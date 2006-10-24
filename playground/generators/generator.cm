@@ -1,10 +1,11 @@
 Library
 	structure Main
         structure Value
-        structure Generator
+        structure ThreadGen
 is
 	main.sml
         value.sml
         generator.sml
+        thread.sml
 	$cml/cml.cm
 	$/basis.cm
