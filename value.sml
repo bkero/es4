@@ -8,7 +8,7 @@ datatype object =
 	 Object of { ty: T ref,
 		     slots: ((T*V) NameMap.map) ref,
 		     proto: (object option) ref }
-
+		   
      and V = Undef
            | Null
 	   | Bool of bool

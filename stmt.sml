@@ -24,7 +24,7 @@ and evalStmt env (Ast.ExprStmt e) = Expr.evalExpr env e
   | evalStmt env (Ast.ContinueStmt lbl) = evalContinueStmt env lbl
   | evalStmt env (Ast.ThrowStmt t) = evalThrowStmt env t
   | evalStmt env (Ast.LabeledStmt (lab, s)) = evalLabelStmt env lab s
-  | evalStmt env (Ast.BlockStmt (Ast.Block b)) = evalBlock env b
+  | evalStmt env (Ast.BlockStmt b) = evalBlock env b
   | evalStmt _ _ = raise Expr.UnimplementedException "Unimplemented statement type"
 
 and evalBlock env { directives, defns, stmts } = 
@@ -47,7 +47,7 @@ and evalLabelStmt env lab s =
 	      then Value.Undef 
 	      else raise BreakException exnLabel
 			 
-and evalWhileStmt env { tag=WHILE, cond, body, contLabel } = 
+and evalWhileStmt env { cond, body, contLabel } = 
     let
         fun loop (accum:Value.V option)
           = let 
