@@ -1,0 +1,19 @@
+Library
+	structure Main
+	structure Ast
+	structure Name
+	structure NameMap
+	structure Value
+	structure Expr
+	structure Stmt
+is
+	main.sml
+	ast.sml
+	name.sml
+	namemap.sml
+	value.sml
+	expr.sml
+	stmt.sml
+
+	$/basis.cm
+	$/smlnj-lib.cm
