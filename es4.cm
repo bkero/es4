@@ -1,6 +1,7 @@
 Library
 	structure Main
 	structure Ast
+    structure Parser
 	structure Name
 	structure NameMap
 	structure Value
@@ -9,6 +10,7 @@ Library
 is
 	main.sml
 	ast.sml
+    parser.sml
 	name.sml
 	namemap.sml
 	value.sml
