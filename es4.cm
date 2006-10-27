@@ -1,23 +1,30 @@
 Library
-	structure Main
-	structure Ast
-    structure Parser
-	structure Name
-	structure NameMap
-	structure Value
-	structure Expr
-	structure Stmt
-	structure TypeChk
+        structure Main
+        structure Ast
+        structure Token
+        structure Lexer
+        structure Parser
+        structure Name
+        structure NameMap
+        structure Value
+        structure Expr
+        structure Stmt
+        structure TypeChk
 is
-	main.sml
-	ast.sml
-    parser.sml
-	name.sml
-	namemap.sml
-	value.sml
-	expr.sml
-	stmt.sml
-	typechk.sml
+        main.sml
+        ast.sml
+        token.sml
+        lexer.lex
+        parser.sml
+        name.sml
+        namemap.sml
+        value.sml
+        expr.sml
+        stmt.sml
+        typechk.sml
 
-	$/basis.cm
-	$/smlnj-lib.cm
+        $/basis.cm
+        $/smlnj-lib.cm
+        $/mllex-tool.cm
+        $/lex-ext.cm
+        
