@@ -7,6 +7,7 @@ Library
 	structure Value
 	structure Expr
 	structure Stmt
+	structure TypeChk
 is
 	main.sml
 	ast.sml
@@ -16,6 +17,7 @@ is
 	value.sml
 	expr.sml
 	stmt.sml
+	typechk.sml
 
 	$/basis.cm
 	$/smlnj-lib.cm
