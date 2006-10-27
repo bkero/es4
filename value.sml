@@ -4,18 +4,17 @@ type str = Ast.ustring
 
 type T = Ast.tyExpr
 
-datatype object = 
-	 Object of { ty: T ref,
-		     slots: ((T*V) NameMap.map) ref,
-		     proto: (object option) ref }
-		   
+datatype object = Object of { ty: T ref,
+		             slots: ((T*V) NameMap.map) ref,
+		             proto: (object option) ref }
+
      and V = Undef
            | Null
-	   | Bool of bool
+	       | Bool of bool
            | Str of str
            | Num of real
-	   | Obj of object
-	   | Fun of (V -> V)
+	       | Obj of object
+	       | Fun of (V -> V)
 
 fun makeObject _ = Object { ty = ref (Ast.SpecialType Ast.ANY),
 			    slots = ref NameMap.empty,
