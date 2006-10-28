@@ -11,6 +11,8 @@ structure Value =
         (* we model ES exceptions as ML exceptions *)
         exception Thrown of value
 
+        exception InternalError of string
+
         fun print x =
             let val s = case x of
                              Undefined => "undefined"
