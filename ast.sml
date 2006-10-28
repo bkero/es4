@@ -40,7 +40,7 @@ datatype binOp =
 
 datatype unOp =
          DELETE | VOID | TYPEOF | PRE_INCREMENT | PRE_DECREMENT
-       | POST_INCREMENT | POST_DECREMENT | PLUS | MINUS | BITWISE_NOT
+       | POST_INCREMENT | POST_DECREMENT | UNARY_PLUS | UNARY_MINUS | BITWISE_NOT
        | LOGICAL_NOT | MAKE_NAMESPACE
 
 datatype nulOp =
@@ -60,7 +60,7 @@ datatype primAnnotation =
          NAMED | NULLABLE | NONNULLABLE
 
 datatype specialTy =
-         ANY | NULL | UNDEFINED | NONE
+         ANY | NULL | UNDEFINED | NOTYPE
 
 datatype directive =
          UseNamespace of expr list
