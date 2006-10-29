@@ -1,103 +1,88 @@
-structure ThreadGen : GENERATOR =
+structure ThreadCoroutine : COROUTINE =
     struct
         open Value
+        open CML
 
-        datatype signal = Yield of value (* client <=  producer *)
-                        | Throw of value (* client <=> producer *)
-                        | Send of value  (* client  => producer *)
-                        | Close          (* client  => producer *)
+        exception Death
 
-        datatype state = NEWBORN (* waiting for first send or next *)
-                       | OPEN    (* started via next               *)
-                       | RUNNING (* currently active               *)
-                       | CLOSED  (* closed and no longer usable    *)
+        (* To close a coroutine, we send it NONE. *)
+        datatype 'a thread = Newborn of 'a option chan
+                           | Paused of 'a option chan
+                           | Running of 'a option chan
 
-        exception WrongDirection (* internal error: signal sent in the wrong direction *)
-        exception AbortGenerator (* internal: raised to abort a generator function     *)
+        (* A closed coroutine is represented as NONE. *)
+        type 'a C = 'a thread option ref
 
-        datatype G = Generator of (signal CML.chan * state ref)
+        fun new f = let val c = channel ()
+                        val r = ref (SOME (Newborn c))
+                        val thread = fn () =>
+                                     (
+                                         (case recv c of
+                                               NONE => raise Death
+                                             | SOME s => (
+                                                             r := SOME (Running c);
+                                                             let val s' = f (r, s) in
+                                                                 r := NONE;
+                                                                 send (c, SOME s')
+                                                             end
+                                                         ))
+                                         handle Death => ()
+                                     )
+                    in
+                        spawn (thread);
+                        r
+                    end
 
-        (* blocks a new generator function before the first send *)
-        fun wait (Generator (c, _)) =
-        (
-            case (CML.recv c) of
-                 Send Undefined => ()
-               | Send v => raise (Thrown (String "newborn generator"))
-               | Close => raise AbortGenerator
-               | Throw e => raise (Thrown e)
-               | _ => raise WrongDirection
-        )
-
-        (* implements yield v *)
-        fun yield (Generator (c, r), v) =
-        (
-            r := OPEN;
-            CML.send (c, Yield v);
-            let val s = CML.recv c in
-                r := RUNNING;
-                case s of
-                     Send v' => v'
-                   | Close => raise AbortGenerator
-                   | Throw e => raise (Thrown e)
-                   | _ => raise WrongDirection
-            end
-        )
-
-        (* implements gen.send(v) *)
-        fun send (Generator (c, r), v) =
-        (
+        fun switch (r, x) =
             case !r of
-                 RUNNING => raise (Thrown (String "already executing"))
-               | CLOSED => raise (Thrown StopIteration)
-               | _ => (CML.send (c, Send v);
-                       case (CML.recv c) of
-                            Yield v' => v'
-                          | Throw e => raise (Thrown e)
-                          | _ => raise WrongDirection)
-        )
+                 NONE => raise InternalError "dead coroutine"
+               | SOME (Newborn c) => (
+                                         r := SOME (Running c);
+                                         send (c, SOME x);
+                                         case recv c of
+                                              NONE => raise InternalError "coroutine protocol"
+                                            | SOME x => x
+                                     )
+               | SOME (Paused c) => (
+                                        r := SOME (Running c);
+                                        send (c, SOME x);
+                                        case recv c of
+                                             NONE => raise InternalError "coroutine protocol"
+                                           | SOME x => x
+                                    )
+               | SOME (Running c) => (
+                                         r := SOME (Paused c);
+                                         send (c, SOME x);
+                                         case recv c of
+                                              NONE => raise Death
+                                            | SOME x => x
+                                     )
 
-        (* implements gen.throw(v) *)
-        fun throw (Generator (c, r), v) =
-        (
+        fun kill r =
             case !r of
-                 NEWBORN => raise (Thrown (String "newborn generator"))
-               | OPEN => (CML.send (c, Throw v);
-                          case (CML.recv c) of
-                               Yield v' => v'
-                             | Throw e => raise (Thrown e)
-                             | _ => raise WrongDirection)
-               | RUNNING => raise (Thrown (String "already executing"))
-               | CLOSED => raise (Thrown v)
-        )
+                 NONE => ()
+               | SOME (Newborn c) => (send (c, NONE); r := NONE)
+               | SOME (Paused c) => (send (c, NONE); r := NONE)
+               | SOME (Running c) => raise InternalError "already executing"
 
-        (* implements gen.close() *)
-        fun close (Generator (c, r)) =
-        (
+        fun newborn r =
             case !r of
-                 RUNNING => raise (Thrown (String "already executing"))
-               | CLOSED => ()
-               | _ => (CML.send (c, Close); CML.recv c; ())
-        )
+                 SOME (Newborn _) => true
+               | _ => false
 
-        val make : (G -> unit) -> G =
-            fn body =>
-                let val c = CML.channel ()
-                    val r = ref NEWBORN
-                    val g = Generator (c, r)
-                    val thread = fn () =>
-                                 (
-                                     (wait (g);
-                                      r := RUNNING;
-                                      body (g);
-                                      raise AbortGenerator)
-                                         handle AbortGenerator => (r := CLOSED;
-                                                                   CML.send (c, Close))
-                                              | Thrown v => (r := CLOSED;
-                                                             CML.send (c, Throw v))
-                                 )
-                in
-                    CML.spawn (thread);
-                    g
-                end
+        fun alive r =
+            case !r of
+                 NONE => false
+               | _ => true
 
+        fun running r =
+            case !r of
+                 SOME (Running _) => true
+               | _ => false
+
+        fun run f = (RunCML.doit (fn () =>
+                                  (
+                                      f ()
+                                      handle InternalError s => TextIO.print ("internal error: " ^ s ^ "\n")
+                                  ), NONE); ())
     end

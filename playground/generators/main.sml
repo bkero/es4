@@ -1,9 +1,8 @@
-functor MainFun(structure G : GENERATOR) =
+functor MainFun(structure Co : COROUTINE) =
     struct
-        open CML       (* Concurrent ML primitives *)
-        open Value     (* data model for ES values *)
+        open Value
 
-        structure Gen : GENERATOR = G
+        structure Gen : GENERATOR = GeneratorFun(structure Coroutine = Co)
 
         fun fib () =
             Gen.make (fn (g) =>
@@ -17,18 +16,16 @@ functor MainFun(structure G : GENERATOR) =
                           end)
 
         fun main () =
-            RunCML.doit(fn () =>
-                            let val g = fib()
-                                val rec loop = fn i =>
-                                                   if i < 10
-                                                   then (print (Gen.send (g, Undefined));
-                                                         loop (i+1))
-                                                   else ()
-                            in
-                                loop 0
-                            end,
-                        NONE)
-
+            Co.run(fn () =>
+                       let val g = fib()
+                           val rec loop = fn i =>
+                                              if i < 10
+                                              then (print (Gen.send (g, Undefined));
+                                                    loop (i+1))
+                                              else ()
+                       in
+                           loop 0
+                       end)
     end
 
-structure Main = MainFun(structure G = ThreadGen)
+structure Main = MainFun(structure Co = ThreadCoroutine)

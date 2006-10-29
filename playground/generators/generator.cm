@@ -1,11 +1,11 @@
 Library
 	structure Main
-        structure Value
-        structure ThreadGen
 is
 	main.sml
         value.sml
         generator.sml
+        coroutine.sml
+        callcc.sml
         thread.sml
 	$cml/cml.cm
 	$/basis.cm
