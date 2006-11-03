@@ -62,7 +62,7 @@ and tcStmt env lbls retTy (Ast.ExprStmt e) =
 
   | tcStmt _ _ _ _ = raise Expr.UnimplementedException "Unimplemented statement type"
 
-and tcBlock env lbls retTy (Ast.Block {directives=directives,defns=defns,stmts=stmts}) = ()
+and tcBlock env lbls retTy {directives,defns,stmts} = ()
 
 and tcExpr env e = 
 	boolType
