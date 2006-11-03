@@ -4,35 +4,38 @@ structure Expr = struct
 
 type value = Value.V
 
-type multiname = { namespaces: (Ast.ustring list), prop: Ast.ustring }
+datatype multiname = Multiname of { namespaces: Ast.visibility list, id: Ast.ustring }
+datatype name = Name of { ns : Ast.visibility, id : Ast.ustring }
 
 exception ReferenceException of multiname
 
 exception UnimplementedException of string
 
 exception TailCallException of (unit -> value)
-			       
+                   
 exception ReturnException of value
 
-fun makeName p (Ast.Attributes {vis=(Ast.BuiltinNamespace n), ...}) =
-    {ns=n, prop=p}
+fun makeName p (Ast.Attributes {vis=n,...}) =
+    Name{ns=n, id=p}
 
-  | makeName p (Ast.Attributes {vis=(Ast.UserNamespace n), ...}) =
-    {ns=n, prop=p}
-			     
-fun setPropertyValue (Value.Object obj) name v =
+(*  | makeName p (Ast.Attributes {vis=(Ast.UserNamespace n), ...}) =
+    Name{ns=Ast.UserNamespace(n), id=p}
+*)
+                 
+fun setPropertyValue (Value.Object obj) (name:name) v =
     let
-	val slots = #slots obj
+    val slots = #slots obj
+    val Name {id=id,...} = name
     in
-	slots := NameMap.insert ((!slots), name, v)
+    slots := NameMap.insert ((!slots),{ns="",prop=id}, v)
     end
 
 fun extendEnvironment env bindingobj = 
     bindingobj :: env
 
 
-fun evalExpr env (Ast.QualIdent { lhs=NONE, rhs=(Ast.Ident id), openNamespaces=nss }) = 
-    evalVarExpr env {prop=id, namespaces=nss}
+fun evalExpr env (Ast.QualIdent { qual=NONE, ident=id, opennss=nss }) = 
+    evalVarExpr env (Multiname {id=id, namespaces=nss})
 
   | evalExpr env (Ast.LetExpr {defs, body}) = 
     evalLetExpr env defs body
@@ -50,25 +53,26 @@ and evalLetExpr env ds body =
     end
     
 and createBinding bindings env 
-		  (Ast.SimpleDefn { attrs, init, name, ty, ...}) = 
+          (Ast.SimpleDefn { attrs, init, name, ty, ...}) = 
     let 
-	val n = makeName name attrs
-	val t = case ty of
-		    NONE => Ast.SpecialType Ast.ANY
-		  | SOME e => e
-	val v = case init of 
-		    NONE => Value.Undef
-		  | SOME e => evalExpr env e
+    val p = name
+    val n = makeName p attrs
+    val t = case ty of
+            NONE => Ast.SpecialType Ast.ANY
+          | SOME e => e
+    val v = case init of 
+            NONE => Value.Undef
+          | SOME e => evalExpr env e
     in
-	setPropertyValue bindings n (t, v)
+    setPropertyValue bindings n (t, v)
     end
 
   | createBinding bindings env 
-		  (Ast.DestructuringDefn { init, postInit, names, ...}) = 
+          (Ast.DestructuringDefn { init, postInit, names, ...}) = 
     let 
         val v = case init of 
-		    NONE => Value.Undef
-		  | SOME e => evalExpr env e
+            NONE => Value.Undef
+          | SOME e => evalExpr env e
     in 
         destructureAndBind bindings postInit names v
     end
@@ -79,34 +83,34 @@ and destructureAndBind bindings postInit names v =
 
 and evalVarExpr env mname = 
     case lookupInEnv env mname of 
-	NONE => raise ReferenceException mname
+    NONE => raise ReferenceException mname
       | SOME (t,v) => v
-		  
+          
 and lookupInEnv [] (mname:multiname) = 
     NONE
 
   | lookupInEnv (b::bs) (mname:multiname) = 
     (case getValueProtocol b mname of 
-	 NONE => lookupInEnv bs mname
+     NONE => lookupInEnv bs mname
        | result => result)
     
 and getValueProtocol (Value.Object obj) (mname:multiname) = 
     case getPropertyValue obj mname of 
-	NONE => (case !(#proto obj) of 
-		     NONE => NONE
+    NONE => (case !(#proto obj) of 
+             NONE => NONE
                    | SOME proto => getValueProtocol proto mname)
       | result => result
 
 and getPropertyValue obj (mname:multiname) = 
-    let 	
-	val slots = !(#slots obj)
-	val p = #prop mname
-	fun search [] = NONE
-	  | search (x::xs) = case NameMap.find (slots, {ns=x, prop=p}) of
-				 NONE => search xs
-			       | res => res
+    let     
+    val slots = !(#slots obj)
+    val Multiname {namespaces=nss,id=p} = mname
+    fun search [] = NONE
+      | search (x::xs) = case NameMap.find (slots,{ns="", prop=p}) of
+                 NONE => search xs
+               | res => res
     in
-	search (#namespaces mname)
+    search(nss)
     end
 
 and evalTailCallExpr env e = 

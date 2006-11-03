@@ -172,4 +172,21 @@ datatype token =
     | EMPTY
     | ERROR
 
+exception TokenError
+
+fun isreserved AS = true
+  | isreserved BREAK = true
+  | isreserved  _ = false
+
+fun tokenname AS = "as"
+  | tokenname (IDENTIFIER name) = name
+  | tokenname (NUMBERLITERAL r) = Real.toString(r)
+  | tokenname DOUBLECOLON = "::"
+  | tokenname COMMA = ","
+  | tokenname DIV = ","
+  | tokenname PRIVATE = "private"
+  | tokenname EOL = "eol"
+  | tokenname EMPTY = "eos"
+  | tokenname _ = "unknown"
+
 end
