@@ -78,16 +78,11 @@ fun sexp1 stream head func =
      PP.string stream ")";
      PP.closeBox stream)
 
-fun ppVisibility stream (BuiltinNamespace id) =
-    sexp stream (fn _ => (PP.string stream "BUILTIN_NAMESPACE";
+fun ppVisibility stream (Namespace (kind,id)) =
+    sexp stream (fn _ => (PP.string stream "NAMESPACE";  (* todo: print kind *)
 			  PP.space stream;
 			  PP.string stream id))
  
-  | ppVisibility stream (UserNamespace ns) = 
-    sexp stream (fn _ => (PP.string stream "USER_NAMESPACE";
-			  PP.space stream;
-			  PP.string stream ns))
-
 fun ppPrimAnnotation stream a = 
     PP.string stream 
     (case a of 
@@ -168,7 +163,7 @@ and ppExpr stream e =
 	  | NullaryExpr n => ppNullOp stream n
 			     
 	  | YieldExpr y => ex1 "YIELD" y
-	  | SuperExpr s => ex1s "SUPER" s
+(* todo	  | SuperExpr s => ex1s "SUPER" s   *)
 	  | LiteralExpr lit => (sx1 "LITERAL" 
 				    (fn _ => ppLiteral stream lit))
 			       
@@ -183,23 +178,24 @@ and ppExpr stream e =
 				      (ex1 "OBJ" obj);
 				      (ex1 "FIELD" field))))
 
-	  | QualIdent {lhs, rhs, openNamespaces} => 
+(*	  | QualIdent {qual, ident, opennss} => 
 	    (sx1 "QUALIDENT" 
-		 (fn _ => ((case lhs of
+		 (fn _ => ((case qual of
 				NONE => ()
 			      | SOME qual => 
 				(sx1 "QUAL" 
-				     (fn _ => ppIdentOrExpr stream qual)));
+				     (fn _ => ppExpr stream qual)));
 			   (sx1 "IDENT" 
-				(fn _ => ppIdentOrExpr stream rhs));
-			   (case openNamespaces of
+				(fn _ => PP.string stream ident));
+			   (case opennss of
 				[] => ()
 			      | x::xs => 
-				(sx1 "OPEN_NAMESPACES" 
+                    (sx1 "OPEN_NAMESPACES" 
 				     (fn _ => List.app 
 						  (fn n => (sp (); str n))
-						  openNamespaces))))))
-	    
+						  opennss))))))
+
+*)	    
 	  | AttrQualIdent { indirect, operand } => 
 	    (sx1 "ATTRQUALIDENT" 
 		 (fn _ => (if indirect 
@@ -336,8 +332,8 @@ and ppLiteral stream lit =
 	  | LiteralString s => (sx1 "STRING" (fn _ => str s))
 	  | LiteralArray a => ex1s "ARRAY" a
 	  | LiteralXML x => ex1s "XML" x
-	  | LiteralNamespace n => (sx1 "BUILTIN_NAMESPACE" 
-				       (fn _ => ppBuiltinNamespace stream n))
+	  | LiteralNamespace vis => (sx1 "BUILTIN_NAMESPACE" 
+				       (fn _ => ppVisibility stream vis))
 	  | LiteralObject fields => 
 	    (sx1 "OBJECT" 
 		 (fn _ => 
@@ -471,15 +467,15 @@ and ppStmt stream s =
 			      NONE => ()
 			    | SOME lbl => str lbl))
 
-	  | BlockStmt b => ppBlock stream b
+	  | BlockStmt (Block {defns=dfs,directives=drs,stmts=sts}) => ppBlock stream  {defns=dfs,directives=drs,stmts=sts}
 
 	  | LabeledStmt (lab, stmt) => 
 	    (sx1 "LABELED_STMT" (fn _ => (str lab; st stmt)))
 
-	  | LetStmt (defs, block) => 
+	  | LetStmt (defs,Block {defns=dfs,directives=drs,stmts=sts}) => 
 	    (sx1 "LET_STMT" 
 		 (fn _ => ((vd1s "DEFINITIONS" defs);
-			   (ppBlock stream block))))
+			   (ppBlock stream {defns=dfs,directives=drs,stmts=sts}))))
 
 	  | SuperStmt es => ex1s "SUPER_STMT" es
 	  | WhileStmt w => ppWhileStmt "WHILE_STMT" w
@@ -506,14 +502,14 @@ and ppStmt stream s =
 	     (fn _ => ((ex1 "OBJ" obj);
 		       (st1 "BODY" body))))
 
-	  | TryStmt {body, catches, finally} => 
+	  | TryStmt {body=Block {defns=dfs,directives=drs,stmts=sts}, catches, finally=Block {defns=fdfs,directives=fdrs,stmts=fsts}} => 
 	    (sx1 "TRY_STMT"
-	     (fn _ => ((sx1 "BODY" (fn _ => ppBlock stream body));
-		       (List.app (fn (formal, block) => 
+	     (fn _ => ((sx1 "BODY" (fn _ => ppBlock stream {defns=dfs,directives=drs,stmts=sts}));
+		       (List.app (fn (formal,Block {defns=dfs,directives=drs,stmts=sts}) => 
 				     (sx1 "CATCH" (fn _ => ((ppFormal stream formal);
-							    (ppBlock stream block)))))
+							    (ppBlock stream {defns=dfs,directives=drs,stmts=sts})))))
 				 catches);
-		       (sx1 "FINALLY" (fn _ => ppBlock stream finally)))))
+		       (sx1 "FINALLY" (fn _ => ppBlock stream {defns=fdfs,directives=fdrs,stmts=fsts})))))
 
 	  | SwitchStmt {cond, cases, default} => 
 	    (sx1 "SWITCH_STMT" 

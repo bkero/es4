@@ -461,7 +461,7 @@ and restParameter ts = raise ParseError
 and resultType ts = 
     let
     in case ts of
-        VOID :: ts1 => (ts1,Ast.SpecialType(Ast.NONE))
+        VOID :: ts1 => (ts1,Ast.SpecialType(Ast.NOTYPE))
       | _ => typeExpression ts
     end
 

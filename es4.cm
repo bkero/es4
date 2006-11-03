@@ -1,7 +1,7 @@
 Library
         structure Main
         structure Ast
-	structure Pretty
+		structure Pretty
         structure Token
         structure Lexer
         structure Parser
@@ -15,7 +15,7 @@ Library
 is
         main.sml
         ast.sml
-	pretty.sml
+		pretty.sml
         token.sml
         lexer.lex
         parser.sml
@@ -28,7 +28,7 @@ is
 
         $/basis.cm
         $/smlnj-lib.cm
-	$/pp-lib.cm
+		$/pp-lib.cm
         $/mllex-tool.cm
         $/lex-ext.cm
         
