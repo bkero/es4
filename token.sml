@@ -171,6 +171,13 @@ datatype token =
 
     | EMPTY
     | ERROR
+    | LEXBREAK_DIV of { lex_initial: unit -> (token list),
+			lex_regexp: unit -> (token list) }
+    | LEXBREAK_DIVASSIGN of { lex_initial: unit -> (token list),
+			      lex_regexp: unit -> (token list) }
+    | LEXBREAK_LESSTHAN of { lex_initial: unit -> (token list),
+			     lex_xml: unit -> (token list) }
+    | EOF
 
 exception TokenError
 

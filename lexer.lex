@@ -8,11 +8,46 @@ open Token
 
 type lexresult = token
 
-fun eof _ = EMPTY
+fun eof _ = EOF
+
+fun log ss = 
+    (TextIO.print "log: "; 
+     List.app TextIO.print ss; 
+     TextIO.print "\n")
+
+fun token_list (token_fn : unit -> token) =
+let
+    val t = ref [] 
+    fun add tok = t := tok :: !t
+    fun stop _ = rev (!t)
+    fun step _ = 
+	let 
+	    val tok = token_fn ()
+	in 
+	  (*
+	   * The lexbreak tokens represent choice points for the parser. We
+	   * return two thunks to it: one for each lexer start state
+	   * it might wish to resume lexing in.
+	   *)	    
+	    case tok of 
+		LEXBREAK_DIV _ => (add DIV; add tok; stop ())
+	      | LEXBREAK_DIVASSIGN _ => (add DIVASSIGN; add tok; stop ())
+	      | LEXBREAK_LESSTHAN _ => (add LESSTHAN; add tok; stop ())
+	      | EOF => stop ()
+	      | _ => step ()
+	end
+in
+    step ()
+end
+
+val (curr_quote : char ref) = ref #"\000"
+val (curr_chars : (char list) ref) = ref []
 
 %%
 
 %structure Lexer
+
+%s REGEXP XML SINGLE_LINE_COMMENT MULTI_LINE_COMMENT STRING;
 
 whitespace      = [ \t\r\013]+;
 
@@ -37,125 +72,190 @@ decimalLiteral        = ({decimalLiteral_1} | {decimalLiteral_2} | {decimalLiter
 
 hexIntegerLiteral     = ("0" [xX] {hexDigit}+);
 
+charEscape            = "\\" ([abtnvfr\"\'\\]|"x"{hexDigit}{2}|[0-7]{1}{3});
+
 %%
 
-"\n"              => (EOL);
+<INITIAL>"\n"              => (EOL);
 
-"-"               => (MINUS);
-"--"              => (MINUSMINUS);
-"!"               => (NOT);
-"!="              => (NOTEQUALS);
-"!=="             => (STRICTNOTEQUALS);
-"%"               => (MODULUS);
-"%="              => (MODULUSASSIGN);
-"&"               => (BITWISEAND);
-"&&"              => (LOGICALAND);
-"&&="             => (LOGICALANDASSIGN);
-"&="              => (BITWISEANDASSIGN);
-"("               => (LEFTPAREN);
-")"               => (RIGHTPAREN);
-"*"               => (MULT);
-"*="              => (MULTASSIGN);
-","               => (COMMA);
-"."               => (DOT);
-".."              => (DOUBLEDOT);
-"..."             => (TRIPLEDOT);
-".<"              => (LEFTDOTANGLE);
-"/"               => (DIV);
-"/="              => (DIVASSIGN);
-":"               => (COLON);
-"::"              => (DOUBLECOLON);
-";"               => (SEMICOLON);
-"?"               => (QUESTIONMARK);
-"@"               => (AT);
-"["               => (LEFTBRACKET);
-"]"               => (RIGHTBRACKET);
-"^"               => (BITWISEXOR);
-"^^"              => (LOGICALXOR);
-"^^="             => (LOGICALXORASSIGN);
-"^="              => (BITWISEXORASSIGN);
-"{"               => (LEFTBRACE);
-"|"               => (BITWISEOR);
-"||"              => (LOGICALOR);
-"||="             => (LOGICALORASSIGN);
-"|="              => (BITWISEORASSIGN);
-"}"               => (RIGHTBRACE);
-"~"               => (BITWISENOT);
-"+"               => (PLUS);
-"++"              => (PLUSPLUS);
-"+="              => (PLUSASSIGN);
-"<"               => (LESSTHAN);
-"<<"              => (LEFTSHIFT);
-"<<="             => (LEFTSHIFTASSIGN);
-"<="              => (LESSTHANOREQUALS);
-"="               => (ASSIGN);
-"-="              => (MINUSASSIGN);
-"=="              => (EQUALS);
-"==="             => (STRICTEQUALS);
-">"               => (GREATERTHAN);
-">="              => (GREATERTHANOREQUALS);
-">>"              => (RIGHTSHIFT);
-">>="             => (RIGHTSHIFTASSIGN);
-">>>"             => (UNSIGNEDRIGHTSHIFT);
-">>>="            => (UNSIGNEDRIGHTSHIFTASSIGN);
+<INITIAL>"-"               => (MINUS);
+<INITIAL>"--"              => (MINUSMINUS);
+<INITIAL>"!"               => (NOT);
+<INITIAL>"!="              => (NOTEQUALS);
+<INITIAL>"!=="             => (STRICTNOTEQUALS);
+<INITIAL>"%"               => (MODULUS);
+<INITIAL>"%="              => (MODULUSASSIGN);
+<INITIAL>"&"               => (BITWISEAND);
+<INITIAL>"&&"              => (LOGICALAND);
+<INITIAL>"&&="             => (LOGICALANDASSIGN);
+<INITIAL>"&="              => (BITWISEANDASSIGN);
+<INITIAL>"("               => (LEFTPAREN);
+<INITIAL>")"               => (RIGHTPAREN);
+<INITIAL>"*"               => (MULT);
+<INITIAL>"*="              => (MULTASSIGN);
+<INITIAL>","               => (COMMA);
+<INITIAL>"."               => (DOT);
+<INITIAL>".."              => (DOUBLEDOT);
+<INITIAL>"..."             => (TRIPLEDOT);
+<INITIAL>".<"              => (LEFTDOTANGLE);
 
-"as"              => (AS);
-"break"           => (BREAK);
-"case"            => (CASE); 
-"cast"            => (CAST); 
-"catch"           => (CATCH); 
-"class"           => (CLASS); 
-"const"           => (CONST); 
-"continue"        => (CONTINUE); 
-"default"         => (DEFAULT); 
-"delete"          => (DELETE); 
-"do"              => (DO); 
-"else"            => (ELSE); 
-"enum"            => (ENUM); 
-"extends"         => (EXTENDS); 
-"false"           => (FALSE); 
-"finally"         => (FINALLY); 
-"for"             => (FOR); 
-"function"        => (FUNCTION); 
-"if"              => (IF);
-"implements"      => (IMPLEMENTS);
-"import"          => (IMPORT);
-"in"              => (IN);
-"instanceof"      => (INSTANCEOF);
-"interface"       => (INTERFACE);
-"internal"        => (INTERNAL);
-"intrinsic"       => (INTRINSIC);
-"is"              => (IS);
-"let"             => (LET);
-"new"             => (NEW);
-"null"            => (NULL);
-"package"         => (PACKAGE);
-"private"         => (PRIVATE);
-"protected"       => (PROTECTED);
-"public"          => (PUBLIC);
-"return"          => (RETURN);
-"super"           => (SUPER);
-"switch"          => (SWITCH);
-"this"            => (THIS);
-"throw"           => (THROW);
-"to"              => (TO);
-"true"            => (TRUE);
-"try"             => (TRY);
-"typeof"          => (TYPEOF);
-"use"             => (USE);
-"var"             => (VAR);
-"void"            => (VOID);
-"while"           => (WHILE);
-"with"            => (WITH);
+<INITIAL>"/"               => (LEXBREAK_DIV 
+				   { lex_initial = 
+				     (fn _ => token_list 
+						  (fn _ => (YYBEGIN INITIAL; lex ()))),
+				     lex_regexp = 
+				     (fn _ => token_list 
+						  (fn _ => (YYBEGIN REGEXP; lex ()))) });
+
+<INITIAL>"/="              => (LEXBREAK_DIVASSIGN 
+				   { lex_initial = 
+				     (fn _ => token_list 
+						  (fn _ => (YYBEGIN INITIAL; lex ()))),
+				     lex_regexp = 
+				     (fn _ => token_list 
+						  (fn _ => (YYBEGIN REGEXP; lex ()))) });
+<INITIAL>":"               => (COLON);
+<INITIAL>"::"              => (DOUBLECOLON);
+<INITIAL>";"               => (SEMICOLON);
+<INITIAL>"?"               => (QUESTIONMARK);
+<INITIAL>"@"               => (AT);
+<INITIAL>"["               => (LEFTBRACKET);
+<INITIAL>"]"               => (RIGHTBRACKET);
+<INITIAL>"^"               => (BITWISEXOR);
+<INITIAL>"^^"              => (LOGICALXOR);
+<INITIAL>"^^="             => (LOGICALXORASSIGN);
+<INITIAL>"^="              => (BITWISEXORASSIGN);
+<INITIAL>"{"               => (LEFTBRACE);
+<INITIAL>"|"               => (BITWISEOR);
+<INITIAL>"||"              => (LOGICALOR);
+<INITIAL>"||="             => (LOGICALORASSIGN);
+<INITIAL>"|="              => (BITWISEORASSIGN);
+<INITIAL>"}"               => (RIGHTBRACE);
+<INITIAL>"~"               => (BITWISENOT);
+<INITIAL>"+"               => (PLUS);
+<INITIAL>"++"              => (PLUSPLUS);
+<INITIAL>"+="              => (PLUSASSIGN);
+
+<INITIAL>"<"               => (LEXBREAK_LESSTHAN
+				   { lex_initial = 
+				     (fn _ => token_list 
+						  (fn _ => (YYBEGIN INITIAL; lex ()))),
+				     lex_xml = 
+				     (fn _ => token_list 
+						  (fn _ => (YYBEGIN XML; lex ()))) });
+
+<INITIAL>"<<"              => (LEFTSHIFT);
+<INITIAL>"<<="             => (LEFTSHIFTASSIGN);
+<INITIAL>"<="              => (LESSTHANOREQUALS);
+<INITIAL>"="               => (ASSIGN);
+<INITIAL>"-="              => (MINUSASSIGN);
+<INITIAL>"=="              => (EQUALS);
+<INITIAL>"==="             => (STRICTEQUALS);
+<INITIAL>">"               => (GREATERTHAN);
+<INITIAL>">="              => (GREATERTHANOREQUALS);
+<INITIAL>">>"              => (RIGHTSHIFT);
+<INITIAL>">>="             => (RIGHTSHIFTASSIGN);
+<INITIAL>">>>"             => (UNSIGNEDRIGHTSHIFT);
+<INITIAL>">>>="            => (UNSIGNEDRIGHTSHIFTASSIGN);
+
+<INITIAL>"as"              => (AS);
+<INITIAL>"break"           => (BREAK);
+<INITIAL>"case"            => (CASE); 
+<INITIAL>"cast"            => (CAST); 
+<INITIAL>"catch"           => (CATCH); 
+<INITIAL>"class"           => (CLASS); 
+<INITIAL>"const"           => (CONST); 
+<INITIAL>"continue"        => (CONTINUE); 
+<INITIAL>"default"         => (DEFAULT); 
+<INITIAL>"delete"          => (DELETE); 
+<INITIAL>"do"              => (DO); 
+<INITIAL>"else"            => (ELSE); 
+<INITIAL>"enum"            => (ENUM); 
+<INITIAL>"extends"         => (EXTENDS); 
+<INITIAL>"false"           => (FALSE); 
+<INITIAL>"finally"         => (FINALLY); 
+<INITIAL>"for"             => (FOR); 
+<INITIAL>"function"        => (FUNCTION); 
+<INITIAL>"if"              => (IF);
+<INITIAL>"implements"      => (IMPLEMENTS);
+<INITIAL>"import"          => (IMPORT);
+<INITIAL>"in"              => (IN);
+<INITIAL>"instanceof"      => (INSTANCEOF);
+<INITIAL>"interface"       => (INTERFACE);
+<INITIAL>"internal"        => (INTERNAL);
+<INITIAL>"intrinsic"       => (INTRINSIC);
+<INITIAL>"is"              => (IS);
+<INITIAL>"let"             => (LET);
+<INITIAL>"new"             => (NEW);
+<INITIAL>"null"            => (NULL);
+<INITIAL>"package"         => (PACKAGE);
+<INITIAL>"private"         => (PRIVATE);
+<INITIAL>"protected"       => (PROTECTED);
+<INITIAL>"public"          => (PUBLIC);
+<INITIAL>"return"          => (RETURN);
+<INITIAL>"super"           => (SUPER);
+<INITIAL>"switch"          => (SWITCH);
+<INITIAL>"this"            => (THIS);
+<INITIAL>"throw"           => (THROW);
+<INITIAL>"to"              => (TO);
+<INITIAL>"true"            => (TRUE);
+<INITIAL>"try"             => (TRY);
+<INITIAL>"typeof"          => (TYPEOF);
+<INITIAL>"use"             => (USE);
+<INITIAL>"var"             => (VAR);
+<INITIAL>"void"            => (VOID);
+<INITIAL>"while"           => (WHILE);
+<INITIAL>"with"            => (WITH);
 
 
-{whitespace}        => (lex());
-{identifier}        => (IDENTIFIER yytext);
-		   
-{decimalLiteral}    => (case Real.fromString yytext of 
-		            SOME r => NUMBERLITERAL r 
-			  | NONE   => raise LexError);
+<INITIAL>{whitespace}        => (lex());
+<INITIAL>{identifier}        => (IDENTIFIER yytext);
+                   
+<INITIAL>{decimalLiteral}    => (case Real.fromString yytext of 
+                                     SOME r => NUMBERLITERAL r 
+                                   | NONE   => raise LexError);
 
-{hexIntegerLiteral} => (case Int.fromString yytext of
-		            SOME i => NUMBERLITERAL (Real.fromInt i)
-			  | NONE => raise LexError);
+<INITIAL>{hexIntegerLiteral} => (case Int.fromString yytext of
+                                     SOME i => NUMBERLITERAL (Real.fromInt i)
+                                   | NONE => raise LexError);
+
+
+<INITIAL>"//"                => (YYBEGIN SINGLE_LINE_COMMENT; lex());
+<SINGLE_LINE_COMMENT>"\n"    => (YYBEGIN INITIAL; lex());
+<SINGLE_LINE_COMMENT>.       => (lex());
+
+<INITIAL>"/*"                => (YYBEGIN MULTI_LINE_COMMENT; lex());
+<MULTI_LINE_COMMENT>"*/"     => (YYBEGIN INITIAL; lex());
+<MULTI_LINE_COMMENT>.        => (lex());
+
+<INITIAL>"'"|"\""            => (curr_quote := String.sub (yytext,0); 
+                                 curr_chars := [];
+                                 YYBEGIN STRING;
+                                 lex());
+
+<STRING>"'"|"\""             => (if 
+                                     (!curr_quote) = String.sub (yytext,0)
+                                 then 
+                                     let 
+                                         val str = (String.implode (rev (!curr_chars)))
+                                     in
+                                         curr_quote := #"\000";
+                                         curr_chars := [];
+                                         YYBEGIN INITIAL;
+                                         STRINGLITERAL str
+                                     end
+                                 else
+                                     lex());
+
+<STRING>{charEscape}          => ((case Char.fromCString yytext of
+				       NONE => raise LexError
+				     | SOME c => curr_chars := c :: (!curr_chars));
+				  lex());
+
+<STRING>"\\".                 => (curr_chars := (String.sub (yytext,1)) :: (!curr_chars);
+				  lex());
+
+<STRING>.                     => (curr_chars := (String.sub (yytext,0)) :: (!curr_chars);
+				  lex());
+
+<INITIAL>.                    => (log ["unexpected input:", yytext]; raise LexError);

@@ -1896,30 +1896,24 @@ fun mkReader filename =
 
 fun lexFile (filename : string) : (token list) = 
     let 
-        val tmp = ref []
         val lexer = Lexer.makeLexer (mkReader filename)
-        fun step _ = 
-            case lexer () of 
-                EMPTY => (tmp := EMPTY :: (!tmp); List.rev (!tmp))
-              | other => (tmp := other :: (!tmp); step ())
-        val result = step ()
-             handle Lexer.LexError => (log ["lex error"]; 
-                           raise Lexer.LexError)
+	val tokens = Lexer.UserDeclarations.token_list lexer
     in
-        log ["lexed ", filename];
-        result
+        tokens
     end
 
 fun parse ts =
     case (program ts) of
-        ([EOL, EMPTY],result) => result
+        ([EOL, EOF],result) => result
       | _  => raise ParseError
 
 fun parseFile filename = 
     (log ["scanning ", filename];
      (parse (lexFile filename)
       handle ParseError => (log ["parse error"]; 
-                raise ParseError));
+			    raise ParseError)
+	   | Lexer.LexError => (log ["lex error"];
+				raise Lexer.LexError));
      log ["parsed ", filename, "\n"])
 
 
