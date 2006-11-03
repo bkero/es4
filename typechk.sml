@@ -10,12 +10,12 @@ fun tcStmts env (s::ss) = (tcStmt env s; tcStmts env ss)
   | tcStmts env [] = ()
 
 and tcStmt env (Ast.ExprStmt e) = tcExpr env e
-  | tcStmt env (Ast.IfStmt {cond,consequent,alternative}	) = 
-	(
-	checkConvertible (tcExpr env cond) boolType;
-	tcStmt env consequent;
-	tcStmt env alternative
-	)
+  | tcStmt env (Ast.IfStmt {cond,consequent,alternative}    ) = 
+    (
+    checkConvertible (tcExpr env cond) boolType;
+    tcStmt env consequent;
+    tcStmt env alternative
+    )
 (*
   | tcStmt env (Ast.WhileStmt w) = tcWhileStmt env w
   | tcStmt env (Ast.ReturnStmt r) = tcReturnStmt env r
@@ -28,10 +28,10 @@ and tcStmt env (Ast.ExprStmt e) = tcExpr env e
   | tcStmt _ _ = raise Expr.UnimplementedException "Unimplemented statement type"
 
 and tcExpr env e = 
-	boolType
+    boolType
 
 and checkConvertible t1 t2 =
-	true
+    true
 
 
 

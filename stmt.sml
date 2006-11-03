@@ -9,7 +9,7 @@ exception ThrowException of Value.V
 exception ReturnException of Value.V
 
 fun labelEq (SOME (stmtLabel:Ast.ident)) 
-	    (SOME (exnLabel:Ast.ident)) = (stmtLabel = exnLabel)
+        (SOME (exnLabel:Ast.ident)) = (stmtLabel = exnLabel)
   | labelEq NONE (SOME exnLabel) = false
   | labelEq _ NONE = true
 
@@ -27,8 +27,8 @@ and evalStmt env (Ast.ExprStmt e) = Expr.evalExpr env e
   | evalStmt env (Ast.BlockStmt b) = evalBlock env b
   | evalStmt _ _ = raise Expr.UnimplementedException "Unimplemented statement type"
 
-and evalBlock env { directives, defns, stmts } = 
-    evalStmts env stmts
+and evalBlock env (Ast.Block{stmts=s,... }) = 
+    evalStmts env s
 
 and evalIfStmt env { cond, consequent, alternative } = 
     let 
@@ -43,10 +43,10 @@ and evalIfStmt env { cond, consequent, alternative } =
 and evalLabelStmt env lab s = 
     evalStmt env s
     handle BreakException exnLabel 
-	   => if labelEq (SOME lab) exnLabel
-	      then Value.Undef 
-	      else raise BreakException exnLabel
-			 
+       => if labelEq (SOME lab) exnLabel
+          then Value.Undef 
+          else raise BreakException exnLabel
+             
 and evalWhileStmt env { cond, body, contLabel } = 
     let
         fun loop (accum:Value.V option)
@@ -59,9 +59,9 @@ and evalWhileStmt env { cond, body, contLabel } =
                     let
                         val curr = (SOME (evalStmt env body)
                                     handle ContinueException exnLabel => 
-					   if labelEq contLabel exnLabel
-					   then NONE
-					   else raise ContinueException exnLabel)
+                       if labelEq contLabel exnLabel
+                       then NONE
+                       else raise ContinueException exnLabel)
                         val next = (case curr 
                                     of NONE => accum
                                      | x => x)
@@ -73,8 +73,8 @@ and evalWhileStmt env { cond, body, contLabel } =
             end
     in
         case loop NONE of
-	    NONE => Value.Undef
-	  | SOME v => v
+        NONE => Value.Undef
+      | SOME v => v
     end
 
 and evalReturnStmt env e
