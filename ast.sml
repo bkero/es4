@@ -41,7 +41,7 @@ datatype binOp =
 datatype unOp =
          DELETE | VOID | TYPEOF | PRE_INCREMENT | PRE_DECREMENT
        | POST_INCREMENT | POST_DECREMENT | UNARY_PLUS | UNARY_MINUS | BITWISE_NOT
-       | LOGICAL_NOT | MAKE_NAMESPACE
+       | LOGICAL_NOT | MAKE_NAMESPACE | TYPE
 
 datatype nulOp =
          THIS | EMPTY
@@ -181,8 +181,9 @@ datatype directive =
        | BinaryExpr of (binOp * expr * expr)
        | BinaryTypeExpr of (binOp * expr * tyExpr)
        | UnaryExpr of (unOp * expr)
+       | TypeExpr of tyExpr
        | NullaryExpr of nulOp
-       | YieldExpr of expr
+       | YieldExpr of expr option
        | SuperExpr of expr option
        | LiteralExpr of literal
 

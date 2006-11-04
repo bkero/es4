@@ -50,13 +50,13 @@ datatype token =
     | LESSTHAN
     | LEFTSHIFT
     | LEFTSHIFTASSIGN
-    | LESSTHANOREQUALS
+    | LESSTHANOREQUAL
     | ASSIGN
     | MINUSASSIGN
     | EQUALS
     | STRICTEQUALS
     | GREATERTHAN
-    | GREATERTHANOREQUALS
+    | GREATERTHANOREQUAL
     | RIGHTSHIFT
     | RIGHTSHIFTASSIGN
     | UNSIGNEDRIGHTSHIFT
@@ -119,6 +119,9 @@ datatype token =
      as IDENTIFIER tokens and letting the parser decide
      how to interpret them.
 
+     jd: except for TYPE
+    *)
+
     | CALL
     | DEBUGGER
     | DECIMAL
@@ -144,8 +147,6 @@ datatype token =
     | TYPE
     | XML
     | YIELD
-
-     *)
 
     (* literals *)
 
@@ -190,7 +191,9 @@ fun tokenname AS = "as"
   | tokenname (NUMBERLITERAL r) = Real.toString(r)
   | tokenname DOUBLECOLON = "::"
   | tokenname COMMA = ","
-  | tokenname DIV = ","
+  | tokenname DIV = "/"
+  | tokenname MULT = "*"
+  | tokenname MODULUS = "%"
   | tokenname PRIVATE = "private"
   | tokenname EOL = "eol"
   | tokenname EMPTY = "eos"
