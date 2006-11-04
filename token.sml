@@ -50,13 +50,13 @@ datatype token =
     | LESSTHAN
     | LEFTSHIFT
     | LEFTSHIFTASSIGN
-    | LESSTHANOREQUAL
+    | LESSTHANOREQUALS
     | ASSIGN
     | MINUSASSIGN
     | EQUALS
     | STRICTEQUALS
     | GREATERTHAN
-    | GREATERTHANOREQUAL
+    | GREATERTHANOREQUALS
     | RIGHTSHIFT
     | RIGHTSHIFTASSIGN
     | UNSIGNEDRIGHTSHIFT
@@ -113,14 +113,11 @@ datatype token =
     | WHILE
     | WITH
 
-    (* contextually reserved identifiers
-     
+(*     
      Currently adopting the strategy of returning these
      as IDENTIFIER tokens and letting the parser decide
      how to interpret them.
-
-     jd: except for TYPE
-    *)
+*)
 
     | CALL
     | DEBUGGER
@@ -148,6 +145,7 @@ datatype token =
     | XML
     | YIELD
 
+
     (* literals *)
 
     | ATTRIBUTEIDENTIFIER
@@ -172,6 +170,13 @@ datatype token =
 
     | EMPTY
     | ERROR
+    | LEXBREAK_DIV of { lex_initial: unit -> (token list),
+			lex_regexp: unit -> (token list) }
+    | LEXBREAK_DIVASSIGN of { lex_initial: unit -> (token list),
+			      lex_regexp: unit -> (token list) }
+    | LEXBREAK_LESSTHAN of { lex_initial: unit -> (token list),
+			     lex_xml: unit -> (token list) }
+    | EOF
 
 exception TokenError
 
@@ -184,12 +189,11 @@ fun tokenname AS = "as"
   | tokenname (NUMBERLITERAL r) = Real.toString(r)
   | tokenname DOUBLECOLON = "::"
   | tokenname COMMA = ","
-  | tokenname DIV = "/"
-  | tokenname MULT = "*"
-  | tokenname MODULUS = "%"
+  | tokenname DIV = ","
   | tokenname PRIVATE = "private"
   | tokenname EOL = "eol"
   | tokenname EMPTY = "eos"
+  | tokenname (LEXBREAK_DIV {...}) = "lexbreak_div"
   | tokenname _ = "unknown"
 
 end

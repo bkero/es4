@@ -940,7 +940,12 @@ and leftHandSideExpression ts =
                     in
                         callExpressionPrime(ts3,nd3)
                     end
-              | _ => (ts2,nd2)
+              | _ => 
+				let 
+    			    val _ = log(["<< leftHandSideExpression with next=",tokenname(hd(ts2))]) 
+				in
+					(ts2,nd2)
+				end
             end
     end
 
@@ -959,7 +964,13 @@ and postfixExpression ts =
     in case ts1 of
 		PLUSPLUS :: ts2 => (ts2,Ast.UnaryExpr(Ast.POST_INCREMENT,nd1))
 	  | MINUSMINUS :: ts2 => (ts2,Ast.UnaryExpr(Ast.POST_DECREMENT,nd1))
-	  | _ => (ts1,nd1)
+	  | _ =>
+		let 
+    	    val _ = log(["<< postfixExpression with next=",tokenname(hd(ts1))]) 
+		in
+			(ts1,nd1)
+		end
+
     end
 
 (*
@@ -991,7 +1002,13 @@ and unaryExpression ts =
 	  | BITWISENOT :: ts1 => let val (ts2,nd2) = unaryExpression ts1 in (ts2,Ast.UnaryExpr(Ast.BITWISE_NOT,nd2)) end
 	  | NOT :: ts1 => let val (ts2,nd2) = unaryExpression ts1 in (ts2,Ast.UnaryExpr(Ast.LOGICAL_NOT,nd2)) end
 	  | TYPE :: ts1 => let val (ts2,nd2) = typeExpression ts1 in (ts2,Ast.TypeExpr(nd2)) end
-	  | _ => postfixExpression ts
+	  | _ =>
+		let 
+	        val (ts2,nd2) = postfixExpression ts
+    	    val _ = log(["<< unaryExpression with next=",tokenname(hd(ts2))]) 
+		in
+			(ts2,nd2)
+		end
     end
     
 (*
@@ -1021,11 +1038,32 @@ and multiplicativeExpression ts =
 		fun multiplicativeExpression' (ts1, nd1) =
 			case ts1 of
 				MULT :: ts2 => let val (ts3,nd3) = unaryExpression ts2 in multiplicativeExpression' (ts3,Ast.BinaryExpr(Ast.TIMES,nd1,nd3)) end
-			  | DIV :: ts2 => let val (ts3,nd3) = unaryExpression ts2 in multiplicativeExpression' (ts3,Ast.BinaryExpr(Ast.DIVIDE,nd1,nd3)) end
+			  | DIV :: ts2 => 
+					let 
+						val _ = print("\nfound div") 
+						val (ts3,nd3) = unaryExpression ts2 
+					in 
+						multiplicativeExpression' (ts3,Ast.BinaryExpr(Ast.DIVIDE,nd1,nd3)) 
+					end
+			  | (LEXBREAK_DIV x) :: _ => 
+					let
+						val _ = print("\nfound lex div break next=") 
+						val ts2 = (#lex_initial x)()
+						val _ = print(tokenname(hd (tl ts2))) 
+
+						val (ts3,nd3) = unaryExpression ts2 
+					in 
+						multiplicativeExpression' (ts3,Ast.BinaryExpr(Ast.DIVIDE,nd1,nd3)) 
+					end
 			  | MODULUS :: ts2 => let val (ts3,nd3) = unaryExpression ts2 in multiplicativeExpression' (ts3,Ast.BinaryExpr(Ast.REMAINDER,nd1,nd3)) end
 			  | _ => (ts1,nd1)
     in
-        multiplicativeExpression' (ts1,nd1)
+		let 
+	        val (ts2,nd2) = multiplicativeExpression' (ts1,nd1)
+    	    val _ = log(["<< multiplicativeExpression with next=",tokenname(hd(ts2))]) 
+		in
+			(ts2,nd2)
+		end
     end
 
 (*
@@ -1048,7 +1086,12 @@ and additiveExpression ts =
 			  | MINUS :: ts2 => let val (ts3,nd3) = multiplicativeExpression ts2 in additiveExpression' (ts3,Ast.BinaryExpr(Ast.MINUS,nd1,nd3)) end
 			  | _ => (ts1,nd1)
     in
-        additiveExpression' (ts1,nd1)
+		let 
+	        val (ts2,nd2) = additiveExpression' (ts1,nd1)
+    	    val _ = log(["<< additiveExpression with next=",tokenname(hd(ts2))]) 
+		in
+			(ts2,nd2)
+		end
     end
 
 (*
@@ -1073,7 +1116,12 @@ and shiftExpression ts =
 			  | UNSIGNEDRIGHTSHIFT :: ts2 => let val (ts3,nd3) = additiveExpression ts2 in shiftExpression' (ts3,Ast.BinaryExpr(Ast.RIGHT_SHIFT_UNSIGNED,nd1,nd3)) end
 			  | _ => (ts1,nd1)
     in
-        shiftExpression' (ts1,nd1)
+		let 
+	        val (ts2,nd2) = shiftExpression' (ts1,nd1)
+    	    val _ = log(["<< shiftExpression with next=",tokenname(hd(ts2))]) 
+		in
+			(ts2,nd2)
+		end
     end
 
 (*
@@ -1112,26 +1160,32 @@ and relationalExpression (ts, beta)=
 			case ts1 of
 				LESSTHAN :: ts2 => let val (ts3,nd3) = shiftExpression ts2 in relationalExpression' (ts3,Ast.BinaryExpr(Ast.LESS,nd1,nd3),ALLOWIN) end
 			  | GREATERTHAN :: ts2 => let val (ts3,nd3) = shiftExpression ts2 in relationalExpression' (ts3,Ast.BinaryExpr(Ast.GREATER,nd1,nd3),ALLOWIN) end
-			  | LESSTHANOREQUAL :: ts2 => let val (ts3,nd3) = shiftExpression ts2 in relationalExpression' (ts3,Ast.BinaryExpr(Ast.LESS_OR_EQUAL,nd1,nd3),ALLOWIN) end
-			  | GREATERTHANOREQUAL :: ts2 => let val (ts3,nd3) = shiftExpression ts2 in relationalExpression' (ts3,Ast.BinaryExpr(Ast.GREATER_OR_EQUAL,nd1,nd3),ALLOWIN) end
+			  | LESSTHANOREQUALS :: ts2 => let val (ts3,nd3) = shiftExpression ts2 in relationalExpression' (ts3,Ast.BinaryExpr(Ast.LESS_OR_EQUAL,nd1,nd3),ALLOWIN) end
+			  | GREATERTHANOREQUALS :: ts2 => let val (ts3,nd3) = shiftExpression ts2 in relationalExpression' (ts3,Ast.BinaryExpr(Ast.GREATER_OR_EQUAL,nd1,nd3),ALLOWIN) end
 			  | IN :: ts2 => let val (ts3,nd3) = shiftExpression ts2 in relationalExpression' (ts3,Ast.BinaryExpr(Ast.IN,nd1,nd3),ALLOWIN) end
 			  | INSTANCEOF :: ts2 => let val (ts3,nd3) = shiftExpression ts2 in relationalExpression' (ts3,Ast.BinaryExpr(Ast.INSTANCEOF,nd1,nd3),ALLOWIN) end
 			  | IS :: ts2 => let val (ts3,nd3) = typeExpression ts2 in relationalExpression' (ts3,Ast.BinaryTypeExpr(Ast.IS,nd1,nd3),ALLOWIN) end
 			  | TO :: ts2 => let val (ts3,nd3) = typeExpression ts2 in relationalExpression' (ts3,Ast.BinaryTypeExpr(Ast.TO,nd1,nd3),ALLOWIN) end
 			  | _ => (ts1,nd1)
-		
+(*		
 		fun relationalExpression' (ts1, nd1, NOIN) =
 			case ts1 of
 				LESSTHAN :: ts2 => let val (ts3,nd3) = shiftExpression ts2 in relationalExpression' (ts3,Ast.BinaryExpr(Ast.LESS,nd1,nd3),NOIN) end
 			  | GREATERTHAN :: ts2 => let val (ts3,nd3) = shiftExpression ts2 in relationalExpression' (ts3,Ast.BinaryExpr(Ast.GREATER,nd1,nd3),NOIN) end
-			  | LESSTHANOREQUAL :: ts2 => let val (ts3,nd3) = shiftExpression ts2 in relationalExpression' (ts3,Ast.BinaryExpr(Ast.LESS_OR_EQUAL,nd1,nd3),NOIN) end
-			  | GREATERTHANOREQUAL :: ts2 => let val (ts3,nd3) = shiftExpression ts2 in relationalExpression' (ts3,Ast.BinaryExpr(Ast.GREATER_OR_EQUAL,nd1,nd3),NOIN) end
+			  | LESSTHANOREQUALS :: ts2 => let val (ts3,nd3) = shiftExpression ts2 in relationalExpression' (ts3,Ast.BinaryExpr(Ast.LESS_OR_EQUAL,nd1,nd3),NOIN) end
+			  | GREATERTHANOREQUALS :: ts2 => let val (ts3,nd3) = shiftExpression ts2 in relationalExpression' (ts3,Ast.BinaryExpr(Ast.GREATER_OR_EQUAL,nd1,nd3),NOIN) end
 			  | INSTANCEOF :: ts2 => let val (ts3,nd3) = shiftExpression ts2 in relationalExpression' (ts3,Ast.BinaryExpr(Ast.INSTANCEOF,nd1,nd3),NOIN) end
 			  | IS :: ts2 => let val (ts3,nd3) = typeExpression ts2 in relationalExpression' (ts3,Ast.BinaryTypeExpr(Ast.IS,nd1,nd3),NOIN) end
 			  | TO :: ts2 => let val (ts3,nd3) = typeExpression ts2 in relationalExpression' (ts3,Ast.BinaryTypeExpr(Ast.TO,nd1,nd3),NOIN) end
 			  | _ => (ts1,nd1)
+*)
     in
-        relationalExpression' (ts1,nd1,beta)
+		let 
+	        val (ts2,nd2) = relationalExpression' (ts1,nd1,beta)
+    	    val _ = log(["<< relationalExpression with next=",tokenname(hd(ts2))]) 
+		in
+			(ts2,nd2)
+		end
     end
 
 (*
@@ -1158,7 +1212,12 @@ and equalityExpression (ts, beta)=
 			  | _ => (ts1,nd1)
 		
     in
-        equalityExpression' (ts1,nd1)
+		let 
+	        val (ts2,nd2) = equalityExpression' (ts1,nd1)
+    	    val _ = log(["<< equalityExpression with next=",tokenname(hd(ts2))]) 
+		in
+			(ts2,nd2)
+		end
     end
 
 (*
@@ -1174,11 +1233,16 @@ and bitwiseAndExpression (ts, beta)=
 		val (ts1,nd1) = equalityExpression (ts,beta)
 		fun bitwiseAndExpression' (ts1,nd1) =
 			case ts1 of
-				AMPERSAND :: ts2 => let val (ts3,nd3) = equalityExpression (ts2,beta) in bitwiseAndExpression' (ts3,Ast.BinaryExpr(Ast.BITWISE_AND,nd1,nd3)) end
+				BITWISEAND :: ts2 => let val (ts3,nd3) = equalityExpression (ts2,beta) in bitwiseAndExpression' (ts3,Ast.BinaryExpr(Ast.BITWISE_AND,nd1,nd3)) end
 			  | _ => (ts1,nd1)
 		
     in
-        bitwiseAndExpression' (ts1,nd1)
+		let 
+	        val (ts2,nd2) = bitwiseAndExpression' (ts1,nd1)
+    	    val _ = log(["<< bitwiseAndExpression with next=",tokenname(hd(ts2))]) 
+		in
+			(ts2,nd2)
+		end
     end
 
 (*
@@ -1198,7 +1262,12 @@ and bitwiseXorExpression (ts, beta)=
 			  | _ => (ts1,nd1)
 		
     in
-        bitwiseXorExpression' (ts1,nd1)
+		let 
+	        val (ts2,nd2) = bitwiseXorExpression' (ts1,nd1)
+    	    val _ = log(["<< bitwiseXorExpression with next=",tokenname(hd(ts2))]) 
+		in
+			(ts2,nd2)
+		end
     end
 
 (*
@@ -1216,7 +1285,12 @@ and bitwiseOrExpression (ts, beta)=
 			  | _ => (ts1,nd1)
 		
     in
-        bitwiseOrExpression' (ts1,nd1)
+		let 
+	        val (ts2,nd2) = bitwiseOrExpression' (ts1,nd1)
+    	    val _ = log(["<< bitwiseOrExpression with next=",tokenname(hd(ts2))]) 
+		in
+			(ts2,nd2)
+		end
     end
 
 (*
@@ -1234,7 +1308,12 @@ and logicalAndExpression (ts, beta)=
 			  | _ => (ts1,nd1)
 		
     in
-        logicalAndExpression' (ts1,nd1)
+		let 
+	        val (ts2,nd2) = logicalAndExpression' (ts1,nd1)
+    	    val _ = log(["<< logicalAndExpression with next=",tokenname(hd(ts2))]) 
+		in
+			(ts2,nd2)
+		end
     end
 
 (*
@@ -1252,7 +1331,12 @@ and logicalXorExpression (ts, beta) =
 			  | _ => (ts1,nd1)
 		
     in
-        logicalXorExpression' (ts1,nd1)
+		let 
+	        val (ts2,nd2) = logicalXorExpression' (ts1,nd1)
+    	    val _ = log(["<< logicalXOrExpression with next=",tokenname(hd(ts2))]) 
+		in
+			(ts2,nd2)
+		end
     end
 
 (*
@@ -1271,7 +1355,12 @@ and logicalOrExpression (ts, beta) =
 			  | _ => (ts1,nd1)
 		
     in
-        logicalOrExpression' (ts1,nd1)
+		let 
+	        val (ts2,nd2) = logicalOrExpression' (ts1,nd1)
+    	    val _ = log(["<< logicalOrExpression with next=",tokenname(hd(ts2))]) 
+		in
+			(ts2,nd2)
+		end
     end
 
 (*
@@ -1299,6 +1388,7 @@ and conditionalExpression (ts,ALLOWLET,beta) =
       | _ => 
 			let
 				val (ts2,nd2) = logicalOrExpression(ts,beta)
+        		val _ = log(["xx conditionalExpression with next=", tokenname(hd ts2)])
 			in case ts2 of
 				QUESTIONMARK :: ts3 => 
 					let
@@ -1439,7 +1529,7 @@ AssignmentExpressiona, b
 and assignmentExpression (ts, alpha, beta):(token list * Ast.expr) = 
     let val _ = log([">> assignmentExpression with next=",tokenname(hd(ts))]) 
     in
-        multiplicativeExpression (ts)
+        conditionalExpression (ts,alpha,beta)
     end
 (*
 
@@ -1489,8 +1579,10 @@ ListExpressionPrime(beta)
 
 and listExpression (ts,beta) = 
     let
+        val _ = log([">> listExpression with next=", tokenname(hd ts)])
         val (ts1,nd1) = assignmentExpression(ts,ALLOWLET,beta)
         val (ts2,nd2) = listExpressionPrime(ts1,nd1,beta)
+        val _ = log(["<< listExpression with next=", tokenname(hd ts2)])
     in
         (ts2, Ast.ListExpr nd2)
     end
@@ -1742,6 +1834,7 @@ and expressionStatement ts =
     let
         val _ = log([">> expressionStatement with next=", tokenname(hd ts)])
         val (ts1,nd1) = listExpression(ts,ALLOWIN)
+        val _ = log(["<< expressionStatement with next=", tokenname(hd ts1)])
     in
         (ts1,Ast.ExprStmt(nd1))
     end
@@ -2151,8 +2244,8 @@ fun lexFile (filename : string) : (token list) =
         val lexer = Lexer.makeLexer (mkReader filename)
         fun step _ = 
             case lexer () of 
-                EMPTY => (tmp := EMPTY :: (!tmp); List.rev (!tmp))
-              | other => (tmp := other :: (!tmp); step ())
+                EOF => (tmp := EOF :: (!tmp); List.rev (!tmp))
+              | other => let val _ = print(tokenname(other)^"\n") in (tmp := other :: (!tmp); step ()) end
         val result = step ()
              handle Lexer.LexError => (log ["lex error"]; 
                            raise Lexer.LexError)
@@ -2163,8 +2256,8 @@ fun lexFile (filename : string) : (token list) =
 
 fun parse ts =
     case (program ts) of
-        ([EOL, EMPTY],result) => result
-      | _  => raise ParseError
+        ([EOL, EOF],result) => result
+      | _  => (print("extra characters"); raise ParseError)
 
 fun parseFile filename = 
     (log ["scanning ", filename];
