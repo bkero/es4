@@ -1828,8 +1828,22 @@ and program ts =
     let
        val _ = log([">> program with next=",tokenname(hd(ts))])
     in case ts of
-        PACKAGE :: tr => packageDefinition tr
-      | _             => expressionStatement ts
+        PACKAGE :: tr => 
+	let 
+	    val (tr2, pkgs) = packageDefinition tr
+	in
+	    (tr2, {packages=[pkgs], body=(Ast.Block {directives=[],
+						     defns=[],
+						     stmts=[]})})
+	end
+      | _             => 
+	let
+	    val (tr2, stmts) = expressionStatement ts
+	in
+	    (tr2, {packages=[], body=(Ast.Block {directives=[],
+						 defns=[],
+						 stmts=[stmts]})})
+	end
     end
 
 (*
@@ -1904,7 +1918,7 @@ fun lexFile (filename : string) : (token list) =
 
 fun parse ts =
     case (program ts) of
-        ([EOL, EOF],result) => result
+        ([EOL, EOF],result) => ((Pretty.ppProgram result); result)
       | _  => raise ParseError
 
 fun parseFile filename = 
