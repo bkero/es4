@@ -24,6 +24,8 @@ let
 	let 
 	    val tok = token_fn ()
 	in 
+	    (* log ["lexed ", tokenname tok]; *)
+
 	  (*
 	   * The lexbreak tokens represent choice points for the parser. We
 	   * return two thunks to it: one for each lexer start state
@@ -33,8 +35,8 @@ let
 		LEXBREAK_DIV _ => (add DIV; add tok; stop ())
 	      | LEXBREAK_DIVASSIGN _ => (add DIVASSIGN; add tok; stop ())
 	      | LEXBREAK_LESSTHAN _ => (add LESSTHAN; add tok; stop ())
-	      | EOF => stop ()
-	      | _ => step ()
+	      | EOF => (add EOF; stop ())
+	      | x => (add x; step ())
 	end
 in
     step ()
@@ -49,7 +51,7 @@ val (curr_chars : (char list) ref) = ref []
 
 %s REGEXP XML SINGLE_LINE_COMMENT MULTI_LINE_COMMENT STRING;
 
-whitespace      = [ \t\r\013]+;
+whitespace      = [\032\t\r\013]+;
 
 identifierStart = [a-zA-Z_$];
 identifierPart  = [a-zA-Z_$0-9];
@@ -258,4 +260,4 @@ charEscape            = "\\" ([abtnvfr\"\'\\]|"x"{hexDigit}{2}|[0-7]{1}{3});
 <STRING>.                     => (curr_chars := (String.sub (yytext,0)) :: (!curr_chars);
 				  lex());
 
-<INITIAL>.                    => (log ["unexpected input:", yytext]; raise LexError);
+<INITIAL>.                    => (log ["unexpected input: '", yytext, "'"]; raise LexError);

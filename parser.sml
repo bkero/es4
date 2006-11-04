@@ -641,6 +641,7 @@ and primaryExpression ts =
       | REGEXP r :: ts1 => (ts1, Ast.RegExp(r))
       | (XMLMARKUP | LESSTHAN ) :: _ => xmlInitializer ts
 *)
+      | EOL :: ts1 => primaryExpression ts1
       | _ => typeIdentifier ts
     end
 
@@ -1916,10 +1917,20 @@ fun lexFile (filename : string) : (token list) =
         tokens
     end
 
+
+
 fun parse ts =
-    case (program ts) of
-        ([EOL, EOF],result) => ((Pretty.ppProgram result); result)
-      | _  => raise ParseError
+    let 
+	val (residual, result) = (program ts) 
+	fun check_residual (EOL :: xs) = check_residual xs
+	  | check_residual [EOF] = ()
+	  | check_residual _ = raise ParseError
+    in
+	check_residual residual;
+	log ["parsed all input, pretty-printing:"];
+	Pretty.ppProgram result;
+	result
+    end
 
 fun parseFile filename = 
     (log ["scanning ", filename];

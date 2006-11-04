@@ -1,7 +1,5 @@
 structure Pretty = struct
 
-exception UnimplementedException of string
-
 structure PP = PPStreamFn(structure Token = StringToken
                           structure Device = SimpleTextIODev)
 open Ast
@@ -27,8 +25,9 @@ datatype smlDataRep =
 
 fun ppSmlDataRep stream (rep : smlDataRep) =
     let
-        fun sp _ = PP.space stream
-        fun ob _ = PP.openBox stream
+        fun nbsp _ = PP.nbSpace stream 1
+	fun sp _ = PP.space stream 1
+        fun ob _ = PP.openHVBox stream (PP.Rel 2)
         fun cb _ = PP.closeBox stream
         fun str s = PP.string stream s
         fun sub (r : smlDataRep) = ppSmlDataRep stream r
@@ -41,9 +40,9 @@ fun ppSmlDataRep stream (rep : smlDataRep) =
       | Rec [] => str "{}"
       | Rec (row::rows) =>
         let
-            fun doRow (n,v) = (str n; sp(); str "="; sp(); sub v)
+            fun doRow (n,v) = (str n; nbsp(); str "="; nbsp(); sub v)
         in
-            (ob(); str "{"; sp(); doRow row;
+            (ob(); str "{"; nbsp(); doRow row;
              List.app (fn r => (str ","; sp(); doRow r)) rows;
              str "}"; cb())
         end
@@ -458,11 +457,16 @@ and cvtProgram {packages, body} =
 
 fun ppProgram p = 
     let 
-	val dev = SimpleTextIODev.openDev {dst=TextIO.stdOut, wid=4}
+	val dev = SimpleTextIODev.openDev {dst=TextIO.stdOut, wid=80}
 	val stream = PP.openStream dev
 	val rep = cvtProgram p
-    in
-	ppSmlDataRep stream rep
+    in	
+	(ppSmlDataRep stream rep;
+	 TextIO.print "\n";
+	 PP.flushStream stream)
+	handle Fail s => 
+	       (TextIO.print "exception while pretty-printing: ";
+		TextIO.print s;
+		TextIO.print "\n")
     end
-
 end
