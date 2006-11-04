@@ -6,4 +6,4 @@ check: es4.heap
 	sml @SMLload=es4.heap tests/ident.js
 	sml @SMLload=es4.heap tests/numberliteral.es
 	sml @SMLload=es4.heap tests/listexpr.es
-	sml @SMLload=es4.heap tests/regexp.es
+	sml @SMLload=es4.heap tests/mult.es

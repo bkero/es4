@@ -79,7 +79,7 @@ fun sexp1 stream head func =
      PP.closeBox stream)
 
 fun ppVisibility stream (Namespace (kind,id)) =
-    sexp stream (fn _ => (PP.string stream "NAMESPACE";  (* todo: print kind *)
+    sexp stream (fn _ => (PP.string stream "NAMESPACE";  (* fixme: print kind *)
 			  PP.space stream;
 			  PP.string stream id))
  
@@ -162,8 +162,10 @@ and ppExpr stream e =
 
 	  | NullaryExpr n => ppNullOp stream n
 			     
+(* fixme: operand is optional
 	  | YieldExpr y => ex1 "YIELD" y
-(* todo	  | SuperExpr s => ex1s "SUPER" s   *)
+	  | SuperExpr s => ex1s "SUPER" s   
+*)
 	  | LiteralExpr lit => (sx1 "LITERAL" 
 				    (fn _ => ppLiteral stream lit))
 			       
@@ -178,7 +180,8 @@ and ppExpr stream e =
 				      (ex1 "OBJ" obj);
 				      (ex1 "FIELD" field))))
 
-(*	  | QualIdent {qual, ident, opennss} => 
+(*
+	  | QualIdent {qual, ident, opennss} => 
 	    (sx1 "QUALIDENT" 
 		 (fn _ => ((case qual of
 				NONE => ()
@@ -194,8 +197,7 @@ and ppExpr stream e =
 				     (fn _ => List.app 
 						  (fn n => (sp (); str n))
 						  opennss))))))
-
-*)	    
+*)
 	  | AttrQualIdent { indirect, operand } => 
 	    (sx1 "ATTRQUALIDENT" 
 		 (fn _ => (if indirect 
