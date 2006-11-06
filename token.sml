@@ -168,7 +168,6 @@ datatype token =
 
     (* meta *)
 
-    | EMPTY
     | ERROR
     | LEXBREAK_DIV of { lex_initial: unit -> (token list),
 			lex_regexp: unit -> (token list) }
@@ -191,8 +190,9 @@ fun tokenname AS = "as"
   | tokenname COMMA = ","
   | tokenname DIV = ","
   | tokenname PRIVATE = "private"
+  | tokenname ERROR = "error"
   | tokenname EOL = "eol"
-  | tokenname EMPTY = "eos"
+  | tokenname EOF = "eof"
   | tokenname (LEXBREAK_DIV {...}) = "lexbreak_div"
   | tokenname _ = "unknown"
 
