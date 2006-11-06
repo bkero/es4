@@ -170,7 +170,6 @@ datatype token =
 
     (* meta *)
 
-    | EMPTY
     | ERROR
     | LEXBREAK_DIV of { lex_initial: unit -> (token list),
 			lex_regexp: unit -> (token list) }
@@ -195,8 +194,9 @@ fun tokenname AS = "as"
   | tokenname MULT = "*"
   | tokenname MODULUS = "%"
   | tokenname PRIVATE = "private"
+  | tokenname ERROR = "error"
   | tokenname EOL = "eol"
-  | tokenname EMPTY = "eos"
+  | tokenname EOF = "eof"
   | tokenname _ = "unknown"
 
 end

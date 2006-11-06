@@ -642,6 +642,7 @@ and primaryExpression ts =
       | REGEXP r :: ts1 => (ts1, Ast.RegExp(r))
       | (XMLMARKUP | LESSTHAN ) :: _ => xmlInitializer ts
 *)
+      | EOL :: ts1 => primaryExpression ts1
       | _ => typeIdentifier ts
     end
 
@@ -2079,8 +2080,22 @@ and program ts =
     let
        val _ = log([">> program with next=",tokenname(hd(ts))])
     in case ts of
-        PACKAGE :: tr => packageDefinition tr
-      | _             => expressionStatement ts
+        PACKAGE :: tr => 
+	let 
+	    val (tr2, pkgs) = packageDefinition tr
+	in
+	    (tr2, {packages=[pkgs], body=(Ast.Block {directives=[],
+						     defns=[],
+						     stmts=[]})})
+	end
+      | _             => 
+	let
+	    val (tr2, stmts) = expressionStatement ts
+	in
+	    (tr2, {packages=[], body=(Ast.Block {directives=[],
+						 defns=[],
+						 stmts=[stmts]})})
+	end
     end
 
 (*
@@ -2153,10 +2168,20 @@ fun lexFile (filename : string) : (token list) =
         tokens
     end
 
+
+
 fun parse ts =
-    case (program ts) of
-        ([EOL, EOF],result) => result
-      | _  => raise ParseError
+    let 
+	val (residual, result) = (program ts) 
+	fun check_residual (EOL :: xs) = check_residual xs
+	  | check_residual [EOF] = ()
+	  | check_residual _ = raise ParseError
+    in
+	check_residual residual;
+	log ["parsed all input, pretty-printing:"];
+	Pretty.ppProgram result;
+	result
+    end
 
 fun parseFile filename = 
     (log ["scanning ", filename];
