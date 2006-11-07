@@ -113,11 +113,11 @@ datatype token =
     | WHILE
     | WITH
 
-    (* contextually reserved identifiers
-     
+(*     
      Currently adopting the strategy of returning these
      as IDENTIFIER tokens and letting the parser decide
      how to interpret them.
+*)
 
     | CALL
     | DEBUGGER
@@ -145,7 +145,6 @@ datatype token =
     | XML
     | YIELD
 
-     *)
 
     (* literals *)
 
@@ -169,7 +168,32 @@ datatype token =
 
     (* meta *)
 
-    | EMPTY
     | ERROR
+    | LEXBREAK_DIV of { lex_initial: unit -> (token list),
+			lex_regexp: unit -> (token list) }
+    | LEXBREAK_DIVASSIGN of { lex_initial: unit -> (token list),
+			      lex_regexp: unit -> (token list) }
+    | LEXBREAK_LESSTHAN of { lex_initial: unit -> (token list),
+			     lex_xml: unit -> (token list) }
+    | EOF
+
+exception TokenError
+
+fun isreserved AS = true
+  | isreserved BREAK = true
+  | isreserved  _ = false
+
+fun tokenname AS = "as"
+  | tokenname (IDENTIFIER name) = name
+  | tokenname (NUMBERLITERAL r) = Real.toString(r)
+  | tokenname DOUBLECOLON = "::"
+  | tokenname COMMA = ","
+  | tokenname DIV = ","
+  | tokenname PRIVATE = "private"
+  | tokenname ERROR = "error"
+  | tokenname EOL = "eol"
+  | tokenname EOF = "eof"
+  | tokenname (LEXBREAK_DIV {...}) = "lexbreak_div"
+  | tokenname _ = "unknown"
 
 end

@@ -41,7 +41,7 @@ datatype binOp =
 datatype unOp =
          DELETE | VOID | TYPEOF | PRE_INCREMENT | PRE_DECREMENT
        | POST_INCREMENT | POST_DECREMENT | UNARY_PLUS | UNARY_MINUS | BITWISE_NOT
-       | LOGICAL_NOT | MAKE_NAMESPACE
+       | LOGICAL_NOT | MAKE_NAMESPACE | TYPE
 
 datatype nulOp =
          THIS | EMPTY
@@ -49,12 +49,8 @@ datatype nulOp =
 datatype varDefnTag =
          CONST | VAR | LETVAR | LETCONST
 
-datatype builtinNamespace =
-         PUBLIC | PRIVATE | PROTECTED | INTERNAL
-
-datatype visibility =
-         BuiltinNamespace of ident
-       | UserNamespace of ident
+datatype namespaceKind =
+         PUBLIC | PRIVATE | PROTECTED | INTERNAL | INTRINSIC | USERDEFINED
 
 datatype primAnnotation =
          NAMED | NULLABLE | NONNULLABLE
@@ -70,6 +66,9 @@ datatype directive =
        | Import of { package: ident,
                      qualifier: importQual,
                      alias: ident option }
+
+     and visibility =
+         Namespace of ( namespaceKind * ustring )
 
      and definition =
          NamespaceDefn of { name: ident,
@@ -94,6 +93,12 @@ datatype directive =
 
        | FunctionDefn of funcDefn
        | VariableDefn of varDefn
+ 
+     and funcSign =
+         FunctionSignature of { typeparams: literal list,
+                                params: formal list,
+                                resulttype: tyExpr }
+                             
 
      (* Improve this? Probably more mutual exclusion possible. *)
      and attributes =
@@ -127,9 +132,9 @@ datatype directive =
        | PrimaryType of primTy
        | FunctionType of funcTy
        | RecordType of (expr * tyExpr) list
-
        | InstantiationType of { base: primTy,
                                 params: tyExpr list }
+       | UnresolvedType of expr
 
      and stmt =
          EmptyStmt
@@ -174,10 +179,12 @@ datatype directive =
      and expr =
          TrinaryExpr of (triOp * expr * expr * expr)
        | BinaryExpr of (binOp * expr * expr)
+       | BinaryTypeExpr of (binOp * expr * tyExpr)
        | UnaryExpr of (unOp * expr)
+       | TypeExpr of tyExpr
        | NullaryExpr of nulOp
-       | YieldExpr of expr
-       | SuperExpr of expr list
+       | YieldExpr of expr option
+       | SuperExpr of expr option
        | LiteralExpr of literal
 
        | CallExpr of {func: expr,
@@ -187,9 +194,9 @@ datatype directive =
                        obj: expr,
                        field: expr }
 
-       | QualIdent of { lhs: identOrExpr option,
-                        rhs: identOrExpr,
-                        openNamespaces: ident list }
+       | QualIdent of { qual: expr option,
+                        ident: ustring,
+                        opennss: visibility list }
 
        | AttrQualIdent of { indirect: bool,
                             operand: identOrExpr }
@@ -199,7 +206,9 @@ datatype directive =
 
        | NewExpr of { obj: expr,
                       actuals: expr list }
-
+       | FunExpr of { sign: funcSign,
+                      body: block }
+       | ListExpr of expr list
 
      and identOrExpr =
          Ident of ident
@@ -213,7 +222,7 @@ datatype directive =
        | LiteralString of ustring
        | LiteralArray of expr list
        | LiteralXML of expr list
-       | LiteralNamespace of builtinNamespace
+       | LiteralNamespace of visibility
 
        | LiteralObject of { name: expr,
                             init: expr } list
@@ -222,13 +231,14 @@ datatype directive =
                             global: bool,
                             multiline: bool,
                             caseInsensitive: bool }
-
-withtype block =
+    and block = Block of
          { directives: directive list,
            defns: definition list,
            stmts: stmt list }
 
-     and funcTy =
+withtype 
+
+         funcTy =
          { paramTypes: tyExpr list,
            returnType: tyExpr,
            boundThisType: tyExpr option,
@@ -248,7 +258,7 @@ withtype block =
            body: block }
 
      and primTy =
-         { name: ident,
+         { name: string,
            annotation: primAnnotation }
 
      and forEnumStmt =
