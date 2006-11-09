@@ -7,3 +7,5 @@ check: es4.heap
 	sml @SMLload=es4.heap tests/numberliteral.es
 	sml @SMLload=es4.heap tests/listexpr.es
 	sml @SMLload=es4.heap tests/mult.es
+	sml @SMLload=es4.heap tests/div.es
+	sml @SMLload=es4.heap tests/cond.es

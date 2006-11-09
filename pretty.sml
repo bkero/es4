@@ -181,7 +181,7 @@ and cvtExpr e =
       | BinaryTypeExpr (b, e1, t1) => Ctor ("BinaryTypeExpr", [cvtBinOp b, cvtExpr e1,  cvtTyExpr t1])
       | UnaryExpr (u, e1) => Ctor ("UnaryExpr", [cvtUnOp u, cvtExpr e1])
       | NullaryExpr n => Ctor ("NullaryExpr", [cvtNullOp n])
-      | YieldExpr y => Ctor ("YieldExpr", [cvtExpr y])
+      | YieldExpr y => Ctor ("YieldExpr", [cvtExprOption y])
       | SuperExpr s => Ctor ("SuperExpr", [cvtExprOption s])
       | LiteralExpr lit => Ctor ("LiteralExpr", [cvtLiteral lit])
 
