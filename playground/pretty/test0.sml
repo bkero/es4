@@ -5,5 +5,6 @@ struct
                    | GREEN of string option
                    | BLUE of real * int * bool * unit * int
                    | INDIGO of { foo: int, bar: real }
+                   | VIOLET of int list
 
 end

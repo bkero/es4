@@ -109,12 +109,12 @@ struct
 
     fun genStrApp (t1, t2) = APPexp (IDexp (IDENT (["String"], "^")), TUPLEexp [t1, t2])
 
-    fun genStrAppCommas [] = LITexp (STRINGlit "")
-      | genStrAppCommas [e] = e
-      | genStrAppCommas (e::es) = genStrApp (e, genStrApp(LITexp (STRINGlit ", "), genStrAppCommas es))
+    fun genStrCat ts = APPexp (IDexp (IDENT (["String"], "concat")), LISTexp (ts, NONE))
 
-    fun genRecEltStr (id, t) =
-        genStrApp (LITexp (STRINGlit (id ^ "=")), t) (*IDexp (IDENT ([], sym)))*)
+    fun genStrCatCommas es = APPexp (APPexp (IDexp (IDENT (["String"], "concatWith")), LITexp (STRINGlit ",")),
+                                     LISTexp (es , NONE))
+
+    fun genRecEltStr (id, t) = genStrApp (LITexp (STRINGlit (id ^ "=")), t)
 
     fun zip ([], []) = []
       | zip (x::xs, y::ys) = (x,y)::(zip (xs, ys))
@@ -133,7 +133,7 @@ struct
                                   (TUPLEpat (map #1 pairs),
                                    APPexp (IDexp (IDENT (["String"], "^")),
                                            TUPLEexp [APPexp (IDexp (IDENT (["String"], "^")),
-                                                             TUPLEexp [LITexp (STRINGlit "("), genStrAppCommas (map #2 pairs)]),
+                                                             TUPLEexp [LITexp (STRINGlit "("), genStrCatCommas (map #2 pairs)]),
                                                      LITexp (STRINGlit ")")]))
                               end
            | RECORDshow elts => let val ids = map #1 elts
@@ -145,11 +145,21 @@ struct
                                     (RECORDpat (zip (ids, map IDpat syms), false),
                                      LETexp ((map (fn (p, sym) => VALdecl [VALbind (p, IDexp (IDENT ([], sym)))])
                                                   (zip (ps, syms))),
-                                             [genStrApp (LITexp (STRINGlit "{"),
-                                                         genStrApp (genStrAppCommas (map genRecEltStr (zip (ids, ts))),
-                                                                    LITexp (STRINGlit "}")))]))
+                                             [genStrCat [LITexp (STRINGlit "{"),
+                                                         genStrCatCommas (map genRecEltStr (zip (ids, ts))),
+                                                         LITexp (STRINGlit "}")]]))
                                 end
-           | LISTshow ty' => raise Unshowable ("NYI", "!!!")
+           | LISTshow ty' => let val sym = gensym "ls"
+                                 val (p, t) = showTy ty'
+                             in
+                                 (IDpat sym,
+                                  genStrCat [LITexp (STRINGlit "["),
+                                             APPexp (APPexp (IDexp (IDENT (["String"], "concatWith")), LITexp (STRINGlit ",")),
+                                                     APPexp (APPexp (IDexp (IDENT (["List"], "map")),
+                                                                     LAMBDAexp [CLAUSE ([p], NONE, t)]),
+                                                             IDexp (IDENT ([], sym)))),
+                                             LITexp (STRINGlit "]")])
+                             end
            | OPTIONshow ty' => let val (p, t) = showTy ty'
                                    val sym = gensym "opt"
                                in
@@ -171,7 +181,10 @@ struct
                         end
            | STRINGshow => let val sym = gensym "s"
                            in
-                               (IDpat sym, IDexp (IDENT ([], sym)))
+                               (IDpat sym,
+                                genStrCat [LITexp (STRINGlit "\""),
+                                           APPexp (IDexp (IDENT (["String"], "toString")), IDexp (IDENT ([], sym))),
+                                           LITexp (STRINGlit "\"")])
                            end
            | UNITshow => (TUPLEpat [], LITexp (STRINGlit "()"))
            | BOOLshow => let val sym = gensym "b"
