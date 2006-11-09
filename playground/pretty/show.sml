@@ -120,8 +120,6 @@ struct
       | zip (x::xs, y::ys) = (x,y)::(zip (xs, ys))
       | zip _ = raise Empty
 
-    fun id2ident id = IDENT ([], id)
-
     fun showTy ty =
         case ty of
              IDshow id => let val sym = gensym "x"
