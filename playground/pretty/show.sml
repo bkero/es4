@@ -113,6 +113,15 @@ struct
       | genStrAppCommas [e] = e
       | genStrAppCommas (e::es) = genStrApp (e, genStrApp(LITexp (STRINGlit ", "), genStrAppCommas es))
 
+    fun genRecEltStr (id, t) =
+        genStrApp (LITexp (STRINGlit (id ^ "=")), t) (*IDexp (IDENT ([], sym)))*)
+
+    fun zip ([], []) = []
+      | zip (x::xs, y::ys) = (x,y)::(zip (xs, ys))
+      | zip _ = raise Empty
+
+    fun id2ident id = IDENT ([], id)
+
     fun showTy ty =
         case ty of
              IDshow id => let val sym = gensym "x"
@@ -127,7 +136,19 @@ struct
                                                              TUPLEexp [LITexp (STRINGlit "("), genStrAppCommas (map #2 pairs)]),
                                                      LITexp (STRINGlit ")")]))
                               end
-           | RECORDshow pairs => raise Unshowable ("NYI", "!!!")
+           | RECORDshow elts => let val ids = map #1 elts
+                                    val syms = map gensym ids
+                                    val pairs = map showTy (map #2 elts)
+                                    val ps = map #1 pairs
+                                    val ts = map #2 pairs
+                                in
+                                    (RECORDpat (zip (ids, map IDpat syms), false),
+                                     LETexp ((map (fn (p, sym) => VALdecl [VALbind (p, IDexp (IDENT ([], sym)))])
+                                                  (zip (ps, syms))),
+                                             [genStrApp (LITexp (STRINGlit "{"),
+                                                         genStrApp (genStrAppCommas (map genRecEltStr (zip (ids, ts))),
+                                                                    LITexp (STRINGlit "}")))]))
+                                end
            | LISTshow ty' => raise Unshowable ("NYI", "!!!")
            | OPTIONshow ty' => let val (p, t) = showTy ty'
                                    val sym = gensym "opt"
