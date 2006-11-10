@@ -211,8 +211,9 @@ and cvtExpr e =
         Ctor ("NewExpr", [Rec [("obj", cvtExpr obj),
                                ("actuals", cvtExprList actuals)]])
 
-      | FunExpr {sign, body} =>
-        Ctor ("FunExpr", [Rec [("sign", cvtFuncSign sign),
+      | FunExpr {ident, sign, body} =>
+        Ctor ("FunExpr", [Rec [("ident", cvtIdentOption ident),
+                               ("sign", cvtFuncSign sign),
                                ("body", cvtBlock body)]])
 
       | ListExpr es =>
@@ -324,10 +325,11 @@ and cvtLiteral lit =
                                      ("multiline", Bool multiline),
                                      ("caseInsensitive", Bool caseInsensitive)]])
 
-and cvtFormal {name, ty, init, isRest} =
+and cvtFormal {name, ty, init, tag, isRest} =
     Rec [("name", String name),
          ("ty", cvtTyExprOption ty),
          ("init", cvtExprOption init),
+		 ("tag", cvtVarDefnTag tag),
          ("isRest", Bool isRest)]
 
 and cvtFuncDefn {name, attrs, formals, ty, body} =

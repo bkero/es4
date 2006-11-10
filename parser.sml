@@ -232,9 +232,11 @@ and attributeIdentifier ts =
 *)
 
 and qualifiedIdentifier ts =
-    case ts of
+    let val _ = log([">> qualifiedIdentifier with next=",tokenname(hd(ts))]) 
+    in case ts of
         AT :: _ => attributeIdentifier(ts)
       | _ => nonAttributeQualifiedIdentifier(ts)
+    end
 
 (*
     SimpleTypeIdentifier    
@@ -243,10 +245,12 @@ and qualifiedIdentifier ts =
 *)
 
 and simpleTypeIdentifier ts =
-    case ts of
+    let val _ = log([">> simpleTypeIdentifier with next=",tokenname(hd(ts))]) 
+    in case ts of
         PACKAGEIDENTIFIER :: DOT :: ts1 => 
             let val (ts2,nd2) = identifier(ts) in (ts2,Ast.LiteralExpr(Ast.LiteralString(nd2))) end
       | _ => nonAttributeQualifiedIdentifier(ts)
+    end
 
 (*
     TypeIdentifier    
@@ -255,7 +259,7 @@ and simpleTypeIdentifier ts =
 *)
 
 and typeIdentifier ts =
-    let
+    let val _ = log([">> typeIdentifier with next=",tokenname(hd(ts))]) 
         val (ts1,nd1) = simpleTypeIdentifier ts
     in case ts1 of
         LEFTDOTANGLE :: ts2 => 
@@ -274,7 +278,7 @@ and typeIdentifier ts =
 *)
 
 and parenExpression ts =
-    let
+    let val _ = log([">> parenExpression with next=",tokenname(hd(ts))]) 
     in case ts of
         LEFTPAREN :: ts1 => 
             let
@@ -292,7 +296,7 @@ and parenExpression ts =
 *)
 
 and parenListExpression ts =
-    let
+    let val _ = log([">> parenListExpression with next=",tokenname(hd(ts))]) 
     in case ts of
         LEFTPAREN :: ts1 => 
             let
@@ -311,10 +315,20 @@ and parenListExpression ts =
 *)
 
 and functionExpression ts =
-    let
+    let val _ = log([">> functionExpression with next=",tokenname(hd(ts))]) 
     in case ts of
-        FUNCTION :: LEFTPAREN :: ts1 => functionCommon ts1
-      | FUNCTION :: tk1 :: ts1 => functionCommon ts1
+        FUNCTION :: ts1 => 
+			let
+			in case ts1 of
+				(LEFTDOTANGLE | LEFTPAREN) :: _ => functionCommon ts1
+		      | _ => 
+					let
+						val (ts2,nd2) = identifier ts1
+						val (ts3,Ast.FunExpr{ident,sign,body}) = functionCommon ts2
+					in
+						(ts3,Ast.FunExpr {ident=SOME nd2,sign=sign,body=body})
+					end
+			end
       | _ => raise ParseError
     end
 
@@ -325,15 +339,14 @@ and functionExpression ts =
 *)
 
 and functionCommon ts =
-    let
+    let val _ = log([">> functionCommon with next=",tokenname(hd(ts))]) 
         val (ts1,nd1) = functionSignature ts
-    in 
-    case ts1 of
+    in case ts1 of
         LEFTBRACE :: _ => 
             let
                 val (ts2,nd2) = block ts1
             in
-                (ts2,Ast.FunExpr({sign=nd1,body=nd2}))
+                (ts2,Ast.FunExpr {ident=NONE,sign=nd1,body=nd2})
             end
       | _ => raise ParseError
     end
@@ -354,36 +367,35 @@ and functionCommon ts =
 *)
 
 and functionSignature ts =
-    let
+    let val _ = log([">> functionSignature with next=",tokenname(hd(ts))]) 
+		fun functionSignature' (ts, nd1) =
+            case ts of
+                LEFTPAREN :: ts1 =>
+                   let
+                       val (ts2, nd2) = parameters ts1
+                   in case ts2 of
+                       RIGHTPAREN :: tsx =>
+                           let
+                               val (ts3,nd3) = resultType tsx
+                           in
+                               (ts3,Ast.FunctionSignature {typeparams=nd1,params=nd2,resulttype=nd3})
+                           end
+                     | _ => raise ParseError
+                   end
+              | _ => raise ParseError
     in case ts of
         LEFTDOTANGLE :: ts1 => 
             let
                 val (ts2,nd2) = typeParameterList ts1
             in
                 let
-                in case ts2 of 
-                    GREATERTHAN :: ts3 => functionSignaturePrime (ts3, nd2)
+                in case ts2 of
+                    GREATERTHAN :: ts3 => functionSignature' (ts3, nd2)
                   | _ => raise ParseError
                 end
             end
-      | _ => functionSignaturePrime (ts, [])
+      | _ => functionSignature' (ts, [])
     end
-
-and functionSignaturePrime (ts, nd1) =
-    case ts of
-        LEFTPAREN :: ts1 =>
-           let
-               val (ts2, nd2) = parameters ts1
-           in case ts2 of
-               RIGHTPAREN :: tsx =>
-                   let
-                       val (ts3,nd3) = resultType tsx
-                   in
-                       (ts3,Ast.FunctionSignature {typeparams=nd1,params=nd2,resulttype=nd3})
-                   end
-             | _ => raise ParseError
-           end
-      | _ => raise ParseError
 
 (*
     TypeParametersList    
@@ -401,72 +413,128 @@ and functionSignaturePrime (ts, nd1) =
 *)
 
 and typeParameterList ts =
-    let
-(*
-       val (ts1,nd1) = (ts, [Ast.PrimaryType({name=Ast.LiteralExpr(Ast.LiteralString("int")),
-                                       annotation=Ast.NONNULLABLE})]) 
-*)
+    let val _ = log([">> typeParameterList with next=",tokenname(hd(ts))]) 
+		fun typeParameterList' (ts, lst) =
+	    	let
+    		in case ts of
+        		COMMA :: ts1 =>
+           			let
+               			val (ts2,nd2) = identifier(ts1)
+               			val (ts3,nd3) = typeParameterList' (ts2,Ast.LiteralString(nd2)::lst)
+           			in
+             			(ts3,nd3)
+           			end
+			  | _ => (ts,lst)
+    end
         val (ts1,nd1) = identifier ts
-        val (ts2,nd2) = typeParameterListPrime (ts1,Ast.LiteralString(nd1)::nil)
+        val (ts2,nd2) = typeParameterList' (ts1,Ast.LiteralString(nd1)::nil)
     in
         (ts2,nd2)
     end
-
-and typeParameterListPrime (ts, lst) =
-    let
-    in case ts of
-        COMMA :: ts1 =>
-           let
-               val (ts2,nd2) = identifier(ts1)
-               val (ts3,nd3) = typeParameterListPrime(ts2,Ast.LiteralString(nd2)::lst)
-           in
-             (ts3,nd3)
-           end
-      | _ => (ts,lst)
-     end
 
 (*
     Parameters    
         «empty»
         NonemptyParameters(ALLOWLET)
-*)
-
-and parameters ts = raise ParseError
-
-(*
 
     NonemptyParameters(alpha)    
         ParameterInit(alpha)
-        ParameterInitnoLet  ,  NonemptyParameters(alpha)
+        ParameterInit(NOLET)  ,  NonemptyParameters(alpha)
         RestParameter
 
+    type formal =
+         { name: ident,
+           ty: tyExpr option,
+           init: expr option,
+		   tag: varDefnTag,
+           isRest: bool }
 *)
 
-and nonemptyParameters ts alpha = raise ParseError
+and parameters ts =
+    let val _ = log([">> parameters with next=",tokenname(hd(ts))]) 
+		fun nonemptyParameters (ts,alpha) = 
+			let
+			in case ts of
+				TRIPLEDOT :: _ => 
+					let
+						val (ts1,nd1) = restParameter (ts)
+					in case ts1 of
+						RIGHTPAREN :: _ => (ts1,nd1::[])
+					  | _ => raise ParseError
+					end					
+			  | _ => 
+					let
+						val (ts1,nd1) = parameterInit (ts,NOLET)
+					in case ts1 of
+						RIGHTPAREN :: _ => (ts1,nd1::[])
+					  | COMMA :: ts2 =>
+							let
+								val (ts3,nd3) = nonemptyParameters (ts2,alpha)
+							in
+								(ts3,nd1::nd3)
+							end
+					  | _ => raise ParseError
+					end
+			end
+	in case ts of 
+		RIGHTPAREN :: ts1 => (ts,[])
+	  | _ => nonemptyParameters(ts,ALLOWLET)
+	end
 
 (*
     ParameterInit(alpha)
         Parameter
         Parameter  =  NonAssignmentExpression(alpha,ALLOWIN)
+
+        formal = { name: ident,
+           ty: tyExpr option,
+           init: expr option,
+		   tag: varDefnTag,
+           isRest: bool }
 *)
 
-and parameterInit ts alpha = raise ParseError
+and parameterInit (ts, alpha) = 
+    let val _ = log([">> parameterInit with next=",tokenname(hd(ts))]) 
+		val (ts1,{name,ty,tag,init,isRest}) = parameter (ts,alpha)
+	in case ts1 of
+		ASSIGN :: ts2 => 
+			let
+				val (ts3,nd3) = nonAssignmentExpression (ts2,alpha,ALLOWIN)
+			in 
+				(ts3,{name=name,ty=ty,tag=tag,init=SOME nd3,isRest=false})
+			end
+	  | _ => (ts1,{name=name,ty=ty,tag=tag,init=NONE,isRest=false})
+	end
 
 (*
     Parameter    
         ParameterAttributes TypedIdentifier(ALLOWIN)
         ParameterAttributes TypedPattern
-*)
 
-and parameter ts alpha = raise ParseError
-
-(*
     ParameterAttributes    
         «empty»
         const
 *)
 
-and parameterAttributes ts = raise ParseError
+and parameter (ts, alpha) : token list * Ast.formal =
+    let val _ = log([">> parameter with next=",tokenname(hd(ts))]) 
+		val (ts1,nd1) = parameterAttributes (ts)
+	in case ts1 of
+(* todo		(LEFTBRACKET | LEFTPAREN) :: _ => typedPattern (ts1,nd1) *)
+		_ => 
+			let
+				val (ts2:token list,{name,ty}) = typedIdentifier (ts1,ALLOWIN)
+			in
+				(ts2,{name=name,ty=ty,tag=nd1,isRest=false,init=NONE})
+			end			
+	end
+
+and parameterAttributes (ts) = 
+    let val _ = log([">> parameterAttributes with next=",tokenname(hd(ts))]) 
+	in case ts of 
+		CONST :: ts1 => (ts1,Ast.CONST)
+	  | ts1 => (ts1,Ast.VAR)
+	end
 
 (*
     RestParameter    
@@ -475,24 +543,66 @@ and parameterAttributes ts = raise ParseError
         ...  ParameterAttributes TypedPattern
 *)
 
-and restParameter ts = raise ParseError
+and restParameter (ts:token list) = 
+    let val _ = log([">> restParameter with next=",tokenname(hd(ts))]) 
+		val (DOTDOTDOT :: ts1) = ts
+	in case ts1 of
+		RIGHTPAREN :: _ => (ts1,{name="",ty=NONE,tag=Ast.VAR,isRest=true,init=NONE}) 
+	  | _ => 
+			let
+				val (ts2:token list,{name,ty,tag,...}) = parameter (ts1,ALLOWLET)
+			in
+				(ts2,{name=name,ty=ty,tag=tag,isRest=true,init=NONE})
+			end
+	end
 
 (*
-    ResultType    
+	TypedIdentifier(beta)    
+    	Identifier
+	    Identifier  :  TypeExpression(beta)
+*)
+
+and typedIdentifier (ts,beta) =
+    let val _ = log([">> typedIdentifier with next=",tokenname(hd(ts))]) 
+		val (ts1,nd1) = identifier ts
+	in case ts1 of
+		COLON :: ts2 => 
+			let
+				val (ts3,nd3) = typeExpression (ts2)
+			in
+				(ts3, {name=nd1,ty=SOME nd3})
+			end
+		
+	  | ts3 => 
+			let
+			in
+				(ts3, {name=nd1,ty=NONE})
+			end
+		
+	end
+
+(*
+	TypedPattern    
+    	Pattern
+	    Pattern  :  TypeExpression
+*)
+    
+(*
+    ResultType
         «empty»
         :  void
         :  TypeExpression
 *)
 
 and resultType ts = 
-    let
+    let val _ = log([">> resultType with next=",tokenname(hd(ts))]) 
     in case ts of
-        VOID :: ts1 => (ts1,Ast.SpecialType(Ast.NOTYPE))
-      | _ => typeExpression ts
+        COLON :: VOID :: ts1 => (ts1,Ast.SpecialType(Ast.NOTYPE))
+      | COLON :: ts1 => typeExpression ts1
+	  | ts1 => (ts1,Ast.SpecialType(Ast.UNDEFINED))
     end
 
 (*
-
     ObjectLiteral    
         {  FieldList  }
         {  FieldList  }  :  RecordType
@@ -1323,8 +1433,8 @@ and logicalOrExpression (ts, beta) =
 and conditionalExpression (ts,ALLOWLET,beta) =
     let val _ = log([">> conditionalExpression with next=",tokenname(hd(ts))])
     in case ts of
-        FUNCTION :: _ => expressionClosure(ts,beta)
-      | LET :: _ => letExpression(ts,beta)
+(*        FUNCTION :: _ => expressionClosure(ts,beta) *)
+        LET :: _ => letExpression(ts,beta)
 	  | YIELD :: _ => yieldExpression(ts,beta)
       | _ => 
 			let
@@ -1368,23 +1478,23 @@ and conditionalExpression (ts,ALLOWLET,beta) =
 
 (*
 
-NonAssignmentExpressionallowLet, b    
-    ExpressionClosureb
-    LetExpressionb
-    YieldExpressionb
-    LogicalOrExpressionb
-    LogicalOrExpressionb  ?  NonAssignmentExpressionallowLet, b  :  NonAssignmentExpressionallowLet, b
+NonAssignmentExpression(allowLet, beta)   
+    ExpressionClosure(beta)
+    LetExpression(beta)
+    YieldExpression(beta)
+    LogicalOrExpression(beta)
+    LogicalOrExpression(beta)  ?  NonAssignmentExpression(allowLet, beta)  :  NonAssignmentExpression(allowLet, beta)
     
-*)
-
-(*
-
-NonAssignmentExpressionnoLet, b    
+NonAssignmentExpression(noLet, beta)    
     SimpleYieldExpression
-    LogicalOrExpressionb
-    LogicalOrExpressionb  ?  NonAssignmentExpressionallowLet, b  :  NonAssignmentExpressionnoLet, b
-    
+    LogicalOrExpression(beta)
+    LogicalOrExpression(beta)  ?  NonAssignmentExpression(allowLet, beta)  :  NonAssignmentExpression(noLet, beta)
+
 *)
+
+
+and nonAssignmentExpression (ts,ALLOWLET,beta) = raise ParseError
+  | nonAssignmentExpression (ts,NOLET,beta) = raise ParseError
 
 (*
 
@@ -1799,8 +1909,8 @@ EmptyStatement
 
 and emptyStatement ts =
     let
-    in
-        (ts,Ast.EmptyStmt)
+    in case ts of
+		SEMICOLON :: ts1 => (ts1,Ast.EmptyStmt)
     end
 
 (*
@@ -1833,13 +1943,14 @@ Block
 *)
 
 and block ts =
-    let
+    let val _ = log([">> block with next=", tokenname(hd ts)])
     in case ts of
-        LEFTBRACE :: ts1 =>
+        RIGHTBRACE :: ts1 => (ts1,Ast.Block{directives=[],defns=[],stmts=[]})
+      | LEFTBRACE :: ts1 =>
             let
-                val (ts2,nd2) = expressionStatement (ts1)  (* todo: direcitves *)
+                val (ts2,nd2) = directives ts1
             in case ts2 of
-                RIGHTBRACE :: ts3 => (ts3,Ast.Block{directives=[],defns=[],stmts=[nd2]})
+                RIGHTBRACE :: ts3 => (ts3,Ast.Block{directives=[],defns=[],stmts=nd2})
             end
     end
 
@@ -1959,46 +2070,68 @@ DefaultXMLNamespaceStatement
 (* DIRECTIVES *)
 
 (*
+	Directive(omega)    
+    	EmptyStatement
+	    Statement(omega)
+    	AnnotatableDirective(omega)
+	    Attributes [no line break] AnnotatableDirective(omega)
+    	IncludeDirective Semicolon(omega)
     
-Directivew    
-    EmptyStatement
-    Statementw
-    AnnotatableDirectivew
-    Attributes [no line break] AnnotatableDirectivew
-    IncludeDirective Semicolonw
+	AnnotatableDirective(omega)
+    	VariableDefinition(allowIn) Semicolon(omega)
+	    FunctionDefinition
+    	ClassDefinition
+	    InterfaceDefinition
+    	NamespaceDefinition Semicolon(omega)
+	    TypeDefinition Semicolon(omega)
+
+	Attributes    
+    	Attribute
+	    Attribute [no line break] Attributes
     
-AnnotatableDirectivew    
-    VariableDefinitionallowIn Semicolonw
-    FunctionDefinition
-    ClassDefinition
-    InterfaceDefinition
-    NamespaceDefinition Semicolonw
-    TypeDefinition Semicolonw
+	Attribute    
+    	SimpleTypeIdentifier
+	    ReservedNamespace
+    	dynamic
+	    final
+    	native
+	    override
+    	prototype
+	    static
+    	[  AssignmentExpression(allowLet, allowIn)  ]
+*)
+
+and directive (ts,omega) =
+	let
+	in case ts of
+		SEMICOLON :: _ => emptyStatement ts
+	  | _ => expressionStatement ts
+	end
+
+(*
+	Directives    
+    	«empty»
+	    DirectivesPrefix Directive(abbrev)
     
-Directives    
-    «empty»
-    DirectivesPrefix Directiveabbrev
-    
-DirectivesPrefix    
-    «empty»
-    Pragmas
-    DirectivesPrefix Directivefull
-    
-Attributes    
-    Attribute
-    Attribute [no line break] Attributes
-    
-Attribute    
-    SimpleTypeIdentifier
-    ReservedNamespace
-    dynamic
-    final
-    native
-    override
-    prototype
-    static
-    [  AssignmentExpressionallowLet, allowIn  ]
-    
+	DirectivesPrefix    
+    	«empty»
+	    Pragmas
+    	DirectivesPrefix Directive(full)
+*)
+
+and directives (ts) : (token list * Ast.stmt list) =
+	let
+	in case ts of
+		RIGHTBRACE :: _ => (ts,[])
+	  | _ => 
+			let
+				val (ts1,nd1) = directive (ts,ABBREV)
+			in
+				(ts1,[nd1])
+			end
+	end
+
+(*
 IncludeDirective    
     include  [no line break]  StringLiteral
     
@@ -2007,8 +2140,8 @@ Pragmas
     Pragmas  Pragma
     
 Pragma    
-    UsePragma  Semicolonfull
-    ImportPragma  Semicolonfull
+    UsePragma  Semicolon(full)
+    ImportPragma  Semicolon(full)
     
 UsePragma    
     use  PragmaItems
@@ -2074,15 +2207,10 @@ VariableBindinga, b
     
 VariableInitialisationa, b    
     =  AssignmentExpressiona, b
-    
-TypedIdentifierb    
-    Identifier
-    Identifier  :  TypeExpressionb
-    
-TypedPattern    
-    Pattern
-    Pattern  :  TypeExpression
-    
+*)
+
+(*
+
 FunctionDefinition    
     function  FunctionName  FunctionCommon
     let  function  FunctionName  FunctionCommon
@@ -2152,21 +2280,21 @@ and program ts =
        val _ = log([">> program with next=",tokenname(hd(ts))])
     in case ts of
         PACKAGE :: tr => 
-	let 
-	    val (tr2, pkgs) = packageDefinition tr
-	in
-	    (tr2, {packages=[pkgs], body=(Ast.Block {directives=[],
+			let 
+			    val (tr2, pkgs) = packageDefinition tr
+			in
+			    (tr2, {packages=[pkgs], body=(Ast.Block {directives=[],
 						     defns=[],
 						     stmts=[]})})
-	end
-      | _             => 
-	let
-	    val (tr2, stmts) = expressionStatement ts
-	in
-	    (tr2, {packages=[], body=(Ast.Block {directives=[],
-						 defns=[],
-						 stmts=[stmts]})})
-	end
+			end
+      | _ => 
+			let
+			    val (tr2, stmts) = directives ts
+			in
+			    (tr2, {packages=[], body=(Ast.Block {directives=[],
+					   defns=[],
+					   stmts=stmts})})
+			end
     end
 
 (*
@@ -2204,14 +2332,6 @@ and typeExpressionList ts = raise ParseError
 *)
 
 and packageDefinition ts = raise ParseError
-
-(*
-
-*)
-
-and directives ts = raise ParseError
-
-
 
 fun mkReader filename = 
     let

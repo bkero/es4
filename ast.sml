@@ -47,7 +47,7 @@ datatype nulOp =
          THIS | EMPTY
 
 datatype varDefnTag =
-         CONST | VAR | LETVAR | LETCONST
+         CONST | VAR | LETVAR | LETCONST | REST
 
 datatype namespaceKind =
          PUBLIC | PRIVATE | PROTECTED | INTERNAL | INTRINSIC | USERDEFINED
@@ -206,7 +206,8 @@ datatype directive =
 
        | NewExpr of { obj: expr,
                       actuals: expr list }
-       | FunExpr of { sign: funcSign,
+       | FunExpr of { ident: ident option,
+					  sign: funcSign,
                       body: block }
        | ListExpr of expr list
  
@@ -248,7 +249,12 @@ withtype
          { name: ident,
            ty: tyExpr option,
            init: expr option,
+		   tag: varDefnTag,
            isRest: bool }
+
+     and typedIdent =
+         { name: ident,
+           ty: tyExpr option }
 
      and funcDefn =
          { name: ident,
