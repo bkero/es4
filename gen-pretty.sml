@@ -1,3 +1,11 @@
+structure MLAst = MDLAst
+structure MLUtil = MDLAstUtil(MDLAst)
+structure MLPP = MDLAstPrettyPrinter(MLUtil)
+structure MLParser = MDLParserDriver(structure AstPP = MLPP
+                                     val MDLmode = false
+                                     val extraCells = [])
+structure MLAstRewriter = MDLAstRewriter(MDLAst)
+
 (*
  * structure Convert
  *)
@@ -5,7 +13,7 @@ structure Convert = struct
 
     structure MLAst = MDLAst
 
-    open MLAst List
+    open MLAst List SMLofNJ
 
     datatype cvtdecl = DECLcvt of cvttypebind list
 
@@ -60,6 +68,56 @@ structure Convert = struct
     fun ident id = IDENT ([], id)
 
     fun cvtFunctionName id = "cvt" ^ (capitalize id)
+
+    (* Quasiquote parser *)
+
+    fun foo x = `dave ^x herman`;
+
+    fun parseMLExp s =
+        let val [MARKdecl (_, VALdecl [VALbind (_, e)])] = MLParser.parseString ("val a = " ^ s)
+        in
+            e
+        end
+
+    fun parseMLPat s =
+        let val [MARKdecl (_, VALdecl [VALbind (p, _)])] = MLParser.parseString ("val (" ^ s ^ ") = 0")
+        in
+            p
+        end
+
+    fun lookup (x, []) = NONE
+      | lookup (x, ((y,z)::pairs)) = if (x = y) then SOME z else lookup (x, pairs)
+
+    (* TODO: generalize to handle either exps or pats *)
+
+    fun parseQuasiML frags =
+        let fun skolemize [] = ([], [])
+              | skolemize ((QUOTE s)::frags) =
+                    let val (ss, skolems) = skolemize frags
+                    in
+                        (s::ss, skolems)
+                    end
+              | skolemize ((ANTIQUOTE x)::frags) =
+                    let val skolem = gensym "qqSkolem"
+                        val (ss, skolems) = skolemize frags
+                    in
+                        (skolem::ss, (skolem, x)::skolems)
+                    end
+            val (ss, skolems) = skolemize frags
+            fun exp _ (e as (IDexp (IDENT ([], x)))) =
+                    (case lookup (x, skolems) of
+                          NONE => e
+                        | SOME e' => e')
+              | exp _ e = e
+            val NIL = MLAstRewriter.noRewrite
+            val rw = #exp(MLAstRewriter.rewrite
+                              {exp=exp,pat=NIL,decl=NIL,ty=NIL,sexp=NIL})
+        in
+            rw (parseMLExp (String.concat ss))
+        end
+
+    (* TODO: now use quasiquotation *)
+    val exp = parseQuasiML
 
     (* Part 1. Extract type declarations from the source program. *)
 
@@ -131,8 +189,9 @@ structure Convert = struct
     fun genCvtTy ty =
         case ty of
              IDcvt id => let val sym = gensym "x"
+                             val cvt = cvtFunctionName id
                          in
-                             (IDpat sym, APPexp (IDexp (ident (cvtFunctionName id)), IDexp (ident sym)))
+                             (IDpat sym, APPexp (IDexp (ident cvt), IDexp (ident sym)))
                          end
            | INTcvt => let val sym = gensym "n"
                        in
@@ -228,13 +287,6 @@ end
  * structure GenPretty
  *)
 structure GenPretty = struct
-
-    structure MLAst = MDLAst
-    structure MLUtil = MDLAstUtil(MDLAst)
-    structure MLPP = MDLAstPrettyPrinter(MLUtil)
-    structure MLParser = MDLParserDriver(structure AstPP = MLPP
-                                         val MDLmode = false
-                                         val extraCells = [])
 
     open MLAst List TextIO Convert
 
