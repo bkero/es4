@@ -16,6 +16,8 @@ is
         main.sml
         ast.sml
 	pretty.sml
+        pretty-cvt.sml
+        pretty-rep.sml
         token.sml
         lexer.lex
         parser.sml

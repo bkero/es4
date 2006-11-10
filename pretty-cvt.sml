@@ -1,191 +1,5 @@
-structure Pretty = struct
-
-(*
- * The pretty-printer has 2 parts.
- *
- * Part 1 defines a datatype that is of a subset of the AST of SML itself,
- * and a single recursive function for pretty-printing that datatype.
- *
- * Part 2 defines a conversion from the ES4 AST (as defined in ast.sml) to the minimal
- * SML AST, such that it can be printed in a way that can be read back in.
- *)
-open PrettyRep PrettyCvt
-
-fun ppProgram p = 
-    let 
-	val dev = SimpleTextIODev.openDev {dst=TextIO.stdOut, wid=80}
-	val stream = PP.openStream dev
-	val rep = cvtProgram p
-    in	
-	(ppSmlDataRep stream rep;
-	 TextIO.print "\n";
-	 PP.flushStream stream)
-	handle Fail s => 
-	       (TextIO.print "exception while pretty-printing: ";
-		TextIO.print s;
-		TextIO.print "\n")
-    end
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-structure PP = PPStreamFn(structure Token = StringToken
-                          structure Device = SimpleTextIODev)
-open Ast
-
-(*
- * This file has 2 parts.
- *
- * Part 1 is a defines a datatype that is of a subset of the AST of SML itself,
- * and a single recursive function for pretty-printing that datatype.
- *
- * Part 2 defines a conversion from the ES4 AST (as defined in ast.sml) to the minimal
- * SML AST, such that it can be printed in a way that can be read back in.
- *)
-
-datatype smlDataRep =
-         Ctor of string * (smlDataRep list)
-       | Rec of (string * smlDataRep) list
-       | List of smlDataRep list
-       | Tuple of smlDataRep list
-       | String of string
-       | Real of real
-       | Bool of bool
-
-fun ppSmlDataRep stream (rep : smlDataRep) =
-    let
-        fun nbsp _ = PP.nbSpace stream 1
-	fun sp _ = PP.space stream 1
-        fun ob _ = PP.openHVBox stream (PP.Rel 2)
-        fun cb _ = PP.closeBox stream
-        fun str s = PP.string stream s
-        fun sub (r : smlDataRep) = ppSmlDataRep stream r
-        fun sublist [] = ()
-          | sublist (r::rs) = (sub r; List.app (fn x => (str ","; sp(); sub x)) rs)
-    in
-    case rep of
-        Ctor (ctor, []) => str ctor
-      | Ctor (ctor, args) => (ob(); str "("; str ctor; sp(); sublist args; str ")"; cb())
-      | Rec [] => str "{}"
-      | Rec (row::rows) =>
-        let
-            fun doRow (n,v) = (str n; nbsp(); str "="; nbsp(); sub v)
-        in
-            (ob(); str "{"; nbsp(); doRow row;
-             List.app (fn r => (str ","; sp(); doRow r)) rows;
-             str "}"; cb())
-        end
-
-      | List rs => (ob(); str "["; sublist rs; str "]"; cb())
-      | Tuple rs => (ob(); str "("; sublist rs; str ")"; cb())
-      | String s => (str "\""; str (String.toString s); str "\"")
-      | Bool true => str "true"
-      | Bool false => str "false"
-      | Real r => str (Real.toString r)
-    end
+structure PrettyCvt = struct
+open Ast PrettyRep
 
 fun cvtIdent s = String s
 fun cvtIdentOption so =
@@ -343,9 +157,8 @@ and cvtExpr e =
         Ctor ("NewExpr", [Rec [("obj", cvtExpr obj),
                                ("actuals", cvtExprList actuals)]])
 
-      | FunExpr {ident, sign, body} =>
-        Ctor ("FunExpr", [Rec [("ident", cvtIdentOption ident),
-                               ("sign", cvtFuncSign sign),
+      | FunExpr {sign, body} =>
+        Ctor ("FunExpr", [Rec [("sign", cvtFuncSign sign),
                                ("body", cvtBlock body)]])
 
       | ListExpr es =>
@@ -457,11 +270,10 @@ and cvtLiteral lit =
                                      ("multiline", Bool multiline),
                                      ("caseInsensitive", Bool caseInsensitive)]])
 
-and cvtFormal {name, ty, init, tag, isRest} =
+and cvtFormal {name, ty, init, isRest} =
     Rec [("name", String name),
          ("ty", cvtTyExprOption ty),
          ("init", cvtExprOption init),
-		 ("tag", cvtVarDefnTag tag),
          ("isRest", Bool isRest)]
 
 and cvtFuncDefn {name, attrs, formals, ty, body} =
@@ -589,18 +401,4 @@ and cvtProgram {packages, body} =
     Rec [("packages", List (map cvtPackage packages)),
 	 ("body", cvtBlock body)]
 
-fun ppProgram p = 
-    let 
-	val dev = SimpleTextIODev.openDev {dst=TextIO.stdOut, wid=80}
-	val stream = PP.openStream dev
-	val rep = cvtProgram p
-    in	
-	(ppSmlDataRep stream rep;
-	 TextIO.print "\n";
-	 PP.flushStream stream)
-	handle Fail s => 
-	       (TextIO.print "exception while pretty-printing: ";
-		TextIO.print s;
-		TextIO.print "\n")
-    end
 end
