@@ -113,6 +113,21 @@ and cvtIdentOrExpr ie =
         Ident i => Ctor ("Ident", [(String i)])
       | Expr e => Ctor ("Expr", [(cvtExpr e)])
 
+and cvtIdentExpr ie =
+    case ie of
+        QualifiedIdentifier {qual, ident} =>
+        Ctor ("QualifiedIdentifier", [Rec [("qual", cvtExpr qual),
+                                 ("ident", String ident)]])
+
+      | QualifiedExpression {qual, expr} =>
+        Ctor ("QualifiedExpression", [Rec [("qual", cvtExpr qual),
+                                 ("expr", cvtExpr expr)]])
+
+      | AttributeIdentifier i =>
+        Ctor ("AttributeIdentifier", [(cvtIdentExpr i)])
+
+      | Identifier i => Ctor ("Identifier", [(String i)])
+
 and cvtExprOption eo =
     case eo of
         SOME e => Ctor ("SOME", [cvtExpr e])
@@ -137,17 +152,26 @@ and cvtExpr e =
 
       | Property {indirect, obj, field} =>
         Ctor ("Property", [Rec [("indirect", Bool indirect),
-                                ("obj", cvtExpr obj),
+                                ("obj", cvtExprOption obj),
                                 ("field", cvtExpr field)]])
+
+      | Ref {base, ident} =>
+        Ctor ("Ref", [Rec [ ("base", cvtExprOption base),
+                                ("ident", cvtIdentExpr ident)]])
 
       | QualIdent {qual, ident, opennss} =>
         Ctor ("QualIdent", [Rec [("qual", cvtExprOption qual),
                                  ("ident", String ident),
                                  ("opennss", List (map cvtVisibility opennss))]])
 
+      | QualExpr {qual, expr, opennss} =>
+        Ctor ("QualExpr", [Rec [("qual", cvtExprOption qual),
+                                 ("expr", cvtExpr expr),
+                                 ("opennss", List (map cvtVisibility opennss))]])
+
       | AttrQualIdent {indirect, operand} =>
         Ctor ("AttrQualIdent", [Rec [("indirect", Bool indirect),
-                                     ("operand", cvtIdentOrExpr operand)]])
+                                     ("operand", cvtExpr operand)]])
 
       | LetExpr {defs, body} =>
         Ctor ("LetExpr", [Rec [("defs", List (map cvtVarDefn defs)),
@@ -157,8 +181,9 @@ and cvtExpr e =
         Ctor ("NewExpr", [Rec [("obj", cvtExpr obj),
                                ("actuals", cvtExprList actuals)]])
 
-      | FunExpr {sign, body} =>
-        Ctor ("FunExpr", [Rec [("sign", cvtFuncSign sign),
+      | FunExpr {ident, sign, body} =>
+        Ctor ("FunExpr", [Rec [("ident", cvtIdentOption ident),
+							   ("sign", cvtFuncSign sign),
                                ("body", cvtBlock body)]])
 
       | ListExpr es =>
@@ -270,8 +295,9 @@ and cvtLiteral lit =
                                      ("multiline", Bool multiline),
                                      ("caseInsensitive", Bool caseInsensitive)]])
 
-and cvtFormal {name, ty, init, isRest} =
+and cvtFormal {name, tag, ty, init, isRest} =
     Rec [("name", String name),
+         ("tag", cvtVarDefnTag tag),
          ("ty", cvtTyExprOption ty),
          ("init", cvtExprOption init),
          ("isRest", Bool isRest)]
