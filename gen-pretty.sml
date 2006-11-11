@@ -1,11 +1,17 @@
+structure MLAst = MDLAst
+structure MLUtil = MDLAstUtil(MDLAst)
+structure MLPP = MDLAstPrettyPrinter(MLUtil)
+structure MLParser = MDLParserDriver(structure AstPP = MLPP
+                                     val MDLmode = false
+                                     val extraCells = [])
+structure MLAstRewriter = MDLAstRewriter(MDLAst)
+
 (*
  * structure Convert
  *)
 structure Convert = struct
 
-    structure MLAst = MDLAst
-
-    open MLAst List
+    open MLAst MLUtil List SMLofNJ
 
     datatype cvtdecl = DECLcvt of cvttypebind list
 
@@ -55,11 +61,71 @@ structure Convert = struct
     fun typeName (DATATYPEcvt (id, _)) = id
       | typeName (TYPEcvt (id, _)) = id
 
-    fun strlit s = LITexp (STRINGlit s)
-
     fun ident id = IDENT ([], id)
 
     fun cvtFunctionName id = "cvt" ^ (capitalize id)
+
+    (* Quasiquote parser *)
+
+    fun parseMLExp s =
+        case MLParser.parseString ("val a = " ^ s) of
+             [MARKdecl (_, VALdecl [VALbind (_, e)])] => e
+           | _ => raise (Fail "parser returned something unexpected")
+
+    fun parseMLPat s =
+        case MLParser.parseString ("val (" ^ s ^ ") = 0") of
+             [MARKdecl (_, VALdecl [VALbind (p, _)])] => p
+           | _ => raise (Fail "parser returned something unexpected")
+
+    fun lookup (x, []) = NONE
+      | lookup (x, ((y,z)::pairs)) = if (x = y) then SOME z else lookup (x, pairs)
+
+    datatype hole = SRChole of string
+                  | EXPhole of exp
+                  | PAThole of pat
+
+    exception HoleType of string * string
+
+    fun holeType (SRChole _) = "raw"
+      | holeType (EXPhole _) = "expression"
+      | holeType (PAThole _) = "pattern"
+
+    (* TODO: could be generalized to produce either exps or pats *)
+
+    fun parseQuasiML frags =
+        let fun skolemize [] = ([], [])
+              | skolemize (((QUOTE s) | (ANTIQUOTE (SRChole s)))::frags) =
+                    let val (ss, skolems) = skolemize frags
+                    in
+                        (s::ss, skolems)
+                    end
+              | skolemize ((ANTIQUOTE x)::frags) =
+                    let val skolem = gensym "qqSkolem"
+                        val (ss, skolems) = skolemize frags
+                    in
+                        (skolem::ss, (skolem, x)::skolems)
+                    end
+            val (ss, skolems) = skolemize frags
+            fun exp _ (e as (IDexp (IDENT ([], x)))) =
+                    (case lookup (x, skolems) of
+                          NONE => e
+                        | SOME (EXPhole e') => e'
+                        | SOME h => raise (HoleType ("exp", holeType h)))
+              | exp _ e = e
+            fun pat _ (p as (IDpat x)) =
+                    (case lookup (x, skolems) of
+                          NONE => p
+                        | SOME (PAThole p') => p'
+                        | SOME h => raise (HoleType ("pat", holeType h)))
+              | pat _ p = p
+            val NIL = MLAstRewriter.noRewrite
+            val rw = #exp(MLAstRewriter.rewrite
+                              {exp=exp,pat=pat,decl=NIL,ty=NIL,sexp=NIL})
+        in
+            rw (parseMLExp (String.concat ss))
+        end
+
+    val % = parseQuasiML
 
     (* Part 1. Extract type declarations from the source program. *)
 
@@ -131,81 +197,84 @@ structure Convert = struct
     fun genCvtTy ty =
         case ty of
              IDcvt id => let val sym = gensym "x"
+                             val cvt = cvtFunctionName id
                          in
-                             (IDpat sym, APPexp (IDexp (ident (cvtFunctionName id)), IDexp (ident sym)))
+                             (IDpat sym, APPexp (ID cvt, ID sym))
                          end
            | INTcvt => let val sym = gensym "n"
                        in
-                           (IDpat sym, APPexp (IDexp (ident "Int"), IDexp (ident sym)))
+                           (IDpat sym, APPexp (ID "Int", ID sym))
                        end
            | REALcvt => let val sym = gensym "r"
                         in
-                            (IDpat sym, APPexp (IDexp (ident "Real"), IDexp (ident sym)))
+                            (IDpat sym, APPexp (ID "Real", ID sym))
                         end
            | BOOLcvt => let val sym = gensym "b"
                         in
-                            (IDpat sym, APPexp (IDexp (ident "Bool"), IDexp (ident sym)))
+                            (IDpat sym, APPexp (ID "Bool", ID sym))
                         end
            | STRINGcvt => let val sym = gensym "s"
                           in
-                              (IDpat sym, APPexp (IDexp (ident "String"), IDexp (ident sym)))
+                              (IDpat sym, APPexp (ID "String", ID sym))
                           end
            | UNITcvt => (TUPLEpat [], IDexp (ident "Unit"))
            | OPTIONcvt ty' => let val (pat, tem) = genCvtTy ty'
-                                  val sym = gensym "o"
+                                  val pat = PAThole pat
+                                  val tem = EXPhole tem
+                                  val sym = gensym "opt"
+                                  val x = EXPhole (ID sym)
                               in
-                                  (IDpat sym,
-                                   CASEexp (IDexp (ident sym),
-                                            [CLAUSE ([CONSpat (ident "NONE", NONE)],
-                                                     NONE,
-                                                     APPexp (IDexp (ident "Ctor"),
-                                                             APPexp (IDexp (ident "SOME"),
-                                                                     APPexp (IDexp (ident "Tuple"),
-                                                                             LISTexp ([strlit "NONE"], NONE))))),
-                                             CLAUSE ([CONSpat (ident "SOME", SOME pat)],
-                                                     NONE,
-                                                     APPexp (IDexp (ident "Ctor"),
-                                                             APPexp (IDexp (ident "SOME"),
-                                                                     APPexp (IDexp (ident "Tuple"),
-                                                                             LISTexp ([strlit "SOME", tem], NONE)))))]))
+                                  (IDpat sym, %`case ^x of
+                                                     NONE => Ctor (SOME (Tuple ["NONE"]))
+                                                   | SOME ^pat => Ctor (SOME (Tuple ["SOME", ^tem]))`)
                               end
            | TUPLEcvt tys => let val pairs = map genCvtTy tys
                                  val pats = map #1 pairs
-                                 val tems = map #2 pairs
+                                 val tems = EXPhole (LISTexp (map #2 pairs, NONE))
                              in
-                                 (TUPLEpat pats, APPexp (IDexp (ident "Tuple"), LISTexp (tems, NONE)))
+                                 (TUPLEpat pats, %`Tuple (^tems)`)
                              end
            | RECORDcvt elts => let val ids = map #1 elts
                                    val pairs = map genCvtTy (map #2 elts)
                                    val pats = map #1 pairs
                                    val tems = map #2 pairs
+                                   val elts = EXPhole (LISTexp (map (fn (id, tem) =>
+                                                                         let val s = EXPhole (STRINGexp id)
+                                                                             val tem = EXPhole tem
+                                                                         in
+                                                                             %`(^s, ^tem)`
+                                                                         end)
+                                                                    (zip (ids, tems)),
+                                                                NONE))
                                in
-                                   (RECORDpat (zip (ids, pats), false),
-                                    APPexp (IDexp (ident "Rec"),
-                                            LISTexp ((map (fn (id, tem) => TUPLEexp [strlit id, tem])
-                                                          (zip (ids, tems))), NONE)))
+                                   (RECORDpat (zip (ids, pats), false), %`Rec (^elts)`)
                                end
            | LISTcvt ty' => let val (pat, tem) = genCvtTy ty'
+                                val pat = PAThole pat
+                                val tem = EXPhole tem
                                 val sym = gensym "ls"
+                                val x = EXPhole (ID sym)
                             in
-                                (IDpat sym,
-                                 APPexp (APPexp (IDexp (IDENT (["List"], "map")),
-                                                 LAMBDAexp [CLAUSE ([pat], NONE, tem)]),
-                                         IDexp (ident sym)))
+                                (IDpat sym, %`List.map (fn ^pat => ^tem) ^x`)
                             end
            (* TODO: ref types *)
            | _ => raise (Fail "not yet implemented")
 
     fun genCvtClause (CONScvt (name, NONE)) =
-            CLAUSE ([CONSpat (ident name, NONE)],
-                    NONE,
-                    APPexp (IDexp (ident "Ctor"), TUPLEexp [strlit name, IDexp (ident "NONE")]))
+            let val s = EXPhole (STRINGexp name)
+            in
+                CLAUSE ([CONSpat (ident name, NONE)],
+                        NONE,
+                        %`Ctor (^s, NONE)`)
+            end
       | genCvtClause (CONScvt (name, SOME ty)) =
             let val (pat, tem) = genCvtTy ty
+                val tem = EXPhole tem
+                val s = EXPhole (STRINGexp name)
             in
                 CLAUSE ([CONSpat (ident name, SOME pat)],
                         NONE,
-                        APPexp (IDexp (ident "Ctor"), TUPLEexp [strlit name, APPexp (IDexp (ident "SOME"), tem)]))
+                        %`Ctor (^s, SOME ^tem)`)
             end
 
     fun genCvtFunction tb =
@@ -228,13 +297,6 @@ end
  * structure GenPretty
  *)
 structure GenPretty = struct
-
-    structure MLAst = MDLAst
-    structure MLUtil = MDLAstUtil(MDLAst)
-    structure MLPP = MDLAstPrettyPrinter(MLUtil)
-    structure MLParser = MDLParserDriver(structure AstPP = MLPP
-                                         val MDLmode = false
-                                         val extraCells = [])
 
     open MLAst List TextIO Convert
 

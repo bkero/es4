@@ -1,9 +1,12 @@
 Library
         structure GenPretty
 is
-        gen-pretty.sml
+        gen-pretty.sml (with: (parser.quotations=true control.poly-eq-warn=false))
         $/basis.cm
         $/smlnj-lib.cm
+        $smlnj/compiler/compiler.cm
 	$mlrisc-tools/parser.cm
 	$mlrisc-tools/pp.cm
 	$mlrisc-tools/sml-ast.cm
+	$mlrisc-tools/prec-parser.cm
+	$mlrisc-tools/source-map.cm
