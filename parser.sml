@@ -23,7 +23,7 @@ fun log ss =
      List.app TextIO.print ss; 
      TextIO.print "\n")
 
-val trace_on = false
+val trace_on = true
 
 fun trace ss =
 	if trace_on then log ss else ()
@@ -174,7 +174,7 @@ and simpleQualifiedIdentifier ts =
           end
     end
 
-and expressionQualifiedIdentifier ts =
+and expressionQualifiedIdentifier (ts) =
     let 
 		val (ts1,nd1) = parenListExpression(ts)
     in 
@@ -645,46 +645,105 @@ and resultType ts =
         {  FieldList  }  :  RecordType
 *)
 
-and objectLiteral ts = raise ParseError
+and objectLiteral ts = 
+    let val _ = trace([">> objectLiteral with next=",tokenname(hd(ts))]) 
+	in case ts of
+		LEFTBRACE :: ts1 => 
+			let
+				val (ts2,nd2) = fieldList ts1
+			in case ts2 of
+				RIGHTBRACE :: COLON :: ts3 => raise ParseError (* todo: record type anno *)
+			  | RIGHTBRACE :: ts3 => (ts3,Ast.LiteralExpr(Ast.LiteralObject nd2))
+			  | _ => raise ParseError
+			end
+	  | _ => raise ParseError
+	end
 
 (*
     FieldList    
         «empty»
-        NonemptyFieldListallowLet
-*)
+        NonemptyFieldList(allowLet)
 
-and fieldList ts = raise ParseError
-
-(*
     NonemptyFieldList(alpha)
         LiteralField(alpha)
-        LiteralFieldnoLet  ,  NonemptyFieldList(alpha)
+        LiteralField(noLet)  ,  NonemptyFieldList(alpha)
 *)
 
-and nonemptyFieldList (ts, alpha) = raise ParseError
+and fieldList ts =
+    let val _ = trace([">> fieldList with next=",tokenname(hd(ts))]) 
+		fun nonemptyFieldList (ts,alpha) =
+			let
+				val (ts1,nd1) = literalField(ts,alpha)
+			in case ts1 of
+				COMMA :: ts2 => 
+					let
+						val (ts3,nd3) = nonemptyFieldList (ts2,alpha)
+					in
+						(ts3,nd1::nd3)
+					end
+			  | _ => (ts1,nd1::[])
+			end
+	in case ts of
+		RIGHTBRACE :: ts1 => (ts1,[])
+	  | _ => nonemptyFieldList (ts,ALLOWLET)
+	end
 
 (*
     LiteralField (alpha)    
         FieldName  :  AssignmentExpression(alpha, ALLOWIN)
-		FieldName  :  AccessorExpression
-	
-	AccessorExpression	
 		get  Identifier  FunctionCommon
 		set  Identifier  FunctionCommon
-*)
 
-and literalField ts alpha = raise ParseError
-
-(*
     FieldName    
         NonAttributeQualifiedIdentifier
         StringLiteral
         NumberLiteral
         ReservedIdentifier
-        ParenExpression
 *)
 
-and fieldName ts = raise ParseError
+and literalField (ts, alpha) =
+    let val _ = trace([">> literalField with next=",tokenname(hd(ts))]) 
+	in case ts of
+		GET :: _ =>
+			let
+				val (ts1,nd1) = fieldName (tl ts)
+				val (ts2,nd2) = functionCommon (ts1)
+			in
+				(ts2,{name=nd1,init=nd2})
+			end
+	  | SET :: _ =>
+			let
+				val (ts1,nd1) = fieldName (tl ts)
+				val (ts2,nd2) = functionCommon (ts1)
+			in
+				(ts2,{name=nd1,init=nd2})
+			end
+	  | _ => 
+			let
+				val (ts1,nd1) = fieldName ts
+			in case ts1 of
+				COLON :: _ =>
+					let
+						val (ts2,nd2) = assignmentExpression (tl ts1,alpha,ALLOWIN)
+					in
+						(ts2,{name=nd1,init=nd2})
+					end
+			  | _ => raise ParseError
+			end
+	end
+
+and fieldName ts =
+    let val _ = trace([">> fieldName with next=",tokenname(hd(ts))]) 
+	in case ts of
+		STRINGLITERAL s :: ts1 => (ts1,Ast.LiteralExpr(Ast.LiteralString(s)))
+	  | NUMBERLITERAL n :: ts1 => (ts1,Ast.LiteralExpr(Ast.LiteralNumber(n)))
+	  | _ => 
+			let
+				val (ts1,nd1) = identifier ts (* nonAttributeQualifiedIdentifier (ts) *)
+			in
+				(ts1,Ast.LiteralExpr(Ast.LiteralString(nd1)))
+			end
+	end
 
 (*
     ArrayLiteral    
@@ -692,7 +751,19 @@ and fieldName ts = raise ParseError
         [  ElementList(ALLOWLET)  ]  :  ArrayType
 *)
 
-and arrayLiteral ts = raise ParseError
+and arrayLiteral ts =
+    let val _ = trace([">> arrayLiteral with next=",tokenname(hd(ts))]) 
+	in case ts of
+		LEFTBRACKET :: ts1 => 
+			let
+				val (ts2,nd2) = elementList (ts1,ALLOWLET)
+			in case ts2 of
+				RIGHTBRACKET :: COLON :: ts3 => raise ParseError (* todo: array type anno *)
+			  | RIGHTBRACKET :: ts3 => (ts3,Ast.LiteralExpr(Ast.LiteralArray nd2))
+			  | _ => raise ParseError
+			end
+	  | _ => raise ParseError
+	end
 
 (*
     ElementList(alpha)
@@ -700,12 +771,34 @@ and arrayLiteral ts = raise ParseError
         LiteralElement(alpha)
         ,  ElementList(alpha)
         LiteralElement(NOLET)  ,  ElementList(alpha)
-*)
 
-(*
     LiteralElement(alpha)
         AssignmentExpression(alpha, ALLOWIN)
 *)
+
+and elementList (ts,alpha) =
+    let val _ = trace([">> elementList with next=",tokenname(hd(ts))]) 
+	in case ts of
+		RIGHTBRACKET :: _ => (ts,[])
+	  | COMMA :: _ => 
+			let
+				val (ts1,nd1) = elementList (tl ts,alpha)
+			in
+				(ts1,Ast.LiteralExpr(Ast.LiteralUndefined) :: nd1)
+			end
+	  | _ =>
+			let
+				val (ts1,nd1) = assignmentExpression (ts,alpha,ALLOWIN)
+			in case ts1 of
+				COMMA :: _ =>
+					let
+						val (ts2,nd2) = elementList (tl ts1,alpha)
+					in
+						(ts2,nd1::nd2)
+					end
+			  | _ => (ts1,nd1::[])
+			end
+	end
 
 (*
     XMLInitialiser    
@@ -1037,22 +1130,18 @@ and propertyOperator (ts, nd) =
                     let
                         val (ts2,nd2) = parenListExpression(ts1)
 					in case ts2 of
-						DOUBLECOLON :: ts3 =>
-							let
-		                    in case ts3 of
-           			            BRACKET :: _ => 
-                       			    let
-		                                val (ts4,nd4) = brackets(ts3)
-           			                in
-                       			        (ts4,Ast.Ref {base=SOME nd,ident=Ast.Expression(nd4)})
-		                            end
-		                      | _ => 
-		                            let
-		                                val (ts4,nd4) = reservedOrPropertyIdentifier(ts3)
-		                            in
-		                                (ts4,Ast.Ref({base=SOME nd,ident=Ast.Identifier(nd4)}))
-		                            end
-							end
+						DOUBLECOLON :: BRACKET :: _ => 
+               			    let
+                                val (ts4,nd4) = brackets(tl ts2)
+   			                in
+               			        (ts4,Ast.Ref {base=SOME nd,ident=Ast.Expression(nd4)})
+                            end
+					  | DOUBLECOLON :: ts3 => 
+                            let
+                                val (ts4,nd4) = reservedOrPropertyIdentifier(ts3)
+                            in
+                                (ts4,Ast.Ref({base=SOME nd,ident=Ast.Identifier(nd4)}))
+                            end
 					  | _ => raise ParseError
                     end
               | _ => 
@@ -1688,12 +1777,14 @@ AssignmentExpression (a,b)
 and assignmentExpression (ts,a,b) :(token list * Ast.expr) = 
     let val _ = trace([">> assignmentExpression with next=",tokenname(hd(ts))]) 
     in case ts of
+(* fixme: doesn't this conflict with an objec literal?
 		(LEFTBRACE | LEFTBRACKET) :: _ => 
 			let
 			in
 				raise ParseError
 			end
-	  | _ => 
+*)
+	    _ => 
 	    	let
 				val (ts1,nd1) = conditionalExpression(ts,a,b)
 			in case (ts1,nd1) of
@@ -1959,7 +2050,7 @@ Statementw
     IfStatementw
     LabeledStatementw
     LetStatementw
-    ReturnStatement Semicolonw
+    ReturnStatement Semicolon(omega)
     SuperStatement Semicolonw
     SwitchStatement
     ThrowStatement Semicolonw
@@ -1986,6 +2077,26 @@ Semicolonfull
     VirtualSemicolon
 
 *)
+
+and statement (ts,omega) =
+	let
+	in case ts of
+	    RETURN :: _ =>
+			let
+				val (ts1,nd1) = returnStatement (ts)
+(* todo 				val (ts2,_) = semicolon (ts1,omega) *)
+			in
+				(ts1,nd1)
+			end
+	  | _ =>
+			let
+				val (ts1,nd1) = expressionStatement (ts)
+(* todo 				val (ts2,_) = semicolon (ts1,omega) *)
+			in
+				(ts1,nd1)
+			end
+	end
+
 
 (*
     
@@ -2033,7 +2144,7 @@ Block
 and block ts =
     let val _ = trace([">> block with next=", tokenname(hd ts)])
     in case ts of
-        RIGHTBRACE :: ts1 => (ts1,Ast.Block{directives=[],defns=[],stmts=[]})
+        LEFTBRACE :: RIGHTBRACE :: ts1 => (ts1,Ast.Block{directives=[],defns=[],stmts=[]})
       | LEFTBRACE :: ts1 =>
             let
                 val (ts2,nd2) = directives ts1
@@ -2129,11 +2240,27 @@ ContinueStatement
 BreakStatement    
     break
     break [no line break] Identifier
-    
+*)
+
+(*    
 ReturnStatement    
     return
     return [no line break] ListExpressionallowIn
-    
+*)
+
+and returnStatement ts =
+	let
+	in case ts of
+		RETURN :: (SEMICOLON | RIGHTBRACE) :: _ => (tl ts,Ast.ReturnStmt (Ast.LiteralExpr Ast.LiteralUndefined))
+	  | RETURN :: _ =>
+			let
+				val (ts1,nd1) = listExpression(tl ts, ALLOWIN)
+			in
+				(ts1,Ast.ReturnStmt nd1)
+			end
+	end
+
+(*    
 ThrowStatement     
     throw  ListExpressionallowIn
     
@@ -2192,10 +2319,10 @@ DefaultXMLNamespaceStatement
 *)
 
 and directive (ts,omega) =
-	let
+    let val _ = trace([">> directive with next=", tokenname(hd ts)])
 	in case ts of
 		SEMICOLON :: _ => emptyStatement ts
-	  | _ => expressionStatement ts
+	  | _ => statement (ts,omega)
 	end
 
 (*

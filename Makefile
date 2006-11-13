@@ -18,6 +18,8 @@ check: es4.heap
 #	sml @SMLload=es4.heap tests/assign_err.es
 	sml @SMLload=es4.heap tests/call.es
 	sml @SMLload=es4.heap tests/objref.es
+	sml @SMLload=es4.heap tests/objectliteral.es
+	sml @SMLload=es4.heap tests/arrayliteral.es
 
 gen: gen-pretty.heap
 	sml @SMLload=gen-pretty.heap ast.sml pretty-cvt-UNTESTED.sml

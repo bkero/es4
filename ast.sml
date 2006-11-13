@@ -226,7 +226,7 @@ datatype directive =
 	   | QualifiedExpression of { qual : expr, expr : expr }
        | AttributeIdentifier of identExpr
 	   | Identifier of ident
-	   | Expression of expr   (* for unqualified bracket exprs: @[x] *)
+	   | Expression of expr   (* for bracket exprs: o[x] and @[x] *)
 
      and literal =
          LiteralNull
