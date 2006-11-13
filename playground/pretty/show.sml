@@ -107,11 +107,18 @@ struct
             )
         end
 
-    fun generateAppend [] = LITexp (STRINGlit "")
-      | generateAppend [e] = e
-      | generateAppend (e::es) = APPexp (IDexp (IDENT (["String"], "^")),
-                                         TUPLEexp [e, APPexp (IDexp (IDENT (["String"], "^")),
-                                                              TUPLEexp [LITexp (STRINGlit ", "), generateAppend es])])
+    fun genStrApp (t1, t2) = APPexp (IDexp (IDENT (["String"], "^")), TUPLEexp [t1, t2])
+
+    fun genStrCat ts = APPexp (IDexp (IDENT (["String"], "concat")), LISTexp (ts, NONE))
+
+    fun genStrCatCommas es = APPexp (APPexp (IDexp (IDENT (["String"], "concatWith")), LITexp (STRINGlit ",")),
+                                     LISTexp (es , NONE))
+
+    fun genRecEltStr (id, t) = genStrApp (LITexp (STRINGlit (id ^ "=")), t)
+
+    fun zip ([], []) = []
+      | zip (x::xs, y::ys) = (x,y)::(zip (xs, ys))
+      | zip _ = raise Empty
 
     fun showTy ty =
         case ty of
@@ -124,12 +131,44 @@ struct
                                   (TUPLEpat (map #1 pairs),
                                    APPexp (IDexp (IDENT (["String"], "^")),
                                            TUPLEexp [APPexp (IDexp (IDENT (["String"], "^")),
-                                                             TUPLEexp [LITexp (STRINGlit "("), generateAppend (map #2 pairs)]),
+                                                             TUPLEexp [LITexp (STRINGlit "("), genStrCatCommas (map #2 pairs)]),
                                                      LITexp (STRINGlit ")")]))
                               end
-           | RECORDshow pairs => raise Unshowable ("NYI", "!!!")
-           | LISTshow ty' => raise Unshowable ("NYI", "!!!")
-           | OPTIONshow ty' => raise Unshowable ("NYI", "!!!")
+           | RECORDshow elts => let val ids = map #1 elts
+                                    val syms = map gensym ids
+                                    val pairs = map showTy (map #2 elts)
+                                    val ps = map #1 pairs
+                                    val ts = map #2 pairs
+                                in
+                                    (RECORDpat (zip (ids, map IDpat syms), false),
+                                     LETexp ((map (fn (p, sym) => VALdecl [VALbind (p, IDexp (IDENT ([], sym)))])
+                                                  (zip (ps, syms))),
+                                             [genStrCat [LITexp (STRINGlit "{"),
+                                                         genStrCatCommas (map genRecEltStr (zip (ids, ts))),
+                                                         LITexp (STRINGlit "}")]]))
+                                end
+           | LISTshow ty' => let val sym = gensym "ls"
+                                 val (p, t) = showTy ty'
+                             in
+                                 (IDpat sym,
+                                  genStrCat [LITexp (STRINGlit "["),
+                                             APPexp (APPexp (IDexp (IDENT (["String"], "concatWith")), LITexp (STRINGlit ",")),
+                                                     APPexp (APPexp (IDexp (IDENT (["List"], "map")),
+                                                                     LAMBDAexp [CLAUSE ([p], NONE, t)]),
+                                                             IDexp (IDENT ([], sym)))),
+                                             LITexp (STRINGlit "]")])
+                             end
+           | OPTIONshow ty' => let val (p, t) = showTy ty'
+                                   val sym = gensym "opt"
+                               in
+                                   (IDpat sym, CASEexp (IDexp (IDENT([], sym)),
+                                                        [CLAUSE ([CONSpat (IDENT ([], "NONE"), NONE)],
+                                                                 NONE,
+                                                                 LITexp (STRINGlit "NONE")),
+                                                         CLAUSE ([CONSpat (IDENT ([], "SOME"), SOME p)],
+                                                                 NONE,
+                                                                 genStrApp (LITexp (STRINGlit "SOME "), t))]))
+                               end
            | REFshow ty' => let val sym = gensym "r"
                             in
                                 (IDpat sym, APPexp (IDexp (IDENT (["General"], "!")), IDexp (IDENT ([], sym))))
@@ -140,7 +179,10 @@ struct
                         end
            | STRINGshow => let val sym = gensym "s"
                            in
-                               (IDpat sym, IDexp (IDENT ([], sym)))
+                               (IDpat sym,
+                                genStrCat [LITexp (STRINGlit "\""),
+                                           APPexp (IDexp (IDENT (["String"], "toString")), IDexp (IDENT ([], sym))),
+                                           LITexp (STRINGlit "\"")])
                            end
            | UNITshow => (TUPLEpat [], LITexp (STRINGlit "()"))
            | BOOLshow => let val sym = gensym "b"

@@ -113,11 +113,7 @@ datatype token =
     | WHILE
     | WITH
 
-(*     
-     Currently adopting the strategy of returning these
-     as IDENTIFIER tokens and letting the parser decide
-     how to interpret them.
-*)
+	(* contextually reserved identifiers *)
 
     | CALL
     | DEBUGGER
@@ -179,21 +175,226 @@ datatype token =
 
 exception TokenError
 
-fun isreserved AS = true
-  | isreserved BREAK = true
-  | isreserved  _ = false
+fun isreserved t = 
+	case t of
+    ( AS
+    | BREAK
+    | CASE
+    | CAST
+    | CATCH
+    | CLASS
+    | CONST
+    | CONTINUE
+    | DEFAULT
+    | DELETE
+    | DO
+    | ELSE
+    | ENUM
+    | EXTENDS
+    | FALSE
+    | FINALLY
+    | FOR
+    | FUNCTION
+    | IF
+    | IMPLEMENTS
+    | IMPORT
+    | IN
+    | INSTANCEOF
+    | INTERFACE
+    | INTERNAL
+    | INTRINSIC
+    | IS
+    | LET
+    | NEW
+    | NULL
+    | PACKAGE
+    | PRIVATE
+    | PROTECTED
+    | PUBLIC
+    | RETURN
+    | SUPER
+    | SWITCH
+    | THIS
+    | THROW
+    | TO
+    | TRUE
+    | TRY
+    | TYPEOF
+    | USE
+    | VAR
+    | VOID
+    | WHILE
+    | WITH ) => true
+	| _ => false
 
-fun tokenname AS = "as"
-  | tokenname (IDENTIFIER name) = name
-  | tokenname (NUMBERLITERAL r) = Real.toString(r)
-  | tokenname DOUBLECOLON = "::"
-  | tokenname COMMA = ","
-  | tokenname DIV = ","
-  | tokenname PRIVATE = "private"
-  | tokenname ERROR = "error"
-  | tokenname EOL = "eol"
-  | tokenname EOF = "eof"
-  | tokenname (LEXBREAK_DIV {...}) = "lexbreak_div"
-  | tokenname _ = "unknown"
+fun tokenname t =
+    case t of
+
+	(* punctuators *)
+
+      MINUS => "-"
+    | MINUSMINUS => "--"
+    | NOT => "!"
+    | NOTEQUALS => "!="
+    | STRICTNOTEQUALS => "!=="
+    | MODULUS => "%"
+    | MODULUSASSIGN => "%="
+    | BITWISEAND => "&"
+    | LOGICALAND => "&&"
+    | LOGICALANDASSIGN => "&&="
+    | BITWISEANDASSIGN => "&="
+    | LEFTPAREN => "("
+    | RIGHTPAREN => ")"
+    | MULT => "*"
+    | MULTASSIGN => "*="
+    | COMMA => ","
+    | DOT => "."
+    | DOUBLEDOT => ".."
+    | TRIPLEDOT => "..."
+    | LEFTDOTANGLE => ".<"
+    | DIV => "/"
+    | DIVASSIGN => "/="
+    | COLON => ":"
+    | DOUBLECOLON => "::"
+    | SEMICOLON => ";"
+    | QUESTIONMARK => "?"
+    | AT => "@"
+    | LEFTBRACKET => "["
+    | RIGHTBRACKET => "]"
+    | BITWISEXOR => "^"
+    | LOGICALXOR => "^^"
+    | LOGICALXORASSIGN => "^^="
+    | BITWISEXORASSIGN => "^="
+    | LEFTBRACE => "{"
+    | BITWISEOR => "|"
+    | LOGICALOR => "||"
+    | LOGICALORASSIGN => "||="
+    | BITWISEORASSIGN => "|="
+    | RIGHTBRACE => "}"
+    | BITWISENOT => "~"
+    | PLUS => "+"
+    | PLUSPLUS => "++"
+    | PLUSASSIGN => "+="
+    | LESSTHAN => "<"
+    | LEFTSHIFT => "<<"
+    | LEFTSHIFTASSIGN => "<<="
+    | LESSTHANOREQUALS => "<="
+    | ASSIGN => "="
+    | MINUSASSIGN => "*="
+    | EQUALS => "=="
+    | STRICTEQUALS => "==="
+    | GREATERTHAN => ">"
+    | GREATERTHANOREQUALS => ">="
+    | RIGHTSHIFT => ">>"
+    | RIGHTSHIFTASSIGN => ">>="
+    | UNSIGNEDRIGHTSHIFT => ">>>"
+    | UNSIGNEDRIGHTSHIFTASSIGN => ">>>="
+
+    (* reserved identifiers *)
+
+    | AS => "as"
+    | BREAK => "break"
+    | CASE => "case"
+    | CAST => "cast"
+    | CATCH => "catch"
+    | CLASS => "class"
+    | CONST => "const"
+    | CONTINUE => "continue"
+    | DEFAULT => "default"
+    | DELETE => "delete"
+    | DO => "do"
+    | ELSE => "else"
+    | ENUM => "enum"
+    | EXTENDS => "extends"
+    | FALSE => "false"
+    | FINALLY => "finally"
+    | FOR => "for"
+    | FUNCTION => "function"
+    | IF => "if"
+    | IMPLEMENTS => "implements"
+    | IMPORT => "import"
+    | IN => "in"
+    | INSTANCEOF => "instanceof"
+    | INTERFACE => "interface"
+    | INTERNAL => "internal"
+    | INTRINSIC => "intrinsic"
+    | IS => "is"
+    | LET => "let"
+    | NEW => "new"
+    | NULL => "null"
+    | PACKAGE => "package"
+    | PRIVATE => "private"
+    | PROTECTED => "protected"
+    | PUBLIC => "public"
+    | RETURN => "return"
+    | SUPER => "super"
+    | SWITCH => "switch"
+    | THIS => "this"
+    | THROW => "throw"
+    | TO => "to"
+    | TRUE => "true"
+    | TRY => "try"
+    | TYPEOF => "typeof"
+    | USE => "use"
+    | VAR => "var"
+    | VOID => "void"
+    | WHILE => "while"
+    | WITH => "with"
+
+    (* contextually reserved identifiers *)
+
+    | CALL => "call"
+    | DEBUGGER => "debugger"
+    | DECIMAL => "decimal"
+    | DOUBLE => "double"
+    | DYNAMIC => "dynamic"
+    | EACH => "each"
+    | FINAL => "final"
+    | GET => "get"
+    | GOTO => "goto"
+    | INCLUDE => "include"
+    | INT => "int"
+    | NAMESPACE => "namespace"
+    | NATIVE => "native"
+    | NUMBER => "number"
+    | OVERRIDE => "override"
+    | PROTOTYPE => "prototype"
+    | ROUNDING => "rounding"
+    | STANDARD => "standard"
+    | STRICT => "strict"
+    | UINT => "uint"
+    | SET => "set"
+    | STATIC => "static"
+    | TYPE => "type"
+    | XML => "xml"
+    | YIELD => "yield"
+
+    (* literals *)
+
+    | ATTRIBUTEIDENTIFIER => "@id"
+    | BLOCKCOMMENT => ""
+    | DOCCOMMENT => ""
+    | EOL => "eol"
+    | IDENTIFIER x => "identifier("^x^")"
+    | NUMBERLITERAL x => Real.toString(x)
+    | PACKAGEIDENTIFIER => "packageidentifier(x)"
+    | REGEXPLITERAL => "regexp(x)"
+    | SLASHSLASHCOMMENT => ""
+    | STRINGLITERAL x => "string("^x^")"
+    | WHITESPACE => "<ws>"
+    | XMLLITERAL => "xmlliteral()"
+    | XMLPART => "xmlpart()"
+    | XMLMARKUP => "xmlmarkup()"
+    | XMLTEXT => "xmltext()"
+    | XMLTAGENDEND => "xmltagendend()"
+    | XMLTAGSTARTEND => "xmltagstartend()"
+
+	(* meta tokens *)
+
+    | ERROR => "error"
+    | LEXBREAK_DIV x => "lexbreak_div"
+    | LEXBREAK_DIVASSIGN x => "lexbreak_divassign"
+    | LEXBREAK_LESSTHAN x => "lexbreak_lessthan"
+    | EOF => "eof"
 
 end

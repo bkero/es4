@@ -47,7 +47,7 @@ datatype nulOp =
          THIS | EMPTY
 
 datatype varDefnTag =
-         CONST | VAR | LETVAR | LETCONST
+         CONST | VAR | LETVAR | LETCONST | REST
 
 datatype namespaceKind =
          PUBLIC | PRIVATE | PROTECTED | INTERNAL | INTRINSIC | USERDEFINED
@@ -191,28 +191,42 @@ datatype directive =
                       actuals: expr list}
 
        | Property of { indirect: bool,
-                       obj: expr,
+                       obj: expr option,
                        field: expr }
+
+	   | Ref of { base : expr option, ident : identExpr }
 
        | QualIdent of { qual: expr option,
                         ident: ustring,
                         opennss: visibility list }
 
+       | QualExpr of { qual: expr option,
+                        expr: expr,
+                        opennss: visibility list }
+
        | AttrQualIdent of { indirect: bool,
-                            operand: identOrExpr }
+                            operand: expr }
 
        | LetExpr of { defs: varDefn list,
                       body: expr }
 
        | NewExpr of { obj: expr,
                       actuals: expr list }
-       | FunExpr of { sign: funcSign,
+       | FunExpr of { ident: ident option,
+					  sign: funcSign,
                       body: block }
        | ListExpr of expr list
-
+ 
      and identOrExpr =
          Ident of ident
        | Expr of expr
+
+	 and identExpr =
+	     QualifiedIdentifier of { qual : expr, ident : ustring }
+	   | QualifiedExpression of { qual : expr, expr : expr }
+       | AttributeIdentifier of identExpr
+	   | Identifier of ident
+	   | Expression of expr   (* for bracket exprs: o[x] and @[x] *)
 
      and literal =
          LiteralNull
@@ -248,7 +262,12 @@ withtype
          { name: ident,
            ty: tyExpr option,
            init: expr option,
+		   tag: varDefnTag,
            isRest: bool }
+
+     and typedIdent =
+         { name: ident,
+           ty: tyExpr option }
 
      and funcDefn =
          { name: ident,

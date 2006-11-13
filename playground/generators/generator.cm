@@ -6,6 +6,8 @@ is
         generator.sml
         coroutine.sml
         callcc.sml
+        shift.sml
         thread.sml
+        control.sml
 	$cml/cml.cm
 	$/basis.cm
