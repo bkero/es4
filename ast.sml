@@ -191,15 +191,21 @@ datatype directive =
                       actuals: expr list}
 
        | Property of { indirect: bool,
-                       obj: expr,
+                       obj: expr option,
                        field: expr }
+
+	   | Ref of { base : expr option, ident : identExpr }
 
        | QualIdent of { qual: expr option,
                         ident: ustring,
                         opennss: visibility list }
 
+       | QualExpr of { qual: expr option,
+                        expr: expr,
+                        opennss: visibility list }
+
        | AttrQualIdent of { indirect: bool,
-                            operand: identOrExpr }
+                            operand: expr }
 
        | LetExpr of { defs: varDefn list,
                       body: expr }
@@ -214,6 +220,13 @@ datatype directive =
      and identOrExpr =
          Ident of ident
        | Expr of expr
+
+	 and identExpr =
+	     QualifiedIdentifier of { qual : expr, ident : ustring }
+	   | QualifiedExpression of { qual : expr, expr : expr }
+       | AttributeIdentifier of identExpr
+	   | Identifier of ident
+	   | Expression of expr   (* for bracket exprs: o[x] and @[x] *)
 
      and literal =
          LiteralNull
