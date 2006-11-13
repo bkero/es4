@@ -1,0 +1,1 @@
+({x:10,get y(){return this.x},set y(v){this.x = v},"s":"hello",10:20})
