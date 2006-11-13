@@ -1,12 +1,13 @@
 signature COROUTINE =
 sig
-    type 'a C
+    type result
+    type C
 
-    val new     : (('a C * 'a) -> 'a) -> 'a C
-    val switch  : ('a C * 'a) -> 'a
-    val kill    : 'a C -> unit
-    val newborn : 'a C -> bool
-    val alive   : 'a C -> bool
-    val running : 'a C -> bool
+    val new     : ((C * result) -> result) -> C
+    val switch  : (C * result) -> result
+    val kill    : C -> unit
+    val newborn : C -> bool
+    val alive   : C -> bool
+    val running : C -> bool
     val run     : (unit -> unit) -> unit
 end
