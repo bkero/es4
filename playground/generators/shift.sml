@@ -6,53 +6,49 @@ struct
 
     open S
 
-    type cont = result -> result
+    datatype computation = Newborn of result -> result
+                         | Paused of result -> result
+                         | Running
+                         | Closed
 
-    datatype thread = Newborn of result -> result
-                    | Paused of cont
-                    | Running
+    type C = computation ref
 
-    type C = thread option ref
-
-    exception NYI
-
-    fun new f = let val r = ref NONE
+    fun new f = let val r = ref Closed (* temporary *)
                 in
-                    r := SOME (Newborn (fn s =>
-                                            reset (fn () =>
-                                                       let val s' = f (r, s) in
-                                                           r := NONE;
-                                                           s'
-                                                       end)));
+                    r := Newborn (fn s => reset (fn () =>
+                                                     let val s' = f (r, s) in
+                                                         r := Closed;
+                                                         s'
+                                                     end));
                     r
                 end
 
     fun switch (r, x) =
         case !r of
-             NONE => raise Value.InternalError "dead coroutine"
-           | SOME (Newborn f) => (r := SOME Running; f x)
-           | SOME (Paused k) => (r := SOME Running; k x)
-           | SOME Running => shift (fn k => (r := SOME (Paused k); x))
+             Newborn f => (r := Running; f x)
+           | Paused k => (r := Running; k x)
+           | Running => shift (fn k => (r := Paused k; x))
+           | Closed => raise Value.InternalError "dead coroutine"
 
     fun kill r =
         case !r of
-             NONE => ()
-           | SOME Running => raise Value.InternalError "already executing"
-           | _ => r := NONE
+             Closed => ()
+           | Running => raise Value.InternalError "already executing"
+           | _ => r := Closed
 
     fun newborn r =
         case !r of
-             SOME (Newborn _) => true
+             Newborn _ => true
            | _ => false
 
     fun alive r =
         case !r of
-             NONE => false
+             Closed => false
            | _ => true
 
     fun running r =
         case !r of
-             SOME Running => true
+             Running => true
            | _ => false
 
     fun run f = f ()

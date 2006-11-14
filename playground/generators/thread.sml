@@ -10,20 +10,20 @@ struct
     datatype thread = Newborn of result option chan
                     | Paused of result option chan
                     | Running of result option chan
+                    | Closed
 
-    (* A closed coroutine is represented as NONE. *)
-    type C = thread option ref
+    type C = thread ref
 
     fun new f = let val c = channel ()
-                    val r = ref (SOME (Newborn c))
+                    val r = ref (Newborn c)
                     val thread = fn () =>
                                  (
                                      (case recv c of
                                            NONE => raise Death
                                          | SOME s => (
-                                                         r := SOME (Running c);
+                                                         r := Running c;
                                                          let val s' = f (r, s) in
-                                                             r := NONE;
+                                                             r := Closed;
                                                              send (c, SOME s')
                                                          end
                                                      ))
@@ -36,49 +36,49 @@ struct
 
     fun switch (r, x) =
         case !r of
-             NONE => raise Value.InternalError "dead coroutine"
-           | SOME (Newborn c) => (
-                                     r := SOME (Running c);
-                                     send (c, SOME x);
-                                     case recv c of
-                                          NONE => raise Value.InternalError "coroutine protocol"
-                                        | SOME x => x
-                                 )
-           | SOME (Paused c) => (
-                                    r := SOME (Running c);
-                                    send (c, SOME x);
-                                    case recv c of
-                                         NONE => raise Value.InternalError "coroutine protocol"
-                                       | SOME x => x
-                                )
-           | SOME (Running c) => (
-                                     r := SOME (Paused c);
-                                     send (c, SOME x);
-                                     case recv c of
-                                          NONE => raise Death
-                                        | SOME x => x
-                                 )
+             Newborn c => (
+                              r := Running c;
+                              send (c, SOME x);
+                              case recv c of
+                                   NONE => raise Value.InternalError "coroutine protocol"
+                                 | SOME x => x
+                          )
+           | Paused c => (
+                             r := Running c;
+                             send (c, SOME x);
+                             case recv c of
+                                  NONE => raise Value.InternalError "coroutine protocol"
+                                | SOME x => x
+                         )
+           | Running c => (
+                              r := Paused c;
+                              send (c, SOME x);
+                              case recv c of
+                                   NONE => raise Death
+                                 | SOME x => x
+                          )
+           | Closed => raise Value.InternalError "dead coroutine"
 
     fun kill r =
         case !r of
-             NONE => ()
-           | SOME (Newborn c) => (send (c, NONE); r := NONE)
-           | SOME (Paused c) => (send (c, NONE); r := NONE)
-           | SOME (Running c) => raise Value.InternalError "already executing"
+             Newborn c => (send (c, NONE); r := Closed)
+           | Paused c => (send (c, NONE); r := Closed)
+           | Running c => raise Value.InternalError "already executing"
+           | Closed => ()
 
     fun newborn r =
         case !r of
-             SOME (Newborn _) => true
+             Newborn _ => true
            | _ => false
 
     fun alive r =
         case !r of
-             NONE => false
+             Closed => false
            | _ => true
 
     fun running r =
         case !r of
-             SOME (Running _) => true
+             Running _ => true
            | _ => false
 
     fun run f = (RunCML.doit (fn () =>

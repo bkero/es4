@@ -7,60 +7,62 @@ struct
     (* renamed to distinguish clearly from ECMAScript throw *)
     val jump = throw
 
-    datatype thread = Newborn of (result -> result)
-                    | Paused of result cont
-                    | Running of result cont
+    datatype computation = Newborn of (result -> result)
+                         | Paused of result cont
+                         | Running of result cont
+                         | Closed
 
-    type C = thread option ref
+    type C = computation ref
 
-    fun new f = let val r = ref NONE
+    fun new f = let val r = ref Closed (* temporary *)
                 in
-                    r := SOME (Newborn (fn s =>
-                                            let val s' = f (r, s) in
-                                                r := NONE;
-                                                s'
-                                            end));
+                    r := Newborn (fn s =>
+                                      let val s' = f (r, s)
+                                      in
+                                          r := Closed;
+                                          s'
+                                      end);
                     r
                 end
 
     fun switch (r, x) =
         case !r of
-             NONE => raise Value.InternalError "dead coroutine"
-           | SOME (Newborn f) => callcc (fn maink =>
-                                         (
-                                             r := SOME (Running maink);
-                                             f x
-                                         ))
-           | SOME (Paused coroutinek) => callcc (fn maink =>
-                                                 (
-                                                     r := SOME (Running maink);
-                                                     jump coroutinek x
-                                                 ))
-           | SOME (Running maink) => callcc (fn coroutinek =>
-                                             (
-                                                 r := SOME (Paused coroutinek);
-                                                 jump maink x
-                                             ))
+             Newborn f => callcc (fn maink =>
+                                  (
+                                      r := Running maink;
+                                      f x
+                                  ))
+           | Paused coroutinek => callcc (fn maink =>
+                                          (
+                                              r := Running maink;
+                                              jump coroutinek x
+                                          ))
+           | Running maink => callcc (fn coroutinek =>
+                                      (
+                                          r := Paused coroutinek;
+                                          jump maink x
+                                      ))
+           | Closed => raise Value.InternalError "dead coroutine"
 
     fun kill r =
         case !r of
-             NONE => ()
-           | SOME (Running _) => raise Value.InternalError "already executing"
-           | _ => r := NONE
+             Closed => ()
+           | Running _ => raise Value.InternalError "already executing"
+           | _ => r := Closed
 
     fun newborn r =
         case !r of
-             SOME (Newborn _) => true
+             Newborn _ => true
            | _ => false
 
     fun alive r =
         case !r of
-             NONE => false
+             Closed => false
            | _ => true
 
     fun running r =
         case !r of
-             SOME (Running _) => true
+             Running _ => true
            | _ => false
 
     fun run f = f ()
