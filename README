@@ -2,6 +2,6 @@ CODING CONVENTIONS
 
 * naming conventions
 
-type names:        FOOBAR
+type names:        FOO_BAR
 constructor names: FooBar
 local/field names: fooBar
