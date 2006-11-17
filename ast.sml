@@ -66,6 +66,8 @@ datatype directive =
        | Import of { package: ident,
                      qualifier: importQual,
                      alias: ident option }
+	   | Definition of definition list
+	   | Statement of stmt
 
      and visibility =
          Namespace of ( namespaceKind * ustring )
@@ -109,6 +111,7 @@ datatype directive =
                          dynamic: bool,
                          prototype: bool,
                          nullable: bool }
+	   | EmptyAttributes
 
      and varDefn =
          SimpleDefn of { tag: varDefnTag,
@@ -116,6 +119,12 @@ datatype directive =
                          attrs: attributes,
                          name: ident,
                          ty: tyExpr option }
+
+       | DestructDefn of { tag: varDefnTag,
+                           init: expr option,
+                           attrs: attributes,
+                           ptrn: pattern,
+                           ty: tyExpr option }
 
        | DestructuringDefn of { tag: varDefnTag,
                                 init: expr option,
@@ -220,6 +229,7 @@ datatype directive =
      and identOrExpr =
          Ident of ident
        | Expr of expr
+	   | Pattern of pattern
 
 	 and identExpr =
 	     QualifiedIdentifier of { qual : expr, ident : ustring }
@@ -250,16 +260,21 @@ datatype directive =
            defns: definition list,
            stmts: stmt list }
 
+	and pattern =
+		ObjectPattern of { name: expr, ptrn : pattern } list
+	  | ArrayPattern of pattern list
+	  | SimplePattern of expr
+
 withtype 
 
          funcTy =
-         { paramTypes: tyExpr list,
+         { paramTypes: tyExpr option list,
            returnType: tyExpr,
            boundThisType: tyExpr option,
            hasRest: bool }
 
-     and formal =
-         { name: ident,
+    and formal =
+         { name: identOrExpr,
            ty: tyExpr option,
            init: expr option,
 		   tag: varDefnTag,

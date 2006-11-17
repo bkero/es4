@@ -20,6 +20,11 @@ check: es4.heap
 	sml @SMLload=es4.heap tests/objref.es
 	sml @SMLload=es4.heap tests/objectliteral.es
 	sml @SMLload=es4.heap tests/arrayliteral.es
+	sml @SMLload=es4.heap tests/cast.es
+	sml @SMLload=es4.heap tests/objectpattern.es
+	sml @SMLload=es4.heap tests/typedident.es
+	sml @SMLload=es4.heap tests/typeexpr.es
+	sml @SMLload=es4.heap tests/vardefn.es
 
 gen: gen-pretty.heap
 	sml @SMLload=gen-pretty.heap ast.sml pretty-cvt-UNTESTED.sml

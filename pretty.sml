@@ -294,7 +294,7 @@ and cvtFuncTy { paramTypes,
                 returnType,
                 boundThisType,
                 hasRest } =
-    Rec [("paramTypes", cvtTyExprList paramTypes),
+    Rec [("paramTypes", cvtTyExprOptionList paramTypes),
          ("returnType", cvtTyExpr returnType),
          ("boundThisType", cvtTyExprOption boundThisType),
          ("hasRest", Bool hasRest)]
@@ -309,6 +309,8 @@ and cvtTyExprOption to =
       | NONE => Ctor ("NONE", [])
 
 and cvtTyExprList tl = List (map cvtTyExpr tl)
+
+and cvtTyExprOptionList tl = List (map cvtTyExprOption tl)
 
 and cvtTyExpr t =
     case t of
@@ -376,7 +378,7 @@ and cvtLiteral lit =
                                      ("caseInsensitive", Bool caseInsensitive)]])
 
 and cvtFormal {name, ty, init, tag, isRest} =
-    Rec [("name", String name),
+    Rec [("name", cvtIdentOrExpr name),
          ("ty", cvtTyExprOption ty),
          ("init", cvtExprOption init),
 		 ("tag", cvtVarDefnTag tag),
