@@ -54,9 +54,11 @@ structure Convert = struct
             (String.implode [c]) ^ suffix
         end
 
+(*
     fun zip ([], []) = []
       | zip (x::xs, y::ys) = (x,y)::(zip (xs, ys))
       | zip _ = raise Empty
+*)
 
     fun typeName (DATATYPEcvt (id, _)) = id
       | typeName (TYPEcvt (id, _)) = id
@@ -244,10 +246,10 @@ structure Convert = struct
                                                                          in
                                                                              %`(^s, ^tem)`
                                                                          end)
-                                                                    (zip (ids, tems)),
+                                                                    (ListPair.zip (ids, tems)),
                                                                 NONE))
                                in
-                                   (RECORDpat (zip (ids, pats), false), %`Rec (^elts)`)
+                                   (RECORDpat (ListPair.zip (ids, pats), false), %`Rec (^elts)`)
                                end
            | LISTcvt ty' => let val (pat, tem) = genCvtTy ty'
                                 val pat = PAThole pat
