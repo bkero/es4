@@ -9,7 +9,7 @@ Library
         structure NameMap
         structure Value
         structure Expr
-        structure Stmt
+        structure Stmt 
         structure TypeChk
 
 is
