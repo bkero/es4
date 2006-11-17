@@ -6,7 +6,7 @@ Library
         structure Lexer
         structure Parser
         structure Expr
-        structure Stmt
+        structure Stmt 
 	structure Mach
         structure TypeChk
 

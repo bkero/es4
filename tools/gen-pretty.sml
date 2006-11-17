@@ -225,8 +225,8 @@ structure Convert = struct
                                   val x = EXPhole (ID sym)
                               in
                                   (IDpat sym, %`case ^x of
-                                                     NONE => Ctor (SOME (Tuple ["NONE"]))
-                                                   | SOME ^pat => Ctor (SOME (Tuple ["SOME", ^tem]))`)
+                                                     NONE => Ctor ("NONE", NONE)
+                                                   | SOME ^pat => Ctor ("SOME", SOME ^tem)`)
                               end
            | TUPLEcvt tys => let val pairs = map genCvtTy tys
                                  val pats = map #1 pairs
@@ -255,7 +255,7 @@ structure Convert = struct
                                 val sym = gensym "ls"
                                 val x = EXPhole (ID sym)
                             in
-                                (IDpat sym, %`List.map (fn ^pat => ^tem) ^x`)
+                                (IDpat sym, %`List (List.map (fn ^pat => ^tem) ^x)`)
                             end
            (* TODO: ref types *)
            | _ => raise (Fail "not yet implemented")
@@ -280,11 +280,11 @@ structure Convert = struct
     fun genCvtFunction tb =
         case tb of
              DATATYPEcvt (id, cs) =>
-                 FUNdecl [FUNbind (cvtFunctionName id, map genCvtClause cs)]
+                 FUNbind (cvtFunctionName id, map genCvtClause cs)
            | TYPEcvt (id, ty) =>
                  let val (pat, tem) = genCvtTy ty
                  in
-                     FUNdecl [FUNbind (cvtFunctionName id, [CLAUSE ([pat], NONE, tem)])]
+                     FUNbind (cvtFunctionName id, [CLAUSE ([pat], NONE, tem)])
                  end
 
     fun genCvtFunctions (DECLcvt ds) =
@@ -323,8 +323,9 @@ structure GenPretty = struct
 
     fun genPretty ast =
         let val (structin, typedecls) = contents ast
-            val fundecls = concat (mapPartial genCvtFunctions (extractCvtDecls typedecls))
-            val body = DECLsexp ((OPENdecl [IDENT ([], "Ast"), IDENT ([], "PrettyRep")])::fundecls)
+            val funbinds = concat (mapPartial genCvtFunctions (extractCvtDecls typedecls))
+            val body = DECLsexp [OPENdecl [IDENT ([], "Ast"), IDENT ([], "PrettyRep")],
+				 FUNdecl funbinds]
         in
             STRUCTUREdecl ("PrettyCvt", [], NONE, body)
         end
