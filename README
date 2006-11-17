@@ -1,0 +1,7 @@
+CODING CONVENTIONS
+
+* naming conventions
+
+type names:        FOOBAR
+constructor names: FooBar
+local/field names: fooBar
