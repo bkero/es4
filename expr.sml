@@ -2,10 +2,14 @@
 
 structure Expr = struct
 
-type value = Value.V
+type value = Mach.VAL
 
-datatype multiname = Multiname of { namespaces: Ast.visibility list, id: Ast.ustring }
-datatype name = Name of { ns : Ast.visibility, id : Ast.ustring }
+datatype multiname = 
+	 Multiname of { namespaces: Ast.visibility list, 
+			id: Ast.ustring }
+datatype name = 
+	 Name of { ns : Ast.visibility, 
+		   id : Ast.ustring }
 
 exception ReferenceException of multiname
 
@@ -22,13 +26,8 @@ fun makeName p (Ast.Attributes {vis=n,...}) =
     Name{ns=Ast.UserNamespace(n), id=p}
 *)
                  
-fun setPropertyValue (Value.Object obj) (name:name) v =
-    let
-    val slots = #slots obj
-    val Name {id=id,...} = name
-    in
-    slots := NameMap.insert ((!slots),{ns="",prop=id}, v)
-    end
+fun setPropertyValue (Mach.Obj obj) name v =
+    Mach.setProp (#slots obj) name
 
 fun extendEnvironment env bindingobj = 
     bindingobj :: env
@@ -101,12 +100,13 @@ and getValueProtocol (Value.Object obj) (mname:multiname) =
                    | SOME proto => getValueProtocol proto mname)
       | result => result
 
-and getPropertyValue obj (mname:multiname) = 
+and getPropertyValue obj (mname:multiname) =
+    
     let     
     val slots = !(#slots obj)
     val Multiname {namespaces=nss,id=p} = mname
     fun search [] = NONE
-      | search (x::xs) = case NameMap.find (slots,{ns="", prop=p}) of
+      | search (x::xs) = case Mach.getProp (slots,{ns="", prop=p}) of
                  NONE => search xs
                | res => res
     in
