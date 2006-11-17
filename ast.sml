@@ -104,11 +104,11 @@ datatype VAR_DEFN_TAG =
        | Rest
 
 datatype NAMESPACE =
-         Public
-       | Private
+	 Private
        | Protected
-       | Internal
        | Intrinsic
+       | Public of IDENT
+       | Internal of IDENT
        | UserDefined of IDENT
 
 datatype PRIM_ANNOTATION =
@@ -234,23 +234,8 @@ datatype DIRECTIVE =
        | CallExpr of {func: EXPR,
                       actuals: EXPR list}
 
-       | Property of { indirect: bool,
-                       obj: EXPR option,
-                       field: EXPR }
-
        | Ref of { base: EXPR option,
                   ident: IDENT_EXPR }
-
-       | QualIdent of { qual: EXPR option,
-                        ident: USTRING,
-                        opennss: NAMESPACE list }
-
-       | QualExpr of { qual: EXPR option,
-                       expr: EXPR,
-                       opennss: NAMESPACE list }
-
-       | AttrQualIdent of { indirect: bool,
-                            operand: EXPR }
 
        | LetExpr of { defs: VAR_DEFN list,
                       body: EXPR }
