@@ -4,7 +4,7 @@ es4.heap: $(wildcard *.sml)
 pretty-cvt.sml: tools/gen-pretty.heap ast.sml
 	cd tools && sml @SMLload=gen-pretty.heap ../ast.sml ../pretty-cvt.sml
 
-tools/gen-pretty.heap: tools/gen-pretty.cm tools/gen-pretty.sml
+tools/gen-pretty.heap: tools/gen-pretty.cm tools/gen-convert.sml
 	cd tools && ml-build gen-pretty.cm Main.main gen-pretty.heap
 
 check: es4.heap
