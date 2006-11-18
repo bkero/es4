@@ -104,7 +104,7 @@ and qualifier ts =
           let
               val (ts1,nd1) = propertyIdentifier (ts)
           in
-              (ts1,Ast.Ref{base=NONE,ident=Ast.Identifier nd1})
+              (ts1,Ast.Ref{base=NONE,ident=Ast.Identifier {ident=nd1, openNamespaces=ref NONE}})
           end
     end
 
@@ -168,9 +168,9 @@ and simpleQualifiedIdentifier ts =
               	val (ts1, nd1) = propertyIdentifier(ts)
           	in case ts1 of
               	DoubleColon :: _ => 
-					qualifiedIdentifierPrime(tl ts1,Ast.Ref ({base=NONE,ident=Ast.Identifier nd1}))
+					qualifiedIdentifierPrime(tl ts1,Ast.Ref ({base=NONE,ident=Ast.Identifier {ident=nd1,openNamespaces=ref NONE}}))
               | _ => ( trace(["<< simpleQualifiedIdentifier with next=",tokenname(hd(ts1))]);
-					   (ts1,Ast.Identifier nd1) )
+					   (ts1,Ast.Identifier {ident=nd1,openNamespaces=ref NONE}) )
           end
     end
 
@@ -1176,7 +1176,7 @@ and propertyOperator (ts, nd) =
                             let
                                 val (ts4,nd4) = reservedOrPropertyIdentifier(ts3)
                             in
-                                (ts4,Ast.Ref({base=SOME nd,ident=Ast.Identifier(nd4)}))
+                                (ts4,Ast.Ref({base=SOME nd,ident=Ast.Identifier {ident=nd4,openNamespaces=ref NONE}}))
                             end
 					  | _ => raise ParseError
                     end
@@ -1184,7 +1184,7 @@ and propertyOperator (ts, nd) =
                     let
                         val (ts4,nd4) = reservedOrPropertyIdentifier(ts1)
                     in
-                        (ts4,Ast.Ref({base=SOME nd,ident=Ast.Identifier(nd4)}))
+                        (ts4,Ast.Ref({base=SOME nd,ident=Ast.Identifier {ident=nd4,openNamespaces=ref NONE}}))
                     end
             end
       | LeftBracket :: _ => 

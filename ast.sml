@@ -262,7 +262,7 @@ datatype DIRECTIVE =
                                   expr : EXPR }
        | AttributeIdentifier of IDENT_EXPR
        | Identifier of { ident : IDENT,
-			 openNamespaces : (NAMESPACE list) ref }
+			 openNamespaces : (NAMESPACE list) option ref }
        | Expression of EXPR   (* for bracket exprs: o[x] and @[x] *)
 
      and LITERAL =
