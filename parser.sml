@@ -2912,10 +2912,7 @@ fun parseFile filename =
          log ["parsed ", filename, "\n"];
          ast
      end)
-
-(*
- handle ParseError => (log ["parse error"]; raise ParseError)
-      | Lexer.LexError => (log ["lex error"]; raise Lexer.LexError)
-*)
+     handle ParseError => (log ["parse error"]; raise ParseError)
+          | Lexer.LexError => (log ["lex error"]; raise Lexer.LexError)
 
 end (* Parser *)

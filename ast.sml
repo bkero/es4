@@ -264,7 +264,7 @@ datatype DIRECTIVE =
 
      and LITERAL =
          LiteralNull
-       | LiteralUndefined
+       | LiteralUndefined 
        | LiteralNumber of real
        | LiteralBoolean of bool
        | LiteralString of USTRING

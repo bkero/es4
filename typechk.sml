@@ -4,8 +4,16 @@ exception IllTypedException of string
 
 open Ast
 
-val boolType = PrimaryType { name="boolean",  annotation=Named }
-val exceptionType = PrimaryType { name="exception",  annotation=Named }
+val boolType      = PrimaryType { name="boolean",   annotation=Named }
+val numberType    = PrimaryType { name="number",    annotation=Named }
+val decimalType   = PrimaryType { name="decimal",   annotation=Named }
+val intType       = PrimaryType { name="int",       annotation=Named }
+val uintType      = PrimaryType { name="uint",      annotation=Named }
+val stringType    = PrimaryType { name="string",    annotation=Named }
+val regexpType    = PrimaryType { name="regexp",    annotation=Named }
+val exceptionType = PrimaryType { name="exception", annotation=Named }
+val undefinedType = SpecialType Undefined
+val nullType      = SpecialType Null
 
 fun assert b s = if b then () else (raise Fail s)
 
@@ -13,7 +21,7 @@ type TYPE_ENV = (IDENT * TYPE_EXPR) list
 
 fun extendEnv ((name, ty), env) = (name, ty)::env
 
-type CONTEXT = {env: TYPE_ENV, lbls: IDENT option list, retTy: TYPE_EXPR}
+type CONTEXT = {env: TYPE_ENV, lbls: IDENT option list, retTy: TYPE_EXPR option}
 
 fun withEnv ({env=_, lbls=lbls, retTy=retTy}, env) = {env=env, lbls=lbls, retTy=retTy}
 
@@ -38,12 +46,85 @@ fun checkForDuplicates extensions =
 fun mergeTypes t1 t2 =
 	t1
 
-fun tcProgram { packages, body } = ()
+(******************** Expressions **************************************************)
+	
+fun tcExpr ((ctxt as {env,...}):CONTEXT) (e:EXPR) :TYPE_EXPR = 
+	let
+	in 
+     	TextIO.print "type checking expr ... \n";
+	case e of
+	  LiteralExpr LiteralNull => nullType
+        | LiteralExpr (LiteralNumber _) => intType
+        | LiteralExpr (LiteralBoolean _) => boolType
+        | LiteralExpr (LiteralString _) => stringType
+        | LiteralExpr (LiteralRegExp _) => regexpType
+        | LiteralExpr LiteralUndefined => undefinedType 
+	| ListExpr l => List.last (List.map (tcExpr ctxt) l)
+	| LetExpr {defs, body} => 
+          let val extensions = List.concat (List.map (fn d => tcVarDefn ctxt d) defs)
+          in
+	    checkForDuplicates extensions;
+	    tcExpr (withEnv (ctxt, foldl extendEnv env extensions)) body
+	  end
+	end
+
+
+(*
+     and LITERAL =
+       | LiteralArray of EXPR list
+       | LiteralXML of EXPR list
+       | LiteralNamespace of NAMESPACE
+
+       | LiteralObject of
+         { name: EXPR,
+           init: EXPR } list
+
+     and EXPR =
+         TrinaryExpr of (TRIOP * EXPR * EXPR * EXPR)
+       | BinaryExpr of (BINOP * EXPR * EXPR)
+       | BinaryTypeExpr of (BINOP * EXPR * TYPE_EXPR)
+       | UnaryExpr of (UNOP * EXPR)
+       | TypeExpr of TYPE_EXPR
+       | NullaryExpr of NULOP
+       | YieldExpr of EXPR option
+       | SuperExpr of EXPR option
+
+       | CallExpr of {func: EXPR,
+                      actuals: EXPR list}
+
+       | Ref of { base: EXPR option,
+                  ident: IDENT_EXPR }
+       | NewExpr of { obj: EXPR,
+                      actuals: EXPR list }
+
+       | FunExpr of { ident: IDENT option,
+                      sign: FUNC_SIGN,
+                      body: BLOCK }
+
+     and IDENT_EXPR =
+         QualifiedIdentifier of { qual : EXPR,
+                                  ident : USTRING }
+       | QualifiedExpression of { qual : EXPR,
+                                  expr : EXPR }
+       | AttributeIdentifier of IDENT_EXPR
+       | Identifier of IDENT
+       | Expression of EXPR   (* for bracket exprs: o[x] and @[x] *)
+
+*)
+
+and tcVarDefn (ctxt:CONTEXT) 
+     (VariableDefinition {tag,init,attrs,pattern=Ast.SimplePattern(name),ty}) = 
+	[]
+
+
+
+(**************************************************************)
 
 fun tcStmts ctxt ss = List.app (fn s => tcStmt ctxt s) ss
 
 and tcStmt ((ctxt as {env,lbls,retTy}):CONTEXT) stmt =
-  (case stmt of
+  (TextIO.print "type checking stmt ... \n";
+   case stmt of
     EmptyStmt => ()
   | ExprStmt e => (tcExpr ctxt e; ())
   | IfStmt {cond,consequent,alternative} => (
@@ -57,8 +138,11 @@ and tcStmt ((ctxt as {env,lbls,retTy}):CONTEXT) stmt =
 	tcStmt (withLbls (ctxt, contLabel::lbls)) body
     )
 
-  | ReturnStmt e => 
-	checkConvertible (tcExpr ctxt e) retTy
+  | ReturnStmt e => (
+	case retTy of
+	  NONE => raise IllTypedException "return not allowed here"
+        | SOME retTy => checkConvertible (tcExpr ctxt e) retTy
+    )
 
   | (BreakStmt NONE | ContinueStmt NONE) =>  
     (
@@ -138,44 +222,18 @@ and tcBlock (ctxt as {env,...}) (Block {pragmas=pragmas,defns=defns,stmts=stmts}
         val ctxt' = withEnv (ctxt, foldl extendEnv env extensions)
     in
         assert (classes = []) "class definition inside block";
-        tcStmts ctxt stmts
+	tcStmts ctxt stmts
     end
 
-and tcExpr ctxt e = 
-	boolType
+fun tcProgram { packages, body } = 
+   (tcBlock {env=[], lbls=[], retTy=NONE} body; true)
+   handle IllTypedException msg => (
+     TextIO.print "Ill typed exception: "; 
+     TextIO.print msg; 
+     TextIO.print "\n"; 
+     false)
 
-(*
-     and expr =
-         TrinaryExpr of (triOp * expr * expr * expr)
-       | BinaryExpr of (binOp * expr * expr)
-       | UnaryExpr of (unOp * expr)
-       | NullaryExpr of nulOp
-       | YieldExpr of expr
-       | SuperExpr of expr list
-       | LiteralExpr of literal
-
-       | CallExpr of {func: expr,
-                      actuals: expr list}
-
-       | Property of { indirect: bool,
-                       obj: expr,
-                       field: expr }
-
-       | QualIdent of { lhs: identOrExpr option,
-                        rhs: identOrExpr,
-                        openNamespaces: ident list }
-
-       | AttrQualIdent of { indirect: bool,
-                            operand: identOrExpr }
-
-       | LetExpr of { defs: varDefn list,
-                      body: expr }
-
-       | NewExpr of { obj: expr,
-                      actuals: expr list }
-*)
-
-and tcVarDefn ctxt (VariableDefinition {tag,init,attrs,pattern=Ast.SimplePattern(name),ty}) = []
+   
 
 
 end
