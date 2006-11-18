@@ -15,7 +15,7 @@ fun ppProgram p =
     let 
 	val dev = SimpleTextIODev.openDev {dst=TextIO.stdOut, wid=80}
 	val stream = PP.openStream dev
-	val rep = cvtProgram p
+	val rep = cvtPROGRAM p
     in	
 	(ppSmlDataRep stream rep;
 	 TextIO.print "\n";

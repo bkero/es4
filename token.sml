@@ -4,397 +4,396 @@ datatype token =
 
     (* punctuators *)
 
-      MINUS
-    | MINUSMINUS
-    | NOT
-    | NOTEQUALS
-    | STRICTNOTEQUALS
-    | MODULUS
-    | MODULUSASSIGN
-    | BITWISEAND
-    | LOGICALAND
-    | LOGICALANDASSIGN
-    | BITWISEANDASSIGN
-    | LEFTPAREN
-    | RIGHTPAREN
-    | MULT
-    | MULTASSIGN
-    | COMMA
-    | DOT
-    | DOUBLEDOT
-    | TRIPLEDOT
-    | LEFTDOTANGLE
-    | DIV
-    | DIVASSIGN
-    | COLON
-    | DOUBLECOLON
-    | SEMICOLON
-    | QUESTIONMARK
-    | AT
-    | LEFTBRACKET
-    | RIGHTBRACKET
-    | BITWISEXOR
-    | LOGICALXOR
-    | LOGICALXORASSIGN
-    | BITWISEXORASSIGN
-    | LEFTBRACE
-    | BITWISEOR
-    | LOGICALOR
-    | LOGICALORASSIGN
-    | BITWISEORASSIGN
-    | RIGHTBRACE
-    | BITWISENOT
-    | PLUS
-    | PLUSPLUS
-    | PLUSASSIGN
-    | LESSTHAN
-    | LEFTSHIFT
-    | LEFTSHIFTASSIGN
-    | LESSTHANOREQUALS
-    | ASSIGN
-    | MINUSASSIGN
-    | EQUALS
-    | STRICTEQUALS
-    | GREATERTHAN
-    | GREATERTHANOREQUALS
-    | RIGHTSHIFT
-    | RIGHTSHIFTASSIGN
-    | UNSIGNEDRIGHTSHIFT
-    | UNSIGNEDRIGHTSHIFTASSIGN
+      Minus
+    | MinusMinus
+    | Not
+    | NotEquals
+    | StrictNotEquals
+    | Modulus
+    | ModulusAssign
+    | BitwiseAnd
+    | LogicalAnd
+    | LogicalAndAssign
+    | BitwiseAndAssign
+    | LeftParen
+    | RightParen
+    | Mult
+    | MultAssign
+    | Comma
+    | Dot
+    | DoubleDot
+    | TripleDot
+    | LeftDotAngle
+    | Div
+    | DivAssign
+    | Colon
+    | DoubleColon
+    | SemiColon
+    | QuestionMark
+    | At
+    | LeftBracket
+    | RightBracket
+    | BitwiseXor
+    | LogicalXor
+    | LogicalXorAssign
+    | BitwiseXorAssign
+    | LeftBrace
+    | BitwiseOr
+    | LogicalOr
+    | LogicalOrAssign
+    | BitwiseOrAssign
+    | RightBrace
+    | BitwiseNot
+    | Plus
+    | PlusPlus
+    | PlusAssign
+    | LessThan
+    | LeftShift
+    | LeftShiftAssign
+    | LessThanOrEquals
+    | Assign
+    | MinusAssign
+    | Equals
+    | StrictEquals
+    | GreaterThan
+    | GreaterThanOrEquals
+    | RightShift
+    | RightShiftAssign
+    | UnsignedRightShift
+    | UnsignedRightShiftAssign
 
     (* reserved identifiers *)
 
-    | AS
-    | BREAK
-    | CASE
-    | CAST
-    | CATCH
-    | CLASS
-    | CONST
-    | CONTINUE
-    | DEFAULT
-    | DELETE
-    | DO
-    | ELSE
-    | ENUM
-    | EXTENDS
-    | FALSE
-    | FINALLY
-    | FOR
-    | FUNCTION
-    | IF
-    | IMPLEMENTS
-    | IMPORT
-    | IN
-    | INSTANCEOF
-    | INTERFACE
-    | INTERNAL
-    | INTRINSIC
-    | IS
-    | LET
-    | NEW
-    | NULL
-    | PACKAGE
-    | PRIVATE
-    | PROTECTED
-    | PUBLIC
-    | RETURN
-    | SUPER
-    | SWITCH
-    | THIS
-    | THROW
-    | TO
-    | TRUE
-    | TRY
-    | TYPEOF
-    | USE
-    | VAR
-    | VOID
-    | WHILE
-    | WITH
+    | As
+    | Break
+    | Case
+    | Cast
+    | Catch
+    | Class
+    | Const
+    | Continue
+    | Default
+    | Delete
+    | Do
+    | Else
+    | Enum
+    | Extends
+    | False
+    | Finally
+    | For
+    | Function
+    | If
+    | Implements
+    | Import
+    | In
+    | InstanceOf
+    | Interface
+    | Internal
+    | Intrinsic
+    | Is
+    | Let
+    | New
+    | Null
+    | Package
+    | Private
+    | Protected
+    | Public
+    | Return
+    | Super
+    | Switch
+    | This
+    | Throw
+    | To
+    | True
+    | Try
+    | TypeOf
+    | Use
+    | Var
+    | Void
+    | While
+    | With
 
 	(* contextually reserved identifiers *)
 
-    | CALL
-    | DEBUGGER
-    | DECIMAL
-    | DOUBLE
-    | DYNAMIC
-    | EACH
-    | FINAL
-    | GET
-    | GOTO
-    | INCLUDE
-    | INT
-    | NAMESPACE
-    | NATIVE
-    | NUMBER
-    | OVERRIDE
-    | PROTOTYPE
-    | ROUNDING
-    | STANDARD
-    | STRICT
-    | UINT
-    | SET
-    | STATIC
-    | TYPE
-    | XML
-    | YIELD
+    | Call
+    | Debugger
+    | Decimal
+    | Double
+    | Dynamic
+    | Each
+    | Final
+    | Get
+    | Goto
+    | Include
+    | Int
+    | Namespace
+    | Native
+    | Number
+    | Override
+    | Prototype
+    | Rounding
+    | Standard
+    | Strict
+    | UInt
+    | Set
+    | Static
+    | Type
+    | Xml
+    | Yield
 
 
     (* literals *)
 
-    | ATTRIBUTEIDENTIFIER
-    | BLOCKCOMMENT
-    | DOCCOMMENT
-    | EOL
-    | IDENTIFIER of string
-    | NUMBERLITERAL of real
-    | PACKAGEIDENTIFIER
-    | REGEXPLITERAL
-    | SLASHSLASHCOMMENT
-    | STRINGLITERAL of string
-    | WHITESPACE
-    | XMLLITERAL
-    | XMLPART
-    | XMLMARKUP
-    | XMLTEXT
-    | XMLTAGENDEND
-    | XMLTAGSTARTEND
+    | AttributeIdentifier
+    | BlockComment
+    | DocComment
+    | Eol
+    | Identifier of string
+    | NumberLiteral of real
+    | PackageIdentifier
+    | RegexpLiteral
+    | SlashSlashComment
+    | StringLiteral of string
+    | Whitespace
+    | XmlLiteral
+    | XmlPart
+    | XmlMarkup
+    | XmlText
+    | XmlTagEndEnd
+    | XmlTagStartEnd
 
     (* meta *)
 
-    | ERROR
-    | LEXBREAK_DIV of { lex_initial: unit -> (token list),
-			lex_regexp: unit -> (token list) }
-    | LEXBREAK_DIVASSIGN of { lex_initial: unit -> (token list),
-			      lex_regexp: unit -> (token list) }
-    | LEXBREAK_LESSTHAN of { lex_initial: unit -> (token list),
-			     lex_xml: unit -> (token list) }
-    | EOF
+    | Error
+    | LexBreakDiv of { lex_initial: unit -> (token list),
+		       lex_regexp: unit -> (token list) }
+    | LexBreakDivAssign of { lex_initial: unit -> (token list),
+			     lex_regexp: unit -> (token list) }
+    | LexBreakLessThan of { lex_initial: unit -> (token list),
+			    lex_xml: unit -> (token list) }
+    | Eof
 
 exception TokenError
 
 fun isreserved t = 
-	case t of
-    ( AS
-    | BREAK
-    | CASE
-    | CAST
-    | CATCH
-    | CLASS
-    | CONST
-    | CONTINUE
-    | DEFAULT
-    | DELETE
-    | DO
-    | ELSE
-    | ENUM
-    | EXTENDS
-    | FALSE
-    | FINALLY
-    | FOR
-    | FUNCTION
-    | IF
-    | IMPLEMENTS
-    | IMPORT
-    | IN
-    | INSTANCEOF
-    | INTERFACE
-    | INTERNAL
-    | INTRINSIC
-    | IS
-    | LET
-    | NEW
-    | NULL
-    | PACKAGE
-    | PRIVATE
-    | PROTECTED
-    | PUBLIC
-    | RETURN
-    | SUPER
-    | SWITCH
-    | THIS
-    | THROW
-    | TO
-    | TRUE
-    | TRY
-    | TYPEOF
-    | USE
-    | VAR
-    | VOID
-    | WHILE
-    | WITH ) => true
-	| _ => false
-
+    case t of
+	( As
+      | Break
+      | Case
+      | Cast
+      | Catch
+      | Class
+      | Const
+      | Continue
+      | Default
+      | Delete
+      | Do
+      | Else
+      | Enum
+      | Extends
+      | False
+      | Finally
+      | For
+      | Function
+      | If
+      | Implements
+      | Import
+      | In
+      | InstanceOf
+      | Interface
+      | Internal
+      | Intrinsic
+      | Is
+      | Let
+      | New
+      | Null
+      | Package
+      | Private
+      | Protected
+      | Public
+      | Return
+      | Super
+      | Switch
+      | This
+      | Throw
+      | To
+      | True
+      | Try
+      | TypeOf
+      | Use
+      | Var
+      | Void
+      | While
+      | With ) => true
+      | _ => false
+	     
 fun tokenname t =
     case t of
-
+	
 	(* punctuators *)
+	
+	Minus => "-"
+      | MinusMinus => "--"
+      | Not => "!"
+      | NotEquals => "!="
+      | StrictNotEquals => "!=="
+      | Modulus => "%"
+      | ModulusAssign => "%="
+      | BitwiseAnd => "&"
+      | LogicalAnd => "&&"
+      | LogicalAndAssign => "&&="
+      | BitwiseAndAssign => "&="
+      | LeftParen => "("
+      | RightParen => ")"
+      | Mult => "*"
+      | MultAssign => "*="
+      | Comma => ","
+      | Dot => "."
+      | DoubleDot => ".."
+      | TripleDot => "..."
+      | LeftDotAngle => ".<"
+      | Div => "/"
+      | DivAssign => "/="
+      | Colon => ":"
+      | DoubleColon => "::"
+      | SemiColon => ";"
+      | QuestionMark => "?"
+      | At => "@"
+      | LeftBracket => "["
+      | RightBracket => "]"
+      | BitwiseXor => "^"
+      | LogicalXor => "^^"
+      | LogicalXorAssign => "^^="
+      | BitwiseXorAssign => "^="
+      | LeftBrace => "{"
+      | BitwiseOr => "|"
+      | LogicalOr => "||"
+      | LogicalOrAssign => "||="
+      | BitwiseOrAssign => "|="
+      | RightBrace => "}"
+      | BitwiseNot => "~"
+      | Plus => "+"
+      | PlusPlus => "++"
+      | PlusAssign => "+="
+      | LessThan => "<"
+      | LeftShift => "<<"
+      | LeftShiftAssign => "<<="
+      | LessThanOrEquals => "<="
+      | Assign => "="
+      | MinusAssign => "*="
+      | Equals => "=="
+      | StrictEquals => "==="
+      | GreaterThan => ">"
+      | GreaterThanOrEquals => ">="
+      | RightShift => ">>"
+      | RightShiftAssign => ">>="
+      | UnsignedRightShift => ">>>"
+      | UnsignedRightShiftAssign => ">>>="
 
-      MINUS => "-"
-    | MINUSMINUS => "--"
-    | NOT => "!"
-    | NOTEQUALS => "!="
-    | STRICTNOTEQUALS => "!=="
-    | MODULUS => "%"
-    | MODULUSASSIGN => "%="
-    | BITWISEAND => "&"
-    | LOGICALAND => "&&"
-    | LOGICALANDASSIGN => "&&="
-    | BITWISEANDASSIGN => "&="
-    | LEFTPAREN => "("
-    | RIGHTPAREN => ")"
-    | MULT => "*"
-    | MULTASSIGN => "*="
-    | COMMA => ","
-    | DOT => "."
-    | DOUBLEDOT => ".."
-    | TRIPLEDOT => "..."
-    | LEFTDOTANGLE => ".<"
-    | DIV => "/"
-    | DIVASSIGN => "/="
-    | COLON => ":"
-    | DOUBLECOLON => "::"
-    | SEMICOLON => ";"
-    | QUESTIONMARK => "?"
-    | AT => "@"
-    | LEFTBRACKET => "["
-    | RIGHTBRACKET => "]"
-    | BITWISEXOR => "^"
-    | LOGICALXOR => "^^"
-    | LOGICALXORASSIGN => "^^="
-    | BITWISEXORASSIGN => "^="
-    | LEFTBRACE => "{"
-    | BITWISEOR => "|"
-    | LOGICALOR => "||"
-    | LOGICALORASSIGN => "||="
-    | BITWISEORASSIGN => "|="
-    | RIGHTBRACE => "}"
-    | BITWISENOT => "~"
-    | PLUS => "+"
-    | PLUSPLUS => "++"
-    | PLUSASSIGN => "+="
-    | LESSTHAN => "<"
-    | LEFTSHIFT => "<<"
-    | LEFTSHIFTASSIGN => "<<="
-    | LESSTHANOREQUALS => "<="
-    | ASSIGN => "="
-    | MINUSASSIGN => "*="
-    | EQUALS => "=="
-    | STRICTEQUALS => "==="
-    | GREATERTHAN => ">"
-    | GREATERTHANOREQUALS => ">="
-    | RIGHTSHIFT => ">>"
-    | RIGHTSHIFTASSIGN => ">>="
-    | UNSIGNEDRIGHTSHIFT => ">>>"
-    | UNSIGNEDRIGHTSHIFTASSIGN => ">>>="
+      (* reserved identifiers *)
 
-    (* reserved identifiers *)
+      | As => "as"
+      | Break => "break"
+      | Case => "case"
+      | Cast => "cast"
+      | Catch => "catch"
+      | Class => "class"
+      | Const => "const"
+      | Continue => "continue"
+      | Default => "default"
+      | Delete => "delete"
+      | Do => "do"
+      | Else => "else"
+      | Enum => "enum"
+      | Extends => "extends"
+      | False => "false"
+      | Finally => "finally"
+      | For => "for"
+      | Function => "function"
+      | If => "if"
+      | Implements => "implements"
+      | Import => "import"
+      | In => "in"
+      | InstanceOf => "instanceof"
+      | Interface => "interface"
+      | Internal => "internal"
+      | Intrinsic => "intrinsic"
+      | Is => "is"
+      | Let => "let"
+      | New => "new"
+      | Null => "null"
+      | Package => "package"
+      | Private => "private"
+      | Protected => "protected"
+      | Public => "public"
+      | Return => "return"
+      | Super => "super"
+      | Switch => "switch"
+      | This => "this"
+      | Throw => "throw"
+      | To => "to"
+      | True => "true"
+      | Try => "try"
+      | TypeOf => "typeof"
+      | Use => "use"
+      | Var => "var"
+      | Void => "void"
+      | While => "while"
+      | With => "with"
 
-    | AS => "as"
-    | BREAK => "break"
-    | CASE => "case"
-    | CAST => "cast"
-    | CATCH => "catch"
-    | CLASS => "class"
-    | CONST => "const"
-    | CONTINUE => "continue"
-    | DEFAULT => "default"
-    | DELETE => "delete"
-    | DO => "do"
-    | ELSE => "else"
-    | ENUM => "enum"
-    | EXTENDS => "extends"
-    | FALSE => "false"
-    | FINALLY => "finally"
-    | FOR => "for"
-    | FUNCTION => "function"
-    | IF => "if"
-    | IMPLEMENTS => "implements"
-    | IMPORT => "import"
-    | IN => "in"
-    | INSTANCEOF => "instanceof"
-    | INTERFACE => "interface"
-    | INTERNAL => "internal"
-    | INTRINSIC => "intrinsic"
-    | IS => "is"
-    | LET => "let"
-    | NEW => "new"
-    | NULL => "null"
-    | PACKAGE => "package"
-    | PRIVATE => "private"
-    | PROTECTED => "protected"
-    | PUBLIC => "public"
-    | RETURN => "return"
-    | SUPER => "super"
-    | SWITCH => "switch"
-    | THIS => "this"
-    | THROW => "throw"
-    | TO => "to"
-    | TRUE => "true"
-    | TRY => "try"
-    | TYPEOF => "typeof"
-    | USE => "use"
-    | VAR => "var"
-    | VOID => "void"
-    | WHILE => "while"
-    | WITH => "with"
+      (* contextually reserved identifiers *)
 
-    (* contextually reserved identifiers *)
+      | Call => "call"
+      | Debugger => "debugger"
+      | Decimal => "decimal"
+      | Double => "double"
+      | Dynamic => "dynamic"
+      | Each => "each"
+      | Final => "final"
+      | Get => "get"
+      | Goto => "goto"
+      | Include => "include"
+      | Int => "int"
+      | Namespace => "namespace"
+      | Native => "native"
+      | Number => "number"
+      | Override => "override"
+      | Prototype => "prototype"
+      | Rounding => "rounding"
+      | Standard => "standard"
+      | Strict => "strict"
+      | UInt => "uint"
+      | Set => "set"
+      | Static => "static"
+      | Type => "type"
+      | Xml => "xml"
+      | Yield => "yield"
 
-    | CALL => "call"
-    | DEBUGGER => "debugger"
-    | DECIMAL => "decimal"
-    | DOUBLE => "double"
-    | DYNAMIC => "dynamic"
-    | EACH => "each"
-    | FINAL => "final"
-    | GET => "get"
-    | GOTO => "goto"
-    | INCLUDE => "include"
-    | INT => "int"
-    | NAMESPACE => "namespace"
-    | NATIVE => "native"
-    | NUMBER => "number"
-    | OVERRIDE => "override"
-    | PROTOTYPE => "prototype"
-    | ROUNDING => "rounding"
-    | STANDARD => "standard"
-    | STRICT => "strict"
-    | UINT => "uint"
-    | SET => "set"
-    | STATIC => "static"
-    | TYPE => "type"
-    | XML => "xml"
-    | YIELD => "yield"
+      (* literals *)
 
-    (* literals *)
+      | AttributeIdentifier => "@id"
+      | BlockComment => ""
+      | DocComment => ""
+      | Eol => "eol"
+      | Identifier x => "identifier("^x^")"
+      | NumberLiteral x => Real.toString(x)
+      | PackageIdentifier => "packageidentifier(x)"
+      | RegexpLiteral => "regexp(x)"
+      | SlashSlashComment => ""
+      | StringLiteral x => "string("^x^")"
+      | Whitespace => "<ws>"
+      | XmlLiteral => "xmlliteral()"
+      | XmlPart => "xmlpart()"
+      | XmlMarkup => "xmlmarkup()"
+      | XmlText => "xmltext()"
+      | XmlTagEndEnd => "xmltagendend()"
+      | XmlTagStartEnd => "xmltagstartend()"
 
-    | ATTRIBUTEIDENTIFIER => "@id"
-    | BLOCKCOMMENT => ""
-    | DOCCOMMENT => ""
-    | EOL => "eol"
-    | IDENTIFIER x => "identifier("^x^")"
-    | NUMBERLITERAL x => Real.toString(x)
-    | PACKAGEIDENTIFIER => "packageidentifier(x)"
-    | REGEXPLITERAL => "regexp(x)"
-    | SLASHSLASHCOMMENT => ""
-    | STRINGLITERAL x => "string("^x^")"
-    | WHITESPACE => "<ws>"
-    | XMLLITERAL => "xmlliteral()"
-    | XMLPART => "xmlpart()"
-    | XMLMARKUP => "xmlmarkup()"
-    | XMLTEXT => "xmltext()"
-    | XMLTAGENDEND => "xmltagendend()"
-    | XMLTAGSTARTEND => "xmltagstartend()"
+      (* meta tokens *)
 
-	(* meta tokens *)
-
-    | ERROR => "error"
-    | LEXBREAK_DIV x => "lexbreak_div"
-    | LEXBREAK_DIVASSIGN x => "lexbreak_divassign"
-    | LEXBREAK_LESSTHAN x => "lexbreak_lessthan"
-    | EOF => "eof"
-
+      | Error => "error"
+      | LexBreakDiv x => "lexbreak_div"
+      | LexBreakDivAssign x => "lexbreak_divassign"
+      | LexBreakLessThan x => "lexbreak_lessthan"
+      | Eof => "eof"
 end

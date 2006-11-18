@@ -130,10 +130,18 @@ datatype DIRECTIVE =
                      qualifier: IMPORT_QUAL,
                      alias: IDENT option }
 
+     and FUNC = 
+	 Func of 
+         { name: IDENT,
+           attrs: ATTRIBUTES,
+           formals: FORMAL list,
+           ty: TY_EXPR option,
+           body: BLOCK }
+	 
      and DEFINITION =
          ClassDefn of CLASS_DEFN
        | VariableDefn of VAR_DEFN
-       | FunctionDefn of FUNC_DEFN
+       | FunctionDefn of FUNC
        | InterfaceDefn of INTERFACE_DEFN
        | NamespaceDefn of { name: IDENT,
                             init: EXPR }
@@ -212,7 +220,7 @@ datatype DIRECTIVE =
        | WithStmt of { obj: EXPR,
                        body: STMT }
 
-       | TryStmt of { body: block,
+       | TryStmt of { body: BLOCK,
                       catches: (FORMAL * BLOCK) list,
                       finally: BLOCK }
 
@@ -310,8 +318,8 @@ withtype
            implements: TY_EXPR list,
            instanceVars: VAR_DEFN list,
            vars: VAR_DEFN list,
-           constructor: FUNC_DEFN,
-           methods: FUNC_DEFN list,
+           constructor: FUNC,
+           methods: FUNC list,
            initializer: STMT list }
 
      and INTERFACE_DEFN =
@@ -320,13 +328,6 @@ withtype
            params: IDENT list,
            extends: TY_EXPR list,
            methods: (IDENT * FUNC_TY) list }
-
-     and FUNC_DEFN =
-         { name: IDENT,
-           attrs: ATTRIBUTES,
-           formals: FORMAL list,
-           ty: TY_EXPR option,
-           body: BLOCK }
 
      and PRIM_TY =
          { name: USTRING,
