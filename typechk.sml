@@ -95,31 +95,32 @@ and tcStmt ((ctxt as {env,lbls,retTy}):CONTEXT) stmt =
 	    tcBlock (withEnv (ctxt, foldl extendEnv env extensions)) body
 	end
     )
+  | DefineStmt _ =>
+        raise Fail "should have been hoisted"
 (*
-       | DefineStmt of varDefn
-       | ForEachStmt of forEnumStmt
-       | ForInStmt of forEnumStmt
-       | LetStmt of ((varDefn list) * block)
-       | SuperStmt of expr list
+       | ForEachStmt of FOR_ENUM_STMT
+       | ForInStmt of FOR_ENUM_STMT
+       | SuperStmt of EXPR list
 
        | ForStmt of { isVar: bool,
-                      defns: varDefn list,
-                      init: expr,
-                      cond: expr,
-                      update: expr,
-                      contLabel: ident option,
-                      body: stmt }
+                      defns: VAR_DEFN list,
+                      init: EXPR,
+                      cond: EXPR,
+                      update: EXPR,
+                      contLabel: IDENT option,
+                      body: STMT }
 
-       | WithStmt of { obj: expr,
-                       body: stmt }
 
-       | TryStmt of { body: block,
-                      catches: (formal * block) list,
-                      finally: block }
+       | WithStmt of { obj: EXPR,
+                       body: STMT }
 
-       | SwitchStmt of { cond: expr,
-                         cases: (expr * (stmt list)) list,
-                         default: stmt list }
+       | TryStmt of { body: BLOCK,
+                      catches: (FORMAL * BLOCK) list,
+                      finally: BLOCK }
+
+       | SwitchStmt of { cond: EXPR,
+                         cases: (EXPR * (STMT list)) list,
+                         default: STMT list }
 *)
 (*  | tcStmt _ _ _ _ => raise Expr.UnimplementedException "Unimplemented statement type" *)
 
