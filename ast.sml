@@ -129,8 +129,6 @@ datatype DIRECTIVE =
        | Import of { package: IDENT,
                      qualifier: IMPORT_QUAL,
                      alias: IDENT option }
-       | Statement of STMT
-       | Definition of DEFINITION list
 
      and FUNC = 
 	 Func of 
@@ -165,19 +163,11 @@ datatype DIRECTIVE =
                          nullable: bool }
 
      and VAR_DEFN =
-         SimpleDefn of { tag: VAR_DEFN_TAG,
-                         init: EXPR option,
-                         attrs: ATTRIBUTES,
-                         pattern: PATTERN,
-                         ty: TYPE_EXPR option }
-
-       | DestructuringDefn of { tag: VAR_DEFN_TAG,
-                                init: EXPR option,
-                                attrs: ATTRIBUTES,
-                                temp: IDENT,
-                                postInit: EXPR option,
-                                names: IDENT list,
-                                ty: TYPE_EXPR option }
+         VariableDefinition of { tag: VAR_DEFN_TAG,
+                           init: EXPR option,
+                           attrs: ATTRIBUTES,
+                           pattern: PATTERN,
+                           ty: TYPE_EXPR option }
 
      and TYPE_EXPR =
          SpecialType of SPECIAL_TY
@@ -229,6 +219,10 @@ datatype DIRECTIVE =
        | SwitchStmt of { cond: EXPR,
                          cases: (EXPR * (STMT list)) list,
                          default: STMT list }
+
+	   | DefnStmt of DEFINITION list
+
+	   | PragmaStmt of DIRECTIVE list
 
      and EXPR =
          TrinaryExpr of (TRIOP * EXPR * EXPR * EXPR)
@@ -289,7 +283,7 @@ datatype DIRECTIVE =
            caseInsensitive: bool }
 
     and BLOCK = Block of
-         { directives: DIRECTIVE list,
+         { pragmas: DIRECTIVE list,
            defns: DEFINITION list,
            stmts: STMT list }
 

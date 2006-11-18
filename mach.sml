@@ -188,7 +188,7 @@ val (noOpFunction:Ast.FUNC) =
 	       attrs = defaultAttrs,
 	       formals = [],
 	       ty = NONE,
-	       body = Ast.Block { directives = [],
+	       body = Ast.Block { pragmas = [],
 				  defns = [],
 				  stmts = [] } }
 

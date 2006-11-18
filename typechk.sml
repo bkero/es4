@@ -124,7 +124,7 @@ and tcStmt ((ctxt as {env,lbls,retTy}):CONTEXT) stmt =
 (*  | tcStmt _ _ _ _ => raise Expr.UnimplementedException "Unimplemented statement type" *)
 
 )
-and tcBlock ctxt (Block {directives=directives,defns=defns,stmts=stmts}) = ()
+and tcBlock ctxt (Block {pragmas=pragmas,defns=defns,stmts=stmts}) = ()
 
 and tcExpr ctxt e = 
 	boolType
@@ -160,7 +160,7 @@ and tcExpr ctxt e =
                       actuals: expr list }
 *)
 
-and tcVarDefn ctxt (SimpleDefn {tag,init,attrs,pattern=Ast.SimplePattern(name),ty}) = []
+and tcVarDefn ctxt (VariableDefinition {tag,init,attrs,pattern=Ast.SimplePattern(name),ty}) = []
 
 
 end

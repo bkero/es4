@@ -376,7 +376,7 @@ and functionExpression (ts,alpha,beta) =
 								val (ts4,nd4) = listExpression (ts3,beta)
 							in
 								(ts4,Ast.FunExpr{ident=NONE,sign=nd3,
-									body=Ast.Block { directives=[],defns=[],stmts=[Ast.ReturnStmt nd4] }})
+									body=Ast.Block { pragmas=[],defns=[],stmts=[Ast.ReturnStmt nd4] }})
 
 							end
 					end
@@ -397,7 +397,7 @@ val _ = log(["funexpr"])
 								val (ts4,nd4) = listExpression (ts3,beta)
 							in
 								(ts4,Ast.FunExpr{ident=SOME nd2,sign=nd3,
-									body=Ast.Block { directives=[],defns=[],stmts=[Ast.ReturnStmt nd4] }})
+									body=Ast.Block { pragmas=[],defns=[],stmts=[Ast.ReturnStmt nd4] }})
 
 							end
 					end
@@ -2329,12 +2329,12 @@ Block
 and block (ts) : (token list * Ast.BLOCK) =
     let val _ = trace([">> block with next=", tokenname(hd ts)])
     in case ts of
-        LeftBrace :: RightBrace :: ts1 => (ts1,Ast.Block{directives=[],defns=[],stmts=[]})
+        LeftBrace :: RightBrace :: ts1 => (ts1,Ast.Block{pragmas=[],defns=[],stmts=[]})
       | LeftBrace :: ts1 =>
             let
                 val (ts2,nd2) = directives ts1
             in case ts2 of
-                RightBrace :: ts3 => (ts3,Ast.Block{directives=nd2,defns=[],stmts=[]})
+                RightBrace :: ts3 => (ts3,Ast.Block{pragmas=[],defns=[],stmts=nd2})
 			  | _ => raise ParseError
             end
 	  | _ => raise ParseError
@@ -2487,19 +2487,19 @@ and directive (ts,omega) =
 			let
 				val (ts1,nd1) = emptyStatement ts
 			in
-				(ts1,Ast.Statement(nd1))
+				(ts1,nd1)
 			end
 	  | (Var | Function ) :: _ => 
 			let
 				val (ts1,nd1) = annotatableDirective (ts,omega)
 			in
-				(ts1,Ast.Definition(nd1))
+				(ts1,Ast.DefnStmt(nd1))
 			end
 	  | _ => 
 			let
 				val (ts1,nd1) = statement (ts,omega)
 			in
-				(ts1,Ast.Statement(nd1))
+				(ts1,nd1)
 			end
 	end
 
@@ -2546,8 +2546,8 @@ and annotatableDirective (ts,omega) : token list * Ast.DEFINITION list  =
     	DirectivesPrefix Directive(full)
 *)
 
-and directives (ts) : (token list * Ast.DIRECTIVE list) =
-	let
+and directives (ts) : (token list * Ast.STMT list) =
+    let val _ = trace([">> directives with next=", tokenname(hd ts)])
 	in case ts of
 		RightBrace :: _ => (ts,[])
 	  | _ => 
@@ -2659,7 +2659,7 @@ VariableInitialisationa, b
 *)
 
 and variableDefinition (ts,beta) =
-	let
+    let val _ = trace([">> variableDefinition with next=", tokenname(hd ts)])
 	in case ts of
 		Const :: _ => variableBindingList (tl ts,Ast.Const,ALLOWLIST,beta)
 	  | Var :: _ => variableBindingList (tl ts,Ast.Var,ALLOWLIST,beta)
@@ -2667,27 +2667,27 @@ and variableDefinition (ts,beta) =
 	end
 
 and variableBindingList (ts,tag,alpha,beta) = 
-    let
+    let val _ = trace([">> variableBindingList with next=", tokenname(hd ts)])
 		fun variableBindingListPrime (ts,tag,alpha,beta) =
 	    	let
 		    in case ts of
     		    Comma :: _ =>
 					let
-            			val (ts1,nd1) = variableBinding(tl ts,tag,alpha,beta)
+            			val (ts1,nd1) = variableBinding(ts,tag,alpha,beta)
 	               		val (ts2,nd2) = variableBindingListPrime(ts1,tag,alpha,beta)
 	    	      	in
     	    	     	(ts2, Ast.VariableDefn nd1 :: nd2)
 	    	      	end
 	    	  | _ => (ts, [])
 		    end
-   			val (ts1,nd1) = variableBinding(tl ts,tag,alpha,beta)
+   			val (ts1,nd1) = variableBinding(ts,tag,alpha,beta)
        		val (ts2,nd2) = variableBindingListPrime(ts1,tag,alpha,beta)
     in
         (ts2, Ast.VariableDefn nd1 :: nd2)
     end
 
 and variableBinding (ts,tag,alpha,beta) = 
-	let
+    let val _ = trace([">> variableBinding with next=", tokenname(hd ts)])
 		val defaultAttrs = 
 			Ast.Attributes { 
 				ns = Ast.Internal "",
@@ -2707,7 +2707,7 @@ and variableBinding (ts,tag,alpha,beta) =
 					let
 						val (ts2,nd2) = assignmentExpression (tl ts1,alpha,beta)
 					in
-						(ts2, Ast.SimpleDefn { tag = tag,
+						(ts2, Ast.VariableDefinition { tag = tag,
                          					   init = SOME nd2,
                          					   attrs = defaultAttrs,
                          					   pattern = ptrn ,
@@ -2716,19 +2716,19 @@ and variableBinding (ts,tag,alpha,beta) =
 			end
 	  | _ => 
 			let
-				val (ts1,nd1) = typedIdentifier ts
+				val (ts1,nd1) = typedIdentifier (ts)
 			in case ts1 of
 				Assign :: _ =>
 					let
 						val (ts2,nd2) = assignmentExpression (tl ts1,alpha,beta)
 					in
-						(ts2, Ast.SimpleDefn { tag = tag,
+						(ts2, Ast.VariableDefinition { tag = tag,
                          init = SOME nd2,
                          attrs = defaultAttrs,
                          pattern = Ast.SimplePattern (#name nd1),
                          ty = #ty nd1 } )
 					end
-			  | _ => (ts1, Ast.SimpleDefn { tag = tag,
+			  | _ => (ts1, Ast.VariableDefinition { tag = tag,
                          init = NONE,
                          attrs = defaultAttrs,
                          pattern = Ast.SimplePattern (#name nd1),
@@ -2810,7 +2810,7 @@ and program ts =
 			let 
 			    val (tr2, pkgs) = packageDefinition tr
 			in
-			    (tr2, {packages=[pkgs], body=(Ast.Block {directives=[],
+			    (tr2, {packages=[pkgs], body=(Ast.Block {pragmas=[],
 						     defns=[],
 						     stmts=[]})})
 			end
@@ -2818,9 +2818,9 @@ and program ts =
 			let
 			    val (tr2, directives) = directives ts
 			in
-			    (tr2, {packages=[], body=(Ast.Block {directives=directives,
+			    (tr2, {packages=[], body=(Ast.Block {stmts=directives,
 					   defns=[],
-					   stmts=[]})})
+					   pragmas=[]})})
 			end
     end
 
