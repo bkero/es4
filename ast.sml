@@ -31,6 +31,11 @@ datatype ROUNDING_MODE =
 datatype TRIOP =
          Cond
 
+datatype BINTYPEOP =
+		 Cast
+	   | Is
+	   | To
+
 datatype BINOP =
          Plus
        | Minus
@@ -47,9 +52,6 @@ datatype BINOP =
        | LogicalOr
        | LogicalXor
        | InstanceOf
-       | Is
-       | Cast
-       | To
        | In
        | Equals
        | NotEquals
@@ -104,7 +106,7 @@ datatype VAR_DEFN_TAG =
        | Rest
 
 datatype NAMESPACE =
-	 Private
+		 Private
        | Protected
        | Intrinsic
        | Public of IDENT
@@ -131,7 +133,7 @@ datatype DIRECTIVE =
                      alias: IDENT option }
 
      and FUNC = 
-	 Func of 
+		 Func of 
          { name: IDENT,
            attrs: ATTRIBUTES,
            formals: FORMAL list,
@@ -227,7 +229,7 @@ datatype DIRECTIVE =
      and EXPR =
          TrinaryExpr of (TRIOP * EXPR * EXPR * EXPR)
        | BinaryExpr of (BINOP * EXPR * EXPR)
-       | BinaryTypeExpr of (BINOP * EXPR * TYPE_EXPR)
+       | BinaryTypeExpr of (BINTYPEOP * EXPR * TYPE_EXPR)
        | UnaryExpr of (UNOP * EXPR)
        | TypeExpr of TYPE_EXPR
        | NullaryExpr of NULOP
@@ -259,7 +261,8 @@ datatype DIRECTIVE =
        | QualifiedExpression of { qual : EXPR,
                                   expr : EXPR }
        | AttributeIdentifier of IDENT_EXPR
-       | Identifier of IDENT
+       | Identifier of { ident : IDENT,
+			 openNamespaces : (NAMESPACE list) option ref }
        | Expression of EXPR   (* for bracket exprs: o[x] and @[x] *)
 
      and LITERAL =
@@ -277,10 +280,7 @@ datatype DIRECTIVE =
            init: EXPR } list
 
        | LiteralRegExp of
-         { pattern: USTRING,
-           global: bool,
-           multiline: bool,
-           caseInsensitive: bool }
+         { str: USTRING }
 
     and BLOCK = Block of
          { pragmas: DIRECTIVE list,

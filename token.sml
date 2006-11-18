@@ -151,7 +151,7 @@ datatype token =
     | Identifier of string
     | NumberLiteral of real
     | PackageIdentifier
-    | RegexpLiteral
+    | RegexpLiteral of string
     | SlashSlashComment
     | StringLiteral of string
     | Whitespace
@@ -378,7 +378,7 @@ fun tokenname t =
       | Identifier x => "identifier("^x^")"
       | NumberLiteral x => Real.toString(x)
       | PackageIdentifier => "packageidentifier(x)"
-      | RegexpLiteral => "regexp(x)"
+      | RegexpLiteral x => "regexp("^x^")"
       | SlashSlashComment => ""
       | StringLiteral x => "string("^x^")"
       | Whitespace => "<ws>"

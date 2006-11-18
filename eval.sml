@@ -7,161 +7,180 @@ exception TailCallException of (unit -> Mach.VAL)
 exception ThrowException of Mach.VAL
 exception ReturnException of Mach.VAL
 
-(*     
+(* 
 		   
-fun newName (prop:Ast.IDENT) (attrs:Ast.ATTRIBUTES) =
+fun newName (i:Ast.IDENT) (attrs:Ast.ATTRIBUTES) =
     case attrs of 
-	Ast.Attributes {ns=n, ...} => {ns=n, id=p}
+	Ast.Attributes {ns=n, ...} => {ns=n, id=i}
 
                  
-fun setPropertyValue (obj:Mach.OBJ) (n:Mach.NAME) (v:Mach.VAL) =
+fun setPropertyValue (obj:Mach.OBJ) (n:Mach.NAME) (p:Mach.PROP) =
     case obj of 
-	Obj ob => Mach.addBinding (#slots ob) n v
+	Mach.Obj ob => Mach.addBinding (#bindings ob) n p
 
 
-fun extendScope (p:Mach.SCOPE) (t:Mach.SCOPE_TAG) (b:Mach.BINDINGS) = 
-    Mach.Scope { tag=t, parent=p, bindings = b }
+fun extendScope (p:Mach.SCOPE) (t:Mach.SCOPE_TAG) (ob:Mach.OBJ) = 
+    Mach.Scope { parent=(SOME p), tag=t, obj=ob }
 
 
 fun evalExpr (scope:Mach.SCOPE) (expr:Ast.EXPR) =
     case expr of
-	Ast.QualIdent { qual=NONE, ident=id, opennss=nss } =>
-	evalVarExpr scope {nss=nss, id=id}
+	Ast.Identifier { id=ident, nss=openNamespaces } =>
+	evalVarExpr scope {nss=(!nss), id=id}
 	
       | Ast.LetExpr {defs, body} => 
 	evalLetExpr scope defs body
 
-      | _ = 
+      | _ => 
 	raise (Mach.UnimplementedException "unhandled expression type")
 
 and evalLetExpr (scope:Mach.SCOPE) (defs:Ast.VAR_DEFN list) (body:Ast.EXPR) = 
     let 
-        val bindings = Mach.newBindings ()
-        val newScope = extendScope scope Mach.Let bindings
+	val obj = Mach.newObject NONE
+        val newScope = extendScope scope Mach.Let obj
     in
-        List.app (createBinding bindings scope) defs;
+        List.app (addBinding obj scope) defs;
         evalExpr newScope body
     end
 
-and createBinding (bindings:Mach.BINDINGS) (scope:Mach.SCOPE) (defn:Ast.VAR_DEFN) =
+and addBinding (obj:Mach.OBJ) (scope:Mach.SCOPE) (defn:Ast.VAR_DEFN) =
     case defn of 
 	(Ast.SimpleDefn { attrs, init, name, ty, ...}) =>
 	let 
 	    val p = name
-	    val n = makeName p attrs
+	    val n = newName p attrs
 	    val t = case ty of
-			NONE => Ast.SpecialType Ast.ANY
+			NONE => Ast.SpecialType Ast.Any
 		      | SOME e => e
 	    val v = case init of 
 			NONE => Mach.Undef
 		      | SOME e => evalExpr scope e
+	    val prop = { ty = t, 
+			 value = v, 
+			 dontDelete = true,
+			 dontEnum = true,
+			 readOnly = false } 
 	in
-	    setPropertyValue bindings n (t, v)
+	    setPropertyValue obj n prop
 	end
 	
       | (Ast.DestructuringDefn { init, postInit, names, ...}) =>
 	let 
             val v = case init of 
-			NONE => Value.Undef
+			NONE => Mach.Undef
 		      | SOME e => evalExpr scope e
 	in 
-            destructureAndBind bindings postInit names v
+            destructureAndBind obj postInit names v
 	end
 	
 	
-and destructureAndBind bindings postInit names v = 
+and destructureAndBind obj postInit names v = 
     raise (Mach.UnimplementedException "destructureAndBind")
 
 and evalVarExpr (scope:Mach.SCOPE) (mname:Mach.MULTINAME) = 
     case lookupInScope scope mname of 
-	NONE => raise ReferenceException mname
+	NONE => raise Mach.MultiReferenceException mname
       | SOME (t,v) => v
           
 and lookupInScope (scope:Mach.SCOPE) (mname:Mach.MULTINAME) =     
     case scope of 
-	Scope { tag, parent, obj } => 
+	Mach.Scope { parent, obj, ... } => 
 	case getValueProtocol obj mname of
 	    NONE => lookupInScope parent mname
 	  | result => result
     
 and getValueProtocol (obj:Mach.OBJ) (mname:Mach.MULTINAME) = 
-    case getPropertyValue obj mname of 
-    NONE => (case !(#proto obj) of 
-             NONE => NONE
-                   | SOME proto => getValueProtocol proto mname)
-      | result => result
+    case obj of 
+	Mach.Obj ob => 
+	case getPropertyValue obj mname of 
+	    NONE => 
+	    let 
+		val proto = !(#proto ob)
+	    in
+		case proto of 
+		    NONE => NONE
+                  | SOME p => getValueProtocol p mname
+	    end
+	  | result => result
 
-and getPropertyValue obj (mname:multiname) =
-    
-    let     
-    val slots = !(#slots obj)
-    val Multiname {namespaces=nss,id=p} = mname
-    fun search [] = NONE
-      | search (x::xs) = case Mach.getProp (slots,{ns="", prop=p}) of
-                 NONE => search xs
-               | res => res
-    in
-    search(nss)
-    end
+and getPropertyValue (obj:Mach.OBJ) (mname:Mach.MULTINAME) =    
+    case obj of 
+	Mach.Obj ob => 
+	let     
+	    val bindings = !(#bindings ob)
+	    val id = (#id mname)
+	    fun tryName [] = NONE
+	      | tryName (x::xs) = 
+		let 
+		    val n = {ns=x, id=id} 
+		in
+		    if Mach.hasBinding bindings n
+		    then SOME (Mach.getBinding bindings n)
+		    else tryName xs
+		end
+	in
+	    tryName (#nss mname)
+	end
 
-and evalTailCallExpr env e = 
-    raise (TailCallException (fn _ => evalExpr env e))
+and evalTailCallExpr scope e = 
+    raise (TailCallException (fn _ => evalExpr scope e))
 
-and evalNonTailCallExpr env e = 
-    evalExpr env e
+and evalNonTailCallExpr scope e = 
+    evalExpr scope e
     handle TailCallException thunk => thunk ()
          | ReturnException v => v
 
-fun labelEq (SOME (stmtLabel:Ast.ident)) 
-            (SOME (exnLabel:Ast.ident)) = (stmtLabel = exnLabel)
-  | labelEq NONE (SOME exnLabel) = false
-  | labelEq _ NONE = true
+fun labelEq stmtLabel exnLabel = 
+    case (stmtLabel, exnLabel) of
+	(SOME sl, SOME el) => sl = el
+      | (NONE, SOME _) => false
+      | (_, NONE) => true
 		     
-fun evalStmts env (s::ss) = (evalStmt env s; evalStmts env ss)
-  | evalStmts env [] = Undef
+fun evalStmts scope (s::ss) = (evalStmt scope s; evalStmts scope ss)
+  | evalStmts scope [] = Undef
 		       
-and evalStmt env (Ast.ExprStmt e) = evalExpr env e
-  | evalStmt env (Ast.IfStmt i) = evalIfStmt env i
-  | evalStmt env (Ast.WhileStmt w) = evalWhileStmt env w
-  | evalStmt env (Ast.ReturnStmt r) = evalReturnStmt env r
-  | evalStmt env (Ast.BreakStmt lbl) = evalBreakStmt env lbl
-  | evalStmt env (Ast.ContinueStmt lbl) = evalContinueStmt env lbl
-  | evalStmt env (Ast.ThrowStmt t) = evalThrowStmt env t
-  | evalStmt env (Ast.LabeledStmt (lab, s)) = evalLabelStmt env lab s
-  | evalStmt env (Ast.BlockStmt b) = evalBlock env b
+and evalStmt scope (Ast.ExprStmt e) = evalExpr scope e
+  | evalStmt scope (Ast.IfStmt i) = evalIfStmt scope i
+  | evalStmt scope (Ast.WhileStmt w) = evalWhileStmt scope w
+  | evalStmt scope (Ast.ReturnStmt r) = evalReturnStmt scope r
+  | evalStmt scope (Ast.BreakStmt lbl) = evalBreakStmt scope lbl
+  | evalStmt scope (Ast.ContinueStmt lbl) = evalContinueStmt scope lbl
+  | evalStmt scope (Ast.ThrowStmt t) = evalThrowStmt scope t
+  | evalStmt scope (Ast.LabeledStmt (lab, s)) = evalLabelStmt scope lab s
+  | evalStmt scope (Ast.BlockStmt b) = evalBlock scope b
   | evalStmt _ _ = raise Mach.UnimplementedException "Unimplemented statement type"
 			 
-and evalBlock env (Ast.Block{stmts=s,... }) = 
-    evalStmts env s
+and evalBlock scope (Ast.Block{stmts=s,... }) = 
+    evalStmts scope s
 
-and evalIfStmt env { cond, consequent, alternative } = 
+and evalIfStmt scope { cond, consequent, alternative } = 
     let 
-        val v = evalExpr env cond 
-        val b = toBoolean v
+        val v = evalExpr scope cond 
+        val b = Mach.toBoolean v
     in
         if b 
-        then evalStmt env consequent
-        else evalStmt env alternative
+        then evalStmt scope consequent
+        else evalStmt scope alternative
     end
     
-and evalLabelStmt env lab s = 
-    evalStmt env s
+and evalLabelStmt scope lab s = 
+    evalStmt scope s
     handle BreakException exnLabel 
 	   => if labelEq (SOME lab) exnLabel
               then Undef 
               else raise BreakException exnLabel
 			 
-and evalWhileStmt env { cond, body, contLabel } = 
+and evalWhileStmt scope { cond, body, contLabel } = 
     let
         fun loop (accum:VAL option)
           = let 
-              val v = evalExpr env cond
-              val b = toBoolean v
+              val v = evalExpr scope cond
+              val b = Mach.toBoolean v
           in
               if not b 
               then 
                   let
-                      val curr = (SOME (evalStmt env body)
+                      val curr = (SOME (evalStmt scope body)
                                   handle ContinueException exnLabel => 
 					 if labelEq contLabel exnLabel
 					 then NONE
@@ -181,16 +200,16 @@ and evalWhileStmt env { cond, body, contLabel } =
 	  | SOME v => v
     end
     
-and evalReturnStmt env e
-  = raise (ReturnException (evalExpr env e))
+and evalReturnStmt scope e
+  = raise (ReturnException (evalExpr scope e))
 	  
-and evalThrowStmt env e
-  = raise (ThrowException (evalExpr env e))
+and evalThrowStmt scope e
+  = raise (ThrowException (evalExpr scope e))
 	  
-and evalBreakStmt env lbl
+and evalBreakStmt scope lbl
   = raise (BreakException lbl)
 	  
-and evalContinueStmt env lbl
+and evalContinueStmt scope lbl
   = raise (ContinueException lbl)
 *)
 	  
