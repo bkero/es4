@@ -19,8 +19,8 @@ is
         lexer.lex
         parser.sml
         eval.sml
-	mach.sml
-        typechk.sml
+		mach.sml
+		typechk.sml
 
         $/basis.cm
         $/smlnj-lib.cm

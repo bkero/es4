@@ -2662,6 +2662,8 @@ and variableDefinition (ts,beta) =
 	let
 	in case ts of
 		Const :: _ => variableBindingList (tl ts,Ast.Const,ALLOWLIST,beta)
+	  | Var :: _ => variableBindingList (tl ts,Ast.Var,ALLOWLIST,beta)
+	  | _ => raise ParseError
 	end
 
 and variableBindingList (ts,tag,alpha,beta) = 

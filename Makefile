@@ -30,4 +30,4 @@ check: es4.heap.$(HEAP_SUFFIX)
 	sml @SMLload=es4.heap tests/objectpattern.es
 	sml @SMLload=es4.heap tests/typedident.es
 	sml @SMLload=es4.heap tests/typeexpr.es
-	sml @SMLload=es4.heap tests/vardefn.es
+#	sml @SMLload=es4.heap tests/vardefn.es
