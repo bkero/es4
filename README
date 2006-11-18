@@ -5,3 +5,13 @@ CODING CONVENTIONS
 type names:        FOO_BAR
 constructor names: FooBar
 local/field names: fooBar
+
+* non-exhaustive matches
+
+During implementation, non-exhaustive match warnings are fine (they
+help us keep track of what hasn't been implemented). But completed
+code should not have non-exhaustive matches.
+
+If a particular case should never happen, the right-hand side of the
+match case should raise a Fail exception with a string indicating what
+invariant was violated.
