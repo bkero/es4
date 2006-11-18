@@ -261,7 +261,8 @@ datatype DIRECTIVE =
        | QualifiedExpression of { qual : EXPR,
                                   expr : EXPR }
        | AttributeIdentifier of IDENT_EXPR
-       | Identifier of IDENT
+       | Identifier of { ident : IDENT,
+			 openNamespaces : (NAMESPACE list) ref }
        | Expression of EXPR   (* for bracket exprs: o[x] and @[x] *)
 
      and LITERAL =
