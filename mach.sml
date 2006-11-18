@@ -3,106 +3,137 @@
 structure Mach = struct 
 
 (* Local type aliases *)
-type STR = Ast.ustring
-type TY = Ast.tyExpr
-type NS = Ast.namespace
 
-exception UnimplementedException of STR
+type TYPE = Ast.TY_EXPR
+type STR = Ast.USTRING
+type ID = Ast.IDENT
+type NS = Ast.NAMESPACE
 
-
-datatype envtag = 
-	 VAR_GLOBAL      (* Variable object created before execution starts *)
-       | VAR_CLASS       (* Variable object created on entry to a function  *)
-       | VAR_INSTANCE    (* Variable object for class objects               *)
-       | VAR_ACTIVATION  (* Variable object for class instances             *)
-       | WITH            (* Created by 'with' bindings                      *)
-       | LET             (* Created by 'catch', 'let', etc.                 *)
+datatype ENV_TAG = 
+	 VarGlobal       (* Variable object created before execution starts *)
+       | VarClass        (* Variable object created on entry to a function  *)
+       | VarInstance     (* Variable object for class objects               *)
+       | VarActivation   (* Variable object for class instances             *)
+       | With            (* Created by 'with' bindings                      *)
+       | Let             (* Created by 'catch', 'let', etc.                 *)
 
 datatype VAL = 
-	 Undef
-       | Null
+         Null
+       | Undef
+       | Num of real
        | Bool of bool
        | Str of STR
-       | Num of real
        | Object of OBJ
-       | Fun of (VAL -> VAL)
-       | Ref of { base: OBJ,
-		  name: NAME }
+       | Function of FUN
+       | Reference of REF
 		
-     and TRAITS = 
-	 Traits of { name: STR,
-		     parent: TRAITS option,
-		     ty: TY,
-		     isClass: bool,
-		     isInterface: bool,
-		     isExtensible: bool }
+     and FUN = 
+	 Fun of (VAL -> VAL) 
+		    
+     and REF = 
+	 Ref of { base: OBJ,
+		  name: NAME }      
 		   
      and ENV = 
 	 Env of { tag: envtag, 
 		  parent: ENV option,
 		  bindings: BINDINGS }
+
+     and OBJ = 
+	 Obj of { class: CLASS,
+		  slots: BINDINGS,
+		  prototype: (OBJ option) ref }
 		
      and CLASS = 
-	 Class of { ty: TY,
+	 Class of { ty: TYPE,
 		    env: ENV,
    		    base: CLASS option,
 		    interfaces: INTERFACE list,
 		    
+		    call: Ast.funcDefn,
 		    definition: Ast.classDefn,
 		    constructor: Ast.funcDefn,
-		    call: Ast.funcDefn,
 		    
-		    instanceTy: TY,
-		    instanceTraits: TRAITS,
+		    instanceTy: TYPE,
+		    instanceLayout: LAYOUT,
 		    instancePrototype: OBJ,
 		    
 		    initialized: bool ref }
 
+     and LAYOUT = 
+	 Layout of { ty: TYPE,
+		     name: STR,
+		     parent: LAYOUT option,		     
+		     isClass: bool,
+		     isInterface: bool,
+		     isExtensible: bool }
+
+     and ROW = 
+	 Row of { ty: TY,
+		  dontDelete: bool,
+		  dontEnum: bool,
+		  readOnly: bool }
+		
      and INTERFACE = 
-	 Interface of { definition: Ast.interfaceDefn,
-			ty: TY,
+	 Interface of { ty: TYPE,
 			bases: INTERFACE list,
+			definition: Ast.interfaceDefn,			
 			isInitialized: bool ref }
+
 
      and MACH = 
 	 Mach of { env: ENV,
 		   result: VAL,
 		   thisObject: OBJ,
-		   numberType: Ast.numberType,
-		   roundingMode: Ast.roundingMode,
-		   openNamespaces: STR list }
+		   numberType: Ast.NUMBER_TYPE,
+		   roundingMode: Ast.ROUNDING_MODE,
+		   openNamespaces: NS list }
 
-     and OBJ = 
-	 Obj of { ty: TY ref,
-		  traits: TRAITS,
-		  slots: BINDINGS,
-		  prototype: (OBJ option) ref }
 		
-withtype NAME = { ns: NS option, id: STR }
+withtype NAME = { ns: NS option, 
+		  id: ID }
 		
+     and MULTINAME = { nss: NS list, 
+		       id: ID }
      and PROP = 
-	 { value: VAL,
-	   ty: TY,
+	 { ty: TY,
+	   value: VAL,	   
 	   dontDelete: bool,
 	   dontEnum: bool,
 	   readOnly: bool }
 	 
      and BINDINGS = ((NAME * PROP) list) ref
-		    
+
+(* Exceptions for "abstract machine failures". *)
+
+exception ReferenceException of NAME
+exception UnimplementedException of STR
 
 (* Values *)
 
-fun setProp (b:BINDINGS) (n:NAME) (p:PROP) = 
+fun addProp (b:BINDINGS) (n:NAME) (p:PROP) = 
     b := ((n,p) :: (!b))
+
+fun delProp (b:BINDINGS) (n:NAME) = 
+    let 
+	fun strip [] = raise ReferenceException n
+	  | strip ((k,v)::bs) = 
+	    if k = n 
+	    then bs
+	    else (k,v)::(strip bs)
+    in
+	b := strip (!b)
+    end
 
 fun getProp (b:BINDINGS) (n:NAME) = 
     let 
-	fun lookup ((k,v)::ps) = 
+	fun search [] = raise ReferenceException n			      
+	  | search ((k,v)::bs) = 
 	    if k = n 
 	    then v
-	    else lookup ps
+	    else search bs
     in
-	lookup (!b)
+	search (!b)
     end
     
 
@@ -119,7 +150,7 @@ fun toBoolean (Bool b) = b
   | toBoolean Null = false
 
 val globalEnv : ENV = 
-    Env { tag = VAR_GLOBAL,
+    Env { tag = VarGlobal,
 	  parent = NONE,
 	  bindings = ref [] }
 

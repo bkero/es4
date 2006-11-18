@@ -4,14 +4,14 @@ exception IllTypedException of string
 
 open Ast
 
-val boolType = PrimaryType { name="boolean",  annotation=NAMED }
-val exceptionType = PrimaryType { name="exception",  annotation=NAMED }
+val boolType = PrimaryType { name="boolean",  annotation=Named }
+val exceptionType = PrimaryType { name="exception",  annotation=Named }
 
-type TYPE_ENV = (ident * tyExpr) list
+type TYPE_ENV = (IDENT * TY_EXPR) list
 
 fun extendEnv ((name, ty), env) = (name, ty)::env
 
-type CONTEXT = {env: TYPE_ENV, lbls: ident option list, retTy: tyExpr}
+type CONTEXT = {env: TYPE_ENV, lbls: IDENT option list, retTy: TY_EXPR}
 
 fun withEnv ({env=_, lbls=lbls, retTy=retTy}, env) = {env=env, lbls=lbls, retTy=retTy}
 

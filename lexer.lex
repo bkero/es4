@@ -8,7 +8,7 @@ open Token
 
 type lexresult = token
 
-fun eof _ = EOF
+fun eof _ = Eof
 
 fun log ss = 
     (TextIO.print "log: "; 
@@ -32,10 +32,10 @@ let
 	   * it might wish to resume lexing in.
 	   *)	    
 	    case tok of 
-		LEXBREAK_DIV _ => (add DIV; add tok; stop ())
-	      | LEXBREAK_DIVASSIGN _ => (add DIVASSIGN; add tok; stop ())
-	      | LEXBREAK_LESSTHAN _ => (add LESSTHAN; add tok; stop ())
-	      | EOF => (add EOF; stop ())
+		LexBreakDiv _ => (add Div; add tok; stop ())
+	      | LexBreakDivAssign _ => (add DivAssign; add tok; stop ())
+	      | LexBreakLessThan _ => (add LessThan; add tok; stop ())
+	      | Eof => (add Eof; stop ())
 	      | x => (add x; step ())
 	end
 in
@@ -78,30 +78,30 @@ charEscape            = "\\" ([abtnvfr\"\'\\]|"x"{hexDigit}{2}|[0-7]{1}{3});
 
 %%
 
-<INITIAL>"\n"              => (EOL);
+<INITIAL>"\n"              => (Eol);
 
-<INITIAL>"-"               => (MINUS);
-<INITIAL>"--"              => (MINUSMINUS);
-<INITIAL>"!"               => (NOT);
-<INITIAL>"!="              => (NOTEQUALS);
-<INITIAL>"!=="             => (STRICTNOTEQUALS);
-<INITIAL>"%"               => (MODULUS);
-<INITIAL>"%="              => (MODULUSASSIGN);
-<INITIAL>"&"               => (BITWISEAND);
-<INITIAL>"&&"              => (LOGICALAND);
-<INITIAL>"&&="             => (LOGICALANDASSIGN);
-<INITIAL>"&="              => (BITWISEANDASSIGN);
-<INITIAL>"("               => (LEFTPAREN);
-<INITIAL>")"               => (RIGHTPAREN);
-<INITIAL>"*"               => (MULT);
-<INITIAL>"*="              => (MULTASSIGN);
-<INITIAL>","               => (COMMA);
-<INITIAL>"."               => (DOT);
-<INITIAL>".."              => (DOUBLEDOT);
-<INITIAL>"..."             => (TRIPLEDOT);
-<INITIAL>".<"              => (LEFTDOTANGLE);
+<INITIAL>"-"               => (Minus);
+<INITIAL>"--"              => (MinusMinus);
+<INITIAL>"!"               => (Not);
+<INITIAL>"!="              => (NotEquals);
+<INITIAL>"!=="             => (StrictNotEquals);
+<INITIAL>"%"               => (Modulus);
+<INITIAL>"%="              => (ModulusAssign);
+<INITIAL>"&"               => (BitwiseAnd);
+<INITIAL>"&&"              => (LogicalAnd);
+<INITIAL>"&&="             => (LogicalAndAssign);
+<INITIAL>"&="              => (BitwiseAndAssign);
+<INITIAL>"("               => (LeftParen);
+<INITIAL>")"               => (RightParen);
+<INITIAL>"*"               => (Mult);
+<INITIAL>"*="              => (MultAssign);
+<INITIAL>","               => (Comma);
+<INITIAL>"."               => (Dot);
+<INITIAL>".."              => (DoubleDot);
+<INITIAL>"..."             => (TripleDot);
+<INITIAL>".<"              => (LeftDotAngle);
 
-<INITIAL>"/"               => (LEXBREAK_DIV 
+<INITIAL>"/"               => (LexBreakDiv
 				   { lex_initial = 
 				     (fn _ => token_list 
 						  (fn _ => (YYBEGIN INITIAL; lex ()))),
@@ -109,36 +109,36 @@ charEscape            = "\\" ([abtnvfr\"\'\\]|"x"{hexDigit}{2}|[0-7]{1}{3});
 				     (fn _ => token_list 
 						  (fn _ => (YYBEGIN REGEXP; lex ()))) });
 
-<INITIAL>"/="              => (LEXBREAK_DIVASSIGN 
+<INITIAL>"/="              => (LexBreakDivAssign
 				   { lex_initial = 
 				     (fn _ => token_list 
 						  (fn _ => (YYBEGIN INITIAL; lex ()))),
 				     lex_regexp = 
 				     (fn _ => token_list 
 						  (fn _ => (YYBEGIN REGEXP; lex ()))) });
-<INITIAL>":"               => (COLON);
-<INITIAL>"::"              => (DOUBLECOLON);
-<INITIAL>";"               => (SEMICOLON);
-<INITIAL>"?"               => (QUESTIONMARK);
-<INITIAL>"@"               => (AT);
-<INITIAL>"["               => (LEFTBRACKET);
-<INITIAL>"]"               => (RIGHTBRACKET);
-<INITIAL>"^"               => (BITWISEXOR);
-<INITIAL>"^^"              => (LOGICALXOR);
-<INITIAL>"^^="             => (LOGICALXORASSIGN);
-<INITIAL>"^="              => (BITWISEXORASSIGN);
-<INITIAL>"{"               => (LEFTBRACE);
-<INITIAL>"|"               => (BITWISEOR);
-<INITIAL>"||"              => (LOGICALOR);
-<INITIAL>"||="             => (LOGICALORASSIGN);
-<INITIAL>"|="              => (BITWISEORASSIGN);
-<INITIAL>"}"               => (RIGHTBRACE);
-<INITIAL>"~"               => (BITWISENOT);
-<INITIAL>"+"               => (PLUS);
-<INITIAL>"++"              => (PLUSPLUS);
-<INITIAL>"+="              => (PLUSASSIGN);
+<INITIAL>":"               => (Colon);
+<INITIAL>"::"              => (DoubleColon);
+<INITIAL>";"               => (SemiColon);
+<INITIAL>"?"               => (QuestionMark);
+<INITIAL>"@"               => (At);
+<INITIAL>"["               => (LeftBracket);
+<INITIAL>"]"               => (RightBracket);
+<INITIAL>"^"               => (BitwiseXor);
+<INITIAL>"^^"              => (LogicalXor);
+<INITIAL>"^^="             => (LogicalXorAssign);
+<INITIAL>"^="              => (BitwiseXorAssign);
+<INITIAL>"{"               => (LeftBrace);
+<INITIAL>"|"               => (BitwiseOr);
+<INITIAL>"||"              => (LogicalOr);
+<INITIAL>"||="             => (LogicalOrAssign);
+<INITIAL>"|="              => (BitwiseOrAssign);
+<INITIAL>"}"               => (RightBrace);
+<INITIAL>"~"               => (BitwiseNot);
+<INITIAL>"+"               => (Plus);
+<INITIAL>"++"              => (PlusPlus);
+<INITIAL>"+="              => (PlusAssign);
 
-<INITIAL>"<"               => (LEXBREAK_LESSTHAN
+<INITIAL>"<"               => (LexBreakLessThan
 				   { lex_initial = 
 				     (fn _ => token_list 
 						  (fn _ => (YYBEGIN INITIAL; lex ()))),
@@ -146,104 +146,104 @@ charEscape            = "\\" ([abtnvfr\"\'\\]|"x"{hexDigit}{2}|[0-7]{1}{3});
 				     (fn _ => token_list 
 						  (fn _ => (YYBEGIN XML; lex ()))) });
 
-<INITIAL>"<<"              => (LEFTSHIFT);
-<INITIAL>"<<="             => (LEFTSHIFTASSIGN);
-<INITIAL>"<="              => (LESSTHANOREQUALS);
-<INITIAL>"="               => (ASSIGN);
-<INITIAL>"-="              => (MINUSASSIGN);
-<INITIAL>"=="              => (EQUALS);
-<INITIAL>"==="             => (STRICTEQUALS);
-<INITIAL>">"               => (GREATERTHAN);
-<INITIAL>">="              => (GREATERTHANOREQUALS);
-<INITIAL>">>"              => (RIGHTSHIFT);
-<INITIAL>">>="             => (RIGHTSHIFTASSIGN);
-<INITIAL>">>>"             => (UNSIGNEDRIGHTSHIFT);
-<INITIAL>">>>="            => (UNSIGNEDRIGHTSHIFTASSIGN);
+<INITIAL>"<<"              => (LeftShift);
+<INITIAL>"<<="             => (LeftShiftAssign);
+<INITIAL>"<="              => (LessThanOrEquals);
+<INITIAL>"="               => (Assign);
+<INITIAL>"-="              => (MinusAssign);
+<INITIAL>"=="              => (Equals);
+<INITIAL>"==="             => (StrictEquals);
+<INITIAL>">"               => (GreaterThan);
+<INITIAL>">="              => (GreaterThanOrEquals);
+<INITIAL>">>"              => (RightShift);
+<INITIAL>">>="             => (RightShiftAssign);
+<INITIAL>">>>"             => (UnsignedRightShift);
+<INITIAL>">>>="            => (UnsignedRightShiftAssign);
 
-<INITIAL>"as"              => (AS);
-<INITIAL>"break"           => (BREAK);
-<INITIAL>"case"            => (CASE); 
-<INITIAL>"cast"            => (CAST); 
-<INITIAL>"catch"           => (CATCH); 
-<INITIAL>"class"           => (CLASS); 
-<INITIAL>"const"           => (CONST); 
-<INITIAL>"continue"        => (CONTINUE); 
-<INITIAL>"default"         => (DEFAULT); 
-<INITIAL>"delete"          => (DELETE); 
-<INITIAL>"do"              => (DO); 
-<INITIAL>"else"            => (ELSE); 
-<INITIAL>"enum"            => (ENUM); 
-<INITIAL>"extends"         => (EXTENDS); 
-<INITIAL>"false"           => (FALSE); 
-<INITIAL>"finally"         => (FINALLY); 
-<INITIAL>"for"             => (FOR); 
-<INITIAL>"function"        => (FUNCTION); 
-<INITIAL>"if"              => (IF);
-<INITIAL>"implements"      => (IMPLEMENTS);
-<INITIAL>"import"          => (IMPORT);
-<INITIAL>"in"              => (IN);
-<INITIAL>"instanceof"      => (INSTANCEOF);
-<INITIAL>"interface"       => (INTERFACE);
-<INITIAL>"internal"        => (INTERNAL);
-<INITIAL>"intrinsic"       => (INTRINSIC);
-<INITIAL>"is"              => (IS);
-<INITIAL>"let"             => (LET);
-<INITIAL>"new"             => (NEW);
-<INITIAL>"null"            => (NULL);
-<INITIAL>"package"         => (PACKAGE);
-<INITIAL>"private"         => (PRIVATE);
-<INITIAL>"protected"       => (PROTECTED);
-<INITIAL>"public"          => (PUBLIC);
-<INITIAL>"return"          => (RETURN);
-<INITIAL>"super"           => (SUPER);
-<INITIAL>"switch"          => (SWITCH);
-<INITIAL>"this"            => (THIS);
-<INITIAL>"throw"           => (THROW);
-<INITIAL>"to"              => (TO);
-<INITIAL>"true"            => (TRUE);
-<INITIAL>"try"             => (TRY);
-<INITIAL>"typeof"          => (TYPEOF);
-<INITIAL>"use"             => (USE);
-<INITIAL>"var"             => (VAR);
-<INITIAL>"void"            => (VOID);
-<INITIAL>"while"           => (WHILE);
-<INITIAL>"with"            => (WITH);
+<INITIAL>"as"              => (As);
+<INITIAL>"break"           => (Break);
+<INITIAL>"case"            => (Case); 
+<INITIAL>"cast"            => (Cast); 
+<INITIAL>"catch"           => (Catch); 
+<INITIAL>"class"           => (Class); 
+<INITIAL>"const"           => (Const); 
+<INITIAL>"continue"        => (Continue); 
+<INITIAL>"default"         => (Default); 
+<INITIAL>"delete"          => (Delete); 
+<INITIAL>"do"              => (Do); 
+<INITIAL>"else"            => (Else); 
+<INITIAL>"enum"            => (Enum); 
+<INITIAL>"extends"         => (Extends); 
+<INITIAL>"false"           => (False); 
+<INITIAL>"finally"         => (Finally); 
+<INITIAL>"for"             => (For); 
+<INITIAL>"function"        => (Function); 
+<INITIAL>"if"              => (If);
+<INITIAL>"implements"      => (Implements);
+<INITIAL>"import"          => (Import);
+<INITIAL>"in"              => (In);
+<INITIAL>"instanceof"      => (InstanceOf);
+<INITIAL>"interface"       => (Interface);
+<INITIAL>"internal"        => (Internal);
+<INITIAL>"intrinsic"       => (Intrinsic);
+<INITIAL>"is"              => (Is);
+<INITIAL>"let"             => (Let);
+<INITIAL>"new"             => (New);
+<INITIAL>"null"            => (Null);
+<INITIAL>"package"         => (Package);
+<INITIAL>"private"         => (Private);
+<INITIAL>"protected"       => (Protected);
+<INITIAL>"public"          => (Public);
+<INITIAL>"return"          => (Return);
+<INITIAL>"super"           => (Super);
+<INITIAL>"switch"          => (Switch);
+<INITIAL>"this"            => (This);
+<INITIAL>"throw"           => (Throw);
+<INITIAL>"to"              => (To);
+<INITIAL>"true"            => (True);
+<INITIAL>"try"             => (Try);
+<INITIAL>"typeof"          => (TypeOf);
+<INITIAL>"use"             => (Use);
+<INITIAL>"var"             => (Var);
+<INITIAL>"void"            => (Void);
+<INITIAL>"while"           => (While);
+<INITIAL>"with"            => (With);
 
-<INITIAL>"call"            => (CALL);
-<INITIAL>"debugger"        => (DEBUGGER);
-<INITIAL>"DECIMAL"         => (DECIMAL);
-<INITIAL>"DOUBLE"          => (DOUBLE);
-<INITIAL>"DYNAMIC"         => (DYNAMIC);
-<INITIAL>"EACH"            => (EACH);
-<INITIAL>"final"           => (FINAL);
-<INITIAL>"get"             => (GET);
-<INITIAL>"goto"            => (GOTO);
-<INITIAL>"include"         => (INCLUDE);
-<INITIAL>"int"             => (INT);
-<INITIAL>"namespace"       => (NAMESPACE);
-<INITIAL>"native"          => (NATIVE);
-<INITIAL>"number"          => (NUMBER);
-<INITIAL>"override"        => (OVERRIDE);
-<INITIAL>"prototype"       => (PROTOTYPE);
-<INITIAL>"rounding"        => (ROUNDING);
-<INITIAL>"standard"        => (STANDARD);
-<INITIAL>"strict"          => (STRICT);
-<INITIAL>"uint"            => (UINT);
-<INITIAL>"set"             => (SET);
-<INITIAL>"static"          => (STATIC);
-<INITIAL>"type"            => (TYPE);
-<INITIAL>"xml"             => (Token.XML);
-<INITIAL>"yield"           => (YIELD);
+<INITIAL>"call"            => (Call);
+<INITIAL>"debugger"        => (Debugger);
+<INITIAL>"decimal"         => (Decimal);
+<INITIAL>"double"          => (Double);
+<INITIAL>"dynamic"         => (Dynamic);
+<INITIAL>"each"            => (Each);
+<INITIAL>"final"           => (Final);
+<INITIAL>"get"             => (Get);
+<INITIAL>"goto"            => (Goto);
+<INITIAL>"include"         => (Include);
+<INITIAL>"int"             => (Int);
+<INITIAL>"namespace"       => (Namespace);
+<INITIAL>"native"          => (Native);
+<INITIAL>"number"          => (Number);
+<INITIAL>"override"        => (Override);
+<INITIAL>"prototype"       => (Prototype);
+<INITIAL>"rounding"        => (Rounding);
+<INITIAL>"standard"        => (Standard);
+<INITIAL>"strict"          => (Strict);
+<INITIAL>"uint"            => (UInt);
+<INITIAL>"set"             => (Set);
+<INITIAL>"static"          => (Static);
+<INITIAL>"type"            => (Type);
+<INITIAL>"xml"             => (Token.Xml);
+<INITIAL>"yield"           => (Yield);
 
 <INITIAL>{whitespace}        => (lex());
-<INITIAL>{identifier}        => (IDENTIFIER yytext);
+<INITIAL>{identifier}        => (Identifier yytext);
                    
 <INITIAL>{decimalLiteral}    => (case Real.fromString yytext of 
-                                     SOME r => NUMBERLITERAL r 
+                                     SOME r => NumberLiteral r 
                                    | NONE   => raise LexError);
 
 <INITIAL>{hexIntegerLiteral} => (case Int.fromString yytext of
-                                     SOME i => NUMBERLITERAL (Real.fromInt i)
+                                     SOME i => NumberLiteral (Real.fromInt i)
                                    | NONE => raise LexError);
 
 
@@ -269,7 +269,7 @@ charEscape            = "\\" ([abtnvfr\"\'\\]|"x"{hexDigit}{2}|[0-7]{1}{3});
                                          curr_quote := #"\000";
                                          curr_chars := [];
                                          YYBEGIN INITIAL;
-                                         STRINGLITERAL str
+                                         StringLiteral str
                                      end
                                  else
                                      lex());
