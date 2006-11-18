@@ -2906,9 +2906,16 @@ fun parse ts =
     end
 
 fun parseFile filename = 
-    (log ["scanning ", filename]; (parse (lexFile filename) handle 
-			ParseError => (log ["parse error"]; raise ParseError)
-	      | Lexer.LexError => (log ["lex error"]; raise Lexer.LexError));
-     log ["parsed ", filename, "\n"])
+    (log ["scanning ", filename];
+     let val ast = parse (lexFile filename)
+     in
+         log ["parsed ", filename, "\n"];
+         ast
+     end)
+
+(*
+ handle ParseError => (log ["parse error"]; raise ParseError)
+      | Lexer.LexError => (log ["lex error"]; raise Lexer.LexError)
+*)
 
 end (* Parser *)
