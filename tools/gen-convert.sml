@@ -157,8 +157,11 @@ struct
                             in
                                 (IDpat sym, %`List (List.map (fn ^pat => ^tem) ^x)`)
                             end
-           (* TODO: ref types *)
-           | _ => raise (Fail "not yet implemented")
+           | REFcvt ty' => let val (pat, tem) = genCvtTy ty'
+                               val tem = EXPhole tem
+                           in
+                               (pat, %`!(^tem)`)
+                           end
 
     fun genCvtClause (CONScvt (name, NONE)) =
             let val s = EXPhole (STRINGexp name)
@@ -187,7 +190,6 @@ struct
                      FUNbind (cvtFunctionName id, [CLAUSE ([pat], NONE, tem)])
                  end
 
-    fun genCvtFunctions (DECLcvt ds) =
-        (SOME (map genCvtFunction ds)) handle (Fail s) => NONE
+    fun genCvtFunctions (DECLcvt ds) = map genCvtFunction ds
 
 end
