@@ -6,8 +6,11 @@ structure Main = struct
 fun testTC argvRest =
     let val asts = List.map Parser.parseFile argvRest
     in
-        List.app TypeChk.tcProgram asts
+	TextIO.print "type checking ... \n";
+        List.map TypeChk.tcProgram asts;
+	TextIO.print "type checked! \n"
     end
+    handle Match => TextIO.print "incomplete match\n"
 
 fun main (argv0:string, argvRest:string list) = 
     ((case argvRest of

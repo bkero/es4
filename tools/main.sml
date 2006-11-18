@@ -30,7 +30,7 @@ struct
     fun genPretty ast =
         let val (structin, typedecls) = contents ast
             val funbinds = concat (mapSoft genCvtFunctions (extractCvtDecls typedecls))
-            val body = DECLsexp [OPENdecl [IDENT ([], "Ast"), IDENT ([], "PrettyRep")],
+            val body = DECLsexp [OPENdecl [IDENT ([], "Ast")],
 				 FUNdecl funbinds]
         in
             STRUCTUREdecl ("PrettyCvt", [], NONE, body)

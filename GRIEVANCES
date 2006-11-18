@@ -1,0 +1,17 @@
+
+
+ - opening two modules that introduce colliding names should be an error or 
+   at least a warning
+
+ - an operator/operand mismatch occurs between two record types that
+   have N correctly unifying fields and M non-unifying fields should
+   hilight the non-unifying fields in some fashion (currently you 
+   have to eyeball it, which is painful on large fields)
+
+ - error messages should demonstrate the source context by
+   "ASCII-underlining" or ocaml-like highlighting
+
+ - you should be able to declare a top-level function type, not just inline
+
+ - type inference messages are nigh-useless (okay, fine, open research
+   problem)
