@@ -1,7 +1,11 @@
 Library
-        structure GenPretty
+        structure Main
+	structure QuasiQuote
 is
-        gen-pretty.sml (with: (parser.quotations=true control.poly-eq-warn=false))
+	main.sml
+        gen-convert.sml (with: parser.quotations=true)
+	smlast.sml
+	quasiquote.sml (with: control.poly-eq-warn=false)
         $/basis.cm
         $/smlnj-lib.cm
         $smlnj/compiler/compiler.cm

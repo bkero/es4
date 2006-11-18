@@ -5,7 +5,7 @@ pretty-cvt.sml: tools/gen-pretty.heap ast.sml
 	cd tools && sml @SMLload=gen-pretty.heap ../ast.sml ../pretty-cvt.sml
 
 tools/gen-pretty.heap: tools/gen-pretty.cm tools/gen-pretty.sml
-	cd tools && ml-build gen-pretty.cm GenPretty.main gen-pretty.heap
+	cd tools && ml-build gen-pretty.cm Main.main gen-pretty.heap
 
 check: es4.heap
 	sml @SMLload=es4.heap tests/ident.js
