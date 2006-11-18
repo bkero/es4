@@ -5,8 +5,7 @@ Library
         structure Token
         structure Lexer
         structure Parser
-        structure Expr
-        structure Stmt 
+        structure Eval
 	structure Mach
         structure TypeChk
 
@@ -19,8 +18,7 @@ is
         token.sml
         lexer.lex
         parser.sml
-        expr.sml
-        stmt.sml
+        eval.sml
 	mach.sml
         typechk.sml
 

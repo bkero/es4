@@ -4,12 +4,12 @@ structure Mach = struct
 
 (* Local type aliases *)
 
-type TYPE = Ast.TY_EXPR
+type TYPE = Ast.TYPE_EXPR
 type STR = Ast.USTRING
 type ID = Ast.IDENT
 type NS = Ast.NAMESPACE
 
-datatype ENV_TAG = 
+datatype SCOPE_TAG = 
 	 VarGlobal       (* Variable object created before execution starts *)
        | VarClass        (* Variable object created on entry to a function  *)
        | VarInstance     (* Variable object for class objects               *)
@@ -34,25 +34,25 @@ datatype VAL =
 	 Ref of { base: OBJ,
 		  name: NAME }      
 		   
-     and ENV = 
-	 Env of { tag: envtag, 
-		  parent: ENV option,
-		  bindings: BINDINGS }
-
+     and SCOPE = 
+	 Scope of { tag: SCOPE_TAG, 
+		    obj: OBJ,
+		    parent: SCOPE option }
+		  
      and OBJ = 
-	 Obj of { class: CLASS,
-		  slots: BINDINGS,
+	 Obj of { class: CLASS option,
+		  bindings: BINDINGS,
 		  prototype: (OBJ option) ref }
 		
      and CLASS = 
 	 Class of { ty: TYPE,
-		    env: ENV,
+		    scope: SCOPE,
    		    base: CLASS option,
 		    interfaces: INTERFACE list,
 		    
-		    call: Ast.funcDefn,
-		    definition: Ast.classDefn,
-		    constructor: Ast.funcDefn,
+		    call: Ast.FUNC,
+		    definition: Ast.CLASS_DEFN,
+		    constructor: Ast.FUNC,
 		    
 		    instanceTy: TYPE,
 		    instanceLayout: LAYOUT,
@@ -60,16 +60,19 @@ datatype VAL =
 		    
 		    initialized: bool ref }
 
+     and LAYOUT_TAG = 
+	 LayoutClass  
+       | LayoutInterface
+
      and LAYOUT = 
 	 Layout of { ty: TYPE,
 		     name: STR,
 		     parent: LAYOUT option,		     
-		     isClass: bool,
-		     isInterface: bool,
+		     tag: LAYOUT_TAG,
 		     isExtensible: bool }
 
      and ROW = 
-	 Row of { ty: TY,
+	 Row of { ty: TYPE,
 		  dontDelete: bool,
 		  dontEnum: bool,
 		  readOnly: bool }
@@ -77,12 +80,12 @@ datatype VAL =
      and INTERFACE = 
 	 Interface of { ty: TYPE,
 			bases: INTERFACE list,
-			definition: Ast.interfaceDefn,			
+			definition: Ast.INTERFACE_DEFN,			
 			isInitialized: bool ref }
 
 
      and MACH = 
-	 Mach of { env: ENV,
+	 Mach of { scope: SCOPE,
 		   result: VAL,
 		   thisObject: OBJ,
 		   numberType: Ast.NUMBER_TYPE,
@@ -96,7 +99,7 @@ withtype NAME = { ns: NS option,
      and MULTINAME = { nss: NS list, 
 		       id: ID }
      and PROP = 
-	 { ty: TY,
+	 { ty: TYPE,
 	   value: VAL,	   
 	   dontDelete: bool,
 	   dontEnum: bool,
@@ -107,14 +110,22 @@ withtype NAME = { ns: NS option,
 (* Exceptions for "abstract machine failures". *)
 
 exception ReferenceException of NAME
+exception MultiReferenceException of MULTINAME
 exception UnimplementedException of STR
 
 (* Values *)
 
-fun addProp (b:BINDINGS) (n:NAME) (p:PROP) = 
+fun newBindings _ = 
+    let 
+	val b:BINDINGS = ref []
+    in
+	b
+    end
+
+fun addBinding (b:BINDINGS) (n:NAME) (p:PROP) = 
     b := ((n,p) :: (!b))
 
-fun delProp (b:BINDINGS) (n:NAME) = 
+fun delBinding (b:BINDINGS) (n:NAME) = 
     let 
 	fun strip [] = raise ReferenceException n
 	  | strip ((k,v)::bs) = 
@@ -125,7 +136,7 @@ fun delProp (b:BINDINGS) (n:NAME) =
 	b := strip (!b)
     end
 
-fun getProp (b:BINDINGS) (n:NAME) = 
+fun getBinding (b:BINDINGS) (n:NAME) = 
     let 
 	fun search [] = raise ReferenceException n			      
 	  | search ((k,v)::bs) = 
@@ -135,23 +146,105 @@ fun getProp (b:BINDINGS) (n:NAME) =
     in
 	search (!b)
     end
-    
 
-fun makeObject _ = Obj { ty = ref (Ast.SpecialType Ast.ANY),
-			 slots = ref [],
-			 prototype = ref NONE }
+fun hasBinding (b:BINDINGS) (n:NAME) = 
+    let 
+	fun search [] = false
+	  | search ((k,v)::bs) = 
+	    if k = n 
+	    then true
+	    else search bs
+    in
+	search (!b)
+    end
+
+(* Standard runtime objects and functions. *)
+
+(* There's a circularity: 
+ * 
+ * SCOPE -> OBJ -> CLASS -> SCOPE.
+ * 
+ * We need to break this so that it's possible to instantiate
+ * the roots of the builtin objects, so we make OBJ have only a CLASS
+ * option, not a mandatory CLASS. When you access the CLASS of an OBJ
+ * you should use an accessor function that "closes the loop" and
+ * returns the global "object" CLASS when you fetch the CLASS of an
+ * OBJ like "Obj {class = NONE, ...}".
+ *)			  
+
+val (objectType:TYPE) = Ast.RecordType []
+
+val (defaultAttrs:Ast.ATTRIBUTES) = 
+    Ast.Attributes { ns = Ast.Public "",
+		     override = false,
+		     static = false,
+		     final = false,
+		     dynamic = true,
+		     prototype = false,
+		     nullable = false }
+
+val (noOpFunction:Ast.FUNC) = 
+    Ast.Func { name = "",
+	       attrs = defaultAttrs,
+	       formals = [],
+	       ty = NONE,
+	       body = Ast.Block { directives = [],
+				  defns = [],
+				  stmts = [] } }
+
+val (emptyClass:Ast.CLASS_DEFN) = 
+    { name = "",
+      attrs = defaultAttrs,
+      params = [],
+      extends = [],
+      implements = [],
+      instanceVars = [],
+      vars = [],
+      constructor = noOpFunction,
+      methods = [],
+      initializer = [] }
+    
+val (emptyLayout:LAYOUT) = 
+    Layout { ty = objectType,
+	     name = "",
+	     parent = NONE,
+	     tag = LayoutClass,
+	     isExtensible = true }
+    
+val (globalObject:OBJ) = 
+    Obj { class = NONE, 
+	  bindings = newBindings (), 
+	  prototype = ref NONE } 
+    
+val (globalScope:SCOPE) = 
+    Scope { tag = VarGlobal,
+	    obj = globalObject,
+	    parent = NONE }
+    
+val (globalClass:CLASS) = 
+    Class { ty = objectType,
+	    scope = globalScope,
+	    base = NONE,
+	    interfaces = [],
+	    call = noOpFunction,
+	    definition = emptyClass,
+	    constructor = noOpFunction,
+	    instanceTy = objectType,
+	    instanceLayout = emptyLayout,
+	    instancePrototype = globalObject,
+	    initialized = ref true }
+
+fun newObject (c:CLASS option) = 
+    Obj { class = c,
+	  bindings = newBindings (),
+	  prototype = ref NONE }
 		   
-fun toBoolean (Bool b) = b
+and toBoolean (Bool b) = b
   | toBoolean (Str _) = true
   | toBoolean (Num _) = true
   | toBoolean (Object _) = true
-  | toBoolean (Fun _) = true
+  | toBoolean (Function _) = true
   | toBoolean Undef = false
   | toBoolean Null = false
-
-val globalEnv : ENV = 
-    Env { tag = VarGlobal,
-	  parent = NONE,
-	  bindings = ref [] }
 
 end

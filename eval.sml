@@ -1,88 +1,90 @@
 structure Eval = struct 
 
-(* Exceptions for object-language control transfer  *)
+(* Exceptions for object-language control transfer. *)
 exception ContinueException of (Ast.IDENT option)
 exception BreakException of (Ast.IDENT option)
 exception TailCallException of (unit -> Mach.VAL)
 exception ThrowException of Mach.VAL
 exception ReturnException of Mach.VAL
 
+(*     
 		   
-fun makeName prop:IDENT (Ast.Attributes {ns=n,...}) =
-    Name{ns=n, id=p}
+fun newName (prop:Ast.IDENT) (attrs:Ast.ATTRIBUTES) =
+    case attrs of 
+	Ast.Attributes {ns=n, ...} => {ns=n, id=p}
 
-(*  | makeName p (Ast.Attributes {vis=(Ast.UserNamespace n), ...}) =
-    Name{ns=Ast.UserNamespace(n), id=p}
-*)
                  
-fun setPropertyValue (obj:Mach.OBJ) (name:Mach.NAME) v =
-    Mach.setProp (#slots obj) name
-
-fun extendEnvironment env bindingobj = 
-    bindingobj :: env
+fun setPropertyValue (obj:Mach.OBJ) (n:Mach.NAME) (v:Mach.VAL) =
+    case obj of 
+	Obj ob => Mach.addBinding (#slots ob) n v
 
 
-fun evalExpr env (Ast.QualIdent { qual=NONE, ident=id, opennss=nss }) = 
-    evalVarExpr env (Multiname {id=id, namespaces=nss})
+fun extendScope (p:Mach.SCOPE) (t:Mach.SCOPE_TAG) (b:Mach.BINDINGS) = 
+    Mach.Scope { tag=t, parent=p, bindings = b }
 
-  | evalExpr env (Ast.LetExpr {defs, body}) = 
-    evalLetExpr env defs body
 
-  | evalExpr env _ = 
-    raise (UnimplementedException "unhandled expression type")
+fun evalExpr (scope:Mach.SCOPE) (expr:Ast.EXPR) =
+    case expr of
+	Ast.QualIdent { qual=NONE, ident=id, opennss=nss } =>
+	evalVarExpr scope {nss=nss, id=id}
+	
+      | Ast.LetExpr {defs, body} => 
+	evalLetExpr scope defs body
 
-and evalLetExpr env ds body = 
+      | _ = 
+	raise (Mach.UnimplementedException "unhandled expression type")
+
+and evalLetExpr (scope:Mach.SCOPE) (defs:Ast.VAR_DEFN list) (body:Ast.EXPR) = 
     let 
-        val bindings = Value.makeObject ()
-        val newEnv = extendEnvironment env bindings 
+        val bindings = Mach.newBindings ()
+        val newScope = extendScope scope Mach.Let bindings
     in
-        List.app (createBinding bindings env) ds;
-        evalExpr newEnv body
-    end
-    
-and createBinding bindings env 
-          (Ast.SimpleDefn { attrs, init, name, ty, ...}) = 
-    let 
-    val p = name
-    val n = makeName p attrs
-    val t = case ty of
-            NONE => Ast.SpecialType Ast.ANY
-          | SOME e => e
-    val v = case init of 
-            NONE => Value.Undef
-          | SOME e => evalExpr env e
-    in
-    setPropertyValue bindings n (t, v)
+        List.app (createBinding bindings scope) defs;
+        evalExpr newScope body
     end
 
-  | createBinding bindings env 
-          (Ast.DestructuringDefn { init, postInit, names, ...}) = 
-    let 
-        val v = case init of 
-            NONE => Value.Undef
-          | SOME e => evalExpr env e
-    in 
-        destructureAndBind bindings postInit names v
-    end
-
-    
+and createBinding (bindings:Mach.BINDINGS) (scope:Mach.SCOPE) (defn:Ast.VAR_DEFN) =
+    case defn of 
+	(Ast.SimpleDefn { attrs, init, name, ty, ...}) =>
+	let 
+	    val p = name
+	    val n = makeName p attrs
+	    val t = case ty of
+			NONE => Ast.SpecialType Ast.ANY
+		      | SOME e => e
+	    val v = case init of 
+			NONE => Mach.Undef
+		      | SOME e => evalExpr scope e
+	in
+	    setPropertyValue bindings n (t, v)
+	end
+	
+      | (Ast.DestructuringDefn { init, postInit, names, ...}) =>
+	let 
+            val v = case init of 
+			NONE => Value.Undef
+		      | SOME e => evalExpr scope e
+	in 
+            destructureAndBind bindings postInit names v
+	end
+	
+	
 and destructureAndBind bindings postInit names v = 
-    raise (UnimplementedException "destructureAndBind")
+    raise (Mach.UnimplementedException "destructureAndBind")
 
-and evalVarExpr env mname = 
-    case lookupInEnv env mname of 
-    NONE => raise ReferenceException mname
+and evalVarExpr (scope:Mach.SCOPE) (mname:Mach.MULTINAME) = 
+    case lookupInScope scope mname of 
+	NONE => raise ReferenceException mname
       | SOME (t,v) => v
           
-and lookupInEnv [] (mname:multiname) = 
-    NONE
-
-  | lookupInEnv (b::bs) (mname:multiname) = 
-    (case getValueProtocol b mname of 
-     NONE => lookupInEnv bs mname
-       | result => result)
+and lookupInScope (scope:Mach.SCOPE) (mname:Mach.MULTINAME) =     
+    case scope of 
+	Scope { tag, parent, obj } => 
+	case getValueProtocol obj mname of
+	    NONE => lookupInScope parent mname
+	  | result => result
     
-and getValueProtocol (Mach.Object obj) (mname:multiname) = 
+and getValueProtocol (obj:Mach.OBJ) (mname:Mach.MULTINAME) = 
     case getPropertyValue obj mname of 
     NONE => (case !(#proto obj) of 
              NONE => NONE
@@ -127,7 +129,7 @@ and evalStmt env (Ast.ExprStmt e) = evalExpr env e
   | evalStmt env (Ast.ThrowStmt t) = evalThrowStmt env t
   | evalStmt env (Ast.LabeledStmt (lab, s)) = evalLabelStmt env lab s
   | evalStmt env (Ast.BlockStmt b) = evalBlock env b
-  | evalStmt _ _ = raise UnimplementedException "Unimplemented statement type"
+  | evalStmt _ _ = raise Mach.UnimplementedException "Unimplemented statement type"
 			 
 and evalBlock env (Ast.Block{stmts=s,... }) = 
     evalStmts env s
@@ -190,5 +192,6 @@ and evalBreakStmt env lbl
 	  
 and evalContinueStmt env lbl
   = raise (ContinueException lbl)
+*)
 	  
 end

@@ -129,11 +129,11 @@ datatype DIRECTIVE =
        | Import of { package: IDENT,
                      qualifier: IMPORT_QUAL,
                      alias: IDENT option }
-	   | Statement of STMT
-	   | Definition of DEFINITION list
+       | Statement of STMT
+       | Definition of DEFINITION list
 
      and FUNC = 
-	 	 Func of 
+	 Func of 
          { name: IDENT,
            attrs: ATTRIBUTES,
            formals: FORMAL list,
