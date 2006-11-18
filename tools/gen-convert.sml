@@ -160,7 +160,7 @@ struct
            | REFcvt ty' => let val (pat, tem) = genCvtTy ty'
                                val tem = EXPhole tem
                            in
-                               (pat, %`!(^tem)`)
+                               (pat, %`Ref (^tem)`)
                            end
 
     fun genCvtClause (CONScvt (name, NONE)) =
