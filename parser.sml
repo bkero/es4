@@ -57,7 +57,7 @@ fun identifier ts =
       | Rounding :: tr => (tr,"rounding")
       | Standard :: tr => (tr,"standard")
       | Strict :: tr => (tr,"strict")
-      | Uint :: tr => (tr,"uint")
+      | UInt :: tr => (tr,"uint")
       | Set :: tr => (tr,"set")
       | Static :: tr => (tr,"static")
       | Type :: tr => (tr,"type")
@@ -104,7 +104,7 @@ and qualifier ts =
           let
               val (ts1,nd1) = propertyIdentifier (ts)
           in
-              (ts1,Ast.QualIdent({qual=NONE, ident=nd1, opennss=[Ast.Public("")]}))
+              (ts1,Ast.Ref{base=NONE,ident=Ast.Identifier nd1})
           end
     end
 
@@ -116,7 +116,7 @@ and reservedNamespace ts =
       | Intrinsic :: tr => 
 			(tr, Ast.LiteralNamespace(Ast.Intrinsic))
       | Private :: tr => 
-			(tr, Ast.LiteralNamespace(Ast.Private("put class name here")))
+			(tr, Ast.LiteralNamespace(Ast.Private))
       | Protected :: tr => 
 			(tr, Ast.LiteralNamespace(Ast.Protected))
       | Public :: tr => 
@@ -592,13 +592,13 @@ and parameter (ts, alpha) : token list * Ast.FORMAL =
 			let
 				val (ts2,{ptrn,ty}) = typedPattern (ts1)
 			in
-				(ts2,{name=Ast.PATTERN(ptrn),ty=ty,tag=nd1,isRest=false,init=NONE})
+				(ts2,{pattern=ptrn,ty=ty,tag=nd1,isRest=false,init=NONE})
 			end
 	  | _ => 
 			let
 				val (ts2:token list,{name,ty}) = typedIdentifier (ts1)
 			in
-				(ts2,{name=Ast.IDENT(name),ty=ty,tag=nd1,isRest=false,init=NONE})
+				(ts2,{pattern=Ast.SimplePattern(name),ty=ty,tag=nd1,isRest=false,init=NONE})
 			end			
 	end
 
@@ -620,12 +620,12 @@ and restParameter (ts:token list) =
     let val _ = trace([">> restParameter with next=",tokenname(hd(ts))]) 
 		val (DOTDOTDOT :: ts1) = ts
 	in case ts1 of
-		RightParen :: _ => (ts1,{name=Ast.IDENT(""),ty=NONE,tag=Ast.Var,isRest=true,init=NONE}) 
+		RightParen :: _ => (ts1,{pattern=Ast.SimplePattern(Ast.LiteralExpr(Ast.LiteralString(""))),ty=NONE,tag=Ast.Var,isRest=true,init=NONE}) 
 	  | _ => 
 			let
-				val (ts2:token list,{name,ty,tag,...}) = parameter (ts1,ALLOWLIST)
+				val (ts2:token list,{pattern,ty,tag,...}) = parameter (ts1,ALLOWLIST)
 			in
-				(ts2,{name=name,ty=ty,tag=tag,isRest=true,init=NONE})
+				(ts2,{pattern=pattern,ty=ty,tag=tag,isRest=true,init=NONE})
 			end
 	end
 
@@ -638,19 +638,19 @@ and restParameter (ts:token list) =
 and typedIdentifier (ts) =
     let val _ = trace([">> typedIdentifier with next=",tokenname(hd(ts))]) 
 		val (ts1,nd1) = identifier ts
+		val expr = Ast.LiteralExpr(Ast.LiteralString(nd1))
 	in case ts1 of
 		Colon :: ts2 => 
 			let
 				val (ts3,nd3) = typeExpression (ts2)
-val _ = log(["typedIdentifier with next=",tokenname(hd ts2)])
 			in
-				(ts3, {name=nd1,ty=SOME nd3})
+				(ts3, {name=expr,ty=SOME nd3})
 			end
 		
 	  | ts3 => 
 			let
 			in
-				(ts3, {name=nd1,ty=NONE})
+				(ts3, {name=expr,ty=NONE})
 			end
 		
 	end
@@ -1210,7 +1210,7 @@ and propertyOperator (ts, nd) =
             let
                 val (ts4,nd4) = brackets(ts)
             in
-                (ts4,Ast.Property({obj=SOME nd,field=nd4,indirect=false}))
+                (ts4,Ast.Ref({base=SOME nd,ident=Ast.Expression(nd4)}))
             end
       | _ => raise ParseError
     end
@@ -1341,7 +1341,7 @@ and unaryExpression ts =
     in case ts of
 		Delete :: ts1 => let val (ts2,nd2) = postfixExpression ts1 in (ts2,Ast.UnaryExpr(Ast.Delete,nd2)) end
 	  | Void :: ts1 => let val (ts2,nd2) = unaryExpression ts1 in (ts2,Ast.UnaryExpr(Ast.Void,nd2)) end
-	  | Typeof :: ts1 => let val (ts2,nd2) = unaryExpression ts1 in (ts2,Ast.UnaryExpr(Ast.Typeof,nd2)) end
+	  | TypeOf :: ts1 => let val (ts2,nd2) = unaryExpression ts1 in (ts2,Ast.UnaryExpr(Ast.Typeof,nd2)) end
 	  | PlusPlus :: ts1 => let val (ts2,nd2) = postfixExpression ts1 in (ts2,Ast.UnaryExpr(Ast.PreIncrement,nd2)) end
 	  | MinusMinus :: ts1 => let val (ts2,nd2) = postfixExpression ts1 in (ts2,Ast.UnaryExpr(Ast.PreDecrement,nd2)) end
 	  | Plus :: ts1 => let val (ts2,nd2) = unaryExpression ts1 in (ts2,Ast.UnaryExpr(Ast.UnaryPlus,nd2)) end
@@ -2101,7 +2101,7 @@ and functionType ts =
 		Function :: _ => 
 			let
 				val (ts1,Ast.FunctionSignature{typeparams,params,resulttype}) = functionSignature (tl ts)
-				fun paramtypes (params:Ast.formal list):Ast.tyExpr option list =
+				fun paramtypes (params:Ast.FORMAL list):Ast.TYPE_EXPR option list =
 					case params of
 						[] => []
 					  | _ => 
@@ -2113,7 +2113,8 @@ and functionType ts =
 							end
 			in
 				trace(["<< functionType with next=",tokenname(hd ts1)]);
-				(ts1,Ast.FunctionType {paramTypes=paramtypes params,returnType=resulttype,boundThisType=NONE,hasRest=false})
+				(ts1,Ast.FunctionType {paramTypes=paramtypes params,
+						returnType=resulttype,boundThisType=NONE,hasRest=false})
 			end
 	end
 
@@ -2325,7 +2326,7 @@ Block
 
 *)
 
-and block (ts) : (token list * Ast.block) =
+and block (ts) : (token list * Ast.BLOCK) =
     let val _ = trace([">> block with next=", tokenname(hd ts)])
     in case ts of
         LeftBrace :: RightBrace :: ts1 => (ts1,Ast.Block{directives=[],defns=[],stmts=[]})
@@ -2685,6 +2686,16 @@ and variableBindingList (ts,tag,alpha,beta) =
 
 and variableBinding (ts,tag,alpha,beta) = 
 	let
+		val defaultAttrs = 
+			Ast.Attributes { 
+				ns = Ast.Internal "",
+		        override = false,
+        		static = false,
+		        final = false,
+        		dynamic = false,
+		        prototype = false,
+        		nullable = false }
+
 	in case ts of
 		(LeftBrace | LeftBracket) :: _ =>
 			let
@@ -2694,11 +2705,11 @@ and variableBinding (ts,tag,alpha,beta) =
 					let
 						val (ts2,nd2) = assignmentExpression (tl ts1,alpha,beta)
 					in
-						(ts2, Ast.DestructuringDefn { tag = tag,
-                         						      init = SOME nd2,
-                         						      attrs = Ast.EmptyAttributes,
-                         						      ptrn = ptrn ,
-                         						      ty = ty } )
+						(ts2, Ast.SimpleDefn { tag = tag,
+                         					   init = SOME nd2,
+                         					   attrs = defaultAttrs,
+                         					   pattern = ptrn ,
+                         					   ty = ty } )
 					end
 			end
 	  | _ => 
@@ -2711,14 +2722,14 @@ and variableBinding (ts,tag,alpha,beta) =
 					in
 						(ts2, Ast.SimpleDefn { tag = tag,
                          init = SOME nd2,
-                         attrs = Ast.EmptyAttributes,
-                         name = #name nd1,
+                         attrs = defaultAttrs,
+                         pattern = Ast.SimplePattern (#name nd1),
                          ty = #ty nd1 } )
 					end
 			  | _ => (ts1, Ast.SimpleDefn { tag = tag,
                          init = NONE,
-                         attrs = Ast.EmptyAttributes,
-                         name = #name nd1,
+                         attrs = defaultAttrs,
+                         pattern = Ast.SimplePattern (#name nd1),
                          ty = #ty nd1 } )
 			end
 	end

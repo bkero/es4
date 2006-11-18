@@ -129,13 +129,15 @@ datatype DIRECTIVE =
        | Import of { package: IDENT,
                      qualifier: IMPORT_QUAL,
                      alias: IDENT option }
+	   | Statement of STMT
+	   | Definition of DEFINITION list
 
      and FUNC = 
-	 Func of 
+	 	 Func of 
          { name: IDENT,
            attrs: ATTRIBUTES,
            formals: FORMAL list,
-           ty: TY_EXPR option,
+           ty: TYPE_EXPR option,
            body: BLOCK }
 	 
      and DEFINITION =
@@ -149,7 +151,7 @@ datatype DIRECTIVE =
      and FUNC_SIGN =
          FunctionSignature of { typeparams: LITERAL list,
                                 params: FORMAL list,
-                                resulttype: TY_EXPR }
+                                resulttype: TYPE_EXPR }
 
 
      (* Improve this? Probably more mutual exclusion possible. *)
@@ -166,8 +168,8 @@ datatype DIRECTIVE =
          SimpleDefn of { tag: VAR_DEFN_TAG,
                          init: EXPR option,
                          attrs: ATTRIBUTES,
-                         name: IDENT,
-                         ty: TY_EXPR option }
+                         pattern: PATTERN,
+                         ty: TYPE_EXPR option }
 
        | DestructuringDefn of { tag: VAR_DEFN_TAG,
                                 init: EXPR option,
@@ -175,17 +177,17 @@ datatype DIRECTIVE =
                                 temp: IDENT,
                                 postInit: EXPR option,
                                 names: IDENT list,
-                                ty: TY_EXPR option }
+                                ty: TYPE_EXPR option }
 
-     and TY_EXPR =
+     and TYPE_EXPR =
          SpecialType of SPECIAL_TY
-       | UnionType of TY_EXPR list
-       | ArrayType of TY_EXPR list
+       | UnionType of TYPE_EXPR list
+       | ArrayType of TYPE_EXPR list
        | PrimaryType of PRIM_TY
        | FunctionType of FUNC_TY
-       | RecordType of (EXPR * TY_EXPR) list
+       | RecordType of (EXPR * TYPE_EXPR) list
        | InstantiationType of { base: PRIM_TY,
-                                params: TY_EXPR list }
+                                params: TYPE_EXPR list }
        | UnresolvedType of EXPR
 
      and STMT =
@@ -231,9 +233,9 @@ datatype DIRECTIVE =
      and EXPR =
          TrinaryExpr of (TRIOP * EXPR * EXPR * EXPR)
        | BinaryExpr of (BINOP * EXPR * EXPR)
-       | BinaryTypeExpr of (BINOP * EXPR * TY_EXPR)
+       | BinaryTypeExpr of (BINOP * EXPR * TYPE_EXPR)
        | UnaryExpr of (UNOP * EXPR)
-       | TypeExpr of TY_EXPR
+       | TypeExpr of TYPE_EXPR
        | NullaryExpr of NULOP
        | YieldExpr of EXPR option
        | SuperExpr of EXPR option
@@ -291,31 +293,36 @@ datatype DIRECTIVE =
            defns: DEFINITION list,
            stmts: STMT list }
 
+	and PATTERN =
+		ObjectPattern of { name: EXPR, ptrn : PATTERN } list
+	  | ArrayPattern of PATTERN list
+	  | SimplePattern of EXPR
+
 withtype
 
          FUNC_TY =
-         { paramTypes: TY_EXPR list,
-           returnType: TY_EXPR,
-           boundThisType: TY_EXPR option,
+         { paramTypes: TYPE_EXPR option list,
+           returnType: TYPE_EXPR,
+           boundThisType: TYPE_EXPR option,
            hasRest: bool }
 
      and FORMAL =
-         { name: IDENT,
-           ty: TY_EXPR option,
+         { pattern: PATTERN,
+           ty: TYPE_EXPR option,
            init: EXPR option,
            tag: VAR_DEFN_TAG,
            isRest: bool }
 
      and TYPED_IDENT =
          { name: IDENT,
-           ty: TY_EXPR option }
+           ty: TYPE_EXPR option }
 
      and CLASS_DEFN =
          { name: IDENT,
            attrs: ATTRIBUTES,
            params: IDENT list,
-           extends: TY_EXPR list,
-           implements: TY_EXPR list,
+           extends: TYPE_EXPR list,
+           implements: TYPE_EXPR list,
            instanceVars: VAR_DEFN list,
            vars: VAR_DEFN list,
            constructor: FUNC,
@@ -326,7 +333,7 @@ withtype
          { name: IDENT,
            attrs: ATTRIBUTES,
            params: IDENT list,
-           extends: TY_EXPR list,
+           extends: TYPE_EXPR list,
            methods: (IDENT * FUNC_TY) list }
 
      and PRIM_TY =

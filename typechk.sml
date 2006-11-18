@@ -7,11 +7,11 @@ open Ast
 val boolType = PrimaryType { name="boolean",  annotation=Named }
 val exceptionType = PrimaryType { name="exception",  annotation=Named }
 
-type TYPE_ENV = (IDENT * TY_EXPR) list
+type TYPE_ENV = (IDENT * TYPE_EXPR) list
 
 fun extendEnv ((name, ty), env) = (name, ty)::env
 
-type CONTEXT = {env: TYPE_ENV, lbls: IDENT option list, retTy: TY_EXPR}
+type CONTEXT = {env: TYPE_ENV, lbls: IDENT option list, retTy: TYPE_EXPR}
 
 fun withEnv ({env=_, lbls=lbls, retTy=retTy}, env) = {env=env, lbls=lbls, retTy=retTy}
 
@@ -160,7 +160,7 @@ and tcExpr ctxt e =
                       actuals: expr list }
 *)
 
-and tcVarDefn ctxt (SimpleDefn {tag,init,attrs,name,ty}) = []
+and tcVarDefn ctxt (SimpleDefn {tag,init,attrs,pattern=Ast.SimplePattern(name),ty}) = []
 
 
 end
