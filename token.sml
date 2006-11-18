@@ -280,7 +280,7 @@ fun tokenname t =
     | LEFTSHIFTASSIGN => "<<="
     | LESSTHANOREQUALS => "<="
     | ASSIGN => "="
-    | MINUSASSIGN => "*="
+    | MINUSASSIGN => "-="
     | EQUALS => "=="
     | STRICTEQUALS => "==="
     | GREATERTHAN => ">"
