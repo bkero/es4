@@ -158,9 +158,12 @@ struct
                                 (IDpat sym, %`List (List.map (fn ^pat => ^tem) ^x)`)
                             end
            | REFcvt ty' => let val (pat, tem) = genCvtTy ty'
+                               val pat = PAThole pat
                                val tem = EXPhole tem
+                               val sym = gensym "r"
+                               val x = EXPhole (ID sym)
                            in
-                               (pat, %`Ref (^tem)`)
+                               (IDpat sym, %`case !(^x) of ^pat => ^tem`)
                            end
 
     fun genCvtClause (CONScvt (name, NONE)) =
