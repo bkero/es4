@@ -1,0 +1,10 @@
+
+
+ - opening two modules that introduce colliding names should be an error or 
+   at least a warning
+
+ - an operator/operand mismatch occurs between two record types that
+   have N correctly unifying fields and M non-unifying fields should
+   hilight the non-unifying fields in some fashion (currently you 
+   have to eyeball it, which is painful on large fields)
+
