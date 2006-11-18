@@ -898,24 +898,6 @@ and elementList (ts,alpha) =
 *)
 
 (*
-    CastExpression    
-        cast  TypeExpression  ParenListExpression
-*)
-
-and castExpression ts =
-    let
-    in case ts of
-        Cast :: ts1 =>
-            let
-                val (ts2,nd2) = typeExpression(ts1)
-                val (ts3,nd3) = parenListExpression(ts2)
-            in
-                (ts3,Ast.BinaryTypeExpr(Ast.Cast,nd3,nd2))
-            end
-      | _ => raise ParseError
-    end
-
-(*
 	PrimaryExpression    
     	null
 	    true
@@ -931,19 +913,7 @@ and castExpression ts =
 	    ArrayLiteral
     	ObjectLiteral
 	    FunctionExpression
-    	CastExpression
 *)
-
-and regexpLiteral (ts, regex) =
-    let val _ = trace(["regexp=",regex])
-    in case ts of 
-        Div :: tr => 
-            let
-            in
-                (tr,Ast.LiteralExpr(Ast.LiteralRegExp{pattern=regex,global=false,multiline=false,caseInsensitive=false}))
-            end
-      | tk :: tr  => regexpLiteral (tr,tokenname(tk)^regex)
-    end
 
 and primaryExpression ts =
     let val _ = trace([">> primaryExpression with next=",tokenname(hd ts)])
@@ -964,8 +934,19 @@ and primaryExpression ts =
       | LeftBracket :: _ => arrayLiteral ts
       | LeftBrace :: _ => let val (ts1,nd1) = objectLiteral ts in (ts1,Ast.LiteralExpr nd1) end
       | Function :: _ => functionExpression (ts,ALLOWLIST,ALLOWIN)  (* fixme: need to propagate alpha and beta *)
-      | Cast :: _ => castExpression ts
-      | Div :: ts1 => regexpLiteral (ts1,"")
+	  | LexBreakDiv x :: _ => 
+			let 
+				val ts1 = (#lex_regexp x)()
+			in case ts1 of
+				RegExp :: _ => 
+					let
+						val RegexpLiteral s = hd ts1
+						val nd1	= Ast.LiteralExpr(Ast.LiteralRegExp { str=s })
+					in
+						(ts1,nd1)
+					end
+			  | _ => raise ParseError
+			end
 
 (* todo
       | REGEXP r :: ts1 => (ts1, Ast.RegExp(r))
@@ -1462,6 +1443,7 @@ and shiftExpression ts =
     	RelationalExpressionallowIn  instanceof  ShiftExpression
 	    RelationalExpressionallowIn  is  TypeExpression
 	    RelationalExpressionallowIn  to  TypeExpression
+	    RelationalExpressionallowIn  cast  TypeExpression
 
 	RelationalExpression(NOIN)
     	ShiftExpression
@@ -1472,6 +1454,7 @@ and shiftExpression ts =
     	RelationalExpressionallowIn  instanceof  ShiftExpression
 	    RelationalExpressionallowIn  is  TypeExpression
 	    RelationalExpressionallowIn  to  TypeExpression
+	    RelationalExpressionallowIn  cast  TypeExpression
 
 	right recursive: (see pattern of MultiplicativeExpression)
 
@@ -1482,15 +1465,62 @@ and relationalExpression (ts, beta)=
 		val (ts1,nd1) = shiftExpression ts
 		fun relationalExpression' (ts1,nd1,beta) =
 			case (ts1,beta) of
-				(LessThan :: ts2,_) => let val (ts3,nd3) = shiftExpression ts2 in relationalExpression' (ts3,Ast.BinaryExpr(Ast.Less,nd1,nd3),ALLOWIN) end
-			  | (GreaterThan :: ts2,_) => let val (ts3,nd3) = shiftExpression ts2 in relationalExpression' (ts3,Ast.BinaryExpr(Ast.Greater,nd1,nd3),ALLOWIN) end
-			  | (LessThanOrEquals :: ts2, _) => let val (ts3,nd3) = shiftExpression ts2 in relationalExpression' (ts3,Ast.BinaryExpr(Ast.LessOrEqual,nd1,nd3),ALLOWIN) end
-			  | (GreaterThanOrEquals :: ts2, _) => let val (ts3,nd3) = shiftExpression ts2 in relationalExpression' (ts3,Ast.BinaryExpr(Ast.GreaterOrEqual,nd1,nd3),ALLOWIN) end
-			  | (In :: ts2, ALLOWIN) => let val (ts3,nd3) = shiftExpression ts2 in relationalExpression' (ts3,Ast.BinaryExpr(Ast.In,nd1,nd3),ALLOWIN) end
-			  | (InstanceOf :: ts2, _) => let val (ts3,nd3) = shiftExpression ts2 in relationalExpression' (ts3,Ast.BinaryExpr(Ast.InstanceOf,nd1,nd3),ALLOWIN) end
-			  | (Is :: ts2, _) => let val (ts3,nd3) = typeExpression ts2 in relationalExpression' (ts3,Ast.BinaryTypeExpr(Ast.Is,nd1,nd3),ALLOWIN) end
-			  | (To :: ts2, _) => let val (ts3,nd3) = typeExpression ts2 in relationalExpression' (ts3,Ast.BinaryTypeExpr(Ast.To,nd1,nd3),ALLOWIN) end
-			  | (_,_) => (trace(["<< relationalExpression"]);(ts1,nd1))
+				(LessThan :: ts2,_) => 
+					let 
+						val (ts3,nd3) = shiftExpression ts2 
+					in 
+						relationalExpression' (ts3,Ast.BinaryExpr(Ast.Less,nd1,nd3),ALLOWIN) 
+					end
+			  | (GreaterThan :: ts2,_) => 
+					let 
+						val (ts3,nd3) = shiftExpression ts2 
+					in 
+						relationalExpression' (ts3,Ast.BinaryExpr(Ast.Greater,nd1,nd3),ALLOWIN) 
+					end
+			  | (LessThanOrEquals :: ts2, _) => 
+					let 
+						val (ts3,nd3) = shiftExpression ts2 
+					in 
+						relationalExpression' (ts3,Ast.BinaryExpr(Ast.LessOrEqual,nd1,nd3),ALLOWIN) 
+					end
+			  | (GreaterThanOrEquals :: ts2, _) => 
+					let 
+						val (ts3,nd3) = shiftExpression ts2 
+					in 
+						relationalExpression' (ts3,Ast.BinaryExpr(Ast.GreaterOrEqual,nd1,nd3),ALLOWIN) 
+					end
+			  | (In :: ts2, ALLOWIN) => 
+					let 
+						val (ts3,nd3) = shiftExpression ts2 
+					in 
+						relationalExpression' (ts3,Ast.BinaryExpr(Ast.In,nd1,nd3),ALLOWIN) 
+					end
+			  | (InstanceOf :: ts2, _) => 
+					let 
+						val (ts3,nd3) = shiftExpression ts2 
+					in 
+						relationalExpression' (ts3,Ast.BinaryExpr(Ast.InstanceOf,nd1,nd3),ALLOWIN) 
+					end
+			  | (Is :: ts2, _) => 
+					let 
+						val (ts3,nd3) = typeExpression ts2 
+					in 
+						relationalExpression' (ts3,Ast.BinaryTypeExpr(Ast.Is,nd1,nd3),ALLOWIN) 
+					end
+			  | (To :: ts2, _) => 
+					let 
+						val (ts3,nd3) = typeExpression ts2 
+					in 
+						relationalExpression' (ts3,Ast.BinaryTypeExpr(Ast.To,nd1,nd3),ALLOWIN) 
+					end
+			  | (Cast :: ts2, _) => 
+					let 
+						val (ts3,nd3) = typeExpression ts2 
+					in 
+						relationalExpression' (ts3,Ast.BinaryTypeExpr(Ast.Cast,nd1,nd3),ALLOWIN) 
+					end
+			  | (_,_) => 
+					(trace(["<< relationalExpression"]);(ts1,nd1))
     in
         relationalExpression' (ts1,nd1,beta)
     end
