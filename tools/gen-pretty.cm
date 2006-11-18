@@ -1,6 +1,5 @@
 Library
         structure Main
-	structure QuasiQuote
 is
 	main.sml
         gen-convert.sml (with: parser.quotations=true)
