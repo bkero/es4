@@ -103,19 +103,19 @@ struct
                          end
            | INTcvt => let val sym = gensym "n"
                        in
-                           (IDpat sym, APPexp (ID "Int", ID sym))
+                           (IDpat sym, APPexp (ID "PrettyRep.Int", ID sym))
                        end
            | REALcvt => let val sym = gensym "r"
                         in
-                            (IDpat sym, APPexp (ID "Real", ID sym))
+                            (IDpat sym, APPexp (ID "PrettyRep.Real", ID sym))
                         end
            | BOOLcvt => let val sym = gensym "b"
                         in
-                            (IDpat sym, APPexp (ID "Bool", ID sym))
+                            (IDpat sym, APPexp (ID "PrettyRep.Bool", ID sym))
                         end
            | STRINGcvt => let val sym = gensym "s"
                           in
-                              (IDpat sym, APPexp (ID "String", ID sym))
+                              (IDpat sym, APPexp (ID "PrettyRep.String", ID sym))
                           end
            | UNITcvt => (TUPLEpat [], IDexp (ident "Unit"))
            | OPTIONcvt ty' => let val (pat, tem) = genCvtTy ty'
@@ -125,14 +125,14 @@ struct
                                   val x = EXPhole (ID sym)
                               in
                                   (IDpat sym, %`case ^x of
-                                                     NONE => Ctor ("NONE", NONE)
-                                                   | SOME ^pat => Ctor ("SOME", SOME ^tem)`)
+                                                     NONE => PrettyRep.Ctor ("NONE", NONE)
+                                                   | SOME ^pat => PrettyRep.Ctor ("SOME", SOME ^tem)`)
                               end
            | TUPLEcvt tys => let val pairs = map genCvtTy tys
                                  val pats = map #1 pairs
                                  val tems = EXPhole (LISTexp (map #2 pairs, NONE))
                              in
-                                 (TUPLEpat pats, %`Tuple (^tems)`)
+                                 (TUPLEpat pats, %`PrettyRep.Tuple (^tems)`)
                              end
            | RECORDcvt elts => let val ids = map #1 elts
                                    val pairs = map genCvtTy (map #2 elts)
@@ -147,7 +147,7 @@ struct
                                                                     (ListPair.zip (ids, tems)),
                                                                 NONE))
                                in
-                                   (RECORDpat (ListPair.zip (ids, pats), false), %`Rec (^elts)`)
+                                   (RECORDpat (ListPair.zip (ids, pats), false), %`PrettyRep.Rec (^elts)`)
                                end
            | LISTcvt ty' => let val (pat, tem) = genCvtTy ty'
                                 val pat = PAThole pat
@@ -155,7 +155,7 @@ struct
                                 val sym = gensym "ls"
                                 val x = EXPhole (ID sym)
                             in
-                                (IDpat sym, %`List (List.map (fn ^pat => ^tem) ^x)`)
+                                (IDpat sym, %`PrettyRep.List (List.map (fn ^pat => ^tem) ^x)`)
                             end
            | REFcvt ty' => let val (pat, tem) = genCvtTy ty'
                                val pat = PAThole pat
@@ -163,7 +163,7 @@ struct
                                val sym = gensym "r"
                                val x = EXPhole (ID sym)
                            in
-                               (IDpat sym, %`case !(^x) of ^pat => ^tem`)
+                               (IDpat sym, %`case !(^x) of ^pat => PrettyRep.Ref (^tem)`)
                            end
 
     fun genCvtClause (CONScvt (name, NONE)) =
@@ -171,7 +171,7 @@ struct
             in
                 CLAUSE ([CONSpat (ident name, NONE)],
                         NONE,
-                        %`Ctor (^s, NONE)`)
+                        %`PrettyRep.Ctor (^s, NONE)`)
             end
       | genCvtClause (CONScvt (name, SOME ty)) =
             let val (pat, tem) = genCvtTy ty
@@ -180,7 +180,7 @@ struct
             in
                 CLAUSE ([CONSpat (ident name, SOME pat)],
                         NONE,
-                        %`Ctor (^s, SOME ^tem)`)
+                        %`PrettyRep.Ctor (^s, SOME ^tem)`)
             end
 
     fun genCvtFunction tb =
