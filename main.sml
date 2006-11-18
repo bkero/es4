@@ -3,10 +3,16 @@
  *)
 
 structure Main = struct
-fun main (argv0:string, argvRest:string list) = 
-    let 
-	val asts = List.map Parser.parseFile argvRest
+fun testTC argvRest =
+    let val asts = List.map Parser.parseFile argvRest
     in
-	0
+        List.app TypeChk.tcProgram asts
     end
+
+fun main (argv0:string, argvRest:string list) = 
+    ((case argvRest of
+           ("-tc"::argvRest) => testTC argvRest
+         | _ => (List.map Parser.parseFile argvRest; ()));
+     0)
+
 end

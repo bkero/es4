@@ -24,9 +24,12 @@ struct
             (id, extractTypeDecls (structureContents e))
         end
 
+    fun mapSoft f = mapPartial (fn x => (SOME (f x))
+                                        handle Fail s => (TextIO.print ("error: " ^ s ^ "; abandoning code generation for all related types\n"); NONE))
+
     fun genPretty ast =
         let val (structin, typedecls) = contents ast
-            val funbinds = concat (mapPartial genCvtFunctions (extractCvtDecls typedecls))
+            val funbinds = concat (mapSoft genCvtFunctions (extractCvtDecls typedecls))
             val body = DECLsexp [OPENdecl [IDENT ([], "Ast"), IDENT ([], "PrettyRep")],
 				 FUNdecl funbinds]
         in

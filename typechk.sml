@@ -7,6 +7,8 @@ open Ast
 val boolType = PrimaryType { name="boolean",  annotation=Named }
 val exceptionType = PrimaryType { name="exception",  annotation=Named }
 
+fun assert b s = if b then () else (raise Fail s)
+
 type TYPE_ENV = (IDENT * TYPE_EXPR) list
 
 fun extendEnv ((name, ty), env) = (name, ty)::env
@@ -38,19 +40,12 @@ fun mergeTypes t1 t2 =
 
 fun tcProgram { packages, body } = ()
 
-fun tcStmts ctxt (s::ss) = (
-	tcStmt ctxt s; 
-	tcStmts ctxt ss
-    )
-  | tcStmts _ [] = ()
+fun tcStmts ctxt ss = List.app (fn s => tcStmt ctxt s) ss
 
 and tcStmt ((ctxt as {env,lbls,retTy}):CONTEXT) stmt =
   (case stmt of
     EmptyStmt => ()
-  | ExprStmt e => (
-        tcExpr ctxt e; ()
-    )
-
+  | ExprStmt e => (tcExpr ctxt e; ())
   | IfStmt {cond,consequent,alternative} => (
 	checkConvertible (tcExpr ctxt cond) boolType;
 	tcStmt ctxt consequent;
@@ -95,36 +90,56 @@ and tcStmt ((ctxt as {env,lbls,retTy}):CONTEXT) stmt =
 	    tcBlock (withEnv (ctxt, foldl extendEnv env extensions)) body
 	end
     )
+  | DefineStmt _ =>
+        raise Fail "should have been hoisted"
 (*
-       | DefineStmt of varDefn
-       | ForEachStmt of forEnumStmt
-       | ForInStmt of forEnumStmt
-       | LetStmt of ((varDefn list) * block)
-       | SuperStmt of expr list
+       | ForEachStmt of FOR_ENUM_STMT
+       | ForInStmt of FOR_ENUM_STMT
+       | SuperStmt of EXPR list
 
        | ForStmt of { isVar: bool,
-                      defns: varDefn list,
-                      init: expr,
-                      cond: expr,
-                      update: expr,
-                      contLabel: ident option,
-                      body: stmt }
+                      defns: VAR_DEFN list,
+                      init: EXPR,
+                      cond: EXPR,
+                      update: EXPR,
+                      contLabel: IDENT option,
+                      body: STMT }
 
-       | WithStmt of { obj: expr,
-                       body: stmt }
 
-       | TryStmt of { body: block,
-                      catches: (formal * block) list,
-                      finally: block }
+       | WithStmt of { obj: EXPR,
+                       body: STMT }
 
-       | SwitchStmt of { cond: expr,
-                         cases: (expr * (stmt list)) list,
-                         default: stmt list }
+       | TryStmt of { body: BLOCK,
+                      catches: (FORMAL * BLOCK) list,
+                      finally: BLOCK }
+
+       | SwitchStmt of { cond: EXPR,
+                         cases: (EXPR * (STMT list)) list,
+                         default: STMT list }
 *)
 (*  | tcStmt _ _ _ _ => raise Expr.UnimplementedException "Unimplemented statement type" *)
 
 )
-and tcBlock ctxt (Block {pragmas=pragmas,defns=defns,stmts=stmts}) = ()
+and tcDefn ctxt d =
+    (case d of
+        VariableDefn vd => (tcVarDefn ctxt vd, [])
+    )
+
+and tcDefns ctxt [] = ([], [])
+  | tcDefns ctxt (d::ds) =
+        let val (extensions1, classes1) = tcDefn ctxt d
+            val (extensions2, classes2) = tcDefns ctxt ds
+        in
+            (extensions1 @ extensions2, classes1 @ classes2)
+        end
+
+and tcBlock (ctxt as {env,...}) (Block {pragmas=pragmas,defns=defns,stmts=stmts}) =
+    let val (extensions, classes) = tcDefns ctxt defns
+        val ctxt' = withEnv (ctxt, foldl extendEnv env extensions)
+    in
+        assert (classes = []) "class definition inside block";
+        tcStmts ctxt stmts
+    end
 
 and tcExpr ctxt e = 
 	boolType
