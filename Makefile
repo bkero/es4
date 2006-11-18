@@ -10,7 +10,7 @@ pretty-cvt.sml: tools/gen-pretty.heap.$(HEAP_SUFFIX) ast.sml
 tools/gen-pretty.heap.$(HEAP_SUFFIX): tools/gen-pretty.cm $(wildcard tools/*.sml)
 	cd tools && ml-build gen-pretty.cm Main.main gen-pretty.heap
 
-check: es4.heap
+check: es4.heap.$(HEAP_SUFFIX)
 	sml @SMLload=es4.heap tests/ident.js
 	sml @SMLload=es4.heap tests/numberliteral.es
 	sml @SMLload=es4.heap tests/stringliteral.es
