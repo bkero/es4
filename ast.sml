@@ -4,105 +4,159 @@ structure Ast = struct
 
 (* not actually unicode, maybe switch to int array to be unicode-y? *)
 
-type ustring =
-     string
+type USTRING = string
 
-type ident =
-     ustring
+type IDENT = USTRING
 
-datatype importQual =
-         QualName of ident
+datatype IMPORT_QUAL =
+         QualName of IDENT
        | QualStar
 
-datatype numberType =
-         DECIMAL | DOUBLE | INT | UINT | NUMBER
+datatype NUMBER_TYPE =
+         Decimal 
+       | Double 
+       | Int 
+       | Uint 
+       | Number
 
-datatype roundingMode =
-         CEILING | FLOOR | UP | DOWN | HALF_UP | HALF_DOWN | HALF_EVEN
+datatype ROUNDING_MODE =
+         Ceiling 
+       | Floor 
+       | Up 
+       | Down 
+       | HalfUp 
+       | HalfDown 
+       | HalfEven
 
-datatype triOp =
-         COND
+datatype TRIOP =
+         Cond
 
-datatype binOp =
-         PLUS | MINUS | TIMES | DIVIDE | REMAINDER
-       | LEFT_SHIFT | RIGHT_SHIFT | RIGHT_SHIFT_UNSIGNED
-       | BITWISE_AND | BITWISE_OR | BITWISE_XOR
-       | LOGICAL_AND | LOGICAL_OR | LOGICAL_XOR
-       | INSTANCEOF | IS | CAST | TO | IN
-       | EQUALS | NOT_EQUALS | STRICT_EQUALS | STRICT_NOT_EQUALS
-       | LESS | LESS_OR_EQUAL | GREATER | GREATER_OR_EQUAL
-       | COMMA | DEFVAR | ASSIGN
-       | ASSIGN_PLUS | ASSIGN_MINUS | ASSIGN_TIMES | ASSIGN_DIVIDE
-       | ASSIGN_REMAINDER | ASSIGN_LEFT_SHIFT
-       | ASSIGN_RIGHT_SHIFT | ASSIGN_RIGHT_SHIFT_UNSIGNED
-       | ASSIGN_BITWISE_AND | ASSIGN_BITWISE_OR | ASSIGN_BITWISE_XOR
-       | ASSIGN_LOGICAL_AND | ASSIGN_LOGICAL_OR | ASSIGN_LOGICAL_XOR
+datatype BINTYPEOP =
+		 Cast
+	   | Is
+	   | To
 
-datatype unOp =
-         DELETE | VOID | TYPEOF | PRE_INCREMENT | PRE_DECREMENT
-       | POST_INCREMENT | POST_DECREMENT | UNARY_PLUS | UNARY_MINUS | BITWISE_NOT
-       | LOGICAL_NOT | MAKE_NAMESPACE | TYPE
+datatype BINOP =
+         Plus
+       | Minus
+       | Times
+       | Divide
+       | Remainder
+       | LeftShift
+       | RightShift
+       | RightShiftUnsigned
+       | BitwiseAnd
+       | BitwiseOr
+       | BitwiseXor
+       | LogicalAnd
+       | LogicalOr
+       | LogicalXor
+       | InstanceOf
+       | In
+       | Equals
+       | NotEquals
+       | StrictEquals
+       | StrictNotEquals
+       | Less
+       | LessOrEqual
+       | Greater
+       | GreaterOrEqual
+       | Comma
+       | DefVar
+       | Assign
+       | AssignPlus
+       | AssignMinus
+       | AssignTimes
+       | AssignDivide
+       | AssignRemainder
+       | AssignLeftShift
+       | AssignRightShift
+       | AssignRightShiftUnsigned
+       | AssignBitwiseAnd
+       | AssignBitwiseOr
+       | AssignBitwiseXor
+       | AssignLogicalAnd
+       | AssignLogicalOr
+       | AssignLogicalXor
 
-datatype nulOp =
-         THIS | EMPTY
+datatype UNOP =
+         Delete
+       | Void
+       | Typeof
+       | PreIncrement
+       | PreDecrement
+       | PostIncrement
+       | PostDecrement
+       | UnaryPlus
+       | UnaryMinus
+       | BitwiseNot
+       | LogicalNot
+       | MakeNamespace
+       | Type
 
-datatype varDefnTag =
-         CONST | VAR | LETVAR | LETCONST | REST
+datatype NULOP =
+         This
+       | Empty
 
-datatype namespaceKind =
-         PUBLIC | PRIVATE | PROTECTED | INTERNAL | INTRINSIC | USERDEFINED
+datatype VAR_DEFN_TAG =
+         Const
+       | Var
+       | LetVar
+       | LetConst
+       | Rest
 
-datatype primAnnotation =
-         NAMED | NULLABLE | NONNULLABLE
+datatype NAMESPACE =
+		 Private
+       | Protected
+       | Intrinsic
+       | Public of IDENT
+       | Internal of IDENT
+       | UserDefined of IDENT
 
-datatype specialTy =
-         ANY | NULL | UNDEFINED | NOTYPE
+datatype PRIM_ANNOTATION =
+         Named
+       | Nullable
+       | NonNullable
 
-datatype directive =
-         UseNamespace of expr list
-       | UseNumber of numberType
-       | UseRounding of roundingMode
+datatype SPECIAL_TY =
+         Any
+       | Null
+       | Undefined
+       | NoType
 
-       | Import of { package: ident,
-                     qualifier: importQual,
-                     alias: ident option }
+datatype DIRECTIVE =
+         UseNamespace of EXPR list
+       | UseNumber of NUMBER_TYPE
+       | UseRounding of ROUNDING_MODE
+       | Import of { package: IDENT,
+                     qualifier: IMPORT_QUAL,
+                     alias: IDENT option }
 
-     and visibility =
-         Namespace of ( namespaceKind * ustring )
+     and FUNC = 
+		 Func of 
+         { name: IDENT,
+           attrs: ATTRIBUTES,
+           formals: FORMAL list,
+           ty: TYPE_EXPR option,
+           body: BLOCK }
+	 
+     and DEFINITION =
+         ClassDefn of CLASS_DEFN
+       | VariableDefn of VAR_DEFN
+       | FunctionDefn of FUNC
+       | InterfaceDefn of INTERFACE_DEFN
+       | NamespaceDefn of { name: IDENT,
+                            init: EXPR }
 
-     and definition =
-         NamespaceDefn of { name: ident,
-                            init: expr }
+     and FUNC_SIGN =
+         FunctionSignature of { typeparams: LITERAL list,
+                                params: FORMAL list,
+                                resulttype: TYPE_EXPR }
 
-       | ClassDefn of { name: ident,
-                        attrs: attributes,
-                        params: ident list,
-                        extends: tyExpr list,
-                        implements: tyExpr list,
-                        instanceVars: varDefn list,
-                        vars: varDefn list,
-                        constructor: funcDefn,
-                        methods: funcDefn list,
-                        initializer: stmt list }
-
-       | InterfaceDefn of { name: ident,
-                            attrs: attributes,
-                            params: ident list,
-                            extends: tyExpr list,
-                            methods: (ident * funcTy) list }
-
-       | FunctionDefn of funcDefn
-       | VariableDefn of varDefn
- 
-     and funcSign =
-         FunctionSignature of { typeparams: literal list,
-                                params: formal list,
-                                resulttype: tyExpr }
-                             
 
      (* Improve this? Probably more mutual exclusion possible. *)
-     and attributes =
-         Attributes of { vis: visibility,
+     and ATTRIBUTES =
+         Attributes of { ns: NAMESPACE,
                          override: bool,
                          static: bool,
                          final: bool,
@@ -110,194 +164,195 @@ datatype directive =
                          prototype: bool,
                          nullable: bool }
 
-     and varDefn =
-         SimpleDefn of { tag: varDefnTag,
-                         init: expr option,
-                         attrs: attributes,
-                         name: ident,
-                         ty: tyExpr option }
+     and VAR_DEFN =
+         VariableDefinition of { tag: VAR_DEFN_TAG,
+                           init: EXPR option,
+                           attrs: ATTRIBUTES,
+                           pattern: PATTERN,
+                           ty: TYPE_EXPR option }
 
-       | DestructuringDefn of { tag: varDefnTag,
-                                init: expr option,
-                                attrs: attributes,
-                                temp: ident,
-                                postInit: expr option,
-                                names: ident list,
-                                ty: tyExpr option }
+     and TYPE_EXPR =
+         SpecialType of SPECIAL_TY
+       | UnionType of TYPE_EXPR list
+       | ArrayType of TYPE_EXPR list
+       | PrimaryType of PRIM_TY
+       | FunctionType of FUNC_TY
+       | RecordType of (EXPR * TYPE_EXPR) list
+       | InstantiationType of { base: PRIM_TY,
+                                params: TYPE_EXPR list }
+       | UnresolvedType of EXPR
 
-     and tyExpr =
-         SpecialType of specialTy
-       | UnionType of tyExpr list
-       | ArrayType of tyExpr list
-       | PrimaryType of primTy
-       | FunctionType of funcTy
-       | RecordType of (expr * tyExpr) list
-       | InstantiationType of { base: primTy,
-                                params: tyExpr list }
-       | UnresolvedType of expr
-
-     and stmt =
+     and STMT =
          EmptyStmt
-       | ExprStmt of expr
-       | DefineStmt of varDefn
-       | ForEachStmt of forEnumStmt
-       | ForInStmt of forEnumStmt
-       | ThrowStmt of expr
-       | ReturnStmt of expr
-       | BreakStmt of ident option
-       | ContinueStmt of ident option
-       | BlockStmt of block
-       | LabeledStmt of (ident * stmt)
-       | LetStmt of ((varDefn list) * block)
-       | SuperStmt of expr list
-       | WhileStmt of whileStmt
-       | DoWhileStmt of whileStmt
+       | ExprStmt of EXPR
+       | DefineStmt of VAR_DEFN
+       | ForEachStmt of FOR_ENUM_STMT
+       | ForInStmt of FOR_ENUM_STMT
+       | ThrowStmt of EXPR
+       | ReturnStmt of EXPR
+       | BreakStmt of IDENT option
+       | ContinueStmt of IDENT option
+       | BlockStmt of BLOCK
+       | LabeledStmt of (IDENT * STMT)
+       | LetStmt of ((VAR_DEFN list) * BLOCK)
+       | SuperStmt of EXPR list
+       | WhileStmt of WHILE_STMT
+       | DoWhileStmt of WHILE_STMT
 
        | ForStmt of { isVar: bool,
-                      defns: varDefn list,
-                      init: expr,
-                      cond: expr,
-                      update: expr,
-                      contLabel: ident option,
-                      body: stmt }
+                      defns: VAR_DEFN list,
+                      init: EXPR,
+                      cond: EXPR,
+                      update: EXPR,
+                      contLabel: IDENT option,
+                      body: STMT }
 
-       | IfStmt of { cond: expr,
-                     consequent: stmt,
-                     alternative: stmt }
+       | IfStmt of { cond: EXPR,
+                     consequent: STMT,
+                     alternative: STMT }
 
-       | WithStmt of { obj: expr,
-                       body: stmt }
+       | WithStmt of { obj: EXPR,
+                       body: STMT }
 
-       | TryStmt of { body: block,
-                      catches: (formal * block) list,
-                      finally: block }
+       | TryStmt of { body: BLOCK,
+                      catches: (FORMAL * BLOCK) list,
+                      finally: BLOCK }
 
-       | SwitchStmt of { cond: expr,
-                         cases: (expr * (stmt list)) list,
-                         default: stmt list }
+       | SwitchStmt of { cond: EXPR,
+                         cases: (EXPR * (STMT list)) list,
+                         default: STMT list }
 
-     and expr =
-         TrinaryExpr of (triOp * expr * expr * expr)
-       | BinaryExpr of (binOp * expr * expr)
-       | BinaryTypeExpr of (binOp * expr * tyExpr)
-       | UnaryExpr of (unOp * expr)
-       | TypeExpr of tyExpr
-       | NullaryExpr of nulOp
-       | YieldExpr of expr option
-       | SuperExpr of expr option
-       | LiteralExpr of literal
+	   | DefnStmt of DEFINITION list
 
-       | CallExpr of {func: expr,
-                      actuals: expr list}
+	   | PragmaStmt of DIRECTIVE list
 
-       | Property of { indirect: bool,
-                       obj: expr option,
-                       field: expr }
+     and EXPR =
+         TrinaryExpr of (TRIOP * EXPR * EXPR * EXPR)
+       | BinaryExpr of (BINOP * EXPR * EXPR)
+       | BinaryTypeExpr of (BINTYPEOP * EXPR * TYPE_EXPR)
+       | UnaryExpr of (UNOP * EXPR)
+       | TypeExpr of TYPE_EXPR
+       | NullaryExpr of NULOP
+       | YieldExpr of EXPR option
+       | SuperExpr of EXPR option
+       | LiteralExpr of LITERAL
 
-	   | Ref of { base : expr option, ident : identExpr }
+       | CallExpr of {func: EXPR,
+                      actuals: EXPR list}
 
-       | QualIdent of { qual: expr option,
-                        ident: ustring,
-                        opennss: visibility list }
+       | Ref of { base: EXPR option,
+                  ident: IDENT_EXPR }
 
-       | QualExpr of { qual: expr option,
-                        expr: expr,
-                        opennss: visibility list }
+       | LetExpr of { defs: VAR_DEFN list,
+                      body: EXPR }
 
-       | AttrQualIdent of { indirect: bool,
-                            operand: expr }
+       | NewExpr of { obj: EXPR,
+                      actuals: EXPR list }
 
-       | LetExpr of { defs: varDefn list,
-                      body: expr }
+       | FunExpr of { ident: IDENT option,
+                      sign: FUNC_SIGN,
+                      body: BLOCK }
 
-       | NewExpr of { obj: expr,
-                      actuals: expr list }
-       | FunExpr of { ident: ident option,
-					  sign: funcSign,
-                      body: block }
-       | ListExpr of expr list
- 
-     and identOrExpr =
-         Ident of ident
-       | Expr of expr
+       | ListExpr of EXPR list
 
-	 and identExpr =
-	     QualifiedIdentifier of { qual : expr, ident : ustring }
-	   | QualifiedExpression of { qual : expr, expr : expr }
-       | AttributeIdentifier of identExpr
-	   | Identifier of ident
-	   | Expression of expr   (* for bracket exprs: o[x] and @[x] *)
+     and IDENT_EXPR =
+         QualifiedIdentifier of { qual : EXPR,
+                                  ident : USTRING }
+       | QualifiedExpression of { qual : EXPR,
+                                  expr : EXPR }
+       | AttributeIdentifier of IDENT_EXPR
+       | Identifier of IDENT
+       | Expression of EXPR   (* for bracket exprs: o[x] and @[x] *)
 
-     and literal =
+     and LITERAL =
          LiteralNull
        | LiteralUndefined
        | LiteralNumber of real
        | LiteralBoolean of bool
-       | LiteralString of ustring
-       | LiteralArray of expr list
-       | LiteralXML of expr list
-       | LiteralNamespace of visibility
+       | LiteralString of USTRING
+       | LiteralArray of EXPR list
+       | LiteralXML of EXPR list
+       | LiteralNamespace of NAMESPACE
 
-       | LiteralObject of { name: expr,
-                            init: expr } list
+       | LiteralObject of
+         { name: EXPR,
+           init: EXPR } list
 
-       | LiteralRegExp of { pattern: ustring,
-                            global: bool,
-                            multiline: bool,
-                            caseInsensitive: bool }
-    and block = Block of
-         { directives: directive list,
-           defns: definition list,
-           stmts: stmt list }
+       | LiteralRegExp of
+         { str: USTRING }
 
-withtype 
+    and BLOCK = Block of
+         { pragmas: DIRECTIVE list,
+           defns: DEFINITION list,
+           stmts: STMT list }
 
-         funcTy =
-         { paramTypes: tyExpr list,
-           returnType: tyExpr,
-           boundThisType: tyExpr option,
+	and PATTERN =
+		ObjectPattern of { name: EXPR, ptrn : PATTERN } list
+	  | ArrayPattern of PATTERN list
+	  | SimplePattern of EXPR
+
+withtype
+
+         FUNC_TY =
+         { paramTypes: TYPE_EXPR option list,
+           returnType: TYPE_EXPR,
+           boundThisType: TYPE_EXPR option,
            hasRest: bool }
 
-     and formal =
-         { name: ident,
-           ty: tyExpr option,
-           init: expr option,
-		   tag: varDefnTag,
+     and FORMAL =
+         { pattern: PATTERN,
+           ty: TYPE_EXPR option,
+           init: EXPR option,
+           tag: VAR_DEFN_TAG,
            isRest: bool }
 
-     and typedIdent =
-         { name: ident,
-           ty: tyExpr option }
+     and TYPED_IDENT =
+         { name: IDENT,
+           ty: TYPE_EXPR option }
 
-     and funcDefn =
-         { name: ident,
-           attrs: attributes,
-           formals: formal list,
-           ty: tyExpr option,
-           body: block }
+     and CLASS_DEFN =
+         { name: IDENT,
+           attrs: ATTRIBUTES,
+           params: IDENT list,
+           extends: TYPE_EXPR list,
+           implements: TYPE_EXPR list,
+           instanceVars: VAR_DEFN list,
+           vars: VAR_DEFN list,
+           constructor: FUNC,
+           methods: FUNC list,
+           initializer: STMT list }
 
-     and primTy =
-         { name: string,
-           annotation: primAnnotation }
+     and INTERFACE_DEFN =
+         { name: IDENT,
+           attrs: ATTRIBUTES,
+           params: IDENT list,
+           extends: TYPE_EXPR list,
+           methods: (IDENT * FUNC_TY) list }
 
-     and forEnumStmt =
+     and PRIM_TY =
+         { name: USTRING,
+           annotation: PRIM_ANNOTATION }
+
+     and FOR_ENUM_STMT =
          { isVar: bool,
-           init: expr,
-           obj: expr,
-           defns: varDefn list,
-           contLabel: ident option,
-           body: stmt }
+           init: EXPR,
+           obj: EXPR,
+           defns: VAR_DEFN list,
+           contLabel: IDENT option,
+           body: STMT }
 
-     and whileStmt =
-         { cond: expr,
-           body: stmt,
-           contLabel: ident option }
+     and WHILE_STMT =
+         { cond: EXPR,
+           body: STMT,
+           contLabel: IDENT option }
 
-type package = { names: ident list,
-                 fullname: ustring,
-                 body: block }
+type PACKAGE =
+     { names: IDENT list,
+       fullname: USTRING,
+       body: BLOCK }
 
-type program = { packages: package list,
-                 body: block }
+type PROGRAM =
+     { packages: PACKAGE list,
+       body: BLOCK }
 
 end

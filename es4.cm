@@ -5,11 +5,8 @@ Library
         structure Token
         structure Lexer
         structure Parser
-        structure Name
-        structure NameMap
-        structure Value
-        structure Expr
-        structure Stmt
+        structure Eval
+	structure Mach
         structure TypeChk
 
 is
@@ -21,12 +18,9 @@ is
         token.sml
         lexer.lex
         parser.sml
-        name.sml
-        namemap.sml
-        value.sml
-        expr.sml
-        stmt.sml
-        typechk.sml
+        eval.sml
+		mach.sml
+		typechk.sml
 
         $/basis.cm
         $/smlnj-lib.cm

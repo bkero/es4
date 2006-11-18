@@ -1,1 +1,1 @@
-function .<t>(x) { }
+(function .<t>(x) { })

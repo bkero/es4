@@ -4,11 +4,12 @@ structure PP = PPStreamFn(structure Token = StringToken
 structure PrettyRep = struct
 
 datatype smlDataRep =
-         Ctor of string * (smlDataRep list)
+         Ctor of string * (smlDataRep option)
        | Rec of (string * smlDataRep) list
        | List of smlDataRep list
        | Tuple of smlDataRep list
        | String of string
+       | Ref of smlDataRep
        | Real of real
        | Bool of bool
 
@@ -24,8 +25,8 @@ fun ppSmlDataRep stream (rep : smlDataRep) =
           | sublist (r::rs) = (sub r; List.app (fn x => (str ","; sp(); sub x)) rs)
     in
     case rep of
-        Ctor (ctor, []) => str ctor
-      | Ctor (ctor, args) => (ob(); str "("; str ctor; sp(); sublist args; str ")"; cb())
+        Ctor (ctor, NONE) => str ctor
+      | Ctor (ctor, SOME arg) => (ob(); str ctor; sp (); sub arg; cb())
       | Rec [] => str "{}"
       | Rec (row::rows) =>
         let
@@ -39,6 +40,7 @@ fun ppSmlDataRep stream (rep : smlDataRep) =
       | List rs => (ob(); str "["; sublist rs; str "]"; cb())
       | Tuple rs => (ob(); str "("; sublist rs; str ")"; cb())
       | String s => (str "\""; str (String.toString s); str "\"")
+      | Ref r => (ob(); str "("; str "ref"; sp; sub r; str ")"; cb())
       | Bool true => str "true"
       | Bool false => str "false"
       | Real r => str (Real.toString r)

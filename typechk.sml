@@ -2,76 +2,180 @@ structure TypeChk = struct
 
 exception IllTypedException of string
 
-val boolType = Ast.PrimaryType { name="boolean",  annotation=Ast.NAMED }
-val exceptionType = Ast.PrimaryType { name="exception",  annotation=Ast.NAMED }
+open Ast
+
+val boolType = PrimaryType { name="boolean",  annotation=Named }
+val exceptionType = PrimaryType { name="exception",  annotation=Named }
+
+fun assert b s = if b then () else (raise Fail s)
+
+type TYPE_ENV = (IDENT * TYPE_EXPR) list
+
+fun extendEnv ((name, ty), env) = (name, ty)::env
+
+type CONTEXT = {env: TYPE_ENV, lbls: IDENT option list, retTy: TYPE_EXPR}
+
+fun withEnv ({env=_, lbls=lbls, retTy=retTy}, env) = {env=env, lbls=lbls, retTy=retTy}
+
+fun withLbls ({env=env, lbls=_, retTy=retTy}, lbls) = {env=env, lbls=lbls, retTy=retTy}
+
+fun withRetTy ({env=env, lbls=lbls, retTy=_}, retTy) = {env=env, lbls=lbls, retTy=retTy}
+
+fun checkConvertible t1 t2 = ()
+
+fun checkForDuplicates' [] = ()
+  | checkForDuplicates' (x::xs) =
+        if List.exists (fn y => x = y) xs
+	then raise IllTypedException "concurrent definition"
+        else checkForDuplicates' xs
+
+fun checkForDuplicates extensions =
+    let val (names, _) = ListPair.unzip extensions
+    in
+        checkForDuplicates' names
+    end
+
+fun mergeTypes t1 t2 =
+	t1
 
 fun tcProgram { packages, body } = ()
 
-fun tcStmts env lbls retTy (s::ss) = (
-	tcStmt env lbls retTy s; 
-	tcStmts env lbls retTy ss
-    )
-  | tcStmts env _ _ [] = ()
+fun tcStmts ctxt ss = List.app (fn s => tcStmt ctxt s) ss
 
-and tcStmt env lbls retTy (Ast.ExprStmt e) = 
-    (
-	tcExpr env e;
-	()
-    )
-
-  | tcStmt env lbls retTy (Ast.IfStmt {cond,consequent,alternative}) = 
-    (
-	checkConvertible (tcExpr env cond) boolType;
-	tcStmt env lbls retTy consequent;
-	tcStmt env lbls retTy alternative
+and tcStmt ((ctxt as {env,lbls,retTy}):CONTEXT) stmt =
+  (case stmt of
+    EmptyStmt => ()
+  | ExprStmt e => (tcExpr ctxt e; ())
+  | IfStmt {cond,consequent,alternative} => (
+	checkConvertible (tcExpr ctxt cond) boolType;
+	tcStmt ctxt consequent;
+	tcStmt ctxt alternative
     )
 
-  | tcStmt env lbls retTy (Ast.WhileStmt {cond,body,contLabel}) = 
-    (
-	checkConvertible (tcExpr env cond) boolType;
-	tcStmt env (contLabel::lbls) retTy body
+  | (DoWhileStmt {cond,body,contLabel} | WhileStmt {cond,body,contLabel}) => (
+	checkConvertible (tcExpr ctxt cond) boolType;
+	tcStmt (withLbls (ctxt, contLabel::lbls)) body
     )
 
-  | tcStmt env lbls retTy (Ast.ReturnStmt e) = 
-	checkConvertible (tcExpr env e) retTy
+  | ReturnStmt e => 
+	checkConvertible (tcExpr ctxt e) retTy
 
-  | tcStmt env lbls retTy (Ast.BreakStmt NONE) =
- (* | tcStmt env lbls retTy (Ast.ContinueStmt NONE) =  *)
+  | (BreakStmt NONE | ContinueStmt NONE) =>  
     (
 	case lbls of
 	  [] => raise IllTypedException "Not in a loop"
 	| _ => ()
     )
 
-  | tcStmt env lbls retTy (Ast.BreakStmt (SOME lbl)) = 
-(*  | tcStmt env lbls retTy (Ast.ContinueStmt (SOME lbl)) =  *)
+  | (BreakStmt (SOME lbl) | ContinueStmt (SOME lbl)) => 
     (
 	if List.exists (fn x => x=(SOME lbl)) lbls	
 	then ()
 	else raise IllTypedException "No such label"
     )
 
-  | tcStmt env lbls retTy (Ast.BlockStmt b) = tcBlock env lbls retTy b
+  | BlockStmt b => tcBlock ctxt b
 
-  | tcStmt env lbls retTy (Ast.LabeledStmt (lab, s)) = 
-	tcStmt env ((SOME lab)::lbls) retTy s
-	(*TODO - check on this *)
+  | LabeledStmt (lab, s) => 
+	tcStmt (withLbls (ctxt, ((SOME lab)::lbls))) s
+ 
+  | ThrowStmt t => 
+	checkConvertible (tcExpr ctxt t) exceptionType
 
-  | tcStmt env lbls retTy (Ast.ThrowStmt t) = 
-	checkConvertible (tcExpr env t) exceptionType
+  | LetStmt (defns, body) =>
+    (
+        let val extensions = List.concat (List.map (fn d => tcVarDefn ctxt d) defns)
+        in
+	    checkForDuplicates extensions;
+	    tcBlock (withEnv (ctxt, foldl extendEnv env extensions)) body
+	end
+    )
+  | DefineStmt _ =>
+        raise Fail "should have been hoisted"
+(*
+       | ForEachStmt of FOR_ENUM_STMT
+       | ForInStmt of FOR_ENUM_STMT
+       | SuperStmt of EXPR list
 
-  | tcStmt _ _ _ _ = raise Expr.UnimplementedException "Unimplemented statement type"
+       | ForStmt of { isVar: bool,
+                      defns: VAR_DEFN list,
+                      init: EXPR,
+                      cond: EXPR,
+                      update: EXPR,
+                      contLabel: IDENT option,
+                      body: STMT }
 
-and tcBlock env lbls retTy (Ast.Block {directives=directives,defns=defns,stmts=stmts}) = ()
 
-and tcExpr env e = 
+       | WithStmt of { obj: EXPR,
+                       body: STMT }
+
+       | TryStmt of { body: BLOCK,
+                      catches: (FORMAL * BLOCK) list,
+                      finally: BLOCK }
+
+       | SwitchStmt of { cond: EXPR,
+                         cases: (EXPR * (STMT list)) list,
+                         default: STMT list }
+*)
+(*  | tcStmt _ _ _ _ => raise Expr.UnimplementedException "Unimplemented statement type" *)
+
+)
+and tcDefn ctxt d =
+    (case d of
+        VariableDefn vd => (tcVarDefn ctxt vd, [])
+    )
+
+and tcDefns ctxt [] = ([], [])
+  | tcDefns ctxt (d::ds) =
+        let val (extensions1, classes1) = tcDefn ctxt d
+            val (extensions2, classes2) = tcDefns ctxt ds
+        in
+            (extensions1 @ extensions2, classes1 @ classes2)
+        end
+
+and tcBlock (ctxt as {env,...}) (Block {pragmas=pragmas,defns=defns,stmts=stmts}) =
+    let val (extensions, classes) = tcDefns ctxt defns
+        val ctxt' = withEnv (ctxt, foldl extendEnv env extensions)
+    in
+        assert (classes = []) "class definition inside block";
+        tcStmts ctxt stmts
+    end
+
+and tcExpr ctxt e = 
 	boolType
 
-and checkConvertible t1 t2 = ()
+(*
+     and expr =
+         TrinaryExpr of (triOp * expr * expr * expr)
+       | BinaryExpr of (binOp * expr * expr)
+       | UnaryExpr of (unOp * expr)
+       | NullaryExpr of nulOp
+       | YieldExpr of expr
+       | SuperExpr of expr list
+       | LiteralExpr of literal
 
-and mergeTypes t1 t2 =
-	t1
+       | CallExpr of {func: expr,
+                      actuals: expr list}
 
+       | Property of { indirect: bool,
+                       obj: expr,
+                       field: expr }
+
+       | QualIdent of { lhs: identOrExpr option,
+                        rhs: identOrExpr,
+                        openNamespaces: ident list }
+
+       | AttrQualIdent of { indirect: bool,
+                            operand: identOrExpr }
+
+       | LetExpr of { defs: varDefn list,
+                      body: expr }
+
+       | NewExpr of { obj: expr,
+                      actuals: expr list }
+*)
+
+and tcVarDefn ctxt (VariableDefinition {tag,init,attrs,pattern=Ast.SimplePattern(name),ty}) = []
 
 
 end
