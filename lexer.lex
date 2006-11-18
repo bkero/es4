@@ -30,9 +30,9 @@ let
 	   * The lexbreak tokens represent choice points for the parser. We
 	   * return two thunks to it: one for each lexer start state
 	   * it might wish to resume lexing in.
-	   *)	    
+	   *)
 	    case tok of 
-		LexBreakDiv _ => (add Div; add tok; stop ())
+            LexBreakDiv _ => (add tok; stop ())
 	      | LexBreakDivAssign _ => (add DivAssign; add tok; stop ())
 	      | LexBreakLessThan _ => (add LessThan; add tok; stop ())
 	      | Eof => (add Eof; stop ())
@@ -103,7 +103,7 @@ charEscape            = "\\" ([abtnvfr\"\'\\]|"x"{hexDigit}{2}|[0-7]{1}{3});
 
 <INITIAL>"/"               => (LexBreakDiv
 				   { lex_initial = 
-				     (fn _ => token_list 
+				     (fn _ => Div :: token_list 
 						  (fn _ => (YYBEGIN INITIAL; lex ()))),
 				     lex_regexp = 
 				     (fn _ => token_list 

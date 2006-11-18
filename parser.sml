@@ -23,7 +23,7 @@ fun log ss =
      List.app TextIO.print ss; 
      TextIO.print "\n")
 
-val trace_on = true
+val trace_on = false
 
 fun trace ss =
 	if trace_on then log ss else ()
@@ -301,7 +301,7 @@ and typeIdentifier ts =
             let
                 val (ts3,nd3) = typeExpressionList ts2
             in case ts3 of
-                RIGHTANGLE :: ts4 => (ts4,nd3)
+                RIGHTANGLE :: ts4 => (ts4,Ast.TypeIdentifier {ident=nd1,typeParams=nd3})
               | _ => raise ParseError
             end
       | _ => (ts1, nd1)        
@@ -709,7 +709,8 @@ and objectLiteral ts =
 				val (ts2,nd2) = fieldList ts1
 			in case ts2 of
 				RightBrace :: Colon :: ts3 => raise ParseError (* todo: record type anno *)
-			  | RightBrace :: ts3 => (trace(["<< objectLiteral with next=",tokenname(hd(ts3))]);(ts3,Ast.LiteralObject nd2))
+			  | RightBrace :: ts3 => (trace(["<< objectLiteral with next=",tokenname(hd(ts3))]);
+				(ts3,Ast.LiteralObject {expr=nd2,ty=NONE}))
 			  | _ => raise ParseError
 			end
 	  | _ => raise ParseError
@@ -741,7 +742,12 @@ and fieldList ts =
 			end
 	in case ts of
 		RightBrace :: ts1 => (ts1,[])
-	  | _ => nonemptyFieldList (ts,ALLOWLIST)
+	  | _ => 
+		let
+			val (ts1,nd1) = nonemptyFieldList (ts,ALLOWLIST)
+		in
+			(ts1,nd1)
+ 		end
 	end
 
 (*
@@ -810,12 +816,17 @@ and fieldName ts =
 and arrayLiteral ts =
     let val _ = trace([">> arrayLiteral with next=",tokenname(hd(ts))]) 
 	in case ts of
-		LeftBracket :: ts1 => 
+		LeftBracket :: _ => 
 			let
-				val (ts2,nd2) = elementList (ts1,ALLOWLIST)
-			in case ts2 of
-				RightBracket :: Colon :: ts3 => raise ParseError (* todo: array type anno *)
-			  | RightBracket :: ts3 => (ts3,Ast.LiteralExpr(Ast.LiteralArray nd2))
+				val (ts1,nd1) = elementList (tl ts,ALLOWLIST)
+			in case ts1 of
+				RightBracket :: Colon :: _ => 
+					let
+						val (ts2,nd2) = arrayType (tl (tl ts1))
+					in
+						(ts2,Ast.LiteralExpr(Ast.LiteralArray {expr=nd1,ty=SOME nd2}))
+					end
+			  | RightBracket :: _ => (tl ts1,Ast.LiteralExpr(Ast.LiteralArray {expr=nd1,ty=NONE}))
 			  | _ => raise ParseError
 			end
 	  | _ => raise ParseError
@@ -1358,25 +1369,24 @@ and multiplicativeExpression ts =
 		val (ts1,nd1) = unaryExpression ts
 		fun multiplicativeExpression' (ts1, nd1) =
 			case ts1 of
-				Mult :: ts2 => let val (ts3,nd3) = unaryExpression ts2 in multiplicativeExpression' (ts3,Ast.BinaryExpr(Ast.Times,nd1,nd3)) end
-			  | Div :: LexBreakDiv x :: _ => 
+				Mult :: ts2 => 
 					let 
-						val ts2 = (#lex_initial x)()
 						val (ts3,nd3) = unaryExpression ts2 
 					in 
-						multiplicativeExpression' (ts3,Ast.BinaryExpr(Ast.Divide,nd1,nd3)) 
+						multiplicativeExpression' (ts3,Ast.BinaryExpr(Ast.Times,nd1,nd3)) 
 					end
 
-		(* fixme: modify the lexer so that it puts LEXBREAK_SLASH 
-		  			(as in the '/' character rather than the Div token) 
-                  	in the current token stream and Div into the next one 
-					so that the previous case would be coded like this:
-
-			  | LEXBREAK_SLASH x :: _ =>
-					let	in case (#lex_initial x)() of
-						Div :: ts2 => let val (ts3,nd3) = unaryExpression ts2 in multiplicativeExpression' (ts3,Ast.BinaryExpr(Ast.DIVID,nd1,nd3)) end
-						_ => raise ParseError
-		*)
+			  | LexBreakDiv x :: _ =>
+					let	
+					in case (#lex_initial x)() of
+						Div :: ts2 => 
+							let 
+								val (ts3,nd3) = unaryExpression ts2 
+            				in 
+								multiplicativeExpression' (ts3,Ast.BinaryExpr(Ast.Divide,nd1,nd3)) 
+							end
+					  | _ => raise ParseError
+					end
 
 			  | Modulus :: ts2 => let val (ts3,nd3) = unaryExpression ts2 in multiplicativeExpression' (ts3,Ast.BinaryExpr(Ast.Remainder,nd1,nd3)) end
 			  | _ => (trace(["<< multiplicative"]);(ts1,nd1))
@@ -2120,6 +2130,72 @@ Type EXPRESSIONS
 
 (*
 
+TypeExpression    
+    TypeIdentifier
+    TypeIdentifier  !
+    TypeIdentifier  ?
+    FunctionType
+    UnionType
+    RecordType
+    ArrayType
+    
+*)
+
+and typeExpression ts =
+    let val _ = trace([">> typeExpression with next=",tokenname(hd ts)])
+    in case ts of
+
+       Function :: _ => 
+			let
+				val (ts1,nd1) = functionType ts
+			in
+				trace(["<< typeExpression with next=",tokenname(hd ts)]);
+				(ts1,nd1)
+			end
+(*
+       LeftParen :: ts1 => unionType ts
+       LeftBrace :: ts1 => recordType ts
+*)
+     | LeftBracket :: ts1 => arrayType ts
+	 | _ => 
+            let
+                val (ts1,nd1) = typeIdentifier ts
+				val rf = Ast.Ref {base=NONE,ident=nd1}
+            in
+                (ts1,Ast.PrimaryType{ident=nd1,annotation=Ast.Named}) 
+            end
+    end
+
+(*
+
+TypeExpressionList    
+    TypeExpression
+    TypeExpressionList  ,  TypeExpression
+
+*)
+
+and typeExpressionList (ts): (token list * Ast.TYPE_EXPR list) = 
+    let
+		fun typeExpressionListPrime (ts,nd) =
+	    	let
+		    in case ts of
+    		    Comma :: _ =>
+					let
+            			val (ts1,nd1) = typeExpression(tl ts)
+	               		val (ts2,nd2) = typeExpressionListPrime(ts1,nd1)
+	    	      	in
+    	    	     	(ts2, nd1 :: nd2)
+	    	      	end
+	    	  | _ => (ts, nd :: [])
+		    end
+        val (ts1,nd1) = typeExpression(ts)
+        val (ts2,nd2) = typeExpressionListPrime(ts1,nd1)
+    in
+        (ts2,nd2)
+    end
+
+(*
+
 FunctionType    
     function  FunctionSignature
     
@@ -2192,6 +2268,20 @@ ArrayType
     
 *)
 
+and arrayType ts =
+    let val _ = trace([">> arrayType with next=",tokenname(hd(ts))]) 
+	in case ts of
+		LeftBracket :: _ => 
+			let
+				val (ts1,nd1) = elementTypeList (tl ts)
+			in case ts1 of
+			    RightBracket :: _ => (tl ts1,Ast.ArrayType nd1)
+			  | _ => raise ParseError
+			end
+	  | _ => raise ParseError
+	end
+
+
 (*
 
 ElementTypeList    
@@ -2202,53 +2292,29 @@ ElementTypeList
     
 *)
 
-(*
-
-TypeExpression    
-    TypeIdentifier
-    TypeIdentifier  !
-    TypeIdentifier  ?
-    FunctionType
-    UnionType
-    RecordType
-    ArrayType
-    
-*)
-
-and typeExpression ts =
-    let val _ = trace([">> typeExpression with next=",tokenname(hd ts)])
-    in case ts of
-
-       Function :: _ => 
+and elementTypeList (ts) : token list * Ast.TYPE_EXPR list =
+    let val _ = trace([">> elementTypeList with next=",tokenname(hd(ts))]) 
+	in case ts of
+		RightBracket :: _ => (ts,[])
+	  | Comma :: _ => 
 			let
-				val (ts1,nd1) = functionType ts
+				val (ts1,nd1) = elementTypeList (tl ts)
 			in
-				trace(["<< typeExpression with next=",tokenname(hd ts)]);
-				(ts1,nd1)
+				(ts1,Ast.SpecialType(Ast.Any) :: nd1)
 			end
-(*
-       LeftParen :: ts1 => unionType ts
-       LeftBrace :: ts1 => recordType ts
-       LeftBracket :: ts1 => arrayType ts
-*)
-	 | _ => 
-            let
-                val (ts1,nd1) = typeIdentifier ts
-				val rf = Ast.Ref {base=NONE,ident=nd1}
-            in
-                (ts1,Ast.UnresolvedType(rf)) (* Ast.PrimaryType {name=nd1,annotation=Ast.NAMED}) *)
-            end
-    end
-
-(*
-
-TypeExpressionList    
-    TypeExpression
-    TypeExpressionList  ,  TypeExpression
-
-*)
-
-
+	  | _ =>
+			let
+				val (ts1,nd1) = typeExpression (ts)
+			in case ts1 of
+				Comma :: _ =>
+					let
+						val (ts2,nd2) = elementTypeList (tl ts1)
+					in
+						(ts2,nd1::nd2)
+					end
+			  | _ => (ts1,nd1::[])
+			end
+	end
 
 (* STATEMENTS *)
 
@@ -2881,12 +2947,6 @@ ParameterisedClassName
 
 *)
 
-
-and typeExpressionList ts = raise ParseError
-
-(*
-
-*)
 
 and packageDefinition ts = raise ParseError
 

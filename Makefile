@@ -1,8 +1,8 @@
 SML_BIN = $(shell dirname `which sml`)
 HEAP_SUFFIX = $(shell $(SML_BIN)/.arch-n-opsys | sed 's/^.*HEAP_SUFFIX=//')
-PARSE_TESTS = tests/ident.js tests/numberliteral.es tests/stringliteral.es tests/listexpr.es tests/mult.es tests/div.es tests/cond.es tests/fexpr.es tests/atident.es tests/assign.es tests/call.es tests/objref.es tests/objectliteral.es tests/arrayliteral.es #tests/cast.es tests/objectpattern.es tests/typedident.es tests/typeexpr.es
+PARSE_TESTS = tests/ident.js tests/numberliteral.es tests/stringliteral.es tests/listexpr.es tests/mult.es tests/div.es tests/cond.es tests/fexpr.es tests/atident.es tests/assign.es tests/call.es tests/objref.es tests/objectliteral.es tests/arrayliteral.es tests/cast.es tests/objectpattern.es tests/typedident.es tests/typeexpr.es tests/typedarray.es tests/vardefn.es
 #tests/assign_err.es
-#tests/vardefn.es
+
 TC_TESTS = tests/numberliteral.es
 
 es4.heap.$(HEAP_SUFFIX): $(wildcard *.sml) pretty-cvt.sml

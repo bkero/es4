@@ -4,8 +4,8 @@ exception IllTypedException of string
 
 open Ast
 
-val boolType = PrimaryType { name="boolean",  annotation=Named }
-val exceptionType = PrimaryType { name="exception",  annotation=Named }
+val boolType = PrimaryType { ident=Ast.Identifier "boolean",  annotation=Named }
+val exceptionType = PrimaryType { ident=Ast.Identifier "exception",  annotation=Named }
 
 fun assert b s = if b then () else (raise Fail s)
 

@@ -175,9 +175,9 @@ datatype DIRECTIVE =
          SpecialType of SPECIAL_TY
        | UnionType of TYPE_EXPR list
        | ArrayType of TYPE_EXPR list
-       | PrimaryType of PRIM_TY
+       | PrimaryType of { ident : IDENT_EXPR, annotation : PRIM_ANNOTATION }
        | FunctionType of FUNC_TY
-       | RecordType of (EXPR * TYPE_EXPR) list
+       | RecordType of FIELD_TYPE list
        | InstantiationType of { base: PRIM_TY,
                                 params: TYPE_EXPR list }
        | UnresolvedType of EXPR
@@ -263,6 +263,7 @@ datatype DIRECTIVE =
        | AttributeIdentifier of IDENT_EXPR
        | Identifier of IDENT
        | Expression of EXPR   (* for bracket exprs: o[x] and @[x] *)
+	   | TypeIdentifier of { ident : IDENT_EXPR, typeParams : TYPE_EXPR list }
 
      and LITERAL =
          LiteralNull
@@ -270,13 +271,13 @@ datatype DIRECTIVE =
        | LiteralNumber of real
        | LiteralBoolean of bool
        | LiteralString of USTRING
-       | LiteralArray of EXPR list
+       | LiteralArray of { expr:EXPR list, ty:TYPE_EXPR option }
        | LiteralXML of EXPR list
        | LiteralNamespace of NAMESPACE
 
        | LiteralObject of
-         { name: EXPR,
-           init: EXPR } list
+         { expr : FIELD list,
+		   ty: TYPE_EXPR option }
 
        | LiteralRegExp of
          { str: USTRING }
@@ -293,7 +294,15 @@ datatype DIRECTIVE =
 
 withtype
 
-         FUNC_TY =
+		 FIELD =
+		 { name: EXPR,
+           init: EXPR }
+
+     and FIELD_TYPE =
+		 { name: EXPR,
+           ty: TYPE_EXPR }
+
+     and FUNC_TY =
          { paramTypes: TYPE_EXPR option list,
            returnType: TYPE_EXPR,
            boundThisType: TYPE_EXPR option,
