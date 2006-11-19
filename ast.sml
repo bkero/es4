@@ -113,10 +113,10 @@ datatype NAMESPACE =
        | Internal of IDENT
        | UserDefined of IDENT
 
-datatype PRIM_ANNOTATION =
+datatype PRIM_KIND =
          Named
        | Nullable
-       | NonNullable
+       | NotNullable
 
 datatype SPECIAL_TY =
          Any
@@ -175,7 +175,7 @@ datatype DIRECTIVE =
          SpecialType of SPECIAL_TY
        | UnionType of TYPE_EXPR list
        | ArrayType of TYPE_EXPR list
-       | PrimaryType of { ident : IDENT_EXPR, annotation : PRIM_ANNOTATION }
+       | PrimaryType of { ident : IDENT_EXPR, kind : PRIM_KIND }
        | FunctionType of FUNC_TY
        | RecordType of FIELD_TYPE list
        | InstantiationType of { base: PRIM_TY,
@@ -255,7 +255,8 @@ datatype DIRECTIVE =
 
        | ListExpr of EXPR list
 
-     and IDENT_EXPR =
+ 
+    and IDENT_EXPR =
          QualifiedIdentifier of { qual : EXPR,
                                   ident : USTRING }
        | QualifiedExpression of { qual : EXPR,
@@ -340,7 +341,7 @@ withtype
 
      and PRIM_TY =
          { name: USTRING,
-           annotation: PRIM_ANNOTATION }
+           kind: PRIM_KIND }
 
      and FOR_ENUM_STMT =
          { isVar: bool,
