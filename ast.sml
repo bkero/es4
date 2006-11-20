@@ -149,7 +149,7 @@ datatype DIRECTIVE =
                             init: EXPR }
 
      and FUNC_SIGN =
-         FunctionSignature of { typeparams: LITERAL list,
+         FunctionSignature of { typeparams: IDENT list,
                                 params: FORMAL list,
                                 resulttype: TYPE_EXPR }
 
