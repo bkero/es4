@@ -1,27 +1,43 @@
-
+/*
+	Attempt at modeling ECMA-262 builtin classes using the new ECMA4 language.
+	
+	Note that these are intended to reflect ECMA-262 behavior, which may omit
+	common-but-nonstandard extensions used in various implementations (e.g., SpiderMonkey).
+	
+	This also makes no attempt at efficiency of implementation, preferring clarity and
+	simplicity instead.
+*/
 
 package
 {
 	public dynamic class Array extends Object
 	{		
-		// E262 {DontEnum, DontDelete}
-		public native function get length():uint;
-		public native function set length(newLength:uint);
+		// 15.4.1 The Array Constructor Called as a Function
+		static function call *(ident, args)
+		{
+			if (ident == "Array")
+			{
+				// args is already an Array. just return it.
+				return args;
+			}
+			
+			// @todo : is this the right syntax for a super call in this case?
+			return super.call(ident, args);
+		}
 
-		// Array.length = 1 per ES3
-		public static const length:int = 1;
-		
-		// ECMA 15.4.2.2
+		// 15.4.2 The Array Constructor 
+		// 15.4.2.1 new Array( [ item0 [ , item1 [ , ... ] ] ] ) 
+		// 15.4.2.2 new Array(len) 
 		public function Array(...args)
 		{
 			var argslen:uint = uint(args.length);
-			if (argslen == 1 && (args.getvalue(0) is Number))
+			if (argslen == 1 && (args[0] is Number))
 			{
-				var dlen:Number = args.getvalue(0);
-				var ulen:uint = dlen;
+				var dlen:Number = args[0];
+				var ulen:uint = uint(dlen);
 				if (ulen != dlen)
 				{
-					throw new RangeError("Array Index Not Integer:" + dlen);
+					throw new RangeError;
 				}
 				length = ulen;
 			}
@@ -29,56 +45,44 @@ package
 			{
 				length = argslen;
 				for (var i:uint = 0; i < argslen; i++)
-					this.putvalue(i, args.getvalue(i));
+					this[i] = args[i];
 			}
 		}
 
-//        // the Array constructor called as a function
- // @todo
-//  static intrinsic function call()
+		// 15.4.4 Properties of the Array Prototype Object
+		// { DontEnum, DontDelete, ReadOnly } 
+		// @todo
 
-// --------------------------------------------------
-// non-generic unbound {DE} properties of Array.prototype
-// --------------------------------------------------
-//	dynamic prototype function toString(this:Array)
+		// 15.4.4.1 Array.prototype.constructor 
+		// @todo
+		
+		// 15.4.4.2 Array.prototype.toString ( )
 		prototype.toString = function():String
 		{
-			var a:Array = this;  // TypeError if not compatible
+			var a:Array = this;  // throws TypeError if not compatible
 			return _join(a, ",");
 		}
-
-//	dynamic prototype function toLocaleString(this:Array)
-		prototype.toLocaleString = function():String
-		{
-			var a:Array = this; // TypeError if not compatible
-			var out:String = "";
-			for (var i:uint = 0, n:uint = a.length; i < n; i++)
-			{
-				var x = a.getvalue(i);
-				if (x != null)
-					out += x.toLocaleString();
-				if (i+1 < n)
-					out += ",";
-			}
-			return out;
-		}
-
-// --------------------------------------------------
-// bound {DE,DD,RO} methods 
-// --------------------------------------------------
-//	ActionScript function toString()
 		public function toString():String
 		{
 			return _join(this, ",");
 		}
 
-//	ActionScript function toLocaleString()
+		// 15.4.4.3 Array.prototype.toLocaleString ( )
+		prototype.toLocaleString = function():String
+		{
+			return _toLocaleString(this);
+		}
 		public function toLocaleString():String
 		{
+			return _toLocaleString(this);
+		}
+		private static function _toLocaleString(o):String
+		{
+			var a:Array = o; // throws TypeError if not compatible
 			var out:String = "";
-			for (var i:uint = 0, n:uint = this.length; i < n; i++)
+			for (var i:uint = 0, n:uint = a.length; i < n; i++)
 			{
-				var x = this.getvalue(i);
+				var x = a[i];
 				if (x != null)
 					out += x.toLocaleString();
 				if (i+1 < n)
@@ -87,11 +91,16 @@ package
 			return out;
 		}
 
-// --------------------------------------------------
-// generic unbound {DE} properties of Array.prototype
-// --------------------------------------------------
-//	dynamic prototype function concat(this:Object, ...items)
-		private static function _concat(o, args:Array):Array
+		// 15.4.4.4 Array.prototype.concat ( [ item1 [ , item2 [ , … ] ] ] )
+		prototype.concat = function(...args):Array
+		{
+			return _concat(this, args);
+		}
+		public function concat(...args):Array
+		{
+			return _concat(this, args);
+		}
+		private static function _concat(o, args):Array
 		{
 			var out:Array = new Array;
 			
@@ -100,20 +109,20 @@ package
 				var olen:uint = uint(o.length);
 				for (var i:uint = 0; i < olen; i++) 
 				{
-					out.push(o.getvalue(i));
+					out.push(o[i]);
 				}
 			}
 
 			var argslen:uint = (args != null) ? uint(args.length) : 0;
 			for (var i:uint = 0; i < argslen; i++) 
 			{
-				var x = args.getvalue(i);
+				var x = args[i];
 				if (x is Array) 
 				{
 					var xlen:uint = uint(x.length);
 					for (var j:uint = 0; j < xlen; j++)
 					{
-						out.push(x.getvalue(j));
+						out.push(x[j]);
 					}
 				}
 				else
@@ -125,24 +134,23 @@ package
 			return out;
 		}
 
-		public function concat(...args):Array
+		// 15.4.4.5 Array.prototype.join (separator)
+		prototype.join = function(sep = void(0)):String
 		{
-			return _concat(this, args);
+			return _join(this, sep);
 		}
-		prototype.concat = function(...args):Array
+		public function join(sep = void(0)):String
 		{
-			return _concat(this, args);
+			return _join(this, sep);
 		}
-
-//	dynamic prototype function join(this:Object, separator)
 		private static function _join(o, sep):String
 		{
-			var s:String = (sep === undefined) ? "," : String(sep);
+			var s:String = (sep === void(0)) ? "," : String(sep);
 			var out:String = "";
 			var olen:uint = uint(o.length);
 			for (var i:uint = 0; i < olen; i++)
 			{
-				var x = o.getvalue(i);
+				var x = o[i];
 				if (x != null)
 					out += String(x);
 				if (i+1 < olen)
@@ -150,16 +158,16 @@ package
 			}
 			return out;
 		}
-		public function join(sep = void 0):String
-		{
-			return _join(this, sep);
-		}
-		prototype.join = function(sep = void 0):String
-		{
-			return _join(this, sep);
-		}
 
-//	dynamic prototype function pop(this:Object)
+		// 15.4.4.6 Array.prototype.pop ( )
+		prototype.pop = function()
+		{
+			return _pop(this);
+		}
+		public function pop()
+		{
+			return _pop(this);
+		}
 		private static function _pop(o)
 		{
 			var olen:uint = uint(o.length);
@@ -167,44 +175,45 @@ package
 			if (olen != 0)
 			{
 				--olen;
-				var x = o.getvalue(olen);
+				var x = o[olen];
+				delete o[olen];
 				o.length = olen;
 				return x;
 			} 
 			else
 			{
-				return undefined;
+				return void(0);
 			}
 		}
-		public function pop()
-		{
-			return _pop(this);
-		}
-		prototype.pop = function()
-		{
-			return _pop(this);
-		}
 
-//	dynamic prototype function push(this:Object, ...items)
-		private static function _push(o, args):uint
+		// 15.4.4.7 Array.prototype.push ( [ item1 [ , item2 [ , … ] ] ] )
+		prototype.push = function(...args):uint
 		{
-			var olen:uint = uint(o.length);
-			var argslen:uint = uint(args.length);
-			for (var i:uint = 0, ; i < argslen; i++)
-				o.putvalue(olen++, args.getvalue(i));
-			o.length = olen;
-			return olen;
+			return _push(this, args);
 		}
 		public function push(...args):uint
 		{
 			return _push(this, args);
 		}
-		prototype.push = function(...args):uint
+		private static function _push(o, args):uint
 		{
-			return _push(this, args);
+			var olen:uint = uint(o.length);
+			var argslen:uint = uint(args.length);
+			for (var i:uint = 0, ; i < argslen; i++)
+				o[olen++] = args[i];
+			o.length = olen;
+			return olen;
 		}
 
-//	dynamic prototype function reverse(this:Object)
+		// 15.4.4.8 Array.prototype.reverse ( )
+		prototype.reverse = function()
+		{
+			return _reverse(this);
+		}
+		public function reverse():Array
+		{
+			return _reverse(this);  // return will cast to Array
+		}
 		private static function _reverse(o)
 		{
 			var i:uint = 0;
@@ -214,55 +223,55 @@ package
 
 			while (i < j) 
 			{
-				var front = o.getvalue(i);
-				var back = o.getvalue(j);
-				o.putvalue(i++, back);
-				o.putvalue(j--, front);
+				var front = o[i];
+				var back = o[j];
+				o[i++] = back;
+				o[j--] = front;
 			}
 			return o;
 		}
-		public function reverse():Array
-		{
-			return _reverse(this);  // return will cast to Array
-		}
-		prototype.reverse = function()
-		{
-			return _reverse(this);
-		}
 
-//	dynamic prototype function shift(this:Object)
+		// 15.4.4.9 Array.prototype.shift ( )
+		prototype.shift = function()
+		{
+			return _shift(this);
+		}
+		public function shift()
+		{
+			return _shift(this);
+		}
 		private static function _shift(o)
 		{
 			var olen:uint = uint(o.length);
 			if (olen == 0)
 			{
-				o.length = 0;	// ES3 requires explicit set here
-				return undefined;
+				o.length = 0;	// ECMA-262 requires explicit set here
+				return void(0);
 			}
 			else
 			{
 				// Get the 0th element to return
-				var x = o.getvalue(0);
+				var x = o[0];
 
 				// Move all of the elements down
 				for (var i:uint = 1; i < olen; i++) 
 				{
-					o.putvalue(i-1, o.getvalue(i));
+					o[i-1] = o[i];
 				}
-				o.deletevalue(olen - 1);
+				delete o[olen - 1];
 				o.length = olen - 1;
 			}
 		}
-		public function shift()
-		{
-			return _shift(this)
-		}
-		prototype.shift = function()
-		{
-			return _shift(this)
-		}
 
-//	dynamic prototype function slice(this:Object, start, end)
+		// 15.4.4.10 Array.prototype.slice (start, end)
+		prototype.slice = function(A = 0, B = 0xffffffff):Array
+		{
+			return _slice(this, Number(A), Number(B))
+		}
+		public function slice(A = 0, B = 0xffffffff):Array
+		{
+			return _slice(this, Number(A), Number(B))
+		}
 		private static function _slice(o, A:Number, B:Number):Array
 		{
 			var olen:uint = uint(o.length);
@@ -277,23 +286,23 @@ package
 			var out:Array = new Array;
 			for (var i:uint = a; i < b; i++) 
 			{
-				out.push(o.getvalue(i));
+				out.push(o[i]);
 			}
 
 			return out;
 		}
-		public function slice(A = 0, B = 0xffffffff):Array
-		{
-			return _slice(this, Number(A), Number(B))
-		}
-		prototype.slice = function(A = 0, B = 0xffffffff):Array
-		{
-			return _slice(this, Number(A), Number(B))
-		}
 
-//	dynamic prototype function sort(this:Object, comparefn)
-		// note this is an implementation that meets the spec, but the spec
+		// 15.4.4.11 Array.prototype.sort (comparefn)
+		// note: this is an implementation that meets the spec, but the spec
 		// allows for different sort implementations (quicksort is not required)
+		prototype.sort = function(...args):Array
+		{
+			return _sort(this, args);
+		}
+		public function sort(...args):Array
+		{
+			return _sort(this, args);
+		}
 		private static function _sort(o, compareFn):Array
 		{
 			var olen:uint = uint(o.length);
@@ -303,28 +312,28 @@ package
 
 			return this;
 		}
-		public function sort(...args):Array
-		{
-			return _sort(this, args);
-		}
-		prototype.sort = function(...args):Array
-		{
-			return _sort(this, args);
-		}
 
-//	dynamic prototype function splice(this:Object, start, deleteCount, ...items)
-		private static function _splice(o, args:Array)
+		// 15.4.4.12 Array.prototype.splice (start, deleteCount [ , item1 [ , item2 [ , … ] ] ] )
+		prototype.splice = function(...args)
+		{
+			return _splice(this, args);
+		}
+		public function splice(...args)
+		{
+			return _splice(this, args);
+		}
+		private static function _splice(o, args)
 		{
 			var argslen:uint = uint(args.length);
 			if (argslen == 0)
-				return undefined;
+				return void(0);
 
 			if (!(o is Object))
 				return null;
 			
 			var olen:uint = uint(o.length);
-			var start:uint = _clampIndex(Number(args.getvalue(0)), olen);
-			var d_deleteCount:Number = argslen > 1 ? Number(args.getvalue(1)) : (olen - start); 
+			var start:uint = _clampIndex(Number(args[0]), olen);
+			var d_deleteCount:Number = argslen > 1 ? Number(args[1]) : (olen - start); 
 			var deleteCount:uint = (d_deleteCount < 0) ? 0 : uint(d_deleteCount);
 			if (deleteCount > (olen - start)) 
 			{
@@ -337,7 +346,7 @@ package
 
 			for (var i:uint = 0; i < deleteCount; i++) 
 			{
-				out.push(o.getvalue(i + start));
+				out.push(o[i + start]);
 			}
 
 			var insertCount:uint = (argslen > 2) ? (argslen - 2) : 0;
@@ -352,13 +361,13 @@ package
 
 				for (var i:uint = end; i < olen; i++) 
 				{
-					o.putvalue(i - shiftAmount, o.getvalue(i));
+					o[i - shiftAmount] = o[i];
 				}
 						
 				// delete top elements here to match ECMAscript spec (generic object support)
 				for (var i:uint = olen - shiftAmount; i < olen; i++) 
 				{
-					o.deletevalue(i);
+					delete o[i];
 				}
 			} 
 			else 
@@ -369,14 +378,14 @@ package
 				for (var i:uint = olen; i > end; )  // Note: i is unsigned, can't check if --i >=0.
 				{
 					--i;
-					o.putvalue(i + shiftAmount, o.getvalue(i));
+					o[i + shiftAmount] = o[i];
 				}
 			}
 
 			// Add the items to insert
 			for (var i:uint = 0; i < insertCount; i++) 
 			{
-				o.putvalue(start+i, args.getvalue(i + 2));
+				o[start+i] = args[i + 2];
 			}
 
 			// shrink array if shiftAmount is negative
@@ -385,61 +394,94 @@ package
 			return out;
 		}
 
-		// splice with zero args returns undefined. All other cases return Array.
-		public function splice(...args)
+		// 15.4.4.13 Array.prototype.unshift ( [ item1 [ , item2 [ , … ] ] ] )
+		prototype.unshift = function(...args):uint
 		{
-			return _splice(this, args);
+			return _unshift(this, args);
 		}
-		prototype.splice = function(...args)
+		public function unshift(...args):uint
 		{
-			return _splice(this, args);
+			return _unshift(this, args);
 		}
-
-//	dynamic prototype function unshift(this:Object, ...items) // length=0, bug in E262 that unshift.length=1
-		private static function _unshift(o, args:Array):uint
+		private static function _unshift(o, args):uint
 		{
 			var olen:uint = uint(o.length);
-			var argslen:uint = args.length;
+			var argslen:uint = uint(args.length);
 			var k:uint;
 			for (k = olen; k > 0; /*nothing*/)
 			{
 				k--;
 				var d:uint = k + argslen;
 				if (k in o)
-					o.putvalue(d, o.getvalue(k));
+					o[d] = o[k];
 				else
-					o.deletevalue(d);
+					delete o[d];
 			}
 
 			for (var i:uint = 0; i < argslen; i++)
-				o.putvalue(k++, args.getvalue(i));
+				o[k++] = args[i];
 
 			olen += argslen;
 			o.length = olen;
 			return olen;
 		}		
-		public function unshift(...args):uint
-		{
-			return _unshift(this, args);
-		}
-		prototype.unshift = function(...args):uint
-		{
-			return _unshift(this, args);
-		}
 
-// --------------------------------------------------
-// --------------------------------------------------
-		_dontEnumPrototype(prototype);
-
-// --------------------------------------------------
-// bound internal methods of Array instances
-		private native function putvalue(propertyName, value):void;
-		private native function getvalue(propertyName):*;
-		private native function deletevalue(propertyName):void;
+		// 15.4.5.1 [[Put]] (P, V)
+		public function set *(propertyName, value):void
+		{
+			if (!this.canPut(propertyName))
+				return;
+			
+			var curLength:uint = uint(this.length);
+			if (propertyName == "length")
+			{
+				var valueAsNumber:Number = Number(value);
+				var valueAsInt:uint = uint(valueAsNumber);
+				if (valueAsInt != valueAsNumber)
+				{
+					throw new RangeError();
+				}
+				for (var i:uint = valueAsInt; i < curLength; ++i)
+				{
+					if (this.hasOwnProperty(i))
+						delete this[i];
+				}
+				// @todo : is this the right syntax for a super call in this case?
+				super.set("length", valueAsInt);
+			}
+			else
+			{
+				// @todo : is this the right syntax for a super call in this case?
+				super.set(propertyName, value);
+				var propertyNameAsNumber:Number = Number(propertyName);
+				var propertyNameAsInt:uint = uint(propertyNameAsNumber);
+				if (propertyNameAsInt == propertyNameAsNumber && propertyNameAsInt >= curLength)
+				{
+					// @todo : is this the right syntax for a super call in this case?
+					super.set("length", propertyNameAsInt+1);	
+				}
+			}
+		}
 		
-// --------------------------------------------------
-// private utility methods
-// --------------------------------------------------
+		// 15.4.5.2 length
+		prototype.length = 0;
+		public function get length():uint
+		{
+			// @todo: verify this will go thru get*() catchall and not recurse
+			return this["length"];
+		}
+		public function set length(newLength:uint):void
+		{
+			// @todo: verify this will go thru set*() catchall and not recurse
+			this["length"] = newLength;
+		}
+
+		// Array.length = 1 per ECMA-262
+		public static const length:int = 1;
+		
+		// --------------------------------------------------
+		// private utility methods
+		// --------------------------------------------------
 		private static function _clampIndex(intValue:Number, len:uint):uint
 		{
 			var clamped:uint;
@@ -462,18 +504,18 @@ package
 
 		private function swap(j:uint, k:uint):void
 		{
-			var temp = this.getvalue(j);
-			this.putvalue(j, this.getvalue(k));
-			this.putvalue(k, temp);
+			var temp = this[j];
+			this[j] = this[k];
+			this[k] = temp;
 		}
 
 		private function compare(j:uint, k:uint, compareFn:Function):int
 		{
-			var x = this.getvalue(j);
-			var y = this.getvalue(k);
-			if (x === undefined)
+			var x = this[j];
+			var y = this[k];
+			if (x === void(0))
 			{
-				if (y === undefined)
+				if (y === void(0))
 				{
 					return 0;
 				}
@@ -482,11 +524,11 @@ package
 					return 1;
 				}
 			} 
-			else if (y === undefined)
+			else if (y === void(0))
 			{
 				return -1;
 			}
-			else if (compareFn === undefined)
+			else if (compareFn === void(0))
 			{
 				x = x.toString();
 				y = y.toString();
@@ -581,7 +623,7 @@ package
 					{
 						if ((lo + 1) < right) 
 						{
-							stk.putvalue(stkptr++, {lo: lo, hi:right-1}:StackFrame);
+							stk[stkptr++] = {lo: lo, hi:right-1}:StackFrame;
 						}
 
 						if (left < hi)
@@ -594,7 +636,7 @@ package
 					{
 						if (left < hi)
 						{
-							stk.putvalue(stkptr++, {lo:left, hi:hi}:StackFrame);
+							stk[stkptr++] = {lo:left, hi:hi}:StackFrame;
 						}
 
 						if ((lo + 1) < right)
@@ -608,8 +650,8 @@ package
 				// we reached the bottom of the well, pop the nested stack frame
 				if (--stkptr >= 0)
 				{
-					lo = stk.getvalue(stkptr).lo;
-					hi = stk.getvalue(stkptr).hi;
+					lo = stk[stkptr].lo;
+					hi = stk[stkptr].hi;
 					continue;
 				}
 
@@ -617,9 +659,7 @@ package
 				break;
 
 			} // endless for
-		}
-
-	}
-
-
-}
+		} // qsort
+		
+	} // Array
+} // package
