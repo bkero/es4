@@ -104,7 +104,7 @@ and qualifier ts =
           let
               val (ts1,nd1) = propertyIdentifier (ts)
           in
-              (ts1,Ast.Ref{base=NONE,ident=Ast.Identifier nd1})
+              (ts1,Ast.Ref{base=NONE,ident=Ast.Identifier {ident=nd1, openNamespaces=ref NONE}})
           end
     end
 
@@ -1181,7 +1181,7 @@ and propertyOperator (ts, nd) =
                             let
                                 val (ts4,nd4) = reservedOrPropertyIdentifier(ts3)
                             in
-                                (ts4,Ast.Ref({base=SOME nd,ident=Ast.Identifier(nd4)}))
+                                (ts4,Ast.Ref({base=SOME nd,ident=Ast.Identifier {ident=nd4,openNamespaces=ref NONE}}))
                             end
 					  | _ => raise ParseError
                     end
@@ -1189,7 +1189,7 @@ and propertyOperator (ts, nd) =
                     let
                         val (ts4,nd4) = reservedOrPropertyIdentifier(ts1)
                     in
-                        (ts4,Ast.Ref({base=SOME nd,ident=Ast.Identifier(nd4)}))
+                        (ts4,Ast.Ref({base=SOME nd,ident=Ast.Identifier {ident=nd4,openNamespaces=ref NONE}}))
                     end
             end
       | LeftBracket :: _ => 
@@ -3161,10 +3161,7 @@ fun parseFile filename =
          log ["parsed ", filename, "\n"];
          ast
      end)
-
-(*
- handle ParseError => (log ["parse error"]; raise ParseError)
-      | Lexer.LexError => (log ["lex error"]; raise Lexer.LexError)
-*)
+     handle ParseError => (log ["parse error"]; raise ParseError)
+          | Lexer.LexError => (log ["lex error"]; raise Lexer.LexError)
 
 end (* Parser *)

@@ -262,13 +262,14 @@ datatype DIRECTIVE =
        | QualifiedExpression of { qual : EXPR,
                                   expr : EXPR }
        | AttributeIdentifier of IDENT_EXPR
-       | Identifier of IDENT
+       | Identifier of { ident : IDENT,
+			 openNamespaces : (NAMESPACE list) option ref }
        | Expression of EXPR   (* for bracket exprs: o[x] and @[x] *)
 	   | TypeIdentifier of { ident : IDENT_EXPR, typeParams : TYPE_EXPR list }
 
      and LITERAL =
          LiteralNull
-       | LiteralUndefined
+       | LiteralUndefined 
        | LiteralNumber of real
        | LiteralBoolean of bool
        | LiteralString of USTRING
