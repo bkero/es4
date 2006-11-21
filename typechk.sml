@@ -17,6 +17,7 @@ val regexpType    = PrimaryType { ident=simpleIdent "regexp",    kind=Named }
 val exceptionType = PrimaryType { ident=simpleIdent "exception", kind=Named }
 val undefinedType = SpecialType Undefined
 val nullType      = SpecialType Null
+val anyType       = SpecialType Any
 
 fun assert b s = if b then () else (raise Fail s)
 
@@ -24,13 +25,15 @@ type TYPE_ENV = (IDENT * TYPE_EXPR) list
 
 fun extendEnv ((name, ty), env) = (name, ty)::env
 
-type CONTEXT = {env: TYPE_ENV, lbls: IDENT option list, retTy: TYPE_EXPR option}
+type CONTEXT = {this: TYPE_EXPR, env: TYPE_ENV, lbls: IDENT option list, retTy: TYPE_EXPR option}
 
-fun withEnv ({env=_, lbls=lbls, retTy=retTy}, env) = {env=env, lbls=lbls, retTy=retTy}
+fun withThis ({this=_, env=env, lbls=lbls, retTy=retTy}, this) = {this=this, env=env, lbls=lbls, retTy=retTy}
 
-fun withLbls ({env=env, lbls=_, retTy=retTy}, lbls) = {env=env, lbls=lbls, retTy=retTy}
+fun withEnv ({this=this, env=_, lbls=lbls, retTy=retTy}, env) = {this=this, env=env, lbls=lbls, retTy=retTy}
 
-fun withRetTy ({env=env, lbls=lbls, retTy=_}, retTy) = {env=env, lbls=lbls, retTy=retTy}
+fun withLbls ({this=this, env=env, lbls=_, retTy=retTy}, lbls) = {this=this, env=env, lbls=lbls, retTy=retTy}
+
+fun withRetTy ({this=this, env=env, lbls=lbls, retTy=_}, retTy) = {this=this, env=env, lbls=lbls, retTy=retTy}
 
 fun checkConvertible t1 t2 = ()
 
@@ -125,7 +128,7 @@ and tcVarDefn (ctxt:CONTEXT)
 
 fun tcStmts ctxt ss = List.app (fn s => tcStmt ctxt s) ss
 
-and tcStmt ((ctxt as {env,lbls,retTy}):CONTEXT) stmt =
+and tcStmt ((ctxt as {this,env,lbls,retTy}):CONTEXT) stmt =
   (TextIO.print "type checking stmt ... \n";
    case stmt of
     EmptyStmt => ()
@@ -229,7 +232,7 @@ and tcBlock (ctxt as {env,...}) (Block {pragmas=pragmas,defns=defns,stmts=stmts}
     end
 
 fun tcProgram { packages, body } = 
-   (tcBlock {env=[], lbls=[], retTy=NONE} body; true)
+   (tcBlock {this=anyType, env=[], lbls=[], retTy=NONE} body; true)
    handle IllTypedException msg => (
      TextIO.print "Ill typed exception: "; 
      TextIO.print msg; 
