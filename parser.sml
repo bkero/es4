@@ -165,12 +165,13 @@ and simpleQualifiedIdentifier ts =
       | _ => 
           	let
               	val (ts1, nd1) = propertyIdentifier(ts)
+                val id = Ast.Identifier {ident=nd1, openNamespaces=ref NONE}
           	in case ts1 of
               	DoubleColon :: _ => 
-					qualifiedIdentifier'(tl ts1,Ast.Ref ({base=NONE,ident=Ast.Identifier nd1}))
+					qualifiedIdentifier'(tl ts1,Ast.Ref ({base=NONE,ident=id}))
               | _ => 
 					(trace(["<< simpleQualifiedIdentifier with next=",tokenname(hd(ts1))]);
-					(ts1,Ast.Identifier nd1))
+					(ts1,id))
           end
     end
 
@@ -614,7 +615,8 @@ and restParameter (ts:token list) =
 and typedIdentifier (ts) =
     let val _ = trace([">> typedIdentifier with next=",tokenname(hd(ts))]) 
 		val (ts1,nd1) = identifier ts
-		val rf = Ast.Ref({base=NONE,ident=Ast.Identifier nd1})
+                val id = Ast.Identifier {ident=nd1, openNamespaces=ref NONE}
+		val rf = Ast.Ref({base=NONE,ident=id})
 	in case ts1 of
 		Colon :: _ => 
 			let

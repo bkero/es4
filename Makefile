@@ -2,7 +2,8 @@ SML_BIN = $(shell dirname `which sml`)
 SOURCES = ast.sml main.sml pretty.sml typechk.sml eval.sml mach.sml \
 	parser.sml  pretty-rep.sml token.sml
 HEAP_SUFFIX = $(shell $(SML_BIN)/.arch-n-opsys | sed 's/^.*HEAP_SUFFIX=//')
-PARSE_TESTS = tests/ident.js tests/numberliteral.es tests/stringliteral.es tests/listexpr.es tests/mult.es tests/div.es tests/cond.es tests/fexpr.es tests/atident.es tests/assign.es tests/call.es tests/objref.es tests/objectliteral.es tests/arrayliteral.es tests/cast.es tests/objectpattern.es tests/typedident.es tests/typeexpr.es tests/typedarray.es tests/vardefn.es tests/uniontype.es tests/nullability.es tests/recordtype.es tests/letexpr.es
+PARSE_TESTS = tests/ident.js tests/numberliteral.es tests/stringliteral.es tests/listexpr.es tests/mult.es tests/div.es tests/cond.es tests/fexpr.es tests/atident.es tests/assign.es tests/call.es tests/objref.es tests/objectliteral.es tests/arrayliteral.es tests/cast.es tests/objectpattern.es tests/typedident.es tests/typeexpr.es tests/typedarray.es tests/vardefn.es tests/uniontype.es tests/nullability.es tests/recordtype.es
+#tests/letexpr.es
 #tests/assign_err.es
 
 TC_TESTS = tests/numberliteral.es

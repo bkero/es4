@@ -4,14 +4,17 @@ exception IllTypedException of string
 
 open Ast
 
-val boolType      = PrimaryType { name="boolean",   annotation=Named }
-val numberType    = PrimaryType { name="number",    annotation=Named }
-val decimalType   = PrimaryType { name="decimal",   annotation=Named }
-val intType       = PrimaryType { name="int",       annotation=Named }
-val uintType      = PrimaryType { name="uint",      annotation=Named }
-val stringType    = PrimaryType { name="string",    annotation=Named }
-val regexpType    = PrimaryType { name="regexp",    annotation=Named }
-val exceptionType = PrimaryType { name="exception", annotation=Named }
+(* TODO: what is the proper way to resolve these built-ins? *)
+fun simpleIdent s = Identifier { ident=s, openNamespaces=ref NONE }
+
+val boolType      = PrimaryType { ident=simpleIdent "boolean",   kind=Named }
+val numberType    = PrimaryType { ident=simpleIdent "number",    kind=Named }
+val decimalType   = PrimaryType { ident=simpleIdent "decimal",   kind=Named }
+val intType       = PrimaryType { ident=simpleIdent "int",       kind=Named }
+val uintType      = PrimaryType { ident=simpleIdent "uint",      kind=Named }
+val stringType    = PrimaryType { ident=simpleIdent "string",    kind=Named }
+val regexpType    = PrimaryType { ident=simpleIdent "regexp",    kind=Named }
+val exceptionType = PrimaryType { ident=simpleIdent "exception", kind=Named }
 val undefinedType = SpecialType Undefined
 val nullType      = SpecialType Null
 
