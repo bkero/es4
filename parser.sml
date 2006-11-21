@@ -13,6 +13,10 @@ datatype beta =
     ALLOWIN
   | NOIN
 
+datatype gamma =
+	ALLOWEXPR
+  | NOEXPR
+
 datatype omega =
     ABBREV
   | NOSHORTIF
@@ -23,10 +27,14 @@ fun log ss =
      List.app TextIO.print ss; 
      TextIO.print "\n")
 
-val trace_on = false
+val trace_on = true
 
 fun trace ss =
 	if trace_on then log ss else ()
+
+fun error ss =
+	(log ("*syntax error: " :: ss); raise ParseError)
+
 (*
 
 Identifier    
@@ -53,6 +61,7 @@ fun identifier ts =
       | Native :: tr => (tr,"native")
       | Number :: tr => (tr,"number")
       | Override :: tr => (tr,"override")
+      | Precision :: tr => (tr,"precision")
       | Prototype :: tr => (tr,"prototype")
       | Rounding :: tr => (tr,"rounding")
       | Standard :: tr => (tr,"standard")
@@ -63,7 +72,7 @@ fun identifier ts =
       | Type :: tr => (tr,"type")
       | Xml :: tr => (tr,"xml")
       | Yield :: tr => (tr,"yield")
-      | _ => raise ParseError
+      | _ => error(["expecting 'identifier' before '",tokenname(hd ts),"'"])
     end
 
 (*
@@ -329,11 +338,13 @@ and parenExpression ts =
 and parenListExpression ts =
     let val _ = trace([">> parenListExpression with next=",tokenname(hd(ts))]) 
     in case ts of
-        LeftParen :: ts1 => 
+        LeftParen :: _ => 
             let
-                val (ts2,nd2) = listExpression (ts1,ALLOWIN)
-            in case ts2 of
-                RightParen :: ts3 => (ts3,nd2)
+                val (ts1,nd1) = listExpression (tl ts,ALLOWIN)
+            in case ts1 of
+                RightParen :: _ => 
+					(trace(["<< parenListExpression with next=",tokenname(hd(ts1))]);
+					(tl ts1,nd1))
               | _ => raise ParseError
             end
       | _ => raise ParseError
@@ -547,54 +558,44 @@ and parameterInit ts =
 
 (*
     Parameter    
-        ParameterAttributes TypedIdentifier(ALLOWIN)
-        ParameterAttributes TypedPattern
+        ParameterKind TypedIdentifier(ALLOWIN)
+        ParameterKind TypedPattern
 
-    ParameterAttributes    
+    ParameterKind    
         «empty»
         const
 *)
 
-and parameter (ts) : token list * Ast.FORMAL =
+and parameter (ts) : (token list * Ast.FORMAL) =
     let val _ = trace([">> parameter with next=",tokenname(hd(ts))]) 
 		val (ts1,nd1) = parameterAttributes (ts)
-	in case ts1 of
-		(LeftBracket | LeftParen) :: _ => 
-			let
-				val (ts2,{ptrn,ty}) = typedPattern (ts1)
-			in
-				(ts2,{pattern=ptrn,ty=ty,tag=nd1,isRest=false,init=NONE})
-			end
-	  | _ => 
-			let
-				val (ts2:token list,{p,t}) = typedIdentifier (ts1)
-			in
-				(ts2,{pattern=p,ty=t,tag=nd1,isRest=false,init=NONE})
-			end			
+		val (ts2,{p,t}) = typedPattern (ts1,NOLIST,ALLOWIN,NOEXPR)
+	in
+		(ts2,{pattern=p,ty=t,tag=nd1,isRest=false,init=NONE})
 	end
 
-and parameterAttributes (ts) = 
+and parameterKind (ts) : (token list * Ast.VAR_DEFN_TAG)  = 
     let val _ = trace([">> parameterAttributes with next=",tokenname(hd(ts))]) 
-	in case ts of 
+	in case ts of
 		Const :: ts1 => (ts1,Ast.Const)
 	  | ts1 => (ts1,Ast.Var)
 	end
 
 (*
-    RestParameter    
+    RestParameter
         ...
         ...  ParameterAttributes TypedIdentifier
         ...  ParameterAttributes TypedPattern
 *)
 
-and restParameter (ts:token list) = 
-    let val _ = trace([">> restParameter with next=",tokenname(hd(ts))]) 
+and restParameter (ts:token list) =
+    let val _ = trace([">> restParameter with next=",tokenname(hd(ts))])
 	in case ts of
 		DOTDOTDOT :: _ =>
 			let
 			in case tl ts of
 				RightParen :: _ => 
-					(tl ts,{pattern=Ast.SimplePattern(Ast.LiteralExpr(Ast.LiteralString(""))),
+					(tl ts,{pattern=Ast.IdentifierPattern "",
 							  ty=NONE,tag=Ast.Var,isRest=true,init=NONE}) 
 			  | _ =>
 					let
@@ -606,53 +607,6 @@ and restParameter (ts:token list) =
 	  | _ => raise ParseError
 	end
 
-(*
-	TypedIdentifier
-    	Identifier
-	    Identifier  :  TypeExpressionx
-*)
-
-and typedIdentifier (ts) =
-    let val _ = trace([">> typedIdentifier with next=",tokenname(hd(ts))]) 
-		val (ts1,nd1) = identifier ts
-                val id = Ast.Identifier {ident=nd1, openNamespaces=ref NONE}
-		val rf = Ast.Ref({base=NONE,ident=id})
-	in case ts1 of
-		Colon :: _ => 
-			let
-				val (ts2,nd2) = typeExpression (tl ts1)
-			in
-				(ts2, {p=Ast.SimplePattern(rf),t=SOME nd2})
-			end
-	  | _ => 
-			let
-			in
-				(trace(["<< typedIdentifier with next=",tokenname(hd(ts1))]);
-				(ts1, {p=Ast.SimplePattern(rf),t=NONE}))
-			end
-		
-	end
-
-(*
-	TypedPattern    
-    	Pattern
-	    Pattern  :  TypeExpression
-*)
-
-and typedPattern ts =
-	let
-		val (ts1,nd1) = pattern ts
-	in case ts of 
-		Colon :: _ =>
-			let
-				val (ts2,nd2) = typeExpression (tl ts)
-			in
-				trace(["<< typedPattern with next=",tokenname(hd ts2)]);
-				(ts2,{ptrn=nd1,ty=SOME nd2})
-			end
-	  | _ => raise ParseError
-	end
-    
 (*
     ResultType
         «empty»
@@ -1132,7 +1086,7 @@ and arguments (ts) : (token list * Ast.EXPR list)  =
 and argumentList (ts) : (token list * Ast.EXPR list)  =
     let val _ = trace([">> argumentList with next=",tokenname(hd(ts))])
 		fun argumentList' (ts) : (token list * Ast.EXPR list) =
-		    let val _ = trace([">> argumentList with next=",tokenname(hd(ts))])
+		    let val _ = trace([">> argumentList' with next=",tokenname(hd(ts))])
 		    in case ts of
 		        Comma :: _ => 
         		    let
@@ -1141,7 +1095,8 @@ and argumentList (ts) : (token list * Ast.EXPR list)  =
         		    in
                 		(ts2,nd1::nd2)
 		            end
-		      | _ => (ts,[])
+		      | RightParen :: _ => (ts,[])
+			  | _ => (log(["*syntax error*: expect '",tokenname RightParen, "' before '",tokenname(hd ts),"'"]);raise ParseError)
 		    end
         val (ts1,nd1) = assignmentExpression(ts,NOLIST,ALLOWIN)
         val (ts2,nd2) = argumentList'(ts1)
@@ -1150,17 +1105,15 @@ and argumentList (ts) : (token list * Ast.EXPR list)  =
     end
 
 (*
-
-PropertyOperator    
-    .. QualifiedIdentifier
-    .  ReservedIdentifier
-    .  QualifiedIdentifier
-    .  ParenListExpression
-    .  ParenListExpression  ::  PropertyIdentifier
-    .  ParenListExpression  ::  ReservedIdentifier
-    .  ParenListExpression  ::  Brackets
-    Brackets
-    
+	PropertyOperator    
+    	.. QualifiedIdentifier
+	    .  ReservedIdentifier
+    	.  QualifiedIdentifier
+	    .  ParenListExpression
+	    .  ParenListExpression  ::  PropertyIdentifier
+    	.  ParenListExpression  ::  ReservedIdentifier
+	    .  ParenListExpression  ::  Brackets
+    	Brackets
 *)
 
 and propertyOperator (ts, nd) =
@@ -1204,12 +1157,10 @@ and propertyOperator (ts, nd) =
     end
 
 (*
-
-Brackets    
-    [  ]
-    [  ListExpression(allowIn)  ]
-    [  ListExpression(allowIn)  :  ListExpression(allowIn)  ]
-    
+	Brackets    
+    	[  ]
+	    [  ListExpression(allowIn)  ]
+    	[  ListExpression(allowIn)  :  ListExpression(allowIn)  ]
 *)
 
 and brackets (ts) =
@@ -1234,11 +1185,9 @@ and brackets (ts) =
 	end
 
 (*
-
-NewExpression    
-    MemberExpression
-    new  NewExpression
-    
+	NewExpression    
+    	MemberExpression
+	    new  NewExpression
 *)
 
 and newExpression (ts,alpha,beta) =
@@ -1286,17 +1235,15 @@ and leftHandSideExpression (ts,alpha,beta) =
                     in
 						(trace(["<< leftHandSideExpression with next=",tokenname(hd(ts4))]);(ts4,nd4))
                     end
-              | _ => (trace(["<< leftHandSideExpression with next=",tokenname(hd(ts))]);(ts2,nd2))
+              | _ => (trace(["<< leftHandSideExpression with next=",tokenname(hd(ts2))]);(ts2,nd2))
             end
     end
 
 (*
-
-PostfixExpression    
-    LeftHandSideExpression
-    LeftHandSideExpression  [no line break]  ++
-    LeftHandSideExpression  [no line break]  --
-    
+	PostfixExpression    
+    	LeftHandSideExpression
+	    LeftHandSideExpression  [no line break]  ++
+    	LeftHandSideExpression  [no line break]  --
 *)
 
 and postfixExpression (ts,alpha,beta) =
@@ -1309,20 +1256,18 @@ and postfixExpression (ts,alpha,beta) =
     end
 
 (*
-
-UnaryExpression    
-    PostfixExpression
-    delete  PostfixExpression
-    void  UnaryExpression
-    typeof  UnaryExpression
-    ++   PostfixExpression
-    --  PostfixExpression
-    +  UnaryExpression
-    -  UnaryExpression
-    ~  UnaryExpression
-    !  UnaryExpression
-    type TypeExpression
-    
+	UnaryExpression    
+    	PostfixExpression
+	    delete  PostfixExpression
+    	void  UnaryExpression
+	    typeof  UnaryExpression
+    	++   PostfixExpression
+	    --  PostfixExpression
+    	+  UnaryExpression
+	    -  UnaryExpression
+    	~  UnaryExpression
+	    !  UnaryExpression
+    	type TypeExpression
 *)
 
 and unaryExpression (ts,alpha,beta) =
@@ -1387,24 +1332,22 @@ and unaryExpression (ts,alpha,beta) =
     end
     
 (*
+	MultiplicativeExpression    
+	    UnaryExpression
+	    MultiplicativeExpression  *  UnaryExpression
+	    MultiplicativeExpression  /  UnaryExpression
+	    MultiplicativeExpression  %  UnaryExpression
 
-MultiplicativeExpression    
-    UnaryExpression
-    MultiplicativeExpression  *  UnaryExpression
-    MultiplicativeExpression  /  UnaryExpression
-    MultiplicativeExpression  %  UnaryExpression
+	right recursive:
 
-right recursive:
-
-MultiplicativeExpression	
-	UnaryExpression MultiplicativeExpressionPrime
+	MultiplicativeExpression	
+		UnaryExpression MultiplicativeExpressionPrime
 	
-MultiplicativeExpression'	
-	*  UnaryExpression MultiplicativeExpressionPrime
-	/  UnaryExpression MultiplicativeExpressionPrime
-	%  UnaryExpression MultiplicativeExpressionPrime
-	empty
-    
+	MultiplicativeExpression'	
+		*  UnaryExpression MultiplicativeExpressionPrime
+		/  UnaryExpression MultiplicativeExpressionPrime
+		%  UnaryExpression MultiplicativeExpressionPrime
+		empty
 *)
 
 and multiplicativeExpression (ts,alpha,beta) =
@@ -1443,14 +1386,12 @@ and multiplicativeExpression (ts,alpha,beta) =
     end
 
 (*
+	AdditiveExpression    
+    	MultiplicativeExpression
+	    AdditiveExpression  +  MultiplicativeExpression
+	    AdditiveExpression  -  MultiplicativeExpression
 
-AdditiveExpression    
-    MultiplicativeExpression
-    AdditiveExpression  +  MultiplicativeExpression
-    AdditiveExpression  -  MultiplicativeExpression
-
-right recursive: (see pattern of MultiplicativeExpression)
-
+	right recursive: (see pattern of MultiplicativeExpression)
 *)
 
 and additiveExpression (ts,alpha,beta) =
@@ -1478,7 +1419,6 @@ and additiveExpression (ts,alpha,beta) =
     end
 
 (*
-
 	ShiftExpression    
 	    AdditiveExpression
 	    ShiftExpression  <<  AdditiveExpression
@@ -1486,7 +1426,6 @@ and additiveExpression (ts,alpha,beta) =
     	ShiftExpression  >>>  AdditiveExpression
     
 	right recursive: (see pattern of MultiplicativeExpression)
-
 *)
 
 and shiftExpression (ts,alpha,beta) =
@@ -1542,7 +1481,6 @@ and shiftExpression (ts,alpha,beta) =
 	    RelationalExpressionallowIn  cast  TypeExpression
 
 	right recursive: (see pattern of MultiplicativeExpression)
-
 *)
 
 and relationalExpression (ts,alpha, beta)=
@@ -1813,7 +1751,6 @@ and logicalOrExpression (ts,alpha,beta) =
 	    LogicalOrExpression(beta)
     	LogicalOrExpression(beta)  ?  AssignmentExpression(ALLOWLIST,beta)  :  AssignmentExpression(ALLOWLIST,beta)
 
-
 	ConditionalExpression(NOLIST, beta)    
     	SimpleYieldExpression
 	    LogicalOrExpression(beta)
@@ -1822,7 +1759,7 @@ and logicalOrExpression (ts,alpha,beta) =
 *)
 
 and conditionalExpression (ts,ALLOWLIST,beta) =
-    let val _ = trace([">> conditionalExpression with next=",tokenname(hd(ts))])
+    let val _ = trace([">> conditionalExpression ALLOWLIST with next=",tokenname(hd(ts))])
     in case ts of
         Let :: _ => letExpression(ts,beta)
 	  | Yield :: _ => yieldExpression(ts,beta)
@@ -1843,14 +1780,15 @@ and conditionalExpression (ts,ALLOWLIST,beta) =
 					  | _ => raise ParseError							
 					end
 			  | _ => 
-					(ts2,nd2)
+					(trace(["<< conditionalExpression ALLOWLIST with next=",tokenname(hd(ts2))]);
+					(ts2,nd2))
 			end
 		end
  
   | conditionalExpression (ts,NOLIST,beta) =
-    let val _ = trace([">> conditionalExpression with next=",tokenname(hd(ts))])
+    let val _ = trace([">> conditionalExpression NOLIST with next=",tokenname(hd(ts))])
     in case ts of
-	    Yield :: _ => yieldExpression(ts,beta)
+	    Yield :: _ => simpleYieldExpression ts
       | _ => 
 			let
 				val (ts2,nd2) = logicalOrExpression(ts,NOLIST,beta)
@@ -1868,29 +1806,24 @@ and conditionalExpression (ts,ALLOWLIST,beta) =
 					  | _ => raise ParseError							
 					end
 			  | _ => 
-					(ts2,nd2)
+					(trace(["<< conditionalExpression NOLIST with next=",tokenname(hd(ts2))]);
+					(ts2,nd2))
 			end
 		end
 
 (*
-
-*)
-
-(*
-
-NonAssignmentExpression(allowList, beta)   
-    LetExpression(beta)
-    YieldExpression(beta)
-    LogicalOrExpression(beta)
-    LogicalOrExpression(beta)  ?  NonAssignmentExpression(allowLet, beta)  
+	NonAssignmentExpression(allowList, beta)   
+    	LetExpression(beta)
+	    YieldExpression(beta)
+    	LogicalOrExpression(beta)
+	    LogicalOrExpression(beta)  ?  NonAssignmentExpression(allowLet, beta)  
 							   :  NonAssignmentExpression(allowLet, beta)
     
-NonAssignmentExpression(noList, beta)    
-    SimpleYieldExpression
-    LogicalOrExpression(beta)
-    LogicalOrExpression(beta)  ?  NonAssignmentExpression(allowLet, beta)  
+	NonAssignmentExpression(noList, beta)    
+    	SimpleYieldExpression
+	    LogicalOrExpression(beta)
+    	LogicalOrExpression(beta)  ?  NonAssignmentExpression(allowLet, beta)  
 							   :  NonAssignmentExpression(noLet, beta)
-
 *)
 
 and nonAssignmentExpression (ts,ALLOWLIST,beta) = raise ParseError
@@ -1913,7 +1846,8 @@ and letExpression (ts,beta) =
 					let
 				        val (ts4,nd4) = listExpression(ts3,beta)
 					in
-						(ts4,Ast.LetExpr{defs=nd2,body=nd4})
+						(trace(["<< letExpression with next=",tokenname(hd(ts4))]);
+						(ts4,Ast.LetExpr{defs=nd2,body=nd4}))
 					end
  			  |	_ => raise ParseError
 			end
@@ -1937,17 +1871,26 @@ and letBindingList (ts) =
 				val (ts1,nd1) = variableBinding (ts,Ast.LetVar,NOLIST,ALLOWIN)
 			in case ts1 of
 				RightParen :: _ => (ts1,nd1::[])
-			  | Comma :: ts2 =>
+			  | Comma :: _ =>
 					let
-						val (ts3,nd3) = nonemptyLetBindingList ts2
+						val (ts2,nd2) = nonemptyLetBindingList (tl ts1)
 					in
-						(ts3,nd1::nd3)
+						(trace(["<< nonemptyLetBindingList with next=",tokenname(hd ts2)]);
+						(ts2,nd1::nd2))
 					end
 			  | _ => raise ParseError
 			end
 	in case ts of 
-		RightParen :: ts1 => (ts,[])
-	  | _ => nonemptyLetBindingList ts
+		RightParen :: _ => 
+			(trace(["<< nonemptyLetBindingList with next=",tokenname(hd ts)]);
+			(ts,[]))
+	  | _ => 
+			let
+				val (ts1,nd1) = nonemptyLetBindingList ts
+			in
+				(trace(["<< letBindingList with next=",tokenname(hd ts1)]);
+				(ts1,nd1))
+			end
 	end
 
 (*
@@ -1957,7 +1900,8 @@ and letBindingList (ts) =
 *)
 
 and yieldExpression (ts,beta) =
-	case ts of
+    let val _ = trace([">> yieldExpression with next=",tokenname(hd(ts))]) 
+	in case ts of
 		Yield :: ts1 => 
 			let
 			in case ts1 of
@@ -1970,6 +1914,7 @@ and yieldExpression (ts,beta) =
 					end
 			end
 	  | _ => raise ParseError
+	end
 
 (*
 	SimpleYieldExpression    
@@ -1982,52 +1927,31 @@ and simpleYieldExpression ts =
 	  | _ => raise ParseError
 
 (*
-
-AssignmentExpression (a,b)    
-    ConditionalExpression (a,b)
-    PostfixExpression  =  AssignmentExpression(a,b)
-    PostfixExpression  CompoundAssignment  AssignmentExpression (a,b)
-    PostfixExpression  LogicalAssignment  AssignmentExpression (a,b)
-    TypedPattern  =  AssignmentExpression (a,b)
-    
+	AssignmentExpression(a, b)	
+		ConditionalExpression(a, b)
+		Pattern(a, b, allowExpr)  =  AssignmentExpression(a, b)
+		Pattern(a, b, allowExpr)  CompoundAssignment  AssignmentExpression(a, b)
+		Pattern(a, b, allowExpr)  LogicalAssignment  AssignmentExpression(a, b)
 *)
 
-and assignmentExpression (ts,a,b) :(token list * Ast.EXPR) = 
-    let val _ = trace([">> assignmentExpression with next=",tokenname(hd(ts))]) 
-    in case ts of
-		LeftBrace :: _ => 
-			let
-				val (ts1,nd1) = objectLiteral ts
-			in case ts1 of
-				Assign :: _ => 
-					let
-						val (ts2,nd2) = assignmentExpression(tl ts1,a,b)						
-					in
-
-					    (trace(["<< assignmentExpression with next=",tokenname(hd(ts2))]);
-						(ts2,Ast.BinaryExpr(Ast.Assign,Ast.LiteralExpr nd1,nd2)))
-
-					end
-			  | _ => (ts1,Ast.LiteralExpr nd1)
-			end
-	  | _ => 
+and assignmentExpression (ts,a,b) : (token list * Ast.EXPR) = 
+    let val _ = trace([">> assignmentExpression with next=",tokenname(hd(ts))])
+		val (ts1,nd1) = conditionalExpression(ts,a,b)
+    in case (ts1,nd1) of
+	  	(Assign :: _, (Ast.Ref _ | Ast.LiteralExpr (Ast.LiteralObject _)
+						| Ast.LiteralExpr (Ast.LiteralArray _)) ) => 
 	    	let
-				val (ts1,nd1) = conditionalExpression(ts,a,b)
-			in case (ts1,nd1) of
-				(Assign :: ts2, Ast.Ref {...}) => 
-					let
-						val (ts3,nd3) = assignmentExpression(ts2,a,b)						
-					in case ts1 of
-						Assign :: _ => (ts3,Ast.BinaryExpr(Ast.Assign,nd1,nd3))
-					  | _ => 
-						(trace(["<< assignmentExpression"]);
-						(ts1,nd1))
-					end
-			  | (Assign :: ts2, _) => raise ParseError (* does not have proper lhs expression *)
-			  | _ => (trace(["<< assignmentExpression with next=",tokenname(hd(ts1))]);(ts1,nd1))
+			    (* todo: convert to pattern, may result in syntax error *)
+				val (ts2,nd2) = assignmentExpression(tl ts1,a,b)						
+			in 
+				(ts2,Ast.BinaryExpr(Ast.Assign,nd1,nd2))
 			end
-
-    end
+	  | (Assign :: _, _) => 
+			(error(["invalid lhs"]);raise ParseError)
+	  | _ =>
+			(trace(["<< assignmentExpression with next=",tokenname(hd(ts1))]);
+			(ts1,nd1))
+	end
 
 (*
 	CompoundAssignment    
@@ -2045,11 +1969,9 @@ and assignmentExpression (ts,a,b) :(token list * Ast.EXPR) =
 *)
 
 (*
-
-LogicalAssignment    
-    &&=
-    ||=
-    
+	LogicalAssignment    
+    	&&=
+	    ||=
 *)
 
 	and logicalAssignment ts =
@@ -2072,49 +1994,78 @@ LogicalAssignment
 
 and listExpression (ts,beta) = 
     let
+		val _ =	trace([">> listExpression with next=",tokenname(hd ts)])
 		fun listExpressionPrime (ts,nd1,beta) =
 	    	let
+				val _ =	trace([">> listExpression' with next=",tokenname(hd ts)])
 		    in case ts of
-    		    Comma :: ts1 =>
+    		    Comma :: _ =>
 					let
-            			val (ts2,nd2) = assignmentExpression(ts1,ALLOWLIST,beta)
-	               		val (ts3,nd3) = listExpressionPrime(ts2,nd2,beta)
+            			val (ts1,nd1) = assignmentExpression(tl ts,ALLOWLIST,beta)
+	               		val (ts2,nd2) = listExpressionPrime(ts1,nd1,beta)
 	    	      	in
-    	    	     	(ts3, nd1 :: nd3)
+						(trace(["<< listExpression' with next=",tokenname(hd(ts2))]);
+    	    	     	(ts2, nd1 :: nd2))
 	    	      	end
 	    	  | _ => (ts, nd1 :: [])
 		    end
         val (ts1,nd1) = assignmentExpression(ts,ALLOWLIST,beta)
         val (ts2,nd2) = listExpressionPrime(ts1,nd1,beta)
     in
-        (ts2, Ast.ListExpr nd2)
+		(trace(["<< listExpression with next=",tokenname(hd(ts2))]);
+        (ts2, Ast.ListExpr nd2))
     end
 
 (*
-	Pattern    
-    	ObjectPattern
-	    ArrayPattern
+	Pattern(a, b, g)	
+		SimplePattern(a, b, g)
+		ObjectPattern(g)
+		ArrayPattern(g)
 *)
 
-and pattern ts =
+and pattern (ts,a,b,g) =
 	let
 	in case ts of
-		LeftBrace :: _ => objectPattern ts
-	  | LeftBracket :: _ => arrayPattern ts
-	  | _ => raise ParseError
+		LeftBrace :: _ => objectPattern (ts,g)
+	  | LeftBracket :: _ => arrayPattern (ts,g)
+	  | _ => simplePattern (ts,a,b,g)
 	end
 
 (*
-	ObjectPattern    
-    	{  DestructuringFieldList  }
+	SimplePattern(a, b, noExpr)	
+		Identifier
+		
+	SimplePattern(a, b, allowExpr)	
+		PostfixExpression(a, b)
 *)
 
-and objectPattern ts =
+and simplePattern (ts,a,b,NOEXPR) =
+    let val _ = trace([">> simplePattern(a,b,NOEXPR) with next=",tokenname(hd(ts))]) 
+		val (ts1,nd1) = identifier ts
+	in
+		(trace(["<< simplePattern(a,b,NOEXPR) with next=",tokenname(hd(ts1))]);
+		(ts1,Ast.IdentifierPattern nd1))
+	end
+
+  | simplePattern (ts,a,b,ALLOWEXPR) =
+    let val _ = trace([">> simplePattern(a,b,ALLOWEXPR) with next=",tokenname(hd(ts))]) 
+		val (ts1,nd1) = postfixExpression (ts,a,b)
+	in
+		(trace(["<< simplePattern(a,b,ALLOWEXPR) with next=",tokenname(hd(ts1))]);
+		(ts1,Ast.SimplePattern nd1))
+	end
+
+(*
+	ObjectPattern(g)   
+    	{  DestructuringFieldList(g)  }
+*)
+
+and objectPattern (ts,g) =
 	let
 	in case ts of
 		LeftBrace :: ts =>
 			let
-				val (ts1,nd1) = destructuringFieldList ts
+				val (ts1,nd1) = destructuringFieldList (ts,g)
 			in case ts1 of
 				RightBrace :: _ => (tl ts1,Ast.ObjectPattern nd1)
 			  | _ => raise ParseError
@@ -2123,67 +2074,60 @@ and objectPattern ts =
 	end
 
 (*
-	DestructuringFieldList    
-    	DestructuringField
-	    DestructuringFieldList  ,  DestructuringField
+	DestructuringFieldList(g)
+    	DestructuringField(g)
+	    DestructuringFieldList(g)  ,  DestructuringField(g)
 *)
 
-and destructuringFieldList ts =
+and destructuringFieldList (ts,g) =
 	let
-		fun destructuringFieldList' ts =
+		fun destructuringFieldList' (ts,g) =
 			let
 			in case ts of
 				Comma :: _ =>
 					let
-						val (ts1,nd1) = destructuringField (tl ts)
-						val (ts2,nd2) = destructuringFieldList' (ts1)
+						val (ts1,nd1) = destructuringField (tl ts,g)
+						val (ts2,nd2) = destructuringFieldList' (ts1,g)
 					in case ts of
 					    _ => (ts2,nd1::nd2)
 					end
 			  | _ => (ts,[])
 			end
-		val (ts1,nd1) = destructuringField ts
-		val (ts2,nd2) = destructuringFieldList' ts1
+		val (ts1,nd1) = destructuringField (ts,g)
+		val (ts2,nd2) = destructuringFieldList' (ts1,g)
 	in
 		(ts2,nd1::nd2)
 	end
 
 (*
-	DestructuringField    
-    	NonAttributeQualifiedIdentifier  :  Pattern
-	    NonAttributeQualifiedIdentifier  :  PostfixExpression
+	DestructuringField(g)
+    	NonAttributeQualifiedIdentifier  :  Pattern(NOLIST,ALLOWIN,g)
 *)
 
-and destructuringField ts =
+and destructuringField (ts,g) =
 	let
-		val (ts1,nd1) = nonAttributeQualifiedIdentifier ts
+		val (ts1,nd1) = nonAttributeQualifiedIdentifier (ts)
 	in case ts1 of
-		Colon :: (LeftBrace | LeftBracket) :: _ => 
+		Colon :: _ => 
 			let
-				val (ts2,nd2) = pattern (tl ts1)
+				val (ts2,nd2) = pattern (tl ts1,NOLIST,ALLOWIN,g)
 			in
 				(ts2,{name=Ast.Ref {base=NONE,ident=nd1},ptrn=nd2})
-			end
-	  | Colon :: _ => 
-			let
-				val (ts2,nd2) = postfixExpression (tl ts1,NOLIST,ALLOWIN)
-			in
-				(ts2,{name=Ast.Ref {base=NONE,ident=nd1},ptrn=Ast.SimplePattern nd2})
 			end
 	  | _ => raise ParseError
 	end
 
 (*
-	ArrayPattern    
-    	[  DestructuringElementList  ]
+	ArrayPattern(g)   
+    	[  DestructuringElementList(g)  ]
 *)
 
-and arrayPattern ts =
+and arrayPattern (ts,g) =
 	let
 	in case ts of
 		LeftBracket :: _ => 
 			let
-				val (ts1,nd1) = destructuringElementList (tl ts)
+				val (ts1,nd1) = destructuringElementList (tl ts,g)
 			in case ts1 of
 				RightBracket :: _ => (tl ts1,Ast.ArrayPattern nd1)
 			  | _ => raise ParseError
@@ -2192,30 +2136,30 @@ and arrayPattern ts =
 	end
 
 (*
-	DestructuringElementList    
+	DestructuringElementList(g)   
     	«empty»
-	    DestructuringElement
-    	, DestructuringElementList
-	    DestructuringElement , DestructuringElementList
+	    DestructuringElement(g)
+    	, DestructuringElementList(g)
+	    DestructuringElement(g) , DestructuringElementList(g)
 *)
 
-and destructuringElementList (ts) =
+and destructuringElementList (ts,g) =
     let val _ = trace([">> destructuringElementList with next=",tokenname(hd(ts))]) 
 	in case ts of
 		RightBracket :: _ => (ts,[])
 	  | Comma :: _ => 
 			let
-				val (ts1,nd1) = destructuringElementList (tl ts)
+				val (ts1,nd1) = destructuringElementList (tl ts,g)
 			in
 				(ts1,Ast.SimplePattern(Ast.LiteralExpr(Ast.LiteralUndefined)) :: nd1)
 			end
 	  | _ =>
 			let
-				val (ts1,nd1) = destructuringElement (ts)
+				val (ts1,nd1) = destructuringElement (ts,g)
 			in case ts1 of
 				Comma :: _ =>
 					let
-						val (ts2,nd2) = destructuringElementList (tl ts1)
+						val (ts2,nd2) = destructuringElementList (tl ts1,g)
 					in
 						(ts2,nd1::nd2)
 					end
@@ -2224,20 +2168,93 @@ and destructuringElementList (ts) =
 	end
 
 (*
-	DestructuringElement    
-    	Pattern
-	    PostfixExpression
+	DestructuringElement(g)   
+    	Pattern(NOLIST,ALLOWIN,g)
 *)
 
-and destructuringElement ts =
+and destructuringElement (ts,g) =
     let val _ = trace([">> destructuringElement with next=",tokenname(hd(ts))]) 		
-	in case ts of
-		(LeftBrace | LeftParen) :: _ => pattern ts
+	in
+		pattern (ts,NOLIST,ALLOWIN,g)
+	end
+
+(*
+	TypedIdentifier(a,b)	
+		SimplePattern(a,b,noExpr)
+		SimplePattern(a,b,noExpr)  :  TypeExpression
+*)
+
+and typedIdentifier (ts,a,b) =
+    let val _ = trace([">> typedIdentifier with next=",tokenname(hd(ts))]) 
+		val (ts1,nd1) = simplePattern (ts,a,b,NOEXPR)
+	in case ts1 of
+		Colon :: _ => 
+			let
+				val (ts2,nd2) = typeExpression (tl ts1)
+			in
+				(ts2, {p=nd1,t=SOME nd2})
+			end
 	  | _ => 
 			let
-				val (ts1,nd1) = postfixExpression (ts,NOLIST,ALLOWIN)
 			in
-				(ts1,Ast.SimplePattern(nd1))
+				(trace(["<< typedIdentifier with next=",tokenname(hd(ts1))]);
+				(ts1, {p=nd1,t=NONE}))
+			end
+		
+	end
+
+(*		
+	TypedPattern(a,b,g)
+		SimplePattern(a,b,g)
+		SimplePattern(a,b,g)  :  TypeExpression
+		ObjectPattern
+		ObjectPattern  :  RecordType
+		ArrayPattern
+		ArrayPattern  :  ArrayType
+*)
+
+and typedPattern (ts,a,b,g) =
+    let val _ = trace([">> typedPattern with next=",tokenname(hd(ts))]) 
+	in case ts of
+		LeftBrace :: _ => 
+			let
+				val (ts1,nd1) = objectPattern (ts,g)
+			in case ts1 of
+				Colon :: _ =>
+					let
+						val (ts2,nd2) = recordType (tl ts1)
+					in
+						(ts2,{p=nd1,t=SOME nd2})
+					end
+			  | _ =>
+					(ts1,{p=nd1,t=NONE})
+			end
+	  | LeftBracket :: _ => 
+			let
+				val (ts1,nd1) = arrayPattern (ts,g)
+			in case ts1 of
+				Colon :: _ =>
+					let
+						val (ts2,nd2) = arrayType (tl ts1)
+					in
+						(ts2,{p=nd1,t=SOME nd2})
+					end
+			  | _ =>
+					(ts1,{p=nd1,t=NONE})
+			end
+	  | _ =>
+			let
+				val (ts1,nd1) = simplePattern (ts,a,b,g)
+			in case ts1 of
+				Colon :: _ =>
+					let
+						val (ts2,nd2) = typeExpression (tl ts1)
+					in
+						(ts2,{p=nd1,t=SOME nd2})
+					end
+			  | _ =>
+					(trace(["<< typedPattern with next=",tokenname(hd ts1)]);
+					(ts1,{p=nd1,t=NONE}))
 			end
 	end
 
@@ -2564,7 +2581,8 @@ and expressionStatement ts =
         val _ = trace([">> expressionStatement with next=", tokenname(hd ts)])
         val (ts1,nd1) = listExpression(ts,ALLOWIN)
     in
-        (ts1,Ast.ExprStmt(nd1))
+		(trace(["<< expressionStatement with next=", tokenname(hd ts1)]);
+        (ts1,Ast.ExprStmt(nd1)))
     end
 
 (*
@@ -2942,7 +2960,7 @@ and variableBindingList (ts,tag,alpha,beta) =
         (ts2, Ast.VariableDefn nd1 :: nd2)
     end
 
-and variableBinding (ts,tag,alpha,beta) = 
+and variableBinding (ts,tag,a,b) = 
     let val _ = trace([">> variableBinding with next=", tokenname(hd ts)])
 		val defaultAttrs = 
 			Ast.Attributes { 
@@ -2953,44 +2971,31 @@ and variableBinding (ts,tag,alpha,beta) =
         		dynamic = false,
 		        prototype = false,
         		nullable = false }
-
-	in case ts of
-		(LeftBrace | LeftBracket) :: _ =>
-			let
-				val (ts1,{ptrn,ty}) = typedPattern ts
-			in case ts1 of
-				Assign :: _ =>
-					let
-						val (ts2,nd2) = assignmentExpression (tl ts1,alpha,beta)
-					in
-						(ts2, Ast.VariableDefinition { tag = tag,
-                         					   init = SOME nd2,
+		val (ts1,{p,t}) = typedPattern (ts,a,b,NOEXPR)
+	in case (ts1,p) of
+			(Assign :: _,_) =>
+				let
+					val _ = trace(["xx variableBinding with next=", tokenname(hd ts1)])
+					val (ts2,nd2) = assignmentExpression (tl ts1,a,b)
+				in
+					(trace(["<< variableBinding with next=", tokenname(hd ts2)]);
+					(ts2, Ast.VariableDefinition { tag = tag,
+                        					   init = SOME nd2,
+                        					   attrs = defaultAttrs,
+                        					   pattern = p,
+                        					   ty = t } ))
+				end
+		  | (_,Ast.IdentifierPattern _) =>
+				let
+				in
+					(trace(["<< variableBinding with next=", tokenname(hd ts1)]);
+					(ts1, Ast.VariableDefinition { tag = tag,
+                         					   init = NONE,
                          					   attrs = defaultAttrs,
-                         					   pattern = ptrn ,
-                         					   ty = ty } )
-					end
-			  | _ => raise ParseError
-			end
-	  | _ => 
-			let
-				val (ts1,{p,t}) = typedIdentifier (ts)
-			in case ts1 of
-				Assign :: _ =>
-					let
-						val (ts2,nd2) = assignmentExpression (tl ts1,alpha,beta)
-					in
-						(ts2, Ast.VariableDefinition { tag = tag,
-                         init = SOME nd2,
-                         attrs = defaultAttrs,
-                         pattern = p,
-                         ty = t } )
-					end
-			  | _ => (ts1, Ast.VariableDefinition { tag = tag,
-                         init = NONE,
-                         attrs = defaultAttrs,
-                         pattern = p,
-                         ty = t } )
-			end
+                         					   pattern = p,
+                         					   ty = t } ))
+				end
+		  | (_,_) => raise ParseError
 	end
 
 (*
