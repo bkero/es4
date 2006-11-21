@@ -255,6 +255,8 @@ datatype DIRECTIVE =
 
        | ListExpr of EXPR list
 
+	   | PatternExpr of PATTERN
+
  
     and IDENT_EXPR =
          QualifiedIdentifier of { qual : EXPR,
@@ -292,6 +294,7 @@ datatype DIRECTIVE =
 		ObjectPattern of { name: EXPR, ptrn : PATTERN } list
 	  | ArrayPattern of PATTERN list
 	  | SimplePattern of EXPR
+	  | IdentifierPattern of IDENT
 
 withtype
 

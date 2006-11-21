@@ -1,0 +1,1 @@
+f(yield,(function (x,y) x*y))

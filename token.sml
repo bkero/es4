@@ -130,6 +130,7 @@ datatype token =
     | Native
     | Number
     | Override
+    | Precision
     | Prototype
     | Rounding
     | Standard
@@ -358,6 +359,7 @@ fun tokenname t =
       | Native => "native"
       | Number => "number"
       | Override => "override"
+      | Precision => "precision"
       | Prototype => "prototype"
       | Rounding => "rounding"
       | Standard => "standard"
