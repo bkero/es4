@@ -32,10 +32,10 @@ datatype TRIOP =
          Cond
 
 datatype BINTYPEOP =
-		 Cast
-	   | Is
-	   | To
-
+	 Cast
+       | Is
+       | To
+	 
 datatype BINOP =
          Plus
        | Minus
@@ -106,7 +106,7 @@ datatype VAR_DEFN_TAG =
        | Rest
 
 datatype NAMESPACE =
-		 Private
+	 Private
        | Protected
        | Intrinsic
        | Public of IDENT
@@ -133,7 +133,7 @@ datatype DIRECTIVE =
                      alias: IDENT option }
 
      and FUNC = 
-		 Func of 
+	 Func of 
          { name: IDENT,
            attrs: ATTRIBUTES,
            formals: FORMAL list,
@@ -152,8 +152,8 @@ datatype DIRECTIVE =
          FunctionSignature of { typeparams: IDENT list,
                                 params: FORMAL list,
                                 resulttype: TYPE_EXPR }
-
-
+			      
+			      
      (* Improve this? Probably more mutual exclusion possible. *)
      and ATTRIBUTES =
          Attributes of { ns: NAMESPACE,
@@ -166,10 +166,10 @@ datatype DIRECTIVE =
 
      and VAR_DEFN =
          VariableDefinition of { tag: VAR_DEFN_TAG,
-                           init: EXPR option,
-                           attrs: ATTRIBUTES,
-                           pattern: PATTERN,
-                           ty: TYPE_EXPR option }
+				 init: EXPR option,
+				 attrs: ATTRIBUTES,
+				 pattern: PATTERN,
+				 ty: TYPE_EXPR option }
 
      and TYPE_EXPR =
          SpecialType of SPECIAL_TY
@@ -222,10 +222,10 @@ datatype DIRECTIVE =
                          cases: (EXPR * (STMT list)) list,
                          default: STMT list }
 
-	   | DefnStmt of DEFINITION list
-
-	   | PragmaStmt of DIRECTIVE list
-
+       | DefnStmt of DEFINITION list
+		     
+       | PragmaStmt of DIRECTIVE list
+		       
      and EXPR =
          TrinaryExpr of (TRIOP * EXPR * EXPR * EXPR)
        | BinaryExpr of (BINOP * EXPR * EXPR)
@@ -255,8 +255,8 @@ datatype DIRECTIVE =
 
        | ListExpr of EXPR list
 
-	   | PatternExpr of PATTERN
-
+       | PatternExpr of PATTERN
+			    
  
     and IDENT_EXPR =
          QualifiedIdentifier of { qual : EXPR,
@@ -265,10 +265,11 @@ datatype DIRECTIVE =
                                   expr : EXPR }
        | AttributeIdentifier of IDENT_EXPR
        | Identifier of { ident : IDENT,
-			 openNamespaces : (NAMESPACE list) option ref }
+			 openNamespaces : (NAMESPACE list) ref }
        | Expression of EXPR   (* for bracket exprs: o[x] and @[x] *)
-	   | TypeIdentifier of { ident : IDENT_EXPR, typeParams : TYPE_EXPR list }
-
+       | TypeIdentifier of { ident : IDENT_EXPR, 
+			     typeParams : TYPE_EXPR list }
+			       
      and LITERAL =
          LiteralNull
        | LiteralUndefined 
@@ -285,34 +286,32 @@ datatype DIRECTIVE =
 
        | LiteralRegExp of
          { str: USTRING }
-
-    and BLOCK = Block of
+	 
+     and BLOCK = Block of
          { pragmas: DIRECTIVE list,
            defns: DEFINITION list,
            stmts: STMT list }
-
-	and PATTERN =
-		ObjectPattern of { name: EXPR, ptrn : PATTERN } list
-	  | ArrayPattern of PATTERN list
-	  | SimplePattern of EXPR
-	  | IdentifierPattern of IDENT
-
-withtype
-
-		 FIELD =
-		 { name: EXPR,
+	 
+     and PATTERN =
+	 ObjectPattern of { name: EXPR, ptrn : PATTERN } list
+       | ArrayPattern of PATTERN list
+       | SimplePattern of EXPR
+       | IdentifierPattern of IDENT
+			      
+withtype FIELD =
+	 { name: EXPR,
            init: EXPR }
-
+	 
      and FIELD_TYPE =
-		 { name: EXPR,
+	 { name: EXPR,
            ty: TYPE_EXPR }
-
+	 
      and FUNC_TY =
          { paramTypes: TYPE_EXPR option list,
            returnType: TYPE_EXPR,
            boundThisType: TYPE_EXPR option,
            hasRest: bool }
-
+	 
      and FORMAL =
          { pattern: PATTERN,
            ty: TYPE_EXPR option,

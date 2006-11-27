@@ -93,7 +93,7 @@ datatype VAL =
 		   openNamespaces: NS list }
 
 		
-withtype NAME = { ns: NS option, 
+withtype NAME = { ns: NS, 
 		  id: ID }
 		
      and MULTINAME = { nss: NS list, 

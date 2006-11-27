@@ -113,7 +113,7 @@ and qualifier ts =
           let
               val (ts1,nd1) = propertyIdentifier (ts)
           in
-              (ts1,Ast.Ref{base=NONE,ident=Ast.Identifier {ident=nd1, openNamespaces=ref NONE}})
+              (ts1,Ast.Ref{base=NONE,ident=Ast.Identifier {ident=nd1, openNamespaces=ref []}})
           end
     end
 
@@ -174,7 +174,7 @@ and simpleQualifiedIdentifier ts =
       | _ => 
           	let
               	val (ts1, nd1) = propertyIdentifier(ts)
-                val id = Ast.Identifier {ident=nd1, openNamespaces=ref NONE}
+                val id = Ast.Identifier {ident=nd1, openNamespaces=ref []}
           	in case ts1 of
               	DoubleColon :: _ => 
 					qualifiedIdentifier'(tl ts1,Ast.Ref ({base=NONE,ident=id}))
@@ -568,7 +568,7 @@ and parameterInit ts =
 
 and parameter (ts) : (token list * Ast.FORMAL) =
     let val _ = trace([">> parameter with next=",tokenname(hd(ts))]) 
-		val (ts1,nd1) = parameterAttributes (ts)
+		val (ts1,nd1) = parameterKind (ts)
 		val (ts2,{p,t}) = typedPattern (ts1,NOLIST,ALLOWIN,NOEXPR)
 	in
 		(ts2,{pattern=p,ty=t,tag=nd1,isRest=false,init=NONE})
@@ -1136,7 +1136,7 @@ and propertyOperator (ts, nd) =
                             let
                                 val (ts4,nd4) = reservedOrPropertyIdentifier(ts3)
                             in
-                                (ts4,Ast.Ref({base=SOME nd,ident=Ast.Identifier {ident=nd4,openNamespaces=ref NONE}}))
+                                (ts4,Ast.Ref({base=SOME nd,ident=Ast.Identifier {ident=nd4,openNamespaces=ref []}}))
                             end
 					  | _ => raise ParseError
                     end
@@ -1144,7 +1144,7 @@ and propertyOperator (ts, nd) =
                     let
                         val (ts4,nd4) = reservedOrPropertyIdentifier(ts1)
                     in
-                        (ts4,Ast.Ref({base=SOME nd,ident=Ast.Identifier {ident=nd4,openNamespaces=ref NONE}}))
+                        (ts4,Ast.Ref({base=SOME nd,ident=Ast.Identifier {ident=nd4,openNamespaces=ref []}}))
                     end
             end
       | LeftBracket :: _ => 

@@ -5,7 +5,7 @@ exception IllTypedException of string
 open Ast
 
 (* TODO: what is the proper way to resolve these built-ins? *)
-fun simpleIdent s = Identifier { ident=s, openNamespaces=ref NONE }
+fun simpleIdent s = Identifier { ident=s, openNamespaces=ref [] }
 
 val boolType      = PrimaryType { ident=simpleIdent "boolean",   kind=Named }
 val numberType    = PrimaryType { ident=simpleIdent "number",    kind=Named }
