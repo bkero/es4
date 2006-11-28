@@ -116,7 +116,7 @@ datatype NAMESPACE =
 datatype PRIM_KIND =
          Named
        | Nullable
-       | NotNullable
+       | NonNullable
 
 datatype SPECIAL_TY =
          Any
@@ -240,9 +240,6 @@ datatype DIRECTIVE =
        | CallExpr of {func: EXPR,
                       actuals: EXPR list}
 
-       | Ref of { base: EXPR option,
-                  ident: IDENT_EXPR }
-
        | LetExpr of { defs: VAR_DEFN list,
                       body: EXPR }
 
@@ -257,6 +254,10 @@ datatype DIRECTIVE =
 
        | PatternExpr of PATTERN
 			    
+       | ObjectRef of { base: EXPR option, ident: IDENT_EXPR }
+
+       | LexicalRef of { ident: IDENT_EXPR }
+
  
     and IDENT_EXPR =
          QualifiedIdentifier of { qual : EXPR,
@@ -266,7 +267,7 @@ datatype DIRECTIVE =
        | AttributeIdentifier of IDENT_EXPR
        | Identifier of { ident : IDENT,
 			 openNamespaces : (NAMESPACE list) ref }
-       | Expression of EXPR   (* for bracket exprs: o[x] and @[x] *)
+       | ExpressionIdentifier of EXPR   (* for bracket exprs: o[x] and @[x] *)
        | TypeIdentifier of { ident : IDENT_EXPR, 
 			     typeParams : TYPE_EXPR list }
 			       

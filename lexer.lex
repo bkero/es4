@@ -15,16 +15,20 @@ fun log ss =
      List.app TextIO.print ss; 
      TextIO.print "\n")
 
+val line_breaks : int list ref = ref []
+val token_count : int ref = ref 0
+
 fun token_list (token_fn : unit -> token) =
 let
     val t = ref [] 
     fun add tok = t := tok :: !t
-    fun stop _ = rev (!t)
+    fun add_lb offset = line_breaks := offset :: !line_breaks
+    fun stop _ = (token_count := length (!t); rev (!t))
     fun step _ = 
-	let 
-	    val tok = token_fn ()
-	in 
-	    (* log ["lexed ", tokenname tok]; *)
+        let 
+	        val tok = token_fn ()
+	    in 
+	        (* log ["lexed ", tokenname tok]; *)
 
 	  (*
 	   * The lexbreak tokens represent choice points for the parser. We
@@ -36,11 +40,30 @@ let
 	      | LexBreakDivAssign _ => (add DivAssign; add tok; stop ())
 	      | LexBreakLessThan _ => (add LessThan; add tok; stop ())
 	      | Eof => (add Eof; stop ())
+	      | Eol => (add_lb (length (!t)); step ())
 	      | x => (add x; step ())
 	end
 in
+    line_breaks := [];
     step ()
 end
+
+
+fun followsLineBreak (ts) =
+	let val _ = log(["followsLineBreak"])
+	    val offset = length ts
+	    val max_offset = !token_count
+	    fun findBreak lbs =
+            case lbs of
+                [] => false
+              | _ => 
+	              (log(["token_count=",Int.toString(max_offset),
+						" offset=",Int.toString(max_offset-offset),
+						" break=",Int.toString(hd lbs)]);
+                  if (hd lbs) = (max_offset - offset) then true else findBreak (tl lbs))
+	in
+		findBreak (!line_breaks)
+	end
 
 val (curr_quote : char ref) = ref #"\000"
 val (curr_chars : (char list) ref) = ref []
