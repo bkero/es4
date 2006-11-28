@@ -110,6 +110,7 @@ withtype NAME = { ns: NS,
 (* Exceptions for "abstract machine failures". *)
 
 exception ReferenceException of NAME
+exception ConversionException of STR
 exception MultiReferenceException of MULTINAME
 exception UnimplementedException of STR
 
@@ -234,16 +235,45 @@ val (globalClass:CLASS) =
 	    instancePrototype = globalObject,
 	    initialized = ref true }
 
+val nan = Real.posInf / Real.posInf
+
 fun newObject (c:CLASS option) = 
     Obj { class = c,
 	  bindings = newBindings (),
 	  prototype = ref NONE }
-		   
+
+and deref (Ref {base=Obj {bindings,...}, name}) = 
+    (#value (getBinding bindings name))
+
+(* FIXME: this is not the correct toString *)
+and toString (Str s) = s
+  | toString (Num n) = Real.toString n
+  | toString (Bool true) = "true"
+  | toString (Bool false) = "false"
+  | toString (Object _) = "[object Object]"
+  | toString (Function _) = "[function Function]"
+  | toString (Reference r) = toString (deref r)
+  | toString Undef = "undefined"
+  | toString Null = "null"
+
+and toNum (Str s) = (case Real.fromString s of
+			SOME n => n
+		      | NONE => nan)
+  | toNum (Num n) = n
+  | toNum (Bool true) = 1.0
+  | toNum (Bool false) = 0.0
+  | toNum (Object _) = nan
+  | toNum (Function _) = nan
+  | toNum (Reference r) = toNum (deref r)
+  | toNum Undef = nan
+  | toNum Null = 0.0
+		    
 and toBoolean (Bool b) = b
   | toBoolean (Str _) = true
   | toBoolean (Num _) = true
   | toBoolean (Object _) = true
   | toBoolean (Function _) = true
+  | toBoolean (Reference r) = toBoolean (deref r)
   | toBoolean Undef = false
   | toBoolean Null = false
 

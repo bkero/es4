@@ -32,8 +32,105 @@ fun evalExpr (scope:Mach.SCOPE) (expr:Ast.EXPR) =
       | Ast.LetExpr {defs, body} => 
 	evalLetExpr scope defs body
 
+      | Ast.TrinaryExpr (Ast.Cond, aexpr, bexpr, cexpr) => 
+	evalCondExpr scope aexpr bexpr cexpr
+
+      | Ast.BinaryExpr (bop, aexpr, bexpr) => 
+	evalBinaryOp scope bop aexpr bexpr
+
+
       | _ => 
 	raise (Mach.UnimplementedException "unhandled expression type")
+
+and assignValue (base:Mach.OBJ) (name:Mach.NAME) (v:Mach.VAL) = 
+    (case base of 
+	 Mach.Obj {bindings,...} => 
+	 if Mach.hasBinding bindings name
+	 then 
+	     let 
+		 val existingProp = Mach.getBinding bindings name
+		 val newProp = { ty = (#ty existingProp), 
+				 value = v, 
+				 dontDelete = (#dontDelete existingProp), 
+				 dontEnum = (#dontEnum existingProp),
+				 readOnly = (#readOnly existingProp) }
+	     in
+		 if (#readOnly existingProp)
+		 then raise (SemanticException "assigning to read-only property")
+		 else ();
+		 (* FIXME: insert typecheck here *)
+		 Mach.delBinding bindings name;
+		 Mach.addBinding bindings name newProp
+	     end
+	 else
+	     let 
+		 val prop = { ty = Ast.SpecialType Ast.Any,
+			      value = v,
+			      dontDelete = false,
+			      dontEnum = false,
+			      readOnly = false }
+	     in
+		 Mach.addBinding bindings name prop
+	     end; v)
+	    
+and evalBinaryOp (scope:Mach.SCOPE) (bop:Ast.BINOP) (aexpr:Ast.EXPR) (bexpr:Ast.EXPR) =
+    let
+	fun rval x = case x of 
+                         (Mach.Reference (Mach.Ref {base=Mach.Obj {bindings,...}, name})) => 
+                         (#value (Mach.getBinding bindings name))
+                       | _ => x
+	fun lval x = case x of 
+			 Mach.Reference r => r
+		       | _ => raise (SemanticException "assigning to non-lvalue")				    
+	fun toNum x = Mach.toNum (rval x)
+	fun toString x = Mach.toString (rval x)
+	fun evalBop bop' a b =
+	    let 
+		fun assignWith bop'' = evalBop Ast.Assign a (evalBop bop'' a b)
+	    in
+		case bop' of 
+		    Ast.Assign => (case lval a of 
+				       Mach.Ref {base, name} => 
+				       assignValue base name (rval b))
+		  | Ast.AssignPlus => assignWith Ast.Plus
+		  | Ast.AssignMinus => assignWith Ast.Minus
+		  | Ast.AssignTimes => assignWith Ast.Times
+		  | Ast.AssignDivide => assignWith Ast.Divide
+		  | Ast.AssignRemainder => assignWith Ast.Remainder
+		  | Ast.AssignLeftShift => assignWith Ast.LeftShift
+		  | Ast.AssignRightShift => assignWith Ast.RightShift
+		  | Ast.AssignRightShiftUnsigned => assignWith Ast.RightShiftUnsigned
+		  | Ast.AssignBitwiseAnd => assignWith Ast.BitwiseAnd
+		  | Ast.AssignBitwiseOr => assignWith Ast.BitwiseOr
+		  | Ast.AssignBitwiseXor => assignWith Ast.BitwiseXor
+		  | Ast.AssignLogicalAnd => assignWith Ast.LogicalAnd
+		  | Ast.AssignLogicalOr => assignWith Ast.LogicalOr
+		  | Ast.AssignLogicalXor => assignWith Ast.LogicalXor
+
+		  | Ast.Plus => 
+		    (case (a,b) of 
+			 (Mach.Num na, Mach.Num nb) => Mach.Num (na + nb)
+		       | (_,_) => Mach.Str ((toString a) ^ (toString b)))
+		  | Ast.Minus => Mach.Num ((toNum a) - (toNum b))
+		  | Ast.Times => Mach.Num ((toNum a) * (toNum b))
+		  | Ast.Divide => Mach.Num((toNum a) / (toNum b))
+		  | _ => raise (Mach.UnimplementedException "unhandled binary operator type")
+	    end
+    in
+	evalBop bop (evalExpr scope aexpr) (evalExpr scope bexpr)
+    end
+
+
+and evalCondExpr (scope:Mach.SCOPE) (cond:Ast.EXPR) (consequent:Ast.EXPR) (alternative:Ast.EXPR) = 
+    let 
+        val v = evalExpr scope cond
+        val b = Mach.toBoolean v
+    in
+	if b 
+	then evalExpr scope consequent
+	else evalExpr scope alternative
+    end
+    
 
 and evalRefExpr (scope:Mach.SCOPE) (b:Mach.VAL option) (r:Ast.IDENT_EXPR) =
     case r of 
