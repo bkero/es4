@@ -3,5 +3,27 @@ TYPE SYSTEM
 
 - is `this' only ever a class type? interface type?
 - are there places where `this' can't be mentioned?
+- what are restrictions on SimplePattern expression? where are they imposed?
+- what is PatternExpr?
+- why don't IdentifierPattern have a TYPE option?
+  o is it this: let (["dave", x:int, b:Boolean] = ["dave", 54, true]) { ... }
+  o    or this: let (["dave", x, b] : [String, int, Boolean] = ["dave", 54, true]) { ... }
+- what is a Ref expression?
+- what is the NULOP Empty?
+- bug in parser.sml? -- "type foo" creates a TypeExpr, not a UnaryExpression with UNOP `type'?
+- what is the definition of a statically known namespace?
+- what is the definition of a statically resolvable name?
+  o all open namespaces are statically known?
+- in IDENT_EXPR, we split out the cases of static names and computed names:
+    and IDENT_EXPR =
+         QualifiedIdentifier of { qual : EXPR,
+                                  ident : USTRING }
+       | QualifiedExpression of { qual : EXPR,
+                                  expr : EXPR }
+  should we also split out the cases of static namespaces and dynamic namespaces?
 
 ============================================================
+ML
+
+- does anyone have a better solution for dealing with uncaught exceptions?
+  o we're currently inserting debugging info for catch-all match clauses

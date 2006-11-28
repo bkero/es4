@@ -1,3 +1,9 @@
+(*
+ * INVARIANTS:
+ *   - all typed libraries in host environment must be DontDelete
+ *   - all typed libraries in host environment must carry compatible runtime type constraints
+ *)
+
 structure TypeChk = struct
 
 exception IllTypedException of string
@@ -52,12 +58,17 @@ fun checkForDuplicates extensions =
 fun mergeTypes t1 t2 =
 	t1
 
+fun unOptionTy NONE = Any
+  | unOptionTy (SOME t) = t
+
 (******************** Expressions **************************************************)
 	
-fun tcExpr ((ctxt as {env,...}):CONTEXT) (e:EXPR) :TYPE_EXPR = 
+fun tcExpr ((ctxt as {env,this,...}):CONTEXT) (e:EXPR) :TYPE_EXPR = 
 	let
 	in 
-     	TextIO.print "type checking expr ... \n";
+     	TextIO.print "type checking expr: ";
+        Pretty.ppExpr e;
+        TextIO.print "\n";
 	case e of
 	  LiteralExpr LiteralNull => nullType
         | LiteralExpr (LiteralNumber _) => intType
@@ -72,8 +83,11 @@ fun tcExpr ((ctxt as {env,...}):CONTEXT) (e:EXPR) :TYPE_EXPR =
 	    checkForDuplicates extensions;
 	    tcExpr (withEnv (ctxt, foldl extendEnv env extensions)) body
 	  end
+       | NullaryExpr This => this
+       | NullaryExpr Empty => (TextIO.print "what is Empty?\n"; raise Match)
+       | UnaryExpr (unop, arg) => tcUnaryExpr ctxt (unop, arg)
+       | _ => (TextIO.print "tcExpr incomplete: "; Pretty.ppExpr e; raise Match)
 	end
-
 
 (*
      and LITERAL =
@@ -89,9 +103,7 @@ fun tcExpr ((ctxt as {env,...}):CONTEXT) (e:EXPR) :TYPE_EXPR =
          TrinaryExpr of (TRIOP * EXPR * EXPR * EXPR)
        | BinaryExpr of (BINOP * EXPR * EXPR)
        | BinaryTypeExpr of (BINOP * EXPR * TYPE_EXPR)
-       | UnaryExpr of (UNOP * EXPR)
        | TypeExpr of TYPE_EXPR
-       | NullaryExpr of NULOP
        | YieldExpr of EXPR option
        | SuperExpr of EXPR option
 
@@ -118,18 +130,56 @@ fun tcExpr ((ctxt as {env,...}):CONTEXT) (e:EXPR) :TYPE_EXPR =
 
 *)
 
+(* TODO: tcPattern returns a pair of env extension and (inferred) type?
+         or takes a type (checked) and returns just extension? *)
+(*
+and tcPattern (ctxt:CONTEXT) (Ast.IdentifierPattern name) = (
+  | tcPattern ctxt (Ast.ObjectPattern props) =
+  | tcPattern ctxt (Ast.ArrayPattern elts) =
+  | tcPattern ctxt (Ast.SimplePattern expr) = ??
+*)
+
+(* TODO: this needs to return some type structure as well *)
 and tcVarDefn (ctxt:CONTEXT) 
-     (VariableDefinition {tag,init,attrs,pattern=Ast.SimplePattern(name),ty}) = 
+     (VariableDefinition {tag,init,attrs,pattern,ty}) =
+        (* TODO: what are simple patterns? *)
 	[]
 
-
+and tcUnaryExpr (ctxt:CONTEXT) (unop:UNOP, arg:EXPR) =
+    (case unop of
+(*
+          Delete => (case arg of
+                          Ref {base=NONE,ident=???} =>
+                        | Ref {base=SOME baseExpr,ident=???} =>
+                        | _ => raise IllTypedException "can only delete ref expressions")
+*)
+          Void => (tcExpr ctxt arg; undefinedType)
+        | Typeof => (tcExpr ctxt arg; stringType)
+(*
+        | PreIncrement
+        | PreDecrement
+        | PostIncrement
+        | PostDecrement
+        | UnaryPlus
+        | UnaryMinus
+        | BitwiseNot
+        | LogicalNot
+        | MakeNamespace
+        | Type
+*)
+        | _ => (TextIO.print "tcUnaryExpr incomplete: "; Pretty.ppExpr (UnaryExpr (unop,arg)); raise Match)
+    )
 
 (**************************************************************)
 
 fun tcStmts ctxt ss = List.app (fn s => tcStmt ctxt s) ss
 
 and tcStmt ((ctxt as {this,env,lbls,retTy}):CONTEXT) stmt =
-  (TextIO.print "type checking stmt ... \n";
+   let
+   in
+   TextIO.print "type checking stmt ... \n";
+        Pretty.ppStmt stmt;
+        TextIO.print "\n";
    case stmt of
     EmptyStmt => ()
   | ExprStmt e => (tcExpr ctxt e; ())
@@ -182,6 +232,8 @@ and tcStmt ((ctxt as {this,env,lbls,retTy}):CONTEXT) stmt =
     )
   | DefineStmt _ =>
         raise Fail "should have been hoisted"
+  | _ => (TextIO.print "tcStmt incomplete: "; Pretty.ppStmt stmt; raise Match)
+
 (*
        | ForEachStmt of FOR_ENUM_STMT
        | ForInStmt of FOR_ENUM_STMT
@@ -209,10 +261,12 @@ and tcStmt ((ctxt as {this,env,lbls,retTy}):CONTEXT) stmt =
 *)
 (*  | tcStmt _ _ _ _ => raise Expr.UnimplementedException "Unimplemented statement type" *)
 
-)
+   end
+
 and tcDefn ctxt d =
     (case d of
         VariableDefn vd => (tcVarDefn ctxt vd, [])
+       | d => (TextIO.print "tcDefn incomplete: "; Pretty.ppDefinition d; raise Match)
     )
 
 and tcDefns ctxt [] = ([], [])
