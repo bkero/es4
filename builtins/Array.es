@@ -21,8 +21,7 @@ package
 				return args;
 			}
 			
-			// @todo : is this the right syntax for a super call in this case?
-			return super.call(ident, args);
+			return intrinsic::call(ident, args);
 		}
 
 		// 15.4.2 The Array Constructor 
@@ -51,10 +50,15 @@ package
 
 		// 15.4.4 Properties of the Array Prototype Object
 		// { DontEnum, DontDelete, ReadOnly } 
-		// @todo
+		// @todo how to set DontEnum?
+		public function get prototype():Object
+		{
+			return intrinsic::get("prototype");
+		}
 
-		// 15.4.4.1 Array.prototype.constructor 
-		// @todo
+		// 15.4.4.1 Array.prototype.constructor
+		// @todo is this right? don't think so... 
+		prototype.constructor = function(...args) { return new Array(args); }
 		
 		// 15.4.4.2 Array.prototype.toString ( )
 		prototype.toString = function():String
@@ -433,47 +437,39 @@ package
 				return;
 			
 			var curLength:uint = uint(this.length);
-			if (propertyName == "length")
+			intrinsic::set(propertyName, value);
+			var propertyNameAsNumber:Number = Number(propertyName);
+			var propertyNameAsInt:uint = uint(propertyNameAsNumber);
+			if (propertyNameAsInt == propertyNameAsNumber && propertyNameAsInt >= curLength)
 			{
-				var valueAsNumber:Number = Number(value);
-				var valueAsInt:uint = uint(valueAsNumber);
-				if (valueAsInt != valueAsNumber)
-				{
-					throw new RangeError();
-				}
-				for (var i:uint = valueAsInt; i < curLength; ++i)
-				{
-					if (this.hasOwnProperty(i))
-						delete this[i];
-				}
-				// @todo : is this the right syntax for a super call in this case?
-				super.set("length", valueAsInt);
-			}
-			else
-			{
-				// @todo : is this the right syntax for a super call in this case?
-				super.set(propertyName, value);
-				var propertyNameAsNumber:Number = Number(propertyName);
-				var propertyNameAsInt:uint = uint(propertyNameAsNumber);
-				if (propertyNameAsInt == propertyNameAsNumber && propertyNameAsInt >= curLength)
-				{
-					// @todo : is this the right syntax for a super call in this case?
-					super.set("length", propertyNameAsInt+1);	
-				}
+				intrinsic::set("length", propertyNameAsInt+1);	
 			}
 		}
 		
 		// 15.4.5.2 length
 		prototype.length = 0;
-		public function get length():uint
+		public function get length():*
 		{
-			// @todo: verify this will go thru get*() catchall and not recurse
-			return this["length"];
+			return intrinsic::get("length");
 		}
-		public function set length(newLength:uint):void
+		
+		// ECMA-262 requires a RangeError if non-ints are passed in,
+		// so we must not type it as uint in the prototype
+		public function set length(newLength:*):void
 		{
-			// @todo: verify this will go thru set*() catchall and not recurse
-			this["length"] = newLength;
+			var curLength:uint = uint(this.length);
+			var valueAsNumber:Number = Number(newLength);
+			var valueAsInt:uint = uint(valueAsNumber);
+			if (valueAsInt != valueAsNumber)
+			{
+				throw new RangeError();
+			}
+			for (var i:uint = valueAsInt; i < curLength; ++i)
+			{
+				if (this.hasOwnProperty(i))
+					delete this[i];
+			}
+			intrinsic::set("length", valueAsInt);
 		}
 
 		// Array.length = 1 per ECMA-262
@@ -500,13 +496,6 @@ package
 				clamped = uint(intValue);
 
 			return clamped;
-		}
-
-		private function swap(j:uint, k:uint):void
-		{
-			var temp = this[j];
-			this[j] = this[k];
-			this[k] = temp;
 		}
 
 		private function compare(j:uint, k:uint, compareFn:Function):int
@@ -542,123 +531,46 @@ package
 			}
 		}
 
+		// note that this is (deliberately) a very simple recursive implementation of Quicksort.
+		// while it suffices for spec purposes, it is not efficient or performant enough
+		// for a real implementation.
 		private function qsort(lo:uint, hi:uint, compareFn:Function):void
 		{
-			// This is an iterative implementation of the recursive quick sort.
-			// Recursive implementations are basically storing nested (lo,hi) pairs
-			// in the stack frame, so we can avoid the recursion by storing them
-			// in an array.
-			//
-			// Once partitioned, we sub-partition the smaller half first. This means
-			// the greatest stack depth happens with equal partitions, all the way down,
-			// which would be 1 + log2(size), which could never exceed 33.
-
-			var size:uint;
-			type StackFrame = { lo:uint, hi:uint };
-			var stk:[StackFrame] = []:[StackFrame];
-			var stkptr:uint = 0;
-
-			// leave without doing anything if the array is empty (lo > hi) or only one element (lo == hi)
 			if (lo >= hi)
 				return;
 
-			// code below branches to this label instead of recursively calling qsort()
-			for (;;)
+			var size:uint  = (hi - lo) + 1;
+			var pivot:uint = lo + (size / 2);
+			var i:uint = lo;
+			var j:uint = hi;
+			while (i <= j) 
 			{
-				size = (hi - lo) + 1; // number of elements in the partition
-
-				// an efficient implementation would special-case small partitions,
-				// but this is skipped here in the interest of code simplicity
-				if (size >= 2) 
+				while (compare(i, pivot, compareFn) < 0) 
 				{
-					// qsort()-ing a near or already sorted list goes much better if
-					// you use the midpoint as the pivot, but the algorithm is simpler
-					// if the pivot is at the start of the list, so move the middle
-					// element to the front!
-					var pivot:uint = lo + (size / 2);
-					swap(pivot, lo);
-
-					var left:uint = lo;
-					var right:uint = hi + 1;
-
-					for (;;) 
-					{
-						// Move the left right until it's at an element greater than the pivot.
-						// Move the right left until it's at an element less than the pivot.
-						// If left and right cross, we can terminate, otherwise swap and continue.
-						//
-						// As each pass of the outer loop increments left at least once,
-						// and decrements right at least once, this loop has to terminate.
-
-						do  {
-							left++;
-						} while ((left <= hi) && (compare(left, lo, compareFn) <= 0));
-
-						do  {
-							right--;
-						} while ((right > lo) && (compare(right, lo, compareFn) >= 0));
-
-						if (right < left)
-							break;
-
-						swap(left, right);
-					}
-
-					// move the pivot after the lower partition
-					swap(lo, right);
-
-					// The array is now in three partions:
-					//	1. left partition	: i in [lo, right), elements less than or equal to pivot
-					//	2. center partition	: i in [right, left], elements equal to pivot
-					//	3. right partition	: i in (left, hi], elements greater than pivot
-					// NOTE : [ means the range includes the lower bounds, ( means it excludes it, with the same for ] and ).
-
-					// Many quick sorts recurse into the left partition, and then the right.
-					// The worst case of this can lead to a stack depth of size -- for instance,
-					// the left is empty, the center is just the pivot, and the right is everything else.
-					//
-					// If you recurse into the smaller partition first, then the worst case is an
-					// equal partitioning, which leads to a depth of log2(size).
-					if ((right - 1 - lo) >= (hi - left)) 
-					{
-						if ((lo + 1) < right) 
-						{
-							stk[stkptr++] = {lo: lo, hi:right-1}:StackFrame;
-						}
-
-						if (left < hi)
-						{
-							lo = left;
-							continue;	/* do small recursion */
-						}
-					}
-					else
-					{
-						if (left < hi)
-						{
-							stk[stkptr++] = {lo:left, hi:hi}:StackFrame;
-						}
-
-						if ((lo + 1) < right)
-						{
-							hi = right - 1;
-							continue;	/* do small recursion */
-						}
-					}
+					++i;
 				}
-
-				// we reached the bottom of the well, pop the nested stack frame
-				if (--stkptr >= 0)
+				while (compare(j, pivot, compareFn) > 0) 
 				{
-					lo = stk[stkptr].lo;
-					hi = stk[stkptr].hi;
-					continue;
+					--j;
 				}
+				if (i <= j) 
+				{
+					var temp = this[i];
+					this[i] = this[j];
+					this[j] = temp;
+					++i;
+					--j;
+				}
+			}
 
-				// we've returned to the top, so we are done!
-				break;
-
-			} // endless for
+			if (lo < j) 
+			{
+				qsort(lo, j, compareFn);
+			}
+			if (i < hi) 
+			{
+				qsort(i, hi, compareFn);
+			}
 		} // qsort
 		
 	} // Array
