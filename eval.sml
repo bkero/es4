@@ -26,8 +26,10 @@ fun evalExpr (scope:Mach.SCOPE) (expr:Ast.EXPR) =
     case expr of
 	Ast.LexicalRef { ident } =>
         evalRefExpr scope NONE ident
+
       | Ast.ObjectRef { base, ident } =>
         evalRefExpr scope (SOME (evalExpr scope base)) ident
+
       | Ast.LetExpr {defs, body} => 
 	evalLetExpr scope defs body
 
@@ -37,9 +39,28 @@ fun evalExpr (scope:Mach.SCOPE) (expr:Ast.EXPR) =
       | Ast.BinaryExpr (bop, aexpr, bexpr) => 
 	evalBinaryOp scope bop aexpr bexpr
 
+      | Ast.CallExpr {func, actuals} => 
+	evalCallExpr (evalExpr scope func) 
+		     (map (fn a => evalExpr scope a) actuals)
 
       | _ => 
 	raise (Mach.UnimplementedException "unhandled expression type")
+
+and evalCallExpr (v:Mach.VAL) (args:Mach.VAL list) =
+    let 
+	val func = 
+	    case v of
+		Mach.Reference r => Mach.deref r
+	      | _ => v
+	val thisObj = 
+	    case v of
+		Mach.Reference (Mach.Ref {base, ...}) => base
+	      | _ => Mach.globalObject
+    in
+	case func of 
+	    Mach.Function (Mach.Fun f) => f thisObj args
+	  | _ => raise (SemanticException "calling non-function type")
+    end
 
 and assignValue (base:Mach.OBJ) (name:Mach.NAME) (v:Mach.VAL) = 
     (case base of 
@@ -238,19 +259,23 @@ fun labelEq stmtLabel exnLabel =
       | (NONE, SOME _) => false
       | (_, NONE) => true
 		     
-fun evalStmts scope (s::ss) = (evalStmt scope s; evalStmts scope ss)
-  | evalStmts scope [] = Mach.Undef
+fun evalStmts (scope:Mach.SCOPE) (stmts:Ast.STMT list) = 
+    case stmts of 
+	(s::ss) => (evalStmt scope s; evalStmts scope ss)
+      | [] => Mach.Undef
 		       
-and evalStmt scope (Ast.ExprStmt e) = evalExpr scope e
-  | evalStmt scope (Ast.IfStmt i) = evalIfStmt scope i
-  | evalStmt scope (Ast.WhileStmt w) = evalWhileStmt scope w
-  | evalStmt scope (Ast.ReturnStmt r) = evalReturnStmt scope r
-  | evalStmt scope (Ast.BreakStmt lbl) = evalBreakStmt scope lbl
-  | evalStmt scope (Ast.ContinueStmt lbl) = evalContinueStmt scope lbl
-  | evalStmt scope (Ast.ThrowStmt t) = evalThrowStmt scope t
-  | evalStmt scope (Ast.LabeledStmt (lab, s)) = evalLabelStmt scope lab s
-  | evalStmt scope (Ast.BlockStmt b) = evalBlock scope b
-  | evalStmt _ _ = raise Mach.UnimplementedException "Unimplemented statement type"
+and evalStmt scope (stmt:Ast.STMT) = 
+    case stmt of 
+	Ast.ExprStmt e => evalExpr scope e
+      | Ast.IfStmt i => evalIfStmt scope i
+      | Ast.WhileStmt w => evalWhileStmt scope w
+      | Ast.ReturnStmt r => evalReturnStmt scope r
+      | Ast.BreakStmt lbl => evalBreakStmt scope lbl
+      | Ast.ContinueStmt lbl => evalContinueStmt scope lbl
+      | Ast.ThrowStmt t => evalThrowStmt scope t
+      | Ast.LabeledStmt (lab, s) => evalLabelStmt scope lab s
+      | Ast.BlockStmt b => evalBlock scope b
+      | _ => raise Mach.UnimplementedException "Unimplemented statement type"
 			 
 and evalBlock scope (Ast.Block{stmts=s,... }) = 
     evalStmts scope s

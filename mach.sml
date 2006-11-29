@@ -28,7 +28,7 @@ datatype VAL =
        | Reference of REF
 		
      and FUN = 
-	 Fun of (VAL -> VAL) 
+	 Fun of (OBJ -> (VAL list) -> VAL) 
 		    
      and REF = 
 	 Ref of { base: OBJ,
