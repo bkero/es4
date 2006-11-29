@@ -214,6 +214,7 @@ charEscape            = "\\" ([abtnvfr\"\'\\]|"x"{hexDigit}{2}|[0-7]{1}{3});
 <INITIAL>"new"             => (New);
 <INITIAL>"null"            => (Null);
 <INITIAL>"package"         => (Package);
+<INITIAL>"precision"       => (Precision);
 <INITIAL>"private"         => (Private);
 <INITIAL>"protected"       => (Protected);
 <INITIAL>"public"          => (Public);

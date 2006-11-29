@@ -212,8 +212,10 @@ and tcStmt ((ctxt as {this,env,lbls,retTy}):CONTEXT) stmt =
 )
 and tcDefn ctxt d =
     (case d of
-        VariableDefn vd => (tcVarDefn ctxt vd, [])
+        VariableDefn vd => (tcVarDefn ctxt (hd vd), [])
+(*		VariableDefn vd => (List.map (fn d => tcVarDefn ctxt d) vd) *)
     )
+
 
 and tcDefns ctxt [] = ([], [])
   | tcDefns ctxt (d::ds) =

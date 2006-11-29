@@ -37,6 +37,15 @@ fun error ss =
 
 fun newline ts = Lexer.UserDeclarations.followsLineBreak ts
 
+val defaultAttrs = 
+	Ast.Attributes { 
+		ns = Ast.Internal "",
+        override = false,
+   		static = false,
+        final = false,
+   		dynamic = false,
+        prototype = false,
+   		nullable = false }
 
 (*
 
@@ -284,10 +293,10 @@ and qualifiedIdentifier ts =
 and simpleTypeIdentifier ts =
     let val _ = trace([">> simpleTypeIdentifier with next=",tokenname(hd(ts))]) 
     in case ts of
-        PackageIdentifier :: Dot :: ts1 => 
+        PackageIdentifier p :: Dot :: ts1 => 
             let val (ts2,nd2) = identifier(ts1) 
 				val nd' = Ast.QualifiedIdentifier(
-					       {qual=Ast.LiteralExpr(Ast.LiteralNamespace(Ast.Public("p"))),
+					       {qual=Ast.LiteralExpr(Ast.LiteralNamespace(Ast.Public(p))),
 						    ident=nd2})
 			in 
 				(ts2,nd') 
@@ -735,16 +744,16 @@ and literalField (ts) =
 			end
 	end
 
-and fieldName ts =
+and fieldName (ts) : token list * Ast.IDENT_EXPR =
     let val _ = trace([">> fieldName with next=",tokenname(hd(ts))]) 
 	in case ts of
-		StringLiteral s :: ts1 => (ts1,Ast.LiteralExpr(Ast.LiteralString(s)))
-	  | NumberLiteral n :: ts1 => (ts1,Ast.LiteralExpr(Ast.LiteralNumber(n)))
+		StringLiteral s :: ts1 => (ts1,Ast.ExpressionIdentifier(Ast.LiteralExpr(Ast.LiteralString(s))))
+	  | NumberLiteral n :: ts1 => (ts1,Ast.ExpressionIdentifier(Ast.LiteralExpr(Ast.LiteralNumber(n))))
 	  | _ => 
 			let
 				val (ts1,nd1) = nonAttributeQualifiedIdentifier (ts)
 			in
-				(ts1,Ast.LexicalRef{ident=nd1})
+				(ts1,nd1)
 			end
 	end
 
@@ -1149,13 +1158,13 @@ and propertyOperator (ts, nd) =
                			    let
                                 val (ts4,nd4) = brackets(tl ts2)
    			                in
-               			        (ts4,Ast.ObjectRef {base=SOME nd,ident=Ast.ExpressionIdentifier(nd4)})
+               			        (ts4,Ast.ObjectRef {base=nd,ident=Ast.ExpressionIdentifier(nd4)})
                             end
 					  | DoubleColon :: ts3 => 
                             let
                                 val (ts4,nd4) = reservedOrPropertyIdentifier(ts3)
                             in
-                                (ts4,Ast.ObjectRef({base=SOME nd,ident=Ast.Identifier {ident=nd4,openNamespaces=ref NONE}}))
+                                (ts4,Ast.ObjectRef({base=nd,ident=Ast.Identifier {ident=nd4,openNamespaces=ref NONE}}))
                             end
 					  | _ => raise ParseError (* e4x filter expr *)
                     end
@@ -1163,14 +1172,14 @@ and propertyOperator (ts, nd) =
                     let
                         val (ts4,nd4) = reservedOrPropertyIdentifier(ts1)
                     in
-                        (ts4,Ast.ObjectRef({base=SOME nd,ident=Ast.Identifier {ident=nd4,openNamespaces=ref NONE}}))
+                        (ts4,Ast.ObjectRef({base=nd,ident=Ast.Identifier {ident=nd4,openNamespaces=ref NONE}}))
                     end
             end
       | LeftBracket :: _ => 
             let
                 val (ts4,nd4) = brackets(ts)
             in
-                (ts4,Ast.ObjectRef({base=SOME nd,ident=Ast.ExpressionIdentifier(nd4)}))
+                (ts4,Ast.ObjectRef({base=nd,ident=Ast.ExpressionIdentifier(nd4)}))
             end
       | _ => raise ParseError
     end
@@ -1875,7 +1884,7 @@ and letBindingList (ts) =
     let val _ = trace([">> letBindingList with next=",tokenname(hd(ts))]) 
 		fun nonemptyLetBindingList ts = 
 			let
-				val (ts1,nd1) = variableBinding (ts,Ast.LetVar,NOLIST,ALLOWIN)
+				val (ts1,nd1) = variableBinding (ts,defaultAttrs,Ast.LetVar,NOLIST,ALLOWIN)
 			in case ts1 of
 				RightParen :: _ => (ts1,nd1::[])
 			  | Comma :: _ =>
@@ -2119,7 +2128,7 @@ and destructuringField (ts,g) =
 			let
 				val (ts2,nd2) = pattern (tl ts1,NOLIST,ALLOWIN,g)
 			in
-				(ts2,{name=Ast.LexicalRef {ident=nd1},ptrn=nd2})
+				(ts2,{name=nd1,ptrn=nd2})
 			end
 	  | _ => raise ParseError
 	end
@@ -2792,9 +2801,9 @@ and directive (ts,omega) =
 			in
 				(ts1,nd1)
 			end
-	  | (Var | Function ) :: _ => 
+	  | (Let | Const | Var | Function ) :: _ => 
 			let
-				val (ts1,nd1) = annotatableDirective (ts,omega)
+				val (ts1,nd1) = annotatableDirective (ts,defaultAttrs,omega)
 			in
 				(ts1,Ast.DefnStmt(nd1))
 			end
@@ -2831,10 +2840,10 @@ and directive (ts,omega) =
     	[  AssignmentExpression(allowLet, allowIn)  ]
 *)
 
-and annotatableDirective (ts,omega) : token list * Ast.DEFINITION list  =
+and annotatableDirective (ts,attrs,omega) : token list * Ast.DEFINITION  =
     let val _ = trace([">> annotatableDirective with next=", tokenname(hd ts)])
 	in case ts of
-		Var :: _ => variableDefinition (ts,ALLOWIN)
+		(Let | Var | Const) :: _ => variableDefinition (ts,attrs,ALLOWIN)
 	  | _ => raise ParseError
 	end
 
@@ -2886,9 +2895,14 @@ and directivesPrefix (ts) : (token list * Ast.STMT list) =
 						(ts2,nd1 :: nd2)
 					end
 			end
-		
 	in case ts of
 		(RightBrace | Eof) :: _ => (ts,[])
+	  | (Use | Import) :: _ => 
+			let
+				val (ts1,nd1) = pragmas ts
+			in
+				(ts1, Ast.PragmaStmt nd1 :: [])
+			end
 	  | _ => 
 			let
 				val (ts2,nd2) = directivesPrefix' ts
@@ -2899,145 +2913,252 @@ and directivesPrefix (ts) : (token list * Ast.STMT list) =
 	end
 
 (*
-IncludeDirective    
-    include  [no line break]  StringLiteral
-    
-Pragmas    
-    Pragma
-    Pragmas  Pragma
-    
-Pragma    
-    UsePragma  Semicolon(full)
-    ImportPragma  Semicolon(full)
-    
-UsePragma    
-    use  PragmaItems
-    
-PragmaItems    
-    PragmaItem
-    PragmaItems  ,  PragmaItem
-    
-PragmaItem    
-    PragmaIdentifier
-    PragmaIdentifier  PragmaArgument
-    
-PragmaIdentifier    
-    decimal
-    default namespace
-    double
-    int
-    namespace
-    Number
-    rounding
-    standard
-    strict
-    uint
-    
-PragmaArgument    
-    true
-    false
-    NumberLiteral
-    -  NumberLiteral
-    StringLiteral
-    SimpleTypeIdentifier
-    
-ImportPragma    
-    import  ImportName
-    import  Identifier  =  ImportName
-    
-ImportName    
-    PackageIdentifier  .  PropertyIdentifier
-
-*)
-    
-(* DEFINITIONS *)    
-
-(*
-    
-VariableDefinitionb    
-    VariableDefinitionKind  VariableBindingListallowLet, b
-    
-VariableDefinitionKind    
-    const
-    let
-    let const
-    var
-    
-VariableBindingLista, b    
-    VariableBindinga, b
-    VariableBindingListnoLet, b  ,  VariableBindinga, b
-    
-VariableBindinga, b    
-    TypedIdentifier
-    TypedIdentifierb VariableInitialisationa, b
-    TypedPattern VariableInitialisationa, b
-    
-VariableInitialisationa, b    
-    =  AssignmentExpressiona, b
-
-
-     and varDefn =
-         SimpleDefn of { tag: varDefnTag,
-                         init: expr option,
-                         attrs: attributes,
-                         name: ident,
-                         ty: tyExpr option }
-
-       | DestructDefn of { tag: varDefnTag,
-                           init: expr option,
-                           attrs: attributes,
-                           ptrn: pattern,
-                           ty: tyExpr option }
-
-       | DestructuringDefn of { tag: varDefnTag,
-                                init: expr option,
-                                attrs: attributes,
-                                temp: ident,
-                                postInit: expr option,
-                                names: ident list,
-                                ty: tyExpr option }
+	Pragmas	
+		Pragma
+		Pragmas  Pragma
+		
+	Pragma	
+		UsePragma  Semicolon(full)
+		ImportPragma  Semicolon(full)
+		
 *)
 
-and variableDefinition (ts,b) =
-    let val _ = trace([">> variableDefinition with next=", tokenname(hd ts)])
+and pragmas (ts) : token list * Ast.PRAGMA list =
+    let val _ = trace([">> pragmas with next=", tokenname(hd ts)])
+		val (ts1,nd1) = pragma(ts)
+	in case ts1 of
+		(Use | Import) :: _ => 
+			let
+				val (ts2,nd2) = pragmas (ts1)
+			in
+				(ts2, nd1 @ nd2)
+			end
+	  | _ =>
+			(ts1, nd1)
+	end
+
+and pragma ts =
+    let val _ = trace([">> pragma with next=", tokenname(hd ts)])
 	in case ts of
-		Const :: _ => variableBindingList (tl ts,Ast.Const,ALLOWLIST,b)
-	  | Var :: _ => variableBindingList (tl ts,Ast.Var,ALLOWLIST,b)
+		Use :: _ => usePragma ts
+	  | Import :: _ => importPragma ts
 	  | _ => raise ParseError
 	end
 
-and variableBindingList (ts,tag,a,b) = 
+(*
+	UsePragma	
+		use  PragmaItems		
+*)
+
+and usePragma ts =
+    let val _ = trace([">> usePragma with next=", tokenname(hd ts)])
+	in case ts of
+		Use :: _ => pragmaItems (tl ts)
+	  | _ => raise ParseError
+	end
+
+(*
+	PragmaItems	
+		PragmaItem
+		PragmaItems  ,  PragmaItem
+
+	right recursive:
+
+	PragmaItems
+		PragmaItem PragmaItems'
+
+	PragmaItems'
+		empty
+		, PragmaItem PragmaItems'
+*)
+		
+and pragmaItems ts =
+    let val _ = trace([">> pragmaItems with next=", tokenname(hd ts)])
+		fun pragmaItems' ts =
+			let
+			in case ts of
+				Comma :: _ =>
+					let
+						val (ts1,nd1) = pragmaItem (tl ts)
+						val (ts2,nd2) = pragmaItems' ts1
+					in
+						(ts2,nd1::nd2)
+					end
+			  | _ => (ts,[])
+			end
+		val (ts1,nd1) = pragmaItem ts
+		val (ts2,nd2) = pragmaItems' ts1
+	in
+		(ts2,nd1::nd2)
+	end
+
+(*
+	PragmaItem	
+		decimal
+		double
+		int
+		Number
+		uint
+		precision NumberLiteral
+		rounding Identifier
+		standard
+		strict
+		default namespace SimpleTypeIdentifier
+		namespace SimpleTypeIdentifier
+*)
+
+and pragmaItem ts =
+    let val _ = trace([">> pragmaItem with next=", tokenname(hd ts)])
+	in case ts of
+		Decimal :: _ => (tl ts,Ast.UseNumber Ast.Decimal)
+	  | Double :: _ => (tl ts,Ast.UseNumber Ast.Double)
+	  | Int :: _ => (tl ts,Ast.UseNumber Ast.Int)
+	  | Number :: _ => (tl ts,Ast.UseNumber Ast.Number)
+	  | UInt :: _ => (tl ts,Ast.UseNumber Ast.UInt)
+	  | Precision :: NumberLiteral n :: _ => 
+			let
+				val i = Ast.LiteralNumber n
+			in
+				(tl (tl ts), Ast.UsePrecision i)
+			end
+	  | Rounding :: Identifier s :: _ => 
+			let
+				val m = Ast.HalfUp
+			in
+				(tl (tl ts), Ast.UseRounding m)
+			end
+	  | Standard :: _ => (tl ts,Ast.UseStandard)
+	  | Strict :: _ => (tl ts,Ast.UseStrict)
+	  | Default :: Namespace :: _ => 
+			let
+				val (ts1,nd1) = simpleTypeIdentifier (tl (tl ts))
+			in
+				(ts1, Ast.UseDefaultNamespace nd1)
+			end
+	  | Namespace :: _ => 
+			let
+				val (ts1,nd1) = simpleTypeIdentifier (tl ts)
+			in
+				(ts1, Ast.UseNamespace nd1)
+			end
+	  | _ =>
+			raise ParseError
+	end
+
+(*
+	ImportPragma	
+		import  Identifier  =  ImportName
+		import  ImportName
+		
+	ImportName	
+		PackageIdentifier  .  PropertyIdentifier
+*)
+
+and importPragma (ts) : token list * Ast.PRAGMA list =
+    let val _ = trace([">> importPragma with next=", tokenname(hd ts)])
+	in case ts of
+		Import :: _ :: Assign :: _ =>
+			let
+				val (ts1,nd1) = identifier (tl ts)
+				val (ts2,{package,name}) = importName (tl ts1)
+			in
+				(ts2,[Ast.Import {package=package,name=name,alias=SOME nd1}])
+			end
+	  | Import :: _ =>
+			let
+				val (ts1,{package,name}) = importName (tl ts)
+			in
+				(ts1,[Ast.Import {package=package,name=name,alias=NONE}])
+			end
+	  | _ => raise ParseError
+	end
+
+and importName (ts) =
+    let val _ = trace([">> importName with next=", tokenname(hd ts)])
+	in case ts of
+		PackageIdentifier p :: Dot :: _ =>
+			let
+				val (ts1,nd1) = (tl ts,p)
+				val (ts2,nd2) = propertyIdentifier (tl ts1)
+			in
+				(ts2,{package=nd1,name=nd2})
+			end
+	  | _ => 
+			(error(["attempt to import an unknown package"]); 
+			raise ParseError)
+	end
+
+(* DEFINITIONS *)    
+
+(*    
+	VariableDefinition(b)	
+		VariableDefinitionKind  VariableBindingList(allowList, b)
+		
+	VariableDefinitionKind	
+		const
+		let
+		let const
+		var
+		
+	VariableBindingList(a, b)	
+		VariableBinding(a, b)
+		VariableBindingList(noList, b)  ,  VariableBinding(a, b)
+*)
+
+and variableDefinition (ts,attrs,b) =
+    let val _ = trace([">> variableDefinition with next=", tokenname(hd ts)])
+		val (ts1,nd1) = variableDefinitionKind(ts)
+		val (ts2,nd2) = variableBindingList (ts1,attrs,nd1,ALLOWLIST,b)
+	in
+		(ts2,Ast.VariableDefn nd2)
+	end
+
+and variableDefinitionKind (ts) =
+	let
+	in case ts of
+		Const :: _ => 
+			(tl ts,Ast.Const)
+	  | Var :: _ => 
+			(tl ts,Ast.Var)
+      | Let :: Const :: _ => 
+			(tl (tl ts), Ast.LetConst)
+	  | Let :: _ => 
+			(tl ts, Ast.LetVar)
+	  | _ => raise ParseError
+	end
+
+and variableBindingList (ts,attrs,kind,a,b) : (token list * Ast.VAR_DEFN list) = 
     let val _ = trace([">> variableBindingList with next=", tokenname(hd ts)])
-		fun variableBindingListPrime (ts,tag,a,b) =
+		fun variableBindingList' (ts,attrs,kind,a,b) : (token list * Ast.VAR_DEFN list) =
 	    	let
 		    in case ts of
     		    Comma :: _ =>
 					let
-            			val (ts1,nd1) = variableBinding(ts,tag,a,b)
-	               		val (ts2,nd2) = variableBindingListPrime(ts1,tag,a,b)
+            			val (ts1,nd1) = variableBinding(tl ts,attrs,kind,a,b)
+	               		val (ts2,nd2) = variableBindingList'(ts1,attrs,kind,a,b)
 	    	      	in
-    	    	     	(ts2, Ast.VariableDefn nd1 :: nd2)
+    	    	     	(ts2, nd1 :: nd2)
 	    	      	end
 	    	  | _ => (ts, [])
 		    end
-   			val (ts1,nd1) = variableBinding(ts,tag,a,b)
-       		val (ts2,nd2) = variableBindingListPrime(ts1,tag,a,b)
+   		val (ts1,nd1) = variableBinding(ts,attrs,kind,a,b)
+       	val (ts2,nd2) = variableBindingList'(ts1,attrs,kind,a,b)
     in
-        (ts2, Ast.VariableDefn nd1 :: nd2)
+        (ts2,nd1 :: nd2)
     end
 
-and variableBinding (ts,tag,a,b) = 
+(*
+	VariableBinding(a, b)	
+		TypedIdentifier
+		TypedPattern(noList, noIn, noExpr) VariableInitialisation(a, b)
+		
+	VariableInitialisation(a, b)	
+		=  AssignmentExpression(a, b)	
+*)
+
+and variableBinding (ts,attrs,kind,a,b) = 
     let val _ = trace([">> variableBinding with next=", tokenname(hd ts)])
-		val defaultAttrs = 
-			Ast.Attributes { 
-				ns = Ast.Internal "",
-		        override = false,
-        		static = false,
-		        final = false,
-        		dynamic = false,
-		        prototype = false,
-        		nullable = false }
-		val (ts1,{p,t}) = typedPattern (ts,a,b,NOEXPR)
+		val (ts1,{p,t}) = typedPattern (ts,a,b,NOEXPR)  (* parse the more general syntax *)
 	in case (ts1,p) of
 			(Assign :: _,_) =>
 				let
@@ -3045,23 +3166,23 @@ and variableBinding (ts,tag,a,b) =
 					val (ts2,nd2) = assignmentExpression (tl ts1,a,b)
 				in
 					(trace(["<< variableBinding with next=", tokenname(hd ts2)]);
-					(ts2, Ast.VariableDefinition { tag = tag,
-                        					   init = SOME nd2,
-                        					   attrs = defaultAttrs,
-                        					   pattern = p,
-                        					   ty = t } ))
+					(ts2, Ast.Binding { kind = kind,
+                        				init = SOME nd2,
+                        				attrs = attrs,
+                        				pattern = p,
+                        				ty = t } ))
 				end
-		  | (_,Ast.IdentifierPattern _) =>
+		  | (_,Ast.IdentifierPattern _) =>   (* check the more specific syntax *)
 				let
 				in
 					(trace(["<< variableBinding with next=", tokenname(hd ts1)]);
-					(ts1, Ast.VariableDefinition { tag = tag,
-                         					   init = NONE,
-                         					   attrs = defaultAttrs,
-                         					   pattern = p,
-                         					   ty = t } ))
+					(ts1, Ast.Binding { kind = kind,
+                         				init = NONE,
+                         				attrs = attrs,
+                         				pattern = p,
+                         				ty = t } ))
 				end
-		  | (_,_) => raise ParseError
+		  | (_,_) => (error(["destructuring pattern without initialiser"]); raise ParseError)
 	end
 
 (*

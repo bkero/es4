@@ -151,7 +151,7 @@ datatype token =
     | Eol
     | Identifier of string
     | NumberLiteral of real
-    | PackageIdentifier
+    | PackageIdentifier of string
     | RegexpLiteral of string
     | SlashSlashComment
     | StringLiteral of string
@@ -379,7 +379,7 @@ fun tokenname t =
       | Eol => "eol"
       | Identifier x => "identifier("^x^")"
       | NumberLiteral x => Real.toString(x)
-      | PackageIdentifier => "packageidentifier(x)"
+      | PackageIdentifier x => "packageidentifier("^x^")"
       | RegexpLiteral x => "regexp("^x^")"
       | SlashSlashComment => ""
       | StringLiteral x => "string("^x^")"

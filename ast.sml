@@ -8,15 +8,11 @@ type USTRING = string
 
 type IDENT = USTRING
 
-datatype IMPORT_QUAL =
-         QualName of IDENT
-       | QualStar
-
 datatype NUMBER_TYPE =
          Decimal 
        | Double 
        | Int 
-       | Uint 
+       | UInt 
        | Number
 
 datatype ROUNDING_MODE =
@@ -124,12 +120,16 @@ datatype SPECIAL_TY =
        | Undefined
        | NoType
 
-datatype DIRECTIVE =
-         UseNamespace of EXPR list
+datatype PRAGMA =
+         UseNamespace of IDENT_EXPR
+       | UseDefaultNamespace of IDENT_EXPR
        | UseNumber of NUMBER_TYPE
        | UseRounding of ROUNDING_MODE
+       | UsePrecision of LITERAL
+	   | UseStrict
+	   | UseStandard
        | Import of { package: IDENT,
-                     qualifier: IMPORT_QUAL,
+                     name: IDENT,
                      alias: IDENT option }
 
      and FUNC = 
@@ -142,7 +142,7 @@ datatype DIRECTIVE =
 	 
      and DEFINITION =
          ClassDefn of CLASS_DEFN
-       | VariableDefn of VAR_DEFN
+       | VariableDefn of VAR_DEFN list
        | FunctionDefn of FUNC
        | InterfaceDefn of INTERFACE_DEFN
        | NamespaceDefn of { name: IDENT,
@@ -169,7 +169,14 @@ datatype DIRECTIVE =
                            init: EXPR option,
                            attrs: ATTRIBUTES,
                            pattern: PATTERN,
-                           ty: TYPE_EXPR option }
+                           ty: TYPE_EXPR option } (* deprecated *)
+
+
+       | Binding of { kind: VAR_DEFN_TAG,
+                      init: EXPR option,
+                      attrs: ATTRIBUTES,
+                      pattern: PATTERN,
+                      ty: TYPE_EXPR option }
 
      and TYPE_EXPR =
          SpecialType of SPECIAL_TY
@@ -222,9 +229,9 @@ datatype DIRECTIVE =
                          cases: (EXPR * (STMT list)) list,
                          default: STMT list }
 
-	   | DefnStmt of DEFINITION list
+	   | DefnStmt of DEFINITION
 
-	   | PragmaStmt of DIRECTIVE list
+	   | PragmaStmt of PRAGMA list
 
      and EXPR =
          TrinaryExpr of (TRIOP * EXPR * EXPR * EXPR)
@@ -254,7 +261,7 @@ datatype DIRECTIVE =
 
 	   | PatternExpr of PATTERN
 
-       | ObjectRef of { base: EXPR option, ident: IDENT_EXPR }
+       | ObjectRef of { base: EXPR, ident: IDENT_EXPR }
 
        | LexicalRef of { ident: IDENT_EXPR }
 
@@ -288,12 +295,12 @@ datatype DIRECTIVE =
          { str: USTRING }
 
     and BLOCK = Block of
-         { pragmas: DIRECTIVE list,
+         { pragmas: PRAGMA list,
            defns: DEFINITION list,
            stmts: STMT list }
 
 	and PATTERN =
-		ObjectPattern of { name: EXPR, ptrn : PATTERN } list
+		ObjectPattern of { name: IDENT_EXPR, ptrn : PATTERN } list
 	  | ArrayPattern of PATTERN list
 	  | SimplePattern of EXPR
 	  | IdentifierPattern of IDENT
@@ -301,11 +308,11 @@ datatype DIRECTIVE =
 withtype
 
 		 FIELD =
-		 { name: EXPR,
+		 { name: IDENT_EXPR,
            init: EXPR }
 
      and FIELD_TYPE =
-		 { name: EXPR,
+		 { name: IDENT_EXPR,
            ty: TYPE_EXPR }
 
      and FUNC_TY =
