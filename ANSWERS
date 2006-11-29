@@ -1,0 +1,39 @@
+============================================================
+TYPE SYSTEM
+
+[https://intranet.mozilla.org/ECMA/wiki/doku.php?id=meetings:minutes_nov_28_2006]
+
+- places where `this' is allowed:
+  o inside instance methods, global code, body of unbound function
+- places where `this' is not allowed:
+  o static class initializers
+  o static methods
+- SimplePattern
+  o in non-binding contexts (i.e., assignments):
+    * always a SimplePattern, never IdentifierPattern
+    * restricted to identifier, dot-expression, bracket-expression, or call expression
+  o in binding contexts (e.g., let or var):
+    * never a SimplePattern, always IdentifierPattern
+    * just identifiers
+- AnnotatedPattern
+  o while perhaps less convenient, it's unambiguous
+  o "{x:int} = {x:45}" is ambiguous with an expression
+  o this might be resolvable in the parser, but it's misleading to the programmer
+- "type foo" is a TypeExpr, not a UnaryExpression
+  o because its argument is a TYPE_EXPR, not an EXPR
+- definition of statically known namespaces:
+  o a built-in such as public, private, or intrinsic; or
+  o defined via "namespace n;" or "namespace n = ...;"
+- definition of statically resolvable name
+  o unqualified identifiers that are in the static environment (since the open namespaces must be static)
+  o identifiers qualified by statically resolvable names that are bound to statically known namespaces
+- separate ML constructors for static namespaces vs. dynamic namespaces?
+  o this depends on the static environment, so it's not something the parser can determine
+  o could be annotated later, but we should probably avoid the mutation
+
+============================================================
+ML
+
+- does anyone have a better solution for dealing with uncaught exceptions?
+  o insert debugging info for catch-all match clauses
+  o turn on backtraces (asking how on smlnj-list)

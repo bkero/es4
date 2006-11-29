@@ -28,10 +28,10 @@ datatype TRIOP =
          Cond
 
 datatype BINTYPEOP =
-		 Cast
-	   | Is
-	   | To
-
+	 Cast
+       | Is
+       | To
+	 
 datatype BINOP =
          Plus
        | Minus
@@ -102,7 +102,7 @@ datatype VAR_DEFN_TAG =
        | Rest
 
 datatype NAMESPACE =
-		 Private
+	 Private
        | Protected
        | Intrinsic
        | Public of IDENT
@@ -133,7 +133,7 @@ datatype PRAGMA =
                      alias: IDENT option }
 
      and FUNC = 
-		 Func of 
+	 Func of 
          { name: IDENT,
            attrs: ATTRIBUTES,
            formals: FORMAL list,
@@ -152,8 +152,8 @@ datatype PRAGMA =
          FunctionSignature of { typeparams: IDENT list,
                                 params: FORMAL list,
                                 resulttype: TYPE_EXPR }
-
-
+			      
+			      
      (* Improve this? Probably more mutual exclusion possible. *)
      and ATTRIBUTES =
          Attributes of { ns: NAMESPACE,
@@ -259,7 +259,9 @@ datatype PRAGMA =
 
        | ListExpr of EXPR list
 
-	   | PatternExpr of PATTERN
+       | PatternExpr of PATTERN
+			    
+       | ObjectRef of { base: EXPR, ident: IDENT_EXPR }
 
        | ObjectRef of { base: EXPR, ident: IDENT_EXPR }
 
@@ -273,10 +275,11 @@ datatype PRAGMA =
                                   expr : EXPR }
        | AttributeIdentifier of IDENT_EXPR
        | Identifier of { ident : IDENT,
-			 openNamespaces : (NAMESPACE list) option ref }
+			 openNamespaces : (NAMESPACE list) ref }
        | ExpressionIdentifier of EXPR   (* for bracket exprs: o[x] and @[x] *)
-	   | TypeIdentifier of { ident : IDENT_EXPR, typeParams : TYPE_EXPR list }
-
+       | TypeIdentifier of { ident : IDENT_EXPR, 
+			     typeParams : TYPE_EXPR list }
+			       
      and LITERAL =
          LiteralNull
        | LiteralUndefined 
@@ -293,8 +296,8 @@ datatype PRAGMA =
 
        | LiteralRegExp of
          { str: USTRING }
-
-    and BLOCK = Block of
+	 
+     and BLOCK = Block of
          { pragmas: PRAGMA list,
            defns: DEFINITION list,
            stmts: STMT list }
@@ -310,17 +313,17 @@ withtype
 		 FIELD =
 		 { name: IDENT_EXPR,
            init: EXPR }
-
+	 
      and FIELD_TYPE =
 		 { name: IDENT_EXPR,
            ty: TYPE_EXPR }
-
+	 
      and FUNC_TY =
          { paramTypes: TYPE_EXPR option list,
            returnType: TYPE_EXPR,
            boundThisType: TYPE_EXPR option,
            hasRest: bool }
-
+	 
      and FORMAL =
          { pattern: PATTERN,
            ty: TYPE_EXPR option,

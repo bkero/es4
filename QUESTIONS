@@ -2,6 +2,7 @@
 TYPE SYSTEM
 
 - is `this' only ever a class type? interface type?
-- are there places where `this' can't be mentioned?
 
 ============================================================
+ML
+

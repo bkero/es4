@@ -125,7 +125,7 @@ and qualifier ts =
           let
               val (ts1,nd1) = propertyIdentifier (ts)
           in
-              (ts1,Ast.LexicalRef{ident=Ast.Identifier {ident=nd1, openNamespaces=ref NONE}})
+              (ts1,Ast.LexicalRef{ident=Ast.Identifier {ident=nd1, openNamespaces=ref []}})
           end
     end
 
@@ -186,7 +186,7 @@ and simpleQualifiedIdentifier ts =
       | _ => 
           	let
               	val (ts1, nd1) = propertyIdentifier(ts)
-                val id = Ast.Identifier {ident=nd1, openNamespaces=ref NONE}
+                val id = Ast.Identifier {ident=nd1, openNamespaces=ref []}
           	in case ts1 of
               	DoubleColon :: _ => 
 					qualifiedIdentifier'(tl ts1,Ast.LexicalRef ({ident=id}))
