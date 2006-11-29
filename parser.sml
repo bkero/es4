@@ -1164,7 +1164,7 @@ and propertyOperator (ts, nd) =
                             let
                                 val (ts4,nd4) = reservedOrPropertyIdentifier(ts3)
                             in
-                                (ts4,Ast.ObjectRef({base=nd,ident=Ast.Identifier {ident=nd4,openNamespaces=ref NONE}}))
+                                (ts4,Ast.ObjectRef({base=nd,ident=Ast.Identifier {ident=nd4,openNamespaces=ref []}}))
                             end
 					  | _ => raise ParseError (* e4x filter expr *)
                     end
@@ -1172,7 +1172,7 @@ and propertyOperator (ts, nd) =
                     let
                         val (ts4,nd4) = reservedOrPropertyIdentifier(ts1)
                     in
-                        (ts4,Ast.ObjectRef({base=nd,ident=Ast.Identifier {ident=nd4,openNamespaces=ref NONE}}))
+                        (ts4,Ast.ObjectRef({base=nd,ident=Ast.Identifier {ident=nd4,openNamespaces=ref []}}))
                     end
             end
       | LeftBracket :: _ => 

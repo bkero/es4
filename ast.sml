@@ -263,8 +263,6 @@ datatype PRAGMA =
 			    
        | ObjectRef of { base: EXPR, ident: IDENT_EXPR }
 
-       | ObjectRef of { base: EXPR, ident: IDENT_EXPR }
-
        | LexicalRef of { ident: IDENT_EXPR }
 
  
