@@ -1149,13 +1149,13 @@ and propertyOperator (ts, nd) =
                			    let
                                 val (ts4,nd4) = brackets(tl ts2)
    			                in
-               			        (ts4,Ast.ObjectRef {base=SOME nd,ident=Ast.ExpressionIdentifier(nd4)})
+               			        (ts4,Ast.ObjectRef {base=nd,ident=Ast.ExpressionIdentifier(nd4)})
                             end
 					  | DoubleColon :: ts3 => 
                             let
                                 val (ts4,nd4) = reservedOrPropertyIdentifier(ts3)
                             in
-                                (ts4,Ast.ObjectRef({base=SOME nd,ident=Ast.Identifier {ident=nd4,openNamespaces=ref []}}))
+                                (ts4,Ast.ObjectRef({base=nd,ident=Ast.Identifier {ident=nd4,openNamespaces=ref []}}))
                             end
 					  | _ => raise ParseError (* e4x filter expr *)
                     end
@@ -1163,14 +1163,14 @@ and propertyOperator (ts, nd) =
                     let
                         val (ts4,nd4) = reservedOrPropertyIdentifier(ts1)
                     in
-                        (ts4,Ast.ObjectRef({base=SOME nd,ident=Ast.Identifier {ident=nd4,openNamespaces=ref []}}))
+                        (ts4,Ast.ObjectRef({base=nd,ident=Ast.Identifier {ident=nd4,openNamespaces=ref []}}))
                     end
             end
       | LeftBracket :: _ => 
             let
                 val (ts4,nd4) = brackets(ts)
             in
-                (ts4,Ast.ObjectRef({base=SOME nd,ident=Ast.ExpressionIdentifier(nd4)}))
+                (ts4,Ast.ObjectRef({base=nd,ident=Ast.ExpressionIdentifier(nd4)}))
             end
       | _ => raise ParseError
     end

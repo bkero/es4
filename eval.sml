@@ -26,10 +26,8 @@ fun evalExpr (scope:Mach.SCOPE) (expr:Ast.EXPR) =
     case expr of
 	Ast.LexicalRef { ident } =>
         evalRefExpr scope NONE ident
-      | Ast.ObjectRef { base, ident } => 
-	(case base of 
-	     SOME bexpr => evalRefExpr scope (SOME (evalExpr scope bexpr)) ident
-	   | NONE => evalRefExpr scope NONE ident)
+      | Ast.ObjectRef { base, ident } =>
+        evalRefExpr scope (SOME (evalExpr scope base)) ident
       | Ast.LetExpr {defs, body} => 
 	evalLetExpr scope defs body
 

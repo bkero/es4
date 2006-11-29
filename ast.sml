@@ -254,7 +254,7 @@ datatype DIRECTIVE =
 
        | PatternExpr of PATTERN
 			    
-       | ObjectRef of { base: EXPR option, ident: IDENT_EXPR }
+       | ObjectRef of { base: EXPR, ident: IDENT_EXPR }
 
        | LexicalRef of { ident: IDENT_EXPR }
 
