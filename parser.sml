@@ -116,7 +116,7 @@ and qualifier ts =
           let
               val (ts1,nd1) = propertyIdentifier (ts)
           in
-              (ts1,Ast.LexicalRef{ident=Ast.Identifier {ident=nd1, openNamespaces=ref NONE}})
+              (ts1,Ast.LexicalRef{ident=Ast.Identifier {ident=nd1, openNamespaces=ref []}})
           end
     end
 
@@ -1155,7 +1155,7 @@ and propertyOperator (ts, nd) =
                             let
                                 val (ts4,nd4) = reservedOrPropertyIdentifier(ts3)
                             in
-                                (ts4,Ast.ObjectRef({base=SOME nd,ident=Ast.Identifier {ident=nd4,openNamespaces=ref NONE}}))
+                                (ts4,Ast.ObjectRef({base=SOME nd,ident=Ast.Identifier {ident=nd4,openNamespaces=ref []}}))
                             end
 					  | _ => raise ParseError (* e4x filter expr *)
                     end
@@ -1163,7 +1163,7 @@ and propertyOperator (ts, nd) =
                     let
                         val (ts4,nd4) = reservedOrPropertyIdentifier(ts1)
                     in
-                        (ts4,Ast.ObjectRef({base=SOME nd,ident=Ast.Identifier {ident=nd4,openNamespaces=ref NONE}}))
+                        (ts4,Ast.ObjectRef({base=SOME nd,ident=Ast.Identifier {ident=nd4,openNamespaces=ref []}}))
                     end
             end
       | LeftBracket :: _ => 
