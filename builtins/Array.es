@@ -13,7 +13,7 @@ package
 	public dynamic class Array extends Object
 	{		
 		// 15.4.1 The Array Constructor Called as a Function
-		static function call *(ident, args)
+		public static function call *(ident, args)
 		{
 			if (ident == "Array")
 			{
@@ -51,13 +51,16 @@ package
 		// 15.4.4 Properties of the Array Prototype Object
 		// { DontEnum, DontDelete, ReadOnly } 
 		// @todo how to set DontEnum?
-		public function get prototype():Object
+		public static function get prototype():Object
 		{
 			return intrinsic::get("prototype");
 		}
 
 		// 15.4.4.1 Array.prototype.constructor
 		// @todo is this right? don't think so... 
+		// won't work, since code like 
+		//    str.constructor == String // true
+		// won't work but is expected by ES3
 		prototype.constructor = function(...args) { return new Array(args); }
 		
 		// 15.4.4.2 Array.prototype.toString ( )
@@ -433,9 +436,6 @@ package
 		// 15.4.5.1 [[Put]] (P, V)
 		public function set *(propertyName, value):void
 		{
-			if (!this.canPut(propertyName))
-				return;
-			
 			var curLength:uint = uint(this.length);
 			intrinsic::set(propertyName, value);
 			var propertyNameAsNumber:Number = Number(propertyName);
@@ -573,5 +573,5 @@ package
 			}
 		} // qsort
 		
-	} // Array
+	} // class
 } // package
