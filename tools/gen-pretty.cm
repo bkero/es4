@@ -13,3 +13,4 @@ is
 	$mlrisc-tools/sml-ast.cm
 	$mlrisc-tools/prec-parser.cm
 	$mlrisc-tools/source-map.cm
+        $smlnj-tdp/plugins.cm
