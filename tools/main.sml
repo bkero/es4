@@ -47,8 +47,10 @@ struct
         end
 
     fun main (argv0:string, argvRest:string list) =
-        (genFile (nth (argvRest, 0), nth (argvRest, 1)); 0)
-            handle IO.Io {name,function,cause} => (print ("I/O error in " ^ name ^ " due to " ^ function ^ "\n"); 1)
-                 | Fail s => (print ("error: " ^ s ^ "\n"); 1)
+        BackTrace.monitor (fn () =>
+                           (
+                               genFile (nth (argvRest, 0), nth (argvRest, 1));
+                               0
+                           ))
 
 end

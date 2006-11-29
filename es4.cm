@@ -27,4 +27,4 @@ is
 	$/pp-lib.cm
         $/mllex-tool.cm
         $/lex-ext.cm
-        
+        $smlnj-tdp/plugins.cm

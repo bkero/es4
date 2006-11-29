@@ -32,10 +32,10 @@ fun testTC argvRest =
     end
 
 fun main (argv0:string, argvRest:string list) =
-    ((case argvRest of
-           ("-tc"::argvRest) => testTC argvRest
-         | _ => (List.map Parser.parseFile argvRest; ()));
-     0)
-    handle e => (printStackTrace e; 1)
+    BackTrace.monitor (fn () =>
+                       ((case argvRest of
+                              ("-tc"::argvRest) => testTC argvRest
+                            | _ => (List.map Parser.parseFile argvRest; ()));
+                        0))
 
 end
