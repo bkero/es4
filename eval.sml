@@ -147,7 +147,7 @@ and evalRefExpr (scope:Mach.SCOPE) (b:Mach.VAL option) (r:Ast.IDENT_EXPR) =
 	end
       | _ => raise (Mach.UnimplementedException "unimplemented identifier expression form")
 		   
-and evalLetExpr (scope:Mach.SCOPE) (defs:Ast.VAR_DEFN list) (body:Ast.EXPR) = 
+and evalLetExpr (scope:Mach.SCOPE) (defs:Ast.VAR_BINDING list) (body:Ast.EXPR) = 
     let 
 	val obj = Mach.newObject NONE
         val newScope = extendScope scope Mach.Let obj
@@ -156,14 +156,14 @@ and evalLetExpr (scope:Mach.SCOPE) (defs:Ast.VAR_DEFN list) (body:Ast.EXPR) =
         evalExpr newScope body
     end
     
-and addBinding (obj:Mach.OBJ) (scope:Mach.SCOPE) (defn:Ast.VAR_DEFN) =
+and addBinding (obj:Mach.OBJ) (scope:Mach.SCOPE) (defn:Ast.VAR_BINDING) =
     case defn of 
-	(Ast.VariableDefinition { tag, init, attrs, pattern, ty }) =>
+	(Ast.Binding { kind, init, attrs, pattern, ty }) =>
 	case pattern of 
 	    Ast.IdentifierPattern name => 
 	    let 
 		val n = newName name attrs
-		val ro = case tag of 
+		val ro = case kind of 
 			     Ast.Const => true
 			   | Ast.LetConst => true
 			   | _ => false
@@ -255,14 +255,14 @@ and evalStmt scope (Ast.ExprStmt e) = evalExpr scope e
 and evalBlock scope (Ast.Block{stmts=s,... }) = 
     evalStmts scope s
 
-and evalIfStmt scope { cond, consequent, alternative } = 
+and evalIfStmt scope { cnd,thn,els } = 
     let 
-        val v = evalExpr scope cond 
+        val v = evalExpr scope cnd 
         val b = Mach.toBoolean v
     in
         if b 
-        then evalStmt scope consequent
-        else evalStmt scope alternative
+        then evalStmt scope thn
+        else evalStmt scope els
     end
     
 and evalLabelStmt scope lab s = 

@@ -141,7 +141,7 @@ and tcPattern (ctxt:CONTEXT) (Ast.IdentifierPattern name) = (
 
 (* TODO: this needs to return some type structure as well *)
 and tcVarDefn (ctxt:CONTEXT) 
-     (VariableDefinition {tag,init,attrs,pattern,ty}) =
+     (Binding {kind,init,attrs,pattern,ty}) =
         (* TODO: what are simple patterns? *)
 	[]
 
@@ -183,10 +183,10 @@ and tcStmt ((ctxt as {this,env,lbls,retTy}):CONTEXT) stmt =
    case stmt of
     EmptyStmt => ()
   | ExprStmt e => (tcExpr ctxt e; ())
-  | IfStmt {cond,consequent,alternative} => (
-	checkConvertible (tcExpr ctxt cond) boolType;
-	tcStmt ctxt consequent;
-	tcStmt ctxt alternative
+  | IfStmt {cnd,thn,els} => (
+	checkConvertible (tcExpr ctxt cnd) boolType;
+	tcStmt ctxt thn;
+	tcStmt ctxt els
     )
 
   | (DoWhileStmt {cond,body,contLabel} | WhileStmt {cond,body,contLabel}) => (
@@ -230,8 +230,6 @@ and tcStmt ((ctxt as {this,env,lbls,retTy}):CONTEXT) stmt =
 	    tcBlock (withEnv (ctxt, foldl extendEnv env extensions)) body
 	end
     )
-  | DefineStmt _ =>
-        raise Fail "should have been hoisted"
   | _ => (TextIO.print "tcStmt incomplete: "; Pretty.ppStmt stmt; raise Match)
 
 (*

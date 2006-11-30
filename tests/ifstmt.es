@@ -1,0 +1,9 @@
+if(true)
+   	print('hello')
+else
+   	if(x=10)
+	{
+		print(x)
+	}
+	else
+		print('error')

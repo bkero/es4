@@ -28,7 +28,7 @@ datatype TRIOP =
          Cond
 
 datatype BINTYPEOP =
-	 Cast
+		 Cast
        | Is
        | To
 	 
@@ -133,16 +133,15 @@ datatype PRAGMA =
                      alias: IDENT option }
 
      and FUNC = 
-	 Func of 
-         { name: IDENT,
-           attrs: ATTRIBUTES,
-           formals: FORMAL list,
-           ty: TYPE_EXPR option,
-           body: BLOCK }
+		 Func of { name: IDENT,
+		           attrs: ATTRIBUTES,
+        		   formals: FORMAL list,
+		           ty: TYPE_EXPR option,
+        		   body: BLOCK }
 	 
-     and DEFINITION =
+     and DEFN =
          ClassDefn of CLASS_DEFN
-       | VariableDefn of VAR_DEFN list
+       | VariableDefn of VAR_BINDING list
        | FunctionDefn of FUNC
        | InterfaceDefn of INTERFACE_DEFN
        | NamespaceDefn of { name: IDENT,
@@ -150,7 +149,7 @@ datatype PRAGMA =
 
      and FUNC_SIGN =
          FunctionSignature of { typeparams: IDENT list,
-                                params: FORMAL list,
+                                params: VAR_BINDING list,
                                 resulttype: TYPE_EXPR }
 			      
 			      
@@ -162,17 +161,11 @@ datatype PRAGMA =
                          final: bool,
                          dynamic: bool,
                          prototype: bool,
+                         rest: bool,
                          nullable: bool }
 
-     and VAR_DEFN =
-         VariableDefinition of { tag: VAR_DEFN_TAG,
-                           init: EXPR option,
-                           attrs: ATTRIBUTES,
-                           pattern: PATTERN,
-                           ty: TYPE_EXPR option } (* deprecated *)
-
-
-       | Binding of { kind: VAR_DEFN_TAG,
+     and VAR_BINDING =
+         Binding of { kind: VAR_DEFN_TAG,
                       init: EXPR option,
                       attrs: ATTRIBUTES,
                       pattern: PATTERN,
@@ -192,7 +185,6 @@ datatype PRAGMA =
      and STMT =
          EmptyStmt
        | ExprStmt of EXPR
-       | DefineStmt of VAR_DEFN
        | ForEachStmt of FOR_ENUM_STMT
        | ForInStmt of FOR_ENUM_STMT
        | ThrowStmt of EXPR
@@ -201,22 +193,22 @@ datatype PRAGMA =
        | ContinueStmt of IDENT option
        | BlockStmt of BLOCK
        | LabeledStmt of (IDENT * STMT)
-       | LetStmt of ((VAR_DEFN list) * BLOCK)
+       | LetStmt of ((VAR_BINDING list) * BLOCK)
        | SuperStmt of EXPR list
        | WhileStmt of WHILE_STMT
        | DoWhileStmt of WHILE_STMT
 
        | ForStmt of { isVar: bool,
-                      defns: VAR_DEFN list,
+                      defns: VAR_BINDING list,
                       init: EXPR,
                       cond: EXPR,
                       update: EXPR,
                       contLabel: IDENT option,
                       body: STMT }
 
-       | IfStmt of { cond: EXPR,
-                     consequent: STMT,
-                     alternative: STMT }
+       | IfStmt of { cnd: EXPR,
+                     thn: STMT,
+                     els: STMT }
 
        | WithStmt of { obj: EXPR,
                        body: STMT }
@@ -228,10 +220,6 @@ datatype PRAGMA =
        | SwitchStmt of { cond: EXPR,
                          cases: (EXPR * (STMT list)) list,
                          default: STMT list }
-
-	   | DefnStmt of DEFINITION
-
-	   | PragmaStmt of PRAGMA list
 
      and EXPR =
          TrinaryExpr of (TRIOP * EXPR * EXPR * EXPR)
@@ -247,7 +235,7 @@ datatype PRAGMA =
        | CallExpr of {func: EXPR,
                       actuals: EXPR list}
 
-       | LetExpr of { defs: VAR_DEFN list,
+       | LetExpr of { defs: VAR_BINDING list,
                       body: EXPR }
 
        | NewExpr of { obj: EXPR,
@@ -265,6 +253,7 @@ datatype PRAGMA =
 
        | LexicalRef of { ident: IDENT_EXPR }
 
+       | SetExpr of (BINOP * PATTERN * EXPR)
  
     and IDENT_EXPR =
          QualifiedIdentifier of { qual : EXPR,
@@ -297,7 +286,7 @@ datatype PRAGMA =
 	 
      and BLOCK = Block of
          { pragmas: PRAGMA list,
-           defns: DEFINITION list,
+           defns: DEFN list,
            stmts: STMT list }
 
 	and PATTERN =
@@ -339,8 +328,8 @@ withtype
            params: IDENT list,
            extends: TYPE_EXPR list,
            implements: TYPE_EXPR list,
-           instanceVars: VAR_DEFN list,
-           vars: VAR_DEFN list,
+           instanceVars: VAR_BINDING list,
+           vars: VAR_BINDING list,
            constructor: FUNC,
            methods: FUNC list,
            initializer: STMT list }
@@ -360,7 +349,7 @@ withtype
          { isVar: bool,
            init: EXPR,
            obj: EXPR,
-           defns: VAR_DEFN list,
+           defns: VAR_BINDING list,
            contLabel: IDENT option,
            body: STMT }
 
@@ -368,6 +357,15 @@ withtype
          { cond: EXPR,
            body: STMT,
            contLabel: IDENT option }
+
+	 and DIRECTIVES =
+		 { pragmas : PRAGMA list,
+		   defns : DEFN list,
+		   stmts : STMT list }
+
+	 and BINDINGS =
+		 { defns : VAR_BINDING list,
+		   stmts : STMT list }
 
 type PACKAGE =
      { names: IDENT list,
