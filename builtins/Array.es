@@ -1,13 +1,3 @@
-/*
-	Attempt at modeling ECMA-262 builtin classes using the new ECMA4 language.
-	
-	Note that these are intended to reflect ECMA-262 behavior, which may omit
-	common-but-nonstandard extensions used in various implementations (e.g., SpiderMonkey).
-	
-	This also makes no attempt at efficiency of implementation, preferring clarity and
-	simplicity instead.
-*/
-
 package
 {
 	dynamic class Array extends Object
@@ -57,7 +47,7 @@ package
 		{
 			return _join(a, ",");
 		}
-		function toString():String
+		ECMA4 function toString():String
 		{
 			return _join(this, ",");
 		}
@@ -67,7 +57,7 @@ package
 		{
 			return _toLocaleString(this);
 		}
-		function toLocaleString():String
+		ECMA4 function toLocaleString():String
 		{
 			return _toLocaleString(this);
 		}
@@ -91,7 +81,7 @@ package
 			return _concat(this, args);
 		}
 		prototype.concat.length = 1;
-		function concat(...args):Array
+		ECMA4 function concat(...args):Array
 		{
 			return _concat(this, args);
 		}
@@ -135,7 +125,7 @@ package
 			return _join(this, sep);
 		}
 		prototype.join.length = 1;
-		function join(sep = void(0)):String
+		ECMA4 function join(sep = void(0)):String
 		{
 			return _join(this, sep);
 		}
@@ -160,11 +150,11 @@ package
 		{
 			return _pop(this);
 		}
-		function pop()
+		ECMA4 function pop():*
 		{
 			return _pop(this);
 		}
-		private static function _pop(o)
+		private static function _pop(o):*
 		{
 			var olen:uint = uint(o.length);
 
@@ -188,7 +178,7 @@ package
 			return _push(this, args);
 		}
 		prototype.join.push = 1;
-		function push(...args:Array):uint
+		ECMA4 function push(...args:Array):uint
 		{
 			return _push(this, args);
 		}
@@ -207,7 +197,7 @@ package
 		{
 			return _reverse(this);
 		}
-		function reverse():Array
+		ECMA4 function reverse():Array
 		{
 			return _reverse(this);  // return will cast to Array
 		}
@@ -233,7 +223,7 @@ package
 		{
 			return _shift(this);
 		}
-		function shift()
+		ECMA4 function shift()
 		{
 			return _shift(this);
 		}
@@ -270,7 +260,7 @@ package
 			return _slice(this, Number(A), Number(B))
 		}
 		prototype.slice.length = 2;
-		function slice(A:Number = 0, B:Number = Infinity):Array
+		ECMA4 function slice(A:Number = 0, B:Number = Infinity):Array
 		{
 			return _slice(this, A, B)
 		}
@@ -301,7 +291,7 @@ package
 		{
 			return _sort(this, compareFn);
 		}
-		function sort(compareFn:Function):Array
+		ECMA4 function sort(compareFn:Function):Array
 		{
 			return _sort(this, compareFn);
 		}
@@ -321,7 +311,7 @@ package
 			return _splice(this, args);
 		}
 		prototype.splice.length = 2;
-		function splice(...args:Array):Array
+		ECMA4 function splice(...args:Array):Array
 		{
 			return _splice(this, args);
 		}
@@ -403,7 +393,7 @@ package
 			return _unshift(this, args);
 		}
 		prototype.unshift.length = 1;
-		function unshift(...args:Array):uint
+		ECMA4 function unshift(...args:Array):uint
 		{
 			return _unshift(this, args);
 		}
@@ -431,6 +421,7 @@ package
 		}		
 
 		// 15.4.5.1 [[Put]] (P, V)
+		// @todo: this will not function the way we want with current catchall behavior!
 		function set *(propertyName, value):void
 		{
 			var curLength:uint = uint(this.length);
@@ -568,7 +559,7 @@ package
 		} // qsort
 		
 		// mark all prototype functions as {DE}
-		_dontEnumPrototype(prototype);
+		_dontEnum(prototype);
 
 	} // class
 } // package

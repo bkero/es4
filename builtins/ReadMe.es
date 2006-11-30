@@ -8,6 +8,10 @@
 		namespace SpiderMonkey		// Mozilla's ECMA-262 implementation
 		namespace ActionScript		// Adobe Flash ActionScript 3.0 implementation
 		namespace JScriptNET		// Microsoft JScript implementation
+
+	There is also the ECMA4 namespace, which is designed to allow for higher-performance
+	early-binding by ECMA4-specific compilers, allowing for potentially better compile-time
+	error-checking (in strict mode) and runtime performance, but at the expense of some backwards compatibility.
 	
 	Note that where method implementations are provided, there is no attempt at efficiency;
 	clarity and simplicity are preferred in all cases.
@@ -17,6 +21,7 @@
 	--  By default, declared properties inside a class are {DontEnum,DontDelete}, and are part of the 
 		type constraint for the class type, instance type, or prototype that they’re on.
 
+		* native: means "provided by the underlying implementation".
 	    * dynamic: means {!DontDelete}, in effect describing the initial state of an object that can change at runtime.
 	    * static: means the property is declared on C itself, not C.prototype or instances of C.
 	    * this:T if given as the first parameter of an unbound (prototype or anonymous) function, 

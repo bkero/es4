@@ -37,7 +37,7 @@ package
 		{
 			return _toString(this);
 		}
-		public function toString():String
+		ECMA4 function toString():String
 		{
 			return _toString(this);
 		}
@@ -47,7 +47,7 @@ package
 		{
 			return toString();
 		}
-		function toLocaleString():String
+		ECMA4 function toLocaleString():String
 		{
 			return toString();
 		}
@@ -57,7 +57,7 @@ package
 		{
 			return this;
 		}
-		function valueOf()
+		ECMA4 function valueOf():Object
 		{
 			return this;
 		}
@@ -71,7 +71,7 @@ package
 		{
 			return _hasOwnProperty(this, V);
 		}
-		function hasOwnProperty(V)
+		ECMA4 function hasOwnProperty(V)
 		{
 			return _hasOwnProperty(this, V);
 		}
@@ -94,7 +94,7 @@ package
 		{
 			return _isPrototypeOf(this, V);
 		}
-		function isPrototypeOf(V)
+		ECMA4 function isPrototypeOf(V)
 		{
 			return _isPrototypeOf(this, V);
 		}
@@ -108,7 +108,7 @@ package
 		{
 			return _propertyIsEnumerable(this, V);
 		}
-		function propertyIsEnumerable(V)
+		ECMA4 function propertyIsEnumerable(V)
 		{
 			return _propertyIsEnumerable(this, V);
 		}
@@ -123,16 +123,16 @@ package
 		
 		// private helper function, used to mark all prototype functions as {DE}
 		protected static native function _setPropertyIsEnumerable(o:Object, V:String, enumerable:Boolean):void;
-		protected static function _dontEnumPrototype(proto:Object):void
+		protected static function _dontEnum(o:Object):void
 		{
-			for (var name:String in proto)
+			for (var name:String in o)
 			{
-				_setPropertyIsEnumerable(proto, name, false);
+				_setPropertyIsEnumerable(o, name, false);
 			}
 		}
 
 		// mark all prototype functions as {DE}
-		_dontEnumPrototype(prototype);
+		_dontEnum(prototype);
 
 	} // class
 } // package

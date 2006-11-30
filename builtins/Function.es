@@ -1,13 +1,3 @@
-/*
-	Attempt at modeling ECMA-262 builtin classes using the new ECMA4 language.
-	
-	Note that these are intended to reflect ECMA-262 behavior, which may omit
-	common-but-nonstandard extensions used in various implementations (e.g., SpiderMonkey).
-	
-	This also makes no attempt at efficiency of implementation, preferring clarity and
-	simplicity instead.
-*/
-
 package
 {
 	dynamic class Function extends Object
@@ -51,7 +41,7 @@ package
 		{
 			return _toString(this);
 		}
-		function toString():String
+		ECMA4 function toString():String
 		{
 			return _toString(this);
 		}
@@ -71,7 +61,7 @@ package
 		{
 			return _apply(this, thisArg, argArray);
 		}
-		function apply(thisArg:Function, argArray:Array):*
+		ECMA4 function apply(thisArg:Function, argArray:Array):*
 		{
 			return _apply(this, thisArg, argArray);
 		}
@@ -86,7 +76,7 @@ package
 			return _call(this, args);
 		}
 		prototype.call.length = 1;			// ECMA-262 says so
-		function call(...args:Array):*
+		ECMA4 function call(...args:Array):*
 		{
 			return _call(this, args);
 		}
@@ -117,7 +107,7 @@ package
 		}
 
 		// mark all prototype functions as {DE}
-		_dontEnumPrototype(prototype);
+		_dontEnum(prototype);
 
 	} // class
 } // package

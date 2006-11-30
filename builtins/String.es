@@ -1,13 +1,3 @@
-/*
-	Attempt at modeling ECMA-262 builtin classes using the new ECMA4 language.
-	
-	Note that these are intended to reflect ECMA-262 behavior, which may omit
-	common-but-nonstandard extensions used in various implementations (e.g., SpiderMonkey).
-	
-	This also makes no attempt at efficiency of implementation, preferring clarity and
-	simplicity instead.
-*/
-
 package
 {
 	// @todo: String is final in AS3 but dynamic in E262. 
@@ -42,12 +32,21 @@ package
 		// 15.5.3.2 String.fromCharCode ( [ char0 [ , char1 [ , … ] ] ] )
 		dynamic static function fromCharCode(...args:Array):Number
 		{
-			var s:String = "";
-			for (var i:int = 0; i < args.length; ++i)
-				s += _fromCharCode(args[i]);
-			return s;
+			return _fromCharCode(args);
 		}
 		fromCharCode.length = 1;	// ECMA-262 says length is 1
+		ECMA4 static function fromCharCode(...args:Array):Number
+		{
+			return _fromCharCode(args);
+		}
+
+		private static function _fromCharCode(args:Array):Number
+		{
+			var s:String = "";
+			for (var i:int = 0; i < args.length; ++i)
+				s += _fromOneCharCode(args[i]);
+			return s;
+		}
 
 		// 15.5.4 Properties of the String Prototype Object
    		prototype.[[Prototype]] = prototype;
@@ -62,7 +61,7 @@ package
 		{
 			return this;
 		}
-		function toString():String
+		ECMA4 function toString():String
 		{
 			return this;
 		}
@@ -72,7 +71,7 @@ package
 		{
 			return this;
 		}
-		function valueOf():String
+		ECMA4 function valueOf():Object
 		{
 			return this;
 		}
@@ -82,7 +81,7 @@ package
 		{
 			return _charAt(this, pos);
 		}
-		function charAt(pos:Number = 0):String
+		ECMA4 function charAt(pos:Number = 0):String
 		{
 			return _charAt(this, pos);
 		}
@@ -92,7 +91,7 @@ package
 			var ipos:int = int(pos);
 			if (ipos < 0 || ipos >= s.length)
 				return "";
-			return _fromCharCode(_getCharCodeAt(s, ipos));
+			return _fromOneCharCode(_getOneCharCodeAt(s, ipos));
 		}
 
 		// 15.5.4.5 String.prototype.charCodeAt (pos)
@@ -100,7 +99,7 @@ package
 		{
 			return _charCodeAt(this, pos);
 		}
-		function charCodeAt(pos:Number = 0):String
+		ECMA4 function charCodeAt(pos:Number = 0):String
 		{
 			return _charCodeAt(this, pos);
 		}
@@ -110,7 +109,7 @@ package
 			var ipos:int = int(pos);
 			if (ipos < 0 || ipos >= s.length)
 				return NaN;
-			return _getCharCodeAt(s, ipos);
+			return _getOneCharCodeAt(s, ipos);
 		}
 
 		// 15.5.4.6 String.prototype.concat ( [ string1 [ , string2 [ , … ] ] ] )
@@ -119,7 +118,7 @@ package
 			return _concat(this, args);
 		}
 		prototype.concat.length = 1;	// ECMA-262 says length is 1
-		function concat(...args:Array):String
+		ECMA4 function concat(...args:Array):String
 		{
 			return _concat(this, args);
 		}
@@ -140,7 +139,7 @@ package
 			return _indexOf(this, searchString, position);
 		}
 		prototype.indexOf.length = 1;	// ECMA-262 says length is 1
-		function indexOf(searchString:String = void(0), position:Number = 0):Number
+		ECMA4 function indexOf(searchString:String = void(0), position:Number = 0):Number
 		{
 			return _indexOf(this, searchString, position);
 		}
@@ -161,7 +160,7 @@ package
 			return _lastIndexOf(this, searchString, position);
 		}
 		prototype.lastIndexOf.length = 1;	// ECMA-262 says length is 1
-		function lastIndexOf(searchString:String = void(0), position:Number = Infinity):Number
+		ECMA4 function lastIndexOf(searchString:String = void(0), position:Number = Infinity):Number
 		{
 			return _lastIndexOf(this, searchString, position);
 		}
@@ -185,7 +184,7 @@ package
 		{
 			return _localeCompare(this, that);
 		}
-		function localeCompare(that = void(0)):Number
+		ECMA4 function localeCompare(that = void(0)):Number
 		{
 			return _localeCompare(this, that);  
 		}
@@ -220,7 +219,7 @@ package
 		{
 			return _match(this, regexp);
 		}
-		function match(regexp = void(0)):Array
+		ECMA4 function match(regexp = void(0)):Array
 		{
 			return _match(this, regexp);  
 		}
@@ -262,7 +261,7 @@ package
 		{
 			return _replace(this, searchValue, replaceValue);
 		}
-		function replace(searchValue:String, replaceValue:String):String
+		ECMA4 function replace(searchValue:String, replaceValue:String):String
 		{
 			return _replace(this, searchValue, replaceValue);  
 		}
@@ -276,7 +275,7 @@ package
 		{
 			return _search(this, regexp);
 		}
-		function search(regexp:Object):int
+		ECMA4 function search(regexp:Object):int
 		{
 			return _search(this, regexp);  
 		}
@@ -295,7 +294,7 @@ package
 			return _slice(this, Number(A), Number(B))
 		}
 		prototype.slice.length = 2;
-		function slice(A:Number = 0, B:Number = Infinity):Array
+		ECMA4 function slice(A:Number = 0, B:Number = Infinity):Array
 		{
 			return _slice(this, Number(A), Number(B))
 		}
@@ -310,7 +309,7 @@ package
 			return _split(this, separator, limit)
 		}
 		// separator may be String or RegExp (or undefined)
-		function split(separator:*, limit:Number):Array
+		ECMA4 function split(separator:*, limit:Number):Array
 		{
 			return _split(this, separator, limit)
 		}
@@ -324,7 +323,7 @@ package
 		{
 			return _substring(this, Number(start), Number(end));
 		}
-		function substring(start:Number = 0, end:Number = 0):String
+		ECMA4 function substring(start:Number = 0, end:Number = 0):String
 		{
 			return _substring(this, start, end);
 		}
@@ -338,7 +337,7 @@ package
 		{
 			return _toLowerCase(this);
 		}
-		function toLowerCase():String
+		ECMA4 function toLowerCase():String
 		{
 			return _toLowerCase(this);
 		}
@@ -352,7 +351,7 @@ package
 		{
 			return _toLocaleLowerCase(this);
 		}
-		function toLocaleLowerCase():String
+		ECMA4 function toLocaleLowerCase():String
 		{
 			return _toLocaleLowerCase(this);
 		}
@@ -366,7 +365,7 @@ package
 		{
 			return _toUpperCase(this);
 		}
-		function toUpperCase():String
+		ECMA4 function toUpperCase():String
 		{
 			return _toUpperCase(this);
 		}
@@ -380,7 +379,7 @@ package
 		{
 			return _toUpperCase(this);
 		}
-		function toUpperCase():String
+		ECMA4 function toUpperCase():String
 		{
 			return _toUpperCase(this);
 		}
@@ -394,7 +393,7 @@ package
 		{
 			return _toLocaleUpperCase(this);
 		}
-		function toLocaleUpperCase():String
+		ECMA4 function toLocaleUpperCase():String
 		{
 			return _toLocaleUpperCase(this);
 		}
@@ -410,11 +409,11 @@ package
 		const length;	
 
 		// native helpers
-		private static native function _fromCharCode(code:Number):String;				// @todo
-		private static native function _getCharCodeAt(s:String, index:Number):Number;	// @todo
+		private static native function _fromOneCharCode(code:Number):String;				// @todo
+		private static native function _getOneCharCodeAt(s:String, index:Number):Number;	// @todo
 
 		// mark all prototype functions as {DE}
-		_dontEnumPrototype(prototype);
+		_dontEnum(prototype);
 
 	} // class
 } // package
