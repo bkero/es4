@@ -1,19 +1,9 @@
-/*
-	Attempt at modeling ECMA-262 builtin classes using the new ECMA4 language.
-	
-	Note that these are intended to reflect ECMA-262 behavior, which may omit
-	common-but-nonstandard extensions used in various implementations (e.g., SpiderMonkey).
-	
-	This also makes no attempt at efficiency of implementation, preferring clarity and
-	simplicity instead.
-*/
-
 package
 {
-	public dynamic class Function extends Object
+	dynamic class Function extends Object
 	{		
 		// 15.3.1 The Function Constructor Called as a Function
-		public static intrinsic function call(...args)
+		static intrinsic function call(...args)
 		{
 			return _construct(args);
 		}
@@ -21,43 +11,43 @@ package
 		// 15.3.1.1 Function (p1, p2, … , pn, body)
 		private static function _construct(args:Array):Function
 		{
-			return @todo, requires eval
+			return @todo;
 		}
-		public static intrinsic function construct(...args)
+		function Function(...args)
 		{
 			return _construct(args);
 		}
 
+		// 15.3.3 Properties of the Function Constructor
+		static const length = 1;
+		
 		// 15.3.3.1 Function.prototype
-		// { DontEnum, DontDelete, ReadOnly } 
-		// @todo how to set DontEnum?
-		public static function get prototype()
-		{
-			return intrinsic::get("prototype");
-		}
-		intrinsic::set("prototype", { prototype: Object.prototype });
+		static const prototype = { };
 
+		// 15.3.4 Properties of the Function Prototype Object
+   		prototype.[[Prototype]] = prototype;
+   		prototype.[[Class]] = "Function";
+		
 		// 15.3.4.1 Function.prototype.constructor
-		prototype.constructor = construct;
+		prototype.constructor = Function;
 
 		// 15.3.4.2 Function.prototype.toString ( )
-		private static function _toString(o):String
+		private static function _toString(f:Function):String
 		{
 			// implementation dependent, so this is acceptable
-			return "[function]";
+			return "function Function() {}";
 		}
-		prototype.toString = function():String
+		prototype.toString = function(this:Function):String
 		{
-			var _this:Function = this;	// throw TypeError if not a Function
-			return _toString(_this);
+			return _toString(this);
 		}
-		public function toString():String
+		ECMA4 function toString():String
 		{
 			return _toString(this);
 		}
 		
 		// 15.3.4.3 Function.prototype.apply (thisArg, argArray)
-		private static function _apply(o, thisArg:Function, argArray:Array)
+		private static function _apply(o, thisArg, argArray)
 		{
 			if (thisArg == null)
 				thisArg = intrinsic::global;
@@ -71,13 +61,13 @@ package
 		{
 			return _apply(this, thisArg, argArray);
 		}
-		public function apply(thisArg:Function, argArray:Array):*
+		ECMA4 function apply(thisArg:Function, argArray:Array):*
 		{
 			return _apply(this, thisArg, argArray);
 		}
 
 		// 15.3.4.4 Function.prototype.call (thisArg [ , arg1 [ , arg2, … ] ] )
-		private static function _call(o, args:Array)
+		private static function _call(o, args:Array):*
 		{
 			return _apply(o, args[0], args.slice(1));
 		}
@@ -86,33 +76,38 @@ package
 			return _call(this, args);
 		}
 		prototype.call.length = 1;			// ECMA-262 says so
-		public function call(...args:Array):*
+		ECMA4 function call(...args:Array):*
 		{
 			return _call(this, args);
 		}
 		
 		// 15.3.5 Properties of Function Instances
 		// 15.3.5.1 length
-		// { DontEnum, DontDelete, ReadOnly } 
-		// @todo how to set DontEnum?
-		// @todo how to set initial value?
-		public function get length()
-		{
-			return intrinsic::get("length");
-		}
+		const length;	// @todo -- how to set initial value
 
 		// 15.3.5.2 prototype
 		// { DontDelete } 
-		// @todo how to set initial value?
-		public function get prototype()
+		var prototype;	// @todo -- how to set initial value
+
+		// 15.3.5.3 [[HasInstance]] (V)
+		function [[HasInstance]](V)		
 		{
-			return intrinsic::get("prototype");
-		}
-		public function set prototype(p)
-		{
-			intrinsic::set("prototype", p);
+			// implements instanceof
+			if (!(V is Object))
+				return false;
+			var O:Object = this.prototype;	// throws TypeError if not Object
+			V = V.prototype;
+			while (V != null)
+			{
+				if (O == V)
+					return true;
+				V = V.prototype;
+			}
+			return false;
 		}
 
+		// mark all prototype functions as {DE}
+		_dontEnum(prototype);
 
 	} // class
 } // package
