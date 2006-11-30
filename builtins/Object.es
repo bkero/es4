@@ -1,57 +1,39 @@
-/*
-	Attempt at modeling ECMA-262 builtin classes using the new ECMA4 language.
-	
-	Note that these are intended to reflect ECMA-262 behavior, which may omit
-	common-but-nonstandard extensions used in various implementations (e.g., SpiderMonkey).
-	
-	This also makes no attempt at efficiency of implementation, preferring clarity and
-	simplicity instead.
-*/
-
 package
 {
-		// @todo -- class name? oops
-	public dynamic class _Object extends Object
+	dynamic class Object 
 	{		
 		// 15.2.1.1 Object ( [ value ] )
 		// the Object constructor called as a function
-		public static intrinsic function call(value)
+		static intrinsic function call(value)
 		{
-			if (value === null || value === void 0)
-			{
-				return new _Object;
-			}
-			return _Object(value);
+			return @todo;
 		}
 
 		// 15.2.2.1 new Object ( [ value ] )
-		public static intrinsic function construct(value)
+		function Object(value)
 		{
-			if (value === null || value === void 0)
-			{
-				return new _Object;
-			}
-			return _Object(value);
+			@todo;
+			// conceptually:
+			// this.[[Prototype]] = myClass.prototype;
+			// this.[[Class]] = myClass.prototype.[[Class]];
 		}
 		
 		// 15.2.3.1 Object.prototype
-		// { DontEnum, DontDelete, ReadOnly } 
-		// @todo how to set DontEnum?
-		public static function get prototype()
-		{
-			return intrinsic::get("prototype");
-		}
-
+		static const prototype = { };
+		
+		// 15.2.4 Properties of the Object Prototype Object
+   		prototype.[[Prototype]] = null;
+   		prototype.[[Class]] = "Object";
+		
 		// 15.2.4.1 Object.prototype.constructor
-		intrinsic::set("prototype", { constructor: _Object.construct });
+   		prototype.constructor = Object;
 
 		// 15.2.4.2 Object.prototype.toString ( )
 		private static function _toString(o):String
 		{
-			// @todo 
-			return "[object " + o._getClassName() + "]";
+			return "[object " + o.[[Class]] + "]";
 		}
-		prototype.toString = function():String
+		prototype.toString = function()
 		{
 			return _toString(this);
 		}
@@ -61,11 +43,11 @@ package
 		}
 
 		// 15.2.4.3 Object.prototype.toLocaleString ( )
-		prototype.toLocaleString = function():String
+		prototype.toLocaleString = function()
 		{
 			return toString();
 		}
-		public function toLocaleString():String
+		function toLocaleString():String
 		{
 			return toString();
 		}
@@ -75,7 +57,7 @@ package
 		{
 			return this;
 		}
-		public function valueOf()
+		function valueOf()
 		{
 			return this;
 		}
@@ -83,14 +65,13 @@ package
 		// 15.2.4.5 Object.prototype.hasOwnProperty (V)
 		private static function _hasOwnProperty(o, V):Boolean
 		{
-			// @todo 
 			return @todo;
 		}
 		prototype.hasOwnProperty = function(V)
 		{
 			return _hasOwnProperty(this, V);
 		}
-		public function hasOwnProperty(V)
+		function hasOwnProperty(V)
 		{
 			return _hasOwnProperty(this, V);
 		}
@@ -98,14 +79,14 @@ package
 		// 15.2.4.6 Object.prototype.isPrototypeOf (V)
 		private static function _isPrototypeOf(o, V):Boolean
 		{
-			if (!(V is _Object))
+			if (!(V is Object))
 				return false;
-			V = V.intrinsic::get("prototype");
+			V = V.prototype;
 			while (V != null)
 			{
 				if (o == V)
 					return true;
-				V = V.intrinsic::get("prototype");
+				V = V.prototype;
 			}
 			return false;
 		}
@@ -113,7 +94,7 @@ package
 		{
 			return _isPrototypeOf(this, V);
 		}
-		public function isPrototypeOf(V)
+		function isPrototypeOf(V)
 		{
 			return _isPrototypeOf(this, V);
 		}
@@ -127,10 +108,31 @@ package
 		{
 			return _propertyIsEnumerable(this, V);
 		}
-		public function propertyIsEnumerable(V)
+		function propertyIsEnumerable(V)
 		{
 			return _propertyIsEnumerable(this, V);
 		}
+
+       // ECMA-262 doesn't expose __proto__ and it's internally readonly
+		private const [[Prototype]];
+		private const [[Class]];
+
+       // bound {DE,DD} accessors
+		SpiderMonkey function get __proto__() { return [[Prototype]]; }
+		SpiderMonkey function set __proto__(o) { [[Prototype]] = o; }   // check for a cycle, throw Error if so
+		
+		// private helper function, used to mark all prototype functions as {DE}
+		protected static native function _setPropertyIsEnumerable(o:Object, V:String, enumerable:Boolean):void;
+		protected static function _dontEnumPrototype(proto:Object):void
+		{
+			for (var name:String in proto)
+			{
+				_setPropertyIsEnumerable(proto, name, false);
+			}
+		}
+
+		// mark all prototype functions as {DE}
+		_dontEnumPrototype(prototype);
 
 	} // class
 } // package
