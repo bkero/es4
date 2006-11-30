@@ -3,24 +3,14 @@
  *)
 
 structure Main = struct
-fun exnDetails (Fail s)  = SOME ("Fail: " ^ s)
-  | exnDetails Bind      = SOME "nonexhaustive binding failure"
-  | exnDetails Match     = SOME "nonexhaustive match failure"
-  | exnDetails Div       = SOME "divide by zero"
-  | exnDetails Domain    = SOME "domain error"
-  | exnDetails Overflow  = SOME "overflow"
-  | exnDetails Size      = SOME "size"
-  | exnDetails Subscript = SOME "subscript out of bounds"
-  | exnDetails _         = NONE
-
 fun printStackTrace e =
     let val ss = SMLofNJ.exnHistory e
+        val s = General.exnMessage e
+        val name = General.exnName e
+        val details = if s = name then "" else (" [" ^ s ^ "]")
     in
-        TextIO.print ("uncaught exception " ^ (exnName e));
-        (case (exnDetails e) of
-              SOME s => TextIO.print (" [" ^ s ^ "]\n")
-            | NONE => TextIO.print "\n");
-        List.app (fn s => TextIO.print ("\t" ^ s ^ "\n")) ss
+        print ("uncaught exception " ^ name ^ details ^ "\n");
+        app (fn s => TextIO.print ("  raised at: " ^ s ^ "\n")) ss
     end
 
 fun testTC argvRest =
