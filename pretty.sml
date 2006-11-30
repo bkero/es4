@@ -30,8 +30,8 @@ val ppExpr = ppRep o cvtEXPR
 
 val ppStmt = ppRep o cvtSTMT
 
-val ppDefinition = ppRep o cvtDEFINITION
+val ppDefinition = ppRep o cvtDEFN
 
-val ppVarDefn = ppRep o cvtVAR_DEFN
+val ppVarDefn = ppRep o cvtVAR_BINDING
 
 end

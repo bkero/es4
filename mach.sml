@@ -182,6 +182,7 @@ val (defaultAttrs:Ast.ATTRIBUTES) =
 		     final = false,
 		     dynamic = true,
 		     prototype = false,
+			 rest = false,
 		     nullable = false }
 
 val (noOpFunction:Ast.FUNC) = 
