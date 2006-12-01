@@ -218,8 +218,7 @@ datatype PRAGMA =
                       finally: BLOCK }
 
        | SwitchStmt of { cond: EXPR,
-                         cases: (EXPR * (STMT list)) list,
-                         default: STMT list }
+                         cases: CASE list }
 
      and EXPR =
          TrinaryExpr of (TRIOP * EXPR * EXPR * EXPR)
@@ -367,6 +366,9 @@ withtype
 		 { defns : VAR_BINDING list,
 		   stmts : STMT list }
 
+	 and CASE =
+		 { label : EXPR option, stmts : DIRECTIVES }
+
 type PACKAGE =
      { names: IDENT list,
        fullname: USTRING,
@@ -374,6 +376,6 @@ type PACKAGE =
 
 type PROGRAM =
      { packages: PACKAGE list,
-       body: BLOCK }
+       body : BLOCK }
 
 end

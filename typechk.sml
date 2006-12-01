@@ -282,16 +282,16 @@ and tcBlock (ctxt as {env,...}) (Block {pragmas=pragmas,defns=defns,stmts=stmts}
         val ctxt' = withEnv (ctxt, foldl extendEnv env extensions)
     in
         assert (classes = []) "class definition inside block";
-	tcStmts ctxt stmts
+		tcStmts ctxt stmts
     end
 
 fun tcProgram { packages, body } = 
-   (tcBlock {this=anyType, env=[], lbls=[], retTy=NONE} body; true)
-   handle IllTypedException msg => (
-     TextIO.print "Ill typed exception: "; 
-     TextIO.print msg; 
-     TextIO.print "\n"; 
-     false)
+	(tcBlock {this=anyType, env=[], lbls=[], retTy=NONE} body; true)
+    handle IllTypedException msg => (
+     	TextIO.print "Ill typed exception: "; 
+     	TextIO.print msg; 
+     	TextIO.print "\n"; 
+     	false)
 
    
 

@@ -1972,7 +1972,7 @@ and assignmentExpression (ts,a,b) : (token list * Ast.EXPR) =
 			    (* todo: convert to pattern, may result in syntax error *)
 				val (ts2,nd2) = assignmentExpression(tl ts1,a,b)						
 			in 
-				(ts2,Ast.BinaryExpr(Ast.Assign,nd1,nd2))
+				(ts2,Ast.SetExpr(Ast.Assign,Ast.SimplePattern nd1,nd2))
 			end
 	  | (Assign :: _, _) => 
 			(error(["invalid lhs"]);raise ParseError)
@@ -2544,22 +2544,22 @@ Statementw
     WithStatementw
 *)
 
-and semicolon (ts,nd,FULL) : (token list * Ast.STMT) =
+and semicolon (ts,FULL) : (token list) =
     let val _ = trace([">> semicolon(FULL) with next=", tokenname(hd ts)])
 	in case ts of
-		SemiColon :: _ => (tl ts,nd)
-	  | (Eof | RightBrace) :: _ => (ts,nd)   (* ABBREV special cases *)
+		SemiColon :: _ => (tl ts)
+	  | (Eof | RightBrace) :: _ => (ts)   (* ABBREV special cases *)
 	  | _ => 
-			if newline ts then (log(["inserting semicolon"]);(ts,nd))
+			if newline ts then (log(["inserting semicolon"]);(ts))
 			else (error(["expecting semicolon before ",tokenname(hd ts)]); raise ParseError)
 	end
-  | semicolon (ts,nd,_) =
+  | semicolon (ts,_) =
     let val _ = trace([">> semicolon(ABBREV | NOSHORTIF) with next=", tokenname(hd ts)])
 	in case ts of
-		SemiColon :: _ => (tl ts,nd)
+		SemiColon :: _ => (tl ts)
 	  | _ => 
           (trace(["<< semicolon(ABBREV | NOSHORTIF) with next=", tokenname(hd ts)]);
-          (ts,nd))
+          (ts))
 	end
 
 and statement (ts,w) : (token list * Ast.STMT) =
@@ -2574,20 +2574,26 @@ and statement (ts,w) : (token list * Ast.STMT) =
 	  | Return :: _ =>
 			let
 				val (ts1,nd1) = returnStatement (ts)
-				val (ts2,nd2) = semicolon (ts1,nd1,w)
+				val (ts2,nd2) = (semicolon (ts1,w),nd1)
 			in
 				(ts2,nd2)
 			end
 	  | LeftBrace :: _ =>
 			let
-				val (ts1,nd1) = block ts
+				val (ts1,nd1) = blockStatement ts
 			in
-				(ts1,Ast.BlockStmt nd1)
+				(ts1,nd1)
+			end
+	  | Switch :: _ =>
+			let
+				val (ts1,nd1) = switchStatement ts
+			in
+				(ts1,nd1)
 			end
 	  | _ =>
 			let
 				val (ts1,nd1) = expressionStatement (ts)
- 				val (ts2,nd2) = semicolon (ts1,nd1,w)
+ 				val (ts2,nd2) = (semicolon (ts1,w),nd1)
 			in
 				trace(["<< statement with next=", tokenname(hd ts2)]);
 				(ts2,nd2)
@@ -2641,6 +2647,23 @@ and emptyStatement ts =
     end
 
 (*
+	BlockStatement     
+    	Block
+*)
+
+and blockStatement ts =
+    let
+    in case ts of
+		LeftBrace :: _ => 
+			let
+				val (ts1,nd1) = block ts
+			in
+				(ts1,Ast.BlockStmt nd1)
+			end
+	  | _ => raise ParseError
+    end
+
+(*
     
 ExpressionStatement    
     [lookahead !{ function, { }] ListExpression (allowLet,allowIn)
@@ -2664,25 +2687,148 @@ SuperStatement
 *)
 
 (*
-
-Block    
-    { Directives }
-
+	SwitchStatement	
+		switch ParenListExpression  {  CaseElements  }
+		
+	CaseElements	
+		«empty»
+		CaseLabel
+		CaseLabel CaseElementsPrefix
+		CaseLabel CaseElementsPrefix Directive(abbrev)
+		
+	CaseElementsPrefix	
+		«empty»
+		CaseElementsPrefix  CaseLabel
+		CaseElementsPrefix  Directive(full)
+	
+    right recursive: 
+			
+	CaseElementsPrefix	
+		«empty»
+		CaseLabel CaseElementsPrefix
+		Directive(full) CaseElementsPrefix
+				
+	CaseLabel	
+		case ListExpression(allowIn) :
+		default :
 *)
 
-and block (ts) : (token list * Ast.BLOCK) =
-    let val _ = trace([">> block with next=", tokenname(hd ts)])
+and switchStatement (ts) : (token list * Ast.STMT) =
+    let val _ = trace([">> switchStatement with next=", tokenname(hd ts)])
     in case ts of
-        LeftBrace :: RightBrace :: ts1 => (ts1,Ast.Block{pragmas=[],defns=[],stmts=[]})
-      | LeftBrace :: ts1 =>
-            let
-                val (ts2,{pragmas,defns,stmts}) = directives ts1
-            in case ts2 of
-                RightBrace :: ts3 => (ts3,Ast.Block{pragmas=pragmas,defns=defns,stmts=stmts})
+		Switch :: _ =>
+			let
+				val (ts1,nd1) = parenListExpression (tl ts)
+			in case ts1 of
+    		    LeftBrace :: _ =>
+            		let
+		                val (ts2,nd2) = caseElements (tl ts1)
+        		    in case ts2 of
+                		RightBrace :: _ => (tl ts2,Ast.SwitchStmt{cond=nd1,cases=nd2})
+					  | _ => raise ParseError
+        		    end
 			  | _ => raise ParseError
-            end
+			end
 	  | _ => raise ParseError
     end
+
+and isDefault (x) =
+	case x of 
+		NONE => true
+	  | _ => false
+
+and caseElements (ts) : (token list * Ast.CASE list) =
+    let val _ = trace([">> caseElements with next=", tokenname(hd ts)])
+    in case ts of
+		RightBrace :: _ =>
+			(tl ts,[])
+	  | (Case | Default) :: _ =>
+			let
+				val (ts1,nd1) = caseLabel (ts,false)
+				val (ts2,nd2) = caseElementsPrefix (ts1,isDefault nd1)
+			in case nd2 of
+				[] =>
+					let
+					in
+						(ts2,{label=nd1,stmts={pragmas=[],defns=[],stmts=[]}}::[])
+					end
+			  | first :: follows =>
+					let
+					in
+						(ts2,{label=nd1,stmts=(#stmts first)} :: follows)
+					end
+			end
+	  | _ => raise ParseError
+	end
+
+and caseElementsPrefix (ts,has_default) : (token list * Ast.CASE list) =
+    let val _ = trace([">> caseElementsPrefix with next=", tokenname(hd ts)])
+    in case ts of
+		RightBrace :: _ =>
+			(ts,[])
+	  | (Case | Default) :: _ =>
+			let
+				val (ts1,nd1) = caseLabel (ts,has_default)
+				val (ts2,nd2) = caseElementsPrefix (ts1,has_default orelse (isDefault nd1))
+			in case nd2 of
+				[] =>
+					let
+					in
+						(* append an empty CASE to the start of the list to
+						   seed the list of previously parsed directives,
+						   which get added when the stack unwinds *)
+
+						(ts2,{label=NONE,stmts={pragmas=[],defns=[],stmts=[]}} ::
+							({label=nd1,stmts={pragmas=[],defns=[],stmts=[]}}::[]))
+					end
+			  | first :: follows =>
+					let
+					in
+						(ts2,{label=NONE,stmts={pragmas=[],defns=[],stmts=[]}} ::
+							({label=nd1,stmts=(#stmts first)} :: follows))
+					end
+			end
+	  | _ => 
+			let
+				val (ts1,nd1) = directive (ts,FULL)
+				val (ts2,nd2) = caseElementsPrefix (ts1,has_default)
+			in case nd2 of
+				[] =>
+					let
+					in
+						(ts2,{label=NONE,stmts=nd1}::[])
+					end
+			  | first :: follows =>
+					let
+						val {pragmas=p1,defns=d1,stmts=s1} = nd1
+						val {pragmas=p2,defns=d2,stmts=s2} = #stmts first
+						val stmts = {pragmas=(p1@p2),defns=(d1@d2),stmts=(s1@s2)}
+					in
+						(ts2,{label=NONE,stmts=stmts}::follows)
+					end
+			end
+	end
+
+and caseLabel (ts,has_default) : (token list * Ast.EXPR option) =
+    let val _ = trace([">> caseLabel with next=", tokenname(hd ts)])
+	in case (ts,has_default) of
+		(Case :: _,_) =>
+			let
+				val (ts1,nd1) = listExpression (tl ts,ALLOWIN)
+			in case ts1 of
+				Colon :: _ => (tl ts1,SOME nd1)
+			  | _ => raise ParseError
+			end
+	  | (Default :: _,false) =>
+			let
+			in case tl ts of
+				Colon :: _ => (tl (tl ts),NONE)
+			  | _ => raise ParseError
+			end
+	  | (Default :: _,true) =>
+			(error(["redundant default switch case"]); raise ParseError)
+	  | _ => raise ParseError
+	end
 
 (*
     
@@ -2955,6 +3101,27 @@ and annotatableDirective (ts,attrs,omega) : (token list * Ast.DIRECTIVES)  =
 	end
 
 (*
+
+Block    
+    { Directives }
+
+*)
+
+and block (ts) : (token list * Ast.BLOCK) =
+    let val _ = trace([">> block with next=", tokenname(hd ts)])
+    in case ts of
+        LeftBrace :: RightBrace :: ts1 => (ts1,Ast.Block {pragmas=[],defns=[],stmts=[]})
+      | LeftBrace :: ts1 =>
+            let
+                val (ts2,nd2) = directives ts1
+            in case ts2 of
+                RightBrace :: _ => (tl ts2,Ast.Block nd2)
+			  | _ => raise ParseError
+            end
+	  | _ => raise ParseError
+    end
+
+(*
 	Directives    
     	«empty»
 	    DirectivesPrefix Directive(abbrev)
@@ -2963,6 +3130,8 @@ and annotatableDirective (ts,attrs,omega) : (token list * Ast.DIRECTIVES)  =
     	«empty»
 	    Pragmas
     	DirectivesPrefix Directive(full)
+
+	right recursive:
 
 	DirectivesPrefix    
     	«empty»
@@ -2980,7 +3149,12 @@ and directives (ts) : (token list * Ast.DIRECTIVES) =
 	  | _ => 
 			let
 				val (ts1,nd1) = directivesPrefix ts
-(*				val (ts2,nd2) = directive(ts1,ABBREV)   *)
+(*				val (ts2,nd2) = directive(ts1,ABBREV)   
+
+todo: the trailing directive(abbrev) is parsed by directivesPrefix. 
+      the semicolon(full) parser checks for the abbrev case and acts
+      like semicolon(abbrev) if needed. clarify this in the code.
+*)
 			in
 				trace(["<< directives with next=", tokenname(hd ts1)]);
 				(ts1,nd1)
@@ -3007,8 +3181,10 @@ and directivesPrefix (ts) : (token list * Ast.DIRECTIVES) =
 	  | (Use | Import) :: _ => 
 			let
 				val (ts1,nd1) = pragmas ts
+				val (ts2,{pragmas=p2,defns=d2,stmts=s2}) = directivesPrefix' ts1
 			in
-				(ts1, {pragmas=nd1,defns=[],stmts=[]})
+				trace(["<< directivesPrefix with next=", tokenname(hd ts2)]);
+				(ts2, {pragmas=nd1,defns=d2,stmts=s2})
 			end
 	  | _ => 
 			let
@@ -3047,8 +3223,20 @@ and pragmas (ts) : token list * Ast.PRAGMA list =
 and pragma ts =
     let val _ = trace([">> pragma with next=", tokenname(hd ts)])
 	in case ts of
-		Use :: _ => usePragma ts
-	  | Import :: _ => importPragma ts
+		Use :: _ => 
+			let
+				val (ts1,nd1) = usePragma ts
+ 				val (ts2,nd2) = (semicolon (ts1,FULL),nd1)
+			in
+				(ts2,nd2)
+			end
+	  | Import :: _ => 
+			let
+				val (ts1,nd1) = importPragma ts
+ 				val (ts2,nd2) = (semicolon (ts1,FULL),nd1)
+			in
+				(ts2,nd2)
+			end
 	  | _ => raise ParseError
 	end
 
@@ -3349,64 +3537,60 @@ TypeInitialisation
 *)
 
 (*
-    
-Program    
-    Directives
-    PackageDefinition Program
-
+	Program	
+		Packages  Directives
 *)
     
 and program ts =
-    let
-       val _ = trace([">> program with next=",tokenname(hd(ts))])
-    in case ts of
-        Package :: tr => 
-			let 
-			    val (tr2, pkgs) = packageDefinition tr
-			in
-			    (tr2, {packages=[pkgs], body=(Ast.Block {pragmas=[],
-						     defns=[],
-						     stmts=[]})})
-			end
-      | _ => 
-			let
-			    val (tr2, {pragmas,defns,stmts}) = directives ts
-			in
-			    (tr2, {packages=[], body=(Ast.Block {stmts=stmts,
-					   defns=defns,
-					   pragmas=pragmas})})
-			end
-    end
+    let val _ = trace([">> program with next=",tokenname(hd(ts))])
+		val (ts1,nd1) = packages ts
+		val (ts2,nd2) = directives ts1
+		val _ = trace(["<< program with next=",tokenname(hd(ts2))])
+    in case ts2 of
+		Eof :: [] => (ts2,{packages=nd1,body=Ast.Block nd2})
+	  | _ => (error(["extra stuff after end of program"]); raise ParseError)
+	end
 
 (*
+	Packages	
+	    «empty»
+		Package Packages
+*)
 
-PackageDefinition    
-    PackageAttributes package PackageNameOpt Block
-    
-PackageAttributes    
-    internal
-    «empty»
-    
-PackageNameOpt    
-    «empty»
-    PackageName
-    
-PackageName [create a lexical PackageIdentifier with the sequence of characters that make a PackageName]    
-    Identifier
-    PackageName  .  Identifier
-    
-ClassName    
-    ParameterisedClassName
-    ParameterisedClassName  !
-    
-ParameterisedClassName    
-    Identifier
-    Identifier  TypeParameters
+and packages ts =
+    let val _ = trace([">> packages with next=",tokenname(hd(ts))])
+	in case ts of
+		(Internal :: Package :: _ | Package :: _) =>
+			let
+				val (ts1,nd1) = package ts
+				val (ts2,nd2) = packages ts1
+			in
+				(ts1,nd1::nd2)
+			end
+	  | _ => (ts,[])
+	end
 
+(*
+	Package	
+		PackageAttributes  package  PackageNameOpt Block
+		
+	PackageAttributes	
+		internal
+		«empty»
+		
+	PackageNameOpt	
+		«empty»
+		PackageName
+		
+	PackageName [create a lexical PackageIdentifier with the sequence of characters that make a PackageName]	
+		Identifier
+		PackageName  .  Identifier
 *)
 
 
-and packageDefinition ts = raise ParseError
+and package ts = raise ParseError
+
+
 
 fun mkReader filename = 
     let
@@ -3450,8 +3634,7 @@ fun lexFile (filename : string) : (token list) =
 fun parse ts =
     let 
 	val (residual, result) = (program ts) 
-	fun check_residual (Eol :: xs) = check_residual xs
-	  | check_residual [Eof] = ()
+	fun check_residual [Eof] = ()
 	  | check_residual _ = raise ParseError
     in
 	check_residual residual;
