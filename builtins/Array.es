@@ -1,33 +1,18 @@
-/*
-	Attempt at modeling ECMA-262 builtin classes using the new ECMA4 language.
-	
-	Note that these are intended to reflect ECMA-262 behavior, which may omit
-	common-but-nonstandard extensions used in various implementations (e.g., SpiderMonkey).
-	
-	This also makes no attempt at efficiency of implementation, preferring clarity and
-	simplicity instead.
-*/
-
 package
 {
-	public dynamic class Array extends Object
+	dynamic class Array extends Object
 	{		
 		// 15.4.1 The Array Constructor Called as a Function
-		public static function call *(ident, args)
+		static intrinsic function call(...args)
 		{
-			if (ident == "Array")
-			{
-				// args is already an Array. just return it.
-				return args;
-			}
-			
-			return intrinsic::call(ident, args);
+			// args is already an Array. just return it.
+			return args;
 		}
 
 		// 15.4.2 The Array Constructor 
 		// 15.4.2.1 new Array( [ item0 [ , item1 [ , ... ] ] ] ) 
 		// 15.4.2.2 new Array(len) 
-		public function Array(...args)
+		function Array(...args)
 		{
 			var argslen:uint = uint(args.length);
 			if (argslen == 1 && (args[0] is Number))
@@ -49,43 +34,35 @@ package
 		}
 
 		// 15.4.4 Properties of the Array Prototype Object
-		// { DontEnum, DontDelete, ReadOnly } 
-		// @todo how to set DontEnum?
-		public static function get prototype():Object
-		{
-			return intrinsic::get("prototype");
-		}
+		static const prototype = { };
+   		prototype.[[Prototype]] = prototype;
+   		prototype.[[Class]] = "Array";
+		prototype.length = 0;
 
 		// 15.4.4.1 Array.prototype.constructor
-		// @todo is this right? don't think so... 
-		// won't work, since code like 
-		//    str.constructor == String // true
-		// won't work but is expected by ES3
-		prototype.constructor = function(...args) { return new Array(args); }
+		prototype.constructor = Array;
 		
 		// 15.4.4.2 Array.prototype.toString ( )
-		prototype.toString = function():String
+		prototype.toString = function(this:Array)
 		{
-			var a:Array = this;  // throws TypeError if not compatible
 			return _join(a, ",");
 		}
-		public function toString():String
+		ECMA4 function toString():String
 		{
 			return _join(this, ",");
 		}
 
 		// 15.4.4.3 Array.prototype.toLocaleString ( )
-		prototype.toLocaleString = function():String
+		prototype.toLocaleString = function(this:Array)
 		{
 			return _toLocaleString(this);
 		}
-		public function toLocaleString():String
+		ECMA4 function toLocaleString():String
 		{
 			return _toLocaleString(this);
 		}
-		private static function _toLocaleString(o):String
+		private static function _toLocaleString(a:Array):String
 		{
-			var a:Array = o; // throws TypeError if not compatible
 			var out:String = "";
 			for (var i:uint = 0, n:uint = a.length; i < n; i++)
 			{
@@ -99,11 +76,12 @@ package
 		}
 
 		// 15.4.4.4 Array.prototype.concat ( [ item1 [ , item2 [ , … ] ] ] )
-		prototype.concat = function(...args):Array
+		prototype.concat = function(...args)
 		{
 			return _concat(this, args);
 		}
-		public function concat(...args):Array
+		prototype.concat.length = 1;
+		ECMA4 function concat(...args):Array
 		{
 			return _concat(this, args);
 		}
@@ -142,11 +120,12 @@ package
 		}
 
 		// 15.4.4.5 Array.prototype.join (separator)
-		prototype.join = function(sep = void(0)):String
+		prototype.join = function(sep = void(0))
 		{
 			return _join(this, sep);
 		}
-		public function join(sep = void(0)):String
+		prototype.join.length = 1;
+		ECMA4 function join(sep = void(0)):String
 		{
 			return _join(this, sep);
 		}
@@ -171,11 +150,11 @@ package
 		{
 			return _pop(this);
 		}
-		public function pop()
+		ECMA4 function pop():*
 		{
 			return _pop(this);
 		}
-		private static function _pop(o)
+		private static function _pop(o):*
 		{
 			var olen:uint = uint(o.length);
 
@@ -194,15 +173,16 @@ package
 		}
 
 		// 15.4.4.7 Array.prototype.push ( [ item1 [ , item2 [ , … ] ] ] )
-		prototype.push = function(...args):uint
+		prototype.push = function(...args)
 		{
 			return _push(this, args);
 		}
-		public function push(...args):uint
+		prototype.join.push = 1;
+		ECMA4 function push(...args:Array):uint
 		{
 			return _push(this, args);
 		}
-		private static function _push(o, args):uint
+		private static function _push(o, args:Array):uint
 		{
 			var olen:uint = uint(o.length);
 			var argslen:uint = uint(args.length);
@@ -217,7 +197,7 @@ package
 		{
 			return _reverse(this);
 		}
-		public function reverse():Array
+		ECMA4 function reverse():Array
 		{
 			return _reverse(this);  // return will cast to Array
 		}
@@ -243,7 +223,7 @@ package
 		{
 			return _shift(this);
 		}
-		public function shift()
+		ECMA4 function shift()
 		{
 			return _shift(this);
 		}
@@ -271,13 +251,18 @@ package
 		}
 
 		// 15.4.4.10 Array.prototype.slice (start, end)
-		prototype.slice = function(A = 0, B = 0xffffffff):Array
+		prototype.slice = function(A, B)
 		{
+			if (A == void(0))
+				A = 0;
+			if (B == void(0))
+				B = Infinity;
 			return _slice(this, Number(A), Number(B))
 		}
-		public function slice(A = 0, B = 0xffffffff):Array
+		prototype.slice.length = 2;
+		ECMA4 function slice(A:Number = 0, B:Number = Infinity):Array
 		{
-			return _slice(this, Number(A), Number(B))
+			return _slice(this, A, B)
 		}
 		private static function _slice(o, A:Number, B:Number):Array
 		{
@@ -302,20 +287,20 @@ package
 		// 15.4.4.11 Array.prototype.sort (comparefn)
 		// note: this is an implementation that meets the spec, but the spec
 		// allows for different sort implementations (quicksort is not required)
-		prototype.sort = function(...args):Array
+		prototype.sort = function(compareFn)
 		{
-			return _sort(this, args);
+			return _sort(this, compareFn);
 		}
-		public function sort(...args):Array
+		ECMA4 function sort(compareFn:Function):Array
 		{
-			return _sort(this, args);
+			return _sort(this, compareFn);
 		}
 		private static function _sort(o, compareFn):Array
 		{
 			var olen:uint = uint(o.length);
 
 			if (olen != 0)
-				qsort(0, olen-1, compareFn);
+				_qsort(0, olen-1, compareFn);
 
 			return this;
 		}
@@ -325,11 +310,12 @@ package
 		{
 			return _splice(this, args);
 		}
-		public function splice(...args)
+		prototype.splice.length = 2;
+		ECMA4 function splice(...args:Array):Array
 		{
 			return _splice(this, args);
 		}
-		private static function _splice(o, args)
+		private static function _splice(o, args):Array
 		{
 			var argslen:uint = uint(args.length);
 			if (argslen == 0)
@@ -402,11 +388,12 @@ package
 		}
 
 		// 15.4.4.13 Array.prototype.unshift ( [ item1 [ , item2 [ , … ] ] ] )
-		prototype.unshift = function(...args):uint
+		prototype.unshift = function(...args)
 		{
 			return _unshift(this, args);
 		}
-		public function unshift(...args):uint
+		prototype.unshift.length = 1;
+		ECMA4 function unshift(...args:Array):uint
 		{
 			return _unshift(this, args);
 		}
@@ -434,7 +421,8 @@ package
 		}		
 
 		// 15.4.5.1 [[Put]] (P, V)
-		public function set *(propertyName, value):void
+		// @todo: this will not function the way we want with current catchall behavior!
+		function set *(propertyName, value):void
 		{
 			var curLength:uint = uint(this.length);
 			intrinsic::set(propertyName, value);
@@ -442,20 +430,20 @@ package
 			var propertyNameAsInt:uint = uint(propertyNameAsNumber);
 			if (propertyNameAsInt == propertyNameAsNumber && propertyNameAsInt >= curLength)
 			{
-				intrinsic::set("length", propertyNameAsInt+1);	
+				this.length = propertyNameAsInt+1;	
 			}
 		}
 		
 		// 15.4.5.2 length
-		prototype.length = 0;
-		public function get length():*
+		private var [[Length]]:uint = 0;
+		function get length():*
 		{
-			return intrinsic::get("length");
+			return this.[[Length]];
 		}
 		
 		// ECMA-262 requires a RangeError if non-ints are passed in,
 		// so we must not type it as uint in the prototype
-		public function set length(newLength:*):void
+		function set length(newLength:*):void
 		{
 			var curLength:uint = uint(this.length);
 			var valueAsNumber:Number = Number(newLength);
@@ -469,12 +457,9 @@ package
 				if (this.hasOwnProperty(i))
 					delete this[i];
 			}
-			intrinsic::set("length", valueAsInt);
+			this.[[Length]] = valueAsInt;
 		}
 
-		// Array.length = 1 per ECMA-262
-		public static const length:int = 1;
-		
 		// --------------------------------------------------
 		// private utility methods
 		// --------------------------------------------------
@@ -498,7 +483,7 @@ package
 			return clamped;
 		}
 
-		private function compare(j:uint, k:uint, compareFn:Function):int
+		private function _compare(j:uint, k:uint, compareFn:Function):int
 		{
 			var x = this[j];
 			var y = this[k];
@@ -534,7 +519,7 @@ package
 		// note that this is (deliberately) a very simple recursive implementation of Quicksort.
 		// while it suffices for spec purposes, it is not efficient or performant enough
 		// for a real implementation.
-		private function qsort(lo:uint, hi:uint, compareFn:Function):void
+		private function _qsort(lo:uint, hi:uint, compareFn:Function):void
 		{
 			if (lo >= hi)
 				return;
@@ -545,11 +530,11 @@ package
 			var j:uint = hi;
 			while (i <= j) 
 			{
-				while (compare(i, pivot, compareFn) < 0) 
+				while (_compare(i, pivot, compareFn) < 0) 
 				{
 					++i;
 				}
-				while (compare(j, pivot, compareFn) > 0) 
+				while (_compare(j, pivot, compareFn) > 0) 
 				{
 					--j;
 				}
@@ -565,13 +550,16 @@ package
 
 			if (lo < j) 
 			{
-				qsort(lo, j, compareFn);
+				_qsort(lo, j, compareFn);
 			}
 			if (i < hi) 
 			{
-				qsort(i, hi, compareFn);
+				_qsort(i, hi, compareFn);
 			}
 		} // qsort
 		
+		// mark all prototype functions as {DE}
+		_dontEnum(prototype);
+
 	} // class
 } // package

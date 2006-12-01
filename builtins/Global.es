@@ -1,125 +1,55 @@
-/*
-	Attempt at modeling ECMA-262 builtin classes using the new ECMA4 language.
-	
-	Note that these are intended to reflect ECMA-262 behavior, which may omit
-	common-but-nonstandard extensions used in various implementations (e.g., SpiderMonkey).
-	
-	This also makes no attempt at efficiency of implementation, preferring clarity and
-	simplicity instead.
-*/
-
 package
 {
-	public class Global extends Object
-	{		
-		// 15.1.1.1 NaN
-		// { DontEnum, DontDelete}
-		public static function get NaN():*
-		{
-			return @todo;
-		}
-		public static function set NaN(value:*):void
-		{
-			@todo;
-		}
+	// 15.1.1.1 NaN
+	// 15.1.1.2 Infinity
+	// 15.1.1.3 undefined
+	// {DE,DD,RO} -- change from ECMA-262, which has them as {DE,DD}
+	ECMA4 const NaN = @todo;
+	ECMA4 const Infinity = @todo;
+	ECMA4 const undefined = void(0);
+	
+	// @todo: "dynamic function" is probably redundant at the top level, but is useful for clarity
+	
+	// 15.1.2.1 eval (x)
+	ECMA4 native function eval(x);
 
-		// 15.1.1.2 Infinity
-		// { DontEnum, DontDelete}
-		public static function get Infinity():*
-		{
-			return @todo;
-		}
-		public static function set Infinity(value:*):void
-		{
-			@todo;
-		}
+	// 15.1.2.2 parseInt (string , radix)
+	ECMA4 native function parseInt(string:String, radix:Number);
 
-		// 15.1.1.3 undefined
-		// { DontEnum, DontDelete}
-		public static function get undefined():*
-		{
-			return @todo;
-		}
-		public static function set undefined(value:*):void
-		{
-			@todo;
-		}
+	// 15.1.2.3 parseFloat (string)
+	ECMA4 native function parseFloat(string:String);
 
-		// 15.1.2.1 eval (x)
-		public static function eval(x)
-		{
-			return @todo;
-		}
+	// 15.1.2.4 isNaN (number)
+	ECMA4 native function isNaN(number:*):Boolean;
 
-		// 15.1.2.2 parseInt (string , radix)
-		public static function parseInt(string, radix)
-		{
-			return @todo;
-		}
+	// 15.1.2.4 isFinite (number)
+	ECMA4 native function isFinite(number:*):Boolean;
+	
+	// 15.1.3.1 decodeURI (encodedURI)
+	ECMA4 native function decodeURI(encodedURI);
 
-		// 15.1.2.3 parseFloat (string)
-		public static function parseFloat(string)
-		{
-			return @todo;
-		}
+	// 15.1.3.2 decodeURIComponent (encodedURIComponent)
+	ECMA4 native function decodeURIComponent(encodedURIComponent);
+	
+	// 15.1.3.3 encodeURI (uri)
+	ECMA4 native function encodeURI(uri);
+	
+	// 15.1.3.4 encodeURIComponent (uriComponent)
+	ECMA4 native function encodeURIComponent(uriComponent);
 
-		// 15.1.2.4 isNaN (number)
-		public static function isNaN(number):Boolean
-		{
-			return Number(number) === NaN;
-		}
 
-		// 15.1.2.4 isFinite (number)
-		public static function isFinite(number):Boolean
-		{
-			var theNumber:Number = Number(number);
-			return !(theNumber === NaN && 
-					theNumber === Infinity &&
-					theNumber === -Infinity);
-					
-		}
-		
-		// 15.1.3.1 decodeURI (encodedURI)
-		public static function decodeURI(encodedURI)
-		{
-			return @todo;
-		}
+	var NaN = ECMA4::NaN;
+	var Infinity = ECMA4::Infinity;
+	var undefined = ECMA4::undefined;
 
-		// 15.1.3.2 decodeURIComponent (encodedURIComponent)
-		public static function decodeURIComponent(encodedURIComponent)
-		{
-			return @todo;
-		}
-		
-		// 15.1.3.3 encodeURI (uri)
-		public static function encodeURI(uri)
-		{
-			return @todo;
-		}
-		
-		// 15.1.3.4 encodeURIComponent (uriComponent)
-		public static function encodeURIComponent(uriComponent)
-		{
-			return @todo;
-		}
+	var eval = ECMA4::eval;
+	var parseInt = ECMA4::parseInt;
+	var parseFloat = ECMA4::parseFloat;
+	var isNaN = ECMA4::isNaN;
+	var isFinite = ECMA4::isFinite;
+	var decodeURI = ECMA4::decodeURI;
+	var decodeURIComponent = ECMA4::decodeURIComponent;
+	var encodeURI = ECMA4::encodeURI;
+	var encodeURIComponent = ECMA4::encodeURIComponent;
 
-		// 15.1.4 Constructor Properties of the Global Object
-		public static function get Object() { return @todo; }
-		public static function get Function() { return @todo; }
-		public static function get Array() { return @todo; }
-		public static function get String() { return @todo; }
-		public static function get Boolean() { return @todo; }
-		public static function get Number() { return @todo; }
-		public static function get Date() { return @todo; }
-		public static function get RegExp() { return @todo; }
-		public static function get EvalError() { return @todo; }
-		public static function get RangeError() { return @todo; }
-		public static function get ReferenceError() { return @todo; }
-		public static function get SyntaxError() { return @todo; }
-		public static function get TypeError() { return @todo; }
-		public static function get URIError() { return @todo; }
-		
-		// 15.1.5.1 Math
-		public static function get Math() { return @todo; }
-	} // class
 } // package

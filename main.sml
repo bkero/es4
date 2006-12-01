@@ -9,8 +9,13 @@ fun printStackTrace e =
         val name = General.exnName e
         val details = if s = name then "" else (" [" ^ s ^ "]")
     in
-        print ("uncaught exception " ^ name ^ details ^ "\n");
-        app (fn s => TextIO.print ("  raised at: " ^ s ^ "\n")) ss
+        TextIO.print ("uncaught exception " ^ name ^ details ^ "\n");
+        case ss of
+             [] => ()
+           | (s::ss') => (
+                             TextIO.print ("  raised at: " ^ s ^ "\n");
+                             List.app (fn s' => TextIO.print ("             " ^ s' ^ "\n")) ss'
+                         )
     end
 
 fun testTC argvRest =
