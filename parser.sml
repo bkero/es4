@@ -27,7 +27,7 @@ fun log ss =
      List.app TextIO.print ss; 
      TextIO.print "\n")
 
-val trace_on = true
+val trace_on = false
 
 fun trace ss =
 	if trace_on then log ss else ()

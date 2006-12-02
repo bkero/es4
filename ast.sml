@@ -135,7 +135,7 @@ datatype PRAGMA =
      and FUNC = 
 		 Func of { name: IDENT,
 		           attrs: ATTRIBUTES,
-        		   formals: FORMAL list,
+        		   formals: VAR_BINDING list,
 		           ty: TYPE_EXPR option,
         		   body: BLOCK }
 	 
@@ -214,7 +214,7 @@ datatype PRAGMA =
                        body: STMT }
 
        | TryStmt of { body: BLOCK,
-                      catches: (FORMAL * BLOCK) list,
+                      catches: (VAR_BINDING * BLOCK) list,
                       finally: BLOCK }
 
        | SwitchStmt of { cond: EXPR,
@@ -310,13 +310,6 @@ withtype
            boundThisType: TYPE_EXPR option,
            hasRest: bool }
 	 
-     and FORMAL =
-         { pattern: PATTERN,
-           ty: TYPE_EXPR option,
-           init: EXPR option,
-           tag: VAR_DEFN_TAG,
-           isRest: bool }
-
      and TYPED_IDENT =
          { name: IDENT,
            ty: TYPE_EXPR option }
