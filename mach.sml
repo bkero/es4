@@ -11,9 +11,9 @@ type NS = Ast.NAMESPACE
 
 datatype SCOPE_TAG = 
 	 VarGlobal       (* Variable object created before execution starts *)
-       | VarClass        (* Variable object created on entry to a function  *)
+       | VarClass        (* Variable object for class instances             *)
        | VarInstance     (* Variable object for class objects               *)
-       | VarActivation   (* Variable object for class instances             *)
+       | VarActivation   (* Variable object created on entry to a function  *)
        | With            (* Created by 'with' bindings                      *)
        | Let             (* Created by 'catch', 'let', etc.                 *)
 
@@ -28,7 +28,7 @@ datatype VAL =
        | Reference of REF
 		
      and FUN = 
-	 Fun of (VAL -> VAL) 
+	 Fun of (OBJ -> (VAL list) -> VAL) 
 		    
      and REF = 
 	 Ref of { base: OBJ,

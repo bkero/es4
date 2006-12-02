@@ -289,7 +289,7 @@ datatype PRAGMA =
            stmts: STMT list }
 
 	and PATTERN =
-		ObjectPattern of { name: IDENT_EXPR, ptrn : PATTERN } list
+	    ObjectPattern of { name: IDENT_EXPR, ptrn : PATTERN } list
 	  | ArrayPattern of PATTERN list
 	  | SimplePattern of EXPR
 	  | IdentifierPattern of IDENT

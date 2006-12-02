@@ -37,9 +37,29 @@ fun evalExpr (scope:Mach.SCOPE) (expr:Ast.EXPR) =
       | Ast.BinaryExpr (bop, aexpr, bexpr) => 
 	evalBinaryOp scope bop aexpr bexpr
 
+      | Ast.CallExpr {func, actuals} => 
+	evalCallExpr 
+	    (evalExpr scope func) 
+	    (map (evalExpr scope) actuals)
 
       | _ => 
 	raise (Mach.UnimplementedException "unhandled expression type")
+
+and evalCallExpr (v:Mach.VAL) (args:Mach.VAL list) =
+    let 
+	val func = 
+	    case v of
+		Mach.Reference r => Mach.deref r
+	      | _ => v
+	val thisObj = 
+	    case v of
+		Mach.Reference (Mach.Ref {base, ...}) => base
+	      | _ => Mach.globalObject
+    in
+	case func of 
+	    Mach.Function (Mach.Fun f) => f thisObj args
+	  | _ => raise (SemanticException "calling non-function type")
+    end
 
 and assignValue (base:Mach.OBJ) (name:Mach.NAME) (v:Mach.VAL) = 
     (case base of 
@@ -238,22 +258,99 @@ fun labelEq stmtLabel exnLabel =
       | (NONE, SOME _) => false
       | (_, NONE) => true
 		     
-fun evalStmts scope (s::ss) = (evalStmt scope s; evalStmts scope ss)
-  | evalStmts scope [] = Mach.Undef
+fun evalStmts (scope:Mach.SCOPE) (stmts:Ast.STMT list) = 
+    (map (evalStmt scope) stmts; Mach.Undef)
 		       
-and evalStmt scope (Ast.ExprStmt e) = evalExpr scope e
-  | evalStmt scope (Ast.IfStmt i) = evalIfStmt scope i
-  | evalStmt scope (Ast.WhileStmt w) = evalWhileStmt scope w
-  | evalStmt scope (Ast.ReturnStmt r) = evalReturnStmt scope r
-  | evalStmt scope (Ast.BreakStmt lbl) = evalBreakStmt scope lbl
-  | evalStmt scope (Ast.ContinueStmt lbl) = evalContinueStmt scope lbl
-  | evalStmt scope (Ast.ThrowStmt t) = evalThrowStmt scope t
-  | evalStmt scope (Ast.LabeledStmt (lab, s)) = evalLabelStmt scope lab s
-  | evalStmt scope (Ast.BlockStmt b) = evalBlock scope b
-  | evalStmt _ _ = raise Mach.UnimplementedException "Unimplemented statement type"
-			 
-and evalBlock scope (Ast.Block{stmts=s,... }) = 
-    evalStmts scope s
+and evalStmt scope (stmt:Ast.STMT) = 
+    case stmt of 
+	Ast.ExprStmt e => evalExpr scope e
+      | Ast.IfStmt i => evalIfStmt scope i
+      | Ast.WhileStmt w => evalWhileStmt scope w
+      | Ast.ReturnStmt r => evalReturnStmt scope r
+      | Ast.BreakStmt lbl => evalBreakStmt scope lbl
+      | Ast.ContinueStmt lbl => evalContinueStmt scope lbl
+      | Ast.ThrowStmt t => evalThrowStmt scope t
+      | Ast.LabeledStmt (lab, s) => evalLabelStmt scope lab s
+      | Ast.BlockStmt b => evalBlock scope b
+      | _ => raise Mach.UnimplementedException "Unimplemented statement type"
+
+and evalDefns (scope:Mach.SCOPE) (ds:Ast.DEFN list) = 
+    (map (evalDefn scope) ds; Mach.Undef)
+
+and evalDefn (scope:Mach.SCOPE) (d:Ast.DEFN) = 
+    case d of 
+	Ast.FunctionDefn f => evalFuncDefn scope f    
+      | _ => raise Mach.UnimplementedException "Unimplemented definition type"
+
+and evalFuncDefn (scope:Mach.SCOPE) (f:Ast.FUNC) = 
+
+    (* Our goal here is to convert the definition AST of the function
+     * into an SML function that invokes the interpreter on the
+     * function's body with a new scope. The new scope should be the
+     * lexical scope of the definition augmented with bindings connecting
+     * all the formals to their corresponding actuals, and a final binding
+     * for the name 'this', bound to the dynamic value provided from the
+     * function call site. 
+     *)
+
+    let 
+	fun getType tyOpt = (case tyOpt of 
+				 SOME t => t
+			       | NONE => Ast.SpecialType Ast.Any)
+	val func = case f of Ast.Func f' => f'
+	fun funcClosure (thisObj:Mach.OBJ) (args:Mach.VAL list) = 
+	    let
+		val (varObj:Mach.OBJ) = Mach.newObject NONE 
+		val (varScope:Mach.SCOPE) = Mach.Scope { tag = Mach.VarActivation,
+							 obj = varObj,
+							 parent = SOME scope }
+		fun bindArgs [] [] = ()
+		  (* FIXME: vastly more complex arg-binding rules actually apply. *)
+		  | bindArgs [] (b::bz) = raise SemanticException "Too few actuals"
+		  | bindArgs (a::az) [] = raise SemanticException "Too many actuals"
+		  | bindArgs (a::az) ((Ast.Binding {ty, pattern, attrs, ...})::bz) = 
+		    let 
+			val formalTy = getType ty
+			(* FIXME: insert typecheck here *)
+			val formalName = (case (pattern, attrs) of 
+					      (Ast.IdentifierPattern id,
+					       Ast.Attributes attrs) => { id=id, ns=(#ns attrs) }
+					    | _ => raise (Mach.UnimplementedException "Unsupported formal type"))
+			val argProp = { ty = formalTy,
+					value = a,
+					dontDelete = true,
+					dontEnum = true,
+					readOnly = true }
+		    in
+			setPropertyValue varObj formalName argProp;
+			bindArgs az bz
+		    end
+		    
+		val thisProp = { ty = Ast.SpecialType Ast.Any,
+				 value = Mach.Object thisObj,
+				 dontDelete = true,
+				 dontEnum = true,
+				 readOnly = true }
+	    in
+		bindArgs args (#formals func);
+		setPropertyValue varObj {id="this", ns=Ast.Private} thisProp;
+		evalBlock varScope (#body func)
+	    end
+	val funcProp = { ty = (getType (#ty func)),
+			 value = Mach.Function (Mach.Fun funcClosure),
+			 dontDelete = true,
+			 dontEnum = false,
+			 readOnly = false }
+	val funcAttrs = case (#attrs func) of Ast.Attributes a => a
+	val funcName = {id=(#name func), ns=(#ns funcAttrs)}
+	val scopeObj = case scope of Mach.Scope {obj, ...} => obj
+    in
+	setPropertyValue scopeObj funcName funcProp
+    end
+	
+and evalBlock scope (Ast.Block{pragmas,defns,stmts}) = 
+    (evalDefns scope defns;
+     evalStmts scope stmts)
 
 and evalIfStmt scope { cnd,thn,els } = 
     let 
