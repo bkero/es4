@@ -7,6 +7,7 @@ PARSE_TESTS = tests/ident.js tests/numberliteral.es tests/stringliteral.es tests
 #tests/nolist_err.es
 
 TC_TESTS = tests/numberliteral.es
+EV_TESTS = tests/exec.es
 MAKE_HEAP=ml-build -Ctdp.instrument=true \$$smlnj-tdp/back-trace.cm
 
 es4.heap.$(HEAP_SUFFIX): $(wildcard *.sml) pretty-cvt.sml
@@ -24,6 +25,9 @@ check: es4.heap.$(HEAP_SUFFIX)
 checktc: es4.heap.$(HEAP_SUFFIX)
 	sml @SMLload=es4.heap -tc $(TC_TESTS)
 #	sml @SMLload=es4.heap tests/vardefn.es
+
+checkev: es4.heap.$(HEAP_SUFFIX)
+	sml @SMLload=es4.heap -ev $(EV_TESTS)
 
 wc:
 	wc ${SOURCES}

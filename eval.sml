@@ -24,10 +24,18 @@ fun extendScope (p:Mach.SCOPE) (t:Mach.SCOPE_TAG) (ob:Mach.OBJ) =
 
 fun evalExpr (scope:Mach.SCOPE) (expr:Ast.EXPR) =
     case expr of
-	Ast.LexicalRef { ident } =>
+	Ast.LiteralExpr lit => 
+	evalLiteralExpr lit
+
+      | Ast.ListExpr es =>
+	evalListExpr scope es
+
+      | Ast.LexicalRef { ident } =>
         evalRefExpr scope NONE ident
+
       | Ast.ObjectRef { base, ident } =>
         evalRefExpr scope (SOME (evalExpr scope base)) ident
+
       | Ast.LetExpr {defs, body} => 
 	evalLetExpr scope defs body
 
@@ -44,6 +52,22 @@ fun evalExpr (scope:Mach.SCOPE) (expr:Ast.EXPR) =
 
       | _ => 
 	raise (Mach.UnimplementedException "unhandled expression type")
+
+and evalLiteralExpr (lit:Ast.LITERAL) = 
+    case lit of 
+        Ast.LiteralNull => Mach.Null
+      | Ast.LiteralUndefined => Mach.Undef
+      | Ast.LiteralNumber r => Mach.Num r
+      | Ast.LiteralBoolean b => Mach.Bool b
+      | Ast.LiteralString s => Mach.Str s
+      | Ast.LiteralNamespace n => Mach.Namespace n
+      | _ => raise (Mach.UnimplementedException "unhandled literal type")
+
+and evalListExpr (scope:Mach.SCOPE) (es:Ast.EXPR list) = 
+    case es of 
+	[] => Mach.Undef
+      | [e] => evalExpr scope e
+      | (e::ez) => ((evalExpr scope e); (evalListExpr scope ez))
 
 and evalCallExpr (v:Mach.VAL) (args:Mach.VAL list) =
     let 
@@ -151,22 +175,35 @@ and evalCondExpr (scope:Mach.SCOPE) (cond:Ast.EXPR) (consequent:Ast.EXPR) (alter
     end
     
 
+and needNamespace v = 
+    case v of 
+	Mach.Namespace n => n
+      | _ => raise (SemanticException "need namespace")
+
 and evalRefExpr (scope:Mach.SCOPE) (b:Mach.VAL option) (r:Ast.IDENT_EXPR) =
-    case r of 
-	Ast.Identifier { ident, openNamespaces } =>
-	let 	    
-	    val multiname : Mach.MULTINAME = { nss=(!openNamespaces), id=ident }
-	    val refOpt = (case b of 
-			      SOME (Mach.Object ob) => resolveOnObjAndPrototypes ob multiname
-			    | NONE => resolveOnScopeChain scope multiname
-			    | _ => raise (SemanticException "ref expression on non-object value"))
-	in
-	    case refOpt of 
-		NONE => raise Mach.MultiReferenceException multiname
-	      | SOME r => r
-	end
-      | _ => raise (Mach.UnimplementedException "unimplemented identifier expression form")
-		   
+    let 
+	fun resolveMultiname mname = 
+	    let 
+		val refOpt = (case b of 
+				  SOME (Mach.Object ob) => resolveOnObjAndPrototypes ob mname
+				| NONE => resolveOnScopeChain scope mname
+				| _ => raise (SemanticException "ref expression on non-object value"))
+	    in
+		case refOpt of 
+		    NONE => raise Mach.MultiReferenceException mname
+		  | SOME r => r
+	    end
+    in			      
+	case r of 
+	    Ast.Identifier { ident, openNamespaces } => 
+	    resolveMultiname { nss=(!openNamespaces), id=ident }
+
+	  | Ast.QualifiedIdentifier { qual, ident } => 
+	    resolveMultiname { nss = [needNamespace (evalExpr scope qual)], id = ident }
+	    
+	  | _ => raise (Mach.UnimplementedException "unimplemented identifier expression form")
+    end
+
 and evalLetExpr (scope:Mach.SCOPE) (defs:Ast.VAR_BINDING list) (body:Ast.EXPR) = 
     let 
 	val obj = Mach.newObject NONE
@@ -279,8 +316,43 @@ and evalDefns (scope:Mach.SCOPE) (ds:Ast.DEFN list) =
 
 and evalDefn (scope:Mach.SCOPE) (d:Ast.DEFN) = 
     case d of 
-	Ast.FunctionDefn f => evalFuncDefn scope f    
+	Ast.FunctionDefn f => evalFuncDefn scope f
+      | Ast.VariableDefn bs => (map (evalVarDefn scope) bs; ())
       | _ => raise Mach.UnimplementedException "Unimplemented definition type"
+
+and getType (tyOpt:Ast.TYPE_EXPR option) = 
+    case tyOpt of 
+	SOME t => t
+      | NONE => Ast.SpecialType Ast.Any
+
+and getAttrs (attrs:Ast.ATTRIBUTES) = case attrs of Ast.Attributes a => a
+
+and getScopeObj (scope:Mach.SCOPE) = case scope of Mach.Scope {obj, ...} => obj
+		    
+and evalVarDefn (scope:Mach.SCOPE) (b:Ast.VAR_BINDING) = 
+    let
+	val binding = case b of Ast.Binding b' => b'
+	val pattern = (#pattern binding)
+	val attrs = getAttrs (#attrs binding)
+	val ty = getType (#ty binding)
+    in
+	case pattern of 
+	    Ast.IdentifierPattern id => 
+	    let
+		(* FIXME: Perform typecheck here and handle different binding kinds. *)
+		val name = { id = id, ns = (#ns attrs) }
+		val prop = { ty = ty,
+			     value = (case (#init binding) of 
+					  SOME e => evalExpr scope e
+					| NONE => Mach.Undef),
+			     dontDelete = true,
+			     dontEnum = false,
+			     readOnly = false }
+	    in
+		setPropertyValue (getScopeObj scope) name prop
+	    end
+	  | _ => raise (Mach.UnimplementedException "Unhandled binding form")
+    end
 
 and evalFuncDefn (scope:Mach.SCOPE) (f:Ast.FUNC) = 
 
@@ -294,9 +366,6 @@ and evalFuncDefn (scope:Mach.SCOPE) (f:Ast.FUNC) =
      *)
 
     let 
-	fun getType tyOpt = (case tyOpt of 
-				 SOME t => t
-			       | NONE => Ast.SpecialType Ast.Any)
 	val func = case f of Ast.Func f' => f'
 	fun funcClosure (thisObj:Mach.OBJ) (args:Mach.VAL list) = 
 	    let
@@ -341,11 +410,10 @@ and evalFuncDefn (scope:Mach.SCOPE) (f:Ast.FUNC) =
 			 dontDelete = true,
 			 dontEnum = false,
 			 readOnly = false }
-	val funcAttrs = case (#attrs func) of Ast.Attributes a => a
+	val funcAttrs = getAttrs (#attrs func)
 	val funcName = {id=(#name func), ns=(#ns funcAttrs)}
-	val scopeObj = case scope of Mach.Scope {obj, ...} => obj
     in
-	setPropertyValue scopeObj funcName funcProp
+	setPropertyValue (getScopeObj scope) funcName funcProp
     end
 	
 and evalBlock scope (Ast.Block{pragmas,defns,stmts}) = 
@@ -410,5 +478,14 @@ and evalBreakStmt scope lbl
 	  
 and evalContinueStmt scope lbl
   = raise (ContinueException lbl)
-	  
+
+and evalPackage scope (package:Ast.PACKAGE) = 
+    evalBlock scope (#body package)
+
+and evalProgram (prog:Ast.PROGRAM) = 
+    (Mach.populateIntrinsics Mach.globalObject;
+     map (evalPackage Mach.globalScope) (#packages prog);
+     evalBlock Mach.globalScope (#body prog))
+
+
 end

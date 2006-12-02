@@ -26,6 +26,7 @@ datatype VAL =
        | Object of OBJ
        | Function of FUN
        | Reference of REF
+       | Namespace of NS
 		
      and FUN = 
 	 Fun of (OBJ -> (VAL list) -> VAL) 
@@ -243,21 +244,22 @@ fun newObject (c:CLASS option) =
 	  bindings = newBindings (),
 	  prototype = ref NONE }
 
-and deref (Ref {base=Obj {bindings,...}, name}) = 
+fun deref (Ref {base=Obj {bindings,...}, name}) = 
     (#value (getBinding bindings name))
 
 (* FIXME: this is not the correct toString *)
-and toString (Str s) = s
+fun toString (Str s) = s
   | toString (Num n) = Real.toString n
   | toString (Bool true) = "true"
   | toString (Bool false) = "false"
   | toString (Object _) = "[object Object]"
   | toString (Function _) = "[function Function]"
   | toString (Reference r) = toString (deref r)
+  | toString (Namespace n) = "[namespace]"
   | toString Undef = "undefined"
   | toString Null = "null"
 
-and toNum (Str s) = (case Real.fromString s of
+fun toNum (Str s) = (case Real.fromString s of
 			SOME n => n
 		      | NONE => nan)
   | toNum (Num n) = n
@@ -266,16 +268,44 @@ and toNum (Str s) = (case Real.fromString s of
   | toNum (Object _) = nan
   | toNum (Function _) = nan
   | toNum (Reference r) = toNum (deref r)
+  | toNum (Namespace n) = 0.0
   | toNum Undef = nan
   | toNum Null = 0.0
 		    
-and toBoolean (Bool b) = b
+fun toBoolean (Bool b) = b
   | toBoolean (Str _) = true
   | toBoolean (Num _) = true
   | toBoolean (Object _) = true
   | toBoolean (Function _) = true
   | toBoolean (Reference r) = toBoolean (deref r)
+  | toBoolean (Namespace n) = true
   | toBoolean Undef = false
   | toBoolean Null = false
 
+fun hostPrintFunction (obj:OBJ) (vals:VAL list) = 
+    let
+	fun printOne v = print (toString v) 
+    in
+	(map printOne vals; Undef)
+    end
+
+and populateIntrinsics obj = 
+    case obj of 
+	Obj { bindings, ... } => 
+	let 
+	    fun bindFunc (n, f) = 
+		let 
+		    val name = {id = n, ns = Ast.Intrinsic }
+		    val prop = { ty = Ast.SpecialType Ast.Any,
+				 value = Function (Fun f),	   
+				 dontDelete = true,
+				 dontEnum = false,
+				 readOnly = true }
+		in
+		    addBinding bindings name prop
+		end
+	in
+	    map bindFunc 
+	    [ ("print", hostPrintFunction) ]
+	end	
 end
