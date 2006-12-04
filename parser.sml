@@ -137,7 +137,7 @@ and qualifier ts =
           let
               val (ts1,nd1) = propertyIdentifier (ts)
           in
-              (ts1,Ast.LexicalRef{ident=Ast.Identifier {ident=nd1, openNamespaces=ref []}})
+              (ts1,Ast.LexicalRef{ident=Ast.Identifier {ident=nd1, openNamespaces=ref [Ast.Internal ""]}})
           end
     end
 
@@ -198,7 +198,7 @@ and simpleQualifiedIdentifier ts =
       | _ => 
           	let
               	val (ts1, nd1) = propertyIdentifier(ts)
-                val id = Ast.Identifier {ident=nd1, openNamespaces=ref []}
+                val id = Ast.Identifier {ident=nd1, openNamespaces=ref [Ast.Internal ""]}
           	in case ts1 of
               	DoubleColon :: _ => 
 					qualifiedIdentifier'(tl ts1,Ast.LexicalRef ({ident=id}))
@@ -619,7 +619,8 @@ and restParameter (ts) : (token list * Ast.VAR_BINDING) =
 			let
 			in case tl ts of
 				RightParen :: _ => 
-					(tl ts,Ast.Binding{pattern=Ast.IdentifierPattern "",
+					(tl ts,Ast.Binding{pattern=Ast.IdentifierPattern (Ast.Identifier {ident="", 
+													  openNamespaces=ref [Ast.Internal ""]}),
 							  ty=NONE,kind=Ast.Var,attrs=defaultRestAttrs,init=NONE}) 
 			  | _ =>
 					let
@@ -1176,7 +1177,7 @@ and propertyOperator (ts, nd) =
                             let
                                 val (ts4,nd4) = reservedOrPropertyIdentifier(ts3)
                             in
-                                (ts4,Ast.ObjectRef({base=nd,ident=Ast.Identifier {ident=nd4,openNamespaces=ref []}}))
+                                (ts4,Ast.ObjectRef({base=nd,ident=Ast.Identifier {ident=nd4,openNamespaces=ref [Ast.Internal ""]}}))
                             end
 					  | _ => raise ParseError (* e4x filter expr *)
                     end
@@ -1184,7 +1185,7 @@ and propertyOperator (ts, nd) =
                     let
                         val (ts4,nd4) = reservedOrPropertyIdentifier(ts1)
                     in
-                        (ts4,Ast.ObjectRef({base=nd,ident=Ast.Identifier {ident=nd4,openNamespaces=ref []}}))
+                        (ts4,Ast.ObjectRef({base=nd,ident=Ast.Identifier {ident=nd4,openNamespaces=ref [Ast.Internal ""]}}))
                     end
             end
       | LeftBracket :: _ => 
@@ -1972,7 +1973,7 @@ and assignmentExpression (ts,a,b) : (token list * Ast.EXPR) =
 			    (* todo: convert to pattern, may result in syntax error *)
 				val (ts2,nd2) = assignmentExpression(tl ts1,a,b)						
 			in 
-				(ts2,Ast.SetExpr(Ast.Assign,Ast.SimplePattern nd1,nd2))
+				(ts2,Ast.SetExpr(Ast.SimplePattern nd1,nd2))
 			end
 	  | (Assign :: _, _) => 
 			(error(["invalid lhs"]);raise ParseError)
@@ -2072,7 +2073,7 @@ and simplePattern (ts,a,b,NOEXPR) =
 		val (ts1,nd1) = identifier ts
 	in
 		(trace(["<< simplePattern(a,b,NOEXPR) with next=",tokenname(hd(ts1))]);
-		(ts1,Ast.IdentifierPattern nd1))
+		(ts1,Ast.IdentifierPattern (Ast.Identifier {ident=nd1, openNamespaces=ref [Ast.Internal ""]})))
 	end
 
   | simplePattern (ts,a,b,ALLOWEXPR) =
@@ -3465,7 +3466,7 @@ and variableBinding (ts,attrs,kind,a,b) : (token list * Ast.BINDINGS) =
 					trace(["<< variableBinding with next=", tokenname(hd ts2)]);
 					(ts2, {defns=[Ast.Binding { kind = kind, init = SOME nd2, attrs = attrs,
                         					   pattern = p, ty = t }],
-						   stmts=[Ast.ExprStmt (Ast.SetExpr (Ast.Assign,p,nd2))]})
+						   stmts=[Ast.ExprStmt (Ast.SetExpr (p,nd2))]})
 				end
 		  | (_,Ast.IdentifierPattern _) =>   (* check the more specific syntax *)
 				let

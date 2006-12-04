@@ -59,7 +59,6 @@ datatype BINOP =
        | GreaterOrEqual
        | Comma
        | DefVar
-       | Assign
        | AssignPlus
        | AssignMinus
        | AssignTimes
@@ -245,14 +244,12 @@ datatype PRAGMA =
                       body: BLOCK }
 
        | ListExpr of EXPR list
-
-       | PatternExpr of PATTERN
 			    
        | ObjectRef of { base: EXPR, ident: IDENT_EXPR }
 
        | LexicalRef of { ident: IDENT_EXPR }
 
-       | SetExpr of (BINOP * PATTERN * EXPR)
+       | SetExpr of (PATTERN * EXPR)
  
     and IDENT_EXPR =
          QualifiedIdentifier of { qual : EXPR,
@@ -292,7 +289,7 @@ datatype PRAGMA =
 	    ObjectPattern of { name: IDENT_EXPR, ptrn : PATTERN } list
 	  | ArrayPattern of PATTERN list
 	  | SimplePattern of EXPR
-	  | IdentifierPattern of IDENT
+	  | IdentifierPattern of IDENT_EXPR
 
 withtype
 
