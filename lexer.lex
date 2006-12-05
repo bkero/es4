@@ -147,8 +147,6 @@ charEscape            = "\\" ([abtnvfr\"\'\\]|"x"{hexDigit}{2}|[0-7]{1}{3});
 <INITIAL>"["               => (LeftBracket);
 <INITIAL>"]"               => (RightBracket);
 <INITIAL>"^"               => (BitwiseXor);
-<INITIAL>"^^"              => (LogicalXor);
-<INITIAL>"^^="             => (LogicalXorAssign);
 <INITIAL>"^="              => (BitwiseXorAssign);
 <INITIAL>"{"               => (LeftBrace);
 <INITIAL>"|"               => (BitwiseOr);

@@ -282,6 +282,34 @@ fun toBoolean (Bool b) = b
   | toBoolean Undef = false
   | toBoolean Null = false
 
+fun equals (Bool a) (Bool b) = (a = b)
+  | equals (Str a) (Str b) = (a = b)
+  | equals (Num a) (Num b) = (Real.== (a,b))
+  | equals (Object a) (Object b) = (a = b)
+  | equals (Namespace a) (Namespace b) = (a = b)
+  | equals Undef Undef = true
+  | equals Null Null = true
+  | equals Undef Null = true
+  | equals Null Undef = true
+  | equals (Str a) (Num b) = (a = (toString (Num b)))
+  | equals (Num a) (Str b) = ((toString (Num a)) = b)
+  | equals (Reference a) b = equals (deref a) b
+  | equals a (Reference b) = equals a (deref b)
+  | equals _ _ = false
+
+fun less (Bool true) (Bool true) = false
+  | less (Bool false) (Bool true) = true
+  | less (Bool false) (Bool false) = false
+  | less (Bool true) (Bool false) = false
+  | less (Str a) (Str b) = (a < b)
+  | less (Num a) (Num b) = (a < b)
+  | less (Str a) (Num b) = (a < (toString (Num b)))
+  | less (Num a) (Str b) = ((toString (Num a)) < b)
+  | less (Reference a) b = less (deref a) b
+  | less a (Reference b) = less a (deref b)
+  | less _ _ = false
+
+
 fun hostPrintFunction (obj:OBJ) (vals:VAL list) = 
     let
 	fun printOne v = print (toString v) 

@@ -1761,7 +1761,7 @@ and logicalOrExpression (ts,a,b) =
 					let 
 						val (ts3,nd3) = logicalAndExpression (ts2,a,b) 
 					in 
-						logicalOrExpression' (ts3,Ast.BinaryExpr(Ast.LogicalXor,nd1,nd3)) 
+						logicalOrExpression' (ts3,Ast.BinaryExpr(Ast.LogicalOr,nd1,nd3)) 
 					end
 			  | _ => 
 					(trace(["<< logicalOrExpression"]);

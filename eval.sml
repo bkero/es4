@@ -165,12 +165,19 @@ and evalBinaryOp (scope:Mach.SCOPE) (bop:Ast.BINOP) (aexpr:Ast.EXPR) (bexpr:Ast.
 		       | _ => semant "assigning to non-reference"
 	fun toNum x = Mach.toNum (rval x)
 	fun toString x = Mach.toString (rval x)
-	fun evalBop bop' a b =
+	fun evalBop bop' (a:Mach.VAL) (b:Mach.VAL) =
 	    let 
 		fun assignWith bop'' = 
 		    case lval a of 
 			Mach.Ref {base, name} => 
 			assignValue base name (rval (evalBop bop'' a b))
+		fun wordOp wop = 
+		    let 
+			val wa = Word.fromInt (trunc (toNum a))
+			val wb = Word.fromInt (trunc (toNum b))
+		    in
+			Mach.Num (real (Word.toInt (wop (wa, wb))))
+		    end
 	    in
 		case bop' of 
 		    Ast.AssignPlus => assignWith Ast.Plus
@@ -186,19 +193,55 @@ and evalBinaryOp (scope:Mach.SCOPE) (bop:Ast.BINOP) (aexpr:Ast.EXPR) (bexpr:Ast.
 		  | Ast.AssignBitwiseXor => assignWith Ast.BitwiseXor
 		  | Ast.AssignLogicalAnd => assignWith Ast.LogicalAnd
 		  | Ast.AssignLogicalOr => assignWith Ast.LogicalOr
-		  | Ast.AssignLogicalXor => assignWith Ast.LogicalXor
 
 		  | Ast.Plus => 
-		    (case (a,b) of 
+		    (case (rval a, rval b) of 
 			 (Mach.Num na, Mach.Num nb) => Mach.Num (na + nb)
 		       | (_,_) => Mach.Str ((toString a) ^ (toString b)))
 		  | Ast.Minus => Mach.Num ((toNum a) - (toNum b))
 		  | Ast.Times => Mach.Num ((toNum a) * (toNum b))
-		  | Ast.Divide => Mach.Num((toNum a) / (toNum b))
+		  | Ast.Divide => Mach.Num ((toNum a) / (toNum b))
+		  | Ast.Remainder => Mach.Num (real (Int.rem ((trunc (toNum a)), (trunc (toNum b)))))
+
+		  | Ast.LeftShift => wordOp Word.<<
+		  | Ast.RightShift => wordOp Word.>>
+		  | Ast.RightShiftUnsigned => wordOp Word.~>>
+		  | Ast.BitwiseAnd => wordOp Word.andb
+		  | Ast.BitwiseOr => wordOp Word.orb
+		  | Ast.BitwiseXor => wordOp Word.xorb
+
+		  | Ast.Equals => Mach.Bool (Mach.equals a b)
+		  | Ast.NotEquals => Mach.Bool (not (Mach.equals a b))
+		  | Ast.StrictEquals => Mach.Bool (Mach.equals a b)
+		  | Ast.StrictNotEquals => Mach.Bool (not (Mach.equals a b))
+		  | Ast.Less => Mach.Bool (Mach.less a b)
+		  | Ast.LessOrEqual => Mach.Bool ((Mach.less a b) orelse (Mach.equals a b))
+		  | Ast.Greater => Mach.Bool (not ((Mach.less a b) orelse (Mach.equals a b)))
+		  | Ast.GreaterOrEqual => Mach.Bool (not (Mach.less a b))
+
 		  | _ => unimpl "unhandled binary operator type"
 	    end
     in
-	evalBop bop (evalExpr scope aexpr) (evalExpr scope bexpr)
+	case bop of 
+	    Ast.LogicalAnd => 
+	    let 
+		val a = evalExpr scope aexpr
+	    in
+		if Mach.toBoolean a
+		then evalExpr scope bexpr
+		else a
+	    end
+		
+	  | Ast.LogicalOr => 
+	    let 
+		val a = evalExpr scope aexpr
+	    in
+		if Mach.toBoolean a
+		then a
+		else evalExpr scope bexpr
+	    end
+
+	  | _ => evalBop bop (evalExpr scope aexpr) (evalExpr scope bexpr)
     end
 
 
@@ -426,20 +469,24 @@ and evalFuncDefn (scope:Mach.SCOPE) (f:Ast.FUNC) =
     in
 	setPropertyValue (getScopeObj scope) funcName funcProp
     end
-	
-and evalBlock scope (Ast.Block{pragmas,defns,stmts}) = 
-    (evalDefns scope defns;
-     evalStmts scope stmts)
 
-and evalIfStmt scope { cnd,thn,els } = 
-    let 
-        val v = evalExpr scope cnd 
-        val b = Mach.toBoolean v
-    in
-        if b 
-        then evalStmt scope thn
-        else evalStmt scope els
-    end
+and evalBlock scope block = 
+    case block of 
+	Ast.Block {defns, stmts, ...} => 
+	(evalDefns scope defns;
+	 evalStmts scope stmts)
+
+and evalIfStmt scope ifStmt = 
+    case ifStmt of 
+	{ cnd, thn, els } => 
+	let 
+            val v = evalExpr scope cnd 
+            val b = Mach.toBoolean v
+	in
+            if b 
+            then evalStmt scope thn
+            else evalStmt scope els
+	end
     
 and evalLabelStmt scope lab s = 
     evalStmt scope s
@@ -448,35 +495,37 @@ and evalLabelStmt scope lab s =
               then Mach.Undef 
               else raise BreakException exnLabel
 			 
-and evalWhileStmt scope { cond, body, contLabel } = 
-    let
-        fun loop (accum:Mach.VAL option)
-          = let 
-              val v = evalExpr scope cond
-              val b = Mach.toBoolean v
-          in
-              if not b 
-              then 
-                  let
-                      val curr = (SOME (evalStmt scope body)
-                                  handle ContinueException exnLabel => 
-					 if labelEq contLabel exnLabel
-					 then NONE
-					 else raise ContinueException exnLabel)
-                      val next = (case curr 
-                                   of NONE => accum
-                                    | x => x)
-                  in
-                      loop next
-                  end
-              else
-                  accum
-          end
-    in
-        case loop NONE of
-            NONE => Mach.Undef
-	  | SOME v => v
-    end
+and evalWhileStmt scope whileStmt = 
+    case whileStmt of 
+	{ cond, body, contLabel } => 
+	let
+            fun loop (accum:Mach.VAL option) = 
+		let 
+		    val v = evalExpr scope cond
+		    val b = Mach.toBoolean v
+		in
+		    if b 
+		    then 
+			let
+			    val curr = (SOME (evalStmt scope body)
+					handle ContinueException exnLabel => 
+					       if labelEq contLabel exnLabel
+					       then NONE
+					       else raise ContinueException exnLabel)
+			    val next = (case curr 
+					 of NONE => accum
+					  | x => x)
+			in
+			    loop next
+			end
+		    else
+			accum
+		end
+	in
+            case loop NONE of
+		NONE => Mach.Undef
+	      | SOME v => v
+	end
     
 and evalReturnStmt scope e
   = raise (ReturnException (evalExpr scope e))

@@ -34,8 +34,6 @@ datatype token =
     | LeftBracket
     | RightBracket
     | BitwiseXor
-    | LogicalXor
-    | LogicalXorAssign
     | BitwiseXorAssign
     | LeftBrace
     | BitwiseOr
@@ -263,8 +261,6 @@ fun tokenname t =
       | LeftBracket => "["
       | RightBracket => "]"
       | BitwiseXor => "^"
-      | LogicalXor => "^^"
-      | LogicalXorAssign => "^^="
       | BitwiseXorAssign => "^="
       | LeftBrace => "{"
       | BitwiseOr => "|"

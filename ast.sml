@@ -46,7 +46,6 @@ datatype BINOP =
        | BitwiseXor
        | LogicalAnd
        | LogicalOr
-       | LogicalXor
        | InstanceOf
        | In
        | Equals
@@ -72,7 +71,6 @@ datatype BINOP =
        | AssignBitwiseXor
        | AssignLogicalAnd
        | AssignLogicalOr
-       | AssignLogicalXor
 
 datatype UNOP =
          Delete

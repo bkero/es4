@@ -1,8 +1,11 @@
 var x = 10;
 intrinsic::print("hello world: ");
 
-intrinsic::print(x);
-intrinsic::print("\n");
+while (x != 20) {
+	intrinsic::print(x);
+	intrinsic::print("\n");
+	x = x + 1;
+}
 
 x = 12;
 intrinsic::print(x);
