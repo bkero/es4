@@ -8,16 +8,18 @@ PARSE_TESTS = tests/ident.js tests/numberliteral.es tests/stringliteral.es tests
 
 TC_TESTS = tests/numberliteral.es
 EV_TESTS = tests/exec.es
-MAKE_HEAP=ml-build -Ctdp.instrument=true \$$smlnj-tdp/back-trace.cm
+MLBUILD=ml-build
+#MLBUILD_ARGS=-Ctdp.instrument=true \$$smlnj-tdp/back-trace.cm
+MLBUILD_ARGS=
 
 es4.heap.$(HEAP_SUFFIX): $(wildcard *.sml) pretty-cvt.sml
-	$(MAKE_HEAP) es4.cm Main.main es4.heap
+	$(MLBUILD) $(MLBUILD_ARGS) es4.cm Main.main es4.heap
 
 pretty-cvt.sml: tools/gen-pretty.heap.$(HEAP_SUFFIX) ast.sml
 	cd tools && sml @SMLload=gen-pretty.heap ../ast.sml ../pretty-cvt.sml
 
 tools/gen-pretty.heap.$(HEAP_SUFFIX): tools/gen-pretty.cm $(wildcard tools/*.sml)
-	cd tools && $(MAKE_HEAP) gen-pretty.cm Main.main gen-pretty.heap
+	cd tools && $(MLBUILD) $(MLBUILD_ARGS) gen-pretty.cm Main.main gen-pretty.heap
 
 check: es4.heap.$(HEAP_SUFFIX)
 	sml @SMLload=es4.heap $(PARSE_TESTS)

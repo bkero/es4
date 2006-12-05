@@ -18,6 +18,9 @@ fun printStackTrace e =
                          )
     end
 
+(* val monitor = BackTrace.monitor *)
+fun monitor f = f() handle e => (printStackTrace e; 1)
+
 fun testTC argvRest =
     let val asts = List.map Parser.parseFile argvRest
     in
@@ -35,11 +38,11 @@ fun testEV argvRest =
     end
 
 fun main (argv0:string, argvRest:string list) =
-    BackTrace.monitor (fn () =>
-                       ((case argvRest of
-                              ("-tc"::argvRest) => testTC argvRest
-			    | ("-ev"::argvRest) => testEV argvRest
-                            | _ => (List.map Parser.parseFile argvRest; ()));
-                        0))
+    monitor (fn () =>
+             ((case argvRest of
+                    ("-tc"::argvRest) => testTC argvRest
+	          | ("-ev"::argvRest) => testEV argvRest
+                  | _ => (List.map Parser.parseFile argvRest; ()));
+              0))
 
 end
