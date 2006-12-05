@@ -2593,6 +2593,24 @@ and statement (ts,w) : (token list * Ast.STMT) =
 			in
 				(ts1,nd1)
 			end
+	  | Super :: _ =>
+			let
+				val (ts1,nd1) = superStatement ts
+			in
+				(ts1,nd1)
+			end
+	  | Do :: _ =>
+			let
+				val (ts1,nd1) = doStatement ts
+			in
+				(ts1,nd1)
+			end
+	  | While :: _ =>
+			let
+				val (ts1,nd1) = whileStatement (ts,w)
+			in
+				(ts1,nd1)
+			end
 	  | _ =>
 			let
 				val (ts1,nd1) = expressionStatement (ts)
@@ -2655,12 +2673,13 @@ and emptyStatement ts =
 *)
 
 and blockStatement ts =
-    let
+    let val _ = trace([">> blockStatement with next=", tokenname(hd ts)])
     in case ts of
 		LeftBrace :: _ => 
 			let
 				val (ts1,nd1) = block ts
 			in
+				trace(["<< blockStatement with next=", tokenname(hd ts)]);
 				(ts1,Ast.BlockStmt nd1)
 			end
 	  | _ => raise ParseError
@@ -2674,8 +2693,7 @@ ExpressionStatement
 *)
 
 and expressionStatement (ts) : (token list * Ast.STMT) =
-    let
-        val _ = trace([">> expressionStatement with next=", tokenname(hd ts)])
+    let val _ = trace([">> expressionStatement with next=", tokenname(hd ts)])
         val (ts1,nd1) = listExpression(ts,ALLOWIN)
     in
 		trace(["<< expressionStatement with next=", tokenname(hd ts1)]);
@@ -2683,11 +2701,21 @@ and expressionStatement (ts) : (token list * Ast.STMT) =
     end
 
 (*
-    
-SuperStatement    
-    super Arguments
-    
+	SuperStatement    
+    	super Arguments
 *)
+
+and superStatement (ts) : (token list * Ast.STMT) =
+    let val _ = trace([">> superStatement with next=", tokenname(hd ts)])
+	in case ts of
+		Super :: _ =>
+			let
+				val (ts1,nd1) = arguments (tl ts)
+			in
+				(ts1,Ast.SuperStmt nd1)
+			end
+	  | _ => raise ParseError
+	end
 
 (*
 	SwitchStatement	
@@ -3055,38 +3083,47 @@ and ifStatement (ts,ABBREV) =
 	end
 
 (*
-SwitchStatement    
-    switch ParenListExpression { CaseElements }
-    switch  type  (  TypedIdentifierallowIn  =  AssignmentExpressionallowIn  )  {  TypeCaseElements  }
-    
-CaseElements    
-    «empty»
-    CaseLabel
-    CaseLabel CaseElementsPrefix CaseElementabbrev
-    
-CaseElementsPrefix    
-    «empty»
-    CaseElementsPrefix CaseElementfull
-    
-CaseElementw    
-    Directivew
-    CaseLabel
-    
-CaseLabel    
-    case ListExpressionallowIn :
-    default :
-    
-TypeCaseElements    
-    TypeCaseElement
-    TypeCaseElements  TypeCaseElement
-    
-TypeCaseElement    
-    case  (  TypedIdentifierallowIn  )  Block
-    case  (  TypedPattern  )  Block
-    default  Block
-    
-DoStatement    
-    do Substatementabbrev while ParenListExpression
+	DoStatement    
+    	do Substatement(abbrev) while ParenListExpression
+*)
+
+and doStatement (ts) : (token list * Ast.STMT) =
+    let val _ = trace([">> doStatement with next=", tokenname(hd ts)])
+    in case ts of
+		Do :: _ =>
+			let
+				val (ts1,nd1) = substatement(tl ts, ABBREV)
+			in case ts1 of
+				While :: _ =>
+					let
+						val (ts2,nd2) = parenListExpression (tl ts1)
+					in
+						(ts2,Ast.DoWhileStmt {body=nd1,cond=nd2,contLabel=NONE})
+					end
+			  | _ => raise ParseError
+			end
+	  | _ => raise ParseError
+	end
+
+(*
+	WhileStatement(w)	
+		while ParenListExpression Substatement(w)
+*)
+
+and whileStatement (ts,w) : (token list * Ast.STMT) =
+    let val _ = trace([">> whileStatement with next=", tokenname(hd ts)])
+	in case ts of
+		While :: _ =>
+			let
+				val (ts1,nd1) = parenListExpression (tl ts)
+				val (ts2,nd2) = substatement(ts1, w)
+			in
+				(ts2,Ast.WhileStmt {cond=nd1,body=nd2,contLabel=NONE})
+			end
+	  | _ => raise ParseError
+	end
+
+(*
     
 WhileStatementw    
     while ParenListExpression Substatementw
@@ -3251,12 +3288,16 @@ Block
 and block (ts) : (token list * Ast.BLOCK) =
     let val _ = trace([">> block with next=", tokenname(hd ts)])
     in case ts of
-        LeftBrace :: RightBrace :: _ => (tl (tl ts),Ast.Block {pragmas=[],defns=[],stmts=[]})
+        LeftBrace :: RightBrace :: _ => 
+			((trace(["<< block with next=", tokenname(hd (tl (tl ts)))]);
+			(tl (tl ts),Ast.Block {pragmas=[],defns=[],stmts=[]})))
       | LeftBrace :: _ =>
             let
                 val (ts1,nd1) = directives (tl ts)
             in case ts1 of
-                RightBrace :: _ => (tl ts1,Ast.Block nd1)
+                RightBrace :: _ => 
+					(trace(["<< block with next=", tokenname(hd (tl ts1))]);
+					(tl ts1,Ast.Block nd1))
 			  | _ => raise ParseError
             end
 	  | _ => raise ParseError
