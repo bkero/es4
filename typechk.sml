@@ -21,6 +21,7 @@ val uintType      = PrimaryType { ident=simpleIdent "uint",      kind=Named }
 val stringType    = PrimaryType { ident=simpleIdent "string",    kind=Named }
 val regexpType    = PrimaryType { ident=simpleIdent "regexp",    kind=Named }
 val exceptionType = PrimaryType { ident=simpleIdent "exception", kind=Named }
+val namespaceType = PrimaryType { ident=simpleIdent "Namespace", kind=Named }
 val undefinedType = SpecialType Undefined
 val nullType      = SpecialType Null
 val anyType       = SpecialType Any
@@ -58,11 +59,11 @@ fun checkForDuplicates extensions =
 fun mergeTypes t1 t2 =
 	t1
 
-fun unOptionTy NONE = Any
-  | unOptionTy (SOME t) = t
-
-(******************** Expressions **************************************************)
+fun unOptionDefault NONE def = def
+  | unOptionDefault (SOME v) _ = v
 	
+(******************** Expressions **************************************************)
+
 fun tcExpr ((ctxt as {env,this,...}):CONTEXT) (e:EXPR) :TYPE_EXPR = 
 	let
 	in 
@@ -76,6 +77,26 @@ fun tcExpr ((ctxt as {env,this,...}):CONTEXT) (e:EXPR) :TYPE_EXPR =
         | LiteralExpr (LiteralString _) => stringType
         | LiteralExpr (LiteralRegExp _) => regexpType
         | LiteralExpr LiteralUndefined => undefinedType 
+        | LiteralExpr (LiteralArray { exprs, ty }) =>
+          (* EXAMPLES:
+               [a, b, c] : [int, Boolean, String]
+               [a, b, c] : Array
+               [a, b, c] : *
+               [a, b, c] : Object
+           *)
+          let val annotatedTy = unOptionDefault ty anyType
+              val inferredTy = ArrayType (map (fn elt => tcExpr ctxt elt) exprs)
+          in
+              checkConvertible inferredTy annotatedTy;
+              annotatedTy
+          end
+        | LiteralExpr (LiteralObject { expr, ty }) =>
+          let val annotatedTy = unOptionDefault ty anyType
+              val inferredTy = inferObjectType ctxt expr
+          in
+              checkConvertible inferredTy annotatedTy;
+              annotatedTy
+          end
 	| ListExpr l => List.last (List.map (tcExpr ctxt) l)
 	| LetExpr {defs, body} => 
           let val extensions = List.concat (List.map (fn d => tcVarDefn ctxt d) defs)
@@ -91,7 +112,6 @@ fun tcExpr ((ctxt as {env,this,...}):CONTEXT) (e:EXPR) :TYPE_EXPR =
 
 (*
      and LITERAL =
-       | LiteralArray of EXPR list
        | LiteralXML of EXPR list
        | LiteralNamespace of NAMESPACE
 
@@ -139,11 +159,29 @@ and tcPattern (ctxt:CONTEXT) (Ast.IdentifierPattern name) = (
   | tcPattern ctxt (Ast.SimplePattern expr) = ??
 *)
 
+and inferObjectType ctxt fields =
+    (* TODO: get a (name, type) option for every field *)
+    raise (Fail "blah")
+
 (* TODO: this needs to return some type structure as well *)
 and tcVarDefn (ctxt:CONTEXT) 
      (Binding {kind,init,attrs,pattern,ty}) =
         (* TODO: what are simple patterns? *)
 	[]
+
+and tcIdentExpr (ctxt:CONTEXT) (id:IDENT_EXPR) =
+    (case id of
+          QualifiedIdentifier { qual, ident=_ } => (checkConvertible (tcExpr ctxt qual) namespaceType; ())
+        | QualifiedExpression { qual, expr } => (checkConvertible (tcExpr ctxt qual) namespaceType;
+                                                 checkConvertible (tcExpr ctxt expr) stringType;
+                                                 ())
+        | Identifier _ => ()
+        | ExpressionIdentifier expr => (checkConvertible (tcExpr ctxt expr) stringType; ()))
+(*
+       | AttributeIdentifier of IDENT_EXPR
+       | TypeIdentifier of { ident : IDENT_EXPR, 
+			     typeParams : TYPE_EXPR list }
+*)
 
 and tcUnaryExpr (ctxt:CONTEXT) (unop:UNOP, arg:EXPR) =
     (case unop of

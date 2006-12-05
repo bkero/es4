@@ -269,7 +269,7 @@ datatype PRAGMA =
        | LiteralNumber of real
        | LiteralBoolean of bool
        | LiteralString of USTRING
-       | LiteralArray of { expr:EXPR list, ty:TYPE_EXPR option }
+       | LiteralArray of { exprs:EXPR list, ty:TYPE_EXPR option }
        | LiteralXML of EXPR list
        | LiteralNamespace of NAMESPACE
 

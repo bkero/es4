@@ -800,10 +800,10 @@ and arrayLiteral (ts) =
 					let
 						val (ts2,nd2) = arrayType (tl (tl ts1))
 					in
-						(ts2,Ast.LiteralArray {expr=nd1,ty=SOME nd2})
+						(ts2,Ast.LiteralArray {exprs=nd1,ty=SOME nd2})
 					end
 			  | RightBracket :: _ => 
-					(tl ts1,Ast.LiteralArray {expr=nd1,ty=NONE})
+					(tl ts1,Ast.LiteralArray {exprs=nd1,ty=NONE})
 			  | _ => raise ParseError
 			end
 	  | _ => raise ParseError
