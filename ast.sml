@@ -179,7 +179,6 @@ datatype PRAGMA =
        | RecordType of FIELD_TYPE list
        | InstantiationType of { base: PRIM_TY,
                                 params: TYPE_EXPR list }
-       | UnresolvedType of EXPR
 
      and STMT =
          EmptyStmt
@@ -218,6 +217,9 @@ datatype PRAGMA =
 
        | SwitchStmt of { cond: EXPR,
                          cases: CASE list }
+
+       | SwitchTypeStmt of { cond: EXPR, ty: TYPE_EXPR,
+                         cases: TYPE_CASE list }
 
      and EXPR =
          TrinaryExpr of (TRIOP * EXPR * EXPR * EXPR)
@@ -358,6 +360,9 @@ withtype
 
 	 and CASE =
 		 { label : EXPR option, stmts : DIRECTIVES }
+
+	 and TYPE_CASE =
+		 { ptrn : VAR_BINDING option, body : BLOCK }
 
 type PACKAGE =
      { names: IDENT list,
