@@ -1,1 +1,1 @@
-var { x: x } = o
+var { "x": x } = o

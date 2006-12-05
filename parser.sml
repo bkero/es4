@@ -27,7 +27,7 @@ fun log ss =
      List.app TextIO.print ss; 
      TextIO.print "\n")
 
-val trace_on = false
+val trace_on = true
 
 fun trace ss =
 	if trace_on then log ss else ()
@@ -2020,7 +2020,7 @@ and assignmentExpression (ts,a,b) : (token list * Ast.EXPR) =
 	    , AssignmentExpression(b) ListExpressionPrime(b)
 *)
 
-and listExpression (ts,b) = 
+and listExpression (ts,b) : (token list * Ast.EXPR) = 
     let
 		val _ =	trace([">> listExpression with next=",tokenname(hd ts)])
 		fun listExpression' (ts,b) =
@@ -2035,7 +2035,9 @@ and listExpression (ts,b) =
 						(trace(["<< listExpression' with next=",tokenname(hd(ts2))]);
     	    	     	(ts2, nd1 :: nd2))
 	    	      	end
-	    	  | _ => (ts, [])
+	    	  | _ => 
+					(trace(["<< listExpression' with next=",tokenname(hd(ts))]);
+					(ts, []))
 		    end
         val (ts1,nd1) = assignmentExpression(ts,ALLOWLIST,b)
         val (ts2,nd2) = listExpression'(ts1,b)
@@ -2089,7 +2091,7 @@ and simplePattern (ts,a,b,NOEXPR) =
 *)
 
 and objectPattern (ts,g) =
-	let
+	let val _ = trace([">> objectPattern with next=",tokenname(hd(ts))]) 
 	in case ts of
 		LeftBrace :: ts =>
 			let
@@ -2134,7 +2136,7 @@ and destructuringFieldList (ts,g) =
 
 and destructuringField (ts,g) =
 	let
-		val (ts1,nd1) = nonAttributeQualifiedIdentifier (ts)
+		val (ts1,nd1) = fieldName ts
 	in case ts1 of
 		Colon :: _ => 
 			let
@@ -2212,9 +2214,9 @@ and destructuringElement (ts,g) =
 		SimplePattern(a,b,noExpr)  :  TypeExpression
 *)
 
-and typedIdentifier (ts,a,b) =
+and typedIdentifier (ts) =
     let val _ = trace([">> typedIdentifier with next=",tokenname(hd(ts))]) 
-		val (ts1,nd1) = simplePattern (ts,a,b,NOEXPR)
+		val (ts1,nd1) = simplePattern (ts,NOLIST,NOIN,NOEXPR)
 	in case ts1 of
 		Colon :: _ => 
 			let
@@ -2689,6 +2691,8 @@ SuperStatement
 (*
 	SwitchStatement	
 		switch ParenListExpression  {  CaseElements  }
+		switch  type  (  ListExpression(allowList, allowIn)  :  TypeExpression  ) 
+		     {  TypeCaseElements  }
 		
 	CaseElements	
 		«empty»
@@ -2716,7 +2720,26 @@ SuperStatement
 and switchStatement (ts) : (token list * Ast.STMT) =
     let val _ = trace([">> switchStatement with next=", tokenname(hd ts)])
     in case ts of
-		Switch :: _ =>
+		Switch :: Type :: LeftParen :: _ =>
+			let
+				val (ts1,nd1) = listExpression (tl (tl (tl ts)),ALLOWIN)
+			in case ts1 of
+				Colon :: _ => 
+					let
+						val (ts2,nd2) = typeExpression (tl ts1)
+					in case ts2 of
+						RightParen :: LeftBrace :: _ =>
+							let
+								val (ts3,nd3) = typeCaseElements (tl (tl ts2))
+        				    in case ts3 of
+                				RightBrace :: _ => (tl ts3,Ast.SwitchTypeStmt{cond=nd1,ty=nd2,cases=nd3})
+							  | _ => raise ParseError
+        				    end
+					  | _ => raise ParseError
+					end
+			  | _ => raise ParseError
+			end
+	  | Switch :: _ =>
 			let
 				val (ts1,nd1) = parenListExpression (tl ts)
 			in case ts1 of
@@ -2732,7 +2755,7 @@ and switchStatement (ts) : (token list * Ast.STMT) =
 	  | _ => raise ParseError
     end
 
-and isDefault (x) =
+and isDefaultCase (x) =
 	case x of 
 		NONE => true
 	  | _ => false
@@ -2745,7 +2768,7 @@ and caseElements (ts) : (token list * Ast.CASE list) =
 	  | (Case | Default) :: _ =>
 			let
 				val (ts1,nd1) = caseLabel (ts,false)
-				val (ts2,nd2) = caseElementsPrefix (ts1,isDefault nd1)
+				val (ts2,nd2) = caseElementsPrefix (ts1,isDefaultCase nd1)
 			in case nd2 of
 				[] =>
 					let
@@ -2769,7 +2792,7 @@ and caseElementsPrefix (ts,has_default) : (token list * Ast.CASE list) =
 	  | (Case | Default) :: _ =>
 			let
 				val (ts1,nd1) = caseLabel (ts,has_default)
-				val (ts2,nd2) = caseElementsPrefix (ts1,has_default orelse (isDefault nd1))
+				val (ts2,nd2) = caseElementsPrefix (ts1,has_default orelse (isDefaultCase nd1))
 			in case nd2 of
 				[] =>
 					let
@@ -2830,6 +2853,123 @@ and caseLabel (ts,has_default) : (token list * Ast.EXPR option) =
 	  | _ => raise ParseError
 	end
 
+(*
+	TypeCaseBinding	
+		(  TypedIdentifier  VariableInitialisation(allowList, allowIn)  )
+		
+	TypeCaseElements	
+		TypeCaseElement
+		TypeCaseElements  TypeCaseElement
+		
+	TypeCaseElement	
+		case  (  TypedPattern(noList, allowIn, noExpr)  )  Block
+		default  Block
+*)
+
+and typeCaseBinding (ts) : (token list * Ast.VAR_BINDING) =
+    let val _ = trace([">> caseCaseBinding with next=", tokenname(hd ts)])
+	in case ts of
+		LeftParen :: _ =>
+			let
+				val (ts1,{p,t}) = typedIdentifier (tl ts)
+			in case ts1 of
+				Assign :: _ =>
+					let
+						val (ts2,nd2) = variableInitialisation(ts1,ALLOWLIST,ALLOWIN)
+					in case ts2 of
+						RightParen :: _ =>
+							(tl ts2,Ast.Binding {kind=Ast.Var,init=SOME nd2,attrs=defaultAttrs,
+                        					   pattern=p,ty=t})
+					  | _ => raise ParseError
+					end
+			  | _ => 
+					let
+					in case ts1 of
+						RightParen :: _ =>
+							(tl ts1,Ast.Binding { kind = Ast.Var, init = NONE, attrs = defaultAttrs,
+                        					   pattern = p, ty = t })
+					  | _ => raise ParseError
+					end
+			end
+	  | _ => 
+			raise ParseError
+	end
+
+(*
+	TypeCaseElements
+		TypeCaseElement
+		TypeCaseElements  TypeCaseElement
+
+	TypeCaseElement
+		case  (  TypedPattern(noList, noIn, noExpr)  )  Block
+		default  Block
+
+	right recursive:
+
+	TypeCaseElements
+		TypeCaseElement TypeCaseElements'
+
+	TypeCaseElements'
+		empty
+		TypeCaseElement TypeCaseElements'
+*)
+
+and isDefaultTypeCase (x) =
+	case x of 
+		NONE => true
+	  | _ => false
+
+and typeCaseElements (ts) : (token list * Ast.TYPE_CASE list) =
+    let val _ = trace([">> typeCaseElements with next=", tokenname(hd ts)])
+		fun typeCaseElements' (ts,has_default) : (token list * Ast.TYPE_CASE list) =
+		    let val _ = trace([">> typeCaseElements' with next=", tokenname(hd ts)])
+			in case ts of
+				(Case | Default) :: _ => 
+					let
+						val (ts1,nd1) = typeCaseElement (ts,has_default)
+						val (ts2,nd2) = typeCaseElements' (ts1,has_default orelse (isDefaultTypeCase (#ptrn nd1)))
+					in
+						trace(["<< typeCaseElements' with next=", tokenname(hd ts2)]);
+						(ts2,nd1::nd2)
+					end
+			  | _ => (ts,[])
+			end
+		val (ts1,nd1) = typeCaseElement (ts,false)
+		val (ts2,nd2) = typeCaseElements' (ts1,isDefaultTypeCase (#ptrn nd1))
+	in
+		trace(["<< typeCaseElements with next=", tokenname(hd ts2)]);
+		(ts2,nd1::nd2)
+	end
+
+and typeCaseElement (ts,has_default) : (token list * Ast.TYPE_CASE) =
+    let val _ = trace([">> typeCaseElement with next=", tokenname(hd ts)])
+	in case (ts,has_default) of
+		(Case :: LeftParen :: _,_) =>
+			let
+				val (ts1,{p,t}) = typedPattern(tl (tl ts),NOLIST,NOIN,NOEXPR)
+			in case ts1 of
+				RightParen :: _ =>
+					let
+						val (ts2,nd2) = block (tl ts1)
+					in
+						trace(["<< typeCaseElement with next=", tokenname(hd ts2)]);
+						(ts2,{ptrn=SOME (Ast.Binding{pattern=p,ty=t,
+								kind=Ast.Var,attrs=defaultAttrs,init=NONE}),
+									body=nd2})
+					end
+			  | _ => raise ParseError
+			end
+	  | (Default :: _,false) =>
+			let
+				val (ts1,nd1) = block (tl ts)
+			in
+				trace(["<< typeCaseElement with next=", tokenname(hd ts1)]);
+				(ts1,{ptrn=NONE,body=nd1})
+			end
+	  | (Default :: _,true) =>
+			(error(["redundant default switch type case"]); raise ParseError)
+	  | _ => raise ParseError
+	end
 (*
     
 LabeledStatementw    
@@ -2985,10 +3125,10 @@ BreakStatement
     break [no line break] Identifier
 *)
 
-(*    
-ReturnStatement    
-    return
-    return [no line break] ListExpressionallowIn
+(*
+	ReturnStatement	
+		return
+		return [no line break] ListExpressio(nallowIn)
 *)
 
 and returnStatement ts =
@@ -3110,12 +3250,12 @@ Block
 and block (ts) : (token list * Ast.BLOCK) =
     let val _ = trace([">> block with next=", tokenname(hd ts)])
     in case ts of
-        LeftBrace :: RightBrace :: ts1 => (ts1,Ast.Block {pragmas=[],defns=[],stmts=[]})
-      | LeftBrace :: ts1 =>
+        LeftBrace :: RightBrace :: _ => (tl (tl ts),Ast.Block {pragmas=[],defns=[],stmts=[]})
+      | LeftBrace :: _ =>
             let
-                val (ts2,nd2) = directives ts1
-            in case ts2 of
-                RightBrace :: _ => (tl ts2,Ast.Block nd2)
+                val (ts1,nd1) = directives (tl ts)
+            in case ts1 of
+                RightBrace :: _ => (tl ts1,Ast.Block nd1)
 			  | _ => raise ParseError
             end
 	  | _ => raise ParseError
@@ -3459,8 +3599,7 @@ and variableBinding (ts,attrs,kind,a,b) : (token list * Ast.BINDINGS) =
 	in case (ts1,p) of
 			(Assign :: _,_) =>
 				let
-					val _ = trace(["xx variableBinding with next=", tokenname(hd ts1)])
-					val (ts2,nd2) = assignmentExpression (tl ts1,a,b)
+					val (ts2,nd2) = variableInitialisation (ts1,a,b)
 				in
 					trace(["<< variableBinding with next=", tokenname(hd ts2)]);
 					(ts2, {defns=[Ast.Binding { kind = kind, init = SOME nd2, attrs = attrs,
@@ -3476,6 +3615,18 @@ and variableBinding (ts,attrs,kind,a,b) : (token list * Ast.BINDINGS) =
 						   stmts=[]})
 				end
 		  | (_,_) => (error(["destructuring pattern without initialiser"]); raise ParseError)
+	end
+
+and variableInitialisation (ts,a,b) : (token list * Ast.EXPR) =
+    let val _ = trace([">> variableInitialisation with next=", tokenname(hd ts)])
+	in case ts of
+		Assign :: _ =>
+			let
+				val (ts1,nd1) = assignmentExpression (tl ts,a,b)
+			in
+				(ts1,nd1)
+			end
+	  | _ => raise ParseError
 	end
 
 (*
