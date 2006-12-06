@@ -34,13 +34,10 @@ fun extendEnv ((name, ty), env) = (name, ty)::env
 
 type CONTEXT = {this: TYPE_EXPR, env: TYPE_ENV, lbls: IDENT option list, retTy: TYPE_EXPR option}
 
-fun withThis ({this=_, env=env, lbls=lbls, retTy=retTy}, this) = {this=this, env=env, lbls=lbls, retTy=retTy}
-
-fun withEnv ({this=this, env=_, lbls=lbls, retTy=retTy}, env) = {this=this, env=env, lbls=lbls, retTy=retTy}
-
-fun withLbls ({this=this, env=env, lbls=_, retTy=retTy}, lbls) = {this=this, env=env, lbls=lbls, retTy=retTy}
-
-fun withRetTy ({this=this, env=env, lbls=lbls, retTy=_}, retTy) = {this=this, env=env, lbls=lbls, retTy=retTy}
+fun withThis  ({this=_,    env=env, lbls=lbls, retTy=retTy}, this) = {this=this, env=env, lbls=lbls, retTy=retTy}
+fun withEnv   ({this=this, env=_,   lbls=lbls, retTy=retTy},  env) = {this=this, env=env, lbls=lbls, retTy=retTy}
+fun withLbls  ({this=this, env=env, lbls=_,    retTy=retTy}, lbls) = {this=this, env=env, lbls=lbls, retTy=retTy}
+fun withRetTy ({this=this, env=env, lbls=lbls, retTy=_},    retTy) = {this=this, env=env, lbls=lbls, retTy=retTy}
 
 fun checkConvertible t1 t2 = ()
 
@@ -107,10 +104,46 @@ fun tcExpr ((ctxt as {env,this,...}):CONTEXT) (e:EXPR) :TYPE_EXPR =
        | NullaryExpr This => this
        | NullaryExpr Empty => (TextIO.print "what is Empty?\n"; raise Match)
        | UnaryExpr (unop, arg) => tcUnaryExpr ctxt (unop, arg)
+
+       | FunExpr {ident, sign as (FunctionSignature {typeparams,params,resulttype}), body} =>
+    (* What to do with typeparams - no place in context for type variables
+    *  also need to check well-formedness of resulttype
+    *  No place in FUNC_TY for type parameters
+    *)
+          let val extensions = List.concat (List.map (fn d => tcVarDefn ctxt d) params);
+	      val ctxt1 = withEnv (ctxt, foldl extendEnv env extensions);
+	      val ctxt2 = withRetTy (ctxt1, SOME resulttype)
+          in
+	    checkForDuplicates extensions;
+	    tcBlock ctxt2 body;
+	    FunctionType { paramTypes= (List.map (fn (Binding {kind=_,init=_,attrs=_,pattern=_,ty=tyo}) => tyo) params),
+			   returnType=resulttype,
+			   boundThisType=NONE,  (*FIXME*)
+			   hasRest=false  (*FIXME*)
+			 }
+	  end
        | _ => (TextIO.print "tcExpr incomplete: "; Pretty.ppExpr e; raise Match)
 	end
 
 (*
+(sign as (FunctionSignature {typeparams, params, resulttype}))
+
+       | FunExpr of { ident: IDENT option,
+                      sign: FUNC_SIGN,
+                      body: BLOCK }
+
+     and FUNC_TY =
+         { paramTypes: TYPE_EXPR option list,
+           returnType: TYPE_EXPR,
+           boundThisType: TYPE_EXPR option,
+           hasRest: bool }
+
+     and FUNC_SIGN =
+         FunctionSignature of { typeparams: IDENT list,
+                                params: VAR_BINDING list,
+                                resulttype: TYPE_EXPR }
+
+
      and LITERAL =
        | LiteralXML of EXPR list
        | LiteralNamespace of NAMESPACE
@@ -135,9 +168,6 @@ fun tcExpr ((ctxt as {env,this,...}):CONTEXT) (e:EXPR) :TYPE_EXPR =
        | NewExpr of { obj: EXPR,
                       actuals: EXPR list }
 
-       | FunExpr of { ident: IDENT option,
-                      sign: FUNC_SIGN,
-                      body: BLOCK }
 
      and IDENT_EXPR =
          QualifiedIdentifier of { qual : EXPR,
@@ -210,9 +240,9 @@ and tcUnaryExpr (ctxt:CONTEXT) (unop:UNOP, arg:EXPR) =
 
 (**************************************************************)
 
-fun tcStmts ctxt ss = List.app (fn s => tcStmt ctxt s) ss
+and tcStmts ctxt ss = List.app (fn s => tcStmt ctxt s) ss
 
-and tcStmt ((ctxt as {this,env,lbls,retTy}):CONTEXT) stmt =
+and tcStmt ((ctxt as {this,env,lbls,retTy}):CONTEXT) (stmt:STMT) =
    let
    in
    TextIO.print "type checking stmt ... \n";

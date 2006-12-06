@@ -15,3 +15,9 @@
 
  - type inference messages are nigh-useless (okay, fine, open research
    problem)
+
+ - uncaught exceptions that propagate to the top level appear to silently
+   disappear, requiring every incompete case statement to include
+   a "catch-all" clause that prints out appropriate debugging information. 
+   Java does this better, by printing out the full stack trace.
+
