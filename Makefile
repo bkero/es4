@@ -9,17 +9,19 @@ PARSE_TESTS = tests/ident.js tests/numberliteral.es tests/stringliteral.es tests
 TC_TESTS = tests/numberliteral.es
 EV_TESTS = tests/exec.es
 
-# [Dave] A total hack to check whether smlnj-tdp is installed.
-CHECK_BACKTRACE=echo -e '(\#get (CM.Anchor.anchor "smlnj-tdp"))();\n' | sml | fgrep 'val it = SOME' | sed -e 's/.*SOME "\(.*\)".*/\1/'
+# A total hack to check whether a given CM anchor is installed.
+anchorhome=$(shell cat .$(strip $(1)) 2>/dev/null || \
+	(echo -e '(\#get (CM.Anchor.anchor "$(strip $(1))"))();\n' \
+		| sml \
+		| fgrep 'val it =' \
+		| sed -e 's/.*\(NONE\|SOME "\(.*\)"\).*/\2/' \
+		>.$(strip $(1)) \
+	&& cat .$(strip $(1))))
 
 MLBUILD=ml-build
-ifeq ($(shell $(CHECK_BACKTRACE)),)
-  MLBUILD_ARGS=
-else
-  MLBUILD_ARGS=-Ctdp.instrument=true -DBACKTRACE \$$smlnj-tdp/back-trace.cm
-endif
+MLBUILD_ARGS=$(if $(call anchorhome,smlnj-tdp),-Ctdp.instrument=true -DBACKTRACE \$$smlnj-tdp/back-trace.cm)
 
-.PHONY: check checktc checkev wc clean
+.PHONY: check checktc checkev wc clean cleanml
 
 es4.heap.$(HEAP_SUFFIX): $(wildcard *.sml) pretty-cvt.sml
 	$(MLBUILD) $(MLBUILD_ARGS) es4.cm Main.main es4.heap
@@ -45,3 +47,6 @@ wc:
 
 clean:
 	rm -rf .cm tools/.cm es4.heap.$(HEAP_SUFFIX) tools/gen-pretty.heap.$(HEAP_SUFFIX)
+
+cleanml:
+	rm -f .smlnj-tdp
