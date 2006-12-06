@@ -247,13 +247,13 @@ and evalRefExpr (scope:Mach.SCOPE) (b:Mach.VAL option) (r:Ast.IDENT_EXPR) =
     end
     
 
-and evalLetExpr (scope:Mach.SCOPE) (defs:Ast.VAR_BINDING list) (body:Ast.EXPR) = 
+and evalLetExpr (scope:Mach.SCOPE) (defs:Ast.VAR_BINDING list) (body:Ast.EXPR list) = 
     let 
 	val obj = Mach.newObject NONE
         val newScope = extendScope scope Mach.Let obj
     in
         List.app (evalVarBinding scope (SOME obj) NONE) defs;
-        evalExpr newScope body
+        evalListExpr newScope body
     end
     
 and getType (tyOpt:Ast.TYPE_EXPR option) = 
@@ -363,7 +363,7 @@ fun evalStmts (scope:Mach.SCOPE) (stmts:Ast.STMT list) =
 		       
 and evalStmt scope (stmt:Ast.STMT) = 
     case stmt of 
-	Ast.ExprStmt e => evalExpr scope e
+	Ast.ExprStmt e => evalListExpr scope e
       | Ast.IfStmt i => evalIfStmt scope i
       | Ast.WhileStmt w => evalWhileStmt scope w
       | Ast.ReturnStmt r => evalReturnStmt scope r
@@ -479,7 +479,7 @@ and evalWhileStmt scope { cond, body, contLabel } =
     end
     
 and evalReturnStmt scope e
-  = raise (ReturnException (evalExpr scope e))
+  = raise (ReturnException (evalListExpr scope e))
 	  
 and evalThrowStmt scope e
   = raise (ThrowException (evalExpr scope e))

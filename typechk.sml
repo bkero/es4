@@ -97,17 +97,23 @@ fun tcExpr ((ctxt as {env,this,...}):CONTEXT) (e:EXPR) :TYPE_EXPR =
               checkConvertible inferredTy annotatedTy;
               annotatedTy
           end
-	| ListExpr l => List.last (List.map (tcExpr ctxt) l)
+	   | ListExpr l => List.last (List.map (tcExpr ctxt) l)
 	| LetExpr {defs, body} => 
           let val extensions = List.concat (List.map (fn d => tcVarDefn ctxt d) defs)
           in
 	    checkForDuplicates extensions;
-	    tcExpr (withEnv (ctxt, foldl extendEnv env extensions)) body
+	    tcExprList (withEnv (ctxt, foldl extendEnv env extensions)) body
 	  end
        | NullaryExpr This => this
        | NullaryExpr Empty => (TextIO.print "what is Empty?\n"; raise Match)
        | UnaryExpr (unop, arg) => tcUnaryExpr ctxt (unop, arg)
        | _ => (TextIO.print "tcExpr incomplete: "; Pretty.ppExpr e; raise Match)
+	end
+
+and tcExprList ((ctxt as {env,this,...}):CONTEXT) (l:EXPR list) :TYPE_EXPR = 
+	let
+	in 	case l of
+		_  => List.last (List.map (tcExpr ctxt) l)
 	end
 
 (*
@@ -220,7 +226,7 @@ and tcStmt ((ctxt as {this,env,lbls,retTy}):CONTEXT) stmt =
         TextIO.print "\n";
    case stmt of
     EmptyStmt => ()
-  | ExprStmt e => (tcExpr ctxt e; ())
+  | ExprStmt e => (tcExprList ctxt e; ())
   | IfStmt {cnd,thn,els} => (
 	checkConvertible (tcExpr ctxt cnd) boolType;
 	tcStmt ctxt thn;
@@ -235,7 +241,7 @@ and tcStmt ((ctxt as {this,env,lbls,retTy}):CONTEXT) stmt =
   | ReturnStmt e => (
 	case retTy of
 	  NONE => raise IllTypedException "return not allowed here"
-        | SOME retTy => checkConvertible (tcExpr ctxt e) retTy
+        | SOME retTy => checkConvertible (tcExprList ctxt e) retTy
     )
 
   | (BreakStmt NONE | ContinueStmt NONE) =>  
