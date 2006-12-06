@@ -28,3 +28,8 @@ is
 	$/pp-lib.cm
         $/mllex-tool.cm
         $/lex-ext.cm
+#if defined (BACKTRACE)
+        $smlnj-tdp/plugins.cm
+#else
+        tools/backtrace.sml
+#endif

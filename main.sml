@@ -3,23 +3,6 @@
  *)
 
 structure Main = struct
-fun printStackTrace e =
-    let val ss = SMLofNJ.exnHistory e
-        val s = General.exnMessage e
-        val name = General.exnName e
-        val details = if s = name then "" else (" [" ^ s ^ "]")
-    in
-        TextIO.print ("uncaught exception " ^ name ^ details ^ "\n");
-        case ss of
-             [] => ()
-           | (s::ss') => (
-                             TextIO.print ("  raised at: " ^ s ^ "\n");
-                             List.app (fn s' => TextIO.print ("             " ^ s' ^ "\n")) ss'
-                         )
-    end
-
-(* val monitor = BackTrace.monitor *)
-fun monitor f = f() handle e => (printStackTrace e; 1)
 
 fun testTC argvRest =
     let val asts = List.map Parser.parseFile argvRest
@@ -38,11 +21,11 @@ fun testEV argvRest =
     end
 
 fun main (argv0:string, argvRest:string list) =
-    monitor (fn () =>
-             ((case argvRest of
-                    ("-tc"::argvRest) => testTC argvRest
-	          | ("-ev"::argvRest) => testEV argvRest
-                  | _ => (List.map Parser.parseFile argvRest; ()));
-              0))
+    BackTrace.monitor (fn () =>
+                       ((case argvRest of
+                              ("-tc"::argvRest) => testTC argvRest
+	                    | ("-ev"::argvRest) => testEV argvRest
+                            | _ => (List.map Parser.parseFile argvRest; ()));
+                        0))
 
 end

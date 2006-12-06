@@ -46,29 +46,11 @@ struct
             closeOut f
         end
 
-    (* TODO: abstract this out! it's copied from main.sml *)
-    fun printStackTrace e =
-        let val ss = SMLofNJ.exnHistory e
-            val s = General.exnMessage e
-            val name = General.exnName e
-            val details = if s = name then "" else (" [" ^ s ^ "]")
-        in
-            TextIO.print ("uncaught exception " ^ name ^ details ^ "\n");
-            case ss of
-                 [] => ()
-               | (s::ss') => (
-                                 TextIO.print ("  raised at: " ^ s ^ "\n");
-                                 List.app (fn s' => TextIO.print ("             " ^ s' ^ "\n")) ss'
-                             )
-        end
-    (* val monitor = BackTrace.monitor *)
-    fun monitor f = f() handle e => (printStackTrace e; 1)
-
     fun main (argv0:string, argvRest:string list) =
-        monitor (fn () =>
-                 (
-                     genFile (nth (argvRest, 0), nth (argvRest, 1));
-                     0
-                ))
+        BackTrace.monitor (fn () =>
+                           (
+                               genFile (nth (argvRest, 0), nth (argvRest, 1));
+                               0
+                           ))
 
 end

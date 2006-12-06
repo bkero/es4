@@ -8,9 +8,18 @@ PARSE_TESTS = tests/ident.js tests/numberliteral.es tests/stringliteral.es tests
 
 TC_TESTS = tests/numberliteral.es
 EV_TESTS = tests/exec.es
+
+# [Dave] A total hack to check whether smlnj-tdp is installed.
+CHECK_BACKTRACE=echo -e '(\#get (CM.Anchor.anchor "smlnj-tdp"))();\n' | sml | fgrep 'val it = SOME' | sed -e 's/.*SOME "\(.*\)".*/\1/'
+
 MLBUILD=ml-build
-#MLBUILD_ARGS=-Ctdp.instrument=true \$$smlnj-tdp/back-trace.cm
-MLBUILD_ARGS=
+ifeq ($(shell $(CHECK_BACKTRACE)),)
+  MLBUILD_ARGS=
+else
+  MLBUILD_ARGS=-Ctdp.instrument=true -DBACKTRACE \$$smlnj-tdp/back-trace.cm
+endif
+
+.PHONY: check checktc checkev wc clean
 
 es4.heap.$(HEAP_SUFFIX): $(wildcard *.sml) pretty-cvt.sml
 	$(MLBUILD) $(MLBUILD_ARGS) es4.cm Main.main es4.heap
@@ -34,3 +43,5 @@ checkev: es4.heap.$(HEAP_SUFFIX)
 wc:
 	wc ${SOURCES}
 
+clean:
+	rm -rf .cm tools/.cm es4.heap.$(HEAP_SUFFIX) tools/gen-pretty.heap.$(HEAP_SUFFIX)
