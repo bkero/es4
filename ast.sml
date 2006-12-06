@@ -180,11 +180,11 @@ datatype PRAGMA =
 
      and STMT =
          EmptyStmt
-       | ExprStmt of EXPR
+       | ExprStmt of EXPR list
        | ForEachStmt of FOR_ENUM_STMT
        | ForInStmt of FOR_ENUM_STMT
        | ThrowStmt of EXPR
-       | ReturnStmt of EXPR
+       | ReturnStmt of EXPR list
        | BreakStmt of IDENT option
        | ContinueStmt of IDENT option
        | BlockStmt of BLOCK
@@ -194,11 +194,10 @@ datatype PRAGMA =
        | WhileStmt of WHILE_STMT
        | DoWhileStmt of WHILE_STMT
 
-       | ForStmt of { isVar: bool,
-                      defns: VAR_BINDING list,
-                      init: EXPR,
-                      cond: EXPR,
-                      update: EXPR,
+       | ForStmt of { defns: VAR_BINDING list,
+                      init: EXPR list,
+                      cond: EXPR list,
+                      update: EXPR list,
                       contLabel: IDENT option,
                       body: STMT }
 
@@ -213,10 +212,10 @@ datatype PRAGMA =
                       catches: (VAR_BINDING * BLOCK) list,
                       finally: BLOCK }
 
-       | SwitchStmt of { cond: EXPR,
+       | SwitchStmt of { cond: EXPR list,
                          cases: CASE list }
 
-       | SwitchTypeStmt of { cond: EXPR, ty: TYPE_EXPR,
+       | SwitchTypeStmt of { cond: EXPR list, ty: TYPE_EXPR,
                          cases: TYPE_CASE list }
 
      and EXPR =
@@ -226,7 +225,7 @@ datatype PRAGMA =
        | UnaryExpr of (UNOP * EXPR)
        | TypeExpr of TYPE_EXPR
        | NullaryExpr of NULOP
-       | YieldExpr of EXPR option
+       | YieldExpr of EXPR list option
        | SuperExpr of EXPR option
        | LiteralExpr of LITERAL
 
@@ -234,7 +233,7 @@ datatype PRAGMA =
                       actuals: EXPR list}
 
        | LetExpr of { defs: VAR_BINDING list,
-                      body: EXPR }
+                      body: EXPR list}
 
        | NewExpr of { obj: EXPR,
                       actuals: EXPR list }
@@ -243,14 +242,15 @@ datatype PRAGMA =
                       sign: FUNC_SIGN,
                       body: BLOCK }
 
-       | ListExpr of EXPR list
-			    
        | ObjectRef of { base: EXPR, ident: IDENT_EXPR }
 
        | LexicalRef of { ident: IDENT_EXPR }
 
        | SetExpr of (PATTERN * EXPR)
  
+       | ListExpr of EXPR list
+       | SliceExpr of (EXPR list * EXPR list * EXPR list)
+			    
     and IDENT_EXPR =
          QualifiedIdentifier of { qual : EXPR,
                                   ident : USTRING }
@@ -354,10 +354,10 @@ withtype
 
 	 and BINDINGS =
 		 { defns : VAR_BINDING list,
-		   stmts : STMT list }
+		   inits : EXPR list }
 
 	 and CASE =
-		 { label : EXPR option, stmts : DIRECTIVES }
+		 { label : EXPR list option, stmts : DIRECTIVES }
 
 	 and TYPE_CASE =
 		 { ptrn : VAR_BINDING option, body : BLOCK }
