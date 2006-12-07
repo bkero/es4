@@ -58,6 +58,9 @@ datatype BINOP =
        | GreaterOrEqual
        | Comma
        | DefVar
+
+datatype ASSIGNOP =
+		 Assign
        | AssignPlus
        | AssignMinus
        | AssignTimes
@@ -246,7 +249,7 @@ datatype PRAGMA =
 
        | LexicalRef of { ident: IDENT_EXPR }
 
-       | SetExpr of (PATTERN * EXPR)
+       | SetExpr of (ASSIGNOP * PATTERN * EXPR)
  
        | ListExpr of EXPR list
        | SliceExpr of (EXPR list * EXPR list * EXPR list)
@@ -335,9 +338,8 @@ withtype
            kind: PRIM_KIND }
 
      and FOR_ENUM_STMT =
-         { isVar: bool,
-           init: EXPR,
-           obj: EXPR,
+         { ptrn: PATTERN option,
+           obj: EXPR list,
            defns: VAR_BINDING list,
            contLabel: IDENT option,
            body: STMT }

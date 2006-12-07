@@ -27,7 +27,7 @@ fun log ss =
      List.app TextIO.print ss; 
      TextIO.print "\n")
 
-val trace_on = true
+val trace_on = false
 
 fun trace ss =
 	if trace_on then log ss else ()
@@ -1966,31 +1966,63 @@ and simpleYieldExpression ts =
 	AssignmentExpression(a, b)	
 		ConditionalExpression(a, b)
 		Pattern(a, b, allowExpr)  =  AssignmentExpression(a, b)
-		Pattern(a, b, allowExpr)  CompoundAssignment  AssignmentExpression(a, b)
-		Pattern(a, b, allowExpr)  LogicalAssignment  AssignmentExpression(a, b)
+		SimplePattern(a, b, allowExpr)  CompoundAssignmentOperator  AssignmentExpression(a, b)
+		SimplePattern(a, b, allowExpr)  LogicalAssignmentOperator  AssignmentExpression(a, b)
+		
+	CompoundAssignmentOperator	
+		*=
+		/=
+		%=
+		+=
+		-=
+		<<=
+		>>=
+		>>>=
+		&=
+		^=
+		|=
+		&&=
+		||=
 *)
 
 and assignmentExpression (ts,a,b) : (token list * Ast.EXPR) = 
     let val _ = trace([">> assignmentExpression with next=",tokenname(hd(ts))])
 		val (ts1,nd1) = conditionalExpression(ts,a,b)
-    in case (ts1,nd1) of
-	  	(Assign :: _, (Ast.ObjectRef _ | Ast.LexicalRef _ | Ast.LiteralExpr (Ast.LiteralObject _)
-						| Ast.LiteralExpr (Ast.LiteralArray _)) ) => 
+    in case ts1 of
+	    Assign :: _ => 
 	    	let
-			    (* todo: convert to pattern, may result in syntax error *)
+				val p = patternFromExpr nd1
 				val (ts2,nd2) = assignmentExpression(tl ts1,a,b)						
 			in 
-				(ts2,Ast.SetExpr(Ast.SimplePattern nd1,nd2))
+				(ts2,Ast.SetExpr(Ast.Assign,p,nd2))
 			end
-	  | (Assign :: _, _) => 
-			(error(["invalid lhs"]);raise ParseError)
+	  | ( ModulusAssign :: _ 
+		  | LogicalAndAssign :: _
+	      | BitwiseAndAssign :: _
+	      | DivAssign :: _
+	      | BitwiseXorAssign :: _
+	      | LogicalOrAssign :: _
+	      | BitwiseOrAssign :: _
+	      | PlusAssign :: _
+	      | LeftShiftAssign :: _
+	      | MinusAssign :: _
+	      | RightShiftAssign :: _
+	      | UnsignedRightShiftAssign :: _
+		  | MultAssign :: _ ) =>
+			let
+				val (ts2,nd2) = compoundAssignmentOperator ts1
+				val p = simplePatternFromExpr nd1
+				val (ts3,nd3) = assignmentExpression(tl ts1,a,b)						
+			in
+				(ts3,Ast.SetExpr(nd2,p,nd3))
+			end
 	  | _ =>
 			(trace(["<< assignmentExpression with next=",tokenname(hd(ts1))]);
 			(ts1,nd1))
 	end
 
 (*
-	CompoundAssignment    
+	CompoundAssignmentOperator
     	*=
 	    /=
     	%=
@@ -2002,16 +2034,26 @@ and assignmentExpression (ts,a,b) : (token list * Ast.EXPR) =
     	&=
 	    ^=
     	|=
-*)
-
-(*
-	LogicalAssignment    
     	&&=
 	    ||=
 *)
 
-	and logicalAssignment ts =
-    	raise ParseError
+	and compoundAssignmentOperator ts =
+    	case ts of
+			ModulusAssign :: _ 				=> (tl ts,Ast.AssignRemainder)
+		  | LogicalAndAssign :: _ 			=> (tl ts,Ast.AssignLogicalAnd)
+	      | BitwiseAndAssign :: _ 			=> (tl ts,Ast.AssignBitwiseAnd)
+	      | DivAssign :: _ 					=> (tl ts,Ast.AssignDivide)
+	      | BitwiseXorAssign :: _ 			=> (tl ts,Ast.AssignBitwiseXor)
+	      | LogicalOrAssign :: _ 			=> (tl ts,Ast.AssignLogicalOr)
+	      | BitwiseOrAssign :: _ 			=> (tl ts,Ast.AssignBitwiseOr)
+	      | PlusAssign :: _ 				=> (tl ts,Ast.AssignPlus)
+	      | LeftShiftAssign :: _ 			=> (tl ts,Ast.AssignLeftShift)
+	      | MinusAssign :: _ 				=> (tl ts,Ast.AssignMinus)
+	      | RightShiftAssign :: _ 		  	=> (tl ts,Ast.AssignRightShift)
+	      | UnsignedRightShiftAssign :: _ 	=> (tl ts,Ast.AssignRightShiftUnsigned)
+		  | MultAssign :: _ 			  	=> (tl ts,Ast.AssignTimes)
+		  | _ => raise ParseError
 
 (*
 	ListExpression(b)    
@@ -2061,13 +2103,24 @@ and listExpression (ts,b) : (token list * Ast.EXPR list) =
 		ArrayPattern(g)
 *)
 
-and pattern (ts,a,b,g) =
+and pattern (ts,a,b,g) : (token list * Ast.PATTERN) =
 	let
 	in case ts of
 		LeftBrace :: _ => objectPattern (ts,g)
 	  | LeftBracket :: _ => arrayPattern (ts,g)
 	  | _ => simplePattern (ts,a,b,g)
 	end
+
+and patternFromExpr (e) : (Ast.PATTERN) =
+	let val _ = trace([">> patternFromExpr"])
+	in case e of
+		Ast.LiteralExpr (Ast.LiteralObject {...}) => objectPatternFromExpr (e)
+	  | Ast.LiteralExpr (Ast.LiteralArray {...}) => arrayPatternFromExpr (e)
+	  | _ => simplePatternFromExpr (e)
+	end
+
+and patternFromListExpr (e::[]) : (Ast.PATTERN) = patternFromExpr e
+  | patternFromListExpr (_)  = (error(["invalid pattern"]); raise ParseError)
 
 (*
 	SimplePattern(a, b, noExpr)	
@@ -2084,13 +2137,23 @@ and simplePattern (ts,a,b,NOEXPR) =
 		(trace(["<< simplePattern(a,b,NOEXPR) with next=",tokenname(hd(ts1))]);
 		(ts1,Ast.IdentifierPattern (Ast.Identifier {ident=nd1, openNamespaces=ref [Ast.Internal ""]})))
 	end
-
   | simplePattern (ts,a,b,ALLOWEXPR) =
     let val _ = trace([">> simplePattern(a,b,ALLOWEXPR) with next=",tokenname(hd(ts))]) 
 		val (ts1,nd1) = leftHandSideExpression (ts,a,b)
 	in
 		(trace(["<< simplePattern(a,b,ALLOWEXPR) with next=",tokenname(hd(ts1))]);
 		(ts1,Ast.SimplePattern nd1))
+	end
+
+and simplePatternFromExpr (e) : (Ast.PATTERN) =  (* only ever called from ALLOWEXPR contexts *)
+	let val _ = trace([">> simplePatternFromExpr"])
+	in case e of
+		(Ast.ObjectRef _ | Ast.LexicalRef _) =>
+			(trace(["<< simplePatternFromExpr"]);
+			Ast.SimplePattern e)
+	  | _ => 
+			(error(["invalid pattern expression"]);
+			raise ParseError)
 	end
 
 (*
@@ -2111,6 +2174,19 @@ and objectPattern (ts,g) =
 	  | _ => raise ParseError
 	end
 
+and objectPatternFromExpr e =
+	let val _ = trace([">> objectPatternFromExpr"])
+	in case e of
+		(Ast.LiteralExpr (Ast.LiteralObject {expr,ty})) =>
+			let
+				val p = destructuringFieldListFromExpr expr
+			in
+				trace(["<< objectPatternFromExpr"]);
+				Ast.ObjectPattern p
+			end
+	  | _ => raise ParseError
+	end
+	
 (*
 	DestructuringFieldList(g)
     	DestructuringField(g)
@@ -2118,7 +2194,7 @@ and objectPattern (ts,g) =
 *)
 
 and destructuringFieldList (ts,g) =
-	let
+	let val _ = trace([">> destructuringFieldList with next=",tokenname(hd(ts))])
 		fun destructuringFieldList' (ts,g) =
 			let
 			in case ts of
@@ -2126,8 +2202,8 @@ and destructuringFieldList (ts,g) =
 					let
 						val (ts1,nd1) = destructuringField (tl ts,g)
 						val (ts2,nd2) = destructuringFieldList' (ts1,g)
-					in case ts of
-					    _ => (ts2,nd1::nd2)
+					in
+					    (ts2,nd1::nd2)
 					end
 			  | _ => (ts,[])
 			end
@@ -2136,6 +2212,32 @@ and destructuringFieldList (ts,g) =
 	in
 		(ts2,nd1::nd2)
 	end
+
+and destructuringFieldListFromExpr e =
+	let val _ = trace([">> destructuringFieldList"])
+		fun destructuringFieldListFromExpr' e =
+			let
+			in case e of
+				[] =>
+					let
+					in
+						[]
+					end
+			  | _ => 
+				let
+					val p1 = destructuringFieldFromExpr (hd e)
+					val p2 = destructuringFieldListFromExpr' (tl e)
+				in
+					p1::p2
+				end
+			end
+		val p1 = destructuringFieldFromExpr (hd e)
+		val p2 = destructuringFieldListFromExpr' (tl e)
+	in
+		trace(["<< destructuringFieldList"]);
+		p1::p2
+	end
+
 
 (*
 	DestructuringField(g)
@@ -2155,6 +2257,15 @@ and destructuringField (ts,g) =
 	  | _ => raise ParseError
 	end
 
+and destructuringFieldFromExpr e =
+	let val _ = trace([">> destructuringFieldFromExpr"])
+		val {name,init} = e
+		val p = patternFromExpr init
+	in
+		trace(["<< destructuringFieldFromExpr"]);
+		{name=name,ptrn=p}
+	end
+
 (*
 	ArrayPattern(g)   
     	[  DestructuringElementList(g)  ]
@@ -2169,6 +2280,19 @@ and arrayPattern (ts,g) =
 			in case ts1 of
 				RightBracket :: _ => (tl ts1,Ast.ArrayPattern nd1)
 			  | _ => raise ParseError
+			end
+	  | _ => raise ParseError
+	end
+
+and arrayPatternFromExpr (e) =
+	let val _ = trace([">> arrayPatternFromExpr"])
+	in case e of
+		Ast.LiteralExpr (Ast.LiteralArray {exprs,ty}) =>
+			let
+				val p = destructuringElementListFromExpr exprs
+			in
+				trace(["<< arrryPatternFromExpr"]);
+				Ast.ArrayPattern p
 			end
 	  | _ => raise ParseError
 	end
@@ -2205,6 +2329,31 @@ and destructuringElementList (ts,g) =
 			end
 	end
 
+and destructuringElementListFromExpr e =
+	let val _ = trace([">> destructuringFieldList"])
+		fun destructuringElementListFromExpr' e =
+			let
+			in case e of
+				[] =>
+					let
+					in
+						[]
+					end
+			  | _ => 
+				let
+					val p1 = destructuringElementFromExpr (hd e)
+					val p2 = destructuringElementListFromExpr' (tl e)
+				in
+					p1::p2
+				end
+			end
+		val p1 = destructuringElementFromExpr (hd e)
+		val p2 = destructuringElementListFromExpr' (tl e)
+	in
+		trace(["<< destructuringElementList"]);
+		p1::p2
+	end
+
 (*
 	DestructuringElement(g)   
     	Pattern(NOLIST,ALLOWIN,g)
@@ -2214,6 +2363,14 @@ and destructuringElement (ts,g) =
     let val _ = trace([">> destructuringElement with next=",tokenname(hd(ts))]) 		
 	in
 		pattern (ts,NOLIST,ALLOWIN,g)
+	end
+
+and destructuringElementFromExpr e =
+	let val _ = trace([">> destructuringElementFromExpr"])
+		val p = patternFromExpr e
+	in
+		trace(["<< destructuringElementFromExpr"]);
+		p
 	end
 
 (*
@@ -3139,8 +3296,8 @@ and whileStatement (ts,w) : (token list * Ast.STMT) =
 (*
 	ForStatement(w)
 		for  (  ForInitialiser  ;  OptionalExpression  ;  OptionalExpression  )  Substatement(w)
-		for  (  ForInBinding  in  ListExpressionallowIn  )  Substatementw	
-		for  each  ( ForInBinding  in  ListExpressionallowIn  )  Substatementw	
+		for  (  ForInBinding  in  ListExpression(allowIn)  )  Substatement(w)	
+		for  each  ( ForInBinding  in  ListExpression(allowIn)  )  Substatement(w)	
 			
 	ForInitialiser		
 		«empty»	
@@ -3151,31 +3308,88 @@ and whileStatement (ts,w) : (token list * Ast.STMT) =
 		ListExpression(allowIn)
 		«empty»	
 
-	ForInBinding		
-		Pattern(allowList, noIn, allowExpr)	
-		VariableDefinitionKind VariableBinding(allowList, noIn)			
 *)
-			
+
+(* note: even though for-each-in and for-in use ForInBinding, we get there by two different
+         paths. With for-in we parse for ForInitializer, which is more general and translate
+         when we see 'in'. With for-each-in, we parse immediately for ForInBinding. Positive
+         and negative cases should produce the same error or ast result
+*)
+
+(* todo: code reuse opps here *)
+
 and forStatement (ts,w) : (token list * Ast.STMT) =
     let val _ = trace([">> forStatement with next=", tokenname(hd ts)])
 	in case ts of
 		For :: LeftParen :: _ =>
 			let
 				val (ts1,{defns,inits}) = forInitialiser (tl (tl ts))
-				val (ts2,nd2) = optionalExpression (ts1)
-				val (ts3,nd3) = optionalExpression (ts2)
-			in case ts3 of
-				RightParen :: _ =>
+			in case ts1 of
+				SemiColon :: _ =>
 					let
-						val (ts4,nd4) = substatement (tl ts3,w)
-					in 
-							(ts4,Ast.ForStmt{ 
-                                      defns=defns,
-                                      init=inits,
-                                      cond=nd2,
-                                      update=nd3,
-                                      contLabel=NONE,
-                                      body=nd4 })
+						val (ts2,nd2) = optionalExpression (tl ts1)
+						val (ts3,nd3) = optionalExpression (ts2)
+					in case ts3 of
+						RightParen :: _ =>
+							let
+								val (ts4,nd4) = substatement (tl ts3,w)
+							in 
+								(ts4,Ast.ForStmt{ 
+                		                    defns=defns,
+                        		            init=inits,
+                                		    cond=nd2,
+		                                    update=nd3,
+        		                            contLabel=NONE,
+                		                    body=nd4 })
+							end
+					  | _ => raise ParseError
+					end
+			  | In :: _ =>
+					let
+						val p = if ((length defns) > 1) 
+									then (error(["too many bindings on left side of in"]); 
+										 raise ParseError)
+									else if ((length defns) = 0) (* convert inits to pattern *)
+										then SOME (patternFromListExpr (inits))
+										else NONE  (* nothing else to do *)
+						
+						val (ts2,nd2) = listExpression (tl ts1,ALLOWIN)
+					in case ts2 of
+						RightParen :: _ =>
+							let
+								val (ts3,nd3) = substatement (tl ts2,w)
+							in 
+								(ts3,Ast.ForInStmt{ 
+               		                      defns=defns,
+                       		              ptrn=p,
+	                                      obj=nd2,
+       		                              contLabel=NONE,
+               		                      body=nd3 })
+							end
+					  | _ => raise ParseError
+					end
+			  | _ => raise ParseError
+			end
+	  | For :: Each :: LeftParen :: _ =>
+			let
+				val (ts1,{defns,ptrn}) = forInBinding (tl (tl (tl ts)))
+			in case ts1 of
+				In :: _ =>
+					let
+						val (ts2,nd2) = listExpression (tl ts1,ALLOWIN)
+					in case ts2 of
+						RightParen :: _ =>
+							let
+								val (ts3,nd3) = substatement (tl ts2,w)
+							in 
+								(ts3,Ast.ForEachStmt{ 
+               		                      defns=defns,
+                       		              ptrn=ptrn,
+	                                      obj=nd2,
+       		                              contLabel=NONE,
+               		                      body=nd3 })
+							end
+					  | _ => raise ParseError
 					end
 			  | _ => raise ParseError
 			end
@@ -3188,23 +3402,24 @@ and forInitialiser (ts) : (token list * Ast.BINDINGS) =
 		(Var | Let | Const) :: _ =>
 			let
 				val (ts1,{defns,stmts,pragmas}) = variableDefinition (ts,defaultAttrs,NOIN)
-			in case (ts1,defns,stmts) of
-				(SemiColon :: _, Ast.VariableDefn bindings :: [],Ast.ExprStmt inits :: []) =>
-					(tl ts1,{defns=bindings,inits=inits})
+			in case (defns,stmts) of
+				(Ast.VariableDefn bindings :: [],Ast.ExprStmt inits :: []) =>
+					(trace(["<< forInitialiser with next=", tokenname(hd ts1)]);
+					(ts1,{defns=bindings,inits=inits}))
 			  | _ => raise ParseError
 			end
 	  | SemiColon :: _ =>
 			let
 			in
-				(tl ts,{defns=[],inits=[]})
+				(trace(["<< forInitialiser with next=", tokenname(hd ts)]);
+				(ts,{defns=[],inits=[]}))
 			end
 	  | _ => 
 			let
 				val (ts1,nd1) = listExpression (ts,NOIN)
-			in case ts1 of
-				SemiColon :: _ =>
-					(tl ts1,{defns=[],inits=nd1})
-			  | _ => raise ParseError
+			in 
+				(trace(["<< forInitialiser with next=", tokenname(hd ts1)]);
+				(ts1,{defns=[],inits=nd1}))
 			end
 	end
 
@@ -3232,6 +3447,32 @@ and optionalExpression (ts) : (token list * Ast.EXPR list) =
 					end
 			  | _ => 
 					(ts1,nd1)
+			end
+	end
+
+(*
+	ForInBinding		
+		Pattern(allowList, noIn, allowExpr)	
+		VariableDefinitionKind VariableBinding(allowList, noIn)			
+*)
+
+and forInBinding (ts) =
+    let val _ = trace([">> forInBinding with next=", tokenname(hd ts)])
+	in case ts of
+		(Var | Let | Const) :: _ =>
+			let
+				val (ts1,nd1) = variableDefinitionKind ts
+				val (ts2,{defns,inits}) = variableBinding (ts1,defaultAttrs,nd1,ALLOWLIST,NOIN)
+			in 
+				(trace(["<< forInBinding with next=", tokenname(hd ts1)]);
+				(ts2,{defns=defns,ptrn=NONE}))
+			end
+	  | _ => 
+			let
+				val (ts1,nd1) = pattern (ts,ALLOWLIST,NOIN,ALLOWEXPR)
+			in 
+				(trace(["<< forInitialiser with next=", tokenname(hd ts1)]);
+				(ts1,{defns=[],ptrn=SOME nd1}))
 			end
 	end
 
@@ -3728,17 +3969,17 @@ and variableBindingList (ts,attrs,kind,a,b) : (token list * Ast.BINDINGS) =
 and variableBinding (ts,attrs,kind,a,b) : (token list * Ast.BINDINGS) = 
     let val _ = trace([">> variableBinding with next=", tokenname(hd ts)])
 		val (ts1,{p,t}) = typedPattern (ts,a,b,NOEXPR)  (* parse the more general syntax *)
-	in case (ts1,p) of
-			(Assign :: _,_) =>
+	in case (ts1,p,b) of
+			(Assign :: _,_,_) =>
 				let
 					val (ts2,nd2) = variableInitialisation (ts1,a,b)
 				in
 					trace(["<< variableBinding with next=", tokenname(hd ts2)]);
 					(ts2, {defns=[Ast.Binding { kind = kind, init = SOME nd2, attrs = attrs,
                         					   pattern = p, ty = t }],
-						   inits=[Ast.SetExpr (p,nd2)]})
+						   inits=[Ast.SetExpr (Ast.Assign,p,nd2)]})
 				end
-		  | (_,Ast.IdentifierPattern _) =>   (* check the more specific syntax *)
+		  | (In :: _,_,NOIN) => (* okay, we are in a for-in or for-each-in binding *)
 				let
 				in
 					trace(["<< variableBinding with next=", tokenname(hd ts1)]);
@@ -3746,7 +3987,16 @@ and variableBinding (ts,attrs,kind,a,b) : (token list * Ast.BINDINGS) =
                         					   pattern = p, ty = t }],
 						   inits=[]})
 				end
-		  | (_,_) => (error(["destructuring pattern without initialiser"]); raise ParseError)
+		  | (_,Ast.IdentifierPattern _,_) =>   (* check the more specific syntax allowed
+												  when there is no init *)
+				let
+				in
+					trace(["<< variableBinding with next=", tokenname(hd ts1)]);
+					(ts1, {defns=[Ast.Binding { kind = kind, init = NONE, attrs = attrs,
+                        					   pattern = p, ty = t }],
+						   inits=[]})
+				end
+		  | (_,_,_) => (error(["destructuring pattern without initialiser"]); raise ParseError)
 	end
 
 and variableInitialisation (ts,a,b) : (token list * Ast.EXPR) =

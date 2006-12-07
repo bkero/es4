@@ -51,8 +51,8 @@ fun evalExpr (scope:Mach.SCOPE) (expr:Ast.EXPR) =
       | Ast.BinaryExpr (bop, aexpr, bexpr) => 
 	evalBinaryOp scope bop aexpr bexpr
 
-      | Ast.SetExpr (pat, expr) => 
-	evalSetExpr scope pat (evalExpr scope expr)
+      | Ast.SetExpr (aop, pat, expr) => 
+	evalSetExpr scope aop pat (evalExpr scope expr)
 
       | Ast.CallExpr {func, actuals} => 
 	evalCallExpr 
@@ -131,7 +131,9 @@ and assignValue (base:Mach.OBJ) (name:Mach.NAME) (v:Mach.VAL) =
  * but not sure if that's easy. 
  *)
 
-and evalSetExpr (scope:Mach.SCOPE) (pat:Ast.PATTERN) (v:Mach.VAL) = 
+and evalSetExpr (scope:Mach.SCOPE) (aop) (pat:Ast.PATTERN) (v:Mach.VAL) = 
+						(* FIXME: aop added, but not handled *)
+
     case pat of 
 	Ast.IdentifierPattern id => 
 	let
@@ -180,6 +182,9 @@ and evalBinaryOp (scope:Mach.SCOPE) (bop:Ast.BINOP) (aexpr:Ast.EXPR) (bexpr:Ast.
 		    end
 	    in
 		case bop' of 
+(*
+FIXME: these need to be handled in evalSetExpr
+
 		    Ast.AssignPlus => assignWith Ast.Plus
 		  | Ast.AssignMinus => assignWith Ast.Minus
 		  | Ast.AssignTimes => assignWith Ast.Times
@@ -193,8 +198,10 @@ and evalBinaryOp (scope:Mach.SCOPE) (bop:Ast.BINOP) (aexpr:Ast.EXPR) (bexpr:Ast.
 		  | Ast.AssignBitwiseXor => assignWith Ast.BitwiseXor
 		  | Ast.AssignLogicalAnd => assignWith Ast.LogicalAnd
 		  | Ast.AssignLogicalOr => assignWith Ast.LogicalOr
+		  | 
+*)
 
-		  | Ast.Plus => 
+			Ast.Plus => 
 		    (case (rval a, rval b) of 
 			 (Mach.Num na, Mach.Num nb) => Mach.Num (na + nb)
 		       | (_,_) => Mach.Str ((toString a) ^ (toString b)))
