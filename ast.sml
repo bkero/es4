@@ -192,7 +192,7 @@ datatype PRAGMA =
        | ContinueStmt of IDENT option
        | BlockStmt of BLOCK
        | LabeledStmt of (IDENT * STMT)
-       | LetStmt of ((VAR_BINDING list) * BLOCK)
+       | LetStmt of ((VAR_BINDING list) * STMT)
        | SuperStmt of EXPR list
        | WhileStmt of WHILE_STMT
        | DoWhileStmt of WHILE_STMT
@@ -208,7 +208,8 @@ datatype PRAGMA =
                      thn: STMT,
                      els: STMT }
 
-       | WithStmt of { obj: EXPR,
+       | WithStmt of { obj: EXPR list,
+					   ty: TYPE_EXPR,
                        body: STMT }
 
        | TryStmt of { body: BLOCK,

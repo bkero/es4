@@ -301,7 +301,11 @@ and tcStmt ((ctxt as {this,env,lbls,retTy}):CONTEXT) (stmt:STMT) =
         let val extensions = List.concat (List.map (fn d => tcVarDefn ctxt d) defns)
         in
 	    checkForDuplicates extensions;
-	    tcBlock (withEnv (ctxt, foldl extendEnv env extensions)) body
+(* FIXME: not sure the following change is correct	    
+		tcBlock (withEnv (ctxt, foldl extendEnv env extensions)) body  
+*)
+	    tcStmt ctxt body
+
 	end
     )
   | _ => (TextIO.print "tcStmt incomplete: "; Pretty.ppStmt stmt; raise Match)

@@ -2781,6 +2781,18 @@ and statement (ts,w) : (token list * Ast.STMT) =
 			in
 				(ts1,nd1)
 			end
+	  | Let :: LeftParen :: _ =>
+			let
+				val (ts1,nd1) = letStatement (ts,w)
+			in
+				(ts1,nd1)
+			end
+	  | With :: _ =>
+			let
+				val (ts1,nd1) = withStatement (ts,w)
+			in
+				(ts1,nd1)
+			end
 	  | _ =>
 			let
 				val (ts1,nd1) = expressionStatement (ts)
@@ -3477,6 +3489,68 @@ and forInBinding (ts) =
 	end
 
 (*
+	LetStatement(w)	
+		let  (  LetBindingList  )  Substatement(w)
+*)
+
+and letStatement (ts,w) : (token list * Ast.STMT) =
+    let val _ = trace([">> letStatement with next=", tokenname(hd ts)])
+	in case ts of
+		Let :: LeftParen :: _ => 
+			let
+				val (ts1,nd1) = letBindingList (tl (tl ts))
+			in case ts1 of
+				RightParen :: _ =>
+					let
+						val (ts2,nd2) = substatement(tl ts1, w)
+					in
+						(trace(["<< letStatement with next=",tokenname(hd(ts2))]);
+						(ts2,Ast.LetStmt (nd1,nd2)))
+					end
+ 			  |	_ => raise ParseError
+			end
+	  | _ => raise ParseError
+	end
+
+(*
+	WithStatement(w)
+		with  (  ListExpression(allowIn)  )  Substatement(w)
+		with  (  ListExpression(allowIn)  :  TypeExpression  )  Substatement(w)
+*)
+
+and withStatement (ts,w) : (token list * Ast.STMT) =
+    let val _ = trace([">> withStatement with next=", tokenname(hd ts)])
+	in case ts of
+		With :: LeftParen :: _ => 
+			let
+				val (ts1,nd1) = listExpression (tl (tl ts),ALLOWIN)
+			in case ts1 of
+				RightParen :: _ =>
+					let
+						val (ts2,nd2) = substatement(tl ts1, w)
+					in
+						(trace(["<< withStatement with next=",tokenname(hd(ts2))]);
+						(ts2,Ast.WithStmt {obj=nd1,ty=Ast.SpecialType Ast.Any,body=nd2}))
+					end
+			  | Colon :: _ =>
+					let
+						val (ts2,nd2) = typeExpression (tl ts1)
+					in case ts2 of
+						RightParen :: _ =>
+							let
+								val (ts3,nd3) = substatement(tl ts2, w)
+							in
+								(trace(["<< withStatement with next=",tokenname(hd(ts3))]);
+								(ts3,Ast.WithStmt {obj=nd1,ty=nd2,body=nd3}))
+							end
+		 			  |	_ => raise ParseError
+					end
+ 			  |	_ => raise ParseError
+			end
+	  | _ => raise ParseError
+	end
+
+(*
     
 LetStatementw    
     let  (  LetBindingList  )  Substatementw
@@ -3558,6 +3632,12 @@ and directive (ts,omega) : (token list * Ast.DIRECTIVES) =
 		SemiColon :: _ => 
 			let
 				val (ts1,nd1) = emptyStatement ts
+			in
+				(ts1,{pragmas=[],defns=[],stmts=[nd1]})
+			end
+	  | Let :: LeftParen :: _  => (* dispatch let statement before let var *)
+			let
+				val (ts1,nd1) = statement (ts,omega)
 			in
 				(ts1,{pragmas=[],defns=[],stmts=[nd1]})
 			end
