@@ -20,9 +20,44 @@ fun newName (i:Ast.IDENT) (attrs:Ast.ATTRIBUTES) =
     case attrs of 
 	Ast.Attributes {ns=n, ...} => {ns=n, id=i}
 
-fun setPropertyValue (obj:Mach.OBJ) (n:Mach.NAME) (p:Mach.PROP) =
+(* Fundamental object methods *)
+
+fun setProp (obj:Mach.OBJ) (n:Mach.NAME) (p:Mach.PROP) =
     case obj of 
 	Mach.Obj ob => Mach.addBinding (#bindings ob) n p
+
+fun setValue (base:Mach.OBJ) (name:Mach.NAME) (v:Mach.VAL) =     
+    (case base of 
+	 Mach.Obj {bindings,...} => 
+	 if Mach.hasBinding bindings name
+	 then 
+	     let 
+		 val existingProp = Mach.getBinding bindings name
+		 val existingAttrs = (#attrs existingProp)
+		 val newProp = { ty = (#ty existingProp), 
+				 value = v, 
+				 attrs = { dontDelete = (#dontDelete existingAttrs), 
+					   dontEnum = (#dontEnum existingAttrs),
+					   readOnly = (#readOnly existingAttrs) } }
+	     in
+		 if (#readOnly existingAttrs)
+		 then semant "assigning to read-only property"
+		 else ();
+		 (* FIXME: insert typecheck here *)
+		 Mach.delBinding bindings name;
+		 Mach.addBinding bindings name newProp
+	     end
+	 else
+	     let 
+		 val prop = { ty = Ast.SpecialType Ast.Any,
+			      value = v,
+			      attrs = { dontDelete = false,
+					dontEnum = false,
+					readOnly = false } }
+	     in
+		 Mach.addBinding bindings name prop
+	     end; v)
+
 
 fun extendScope (p:Mach.SCOPE) (t:Mach.SCOPE_TAG) (ob:Mach.OBJ) = 
     Mach.Scope { parent=(SOME p), tag=t, obj=ob }
@@ -50,6 +85,9 @@ fun evalExpr (scope:Mach.SCOPE) (expr:Ast.EXPR) =
 
       | Ast.BinaryExpr (bop, aexpr, bexpr) => 
 	evalBinaryOp scope bop aexpr bexpr
+
+      | Ast.UnaryExpr (unop, expr) => 
+	evalUnaryOp scope unop expr
 
       | Ast.SetExpr (aop, pat, expr) => 
 	evalSetExpr scope aop pat (evalExpr scope expr)
@@ -94,163 +132,163 @@ and evalCallExpr (v:Mach.VAL) (args:Mach.VAL list) =
 	  | _ => semant "calling non-function type"
     end
 
-and assignValue (base:Mach.OBJ) (name:Mach.NAME) (v:Mach.VAL) =     
-    (case base of 
-	 Mach.Obj {bindings,...} => 
-	 if Mach.hasBinding bindings name
-	 then 
-	     let 
-		 val existingProp = Mach.getBinding bindings name
-		 val newProp = { ty = (#ty existingProp), 
-				 value = v, 
-				 dontDelete = (#dontDelete existingProp), 
-				 dontEnum = (#dontEnum existingProp),
-				 readOnly = (#readOnly existingProp) }
-	     in
-		 if (#readOnly existingProp)
-		 then semant "assigning to read-only property"
-		 else ();
-		 (* FIXME: insert typecheck here *)
-		 Mach.delBinding bindings name;
-		 Mach.addBinding bindings name newProp
-	     end
-	 else
-	     let 
-		 val prop = { ty = Ast.SpecialType Ast.Any,
-			      value = v,
-			      dontDelete = false,
-			      dontEnum = false,
-			      readOnly = false }
-	     in
-		 Mach.addBinding bindings name prop
-	     end; v)
-
 
 (* 
  * FIXME: possibly try to factor and merge this with evalVarBinding,
  * but not sure if that's easy. 
  *)
 
-and evalSetExpr (scope:Mach.SCOPE) (aop) (pat:Ast.PATTERN) (v:Mach.VAL) = 
-						(* FIXME: aop added, but not handled *)
-
-    case pat of 
-	Ast.IdentifierPattern id => 
-	let
-	    val multiname = evalIdentExpr scope id
-	    val refOpt = resolveOnScopeChain scope multiname
-	in
-	    case refOpt of 
-		SOME (Mach.Reference (Mach.Ref { base, name })) => assignValue base name v
-	      | SOME _ => semant "assignment to non-reference"
-	      | NONE => raise Mach.MultiReferenceException multiname
+and evalSetExpr (scope:Mach.SCOPE) (aop:Ast.ASSIGNOP) (pat:Ast.PATTERN) (v:Mach.VAL) = 
+    let
+	fun modified r = 
+	    let 
+		fun modifyWith bop = performBinop bop (Mach.deref r) v
+	    in
+		case aop of 
+		    Ast.Assign => v
+		  | Ast.AssignPlus => modifyWith Ast.Plus
+		  | Ast.AssignMinus => modifyWith Ast.Minus
+		  | Ast.AssignTimes => modifyWith Ast.Times
+		  | Ast.AssignDivide => modifyWith Ast.Divide
+		  | Ast.AssignRemainder => modifyWith Ast.Remainder
+		  | Ast.AssignLeftShift => modifyWith Ast.LeftShift
+		  | Ast.AssignRightShift => modifyWith Ast.RightShift
+		  | Ast.AssignRightShiftUnsigned => modifyWith Ast.RightShiftUnsigned
+		  | Ast.AssignBitwiseAnd => modifyWith Ast.BitwiseAnd
+		  | Ast.AssignBitwiseOr => modifyWith Ast.BitwiseOr
+		  | Ast.AssignBitwiseXor => modifyWith Ast.BitwiseXor
+		  | Ast.AssignLogicalAnd => modifyWith Ast.LogicalAnd
+		  | Ast.AssignLogicalOr => modifyWith Ast.LogicalOr
+	    end
+    in
+	case pat of 
+	    Ast.IdentifierPattern id => 
+	    let
+		val multiname = evalIdentExpr scope id
+		val refOpt = resolveOnScopeChain scope multiname
+	    in
+		case refOpt of 
+		    SOME (Mach.Reference r) => 
+		    (case r of Mach.Ref { base, name } => setValue base name (modified r))
+		  | SOME _ => semant "assignment to non-reference"
+		  | NONE => raise Mach.MultiReferenceException multiname
 	end
       | Ast.SimplePattern expr => 
 	let
 	    val r = evalExpr scope expr
 	in
 	    case r of 
-		Mach.Reference (Mach.Ref { base, name }) => assignValue base name v
+		Mach.Reference r => 
+		(case r of Mach.Ref { base, name } => setValue base name (modified r))
 	      | _ => semant "assigning to non-reference"
 	end
       |	_ => unimpl "unhandled pattern form in assignment"
+    end
 
 
-and evalBinaryOp (scope:Mach.SCOPE) (bop:Ast.BINOP) (aexpr:Ast.EXPR) (bexpr:Ast.EXPR) =
+and rval (x:Mach.VAL) = 
+    case x of 
+        (Mach.Reference (Mach.Ref {base=Mach.Obj {bindings,...}, name})) => 
+        (#value (Mach.getBinding bindings name))
+      | _ => x
+	     
+and lval (x:Mach.VAL) = 
+    case x of 
+	Mach.Reference r => r
+      | _ => semant "assigning to non-reference"
+
+and evalUnaryOp (scope:Mach.SCOPE) (unop:Ast.UNOP) (expr:Ast.EXPR) =
     let
-	fun rval x = case x of 
-                         (Mach.Reference (Mach.Ref {base=Mach.Obj {bindings,...}, name})) => 
-                         (#value (Mach.getBinding bindings name))
-                       | _ => x
-	fun lval x = case x of 
-			 Mach.Reference r => r
-		       | _ => semant "assigning to non-reference"
+	fun crement f isPre = 
+	    let 
+		val r = lval (evalExpr scope expr)
+		val n = Mach.toNum (Mach.deref r)
+		val n' = Mach.Num (f (n, 1.0))
+		val n'' = if isPre
+			  then n'
+			  else Mach.Num n
+	    in
+		case r of 
+		    Mach.Ref {base, name} => (setValue base name n'; n'')
+	    end
+    in	    
+	case unop of 
+	    Ast.Delete => 
+	    (case evalExpr scope expr of
+		 Mach.Reference (Mach.Ref {base=Mach.Obj {bindings, ...}, name}) => 
+		 (Mach.delBinding bindings name; Mach.Bool true)
+	       | _ => Mach.Bool true)
+	    
+	  | Ast.PreIncrement => crement Real.+ true
+	  | Ast.PreDecrement => crement Real.- true
+	  | Ast.PostIncrement => crement Real.+ false
+	  | Ast.PostDecrement => crement Real.- false
+	  | _ => unimpl "unhandled unary operator"
+    end
+
+and performBinop (bop:Ast.BINOP) (a:Mach.VAL) (b:Mach.VAL) = 
+    let 
 	fun toNum x = Mach.toNum (rval x)
 	fun toString x = Mach.toString (rval x)
-	fun evalBop bop' (a:Mach.VAL) (b:Mach.VAL) =
+	fun wordOp wop = 
 	    let 
-		fun assignWith bop'' = 
-		    case lval a of 
-			Mach.Ref {base, name} => 
-			assignValue base name (rval (evalBop bop'' a b))
-		fun wordOp wop = 
-		    let 
-			val wa = Word.fromInt (trunc (toNum a))
-			val wb = Word.fromInt (trunc (toNum b))
-		    in
-			Mach.Num (real (Word.toInt (wop (wa, wb))))
-		    end
+		val wa = Word.fromInt (trunc (toNum a))
+		val wb = Word.fromInt (trunc (toNum b))
 	    in
-		case bop' of 
-(*
-FIXME: these need to be handled in evalSetExpr
-
-		    Ast.AssignPlus => assignWith Ast.Plus
-		  | Ast.AssignMinus => assignWith Ast.Minus
-		  | Ast.AssignTimes => assignWith Ast.Times
-		  | Ast.AssignDivide => assignWith Ast.Divide
-		  | Ast.AssignRemainder => assignWith Ast.Remainder
-		  | Ast.AssignLeftShift => assignWith Ast.LeftShift
-		  | Ast.AssignRightShift => assignWith Ast.RightShift
-		  | Ast.AssignRightShiftUnsigned => assignWith Ast.RightShiftUnsigned
-		  | Ast.AssignBitwiseAnd => assignWith Ast.BitwiseAnd
-		  | Ast.AssignBitwiseOr => assignWith Ast.BitwiseOr
-		  | Ast.AssignBitwiseXor => assignWith Ast.BitwiseXor
-		  | Ast.AssignLogicalAnd => assignWith Ast.LogicalAnd
-		  | Ast.AssignLogicalOr => assignWith Ast.LogicalOr
-		  | 
-*)
-
-			Ast.Plus => 
-		    (case (rval a, rval b) of 
-			 (Mach.Num na, Mach.Num nb) => Mach.Num (na + nb)
-		       | (_,_) => Mach.Str ((toString a) ^ (toString b)))
-		  | Ast.Minus => Mach.Num ((toNum a) - (toNum b))
-		  | Ast.Times => Mach.Num ((toNum a) * (toNum b))
-		  | Ast.Divide => Mach.Num ((toNum a) / (toNum b))
-		  | Ast.Remainder => Mach.Num (real (Int.rem ((trunc (toNum a)), (trunc (toNum b)))))
-
-		  | Ast.LeftShift => wordOp Word.<<
-		  | Ast.RightShift => wordOp Word.>>
-		  | Ast.RightShiftUnsigned => wordOp Word.~>>
-		  | Ast.BitwiseAnd => wordOp Word.andb
-		  | Ast.BitwiseOr => wordOp Word.orb
-		  | Ast.BitwiseXor => wordOp Word.xorb
-
-		  | Ast.Equals => Mach.Bool (Mach.equals a b)
-		  | Ast.NotEquals => Mach.Bool (not (Mach.equals a b))
-		  | Ast.StrictEquals => Mach.Bool (Mach.equals a b)
-		  | Ast.StrictNotEquals => Mach.Bool (not (Mach.equals a b))
-		  | Ast.Less => Mach.Bool (Mach.less a b)
-		  | Ast.LessOrEqual => Mach.Bool ((Mach.less a b) orelse (Mach.equals a b))
-		  | Ast.Greater => Mach.Bool (not ((Mach.less a b) orelse (Mach.equals a b)))
-		  | Ast.GreaterOrEqual => Mach.Bool (not (Mach.less a b))
-
-		  | _ => unimpl "unhandled binary operator type"
+		Mach.Num (real (Word.toInt (wop (wa, wb))))
 	    end
     in
 	case bop of 
-	    Ast.LogicalAnd => 
-	    let 
-		val a = evalExpr scope aexpr
-	    in
-		if Mach.toBoolean a
-		then evalExpr scope bexpr
-		else a
-	    end
-		
-	  | Ast.LogicalOr => 
-	    let 
-		val a = evalExpr scope aexpr
-	    in
-		if Mach.toBoolean a
-		then a
-		else evalExpr scope bexpr
-	    end
-
-	  | _ => evalBop bop (evalExpr scope aexpr) (evalExpr scope bexpr)
+	    Ast.Plus => 
+	    (case (rval a, rval b) of 
+		 (Mach.Num na, Mach.Num nb) => Mach.Num (na + nb)
+	       | (_,_) => Mach.Str ((toString a) ^ (toString b)))
+	  | Ast.Minus => Mach.Num ((toNum a) - (toNum b))
+	  | Ast.Times => Mach.Num ((toNum a) * (toNum b))
+	  | Ast.Divide => Mach.Num ((toNum a) / (toNum b))
+	  | Ast.Remainder => Mach.Num (real (Int.rem ((trunc (toNum a)), (trunc (toNum b)))))
+			     
+	  | Ast.LeftShift => wordOp Word.<<
+	  | Ast.RightShift => wordOp Word.>>
+	  | Ast.RightShiftUnsigned => wordOp Word.~>>
+	  | Ast.BitwiseAnd => wordOp Word.andb
+	  | Ast.BitwiseOr => wordOp Word.orb
+	  | Ast.BitwiseXor => wordOp Word.xorb
+			      
+	  | Ast.Equals => Mach.Bool (Mach.equals a b)
+	  | Ast.NotEquals => Mach.Bool (not (Mach.equals a b))
+	  | Ast.StrictEquals => Mach.Bool (Mach.equals a b)
+	  | Ast.StrictNotEquals => Mach.Bool (not (Mach.equals a b))
+	  | Ast.Less => Mach.Bool (Mach.less a b)
+	  | Ast.LessOrEqual => Mach.Bool ((Mach.less a b) orelse (Mach.equals a b))
+	  | Ast.Greater => Mach.Bool (not ((Mach.less a b) orelse (Mach.equals a b)))
+	  | Ast.GreaterOrEqual => Mach.Bool (not (Mach.less a b))
+				  
+	  | _ => unimpl "unhandled binary operator type"
     end
 
+and evalBinaryOp (scope:Mach.SCOPE) (bop:Ast.BINOP) (aexpr:Ast.EXPR) (bexpr:Ast.EXPR) =
+    case bop of 
+	Ast.LogicalAnd => 
+	let 
+	    val a = evalExpr scope aexpr
+	in
+	    if Mach.toBoolean a
+	    then evalExpr scope bexpr
+	    else a
+	end
+	
+      | Ast.LogicalOr => 
+	let 
+	    val a = evalExpr scope aexpr
+	in
+	    if Mach.toBoolean a
+	    then a
+	    else evalExpr scope bexpr
+	end
+	
+      | _ => performBinop bop (evalExpr scope aexpr) (evalExpr scope bexpr)
+	     
 
 and evalCondExpr (scope:Mach.SCOPE) (cond:Ast.EXPR) (consequent:Ast.EXPR) (alternative:Ast.EXPR) = 
     let 
@@ -342,11 +380,11 @@ and evalVarBinding (scope:Mach.SCOPE) (obj:Mach.OBJ option) (v:Mach.VAL option) 
 			 (* FIXME: Perform typecheck here and handle different binding kinds. *)
 			 val prop = { ty = t, 
 				      value = v', 
-				      dontDelete = true,
-				      dontEnum = true,
-				      readOnly = ro } 
+				      attrs = { dontDelete = true,
+						dontEnum = true,
+						readOnly = ro } }
 		     in
-			 setPropertyValue ob n prop
+			 setProp ob n prop
 		     end
 		   | _ => unimpl "unhandled identifier form in identifier binding pattern"
 		)
@@ -458,23 +496,23 @@ and evalFuncDefn (scope:Mach.SCOPE) (f:Ast.FUNC) =
 						bindArgs az bz)		    
 		val thisProp = { ty = Ast.SpecialType Ast.Any,
 				 value = Mach.Object thisObj,
-				 dontDelete = true,
-				 dontEnum = true,
-				 readOnly = true }
+				 attrs = { dontDelete = true,
+					   dontEnum = true,
+					   readOnly = true } }
 	    in
 		bindArgs args (#formals func);
-		setPropertyValue varObj {id="this", ns=Ast.Private} thisProp;
+		setProp varObj {id="this", ns=Ast.Private} thisProp;
 		evalBlock varScope (#body func)
 	    end
 	val funcProp = { ty = (getType (#ty func)),
 			 value = Mach.Function (Mach.Fun funcClosure),
-			 dontDelete = true,
-			 dontEnum = false,
-			 readOnly = false }
+			 attrs = { dontDelete = true,
+				   dontEnum = false,
+				   readOnly = false } }
 	val funcAttrs = getAttrs (#attrs func)
 	val funcName = {id=(#name func), ns=(#ns funcAttrs)}
     in
-	setPropertyValue (getScopeObj scope) funcName funcProp
+	setProp (getScopeObj scope) funcName funcProp
     end
 
 and evalBlock scope block = 
