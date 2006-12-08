@@ -4,7 +4,7 @@ intrinsic::print("hello world: ");
 while (x != 20) {
 	intrinsic::print(x);
 	intrinsic::print("\n");
-	x = x + 1;
+	x += 1;
 }
 
 x = 12;

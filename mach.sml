@@ -66,17 +66,15 @@ datatype VAL =
        | LayoutInterface
 
      and LAYOUT = 
-	 Layout of { ty: TYPE,
-		     name: STR,
-		     parent: LAYOUT option,		     
+	 Layout of { parent: LAYOUT option,		     
 		     tag: LAYOUT_TAG,
+		     items: ITEM list,
 		     isExtensible: bool }
 
-     and ROW = 
-	 Row of { ty: TYPE,
-		  dontDelete: bool,
-		  dontEnum: bool,
-		  readOnly: bool }
+     and ITEM = 
+	 Item of { name: NAME,
+		   ty: TYPE,   
+		   attrs: ATTRS }
 		
      and INTERFACE = 
 	 Interface of { ty: TYPE,
@@ -99,12 +97,14 @@ withtype NAME = { ns: NS,
 		
      and MULTINAME = { nss: NS list, 
 		       id: ID }
-     and PROP = 
-	 { ty: TYPE,
-	   value: VAL,	   
-	   dontDelete: bool,
-	   dontEnum: bool,
-	   readOnly: bool }
+
+     and ATTRS = { dontDelete: bool,
+		   dontEnum: bool,
+		   readOnly: bool }
+
+     and PROP = { ty: TYPE,
+		  value: VAL,	   
+		  attrs: ATTRS }
 	 
      and BINDINGS = ((NAME * PROP) list) ref
 
@@ -207,11 +207,10 @@ val (emptyClass:Ast.CLASS_DEFN) =
       methods = [],
       initializer = [] }
     
-val (emptyLayout:LAYOUT) = 
-    Layout { ty = objectType,
-	     name = "",
-	     parent = NONE,
+val (emptyClassLayout:LAYOUT) = 
+    Layout { parent = NONE,
 	     tag = LayoutClass,
+	     items = [],	     
 	     isExtensible = true }
     
 val (globalObject:OBJ) = 
@@ -233,7 +232,7 @@ val (globalClass:CLASS) =
 	    definition = emptyClass,
 	    constructor = noOpFunction,
 	    instanceTy = objectType,
-	    instanceLayout = emptyLayout,
+	    instanceLayout = emptyClassLayout,
 	    instancePrototype = globalObject,
 	    initialized = ref true }
 
@@ -326,9 +325,9 @@ and populateIntrinsics obj =
 		    val name = {id = n, ns = Ast.Intrinsic }
 		    val prop = { ty = Ast.SpecialType Ast.Any,
 				 value = Function (Fun f),	   
-				 dontDelete = true,
-				 dontEnum = false,
-				 readOnly = true }
+				 attrs = { dontDelete = true,
+					   dontEnum = false,
+					   readOnly = true } }
 		in
 		    addBinding bindings name prop
 		end

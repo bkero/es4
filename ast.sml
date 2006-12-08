@@ -60,7 +60,7 @@ datatype BINOP =
        | DefVar
 
 datatype ASSIGNOP =
-		 Assign
+	 Assign
        | AssignPlus
        | AssignMinus
        | AssignTimes
@@ -126,18 +126,18 @@ datatype PRAGMA =
        | UseNumber of NUMBER_TYPE
        | UseRounding of ROUNDING_MODE
        | UsePrecision of LITERAL
-	   | UseStrict
-	   | UseStandard
+       | UseStrict
+       | UseStandard
        | Import of { package: IDENT,
                      name: IDENT,
                      alias: IDENT option }
 
      and FUNC = 
-		 Func of { name: IDENT,
-		           attrs: ATTRIBUTES,
-        		   formals: VAR_BINDING list,
-		           ty: TYPE_EXPR option,
-        		   body: BLOCK }
+	 Func of { name: IDENT,
+		   attrs: ATTRIBUTES,
+        	   formals: VAR_BINDING list,
+		   ty: TYPE_EXPR option,
+        	   body: BLOCK }
 	 
      and DEFN =
          ClassDefn of CLASS_DEFN
