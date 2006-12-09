@@ -576,7 +576,7 @@ and evalReturnStmt scope e
   = raise (ReturnException (evalListExpr scope e))
 	  
 and evalThrowStmt scope e
-  = raise (ThrowException (evalExpr scope e))
+  = raise (ThrowException (evalListExpr scope e))
 	  
 and evalBreakStmt scope lbl
   = raise (BreakException lbl)

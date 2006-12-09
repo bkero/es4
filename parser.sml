@@ -1,4 +1,3 @@
-
 structure Parser = struct
 
 open Token
@@ -27,7 +26,7 @@ fun log ss =
      List.app TextIO.print ss; 
      TextIO.print "\n")
 
-val trace_on = false
+val trace_on = true
 
 fun trace ss =
 	if trace_on then log ss else ()
@@ -578,13 +577,18 @@ and parameterInit (ts) : (token list * Ast.VAR_BINDING) =
     let val _ = trace([">> parameterInit with next=",tokenname(hd(ts))]) 
 		val (ts1,nd1) = parameter ts
 	in case ts1 of
-		Assign :: ts2 => 
+		Assign :: _ => 
 			let
-				val (ts3,nd3) = nonAssignmentExpression (ts2,NOLIST,ALLOWIN)
+				val _ = trace(["xx parameterInit with next=",tokenname(hd(ts))])
+				val {pattern,ty,kind,attrs,...} = nd1
+				val (ts2,nd2) = nonAssignmentExpression (tl ts1,NOLIST,ALLOWIN)
 			in 
-				raise ParseError (* fixme: (ts3,{name=name,ty=ty,tag=tag,init=SOME nd3,isRest=false})*)
+				trace(["<< parameterInit with next=",tokenname(hd(ts))]);
+				(ts2,Ast.Binding {pattern=pattern,ty=ty,kind=kind,init=SOME nd2,attrs=attrs})
 			end
-	  | _ => (ts1,Ast.Binding nd1)
+	  | _ => 
+			(trace(["<< parameterInit with next=",tokenname(hd(ts))]);
+			(ts1,Ast.Binding nd1))
 	end
 
 (*
@@ -602,6 +606,7 @@ and parameter (ts) =
 		val (ts1,nd1) = parameterKind (ts)
 		val (ts2,{p,t}) = typedPattern (ts1,NOLIST,ALLOWIN,NOEXPR)
 	in
+		trace(["<< parameter with next=",tokenname(hd(ts2))]);
 		(ts2,{pattern=p,ty=t,kind=nd1,attrs=defaultAttrs,init=NONE})
 	end
 
@@ -722,12 +727,16 @@ and fieldList ts =
 
 (*
     LiteralField    
-        FieldName  :  AssignmentExpression(NOLIST, ALLOWIN)
+        FieldKind  FieldName  :  AssignmentExpression(NOLIST, ALLOWIN)
 		get  Identifier  FunctionCommon
 		set  Identifier  FunctionCommon
 
+	FieldKind	
+		«empty»
+		const
+
     FieldName    
-        NonAttributeQualifiedIdentifier
+        PropertyIdentifier
         StringLiteral
         NumberLiteral
         ReservedIdentifier
@@ -736,32 +745,54 @@ and fieldList ts =
 and literalField (ts) =
     let val _ = trace([">> literalField with next=",tokenname(hd(ts))]) 
 	in case ts of
-		Get :: _ =>
+		(Get | Set) :: Colon :: _ =>  (* special case for fields with name 'get' or 'set' *)
+			let
+				val (ts1,nd1) = fieldKind ts
+				val (ts2,nd2) = fieldName ts1
+			in case ts2 of
+				Colon :: _ =>
+					let
+						val (ts3,nd3) = assignmentExpression (tl ts2,NOLIST,ALLOWIN)
+					in
+						(ts3,{kind=nd1,name=nd2,init=nd3})
+					end
+			  | _ => raise ParseError
+			end
+	  | Get :: _ =>
 			let
 				val (ts1,nd1) = fieldName (tl ts)
 				val (ts2,nd2) = functionCommon (ts1)
 			in
-				(ts2,{name=nd1,init=nd2})
+				(ts2,{kind=Ast.Var,name=nd1,init=nd2})
 			end
 	  | Set :: _ =>
 			let
 				val (ts1,nd1) = fieldName (tl ts)
 				val (ts2,nd2) = functionCommon (ts1)
 			in
-				(ts2,{name=nd1,init=nd2})
+				(ts2,{kind=Ast.Var,name=nd1,init=nd2})
 			end
 	  | _ => 
 			let
-				val (ts1,nd1) = fieldName ts
-			in case ts1 of
+				val (ts1,nd1) = fieldKind ts
+				val (ts2,nd2) = fieldName ts1
+			in case ts2 of
 				Colon :: _ =>
 					let
-						val (ts2,nd2) = assignmentExpression (tl ts1,NOLIST,ALLOWIN)
+						val (ts3,nd3) = assignmentExpression (tl ts2,NOLIST,ALLOWIN)
 					in
-						(ts2,{name=nd1,init=nd2})
+						(ts3,{kind=nd1,name=nd2,init=nd3})
 					end
 			  | _ => raise ParseError
 			end
+	end
+
+and fieldKind (ts) : (token list * Ast.VAR_DEFN_TAG)  = 
+    let val _ = trace([">> fieldKind with next=",tokenname(hd(ts))]) 
+	in case ts of
+		(Const | Get | Set ) :: Colon :: _ => (ts,Ast.Var)
+	  | Const :: _ => (tl ts,Ast.Const)
+	  | _ => (ts,Ast.Var)
 	end
 
 and fieldName (ts) : token list * Ast.IDENT_EXPR =
@@ -771,9 +802,9 @@ and fieldName (ts) : token list * Ast.IDENT_EXPR =
 	  | NumberLiteral n :: ts1 => (ts1,Ast.ExpressionIdentifier(Ast.LiteralExpr(Ast.LiteralNumber(n))))
 	  | _ => 
 			let
-				val (ts1,nd1) = nonAttributeQualifiedIdentifier (ts)
+				val (ts1,nd1) = reservedOrPropertyIdentifier (ts) 
 			in
-				(ts1,nd1)
+				(ts1,Ast.QualifiedIdentifier {ident=nd1,qual=Ast.LiteralExpr (Ast.LiteralNamespace (Ast.Public ""))})
 			end
 	end
 
@@ -1862,8 +1893,59 @@ and conditionalExpression (ts,ALLOWLIST,b) =
 							   :  NonAssignmentExpression(noLet, b)
 *)
 
-and nonAssignmentExpression (ts,ALLOWLIST,b) = raise ParseError
-  | nonAssignmentExpression (ts,NOLIST,b) = raise ParseError
+and nonAssignmentExpression (ts,ALLOWLIST,b) =
+    let val _ = trace([">> nonAssignmentExpression ALLOWLIST with next=",tokenname(hd(ts))])
+    in case ts of
+        Let :: _ => letExpression(ts,b)
+	  | Yield :: _ => yieldExpression(ts,b)
+      | _ => 
+			let
+				val (ts2,nd2) = logicalOrExpression(ts,ALLOWLIST,b)
+			in case ts2 of
+				QuestionMark :: ts3 => 
+					let
+						val (ts4,nd4) = nonAssignmentExpression(ts3,ALLOWLIST,b)
+					in case ts4 of
+						Colon :: ts5 =>
+							let
+								val (ts6,nd6) = nonAssignmentExpression(ts5,ALLOWLIST,b)
+							in
+								(ts6,nd6)
+							end
+					  | _ => raise ParseError							
+					end
+			  | _ => 
+					(trace(["<< nonAssignmentExpression ALLOWLIST with next=",tokenname(hd(ts2))]);
+					(ts2,nd2))
+			end
+		end
+ 
+  | nonAssignmentExpression (ts,NOLIST,b) =
+    let val _ = trace([">> nonAssignmentExpression NOLIST with next=",tokenname(hd(ts))])
+    in case ts of
+	    Yield :: _ => simpleYieldExpression ts
+      | _ => 
+			let
+				val (ts2,nd2) = logicalOrExpression(ts,NOLIST,b)
+			in case ts2 of
+				QuestionMark :: ts3 => 
+					let
+						val (ts4,nd4) = nonAssignmentExpression(ts3,NOLIST,b)
+					in case ts4 of
+						Colon :: ts5 =>
+							let
+								val (ts6,nd6) = nonAssignmentExpression(ts5,NOLIST,b)
+							in
+								(ts6,nd6)
+							end
+					  | _ => raise ParseError							
+					end
+			  | _ => 
+					(trace(["<< nonAssignmentExpression NOLIST with next=",tokenname(hd(ts2))]);
+					(ts2,nd2))
+			end
+		end
+
 
 (*
 	LetExpression(b)    
@@ -2259,7 +2341,7 @@ and destructuringField (ts,g) =
 
 and destructuringFieldFromExpr e =
 	let val _ = trace([">> destructuringFieldFromExpr"])
-		val {name,init} = e
+		val {kind,name,init} = e
 		val p = patternFromExpr init
 	in
 		trace(["<< destructuringFieldFromExpr"]);
@@ -2793,6 +2875,42 @@ and statement (ts,w) : (token list * Ast.STMT) =
 			in
 				(ts1,nd1)
 			end
+	  | Identifier _ :: Colon :: _ =>
+			let
+				val (ts1,nd1) = labeledStatement (ts,w)
+			in
+				(ts1,nd1)
+			end
+	  | Continue :: _ =>
+			let
+				val (ts1,nd1) = continueStatement (ts)
+			in
+				(ts1,nd1)
+			end
+	  | Break :: _ =>
+			let
+				val (ts1,nd1) = breakStatement (ts)
+			in
+				(ts1,nd1)
+			end
+	  | Throw :: _ =>
+			let
+				val (ts1,nd1) = throwStatement (ts)
+			in
+				(ts1,nd1)
+			end
+	  | Try :: _ =>
+			let
+				val (ts1,nd1) = tryStatement (ts)
+			in
+				(ts1,nd1)
+			end
+	  | Defaault :: Xml :: Namespace :: Assign :: _ =>
+			let
+				val (ts1,nd1) = defaultXmlNamespaceStatement (ts)
+			in
+				(ts1,nd1)
+			end
 	  | _ =>
 			let
 				val (ts1,nd1) = expressionStatement (ts)
@@ -2836,10 +2954,8 @@ Semicolonfull
 *)
 
 (*
-    
-EmptyStatement     
-    ;
-
+	EmptyStatement     
+    	;
 *)
 
 and emptyStatement ts =
@@ -2863,6 +2979,24 @@ and blockStatement ts =
 			in
 				trace(["<< blockStatement with next=", tokenname(hd ts)]);
 				(ts1,Ast.BlockStmt nd1)
+			end
+	  | _ => raise ParseError
+    end
+
+(*
+	LabeledStatement(w)
+		Identifier  :  Substatement(w)
+
+*)
+
+and labeledStatement (ts,w) =
+    let
+    in case ts of
+		Identifier id :: Colon :: _  =>
+			let
+				val (ts1,nd1) = substatement (tl (tl ts),w)
+			in
+				(ts1,Ast.LabeledStmt (id,nd1))
 			end
 	  | _ => raise ParseError
     end
@@ -3551,22 +3685,51 @@ and withStatement (ts,w) : (token list * Ast.STMT) =
 	end
 
 (*
-    
-LetStatementw    
-    let  (  LetBindingList  )  Substatementw
-    
-WithStatementw    
-    with  (  ListExpressionallowIn  )  Substatementw
-    with  (  ListExpressionallowIn  :  TypeExpression  )  Substatementw
-    
-ContinueStatement    
-    continue
-    continue [no line break] Identifier
-    
-BreakStatement    
-    break
-    break [no line break] Identifier
+	ContinueStatement	
+		continue
+		continue [no line break] Identifier
 *)
+
+and continueStatement ts: (token list * Ast.STMT) =
+	let
+	in case ts of
+		Continue :: (SemiColon | RightBrace) :: _ => 
+			(tl ts,Ast.ContinueStmt NONE)
+	  | Continue :: _ =>
+			if newline(tl ts) then 
+				(tl ts,Ast.ContinueStmt NONE)
+			else
+				let
+					val (ts1,nd1) = identifier (tl ts)
+				in
+					(ts1,Ast.ContinueStmt (SOME nd1))
+				end
+	  | _ => raise ParseError
+	end
+
+(*
+	BreakStatement	
+		break
+		break [no line break] Identifier
+*)
+
+and breakStatement ts: (token list * Ast.STMT) =
+    let val _ = trace([">> breakStatement with next=", tokenname(hd ts)])
+	in case ts of
+		Break :: (SemiColon | RightBrace) :: _ => 
+			(tl ts,Ast.BreakStmt NONE)
+	  | Break :: _ =>
+			if newline(tl ts) then 
+				(tl ts,Ast.BreakStmt NONE)
+			else
+				let
+					val (ts1,nd1) = identifier (tl ts)
+				in
+					trace(["<< breakStatement with next=", tokenname(hd ts)]);
+					(ts1,Ast.BreakStmt (SOME nd1))
+				end
+	  | _ => raise ParseError
+	end
 
 (*
 	ReturnStatement	
@@ -3591,29 +3754,121 @@ and returnStatement ts =
 	  | _ => raise ParseError
 	end
 
-(*    
-ThrowStatement     
-    throw  ListExpressionallowIn
-    
-TryStatement    
-    try Block CatchClauses
-    try Block CatchClausesOpt finally Block
-    
-CatchClausesOpt    
-    «empty»
-    CatchClauses
-    
-CatchClauses    
-    CatchClause
-    CatchClauses CatchClause
-    
-CatchClause    
-    catch  (  Parameter  )  Block
-    
-DefaultXMLNamespaceStatement    
-    default  xml  namespace = NonAssignmentExpressionallowLet, allowIn
-
+(*
+	ThrowStatement 	
+		throw  ListExpression(allowIn)
 *)
+
+and throwStatement ts =
+	let
+	in case ts of
+	    Throw :: _ =>
+			let
+				val (ts1,nd1) = listExpression(tl ts, ALLOWIN)
+			in
+				(ts1,Ast.ThrowStmt nd1)
+			end
+	  | _ => raise ParseError
+	end
+
+(*
+	TryStatement	
+		try Block CatchClauses
+		try Block CatchClauses finally Block
+		try Block finally Block
+		
+	CatchClauses	
+		CatchClause
+		CatchClauses CatchClause
+		
+	CatchClause	
+		catch  (  Parameter  )  Block
+*)
+
+and tryStatement (ts) : (token list * Ast.STMT) =
+    let val _ = trace([">> tryStatement with next=", tokenname(hd ts)])
+    in case ts of
+		Try :: _ =>
+			let
+				val (ts1,nd1) = block(tl ts)
+			in case ts1 of
+				Finally :: _ =>
+					let
+						val (ts2,nd2) = block (tl ts1)
+					in
+						(ts2,Ast.TryStmt {body=nd1,catches=[],finally=SOME nd2})
+					end
+			  | _ => 
+					let
+						val (ts2,nd2) = catchClauses ts1
+					in case ts2 of
+						Finally :: _ =>
+							let
+								val (ts3,nd3) = block (tl ts2)
+							in
+								(ts3,Ast.TryStmt {body=nd1,catches=nd2,finally=SOME nd3})
+							end
+					  | _ =>
+							let
+							in
+								(ts2,Ast.TryStmt {body=nd1,catches=nd2,finally=NONE})
+							end
+					end
+			end
+	  | _ => raise ParseError
+	end
+
+and catchClauses (ts) =
+    let val _ = trace([">> catchClauses with next=", tokenname(hd ts)])
+		val (ts1,nd1) = catchClause ts
+    in case ts1 of
+		Catch :: _ =>
+			let
+				val (ts2,nd2) = catchClauses ts1
+			in
+				(ts2,nd1::nd2)
+			end
+	  | _ =>
+			let
+			in
+				(ts1,nd1::[])
+			end
+	end
+
+and catchClause (ts) =
+    let val _ = trace([">> catchClause with next=", tokenname(hd ts)])
+    in case ts of
+		Catch :: LeftParen :: _ =>
+			let
+				val (ts1,nd1) = parameter (tl (tl ts))
+			in case ts1 of
+				RightParen :: _ =>
+					let
+						val (ts2,nd2) = block (tl ts1)
+					in
+						(ts2,{bind=Ast.Binding nd1,body=nd2})
+					end
+			  | _ => raise ParseError
+			end
+	  | _ => raise ParseError
+	end
+
+(*
+	DefaultXMLNamespaceStatement    
+    	default  xml  namespace = NonAssignmentExpression(allowList, allowIn)
+*)
+
+and defaultXmlNamespaceStatement (ts) =
+    let val _ = trace([">> defaultXmlNamespaceStatement with next=", tokenname(hd ts)])
+    in case ts of
+		Default :: Xml :: Namespace :: Assign :: _ =>
+			let
+				val (ts1,nd1) = nonAssignmentExpression ((tl (tl (tl (tl ts)))),ALLOWLIST,ALLOWIN)
+			in
+				(ts1,Ast.Dxns {expr=nd1})
+			end
+	  | _ => raise ParseError
+	end
     
 (* DIRECTIVES *)
 

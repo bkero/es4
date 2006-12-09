@@ -294,7 +294,7 @@ and tcStmt ((ctxt as {this,env,lbls,retTy}):CONTEXT) (stmt:STMT) =
 	tcStmt (withLbls (ctxt, ((SOME lab)::lbls))) s
  
   | ThrowStmt t => 
-	checkConvertible (tcExpr ctxt t) exceptionType
+	checkConvertible (tcExprList ctxt t) exceptionType
 
   | LetStmt (defns, body) =>
     (

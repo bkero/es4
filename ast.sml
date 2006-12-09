@@ -186,7 +186,7 @@ datatype PRAGMA =
        | ExprStmt of EXPR list
        | ForEachStmt of FOR_ENUM_STMT
        | ForInStmt of FOR_ENUM_STMT
-       | ThrowStmt of EXPR
+       | ThrowStmt of EXPR list
        | ReturnStmt of EXPR list
        | BreakStmt of IDENT option
        | ContinueStmt of IDENT option
@@ -213,14 +213,15 @@ datatype PRAGMA =
                        body: STMT }
 
        | TryStmt of { body: BLOCK,
-                      catches: (VAR_BINDING * BLOCK) list,
-                      finally: BLOCK }
+                      catches: {bind:VAR_BINDING, body:BLOCK} list,
+                      finally: BLOCK option}
 
        | SwitchStmt of { cond: EXPR list,
                          cases: CASE list }
 
        | SwitchTypeStmt of { cond: EXPR list, ty: TYPE_EXPR,
                          cases: TYPE_CASE list }
+	   | Dxns of { expr: EXPR }
 
      and EXPR =
          TrinaryExpr of (TRIOP * EXPR * EXPR * EXPR)
@@ -298,7 +299,8 @@ datatype PRAGMA =
 withtype
 
 		 FIELD =
-		 { name: IDENT_EXPR,
+		 { kind: VAR_DEFN_TAG,
+		   name: IDENT_EXPR,
            init: EXPR }
 	 
      and FIELD_TYPE =
