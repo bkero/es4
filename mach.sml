@@ -177,14 +177,14 @@ fun hasBinding (b:BINDINGS) (n:NAME) =
 val (objectType:TYPE) = Ast.RecordType []
 
 val (defaultAttrs:Ast.ATTRIBUTES) = 
-    Ast.Attributes { ns = Ast.Public "",
+    Ast.Attributes { ns = Ast.LiteralExpr (Ast.LiteralNamespace (Ast.Public "")),
 		     override = false,
 		     static = false,
 		     final = false,
 		     dynamic = true,
 		     prototype = false,
-			 rest = false,
-		     nullable = false }
+		     native = false,
+			 rest = false }
 
 val (noOpFunction:Ast.FUNC) = 
     Ast.Func { name = "",

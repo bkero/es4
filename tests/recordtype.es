@@ -1,1 +1,1 @@
-type {i:int,s:String!}
+(type {i:int,s:String!})

@@ -26,7 +26,7 @@ fun log ss =
      List.app TextIO.print ss; 
      TextIO.print "\n")
 
-val trace_on = true
+val trace_on = false
 
 fun trace ss =
 	if trace_on then log ss else ()
@@ -38,25 +38,25 @@ fun newline ts = Lexer.UserDeclarations.followsLineBreak ts
 
 val defaultAttrs = 
 	Ast.Attributes { 
-		ns = Ast.Internal "",
+		ns = Ast.LiteralExpr (Ast.LiteralNamespace (Ast.Internal "")),
         override = false,
    		static = false,
         final = false,
    		dynamic = false,
         prototype = false,
-		rest = false,
-   		nullable = false }
+        native = false,
+		rest = false }
 
 val defaultRestAttrs = 
 	Ast.Attributes { 
-		ns = Ast.Internal "",
+		ns = Ast.LiteralExpr (Ast.LiteralNamespace (Ast.Internal "")),
         override = false,
    		static = false,
         final = false,
    		dynamic = false,
         prototype = false,
-		rest = false,
-   		nullable = false }
+        native = false,
+		rest = true }
 
 (*
 
@@ -130,7 +130,7 @@ and qualifier ts =
           let
               val (ts1,nd1) = reservedNamespace (ts)
           in
-              (ts1,Ast.LiteralExpr(nd1))
+              (ts1,Ast.LiteralExpr(Ast.LiteralNamespace nd1))
           end
       | _ => 
           let
@@ -144,15 +144,15 @@ and reservedNamespace ts =
     let val _ = trace([">> reservedNamespace with next=",tokenname(hd(ts))])
     in case ts of
         Internal :: tr => 
-			(tr, Ast.LiteralNamespace(Ast.Internal("put package name here")))
+			(tr, Ast.Internal("put package name here"))
       | Intrinsic :: tr => 
-			(tr, Ast.LiteralNamespace(Ast.Intrinsic))
+			(tr, Ast.Intrinsic)
       | Private :: tr => 
-			(tr, Ast.LiteralNamespace(Ast.Private))
+			(tr, Ast.Private)
       | Protected :: tr => 
-			(tr, Ast.LiteralNamespace(Ast.Protected))
+			(tr, Ast.Protected)
       | Public :: tr => 
-			(tr, Ast.LiteralNamespace(Ast.Public("")))
+			(tr, Ast.Public(""))
       | _ => raise ParseError
     end
 
@@ -191,7 +191,7 @@ and simpleQualifiedIdentifier ts =
           let 
               val (ts1, nd1) = reservedNamespace(ts)
           in case ts1 of
-              DoubleColon :: ts2 => qualifiedIdentifier'(ts2,Ast.LiteralExpr(nd1))
+              DoubleColon :: ts2 => qualifiedIdentifier'(ts2,Ast.LiteralExpr(Ast.LiteralNamespace nd1))
             | _ => raise ParseError
           end
       | _ => 
@@ -3873,15 +3873,14 @@ and defaultXmlNamespaceStatement (ts) =
 (* DIRECTIVES *)
 
 (*
-	Directive(omega)    
-    	EmptyStatement
-	    Statement(omega)
-    	AnnotatableDirective(omega)
-	    Attributes [no line break] AnnotatableDirective(omega)
-    	IncludeDirective Semicolon(omega)    
+	Directive(w)
+		EmptyStatement
+		Statement(w)
+		AnnotatableDirective(w)
+		Attributes  [no line break]  AnnotatableDirective(w)
 *)
 
-and directive (ts,omega) : (token list * Ast.DIRECTIVES) =
+and directive (ts,w) : (token list * Ast.DIRECTIVES) =
     let val _ = trace([">> directive with next=", tokenname(hd ts)])
 	in case ts of
 		SemiColon :: _ => 
@@ -3892,23 +3891,196 @@ and directive (ts,omega) : (token list * Ast.DIRECTIVES) =
 			end
 	  | Let :: LeftParen :: _  => (* dispatch let statement before let var *)
 			let
-				val (ts1,nd1) = statement (ts,omega)
+				val (ts1,nd1) = statement (ts,w)
 			in
 				(ts1,{pragmas=[],defns=[],stmts=[nd1]})
 			end
-	  | (Let | Const | Var | Function ) :: _ => 
+	  | (Let | Const | Var | Function | Class | Interface | Namespace | Type) :: _ => 
 			let
-				val (ts1,nd1) = annotatableDirective (ts,defaultAttrs,omega)
+				val (ts1,nd1) = annotatableDirective (ts,defaultAttrs,w)
 			in
 				(ts1,nd1)
 			end
+	  | (Dynamic | Final | Native | Override | Prototype | Static ) :: _ =>
+			let
+				val (ts1,nd1) = attributes (ts,defaultAttrs)
+				val (ts2,nd2) = annotatableDirective (ts1,nd1,w)
+			in
+				(ts2,nd2)
+			end
+	  | (Identifier _ | Private | Public | Protected | Internal | Intrinsic  ) :: 
+		(Dynamic | Final | Native | Override | Prototype | Static | 
+		 Var | Let | Const | Function | Class | Interface | Namespace | Type) :: _ =>
+			let
+				val (ts1,nd1) = attributes (ts,defaultAttrs)
+				val (ts2,nd2) = annotatableDirective (ts1,nd1,w)
+			in
+				(ts2,nd2)
+			end
 	  | _ => 
 			let
-				val (ts1,nd1) = statement (ts,omega)
+				val (ts1,nd1) = statement (ts,w)
 			in
 				(ts1,{pragmas=[],defns=[],stmts=[nd1]})
 			end
 	end
+
+(*
+	Attributes	
+		Attribute
+		Attribute  [no line break]  Attributes
+		
+	Attribute	
+		NamespaceAttribute
+		dynamic
+		final
+		native
+		override
+		prototype
+		static
+		[  AssignmentExpressionallowList, allowIn  ]
+
+	NamespaceAttribute	
+		ReservedNamespace
+		PackageIdentifier  .  Identifier
+		Identifier
+*)
+
+and attributes (ts,attrs) =
+    let val _ = trace([">> attributes with next=", tokenname(hd ts)])
+	in case ts of
+		(Dynamic | Final | Native | Override | Prototype | Static | 
+		 Private | Protected | Public | Internal | Intrinsic | Identifier _) :: _ =>
+			let
+				val (ts1,nd1) = attribute (ts,attrs)
+				val (ts2,nd2) = attributes (ts1,nd1)
+			in
+				trace(["<< attributes with next=", tokenname(hd ts)]);
+				(ts2,nd2)
+			end
+	  | _ =>
+			let
+			in
+				trace(["<< attributes with next=", tokenname(hd ts)]);
+				(ts,attrs)
+			end
+	end
+
+and attribute (ts,Ast.Attributes {ns,override,static,final,dynamic,
+							        prototype,native,rest }) =
+    let val _ = trace([">> attribute with next=", tokenname(hd ts)])
+	in case ts of
+		Dynamic :: _ =>
+			let
+			in
+				(tl ts,Ast.Attributes { 
+						ns = ns,
+				        override = override,
+				   		static = static,
+				        final = final,
+				   		dynamic = true,
+				        prototype = prototype,
+						native = native,
+						rest = rest})
+			end
+	  | Final :: _ =>
+			let
+			in
+				(tl ts,Ast.Attributes { 
+						ns = ns,
+				        override = override,
+				   		static = static,
+				        final = true,
+				   		dynamic = dynamic,
+				        prototype = prototype,
+						native = native,
+						rest = rest})
+			end
+	  | Native :: _ =>
+			let
+			in
+				(tl ts,Ast.Attributes { 
+						ns = ns,
+				        override = override,
+				   		static = static,
+				        final = final,
+				   		dynamic = dynamic,
+				        prototype = prototype,
+						native = true,
+						rest = rest})
+			end
+	  | Override :: _ =>
+			let
+			in
+				(tl ts,Ast.Attributes { 
+						ns = ns,
+				        override = true,
+				   		static = static,
+				        final = final,
+				   		dynamic = dynamic,
+				        prototype = prototype,
+						native = native,
+						rest = rest})
+			end
+	  | Prototype :: _ =>
+			let
+			in
+				(tl ts,Ast.Attributes { 
+						ns = ns,
+				        override = override,
+				   		static = static,
+				        final = final,
+				   		dynamic = dynamic,
+				        prototype = true,
+						native = native,
+						rest = rest})
+			end
+	  | Static :: _ =>
+			let
+			in
+				(tl ts,Ast.Attributes { 
+						ns = ns,
+				        override = override,
+				   		static = true,
+				        final = final,
+				   		dynamic = dynamic,
+				        prototype = prototype,
+						native = native,
+						rest = rest})
+			end
+	  | _ => 
+			let
+				val (ts1,nd1) = namespaceAttribute ts
+			in
+				(tl ts,Ast.Attributes { 
+						ns = nd1,
+				        override = override,
+				   		static = static,
+				        final = final,
+				   		dynamic = dynamic,
+				        prototype = prototype,
+						native = native,
+						rest = rest})				
+			end
+	end
+
+and namespaceAttribute ts =
+    let val _ = trace([">> namespaceAttribute with next=", tokenname(hd ts)])
+	in case ts of
+        (Internal :: _ | Intrinsic :: _ | Private :: _ | Protected :: _ | Public :: _) => 
+			let
+				val (ts1,nd1) = reservedNamespace ts
+			in
+				(ts1,Ast.LiteralExpr (Ast.LiteralNamespace nd1))
+			end
+	  | Identifier s :: _ =>
+			let
+			in
+				(tl ts,Ast.LexicalRef {ident=Ast.Identifier{ident=s,openNamespaces=ref []}})
+			end
+	  | _ => raise ParseError
+	end
+		
 
 (*
 	AnnotatableDirective(omega)

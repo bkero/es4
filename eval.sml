@@ -16,9 +16,7 @@ fun semant s =
     (List.app TextIO.print ["*semantic error: ", s, "\n"];
      raise SemanticException s)
     		   
-fun newName (i:Ast.IDENT) (attrs:Ast.ATTRIBUTES) =
-    case attrs of 
-	Ast.Attributes {ns=n, ...} => {ns=n, id=i}
+fun newName (i:Ast.IDENT) (n:Mach.NS) = {ns=n, id=i}
 
 (* Fundamental object methods *)
 
@@ -366,7 +364,8 @@ and evalVarBinding (scope:Mach.SCOPE) (obj:Mach.OBJ option) (v:Mach.VAL option) 
 		(case id of 
 		     Ast.Identifier {ident, ...} => 
 		     let 
-			 val n = newName ident attrs
+			 val Ast.Attributes {ns,...} = attrs
+			 val n = newName ident (needNamespace (evalExpr scope ns))
 			 val ro = case kind of 
 				      Ast.Const => true
 				    | Ast.LetConst => true
@@ -510,7 +509,7 @@ and evalFuncDefn (scope:Mach.SCOPE) (f:Ast.FUNC) =
 				   dontEnum = false,
 				   readOnly = false } }
 	val funcAttrs = getAttrs (#attrs func)
-	val funcName = {id=(#name func), ns=(#ns funcAttrs)}
+	val funcName = {id=(#name func), ns=(needNamespace (evalExpr scope (#ns funcAttrs)))}
     in
 	setProp (getScopeObj scope) funcName funcProp
     end

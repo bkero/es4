@@ -155,14 +155,14 @@ datatype PRAGMA =
 			      
      (* Improve this? Probably more mutual exclusion possible. *)
      and ATTRIBUTES =
-         Attributes of { ns: NAMESPACE,
+         Attributes of { ns: EXPR,
                          override: bool,
                          static: bool,
                          final: bool,
                          dynamic: bool,
                          prototype: bool,
-                         rest: bool,
-                         nullable: bool }
+                         native: bool,
+                         rest: bool }
 
      and VAR_BINDING =
          Binding of { kind: VAR_DEFN_TAG,
