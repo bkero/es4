@@ -1,3 +1,12 @@
+/* -*- mode: java; mode: font-lock; tab-width: 4 -*- 
+ *
+ * ECMAScript 4 builtins - the "Array" object
+ * ES-262-3 15.X
+ * ES-262-4 draft
+ *
+ * Status: not reviewed against specs.
+ */
+
 package
 {
 	dynamic class Array extends Object
@@ -12,6 +21,19 @@ package
 		// 15.4.2 The Array Constructor 
 		// 15.4.2.1 new Array( [ item0 [ , item1 [ , ... ] ] ] ) 
 		// 15.4.2.2 new Array(len) 
+		//
+		// Here we rely on magic or optimization, since the Array
+		// constructor takes a variable number of arguments, which
+		// itself requires an array to be constructed.
+		//
+		// Optimization gets around this by avoiding allocation of the
+		// array if all references to args is in the form of
+		// args.length and args[n].
+		//
+		// Magic would solve this by creating an array without
+		// invoking the array constructor, ie, essentially making this
+		// code pointless.
+
 		function Array(...args)
 		{
 			var argslen:uint = uint(args.length);

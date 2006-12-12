@@ -1,138 +1,121 @@
+/* -*- mode: java; mode: font-lock; tab-width: 4 -*- 
+ *
+ * ECMAScript 4 builtins - the "Object" object
+ * ES-262-3 15.2
+ * ES-262-4 draft
+ *
+ * Status: not reviewed against specs.
+ */
+
 package
 {
 	dynamic class Object 
 	{		
-		// 15.2.1.1 Object ( [ value ] )
-		// the Object constructor called as a function
+		/* ES-262-3 15.2.1.1: The Object constructor called as a function */
 		static intrinsic function call(value)
 		{
-			return @todo;
+			return intrinsic::ToObject(value);
 		}
 
-		// 15.2.2.1 new Object ( [ value ] )
-		function Object(value)
+		/* ES-262-3 15.2.2.1: The Object constructor */
+		static intrinsic function construct(value) : Object!
 		{
-			@todo;
-			// conceptually:
-			// this.[[Prototype]] = myClass.prototype;
-			// this.[[Class]] = myClass.prototype.[[Class]];
-		}
-		
-		// 15.2.3.1 Object.prototype
-		static const prototype = { };
-		
-		// 15.2.4 Properties of the Object Prototype Object
-   		prototype.[[Prototype]] = null;
-   		prototype.[[Class]] = "Object";
-		
-		// 15.2.4.1 Object.prototype.constructor
-   		prototype.constructor = Object;
+			if (value !== void 0 && value !== null)
+				return value;
 
-		// 15.2.4.2 Object.prototype.toString ( )
-		private static function _toString(o):String
-		{
-			return "[object " + o.[[Class]] + "]";
-		}
-		prototype.toString = function()
-		{
-			return _toString(this);
-		}
-		ECMA4 function toString():String
-		{
-			return _toString(this);
+			const o : Object! = super.intrinsic::construct(Object);  // see Class.es
+			const x : * = o.Object();
+			return (x is Object) ? x to Object! : o;
 		}
 
-		// 15.2.4.3 Object.prototype.toLocaleString ( )
-		prototype.toLocaleString = function()
+		/* ES-262-3 15.2.4.2: Object.prototype.toString */
+		Object.prototype.toString = function toString()
 		{
-			return toString();
-		}
-		ECMA4 function toLocaleString():String
-		{
-			return toString();
+			return this.intrinsic::toString();
 		}
 
-		// 15.2.4.4 Object.prototype.valueOf ( )
-		prototype.valueOf = function()
+		intrinsic function toString() : String!
 		{
-			return this;
+			return "[object " + magic::getClassName() + "]";
 		}
-		ECMA4 function valueOf():Object
+
+		/* ES-262-3 15.2.4.3: Object.prototype.toLocaleString */
+		Object.prototype.toLocaleString = function toLocaleString()
+		{
+			return this.intrinsic::toLocaleString();
+		}
+
+		intrinsic function toLocaleString() : String!
+		{
+			return "[object " + magic::getClassName() + "]";
+		}
+
+		/* ES-262-3 15.2.4.4:  Object.prototype.valueOf */
+		Object.prototype.valueOf = function valueOf()
+		{
+			return this.intrinsic::valueOf();
+		}
+
+		intrinsic function valueOf() : Object!
 		{
 			return this;
 		}
 
-		// 15.2.4.5 Object.prototype.hasOwnProperty (V)
-		private static function _hasOwnProperty(o, V):Boolean
+		/* ES-262-3 15.2.4.5:  Object.prototype.hasOwnProperty */
+		Object.prototype.hasOwnProperty = function hasOwnProperty(V)
 		{
-			return @todo;
+			return this.intrinsic::hasOwnProperty(V);
 		}
-		prototype.hasOwnProperty = function(V)
+
+		intrinsic function hasOwnProperty(V) : Boolean!
 		{
-			return _hasOwnProperty(this, V);
-		}
-		ECMA4 function hasOwnProperty(V)
-		{
-			return _hasOwnProperty(this, V);
+			return magic::hasOwnProperty(this, intrinsic::ToString(V));
 		}
 		
-		// 15.2.4.6 Object.prototype.isPrototypeOf (V)
-		private static function _isPrototypeOf(o, V):Boolean
+		/* ES-262-3 15.2.4.6:  Object.prototype.isPrototypeOf */
+		Object.prototype.isPrototypeOf = function(V)
 		{
+			return this.intrinsic::isPrototypeOf(V);
+		}
+
+		intrinsic function isPrototypeOf(V) : Boolean!
+		{
+			var O : Object! = this;
+
 			if (!(V is Object))
 				return false;
-			V = V.prototype;
-			while (V != null)
-			{
-				if (o == V)
+
+			for (;;) {
+				V = magic::getPrototype(V);
+				if (V === null)
+					return false;
+				if (O === V)
 					return true;
-				V = V.prototype;
-			}
-			return false;
-		}
-		prototype.isPrototypeOf = function(V)
-		{
-			return _isPrototypeOf(this, V);
-		}
-		ECMA4 function isPrototypeOf(V)
-		{
-			return _isPrototypeOf(this, V);
-		}
-		
-		// 15.2.4.7 Object.prototype.propertyIsEnumerable (V)
-		private static function _propertyIsEnumerable(o, V):Boolean
-		{
-			return @todo;
-		}
-		prototype.propertyIsEnumerable = function(V)
-		{
-			return _propertyIsEnumerable(this, V);
-		}
-		ECMA4 function propertyIsEnumerable(V)
-		{
-			return _propertyIsEnumerable(this, V);
-		}
-
-       // ECMA-262 doesn't expose __proto__ and it's internally readonly
-		private const [[Prototype]];
-		private const [[Class]];
-
-       // bound {DE,DD} accessors
-		SpiderMonkey function get __proto__() { return [[Prototype]]; }
-		SpiderMonkey function set __proto__(o) { [[Prototype]] = o; }   // check for a cycle, throw Error if so
-		
-		// private helper function, used to mark all prototype functions as {DE}
-		protected static native function _setPropertyIsEnumerable(o:Object, V:String, enumerable:Boolean):void;
-		protected static function _dontEnum(o:Object):void
-		{
-			for (var name:String in o)
-			{
-				_setPropertyIsEnumerable(o, name, false);
 			}
 		}
 
-		// mark all prototype functions as {DE}
-		_dontEnum(prototype);
+		/* ES-262-3 15.2.4.7: Object.prototype.propertyIsEnumerable (V) */
+		prototype.propertyIsEnumerable = function propertyIsEnumerable(V, ...args)
+		{
+			if (args.length <= 1)
+			    return magic::getPropertyIsEnumerable(this, intrinsic::ToString(V));
+			else
+			    magic::setPropertyIsEnumerable(this, intrinsic::ToString(V), intrinsic::ToBoolean(args[0]));
+		}
 
-	} // class
-} // package
+		intrinsic function propertyIsEnumerable(V, ...args)
+		{
+			if (args.length <= 1)
+			    return magic::getPropertyIsEnumerable(this, intrinsic::ToString(V));
+			else
+			    magic::setPropertyIsEnumerable(this, intrinsic::ToString(V), intrinsic::ToBoolean(args[0]));
+		}
+
+		magic::setPropertyIsEnumerable(prototype, "toString", false);
+		magic::setPropertyIsEnumerable(prototype, "toLocaleString", false);
+		magic::setPropertyIsEnumerable(prototype, "valueOf", false);
+		magic::setPropertyIsEnumerable(prototype, "hasOwnProperty", false);
+		magic::setPropertyIsEnumerable(prototype, "isPrototypeOf", false);
+		magic::setPropertyIsEnumerable(prototype, "propertyIsEnumerable", false);
+	}
+}
