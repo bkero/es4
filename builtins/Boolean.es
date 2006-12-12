@@ -1,60 +1,77 @@
+/* -*- mode: java; tab-width: 4 -*- 
+ *
+ * ECMAScript 4 builtins - the "Boolean" object
+ * ES-262-3 15.6
+ */
+
 package
 {
 	dynamic class Boolean extends Object
 	{		
-		// 15.3.1 The Boolean Constructor Called as a Function
+		/* ES-262-3 15.6.1: The Boolean Constructor Called as a Function.
+
+		   ES-262-4 draft: There are no Boolean "values", only Boolean
+		   objects, so this will always return type Boolean. */
 		static intrinsic function call(value)
 		{
-			return value ? true : false;
+			return value ? true : false;                      // value is forced through ToBoolean
 		}
 
-		// 15.6.2.1 new Boolean (value)
+		/* ES-262-3 15.6.2.1: The Boolean Constructor. */
 		function Boolean(value)
 		{
-			// @todo
-			// conceptually:
-			// this.[[Value]] = Boolean(value);
+			intrinsic::setPrototype(this, Boolean.prototype);
+			intrinsic::setClass(this, "Boolean");
+			intrinsic::setValue(this, value ? true : false);  // value is forced through ToBoolean
 		}
 
-		// 15.6.3 Properties of the Boolean Constructor
+		/* ES-262-3 15.6.3:  Properties of the Boolean Constructor */
 		static const length = 1;
-		
-		// 15.6.3.1 Boolean.prototype
+
+		/* ES-262-3 15.6.3.1: Boolean.prototype */
 		static const prototype = { };
 
-		// 15.6.4 Properties of the Boolean Prototype Object
-   		prototype.[[Prototype]] = prototype;
-   		prototype.[[Class]] = "Boolean";
-		
-		// 15.6.4.1 Boolean.prototype.constructor
-		prototype.constructor = Boolean;
+		/* ES-262-3 requires that the class name of the prototype
+		   object is "Boolean".  */
+   		intrinsic::setClass(Boolean.prototype, "Boolean");
 
-		// 15.6.4.2 Boolean.prototype.toString ( )
-		private static function _toString(f:Boolean):String
+		/* ES-262-3 15.6.4.1: Boolean.prototype.constructor is the
+		   original Boolean constructor */
+		Boolean.prototype.constructor = Boolean;
+		
+		/* ES-262-3 15.6.4.2: Boolean.prototype.toString.  
+
+		   The type constraint enforces non-transportability of the
+		   toString method.  */
+		Boolean.prototype.toString = function toString(this : Boolean) 
 		{
-			return this.[[Value]] ? "true" : "false";
+			return this.intrinsic::toString();
 		}
-		prototype.toString = function(this:Boolean)
+
+		/* ES-262-4 draft ch 19 */
+		intrinsic function toString() : String
 		{
-			return _toString(this);
-		}
-		ECMA4 function toString():String
-		{
-			return _toString(this);
+			return intrinsic::getValue(this) ? "true" : "false";
 		}
 		
-		// 15.6.4.3 Boolean.prototype.valueOf ( )
-		prototype.valueOf = function(this:Boolean)
+		/* ES-262-3 15.6.4.3: Boolean.prototype.valueOf.
+
+		   The type constraint enforces non-transportability of the
+		   toString method.  */
+		Boolean.prototype.valueOf = function valueOf(this : Boolean)
 		{
 			return this;
 		}
-		ECMA4 function valueOf():Object
+
+		/* ES-262-4 draft ch 19 */
+		ECMA4 function valueOf() : Object
 		{
 			return this;
 		}
 
-		// mark all prototype functions as {DE}
-		_dontEnum(prototype);
-
-	} // class
-} // package
+		/* ES-262-3 FIXME-cite: properties on prototype are DontEnum */
+		Boolean.prototype.propertyIsEnumerable("constructor", false);
+		Boolean.prototype.propertyIsEnumerable("toString", false);
+		Boolean.prototype.propertyIsEnumerable("valueOf", false);
+	}
+}

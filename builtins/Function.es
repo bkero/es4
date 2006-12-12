@@ -1,96 +1,87 @@
+/* -*- mode: java; mode: font-lock; tab-width: 4 -*- 
+ *
+ * ECMAScript 4 builtins - the "Function" object
+ * ES-262-3 15.3
+ * ES-262-4 draft
+ *
+ * Status: not reviewed against specs.
+ *
+ * The model here is that a function definition is compiled to a
+ * Function object whose private "env" property is something
+ * arbitrary; when a function is closed in an environment the object
+ * is cloned and the clone is given a new value for "env".
+ * Implementations don't have to do it that way but as a model it's
+ * just fine.
+ */
+
 package
 {
 	dynamic class Function extends Object
 	{		
-		// 15.3.1 The Function Constructor Called as a Function
+		/* E262-3 15.3.1.1: The Function constructor */
+		static intrinsic function construct(...args)
+		{
+			return createFunction(args);
+		}
+
+		/* E262-3 15.3.1: The Function Constructor Called as a Function */
 		static intrinsic function call(...args)
 		{
-			return _construct(args);
+			return createFunction(args);
 		}
 
-		// 15.3.1.1 Function (p1, p2, … , pn, body)
-		private static function _construct(args:Array):Function
-		{
-			return @todo;
-		}
-		function Function(...args)
-		{
-			return _construct(args);
-		}
-
-		// 15.3.3 Properties of the Function Constructor
+		/* E262-3 15.3.3: Properties of the Function Constructor */
 		static const length = 1;
 		
-		// 15.3.3.1 Function.prototype
-		static const prototype = { };
-
-		// 15.3.4 Properties of the Function Prototype Object
-   		prototype.[[Prototype]] = prototype;
-   		prototype.[[Class]] = "Function";
-		
-		// 15.3.4.1 Function.prototype.constructor
-		prototype.constructor = Function;
-
-		// 15.3.4.2 Function.prototype.toString ( )
-		private static function _toString(f:Function):String
+		/* E262-3 10.X / 13.X: function invocation */
+		intrinsic function call(...args)
 		{
-			// implementation dependent, so this is acceptable
-			return "function Function() {}";
+			return magic::invoke(code, env, args);
 		}
-		prototype.toString = function(this:Function):String
+
+		Function.prototype.toString = function()
 		{
-			return _toString(this);
+			return this.intrinsic::toString();
 		}
-		ECMA4 function toString():String
+
+		intrinsic function toString() : String!
 		{
-			return _toString(this);
+			return source;
 		}
 		
-		// 15.3.4.3 Function.prototype.apply (thisArg, argArray)
-		private static function _apply(o, thisArg, argArray)
+		/* E262-3 15.3.4.3: Function.prototype.apply */
+		Function.prototype.apply = function(thisArg, argArray)
+		{
+			return this.intrinsic::apply(thisArg, argArray);
+		}
+
+		intrinsic function apply(thisArg, argArray) : *
 		{
 			if (thisArg == null)
 				thisArg = intrinsic::global;
-			// @todo how to convert args into arg1, arg2.... etc
-			if (argArray == null)
-				return o.intrinsic::call(thisArg);
-			else
-				return o.intrinsic::call(thisArg, argArray...);
-		}
-		prototype.apply = function(thisArg, argArray)
-		{
-			return _apply(this, thisArg, argArray);
-		}
-		ECMA4 function apply(thisArg:Function, argArray:Array):*
-		{
-			return _apply(this, thisArg, argArray);
+			// ES4 bug fix: arguments object is an 'Array'
+			if (!argArray is Array)
+				throw new TypeError("argument array to 'apply' must be Array");
+			return magic::apply(this, thisArg, argArray);
 		}
 
-		// 15.3.4.4 Function.prototype.call (thisArg [ , arg1 [ , arg2, … ] ] )
-		private static function _call(o, args:Array):*
+		/* E262-3 15.3.4.4 Function.prototype.call.
+
+		   Assuming a rest argument does not contribute to the
+		   "length" of the function, so the length of
+		   Function.prototype.call is 1, which is what we want. */
+		Function.prototype.call = function(thisObj, ...args)
 		{
-			return _apply(o, args[0], args.slice(1));
+			return magic::apply(this, thisObj, args);
 		}
-		prototype.call = function(...args)
+
+		intrinsic function call(thisObj, ...args:Array):*
 		{
-			return _call(this, args);
-		}
-		prototype.call.length = 1;			// ECMA-262 says so
-		ECMA4 function call(...args:Array):*
-		{
-			return _call(this, args);
+			return magic::apply(this, thisObj, args);
 		}
 		
-		// 15.3.5 Properties of Function Instances
-		// 15.3.5.1 length
-		const length;	// @todo -- how to set initial value
-
-		// 15.3.5.2 prototype
-		// { DontDelete } 
-		var prototype;	// @todo -- how to set initial value
-
-		// 15.3.5.3 [[HasInstance]] (V)
-		function [[HasInstance]](V)		
+		/* E262-3 15.3.5.3: [[HasInstance]] */
+		intrinsic function HasInstance(V)
 		{
 			// implements instanceof
 			if (!(V is Object))
@@ -106,8 +97,52 @@ package
 			return false;
 		}
 
-		// mark all prototype functions as {DE}
-		_dontEnum(prototype);
+		magic::setPropertyIsEnumerable(Function.prototype, "toString", false);
+		magic::setPropertyIsEnumerable(Function.prototype, "apply", false);
+		magic::setPropertyIsEnumerable(Function.prototype, "call", false);
 
-	} // class
-} // package
+		/*** Function public data ***/
+
+		const length : Number;     // Initialized by createFunction, below
+		var prototype : *;         // ditto
+
+		/*** Function private data ***/
+
+		private code : *;          // Opaque representation of compiled code
+		private env : *;           // Environment in which this function is closed
+		private source : String!;  // Source code for decompilation
+
+		/*** Function construction ***/
+
+		/* Given an array of values as passed to the function
+		   constructor, create a new function object. */
+		static private createFunction(args : Array!) : Function!
+		{
+			var [code, source, length] : [*, String!, Number] = compileFunction(args);
+			var fn : Function = super.intrinsic::construct(Function);
+			var x : * = fn.Function();
+			if (x is Object)
+				return x to Object!;
+			fn.length = length;
+			fn.prototype = new Object;
+			fn.source = source;
+			fn.code = code;
+			fn.env = intrinsic::global;
+			return fn;
+		}
+
+		/* Given an array of values as passed to the function
+		   constructor, compile the function and return the compiled
+		   code, a representation of the source code suitable for
+		   Function.prototype.toString(), and the function's
+		   "length".  */
+		static private compileFunction(...args) : [*, String!, Number]
+		{
+			var formals = args[0:args.length-1];
+			var body = args[args.length-1];
+			var code = magic::compile(formals, body);
+			var source = "function (" + formals.join(",") + ") {" + body + "}";
+			return [code, source, formals.length];
+		}
+	}
+}
