@@ -70,6 +70,7 @@ fun identifier ts =
     in case ts of
         Identifier(str) :: tr => (tr,str)
 	  | Call :: tr => (tr,"call")
+	  | Construct :: tr => (tr,"construct")
       | Debugger :: tr => (tr,"debugger")
       | Decimal :: tr => (tr,"decimal")
       | Double :: tr => (tr,"double")
@@ -2905,7 +2906,7 @@ and statement (ts,w) : (token list * Ast.STMT) =
 			in
 				(ts1,nd1)
 			end
-	  | Defaault :: Xml :: Namespace :: Assign :: _ =>
+	  | Default :: Xml :: Namespace :: Assign :: _ =>
 			let
 				val (ts1,nd1) = defaultXmlNamespaceStatement (ts)
 			in
@@ -4110,7 +4111,11 @@ and namespaceAttribute ts =
 and annotatableDirective (ts,attrs,omega) : (token list * Ast.DIRECTIVES)  =
     let val _ = trace([">> annotatableDirective with next=", tokenname(hd ts)])
 	in case ts of
-		(Let | Var | Const) :: _ => 
+	    Let :: Function :: _ =>
+			functionDefinition (ts,attrs)
+	  | Function :: _ =>
+			functionDefinition (ts,attrs)
+	  | (Let | Var | Const) :: _ => 
 			variableDefinition (ts,attrs,ALLOWIN)
 	  | _ => 
 			raise ParseError
@@ -4519,22 +4524,146 @@ and variableInitialisation (ts,a,b) : (token list * Ast.EXPR) =
 	end
 
 (*
+	FunctionDefinition	
+		function  FunctionName  FunctionCommon
+		let  function  FunctionName  FunctionCommon
+		
+	FunctionName	
+		Identifier
+		OperatorName
+		to
+		call
+		construct
+		get  PropertyIdentifier
+		set  PropertyIdentifier
+		call  PropertyIdentifier
+		construct  PropertyIdentifier
 
-FunctionDefinition    
-    function  FunctionName  FunctionCommon
-    let  function  FunctionName  FunctionCommon
-    
-FunctionName    
-    Identifier
-    OperatorName
-    to  [no line break]  Identifier
-    get  [no line break]  PropertyIdentifier
-    set  [no line break]  PropertyIdentifier
-    call  [no line break]  PropertyIdentifier
-    
-OperatorName [one of]    
-    +   -   ~   *   /   %   <   >   <=   >=   ==   <<   >>   >>>   &   |   ===   !=   !==
-    
+	OperatorName [one of]	
+		+   -   ~   *   /   %   <   >   <=   >=   ==   <<   >>   >>>   &   |   ===   !=   !==
+*)
+
+and functionDefinition (ts,attrs) =
+    let val _ = trace([">> functionDefinition with next=", tokenname(hd ts)])
+		val (ts1,nd1) = functionKind (ts)
+		val (ts2,nd2) = functionName (ts1)
+		val (ts3,nd3) = functionSignature (ts2)
+		val (ts4,nd4) = block (ts3)
+	in
+		(ts4,{pragmas=[],
+			  defns=[Ast.FunctionDefn {attrs=attrs,
+						   kind=nd1, 
+						   func=Ast.Func {name=nd2,
+									   	  sign=nd3,
+			    				    	  body=nd4}}],
+			  stmts=[]})
+	end
+
+and functionKind (ts) : (token list * Ast.VAR_DEFN_TAG) =
+	let
+	in case ts of
+		Function :: _ => (tl ts,Ast.Var)
+	  | Let :: Function :: _ =>	(tl (tl ts),Ast.LetVar)
+	  | _ => raise ParseError
+	end
+
+and functionName (ts) : (token list * Ast.FUNC_NAME) =
+	let
+	in case ts of
+		(Plus | Minus | BitwiseNot | Mult | Div | Modulus | LessThan |
+		 GreaterThan | LessThanOrEquals | GreaterThanOrEquals | Equals | LeftShift |
+		 RightShift | UnsignedRightShift | BitwiseAnd | BitwiseOr | StrictEquals |
+		 NotEquals | StrictNotEquals) :: _ => 
+			let 
+				val (ts1,nd1) = operatorName ts
+			in
+				(ts1,{kind=Ast.Operator,ident=nd1})
+			end			
+	  | To :: _ => 
+			let
+			in
+				(tl ts,{kind=Ast.ToFunc,ident=""})
+			end
+	  | Call :: _ => 
+			let
+			in case (tl ts) of
+				(LeftParen | LeftDotAngle) :: _ =>
+					let
+					in
+						(tl ts,{kind=Ast.Call,ident=""})
+					end
+			  | _ =>
+					let
+						val (ts1,nd1) = propertyIdentifier (tl ts)
+					in
+						(ts1,{kind=Ast.Call,ident=nd1})
+					end
+			end
+	  | Construct :: _ => 
+			let
+			in case (tl ts) of
+				(LeftParen | LeftDotAngle) :: _ =>
+					let
+					in
+						(tl ts,{kind=Ast.Call,ident=""})
+					end
+			  | _ =>
+					let
+						val (ts1,nd1) = propertyIdentifier (tl ts)
+					in
+						(ts1,{kind=Ast.Call,ident=nd1})
+					end
+			end
+	  | Get :: _ => 
+			let
+				val (ts1,nd1) = propertyIdentifier (tl ts)
+			in
+				(ts1,{kind=Ast.Get,ident=nd1})
+			end
+	  | Set :: _ => 
+			let
+				val (ts1,nd1) = propertyIdentifier (tl ts)
+			in
+				(ts1,{kind=Ast.Set,ident=nd1})
+			end
+	  | _ => 
+			let
+				val (ts1,nd1) = identifier ts
+			in
+				(ts1,{kind=Ast.Ordinary,ident=nd1})
+			end
+	end
+
+(*	
+	+   -   ~   *   /   %   <   >   <=   >=   ==   <<   >>   >>>   &   |   ===   !=   !== 
+*)
+
+and operatorName (ts) =
+	let
+	in case ts of
+		Plus :: _ => (tl ts,"+")
+	  | Minus :: _ => (tl ts,"-")
+	  | BitwiseNot :: _ => (tl ts,"~")
+	  | Mult :: _ => (tl ts,"*")
+	  | Div :: _ => (tl ts,"/")
+	  | Modulus :: _ => (tl ts,"%")
+	  | LessThan :: _ => (tl ts,"<")
+	  | GreaterThan :: _ => (tl ts,">")
+	  | LessThanOrEquals :: _ => (tl ts,"<=")
+	  | GreaterThanOrEquals :: _ => (tl ts,">=")
+	  | Equals :: _ => (tl ts,"=")
+	  | LeftShift :: _ => (tl ts,">>")
+	  | RightShift :: _ => (tl ts,"<<")
+	  | UnsignedRightShift :: _ => (tl ts,"<<<")
+	  | BitwiseAnd :: _ => (tl ts,"&")
+	  | BitwiseOr :: _ => (tl ts,"|")
+	  | StrictEquals :: _ => (tl ts,"===")
+	  | NotEquals :: _ => (tl ts,"!=")
+	  | NotStrictEquals :: _ => (tl ts,"!==")
+      | _ => raise ParseError
+	end
+
+(*
 ClassDefinition    
     class  ClassName  Inheritance Block
     

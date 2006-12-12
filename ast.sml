@@ -102,7 +102,7 @@ datatype VAR_DEFN_TAG =
        | Rest
 
 datatype NAMESPACE =
-	 Private
+		 Private
        | Protected
        | Intrinsic
        | Public of IDENT
@@ -132,17 +132,28 @@ datatype PRAGMA =
                      name: IDENT,
                      alias: IDENT option }
 
+	 and FUNC_NAME_KIND =
+		 Ordinary
+	   | Operator
+	   | Get
+	   | Set
+	   | Call
+	   | Construct
+	   | ToFunc
+
      and FUNC = 
-	 Func of { name: IDENT,
-		   attrs: ATTRIBUTES,
-        	   formals: VAR_BINDING list,
-		   ty: TYPE_EXPR option,
-        	   body: BLOCK }
+		 Func of { name: FUNC_NAME,
+        		   sign: FUNC_SIGN,
+        		   body: BLOCK }
 	 
      and DEFN =
          ClassDefn of CLASS_DEFN
        | VariableDefn of VAR_BINDING list
-       | FunctionDefn of FUNC
+
+       | FunctionDefn of { attrs : ATTRIBUTES,
+						   kind : VAR_DEFN_TAG,
+						   func : FUNC }
+
        | InterfaceDefn of INTERFACE_DEFN
        | NamespaceDefn of { name: IDENT,
                             init: EXPR }
@@ -154,6 +165,14 @@ datatype PRAGMA =
 			      
 			      
      (* Improve this? Probably more mutual exclusion possible. *)
+     (* [jd] todo: as Attributes get passed into the parser functions
+				   for the various definition kinds, pick the relevant 
+				   subset of attributes to capture in each definition.
+				   for example, 
+
+			VariableDefn ( static, prototype, Binding { ns, ... } }
+     *)
+
      and ATTRIBUTES =
          Attributes of { ns: EXPR,
                          override: bool,
@@ -366,6 +385,9 @@ withtype
 
 	 and TYPE_CASE =
 		 { ptrn : VAR_BINDING option, body : BLOCK }
+
+	 and FUNC_NAME =
+		 { kind : FUNC_NAME_KIND, ident : IDENT }
 
 type PACKAGE =
      { names: IDENT list,
