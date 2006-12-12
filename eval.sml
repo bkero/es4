@@ -126,7 +126,7 @@ and evalCallExpr (v:Mach.VAL) (args:Mach.VAL list) =
 	      | _ => Mach.globalObject
     in
 	case func of 
-	    Mach.Function (Mach.Fun f) => f thisObj args
+	    Mach.Function (Mach.Fun f) => (#code f) thisObj args
 	  | _ => semant "calling non-function type"
     end
 
@@ -471,8 +471,7 @@ and evalDefn (scope:Mach.SCOPE) (d:Ast.DEFN) =
       | Ast.VariableDefn bs => List.app (evalVarBinding scope NONE NONE) bs
       | _ => unimpl "unimplemented definition type"
 
-and evalFuncDefn (scope:Mach.SCOPE) (f:Ast.FUNC) = 
-
+and evalFunc (scope:Mach.SCOPE) (f:Ast.FUNC) : Mach.FUN = 
     (* Our goal here is to convert the definition AST of the function
      * into an SML function that invokes the interpreter on the
      * function's body with a new scope. The new scope should be the
@@ -481,9 +480,9 @@ and evalFuncDefn (scope:Mach.SCOPE) (f:Ast.FUNC) =
      * for the name 'this', bound to the dynamic value provided from the
      * function call site. 
      *)
-
     let 
 	val func = case f of Ast.Func f' => f'
+	val funcSign = case (#sign func) of Ast.FunctionSignature s => s
 	fun funcClosure (thisObj:Mach.OBJ) (args:Mach.VAL list) = 
 	    let
 		val (varObj:Mach.OBJ) = Mach.newObject NONE 
@@ -499,17 +498,53 @@ and evalFuncDefn (scope:Mach.SCOPE) (f:Ast.FUNC) =
 					   dontEnum = true,
 					   readOnly = true } }
 	    in
-		bindArgs args (#formals func);
+		bindArgs args (#params funcSign);
 		setProp varObj {id="this", ns=Ast.Private} thisProp;
 		evalBlock varScope (#body func)
 	    end
-	val funcProp = { ty = (getType (#ty func)),
-			 value = Mach.Function (Mach.Fun funcClosure),
+    in
+	Mach.Fun { code = funcClosure,
+		   ty = signToType (#sign func),
+		   definition = NONE,
+		   layout = Mach.emptyFuncLayout }
+    end
+
+and signToType (sign:Ast.FUNC_SIGN) = 
+    let
+	val paramTypes = ref []
+	val hasRest = ref false
+	fun processFormal formal = 
+	    case formal of 
+		Ast.Binding { kind, ty, ... } => 
+		if kind = Ast.Rest
+		then hasRest := true
+		else paramTypes := ty :: !paramTypes
+    in
+	case sign of 
+	    Ast.FunctionSignature { params, resulttype, ... } => 
+	    (List.app processFormal params; 
+	     Ast.FunctionType { paramTypes = List.rev (!paramTypes),
+				returnType = resulttype,
+				boundThisType = SOME (Ast.SpecialType Ast.Any) (* FIXME: calculate a 'this' type! *),
+				hasRest = !hasRest })
+    end
+
+
+and evalFuncDefn (scope:Mach.SCOPE) (f:Ast.FUNC_DEFN) = 
+    let 
+	val func = case (#func f) of Ast.Func f' => f'
+	(* Fixme: maybe some sort of different binding form for different name kinds? *)
+	val name = case (#kind (#name func)) of
+		       _ => (#ident (#name func))
+	val (funcClosure:Mach.FUN) = evalFunc scope (#func f)
+	val funcAttrs = getAttrs (#attrs f)
+	val funcProp = { ty = signToType (#sign func),
+			 value = Mach.Function funcClosure,
 			 attrs = { dontDelete = true,
 				   dontEnum = false,
 				   readOnly = false } }
-	val funcAttrs = getAttrs (#attrs func)
-	val funcName = {id=(#name func), ns=(needNamespace (evalExpr scope (#ns funcAttrs)))}
+	val funcName = {id = name, 
+			ns = (needNamespace (evalExpr scope (#ns funcAttrs)))}
     in
 	setProp (getScopeObj scope) funcName funcProp
     end

@@ -7,6 +7,8 @@ Library
         structure Parser
 	structure Defn
         structure TypeChk
+	structure Eval
+	structure Mach
 is
         main.sml
         ast.sml
@@ -18,6 +20,8 @@ is
         parser.sml
         defn.sml
 	typechk.sml
+	eval.sml
+	mach.sml
 
         $/basis.cm
         $/smlnj-lib.cm
