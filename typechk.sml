@@ -21,6 +21,7 @@ val uintType      = PrimaryType { ident=simpleIdent "uint",      kind=Named }
 val stringType    = PrimaryType { ident=simpleIdent "string",    kind=Named }
 val regexpType    = PrimaryType { ident=simpleIdent "regexp",    kind=Named }
 val exceptionType = PrimaryType { ident=simpleIdent "exception", kind=Named }
+val namespaceType = PrimaryType { ident=simpleIdent "Namespace", kind=Named }
 val undefinedType = SpecialType Undefined
 val nullType      = SpecialType Null
 val anyType       = SpecialType Any
@@ -33,13 +34,10 @@ fun extendEnv ((name, ty), env) = (name, ty)::env
 
 type CONTEXT = {this: TYPE_EXPR, env: TYPE_ENV, lbls: IDENT option list, retTy: TYPE_EXPR option}
 
-fun withThis ({this=_, env=env, lbls=lbls, retTy=retTy}, this) = {this=this, env=env, lbls=lbls, retTy=retTy}
-
-fun withEnv ({this=this, env=_, lbls=lbls, retTy=retTy}, env) = {this=this, env=env, lbls=lbls, retTy=retTy}
-
-fun withLbls ({this=this, env=env, lbls=_, retTy=retTy}, lbls) = {this=this, env=env, lbls=lbls, retTy=retTy}
-
-fun withRetTy ({this=this, env=env, lbls=lbls, retTy=_}, retTy) = {this=this, env=env, lbls=lbls, retTy=retTy}
+fun withThis  ({this=_,    env=env, lbls=lbls, retTy=retTy}, this) = {this=this, env=env, lbls=lbls, retTy=retTy}
+fun withEnv   ({this=this, env=_,   lbls=lbls, retTy=retTy},  env) = {this=this, env=env, lbls=lbls, retTy=retTy}
+fun withLbls  ({this=this, env=env, lbls=_,    retTy=retTy}, lbls) = {this=this, env=env, lbls=lbls, retTy=retTy}
+fun withRetTy ({this=this, env=env, lbls=lbls, retTy=_},    retTy) = {this=this, env=env, lbls=lbls, retTy=retTy}
 
 fun checkConvertible t1 t2 = ()
 
@@ -58,11 +56,11 @@ fun checkForDuplicates extensions =
 fun mergeTypes t1 t2 =
 	t1
 
-fun unOptionTy NONE = Any
-  | unOptionTy (SOME t) = t
-
-(******************** Expressions **************************************************)
+fun unOptionDefault NONE def = def
+  | unOptionDefault (SOME v) _ = v
 	
+(******************** Expressions **************************************************)
+
 fun tcExpr ((ctxt as {env,this,...}):CONTEXT) (e:EXPR) :TYPE_EXPR = 
 	let
 	in 
@@ -76,22 +74,83 @@ fun tcExpr ((ctxt as {env,this,...}):CONTEXT) (e:EXPR) :TYPE_EXPR =
         | LiteralExpr (LiteralString _) => stringType
         | LiteralExpr (LiteralRegExp _) => regexpType
         | LiteralExpr LiteralUndefined => undefinedType 
-	| ListExpr l => List.last (List.map (tcExpr ctxt) l)
+        | LiteralExpr (LiteralArray { exprs, ty }) =>
+          (* EXAMPLES:
+               [a, b, c] : [int, Boolean, String]
+               [a, b, c] : Array
+               [a, b, c] : *
+               [a, b, c] : Object
+           *)
+          let val annotatedTy = unOptionDefault ty anyType
+              val inferredTy = ArrayType (map (fn elt => tcExpr ctxt elt) exprs)
+          in
+              checkConvertible inferredTy annotatedTy;
+              annotatedTy
+          end
+        | LiteralExpr (LiteralObject { expr, ty }) =>
+          let val annotatedTy = unOptionDefault ty anyType
+              val inferredTy = inferObjectType ctxt expr
+          in
+              checkConvertible inferredTy annotatedTy;
+              annotatedTy
+          end
+	   | ListExpr l => List.last (List.map (tcExpr ctxt) l)
 	| LetExpr {defs, body} => 
           let val extensions = List.concat (List.map (fn d => tcVarDefn ctxt d) defs)
           in
 	    checkForDuplicates extensions;
-	    tcExpr (withEnv (ctxt, foldl extendEnv env extensions)) body
+	    tcExprList (withEnv (ctxt, foldl extendEnv env extensions)) body
 	  end
        | NullaryExpr This => this
        | NullaryExpr Empty => (TextIO.print "what is Empty?\n"; raise Match)
        | UnaryExpr (unop, arg) => tcUnaryExpr ctxt (unop, arg)
+
+       | FunExpr {ident, sign as (FunctionSignature {typeparams,params,resulttype}), body} =>
+    (* What to do with typeparams - no place in context for type variables
+    *  also need to check well-formedness of resulttype
+    *  No place in FUNC_TY for type parameters
+    *)
+          let val extensions = List.concat (List.map (fn d => tcVarDefn ctxt d) params);
+	      val ctxt1 = withEnv (ctxt, foldl extendEnv env extensions);
+	      val ctxt2 = withRetTy (ctxt1, SOME resulttype)
+          in
+	    checkForDuplicates extensions;
+	    tcBlock ctxt2 body;
+	    FunctionType { paramTypes= (List.map (fn (Binding {kind=_,init=_,attrs=_,pattern=_,ty=tyo}) => tyo) params),
+			   returnType=resulttype,
+			   boundThisType=NONE,  (*FIXME*)
+			   hasRest=false  (*FIXME*)
+			 }
+	  end
        | _ => (TextIO.print "tcExpr incomplete: "; Pretty.ppExpr e; raise Match)
 	end
 
+and tcExprList ((ctxt as {env,this,...}):CONTEXT) (l:EXPR list) :TYPE_EXPR = 
+	let
+	in 	case l of
+		_  => List.last (List.map (tcExpr ctxt) l)
+	end
+
 (*
+(sign as (FunctionSignature {typeparams, params, resulttype}))
+
+       | FunExpr of { ident: IDENT option,
+                      sign: FUNC_SIGN,
+                      body: BLOCK }
+
+     and FUNC_TY =
+         { paramTypes: TYPE_EXPR option list,
+           returnType: TYPE_EXPR,
+           boundThisType: TYPE_EXPR option,
+           hasRest: bool }
+
+     and FUNC_SIGN =
+         FunctionSignature of { typeparams: IDENT list,
+                                params: VAR_BINDING list,
+                                resulttype: TYPE_EXPR }
+
+
      and LITERAL =
-       | LiteralArray of EXPR list
        | LiteralXML of EXPR list
        | LiteralNamespace of NAMESPACE
 
@@ -115,9 +174,6 @@ fun tcExpr ((ctxt as {env,this,...}):CONTEXT) (e:EXPR) :TYPE_EXPR =
        | NewExpr of { obj: EXPR,
                       actuals: EXPR list }
 
-       | FunExpr of { ident: IDENT option,
-                      sign: FUNC_SIGN,
-                      body: BLOCK }
 
      and IDENT_EXPR =
          QualifiedIdentifier of { qual : EXPR,
@@ -139,11 +195,29 @@ and tcPattern (ctxt:CONTEXT) (Ast.IdentifierPattern name) = (
   | tcPattern ctxt (Ast.SimplePattern expr) = ??
 *)
 
+and inferObjectType ctxt fields =
+    (* TODO: get a (name, type) option for every field *)
+    raise (Fail "blah")
+
 (* TODO: this needs to return some type structure as well *)
 and tcVarDefn (ctxt:CONTEXT) 
-     (VariableDefinition {tag,init,attrs,pattern,ty}) =
+     (Binding {kind,init,attrs,pattern,ty}) =
         (* TODO: what are simple patterns? *)
 	[]
+
+and tcIdentExpr (ctxt:CONTEXT) (id:IDENT_EXPR) =
+    (case id of
+          QualifiedIdentifier { qual, ident=_ } => (checkConvertible (tcExpr ctxt qual) namespaceType; ())
+        | QualifiedExpression { qual, expr } => (checkConvertible (tcExpr ctxt qual) namespaceType;
+                                                 checkConvertible (tcExpr ctxt expr) stringType;
+                                                 ())
+        | Identifier _ => ()
+        | ExpressionIdentifier expr => (checkConvertible (tcExpr ctxt expr) stringType; ()))
+(*
+       | AttributeIdentifier of IDENT_EXPR
+       | TypeIdentifier of { ident : IDENT_EXPR, 
+			     typeParams : TYPE_EXPR list }
+*)
 
 and tcUnaryExpr (ctxt:CONTEXT) (unop:UNOP, arg:EXPR) =
     (case unop of
@@ -172,9 +246,9 @@ and tcUnaryExpr (ctxt:CONTEXT) (unop:UNOP, arg:EXPR) =
 
 (**************************************************************)
 
-fun tcStmts ctxt ss = List.app (fn s => tcStmt ctxt s) ss
+and tcStmts ctxt ss = List.app (fn s => tcStmt ctxt s) ss
 
-and tcStmt ((ctxt as {this,env,lbls,retTy}):CONTEXT) stmt =
+and tcStmt ((ctxt as {this,env,lbls,retTy}):CONTEXT) (stmt:STMT) =
    let
    in
    TextIO.print "type checking stmt ... \n";
@@ -182,11 +256,11 @@ and tcStmt ((ctxt as {this,env,lbls,retTy}):CONTEXT) stmt =
         TextIO.print "\n";
    case stmt of
     EmptyStmt => ()
-  | ExprStmt e => (tcExpr ctxt e; ())
-  | IfStmt {cond,consequent,alternative} => (
-	checkConvertible (tcExpr ctxt cond) boolType;
-	tcStmt ctxt consequent;
-	tcStmt ctxt alternative
+  | ExprStmt e => (tcExprList ctxt e; ())
+  | IfStmt {cnd,thn,els} => (
+	checkConvertible (tcExpr ctxt cnd) boolType;
+	tcStmt ctxt thn;
+	tcStmt ctxt els
     )
 
   | (DoWhileStmt {cond,body,contLabel} | WhileStmt {cond,body,contLabel}) => (
@@ -197,7 +271,7 @@ and tcStmt ((ctxt as {this,env,lbls,retTy}):CONTEXT) stmt =
   | ReturnStmt e => (
 	case retTy of
 	  NONE => raise IllTypedException "return not allowed here"
-        | SOME retTy => checkConvertible (tcExpr ctxt e) retTy
+        | SOME retTy => checkConvertible (tcExprList ctxt e) retTy
     )
 
   | (BreakStmt NONE | ContinueStmt NONE) =>  
@@ -220,18 +294,20 @@ and tcStmt ((ctxt as {this,env,lbls,retTy}):CONTEXT) stmt =
 	tcStmt (withLbls (ctxt, ((SOME lab)::lbls))) s
  
   | ThrowStmt t => 
-	checkConvertible (tcExpr ctxt t) exceptionType
+	checkConvertible (tcExprList ctxt t) exceptionType
 
   | LetStmt (defns, body) =>
     (
         let val extensions = List.concat (List.map (fn d => tcVarDefn ctxt d) defns)
         in
 	    checkForDuplicates extensions;
-	    tcBlock (withEnv (ctxt, foldl extendEnv env extensions)) body
+(* FIXME: not sure the following change is correct	    
+		tcBlock (withEnv (ctxt, foldl extendEnv env extensions)) body  
+*)
+	    tcStmt ctxt body
+
 	end
     )
-  | DefineStmt _ =>
-        raise Fail "should have been hoisted"
   | _ => (TextIO.print "tcStmt incomplete: "; Pretty.ppStmt stmt; raise Match)
 
 (*
@@ -265,9 +341,11 @@ and tcStmt ((ctxt as {this,env,lbls,retTy}):CONTEXT) stmt =
 
 and tcDefn ctxt d =
     (case d of
-        VariableDefn vd => (tcVarDefn ctxt vd, [])
+        VariableDefn vd => (tcVarDefn ctxt (hd vd), [])
+(*		VariableDefn vd => (List.map (fn d => tcVarDefn ctxt d) vd) *)
        | d => (TextIO.print "tcDefn incomplete: "; Pretty.ppDefinition d; raise Match)
     )
+
 
 and tcDefns ctxt [] = ([], [])
   | tcDefns ctxt (d::ds) =
@@ -282,16 +360,16 @@ and tcBlock (ctxt as {env,...}) (Block {pragmas=pragmas,defns=defns,stmts=stmts}
         val ctxt' = withEnv (ctxt, foldl extendEnv env extensions)
     in
         assert (classes = []) "class definition inside block";
-	tcStmts ctxt stmts
+		tcStmts ctxt stmts
     end
 
 fun tcProgram { packages, body } = 
-   (tcBlock {this=anyType, env=[], lbls=[], retTy=NONE} body; true)
-   handle IllTypedException msg => (
-     TextIO.print "Ill typed exception: "; 
-     TextIO.print msg; 
-     TextIO.print "\n"; 
-     false)
+	(tcBlock {this=anyType, env=[], lbls=[], retTy=NONE} body; true)
+    handle IllTypedException msg => (
+     	TextIO.print "Ill typed exception: "; 
+     	TextIO.print msg; 
+     	TextIO.print "\n"; 
+     	false)
 
    
 

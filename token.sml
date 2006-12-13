@@ -34,8 +34,6 @@ datatype token =
     | LeftBracket
     | RightBracket
     | BitwiseXor
-    | LogicalXor
-    | LogicalXorAssign
     | BitwiseXorAssign
     | LeftBrace
     | BitwiseOr
@@ -116,6 +114,7 @@ datatype token =
 	(* contextually reserved identifiers *)
 
     | Call
+    | Construct
     | Debugger
     | Decimal
     | Double
@@ -151,7 +150,7 @@ datatype token =
     | Eol
     | Identifier of string
     | NumberLiteral of real
-    | PackageIdentifier
+    | PackageIdentifier of string
     | RegexpLiteral of string
     | SlashSlashComment
     | StringLiteral of string
@@ -263,8 +262,6 @@ fun tokenname t =
       | LeftBracket => "["
       | RightBracket => "]"
       | BitwiseXor => "^"
-      | LogicalXor => "^^"
-      | LogicalXorAssign => "^^="
       | BitwiseXorAssign => "^="
       | LeftBrace => "{"
       | BitwiseOr => "|"
@@ -345,6 +342,7 @@ fun tokenname t =
       (* contextually reserved identifiers *)
 
       | Call => "call"
+      | Construct => "construct"
       | Debugger => "debugger"
       | Decimal => "decimal"
       | Double => "double"
@@ -379,7 +377,7 @@ fun tokenname t =
       | Eol => "eol"
       | Identifier x => "identifier("^x^")"
       | NumberLiteral x => Real.toString(x)
-      | PackageIdentifier => "packageidentifier(x)"
+      | PackageIdentifier x => "packageidentifier("^x^")"
       | RegexpLiteral x => "regexp("^x^")"
       | SlashSlashComment => ""
       | StringLiteral x => "string("^x^")"

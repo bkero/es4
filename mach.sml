@@ -11,9 +11,9 @@ type NS = Ast.NAMESPACE
 
 datatype SCOPE_TAG = 
 	 VarGlobal       (* Variable object created before execution starts *)
-       | VarClass        (* Variable object created on entry to a function  *)
-       | VarInstance     (* Variable object for class objects               *)
-       | VarActivation   (* Variable object for class instances             *)
+       | VarClass        (* Variable object for class objects               *)
+       | VarInstance     (* Variable object for class instances             *)
+       | VarActivation   (* Variable object created on entry to a function  *)
        | With            (* Created by 'with' bindings                      *)
        | Let             (* Created by 'catch', 'let', etc.                 *)
 
@@ -25,11 +25,52 @@ datatype VAL =
        | Str of STR
        | Object of OBJ
        | Function of FUN
+
+       (* 
+	* The remaining VAL types are not "first class" -- they cannot be stored
+	* in new variables or copied around -- but can still be bound to names 
+	* within scopes, or the transient result of certain expressions.
+	*) 
+
+       | Type of TYPE
+       | Class of CLS
+       | Interface of IFACE
+       | Namespace of NS
        | Reference of REF
 		
+     and OBJ = 
+	 Obj of { class: CLS option,
+		  bindings: BINDINGS,
+		  prototype: (OBJ option) ref }
+
      and FUN = 
-	 Fun of (OBJ -> (VAL list) -> VAL) 
+	 Fun of { ty: TYPE, 
+		  layout: LAYOUT,
+		  code: (OBJ -> (VAL list) -> VAL),
+		  definition: Ast.FUNC_DEFN option }
 		    
+     and CLS = 
+	 Cls of { ty: TYPE,
+		  scope: SCOPE,
+   		  base: CLS option,
+		  interfaces: IFACE list,
+		  
+		  call: FUN,
+		  definition: Ast.CLASS_DEFN,
+		  constructor: FUN,
+		  
+		  instanceTy: TYPE,
+		  instanceLayout: LAYOUT,
+		  instancePrototype: OBJ,
+		  
+		  initialized: bool ref }
+
+     and IFACE = 
+	 IFACE of { ty: TYPE,
+		    bases: IFACE list,
+		    definition: Ast.INTERFACE_DEFN,			
+		    isInitialized: bool ref }
+
      and REF = 
 	 Ref of { base: OBJ,
 		  name: NAME }      
@@ -38,51 +79,22 @@ datatype VAL =
 	 Scope of { tag: SCOPE_TAG, 
 		    obj: OBJ,
 		    parent: SCOPE option }
-		  
-     and OBJ = 
-	 Obj of { class: CLASS option,
-		  bindings: BINDINGS,
-		  prototype: (OBJ option) ref }
-		
-     and CLASS = 
-	 Class of { ty: TYPE,
-		    scope: SCOPE,
-   		    base: CLASS option,
-		    interfaces: INTERFACE list,
-		    
-		    call: Ast.FUNC,
-		    definition: Ast.CLASS_DEFN,
-		    constructor: Ast.FUNC,
-		    
-		    instanceTy: TYPE,
-		    instanceLayout: LAYOUT,
-		    instancePrototype: OBJ,
-		    
-		    initialized: bool ref }
 
      and LAYOUT_TAG = 
 	 LayoutClass  
        | LayoutInterface
+       | LayoutFunction
 
      and LAYOUT = 
-	 Layout of { ty: TYPE,
-		     name: STR,
-		     parent: LAYOUT option,		     
+	 Layout of { parent: LAYOUT option,		     
 		     tag: LAYOUT_TAG,
+		     items: ITEM list,
 		     isExtensible: bool }
 
-     and ROW = 
-	 Row of { ty: TYPE,
-		  dontDelete: bool,
-		  dontEnum: bool,
-		  readOnly: bool }
-		
-     and INTERFACE = 
-	 Interface of { ty: TYPE,
-			bases: INTERFACE list,
-			definition: Ast.INTERFACE_DEFN,			
-			isInitialized: bool ref }
-
+     and ITEM = 
+	 Item of { name: NAME,
+		   ty: TYPE,   
+		   attrs: ATTRS }
 
      and MACH = 
 	 Mach of { scope: SCOPE,
@@ -98,12 +110,14 @@ withtype NAME = { ns: NS,
 		
      and MULTINAME = { nss: NS list, 
 		       id: ID }
-     and PROP = 
-	 { ty: TYPE,
-	   value: VAL,	   
-	   dontDelete: bool,
-	   dontEnum: bool,
-	   readOnly: bool }
+
+     and ATTRS = { dontDelete: bool,
+		   dontEnum: bool,
+		   readOnly: bool }
+
+     and PROP = { ty: TYPE,
+		  value: VAL,	   
+		  attrs: ATTRS }
 	 
      and BINDINGS = ((NAME * PROP) list) ref
 
@@ -163,37 +177,61 @@ fun hasBinding (b:BINDINGS) (n:NAME) =
 
 (* There's a circularity: 
  * 
- * SCOPE -> OBJ -> CLASS -> SCOPE.
+ * SCOPE -> OBJ -> CLS -> SCOPE.
  * 
  * We need to break this so that it's possible to instantiate
- * the roots of the builtin objects, so we make OBJ have only a CLASS
- * option, not a mandatory CLASS. When you access the CLASS of an OBJ
+ * the roots of the builtin objects, so we make OBJ have only a CLS
+ * option, not a mandatory CLS. When you access the CLS of an OBJ
  * you should use an accessor function that "closes the loop" and
- * returns the global "object" CLASS when you fetch the CLASS of an
+ * returns the global "object" CLS when you fetch the CLS of an
  * OBJ like "Obj {class = NONE, ...}".
  *)			  
 
 val (objectType:TYPE) = Ast.RecordType []
 
 val (defaultAttrs:Ast.ATTRIBUTES) = 
-    Ast.Attributes { ns = Ast.Public "",
+    Ast.Attributes { ns = Ast.LiteralExpr (Ast.LiteralNamespace (Ast.Public "")),
 		     override = false,
 		     static = false,
 		     final = false,
 		     dynamic = true,
 		     prototype = false,
-		     nullable = false }
+		     native = false,
+			 rest = false }
 
-val (noOpFunction:Ast.FUNC) = 
-    Ast.Func { name = "",
-	       attrs = defaultAttrs,
-	       formals = [],
-	       ty = NONE,
+val (noOpFunctionSignature:Ast.FUNC_SIGN) = 
+    Ast.FunctionSignature { typeparams = [],
+			    params = [],
+			    resulttype = Ast.SpecialType Ast.Any }
+
+val (noOpFunc:Ast.FUNC) = 
+    Ast.Func { name = {kind = Ast.Ordinary, ident = ""},
+	       sign = noOpFunctionSignature,
 	       body = Ast.Block { pragmas = [],
 				  defns = [],
 				  stmts = [] } }
+    
+val (noOpFunctionDefn:Ast.FUNC_DEFN) = 
+    { attrs = defaultAttrs,
+      kind = Ast.Var,
+      func = noOpFunc }
 
-val (emptyClass:Ast.CLASS_DEFN) = 
+val (emptyFuncLayout:LAYOUT) = 
+    Layout { parent = NONE,
+	     tag = LayoutFunction,
+	     items = [],	     
+	     isExtensible = true }
+
+val (noOpFunction:FUN) = 
+    Fun { ty = Ast.FunctionType { paramTypes = [],
+				  returnType = Ast.SpecialType Ast.Any,
+				  boundThisType = NONE,
+				  hasRest = false },
+	  layout = emptyFuncLayout,
+	  code = (fn _ => fn _ => Undef),
+	  definition = SOME noOpFunctionDefn }
+
+val (emptyClassDefn:Ast.CLASS_DEFN) = 
     { name = "",
       attrs = defaultAttrs,
       params = [],
@@ -201,15 +239,14 @@ val (emptyClass:Ast.CLASS_DEFN) =
       implements = [],
       instanceVars = [],
       vars = [],
-      constructor = noOpFunction,
+      constructor = noOpFunc,
       methods = [],
       initializer = [] }
     
-val (emptyLayout:LAYOUT) = 
-    Layout { ty = objectType,
-	     name = "",
-	     parent = NONE,
+val (emptyClassLayout:LAYOUT) = 
+    Layout { parent = NONE,
 	     tag = LayoutClass,
+	     items = [],	     
 	     isExtensible = true }
     
 val (globalObject:OBJ) = 
@@ -222,41 +259,45 @@ val (globalScope:SCOPE) =
 	    obj = globalObject,
 	    parent = NONE }
     
-val (globalClass:CLASS) = 
-    Class { ty = objectType,
-	    scope = globalScope,
-	    base = NONE,
-	    interfaces = [],
-	    call = noOpFunction,
-	    definition = emptyClass,
-	    constructor = noOpFunction,
-	    instanceTy = objectType,
-	    instanceLayout = emptyLayout,
-	    instancePrototype = globalObject,
-	    initialized = ref true }
+val (globalClass:CLS) = 
+    Cls { ty = objectType,
+	  scope = globalScope,
+	  base = NONE,
+	  interfaces = [],
+	  call = noOpFunction,
+	  definition = emptyClassDefn,
+	  constructor = noOpFunction,
+	  instanceTy = objectType,
+	  instanceLayout = emptyClassLayout,
+	  instancePrototype = globalObject,
+	  initialized = ref true }
 
 val nan = Real.posInf / Real.posInf
 
-fun newObject (c:CLASS option) = 
+fun newObject (c:CLS option) = 
     Obj { class = c,
 	  bindings = newBindings (),
 	  prototype = ref NONE }
 
-and deref (Ref {base=Obj {bindings,...}, name}) = 
+fun deref (Ref {base=Obj {bindings,...}, name}) = 
     (#value (getBinding bindings name))
 
 (* FIXME: this is not the correct toString *)
-and toString (Str s) = s
+fun toString (Str s) = s
   | toString (Num n) = Real.toString n
   | toString (Bool true) = "true"
   | toString (Bool false) = "false"
   | toString (Object _) = "[object Object]"
   | toString (Function _) = "[function Function]"
   | toString (Reference r) = toString (deref r)
+  | toString (Namespace _) = "[namespace]"
+  | toString (Class _) = "[class]"
+  | toString (Interface _) = "[interface]"
   | toString Undef = "undefined"
   | toString Null = "null"
 
-and toNum (Str s) = (case Real.fromString s of
+
+fun toNum (Str s) = (case Real.fromString s of
 			SOME n => n
 		      | NONE => nan)
   | toNum (Num n) = n
@@ -265,16 +306,81 @@ and toNum (Str s) = (case Real.fromString s of
   | toNum (Object _) = nan
   | toNum (Function _) = nan
   | toNum (Reference r) = toNum (deref r)
+  | toNum (Namespace _) = 0.0
+  | toNum (Class _) = 0.0
+  | toNum (Interface _) = 0.0
   | toNum Undef = nan
   | toNum Null = 0.0
 		    
-and toBoolean (Bool b) = b
+fun toBoolean (Bool b) = b
   | toBoolean (Str _) = true
   | toBoolean (Num _) = true
   | toBoolean (Object _) = true
   | toBoolean (Function _) = true
   | toBoolean (Reference r) = toBoolean (deref r)
+  | toBoolean (Namespace _) = true
+  | toBoolean (Class _) = true
+  | toBoolean (Interface _) = true
   | toBoolean Undef = false
   | toBoolean Null = false
 
+fun equals (Bool a) (Bool b) = (a = b)
+  | equals (Str a) (Str b) = (a = b)
+  | equals (Num a) (Num b) = (Real.== (a,b))
+  | equals (Object (Obj a)) (Object (Obj b)) = ((#bindings a) = (#bindings b))
+  | equals (Namespace a) (Namespace b) = (a = b)
+  | equals (Class (Cls a)) (Class (Cls b)) = ((#definition a) = (#definition b))
+  | equals (Interface a) (Interface b) = (a = b)
+  | equals Undef Undef = true
+  | equals Null Null = true
+  | equals Undef Null = true
+  | equals Null Undef = true
+  | equals (Str a) (Num b) = (a = (toString (Num b)))
+  | equals (Num a) (Str b) = ((toString (Num a)) = b)
+  | equals (Reference a) b = equals (deref a) b
+  | equals a (Reference b) = equals a (deref b)
+  | equals _ _ = false
+
+fun less (Bool true) (Bool true) = false
+  | less (Bool false) (Bool true) = true
+  | less (Bool false) (Bool false) = false
+  | less (Bool true) (Bool false) = false
+  | less (Str a) (Str b) = (a < b)
+  | less (Num a) (Num b) = (a < b)
+  | less (Str a) (Num b) = (a < (toString (Num b)))
+  | less (Num a) (Str b) = ((toString (Num a)) < b)
+  | less (Reference a) b = less (deref a) b
+  | less a (Reference b) = less a (deref b)
+  | less _ _ = false
+
+
+fun hostPrintFunction (obj:OBJ) (vals:VAL list) = 
+    let
+	fun printOne v = print (toString v) 
+    in
+	(map printOne vals; Undef)
+    end
+
+and populateIntrinsics obj = 
+    case obj of 
+	Obj { bindings, ... } => 
+	let 
+	    fun bindFunc (n, f) = 
+		let 
+		    val name = { id = n, ns = Ast.Intrinsic }
+		    val prop = { ty = Ast.SpecialType Ast.Any,
+				 value = Function (Fun { code=f, 
+							 definition=NONE, 
+							 layout=emptyFuncLayout, 
+							 ty=Ast.SpecialType Ast.Any} ),	   
+				 attrs = { dontDelete = true,
+					   dontEnum = false,
+					   readOnly = true } }
+		in
+		    addBinding bindings name prop
+		end
+	in
+	    map bindFunc 
+	    [ ("print", hostPrintFunction) ]
+	end	
 end

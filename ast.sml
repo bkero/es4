@@ -8,34 +8,30 @@ type USTRING = string
 
 type IDENT = USTRING
 
-datatype IMPORT_QUAL =
-         QualName of IDENT
-       | QualStar
-
 datatype NUMBER_TYPE =
-         Decimal 
-       | Double 
-       | Int 
-       | Uint 
+         Decimal
+       | Double
+       | Int
+       | UInt
        | Number
 
 datatype ROUNDING_MODE =
-         Ceiling 
-       | Floor 
-       | Up 
-       | Down 
-       | HalfUp 
-       | HalfDown 
+         Ceiling
+       | Floor
+       | Up
+       | Down
+       | HalfUp
+       | HalfDown
        | HalfEven
 
 datatype TRIOP =
          Cond
 
 datatype BINTYPEOP =
-	 Cast
+         Cast
        | Is
        | To
-	 
+
 datatype BINOP =
          Plus
        | Minus
@@ -50,7 +46,6 @@ datatype BINOP =
        | BitwiseXor
        | LogicalAnd
        | LogicalOr
-       | LogicalXor
        | InstanceOf
        | In
        | Equals
@@ -63,7 +58,9 @@ datatype BINOP =
        | GreaterOrEqual
        | Comma
        | DefVar
-       | Assign
+
+datatype ASSIGNOP =
+         Assign
        | AssignPlus
        | AssignMinus
        | AssignTimes
@@ -77,7 +74,6 @@ datatype BINOP =
        | AssignBitwiseXor
        | AssignLogicalAnd
        | AssignLogicalOr
-       | AssignLogicalXor
 
 datatype UNOP =
          Delete
@@ -106,7 +102,7 @@ datatype VAR_DEFN_TAG =
        | Rest
 
 datatype NAMESPACE =
-	 Private
+         Private
        | Protected
        | Intrinsic
        | Public of IDENT
@@ -124,52 +120,71 @@ datatype SPECIAL_TY =
        | Undefined
        | NoType
 
-datatype DIRECTIVE =
-         UseNamespace of EXPR list
+datatype PRAGMA =
+         UseNamespace of IDENT_EXPR
+       | UseDefaultNamespace of IDENT_EXPR
        | UseNumber of NUMBER_TYPE
        | UseRounding of ROUNDING_MODE
+       | UsePrecision of LITERAL
+       | UseStrict
+       | UseStandard
        | Import of { package: IDENT,
-                     qualifier: IMPORT_QUAL,
+                     name: IDENT,
                      alias: IDENT option }
 
-     and FUNC = 
-	 Func of 
-         { name: IDENT,
-           attrs: ATTRIBUTES,
-           formals: FORMAL list,
-           ty: TYPE_EXPR option,
-           body: BLOCK }
-	 
-     and DEFINITION =
+     and FUNC_NAME_KIND =
+         Ordinary
+       | Operator
+       | Get
+       | Set
+       | Call
+       | Construct
+       | ToFunc
+
+     and FUNC =
+         Func of { name: FUNC_NAME,
+                   sign: FUNC_SIGN,
+                   body: BLOCK }
+
+     and DEFN =
          ClassDefn of CLASS_DEFN
-       | VariableDefn of VAR_DEFN
-       | FunctionDefn of FUNC
+       | VariableDefn of VAR_BINDING list
+       | FunctionDefn of FUNC_DEFN
        | InterfaceDefn of INTERFACE_DEFN
        | NamespaceDefn of { name: IDENT,
                             init: EXPR }
 
      and FUNC_SIGN =
          FunctionSignature of { typeparams: IDENT list,
-                                params: FORMAL list,
+                                params: VAR_BINDING list,
                                 resulttype: TYPE_EXPR }
-			      
-			      
+
+
      (* Improve this? Probably more mutual exclusion possible. *)
+     (* [jd] todo: as Attributes get passed into the parser functions
+                      for the various definition kinds, pick the relevant
+                                                             subset of attributes to capture in each definition.
+                                                                                                     for example,
+
+                                                                                                VariableDefn ( static, prototype, Binding { ns, ... } }
+      *)
+
      and ATTRIBUTES =
-         Attributes of { ns: NAMESPACE,
+         Attributes of { ns: EXPR,
                          override: bool,
                          static: bool,
                          final: bool,
                          dynamic: bool,
                          prototype: bool,
-                         nullable: bool }
+                         native: bool,
+                         rest: bool }
 
-     and VAR_DEFN =
-         VariableDefinition of { tag: VAR_DEFN_TAG,
-				 init: EXPR option,
-				 attrs: ATTRIBUTES,
-				 pattern: PATTERN,
-				 ty: TYPE_EXPR option }
+     and VAR_BINDING =
+         Binding of { kind: VAR_DEFN_TAG,
+                      init: EXPR option,
+                      attrs: ATTRIBUTES,
+                      pattern: PATTERN,
+                      ty: TYPE_EXPR option }
 
      and TYPE_EXPR =
          SpecialType of SPECIAL_TY
@@ -180,52 +195,49 @@ datatype DIRECTIVE =
        | RecordType of FIELD_TYPE list
        | InstantiationType of { base: PRIM_TY,
                                 params: TYPE_EXPR list }
-       | UnresolvedType of EXPR
 
      and STMT =
          EmptyStmt
-       | ExprStmt of EXPR
-       | DefineStmt of VAR_DEFN
+       | ExprStmt of EXPR list
        | ForEachStmt of FOR_ENUM_STMT
        | ForInStmt of FOR_ENUM_STMT
-       | ThrowStmt of EXPR
-       | ReturnStmt of EXPR
+       | ThrowStmt of EXPR list
+       | ReturnStmt of EXPR list
        | BreakStmt of IDENT option
        | ContinueStmt of IDENT option
        | BlockStmt of BLOCK
        | LabeledStmt of (IDENT * STMT)
-       | LetStmt of ((VAR_DEFN list) * BLOCK)
+       | LetStmt of ((VAR_BINDING list) * STMT)
        | SuperStmt of EXPR list
        | WhileStmt of WHILE_STMT
        | DoWhileStmt of WHILE_STMT
 
-       | ForStmt of { isVar: bool,
-                      defns: VAR_DEFN list,
-                      init: EXPR,
-                      cond: EXPR,
-                      update: EXPR,
+       | ForStmt of { defns: VAR_BINDING list,
+                      init: EXPR list,
+                      cond: EXPR list,
+                      update: EXPR list,
                       contLabel: IDENT option,
                       body: STMT }
 
-       | IfStmt of { cond: EXPR,
-                     consequent: STMT,
-                     alternative: STMT }
+       | IfStmt of { cnd: EXPR,
+                     thn: STMT,
+                     els: STMT }
 
-       | WithStmt of { obj: EXPR,
+       | WithStmt of { obj: EXPR list,
+                       ty: TYPE_EXPR,
                        body: STMT }
 
        | TryStmt of { body: BLOCK,
-                      catches: (FORMAL * BLOCK) list,
-                      finally: BLOCK }
+                      catches: {bind:VAR_BINDING, body:BLOCK} list,
+                      finally: BLOCK option}
 
-       | SwitchStmt of { cond: EXPR,
-                         cases: (EXPR * (STMT list)) list,
-                         default: STMT list }
+       | SwitchStmt of { cond: EXPR list,
+                         cases: CASE list }
 
-       | DefnStmt of DEFINITION list
-		     
-       | PragmaStmt of DIRECTIVE list
-		       
+       | SwitchTypeStmt of { cond: EXPR list, ty: TYPE_EXPR,
+                             cases: TYPE_CASE list }
+       | Dxns of { expr: EXPR }
+
      and EXPR =
          TrinaryExpr of (TRIOP * EXPR * EXPR * EXPR)
        | BinaryExpr of (BINOP * EXPR * EXPR)
@@ -233,15 +245,15 @@ datatype DIRECTIVE =
        | UnaryExpr of (UNOP * EXPR)
        | TypeExpr of TYPE_EXPR
        | NullaryExpr of NULOP
-       | YieldExpr of EXPR option
+       | YieldExpr of EXPR list option
        | SuperExpr of EXPR option
        | LiteralExpr of LITERAL
 
        | CallExpr of {func: EXPR,
                       actuals: EXPR list}
 
-       | LetExpr of { defs: VAR_DEFN list,
-                      body: EXPR }
+       | LetExpr of { defs: VAR_BINDING list,
+                      body: EXPR list}
 
        | NewExpr of { obj: EXPR,
                       actuals: EXPR list }
@@ -250,108 +262,111 @@ datatype DIRECTIVE =
                       sign: FUNC_SIGN,
                       body: BLOCK }
 
-       | ListExpr of EXPR list
-
-       | PatternExpr of PATTERN
-			    
        | ObjectRef of { base: EXPR, ident: IDENT_EXPR }
 
        | LexicalRef of { ident: IDENT_EXPR }
 
- 
-    and IDENT_EXPR =
+       | SetExpr of (ASSIGNOP * PATTERN * EXPR)
+
+       | ListExpr of EXPR list
+       | SliceExpr of (EXPR list * EXPR list * EXPR list)
+
+     and IDENT_EXPR =
          QualifiedIdentifier of { qual : EXPR,
                                   ident : USTRING }
        | QualifiedExpression of { qual : EXPR,
                                   expr : EXPR }
        | AttributeIdentifier of IDENT_EXPR
        | Identifier of { ident : IDENT,
-			 openNamespaces : (NAMESPACE list) ref }
+                         openNamespaces : (NAMESPACE list) ref }
        | ExpressionIdentifier of EXPR   (* for bracket exprs: o[x] and @[x] *)
-       | TypeIdentifier of { ident : IDENT_EXPR, 
-			     typeParams : TYPE_EXPR list }
-			       
+       | TypeIdentifier of { ident : IDENT_EXPR,
+                             typeParams : TYPE_EXPR list }
+
      and LITERAL =
          LiteralNull
-       | LiteralUndefined 
+       | LiteralUndefined
        | LiteralNumber of real
        | LiteralBoolean of bool
        | LiteralString of USTRING
-       | LiteralArray of { expr:EXPR list, ty:TYPE_EXPR option }
+       | LiteralArray of { exprs:EXPR list, ty:TYPE_EXPR option }
        | LiteralXML of EXPR list
        | LiteralNamespace of NAMESPACE
 
        | LiteralObject of
          { expr : FIELD list,
-		   ty: TYPE_EXPR option }
+           ty: TYPE_EXPR option }
 
        | LiteralRegExp of
          { str: USTRING }
-	 
+
      and BLOCK = Block of
-         { pragmas: DIRECTIVE list,
-           defns: DEFINITION list,
+         { pragmas: PRAGMA list,
+           defns: DEFN list,
            stmts: STMT list }
-	 
+
      and PATTERN =
-	 ObjectPattern of { name: EXPR, ptrn : PATTERN } list
+         ObjectPattern of { name: IDENT_EXPR, ptrn : PATTERN } list
        | ArrayPattern of PATTERN list
        | SimplePattern of EXPR
-       | IdentifierPattern of IDENT
-			      
+       | IdentifierPattern of IDENT_EXPR
+
 withtype FIELD =
-	 { name: EXPR,
+         { kind: VAR_DEFN_TAG,
+           name: IDENT_EXPR,
            init: EXPR }
-	 
+
      and FIELD_TYPE =
-	 { name: EXPR,
+         { name: IDENT_EXPR,
            ty: TYPE_EXPR }
-	 
+
      and FUNC_TY =
          { paramTypes: TYPE_EXPR option list,
            returnType: TYPE_EXPR,
            boundThisType: TYPE_EXPR option,
            hasRest: bool }
-	 
-     and FORMAL =
-         { pattern: PATTERN,
-           ty: TYPE_EXPR option,
-           init: EXPR option,
-           tag: VAR_DEFN_TAG,
-           isRest: bool }
 
      and TYPED_IDENT =
          { name: IDENT,
            ty: TYPE_EXPR option }
 
+     and FUNC_DEFN = 
+	 { attrs : ATTRIBUTES,
+           kind : VAR_DEFN_TAG,
+           func : FUNC }
+
      and CLASS_DEFN =
          { name: IDENT,
+		   nonnullable: bool,
            attrs: ATTRIBUTES,
            params: IDENT list,
-           extends: TYPE_EXPR list,
-           implements: TYPE_EXPR list,
-           instanceVars: VAR_DEFN list,
-           vars: VAR_DEFN list,
-           constructor: FUNC,
+           extends: IDENT_EXPR option,
+           implements: IDENT_EXPR list,
+		   body: BLOCK,
+           (* the following field will be populated during the definition phase *)
+           instanceVars: VAR_BINDING list,
+		   instanceMethods: FUNC list,
+           vars: VAR_BINDING list,
            methods: FUNC list,
+           constructor: FUNC option,
            initializer: STMT list }
 
      and INTERFACE_DEFN =
          { name: IDENT,
+		   nonnullable: bool,
            attrs: ATTRIBUTES,
            params: IDENT list,
-           extends: TYPE_EXPR list,
-           methods: (IDENT * FUNC_TY) list }
+           extends: IDENT_EXPR list,
+           body: BLOCK }
 
      and PRIM_TY =
          { name: USTRING,
            kind: PRIM_KIND }
 
      and FOR_ENUM_STMT =
-         { isVar: bool,
-           init: EXPR,
-           obj: EXPR,
-           defns: VAR_DEFN list,
+         { ptrn: PATTERN option,
+           obj: EXPR list,
+           defns: VAR_BINDING list,
            contLabel: IDENT option,
            body: STMT }
 
@@ -360,13 +375,31 @@ withtype FIELD =
            body: STMT,
            contLabel: IDENT option }
 
+     and DIRECTIVES =
+         { pragmas : PRAGMA list,
+           defns : DEFN list,
+           stmts : STMT list }
+
+     and BINDINGS =
+         { defns : VAR_BINDING list,
+           inits : EXPR list }
+
+     and CASE =
+         { label : EXPR list option, stmts : DIRECTIVES }
+
+     and TYPE_CASE =
+         { ptrn : VAR_BINDING option, body : BLOCK }
+
+     and FUNC_NAME =
+         { kind : FUNC_NAME_KIND, ident : IDENT }
+
 type PACKAGE =
      { names: IDENT list,
        fullname: USTRING,
        body: BLOCK }
-
+     
 type PROGRAM =
      { packages: PACKAGE list,
-       body: BLOCK }
+       body : BLOCK }
 
 end

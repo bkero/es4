@@ -1,1 +1,1 @@
-({x:x,y:y} = z)
+({x:{i:int,j:int},y:z} = o)

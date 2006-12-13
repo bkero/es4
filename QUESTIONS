@@ -2,6 +2,23 @@
 TYPE SYSTEM
 
 - is `this' only ever a class type? interface type?
+  o e.g., could it be a record type for ES3-style function properties?
+- do we do a convertibility check on literal annotations? what are the implications for the evaluator?
+- do we have a top-level ``Namespace'' type bound in intrinsic or something like that?
+- what on earth is AttributeIdentifier?
+- why does IDENT_EXPR have a TypeIdentifier production?
+- how does this example not break soundness?
+      use namespace foo;
+      use namespace goo;
+      
+      class C {
+          foo x : int = 3
+          f() { print(x) }
+      }
+      
+      class D {
+          goo x : String = "goo"
+      }
 
 ============================================================
 ML

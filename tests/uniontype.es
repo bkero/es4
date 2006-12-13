@@ -1,1 +1,1 @@
-type (T,U,V)
+(type (T,U,V))

@@ -5,10 +5,10 @@ Library
         structure Token
         structure Lexer
         structure Parser
-        structure Eval
-	structure Mach
+	structure Defn
         structure TypeChk
-
+	structure Eval
+	structure Mach
 is
         main.sml
         ast.sml
@@ -18,13 +18,18 @@ is
         token.sml
         lexer.lex
         parser.sml
-        eval.sml
-	mach.sml
+        defn.sml
 	typechk.sml
+	eval.sml
+	mach.sml
 
         $/basis.cm
         $/smlnj-lib.cm
 	$/pp-lib.cm
         $/mllex-tool.cm
         $/lex-ext.cm
-        
+#if defined (BACKTRACE)
+        $smlnj-tdp/plugins.cm
+#else
+        tools/backtrace.sml
+#endif

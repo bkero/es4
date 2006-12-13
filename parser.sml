@@ -1,4 +1,3 @@
-
 structure Parser = struct
 
 open Token
@@ -22,9 +21,15 @@ datatype omega =
   | NOSHORTIF
   | FULL
 
+datatype tau =
+    GLOBAL
+  | CLASS
+  | INTERFACE
+  | FUNCTION
+
 fun log ss = 
     (TextIO.print "log: "; 
-     List.app TextIO.print ss; 
+     List.app TextIO.print ss;
      TextIO.print "\n")
 
 val trace_on = true
@@ -37,6 +42,27 @@ fun error ss =
 
 fun newline ts = Lexer.UserDeclarations.followsLineBreak ts
 
+val defaultAttrs = 
+	Ast.Attributes { 
+		ns = Ast.LiteralExpr (Ast.LiteralNamespace (Ast.Internal "")),
+        override = false,
+   		static = false,
+        final = false,
+   		dynamic = false,
+        prototype = false,
+        native = false,
+		rest = false }
+
+val defaultRestAttrs = 
+	Ast.Attributes { 
+		ns = Ast.LiteralExpr (Ast.LiteralNamespace (Ast.Internal "")),
+        override = false,
+   		static = false,
+        final = false,
+   		dynamic = false,
+        prototype = false,
+        native = false,
+		rest = true }
 
 (*
 
@@ -50,6 +76,7 @@ fun identifier ts =
     in case ts of
         Identifier(str) :: tr => (tr,str)
 	  | Call :: tr => (tr,"call")
+	  | Construct :: tr => (tr,"construct")
       | Debugger :: tr => (tr,"debugger")
       | Decimal :: tr => (tr,"decimal")
       | Double :: tr => (tr,"double")
@@ -110,13 +137,13 @@ and qualifier ts =
           let
               val (ts1,nd1) = reservedNamespace (ts)
           in
-              (ts1,Ast.LiteralExpr(nd1))
+              (ts1,Ast.LiteralExpr(Ast.LiteralNamespace nd1))
           end
       | _ => 
           let
               val (ts1,nd1) = propertyIdentifier (ts)
           in
-              (ts1,Ast.LexicalRef{ident=Ast.Identifier {ident=nd1, openNamespaces=ref []}})
+              (ts1,Ast.LexicalRef{ident=Ast.Identifier {ident=nd1, openNamespaces=ref [Ast.Internal ""]}})
           end
     end
 
@@ -124,15 +151,15 @@ and reservedNamespace ts =
     let val _ = trace([">> reservedNamespace with next=",tokenname(hd(ts))])
     in case ts of
         Internal :: tr => 
-			(tr, Ast.LiteralNamespace(Ast.Internal("put package name here")))
+			(tr, Ast.Internal("put package name here"))
       | Intrinsic :: tr => 
-			(tr, Ast.LiteralNamespace(Ast.Intrinsic))
+			(tr, Ast.Intrinsic)
       | Private :: tr => 
-			(tr, Ast.LiteralNamespace(Ast.Private))
+			(tr, Ast.Private)
       | Protected :: tr => 
-			(tr, Ast.LiteralNamespace(Ast.Protected))
+			(tr, Ast.Protected)
       | Public :: tr => 
-			(tr, Ast.LiteralNamespace(Ast.Public("")))
+			(tr, Ast.Public(""))
       | _ => raise ParseError
     end
 
@@ -171,13 +198,13 @@ and simpleQualifiedIdentifier ts =
           let 
               val (ts1, nd1) = reservedNamespace(ts)
           in case ts1 of
-              DoubleColon :: ts2 => qualifiedIdentifier'(ts2,Ast.LiteralExpr(nd1))
+              DoubleColon :: ts2 => qualifiedIdentifier'(ts2,Ast.LiteralExpr(Ast.LiteralNamespace nd1))
             | _ => raise ParseError
           end
       | _ => 
           	let
               	val (ts1, nd1) = propertyIdentifier(ts)
-                val id = Ast.Identifier {ident=nd1, openNamespaces=ref []}
+                val id = Ast.Identifier {ident=nd1, openNamespaces=ref [Ast.Internal ""]}
           	in case ts1 of
               	DoubleColon :: _ => 
 					qualifiedIdentifier'(tl ts1,Ast.LexicalRef ({ident=id}))
@@ -191,7 +218,14 @@ and expressionQualifiedIdentifier (ts) =
     let 
 		val (ts1,nd1) = parenListExpression(ts)
     in case ts1 of
-        DoubleColon :: ts2 => qualifiedIdentifier'(ts2,nd1)
+        DoubleColon :: _ => 
+			let
+				val (ts2,nd2) = qualifiedIdentifier'(tl ts1,nd1) 
+(* todo: make qualifier be an EXPR list *) 
+			in
+				(ts2,nd2)
+			end
+
       | _ => raise ParseError
     end
 
@@ -284,10 +318,10 @@ and qualifiedIdentifier ts =
 and simpleTypeIdentifier ts =
     let val _ = trace([">> simpleTypeIdentifier with next=",tokenname(hd(ts))]) 
     in case ts of
-        PackageIdentifier :: Dot :: ts1 => 
+        PackageIdentifier p :: Dot :: ts1 => 
             let val (ts2,nd2) = identifier(ts1) 
 				val nd' = Ast.QualifiedIdentifier(
-					       {qual=Ast.LiteralExpr(Ast.LiteralNamespace(Ast.Public("p"))),
+					       {qual=Ast.LiteralExpr(Ast.LiteralNamespace(Ast.Public(p))),
 						    ident=nd2})
 			in 
 				(ts2,nd') 
@@ -309,10 +343,14 @@ and typeIdentifier ts =
             let
                 val (ts2,nd2) = typeExpressionList (tl ts1)
             in case ts2 of
-                RIGHTANGLE :: _ => (tl ts2,Ast.TypeIdentifier {ident=nd1,typeParams=nd2})
+                GreaterThan :: _ =>
+					(trace(["<< typeIdentifier with next=",tokenname(hd(tl ts2))]); 
+					(tl ts2,Ast.TypeIdentifier {ident=nd1,typeParams=nd2}))
               | _ => raise ParseError
             end
-      | _ => (ts1, nd1)        
+      | _ =>
+			(trace(["<< typeIdentifier with next=",tokenname(hd(ts1))]); 
+			(ts1, nd1))
     end
 
 (*
@@ -338,7 +376,7 @@ and parenExpression ts =
         (  ListExpression(ALLOWIN)  )
 *)
 
-and parenListExpression ts =
+and parenListExpression (ts) : (token list * Ast.EXPR) =
     let val _ = trace([">> parenListExpression with next=",tokenname(hd(ts))]) 
     in case ts of
         LeftParen :: _ => 
@@ -347,7 +385,7 @@ and parenListExpression ts =
             in case ts1 of
                 RightParen :: _ => 
 					(trace(["<< parenListExpression with next=",tokenname(hd(ts1))]);
-					(tl ts1,nd1))
+					(tl ts1,Ast.ListExpr nd1))
               | _ => raise ParseError
             end
       | _ => raise ParseError
@@ -365,7 +403,7 @@ and parenListExpression ts =
 		function  Identifier  FunctionSignature  Block
 *)
 
-and functionExpression (ts,a,b) =
+and functionExpression (ts,a:alpha,b:beta) =
     let val _ = trace([">> functionExpression with next=",tokenname(hd(ts))]) 
     in case ts of
         Function :: ts1 => 
@@ -377,7 +415,7 @@ and functionExpression (ts,a,b) =
 					in case (ts3,a) of
 						(LeftBrace :: _,_) => 
 							let
-								val (ts4,nd4) = block ts3
+								val (ts4,nd4) = block (ts3,FUNCTION)
 							in
 								(ts4,Ast.FunExpr {ident=NONE,sign=nd3,body=nd4})
 							end
@@ -398,7 +436,7 @@ and functionExpression (ts,a,b) =
 					in case (ts3,a) of
 						(LeftBrace :: _,_) => 
 							let
-								val (ts4,nd4) = block ts3
+								val (ts4,nd4) = block (ts3,FUNCTION)
 							in
 								(ts4,Ast.FunExpr {ident=SOME nd2,sign=nd3,body=nd4})
 							end
@@ -417,51 +455,53 @@ and functionExpression (ts,a,b) =
     end
 
 (*
-    FunctionSignature
-        .<  TypeParameterList  > (  Parameters  )  ResultType
-        (  Parameters  )  ResultType
-
-    re-factored:
-
-    FunctionSignature
-        .<  TypeParameterList  > FunctionSignaturePrime
-        FunctionSignaturePrime
-
-    FunctionSignaturePrime
-        (  Parameters  )  ResultType
+	FunctionSignature	
+		TypeParameters  (  Parameters  )  ResultType
 *)
 
-and functionSignature ts =
+and functionSignature (ts) : (token list * Ast.FUNC_SIGN) =
     let val _ = trace([">> functionSignature with next=",tokenname(hd(ts))]) 
-		fun functionSignature' (ts, nd1) : (token list * Ast.FUNC_SIGN) =
-            case ts of
-                LeftParen :: ts1 =>
+		val (ts1,nd1) = typeParameters ts
+	in case ts1 of
+        LeftParen :: _ =>
+           	let
+               	val (ts2, nd2) = parameters (tl ts1)
+           	in case ts2 of
+               	RightParen :: _ =>
                    	let
-                       	val (ts2, nd2) = parameters ts1
-                   	in case ts2 of
-                       	RightParen :: tsx =>
-                           	let
-                               	val (ts3,nd3) = resultType tsx
-                           	in
-								(log(["functionSignature with next=",tokenname(hd ts3)]);
-                                (ts3,Ast.FunctionSignature {typeparams=nd1,params=nd2,resulttype=nd3}))
-                           	end
-                      | _ => raise ParseError
+                       	val (ts3,nd3) = resultType (tl ts2)
+                   	in
+						(log(["<< functionSignature with next=",tokenname(hd ts3)]);
+                        (ts3,Ast.FunctionSignature {typeparams=nd1,params=nd2,resulttype=nd3}))
                    	end
-              	| _ => raise ParseError
-    in case ts of
-        LeftDotAngle :: ts1 => 
-            let
-                val (ts2,nd2) = typeParameterList ts1
-            in
-                let
-                in case ts2 of
-                    GreaterThan :: ts3 => functionSignature' (ts3, nd2)
-                  | _ => raise ParseError
-                end
-            end
-      | _ => functionSignature' (ts, [])
+           	  | _ => raise ParseError
+			end
+	  | _ => raise ParseError
     end
+
+(*
+	TypeParameters	
+		«empty»
+		.<  TypeParameterList  >  
+*)
+
+and typeParameters ts =
+    let val _ = trace([">> typeParameters with next=",tokenname(hd(ts))]) 
+    in case ts of
+        LeftDotAngle :: _ => 
+            let
+                val (ts1,nd1) = typeParameterList (tl ts)
+            in case ts1 of
+                GreaterThan :: _ => 
+					let
+					in
+						trace(["<< typeParameters with next=",tokenname(hd(tl ts1))]);
+						(tl ts1,nd1)
+					end
+              | _ => raise ParseError
+            end
+      | _ => (ts,[])
+	end
 
 (*
     TypeParametersList    
@@ -480,22 +520,23 @@ and functionSignature ts =
 
 and typeParameterList (ts) : token list * string list =
     let val _ = trace([">> typeParameterList with next=",tokenname(hd(ts))]) 
-		fun typeParameterList' (ts, lst) =
+		fun typeParameterList' (ts) =
 	    	let
     		in case ts of
         		Comma :: _ =>
            			let
                			val (ts1,nd1) = identifier(tl ts)
-               			val (ts2,nd2) = typeParameterList' (ts1,nd1::lst)
+               			val (ts2,nd2) = typeParameterList' (ts1)
            			in
-             			(ts2,nd2)
+             			(ts2,nd1::nd2)
            			end
-			  | _ => (ts,lst)
+			  | _ => (ts,[])
     end
         val (ts1,nd1) = identifier ts
-        val (ts2,nd2) = typeParameterList' (ts1,nd1::nil)
+        val (ts2,nd2) = typeParameterList' (ts1)
     in
-        (ts2,nd2)
+		trace(["<< typeParameterList with next=",tokenname(hd ts2)]);
+        (ts2,nd1::nd2)
     end
 
 (*
@@ -509,7 +550,7 @@ and typeParameterList (ts) : token list * string list =
         RestParameter
 *)
 
-and parameters ts =
+and parameters (ts) : (token list * Ast.VAR_BINDING list)=
     let val _ = trace([">> parameters with next=",tokenname(hd(ts))]) 
 		fun nonemptyParameters ts = 
 			let
@@ -546,17 +587,22 @@ and parameters ts =
         Parameter  =  NonAssignmentExpression(ALLOWIN)
 *)
 
-and parameterInit ts = 
+and parameterInit (ts) : (token list * Ast.VAR_BINDING) = 
     let val _ = trace([">> parameterInit with next=",tokenname(hd(ts))]) 
 		val (ts1,nd1) = parameter ts
 	in case ts1 of
-		Assign :: ts2 => 
+		Assign :: _ => 
 			let
-				val (ts3,nd3) = nonAssignmentExpression (ts2,NOLIST,ALLOWIN)
+				val _ = trace(["xx parameterInit with next=",tokenname(hd(ts))])
+				val {pattern,ty,kind,attrs,...} = nd1
+				val (ts2,nd2) = nonAssignmentExpression (tl ts1,NOLIST,ALLOWIN)
 			in 
-				raise ParseError (* fixme: (ts3,{name=name,ty=ty,tag=tag,init=SOME nd3,isRest=false})*)
+				trace(["<< parameterInit with next=",tokenname(hd(ts))]);
+				(ts2,Ast.Binding {pattern=pattern,ty=ty,kind=kind,init=SOME nd2,attrs=attrs})
 			end
-	  | _ => (ts1,nd1)
+	  | _ => 
+			(trace(["<< parameterInit with next=",tokenname(hd(ts))]);
+			(ts1,Ast.Binding nd1))
 	end
 
 (*
@@ -569,12 +615,13 @@ and parameterInit ts =
         const
 *)
 
-and parameter (ts) : (token list * Ast.FORMAL) =
+and parameter (ts) =
     let val _ = trace([">> parameter with next=",tokenname(hd(ts))]) 
 		val (ts1,nd1) = parameterKind (ts)
 		val (ts2,{p,t}) = typedPattern (ts1,NOLIST,ALLOWIN,NOEXPR)
 	in
-		(ts2,{pattern=p,ty=t,tag=nd1,isRest=false,init=NONE})
+		trace(["<< parameter with next=",tokenname(hd(ts2))]);
+		(ts2,{pattern=p,ty=t,kind=nd1,attrs=defaultAttrs,init=NONE})
 	end
 
 and parameterKind (ts) : (token list * Ast.VAR_DEFN_TAG)  = 
@@ -587,24 +634,25 @@ and parameterKind (ts) : (token list * Ast.VAR_DEFN_TAG)  =
 (*
     RestParameter
         ...
-        ...  ParameterAttributes TypedIdentifier
-        ...  ParameterAttributes TypedPattern
+        ...  ParameterKind TypedIdentifier
+        ...  ParameterKind TypedPattern
 *)
 
-and restParameter (ts:token list) =
+and restParameter (ts) : (token list * Ast.VAR_BINDING) =
     let val _ = trace([">> restParameter with next=",tokenname(hd(ts))])
 	in case ts of
 		DOTDOTDOT :: _ =>
 			let
 			in case tl ts of
 				RightParen :: _ => 
-					(tl ts,{pattern=Ast.IdentifierPattern "",
-							  ty=NONE,tag=Ast.Var,isRest=true,init=NONE}) 
+					(tl ts,Ast.Binding{pattern=Ast.IdentifierPattern (Ast.Identifier {ident="", 
+													  openNamespaces=ref [Ast.Internal ""]}),
+							  ty=NONE,kind=Ast.Var,attrs=defaultRestAttrs,init=NONE}) 
 			  | _ =>
 					let
-						val (ts1:token list,{pattern,ty,tag,...}) = parameter (tl ts)
+						val (ts1:token list,{pattern,ty,kind,...}) = parameter (tl ts)
 					in
-						(ts1,{pattern=pattern,ty=ty,tag=tag,isRest=true,init=NONE})
+						(ts1,Ast.Binding{pattern=pattern,ty=ty,kind=kind,attrs=defaultRestAttrs,init=NONE})
 					end
 			end
 	  | _ => raise ParseError
@@ -628,7 +676,7 @@ and resultType ts =
 				log(["<< resultType with next=",tokenname(hd ts1)]);
 				(ts1,nd1)
 			end
-	  | ts1 => (ts1,Ast.SpecialType(Ast.Undefined))
+	  | ts1 => (ts1,Ast.SpecialType(Ast.Any))
     end
 
 (*
@@ -693,12 +741,16 @@ and fieldList ts =
 
 (*
     LiteralField    
-        FieldName  :  AssignmentExpression(NOLIST, ALLOWIN)
+        FieldKind  FieldName  :  AssignmentExpression(NOLIST, ALLOWIN)
 		get  Identifier  FunctionCommon
 		set  Identifier  FunctionCommon
 
+	FieldKind	
+		«empty»
+		const
+
     FieldName    
-        NonAttributeQualifiedIdentifier
+        PropertyIdentifier
         StringLiteral
         NumberLiteral
         ReservedIdentifier
@@ -707,44 +759,66 @@ and fieldList ts =
 and literalField (ts) =
     let val _ = trace([">> literalField with next=",tokenname(hd(ts))]) 
 	in case ts of
-		Get :: _ =>
+		(Get | Set) :: Colon :: _ =>  (* special case for fields with name 'get' or 'set' *)
+			let
+				val (ts1,nd1) = fieldKind ts
+				val (ts2,nd2) = fieldName ts1
+			in case ts2 of
+				Colon :: _ =>
+					let
+						val (ts3,nd3) = assignmentExpression (tl ts2,NOLIST,ALLOWIN)
+					in
+						(ts3,{kind=nd1,name=nd2,init=nd3})
+					end
+			  | _ => raise ParseError
+			end
+	  | Get :: _ =>
 			let
 				val (ts1,nd1) = fieldName (tl ts)
 				val (ts2,nd2) = functionCommon (ts1)
 			in
-				(ts2,{name=nd1,init=nd2})
+				(ts2,{kind=Ast.Var,name=nd1,init=nd2})
 			end
 	  | Set :: _ =>
 			let
 				val (ts1,nd1) = fieldName (tl ts)
 				val (ts2,nd2) = functionCommon (ts1)
 			in
-				(ts2,{name=nd1,init=nd2})
+				(ts2,{kind=Ast.Var,name=nd1,init=nd2})
 			end
 	  | _ => 
 			let
-				val (ts1,nd1) = fieldName ts
-			in case ts1 of
+				val (ts1,nd1) = fieldKind ts
+				val (ts2,nd2) = fieldName ts1
+			in case ts2 of
 				Colon :: _ =>
 					let
-						val (ts2,nd2) = assignmentExpression (tl ts1,NOLIST,ALLOWIN)
+						val (ts3,nd3) = assignmentExpression (tl ts2,NOLIST,ALLOWIN)
 					in
-						(ts2,{name=nd1,init=nd2})
+						(ts3,{kind=nd1,name=nd2,init=nd3})
 					end
 			  | _ => raise ParseError
 			end
 	end
 
-and fieldName ts =
+and fieldKind (ts) : (token list * Ast.VAR_DEFN_TAG)  = 
+    let val _ = trace([">> fieldKind with next=",tokenname(hd(ts))]) 
+	in case ts of
+		(Const | Get | Set ) :: Colon :: _ => (ts,Ast.Var)
+	  | Const :: _ => (tl ts,Ast.Const)
+	  | _ => (ts,Ast.Var)
+	end
+
+and fieldName (ts) : token list * Ast.IDENT_EXPR =
     let val _ = trace([">> fieldName with next=",tokenname(hd(ts))]) 
 	in case ts of
-		StringLiteral s :: ts1 => (ts1,Ast.LiteralExpr(Ast.LiteralString(s)))
-	  | NumberLiteral n :: ts1 => (ts1,Ast.LiteralExpr(Ast.LiteralNumber(n)))
+		StringLiteral s :: ts1 => (ts1,Ast.ExpressionIdentifier(Ast.LiteralExpr(Ast.LiteralString(s))))
+	  | NumberLiteral n :: ts1 => (ts1,Ast.ExpressionIdentifier(Ast.LiteralExpr(Ast.LiteralNumber(n))))
 	  | _ => 
 			let
-				val (ts1,nd1) = nonAttributeQualifiedIdentifier (ts)
+				val (ts1,nd1) = reservedOrPropertyIdentifier (ts) 
 			in
-				(ts1,Ast.LexicalRef{ident=nd1})
+				(ts1,Ast.QualifiedIdentifier {ident=nd1,qual=Ast.LiteralExpr (Ast.LiteralNamespace (Ast.Public ""))})
 			end
 	end
 
@@ -754,7 +828,7 @@ and functionCommon ts =
     in case ts1 of
         LeftBrace :: _ => 
             let
-                val (ts2,nd2) = block ts1
+                val (ts2,nd2) = block (ts1,FUNCTION)
             in
                 (ts2,Ast.FunExpr {ident=NONE,sign=nd1,body=nd2})
             end
@@ -778,10 +852,10 @@ and arrayLiteral (ts) =
 					let
 						val (ts2,nd2) = arrayType (tl (tl ts1))
 					in
-						(ts2,Ast.LiteralArray {expr=nd1,ty=SOME nd2})
+						(ts2,Ast.LiteralArray {exprs=nd1,ty=SOME nd2})
 					end
 			  | RightBracket :: _ => 
-					(tl ts1,Ast.LiteralArray {expr=nd1,ty=NONE})
+					(tl ts1,Ast.LiteralArray {exprs=nd1,ty=NONE})
 			  | _ => raise ParseError
 			end
 	  | _ => raise ParseError
@@ -1155,7 +1229,7 @@ and propertyOperator (ts, nd) =
                             let
                                 val (ts4,nd4) = reservedOrPropertyIdentifier(ts3)
                             in
-                                (ts4,Ast.ObjectRef({base=nd,ident=Ast.Identifier {ident=nd4,openNamespaces=ref []}}))
+                                (ts4,Ast.ObjectRef({base=nd,ident=Ast.Identifier {ident=nd4,openNamespaces=ref [Ast.Internal ""]}}))
                             end
 					  | _ => raise ParseError (* e4x filter expr *)
                     end
@@ -1163,7 +1237,7 @@ and propertyOperator (ts, nd) =
                     let
                         val (ts4,nd4) = reservedOrPropertyIdentifier(ts1)
                     in
-                        (ts4,Ast.ObjectRef({base=nd,ident=Ast.Identifier {ident=nd4,openNamespaces=ref []}}))
+                        (ts4,Ast.ObjectRef({base=nd,ident=Ast.Identifier {ident=nd4,openNamespaces=ref [Ast.Internal ""]}}))
                     end
             end
       | LeftBracket :: _ => 
@@ -1191,7 +1265,7 @@ and propertyOperator (ts, nd) =
 	TODO: implement SliceExpression
 *)
 
-and brackets (ts) =
+and brackets (ts) : (token list * Ast.EXPR) =
     let val _ = trace([">> brackets with next=",tokenname(hd(ts))]) 
     in case ts of
 		LeftBracket :: ts' =>
@@ -1202,11 +1276,11 @@ and brackets (ts) =
 					let
 						val (ts2,nd2) = listExpression (ts'',ALLOWIN)
 					in case ts2 of
-						RightBracket :: ts'' => (ts'',nd1) 
+						RightBracket :: ts'' => (ts'',Ast.SliceExpr (nd1,nd2,[])) 
 							(* fixme: need an ast for slice *)
 					  | _ => raise ParseError
 					end
-			  | RightBracket :: ts'' => (ts'',nd1) 
+			  | RightBracket :: ts'' => (ts'',Ast.ListExpr nd1) 
 			  | _ => raise ParseError
 			end
 	  | _ => raise ParseError
@@ -1739,7 +1813,7 @@ and logicalOrExpression (ts,a,b) =
 					let 
 						val (ts3,nd3) = logicalAndExpression (ts2,a,b) 
 					in 
-						logicalOrExpression' (ts3,Ast.BinaryExpr(Ast.LogicalXor,nd1,nd3)) 
+						logicalOrExpression' (ts3,Ast.BinaryExpr(Ast.LogicalOr,nd1,nd3)) 
 					end
 			  | _ => 
 					(trace(["<< logicalOrExpression"]);
@@ -1833,8 +1907,59 @@ and conditionalExpression (ts,ALLOWLIST,b) =
 							   :  NonAssignmentExpression(noLet, b)
 *)
 
-and nonAssignmentExpression (ts,ALLOWLIST,b) = raise ParseError
-  | nonAssignmentExpression (ts,NOLIST,b) = raise ParseError
+and nonAssignmentExpression (ts,ALLOWLIST,b) =
+    let val _ = trace([">> nonAssignmentExpression ALLOWLIST with next=",tokenname(hd(ts))])
+    in case ts of
+        Let :: _ => letExpression(ts,b)
+	  | Yield :: _ => yieldExpression(ts,b)
+      | _ => 
+			let
+				val (ts2,nd2) = logicalOrExpression(ts,ALLOWLIST,b)
+			in case ts2 of
+				QuestionMark :: ts3 => 
+					let
+						val (ts4,nd4) = nonAssignmentExpression(ts3,ALLOWLIST,b)
+					in case ts4 of
+						Colon :: ts5 =>
+							let
+								val (ts6,nd6) = nonAssignmentExpression(ts5,ALLOWLIST,b)
+							in
+								(ts6,nd6)
+							end
+					  | _ => raise ParseError							
+					end
+			  | _ => 
+					(trace(["<< nonAssignmentExpression ALLOWLIST with next=",tokenname(hd(ts2))]);
+					(ts2,nd2))
+			end
+		end
+ 
+  | nonAssignmentExpression (ts,NOLIST,b) =
+    let val _ = trace([">> nonAssignmentExpression NOLIST with next=",tokenname(hd(ts))])
+    in case ts of
+	    Yield :: _ => simpleYieldExpression ts
+      | _ => 
+			let
+				val (ts2,nd2) = logicalOrExpression(ts,NOLIST,b)
+			in case ts2 of
+				QuestionMark :: ts3 => 
+					let
+						val (ts4,nd4) = nonAssignmentExpression(ts3,NOLIST,b)
+					in case ts4 of
+						Colon :: ts5 =>
+							let
+								val (ts6,nd6) = nonAssignmentExpression(ts5,NOLIST,b)
+							in
+								(ts6,nd6)
+							end
+					  | _ => raise ParseError							
+					end
+			  | _ => 
+					(trace(["<< nonAssignmentExpression NOLIST with next=",tokenname(hd(ts2))]);
+					(ts2,nd2))
+			end
+		end
+
 
 (*
 	LetExpression(b)    
@@ -1871,19 +1996,19 @@ and letExpression (ts,b) =
 	    VariableBindingallowIn  ,  NonemptyLetBindingList
 *)
 
-and letBindingList (ts) =
+and letBindingList (ts) : (token list * Ast.VAR_BINDING list) =
     let val _ = trace([">> letBindingList with next=",tokenname(hd(ts))]) 
-		fun nonemptyLetBindingList ts = 
+		fun nonemptyLetBindingList (ts) : (token list * Ast.VAR_BINDING list) = 
 			let
-				val (ts1,nd1) = variableBinding (ts,Ast.LetVar,NOLIST,ALLOWIN)
+				val (ts1,{defns=d1,inits}) = variableBinding (ts,defaultAttrs,Ast.LetVar,NOLIST,ALLOWIN)
 			in case ts1 of
-				RightParen :: _ => (ts1,nd1::[])
+				RightParen :: _ => (ts1,d1)
 			  | Comma :: _ =>
 					let
 						val (ts2,nd2) = nonemptyLetBindingList (tl ts1)
 					in
 						(trace(["<< nonemptyLetBindingList with next=",tokenname(hd ts2)]);
-						(ts2,nd1::nd2))
+						(ts2,d1@nd2))
 					end
 			  | _ => raise ParseError
 			end
@@ -1937,31 +2062,63 @@ and simpleYieldExpression ts =
 	AssignmentExpression(a, b)	
 		ConditionalExpression(a, b)
 		Pattern(a, b, allowExpr)  =  AssignmentExpression(a, b)
-		Pattern(a, b, allowExpr)  CompoundAssignment  AssignmentExpression(a, b)
-		Pattern(a, b, allowExpr)  LogicalAssignment  AssignmentExpression(a, b)
+		SimplePattern(a, b, allowExpr)  CompoundAssignmentOperator  AssignmentExpression(a, b)
+		SimplePattern(a, b, allowExpr)  LogicalAssignmentOperator  AssignmentExpression(a, b)
+		
+	CompoundAssignmentOperator	
+		*=
+		/=
+		%=
+		+=
+		-=
+		<<=
+		>>=
+		>>>=
+		&=
+		^=
+		|=
+		&&=
+		||=
 *)
 
 and assignmentExpression (ts,a,b) : (token list * Ast.EXPR) = 
     let val _ = trace([">> assignmentExpression with next=",tokenname(hd(ts))])
 		val (ts1,nd1) = conditionalExpression(ts,a,b)
-    in case (ts1,nd1) of
-	  	(Assign :: _, (Ast.ObjectRef _ | Ast.LexicalRef _ | Ast.LiteralExpr (Ast.LiteralObject _)
-						| Ast.LiteralExpr (Ast.LiteralArray _)) ) => 
+    in case ts1 of
+	    Assign :: _ => 
 	    	let
-			    (* todo: convert to pattern, may result in syntax error *)
+				val p = patternFromExpr nd1
 				val (ts2,nd2) = assignmentExpression(tl ts1,a,b)						
 			in 
-				(ts2,Ast.BinaryExpr(Ast.Assign,nd1,nd2))
+				(ts2,Ast.SetExpr(Ast.Assign,p,nd2))
 			end
-	  | (Assign :: _, _) => 
-			(error(["invalid lhs"]);raise ParseError)
+	  | ( ModulusAssign :: _ 
+		  | LogicalAndAssign :: _
+	      | BitwiseAndAssign :: _
+	      | DivAssign :: _
+	      | BitwiseXorAssign :: _
+	      | LogicalOrAssign :: _
+	      | BitwiseOrAssign :: _
+	      | PlusAssign :: _
+	      | LeftShiftAssign :: _
+	      | MinusAssign :: _
+	      | RightShiftAssign :: _
+	      | UnsignedRightShiftAssign :: _
+		  | MultAssign :: _ ) =>
+			let
+				val (ts2,nd2) = compoundAssignmentOperator ts1
+				val p = simplePatternFromExpr nd1
+				val (ts3,nd3) = assignmentExpression(tl ts1,a,b)						
+			in
+				(ts3,Ast.SetExpr(nd2,p,nd3))
+			end
 	  | _ =>
 			(trace(["<< assignmentExpression with next=",tokenname(hd(ts1))]);
 			(ts1,nd1))
 	end
 
 (*
-	CompoundAssignment    
+	CompoundAssignmentOperator
     	*=
 	    /=
     	%=
@@ -1973,16 +2130,26 @@ and assignmentExpression (ts,a,b) : (token list * Ast.EXPR) =
     	&=
 	    ^=
     	|=
-*)
-
-(*
-	LogicalAssignment    
     	&&=
 	    ||=
 *)
 
-	and logicalAssignment ts =
-    	raise ParseError
+	and compoundAssignmentOperator ts =
+    	case ts of
+			ModulusAssign :: _ 				=> (tl ts,Ast.AssignRemainder)
+		  | LogicalAndAssign :: _ 			=> (tl ts,Ast.AssignLogicalAnd)
+	      | BitwiseAndAssign :: _ 			=> (tl ts,Ast.AssignBitwiseAnd)
+	      | DivAssign :: _ 					=> (tl ts,Ast.AssignDivide)
+	      | BitwiseXorAssign :: _ 			=> (tl ts,Ast.AssignBitwiseXor)
+	      | LogicalOrAssign :: _ 			=> (tl ts,Ast.AssignLogicalOr)
+	      | BitwiseOrAssign :: _ 			=> (tl ts,Ast.AssignBitwiseOr)
+	      | PlusAssign :: _ 				=> (tl ts,Ast.AssignPlus)
+	      | LeftShiftAssign :: _ 			=> (tl ts,Ast.AssignLeftShift)
+	      | MinusAssign :: _ 				=> (tl ts,Ast.AssignMinus)
+	      | RightShiftAssign :: _ 		  	=> (tl ts,Ast.AssignRightShift)
+	      | UnsignedRightShiftAssign :: _ 	=> (tl ts,Ast.AssignRightShiftUnsigned)
+		  | MultAssign :: _ 			  	=> (tl ts,Ast.AssignTimes)
+		  | _ => raise ParseError
 
 (*
 	ListExpression(b)    
@@ -1999,7 +2166,7 @@ and assignmentExpression (ts,a,b) : (token list * Ast.EXPR) =
 	    , AssignmentExpression(b) ListExpressionPrime(b)
 *)
 
-and listExpression (ts,b) = 
+and listExpression (ts,b) : (token list * Ast.EXPR list) = 
     let
 		val _ =	trace([">> listExpression with next=",tokenname(hd ts)])
 		fun listExpression' (ts,b) =
@@ -2014,13 +2181,15 @@ and listExpression (ts,b) =
 						(trace(["<< listExpression' with next=",tokenname(hd(ts2))]);
     	    	     	(ts2, nd1 :: nd2))
 	    	      	end
-	    	  | _ => (ts, [])
+	    	  | _ => 
+					(trace(["<< listExpression' with next=",tokenname(hd(ts))]);
+					(ts, []))
 		    end
         val (ts1,nd1) = assignmentExpression(ts,ALLOWLIST,b)
         val (ts2,nd2) = listExpression'(ts1,b)
     in
 		trace(["<< listExpression with next=",tokenname(hd(ts2))]);
-        (ts2, Ast.ListExpr (nd1 :: nd2))
+        (ts2, nd1 :: nd2)
     end
 
 (*
@@ -2030,13 +2199,24 @@ and listExpression (ts,b) =
 		ArrayPattern(g)
 *)
 
-and pattern (ts,a,b,g) =
+and pattern (ts,a,b,g) : (token list * Ast.PATTERN) =
 	let
 	in case ts of
 		LeftBrace :: _ => objectPattern (ts,g)
 	  | LeftBracket :: _ => arrayPattern (ts,g)
 	  | _ => simplePattern (ts,a,b,g)
 	end
+
+and patternFromExpr (e) : (Ast.PATTERN) =
+	let val _ = trace([">> patternFromExpr"])
+	in case e of
+		Ast.LiteralExpr (Ast.LiteralObject {...}) => objectPatternFromExpr (e)
+	  | Ast.LiteralExpr (Ast.LiteralArray {...}) => arrayPatternFromExpr (e)
+	  | _ => simplePatternFromExpr (e)
+	end
+
+and patternFromListExpr (e::[]) : (Ast.PATTERN) = patternFromExpr e
+  | patternFromListExpr (_)  = (error(["invalid pattern"]); raise ParseError)
 
 (*
 	SimplePattern(a, b, noExpr)	
@@ -2051,15 +2231,25 @@ and simplePattern (ts,a,b,NOEXPR) =
 		val (ts1,nd1) = identifier ts
 	in
 		(trace(["<< simplePattern(a,b,NOEXPR) with next=",tokenname(hd(ts1))]);
-		(ts1,Ast.IdentifierPattern nd1))
+		(ts1,Ast.IdentifierPattern (Ast.Identifier {ident=nd1, openNamespaces=ref [Ast.Internal ""]})))
 	end
-
   | simplePattern (ts,a,b,ALLOWEXPR) =
     let val _ = trace([">> simplePattern(a,b,ALLOWEXPR) with next=",tokenname(hd(ts))]) 
-		val (ts1,nd1) = postfixExpression (ts,a,b)
+		val (ts1,nd1) = leftHandSideExpression (ts,a,b)
 	in
 		(trace(["<< simplePattern(a,b,ALLOWEXPR) with next=",tokenname(hd(ts1))]);
 		(ts1,Ast.SimplePattern nd1))
+	end
+
+and simplePatternFromExpr (e) : (Ast.PATTERN) =  (* only ever called from ALLOWEXPR contexts *)
+	let val _ = trace([">> simplePatternFromExpr"])
+	in case e of
+		(Ast.ObjectRef _ | Ast.LexicalRef _) =>
+			(trace(["<< simplePatternFromExpr"]);
+			Ast.SimplePattern e)
+	  | _ => 
+			(error(["invalid pattern expression"]);
+			raise ParseError)
 	end
 
 (*
@@ -2068,7 +2258,7 @@ and simplePattern (ts,a,b,NOEXPR) =
 *)
 
 and objectPattern (ts,g) =
-	let
+	let val _ = trace([">> objectPattern with next=",tokenname(hd(ts))]) 
 	in case ts of
 		LeftBrace :: ts =>
 			let
@@ -2080,6 +2270,19 @@ and objectPattern (ts,g) =
 	  | _ => raise ParseError
 	end
 
+and objectPatternFromExpr e =
+	let val _ = trace([">> objectPatternFromExpr"])
+	in case e of
+		(Ast.LiteralExpr (Ast.LiteralObject {expr,ty})) =>
+			let
+				val p = destructuringFieldListFromExpr expr
+			in
+				trace(["<< objectPatternFromExpr"]);
+				Ast.ObjectPattern p
+			end
+	  | _ => raise ParseError
+	end
+	
 (*
 	DestructuringFieldList(g)
     	DestructuringField(g)
@@ -2087,7 +2290,7 @@ and objectPattern (ts,g) =
 *)
 
 and destructuringFieldList (ts,g) =
-	let
+	let val _ = trace([">> destructuringFieldList with next=",tokenname(hd(ts))])
 		fun destructuringFieldList' (ts,g) =
 			let
 			in case ts of
@@ -2095,8 +2298,8 @@ and destructuringFieldList (ts,g) =
 					let
 						val (ts1,nd1) = destructuringField (tl ts,g)
 						val (ts2,nd2) = destructuringFieldList' (ts1,g)
-					in case ts of
-					    _ => (ts2,nd1::nd2)
+					in
+					    (ts2,nd1::nd2)
 					end
 			  | _ => (ts,[])
 			end
@@ -2106,6 +2309,32 @@ and destructuringFieldList (ts,g) =
 		(ts2,nd1::nd2)
 	end
 
+and destructuringFieldListFromExpr e =
+	let val _ = trace([">> destructuringFieldList"])
+		fun destructuringFieldListFromExpr' e =
+			let
+			in case e of
+				[] =>
+					let
+					in
+						[]
+					end
+			  | _ => 
+				let
+					val p1 = destructuringFieldFromExpr (hd e)
+					val p2 = destructuringFieldListFromExpr' (tl e)
+				in
+					p1::p2
+				end
+			end
+		val p1 = destructuringFieldFromExpr (hd e)
+		val p2 = destructuringFieldListFromExpr' (tl e)
+	in
+		trace(["<< destructuringFieldList"]);
+		p1::p2
+	end
+
+
 (*
 	DestructuringField(g)
     	NonAttributeQualifiedIdentifier  :  Pattern(NOLIST,ALLOWIN,g)
@@ -2113,15 +2342,24 @@ and destructuringFieldList (ts,g) =
 
 and destructuringField (ts,g) =
 	let
-		val (ts1,nd1) = nonAttributeQualifiedIdentifier (ts)
+		val (ts1,nd1) = fieldName ts
 	in case ts1 of
 		Colon :: _ => 
 			let
 				val (ts2,nd2) = pattern (tl ts1,NOLIST,ALLOWIN,g)
 			in
-				(ts2,{name=Ast.LexicalRef {ident=nd1},ptrn=nd2})
+				(ts2,{name=nd1,ptrn=nd2})
 			end
 	  | _ => raise ParseError
+	end
+
+and destructuringFieldFromExpr e =
+	let val _ = trace([">> destructuringFieldFromExpr"])
+		val {kind,name,init} = e
+		val p = patternFromExpr init
+	in
+		trace(["<< destructuringFieldFromExpr"]);
+		{name=name,ptrn=p}
 	end
 
 (*
@@ -2138,6 +2376,19 @@ and arrayPattern (ts,g) =
 			in case ts1 of
 				RightBracket :: _ => (tl ts1,Ast.ArrayPattern nd1)
 			  | _ => raise ParseError
+			end
+	  | _ => raise ParseError
+	end
+
+and arrayPatternFromExpr (e) =
+	let val _ = trace([">> arrayPatternFromExpr"])
+	in case e of
+		Ast.LiteralExpr (Ast.LiteralArray {exprs,ty}) =>
+			let
+				val p = destructuringElementListFromExpr exprs
+			in
+				trace(["<< arrryPatternFromExpr"]);
+				Ast.ArrayPattern p
 			end
 	  | _ => raise ParseError
 	end
@@ -2174,6 +2425,31 @@ and destructuringElementList (ts,g) =
 			end
 	end
 
+and destructuringElementListFromExpr e =
+	let val _ = trace([">> destructuringFieldList"])
+		fun destructuringElementListFromExpr' e =
+			let
+			in case e of
+				[] =>
+					let
+					in
+						[]
+					end
+			  | _ => 
+				let
+					val p1 = destructuringElementFromExpr (hd e)
+					val p2 = destructuringElementListFromExpr' (tl e)
+				in
+					p1::p2
+				end
+			end
+		val p1 = destructuringElementFromExpr (hd e)
+		val p2 = destructuringElementListFromExpr' (tl e)
+	in
+		trace(["<< destructuringElementList"]);
+		p1::p2
+	end
+
 (*
 	DestructuringElement(g)   
     	Pattern(NOLIST,ALLOWIN,g)
@@ -2185,15 +2461,23 @@ and destructuringElement (ts,g) =
 		pattern (ts,NOLIST,ALLOWIN,g)
 	end
 
+and destructuringElementFromExpr e =
+	let val _ = trace([">> destructuringElementFromExpr"])
+		val p = patternFromExpr e
+	in
+		trace(["<< destructuringElementFromExpr"]);
+		p
+	end
+
 (*
 	TypedIdentifier(a,b)	
 		SimplePattern(a,b,noExpr)
 		SimplePattern(a,b,noExpr)  :  TypeExpression
 *)
 
-and typedIdentifier (ts,a,b) =
+and typedIdentifier (ts) =
     let val _ = trace([">> typedIdentifier with next=",tokenname(hd(ts))]) 
-		val (ts1,nd1) = simplePattern (ts,a,b,NOEXPR)
+		val (ts1,nd1) = simplePattern (ts,NOLIST,NOIN,NOEXPR)
 	in case ts1 of
 		Colon :: _ => 
 			let
@@ -2313,13 +2597,13 @@ and functionType (ts) : (token list * Ast.TYPE_EXPR)  =
 			let
 				val (ts1,Ast.FunctionSignature{typeparams,params,resulttype}) = 
 								functionSignature (tl ts)
-				fun paramtypes (params:Ast.FORMAL list):Ast.TYPE_EXPR option list =
+				fun paramtypes (params:Ast.VAR_BINDING list):Ast.TYPE_EXPR option list =
 					case params of
 						[] => []
 					  | _ => 
 							let
 								val _ = log(["paramtypes"]);
-								val {ty,... } = hd params
+								val Ast.Binding {ty,... } = hd params
 							in
 								ty :: paramtypes (tl params)
 							end
@@ -2521,11 +2805,152 @@ Statementw
     TryStatement
     WhileStatementw
     WithStatementw
-    
-Substatementw    
-    EmptyStatement
-    Statementw
-    
+*)
+
+and semicolon (ts,FULL) : (token list) =
+    let val _ = trace([">> semicolon(FULL) with next=", tokenname(hd ts)])
+	in case ts of
+		SemiColon :: _ => (tl ts)
+	  | (Eof | RightBrace) :: _ => (ts)   (* ABBREV special cases *)
+	  | _ => 
+			if newline ts then (log(["inserting semicolon"]);(ts))
+			else (error(["expecting semicolon before ",tokenname(hd ts)]); raise ParseError)
+	end
+  | semicolon (ts,_) =
+    let val _ = trace([">> semicolon(ABBREV | NOSHORTIF) with next=", tokenname(hd ts)])
+	in case ts of
+		SemiColon :: _ => (tl ts)
+	  | _ => 
+          (trace(["<< semicolon(ABBREV | NOSHORTIF) with next=", tokenname(hd ts)]);
+          (ts))
+	end
+
+and statement (ts,w) : (token list * Ast.STMT) =
+    let val _ = trace([">> statement with next=", tokenname(hd ts)])
+	in case ts of
+	    If :: _ =>
+			let
+				val (ts1,nd1) = ifStatement (ts,w)
+			in
+				(ts1,nd1)
+			end
+	  | Return :: _ =>
+			let
+				val (ts1,nd1) = returnStatement (ts)
+				val (ts2,nd2) = (semicolon (ts1,w),nd1)
+			in
+				(ts2,nd2)
+			end
+	  | LeftBrace :: _ =>
+			let
+				val (ts1,nd1) = blockStatement ts
+			in
+				(ts1,nd1)
+			end
+	  | Switch :: _ =>
+			let
+				val (ts1,nd1) = switchStatement ts
+			in
+				(ts1,nd1)
+			end
+	  | Super :: _ =>
+			let
+				val (ts1,nd1) = superStatement ts
+			in
+				(ts1,nd1)
+			end
+	  | Do :: _ =>
+			let
+				val (ts1,nd1) = doStatement ts
+			in
+				(ts1,nd1)
+			end
+	  | While :: _ =>
+			let
+				val (ts1,nd1) = whileStatement (ts,w)
+			in
+				(ts1,nd1)
+			end
+	  | For :: _ =>
+			let
+				val (ts1,nd1) = forStatement (ts,w)
+			in
+				(ts1,nd1)
+			end
+	  | Let :: LeftParen :: _ =>
+			let
+				val (ts1,nd1) = letStatement (ts,w)
+			in
+				(ts1,nd1)
+			end
+	  | With :: _ =>
+			let
+				val (ts1,nd1) = withStatement (ts,w)
+			in
+				(ts1,nd1)
+			end
+	  | Identifier _ :: Colon :: _ =>
+			let
+				val (ts1,nd1) = labeledStatement (ts,w)
+			in
+				(ts1,nd1)
+			end
+	  | Continue :: _ =>
+			let
+				val (ts1,nd1) = continueStatement (ts)
+			in
+				(ts1,nd1)
+			end
+	  | Break :: _ =>
+			let
+				val (ts1,nd1) = breakStatement (ts)
+			in
+				(ts1,nd1)
+			end
+	  | Throw :: _ =>
+			let
+				val (ts1,nd1) = throwStatement (ts)
+			in
+				(ts1,nd1)
+			end
+	  | Try :: _ =>
+			let
+				val (ts1,nd1) = tryStatement (ts)
+			in
+				(ts1,nd1)
+			end
+	  | Default :: Xml :: Namespace :: Assign :: _ =>
+			let
+				val (ts1,nd1) = defaultXmlNamespaceStatement (ts)
+			in
+				(ts1,nd1)
+			end
+	  | _ =>
+			let
+				val (ts1,nd1) = expressionStatement (ts)
+ 				val (ts2,nd2) = (semicolon (ts1,w),nd1)
+			in
+				trace(["<< statement with next=", tokenname(hd ts2)]);
+				(ts2,nd2)
+			end
+	end
+
+(*
+	Substatement(w)    
+    	EmptyStatement
+    	Statement(w)
+*)
+
+and substatement (ts,w) : (token list * Ast.STMT) =
+    let val _ = trace([">> substatement with next=", tokenname(hd ts)])
+	in case ts of
+		SemiColon :: _ =>
+			(tl ts, Ast.EmptyStmt)
+	  | _ => 
+			statement(ts,w)
+	end
+
+(*    
 Semicolonabbrev     
     ;
     VirtualSemicolon
@@ -2542,49 +2967,9 @@ Semicolonfull
 
 *)
 
-and semicolon (ts,nd,FULL) =
-    let val _ = trace([">> semicolon(FULL) with next=", tokenname(hd ts)])
-	in case ts of
-		SemiColon :: _ => (tl ts,nd)
-	  | (Eof | RightBrace) :: _ => (ts,nd)   (* ABBREV special cases *)
-	  | _ => 
-			if newline ts then (log(["inserting semicolon"]);(ts,nd))
-			else (error(["expecting semicolon before ",tokenname(hd ts)]); raise ParseError)
-	end
-  | semicolon (ts,nd,_) =
-    let val _ = trace([">> semicolon(ABBREV | NOSHORTIF) with next=", tokenname(hd ts)])
-	in case ts of
-		SemiColon :: _ => (tl ts,nd)
-	  | _ => 
-          (trace(["<< semicolon(ABBREV | NOSHORTIF) with next=", tokenname(hd ts)]);
-          (ts,nd))
-	end
-
-and statement (ts,omega) =
-    let val _ = trace([">> statement with next=", tokenname(hd ts)])
-	in case ts of
-	    Return :: _ =>
-			let
-				val (ts1,nd1) = returnStatement (ts)
-				val (ts2,nd2) = semicolon (ts1,nd1,omega)
-			in
-				(ts2,nd2)
-			end
-	  | _ =>
-			let
-				val (ts1,nd1) = expressionStatement (ts)
- 				val (ts2,nd2) = semicolon (ts1,nd1,omega)
-			in
-				trace(["<< statement with next=", tokenname(hd ts2)]);
-				(ts2,nd2)
-			end
-	end
-
 (*
-    
-EmptyStatement     
-    ;
-
+	EmptyStatement     
+    	;
 *)
 
 and emptyStatement ts =
@@ -2595,15 +2980,50 @@ and emptyStatement ts =
     end
 
 (*
+	BlockStatement     
+    	Block
+*)
+
+and blockStatement (ts) =
+    let val _ = trace([">> blockStatement with next=", tokenname(hd ts)])
+    in case ts of
+		LeftBrace :: _ => 
+			let
+				val (ts1,nd1) = block (ts,FUNCTION)
+			in
+				trace(["<< blockStatement with next=", tokenname(hd ts)]);
+				(ts1,Ast.BlockStmt nd1)
+			end
+	  | _ => raise ParseError
+    end
+
+(*
+	LabeledStatement(w)
+		Identifier  :  Substatement(w)
+
+*)
+
+and labeledStatement (ts,w) =
+    let
+    in case ts of
+		Identifier id :: Colon :: _  =>
+			let
+				val (ts1,nd1) = substatement (tl (tl ts),w)
+			in
+				(ts1,Ast.LabeledStmt (id,nd1))
+			end
+	  | _ => raise ParseError
+    end
+
+(*
     
 ExpressionStatement    
     [lookahead !{ function, { }] ListExpression (allowLet,allowIn)
 
 *)
 
-and expressionStatement ts =
-    let
-        val _ = trace([">> expressionStatement with next=", tokenname(hd ts)])
+and expressionStatement (ts) : (token list * Ast.STMT) =
+    let val _ = trace([">> expressionStatement with next=", tokenname(hd ts)])
         val (ts1,nd1) = listExpression(ts,ALLOWIN)
     in
 		trace(["<< expressionStatement with next=", tokenname(hd ts1)]);
@@ -2611,134 +3031,734 @@ and expressionStatement ts =
     end
 
 (*
-    
-SuperStatement    
-    super Arguments
-    
+	SuperStatement    
+    	super Arguments
 *)
+
+and superStatement (ts) : (token list * Ast.STMT) =
+    let val _ = trace([">> superStatement with next=", tokenname(hd ts)])
+	in case ts of
+		Super :: _ =>
+			let
+				val (ts1,nd1) = arguments (tl ts)
+			in
+				(ts1,Ast.SuperStmt nd1)
+			end
+	  | _ => raise ParseError
+	end
 
 (*
-
-Block    
-    { Directives }
-
+	SwitchStatement	
+		switch ParenListExpression  {  CaseElements  }
+		switch  type  (  ListExpression(allowList, allowIn)  :  TypeExpression  ) 
+		     {  TypeCaseElements  }
+		
+	CaseElements	
+		«empty»
+		CaseLabel
+		CaseLabel CaseElementsPrefix
+		CaseLabel CaseElementsPrefix Directive(abbrev)
+		
+	CaseElementsPrefix	
+		«empty»
+		CaseElementsPrefix  CaseLabel
+		CaseElementsPrefix  Directive(full)
+	
+    right recursive: 
+			
+	CaseElementsPrefix	
+		«empty»
+		CaseLabel CaseElementsPrefix
+		Directive(full) CaseElementsPrefix
+				
+	CaseLabel	
+		case ListExpression(allowIn) :
+		default :
 *)
 
-and block (ts) : (token list * Ast.BLOCK) =
-    let val _ = trace([">> block with next=", tokenname(hd ts)])
+and switchStatement (ts) : (token list * Ast.STMT) =
+    let val _ = trace([">> switchStatement with next=", tokenname(hd ts)])
     in case ts of
-        LeftBrace :: RightBrace :: ts1 => (ts1,Ast.Block{pragmas=[],defns=[],stmts=[]})
-      | LeftBrace :: ts1 =>
-            let
-                val (ts2,nd2) = directives ts1
-            in case ts2 of
-                RightBrace :: ts3 => (ts3,Ast.Block{pragmas=[],defns=[],stmts=nd2})
+		Switch :: Type :: LeftParen :: _ =>
+			let
+				val (ts1,nd1) = listExpression (tl (tl (tl ts)),ALLOWIN)
+			in case ts1 of
+				Colon :: _ => 
+					let
+						val (ts2,nd2) = typeExpression (tl ts1)
+					in case ts2 of
+						RightParen :: LeftBrace :: _ =>
+							let
+								val (ts3,nd3) = typeCaseElements (tl (tl ts2))
+        				    in case ts3 of
+                				RightBrace :: _ => (tl ts3,Ast.SwitchTypeStmt{cond=nd1,ty=nd2,cases=nd3})
+							  | _ => raise ParseError
+        				    end
+					  | _ => raise ParseError
+					end
 			  | _ => raise ParseError
-            end
+			end
+	  | Switch :: _ =>
+			let
+				val (ts1,nd1) = parenListExpression (tl ts)
+			in case (ts1,nd1) of
+    		    (LeftBrace :: _, Ast.ListExpr cond) =>
+            		let
+		                val (ts2,nd2) = caseElements (tl ts1)
+        		    in case ts2 of
+                		RightBrace :: _ => (tl ts2,Ast.SwitchStmt{cond=cond,cases=nd2})
+					  | _ => raise ParseError
+        		    end
+			  | _ => raise ParseError
+			end
 	  | _ => raise ParseError
     end
 
+and isDefaultCase (x) =
+	case x of 
+		NONE => true
+	  | _ => false
+
+and caseElements (ts) : (token list * Ast.CASE list) =
+    let val _ = trace([">> caseElements with next=", tokenname(hd ts)])
+    in case ts of
+		RightBrace :: _ =>
+			(tl ts,[])
+	  | (Case | Default) :: _ =>
+			let
+				val (ts1,nd1) = caseLabel (ts,false)
+				val (ts2,nd2) = caseElementsPrefix (ts1,isDefaultCase nd1)
+			in case nd2 of
+				[] =>
+					let
+					in
+						(ts2,{label=nd1,stmts={pragmas=[],defns=[],stmts=[]}}::[])
+					end
+			  | first :: follows =>
+					let
+					in
+						(ts2,{label=nd1,stmts=(#stmts first)} :: follows)
+					end
+			end
+	  | _ => raise ParseError
+	end
+
+and caseElementsPrefix (ts,has_default) : (token list * Ast.CASE list) =
+    let val _ = trace([">> caseElementsPrefix with next=", tokenname(hd ts)])
+    in case ts of
+		RightBrace :: _ =>
+			(ts,[])
+	  | (Case | Default) :: _ =>
+			let
+				val (ts1,nd1) = caseLabel (ts,has_default)
+				val (ts2,nd2) = caseElementsPrefix (ts1,has_default orelse (isDefaultCase nd1))
+			in case nd2 of
+				[] =>
+					let
+					in
+						(* append an empty CASE to the start of the list to
+						   seed the list of previously parsed directives,
+						   which get added when the stack unwinds *)
+
+						(ts2,{label=NONE,stmts={pragmas=[],defns=[],stmts=[]}} ::
+							({label=nd1,stmts={pragmas=[],defns=[],stmts=[]}}::[]))
+					end
+			  | first :: follows =>
+					let
+					in
+						(ts2,{label=NONE,stmts={pragmas=[],defns=[],stmts=[]}} ::
+							({label=nd1,stmts=(#stmts first)} :: follows))
+					end
+			end
+	  | _ => 
+			let
+				val (ts1,nd1) = directive (ts,FUNCTION,FULL)
+				val (ts2,nd2) = caseElementsPrefix (ts1,has_default)
+			in case nd2 of
+				[] =>
+					let
+					in
+						(ts2,{label=NONE,stmts=nd1}::[])
+					end
+			  | first :: follows =>
+					let
+						val {pragmas=p1,defns=d1,stmts=s1} = nd1
+						val {pragmas=p2,defns=d2,stmts=s2} = #stmts first
+						val stmts = {pragmas=(p1@p2),defns=(d1@d2),stmts=(s1@s2)}
+					in
+						(ts2,{label=NONE,stmts=stmts}::follows)
+					end
+			end
+	end
+
+and caseLabel (ts,has_default) : (token list * Ast.EXPR list option) =
+    let val _ = trace([">> caseLabel with next=", tokenname(hd ts)])
+	in case (ts,has_default) of
+		(Case :: _,_) =>
+			let
+				val (ts1,nd1) = listExpression (tl ts,ALLOWIN)
+			in case ts1 of
+				Colon :: _ => (tl ts1,SOME nd1)
+			  | _ => raise ParseError
+			end
+	  | (Default :: _,false) =>
+			let
+			in case tl ts of
+				Colon :: _ => (tl (tl ts),NONE)
+			  | _ => raise ParseError
+			end
+	  | (Default :: _,true) =>
+			(error(["redundant default switch case"]); raise ParseError)
+	  | _ => raise ParseError
+	end
+
+(*
+	TypeCaseBinding	
+		(  TypedIdentifier  VariableInitialisation(allowList, allowIn)  )
+		
+	TypeCaseElements	
+		TypeCaseElement
+		TypeCaseElements  TypeCaseElement
+		
+	TypeCaseElement	
+		case  (  TypedPattern(noList, allowIn, noExpr)  )  Block
+		default  Block
+*)
+
+and typeCaseBinding (ts) : (token list * Ast.VAR_BINDING) =
+    let val _ = trace([">> caseCaseBinding with next=", tokenname(hd ts)])
+	in case ts of
+		LeftParen :: _ =>
+			let
+				val (ts1,{p,t}) = typedIdentifier (tl ts)
+			in case ts1 of
+				Assign :: _ =>
+					let
+						val (ts2,nd2) = variableInitialisation(ts1,ALLOWLIST,ALLOWIN)
+					in case ts2 of
+						RightParen :: _ =>
+							(tl ts2,Ast.Binding {kind=Ast.Var,init=SOME nd2,attrs=defaultAttrs,
+                        					   pattern=p,ty=t})
+					  | _ => raise ParseError
+					end
+			  | _ => 
+					let
+					in case ts1 of
+						RightParen :: _ =>
+							(tl ts1,Ast.Binding { kind = Ast.Var, init = NONE, attrs = defaultAttrs,
+                        					   pattern = p, ty = t })
+					  | _ => raise ParseError
+					end
+			end
+	  | _ => 
+			raise ParseError
+	end
+
+(*
+	TypeCaseElements
+		TypeCaseElement
+		TypeCaseElements  TypeCaseElement
+
+	TypeCaseElement
+		case  (  TypedPattern(noList, noIn, noExpr)  )  Block
+		default  Block
+
+	right recursive:
+
+	TypeCaseElements
+		TypeCaseElement TypeCaseElements'
+
+	TypeCaseElements'
+		empty
+		TypeCaseElement TypeCaseElements'
+*)
+
+and isDefaultTypeCase (x) =
+	case x of 
+		NONE => true
+	  | _ => false
+
+and typeCaseElements (ts) : (token list * Ast.TYPE_CASE list) =
+    let val _ = trace([">> typeCaseElements with next=", tokenname(hd ts)])
+		fun typeCaseElements' (ts,has_default) : (token list * Ast.TYPE_CASE list) =
+		    let val _ = trace([">> typeCaseElements' with next=", tokenname(hd ts)])
+			in case ts of
+				(Case | Default) :: _ => 
+					let
+						val (ts1,nd1) = typeCaseElement (ts,has_default)
+						val (ts2,nd2) = typeCaseElements' (ts1,has_default orelse (isDefaultTypeCase (#ptrn nd1)))
+					in
+						trace(["<< typeCaseElements' with next=", tokenname(hd ts2)]);
+						(ts2,nd1::nd2)
+					end
+			  | _ => (ts,[])
+			end
+		val (ts1,nd1) = typeCaseElement (ts,false)
+		val (ts2,nd2) = typeCaseElements' (ts1,isDefaultTypeCase (#ptrn nd1))
+	in
+		trace(["<< typeCaseElements with next=", tokenname(hd ts2)]);
+		(ts2,nd1::nd2)
+	end
+
+and typeCaseElement (ts,has_default) : (token list * Ast.TYPE_CASE) =
+    let val _ = trace([">> typeCaseElement with next=", tokenname(hd ts)])
+	in case (ts,has_default) of
+		(Case :: LeftParen :: _,_) =>
+			let
+				val (ts1,{p,t}) = typedPattern(tl (tl ts),NOLIST,NOIN,NOEXPR)
+			in case ts1 of
+				RightParen :: _ =>
+					let
+						val (ts2,nd2) = block (tl ts1,FUNCTION)
+					in
+						trace(["<< typeCaseElement with next=", tokenname(hd ts2)]);
+						(ts2,{ptrn=SOME (Ast.Binding{pattern=p,ty=t,
+								kind=Ast.Var,attrs=defaultAttrs,init=NONE}),
+									body=nd2})
+					end
+			  | _ => raise ParseError
+			end
+	  | (Default :: _,false) =>
+			let
+				val (ts1,nd1) = block (tl ts,FUNCTION)
+			in
+				trace(["<< typeCaseElement with next=", tokenname(hd ts1)]);
+				(ts1,{ptrn=NONE,body=nd1})
+			end
+	  | (Default :: _,true) =>
+			(error(["redundant default switch type case"]); raise ParseError)
+	  | _ => raise ParseError
+	end
 (*
     
 LabeledStatementw    
     Identifier : Substatementw
-    
-IfStatementabbrev    
-    if ParenListExpression Substatementabbrev
-    if ParenListExpression SubstatementnoShortIf else Substatementabbrev
-    
-IfStatementfull    
-    if ParenListExpression Substatementfull
-    if ParenListExpression SubstatementnoShortIf else Substatementfull
-    
-IfStatementnoShortIf    
-    if ParenListExpression SubstatementnoShortIf else SubstatementnoShortIf
-    
-SwitchStatement    
-    switch ParenListExpression { CaseElements }
-    switch  type  (  TypedIdentifierallowIn  =  AssignmentExpressionallowIn  )  {  TypeCaseElements  }
-    
-CaseElements    
-    «empty»
-    CaseLabel
-    CaseLabel CaseElementsPrefix CaseElementabbrev
-    
-CaseElementsPrefix    
-    «empty»
-    CaseElementsPrefix CaseElementfull
-    
-CaseElementw    
-    Directivew
-    CaseLabel
-    
-CaseLabel    
-    case ListExpressionallowIn :
-    default :
-    
-TypeCaseElements    
-    TypeCaseElement
-    TypeCaseElements  TypeCaseElement
-    
-TypeCaseElement    
-    case  (  TypedIdentifierallowIn  )  Block
-    case  (  TypedPattern  )  Block
-    default  Block
-    
-DoStatement    
-    do Substatementabbrev while ParenListExpression
-    
-WhileStatementw    
-    while ParenListExpression Substatementw
-    
-ForStatementw    
-    for  (  ForInitialiser  ;  OptionalExpression  ;  OptionalExpression  )  Substatementw
-    for  (  ForInBinding  in  ListExpressionallowIn  )  Substatementw
-    for  each  ( ForInBinding  in  ListExpressionallowIn  )  Substatementw
-    
-ForInitialiser    
-    «empty»
-    ListExpressionnoIn
-    VariableDefinitionnoIn
-    
-ForInBinding    
-    PostfixExpression
-    Pattern
-    VariableDefinitionKind VariableBindingnoIn
-    
-OptionalExpression    
-    ListExpressionallowIn
-    «empty»
-    
-LetStatementw    
-    let  (  LetBindingList  )  Substatementw
-    
-WithStatementw    
-    with  (  ListExpressionallowIn  )  Substatementw
-    with  (  ListExpressionallowIn  :  TypeExpression  )  Substatementw
-    
-ContinueStatement    
-    continue
-    continue [no line break] Identifier
-    
-BreakStatement    
-    break
-    break [no line break] Identifier
 *)
 
-(*    
-ReturnStatement    
-    return
-    return [no line break] ListExpressionallowIn
+(*
+	IfStatement(abbrev)
+		if ParenListExpression Substatement(abbrev)
+		if ParenListExpression Substatement(noShortIf) else Substatement(abbrev)
+		
+	IfStatement(full)	
+		if ParenListExpression Substatement(full)
+		if ParenListExpression Substatement(noShortIf) else Substatement(full)
+		
+	IfStatementno(ShortIf)	
+		if ParenListExpression Substatement(noShortIf) else Substatementno(ShortIf)
+*)
+
+and ifStatement (ts,ABBREV) =
+    let val _ = trace([">> ifStatement(ABBREV) with next=", tokenname(hd ts)])
+    in case ts of
+		If :: _ =>
+			let
+				val (ts1,nd1) = parenListExpression (tl ts)
+				val (ts2,nd2) = substatement(ts1,ABBREV)
+			in case ts2 of
+				Else :: _ =>
+					let
+						val (ts3,nd3) = substatement(tl ts2,ABBREV)
+					in
+						(ts3,Ast.IfStmt {cnd=nd1,thn=nd2,els=nd3})
+					end
+			  | _ => 
+					let
+					in
+						(ts2,Ast.IfStmt {cnd=nd1,thn=nd2,els=Ast.EmptyStmt})
+					end
+			end
+		  | _ => raise ParseError
+	end
+  | ifStatement (ts,FULL) =
+    let val _ = trace([">> ifStatement(FULL) with next=", tokenname(hd ts)])
+    in case ts of
+		If :: _ =>
+			let
+				val (ts1,nd1) = parenListExpression (tl ts)
+				val (ts2,nd2) = substatement(ts1,FULL)
+			in case ts2 of
+				Else :: _ =>
+					let
+						val (ts3,nd3) = substatement(tl ts2,FULL)
+					in
+						(ts3,Ast.IfStmt {cnd=nd1,thn=nd2,els=nd3})
+					end
+			  | _ => 
+					let
+					in
+						(ts2,Ast.IfStmt {cnd=nd1,thn=nd2,els=Ast.EmptyStmt})
+					end
+			end
+		  | _ => raise ParseError
+	end
+  | ifStatement (ts,SHORTIF) =
+    let val _ = trace([">> ifStatement(SHORTIF) with next=", tokenname(hd ts)])
+    in case ts of
+		If :: _ =>
+			let
+				val (ts1,nd1) = parenListExpression (tl ts)
+				val (ts2,nd2) = substatement(ts1,NOSHORTIF)
+			in case ts2 of
+				Else :: _ =>
+					let
+						val (ts3,nd3) = substatement(tl ts2,SHORTIF)
+					in
+						(ts3,Ast.IfStmt {cnd=nd1,thn=nd2,els=nd3})
+					end
+			  | _ => 
+					raise ParseError
+			end
+		  | _ => raise ParseError
+	end
+
+(*
+	DoStatement    
+    	do Substatement(abbrev) while ParenListExpression
+*)
+
+and doStatement (ts) : (token list * Ast.STMT) =
+    let val _ = trace([">> doStatement with next=", tokenname(hd ts)])
+    in case ts of
+		Do :: _ =>
+			let
+				val (ts1,nd1) = substatement(tl ts, ABBREV)
+			in case ts1 of
+				While :: _ =>
+					let
+						val (ts2,nd2) = parenListExpression (tl ts1)
+					in
+						(ts2,Ast.DoWhileStmt {body=nd1,cond=nd2,contLabel=NONE})
+					end
+			  | _ => raise ParseError
+			end
+	  | _ => raise ParseError
+	end
+
+(*
+	WhileStatement(w)	
+		while ParenListExpression Substatement(w)
+*)
+
+and whileStatement (ts,w) : (token list * Ast.STMT) =
+    let val _ = trace([">> whileStatement with next=", tokenname(hd ts)])
+	in case ts of
+		While :: _ =>
+			let
+				val (ts1,nd1) = parenListExpression (tl ts)
+				val (ts2,nd2) = substatement(ts1, w)
+			in
+				(ts2,Ast.WhileStmt {cond=nd1,body=nd2,contLabel=NONE})
+			end
+	  | _ => raise ParseError
+	end
+
+(*
+	ForStatement(w)
+		for  (  ForInitialiser  ;  OptionalExpression  ;  OptionalExpression  )  Substatement(w)
+		for  (  ForInBinding  in  ListExpression(allowIn)  )  Substatement(w)	
+		for  each  ( ForInBinding  in  ListExpression(allowIn)  )  Substatement(w)	
+			
+	ForInitialiser		
+		«empty»	
+		ListExpression(noIn)
+		VariableDefinition(noIn)
+			
+	OptionalExpression		
+		ListExpression(allowIn)
+		«empty»	
+
+*)
+
+(* note: even though for-each-in and for-in use ForInBinding, we get there by two different
+         paths. With for-in we parse for ForInitializer, which is more general and translate
+         when we see 'in'. With for-each-in, we parse immediately for ForInBinding. Positive
+         and negative cases should produce the same error or ast result
+*)
+
+(* todo: code reuse opps here *)
+
+and forStatement (ts,w) : (token list * Ast.STMT) =
+    let val _ = trace([">> forStatement with next=", tokenname(hd ts)])
+	in case ts of
+		For :: LeftParen :: _ =>
+			let
+				val (ts1,{defns,inits}) = forInitialiser (tl (tl ts))
+			in case ts1 of
+				SemiColon :: _ =>
+					let
+						val (ts2,nd2) = optionalExpression (tl ts1)
+						val (ts3,nd3) = optionalExpression (ts2)
+					in case ts3 of
+						RightParen :: _ =>
+							let
+								val (ts4,nd4) = substatement (tl ts3,w)
+							in 
+								(ts4,Ast.ForStmt{ 
+                		                    defns=defns,
+                        		            init=inits,
+                                		    cond=nd2,
+		                                    update=nd3,
+        		                            contLabel=NONE,
+                		                    body=nd4 })
+							end
+					  | _ => raise ParseError
+					end
+			  | In :: _ =>
+					let
+						val p = if ((length defns) > 1) 
+									then (error(["too many bindings on left side of in"]); 
+										 raise ParseError)
+									else if ((length defns) = 0) (* convert inits to pattern *)
+										then SOME (patternFromListExpr (inits))
+										else NONE  (* nothing else to do *)
+						
+						val (ts2,nd2) = listExpression (tl ts1,ALLOWIN)
+					in case ts2 of
+						RightParen :: _ =>
+							let
+								val (ts3,nd3) = substatement (tl ts2,w)
+							in 
+								(ts3,Ast.ForInStmt{ 
+               		                      defns=defns,
+                       		              ptrn=p,
+	                                      obj=nd2,
+       		                              contLabel=NONE,
+               		                      body=nd3 })
+							end
+					  | _ => raise ParseError
+					end
+			  | _ => raise ParseError
+			end
+	  | For :: Each :: LeftParen :: _ =>
+			let
+				val (ts1,{defns,ptrn}) = forInBinding (tl (tl (tl ts)))
+			in case ts1 of
+				In :: _ =>
+					let
+						val (ts2,nd2) = listExpression (tl ts1,ALLOWIN)
+					in case ts2 of
+						RightParen :: _ =>
+							let
+								val (ts3,nd3) = substatement (tl ts2,w)
+							in 
+								(ts3,Ast.ForEachStmt{ 
+               		                      defns=defns,
+                       		              ptrn=ptrn,
+	                                      obj=nd2,
+       		                              contLabel=NONE,
+               		                      body=nd3 })
+							end
+					  | _ => raise ParseError
+					end
+			  | _ => raise ParseError
+			end
+	  | _ => raise ParseError
+	end
+
+and forInitialiser (ts) : (token list * Ast.BINDINGS) =
+    let val _ = trace([">> forInitialiser with next=", tokenname(hd ts)])
+	in case ts of
+		(Var | Let | Const) :: _ =>
+			let
+				val (ts1,{defns,stmts,pragmas}) = variableDefinition (ts,defaultAttrs,NOIN)
+			in case (defns,stmts) of
+				(Ast.VariableDefn bindings :: [],Ast.ExprStmt inits :: []) =>
+					(trace(["<< forInitialiser with next=", tokenname(hd ts1)]);
+					(ts1,{defns=bindings,inits=inits}))
+			  | _ => raise ParseError
+			end
+	  | SemiColon :: _ =>
+			let
+			in
+				(trace(["<< forInitialiser with next=", tokenname(hd ts)]);
+				(ts,{defns=[],inits=[]}))
+			end
+	  | _ => 
+			let
+				val (ts1,nd1) = listExpression (ts,NOIN)
+			in 
+				(trace(["<< forInitialiser with next=", tokenname(hd ts1)]);
+				(ts1,{defns=[],inits=nd1}))
+			end
+	end
+
+and optionalExpression (ts) : (token list * Ast.EXPR list) =
+    let val _ = trace([">> optionalExpression with next=", tokenname(hd ts)])
+	in case ts of
+		SemiColon :: _ =>
+			let
+			in
+				(tl ts,[])
+			end
+	  | RightParen :: _ =>
+			let
+			in
+				(ts,[])
+			end
+	  | _ => 
+			let
+				val (ts1,nd1) = listExpression (ts,NOIN)
+			in case ts1 of
+				SemiColon :: _ =>
+					let
+					in
+						(tl ts1,nd1)
+					end
+			  | _ => 
+					(ts1,nd1)
+			end
+	end
+
+(*
+	ForInBinding		
+		Pattern(allowList, noIn, allowExpr)	
+		VariableDefinitionKind VariableBinding(allowList, noIn)			
+*)
+
+and forInBinding (ts) =
+    let val _ = trace([">> forInBinding with next=", tokenname(hd ts)])
+	in case ts of
+		(Var | Let | Const) :: _ =>
+			let
+				val (ts1,nd1) = variableDefinitionKind ts
+				val (ts2,{defns,inits}) = variableBinding (ts1,defaultAttrs,nd1,ALLOWLIST,NOIN)
+			in 
+				(trace(["<< forInBinding with next=", tokenname(hd ts1)]);
+				(ts2,{defns=defns,ptrn=NONE}))
+			end
+	  | _ => 
+			let
+				val (ts1,nd1) = pattern (ts,ALLOWLIST,NOIN,ALLOWEXPR)
+			in 
+				(trace(["<< forInitialiser with next=", tokenname(hd ts1)]);
+				(ts1,{defns=[],ptrn=SOME nd1}))
+			end
+	end
+
+(*
+	LetStatement(w)	
+		let  (  LetBindingList  )  Substatement(w)
+*)
+
+and letStatement (ts,w) : (token list * Ast.STMT) =
+    let val _ = trace([">> letStatement with next=", tokenname(hd ts)])
+	in case ts of
+		Let :: LeftParen :: _ => 
+			let
+				val (ts1,nd1) = letBindingList (tl (tl ts))
+			in case ts1 of
+				RightParen :: _ =>
+					let
+						val (ts2,nd2) = substatement(tl ts1, w)
+					in
+						(trace(["<< letStatement with next=",tokenname(hd(ts2))]);
+						(ts2,Ast.LetStmt (nd1,nd2)))
+					end
+ 			  |	_ => raise ParseError
+			end
+	  | _ => raise ParseError
+	end
+
+(*
+	WithStatement(w)
+		with  (  ListExpression(allowIn)  )  Substatement(w)
+		with  (  ListExpression(allowIn)  :  TypeExpression  )  Substatement(w)
+*)
+
+and withStatement (ts,w) : (token list * Ast.STMT) =
+    let val _ = trace([">> withStatement with next=", tokenname(hd ts)])
+	in case ts of
+		With :: LeftParen :: _ => 
+			let
+				val (ts1,nd1) = listExpression (tl (tl ts),ALLOWIN)
+			in case ts1 of
+				RightParen :: _ =>
+					let
+						val (ts2,nd2) = substatement(tl ts1, w)
+					in
+						(trace(["<< withStatement with next=",tokenname(hd(ts2))]);
+						(ts2,Ast.WithStmt {obj=nd1,ty=Ast.SpecialType Ast.Any,body=nd2}))
+					end
+			  | Colon :: _ =>
+					let
+						val (ts2,nd2) = typeExpression (tl ts1)
+					in case ts2 of
+						RightParen :: _ =>
+							let
+								val (ts3,nd3) = substatement(tl ts2, w)
+							in
+								(trace(["<< withStatement with next=",tokenname(hd(ts3))]);
+								(ts3,Ast.WithStmt {obj=nd1,ty=nd2,body=nd3}))
+							end
+		 			  |	_ => raise ParseError
+					end
+ 			  |	_ => raise ParseError
+			end
+	  | _ => raise ParseError
+	end
+
+(*
+	ContinueStatement	
+		continue
+		continue [no line break] Identifier
+*)
+
+and continueStatement ts: (token list * Ast.STMT) =
+	let
+	in case ts of
+		Continue :: (SemiColon | RightBrace) :: _ => 
+			(tl ts,Ast.ContinueStmt NONE)
+	  | Continue :: _ =>
+			if newline(tl ts) then 
+				(tl ts,Ast.ContinueStmt NONE)
+			else
+				let
+					val (ts1,nd1) = identifier (tl ts)
+				in
+					(ts1,Ast.ContinueStmt (SOME nd1))
+				end
+	  | _ => raise ParseError
+	end
+
+(*
+	BreakStatement	
+		break
+		break [no line break] Identifier
+*)
+
+and breakStatement ts: (token list * Ast.STMT) =
+    let val _ = trace([">> breakStatement with next=", tokenname(hd ts)])
+	in case ts of
+		Break :: (SemiColon | RightBrace) :: _ => 
+			(tl ts,Ast.BreakStmt NONE)
+	  | Break :: _ =>
+			if newline(tl ts) then 
+				(tl ts,Ast.BreakStmt NONE)
+			else
+				let
+					val (ts1,nd1) = identifier (tl ts)
+				in
+					trace(["<< breakStatement with next=", tokenname(hd ts)]);
+					(ts1,Ast.BreakStmt (SOME nd1))
+				end
+	  | _ => raise ParseError
+	end
+
+(*
+	ReturnStatement	
+		return
+		return [no line break] ListExpressio(nallowIn)
 *)
 
 and returnStatement ts =
 	let
 	in case ts of
 		Return :: (SemiColon | RightBrace) :: _ => 
-			(tl ts,Ast.ReturnStmt (Ast.ListExpr []))
+			(tl ts,Ast.ReturnStmt [])
 	  | Return :: _ =>
 			if newline(tl ts) then 
-				(tl ts,Ast.ReturnStmt (Ast.ListExpr []))
+				(tl ts,Ast.ReturnStmt [])
 			else 
 				let
 					val (ts1,nd1) = listExpression(tl ts, ALLOWIN)
@@ -2748,150 +3768,192 @@ and returnStatement ts =
 	  | _ => raise ParseError
 	end
 
-(*    
-ThrowStatement     
-    throw  ListExpressionallowIn
-    
-TryStatement    
-    try Block CatchClauses
-    try Block CatchClausesOpt finally Block
-    
-CatchClausesOpt    
-    «empty»
-    CatchClauses
-    
-CatchClauses    
-    CatchClause
-    CatchClauses CatchClause
-    
-CatchClause    
-    catch  (  Parameter  )  Block
-    
-DefaultXMLNamespaceStatement    
-    default  xml  namespace = NonAssignmentExpressionallowLet, allowIn
-
-*)
-    
-(* DIRECTIVES *)
-
 (*
-	Directive(omega)    
-    	EmptyStatement
-	    Statement(omega)
-    	AnnotatableDirective(omega)
-	    Attributes [no line break] AnnotatableDirective(omega)
-    	IncludeDirective Semicolon(omega)    
+	ThrowStatement 	
+		throw  ListExpression(allowIn)
 *)
 
-and directive (ts,omega) =
-    let val _ = trace([">> directive with next=", tokenname(hd ts)])
+and throwStatement ts =
+	let
 	in case ts of
-		SemiColon :: _ => 
+	    Throw :: _ =>
 			let
-				val (ts1,nd1) = emptyStatement ts
+				val (ts1,nd1) = listExpression(tl ts, ALLOWIN)
 			in
-				(ts1,nd1)
+				(ts1,Ast.ThrowStmt nd1)
 			end
-	  | (Var | Function ) :: _ => 
-			let
-				val (ts1,nd1) = annotatableDirective (ts,omega)
-			in
-				(ts1,Ast.DefnStmt(nd1))
-			end
-	  | _ => 
-			let
-				val (ts1,nd1) = statement (ts,omega)
-			in
-				(ts1,nd1)
-			end
-	end
-
-(*
-	AnnotatableDirective(omega)
-    	VariableDefinition(allowIn) Semicolon(omega)
-	    FunctionDefinition
-    	ClassDefinition
-	    InterfaceDefinition
-    	NamespaceDefinition Semicolon(omega)
-	    TypeDefinition Semicolon(omega)
-
-	Attributes    
-    	Attribute
-	    Attribute [no line break] Attributes
-    
-	Attribute    
-    	SimpleTypeIdentifier
-	    ReservedNamespace
-    	dynamic
-	    final
-    	native
-	    override
-    	prototype
-	    static
-    	[  AssignmentExpression(allowLet, allowIn)  ]
-*)
-
-and annotatableDirective (ts,omega) : token list * Ast.DEFINITION list  =
-    let val _ = trace([">> annotatableDirective with next=", tokenname(hd ts)])
-	in case ts of
-		Var :: _ => variableDefinition (ts,ALLOWIN)
 	  | _ => raise ParseError
 	end
 
 (*
-	Directives    
-    	«empty»
-	    DirectivesPrefix Directive(abbrev)
-    
-	DirectivesPrefix    
-    	«empty»
-	    Pragmas
-    	DirectivesPrefix Directive(full)
-
-	DirectivesPrefix    
-    	«empty»
-	    Pragmas DirectivePrefix'
-
-	DirectivesPrefix'
-	   	«empty»
-		Directive(full) DirectivesPrefix'
+	TryStatement	
+		try Block CatchClauses
+		try Block CatchClauses finally Block
+		try Block finally Block
+		
+	CatchClauses	
+		CatchClause
+		CatchClauses CatchClause
+		
+	CatchClause	
+		catch  (  Parameter  )  Block
 *)
 
-and directives (ts) : (token list * Ast.STMT list) =
+and tryStatement (ts) : (token list * Ast.STMT) =
+    let val _ = trace([">> tryStatement with next=", tokenname(hd ts)])
+    in case ts of
+		Try :: _ =>
+			let
+				val (ts1,nd1) = block(tl ts,FUNCTION)
+			in case ts1 of
+				Finally :: _ =>
+					let
+						val (ts2,nd2) = block (tl ts1,FUNCTION)
+					in
+						(ts2,Ast.TryStmt {body=nd1,catches=[],finally=SOME nd2})
+					end
+			  | _ => 
+					let
+						val (ts2,nd2) = catchClauses ts1
+					in case ts2 of
+						Finally :: _ =>
+							let
+								val (ts3,nd3) = block (tl ts2,FUNCTION)
+							in
+								(ts3,Ast.TryStmt {body=nd1,catches=nd2,finally=SOME nd3})
+							end
+					  | _ =>
+							let
+							in
+								(ts2,Ast.TryStmt {body=nd1,catches=nd2,finally=NONE})
+							end
+					end
+			end
+	  | _ => raise ParseError
+	end
+
+and catchClauses (ts) =
+    let val _ = trace([">> catchClauses with next=", tokenname(hd ts)])
+		val (ts1,nd1) = catchClause ts
+    in case ts1 of
+		Catch :: _ =>
+			let
+				val (ts2,nd2) = catchClauses ts1
+			in
+				(ts2,nd1::nd2)
+			end
+	  | _ =>
+			let
+			in
+				(ts1,nd1::[])
+			end
+	end
+
+and catchClause (ts) =
+    let val _ = trace([">> catchClause with next=", tokenname(hd ts)])
+    in case ts of
+		Catch :: LeftParen :: _ =>
+			let
+				val (ts1,nd1) = parameter (tl (tl ts))
+			in case ts1 of
+				RightParen :: _ =>
+					let
+						val (ts2,nd2) = block (tl ts1,FUNCTION)
+					in
+						(ts2,{bind=Ast.Binding nd1,body=nd2})
+					end
+			  | _ => raise ParseError
+			end
+	  | _ => raise ParseError
+	end
+
+(*
+	DefaultXMLNamespaceStatement    
+    	default  xml  namespace = NonAssignmentExpression(allowList, allowIn)
+*)
+
+and defaultXmlNamespaceStatement (ts) =
+    let val _ = trace([">> defaultXmlNamespaceStatement with next=", tokenname(hd ts)])
+    in case ts of
+		Default :: Xml :: Namespace :: Assign :: _ =>
+			let
+				val (ts1,nd1) = nonAssignmentExpression ((tl (tl (tl (tl ts)))),ALLOWLIST,ALLOWIN)
+			in
+				(ts1,Ast.Dxns {expr=nd1})
+			end
+	  | _ => raise ParseError
+	end
+    
+(* DIRECTIVES *)
+
+(*
+	Directives(t)    
+    	«empty»
+	    DirectivesPrefix(t) Directive(t,abbrev)
+    
+	DirectivesPrefix(t)   
+    	«empty»
+	    Pragmas
+    	DirectivesPrefix(t) Directive(t,full)
+
+	right recursive:
+
+	DirectivesPrefix(t)   
+    	«empty»
+	    Pragmas DirectivePrefix'(t)
+
+	DirectivesPrefix'(t)
+	   	«empty»
+		Directive(t,full) DirectivesPrefix'(t)
+*)
+
+and directives (ts,t) : (token list * Ast.DIRECTIVES) =
     let val _ = trace([">> directives with next=", tokenname(hd ts)])
 	in case ts of
-		(RightBrace | Eof) :: _ => (ts,[])
+		(RightBrace | Eof) :: _ => (ts,{pragmas=[],defns=[],stmts=[]})
 	  | _ => 
 			let
-				val (ts1,nd1) = directivesPrefix ts
-(*				val (ts2,nd2) = directive(ts1,ABBREV)   *)
+				val (ts1,nd1) = directivesPrefix (ts,t)
+(*				val (ts2,nd2) = directive(ts1,t,ABBREV)   
+
+todo: the trailing directive(abbrev) is parsed by directivesPrefix. 
+      the semicolon(full) parser checks for the abbrev case and acts
+      like semicolon(abbrev) if needed. clarify this in the code.
+*)
 			in
 				trace(["<< directives with next=", tokenname(hd ts1)]);
 				(ts1,nd1)
 			end
 	end
 
-and directivesPrefix (ts) : (token list * Ast.STMT list) =
+and directivesPrefix (ts,t:tau) : (token list * Ast.DIRECTIVES) =
     let val _ = trace([">> directivesPrefix with next=", tokenname(hd ts)])
-		fun directivesPrefix' ts =
+		fun directivesPrefix' (ts,t) =
 		    let val _ = trace([">> directivesPrefix' with next=", tokenname(hd ts)])
 			in case ts of
-				(RightBrace | Eof) :: _ => (ts,[])
+				(RightBrace | Eof) :: _ => (ts,{pragmas=[],defns=[],stmts=[]})
 			  | _ => 
 					let
-						val (ts1,nd1) = directive (ts,FULL)
-						val (ts2,nd2) = directivesPrefix' ts1
+						val (ts1,{pragmas=p1,defns=d1,stmts=s1}) = directive (ts,t,FULL)
+						val (ts2,{pragmas=p2,defns=d2,stmts=s2}) = directivesPrefix' (ts1,t)
 					in
 						trace(["<< directivesPrefix' with next=", tokenname(hd ts2)]);
-						(ts2,nd1 :: nd2)
+						(ts2,{pragmas=(p1@p2),defns=(d1@d2),stmts=(s1@s2)})
 					end
 			end
-		
 	in case ts of
-		(RightBrace | Eof) :: _ => (ts,[])
+		(RightBrace | Eof) :: _ => (ts,{pragmas=[],defns=[],stmts=[]})
+	  | (Use | Import) :: _ => 
+			let
+				val (ts1,nd1) = pragmas ts
+				val (ts2,{pragmas=p2,defns=d2,stmts=s2}) = directivesPrefix' (ts1,t)
+			in
+				trace(["<< directivesPrefix with next=", tokenname(hd ts2)]);
+				(ts2, {pragmas=nd1,defns=d2,stmts=s2})
+			end
 	  | _ => 
 			let
-				val (ts2,nd2) = directivesPrefix' ts
+				val (ts2,nd2) = directivesPrefix' (ts,t)
 			in
 				trace(["<< directivesPrefix with next=", tokenname(hd ts2)]);
 				(ts2,nd2)
@@ -2899,208 +3961,1130 @@ and directivesPrefix (ts) : (token list * Ast.STMT list) =
 	end
 
 (*
-IncludeDirective    
-    include  [no line break]  StringLiteral
-    
-Pragmas    
-    Pragma
-    Pragmas  Pragma
-    
-Pragma    
-    UsePragma  Semicolon(full)
-    ImportPragma  Semicolon(full)
-    
-UsePragma    
-    use  PragmaItems
-    
-PragmaItems    
-    PragmaItem
-    PragmaItems  ,  PragmaItem
-    
-PragmaItem    
-    PragmaIdentifier
-    PragmaIdentifier  PragmaArgument
-    
-PragmaIdentifier    
-    decimal
-    default namespace
-    double
-    int
-    namespace
-    Number
-    rounding
-    standard
-    strict
-    uint
-    
-PragmaArgument    
-    true
-    false
-    NumberLiteral
-    -  NumberLiteral
-    StringLiteral
-    SimpleTypeIdentifier
-    
-ImportPragma    
-    import  ImportName
-    import  Identifier  =  ImportName
-    
-ImportName    
-    PackageIdentifier  .  PropertyIdentifier
-
+	Directive(t,w)
+		EmptyStatement
+		Statement(w)
+		AnnotatableDirective(t,w)
+		Attributes  [no line break]  AnnotatableDirective(t,w)
 *)
-    
-(* DEFINITIONS *)    
+
+and directive (ts,t:tau,w:omega) : (token list * Ast.DIRECTIVES) =
+    let val _ = trace([">> directive with next=", tokenname(hd ts)])
+	in case ts of
+		SemiColon :: _ => 
+			let
+				val (ts1,nd1) = emptyStatement ts
+			in
+				(ts1,{pragmas=[],defns=[],stmts=[nd1]})
+			end
+	  | Let :: LeftParen :: _  => (* dispatch let statement before let var *)
+			let
+				val (ts1,nd1) = statement (ts,w)
+			in
+				(ts1,{pragmas=[],defns=[],stmts=[nd1]})
+			end
+	  | (Let | Const | Var | Function | Class | Interface | Namespace | Type) :: _ => 
+			let
+				val (ts1,nd1) = annotatableDirective (ts,defaultAttrs,t,w)
+			in
+				(ts1,nd1)
+			end
+	  | (Dynamic | Final | Native | Override | Prototype | Static ) :: _ =>
+			let
+				val (ts1,nd1) = attributes (ts,defaultAttrs,t)
+				val (ts2,nd2) = annotatableDirective (ts1,nd1,t,w)
+			in
+				(ts2,nd2)
+			end
+	  | (Identifier _ | Private | Public | Protected | Internal | Intrinsic  ) :: 
+		(Dynamic | Final | Native | Override | Prototype | Static | 
+		 Var | Let | Const | Function | Class | Interface | Namespace | Type) :: _ =>
+			let
+				val (ts1,nd1) = attributes (ts,defaultAttrs,t)
+				val (ts2,nd2) = annotatableDirective (ts1,nd1,t,w)
+			in
+				(ts2,nd2)
+			end
+	  | _ => 
+			let
+				val (ts1,nd1) = statement (ts,w)
+			in
+				(ts1,{pragmas=[],defns=[],stmts=[nd1]})
+			end
+	end
 
 (*
-    
-VariableDefinitionb    
-    VariableDefinitionKind  VariableBindingListallowLet, b
-    
-VariableDefinitionKind    
-    const
-    let
-    let const
-    var
-    
-VariableBindingLista, b    
-    VariableBindinga, b
-    VariableBindingListnoLet, b  ,  VariableBindinga, b
-    
-VariableBindinga, b    
-    TypedIdentifier
-    TypedIdentifierb VariableInitialisationa, b
-    TypedPattern VariableInitialisationa, b
-    
-VariableInitialisationa, b    
-    =  AssignmentExpressiona, b
+	AnnotatableDirective(global, w)	
+		VariableDefinition(allowIn)  Semicolon(w)
+		FunctionDefinition(global)
+		ClassDefinition
+		InterfaceDefinition
+		NamespaceDefinition  Semicolon(w)
+		TypeDefinition  Semicolon(w)
 
-
-     and varDefn =
-         SimpleDefn of { tag: varDefnTag,
-                         init: expr option,
-                         attrs: attributes,
-                         name: ident,
-                         ty: tyExpr option }
-
-       | DestructDefn of { tag: varDefnTag,
-                           init: expr option,
-                           attrs: attributes,
-                           ptrn: pattern,
-                           ty: tyExpr option }
-
-       | DestructuringDefn of { tag: varDefnTag,
-                                init: expr option,
-                                attrs: attributes,
-                                temp: ident,
-                                postInit: expr option,
-                                names: ident list,
-                                ty: tyExpr option }
+	AnnotatableDirective(interface, w)
+		FunctionDeclaration  Semicolon(w)
+		
+	AnnotatableDirective(t, w)	
+		VariableDefinition(allowIn)  Semicolon(w)
+		FunctionDefinition(t)
+		NamespaceDefinition  Semicolon(w)
+		TypeDefinition  Semicolon(w)
 *)
 
-and variableDefinition (ts,b) =
-    let val _ = trace([">> variableDefinition with next=", tokenname(hd ts)])
+and annotatableDirective (ts,attrs,GLOBAL,w) : (token list * Ast.DIRECTIVES)  =
+    let val _ = trace([">> annotatableDirective with next=", tokenname(hd ts)])
 	in case ts of
-		Const :: _ => variableBindingList (tl ts,Ast.Const,ALLOWLIST,b)
-	  | Var :: _ => variableBindingList (tl ts,Ast.Var,ALLOWLIST,b)
+	    Let :: Function :: _ =>
+			functionDefinition (ts,attrs,GLOBAL)
+	  | Function :: _ =>
+			functionDefinition (ts,attrs,GLOBAL)
+	  | Class :: _ =>
+			classDefinition (ts,attrs)
+	  | Interface :: _ =>
+			interfaceDefinition (ts,attrs)
+	  | (Let | Var | Const) :: _ => 
+			variableDefinition (ts,attrs,ALLOWIN)
+	  | _ => 
+			raise ParseError
+	end
+  | annotatableDirective (ts,attrs,INTERFACE,w) : (token list * Ast.DIRECTIVES)  =
+    let val _ = trace([">> annotatableDirective with next=", tokenname(hd ts)])
+	in case ts of
+	    Function :: _ =>
+			let
+				val (ts1,nd1) = functionDeclaration (ts)
+				val (ts2,nd2) = (semicolon(ts1,w),nd1)
+			in
+				(ts2,nd2)
+			end
+	  | _ => 
+			raise ParseError
+	end
+  | annotatableDirective (ts,attrs,t,omega) : (token list * Ast.DIRECTIVES)  =
+    let val _ = trace([">> annotatableDirective with next=", tokenname(hd ts)])
+	in case ts of
+	    Let :: Function :: _ =>
+			functionDefinition (ts,attrs,t)
+	  | Function :: _ =>
+			functionDefinition (ts,attrs,t)
+	  | (Let | Var | Const) :: _ => 
+			variableDefinition (ts,attrs,ALLOWIN)
+	  | _ => 
+			raise ParseError
+	end
+
+(*
+	Attributes	
+		Attribute
+		Attribute  [no line break]  Attributes
+		
+	Attribute	
+		NamespaceAttribute
+		dynamic
+		final
+		native
+		override
+		prototype
+		static
+		[  AssignmentExpressionallowList, allowIn  ]
+
+	NamespaceAttribute	
+		ReservedNamespace
+		PackageIdentifier  .  Identifier
+		Identifier
+*)
+
+and attributes (ts,attrs,t) =
+    let val _ = trace([">> attributes with next=", tokenname(hd ts)])
+	in case ts of
+		(Dynamic | Final | Native | Override | Prototype | Static | 
+		 Private | Protected | Public | Internal | Intrinsic | Identifier _) :: _ =>
+			let
+				val (ts1,nd1) = attribute (ts,attrs,t)
+				val (ts2,nd2) = attributes (ts1,nd1,t)
+			in
+				trace(["<< attributes with next=", tokenname(hd ts)]);
+				(ts2,nd2)
+			end
+	  | _ =>
+			let
+			in
+				trace(["<< attributes with next=", tokenname(hd ts)]);
+				(ts,attrs)
+			end
+	end
+
+and attribute (ts,Ast.Attributes {ns,override,static,final,dynamic,
+							        prototype,native,rest },GLOBAL) =
+    let val _ = trace([">> attribute with next=", tokenname(hd ts)])
+	in case ts of
+		Dynamic :: _ =>
+			let
+			in
+				(tl ts,Ast.Attributes { 
+						ns = ns,
+				        override = override,
+				   		static = static,
+				        final = final,
+				   		dynamic = true,
+				        prototype = prototype,
+						native = native,
+						rest = rest})
+			end
+	  | Final :: _ =>
+			let
+			in
+				(tl ts,Ast.Attributes { 
+						ns = ns,
+				        override = override,
+				   		static = static,
+				        final = true,
+				   		dynamic = dynamic,
+				        prototype = prototype,
+						native = native,
+						rest = rest})
+			end
+	  | Native :: _ =>
+			let
+			in
+				(tl ts,Ast.Attributes { 
+						ns = ns,
+				        override = override,
+				   		static = static,
+				        final = final,
+				   		dynamic = dynamic,
+				        prototype = prototype,
+						native = true,
+						rest = rest})
+			end
+      | (Override | Static | Prototype ) :: _ => 
+			(error(["invalid attribute in global context"]);raise ParseError)
+	  | _ => 
+			let
+				val (ts1,nd1) = namespaceAttribute (ts,GLOBAL)
+			in
+				(tl ts,Ast.Attributes { 
+						ns = nd1,
+				        override = override,
+				   		static = static,
+				        final = final,
+				   		dynamic = dynamic,
+				        prototype = prototype,
+						native = native,
+						rest = rest})				
+			end
+	end
+  | attribute (ts,Ast.Attributes {ns,override,static,final,dynamic,
+							        prototype,native,rest },CLASS) =
+    let val _ = trace([">> attribute with next=", tokenname(hd ts)])
+	in case ts of
+		Final :: _ =>
+			let
+			in
+				(tl ts,Ast.Attributes { 
+						ns = ns,
+				        override = override,
+				   		static = static,
+				        final = true,
+				   		dynamic = dynamic,
+				        prototype = prototype,
+						native = native,
+						rest = rest})
+			end
+	  | Native :: _ =>
+			let
+			in
+				(tl ts,Ast.Attributes { 
+						ns = ns,
+				        override = override,
+				   		static = static,
+				        final = final,
+				   		dynamic = dynamic,
+				        prototype = prototype,
+						native = true,
+						rest = rest})
+			end
+	  | Override :: _ =>
+			let
+			in
+				(tl ts,Ast.Attributes { 
+						ns = ns,
+				        override = true,
+				   		static = static,
+				        final = final,
+				   		dynamic = dynamic,
+				        prototype = prototype,
+						native = native,
+						rest = rest})
+			end
+	  | Prototype :: _ =>
+			let
+			in
+				(tl ts,Ast.Attributes { 
+						ns = ns,
+				        override = override,
+				   		static = static,
+				        final = final,
+				   		dynamic = dynamic,
+				        prototype = true,
+						native = native,
+						rest = rest})
+			end
+	  | Static :: _ =>
+			let
+			in
+				(tl ts,Ast.Attributes { 
+						ns = ns,
+				        override = override,
+				   		static = true,
+				        final = final,
+				   		dynamic = dynamic,
+				        prototype = prototype,
+						native = native,
+						rest = rest})
+			end
+      | Dynamic :: _ => 
+			(error(["invalid attribute in class context"]);raise ParseError)
+	  | _ => 
+			let
+				val (ts1,nd1) = namespaceAttribute (ts,CLASS)
+			in
+				(tl ts,Ast.Attributes { 
+						ns = nd1,
+				        override = override,
+				   		static = static,
+				        final = final,
+				   		dynamic = dynamic,
+				        prototype = prototype,
+						native = native,
+						rest = rest})				
+			end
+	end
+  | attribute (ts,Ast.Attributes {ns,override,static,final,dynamic,
+							        prototype,native,rest },INTERFACE) =
+		let
+		in case ts of
+			(Dynamic | Final | Native | Override | Prototype | Static | 
+			 Private | Protected | Public | Internal | Intrinsic | Identifier _) :: _ =>
+				(error(["attributes not allowed on a interface methods"]);
+				 raise ParseError)
+		  | _ =>
+				(ts,Ast.Attributes { 
+						ns = ns,
+				        override = override,
+				   		static = static,
+				        final = final,
+				   		dynamic = dynamic,
+				        prototype = prototype,
+						native = native,
+						rest = rest})				
+		end
+  | attribute (ts,Ast.Attributes {ns,override,static,final,dynamic,
+							        prototype,native,rest },FUNCTION) =
+		let
+		in case ts of
+			(Dynamic | Final | Native | Override | Prototype | Static | 
+			 Private | Protected | Public | Internal | Intrinsic | Identifier _) :: _ =>
+				(error(["attributes not allowed on local definitions"]);
+				 raise ParseError)
+		  | _ =>
+			(ts,Ast.Attributes { 
+					ns = ns,
+			        override = override,
+			   		static = static,
+			        final = final,
+			   		dynamic = dynamic,
+			        prototype = prototype,
+					native = native,
+					rest = rest})				
+		end
+
+and namespaceAttribute (ts,GLOBAL) =
+    let val _ = trace([">> namespaceAttribute with next=", tokenname(hd ts)])
+	in case ts of
+        (Internal :: _ | Intrinsic :: _ | Public :: _) => 
+			let
+				val (ts1,nd1) = reservedNamespace ts
+			in
+				(ts1,Ast.LiteralExpr (Ast.LiteralNamespace nd1))
+			end
+	  | Identifier s :: _ =>
+			let
+			in
+				(tl ts,Ast.LexicalRef {ident=Ast.Identifier{ident=s,openNamespaces=ref []}})
+			end
+	  | _ => raise ParseError
+	end
+  | namespaceAttribute (ts,CLASS) =
+    let val _ = trace([">> namespaceAttribute with next=", tokenname(hd ts)])
+	in case ts of
+        (Internal :: _ | Intrinsic :: _ | Private :: _ | Protected :: _ | Public :: _) => 
+			let
+				val (ts1,nd1) = reservedNamespace ts
+			in
+				(ts1,Ast.LiteralExpr (Ast.LiteralNamespace nd1))
+			end
+	  | Identifier s :: _ =>
+			let
+			in
+				(tl ts,Ast.LexicalRef {ident=Ast.Identifier{ident=s,openNamespaces=ref []}})
+			end
+	  | _ => raise ParseError
+	end
+  | namespaceAttribute (ts,_) =
+    let val _ = trace([">> namespaceAttribute with next=", tokenname(hd ts)])
+	in case ts of
+		_ => raise ParseError
+	end
+		
+
+(*
+	Pragmas	
+		Pragma
+		Pragmas  Pragma
+		
+	Pragma	
+		UsePragma  Semicolon(full)
+		ImportPragma  Semicolon(full)
+		
+*)
+
+and pragmas (ts) : token list * Ast.PRAGMA list =
+    let val _ = trace([">> pragmas with next=", tokenname(hd ts)])
+		val (ts1,nd1) = pragma(ts)
+	in case ts1 of
+		(Use | Import) :: _ => 
+			let
+				val (ts2,nd2) = pragmas (ts1)
+			in
+				(ts2, nd1 @ nd2)
+			end
+	  | _ =>
+			(ts1, nd1)
+	end
+
+and pragma ts =
+    let val _ = trace([">> pragma with next=", tokenname(hd ts)])
+	in case ts of
+		Use :: _ => 
+			let
+				val (ts1,nd1) = usePragma ts
+ 				val (ts2,nd2) = (semicolon (ts1,FULL),nd1)
+			in
+				(ts2,nd2)
+			end
+	  | Import :: _ => 
+			let
+				val (ts1,nd1) = importPragma ts
+ 				val (ts2,nd2) = (semicolon (ts1,FULL),nd1)
+			in
+				(ts2,nd2)
+			end
 	  | _ => raise ParseError
 	end
 
-and variableBindingList (ts,tag,a,b) = 
-    let val _ = trace([">> variableBindingList with next=", tokenname(hd ts)])
-		fun variableBindingListPrime (ts,tag,a,b) =
-	    	let
-		    in case ts of
-    		    Comma :: _ =>
-					let
-            			val (ts1,nd1) = variableBinding(ts,tag,a,b)
-	               		val (ts2,nd2) = variableBindingListPrime(ts1,tag,a,b)
-	    	      	in
-    	    	     	(ts2, Ast.VariableDefn nd1 :: nd2)
-	    	      	end
-	    	  | _ => (ts, [])
-		    end
-   			val (ts1,nd1) = variableBinding(ts,tag,a,b)
-       		val (ts2,nd2) = variableBindingListPrime(ts1,tag,a,b)
-    in
-        (ts2, Ast.VariableDefn nd1 :: nd2)
-    end
+(*
+	UsePragma	
+		use  PragmaItems		
+*)
 
-and variableBinding (ts,tag,a,b) = 
-    let val _ = trace([">> variableBinding with next=", tokenname(hd ts)])
-		val defaultAttrs = 
-			Ast.Attributes { 
-				ns = Ast.Internal "",
-		        override = false,
-        		static = false,
-		        final = false,
-        		dynamic = false,
-		        prototype = false,
-        		nullable = false }
-		val (ts1,{p,t}) = typedPattern (ts,a,b,NOEXPR)
-	in case (ts1,p) of
-			(Assign :: _,_) =>
-				let
-					val _ = trace(["xx variableBinding with next=", tokenname(hd ts1)])
-					val (ts2,nd2) = assignmentExpression (tl ts1,a,b)
-				in
-					(trace(["<< variableBinding with next=", tokenname(hd ts2)]);
-					(ts2, Ast.VariableDefinition { tag = tag,
-                        					   init = SOME nd2,
-                        					   attrs = defaultAttrs,
-                        					   pattern = p,
-                        					   ty = t } ))
-				end
-		  | (_,Ast.IdentifierPattern _) =>
-				let
-				in
-					(trace(["<< variableBinding with next=", tokenname(hd ts1)]);
-					(ts1, Ast.VariableDefinition { tag = tag,
-                         					   init = NONE,
-                         					   attrs = defaultAttrs,
-                         					   pattern = p,
-                         					   ty = t } ))
-				end
-		  | (_,_) => raise ParseError
+and usePragma ts =
+    let val _ = trace([">> usePragma with next=", tokenname(hd ts)])
+	in case ts of
+		Use :: _ => pragmaItems (tl ts)
+	  | _ => raise ParseError
 	end
 
 (*
+	PragmaItems	
+		PragmaItem
+		PragmaItems  ,  PragmaItem
 
-FunctionDefinition    
-    function  FunctionName  FunctionCommon
-    let  function  FunctionName  FunctionCommon
-    
-FunctionName    
-    Identifier
-    OperatorName
-    to  [no line break]  Identifier
-    get  [no line break]  PropertyIdentifier
-    set  [no line break]  PropertyIdentifier
-    call  [no line break]  PropertyIdentifier
-    
-OperatorName [one of]    
-    +   -   ~   *   /   %   <   >   <=   >=   ==   <<   >>   >>>   &   |   ===   !=   !==
-    
-ClassDefinition    
-    class  ClassName  Inheritance Block
-    
-Inheritance    
-    «empty»
-    extends TypeIdentifier
-    implements TypeIdentifierList
-    extends TypeIdentifier implements TypeIdentifierList
-    
-TypeIdentifierList    
-    TypeIdentifier
-    TypeIdentifier  ,  TypeIdentifierList
-    
-InterfaceDefinition    
-    interface  ClassName  ExtendsList Block
-    
-ExtendsList    
-    «empty»
-    extends TypeIdentifierList
-    
+	right recursive:
+
+	PragmaItems
+		PragmaItem PragmaItems'
+
+	PragmaItems'
+		empty
+		, PragmaItem PragmaItems'
+*)
+		
+and pragmaItems ts =
+    let val _ = trace([">> pragmaItems with next=", tokenname(hd ts)])
+		fun pragmaItems' ts =
+			let
+			in case ts of
+				Comma :: _ =>
+					let
+						val (ts1,nd1) = pragmaItem (tl ts)
+						val (ts2,nd2) = pragmaItems' ts1
+					in
+						(ts2,nd1::nd2)
+					end
+			  | _ => (ts,[])
+			end
+		val (ts1,nd1) = pragmaItem ts
+		val (ts2,nd2) = pragmaItems' ts1
+	in
+		(ts2,nd1::nd2)
+	end
+
+(*
+	PragmaItem	
+		decimal
+		double
+		int
+		Number
+		uint
+		precision NumberLiteral
+		rounding Identifier
+		standard
+		strict
+		default namespace SimpleTypeIdentifier
+		namespace SimpleTypeIdentifier
+*)
+
+and pragmaItem ts =
+    let val _ = trace([">> pragmaItem with next=", tokenname(hd ts)])
+	in case ts of
+		Decimal :: _ => (tl ts,Ast.UseNumber Ast.Decimal)
+	  | Double :: _ => (tl ts,Ast.UseNumber Ast.Double)
+	  | Int :: _ => (tl ts,Ast.UseNumber Ast.Int)
+	  | Number :: _ => (tl ts,Ast.UseNumber Ast.Number)
+	  | UInt :: _ => (tl ts,Ast.UseNumber Ast.UInt)
+	  | Precision :: NumberLiteral n :: _ => 
+			let
+				val i = Ast.LiteralNumber n
+			in
+				(tl (tl ts), Ast.UsePrecision i)
+			end
+	  | Rounding :: Identifier s :: _ => 
+			let
+				val m = Ast.HalfUp
+			in
+				(tl (tl ts), Ast.UseRounding m)
+			end
+	  | Standard :: _ => (tl ts,Ast.UseStandard)
+	  | Strict :: _ => (tl ts,Ast.UseStrict)
+	  | Default :: Namespace :: _ => 
+			let
+				val (ts1,nd1) = simpleTypeIdentifier (tl (tl ts))
+			in
+				(ts1, Ast.UseDefaultNamespace nd1)
+			end
+	  | Namespace :: _ => 
+			let
+				val (ts1,nd1) = simpleTypeIdentifier (tl ts)
+			in
+				(ts1, Ast.UseNamespace nd1)
+			end
+	  | _ =>
+			raise ParseError
+	end
+
+(*
+	ImportPragma	
+		import  Identifier  =  ImportName
+		import  ImportName
+		
+	ImportName	
+		PackageIdentifier  .  PropertyIdentifier
+*)
+
+and importPragma (ts) : token list * Ast.PRAGMA list =
+    let val _ = trace([">> importPragma with next=", tokenname(hd ts)])
+	in case ts of
+		Import :: _ :: Assign :: _ =>
+			let
+				val (ts1,nd1) = identifier (tl ts)
+				val (ts2,{package,name}) = importName (tl ts1)
+			in
+				(ts2,[Ast.Import {package=package,name=name,alias=SOME nd1}])
+			end
+	  | Import :: _ =>
+			let
+				val (ts1,{package,name}) = importName (tl ts)
+			in
+				(ts1,[Ast.Import {package=package,name=name,alias=NONE}])
+			end
+	  | _ => raise ParseError
+	end
+
+and importName (ts) =
+    let val _ = trace([">> importName with next=", tokenname(hd ts)])
+	in case ts of
+		PackageIdentifier p :: Dot :: _ =>
+			let
+				val (ts1,nd1) = (tl ts,p)
+				val (ts2,nd2) = propertyIdentifier (tl ts1)
+			in
+				(ts2,{package=nd1,name=nd2})
+			end
+	  | _ => 
+			(error(["attempt to import an unknown package"]); 
+			raise ParseError)
+	end
+
+(* DEFINITIONS *)    
+
+(*    
+	VariableDefinition(b)	
+		VariableDefinitionKind  VariableBindingList(allowList, b)
+		
+	VariableDefinitionKind	
+		const
+		let
+		let const
+		var
+		
+	VariableBindingList(a, b)	
+		VariableBinding(a, b)
+		VariableBindingList(noList, b)  ,  VariableBinding(a, b)
+*)
+
+and variableDefinition (ts,attrs,b) : (token list * Ast.DIRECTIVES) =
+    let val _ = trace([">> variableDefinition with next=", tokenname(hd ts)])
+		val (ts1,nd1) = variableDefinitionKind(ts)
+		val (ts2,{defns,inits}) = variableBindingList (ts1,attrs,nd1,ALLOWLIST,b)
+	in
+		(ts2,{pragmas=[],defns=[Ast.VariableDefn defns],stmts=[Ast.ExprStmt inits]})
+	end
+
+and variableDefinitionKind (ts) =
+	let
+	in case ts of
+		Const :: _ => 
+			(tl ts,Ast.Const)
+	  | Var :: _ => 
+			(tl ts,Ast.Var)
+      | Let :: Const :: _ => 
+			(tl (tl ts), Ast.LetConst)
+	  | Let :: _ => 
+			(tl ts, Ast.LetVar)
+	  | _ => raise ParseError
+	end
+
+and variableBindingList (ts,attrs,kind,a,b) : (token list * Ast.BINDINGS) = 
+    let val _ = trace([">> variableBindingList with next=", tokenname(hd ts)])
+		fun variableBindingList' (ts,attrs,kind,a,b) : (token list * Ast.BINDINGS) =
+		    let val _ = trace([">> variableBindingList' with next=", tokenname(hd ts)])
+		    in case ts of
+    		    Comma :: _ =>
+					let
+            			val (ts1,{defns=d1,inits=s1}) = variableBinding(tl ts,attrs,kind,a,b)
+	               		val (ts2,{defns=d2,inits=s2}) = variableBindingList'(ts1,attrs,kind,a,b)
+	    	      	in
+						trace(["<< variableBindingList' with next=", tokenname(hd ts2)]);
+    	    	     	(ts2,{defns=d1@d2,inits=s1@s2})
+	    	      	end
+	    	  | _ => (ts,{defns=[],inits=[]})
+		    end
+		val (ts1,{defns=d1,inits=s1}) = variableBinding(ts,attrs,kind,a,b)
+   		val (ts2,{defns=d2,inits=s2}) = variableBindingList'(ts1,attrs,kind,a,b)
+   	in
+		trace(["<< variableBindingList with next=", tokenname(hd ts2)]);
+    	(ts2,{defns=d1@d2,inits=s1@s2})
+    end
+
+(*
+	VariableBinding(a, b)	
+		TypedIdentifier
+		TypedPattern(noList, noIn, noExpr) VariableInitialisation(a, b)
+		
+	VariableInitialisation(a, b)	
+		=  AssignmentExpression(a, b)	
+*)
+
+and variableBinding (ts,attrs,kind,a,b) : (token list * Ast.BINDINGS) = 
+    let val _ = trace([">> variableBinding with next=", tokenname(hd ts)])
+		val (ts1,{p,t}) = typedPattern (ts,a,b,NOEXPR)  (* parse the more general syntax *)
+	in case (ts1,p,b) of
+			(Assign :: _,_,_) =>
+				let
+					val (ts2,nd2) = variableInitialisation (ts1,a,b)
+				in
+					trace(["<< variableBinding with next=", tokenname(hd ts2)]);
+					(ts2, {defns=[Ast.Binding { kind = kind, init = SOME nd2, attrs = attrs,
+                        					   pattern = p, ty = t }],
+						   inits=[Ast.SetExpr (Ast.Assign,p,nd2)]})
+				end
+		  | (In :: _,_,NOIN) => (* okay, we are in a for-in or for-each-in binding *)
+				let
+				in
+					trace(["<< variableBinding with next=", tokenname(hd ts1)]);
+					(ts1, {defns=[Ast.Binding { kind = kind, init = NONE, attrs = attrs,
+                        					   pattern = p, ty = t }],
+						   inits=[]})
+				end
+		  | (_,Ast.IdentifierPattern _,_) =>   (* check the more specific syntax allowed
+												  when there is no init *)
+				let
+				in
+					trace(["<< variableBinding with next=", tokenname(hd ts1)]);
+					(ts1, {defns=[Ast.Binding { kind = kind, init = NONE, attrs = attrs,
+                        					   pattern = p, ty = t }],
+						   inits=[]})
+				end
+		  | (_,_,_) => (error(["destructuring pattern without initialiser"]); raise ParseError)
+	end
+
+and variableInitialisation (ts,a,b) : (token list * Ast.EXPR) =
+    let val _ = trace([">> variableInitialisation with next=", tokenname(hd ts)])
+	in case ts of
+		Assign :: _ =>
+			let
+				val (ts1,nd1) = assignmentExpression (tl ts,a,b)
+			in
+				(ts1,nd1)
+			end
+	  | _ => raise ParseError
+	end
+
+(*
+	FunctionDeclaration	
+		function  Identifier  FunctionSignature
+*)
+
+and functionDeclaration (ts) =
+    let val _ = trace([">> functionDeclaration with next=", tokenname(hd ts)])
+	in case ts of
+		Function :: _ =>
+			let
+				val (ts1,nd1) = identifier (tl ts)
+				val (ts2,nd2) = functionSignature (ts1)
+			in
+				(ts2,{pragmas=[],
+					  defns=[Ast.FunctionDefn {attrs=defaultAttrs,
+						   kind=Ast.Var, 
+						   func=Ast.Func {name={ident=nd1,kind=Ast.Ordinary},
+									   	  sign=nd2,
+			    				    	  body=Ast.Block {pragmas=[],defns=[],stmts=[]}}}],
+			  		  stmts=[]})
+			end
+	  | _ => raise ParseError
+	end
+
+(*
+	FunctionDefinition(class)	
+		function  ClassName  ConstructorSignature  FunctionBody
+		function  FunctionName  FunctionSignature  FunctionBody
+		let  function  FunctionName  FunctionSignature  FunctionBody
+		
+	FunctionDefinition(t)	
+		function  FunctionName  FunctionSignature  FunctionBody
+		let  function  FunctionName  FunctionSignature  FunctionBody
+		
+	FunctionName	
+		Identifier
+		OperatorName
+		to
+		call
+		construct
+		get  PropertyIdentifier
+		set  PropertyIdentifier
+		call  PropertyIdentifier
+		construct  PropertyIdentifier
+
+	OperatorName [one of]	
+		+   -   ~   *   /   %   <   >   <=   >=   ==   <<   >>   >>>   &   |   ===   !=   !==
+*)
+
+and isCurrentClass (nd) = false  (* todo *)
+
+and functionDefinition (ts,attrs,CLASS) =
+    let val _ = trace([">> functionDefinition(CLASS) with next=", tokenname(hd ts)])
+		val (ts1,nd1) = functionKind (ts)
+		val (ts2,nd2) = functionName (ts1)
+	in case (nd1,isCurrentClass(nd2)) of
+		(Ast.Var,true) =>
+			let
+				val (ts3,nd3) = constructorSignature (ts2)
+				val (ts4,nd4) = functionBody (ts3)
+			in
+				(ts4,{pragmas=[],
+					  defns=[Ast.FunctionDefn {attrs=attrs,
+						   kind=nd1, 
+						   func=Ast.Func {name=nd2,
+									   	  sign=nd3,
+			    				    	  body=nd4}}],
+			  		  stmts=[]})
+			end
+	  | (Ast.LetVar,true) => raise ParseError
+	  | _ =>
+			let
+				val (ts3,nd3) = functionSignature (ts2)
+				val (ts4,nd4) = functionBody (ts3)
+			in
+				(ts4,{pragmas=[],
+					  defns=[Ast.FunctionDefn {attrs=attrs,
+						   kind=nd1, 
+						   func=Ast.Func {name=nd2,
+									   	  sign=nd3,
+			    				    	  body=nd4}}],
+			  		  stmts=[]})
+			end
+	end
+
+  | functionDefinition (ts,attrs,t) =
+    let val _ = trace([">> functionDefinition with next=", tokenname(hd ts)])
+		val (ts1,nd1) = functionKind (ts)
+		val (ts2,nd2) = functionName (ts1)
+		val (ts3,nd3) = functionSignature (ts2)
+		val (ts4,nd4) = functionBody (ts3)
+	in
+		(ts4,{pragmas=[],
+			  defns=[Ast.FunctionDefn {attrs=attrs,
+						   kind=nd1, 
+						   func=Ast.Func {name=nd2,
+									   	  sign=nd3,
+			    				    	  body=nd4}}],
+			  stmts=[]})
+	end
+
+and functionKind (ts) =
+    let val _ = trace([">> functionKind with next=", tokenname(hd ts)])
+	in case ts of
+	    Function :: _ => 
+			(trace(["<< functionKind with next=", tokenname(hd (tl ts))]);
+			(tl ts,Ast.Var))   (* reuse VAR_DEFN_KIND *)
+      | Let :: Function :: _ => 
+			(tl (tl ts), Ast.LetVar)
+	  | _ => raise ParseError
+	end
+
+
+and functionName (ts) : (token list * Ast.FUNC_NAME) =
+    let val _ = trace([">> functionName with next=", tokenname(hd ts)])
+	in case ts of
+		(Plus | Minus | BitwiseNot | Mult | Div | Modulus | LessThan |
+		 GreaterThan | LessThanOrEquals | GreaterThanOrEquals | Equals | LeftShift |
+		 RightShift | UnsignedRightShift | BitwiseAnd | BitwiseOr | StrictEquals |
+		 NotEquals | StrictNotEquals) :: _ => 
+			let 
+				val (ts1,nd1) = operatorName ts
+			in
+				(ts1,{kind=Ast.Operator,ident=nd1})
+			end			
+	  | To :: _ => 
+			let
+			in
+				(tl ts,{kind=Ast.ToFunc,ident=""})
+			end
+	  | Call :: _ => 
+			let
+			in case (tl ts) of
+				(LeftParen | LeftDotAngle) :: _ =>
+					let
+					in
+						(tl ts,{kind=Ast.Call,ident=""})
+					end
+			  | _ =>
+					let
+						val (ts1,nd1) = propertyIdentifier (tl ts)
+					in
+						(ts1,{kind=Ast.Call,ident=nd1})
+					end
+			end
+	  | Construct :: _ => 
+			let
+			in case (tl ts) of
+				(LeftParen | LeftDotAngle) :: _ =>
+					let
+					in
+						(tl ts,{kind=Ast.Call,ident=""})
+					end
+			  | _ =>
+					let
+						val (ts1,nd1) = propertyIdentifier (tl ts)
+					in
+						(ts1,{kind=Ast.Call,ident=nd1})
+					end
+			end
+	  | Get :: _ => 
+			let
+				val (ts1,nd1) = propertyIdentifier (tl ts)
+			in
+				(ts1,{kind=Ast.Get,ident=nd1})
+			end
+	  | Set :: _ => 
+			let
+				val (ts1,nd1) = propertyIdentifier (tl ts)
+			in
+				(ts1,{kind=Ast.Set,ident=nd1})
+			end
+	  | _ => 
+			let
+				val (ts1,nd1) = identifier ts
+			in
+				trace(["<< functionName with next=", tokenname(hd ts1)]);
+				(ts1,{kind=Ast.Ordinary,ident=nd1})
+			end
+	end
+
+(*	
+	+   -   ~   *   /   %   <   >   <=   >=   ==   <<   >>   >>>   &   |   ===   !=   !== 
+*)
+
+and operatorName (ts) =
+	let
+	in case ts of
+		Plus :: _ => (tl ts,"+")
+	  | Minus :: _ => (tl ts,"-")
+	  | BitwiseNot :: _ => (tl ts,"~")
+	  | Mult :: _ => (tl ts,"*")
+	  | Div :: _ => (tl ts,"/")
+	  | Modulus :: _ => (tl ts,"%")
+	  | LessThan :: _ => (tl ts,"<")
+	  | GreaterThan :: _ => (tl ts,">")
+	  | LessThanOrEquals :: _ => (tl ts,"<=")
+	  | GreaterThanOrEquals :: _ => (tl ts,">=")
+	  | Equals :: _ => (tl ts,"=")
+	  | LeftShift :: _ => (tl ts,">>")
+	  | RightShift :: _ => (tl ts,"<<")
+	  | UnsignedRightShift :: _ => (tl ts,"<<<")
+	  | BitwiseAnd :: _ => (tl ts,"&")
+	  | BitwiseOr :: _ => (tl ts,"|")
+	  | StrictEquals :: _ => (tl ts,"===")
+	  | NotEquals :: _ => (tl ts,"!=")
+	  | NotStrictEquals :: _ => (tl ts,"!==")
+      | _ => raise ParseError
+	end
+
+(*
+	ConstructorSignature	
+		TypeParameters  (  Parameters  )
+		TypeParameters  (  Parameters  )  ConstructorInitialiser
+		
+	ConstructorInitialiser	
+		:  InitialiserList
+		
+	InitaliserList	
+		Initialiser
+		InitialiserList  ,  Initialiser
+		
+	Initialiser	
+		PatternnoList, noIn, noExpr  VariableInitialisationnoList, allowIn
+*)
+
+and constructorSignature (ts) = raise ParseError
+
+(*
+	FunctionBody	
+		Block(function)
+*)
+
+and functionBody (ts) =
+    let val _ = trace([">> functionBody with next=", tokenname(hd ts)])
+		val (ts1,nd1) = block (ts,FUNCTION)
+	in
+		(ts1,nd1)
+	end
+		
+(*
+	ClassDefinition	
+		class  ClassName  ClassInheritance  ClassBlock
+		
+	ClassName	
+		ParameterisedClassName
+		ParameterisedClassName  !
+		
+	ParameterisedClassName	
+		Identifier
+		Identifier  TypeParameters
+		
+*)
+
+and classDefinition (ts,attrs) =
+    let val _ = trace([">> classDefinition with next=", tokenname(hd ts)])
+	in case ts of
+		Class :: _ =>
+			let
+				val (ts1,{ident,params,nonnullable}) = className (tl ts)
+				val (ts2,{extends,implements}) = classInheritance (ts1)
+				val (ts3,nd3) = classBody (ts2)
+			in
+         		(ts3,{pragmas=[],stmts=[],defns=[Ast.ClassDefn {name=ident,
+					nonnullable=nonnullable,
+        			attrs=attrs,
+		           	params=params,
+		            extends=extends,
+           			implements=implements,
+					body=nd3,
+					(* the following field will be populated during the definition phase *)
+           			instanceVars=[],
+					instanceMethods=[],
+           			vars=[],
+					methods=[],
+           			constructor=NONE,
+           			initializer=[]}]})
+			end
+	  | _ => raise ParseError
+	end
+
+and className (ts) =
+    let val _ = trace([">> className with next=", tokenname(hd ts)])
+		val (ts1,{ident,params}) = parameterisedClassName ts
+	in case ts1 of
+		Not :: _ =>
+			let
+			in
+				(tl ts1,{ident=ident,params=params,nonnullable=true})
+			end
+	  | _ =>
+			let
+			in
+				(ts1,{ident=ident,params=params,nonnullable=false})
+			end
+	end
+
+and parameterisedClassName (ts) =
+    let val _ = trace([">> parameterisedClassName with next=", tokenname(hd ts)])
+		val (ts1,nd1) = identifier ts
+	in case ts1 of
+		LeftDotAngle :: _ =>
+			let
+				val (ts2,nd2) = typeParameters (ts1)
+			in
+				(ts2,{ident=nd1,params=nd2})
+			end
+	  | _ =>
+			let
+			in
+				(ts1,{ident=nd1,params=[]})
+			end
+	end
+
+(*
+	ClassInheritance	
+		«empty»
+		extends  TypeIdentifier
+		implements  TypeIdentifierList
+		extends  TypeIdentifier  implements  TypeIdentifierList
+		
+	TypeIdentifierList	
+		TypeIdentifier
+		TypeIdentifier  ,  TypeIdentifierList
+
+	ClassBody	
+		Block
+*)
+
+and classInheritance (ts) = 
+    let val _ = trace([">> classInheritance with next=", tokenname(hd ts)])
+	in case ts of
+	    Extends :: _ =>
+			let
+				val (ts1,nd1) = typeIdentifier (tl ts)
+			in case ts1 of
+				Implements :: _ =>
+					let
+						val (ts2,nd2) = typeIdentifierList (tl ts1)
+					in
+						(ts2,{extends=SOME nd1,implements=nd2})
+					end
+			  | _ =>
+					let
+					in
+						(ts1,{extends=SOME nd1,implements=[]})
+					end	
+			end
+	  | Implements :: _ =>
+			let
+				val (ts1,nd1) = typeIdentifierList (tl ts)
+			in
+				(ts1,{extends=NONE,implements=nd1})
+			end
+	  | _ => (ts,{extends=NONE,implements=[]})
+	end
+
+and typeIdentifierList (ts) = 
+    let val _ = trace([">> typeIdentifierList with next=", tokenname(hd ts)])
+		fun typeIdentifierList' (ts) =
+			let
+			in case ts of
+				Comma :: _ =>
+					let
+						val (ts1,nd1) = typeIdentifier (tl ts)
+						val (ts2,nd2) = typeIdentifierList' (ts1)
+					in
+						(ts2,nd1::nd2)
+					end
+			  | _ =>
+					let
+					in
+						(ts,[])
+					end
+			end
+		val (ts1,nd1) = typeIdentifier (ts)
+		val (ts2,nd2) = typeIdentifierList' (ts1)
+	in
+		trace(["<< typeIdentifierList with next=", tokenname(hd ts2)]);
+		(ts2,nd1::nd2)
+	end
+
+and classBody (ts) =
+    let val _ = trace([">> classBody with next=", tokenname(hd ts)])
+		val (ts1,nd1) = block (ts,CLASS)
+	in
+		(ts1,nd1)
+	end
+		
+
+(*		
+	InterfaceDefinition	
+		interface  ClassName  InterfaceInheritance  InterfaceBody
+		
+	InterfaceInheritance	
+		«empty»
+		extends  TypeIdentifierList
+		
+	InterfaceBody	
+		Block(interface)
+*)
+
+and interfaceDefinition (ts,attrs) =
+    let val _ = trace([">> interfaceDefinition with next=", tokenname(hd ts)])
+	in case ts of
+		Interface :: _ =>
+			let
+				val (ts1,{ident,params,nonnullable}) = className (tl ts)
+				val (ts2,{extends}) = interfaceInheritance (ts1)
+				val (ts3,nd3) = interfaceBody (ts2)
+			in
+         		(ts3,{pragmas=[],stmts=[],defns=[Ast.InterfaceDefn {
+					name=ident,
+					nonnullable=nonnullable,
+        			attrs=attrs,
+		           	params=params,
+		            extends=extends,
+					body=nd3}]})
+			end
+	  | _ => raise ParseError
+	end
+
+and interfaceInheritance (ts) = 
+    let val _ = trace([">> interfaceInheritance with next=", tokenname(hd ts)])
+	in case ts of
+	    Extends :: _ =>
+			let
+				val (ts1,nd1) = typeIdentifierList (tl ts)
+			in
+				(ts1,{extends=nd1})
+			end
+	  | _ => (ts,{extends=[]})
+	end
+
+and interfaceBody (ts) =
+    let val _ = trace([">> interfaceBody with next=", tokenname(hd ts)])
+		val (ts1,nd1) = block (ts,INTERFACE)
+	in
+		trace(["<< interfaceBody with next=", tokenname(hd ts)]);
+		(ts1,nd1)
+	end
+		
+(*		
 NamespaceDefinition    
     namespace NamespaceBinding
     
@@ -3122,65 +5106,89 @@ TypeInitialisation
     =  TypeExpression
 *)
 
-(*
-    
-Program    
-    Directives
-    PackageDefinition Program
+(* BLOCKS AND PROGRAMS *)
 
+(*
+	Block(t)	
+		{  Directives(t)  }
 *)
-    
-and program ts =
-    let
-       val _ = trace([">> program with next=",tokenname(hd(ts))])
+
+and block (ts,t) : (token list * Ast.BLOCK) =
+    let val _ = trace([">> block with next=", tokenname(hd ts)])
     in case ts of
-        Package :: tr => 
-			let 
-			    val (tr2, pkgs) = packageDefinition tr
-			in
-			    (tr2, {packages=[pkgs], body=(Ast.Block {pragmas=[],
-						     defns=[],
-						     stmts=[]})})
-			end
-      | _ => 
-			let
-			    val (tr2, directives) = directives ts
-			in
-			    (tr2, {packages=[], body=(Ast.Block {stmts=directives,
-					   defns=[],
-					   pragmas=[]})})
-			end
+        LeftBrace :: RightBrace :: _ => 
+			((trace(["<< block with next=", tokenname(hd (tl (tl ts)))]);
+			(tl (tl ts),Ast.Block {pragmas=[],defns=[],stmts=[]})))
+      | LeftBrace :: _ =>
+            let
+                val (ts1,nd1) = directives (tl ts,t)
+            in case ts1 of
+                RightBrace :: _ => 
+					(trace(["<< block with next=", tokenname(hd (tl ts1))]);
+					(tl ts1,Ast.Block nd1))
+			  | _ => raise ParseError
+            end
+	  | _ => raise ParseError
     end
 
 (*
+	Program	
+		Packages  Directives
+*)
+    
+and program ts =
+    let val _ = trace([">> program with next=",tokenname(hd(ts))])
+		val (ts1,nd1) = packages ts
+		val (ts2,nd2) = directives (ts1,GLOBAL)
 
-PackageDefinition    
-    PackageAttributes package PackageNameOpt Block
-    
-PackageAttributes    
-    internal
-    «empty»
-    
-PackageNameOpt    
-    «empty»
-    PackageName
-    
-PackageName [create a lexical PackageIdentifier with the sequence of characters that make a PackageName]    
-    Identifier
-    PackageName  .  Identifier
-    
-ClassName    
-    ParameterisedClassName
-    ParameterisedClassName  !
-    
-ParameterisedClassName    
-    Identifier
-    Identifier  TypeParameters
+		val _ = trace(["<< program with next=",tokenname(hd(ts2))])
+    in case ts2 of
+		Eof :: [] => (ts2,{packages=nd1,body=Ast.Block nd2})
+	  | _ => (error(["extra stuff after end of program"]); raise ParseError)
+	end
 
+(*
+	Packages	
+	    «empty»
+		Package Packages
 *)
 
+and packages ts =
+    let val _ = trace([">> packages with next=",tokenname(hd(ts))])
+	in case ts of
+		(Internal :: Package :: _ | Package :: _) =>
+			let
+				val (ts1,nd1) = package ts
+				val (ts2,nd2) = packages ts1
+			in
+				(ts1,nd1::nd2)
+			end
+	  | _ => (ts,[])
+	end
 
-and packageDefinition ts = raise ParseError
+(*
+	Package	
+		PackageAttributes  package  PackageNameOpt  PackageBody
+		
+	PackageAttributes	
+		internal
+		«empty»
+		
+	PackageNameOpt	
+		«empty»
+		PackageName
+		
+	PackageName [create a lexical PackageIdentifier with the sequence of characters that make a PackageName]	
+		Identifier
+		PackageName  .  Identifier
+
+	PackageBody	
+		Block(global)
+*)
+
+and package ts = raise ParseError
+
+
 
 fun mkReader filename = 
     let
@@ -3224,8 +5232,7 @@ fun lexFile (filename : string) : (token list) =
 fun parse ts =
     let 
 	val (residual, result) = (program ts) 
-	fun check_residual (Eol :: xs) = check_residual xs
-	  | check_residual [Eof] = ()
+	fun check_residual [Eof] = ()
 	  | check_residual _ = raise ParseError
     in
 	check_residual residual;
