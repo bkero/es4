@@ -1,6 +1,7 @@
 /* -*- mode: java; mode: font-lock; tab-width: 4 -*- 
  *
  * ECMAScript 4 builtins - the "Class" object
+ * E262-4 not yet documented.
  */
 
 package

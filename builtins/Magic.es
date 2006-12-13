@@ -30,20 +30,24 @@ package
 	/* Retrieve the [[Class]] property of o */
 	native magic function getClassName(o : Object!) : String!;
 
-	/* Retrieve the [[Prototype]] property of o */
-	native magic function getPrototype(o : Object!) : Object?;
+	/* Retrieve the possibly null [[Prototype]] property of o */
+	native magic function getPrototype(o : Object!) : Object;
 
 	/* Return true iff o has a local property named by p. */
-	native magic function hasOwnProperty(o : Object!, p : String!) : Boolean!;
+	native magic function hasOwnProperty(o : Object!, p : String!) : Boolean;
 
-	/* Return true iff the property p exists locally on o and is
-	   enumerable */
-	native magic function getPropertyIsEnumerable(o : Object!, p : String!) : Boolean!;
+	/* Return true if the property p does exists locally on o and its
+	   DontEnum bit is set */
+	native magic function getPropertyIsDontEnum(o : Object!, p : String!) : Boolean;
 
-	/* Provided that the property p exists locally on o, set its enumerable
+	/* Return true if the property p does exists locally on o and its
+	   DontDelete bit is set */
+	native magic function getPropertyIsDontDelete(o : Object!, p : String!) : Boolean;
+
+	/* Provided that the property p exists locally on o, set its DontEnum
 	   flag according to f.  If the property p does not exist locally on
 	   o, it does nothing. */
-	native magic function setPropertyIsEnumerable(o : Object!, p : String!, f : Boolean!) : void;
+	native magic function setPropertyIsDontEnum(o : Object!, p : String!, f : Boolean) : void;
 
 	/* Retrieve the [[Value]] property of o */
 	native magic function getValue(o : Object!) : *;
@@ -51,10 +55,13 @@ package
 	/* Set the [[Value]] of o to v */
 	native magic function setValue(o : Object!, v : *) : void;
 		
-	/* Compile the function body in the context of the parameter list
-	   and return an opaque representation for the compiled code,
-	   suitable for passing to magic::invoke.  */
-	native magic magic function compile(formals : [String!], body : String!) : *;
+	/* Compile the function body in the context of the formals and
+	   return an opaque representation for the compiled code, suitable
+	   for passing to magic::invoke, along with the arity of the
+	   function.
+
+	   Throws a SyntaxError if the code could not be compiled. */
+	native magic magic function compile(formals : String!, body : String!) : [*, Number];
 
 	/* Given some code created by magic::compile, an environment of
 	   some sort (either a global object or an environment structure
@@ -62,11 +69,11 @@ package
 	   argument values, invoke the code on those arguments in the
 	   given environment by extending the environment with the
 	   formals, binding actuals to formals, and running the code. */
-	native magic function invoke(code : *, env : *, args : [*]) : *;
+	native magic function invoke(code : *, env : *, args : Array) : *;
 
 	/* Given a function object, a this object, and an array of argument
 	   values, call the function with the this object and arguments. */
-	native magic function apply(fn : Function!, t : Object!, args : [*]) : *;
+	native magic function apply(fn : Function!, t : Object!, args : Array) : *;
 }
 
 

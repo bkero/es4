@@ -1,8 +1,8 @@
 /* -*- mode: java; mode: font-lock; tab-width: 4 -*- 
  *
  * ECMAScript 4 builtins - the "Function" object
- * ES-262-3 15.3
- * ES-262-4 draft
+ * E262-3 15.3
+ * E262-4 draft
  *
  * Status: not reviewed against specs.
  *
@@ -57,49 +57,70 @@ package
 
 		intrinsic function apply(thisArg, argArray) : *
 		{
-			if (thisArg == null)
-				thisArg = intrinsic::global;
-			// ES4 bug fix: arguments object is an 'Array'
-			if (!argArray is Array)
-				throw new TypeError("argument array to 'apply' must be Array");
-			return magic::apply(this, thisArg, argArray);
+			return Function.apply(this, thisArg, argArray);
 		}
 
-		/* E262-3 15.3.4.4 Function.prototype.call.
+		/* E262-4 draft: "apply" and "call" are static methods on the
+		   Function object, and everyone eventually ends up in
+		   Function.apply().
+
+		   Note ES4 bug fix: the arguments object is an 'Array', so the test
+		   for applicability of argArray is simpler than in ES3 */
+		static function apply(fn : Function!, thisArg, argArray)
+		{
+			if (thisArg === void 0 || thisArg === null)
+				thisArg = intrinsic::global;
+			if (argArray === void 0 || argArray === null)
+				argArray = [];
+			else if (!(argArray is Array))
+				throw new TypeError("argument array to 'apply' must be Array");
+			return magic::apply(fn, thisArg, argArray);
+		}
+
+		/* E262-3 15.3.4.4: Function.prototype.call.
 
 		   Assuming a rest argument does not contribute to the
 		   "length" of the function, so the length of
 		   Function.prototype.call is 1, which is what we want. */
 		Function.prototype.call = function(thisObj, ...args)
 		{
-			return magic::apply(this, thisObj, args);
+			return Function.apply(this, thisObj, args);
 		}
 
 		intrinsic function call(thisObj, ...args:Array):*
 		{
-			return magic::apply(this, thisObj, args);
+			return Function.apply(this, thisObj, args);
+		}
+
+		/* E262-4 draft: "apply" and "call" are static methods on the
+		   Function object */
+		static function call(thisObj, ...args:Array):*
+		{
+			return Function.apply(this, thisObj, args);
 		}
 		
 		/* E262-3 15.3.5.3: [[HasInstance]] */
 		intrinsic function HasInstance(V)
 		{
-			// implements instanceof
 			if (!(V is Object))
 				return false;
-			var O:Object = this.prototype;	// throws TypeError if not Object
-			V = V.prototype;
-			while (V != null)
-			{
+
+			var O : Object = this.prototype;
+			if (!(O is Object))
+				throw new TypeError("[[HasInstance]]: prototype is not object");
+
+			for (;;) {
+				V = magic::getPrototype(V);
+				if (V === null)
+					return false;
 				if (O == V)
 					return true;
-				V = V.prototype;
 			}
-			return false;
 		}
 
-		magic::setPropertyIsEnumerable(Function.prototype, "toString", false);
-		magic::setPropertyIsEnumerable(Function.prototype, "apply", false);
-		magic::setPropertyIsEnumerable(Function.prototype, "call", false);
+		magic::setPropertyIsDontEnum(Function.prototype, "toString", true);
+		magic::setPropertyIsDontEnum(Function.prototype, "apply", true);
+		magic::setPropertyIsDontEnum(Function.prototype, "call", true);
 
 		/*** Function public data ***/
 
@@ -138,11 +159,11 @@ package
 		   "length".  */
 		static private compileFunction(...args) : [*, String!, Number]
 		{
-			var formals = args[0:args.length-1];
+			var formals = args[0:args.length-1].join(",");
 			var body = args[args.length-1];
-			var code = magic::compile(formals, body);
-			var source = "function (" + formals.join(",") + ") {" + body + "}";
-			return [code, source, formals.length];
+			var [code, length] = magic::compile(formals, body);
+			var source = "function (" + formals + ") {" + body + "}";
+			return [code, source, length];
 		}
 	}
 }
