@@ -338,22 +338,27 @@ withtype
 
      and CLASS_DEFN =
          { name: IDENT,
+		   nonnullable: bool,
            attrs: ATTRIBUTES,
            params: IDENT list,
-           extends: TYPE_EXPR list,
-           implements: TYPE_EXPR list,
+           extends: IDENT_EXPR option,
+           implements: IDENT_EXPR list,
+		   body: BLOCK,
+           (* the following field will be populated during the definition phase *)
            instanceVars: VAR_BINDING list,
+		   instanceMethods: FUNC list,
            vars: VAR_BINDING list,
-           constructor: FUNC,
            methods: FUNC list,
+           constructor: FUNC option,
            initializer: STMT list }
 
      and INTERFACE_DEFN =
          { name: IDENT,
+		   nonnullable: bool,
            attrs: ATTRIBUTES,
            params: IDENT list,
-           extends: TYPE_EXPR list,
-           methods: (IDENT * FUNC_TY) list }
+           extends: IDENT_EXPR list,
+           body: BLOCK }
 
      and PRIM_TY =
          { name: USTRING,

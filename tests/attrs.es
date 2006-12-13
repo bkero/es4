@@ -1,2 +1,2 @@
-ns override static final dynamic prototype native var x
+ns final dynamic native var x
 (function (...rest) {})
