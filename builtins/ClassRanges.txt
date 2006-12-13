@@ -1,0 +1,103 @@
+Rewriting of classranges grammar.
+
+1. INITIAL GRAMMAR
+
+
+ClassRanges ::= [empty] | NonemptyClassRanges ;
+ClassAtom ::= "-" | ClassAtomNoDash ;
+						   
+NonemptyClassRanges ::= ClassAtom
+                      | ClassAtom NonemptyClassRangesNoDash
+                      | ClassAtom "-" ClassAtom ClassRanges ;
+
+NonemptyClassRangesNoDash ::= ClassAtom
+                            | ClassAtomNoDash NonemptyClassRangesNoDash
+                            | ClassAtomNoDash "-" ClassAtom ClassRanges ;
+
+
+
+2. EXPAND ClassRanges WHERE IT'S REFERENCED
+
+ClassRanges ::= [empty] | NonemptyClassRanges ;
+ClassAtom ::= "-" | ClassAtomNoDash ;
+						   
+NonemptyClassRanges ::= ClassAtom
+                      | ClassAtom NonemptyClassRangesNoDash
+                      | ClassAtom "-" ClassAtom
+                      | ClassAtom "-" ClassAtom NonemptyClassRanges ;
+
+NonemptyClassRangesNoDash ::= ClassAtom
+                            | ClassAtomNoDash NonemptyClassRangesNoDash
+                            | ClassAtomNoDash "-" ClassAtom 
+                            | ClassAtomNoDash "-" ClassAtom NonemptyClassRanges ;
+
+
+
+3. EXPAND ClassAtom IN NonemptyClassRanges
+
+ClassRanges ::= [empty] | NonemptyClassRanges ;
+ClassAtom ::= "-" | ClassAtomNoDash ;
+						   
+NonemptyClassRanges ::= ClassAtom
+                      | ClassAtom NonemptyClassRangesNoDash
+                      | ClassAtom "-" ClassAtom
+                      | ClassAtom "-" ClassAtom NonemptyClassRanges ;
+
+NonemptyClassRangesNoDash ::= "-"
+	                    | ClassAtomNoDash
+                            | ClassAtomNoDash NonemptyClassRangesNoDash
+                            | ClassAtomNoDash "-" ClassAtom 
+                            | ClassAtomNoDash "-" ClassAtom NonemptyClassRanges ;
+
+
+4. PULL "-" UP FROM NonemptyClassRangesNoDash EVERYWHERE, AND REORDER
+
+ClassRanges ::= [empty] | NonemptyClassRanges ;
+ClassAtom ::= "-" | ClassAtomNoDash ;
+						   
+NonemptyClassRanges ::= ClassAtom
+                      | ClassAtom "-" 
+                      | ClassAtom "-" ClassAtom
+                      | ClassAtom "-" ClassAtom NonemptyClassRanges
+                      | ClassAtom NonemptyClassRangesNoDash ;
+
+NonemptyClassRangesNoDash ::= ClassAtomNoDash
+                            | ClassAtomNoDash "-"
+                            | ClassAtomNoDash "-" ClassAtom 
+                            | ClassAtomNoDash "-" ClassAtom NonemptyClassRanges
+                            | ClassAtomNoDash NonemptyClassRangesNoDash ;
+
+
+5. LIFT THE PRECONDITION FOR NonemptyClassRangesNoDash INTO
+   ITS REFERENTS BY OBSERVING THAT ClassAtomNoDash IS THE SAME
+   AS ClassAtom WITH A PRECONDITION THAT LOOKAHEAD != "-".
+
+ClassRanges ::= [empty] | NonemptyClassRanges ;
+ClassAtom ::= "-" | ClassAtomNoDash ;
+						   
+NonemptyClassRanges ::= ClassAtom
+                      | ClassAtom "-" 
+                      | ClassAtom "-" ClassAtom
+                      | ClassAtom "-" ClassAtom NonemptyClassRanges
+                      | ClassAtom [lookahead != "-"] NonemptyClassRangesNoDash ;
+
+NonemptyClassRangesNoDash ::= ClassAtom
+                            | ClassAtom "-"
+                            | ClassAtom "-" ClassAtom 
+                            | ClassAtom "-" ClassAtom NonemptyClassRanges
+                            | ClassAtom [lookahead != "-"] NonemptyClassRangesNoDash ;
+
+
+6. OBSERVE THAT NonemptyClassRanges IS THE SAME AS
+   NonemptyClassRangesNoDash, AND GET RID OF THE LATTER.
+
+ClassRanges ::= [empty] | NonemptyClassRanges ;
+
+ClassAtom ::= "-" | ClassAtomNoDash ;
+						   
+NonemptyClassRanges ::= ClassAtom
+                      | ClassAtom "-" 
+                      | ClassAtom "-" ClassAtom
+                      | ClassAtom "-" ClassAtom NonemptyClassRanges
+                      | ClassAtom [lookahead != "-"] NonemptyClassRanges ;
+
