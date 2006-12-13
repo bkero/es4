@@ -1,4 +1,4 @@
-/* -*- mode: java; tab-width: 4 -*- 
+/* -*- mode: java; mode: font-lock; tab-width: 4 -*- 
  *
  * ECMAScript 4 builtins - the "Boolean" object
  * ES-262-3 15.6
@@ -70,8 +70,8 @@ package
 		}
 
 		/* ES-262-3 FIXME-cite: properties on prototype are DontEnum */
-		Boolean.prototype.propertyIsEnumerable("constructor", false);
-		Boolean.prototype.propertyIsEnumerable("toString", false);
-		Boolean.prototype.propertyIsEnumerable("valueOf", false);
+		intrinsic::setPropertyIsDontEnum(Boolean.prototype, "constructor", true);
+		intrinsic::setPropertyIsDontEnum(Boolean.prototype, "toString", true);
+		intrinsic::setPropertyIsDontEnum(Boolean.prototype, "valueOf", true);
 	}
 }
