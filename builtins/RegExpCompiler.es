@@ -8,36 +8,31 @@
  *
  * Regular expression compiler.
  *
+ * Status:  Nearly complete; Not reviewed.
+ *
  * TO DO:
  *
- * - Whitespace / comment handling for the /x qualifier are 
- *   not correct, these are ignored everywhere now but the spec
- *   says to do so only in some contexts
- *
- * - NEL handling?
+ * - Whitespace / comment handling for the /x qualifier are not
+ *   correct, spaces are ignored everywhere now but the spec says to do
+ *   so only in some contexts
  */
 
 package RegExp
 {
-	/* Returns a matcher, the number of capturing parens, and an array
-	   of length equal to the number of capturing parens, where an
-	   element is non-null if that capturing paren has a name.  */
+	import Unicode.*;
 
-	private static function compile( source : String!, flags : String! ) : [Matcher, int, [String]!] {
-		return (new RECompile(source, flags).compile());
-	}
-
-	private class RECompile
+	class RegExpCompiler
 	{
 		// Invariant: either idx==source.length or source[idx] is a significant char
 
-		const source;                  // expression source, sans leading and trailing /
-		var   idx;                     // current character in the source
-		const extended;                // true iff expression has /x flag
-		const names = [];              // capturing names, or null for capturing exprs that are not named
-		const nCapturingParens = 0;    // number of capturing parens (including those that are named)
+		const source : String!;        // expression source, sans leading and trailing /
+		var   idx : uint;              // current character in the source
+		const extended : Boolean;      // true iff expression has /x flag
+		const names : [String] = [];   // capturing names, or null for capturing exprs that are not named
+		const parenIndex : uint = 0;   // number of capturing parens (including those that are named)
+		const parenCount : uint = 0;   // current depth of capture nesting
 
-		function RECompile( source, flags ) 
+		function RegExpCompiler( source : String!, flags : String! )
 			: extended(flags.indexOf("x") != -1)
 			, source(source)
 			, idx(0)
@@ -45,13 +40,13 @@ package RegExp
 			skipBlanksAndComments();
 		}
 
-		function compile() : [Matcher, int, [String]] {
+		function compile() : RegExpMatcher {
 			var p = pattern;
 			if (p === null)
 				throw new SyntaxError("Empty regular expression");
 			if (idx !== source.length)
 				throw new SyntaxError("Invalid character in input");
-			return [p, nCapturingparens, names];
+			return new RegExpMatcher(p, parenIndex, names);
 		}
 
 		function pattern() : Matcher {
@@ -95,8 +90,8 @@ package RegExp
 			if (y == null)
 				return x;
 			else {
-				var [min, max, greedy] = y;
-				return Quantified(x, min, max, greedy);
+				var [min, max, greedy] : [Number,Number,Boolean] = y;
+				return new Quantified(parenIndex, parenCount, min, max, greedy);
 			}
 		}
 
@@ -134,6 +129,8 @@ package RegExp
 						match("}");
 					}
 				}
+				if (intrinsic::isFinite(max) && max < min)
+					throw new SyntaxError("max must be at least as large as min");
 				return [min,max];
 			}
 			else 
@@ -142,7 +139,7 @@ package RegExp
 
 		function atom() : Matcher {
 			if (eat("."))
-				return new AtomDot;
+				return new CharsetMatcher(charset_notlinebreak);
 			else if (eat("(")) {
 				if (eat("?")) {
 					if (eat(":")) {
@@ -166,42 +163,40 @@ package RegExp
 						return new Empty;
 					}
 					if (eat("P")) {
-						let function consumeName() : String! {
-							// FIXME: here, we should not skip blanks/comments inside the name
-							let c = consume();
-							if (!isIdentifierStart(c))
-								throw new SyntaxError("Invalid name");
-							let name = c;
-							while (isIdentPart(c = next()))
-								name += consume();
-							return name;
-						}
-
 						if (eat("<")) {
-							let name = consumeName();
+							let name = identifier();
 							match(">");
+							let capno = parenIndex++;
+							parenCount++;
 							let d = disjunction();
-							let capno = nCapturingParens++;
+							parenCount--;
 							match(")");
 							for each ( let n in names ) {
 								if (n == name)
 									throw new SyntaxError("Multiply defined capture name: " + name );
 							}
 							names[capno] = name;
-							return new Capturing(d);
+							return new Capturing(d, capno);
 						}
 						if (eat("=")) {
-							let name = consumeName();
+							let name = identifier();
 							match(")");
-							return new NamedBackref(name);
+							for ( let [i,n] in names ) {
+								if (n == name)
+									return new Backref(i);
+							}
+							throw new SyntaxError("Unknown backref name " + name );
 						}
 					}
 					throw new SyntaxError("Bogus (? pattern");
 				}
 				else {
+					let capno : uint = parenIndex++;
+					parenCount++;
 					let d = disjunction();
+					parenCount--;
 					match(")");
-					return new Capturing(d);
+					return new Capturing(d, capno);
 				}
 			}
 			else if (lookingAt("[")) 
@@ -220,15 +215,23 @@ package RegExp
 					lookingAt(")") ||
 					lookingAt("|"))
 					throw new SyntaxError("Illegal character in expression.");
-				return new Character(consume());
+				return new CharsetMatcher(new CharsetAdhoc[consume()]);
 			}
 		}
 
 		function atomEscape() : Matcher {
 			var t;
 			match("\\");
-			if (t = decimalEscape())
-				return new CharsetMatcher(new CharsetAdhoc([t]));
+			if (t = decimalEscape()) {
+				if (t >= nCapturingParens)
+					throw new SyntaxError("Illegal backreference " + t);
+				if (t === 0)
+					return new CharsetMatcher(new CharsetAdhoc(["\x00"]));
+				else {
+					largest_backref = Math.max(largest_backref, t);  // Will check validity later
+					return new Backref(t);
+				}
+			}
 			if (t = characterClassEscape())
 				return new CharsetMatcher(t);
 			if (t = characterEscape())
@@ -238,7 +241,7 @@ package RegExp
 
 		function characterClass() : Matcher {
 			match("[");
-			var inverted = false;
+			var inverted : Boolean = false;
 			if (eat("^"))
 				inverted = true;
 			var ranges : Charset = classRanges();
@@ -333,9 +336,10 @@ package RegExp
 		}
 
 		function classEscape() : Charset {
+			var t;
 			match("\\");
 			if (t = decimalEscape())
-				return new CharsetAdhoc([t]);
+				return new CharsetAdhoc([String.fromCharCode(t)]);
 			if (lookingAt("b"))
 				return new CharsetAdhoc(["\u0008"]);
 			if (t = characterEscape())
@@ -355,54 +359,44 @@ package RegExp
 		function characterClassEscape() : Charset {
 			var c;
 			switch (c = next()) {
-			case "D": case "d": 
-				consume();
-				return c == 'd' ? chars_digit : chars_notdigit;
-			case "S": case "s": 
-				consume();
-				return c == 's' ? chars_space : chars_notspace;
-			case "w": case "W": 
-				consume();
-				return c == 'w' ? chars_word : chars_notword;
-			case "p": case "P": {
-				let function getName() : String! {
-					// FIXME: here, we should not skip blanks/comments inside the name
-					let name = "";
-					let c;
-					while (!atEnd() && (c = consume()) != "}")
-						name += c;
-					return name;
-				}
-
+			case "d": consume(); return charset_digit;
+			case "D": consume(); return charset_notdigit;
+			case "s": consume(); return charset_space;
+			case "S": consume(); return charset_notspace;
+			case "w": consume(); return charset_word;
+			case "W": consume(); return charset_notword;
+			case "p": 
+			case "P":
 				consume();
 				match("{");
-				let name = getName();
-				match("}");
-				let cls = unicode_named_classes[name];
-				if (!cls)
-					throw new SyntaxError("Invalid unicode named class " + name);
-				return c == 'p' ? cls : new CharsetComplement(cls);
-			}
+				let (name = identifier()) {
+					match("}");
+					let (cls = unicodeClass(name, c === 'P')) {
+						if (!cls)
+							throw new ReferenceError("Unsupported unicode character class " + name);
+						return cls;
+					}
+				}
 			default:
 				return null;
 			}
 		}
 
-		/* Normally returns a single character.
+		/* Normally returns a single number;
 
 		   Returns null if it does not consume anything but fails;
 		   throws an error if it consumes and then fails.
 
 		   The initial \ has been consumed already.	*/
 
-		function decimalEscape() : String? {
+		function decimalEscape() : Number? {
 			switch (next()) {
 			case "0": case "1": case "2": case "3": case "4": 
 			case "5": case "6": case "7": case "8": case "9":
 				let (k = 0) {
 					while (isDecimalDigit(next()))
 						k = k*10 + decimalValue(consume());
-					return String.fromCharCode(k);
+					return k;
 				}
 			default:
 				return null;
@@ -479,6 +473,16 @@ package RegExp
 			}
 		}
 
+		function identifier() : String! {
+			let c = consume();
+			if (!isIdentifierStart(c))
+				throw new SyntaxError("Expected identifier");
+			let name = c;
+			while (isIdentPart(next()))
+				name += consume();
+			return name;
+		}
+
 		function eat(c : String!) : Boolean {
 			if (lookingAt(c)) {
 				consume();
@@ -519,10 +523,10 @@ package RegExp
 				return;
 			while (idx < source.length) {
 				if (source[idx] == '#') {
-					while (idx < source.length && !isNewline(source[idx]))
+					while (idx < source.length && !isTerminator(source[idx]))
 						++idx;
 				}
-				else if (isBlank(source[idx]) || isNewline(source[idx]))
+				else if (isBlank(source[idx]) || isTerminator(source[idx]))
 					++idx;
 				else
 					return;

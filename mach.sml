@@ -25,6 +25,8 @@ datatype VAL =
        | Str of STR
        | Object of OBJ
        | Function of FUN
+       | Namespace of NS
+       | Type of TYPE
 
        (* 
 	* The remaining VAL types are not "first class" -- they cannot be stored
@@ -32,10 +34,8 @@ datatype VAL =
 	* within scopes, or the transient result of certain expressions.
 	*) 
 
-       | Type of TYPE
        | Class of CLS
        | Interface of IFACE
-       | Namespace of NS
        | Reference of REF
 		
      and OBJ = 
@@ -57,7 +57,7 @@ datatype VAL =
 		  
 		  call: FUN,
 		  definition: Ast.CLASS_DEFN,
-		  constructor: FUN,
+		  constructor: FUN option,
 		  
 		  instanceTy: TYPE,
 		  instanceLayout: LAYOUT,
@@ -204,12 +204,14 @@ val (noOpFunctionSignature:Ast.FUNC_SIGN) =
 			    params = [],
 			    resulttype = Ast.SpecialType Ast.Any }
 
+val (emptyBlock:Ast.BLOCK) = Ast.Block { pragmas = [],
+					 defns = [],
+					 stmts = [] }
+
 val (noOpFunc:Ast.FUNC) = 
     Ast.Func { name = {kind = Ast.Ordinary, ident = ""},
 	       sign = noOpFunctionSignature,
-	       body = Ast.Block { pragmas = [],
-				  defns = [],
-				  stmts = [] } }
+	       body = emptyBlock }
     
 val (noOpFunctionDefn:Ast.FUNC_DEFN) = 
     { attrs = defaultAttrs,
@@ -233,14 +235,17 @@ val (noOpFunction:FUN) =
 
 val (emptyClassDefn:Ast.CLASS_DEFN) = 
     { name = "",
+      nonnullable = true,
       attrs = defaultAttrs,
       params = [],
-      extends = [],
+      extends = NONE,
       implements = [],
+      body = emptyBlock,
       instanceVars = [],
+      instanceMethods = [],
       vars = [],
-      constructor = noOpFunc,
       methods = [],
+      constructor = NONE,
       initializer = [] }
     
 val (emptyClassLayout:LAYOUT) = 
@@ -266,7 +271,7 @@ val (globalClass:CLS) =
 	  interfaces = [],
 	  call = noOpFunction,
 	  definition = emptyClassDefn,
-	  constructor = noOpFunction,
+	  constructor = NONE,
 	  instanceTy = objectType,
 	  instanceLayout = emptyClassLayout,
 	  instancePrototype = globalObject,
@@ -329,8 +334,6 @@ fun equals (Bool a) (Bool b) = (a = b)
   | equals (Num a) (Num b) = (Real.== (a,b))
   | equals (Object (Obj a)) (Object (Obj b)) = ((#bindings a) = (#bindings b))
   | equals (Namespace a) (Namespace b) = (a = b)
-  | equals (Class (Cls a)) (Class (Cls b)) = ((#definition a) = (#definition b))
-  | equals (Interface a) (Interface b) = (a = b)
   | equals Undef Undef = true
   | equals Null Null = true
   | equals Undef Null = true
