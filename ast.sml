@@ -9,29 +9,29 @@ type USTRING = string
 type IDENT = USTRING
 
 datatype NUMBER_TYPE =
-         Decimal 
-       | Double 
-       | Int 
-       | UInt 
+         Decimal
+       | Double
+       | Int
+       | UInt
        | Number
 
 datatype ROUNDING_MODE =
-         Ceiling 
-       | Floor 
-       | Up 
-       | Down 
-       | HalfUp 
-       | HalfDown 
+         Ceiling
+       | Floor
+       | Up
+       | Down
+       | HalfUp
+       | HalfDown
        | HalfEven
 
 datatype TRIOP =
          Cond
 
 datatype BINTYPEOP =
-		 Cast
+         Cast
        | Is
        | To
-	 
+
 datatype BINOP =
          Plus
        | Minus
@@ -60,7 +60,7 @@ datatype BINOP =
        | DefVar
 
 datatype ASSIGNOP =
-	 Assign
+         Assign
        | AssignPlus
        | AssignMinus
        | AssignTimes
@@ -102,7 +102,7 @@ datatype VAR_DEFN_TAG =
        | Rest
 
 datatype NAMESPACE =
-	 Private
+         Private
        | Protected
        | Intrinsic
        | Public of IDENT
@@ -132,17 +132,24 @@ datatype PRAGMA =
                      name: IDENT,
                      alias: IDENT option }
 
-     and FUNC = 
-	 Func of { name: IDENT,
-		   attrs: ATTRIBUTES,
-        	   formals: VAR_BINDING list,
-		   ty: TYPE_EXPR option,
-        	   body: BLOCK }
-	 
+     and FUNC_NAME_KIND =
+         Ordinary
+       | Operator
+       | Get
+       | Set
+       | Call
+       | Construct
+       | ToFunc
+
+     and FUNC =
+         Func of { name: FUNC_NAME,
+                   sign: FUNC_SIGN,
+                   body: BLOCK }
+
      and DEFN =
          ClassDefn of CLASS_DEFN
        | VariableDefn of VAR_BINDING list
-       | FunctionDefn of FUNC
+       | FunctionDefn of FUNC_DEFN
        | InterfaceDefn of INTERFACE_DEFN
        | NamespaceDefn of { name: IDENT,
                             init: EXPR }
@@ -151,9 +158,17 @@ datatype PRAGMA =
          FunctionSignature of { typeparams: IDENT list,
                                 params: VAR_BINDING list,
                                 resulttype: TYPE_EXPR }
-			      
-			      
+
+
      (* Improve this? Probably more mutual exclusion possible. *)
+     (* [jd] todo: as Attributes get passed into the parser functions
+                      for the various definition kinds, pick the relevant
+                                                             subset of attributes to capture in each definition.
+                                                                                                     for example,
+
+                                                                                                VariableDefn ( static, prototype, Binding { ns, ... } }
+      *)
+
      and ATTRIBUTES =
          Attributes of { ns: EXPR,
                          override: bool,
@@ -209,7 +224,7 @@ datatype PRAGMA =
                      els: STMT }
 
        | WithStmt of { obj: EXPR list,
-					   ty: TYPE_EXPR,
+                       ty: TYPE_EXPR,
                        body: STMT }
 
        | TryStmt of { body: BLOCK,
@@ -220,8 +235,8 @@ datatype PRAGMA =
                          cases: CASE list }
 
        | SwitchTypeStmt of { cond: EXPR list, ty: TYPE_EXPR,
-                         cases: TYPE_CASE list }
-	   | Dxns of { expr: EXPR }
+                             cases: TYPE_CASE list }
+       | Dxns of { expr: EXPR }
 
      and EXPR =
          TrinaryExpr of (TRIOP * EXPR * EXPR * EXPR)
@@ -252,25 +267,25 @@ datatype PRAGMA =
        | LexicalRef of { ident: IDENT_EXPR }
 
        | SetExpr of (ASSIGNOP * PATTERN * EXPR)
- 
+
        | ListExpr of EXPR list
        | SliceExpr of (EXPR list * EXPR list * EXPR list)
-			    
-    and IDENT_EXPR =
+
+     and IDENT_EXPR =
          QualifiedIdentifier of { qual : EXPR,
                                   ident : USTRING }
        | QualifiedExpression of { qual : EXPR,
                                   expr : EXPR }
        | AttributeIdentifier of IDENT_EXPR
        | Identifier of { ident : IDENT,
-			 openNamespaces : (NAMESPACE list) ref }
+                         openNamespaces : (NAMESPACE list) ref }
        | ExpressionIdentifier of EXPR   (* for bracket exprs: o[x] and @[x] *)
-       | TypeIdentifier of { ident : IDENT_EXPR, 
-			     typeParams : TYPE_EXPR list }
-			       
+       | TypeIdentifier of { ident : IDENT_EXPR,
+                             typeParams : TYPE_EXPR list }
+
      and LITERAL =
          LiteralNull
-       | LiteralUndefined 
+       | LiteralUndefined
        | LiteralNumber of real
        | LiteralBoolean of bool
        | LiteralString of USTRING
@@ -280,61 +295,69 @@ datatype PRAGMA =
 
        | LiteralObject of
          { expr : FIELD list,
-		   ty: TYPE_EXPR option }
+           ty: TYPE_EXPR option }
 
        | LiteralRegExp of
          { str: USTRING }
-	 
+
      and BLOCK = Block of
          { pragmas: PRAGMA list,
            defns: DEFN list,
            stmts: STMT list }
 
-	and PATTERN =
-	    ObjectPattern of { name: IDENT_EXPR, ptrn : PATTERN } list
-	  | ArrayPattern of PATTERN list
-	  | SimplePattern of EXPR
-	  | IdentifierPattern of IDENT_EXPR
+     and PATTERN =
+         ObjectPattern of { name: IDENT_EXPR, ptrn : PATTERN } list
+       | ArrayPattern of PATTERN list
+       | SimplePattern of EXPR
+       | IdentifierPattern of IDENT_EXPR
 
-withtype
-
-		 FIELD =
-		 { kind: VAR_DEFN_TAG,
-		   name: IDENT_EXPR,
+withtype FIELD =
+         { kind: VAR_DEFN_TAG,
+           name: IDENT_EXPR,
            init: EXPR }
-	 
+
      and FIELD_TYPE =
-		 { name: IDENT_EXPR,
+         { name: IDENT_EXPR,
            ty: TYPE_EXPR }
-	 
+
      and FUNC_TY =
          { paramTypes: TYPE_EXPR option list,
            returnType: TYPE_EXPR,
            boundThisType: TYPE_EXPR option,
            hasRest: bool }
-	 
+
      and TYPED_IDENT =
          { name: IDENT,
            ty: TYPE_EXPR option }
 
+     and FUNC_DEFN = 
+	 { attrs : ATTRIBUTES,
+           kind : VAR_DEFN_TAG,
+           func : FUNC }
+
      and CLASS_DEFN =
          { name: IDENT,
+		   nonnullable: bool,
            attrs: ATTRIBUTES,
            params: IDENT list,
-           extends: TYPE_EXPR list,
-           implements: TYPE_EXPR list,
+           extends: IDENT_EXPR option,
+           implements: IDENT_EXPR list,
+		   body: BLOCK,
+           (* the following field will be populated during the definition phase *)
            instanceVars: VAR_BINDING list,
+		   instanceMethods: FUNC list,
            vars: VAR_BINDING list,
-           constructor: FUNC,
            methods: FUNC list,
+           constructor: FUNC option,
            initializer: STMT list }
 
      and INTERFACE_DEFN =
          { name: IDENT,
+		   nonnullable: bool,
            attrs: ATTRIBUTES,
            params: IDENT list,
-           extends: TYPE_EXPR list,
-           methods: (IDENT * FUNC_TY) list }
+           extends: IDENT_EXPR list,
+           body: BLOCK }
 
      and PRIM_TY =
          { name: USTRING,
@@ -352,26 +375,29 @@ withtype
            body: STMT,
            contLabel: IDENT option }
 
-	 and DIRECTIVES =
-		 { pragmas : PRAGMA list,
-		   defns : DEFN list,
-		   stmts : STMT list }
+     and DIRECTIVES =
+         { pragmas : PRAGMA list,
+           defns : DEFN list,
+           stmts : STMT list }
 
-	 and BINDINGS =
-		 { defns : VAR_BINDING list,
-		   inits : EXPR list }
+     and BINDINGS =
+         { defns : VAR_BINDING list,
+           inits : EXPR list }
 
-	 and CASE =
-		 { label : EXPR list option, stmts : DIRECTIVES }
+     and CASE =
+         { label : EXPR list option, stmts : DIRECTIVES }
 
-	 and TYPE_CASE =
-		 { ptrn : VAR_BINDING option, body : BLOCK }
+     and TYPE_CASE =
+         { ptrn : VAR_BINDING option, body : BLOCK }
+
+     and FUNC_NAME =
+         { kind : FUNC_NAME_KIND, ident : IDENT }
 
 type PACKAGE =
      { names: IDENT list,
        fullname: USTRING,
        body: BLOCK }
-
+     
 type PROGRAM =
      { packages: PACKAGE list,
        body : BLOCK }

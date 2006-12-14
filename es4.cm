@@ -7,7 +7,7 @@ Library
         structure Parser
 	structure Defn
         structure TypeChk
-        structure Eval
+	structure Eval
 	structure Mach
 is
         main.sml
@@ -20,7 +20,7 @@ is
         parser.sml
         defn.sml
 	typechk.sml
-        eval.sml
+	eval.sml
 	mach.sml
 
         $/basis.cm
