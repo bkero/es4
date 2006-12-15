@@ -17,26 +17,36 @@ datatype SCOPE_TAG =
        | With            (* Created by 'with' bindings                      *)
        | Let             (* Created by 'catch', 'let', etc.                 *)
 
-datatype VAL = 
-         Null
-       | Undef
-       | Num of real
-       | Bool of bool
-       | Str of STR
-       | Object of OBJ
-       | Function of FUN
-       | Namespace of NS
-       | Type of TYPE
+datatype VAL = Object of { tag: VAL_TAG,			   
+			   props: BINDINGS,
+			   proto: (VAL option) ref,
+			   magic: (MAGIC option) ref }
+	     | Null
+	     | Undef
+	       
+     and VAL_TAG =
+	 ObjectTag of FIELD_TYPE list
+       | ArrayTag of TYPE_EXPR list
+       | FunctionTag of Ast.FUNC_SIG
+       | ClassTag of NAME
 
-       (* 
-	* The remaining VAL types are not "first class" -- they cannot be stored
-	* in new variables or copied around -- but can still be bound to names 
-	* within scopes, or the transient result of certain expressions.
-	*) 
-
-       | Class of CLS
-       | Interface of IFACE
-       | Reference of REF
+(* 
+ * Magic is visible only to the interpreter; 
+ * it is not visible to users.
+ *)
+	       
+     and MAGIC = Number of real    (* someday to be more complicated *)
+	       | String of ustring (* someday to be unicode *)
+	       | Namespace of NS
+	       | Class of { class: CLS, 
+			    allTypesBound: bool,
+			    env: SCOPE }
+	       | Interface of { interface: IFACE, 
+				allTypesBound: bool,
+				env: SCOPE }
+	       | Function of { function: Ast.FUNC, 
+			       allTypesBound: bool,
+			       env: SCOPE }
 		
      and OBJ = 
 	 Obj of { class: CLS option,
@@ -51,6 +61,7 @@ datatype VAL =
 		    
      and CLS = 
 	 Cls of { ty: TYPE,
+		  isSealed: bool,
 		  scope: SCOPE,
    		  base: CLS option,
 		  interfaces: IFACE list,
@@ -111,11 +122,21 @@ withtype NAME = { ns: NS,
      and MULTINAME = { nss: NS list, 
 		       id: ID }
 
+(* Important to model "fixedness" separately from 
+ * "dontDelete-ness" because fixedness affects 
+ * which phase of name lookup the name is found during.
+ *)
+
      and ATTRS = { dontDelete: bool,
 		   dontEnum: bool,
-		   readOnly: bool }
+		   readOnly: bool,
+		   isFixed: bool}
 
-     and PROP = { ty: TYPE,
+     and PROP_KIND = TypeProp 
+		   | ValProp
+
+     and PROP = { kind: PROP_KIND,
+		  ty: TYPE,
 		  value: VAL,	   
 		  attrs: ATTRS }
 	 
@@ -278,6 +299,36 @@ val (globalClass:CLS) =
 	  initialized = ref true }
 
 val nan = Real.posInf / Real.posInf
+
+
+(*
+ * To get from any object to its CLS, you work out the
+ * "nominal base" of the object's tag. You can then find
+ * a fixed prop in the global object that has a "Class"
+ * magic value pointing to the CLS.
+ *)
+
+let nominalBaseOfTag (t:VAL_TAG) = 
+case t of 
+    ObjectTag _ => { ns = Ast.Intrinsic, ident = "Object" }
+  | ArrayTag _ => { ns = Ast.Intrinsic, ident = "Array" }
+  | FunctionTag _ => { ns = Ast.Intrinsic, ident = "Function" }
+  | ClassTag c => c
+
+let valToCls (v:VAL) : (CLS option) = 
+    let 
+	val globalBindings = (#bindings globalObject)
+	val className = nominalBaseOfTag (#tag v)
+	val classObj = getBinding globalBindings className
+	val classMagic = case classObj of 
+			     Object ob => (#magic ob)
+			   | Null => NONE
+			   | Undef => NONE
+    in
+	case classMagic of 
+	    SOME (Class {class,...}) => SOME class
+	  | _ => NONE
+
 
 fun newObject (c:CLS option) = 
     Obj { class = c,

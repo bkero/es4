@@ -109,16 +109,11 @@ datatype NAMESPACE =
        | Internal of IDENT
        | UserDefined of IDENT
 
-datatype PRIM_KIND =
-         Named
-       | Nullable
-       | NonNullable
-
 datatype SPECIAL_TY =
          Any
        | Null
        | Undefined
-       | NoType
+       | VoidType
 
 datatype PRAGMA =
          UseNamespace of IDENT_EXPR
@@ -143,7 +138,7 @@ datatype PRAGMA =
 
      and FUNC =
          Func of { name: FUNC_NAME,
-                   sign: FUNC_SIGN,
+                   fsig: FUNC_SIG,
                    body: BLOCK }
 
      and DEFN =
@@ -154,10 +149,13 @@ datatype PRAGMA =
        | NamespaceDefn of { name: IDENT,
                             init: EXPR }
 
-     and FUNC_SIGN =
-         FunctionSignature of { typeparams: IDENT list,
+     and FUNC_SIG =
+         FunctionSignature of { typeParams: IDENT list,
                                 params: VAR_BINDING list,
-                                resulttype: TYPE_EXPR }
+                                returnType: TYPE_EXPR,
+				thisType: TYPE_EXPR option,
+				hasBoundThis: bool,
+				hasRest: bool }
 
 
      (* Improve this? Probably more mutual exclusion possible. *)
@@ -186,15 +184,22 @@ datatype PRAGMA =
                       pattern: PATTERN,
                       ty: TYPE_EXPR option }
 
+     (* 
+      * Note: no type parameters allowed on general typedefs,
+      * only the implicit paramters in Function, Class and 
+      * Interface types.
+      *)
+
      and TYPE_EXPR =
          SpecialType of SPECIAL_TY
        | UnionType of TYPE_EXPR list
        | ArrayType of TYPE_EXPR list
-       | PrimaryType of { ident : IDENT_EXPR, kind : PRIM_KIND }
-       | FunctionType of FUNC_TY
-       | RecordType of FIELD_TYPE list
-       | InstantiationType of { base: PRIM_TY,
-                                params: TYPE_EXPR list }
+       | NominalType of { ident : IDENT_EXPR, 
+			  nullable : bool option }
+       | FunctionType of FUNC_SIG
+       | ObjectType of FIELD_TYPE list
+       | AppType of { base: TYPE_EXPR,
+		      args: TYPE_EXPR list }
 
      and STMT =
          EmptyStmt
@@ -259,7 +264,7 @@ datatype PRAGMA =
                       actuals: EXPR list }
 
        | FunExpr of { ident: IDENT option,
-                      sign: FUNC_SIGN,
+                      fsig: FUNC_SIG,
                       body: BLOCK }
 
        | ObjectRef of { base: EXPR, ident: IDENT_EXPR }
@@ -319,12 +324,6 @@ withtype FIELD =
      and FIELD_TYPE =
          { name: IDENT_EXPR,
            ty: TYPE_EXPR }
-
-     and FUNC_TY =
-         { paramTypes: TYPE_EXPR option list,
-           returnType: TYPE_EXPR,
-           boundThisType: TYPE_EXPR option,
-           hasRest: bool }
 
      and TYPED_IDENT =
          { name: IDENT,

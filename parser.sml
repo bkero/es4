@@ -668,7 +668,7 @@ and restParameter (ts) : (token list * Ast.VAR_BINDING) =
 and resultType ts = 
     let val _ = trace([">> resultType with next=",tokenname(hd(ts))]) 
     in case ts of
-        Colon :: Void :: ts1 => (ts1,Ast.SpecialType(Ast.NoType))
+        Colon :: Void :: ts1 => (ts1,Ast.SpecialType(Ast.VoidType))
       | Colon :: _ => 
 			let
 				val (ts1,nd1) = typeExpression (tl ts)
