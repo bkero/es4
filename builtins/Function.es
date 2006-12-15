@@ -118,9 +118,9 @@ package
 			}
 		}
 
-		magic::setPropertyIsDontEnum(Function.prototype, "toString", true);
-		magic::setPropertyIsDontEnum(Function.prototype, "apply", true);
-		magic::setPropertyIsDontEnum(Function.prototype, "call", true);
+		intrinsic::setPropertyIsDontEnum(Function.prototype, "toString", true);
+		intrinsic::setPropertyIsDontEnum(Function.prototype, "apply", true);
+		intrinsic::setPropertyIsDontEnum(Function.prototype, "call", true);
 
 		/*** Function public data ***/
 

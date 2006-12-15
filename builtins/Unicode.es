@@ -25,4 +25,11 @@ package Unicode
 	public function isHexDigit(c) {
 		return c >= '0' && c <= '9' || c >= 'a' && c <= 'f' || c >= 'A' && c <= 'F';
 	}
+
+	public function isREWordChar(ctx : Context, e : int) : Boolean {
+		if (e === -1 || e === ctx.inputLength)
+			return false;
+		let c = ctx.input[e];
+		return c >= 'a' && c <= 'z' || c >= 'A' && c <= 'Z' || c >= '0' && c <= '9' || c == '_';
+	}
 }

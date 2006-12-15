@@ -4,6 +4,8 @@
  * E262-3 15.10
  *
  * Representation of compiled code, plus evaluation.
+ *
+ * Status: Complete, not reviewed, not tested.
  */
 
 package RegExp
@@ -16,10 +18,12 @@ package RegExp
 	*/
 	class RegExpMatcher!
 	{
-		function RegExpMatcher(matcher : Matcher, nCapturingParens : int, names : [String]!) {
-			this.matcher = matcher;
-			this.nCapturingParens = nCapturingParens;
-			this.names = names;
+		function RegExpMatcher(matcher : Matcher, nCapturingParens : int, names : [String]!) 
+			: matcher = matcher
+			, nCapturingParens = nCapturingParens
+			, names = names
+			
+		{
 		}
 
 		/* Returns an array of matches, with additional named properties
@@ -42,20 +46,20 @@ package RegExp
 	*/
 	class Context!
 	{
+		function Context(input : String!, flags : String!) 
+			: input = input
+			, inputLength = input.length
+			, global = flags.indexOf("g") != -1
+			, ignoreCase = flags.indexOf("i") != -1
+			, multiline = flags.indexOf("m") != -1
+		{
+		}
+
 		const input       : String!;
 		const inputLength : int;
 		const global      : Boolean;   // g
 		const ignoreCase  : Boolean;   // i
 		const multiline   : Boolean;   // m
-
-		function Context(input : String!, flags : String!) 
-			: input(input)
-			, inputLength(input.length);
-			, global(flags.indexOf("g") != -1)
-			, ignoreCase(flags.indexOf("i") != -1)
-			, multiline(flags.indexOf("m") != -1)
-		{
-		}
 	}
 
 	/* MatchResult and State. 
@@ -66,13 +70,14 @@ package RegExp
 
 	class State!
 	{
-		var endIndex : int = 0;
-		var cap : CapArray;
-
-		function State(e : int, cap : CapArray) {
-			this.endIdex = e;
-			this.cap = cap;
+		function State(endIndex : int, cap : CapArray) 
+			: endIndex = endIndex
+			, cap = cap
+		{
 		}
+
+		var endIndex : int;
+		var cap : CapArray;
 	}
 
 	/* Captures array.
@@ -90,7 +95,7 @@ package RegExp
 	}
 
 	function copyCapArray(a : CapArray, parenIndex : uint, parenCount : uint) : CapArray {
-		let b : CapArray = [] : CapArray;
+		let b : CapArray = makeCapArray(a.length);
 		for ( let i : uint = 0 ; i < a.length ; i++ )
 			b[i] = a[i];
 		for ( let k : uint = parenIndex+1 ; k <= parenIndex+parenCount ; k++ )
@@ -195,12 +200,12 @@ package RegExp
 	class Quantified! implements Matcher
 	{
 		function Quantified(parenIndex:uint, parenCount:uint, m:Matcher, min:Number, max:Number, greedy:Boolean) 
-			: parenIndex(parenIndex)
-			, parenCount(parenCount)
-			, m(m)
-			, min(min)
-			, max(max)
-			, greedy(greedy) 
+			: parenIndex = parenIndex
+			, parenCount = parenCount
+			, m = m
+			, min = min
+			, max = max
+			, greedy = greedy
 		{
 		}
 

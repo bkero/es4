@@ -1,25 +1,23 @@
 /* -*- mode: java; mode: font-lock; tab-width: 4 -*- 
  *
  * ECMAScript 4 builtins - the "Object" object
- * E262-3 15.2
- * E262-4 draft proposals
  *
- * Status: not reviewed against specs.
+ * E262-3 15.2
+ * E262-4 proposals:builtin_classes
+ *
+ * Status: Complete; Not reviewed against spec.
  */
-
 package
 {
 	dynamic class Object 
 	{		
 		/* E262-3 15.2.1.1: The Object constructor called as a function */
-		static intrinsic function call(value)
-		{
+		static intrinsic function call(value) {
 			return intrinsic::ToObject(value);
 		}
 
 		/* E262-3 15.2.2.1: The Object constructor */
-		static intrinsic function construct(value) : Object!
-		{
+		static intrinsic function construct(value) : Object! {
 			if (value !== intrinsic::undefined && value !== null)
 				return value;
 
@@ -29,80 +27,67 @@ package
 		}
 
 		/* E262-3 15.2.4.2: Object.prototype.toString */
-		Object.prototype.toString = function toString()
-		{
+		prototype function toString() {
 			return this.intrinsic::toString();
 		}
 
-		intrinsic function toString() : String!
-		{
+		intrinsic function toString() : String! {
 			return "[object " + magic::getClassName(this) + "]";
 		}
 
 		/* E262-3 15.2.4.3: Object.prototype.toLocaleString */
-		Object.prototype.toLocaleString = function toLocaleString()
-		{
+		prototype function toLocaleString() {
 			return this.intrinsic::toLocaleString();
 		}
 
-		intrinsic function toLocaleString() : String!
-		{
+		intrinsic function toLocaleString() : String! {
 			return "[object " + magic::getClassName(this) + "]";
 		}
 
 		/* E262-3 15.2.4.4:  Object.prototype.valueOf */
-		Object.prototype.valueOf = function valueOf()
-		{
+		prototype function valueOf() {
 			return this.intrinsic::valueOf();
 		}
 
-		intrinsic function valueOf() : Object!
-		{
+		intrinsic function valueOf() : Object! {
 			return this;
 		}
 
 		/* E262-3 15.2.4.5:  Object.prototype.hasOwnProperty */
-		Object.prototype.hasOwnProperty = function hasOwnProperty(V)
-		{
+		prototype function hasOwnProperty(V) {
 			return this.intrinsic::hasOwnProperty(V);
 		}
 
-		intrinsic function hasOwnProperty(V : String!) : Boolean
-		{
+		intrinsic function hasOwnProperty(V : String!) : Boolean {
 			return magic::hasOwnProperty(this, V);
 		}
 		
 		/* E262-3 15.2.4.6:  Object.prototype.isPrototypeOf */
-		Object.prototype.isPrototypeOf = function(V)
-		{
+		prototype function isPrototypeOf(V) {
 			return this.intrinsic::isPrototypeOf(V);
 		}
 
-		intrinsic function isPrototypeOf(V) : Boolean
-		{
-			var O : Object! = this;
-
+		intrinsic function isPrototypeOf(V) : Boolean {
 			if (!(V is Object))
 				return false;
 
+			var VO : Object = V to Object;
 			for (;;) {
-				V = magic::getPrototype(V);
-				if (V === null)
+				VO = magic::getPrototype(VO);
+				if (VO === null)
 					return false;
-				if (O === V)
+				if (VO === this)
 					return true;
 			}
 		}
 
 		/* E262-3 15.2.4.7: Object.prototype.propertyIsEnumerable (V) */
-		Object.prototype.propertyIsEnumerable = function propertyIsEnumerable(V, E=intrinsic::undefined)
-		{
+		prototype function propertyIsEnumerable(V, E=intrinsic::undefined) {
 			return this.intrinsic::propertyIsEnumerable(V, E);
 		}
 
 		/* E262-4 draft proposals:enumerability */
-		intrinsic function propertyIsEnumerable(V : String!, E=intrinsic::undefined) : Boolean
-		{
+		intrinsic function propertyIsEnumerable(V : String!, E=intrinsic::undefined) : Boolean {
 			var O : Object = this;
 			while (O !== null) {
 				if (O.intrinsic::hasOwnProperty(V)) {
@@ -115,12 +100,5 @@ package
 				O = magic::getPrototype(O);
 			}
 		}
-
-		magic::setPropertyIsDontEnum(prototype, "toString", true);
-		magic::setPropertyIsDontEnum(prototype, "toLocaleString", true);
-		magic::setPropertyIsDontEnum(prototype, "valueOf", true);
-		magic::setPropertyIsDontEnum(prototype, "hasOwnProperty", true);
-		magic::setPropertyIsDontEnum(prototype, "isPrototypeOf", true);
-		magic::setPropertyIsDontEnum(prototype, "propertyIsEnumerable", true);
 	}
 }

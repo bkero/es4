@@ -1,7 +1,9 @@
 /* -*- mode: java; mode: font-lock; tab-width: 4 -*- 
  *
  * ECMAScript 4 builtins - the "Class" object
- * E262-4 not yet documented.
+ *
+ * E262-4 proposals:meta_objects
+ * E262-4 not yet documented
  */
 
 package
@@ -69,7 +71,7 @@ package
 	   accessible to user programs; we don't want people to go around
 	   creating metaclasses willy-nilly. */
 
-	class Class 
+	class Class
 	{
 		/* Becomes available as Object.prototype, Boolean.prototype,
 		   and so on */
@@ -97,7 +99,7 @@ package
 		   construct() does not call the new object's user-defined
 		   constructor, the client must do that.  */
 
-		intrinsic native function construct(classobj : Class!);
+		native intrinsic function construct(classobj : Class!);
 
 		private classname : String;
 		

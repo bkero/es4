@@ -1,7 +1,8 @@
+/* -*- mode: java; mode: font-lock; tab-width: 4 -*- */
 package
 {
 	// ECMA4 version which allows early-binding.
-	ECMA4 final class Math extends Object
+	public ECMA4 final class Math extends Object
 	{		
 		// 15.8.1 Value Properties of the Math Object
 		static native const E;	
@@ -37,7 +38,9 @@ package
 	
 	// Math is a singleton object, not a class, but has the type "Math"
 	// which suggests a private Math class that created the singleton.
+
 	var Math = new private::Math;
+
 	private dynamic class Math extends Object
 	{		
 		// 15.8.1 Value Properties of the Math Object

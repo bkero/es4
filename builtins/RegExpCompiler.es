@@ -13,34 +13,35 @@
 
 package RegExp
 {
-	import Unicode.*;
+	/* import Unicode.*; */  // FIXME: not handled by parser yet
 	use strict;
 
 	class RegExpCompiler
 	{
-		// Invariant: either idx==source.length or source[idx] is a significant char
+		/* Invariant for token handling: either idx==source.length or source[idx] is a significant char */
 
 		const source : String!;        // expression source, sans leading and trailing /
 		var   idx : uint;              // current character in the source
+		var   largest_backref : uint;  // largest back reference seen
 		const extended : Boolean;      // true iff expression has /x flag
 		const names : [String] = [];   // capturing names, or null for capturing exprs that are not named
 		const parenIndex : uint = 0;   // number of capturing parens (including those that are named)
 		const parenCount : uint = 0;   // current depth of capture nesting
 
 		function RegExpCompiler( source : String!, flags : String! )
-			: extended(flags.indexOf("x") != -1)
-			, source(source)
-			, idx(0)
+			: extended = flags.indexOf("x") != -1,
+			, source = source,
+			, idx = 0
 		{
 			skip();
 		}
 
 		function compile() : RegExpMatcher {
-			var p : Matcher = pattern();
-			if (p === null)
-				throw new SyntaxError("Empty regular expression");
+			let p : Matcher = pattern();
 			if (idx !== source.length)
-				throw new SyntaxError("Invalid character in input");
+				throw new SyntaxError("Invalid character in input \"" + source + "\", position " + idx);
+			if (largest_backref >= parenIndex)
+				throw new SyntaxError("Reference to undefined capture " + largest_backref);
 			return new RegExpMatcher(p, parenIndex, names);
 		}
 
@@ -49,25 +50,21 @@ package RegExp
 		}
 
 		function disjunction() : Matcher {
-			var alt : Matcher = alternative();
+			let alt : Matcher = alternative();
 			if (alt == null)
 				return new Empty;
-			if (eat("|")) {
-				var dis : Matcher = disjunction();
-				if (dis === null)
-					throw new SyntaxError("Missing disjunction following '|'");
-				return new Disjunct(alt, dis);
-			}
+			if (eat("|"))
+				return new Disjunct(alt, disjunction());
 			else
 				return alt;
 		}
 
 		function alternative() : Matcher? {
-			var t : Matcher? = term();
+			let t : Matcher? = term();
 			if (t === null)
 				return null;
 			for (;;) {
-				var p : Matcher? = term();
+				let p : Matcher? = term();
 				if (p === null)
 					return t;
 				t = new Alternative(t, p);
@@ -75,16 +72,14 @@ package RegExp
 		}
 
 		function term() : Matcher? {
-			var x : Matcher? = assertion();
+			let x : Matcher? = assertion();
 			if (x !== null)
 				return x;
-			var x : Matcher? = atom();
-			if (x === null)
-				return null;
-			var y : [Number, Number, Boolean]? = quantifier();
+			let x : Matcher = atom();
+			let y : [Number, Number, Boolean]? = quantifier();
 			if (y === null)
 				return x;
-			var [min, max, greedy] : [Number,Number,Boolean] = y;
+			let [min, max, greedy] : [Number,Number,Boolean] = y;
 			return new Quantified(parenIndex, parenCount, min, max, greedy);
 		}
 
@@ -97,26 +92,24 @@ package RegExp
 		}
 
 		function quantifier() : [Number,Number,Boolean]? {
-			var x = quantifierPrefix();
+			let x : [Number,Number]? = quantifierPrefix();
 			if (x == null)
 				return x;
-			var [min,max] = x;
-			var greedy = false;
-			if (eat("?"))
-				greedy = true;
+			let [min,max] : [Number,Number] = x;
+			let greedy : Boolean = eat("?");
 			return [min,max,greedy];
 		}
 
 		function quantifierPrefix() : [Number, Number]? {
-			if (eat("*"))      return [0,Infinity];
-			else if (eat("+")) return [1,Infinity];
+			     if (eat("*")) return [0,intrinsic::Infinity];
+			else if (eat("+")) return [1,intrinsic::Infinity];
 			else if (eat("?")) return [0,1];
 			else if (eat("{")) {
-				var min : Number = decimalDigits();
-				var max : Number = n;
+				let min : Number = decimalDigits();
+				let max : Number = n;
 				if (eat(",")) {
 					if (eat("}"))
-						max = Infinity;
+						max = intrinsic::Infinity;
 					else {
 						max = decimalDigits();
 						match("}");
@@ -238,15 +231,15 @@ package RegExp
 				return new CharsetMatcher(new CharsetAdhoc([t]));
 			}
 
-			return escape( decimalEscape, characterClassEscape, characterEscape );
+			return escape( decimalEscape, characterClassEscape, characterEscape, false );
 		}
 
 		function characterClass() : Matcher {
 			match("[");
-			var inverted : Boolean = false;
+			let inverted : Boolean = false;
 			if (eat("^"))
 				inverted = true;
-			var ranges : Charset = classRanges();
+			let ranges : Charset = classRanges();
 			match("]");
 			return new CharsetMatcher(inverted ? new CharsetComplement(ranges) : ranges);
 		}
@@ -338,7 +331,8 @@ package RegExp
 		function classEscape() : Charset {
 			return escape( function(t : Number) : Charset new CharsetAdhoc([String.fromCharCode(t)]),
 						   function(t : Charset) : Charset t,
-						   function(t : String) : Charset new CharsetAdhoc(t) );
+						   function(t : String) : Charset new CharsetAdhoc(t),
+						   true );
 		}
 
 		/* Parse an escape sequence. */
@@ -346,8 +340,6 @@ package RegExp
 						 ce : function (Charset) : (Matcher,Charset),
 						 ch : function (String) : (Matcher,Charset),
 						 allow_b : Boolean ) : (Matcher,Charset) {
-			consumeChar("\\");
-
 			let (t : Number? = decimalEscape()) {
 				if (t !== null) 
 					return de(t);
@@ -363,68 +355,52 @@ package RegExp
 					return ch(t);
 			}
 
-			throw new SyntaxError("Failed to match AtomEscape");
+			throw new SyntaxError("Failed to match escape sequence");
 		}
 
 		/* Returns null if it does not consume anything but fails;
-		   throws an error if it consumes and then fails.
-
-		   The initial \ has been consumed already.	*/
-
-		function characterClassEscape() : Charset? {
-			var c : String!;
-			switch (c = peekChar()) {
-			case "d": match("d"); return charset_digit;
-			case "D": match("D"); return charset_notdigit;
-			case "s": match("s"); return charset_space;
-			case "S": match("S"); return charset_notspace;
-			case "w": match("w"); return charset_word;
-			case "W": match("W"); return charset_notword;
-			case "p": 
-			case "P":
-				match(c + "{");
-				let (name : String! = identifier()) {
-					match("}");
-					let (cls : Charset? = unicodeClass(name, c === 'P')) {
-						if (!cls)
-							throw new ReferenceError("Unsupported unicode character class " + name);
-						return cls;
-					}
-				}
-			default:
-				return null;
-			}
-		}
-
-		/* Normally returns a single number;
-
-		   Returns null if it does not consume anything but fails;
-		   throws an error if it consumes and then fails.
-
-		   The initial \ has been consumed already.	*/
-
+		   throws an error if it consumes and then fails. 
+		*/
 		function decimalEscape() : Number? {
-			switch (peekChar()) {
-			case "0": case "1": case "2": case "3": case "4": 
-			case "5": case "6": case "7": case "8": case "9":
-				let (k : Number = 0) {
-					while (isDecimalDigit(c = peekChar()))
-						k = k*10 + consumeChar(c).charCodeAt(0) - "0".charCodeAt(0));
-					skip();
-					return k;
-				}
-			default:
-				return null;
+			if (lookingAt("\\0") || lookingAt("\\1") || lookingAt("\\2") || lookingAt("\\3") || 
+				lookingAt("\\4") || lookingAt("\\5") || lookingAt("\\6") || lookingAt("\\7") || 
+				lookingAt("\\8") || lookingAt("\\9")) {
+				consumeChar("\\");
+				return decimalDigits();
 			}
+			else
+				return null;
 		}
 
-		/* Normally returns a single character.
+		/* Returns null if it does not consume anything but fails;
+		   throws an error if it consumes and then fails.  
+		*/
+		function characterClassEscape() : Charset? {
 
-		   The initial \ has been consumed already when this is called.
+			function unicodeSet(invert : Boolean) : Charset {
+				let name : String! = identifier();
+				match("}");
+				let (cls : Charset? = unicodeClass(name, invert));
+				if (cls === null)
+					throw new ReferenceError("Unsupported unicode character class " + name);
+				return cls;
+			}
 
-		   Returns null if it does not consume anything but fails;
-		   throws an error if it consumes and then fails. */
+			if (eat("\\d")) return charset_digit;
+			if (eat("\\D")) return charset_notdigit;
+			if (eat("\\s")) return charset_space;
+			if (eat("\\S")) return charset_notspace;
+			if (eat("\\w")) return charset_word;
+			if (eat("\\W")) return charset_notword;
+			if (eat("\\p{")) return unicodeSet(false);
+			if (eat("\\P{")) return unicodeSet(true);
 
+			return null;
+		}
+
+		/* Returns null if it does not consume anything but fails;
+		   throws an error if it consumes and then fails. 
+		*/
 		function characterEscape(allow_b : Boolean) : String? {
 
 			function hexValue(c) : Number {
@@ -434,80 +410,60 @@ package RegExp
 					return c.toUpperCase().charCodeAt(0) - "A".charCodeAt(0) + 10;
 			}
 
-			function extendedHexEscape() : Number {
-				var k : Number = 0;
-				var c;
-				match("{");
-				if (!isHexDigit(next))
-					throw new SyntaxError("missing hex sequence");
-				while (isHexDigit(c = peekChar()))
-					k = k*16 + hexValue(consumeChar(c));
-				skip();
-				match("}");
-				return k;
-			}
-
-			function hexDigits(n : uint) : Number {
-				var k : Number = 0;
-				var c;
-				while (n > 0 && isHexDigit(c = peekChar())) {
-					k = k*16 + hexValue(consumeChar(c));
-					--n;
+			function hexDigits(n : uint? = null) : String! {
+				let k : Number = 0;
+				let c : String!;
+				let m : uint = n === null ? 100000 : n;
+				let i : uint;
+				for ( i=0 ; i < m ; i++ ) {
+					let (c = peekChar()) {
+						if (!isHexdigit(c)) 
+							break;
+						k = k*16 + hexValue(consumeChar(c));
+					}
 				}
-				if (n > 0)
+				if (n !== null && i < m || i == 0)
 					throw new SyntaxError("hex sequence too short");
 				skip();
-				return k;
+				return String.fromCharCode(k);
 			}
 
-			var c : String!;
-			switch (c = next()) {
-			case "b":
-				if (allow_b)
-					return "b";
-				else
-					return null;
-			case "f":
-				match(c);
+			if (allow_b && eat("\\b")) 
+				return "\\b";
+			if (eat("\\f")) 
 				return "\f";
-			case "n": 
-				match(c);
+			if (eat("\\n")) 
 				return "\n";
-			case "r": 
-				match(c);
+			if (eat("\\r")) 
 				return "\r";
-			case "t":
-				match(c);
+			if (eat("\\t")) 
 				return "\t";
-			case "c": 
-				match("c");
-				let (l : String! = peekChar()) {
-					if (l >= "A" && l <= "Z") {
-						match(l);
-						return String.fromCharCode(l.charCodeAt(0) - "A".charCodeAt(0));
-					}
-					if (l >= "a" && l <= "z") {
-						match(l);
-						return String.fromCharCode(l.charCodeAt(0) - "a".charCodeAt(0));
-					}
-					throw new SyntaxError("Bogus \\c sequence");
+			if (eat("\\c"))
+				let (c : String! = consumeChar()) {
+					if (c >= "A" && c <= "Z")
+						return String.fromCharCode(c.charCodeAt(0) - "A".charCodeAt(0));
+					if (c >= "a" && c <= "z")
+						return String.fromCharCode(c.charCodeAt(0) - "a".charCodeAt(0));
+					throw new SyntaxError("Bogus \\c sequence: " + c);
 				}
-			case "x": case "X":
-				match(c);
-				return String.fromCharCode(lookingAt("{") ? extendedHexEscape() : hexDigits(2));
-			case "u": case "U": 
-				match(c);
-				return String.fromCharCode(lookingAt("{") ? extendedHexEscape() : hexDigits(4));
-			case "*END*":
-				return null;
-			default:
-				if (isIdentifierPart(c))
-					return null;
-				match(c);
-				return c;
+			if (eat("\\x{") || eat("\\X{") || eat("\\u{") || eat("\\U{")) {
+				let s : String! = hexDigits();
+				match("}");
+				return s;
 			}
+			if (eat("\\x") || eat("\\X"))
+				return hexDigits(2);
+			if (eat("\\u") || eat("\\U"))
+				return hexDigits(4);
+			if (isIdentifierPart(c))
+				return null;
+			consumeChar("\\");
+			if (atEnd())
+				throw new SyntaxError("EOF inside escape sequence");
+			return consumeChar();
 		}
 
+		/*** Token handling ***/
 
 		/* If c matches the next characters (not skipping blanks), consume those
 		   characters and any intertoken space following, and return true.
@@ -527,7 +483,7 @@ package RegExp
 		}
 
 		function lookingAt(c : String!) : void {
-			for ( var i=0 ; i < c.length && i+idx < source.length ; i++ )
+			for ( let i : uint=0 ; i < c.length && i+idx < source.length ; i++ )
 				if (c[i] != source[i+idx])
 					return false;
 			return true;
@@ -548,27 +504,38 @@ package RegExp
 			else
 				throw new SyntaxError("Expected identifier");
 		}
-		
-		//////
+
+		function decimalDigits() : Number {
+			let k : Number = 0;
+			while (isDecimalDigit(c = peekChar()))
+				k = k*10 + consumeChar(c).charCodeAt(0) - "0".charCodeAt(0);
+			skip();
+			return k;
+		}
+
+		function atEnd() {
+			return idx < source.length;
+		}
 
 		function peekChar() {
-			if (idx < source.length)
+			if (!atEnd())
 				return source[idx];
 			else
 				return "*END*";
 		}
 
-		function consumeChar(c : String!) : void {
-			if (idx < source.length && source[idx] == c)
-				++idx;
+		function consumeChar(c : String = null) : String! {
+			if (!atEnd() && c === null || source[idx] == c)
+				return source[idx++];
+			if (c !== null)
+				throw new SyntaxError("Expected character " + c);
 			else
-				throw new SyntaxError("Expected " + c);
+				throw new SyntaxError("Unexected EOF");
 		}
 
 		function consumeUntil(c : String!) : void {
-			while (idx < source.length && source[idx] != c)
+			while (!atEnd() && source[idx] != c)
 				++idx;
-			skip();
 		}
 
 		function skip() : void {
@@ -576,9 +543,9 @@ package RegExp
 				return;
 
 			// FIXME: also skip unicode format control characters
-			while (idx < source.length) {
+			while (!atEnd()) {
 				if (source[idx] == '#') {
-					while (idx < source.length && !isTerminator(source[idx]))
+					while (!atEnd() && !isTerminator(source[idx]))
 						++idx;
 				}
 				else if (isBlank(source[idx]) || isTerminator(source[idx]))
