@@ -8,6 +8,7 @@ structure TypeChk = struct
     
 exception IllTypedException of string
 exception BrokenInvariant of string
+exception CalledEval
     
 open Ast
 
@@ -72,7 +73,13 @@ fun normalizeType (t:TYPE_EXPR):TYPE_EXPR =
     case t of
 	AppType {base, args } => base (*TODO*)
       | _ => t
-	
+
+(*
+ * TODO: when type checking a function body, handle CalledEval
+ * TODO: during type checking, if you see naked invocations of "eval" (that
+ *       exact name), raise CalledEval
+ *)
+
 (******************** Expressions **************************************************)
 
 fun tcExpr ((ctxt as {env,this,...}):CONTEXT) (e:EXPR) :TYPE_EXPR = 
@@ -87,7 +94,6 @@ fun tcExpr ((ctxt as {env,this,...}):CONTEXT) (e:EXPR) :TYPE_EXPR =
       | LiteralExpr (LiteralBoolean _) => boolType
       | LiteralExpr (LiteralString _) => stringType
       | LiteralExpr (LiteralRegExp _) => regexpType
-      | LiteralExpr LiteralUndefined => undefinedType 
       | LiteralExpr (LiteralArray { exprs, ty }) =>
         (* EXAMPLES:
            [a, b, c] : [int, Boolean, String]
@@ -125,14 +131,16 @@ fun tcExpr ((ctxt as {env,this,...}):CONTEXT) (e:EXPR) :TYPE_EXPR =
 		   fsig as (FunctionSignature {typeParams,params,returnType,thisType,...}), 
 		   body} 
 	 =>
-         let val extensions1 = List.map (fn id => (id,NONE)) typeParams;
+         let (* Add the type parameters to the environment. *)
+             val extensions1 = List.map (fn id => (id,NONE)) typeParams;
 	     val ctxt1 = withEnv (ctxt,foldl extendEnv env extensions1);
-	     val extensions2 = List.concat (List.map (fn d => tcVarDefn ctxt1 d) params); 
+	     (* Add the function arguments to the environment. *)
+             val extensions2 = List.concat (List.map (fn d => tcVarDefn ctxt1 d) params); 
 	     val ctxt2 = withEnv (ctxt,foldl extendEnv env extensions2);
-	     val ctxt3 = withRetTy (ctxt2, SOME returnType)
+	     (* Add the return type to the context. *)
+             val ctxt3 = withRetTy (ctxt2, SOME returnType)
 	 in
-	     checkForDuplicates extensions1;
-	     checkForDuplicates extensions2;
+	     checkForDuplicates (extensions1 @ extensions2);
 	     tcType ctxt1 returnType;
 	     tcBlock ctxt3 body;
 	     FunctionType fsig
@@ -164,17 +172,17 @@ fun tcExpr ((ctxt as {env,this,...}):CONTEXT) (e:EXPR) :TYPE_EXPR =
 			    else (params, NONE)
 			(* handleArgs normalParams actualTys *)
 			fun handleArgs [] [] = ()
+			  | handleArgs (p::pr) (a::ar) =
+			    let in
+				checkConvertible a (tcVarBinding ctxt p);
+				handleArgs pr ar
+			    end
 			  | handleArgs [] (_::_) = 
 			    if hasRest 
 			    then (* all ok, no type checking to do on rest arg *) ()
 			    else raise IllTypedException "Too many args to function"
 			  | handleArgs (_::_) [] =
 			    raise IllTypedException "Not enough args to function"
-			  | handleArgs (p::pr) (a::ar) =
-			    let in
-				checkConvertible a (tcVarBinding ctxt p);
-				handleArgs pr ar
-			    end
 		    in
 			handleArgs params actualsTy;
 			returnType
@@ -189,13 +197,14 @@ fun tcExpr ((ctxt as {env,this,...}):CONTEXT) (e:EXPR) :TYPE_EXPR =
 	     val typeParams = 
 		 case exprTy of
 		     FunctionType (FunctionSignature {typeParams, ...}) => typeParams
+                   (* TODO: class and interface types *)
 		   | _ => raise IllTypedException "Cannot instantiate a non-polymorphic type"
 	 in
 	     List.app (fn t => tcType ctxt t) actuals;
 	     if (List.length typeParams) = (List.length actuals)
 	     then ()
 	     else raise IllTypedException "Wrong number of type arguments";
-	     AppType { base=exprTy, args=actuals }
+	     normalizeType (AppType { base=exprTy, args=actuals })
 	 end
 
        | _ => (TextIO.print "tcExpr incomplete: "; Pretty.ppExpr e; raise Match)

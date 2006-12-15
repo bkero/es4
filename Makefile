@@ -6,7 +6,7 @@ PARSE_TESTS = tests/ident.js tests/numberliteral.es tests/stringliteral.es tests
 #tests/assign_err.es
 #tests/nolist_err.es
 
-TC_TESTS = tests/numberliteral.es
+TC_TESTS = tests/tc_expr.es
 EV_TESTS = tests/exec.es
 
 # A total hack to check whether a given CM anchor is installed.
