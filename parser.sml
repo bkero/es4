@@ -1,3 +1,5 @@
+
+
 structure Parser = struct
 
 open Token
@@ -233,6 +235,11 @@ and reservedOrPropertyIdentifier ts =
     case isreserved(hd ts) of
         true => (tl ts, tokenname(hd ts))
       | false => propertyIdentifier(ts)
+
+and reservedIdentifier ts =
+    case isreserved(hd ts) of
+        true => (tl ts, tokenname(hd ts))
+      | false => raise ParseError
 
 and qualifiedIdentifier' (ts1, nd1) : (token list * Ast.IDENT_EXPR) =
     let val _ = trace([">> qualifiedIdentifier' with next=",tokenname(hd(ts1))]) 
@@ -593,7 +600,6 @@ and parameterInit (ts) : (token list * Ast.VAR_BINDING) =
 	in case ts1 of
 		Assign :: _ => 
 			let
-				val _ = trace(["xx parameterInit with next=",tokenname(hd(ts))])
 				val {pattern,ty,kind,attrs,...} = nd1
 				val (ts2,nd2) = nonAssignmentExpression (tl ts1,NOLIST,ALLOWIN)
 			in 
@@ -1198,53 +1204,61 @@ and argumentList (ts) : (token list * Ast.EXPR list)  =
 (*
 	PropertyOperator    
     	.. QualifiedIdentifier
-	    .  ReservedIdentifier
+	    .  ReservedIdentifier   <- might be private, public, etc
     	.  QualifiedIdentifier
 	    .  ParenListExpression
 	    .  ParenListExpression  ::  PropertyIdentifier
     	.  ParenListExpression  ::  ReservedIdentifier
 	    .  ParenListExpression  ::  Brackets
     	Brackets
-
-	STATUS: Needs testing
 *)
 
 and propertyOperator (ts, nd) =
     let val _ = trace([">> propertyOperator with next=",tokenname(hd(ts))]) 
     in case ts of
-        Dot :: ts1 =>
-            let
-            in case ts1 of
-                LeftParen :: _ =>
+        Dot :: LeftParen :: _ =>
                     let
-                        val (ts2,nd2) = parenListExpression(ts1)
-					in case ts2 of
-						DoubleColon:: BRACKET :: _ => 
+                        val (ts1,nd1) = parenListExpression(tl ts)
+					in case ts1 of
+						DoubleColon :: LeftBracket :: _ => 
                			    let
-                                val (ts4,nd4) = brackets(tl ts2)
+                                val (ts2,nd2) = brackets(tl ts1)
    			                in
-               			        (ts4,Ast.ObjectRef {base=nd,ident=Ast.ExpressionIdentifier(nd4)})
+               			        (ts2,Ast.ObjectRef {base=nd,ident=Ast.QualifiedExpression {
+											qual=nd1, expr=nd2}})
                             end
-					  | DoubleColon :: ts3 => 
+					  | DoubleColon :: _ => 
                             let
-                                val (ts4,nd4) = reservedOrPropertyIdentifier(ts3)
+                                val (ts2,nd2) = reservedOrPropertyIdentifier(tl ts1)
                             in
-                                (ts4,Ast.ObjectRef({base=nd,ident=Ast.Identifier {ident=nd4,openNamespaces=ref [Ast.Internal ""]}}))
+                                (ts2,Ast.ObjectRef({base=nd,ident=Ast.QualifiedIdentifier {
+											qual=nd1, ident=nd2}}))
                             end
 					  | _ => raise ParseError (* e4x filter expr *)
                     end
-              | _ => 
+      | Dot :: _ => 
                     let
-                        val (ts4,nd4) = reservedOrPropertyIdentifier(ts1)
-                    in
-                        (ts4,Ast.ObjectRef({base=nd,ident=Ast.Identifier {ident=nd4,openNamespaces=ref [Ast.Internal ""]}}))
+ 					in case (isreserved(hd (tl ts)),tl ts) of
+					    ((true,(Intrinsic | Private) ::_) |
+						 (false,_)) => 
+							let
+		                        val (ts1,nd1) = qualifiedIdentifier(tl ts)
+							in
+                                (ts1,Ast.ObjectRef {base=nd,ident=nd1})
+							end
+					  | (true,_) =>
+							let
+								val (ts1,nd1) = reservedIdentifier (tl ts)
+							in
+								(ts1,Ast.ObjectRef {base=nd,ident=Ast.Identifier {ident=nd1,
+													openNamespaces=ref [Ast.Internal ""]}})
+							end 
                     end
-            end
       | LeftBracket :: _ => 
             let
-                val (ts4,nd4) = brackets(ts)
+                val (ts1,nd1) = brackets(ts)
             in
-                (ts4,Ast.ObjectRef({base=nd,ident=Ast.ExpressionIdentifier(nd4)}))
+                (ts1,Ast.ObjectRef({base=nd,ident=Ast.ExpressionIdentifier(nd1)}))
             end
       | _ => raise ParseError
     end
@@ -3968,6 +3982,7 @@ and directivesPrefix (ts,t:tau) : (token list * Ast.DIRECTIVES) =
 		Attributes  [no line break]  AnnotatableDirective(t,w)
 *)
 
+
 and directive (ts,t:tau,w:omega) : (token list * Ast.DIRECTIVES) =
     let val _ = trace([">> directive with next=", tokenname(hd ts)])
 	in case ts of
@@ -4033,7 +4048,7 @@ and directive (ts,t:tau,w:omega) : (token list * Ast.DIRECTIVES) =
 *)
 
 and annotatableDirective (ts,attrs,GLOBAL,w) : (token list * Ast.DIRECTIVES)  =
-    let val _ = trace([">> annotatableDirective with next=", tokenname(hd ts)])
+    let val _ = trace([">> annotatableDirective GLOBAL with next=", tokenname(hd ts)])
 	in case ts of
 	    Let :: Function :: _ =>
 			functionDefinition (ts,attrs,GLOBAL)
@@ -4043,13 +4058,32 @@ and annotatableDirective (ts,attrs,GLOBAL,w) : (token list * Ast.DIRECTIVES)  =
 			classDefinition (ts,attrs)
 	  | Interface :: _ =>
 			interfaceDefinition (ts,attrs)
+	  | Namespace :: _ =>
+			let
+				val (ts1,nd1) = namespaceDefinition (ts,attrs)
+				val (ts2,nd2) = (semicolon(ts1,w),nd1)
+			in
+				(ts2,nd2)
+			end
+	  | Type :: _ =>
+			let
+				val (ts1,nd1) = typeDefinition (ts,attrs)
+				val (ts2,nd2) = (semicolon(ts1,w),nd1)
+			in
+				(ts2,nd2)
+			end
 	  | (Let | Var | Const) :: _ => 
-			variableDefinition (ts,attrs,ALLOWIN)
+			let
+				val (ts1,nd1) = variableDefinition (ts,attrs,ALLOWIN)
+				val (ts2,nd2) = (semicolon(ts1,w),nd1)
+			in
+				(ts2,nd2)
+			end
 	  | _ => 
 			raise ParseError
 	end
   | annotatableDirective (ts,attrs,INTERFACE,w) : (token list * Ast.DIRECTIVES)  =
-    let val _ = trace([">> annotatableDirective with next=", tokenname(hd ts)])
+    let val _ = trace([">> annotatableDirective INTERFACE with next=", tokenname(hd ts)])
 	in case ts of
 	    Function :: _ =>
 			let
@@ -4062,7 +4096,7 @@ and annotatableDirective (ts,attrs,GLOBAL,w) : (token list * Ast.DIRECTIVES)  =
 			raise ParseError
 	end
   | annotatableDirective (ts,attrs,t,omega) : (token list * Ast.DIRECTIVES)  =
-    let val _ = trace([">> annotatableDirective with next=", tokenname(hd ts)])
+    let val _ = trace([">> annotatableDirective omega with next=", tokenname(hd ts)])
 	in case ts of
 	    Let :: Function :: _ =>
 			functionDefinition (ts,attrs,t)
@@ -4338,194 +4372,6 @@ and namespaceAttribute (ts,GLOBAL) =
 		_ => raise ParseError
 	end
 		
-
-(*
-	Pragmas	
-		Pragma
-		Pragmas  Pragma
-		
-	Pragma	
-		UsePragma  Semicolon(full)
-		ImportPragma  Semicolon(full)
-		
-*)
-
-and pragmas (ts) : token list * Ast.PRAGMA list =
-    let val _ = trace([">> pragmas with next=", tokenname(hd ts)])
-		val (ts1,nd1) = pragma(ts)
-	in case ts1 of
-		(Use | Import) :: _ => 
-			let
-				val (ts2,nd2) = pragmas (ts1)
-			in
-				(ts2, nd1 @ nd2)
-			end
-	  | _ =>
-			(ts1, nd1)
-	end
-
-and pragma ts =
-    let val _ = trace([">> pragma with next=", tokenname(hd ts)])
-	in case ts of
-		Use :: _ => 
-			let
-				val (ts1,nd1) = usePragma ts
- 				val (ts2,nd2) = (semicolon (ts1,FULL),nd1)
-			in
-				(ts2,nd2)
-			end
-	  | Import :: _ => 
-			let
-				val (ts1,nd1) = importPragma ts
- 				val (ts2,nd2) = (semicolon (ts1,FULL),nd1)
-			in
-				(ts2,nd2)
-			end
-	  | _ => raise ParseError
-	end
-
-(*
-	UsePragma	
-		use  PragmaItems		
-*)
-
-and usePragma ts =
-    let val _ = trace([">> usePragma with next=", tokenname(hd ts)])
-	in case ts of
-		Use :: _ => pragmaItems (tl ts)
-	  | _ => raise ParseError
-	end
-
-(*
-	PragmaItems	
-		PragmaItem
-		PragmaItems  ,  PragmaItem
-
-	right recursive:
-
-	PragmaItems
-		PragmaItem PragmaItems'
-
-	PragmaItems'
-		empty
-		, PragmaItem PragmaItems'
-*)
-		
-and pragmaItems ts =
-    let val _ = trace([">> pragmaItems with next=", tokenname(hd ts)])
-		fun pragmaItems' ts =
-			let
-			in case ts of
-				Comma :: _ =>
-					let
-						val (ts1,nd1) = pragmaItem (tl ts)
-						val (ts2,nd2) = pragmaItems' ts1
-					in
-						(ts2,nd1::nd2)
-					end
-			  | _ => (ts,[])
-			end
-		val (ts1,nd1) = pragmaItem ts
-		val (ts2,nd2) = pragmaItems' ts1
-	in
-		(ts2,nd1::nd2)
-	end
-
-(*
-	PragmaItem	
-		decimal
-		double
-		int
-		Number
-		uint
-		precision NumberLiteral
-		rounding Identifier
-		standard
-		strict
-		default namespace SimpleTypeIdentifier
-		namespace SimpleTypeIdentifier
-*)
-
-and pragmaItem ts =
-    let val _ = trace([">> pragmaItem with next=", tokenname(hd ts)])
-	in case ts of
-		Decimal :: _ => (tl ts,Ast.UseNumber Ast.Decimal)
-	  | Double :: _ => (tl ts,Ast.UseNumber Ast.Double)
-	  | Int :: _ => (tl ts,Ast.UseNumber Ast.Int)
-	  | Number :: _ => (tl ts,Ast.UseNumber Ast.Number)
-	  | UInt :: _ => (tl ts,Ast.UseNumber Ast.UInt)
-	  | Precision :: NumberLiteral n :: _ => 
-			let
-				val i = Ast.LiteralNumber n
-			in
-				(tl (tl ts), Ast.UsePrecision i)
-			end
-	  | Rounding :: Identifier s :: _ => 
-			let
-				val m = Ast.HalfUp
-			in
-				(tl (tl ts), Ast.UseRounding m)
-			end
-	  | Standard :: _ => (tl ts,Ast.UseStandard)
-	  | Strict :: _ => (tl ts,Ast.UseStrict)
-	  | Default :: Namespace :: _ => 
-			let
-				val (ts1,nd1) = simpleTypeIdentifier (tl (tl ts))
-			in
-				(ts1, Ast.UseDefaultNamespace nd1)
-			end
-	  | Namespace :: _ => 
-			let
-				val (ts1,nd1) = simpleTypeIdentifier (tl ts)
-			in
-				(ts1, Ast.UseNamespace nd1)
-			end
-	  | _ =>
-			raise ParseError
-	end
-
-(*
-	ImportPragma	
-		import  Identifier  =  ImportName
-		import  ImportName
-		
-	ImportName	
-		PackageIdentifier  .  PropertyIdentifier
-*)
-
-and importPragma (ts) : token list * Ast.PRAGMA list =
-    let val _ = trace([">> importPragma with next=", tokenname(hd ts)])
-	in case ts of
-		Import :: _ :: Assign :: _ =>
-			let
-				val (ts1,nd1) = identifier (tl ts)
-				val (ts2,{package,name}) = importName (tl ts1)
-			in
-				(ts2,[Ast.Import {package=package,name=name,alias=SOME nd1}])
-			end
-	  | Import :: _ =>
-			let
-				val (ts1,{package,name}) = importName (tl ts)
-			in
-				(ts1,[Ast.Import {package=package,name=name,alias=NONE}])
-			end
-	  | _ => raise ParseError
-	end
-
-and importName (ts) =
-    let val _ = trace([">> importName with next=", tokenname(hd ts)])
-	in case ts of
-		PackageIdentifier p :: Dot :: _ =>
-			let
-				val (ts1,nd1) = (tl ts,p)
-				val (ts2,nd2) = propertyIdentifier (tl ts1)
-			in
-				(ts2,{package=nd1,name=nd2})
-			end
-	  | _ => 
-			(error(["attempt to import an unknown package"]); 
-			raise ParseError)
-	end
 
 (* DEFINITIONS *)    
 
@@ -5085,26 +4931,275 @@ and interfaceBody (ts) =
 	end
 		
 (*		
-NamespaceDefinition    
-    namespace NamespaceBinding
-    
-NamespaceBinding    
-    Identifier NamespaceInitialisation
-    
-NamespaceInitialisation    
-    «empty»
-    = StringLiteral
-    = SimpleTypeIdentifier
-    
-TypeDefinition    
-    type  TypeBinding
-    
-TypeBinding    
-    Identifier  TypeInitialisation
-    
-TypeInitialisation    
-    =  TypeExpression
+	NamespaceDefinition
+		namespace  Identifier  NamespaceInitialisation
+		
+	NamespaceInitialisation	
+		«empty»
+		=  StringLiteral
+		=  SimpleTypeIdentifier
 *)
+
+and namespaceDefinition (ts,attrs) =
+    let val _ = trace([">> namespaceDefinition with next=", tokenname(hd ts)])
+	in case ts of
+		Namespace :: _ =>
+			let
+				val (ts1,nd1) = identifier (tl ts)
+				val (ts2,nd2) = namespaceInitialisation ts1
+			in
+				trace(["<< namespaceDefinition with next=", tokenname(hd ts2)]);
+         		(ts2,{pragmas=[],stmts=[],defns=[Ast.NamespaceDefn {attrs=attrs,ident=nd1,init=nd2}]})
+			end
+	  | _ => raise ParseError
+	end
+		
+and namespaceInitialisation (ts) : (token list * Ast.EXPR option) =
+    let val _ = trace([">> namespaceInitialisation with next=", tokenname(hd ts)])
+	in case ts of
+	 	Assign :: StringLiteral s :: _ =>
+			let
+				val (ts1,nd1) = (tl (tl ts), 
+						Ast.LiteralExpr(Ast.LiteralString(s)))
+			in
+				trace(["<< namespaceInitialisation StringLiteral with next=", tokenname(hd ts1)]);
+				(ts1,SOME nd1)
+			end
+	  | Assign :: _ =>
+			let
+				val (ts1,nd1) = simpleTypeIdentifier (tl ts)
+			in
+				trace(["<< namespaceInitialisation simpleTypeIdentifer with next=", tokenname(hd ts1)]);
+				(ts1,SOME (Ast.LexicalRef {ident=nd1}))
+			end
+	  | _ => (trace(["<< namespaceInitialisation none with next=", tokenname(hd ts)]);
+			 (ts,NONE))
+	end
+
+(*  
+	TypeDefinition	
+		type  Identifier  TypeInitialisation
+		
+	TypeInitialisation	
+		=  TypeExpression
+*)
+
+and typeDefinition (ts,attrs) =
+    let val _ = trace([">> typeDefinition with next=", tokenname(hd ts)])
+	in case ts of
+		Type :: _ =>
+			let
+				val (ts1,nd1) = identifier (tl ts)
+				val (ts2,nd2) = typeInitialisation ts1
+			in
+				trace(["<< typeDefinition with next=", tokenname(hd ts2)]);
+         		(ts2,{pragmas=[],stmts=[],defns=[Ast.TypeDefn {attrs=attrs,ident=nd1,init=nd2}]})
+			end
+	  | _ => raise ParseError
+	end
+		
+and typeInitialisation (ts) : (token list * Ast.TYPE_EXPR) =
+    let val _ = trace([">> typeInitialisation with next=", tokenname(hd ts)])
+	in case ts of
+		Assign :: _ =>
+			let
+				val (ts1,nd1) = typeExpression (tl ts)
+			in
+				trace(["<< typeInitialisation with next=", tokenname(hd ts1)]);
+				(ts1,nd1)
+			end
+	  | _ => raise ParseError
+	end
+
+(* PRAGMAS *)
+
+(*
+	Pragmas	
+		Pragma
+		Pragmas  Pragma
+		
+	Pragma	
+		UsePragma  Semicolon(full)
+		ImportPragma  Semicolon(full)
+		
+*)
+
+and pragmas (ts) : token list * Ast.PRAGMA list =
+    let val _ = trace([">> pragmas with next=", tokenname(hd ts)])
+		val (ts1,nd1) = pragma(ts)
+	in case ts1 of
+		(Use | Import) :: _ => 
+			let
+				val (ts2,nd2) = pragmas (ts1)
+			in
+				(ts2, nd1 @ nd2)
+			end
+	  | _ =>
+			(ts1, nd1)
+	end
+
+and pragma ts =
+    let val _ = trace([">> pragma with next=", tokenname(hd ts)])
+	in case ts of
+		Use :: _ => 
+			let
+				val (ts1,nd1) = usePragma ts
+ 				val (ts2,nd2) = (semicolon (ts1,FULL),nd1)
+			in
+				(ts2,nd2)
+			end
+	  | Import :: _ => 
+			let
+				val (ts1,nd1) = importPragma ts
+ 				val (ts2,nd2) = (semicolon (ts1,FULL),nd1)
+			in
+				(ts2,nd2)
+			end
+	  | _ => raise ParseError
+	end
+
+(*
+	UsePragma	
+		use  PragmaItems		
+*)
+
+and usePragma ts =
+    let val _ = trace([">> usePragma with next=", tokenname(hd ts)])
+	in case ts of
+		Use :: _ => pragmaItems (tl ts)
+	  | _ => raise ParseError
+	end
+
+(*
+	PragmaItems	
+		PragmaItem
+		PragmaItems  ,  PragmaItem
+
+	right recursive:
+
+	PragmaItems
+		PragmaItem PragmaItems'
+
+	PragmaItems'
+		empty
+		, PragmaItem PragmaItems'
+*)
+		
+and pragmaItems ts =
+    let val _ = trace([">> pragmaItems with next=", tokenname(hd ts)])
+		fun pragmaItems' ts =
+			let
+			in case ts of
+				Comma :: _ =>
+					let
+						val (ts1,nd1) = pragmaItem (tl ts)
+						val (ts2,nd2) = pragmaItems' ts1
+					in
+						(ts2,nd1::nd2)
+					end
+			  | _ => (ts,[])
+			end
+		val (ts1,nd1) = pragmaItem ts
+		val (ts2,nd2) = pragmaItems' ts1
+	in
+		(ts2,nd1::nd2)
+	end
+
+(*
+	PragmaItem	
+		decimal
+		double
+		int
+		Number
+		uint
+		precision NumberLiteral
+		rounding Identifier
+		standard
+		strict
+		default namespace SimpleTypeIdentifier
+		namespace SimpleTypeIdentifier
+*)
+
+and pragmaItem ts =
+    let val _ = trace([">> pragmaItem with next=", tokenname(hd ts)])
+	in case ts of
+		Decimal :: _ => (tl ts,Ast.UseNumber Ast.Decimal)
+	  | Double :: _ => (tl ts,Ast.UseNumber Ast.Double)
+	  | Int :: _ => (tl ts,Ast.UseNumber Ast.Int)
+	  | Number :: _ => (tl ts,Ast.UseNumber Ast.Number)
+	  | UInt :: _ => (tl ts,Ast.UseNumber Ast.UInt)
+	  | Precision :: NumberLiteral n :: _ => 
+			let
+				val i = Ast.LiteralNumber n
+			in
+				(tl (tl ts), Ast.UsePrecision i)
+			end
+	  | Rounding :: Identifier s :: _ => 
+			let
+				val m = Ast.HalfUp
+			in
+				(tl (tl ts), Ast.UseRounding m)
+			end
+	  | Standard :: _ => (tl ts,Ast.UseStandard)
+	  | Strict :: _ => (tl ts,Ast.UseStrict)
+	  | Default :: Namespace :: _ => 
+			let
+				val (ts1,nd1) = simpleTypeIdentifier (tl (tl ts))
+			in
+				(ts1, Ast.UseDefaultNamespace nd1)
+			end
+	  | Namespace :: _ => 
+			let
+				val (ts1,nd1) = simpleTypeIdentifier (tl ts)
+			in
+				(ts1, Ast.UseNamespace nd1)
+			end
+	  | _ =>
+			raise ParseError
+	end
+
+(*
+	ImportPragma	
+		import  Identifier  =  ImportName
+		import  ImportName
+		
+	ImportName	
+		PackageIdentifier  .  PropertyIdentifier
+*)
+
+and importPragma (ts) : token list * Ast.PRAGMA list =
+    let val _ = trace([">> importPragma with next=", tokenname(hd ts)])
+	in case ts of
+		Import :: _ :: Assign :: _ =>
+			let
+				val (ts1,nd1) = identifier (tl ts)
+				val (ts2,{package,name}) = importName (tl ts1)
+			in
+				(ts2,[Ast.Import {package=package,name=name,alias=SOME nd1}])
+			end
+	  | Import :: _ =>
+			let
+				val (ts1,{package,name}) = importName (tl ts)
+			in
+				(ts1,[Ast.Import {package=package,name=name,alias=NONE}])
+			end
+	  | _ => raise ParseError
+	end
+
+and importName (ts) =
+    let val _ = trace([">> importName with next=", tokenname(hd ts)])
+	in case ts of
+		PackageIdentifier p :: Dot :: _ =>
+			let
+				val (ts1,nd1) = (tl ts,p)
+				val (ts2,nd2) = propertyIdentifier (tl ts1)
+			in
+				(ts2,{package=nd1,name=nd2})
+			end
+	  | _ => 
+			(error(["attempt to import an unknown package"]); 
+			raise ParseError)
+	end
 
 (* BLOCKS AND PROGRAMS *)
 
@@ -5133,25 +5228,50 @@ and block (ts,t) : (token list * Ast.BLOCK) =
 
 (*
 	Program	
-		Packages  Directives
+		Directives(global)
+		Packages  Directives(global)
+		
+	Packages	
+		Packages
+		Package Packages
+		
+	Package	
+		PackageAttributes  package  PackageNameOpt  PackageBody
+		
+	PackageAttributes	
+		internal
+		«empty»
+		
+	PackageNameOpt	
+		«empty»
+		PackageName
+		
+	PackageName [create a lexical PackageIdentifier with the sequence of characters that make a PackageName]	
+		Identifier
+		PackageName  .  Identifier
+		
+	PackageBody	
+		Blockglobal
 *)
     
 and program ts =
     let val _ = trace([">> program with next=",tokenname(hd(ts))])
-		val (ts1,nd1) = packages ts
-		val (ts2,nd2) = directives (ts1,GLOBAL)
-
-		val _ = trace(["<< program with next=",tokenname(hd(ts2))])
-    in case ts2 of
-		Eof :: [] => (ts2,{packages=nd1,body=Ast.Block nd2})
-	  | _ => (error(["extra stuff after end of program"]); raise ParseError)
+    in case ts of
+		((Internal :: Package :: _) |
+		 (Package :: _)) =>
+			let
+				val (ts1,nd1) = packages ts
+				val (ts2,nd2) = directives (ts1,GLOBAL)
+			in
+				(ts2,{body=Ast.Block nd2,packages=nd1})
+			end
+	  | _ =>
+			let
+				val (ts1,nd1) = directives (ts,GLOBAL)
+			in
+				(ts1,{body=Ast.Block nd1,packages=[]})
+			end
 	end
-
-(*
-	Packages	
-	    «empty»
-		Package Packages
-*)
 
 and packages ts =
     let val _ = trace([">> packages with next=",tokenname(hd(ts))])
@@ -5161,9 +5281,10 @@ and packages ts =
 				val (ts1,nd1) = package ts
 				val (ts2,nd2) = packages ts1
 			in
-				(ts1,nd1::nd2)
+				trace(["<< packages with next=",tokenname(hd(ts2))]);
+				(ts2,nd1::nd2)
 			end
-	  | _ => (ts,[])
+	  | _ => (trace(["<< packages with next=",tokenname(hd(ts))]);(ts,[]))
 	end
 
 (*
@@ -5181,14 +5302,53 @@ and packages ts =
 	PackageName [create a lexical PackageIdentifier with the sequence of characters that make a PackageName]	
 		Identifier
 		PackageName  .  Identifier
-
+		
 	PackageBody	
 		Block(global)
 *)
 
-and package ts = raise ParseError
+and package ts =
+    let val _ = trace([">> package with next=",tokenname(hd(ts))])
+	in case ts of
+		Internal :: Package :: _ => 
+			let
+				val (ts1,nd1) = packageName (tl (tl ts))
+				val (ts2,nd2) = block (ts1,GLOBAL)
+			in
+				(ts2,{name=nd1, body=nd2})
+			end
+	  | Package :: LeftBrace :: _ =>
+			let
+				val (ts1,nd1) = block (tl ts,GLOBAL)
+			in
+				(ts1, {name="", body=nd1})
+			end
+	  | Package :: _ =>
+			let
+				val (ts1,nd1) = packageName (tl ts)
+				val (ts2,nd2) = block (ts1,GLOBAL)
+			in
+				(ts2, {name=nd1, body=nd2})
+			end
+	  | _ => raise ParseError
+	end
 
-
+and packageName (ts) =
+    let val _ = trace([">> packageName with next=", tokenname(hd ts)])
+		val (ts1,nd1) = identifier ts
+	in case ts1 of
+		Dot :: _ =>
+			let
+				val (ts2,nd2) = packageName (tl ts1)
+			in
+				(ts2,nd1^"."^nd2)
+			end
+	  | _ =>
+			let
+			in
+				(ts1,nd1)
+			end
+	end
 
 fun mkReader filename = 
     let

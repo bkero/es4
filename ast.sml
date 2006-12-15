@@ -146,8 +146,12 @@ datatype PRAGMA =
        | VariableDefn of VAR_BINDING list
        | FunctionDefn of FUNC_DEFN
        | InterfaceDefn of INTERFACE_DEFN
-       | NamespaceDefn of { name: IDENT,
-                            init: EXPR }
+       | NamespaceDefn of { attrs: ATTRIBUTES,
+							ident: IDENT,
+                            init: EXPR option }
+       | TypeDefn of { attrs: ATTRIBUTES,
+					   ident: IDENT,
+                       init: TYPE_EXPR }
 
      and FUNC_SIG =
          FunctionSignature of { typeParams: IDENT list,
@@ -393,8 +397,7 @@ withtype FIELD =
          { kind : FUNC_NAME_KIND, ident : IDENT }
 
 type PACKAGE =
-     { names: IDENT list,
-       fullname: USTRING,
+     { name: USTRING,
        body: BLOCK }
      
 type PROGRAM =
