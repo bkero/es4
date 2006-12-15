@@ -97,7 +97,7 @@ decimalLiteral        = ({decimalLiteral_1} | {decimalLiteral_2} | {decimalLiter
 
 hexIntegerLiteral     = ("0" [xX] {hexDigit}+);
 
-charEscape            = "\\" ([btnvfr\"\'\\]|"x"{hexDigit}{2}|[0-7]{1-3});
+charEscape            = "\\" ([btnvfr\"\'\\]|"x"{hexDigit}{2}|[0-7]{1,3});
 
 %%
 
