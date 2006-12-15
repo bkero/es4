@@ -3,62 +3,66 @@
  * ECMAScript 4 builtins - the "RegExp" object
  * E262-3 15.10
  *
- * Abstract syntax tree classes and evaluation.
+ * Representation of compiled code, plus evaluation.
  */
 
 package RegExp
 {
-	private const failure : State? = null;
+	import Unicode.*;
 
-	private class State!
+	type MatchResult = State?;
+
+	const failure : State? = null;
+
+	class State!
 	{
 		var endIndex : int = 0;
-		var cap : Array;
+		var cap : CapArray;
 
-		function State(e : int, cap : Array) {
+		function State(e : int, cap : CapArray) {
 			this.endIdex = e;
 			this.cap = cap;
 		}
 	}
 
-	private class Context!
+	class Context!
 	{
-		const input : String!;
+		const input       : String!;
 		const inputLength : int;
-		const global : Boolean;       // g
-		const ignoreCase : Boolean;   // i
-		const multiLine : Boolean;    // m
-		const noSearch : Boolean;     // y
+		const global      : Boolean;   // g
+		const ignoreCase  : Boolean;   // i
+		const multiline   : Boolean;   // m
 
 		function Context(input : String!, flags : String!) 
 			: input(input)
 			, inputLength(input.length);
 			, global(flags.indexOf("g") != -1)
 			, ignoreCase(flags.indexOf("i") != -1)
-			, multiLine(flags.indexOf("m") != -1)
-			, noSearch(flags.indexOf("y") != -1)
+			, multiline(flags.indexOf("m") != -1)
 		{
 		}
 	}
 
-	private interface Matcher!
+	interface Matcher!
 	{
-		function match(ctx : Context, x : State, c : Continuation) : State?;
+		function match(ctx : Context, x : State, c : Continuation) : MatchResult;
 	}
 
-	private type Continuation = function(ctx : Context, x : State) : State?;
+	type Continuation = function(ctx : Context, x : State) : MatchResult;
 
-	/* Syntax trees double as compiled code.  Since these are syntax
-	   trees they are a little more elaborate than they need be, eg
-	   AtomDisjunct is not strictly necessary but present for expository
-	   purposes.  */
+	class Empty! implements Matcher
+	{
+		function match(ctx : Context, x : State, c : Continuation) : MatchResult {
+			return c(x);
+		}
+	}
 
-	private class Disjunct! implements Matcher
+	class Disjunct! implements Matcher
 	{
 		function Disjunct(m1 : Matcher, m2 : Matcher) : m1(m1), m2(m2) {}
 
-		function match(ctx : Context, x : State, c : Continuation) : State? {
-			let r = m1.match(ctx, x, c);
+		function match(ctx : Context, x : State, c : Continuation) : MatchResult {
+			let r : MatchResult = m1.match(ctx, x, c);
 			if (r !== failure)
 				return r;
 			return m2.match(ctx, x, c);
@@ -67,222 +71,354 @@ package RegExp
 		var m1 : Matcher, m2 : Matcher;
 	}
 
-	private class Alternative! implements Matcher
+	class Alternative! implements Matcher
 	{
 		function Alternative(m1 : Matcher, m2 : Matcher) : m1(m1), m2(m2) {}
 
-		function match(ctx : Context, x : State, c : Continuation) : State? {
+		function match(ctx : Context, x : State, c : Continuation) : MatchResult {
 			return m1.match(ctx, x, function (ctx : Context, y : State) { return m2.match(ctx, y, c); } );
 		}
 
 		var m1 : Matcher, m2 : Matcher;
 	}
 
-	private class Assertion! implements Matcher
+	class Assertion! implements Matcher
 	{
-		function match(ctx : Context, x : State, c : Continuation) : State? {
+		function match(ctx : Context, x : State, c : Continuation) : MatchResult {
 			if (!testAssertion(ctx, x))
 				return failure;
 			return c(ctx, x);
 		}
 
-		abstract function testAssertion(ctx : Context, x : State) : Boolean;
+		function testAssertion(ctx : Context, x : State) : Boolean { return false; }
 	}
 
-	private class AssertStartOfInput extends Assertion
+	class AssertStartOfInput extends Assertion
 	{
-		function testAssertion(ctx : Context, x : State) : Boolean {
+		override function testAssertion(ctx : Context, x : State) : Boolean {
 			let e : int = x.endIndex;
 			if (e === 0)
 				return true;
-			if (ctx.multiLine)
+			if (ctx.multiline)
 				return isTerminator(ctx.input[e-1]);
 			return false;
 		}
 	}
 
-	private class AssertEndOfInput extends Assertion
+	class AssertEndOfInput extends Assertion
 	{
-		function testAssertion(ctx : Context, x : State) : Boolean {
+		override function testAssertion(ctx : Context, x : State) : Boolean {
 			let e : int = x.endIndex;
 			if (e === ctx.inputLength)
 				return true;
-			if (ctx.multiLine)
+			if (ctx.multiline)
 				return isTerminator(ctx.input[e-1]);
 			return false;
 		}
 	}
 
-	private class AssertWordboundary extends Assertion
+	class AssertWordboundary extends Assertion
 	{
-		function testAssertion(ctx : Context, x : State) : Boolean {
+		override function testAssertion(ctx : Context, x : State) : Boolean {
 			let e : int = x.endIndex;
 			return isWordChar(ctx, e-1) !== isWordChar(ctx, e);
 		}
 	}
 
-	private class AssertNotWordboundary extends Assertion
+	class AssertNotWordboundary extends Assertion
 	{
-		function testAssertion(ctx : Context, x : State) : Boolean {
+		override function testAssertion(ctx : Context, x : State) : Boolean {
 			let e : int = x.endIndex;
 			return isWordChar(ctx, e-1) === isWordChar(ctx, e);
 		}
 	}
 
-	private class Quantified! implements Matcher
+	class Quantified! implements Matcher
 	{
-		function Quantified(m : Matcher, min : Number, max : Number, greedy : Boolean) 
-			: m(m), min(min), max(max), greedy(greedy) {}
-
-		function match(ctx : Context, x : State, c : Continuation) : State? {
-			// FIXME
+		function Quantified(parenIndex:uint, parenCount:uint, m:Matcher, min:Number, max:Number, greedy:Boolean) 
+			: parenIndex(parenIndex)
+			, parenCount(parenCount)
+			, m(m)
+			, min(min)
+			, max(max)
+			, greedy(greedy) 
+		{
 		}
 
-		var m : Matcher, min : Number, max : Number, greedy : Boolean;
+		function match(ctx : Context, x : State, c : Continuation) : MatchResult {
+
+			function RepeatMatcher(min : Number, max : Number, x : State) : MatchResult {
+				if (max === 0)
+					return c(x);
+
+				let function d(y : State) : MatchResult {
+					if (min === 0 && y.endIndex === x.endIndex)
+						return failure;
+					else
+						return RepeatMatcher(Math.max(0, min-1), max-1, y);
+				}
+				let xr = new State(x.endIndex, cloneCaptures(x.cap, parenIndex, parenCount));
+
+				if (min !== 0)
+					return m.match(xr, d);
+
+				if (!greedy) {
+					let z : MatchResult = c(x);
+					if (z !== failure)
+						return z;
+					return m.match(xr, d);
+				}
+				else {
+					let z : MatchResult = m.match(xr, d);
+					if (z !== failure)
+						return z;
+					return c(x);
+				}
+			}
+
+			return RepeatMatcher(min, max, x);
+		}
+
+		var parenIndex : uint;
+		var parenCount : uint;
+		var m : Matcher;
+		var min : Number;
+		var max : Number;
+		var greedy : Boolean;
 	}
 
-	private class Dot! implements Matcher
+	class Capturing! implements Matcher
 	{
-		function match(ctx : Context, x : State, c : Continuation) : State? {
-			let e : int = x.endIndex;
-			if (e === ctx.inputLength)
+		function Capturing(m : Matcher, parenIndex : uint) : m(m), parenIndex(parenIndex) {}
+
+		function match(ctx : Context, x : State, c : Continuation) : MatchResult {
+
+			let function d( y : State ) : MatchResult {
+				let cap : CapArray = copyCapArray( y.cap, 0, 0 );
+				let xe : int = x.endIndex;
+				let ye : int = y.endIndex;
+				cap[parenIndex+1] = ctx.input.substring(xe, ye);
+				return c(new State(ye, cap));
+			}
+
+			return m.match(x, d);
+		}
+
+		var m : Matcher, parenIndex : uint;
+	}
+
+	class Backref! implements Matcher
+	{
+		function Backref(capno : uint) : capno(capno) {}
+
+		function match(ctx : Context, x : State, c : Continuation) : MatchResult {
+			let cap = x.cap;
+			let s = cap[capno];
+			if (s == null)
+				return c(x);
+			let e = x.endIndex;
+			let len = s.length;
+			let f = e+len;
+			if (f > ctx.inputLength)
 				return failure;
-			if (isTerminator(ctx.input[e]))
-				return failure;
-			return c(ctx, new State(e+1, x.cap));
+			for ( let i=0 ; i < len ; i++ )
+				if (Canonicalize(ctx, s[i]) !== Canonicalize(ctx, ctx.input[e+i]))
+					return failure;
+			return c(new State(f, cap));
 		}
+
+		var capno : uint;
 	}
 
-	private class CharsetMatcher! implements Matcher
+	class PositiveLookahead! implements Matcher
 	{
-		function match(ctx : Context, x : State, c : Continuation) : State? {
-			// FIXME
-		}
-	}
-
-	private class PositiveLookahead! implements Matcher
-	{
-		function match(ctx : Context, x : State, c : Continuation) : State? {
-			let r : State? = m(ctx, x, function (y : State!) : State? { return y });
+		function match(ctx : Context, x : State, c : Continuation) : MatchResult {
+			let r : MatchResult = m(ctx, x, function (y : State) : MatchResult { return y });
 			if (r === failure)
 				return failure;
 			return c(new State(x.endIndex, r.cap));
 		}
 	}
 
-	private class NegativeLookahead! implements Matcher
+	class NegativeLookahead! implements Matcher
 	{
-		function match(ctx : Context, x : State, c : Continuation) : State? {
-			let r : State? = m(ctx, x, function (y : State!) : State? { return y });
+		function match(ctx : Context, x : State, c : Continuation) : MatchResult {
+			let r : MatchResult = m(ctx, x, function (y : State) : MatchResult { return y });
 			if (r !== failure)
 				return failure;
 			return c(x);
 		}
 	}
 
+	class CharsetMatcher! implements Matcher
+	{
+		function CharsetMatcher(cs : Charset) : cs(cs) {}
+
+		function match(ctx : Context, x : State, c : Continuation) : MatchResult {
+			let e = x.endIndex;
+			if (e === ctx.inputLength)
+				return failure;
+			let c = ctx.input[e];
+			let cc = Canonicalize(c);
+			let res = cs.match(cc);
+			if (res === failure)
+				return failure;
+			return c(new State(e+1, x.cap));
+		}
+
+		var cs : Charset;
+	}
+
+	function Canonicalize(ctx, ch) {
+		if (!ctx.ignoreCase)
+			return ch;
+		let u = ch.toUpperCase();
+		if (u.length != 1)
+			return ch;
+		if (ch.charCodeAt(0) >= 128 && u.charCodeAt(0) < 128)
+			return ch;
+		return u;
+	}
+
+
 	/*** Character sets ***/
 
-	private interface CharSet!
+	interface Charset!
 	{
-		function match(c : String!, invert : Boolean) : Boolean;
+		function match(c : String!) : Boolean;
 	}
 
-	private class CharsetUnion implements CharSet 
+	class CharsetUnion implements Charset 
 	{
-		function CharsetUnion(m1 : CharSet, m2 : CharSet) : m1(m1), m2(m2) {}
+		function CharsetUnion(m1 : Charset, m2 : Charset) : m1(m1), m2(m2) {}
 
-		function match(c : String!, invert : Boolean) : Boolean {
-			let res : Boolean = m1.match(c, true) || m2.match(c, true);
-			return res !== invert;
+		function match(c : String!) : Boolean {
+			return m1.match(c, true) || m2.match(c, true);
 		}
 
-		var m1 : CharSet, m2 : CharSet;
+		var m1 : Charset, m2 : Charset;
 	}
 
-	private class CharsetIntersection implements CharSet 
+	class CharsetIntersection implements Charset 
 	{
-		function CharsetIntersection(m1 : CharSet, m2 : CharSet) : m1(m1), m2(m2) {}
+		function CharsetIntersection(m1 : Charset, m2 : Charset) : m1(m1), m2(m2) {}
 
-		function match(c : String!, invert : Boolean) : Boolean {
-			let res : Boolean = m1.match(c, true) && m2.match(c, true);
-			return res !== invert;
+		function match(c : String!) : Boolean {
+			return m1.match(c, true) && m2.match(c, true);
 		}
 
-		var m1 : CharSet, m2 : CharSet;
+		var m1 : Charset, m2 : Charset;
 	}
 
-	private class CharsetComplement implements CharSet 
+	class CharsetComplement implements Charset 
 	{
-		function match(c : String!, invert : Boolean) : Boolean {
-			return m.match(c, true) === invert;
+		function CharsetComplement(cs : Charset) : cs(cs) {}
+
+		function match(c : String!) : Boolean {
+			return m.match(c) === failure;
 		}
+
+		var cs : Charset;
 	}
 
-	private class CharsetRange implements CharSet 
+	class CharsetRange implements Charset 
 	{
-		function match(c : String!, invert : Boolean) : Boolean {
-			// FIXME
+		function CharsetRange(lo : String!, hi : String!) : lo(lo), hi(hi) {}
+
+		function match(c : String!) : Boolean {
+			let lo_code = lo.charCodeAt(0);
+			let hi_code = hi.charCodeAt(0);
+			for ( let i=lo_code ; i <= hi_code ; i++ )
+				if (Canonicalize(String.fromCharCode(i)) === c)
+					return true;
+			return false;
 		}
+
+		var lo : String!, hi : String!;
 	}
 
-	private class CharsetAdhoc implements CharSet 
+	class CharsetAdhoc implements Charset 
 	{
-		function match(c : String!, invert : Boolean) : Boolean {
-			// FIXME
+		function CharsetAdhoc(cs : [String!]) : cs(cs) {}
+
+		function match(c : String!) : Boolean {
+			for each ( let d in cs ) {
+				if (Canonicalize(d) === c)
+					return true;
+			}
+			return false;
 		}
+
+		var cs : [String!];
 	}
 
-	private class CharsetMagic implements CharSet
+	class CharsetUnicodeClass implements Charset
 	{
-		function CharsetMagic(name : String!) : name(name) {}
+		function CharsetUnicodeClass(name : String!) : name(name) {}
 
-		function match(c : String!, invert : Boolean) : Boolean {
+		function match(c : String!) : Boolean {
 			throw new Error("character set not yet implemented: " + name);
 		}
 
 		var name : String!;
 	}
 
-	private const chars_space : CharSet = new CharsetAdhoc(["\u0020" /* etc */]);
-	private const chars_notspace : CharSet = new CharsetComplement(chars_space);
+	const charset_linebreak : Charset = new CharsetAdhoc("\u000A\u000D\u0085\u2028\u2029".split(""));
+	const charset_notlinebreak : Charset = new CharsetComplement(charset_linebreak);
 
-	private const unicode_named_classes = {
-		"L":  new CharsetMagic("Letter"),
-		"Lu": new CharsetMagic("Letter, Uppercase"),
-		"Ll": new CharsetMagic("Letter, Lowercase"),
-		"Lt": new CharsetMagic("Letter, Titlecase"),
-		"Lm": new CharsetMagic("Letter, Modifier"),
-		"Lo": new CharsetMagic("Letter, Other"),
-		"M":  new CharsetMagic("Mark"),
-		"Mn": new CharsetMagic("Mark, Nonspacing"),
-		"Mc": new CharsetMagic("Mark, Spacing Combining"),
-		"Me": new CharsetMagic("Mark, Enclosing"),
-		"N":  new CharsetMagic("Number"),
-		"Nd": new CharsetMagic("Number, Decimal Digit"),
-		"Nl": new CharsetMagic("Number, Letter"),
-		"No": new CharsetMagic("Number, Other"),
-		"P":  new CharsetMagic("Punctuation"),
-		"Pc": new CharsetMagic("Punctuation, Connector"),
-		"Pd": new CharsetMagic("Punctuation, Dash"),
-		"Ps": new CharsetMagic("Punctuation, Open"),
-		"Pe": new CharsetMagic("Punctuation, Close"),
-		"Pi": new CharsetMagic("Punctuation, Initial quote (may behave like Ps or Pe depending on usage)"),
-		"Pf": new CharsetMagic("Punctuation, Final quote (may behave like Ps or Pe depending on usage)"),
-		"Po": new CharsetMagic("Punctuation, Other"),
-		"S":  new CharsetMagic("Symbol"),
-		"Sm": new CharsetMagic("Symbol, Math"),
-		"Sc": new CharsetMagic("Symbol, Currency"),
-		"Sk": new CharsetMagic("Symbol, Modifier"),
-		"So": new CharsetMagic("Symbol, Other"),
-		"Z":  new CharsetMagic("Separator"),
-		"Zs": new CharsetMagic("Separator, Space"),
-		"Zl": new CharsetMagic("Separator, Line"),
-		"Zp": new CharsetMagic("Separator, Paragraph"),
-		"C":  new CharsetMagic("Other"),
-		"Cc": new CharsetMagic("Other, Control"),
-		"Cf": new CharsetMagic("Other, Format"),
-		"Cs": new CharsetMagic("Other, Surrogate"),
-		"Co": new CharsetMagic("Other, Private Use"),
-		"Cn": new CharsetMagic("Other, Not Assigned (no characters in the file have this property)") 
+	const charset_space : Charset = new CharsetAdhoc("\u0009\u000B\u000C\u0020\u00A0\u1680\u180E\u2000\u2001\u2002\u203\u2004\u2005\u2006\u2007\u2008\u2009\u200A\u202F\u205F\u3000\u000A\u000D\u0085\u2028\u2029".split(""));
+	const charset_notspace : Charset = new CharsetComplement(charset_space);
+
+	const charset_digits : Charset = new CharsetAdhoc("0123456789".split(""));
+	const charset_notdigits : Charset = new CharsetComplement(charset_digits);
+
+	const charset_word : Charset = new CharsetAdhoc("abcdefghijklmnopqrstuvwzyzABCDEFGHIJKLMNOPQRSTUVWZYZ0123456789_".split(""));
+	const charset_notword : Charset = new CharsetComplement(charset_word);
+
+	const unicode_named_classes = {
+		"L":  new CharsetUnicodeClass("Letter"),
+		"Lu": new CharsetUnicodeClass("Letter, Uppercase"),
+		"Ll": new CharsetUnicodeClass("Letter, Lowercase"),
+		"Lt": new CharsetUnicodeClass("Letter, Titlecase"),
+		"Lm": new CharsetUnicodeClass("Letter, Modifier"),
+		"Lo": new CharsetUnicodeClass("Letter, Other"),
+		"M":  new CharsetUnicodeClass("Mark"),
+		"Mn": new CharsetUnicodeClass("Mark, Nonspacing"),
+		"Mc": new CharsetUnicodeClass("Mark, Spacing Combining"),
+		"Me": new CharsetUnicodeClass("Mark, Enclosing"),
+		"N":  new CharsetUnicodeClass("Number"),
+		"Nd": new CharsetUnicodeClass("Number, Decimal Digit"),
+		"Nl": new CharsetUnicodeClass("Number, Letter"),
+		"No": new CharsetUnicodeClass("Number, Other"),
+		"P":  new CharsetUnicodeClass("Punctuation"),
+		"Pc": new CharsetUnicodeClass("Punctuation, Connector"),
+		"Pd": new CharsetUnicodeClass("Punctuation, Dash"),
+		"Ps": new CharsetUnicodeClass("Punctuation, Open"),
+		"Pe": new CharsetUnicodeClass("Punctuation, Close"),
+		"Pi": new CharsetUnicodeClass("Punctuation, Initial quote (may behave like Ps or Pe depending on usage)"),
+		"Pf": new CharsetUnicodeClass("Punctuation, Final quote (may behave like Ps or Pe depending on usage)"),
+		"Po": new CharsetUnicodeClass("Punctuation, Other"),
+		"S":  new CharsetUnicodeClass("Symbol"),
+		"Sm": new CharsetUnicodeClass("Symbol, Math"),
+		"Sc": new CharsetUnicodeClass("Symbol, Currency"),
+		"Sk": new CharsetUnicodeClass("Symbol, Modifier"),
+		"So": new CharsetUnicodeClass("Symbol, Other"),
+		"Z":  new CharsetUnicodeClass("Separator"),
+		"Zs": new CharsetUnicodeClass("Separator, Space"),
+		"Zl": new CharsetUnicodeClass("Separator, Line"),
+		"Zp": new CharsetUnicodeClass("Separator, Paragraph"),
+		"C":  new CharsetUnicodeClass("Other"),
+		"Cc": new CharsetUnicodeClass("Other, Control"),
+		"Cf": new CharsetUnicodeClass("Other, Format"),
+		"Cs": new CharsetUnicodeClass("Other, Surrogate"),
+		"Co": new CharsetUnicodeClass("Other, Use"),
+		"Cn": new CharsetUnicodeClass("Other, Not Assigned (no characters in the file have this property)") 
 	};
+
+	function unicodeClass(name : String!, complement : Boolean) : Charset? {
+		let c = unicode_named_classes[name];
+		if (!c)
+			return null;
+		return complement ? new CharsetComplement(c) : c;
+	}
 }
