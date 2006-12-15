@@ -23,7 +23,7 @@ package
 	   there will be only two, one for "true" and the other for
 	   "false".
 	 */
-	final class Boolean extends Object
+	final class Boolean! extends Object
 	{		
 		/* E262-3 15.6.1: The Boolean Constructor Called as a Function. */
 		static intrinsic function call(value) : Boolean {
@@ -36,7 +36,7 @@ package
 		}
 
 		/* E262-3 15.6.4.2: Boolean.prototype.toString.  */
-		prototype function toString(this : Boolean) {
+		prototype function toString(/*this : Boolean*/) {  // FIXME: parser does not handle this yet
 			return this.intrinsic::toString();
 		}
 
@@ -46,7 +46,7 @@ package
 		}
 		
 		/* E262-3 15.6.4.3: Boolean.prototype.valueOf. */
-		prototype function valueOf(this : Boolean) {
+		prototype function valueOf(/*this : Boolean*/) {  // FIXME: parser does not handle this yet
 			return this;
 		}
 
