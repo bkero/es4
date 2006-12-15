@@ -261,6 +261,9 @@ datatype PRAGMA =
        | CallExpr of {func: EXPR,
                       actuals: EXPR list}
 
+       | ApplyTypeExpr of {expr: EXPR,  (* apply expr to type list *)
+                      actuals: TYPE_EXPR list}
+
        | LetExpr of { defs: VAR_BINDING list,
                       body: EXPR list}
 
@@ -340,15 +343,15 @@ withtype FIELD =
 
      and CLASS_DEFN =
          { name: IDENT,
-	   nonnullable: bool,
+		   nonnullable: bool,
            attrs: ATTRIBUTES,
            params: IDENT list,
            extends: IDENT_EXPR option,
            implements: IDENT_EXPR list,
-	   body: BLOCK,
+		   body: BLOCK,
            (* the following field will be populated during the definition phase *)
            instanceVars: VAR_BINDING list,
-	   instanceMethods: FUNC list,
+		   instanceMethods: FUNC list,
            vars: VAR_BINDING list,
            methods: FUNC list,
            constructor: FUNC option,
