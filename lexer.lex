@@ -275,7 +275,7 @@ charEscape            = "\\" ([abtnvfr\"\'\\]|"x"{hexDigit}{2}|[0-7]{1}{3});
 
 <INITIAL>"/*"                => (YYBEGIN MULTI_LINE_COMMENT; lex());
 <MULTI_LINE_COMMENT>"*/"     => (YYBEGIN INITIAL; lex());
-<MULTI_LINE_COMMENT>.        => (lex());
+<MULTI_LINE_COMMENT>.|"\n"   => (lex());
 
 <INITIAL>"'"|"\""            => (curr_quote := String.sub (yytext,0); 
                                  curr_chars := [];
