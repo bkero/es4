@@ -34,7 +34,7 @@ fun log ss =
      List.app TextIO.print ss;
      TextIO.print "\n")
 
-val trace_on = true
+val trace_on = false
 
 fun trace ss =
 	if trace_on then log ss else ()
@@ -424,13 +424,13 @@ and functionExpression (ts,a:alpha,b:beta) =
 							let
 								val (ts4,nd4) = block (ts3,FUNCTION)
 							in
-								(ts4,Ast.FunExpr {ident=NONE,sign=nd3,body=nd4})
+								(ts4,Ast.FunExpr {ident=NONE,fsig=nd3,body=nd4})
 							end
 					  | (_,ALLOWLIST) => 
 							let
 								val (ts4,nd4) = listExpression (ts3,b)
 							in
-								(ts4,Ast.FunExpr{ident=NONE,sign=nd3,
+								(ts4,Ast.FunExpr{ident=NONE,fsig=nd3,
 									body=Ast.Block { pragmas=[],defns=[],stmts=[Ast.ReturnStmt nd4] }})
 
 							end
@@ -445,13 +445,13 @@ and functionExpression (ts,a:alpha,b:beta) =
 							let
 								val (ts4,nd4) = block (ts3,FUNCTION)
 							in
-								(ts4,Ast.FunExpr {ident=SOME nd2,sign=nd3,body=nd4})
+								(ts4,Ast.FunExpr {ident=SOME nd2,fsig=nd3,body=nd4})
 							end
 					  | (_,ALLOWLIST) => 
 							let
 								val (ts4,nd4) = listExpression (ts3,b)
 							in
-								(ts4,Ast.FunExpr{ident=SOME nd2,sign=nd3,
+								(ts4,Ast.FunExpr{ident=SOME nd2,fsig=nd3,
 									body=Ast.Block { pragmas=[],defns=[],stmts=[Ast.ReturnStmt nd4] }})
 
 							end
@@ -466,7 +466,7 @@ and functionExpression (ts,a:alpha,b:beta) =
 		TypeParameters  (  Parameters  )  ResultType
 *)
 
-and functionSignature (ts) : (token list * Ast.FUNC_SIGN) =
+and functionSignature (ts) : (token list * Ast.FUNC_SIG) =
     let val _ = trace([">> functionSignature with next=",tokenname(hd(ts))]) 
 		val (ts1,nd1) = typeParameters ts
 	in case ts1 of
@@ -479,7 +479,13 @@ and functionSignature (ts) : (token list * Ast.FUNC_SIGN) =
                        	val (ts3,nd3) = resultType (tl ts2)
                    	in
 						(log(["<< functionSignature with next=",tokenname(hd ts3)]);
-                        (ts3,Ast.FunctionSignature {typeparams=nd1,params=nd2,resulttype=nd3}))
+                        (ts3,Ast.FunctionSignature
+								{ typeParams=nd1,
+                                	params=nd2,
+	                                returnType=nd3,
+									thisType=NONE,  (* todo *)
+									hasBoundThis=false, (* todo *)
+									hasRest=false })) (* do we need this *)
                    	end
            	  | _ => raise ParseError
 			end
@@ -688,7 +694,7 @@ and resultType ts =
 (*
     ObjectLiteral    
         {  FieldList  }
-        {  FieldList  }  :  RecordType
+        {  FieldList  }  :  ObjectType
 *)
 
 and objectLiteral ts = 
@@ -836,7 +842,7 @@ and functionCommon ts =
             let
                 val (ts2,nd2) = block (ts1,FUNCTION)
             in
-                (ts2,Ast.FunExpr {ident=NONE,sign=nd1,body=nd2})
+                (ts2,Ast.FunExpr {ident=NONE,fsig=nd1,body=nd2})
             end
       | _ => raise ParseError
     end
@@ -2513,7 +2519,7 @@ and typedIdentifier (ts) =
 		SimplePattern(a,b,g)
 		SimplePattern(a,b,g)  :  TypeExpression
 		ObjectPattern
-		ObjectPattern  :  RecordType
+		ObjectPattern  :  ObjectType
 		ArrayPattern
 		ArrayPattern  :  ArrayType
 *)
@@ -2571,7 +2577,7 @@ and typedPattern (ts,a,b,g) =
 	TypeExpression    
 	    FunctionType
     	UnionType
-	    RecordType
+	    ObjectType
     	ArrayType
     	TypeIdentifier
 	    TypeIdentifier  !
@@ -2591,11 +2597,11 @@ and typeExpression (ts) : (token list * Ast.TYPE_EXPR) =
 				val rf = Ast.LexicalRef {ident=nd1}
             in case ts1 of
 				Not :: _ =>
-					(tl ts1,Ast.PrimaryType {ident=nd1,kind=Ast.NonNullable}) 
+					(tl ts1,Ast.NominalType {ident=nd1,nullable=SOME false}) 
 			  | QuestionMark :: _ =>
-					(tl ts1,Ast.PrimaryType{ident=nd1,kind=Ast.Nullable}) 
+					(tl ts1,Ast.NominalType{ident=nd1,nullable=SOME true}) 
 			  | _ =>
-					(ts1,Ast.PrimaryType{ident=nd1,kind=Ast.Named}) 
+					(ts1,Ast.NominalType{ident=nd1,nullable=NONE}) 
             end
     end
 
@@ -2609,8 +2615,7 @@ and functionType (ts) : (token list * Ast.TYPE_EXPR)  =
 	in case ts of
 		Function :: _ => 
 			let
-				val (ts1,Ast.FunctionSignature{typeparams,params,resulttype}) = 
-								functionSignature (tl ts)
+				val (ts1,nd1) = functionSignature (tl ts)
 				fun paramtypes (params:Ast.VAR_BINDING list):Ast.TYPE_EXPR option list =
 					case params of
 						[] => []
@@ -2623,8 +2628,7 @@ and functionType (ts) : (token list * Ast.TYPE_EXPR)  =
 							end
 			in
 				trace(["<< functionType with next=",tokenname(hd ts1)]);
-				(ts1,Ast.FunctionType {paramTypes=paramtypes params,
-						returnType=resulttype,boundThisType=NONE,hasRest=false})
+				(ts1,Ast.FunctionType nd1)
 			end
 	  | _ => raise ParseError
 	end
@@ -2649,7 +2653,7 @@ and unionType (ts) : (token list * Ast.TYPE_EXPR)  =
 	end
 
 (*
-	RecordType    
+	ObjectType    
     	{  FieldTypeList  }
 *)
 
@@ -2662,7 +2666,7 @@ and recordType (ts) : (token list * Ast.TYPE_EXPR) =
 			in case ts2 of
 			    RightBrace :: ts3 => 
 					(trace(["<< recordType with next=",tokenname(hd(ts3))]);
-					(ts3,Ast.RecordType nd2))
+					(ts3,Ast.ObjectType nd2))
 			  | _ => raise ParseError
 			end
 	  | _ => raise ParseError
@@ -4505,7 +4509,7 @@ and functionDeclaration (ts) =
 					  defns=[Ast.FunctionDefn {attrs=defaultAttrs,
 						   kind=Ast.Var, 
 						   func=Ast.Func {name={ident=nd1,kind=Ast.Ordinary},
-									   	  sign=nd2,
+									   	  fsig=nd2,
 			    				    	  body=Ast.Block {pragmas=[],defns=[],stmts=[]}}}],
 			  		  stmts=[]})
 			end
@@ -4553,7 +4557,7 @@ and functionDefinition (ts,attrs,CLASS) =
 					  defns=[Ast.FunctionDefn {attrs=attrs,
 						   kind=nd1, 
 						   func=Ast.Func {name=nd2,
-									   	  sign=nd3,
+									   	  fsig=nd3,
 			    				    	  body=nd4}}],
 			  		  stmts=[]})
 			end
@@ -4567,7 +4571,7 @@ and functionDefinition (ts,attrs,CLASS) =
 					  defns=[Ast.FunctionDefn {attrs=attrs,
 						   kind=nd1, 
 						   func=Ast.Func {name=nd2,
-									   	  sign=nd3,
+									   	  fsig=nd3,
 			    				    	  body=nd4}}],
 			  		  stmts=[]})
 			end
@@ -4584,7 +4588,7 @@ and functionDefinition (ts,attrs,CLASS) =
 			  defns=[Ast.FunctionDefn {attrs=attrs,
 						   kind=nd1, 
 						   func=Ast.Func {name=nd2,
-									   	  sign=nd3,
+									   	  fsig=nd3,
 			    				    	  body=nd4}}],
 			  stmts=[]})
 	end
