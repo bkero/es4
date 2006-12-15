@@ -104,7 +104,7 @@ fun tcExpr ((ctxt as {env,this,...}):CONTEXT) (e:EXPR) :TYPE_EXPR =
        | NullaryExpr This => this
        | NullaryExpr Empty => (TextIO.print "what is Empty?\n"; raise Match)
        | UnaryExpr (unop, arg) => tcUnaryExpr ctxt (unop, arg)
-
+(*
        | FunExpr {ident, sign as (FunctionSignature {typeParams,params,returnType,...}), body} =>
     (* What to do with typeparams - no place in context for type variables
     *  also need to check well-formedness of resulttype
@@ -122,6 +122,7 @@ fun tcExpr ((ctxt as {env,this,...}):CONTEXT) (e:EXPR) :TYPE_EXPR =
 			   hasRest=false  (*FIXME*)
 			 }
 	  end
+*)
        | _ => (TextIO.print "tcExpr incomplete: "; Pretty.ppExpr e; raise Match)
 	end
 
