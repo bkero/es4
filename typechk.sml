@@ -31,9 +31,15 @@ val anyType       = SpecialType Any
 fun assert b s = if b then () else (raise Fail s)
 
 (* type env has program variables, with types, and type variables, with no types *)
+(* TODO: do we need to consider namespaces here ??? *)
 type TYPE_ENV = (IDENT * TYPE_EXPR option) list
 
 fun extendEnv ((name, ty), env) = (name, ty)::env
+fun lookupProgramVariable (env:TYPE_ENV) (name:IDENT) : TYPE_EXPR =
+    case List.find (fn (n,_) => n=name) env of
+	NONE => raise IllTypedException "Unbound variable"
+      | SOME (_,NONE) => raise IllTypedException "Refered to type variable as a program variable"
+      | SOME (_,SOME t) => t
 
 type CONTEXT = {this: TYPE_EXPR, env: TYPE_ENV, lbls: IDENT option list, retTy: TYPE_EXPR option}
 
@@ -72,7 +78,7 @@ fun normalizeType (t:TYPE_EXPR):TYPE_EXPR =
 fun tcExpr ((ctxt as {env,this,...}):CONTEXT) (e:EXPR) :TYPE_EXPR = 
     let
     in 
-      TextIO.print "type checking expr: ";
+      TextIO.print ("type checking expr: env len " ^ (Int.toString (List.length env)) ^"\n");
       Pretty.ppExpr e;
       TextIO.print "\n";
       case e of
@@ -112,6 +118,8 @@ fun tcExpr ((ctxt as {env,this,...}):CONTEXT) (e:EXPR) :TYPE_EXPR =
        | NullaryExpr This => this
        | NullaryExpr Empty => (TextIO.print "what is Empty?\n"; raise Match)
        | UnaryExpr (unop, arg) => tcUnaryExpr ctxt (unop, arg)
+       | LexicalRef {ident=Identifier { ident, openNamespaces }} =>
+	 lookupProgramVariable env ident
 
        | FunExpr { ident, 
 		   fsig as (FunctionSignature {typeParams,params,returnType,thisType,...}), 
@@ -174,34 +182,26 @@ fun tcExpr ((ctxt as {env,this,...}):CONTEXT) (e:EXPR) :TYPE_EXPR =
 		end
 	      | _ => raise IllTypedException "Function expression does not have a function type"
 	 end
+
+       | ApplyTypeExpr {expr, actuals} =>
+	 (* Can only instantiate Functions, classes, and interfaces *)
+	 let val exprTy = tcExpr ctxt expr;
+	     val typeParams = 
+		 case exprTy of
+		     FunctionType (FunctionSignature {typeParams, ...}) => typeParams
+		   | _ => raise IllTypedException "Cannot instantiate a non-polymorphic type"
+	 in
+	     List.app (fn t => tcType ctxt t) actuals;
+	     if (List.length typeParams) = (List.length actuals)
+	     then ()
+	     else raise IllTypedException "Wrong number of type arguments";
+	     AppType { base=exprTy, args=actuals }
+	 end
+
        | _ => (TextIO.print "tcExpr incomplete: "; Pretty.ppExpr e; raise Match)
     end
     
-and tcExprList ((ctxt as {env,this,...}):CONTEXT) (l:EXPR list) :TYPE_EXPR = 
-	let
-	in 	case l of
-		_  => List.last (List.map (tcExpr ctxt) l)
-	end
-
 (*
-(sign as (FunctionSignature {typeparams, params, resulttype}))
-
-       | FunExpr of { ident: IDENT option,
-                      sign: FUNC_SIGN,
-                      body: BLOCK }
-
-     and FUNC_TY =
-         { paramTypes: TYPE_EXPR option list,
-           returnType: TYPE_EXPR,
-           boundThisType: TYPE_EXPR option,
-           hasRest: bool }
-
-     and FUNC_SIGN =
-         FunctionSignature of { typeparams: IDENT list,
-                                params: VAR_BINDING list,
-                                resulttype: TYPE_EXPR }
-
-
      and LITERAL =
        | LiteralXML of EXPR list
        | LiteralNamespace of NAMESPACE
@@ -247,15 +247,21 @@ and tcPattern (ctxt:CONTEXT) (Ast.IdentifierPattern name) = (
   | tcPattern ctxt (Ast.SimplePattern expr) = ??
 *)
 
+and tcExprList ((ctxt as {env,this,...}):CONTEXT) (l:EXPR list) :TYPE_EXPR = 
+	let
+	in 	case l of
+		_  => List.last (List.map (tcExpr ctxt) l)
+	end
+
 and inferObjectType ctxt fields =
     (* TODO: get a (name, type) option for every field *)
     raise (Fail "blah")
 
 (* TODO: this needs to return some type structure as well *)
-and tcVarDefn (ctxt:CONTEXT) 
-     (Binding {kind,init,attrs,pattern,ty}) =
+and tcVarDefn (ctxt:CONTEXT) (Binding {kind,init,attrs,pattern,ty}) =
         (* TODO: what are simple patterns? *)
-	[]
+[]
+	
 
 and tcVarBinding (ctxt:CONTEXT) (v:VAR_BINDING) : TYPE_EXPR =
     (*TODO*)
@@ -427,13 +433,15 @@ and tcBlock (ctxt as {env,...}) (Block {pragmas=pragmas,defns=defns,stmts=stmts}
 
 fun tcProgram { packages, body } = 
 	(tcBlock {this=anyType, env=[], lbls=[], retTy=NONE} body; true)
-    handle IllTypedException msg => (
-     	TextIO.print "Ill typed exception: "; 
-     	TextIO.print msg; 
-     	TextIO.print "\n"; 
-     	false)
+    handle IllTypedException msg => 
+	   let in
+     	       TextIO.print "Ill typed exception: "; 
+     	       TextIO.print msg; 
+     	       TextIO.print "\n"; 
+     	       false
+	   end
 
    
-
+				    
 
 end
