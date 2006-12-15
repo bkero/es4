@@ -34,7 +34,7 @@ fun log ss =
      List.app TextIO.print ss;
      TextIO.print "\n")
 
-val trace_on = false
+val trace_on = true
 
 fun trace ss =
 	if trace_on then log ss else ()
@@ -470,7 +470,26 @@ and functionSignature (ts) : (token list * Ast.FUNC_SIG) =
     let val _ = trace([">> functionSignature with next=",tokenname(hd(ts))]) 
 		val (ts1,nd1) = typeParameters ts
 	in case ts1 of
-        LeftParen :: _ =>
+        LeftParen :: This :: Colon ::  _ =>
+           	let
+               	val (ts2, nd2) = parameters (tl ts1)
+           	in case ts2 of
+               	RightParen :: _ =>
+                   	let
+                       	val (ts3,nd3) = resultType (tl ts2)
+                   	in
+						(log(["<< functionSignature with next=",tokenname(hd ts3)]);
+                        (ts3,Ast.FunctionSignature
+								{ typeParams=nd1,
+                                	params=nd2,
+	                                returnType=nd3,
+									thisType=NONE,  (* todo *)
+									hasBoundThis=false, (* todo *)
+									hasRest=false })) (* do we need this *)
+                   	end
+           	  | _ => raise ParseError
+			end
+      | LeftParen :: _ =>
            	let
                	val (ts2, nd2) = parameters (tl ts1)
            	in case ts2 of
@@ -1072,7 +1091,7 @@ and memberExpression (ts,a,b) =
             let
                 val (ts1,nd1) = memberExpression(tl ts,a,b)
                 val (ts2,nd2) = arguments(ts1)
-                val (ts3,nd3) = memberExpressionPrime(ts2,Ast.CallExpr {func=nd1,actuals=nd2},a,b)
+                val (ts3,nd3) = memberExpressionPrime(ts2,Ast.NewExpr {obj=nd1,actuals=nd2},a,b)
             in
                 (ts3,nd3)
             end
@@ -1081,14 +1100,14 @@ and memberExpression (ts,a,b) =
                 val (ts2,nd2) = superExpression(ts)
                 val (ts3,nd3) = propertyOperator(ts2,nd2)
                 val (ts4,nd4) = memberExpressionPrime(ts3,nd3,a,b)
-               in
+            in
                 (ts4,nd4)
             end
       | _ =>
             let
                 val (ts3,nd3) = primaryExpression(ts,a,b)
                 val (ts4,nd4) = memberExpressionPrime(ts3,nd3,a,b)
-               in
+            in
                 (trace(["<< memberExpression with next=",tokenname(hd ts4)]);(ts4,nd4))
             end
     end
@@ -1146,6 +1165,30 @@ and callExpressionPrime (ts,nd,a,b) =
                 memberExpressionPrime(ts1,Ast.CallExpr({func=nd,actuals=nd1}),a,b)
             end
       | _ => (ts,nd)
+    end
+
+(*
+	NewExpression(a,b)
+    	MemberExpression(a,b)
+	    new  NewExpression(a,b)
+*)
+
+and newExpression (ts,a,b) =
+    let val _ = trace([">> newExpression with next=",tokenname(hd(ts))]) 
+    in case ts of
+        New :: New :: _ =>
+            let
+                val (ts1,nd1) = newExpression(tl ts,a,b)  (* eat only the first new *)
+            in
+                (ts1,Ast.NewExpr({obj=nd1,actuals=[]}))
+            end
+      | New :: _ =>
+            let
+                val (ts1,nd1) = memberExpression(ts,a,b)  (* don't eat new, let memberExpr eat it *)
+            in
+                (ts1,nd1)
+            end
+      | _ => memberExpression(ts,a,b)
     end
 
 (*
@@ -1307,24 +1350,6 @@ and brackets (ts) : (token list * Ast.EXPR) =
 	end
 
 (*
-	NewExpression(a,b)
-    	MemberExpression(a,b)
-	    new  NewExpression(a,b)
-*)
-
-and newExpression (ts,a,b) =
-    let val _ = trace([">> newExpression with next=",tokenname(hd(ts))]) 
-    in case ts of
-        New :: ts1 =>
-            let
-                val (ts2,nd2) = newExpression(ts1,a,b)
-            in
-                (ts2,Ast.NewExpr({obj=nd2,actuals=[]}))
-            end
-      | _ => memberExpression(ts,a,b)
-    end
-
-(*
     LeftHandSideExpression(a, b)   
         NewExpression(a, b)
         CallExpression(a, b)
@@ -1340,26 +1365,26 @@ and newExpression (ts,a,b) =
 and leftHandSideExpression (ts,a,b) =
     let val _ = trace([">> leftHandSideExpression with next=",tokenname(hd(ts))]) 
     in case ts of
-        New :: ts1 =>
+        New :: _ =>
             let
-                val (ts2,nd2) = newExpression(ts1,a,b)
+                val (ts1,nd1) = newExpression(ts,a,b)
             in
-                (ts2,Ast.NewExpr({obj=nd2,actuals=[]}))
+                (ts1,Ast.NewExpr({obj=nd1,actuals=[]}))
             end
       | _ =>
             let
-                val (ts2,nd2) = memberExpression(ts,a,b)
-            in case ts2 of
+                val (ts1,nd1) = memberExpression(ts,a,b)
+            in case ts1 of
                 LeftParen :: _ =>
                     let
-                        val (ts3,nd3) = arguments(ts2)
-                        val (ts4,nd4) = callExpressionPrime(ts3,Ast.CallExpr {func=nd2,actuals=nd3},a,b)
+                        val (ts2,nd2) = arguments(ts1)
+                        val (ts3,nd3) = callExpressionPrime(ts2,Ast.CallExpr {func=nd1,actuals=nd2},a,b)
                     in
-						(trace(["<< leftHandSideExpression with next=",tokenname(hd(ts4))]);(ts4,nd4))
+						(trace(["<< leftHandSideExpression with next=",tokenname(hd(ts3))]);(ts3,nd3))
                     end
               | _ => 
-					(trace(["<< leftHandSideExpression with next=",tokenname(hd(ts2))]);
-					(ts2,nd2))
+					(trace(["<< leftHandSideExpression with next=",tokenname(hd(ts1))]);
+					(ts1,nd1))
             end
     end
 

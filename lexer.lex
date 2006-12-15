@@ -57,9 +57,9 @@ fun followsLineBreak (ts) =
             case lbs of
                 [] => false
               | _ => 
-	              (log(["token_count=",Int.toString(max_offset),
+	              (  (* log(["token_count=",Int.toString(max_offset),
 						" offset=",Int.toString(max_offset-offset),
-						" break=",Int.toString(hd lbs)]);
+							 " break=",Int.toString(hd lbs)]) ;*)
                   if (hd lbs) = (max_offset - offset) then true else findBreak (tl lbs))
 	in
 		findBreak (!line_breaks)
