@@ -99,7 +99,7 @@ datatype VAR_DEFN_TAG =
        | Var
        | LetVar
        | LetConst
-       | Rest
+       | Rest   (* Goes away, redundant with hasRest in FUNC_SIG *)
 
 datatype NAMESPACE =
          Private
@@ -147,10 +147,10 @@ datatype PRAGMA =
        | FunctionDefn of FUNC_DEFN
        | InterfaceDefn of INTERFACE_DEFN
        | NamespaceDefn of { attrs: ATTRIBUTES,
-							ident: IDENT,
+			    ident: IDENT,
                             init: EXPR option }
        | TypeDefn of { attrs: ATTRIBUTES,
-					   ident: IDENT,
+		       ident: IDENT,
                        init: TYPE_EXPR }
 
      and FUNC_SIG =
@@ -158,7 +158,7 @@ datatype PRAGMA =
                                 params: VAR_BINDING list,
                                 returnType: TYPE_EXPR,
 				thisType: TYPE_EXPR option,
-				hasBoundThis: bool,
+				hasBoundThis: bool, (*goes away, redundant with previous option*)
 				hasRest: bool }
 
 
