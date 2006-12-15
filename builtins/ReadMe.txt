@@ -1,3 +1,9 @@
+Resolution December meeting: 
+
+  * "intrinsic function" implies final
+  * "prototype function" implies DontEnum
+
+
 /*
 	Attempt at modeling ECMA-262 builtin classes using the new ECMA4 language.
 	
