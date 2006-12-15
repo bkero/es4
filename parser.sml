@@ -27,7 +27,7 @@ datatype tau =
     GLOBAL
   | CLASS
   | INTERFACE
-  | FUNCTION
+  | LOCAL
 
 fun log ss = 
     (TextIO.print "log: "; 
@@ -422,7 +422,7 @@ and functionExpression (ts,a:alpha,b:beta) =
 					in case (ts3,a) of
 						(LeftBrace :: _,_) => 
 							let
-								val (ts4,nd4) = block (ts3,FUNCTION)
+								val (ts4,nd4) = block (ts3,LOCAL)
 							in
 								(ts4,Ast.FunExpr {ident=NONE,fsig=nd3,body=nd4})
 							end
@@ -443,7 +443,7 @@ and functionExpression (ts,a:alpha,b:beta) =
 					in case (ts3,a) of
 						(LeftBrace :: _,_) => 
 							let
-								val (ts4,nd4) = block (ts3,FUNCTION)
+								val (ts4,nd4) = block (ts3,LOCAL)
 							in
 								(ts4,Ast.FunExpr {ident=SOME nd2,fsig=nd3,body=nd4})
 							end
@@ -840,7 +840,7 @@ and functionCommon ts =
     in case ts1 of
         LeftBrace :: _ => 
             let
-                val (ts2,nd2) = block (ts1,FUNCTION)
+                val (ts2,nd2) = block (ts1,LOCAL)
             in
                 (ts2,Ast.FunExpr {ident=NONE,fsig=nd1,body=nd2})
             end
@@ -3007,7 +3007,7 @@ and blockStatement (ts) =
     in case ts of
 		LeftBrace :: _ => 
 			let
-				val (ts1,nd1) = block (ts,FUNCTION)
+				val (ts1,nd1) = block (ts,LOCAL)
 			in
 				trace(["<< blockStatement with next=", tokenname(hd ts)]);
 				(ts1,Ast.BlockStmt nd1)
@@ -3190,7 +3190,7 @@ and caseElementsPrefix (ts,has_default) : (token list * Ast.CASE list) =
 			end
 	  | _ => 
 			let
-				val (ts1,nd1) = directive (ts,FUNCTION,FULL)
+				val (ts1,nd1) = directive (ts,LOCAL,FULL)
 				val (ts2,nd2) = caseElementsPrefix (ts1,has_default)
 			in case nd2 of
 				[] =>
@@ -3327,7 +3327,7 @@ and typeCaseElement (ts,has_default) : (token list * Ast.TYPE_CASE) =
 			in case ts1 of
 				RightParen :: _ =>
 					let
-						val (ts2,nd2) = block (tl ts1,FUNCTION)
+						val (ts2,nd2) = block (tl ts1,LOCAL)
 					in
 						trace(["<< typeCaseElement with next=", tokenname(hd ts2)]);
 						(ts2,{ptrn=SOME (Ast.Binding{pattern=p,ty=t,
@@ -3338,7 +3338,7 @@ and typeCaseElement (ts,has_default) : (token list * Ast.TYPE_CASE) =
 			end
 	  | (Default :: _,false) =>
 			let
-				val (ts1,nd1) = block (tl ts,FUNCTION)
+				val (ts1,nd1) = block (tl ts,LOCAL)
 			in
 				trace(["<< typeCaseElement with next=", tokenname(hd ts1)]);
 				(ts1,{ptrn=NONE,body=nd1})
@@ -3822,11 +3822,11 @@ and tryStatement (ts) : (token list * Ast.STMT) =
     in case ts of
 		Try :: _ =>
 			let
-				val (ts1,nd1) = block(tl ts,FUNCTION)
+				val (ts1,nd1) = block(tl ts,LOCAL)
 			in case ts1 of
 				Finally :: _ =>
 					let
-						val (ts2,nd2) = block (tl ts1,FUNCTION)
+						val (ts2,nd2) = block (tl ts1,LOCAL)
 					in
 						(ts2,Ast.TryStmt {body=nd1,catches=[],finally=SOME nd2})
 					end
@@ -3836,7 +3836,7 @@ and tryStatement (ts) : (token list * Ast.STMT) =
 					in case ts2 of
 						Finally :: _ =>
 							let
-								val (ts3,nd3) = block (tl ts2,FUNCTION)
+								val (ts3,nd3) = block (tl ts2,LOCAL)
 							in
 								(ts3,Ast.TryStmt {body=nd1,catches=nd2,finally=SOME nd3})
 							end
@@ -3876,7 +3876,7 @@ and catchClause (ts) =
 			in case ts1 of
 				RightParen :: _ =>
 					let
-						val (ts2,nd2) = block (tl ts1,FUNCTION)
+						val (ts2,nd2) = block (tl ts1,LOCAL)
 					in
 						(ts2,{bind=Ast.Binding nd1,body=nd2})
 					end
@@ -4156,7 +4156,7 @@ and attributes (ts,attrs,t) =
 and attribute (ts,Ast.Attributes {ns,override,static,final,dynamic,
 							        prototype,native,rest },GLOBAL) =
     let val _ = trace([">> attribute with next=", tokenname(hd ts)])
-	in case ts of
+	in case (ts) of
 		Dynamic :: _ =>
 			let
 			in
@@ -4319,7 +4319,7 @@ and attribute (ts,Ast.Attributes {ns,override,static,final,dynamic,
 						rest = rest})				
 		end
   | attribute (ts,Ast.Attributes {ns,override,static,final,dynamic,
-							        prototype,native,rest },FUNCTION) =
+							        prototype,native,rest },LOCAL) =
 		let
 		in case ts of
 			(Dynamic | Final | Native | Override | Prototype | Static | 
@@ -4727,7 +4727,7 @@ and constructorSignature (ts) = raise ParseError
 
 and functionBody (ts) =
     let val _ = trace([">> functionBody with next=", tokenname(hd ts)])
-		val (ts1,nd1) = block (ts,FUNCTION)
+		val (ts1,nd1) = block (ts,LOCAL)
 	in
 		(ts1,nd1)
 	end
