@@ -232,15 +232,34 @@ val (noOpFunction:FUN) =
 	  definition = SOME noOpFunctionDefn }
 
 val (emptyClassDefn:Ast.CLASS_DEFN) = 
+(*     and CLASS_DEFN =
+         { name: IDENT,
+		   nonnullable: bool,
+           attrs: ATTRIBUTES,
+           params: IDENT list,
+           extends: IDENT_EXPR option,
+           implements: IDENT_EXPR list,
+		   body: BLOCK,
+           (* the following field will be populated during the definition phase *)
+           instanceVars: VAR_BINDING list,
+		   instanceMethods: FUNC list,
+           vars: VAR_BINDING list,
+           methods: FUNC list,
+           constructor: FUNC option,
+           initializer: STMT list }
+*)
     { name = "",
+	  nonnullable = false,
       attrs = defaultAttrs,
       params = [],
-      extends = [],
+      extends = NONE,
       implements = [],
+	  body = Ast.Block {pragmas=[],defns=[],stmts=[]},
       instanceVars = [],
+	  instanceMethods = [],
       vars = [],
-      constructor = noOpFunc,
       methods = [],
+      constructor = SOME noOpFunc,
       initializer = [] }
     
 val (emptyClassLayout:LAYOUT) = 
@@ -329,8 +348,8 @@ fun equals (Bool a) (Bool b) = (a = b)
   | equals (Num a) (Num b) = (Real.== (a,b))
   | equals (Object (Obj a)) (Object (Obj b)) = ((#bindings a) = (#bindings b))
   | equals (Namespace a) (Namespace b) = (a = b)
-  | equals (Class (Cls a)) (Class (Cls b)) = ((#definition a) = (#definition b))
-  | equals (Interface a) (Interface b) = (a = b)
+(*  | equals (Class (Cls a)) (Class (Cls b)) = ((#definition a) = (#definition b)) *)
+(*  | equals (Interface a) (Interface b) = (a = b) *)
   | equals Undef Undef = true
   | equals Null Null = true
   | equals Undef Null = true
