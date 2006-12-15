@@ -9,22 +9,37 @@
 package RegExp
 {
 	import Unicode.*;
+	use strict;
 
-	type MatchResult = State?;
-
-	const failure : State? = null;
-
-	class State!
+	/* Encapsulation of compiled regular expression as returned by the
+	   compiler.  
+	*/
+	class RegExpMatcher!
 	{
-		var endIndex : int = 0;
-		var cap : CapArray;
-
-		function State(e : int, cap : CapArray) {
-			this.endIdex = e;
-			this.cap = cap;
+		function RegExpMatcher(matcher : Matcher, nCapturingParens : int, names : [String]!) {
+			this.matcher = matcher;
+			this.nCapturingParens = nCapturingParens;
+			this.names = names;
 		}
+
+		/* Returns an array of matches, with additional named properties
+		   on the array for named submatches 
+		*/
+		function match( input : String!, endIndex : int ) : MatchResult {
+			return matcher.match(new Context(input, flags),
+								 new State(endIndex, makeCapArray(nCapturingParens)), 
+								 function (x : State) : State? { return x });
+		}
+
+		var matcher : Matcher;
+		var nCapturingParens : int;
+		var names : [String]!;
 	}
 
+	/* The Context contains static data for the matching, we use this
+	   instead of package-global variables in order to make the
+	   matcher reentrant.
+	*/
 	class Context!
 	{
 		const input       : String!;
@@ -43,6 +58,50 @@ package RegExp
 		}
 	}
 
+	/* MatchResult and State. 
+	 */
+	type MatchResult = State?;
+
+	const failure : State? = null;
+
+	class State!
+	{
+		var endIndex : int = 0;
+		var cap : CapArray;
+
+		function State(e : int, cap : CapArray) {
+			this.endIdex = e;
+			this.cap = cap;
+		}
+	}
+
+	/* Captures array.
+
+	   This captures array can be an array that's copied like the
+	   E262-3 states, or it could be a functional data structure.  
+	*/
+	type CapArray = [String]!;
+
+	function makeCapArray(nCapturingParens : uint) : CapArray {
+		var a = [] : CapArray;
+		for ( let i : uint = 0 ; i <= nCapturingParens ; i++ )
+			a[i] = null;
+		return a;
+	}
+
+	function copyCapArray(a : CapArray, parenIndex : uint, parenCount : uint) : CapArray {
+		let b : CapArray = [] : CapArray;
+		for ( let i : uint = 0 ; i < a.length ; i++ )
+			b[i] = a[i];
+		for ( let k : uint = parenIndex+1 ; k <= parenIndex+parenCount ; k++ )
+			b[i] = null;
+		return b;
+	}
+
+
+	/* The matcher is a single object that implements the Matcher
+	   interface.  Normally a Matcher object references other Matcher
+	   objects.  */
 	interface Matcher!
 	{
 		function match(ctx : Context, x : State, c : Continuation) : MatchResult;
@@ -121,7 +180,7 @@ package RegExp
 	{
 		override function testAssertion(ctx : Context, x : State) : Boolean {
 			let e : int = x.endIndex;
-			return isWordChar(ctx, e-1) !== isWordChar(ctx, e);
+			return isREWordChar(ctx, e-1) !== isREWordChar(ctx, e);
 		}
 	}
 
@@ -129,7 +188,7 @@ package RegExp
 	{
 		override function testAssertion(ctx : Context, x : State) : Boolean {
 			let e : int = x.endIndex;
-			return isWordChar(ctx, e-1) === isWordChar(ctx, e);
+			return isREWordChar(ctx, e-1) === isREWordChar(ctx, e);
 		}
 	}
 
