@@ -362,10 +362,6 @@ withtype FIELD =
            extends: IDENT_EXPR list,
            body: BLOCK }
 
-     and PRIM_TY =
-         { name: USTRING,
-           kind: PRIM_KIND }
-
      and FOR_ENUM_STMT =
          { ptrn: PATTERN option,
            obj: EXPR list,
