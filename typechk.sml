@@ -13,15 +13,15 @@ open Ast
 (* TODO: what is the proper way to resolve these built-ins? *)
 fun simpleIdent s = Identifier { ident=s, openNamespaces=ref [] }
 
-val boolType      = PrimaryType { ident=simpleIdent "boolean",   kind=Named }
-val numberType    = PrimaryType { ident=simpleIdent "number",    kind=Named }
-val decimalType   = PrimaryType { ident=simpleIdent "decimal",   kind=Named }
-val intType       = PrimaryType { ident=simpleIdent "int",       kind=Named }
-val uintType      = PrimaryType { ident=simpleIdent "uint",      kind=Named }
-val stringType    = PrimaryType { ident=simpleIdent "string",    kind=Named }
-val regexpType    = PrimaryType { ident=simpleIdent "regexp",    kind=Named }
-val exceptionType = PrimaryType { ident=simpleIdent "exception", kind=Named }
-val namespaceType = PrimaryType { ident=simpleIdent "Namespace", kind=Named }
+val boolType      = NominalType { ident=simpleIdent "boolean",   nullable=NONE }
+val numberType    = NominalType { ident=simpleIdent "number",    nullable=NONE }
+val decimalType   = NominalType { ident=simpleIdent "decimal",   nullable=NONE }
+val intType       = NominalType { ident=simpleIdent "int",       nullable=NONE }
+val uintType      = NominalType { ident=simpleIdent "uint",      nullable=NONE }
+val stringType    = NominalType { ident=simpleIdent "string",    nullable=NONE }
+val regexpType    = NominalType { ident=simpleIdent "regexp",    nullable=NONE }
+val exceptionType = NominalType { ident=simpleIdent "exception", nullable=NONE }
+val namespaceType = NominalType { ident=simpleIdent "Namespace", nullable=NONE }
 val undefinedType = SpecialType Undefined
 val nullType      = SpecialType Null
 val anyType       = SpecialType Any
@@ -105,19 +105,19 @@ fun tcExpr ((ctxt as {env,this,...}):CONTEXT) (e:EXPR) :TYPE_EXPR =
        | NullaryExpr Empty => (TextIO.print "what is Empty?\n"; raise Match)
        | UnaryExpr (unop, arg) => tcUnaryExpr ctxt (unop, arg)
 
-       | FunExpr {ident, sign as (FunctionSignature {typeparams,params,resulttype}), body} =>
+       | FunExpr {ident, sign as (FunctionSignature {typeParams,params,returnType,...}), body} =>
     (* What to do with typeparams - no place in context for type variables
     *  also need to check well-formedness of resulttype
     *  No place in FUNC_TY for type parameters
     *)
           let val extensions = List.concat (List.map (fn d => tcVarDefn ctxt d) params);
 	      val ctxt1 = withEnv (ctxt, foldl extendEnv env extensions);
-	      val ctxt2 = withRetTy (ctxt1, SOME resulttype)
+	      val ctxt2 = withRetTy (ctxt1, SOME returnType)
           in
 	    checkForDuplicates extensions;
 	    tcBlock ctxt2 body;
 	    FunctionType { paramTypes= (List.map (fn (Binding {kind=_,init=_,attrs=_,pattern=_,ty=tyo}) => tyo) params),
-			   returnType=resulttype,
+			   returnType=returnType,
 			   boundThisType=NONE,  (*FIXME*)
 			   hasRest=false  (*FIXME*)
 			 }

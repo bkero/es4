@@ -115,6 +115,8 @@ datatype VAL = Object of { tag: VAL_TAG,
 		   roundingMode: Ast.ROUNDING_MODE,
 		   openNamespaces: NS list }
 
+     and PROP_KIND = TypeProp 
+		   | ValProp
 		
 withtype NAME = { ns: NS, 
 		  id: ID }
@@ -131,9 +133,6 @@ withtype NAME = { ns: NS,
 		   dontEnum: bool,
 		   readOnly: bool,
 		   isFixed: bool}
-
-     and PROP_KIND = TypeProp 
-		   | ValProp
 
      and PROP = { kind: PROP_KIND,
 		  ty: TYPE,
@@ -308,14 +307,14 @@ val nan = Real.posInf / Real.posInf
  * magic value pointing to the CLS.
  *)
 
-let nominalBaseOfTag (t:VAL_TAG) = 
+fun nominalBaseOfTag (t:VAL_TAG) = 
 case t of 
     ObjectTag _ => { ns = Ast.Intrinsic, ident = "Object" }
   | ArrayTag _ => { ns = Ast.Intrinsic, ident = "Array" }
   | FunctionTag _ => { ns = Ast.Intrinsic, ident = "Function" }
   | ClassTag c => c
 
-let valToCls (v:VAL) : (CLS option) = 
+fun valToCls (v:VAL) : (CLS option) = 
     let 
 	val globalBindings = (#bindings globalObject)
 	val className = nominalBaseOfTag (#tag v)
@@ -328,7 +327,7 @@ let valToCls (v:VAL) : (CLS option) =
 	case classMagic of 
 	    SOME (Class {class,...}) => SOME class
 	  | _ => NONE
-
+    end
 
 fun newObject (c:CLS option) = 
     Obj { class = c,
