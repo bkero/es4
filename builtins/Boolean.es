@@ -11,8 +11,7 @@ package
 {
 	/* Notionally, the boolean constants "true" and "false" reference
 	   instances of the Boolean class.  These two instances are
-	   necessarily magically constructed and are available only from
-	   system-internal variables.
+	   necessarily magically constructed.
 
 	   The Boolean constructor returns one of these instances, so
 	   there are never more than two Boolean instances in the system.
