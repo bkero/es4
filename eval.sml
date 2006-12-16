@@ -162,9 +162,10 @@ and evalCallExpr (thisObj:Mach.OBJ option) (fobj:Mach.OBJ) (args:Mach.VAL list) 
 	case !magic of 
 	    SOME (Mach.HostFunction f) => f args
 	  | SOME (Mach.Function f) => 
-	    (case thisObj of 
-		 NONE => invokeFuncClosure Mach.globalObject f args
-	       | SOME this => invokeFuncClosure this f args)
+	    ((case thisObj of 
+		  NONE => invokeFuncClosure Mach.globalObject f args
+		| SOME this => invokeFuncClosure this f args)
+	     handle ReturnException v => v)
 	  | _ => semant "calling non-callable object"
 						       
 
