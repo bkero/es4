@@ -1,7 +1,7 @@
 Library
-        structure Main
+        structure GenPretty
 is
-	main.sml
+	gen-pretty.sml
         gen-convert.sml (with: parser.quotations=true)
 	smlast.sml
 	quasiquote.sml (with: control.poly-eq-warn=false)
