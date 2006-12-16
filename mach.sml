@@ -25,8 +25,8 @@ datatype VAL = Object of { tag: VAL_TAG,
 	     | Undef
 	       
      and VAL_TAG =
-	 ObjectTag of FIELD_TYPE list
-       | ArrayTag of TYPE_EXPR list
+	 ObjectTag of Ast.FIELD_TYPE list
+       | ArrayTag of TYPE list
        | FunctionTag of Ast.FUNC_SIG
        | ClassTag of NAME
 
@@ -36,28 +36,13 @@ datatype VAL = Object of { tag: VAL_TAG,
  *)
 	       
      and MAGIC = Number of real    (* someday to be more complicated *)
-	       | String of ustring (* someday to be unicode *)
+	       | String of STR (* someday to be unicode *)
+	       | Bool of bool
 	       | Namespace of NS
-	       | Class of { class: CLS, 
-			    allTypesBound: bool,
-			    env: SCOPE }
-	       | Interface of { interface: IFACE, 
-				allTypesBound: bool,
-				env: SCOPE }
-	       | Function of { function: Ast.FUNC, 
-			       allTypesBound: bool,
-			       env: SCOPE }
-		
-     and OBJ = 
-	 Obj of { class: CLS option,
-		  bindings: BINDINGS,
-		  prototype: (OBJ option) ref }
-
-     and FUN = 
-	 Fun of { ty: TYPE, 
-		  layout: LAYOUT,
-		  code: (OBJ -> (VAL list) -> VAL),
-		  definition: Ast.FUNC_DEFN option }
+	       | Class of CLS_CLOSURE
+	       | Interface of IFACE_CLOSURE
+	       | Function of FUNC_CLOSURE
+	       | HostFunction of (VAL list -> VAL)
 		    
      and CLS = 
 	 Cls of { ty: TYPE,
@@ -66,29 +51,25 @@ datatype VAL = Object of { tag: VAL_TAG,
    		  base: CLS option,
 		  interfaces: IFACE list,
 		  
-		  call: FUN,
+		  call: FUNC_CLOSURE option,
 		  definition: Ast.CLASS_DEFN,
-		  constructor: FUN option,
+		  constructor: FUNC_CLOSURE option,
 		  
 		  instanceTy: TYPE,
 		  instanceLayout: LAYOUT,
-		  instancePrototype: OBJ,
+		  instancePrototype: VAL,
 		  
 		  initialized: bool ref }
 
      and IFACE = 
-	 IFACE of { ty: TYPE,
+	 Iface of { ty: TYPE,
 		    bases: IFACE list,
 		    definition: Ast.INTERFACE_DEFN,			
 		    isInitialized: bool ref }
-
-     and REF = 
-	 Ref of { base: OBJ,
-		  name: NAME }      
 		   
      and SCOPE = 
 	 Scope of { tag: SCOPE_TAG, 
-		    obj: OBJ,
+		    object: VAL,
 		    parent: SCOPE option }
 
      and LAYOUT_TAG = 
@@ -107,14 +88,6 @@ datatype VAL = Object of { tag: VAL_TAG,
 		   ty: TYPE,   
 		   attrs: ATTRS }
 
-     and MACH = 
-	 Mach of { scope: SCOPE,
-		   result: VAL,
-		   thisObject: OBJ,
-		   numberType: Ast.NUMBER_TYPE,
-		   roundingMode: Ast.ROUNDING_MODE,
-		   openNamespaces: NS list }
-
      and PROP_KIND = TypeProp 
 		   | ValProp
 		
@@ -123,6 +96,23 @@ withtype NAME = { ns: NS,
 		
      and MULTINAME = { nss: NS list, 
 		       id: ID }
+
+     and FUNC_CLOSURE = 
+	 { fsig: Ast.FUNC_SIG,
+	   func: Ast.FUNC, 
+	   allTypesBound: bool,
+	   env: SCOPE }
+
+     and CLS_CLOSURE = 
+	 { cls: CLS, 
+	   allTypesBound: bool,
+	   env: SCOPE }
+	 
+     and IFACE_CLOSURE = 
+	 { iface: IFACE, 
+	   allTypesBound: bool,
+	   env: SCOPE }
+
 
 (* Important to model "fixedness" separately from 
  * "dontDelete-ness" because fixedness affects 
@@ -147,6 +137,7 @@ exception ReferenceException of NAME
 exception ConversionException of STR
 exception MultiReferenceException of MULTINAME
 exception UnimplementedException of STR
+exception MachineException of STR
 
 (* Values *)
 
@@ -195,19 +186,21 @@ fun hasBinding (b:BINDINGS) (n:NAME) =
 
 (* Standard runtime objects and functions. *)
 
-(* There's a circularity: 
- * 
- * SCOPE -> OBJ -> CLS -> SCOPE.
- * 
- * We need to break this so that it's possible to instantiate
- * the roots of the builtin objects, so we make OBJ have only a CLS
- * option, not a mandatory CLS. When you access the CLS of an OBJ
- * you should use an accessor function that "closes the loop" and
- * returns the global "object" CLS when you fetch the CLS of an
- * OBJ like "Obj {class = NONE, ...}".
- *)			  
+val intrinsicObjectName:NAME = { ns = Ast.Intrinsic, id = "Object" }
+val intrinsicArrayName:NAME = { ns = Ast.Intrinsic, id = "Array" }
+val intrinsicFunctionName:NAME = { ns = Ast.Intrinsic, id = "Function" }
 
-val (objectType:TYPE) = Ast.RecordType []
+val intrinsicObjectBaseTag:VAL_TAG = ClassTag (intrinsicObjectName)
+val intrinsicArrayBaseTag:VAL_TAG = ClassTag (intrinsicArrayName)
+val intrinsicFunctionBaseTag:VAL_TAG = ClassTag (intrinsicFunctionName)
+
+fun newObject (t:VAL_TAG) : VAL = 
+    Object { tag = t,
+	     props = newBindings (),
+	     proto = ref NONE,
+	     magic = ref NONE }
+
+val (objectType:TYPE) = Ast.ObjectType []
 
 val (defaultAttrs:Ast.ATTRIBUTES) = 
     Ast.Attributes { ns = Ast.LiteralExpr (Ast.LiteralNamespace (Ast.Public "")),
@@ -217,41 +210,11 @@ val (defaultAttrs:Ast.ATTRIBUTES) =
 		     dynamic = true,
 		     prototype = false,
 		     native = false,
-			 rest = false }
-
-val (noOpFunctionSignature:Ast.FUNC_SIGN) = 
-    Ast.FunctionSignature { typeparams = [],
-			    params = [],
-			    resulttype = Ast.SpecialType Ast.Any }
+		     rest = false }
 
 val (emptyBlock:Ast.BLOCK) = Ast.Block { pragmas = [],
 					 defns = [],
 					 stmts = [] }
-
-val (noOpFunc:Ast.FUNC) = 
-    Ast.Func { name = {kind = Ast.Ordinary, ident = ""},
-	       sign = noOpFunctionSignature,
-	       body = emptyBlock }
-    
-val (noOpFunctionDefn:Ast.FUNC_DEFN) = 
-    { attrs = defaultAttrs,
-      kind = Ast.Var,
-      func = noOpFunc }
-
-val (emptyFuncLayout:LAYOUT) = 
-    Layout { parent = NONE,
-	     tag = LayoutFunction,
-	     items = [],	     
-	     isExtensible = true }
-
-val (noOpFunction:FUN) = 
-    Fun { ty = Ast.FunctionType { paramTypes = [],
-				  returnType = Ast.SpecialType Ast.Any,
-				  boundThisType = NONE,
-				  hasRest = false },
-	  layout = emptyFuncLayout,
-	  code = (fn _ => fn _ => Undef),
-	  definition = SOME noOpFunctionDefn }
 
 val (emptyClassDefn:Ast.CLASS_DEFN) = 
     { name = "",
@@ -273,15 +236,12 @@ val (emptyClassLayout:LAYOUT) =
 	     tag = LayoutClass,
 	     items = [],	     
 	     isExtensible = true }
-    
-val (globalObject:OBJ) = 
-    Obj { class = NONE, 
-	  bindings = newBindings (), 
-	  prototype = ref NONE } 
+
+val (globalObject:VAL) = newObject intrinsicObjectBaseTag
     
 val (globalScope:SCOPE) = 
     Scope { tag = VarGlobal,
-	    obj = globalObject,
+	    object = globalObject,
 	    parent = NONE }
     
 val (globalClass:CLS) = 
@@ -289,16 +249,16 @@ val (globalClass:CLS) =
 	  scope = globalScope,
 	  base = NONE,
 	  interfaces = [],
-	  call = noOpFunction,
+	  call = NONE,
 	  definition = emptyClassDefn,
 	  constructor = NONE,
 	  instanceTy = objectType,
 	  instanceLayout = emptyClassLayout,
 	  instancePrototype = globalObject,
+	  isSealed = false,
 	  initialized = ref true }
 
 val nan = Real.posInf / Real.posInf
-
 
 (*
  * To get from any object to its CLS, you work out the
@@ -308,134 +268,146 @@ val nan = Real.posInf / Real.posInf
  *)
 
 fun nominalBaseOfTag (t:VAL_TAG) = 
-case t of 
-    ObjectTag _ => { ns = Ast.Intrinsic, ident = "Object" }
-  | ArrayTag _ => { ns = Ast.Intrinsic, ident = "Array" }
-  | FunctionTag _ => { ns = Ast.Intrinsic, ident = "Function" }
-  | ClassTag c => c
+    case t of 
+	ObjectTag _ => intrinsicObjectName
+      | ArrayTag _ => intrinsicArrayName
+      | FunctionTag _ => intrinsicFunctionName
+      | ClassTag c => c
+
+fun getMagic (v:VAL) : (MAGIC option) = 
+    case v of 
+	Object ob => !(#magic ob)
+      | _ => NONE
+
+fun getGlobalVal (n:NAME) = 
+    case globalObject of 
+	Object ob => 
+	let 
+	    val prop = getBinding (#props ob) n
+	in 
+	    if (#kind prop) = ValProp
+	    then (#value prop)
+	    else Undef
+	end
+      | _ => Undef
 
 fun valToCls (v:VAL) : (CLS option) = 
-    let 
-	val globalBindings = (#bindings globalObject)
-	val className = nominalBaseOfTag (#tag v)
-	val classObj = getBinding globalBindings className
-	val classMagic = case classObj of 
-			     Object ob => (#magic ob)
-			   | Null => NONE
-			   | Undef => NONE
-    in
-	case classMagic of 
-	    SOME (Class {class,...}) => SOME class
-	  | _ => NONE
-    end
-
-fun newObject (c:CLS option) = 
-    Obj { class = c,
-	  bindings = newBindings (),
-	  prototype = ref NONE }
-
-fun deref (Ref {base=Obj {bindings,...}, name}) = 
-    (#value (getBinding bindings name))
+    case v of 
+	Object ob => (case getMagic (getGlobalVal (nominalBaseOfTag (#tag ob))) of
+			  SOME (Class {cls,...}) => SOME cls
+			| _ => NONE)
+      | _ => NONE
 
 (* FIXME: this is not the correct toString *)
-fun toString (Str s) = s
-  | toString (Num n) = Real.toString n
-  | toString (Bool true) = "true"
-  | toString (Bool false) = "false"
-  | toString (Object _) = "[object Object]"
-  | toString (Function _) = "[function Function]"
-  | toString (Reference r) = toString (deref r)
-  | toString (Namespace _) = "[namespace]"
-  | toString (Class _) = "[class]"
-  | toString (Interface _) = "[interface]"
-  | toString Undef = "undefined"
-  | toString Null = "null"
+
+fun toString (v:VAL) : string = 
+    case v of 
+	Undef => "undefined"
+      | Null => "null"
+      | Object ob => 
+	(case !(#magic ob) of 
+	     NONE => "[object Object]"
+	   | SOME magic => 
+	     (case magic of 
+		  Number n => Real.toString n
+		| Bool true => "true"
+		| Bool false => "false"
+		| String s => s
+		| Namespace Ast.Private => "[private namespace]"
+		| Namespace Ast.Protected => "[protected namespace]"
+		| Namespace Ast.Intrinsic => "[intrinsic namespace]"
+		| Namespace (Ast.Public id) => "[public namespace: " ^ id ^ "]"
+		| Namespace (Ast.Internal _) => "[internal namespace]"
+		| Namespace (Ast.UserDefined id) => "[user-defined namespace " ^ id ^ "]"
+		| Function _ => "[function Function]"
+		| HostFunction _ => "[function HostFunction]"
+		| Class _ => "[class Class]"
+		| Interface _ => "[interface Interface]"))
+
+fun toNum (v:VAL) : real = 
+    case v of 
+	Undef => nan
+      | Null => 0.0
+      | Object ob => 
+	(case !(#magic ob) of 
+	     SOME (Number n) => n
+	   | SOME (Bool true) => 1.0
+	   | SOME (Bool false) => 0.0
+	   | SOME (String s) => (case Real.fromString s of 
+				     SOME n => n
+				   | NONE => nan)
+	   | _ => nan)
+
+fun toBoolean (v:VAL) : bool = 
+    case v of 
+	Undef => false
+      | Null => false
+      | Object ob => 
+	(case !(#magic ob) of 
+	     SOME (Bool b) => b
+	   | _ => true)
+
+		  
+fun equals (va:VAL) (vb:VAL) : bool = 
+    case (va,vb) of 
+	(Object oa, Object ob) => 
+	(case (!(#magic oa), !(#magic ob)) of 
+	     (SOME ma, SOME mb) => 
+	     (case (ma, mb) of
+		  (Number na, String _) => Real.== (na, (toNum vb))
+		| (String _, Number nb) => Real.== ((toNum va), nb)
+		| (Number a, Number b) => Real.==(a, b)
+		| _ => (toString va) = (toString vb))
+	   | (_, _) => (toString va) = (toString vb))
+      | _ => (toString va) = (toString vb)
 
 
-fun toNum (Str s) = (case Real.fromString s of
-			SOME n => n
-		      | NONE => nan)
-  | toNum (Num n) = n
-  | toNum (Bool true) = 1.0
-  | toNum (Bool false) = 0.0
-  | toNum (Object _) = nan
-  | toNum (Function _) = nan
-  | toNum (Reference r) = toNum (deref r)
-  | toNum (Namespace _) = 0.0
-  | toNum (Class _) = 0.0
-  | toNum (Interface _) = 0.0
-  | toNum Undef = nan
-  | toNum Null = 0.0
-		    
-fun toBoolean (Bool b) = b
-  | toBoolean (Str _) = true
-  | toBoolean (Num _) = true
-  | toBoolean (Object _) = true
-  | toBoolean (Function _) = true
-  | toBoolean (Reference r) = toBoolean (deref r)
-  | toBoolean (Namespace _) = true
-  | toBoolean (Class _) = true
-  | toBoolean (Interface _) = true
-  | toBoolean Undef = false
-  | toBoolean Null = false
-
-fun equals (Bool a) (Bool b) = (a = b)
-  | equals (Str a) (Str b) = (a = b)
-  | equals (Num a) (Num b) = (Real.== (a,b))
-  | equals (Object (Obj a)) (Object (Obj b)) = ((#bindings a) = (#bindings b))
-  | equals (Namespace a) (Namespace b) = (a = b)
-  | equals (Class (Cls a)) (Class (Cls b)) = ((#definition a) = (#definition b))
-  | equals (Interface a) (Interface b) = (a = b)
-  | equals Undef Undef = true
-  | equals Null Null = true
-  | equals Undef Null = true
-  | equals Null Undef = true
-  | equals (Str a) (Num b) = (a = (toString (Num b)))
-  | equals (Num a) (Str b) = ((toString (Num a)) = b)
-  | equals (Reference a) b = equals (deref a) b
-  | equals a (Reference b) = equals a (deref b)
-  | equals _ _ = false
-
-fun less (Bool true) (Bool true) = false
-  | less (Bool false) (Bool true) = true
-  | less (Bool false) (Bool false) = false
-  | less (Bool true) (Bool false) = false
-  | less (Str a) (Str b) = (a < b)
-  | less (Num a) (Num b) = (a < b)
-  | less (Str a) (Num b) = (a < (toString (Num b)))
-  | less (Num a) (Str b) = ((toString (Num a)) < b)
-  | less (Reference a) b = less (deref a) b
-  | less a (Reference b) = less a (deref b)
-  | less _ _ = false
+fun less (va:VAL) (vb:VAL) : bool = 
+    case (va,vb) of 
+	(Object oa, Object ob) =>
+	(case (!(#magic oa), !(#magic ob)) of 
+	     (SOME ma, SOME mb) => 
+	     (case (ma, mb) of 
+		  (Number na, String _) => na < (toNum vb)
+		| (String _, Number nb) => (toNum va) < nb
+		| (String sa, String sb) => sa < sb
+		| _ => (toNum va) < (toNum vb))
+	   | _ => (toNum va) < (toNum vb))
+      | _ => (toNum va) < (toNum vb)
 
 
-fun hostPrintFunction (obj:OBJ) (vals:VAL list) = 
+fun hostPrintFunction (vals:VAL list) : VAL = 
     let
 	fun printOne v = print (toString v) 
     in
-	(map printOne vals; Undef)
+	(List.app printOne vals; Undef)
     end
 
-and populateIntrinsics obj = 
-    case obj of 
-	Obj { bindings, ... } => 
+and populateIntrinsics globalObj = 
+    case globalObj of 
+	Object { props, ... } => 
 	let 
+	    fun newHostFunctionObj f = 
+		Object { tag = intrinsicFunctionBaseTag,
+			 props = newBindings (),
+			 proto = ref NONE,
+			 magic = ref (SOME (HostFunction f)) }
 	    fun bindFunc (n, f) = 
 		let 
 		    val name = { id = n, ns = Ast.Intrinsic }
-		    val prop = { ty = Ast.SpecialType Ast.Any,
-				 value = Function (Fun { code=f, 
-							 definition=NONE, 
-							 layout=emptyFuncLayout, 
-							 ty=Ast.SpecialType Ast.Any} ),	   
+		    val prop = { kind = ValProp, 
+				 ty = Ast.SpecialType Ast.Any,
+				 value = newHostFunctionObj f,
 				 attrs = { dontDelete = true,
 					   dontEnum = false,
-					   readOnly = true } }
+					   readOnly = true,
+					   isFixed = false } }
 		in
-		    addBinding bindings name prop
+		    addBinding props name prop
 		end
 	in
-	    map bindFunc 
+	    List.app bindFunc 
 	    [ ("print", hostPrintFunction) ]
 	end	
+      | _ => raise MachineException "Undefined or Null Global Object"
 end

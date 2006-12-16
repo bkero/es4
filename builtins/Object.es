@@ -23,7 +23,7 @@ package
 
 			const o : Object! = super.intrinsic::construct(Object);  // see Class.es
 			const x : * = o.Object();
-			return (x is Object) ? x to Object! : o;
+			return (x is Object) ? x to Object : o;
 		}
 
 		/* E262-3 15.2.4.2: Object.prototype.toString */

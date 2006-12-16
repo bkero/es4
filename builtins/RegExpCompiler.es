@@ -29,8 +29,8 @@ package RegExp
 		const parenCount : uint = 0;   // current depth of capture nesting
 
 		function RegExpCompiler( source : String!, flags : String! )
-			: extended = flags.indexOf("x") != -1,
-			, source = source,
+			: extended = flags.indexOf("x") != -1
+			, source = source
 			, idx = 0
 		{
 			skip();
