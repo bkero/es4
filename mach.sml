@@ -23,7 +23,7 @@ datatype VAL = Object of OBJ
 
      and OBJ = 
 	 Obj of { tag: VAL_TAG,			   
-		  props: BINDINGS,
+		  props: PROP BINDINGS,
 		  proto: (VAL option) ref,
 		  magic: (MAGIC option) ref }
 
@@ -59,7 +59,7 @@ datatype VAL = Object of OBJ
 		  constructor: FUNC_CLOSURE option,
 		  
 		  instanceTy: TYPE,
-		  instanceLayout: LAYOUT,
+		  instanceFixtures: FIXTURES,
 		  instancePrototype: VAL,
 		  
 		  initialized: bool ref }
@@ -75,21 +75,22 @@ datatype VAL = Object of OBJ
 		    object: OBJ,
 		    parent: SCOPE option }
 
-     and LAYOUT_TAG = 
-	 LayoutClass  
-       | LayoutInterface
-       | LayoutFunction
+     and FIXTURES_TAG = 
+	 ClassFixtures  
+       | InterfaceFixtures
+       | FunctionFixtures
+       | GlobalFixtures
 
-     and LAYOUT = 
-	 Layout of { parent: LAYOUT option,		     
-		     tag: LAYOUT_TAG,
-		     items: ITEM list,
-		     isExtensible: bool }
+     and FIXTURES = 
+	 Fixtures of { tag: FIXTURES_TAG,
+		       parent: FIXTURES option,	     		       
+		       fixtures: FIXTURE BINDINGS,
+		       isExtensible: bool }
 
-     and ITEM = 
-	 Item of { name: NAME,
-		   ty: TYPE,   
-		   attrs: ATTRS }
+     and FIXTURE = 
+	 Fixture of { ty: TYPE,
+		      readOnly: bool,
+		      isOverride: bool }
 
      and PROP_KIND = TypeProp 
 		   | ValProp
@@ -130,8 +131,9 @@ withtype NAME = { ns: NS,
 		  ty: TYPE,
 		  value: VAL,	   
 		  attrs: ATTRS }
-	 
-     and BINDINGS = ((NAME * PROP) list) ref
+
+     and 'a BINDINGS = ((NAME * 'a) list) ref
+
 
 (* Exceptions for "abstract machine failures". *)
 
@@ -143,17 +145,24 @@ exception MachineException of STR
 
 (* Values *)
 
-fun newBindings _ = 
+fun newPropBindings _ : PROP BINDINGS = 
     let 
-	val b:BINDINGS = ref []
+	val b:PROP BINDINGS = ref []
     in
 	b
     end
 
-fun addBinding (b:BINDINGS) (n:NAME) (p:PROP) = 
-    b := ((n,p) :: (!b))
+fun newFixtureBindings _ : FIXTURE BINDINGS = 
+    let 
+	val b:FIXTURE BINDINGS = ref []
+    in
+	b
+    end
 
-fun delBinding (b:BINDINGS) (n:NAME) = 
+fun addBinding (b:'a BINDINGS) (n:NAME) (x:'a) = 
+    b := ((n,x) :: (!b))
+
+fun delBinding (b:'a BINDINGS) (n:NAME) = 
     let 
 	fun strip [] = raise ReferenceException n
 	  | strip ((k,v)::bs) = 
@@ -164,7 +173,7 @@ fun delBinding (b:BINDINGS) (n:NAME) =
 	b := strip (!b)
     end
 
-fun getBinding (b:BINDINGS) (n:NAME) = 
+fun getBinding (b:'a BINDINGS) (n:NAME) : 'a = 
     let 
 	fun search [] = raise ReferenceException n			      
 	  | search ((k,v)::bs) = 
@@ -175,7 +184,7 @@ fun getBinding (b:BINDINGS) (n:NAME) =
 	search (!b)
     end
 
-fun hasBinding (b:BINDINGS) (n:NAME) = 
+fun hasBinding (b:'a BINDINGS) (n:NAME) : bool = 
     let 
 	fun search [] = false
 	  | search ((k,v)::bs) = 
@@ -206,7 +215,7 @@ val intrinsicNamespaceBaseTag:VAL_TAG = ClassTag (intrinsicNamespaceName)
 
 fun newObj (t:VAL_TAG) (p:VAL option) (m:MAGIC option) : OBJ = 
     Obj { tag = t,
-	  props = newBindings (),
+	  props = newPropBindings (),
 	  proto = ref p,
 	  magic = ref m }
 			  
@@ -255,49 +264,24 @@ val (emptyBlock:Ast.BLOCK) = Ast.Block { pragmas = [],
 					 defns = [],
 					 stmts = [] }
 
-val (emptyClassDefn:Ast.CLASS_DEFN) = 
-    { name = "",
-      nonnullable = true,
-      attrs = defaultAttrs,
-      params = [],
-      extends = NONE,
-      implements = [],
-      body = emptyBlock,
-      instanceVars = [],
-      instanceMethods = [],
-      vars = [],
-      methods = [],
-      constructor = NONE,
-      initializer = [] }
-    
-val (emptyClassLayout:LAYOUT) = 
-    Layout { parent = NONE,
-	     tag = LayoutClass,
-	     items = [],	     
-	     isExtensible = true }
+val (globalFixtures:FIXTURES) = 
+    Fixtures { parent = NONE,
+	       tag = GlobalFixtures,
+	       fixtures = newFixtureBindings (),
+	       isExtensible = false }
 
 val (globalObject:OBJ) = newObj intrinsicObjectBaseTag NONE NONE
-    
+
 val (globalScope:SCOPE) = 
     Scope { tag = VarGlobal,
 	    object = globalObject,
 	    parent = NONE }
-    
-val (globalClass:CLS) = 
-    Cls { ty = objectType,
-	  scope = globalScope,
-	  base = NONE,
-	  interfaces = [],
-	  call = NONE,
-	  definition = emptyClassDefn,
-	  constructor = NONE,
-	  instanceTy = objectType,
-	  instanceLayout = emptyClassLayout,
-	  instancePrototype = Object globalObject,
-	  isSealed = false,
-	  initialized = ref true }
 
 val nan = Real.posInf / Real.posInf
+
+fun addFixturesToObject (fixs:FIXTURES) (obj:OBJ) : unit = 
+    case fixs of
+	Fixtures { fixtures, ... } => ()
 
 (*
  * To get from any object to its CLS, you work out the
@@ -428,7 +412,7 @@ and populateIntrinsics globalObj =
 	let 
 	    fun newHostFunctionObj f = 
 		Object (Obj { tag = intrinsicFunctionBaseTag,
-			      props = newBindings (),
+			      props = newPropBindings (),
 			      proto = ref NONE,
 			      magic = ref (SOME (HostFunction f)) })
 	    fun bindFunc (n, f) = 

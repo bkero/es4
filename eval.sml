@@ -587,7 +587,7 @@ and evalBlock (scope:Mach.SCOPE) (block:Ast.BLOCK) : Mach.VAL =
 	(evalDefns scope defns;
 	 evalStmts scope stmts)
 
-and evalIfStmt (scope:Mach.SCOPE) (cnd:Ast.EXPR) (thn:Ast.STMT) (els:Ast.STMT) = 
+and evalIfStmt (scope:Mach.SCOPE) (cnd:Ast.EXPR) (thn:Ast.STMT) (els:Ast.STMT) : Mach.VAL = 
     let 
         val v = evalExpr scope cnd 
         val b = Mach.toBoolean v
