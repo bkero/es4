@@ -134,15 +134,6 @@ withtype NAME = { ns: NS,
 
      and 'a BINDINGS = ((NAME * 'a) list) ref
 
-
-(* Exceptions for "abstract machine failures". *)
-
-exception ReferenceException of NAME
-exception ConversionException of STR
-exception MultiReferenceException of MULTINAME
-exception UnimplementedException of STR
-exception MachineException of STR
-
 (* Values *)
 
 fun newPropBindings _ : PROP BINDINGS = 
@@ -164,7 +155,8 @@ fun addBinding (b:'a BINDINGS) (n:NAME) (x:'a) =
 
 fun delBinding (b:'a BINDINGS) (n:NAME) = 
     let 
-	fun strip [] = raise ReferenceException n
+	fun strip [] = LogErr.hostError ["deleting nonexistent binding: ", 
+					 (#id n)]
 	  | strip ((k,v)::bs) = 
 	    if k = n 
 	    then bs
@@ -175,7 +167,8 @@ fun delBinding (b:'a BINDINGS) (n:NAME) =
 
 fun getBinding (b:'a BINDINGS) (n:NAME) : 'a = 
     let 
-	fun search [] = raise ReferenceException n			      
+	fun search [] = LogErr.hostError ["binding not found: ", 
+					  (#id n)]
 	  | search ((k,v)::bs) = 
 	    if k = n 
 	    then v
