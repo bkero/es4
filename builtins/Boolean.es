@@ -25,33 +25,27 @@ package
     final class Boolean! extends Object
     {       
         /* E262-3 15.6.1: The Boolean Constructor Called as a Function. */
-        static intrinsic function call(value) : Boolean {
-            return value ? true : false;
-        }
+        static intrinsic function call(value) : Boolean
+            value ? true : false;
 
         /* E262-3 15.6.2.1: The Boolean Constructor. */
-        function Boolean(value) {
-            return value ? true : false;
-        }
+        function Boolean(value)
+            value ? true : false;
 
         /* E262-3 15.6.4.2: Boolean.prototype.toString.  */
-        prototype function toString(this : Boolean) {
-            return this.intrinsic::toString();
-        }
+        prototype function toString(this : Boolean) 
+            this.intrinsic::toString();
 
         /* E262-4 draft ch 19 */
-        intrinsic function toString() : String {
-            return this === true ? "true" : "false";
-        }
+        intrinsic function toString() : String
+            this === true ? "true" : "false";
         
         /* E262-3 15.6.4.3: Boolean.prototype.valueOf. */
-        prototype function valueOf(this : Boolean) {
-            return this;
-        }
+        prototype function valueOf(this : Boolean)
+            this;
 
         /* E262-4 draft ch 19 */
-        intrinsic function valueOf() : Boolean {
-            return this;
-        }
+        intrinsic function valueOf() : Boolean
+            this;
     }
 }

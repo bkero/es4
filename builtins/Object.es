@@ -12,9 +12,8 @@ package
     dynamic class Object 
     {       
         /* E262-3 15.2.1.1: The Object constructor called as a function */
-        static intrinsic function call(value) {
-            return intrinsic::ToObject(value);
-        }
+        static intrinsic function call(value)
+            intrinsic::ToObject(value);
 
         /* E262-3 15.2.2.1: The Object constructor */
         static intrinsic function construct(value) : Object! {
@@ -27,45 +26,36 @@ package
         }
 
         /* E262-3 15.2.4.2: Object.prototype.toString */
-        prototype function toString() {
-            return this.intrinsic::toString();
-        }
+        prototype function toString()
+            this.intrinsic::toString();
 
-        intrinsic function toString() : String! {
-            return "[object " + magic::getClassName(this) + "]";
-        }
+        intrinsic function toString() : String!
+            "[object " + magic::getClassName(this) + "]";
 
         /* E262-3 15.2.4.3: Object.prototype.toLocaleString */
-        prototype function toLocaleString() {
-            return this.intrinsic::toLocaleString();
-        }
+        prototype function toLocaleString()
+            this.intrinsic::toLocaleString();
 
-        intrinsic function toLocaleString() : String! {
-            return "[object " + magic::getClassName(this) + "]";
-        }
+        intrinsic function toLocaleString() : String!
+            "[object " + magic::getClassName(this) + "]";
 
         /* E262-3 15.2.4.4:  Object.prototype.valueOf */
-        prototype function valueOf() {
-            return this.intrinsic::valueOf();
-        }
+        prototype function valueOf()
+            this.intrinsic::valueOf();
 
-        intrinsic function valueOf() : Object! {
-            return this;
-        }
+        intrinsic function valueOf() : Object!
+            this;
 
         /* E262-3 15.2.4.5:  Object.prototype.hasOwnProperty */
-        prototype function hasOwnProperty(V) {
-            return this.intrinsic::hasOwnProperty(V);
-        }
+        prototype function hasOwnProperty(V)
+            this.intrinsic::hasOwnProperty(V);
 
-        intrinsic function hasOwnProperty(V : String!) : Boolean {
-            return magic::hasOwnProperty(this, V);
-        }
+        intrinsic function hasOwnProperty(V : String!) : Boolean 
+            magic::hasOwnProperty(this, V);
         
         /* E262-3 15.2.4.6:  Object.prototype.isPrototypeOf */
-        prototype function isPrototypeOf(V) {
-            return this.intrinsic::isPrototypeOf(V);
-        }
+        prototype function isPrototypeOf(V)
+            this.intrinsic::isPrototypeOf(V);
 
         intrinsic function isPrototypeOf(V) : Boolean {
             if (!(V is Object))
@@ -82,9 +72,8 @@ package
         }
 
         /* E262-3 15.2.4.7: Object.prototype.propertyIsEnumerable (V) */
-        prototype function propertyIsEnumerable(V, E=intrinsic::undefined) {
-            return this.intrinsic::propertyIsEnumerable(V, E);
-        }
+        prototype function propertyIsEnumerable(V, E=intrinsic::undefined)
+            this.intrinsic::propertyIsEnumerable(V, E);
 
         /* E262-4 draft proposals:enumerability */
         intrinsic function propertyIsEnumerable(V : String!, E=intrinsic::undefined) : Boolean {
