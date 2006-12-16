@@ -26,7 +26,7 @@ type REF = (Mach.OBJ * Mach.NAME)
 
 (* Fundamental object methods *)
 
-fun getValue (obj:Mach.OBJ) (name:Mach.NAME) = 
+fun getValue (obj:Mach.OBJ) (name:Mach.NAME) : Mach.VAL = 
     case obj of 
 	Mach.Obj {props, ...} => 
 	let 
@@ -37,51 +37,51 @@ fun getValue (obj:Mach.OBJ) (name:Mach.NAME) =
 	    else (#value prop)
 	end
 
-fun setProp (obj:Mach.OBJ) (n:Mach.NAME) (p:Mach.PROP) =
+fun setProp (obj:Mach.OBJ) (n:Mach.NAME) (p:Mach.PROP) : unit =
     case obj of 
 	Mach.Obj ob => Mach.addBinding (#props ob) n p
 
-fun setValue (base:Mach.OBJ) (name:Mach.NAME) (v:Mach.VAL) =     
-    (case base of 
-	 Mach.Obj {props,...} => 
-	 if Mach.hasBinding props name
-	 then 
-	     let 
-		 val existingProp = Mach.getBinding props name
-		 val _ = if (#kind existingProp) = Mach.TypeProp 
-			 then semant "assigning a value to a type property"
-			 else ()
-		 val existingAttrs = (#attrs existingProp)
-		 val newProp = { kind = Mach.ValProp,
-				 ty = (#ty existingProp), 
-				 value = v, 
-				 attrs = { dontDelete = (#dontDelete existingAttrs), 
-					   dontEnum = (#dontEnum existingAttrs),
-					   readOnly = (#readOnly existingAttrs),
-					   isFixed = (#isFixed existingAttrs) } }
-	     in
-		 if (#readOnly existingAttrs)
-		 then semant "assigning to read-only property"
-		 else ();
-		 (* FIXME: insert typecheck here *)
-		 Mach.delBinding props name;
-		 Mach.addBinding props name newProp
-	     end
-	 else
-	     let 
-		 val prop = { kind = Mach.ValProp,
-			      ty = Ast.SpecialType Ast.Any,
-			      value = v,
-			      attrs = { dontDelete = false,
-					dontEnum = false,
-					readOnly = false,
-					isFixed = false } }
-	     in
-		 Mach.addBinding props name prop
-	     end; v)
+fun setValue (base:Mach.OBJ) (name:Mach.NAME) (v:Mach.VAL) : unit =     
+    case base of 
+	Mach.Obj {props,...} => 
+	if Mach.hasBinding props name
+	then 
+	    let 
+		val existingProp = Mach.getBinding props name
+		val _ = if (#kind existingProp) = Mach.TypeProp 
+			then semant "assigning a value to a type property"
+			else ()
+		val existingAttrs = (#attrs existingProp)
+		val newProp = { kind = Mach.ValProp,
+				ty = (#ty existingProp), 
+				value = v, 
+				attrs = { dontDelete = (#dontDelete existingAttrs), 
+					  dontEnum = (#dontEnum existingAttrs),
+					  readOnly = (#readOnly existingAttrs),
+					  isFixed = (#isFixed existingAttrs) } }
+	    in
+		if (#readOnly existingAttrs)
+		then semant "assigning to read-only property"
+		else ();
+		(* FIXME: insert typecheck here *)
+		Mach.delBinding props name;
+		Mach.addBinding props name newProp
+	    end
+	else
+	    let 
+		val prop = { kind = Mach.ValProp,
+			     ty = Ast.SpecialType Ast.Any,
+			     value = v,
+			     attrs = { dontDelete = false,
+				       dontEnum = false,
+				       readOnly = false,
+				       isFixed = false } }
+	    in
+		Mach.addBinding props name prop
+	    end
 
 
-fun extendScope (p:Mach.SCOPE) (t:Mach.SCOPE_TAG) (ob:Mach.OBJ) = 
+fun extendScope (p:Mach.SCOPE) (t:Mach.SCOPE_TAG) (ob:Mach.OBJ) : Mach.SCOPE = 
     Mach.Scope { parent=(SOME p), tag=t, object=ob }
 
 fun evalExpr (scope:Mach.SCOPE) (expr:Ast.EXPR) =
@@ -135,7 +135,7 @@ fun evalExpr (scope:Mach.SCOPE) (expr:Ast.EXPR) =
       | _ => 
 	raise unimpl "unhandled expression type"
 
-and evalLiteralExpr (lit:Ast.LITERAL) = 
+and evalLiteralExpr (lit:Ast.LITERAL) : Mach.VAL = 
     case lit of 
         Ast.LiteralNull => Mach.Null
       | Ast.LiteralUndefined => Mach.Undef
@@ -145,7 +145,7 @@ and evalLiteralExpr (lit:Ast.LITERAL) =
       | Ast.LiteralNamespace n => Mach.newNamespace n
       | _ => unimpl "unhandled literal type"
 
-and evalListExpr (scope:Mach.SCOPE) (es:Ast.EXPR list) = 
+and evalListExpr (scope:Mach.SCOPE) (es:Ast.EXPR list) : Mach.VAL = 
     case es of 
 	[] => Mach.Undef
       | [e] => evalExpr scope e
@@ -156,7 +156,7 @@ and needObj (v:Mach.VAL) : Mach.OBJ =
 	Mach.Object ob => ob
       | _ => semant "need object"
 
-and evalCallExpr (thisObj:Mach.OBJ option) (fobj:Mach.OBJ) (args:Mach.VAL list) =
+and evalCallExpr (thisObj:Mach.OBJ option) (fobj:Mach.OBJ) (args:Mach.VAL list) : Mach.VAL =
     case fobj of
 	Mach.Obj { magic, ... } => 
 	case !magic of 
@@ -174,11 +174,11 @@ and evalCallExpr (thisObj:Mach.OBJ option) (fobj:Mach.OBJ) (args:Mach.VAL list) 
  * but not sure if that's easy. 
  *)
 
-and evalSetExpr (scope:Mach.SCOPE) (aop:Ast.ASSIGNOP) (pat:Ast.PATTERN) (v:Mach.VAL) = 
+and evalSetExpr (scope:Mach.SCOPE) (aop:Ast.ASSIGNOP) (pat:Ast.PATTERN) (v:Mach.VAL) : Mach.VAL = 
     let
-	fun modified r = 
+	fun modified obj name = 
 	    let 
-		fun modifyWith bop = performBinop bop r v
+		fun modifyWith bop = performBinop bop (getValue obj name) v
 	    in
 		case aop of 
 		    Ast.Assign => v
@@ -204,14 +204,26 @@ and evalSetExpr (scope:Mach.SCOPE) (aop:Ast.ASSIGNOP) (pat:Ast.PATTERN) (v:Mach.
 		val refOpt = resolveOnScopeChain scope multiname
 	    in
 		case refOpt of 
-		    SOME (obj, name) => setValue obj name (modified (getValue obj name))
+		    SOME (obj, name) => 
+		    let 
+			val v = modified obj name
+		    in 
+			setValue obj name v;
+			v
+		    end
 		  | NONE => raise Mach.MultiReferenceException multiname
 	end
       | Ast.SimplePattern expr => 
 	let
 	    val r = evalLhsExpr scope expr
 	in
-	    case r of (obj, name) => setValue obj name (modified (getValue obj name))
+	    case r of (obj, name) => 
+		      let 
+			  val v = modified obj name
+		      in 
+			  setValue obj name v;
+			  v
+		      end
 	end
       |	_ => unimpl "unhandled pattern form in assignment"
     end
@@ -224,7 +236,7 @@ and evalLhsExpr (scope:Mach.SCOPE) (expr:Ast.EXPR) : REF =
 	evalRefExpr scope (SOME (evalExpr scope base)) ident
       | _ => semant "need lexical or object-reference expression"
 
-and evalUnaryOp (scope:Mach.SCOPE) (unop:Ast.UNOP) (expr:Ast.EXPR) =
+and evalUnaryOp (scope:Mach.SCOPE) (unop:Ast.UNOP) (expr:Ast.EXPR) : Mach.VAL =
     let
 	fun crement f isPre = 
 	    let 
@@ -255,7 +267,7 @@ and evalUnaryOp (scope:Mach.SCOPE) (unop:Ast.UNOP) (expr:Ast.EXPR) =
 	  | _ => unimpl "unhandled unary operator"
     end
 
-and performBinop (bop:Ast.BINOP) (a:Mach.VAL) (b:Mach.VAL) = 
+and performBinop (bop:Ast.BINOP) (a:Mach.VAL) (b:Mach.VAL) : Mach.VAL = 
     let 
 	fun wordOp wop = 
 	    let 
@@ -302,7 +314,7 @@ and performBinop (bop:Ast.BINOP) (a:Mach.VAL) (b:Mach.VAL) =
 	  | _ => unimpl "unhandled binary operator type"
     end
 
-and evalBinaryOp (scope:Mach.SCOPE) (bop:Ast.BINOP) (aexpr:Ast.EXPR) (bexpr:Ast.EXPR) =
+and evalBinaryOp (scope:Mach.SCOPE) (bop:Ast.BINOP) (aexpr:Ast.EXPR) (bexpr:Ast.EXPR) : Mach.VAL =
     case bop of 
 	Ast.LogicalAnd => 
 	let 
@@ -325,14 +337,14 @@ and evalBinaryOp (scope:Mach.SCOPE) (bop:Ast.BINOP) (aexpr:Ast.EXPR) (bexpr:Ast.
       | _ => performBinop bop (evalExpr scope aexpr) (evalExpr scope bexpr)
 	     
 
-and evalCondExpr (scope:Mach.SCOPE) (cond:Ast.EXPR) (consequent:Ast.EXPR) (alternative:Ast.EXPR) = 
+and evalCondExpr (scope:Mach.SCOPE) (cond:Ast.EXPR) (thn:Ast.EXPR) (els:Ast.EXPR) : Mach.VAL = 
     let 
         val v = evalExpr scope cond
         val b = Mach.toBoolean v
     in
 	if b 
-	then evalExpr scope consequent
-	else evalExpr scope alternative
+	then evalExpr scope thn
+	else evalExpr scope els
     end
     
 
@@ -375,7 +387,7 @@ and evalRefExpr (scope:Mach.SCOPE) (b:Mach.VAL option) (r:Ast.IDENT_EXPR) : REF 
     end
     
 
-and evalLetExpr (scope:Mach.SCOPE) (defs:Ast.VAR_BINDING list) (body:Ast.EXPR list) = 
+and evalLetExpr (scope:Mach.SCOPE) (defs:Ast.VAR_BINDING list) (body:Ast.EXPR list) : Mach.VAL = 
     let 
 	val obj = Mach.newObj Mach.intrinsicObjectBaseTag NONE NONE
         val newScope = extendScope scope Mach.Let obj
@@ -384,16 +396,20 @@ and evalLetExpr (scope:Mach.SCOPE) (defs:Ast.VAR_BINDING list) (body:Ast.EXPR li
         evalListExpr newScope body
     end
     
-and getType (tyOpt:Ast.TYPE_EXPR option) = 
+and getType (tyOpt:Ast.TYPE_EXPR option) : Ast.TYPE_EXPR = 
     case tyOpt of 
 	SOME t => t
       | NONE => Ast.SpecialType Ast.Any
 
 and getAttrs (attrs:Ast.ATTRIBUTES) = case attrs of Ast.Attributes a => a
 
-and getScopeObj (scope:Mach.SCOPE) = case scope of Mach.Scope { object, ...} => object
+and getScopeObj (scope:Mach.SCOPE) : Mach.OBJ = case scope of Mach.Scope { object, ...} => object
 
-and evalVarBinding (scope:Mach.SCOPE) (obj:Mach.OBJ option) (v:Mach.VAL option) (defn:Ast.VAR_BINDING) =
+and evalVarBinding 
+	(scope:Mach.SCOPE) 
+	(obj:Mach.OBJ option) 
+	(v:Mach.VAL option) 
+	(defn:Ast.VAR_BINDING) : unit =
     let 
 	val ob = case obj of 
 		     SOME ob' => ob'
@@ -475,27 +491,27 @@ and resolveOnObj (obj:Mach.OBJ) (mname:Mach.MULTINAME) : REF option =
 	    tryName (#nss mname)
 	end
 
-and evalTailCallExpr scope e = 
+and evalTailCallExpr (scope:Mach.SCOPE) (e:Ast.EXPR) : Mach.VAL = 
     raise (TailCallException (fn _ => evalExpr scope e))
 
-and evalNonTailCallExpr scope e = 
+and evalNonTailCallExpr (scope:Mach.SCOPE) (e:Ast.EXPR) : Mach.VAL = 
     evalExpr scope e
     handle TailCallException thunk => thunk ()
          | ReturnException v => v
 
-and labelEq stmtLabel exnLabel = 
+and labelEq (stmtLabel:Ast.IDENT option) (exnLabel:Ast.IDENT option) : bool = 
     case (stmtLabel, exnLabel) of
 	(SOME sl, SOME el) => sl = el
       | (NONE, SOME _) => false
       | (_, NONE) => true
 		     
-and evalStmts (scope:Mach.SCOPE) (stmts:Ast.STMT list) = 
+and evalStmts (scope:Mach.SCOPE) (stmts:Ast.STMT list) : Mach.VAL = 
     (map (evalStmt scope) stmts; Mach.Undef)
 		       
-and evalStmt scope (stmt:Ast.STMT) = 
+and evalStmt (scope:Mach.SCOPE) (stmt:Ast.STMT) : Mach.VAL = 
     case stmt of 
 	Ast.ExprStmt e => evalListExpr scope e
-      | Ast.IfStmt i => evalIfStmt scope i
+      | Ast.IfStmt {cnd,thn,els} => evalIfStmt scope cnd thn els
       | Ast.WhileStmt w => evalWhileStmt scope w
       | Ast.ReturnStmt r => evalReturnStmt scope r
       | Ast.BreakStmt lbl => evalBreakStmt scope lbl
@@ -506,16 +522,16 @@ and evalStmt scope (stmt:Ast.STMT) =
       | Ast.EmptyStmt => Mach.Undef
       | _ => unimpl "unimplemented statement type"
 
-and evalDefns (scope:Mach.SCOPE) (ds:Ast.DEFN list) = 
-    (List.app (evalDefn scope) ds; Mach.Undef)
+and evalDefns (scope:Mach.SCOPE) (ds:Ast.DEFN list) : unit = 
+    List.app (evalDefn scope) ds
 
-and evalDefn (scope:Mach.SCOPE) (d:Ast.DEFN) = 
+and evalDefn (scope:Mach.SCOPE) (d:Ast.DEFN) : unit = 
     case d of 
 	Ast.FunctionDefn f => evalFuncDefn scope f
       | Ast.VariableDefn bs => List.app (evalVarBinding scope NONE NONE) bs
       | _ => unimpl "unimplemented definition type"
 
-and invokeFuncClosure (this:Mach.OBJ) (closure:Mach.FUNC_CLOSURE) (args:Mach.VAL list) =
+and invokeFuncClosure (this:Mach.OBJ) (closure:Mach.FUNC_CLOSURE) (args:Mach.VAL list) : Mach.VAL =
     case closure of 
 	{ func=(Ast.Func f), allTypesBound, env } => 
 	if not allTypesBound
@@ -545,7 +561,7 @@ and invokeFuncClosure (this:Mach.OBJ) (closure:Mach.FUNC_CLOSURE) (args:Mach.VAL
 		    evalBlock varScope (#body f)
 		end
 
-and evalFuncDefn (scope:Mach.SCOPE) (f:Ast.FUNC_DEFN) = 
+and evalFuncDefn (scope:Mach.SCOPE) (f:Ast.FUNC_DEFN) : unit = 
     let 
 	val func = (#func f)
 	val fsig = case func of Ast.Func { fsig, ...} => fsig
@@ -565,32 +581,30 @@ and evalFuncDefn (scope:Mach.SCOPE) (f:Ast.FUNC_DEFN) =
 	setProp (getScopeObj scope) funcName funcProp
     end
 
-and evalBlock scope block = 
+and evalBlock (scope:Mach.SCOPE) (block:Ast.BLOCK) : Mach.VAL = 
     case block of 
 	Ast.Block {defns, stmts, ...} => 
 	(evalDefns scope defns;
 	 evalStmts scope stmts)
 
-and evalIfStmt scope ifStmt = 
-    case ifStmt of 
-	{ cnd, thn, els } => 
-	let 
-            val v = evalExpr scope cnd 
-            val b = Mach.toBoolean v
-	in
-            if b 
-            then evalStmt scope thn
-            else evalStmt scope els
-	end
+and evalIfStmt (scope:Mach.SCOPE) (cnd:Ast.EXPR) (thn:Ast.STMT) (els:Ast.STMT) = 
+    let 
+        val v = evalExpr scope cnd 
+        val b = Mach.toBoolean v
+    in
+        if b 
+        then evalStmt scope thn
+        else evalStmt scope els
+    end
     
-and evalLabelStmt scope lab s = 
+and evalLabelStmt (scope:Mach.SCOPE) (lab:Ast.IDENT) (s:Ast.STMT) : Mach.VAL = 
     evalStmt scope s
     handle BreakException exnLabel 
 	   => if labelEq (SOME lab) exnLabel
-              then Mach.Undef 
+              then Mach.Undef
               else raise BreakException exnLabel
 			 
-and evalWhileStmt scope whileStmt = 
+and evalWhileStmt (scope:Mach.SCOPE) (whileStmt:Ast.WHILE_STMT) : Mach.VAL = 
     case whileStmt of 
 	{ cond, body, contLabel } => 
 	let
@@ -622,22 +636,22 @@ and evalWhileStmt scope whileStmt =
 	      | SOME v => v
 	end
     
-and evalReturnStmt scope e
+and evalReturnStmt (scope:Mach.SCOPE) (e:Ast.EXPR list) : Mach.VAL
   = raise (ReturnException (evalListExpr scope e))
 	  
-and evalThrowStmt scope e
+and evalThrowStmt (scope:Mach.SCOPE) (e:Ast.EXPR list) : Mach.VAL
   = raise (ThrowException (evalListExpr scope e))
 	  
-and evalBreakStmt scope lbl
+and evalBreakStmt (scope:Mach.SCOPE) (lbl:Ast.IDENT option) : Mach.VAL
   = raise (BreakException lbl)
 	  
-and evalContinueStmt scope lbl
+and evalContinueStmt (scope:Mach.SCOPE) (lbl:Ast.IDENT option) : Mach.VAL
   = raise (ContinueException lbl)
 
-and evalPackage scope (package:Ast.PACKAGE) = 
+and evalPackage (scope:Mach.SCOPE) (package:Ast.PACKAGE) : Mach.VAL = 
     evalBlock scope (#body package)
 
-and evalProgram (prog:Ast.PROGRAM) = 
+and evalProgram (prog:Ast.PROGRAM) : Mach.VAL = 
     (Mach.populateIntrinsics Mach.globalObject;
      map (evalPackage Mach.globalScope) (#packages prog);
      evalBlock Mach.globalScope (#body prog))
