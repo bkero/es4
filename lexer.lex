@@ -28,7 +28,7 @@ let
         let 
 	        val tok = token_fn ()
 	    in 
-	        (* log ["lexed ", tokenname tok]; *)
+(* log ["lexed ", tokenname tok]; *)
 
 	  (*
 	   * The lexbreak tokens represent choice points for the parser. We
@@ -37,8 +37,8 @@ let
 	   *)
 	    case tok of 
             LexBreakDiv _ => (add tok; stop ())
-	      | LexBreakDivAssign _ => (add DivAssign; add tok; stop ())
-	      | LexBreakLessThan _ => (add LessThan; add tok; stop ())
+	      | LexBreakDivAssign _ => (add tok; stop ())
+	      | LexBreakLessThan _ => (add tok; stop ())
 	      | Eof => (add Eof; stop ())
 	      | Eol => (add_lb (length (!t)); step ())
 	      | x => (add x; step ())
@@ -47,7 +47,6 @@ in
     line_breaks := [];
     step ()
 end
-
 
 fun followsLineBreak (ts) =
 	let val _ = log(["followsLineBreak"])
@@ -134,7 +133,7 @@ charEscape            = "\\" ([btnvfr\"\'\\]|"x"{hexDigit}{2}|[0-7]{1,3});
 
 <INITIAL>"/="              => (LexBreakDivAssign
 				   { lex_initial = 
-				     (fn _ => token_list 
+				     (fn _ => DivAssign :: token_list 
 						  (fn _ => (YYBEGIN INITIAL; lex ()))),
 				     lex_regexp = 
 				     (fn _ => token_list 
@@ -161,7 +160,7 @@ charEscape            = "\\" ([btnvfr\"\'\\]|"x"{hexDigit}{2}|[0-7]{1,3});
 
 <INITIAL>"<"               => (LexBreakLessThan
 				   { lex_initial = 
-				     (fn _ => token_list 
+				     (fn _ => LessThan :: token_list 
 						  (fn _ => (YYBEGIN INITIAL; lex ()))),
 				     lex_xml = 
 				     (fn _ => token_list 
