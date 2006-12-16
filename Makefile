@@ -32,8 +32,14 @@ pretty-cvt.sml: tools/gen-pretty.heap.$(HEAP_SUFFIX) ast.sml
 tools/gen-pretty.heap.$(HEAP_SUFFIX): tools/gen-pretty.cm $(wildcard tools/*.sml)
 	cd tools && $(MLBUILD) $(MLBUILD_ARGS) gen-pretty.cm Main.main gen-pretty.heap
 
+tools/unit.heap.$(HEAP_SUFFIX): tools/unit.cm tools/unit.sml
+	cd tools && $(MLBUILD) $(MLBUILD_ARGS) unit.cm UnitTests.main unit.heap
+
 check: es4.heap.$(HEAP_SUFFIX)
 	sml @SMLload=es4.heap $(PARSE_TESTS)
+
+unit: tools/unit.heap.$(HEAP_SUFFIX)
+	sml @SMLload=tools/unit.heap tests/tc.test
 
 checktc: es4.heap.$(HEAP_SUFFIX)
 	sml @SMLload=es4.heap -tc $(TC_TESTS)

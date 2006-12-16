@@ -5382,7 +5382,19 @@ fun dumpLineBreaks (lbs,lst) =
 		[] => rev lst
       | _ => dumpLineBreaks(tl lbs, Int.toString(hd lbs) :: "\n  " :: lst)
 
-fun lexFile (filename : string) : (token list) = 
+fun lex (reader) : (token list) =
+    let 
+        val lexer = Lexer.makeLexer reader
+		val tokens = Lexer.UserDeclarations.token_list lexer
+		val line_breaks = !Lexer.UserDeclarations.line_breaks
+    in
+        log ("tokens:" :: dumpTokens(tokens,[])); 
+        log ("line breaks:" :: dumpLineBreaks(line_breaks,[])); 
+        tokens
+    end
+
+fun lexFile (filename : string) : (token list) = lex (mkReader filename)
+(*
     let 
         val lexer = Lexer.makeLexer (mkReader filename)
 		val tokens = Lexer.UserDeclarations.token_list lexer
@@ -5391,6 +5403,18 @@ fun lexFile (filename : string) : (token list) =
         log ("tokens:" :: dumpTokens(tokens,[])); 
         log ("line breaks:" :: dumpLineBreaks(line_breaks,[])); 
         tokens
+    end
+*)
+
+fun lexLines (lines : string list) : (token list) =
+    let val reader = let val r = ref lines
+                     in
+                         fn _ => (case !r of
+                                       (line::lines) => (r := lines; line)
+                                     | [] => "")
+                     end
+    in
+        lex reader
     end
 
 fun parse ts =
@@ -5405,7 +5429,20 @@ fun parse ts =
 	result
     end
 
-fun parseFile filename = 
+fun logged thunk name =
+    (log ["scanning ", name];
+     let val ast = thunk ()
+     in
+         log ["parsed ", name, "\n"];
+         ast
+     end)
+    handle ParseError => (log ["parse error"]; raise ParseError)
+         | Lexer.LexError => (log ["lex error"]; raise Lexer.LexError)
+
+fun parseFile filename =
+    logged (fn _ => parse (lexFile filename)) filename
+
+(*
     (log ["scanning ", filename];
      let val ast = parse (lexFile filename)
      in
@@ -5414,5 +5451,9 @@ fun parseFile filename =
      end)
      handle ParseError => (log ["parse error"]; raise ParseError)
           | Lexer.LexError => (log ["lex error"]; raise Lexer.LexError)
+*)
+
+fun parseLines lines =
+    logged (fn _ => parse (lexLines lines)) "<<string>>"
 
 end (* Parser *)
