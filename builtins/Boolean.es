@@ -1,77 +1,57 @@
 /* -*- mode: java; mode: font-lock; tab-width: 4 -*- 
  *
  * ECMAScript 4 builtins - the "Boolean" object
- * ES-262-3 15.6
+ *
+ * E262-3 15.6
+ * E262-4 19.x
+ * E262-4 proposals:builtin_classes
  */
 
 package
 {
-	dynamic class Boolean extends Object
+	/* Notionally, the boolean constants "true" and "false" reference
+	   instances of the Boolean class.  These two instances are
+	   necessarily magically constructed.
+
+	   The Boolean constructor returns one of these instances, so
+	   there are never more than two Boolean instances in the system.
+
+	   The Boolean class is final and non-dynamic because most
+	   implementations will in fact represent Boolean objects not
+	   using objects, but using some magic tagged value, of which
+	   there will be only two, one for "true" and the other for
+	   "false".
+	 */
+	final class Boolean! extends Object
 	{		
-		/* ES-262-3 15.6.1: The Boolean Constructor Called as a Function.
-
-		   ES-262-4 draft: There are no Boolean "values", only Boolean
-		   objects, so this will always return type Boolean. */
-		static intrinsic function call(value)
-		{
-			return value ? true : false;                      // value is forced through ToBoolean
+		/* E262-3 15.6.1: The Boolean Constructor Called as a Function. */
+		static intrinsic function call(value) : Boolean {
+			return value ? true : false;
 		}
 
-		/* ES-262-3 15.6.2.1: The Boolean Constructor. */
-		function Boolean(value)
-		{
-			intrinsic::setPrototype(this, Boolean.prototype);
-			intrinsic::setClass(this, "Boolean");
-			intrinsic::setValue(this, value ? true : false);  // value is forced through ToBoolean
+		/* E262-3 15.6.2.1: The Boolean Constructor. */
+		function Boolean(value) {
+			return value ? true : false;
 		}
 
-		/* ES-262-3 15.6.3:  Properties of the Boolean Constructor */
-		static const length = 1;
-
-		/* ES-262-3 15.6.3.1: Boolean.prototype */
-		static const prototype = { };
-
-		/* ES-262-3 requires that the class name of the prototype
-		   object is "Boolean".  */
-   		intrinsic::setClass(Boolean.prototype, "Boolean");
-
-		/* ES-262-3 15.6.4.1: Boolean.prototype.constructor is the
-		   original Boolean constructor */
-		Boolean.prototype.constructor = Boolean;
-		
-		/* ES-262-3 15.6.4.2: Boolean.prototype.toString.  
-
-		   The type constraint enforces non-transportability of the
-		   toString method.  */
-		Boolean.prototype.toString = function toString(this : Boolean) 
-		{
+		/* E262-3 15.6.4.2: Boolean.prototype.toString.  */
+		prototype function toString(/*this : Boolean*/) {  // FIXME: parser does not handle this yet
 			return this.intrinsic::toString();
 		}
 
-		/* ES-262-4 draft ch 19 */
-		intrinsic function toString() : String
-		{
-			return intrinsic::getValue(this) ? "true" : "false";
+		/* E262-4 draft ch 19 */
+		intrinsic function toString() : String {
+			return this === true ? "true" : "false";
 		}
 		
-		/* ES-262-3 15.6.4.3: Boolean.prototype.valueOf.
-
-		   The type constraint enforces non-transportability of the
-		   toString method.  */
-		Boolean.prototype.valueOf = function valueOf(this : Boolean)
-		{
+		/* E262-3 15.6.4.3: Boolean.prototype.valueOf. */
+		prototype function valueOf(/*this : Boolean*/) {  // FIXME: parser does not handle this yet
 			return this;
 		}
 
-		/* ES-262-4 draft ch 19 */
-		ECMA4 function valueOf() : Object
-		{
+		/* E262-4 draft ch 19 */
+		intrinsic function valueOf() : Boolean {
 			return this;
 		}
-
-		/* ES-262-3 FIXME-cite: properties on prototype are DontEnum */
-		intrinsic::setPropertyIsDontEnum(Boolean.prototype, "constructor", true);
-		intrinsic::setPropertyIsDontEnum(Boolean.prototype, "toString", true);
-		intrinsic::setPropertyIsDontEnum(Boolean.prototype, "valueOf", true);
 	}
 }
