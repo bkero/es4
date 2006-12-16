@@ -16,7 +16,7 @@ fun testEV argvRest =
     let val asts = List.map Parser.parseFile argvRest
     in
 	TextIO.print "evaluating ... \n";
-(*        List.map Eval.evalProgram asts; *)
+        List.map Eval.evalProgram asts;
 	TextIO.print "evaluated! \n"
     end
 
