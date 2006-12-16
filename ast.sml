@@ -198,12 +198,12 @@ datatype PRAGMA =
          SpecialType of SPECIAL_TY
        | UnionType of TYPE_EXPR list
        | ArrayType of TYPE_EXPR list
-       | NominalType of { ident : IDENT_EXPR, 
-			  nullable : bool option }
+       | NominalType of { ident : IDENT_EXPR, nullable: bool option }  (* todo: remove nullable *)
        | FunctionType of FUNC_SIG
        | ObjectType of FIELD_TYPE list
        | AppType of { base: TYPE_EXPR,
 		      args: TYPE_EXPR list }
+	   | NullableType of {expr:TYPE_EXPR,nullable:bool}
 
      and STMT =
          EmptyStmt

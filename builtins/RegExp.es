@@ -12,7 +12,7 @@
 
 package RegExp
 {
-	//	import Unicode.*;
+	import Unicode.*;
 	use strict;
 
 	/* E262-3 15.10: Regular expression object */
