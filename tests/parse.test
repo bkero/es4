@@ -1,0 +1,209 @@
+// Comments are lines beginning with "//" or containing only whitespace.
+// 
+// Each test case is introduced with a header of the form:
+// 
+//     header ::= "%%" ("[" name "]")? type ("," arg)?
+//     name ::= (anything except "[" or "]")*
+//     type ::= "parse" | "verify" | "eval" | "verifyeval"
+// 
+// Each test type takes an argument:
+// 
+//     Parse argument:
+//         "parse" (default) : successfully parse to AST
+//         "fail" : raise a ParseError
+//     Verify argument:
+//         "pass" (default) : parse and successfully verify
+//         "fail" : parse but fail to verify with IllTypedException
+//     Eval argument:
+//         [TODO]
+//     VerifyEval argument:
+//         [TODO]
+// 
+// Following the header is the contents of the test case, up to the next
+// test case or end of file. This can be the literal source code of the
+// test case or a line of the form:
+// 
+//     "@" filename
+// 
+// In this case, the source will be read in from the given filename,
+// relative to the current working directory.
+
+%% [ident] parse
+@tests/ident.js
+
+%% [numberliteral] parse
+@tests/numberliteral.es
+
+%% [stringliteral] parse
+@tests/stringliteral.es
+
+%% [listexpr] parse
+@tests/listexpr.es
+
+%% [mult] parse
+@tests/mult.es
+
+%% [div] parse
+@tests/div.es
+
+%% [cond] parse
+@tests/cond.es
+
+%% [fexpr] parse
+@tests/fexpr.es
+
+%% [atident] parse
+@tests/atident.es
+
+%% [assign] parse
+@tests/assign.es
+
+%% [call] parse
+@tests/call.es
+
+%% [objectref] parse
+@tests/objectref.es
+
+%% [objectliteral] parse
+@tests/objectliteral.es
+
+%% [arrayliteral] parse
+@tests/arrayliteral.es
+
+%% [cast] parse
+@tests/cast.es
+
+%% [objectpattern] parse
+@tests/objectpattern.es
+
+%% [typedident] parse
+@tests/typedident.es
+
+%% [typeexpr] parse
+@tests/typeexpr.es
+
+%% [typedarray] parse
+@tests/typedarray.es
+
+%% [uniontype] parse
+@tests/uniontype.es
+
+%% [nullability] parse
+@tests/nullability.es
+
+%% [recordtype] parse
+@tests/recordtype.es
+
+%% [letexpr] parse
+@tests/letexpr.es
+
+%% [nolist] parse
+@tests/nolist.es
+
+%% [arraypattern] parse
+@tests/arraypattern.es
+
+%% [equality] parse
+@tests/equality.es
+
+%% [relational] parse
+@tests/relational.es
+
+%% [primary] parse
+@tests/primary.es
+
+%% [asi] parse
+@tests/asi.es
+
+%% [return] parse
+@tests/return.es
+
+%% [vardefn] parse
+@tests/vardefn.es
+
+%% [pragma] parse
+@tests/pragma.es
+
+%% [block] parse
+@tests/block.es
+
+%% [ifstmt] parse
+@tests/ifstmt.es
+
+%% [switch] parse
+@tests/switch.es
+
+%% [destruct] parse
+@tests/destruct.es
+
+%% [switchtype] parse
+@tests/switchtype.es
+
+%% [superstmt] parse
+@tests/superstmt.es
+
+%% [dowhile] parse
+@tests/dowhile.es
+
+%% [while] parse
+@tests/while.es
+
+%% [for] parse
+@tests/for.es
+
+%% [forin] parse
+@tests/forin.es
+
+%% [foreach] parse
+@tests/foreach.es
+
+%% [letstmt] parse
+@tests/letstmt.es
+
+%% [with] parse
+@tests/with.es
+
+%% [labeled] parse
+@tests/labeled.es
+
+%% [continue] parse
+@tests/continue.es
+
+%% [break] parse
+@tests/break.es
+
+%% [try] parse
+@tests/try.es
+
+%% [attrs] parse
+@tests/attrs.es
+
+%% [fundef] parse
+@tests/fundef.es
+
+%% [classdef] parse
+@tests/classdef.es
+
+%% [interfacedef] parse
+@tests/interfacedef.es
+
+%% [namespacedef] parse
+@tests/namespacedef.es
+
+%% [package] parse
+@tests/package.es
+
+%% [Boolean.es] parse
+@builtins/Boolean.es
+
+%% [Object.es] parse
+@builtins/Object.es
+
+%% [t] parse
+@tests/t.es
+
+%% [assign error] parse, fail
+@tests/assign_err.es
+
+%% [nolist error] parse, fail
+@tests/nolist_err.es

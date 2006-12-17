@@ -1,24 +1,4 @@
-// Comments are lines beginning with "//" or containing only whitespace.
-// 
-// Each test case is introduced with a header of the form:
-// 
-//     header ::= "%%" ("[" name "]")? type ("," arg)?
-//     name ::= (anything except "[" or "]")*
-//     type ::= "parse" | "verify" | "eval" | "verifyeval"
-// 
-// Each test type recognizes its own set of possible arguments.
-// 
-//     Parse tests:
-//         arg ::= "pass" | "error"
-//     Verify tests:
-//         arg ::= "pass" | "fail"
-//     Eval tests:
-//         arg ::= [TODO]
-//     VerifyEval tests:
-//         arg ::= [TODO]
-// 
-// Following the header is the ES4 source code for the test case, up to
-// the next test case or end of file.
+// See "parse.test" for information about the unit test file format.
 
 %% [int literal] verify, pass
 1

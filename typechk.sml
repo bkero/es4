@@ -4,8 +4,10 @@
  *   - all typed libraries in host environment must carry compatible runtime type constraints
  *)
 
+(* TODO: rename to Verify *)
 structure TypeChk = struct
-    
+
+(* TODO: rename to VerifyError *)
 exception IllTypedException of string
 exception BrokenInvariant of string
 exception CalledEval
