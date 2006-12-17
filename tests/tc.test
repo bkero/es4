@@ -1,0 +1,72 @@
+// Comments are lines beginning with "//" or containing only whitespace.
+// 
+// Each test case is introduced with a header of the form:
+// 
+//     header ::= "%%" ("[" name "]")? type ("," arg)?
+//     name ::= (anything except "[" or "]")*
+//     type ::= "parse" | "verify" | "eval" | "verifyeval"
+// 
+// Each test type recognizes its own set of possible arguments.
+// 
+//     Parse tests:
+//         arg ::= "pass" | "error"
+//     Verify tests:
+//         arg ::= "pass" | "fail"
+//     Eval tests:
+//         arg ::= [TODO]
+//     VerifyEval tests:
+//         arg ::= [TODO]
+// 
+// Following the header is the ES4 source code for the test case, up to
+// the next test case or end of file.
+
+%% [int literal] verify, pass
+1
+
+%% [double literal] verify, pass
+1.23
+
+%% [null literal] verify, pass
+null
+
+%% [true literal] verify, pass
+true
+
+%% [false literal] verify, pass
+false
+
+%% [string literal] verify, pass
+"string"
+
+%% [structurally typed array literal] verify, pass
+[0, true, "blue"] : [int, Boolean, String]
+
+//%% [nominally typed array literal] verify, pass
+//[1, 2, "foo"] : Array
+
+//%% [dynamically typed array literal] verify, pass
+//[1, 2, "bar"] : *
+
+//%% [loosely typed array literal] verify, pass
+//[1, 2, "baz"] : Object
+
+%% [untyped array literal] verify, pass
+[1, 2, "foo"]
+
+//%% [structurally typed object literal] verify, pass
+//{} : {}
+
+//%% [dynamically typed object literal] verify, pass
+//{} : *
+
+//%% [untyped object literal] verify, pass
+//{}
+
+//%% [structurally typed object literal] verify, pass
+//{ x: 0, y: true, z: "blue" } : { x: int, y: Boolean }
+
+//%% [structurally typed object literal] verify, pass
+//{ x: 0, y: true, z: "blue" } : { x: int, y: Boolean, z: String }
+
+%% verify, pass
+let (x=1) x

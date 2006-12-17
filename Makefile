@@ -6,7 +6,7 @@ PARSE_TESTS = tests/ident.js tests/numberliteral.es tests/stringliteral.es tests
 #tests/assign_err.es
 #tests/nolist_err.es
 
-TC_TESTS = tests/tc_expr.es
+TC_TESTS = tests/tc.test
 EV_TESTS = tests/exec.es
 
 # A total hack to check whether a given CM anchor is installed.
@@ -29,15 +29,17 @@ es4.heap.$(HEAP_SUFFIX): $(wildcard *.sml) pretty-cvt.sml
 pretty-cvt.sml: tools/gen-pretty.heap.$(HEAP_SUFFIX) ast.sml
 	cd tools && sml @SMLload=gen-pretty.heap ../ast.sml ../pretty-cvt.sml
 
-tools/gen-pretty.heap.$(HEAP_SUFFIX): tools/gen-pretty.cm $(wildcard tools/*.sml)
-	cd tools && $(MLBUILD) $(MLBUILD_ARGS) gen-pretty.cm Main.main gen-pretty.heap
+tools/gen-pretty.heap.$(HEAP_SUFFIX): tools/gen-pretty.cm tools/gen-convert.sml tools/gen-pretty.sml tools/quasiquote.sml tools/smlast.sml
+	cd tools && $(MLBUILD) $(MLBUILD_ARGS) gen-pretty.cm GenPretty.main gen-pretty.heap
+
+tools/unit.heap.$(HEAP_SUFFIX): tools/unit.cm tools/unit.sml
+	cd tools && $(MLBUILD) $(MLBUILD_ARGS) unit.cm UnitTests.main unit.heap
 
 check: es4.heap.$(HEAP_SUFFIX)
 	sml @SMLload=es4.heap $(PARSE_TESTS)
 
-checktc: es4.heap.$(HEAP_SUFFIX)
-	sml @SMLload=es4.heap -tc $(TC_TESTS)
-#	sml @SMLload=es4.heap tests/vardefn.es
+checktc: tools/unit.heap.$(HEAP_SUFFIX) es4.heap.$(HEAP_SUFFIX)
+	sml @SMLload=tools/unit.heap tests/tc.test
 
 checkev: es4.heap.$(HEAP_SUFFIX)
 	sml @SMLload=es4.heap -ev $(EV_TESTS)
