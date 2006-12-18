@@ -27,3 +27,7 @@ Lines must not exceed 100 columns.
 * indentation
 
 [TODO]
+
+* tabs
+
+Hard tabs are disallowed.
