@@ -15,3 +15,15 @@ code should not have non-exhaustive matches.
 If a particular case should never happen, the right-hand side of the
 match case should raise a Fail exception with a string indicating what
 invariant was violated.
+
+* explicit type annotations
+
+Top-level functions must be annotated explicitly.
+
+* line widths
+
+Lines must not exceed 100 columns.
+
+* indentation
+
+[TODO]
