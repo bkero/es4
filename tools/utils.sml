@@ -1,3 +1,14 @@
+structure Utils =
+struct
+
+fun when (b : bool) (thunk : unit -> 'a) : unit =
+    if b then (thunk(); ()) else ()
+
+fun unless (b : bool) (thunk : unit -> 'a) : unit =
+    when (not b) thunk
+
+end
+
 structure ListUtils =
 struct
 
