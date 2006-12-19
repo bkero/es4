@@ -46,11 +46,11 @@ fun resolveExprToNamespace (fixs:Mach.FIXTURES) (expr:Ast.EXPR) : Mach.NS =
 and defClass (firstPassFixtures:Ast.FIXTURES option) (parentFixtures:Ast.FIXTURES option) (cdef:Ast.CLASS_DEFN) : Ast.FIXTURE_BINDINGS = 
     []
 
-and defVars (firstPassFixtures:Ast.FIXTURES option) (parentFixtures:Ast.FIXTURES option) (vars:Ast.VAR_BINDING list) : Ast.FIXTURE_BINDINGS = 
+and defVars (parentFixtures:Ast.FIXTURES option) (vars:Ast.VAR_BINDING list) : Ast.FIXTURE_BINDINGS = 
     []
 
 
-and defFunc (firstPassFixtures:Ast.FIXTURES option) (parentFixtures:Ast.FIXTURES option) (f:Ast.FUNC_DEFN) : Ast.FIXTURE_BINDINGS = 
+and defFunc (parentFixtures:Ast.FIXTURES option) (f:Ast.FUNC_DEFN) : Ast.FIXTURE_BINDINGS = 
     []
     (* LogErr.unimplError ["function definitions temporarily disabled "] *)
 (*     case fixs of 
@@ -82,15 +82,23 @@ and defFunc (firstPassFixtures:Ast.FIXTURES option) (parentFixtures:Ast.FIXTURES
 and defPragma (firstPassFixtures:Ast.FIXTURES option) (parentFixtures:Ast.FIXTURES option) (pragma:Ast.PRAGMA) : Ast.FIXTURE_BINDINGS = 
     []
 
-and defStmt (firstPassFixtures:Ast.FIXTURES option) (parentFixtures:Ast.FIXTURES option) (cls:Ast.STMT) : Ast.FIXTURE_BINDINGS = 
+and defStmt  (parentFixtures:Ast.FIXTURES option) (cls:Ast.STMT) : Ast.FIXTURE_BINDINGS = 
     []
 
 and defDefn (firstPassFixtures:Ast.FIXTURES option) (parentFixtures:Ast.FIXTURES option) (defn:Ast.DEFN) : Ast.FIXTURE_BINDINGS = 
-    case defn of 
-	Ast.ClassDefn cd => defClass firstPassFixtures parentFixtures cd
-      | Ast.VariableDefn vbs => defVars firstPassFixtures parentFixtures vbs
-      | Ast.FunctionDefn fd => defFunc firstPassFixtures parentFixtures fd
-      | _ => []
+    case firstPassFixtures of 
+	SOME _ => 
+	(case defn of 
+	     (* Do a partial resolution -- class defns only -- the first time *)
+	     Ast.ClassDefn cd => defClass firstPassFixtures parentFixtures cd
+	   | _ => [])
+      | NONE => 
+	(case defn of 
+	     (* Do the full resolution the second time *) 
+	     Ast.ClassDefn cd => defClass firstPassFixtures parentFixtures cd
+	   | Ast.VariableDefn vbs => defVars parentFixtures vbs
+	   | Ast.FunctionDefn fd => defFunc parentFixtures fd
+	   | _ => [])
 
 and defBlock (firstPassFixtures:Ast.FIXTURES option) (parentFixtures:Ast.FIXTURES option) (block:Ast.BLOCK) : Ast.BLOCK = 
     case block of 
@@ -103,9 +111,17 @@ and defBlock (firstPassFixtures:Ast.FIXTURES option) (parentFixtures:Ast.FIXTURE
 						      parent = parentFixtures,
 						      bindings = [],
 						      isExtensible = false })
-	    val newBindings = ((List.concat (List.map (defPragma firstPassFixtures newFixtures) pragmas)) @ 
-			       (List.concat (List.map (defDefn firstPassFixtures newFixtures) defns)) @ 
-			       (List.concat (List.map (defStmt firstPassFixtures newFixtures) stmts)))
+	    val newBindings = case firstPassFixtures of 
+				  NONE => 
+				  (* Do a partial resolution -- pragmas and defns only -- the first time *)
+				  ((List.concat (List.map (defPragma firstPassFixtures newFixtures) pragmas)) @ 
+				   (List.concat (List.map (defDefn firstPassFixtures newFixtures) defns)))
+				| SOME _ => 
+				  (* Do the full resolution the second time *) 
+				  ((List.concat (List.map (defPragma firstPassFixtures newFixtures) pragmas)) @ 
+				   (List.concat (List.map (defDefn firstPassFixtures newFixtures) defns)) @ 
+				   (List.concat (List.map (defStmt newFixtures) stmts)))
+				  
 	in
 	    Ast.Block { pragmas=pragmas,
 			defns=defns,
