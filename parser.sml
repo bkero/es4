@@ -3317,8 +3317,8 @@ and caseElementsPrefix (ts,has_default) : (token list * Ast.CASE list) =
 					end
 			  | first :: follows =>
 					let
-						val {pragmas=p1,defns=d1,stmts=s1,fixtures=NONE} = nd1
-						val {pragmas=p2,defns=d2,stmts=s2,fixtures=NONE} = (case #body first of Ast.Block b => b)
+						val {pragmas=p1,defns=d1,stmts=s1, ...} = nd1
+						val {pragmas=p2,defns=d2,stmts=s2, ...} = (case #body first of Ast.Block b => b)
 						val block = Ast.Block{pragmas=(p1@p2),defns=(d1@d2),stmts=(s1@s2),fixtures=NONE}
 					in
 						(ts2,{label=NONE,body=block}::follows)

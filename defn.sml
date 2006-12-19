@@ -6,10 +6,9 @@ structure Defn = struct
  * objects into the global object.
  *)
 
-
 fun resolveFixture (fixs:Mach.FIXTURES) (mname:Mach.MULTINAME) : Ast.FIXTURE =
     case fixs of 
-	Ast.Fixtures { parent, fixtures, ... } => 
+	Ast.Fixtures { parent, bindings, ... } => 
 	let     
 	    val id = (#id mname)
 	    fun tryName [] = NONE
@@ -17,13 +16,13 @@ fun resolveFixture (fixs:Mach.FIXTURES) (mname:Mach.MULTINAME) : Ast.FIXTURE =
 		let 
 		    val n = {ns=x, id=id} 
 		in
-		    if Mach.hasFixture fixtures n
+		    if Mach.hasFixture bindings n
 		    then SOME n
 		    else tryName xs
 		end
 	in
 	    case tryName (#nss mname) of 
-		SOME n => Mach.getFixture fixtures n 
+		SOME n => Mach.getFixture bindings n 
 	      | NONE => (case parent of 
 			     NONE => LogErr.defnError ["unresolved fixture"]
 			   | SOME p => resolveFixture p mname)
@@ -44,18 +43,18 @@ fun resolveExprToNamespace (fixs:Mach.FIXTURES) (expr:Ast.EXPR) : Mach.NS =
       | _ => LogErr.defnError ["unexpected expression type ",
 			       "in namespace context"]
 
+and defClass (fixs:Ast.FIXTURES option) (cdef:Ast.CLASS_DEFN) : Ast.FIXTURE_BINDINGS = 
+    []
 
-fun addNominalTypeObjects _ : unit = 
-    ()
+and defVars (fixs:Ast.FIXTURES option) (vars:Ast.VAR_BINDING list) : Ast.FIXTURE_BINDINGS = 
+    case fixs of 
+	NONE => []
+      | SOME fxs => []
 
-and defClass (fixs:Mach.FIXTURES) (cdef:Ast.CLASS_DEFN) : unit = 
-    ()
 
-and defVars (fixs:Mach.FIXTURES) (vars:Ast.VAR_BINDING list) : unit = 
-    ()
-
-and defFunc (fixs:Mach.FIXTURES) (f:Ast.FUNC_DEFN) : unit = 
-    LogErr.unimplError ["function definitions temporarily disabled "]
+and defFunc (fixs:Ast.FIXTURES option) (f:Ast.FUNC_DEFN) : Ast.FIXTURE_BINDINGS = 
+    []
+    (* LogErr.unimplError ["function definitions temporarily disabled "] *)
 (*     case fixs of 
 	Mach.Fixtures { fixtures, ... } =>
 	let
@@ -82,29 +81,51 @@ and defFunc (fixs:Mach.FIXTURES) (f:Ast.FUNC_DEFN) : unit =
     end
 *)
 
-and defInterface (fixs:Mach.FIXTURES) (idef:Ast.INTERFACE_DEFN) : unit = 
-    ()
+and defPragma (cls:Ast.PRAGMA) : Ast.FIXTURE_BINDINGS = 
+    []
 
-and defDefn (fixs:Mach.FIXTURES) (defn:Ast.DEFN) : unit = 
+and defStmt (fxs:Ast.FIXTURES option) (cls:Ast.STMT) : Ast.FIXTURE_BINDINGS = 
+    []
+
+and defDefn (fxs:Ast.FIXTURES option) (defn:Ast.DEFN) : Ast.FIXTURE_BINDINGS = 
     case defn of 
-	Ast.ClassDefn cd => defClass fixs cd
-      | Ast.VariableDefn vbs => defVars fixs vbs
-      | Ast.FunctionDefn fd => defFunc fixs fd
-      | Ast.InterfaceDefn id => defInterface fixs id
-      | _ => LogErr.unimplError ["unhandled definition form"]
+	Ast.ClassDefn cd => defClass fxs cd
+      | Ast.VariableDefn vbs => defVars fxs vbs
+      | Ast.FunctionDefn fd => defFunc fxs fd
+      | _ => []
 
-and defBlock (fixs:Mach.FIXTURES) (block:Ast.BLOCK) : unit = 
+and defBlock (fixs:Ast.FIXTURES option) (block:Ast.BLOCK) : Ast.BLOCK = 
     case block of 
-	Ast.Block { defns, ... } => List.app (defDefn fixs) defns
-	
+	Ast.Block { pragmas, defns, stmts, ... } => 
+	let 
+	    val fixtures0 = Ast.Fixtures 
+				{ tag = Ast.BlockFixtures,
+				  parent = NONE,
+				  bindings = ((List.concat (List.map defPragma pragmas)) @ 
+					      (List.concat (List.map (defDefn NONE) defns)) @ 
+					      (List.concat (List.map (defStmt NONE) stmts))),
+				  isExtensible = false }
+			    
+	    val fixtures1 = Ast.Fixtures 
+				{ tag = Ast.BlockFixtures,
+				  parent = NONE,
+				  bindings = ((List.concat (List.map defPragma pragmas)) @ 
+					      (List.concat (List.map (defDefn (SOME fixtures0)) defns)) @ 
+					      (List.concat (List.map (defStmt (SOME fixtures0)) stmts))),
+				  isExtensible = false }
+	in
+	    Ast.Block { pragmas=pragmas,
+			defns=defns,
+			stmts=stmts,
+			fixtures=SOME fixtures1 }
+	end
 
-and defPackage (fixs:Mach.FIXTURES) (package:Ast.PACKAGE) : unit = 
-    defBlock fixs (#body package)
-
-and defProgram (prog:Ast.PROGRAM) : unit = 
-    (List.app (defPackage Mach.globalFixtures) (#packages prog);
-     defBlock Mach.globalFixtures (#body prog);
-     addNominalTypeObjects ();
-     Mach.addFixturesToObject Mach.globalFixtures Mach.globalObject)
+and defPackage (package:Ast.PACKAGE) : Ast.PACKAGE =     
+    { name = (#name package),
+      body = defBlock NONE (#body package) }
+    
+and defProgram (prog:Ast.PROGRAM) : Ast.PROGRAM = 
+    { packages = map defPackage (#packages prog),
+      body = defBlock NONE (#body prog) }
 
 end

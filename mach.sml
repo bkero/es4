@@ -269,7 +269,7 @@ val (emptyBlock:Ast.BLOCK) = Ast.Block { pragmas = [],
 val (globalFixtures:FIXTURES) = 
     Ast.Fixtures { parent = NONE,
 		   tag = Ast.GlobalFixtures,
-		   fixtures = [],
+		   bindings = [],
 		   isExtensible = false }
 
 val (globalObject:OBJ) = newObj intrinsicObjectBaseTag NONE NONE
@@ -283,7 +283,7 @@ val nan = Real.posInf / Real.posInf
 
 fun addFixturesToObject (fixs:FIXTURES) (obj:OBJ) : unit = 
     case fixs of
-	Ast.Fixtures { fixtures, ... } => ()
+	Ast.Fixtures { bindings, ... } => ()
 
 (*
  * To get from any object to its CLS, you work out the

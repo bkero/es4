@@ -339,7 +339,7 @@ datatype PRAGMA =
      and FIXTURES = 
 	 Fixtures of { tag: FIXTURES_TAG,
 		       parent: FIXTURES option,	     		       
-		       fixtures: FIXTURE_BINDINGS,
+		       bindings: FIXTURE_BINDINGS,
 		       isExtensible: bool }
 
      and FIXTURE = 
