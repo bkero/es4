@@ -34,7 +34,7 @@ fun log ss =
      List.app TextIO.print ss;
      TextIO.print "\n")
 
-val trace_on = true
+val trace_on = false
 
 fun trace ss =
 	if trace_on then log ss else ()
@@ -497,6 +497,20 @@ and functionSignature (ts) : (token list * Ast.FUNC_SIG) =
                 		   	end
 		           	  | _ => raise ParseError
 					end
+       		  | RightParen :: _ =>
+                   	let
+   		               	val (ts3,nd3) = resultType (tl ts2)
+           		   	in
+						(log(["<< functionSignature with next=",tokenname(hd ts3)]);
+                        (ts3,Ast.FunctionSignature
+								{ typeParams=nd1,
+									thisType=SOME (Ast.NominalType {ident=nd2,nullable=NONE}),
+                   		        	params=[],
+	                       		    returnType=nd3,
+									inits=NONE,
+									hasBoundThis=false,
+									hasRest=false })) (* do we need this *)
+           		   	end
            	  | _ => raise ParseError
 			end
       | LeftParen :: _ =>
@@ -543,7 +557,9 @@ and typeParameters ts =
 					end
               | _ => raise ParseError
             end
-      | _ => (ts,[])
+      | _ => 
+			(trace(["<< typeParameters with next=",tokenname(hd(ts))]);
+			(ts,[]))
 	end
 
 (*
@@ -4670,6 +4686,32 @@ and functionDefinition (ts,attrs,CLASS) =
 		(Ast.Var,true) =>
 			let
 				val (ts3,nd3) = constructorSignature (ts2)
+			in case ts3 of
+				LeftBrace :: _ =>
+					let
+						val (ts4,nd4) = functionBody (ts3)
+					in
+						(ts4,{pragmas=[],
+							  defns=[Ast.FunctionDefn {attrs=attrs,
+								   kind=nd1, 
+								   func=Ast.Func {name=nd2,
+											   	  fsig=nd3,
+			    				    			  body=nd4}}],
+			  		  		  stmts=[]})
+					end
+			  | _ => 
+					let
+						val (ts4,nd4) = listExpression (ts3,ALLOWIN)
+					in
+						(ts4,{pragmas=[],
+							  defns=[Ast.FunctionDefn {attrs=attrs,
+								   kind=nd1, 
+								   func=Ast.Func {name=nd2,
+											   	  fsig=nd3,
+			    				    			  body=Ast.Block { pragmas=[],defns=[],stmts=[Ast.ReturnStmt nd4] }}}],
+			  		  		  stmts=[]})
+					end
+(*
 				val (ts4,nd4) = functionBody (ts3)
 			in
 				(ts4,{pragmas=[],
@@ -4679,20 +4721,37 @@ and functionDefinition (ts,attrs,CLASS) =
 									   	  fsig=nd3,
 			    				    	  body=nd4}}],
 			  		  stmts=[]})
+*)
 			end
-	  | (Ast.LetVar,true) => raise ParseError
+	  | (Ast.LetVar,true) => raise ParseError  (* todo *)
 	  | _ =>
 			let
 				val (ts3,nd3) = functionSignature (ts2)
-				val (ts4,nd4) = functionBody (ts3)
-			in
-				(ts4,{pragmas=[],
-					  defns=[Ast.FunctionDefn {attrs=attrs,
-						   kind=nd1, 
-						   func=Ast.Func {name=nd2,
-									   	  fsig=nd3,
-			    				    	  body=nd4}}],
-			  		  stmts=[]})
+			in case ts3 of
+				LeftBrace :: _ =>
+					let
+						val (ts4,nd4) = functionBody (ts3)
+					in
+						(ts4,{pragmas=[],
+							  defns=[Ast.FunctionDefn {attrs=attrs,
+								   kind=nd1, 
+								   func=Ast.Func {name=nd2,
+											   	  fsig=nd3,
+			    				    			  body=nd4}}],
+			  		  		  stmts=[]})
+					end
+			  | _ => 
+					let
+						val (ts4,nd4) = listExpression (ts3,ALLOWIN)
+					in
+						(ts4,{pragmas=[],
+							  defns=[Ast.FunctionDefn {attrs=attrs,
+								   kind=nd1, 
+								   func=Ast.Func {name=nd2,
+											   	  fsig=nd3,
+			    				    			  body=Ast.Block { pragmas=[],defns=[],stmts=[Ast.ReturnStmt nd4] }}}],
+			  		  		  stmts=[]})
+					end
 			end
 	end
 
