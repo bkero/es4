@@ -8,6 +8,16 @@ type USTRING = string
 
 type IDENT = USTRING
 
+datatype NAMESPACE =
+         Private
+       | Protected
+       | Intrinsic
+       | Public of IDENT
+       | Internal of IDENT
+       | UserDefined of IDENT
+
+type NAME = { ns: NAMESPACE, id: IDENT }
+
 datatype NUMBER_TYPE =
          Decimal
        | Double
@@ -100,14 +110,6 @@ datatype VAR_DEFN_TAG =
        | LetVar
        | LetConst
        | Rest   (* Goes away, redundant with hasRest in FUNC_SIG *)
-
-datatype NAMESPACE =
-         Private
-       | Protected
-       | Intrinsic
-       | Public of IDENT
-       | Internal of IDENT
-       | UserDefined of IDENT
 
 datatype SPECIAL_TY =
          Any
@@ -291,9 +293,9 @@ datatype PRAGMA =
                                   expr : EXPR }
        | AttributeIdentifier of IDENT_EXPR
        | Identifier of { ident : IDENT,
-                         openNamespaces : (NAMESPACE list) ref }
+                         openNamespaces : NAMESPACE list }
        | ExpressionIdentifier of EXPR   (* for bracket exprs: o[x] and @[x] *)
-       | TypeIdentifier of { ident : IDENT_EXPR,
+       | TypeIdentifier of { ident : IDENT_EXPR, (*deprecated*)
                              typeParams : TYPE_EXPR list }
 
      and LITERAL =
@@ -313,16 +315,41 @@ datatype PRAGMA =
        | LiteralRegExp of
          { str: USTRING }
 
-     and BLOCK = Block of
-         { pragmas: PRAGMA list,
-           defns: DEFN list,
-           stmts: STMT list }
+     and BLOCK = Block of DIRECTIVES
 
-     and PATTERN =
+     and PATTERN = 
+		(* these IDENT_EXPRs are actually
+		   Identifier { id, _ }
+		   and should later be changed to IDENT
+		 *)
          ObjectPattern of { name: IDENT_EXPR, ptrn : PATTERN } list
        | ArrayPattern of PATTERN list
        | SimplePattern of EXPR
        | IdentifierPattern of IDENT_EXPR
+
+(* FIXTURES are built by the definition phase, not the parser; but they 
+ * are patched back into the AST in class-definition and block
+ * nodes, so we must define them here. *)
+
+     and FIXTURES_TAG = 
+	 ClassFixtures  
+       | BlockFixtures
+       | GlobalFixtures
+
+     and FIXTURES = 
+	 Fixtures of { tag: FIXTURES_TAG,
+		       parent: FIXTURES option,	     		       
+		       fixtures: FIXTURE_BINDINGS,
+		       isExtensible: bool }
+
+     and FIXTURE = 
+	 NamespaceFixture of NAMESPACE
+       | TypeFixture of TYPE_EXPR
+       | PropFixture of { ty: TYPE_EXPR,
+			  readOnly: bool,
+			  isOverride: bool,
+			  subFixtures: FIXTURES option }
+
 
 withtype FIELD =
          { kind: VAR_DEFN_TAG,
@@ -342,17 +369,21 @@ withtype FIELD =
            kind : VAR_DEFN_TAG,
            func : FUNC }
 
+     and FIXTURE_BINDINGS = (NAME * FIXTURE) list
+
      and CLASS_DEFN =
          { name: IDENT,
-		   nonnullable: bool,
+	   nonnullable: bool,
            attrs: ATTRIBUTES,
            params: IDENT list,
            extends: IDENT_EXPR option,
            implements: IDENT_EXPR list,
-		   body: BLOCK,
+	   classFixtures: FIXTURES option,
+	   instanceFixtures: FIXTURES option,
+	   body: BLOCK,
            (* the following field will be populated during the definition phase *)
            instanceVars: VAR_BINDING list,
-		   instanceMethods: FUNC list,
+	   instanceMethods: FUNC list,
            vars: VAR_BINDING list,
            methods: FUNC list,
            constructor: FUNC option,
@@ -360,7 +391,7 @@ withtype FIELD =
 
      and INTERFACE_DEFN =
          { name: IDENT,
-		   nonnullable: bool,
+	   nonnullable: bool,
            attrs: ATTRIBUTES,
            params: IDENT list,
            extends: IDENT_EXPR list,
@@ -378,17 +409,18 @@ withtype FIELD =
            body: STMT,
            contLabel: IDENT option }
 
-     and DIRECTIVES =
-         { pragmas : PRAGMA list,
-           defns : DEFN list,
-           stmts : STMT list }
+     and DIRECTIVES = 
+         { pragmas: PRAGMA list,
+           defns: DEFN list,
+           stmts: STMT list,
+	   fixtures: FIXTURES option }
 
      and BINDINGS =
          { defns : VAR_BINDING list,
            inits : EXPR list }
 
      and CASE =
-         { label : EXPR list option, stmts : DIRECTIVES }
+         { label : EXPR list option, body : BLOCK }
 
      and TYPE_CASE =
          { ptrn : VAR_BINDING option, body : BLOCK }

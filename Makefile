@@ -2,11 +2,7 @@ SML_BIN = $(shell dirname "`which sml`" )
 SOURCES = ast.sml main.sml pretty.sml typechk.sml eval.sml mach.sml \
 	parser.sml  pretty-rep.sml token.sml
 HEAP_SUFFIX = $(shell if [ -e "$(SML_BIN)/.arch-n-opsys" ]; then "$(SML_BIN)/.arch-n-opsys" | sed 's/^.*HEAP_SUFFIX=//'; else echo x86-linux; fi )
-PARSE_TESTS = tests/ident.js tests/numberliteral.es tests/stringliteral.es tests/listexpr.es tests/mult.es tests/div.es tests/cond.es tests/fexpr.es tests/atident.es tests/assign.es tests/call.es tests/objectref.es tests/objectliteral.es tests/arrayliteral.es tests/cast.es tests/objectpattern.es tests/typedident.es tests/typeexpr.es tests/typedarray.es tests/uniontype.es tests/nullability.es tests/recordtype.es tests/letexpr.es tests/nolist.es tests/arraypattern.es tests/equality.es tests/relational.es tests/primary.es tests/asi.es tests/return.es tests/vardefn.es tests/pragma.es tests/block.es tests/ifstmt.es tests/switch.es tests/destruct.es tests/switchtype.es tests/superstmt.es tests/dowhile.es tests/while.es tests/for.es tests/forin.es tests/foreach.es tests/letstmt.es tests/with.es tests/labeled.es tests/continue.es tests/break.es tests/try.es tests/attrs.es tests/fundef.es tests/classdef.es tests/interfacedef.es tests/namespacedef.es tests/package.es builtins/Object.es builtins/RegExp.es builtins/RegExpCompiler.es builtins/RegExpEvaluator.es tests/t.es
-#tests/assign_err.es
-#tests/nolist_err.es
 
-TC_TESTS = tests/numberliteral.es
 EV_TESTS = tests/exec.es
 
 # A total hack to check whether a given CM anchor is installed.
@@ -29,15 +25,18 @@ es4.heap.$(HEAP_SUFFIX): $(wildcard *.sml) pretty-cvt.sml
 pretty-cvt.sml: tools/gen-pretty.heap.$(HEAP_SUFFIX) ast.sml
 	cd tools && sml @SMLload=gen-pretty.heap ../ast.sml ../pretty-cvt.sml
 
-tools/gen-pretty.heap.$(HEAP_SUFFIX): tools/gen-pretty.cm $(wildcard tools/*.sml)
-	cd tools && $(MLBUILD) $(MLBUILD_ARGS) gen-pretty.cm Main.main gen-pretty.heap
+tools/gen-pretty.heap.$(HEAP_SUFFIX): tools/gen-pretty.cm tools/gen-convert.sml tools/gen-pretty.sml tools/quasiquote.sml tools/smlast.sml
+	cd tools && $(MLBUILD) $(MLBUILD_ARGS) gen-pretty.cm GenPretty.main gen-pretty.heap
 
-check: es4.heap.$(HEAP_SUFFIX)
-	sml @SMLload=es4.heap $(PARSE_TESTS)
+tools/unit.heap.$(HEAP_SUFFIX): tools/unit.cm tools/unit.sml
+	cd tools && $(MLBUILD) $(MLBUILD_ARGS) unit.cm UnitTests.main unit.heap
 
-checktc: es4.heap.$(HEAP_SUFFIX)
-	sml @SMLload=es4.heap -tc $(TC_TESTS)
-#	sml @SMLload=es4.heap tests/vardefn.es
+# TODO: "check" should do all the *.test files, not just parse tests
+check: tools/unit.heap.$(HEAP_SUFFIX) es4.heap.$(HEAP_SUFFIX)
+	sml @SMLload=tools/unit.heap tests/parse.test
+
+checktc: tools/unit.heap.$(HEAP_SUFFIX) es4.heap.$(HEAP_SUFFIX)
+	sml @SMLload=tools/unit.heap tests/tc.test
 
 checkev: es4.heap.$(HEAP_SUFFIX)
 	sml @SMLload=es4.heap -ev $(EV_TESTS)

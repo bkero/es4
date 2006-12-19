@@ -1,0 +1,52 @@
+// See "parse.test" for information about the unit test file format.
+
+%% [int literal] verify, pass
+1
+
+%% [double literal] verify, pass
+1.23
+
+%% [null literal] verify, pass
+null
+
+%% [true literal] verify, pass
+true
+
+%% [false literal] verify, pass
+false
+
+%% [string literal] verify, pass
+"string"
+
+%% [structurally typed array literal] verify, pass
+[0, true, "blue"] : [int, Boolean, String]
+
+//%% [nominally typed array literal] verify, pass
+//[1, 2, "foo"] : Array
+
+//%% [dynamically typed array literal] verify, pass
+//[1, 2, "bar"] : *
+
+//%% [loosely typed array literal] verify, pass
+//[1, 2, "baz"] : Object
+
+%% [untyped array literal] verify, pass
+[1, 2, "foo"]
+
+//%% [structurally typed object literal] verify, pass
+//{} : {}
+
+//%% [dynamically typed object literal] verify, pass
+//{} : *
+
+//%% [untyped object literal] verify, pass
+//{}
+
+//%% [structurally typed object literal] verify, pass
+//{ x: 0, y: true, z: "blue" } : { x: int, y: Boolean }
+
+//%% [structurally typed object literal] verify, pass
+//{ x: 0, y: true, z: "blue" } : { x: int, y: Boolean, z: String }
+
+%% verify, pass
+let (x=1) x

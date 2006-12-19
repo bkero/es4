@@ -1,242 +1,639 @@
+/* -*- mode: java; mode: font-lock; tab-width: 4; indent-tabs-mode: nil -*- 
+ *
+ * ECMAScript 4 builtins - the "date" object
+ *
+ * E262-3 15.9
+ * E262-4 proposals:date_and_time
+ *
+ * Status: incomplete
+ */
+
 package
 {
-	dynamic class Date extends Object
-	{		
-		// 15.9.2 The Date Constructor Called as a Function
-		static intrinsic function call(...args)
-		{
-			// args are ignored.
-			return (new Date()).toString();
-		}
+    /* The Date class is "final dynamic" in ActionScript 3.0, though
+       the motivation for that is unclear.  The consequence is anyway
+       that the getters for the components of a Date can be inlined.
+    */
+    final dynamic class Date extends Object
+    {       
+        // 15.9.2 The Date Constructor Called as a Function
+        static intrinsic function call(...args) {
+            // args are ignored.
+            return (new Date()).toString();
+        }
 
-		// 15.9.3 The Date Constructor
-		// 15.9.3.1 new Date (year, month [, date [, hours [, minutes [, seconds [, ms ] ] ] ] ] )
-		// 15.9.3.2 new Date (value)
-		// 15.9.3.3 new Date ( )
-		function Date(...args)
-		{
-			// conceptually:
-			// this.[[Value]] = @todo
-		}
+        // 15.9.3 The Date Constructor
+        //
+        // 15.9.3.1 new Date (year, month [, date [, hours [, minutes [, seconds [, ms ] ] ] ] ] )
+        // 15.9.3.2 new Date (value)
+        // 15.9.3.3 new Date ( )
+        function Date(year, month, date, hours, minutes, seconds, ms) {
+            // conceptually:
+            // this.[[Value]] = @todo
+        }
 
-		// 15.9.4 Properties of the Date Constructor
-		static const length = 7;
-		
-		// 15.9.4.1 Date.prototype
-		static const prototype = { };
+        // 15.9.4.2 Date.parse (string)
+        var parse = function parse(string) {
+            return Date.intrinsic::parse(String(string));
+        }
 
-		// 15.9.4.2 Date.parse (string)
-		dynamic static function parse(string)
-		{
-			return _parse(string);
-		}
-		ECMA4 static function parse(string:String):Date
-		{
-			return _parse(string);
-		}
-		private static function _parse(string)
-		{
-			return @todo;
-		}
+        static native function now() : Number;
 
-		// 15.9.4.3 Date.UTC (year, month [, date [, hours [, minutes [, seconds [, ms ] ] ] ] ] )
-		dynamic static function UTC(year, month, date, hours, minutes, seconds, ms)
-		{
-			return _UTC(year, month, date, hours, minutes, seconds, ms);
-		}
-		UTC.length = 7;
-		ECMA4 static function UTC(year:Number, month:Number, date:Number, hours:Number, minutes:Number, seconds:Number, ms:Number):Number
-		{
-			return _UTC(year, month, date, hours, minutes, seconds, ms);
-		}
-		private static function _UTC(year, month, date, hours, minutes, seconds, ms)
-		{
-			return @todo;
-		}
+        static intrinsic native function now() : Number;
 
-		// 15.9.5 Properties of the Date Prototype Object
-   		prototype.[[Prototype]] = prototype;
-   		prototype.[[Class]] = "Date";
-		
-		// 15.9.5.1 Date.prototype.constructor
-		prototype.constructor = Date;
+        static intrinsic function parse(string:String!):Date {
+            // FIXME
+            // This is our chance to write a normative date parser...
+        }
 
-		// 15.9.5.2 Date.prototype.toString ( )
-		prototype.toString = function(this:Date) { return this.ECMA4::toString(); }
-		ECMA4 native function toString():String;
 
-		// 15.9.5.3 Date.prototype.toDateString ( )
-		prototype.toDateString = function(this:Date) { return this.ECMA4::toDateString(); }
-		ECMA4 native function toDateString():String;
+        /* E262-3 15.9.4.3: Date.UTC */
+        var UTC = function UTC(year, month, date, hours, minutes, seconds, ms) {
+            use namespace intrinsic;
 
-		// 15.9.5.4 Date.prototype.toTimeString ( )
-		prototype.toTimeString = function(this:Date) { return this.ECMA4::toTimeString(); }
-		ECMA4 native function toTimeString():String;
+            var argc = arguments.length;
+            return Date.UTC(ToNumber(year), 
+                            ToNumber(month), 
+                            argc >= 3 ? ToNumber(date) : 1,
+                            argc >= 4 ? ToNumber(hours) : 0,
+                            argc >= 5 ? ToNumber(minutes) : 0,
+                            argc >= 6 ? ToNumber(seconds) : 0,
+                            argc >= 7 ? ToNumber(ms) : 0);
+        }
 
-		// 15.9.5.5 Date.prototype.toLocaleString ( )
-		prototype.toLocaleString = function(this:Date) { return this.ECMA4::toLocaleString(); }
-		ECMA4 native function toLocaleString():String;
+        static instrinsic function UTC(year : Number, month : Number, 
+                                       date : Number=1, hours : Number?=0, minutes : Number?=0,
+                                       seconds : Number=0, ms : Number?=0) : Number {
+            use namespace intrinsic;
 
-		// 15.9.5.6 Date.prototype.toLocaleDateString ( )
-		prototype.toLocaleDateString = function(this:Date) { return this.ECMA4::toLocaleDateString(); }
-		ECMA4 native function toLocaleDateString():String;
+            var intYear = ToInteger(year);
+            if (!isNaN(year) && 0 <= intYear && intYear <= 99)
+                intYear += 1900;
+            return TimeClip(MakeDate(MakeDay(intYear, month, date), 
+                                     MakeTime(hours, minutes, seconds, ms)));
+        }
 
-		// 15.9.5.7 Date.prototype.toLocaleTimeString ( )
-		prototype.toLocaleTimeString = function(this:Date) { return this.ECMA4::toLocaleTimeString(); }
-		ECMA4 native function toLocaleTimeString():String;
+        // 15.9.5.2 Date.prototype.toString ( )
+        prototype function toString(this:Date) { 
+            return this.intrinsic::toString(); 
+        }
 
-		// 15.9.5.8 Date.prototype.valueOf ( )
-		prototype.valueOf = function(this:Date) { return this.ECMA4::valueOf(); }
-		ECMA4 native function valueOf():Object;
+        intrinsic native function toString() : String;
 
-		// 15.9.5.9 Date.prototype.getTime ( )
-		prototype.getTime = function(this:Date) { return this.ECMA4::getTime(); }
-		ECMA4 native function getTime():Number;
+        // 15.9.5.3 Date.prototype.toDateString ( )
+        prototype function toDateString(this:Date) { 
+            return this.intrinsic::toDateString(); 
+        }
 
-		// 15.9.5.10 Date.prototype.getFullYear ( )
-		prototype.getFullYear = function(this:Date) { return this.ECMA4::getFullYear(); }
-		ECMA4 native function getFullYear():Number;
+        intrinsic native function toDateString() : String;
 
-		// 15.9.5.11 Date.prototype.getUTCFullYear ( )
-		prototype.getUTCFullYear = function(this:Date) { return this.ECMA4::getUTCFullYear(); }
-		ECMA4 native function getUTCFullYear():Number;
+        // 15.9.5.4 Date.prototype.toTimeString ( )
 
-		// 15.9.5.12 Date.prototype.getMonth ( )
-		prototype.getMonth = function(this:Date) { return this.ECMA4::getMonth(); }
-		ECMA4 native function getMonth():Number;
-		
-		// 15.9.5.13 Date.prototype.getUTCMonth ( )
-		prototype.getUTCMonth = function(this:Date) { return this.ECMA4::getUTCMonth(); }
-		ECMA4 native function getUTCMonth():Number;
-		
-		// 15.9.5.14 Date.prototype.getDate ( )
-		prototype.getDate = function(this:Date) { return this.ECMA4::getDate(); }
-		ECMA4 native function getDate():Number;
+        prototype function toTimeString(this:Date) { 
+            return this.intrinsic::toTimeString(); 
+        }
 
-		// 15.9.5.15 Date.prototype.getUTCDate ( )
-		prototype.getUTCDate = function(this:Date) { return this.ECMA4::getUTCDate(); }
-		ECMA4 native function getUTCDate():Number;
+        intrinsic native function toTimeString():String;
 
-		// 15.9.5.16 Date.prototype.getDay ( )
-		prototype.getDay = function(this:Date) { return this.ECMA4::getDay(); }
-		ECMA4 native function getDay():Number;
+        // 15.9.5.5 Date.prototype.toLocaleString ( )
+        prototype function toLocaleString(this:Date) {
+            return this.intrinsic::toLocaleString(); 
+        }
 
-		// 15.9.5.17 Date.prototype.getUTCDay ( )
-		prototype.getUTCDay = function(this:Date) { return this.ECMA4::getUTCDay(); }
-		ECMA4 native function getUTCDay():Number;
+        intrinsic native function toLocaleString():String;
 
-		// 15.9.5.18 Date.prototype.getHours ( )
-		prototype.getHours = function(this:Date) { return this.ECMA4::getHours(); }
-		ECMA4 native function getHours():Number;
+        // 15.9.5.6 Date.prototype.toLocaleDateString ( )
+        prototype function toLocaleDateString(this:Date) {
+            return this.intrinsic::toLocaleDateString(); 
+        }
 
-		// 15.9.5.19 Date.prototype.getUTCHours ( )
-		prototype.getUTCHours = function(this:Date) { return this.ECMA4::getUTCHours(); }
-		ECMA4 native function getUTCHours():Number;
+        intrinsic native function toLocaleDateString():String;
 
-		// 15.9.5.20 Date.prototype.getMinutes ( )
-		prototype.getMinutes = function(this:Date) { return this.ECMA4::getMinutes(); }
-		ECMA4 native function getMinutes():Number;
-		
-		// 15.9.5.21 Date.prototype.getUTCMinutes ( )
-		prototype.getUTCMinutes = function(this:Date) { return this.ECMA4::getUTCMinutes(); }
-		ECMA4 native function getUTCMinutes():Number;
+        // 15.9.5.7 Date.prototype.toLocaleTimeString ( )
+        prototype function toLocaleTimeString(this:Date) {
+            return this.intrinsic::toLocaleTimeString(); 
+        }
 
-		// 15.9.5.22 Date.prototype.getSeconds ( )
-		prototype.getSeconds = function(this:Date) { return this.ECMA4::getSeconds(); }
-		ECMA4 native function getSeconds():Number;
+        intrinsic native function toLocaleTimeString():String;
 
-		// 15.9.5.23 Date.prototype.getUTCSeconds ( )
-		prototype.getUTCSeconds = function(this:Date) { return this.ECMA4::getUTCSeconds(); }
-		ECMA4 native function getUTCSeconds():Number;
+        // 15.9.5.42 Date.prototype.toUTCString ( )
+        prototype function toUTCString(this:Date) {
+            return this.intrinsic::toUTCString(); 
+        }
+        
+        intrinsic native function toUTCString():String;
 
-		// 15.9.5.24 Date.prototype.getMilliseconds ( )
-		prototype.getMilliseconds = function(this:Date) { return this.ECMA4::getMilliseconds(); }
-		ECMA4 native function getMilliseconds():Number;
-		
-		// 15.9.5.25 Date.prototype.getUTCMilliseconds ( )
-		prototype.getUTCMilliseconds = function(this:Date) { return this.ECMA4::getUTCMilliseconds(); }
-		ECMA4 native function getUTCMilliseconds():Number;
-		
-		// 15.9.5.26 Date.prototype.getTimezoneOffset ( )
-		prototype.getTimezoneOffset = function(this:Date) { return this.ECMA4::getTimezoneOffset(); }
-		ECMA4 native function getTimezoneOffset():Number;
+        // 15.9.5.8 Date.prototype.valueOf ( )
+        prototype function valueOf(this:Date) {
+            return this.intrinsic::valueOf(); 
+        }
 
-		// 15.9.5.27 Date.prototype.setTime (time)
-		prototype.setTime = function(this:Date, time:*) { return this.ECMA4::setTime(Number(time)); }
-		ECMA4 native function setTime(time:Number):Number;
+        intrinsic native function valueOf():Object;
 
-		// 15.9.5.28 Date.prototype.setMilliseconds (ms)
-		prototype.setMilliseconds = function(this:Date, ms:*) { return this.ECMA4::setMilliseconds(Number(ms)); }
-		ECMA4 native function setMilliseconds(ms:Number):Number;
+        /* E262-4 proposals:date_and_time: the logical components of
+           date values are gettable and settable through properties
+           naming those components, and everything else is implemented
+           in terms of those components.
 
-		// 15.9.5.29 Date.prototype.setUTCMilliseconds (ms)
-		prototype.setUTCMilliseconds = function(this:Date, ms:*) { return this.ECMA4::setUTCMilliseconds(Number(ms)); }
-		ECMA4 native function setUTCMilliseconds(ms:Number):Number;
+           Brendan and Lars agreed (2006-12-15) that these getters and
+           setters are not overridable by assignment, ie, they're on
+           the Date instances, not properties on the prototype.
 
-		// 15.9.5.30 Date.prototype.setSeconds (sec [, ms ] )
-		prototype.setSeconds = function(this:Date, sec:*, ms:*) { return this.ECMA4::setSeconds(Number(sec), Number(ms)); }
-		prototype.setSeconds.length = 2;
-		ECMA4 native function setSeconds(sec:Number, ms:Number = NaN):Number;
+           As the Date class is final the getters and setters can be
+           inlined. */
 
-		// 15.9.5.31 Date.prototype.setUTCSeconds (sec [, ms ] )
-		prototype.setUTCSeconds = function(this:Date, sec:*, ms:*) { return this.ECMA4::setUTCSeconds(Number(sec), Number(ms)); }
-		prototype.setUTCSeconds.length = 2;
-		ECMA4 native function setUTCSeconds(sec:Number, ms:Number = NaN):Number;
+        /* E262-3 15.9.5.9: Date.prototype.getTime */
+        function get time() : double
+            timeval;
 
-		// 15.9.5.33 Date.prototype.setMinutes (min [, sec [, ms ] ] )
-		prototype.setMinutes = function(this:Date, min:*, sec:*, ms:*) { return this.ECMA4::setMinutes(Number(min), Number(sec), Number(ms)); }
-		prototype.setMinutes.length = 3;
-		ECMA4 native function setMinutes(min:Number, sec:Number = NaN, ms:Number = NaN):Number;
+        /* E262-3 15.9.5.27: Date.prototype.setTime */
+        function set time(t : double) : double
+            timeval = TimeClip(t)
 
-		// 15.9.5.34 Date.prototype.setUTCMinutes (min [, sec [, ms ] ] )
-		prototype.setUTCMinutes = function(this:Date, min:*, sec:*, ms:*) { return this.ECMA4::setUTCMinutes(Number(min), Number(sec), Number(ms)); }
-		prototype.setUTCMinutes.length = 3;
-		ECMA4 native function setUTCMinutes(min:Number, sec:Number = NaN, ms:Number = NaN):Number;
+        /* E626-3 15.9.5.10: Date.prototype.getFullYear */
+        function get fullYear() : double {
+            var t : double = timeval;
+            if (intrinsic::isNaN(t))
+                return t;
+            return YearFromTime(LocalTime(t));
+        }
 
-		// 15.9.5.35 Date.prototype.setHours (hour [, min [, sec [, ms ] ] ] )
-		prototype.setHours = function(this:Date, hour:*, min:*, sec:*, ms:*) { return this.ECMA4::setHours(Number(hour), Number(min), Number(sec), Number(ms)); }
-		prototype.setHours.length = 4;
-		ECMA4 native function setHours(hour:Number, min:Number = NaN, sec:Number = NaN, ms:Number = NaN):Number;
+        /* E262-3 15.9.5.11: Date.prototype.getUTCFullYear */
+        function get UTCFullYear() : double {
+            var t : double = timeval;
+            if (intrinsic::isNaN(t))
+                return t;
+            return YearFromTime(t);
+        }
 
-		// 15.9.5.36 Date.prototype.setUTCHours (hour [, min [, sec [, ms ] ] ] )
-		prototype.setUTCHours = function(this:Date, hour:*, min:*, sec:*, ms:*) { return this.ECMA4::setUTCHours(Number(hour), Number(min), Number(sec), Number(ms)); }
-		prototype.setUTCHours.length = 4;
-		ECMA4 native function setUTCHours(hour:Number, min:Number = NaN, sec:Number = NaN, ms:Number = NaN):Number;
+        /* E262-3 15.9.5.12: Date.prototype.getMonth */
+        function get month() : double {
+            var t : double = timeval;
+            if (intrinsic::isNaN(t))
+                return t;
+            return MonthFromTime(LocalTime(t));
+        }
 
-		// 15.9.5.36 Date.prototype.setDate (date)
-		prototype.setDate = function(this:Date, date:*) { return this.ECMA4::setDate(Number(date)); }
-		ECMA4 native function setDate(date:Number):Number;
+        /* E262-3 15.9.5.13: Date.prototype.getUTCMonth */
+        function get UTCMonth() : double {
+            var t : double = timeval;
+            if (intrinsic::isNaN(t))
+                return t;
+            return MonthFromTime(t);
+        }
 
-		// 15.9.5.37 Date.prototype.setUTCDate (date)
-		prototype.setUTCDate = function(this:Date, date:*) { return this.ECMA4::setUTCDate(Number(date)); }
-		ECMA4 native function setUTCDate(date:Number):Number;
+        /* E262-3 15.9.5.14: Date.prototype.getDate */
+        function get date() : double {
+            var t : double = timeval;
+            if (intrinsic::isNaN(t))
+                return t;
+            return DateFromTime(LocalTime(t));
+        }
 
-		// 15.9.5.38 Date.prototype.setMonth (month [, date ] )
-		prototype.setMonth = function(this:Date, month:*, date:*) { return this.ECMA4::setMonth(Number(month), Number(date)); }
-		prototype.setMonth.length = 2;
-		ECMA4 native function setMonth(month:Number, date:Number = NaN):Number;
+        /* E262-3 15.9.5.15: Date.prototype.getUTCDate */
+        function get UTCDate() : double {
+            var t : double = timeval;
+            if (intrinsic::isNaN(t))
+                return t;
+            return DateFromTime(t);
+        }
 
-		// 15.9.5.39 Date.prototype.setUTCMonth (month [, date ] )
-		prototype.setUTCMonth = function(this:Date, month:*, date:*) { return this.ECMA4::setUTCMonth(Number(month), Number(date)); }
-		prototype.setUTCMonth.length = 2;
-		ECMA4 native function setUTCMonth(month:Number, date:Number = NaN):Number;
+        /* E262-3 15.9.5.16: Date.prototype.getDay */
+        function get day() : double {
+            var t : double = timeval;
+            if (intrinsic::isNaN(t))
+                return t;
+            return WeekDay(LocalTime(t));
+        }
 
-		// 15.9.5.40 Date.prototype.setFullYear (year [, month [, date ] ] )
-		prototype.setFullYear = function(this:Date, year:*, month:*, date:*) { return this.ECMA4::setFullYear(Number(year), Number(month), Number(date)); }
-		prototype.setFullYear.length = 3;
-		ECMA4 native function setFullYear(year:Number, month:Number = NaN, date:Number = NaN):Number;
+        /* E262-3 15.9.5.17: Date.prototype.getUTCDay */
+        function get UTCDay() : double {
+            var t : double = timeval;
+            if (intrinsic::isNaN(t))
+                return t;
+            return WeekDay(t);
+        }
 
-		// 15.9.5.41 Date.prototype.setUTCFullYear (year [, month [, date ] ] )
-		prototype.setUTCFullYear = function(this:Date, year:*, month:*, date:*) { return this.ECMA4::setUTCFullYear(Number(year), Number(month), Number(date)); }
-		prototype.setUTCFullYear.length = 3;
-		ECMA4 native function setUTCFullYear(year:Number, month:Number = NaN, date:Number = NaN):Number;
+        /* E262-3 15.9.5.18: Date.prototype.getHours */
+        function get hours() : double {
+            var t : double = timeval;
+            if (intrinsic::isNaN(t))
+                return t;
+            return HourFromTime(LocalTime(t));
+        }
 
-		// 15.9.5.42 Date.prototype.toUTCString ( )
-		prototype.toUTCString = function(this:Date) { return this.ECMA4::toUTCString(); }
-		ECMA4 native function toUTCString():String;
-		
-		// mark all prototype functions as {DE}
-		_dontEnum(prototype);
+        /* E262-3 15.9.5.19: Date.prototype.getUTCHours */
+        function get UTCHours() : double {
+            var t : double = timeval;
+            if (intrinsic::isNaN(t))
+                return t;
+            return HourFromTime(t);
+        }
 
-	} // class
-} // package
+        /* E262-3 15.9.5.20: Date.prototype.getMinutes */
+        function get minutes() : double {
+            var t : double = timeval;
+            if (intrinsic::isNaN(t))
+                return t;
+            return MinFromTime(LocalTime(t));
+        }
+
+        /* E262-3 15.9.5.21: Date.prototype.getUTCMinutes */
+        function get UTCMinutes() : double {
+            var t : double = timeval;
+            if (intrinsic::isNaN(t))
+                return t;
+            return MinFromTime(t);
+        }
+
+        /* E262-3 15.9.5.22: Date.prototype.getSeconds */
+        function get seconds() : double {
+            var t : double = timeval;
+            if (intrinsic::isNaN(t))
+                return t;
+            return SecFromTime(LocalTime(t));
+        }
+
+        /* E262-3 15.9.5.23: Date.prototype.getUTCSeconds */
+        function get seconds() : double {
+            var t : double = timeval;
+            if (intrinsic::isNaN(t))
+                return t;
+            return SecFromTime(t);
+        }
+
+        /* E262-3 15.9.5.24: Date.prototype.getMilliseconds */
+        function get milliseconds() : double {
+            var t : double = timeval;
+            if (intrinsic::isNaN(t))
+                return t;
+            return msFromTime(LocalTime(t));
+        }
+
+        /* E262-3 15.9.5.25: Date.prototype.getUTCMilliseconds */
+        function get UTCMilliseconds() : double {
+            var t : double = timeval;
+            if (intrinsic::isNaN(t))
+                return t;
+            return msFromTime(t);
+        }
+
+        /* E262-3 15.9.5.26: Date.prototype.getTimezoneOffset */
+        function get timezoneOffset() : double {
+            var t : double = timeval;
+            if (intrinsic::isNaN(t))
+                return t;
+            return (t - LocalTime(t)) / msPerMinute;
+        }
+
+
+        /*** Mandated aliases for the canonical getters and setters ***/
+
+        prototype function getTime(this:Date)   time;
+        intrinsic function getTime() : double   time;
+
+        prototype function getFullYear(this:Date)   fullYear;
+        intrinsic function getFullYear() : double   fullYear;
+
+        prototype function getUTCFullYear(this:Date)   UTCFullYear;
+        intrinsic function getUTCFullYear() : double   UTCFullYear;
+
+        prototype function getMonth(this:Date)   month;
+        intrinsic function getMonth() : double   month;
+        
+        prototype function getUTCMonth(this:Date)   UTCMonth;
+        intrinsic function getUTCMonth() : double   UTCMonth;
+
+        prototype function getDate(this:Date)   date;
+        intrinsic function getDate() : double   date;
+
+        prototype function getUTCDate(this:Date)   UTCDate;
+        intrinsic function getUTCDate() : double   UTCDate;
+
+        prototype function getDay(this:Date)   day;
+        intrinsic function getDay() : double   day;
+
+        prototype function getUTCDay(this:Date)   UTCDay;
+        intrinsic function getUTCDay() : double   UTCDay;
+
+        prototype function getHours(this:Date)   hours;
+        intrinsic function getHours() : double   hours;
+
+        prototype function getUTCHours(this:Date)   UTCHours;
+        intrinsic function getUTCHours() : double   UTCHours;
+
+        prototype function getMinutes(this:Date)   minutes;
+        intrinsic function getMinutes() : double   minutes;
+        
+        prototype function getUTCMinutes(this:Date)   UTCMinutes;
+        intrinsic function getUTCMinutes() : double   UTCMinutes;
+
+        prototype function getSeconds(this:Date)   seconds;
+        intrinsic function getSeconds() : double   seconds;
+
+        prototype function getUTCSeconds(this:Date)   UTCSeconds;
+        intrinsic function getUTCSeconds() : double   UTCSeconds;
+
+        prototype function getMilliseconds(this:Date)   milliseconds;
+        intrinsic function getMilliseconds() : double   milliseconds;
+        
+        prototype function getUTCMilliseconds(this:Date)   UTCMilliseconds;
+        intrinsic function getUTCMilliseconds() : double   UTCMilliseconds;
+        
+        prototype function getTimezoneOffset(this:Date)   timezoneOffset;
+        intrinsic function getTimezoneOffset() : double   timezoneOffset;
+
+        prototype function setTime(this:Date, t)        time = double(t);
+        intrinsic function setTime(t:double) : double   time = t;
+
+        /* E262-3 15.9.5.28:  Date.prototype.setMilliseconds (ms) */
+        prototype function setMilliseconds(this:Date, ms)
+            this.intrinsic::setMilliseconds(double(ms))
+
+        intrinsic function setMilliseconds(ms:double) : double
+            timeval = let (t : double = LocalTime(timeval))
+                          UTCTime(MakeDate(Day(t), MakeTime(HourFromTime(t), 
+                                                            MinFromTime(t), 
+                                                            SecFromTime(t), 
+                                                            ms)));
+
+        // 15.9.5.29 Date.prototype.setUTCMilliseconds (ms)
+        prototype function setUTCMilliseconds(this:Date, ms)
+            this.intrinsic::setUTCMilliseconds(double(ms));
+
+        intrinsic function setUTCMilliseconds(ms:double) : double
+            timeval = let (t : double = timeval)
+                          MakeDate(Day(t), MakeTime(HourFromTime(t), 
+                                                    MinFromTime(t), 
+                                                    SecFromTime(t), 
+                                                    ms));
+
+        // 15.9.5.30 Date.prototype.setSeconds (sec [, ms ] )
+        prototype function setSeconds(this:Date, sec, ms)
+            this.intrinsic::setSeconds(double(sec), double(ms)); 
+
+        intrinsic function setSeconds(sec:double, ms:double = milliseconds) : double
+            timeval = let (t : double = LocalTime(timeval))
+                          UTCTime(MakeDate(Day(t), MakeTime(HourFromTime(t), 
+                                                            MinFromTime(t), 
+                                                            sec, 
+                                                            ms)));
+
+        // 15.9.5.31 Date.prototype.setUTCSeconds (sec [, ms ] )
+        prototype function setUTCSeconds(this:Date, sec, ms) 
+            this.intrinsic::setUTCSeconds(double(sec), double(ms)); 
+
+        intrinsic function setUTCSeconds(sec:double, ms:double = milliseconds) : double
+            timeval = let (t : double = timeval)
+                          MakeDate(Day(t), MakeTime(HourFromTime(t), 
+                                                    MinFromTime(t), 
+                                                    sec, 
+                                                    ms));
+
+        // 15.9.5.33 Date.prototype.setMinutes (min [, sec [, ms ] ] )
+        prototype function setMinutes(this:Date, min, sec, ms)
+            this.intrinsic::setMinutes(double(min), double(sec), double(ms)); 
+
+        intrinsic function setMinutes(min:double, 
+                                      sec:double = seconds, 
+                                      ms:double = milliseconds) : double 
+            timeval = let (t : double = LocalTime(timeval))
+                          UTCTime(MakeDate(Day(t), MakeTime(HourFromTime(t), 
+                                                            min, 
+                                                            sec, 
+                                                            ms)));
+
+        // 15.9.5.34 Date.prototype.setUTCMinutes (min [, sec [, ms ] ] )
+        prototype function setUTCMinutes(this:Date, min, sec, ms)
+            this.intrinsic::setUTCMinutes(double(min), double(sec), double(ms)); 
+
+        intrinsic function setUTCMinutes(min:double, 
+                                         sec:double = seconds,
+                                         ms:double = milliseconds) : double 
+            timeval = let (t : double = timeval)
+                          MakeDate(Day(t), MakeTime(HourFromTime(t), 
+                                                    min, 
+                                                    sec, 
+                                                    ms));
+
+        // 15.9.5.35 Date.prototype.setHours (hour [, min [, sec [, ms ] ] ] )
+        prototype function setHours(this:Date, hour, min, sec, ms)
+            this.intrinsic::setHours(double(hour), double(min), double(sec), double(ms));
+
+        intrinsic function setHours(hour:double, 
+                                    min:double = minutes,
+                                    sec:double = seconds,
+                                    ms:double = milliseconds) : double 
+            timeval = let (t : double = LocalTime(timeval))
+                          UTCTime(MakeDate(Day(t), MakeTime(hour, 
+                                                            min, 
+                                                            sec, 
+                                                            ms)));
+
+        // 15.9.5.36 Date.prototype.setUTCHours (hour [, min [, sec [, ms ] ] ] )
+        prototype function setUTCHours(this:Date, hour, min, sec, ms)
+            this.intrinsic::setUTCHours(double(hour), double(min), double(sec), double(ms));
+
+        intrinsic function setUTCHours(hour:double, 
+                                       min:double = minutes,
+                                       sec:double = seconds,
+                                       ms:double = milliseconds) : double 
+            timeval = let (t : double = timeval)
+                          MakeDate(Day(t), MakeTime(hour, 
+                                                    min, 
+                                                    sec, 
+                                                    ms));
+
+        // 15.9.5.36 Date.prototype.setDate (date)
+        prototype function setDate(this:Date, date)
+            this.intrinsic::setDate(double(date)); 
+
+        intrinsic function setDate(date:double):double
+            timeval = let (t : double = LocalTime(timeval))
+                          UTCTime(MakeDate(MakeDay(YearFromTime(t), MonthFromTime(t), date), 
+                                           TimeWithinDay(t)));
+            
+
+        // 15.9.5.37 Date.prototype.setUTCDate (date)
+        prototype function setUTCDate(this:Date, date)
+            this.intrinsic::setUTCDate(double(date)); 
+
+        intrinsic function setUTCDate(date:double):double 
+            timeval = let (t : double = timeval)
+                          MakeDate(MakeDay(YearFromTime(t), MonthFromTime(t), date), 
+                                   TimeWithinDay(t));
+
+
+        // 15.9.5.38 Date.prototype.setMonth (month [, date ] )
+        prototype function setMonth(this:Date, month, date)
+            this.intrinsic::setMonth(double(month), double(date)); 
+
+        intrinsic function setMonth(month:double, date:double = date):double
+            timeval = let (t : double = LocalTime(timeval))
+                          UTCTime(MakeDate(MakeDay(YearFromTime(t), month, date), 
+                                           TimeWithinDay(t)));
+
+        /* E262-3 15.9.5.39: Date.prototype.setUTCMonth */
+        prototype function setUTCMonth(this:Date, month, date)
+            this.intrinsic::setUTCMonth(double(month), double(date)); 
+
+        intrinsic function setUTCMonth(month:double, date:double = date):double
+            timeval = let (t : double = timeval)
+                          MakeDate(MakeDay(YearFromTime(t), month, date), 
+                                   TimeWithinDay(t));
+
+        /* E262-3 15.9.5.40: Date.prototype.setFullYear */
+        prototype function setFullYear(this:Date, year, month, date)
+            this.intrinsic::setFullYear(double(year), double(month), double(date)); 
+
+        intrinsic function setFullYear(year:double, 
+                                       month:double = month, 
+                                       date:double = date) : double 
+            timeval = let (t : double = LocalTime(timeval))
+                          UTCTime(MakeDate(MakeDay(year, month, date), 
+                                           TimeWithinDay(t)));
+
+        /* E262-3 15.9.5.41: Date.prototype.setUTCFullYear */
+        prototype function setUTCFullYear(this:Date, year, month, date)
+            this.intrinsic::setUTCFullYear(double(year), double(month), double(date)); 
+
+        intrinsic function setUTCFullYear(year:double, 
+                                          month:double = month, 
+                                          date:double = date) : double 
+            timeval = let (t : double = timeval)
+                          MakeDate(MakeDay(year, month, date), 
+                                   TimeWithinDay(t));
+
+
+        /*** Primitives from E262-3 ***/
+
+        private var timeval : double = 0;
+
+        private const msPerDay : double = 86400000;
+        private const hoursPerDay : double = 24;
+        private const minutesPerHour : double = 60;
+        private const secondsPerMinute : double = 60;
+        private const msPerSecond : double = 1000;
+        private const msPerMinute : double = msPerSecond * secondsPerMinute;
+        private const msPerHour : double = msPerMinute * minutesPerHour;
+        private const monthOffsets : [double] 
+            = [0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334] : [double];
+
+        private function MakeTime(hour:double, min:double, sec:double, ms:double ):double {
+            use namespace intrinsic;
+
+            if (!isFinite(hour) || !isFinite(min) || !isFinite(sec) || !isFinite(ms))
+                return NaN;
+
+            return ToInteger(hour) * msPerHour +
+                ToInteger(min) * msPerMinute +
+                ToInteger(sec) * msPerSecond +
+                ToInteger(ms);
+        }
+
+        private function MakeDay(year : double, month : double, date : double) : double {
+            use namespace intrinsic;
+
+            if (!isFinite(year) || !isFinite(month) || !isFinite(date))
+                return NaN;
+
+            year = ToInteger(year);
+            month = ToInteger(month);
+            date = ToInteger(date);
+            // FIXME
+        }
+
+        private function MakeDate(day : double, time : double) : double {
+            use namespace intrinsic;
+
+            if (!isFinite(day) || !isFinite(time))
+                return NaN;
+            return day * msPerDay + time;
+        }
+
+        private function Day(t : double) : double
+            Math.floor(t / msPerDay);
+
+        private function TimeWithinDay(t : double) : double
+            t % msPerDay;
+
+        private function HoursFromTime(t : double) : double
+            Math.floor(t / msPerHour) % hoursPerDay;
+        
+        private function DaysInYear(y : double) : double {
+            if (y % 4 !== 0) return 365;
+            if (y % 100 !== 0) return 366;
+            if (y % 400 !== 0) return 365;
+            return 366;
+        }
+
+        private function DayFromYear(y : double) : double {
+            use namespace intrinsic;
+
+            return 365*(y-1970) +
+                Math.floor((y-1969)/4) -
+                Math.floor((y-1901)/100) + 
+                Math.floor((y-1601)/400);
+        }
+
+        private function TimeFromYear(y : double) : double
+            msPerDay * DayFromYear(y);
+
+        private function InLeapYear(t : double) : double
+            DaysInYear(YearFromTime(t)) ? 1 : 0;
+
+        private function MonthFromTime(t : double) : double {
+            let dwy : double = DayWithinYear(t),
+                ily : double = InLeapYear(t);
+            for ( var i : int=0 ; i < monthOffsets.length-1 ; i++ )
+                if (dwy > monthOffsets[i] + (i >= 2 ? ily : 0) && 
+                    dwy < monthOffsets[i+1] + (i+1 >= 2 ? ily : 0))
+                    return i;
+            /*NOTREACHED*/
+        }
+
+        private function DayWithinYear(t : double) : double
+            Day(t) - DayFromYear(YearFromTime(t));
+
+        private function DateFromTime(t : double) : double {
+            let dwy : double = DayWithinYear(t),
+                mft : double = MonthFromTime(t),
+                ily : double = InLeapYear(t);
+            return dwy - (monthOffsets[mft] - 1) - (mft >= 2 ? ily : 0);
+        }
+
+        private function WeekDay(t : double) : double
+            (Day(t) + 4) % 7;
+
+        private function LocalTime(t : double) : double
+            t + LocalTZA() + DaylightSavingTA(t);
+
+        private function UTCTime(t : double) : double
+            t - LocalTZA() - DaylighSavingsTA(t - LocalTZA());
+
+        private function TimeClip(t : double) : double {
+            use namespace intrinsic;
+
+            if (!isFinite(t) || Math.abs(t) > 8.64e15)
+                return NaN;
+            else
+                return ToInteger(t);
+        }
+
+        /*** Informative ***/
+
+        private function YearFromTime(t : double) : double {
+            let y : double = t / (msPerDay * 365);
+            while (TimeFromYear(y) < t)
+                y += 1;
+            while (TimeFromYear(y) > t)
+                y -= 1;
+            return y;
+        }
+
+        /*** System hooks ***/
+
+        private native function LocalTZA() : double;
+        private native function DaylightSavingsTA(t : double) : double;
+    }
+}
