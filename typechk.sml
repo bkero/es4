@@ -16,7 +16,7 @@ open Ast
 
 (* TODO: what is the proper way to resolve these built-ins? *)
 fun simpleIdent (s:string) : IDENT_EXPR 
-  = Identifier { ident=s, openNamespaces=ref [] }
+  = Identifier { ident=s, openNamespaces=[] }
     
 val boolType      = NominalType { ident=simpleIdent "boolean",   nullable=NONE }
 val numberType    = NominalType { ident=simpleIdent "number",    nullable=NONE }
@@ -448,7 +448,7 @@ and tcDefns ctxt [] = ([], [])
             (extensions1 @ extensions2, classes1 @ classes2)
         end
 
-and tcBlock (ctxt as {env,...}) (Block {pragmas=pragmas,defns=defns,stmts=stmts}) =
+and tcBlock (ctxt as {env,...}) (Block {pragmas=pragmas,defns=defns,stmts=stmts,fixtures}) =
     let val (extensions, classes) = tcDefns ctxt defns
         val ctxt' = withEnv (ctxt, foldl extendEnv env extensions)
     in

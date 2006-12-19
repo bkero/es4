@@ -21,7 +21,7 @@ fun getValue (obj:Mach.OBJ) (name:Mach.NAME) : Mach.VAL =
     case obj of 
 	Mach.Obj {props, ...} => 
 	let 
-	    val prop = Mach.getBinding props name
+	    val prop = Mach.getProp props name
 	in
 	    if (#kind prop) = Mach.TypeProp
 	    then LogErr.evalError ["property is a type, wanted a value"]
@@ -30,15 +30,15 @@ fun getValue (obj:Mach.OBJ) (name:Mach.NAME) : Mach.VAL =
 
 fun setProp (obj:Mach.OBJ) (n:Mach.NAME) (p:Mach.PROP) : unit =
     case obj of 
-	Mach.Obj ob => Mach.addBinding (#props ob) n p
+	Mach.Obj ob => Mach.addProp (#props ob) n p
 
 fun setValue (base:Mach.OBJ) (name:Mach.NAME) (v:Mach.VAL) : unit =     
     case base of 
 	Mach.Obj {props,...} => 
-	if Mach.hasBinding props name
+	if Mach.hasProp props name
 	then 
 	    let 
-		val existingProp = Mach.getBinding props name
+		val existingProp = Mach.getProp props name
 		val _ = if (#kind existingProp) = Mach.TypeProp 
 			then LogErr.evalError ["assigning a value to a type property"]
 			else ()
@@ -55,8 +55,8 @@ fun setValue (base:Mach.OBJ) (name:Mach.NAME) (v:Mach.VAL) : unit =
 		then LogErr.evalError ["assigning to read-only property"]
 		else ();
 		(* FIXME: insert typecheck here *)
-		Mach.delBinding props name;
-		Mach.addBinding props name newProp
+		Mach.delProp props name;
+		Mach.addProp props name newProp
 	    end
 	else
 	    let 
@@ -68,7 +68,7 @@ fun setValue (base:Mach.OBJ) (name:Mach.NAME) (v:Mach.VAL) : unit =
 				       readOnly = false,
 				       isFixed = false } }
 	    in
-		Mach.addBinding props name prop
+		Mach.addProp props name prop
 	    end
 
 
@@ -248,7 +248,7 @@ and evalUnaryOp (scope:Mach.SCOPE) (unop:Ast.UNOP) (expr:Ast.EXPR) : Mach.VAL =
 	    Ast.Delete => 
 	    (case evalLhsExpr scope expr of
 		 (Mach.Obj {props, ...}, name) => 
-		 (Mach.delBinding props name; Mach.newBoolean true))
+		 (Mach.delProp props name; Mach.newBoolean true))
 	    
 	  | Ast.PreIncrement => crement Real.+ true
 	  | Ast.PreDecrement => crement Real.- true
@@ -349,7 +349,7 @@ and needNamespace (v:Mach.VAL) : Ast.NAMESPACE =
 and evalIdentExpr (scope:Mach.SCOPE) (r:Ast.IDENT_EXPR) : Mach.MULTINAME = 
     case r of 
 	Ast.Identifier { ident, openNamespaces } => 
-	{ nss=(!openNamespaces), id=ident }
+	{ nss=openNamespaces, id=ident }
 	
       | Ast.QualifiedIdentifier { qual, ident } => 
 	{ nss = [needNamespace (evalExpr scope qual)], id = ident }
@@ -474,7 +474,7 @@ and resolveOnObj (obj:Mach.OBJ) (mname:Mach.MULTINAME) : REF option =
 		let 
 		    val n = {ns=x, id=id} 
 		in
-		    if Mach.hasBinding (#props ob) n
+		    if Mach.hasProp (#props ob) n
 		    then SOME (obj, n)
 		    else tryName xs
 		end

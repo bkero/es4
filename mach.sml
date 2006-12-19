@@ -8,6 +8,8 @@ type TYPE = Ast.TYPE_EXPR
 type STR = Ast.USTRING
 type ID = Ast.IDENT
 type NS = Ast.NAMESPACE
+type BINDINGS = Ast.BINDINGS
+type FIXTURES = Ast.FIXTURES
 
 datatype SCOPE_TAG = 
 	 VarGlobal       (* Variable object created before execution starts *)
@@ -23,7 +25,7 @@ datatype VAL = Object of OBJ
 
      and OBJ = 
 	 Obj of { tag: VAL_TAG,			   
-		  props: PROP BINDINGS,
+		  props: PROP_BINDINGS,
 		  proto: (VAL option) ref,
 		  magic: (MAGIC option) ref }
 
@@ -78,25 +80,6 @@ datatype VAL = Object of OBJ
 	 Scope of { tag: SCOPE_TAG, 
 		    object: OBJ,
 		    parent: SCOPE option }
-
-     and FIXTURES_TAG = 
-	 ClassFixtures  
-       | FunctionFixtures
-       | GlobalFixtures
-
-     and FIXTURES = 
-	 Fixtures of { tag: FIXTURES_TAG,
-		       parent: FIXTURES option,	     		       
-		       fixtures: FIXTURE BINDINGS,
-		       isExtensible: bool }
-
-     and FIXTURE = 
-	 PropFixture of { ty: TYPE,
-			  readOnly: bool,
-			  isOverride: bool,
-			  subFixtures: FIXTURES option }
-       | NamespaceFixture of NS
-       | TypeFixture of TYPE
 			
      and PROP_KIND = TypeProp 
 		   | ValProp
@@ -135,33 +118,26 @@ withtype NAME = { ns: NS,
 
      and PROP = { kind: PROP_KIND,
 		  ty: TYPE,
-		  value: VAL,	   
+		  value: VAL,
 		  attrs: ATTRS }
 
-     and 'a BINDINGS = ((NAME * 'a) list) ref
+     and PROP_BINDINGS = ((NAME * PROP) list) ref
 
-(* Values *)
+(* Binding operations. *)
 
-fun newPropBindings _ : PROP BINDINGS = 
+fun newPropBindings _ : PROP_BINDINGS = 
     let 
-	val b:PROP BINDINGS = ref []
+	val b:PROP_BINDINGS = ref []
     in
 	b
     end
 
-fun newFixtureBindings _ : FIXTURE BINDINGS = 
-    let 
-	val b:FIXTURE BINDINGS = ref []
-    in
-	b
-    end
-
-fun addBinding (b:'a BINDINGS) (n:NAME) (x:'a) = 
+fun addProp (b:PROP_BINDINGS) (n:NAME) (x:PROP) = 
     b := ((n,x) :: (!b))
 
-fun delBinding (b:'a BINDINGS) (n:NAME) = 
+fun delProp (b:PROP_BINDINGS) (n:NAME) = 
     let 
-	fun strip [] = LogErr.hostError ["deleting nonexistent binding: ", 
+	fun strip [] = LogErr.hostError ["deleting nonexistent property binding: ", 
 					 (#id n)]
 	  | strip ((k,v)::bs) = 
 	    if k = n 
@@ -171,9 +147,9 @@ fun delBinding (b:'a BINDINGS) (n:NAME) =
 	b := strip (!b)
     end
 
-fun getBinding (b:'a BINDINGS) (n:NAME) : 'a = 
+fun getProp (b:PROP_BINDINGS) (n:NAME) : PROP = 
     let 
-	fun search [] = LogErr.hostError ["binding not found: ", 
+	fun search [] = LogErr.hostError ["property binding not found: ", 
 					  (#id n)]
 	  | search ((k,v)::bs) = 
 	    if k = n 
@@ -183,7 +159,20 @@ fun getBinding (b:'a BINDINGS) (n:NAME) : 'a =
 	search (!b)
     end
 
-fun hasBinding (b:'a BINDINGS) (n:NAME) : bool = 
+fun getFixture (b:Ast.FIXTURE_BINDINGS) (n:NAME) : Ast.FIXTURE = 
+    let 
+	fun search [] = LogErr.hostError ["fixture binding not found: ", 
+					  (#id n)]
+	  | search ((k,v)::bs) = 
+	    if k = n 
+	    then v
+	    else search bs
+    in
+	search b
+    end
+
+
+fun hasProp (b:PROP_BINDINGS) (n:NAME) : bool = 
     let 
 	fun search [] = false
 	  | search ((k,v)::bs) = 
@@ -192,6 +181,17 @@ fun hasBinding (b:'a BINDINGS) (n:NAME) : bool =
 	    else search bs
     in
 	search (!b)
+    end
+
+fun hasFixture (b:Ast.FIXTURE_BINDINGS) (n:NAME) : bool = 
+    let 
+	fun search [] = false
+	  | search ((k,v)::bs) = 
+	    if k = n 
+	    then true
+	    else search bs
+    in
+	search b
     end
 
 (* Standard runtime objects and functions. *)
@@ -263,13 +263,14 @@ val (defaultAttrs:Ast.ATTRIBUTES) =
 
 val (emptyBlock:Ast.BLOCK) = Ast.Block { pragmas = [],
 					 defns = [],
-					 stmts = [] }
+					 stmts = [],
+					 fixtures = NONE }
 
 val (globalFixtures:FIXTURES) = 
-    Fixtures { parent = NONE,
-	       tag = GlobalFixtures,
-	       fixtures = newFixtureBindings (),
-	       isExtensible = false }
+    Ast.Fixtures { parent = NONE,
+		   tag = Ast.GlobalFixtures,
+		   fixtures = [],
+		   isExtensible = false }
 
 val (globalObject:OBJ) = newObj intrinsicObjectBaseTag NONE NONE
 
@@ -282,7 +283,7 @@ val nan = Real.posInf / Real.posInf
 
 fun addFixturesToObject (fixs:FIXTURES) (obj:OBJ) : unit = 
     case fixs of
-	Fixtures { fixtures, ... } => ()
+	Ast.Fixtures { fixtures, ... } => ()
 
 (*
  * To get from any object to its CLS, you work out the
@@ -307,7 +308,7 @@ fun getGlobalVal (n:NAME) =
     case globalObject of 
 	Obj ob => 
 	let 
-	    val prop = getBinding (#props ob) n
+	    val prop = getProp (#props ob) n
 	in 
 	    if (#kind prop) = ValProp
 	    then (#value prop)
@@ -427,7 +428,7 @@ and populateIntrinsics globalObj =
 					   readOnly = true,
 					   isFixed = false } }
 		in
-		    addBinding props name prop
+		    addProp props name prop
 		end
 	in
 	    List.app bindFunc 

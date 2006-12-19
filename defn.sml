@@ -7,9 +7,9 @@ structure Defn = struct
  *)
 
 
-fun resolveFixture (fixs:Mach.FIXTURES) (mname:Mach.MULTINAME) : Mach.FIXTURE =
+fun resolveFixture (fixs:Mach.FIXTURES) (mname:Mach.MULTINAME) : Ast.FIXTURE =
     case fixs of 
-	Mach.Fixtures { parent, fixtures, ... } => 
+	Ast.Fixtures { parent, fixtures, ... } => 
 	let     
 	    val id = (#id mname)
 	    fun tryName [] = NONE
@@ -17,13 +17,13 @@ fun resolveFixture (fixs:Mach.FIXTURES) (mname:Mach.MULTINAME) : Mach.FIXTURE =
 		let 
 		    val n = {ns=x, id=id} 
 		in
-		    if Mach.hasBinding fixtures n
+		    if Mach.hasFixture fixtures n
 		    then SOME n
 		    else tryName xs
 		end
 	in
 	    case tryName (#nss mname) of 
-		SOME n => Mach.getBinding fixtures n 
+		SOME n => Mach.getFixture fixtures n 
 	      | NONE => (case parent of 
 			     NONE => LogErr.defnError ["unresolved fixture"]
 			   | SOME p => resolveFixture p mname)
@@ -34,10 +34,10 @@ fun resolveExprToNamespace (fixs:Mach.FIXTURES) (expr:Ast.EXPR) : Mach.NS =
 	Ast.LiteralExpr (Ast.LiteralNamespace ns) => ns
       | Ast.LexicalRef {ident = Ast.Identifier {ident, openNamespaces} } => 
 	let 
-	    val mname = {nss = !openNamespaces, id = ident}
+	    val mname = {nss = openNamespaces, id = ident}
 	in
 	    case resolveFixture fixs mname of 
-		Mach.NamespaceFixture ns => ns
+		Ast.NamespaceFixture ns => ns
 	      | _ => LogErr.defnError ["namespace expression resolved ",
 				       "to non-namespace fixture"]
 	end

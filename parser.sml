@@ -145,7 +145,7 @@ and qualifier ts =
           let
               val (ts1,nd1) = propertyIdentifier (ts)
           in
-              (ts1,Ast.LexicalRef{ident=Ast.Identifier {ident=nd1, openNamespaces=ref [Ast.Internal ""]}})
+              (ts1,Ast.LexicalRef{ident=Ast.Identifier {ident=nd1, openNamespaces=[]}})
           end
     end
 
@@ -206,7 +206,7 @@ and simpleQualifiedIdentifier ts =
       | _ => 
           	let
               	val (ts1, nd1) = propertyIdentifier(ts)
-                val id = Ast.Identifier {ident=nd1, openNamespaces=ref [Ast.Internal ""]}
+                val id = Ast.Identifier {ident=nd1, openNamespaces=[]}
           	in case ts1 of
               	DoubleColon :: _ => 
 					qualifiedIdentifier'(tl ts1,Ast.LexicalRef ({ident=id}))
@@ -431,7 +431,7 @@ and functionExpression (ts,a:alpha,b:beta) =
 								val (ts4,nd4) = listExpression (ts3,b)
 							in
 								(ts4,Ast.FunExpr{ident=NONE,fsig=nd3,
-									body=Ast.Block { pragmas=[],defns=[],stmts=[Ast.ReturnStmt nd4] }})
+									body=Ast.Block { pragmas=[],defns=[],stmts=[Ast.ReturnStmt nd4],fixtures=NONE }})
 
 							end
 					  | _ => raise ParseError
@@ -452,7 +452,7 @@ and functionExpression (ts,a:alpha,b:beta) =
 								val (ts4,nd4) = listExpression (ts3,b)
 							in
 								(ts4,Ast.FunExpr{ident=SOME nd2,fsig=nd3,
-									body=Ast.Block { pragmas=[],defns=[],stmts=[Ast.ReturnStmt nd4] }})
+									body=Ast.Block { pragmas=[],defns=[],stmts=[Ast.ReturnStmt nd4],fixtures=NONE }})
 
 							end
 					  | _ => raise ParseError
@@ -684,7 +684,7 @@ and restParameter (ts) : (token list * Ast.VAR_BINDING) =
 			in case tl ts of
 				RightParen :: _ => 
 					(tl ts,Ast.Binding{pattern=Ast.IdentifierPattern (Ast.Identifier {ident="", 
-													  openNamespaces=ref [Ast.Internal ""]}),
+													  openNamespaces=[]}),
 							  ty=NONE,kind=Ast.Var,attrs=defaultRestAttrs,init=NONE}) 
 			  | _ =>
 					let
@@ -1307,7 +1307,7 @@ and propertyOperator (ts, nd) =
 								val (ts1,nd1) = reservedIdentifier (tl ts)
 							in
 								(ts1,Ast.ObjectRef {base=nd,ident=Ast.Identifier {ident=nd1,
-													openNamespaces=ref [Ast.Internal ""]}})
+													openNamespaces=[]}})
 							end 
                     end
       | LeftBracket :: _ => 
@@ -2289,7 +2289,7 @@ and simplePattern (ts,a,b,NOEXPR) =
 		val (ts1,nd1) = identifier ts
 	in
 		(trace(["<< simplePattern(a,b,NOEXPR) with next=",tokenname(hd(ts1))]);
-		(ts1,Ast.IdentifierPattern (Ast.Identifier {ident=nd1, openNamespaces=ref [Ast.Internal ""]})))
+		(ts1,Ast.IdentifierPattern (Ast.Identifier {ident=nd1, openNamespaces=[]})))
 	end
   | simplePattern (ts,a,b,ALLOWEXPR) =
     let val _ = trace([">> simplePattern(a,b,ALLOWEXPR) with next=",tokenname(hd(ts))]) 
@@ -3197,12 +3197,12 @@ and caseElements (ts) : (token list * Ast.CASE list) =
 				[] =>
 					let
 					in
-						(ts2,{label=nd1,stmts={pragmas=[],defns=[],stmts=[]}}::[])
+						(ts2,{label=nd1,body=Ast.Block {pragmas=[],defns=[],stmts=[],fixtures=NONE}}::[])
 					end
 			  | first :: follows =>
 					let
 					in
-						(ts2,{label=nd1,stmts=(#stmts first)} :: follows)
+						(ts2,{label=nd1,body=(#body first)} :: follows)
 					end
 			end
 	  | _ => raise ParseError
@@ -3225,14 +3225,14 @@ and caseElementsPrefix (ts,has_default) : (token list * Ast.CASE list) =
 						   seed the list of previously parsed directives,
 						   which get added when the stack unwinds *)
 
-						(ts2,{label=NONE,stmts={pragmas=[],defns=[],stmts=[]}} ::
-							({label=nd1,stmts={pragmas=[],defns=[],stmts=[]}}::[]))
+						(ts2,{label=NONE,body=Ast.Block{pragmas=[],defns=[],stmts=[],fixtures=NONE}} ::
+							({label=nd1,body=Ast.Block{pragmas=[],defns=[],stmts=[],fixtures=NONE}}::[]))
 					end
 			  | first :: follows =>
 					let
 					in
-						(ts2,{label=NONE,stmts={pragmas=[],defns=[],stmts=[]}} ::
-							({label=nd1,stmts=(#stmts first)} :: follows))
+						(ts2,{label=NONE,body=Ast.Block{pragmas=[],defns=[],stmts=[],fixtures=NONE}} ::
+							({label=nd1,body=(#body first)} :: follows))
 					end
 			end
 	  | _ => 
@@ -3243,15 +3243,15 @@ and caseElementsPrefix (ts,has_default) : (token list * Ast.CASE list) =
 				[] =>
 					let
 					in
-						(ts2,{label=NONE,stmts=nd1}::[])
+						(ts2,{label=NONE,body=Ast.Block nd1}::[])
 					end
 			  | first :: follows =>
 					let
-						val {pragmas=p1,defns=d1,stmts=s1} = nd1
-						val {pragmas=p2,defns=d2,stmts=s2} = #stmts first
-						val stmts = {pragmas=(p1@p2),defns=(d1@d2),stmts=(s1@s2)}
+						val {pragmas=p1,defns=d1,stmts=s1,fixtures=NONE} = nd1
+						val {pragmas=p2,defns=d2,stmts=s2,fixtures=NONE} = (case #body first of Ast.Block b => b)
+						val block = Ast.Block{pragmas=(p1@p2),defns=(d1@d2),stmts=(s1@s2),fixtures=NONE}
 					in
-						(ts2,{label=NONE,stmts=stmts}::follows)
+						(ts2,{label=NONE,body=block}::follows)
 					end
 			end
 	end
@@ -3626,7 +3626,7 @@ and forInitialiser (ts) : (token list * Ast.BINDINGS) =
 	in case ts of
 		(Var | Let | Const) :: _ =>
 			let
-				val (ts1,{defns,stmts,pragmas}) = variableDefinition (ts,defaultAttrs,NOIN)
+				val (ts1,{defns,stmts,pragmas,fixtures}) = variableDefinition (ts,defaultAttrs,NOIN)
 			in case (defns,stmts) of
 				(Ast.VariableDefn bindings :: [],Ast.ExprStmt inits :: []) =>
 					(trace(["<< forInitialiser with next=", tokenname(hd ts1)]);
@@ -3975,7 +3975,7 @@ and defaultXmlNamespaceStatement (ts) =
 and directives (ts,t) : (token list * Ast.DIRECTIVES) =
     let val _ = trace([">> directives with next=", tokenname(hd ts)])
 	in case ts of
-		(RightBrace | Eof) :: _ => (ts,{pragmas=[],defns=[],stmts=[]})
+		(RightBrace | Eof) :: _ => (ts,{pragmas=[],defns=[],stmts=[],fixtures=NONE})
 	  | _ => 
 			let
 				val (ts1,nd1) = directivesPrefix (ts,t)
@@ -3996,25 +3996,25 @@ and directivesPrefix (ts,t:tau) : (token list * Ast.DIRECTIVES) =
 		fun directivesPrefix' (ts,t) =
 		    let val _ = trace([">> directivesPrefix' with next=", tokenname(hd ts)])
 			in case ts of
-				(RightBrace | Eof) :: _ => (ts,{pragmas=[],defns=[],stmts=[]})
+				(RightBrace | Eof) :: _ => (ts,{pragmas=[],defns=[],stmts=[],fixtures=NONE})
 			  | _ => 
 					let
-						val (ts1,{pragmas=p1,defns=d1,stmts=s1}) = directive (ts,t,FULL)
-						val (ts2,{pragmas=p2,defns=d2,stmts=s2}) = directivesPrefix' (ts1,t)
+						val (ts1,{pragmas=p1,defns=d1,stmts=s1,fixtures=f1}) = directive (ts,t,FULL)
+						val (ts2,{pragmas=p2,defns=d2,stmts=s2,fixtures=f2}) = directivesPrefix' (ts1,t)
 					in
 						trace(["<< directivesPrefix' with next=", tokenname(hd ts2)]);
-						(ts2,{pragmas=(p1@p2),defns=(d1@d2),stmts=(s1@s2)})
+						(ts2,{pragmas=(p1@p2),defns=(d1@d2),stmts=(s1@s2),fixtures=NONE})
 					end
 			end
 	in case ts of
-		(RightBrace | Eof) :: _ => (ts,{pragmas=[],defns=[],stmts=[]})
+		(RightBrace | Eof) :: _ => (ts,{pragmas=[],defns=[],stmts=[],fixtures=NONE})
 	  | (Use | Import) :: _ => 
 			let
 				val (ts1,nd1) = pragmas ts
-				val (ts2,{pragmas=p2,defns=d2,stmts=s2}) = directivesPrefix' (ts1,t)
+				val (ts2,{pragmas=p2,defns=d2,stmts=s2,fixtures=f1}) = directivesPrefix' (ts1,t)
 			in
 				trace(["<< directivesPrefix with next=", tokenname(hd ts2)]);
-				(ts2, {pragmas=nd1,defns=d2,stmts=s2})
+				(ts2, {pragmas=nd1,defns=d2,stmts=s2,fixtures=NONE})
 			end
 	  | _ => 
 			let
@@ -4041,13 +4041,13 @@ and directive (ts,t:tau,w:omega) : (token list * Ast.DIRECTIVES) =
 			let
 				val (ts1,nd1) = emptyStatement ts
 			in
-				(ts1,{pragmas=[],defns=[],stmts=[nd1]})
+				(ts1,{pragmas=[],defns=[],stmts=[nd1],fixtures=NONE})
 			end
 	  | Let :: LeftParen :: _  => (* dispatch let statement before let var *)
 			let
 				val (ts1,nd1) = statement (ts,w)
 			in
-				(ts1,{pragmas=[],defns=[],stmts=[nd1]})
+				(ts1,{pragmas=[],defns=[],stmts=[nd1],fixtures=NONE})
 			end
 	  | (Let | Const | Var | Function | Class | Interface | Namespace | Type) :: _ => 
 			let
@@ -4075,7 +4075,7 @@ and directive (ts,t:tau,w:omega) : (token list * Ast.DIRECTIVES) =
 			let
 				val (ts1,nd1) = statement (ts,w)
 			in
-				(ts1,{pragmas=[],defns=[],stmts=[nd1]})
+				(ts1,{pragmas=[],defns=[],stmts=[nd1],fixtures=NONE})
 			end
 	end
 
@@ -4397,7 +4397,7 @@ and namespaceAttribute (ts,GLOBAL) =
 	  | Identifier s :: _ =>
 			let
 			in
-				(tl ts,Ast.LexicalRef {ident=Ast.Identifier{ident=s,openNamespaces=ref []}})
+				(tl ts,Ast.LexicalRef {ident=Ast.Identifier{ident=s,openNamespaces=[]}})
 			end
 	  | _ => raise ParseError
 	end
@@ -4413,7 +4413,7 @@ and namespaceAttribute (ts,GLOBAL) =
 	  | Identifier s :: _ =>
 			let
 			in
-				(tl ts,Ast.LexicalRef {ident=Ast.Identifier{ident=s,openNamespaces=ref []}})
+				(tl ts,Ast.LexicalRef {ident=Ast.Identifier{ident=s,openNamespaces=[]}})
 			end
 	  | _ => raise ParseError
 	end
@@ -4446,7 +4446,7 @@ and variableDefinition (ts,attrs,b) : (token list * Ast.DIRECTIVES) =
 		val (ts1,nd1) = variableDefinitionKind(ts)
 		val (ts2,{defns,inits}) = variableBindingList (ts1,attrs,nd1,ALLOWLIST,b)
 	in
-		(ts2,{pragmas=[],defns=[Ast.VariableDefn defns],stmts=[Ast.ExprStmt inits]})
+		(ts2,{pragmas=[],defns=[Ast.VariableDefn defns],stmts=[Ast.ExprStmt inits],fixtures=NONE})
 	end
 
 and variableDefinitionKind (ts) =
@@ -4557,8 +4557,8 @@ and functionDeclaration (ts) =
 						   kind=Ast.Var, 
 						   func=Ast.Func {name={ident=nd1,kind=Ast.Ordinary},
 									   	  fsig=nd2,
-			    				    	  body=Ast.Block {pragmas=[],defns=[],stmts=[]}}}],
-			  		  stmts=[]})
+			    				    	  body=Ast.Block {pragmas=[],defns=[],stmts=[],fixtures=NONE}}}],
+			  		  stmts=[],fixtures=NONE})
 			end
 	  | _ => raise ParseError
 	end
@@ -4606,7 +4606,8 @@ and functionDefinition (ts,attrs,CLASS) =
 						   func=Ast.Func {name=nd2,
 									   	  fsig=nd3,
 			    				    	  body=nd4}}],
-			  		  stmts=[]})
+			  		  stmts=[],
+				      fixtures=NONE})
 			end
 	  | (Ast.LetVar,true) => raise ParseError
 	  | _ =>
@@ -4620,7 +4621,8 @@ and functionDefinition (ts,attrs,CLASS) =
 						   func=Ast.Func {name=nd2,
 									   	  fsig=nd3,
 			    				    	  body=nd4}}],
-			  		  stmts=[]})
+			  		  stmts=[],
+				      fixtures=NONE})
 			end
 	end
 
@@ -4637,7 +4639,8 @@ and functionDefinition (ts,attrs,CLASS) =
 						   func=Ast.Func {name=nd2,
 									   	  fsig=nd3,
 			    				    	  body=nd4}}],
-			  stmts=[]})
+			  stmts=[],
+		      fixtures=NONE})
 	end
 
 and functionKind (ts) =
@@ -4808,6 +4811,8 @@ and classDefinition (ts,attrs) =
 		           	params=params,
 		            extends=extends,
            			implements=implements,
+				classFixtures = NONE,
+				instanceFixtures = NONE,									
 					body=nd3,
 					(* the following field will be populated during the definition phase *)
            			instanceVars=[],
@@ -4815,7 +4820,8 @@ and classDefinition (ts,attrs) =
            			vars=[],
 					methods=[],
            			constructor=NONE,
-           			initializer=[]}]})
+           			initializer=[]}],
+			      fixtures=NONE})
 			end
 	  | _ => raise ParseError
 	end
@@ -4956,7 +4962,8 @@ and interfaceDefinition (ts,attrs) =
         			attrs=attrs,
 		           	params=params,
 		            extends=extends,
-					body=nd3}]})
+					body=nd3}],
+			      fixtures=NONE})
 			end
 	  | _ => raise ParseError
 	end
@@ -5000,7 +5007,7 @@ and namespaceDefinition (ts,attrs) =
 				val (ts2,nd2) = namespaceInitialisation ts1
 			in
 				trace(["<< namespaceDefinition with next=", tokenname(hd ts2)]);
-         		(ts2,{pragmas=[],stmts=[],defns=[Ast.NamespaceDefn {attrs=attrs,ident=nd1,init=nd2}]})
+         		(ts2,{pragmas=[],stmts=[],defns=[Ast.NamespaceDefn {attrs=attrs,ident=nd1,init=nd2}],fixtures=NONE})
 			end
 	  | _ => raise ParseError
 	end
@@ -5044,7 +5051,7 @@ and typeDefinition (ts,attrs) =
 				val (ts2,nd2) = typeInitialisation ts1
 			in
 				trace(["<< typeDefinition with next=", tokenname(hd ts2)]);
-         		(ts2,{pragmas=[],stmts=[],defns=[Ast.TypeDefn {attrs=attrs,ident=nd1,init=nd2}]})
+         		(ts2,{pragmas=[],stmts=[],defns=[Ast.TypeDefn {attrs=attrs,ident=nd1,init=nd2}],fixtures=NONE})
 			end
 	  | _ => raise ParseError
 	end
@@ -5265,7 +5272,7 @@ and block (ts,t) : (token list * Ast.BLOCK) =
     in case ts of
         LeftBrace :: RightBrace :: _ => 
 			((trace(["<< block with next=", tokenname(hd (tl (tl ts)))]);
-			(tl (tl ts),Ast.Block {pragmas=[],defns=[],stmts=[]})))
+			(tl (tl ts),Ast.Block {pragmas=[],defns=[],stmts=[], fixtures=NONE})))
       | LeftBrace :: _ =>
             let
                 val (ts1,nd1) = directives (tl ts,t)
