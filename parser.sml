@@ -4697,7 +4697,8 @@ and functionDefinition (ts,attrs,CLASS) =
 								   func=Ast.Func {name=nd2,
 											   	  fsig=nd3,
 			    				    			  body=nd4}}],
-			  		  		  stmts=[]})
+			  		  		  stmts=[],
+							  fixtures=NONE})
 					end
 			  | _ => 
 					let
@@ -4708,8 +4709,12 @@ and functionDefinition (ts,attrs,CLASS) =
 								   kind=nd1, 
 								   func=Ast.Func {name=nd2,
 											   	  fsig=nd3,
-			    				    			  body=Ast.Block { pragmas=[],defns=[],stmts=[Ast.ReturnStmt nd4] }}}],
-			  		  		  stmts=[]})
+			    				    			  body=Ast.Block {pragmas=[],
+																  defns=[],
+ 																  stmts=[Ast.ReturnStmt nd4],
+																  fixtures=NONE }}}],
+			  		  		  stmts=[],
+							  fixtures=NONE})
 					end
 (*
 				val (ts4,nd4) = functionBody (ts3)
@@ -4739,7 +4744,8 @@ and functionDefinition (ts,attrs,CLASS) =
 								   func=Ast.Func {name=nd2,
 											   	  fsig=nd3,
 			    				    			  body=nd4}}],
-			  		  		  stmts=[]})
+			  		  		  stmts=[],
+							  fixtures=NONE })
 					end
 			  | _ => 
 					let
@@ -4750,8 +4756,12 @@ and functionDefinition (ts,attrs,CLASS) =
 								   kind=nd1, 
 								   func=Ast.Func {name=nd2,
 											   	  fsig=nd3,
-			    				    			  body=Ast.Block { pragmas=[],defns=[],stmts=[Ast.ReturnStmt nd4] }}}],
-			  		  		  stmts=[]})
+			    				    			  body=Ast.Block { pragmas=[],
+												  				   defns=[],
+												 				   stmts=[Ast.ReturnStmt nd4],
+												                   fixtures=NONE }}}],
+			  		  		  stmts=[],
+							  fixtures=NONE })
 					end
 			end
 	end
