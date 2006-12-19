@@ -43,16 +43,14 @@ fun resolveExprToNamespace (fixs:Mach.FIXTURES) (expr:Ast.EXPR) : Mach.NS =
       | _ => LogErr.defnError ["unexpected expression type ",
 			       "in namespace context"]
 
-and defClass (fixs:Ast.FIXTURES option) (cdef:Ast.CLASS_DEFN) : Ast.FIXTURE_BINDINGS = 
+and defClass (firstPassFixtures:Ast.FIXTURES option) (parentFixtures:Ast.FIXTURES option) (cdef:Ast.CLASS_DEFN) : Ast.FIXTURE_BINDINGS = 
     []
 
-and defVars (fixs:Ast.FIXTURES option) (vars:Ast.VAR_BINDING list) : Ast.FIXTURE_BINDINGS = 
-    case fixs of 
-	NONE => []
-      | SOME fxs => []
+and defVars (firstPassFixtures:Ast.FIXTURES option) (parentFixtures:Ast.FIXTURES option) (vars:Ast.VAR_BINDING list) : Ast.FIXTURE_BINDINGS = 
+    []
 
 
-and defFunc (fixs:Ast.FIXTURES option) (f:Ast.FUNC_DEFN) : Ast.FIXTURE_BINDINGS = 
+and defFunc (firstPassFixtures:Ast.FIXTURES option) (parentFixtures:Ast.FIXTURES option) (f:Ast.FUNC_DEFN) : Ast.FIXTURE_BINDINGS = 
     []
     (* LogErr.unimplError ["function definitions temporarily disabled "] *)
 (*     case fixs of 
@@ -81,51 +79,71 @@ and defFunc (fixs:Ast.FIXTURES option) (f:Ast.FUNC_DEFN) : Ast.FIXTURE_BINDINGS 
     end
 *)
 
-and defPragma (cls:Ast.PRAGMA) : Ast.FIXTURE_BINDINGS = 
+and defPragma (firstPassFixtures:Ast.FIXTURES option) (parentFixtures:Ast.FIXTURES option) (pragma:Ast.PRAGMA) : Ast.FIXTURE_BINDINGS = 
     []
 
-and defStmt (fxs:Ast.FIXTURES option) (cls:Ast.STMT) : Ast.FIXTURE_BINDINGS = 
+and defStmt (firstPassFixtures:Ast.FIXTURES option) (parentFixtures:Ast.FIXTURES option) (cls:Ast.STMT) : Ast.FIXTURE_BINDINGS = 
     []
 
-and defDefn (fxs:Ast.FIXTURES option) (defn:Ast.DEFN) : Ast.FIXTURE_BINDINGS = 
+and defDefn (firstPassFixtures:Ast.FIXTURES option) (parentFixtures:Ast.FIXTURES option) (defn:Ast.DEFN) : Ast.FIXTURE_BINDINGS = 
     case defn of 
-	Ast.ClassDefn cd => defClass fxs cd
-      | Ast.VariableDefn vbs => defVars fxs vbs
-      | Ast.FunctionDefn fd => defFunc fxs fd
+	Ast.ClassDefn cd => defClass firstPassFixtures parentFixtures cd
+      | Ast.VariableDefn vbs => defVars firstPassFixtures parentFixtures vbs
+      | Ast.FunctionDefn fd => defFunc firstPassFixtures parentFixtures fd
       | _ => []
 
-and defBlock (fixs:Ast.FIXTURES option) (block:Ast.BLOCK) : Ast.BLOCK = 
+and defBlock (firstPassFixtures:Ast.FIXTURES option) (parentFixtures:Ast.FIXTURES option) (block:Ast.BLOCK) : Ast.BLOCK = 
     case block of 
 	Ast.Block { pragmas, defns, stmts, ... } => 
 	let 
-	    val fixtures0 = Ast.Fixtures 
-				{ tag = Ast.BlockFixtures,
-				  parent = NONE,
-				  bindings = ((List.concat (List.map defPragma pragmas)) @ 
-					      (List.concat (List.map (defDefn NONE) defns)) @ 
-					      (List.concat (List.map (defStmt NONE) stmts))),
-				  isExtensible = false }
-			    
-	    val fixtures1 = Ast.Fixtures 
-				{ tag = Ast.BlockFixtures,
-				  parent = NONE,
-				  bindings = ((List.concat (List.map defPragma pragmas)) @ 
-					      (List.concat (List.map (defDefn (SOME fixtures0)) defns)) @ 
-					      (List.concat (List.map (defStmt (SOME fixtures0)) stmts))),
-				  isExtensible = false }
+	    val newFixtures = case firstPassFixtures of 
+				  SOME f => SOME f
+				| NONE => SOME (Ast.Fixtures 
+						    { tag = Ast.BlockFixtures,
+						      parent = parentFixtures,
+						      bindings = [],
+						      isExtensible = false })
+	    val newBindings = ((List.concat (List.map (defPragma firstPassFixtures newFixtures) pragmas)) @ 
+			       (List.concat (List.map (defDefn firstPassFixtures newFixtures) defns)) @ 
+			       (List.concat (List.map (defStmt firstPassFixtures newFixtures) stmts)))
 	in
 	    Ast.Block { pragmas=pragmas,
 			defns=defns,
 			stmts=stmts,
-			fixtures=SOME fixtures1 }
+			fixtures=SOME (Ast.Fixtures 
+					   { tag = Ast.BlockFixtures,
+					     parent = parentFixtures,
+					     bindings = newBindings,
+					     isExtensible = false } ) }
 	end
-
-and defPackage (package:Ast.PACKAGE) : Ast.PACKAGE =     
+	
+and defMutuallyRecursiveTopLevelBlock (parentFixtures:Ast.FIXTURES option)(b:Ast.BLOCK) : Ast.BLOCK =
+    let
+	val body0 = defBlock NONE parentFixtures b
+	val fixtures0 = case body0 of Ast.Block b' => (#fixtures b')
+    in	
+	defBlock fixtures0 parentFixtures b
+    end
+    
+and defPackage (parentFixtures:Ast.FIXTURES option) (package:Ast.PACKAGE) : Ast.PACKAGE =
     { name = (#name package),
-      body = defBlock NONE (#body package) }
+      body = defMutuallyRecursiveTopLevelBlock parentFixtures (#body package) }
     
 and defProgram (prog:Ast.PROGRAM) : Ast.PROGRAM = 
-    { packages = map defPackage (#packages prog),
-      body = defBlock NONE (#body prog) }
-
+    let 
+	fun mkNamespaceFixtureBinding pkg = 
+	    case (pkg:Ast.PACKAGE) of 
+		{name, ...} => ({ns=Ast.Internal "", id=name}, 
+				Ast.NamespaceFixture (Ast.Public name))
+	val topFixtures = 
+	    SOME (Ast.Fixtures 
+		      { tag = Ast.GlobalFixtures,
+			parent = NONE,
+			bindings = map mkNamespaceFixtureBinding (#packages prog),
+			isExtensible = false } )
+    in
+	{ packages = map (defPackage topFixtures) (#packages prog),
+	  body = defMutuallyRecursiveTopLevelBlock topFixtures (#body prog) }
+	
+    end
 end
