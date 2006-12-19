@@ -6,15 +6,6 @@ exception BreakException of (Ast.IDENT option)
 exception TailCallException of (unit -> Mach.VAL)
 exception ThrowException of Mach.VAL
 exception ReturnException of Mach.VAL
-exception SemanticException of Ast.USTRING
-
-fun unimpl s =
-    (List.app TextIO.print ["*unimplemented: ", s, "\n"];
-     raise Mach.UnimplementedException s)
-
-fun semant s = 
-    (List.app TextIO.print ["*semantic error: ", s, "\n"];
-     raise SemanticException s)
     
 fun newName (i:Ast.IDENT) (n:Mach.NS) = {ns=n, id=i}
 
@@ -33,7 +24,7 @@ fun getValue (obj:Mach.OBJ) (name:Mach.NAME) : Mach.VAL =
 	    val prop = Mach.getBinding props name
 	in
 	    if (#kind prop) = Mach.TypeProp
-	    then semant "property is a type, wanted a value"
+	    then LogErr.evalError ["property is a type, wanted a value"]
 	    else (#value prop)
 	end
 
@@ -49,7 +40,7 @@ fun setValue (base:Mach.OBJ) (name:Mach.NAME) (v:Mach.VAL) : unit =
 	    let 
 		val existingProp = Mach.getBinding props name
 		val _ = if (#kind existingProp) = Mach.TypeProp 
-			then semant "assigning a value to a type property"
+			then LogErr.evalError ["assigning a value to a type property"]
 			else ()
 		val existingAttrs = (#attrs existingProp)
 		val newProp = { kind = Mach.ValProp,
@@ -61,7 +52,7 @@ fun setValue (base:Mach.OBJ) (name:Mach.NAME) (v:Mach.VAL) : unit =
 					  isFixed = (#isFixed existingAttrs) } }
 	    in
 		if (#readOnly existingAttrs)
-		then semant "assigning to read-only property"
+		then LogErr.evalError ["assigning to read-only property"]
 		else ();
 		(* FIXME: insert typecheck here *)
 		Mach.delBinding props name;
@@ -132,8 +123,7 @@ fun evalExpr (scope:Mach.SCOPE) (expr:Ast.EXPR) =
 	end
 	    
 
-      | _ => 
-	raise unimpl "unhandled expression type"
+      | _ => LogErr.unimplError ["unhandled expression type"]
 
 and evalLiteralExpr (lit:Ast.LITERAL) : Mach.VAL = 
     case lit of 
@@ -143,7 +133,7 @@ and evalLiteralExpr (lit:Ast.LITERAL) : Mach.VAL =
       | Ast.LiteralBoolean b => Mach.newBoolean b
       | Ast.LiteralString s => Mach.newString s
       | Ast.LiteralNamespace n => Mach.newNamespace n
-      | _ => unimpl "unhandled literal type"
+      | _ => LogErr.unimplError ["unhandled literal type"]
 
 and evalListExpr (scope:Mach.SCOPE) (es:Ast.EXPR list) : Mach.VAL = 
     case es of 
@@ -154,7 +144,7 @@ and evalListExpr (scope:Mach.SCOPE) (es:Ast.EXPR list) : Mach.VAL =
 and needObj (v:Mach.VAL) : Mach.OBJ = 
     case v of 
 	Mach.Object ob => ob
-      | _ => semant "need object"
+      | _ => LogErr.evalError ["need object"]
 
 and evalCallExpr (thisObj:Mach.OBJ option) (fobj:Mach.OBJ) (args:Mach.VAL list) : Mach.VAL =
     case fobj of
@@ -166,7 +156,7 @@ and evalCallExpr (thisObj:Mach.OBJ option) (fobj:Mach.OBJ) (args:Mach.VAL list) 
 		  NONE => invokeFuncClosure Mach.globalObject f args
 		| SOME this => invokeFuncClosure this f args)
 	     handle ReturnException v => v)
-	  | _ => semant "calling non-callable object"
+	  | _ => LogErr.evalError ["calling non-callable object"]
 						       
 
 (* 
@@ -211,7 +201,7 @@ and evalSetExpr (scope:Mach.SCOPE) (aop:Ast.ASSIGNOP) (pat:Ast.PATTERN) (v:Mach.
 			setValue obj name v;
 			v
 		    end
-		  | NONE => raise Mach.MultiReferenceException multiname
+		  | NONE => LogErr.evalError ["unresolved identifier pattern"]
 	end
       | Ast.SimplePattern expr => 
 	let
@@ -225,7 +215,7 @@ and evalSetExpr (scope:Mach.SCOPE) (aop:Ast.ASSIGNOP) (pat:Ast.PATTERN) (v:Mach.
 			  v
 		      end
 	end
-      |	_ => unimpl "unhandled pattern form in assignment"
+      |	_ => LogErr.unimplError ["unhandled pattern form in assignment"]
     end
 
 and evalLhsExpr (scope:Mach.SCOPE) (expr:Ast.EXPR) : REF = 
@@ -234,7 +224,7 @@ and evalLhsExpr (scope:Mach.SCOPE) (expr:Ast.EXPR) : REF =
 	evalRefExpr scope NONE ident
       | Ast.ObjectRef { base, ident } => 
 	evalRefExpr scope (SOME (evalExpr scope base)) ident
-      | _ => semant "need lexical or object-reference expression"
+      | _ => LogErr.evalError ["need lexical or object-reference expression"]
 
 and evalUnaryOp (scope:Mach.SCOPE) (unop:Ast.UNOP) (expr:Ast.EXPR) : Mach.VAL =
     let
@@ -264,7 +254,7 @@ and evalUnaryOp (scope:Mach.SCOPE) (unop:Ast.UNOP) (expr:Ast.EXPR) : Mach.VAL =
 	  | Ast.PreDecrement => crement Real.- true
 	  | Ast.PostIncrement => crement Real.+ false
 	  | Ast.PostDecrement => crement Real.- false
-	  | _ => unimpl "unhandled unary operator"
+	  | _ => LogErr.unimplError ["unhandled unary operator"]
     end
 
 and performBinop (bop:Ast.BINOP) (a:Mach.VAL) (b:Mach.VAL) : Mach.VAL = 
@@ -311,7 +301,7 @@ and performBinop (bop:Ast.BINOP) (a:Mach.VAL) (b:Mach.VAL) : Mach.VAL =
 	  | Ast.Greater => Mach.newBoolean (not ((Mach.less a b) orelse (Mach.equals a b)))
 	  | Ast.GreaterOrEqual => Mach.newBoolean (not (Mach.less a b))
 				  
-	  | _ => unimpl "unhandled binary operator type"
+	  | _ => LogErr.unimplError ["unhandled binary operator type"]
     end
 
 and evalBinaryOp (scope:Mach.SCOPE) (bop:Ast.BINOP) (aexpr:Ast.EXPR) (bexpr:Ast.EXPR) : Mach.VAL =
@@ -353,8 +343,8 @@ and needNamespace (v:Mach.VAL) : Ast.NAMESPACE =
 	Mach.Object (Mach.Obj ob) => 
 	(case !(#magic ob) of 
 	     SOME (Mach.Namespace n) => n
-	   | _ => semant "need namespace")
-      | _ => semant "need namespace"
+	   | _ => LogErr.evalError ["need namespace"])
+      | _ => LogErr.evalError ["need namespace"]
 
 and evalIdentExpr (scope:Mach.SCOPE) (r:Ast.IDENT_EXPR) : Mach.MULTINAME = 
     case r of 
@@ -368,7 +358,7 @@ and evalIdentExpr (scope:Mach.SCOPE) (r:Ast.IDENT_EXPR) : Mach.MULTINAME =
 	{ nss = [needNamespace (evalExpr scope qual)], 
 	  id = Mach.toString (evalExpr scope expr) }
 
-      | _ => unimpl "unimplemented identifier expression form"
+      | _ => LogErr.unimplError ["unimplemented identifier expression form"]
 		   
 
 and evalRefExpr (scope:Mach.SCOPE) (b:Mach.VAL option) (r:Ast.IDENT_EXPR) : REF =
@@ -379,10 +369,10 @@ and evalRefExpr (scope:Mach.SCOPE) (b:Mach.VAL option) (r:Ast.IDENT_EXPR) : REF 
 			  resolveOnObjAndPrototypes ob multiname
 			| NONE => 
 			  resolveOnScopeChain scope multiname
-			| _ => semant "ref expression on non-object value")
+			| _ => LogErr.evalError ["ref expression on non-object value"])
     in
 	case refOpt of 
-	    NONE => raise Mach.MultiReferenceException multiname
+	    NONE => LogErr.evalError ["unresolved identifier expression"]
 	  | SOME r' => r'
     end
     
@@ -445,9 +435,10 @@ and evalVarBinding
 		     in
 			 setProp ob n prop
 		     end
-		   | _ => unimpl "unhandled identifier form in identifier binding pattern"
+		   | _ => LogErr.unimplError ["unhandled identifier form in ",
+					 "identifier binding pattern"]
 		)
-	      | _ => unimpl "unhandled pattern form in binding"
+	      | _ => LogErr.unimplError ["unhandled pattern form in binding"]
     end
           
 and resolveOnScopeChain (scope:Mach.SCOPE) (mname:Mach.MULTINAME) : REF option =
@@ -520,7 +511,7 @@ and evalStmt (scope:Mach.SCOPE) (stmt:Ast.STMT) : Mach.VAL =
       | Ast.LabeledStmt (lab, s) => evalLabelStmt scope lab s
       | Ast.BlockStmt b => evalBlock scope b
       | Ast.EmptyStmt => Mach.Undef
-      | _ => unimpl "unimplemented statement type"
+      | _ => LogErr.unimplError ["unimplemented statement type"]
 
 and evalDefns (scope:Mach.SCOPE) (ds:Ast.DEFN list) : unit = 
     List.app (evalDefn scope) ds
@@ -529,13 +520,13 @@ and evalDefn (scope:Mach.SCOPE) (d:Ast.DEFN) : unit =
     case d of 
 	Ast.FunctionDefn f => evalFuncDefn scope f
       | Ast.VariableDefn bs => List.app (evalVarBinding scope NONE NONE) bs
-      | _ => unimpl "unimplemented definition type"
+      | _ => LogErr.unimplError ["unimplemented definition type"]
 
 and invokeFuncClosure (this:Mach.OBJ) (closure:Mach.FUNC_CLOSURE) (args:Mach.VAL list) : Mach.VAL =
     case closure of 
 	{ func=(Ast.Func f), allTypesBound, env } => 
 	if not allTypesBound
-	then semant "invoking function with unbound type variables"
+	then LogErr.evalError ["invoking function with unbound type variables"]
 	else 
 	    case (#fsig f) of 
 		Ast.FunctionSignature { params, ... } => 
@@ -543,8 +534,8 @@ and invokeFuncClosure (this:Mach.OBJ) (closure:Mach.FUNC_CLOSURE) (args:Mach.VAL
 		    val (varObj:Mach.OBJ) = Mach.newObj Mach.intrinsicObjectBaseTag NONE NONE
 		    val (varScope:Mach.SCOPE) = extendScope env Mach.VarActivation varObj
 		    fun bindArgs [] [] = ()
-		      | bindArgs [] (b::bz) = semant "Too few actuals"
-		      | bindArgs (a::az) [] = semant "Too many actuals"
+		      | bindArgs [] (b::bz) = LogErr.evalError ["Too few actuals"]
+		      | bindArgs (a::az) [] = LogErr.evalError ["Too many actuals"]
 		      | bindArgs (a::az) (b::bz) = (evalVarBinding env (SOME varObj) (SOME a) b; 
 						    bindArgs az bz)
 		    (* FIXME: bind 'this' type from func *)
