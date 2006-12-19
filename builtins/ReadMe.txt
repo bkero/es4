@@ -1,6 +1,10 @@
 Resolution December meeting: 
 
-  * "intrinsic function" implies final
+  * "intrinsic" is a namespace
+  * "prototype" is not a namespace
+  * "intrinsic function" implies final, DontDelete, ReadOnly
+  * "intrinsic" properties are never dynamic.  This implies that intrinsic::NaN references the global NaN
+    value provided the class or its base classes do not define a property of that name.
   * "prototype function" implies DontEnum
 
 

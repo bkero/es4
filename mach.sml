@@ -17,13 +17,16 @@ datatype SCOPE_TAG =
        | With            (* Created by 'with' bindings                      *)
        | Let             (* Created by 'catch', 'let', etc.                 *)
 
-datatype VAL = Object of { tag: VAL_TAG,			   
-			   props: BINDINGS,
-			   proto: (VAL option) ref,
-			   magic: (MAGIC option) ref }
+datatype VAL = Object of OBJ
 	     | Null
 	     | Undef
-	       
+
+     and OBJ = 
+	 Obj of { tag: VAL_TAG,			   
+		  props: PROP BINDINGS,
+		  proto: (VAL option) ref,
+		  magic: (MAGIC option) ref }
+
      and VAL_TAG =
 	 ObjectTag of Ast.FIELD_TYPE list
        | ArrayTag of TYPE list
@@ -35,13 +38,13 @@ datatype VAL = Object of { tag: VAL_TAG,
  * it is not visible to users.
  *)
 	       
-     and MAGIC = Number of real    (* someday to be more complicated *)
-	       | String of STR (* someday to be unicode *)
+     and MAGIC = Number of real (* someday to be more complicated *)
+	       | String of STR  (* someday to be unicode *)
 	       | Bool of bool
 	       | Namespace of NS
 	       | Class of CLS_CLOSURE
 	       | Interface of IFACE_CLOSURE
-	       | Function of FUNC_CLOSURE
+	       | Function of FUN_CLOSURE
 	       | HostFunction of (VAL list -> VAL)
 		    
      and CLS = 
@@ -51,12 +54,12 @@ datatype VAL = Object of { tag: VAL_TAG,
    		  base: CLS option,
 		  interfaces: IFACE list,
 		  
-		  call: FUNC_CLOSURE option,
+		  call: FUN_CLOSURE option,
 		  definition: Ast.CLASS_DEFN,
-		  constructor: FUNC_CLOSURE option,
+		  constructor: FUN_CLOSURE option,
 		  
 		  instanceTy: TYPE,
-		  instanceLayout: LAYOUT,
+		  instanceFixtures: FIXTURES,
 		  instancePrototype: VAL,
 		  
 		  initialized: bool ref }
@@ -66,28 +69,35 @@ datatype VAL = Object of { tag: VAL_TAG,
 		    bases: IFACE list,
 		    definition: Ast.INTERFACE_DEFN,			
 		    isInitialized: bool ref }
+
+     and FNC = 
+	 Fnc of { func: Ast.FUNC,
+		  activationFixtures: FIXTURES }
 		   
      and SCOPE = 
 	 Scope of { tag: SCOPE_TAG, 
-		    object: VAL,
+		    object: OBJ,
 		    parent: SCOPE option }
 
-     and LAYOUT_TAG = 
-	 LayoutClass  
-       | LayoutInterface
-       | LayoutFunction
+     and FIXTURES_TAG = 
+	 ClassFixtures  
+       | FunctionFixtures
+       | GlobalFixtures
 
-     and LAYOUT = 
-	 Layout of { parent: LAYOUT option,		     
-		     tag: LAYOUT_TAG,
-		     items: ITEM list,
-		     isExtensible: bool }
+     and FIXTURES = 
+	 Fixtures of { tag: FIXTURES_TAG,
+		       parent: FIXTURES option,	     		       
+		       fixtures: FIXTURE BINDINGS,
+		       isExtensible: bool }
 
-     and ITEM = 
-	 Item of { name: NAME,
-		   ty: TYPE,   
-		   attrs: ATTRS }
-
+     and FIXTURE = 
+	 PropFixture of { ty: TYPE,
+			  readOnly: bool,
+			  isOverride: bool,
+			  subFixtures: FIXTURES option }
+       | NamespaceFixture of NS
+       | TypeFixture of TYPE
+			
      and PROP_KIND = TypeProp 
 		   | ValProp
 		
@@ -96,10 +106,9 @@ withtype NAME = { ns: NS,
 		
      and MULTINAME = { nss: NS list, 
 		       id: ID }
-
-     and FUNC_CLOSURE = 
-	 { fsig: Ast.FUNC_SIG,
-	   func: Ast.FUNC, 
+		
+     and FUN_CLOSURE = 
+	 { fnc: FNC,
 	   allTypesBound: bool,
 	   env: SCOPE }
 
@@ -128,32 +137,32 @@ withtype NAME = { ns: NS,
 		  ty: TYPE,
 		  value: VAL,	   
 		  attrs: ATTRS }
-	 
-     and BINDINGS = ((NAME * PROP) list) ref
 
-(* Exceptions for "abstract machine failures". *)
-
-exception ReferenceException of NAME
-exception ConversionException of STR
-exception MultiReferenceException of MULTINAME
-exception UnimplementedException of STR
-exception MachineException of STR
+     and 'a BINDINGS = ((NAME * 'a) list) ref
 
 (* Values *)
 
-fun newBindings _ = 
+fun newPropBindings _ : PROP BINDINGS = 
     let 
-	val b:BINDINGS = ref []
+	val b:PROP BINDINGS = ref []
     in
 	b
     end
 
-fun addBinding (b:BINDINGS) (n:NAME) (p:PROP) = 
-    b := ((n,p) :: (!b))
-
-fun delBinding (b:BINDINGS) (n:NAME) = 
+fun newFixtureBindings _ : FIXTURE BINDINGS = 
     let 
-	fun strip [] = raise ReferenceException n
+	val b:FIXTURE BINDINGS = ref []
+    in
+	b
+    end
+
+fun addBinding (b:'a BINDINGS) (n:NAME) (x:'a) = 
+    b := ((n,x) :: (!b))
+
+fun delBinding (b:'a BINDINGS) (n:NAME) = 
+    let 
+	fun strip [] = LogErr.hostError ["deleting nonexistent binding: ", 
+					 (#id n)]
 	  | strip ((k,v)::bs) = 
 	    if k = n 
 	    then bs
@@ -162,9 +171,10 @@ fun delBinding (b:BINDINGS) (n:NAME) =
 	b := strip (!b)
     end
 
-fun getBinding (b:BINDINGS) (n:NAME) = 
+fun getBinding (b:'a BINDINGS) (n:NAME) : 'a = 
     let 
-	fun search [] = raise ReferenceException n			      
+	fun search [] = LogErr.hostError ["binding not found: ", 
+					  (#id n)]
 	  | search ((k,v)::bs) = 
 	    if k = n 
 	    then v
@@ -173,7 +183,7 @@ fun getBinding (b:BINDINGS) (n:NAME) =
 	search (!b)
     end
 
-fun hasBinding (b:BINDINGS) (n:NAME) = 
+fun hasBinding (b:'a BINDINGS) (n:NAME) : bool = 
     let 
 	fun search [] = false
 	  | search ((k,v)::bs) = 
@@ -189,17 +199,56 @@ fun hasBinding (b:BINDINGS) (n:NAME) =
 val intrinsicObjectName:NAME = { ns = Ast.Intrinsic, id = "Object" }
 val intrinsicArrayName:NAME = { ns = Ast.Intrinsic, id = "Array" }
 val intrinsicFunctionName:NAME = { ns = Ast.Intrinsic, id = "Function" }
+val intrinsicBooleanName:NAME = { ns = Ast.Intrinsic, id = "Boolean" }
+val intrinsicNumberName:NAME = { ns = Ast.Intrinsic, id = "Number" }
+val intrinsicStringName:NAME = { ns = Ast.Intrinsic, id = "String" }
+val intrinsicNamespaceName:NAME = { ns = Ast.Intrinsic, id = "Namespace" }
 
 val intrinsicObjectBaseTag:VAL_TAG = ClassTag (intrinsicObjectName)
 val intrinsicArrayBaseTag:VAL_TAG = ClassTag (intrinsicArrayName)
 val intrinsicFunctionBaseTag:VAL_TAG = ClassTag (intrinsicFunctionName)
+val intrinsicBooleanBaseTag:VAL_TAG = ClassTag (intrinsicBooleanName)
+val intrinsicNumberBaseTag:VAL_TAG = ClassTag (intrinsicNumberName)
+val intrinsicStringBaseTag:VAL_TAG = ClassTag (intrinsicStringName)
+val intrinsicNamespaceBaseTag:VAL_TAG = ClassTag (intrinsicNamespaceName)
 
-fun newObject (t:VAL_TAG) : VAL = 
-    Object { tag = t,
-	     props = newBindings (),
-	     proto = ref NONE,
-	     magic = ref NONE }
+fun newObj (t:VAL_TAG) (p:VAL option) (m:MAGIC option) : OBJ = 
+    Obj { tag = t,
+	  props = newPropBindings (),
+	  proto = ref p,
+	  magic = ref m }
+			  
+fun newObject (t:VAL_TAG) (p:VAL option) (m:MAGIC option) : VAL = 
+    Object (newObj t p m)
 
+fun newNumber (n:real) : VAL = 
+    newObject intrinsicNumberBaseTag NONE (SOME (Number n))
+
+fun newString (s:STR) : VAL = 
+    newObject intrinsicStringBaseTag NONE (SOME (String s))
+
+fun newBoolean (b:bool) : VAL = 
+    newObject intrinsicBooleanBaseTag NONE (SOME (Bool b))
+
+fun newNamespace (n:NS) : VAL = 
+    newObject intrinsicNamespaceBaseTag NONE (SOME (Namespace n))
+
+fun newFunc (e:SCOPE) (fixs:FIXTURES) (f:Ast.FUNC) : VAL = 
+    let 
+	val fsig = case f of Ast.Func { fsig, ... } => fsig
+	val tag = FunctionTag fsig
+	val allTypesBound = (case fsig of 
+				 Ast.FunctionSignature { typeParams, ... } 
+				 => (length typeParams) = 0)
+			    
+	val closure = { fnc = Fnc { func = f, 
+				    activationFixtures = fixs } ,
+			allTypesBound = allTypesBound,
+			env = e }
+    in
+	newObject tag NONE (SOME (Function closure))
+    end
+	    
 val (objectType:TYPE) = Ast.ObjectType []
 
 val (defaultAttrs:Ast.ATTRIBUTES) = 
@@ -216,49 +265,24 @@ val (emptyBlock:Ast.BLOCK) = Ast.Block { pragmas = [],
 					 defns = [],
 					 stmts = [] }
 
-val (emptyClassDefn:Ast.CLASS_DEFN) = 
-    { name = "",
-      nonnullable = true,
-      attrs = defaultAttrs,
-      params = [],
-      extends = NONE,
-      implements = [],
-      body = emptyBlock,
-      instanceVars = [],
-      instanceMethods = [],
-      vars = [],
-      methods = [],
-      constructor = NONE,
-      initializer = [] }
-    
-val (emptyClassLayout:LAYOUT) = 
-    Layout { parent = NONE,
-	     tag = LayoutClass,
-	     items = [],	     
-	     isExtensible = true }
+val (globalFixtures:FIXTURES) = 
+    Fixtures { parent = NONE,
+	       tag = GlobalFixtures,
+	       fixtures = newFixtureBindings (),
+	       isExtensible = false }
 
-val (globalObject:VAL) = newObject intrinsicObjectBaseTag
-    
+val (globalObject:OBJ) = newObj intrinsicObjectBaseTag NONE NONE
+
 val (globalScope:SCOPE) = 
     Scope { tag = VarGlobal,
 	    object = globalObject,
 	    parent = NONE }
-    
-val (globalClass:CLS) = 
-    Cls { ty = objectType,
-	  scope = globalScope,
-	  base = NONE,
-	  interfaces = [],
-	  call = NONE,
-	  definition = emptyClassDefn,
-	  constructor = NONE,
-	  instanceTy = objectType,
-	  instanceLayout = emptyClassLayout,
-	  instancePrototype = globalObject,
-	  isSealed = false,
-	  initialized = ref true }
 
 val nan = Real.posInf / Real.posInf
+
+fun addFixturesToObject (fixs:FIXTURES) (obj:OBJ) : unit = 
+    case fixs of
+	Fixtures { fixtures, ... } => ()
 
 (*
  * To get from any object to its CLS, you work out the
@@ -276,12 +300,12 @@ fun nominalBaseOfTag (t:VAL_TAG) =
 
 fun getMagic (v:VAL) : (MAGIC option) = 
     case v of 
-	Object ob => !(#magic ob)
+	Object (Obj ob) => !(#magic ob)
       | _ => NONE
 
 fun getGlobalVal (n:NAME) = 
     case globalObject of 
-	Object ob => 
+	Obj ob => 
 	let 
 	    val prop = getBinding (#props ob) n
 	in 
@@ -289,13 +313,13 @@ fun getGlobalVal (n:NAME) =
 	    then (#value prop)
 	    else Undef
 	end
-      | _ => Undef
 
 fun valToCls (v:VAL) : (CLS option) = 
     case v of 
-	Object ob => (case getMagic (getGlobalVal (nominalBaseOfTag (#tag ob))) of
-			  SOME (Class {cls,...}) => SOME cls
-			| _ => NONE)
+	Object (Obj ob) => 
+	(case getMagic (getGlobalVal (nominalBaseOfTag (#tag ob))) of
+	     SOME (Class {cls,...}) => SOME cls
+	   | _ => NONE)
       | _ => NONE
 
 (* FIXME: this is not the correct toString *)
@@ -304,7 +328,7 @@ fun toString (v:VAL) : string =
     case v of 
 	Undef => "undefined"
       | Null => "null"
-      | Object ob => 
+      | Object (Obj ob) => 
 	(case !(#magic ob) of 
 	     NONE => "[object Object]"
 	   | SOME magic => 
@@ -328,7 +352,7 @@ fun toNum (v:VAL) : real =
     case v of 
 	Undef => nan
       | Null => 0.0
-      | Object ob => 
+      | Object (Obj ob) => 
 	(case !(#magic ob) of 
 	     SOME (Number n) => n
 	   | SOME (Bool true) => 1.0
@@ -342,7 +366,7 @@ fun toBoolean (v:VAL) : bool =
     case v of 
 	Undef => false
       | Null => false
-      | Object ob => 
+      | Object (Obj ob) => 
 	(case !(#magic ob) of 
 	     SOME (Bool b) => b
 	   | _ => true)
@@ -350,7 +374,7 @@ fun toBoolean (v:VAL) : bool =
 		  
 fun equals (va:VAL) (vb:VAL) : bool = 
     case (va,vb) of 
-	(Object oa, Object ob) => 
+	(Object (Obj oa), Object (Obj ob)) => 
 	(case (!(#magic oa), !(#magic ob)) of 
 	     (SOME ma, SOME mb) => 
 	     (case (ma, mb) of
@@ -364,7 +388,7 @@ fun equals (va:VAL) (vb:VAL) : bool =
 
 fun less (va:VAL) (vb:VAL) : bool = 
     case (va,vb) of 
-	(Object oa, Object ob) =>
+	(Object (Obj oa), Object (Obj ob)) =>
 	(case (!(#magic oa), !(#magic ob)) of 
 	     (SOME ma, SOME mb) => 
 	     (case (ma, mb) of 
@@ -385,13 +409,13 @@ fun hostPrintFunction (vals:VAL list) : VAL =
 
 and populateIntrinsics globalObj = 
     case globalObj of 
-	Object { props, ... } => 
+	Obj { props, ... } => 
 	let 
 	    fun newHostFunctionObj f = 
-		Object { tag = intrinsicFunctionBaseTag,
-			 props = newBindings (),
-			 proto = ref NONE,
-			 magic = ref (SOME (HostFunction f)) }
+		Object (Obj { tag = intrinsicFunctionBaseTag,
+			      props = newPropBindings (),
+			      proto = ref NONE,
+			      magic = ref (SOME (HostFunction f)) })
 	    fun bindFunc (n, f) = 
 		let 
 		    val name = { id = n, ns = Ast.Intrinsic }
@@ -409,5 +433,4 @@ and populateIntrinsics globalObj =
 	    List.app bindFunc 
 	    [ ("print", hostPrintFunction) ]
 	end	
-      | _ => raise MachineException "Undefined or Null Global Object"
 end

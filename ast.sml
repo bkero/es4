@@ -293,7 +293,7 @@ datatype PRAGMA =
        | Identifier of { ident : IDENT,
                          openNamespaces : (NAMESPACE list) ref }
        | ExpressionIdentifier of EXPR   (* for bracket exprs: o[x] and @[x] *)
-       | TypeIdentifier of { ident : IDENT_EXPR,
+       | TypeIdentifier of { ident : IDENT_EXPR, (*deprecated*)
                              typeParams : TYPE_EXPR list }
 
      and LITERAL =
@@ -318,7 +318,11 @@ datatype PRAGMA =
            defns: DEFN list,
            stmts: STMT list }
 
-     and PATTERN =
+     and PATTERN = 
+		(* these IDENT_EXPRs are actually
+		   Identifier { id, _ }
+		   and should later be changed to IDENT
+		 *)
          ObjectPattern of { name: IDENT_EXPR, ptrn : PATTERN } list
        | ArrayPattern of PATTERN list
        | SimplePattern of EXPR

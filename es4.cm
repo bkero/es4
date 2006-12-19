@@ -1,4 +1,5 @@
 Library
+	structure LogErr
         structure Main
         structure Ast
 	structure Pretty
@@ -7,9 +8,10 @@ Library
         structure Parser
 	structure Defn
         structure TypeChk
-(*	structure Eval *)
+   	structure Eval
 	structure Mach 
 is
+	logerr.sml
         main.sml
         ast.sml
 	pretty.sml
@@ -20,7 +22,7 @@ is
         parser.sml
         defn.sml
 	typechk.sml
-(*	eval.sml *)
+	eval.sml
 	mach.sml
 
         $/basis.cm
@@ -28,8 +30,4 @@ is
 	$/pp-lib.cm
         $/mllex-tool.cm
         $/lex-ext.cm
-#if defined (BACKTRACE)
-        $smlnj-tdp/plugins.cm
-#else
-        tools/backtrace.sml
-#endif
+        tools/backtrace.cm

@@ -1,0 +1,10 @@
+Library
+        structure BackTrace
+is
+        $/basis.cm
+        $/smlnj-lib.cm
+#if defined (BACKTRACE)
+        $smlnj-tdp/plugins.cm
+#else
+        backtrace.sml
+#endif
