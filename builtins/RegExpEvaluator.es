@@ -123,7 +123,7 @@ package RegExp
 
 	class Disjunct! implements Matcher
 	{
-		function Disjunct(m1 : Matcher, m2 : Matcher) : m1(m1), m2(m2) {}
+		function Disjunct(m1 : Matcher, m2 : Matcher) : m1=m1, m2=m2 {}
 
 		function match(ctx : Context, x : State, c : Continuation) : MatchResult {
 			let r : MatchResult = m1.match(ctx, x, c);
@@ -137,7 +137,7 @@ package RegExp
 
 	class Alternative! implements Matcher
 	{
-		function Alternative(m1 : Matcher, m2 : Matcher) : m1(m1), m2(m2) {}
+		function Alternative(m1 : Matcher, m2 : Matcher) : m1=m1, m2=m2 {}
 
 		function match(ctx : Context, x : State, c : Continuation) : MatchResult {
 			return m1.match(ctx, x, function (ctx : Context, y : State) { return m2.match(ctx, y, c); } );
@@ -253,7 +253,7 @@ package RegExp
 
 	class Capturing! implements Matcher
 	{
-		function Capturing(m : Matcher, parenIndex : uint) : m(m), parenIndex(parenIndex) {}
+		function Capturing(m : Matcher, parenIndex : uint) : m=m, parenIndex=parenIndex {}
 
 		function match(ctx : Context, x : State, c : Continuation) : MatchResult {
 
@@ -273,7 +273,7 @@ package RegExp
 
 	class Backref! implements Matcher
 	{
-		function Backref(capno : uint) : capno(capno) {}
+		function Backref(capno : uint) : capno=capno {}
 
 		function match(ctx : Context, x : State, c : Continuation) : MatchResult {
 			let cap = x.cap;
@@ -316,7 +316,7 @@ package RegExp
 
 	class CharsetMatcher! implements Matcher
 	{
-		function CharsetMatcher(cs : Charset) : cs(cs) {}
+		function CharsetMatcher(cs : Charset) : cs=cs {}
 
 		function match(ctx : Context, x : State, c : Continuation) : MatchResult {
 			let e = x.endIndex;
@@ -354,7 +354,7 @@ package RegExp
 
 	class CharsetUnion implements Charset 
 	{
-		function CharsetUnion(m1 : Charset, m2 : Charset) : m1(m1), m2(m2) {}
+		function CharsetUnion(m1 : Charset, m2 : Charset) : m1=m1, m2=m2 {}
 
 		function match(c : String!) : Boolean {
 			return m1.match(c, true) || m2.match(c, true);
@@ -365,7 +365,7 @@ package RegExp
 
 	class CharsetIntersection implements Charset 
 	{
-		function CharsetIntersection(m1 : Charset, m2 : Charset) : m1(m1), m2(m2) {}
+		function CharsetIntersection(m1 : Charset, m2 : Charset) : m1=m1, m2=m2 {}
 
 		function match(c : String!) : Boolean {
 			return m1.match(c, true) && m2.match(c, true);
@@ -376,7 +376,7 @@ package RegExp
 
 	class CharsetComplement implements Charset 
 	{
-		function CharsetComplement(cs : Charset) : cs(cs) {}
+		function CharsetComplement(cs : Charset) : cs=cs {}
 
 		function match(c : String!) : Boolean {
 			return m.match(c) === failure;
@@ -387,7 +387,7 @@ package RegExp
 
 	class CharsetRange implements Charset 
 	{
-		function CharsetRange(lo : String!, hi : String!) : lo(lo), hi(hi) {}
+		function CharsetRange(lo : String!, hi : String!) : lo=lo, hi=hi {}
 
 		function match(c : String!) : Boolean {
 			let lo_code = lo.charCodeAt(0);
@@ -403,7 +403,7 @@ package RegExp
 
 	class CharsetAdhoc implements Charset 
 	{
-		function CharsetAdhoc(cs : [String!]) : cs(cs) {}
+		function CharsetAdhoc(cs : [String!]) : cs=cs {}
 
 		function match(c : String!) : Boolean {
 			for each ( let d in cs ) {
@@ -418,7 +418,7 @@ package RegExp
 
 	class CharsetUnicodeClass implements Charset
 	{
-		function CharsetUnicodeClass(name : String!) : name(name) {}
+		function CharsetUnicodeClass(name : String!) : name=name {}
 
 		function match(c : String!) : Boolean {
 			throw new Error("character set not yet implemented: " + name);

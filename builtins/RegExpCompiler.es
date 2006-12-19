@@ -329,9 +329,9 @@ package RegExp
 		}
 
 		function classEscape() : Charset {
-			return escape( function(t : Number) : Charset new CharsetAdhoc([String.fromCharCode(t)]),
-						   function(t : Charset) : Charset t,
-						   function(t : String) : Charset new CharsetAdhoc(t),
+			return escape( (function(t : Number) : Charset new CharsetAdhoc([String.fromCharCode(t)])),
+						   (function(t : Charset) : Charset t),
+						   (function(t : String) : Charset new CharsetAdhoc(t)),
 						   true );
 		}
 

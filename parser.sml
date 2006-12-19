@@ -39,6 +39,8 @@ val trace_on = true
 fun trace ss =
 	if trace_on then log ss else ()
 
+val currentClassName : Ast.IDENT ref = ref ""
+
 fun error ss =
 	(log ("*syntax error: " :: ss); raise ParseError)
 
@@ -489,6 +491,7 @@ and functionSignature (ts) : (token list * Ast.FUNC_SIG) =
 											thisType=SOME (Ast.NominalType {ident=nd2,nullable=NONE}),
                         		        	params=nd3,
 	                            		    returnType=nd4,
+											inits=NONE,
 											hasBoundThis=false,
 											hasRest=false })) (* do we need this *)
                 		   	end
@@ -509,6 +512,7 @@ and functionSignature (ts) : (token list * Ast.FUNC_SIG) =
 								{ typeParams=nd1,
                                 	params=nd2,
 	                                returnType=nd3,
+									inits=NONE,
 									thisType=NONE,  (* todo *)
 									hasBoundThis=false, (* todo *)
 									hasRest=false })) (* do we need this *)
@@ -768,11 +772,14 @@ and fieldList ts =
 			  | _ => (ts1,nd1::[])
 			end
 	in case ts of
-		RightBrace :: ts1 => (ts1,[])
+		RightBrace :: _ => 
+			(trace(["<< fieldList with next=",tokenname(hd(ts))]);
+			(ts,[]))
 	  | _ => 
 		let
 			val (ts1,nd1) = nonemptyFieldList (ts)
 		in
+			trace(["<< fieldList with next=",tokenname(hd(ts))]);
 			(ts1,nd1)
  		end
 	end
@@ -870,7 +877,7 @@ and functionCommon ts =
             in
                 (ts2,Ast.FunExpr {ident=NONE,fsig=nd1,body=nd2})
             end
-      | _ => raise ParseError
+      | _ => (error(["expecting {"]); raise ParseError)
     end
 
 (*
@@ -1097,10 +1104,19 @@ and memberExpression (ts,a,b) =
         New :: _ =>
             let
                 val (ts1,nd1) = memberExpression(tl ts,a,b)
-                val (ts2,nd2) = arguments(ts1)
-                val (ts3,nd3) = memberExpressionPrime(ts2,Ast.NewExpr {obj=nd1,actuals=nd2},a,b)
-            in
-                (ts3,nd3)
+			in case ts1 of
+				LeftParen :: _ =>
+					let
+		                val (ts2,nd2) = arguments(ts1)
+        		        val (ts3,nd3) = memberExpressionPrime(ts2,Ast.NewExpr {obj=nd1,actuals=nd2},a,b)
+					in
+						(ts3,nd3)
+					end
+			  | _ => 
+					let
+					in
+						(ts1,nd1) (* short new, we're done *)
+					end
             end
       | Super :: _ =>
             let
@@ -1124,11 +1140,18 @@ and memberExpressionPrime (ts,nd,a,b) =
     in case ts of
         (LeftBracket :: _ | Dot :: _) =>
             let
-                val (ts2,nd2) = propertyOperator(ts,nd)
+                val (ts1,nd1) = propertyOperator(ts,nd)
+                val (ts2,nd2) = memberExpressionPrime(ts1,nd1,a,b)
             in
-                memberExpressionPrime(ts2, nd2,a,b)
+				trace(["<< memberExpressionPrime with next=",tokenname(hd(ts2))]);
+				(ts2,nd2)
             end
-      | _ => (ts,nd)
+      | _ => 
+			let
+			in
+				trace(["<< memberExpressionPrime with next=",tokenname(hd(ts))]);
+				(ts,nd)
+			end
     end
 
 (*
@@ -1152,8 +1175,10 @@ and callExpression (ts,a,b) =
     let val _ = trace([">> callExpression with next=",tokenname(hd(ts))]) 
         val (ts1,nd1) = memberExpression(ts,a,b)
         val (ts2,nd2) = arguments(ts1)
+		val (ts3,nd3) = callExpressionPrime(ts2,Ast.CallExpr({func=nd1,actuals=nd2}),a,b)
     in 
-        callExpressionPrime(ts2,Ast.CallExpr({func=nd1,actuals=nd2}),a,b)
+		trace(["<< callExpression with next=",tokenname(hd(ts2))]);
+		(ts3,nd3)
     end
 
 and callExpressionPrime (ts,nd,a,b) =
@@ -1161,17 +1186,26 @@ and callExpressionPrime (ts,nd,a,b) =
     in case ts of
         (LeftBracket :: _ | Dot :: _) =>
             let
-                val (ts1,nd1) = propertyOperator(tl ts,nd)
+                val (ts1,nd1) = propertyOperator(ts,nd)
+                val (ts2,nd2) = callExpressionPrime(ts1,nd1,a,b)
             in
-                memberExpressionPrime(ts1, nd1,a,b)
+				trace(["<< callExpressionPrime with next=",tokenname(hd(ts2))]);
+				(ts2,nd2)
             end
       | LeftParen :: _ => 
             let
                 val (ts1,nd1) = arguments(ts)
+				val (ts2,nd2) = callExpressionPrime(ts1,Ast.CallExpr({func=nd,actuals=nd1}),a,b)
             in
-                memberExpressionPrime(ts1,Ast.CallExpr({func=nd,actuals=nd1}),a,b)
+				trace(["<< callExpressionPrime with next=",tokenname(hd(ts2))]);
+				(ts2,nd2)
             end
-      | _ => (ts,nd)
+      | _ => 
+			let
+			in
+				trace(["<< callExpressionPrime with next=",tokenname(hd(ts))]);
+				(ts,nd)
+			end
     end
 
 (*
@@ -1195,7 +1229,22 @@ and newExpression (ts,a,b) =
             in
                 (ts1,nd1)
             end
-      | _ => memberExpression(ts,a,b)
+      | _ => 
+			let
+				val (ts1,nd1) = memberExpression(ts,a,b)
+			in case ts1 of
+				LeftParen :: _ =>
+					let
+						val (ts2,nd2) = callExpressionPrime (ts,nd1,a,b)
+					in
+						(ts2,nd2)
+					end
+			  | _ =>
+					let
+					in
+						(ts1,nd1)
+					end
+			end
     end
 
 (*
@@ -1205,14 +1254,24 @@ and newExpression (ts,a,b) =
 *)
 
 and arguments (ts) : (token list * Ast.EXPR list)  =
-    let val _ = trace([">> arguments with next=",tokenname(hd(ts))]) 
+    let val _ = trace([">> arguments with next=",tokenname(hd(ts))])
 	in case ts of
-        LeftParen :: RightParen :: ts1 => (ts1,[]) 
-      | LeftParen :: ts1 => 
+        LeftParen :: RightParen :: _ => 
 			let
-		        val (ts2,nd2) = argumentList(ts1)
-			in case ts2 of
-				RightParen :: ts3 => (ts3,nd2)
+			in
+				trace(["<< arguments with next=",tokenname(hd(tl (tl ts)))]);
+				(tl (tl ts),[]) 
+			end
+      | LeftParen :: _ => 
+			let
+		        val (ts1,nd1) = argumentList(tl ts)
+			in case ts1 of
+				RightParen :: _ => 
+					let
+					in
+						trace(["<< arguments with next=",tokenname(hd(tl ts1))]);
+						(tl ts1,nd1)
+					end
 			  | _ => raise ParseError
 			end
 	  | _ => raise ParseError
@@ -1464,6 +1523,12 @@ and unaryExpression (ts,a,b) =
 				val (ts2,nd2) = unaryExpression (ts1,a,b) 
 			in 
 				(ts2,Ast.UnaryExpr(Ast.UnaryPlus,nd2)) 
+			end
+	  | Minus :: ts1 => 
+			let 
+				val (ts2,nd2) = unaryExpression (ts1,a,b) 
+			in 
+				(ts2,Ast.UnaryExpr(Ast.UnaryMinus,nd2)) 
 			end
 	  | BitwiseNot :: ts1 => 
 			let 
@@ -2744,7 +2809,7 @@ and fieldTypeList ts =
 			  | _ => (ts1,nd1::[])
 			end
 	in case ts of
-		RightBrace :: ts1 => (ts1,[])
+		RightBrace :: _ => (ts,[])
 	  | _ => 
 		let
 			val (ts1,nd1) = nonemptyFieldTypeList (ts)
@@ -2921,8 +2986,9 @@ and statement (ts,w) : (token list * Ast.STMT) =
 	  | Super :: _ =>
 			let
 				val (ts1,nd1) = superStatement ts
+				val (ts2,nd2) = (semicolon (ts1,w),nd1)
 			in
-				(ts1,nd1)
+				(ts2,nd2)
 			end
 	  | Do :: _ =>
 			let
@@ -2963,20 +3029,23 @@ and statement (ts,w) : (token list * Ast.STMT) =
 	  | Continue :: _ =>
 			let
 				val (ts1,nd1) = continueStatement (ts)
+				val (ts2,nd2) = (semicolon (ts1,w),nd1)
 			in
-				(ts1,nd1)
+				(ts2,nd2)
 			end
 	  | Break :: _ =>
 			let
 				val (ts1,nd1) = breakStatement (ts)
+				val (ts2,nd2) = (semicolon (ts1,w),nd1)
 			in
-				(ts1,nd1)
+				(ts2,nd2)
 			end
 	  | Throw :: _ =>
 			let
 				val (ts1,nd1) = throwStatement (ts)
+				val (ts2,nd2) = (semicolon (ts1,w),nd1)
 			in
-				(ts1,nd1)
+				(ts2,nd2)
 			end
 	  | Try :: _ =>
 			let
@@ -2987,8 +3056,9 @@ and statement (ts,w) : (token list * Ast.STMT) =
 	  | Default :: Xml :: Namespace :: Assign :: _ =>
 			let
 				val (ts1,nd1) = defaultXmlNamespaceStatement (ts)
+				val (ts2,nd2) = (semicolon (ts1,w),nd1)
 			in
-				(ts1,nd1)
+				(ts2,nd2)
 			end
 	  | _ =>
 			let
@@ -4588,7 +4658,9 @@ and functionDeclaration (ts) =
 		+   -   ~   *   /   %   <   >   <=   >=   ==   <<   >>   >>>   &   |   ===   !=   !==
 *)
 
-and isCurrentClass (nd) = false  (* todo *)
+and isCurrentClass ({ident,kind}) = if (ident=(!currentClassName)) andalso (kind=Ast.Ordinary) 
+									then true 
+									else false
 
 and functionDefinition (ts,attrs,CLASS) =
     let val _ = trace([">> functionDefinition(CLASS) with next=", tokenname(hd ts)])
@@ -4753,7 +4825,62 @@ and operatorName (ts) =
 	ConstructorSignature	
 		TypeParameters  (  Parameters  )
 		TypeParameters  (  Parameters  )  ConstructorInitialiser
-		
+*)
+
+and constructorSignature (ts) = 
+    let val _ = trace([">> constructorSignature with next=",tokenname(hd(ts))]) 
+		val (ts1,nd1) = typeParameters ts
+	in case ts1 of
+        LeftParen :: This :: Colon ::  _ =>
+           	let
+				val (ts2,nd2) = typeIdentifier (tl (tl (tl ts1)))
+			in case ts2 of
+				Comma :: _ =>
+					let
+		               	val (ts3,nd3) = parameters (tl ts2)  
+        		   	in case ts3 of
+               			RightParen :: _ =>
+		                   	let
+        		               	val (ts4,nd4) = constructorInitialiser (tl ts3)
+                		   	in
+								(log(["<< functionSignature with next=",tokenname(hd ts4)]);
+		                        (ts4,Ast.FunctionSignature
+										{ typeParams=nd1,
+											thisType=SOME (Ast.NominalType {ident=nd2,nullable=NONE}),
+                        		        	params=nd3,
+	                            		    returnType=(Ast.SpecialType Ast.VoidType),
+											inits=SOME nd4,
+											hasBoundThis=false,
+											hasRest=false })) (* do we need this *)
+                		   	end
+		           	  | _ => raise ParseError
+					end
+           	  | _ => raise ParseError
+			end
+      | LeftParen :: _ =>
+           	let
+               	val (ts2, nd2) = parameters (tl ts1)
+           	in case ts2 of
+               	RightParen :: _ =>
+                   	let
+                       	val (ts3,nd3) = constructorInitialiser (tl ts2)
+                   	in
+						(log(["<< construcorSignature with next=",tokenname(hd ts3)]);
+                        (ts3,Ast.FunctionSignature
+								{ typeParams=nd1,
+                                	params=nd2,
+	                                returnType=(Ast.SpecialType Ast.VoidType),
+									inits=NONE,
+									thisType=NONE,
+									hasBoundThis=false, (* todo *)
+									hasRest=false })) (* do we need this *)
+                   	end
+           	  | _ => raise ParseError
+			end
+	  | _ => raise ParseError
+    end
+
+(*
 	ConstructorInitialiser	
 		:  InitialiserList
 		
@@ -4762,10 +4889,21 @@ and operatorName (ts) =
 		InitialiserList  ,  Initialiser
 		
 	Initialiser	
-		PatternnoList, noIn, noExpr  VariableInitialisationnoList, allowIn
+		Pattern(noList, noIn, noExpr)  VariableInitialisation(noList, allowIn)
 *)
 
-and constructorSignature (ts) = raise ParseError
+and constructorInitialiser ts = 
+    let val _ = trace([">> constructorInitialiser with next=",tokenname(hd(ts))]) 
+    in case ts of
+    	Colon :: _ => 
+			let
+				val (ts1,nd1) = variableBindingList (tl ts,defaultAttrs,Ast.Var,NOLIST,ALLOWIN)
+			in
+				log(["<< constructorInitialiser with next=",tokenname(hd ts1)]);
+				(ts1,nd1)
+			end
+	  | _ => (ts,{defns=[],inits=[]})
+    end
 
 (*
 	FunctionBody	
@@ -4800,7 +4938,9 @@ and classDefinition (ts,attrs) =
 			let
 				val (ts1,{ident,params,nonnullable}) = className (tl ts)
 				val (ts2,{extends,implements}) = classInheritance (ts1)
+				val _ = currentClassName := ident;
 				val (ts3,nd3) = classBody (ts2)
+				val _ = currentClassName := "";
 			in
          		(ts3,{pragmas=[],stmts=[],defns=[Ast.ClassDefn {name=ident,
 					nonnullable=nonnullable,

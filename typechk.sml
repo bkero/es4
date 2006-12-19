@@ -122,7 +122,7 @@ fun tcExpr ((ctxt as {env,this,...}):CONTEXT) (e:EXPR) :TYPE_EXPR =
 	 lookupProgramVariable env ident
 
        | FunExpr { ident, 
-		   fsig as (FunctionSignature {typeParams,params,returnType,thisType,...}), 
+		   fsig as (FunctionSignature {typeParams,params,returnType,thisType,inits,...}), 
 		   body} 
 	 =>
          let val extensions1 = List.map (fn id => (id,NONE)) typeParams;
@@ -145,7 +145,7 @@ fun tcExpr ((ctxt as {env,this,...}):CONTEXT) (e:EXPR) :TYPE_EXPR =
 		(* not much to do *)
 		anyType
 	      | FunctionType 
-		    (FunctionSignature { typeParams, params, returnType, thisType, hasBoundThis (*deprecated*),
+		    (FunctionSignature { typeParams, params, returnType, inits, thisType, hasBoundThis (*deprecated*),
 					 hasRest })
 		=> 
 		let 

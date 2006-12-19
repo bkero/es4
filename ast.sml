@@ -156,10 +156,11 @@ datatype PRAGMA =
      and FUNC_SIG =
          FunctionSignature of { typeParams: IDENT list,
                                 params: VAR_BINDING list,
+								inits: BINDINGS option, 
                                 returnType: TYPE_EXPR,
-				thisType: TYPE_EXPR option,
-				hasBoundThis: bool, (*goes away, redundant with previous option*)
-				hasRest: bool }
+								thisType: TYPE_EXPR option,
+								hasBoundThis: bool, (*goes away, redundant with previous option*)
+								hasRest: bool }
 
 
      (* Improve this? Probably more mutual exclusion possible. *)
