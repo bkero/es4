@@ -522,9 +522,9 @@ and evalDefn (scope:Mach.SCOPE) (d:Ast.DEFN) : unit =
       | Ast.VariableDefn bs => List.app (evalVarBinding scope NONE NONE) bs
       | _ => LogErr.unimplError ["unimplemented definition type"]
 
-and invokeFuncClosure (this:Mach.OBJ) (closure:Mach.FUNC_CLOSURE) (args:Mach.VAL list) : Mach.VAL =
+and invokeFuncClosure (this:Mach.OBJ) (closure:Mach.FUN_CLOSURE) (args:Mach.VAL list) : Mach.VAL =
     case closure of 
-	{ func=(Ast.Func f), allTypesBound, env } => 
+	{ fnc=(Mach.Fnc {func=(Ast.Func f), activationFixtures}), allTypesBound, env } => 
 	if not allTypesBound
 	then LogErr.evalError ["invoking function with unbound type variables"]
 	else 
@@ -552,7 +552,14 @@ and invokeFuncClosure (this:Mach.OBJ) (closure:Mach.FUNC_CLOSURE) (args:Mach.VAL
 		    evalBlock varScope (#body f)
 		end
 
+(* 
+ * This is the dynamic phase of function definition; it assumes that the 
+ * function has already had its fixtures constructed during the
+ * definition phase. 
+ *) 
 and evalFuncDefn (scope:Mach.SCOPE) (f:Ast.FUNC_DEFN) : unit = 
+    LogErr.unimplError ["function definitions temporarily disabled "]
+(*
     let 
 	val func = (#func f)
 	val fsig = case func of Ast.Func { fsig, ...} => fsig
@@ -571,6 +578,7 @@ and evalFuncDefn (scope:Mach.SCOPE) (f:Ast.FUNC_DEFN) : unit =
     in
 	setProp (getScopeObj scope) funcName funcProp
     end
+*)
 
 and evalBlock (scope:Mach.SCOPE) (block:Ast.BLOCK) : Mach.VAL = 
     case block of 

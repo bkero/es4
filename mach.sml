@@ -44,7 +44,7 @@ datatype VAL = Object of OBJ
 	       | Namespace of NS
 	       | Class of CLS_CLOSURE
 	       | Interface of IFACE_CLOSURE
-	       | Function of FUNC_CLOSURE
+	       | Function of FUN_CLOSURE
 	       | HostFunction of (VAL list -> VAL)
 		    
      and CLS = 
@@ -54,9 +54,9 @@ datatype VAL = Object of OBJ
    		  base: CLS option,
 		  interfaces: IFACE list,
 		  
-		  call: FUNC_CLOSURE option,
+		  call: FUN_CLOSURE option,
 		  definition: Ast.CLASS_DEFN,
-		  constructor: FUNC_CLOSURE option,
+		  constructor: FUN_CLOSURE option,
 		  
 		  instanceTy: TYPE,
 		  instanceFixtures: FIXTURES,
@@ -69,6 +69,10 @@ datatype VAL = Object of OBJ
 		    bases: IFACE list,
 		    definition: Ast.INTERFACE_DEFN,			
 		    isInitialized: bool ref }
+
+     and FNC = 
+	 Fnc of { func: Ast.FUNC,
+		  activationFixtures: FIXTURES }
 		   
      and SCOPE = 
 	 Scope of { tag: SCOPE_TAG, 
@@ -77,7 +81,6 @@ datatype VAL = Object of OBJ
 
      and FIXTURES_TAG = 
 	 ClassFixtures  
-       | InterfaceFixtures
        | FunctionFixtures
        | GlobalFixtures
 
@@ -88,10 +91,13 @@ datatype VAL = Object of OBJ
 		       isExtensible: bool }
 
      and FIXTURE = 
-	 Fixture of { ty: TYPE,
-		      readOnly: bool,
-		      isOverride: bool }
-
+	 PropFixture of { ty: TYPE,
+			  readOnly: bool,
+			  isOverride: bool,
+			  subFixtures: FIXTURES option }
+       | NamespaceFixture of NS
+       | TypeFixture of TYPE
+			
      and PROP_KIND = TypeProp 
 		   | ValProp
 		
@@ -100,9 +106,9 @@ withtype NAME = { ns: NS,
 		
      and MULTINAME = { nss: NS list, 
 		       id: ID }
-
-     and FUNC_CLOSURE = 
-	 { func: Ast.FUNC, 
+		
+     and FUN_CLOSURE = 
+	 { fnc: FNC,
 	   allTypesBound: bool,
 	   env: SCOPE }
 
@@ -227,14 +233,16 @@ fun newBoolean (b:bool) : VAL =
 fun newNamespace (n:NS) : VAL = 
     newObject intrinsicNamespaceBaseTag NONE (SOME (Namespace n))
 
-fun newFunc (e:SCOPE)  (f:Ast.FUNC) : VAL = 
+fun newFunc (e:SCOPE) (fixs:FIXTURES) (f:Ast.FUNC) : VAL = 
     let 
 	val fsig = case f of Ast.Func { fsig, ... } => fsig
 	val tag = FunctionTag fsig
 	val allTypesBound = (case fsig of 
 				 Ast.FunctionSignature { typeParams, ... } 
 				 => (length typeParams) = 0)
-	val closure = { func = f,
+			    
+	val closure = { fnc = Fnc { func = f, 
+				    activationFixtures = fixs } ,
 			allTypesBound = allTypesBound,
 			env = e }
     in
