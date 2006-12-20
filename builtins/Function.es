@@ -129,21 +129,21 @@ package
 
         /*** Function private data ***/
 
-        private code : *;          // Opaque representation of compiled code
-        private env : *;           // Environment in which this function is closed
-        private source : String!;  // Source code for decompilation
+        private var code : *;          // Opaque representation of compiled code
+        private var env : *;           // Environment in which this function is closed
+        private var source : String!;  // Source code for decompilation
 
         /*** Function construction ***/
 
         /* Given an array of values as passed to the function
            constructor, create a new function object. */
-        static private createFunction(args : Array!) : Function!
+        static private function createFunction(args : Array!) : Function!
         {
             var [code, source, length] : [*, String!, Number] = compileFunction(args);
             var fn : Function = super.intrinsic::construct(Function);
             var x : * = fn.Function();
             if (x is Object)
-                return x to Object!;
+                return x to Object;
             fn.length = length;
             fn.prototype = new Object;
             fn.source = source;
@@ -157,7 +157,7 @@ package
            code, a representation of the source code suitable for
            Function.prototype.toString(), and the function's
            "length".  */
-        static private compileFunction(...args) : [*, String!, Number]
+        static private function compileFunction(...args) : [*, String!, Number]
         {
             var formals = args[0:args.length-1].join(",");
             var body = args[args.length-1];

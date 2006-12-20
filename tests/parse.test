@@ -199,6 +199,36 @@
 %% [Object.es] parse
 @builtins/Object.es
 
+%% [Array.es] parse
+@builtins/Array.es
+
+%% [Class.es] parse
+@builtins/Class.es
+
+%% [Date.es] parse
+@builtins/Date.es
+
+%% [Function.es] parse
+@builtins/Function.es
+
+%% [Global.es] parse
+@builtins/Global.es
+
+%% [Magic.es] parse
+@builtins/Magic.es
+
+%% [Math.es] parse
+@builtins/Math.es
+
+%% [Number.es] parse
+@builtins/Number.es
+
+%% [String.es] parse
+@builtins/String.es
+
+%% [Unicode.es] parse
+@builtins/Unicode.es
+
 %% [t] parse
 @tests/t.es
 

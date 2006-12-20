@@ -143,7 +143,7 @@ dynamic class Array extends Object
         let len:uint = uint(this.length);
         let argslen:uint = uint(args.length);
 
-        for (let i:uint = 0, ; i < argslen; i++)
+        for (let i:uint = 0; i < argslen; i++)
             this[len++] = args[i];
         this.length = len;
         return len;
@@ -151,7 +151,7 @@ dynamic class Array extends Object
 
     // 15.4.4.8 Array.prototype.reverse ( )
     prototype function reverse()
-        this::intrinsic::reverse();
+        this.intrinsic::reverse();
     intrinsic function reverse():Array {
         let i:uint = 0;
         let j:uint = uint(this.length);
@@ -215,7 +215,7 @@ dynamic class Array extends Object
     // 15.4.4.11 Array.prototype.sort (comparefn)
     // Note: this is an implementation that meets the spec, but the spec
     // allows for different sort implementations (quicksort is not required)
-    type Comparator = function (*, *):Number;
+    type Comparator = function (x:*, y:*):Number;
 
     prototype function sort(comparefn)
         this.intrinsic::sort(comparefn);
@@ -465,10 +465,10 @@ dynamic class Array extends Object
     // Array "extras" from JS1.6
     // See http://developer.mozilla.org/en/docs/New_in_JavaScript_1.6#Array_extras
     // The callback function typically takes (item, i, list) parameters
-    type Mapper  = function (*, uint, Object):*;
-    type Eacher  = function (*, uint, Object):void;
-    type Checker = function (*, uint, Object):Boolean;
-    type Reducer = function (*, *, uint, Object):*;
+    type Mapper  = function (_:*, _:uint, _:Object):*;
+    type Eacher  = function (_:*, _:uint, _:Object):void;
+    type Checker = function (_:*, _:uint, _:Object):Boolean;
+    type Reducer = function (_:*, _:*, _:uint, _:Object):*;
 
     prototype function map(mapper, thisObj)
     {

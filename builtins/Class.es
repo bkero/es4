@@ -101,7 +101,7 @@ package
 
         native intrinsic function construct(classobj : Class!);
 
-        private classname : String;
+        private var classname : String;
         
         intrinsic function getClass() : String! { return classname; }
 

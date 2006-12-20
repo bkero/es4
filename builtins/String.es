@@ -30,7 +30,7 @@ package
 		static const prototype = new String;
 
 		// 15.5.3.2 String.fromCharCode ( [ char0 [ , char1 [ , … ] ] ] )
-		dynamic static function fromCharCode(...args:Array):Number
+		static function fromCharCode(...args:Array):Number
 		{
 			return _fromCharCode(args);
 		}
@@ -49,8 +49,8 @@ package
 		}
 
 		// 15.5.4 Properties of the String Prototype Object
-   		prototype.[[Prototype]] = prototype;
-   		prototype.[[Class]] = "String";
+   		prototype.magic::proto = prototype;
+   		prototype.magic::className = "String";
 		prototype.length = 0;
 		
 		// 15.5.4.1 String.prototype.constructor
@@ -128,7 +128,7 @@ package
 			var argslen:uint = uint(args.length);
 			for (var i:uint = 0; i < olen; i++)
 			{
-				s = s + String(args[i]));
+				s = s + String(args[i]);
 			}
 			return s;
 		}
@@ -403,7 +403,7 @@ package
 		}
 
 		// 15.5.5 Properties of String Instances
-		const [[Value]];
+		magic const value;
 
 		// 15.5.5.1 length
 		const length;	

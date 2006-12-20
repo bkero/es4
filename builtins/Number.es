@@ -116,13 +116,13 @@ package
 			return this.intrinsic::toExponential(Number(fractionDigits));
 		}
 
-		public native intrinsic function toExponential(fractionDigits:Number):String; // FIXME
+		intrinsic native function toExponential(fractionDigits:Number):String; // FIXME
 
 		/* E262-3 15.7.4.7: Number.prototype.toPrecision */
 		prototype function toPrecision(this:Number, precision) {
 			return this.intrinsic::toPrecision(Number(precision));
 		}
 
-		public intrinsic native function toPrecision(precision:Number) : String!; // FIXME
+		intrinsic native function toPrecision(precision:Number) : String!; // FIXME
 	}
 }

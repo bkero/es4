@@ -34,7 +34,7 @@ fun log ss =
      List.app TextIO.print ss;
      TextIO.print "\n")
 
-val trace_on = false
+val trace_on = true
 
 fun trace ss =
 	if trace_on then log ss else ()
@@ -4141,21 +4141,45 @@ and directive (ts,t:tau,w:omega) : (token list * Ast.DIRECTIVES) =
 			in
 				(ts1,nd1)
 			end
-	  | (Dynamic | Final | Native | Override | Prototype | Static ) :: _ =>
+	  | (Dynamic | Final | Override | Native | Static ) :: _ =>
 			let
 				val (ts1,nd1) = attributes (ts,defaultAttrs,t)
-				val (ts2,nd2) = annotatableDirective (ts1,nd1,t,w)
-			in
-				(ts2,nd2)
+				val (Ast.Attributes {native,...}) = nd1
+			in case native of
+				true => 
+					let
+						val (ts2,nd2) = functionDeclaration (ts1)
+						val (ts3,nd3) = (semicolon(ts2,w),nd2)
+					in
+						(ts3,nd3)
+					end
+			  | false =>
+					let
+						val (ts2,nd2) = annotatableDirective (ts1,nd1,t,w)
+					in
+						(ts2,nd2)
+					end
 			end
-	  | (Identifier _ | Private | Public | Protected | Internal | Intrinsic  ) :: 
+	  | (Identifier _ | Private | Public | Protected | Internal | Intrinsic | Prototype  ) :: 
 		(Dynamic | Final | Native | Override | Prototype | Static | 
 		 Var | Let | Const | Function | Class | Interface | Namespace | Type) :: _ =>
 			let
 				val (ts1,nd1) = attributes (ts,defaultAttrs,t)
-				val (ts2,nd2) = annotatableDirective (ts1,nd1,t,w)
-			in
-				(ts2,nd2)
+				val (Ast.Attributes {native,...}) = nd1
+			in case native of
+				true => 
+					let
+						val (ts2,nd2) = functionDeclaration (ts1)
+						val (ts3,nd3) = (semicolon(ts2,w),nd2)
+					in
+						(ts3,nd3)
+					end
+			  | false =>
+					let
+						val (ts2,nd2) = annotatableDirective (ts1,nd1,t,w)
+					in
+						(ts2,nd2)
+					end
 			end
 	  | _ => 
 			let
@@ -4229,18 +4253,37 @@ and annotatableDirective (ts,attrs,GLOBAL,w) : (token list * Ast.DIRECTIVES)  =
 			in
 				(ts2,nd2)
 			end
+	  | Type :: _ =>
+			let
+				val (ts1,nd1) = typeDefinition (ts,attrs)
+				val (ts2,nd2) = (semicolon(ts1,w),nd1)
+			in
+				(ts2,nd2)
+			end
 	  | _ => 
 			raise ParseError
 	end
-  | annotatableDirective (ts,attrs,t,omega) : (token list * Ast.DIRECTIVES)  =
+  | annotatableDirective (ts,attrs,t,w) : (token list * Ast.DIRECTIVES)  =
     let val _ = trace([">> annotatableDirective omega with next=", tokenname(hd ts)])
 	in case ts of
 	    Let :: Function :: _ =>
 			functionDefinition (ts,attrs,t)
 	  | Function :: _ =>
 			functionDefinition (ts,attrs,t)
+	  | Type :: _ =>
+			let
+				val (ts1,nd1) = typeDefinition (ts,attrs)
+				val (ts2,nd2) = (semicolon(ts1,w),nd1)
+			in
+				(ts2,nd2)
+			end
 	  | (Let | Var | Const) :: _ => 
-			variableDefinition (ts,attrs,ALLOWIN)
+			let
+				val (ts1,nd1) = variableDefinition (ts,attrs,ALLOWIN)
+				val (ts2,nd2) = (semicolon(ts1,w),nd1)
+			in
+				(ts2,nd2)
+			end
 	  | _ => 
 			raise ParseError
 	end
@@ -4716,20 +4759,8 @@ and functionDefinition (ts,attrs,CLASS) =
 			  		  		  stmts=[],
 							  fixtures=NONE})
 					end
-(*
-				val (ts4,nd4) = functionBody (ts3)
-			in
-				(ts4,{pragmas=[],
-					  defns=[Ast.FunctionDefn {attrs=attrs,
-						   kind=nd1, 
-						   func=Ast.Func {name=nd2,
-									   	  fsig=nd3,
-			    				    	  body=nd4}}],
-			  		  stmts=[],
-				      fixtures=NONE})
-*)
 			end
-	  | (Ast.LetVar,true) => raise ParseError  (* todo *)
+	  | (Ast.LetVar,true) => (error (["class name not allowed in 'let function'"]);raise ParseError)
 	  | _ =>
 			let
 				val (ts3,nd3) = functionSignature (ts2)
@@ -5413,6 +5444,12 @@ and pragmaItem ts =
 				val (ts1,nd1) = simpleTypeIdentifier (tl (tl ts))
 			in
 				(ts1, Ast.UseDefaultNamespace nd1)
+			end
+	  | Namespace :: Intrinsic :: _ => 
+			let
+				val (ts1,nd1) = (tl (tl ts), Ast.Identifier {ident="intrinsic",openNamespaces=[]})
+			in
+				(ts1, Ast.UseNamespace nd1)
 			end
 	  | Namespace :: _ => 
 			let

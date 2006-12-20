@@ -2,17 +2,17 @@
 package
 {
 	// ECMA4 version which allows early-binding.
-	public ECMA4 final class Math extends Object
+	ECMA4 final class Math extends Object
 	{		
 		// 15.8.1 Value Properties of the Math Object
-		static native const E;	
-		static native const LN10;	
-		static native const LN2;	
-		static native const LOG2E;	
-		static native const LOG10E;	
-		static native const PI;	
-		static native const SQRT1_2;	
-		static native const SQRT2;	
+		static const E;	
+		static const LN10;	
+		static const LN2;	
+		static const LOG2E;	
+		static const LOG10E;	
+		static const PI;	
+		static const SQRT1_2;	
+		static const SQRT2;	
 
 		// 15.8.2 Function Properties of the Math Object
 		static native function abs(x:Number):Number;
@@ -41,7 +41,7 @@ package
 
 	var Math = new private::Math;
 
-	private dynamic class Math extends Object
+	dynamic class Math extends Object
 	{		
 		// 15.8.1 Value Properties of the Math Object
 		const E = ECMA4::Math.E;	
