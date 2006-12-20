@@ -1,0 +1,14 @@
+on seqwithtype
+
+structure LogErr=../../logerr.sml
+structure Token=../../token.sml
+structure Ast=../../ast.sml
+structure Lexer=../../lexer.lex.sml
+structure Parser=../../parser.sml
+structure Defn=../../defn.sml
+structure Mach=../../mach.sml
+structure TypeChk=../../typechk.sml
+structure Eval=../../eval.sml
+
+(* add compiler flags common to all configurations here *)
+export ES4Model
