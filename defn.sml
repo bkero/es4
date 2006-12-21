@@ -92,35 +92,61 @@ and defVars (parentFixtures:Ast.FIXTURES list)
 and defFunc (parentFixtures:Ast.FIXTURES list) 
 	    (f:Ast.FUNC_DEFN) 
     : (Ast.FIXTURE_BINDINGS * Ast.FUNC_DEFN) = 
-    (* FIXME *)
-    ([], f)
-    (* LogErr.unimplError ["function definitions temporarily disabled "] *)
-(*     case fixs of 
-	Mach.Fixtures { fixtures, ... } =>
-	let
-	    val func = (#func f)
-	    val fsig = case func of Ast.Func { fsig, ...} => fsig
-	    val body = case func of Ast.Func { body, ...} => body
-	    val name = case func of Ast.Func { name={ident, ...}, ...} => ident
-	    val funcAttrs = getAttrs (#attrs f)
-	    val subFixtures = Mach.Fixtures { tag = Mach.FunctionFixtures,
-					      parent = fixtures, 
-					      fixtures = newFixtureBindings (),
-					      isExtensible = false }
-	    val funcFixture = Mach.PropFixture { ty = Ast.FunctionType fsig,
-						 readOnly = true,
-						 isOverride = false,
-						 subFixtures = SOME subFixtures } 
-	    val ns = resolveExprToNamespace fixs (#ns funcAttrs)
-	    val funcName = {id = name, ns = ns}
-	in
-	    if Mach.hasBinding fixtures name 
-	    then LogErr.defnError ["duplicate fixture: ", name ]
-	    else (defBlock subFixtures body;
-		  Mach.addBinding fixtures name funcFixture)
-    end
-*)
-
+    case (#func f) of 
+	Ast.Func { name, fsig, body, ... } =>
+	case fsig of 
+	    Ast.FunctionSignature { typeParams, params, inits, 
+				    returnType, thisType, 
+				    hasBoundThis, hasRest } =>
+	    
+	    let 
+		val func = (#func f)
+		val attrs = (#attrs f)
+		fun mkTypeVarBinding x = ({ns=Ast.Internal "", id=x}, Ast.TypeVarFixture)
+		val qualNs = case attrs of 
+				 Ast.Attributes { ns, ... } => 
+				 resolveExprToNamespace parentFixtures ns
+		val ident = case (#kind name) of 
+				Ast.Ordinary => (#ident name)
+			      | _ => LogErr.unimplError ["unhandled type of function name"]
+		val selfBinding = ({ns = qualNs, id = ident}, 
+				   Ast.PropFixture { ty = Ast.FunctionType fsig,
+						     readOnly = true,
+						     isOverride = false })			   
+		val typeParamBindings = map mkTypeVarBinding typeParams
+		val boundTypeFixtures = Ast.Fixtures { tag = Ast.FrameFixtures,
+						       bindings = typeParamBindings,
+						       isExtensible = false }
+		val typeEnv = (boundTypeFixtures :: parentFixtures)
+		val (paramBindings, newParams) = defVars typeEnv params
+		val (initBindings, newInits) = 
+		    case inits of NONE => ([], NONE)
+				| SOME i => 
+				  let 
+				      val (bindings, newDefns) = defVars typeEnv (#defns i)
+				  in
+				      (bindings, SOME { defns = newDefns, inits = (#inits i) })
+				  end
+		val newFsig = Ast.FunctionSignature { typeParams = typeParams,
+						      params = newParams,
+						      inits = newInits,
+						      returnType = defTyExpr typeEnv returnType,
+						      thisType = case thisType of 
+								     NONE => NONE
+								   | SOME t => SOME (defTyExpr typeEnv t),
+						      hasBoundThis = hasBoundThis,
+						      hasRest = hasRest }
+		val allParamBindings = paramBindings @ initBindings
+		val funcBindings = (allParamBindings @ typeParamBindings @ [selfBinding])
+		val funcFixtures = newFrame funcBindings
+		val newFunc = Ast.Func { name = name, 
+					 fsig = newFsig, 
+					 body = defBlock (funcFixtures :: parentFixtures) body,
+					 fixtures = SOME funcFixtures }
+	    in
+		([selfBinding], {func = newFunc, kind = (#kind f), attrs = attrs })
+	    end
+	    
 and defPragma (parentFixtures:Ast.FIXTURES list) 
 	      (pragma:Ast.PRAGMA) 
     : Ast.FIXTURE_BINDINGS = 

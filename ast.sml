@@ -140,8 +140,9 @@ datatype PRAGMA =
 
      and FUNC =
          Func of { name: FUNC_NAME,
-                   fsig: FUNC_SIG,
-                   body: BLOCK }
+                   fsig: FUNC_SIG,		   
+                   body: BLOCK,
+		   fixtures: FIXTURES option }
 
      and DEFN =
          ClassDefn of CLASS_DEFN
@@ -343,11 +344,11 @@ datatype PRAGMA =
 
      and FIXTURE = 
 	 NamespaceFixture of NAMESPACE
+       | TypeVarFixture
        | TypeFixture of TYPE_EXPR
        | PropFixture of { ty: TYPE_EXPR,
 			  readOnly: bool,
-			  isOverride: bool,
-			  subFixtures: FIXTURES option }
+			  isOverride: bool }
 
 
 withtype FIELD =

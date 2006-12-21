@@ -4685,7 +4685,7 @@ and functionDeclaration (ts) =
 					  defns=[Ast.FunctionDefn {attrs=defaultAttrs,
 						   kind=Ast.Var, 
 						   func=Ast.Func {name={ident=nd1,kind=Ast.Ordinary},
-									   	  fsig=nd2,
+									   	  fsig=nd2, fixtures = NONE,
 			    				    	  body=Ast.Block {pragmas=[],defns=[],stmts=[],fixtures=NONE}}}],
 			  		  stmts=[],fixtures=NONE})
 			end
@@ -4735,11 +4735,12 @@ and functionDefinition (ts,attrs,CLASS) =
 						val (ts4,nd4) = functionBody (ts3)
 					in
 						(ts4,{pragmas=[],
-							  defns=[Ast.FunctionDefn {attrs=attrs,
-								   kind=nd1, 
-								   func=Ast.Func {name=nd2,
-											   	  fsig=nd3,
-			    				    			  body=nd4}}],
+						      defns=[Ast.FunctionDefn {attrs=attrs,
+									       kind=nd1, 
+									       func=Ast.Func {name=nd2,
+											      fsig=nd3,
+											      fixtures=NONE,
+			    				    				      body=nd4}}],
 			  		  		  stmts=[],
 							  fixtures=NONE})
 					end
@@ -4751,7 +4752,7 @@ and functionDefinition (ts,attrs,CLASS) =
 							  defns=[Ast.FunctionDefn {attrs=attrs,
 								   kind=nd1, 
 								   func=Ast.Func {name=nd2,
-											   	  fsig=nd3,
+											   	  fsig=nd3, fixtures = NONE,
 			    				    			  body=Ast.Block {pragmas=[],
 																  defns=[],
  																  stmts=[Ast.ReturnStmt nd4],
@@ -4785,7 +4786,7 @@ and functionDefinition (ts,attrs,CLASS) =
 							  defns=[Ast.FunctionDefn {attrs=attrs,
 								   kind=nd1, 
 								   func=Ast.Func {name=nd2,
-											   	  fsig=nd3,
+											   	  fsig=nd3, fixtures = NONE,
 			    				    			  body=nd4}}],
 			  		  		  stmts=[],
 							  fixtures=NONE })
@@ -4798,7 +4799,7 @@ and functionDefinition (ts,attrs,CLASS) =
 							  defns=[Ast.FunctionDefn {attrs=attrs,
 								   kind=nd1, 
 								   func=Ast.Func {name=nd2,
-											   	  fsig=nd3,
+											   	  fsig=nd3, fixtures = NONE,
 			    				    			  body=Ast.Block { pragmas=[],
 												  				   defns=[],
 												 				   stmts=[Ast.ReturnStmt nd4],
@@ -4820,7 +4821,7 @@ and functionDefinition (ts,attrs,CLASS) =
 			  defns=[Ast.FunctionDefn {attrs=attrs,
 						   kind=nd1, 
 						   func=Ast.Func {name=nd2,
-									   	  fsig=nd3,
+									   	  fsig=nd3, fixtures = NONE,
 			    				    	  body=nd4}}],
 			  stmts=[],
 		      fixtures=NONE})
