@@ -34,7 +34,7 @@ fun log ss =
      List.app TextIO.print ss;
      TextIO.print "\n")
 
-val trace_on = true
+val trace_on = false
 
 fun trace ss =
 	if trace_on then log ss else ()
@@ -4759,6 +4759,18 @@ and functionDefinition (ts,attrs,CLASS) =
 			  		  		  stmts=[],
 							  fixtures=NONE})
 					end
+(*
+				val (ts4,nd4) = functionBody (ts3)
+			in
+				(ts4,{pragmas=[],
+					  defns=[Ast.FunctionDefn {attrs=attrs,
+						   kind=nd1, 
+						   func=Ast.Func {name=nd2,
+									   	  fsig=nd3,
+			    				    	  body=nd4}}],
+			  		  stmts=[],
+				      fixtures=NONE})
+*)
 			end
 	  | (Ast.LetVar,true) => (error (["class name not allowed in 'let function'"]);raise ParseError)
 	  | _ =>
@@ -4981,6 +4993,7 @@ and constructorSignature (ts) =
 			end
 	  | _ => raise ParseError
     end
+
 
 (*
 	ConstructorInitialiser	

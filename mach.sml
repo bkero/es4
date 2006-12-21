@@ -266,12 +266,6 @@ val (emptyBlock:Ast.BLOCK) = Ast.Block { pragmas = [],
 					 stmts = [],
 					 fixtures = NONE }
 
-val (globalFixtures:FIXTURES) = 
-    Ast.Fixtures { parent = NONE,
-		   tag = Ast.GlobalFixtures,
-		   bindings = [],
-		   isExtensible = false }
-
 val (globalObject:OBJ) = newObj intrinsicObjectBaseTag NONE NONE
 
 val (globalScope:SCOPE) = 

@@ -332,18 +332,17 @@ datatype PRAGMA =
  * nodes, so we must define them here. *)
 
      and FIXTURES_TAG = 
-	     ClassFixtures  
-       | BlockFixtures
+	 ClassFixtures  
+       | FrameFixtures
        | GlobalFixtures
 
      and FIXTURES = 
-	     Fixtures of { tag: FIXTURES_TAG,
-		       parent: FIXTURES option,	     		       
+	 Fixtures of { tag: FIXTURES_TAG,
 		       bindings: FIXTURE_BINDINGS,
 		       isExtensible: bool }
 
      and FIXTURE = 
-	     NamespaceFixture of NAMESPACE
+	 NamespaceFixture of NAMESPACE
        | TypeFixture of TYPE_EXPR
        | PropFixture of { ty: TYPE_EXPR,
 			  readOnly: bool,
@@ -391,7 +390,7 @@ withtype FIELD =
 
      and INTERFACE_DEFN =
          { name: IDENT,
-	   	   nonnullable: bool,
+	   nonnullable: bool,
            attrs: ATTRIBUTES,
            params: IDENT list,
            extends: IDENT_EXPR list,
