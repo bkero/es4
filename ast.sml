@@ -340,8 +340,10 @@ datatype PRAGMA =
      and FIXTURES = 
 	 Fixtures of { tag: FIXTURES_TAG,
 		       bindings: FIXTURE_BINDINGS,
-		       isExtensible: bool }
-
+		       isExtensible: bool,
+		       openNamespaces: NAMESPACE list, 
+		       numberType: NUMBER_TYPE,
+		       roundingMode: ROUNDING_MODE }
      and FIXTURE = 
 	 NamespaceFixture of NAMESPACE
        | TypeVarFixture

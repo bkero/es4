@@ -8,8 +8,6 @@ structure Defn = struct
 
 fun inr f (a, b) = (a, f b)
 
-(* fun inr (f:'b->'c) (x:'a, y:'b) : ('a * 'c) = (x, f y) *)
-
 fun resolveFixture (fixs:Ast.FIXTURES list) (mname:Mach.MULTINAME) : Ast.FIXTURE =
     case fixs of 
 	[] => LogErr.defnError ["unresolved fixture"]
@@ -46,11 +44,25 @@ fun resolveExprToNamespace (fixs:Ast.FIXTURES list) (expr:Ast.EXPR) : Mach.NS =
       | _ => LogErr.defnError ["unexpected expression type ",
 			       "in namespace context"]
 
-
-fun newFrame (bs:Ast.FIXTURE_BINDINGS) : Ast.FIXTURES = 
-    Ast.Fixtures { tag = Ast.FrameFixtures,
-		   bindings = bs,
-		   isExtensible = false } 
+fun newFrame (parentFixtures:Ast.FIXTURES list) 
+	     (newBindings:Ast.FIXTURE_BINDINGS) 
+    : Ast.FIXTURES = 
+    case parentFixtures of 
+	[] => 
+	Ast.Fixtures { tag = Ast.FrameFixtures,
+		       bindings = newBindings,
+		       isExtensible = false,
+		       openNamespaces = [Ast.Internal ""],
+		       numberType = Ast.Number,
+		       roundingMode = Ast.HalfEven } 
+      | (Ast.Fixtures { numberType, roundingMode, openNamespaces, ... } :: _) =>
+	Ast.Fixtures { tag = Ast.FrameFixtures,
+		       bindings = newBindings,
+		       isExtensible = false,
+		       openNamespaces = openNamespaces, 
+		       numberType = numberType,
+		       roundingMode = roundingMode } 
+	
 
 
 fun defClass (parentFixtures:Ast.FIXTURES list) 
@@ -114,9 +126,7 @@ and defFunc (parentFixtures:Ast.FIXTURES list)
 						     readOnly = true,
 						     isOverride = false })			   
 		val typeParamBindings = map mkTypeVarBinding typeParams
-		val boundTypeFixtures = Ast.Fixtures { tag = Ast.FrameFixtures,
-						       bindings = typeParamBindings,
-						       isExtensible = false }
+		val boundTypeFixtures = newFrame parentFixtures typeParamBindings
 		val typeEnv = (boundTypeFixtures :: parentFixtures)
 		val (paramBindings, newParams) = defVars typeEnv params
 		val (initBindings, newInits) = 
@@ -138,7 +148,7 @@ and defFunc (parentFixtures:Ast.FIXTURES list)
 						      hasRest = hasRest }
 		val allParamBindings = paramBindings @ initBindings
 		val funcBindings = (allParamBindings @ typeParamBindings @ [selfBinding])
-		val funcFixtures = newFrame funcBindings
+		val funcFixtures = newFrame parentFixtures funcBindings
 		val newFunc = Ast.Func { name = name, 
 					 fsig = newFsig, 
 					 body = defBlock (funcFixtures :: parentFixtures) body,
@@ -183,10 +193,10 @@ and defStmt (parentFixtures:Ast.FIXTURES list) (stmt:Ast.STMT) : (Ast.STMT) =
 			case ptrn of 
 			    NONE => ([], NONE)
 			  | SOME p => inr (SOME) (defPattern parentFixtures p)
-		    val f0 = newFrame b0
+		    val f0 = newFrame parentFixtures b0
 		    val newObj =  defExprs parentFixtures obj
 		    val (b1, newDefns) = defVars (f0 :: parentFixtures) defns
-		    val f1 = newFrame (b1 @ b0)
+		    val f1 = newFrame (f0 :: parentFixtures) (b1 @ b0)
 		    val newBody = defStmt (f1 :: parentFixtures) body
 		in
 		    { ptrn = newPtrn,
@@ -210,7 +220,7 @@ and defStmt (parentFixtures:Ast.FIXTURES list) (stmt:Ast.STMT) : (Ast.STMT) =
 	fun reconstructForStmt { defns, init, cond, update, contLabel, body } =
 	    let
 		val (b0, newDefns) = defVars parentFixtures defns
-		val f0 = newFrame b0
+		val f0 = newFrame parentFixtures b0
 		val newFix = f0 :: parentFixtures
 		val newInit = defExprs newFix init
 		val newCond = defExprs newFix cond
@@ -228,7 +238,7 @@ and defStmt (parentFixtures:Ast.FIXTURES list) (stmt:Ast.STMT) : (Ast.STMT) =
 	fun reconstructCatch { bind, body } =
 	    let 
 		val (b0, newBind) = defVar parentFixtures bind
-		val f0 = newFrame b0
+		val f0 = newFrame parentFixtures b0
 	    in		     
 		{ bind = newBind, 
 		  body = defBlock (f0 :: parentFixtures) body }
@@ -248,7 +258,7 @@ and defStmt (parentFixtures:Ast.FIXTURES list) (stmt:Ast.STMT) : (Ast.STMT) =
 				 ([], NONE)
 			       | SOME b => 
 				 inr (SOME) (defVar parentFixtures b)
-		val f0 = newFrame b0
+		val f0 = newFrame parentFixtures b0
 	    in
 		{ ptrn = newPtrn,
 		  body = defBlock (f0 :: parentFixtures) body }
@@ -288,7 +298,7 @@ and defStmt (parentFixtures:Ast.FIXTURES list) (stmt:Ast.STMT) : (Ast.STMT) =
 	  | Ast.LetStmt (vbs, stmt) => 
 	    let
 		val (b0, newVbs) = defVars parentFixtures vbs
-		val f0 = newFrame b0
+		val f0 = newFrame parentFixtures b0
 		val newStmt = defStmt (f0 :: parentFixtures) stmt
 	    in
 		Ast.LetStmt (newVbs, newStmt)
@@ -373,9 +383,9 @@ and defBlock (parentFixtures:Ast.FIXTURES list) (block:Ast.BLOCK) : Ast.BLOCK =
 	Ast.Block { pragmas, defns, stmts, ... } => 
 	let 
 	    val b0 = List.concat (List.map (defPragma parentFixtures) pragmas)
-	    val f0 = newFrame b0
+	    val f0 = newFrame parentFixtures b0
 	    val (b1, newDefns) = defDefns (f0 :: parentFixtures) defns
-	    val f1 = newFrame (b1 @ b0)
+	    val f1 = newFrame (f0 :: parentFixtures) (b1 @ b0)
 	    val newStmts = map (defStmt (f1 :: parentFixtures)) stmts
 	in
 	    Ast.Block { pragmas=pragmas,
@@ -406,7 +416,10 @@ and defProgram (prog:Ast.PROGRAM) : Ast.PROGRAM =
 	    [Ast.Fixtures 
 		 { tag = Ast.GlobalFixtures,
 		   bindings = map mkNamespaceFixtureBinding (#packages prog),
-		   isExtensible = false }]
+		   isExtensible = false,
+		   openNamespaces = [Ast.Internal ""],
+		   numberType = Ast.Number,
+		   roundingMode = Ast.HalfEven }]
     in
 	{ packages = map (defPackage topFixtures) (#packages prog),
 	  body = defTopBlock topFixtures (#body prog) }
