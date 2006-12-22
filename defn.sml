@@ -101,70 +101,181 @@ and defVars (parentFixtures:Ast.FIXTURES list)
 	(List.concat fbl, vbl)
     end
 
+and defFuncSig (parentFixtures:Ast.FIXTURES list) 
+    (name:Ast.NAME option)
+    (fsig:Ast.FUNC_SIG)
+    : (Ast.FUNC_SIG * Ast.FIXTURE_BINDINGS * Ast.FIXTURE_BINDINGS) =
+    case fsig of 
+	Ast.FunctionSignature { typeParams, params, inits, 
+				returnType, thisType, 
+				hasBoundThis, hasRest } =>
+	let 
+	    fun mkTypeVarBinding x = ({ns=Ast.Internal "", id=x}, Ast.TypeVarFixture)
+	    val typeParamBindings = map mkTypeVarBinding typeParams
+	    val boundTypeFixtures = newFrame parentFixtures typeParamBindings
+	    val typeEnv = (boundTypeFixtures :: parentFixtures)
+	    val (paramBindings, newParams) = defVars typeEnv params
+	    val (initBindings, newInits) = 
+		case inits of NONE => ([], NONE)
+			    | SOME i => 
+			      let 
+				  val (bindings, newDefns) = defVars typeEnv (#defns i)
+			      in
+				  (bindings, SOME { defns = newDefns, inits = (#inits i) })
+			      end
+	    val selfBindings = 
+		case name of 
+		    NONE => []
+		  | SOME n => [(n, Ast.PropFixture { ty = Ast.FunctionType fsig,
+						     readOnly = true,
+						     isOverride = false })]
+	    val newFsig = Ast.FunctionSignature { typeParams = typeParams,
+						  params = newParams,
+						  inits = newInits,
+						  returnType = defTyExpr typeEnv returnType,
+						  thisType = case thisType of 
+								 NONE => NONE
+							       | SOME t => SOME (defTyExpr typeEnv t),
+						  hasBoundThis = hasBoundThis,
+						  hasRest = hasRest }
+	    val allParamBindings = paramBindings @ initBindings
+	    val funcBindings = (allParamBindings @ typeParamBindings @ selfBindings)
+	in
+	    (newFsig, selfBindings, funcBindings)
+	end
+
+
 and defFunc (parentFixtures:Ast.FIXTURES list) 
 	    (f:Ast.FUNC_DEFN) 
     : (Ast.FIXTURE_BINDINGS * Ast.FUNC_DEFN) = 
     case (#func f) of 
 	Ast.Func { name, fsig, body, ... } =>
-	case fsig of 
-	    Ast.FunctionSignature { typeParams, params, inits, 
-				    returnType, thisType, 
-				    hasBoundThis, hasRest } =>
-	    
-	    let 
-		val func = (#func f)
-		val attrs = (#attrs f)
-		fun mkTypeVarBinding x = ({ns=Ast.Internal "", id=x}, Ast.TypeVarFixture)
-		val qualNs = case attrs of 
-				 Ast.Attributes { ns, ... } => 
-				 resolveExprToNamespace parentFixtures ns
-		val ident = case (#kind name) of 
-				Ast.Ordinary => (#ident name)
-			      | _ => LogErr.unimplError ["unhandled type of function name"]
-		val selfBinding = ({ns = qualNs, id = ident}, 
-				   Ast.PropFixture { ty = Ast.FunctionType fsig,
-						     readOnly = true,
-						     isOverride = false })			   
-		val typeParamBindings = map mkTypeVarBinding typeParams
-		val boundTypeFixtures = newFrame parentFixtures typeParamBindings
-		val typeEnv = (boundTypeFixtures :: parentFixtures)
-		val (paramBindings, newParams) = defVars typeEnv params
-		val (initBindings, newInits) = 
-		    case inits of NONE => ([], NONE)
-				| SOME i => 
-				  let 
-				      val (bindings, newDefns) = defVars typeEnv (#defns i)
-				  in
-				      (bindings, SOME { defns = newDefns, inits = (#inits i) })
-				  end
-		val newFsig = Ast.FunctionSignature { typeParams = typeParams,
-						      params = newParams,
-						      inits = newInits,
-						      returnType = defTyExpr typeEnv returnType,
-						      thisType = case thisType of 
-								     NONE => NONE
-								   | SOME t => SOME (defTyExpr typeEnv t),
-						      hasBoundThis = hasBoundThis,
-						      hasRest = hasRest }
-		val allParamBindings = paramBindings @ initBindings
-		val funcBindings = (allParamBindings @ typeParamBindings @ [selfBinding])
-		val funcFixtures = newFrame parentFixtures funcBindings
-		val newFunc = Ast.Func { name = name, 
-					 fsig = newFsig, 
-					 body = defBlock (funcFixtures :: parentFixtures) body,
-					 fixtures = SOME funcFixtures }
-	    in
-		([selfBinding], {func = newFunc, kind = (#kind f), attrs = attrs })
-	    end
-	    
+	let 
+	    val attrs = (#attrs f)
+	    val qualNs = case attrs of 
+			     Ast.Attributes { ns, ... } => 
+			     resolveExprToNamespace parentFixtures ns
+	    val ident = case (#kind name) of 
+			    Ast.Ordinary => (#ident name)
+			  | _ => LogErr.unimplError ["unhandled type of function name"]
+				 
+	    val (newFsig, outerBindings, innerBindings) = 
+		defFuncSig parentFixtures (SOME { ns=qualNs, id=ident }) fsig
+	    val funcFixtures = newFrame parentFixtures innerBindings
+	    val newFunc = Ast.Func { name = name, 
+				     fsig = newFsig, 
+				     body = defBlock (funcFixtures :: parentFixtures) body,
+				     fixtures = SOME funcFixtures }
+	in
+	    (outerBindings, {func = newFunc, kind = (#kind f), attrs = attrs })
+	end
+	
 and defPragma (parentFixtures:Ast.FIXTURES list) 
 	      (pragma:Ast.PRAGMA) 
     : Ast.FIXTURE_BINDINGS = 
     (* FIXME *)
     []
 
+
+and defIdentExpr (parentFixtures:Ast.FIXTURES list) (ie:Ast.IDENT_EXPR) : Ast.IDENT_EXPR = 
+    ie
+
 and defExpr (parentFixtures:Ast.FIXTURES list) (expr:Ast.EXPR) : Ast.EXPR = 
-    expr
+    let 
+	fun sub e = defExpr parentFixtures e
+	fun subs e = defExprs parentFixtures e
+    in
+	case expr of 
+	    Ast.TrinaryExpr (t, e1, e2, e3) => 
+	    Ast.TrinaryExpr (t, sub e1, sub e2, sub e3)
+	    
+	  | Ast.BinaryExpr (b, e1, e2) => 
+	    Ast.BinaryExpr (b, sub e1, sub e2) 
+	    
+	  | Ast.BinaryTypeExpr (b, e, te) => 
+	    Ast.BinaryTypeExpr (b, sub e, defTyExpr parentFixtures te)
+
+	  | Ast.UnaryExpr (u, e) => 
+	    Ast.UnaryExpr (u, sub e)
+
+	  | Ast.TypeExpr t => 
+	    Ast.TypeExpr (defTyExpr parentFixtures t)
+
+	  | Ast.NullaryExpr n => 
+	    Ast.NullaryExpr n
+
+	  | Ast.YieldExpr eso => 
+	    (case eso of 
+		 NONE => Ast.YieldExpr NONE
+	       | SOME es => Ast.YieldExpr (SOME (subs es)))
+
+	  | Ast.SuperExpr eo => 
+	    (case eo of
+		 NONE => Ast.SuperExpr NONE
+	       | SOME e => Ast.SuperExpr (SOME (sub e)))
+	    
+	  (* FIXME: possibly need to reinterpret literals given arithmetic modes. *)
+	  | Ast.LiteralExpr le => 
+	    Ast.LiteralExpr le
+	    
+	  | Ast.CallExpr {func, actuals} => 
+	    Ast.CallExpr {func = sub func,
+			  actuals = map sub actuals }
+
+	  | Ast.ApplyTypeExpr { expr, actuals } =>
+	    Ast.ApplyTypeExpr { expr = sub expr,
+				actuals = map (defTyExpr parentFixtures) actuals }
+
+	  | Ast.LetExpr { defs, body, fixtures } => 
+	    let
+		val (b0, newDefs) = defVars parentFixtures defs
+		val f0 = newFrame parentFixtures b0
+		val newBody = defExprs (f0 :: parentFixtures) body
+	    in
+		Ast.LetExpr { defs = newDefs,
+			      body = newBody,
+			      fixtures = SOME f0 }
+	    end
+
+	  | Ast.NewExpr { obj, actuals } => 
+	    Ast.NewExpr { obj = sub obj,
+			  actuals = subs actuals }
+
+	  | Ast.FunExpr { ident, fsig, body, fixtures } => 
+	    let
+		val (newFsig, _, innerBindings) = 
+		    case ident of 
+			SOME id => defFuncSig parentFixtures (SOME { ns=(Ast.Internal ""), id=id }) fsig
+		      | NONE => defFuncSig parentFixtures NONE fsig
+		val funcFixtures = newFrame parentFixtures innerBindings
+	    in
+		Ast.FunExpr { ident = ident,
+			      fsig = newFsig,
+			      body = defBlock (funcFixtures :: parentFixtures) body,
+			      fixtures = SOME funcFixtures }
+	    end
+
+	  | Ast.ObjectRef { base, ident } =>
+	    Ast.ObjectRef { base = sub base,
+			    ident = defIdentExpr parentFixtures ident }
+
+	  | Ast.LexicalRef { ident } => 
+	    Ast.LexicalRef { ident = defIdentExpr parentFixtures ident } 
+
+	  | Ast.SetExpr (a, p, e) => 
+	    (* FIXME: probably need to do something complicated with temporary bindings here. *)
+	    let 
+		val (_, newPattern) = defPattern parentFixtures p
+	    in
+		Ast.SetExpr (a, newPattern, sub e)
+	    end
+
+	  | Ast.ListExpr es => 
+	    Ast.ListExpr (subs es) 
+
+	  | Ast.SliceExpr (a, b, c) => 
+	    Ast.SliceExpr (subs a, subs b, subs c) 
+    end
 
 and defExprs (parentFixtures:Ast.FIXTURES list) 
 	     (expr:Ast.EXPR list) 

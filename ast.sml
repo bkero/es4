@@ -268,15 +268,17 @@ datatype PRAGMA =
        | ApplyTypeExpr of {expr: EXPR,  (* apply expr to type list *)
                       actuals: TYPE_EXPR list}
 
-       | LetExpr of { defs: VAR_BINDING list,
-                      body: EXPR list}
+       | LetExpr of { defs: VAR_BINDING list,		      
+                      body: EXPR list,
+		      fixtures: FIXTURES option}
 
        | NewExpr of { obj: EXPR,
                       actuals: EXPR list }
 
        | FunExpr of { ident: IDENT option,
                       fsig: FUNC_SIG,
-                      body: BLOCK }
+                      body: BLOCK,
+		      fixtures: FIXTURES option }
 
        | ObjectRef of { base: EXPR, ident: IDENT_EXPR }
 

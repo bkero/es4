@@ -426,14 +426,15 @@ and functionExpression (ts,a:alpha,b:beta) =
 							let
 								val (ts4,nd4) = block (ts3,LOCAL)
 							in
-								(ts4,Ast.FunExpr {ident=NONE,fsig=nd3,body=nd4})
+								(ts4,Ast.FunExpr {ident=NONE,fsig=nd3,body=nd4,fixtures=NONE})
 							end
 					  | (_,ALLOWLIST) => 
 							let
 								val (ts4,nd4) = listExpression (ts3,b)
 							in
 								(ts4,Ast.FunExpr{ident=NONE,fsig=nd3,
-									body=Ast.Block { pragmas=[],defns=[],stmts=[Ast.ReturnStmt nd4],fixtures=NONE }})
+										 body=Ast.Block { pragmas=[],defns=[],stmts=[Ast.ReturnStmt nd4],fixtures=NONE },
+										 fixtures=NONE})
 
 							end
 					  | _ => raise ParseError
@@ -447,14 +448,15 @@ and functionExpression (ts,a:alpha,b:beta) =
 							let
 								val (ts4,nd4) = block (ts3,LOCAL)
 							in
-								(ts4,Ast.FunExpr {ident=SOME nd2,fsig=nd3,body=nd4})
+								(ts4,Ast.FunExpr {ident=SOME nd2,fsig=nd3,body=nd4,fixtures=NONE})
 							end
 					  | (_,ALLOWLIST) => 
 							let
 								val (ts4,nd4) = listExpression (ts3,b)
 							in
 								(ts4,Ast.FunExpr{ident=SOME nd2,fsig=nd3,
-									body=Ast.Block { pragmas=[],defns=[],stmts=[Ast.ReturnStmt nd4],fixtures=NONE }})
+										 body=Ast.Block { pragmas=[],defns=[],stmts=[Ast.ReturnStmt nd4],fixtures=NONE },
+										 fixtures=NONE})
 
 							end
 					  | _ => raise ParseError
@@ -891,7 +893,7 @@ and functionCommon ts =
             let
                 val (ts2,nd2) = block (ts1,LOCAL)
             in
-                (ts2,Ast.FunExpr {ident=NONE,fsig=nd1,body=nd2})
+                (ts2,Ast.FunExpr {ident=NONE,fsig=nd1,body=nd2,fixtures=NONE})
             end
       | _ => (error(["expecting {"]); raise ParseError)
     end
@@ -2118,7 +2120,7 @@ and letExpression (ts,b) =
 				        val (ts4,nd4) = listExpression(ts3,b)
 					in
 						(trace(["<< letExpression with next=",tokenname(hd(ts4))]);
-						(ts4,Ast.LetExpr{defs=nd2,body=nd4}))
+						(ts4,Ast.LetExpr{defs=nd2,body=nd4,fixtures=NONE}))
 					end
  			  |	_ => raise ParseError
 			end
@@ -4685,7 +4687,7 @@ and functionDeclaration (ts) =
 					  defns=[Ast.FunctionDefn {attrs=defaultAttrs,
 						   kind=Ast.Var, 
 						   func=Ast.Func {name={ident=nd1,kind=Ast.Ordinary},
-									   	  fsig=nd2, fixtures = NONE,
+								  fsig=nd2, fixtures = NONE,
 			    				    	  body=Ast.Block {pragmas=[],defns=[],stmts=[],fixtures=NONE}}}],
 			  		  stmts=[],fixtures=NONE})
 			end

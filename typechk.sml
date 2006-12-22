@@ -118,7 +118,7 @@ fun tcExpr ((ctxt as {env,this,...}):CONTEXT) (e:EXPR) :TYPE_EXPR =
           annotatedTy
         end
       | ListExpr l => List.last (List.map (tcExpr ctxt) l)
-      | LetExpr {defs, body} => 
+      | LetExpr {defs, body, fixtures } => 
           let val extensions = List.concat (List.map (fn d => tcBinding ctxt d) defs)
           in
 	    checkForDuplicates extensions;
@@ -132,7 +132,8 @@ fun tcExpr ((ctxt as {env,this,...}):CONTEXT) (e:EXPR) :TYPE_EXPR =
 
        | FunExpr { ident, 
 		   fsig as (FunctionSignature {typeParams,params,returnType,thisType,inits,...}), 
-		   body} 
+		   body, 
+		   fixtures } 
 	 =>
          let (* Add the type parameters to the environment. *)
              val extensions1 = List.map (fn id => (id,NONE)) typeParams;

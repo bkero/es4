@@ -91,7 +91,7 @@ fun evalExpr (scope:Mach.SCOPE) (expr:Ast.EXPR) =
 	(case evalLhsExpr scope expr of
 	     (obj, name) => getValue obj name)
 	
-      | Ast.LetExpr {defs, body} => 
+      | Ast.LetExpr {defs, body, fixtures} => 
 	evalLetExpr scope defs body
 
       | Ast.TrinaryExpr (Ast.Cond, aexpr, bexpr, cexpr) => 
