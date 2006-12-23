@@ -431,9 +431,9 @@ structure PrettyCvt = struct
           SOME (cvtNAMESPACE x919))
      | cvtFIXTURE (TypeVarFixture) = PrettyRep.Ctor ("TypeVarFixture", NONE)
      | cvtFIXTURE (TypeFixture x923) = PrettyRep.Ctor ("TypeFixture", SOME (cvtTYPE_EXPR x923))
-     | cvtFIXTURE (PropFixture{ty=x926, readOnly=b927, isOverride=b928}) = 
-          PrettyRep.Ctor ("PropFixture", SOME (PrettyRep.Rec [("ty", cvtTYPE_EXPR x926), 
-          ("readOnly", PrettyRep.Bool b927), ("isOverride", PrettyRep.Bool b928)]))
+     | cvtFIXTURE (ValFixture{ty=x926, readOnly=b927, isOverride=b928}) = PrettyRep.Ctor ("ValFixture", 
+          SOME (PrettyRep.Rec [("ty", cvtTYPE_EXPR x926), ("readOnly", PrettyRep.Bool b927), 
+          ("isOverride", PrettyRep.Bool b928)]))
    and cvtFIELD {kind=x938, name=x939, init=x940} = PrettyRep.Rec [("kind", 
           cvtVAR_DEFN_TAG x938), ("name", cvtIDENT_EXPR x939), ("init", cvtEXPR x940)]
    and cvtFIELD_TYPE {name=x948, ty=x949} = PrettyRep.Rec [("name", cvtIDENT_EXPR x948), 

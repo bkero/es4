@@ -350,9 +350,9 @@ datatype PRAGMA =
 	 NamespaceFixture of NAMESPACE
        | TypeVarFixture
        | TypeFixture of TYPE_EXPR
-       | PropFixture of { ty: TYPE_EXPR,
-			  readOnly: bool,
-			  isOverride: bool }
+       | ValFixture of { ty: TYPE_EXPR,
+			 readOnly: bool,
+			 isOverride: bool }
 
 
 withtype FIELD =

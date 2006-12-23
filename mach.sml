@@ -26,7 +26,7 @@ datatype VAL = Object of OBJ
      and OBJ = 
 	 Obj of { tag: VAL_TAG,			   
 		  props: PROP_BINDINGS,
-		  proto: (VAL option) ref,
+		  proto: VAL ref,
 		  magic: (MAGIC option) ref }
 
      and VAL_TAG =
@@ -47,6 +47,7 @@ datatype VAL = Object of OBJ
 	       | Class of CLS_CLOSURE
 	       | Interface of IFACE_CLOSURE
 	       | Function of FUN_CLOSURE
+	       | Type of TYPE
 	       | HostFunction of (VAL list -> VAL)
 		    
      and CLS = 
@@ -212,26 +213,29 @@ val intrinsicNumberBaseTag:VAL_TAG = ClassTag (intrinsicNumberName)
 val intrinsicStringBaseTag:VAL_TAG = ClassTag (intrinsicStringName)
 val intrinsicNamespaceBaseTag:VAL_TAG = ClassTag (intrinsicNamespaceName)
 
-fun newObj (t:VAL_TAG) (p:VAL option) (m:MAGIC option) : OBJ = 
+fun newObj (t:VAL_TAG) (p:VAL) (m:MAGIC option) : OBJ = 
     Obj { tag = t,
 	  props = newPropBindings (),
 	  proto = ref p,
 	  magic = ref m }
 			  
-fun newObject (t:VAL_TAG) (p:VAL option) (m:MAGIC option) : VAL = 
+fun newObject (t:VAL_TAG) (p:VAL) (m:MAGIC option) : VAL = 
     Object (newObj t p m)
 
+fun newSimpleObject (m:MAGIC option) : VAL = 
+    Object (newObj intrinsicObjectBaseTag Null m)
+
 fun newNumber (n:real) : VAL = 
-    newObject intrinsicNumberBaseTag NONE (SOME (Number n))
+    newObject intrinsicNumberBaseTag Null (SOME (Number n))
 
 fun newString (s:STR) : VAL = 
-    newObject intrinsicStringBaseTag NONE (SOME (String s))
+    newObject intrinsicStringBaseTag Null (SOME (String s))
 
 fun newBoolean (b:bool) : VAL = 
-    newObject intrinsicBooleanBaseTag NONE (SOME (Bool b))
+    newObject intrinsicBooleanBaseTag Null (SOME (Bool b))
 
 fun newNamespace (n:NS) : VAL = 
-    newObject intrinsicNamespaceBaseTag NONE (SOME (Namespace n))
+    newObject intrinsicNamespaceBaseTag Null (SOME (Namespace n))
 
 fun newFunc (e:SCOPE) (fixs:FIXTURES) (f:Ast.FUNC) : VAL = 
     let 
@@ -246,7 +250,7 @@ fun newFunc (e:SCOPE) (fixs:FIXTURES) (f:Ast.FUNC) : VAL =
 			allTypesBound = allTypesBound,
 			env = e }
     in
-	newObject tag NONE (SOME (Function closure))
+	newObject tag Null (SOME (Function closure))
     end
 	    
 val (objectType:TYPE) = Ast.ObjectType []
@@ -266,7 +270,7 @@ val (emptyBlock:Ast.BLOCK) = Ast.Block { pragmas = [],
 					 stmts = [],
 					 fixtures = NONE }
 
-val (globalObject:OBJ) = newObj intrinsicObjectBaseTag NONE NONE
+val (globalObject:OBJ) = newObj intrinsicObjectBaseTag Null NONE
 
 val (globalScope:SCOPE) = 
     Scope { tag = VarGlobal,
@@ -402,14 +406,24 @@ fun hostPrintFunction (vals:VAL list) : VAL =
 	(List.app printOne vals; Undef)
     end
 
-and populateIntrinsics globalObj = 
+
+(* To reference something in the intrinsic namespace, you need a complicated expression. *)
+val intrinsicNsExpr = Ast.LiteralExpr (Ast.LiteralNamespace (Ast.Intrinsic))
+fun intrinsicName id = Ast.QualifiedIdentifier { qual = intrinsicNsExpr, ident = id }
+
+(* Define some global intrinsic nominal types. *)
+
+val typeType = Ast.NominalType { ident = (intrinsicName "Type"), nullable = NONE }
+val namespaceType = Ast.NominalType { ident = (intrinsicName "Namespace"), nullable = NONE }
+
+fun populateIntrinsics globalObj = 
     case globalObj of 
 	Obj { props, ... } => 
 	let 
 	    fun newHostFunctionObj f = 
 		Object (Obj { tag = intrinsicFunctionBaseTag,
 			      props = newPropBindings (),
-			      proto = ref NONE,
+			      proto = ref Null,
 			      magic = ref (SOME (HostFunction f)) })
 	    fun bindFunc (n, f) = 
 		let 

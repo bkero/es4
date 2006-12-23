@@ -7,13 +7,33 @@ exception TailCallException of (unit -> Mach.VAL)
 exception ThrowException of Mach.VAL
 exception ReturnException of Mach.VAL
     
-fun newName (i:Ast.IDENT) (n:Mach.NS) = {ns=n, id=i}
+fun newName (i:Ast.IDENT) (n:Mach.NS) = { ns=n, id=i }
 
-(* A small number of functions do not fully evaluate to Mach.VAL 
+fun getType (tyOpt:Ast.TYPE_EXPR option) : Ast.TYPE_EXPR = 
+    case tyOpt of 
+	SOME t => t
+      | NONE => Ast.SpecialType Ast.Any
+
+fun getAttrs (attrs:Ast.ATTRIBUTES) = case attrs of Ast.Attributes a => a
+
+fun getScopeObj (scope:Mach.SCOPE) : Mach.OBJ = case scope of Mach.Scope { object, ...} => object
+
+(* 
+ * A small number of functions do not fully evaluate to Mach.VAL 
  * values, but instead to REFs; these are temporary artifacts of
- * evaluation, not first-class values in the language. *)
+ * evaluation, not first-class values in the language. 
+ *)
 
 type REF = (Mach.OBJ * Mach.NAME)
+
+(* 
+ * A small number of functions return an INIT_LIST, a 
+ * type of binding list that represents a request to allocate 
+ * a certain set of fixtures and initialize them to given
+ * values. 
+ *)
+
+type INIT_LIST = (Mach.NAME * Mach.VAL) list
 
 (* Fundamental object methods *)
 
@@ -74,6 +94,50 @@ fun setValue (base:Mach.OBJ) (name:Mach.NAME) (v:Mach.VAL) : unit =
 
 fun extendScope (p:Mach.SCOPE) (t:Mach.SCOPE_TAG) (ob:Mach.OBJ) : Mach.SCOPE = 
     Mach.Scope { parent=(SOME p), tag=t, object=ob }
+
+fun initScope (scope:Mach.SCOPE) (f:Ast.FIXTURES) (il:INIT_LIST) : unit = 
+    case f of 
+	Ast.Fixtures { bindings, ... } => 
+	let 
+	    fun initBinding (n,v) = 
+		let 
+		    val f = Mach.getFixture bindings n
+		    val prop = case f of 
+				   Ast.TypeFixture te => 
+				   { kind = Mach.TypeProp,
+				     ty = Mach.typeType,
+				     value = Mach.newSimpleObject (SOME (Mach.Type te)),
+				     attrs = { dontDelete = true,
+					       dontEnum = true,
+					       readOnly = true,
+					       isFixed = true } }
+				 | Ast.ValFixture { ty, readOnly, ... } => 
+				   { kind = Mach.ValProp,
+				     ty = ty,
+				     value = v,
+				     attrs = { dontDelete = true,
+					       dontEnum = false,
+					       readOnly = readOnly,
+					       isFixed = true } }
+				 | Ast.NamespaceFixture ns => 
+				   { kind = Mach.ValProp,
+				     ty = Mach.namespaceType,
+				     value = Mach.newSimpleObject (SOME (Mach.Namespace ns)),
+				     attrs = { dontDelete = true,
+					       dontEnum = true,
+					       readOnly = true,
+					       isFixed = true } }
+				 | _ => LogErr.defnError ["initializing scope with unbound type variable"]
+		in
+		    case getScopeObj scope of 
+			Mach.Obj {props,...} => 
+			if Mach.hasProp props n
+			then LogErr.defnError ["initializing scope with duplicate property name"]
+			else Mach.addProp props n prop
+		end
+	in		    
+	    List.app initBinding il
+	end
 
 fun evalExpr (scope:Mach.SCOPE) (expr:Ast.EXPR) =
     case expr of
@@ -379,21 +443,12 @@ and evalRefExpr (scope:Mach.SCOPE) (b:Mach.VAL option) (r:Ast.IDENT_EXPR) : REF 
 
 and evalLetExpr (scope:Mach.SCOPE) (defs:Ast.VAR_BINDING list) (body:Ast.EXPR list) : Mach.VAL = 
     let 
-	val obj = Mach.newObj Mach.intrinsicObjectBaseTag NONE NONE
+	val obj = Mach.newObj Mach.intrinsicObjectBaseTag Mach.Null NONE
         val newScope = extendScope scope Mach.Let obj
     in
         List.app (evalVarBinding scope (SOME obj) NONE) defs;
         evalListExpr newScope body
     end
-    
-and getType (tyOpt:Ast.TYPE_EXPR option) : Ast.TYPE_EXPR = 
-    case tyOpt of 
-	SOME t => t
-      | NONE => Ast.SpecialType Ast.Any
-
-and getAttrs (attrs:Ast.ATTRIBUTES) = case attrs of Ast.Attributes a => a
-
-and getScopeObj (scope:Mach.SCOPE) : Mach.OBJ = case scope of Mach.Scope { object, ...} => object
 
 and evalVarBinding 
 	(scope:Mach.SCOPE) 
@@ -459,7 +514,7 @@ and resolveOnObjAndPrototypes (obj:Mach.OBJ) (mname:Mach.MULTINAME) : REF option
 		val proto = !(#proto ob)
 	    in
 		case proto of 
-                    SOME (Mach.Object ob) => resolveOnObjAndPrototypes ob mname
+                    Mach.Object ob => resolveOnObjAndPrototypes ob mname
 		  | _ => NONE
 	    end
 	  | result => result
@@ -531,7 +586,7 @@ and invokeFuncClosure (this:Mach.OBJ) (closure:Mach.FUN_CLOSURE) (args:Mach.VAL 
 	    case (#fsig f) of 
 		Ast.FunctionSignature { params, ... } => 
 		let
-		    val (varObj:Mach.OBJ) = Mach.newObj Mach.intrinsicObjectBaseTag NONE NONE
+		    val (varObj:Mach.OBJ) = Mach.newObj Mach.intrinsicObjectBaseTag Mach.Null NONE
 		    val (varScope:Mach.SCOPE) = extendScope env Mach.VarActivation varObj
 		    fun bindArgs [] [] = ()
 		      | bindArgs [] (b::bz) = LogErr.evalError ["Too few actuals"]
