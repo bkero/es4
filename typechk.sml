@@ -52,7 +52,58 @@ fun withEnv   ({this=this, env=_,   lbls=lbls, retTy=retTy},  env) = {this=this,
 fun withLbls  ({this=this, env=env, lbls=_,    retTy=retTy}, lbls) = {this=this, env=env, lbls=lbls, retTy=retTy}
 fun withRetTy ({this=this, env=env, lbls=lbls, retTy=_},    retTy) = {this=this, env=env, lbls=lbls, retTy=retTy}
 
-fun checkConvertible (t1:TYPE_EXPR) (t2:TYPE_EXPR) = ()
+fun checkConvertible (t1:TYPE_EXPR) (t2:TYPE_EXPR) : unit = 
+    if isConvertible t1 t2
+    then ()
+    else raise IllTypedException "Types are not convertible"
+
+and isConvertible (t1:TYPE_EXPR) (t2:TYPE_EXPR) : bool =
+    case (t1,t2) of
+	(UnionType types1,_) => 
+	List.all (fn t => isConvertible t t2) types1
+      | (_, UnionType types2) =>
+	(* t1 must exist in types2 *)
+	List.exists (fn t => isConvertible t1 t) types2 
+      | (ArrayType types1, ArrayType types2) => 
+	(* arrays are invariant, every entry should be convertible in both directorys *)
+	let fun check (h1::t1) (h2::t2) =
+		(isConvertible h1 h2)
+		andalso
+		(isConvertible h2 h1)
+		andalso
+		(case (t1,t2) of
+		     ([],[]) => true
+		   | ([],_::_) => check [h1] t2
+		   | (_::_,[]) => check t1 [h2]
+		   | (_::_,_::_) => check t1 t2)
+	in
+	    check types1 types2
+	end
+      | (AppType {base=base1,args=args1},AppType {base=base2,args=args2}) => 
+	(* We keep types normalized wrt beta-reduction, so base1 and base2 must be class or interface types.
+           Type arguments are covariant, and so must be intra-convertible - CHECK *)
+	false
+
+      | (ObjectType fields1,ObjectType fields2) =>
+	false
+      
+
+
+    
+(*
+
+
+    and TYPE_EXPR =
+         SpecialType of SPECIAL_TY
+       | UnionType of TYPE_EXPR list
+       | ArrayType of TYPE_EXPR list
+       | NominalType of { ident : IDENT_EXPR, nullable: bool option }  (* todo: remove nullable *)
+       | FunctionType of FUNC_SIG
+       | ObjectType of FIELD_TYPE list
+       | AppType of { base: TYPE_EXPR,
+		      args: TYPE_EXPR list }
+	   | NullableType of {expr:TYPE_EXPR,nullable:bool}
+*)
 
 fun checkForDuplicates' [] = ()
   | checkForDuplicates' (x::xs) =
