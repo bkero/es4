@@ -28,7 +28,7 @@ let
         let 
 	        val tok = token_fn ()
 	    in 
-(* log ["lexed ", tokenname tok]; *)
+          (* log ["lexed ", tokenname tok];  *)
 
 	  (*
 	   * The lexbreak tokens represent choice points for the parser. We
@@ -73,7 +73,7 @@ val (curr_chars : (char list) ref) = ref []
 
 %s REGEXP XML SINGLE_LINE_COMMENT MULTI_LINE_COMMENT STRING;
 
-whitespace      = [\032\t\r\013]+;
+whitespace      = [\009\013\032]+;
 
 identifierStart = [a-zA-Z_$];
 identifierPart  = [a-zA-Z_$0-9];

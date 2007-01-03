@@ -62,7 +62,6 @@ datatype VAL = Object of OBJ
 		  constructor: FUN_CLOSURE option,
 		  
 		  instanceTy: TYPE,
-		  instanceFixtures: FIXTURES,
 		  instancePrototype: VAL,
 		  
 		  initialized: bool ref }
@@ -72,10 +71,6 @@ datatype VAL = Object of OBJ
 		    bases: IFACE list,
 		    definition: Ast.INTERFACE_DEFN,			
 		    isInitialized: bool ref }
-
-     and FNC = 
-	 Fnc of { func: Ast.FUNC,
-		  activationFixtures: FIXTURES }
 		   
      and SCOPE = 
 	 Scope of { tag: SCOPE_TAG, 
@@ -92,7 +87,7 @@ withtype NAME = { ns: NS,
 		       id: ID }
 		
      and FUN_CLOSURE = 
-	 { fnc: FNC,
+	 { func: Ast.FUNC,
 	   allTypesBound: bool,
 	   env: SCOPE }
 
@@ -237,7 +232,7 @@ fun newBoolean (b:bool) : VAL =
 fun newNamespace (n:NS) : VAL = 
     newObject intrinsicNamespaceBaseTag Null (SOME (Namespace n))
 
-fun newFunc (e:SCOPE) (fixs:FIXTURES) (f:Ast.FUNC) : VAL = 
+fun newFunc (e:SCOPE) (f:Ast.FUNC) : VAL = 
     let 
 	val fsig = case f of Ast.Func { fsig, ... } => fsig
 	val tag = FunctionTag fsig
@@ -245,8 +240,7 @@ fun newFunc (e:SCOPE) (fixs:FIXTURES) (f:Ast.FUNC) : VAL =
 				 Ast.FunctionSignature { typeParams, ... } 
 				 => (length typeParams) = 0)
 			    
-	val closure = { fnc = Fnc { func = f, 
-				    activationFixtures = fixs } ,
+	val closure = { func = f, 
 			allTypesBound = allTypesBound,
 			env = e }
     in

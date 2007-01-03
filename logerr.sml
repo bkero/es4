@@ -1,6 +1,6 @@
 structure LogErr = struct
 
-val log_level = ref 0
+val log_level = ref 3
 
 fun log n ss = 
     if n <= (!log_level)
@@ -23,6 +23,15 @@ fun withTrace (ss:string list) (f:('a -> 'b)) (x:'a) : 'b =
     in
 	r
     end
+
+fun name (n:Ast.NAME) = 
+    case (#ns n) of 
+	Ast.Private => "[private::" ^ (#id n) ^ "]"
+      | Ast.Protected => "[protected::" ^ (#id n) ^ "]"
+      | Ast.Intrinsic => "[intrinsic::" ^ (#id n) ^ "]"
+      | Ast.Public i => "[(public ns) " ^ i ^ "::" ^ (#id n) ^ "]"
+      | Ast.Internal i => "[(internal ns) " ^ i ^ "::" ^ (#id n) ^ "]"
+      | Ast.UserDefined i => "[(user ns) " ^ i ^ "::" ^ (#id n) ^ "]"
 
 exception ParseError
 exception DefnError

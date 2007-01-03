@@ -93,7 +93,38 @@ and defVar (parentFixtures:Ast.FIXTURES list)
 	    (var:Ast.VAR_BINDING) 
     : (Ast.FIXTURE_BINDINGS * Ast.VAR_BINDING) = 
     (* FIXME *)
-    ([], var)
+    case var of 
+	Ast.Binding { kind, init, attrs, pattern, ty } => 
+	let
+	    val newInit = case init of 
+			      NONE => NONE
+			    | SOME e => SOME (defExpr parentFixtures e)
+	    val newTy = case ty of 
+			    NONE => NONE
+			  | SOME t => SOME (defTyExpr parentFixtures t)
+	    val fixtureTy = case newTy of
+				NONE => Ast.SpecialType Ast.Any
+			      | SOME t => t
+	    val newPattern = defPattern parentFixtures pattern
+	    val isReadOnly = case kind of 
+				 Ast.Const => true
+			       | Ast.LetConst => true
+			       | _ => false		
+	    val fixtureBindings = 
+		case newPattern of 
+		    Ast.IdentifierPattern (Ast.Identifier { ident, ... }) => 
+		    [({ns=Ast.Internal "", id=ident}, Ast.ValFixture { ty = fixtureTy, 
+								       readOnly = isReadOnly,
+								       isOverride = false })]
+		  | _ => []
+	in
+	    (fixtureBindings, 
+	     Ast.Binding { kind = kind,
+			   init = newInit,
+			   attrs = attrs,
+			   pattern = newPattern,
+			   ty = newTy })
+	end
 
 
 and defVars (parentFixtures:Ast.FIXTURES list) 
@@ -184,8 +215,23 @@ and defPragma (parentFixtures:Ast.FIXTURES list)
 
 
 and defIdentExpr (parentFixtures:Ast.FIXTURES list) (ie:Ast.IDENT_EXPR) : Ast.IDENT_EXPR = 
-    ie
+    let 
+	val openNamespaces = case parentFixtures of 
+				 [] => []
+			       | (Ast.Fixtures { openNamespaces, ... }) :: _ => openNamespaces
+    in
+	case ie of 
+	    Ast.Identifier { ident, ... } => 
+	    Ast.Identifier { ident=ident, openNamespaces=openNamespaces } 
 
+	  | Ast.AttributeIdentifier ai => 
+	    Ast.AttributeIdentifier (defIdentExpr parentFixtures ai)
+
+	  | Ast.TypeIdentifier {ident, typeParams} => 
+	    Ast.TypeIdentifier {ident=(defIdentExpr parentFixtures ident), typeParams=typeParams}
+
+	  | _ => ie
+    end
 
 and defExpr (parentFixtures:Ast.FIXTURES list) (expr:Ast.EXPR) : Ast.EXPR = 
     let 
@@ -272,7 +318,7 @@ and defExpr (parentFixtures:Ast.FIXTURES list) (expr:Ast.EXPR) : Ast.EXPR =
 	  | Ast.SetExpr (a, p, e) => 
 	    (* FIXME: probably need to do something complicated with temporary bindings here. *)
 	    let 
-		val (_, newPattern) = defPattern parentFixtures p
+		val newPattern = defPattern parentFixtures p
 	    in
 		Ast.SetExpr (a, newPattern, sub e)
 	    end
@@ -300,10 +346,22 @@ and defTyExpr (parentFixtures:Ast.FIXTURES list)
     
 and defPattern (parentFixtures:Ast.FIXTURES list)
 	       (pat:Ast.PATTERN) 
-    : (Ast.FIXTURE_BINDINGS * Ast.PATTERN) = 
-    (* FIXME *)
-    ([], pat)
+    : Ast.PATTERN = 
 
+    case pat of 
+	Ast.ObjectPattern fields => 
+	Ast.ObjectPattern (map (fn { name, ptrn } => 
+				   { name = defIdentExpr parentFixtures name, 
+				     ptrn = defPattern parentFixtures ptrn }) fields)
+
+      | Ast.ArrayPattern ptrns => 
+	Ast.ArrayPattern (map (defPattern parentFixtures) ptrns)
+
+      | Ast.SimplePattern e => 
+	Ast.SimplePattern (defExpr parentFixtures e)
+
+      | Ast.IdentifierPattern ie => 
+	Ast.IdentifierPattern (defIdentExpr parentFixtures ie)
 
 and defStmt (parentFixtures:Ast.FIXTURES list) (stmt:Ast.STMT) : (Ast.STMT) = 
     let
@@ -311,15 +369,14 @@ and defStmt (parentFixtures:Ast.FIXTURES list) (stmt:Ast.STMT) : (Ast.STMT) =
 	    case fe of 
 		{ ptrn, obj, defns, contLabel, body } => 
 		let
-		    val (b0, newPtrn) = 
+		    val newPtrn = 
 			case ptrn of 
-			    NONE => ([], NONE)
-			  | SOME p => inr (SOME) (defPattern parentFixtures p)
-		    val f0 = newFrame parentFixtures b0
+			    NONE => NONE
+			  | SOME p => SOME (defPattern parentFixtures p)
 		    val newObj =  defExprs parentFixtures obj
-		    val (b1, newDefns) = defVars (f0 :: parentFixtures) defns
-		    val f1 = newFrame (f0 :: parentFixtures) (b1 @ b0)
-		    val newBody = defStmt (f1 :: parentFixtures) body
+		    val (b0, newDefns) = defVars parentFixtures defns
+		    val f0 = newFrame parentFixtures b0
+		    val newBody = defStmt (f0 :: parentFixtures) body
 		in
 		    { ptrn = newPtrn,
 		      obj = newObj,

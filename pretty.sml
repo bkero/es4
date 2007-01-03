@@ -24,6 +24,8 @@ fun ppRep rep =
                 TextIO.print "\n")
     end
 
+val ppNamespace = ppRep o cvtNAMESPACE
+
 val ppProgram = ppRep o cvtPROGRAM
 
 val ppExpr = ppRep o cvtEXPR

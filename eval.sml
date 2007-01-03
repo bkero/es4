@@ -99,44 +99,72 @@ fun initScope (scope:Mach.SCOPE) (f:Ast.FIXTURES) (il:INIT_LIST) : unit =
     case f of 
 	Ast.Fixtures { bindings, ... } => 
 	let 
-	    fun initBinding (n,v) = 
+	    fun findInit n = 
 		let 
-		    val f = Mach.getFixture bindings n
-		    val prop = case f of 
-				   Ast.TypeFixture te => 
-				   { kind = Mach.TypeProp,
-				     ty = Mach.typeType,
-				     value = Mach.newSimpleObject (SOME (Mach.Type te)),
-				     attrs = { dontDelete = true,
-					       dontEnum = true,
-					       readOnly = true,
-					       isFixed = true } }
-				 | Ast.ValFixture { ty, readOnly, ... } => 
-				   { kind = Mach.ValProp,
-				     ty = ty,
-				     value = v,
-				     attrs = { dontDelete = true,
-					       dontEnum = false,
-					       readOnly = readOnly,
-					       isFixed = true } }
-				 | Ast.NamespaceFixture ns => 
-				   { kind = Mach.ValProp,
-				     ty = Mach.namespaceType,
-				     value = Mach.newSimpleObject (SOME (Mach.Namespace ns)),
-				     attrs = { dontDelete = true,
-					       dontEnum = true,
-					       readOnly = true,
-					       isFixed = true } }
-				 | _ => LogErr.defnError ["initializing scope with unbound type variable"]
+		    fun search [] = NONE
+		      | search ((k,v)::bs) = 
+			if k = n 
+			then SOME v
+			else search bs
 		in
-		    case getScopeObj scope of 
-			Mach.Obj {props,...} => 
-			if Mach.hasProp props n
-			then LogErr.defnError ["initializing scope with duplicate property name"]
-			else Mach.addProp props n prop
+		    search il
+		end
+
+	    fun initFixture (n, f) = 
+		let 
+		    fun initProp p = 
+			case getScopeObj scope of 
+			    Mach.Obj {props,...} => 
+			    if Mach.hasProp props n
+			    then LogErr.defnError ["initializing scope with duplicate property name"]
+			    else (LogErr.trace ["initializing property ", LogErr.name n]; 
+				  Mach.addProp props n p)
+		in 
+		    case f of 
+			Ast.TypeFixture te => 
+			(case findInit n of
+			     SOME _ => LogErr.defnError 
+					   ["initializing fixed type property with value"]
+			   | NONE => 
+			     initProp { kind = Mach.TypeProp,
+					ty = Mach.typeType,
+					value = Mach.newSimpleObject (SOME (Mach.Type te)),
+					attrs = { dontDelete = true,
+						  dontEnum = true,
+						  readOnly = true,
+						  isFixed = true } })
+		      | Ast.ValFixture { ty, readOnly, ... } => 
+			let 
+			    val v = case findInit n of 
+					(* FIXME: Undef or Null? *)
+					NONE => Mach.Undef
+				      | SOME i => i
+			in
+			    (* FIXME: type-check v against ty here *)
+			    initProp { kind = Mach.ValProp,
+				       ty = ty,
+				       value = v,
+				       attrs = { dontDelete = true,
+						 dontEnum = false,
+						 readOnly = readOnly,
+						 isFixed = true } }
+			end
+		      | Ast.NamespaceFixture ns => 
+			(case findInit n of
+			     SOME _ => LogErr.defnError ["initializing namespace fixture"]
+			   | NONE => 					
+			     initProp { kind = Mach.ValProp,
+					ty = Mach.namespaceType,
+					value = Mach.newSimpleObject (SOME (Mach.Namespace ns)),
+					attrs = { dontDelete = true,
+						  dontEnum = true,
+						  readOnly = true,
+						  isFixed = true } })
+		      | Ast.TypeVarFixture =>
+			()
 		end
 	in		    
-	    List.app initBinding il
+	    List.app initFixture bindings
 	end
 
 fun evalExpr (scope:Mach.SCOPE) (expr:Ast.EXPR) =
@@ -156,7 +184,7 @@ fun evalExpr (scope:Mach.SCOPE) (expr:Ast.EXPR) =
 	     (obj, name) => getValue obj name)
 	
       | Ast.LetExpr {defs, body, fixtures} => 
-	evalLetExpr scope defs body
+	evalLetExpr scope (getFixtures fixtures) defs body
 
       | Ast.TrinaryExpr (Ast.Cond, aexpr, bexpr, cexpr) => 
 	evalCondExpr scope aexpr bexpr cexpr
@@ -441,69 +469,60 @@ and evalRefExpr (scope:Mach.SCOPE) (b:Mach.VAL option) (r:Ast.IDENT_EXPR) : REF 
     end
     
 
-and evalLetExpr (scope:Mach.SCOPE) (defs:Ast.VAR_BINDING list) (body:Ast.EXPR list) : Mach.VAL = 
+and evalLetExpr (scope:Mach.SCOPE) 
+		(fixtures:Ast.FIXTURES) 
+		(defs:Ast.VAR_BINDING list) 
+		(body:Ast.EXPR list) 
+    : Mach.VAL = 
     let 
 	val obj = Mach.newObj Mach.intrinsicObjectBaseTag Mach.Null NONE
         val newScope = extendScope scope Mach.Let obj
+	val inits = evalVarBindings scope defs		    
     in
-        List.app (evalVarBinding scope (SOME obj) NONE) defs;
+        initScope scope fixtures inits;
         evalListExpr newScope body
     end
 
-and evalVarBinding 
-	(scope:Mach.SCOPE) 
-	(obj:Mach.OBJ option) 
-	(v:Mach.VAL option) 
-	(defn:Ast.VAR_BINDING) : unit =
-    let 
-	val ob = case obj of 
-		     SOME ob' => ob'
-		   | NONE => getScopeObj scope
-    in
-	case defn of 
-	    (Ast.Binding { kind, init, attrs, pattern, ty }) =>
-	    case pattern of 
-		Ast.IdentifierPattern id => 
-		(case id of 
-		     Ast.Identifier {ident, ...} => 
-		     let 
-			 val Ast.Attributes {ns,...} = attrs
-			 val n = newName ident (needNamespace (evalExpr scope ns))
-			 val ro = case kind of 
-				      Ast.Const => true
-				    | Ast.LetConst => true
-				    | _ => false
-			 val t = getType ty
-			 val v' = case v of 
-				      SOME v'' => v''
-				    | NONE => (case init of 
-						  NONE => Mach.Undef
-						| SOME e => evalExpr scope e)
-			 (* FIXME: Perform typecheck here and handle different binding kinds. *)
-			 val prop = { kind = Mach.ValProp,
-				      ty = t, 
-				      value = v', 
-				      attrs = { dontDelete = true,
-						dontEnum = true,
-						readOnly = ro,
-						isFixed = false } }
-		     in
-			 setProp ob n prop
-		     end
-		   | _ => LogErr.unimplError ["unhandled identifier form in ",
-					 "identifier binding pattern"]
-		)
-	      | _ => LogErr.unimplError ["unhandled pattern form in binding"]
-    end
+and evalVarBinding (scope:Mach.SCOPE)
+		   (v:Mach.VAL option)
+		   (defn:Ast.VAR_BINDING)
+    : INIT_LIST =
+    case defn of 
+	(Ast.Binding { kind, init, attrs, pattern, ty }) =>
+	case pattern of 
+	    Ast.IdentifierPattern id => 
+	    (case id of 
+		 Ast.Identifier {ident, ...} => 
+		 let 
+		     val Ast.Attributes {ns,...} = attrs
+		     val v' = case v of 
+				  SOME v'' => v''
+				| NONE => (case init of 
+					       NONE => Mach.Undef
+					     | SOME e => evalExpr scope e)
+		     val n = {ns=needNamespace (evalExpr scope ns), id=ident}
+		     val _ = LogErr.trace ["allocating variable binding ", LogErr.name n]
+		 in
+		     [(n, v')]
+		 end
+	       | _ => LogErr.unimplError ["unhandled identifier form in ",
+					  "identifier binding pattern"])
+	  | _ => LogErr.unimplError ["unhandled pattern form in binding"]
+
+and evalVarBindings (scope:Mach.SCOPE)
+    (defns:Ast.VAR_BINDING list)
+    : INIT_LIST =
+    List.concat (map (evalVarBinding scope NONE) defns)
           
 and resolveOnScopeChain (scope:Mach.SCOPE) (mname:Mach.MULTINAME) : REF option =
+    (LogErr.trace ["resolving name on scope chain:", (#id mname)];     
     case scope of 
 	Mach.Scope { parent, object, ... } => 
 	case resolveOnObjAndPrototypes object mname of
 	    NONE => (case parent of 
 			 SOME p => resolveOnScopeChain p mname
 		       | NONE => NONE)
-	  | result => result
+	  | result => result)
     
 and resolveOnObjAndPrototypes (obj:Mach.OBJ) (mname:Mach.MULTINAME) : REF option = 
     case obj of 
@@ -528,6 +547,7 @@ and resolveOnObj (obj:Mach.OBJ) (mname:Mach.MULTINAME) : REF option =
 	      | tryName (x::xs) = 
 		let 
 		    val n = {ns=x, id=id} 
+		    val _ = LogErr.trace ["resolving candidate name ", LogErr.name n]
 		in
 		    if Mach.hasProp (#props ob) n
 		    then SOME (obj, n)
@@ -568,31 +588,37 @@ and evalStmt (scope:Mach.SCOPE) (stmt:Ast.STMT) : Mach.VAL =
       | Ast.EmptyStmt => Mach.Undef
       | _ => LogErr.unimplError ["unimplemented statement type"]
 
-and evalDefns (scope:Mach.SCOPE) (ds:Ast.DEFN list) : unit = 
-    List.app (evalDefn scope) ds
-
-and evalDefn (scope:Mach.SCOPE) (d:Ast.DEFN) : unit = 
+and evalDefn (scope:Mach.SCOPE) (d:Ast.DEFN) : INIT_LIST = 
     case d of 
 	Ast.FunctionDefn f => evalFuncDefn scope f
-      | Ast.VariableDefn bs => List.app (evalVarBinding scope NONE NONE) bs
+      | Ast.VariableDefn bs => evalVarBindings scope bs 
       | _ => LogErr.unimplError ["unimplemented definition type"]
+	     
+and evalDefns (scope:Mach.SCOPE) (ds:Ast.DEFN list) : INIT_LIST = 
+    List.concat (map (evalDefn scope) ds)
+	     
+and getFixtures (f:Ast.FIXTURES option) : Ast.FIXTURES = 
+    case f of 
+	SOME f' => f'
+      | NONE => LogErr.evalError ["missing expected fixtures"]
 
 and invokeFuncClosure (this:Mach.OBJ) (closure:Mach.FUN_CLOSURE) (args:Mach.VAL list) : Mach.VAL =
     case closure of 
-	{ fnc=(Mach.Fnc {func=(Ast.Func f), activationFixtures}), allTypesBound, env } => 
+	{ func=(Ast.Func f), allTypesBound, env } => 
 	if not allTypesBound
 	then LogErr.evalError ["invoking function with unbound type variables"]
 	else 
 	    case (#fsig f) of 
 		Ast.FunctionSignature { params, ... } => 
 		let
+		    val fixtures = getFixtures (#fixtures f)
+				       
 		    val (varObj:Mach.OBJ) = Mach.newObj Mach.intrinsicObjectBaseTag Mach.Null NONE
 		    val (varScope:Mach.SCOPE) = extendScope env Mach.VarActivation varObj
-		    fun bindArgs [] [] = ()
-		      | bindArgs [] (b::bz) = LogErr.evalError ["Too few actuals"]
-		      | bindArgs (a::az) [] = LogErr.evalError ["Too many actuals"]
-		      | bindArgs (a::az) (b::bz) = (evalVarBinding env (SOME varObj) (SOME a) b; 
-						    bindArgs az bz)
+
+		    fun bindArg (a, b) = evalVarBinding env (SOME a) b
+		    val inits = List.concat (map bindArg (ListPair.zip (args, params)))
+
 		    (* FIXME: bind 'this' type from func *)
 		    val thisProp = { kind = Mach.ValProp,
 				     ty = Ast.SpecialType Ast.Any,
@@ -601,45 +627,49 @@ and invokeFuncClosure (this:Mach.OBJ) (closure:Mach.FUN_CLOSURE) (args:Mach.VAL 
 					       dontEnum = true,
 					       readOnly = true,
 					       isFixed = false } }
+
 		in
-		    bindArgs args params;
-		    setProp varObj {id="this", ns=Ast.Private} thisProp;
+		    initScope varScope fixtures inits;
+		    setProp varObj {id="this", ns=Ast.Internal ""} thisProp;
 		    evalBlock varScope (#body f)
 		end
-
+		
 (* 
  * This is the dynamic phase of function definition; it assumes that the 
  * function has already had its fixtures constructed during the
  * definition phase. 
  *) 
-and evalFuncDefn (scope:Mach.SCOPE) (f:Ast.FUNC_DEFN) : unit = 
-    LogErr.unimplError ["function definitions temporarily disabled "]
-(*
+and evalFuncDefn (scope:Mach.SCOPE) (f:Ast.FUNC_DEFN) : INIT_LIST = 
     let 
 	val func = (#func f)
-	val fsig = case func of Ast.Func { fsig, ...} => fsig
+	val funcAttrs = getAttrs (#attrs f)
 	val name = case func of Ast.Func { name={ident, ...}, ...} => ident
 	val fval = Mach.newFunc scope func
-	val funcAttrs = getAttrs (#attrs f)
-	val funcProp = { kind = Mach.ValProp,
-			 ty = Ast.FunctionType fsig,
-			 value = fval,
-			 attrs = { dontDelete = true,
-				   dontEnum = false,
-				   readOnly = false,
-				   isFixed = false } }
-	val funcName = {id = name, 
-			ns = (needNamespace (evalExpr scope (#ns funcAttrs)))}
+	val fname = {id = name, 
+		     ns = (needNamespace (evalExpr scope (#ns funcAttrs)))}
     in
-	setProp (getScopeObj scope) funcName funcProp
+	LogErr.trace ["allocating function binding ", LogErr.name fname];
+	[(fname, fval)]
     end
-*)
 
 and evalBlock (scope:Mach.SCOPE) (block:Ast.BLOCK) : Mach.VAL = 
     case block of 
-	Ast.Block {defns, stmts, ...} => 
-	(evalDefns scope defns;
-	 evalStmts scope stmts)
+	Ast.Block {defns, stmts, fixtures, ...} => 
+	let 
+	    val blockObj = Mach.newObj Mach.intrinsicObjectBaseTag Mach.Null NONE
+	    val blockScope = extendScope scope Mach.Let blockObj
+	    val inits = evalDefns scope defns
+	in
+	    LogErr.trace ["initializing block scope"];
+	    initScope blockScope (getFixtures fixtures) inits; 
+	    LogErr.trace ["evaluating block scope statements"];
+	    let 
+		val v = evalStmts blockScope stmts 
+	    in 
+		LogErr.trace ["exiting block"];
+		v
+	    end
+	end
 
 and evalIfStmt (scope:Mach.SCOPE) (cnd:Ast.EXPR) (thn:Ast.STMT) (els:Ast.STMT) : Mach.VAL = 
     let 

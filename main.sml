@@ -13,11 +13,17 @@ fun testTC argvRest =
     end
 
 fun testEV argvRest =
-    let val asts = List.map Parser.parseFile argvRest
+    let 
+	val _ = TextIO.print "parsing ... \n";
+	val asts = List.map Parser.parseFile argvRest
+	val _ = TextIO.print "defining ... \n";
+	val dps = map Defn.defProgram asts
+	val _ = List.app Pretty.ppProgram dps
+	val _ = TextIO.print "evaluating ... \n";
+	val _ = map Eval.evalProgram dps
+	val _ = TextIO.print "evaluated! \n"
     in
-	TextIO.print "evaluating ... \n";
-        List.map Eval.evalProgram asts;
-	TextIO.print "evaluated! \n"
+	()
     end
 
 fun main (argv0:string, argvRest:string list) =
