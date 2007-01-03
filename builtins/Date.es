@@ -22,30 +22,113 @@ package
             return (new Date()).toString();
         }
 
-        // 15.9.3 The Date Constructor
-        //
-        // 15.9.3.1 new Date (year, month [, date [, hours [, minutes [, seconds [, ms ] ] ] ] ] )
-        // 15.9.3.2 new Date (value)
-        // 15.9.3.3 new Date ( )
+        /* E262-3 15.9.3: The Date Constructor */
         function Date(year, month, date, hours, minutes, seconds, ms) {
-            // conceptually:
-            // this.[[Value]] = @todo
+            use namespace intrinsic;
+
+            let argc : int = arguments.length;
+
+            year = ToNumber(year);
+            month = ToNumber(month);
+            date = argc >= 3 ? ToNumber(date) : 1;
+            hours = argc >= 4 ? ToNumber(hours) : 0;
+            minutes = argc >= 5 ? ToNumber(minutes) : 0;
+            seconds = argc >= 6 ? ToNumber(seconds) : 0;
+            ms = argc >= 7 ? ToNumber(ms) : 0;
+
+            var intYear = ToInteger(year);
+            if (!isNaN(year) && 0 <= intYear && intYear <= 99)
+                intYear += 1900;
+
+            timeval = TimeClip(UTCTime(MakeDate(MakeDay(intYear, month, date), 
+                                                MakeTime(hours, minutes, seconds, ms))));
         }
 
-        // 15.9.4.2 Date.parse (string)
-        var parse = function parse(string) {
-            return Date.intrinsic::parse(String(string));
+        /* E262-3 15.9.4.2: Date.parse */
+        var parse = function parse(string, reference : double=0.0) {
+            return Date.intrinsic::parse(String(string), reference);
         }
 
-        static native function now() : Number;
+        // FIXME: INTERPRETATION: Is reference localtime or UTC?
+        static intrinsic function parse(s:String!, reference:double=0.0) : Date! {
+            use namespace intrinsic;
 
-        static intrinsic native function now() : Number;
+            function fractionToMilliseconds(frac : String!) : double
+                Math.floor(1000 * (parseInt(frac) / Math.pow(10,frac.length)));
 
-        static intrinsic function parse(string:String!):Date {
-            // FIXME
-            // This is our chance to write a normative date parser...
+            let isoRes : Object = isoTimestamp.intrinsic::exec(s);
+            let defaults : Date! = new Date(reference);
+            if (isoRes !== null) {
+                let year = isoRes.year !== null ? parseInt(isoRes.year) : defaults.UTCYear;
+                let month = isoRes.month !== null ? parseInt(isoRes.month) : defaults.UTCMonth;
+                let day = isoRes.day !== null ? parseInt(isoRes.day) : defaults.UTCDay;
+                let hour = isoRes.hour !== null ? parseInt(isoRes.hour) : defaults.UTCHour;
+                let mins = isoRes.mins !== null ? parseInt(isoRes.mins) : defaults.UTCMinutes;
+                let secs = isoRes.secs !== null ? parseInt(isoRes.secs) : defaults.UTCSeconds;
+                let millisecs = isoRes.fraction !== null ? 
+                    fractionToMillisecons(isoRes.fraction) : 
+                    defaults.UTCMilliseconds;
+                let tzo = defaults.timezoneOffset;
+                if (isoRes.zulu !== null)
+                    tzo = 0;
+                else if (isoRes.offs !== null) {
+                    tzo = parseInt(isoRes.tzhr) * 60;
+                    if (isoRes.tzmin !== null)
+                        tzo += parseInt(isoRes.tzmin);
+                    if (isoRes.tzdir === "-")
+                        tzo = -tzo;
+                }
+                return new Date(Date.UTC(year, month, day, hour, mins, secs, millisecs).time - tzo);
+            }
+            else
+                return fromDateString(s, reference);
+        }
+        
+        /* INFORMATIVE.  
+
+           Most practical implementations have many heuristics for
+           parsing date formats, which are as numerous as the sands of
+           the desert, the snowflakes of the arctic, the stars in the
+           sky, etc.  Parsing the output of Date.prototype.toString is
+           the minimum required by the Standard and we handle that
+           here along with the output of Date.prototype.toUTCString.
+        */
+        private static function fromDateString(s : String!, reference : double) : Date {
+            use namespace intrinsic;
+
+            function findMonth(name) {
+                for ( var i=0 ; i < monthNames.length ; i++ )
+                    if (name === monthNames[i])
+                        return i;
+                return 0;  // implementation bug if this happens...
+            }
+
+            var res = adhocTimestamp.exec(s);
+            if (res === null)
+                return new Date(reference);
+            var t = Date.UTC(parseInt(res.year),
+                             findMonth(res.month),
+                             parseInt(res.day),
+                             parseInt(res.hour),
+                             parseInt(res.minute),
+                             parseInt(res.second));
+            if (res.tz !== null) {
+                // FIXME
+            }
+            return new Date(t);
         }
 
+        /* E262-4 proposals:date_and_time */
+        static intrinsic function now() : double
+            Date.now()
+
+        static native function now() : double;
+
+        /* E262-4 proposals:date_and_time */
+        static intrinsic function nanoAge() : double
+            Date.nanoAge();
+
+        static native function nanoAge() : double;
 
         /* E262-3 15.9.4.3: Date.UTC */
         var UTC = function UTC(year, month, date, hours, minutes, seconds, ms) {
@@ -61,9 +144,9 @@ package
                             argc >= 7 ? ToNumber(ms) : 0);
         }
 
-        static instrinsic function UTC(year : Number, month : Number, 
-                                       date : Number=1, hours : Number?=0, minutes : Number?=0,
-                                       seconds : Number=0, ms : Number?=0) : Number {
+        static instrinsic function UTC(year : double, month : double, 
+                                       date : double=1, hours : double?=0, minutes : double?=0,
+                                       seconds : double=0, ms : double?=0) : double {
             use namespace intrinsic;
 
             var intYear = ToInteger(year);
@@ -73,62 +156,155 @@ package
                                      MakeTime(hours, minutes, seconds, ms)));
         }
 
-        // 15.9.5.2 Date.prototype.toString ( )
+        private const dayNames = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+        private const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", 
+                                    "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+        /* Format of string produced by Date.toString, recognized by Date.parse */
+        /* e.g., "Fri, 15 Dec 2006 23:45:09 GMT-0800" */
+        private const adhocTimestamp : RegExp! = 
+            /(?: Mon|Tue|Wed|Thu|Fri|Sat|Sun )\s+
+             (?P<day> [0-9]+ )\s+
+             (?P<month> Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec )\s+
+             (?P<year> -? [0-9]+ )\s+
+             (?P<hour> [0-9]{2} ):
+             (?P<minute> [0-9]{2} ):
+             (?P<second> [0-9]{2} )\s+
+             GMT
+             (?P<tz> (?: \\+ | - ) [0-9]{4} )?/x;
+
+        /* Format of string produced by Date.toISO, recognized by Date.parse */
+        /* e.g, "2006-12-15T23:45:09.33-08:00" */
+        private const isoTimestamp : RegExp! =
+            /^
+            # Date, optional
+            (?: (?P<year> - [0-9]+ | [0-9]{4} [0-9]* )
+             (?: - (?P<month> [0-9]{2} )
+              (?: - (?P<day> [0-9]{2} ) )? )? )?
+            T
+            # Time, optional
+            (?: (?P<hour> [0-9]{2} )
+             (?: : (?P<minutes> [0-9]{2} )
+              (?: : (?P<seconds> [0-9]{2} )
+               (?: \. (?P<fraction> [0-9]+ ) )? )? )? )?
+            # Timezone, optional
+            (?: (?P<zulu> Z )
+             | (?P<offs> 
+                (?P<tzdir> \\+ | - )
+                (?P<tzhr> [0-9]{2} )
+                (?: : (?P<tzmin> [0-9]{2} ) )? ) )?
+            $/x;
+
+        /* E262-4 proposals:date_and_time */
+        prototype function toISO(this:Date) {
+            return this.intrinsic::toISO();
+        }
+
+        intrinsic function toISO() : String {
+            // FIXME: milliseconds should be minimal string (suppress trailing zeroes)
+            // FIXME: the years should be formatted much more elaborately
+            let tz = timezoneOffset;
+            let atz = Math.abs(tz);
+            return "" + fullYear + "-" + twoDigit(month) + "-" + twoDigit(day) +
+                "T" + twoDigit(hours) + ":" + twoDigit(minutes) + ":" + twoDigit(seconds) +
+                "." + threeDigit(milliseconds) + sign(tz) +
+                twoDigit(Math.floor(atz / 60)) + ":" + twoDigit(atz % 60);
+        }
+
+        /* E262-3 15.9.5.2: Date.prototype.toString */
         prototype function toString(this:Date) { 
             return this.intrinsic::toString(); 
         }
 
-        intrinsic native function toString() : String;
+        /* INFORMATIVE */
+        intrinsic function toString() : String {
+            /* "Fri, 15 Dec 2006 23:45:09 GMT-0800" */
+            let tz = timezoneOffset;
+            let atz = Math.abs(tz);
+            return dayNames[date] + ", " + twoDigit(day) + " " + monthNames[month] + " " fullYear +
+                " " + twoDigit(hours) + ":" + twoDigit(minutes) + ":" + twoDigit(seconds) +
+                " GMT" + sign(tz) + twoDigit(Math.floor(atz / 60)) + twoDigit(atz % 60);
+        }
 
-        // 15.9.5.3 Date.prototype.toDateString ( )
+        /* E262-3 15.9.5.42: Date.prototype.toUTCString */
+        prototype function toUTCString(this:Date) {
+            return this.intrinsic::toUTCString(); 
+        }
+
+        /* INFORMATIVE */
+        intrinsic function toUTCString() : String {
+            /* "Sat, 16 Dec 2006 08:06:21 GMT" */
+            return dayNames[UTCdate] + ", " + 
+                twoDigit(UTCday) + " " + 
+                monthNames[UTCmonth] + " " +
+                UTCFullYear + " " + 
+                twoDigit(UTCHours) + ":" + 
+                twoDigit(UTCMinutes) + ":" + 
+                twoDigit(UTCSeconds) + " GMT";
+        }
+
+        /* E262-3 15.9.5.3: Date.prototype.toDateString */
         prototype function toDateString(this:Date) { 
             return this.intrinsic::toDateString(); 
         }
 
-        intrinsic native function toDateString() : String;
+        /* INFORMATIVE */
+        intrinsic function toDateString() : String {
+            /* "Sat, 16 Dec 2006" */
+            return dayNames[date] + ", " + twoDigit(day) + " " + monthNames[month] + " " fullYear;
+        }
 
-        // 15.9.5.4 Date.prototype.toTimeString ( )
-
+        /* E262-3 15.9.5.4: Date.prototype.toTimeString */
         prototype function toTimeString(this:Date) { 
             return this.intrinsic::toTimeString(); 
         }
 
-        intrinsic native function toTimeString():String;
+        /* INFORMATIVE */
+        intrinsic function toTimeString():String {
+            /* "00:13:29 GMT-0800" */
+            let tz = timezoneOffset;
+            let atz = Math.abs(tz);
+            return twoDigit(hours) + ":" + twoDigit(minutes) + ":" + twoDigit(seconds) +
+                " GMT" + sign(tz) + twoDigit(Math.floor(atz / 60)) + twoDigit(atz % 60);
+        }
 
-        // 15.9.5.5 Date.prototype.toLocaleString ( )
+        /* E262-3 15.9.5.5: Date.prototype.toLocaleString */
         prototype function toLocaleString(this:Date) {
             return this.intrinsic::toLocaleString(); 
         }
 
-        intrinsic native function toLocaleString():String;
+        /* INFORMATIVE */
+        intrinsic function toLocaleString():String {
+            return this.intrinsic::toString();
+        }
 
-        // 15.9.5.6 Date.prototype.toLocaleDateString ( )
+        /* E262-3 15.9.5.6: Date.prototype.toLocaleDateString */
         prototype function toLocaleDateString(this:Date) {
             return this.intrinsic::toLocaleDateString(); 
         }
 
-        intrinsic native function toLocaleDateString():String;
+        /* INFORMATIVE */
+        intrinsic function toLocaleDateString():String {
+            return this.intrinsic::toDateString();
+        }
 
-        // 15.9.5.7 Date.prototype.toLocaleTimeString ( )
+        /* E262-3 15.9.5.7: Date.prototype.toLocaleTimeString */
         prototype function toLocaleTimeString(this:Date) {
             return this.intrinsic::toLocaleTimeString(); 
         }
 
-        intrinsic native function toLocaleTimeString():String;
-
-        // 15.9.5.42 Date.prototype.toUTCString ( )
-        prototype function toUTCString(this:Date) {
-            return this.intrinsic::toUTCString(); 
+        /* INFORMATIVE */
+        intrinsic function toLocaleTimeString():String {
+            return this.intrinsic::toTimeString();
         }
-        
-        intrinsic native function toUTCString():String;
 
-        // 15.9.5.8 Date.prototype.valueOf ( )
+        /* E262-3 15.9.5.8: Date.prototype.valueOf */
         prototype function valueOf(this:Date) {
             return this.intrinsic::valueOf(); 
         }
 
-        intrinsic native function valueOf():Object;
+        intrinsic function valueOf() : Object
+            time;
 
         /* E262-4 proposals:date_and_time: the logical components of
            date values are gettable and settable through properties
@@ -505,6 +681,17 @@ package
                                    TimeWithinDay(t));
 
 
+        /*** Utilities ***/
+
+        private function twoDigit(n : double)
+            (n + 100).toString().substring(1);
+
+        private function threeDigit(n : double)
+            (n + 1000).toString().substring(1);
+
+        private function sign(n : double)
+            n < 0 ? "-" : "+";
+
         /*** Primitives from E262-3 ***/
 
         private var timeval : double = 0;
@@ -620,8 +807,7 @@ package
                 return ToInteger(t);
         }
 
-        /*** Informative ***/
-
+        /* INFORMATIVE */
         private function YearFromTime(t : double) : double {
             let y : double = t / (msPerDay * 365);
             while (TimeFromYear(y) < t)
@@ -630,8 +816,6 @@ package
                 y -= 1;
             return y;
         }
-
-        /*** System hooks ***/
 
         private native function LocalTZA() : double;
         private native function DaylightSavingsTA(t : double) : double;
