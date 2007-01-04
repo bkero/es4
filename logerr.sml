@@ -1,6 +1,6 @@
 structure LogErr = struct
 
-val log_level = ref 3
+val log_level = ref 0
 
 fun log n ss = 
     if n <= (!log_level)

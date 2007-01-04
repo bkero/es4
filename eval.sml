@@ -515,7 +515,7 @@ and evalVarBindings (scope:Mach.SCOPE)
     List.concat (map (evalVarBinding scope NONE) defns)
           
 and resolveOnScopeChain (scope:Mach.SCOPE) (mname:Mach.MULTINAME) : REF option =
-    (LogErr.trace ["resolving name on scope chain:", (#id mname)];     
+    (LogErr.trace ["resolving name on scope chain: ", (#id mname)];     
     case scope of 
 	Mach.Scope { parent, object, ... } => 
 	case resolveOnObjAndPrototypes object mname of
@@ -542,15 +542,19 @@ and resolveOnObj (obj:Mach.OBJ) (mname:Mach.MULTINAME) : REF option =
     case obj of 
 	Mach.Obj ob => 
 	let     
-	    val id = (#id mname)
-	    fun tryName [] = NONE
+	    val id = (#id mname)		     
+	    val _ = LogErr.trace ["candidate object props: "]
+	    val _ = List.app (fn (k,_) => LogErr.trace ["prop: ", LogErr.name k]) (!(#props ob))
+	    fun tryName [] = (LogErr.trace ["no matches found on candidate object"]; 
+			      NONE)
 	      | tryName (x::xs) = 
 		let 
 		    val n = {ns=x, id=id} 
 		    val _ = LogErr.trace ["resolving candidate name ", LogErr.name n]
 		in
 		    if Mach.hasProp (#props ob) n
-		    then SOME (obj, n)
+		    then (LogErr.trace ["found property with name ", LogErr.name n]; 
+			  SOME (obj, n))
 		    else tryName xs
 		end
 	in
@@ -658,7 +662,7 @@ and evalBlock (scope:Mach.SCOPE) (block:Ast.BLOCK) : Mach.VAL =
 	let 
 	    val blockObj = Mach.newObj Mach.intrinsicObjectBaseTag Mach.Null NONE
 	    val blockScope = extendScope scope Mach.Let blockObj
-	    val inits = evalDefns scope defns
+	    val inits = evalDefns blockScope defns
 	in
 	    LogErr.trace ["initializing block scope"];
 	    initScope blockScope (getFixtures fixtures) inits; 
