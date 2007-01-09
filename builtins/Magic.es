@@ -61,7 +61,7 @@ package
 	   function.
 
 	   Throws a SyntaxError if the code could not be compiled. */
-	native magic magic function compile(formals : String!, body : String!) : [*, Number];
+	native magic function compile(formals : String!, body : String!) : [*, Number];
 
 	/* Given some code created by magic::compile, an environment of
 	   some sort (either a global object or an environment structure
@@ -75,5 +75,3 @@ package
 	   values, call the function with the this object and arguments. */
 	native magic function apply(fn : Function!, t : Object!, args : Array) : *;
 }
-
-

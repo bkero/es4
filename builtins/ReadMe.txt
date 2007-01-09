@@ -8,6 +8,17 @@ Resolution December meeting:
   * "prototype function" implies DontEnum
 
 
+Style:
+
+  * prototype functions defer to intrinsic functions, generally
+  * use intrinsic::Number(x) to implement ToNumber(x)
+  * Ditto for ToString, ToBoolean, ToObject
+  * use intrinsic::Integer to implement ToInteger, though Integer is not a class; this is a
+    global function and has no non-intrinsic equivalent
+  * use intrinsic::int(x), intrinsic::uint(x), intrinsic::double(x), intrinsic::decimal(x)
+  * reserve native functions for systems-level things (getting system data or deferring to
+    the C library)
+
 /*
 	Attempt at modeling ECMA-262 builtin classes using the new ECMA4 language.
 	
