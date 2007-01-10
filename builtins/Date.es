@@ -164,7 +164,7 @@ package
 
         /* E262-4 proposals:date_and_time - "Current and elapsed times" */
         prototype function nanoAge() : double
-            nanoAge();
+            this.nanoAge();
 
         /* INFORMATIVE */
         intrinsic function nanoAge() : double
@@ -318,7 +318,7 @@ package
 
         /* INFORMATIVE */
         intrinsic function toLocaleString():String
-            this.toString();
+            toString();
 
         /* E262-3 15.9.5.6: Date.prototype.toLocaleDateString */
         prototype function toLocaleDateString(this:Date)
@@ -326,7 +326,7 @@ package
 
         /* INFORMATIVE */
         intrinsic function toLocaleDateString():String
-            this.toDateString();
+            toDateString();
 
         /* E262-3 15.9.5.7: Date.prototype.toLocaleTimeString */
         prototype function toLocaleTimeString(this:Date)
@@ -334,14 +334,14 @@ package
 
         /* INFORMATIVE */
         intrinsic function toLocaleTimeString():String
-            this.toTimeString();
+            toTimeString();
 
         /* E262-3 15.9.5.8: Date.prototype.valueOf */
         prototype function valueOf(this:Date)
             this.valueOf(); 
 
         intrinsic function valueOf() : Object
-            time;
+            getTime();
 
         /* E262-4 proposals:date_and_time: the logical components of
            date values are gettable and settable through properties
@@ -360,7 +360,7 @@ package
         public function get fullYear(this:Date) : double                 getFullYear();
         public function set fullYear(this:Date, t : double) : double     setFullYear(t);
         public function get UTCFullYear(this:Date) : double              getUTCFullYear();
-        public function set UTCFullYear(this:Date, t : double) : double  setUTCFullYear(t)
+        public function set UTCFullYear(this:Date, t : double) : double  setUTCFullYear(t);
         public function get month(this:Date) : double                    getMonth();
         public function set month(this:Date, t : double) : double        setMonth(t);
         public function get UTCMonth(this:Date) : double                 getUTCMonth();
@@ -378,15 +378,15 @@ package
         public function get UTCHours(this:Date) : double                 getUTCHours();
         public function set UTCHours(this:Date, t : double) : double     setUTCHours(t);
         public function get minutes(this:Date) : double                  getMinutes();
-        public function set minutes(this:Date, t : double) : double      setMinutes(t)
+        public function set minutes(this:Date, t : double) : double      setMinutes(t);
         public function get UTCMinutes(this:Date) : double               getUTCMinutes();
-        public function set UTCMinutes(this:Date, t : double) : double   setUTCMinutes(t)
+        public function set UTCMinutes(this:Date, t : double) : double   setUTCMinutes(t);
         public function get seconds(this:Date) : double                  getSeconds();
-        public function set seconds(this:Date, t : double) : double      setSeconds(t)
+        public function set seconds(this:Date, t : double) : double      setSeconds(t);
         public function get UTCSeconds(this:Date) : double               getUTCSeconds();
-        public function set UTCSeconds(this:Date, t : double) : double   setUTCSeconds(t)
+        public function set UTCSeconds(this:Date, t : double) : double   setUTCSeconds(t);
         public function get milliseconds(this:Date) : double             getMilliseconds();
-        public function set milliseconds(this:Date, t : double) : double setMilliseconds(t)
+        public function set milliseconds(this:Date, t : double) : double setMilliseconds(t);
         public function get UTCMilliseconds(this:Date) : double          getUTCMilliseconds();
         public function set UTCMilliseconds(this:Date, t : double) : double setUTCMilliseconds(t);
         public function get timezoneOffset(this:Date) : double            getTimezoneOffset();
@@ -396,7 +396,7 @@ package
 
         /* E262-3 15.9.5.9: Date.prototype.getTime */
         prototype function getTime(this:Date)   
-            time;
+            this.getTime();
 
         intrinsic function getTime() : double   
             timeval;
@@ -539,10 +539,10 @@ package
 
         /* E262-3 15.9.5.27: Date.prototype.setTime */
         prototype function setTime(this:Date, t)
-            this.setTime(t);
+            this.setTime(double(t));
 
         intrinsic function setTime(t:double) : double
-            timeval = TimeClip(double(t));
+            timeval = TimeClip(t);
 
         /* E262-3 15.9.5.28:  Date.prototype.setMilliseconds (ms) */
         prototype function setMilliseconds(this:Date, ms)
