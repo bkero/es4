@@ -214,7 +214,7 @@ package
              GMT
              (?P<tz> (?: \\+ | - ) [0-9]{4} )?/x;
 
-        /* Format of string produced by Date.toISO, recognized by Date.parse */
+        /* Format of string produced by Date.toISOString, recognized by Date.parse */
         /* e.g, "2006-12-15T23:45:09.33-08:00" */
         const isoTimestamp : RegExp! =
             /^
@@ -237,10 +237,10 @@ package
             $/x;
 
         /* E262-4 proposals:date_and_time - "ISO Date strings" */
-        prototype function toISO(this:Date)
-            this.toISO();
+        prototype function toISOString(this:Date)
+            this.toISOString();
 
-        intrinsic function toISO() : String {
+        intrinsic function toISOString() : String {
 
             function years(n : double) : String {
                 if (n >= 0 && n <= 9999)
@@ -403,7 +403,7 @@ package
 
         /* E262-3 15.9.5.10: Date.prototype.getFullYear */
         prototype function getFullYear(this:Date)
-            getFullYear();
+            this.getFullYear();
 
         intrinsic function getFullYear() : double
             let (t : double = timeval) 
@@ -411,7 +411,7 @@ package
 
         /* E262-3 15.9.5.11: Date.prototype.getUTCFullYear */
         prototype function getUTCFullYear(this:Date)
-            getUTCFullYear();
+            this.getUTCFullYear();
 
         intrinsic function getUTCFullYear() : double
             let (t : double = timeval) 
@@ -419,7 +419,7 @@ package
 
         /* E262-3 15.9.5.12: Date.prototype.getMonth */
         prototype function getMonth(this:Date)
-            getMonth();
+            this.getMonth();
 
         intrinsic function getMonth() : double
             let (t : double = timeval)
@@ -427,7 +427,7 @@ package
         
         /* E262-3 15.9.5.13: Date.prototype.getUTCMonth */
         prototype function getUTCMonth(this:Date)
-            getUTCMonth();
+            this.getUTCMonth();
 
         intrinsic function getUTCMonth() : double
             let (t : double = timeval)
@@ -435,7 +435,7 @@ package
 
         /* E262-3 15.9.5.14: Date.prototype.getDate */
         prototype function getDate(this:Date)
-            getDate();
+            this.getDate();
 
         intrinsic function getDate() : double
             let (t : double = timeval)
@@ -443,7 +443,7 @@ package
 
         /* E262-3 15.9.5.15: Date.prototype.getUTCDate */
         prototype function getUTCDate(this:Date)
-            getUTCDate();
+            this.getUTCDate();
 
         intrinsic function getUTCDate() : double
             let (t : double = timeval)
@@ -451,7 +451,7 @@ package
 
         /* E262-3 15.9.5.16: Date.prototype.getDay */
         prototype function getDay(this:Date)
-            getDay();
+            this.getDay();
 
         intrinsic function getDay() : double
             let (t : double = timeval)
@@ -459,7 +459,7 @@ package
 
         /* E262-3 15.9.5.17: Date.prototype.getUTCDay */
         prototype function getUTCDay(this:Date)
-            getUTCDay();
+            this.getUTCDay();
 
         intrinsic function getUTCDay() : double
             let (t : double = timeval)
@@ -467,7 +467,7 @@ package
 
         /* E262-3 15.9.5.18: Date.prototype.getHours */
         prototype function getHours(this:Date)
-            getHours();
+            this.getHours();
 
         intrinsic function getHours() : double
             let (t : double = timeval)
@@ -475,7 +475,7 @@ package
 
         /* E262-3 15.9.5.19: Date.prototype.getUTCHours */
         prototype function getUTCHours(this:Date)
-            getUTCHours();
+            this.getUTCHours();
 
         intrinsic function getUTCHours() : double
             let (t : double = timeval)
@@ -483,7 +483,7 @@ package
 
         /* E262-3 15.9.5.20: Date.prototype.getMinutes */
         prototype function getMinutes(this:Date)
-            getMinutes();
+            this.getMinutes();
 
         intrinsic function getMinutes() : double
             let (t : double = timeval)
@@ -491,7 +491,7 @@ package
         
         /* E262-3 15.9.5.21: Date.prototype.getUTCMinutes */
         prototype function getUTCMinutes(this:Date)
-            getUTCMinutes();
+            this.getUTCMinutes();
 
         intrinsic function getUTCMinutes() : double
             let (t : double = timeval)
@@ -499,7 +499,7 @@ package
 
         /* E262-3 15.9.5.22: Date.prototype.getSeconds */
         prototype function getSeconds(this:Date)
-            getSeconds();
+            this.getSeconds();
 
         intrinsic function getSeconds() : double
             let (t : double = timeval)
@@ -507,7 +507,7 @@ package
 
         /* E262-3 15.9.5.23: Date.prototype.getUTCSeconds */
         prototype function getUTCSeconds(this:Date)
-            getUTCSeconds();
+            this.getUTCSeconds();
 
         intrinsic function getUTCSeconds() : double
             let (t : double = timeval)
@@ -515,7 +515,7 @@ package
 
         /* E262-3 15.9.5.24: Date.prototype.getMilliseconds */
         prototype function getMilliseconds(this:Date)
-            getMilliseconds();
+            this.getMilliseconds();
 
         intrinsic function getMilliseconds() : double
             let (t : double = timeval)
@@ -523,7 +523,7 @@ package
         
         /* E262-3 15.9.5.25: Date.prototype.getUTCMilliseconds */
         prototype function getUTCMilliseconds(this:Date)
-            getUTCMilliseconds();
+            this.getUTCMilliseconds();
 
         intrinsic function getUTCMilliseconds() : double
             let (t : double = timeval)
@@ -531,7 +531,7 @@ package
         
         /* E262-3 15.9.5.26: Date.prototype.getTimezoneOffset */
         prototype function getTimezoneOffset(this:Date)
-            getTimezoneOffset();
+            this.getTimezoneOffset();
 
         intrinsic function getTimezoneOffset() : double
             let (t : double = timeval) 
@@ -539,7 +539,7 @@ package
 
         /* E262-3 15.9.5.27: Date.prototype.setTime */
         prototype function setTime(this:Date, t)
-            setTime(t);
+            this.setTime(t);
 
         intrinsic function setTime(t:double) : double
             timeval = TimeClip(double(t));
