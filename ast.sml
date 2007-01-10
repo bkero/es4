@@ -149,9 +149,7 @@ datatype PRAGMA =
        | VariableDefn of VAR_BINDING list
        | FunctionDefn of FUNC_DEFN
        | InterfaceDefn of INTERFACE_DEFN
-       | NamespaceDefn of { attrs: ATTRIBUTES,
-			    ident: IDENT,
-                            init: EXPR option }
+       | NamespaceDefn of NAMESPACE_DEFN 
        | TypeDefn of { attrs: ATTRIBUTES,
 		       ident: IDENT,
                        init: TYPE_EXPR }
@@ -334,27 +332,22 @@ datatype PRAGMA =
  * are patched back into the AST in class-definition and block
  * nodes, so we must define them here. *)
 
-     and FIXTURES_TAG = 
-	 ClassFixtures  
-       | FrameFixtures
-       | GlobalFixtures
-
-     and FIXTURES = 
-	 Fixtures of { tag: FIXTURES_TAG,
-		       bindings: FIXTURE_BINDINGS,
-		       isExtensible: bool,
-		       openNamespaces: NAMESPACE list, 
-		       numberType: NUMBER_TYPE,
-		       roundingMode: ROUNDING_MODE }
      and FIXTURE = 
 	 NamespaceFixture of NAMESPACE
        | TypeVarFixture
+       | ClassFixture of CLASS_DEFN
        | TypeFixture of TYPE_EXPR
        | ValFixture of { ty: TYPE_EXPR,
 			 readOnly: bool,
 			 isOverride: bool }
-
-
+		       
+     and FIXTURES = 
+	 Fixtures of { bindings: FIXTURE_BINDINGS,
+		       openNamespaces: NAMESPACE list, 
+		       numberType: NUMBER_TYPE,
+		       roundingMode: ROUNDING_MODE }
+		     
+		     
 withtype FIELD =
          { kind: VAR_DEFN_TAG,
            name: IDENT_EXPR,
@@ -363,7 +356,7 @@ withtype FIELD =
      and FIELD_TYPE =
          { name: IDENT_EXPR,
            ty: TYPE_EXPR }
-
+	 
      and TYPED_IDENT =
          { name: IDENT,
            ty: TYPE_EXPR option }
@@ -374,6 +367,11 @@ withtype FIELD =
            func : FUNC }
 
      and FIXTURE_BINDINGS = (NAME * FIXTURE) list
+
+     and NAMESPACE_DEFN = 
+	 { attrs: ATTRIBUTES,
+	   ident: IDENT,
+           init: EXPR option }
 
      and CLASS_DEFN =
          { name: IDENT,
