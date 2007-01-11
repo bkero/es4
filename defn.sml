@@ -173,6 +173,37 @@ fun analyzeClassBlock
 	      ifixtures = f2 }
     end
 
+and mergeClasses (base:Ast.CLASS_DEFN) (curr:Ast.CLASS_DEFN) : Ast.CLASS_DEFN = 
+    let 
+	fun mergeFixtures a b = 
+	    case (a, b) of 
+		(SOME (Ast.Fixtures fa), (SOME (Ast.Fixtures fb))) => 
+		SOME (Ast.Fixtures { bindings = (#bindings fa) @ (#bindings fb),
+				     openNamespaces = (#openNamespaces fb),
+				     numberType = (#numberType fb),
+				     roundingMode = (#roundingMode fb) })
+	      | (SOME x, NONE) => SOME x
+	      | (NONE, SOME x) => SOME x
+	      | (NONE, NONE) => NONE
+    in
+	{ name = (#name curr),
+	  nonnullable = (#nonnullable curr),
+	  attrs = (#attrs curr),
+	  params = (#params curr),
+	  extends = (#extends curr),
+	  implements = (#implements curr) @ (#implements base),
+	  classFixtures = (#classFixtures curr),
+	  instanceFixtures = mergeFixtures (#instanceFixtures base) (#instanceFixtures curr),
+	  body = (#body curr),
+	  instanceVars = (#instanceVars curr) @ (#instanceVars base),
+	  instanceMethods = (#instanceMethods curr) @ (#instanceMethods base),
+	  vars = (#vars curr),
+	  methods = (#methods curr),
+	  constructor = (#constructor curr),
+	  initializer = (#initializer curr) }
+    end
+      
+
 and resolveOneClass (parentFixtures:Ast.FIXTURES list)
 		    (unresolved:Ast.CLASS_DEFN list)
 		    (resolved:(Ast.CLASS_DEFN list) ref)    
@@ -233,15 +264,13 @@ and resolveOneClass (parentFixtures:Ast.FIXTURES list)
 			    if seenAsChild baseName
 			    then LogErr.defnError ["cyclical class inheritence detected at ", LogErr.name baseName]
 			    else findBaseClassDef baseName unresolved 
-			val resolvedBaseClassDef = 
+			val (_, resolvedBaseClassDef) = 
 			    resolveOneClass 
 				parentFixtures 
 				unresolved 
 				resolved
 				(currName :: children) 
 				unresolvedBaseClassDef
-			(* FIXME: perform sensible merger of base and curr here *)
-			fun mergeClasses a b = b
 		    in
 			(currName, mergeClasses resolvedBaseClassDef analyzedCurrClassDef)
 		    end

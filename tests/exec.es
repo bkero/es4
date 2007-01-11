@@ -9,9 +9,11 @@ function printWithLine(x) {
 }
 
 class bar {
+	var p;
 }
 
 class foo extends bar {
+	var q;
 }
 
 var x = 10;
