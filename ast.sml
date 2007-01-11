@@ -18,6 +18,8 @@ datatype NAMESPACE =
 
 type NAME = { ns: NAMESPACE, id: IDENT }
 
+type MULTINAME = { nss: NAMESPACE list, id: IDENT }
+
 datatype NUMBER_TYPE =
          Decimal
        | Double

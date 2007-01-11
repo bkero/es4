@@ -6,8 +6,20 @@ structure Defn = struct
  * objects into the global object.
  *)
 
-fun inr f (a, b) = (a, f b)
+type DEFN_CLASSIFICATION = 
+     ((Ast.NAMESPACE_DEFN list) * (Ast.CLASS_DEFN list) * (Ast.DEFN list))
 
+fun classifyDefn 
+	(curr:(Ast.DEFN * DEFN_CLASSIFICATION))
+    : DEFN_CLASSIFICATION = 
+    case curr of 
+	(next, (n, c, d)) => 
+	case next of 
+	    Ast.NamespaceDefn x => ((x::n), c, d)
+	  | Ast.ClassDefn x => (n, (x::c), d)
+	  | x => (n, c, (x::d))
+
+fun inr f (a, b) = (a, f b)
 
 fun resolveFixture (fixs:Ast.FIXTURES list) (mname:Mach.MULTINAME) : Ast.FIXTURE =
     case fixs of 
@@ -91,7 +103,7 @@ fun analyzeClassBlock
 		    (fn Ast.Binding { attrs = Ast.Attributes { static, ... }, ... } => static)
 		vbs
 
-	    fun classifyDefn (d:Ast.DEFN) : ((Ast.DEFN option) * (Ast.DEFN option)) = 
+	    fun partitionDefn (d:Ast.DEFN) : ((Ast.DEFN option) * (Ast.DEFN option)) = 
 		case (legalDefn d) of 
 		    Ast.VariableDefn vbs => 
 		    let 
@@ -111,9 +123,9 @@ fun analyzeClassBlock
 
 		  | _ => LogErr.defnError ["unexpected definition"]
 
-	    fun classifyDefns (ds:Ast.DEFN list) : ((Ast.DEFN list) * (Ast.DEFN list)) = 
+	    fun partitionDefns (ds:Ast.DEFN list) : ((Ast.DEFN list) * (Ast.DEFN list)) = 
 		let 
-		    val (staticOpts, instanceOpts) = ListPair.unzip (map classifyDefn ds)
+		    val (staticOpts, instanceOpts) = ListPair.unzip (map partitionDefn ds)
 		    val lower = (map valOf) o (List.filter isSome)
 		in
 		    (lower staticOpts, lower instanceOpts)
@@ -144,7 +156,7 @@ fun analyzeClassBlock
 		    Ast.VariableDefn vbs => vbs
 		  | _ => []
 
-	    val (staticDefns, instanceDefns) = classifyDefns defns
+	    val (staticDefns, instanceDefns) = partitionDefns defns
 
 	    val b0 = List.concat (List.map (defPragma parentFixtures) pragmas)
 	    val f0 = newFixtures parentFixtures b0
@@ -173,35 +185,42 @@ fun analyzeClassBlock
 	      ifixtures = f2 }
     end
 
+and mergeFixtures
+	(pair:(Ast.FIXTURES * Ast.FIXTURES))
+    : Ast.FIXTURES = 
+    case pair of
+	(Ast.Fixtures fa, Ast.Fixtures fb) => 
+	Ast.Fixtures { bindings = (#bindings fa) @ (#bindings fb),
+		       openNamespaces = (#openNamespaces fb),
+		       numberType = (#numberType fb),
+		       roundingMode = (#roundingMode fb) }
+
+and mergeFixtureOpts 
+	(a:Ast.FIXTURES option) 
+	(b:Ast.FIXTURES option) 
+    : (Ast.FIXTURES option)= 
+    case (a, b) of 
+	(SOME x, SOME y) => SOME (mergeFixtures (x, y))
+      | (SOME x, NONE) => SOME x
+      | (NONE, SOME x) => SOME x
+      | (NONE, NONE) => NONE
+
 and mergeClasses (base:Ast.CLASS_DEFN) (curr:Ast.CLASS_DEFN) : Ast.CLASS_DEFN = 
-    let 
-	fun mergeFixtures a b = 
-	    case (a, b) of 
-		(SOME (Ast.Fixtures fa), (SOME (Ast.Fixtures fb))) => 
-		SOME (Ast.Fixtures { bindings = (#bindings fa) @ (#bindings fb),
-				     openNamespaces = (#openNamespaces fb),
-				     numberType = (#numberType fb),
-				     roundingMode = (#roundingMode fb) })
-	      | (SOME x, NONE) => SOME x
-	      | (NONE, SOME x) => SOME x
-	      | (NONE, NONE) => NONE
-    in
-	{ name = (#name curr),
-	  nonnullable = (#nonnullable curr),
-	  attrs = (#attrs curr),
-	  params = (#params curr),
-	  extends = (#extends curr),
-	  implements = (#implements curr) @ (#implements base),
-	  classFixtures = (#classFixtures curr),
-	  instanceFixtures = mergeFixtures (#instanceFixtures base) (#instanceFixtures curr),
-	  body = (#body curr),
-	  instanceVars = (#instanceVars curr) @ (#instanceVars base),
-	  instanceMethods = (#instanceMethods curr) @ (#instanceMethods base),
-	  vars = (#vars curr),
-	  methods = (#methods curr),
-	  constructor = (#constructor curr),
-	  initializer = (#initializer curr) }
-    end
+    { name = (#name curr),
+      nonnullable = (#nonnullable curr),
+      attrs = (#attrs curr),
+      params = (#params curr),
+      extends = (#extends curr),
+      implements = (#implements curr) @ (#implements base),
+      classFixtures = (#classFixtures curr),
+      instanceFixtures = mergeFixtureOpts (#instanceFixtures base) (#instanceFixtures curr),
+      body = (#body curr),
+      instanceVars = (#instanceVars curr) @ (#instanceVars base),
+      instanceMethods = (#instanceMethods curr) @ (#instanceMethods base),
+      vars = (#vars curr),
+      methods = (#methods curr),
+      constructor = (#constructor curr),
+      initializer = (#initializer curr) }
       
 
 and resolveOneClass (parentFixtures:Ast.FIXTURES list)
@@ -237,13 +256,18 @@ and resolveOneClass (parentFixtures:Ast.FIXTURES list)
 	    let 
 		val _ = LogErr.trace ["analyzing class block for ", LogErr.name currName]
 		val cba = analyzeClassBlock parentFixtures currName (#body curr)
+		val newAttrs = defAttrs parentFixtures (#attrs curr) 
+		val newExtends = case (#extends curr) of 
+				     SOME x => SOME (defIdentExpr parentFixtures x)
+				   | NONE => NONE
+		val newImplements = map (defIdentExpr parentFixtures) (#implements curr)
 		val analyzedCurrClassDef = 
 		    { name = (#name curr),
 		      nonnullable = (#nonnullable curr),
-		      attrs = (#attrs curr),
+		      attrs = newAttrs,
 		      params = (#params curr),
-		      extends = (#extends curr),
-		      implements = (#implements curr),
+		      extends = newExtends,
+		      implements = newImplements,
 		      
 		      classFixtures = SOME (#fixtures cba),
 		      instanceFixtures = SOME (#ifixtures cba),
@@ -278,6 +302,19 @@ and resolveOneClass (parentFixtures:Ast.FIXTURES list)
 	    end
     end
 
+and defAttrs (parentFixtures:Ast.FIXTURES list)
+    (attrs:Ast.ATTRIBUTES)
+    : Ast.ATTRIBUTES = 
+    case attrs of 
+	Ast.Attributes a => 
+	Ast.Attributes { ns = defExpr parentFixtures (#ns a),
+			 override = (#override a),
+			 static = (#static a),
+			 final = (#final a),
+			 dynamic = (#dynamic a),
+			 prototype = (#prototype a),
+			 native = (#native a),
+			 rest = (#rest a) }
 
 and defVar (parentFixtures:Ast.FIXTURES list) 
 	    (var:Ast.VAR_BINDING) 
@@ -285,6 +322,9 @@ and defVar (parentFixtures:Ast.FIXTURES list)
     case var of 
 	Ast.Binding { kind, init, attrs, pattern, ty } => 
 	let
+	    val newAttrs = defAttrs parentFixtures attrs
+	    val ns = case newAttrs of Ast.Attributes { ns, ...} => 
+				      resolveExprToNamespace parentFixtures ns
 	    val newInit = case init of 
 			      NONE => NONE
 			    | SOME e => SOME (defExpr parentFixtures e)
@@ -302,7 +342,7 @@ and defVar (parentFixtures:Ast.FIXTURES list)
 	    val fixtureBindings = 
 		case newPattern of 
 		    Ast.IdentifierPattern (Ast.Identifier { ident, ... }) => 
-		    [({ns=Ast.Internal "", id=ident}, Ast.ValFixture { ty = fixtureTy, 
+		    [({ns=ns, id=ident}, Ast.ValFixture { ty = fixtureTy, 
 								       readOnly = isReadOnly,
 								       isOverride = false })]
 		  (* FIXME: do other pattern forms introduce fixtures? *)
@@ -311,7 +351,7 @@ and defVar (parentFixtures:Ast.FIXTURES list)
 	    (fixtureBindings, 
 	     Ast.Binding { kind = kind,
 			   init = newInit,
-			   attrs = attrs,
+			   attrs = newAttrs,
 			   pattern = newPattern,
 			   ty = newTy })
 	end
@@ -377,8 +417,8 @@ and defFunc (parentFixtures:Ast.FIXTURES list)
     case (#func f) of 
 	Ast.Func { name, fsig, body, ... } =>
 	let 
-	    val attrs = (#attrs f)
-	    val qualNs = case attrs of 
+	    val newAttrs = defAttrs parentFixtures (#attrs f)
+	    val qualNs = case newAttrs of 
 			     Ast.Attributes { ns, ... } => 
 			     resolveExprToNamespace parentFixtures ns
 	    val ident = case (#kind name) of 
@@ -393,7 +433,7 @@ and defFunc (parentFixtures:Ast.FIXTURES list)
 				     body = defBlock (funcFixtures :: parentFixtures) body,
 				     fixtures = SOME funcFixtures }
 	in
-	    (outerBindings, {func = newFunc, kind = (#kind f), attrs = attrs })
+	    (outerBindings, {func = newFunc, kind = (#kind f), attrs = newAttrs })
 	end
 
 	
@@ -759,27 +799,17 @@ and defDefns (parentFixtures:Ast.FIXTURES list)
     end
 
 
+and defTopBlock (parentFixtures:Ast.FIXTURES list) (block:Ast.BLOCK) : Ast.BLOCK =
+    defBlockFull true parentFixtures block
+
 and defBlock (parentFixtures:Ast.FIXTURES list) (block:Ast.BLOCK) : Ast.BLOCK = 
-    case block of 
-	Ast.Block { pragmas, defns, stmts, ... } => 
-	let 
-	    val b0 = List.concat (List.map (defPragma parentFixtures) pragmas)
-	    val f0 = newFixtures parentFixtures b0
-	    val (b1, newDefns) = defDefns (f0 :: parentFixtures) defns
-	    val f1 = newFixtures (f0 :: parentFixtures) b1
-	    val newStmts = map (defStmt (f1 :: parentFixtures)) stmts
-	in
-	    Ast.Block { pragmas=pragmas,
-			defns=newDefns,
-			stmts=newStmts,
-			fixtures=SOME f1 }
-	end
+    defBlockFull false parentFixtures block
 
-and defTopBlock (parentFixtures:Ast.FIXTURES list) (b:Ast.BLOCK) : Ast.BLOCK =
-    (* This is a special case of block: we permit "top-blocks" to contain class definitions,
-     * that support forward-declaration and must resolve to a proper
-     * inheritence tree. *)
-
+and defBlockFull 
+	(classesOk:bool) 
+	(parentFixtures:Ast.FIXTURES list) 
+	(b:Ast.BLOCK) 
+    : Ast.BLOCK =
     case b of 
 	Ast.Block { pragmas, defns, stmts, ... } => 
 	let 
@@ -787,28 +817,35 @@ and defTopBlock (parentFixtures:Ast.FIXTURES list) (b:Ast.BLOCK) : Ast.BLOCK =
 	    val pragmaFixtures = newFixtures parentFixtures pragmaBindings
 	    val f0 = pragmaFixtures :: parentFixtures
 
-	    fun isClassDefn d = case d of Ast.ClassDefn _ => true | _ => false
-	    fun getClassDefn d = case d of Ast.ClassDefn c => SOME c | _ => NONE
-	    val (classDefns, otherDefns) = List.partition isClassDefn defns
+	    val (nsDefns, classDefns, otherDefns) = List.foldl classifyDefn ([],[],[]) defns
+	    val (nsBindings, newNsDefns) = defDefns f0 (map (Ast.NamespaceDefn) nsDefns)
+	    val nsFixtures = newFixtures f0 nsBindings
+	    val f1 = nsFixtures :: f0
+
+	    val _ = if not ((List.null classDefns) orelse classesOk)
+		    then LogErr.defnError ["classes found in illegal block context"]
+		    else ()
+
 	    val tmp:(Ast.CLASS_DEFN list) ref = ref []
-	    val rawClassDefns = List.mapPartial getClassDefn defns
-	    val resolve = resolveOneClass parentFixtures rawClassDefns tmp []
-	    val newRawClassDefns = map resolve rawClassDefns
-	    val newClassDefns = map (fn (_, cd) => Ast.ClassDefn cd) newRawClassDefns
-	    val classBindings = map (inr (Ast.ClassFixture)) newRawClassDefns
-	    val classFixtures = newFixtures parentFixtures classBindings
-	    val f1 = classFixtures :: f0
+	    val resolve = resolveOneClass f1 classDefns tmp []
+	    val newNamedClasses = map resolve classDefns
+	    val newClassDefns = map (fn (_, cd) => Ast.ClassDefn cd) newNamedClasses
+	    val classBindings = map (inr (Ast.ClassFixture)) newNamedClasses
+	    val classFixtures = if classesOk then (newFixtures f1 classBindings) else nsFixtures
+	    val f2 = if classesOk then (classFixtures::f1) else f1
 
-	    val (defnBindings, newOtherDefns) = defDefns f0 otherDefns
-	    val defnFixtures = newFixtures f0 (classBindings @ defnBindings)
-	    val f2 = defnFixtures :: f0
+	    val (defnBindings, newOtherDefns) = defDefns f2 otherDefns
+	    val defnFixtures = newFixtures f2 (classBindings @ defnBindings)
+	    val f3 = defnFixtures :: f2
 
-	    val newStmts = map (defStmt f2) stmts
+	    val newStmts = map (defStmt f3) stmts
+	    val mergedFixtures = List.foldl mergeFixtures pragmaFixtures 
+					    [nsFixtures, classFixtures, defnFixtures]
 	in
 	    Ast.Block { pragmas = pragmas,
-			defns = (newClassDefns @ newOtherDefns),
+			defns = (newNsDefns @ newClassDefns @ newOtherDefns),
 			stmts = newStmts,
-			fixtures = SOME defnFixtures }
+			fixtures = SOME mergedFixtures }
 	end
 
     

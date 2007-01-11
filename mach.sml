@@ -8,6 +8,8 @@ type TYPE = Ast.TYPE_EXPR
 type STR = Ast.USTRING
 type ID = Ast.IDENT
 type NS = Ast.NAMESPACE
+type NAME = Ast.NAME
+type MULTINAME = Ast.MULTINAME
 type BINDINGS = Ast.BINDINGS
 type FIXTURES = Ast.FIXTURES
 
@@ -80,13 +82,7 @@ datatype VAL = Object of OBJ
      and PROP_KIND = TypeProp 
 		   | ValProp
 		
-withtype NAME = { ns: NS, 
-		  id: ID }
-		
-     and MULTINAME = { nss: NS list, 
-		       id: ID }
-		
-     and FUN_CLOSURE = 
+withtype FUN_CLOSURE = 
 	 { func: Ast.FUNC,
 	   allTypesBound: bool,
 	   env: SCOPE }

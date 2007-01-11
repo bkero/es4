@@ -33,6 +33,12 @@ fun name (n:Ast.NAME) =
       | Ast.Internal i => "[(internal ns) " ^ i ^ "::" ^ (#id n) ^ "]"
       | Ast.UserDefined i => "[(user ns) " ^ i ^ "::" ^ (#id n) ^ "]"
 
+fun multiname (mn:Ast.MULTINAME) = 
+    String.concat 
+	(["{multiname: "] @
+	 (List.map (fn ns => name {ns = ns, id = (#id mn)}) (#nss mn)) @
+	 ["}"])
+
 exception ParseError
 exception DefnError
 exception EvalError

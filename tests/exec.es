@@ -12,8 +12,10 @@ class bar {
 	var p;
 }
 
-class foo extends bar {
-	var q;
+namespace magic;
+
+class foo extends bar {	
+	magic var q;
 }
 
 var x = 10;
