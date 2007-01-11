@@ -54,19 +54,25 @@ datatype VAL = Object of OBJ
 		    
      and CLS = 
 	 Cls of { ty: TYPE,
+		  (* FIXME: revive these slots as needed; disabled for now *)
+    (*
 		  isSealed: bool,
 		  scope: SCOPE,
    		  base: CLS option,
 		  interfaces: IFACE list,
 		  
 		  call: FUN_CLOSURE option,
-		  definition: Ast.CLASS_DEFN,
+     *)
+		  definition: Ast.CLASS_DEFN
+    (*
 		  constructor: FUN_CLOSURE option,
 		  
 		  instanceTy: TYPE,
 		  instancePrototype: VAL,
 		  
-		  initialized: bool ref }
+		  initialized: bool ref
+     *)
+		}
 
      and IFACE = 
 	 Iface of { ty: TYPE,
@@ -195,6 +201,8 @@ val intrinsicBooleanName:NAME = { ns = Ast.Intrinsic, id = "Boolean" }
 val intrinsicNumberName:NAME = { ns = Ast.Intrinsic, id = "Number" }
 val intrinsicStringName:NAME = { ns = Ast.Intrinsic, id = "String" }
 val intrinsicNamespaceName:NAME = { ns = Ast.Intrinsic, id = "Namespace" }
+val intrinsicClassName:NAME = { ns = Ast.Intrinsic, id = "Class" }
+val intrinsicInterfaceName:NAME = { ns = Ast.Intrinsic, id = "Interface" }
 
 val intrinsicObjectBaseTag:VAL_TAG = ClassTag (intrinsicObjectName)
 val intrinsicArrayBaseTag:VAL_TAG = ClassTag (intrinsicArrayName)
@@ -203,6 +211,18 @@ val intrinsicBooleanBaseTag:VAL_TAG = ClassTag (intrinsicBooleanName)
 val intrinsicNumberBaseTag:VAL_TAG = ClassTag (intrinsicNumberName)
 val intrinsicStringBaseTag:VAL_TAG = ClassTag (intrinsicStringName)
 val intrinsicNamespaceBaseTag:VAL_TAG = ClassTag (intrinsicNamespaceName)
+val intrinsicClassBaseTag:VAL_TAG = ClassTag (intrinsicClassName)
+val intrinsicInterfaceBaseTag:VAL_TAG = ClassTag (intrinsicInterfaceName)
+
+(* To reference something in the intrinsic namespace, you need a complicated expression. *)
+val intrinsicNsExpr = Ast.LiteralExpr (Ast.LiteralNamespace (Ast.Intrinsic))
+fun intrinsicName id = Ast.QualifiedIdentifier { qual = intrinsicNsExpr, ident = id }
+
+(* Define some global intrinsic nominal types. *)
+
+val typeType = Ast.NominalType { ident = (intrinsicName "Type"), nullable = NONE }
+val namespaceType = Ast.NominalType { ident = (intrinsicName "Namespace"), nullable = NONE }
+val classType = Ast.NominalType { ident = intrinsicName "Class", nullable = NONE }
 
 fun newObj (t:VAL_TAG) (p:VAL) (m:MAGIC option) : OBJ = 
     Obj { tag = t,
@@ -227,6 +247,18 @@ fun newBoolean (b:bool) : VAL =
 
 fun newNamespace (n:NS) : VAL = 
     newObject intrinsicNamespaceBaseTag Null (SOME (Namespace n))
+
+fun newClass (e:SCOPE) (c:Ast.CLASS_DEFN) : VAL =
+    let
+	val cls = Cls { ty = classType,
+			definition = c }
+	val closure = { cls = cls,
+			allTypesBound = ((length (#params c)) = 0),
+			env = e }
+    in
+	newObject intrinsicClassBaseTag Null (SOME (Class closure))
+    end
+
 
 fun newFunc (e:SCOPE) (f:Ast.FUNC) : VAL = 
     let 
@@ -396,15 +428,6 @@ fun hostPrintFunction (vals:VAL list) : VAL =
 	(List.app printOne vals; Undef)
     end
 
-
-(* To reference something in the intrinsic namespace, you need a complicated expression. *)
-val intrinsicNsExpr = Ast.LiteralExpr (Ast.LiteralNamespace (Ast.Intrinsic))
-fun intrinsicName id = Ast.QualifiedIdentifier { qual = intrinsicNsExpr, ident = id }
-
-(* Define some global intrinsic nominal types. *)
-
-val typeType = Ast.NominalType { ident = (intrinsicName "Type"), nullable = NONE }
-val namespaceType = Ast.NominalType { ident = (intrinsicName "Namespace"), nullable = NONE }
 
 fun populateIntrinsics globalObj = 
     case globalObj of 

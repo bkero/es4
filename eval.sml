@@ -116,7 +116,7 @@ fun initScope (scope:Mach.SCOPE) (f:Ast.FIXTURES) (il:INIT_LIST) : unit =
 			case getScopeObj scope of 
 			    Mach.Obj {props,...} => 
 			    if Mach.hasProp props n
-			    then LogErr.defnError ["initializing scope with duplicate property name"]
+			    then LogErr.defnError ["initializing scope with duplicate property name: ", LogErr.name n]
 			    else (LogErr.trace ["initializing property ", LogErr.name n]; 
 				  Mach.addProp props n p)
 		in 
@@ -149,6 +149,18 @@ fun initScope (scope:Mach.SCOPE) (f:Ast.FIXTURES) (il:INIT_LIST) : unit =
 						 readOnly = readOnly,
 						 isFixed = true } }
 			end
+		      | Ast.ClassFixture cd => 
+			(case findInit n of
+			     SOME _ => LogErr.defnError ["initializing class fixture"]
+			   | NONE => 					
+			     initProp { kind = Mach.ValProp,
+					ty = Mach.classType,
+					value = Mach.newClass scope cd,
+					attrs = { dontDelete = true,
+						  dontEnum = true,
+						  readOnly = true,
+						  isFixed = true } })
+
 		      | Ast.NamespaceFixture ns => 
 			(case findInit n of
 			     SOME _ => LogErr.defnError ["initializing namespace fixture"]
@@ -596,6 +608,8 @@ and evalDefn (scope:Mach.SCOPE) (d:Ast.DEFN) : INIT_LIST =
     case d of 
 	Ast.FunctionDefn f => evalFuncDefn scope f
       | Ast.VariableDefn bs => evalVarBindings scope bs 
+      | Ast.NamespaceDefn ns => [] (* handled as a fixture *)
+      | Ast.ClassDefn cd => []  (* handled as a fixture *)
       | _ => LogErr.unimplError ["unimplemented definition type"]
 	     
 and evalDefns (scope:Mach.SCOPE) (ds:Ast.DEFN list) : INIT_LIST = 

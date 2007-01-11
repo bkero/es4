@@ -763,7 +763,13 @@ and defNamespace (parentFixtures:Ast.FIXTURES list) (nd:Ast.NAMESPACE_DEFN) :
 	{ attrs=(Ast.Attributes {ns, ...}), ident, init } => 
 	let
 	    val qualNs = resolveExprToNamespace parentFixtures ns
-	    val newNs = Ast.UserDefined ident
+	    val newNs = case init of 
+			NONE => Ast.UserDefined ident (* FIXME: a nonce perhaps? *)
+		      | SOME (Ast.LiteralExpr (Ast.LiteralString s)) => 
+			Ast.UserDefined s
+		      | SOME (Ast.LexicalRef {ident}) => 
+			resolveExprToNamespace parentFixtures (Ast.LexicalRef {ident=ident})
+		      | _ => LogErr.evalError ["illegal form of namespace initializer"]
 	    val fixtureName = { ns = qualNs, id = ident } 
 	in
 	    ([(fixtureName, Ast.NamespaceFixture newNs)], nd)
