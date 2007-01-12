@@ -416,8 +416,8 @@ structure PrettyCvt = struct
           SOME (cvtIDENT_EXPR x886))
    and cvtFIXTURE (NamespaceFixture x889) = PrettyRep.Ctor ("NamespaceFixture", 
           SOME (cvtNAMESPACE x889))
+     | cvtFIXTURE (ClassFixture x892) = PrettyRep.Ctor ("ClassFixture", SOME (cvtCLASS_DEFN x892))
      | cvtFIXTURE (TypeVarFixture) = PrettyRep.Ctor ("TypeVarFixture", NONE)
-     | cvtFIXTURE (ClassFixture x893) = PrettyRep.Ctor ("ClassFixture", SOME (cvtCLASS_DEFN x893))
      | cvtFIXTURE (TypeFixture x896) = PrettyRep.Ctor ("TypeFixture", SOME (cvtTYPE_EXPR x896))
      | cvtFIXTURE (ValFixture{ty=x899, readOnly=b900, isOverride=b901}) = PrettyRep.Ctor ("ValFixture", 
           SOME (PrettyRep.Rec [("ty", cvtTYPE_EXPR x899), ("readOnly", PrettyRep.Bool b900), 

@@ -336,8 +336,8 @@ datatype PRAGMA =
 
      and FIXTURE = 
 	 NamespaceFixture of NAMESPACE
-       | TypeVarFixture
        | ClassFixture of CLASS_DEFN
+       | TypeVarFixture
        | TypeFixture of TYPE_EXPR
        | ValFixture of { ty: TYPE_EXPR,
 			 readOnly: bool,

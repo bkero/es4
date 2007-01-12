@@ -85,8 +85,10 @@ datatype VAL = Object of OBJ
 		    object: OBJ,
 		    parent: SCOPE option }
 			
-     and PROP_KIND = TypeProp 
-		   | ValProp
+     and PROP_STATE = TypeVarProp
+		    | TypeProp
+		    | UninitProp
+		    | ValProp of VAL
 		
 withtype FUN_CLOSURE = 
 	 { func: Ast.FUNC,
@@ -114,9 +116,8 @@ withtype FUN_CLOSURE =
 		   readOnly: bool,
 		   isFixed: bool}
 
-     and PROP = { kind: PROP_KIND,
-		  ty: TYPE,
-		  value: VAL,
+     and PROP = { ty: TYPE,
+		  state: PROP_STATE,		  
 		  attrs: ATTRS }
 
      and PROP_BINDINGS = ((NAME * PROP) list) ref
@@ -143,7 +144,7 @@ fun delProp (b:PROP_BINDINGS) (n:NAME) =
 	    else (k,v)::(strip bs)
     in
 	b := strip (!b)
-    end
+    end    
 
 fun getProp (b:PROP_BINDINGS) (n:NAME) : PROP = 
     let 
@@ -156,6 +157,7 @@ fun getProp (b:PROP_BINDINGS) (n:NAME) : PROP =
     in
 	search (!b)
     end
+
 
 fun getFixture (b:Ast.FIXTURE_BINDINGS) (n:NAME) : Ast.FIXTURE = 
     let 
@@ -230,11 +232,14 @@ fun newObj (t:VAL_TAG) (p:VAL) (m:MAGIC option) : OBJ =
 	  proto = ref p,
 	  magic = ref m }
 			  
+fun newSimpleObj (m:MAGIC option) : OBJ = 
+    newObj intrinsicObjectBaseTag Null m
+
 fun newObject (t:VAL_TAG) (p:VAL) (m:MAGIC option) : VAL = 
     Object (newObj t p m)
 
 fun newSimpleObject (m:MAGIC option) : VAL = 
-    Object (newObj intrinsicObjectBaseTag Null m)
+    Object (newSimpleObj m)
 
 fun newNumber (n:real) : VAL = 
     newObject intrinsicNumberBaseTag Null (SOME (Number n))
@@ -301,9 +306,100 @@ val (globalScope:SCOPE) =
 
 val nan = Real.posInf / Real.posInf
 
-fun addFixturesToObject (fixs:FIXTURES) (obj:OBJ) : unit = 
-    case fixs of
-	Ast.Fixtures { bindings, ... } => ()
+
+fun getValue (obj:OBJ) (name:NAME) : VAL = 
+    case obj of 
+	Obj {props, ...} => 
+	let 
+	    val prop = getProp props name
+	in
+	    case (#state prop) of 
+		TypeProp => LogErr.machError ["getValue on a type property"]
+	      | TypeVarProp => LogErr.machError ["getValue on a type variable property"]
+	      | UninitProp => LogErr.machError ["getValue on an uninitialized property"]
+	      | ValProp v => v
+	end
+
+(* A "defValue" call occurs when assigning a property definition's 
+ * initial value, as specified by the user. All other assignments
+ * to a property go through "setValue". *)
+
+fun defValue (base:OBJ) (name:NAME) (v:VAL) : unit =
+    case base of 
+	Obj { props, ... } => 
+	if not (hasProp props name)
+	then LogErr.machError ["defValue on missing property"]
+	else (* Here we have relaxed rules: you can write to an 
+	      * uninitialized property or a read-only property. *)
+	    let 
+		val existingProp = getProp props name
+				   
+		val _ = case (#state existingProp) of 
+			    
+			    TypeVarProp => 
+			    LogErr.machError ["defValue on type variable property:", 
+					      LogErr.name name]
+			    
+			  | TypeProp => 
+			    LogErr.machError ["defValue on type property: ", 
+					      LogErr.name name]
+			    
+			  | UninitProp => ()
+			  | ValProp _ => ()
+		val newProp = { state = ValProp v,
+				ty = (#ty existingProp), 
+				attrs = (#attrs existingProp) }
+	    in
+		(* FIXME: insert typecheck here *)
+		delProp props name;
+		addProp props name newProp
+	    end
+
+fun setValue (base:OBJ) (name:NAME) (v:VAL) : unit = 
+    case base of 
+	Obj {props, ...} => 
+	if hasProp props name
+	then 
+	    let 
+		val existingProp = getProp props name
+				   
+		val _ = case (#state existingProp) of 
+			    UninitProp => 
+			    LogErr.machError ["setValue on uninitialized property", 
+					      LogErr.name name]
+
+			  | TypeVarProp => 
+			    LogErr.machError ["setValue on type variable property:", 
+					      LogErr.name name]
+
+			  | TypeProp => 
+			    LogErr.machError ["setValue on type property: ", 
+					      LogErr.name name]
+
+			  | ValProp _ => ()
+
+		val existingAttrs = (#attrs existingProp)
+		val newProp = { state = ValProp v,
+				ty = (#ty existingProp), 
+				attrs = existingAttrs }
+	    in
+		if (#readOnly existingAttrs)
+		then LogErr.machError ["setValue on read-only property"]
+		else ((* FIXME: insert typecheck here *)
+		      delProp props name;
+		      addProp props name newProp)
+	    end
+	else
+	    let 
+		val prop = { state = ValProp v,
+			     ty = Ast.SpecialType Ast.Any,
+			     attrs = { dontDelete = false,
+				       dontEnum = false,
+				       readOnly = false,
+				       isFixed = false } }
+	    in
+		addProp props name prop
+	    end
 
 (*
  * To get from any object to its CLS, you work out the
@@ -324,16 +420,8 @@ fun getMagic (v:VAL) : (MAGIC option) =
 	Object (Obj ob) => !(#magic ob)
       | _ => NONE
 
-fun getGlobalVal (n:NAME) = 
-    case globalObject of 
-	Obj ob => 
-	let 
-	    val prop = getProp (#props ob) n
-	in 
-	    if (#kind prop) = ValProp
-	    then (#value prop)
-	    else Undef
-	end
+fun getGlobalVal (n:NAME) : VAL = 
+    getValue globalObject n
 
 fun valToCls (v:VAL) : (CLS option) = 
     case v of 
@@ -355,19 +443,20 @@ fun toString (v:VAL) : string =
 	   | SOME magic => 
 	     (case magic of 
 		  Number n => Real.toString n
+		| String s => s
 		| Bool true => "true"
 		| Bool false => "false"
-		| String s => s
 		| Namespace Ast.Private => "[private namespace]"
 		| Namespace Ast.Protected => "[protected namespace]"
 		| Namespace Ast.Intrinsic => "[intrinsic namespace]"
 		| Namespace (Ast.Public id) => "[public namespace: " ^ id ^ "]"
 		| Namespace (Ast.Internal _) => "[internal namespace]"
 		| Namespace (Ast.UserDefined id) => "[user-defined namespace " ^ id ^ "]"
-		| Function _ => "[function Function]"
-		| HostFunction _ => "[function HostFunction]"
 		| Class _ => "[class Class]"
-		| Interface _ => "[interface Interface]"))
+		| Interface _ => "[interface Interface]"
+		| Function _ => "[function Function]"
+		| Type _ => "[type Function]"
+		| HostFunction _ => "[function HostFunction]"))
 
 fun toNum (v:VAL) : real = 
     case v of 
@@ -441,13 +530,12 @@ fun populateIntrinsics globalObj =
 	    fun bindFunc (n, f) = 
 		let 
 		    val name = { id = n, ns = Ast.Intrinsic }
-		    val prop = { kind = ValProp, 
-				 ty = Ast.SpecialType Ast.Any,
-				 value = newHostFunctionObj f,
+		    val prop = { ty = Ast.SpecialType Ast.Any,
+				 state = ValProp (newHostFunctionObj f), 
 				 attrs = { dontDelete = true,
 					   dontEnum = false,
 					   readOnly = true,
-					   isFixed = false } }
+					   isFixed = true } }
 		in
 		    addProp props name prop
 		end

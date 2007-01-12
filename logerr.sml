@@ -42,6 +42,7 @@ fun multiname (mn:Ast.MULTINAME) =
 exception ParseError
 exception DefnError
 exception EvalError
+exception MachError
 exception HostError
 exception UnimplError
 
@@ -56,6 +57,10 @@ fun defnError ss =
 fun evalError ss = 
     (error ("evalError " :: ss); 
      raise EvalError)
+
+fun machError ss = 
+    (error ("machError " :: ss); 
+     raise MachError)
 
 fun hostError ss = 
     (error ("hostError " :: ss); 
