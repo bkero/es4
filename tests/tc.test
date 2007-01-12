@@ -19,20 +19,27 @@ false
 "string"
 
 %% [structurally typed array literal] verify, pass
-[0, true, "blue"] : [int, Boolean, String]
+[0] : [int]
 
-//%% [nominally typed array literal] verify, pass
-//[1, 2, "foo"] : Array
+%% [structurally typed array literal] verify, pass
+[0, true, "blue"] : [int, boolean, string]
 
-//%% [dynamically typed array literal] verify, pass
-//[1, 2, "bar"] : *
+%% [nominally typed array literal] verify, pass
+[1, 2, "foo"] : Array
 
-//%% [loosely typed array literal] verify, pass
-//[1, 2, "baz"] : Object
+%% [untyped array literal] verify, pass
+[1, 2, "bar"] 
+
+%% [dynamically typed array literal] verify, pass
+[1, 2, "bar"] : *
+
+%% [loosely typed array literal] verify, pass
+[1, 2, "baz"] : Object
 
 %% [untyped array literal] verify, pass
 [1, 2, "foo"]
 
+// parsing errors with the following
 //%% [structurally typed object literal] verify, pass
 //{} : {}
 
@@ -48,5 +55,9 @@ false
 //%% [structurally typed object literal] verify, pass
 //{ x: 0, y: true, z: "blue" } : { x: int, y: Boolean, z: String }
 
-%% verify, pass
+%% [let] verify, pass
 let (x=1) x
+
+%% [function defn] verify, pass
+function f(x) { return x; }
+

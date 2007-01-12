@@ -36,4 +36,6 @@ val ppDefinition = ppRep o cvtDEFN
 
 val ppVarDefn = ppRep o cvtVAR_BINDING
 
+val ppType = ppRep o cvtTYPE_EXPR
+
 end

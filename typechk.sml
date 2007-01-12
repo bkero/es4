@@ -29,7 +29,9 @@ val exceptionType = NominalType { ident=simpleIdent "exception", nullable=NONE }
 val namespaceType = NominalType { ident=simpleIdent "Namespace", nullable=NONE }
 val undefinedType = SpecialType Undefined
 val nullType      = SpecialType Null
-val anyType       = SpecialType Any
+val anyType       = NominalType { ident=simpleIdent "*", nullable=NONE }
+    (* CF: was SpecialType Any, but parser does not return that for "*" *)
+
 
 fun assert b s = if b then () else (raise Fail s)
 
@@ -55,40 +57,63 @@ fun withRetTy ({this=this, env=env, lbls=lbls, retTy=_},    retTy) = {this=this,
 fun checkConvertible (t1:TYPE_EXPR) (t2:TYPE_EXPR) : unit = 
     if isConvertible t1 t2
     then ()
-    else raise IllTypedException "Types are not convertible"
+    else let in
+	     TextIO.print ("Types are not convertible\n");
+	     Pretty.ppType t1;
+	     Pretty.ppType t2;
+	     raise IllTypedException "Types are not convertible"
+	 end
 
-and isConvertible (t1:TYPE_EXPR) (t2:TYPE_EXPR) : bool =
-    case (t1,t2) of
-	(UnionType types1,_) => 
-	List.all (fn t => isConvertible t t2) types1
-      | (_, UnionType types2) =>
-	(* t1 must exist in types2 *)
-	List.exists (fn t => isConvertible t1 t) types2 
-      | (ArrayType types1, ArrayType types2) => 
-	(* arrays are invariant, every entry should be convertible in both directorys *)
-	let fun check (h1::t1) (h2::t2) =
-		(isConvertible h1 h2)
-		andalso
-		(isConvertible h2 h1)
-		andalso
-		(case (t1,t2) of
-		     ([],[]) => true
-		   | ([],_::_) => check [h1] t2
-		   | (_::_,[]) => check t1 [h2]
-		   | (_::_,_::_) => check t1 t2)
-	in
-	    check types1 types2
-	end
-      | (AppType {base=base1,args=args1},AppType {base=base2,args=args2}) => 
-	(* We keep types normalized wrt beta-reduction, so base1 and base2 must be class or interface types.
-           Type arguments are covariant, and so must be intra-convertible - CHECK *)
-	false
+and isConvertible (t1:TYPE_EXPR) (t2:TYPE_EXPR) : bool = 
+    let 
+    in
+	TextIO.print ("Checking convertible\n");
+	Pretty.ppType t1;
+	Pretty.ppType t2; 
+	(t1=t2) orelse
+	(t1=anyType) orelse
+	(t2=anyType) orelse
+	case (t1,t2) of
+	    (UnionType types1,_) => 
+	    List.all (fn t => isConvertible t t2) types1
+	  | (_, UnionType types2) =>
+	    (* t1 must exist in types2 *)
+	    List.exists (fn t => isConvertible t1 t) types2 
+	  | (ArrayType types1, ArrayType types2) => 
+	    (* arrays are invariant, every entry should be convertible in both directorys *)
+	    let fun check (h1::t1) (h2::t2) =
+		    (isConvertible h1 h2)
+		    andalso
+		    (isConvertible h2 h1)
+		    andalso
+		    (case (t1,t2) of
+			 ([],[]) => true
+		       | ([],_::_) => check [h1] t2
+		       | (_::_,[]) => check t1 [h2]
+		       | (_::_,_::_) => check t1 t2)
+	    in
+		check types1 types2
+	    end
 
-      | (ObjectType fields1,ObjectType fields2) =>
-	false
-      
+	  | (ArrayType _, 
+	     NominalType {ident=Identifier {ident="Array", openNamespaces=[]}, nullable=NONE}) 
+	    => true
 
+	  | (ArrayType _, 
+	     NominalType {ident=Identifier {ident="Object", openNamespaces=[]}, nullable=NONE}) 
+	    => true
 
+	  | (AppType {base=base1,args=args1},AppType {base=base2,args=args2}) => 
+	    (* We keep types normalized wrt beta-reduction, so base1 and base2 must be class or interface types.
+									       Type arguments are covariant, and so must be intra-convertible - CHECK *)
+	    false
+	    
+	  | (ObjectType fields1,ObjectType fields2) =>
+	    false
+	    
+	  (* catch all *)
+	  | _ => false 
+    end
     
 (*
 
@@ -485,9 +510,31 @@ and tcStmt ((ctxt as {this,env,lbls,retTy}):CONTEXT) (stmt:STMT) =
 
    end
 
-and tcDefn (ctxt:CONTEXT) (d:DEFN) : (TYPE_ENV * int list) =
+and tcDefn ((ctxt as {this,env,lbls,retTy}):CONTEXT) (d:DEFN) : (TYPE_ENV * int list) =
     (case d of
-	 VariableDefn vd => (List.concat (List.map (fn d => tcVarBinding ctxt d) vd), []) 
+	 VariableDefn vd => 
+	 (List.concat (List.map (fn d => tcVarBinding ctxt d) vd), []) 
+       | FunctionDefn { attrs, kind, func } =>
+	 let val Func {name,fsig,body,fixtures} = func
+	     val FunctionSignature { typeParams, params, inits, 
+				     returnType, thisType, hasBoundThis, hasRest } 
+	       = fsig
+	     val { kind, ident } = name
+             (* Add the type parameters to the environment. *)
+             val extensions1 = List.map (fn id => (id,NONE)) typeParams;
+	     val ctxt1 = withEnv (ctxt,foldl extendEnv env extensions1);
+	     (* Add the function arguments to the environment. *)
+             val extensions2 = List.concat (List.map (fn d => tcBinding ctxt1 d) params); 
+	     val ctxt2 = withEnv (ctxt,foldl extendEnv env extensions2);
+	     (* Add the return type to the context. *)
+             val ctxt3 = withRetTy (ctxt2, SOME returnType)
+	 in
+	     checkForDuplicates (extensions1 @ extensions2);
+	     tcType ctxt1 returnType;
+	     tcBlock ctxt3 body;
+	     ([(ident, SOME (FunctionType fsig))],[])
+         end
+
        | d => (TextIO.print "tcDefn incomplete: "; Pretty.ppDefinition d; raise Match)
     )
 
@@ -509,7 +556,8 @@ and tcBlock (ctxt as {env,...}) (Block {pragmas=pragmas,defns=defns,stmts=stmts,
     end
 
 fun tcProgram { packages, body } = 
-	(tcBlock {this=anyType, env=[], lbls=[], retTy=NONE} body; true)
+    (tcBlock {this=anyType, env=[], lbls=[], retTy=NONE} body; true)
+(* CF: Let this propagate to top-level to see full trace
     handle IllTypedException msg => 
 	   let in
      	       TextIO.print "Ill typed exception: "; 
@@ -518,7 +566,7 @@ fun tcProgram { packages, body } =
      	       false
 	   end
 
-   
+*)   
 				    
 
 end
