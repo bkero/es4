@@ -846,7 +846,7 @@ and defBlockFull
 
 	    val newStmts = map (defStmt f3) stmts
 	    val mergedFixtures = List.foldl mergeFixtures pragmaFixtures 
-					    [nsFixtures, classFixtures, defnFixtures]
+					    [nsFixtures, defnFixtures]
 	in
 	    Ast.Block { pragmas = pragmas,
 			defns = (newNsDefns @ newClassDefns @ newOtherDefns),
