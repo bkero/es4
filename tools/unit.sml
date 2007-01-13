@@ -269,7 +269,10 @@ fun runTestCase (test : TEST_CASE) : TEST_RESULT =
                    | _ => (test, false))
        | { name, stage=Verify, arg=true, source } =>
              ((TypeChk.tcProgram (parse source); (test, true))
-              handle _ => (test, false))
+            (* CF: removed to help debug failing tests
+               handle _ => (test, false) 
+             *)
+)
        | { name, stage=Verify, arg=false, source } =>
              ((TypeChk.tcProgram (parse source); (test, false))
               handle TypeChk.IllTypedException _ => (test, true)
