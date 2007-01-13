@@ -376,7 +376,7 @@ withtype FIELD =
            init: EXPR option }
 
      and CLASS_DEFN =
-         { name: IDENT,
+         { name: IDENT, 
 	   nonnullable: bool,
            attrs: ATTRIBUTES,
            params: IDENT list,

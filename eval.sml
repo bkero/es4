@@ -17,6 +17,9 @@ fun getType (tyOpt:Ast.TYPE_EXPR option) : Ast.TYPE_EXPR =
 fun getAttrs (attrs:Ast.ATTRIBUTES) = 
     case attrs of Ast.Attributes a => a
 
+fun getAttrNs (attrs:Ast.ATTRIBUTES) = 
+    case attrs of Ast.Attributes {ns, ...} => ns
+
 fun getScopeObj (scope:Mach.SCOPE) : Mach.OBJ = 
     case scope of Mach.Scope { object, ...} => object
 
@@ -29,6 +32,8 @@ fun getScopeObj (scope:Mach.SCOPE) : Mach.OBJ =
 type REF = (Mach.OBJ * Mach.NAME)
 
 (* Fundamental object methods *)
+
+(* FIXME: possibly move this to mach.sml *) 
 
 fun initObj (scope:Mach.SCOPE) (obj:Mach.OBJ) (f:Ast.FIXTURES) : unit = 
     case (obj, f) of 
@@ -198,7 +203,14 @@ fun evalExpr (scope:Mach.SCOPE) (expr:Ast.EXPR) =
 	      | Ast.ObjectRef _ => withLhs func
 	      | _ => evalCallExpr NONE (needObj (evalExpr scope func)) args
 	end
-	    
+
+      | Ast.NewExpr { obj, actuals } => 
+	let
+	    val args = map (evalExpr scope) actuals
+	in
+	    evalNewExpr (needObj (evalExpr scope obj)) args
+	end
+	
 
       | _ => LogErr.unimplError ["unhandled expression type"]
 
@@ -223,6 +235,13 @@ and needObj (v:Mach.VAL) : Mach.OBJ =
 	Mach.Object ob => ob
       | _ => LogErr.evalError ["need object"]
 
+and evalNewExpr  (obj:Mach.OBJ) (args:Mach.VAL list) : Mach.VAL =
+    case obj of 
+	Mach.Obj { magic, ... } => 
+	case (!magic) of 
+	    SOME (Mach.Class c) => constructClassInstance c args
+	  | _ => LogErr.evalError ["operator 'new' applied to non-class object"]
+										 
 and evalCallExpr (thisObj:Mach.OBJ option) (fobj:Mach.OBJ) (args:Mach.VAL list) : Mach.VAL =
     case fobj of
 	Mach.Obj { magic, ... } => 
@@ -485,7 +504,7 @@ and evalVarBinding (scope:Mach.SCOPE)
 		    (case id of 
 			 Ast.Identifier {ident, ...} => 
 			 let 
-			     val Ast.Attributes {ns,...} = attrs
+			     val ns = getAttrNs attrs
 			     val n = { ns = needNamespace (evalExpr scope ns), 
 				       id = ident}
 			 in
@@ -510,7 +529,7 @@ and evalVarBindings (scope:Mach.SCOPE)
     List.app (evalVarBinding scope NONE) defns
           
 and resolveOnScopeChain (scope:Mach.SCOPE) (mname:Mach.MULTINAME) : REF option =
-    (LogErr.trace ["resolving name on scope chain: ", (#id mname)];     
+    (LogErr.trace ["resolving multiname on scope chain: ", LogErr.multiname mname];     
     case scope of 
 	Mach.Scope { parent, object, ... } => 
 	case resolveOnObjAndPrototypes object mname of
@@ -603,6 +622,19 @@ and getFixtures (f:Ast.FIXTURES option) : Ast.FIXTURES =
 	SOME f' => f'
       | NONE => LogErr.evalError ["missing expected fixtures"]
 
+and checkAllPropertiesInitialized (obj:Mach.OBJ) = 
+    let 
+	fun checkOne (n:Mach.NAME, p:Mach.PROP) = 
+	    case (#state p) of 
+		Mach.UninitProp => LogErr.evalError ["uninitialized property: ", 
+						     LogErr.name n]
+	      | _ => ()
+    in
+	case obj of 
+	    Mach.Obj { props, ... } => 
+	    List.app checkOne (!props)
+    end
+
 and invokeFuncClosure (this:Mach.OBJ) (closure:Mach.FUN_CLOSURE) (args:Mach.VAL list) : Mach.VAL =
     case closure of 
 	{ func=(Ast.Func f), allTypesBound, env } => 
@@ -615,13 +647,95 @@ and invokeFuncClosure (this:Mach.OBJ) (closure:Mach.FUN_CLOSURE) (args:Mach.VAL 
 		    val (varObj:Mach.OBJ) = Mach.newSimpleObj NONE
 		    val (varScope:Mach.SCOPE) = extendScope env Mach.VarActivation varObj
 		    fun bindArg (a, b) = evalVarBinding varScope (SOME a) b
+
+		    (* FIXME: infer a fixture for "this" so that it's properly typed, dontDelete, etc.
+		     * Also this will mean changing to defVar rather than setVar, for 'this'. *)
+		    val thisName = { id = "this", ns = Ast.Internal "" }
+		    val thisVal = Mach.Object this
+
+		    (* FIXME: self-name binding is surely more complex than this! *)
+		    val selfName = { id=(#ident (#name f)), ns = Ast.Internal "" }
+		    val selfTag = Mach.FunctionTag (#fsig f)
+		    val selfVal = Mach.newObject selfTag Mach.Null (SOME (Mach.Function closure))
 		in
 		    initScope varScope (getFixtures (#fixtures f));
 		    (* FIXME: handle arg-list length mismatch correctly. *)
 		    List.app bindArg (ListPair.zip (args, params));
-		    (* FIXME: infer a fixture for "this" so that it's properly typed, dontDelete, etc. *)
-		    Mach.setValue varObj {id="this", ns=Ast.Internal ""} (Mach.Object this);
+		    Mach.setValue varObj thisName thisVal;
+		    Mach.defValue varObj selfName selfVal;
+		    checkAllPropertiesInitialized varObj;
 		    evalBlock varScope (#body f)
+		end
+
+and constructClassInstance (closure:Mach.CLS_CLOSURE) (args:Mach.VAL list) : Mach.VAL = 
+    case closure of 
+	{ cls, allTypesBound, env } => 
+	if not allTypesBound
+	then LogErr.evalError ["constructing instance of class with unbound type variables"]
+	else 
+	    case cls of 
+		Mach.Cls { definition, ... } =>
+		let
+		    val ns = getAttrNs (#attrs definition)
+		    val n = { ns = needNamespace (evalExpr env ns), 
+			      id = (#name definition) }
+		    val _ = LogErr.trace ["constructing instance of ", LogErr.name n]
+		    val classTag = Mach.ClassTag n
+		    (* FIXME: copy prototype from CLS_CLOSURE here *)
+		    val (obj:Mach.OBJ) = Mach.newObj classTag Mach.Null NONE
+		    val (objScope:Mach.SCOPE) = extendScope env Mach.VarInstance obj
+		    val (instance:Mach.VAL) = Mach.Object obj
+		    val ctor = (#constructor definition)
+
+		    (* FIXME: infer a fixture for "this" so that it's properly typed, dontDelete, etc.
+		     * Also this will mean changing to defVar rather than setVar, for 'this'. *)
+		    val thisName = { id = "this", ns = Ast.Internal "" }
+
+		    (* FIXME: self-name binding is surely more complex than this! *)
+		    val selfTag = Mach.ClassTag n
+		    val selfVal = Mach.newObject selfTag Mach.Null (SOME (Mach.Class closure))
+		in
+		    initObj env obj (getFixtures (#instanceFixtures definition));
+		    case ctor of 
+			NONE => (checkAllPropertiesInitialized obj; instance)
+		      | SOME (Ast.Func { fsig=Ast.FunctionSignature { params, inits, ... }, 
+					 body, fixtures, ... }) => 
+			let 
+			    val (varObj:Mach.OBJ) = Mach.newSimpleObj NONE
+			    val (varScope:Mach.SCOPE) = extendScope env Mach.VarActivation varObj
+			    fun bindArg (a, b) = evalVarBinding varScope (SOME a) b
+			in
+			    initScope varScope (getFixtures fixtures);
+			    (* FIXME: handle arg-list length mismatch correctly. *)
+			    LogErr.trace ["binding constructor args of ", LogErr.name n];
+			    List.app bindArg (ListPair.zip (args, params));
+			    Mach.setValue varObj thisName instance;
+			    Mach.defValue varObj n selfVal;
+			    (* FIXME: is this correct? we currently bind the self name on obj as well.. *)
+			    Mach.defValue obj n selfVal;
+			    (* Run any initializers if they exist. *)
+			    LogErr.trace ["running initializers of ", LogErr.name n];
+			    (case inits of 
+				 NONE => ()
+			       | SOME { defns, inits } => 
+				 let
+				     val (initVals:Mach.VAL list) = List.map (evalExpr varScope) inits
+				     fun bindInit (a, b) = evalVarBinding objScope (SOME a) b
+				 in
+				     List.app bindInit (ListPair.zip (initVals, defns))
+				 end);
+			    LogErr.trace ["checking initializers completed properly for ", LogErr.name n];
+			    checkAllPropertiesInitialized obj; 
+			    let 
+				(* Now the strange part: we re-parent the arguments var object
+				 * to the instance object, before running the constructor body. *)
+				val _ = LogErr.trace ["running constructor of ", LogErr.name n]
+				val (newVarScope:Mach.SCOPE) = extendScope objScope Mach.VarActivation varObj
+				val _ = evalBlock newVarScope body 
+			    in 
+				instance
+			    end
+			end
 		end
 		
 (* 

@@ -386,8 +386,10 @@ and defFuncSig (parentFixtures:Ast.FIXTURES list)
 			    | SOME i => 
 			      let 
 				  val (bindings, newDefns) = defVars typeEnv (#defns i)
+				  val newInits = defExprs parentFixtures (#inits i)
 			      in
-				  (bindings, SOME { defns = newDefns, inits = (#inits i) })
+				  (bindings, SOME { defns = newDefns, 
+						    inits = newInits })
 			      end
 	    val selfBindings = 
 		case name of 
@@ -460,7 +462,14 @@ and defIdentExpr (parentFixtures:Ast.FIXTURES list) (ie:Ast.IDENT_EXPR) : Ast.ID
 	  | Ast.TypeIdentifier {ident, typeParams} => 
 	    Ast.TypeIdentifier {ident=(defIdentExpr parentFixtures ident), typeParams=typeParams}
 
-	  | _ => ie
+	  | Ast.QualifiedIdentifier {qual, ident} => 
+	    Ast.QualifiedIdentifier {qual = defExpr parentFixtures qual, ident = ident}
+
+	  | Ast.QualifiedExpression {qual, expr} => 
+	    Ast.QualifiedExpression {qual = defExpr parentFixtures qual, 
+				     expr = defExpr parentFixtures expr}
+	  | Ast.ExpressionIdentifier e => 
+	    Ast.ExpressionIdentifier (defExpr parentFixtures e)
     end
 
 and defExpr (parentFixtures:Ast.FIXTURES list) (expr:Ast.EXPR) : Ast.EXPR = 

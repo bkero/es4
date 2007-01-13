@@ -15,10 +15,13 @@ class bar {
 namespace magic;
 
 class foo extends bar {	
+	function foo(x) : p = x { magic::q = p; }
 	magic var q;
 }
 
 var x = 10;
+
+var y = new foo(10);
 
 while (x != 20) {
 	printWithLine(x)

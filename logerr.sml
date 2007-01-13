@@ -1,6 +1,6 @@
 structure LogErr = struct
 
-val log_level = ref 0
+val log_level = ref 3
 
 fun log n ss = 
     if n <= (!log_level)
@@ -34,11 +34,13 @@ fun name (n:Ast.NAME) =
       | Ast.UserDefined i => "[(user ns) " ^ i ^ "::" ^ (#id n) ^ "]"
 
 fun multiname (mn:Ast.MULTINAME) = 
-    String.concat 
-	(["{multiname: "] @
-	 (List.map (fn ns => name {ns = ns, id = (#id mn)}) (#nss mn)) @
-	 ["}"])
-
+    case (#nss mn) of 
+	[] => (String.concat ["{multiname: NO NAMESPACE :: ", (#id mn), "}"])
+      | _ => String.concat 
+		 (["{multiname: "] @
+		  (List.map (fn ns => name {ns = ns, id = (#id mn)}) (#nss mn)) @
+		  ["}"])
+	     
 exception ParseError
 exception DefnError
 exception EvalError

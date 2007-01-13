@@ -17,6 +17,7 @@ datatype SCOPE_TAG =
 	 VarGlobal       (* Variable object created before execution starts *)
        | VarClass        (* Variable object for class objects               *)
        | VarInstance     (* Variable object for class instances             *)
+       | VarInitializer  (* Variable object created on entry an initializer *)
        | VarActivation   (* Variable object created on entry to a function  *)
        | With            (* Created by 'with' bindings                      *)
        | Let             (* Created by 'catch', 'let', etc.                 *)
