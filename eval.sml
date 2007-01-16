@@ -235,12 +235,30 @@ and needObj (v:Mach.VAL) : Mach.OBJ =
 	Mach.Object ob => ob
       | _ => LogErr.evalError ["need object"]
 
+and constructObjectViaFunction (ctorObj:Mach.OBJ) (ctor:Mach.FUN_CLOSURE) (args:Mach.VAL list) : Mach.VAL = 
+    case ctorObj of 
+	Mach.Obj { props, ... } => 
+	let
+	    (* FIXME: the default prototype should be the initial Object prototype, 
+	     * as per ES3 13.2.2. *)
+	    val (proto:Mach.VAL) = if Mach.hasProp props Mach.internalPrototypeName
+				   then Mach.getValue ctorObj Mach.internalPrototypeName
+				   else Mach.Null
+	    val (newObj:Mach.OBJ) = Mach.newObj Mach.intrinsicObjectBaseTag proto NONE
+	in
+	    Mach.defValue newObj Mach.internalConstructorName (Mach.Object ctorObj);
+	    case invokeFuncClosure newObj ctor args of 
+		Mach.Object ob => Mach.Object ob
+	      | _ => Mach.Object newObj
+	end
+
 and evalNewExpr  (obj:Mach.OBJ) (args:Mach.VAL list) : Mach.VAL =
     case obj of 
 	Mach.Obj { magic, ... } => 
 	case (!magic) of 
 	    SOME (Mach.Class c) => constructClassInstance c args
-	  | _ => LogErr.evalError ["operator 'new' applied to non-class object"]
+	  | SOME (Mach.Function f) => constructObjectViaFunction obj f args
+	  | _ => LogErr.evalError ["operator 'new' applied to unknown object"]
 										 
 and evalCallExpr (thisObj:Mach.OBJ option) (fobj:Mach.OBJ) (args:Mach.VAL list) : Mach.VAL =
     case fobj of

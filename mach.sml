@@ -197,6 +197,10 @@ fun hasFixture (b:Ast.FIXTURE_BINDINGS) (n:NAME) : bool =
 
 (* Standard runtime objects and functions. *)
 
+val internalPrototypeName:NAME = { ns = (Ast.Internal ""), id = "prototype" }
+val internalConstructorName:NAME = { ns = (Ast.Internal ""), id = "constructor" }
+val internalObjectName:NAME = { ns = (Ast.Internal ""), id = "Object" }
+					    
 val intrinsicObjectName:NAME = { ns = Ast.Intrinsic, id = "Object" }
 val intrinsicArrayName:NAME = { ns = Ast.Intrinsic, id = "Array" }
 val intrinsicFunctionName:NAME = { ns = Ast.Intrinsic, id = "Function" }
@@ -304,6 +308,7 @@ val (globalScope:SCOPE) =
     Scope { tag = VarGlobal,
 	    object = globalObject,
 	    parent = NONE }
+
 
 val nan = Real.posInf / Real.posInf
 
