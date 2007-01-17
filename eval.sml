@@ -665,7 +665,28 @@ and evalClassDefn (scope:Mach.SCOPE) (cd:Ast.CLASS_DEFN) : unit =
 		end
 			     
 	val newPrototype = Mach.newObj Mach.intrinsicObjectBaseTag baseProtoVal NONE
+	fun addProtoMethod (f:Ast.FUNC_DEFN) = 
+	    let 
+ 		val ns = getAttrNs (#attrs f)
+		val n = case f of 
+			    {func = Ast.Func { name = { ident, ... }, ... }, ... } => 
+			    { ns = needNamespace (evalExpr scope ns), 
+			      id = ident }
+
+		(* FIXME: 'scope' is not the correct environment for the method; we actually want to use
+		 * the scope containing the class statics, which should really be stored in 
+		 * the class closure, but currently isn't. *)
+		val fval = Mach.newFunc scope (#func f)
+	    in
+		Mach.defValue newPrototype n fval
+	    end
+	(* FIXME: something to do with proto fixtures? Or do we have yet another structural 
+	 * induction on the form of a VAR_BINDING? *)
+	fun addProtoVar (vb:Ast.VAR_BINDING) = ()
+	    
     in
+	List.app addProtoMethod (#protoMethods cd);
+	List.app addProtoVar (#protoVars cd);
 	(* FIXME: install the protoMethods and protoVars into the prototype. *)
 	Mach.setValue currClassObj Mach.internalPrototypeName baseProtoVal
     end
@@ -763,8 +784,8 @@ and constructClassInstance (closure:Mach.CLS_CLOSURE) (args:Mach.VAL list) : Mac
 		    initObj env obj (getFixtures (#instanceFixtures definition));
 		    case ctor of 
 			NONE => (checkAllPropertiesInitialized obj; instance)
-		      | SOME (Ast.Func { fsig=Ast.FunctionSignature { params, inits, ... }, 
-					 body, fixtures, ... }) => 
+		      | SOME ({func = Ast.Func { fsig=Ast.FunctionSignature { params, inits, ... }, 
+						 body, fixtures, ... }, ... }) => 
 			let 
 			    val (varObj:Mach.OBJ) = Mach.newSimpleObj NONE
 			    val (varScope:Mach.SCOPE) = extendScope env Mach.VarActivation varObj

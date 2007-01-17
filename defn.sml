@@ -133,12 +133,12 @@ fun newFixtures (parentFixtures:Ast.FIXTURES list)
 
 type classBlockAnalysis = 
      { protoVars: Ast.VAR_BINDING list,
-       protoMethods: Ast.FUNC list,
+       protoMethods: Ast.FUNC_DEFN list,
        instanceVars: Ast.VAR_BINDING list,
-       instanceMethods: Ast.FUNC list,
+       instanceMethods: Ast.FUNC_DEFN list,
        vars: Ast.VAR_BINDING list,
-       methods: Ast.FUNC list,
-       constructor: Ast.FUNC option,
+       methods: Ast.FUNC_DEFN list,
+       constructor: Ast.FUNC_DEFN option,
        initializer: Ast.STMT list,
        ifixtures: Ast.FIXTURES, 
        fixtures: Ast.FIXTURES }
@@ -174,9 +174,9 @@ fun analyzeClassBlock
 		    end
 		  | _ => false
 
-	    fun getFunc (d:Ast.DEFN) : (Ast.FUNC option) = 
+	    fun getFunc (d:Ast.DEFN) : (Ast.FUNC_DEFN option) = 
 		case d of 
-		    Ast.FunctionDefn { func, ... } => SOME func
+		    Ast.FunctionDefn fd => SOME fd
 		  | _ => NONE
 
 	    fun getVarBindings (d:Ast.DEFN) : Ast.VAR_BINDING list = 
@@ -206,7 +206,7 @@ fun analyzeClassBlock
 
 	    val (ctorDefns, nonCtorInstanceDefns) = List.partition isCtor newInstanceDefns
 	    val ctorDefn = case ctorDefns of 
-			       [Ast.FunctionDefn { func, ... }] => SOME func
+			       [Ast.FunctionDefn fd] => SOME fd
 			     | [] => NONE
 			     | _ => LogErr.defnError ["illegal constructor definition(s)"]
 

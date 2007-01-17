@@ -387,12 +387,12 @@ withtype FIELD =
 	   body: BLOCK,
            (* the following field will be populated during the definition phase *)
            protoVars: VAR_BINDING list,
-	   protoMethods: FUNC list,
+	   protoMethods: FUNC_DEFN list,
            instanceVars: VAR_BINDING list,
-	   instanceMethods: FUNC list,
+	   instanceMethods: FUNC_DEFN list,
            vars: VAR_BINDING list,
-           methods: FUNC list,
-           constructor: FUNC option,
+           methods: FUNC_DEFN list,
+           constructor: FUNC_DEFN option,
            initializer: STMT list }
 
      and INTERFACE_DEFN =

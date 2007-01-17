@@ -475,20 +475,20 @@ structure PrettyCvt = struct
        )), ("body", cvtBLOCK x1017), ("protoVars", PrettyRep.List (List.map (fn x1018 => 
                                                                                    cvtVAR_BINDING x1018
                                                                             ) ls1019)), 
-          ("protoMethods", PrettyRep.List (List.map (fn x1023 => cvtFUNC x1023
+          ("protoMethods", PrettyRep.List (List.map (fn x1023 => cvtFUNC_DEFN x1023
                                                     ) ls1024)), ("instanceVars", 
           PrettyRep.List (List.map (fn x1028 => cvtVAR_BINDING x1028
                                    ) ls1029)), ("instanceMethods", PrettyRep.List (List.map (fn x1033 => 
-                                                                                                   cvtFUNC x1033
+                                                                                                   cvtFUNC_DEFN x1033
                                                                                             ) ls1034)), 
           ("vars", PrettyRep.List (List.map (fn x1038 => cvtVAR_BINDING x1038
                                             ) ls1039)), ("methods", PrettyRep.List (List.map (fn x1043 => 
-                                                                                                    cvtFUNC x1043
+                                                                                                    cvtFUNC_DEFN x1043
                                                                                              ) ls1044)), 
           ("constructor", 
        (case opt1049 of
          NONE => PrettyRep.Ctor ("NONE", NONE)
-       | SOME x1048 => PrettyRep.Ctor ("SOME", SOME (cvtFUNC x1048))
+       | SOME x1048 => PrettyRep.Ctor ("SOME", SOME (cvtFUNC_DEFN x1048))
        )), ("initializer", PrettyRep.List (List.map (fn x1053 => cvtSTMT x1053
                                                     ) ls1054))]
    and cvtINTERFACE_DEFN {name=x1093, nonnullable=b1094, attrs=x1095, params=ls1097, 
