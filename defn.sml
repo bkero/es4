@@ -6,12 +6,12 @@ structure Defn = struct
  * objects into the global object.
  *)
 
-type DEFN_CLASSIFICATION = 
+type DEFN_TYPE_CLASSIFICATION = 
      ((Ast.NAMESPACE_DEFN list) * (Ast.CLASS_DEFN list) * (Ast.DEFN list))
 
-fun classifyDefn 
-	(curr:(Ast.DEFN * DEFN_CLASSIFICATION))
-    : DEFN_CLASSIFICATION = 
+fun classifyDefnByType 
+	(curr:(Ast.DEFN * DEFN_TYPE_CLASSIFICATION))
+    : DEFN_TYPE_CLASSIFICATION = 
     case curr of 
 	(next, (n, c, d)) => 
 	case next of 
@@ -19,6 +19,65 @@ fun classifyDefn
 	  | Ast.ClassDefn x => (n, (x::c), d)
 	  | x => (n, c, (x::d))
 
+type 'a STORAGE_CLASSIFICATION = 
+     { proto: 'a list,
+       static: 'a list,
+       instance: 'a list }
+
+fun classifyDefnByStorage 
+	(curr:(Ast.DEFN * (Ast.DEFN STORAGE_CLASSIFICATION)))
+    : Ast.DEFN STORAGE_CLASSIFICATION = 
+	let
+	    fun classifyByAttrs 
+		    (curr:('a * ('a STORAGE_CLASSIFICATION))) 
+		    (Ast.Attributes a) 
+		: 'a STORAGE_CLASSIFICATION = 
+		case curr of 
+		    (next, {proto, static, instance}) => 
+		    if (#prototype a) 
+		    then (if (#static a) 
+			  then LogErr.defnError ["prototype cannot be combined with static"]
+			  else { proto = next :: proto, 
+				 static = static, 
+				 instance = instance })
+		    else (if (#static a)
+			  then { proto = proto, 
+				 static = next :: static, 
+				 instance = instance }
+			  else { proto = proto, 
+				 static = static, 
+				 instance = next :: instance })
+	in
+	    case curr of 
+		(next, { proto, static, instance }) => 
+		case next of 
+		    Ast.NamespaceDefn x => classifyByAttrs curr (#attrs x)
+		  | Ast.ClassDefn x => classifyByAttrs curr (#attrs x)
+		  | Ast.FunctionDefn x => classifyByAttrs curr (#attrs x)
+		  | Ast.InterfaceDefn x => classifyByAttrs curr (#attrs x)
+		  | Ast.TypeDefn x => classifyByAttrs curr (#attrs x)
+		  | Ast.VariableDefn vbs => 
+		    let 
+			val initVb:(Ast.VAR_BINDING STORAGE_CLASSIFICATION) = 
+			    { proto = [],
+			      static = [],
+			      instance = [] }
+			fun classifyVb (vb,cls) = 
+			    case vb of 
+				(Ast.Binding { attrs, ...}) => 
+				classifyByAttrs (vb,cls) attrs
+			val classifiedVbs = List.foldl classifyVb initVb vbs
+			fun maybeExtend newVbs oldDefns = 
+			    case newVbs of 
+				[] => oldDefns
+			      | x => (Ast.VariableDefn newVbs) :: oldDefns
+		    in
+			{ proto = maybeExtend (#proto classifiedVbs) proto,
+			  static = maybeExtend (#static classifiedVbs) static,
+			  instance = maybeExtend (#instance classifiedVbs) instance }
+		    end
+	end
+		     
 fun inr f (a, b) = (a, f b)
 
 fun resolveFixture (fixs:Ast.FIXTURES list) (mname:Mach.MULTINAME) : Ast.FIXTURE =
@@ -97,39 +156,6 @@ fun analyzeClassBlock
 		  | Ast.TypeDefn _ => LogErr.defnError ["illegal type definition in class definition"]
 		  | x => x
 
-	    fun partitionVarBindings (vbs:Ast.VAR_BINDING list) 
-		: ((Ast.VAR_BINDING list) * (Ast.VAR_BINDING list)) = 
-		List.partition 
-		    (fn Ast.Binding { attrs = Ast.Attributes { static, ... }, ... } => static)
-		vbs
-
-	    fun partitionDefn (d:Ast.DEFN) : ((Ast.DEFN option) * (Ast.DEFN option)) = 
-		case (legalDefn d) of 
-		    Ast.VariableDefn vbs => 
-		    let 
-			fun proj x = case x of [] => NONE | y => SOME (Ast.VariableDefn y)
-			val (svbs, ivbs) = partitionVarBindings vbs
-		    in
-			(proj svbs, proj ivbs)
-		    end
-
-		  | Ast.NamespaceDefn nd => (SOME (Ast.NamespaceDefn nd), NONE)
-		  | Ast.FunctionDefn fd => 
-		    (case fd of 
-			 { attrs = Ast.Attributes { static, ... }, ... } => 
-			 if static 
-			 then (SOME (Ast.FunctionDefn fd), NONE)
-			 else (NONE, SOME (Ast.FunctionDefn fd)))
-
-		  | _ => LogErr.defnError ["unexpected definition"]
-
-	    fun partitionDefns (ds:Ast.DEFN list) : ((Ast.DEFN list) * (Ast.DEFN list)) = 
-		let 
-		    val (staticOpts, instanceOpts) = ListPair.unzip (map partitionDefn ds)
-		    val lower = (map valOf) o (List.filter isSome)
-		in
-		    (lower staticOpts, lower instanceOpts)
-		end
 
 	    fun isCtor (d:Ast.DEFN) : bool = 
 		case d of 
@@ -156,7 +182,14 @@ fun analyzeClassBlock
 		    Ast.VariableDefn vbs => vbs
 		  | _ => []
 
-	    val (staticDefns, instanceDefns) = partitionDefns defns
+	    val init:(Ast.DEFN STORAGE_CLASSIFICATION) = 
+		{ proto = [],
+		  static = [],
+		  instance = [] }		
+	    val classifiedDefns = List.foldl classifyDefnByStorage init defns
+	    val protoDefns = (#proto classifiedDefns)
+	    val staticDefns = (#static classifiedDefns)
+	    val instanceDefns = (#instance classifiedDefns)
 
 	    val b0 = List.concat (List.map (defPragma parentFixtures) pragmas)
 	    val f0 = newFixtures parentFixtures b0
@@ -832,7 +865,7 @@ and defBlockFull
 	    val pragmaFixtures = newFixtures parentFixtures pragmaBindings
 	    val f0 = pragmaFixtures :: parentFixtures
 
-	    val (nsDefns, classDefns, otherDefns) = List.foldl classifyDefn ([],[],[]) defns
+	    val (nsDefns, classDefns, otherDefns) = List.foldl classifyDefnByType ([],[],[]) defns
 	    val (nsBindings, newNsDefns) = defDefns f0 (map (Ast.NamespaceDefn) nsDefns)
 	    val nsFixtures = newFixtures f0 nsBindings
 	    val f1 = nsFixtures :: f0
