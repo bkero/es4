@@ -471,6 +471,14 @@ and functionExpression (ts,a:alpha,b:beta) =
 		TypeParameters  (  this  :  TypeIdentifier  ,  Parameters  )  ResultType
 *)
 
+and needType (nd:Ast.IDENT_EXPR,nullable:bool option) = 
+	case nd of
+		Ast.Identifier {ident,...} =>
+			if (ident="*")
+				then Ast.SpecialType Ast.Any 
+				else Ast.NominalType {ident=nd,nullable=nullable}
+	  | _ => Ast.NominalType {ident=nd,nullable=nullable}
+	
 and functionSignature (ts) : (token list * Ast.FUNC_SIG) =
     let val _ = trace([">> functionSignature with next=",tokenname(hd(ts))]) 
 		val (ts1,nd1) = typeParameters ts
@@ -490,7 +498,7 @@ and functionSignature (ts) : (token list * Ast.FUNC_SIG) =
 								(log(["<< functionSignature with next=",tokenname(hd ts4)]);
 		                        (ts4,Ast.FunctionSignature
 										{ typeParams=nd1,
-											thisType=SOME (Ast.NominalType {ident=nd2,nullable=NONE}),
+											thisType=SOME (needType (nd2,SOME false)),
                         		        	params=nd3,
 	                            		    returnType=nd4,
 											inits=NONE,
@@ -506,7 +514,7 @@ and functionSignature (ts) : (token list * Ast.FUNC_SIG) =
 						(log(["<< functionSignature with next=",tokenname(hd ts3)]);
                         (ts3,Ast.FunctionSignature
 								{ typeParams=nd1,
-									thisType=SOME (Ast.NominalType {ident=nd2,nullable=NONE}),
+									thisType=SOME (needType (nd2,SOME false)),
                    		        	params=[],
 	                       		    returnType=nd3,
 									inits=NONE,
@@ -1133,7 +1141,7 @@ and memberExpression (ts,a,b) =
 			  | _ => 
 					let
 					in
-						(ts1,nd1) (* short new, we're done *)
+						(ts1,Ast.NewExpr {obj=nd1,actuals=[]}) (* short new, we're done *)
 					end
             end
       | Super :: _ =>
@@ -1239,12 +1247,14 @@ and newExpression (ts,a,b) =
             let
                 val (ts1,nd1) = newExpression(tl ts,a,b)  (* eat only the first new *)
             in
+				trace(["<< newExpression new new with next=",tokenname(hd(ts1))]);
                 (ts1,Ast.NewExpr({obj=nd1,actuals=[]}))
             end
       | New :: _ =>
             let
                 val (ts1,nd1) = memberExpression(ts,a,b)  (* don't eat new, let memberExpr eat it *)
             in
+				trace(["<< newExpression with next=",tokenname(hd(ts1))]);
                 (ts1,nd1)
             end
       | _ => 
@@ -1372,7 +1382,7 @@ and propertyOperator (ts, nd) =
       | Dot :: _ => 
                     let
  					in case (isreserved(hd (tl ts)),tl ts) of
-					    ((true,(Intrinsic | Private) ::_) |
+					    ((true,(Intrinsic | Private | Public | Protected | Internal) ::_) |
 						 (false,_)) => 
 							let
 		                        val (ts1,nd1) = qualifiedIdentifier(tl ts)
@@ -1453,7 +1463,7 @@ and leftHandSideExpression (ts,a,b) =
             let
                 val (ts1,nd1) = newExpression(ts,a,b)
             in
-                (ts1,Ast.NewExpr({obj=nd1,actuals=[]}))
+                (ts1,nd1)
             end
       | _ =>
             let
@@ -2731,7 +2741,7 @@ and typeExpression (ts) : (token list * Ast.TYPE_EXPR) =
            	let
                	val (ts1,nd1) = typeIdentifier ts
 			in
-				(ts1,Ast.NominalType {ident=nd1,nullable=NONE})
+				(ts1,needType(nd1,NONE))
 			end
 	end
 
@@ -4150,7 +4160,7 @@ and directive (ts,t:tau,w:omega) : (token list * Ast.DIRECTIVES) =
 			in case native of
 				true => 
 					let
-						val (ts2,nd2) = functionDeclaration (ts1)
+						val (ts2,nd2) = functionDeclaration (ts1)    (* native function f(); *)
 						val (ts3,nd3) = (semicolon(ts2,w),nd2)
 					in
 						(ts3,nd3)
@@ -4963,7 +4973,7 @@ and constructorSignature (ts) =
 								(log(["<< functionSignature with next=",tokenname(hd ts4)]);
 		                        (ts4,Ast.FunctionSignature
 										{ typeParams=nd1,
-											thisType=SOME (Ast.NominalType {ident=nd2,nullable=NONE}),
+											thisType=SOME (needType(nd2,NONE)),
                         		        	params=nd3,
 	                            		    returnType=(Ast.SpecialType Ast.VoidType),
 											inits=SOME nd4,
