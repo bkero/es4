@@ -5080,6 +5080,8 @@ and classDefinition (ts,attrs) =
 				instanceFixtures = NONE,									
 					body=nd3,
 					(* the following field will be populated during the definition phase *)
+           			protoVars=[],
+					protoMethods=[],
            			instanceVars=[],
 					instanceMethods=[],
            			vars=[],

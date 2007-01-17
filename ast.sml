@@ -386,6 +386,8 @@ withtype FIELD =
 	   instanceFixtures: FIXTURES option,
 	   body: BLOCK,
            (* the following field will be populated during the definition phase *)
+           protoVars: VAR_BINDING list,
+	   protoMethods: FUNC list,
            instanceVars: VAR_BINDING list,
 	   instanceMethods: FUNC list,
            vars: VAR_BINDING list,

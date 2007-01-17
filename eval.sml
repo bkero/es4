@@ -123,6 +123,7 @@ fun initObj (scope:Mach.SCOPE) (obj:Mach.OBJ) (f:Ast.FIXTURES) : unit =
 					     dontEnum = false,
 					     readOnly = readOnly,
 					     isFixed = true } }
+
 		      | Ast.ClassFixture cd => 
 			initProp { ty = Mach.classType,
 				   state = Mach.ValProp (Mach.newClass scope cd),
@@ -624,12 +625,58 @@ and evalStmt (scope:Mach.SCOPE) (stmt:Ast.STMT) : Mach.VAL =
       | Ast.EmptyStmt => Mach.Undef
       | _ => LogErr.unimplError ["unimplemented statement type"]
 
+and evalClassDefn (scope:Mach.SCOPE) (cd:Ast.CLASS_DEFN) : unit =
+    (* The class objects were installed into the scope during initialization,
+     * all we do here is build a prototype for this class and link up
+     * the implicit prototype chains.
+     *)
+    let 
+	val ns = getAttrNs (#attrs cd)
+	val currClassMname = { nss = [needNamespace (evalExpr scope ns)],
+			       id = (#name cd) }
+	val currClassObj = 
+	    case resolveOnScopeChain scope currClassMname of 
+		NONE => LogErr.evalError ["unable to resolve class multiname: ", 
+					  LogErr.multiname currClassMname ]
+	      | SOME (obj, name) => 
+		case Mach.getValue obj name of 
+		    Mach.Object ob => ob
+		  | _ => LogErr.evalError ["class name resolved to non-object: ",
+					   LogErr.multiname currClassMname ]
+			 
+	val baseProtoVal = 
+	    case (#extends cd) of 
+		NONE => Mach.Null
+	      | SOME ie => 
+		let
+		    val baseClassMname = evalIdentExpr scope ie
+		in
+		    case resolveOnScopeChain scope baseClassMname of 
+			NONE => LogErr.evalError ["unable to resolve base class multiname: ", 
+						  LogErr.multiname baseClassMname]
+		      | SOME (obj, name) => 
+			case Mach.getValue obj name of 
+			    Mach.Object ob => 
+			    if Mach.hasOwnValue ob Mach.internalPrototypeName
+			    then Mach.getValue ob Mach.internalPrototypeName
+			    else Mach.Null
+			  | _ => LogErr.evalError ["base class resolved to non-object: ", 
+						   LogErr.multiname baseClassMname]
+		end
+			     
+	val newPrototype = Mach.newObj Mach.intrinsicObjectBaseTag baseProtoVal NONE
+    in
+	(* FIXME: install the protoMethods and protoVars into the prototype. *)
+	Mach.setValue currClassObj Mach.internalPrototypeName baseProtoVal
+    end
+	    
+
 and evalDefn (scope:Mach.SCOPE) (d:Ast.DEFN) : unit = 
     case d of 
 	Ast.FunctionDefn f => evalFuncDefn scope f
       | Ast.VariableDefn bs => evalVarBindings scope bs
       | Ast.NamespaceDefn ns => () (* handled during initialization *)
-      | Ast.ClassDefn cd => () (* handled during initialization *)
+      | Ast.ClassDefn cd => evalClassDefn scope cd
       | _ => LogErr.unimplError ["unimplemented definition type"]
 	     
 and evalDefns (scope:Mach.SCOPE) (ds:Ast.DEFN list) : unit = 

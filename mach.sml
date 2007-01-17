@@ -172,7 +172,6 @@ fun getFixture (b:Ast.FIXTURE_BINDINGS) (n:NAME) : Ast.FIXTURE =
 	search b
     end
 
-
 fun hasProp (b:PROP_BINDINGS) (n:NAME) : bool = 
     let 
 	fun search [] = false
@@ -312,6 +311,19 @@ val (globalScope:SCOPE) =
 
 val nan = Real.posInf / Real.posInf
 
+
+fun hasOwnValue (obj:OBJ) (n:NAME) : bool = 
+    case obj of 
+	Obj { props, ... } => hasProp props n
+
+fun hasValue (obj:OBJ) (n:NAME) : bool = 
+    if hasOwnValue obj n
+    then true
+    else (case obj of 
+	      Obj { proto, ... } => 
+	      case (!proto) of 
+		  Object p => hasValue p n
+		| _ => false)
 
 fun getValue (obj:OBJ) (name:NAME) : VAL = 
     case obj of 

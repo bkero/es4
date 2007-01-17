@@ -132,7 +132,9 @@ fun newFixtures (parentFixtures:Ast.FIXTURES list)
 
 
 type classBlockAnalysis = 
-     { instanceVars: Ast.VAR_BINDING list,
+     { protoVars: Ast.VAR_BINDING list,
+       protoMethods: Ast.FUNC list,
+       instanceVars: Ast.VAR_BINDING list,
        instanceMethods: Ast.FUNC list,
        vars: Ast.VAR_BINDING list,
        methods: Ast.FUNC list,
@@ -207,8 +209,13 @@ fun analyzeClassBlock
 			       [Ast.FunctionDefn { func, ... }] => SOME func
 			     | [] => NONE
 			     | _ => LogErr.defnError ["illegal constructor definition(s)"]
+
+	    val (_, newProtoDefns) = defDefns (f2 :: f1 :: f0 :: parentFixtures) protoDefns
+
 	in 
-	    { instanceVars = List.concat (List.map getVarBindings nonCtorInstanceDefns),
+	    { protoVars = List.concat (List.map getVarBindings newProtoDefns),
+	      protoMethods = List.mapPartial getFunc newProtoDefns,
+	      instanceVars = List.concat (List.map getVarBindings nonCtorInstanceDefns),
 	      instanceMethods = List.mapPartial getFunc nonCtorInstanceDefns,
 	      vars = List.concat (List.map getVarBindings newStaticDefns),
 	      methods = List.mapPartial getFunc newStaticDefns,
@@ -239,6 +246,7 @@ and mergeFixtureOpts
       | (NONE, NONE) => NONE
 
 and mergeClasses (base:Ast.CLASS_DEFN) (curr:Ast.CLASS_DEFN) : Ast.CLASS_DEFN = 
+    (* FIXME: check for name collisions and respect override / final modifiers. *)
     { name = (#name curr),
       nonnullable = (#nonnullable curr),
       attrs = (#attrs curr),
@@ -248,6 +256,8 @@ and mergeClasses (base:Ast.CLASS_DEFN) (curr:Ast.CLASS_DEFN) : Ast.CLASS_DEFN =
       classFixtures = (#classFixtures curr),
       instanceFixtures = mergeFixtureOpts (#instanceFixtures base) (#instanceFixtures curr),
       body = (#body curr),
+      protoVars = (#protoVars curr),
+      protoMethods = (#protoMethods curr),
       instanceVars = (#instanceVars curr) @ (#instanceVars base),
       instanceMethods = (#instanceMethods curr) @ (#instanceMethods base),
       vars = (#vars curr),
@@ -306,6 +316,8 @@ and resolveOneClass (parentFixtures:Ast.FIXTURES list)
 		      instanceFixtures = SOME (#ifixtures cba),
 		      body = (#body curr),
 		      
+		      protoVars = (#protoVars cba),
+		      protoMethods = (#protoMethods cba),
 		      instanceVars = (#instanceVars cba),
 		      instanceMethods = (#instanceMethods cba),
 		      vars = (#vars cba),
