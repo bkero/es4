@@ -29,9 +29,7 @@ val exceptionType = NominalType { ident=simpleIdent "exception", nullable=NONE }
 val namespaceType = NominalType { ident=simpleIdent "Namespace", nullable=NONE }
 val undefinedType = SpecialType Undefined
 val nullType      = SpecialType Null
-val anyType       = NominalType { ident=simpleIdent "*", nullable=NONE }
-    (* CF: was SpecialType Any, but parser does not return that for "*" *)
-
+val anyType       = SpecialType Any
 
 fun assert b s = if b then () else (raise Fail s)
 
@@ -54,6 +52,26 @@ fun withEnv   ({this=this, env=_,   lbls=lbls, retTy=retTy},  env) = {this=this,
 fun withLbls  ({this=this, env=env, lbls=_,    retTy=retTy}, lbls) = {this=this, env=env, lbls=lbls, retTy=retTy}
 fun withRetTy ({this=this, env=env, lbls=lbls, retTy=_},    retTy) = {this=this, env=env, lbls=lbls, retTy=retTy}
 
+
+fun checkForDuplicates' [] = ()
+  | checkForDuplicates' (x::xs) =
+    if List.exists (fn y => x = y) xs
+    then raise IllTypedException "concurrent definition"
+    else checkForDuplicates' xs
+      
+fun checkForDuplicates extensions =
+    let val (names, _) = ListPair.unzip extensions
+    in
+      checkForDuplicates' names
+end
+
+fun unOptionDefault NONE def = def
+  | unOptionDefault (SOME v) _ = v
+
+(************************* Substitution on Types *********************************)
+
+(************************* Convertibility *********************************)
+
 fun checkConvertible (t1:TYPE_EXPR) (t2:TYPE_EXPR) : unit = 
     if isConvertible t1 t2
     then ()
@@ -67,9 +85,11 @@ fun checkConvertible (t1:TYPE_EXPR) (t2:TYPE_EXPR) : unit =
 and isConvertible (t1:TYPE_EXPR) (t2:TYPE_EXPR) : bool = 
     let 
     in
-	TextIO.print ("Checking convertible\n");
+	TextIO.print ("Checking convertible\nFirst type: ");
 	Pretty.ppType t1;
+	TextIO.print("\nSecond type: ");
 	Pretty.ppType t2; 
+	TextIO.print("\n");
 	(t1=t2) orelse
 	(t1=anyType) orelse
 	(t2=anyType) orelse
@@ -104,20 +124,35 @@ and isConvertible (t1:TYPE_EXPR) (t2:TYPE_EXPR) : bool =
 	    => true
 
 	  | (AppType {base=base1,args=args1},AppType {base=base2,args=args2}) => 
-	    (* We keep types normalized wrt beta-reduction, so base1 and base2 must be class or interface types.
-									       Type arguments are covariant, and so must be intra-convertible - CHECK *)
+	    (* We keep types normalized wrt beta-reduction, 
+	     * so base1 and base2 must be class or interface types.
+	     * Type arguments are covariant, and so must be intra-convertible - CHECK 
+	     *)
 	    false
 	    
 	  | (ObjectType fields1,ObjectType fields2) =>
 	    false
+
+	  | (FunctionType 
+		 (FunctionSignature 
+		      {typeParams=typeParams1,params=params1, 
+		       inits=inits1,returnType=returnType1,
+		       thisType=thisType1,hasBoundThis=hasBoundThis1,hasRest=hasRest1}),
+	     FunctionType 
+		 (FunctionSignature 
+		      {typeParams=typeParams2,params=params2, 
+		       inits=inits2,returnType=returnType2,
+		       thisType=thisType2,hasBoundThis=hasBoundThis2,hasRest=hasRest2})) =>
+	    false
+	    (* TODO: Gets pretty complicated here! *)
 	    
 	  (* catch all *)
 	  | _ => false 
     end
     
+
+
 (*
-
-
     and TYPE_EXPR =
          SpecialType of SPECIAL_TY
        | UnionType of TYPE_EXPR list
@@ -130,23 +165,10 @@ and isConvertible (t1:TYPE_EXPR) (t2:TYPE_EXPR) : bool =
 	   | NullableType of {expr:TYPE_EXPR,nullable:bool}
 *)
 
-fun checkForDuplicates' [] = ()
-  | checkForDuplicates' (x::xs) =
-    if List.exists (fn y => x = y) xs
-    then raise IllTypedException "concurrent definition"
-    else checkForDuplicates' xs
-      
-fun checkForDuplicates extensions =
-    let val (names, _) = ListPair.unzip extensions
-    in
-      checkForDuplicates' names
-end
+(************************* Handling Types *********************************)
 
 fun mergeTypes t1 t2 =
 	t1
-
-fun unOptionDefault NONE def = def
-  | unOptionDefault (SOME v) _ = v
 
 fun normalizeType (t:TYPE_EXPR):TYPE_EXPR =
     case t of
@@ -159,9 +181,61 @@ fun normalizeType (t:TYPE_EXPR):TYPE_EXPR =
  *       exact name), raise CalledEval
  *)
 
+(******************** Checking types are well-formed **************************************************)
+
+fun tcTypeExpr ((ctxt as {env,this,...}):CONTEXT) (ty:TYPE_EXPR) : unit = 
+    let
+    in 
+	case ty of
+	    SpecialType _ => ()
+	  | UnionType tys => tcTypeExprs ctxt tys
+	  | ArrayType tys => tcTypeExprs ctxt tys
+	  | NullableType {expr=ty,nullable} => tcTypeExpr ctxt ty
+	  | AppType {base,args} =>
+	    let in
+		tcTypeExpr ctxt base;
+		tcTypeExprs ctxt args
+	    (*TODO: check # args is correct *)
+	    end
+	  | FunctionType fsig =>
+	    let in
+		tcFunctionSignature ctxt fsig;
+		()
+	    end
+    (*TODO:
+          | NominalType of { ident : IDENT_EXPR, nullable: bool option } 
+ 	  | ObjectType of FIELD_TYPE list
+     *)	    
+    end
+
+and tcTypeExprs  ((ctxt as {env,this,...}):CONTEXT) (tys:TYPE_EXPR list) : unit = 
+    (List.app (fn t => tcTypeExpr ctxt t) tys)
+
+and tcFunctionSignature  ((ctxt as {env,this,...}):CONTEXT)
+			 (FunctionSignature {typeParams, params, inits, returnType, 
+					     thisType, hasBoundThis, hasRest})
+    : CONTEXT =
+    let (* Add the type parameters to the environment. *)
+	val extensions1 = List.map (fn id => (id,NONE)) typeParams;
+	val ctxt1 = withEnv (ctxt,foldl extendEnv env extensions1);
+	(* Add the function arguments to the environment. *)
+	val extensions2 = List.concat (List.map (fn d => tcBinding ctxt1 d) params); 
+	val ctxt2 = withEnv (ctxt,foldl extendEnv env extensions2);
+	(* Add the return type to the context. *)
+	val ctxt3 = withRetTy (ctxt2, SOME returnType)
+    in
+	checkForDuplicates (extensions1 @ extensions2);
+	tcType ctxt1 returnType;
+	(case thisType of
+	     NONE => ()
+	   | SOME t => tcType ctxt t);
+	ctxt3
+	(* TODO: check inits, hasBoundThis, hasRest *)
+    end
+
 (******************** Expressions **************************************************)
 
-fun tcExpr ((ctxt as {env,this,...}):CONTEXT) (e:EXPR) :TYPE_EXPR = 
+and tcExpr ((ctxt as {env,this,...}):CONTEXT) (e:EXPR) :TYPE_EXPR = 
     let
     in 
       TextIO.print ("type checking expr: env len " ^ (Int.toString (List.length env)) ^"\n");
@@ -206,25 +280,14 @@ fun tcExpr ((ctxt as {env,this,...}):CONTEXT) (e:EXPR) :TYPE_EXPR =
        | LexicalRef {ident=Identifier { ident, openNamespaces }} =>
 	 lookupProgramVariable env ident
 
-       | FunExpr { ident, 
-		   fsig as (FunctionSignature {typeParams,params,returnType,thisType,inits,...}), 
-		   body, 
-		   fixtures } 
+       | FunExpr { ident, fsig, body, fixtures } 
 	 =>
-         let (* Add the type parameters to the environment. *)
-             val extensions1 = List.map (fn id => (id,NONE)) typeParams;
-	     val ctxt1 = withEnv (ctxt,foldl extendEnv env extensions1);
-	     (* Add the function arguments to the environment. *)
-             val extensions2 = List.concat (List.map (fn d => tcBinding ctxt1 d) params); 
-	     val ctxt2 = withEnv (ctxt,foldl extendEnv env extensions2);
-	     (* Add the return type to the context. *)
-             val ctxt3 = withRetTy (ctxt2, SOME returnType)
+	 let val ctxt3 = tcFunctionSignature ctxt fsig 
 	 in
-	     checkForDuplicates (extensions1 @ extensions2);
-	     tcType ctxt1 returnType;
 	     tcBlock ctxt3 body;
 	     FunctionType fsig
          end
+
        | CallExpr { func, actuals } =>
          let val functy = tcExpr ctxt func;
 	     val actualsTy = (map (fn a => tcExpr ctxt a) actuals)
@@ -285,6 +348,13 @@ fun tcExpr ((ctxt as {env,this,...}):CONTEXT) (e:EXPR) :TYPE_EXPR =
 	     then ()
 	     else raise IllTypedException "Wrong number of type arguments";
 	     normalizeType (AppType { base=exprTy, args=actuals })
+	 end
+
+       | TypeExpr ty => 
+	 let 
+	 in
+	     tcTypeExpr ctxt ty;
+	     ty
 	 end
 
        | _ => (TextIO.print "tcExpr incomplete: "; Pretty.ppExpr e; raise Match)
@@ -520,17 +590,8 @@ and tcDefn ((ctxt as {this,env,lbls,retTy}):CONTEXT) (d:DEFN) : (TYPE_ENV * int 
 				     returnType, thisType, hasBoundThis, hasRest } 
 	       = fsig
 	     val { kind, ident } = name
-             (* Add the type parameters to the environment. *)
-             val extensions1 = List.map (fn id => (id,NONE)) typeParams;
-	     val ctxt1 = withEnv (ctxt,foldl extendEnv env extensions1);
-	     (* Add the function arguments to the environment. *)
-             val extensions2 = List.concat (List.map (fn d => tcBinding ctxt1 d) params); 
-	     val ctxt2 = withEnv (ctxt,foldl extendEnv env extensions2);
-	     (* Add the return type to the context. *)
-             val ctxt3 = withRetTy (ctxt2, SOME returnType)
+             val ctxt3 = tcFunctionSignature ctxt fsig
 	 in
-	     checkForDuplicates (extensions1 @ extensions2);
-	     tcType ctxt1 returnType;
 	     tcBlock ctxt3 body;
 	     ([(ident, SOME (FunctionType fsig))],[])
          end

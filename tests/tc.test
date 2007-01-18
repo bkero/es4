@@ -36,12 +36,9 @@ false
 %% [loosely typed array literal] verify, pass
 [1, 2, "baz"] : Object
 
-%% [untyped array literal] verify, pass
-[1, 2, "foo"]
-
-// parsing errors with the following
+// cannot infer object types yet
 //%% [structurally typed object literal] verify, pass
-//{} : {}
+//({} : {})
 
 //%% [dynamically typed object literal] verify, pass
 //{} : *
@@ -55,9 +52,55 @@ false
 //%% [structurally typed object literal] verify, pass
 //{ x: 0, y: true, z: "blue" } : { x: int, y: Boolean, z: String }
 
-%% [let] verify, pass
+%% [let1] verify, pass
 let (x=1) x
+
+%% [let2] verify, pass
+let (x=1) let (y=x) y
+
+%% [let3] verify, pass
+let (z=2,y=3) y
+
+%% [comma] verify, pass
+1,2,"abc"
+
+%% [this] verify, pass
+this
+
+%% [fn1] verify, pass
+(function f(x:int):int { return 1 });
+
+%% [fn2] verify, pass
+(function f(x:int):int { return 1 }) (4);
+
+%% [fn3] verify, pass
+(function f(x:int,y):int { return 1 }) (4,5);
+
+%% [fn4] verify, pass
+let (f=function f() {}) f(3);
+
+%% [fn6] verify, pass
+(type function(int):int);
+
+%% [fn5] verify, pass
+let (f:function(x:int):int=function f(x:int):int {return x}) f(3);
+
+%% [fn52] verify, pass
+let (f:function(y:int):int=function f(x:int):int {return x}) f(3);
+
+
+%% [fn7] verify, pass
+(function f(...x):int { return 1 }) (4);
+
+%% [fn8] verify, pass
+(function f.<X>(x:X):X { return x});
+
+%% [fn9] verify, pass
+let (f=1) f(3)
 
 %% [function defn] verify, pass
 function f(x) { return x; }
+
+
+
 
