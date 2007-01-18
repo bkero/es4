@@ -1,3 +1,4 @@
+(* -*- mode: sml; mode: font-lock; tab-width: 4; insert-tabs-mode: nil; indent-tabs-mode: nil -*- *)
 (* A sketch of the ES4 AST in SML *)
 
 structure Ast = struct
@@ -142,9 +143,9 @@ datatype PRAGMA =
 
      and FUNC =
          Func of { name: FUNC_NAME,
-                   fsig: FUNC_SIG,		   
+                   fsig: FUNC_SIG,                   
                    body: BLOCK,
-		   fixtures: FIXTURES option }
+                   fixtures: FIXTURES option }
 
      and DEFN =
          ClassDefn of CLASS_DEFN
@@ -153,17 +154,17 @@ datatype PRAGMA =
        | InterfaceDefn of INTERFACE_DEFN
        | NamespaceDefn of NAMESPACE_DEFN 
        | TypeDefn of { attrs: ATTRIBUTES,
-		       ident: IDENT,
+                       ident: IDENT,
                        init: TYPE_EXPR }
 
      and FUNC_SIG =
          FunctionSignature of { typeParams: IDENT list,
                                 params: VAR_BINDING list,
-				inits: BINDINGS option, 
+                                inits: BINDINGS option, 
                                 returnType: TYPE_EXPR,
-				thisType: TYPE_EXPR option,
-				hasBoundThis: bool, (*goes away, redundant with previous option*)
-				hasRest: bool }
+                                thisType: TYPE_EXPR option,
+                                hasBoundThis: bool, (*goes away, redundant with previous option*)
+                                hasRest: bool }
 
 
      (* Improve this? Probably more mutual exclusion possible. *)
@@ -206,7 +207,7 @@ datatype PRAGMA =
        | FunctionType of FUNC_SIG
        | ObjectType of FIELD_TYPE list
        | AppType of { base: TYPE_EXPR,
-		      args: TYPE_EXPR list }
+                      args: TYPE_EXPR list }
        | NullableType of {expr:TYPE_EXPR,nullable:bool}
   
      and STMT =
@@ -268,9 +269,9 @@ datatype PRAGMA =
        | ApplyTypeExpr of {expr: EXPR,  (* apply expr to type list *)
                       actuals: TYPE_EXPR list}
 
-       | LetExpr of { defs: VAR_BINDING list,		      
+       | LetExpr of { defs: VAR_BINDING list,                      
                       body: EXPR list,
-		      fixtures: FIXTURES option}
+                      fixtures: FIXTURES option}
 
        | NewExpr of { obj: EXPR,
                       actuals: EXPR list }
@@ -278,7 +279,7 @@ datatype PRAGMA =
        | FunExpr of { ident: IDENT option,
                       fsig: FUNC_SIG,
                       body: BLOCK,
-		      fixtures: FIXTURES option }
+                      fixtures: FIXTURES option }
 
        | ObjectRef of { base: EXPR, ident: IDENT_EXPR }
 
@@ -321,10 +322,10 @@ datatype PRAGMA =
      and BLOCK = Block of DIRECTIVES
 
      and PATTERN = 
-		(* these IDENT_EXPRs are actually
-		   Identifier { id, _ }
-		   and should later be changed to IDENT
-		 *)
+                (* these IDENT_EXPRs are actually
+                   Identifier { id, _ }
+                   and should later be changed to IDENT
+                 *)
          ObjectPattern of { name: IDENT_EXPR, ptrn : PATTERN } list
        | ArrayPattern of PATTERN list
        | SimplePattern of EXPR
@@ -335,21 +336,21 @@ datatype PRAGMA =
  * nodes, so we must define them here. *)
 
      and FIXTURE = 
-	 NamespaceFixture of NAMESPACE
+         NamespaceFixture of NAMESPACE
        | ClassFixture of CLASS_DEFN
        | TypeVarFixture
        | TypeFixture of TYPE_EXPR
        | ValFixture of { ty: TYPE_EXPR,
-			 readOnly: bool,
-			 isOverride: bool }
-		       
+                         readOnly: bool,
+                         isOverride: bool }
+                       
      and FIXTURES = 
-	 Fixtures of { bindings: FIXTURE_BINDINGS,
-		       openNamespaces: NAMESPACE list, 
-		       numberType: NUMBER_TYPE,
-		       roundingMode: ROUNDING_MODE }
-		     
-		     
+         Fixtures of { bindings: FIXTURE_BINDINGS,
+                       openNamespaces: NAMESPACE list, 
+                       numberType: NUMBER_TYPE,
+                       roundingMode: ROUNDING_MODE }
+                     
+                     
 withtype FIELD =
          { kind: VAR_DEFN_TAG,
            name: IDENT_EXPR,
@@ -358,38 +359,38 @@ withtype FIELD =
      and FIELD_TYPE =
          { name: IDENT_EXPR,
            ty: TYPE_EXPR }
-	 
+         
      and TYPED_IDENT =
          { name: IDENT,
            ty: TYPE_EXPR option }
 
      and FUNC_DEFN = 
-	 { attrs : ATTRIBUTES,
+         { attrs : ATTRIBUTES,
            kind : VAR_DEFN_TAG,
            func : FUNC }
 
      and FIXTURE_BINDINGS = (NAME * FIXTURE) list
 
      and NAMESPACE_DEFN = 
-	 { attrs: ATTRIBUTES,
-	   ident: IDENT,
+         { attrs: ATTRIBUTES,
+           ident: IDENT,
            init: EXPR option }
 
      and CLASS_DEFN =
          { name: IDENT, 
-	   nonnullable: bool,
+           nonnullable: bool,
            attrs: ATTRIBUTES,
            params: IDENT list,
            extends: IDENT_EXPR option,
            implements: IDENT_EXPR list,
-	   classFixtures: FIXTURES option,
-	   instanceFixtures: FIXTURES option,
-	   body: BLOCK,
+           classFixtures: FIXTURES option,
+           instanceFixtures: FIXTURES option,
+           body: BLOCK,
            (* the following field will be populated during the definition phase *)
            protoVars: VAR_BINDING list,
-	   protoMethods: FUNC_DEFN list,
+           protoMethods: FUNC_DEFN list,
            instanceVars: VAR_BINDING list,
-	   instanceMethods: FUNC_DEFN list,
+           instanceMethods: FUNC_DEFN list,
            vars: VAR_BINDING list,
            methods: FUNC_DEFN list,
            constructor: FUNC_DEFN option,
@@ -397,7 +398,7 @@ withtype FIELD =
 
      and INTERFACE_DEFN =
          { name: IDENT,
-	   nonnullable: bool,
+           nonnullable: bool,
            attrs: ATTRIBUTES,
            params: IDENT list,
            extends: IDENT_EXPR list,
@@ -419,7 +420,7 @@ withtype FIELD =
          { pragmas: PRAGMA list,
            defns: DEFN list,
            stmts: STMT list,
-	   fixtures: FIXTURES option }
+           fixtures: FIXTURES option }
 
      and BINDINGS =
          { defns : VAR_BINDING list,

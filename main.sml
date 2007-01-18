@@ -1,3 +1,4 @@
+(* -*- mode: sml; mode: font-lock; tab-width: 4; insert-tabs-mode: nil; indent-tabs-mode: nil -*- *)
 (* 
  * This is the main entry point for the ES4 reference evaluator.
  *)

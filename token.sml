@@ -1,3 +1,4 @@
+(* -*- mode: sml; mode: font-lock; tab-width: 4; insert-tabs-mode: nil; indent-tabs-mode: nil -*- *)
 structure Token = struct
 
 datatype token = 
@@ -111,7 +112,7 @@ datatype token =
     | While
     | With
 
-	(* contextually reserved identifiers *)
+    (* contextually reserved identifiers *)
 
     | Call
     | Construct
@@ -166,18 +167,18 @@ datatype token =
 
     | Error
     | LexBreakDiv of { lex_initial: unit -> (token list),
-		       lex_regexp: unit -> (token list) }
+               lex_regexp: unit -> (token list) }
     | LexBreakDivAssign of { lex_initial: unit -> (token list),
-			     lex_regexp: unit -> (token list) }
+                 lex_regexp: unit -> (token list) }
     | LexBreakLessThan of { lex_initial: unit -> (token list),
-			    lex_xml: unit -> (token list) }
+                lex_xml: unit -> (token list) }
     | Eof
 
 exception TokenError
 
 fun isreserved t = 
     case t of
-	( As
+    ( As
       | Break
       | Case
       | Cast
@@ -226,13 +227,13 @@ fun isreserved t =
       | While
       | With ) => true
       | _ => false
-	     
+         
 fun tokenname t =
     case t of
-	
-	(* punctuators *)
-	
-	Minus => "-"
+    
+    (* punctuators *)
+    
+    Minus => "-"
       | MinusMinus => "--"
       | Not => "!"
       | NotEquals => "!="
