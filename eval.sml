@@ -510,12 +510,12 @@ and evalLetExpr (scope:Mach.SCOPE)
 and processVarBinding (scope:Mach.SCOPE) 
                       (v:Mach.VAL option)
                       (defn:Ast.VAR_BINDING)
-		      (procOneBinding:Mach.NAME -> Mach.VAL -> unit)
+              (procOneBinding:Mach.NAME -> Mach.VAL -> unit)
     : unit =
     case defn of 
         Ast.Binding { kind, init, attrs, pattern, ty } =>
         let 
-	    fun procWithValue v' = 
+        fun procWithValue v' = 
                 case pattern of 
                     Ast.IdentifierPattern id => 
                     (case id of 
@@ -525,24 +525,24 @@ and processVarBinding (scope:Mach.SCOPE)
                              val n = { ns = needNamespace (evalExpr scope ns), 
                                        id = ident}
                          in
-			     LogErr.trace ["binding variable ", LogErr.name n];
-			     procOneBinding n v'
+                 LogErr.trace ["binding variable ", LogErr.name n];
+                 procOneBinding n v'
                          end
                        | _ => LogErr.unimplError ["unhandled identifier form in ",
                                                   "identifier binding pattern"])
                   | _ => LogErr.unimplError ["unhandled pattern form in binding"]                     
         in
             case v of 
-		SOME v' => procWithValue v'
+        SOME v' => procWithValue v'
               | NONE => 
                 (case init of 
-		     SOME e => procWithValue (evalExpr scope e)
+             SOME e => procWithValue (evalExpr scope e)
                    | NONE => ())
         end
 
 and evalVarBinding (scope:Mach.SCOPE)
-		   (v:Mach.VAL option)
-		   (defn:Ast.VAR_BINDING)
+           (v:Mach.VAL option)
+           (defn:Ast.VAR_BINDING)
     : unit = 
     (* Here we are evaluating only the *definition* affect of the
      * binding, as the binding produced a fixture and we've already 
@@ -689,13 +689,13 @@ and evalClassDefn (scope:Mach.SCOPE) (cd:Ast.CLASS_DEFN) : unit =
                 Mach.defValue newPrototype n fval
             end
 
-	fun addProtoVar (vb:Ast.VAR_BINDING) = 
-	    processVarBinding scope NONE vb (Mach.setValue newPrototype)	    
+    fun addProtoVar (vb:Ast.VAR_BINDING) = 
+        processVarBinding scope NONE vb (Mach.setValue newPrototype)        
     in
         List.app addProtoMethod (#protoMethods cd);
         List.app addProtoVar (#protoVars cd);
         (* FIXME: install the protoMethods and protoVars into the prototype. *)
-	Mach.setValue currClassObj Mach.internalPrototypeName (Mach.Object newPrototype)
+    Mach.setValue currClassObj Mach.internalPrototypeName (Mach.Object newPrototype)
     end
             
 
@@ -761,8 +761,8 @@ and invokeFuncClosure (this:Mach.OBJ) (closure:Mach.FUN_CLOSURE) (args:Mach.VAL 
                 end
 
 and constructClassInstance (obj:Mach.OBJ) 
-			   (closure:Mach.CLS_CLOSURE) 
-			   (args:Mach.VAL list) 
+               (closure:Mach.CLS_CLOSURE) 
+               (args:Mach.VAL list) 
     : Mach.VAL = 
     case closure of 
         { cls, allTypesBound, env } => 
@@ -777,10 +777,10 @@ and constructClassInstance (obj:Mach.OBJ)
                               id = (#name definition) }
                     val _ = LogErr.trace ["constructing instance of ", LogErr.name n]
                     val classTag = Mach.ClassTag n
-		    val proto = if Mach.hasOwnValue obj Mach.internalPrototypeName
-				then Mach.getValue obj Mach.internalPrototypeName
-				else Mach.Null
-		    val (obj:Mach.OBJ) = Mach.newObj classTag proto NONE
+            val proto = if Mach.hasOwnValue obj Mach.internalPrototypeName
+                then Mach.getValue obj Mach.internalPrototypeName
+                else Mach.Null
+            val (obj:Mach.OBJ) = Mach.newObj classTag proto NONE
                     val (objScope:Mach.SCOPE) = extendScope env Mach.VarInstance obj
                     val (instance:Mach.VAL) = Mach.Object obj
                     val ctor = (#constructor definition)
