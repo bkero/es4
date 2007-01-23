@@ -27,23 +27,38 @@ functor DelimitedControl (type result) : DELIMITED_CONTROL =
 struct
     open Escape
 
+    type result = result
+
+    datatype meta_result = Succeeded of result
+                         | Failed of exn
+
     exception MissingReset
 
-    val mk : (result -> void) ref =
+    val mk : (meta_result -> void) ref =
         ref (fn _ => raise MissingReset)
 
     fun abort x =
         coerce (!mk x)
 
-    type result = result
-
     fun reset thunk =
-        escape (fn k => let val mk0 = !mk
-                        in
-                            mk := (fn r => (mk := mk0; k r));
-                            abort (thunk ())
-                        end)
+        (case escape (fn k => let val mk0 = !mk
+                              in
+                                  mk := (fn r => (mk := mk0; k r));
+                                  let val v = (Succeeded (thunk ()))
+                                              handle x => Failed x
+                                  in
+                                      abort v
+                                  end
+                              end) of
+             Succeeded v => v
+           | Failed exn => raise exn)
 
     fun shift f =
-        escape (fn k => abort (f (fn v => reset (fn () => coerce (k v)))))
+        escape (fn k =>
+                   let val v = f (fn v =>
+                                     reset (fn () =>
+                                               coerce (k v)))
+                   in
+                       abort (Succeeded v)
+                   end)
 end

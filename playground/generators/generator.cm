@@ -4,7 +4,7 @@ is
 	main.sml
         value.sml
         generator.sml
-        coroutine.sml
+        coroutine.sig
         callcc.sml
         shift.sml
         thread.sml

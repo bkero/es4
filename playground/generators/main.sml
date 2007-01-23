@@ -17,9 +17,11 @@ struct
         (Generator.Coroutine.run(fn () =>
                                      let val g = fib()
                                          val rec loop = fn i =>
-                                                            if i < 10
-                                                            then (print (Generator.send (g, Undefined));
-                                                                  loop (i+1))
+                                                            if i < 10 then
+                                                            (
+                                                                print (Generator.send (g, Undefined));
+                                                                loop (i+1)
+                                                            )
                                                             else ()
                                      in
                                          loop 0
