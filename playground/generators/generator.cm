@@ -5,9 +5,9 @@ is
         value.sml
         generator.sml
         coroutine.sig
-        callcc.sml
-        shift.sml
-        thread.sml
+        coroutine_callcc.sml
+        coroutine_shift.sml
+        coroutine_thread.sml
         control.sml
 	$cml/cml.cm
 	$/basis.cm
