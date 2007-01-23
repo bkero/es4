@@ -19,33 +19,33 @@ struct
         else
             case Coroutine.switch (c, Yield v) of
                  Send v' => v'
-               | Throw e => raise (Thrown e)
+               | Throw e => raise Thrown e
                | _ => raise InternalError "generator protocol"
 
     fun send (Generator c, v) =
         if Coroutine.running c then
             raise InternalError "already running"
         else if (Coroutine.newborn c) andalso (v <> Undefined) then
-            raise (Thrown (String "newborn generator"))
+            raise Thrown (String "newborn generator")
         else if not (Coroutine.alive c) then
-            raise (Thrown StopIteration)
+            raise Thrown StopIteration
         else
             case Coroutine.switch (c, Send v) of
                  Yield v' => v'
-               | Throw e => raise (Thrown e)
-               | Close => raise (Thrown StopIteration)
+               | Throw e => raise Thrown e
+               | Close => raise Thrown StopIteration
                | _ => raise InternalError "generator protocol"
 
     fun throw (Generator c, v) =
         if Coroutine.running c then
             raise InternalError "already running"
         else if not (Coroutine.alive c) then
-            raise (Thrown v)
+            raise Thrown v
         else
             case Coroutine.switch (c, Throw v) of
                  Yield v' => v'
-               | Throw e => raise (Thrown e)
-               | Close => raise (Thrown v)
+               | Throw e => raise Thrown e
+               | Close => raise Thrown v
                | _ => raise InternalError "generator protocol"
 
     fun close (Generator c) =
