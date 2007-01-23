@@ -5,12 +5,12 @@ struct
     type result = result
     type 'a cont = (('a -> void) -> 'a) -> 'a
 
-    datatype coroutine = Newborn of (result -> result)
+    datatype COROUTINE = Newborn of (result -> result)
                        | Paused of result cont
                        | Running of result cont
                        | Closed
 
-    type C = coroutine ref
+    type C = COROUTINE ref
 
     fun new f = let val r = ref Closed (* temporary *)
                 in

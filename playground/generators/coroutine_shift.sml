@@ -6,12 +6,12 @@ struct
 
     open S
 
-    datatype coroutine = Newborn of result -> result
+    datatype COROUTINE = Newborn of result -> result
                        | Paused of result -> result
                        | Running
                        | Closed
 
-    type C = coroutine ref
+    type C = COROUTINE ref
 
     fun new f = let val r = ref Closed (* temporary *)
                 in
