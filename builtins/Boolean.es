@@ -1,4 +1,4 @@
-/* -*- mode: java; mode: font-lock; tab-width: 4; indent-tabs-mode: nil -*- 
+/* -*- mode: java -*- 
  *
  * ECMAScript 4 builtins - the "Boolean" object
  *

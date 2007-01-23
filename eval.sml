@@ -258,7 +258,7 @@ and evalNewExpr  (obj:Mach.OBJ) (args:Mach.VAL list) : Mach.VAL =
     case obj of 
         Mach.Obj { magic, ... } => 
         case (!magic) of 
-            SOME (Mach.Class c) => constructClassInstance c args
+            SOME (Mach.Class c) => constructClassInstance obj c args
           | SOME (Mach.Function f) => constructObjectViaFunction obj f args
           | _ => LogErr.evalError ["operator 'new' applied to unknown object"]
                                                                                  
@@ -507,18 +507,15 @@ and evalLetExpr (scope:Mach.SCOPE)
         evalListExpr newScope body
     end
 
-and evalVarBinding (scope:Mach.SCOPE)
-                   (v:Mach.VAL option)
-                   (defn:Ast.VAR_BINDING)
+and processVarBinding (scope:Mach.SCOPE) 
+                      (v:Mach.VAL option)
+                      (defn:Ast.VAR_BINDING)
+              (procOneBinding:Mach.NAME -> Mach.VAL -> unit)
     : unit =
-    (* Here we are evaluating only the *definition* affect of the
-     * binding, as the binding produced a fixture and we've already 
-     * allocated and possibly initialized a property for the fixture.
-     *)
     case defn of 
         Ast.Binding { kind, init, attrs, pattern, ty } =>
         let 
-            fun defToValue v' = 
+        fun procWithValue v' = 
                 case pattern of 
                     Ast.IdentifierPattern id => 
                     (case id of 
@@ -528,21 +525,31 @@ and evalVarBinding (scope:Mach.SCOPE)
                              val n = { ns = needNamespace (evalExpr scope ns), 
                                        id = ident}
                          in
-                             LogErr.trace ["defining variable ", LogErr.name n];
-                             Mach.defValue (getScopeObj scope) n v'
+                 LogErr.trace ["binding variable ", LogErr.name n];
+                 procOneBinding n v'
                          end
                        | _ => LogErr.unimplError ["unhandled identifier form in ",
                                                   "identifier binding pattern"])
                   | _ => LogErr.unimplError ["unhandled pattern form in binding"]                     
         in
             case v of 
-                SOME v' => defToValue v'
+        SOME v' => procWithValue v'
               | NONE => 
                 (case init of 
-                     SOME e => defToValue (evalExpr scope e)
+             SOME e => procWithValue (evalExpr scope e)
                    | NONE => ())
         end
-    
+
+and evalVarBinding (scope:Mach.SCOPE)
+           (v:Mach.VAL option)
+           (defn:Ast.VAR_BINDING)
+    : unit = 
+    (* Here we are evaluating only the *definition* affect of the
+     * binding, as the binding produced a fixture and we've already 
+     * allocated and possibly initialized a property for the fixture.
+     *)
+    processVarBinding scope v defn (Mach.defValue (getScopeObj scope))
+
 and evalVarBindings (scope:Mach.SCOPE)
     (defns:Ast.VAR_BINDING list)
     : unit =
@@ -681,15 +688,14 @@ and evalClassDefn (scope:Mach.SCOPE) (cd:Ast.CLASS_DEFN) : unit =
             in
                 Mach.defValue newPrototype n fval
             end
-        (* FIXME: something to do with proto fixtures? Or do we have yet another structural 
-         * induction on the form of a VAR_BINDING? *)
-        fun addProtoVar (vb:Ast.VAR_BINDING) = ()
-            
+
+    fun addProtoVar (vb:Ast.VAR_BINDING) = 
+        processVarBinding scope NONE vb (Mach.setValue newPrototype)        
     in
         List.app addProtoMethod (#protoMethods cd);
         List.app addProtoVar (#protoVars cd);
         (* FIXME: install the protoMethods and protoVars into the prototype. *)
-        Mach.setValue currClassObj Mach.internalPrototypeName baseProtoVal
+    Mach.setValue currClassObj Mach.internalPrototypeName (Mach.Object newPrototype)
     end
             
 
@@ -754,7 +760,10 @@ and invokeFuncClosure (this:Mach.OBJ) (closure:Mach.FUN_CLOSURE) (args:Mach.VAL 
                     evalBlock varScope (#body f)
                 end
 
-and constructClassInstance (closure:Mach.CLS_CLOSURE) (args:Mach.VAL list) : Mach.VAL = 
+and constructClassInstance (obj:Mach.OBJ) 
+               (closure:Mach.CLS_CLOSURE) 
+               (args:Mach.VAL list) 
+    : Mach.VAL = 
     case closure of 
         { cls, allTypesBound, env } => 
         if not allTypesBound
@@ -768,8 +777,10 @@ and constructClassInstance (closure:Mach.CLS_CLOSURE) (args:Mach.VAL list) : Mac
                               id = (#name definition) }
                     val _ = LogErr.trace ["constructing instance of ", LogErr.name n]
                     val classTag = Mach.ClassTag n
-                    (* FIXME: copy prototype from CLS_CLOSURE here *)
-                    val (obj:Mach.OBJ) = Mach.newObj classTag Mach.Null NONE
+            val proto = if Mach.hasOwnValue obj Mach.internalPrototypeName
+                then Mach.getValue obj Mach.internalPrototypeName
+                else Mach.Null
+            val (obj:Mach.OBJ) = Mach.newObj classTag proto NONE
                     val (objScope:Mach.SCOPE) = extendScope env Mach.VarInstance obj
                     val (instance:Mach.VAL) = Mach.Object obj
                     val ctor = (#constructor definition)

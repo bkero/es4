@@ -15,6 +15,7 @@ class bar {
 namespace magic;
 
 class foo extends bar {	
+	prototype var k = 22;
 	function foo(x) : p = x { magic::q = p; }
 	magic var q;
 }
@@ -22,6 +23,8 @@ class foo extends bar {
 var x = 10;
 
 var y = new foo(10);
+
+printWithLine(y.k);
 
 while (x != 20) {
 	printWithLine(x)
