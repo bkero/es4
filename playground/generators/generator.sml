@@ -1,3 +1,7 @@
+(* The semantics of ES4 generators, built on top of the library
+   of coroutines.
+ *)
+
 structure Generator : GENERATOR =
 struct
     open Value
@@ -7,7 +11,7 @@ struct
                     | Send of VALUE  (* client  => generator *)
                     | Close          (* client <=  generator *)
 
-    structure Coroutine = ShiftCoroutine (type result = signal)
+    structure Coroutine = CallccCoroutine (type result = signal)
 
     type coroutine = Coroutine.C
 

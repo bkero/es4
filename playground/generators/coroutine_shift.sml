@@ -1,3 +1,5 @@
+(* Coroutines implemented via delimited continuations. *)
+
 functor ShiftCoroutine (type result) : COROUTINE =
 struct
     type result = result

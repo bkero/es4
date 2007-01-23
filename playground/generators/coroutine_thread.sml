@@ -1,3 +1,5 @@
+(* Coroutines implemented via CML threads. *)
+
 functor ThreadCoroutine (type result) : COROUTINE =
 struct
     open CML
@@ -7,12 +9,12 @@ struct
     exception Death
 
     (* To close a coroutine, we send it NONE. *)
-    datatype thread = Newborn of result option chan
-                    | Paused of result option chan
-                    | Running of result option chan
-                    | Closed
+    datatype COROUTINE = Newborn of result option chan
+                       | Paused of result option chan
+                       | Running of result option chan
+                       | Closed
 
-    type C = thread ref
+    type C = COROUTINE ref
 
     fun new f = let val c = channel ()
                     val r = ref (Newborn c)

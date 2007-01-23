@@ -1,3 +1,5 @@
+(* A simple mockup of the model of ES4 values, just to make the example run. *)
+
 structure Value =
 struct
 

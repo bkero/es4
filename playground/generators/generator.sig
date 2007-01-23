@@ -1,3 +1,5 @@
+(* The interface for ES4 generators. *)
+
 signature GENERATOR =
 sig
     type G

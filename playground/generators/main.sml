@@ -1,3 +1,5 @@
+(* An example ES4 program generating 10 Fibonacci numbers. *)
+
 structure Main =
 struct
     open Value

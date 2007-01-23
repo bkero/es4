@@ -1,3 +1,7 @@
+(* An abstract interface for coroutines, since I have written three
+   different implementations (see coroutine_*.sml).
+ *)
+
 signature COROUTINE =
 sig
     type result

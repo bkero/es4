@@ -1,3 +1,10 @@
+(* An implementation of delimited continuations in terms of
+   undelimited continuations, following:
+
+   - http://calculist.blogspot.com/2006/11/filinskis-implementation-of-shift-and.html
+   - http://calculist.blogspot.com/2007/01/non-native-shiftreset-with-exceptions.html
+ *)
+
 signature SHIFT =
 sig
     type result

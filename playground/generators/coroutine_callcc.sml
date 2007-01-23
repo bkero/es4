@@ -1,13 +1,14 @@
+(* Coroutines implemented via undelimited continuations. *)
+
 functor CallccCoroutine (type result) : COROUTINE =
 struct
     open Callcc
 
     type result = result
-    type 'a cont = (('a -> void) -> 'a) -> 'a
 
-    datatype COROUTINE = Newborn of (result -> result)
-                       | Paused of result cont
-                       | Running of result cont
+    datatype COROUTINE = Newborn of result -> result
+                       | Paused of result -> void
+                       | Running of result -> void
                        | Closed
 
     type C = COROUTINE ref
