@@ -7,6 +7,10 @@ Resolution December meeting:
     value provided the class or its base classes do not define a property of that name.
   * "prototype function" implies DontEnum
 
+Open questions:
+
+  * can an intrinsic method be extracted?  If so, all of the intrinsics in the
+    library need this:T annotations.
 
 Style:
 
@@ -18,6 +22,34 @@ Style:
   * use intrinsic::int(x), intrinsic::uint(x), intrinsic::double(x), intrinsic::decimal(x)
   * reserve native functions for systems-level things (getting system data or deferring to
     the C library)
+
+Editing style:
+
+  * Don't use tabs
+
+  * Indent 4 spaces
+
+  * No line longer than 110 characters (not counting linebreak)
+
+  * Opening brace for package, class on next line, aligned:
+       class Bar extends Foo 
+       {
+
+  * Opening brace for everything else on the same line
+       function foo() {
+       if (fnord > chthulu) {
+       else {
+
+  * Closing brace always on line by itself:
+
+       }
+       else {
+
+  * Semicolons always (helps Emacs figure things out)
+
+  * Expression functions when natural
+
+  * Cite the relevant specs for every function
 
 /*
 	Attempt at modeling ECMA-262 builtin classes using the new ECMA4 language.

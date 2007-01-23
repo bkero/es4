@@ -1,4 +1,4 @@
-/* -*- mode: java; mode: font-lock; tab-width: 4 -*-
+/* -*- indent-tabs-mode: nil -*-
  *
  * ECMAScript 4 builtins - the "Array" object
  * ES-262-3 15.X
