@@ -2,7 +2,7 @@ functor ShiftCoroutine (type result) : COROUTINE =
 struct
     type result = result
 
-    structure S = DelimitedControl (type result = result)
+    structure S = Shift (type result = result)
 
     open S
 
@@ -52,5 +52,4 @@ struct
            | _ => false
 
     fun run f = f ()
-                handle Value.InternalError s => TextIO.print ("internal error: " ^ s ^ "\n")
 end

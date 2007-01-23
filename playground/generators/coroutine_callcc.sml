@@ -1,11 +1,9 @@
 functor CallccCoroutine (type result) : COROUTINE =
 struct
-    open SMLofNJ.Cont
+    open Callcc
 
     type result = result
-
-    (* renamed to distinguish clearly from ECMAScript throw *)
-    val jump = throw
+    type 'a cont = (('a -> void) -> 'a) -> 'a
 
     datatype computation = Newborn of (result -> result)
                          | Paused of result cont
@@ -66,5 +64,4 @@ struct
            | _ => false
 
     fun run f = f ()
-                handle Value.InternalError s => TextIO.print ("internal error: " ^ s ^ "\n")
 end

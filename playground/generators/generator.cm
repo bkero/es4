@@ -1,13 +1,24 @@
 Library
 	structure Main
 is
+        (* JavaScript evaluator *)
 	main.sml
         value.sml
+
+        (* Generators *)
+        generator.sig
         generator.sml
+
+        (* Coroutines *)
         coroutine.sig
         coroutine_callcc.sml
         coroutine_shift.sml
         coroutine_thread.sml
-        control.sml
+
+        (* Control operators *)
+        callcc.sml
+        shift.sml
+
+        (* Core SML/NJ libraries *)
 	$cml/cml.cm
 	$/basis.cm

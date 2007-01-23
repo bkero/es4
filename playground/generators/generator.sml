@@ -1,23 +1,10 @@
-signature GENERATOR =
-sig
-    type G
-
-    structure Coroutine : COROUTINE
-
-    val make  : (G -> unit) -> G
-    val yield : G * Value.value -> Value.value
-    val send  : G * Value.value -> Value.value
-    val throw : G * Value.value -> Value.value
-    val close : G -> unit
-end
-
 structure Generator : GENERATOR =
 struct
     open Value
 
-    datatype signal = Yield of value (* client <=  generator *)
-                    | Throw of value (* client <=> generator *)
-                    | Send of value  (* client  => generator *)
+    datatype signal = Yield of VALUE (* client <=  generator *)
+                    | Throw of VALUE (* client <=> generator *)
+                    | Send of VALUE  (* client  => generator *)
                     | Close          (* client <=  generator *)
 
     structure Coroutine = ShiftCoroutine (type result = signal)

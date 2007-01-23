@@ -81,9 +81,16 @@ struct
              Running _ => true
            | _ => false
 
-    fun run f = (RunCML.doit (fn () =>
-                              (
-                                  f ()
-                                  handle Value.InternalError s => TextIO.print ("internal error: " ^ s ^ "\n")
-                              ), NONE); ())
+    fun run f = let val r : exn option ref = ref NONE
+                in
+                    (* CML ignores exceptions, so catch and save it. *)
+                    RunCML.doit ((fn () =>
+                                     f ()
+                                     handle x => r := SOME x),
+                                 NONE);
+                    (* Propagate the saved exception to top-level. *)
+                    case !r of
+                         SOME x => raise x
+                       | NONE => ()
+                end
 end
