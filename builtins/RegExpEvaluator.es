@@ -11,6 +11,7 @@
 package RegExp
 {
     import Unicode.*;
+    use namespace intrinsic;
     use strict;
 
     /* Encapsulation of compiled regular expression as returned by the
@@ -83,12 +84,12 @@ package RegExp
        This captures array can be an array that's copied like the
        E262-3 states, or it could be a functional data structure.  
     */
-    type CapArray = [String]!;
+    type CapArray = Array!;  /* Really [(String!,Undefined)]! but we can't express that yet */
 
     function makeCapArray(nCapturingParens : uint) : CapArray {
         var a = [] : CapArray;
         for ( let i : uint = 0 ; i < nCapturingParens ; i++ )
-            a[i] = null;
+            a[i] = undefined;
         return a;
     }
 
