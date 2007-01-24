@@ -33,7 +33,7 @@ fun log ss =
      List.app TextIO.print ss;
      TextIO.print "\n")
 
-val trace_on = false
+val trace_on = true
 
 fun trace ss =
     if trace_on then log ss else ()
@@ -5039,9 +5039,19 @@ and constructorInitialiser ts =
 
 and functionBody (ts) =
     let val _ = trace([">> functionBody with next=", tokenname(hd ts)])
-        val (ts1,nd1) = block (ts,LOCAL)
-    in
-        (ts1,nd1)
+    in case ts of
+        LeftBrace :: _ =>
+            let
+                val (ts1,nd1) = block (ts,LOCAL)
+            in
+                (ts1,nd1)
+            end
+      | _ =>
+            let
+                val (ts1,nd1) = listExpression (ts,ALLOWIN)
+            in
+                (ts1,Ast.Block {pragmas=[],defns=[],stmts=[Ast.ReturnStmt nd1],fixtures=NONE})
+            end
     end
         
 (*

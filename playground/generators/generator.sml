@@ -1,26 +1,17 @@
-signature GENERATOR =
-sig
-    type G
-
-    structure Coroutine : COROUTINE
-
-    val make  : (G -> unit) -> G
-    val yield : G * Value.value -> Value.value
-    val send  : G * Value.value -> Value.value
-    val throw : G * Value.value -> Value.value
-    val close : G -> unit
-end
+(* The semantics of ES4 generators, built on top of the library
+   of coroutines.
+ *)
 
 structure Generator : GENERATOR =
 struct
     open Value
 
-    datatype signal = Yield of value (* client <=  generator *)
-                    | Throw of value (* client <=> generator *)
-                    | Send of value  (* client  => generator *)
+    datatype signal = Yield of VALUE (* client <=  generator *)
+                    | Throw of VALUE (* client <=> generator *)
+                    | Send of VALUE  (* client  => generator *)
                     | Close          (* client <=  generator *)
 
-    structure Coroutine = ShiftCoroutine (type result = signal)
+    structure Coroutine = CallccCoroutine (type result = signal)
 
     type coroutine = Coroutine.C
 
@@ -32,33 +23,33 @@ struct
         else
             case Coroutine.switch (c, Yield v) of
                  Send v' => v'
-               | Throw e => raise (Thrown e)
+               | Throw e => raise Thrown e
                | _ => raise InternalError "generator protocol"
 
     fun send (Generator c, v) =
         if Coroutine.running c then
             raise InternalError "already running"
         else if (Coroutine.newborn c) andalso (v <> Undefined) then
-            raise (Thrown (String "newborn generator"))
+            raise Thrown (String "newborn generator")
         else if not (Coroutine.alive c) then
-            raise (Thrown StopIteration)
+            raise Thrown StopIteration
         else
             case Coroutine.switch (c, Send v) of
                  Yield v' => v'
-               | Throw e => raise (Thrown e)
-               | Close => raise (Thrown StopIteration)
+               | Throw e => raise Thrown e
+               | Close => raise Thrown StopIteration
                | _ => raise InternalError "generator protocol"
 
     fun throw (Generator c, v) =
         if Coroutine.running c then
             raise InternalError "already running"
         else if not (Coroutine.alive c) then
-            raise (Thrown v)
+            raise Thrown v
         else
             case Coroutine.switch (c, Throw v) of
                  Yield v' => v'
-               | Throw e => raise (Thrown e)
-               | Close => raise (Thrown v)
+               | Throw e => raise Thrown e
+               | Close => raise Thrown v
                | _ => raise InternalError "generator protocol"
 
     fun close (Generator c) =
