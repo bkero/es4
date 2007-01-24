@@ -82,7 +82,7 @@ package RegExp
             if (!global)
                 i = 0;
             let res : MatchResult = failure;
-            for (;;) {
+            while (true) {
                 if (i < 0 || i > length) {
                     lastIndex = 0;
                     return null;
@@ -129,6 +129,18 @@ package RegExp
         public const sticky     : Boolean;  // E262-4 proposals:extend_regexps
         public const source     : String!;
         public var   lastIndex  : Number;
+
+        /* E262-4 - [[Match]] may not *have* to be public, but String
+           uses it, and if we want to model the language in the
+           language we should expose it -- it's benign. 
+        */
+        intrinsic function match(s : String!, i : uint) : MatchResult
+            matcher.match(s, i);
+
+        /* E262-4 - nCapturingParens used by String.prototype.replace 
+         */
+        intrinsic function get nCapturingParens() : uint
+            matcher.nCapturingParens;
 
         /* Internal */
         const matcher : RegExpMatcher;      // The [[Match]] property

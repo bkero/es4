@@ -87,7 +87,7 @@ package RegExp
 
     function makeCapArray(nCapturingParens : uint) : CapArray {
         var a = [] : CapArray;
-        for ( let i : uint = 0 ; i <= nCapturingParens ; i++ )
+        for ( let i : uint = 0 ; i < nCapturingParens ; i++ )
             a[i] = null;
         return a;
     }
@@ -96,8 +96,8 @@ package RegExp
         let b : CapArray = makeCapArray(a.length);
         for ( let i : uint = 0 ; i < a.length ; i++ )
             b[i] = a[i];
-        for ( let k : uint = parenIndex+1 ; k <= parenIndex+parenCount ; k++ )
-            b[i] = null;
+        for ( let k : uint = parenIndex ; k < parenIndex+parenCount ; k++ )
+            b[i] = undefined;
         return b;
     }
 
@@ -263,7 +263,7 @@ package RegExp
                 let cap : CapArray = copyCapArray( y.cap, 0, 0 );
                 let xe : int = x.endIndex;
                 let ye : int = y.endIndex;
-                cap[parenIndex+1] = ctx.input.substring(xe, ye);
+                cap[parenIndex] = ctx.input.substring(xe, ye);
                 return c(new State(ye, cap));
             }
 

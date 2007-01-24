@@ -13,7 +13,7 @@
 
 package RegExp
 {
-    /* import Unicode.*; */  // FIXME: not handled by parser yet
+    import Unicode.*;
     use strict;
 
     class RegExpCompiler
@@ -63,7 +63,7 @@ package RegExp
             let t : Matcher? = term();
             if (t === null)
                 return null;
-            for (;;) {
+            while (true) {
                 let p : Matcher? = term();
                 if (p === null)
                     return t;
@@ -224,7 +224,7 @@ package RegExp
             }
 
             function characterClassEscape(t : Charset) : Matcher {
-                    return new CharsetMatcher(t);
+                return new CharsetMatcher(t);
             }
 
             function characterEscape(t : String) : Matcher {
@@ -276,7 +276,7 @@ package RegExp
                 return new CharsetEmpty;
 
             let s : Charset = nonemptyClassRanges();
-            for (;;) {
+            while (true) {
                 if (eat("\\&")) {
                     let t : Charset = nonemptyClassRanges();
                     s = CharsetIntersect(s, t);

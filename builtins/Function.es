@@ -109,7 +109,7 @@ package
             if (!(O is Object))
                 throw new TypeError("[[HasInstance]]: prototype is not object");
 
-            for (;;) {
+            while (true) {
                 V = magic::getPrototype(V);
                 if (V === null)
                     return false;
