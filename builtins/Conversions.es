@@ -1,7 +1,14 @@
 /* -*- indent-tabs-mode: nil -*- */
 
+/* Primitive conversion functions.  These are all "intrinsic"-only, in
+   E262-3 they are hidden in the implementation but there's no real
+   reason not to expose them, though we could certainly hide them.
+*/
+
 package
 {
+    use namespace intrinsic;
+
     /* ... */
     intrinsic function ToPrimitive(value, preferredType)    {
         if (value === void 0 || value === null || value is String || value is Boolean || value is Number)
@@ -27,7 +34,7 @@ package
     intrinsic function ToNumber(value) : Number {
         if (value is Number)
             return value;
-        if (value === void 0)
+        if (value === undefined)
             return 0.0/0.0;
         if (value === null)
             return 0;
