@@ -40,6 +40,14 @@ fun warn msg filename lineNum =
 fun error msg filename lineNum =
     print (filename ^ ": Error: " ^ msg ^ " on line " ^ (Int.toString lineNum) ^ "\n")
 
+fun unexpectedExn e =
+(
+    print "\n----------------------------------------\n";
+    print "UNEXPECTED EXCEPTION:\n";
+    PrintTrace.printStackTrace e;
+    print   "----------------------------------------\n"
+)
+
 fun logTestCase name =
 (
     print "\n****************************************\n";
@@ -261,22 +269,27 @@ fun runTestCase (test : TEST_CASE) : TEST_RESULT =
     logTestCase (#name test);
     case test of
          { name, stage=Parse, arg=true, source } =>
-             ((parse source; (test, true))
-              handle _ => (test, false))
+         (
+             (parse source; (test, true))
+             handle e => (unexpectedExn e; (test, false))
+         )
        | { name, stage=Parse, arg=false, source } =>
-             ((parse source; (test, false))
-              handle Parser.ParseError => (test, true)
-                   | _ => (test, false))
+         (
+             (parse source; (test, false))
+             handle Parser.ParseError => (test, true)
+                  | e => (unexpectedExn e; (test, false))
+         )
        | { name, stage=Verify, arg=true, source } =>
-             ((TypeChk.tcProgram (parse source); (test, true))
-            (* CF: removed to help debug failing tests
-               handle _ => (test, false) 
-             *)
-)
+         (
+             (TypeChk.tcProgram (parse source); (test, true))
+             handle e => (unexpectedExn e; (test, false))
+         )
        | { name, stage=Verify, arg=false, source } =>
-             ((TypeChk.tcProgram (parse source); (test, false))
-              handle TypeChk.IllTypedException _ => (test, true)
-                   | _ => (test, false))
+         (
+             (TypeChk.tcProgram (parse source); (test, false))
+             handle TypeChk.IllTypedException _ => (test, true)
+                  | e => (unexpectedExn e; (test, false))
+         )
 )
 
 fun run (filename : string) : TEST_RESULT list =
