@@ -23,7 +23,7 @@ package
     final dynamic class Date extends Object
     {       
         /* E262-3 15.9.2: The Date Constructor Called as a Function */
-        static intrinsic function call(...args)   // args are ignored.
+        static intrinsic function date(...args)   // args are ignored.
             (new Date()).public::toString();
 
         /* E262-3 15.9.3: The Date Constructor. */
@@ -41,23 +41,23 @@ package
                 if (v is String)
                     return parse(v cast String);
 
-                timeval = TimeClip(Number(v));
+                timeval = TimeClip(ToDouble(v));
                 return;
             default:  /* 15.9.3.1 */
-                ms = Number(e);
+                ms = ToDouble(e);
             case 6:
-                seconds = Number(d);
+                seconds = ToDouble(d);
             case 5:
-                minutes = Number(c);
+                minutes = ToDouble(c);
             case 4:
-                hours = Number(b);
+                hours = ToDouble(b);
             case 3:
-                date = Number(a);
+                date = ToDouble(a);
             case 2:
-                year = Number(year);
-                month = Number(month);
+                year = ToDouble(year);
+                month = ToDouble(month);
 
-                let intYear = Integer(year);
+                let intYear = ToInteger(year);
                 if (!isNaN(year) && 0 <= intYear && intYear <= 99)
                     intYear += 1900;
 
@@ -179,13 +179,13 @@ package
         public static var UTC = 
             function UTC(year, month, date, hours, minutes, seconds, ms)
             let (argc:uint = arguments.length)
-                Date.UTC(Number(year), 
-                         Number(month), 
-                         argc >= 3 ? Number(date) : 1,
-                         argc >= 4 ? Number(hours) : 0,
-                         argc >= 5 ? Number(minutes) : 0,
-                         argc >= 6 ? Number(seconds) : 0,
-                         argc >= 7 ? Number(ms) : 0);
+                Date.UTC(ToDouble(year), 
+                         ToDouble(month), 
+                         argc >= 3 ? ToDouble(date) : 1,
+                         argc >= 4 ? ToDouble(hours) : 0,
+                         argc >= 5 ? ToDouble(minutes) : 0,
+                         argc >= 6 ? ToDouble(seconds) : 0,
+                         argc >= 7 ? ToDouble(ms) : 0);
 
         static instrinsic function UTC(year : double, month : double, 
                                        date : double=1, hours : double?=0, minutes : double?=0,

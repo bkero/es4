@@ -8,10 +8,11 @@
 package
 {
     use namespace intrinsic;
+    use strict;
 
     /* ... */
     intrinsic function ToPrimitive(value, preferredType)    {
-        if (value === void 0 || value === null || value is String || value is Boolean || value is Number)
+        if (value === undefined || value === null || value is String || value is Boolean || value is Numeric)
             return value;
         return value.intrinsic::DefaultValue(preferredType);
     }
@@ -21,12 +22,12 @@ package
         if (value is Boolean)
             return value;
 
-        if (value === void 0 || value === null)
+        if (value === undefined || value === null)
             return false;
         if (value is String)
             return value !== "";
-        if (value is Number)
-            return value !== 0.0 && value === value;
+        if (value is Numeric)
+            return value !== 0 && value === value;
         return true;
     }
         
@@ -74,7 +75,7 @@ package
     intrinsic function ToString(value) : String! {
         if (value is String)
             return value;
-        if (value === void 0)
+        if (value === undefined)
             return "undefined";
         if (value === null)
             return "null";
@@ -91,7 +92,7 @@ package
        already objects, no conversion is necessary.  */
 
     intrinsic function ToObject(value) : Object! {
-        if (value === void 0 || value === null)
+        if (value === undefined || value === null)
             throw new TypeError("Can't convert undefined or null to Object");
         return value;
     }

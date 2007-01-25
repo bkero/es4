@@ -201,7 +201,7 @@ package RegExp
 
     class Quantified! implements Matcher
     {
-        function Quantified(parenIndex:uint, parenCount:uint, m:Matcher, min:Number, max:Number, 
+        function Quantified(parenIndex:uint, parenCount:uint, m:Matcher, min:double, max:double, 
                             greedy:Boolean) 
             : parenIndex = parenIndex
             , parenCount = parenCount
@@ -214,7 +214,7 @@ package RegExp
 
         function match(ctx : Context, x : State, c : Continuation) : MatchResult {
 
-            function RepeatMatcher(min : Number, max : Number, x : State) : MatchResult {
+            function RepeatMatcher(min : double, max : double, x : State) : MatchResult {
                 if (max === 0)
                     return c(x);
 
@@ -249,8 +249,8 @@ package RegExp
         var parenIndex : uint;
         var parenCount : uint;
         var m : Matcher;
-        var min : Number;
-        var max : Number;
+        var min : double;
+        var max : double;
         var greedy : Boolean;
     }
 

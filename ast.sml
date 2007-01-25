@@ -343,7 +343,9 @@ datatype PRAGMA =
        | ValFixture of { ty: TYPE_EXPR,
                          readOnly: bool,
                          isOverride: bool }
-                       
+       | VirtualValFixture of { getter: FUNC_DEFN option,
+                                setter: FUNC_DEFN option }
+
      and FIXTURES = 
          Fixtures of { bindings: FIXTURE_BINDINGS,
                        openNamespaces: NAMESPACE list, 

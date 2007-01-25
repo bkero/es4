@@ -77,10 +77,10 @@ package RegExp
             if (x !== null)
                 return x;
             let x : Matcher = atom();
-            let y : [Number, Number, Boolean]? = quantifier();
+            let y : [double, double, Boolean]? = quantifier();
             if (y === null)
                 return x;
-            let [min, max, greedy] : [Number,Number,Boolean] = y;
+            let [min, max, greedy] : [double,double,Boolean] = y;
             return new Quantified(parenIndex, parenCount, min, max, greedy);
         }
 
@@ -92,22 +92,22 @@ package RegExp
             else                 return null;
         }
 
-        function quantifier() : [Number,Number,Boolean]? {
-            let x : [Number,Number]? = quantifierPrefix();
+        function quantifier() : [double,double,Boolean]? {
+            let x : [double,double]? = quantifierPrefix();
             if (x == null)
                 return x;
-            let [min,max] : [Number,Number] = x;
+            let [min,max] : [double,double] = x;
             let greedy : Boolean = eat("?");
             return [min,max,greedy];
         }
 
-        function quantifierPrefix() : [Number, Number]? {
+        function quantifierPrefix() : [double, double]? {
                  if (eat("*")) return [0,Infinity];
             else if (eat("+")) return [1,Infinity];
             else if (eat("?")) return [0,1];
             else if (eat("{")) {
-                let min : Number = decimalDigits();
-                let max : Number = n;
+                let min : double = decimalDigits();
+                let max : double = n;
                 if (eat(",")) {
                     if (eat("}"))
                         max = Infinity;
@@ -213,7 +213,7 @@ package RegExp
 
         function atomEscape() : Matcher {
 
-            function decimalEscape(t : Number) : Matcher {
+            function decimalEscape(t : double) : Matcher {
                 if (t >= nCapturingParens)
                     throw new SyntaxError("Illegal backreference " + t);
                 if (t === 0)
@@ -330,18 +330,18 @@ package RegExp
         }
 
         function classEscape() : Charset {
-            return escape( (function(t : Number) : Charset new CharsetAdhoc([String.fromCharCode(t)])),
+            return escape( (function(t : double) : Charset new CharsetAdhoc([String.fromCharCode(t)])),
                            (function(t : Charset) : Charset t),
                            (function(t : String) : Charset new CharsetAdhoc(t)),
                            true );
         }
 
         /* Parse an escape sequence. */
-        function escape( de : function (Number) : (Matcher,Charset),
+        function escape( de : function (double) : (Matcher,Charset),
                          ce : function (Charset) : (Matcher,Charset),
                          ch : function (String) : (Matcher,Charset),
                          allow_b : Boolean ) : (Matcher,Charset) {
-            let (t : Number? = decimalEscape()) {
+            let (t : double? = decimalEscape()) {
                 if (t !== null) 
                     return de(t);
             }
@@ -362,7 +362,7 @@ package RegExp
         /* Returns null if it does not consume anything but fails;
            throws an error if it consumes and then fails. 
         */
-        function decimalEscape() : Number? {
+        function decimalEscape() : double? {
             if (lookingAt("\\0") || lookingAt("\\1") || lookingAt("\\2") || lookingAt("\\3") || 
                 lookingAt("\\4") || lookingAt("\\5") || lookingAt("\\6") || lookingAt("\\7") || 
                 lookingAt("\\8") || lookingAt("\\9")) {
@@ -404,7 +404,7 @@ package RegExp
         */
         function characterEscape(allow_b : Boolean) : String? {
 
-            function hexValue(c) : Number {
+            function hexValue(c) : double {
                 if (c >= "0" && c <= "9")
                     return c.charCodeAt(0) - "0".charCodeAt(0);
                 else
@@ -412,7 +412,7 @@ package RegExp
             }
 
             function hexDigits(n : uint? = null) : String! {
-                let k : Number = 0;
+                let k : double = 0;
                 let c : String!;
                 let m : uint = n === null ? 100000 : n;
                 let i : uint;
@@ -506,8 +506,8 @@ package RegExp
                 throw new SyntaxError("Expected identifier");
         }
 
-        function decimalDigits() : Number {
-            let k : Number = 0;
+        function decimalDigits() : double {
+            let k : double = 0;
             while (isDecimalDigit(c = peekChar()))
                 k = k*10 + consumeChar(c).charCodeAt(0) - "0".charCodeAt(0);
             skip();

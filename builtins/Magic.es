@@ -32,32 +32,32 @@ package
        PROPERTY MANIPULATION.  */
 
     /* Retrieve the [[Class]] property of o */
-    native magic function getClassName(o : Object!) : String!;
+    magic native function getClassName(o : Object!) : String!;
 
     /* Retrieve the possibly null [[Prototype]] property of o */
-    native magic function getPrototype(o : Object!) : Object;
+    magic native function getPrototype(o : Object!) : Object;
 
     /* Return true iff o has a local property named by p. */
-    native magic function hasOwnProperty(o : Object!, p : String!) : Boolean;
+    magic native function hasOwnProperty(o : Object!, p : String!) : Boolean;
 
     /* Return true if the property p does exists locally on o and its
        DontEnum bit is set */
-    native magic function getPropertyIsDontEnum(o : Object!, p : String!) : Boolean;
+    magic native function getPropertyIsDontEnum(o : Object!, p : String!) : Boolean;
 
     /* Return true if the property p does exists locally on o and its
        DontDelete bit is set */
-    native magic function getPropertyIsDontDelete(o : Object!, p : String!) : Boolean;
+    magic native function getPropertyIsDontDelete(o : Object!, p : String!) : Boolean;
 
     /* Provided that the property p exists locally on o, set its DontEnum
        flag according to f.  If the property p does not exist locally on
        o, it does nothing. */
-    native magic function setPropertyIsDontEnum(o : Object!, p : String!, f : Boolean) : void;
+    magic native function setPropertyIsDontEnum(o : Object!, p : String!, f : Boolean) : void;
 
     /* Retrieve the [[Value]] property of o */
-    native magic function getValue(o : Object!) : *;
+    magic native function getValue(o : Object!) : *;
 
     /* Set the [[Value]] of o to v */
-    native magic function setValue(o : Object!, v : *) : void;
+    magic native function setValue(o : Object!, v : *) : void;
 
 
     /* ----------------------------------------------------------------
@@ -70,7 +70,7 @@ package
        function.
 
        Throws a SyntaxError if the code could not be compiled. */
-    native magic function compile(formals : String!, body : String!) : [*, Number];
+    magic native function compile(formals : String!, body : String!) : [*, Number];
 
     /* Given some code created by magic::compile, an environment of
        some sort (either a global object or an environment structure
@@ -78,11 +78,11 @@ package
        argument values, invoke the code on those arguments in the
        given environment by extending the environment with the
        formals, binding actuals to formals, and running the code. */
-    native magic function invoke(code : *, env : *, args : Array) : *;
+    magic native function invoke(code : *, env : *, args : Array) : *;
 
     /* Given a function object, a this object, and an array of argument
        values, call the function with the this object and arguments. */
-    native magic function apply(fn : Function!, t : Object!, args : Array) : *;
+    magic native function apply(fn : Function!, t : Object!, args : Array) : *;
 
 
     /* ----------------------------------------------------------------
@@ -95,24 +95,24 @@ package
     /* Given a String object 'src', copy its internal string data into
        another String object 'dest', replacing whatever data might
        have been in 'dest' to begin with.  */
-    native magic function setStringValue(dest : String!, src : String!) : void;
+    magic native function setStringValue(dest : String!, src : String!) : void;
 
     /* Given a string and a position in that string, return the
        numeric value of the character at that position in the
        string.  */
-    native magic function charCodeAt(s : String!, pos : uint) : String!;
+    magic native function charCodeAt(s : String!, pos : uint) : String!;
 
     /* Given a numeric character value, return a string of length 1
        whose element 0 is the character with that same value.  */
-    native magic function fromCharCode(ch : uint) : String!;
+    magic native function fromCharCode(ch : uint) : String!;
 
     /* Given a string object, return the number of characters in the
      * string. */
-    native magic function stringLength(s : String!) : uint;
+    magic native function stringLength(s : String!) : uint;
 
     /* Given two string objects A and B , return a new string object
        containing the characters from A followed by the characters
        from B.  */
-    native magic function stringAppend(a : String!, b : String!) : String!;
+    magic native function stringAppend(a : String!, b : String!) : String!;
 }
 

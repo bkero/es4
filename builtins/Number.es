@@ -5,8 +5,9 @@
  * E262-3 15.7
  * E262-4 proposals:numbers
  *
- * "Number" is for backwards compatibility, most of the functionality
- * is in "double".
+ * The committee decided at the January 2007 meeting at Mozilla that
+ * "Number" is a heavyweight wrapper (non-final, dynamic) for a
+ * "double" value.
  */
 
 package
@@ -14,42 +15,62 @@ package
     use namespace intrinsic;
     use strict;
 
-    type Numeric = (int, uint, double, decimal);
-
-    final class Number!
+    dynamic class Number!
     {
-        public static const MAX_VALUE : double        = 1.7976931348623157e+308;   
-        public static const MIN_VALUE : double        = 5e-324;    
-        public static const NaN : double              = 0.0/0.0;   
-        public static const NEGATIVE_INFINITY : double = -1.0/0.0;
-        public static const POSITIVE_INFINITY : double = 1.0/0.0;
+        public static const MAX_VALUE : double         = double.MAX_VALUE;
+        public static const MIN_VALUE : double         = double.MIN_VALUE;
+        public static const NaN : double               = double.NaN;
+        public static const NEGATIVE_INFINITY : double = double.NEGATIVE_INFINITY;
+        public static const POSITIVE_INFINITY : double = double.POSITIVE_INFINITY;
 
-        prototype = double.prototype;
+        const value : double;
+
+        /* E262-4 draft */
+        public static function to(x : Numeric) : Number
+            x is Number ? x : new Number(ToDouble(x));
 
         /* E262-3 15.7.1.1: The Number Constructor Called as a Function */
-        intrinsic static function call(value) 
-            value === undefined ? 0 : ToDouble(value);
+        intrinsic static function invoke(value) 
+            value === undefined ? 0.0 : new Number(value);
 
         /* E262-3 15.7.2.1: The Number constructor */
-        public function Number(value)
-            new double(value);
+        public function Number(value) 
+            value = ToDouble(value);
 
-        intrinsic function toString(radix:Number = 10) : String!
-            magic::getValue(this).toRadix(radix);
+        prototype function toString(radix = 10)
+            this.toString(radix);
+
+        intrinsic function toString(radix = 10) : String!
+            value.toString(radix);
         
+        prototype function toLocaleString()
+            this.toLocaleString();
+
         intrinsic function toLocaleString() : String!
-            magic::getValue(this).toLocaleString();
+            value.toLocaleString();
+
+        prototype function valueOf()
+            this.valueOf();
 
         intrinsic function valueOf() : Object!
-            magic::getValue(this).valueOf();
+            value.valueOf();
 
-        intrinsic function toFixed(fractionDigits:Number) : String! 
-            magic::getValue(this).toFixed(fractionDigits);
+        prototype function toFixed(fractionDigits)
+            this.toFixed(fractionDigits);
 
-        intrinsic function toExponential(fractionDigits:Number) : String
-            magic::getValue(this).toExponential(fractionDigits);
+        intrinsic function toFixed(fractionDigits:double) : String! 
+            value.toFixed(fractionDigits);
 
-        intrinsic function toPrecision(precision:Number) : String!
-            magic::getValue(this).toPrecision(precision);
+        prototype function toExponential(fractionDigits)
+            this.toExponential(fractionDigits);
+
+        intrinsic function toExponential(fractionDigits:double) : String
+            value.toExponential(fractionDigits);
+
+        prototype function toPrecision(precision)
+            this.toPrecision(precision);
+
+        intrinsic function toPrecision(precision:double) : String!
+            value.toPrecision(precision);
     }
 }

@@ -31,7 +31,7 @@ package
             x is double ? x : ToDouble(x);
 
         /* E262-3 15.7.1.1: The double Constructor Called as a Function */
-        intrinsic static function call(value)
+        intrinsic static function invoke(value)
             value === undefined ? 0d : ToDouble(value);
 
         /* E262-3 15.7.2.1: The double constructor */
@@ -40,10 +40,10 @@ package
         }
 
         /* E262-3 15.7.4.2: double.prototype.toString */
-        prototype function toString(this:double, radix:Number)
+        prototype function toString(this:double, radix)
             this.toString(radix);
 
-        intrinsic function toString(radix:Number = 10) : String! {
+        intrinsic function toString(radix = 10) : String! {
             if (radix === 10 || radix === undefined)
                 return ToString(magic::getValue(this));
             else if (typeof radix === "number" && radix >= 2 && radix <= 36 && isIntegral(radix)) {
@@ -51,7 +51,7 @@ package
                 throw new Error("Unimplemented: non-decimal radix");
             }
             else
-                throw new TypeError("Invalid radix argument to Number.toString");
+                throw new TypeError("Invalid radix argument to double.toString");
         }
         
         /* E262-3 15.7.4.3: double.prototype.toLocaleString() */
@@ -71,13 +71,13 @@ package
 
         /* E262-3 15.7.4.5 Number.prototype.toFixed */
         prototype function toFixed(this:double, fractionDigits)
-            this.toFixed(ToNumber(fractionDigits));
+            this.toFixed(ToDouble(fractionDigits));
 
-        intrinsic function toFixed(fractionDigits:Number) : String! {
-            let f : Number = ToInteger(fractionDigits);
+        intrinsic function toFixed(fractionDigits:double) : String! {
+            let f : double = ToInteger(fractionDigits);
             if (f < 0 || f > 20)
                 throw new RangeError("fractionDigits out of range");
-            let x : Number = magic::getValue(this);
+            let x : double = magic::getValue(this);
             if (isNaN(x))
                 return "NaN";
             let s : String! = "";
@@ -89,7 +89,7 @@ package
             if (x >= Math.pow(10,21)) 
                 return s + ToString(m);
             
-            let n : Number = toFixedStep10(x, f);
+            let n : double = toFixedStep10(x, f);
             let m : String! = n == 0 ? "0" : ToString(n);
             if (f == 0)
                 return s + m;
@@ -113,12 +113,12 @@ package
         prototype function toExponential(this:double, fractionDigits)
             this.toExponential(ToDouble(fractionDigits));
 
-        intrinsic native function toExponential(fractionDigits:Number):String; // FIXME
+        intrinsic native function toExponential(fractionDigits:double):String; // FIXME
 
         /* E262-3 15.7.4.7: Number.prototype.toPrecision */
         prototype function toPrecision(this:double, precision)
             this.toPrecision(ToDouble(precision));
 
-        intrinsic native function toPrecision(precision:Number) : String!; // FIXME
+        intrinsic native function toPrecision(precision:double) : String!; // FIXME
     }
 }

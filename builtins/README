@@ -9,9 +9,8 @@ Resolution December meeting:
 
 Open questions for January meeting:
 
-  * Can an intrinsic method be extracted?  If so, all of the intrinsics in the
-    library need this:T annotations.
-  * Are library classes "final", "dynamic"?  Esp String should probably be final, non-dynamic.
+  * Can an intrinsic method be extracted?  Yes, no problem -- but it has a bound "this".
+  * Are library classes "final", "dynamic"?  They are non-final, dynamic.
 
 Code style:
 
@@ -28,7 +27,6 @@ Code style:
 
      - ToObject
      - ToString
-     - ToNumber
      - ToInt
      - ToUint
      - ToDouble
@@ -36,6 +34,7 @@ Code style:
      - ToBoolean
      - ToInteger
      - ToPrimitive
+     - ToNumber (don't use this, much -- it converts to the new class "Number")
 
   * Use the "magic" namespace for magic things
 
@@ -51,13 +50,27 @@ Code style:
 
   * Use "while (true) { ... }" for infinite loops, not "for (;;) { ... }"
 
+  * In declarations, namespace always precedes other modifiers:
+
+      intrinsic static const ...
+      public native function ...
+
+  * Use "double" to annotate parameters and variables that are
+    "Number" in ES3, and use "ToDouble" to convert values to that
+    representations (not "ToNumber").
+
+  * Use "let" or "let const" (rather than "var" or "const") to bind variables 
+
+
 Formatting style:
+
+  * methodNamesAreLikeThis, variable_names_are_like_this
 
   * Don't use tabs
 
   * Indent 4 spaces
 
-  * No line longer than 110 characters (not counting linebreak)
+  * No line longer than 100 characters (not counting linebreak)
 
   * Opening brace for package, class on next line, aligned:
        class Bar extends Foo 
@@ -78,8 +91,6 @@ Formatting style:
   * Expression functions when natural
 
   * Cite the relevant specs for every function
-
-  * Use "let" or "let const" (rather than "var" or "const") to bind variables 
 
 
 /*

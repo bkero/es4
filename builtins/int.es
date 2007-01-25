@@ -24,7 +24,7 @@ package
             x is int ? x : ToInt(x);
 
         /* E262-4 draft: The int Constructor Called as a Function */
-        intrinsic static function call(value)
+        intrinsic static function invoke(value)
             value === undefined ? 0i : ToInt(value);
 
         /* E262-4 draft: The int constructor */
@@ -33,10 +33,10 @@ package
 	}
 
         /* E262-4 draft: int.prototype.toString */
-        prototype function toString(this:int, radix:Number)
+        prototype function toString(this:int, radix)
             this.toString(radix);
 
-        intrinsic function toString(radix:Number = 10) : String! {
+        intrinsic function toString(radix = 10) : String! {
             if (radix === 10 || radix === undefined)
                 return ToString(magic::getValue(this));
             else if (typeof radix === "number" && radix >= 2 && radix <= 36 && isIntegral(radix)) {
@@ -44,7 +44,7 @@ package
                 throw new Error("Unimplemented: non-decimal radix");
             }
             else
-                throw new TypeError("Invalid radix argument to Number.toString");
+                throw new TypeError("Invalid radix argument to int.toString");
         }
         
         /* E262-4 draft: int.prototype.toLocaleString() */
@@ -64,23 +64,23 @@ package
 
         /* E262-3 15.7.4.5 int.prototype.toFixed */
         prototype function toFixed(this:int, fractionDigits)
-            this.toFixed(ToNumber(fractionDigits));
+            this.toFixed(ToDouble(fractionDigits));
 
-        intrinsic function toFixed(fractionDigits:Number) : String! 
+        intrinsic function toFixed(fractionDigits:double) : String! 
 	    ToDouble(this).toFixed(fractionDigits);
 
         /* E262-4 draft: int.prototype.toExponential */
         prototype function toExponential(this:int, fractionDigits)
             this.toExponential(ToDouble(fractionDigits));
 
-        intrinsic function toExponential(fractionDigits:Number) : String!
+        intrinsic function toExponential(fractionDigits:double) : String!
 	    ToDouble(this).toExponential(fractionDigits);
 
         /* E262-4 draft: int.prototype.toPrecision */
         prototype function toPrecision(this:int, precision)
             this.toPrecision(ToDouble(precision));
 
-        intrinsic function toPrecision(precision:Number) : String!
+        intrinsic function toPrecision(precision:double) : String!
 	    ToDouble(this).toPrecision(precision);
     }
 }

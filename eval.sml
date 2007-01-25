@@ -321,21 +321,34 @@ and evalNewExpr (obj:Mach.OBJ)
           | _ => LogErr.evalError ["operator 'new' applied to unknown object"]
 
                                                                                  
-and evalCallExpr (thisObj:Mach.OBJ option) 
+and evalCallExpr (thisObjOpt:Mach.OBJ option) 
                  (fobj:Mach.OBJ) 
                  (args:Mach.VAL list) 
     : Mach.VAL =
-    case fobj of
-        Mach.Obj { magic, ... } => 
-        case !magic of 
-            SOME (Mach.HostFunction f) => f args
-          | SOME (Mach.Function f) => 
-            ((case thisObj of 
-                  NONE => invokeFuncClosure Mach.globalObject f args
-                | SOME this => invokeFuncClosure this f args)
-             handle ReturnException v => v)
-          | _ => LogErr.evalError ["calling non-callable object"]
-                                                       
+    let 
+        val thisObj = case thisObjOpt of 
+                          NONE => Mach.globalObject
+                        | SOME t => t
+        val thisVal = Mach.Object thisObj
+    in
+        case fobj of
+            Mach.Obj { magic, ... } => 
+            case !magic of 
+                SOME (Mach.HostFunction f) => 
+                f args
+              | SOME (Mach.Function f) => 
+                (invokeFuncClosure thisObj f args
+                 handle ReturnException v => v)
+              | _ => 
+                if Mach.hasValue fobj Mach.intrinsicInvokeName
+                then
+                    let 
+                        val invokeFn = Mach.getValue fobj Mach.intrinsicInvokeName
+                    in
+                        evalCallExpr NONE (needObj invokeFn) (thisVal :: args)
+                    end
+                else LogErr.evalError ["calling non-callable object"]
+    end
 
 (* 
  * FIXME: possibly try to factor and merge this with evalVarBinding,

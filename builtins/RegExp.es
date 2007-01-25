@@ -20,7 +20,7 @@ package RegExp
     public dynamic class RegExp
     {
         /* E262-3 15.10.3.1: The RegExp constructor called as a function */
-        static intrinsic function call( pattern, flags ) {
+        static intrinsic function invoke( pattern, flags ) {
             if (pattern is RegExp && flags === undefined)
                 return pattern;
             else
@@ -69,17 +69,17 @@ package RegExp
            callable, and a call to an instance is equivalent to
            calling its exec() method.
         */
-        public function call(s) : Array
+        public function invoke(s) : Array
             this.exec(s);
 
-        intrinsic function call(s : String!) : Array
+        intrinsic function invoke(s : String!) : Array
             exec(s);
 
         /* E262-3 15.10.6.2: RegExp.prototype.exec */
         intrinsic function exec(s : String!) : Array {
             let S : String! = ToString(s);
             let length : uint = S.length;
-            let i : Number = ToInteger(lastIndex);
+            let i : double = ToInteger(lastIndex);
             if (!global)
                 i = 0;
             let res : MatchResult = failure;
@@ -129,7 +129,7 @@ package RegExp
         public const extended   : Boolean;  // E262-4 proposals:extend_regexps
         public const sticky     : Boolean;  // E262-4 proposals:extend_regexps
         public const source     : String!;
-        public var   lastIndex  : Number;
+        public var   lastIndex  : double;
 
         /* E262-4 - [[Match]] may not *have* to be public, but String
            uses it, and if we want to model the language in the
