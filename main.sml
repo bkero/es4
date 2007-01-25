@@ -9,7 +9,7 @@ fun testTC argvRest =
     let val asts = List.map Parser.parseFile argvRest
     in
 	TextIO.print "type checking ... \n";
-        List.map Verify.tcProgram asts;
+        List.map Verify.verifyProgram asts;
 	TextIO.print "type checked! \n"
     end
 
