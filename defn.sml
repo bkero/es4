@@ -491,6 +491,7 @@ and defFunc (parentFixtures:Ast.FIXTURES list)
                              resolveExprToNamespace parentFixtures ns
             val ident = case (#kind name) of 
                             Ast.Ordinary => (#ident name)
+                          | Ast.Call => (#ident name)
                           | _ => LogErr.unimplError ["unhandled type of function name"]
                                  
             val (newFsig, outerBindings, innerBindings) = 
