@@ -7,7 +7,7 @@ Library
         structure Lexer
         structure Parser
 	structure Defn
-        structure TypeChk
+        structure Verify
    	structure Eval
 	structure Mach 
 is

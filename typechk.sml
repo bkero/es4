@@ -5,7 +5,7 @@
  *)
 
 (* TODO: rename to Verify *)
-structure TypeChk = struct
+structure Verify = struct
 
 (* TODO: rename to VerifyError *)
 exception IllTypedException of string
@@ -715,8 +715,8 @@ and tcDefn ((ctxt as {this,env,lbls,retTy}):CONTEXT) (d:DEFN) : (TYPE_ENV * int 
     )
 
 
-and tcDefns ctxt [] = ([], [])
-  | tcDefns ctxt (d::ds) =
+and tcDefns ctxt ([]:DEFN list) : (TYPE_ENV * int list) = ([], [])
+  | tcDefns ctxt ((d::ds):DEFN list) : (TYPE_ENV * int list) =
         let val (extensions1, classes1) = tcDefn ctxt d
             val (extensions2, classes2) = tcDefns ctxt ds
         in

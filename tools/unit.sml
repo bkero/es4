@@ -281,13 +281,13 @@ fun runTestCase (test : TEST_CASE) : TEST_RESULT =
          )
        | { name, stage=Verify, arg=true, source } =>
          (
-             (TypeChk.tcProgram (parse source); (test, true))
+             (Verify.tcProgram (parse source); (test, true))
              handle e => (unexpectedExn e; (test, false))
          )
        | { name, stage=Verify, arg=false, source } =>
          (
-             (TypeChk.tcProgram (parse source); (test, false))
-             handle TypeChk.IllTypedException _ => (test, true)
+             (Verify.tcProgram (parse source); (test, false))
+             handle Verify.IllTypedException _ => (test, true)
                   | e => (unexpectedExn e; (test, false))
          )
 )
