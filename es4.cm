@@ -21,7 +21,7 @@ is
         lexer.lex
         parser.sml
         defn.sml
-	typechk.sml
+	verify.sml
 	eval.sml
 	mach.sml
 
