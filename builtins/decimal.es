@@ -22,6 +22,10 @@ package
         public static const NEGATIVE_INFINITY = -1.0m / 0.0m; // ???
         public static const POSITIVE_INFINITY = 1.0m / 0.0m;  // ???
 
+        /* E262-4 draft */
+        static function to(x : Numeric) : decimal
+            x is decimal ? x : ToDecimal(x);
+
         /* E262-3 15.7.1.1: The decimal Constructor Called as a Function */
         intrinsic static function call(value)
             value === undefined ? 0m : ToDecimal(value);

@@ -19,6 +19,10 @@ package
         static const MAX_VALUE : uint = 0xFFFFFFFFu;
         static const MIN_VALUE : uint = 0;
 
+        /* E262-4 draft */
+        static function to(x : Numeric) : uint
+            x is uint ? x : ToUint(x);
+
         /* E262-4 draft: The uint Constructor Called as a Function */
         intrinsic static function call(value)
             value === undefined ? 0u : ToUint(value);

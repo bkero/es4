@@ -1,10 +1,12 @@
 /* -*- indent-tabs-mode: nil -*- 
  *
  * ECMAScript 4 builtins - the "int" object
+ *
  * E262-3 15.7
  * E262-4 proposals:numbers
+ * Tamarin code
  *
- * Status: Incomplete?  No real spec to compare against.
+ * Status: Complete; not reviewed; not tested.
  */
 
 package
@@ -14,15 +16,19 @@ package
 
     final class int!
     {       
-        static const MAX_VALUE : int = 0x7FFFFFFF;
-        static const MIN_VALUE : int = -0x80000000;
+        public static const MAX_VALUE : int = 0x7FFFFFFF;
+        public static const MIN_VALUE : int = -0x80000000;
+
+        /* E262-4 draft */
+        static function to(x : Numeric) : int
+            x is int ? x : ToInt(x);
 
         /* E262-4 draft: The int Constructor Called as a Function */
-        static intrinsic function call(value)
-            value === undefined ? 0 ToInt(value);
+        intrinsic static function call(value)
+            value === undefined ? 0i : ToInt(value);
 
         /* E262-4 draft: The int constructor */
-        function int(value) {
+        public function int(value) {
             magic::setValue(this, ToInt(value));
 	}
 
@@ -33,7 +39,7 @@ package
         intrinsic function toString(radix:Number = 10) : String! {
             if (radix === 10 || radix === undefined)
                 return ToString(magic::getValue(this));
-            else if (typeof radix === "number" && radix >= 2 && radix <= 36 && intrinsic::isIntegral(radix)) {
+            else if (typeof radix === "number" && radix >= 2 && radix <= 36 && isIntegral(radix)) {
                 // FIXME
                 throw new Error("Unimplemented: non-decimal radix");
             }
