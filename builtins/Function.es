@@ -21,16 +21,18 @@ package
         use namespace intrinsic;
         use strict;
 
-        /* E262-3 15.3.1.1: The Function constructor */
-        intrinsic static function construct(...args)
-            createFunction(args);
+        /* E262-3 15.3.1.1: The Function constructor.  This
+           initializes the fields code, env, and source in the
+           constructed object.
+         */
+        /* magic */ native function Function(...args);
 
         /* E262-3 15.3.1: The Function Constructor Called as a Function */
-        intrinsic static function call(...args)
-            createFunction(args);
+        intrinsic static function invoke(...args)
+            Function.construct.apply(null, ...args);
 
         /* E262-3 10.X / 13.X: function invocation */
-        intrinsic function call(...args)
+        intrinsic function invoke(...args)
             magic::invoke(code, env, args);
 
         prototype function toString()
@@ -53,11 +55,10 @@ package
            Note ES4 bug fix: the arguments object is an 'Array', so the test
            for applicability of argArray is simpler than in ES3.
         */
-        public static function apply(fn : Function!, thisArg, argArray)
-        {
-            if (thisArg === void 0 || thisArg === null)
+        public static function apply(fn : Function!, thisArg, argArray) {
+            if (thisArg === undefined || thisArg === null)
                 thisArg = global;
-            if (argArray === void 0 || argArray === null)
+            if (argArray === undefined || argArray === null)
                 argArray = [];
             else if (!(argArray is Array))
                 throw new TypeError("argument array to 'apply' must be Array");
@@ -82,8 +83,7 @@ package
             Function.apply(this, thisObj, args);
         
         /* E262-3 15.3.5.3: [[HasInstance]] */
-        intrinsic function HasInstance(V)
-        {
+        intrinsic function HasInstance(V) {
             if (!(V is Object))
                 return false;
 
@@ -108,9 +108,8 @@ package
         /* Given an array of values as passed to the function
            constructor, create a new function object. 
         */
-        static function createFunction(args : Array!) : Function!
-        {
-            let [code, source, length] : [*, String!, Number] = compileFunction(args);
+        static function createFunction(args : Array!) : Function! {
+            let [code, source, length] : [*, String!, uint] = compileFunction(args);
             let fn : Function = super.intrinsic::construct(Function);
             let x : * = fn.Function();
 
@@ -131,8 +130,7 @@ package
            Function.prototype.toString(), and the function's
            "length".  
         */
-        static function compileFunction(...args) : [*, String!, Number]
-        {
+        static function compileFunction(...args) : [*, String!, uint] {
             let formals = args[0:args.length-1].join(",");
             let body = args[args.length-1];
             let [code, length] = magic::compile(formals, body);

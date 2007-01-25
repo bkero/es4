@@ -32,7 +32,7 @@ package
     final class String extends Object
     {       
         /* E262-3 15.5.1: The String Constructor Called as a Function */
-        static intrinsic function call(value) {
+        static intrinsic function invoke(value) {
             if (arguments.length === 0)
                 return "";
             else
@@ -58,10 +58,10 @@ package
         public static function fromCharCode(...args)
             builtinFromCharCode(args);
 
-        intrinsic static function fromCharCode(...args) : Number
+        intrinsic static function fromCharCode(...args) : double
             builtinFromCharCode(args);
 
-        static function builtinFromCharCode(codes : Array) : Number {
+        static function builtinFromCharCode(codes : Array) : double {
             let s : String = "";
             let n : uint = codes.length;
             for (let i : uint = 0 ; i < n ; ++i)
@@ -87,7 +87,7 @@ package
         prototype function charAt(pos)
             ToString(this).charAt(pos);
 
-        intrinsic function charAt(pos : Number = 0) : String
+        intrinsic function charAt(pos: double = 0) : String
             let (ipos = ToInteger(pos))
                 (ipos < 0 || ipos >= length) ? "" : magic::fromCharCode(magic::charCodeAt(this, ToUint(ipos)));
 
@@ -95,9 +95,9 @@ package
         prototype function charCodeAt(pos)
             ToString(this).charCodeAt(pos);
 
-        intrinsic function charCodeAt(pos : Number = 0) : Number
-            let (ipos = ToInteger(pos))
-                (ipos < 0 || ipos >= length) ? NaN : return magic::charCodeAt(this, ToUint(ipos));
+        intrinsic function charCodeAt(pos: double = 0) : double
+            let (ipos: double = ToInteger(pos))
+                (ipos < 0 || ipos >= length) ? NaN : magic::charCodeAt(this, ToUint(ipos));
 
         /* E262-3 15.5.4.6: String.prototype.concat.
            E262-4 draft proposals:bug_fixes - FUNCTION.LENGTH
@@ -122,7 +122,7 @@ package
         prototype function indexOf(searchString, position)
             ToString(this).indexOf(searchString, position);
 
-        intrinsic function indexOf(searchString : String!, position : Number = 0) : Number {
+        intrinsic function indexOf(searchString: String!, position: double = 0.0) : double {
             position = ToInteger(position);
 
             let slen  : uint = length;
@@ -147,8 +147,8 @@ package
         prototype function lastIndexOf(searchString, position)
             ToString(this).lastIndexOf(searchString, position);
 
-        intrinsic function lastIndexOf(searchString : String!, position : Number) : Number {
-            position = isNaN(Number) ? Infinity : ToInteger(x);
+        intrinsic function lastIndexOf(searchString : String!, position : double) : double {
+            position = isNaN(position) ? Infinity : ToInteger(x);
 
             let slen  : uint = length;
             let m     : uint = ToUint(Math.min(Math.max(position, 0), slen));
@@ -170,7 +170,7 @@ package
             ToString(this).localeCompare(that);
 
         /* INFORMATIVE - this is correct for a "simple" locale, eg English */
-        intrinsic function localeCompare(that : String!) : Number {
+        intrinsic function localeCompare(that : String!) : double {
             let la : uint = length;
             let lb : uint = that.length;
             let l  : uint = la < lb ? la : lb;
@@ -198,7 +198,7 @@ package
 
             regexp.lastIndex = 0;
             while (true) {
-                let oldLastIndex : Number = re.lastIndex;
+                let oldLastIndex : double = re.lastIndex;
                 let res : [String] = re.exec(this);
 
                 if (res === null) 
@@ -233,6 +233,7 @@ package
                 let s   : String! = "";
                 let i   : uint = 0;
                 /* FIXME: use regex literal here when lexer can handle them */
+                /* let r   : RegExp = /\$(?:(\$)|(\&)|(\`)|(\')|([0-9]{1,2}))/g; */
                 let r   : RegExp = new RegExp("\\$(?:(\\$)|(\\&)|(\\`)|(\\')|([0-9]{1,2}))","g");
                 let res : Array;
 
@@ -292,14 +293,14 @@ package
                         if (res === null)
                             return s + substring(oldi);
 
-                        ...;
+                        //...;
                     }
                 }
             }
             else {
                 /* paragraph 3 */
                 let searchString : String! = ToString(s);
-                let pos : Number = indexOf(searchString, 0);
+                let pos : double = indexOf(searchString, 0);
 
                 /* paragraph 6: the new string is derived from the old string by
                    making replacements for each match.  If there are no matches,
@@ -316,7 +317,7 @@ package
         prototype function search(regexp)
             ToString(this).search(regexp);
 
-        intrinsic function search(r) : Number {
+        intrinsic function search(r) : double {
             let regexp : RegExp = r instanceof RegExp ? r : new RegExp(r);
             let lim    : uint = length;
 
@@ -433,10 +434,10 @@ package
 
         /* E262-3 15.5.4.15: String.prototype.substring */
         prototype function substring (start, end)
-            ToString(this).substring(ToNumber(start), ToNumber(end));
+            ToString(this).substring(ToDouble(start), ToDouble(end));
 
-        intrinsic function substring(start : Number, end : Number) : String! {
-            let len : Number = length;
+        intrinsic function substring(start: double, end: double) : String! {
+            let len : double = length;
 
             start = ToInteger(start);
             end = isNaN(end) ? len : ToInteger(end);
