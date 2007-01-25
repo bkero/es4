@@ -4,6 +4,7 @@
  *
  * E262-3 15.2
  * E262-4 proposals:builtin_classes
+ * E262-4 draft proposals:json_encoding_and_decoding
  *
  * Status: Complete; Not reviewed against spec.
  */
@@ -62,7 +63,7 @@ package
                 return false;
 
             var VO : Object = V to Object;
-            for (;;) {
+            while (true) {
                 VO = magic::getPrototype(VO);
                 if (VO === null)
                     return false;
@@ -89,5 +90,12 @@ package
                 O = magic::getPrototype(O);
             }
         }
+
+        /* E262-4 draft proposals:json_encoding_and_decoding */
+        prototype function toJSONString() 
+            this.toJSONString();
+
+        intrinsic function toJSONString(...args) : String!
+            JSON.emit.apply(null, args.unshift(this));
     }
 }

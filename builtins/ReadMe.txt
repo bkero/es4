@@ -7,23 +7,51 @@ Resolution December meeting:
     value provided the class or its base classes do not define a property of that name.
   * "prototype function" implies DontEnum
 
-Open questions:
+Open questions for January meeting:
 
-  * can an intrinsic method be extracted?  If so, all of the intrinsics in the
+  * Can an intrinsic method be extracted?  If so, all of the intrinsics in the
     library need this:T annotations.
+  * Are library classes "final", "dynamic"?  Esp String should probably be final, non-dynamic.
 
-Style:
+Code style:
 
-  * prototype functions defer to intrinsic functions, generally
-  * use intrinsic::Number(x) to implement ToNumber(x)
-  * Ditto for ToString, ToBoolean, ToObject
-  * use intrinsic::Integer to implement ToInteger, though Integer is not a class; this is a
-    global function and has no non-intrinsic equivalent
-  * use intrinsic::int(x), intrinsic::uint(x), intrinsic::double(x), intrinsic::decimal(x)
-  * reserve native functions for systems-level things (getting system data or deferring to
-    the C library)
+  * Generally put "use namespace intrinsic" at the top of the package
+    and use public:: or other qualifiers when necessary to invoke
+    subclassed methods
 
-Editing style:
+  * Prototype functions should defer to intrinsic functions:
+
+      prototype function toString()
+          this.toString()   /* implicitly calls this.intrinsic::toString */
+
+  * Use these global, intrinsic-only conversion functions for conversions:
+
+     - ToObject
+     - ToString
+     - ToNumber
+     - ToInt
+     - ToUint
+     - ToDouble
+     - ToDecimal
+     - ToBoolean
+     - ToInteger
+     - ToPrimitive
+
+  * Use the "magic" namespace for magic things
+
+  * Use native functions to access system data and the C library
+
+  * Use === and !=== unless there is very good reason to use == or !=.
+
+  * To test whether a value v is undefined, use "v === undefined" (or
+    "v === intrinsic::undefined" if you're not using "use namespace
+    intrinsic").  Any compiler worth its salt gets this right.  Using
+    "void 0" is legal (and the compiler should get that right too) but
+    obscure, sort of like shifting for division.
+
+  * Use "while (true) { ... }" for infinite loops, not "for (;;) { ... }"
+
+Formatting style:
 
   * Don't use tabs
 
@@ -50,6 +78,9 @@ Editing style:
   * Expression functions when natural
 
   * Cite the relevant specs for every function
+
+  * Use "let" or "let const" (rather than "var" or "const") to bind variables 
+
 
 /*
 	Attempt at modeling ECMA-262 builtin classes using the new ECMA4 language.

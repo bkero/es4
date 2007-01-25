@@ -6,6 +6,21 @@ package Unicode
         return c >= 'a' && c <= 'z' || c >= 'A' && c <= 'z' || c == '_' || c == '$';
     }
 
+    /* Utility functions for String */
+
+    const trimmable_spaces = {};
+
+    for each ( let c in ("\u0009\u000A\u000B\u000C\u000D\u0020\u00A0" +
+                         "\u1680\u180E\u2000\u2001\u2002\u2003\u2004" +
+                         "\u2005\u2006\u2007\u2008\u2009\u200A\u2028" +
+                         "\u2029\u202F\u205F\u3000").split() ) {
+        trimmable_spaces[c.charCodeAt(0)] = true;
+    }
+
+    public function isTrimmableSpace(c : uint) : Boolean {
+        return trimmable_spaces.hasOwnProperty(c);
+    }
+
     /* Utility functions for Regular Expressions */
 
     public function isIdentifierPart(c) { // FIXME -- hairy, but not yet important

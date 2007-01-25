@@ -27,6 +27,10 @@ package
 {
     namespace magic;
 
+    /* --------------------------------------------------------------
+
+       PROPERTY MANIPULATION.  */
+
     /* Retrieve the [[Class]] property of o */
     native magic function getClassName(o : Object!) : String!;
 
@@ -54,7 +58,12 @@ package
 
     /* Set the [[Value]] of o to v */
     native magic function setValue(o : Object!, v : *) : void;
-        
+
+
+    /* ----------------------------------------------------------------
+
+       FUNCTION MANIPULATION.  */
+
     /* Compile the function body in the context of the formals and
        return an opaque representation for the compiled code, suitable
        for passing to magic::invoke, along with the arity of the
@@ -74,4 +83,36 @@ package
     /* Given a function object, a this object, and an array of argument
        values, call the function with the this object and arguments. */
     native magic function apply(fn : Function!, t : Object!, args : Array) : *;
+
+
+    /* ----------------------------------------------------------------
+
+       STRING MANIPULATION.  Strings contain string data in some
+       unspecified way - there is no representation of string data in
+       the language.  The following magic functions access and set
+       those string data.  */
+
+    /* Given a String object 'src', copy its internal string data into
+       another String object 'dest', replacing whatever data might
+       have been in 'dest' to begin with.  */
+    native magic function setStringValue(dest : String!, src : String!) : void;
+
+    /* Given a string and a position in that string, return the
+       numeric value of the character at that position in the
+       string.  */
+    native magic function charCodeAt(s : String!, pos : uint) : String!;
+
+    /* Given a numeric character value, return a string of length 1
+       whose element 0 is the character with that same value.  */
+    native magic function fromCharCode(ch : uint) : String!;
+
+    /* Given a string object, return the number of characters in the
+     * string. */
+    native magic function stringLength(s : String!) : uint;
+
+    /* Given two string objects A and B , return a new string object
+       containing the characters from A followed by the characters
+       from B.  */
+    native magic function stringAppend(a : String!, b : String!) : String!;
 }
+

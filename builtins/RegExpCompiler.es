@@ -13,7 +13,8 @@
 
 package RegExp
 {
-    /* import Unicode.*; */  // FIXME: not handled by parser yet
+    import Unicode.*;
+    use namespace intrinsic;
     use strict;
 
     class RegExpCompiler
@@ -63,7 +64,7 @@ package RegExp
             let t : Matcher? = term();
             if (t === null)
                 return null;
-            for (;;) {
+            while (true) {
                 let p : Matcher? = term();
                 if (p === null)
                     return t;
@@ -101,21 +102,21 @@ package RegExp
         }
 
         function quantifierPrefix() : [Number, Number]? {
-                 if (eat("*")) return [0,intrinsic::Infinity];
-            else if (eat("+")) return [1,intrinsic::Infinity];
+                 if (eat("*")) return [0,Infinity];
+            else if (eat("+")) return [1,Infinity];
             else if (eat("?")) return [0,1];
             else if (eat("{")) {
                 let min : Number = decimalDigits();
                 let max : Number = n;
                 if (eat(",")) {
                     if (eat("}"))
-                        max = intrinsic::Infinity;
+                        max = Infinity;
                     else {
                         max = decimalDigits();
                         match("}");
                     }
                 }
-                if (intrinsic::isFinite(max) && max < min)
+                if (isFinite(max) && max < min)
                     throw new SyntaxError("max must be at least as large as min");
                 return [min,max];
             }
@@ -224,7 +225,7 @@ package RegExp
             }
 
             function characterClassEscape(t : Charset) : Matcher {
-                    return new CharsetMatcher(t);
+                return new CharsetMatcher(t);
             }
 
             function characterEscape(t : String) : Matcher {
@@ -276,7 +277,7 @@ package RegExp
                 return new CharsetEmpty;
 
             let s : Charset = nonemptyClassRanges();
-            for (;;) {
+            while (true) {
                 if (eat("\\&")) {
                     let t : Charset = nonemptyClassRanges();
                     s = CharsetIntersect(s, t);
