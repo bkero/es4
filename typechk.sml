@@ -70,6 +70,67 @@ fun unOptionDefault NONE def = def
 
 (************************* Substitution on Types *********************************)
 
+val gensymCounter : int ref = ref 0
+fun gensym (s:IDENT):IDENT = 
+    let
+    in 
+	gensymCounter := 1+(!gensymCounter);
+	s^"$"^(Int.toString (!gensymCounter))
+    end
+
+fun subst (s:((IDENT*TYPE_EXPR) list)) (t:TYPE_EXPR):TYPE_EXPR = 
+    let in
+	case t of
+	    UnionType ts => 
+	    UnionType (map (subst s) ts)
+	  | ArrayType ts => 
+	    ArrayType (map (subst s) ts)
+	  | AppType {base, args} => 
+	    AppType {base=subst s base, args=map (subst s) args}
+	  | NullableType {expr, nullable}
+	    => NullableType {expr=subst s expr, nullable=nullable}
+(*
+	  | NominalType { ident, nullable=_ } =>
+	    let in case List.find (fn (id,ty) => id=ident) s of
+		       (* TODO: we're dropping the nullable here, is that right? *)
+		       SOME (_,ty) => ty 
+		     | NONE => t
+	    end
+*)
+	  | ObjectType fields =>
+	    ObjectType (map (fn {name,ty} => 
+				{name=name,ty=subst s ty})
+			fields)
+	  | SpecialType st => SpecialType st
+(*
+	  | FunctionType (FunctionSignature {typeParams,params,inits,
+					     returnType,thisType,hasBoundThis,hasRest}) =>
+	    let val oldNew = map (fun id => (id, gensym id)) typeParams 
+		val nuSub = 
+		    map 
+			(fun (oldId,newId) => 
+			     (oldId, NominalType { ident=Identifier {ident=newId,openNamespaces=[]}}))
+			oldNew
+		val nuTypeParams = map (fun (oldId,newId) => newId) oldNew
+		val nuParams =
+		    (map (fun Binding {kind,init,attrs,pattern,ty} =>
+			      Binding {kind,
+
+}) =>
+*)
+	    (* Need to first uniquify typeParams to avoid capture *)
+	    
+
+    end
+	
+
+
+
+(*
+     and TYPE_EXPR =
+       | FunctionType of FUNC_SIG
+   *)
+
 (************************* Convertibility *********************************)
 
 fun checkConvertible (t1:TYPE_EXPR) (t2:TYPE_EXPR) : unit = 
@@ -100,7 +161,7 @@ and isConvertible (t1:TYPE_EXPR) (t2:TYPE_EXPR) : bool =
 	    (* t1 must exist in types2 *)
 	    List.exists (fn t => isConvertible t1 t) types2 
 	  | (ArrayType types1, ArrayType types2) => 
-	    (* arrays are invariant, every entry should be convertible in both directorys *)
+	    (* arrays are invariant, every entry should be convertible in both directions *)
 	    let fun check (h1::t1) (h2::t2) =
 		    (isConvertible h1 h2)
 		    andalso
@@ -120,6 +181,14 @@ and isConvertible (t1:TYPE_EXPR) (t2:TYPE_EXPR) : bool =
 	    => true
 
 	  | (ArrayType _, 
+	     NominalType {ident=Identifier {ident="Object", openNamespaces=[]}, nullable=NONE}) 
+	    => true
+
+	  | (FunctionType _, 
+	     NominalType {ident=Identifier {ident="Function", openNamespaces=[]}, nullable=NONE}) 
+	    => true
+
+	  | (FunctionType _, 
 	     NominalType {ident=Identifier {ident="Object", openNamespaces=[]}, nullable=NONE}) 
 	    => true
 
@@ -143,8 +212,31 @@ and isConvertible (t1:TYPE_EXPR) (t2:TYPE_EXPR) : bool =
 		      {typeParams=typeParams2,params=params2, 
 		       inits=inits2,returnType=returnType2,
 		       thisType=thisType2,hasBoundThis=hasBoundThis2,hasRest=hasRest2})) =>
-	    false
+	    let
+	    in
+		(* TODO: Assume for now that functions are not polymorphic *)
+		assert (typeParams1 = [] andalso typeParams2=[])   "cannot handle polymorphic fns";
+		assert (not hasRest1 andalso not hasRest2)   "cannot handle rest args";
+
+		let fun checkArgs params1 params2 =
+			case (params1,params2) of
+			    ([],[]) => true
+			  | (Binding {kind=_,init=_,attrs=_,pattern=_,ty=ty1}::t1,
+			     Binding {kind=_,init=_,attrs=_,pattern=_,ty=ty2}::t2) => 
+			    isConvertible (unOptionDefault ty2 anyType)
+					  (unOptionDefault ty1 anyType)
+			    andalso checkArgs t1 t2
+			  | _ =>
+			    (* different args length *)
+			    false
+		in
+		    checkArgs params1 params2
+		    andalso
+		    isConvertible returnType1 returnType2
+		end
+		
 	    (* TODO: Gets pretty complicated here! *)
+	    end
 	    
 	  (* catch all *)
 	  | _ => false 
@@ -155,14 +247,8 @@ and isConvertible (t1:TYPE_EXPR) (t2:TYPE_EXPR) : bool =
 (*
     and TYPE_EXPR =
          SpecialType of SPECIAL_TY
-       | UnionType of TYPE_EXPR list
-       | ArrayType of TYPE_EXPR list
        | NominalType of { ident : IDENT_EXPR, nullable: bool option }  (* todo: remove nullable *)
-       | FunctionType of FUNC_SIG
-       | ObjectType of FIELD_TYPE list
-       | AppType of { base: TYPE_EXPR,
-		      args: TYPE_EXPR list }
-	   | NullableType of {expr:TYPE_EXPR,nullable:bool}
+       | NullableType of {expr:TYPE_EXPR,nullable:bool}
 *)
 
 (************************* Handling Types *********************************)
