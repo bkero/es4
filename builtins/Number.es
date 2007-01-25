@@ -27,15 +27,15 @@ package
 
         /* E262-4 draft */
         public static function to(x : Numeric) : Number
-            ToNumber(x);
+            x is Number ? x : new Number(ToDouble(x));
 
         /* E262-3 15.7.1.1: The Number Constructor Called as a Function */
         intrinsic static function invoke(value) 
-            value === undefined ? 0.0 : ToNumber(value);
+            value === undefined ? 0.0 : new Number(value);
 
         /* E262-3 15.7.2.1: The Number constructor */
-        public function Number(value)
-            value = new double(value);
+        public function Number(value) 
+            value = ToDouble(value);
 
         prototype function toString(radix = 10)
             this.toString(radix);
