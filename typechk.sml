@@ -12,7 +12,7 @@ exception IllTypedException of string
 exception BrokenInvariant of string
 exception CalledEval
     
-open Ast
+open Ast LogErr
 
 (* TODO: what is the proper way to resolve these built-ins? *)
 fun simpleIdent (s:string) : IDENT_EXPR 
@@ -147,7 +147,7 @@ and isConvertible (t1:TYPE_EXPR) (t2:TYPE_EXPR) : bool =
 	    (* TODO: Gets pretty complicated here! *)
 	    
 	  (* catch all *)
-	  | _ => false 
+	  | _ => unimplError ["isConvertible"]
     end
     
 

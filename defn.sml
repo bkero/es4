@@ -10,8 +10,8 @@ structure Defn = struct
 type DEFN_TYPE_CLASSIFICATION = 
      ((Ast.NAMESPACE_DEFN list) * (Ast.CLASS_DEFN list) * (Ast.DEFN list))
 
-fun classifyDefnByType 
-        (curr:(Ast.DEFN * DEFN_TYPE_CLASSIFICATION))
+
+fun classifyDefnByType (curr:(Ast.DEFN * DEFN_TYPE_CLASSIFICATION))
     : DEFN_TYPE_CLASSIFICATION = 
     case curr of 
         (next, (n, c, d)) => 
@@ -20,13 +20,14 @@ fun classifyDefnByType
           | Ast.ClassDefn x => (n, (x::c), d)
           | x => (n, c, (x::d))
 
+
 type 'a STORAGE_CLASSIFICATION = 
      { proto: 'a list,
        static: 'a list,
        instance: 'a list }
 
-fun classifyDefnByStorage 
-        (curr:(Ast.DEFN * (Ast.DEFN STORAGE_CLASSIFICATION)))
+
+fun classifyDefnByStorage (curr:(Ast.DEFN * (Ast.DEFN STORAGE_CLASSIFICATION)))
     : Ast.DEFN STORAGE_CLASSIFICATION = 
         let
             fun classifyByAttrs 
@@ -78,10 +79,14 @@ fun classifyDefnByStorage
                           instance = maybeExtend (#instance classifiedVbs) instance }
                     end
         end
+
                      
 fun inr f (a, b) = (a, f b)
 
-fun resolveFixture (fixs:Ast.FIXTURES list) (mname:Mach.MULTINAME) : Ast.FIXTURE =
+
+fun resolveFixture (fixs:Ast.FIXTURES list) 
+                   (mname:Mach.MULTINAME) 
+    : Ast.FIXTURE =
     case fixs of 
         [] => LogErr.defnError ["unresolved fixture"]
       |        (Ast.Fixtures { bindings, ... }) :: parents => 
@@ -102,7 +107,10 @@ fun resolveFixture (fixs:Ast.FIXTURES list) (mname:Mach.MULTINAME) : Ast.FIXTURE
               | NONE => resolveFixture parents mname
         end
 
-fun resolveExprToNamespace (fixs:Ast.FIXTURES list) (expr:Ast.EXPR) : Mach.NS = 
+
+fun resolveExprToNamespace (fixs:Ast.FIXTURES list) 
+                           (expr:Ast.EXPR) 
+    : Mach.NS = 
     case expr of 
         Ast.LiteralExpr (Ast.LiteralNamespace ns) => ns
       | Ast.LexicalRef {ident = Ast.Identifier {ident, openNamespaces} } => 
@@ -116,7 +124,7 @@ fun resolveExprToNamespace (fixs:Ast.FIXTURES list) (expr:Ast.EXPR) : Mach.NS =
         end
       | _ => LogErr.defnError ["unexpected expression type ",
                                "in namespace context"]
-
+             
 fun newFixtures (parentFixtures:Ast.FIXTURES list) 
                 (newBindings:Ast.FIXTURE_BINDINGS) 
     : Ast.FIXTURES = 
@@ -144,10 +152,10 @@ type classBlockAnalysis =
        ifixtures: Ast.FIXTURES, 
        fixtures: Ast.FIXTURES }
 
-fun analyzeClassBlock 
-        (parentFixtures:Ast.FIXTURES list) 
-        (n:Ast.NAME) 
-        (b:Ast.BLOCK) 
+
+fun analyzeClassBlock (parentFixtures:Ast.FIXTURES list) 
+                      (n:Ast.NAME) 
+                      (b:Ast.BLOCK) 
     : classBlockAnalysis = 
     case b of 
         Ast.Block { pragmas, defns, stmts, ... } => 
@@ -226,8 +234,7 @@ fun analyzeClassBlock
               ifixtures = f2 }
     end
 
-and mergeFixtures
-        (pair:(Ast.FIXTURES * Ast.FIXTURES))
+and mergeFixtures (pair:(Ast.FIXTURES * Ast.FIXTURES))
     : Ast.FIXTURES = 
     case pair of
         (Ast.Fixtures fa, Ast.Fixtures fb) => 
@@ -236,9 +243,9 @@ and mergeFixtures
                        numberType = (#numberType fb),
                        roundingMode = (#roundingMode fb) }
 
-and mergeFixtureOpts 
-        (a:Ast.FIXTURES option) 
-        (b:Ast.FIXTURES option) 
+
+and mergeFixtureOpts (a:Ast.FIXTURES option) 
+                     (b:Ast.FIXTURES option) 
     : (Ast.FIXTURES option)= 
     case (a, b) of 
         (SOME x, SOME y) => SOME (mergeFixtures (x, y))
@@ -246,7 +253,9 @@ and mergeFixtureOpts
       | (NONE, SOME x) => SOME x
       | (NONE, NONE) => NONE
 
-and mergeClasses (base:Ast.CLASS_DEFN) (curr:Ast.CLASS_DEFN) : Ast.CLASS_DEFN = 
+and mergeClasses (base:Ast.CLASS_DEFN) 
+                 (curr:Ast.CLASS_DEFN) 
+    : Ast.CLASS_DEFN = 
     (* FIXME: check for name collisions and respect override / final modifiers. *)
     { name = (#name curr),
       nonnullable = (#nonnullable curr),
@@ -255,7 +264,8 @@ and mergeClasses (base:Ast.CLASS_DEFN) (curr:Ast.CLASS_DEFN) : Ast.CLASS_DEFN =
       extends = (#extends curr),
       implements = (#implements curr) @ (#implements base),
       classFixtures = (#classFixtures curr),
-      instanceFixtures = mergeFixtureOpts (#instanceFixtures base) (#instanceFixtures curr),
+      instanceFixtures = mergeFixtureOpts (#instanceFixtures base) 
+                                          (#instanceFixtures curr),
       body = (#body curr),
       protoVars = (#protoVars curr),
       protoMethods = (#protoMethods curr),
@@ -265,13 +275,14 @@ and mergeClasses (base:Ast.CLASS_DEFN) (curr:Ast.CLASS_DEFN) : Ast.CLASS_DEFN =
       methods = (#methods curr),
       constructor = (#constructor curr),
       initializer = (#initializer curr) }
-      
+
 
 and resolveOneClass (parentFixtures:Ast.FIXTURES list)
                     (unresolved:Ast.CLASS_DEFN list)
                     (resolved:(Ast.CLASS_DEFN list) ref)    
                     (children:Ast.NAME list)
-                    (curr:Ast.CLASS_DEFN) : (Ast.NAME * Ast.CLASS_DEFN) = 
+                    (curr:Ast.CLASS_DEFN) 
+    : (Ast.NAME * Ast.CLASS_DEFN) = 
     let 
         fun qualName (cd:Ast.CLASS_DEFN) = { ns = Ast.Internal "", id = (#name cd) }
         val currName = qualName curr
@@ -282,23 +293,27 @@ and resolveOneClass (parentFixtures:Ast.FIXTURES list)
                 Ast.Attributes { final, ... } => final
         fun findBaseClassDef (n:Ast.NAME) (cds:Ast.CLASS_DEFN list) = 
             case cds of 
-                [] => LogErr.defnError ["unable to find class definition ", LogErr.name n]
+                [] => LogErr.defnError ["unable to find class definition ", 
+                                        LogErr.name n]
               | x::xs => if n = (qualName x) 
                          then (if isFinal x
-                               then LogErr.defnError ["attempting to extend final class ", LogErr.name n]
+                               then LogErr.defnError ["attempting to extend final class ", 
+                                                      LogErr.name n]
                                else x)
                          else findBaseClassDef n xs
         fun identExprToName ie = 
             case ie of 
                 Ast.Identifier {ident, ...} => {ns = Ast.Internal "", 
                                                 id = ident}
-              | _ => LogErr.defnError ["unhandled form of identifier expresison in class defn"]
+              | _ => LogErr.defnError ["unhandled form of identifier ",
+                                       "expresison in class defn"]
     in
         case findResolved currName of 
             SOME existingDefn => (currName, existingDefn)
           | NONE => 
             let 
-                val _ = LogErr.trace ["analyzing class block for ", LogErr.name currName]
+                val _ = LogErr.trace ["analyzing class block for ", 
+                                      LogErr.name currName]
                 val cba = analyzeClassBlock parentFixtures currName (#body curr)
                 val newAttrs = defAttrs parentFixtures (#attrs curr) 
                 val newExtends = case (#extends curr) of 
@@ -332,7 +347,8 @@ and resolveOneClass (parentFixtures:Ast.FIXTURES list)
                         val baseName = identExprToName baseIdentExpr
                         val unresolvedBaseClassDef = 
                             if seenAsChild baseName
-                            then LogErr.defnError ["cyclical class inheritence detected at ", LogErr.name baseName]
+                            then LogErr.defnError ["cyclical class inheritence detected at ", 
+                                                   LogErr.name baseName]
                             else findBaseClassDef baseName unresolved 
                         val (_, resolvedBaseClassDef) = 
                             resolveOneClass 
@@ -342,14 +358,16 @@ and resolveOneClass (parentFixtures:Ast.FIXTURES list)
                                 (currName :: children) 
                                 unresolvedBaseClassDef
                     in
-                        (currName, mergeClasses resolvedBaseClassDef analyzedCurrClassDef)
+                        (currName, mergeClasses resolvedBaseClassDef 
+                                                analyzedCurrClassDef)
                     end
                   | NONE => ((qualName curr), analyzedCurrClassDef)
             end
     end
 
+
 and defAttrs (parentFixtures:Ast.FIXTURES list)
-    (attrs:Ast.ATTRIBUTES)
+             (attrs:Ast.ATTRIBUTES)
     : Ast.ATTRIBUTES = 
     case attrs of 
         Ast.Attributes a => 
@@ -362,8 +380,9 @@ and defAttrs (parentFixtures:Ast.FIXTURES list)
                          native = (#native a),
                          rest = (#rest a) }
 
+
 and defVar (parentFixtures:Ast.FIXTURES list) 
-            (var:Ast.VAR_BINDING) 
+           (var:Ast.VAR_BINDING) 
     : (Ast.FIXTURE_BINDINGS * Ast.VAR_BINDING) = 
     case var of 
         Ast.Binding { kind, init, attrs, pattern, ty } => 
@@ -414,8 +433,8 @@ and defVars (parentFixtures:Ast.FIXTURES list)
 
 
 and defFuncSig (parentFixtures:Ast.FIXTURES list) 
-    (name:Ast.NAME option)
-    (fsig:Ast.FUNC_SIG)
+               (name:Ast.NAME option)
+               (fsig:Ast.FUNC_SIG)
     : (Ast.FUNC_SIG * Ast.FIXTURE_BINDINGS * Ast.FIXTURE_BINDINGS) =
     case fsig of 
         Ast.FunctionSignature { typeParams, params, inits, 
@@ -443,15 +462,16 @@ and defFuncSig (parentFixtures:Ast.FIXTURES list)
                   | SOME n => [(n, Ast.ValFixture { ty = Ast.FunctionType fsig,
                                                     readOnly = true,
                                                     isOverride = false })]
-            val newFsig = Ast.FunctionSignature { typeParams = typeParams,
-                                                  params = newParams,
-                                                  inits = newInits,
-                                                  returnType = defTyExpr typeEnv returnType,
-                                                  thisType = case thisType of 
-                                                                 NONE => NONE
-                                                               | SOME t => SOME (defTyExpr typeEnv t),
-                                                  hasBoundThis = hasBoundThis,
-                                                  hasRest = hasRest }
+            val newFsig = Ast.FunctionSignature 
+                              { typeParams = typeParams,
+                                params = newParams,
+                                inits = newInits,
+                                returnType = defTyExpr typeEnv returnType,
+                                thisType = case thisType of 
+                                               NONE => NONE
+                                             | SOME t => SOME (defTyExpr typeEnv t),
+                                hasBoundThis = hasBoundThis,
+                                hasRest = hasRest }
             val allParamBindings = paramBindings @ initBindings
             val funcBindings = (allParamBindings @ typeParamBindings @ selfBindings)
         in
@@ -481,7 +501,9 @@ and defFunc (parentFixtures:Ast.FIXTURES list)
                                      body = defBlock (funcFixtures :: parentFixtures) body,
                                      fixtures = SOME funcFixtures }
         in
-            (outerBindings, {func = newFunc, kind = (#kind f), attrs = newAttrs })
+            (outerBindings, {func = newFunc, 
+                             kind = (#kind f), 
+                             attrs = newAttrs })
         end
 
         
@@ -492,33 +514,43 @@ and defPragma (parentFixtures:Ast.FIXTURES list)
     []
 
 
-and defIdentExpr (parentFixtures:Ast.FIXTURES list) (ie:Ast.IDENT_EXPR) : Ast.IDENT_EXPR = 
+and defIdentExpr (parentFixtures:Ast.FIXTURES list) 
+                 (ie:Ast.IDENT_EXPR) 
+    : Ast.IDENT_EXPR = 
     let 
-        val openNamespaces = case parentFixtures of 
-                                 [] => []
-                               | (Ast.Fixtures { openNamespaces, ... }) :: _ => openNamespaces
+        val openNamespaces = 
+            case parentFixtures of 
+                [] => []
+              | (Ast.Fixtures { openNamespaces, ... }) :: _ => 
+                openNamespaces
     in
         case ie of 
             Ast.Identifier { ident, ... } => 
-            Ast.Identifier { ident=ident, openNamespaces=openNamespaces } 
-
+            Ast.Identifier { ident=ident, 
+                             openNamespaces=openNamespaces } 
+            
           | Ast.AttributeIdentifier ai => 
             Ast.AttributeIdentifier (defIdentExpr parentFixtures ai)
 
-          | Ast.TypeIdentifier {ident, typeParams} => 
-            Ast.TypeIdentifier {ident=(defIdentExpr parentFixtures ident), typeParams=typeParams}
+          | Ast.TypeIdentifier { ident, typeParams } => 
+            Ast.TypeIdentifier { ident=(defIdentExpr parentFixtures ident), 
+                                 typeParams=typeParams }
 
-          | Ast.QualifiedIdentifier {qual, ident} => 
-            Ast.QualifiedIdentifier {qual = defExpr parentFixtures qual, ident = ident}
+          | Ast.QualifiedIdentifier { qual, ident } => 
+            Ast.QualifiedIdentifier { qual = defExpr parentFixtures qual, 
+                                      ident = ident }
 
-          | Ast.QualifiedExpression {qual, expr} => 
-            Ast.QualifiedExpression {qual = defExpr parentFixtures qual, 
-                                     expr = defExpr parentFixtures expr}
+          | Ast.QualifiedExpression { qual, expr } => 
+            Ast.QualifiedExpression { qual = defExpr parentFixtures qual, 
+                                      expr = defExpr parentFixtures expr }
           | Ast.ExpressionIdentifier e => 
             Ast.ExpressionIdentifier (defExpr parentFixtures e)
     end
 
-and defExpr (parentFixtures:Ast.FIXTURES list) (expr:Ast.EXPR) : Ast.EXPR = 
+
+and defExpr (parentFixtures:Ast.FIXTURES list) 
+            (expr:Ast.EXPR) 
+    : Ast.EXPR = 
     let 
         fun sub e = defExpr parentFixtures e
         fun subs e = defExprs parentFixtures e
@@ -583,7 +615,11 @@ and defExpr (parentFixtures:Ast.FIXTURES list) (expr:Ast.EXPR) : Ast.EXPR =
             let
                 val (newFsig, _, innerBindings) = 
                     case ident of 
-                        SOME id => defFuncSig parentFixtures (SOME { ns=(Ast.Internal ""), id=id }) fsig
+                        (* FIXME: can function expressions have namespaces on their name? *)
+                        SOME id => defFuncSig parentFixtures 
+                                              (SOME { ns=(Ast.Internal ""), 
+                                                      id=id }) 
+                                              fsig
                       | NONE => defFuncSig parentFixtures NONE fsig
                 val funcFixtures = newFixtures parentFixtures innerBindings
             in
@@ -632,7 +668,6 @@ and defTyExpr (parentFixtures:Ast.FIXTURES list)
 and defPattern (parentFixtures:Ast.FIXTURES list)
                (pat:Ast.PATTERN) 
     : Ast.PATTERN = 
-
     case pat of 
         Ast.ObjectPattern fields => 
         Ast.ObjectPattern (map (fn { name, ptrn } => 
@@ -648,7 +683,10 @@ and defPattern (parentFixtures:Ast.FIXTURES list)
       | Ast.IdentifierPattern ie => 
         Ast.IdentifierPattern (defIdentExpr parentFixtures ie)
 
-and defStmt (parentFixtures:Ast.FIXTURES list) (stmt:Ast.STMT) : (Ast.STMT) = 
+
+and defStmt (parentFixtures:Ast.FIXTURES list) 
+            (stmt:Ast.STMT) 
+    : (Ast.STMT) = 
     let
         fun reconstructForEnumStmt (fe:Ast.FOR_ENUM_STMT) = 
             case fe of 
@@ -671,14 +709,14 @@ and defStmt (parentFixtures:Ast.FIXTURES list) (stmt:Ast.STMT) : (Ast.STMT) =
                 end
         fun reconstructWhileStmt (w:Ast.WHILE_STMT) = 
             case w of 
-                { cond, body, contLabel} => 
+                { cond, body, contLabel } => 
                 let 
                     val newCond = defExpr parentFixtures cond
                     val newBody = defStmt parentFixtures body
                 in
                     { cond=newCond, 
                       body=newBody, 
-                      contLabel=contLabel}
+                      contLabel=contLabel }
                 end
 
         fun reconstructForStmt { defns, init, cond, update, contLabel, body } =
@@ -698,7 +736,7 @@ and defStmt (parentFixtures:Ast.FIXTURES list) (stmt:Ast.STMT) : (Ast.STMT) =
                               contLabel = contLabel,
                               body = newBody }
             end
-
+            
         fun reconstructCatch { bind, body } =
             let 
                 val (b0, newBind) = defVar parentFixtures bind
@@ -714,7 +752,7 @@ and defStmt (parentFixtures:Ast.FIXTURES list) (stmt:Ast.STMT) : (Ast.STMT) =
                          | SOME e => SOME (defExprs parentFixtures e)),
               body = defBlock parentFixtures body }
 
-
+            
         fun reconstructTyCase { ptrn, body } =
             let 
                 val (b0, newPtrn) = 
@@ -731,7 +769,7 @@ and defStmt (parentFixtures:Ast.FIXTURES list) (stmt:Ast.STMT) : (Ast.STMT) =
         case stmt of
             Ast.EmptyStmt => 
             Ast.EmptyStmt
-
+            
           | Ast.ExprStmt es => 
             Ast.ExprStmt (defExprs parentFixtures es)
             
@@ -812,8 +850,10 @@ and defStmt (parentFixtures:Ast.FIXTURES list) (stmt:Ast.STMT) : (Ast.STMT) =
             Ast.Dxns { expr = defExpr parentFixtures expr }
     end            
 
-and defNamespace (parentFixtures:Ast.FIXTURES list) (nd:Ast.NAMESPACE_DEFN) : 
-    (Ast.FIXTURE_BINDINGS * Ast.NAMESPACE_DEFN) = 
+
+and defNamespace (parentFixtures:Ast.FIXTURES list) 
+                 (nd:Ast.NAMESPACE_DEFN)
+    : (Ast.FIXTURE_BINDINGS * Ast.NAMESPACE_DEFN) = 
     case nd of 
         { attrs=(Ast.Attributes {ns, ...}), ident, init } => 
         let
@@ -830,7 +870,7 @@ and defNamespace (parentFixtures:Ast.FIXTURES list) (nd:Ast.NAMESPACE_DEFN) :
             ([(fixtureName, Ast.NamespaceFixture newNs)], nd)
         end
 
-            
+
 and defDefn (parentFixtures:Ast.FIXTURES list) 
             (defn:Ast.DEFN) 
     : (Ast.FIXTURE_BINDINGS * Ast.DEFN) = 
@@ -860,11 +900,17 @@ and defDefns (parentFixtures:Ast.FIXTURES list)
     end
 
 
-and defTopBlock (parentFixtures:Ast.FIXTURES list) (block:Ast.BLOCK) : Ast.BLOCK =
+and defTopBlock (parentFixtures:Ast.FIXTURES list) 
+                (block:Ast.BLOCK) 
+    : Ast.BLOCK =
     defBlockFull true parentFixtures block
 
-and defBlock (parentFixtures:Ast.FIXTURES list) (block:Ast.BLOCK) : Ast.BLOCK = 
+
+and defBlock (parentFixtures:Ast.FIXTURES list) 
+             (block:Ast.BLOCK) 
+    : Ast.BLOCK = 
     defBlockFull false parentFixtures block
+
 
 and defBlockFull 
         (classesOk:bool) 
@@ -909,13 +955,16 @@ and defBlockFull
                         fixtures = SOME mergedFixtures }
         end
 
-    
-and defPackage (parentFixtures:Ast.FIXTURES list) (package:Ast.PACKAGE) : Ast.PACKAGE =
+
+and defPackage (parentFixtures:Ast.FIXTURES list) 
+               (package:Ast.PACKAGE) 
+    : Ast.PACKAGE =
     { name = (#name package),
       body = defTopBlock parentFixtures (#body package) }
 
-    
-and defProgram (prog:Ast.PROGRAM) : Ast.PROGRAM = 
+
+and defProgram (prog:Ast.PROGRAM) 
+    : Ast.PROGRAM = 
     let 
         fun mkNamespaceFixtureBinding pkg = 
             case (pkg:Ast.PACKAGE) of 
@@ -930,6 +979,5 @@ and defProgram (prog:Ast.PROGRAM) : Ast.PROGRAM =
     in
         { packages = map (defPackage topFixtures) (#packages prog),
           body = defTopBlock topFixtures (#body prog) }
-        
     end
 end
