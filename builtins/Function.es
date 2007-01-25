@@ -22,8 +22,7 @@ package
         use strict;
 
         /* E262-3 15.3.1.1: The Function constructor.  This
-           initializes the fields code, env, and source in the
-           constructed object.
+           initializes the field "source" in the constructed object.
          */
         /* magic */ native function Function(...args);
 
@@ -31,9 +30,20 @@ package
         intrinsic static function invoke(...args)
             Function.construct.apply(null, ...args);
 
-        /* E262-3 10.X / 13.X: function invocation */
-        intrinsic function invoke(...args)
-            magic::invoke(code, env, args);
+        /* E262-3 10.X / 13.X: function invocation.
+
+           This method is never called.  The Function constructor
+           marks instances of Function specially, and recognizes these
+           instances in the implementation of function calling.  The
+           intrinsic invoke method is defined here to prevent
+           subclasses of Function to override it.
+
+           Other parts of the class hierarchy may however create
+           intrinsic invoke methods that will be considered by the
+           function calling machinery. 
+        */
+        intrinsic function invoke()
+            undefined;
 
         prototype function toString()
             this.toString();
@@ -100,42 +110,6 @@ package
             }
         }
 
-
-        var code : *;          // Opaque representation of compiled code
-        var env : *;           // Environment in which this function is closed
-        var source : String!;  // Source code for decompilation
-
-        /* Given an array of values as passed to the function
-           constructor, create a new function object. 
-        */
-        static function createFunction(args : Array!) : Function! {
-            let [code, source, length] : [*, String!, uint] = compileFunction(args);
-            let fn : Function = super.intrinsic::construct(Function);
-            let x : * = fn.Function();
-
-            if (x is Object)
-                return x to Object;
-
-            fn.length = length;
-            fn.prototype = new Object;
-            fn.source = source;
-            fn.code = code;
-            fn.env = global;
-            return fn;
-        }
-
-        /* Given an array of values as passed to the function
-           constructor, compile the function and return the compiled
-           code, a representation of the source code suitable for
-           Function.prototype.toString(), and the function's
-           "length".  
-        */
-        static function compileFunction(...args) : [*, String!, uint] {
-            let formals = args[0:args.length-1].join(",");
-            let body = args[args.length-1];
-            let [code, length] = magic::compile(formals, body);
-            let source = "function (" + formals + ") {" + body + "}";
-            return [code, source, length];
-        }
+        var source : String!;  /* Source code for decompilation, installed by the constructor */
     }
 }
