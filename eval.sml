@@ -30,13 +30,6 @@ fun getAttrNs (attrs:Ast.ATTRIBUTES) =
         Ast.Attributes {ns, ...} => ns
 
 
-fun needFixtures (f:Ast.FIXTURES option) 
-    : Ast.FIXTURES = 
-    case f of 
-        SOME f' => f'
-      | NONE => LogErr.evalError ["missing expected fixtures"]
-
-
 fun getScopeObj (scope:Mach.SCOPE) 
     : Mach.OBJ = 
     case scope of 
@@ -75,9 +68,8 @@ fun allocObjFixtures (scope:Mach.SCOPE)
                      (obj:Mach.OBJ) 
                      (f:Ast.FIXTURES) 
     : unit = 
-    case (obj, f) of 
-        (Mach.Obj { props, ...}, 
-         Ast.Fixtures { bindings, ... }) => 
+    case obj of 
+        Mach.Obj { props, ...} => 
         let 
             fun valAllocState (t:Ast.TYPE_EXPR) 
                 : Mach.PROP_STATE = 
@@ -107,7 +99,7 @@ fun allocObjFixtures (scope:Mach.SCOPE)
                     Mach.ValProp (Mach.Undef)
 
                   | Ast.SpecialType (Ast.VoidType) => 
-                    LogErr.evalError ["attempt to initialize void-type property"]
+                    LogErr.evalError ["attempt to allocate void-type property"]
 
                   (* FIXME: is this correct? Maybe we need to check them all to be nullable? *)
                   | Ast.UnionType _ => 
@@ -141,10 +133,9 @@ fun allocObjFixtures (scope:Mach.SCOPE)
                     fun allocProp p = 
                         if Mach.hasProp props n
                         then LogErr.defnError 
-                                 ["initializing object with ",
-                                  "duplicate property name: ", 
+                                 ["allocating duplicate property name: ", 
                                   LogErr.name n]
-                        else (LogErr.trace ["initializing property ", 
+                        else (LogErr.trace ["allocating property ", 
                                             LogErr.name n]; 
                               Mach.addProp props n p)
                 in 
@@ -190,7 +181,7 @@ fun allocObjFixtures (scope:Mach.SCOPE)
                                               isFixed = true } }
                 end
         in                    
-            List.app allocFixture bindings
+            List.app allocFixture f
         end
         
 fun extendScope (p:Mach.SCOPE) 
@@ -225,7 +216,7 @@ fun evalExpr (scope:Mach.SCOPE)
              (obj, name) => Mach.getValue obj name)
         
       | Ast.LetExpr {defs, body, fixtures} => 
-        evalLetExpr scope (needFixtures fixtures) defs body
+        evalLetExpr scope fixtures defs body
 
       | Ast.TrinaryExpr (Ast.Cond, aexpr, bexpr, cexpr) => 
         evalCondExpr scope aexpr bexpr cexpr
@@ -761,7 +752,7 @@ and evalStmt (scope:Mach.SCOPE)
 and evalClassDefn (scope:Mach.SCOPE) 
                   (cd:Ast.CLASS_DEFN) 
     : unit =
-    (* The class objects were installed into the scope during initialization,
+    (* The class objects were installed into the scope during allocation,
      * all we do here is build a prototype for this class and link up
      * the implicit prototype chains.
      *)
@@ -831,7 +822,7 @@ and evalDefn (scope:Mach.SCOPE)
     case d of 
         Ast.FunctionDefn f => evalFuncDefn scope f
       | Ast.VariableDefn bs => evalVarBindings scope bs
-      | Ast.NamespaceDefn ns => () (* handled during initialization *)
+      | Ast.NamespaceDefn ns => () (* handled during allocation *)
       | Ast.ClassDefn cd => evalClassDefn scope cd
       | _ => LogErr.unimplError ["unimplemented definition type"]
 
@@ -883,7 +874,7 @@ and invokeFuncClosure (this:Mach.OBJ)
                     val selfTag = Mach.FunctionTag (#fsig f)
                     val selfVal = Mach.newObject selfTag Mach.Null (SOME (Mach.Function closure))
                 in
-                    allocScopeFixtures varScope (needFixtures (#fixtures f));
+                    allocScopeFixtures varScope (#fixtures f);
                     (* FIXME: handle arg-list length mismatch correctly. *)
                     List.app bindArg (ListPair.zip (args, params));
                     Mach.setValue varObj thisName thisVal;
@@ -926,7 +917,7 @@ and constructClassInstance (obj:Mach.OBJ)
                     val selfTag = Mach.ClassTag n
                     val selfVal = Mach.newObject selfTag Mach.Null (SOME (Mach.Class closure))
                 in
-                    allocObjFixtures env obj (needFixtures (#instanceFixtures definition));
+                    allocObjFixtures env obj (#instanceFixtures definition);
                     case ctor of 
                         NONE => (checkAllPropertiesInitialized obj; instance)
                       | SOME ({func = Ast.Func { fsig=Ast.FunctionSignature { params, inits, ... }, 
@@ -936,7 +927,7 @@ and constructClassInstance (obj:Mach.OBJ)
                             val (varScope:Mach.SCOPE) = extendScope env Mach.VarActivation varObj
                             fun bindArg (a, b) = evalVarBinding varScope (SOME a) b
                         in
-                            allocScopeFixtures varScope (needFixtures fixtures);
+                            allocScopeFixtures varScope fixtures;
                             (* FIXME: handle arg-list length mismatch correctly. *)
                             LogErr.trace ["binding constructor args of ", LogErr.name n];
                             List.app bindArg (ListPair.zip (args, params));
@@ -1001,7 +992,7 @@ and evalBlock (scope:Mach.SCOPE)
             val blockScope = extendScope scope Mach.Let blockObj
         in
             LogErr.trace ["initializing block scope"];
-            allocScopeFixtures blockScope (needFixtures fixtures); 
+            allocScopeFixtures blockScope fixtures; 
             LogErr.trace ["evaluating block scope definitions"];
             evalDefns blockScope defns;
             LogErr.trace ["evaluating block scope statements"];
