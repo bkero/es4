@@ -19,4 +19,6 @@ sig
 
     (* A wrapper for the main function; only really needed for CML. *)
     val run     : (unit -> unit) -> unit
-end
+end;
+
+funsig MK_COROUTINE (type result) = COROUTINE where type result = result;

@@ -2,7 +2,7 @@
    of coroutines.
  *)
 
-structure Generator : GENERATOR =
+functor Generator(functor MkCoroutine : MK_COROUTINE) : GENERATOR =
 struct
     open Value
 
@@ -11,11 +11,10 @@ struct
                     | Send of VALUE  (* client  => generator *)
                     | Close          (* client <=  generator *)
 
-    structure Coroutine = CallccCoroutine (type result = signal)
+    structure Coroutine : COROUTINE =
+        MkCoroutine (type result = signal)
 
-    type coroutine = Coroutine.C
-
-    datatype G = Generator of coroutine
+    datatype G = Generator of Coroutine.C
 
     fun yield (Generator c, v) =
         if not (Coroutine.running c) then
