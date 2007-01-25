@@ -4,7 +4,7 @@
  * E262-3 15.3
  * E262-4 draft
  *
- * Status: not reviewed against specs.
+ * Status: complete; not reviewed; not tested.
  *
  * The model here is that a function definition is compiled to a
  * Function object whose private "env" property is something
@@ -16,60 +16,47 @@
 
 package
 {
-    dynamic class Function extends Object
+    dynamic class Function
     {       
+        use namespace intrinsic;
+        use strict;
+
         /* E262-3 15.3.1.1: The Function constructor */
-        static intrinsic function construct(...args)
-        {
-            return createFunction(args);
-        }
+        intrinsic static function construct(...args)
+            createFunction(args);
 
         /* E262-3 15.3.1: The Function Constructor Called as a Function */
-        static intrinsic function call(...args)
-        {
-            return createFunction(args);
-        }
+        intrinsic static function call(...args)
+            createFunction(args);
 
-        /* E262-3 15.3.3: Properties of the Function Constructor */
-        static const length = 1;
-        
         /* E262-3 10.X / 13.X: function invocation */
         intrinsic function call(...args)
-        {
-            return magic::invoke(code, env, args);
-        }
+            magic::invoke(code, env, args);
 
-        Function.prototype.toString = function()
-        {
-            return this.intrinsic::toString();
-        }
+        prototype function toString()
+            this.toString();
 
         intrinsic function toString() : String!
-        {
-            return source;
-        }
+            source;
         
         /* E262-3 15.3.4.3: Function.prototype.apply */
-        Function.prototype.apply = function(thisArg, argArray)
-        {
-            return this.intrinsic::apply(thisArg, argArray);
-        }
+        prototype function apply(thisArg, argArray)
+            this.apply(thisArg, argArray);
 
         intrinsic function apply(thisArg, argArray) : *
-        {
-            return Function.apply(this, thisArg, argArray);
-        }
+            Function.apply(this, thisArg, argArray);
 
         /* E262-4 draft: "apply" and "call" are static methods on the
            Function object, and everyone eventually ends up in
            Function.apply().
 
            Note ES4 bug fix: the arguments object is an 'Array', so the test
-           for applicability of argArray is simpler than in ES3 */
-        static function apply(fn : Function!, thisArg, argArray)
+           for applicability of argArray is simpler than in ES3.
+        */
+        public static function apply(fn : Function!, thisArg, argArray)
         {
             if (thisArg === void 0 || thisArg === null)
-                thisArg = intrinsic::global;
+                thisArg = global;
             if (argArray === void 0 || argArray === null)
                 argArray = [];
             else if (!(argArray is Array))
@@ -81,23 +68,18 @@ package
 
            Assuming a rest argument does not contribute to the
            "length" of the function, so the length of
-           Function.prototype.call is 1, which is what we want. */
-        Function.prototype.call = function(thisObj, ...args)
-        {
-            return Function.apply(this, thisObj, args);
-        }
+           Function.prototype.call is 1, which is what we want. 
+        */
+        prototype function call(thisObj, ...args)
+            Function.apply(this, thisObj, args);
 
         intrinsic function call(thisObj, ...args:Array):*
-        {
-            return Function.apply(this, thisObj, args);
-        }
+            Function.apply(this, thisObj, args);
 
         /* E262-4 draft: "apply" and "call" are static methods on the
-           Function object */
-        static function call(thisObj, ...args:Array):*
-        {
-            return Function.apply(this, thisObj, args);
-        }
+           Function object. */
+        public static function call(thisObj, ...args:Array):*
+            Function.apply(this, thisObj, args);
         
         /* E262-3 15.3.5.3: [[HasInstance]] */
         intrinsic function HasInstance(V)
@@ -105,7 +87,7 @@ package
             if (!(V is Object))
                 return false;
 
-            var O : Object = this.prototype;
+            let O : Object = this.prototype;
             if (!(O is Object))
                 throw new TypeError("[[HasInstance]]: prototype is not object");
 
@@ -118,37 +100,28 @@ package
             }
         }
 
-        intrinsic::setPropertyIsDontEnum(Function.prototype, "toString", true);
-        intrinsic::setPropertyIsDontEnum(Function.prototype, "apply", true);
-        intrinsic::setPropertyIsDontEnum(Function.prototype, "call", true);
 
-        /*** Function public data ***/
-
-        const length : Number;     // Initialized by createFunction, below
-        var prototype : *;         // ditto
-
-        /*** Function private data ***/
-
-        private var code : *;          // Opaque representation of compiled code
-        private var env : *;           // Environment in which this function is closed
-        private var source : String!;  // Source code for decompilation
-
-        /*** Function construction ***/
+        var code : *;          // Opaque representation of compiled code
+        var env : *;           // Environment in which this function is closed
+        var source : String!;  // Source code for decompilation
 
         /* Given an array of values as passed to the function
-           constructor, create a new function object. */
-        static private function createFunction(args : Array!) : Function!
+           constructor, create a new function object. 
+        */
+        static function createFunction(args : Array!) : Function!
         {
-            var [code, source, length] : [*, String!, Number] = compileFunction(args);
-            var fn : Function = super.intrinsic::construct(Function);
-            var x : * = fn.Function();
+            let [code, source, length] : [*, String!, Number] = compileFunction(args);
+            let fn : Function = super.intrinsic::construct(Function);
+            let x : * = fn.Function();
+
             if (x is Object)
                 return x to Object;
+
             fn.length = length;
             fn.prototype = new Object;
             fn.source = source;
             fn.code = code;
-            fn.env = intrinsic::global;
+            fn.env = global;
             return fn;
         }
 
@@ -156,13 +129,14 @@ package
            constructor, compile the function and return the compiled
            code, a representation of the source code suitable for
            Function.prototype.toString(), and the function's
-           "length".  */
-        static private function compileFunction(...args) : [*, String!, Number]
+           "length".  
+        */
+        static function compileFunction(...args) : [*, String!, Number]
         {
-            var formals = args[0:args.length-1].join(",");
-            var body = args[args.length-1];
-            var [code, length] = magic::compile(formals, body);
-            var source = "function (" + formals + ") {" + body + "}";
+            let formals = args[0:args.length-1].join(",");
+            let body = args[args.length-1];
+            let [code, length] = magic::compile(formals, body);
+            let source = "function (" + formals + ") {" + body + "}";
             return [code, source, length];
         }
     }

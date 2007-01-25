@@ -14,6 +14,7 @@
 package RegExp
 {
     import Unicode.*;
+    use namespace intrinsic;
     use strict;
 
     class RegExpCompiler
@@ -101,21 +102,21 @@ package RegExp
         }
 
         function quantifierPrefix() : [Number, Number]? {
-                 if (eat("*")) return [0,intrinsic::Infinity];
-            else if (eat("+")) return [1,intrinsic::Infinity];
+                 if (eat("*")) return [0,Infinity];
+            else if (eat("+")) return [1,Infinity];
             else if (eat("?")) return [0,1];
             else if (eat("{")) {
                 let min : Number = decimalDigits();
                 let max : Number = n;
                 if (eat(",")) {
                     if (eat("}"))
-                        max = intrinsic::Infinity;
+                        max = Infinity;
                     else {
                         max = decimalDigits();
                         match("}");
                     }
                 }
-                if (intrinsic::isFinite(max) && max < min)
+                if (isFinite(max) && max < min)
                     throw new SyntaxError("max must be at least as large as min");
                 return [min,max];
             }
