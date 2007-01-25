@@ -343,7 +343,8 @@ datatype PRAGMA =
        | ValFixture of { ty: TYPE_EXPR,
                          readOnly: bool,
                          isOverride: bool }
-       | VirtualValFixture of { getter: FUNC_DEFN option,
+       | VirtualValFixture of { ty: TYPE_EXPR, 
+                                getter: FUNC_DEFN option,
                                 setter: FUNC_DEFN option }
 
                      

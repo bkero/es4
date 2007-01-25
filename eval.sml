@@ -155,6 +155,14 @@ fun allocObjFixtures (scope:Mach.SCOPE)
                                               dontEnum = false,
                                               readOnly = readOnly,
                                               isFixed = true } }
+
+                      | Ast.VirtualValFixture { ty, setter, ... } => 
+                        allocProp { ty = ty,
+                                    state = Mach.UninitProp,
+                                    attrs = { dontDelete = true,
+                                              dontEnum = false,
+                                              readOnly = (setter = NONE),
+                                              isFixed = true } }
                         
                       | Ast.ClassFixture cd => 
                         allocProp { ty = Mach.classType,
