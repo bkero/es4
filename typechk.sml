@@ -541,7 +541,11 @@ and tcVarBinding (ctxt:CONTEXT) (v:VAR_BINDING) : TYPE_ENV =
 	case pattern of
 	    IdentifierPattern (Identifier {ident, openNamespaces}) =>
 	    [(ident,SOME (unOptionDefault ty anyType))]
-    (*TODO*)
+
+and tcVarBindings (ctxt:CONTEXT) (vs:VAR_BINDING list) : TYPE_ENV =
+    case vs of
+	[] => []
+      | h::t => (tcVarBinding ctxt h) @ (tcVarBindings ctxt t)
     
 
 and tcIdentExpr (ctxt:CONTEXT) (id:IDENT_EXPR) =
@@ -649,7 +653,7 @@ and tcStmt ((ctxt as {this,env,lbls,retTy}):CONTEXT) (stmt:STMT) =
     end
 
   | ForStmt { defns, init, cond, update, contLabel, body } =>
-    let val (extensions, classes) = tcDefns ctxt defns
+    let val extensions = tcVarBindings ctxt defns
         val ctxt' = withEnv (ctxt, foldl extendEnv env extensions)
 	fun tcExprs exprs = 
 	    let in
@@ -658,8 +662,7 @@ and tcStmt ((ctxt as {this,env,lbls,retTy}):CONTEXT) (stmt:STMT) =
 		else List.last (List.map (fn e => tcExpr ctxt' e) exprs)
 	    end
     in
-        assert (classes = []) "class definition inside block";
-	tcExprs init;
+  	tcExprs init;
 	checkCompatible (tcExprs cond) boolType;
 	tcExprs update;
 	tcStmt (withLbls (ctxt', contLabel::lbls)) body
