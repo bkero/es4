@@ -145,7 +145,7 @@ datatype PRAGMA =
          Func of { name: FUNC_NAME,
                    fsig: FUNC_SIG,                   
                    body: BLOCK,
-                   fixtures: FIXTURES option }
+                   fixtures: FIXTURES }
 
      and DEFN =
          ClassDefn of CLASS_DEFN
@@ -271,7 +271,7 @@ datatype PRAGMA =
 
        | LetExpr of { defs: VAR_BINDING list,                      
                       body: EXPR list,
-                      fixtures: FIXTURES option}
+                      fixtures: FIXTURES}
 
        | NewExpr of { obj: EXPR,
                       actuals: EXPR list }
@@ -279,7 +279,7 @@ datatype PRAGMA =
        | FunExpr of { ident: IDENT option,
                       fsig: FUNC_SIG,
                       body: BLOCK,
-                      fixtures: FIXTURES option }
+                      fixtures: FIXTURES }
 
        | ObjectRef of { base: EXPR, ident: IDENT_EXPR }
 
@@ -346,12 +346,6 @@ datatype PRAGMA =
        | VirtualValFixture of { getter: FUNC_DEFN option,
                                 setter: FUNC_DEFN option }
 
-     and FIXTURES = 
-         Fixtures of { bindings: FIXTURE_BINDINGS,
-                       openNamespaces: NAMESPACE list, 
-                       numberType: NUMBER_TYPE,
-                       roundingMode: ROUNDING_MODE }
-                     
                      
 withtype FIELD =
          { kind: VAR_DEFN_TAG,
@@ -371,7 +365,7 @@ withtype FIELD =
            kind : VAR_DEFN_TAG,
            func : FUNC }
 
-     and FIXTURE_BINDINGS = (NAME * FIXTURE) list
+     and FIXTURES = (NAME * FIXTURE) list
 
      and NAMESPACE_DEFN = 
          { attrs: ATTRIBUTES,
@@ -385,8 +379,8 @@ withtype FIELD =
            params: IDENT list,
            extends: IDENT_EXPR option,
            implements: IDENT_EXPR list,
-           classFixtures: FIXTURES option,
-           instanceFixtures: FIXTURES option,
+           classFixtures: FIXTURES,
+           instanceFixtures: FIXTURES,
            body: BLOCK,
            (* the following field will be populated during the definition phase *)
            protoVars: VAR_BINDING list,
@@ -422,7 +416,7 @@ withtype FIELD =
          { pragmas: PRAGMA list,
            defns: DEFN list,
            stmts: STMT list,
-           fixtures: FIXTURES option }
+           fixtures: FIXTURES }
 
      and BINDINGS =
          { defns : VAR_BINDING list,
