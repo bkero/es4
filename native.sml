@@ -3,21 +3,22 @@
 
 structure Native = struct 
 
+fun internal (n:Ast.IDENT) = { ns = Ast.Internal "", id = n }
+
 type nativeMethod = (Mach.SCOPE -> Mach.OBJ -> Mach.VAL list -> Mach.VAL)
 
 fun functionCtor (scope:Mach.SCOPE) (obj:Mach.OBJ) (args:Mach.VAL list) 
     : Mach.VAL = 
-    Mach.Null
+    case args of 
+	[] => LogErr.evalError ["Function constructor called with no args"]
+      | x::xs => (Mach.defValue obj (internal "source") (Mach.newString (Mach.toString x)); 
+		  Mach.Object obj)
     
     
 val nativeMethods:(Ast.NAME * Ast.NAME * nativeMethod) list = 
-    let 
-	fun internal (n:Ast.IDENT) = { ns = Ast.Internal "", id = n }
-    in
-	[
-	 ((internal "Function"), (internal "Function"), functionCtor)
-	]
-    end
+    [
+     ((internal "Function"), (internal "Function"), functionCtor)
+    ]
 
 fun getNativeMethod (class:Ast.NAME) (method:Ast.NAME) 
     : nativeMethod = 

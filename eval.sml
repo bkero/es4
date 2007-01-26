@@ -949,27 +949,32 @@ and constructClassInstance (obj:Mach.OBJ)
                             fun bindArg (a, b) = evalVarBinding varScope (SOME a) b
                         in
                             allocScopeFixtures varScope fixtures;
-                            (* FIXME: handle arg-list length mismatch correctly. *)
-                            LogErr.trace ["binding constructor args of ", LogErr.name n];
-                            List.app bindArg (ListPair.zip (args, params));
-                            Mach.setValue varObj thisName instance;
-                            Mach.defValue varObj n selfVal;
                             (* FIXME: is this correct? we currently bind the self name on obj as well.. *)
                             Mach.defValue obj n selfVal;
                             LogErr.trace ["initialializing instance methods of ", LogErr.name n];
                             List.app (evalFuncDefnFull env obj) (#instanceMethods definition);
+                            (* FIXME: evaluate instance-var initializers declared in class as well. *)
 
                             if (#native (getAttrs attrs))
                             then 
                                 (* Native constructors take over here. *)
-                                (LogErr.trace ["running native constructor for ", LogErr.name n];
-                                 (Native.getNativeMethod n n) env obj args;
-                                 LogErr.trace ["checking native initialization of ", LogErr.name n];
-                                 checkAllPropertiesInitialized obj;
-                                 instance)
+                                let 
+                                    val nativeCtor = Native.getNativeMethod n n
+                                    val _ = LogErr.trace ["running native constructor for ", LogErr.name n]
+                                    val result = nativeCtor env obj args
+                                in
+                                    LogErr.trace ["checking native initialization of ", LogErr.name n];
+                                    checkAllPropertiesInitialized obj;
+                                    result
+                                end
                             else 
                                 (* Otherwise run any initializers and constructor. *)
-                                (LogErr.trace ["running initializers of ", LogErr.name n];
+                                ((* FIXME: handle arg-list length mismatch correctly. *)
+                                 LogErr.trace ["binding constructor args of ", LogErr.name n];
+                                 List.app bindArg (ListPair.zip (args, params));
+                                 Mach.setValue varObj thisName instance;
+                                 Mach.defValue varObj n selfVal;
+                                 LogErr.trace ["running initializers of ", LogErr.name n];
                                  (case inits of 
                                       NONE => ()
                                     | SOME { defns, inits } => 
