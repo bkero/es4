@@ -310,7 +310,7 @@ fun newFunc (e:SCOPE)
 val (objectType:TYPE) = Ast.ObjectType []
 
 val (defaultAttrs:Ast.ATTRIBUTES) = 
-    Ast.Attributes { ns = Ast.LiteralExpr (Ast.LiteralNamespace (Ast.Public "")),
+    { ns = Ast.LiteralExpr (Ast.LiteralNamespace (Ast.Public "")),
                      override = false,
                      static = false,
                      final = false,
