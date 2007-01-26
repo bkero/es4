@@ -510,8 +510,8 @@ and defFunc (env:ENV)
                              resolveExprToNamespace env ns
             val ident = case (#kind name) of 
                             Ast.Ordinary => (#ident name)
-                          | Ast.Call => (#ident name)
-                          | _ => LogErr.unimplError ["unhandled type of function name"]
+                          | Ast.Call => "call" (* FIXME: hack until parser fixed. *)
+                          | _ => LogErr.unimplError ["defining unhandled type of function name"]
                                  
             val (newFsig, outerFixtures, innerFixtures) = 
                 defFuncSig env (SOME { ns=qualNs, id=ident }) fsig
@@ -968,7 +968,7 @@ and defBlockFull
             Ast.Block { pragmas = pragmas,
                         defns = (newNsDefns @ newClassDefns @ newOtherDefns),
                         stmts = map (defStmt e3) stmts,
-                        fixtures = pragmaFixtures @ nsFixtures @ defnFixtures }
+                        fixtures = pragmaFixtures @ nsFixtures @ classFixtures @ defnFixtures }
         end
 
 
