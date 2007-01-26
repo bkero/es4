@@ -1,35 +1,35 @@
 Library
 	structure LogErr
-        structure Main
-        structure Ast
+    structure Main
+    structure Ast
 	structure Pretty
-        structure Token
-        structure Lexer
-        structure Parser
-	structure Defn
-        structure Verify
-   	structure Eval
-	structure Mach 
+    structure Token
+    structure Lexer
+    structure Parser
+(*	structure Defn *)
+(*    structure Verify *)
+(*	structure Eval *)
+(*	structure Mach *)
 	structure Native 
 is
 	logerr.sml
-        main.sml
-        ast.sml
+    main.sml
+    ast.sml
 	pretty.sml
-        pretty-cvt.sml
-        pretty-rep.sml
-        token.sml
-        lexer.lex
-        parser.sml
-        defn.sml
-	verify.sml
-	eval.sml
-	mach.sml
+    pretty-cvt.sml
+    pretty-rep.sml
+    token.sml
+    lexer.lex
+    parser.sml
+(*    defn.sml *)
+(*	verify.sml *)
+(*	eval.sml *)
+(*	mach.sml *)
 	native.sml
 
-        $/basis.cm
-        $/smlnj-lib.cm
+    $/basis.cm
+    $/smlnj-lib.cm
 	$/pp-lib.cm
-        $/mllex-tool.cm
-        $/lex-ext.cm
-        tools/backtrace.cm
+    $/mllex-tool.cm
+    $/lex-ext.cm
+    tools/backtrace.cm
