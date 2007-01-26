@@ -14,7 +14,7 @@ struct
                        | Running of result option chan
                        | Closed
 
-    type C = COROUTINE ref
+    type t = COROUTINE ref
 
     fun new f = let val c = channel ()
                     val r = ref (Newborn c)
@@ -95,4 +95,4 @@ struct
                          SOME x => raise x
                        | NONE => ()
                 end
-end
+end;

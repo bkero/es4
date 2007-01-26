@@ -4,7 +4,7 @@ functor ShiftCoroutine (type result) =
 struct
     type result = result
 
-    structure S = Shift (type result = result)
+    structure S = Shift (type result = result);
 
     open S
 
@@ -13,7 +13,7 @@ struct
                        | Running
                        | Closed
 
-    type C = COROUTINE ref
+    type t = COROUTINE ref
 
     fun new f = let val r = ref Closed (* temporary *)
                 in
@@ -54,4 +54,4 @@ struct
            | _ => false
 
     fun run f = f ()
-end
+end;
