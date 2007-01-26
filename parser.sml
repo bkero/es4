@@ -4159,7 +4159,7 @@ and directive (ts,t:tau,w:omega) : (token list * Ast.DIRECTIVES) =
             in case native of
                 true => 
                     let
-                        val (ts2,nd2) = functionDeclaration (ts1)    (* native function f(); *)
+                        val (ts2,nd2) = functionDeclaration (ts1,nd1)    (* native function f(); *)
                         val (ts3,nd3) = (semicolon(ts2,w),nd2)
                     in
                         (ts3,nd3)
@@ -4180,7 +4180,7 @@ and directive (ts,t:tau,w:omega) : (token list * Ast.DIRECTIVES) =
             in case native of
                 true => 
                     let
-                        val (ts2,nd2) = functionDeclaration (ts1)
+                        val (ts2,nd2) = functionDeclaration (ts1,nd1)
                         val (ts3,nd3) = (semicolon(ts2,w),nd2)
                     in
                         (ts3,nd3)
@@ -4259,7 +4259,7 @@ and annotatableDirective (ts,attrs,GLOBAL,w) : (token list * Ast.DIRECTIVES)  =
     in case ts of
         Function :: _ =>
             let
-                val (ts1,nd1) = functionDeclaration (ts)
+                val (ts1,nd1) = functionDeclaration (ts,attrs)
                 val (ts2,nd2) = (semicolon(ts1,w),nd1)
             in
                 (ts2,nd2)
@@ -4684,7 +4684,7 @@ and variableInitialisation (ts,a,b) : (token list * Ast.EXPR) =
         function  Identifier  FunctionSignature
 *)
 
-and functionDeclaration (ts) =
+and functionDeclaration (ts,attrs) =
     let val _ = trace([">> functionDeclaration with next=", tokenname(hd ts)])
     in case ts of
         Function :: _ =>
@@ -4693,7 +4693,7 @@ and functionDeclaration (ts) =
                 val (ts2,nd2) = functionSignature (ts1)
             in
                 (ts2,{pragmas=[],
-                      defns=[Ast.FunctionDefn {attrs=defaultAttrs,
+                      defns=[Ast.FunctionDefn {attrs=attrs,
                            kind=Ast.Var, 
                            func=Ast.Func {name={ident=nd1,kind=Ast.Ordinary},
                                   fsig=nd2, fixtures = [],
