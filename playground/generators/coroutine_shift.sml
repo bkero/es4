@@ -13,7 +13,7 @@ struct
                        | Running
                        | Closed
 
-    type C = COROUTINE ref
+    type t = COROUTINE ref
 
     fun new f = let val r = ref Closed (* temporary *)
                 in

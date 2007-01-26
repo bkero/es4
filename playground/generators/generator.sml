@@ -11,10 +11,11 @@ struct
                     | Send of VALUE  (* client  => generator *)
                     | Close          (* client <=  generator *)
 
-    structure Coroutine : COROUTINE =
-        MkCoroutine (type result = signal)
+    structure Coroutine : COROUTINE = MkCoroutine (type result = signal)
 
-    datatype G = Generator of Coroutine.C
+    (* This unnecessary polymorphism is a workaround for an SML/NJ compiler bug. *)
+    datatype 'a generator = Generator of 'a
+    type t = Coroutine.t generator
 
     fun yield (Generator c, v) =
         if not (Coroutine.running c) then
@@ -63,4 +64,6 @@ struct
                                       (f (Generator c); Close)
                                       handle Thrown v => Throw v
                                   )))
+
+    val run = Coroutine.run
 end
