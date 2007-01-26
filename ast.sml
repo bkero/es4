@@ -179,8 +179,7 @@ datatype PRAGMA =
          SpecialType of SPECIAL_TY
        | UnionType of TYPE_EXPR list
        | ArrayType of TYPE_EXPR list
-       | NominalType of { ident : IDENT_EXPR, 
-                          nullable: bool option }  (* todo: remove nullable *)
+       | NominalType of { ident : IDENT_EXPR }
        | FunctionType of FUNC_SIG
        | ObjectType of FIELD_TYPE list
        | AppType of { base: TYPE_EXPR,

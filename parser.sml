@@ -476,8 +476,8 @@ and needType (nd:Ast.IDENT_EXPR,nullable:bool option) =
         Ast.Identifier {ident,...} =>
             if (ident="*")
                 then Ast.SpecialType Ast.Any 
-                else Ast.NominalType {ident=nd,nullable=nullable}
-      | _ => Ast.NominalType {ident=nd,nullable=nullable}
+                else Ast.NominalType {ident=nd}
+      | _ => Ast.NominalType {ident=nd}
     
 and functionSignature (ts) : (token list * Ast.FUNC_SIG) =
     let val _ = trace([">> functionSignature with next=",tokenname(hd(ts))]) 

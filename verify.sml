@@ -16,22 +16,22 @@ open Ast LogErr
 fun simpleIdent (s:string) : IDENT_EXPR 
   = Identifier { ident=s, openNamespaces=[] }
     
-val boolType      = NominalType { ident=simpleIdent "boolean",   nullable=NONE }
-val numberType    = NominalType { ident=simpleIdent "number",    nullable=NONE }
-val decimalType   = NominalType { ident=simpleIdent "decimal",   nullable=NONE }
-val intType       = NominalType { ident=simpleIdent "int",       nullable=NONE }
-val uintType      = NominalType { ident=simpleIdent "uint",      nullable=NONE }
-val stringType    = NominalType { ident=simpleIdent "string",    nullable=NONE }
-val regexpType    = NominalType { ident=simpleIdent "regexp",    nullable=NONE }
-val exceptionType = NominalType { ident=simpleIdent "exception", nullable=NONE }
-val namespaceType = NominalType { ident=simpleIdent "Namespace", nullable=NONE }
+val boolType      = NominalType { ident=simpleIdent "boolean" }
+val numberType    = NominalType { ident=simpleIdent "number" }
+val decimalType   = NominalType { ident=simpleIdent "decimal" }
+val intType       = NominalType { ident=simpleIdent "int" }
+val uintType      = NominalType { ident=simpleIdent "uint" }
+val stringType    = NominalType { ident=simpleIdent "string" }
+val regexpType    = NominalType { ident=simpleIdent "regexp" }
+val exceptionType = NominalType { ident=simpleIdent "exception" }
+val namespaceType = NominalType { ident=simpleIdent "Namespace" }
 val undefinedType = SpecialType Undefined
 val nullType      = SpecialType Null
 val anyType       = SpecialType Any
 
 fun assert b s = if b then () else (raise Fail s)
 
-(* type env has program variables, with types, and type variables, with no types *)
+(* type env has program variables, with types, axnd type variables, with no types *)
 (* TODO: do we need to consider namespaces here ??? *)
 type TYPE_ENV = (IDENT * TYPE_EXPR option) list
 
@@ -88,7 +88,7 @@ fun subst (s:((IDENT*TYPE_EXPR) list)) (t:TYPE_EXPR):TYPE_EXPR =
 	  | NullableType {expr, nullable}
 	    => NullableType {expr=subst s expr, nullable=nullable}
 
-	  | NominalType { ident=(Identifier {ident=ident, openNamespaces=_}), nullable=_ } =>
+	  | NominalType { ident=(Identifier {ident=ident, openNamespaces=_})} =>
 	    let in
 		case List.find 
 			 (fn (id,ty) => id=ident)
@@ -98,7 +98,7 @@ fun subst (s:((IDENT*TYPE_EXPR) list)) (t:TYPE_EXPR):TYPE_EXPR =
 		    SOME (_,ty) => ty 
 		  | NONE => t
 	    end
-	  | NominalType { ident=_, nullable=_ } => t
+	  | NominalType { ident=_} => t
 
 	  | ObjectType fields =>
 	    ObjectType (map (fn {name,ty} => 
@@ -114,16 +114,15 @@ fun subst (s:((IDENT*TYPE_EXPR) list)) (t:TYPE_EXPR):TYPE_EXPR =
 		    map 
 			(fn (oldId,newId) => 
 			     (oldId, 
-			      NominalType { ident=Identifier {ident=newId,openNamespaces=[]}, 
-					    nullable=NONE}))
+			      NominalType { ident=Identifier {ident=newId,openNamespaces=[]}}))
 			oldNew
 		val bothSubs = fn t => subst s (subst nuSub t)
 		val nuTypeParams = map (fn (oldId,newId) => newId) oldNew
 		val nuParams =
 		    map 
-			(fn Binding {kind,init,attrs,pattern,ty} =>
-			    Binding {kind=kind,init=init,attrs=attrs,pattern=pattern, 
-				     ty=Option.map bothSubs ty})
+			(fn Binding {init,pattern,ty} =>
+			    Binding {init=init,pattern=pattern, 
+				         ty=Option.map bothSubs ty})
 			params
 		in
 		FunctionType (FunctionSignature {typeParams=nuTypeParams,
@@ -185,19 +184,19 @@ and isCompatible (t1:TYPE_EXPR) (t2:TYPE_EXPR) : bool =
 	    end
 
 	  | (ArrayType _, 
-	     NominalType {ident=Identifier {ident="Array", openNamespaces=[]}, nullable=NONE}) 
+	     NominalType {ident=Identifier {ident="Array", openNamespaces=[]}}) 
 	    => true
 
 	  | (ArrayType _, 
-	     NominalType {ident=Identifier {ident="Object", openNamespaces=[]}, nullable=NONE}) 
+	     NominalType {ident=Identifier {ident="Object", openNamespaces=[]}}) 
 	    => true
 
 	  | (FunctionType _, 
-	     NominalType {ident=Identifier {ident="Function", openNamespaces=[]}, nullable=NONE}) 
+	     NominalType {ident=Identifier {ident="Function", openNamespaces=[]}}) 
 	    => true
 
 	  | (FunctionType _, 
-	     NominalType {ident=Identifier {ident="Object", openNamespaces=[]}, nullable=NONE}) 
+	     NominalType {ident=Identifier {ident="Object", openNamespaces=[]}})
 	    => true
 
 	  | (AppType {base=base1,args=args1},AppType {base=base2,args=args2}) => 
@@ -229,8 +228,8 @@ and isCompatible (t1:TYPE_EXPR) (t2:TYPE_EXPR) : bool =
 		let fun checkArgs params1 params2 =
 			case (params1,params2) of
 			    ([],[]) => true
-			  | (Binding {kind=_,init=_,attrs=_,pattern=_,ty=ty1}::t1,
-			     Binding {kind=_,init=_,attrs=_,pattern=_,ty=ty2}::t2) => 
+			  | (Binding {init=_,pattern=_,ty=ty1}::t1,
+			     Binding {init=_,pattern=_,ty=ty2}::t2) => 
 			    isCompatible (unOptionDefault ty2 anyType)
 					  (unOptionDefault ty1 anyType)
 			    andalso checkArgs t1 t2
@@ -253,7 +252,7 @@ and isCompatible (t1:TYPE_EXPR) (t2:TYPE_EXPR) : bool =
 (*
     and TYPE_EXPR =
          SpecialType of SPECIAL_TY
-       | NominalType of { ident : IDENT_EXPR, nullable: bool option }  (* todo: remove nullable *)
+       | NominalType of { ident : IDENT_EXPR }
        | NullableType of {expr:TYPE_EXPR,nullable:bool}
 *)
 
@@ -414,7 +413,7 @@ and verifyExpr ((ctxt as {env,this,...}):CONTEXT) (e:EXPR) :TYPE_EXPR =
 			(* handleArgs normalParams actualTys *)
 			fun handleArgs [] [] = ()
 			  | handleArgs (p::pr) (a::ar) =				
-			    let val Binding {kind,init,attrs,pattern,ty} = p in
+			    let val Binding {init,pattern,ty} = p in
 				checkCompatible a (unOptionDefault ty anyType);
 				handleArgs pr ar
 			    end
@@ -515,7 +514,7 @@ and inferObjectType ctxt fields =
     raise (Fail "blah")
 
 (* TODO: this needs to return some type structure as well *)
-and verifyBinding (ctxt:CONTEXT) (Binding {kind,init,attrs,pattern,ty}) : TYPE_ENV =
+and verifyBinding (ctxt:CONTEXT) (Binding {init,pattern,ty}) : TYPE_ENV =
     let val ty = unOptionDefault ty anyType in
 	case init of
 	    SOME expr => checkCompatible (verifyExpr ctxt expr) ty
@@ -525,9 +524,7 @@ and verifyBinding (ctxt:CONTEXT) (Binding {kind,init,attrs,pattern,ty}) : TYPE_E
     end
 (*
  and VAR_BINDING =
-         Binding of { kind: VAR_DEFN_TAG,
-                      init: EXPR option,
-                      attrs: ATTRIBUTES,
+         Binding of { init: EXPR option,
                       pattern: PATTERN,
                       ty: TYPE_EXPR option }
 
@@ -535,7 +532,7 @@ and verifyBinding (ctxt:CONTEXT) (Binding {kind,init,attrs,pattern,ty}) : TYPE_E
 
 and verifyVarBinding (ctxt:CONTEXT) (v:VAR_BINDING) : TYPE_ENV =
     case v of
-	Binding {kind,init, attrs, pattern, ty} =>
+	Binding {init, pattern, ty} =>
 	case pattern of
 	    IdentifierPattern (Identifier {ident, openNamespaces}) =>
 	    [(ident,SOME (unOptionDefault ty anyType))]
@@ -544,7 +541,6 @@ and verifyVarBindings (ctxt:CONTEXT) (vs:VAR_BINDING list) : TYPE_ENV =
     case vs of
 	[] => []
       | h::t => (verifyVarBinding ctxt h) @ (verifyVarBindings ctxt t)
-    
 
 and verifyIdentExpr (ctxt:CONTEXT) (id:IDENT_EXPR) =
     (case id of
@@ -650,7 +646,7 @@ and verifyStmt ((ctxt as {this,env,lbls,retTy}):CONTEXT) (stmt:STMT) =
         verifyStmt (withEnv (ctxt, foldl extendEnv env extensions)) body  
     end
 
-  | ForStmt { defns, init, cond, update, contLabel, body } =>
+  | ForStmt { defns, init, cond, update, contLabel, body, fixtures } =>
     let val extensions = verifyVarBindings ctxt defns
         val ctxt' = withEnv (ctxt, foldl extendEnv env extensions)
 	fun verifyExprs exprs = 
@@ -698,9 +694,9 @@ and verifyStmt ((ctxt as {this,env,lbls,retTy}):CONTEXT) (stmt:STMT) =
 
 and verifyDefn ((ctxt as {this,env,lbls,retTy}):CONTEXT) (d:DEFN) : (TYPE_ENV * int list) =
     (case d of
-	 VariableDefn vd => 
-	 (List.concat (List.map (fn d => verifyVarBinding ctxt d) vd), []) 
-       | FunctionDefn { attrs, kind, func } =>
+	 VariableDefn {bindings,...} => 
+	 (List.concat (List.map (fn d => verifyVarBinding ctxt d) bindings), []) 
+       | FunctionDefn { kind, func,... } =>
 	 let val Func {name,fsig,body,fixtures} = func
 	     val FunctionSignature { typeParams, params, inits, 
 				     returnType, thisType, hasBoundThis, hasRest } 
