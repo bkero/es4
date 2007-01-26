@@ -7,6 +7,8 @@ exception BreakException of (Ast.IDENT option)
 exception TailCallException of (unit -> Mach.VAL)
 exception ThrowException of Mach.VAL
 exception ReturnException of Mach.VAL
+
+exception InternalError
     
 fun newName (i:Ast.IDENT) 
             (n:Mach.NS) 
@@ -18,18 +20,7 @@ fun getType (tyOpt:Ast.TYPE_EXPR option)
     case tyOpt of 
         SOME t => t
       | NONE => Ast.SpecialType Ast.Any
-
                 
-fun getAttrs (attrs:Ast.ATTRIBUTES) = 
-    case attrs of 
-        Ast.Attributes a => a
-
-
-fun getAttrNs (attrs:Ast.ATTRIBUTES) = 
-    case attrs of 
-        Ast.Attributes {ns, ...} => ns
-
-
 fun getScopeObj (scope:Mach.SCOPE) 
     : Mach.OBJ = 
     case scope of 
@@ -164,7 +155,7 @@ fun allocObjFixtures (scope:Mach.SCOPE)
                                     state = Mach.UninitProp,
                                     attrs = { dontDelete = true,
                                               dontEnum = false,
-                                              readOnly = (setter = NONE),
+                                              readOnly = (case setter of NONE => true | _ => false),
                                               isFixed = true } }
                         
                       | Ast.ClassFixture cd => 
@@ -208,7 +199,7 @@ fun extendScope (p:Mach.SCOPE)
 fun allocScopeFixtures (scope:Mach.SCOPE) 
                        (f:Ast.FIXTURES) 
     : unit = 
-    allocObjFixtures scope (getScopeObj scope) f
+        allocObjFixtures scope (getScopeObj scope) f
 
     
 fun evalExpr (scope:Mach.SCOPE) 
@@ -229,8 +220,8 @@ fun evalExpr (scope:Mach.SCOPE)
         (case evalLhsExpr scope expr of
              (obj, name) => Mach.getValue obj name)
         
-      | Ast.LetExpr {defs, body, fixtures} => 
-        evalLetExpr scope fixtures defs body
+      | Ast.LetExpr {defs, body, fixtures} =>
+        evalLetExpr scope (valOf fixtures) defs body
 
       | Ast.TrinaryExpr (Ast.Cond, aexpr, bexpr, cexpr) => 
         evalCondExpr scope aexpr bexpr cexpr
@@ -605,18 +596,19 @@ and evalLetExpr (scope:Mach.SCOPE)
         val newScope = extendScope scope Mach.Let obj        
     in
         allocScopeFixtures scope fixtures;
-        evalVarBindings scope defs;
+        evalVarBindings scope (Ast.LiteralExpr (Ast.LiteralNamespace (Ast.Internal ""))) defs; (* todo: what do we use for a namespace here *)
         evalListExpr newScope body
     end
 
 
 and processVarBinding (scope:Mach.SCOPE) 
                       (v:Mach.VAL option)
+                      (ns:Ast.EXPR)
                       (defn:Ast.VAR_BINDING)
                       (procOneBinding:Mach.NAME -> Mach.VAL -> unit)
     : unit =
     case defn of 
-        Ast.Binding { kind, init, attrs, pattern, ty } =>
+        Ast.Binding { init, pattern, ty } =>
         let 
         fun procWithValue v' = 
                 case pattern of 
@@ -624,7 +616,6 @@ and processVarBinding (scope:Mach.SCOPE)
                     (case id of 
                          Ast.Identifier {ident, ...} => 
                          let 
-                             val ns = getAttrNs attrs
                              val n = { ns = needNamespace (evalExpr scope ns), 
                                        id = ident}
                          in
@@ -646,19 +637,21 @@ and processVarBinding (scope:Mach.SCOPE)
 
 and evalVarBinding (scope:Mach.SCOPE)
                    (v:Mach.VAL option)
+                   (ns:Ast.EXPR)
                    (defn:Ast.VAR_BINDING)
     : unit = 
     (* Here we are evaluating only the *definition* affect of the
      * binding, as the binding produced a fixture and we've already 
      * allocated and possibly initialized a property for the fixture.
      *)
-    processVarBinding scope v defn (Mach.defValue (getScopeObj scope))
+    processVarBinding scope v ns defn (Mach.defValue (getScopeObj scope))
 
 
 and evalVarBindings (scope:Mach.SCOPE)
+                    (ns:Ast.EXPR)
                     (defns:Ast.VAR_BINDING list)
     : unit =
-    List.app (evalVarBinding scope NONE) defns
+    List.app (evalVarBinding scope NONE ns) defns
 
 
 and resolveOnScopeChain (scope:Mach.SCOPE) 
@@ -771,7 +764,7 @@ and evalClassDefn (scope:Mach.SCOPE)
      * the implicit prototype chains.
      *)
     let 
-        val ns = getAttrNs (#attrs cd)
+        val ns = (#ns cd)
         val currClassMname = { nss = [needNamespace (evalExpr scope ns)],
                                id = (#name cd) }
         val _ = LogErr.trace ["evaluating class defn for ", 
@@ -812,7 +805,7 @@ and evalClassDefn (scope:Mach.SCOPE)
         val newPrototype = Mach.newObj Mach.intrinsicObjectBaseTag baseProtoVal NONE
         fun addProtoMethod (f:Ast.FUNC_DEFN) = 
             let 
-                val ns = getAttrNs (#attrs f)
+                val ns = (#ns f)
                 val n = case f of 
                             {func = Ast.Func { name = { ident, ... }, ... }, ... } => 
                             { ns = needNamespace (evalExpr scope ns), 
@@ -826,7 +819,7 @@ and evalClassDefn (scope:Mach.SCOPE)
             end
             
         fun addProtoVar (vb:Ast.VAR_BINDING) = 
-            processVarBinding scope NONE vb (Mach.setValue newPrototype)        
+            processVarBinding scope NONE ns vb (Mach.setValue newPrototype)        
     in
         LogErr.trace ["filling in prototype"];
         List.app addProtoMethod (#protoMethods cd);
@@ -841,7 +834,7 @@ and evalDefn (scope:Mach.SCOPE)
     : unit = 
     case d of 
         Ast.FunctionDefn f => evalFuncDefn scope f
-      | Ast.VariableDefn bs => evalVarBindings scope bs
+      | Ast.VariableDefn {bindings,ns,...} => evalVarBindings scope ns bindings
       | Ast.NamespaceDefn ns => () (* handled during allocation *)
       | Ast.ClassDefn cd => evalClassDefn scope cd
       | _ => LogErr.unimplError ["unimplemented definition type"]
@@ -882,7 +875,7 @@ and invokeFuncClosure (this:Mach.OBJ)
                 let
                     val (varObj:Mach.OBJ) = Mach.newSimpleObj NONE
                     val (varScope:Mach.SCOPE) = extendScope env Mach.VarActivation varObj
-                    fun bindArg (a, b) = evalVarBinding varScope (SOME a) b
+                    fun bindArg (a, b) = evalVarBinding varScope (SOME a) (Ast.LiteralExpr (Ast.LiteralNamespace (Ast.Internal ""))) b 
 
                     (* FIXME: infer a fixture for "this" so that it's properly typed, dontDelete, etc.
                      * Also this will mean changing to defVar rather than setVar, for 'this'. *)
@@ -894,7 +887,7 @@ and invokeFuncClosure (this:Mach.OBJ)
                     val selfTag = Mach.FunctionTag (#fsig f)
                     val selfVal = Mach.newObject selfTag Mach.Null (SOME (Mach.Function closure))
                 in
-                    allocScopeFixtures varScope (#fixtures f);
+                    allocScopeFixtures varScope (valOf (#fixtures f));
                     (* FIXME: handle arg-list length mismatch correctly. *)
                     List.app bindArg (ListPair.zip (args, params));
                     Mach.setValue varObj thisName thisVal;
@@ -916,7 +909,7 @@ and constructClassInstance (obj:Mach.OBJ)
             case cls of 
                 Mach.Cls { definition, ... } =>
                 let
-                    val ns = getAttrNs (#attrs definition)
+                    val ns = (#ns definition)
                     val n = { ns = needNamespace (evalExpr env ns), 
                               id = (#name definition) }
                     val _ = LogErr.trace ["constructing instance of ", LogErr.name n]
@@ -937,19 +930,18 @@ and constructClassInstance (obj:Mach.OBJ)
                     val selfTag = Mach.ClassTag n
                     val selfVal = Mach.newObject selfTag Mach.Null (SOME (Mach.Class closure))
                 in
-                    allocObjFixtures env obj (#instanceFixtures definition);
+                    allocObjFixtures env obj (valOf (#instanceFixtures definition));
                     case ctor of 
                         NONE => (checkAllPropertiesInitialized obj; instance)
-                      | SOME ({func = Ast.Func { fsig=Ast.FunctionSignature { params, inits, ... }, 
-                                                 body, fixtures, ... }, 
-                               attrs, ... }) => 
+                      | SOME ({native, ns, func = Ast.Func { fsig=Ast.FunctionSignature { params, inits, ... }, 
+                                                 body, fixtures, ... }, ... }) => 
                         let 
                             val (varObj:Mach.OBJ) = Mach.newSimpleObj NONE
                             val (varScope:Mach.SCOPE) = extendScope env Mach.VarActivation varObj
-                            fun bindArg (a, b) = evalVarBinding varScope (SOME a) b
-                            fun initInstanceVar d = processVarBinding env NONE d (Mach.defValue obj)
+                            fun bindArg (a, b) = evalVarBinding varScope (SOME a) ns b
+                            fun initInstanceVar d = processVarBinding env NONE ns d (Mach.defValue obj)
                         in
-                            allocScopeFixtures varScope fixtures;
+                            allocScopeFixtures varScope (valOf fixtures);
                             (* FIXME: is this correct? we currently bind the self name on obj as well.. *)
                             Mach.defValue obj n selfVal;
                             LogErr.trace ["initialializing instance methods of ", LogErr.name n];
@@ -957,7 +949,7 @@ and constructClassInstance (obj:Mach.OBJ)
                             List.app initInstanceVar (#instanceVars definition);
                             (* FIXME: evaluate instance-var initializers declared in class as well. *)
 
-                            if (#native (getAttrs attrs))
+                            if (native)
                             then 
                                 (* Native constructors take over here. *)
                                 let 
@@ -979,12 +971,12 @@ and constructClassInstance (obj:Mach.OBJ)
                                  LogErr.trace ["running initializers of ", LogErr.name n];
                                  (case inits of 
                                       NONE => ()
-                                    | SOME { defns, inits } => 
+                                    | SOME { b=bindings, i=inits } => 
                                       let
                                           val (initVals:Mach.VAL list) = List.map (evalExpr varScope) inits
-                                          fun bindInit (a, b) = evalVarBinding objScope (SOME a) b
+                                          fun bindInit (a, b) = evalVarBinding objScope (SOME a) ns b
                                       in
-                                          List.app bindInit (ListPair.zip (initVals, defns))
+                                          List.app bindInit (ListPair.zip (initVals, bindings))
                                       end);
                                  LogErr.trace ["checking initialization of ", LogErr.name n];
                                  checkAllPropertiesInitialized obj; 
@@ -1017,7 +1009,6 @@ and evalFuncDefnFull (scope:Mach.SCOPE)
     : unit = 
     let 
         val func = (#func f)
-        val funcAttrs = getAttrs (#attrs f)
         val name = case func of Ast.Func { name={ident, kind}, ...} => 
                                 case kind of 
                                     Ast.Ordinary => ident
@@ -1026,12 +1017,11 @@ and evalFuncDefnFull (scope:Mach.SCOPE)
 
         val fval = Mach.newFunc scope func
         val fname = {id = name, 
-                     ns = (needNamespace (evalExpr scope (#ns funcAttrs)))}
+                     ns = (needNamespace (evalExpr scope (#ns f)))}
     in
         LogErr.trace ["defining function ", LogErr.name fname];
         Mach.defValue target fname fval
     end
-
 
 and evalBlock (scope:Mach.SCOPE) 
               (block:Ast.BLOCK) 
@@ -1043,7 +1033,7 @@ and evalBlock (scope:Mach.SCOPE)
             val blockScope = extendScope scope Mach.Let blockObj
         in
             LogErr.trace ["initializing block scope"];
-            allocScopeFixtures blockScope fixtures; 
+            allocScopeFixtures blockScope (valOf fixtures);
             LogErr.trace ["evaluating block scope definitions"];
             evalDefns blockScope defns;
             LogErr.trace ["evaluating block scope statements"];

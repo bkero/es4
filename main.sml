@@ -9,7 +9,7 @@ fun testTC argvRest =
     let val asts = List.map Parser.parseFile argvRest
     in
 	TextIO.print "type checking ... \n";
-(*        List.map Verify.verifyProgram asts; *)
+        List.map Verify.verifyProgram asts;
 	TextIO.print "type checked! \n"
     end
 
@@ -17,8 +17,8 @@ fun testEV argvRest =
     let 
 	val _ = TextIO.print "parsing ... \n";
 	val asts = List.map Parser.parseFile argvRest
-(*	val _ = TextIO.print "defining ... \n";
-	val dps = map Defn.defProgram asts
+	val _ = TextIO.print "defining ... \n";
+(*	val dps = map Defn.defProgram asts
 	val _ = List.app Pretty.ppProgram dps
 	val _ = TextIO.print "evaluating ... \n";
 	val _ = map Eval.evalProgram dps
