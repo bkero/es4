@@ -2,11 +2,13 @@
 
 signature GENERATOR =
 sig
-    type G
+    type t
 
-    val make  : (G -> unit) -> G
-    val yield : G * Value.VALUE -> Value.VALUE
-    val send  : G * Value.VALUE -> Value.VALUE
-    val throw : G * Value.VALUE -> Value.VALUE
-    val close : G -> unit
-end
+    val make  : (t -> unit) -> t
+    val yield : t * Value.VALUE -> Value.VALUE
+    val send  : t * Value.VALUE -> Value.VALUE
+    val throw : t * Value.VALUE -> Value.VALUE
+    val close : t -> unit
+
+    val run : (unit -> unit) -> unit
+end;

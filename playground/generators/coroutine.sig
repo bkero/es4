@@ -5,20 +5,21 @@
 signature COROUTINE =
 sig
     type result
-    type C
+    type t
 
     (* Operations on coroutines. *)
-    val new     : ((C * result) -> result) -> C
-    val switch  : (C * result) -> result
-    val kill    : C -> unit
+    val new     : ((t * result) -> result) -> t
+    val switch  : (t * result) -> result
+    val kill    : t -> unit
 
     (* Test the state of a coroutine. *)
-    val newborn : C -> bool
-    val alive   : C -> bool
-    val running : C -> bool
+    val newborn : t -> bool
+    val alive   : t -> bool
+    val running : t -> bool
 
     (* A wrapper for the main function; only really needed for CML. *)
     val run     : (unit -> unit) -> unit
 end;
 
-funsig MK_COROUTINE (type result) = COROUTINE where type result = result;
+funsig MK_COROUTINE (type result) = COROUTINE
+    where type result = result;
