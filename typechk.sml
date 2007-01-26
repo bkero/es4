@@ -89,64 +89,74 @@ fun subst (s:((IDENT*TYPE_EXPR) list)) (t:TYPE_EXPR):TYPE_EXPR =
 	    AppType {base=subst s base, args=map (subst s) args}
 	  | NullableType {expr, nullable}
 	    => NullableType {expr=subst s expr, nullable=nullable}
-(*
-	  | NominalType { ident, nullable=_ } =>
-	    let in case List.find (fn (id,ty) => id=ident) s of
-		       (* TODO: we're dropping the nullable here, is that right? *)
-		       SOME (_,ty) => ty 
-		     | NONE => t
+
+	  | NominalType { ident=(Identifier {ident=ident, openNamespaces=_}), nullable=_ } =>
+	    let in
+		case List.find 
+			 (fn (id,ty) => id=ident)
+			 s 
+		 of
+		    (* TODO: we're dropping the nullable here, is that right? *)
+		    SOME (_,ty) => ty 
+		  | NONE => t
 	    end
-*)
+	  | NominalType { ident=_, nullable=_ } => t
+
 	  | ObjectType fields =>
 	    ObjectType (map (fn {name,ty} => 
 				{name=name,ty=subst s ty})
 			fields)
 	  | SpecialType st => SpecialType st
-(*
+
 	  | FunctionType (FunctionSignature {typeParams,params,inits,
 					     returnType,thisType,hasBoundThis,hasRest}) =>
-	    let val oldNew = map (fun id => (id, gensym id)) typeParams 
+	    (* Need to uniquify typeParams to avoid capture *)
+	    let val oldNew = map (fn id => (id, gensym id)) typeParams 
 		val nuSub = 
 		    map 
-			(fun (oldId,newId) => 
-			     (oldId, NominalType { ident=Identifier {ident=newId,openNamespaces=[]}}))
+			(fn (oldId,newId) => 
+			     (oldId, 
+			      NominalType { ident=Identifier {ident=newId,openNamespaces=[]}, 
+					    nullable=NONE}))
 			oldNew
-		val nuTypeParams = map (fun (oldId,newId) => newId) oldNew
+		val bothSubs = fn t => subst s (subst nuSub t)
+		val nuTypeParams = map (fn (oldId,newId) => newId) oldNew
 		val nuParams =
-		    (map (fun Binding {kind,init,attrs,pattern,ty} =>
-			      Binding {kind,
-
-}) =>
-*)
-	    (* Need to first uniquify typeParams to avoid capture *)
-	    
-
-    end
+		    map 
+			(fn Binding {kind,init,attrs,pattern,ty} =>
+			    Binding {kind=kind,init=init,attrs=attrs,pattern=pattern, 
+				     ty=Option.map bothSubs ty})
+			params
+		in
+		FunctionType (FunctionSignature {typeParams=nuTypeParams,
+						 params=nuParams,
+						 inits=inits,
+						 returnType = bothSubs returnType,
+						 thisType = Option.map bothSubs thisType,
+						 hasBoundThis=hasBoundThis,
+						 hasRest=hasRest})
+		end
+    end 
 	
+(************************* Compatibility *********************************)
 
+fun l [] = 0
+  | l (h::t) = 1
 
-
-(*
-     and TYPE_EXPR =
-       | FunctionType of FUNC_SIG
-   *)
-
-(************************* Convertibility *********************************)
-
-fun checkConvertible (t1:TYPE_EXPR) (t2:TYPE_EXPR) : unit = 
-    if isConvertible t1 t2
+fun checkCompatible (t1:TYPE_EXPR) (t2:TYPE_EXPR) : unit = 
+    if isCompatible t1 t2
     then ()
     else let in
-	     TextIO.print ("Types are not convertible\n");
+	     TextIO.print ("Types are not compatible\n");
 	     Pretty.ppType t1;
 	     Pretty.ppType t2;
-	     raise IllTypedException "Types are not convertible"
+	     raise IllTypedException "Types are not compatible"
 	 end
 
-and isConvertible (t1:TYPE_EXPR) (t2:TYPE_EXPR) : bool = 
+and isCompatible (t1:TYPE_EXPR) (t2:TYPE_EXPR) : bool = 
     let 
     in
-	TextIO.print ("Checking convertible\nFirst type: ");
+	TextIO.print ("Checking compatible\nFirst type: ");
 	Pretty.ppType t1;
 	TextIO.print("\nSecond type: ");
 	Pretty.ppType t2; 
@@ -156,16 +166,16 @@ and isConvertible (t1:TYPE_EXPR) (t2:TYPE_EXPR) : bool =
 	(t2=anyType) orelse
 	case (t1,t2) of
 	    (UnionType types1,_) => 
-	    List.all (fn t => isConvertible t t2) types1
+	    List.all (fn t => isCompatible t t2) types1
 	  | (_, UnionType types2) =>
 	    (* t1 must exist in types2 *)
-	    List.exists (fn t => isConvertible t1 t) types2 
+	    List.exists (fn t => isCompatible t1 t) types2 
 	  | (ArrayType types1, ArrayType types2) => 
-	    (* arrays are invariant, every entry should be convertible in both directions *)
+	    (* arrays are invariant, every entry should be compatible in both directions *)
 	    let fun check (h1::t1) (h2::t2) =
-		    (isConvertible h1 h2)
+		    (isCompatible h1 h2)
 		    andalso
-		    (isConvertible h2 h1)
+		    (isCompatible h2 h1)
 		    andalso
 		    (case (t1,t2) of
 			 ([],[]) => true
@@ -195,7 +205,7 @@ and isConvertible (t1:TYPE_EXPR) (t2:TYPE_EXPR) : bool =
 	  | (AppType {base=base1,args=args1},AppType {base=base2,args=args2}) => 
 	    (* We keep types normalized wrt beta-reduction, 
 	     * so base1 and base2 must be class or interface types.
-	     * Type arguments are covariant, and so must be intra-convertible - CHECK 
+	     * Type arguments are covariant, and so must be intra-compatible - CHECK 
 	     *)
 	    false
 	    
@@ -215,15 +225,15 @@ and isConvertible (t1:TYPE_EXPR) (t2:TYPE_EXPR) : bool =
 	    let
 	    in
 		(* TODO: Assume for now that functions are not polymorphic *)
-		assert (typeParams1 = [] andalso typeParams2=[])   "cannot handle polymorphic fns";
-		assert (not hasRest1 andalso not hasRest2)   "cannot handle rest args";
+		assert (typeParams1 = [] andalso typeParams2=[]) "cannot handle polymorphic fns";
+		assert (not hasRest1 andalso not hasRest2) "cannot handle rest args";
 
 		let fun checkArgs params1 params2 =
 			case (params1,params2) of
 			    ([],[]) => true
 			  | (Binding {kind=_,init=_,attrs=_,pattern=_,ty=ty1}::t1,
 			     Binding {kind=_,init=_,attrs=_,pattern=_,ty=ty2}::t2) => 
-			    isConvertible (unOptionDefault ty2 anyType)
+			    isCompatible (unOptionDefault ty2 anyType)
 					  (unOptionDefault ty1 anyType)
 			    andalso checkArgs t1 t2
 			  | _ =>
@@ -232,24 +242,28 @@ and isConvertible (t1:TYPE_EXPR) (t2:TYPE_EXPR) : bool =
 		in
 		    checkArgs params1 params2
 		    andalso
-		    isConvertible returnType1 returnType2
+		    isCompatible returnType1 returnType2
 		end
 		
 	    (* TODO: Gets pretty complicated here! *)
 	    end
 	    
 	  (* catch all *)
-	  | _ => unimplError ["isConvertible"]
+	  | _ => unimplError ["isCompatible"]
     end
     
-
-
 (*
     and TYPE_EXPR =
          SpecialType of SPECIAL_TY
        | NominalType of { ident : IDENT_EXPR, nullable: bool option }  (* todo: remove nullable *)
        | NullableType of {expr:TYPE_EXPR,nullable:bool}
 *)
+
+fun checkComparable ty1 ty2 = 
+    let in
+	checkCompatible ty1 ty2;
+	checkCompatible ty2 ty1
+    end
 
 (************************* Handling Types *********************************)
 
@@ -343,14 +357,14 @@ and tcExpr ((ctxt as {env,this,...}):CONTEXT) (e:EXPR) :TYPE_EXPR =
         let val annotatedTy = unOptionDefault ty anyType
             val inferredTy = ArrayType (map (fn elt => tcExpr ctxt elt) exprs)
         in
-          checkConvertible inferredTy annotatedTy;
+          checkCompatible inferredTy annotatedTy;
           annotatedTy
         end
       | LiteralExpr (LiteralObject { expr, ty }) =>
         let val annotatedTy = unOptionDefault ty anyType
             val inferredTy = inferObjectType ctxt expr
         in
-          checkConvertible inferredTy annotatedTy;
+          checkCompatible inferredTy annotatedTy;
           annotatedTy
         end
       | ListExpr l => List.last (List.map (tcExpr ctxt) l)
@@ -393,7 +407,7 @@ and tcExpr ((ctxt as {env,this,...}):CONTEXT) (e:EXPR) :TYPE_EXPR =
 		    (* check this has compatible type *)
 		    case thisType of
 			NONE => ()  (* this lexically bound, nothing to check *)
-		      | SOME t => checkConvertible this t;
+		      | SOME t => checkCompatible this t;
 		    (* check compatible parameters *)
 		    let val (normalParams, restParam) =
 			    if hasRest
@@ -403,7 +417,7 @@ and tcExpr ((ctxt as {env,this,...}):CONTEXT) (e:EXPR) :TYPE_EXPR =
 			fun handleArgs [] [] = ()
 			  | handleArgs (p::pr) (a::ar) =				
 			    let val Binding {kind,init,attrs,pattern,ty} = p in
-				checkConvertible a (unOptionDefault ty anyType);
+				checkCompatible a (unOptionDefault ty anyType);
 				handleArgs pr ar
 			    end
 			  | handleArgs [] (_::_) = 
@@ -506,7 +520,7 @@ and inferObjectType ctxt fields =
 and tcBinding (ctxt:CONTEXT) (Binding {kind,init,attrs,pattern,ty}) : TYPE_ENV =
     let val ty = unOptionDefault ty anyType in
 	case init of
-	    SOME expr => checkConvertible (tcExpr ctxt expr) ty
+	    SOME expr => checkCompatible (tcExpr ctxt expr) ty
 	  | NONE => ();
 	case pattern of
 	    IdentifierPattern (Identifier {ident,openNamespaces}) => [(ident,SOME ty)]
@@ -527,17 +541,21 @@ and tcVarBinding (ctxt:CONTEXT) (v:VAR_BINDING) : TYPE_ENV =
 	case pattern of
 	    IdentifierPattern (Identifier {ident, openNamespaces}) =>
 	    [(ident,SOME (unOptionDefault ty anyType))]
-    (*TODO*)
+
+and tcVarBindings (ctxt:CONTEXT) (vs:VAR_BINDING list) : TYPE_ENV =
+    case vs of
+	[] => []
+      | h::t => (tcVarBinding ctxt h) @ (tcVarBindings ctxt t)
     
 
 and tcIdentExpr (ctxt:CONTEXT) (id:IDENT_EXPR) =
     (case id of
-          QualifiedIdentifier { qual, ident=_ } => (checkConvertible (tcExpr ctxt qual) namespaceType; ())
-        | QualifiedExpression { qual, expr } => (checkConvertible (tcExpr ctxt qual) namespaceType;
-                                                 checkConvertible (tcExpr ctxt expr) stringType;
+          QualifiedIdentifier { qual, ident=_ } => (checkCompatible (tcExpr ctxt qual) namespaceType; ())
+        | QualifiedExpression { qual, expr } => (checkCompatible (tcExpr ctxt qual) namespaceType;
+                                                 checkCompatible (tcExpr ctxt expr) stringType;
                                                  ())
         | Identifier _ => ()
-        | ExpressionIdentifier expr => (checkConvertible (tcExpr ctxt expr) stringType; ()))
+        | ExpressionIdentifier expr => (checkCompatible (tcExpr ctxt expr) stringType; ()))
 (*
        | AttributeIdentifier of IDENT_EXPR
        | TypeIdentifier of { ident : IDENT_EXPR, 
@@ -589,20 +607,20 @@ and tcStmt ((ctxt as {this,env,lbls,retTy}):CONTEXT) (stmt:STMT) =
     EmptyStmt => ()
   | ExprStmt e => (tcExprList ctxt e; ())
   | IfStmt {cnd,thn,els} => (
-	checkConvertible (tcExpr ctxt cnd) boolType;
+	checkCompatible (tcExpr ctxt cnd) boolType;
 	tcStmt ctxt thn;
 	tcStmt ctxt els
     )
 
   | (DoWhileStmt {cond,body,contLabel} | WhileStmt {cond,body,contLabel}) => (
-	checkConvertible (tcExpr ctxt cond) boolType;
+	checkCompatible (tcExpr ctxt cond) boolType;
 	tcStmt (withLbls (ctxt, contLabel::lbls)) body
     )
 
   | ReturnStmt e => (
 	case retTy of
 	  NONE => raise IllTypedException "return not allowed here"
-        | SOME retTy => checkConvertible (tcExprList ctxt e) retTy
+        | SOME retTy => checkCompatible (tcExprList ctxt e) retTy
     )
 
   | (BreakStmt NONE | ContinueStmt NONE) =>  
@@ -625,7 +643,7 @@ and tcStmt ((ctxt as {this,env,lbls,retTy}):CONTEXT) (stmt:STMT) =
 	tcStmt (withLbls (ctxt, ((SOME lab)::lbls))) s
  
   | ThrowStmt t => 
-	checkConvertible (tcExprList ctxt t) exceptionType
+	checkCompatible (tcExprList ctxt t) exceptionType
 
   | LetStmt (defns, body) =>
     let val extensions = List.concat (List.map (fn d => tcBinding ctxt d) defns)
@@ -633,8 +651,35 @@ and tcStmt ((ctxt as {this,env,lbls,retTy}):CONTEXT) (stmt:STMT) =
         checkForDuplicates extensions;
         tcStmt (withEnv (ctxt, foldl extendEnv env extensions)) body  
     end
-    
 
+  | ForStmt { defns, init, cond, update, contLabel, body } =>
+    let val extensions = tcVarBindings ctxt defns
+        val ctxt' = withEnv (ctxt, foldl extendEnv env extensions)
+	fun tcExprs exprs = 
+	    let in
+		if List.length exprs = 0
+		then boolType
+		else List.last (List.map (fn e => tcExpr ctxt' e) exprs)
+	    end
+    in
+  	tcExprs init;
+	checkCompatible (tcExprs cond) boolType;
+	tcExprs update;
+	tcStmt (withLbls (ctxt', contLabel::lbls)) body
+    end
+(*
+  | SwitchStmt { cond, cases } =>
+    let val ty = tcExpr ctxt cond
+    in
+	List.app
+	    (fn (expr,stmts) =>
+		let in
+		    tcStmts ctxt stmts;
+		    checkComparable ty (tcExpr ctxt expr)
+		end)
+	    cases
+    end
+*)
   | _ => (TextIO.print "tcStmt incomplete: "; Pretty.ppStmt stmt; raise Match)
 
 (*
@@ -642,25 +687,12 @@ and tcStmt ((ctxt as {this,env,lbls,retTy}):CONTEXT) (stmt:STMT) =
        | ForInStmt of FOR_ENUM_STMT
        | SuperStmt of EXPR list
 
-       | ForStmt of { isVar: bool,
-                      defns: VAR_DEFN list,
-                      init: EXPR,
-                      cond: EXPR,
-                      update: EXPR,
-                      contLabel: IDENT option,
-                      body: STMT }
-
-
        | WithStmt of { obj: EXPR,
                        body: STMT }
 
        | TryStmt of { body: BLOCK,
                       catches: (FORMAL * BLOCK) list,
                       finally: BLOCK }
-
-       | SwitchStmt of { cond: EXPR,
-                         cases: (EXPR * (STMT list)) list,
-                         default: STMT list }
 *)
 (*  | tcStmt _ _ _ _ => raise Expr.UnimplementedException "Unimplemented statement type" *)
 

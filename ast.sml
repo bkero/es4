@@ -428,7 +428,7 @@ withtype FIELD =
          { defns : VAR_BINDING list,
            inits : EXPR list }
 
-     and CASE =
+     and CASE = (* Perhaps we can collapse this to EXPR list *)
          { label : EXPR list option, body : BLOCK }
 
      and TYPE_CASE =
