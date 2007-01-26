@@ -947,12 +947,14 @@ and constructClassInstance (obj:Mach.OBJ)
                             val (varObj:Mach.OBJ) = Mach.newSimpleObj NONE
                             val (varScope:Mach.SCOPE) = extendScope env Mach.VarActivation varObj
                             fun bindArg (a, b) = evalVarBinding varScope (SOME a) b
+                            fun initInstanceVar d = processVarBinding env NONE d (Mach.defValue obj)
                         in
                             allocScopeFixtures varScope fixtures;
                             (* FIXME: is this correct? we currently bind the self name on obj as well.. *)
                             Mach.defValue obj n selfVal;
                             LogErr.trace ["initialializing instance methods of ", LogErr.name n];
                             List.app (evalFuncDefnFull env obj) (#instanceMethods definition);
+                            List.app initInstanceVar (#instanceVars definition);
                             (* FIXME: evaluate instance-var initializers declared in class as well. *)
 
                             if (#native (getAttrs attrs))
