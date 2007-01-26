@@ -32,26 +32,26 @@ package
        PROPERTY MANIPULATION.  */
 
     /* Retrieve the [[Class]] property of o */
-    magic native function getClassName(o : Object!) : String!;
+    magic native function getClassName(o : Object!) : string;
 
     /* Retrieve the possibly null [[Prototype]] property of o */
     magic native function getPrototype(o : Object!) : Object;
 
     /* Return true iff o has a local property named by p. */
-    magic native function hasOwnProperty(o : Object!, p : String!) : Boolean;
+    magic native function hasOwnProperty(o : Object!, p : string) : Boolean;
 
     /* Return true if the property p does exists locally on o and its
        DontEnum bit is set */
-    magic native function getPropertyIsDontEnum(o : Object!, p : String!) : Boolean;
+    magic native function getPropertyIsDontEnum(o : Object!, p : string) : Boolean;
 
     /* Return true if the property p does exists locally on o and its
        DontDelete bit is set */
-    magic native function getPropertyIsDontDelete(o : Object!, p : String!) : Boolean;
+    magic native function getPropertyIsDontDelete(o : Object!, p : string) : Boolean;
 
     /* Provided that the property p exists locally on o, set its DontEnum
        flag according to f.  If the property p does not exist locally on
        o, it does nothing. */
-    magic native function setPropertyIsDontEnum(o : Object!, p : String!, f : Boolean) : void;
+    magic native function setPropertyIsDontEnum(o : Object!, p : string, f : Boolean) : void;
 
     /* Retrieve the [[Value]] property of o */
     magic native function getValue(o : Object!) : *;
@@ -63,22 +63,6 @@ package
     /* ----------------------------------------------------------------
 
        FUNCTION MANIPULATION.  */
-
-    /* Compile the function body in the context of the formals and
-       return an opaque representation for the compiled code, suitable
-       for passing to magic::invoke, along with the arity of the
-       function.
-
-       Throws a SyntaxError if the code could not be compiled. */
-    magic native function compile(formals : String!, body : String!) : [*, Number];
-
-    /* Given some code created by magic::compile, an environment of
-       some sort (either a global object or an environment structure
-       created by function closing; we could clean this up), and some
-       argument values, invoke the code on those arguments in the
-       given environment by extending the environment with the
-       formals, binding actuals to formals, and running the code. */
-    magic native function invoke(code : *, env : *, args : Array) : *;
 
     /* Given a function object, a this object, and an array of argument
        values, call the function with the this object and arguments. */
@@ -92,27 +76,27 @@ package
        the language.  The following magic functions access and set
        those string data.  */
 
-    /* Given a String object 'src', copy its internal string data into
-       another String object 'dest', replacing whatever data might
+    /* Given a string object 'src', copy its internal string data into
+       another string object 'dest', replacing whatever data might
        have been in 'dest' to begin with.  */
-    magic native function setStringValue(dest : String!, src : String!) : void;
+    magic native function setStringValue(dest : string, src : string) : void;
 
     /* Given a string and a position in that string, return the
        numeric value of the character at that position in the
        string.  */
-    magic native function charCodeAt(s : String!, pos : uint) : String!;
+    magic native function charCodeAt(s : string, pos : uint) : string;
 
     /* Given a numeric character value, return a string of length 1
        whose element 0 is the character with that same value.  */
-    magic native function fromCharCode(ch : uint) : String!;
+    magic native function fromCharCode(ch : uint) : string;
 
     /* Given a string object, return the number of characters in the
      * string. */
-    magic native function stringLength(s : String!) : uint;
+    magic native function stringLength(s : string) : uint;
 
     /* Given two string objects A and B , return a new string object
        containing the characters from A followed by the characters
        from B.  */
-    magic native function stringAppend(a : String!, b : String!) : String!;
+    magic native function stringAppend(a : string, b : string) : string;
 }
 

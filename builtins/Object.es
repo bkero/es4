@@ -19,21 +19,21 @@ package
         intrinsic static function invoke(value)
             ToObject(value);
 
-        /* E262-3 15.2.2.1: The Object constructor */
+        /* E262-3 15.2.2.1: The Object constructor. */
         /* magic */ object function Object();
 
         /* E262-3 15.2.4.2: Object.prototype.toString */
         prototype function toString()
             this.toString();
 
-        intrinsic function toString() : String!
+        intrinsic function toString() : string
             "[object " + magic::getClassName(this) + "]";
 
         /* E262-3 15.2.4.3: Object.prototype.toLocaleString */
         prototype function toLocaleString()
             this.toLocaleString();
 
-        intrinsic function toLocaleString() : String!
+        intrinsic function toLocaleString() : string
             "[object " + magic::getClassName(this) + "]";
 
         /* E262-3 15.2.4.4:  Object.prototype.valueOf */
@@ -47,7 +47,7 @@ package
         prototype function hasOwnProperty(V)
             this.hasOwnProperty(V);
 
-        intrinsic function hasOwnProperty(V : String!) : Boolean 
+        intrinsic function hasOwnProperty(V : string) : Boolean 
             magic::hasOwnProperty(this, V);
         
         /* E262-3 15.2.4.6:  Object.prototype.isPrototypeOf */
@@ -73,7 +73,7 @@ package
             this.propertyIsEnumerable(V, E);
 
         /* E262-4 draft proposals:enumerability */
-        intrinsic function propertyIsEnumerable(V : String!, E=undefined) : Boolean {
+        intrinsic function propertyIsEnumerable(V : string, E=undefined) : Boolean {
             let O : Object = this;
             while (O !== null) {
                 if (O.hasOwnProperty(V)) {
@@ -91,7 +91,7 @@ package
         prototype function toJSONString() 
             this.toJSONString();
 
-        intrinsic function toJSONString(...args) : String!
+        intrinsic function toJSONString(...args) : string
             JSON.emit.apply(null, args.unshift(this));
     }
 }

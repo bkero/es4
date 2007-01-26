@@ -31,21 +31,6 @@ package
         return true;
     }
         
-    /* ES-262-3 9.3: ToNumber */
-    intrinsic function ToNumber(value) : Number {
-        if (value is Number)
-            return value;
-        if (value === undefined)
-            return 0.0/0.0;
-        if (value === null)
-            return 0;
-        if (value is Boolean)
-            return value ? 1 : 0;
-        if (value is String)
-            return parseFloat(value);
-        return ToNumber(ToPrimitive(value, "Number"));
-    }
-
     intrinsic function ToInteger(value) : Number {
         value = ToNumber(value);
         if (value !== value)
@@ -72,9 +57,11 @@ package
         // FIXME
     }
 
-    intrinsic function ToString(value) : String! {
-        if (value is String)
+    intrinsic function ToString(value) : string {
+        if (value is string)
             return value;
+        if (value is String)
+            return value.valueOf();
         if (value === undefined)
             return "undefined";
         if (value === null)

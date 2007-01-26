@@ -29,7 +29,7 @@ package RegExp
 
         /* E262-3 15.10.4.1: The RegExp constructor */
         public function RegExp( pattern, flags ) {
-            let source : String! = "";
+            let source : string = "";
 
             if (pattern is RegExp) {
                 if (flags === undefined) {
@@ -40,13 +40,13 @@ package RegExp
                     throw new TypeError("Illegal construction of regular expression");
             }
             else {
-                source = pattern === undefined ? "" : String(pattern);
-                flags = flags === undefined ? "" : String(flags);
+                source = pattern === undefined ? "" : ToString(pattern);
+                flags = flags === undefined ? "" : ToString(flags);
             }
 
             let usedflags : Object! = { m: false, i: false, g: false, x: false, y: false };
 
-            for each ( let f : String! in flags.split("") ) {
+            for each ( let f : string in flags.split("") ) {
                 if (!(f in usedflags))
                     throw new SyntaxError("Invalid flag: " + f);
                 if (usedflags.f)
@@ -72,12 +72,12 @@ package RegExp
         public function invoke(s) : Array
             this.exec(s);
 
-        intrinsic function invoke(s : String!) : Array
+        intrinsic function invoke(s : string) : Array
             exec(s);
 
         /* E262-3 15.10.6.2: RegExp.prototype.exec */
-        intrinsic function exec(s : String!) : Array {
-            let S : String! = ToString(s);
+        intrinsic function exec(s : string) : Array {
+            let S : string = ToString(s);
             let length : uint = S.length;
             let i : double = ToInteger(lastIndex);
             if (!global)
@@ -109,14 +109,14 @@ package RegExp
             this.exec(s);
 
         /* E262-3 15.10.6.3: RegExp.prototype.test */
-        intrinsic function test(s : String!) : Boolean
+        intrinsic function test(s : string) : Boolean
             exec(s) !== null;
 
         prototype function test(s)
             this.test(s);
 
         /* E262-3 15.10.6.4: RegExp.prototype.toString */
-        intrinsic function toString() : String!
+        intrinsic function toString() : string
             "/" + (source.length == 0 ? "(?:)" : source) + "/" + flags;
 
         prototype function toString()
@@ -128,14 +128,14 @@ package RegExp
         public const global     : Boolean;
         public const extended   : Boolean;  // E262-4 proposals:extend_regexps
         public const sticky     : Boolean;  // E262-4 proposals:extend_regexps
-        public const source     : String!;
+        public const source     : string;
         public var   lastIndex  : double;
 
         /* E262-4 - [[Match]] may not *have* to be public, but String
            uses it, and if we want to model the language in the
            language we should expose it -- it's benign. 
         */
-        intrinsic function match(s : String!, i : uint) : MatchResult
+        intrinsic function match(s : string, i : uint) : MatchResult
             matcher.match(s, i);
 
         /* E262-4 - nCapturingParens used by String.prototype.replace 
@@ -146,7 +146,7 @@ package RegExp
         /* Internal */
         const matcher : RegExpMatcher;      // The [[Match]] property
 
-        function get flags() : String! {
+        function get flags() : string {
             return (multiline ? "m" : "") +
                    (ignoreCase ? "i" : "") +
                    (global ? "g" : "") +

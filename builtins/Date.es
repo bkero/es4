@@ -38,8 +38,8 @@ package
                 return;
             case 1:  /* 15.9.3.2 */
                 let v = ToPrimitive(year);
-                if (v is String)
-                    return parse(v cast String);
+                if (v is string)
+                    return parse(v cast string);
 
                 timeval = TimeClip(ToDouble(v));
                 return;
@@ -82,12 +82,12 @@ package
         public static var parse = function parse(string, reference:double=0.0) {
             if (arguments.length > 2)
                 throw new TypeError("Too many arguments to Date.parse"); 
-            return Date.parse(String(string), reference);
+            return Date.parse(ToString(string), reference);
         }
 
-        static intrinsic function parse(s:String!, reference:double=0.0) : Date! {
+        static intrinsic function parse(s:string, reference:double=0.0) : Date! {
 
-            function fractionToMilliseconds(frac : String!) : double
+            function fractionToMilliseconds(frac : string) : double
                 Math.floor(1000 * (parseInt(frac) / Math.pow(10,frac.length)));
 
             let isoRes : Object = isoTimestamp.exec(s);
@@ -127,7 +127,7 @@ package
            the minimum required by the Standard and we handle that
            here along with the output of Date.prototype.toUTCString.
         */
-        static function fromDateString(s : String!, reference : double) : Date {
+        static function fromDateString(s : string, reference : double) : Date {
 
             function findMonth(name) {
                 for ( let i:int=0 ; i < monthNames.length ; i++ )
@@ -240,7 +240,7 @@ package
         prototype function toISOString(this:Date)
             this.toISOString();
 
-        intrinsic function toISOString() : String {
+        intrinsic function toISOString() : string {
 
             function years(n : double) : String {
                 if (n >= 0 && n <= 9999)
@@ -249,7 +249,7 @@ package
                     return n.toString();
             }
 
-            function fraction(n : int) : String {
+            function fraction(n : int) : string {
                 while (n > 0 && n % 10 === 0)
                     n /= 10;
                 return n.toString();
@@ -268,7 +268,7 @@ package
             this.toString(); 
 
         /* INFORMATIVE */
-        intrinsic function toString() : String
+        intrinsic function toString() : string
             /* "Fri, 15 Dec 2006 23:45:09 GMT-0800" */
             let (tz:double = timezoneOffset)
                 let (atz:double = Math.abs(tz))
@@ -281,7 +281,7 @@ package
             this.toUTCString(); 
 
         /* INFORMATIVE */
-        intrinsic function toUTCString() : String
+        intrinsic function toUTCString() : string
             /* "Sat, 16 Dec 2006 08:06:21 GMT" */
             dayNames[UTCdate] + ", " + 
             twoDigit(UTCday) + " " + 
@@ -296,7 +296,7 @@ package
             this.toDateString(); 
 
         /* INFORMATIVE */
-        intrinsic function toDateString() : String
+        intrinsic function toDateString() : string
             /* "Sat, 16 Dec 2006" */
             dayNames[date] + ", " + twoDigit(day) + " " + monthNames[month] + " " fullYear;
 
@@ -305,7 +305,7 @@ package
             this.toTimeString(); 
 
         /* INFORMATIVE */
-        intrinsic function toTimeString():String
+        intrinsic function toTimeString():string
             /* "00:13:29 GMT-0800" */
             let (tz:double = timezoneOffset)
                 let (atz:double = Math.abs(tz))
@@ -317,7 +317,7 @@ package
             this.toLocaleString(); 
 
         /* INFORMATIVE */
-        intrinsic function toLocaleString():String
+        intrinsic function toLocaleString() : string
             toString();
 
         /* E262-3 15.9.5.6: Date.prototype.toLocaleDateString */
@@ -325,7 +325,7 @@ package
             this.toLocaleDateString(); 
 
         /* INFORMATIVE */
-        intrinsic function toLocaleDateString():String
+        intrinsic function toLocaleDateString() : string
             toDateString();
 
         /* E262-3 15.9.5.7: Date.prototype.toLocaleTimeString */
@@ -333,7 +333,7 @@ package
             this.toLocaleTimeString(); 
 
         /* INFORMATIVE */
-        intrinsic function toLocaleTimeString():String
+        intrinsic function toLocaleTimeString() : string
             toTimeString();
 
         /* E262-3 15.9.5.8: Date.prototype.valueOf */

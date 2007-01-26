@@ -27,7 +27,7 @@ package
         public static const POSITIVE_INFINITY : double = 1.0 / 0.0;
 
         /* E262-4 draft */
-        static function to(x : Numeric) : double
+        intrinsic static function to(x : Numeric) : double
             x is double ? x : ToDouble(x);
 
         /* E262-3 15.7.1.1: The double Constructor Called as a Function */
@@ -43,7 +43,7 @@ package
         prototype function toString(this:double, radix)
             this.toString(radix);
 
-        intrinsic function toString(radix = 10) : String! {
+        intrinsic function toString(radix = 10) : string {
             if (radix === 10 || radix === undefined)
                 return ToString(magic::getValue(this));
             else if (typeof radix === "number" && radix >= 2 && radix <= 36 && isIntegral(radix)) {
@@ -59,7 +59,7 @@ package
             this.toLocaleString();
 
         /* INFORMATIVE */
-        intrinsic function toLocaleString() : String!
+        intrinsic function toLocaleString() : string
             toString();
 
         /* E262-3 15.7.4.4: double.prototype.valueOf */
@@ -73,14 +73,14 @@ package
         prototype function toFixed(this:double, fractionDigits)
             this.toFixed(ToDouble(fractionDigits));
 
-        intrinsic function toFixed(fractionDigits:double) : String! {
+        intrinsic function toFixed(fractionDigits:double) : string {
             let f : double = ToInteger(fractionDigits);
             if (f < 0 || f > 20)
                 throw new RangeError("fractionDigits out of range");
             let x : double = magic::getValue(this);
             if (isNaN(x))
                 return "NaN";
-            let s : String! = "";
+            let s : string = "";
             if (x < 0) {
                 s = "-";
                 x = -x;
@@ -90,7 +90,7 @@ package
                 return s + ToString(m);
             
             let n : double = toFixedStep10(x, f);
-            let m : String! = n == 0 ? "0" : ToString(n);
+            let m : string = n == 0 ? "0" : ToString(n);
             if (f == 0)
                 return s + m;
             let k : int = m.length;
@@ -113,12 +113,12 @@ package
         prototype function toExponential(this:double, fractionDigits)
             this.toExponential(ToDouble(fractionDigits));
 
-        intrinsic native function toExponential(fractionDigits:double):String; // FIXME
+        intrinsic native function toExponential(fractionDigits:double) : string; // FIXME
 
         /* E262-3 15.7.4.7: Number.prototype.toPrecision */
         prototype function toPrecision(this:double, precision)
             this.toPrecision(ToDouble(precision));
 
-        intrinsic native function toPrecision(precision:double) : String!; // FIXME
+        intrinsic native function toPrecision(precision:double) : string; // FIXME
     }
 }

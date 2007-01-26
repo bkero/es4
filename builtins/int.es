@@ -20,7 +20,7 @@ package
         public static const MIN_VALUE : int = -0x80000000;
 
         /* E262-4 draft */
-        static function to(x : Numeric) : int
+        intrinsic static function to(x : Numeric) : int
             x is int ? x : ToInt(x);
 
         /* E262-4 draft: The int Constructor Called as a Function */
@@ -36,7 +36,7 @@ package
         prototype function toString(this:int, radix)
             this.toString(radix);
 
-        intrinsic function toString(radix = 10) : String! {
+        intrinsic function toString(radix = 10) : string {
             if (radix === 10 || radix === undefined)
                 return ToString(magic::getValue(this));
             else if (typeof radix === "number" && radix >= 2 && radix <= 36 && isIntegral(radix)) {
@@ -52,7 +52,7 @@ package
             this.toLocaleString();
 
         /* INFORMATIVE */
-        intrinsic function toLocaleString() : String!
+        intrinsic function toLocaleString() : string
             toString();
 
         /* E262-4 draft: int.prototype.valueOf */
@@ -66,21 +66,21 @@ package
         prototype function toFixed(this:int, fractionDigits)
             this.toFixed(ToDouble(fractionDigits));
 
-        intrinsic function toFixed(fractionDigits:double) : String! 
+        intrinsic function toFixed(fractionDigits:double) : string 
 	    ToDouble(this).toFixed(fractionDigits);
 
         /* E262-4 draft: int.prototype.toExponential */
         prototype function toExponential(this:int, fractionDigits)
             this.toExponential(ToDouble(fractionDigits));
 
-        intrinsic function toExponential(fractionDigits:double) : String!
+        intrinsic function toExponential(fractionDigits:double) : string
 	    ToDouble(this).toExponential(fractionDigits);
 
         /* E262-4 draft: int.prototype.toPrecision */
         prototype function toPrecision(this:int, precision)
             this.toPrecision(ToDouble(precision));
 
-        intrinsic function toPrecision(precision:double) : String!
+        intrinsic function toPrecision(precision:double) : string
 	    ToDouble(this).toPrecision(precision);
     }
 }

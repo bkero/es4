@@ -43,17 +43,31 @@ package
            function calling machinery. 
         */
         intrinsic function invoke()
+            throw new Error("Implementation error");
+
+        /* XXX: The prototype object behaves like a function (and
+           system magic makes its classname be "Function", though it's
+           not an instance of the Function class).  So here we install
+           some things in the prototype that ensures that the object
+           behaves like a function in some trivial ways.
+         */
+        prototype intrinsic function invoke()
             undefined;
 
-        prototype function toString()
-            this.toString();
+        prototype var source : string = "function () { }";
 
-        intrinsic function toString() : String!
+        prototype var length : uint = 0;
+
+        /* XXX: Function.prototype.toString */
+        prototype function toString()
+            this.source;
+
+        intrinsic function toString() : string
             source;
         
         /* E262-3 15.3.4.3: Function.prototype.apply */
         prototype function apply(thisArg, argArray)
-            this.apply(thisArg, argArray);
+            Function.apply(this, thisArg, argArray);
 
         intrinsic function apply(thisArg, argArray) : *
             Function.apply(this, thisArg, argArray);
@@ -110,6 +124,6 @@ package
             }
         }
 
-        var source : String!;  /* Source code for decompilation, installed by the constructor */
+        var source : string;  /* Source code for decompilation, installed by the constructor */
     }
 }

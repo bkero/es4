@@ -21,15 +21,15 @@ package RegExp
     {
         /* Invariant for token handling: either idx==source.length or source[idx] is a significant char */
 
-        const source : String!;        // expression source, sans leading and trailing /
+        const source : string;         // expression source, sans leading and trailing /
         var   idx : uint;              // current character in the source
         var   largest_backref : uint;  // largest back reference seen
         const extended : Boolean;      // true iff expression has /x flag
-        const names : [String] = [];   // capturing names, or null for capturing exprs that are not named
+        const names : [string?] = [];  // capturing names, or null for capturing exprs that are not named
         const parenIndex : uint = 0;   // number of capturing parens (including those that are named)
         const parenCount : uint = 0;   // current depth of capture nesting
 
-        function RegExpCompiler( source : String!, flags : String! )
+        function RegExpCompiler( source : string, flags : string )
             : extended = flags.indexOf("x") != -1
             , source = source
             , idx = 0
@@ -153,14 +153,14 @@ package RegExp
             }
             
             if (eat("(?P<")) {
-                let name : String! = identifier();
+                let name : string = identifier();
                 match(">");
                 let capno : uint = parenIndex++;
                 parenCount++;
                 let d : Matcher = disjunction();
                 parenCount--;
                 match(")");
-                for each ( let n : String! in names ) {
+                for each ( let n : string in names ) {
                     if (n === name)
                         throw new SyntaxError("Multiply defined capture name: " + name );
                 }
@@ -169,9 +169,9 @@ package RegExp
             }
 
             if (eat("(?P=")) {
-                let name : String! = identifier();
+                let name : string = identifier();
                 match(")");
-                for ( let [i,n] : [String!,String] in names ) {
+                for ( let [i,n] : [string,string?] in names ) {
                     if (n === name)
                         return new Backref(uint(i));
                 }
@@ -228,7 +228,7 @@ package RegExp
                 return new CharsetMatcher(t);
             }
 
-            function characterEscape(t : String) : Matcher {
+            function characterEscape(t : string) : Matcher {
                 return new CharsetMatcher(new CharsetAdhoc([t]));
             }
 
@@ -330,16 +330,16 @@ package RegExp
         }
 
         function classEscape() : Charset {
-            return escape( (function(t : double) : Charset new CharsetAdhoc([String.fromCharCode(t)])),
+            return escape( (function(t : double) : Charset new CharsetAdhoc([string.fromCharCode(t)])),
                            (function(t : Charset) : Charset t),
-                           (function(t : String) : Charset new CharsetAdhoc(t)),
+                           (function(t : string) : Charset new CharsetAdhoc(t)),
                            true );
         }
 
         /* Parse an escape sequence. */
         function escape( de : function (double) : (Matcher,Charset),
                          ce : function (Charset) : (Matcher,Charset),
-                         ch : function (String) : (Matcher,Charset),
+                         ch : function (string) : (Matcher,Charset),
                          allow_b : Boolean ) : (Matcher,Charset) {
             let (t : double? = decimalEscape()) {
                 if (t !== null) 
@@ -351,7 +351,7 @@ package RegExp
                     return ce(t);
             }
 
-            let (t : String = characterEscape(allow_b)) {
+            let (t : string? = characterEscape(allow_b)) {
                 if (t !== null)
                     return ch(t);
             }
@@ -379,7 +379,7 @@ package RegExp
         function characterClassEscape() : Charset? {
 
             function unicodeSet(invert : Boolean) : Charset {
-                let name : String! = identifier();
+                let name : string = identifier();
                 match("}");
                 let (cls : Charset? = unicodeClass(name, invert));
                 if (cls === null)
@@ -402,7 +402,7 @@ package RegExp
         /* Returns null if it does not consume anything but fails;
            throws an error if it consumes and then fails. 
         */
-        function characterEscape(allow_b : Boolean) : String? {
+        function characterEscape(allow_b : Boolean) : string? {
 
             function hexValue(c) : double {
                 if (c >= "0" && c <= "9")
@@ -411,9 +411,9 @@ package RegExp
                     return c.toUpperCase().charCodeAt(0) - "A".charCodeAt(0) + 10;
             }
 
-            function hexDigits(n : uint? = null) : String! {
+            function hexDigits(n : uint? = null) : string {
                 let k : double = 0;
-                let c : String!;
+                let c : string;
                 let m : uint = n === null ? 100000 : n;
                 let i : uint;
                 for ( i=0 ; i < m ; i++ ) {
@@ -426,7 +426,7 @@ package RegExp
                 if (n !== null && i < m || i == 0)
                     throw new SyntaxError("hex sequence too short");
                 skip();
-                return String.fromCharCode(k);
+                return string.fromCharCode(k);
             }
 
             if (allow_b && eat("\\b")) 
@@ -440,15 +440,15 @@ package RegExp
             if (eat("\\t")) 
                 return "\t";
             if (eat("\\c"))
-                let (c : String! = consumeChar()) {
+                let (c : string = consumeChar()) {
                     if (c >= "A" && c <= "Z")
-                        return String.fromCharCode(c.charCodeAt(0) - "A".charCodeAt(0));
+                        return string.fromCharCode(c.charCodeAt(0) - "A".charCodeAt(0));
                     if (c >= "a" && c <= "z")
-                        return String.fromCharCode(c.charCodeAt(0) - "a".charCodeAt(0));
+                        return string.fromCharCode(c.charCodeAt(0) - "a".charCodeAt(0));
                     throw new SyntaxError("Bogus \\c sequence: " + c);
                 }
             if (eat("\\x{") || eat("\\X{") || eat("\\u{") || eat("\\U{")) {
-                let s : String! = hexDigits();
+                let s : string = hexDigits();
                 match("}");
                 return s;
             }
@@ -470,12 +470,12 @@ package RegExp
            characters and any intertoken space following, and return true.
            Otherwise return false.  */
 
-        function match(c : String!) : void {
+        function match(c : string) : void {
             if (!eat(c))
                 throw new SyntaxError("Expected token here: " + c);
         }
 
-        function eat(c : String!) : Boolean {
+        function eat(c : string) : Boolean {
             if (!lookingAt(c))
                 return false;
             idx += c.length;
@@ -483,17 +483,17 @@ package RegExp
             return true;
         }
 
-        function lookingAt(c : String!) : void {
+        function lookingAt(c : string) : void {
             for ( let i : uint=0 ; i < c.length && i+idx < source.length ; i++ )
                 if (c[i] != source[i+idx])
                     return false;
             return true;
         }
 
-        function identifier() : String! {
-            let name : String = null;
+        function identifier() : string {
+            let name : string? = null;
             if (idx < source.length) {
-                let c : String! = source[idx++];
+                let c : string = source[idx++];
                 if (!isIdentifierStart(c))
                     throw new SyntaxError("Expected identifier");
                 let name = c;
@@ -525,7 +525,7 @@ package RegExp
                 return "*END*";
         }
 
-        function consumeChar(c : String = null) : String! {
+        function consumeChar(c : string? = null) : string {
             if (!atEnd() && c === null || source[idx] == c)
                 return source[idx++];
             if (c !== null)
@@ -534,7 +534,7 @@ package RegExp
                 throw new SyntaxError("Unexected EOF");
         }
 
-        function consumeUntil(c : String!) : void {
+        function consumeUntil(c : string) : void {
             while (!atEnd() && source[idx] != c)
                 ++idx;
         }

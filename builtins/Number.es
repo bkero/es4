@@ -26,7 +26,7 @@ package
         const value : double;
 
         /* E262-4 draft */
-        public static function to(x : Numeric) : Number
+        intrinsic static function to(x : Numeric) : Number
             x is Number ? x : new Number(ToDouble(x));
 
         /* E262-3 15.7.1.1: The Number Constructor Called as a Function */
@@ -40,13 +40,13 @@ package
         prototype function toString(radix = 10)
             this.toString(radix);
 
-        intrinsic function toString(radix = 10) : String!
+        intrinsic function toString(radix = 10) : string
             value.toString(radix);
         
         prototype function toLocaleString()
             this.toLocaleString();
 
-        intrinsic function toLocaleString() : String!
+        intrinsic function toLocaleString() : string
             value.toLocaleString();
 
         prototype function valueOf()
@@ -58,19 +58,19 @@ package
         prototype function toFixed(fractionDigits)
             this.toFixed(fractionDigits);
 
-        intrinsic function toFixed(fractionDigits:double) : String! 
+        intrinsic function toFixed(fractionDigits:double) : string 
             value.toFixed(fractionDigits);
 
         prototype function toExponential(fractionDigits)
             this.toExponential(fractionDigits);
 
-        intrinsic function toExponential(fractionDigits:double) : String
+        intrinsic function toExponential(fractionDigits:double) : string
             value.toExponential(fractionDigits);
 
         prototype function toPrecision(precision)
             this.toPrecision(precision);
 
-        intrinsic function toPrecision(precision:double) : String!
+        intrinsic function toPrecision(precision:double) : string
             value.toPrecision(precision);
     }
 }

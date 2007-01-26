@@ -23,7 +23,7 @@ package
         public static const POSITIVE_INFINITY = 1.0m / 0.0m;  // ???
 
         /* E262-4 draft */
-        static function to(x : Numeric) : decimal
+        intrinsic static function to(x : Numeric) : decimal
             x is decimal ? x : ToDecimal(x);
 
         /* E262-3 15.7.1.1: The decimal Constructor Called as a Function */
@@ -39,7 +39,7 @@ package
         prototype function toString(this:decimal, radix)
             this.toString(radix);
 
-        intrinsic function toString(radix = 10) : String! {
+        intrinsic function toString(radix = 10) : string {
             if (radix === 10 || radix === undefined)
                 return ToString(magic::getValue(this));
             else if (typeof radix === "number" && radix >= 2 && radix <= 36 && isIntegral(radix)) {
@@ -55,7 +55,7 @@ package
             this.toLocaleString();
 
         /* INFORMATIVE */
-        intrinsic function toLocaleString() : String!
+        intrinsic function toLocaleString() : string
             toString();
 
         /* E262-3 15.7.4.4: decimal.prototype.valueOf */
@@ -69,18 +69,18 @@ package
         prototype function toFixed(this:decimal, fractionDigits)
             this.toFixed(ToDouble(fractionDigits));
 
-        intrinsic native function toFixed(fractionDigits:double) : String!; // FIXME
+        intrinsic native function toFixed(fractionDigits:double) : string; // FIXME
 
         /* E262-3 15.7.4.6: Number.prototype.toExponential */
         prototype function toExponential(this:decimal, fractionDigits)
             this.toExponential(ToDouble(fractionDigits));
 
-        intrinsic native function toExponential(fractionDigits:double):String; // FIXME
+        intrinsic native function toExponential(fractionDigits:double) : string; // FIXME
 
         /* E262-3 15.7.4.7: Number.prototype.toPrecision */
         prototype function toPrecision(this:decimal, precision)
             this.toPrecision(ToDouble(precision));
 
-        intrinsic native function toPrecision(precision:double) : String!; // FIXME
+        intrinsic native function toPrecision(precision:double) : string; // FIXME
     }
 }
