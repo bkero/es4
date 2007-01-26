@@ -256,11 +256,15 @@ and isCompatible (t1:TYPE_EXPR) (t2:TYPE_EXPR) : bool =
        | NullableType of {expr:TYPE_EXPR,nullable:bool}
 *)
 
-fun checkComparable ty1 ty2 = 
+fun checkBicompatible ty1 ty2 = 
     let in
 	checkCompatible ty1 ty2;
 	checkCompatible ty2 ty1
     end
+
+fun checkConvertible ty1 ty2 =
+    (* TODO: int to float, etc, and to() methods *)
+    checkCompatible ty1 ty2
 
 (************************* Handling Types *********************************)
 
@@ -322,10 +326,10 @@ and verifyFunctionSignature  ((ctxt as {env,this,...}):CONTEXT)
 	val ctxt3 = withRetTy (ctxt2, SOME returnType)
     in
 	checkForDuplicates (extensions1 @ extensions2);
-	verifyType ctxt1 returnType;
+	verifyTypeExpr ctxt1 returnType;
 	(case thisType of
 	     NONE => ()
-	   | SOME t => verifyType ctxt t);
+	   | SOME t => verifyTypeExpr ctxt t);
 	ctxt3
 	(* TODO: check inits, hasBoundThis, hasRest *)
     end
@@ -357,9 +361,9 @@ and verifyExpr ((ctxt as {env,this,...}):CONTEXT) (e:EXPR) :TYPE_EXPR =
           checkCompatible inferredTy annotatedTy;
           annotatedTy
         end
-      | LiteralExpr (LiteralObject { expr, ty }) =>
+      | LiteralExpr (LiteralObject { expr=fields, ty }) =>
         let val annotatedTy = unOptionDefault ty anyType
-            val inferredTy = inferObjectType ctxt expr
+            val inferredTy = ObjectType (map (verifyField ctxt) fields)
         in
           checkCompatible inferredTy annotatedTy;
           annotatedTy
@@ -374,6 +378,10 @@ and verifyExpr ((ctxt as {env,this,...}):CONTEXT) (e:EXPR) :TYPE_EXPR =
        | NullaryExpr This => this
        | NullaryExpr Empty => (TextIO.print "what is Empty?\n"; raise Match)
        | UnaryExpr (unop, arg) => verifyUnaryExpr ctxt (unop, arg)
+       | BinaryExpr (binop, lhs, rhs ) => verifyBinaryExpr ctxt (binop, lhs, rhs)
+       | BinaryTypeExpr (binop, lhs, rhs ) => verifyBinaryTypeExpr ctxt (binop, lhs, rhs)
+       | TrinaryExpr (triop, a,b,c ) => verifyTrinaryExpr ctxt (triop, a,b,c)
+
        | LexicalRef {ident=Identifier { ident, openNamespaces }} =>
 	 lookupProgramVariable env ident
 
@@ -440,7 +448,7 @@ and verifyExpr ((ctxt as {env,this,...}):CONTEXT) (e:EXPR) :TYPE_EXPR =
                    (* TODO: class and interface types *)
 		   | _ => raise VerifyError "Cannot instantiate a non-polymorphic type"
 	 in
-	     List.app (fn t => verifyType ctxt t) actuals;
+	     List.app (fn t => verifyTypeExpr ctxt t) actuals;
 	     if (List.length typeParams) = (List.length actuals)
 	     then ()
 	     else raise VerifyError "Wrong number of type arguments";
@@ -453,6 +461,7 @@ and verifyExpr ((ctxt as {env,this,...}):CONTEXT) (e:EXPR) :TYPE_EXPR =
 	     verifyTypeExpr ctxt ty;
 	     ty
 	 end
+
 
        | _ => (TextIO.print "verifyExpr incomplete: "; Pretty.ppExpr e; raise Match)
     end
@@ -467,9 +476,6 @@ and verifyExpr ((ctxt as {env,this,...}):CONTEXT) (e:EXPR) :TYPE_EXPR =
            init: EXPR } list
 
      and EXPR =
-         TrinaryExpr of (TRIOP * EXPR * EXPR * EXPR)
-       | BinaryExpr of (BINOP * EXPR * EXPR)
-       | BinaryTypeExpr of (BINOP * EXPR * TYPE_EXPR)
        | TypeExpr of TYPE_EXPR
        | YieldExpr of EXPR option
        | SuperExpr of EXPR option
@@ -509,11 +515,10 @@ and verifyExprList ((ctxt as {env,this,...}):CONTEXT) (l:EXPR list) :TYPE_EXPR =
 		_  => List.last (List.map (verifyExpr ctxt) l)
 	end
 
-and inferObjectType ctxt fields =
-    (* TODO: get a (name, type) option for every field *)
-    raise (Fail "blah")
+and verifyField (ctxt:CONTEXT) ({kind,name,init}:FIELD) : FIELD_TYPE =
+    {name=name, ty = verifyExpr ctxt init }
 
-(* TODO: this needs to return some type structure as well *)
+(* This type checksTODO: this needs to return some type structure as well *)
 and verifyBinding (ctxt:CONTEXT) (Binding {init,pattern,ty}) : TYPE_ENV =
     let val ty = unOptionDefault ty anyType in
 	case init of
@@ -530,13 +535,13 @@ and verifyBinding (ctxt:CONTEXT) (Binding {init,pattern,ty}) : TYPE_ENV =
 
 *)
 
-and verifyVarBinding (ctxt:CONTEXT) (v:VAR_BINDING) : TYPE_ENV =
-    case v of
-	Binding {init, pattern, ty} =>
+and verifyVarBinding (ctxt:CONTEXT) (Binding {init, pattern, ty}:VAR_BINDING) : TYPE_ENV =
+    let in
 	case pattern of
 	    IdentifierPattern (Identifier {ident, openNamespaces}) =>
 	    [(ident,SOME (unOptionDefault ty anyType))]
-
+	    end
+    
 and verifyVarBindings (ctxt:CONTEXT) (vs:VAR_BINDING list) : TYPE_ENV =
     case vs of
 	[] => []
@@ -557,37 +562,98 @@ and verifyIdentExpr (ctxt:CONTEXT) (id:IDENT_EXPR) =
 *)
 
 and verifyUnaryExpr (ctxt:CONTEXT) (unop:UNOP, arg:EXPR) =
-    (case unop of
-(*
-          Delete => (case arg of
-                          Ref {base=NONE,ident=???} =>
-                        | Ref {base=SOME baseExpr,ident=???} =>
-                        | _ => raise VerifyError "can only delete ref expressions")
+    let val argType = verifyExpr ctxt arg
+	fun checkNumeric () = 
+	    let in
+		checkBicompatible boolType argType;
+		argType
+	    end
+    in
+	case unop of
+	    Void => (verifyExpr ctxt arg; undefinedType)
+          | Typeof => (verifyExpr ctxt arg; stringType)
+
+	  (* Assume arg is an l-value *)
+          | PreIncrement  => checkNumeric ()
+          | PostIncrement => checkNumeric ()
+          | PreDecrement  => checkNumeric ()
+          | UnaryPlus     => checkNumeric ()
+          | UnaryMinus    => checkNumeric ()
+          | BitwiseNot    => 
+	    let in checkConvertible argType uintType; uintType end
+          | LogicalNot    => 
+	    let in checkConvertible argType boolType; boolType end
+	    
+  (*
+             Delete => (case arg of
+                            Ref {base=NONE,ident=???} =>
+                          | Ref {base=SOME baseExpr,ident=???} =>
+                          | _ => raise VerifyError "can only delete ref expressions")
+  *)
+ 
+(*    
+          | MakeNamespace
+          | Type
 *)
-          Void => (verifyExpr ctxt arg; undefinedType)
-        | Typeof => (verifyExpr ctxt arg; stringType)
-(*
-        | PreIncrement
-        | PreDecrement
-        | PostIncrement
-        | PostDecrement
-        | UnaryPlus
-        | UnaryMinus
-        | BitwiseNot
-        | LogicalNot
-        | MakeNamespace
-        | Type
-*)
-        | _ => (TextIO.print "verifyUnaryExpr incomplete: "; Pretty.ppExpr (UnaryExpr (unop,arg)); raise Match)
-    )
+          | _ => 
+	    let in
+		TextIO.print "verifyUnaryExpr incomplete: "; 
+		Pretty.ppExpr (UnaryExpr (unop,arg)); 
+		raise Match
+	    end
+    end
 
-(**************************************************************)
+and verifyBinaryExpr (ctxt:CONTEXT) (bop:BINOP, lhs:EXPR, rhs:EXPR) =
+    let
+    in
+	case bop of
+	    _ => 
+	    let in
+		TextIO.print "verifyBinaryExpr incomplete: "; 
+		Pretty.ppExpr (BinaryExpr (bop,lhs,rhs)); 
+		raise Match
+	    end
+    end
 
-and verifyType ctxt ty = 
-    (*TODO*)
-    ()
+and verifyBinaryTypeExpr (ctxt:CONTEXT) (bop:BINTYPEOP, arg:EXPR, t:TYPE_EXPR) =
+    let val argType = verifyExpr ctxt arg	
+    in
+	verifyTypeExpr ctxt t;
+	case bop of
+	    Cast =>
+	    let in
+		(* TODO: check *)
+		checkConvertible argType t;
+		t
+	    end
+	  | To =>
+	    let in
+		(* TODO: check *)
+		checkConvertible argType t;
+		t
+	    end
+	  | Is =>
+	    let in
+		(* TODO: check *)
+		checkConvertible argType t;
+		boolType
+	    end
+    end
 
-(**************************************************************)
+
+and verifyTrinaryExpr (ctxt:CONTEXT) (triop:TRIOP, a:EXPR, b:EXPR, c:EXPR) =
+    let
+    in
+	case triop of
+	    _ => 
+	    let in
+		TextIO.print "verifyTrinaryExpr incomplete: "; 
+		Pretty.ppExpr (TrinaryExpr (triop,a,b,c)); 
+		raise Match
+	    end
+    end
+
+(****************************** Verifying Statements ********************************)
 
 and verifyStmts ctxt ss = List.app (fn s => verifyStmt ctxt s) ss
 
@@ -661,7 +727,8 @@ and verifyStmt ((ctxt as {this,env,lbls,retTy}):CONTEXT) (stmt:STMT) =
 	verifyExprs update;
 	verifyStmt (withLbls (ctxt', contLabel::lbls)) body
     end
-(*
+
+(* Wait on refactoring AST
   | SwitchStmt { cond, cases } =>
     let val ty = verifyExpr ctxt cond
     in
@@ -669,11 +736,13 @@ and verifyStmt ((ctxt as {this,env,lbls,retTy}):CONTEXT) (stmt:STMT) =
 	    (fn (expr,stmts) =>
 		let in
 		    verifyStmts ctxt stmts;
-		    checkComparable ty (verifyExpr ctxt expr)
+		    checkBicompatable ty (verifyExpr ctxt expr)
 		end)
 	    cases
     end
 *)
+
+    
   | _ => (TextIO.print "verifyStmt incomplete: "; Pretty.ppStmt stmt; raise Match)
 
 (*
@@ -688,9 +757,10 @@ and verifyStmt ((ctxt as {this,env,lbls,retTy}):CONTEXT) (stmt:STMT) =
                       catches: (FORMAL * BLOCK) list,
                       finally: BLOCK }
 *)
-(*  | verifyStmt _ _ _ _ => raise Expr.UnimplementedException "Unimplemented statement type" *)
 
    end
+
+(***************************** Verifying Definitions ****************************************)
 
 and verifyDefn ((ctxt as {this,env,lbls,retTy}):CONTEXT) (d:DEFN) : (TYPE_ENV * int list) =
     (case d of
@@ -707,6 +777,11 @@ and verifyDefn ((ctxt as {this,env,lbls,retTy}):CONTEXT) (d:DEFN) : (TYPE_ENV * 
 	     verifyBlock ctxt3 body;
 	     ([(ident, SOME (FunctionType fsig))],[])
          end
+
+       | InterfaceDefn {name,ns,nonnullable,params,extends,body} =>
+	 
+
+	 ([],[])
 
        | d => (TextIO.print "verifyDefn incomplete: "; Pretty.ppDefinition d; raise Match)
     )
