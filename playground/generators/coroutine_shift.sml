@@ -18,7 +18,8 @@ struct
     fun new f = let val r = ref Closed (* temporary *)
                 in
                     r := Newborn (fn s => reset (fn () =>
-                                                     let val s' = f (r, s) in
+                                                     let val s' = f (r, s)
+                                                     in
                                                          r := Closed;
                                                          s'
                                                      end));

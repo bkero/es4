@@ -31,7 +31,7 @@ struct
                  end);
         0
     )
-    handle Value.InternalError s => (TextIO.print ("internal error: " ^ s ^ "\n"); 1)
+    handle InternalError s => (TextIO.print ("internal error: " ^ s ^ "\n"); 1)
 end;
 
 structure Main = Example(structure G = Generator(functor MkCoroutine = ShiftCoroutine));
