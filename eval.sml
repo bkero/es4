@@ -30,13 +30,6 @@ fun getAttrNs (attrs:Ast.ATTRIBUTES) =
         Ast.Attributes {ns, ...} => ns
 
 
-fun needFixtures (f:Ast.FIXTURES option) 
-    : Ast.FIXTURES = 
-    case f of 
-        SOME f' => f'
-      | NONE => LogErr.evalError ["missing expected fixtures"]
-
-
 fun getScopeObj (scope:Mach.SCOPE) 
     : Mach.OBJ = 
     case scope of 
@@ -75,9 +68,8 @@ fun allocObjFixtures (scope:Mach.SCOPE)
                      (obj:Mach.OBJ) 
                      (f:Ast.FIXTURES) 
     : unit = 
-    case (obj, f) of 
-        (Mach.Obj { props, ...}, 
-         Ast.Fixtures { bindings, ... }) => 
+    case obj of 
+        Mach.Obj { props, ...} => 
         let 
             fun valAllocState (t:Ast.TYPE_EXPR) 
                 : Mach.PROP_STATE = 
@@ -107,7 +99,7 @@ fun allocObjFixtures (scope:Mach.SCOPE)
                     Mach.ValProp (Mach.Undef)
 
                   | Ast.SpecialType (Ast.VoidType) => 
-                    LogErr.evalError ["attempt to initialize void-type property"]
+                    LogErr.evalError ["attempt to allocate void-type property"]
 
                   (* FIXME: is this correct? Maybe we need to check them all to be nullable? *)
                   | Ast.UnionType _ => 
@@ -138,19 +130,19 @@ fun allocObjFixtures (scope:Mach.SCOPE)
 
             fun allocFixture (n, f) = 
                 let 
-                    fun allocProp p = 
+                    fun allocProp state p = 
                         if Mach.hasProp props n
                         then LogErr.defnError 
-                                 ["initializing object with ",
-                                  "duplicate property name: ", 
+                                 ["allocating duplicate property name: ", 
                                   LogErr.name n]
-                        else (LogErr.trace ["initializing property ", 
+                        else (LogErr.trace ["allocating ", state, " property ", 
                                             LogErr.name n]; 
                               Mach.addProp props n p)
                 in 
                     case f of 
                         Ast.TypeFixture te => 
-                        allocProp { ty = te,
+                        allocProp "type" 
+                                  { ty = te,
                                     state = Mach.TypeProp,                                   
                                     attrs = { dontDelete = true,
                                               dontEnum = true,
@@ -158,15 +150,26 @@ fun allocObjFixtures (scope:Mach.SCOPE)
                                               isFixed = true } }
                         
                       | Ast.ValFixture { ty, readOnly, ... } => 
-                        allocProp { ty = ty,
+                        allocProp "value" 
+                                  { ty = ty,
                                     state = valAllocState ty,
                                     attrs = { dontDelete = true,
                                               dontEnum = false,
                                               readOnly = readOnly,
                                               isFixed = true } }
                         
+                      | Ast.VirtualValFixture { ty, setter, ... } => 
+                        allocProp "virtual value" 
+                                  { ty = ty,
+                                    state = Mach.UninitProp,
+                                    attrs = { dontDelete = true,
+                                              dontEnum = false,
+                                              readOnly = (setter = NONE),
+                                              isFixed = true } }
+                        
                       | Ast.ClassFixture cd => 
-                        allocProp { ty = Mach.classType,
+                        allocProp "class"
+                                  { ty = Mach.classType,
                                     state = Mach.ValProp (Mach.newClass scope cd),
                                     attrs = { dontDelete = true,
                                               dontEnum = true,
@@ -174,7 +177,8 @@ fun allocObjFixtures (scope:Mach.SCOPE)
                                               isFixed = true } }
                         
                       | Ast.NamespaceFixture ns => 
-                        allocProp { ty = Mach.namespaceType,
+                        allocProp "namespace" 
+                                  { ty = Mach.namespaceType,
                                     state = Mach.ValProp (Mach.newNamespace ns),
                                     attrs = { dontDelete = true,
                                               dontEnum = true,
@@ -182,7 +186,8 @@ fun allocObjFixtures (scope:Mach.SCOPE)
                                               isFixed = true } }
                         
                       | Ast.TypeVarFixture =>
-                        allocProp { ty = Mach.typeType,
+                        allocProp "type variable"
+                                  { ty = Mach.typeType,
                                     state = Mach.TypeVarProp,
                                     attrs = { dontDelete = true,
                                               dontEnum = true,
@@ -190,7 +195,7 @@ fun allocObjFixtures (scope:Mach.SCOPE)
                                               isFixed = true } }
                 end
         in                    
-            List.app allocFixture bindings
+            List.app allocFixture f
         end
         
 fun extendScope (p:Mach.SCOPE) 
@@ -225,7 +230,7 @@ fun evalExpr (scope:Mach.SCOPE)
              (obj, name) => Mach.getValue obj name)
         
       | Ast.LetExpr {defs, body, fixtures} => 
-        evalLetExpr scope (needFixtures fixtures) defs body
+        evalLetExpr scope fixtures defs body
 
       | Ast.TrinaryExpr (Ast.Cond, aexpr, bexpr, cexpr) => 
         evalCondExpr scope aexpr bexpr cexpr
@@ -761,7 +766,7 @@ and evalStmt (scope:Mach.SCOPE)
 and evalClassDefn (scope:Mach.SCOPE) 
                   (cd:Ast.CLASS_DEFN) 
     : unit =
-    (* The class objects were installed into the scope during initialization,
+    (* The class objects were installed into the scope during allocation,
      * all we do here is build a prototype for this class and link up
      * the implicit prototype chains.
      *)
@@ -769,6 +774,8 @@ and evalClassDefn (scope:Mach.SCOPE)
         val ns = getAttrNs (#attrs cd)
         val currClassMname = { nss = [needNamespace (evalExpr scope ns)],
                                id = (#name cd) }
+        val _ = LogErr.trace ["evaluating class defn for ", 
+                              LogErr.multiname currClassMname]
         val currClassObj = 
             case resolveOnScopeChain scope currClassMname of 
                 NONE => LogErr.evalError ["unable to resolve class multiname: ", 
@@ -785,6 +792,8 @@ and evalClassDefn (scope:Mach.SCOPE)
               | SOME ie => 
                 let
                     val baseClassMname = evalIdentExpr scope ie
+                    val _ = LogErr.trace ["looking up base class ", 
+                                          LogErr.multiname baseClassMname]
                 in
                     case resolveOnScopeChain scope baseClassMname of 
                         NONE => LogErr.evalError ["unable to resolve base class multiname: ", 
@@ -799,6 +808,7 @@ and evalClassDefn (scope:Mach.SCOPE)
                                                    LogErr.multiname baseClassMname]
                 end
                 
+        val _ = LogErr.trace ["constructing prototype"]
         val newPrototype = Mach.newObj Mach.intrinsicObjectBaseTag baseProtoVal NONE
         fun addProtoMethod (f:Ast.FUNC_DEFN) = 
             let 
@@ -807,21 +817,22 @@ and evalClassDefn (scope:Mach.SCOPE)
                             {func = Ast.Func { name = { ident, ... }, ... }, ... } => 
                             { ns = needNamespace (evalExpr scope ns), 
                               id = ident }
-                            
                 (* FIXME: 'scope' is not the correct environment for the method; we actually want to use
                  * the scope containing the class statics, which should really be stored in 
                  * the class closure, but currently isn't. *)
                 val fval = Mach.newFunc scope (#func f)
             in
-                Mach.defValue newPrototype n fval
+                Mach.setValue newPrototype n fval
             end
             
         fun addProtoVar (vb:Ast.VAR_BINDING) = 
             processVarBinding scope NONE vb (Mach.setValue newPrototype)        
     in
+        LogErr.trace ["filling in prototype"];
         List.app addProtoMethod (#protoMethods cd);
         List.app addProtoVar (#protoVars cd);
-        Mach.setValue currClassObj Mach.internalPrototypeName (Mach.Object newPrototype)
+        Mach.setValue currClassObj Mach.internalPrototypeName (Mach.Object newPrototype);
+        LogErr.trace ["finished defining class"]
     end
 
 
@@ -831,7 +842,7 @@ and evalDefn (scope:Mach.SCOPE)
     case d of 
         Ast.FunctionDefn f => evalFuncDefn scope f
       | Ast.VariableDefn bs => evalVarBindings scope bs
-      | Ast.NamespaceDefn ns => () (* handled during initialization *)
+      | Ast.NamespaceDefn ns => () (* handled during allocation *)
       | Ast.ClassDefn cd => evalClassDefn scope cd
       | _ => LogErr.unimplError ["unimplemented definition type"]
 
@@ -883,7 +894,7 @@ and invokeFuncClosure (this:Mach.OBJ)
                     val selfTag = Mach.FunctionTag (#fsig f)
                     val selfVal = Mach.newObject selfTag Mach.Null (SOME (Mach.Function closure))
                 in
-                    allocScopeFixtures varScope (needFixtures (#fixtures f));
+                    allocScopeFixtures varScope (#fixtures f);
                     (* FIXME: handle arg-list length mismatch correctly. *)
                     List.app bindArg (ListPair.zip (args, params));
                     Mach.setValue varObj thisName thisVal;
@@ -910,10 +921,10 @@ and constructClassInstance (obj:Mach.OBJ)
                               id = (#name definition) }
                     val _ = LogErr.trace ["constructing instance of ", LogErr.name n]
                     val classTag = Mach.ClassTag n
-            val proto = if Mach.hasOwnValue obj Mach.internalPrototypeName
-                then Mach.getValue obj Mach.internalPrototypeName
-                else Mach.Null
-            val (obj:Mach.OBJ) = Mach.newObj classTag proto NONE
+                    val proto = if Mach.hasOwnValue obj Mach.internalPrototypeName
+                                then Mach.getValue obj Mach.internalPrototypeName
+                                else Mach.Null
+                    val (obj:Mach.OBJ) = Mach.newObj classTag proto NONE
                     val (objScope:Mach.SCOPE) = extendScope env Mach.VarInstance obj
                     val (instance:Mach.VAL) = Mach.Object obj
                     val ctor = (#constructor definition)
@@ -926,46 +937,64 @@ and constructClassInstance (obj:Mach.OBJ)
                     val selfTag = Mach.ClassTag n
                     val selfVal = Mach.newObject selfTag Mach.Null (SOME (Mach.Class closure))
                 in
-                    allocObjFixtures env obj (needFixtures (#instanceFixtures definition));
+                    allocObjFixtures env obj (#instanceFixtures definition);
                     case ctor of 
                         NONE => (checkAllPropertiesInitialized obj; instance)
                       | SOME ({func = Ast.Func { fsig=Ast.FunctionSignature { params, inits, ... }, 
-                                                 body, fixtures, ... }, ... }) => 
+                                                 body, fixtures, ... }, 
+                               attrs, ... }) => 
                         let 
                             val (varObj:Mach.OBJ) = Mach.newSimpleObj NONE
                             val (varScope:Mach.SCOPE) = extendScope env Mach.VarActivation varObj
                             fun bindArg (a, b) = evalVarBinding varScope (SOME a) b
                         in
-                            allocScopeFixtures varScope (needFixtures fixtures);
-                            (* FIXME: handle arg-list length mismatch correctly. *)
-                            LogErr.trace ["binding constructor args of ", LogErr.name n];
-                            List.app bindArg (ListPair.zip (args, params));
-                            Mach.setValue varObj thisName instance;
-                            Mach.defValue varObj n selfVal;
+                            allocScopeFixtures varScope fixtures;
                             (* FIXME: is this correct? we currently bind the self name on obj as well.. *)
                             Mach.defValue obj n selfVal;
-                            (* Run any initializers if they exist. *)
-                            LogErr.trace ["running initializers of ", LogErr.name n];
-                            (case inits of 
-                                 NONE => ()
-                               | SOME { defns, inits } => 
-                                 let
-                                     val (initVals:Mach.VAL list) = List.map (evalExpr varScope) inits
-                                     fun bindInit (a, b) = evalVarBinding objScope (SOME a) b
-                                 in
-                                     List.app bindInit (ListPair.zip (initVals, defns))
-                                 end);
-                            LogErr.trace ["checking initializers completed properly for ", LogErr.name n];
-                            checkAllPropertiesInitialized obj; 
-                            let 
-                                (* Now the strange part: we re-parent the arguments var object
-                                 * to the instance object, before running the constructor body. *)
-                                val _ = LogErr.trace ["running constructor of ", LogErr.name n]
-                                val (newVarScope:Mach.SCOPE) = extendScope objScope Mach.VarActivation varObj
-                                val _ = evalBlock newVarScope body 
-                            in 
-                                instance
-                            end
+                            LogErr.trace ["initialializing instance methods of ", LogErr.name n];
+                            List.app (evalFuncDefnFull env obj) (#instanceMethods definition);
+                            (* FIXME: evaluate instance-var initializers declared in class as well. *)
+
+                            if (#native (getAttrs attrs))
+                            then 
+                                (* Native constructors take over here. *)
+                                let 
+                                    val nativeCtor = Native.getNativeMethod n n
+                                    val _ = LogErr.trace ["running native constructor for ", LogErr.name n]
+                                    val result = nativeCtor env obj args
+                                in
+                                    LogErr.trace ["checking native initialization of ", LogErr.name n];
+                                    checkAllPropertiesInitialized obj;
+                                    result
+                                end
+                            else 
+                                (* Otherwise run any initializers and constructor. *)
+                                ((* FIXME: handle arg-list length mismatch correctly. *)
+                                 LogErr.trace ["binding constructor args of ", LogErr.name n];
+                                 List.app bindArg (ListPair.zip (args, params));
+                                 Mach.setValue varObj thisName instance;
+                                 Mach.defValue varObj n selfVal;
+                                 LogErr.trace ["running initializers of ", LogErr.name n];
+                                 (case inits of 
+                                      NONE => ()
+                                    | SOME { defns, inits } => 
+                                      let
+                                          val (initVals:Mach.VAL list) = List.map (evalExpr varScope) inits
+                                          fun bindInit (a, b) = evalVarBinding objScope (SOME a) b
+                                      in
+                                          List.app bindInit (ListPair.zip (initVals, defns))
+                                      end);
+                                 LogErr.trace ["checking initialization of ", LogErr.name n];
+                                 checkAllPropertiesInitialized obj; 
+                                 let 
+                                     (* Now the strange part: we re-parent the arguments var object
+                                      * to the instance object, before running the constructor body. *)
+                                     val _ = LogErr.trace ["running constructor of ", LogErr.name n]
+                                     val (newVarScope:Mach.SCOPE) = extendScope objScope Mach.VarActivation varObj
+                                     val _ = evalBlock newVarScope body 
+                                 in 
+                                     instance
+                                 end)
                         end
                 end
                 
@@ -975,19 +1004,30 @@ and constructClassInstance (obj:Mach.OBJ)
  * definition phase and a property for it has been allocated to the ininitialized
  * state.
  *) 
+
 and evalFuncDefn (scope:Mach.SCOPE) 
-                 (f:Ast.FUNC_DEFN) 
+                 (f:Ast.FUNC_DEFN) =
+    evalFuncDefnFull scope (getScopeObj scope) f
+
+and evalFuncDefnFull (scope:Mach.SCOPE) 
+                     (target:Mach.OBJ)
+                     (f:Ast.FUNC_DEFN) 
     : unit = 
     let 
         val func = (#func f)
         val funcAttrs = getAttrs (#attrs f)
-        val name = case func of Ast.Func { name={ident, ...}, ...} => ident
+        val name = case func of Ast.Func { name={ident, kind}, ...} => 
+                                case kind of 
+                                    Ast.Ordinary => ident
+                                  | Ast.Call => "call" (* FIXME: hack until parser fixed *)
+                                  | _ => LogErr.unimplError ["evaluating unhandled type of function name"]
+
         val fval = Mach.newFunc scope func
         val fname = {id = name, 
                      ns = (needNamespace (evalExpr scope (#ns funcAttrs)))}
     in
         LogErr.trace ["defining function ", LogErr.name fname];
-        Mach.defValue (getScopeObj scope) fname fval
+        Mach.defValue target fname fval
     end
 
 
@@ -1001,7 +1041,7 @@ and evalBlock (scope:Mach.SCOPE)
             val blockScope = extendScope scope Mach.Let blockObj
         in
             LogErr.trace ["initializing block scope"];
-            allocScopeFixtures blockScope (needFixtures fixtures); 
+            allocScopeFixtures blockScope fixtures; 
             LogErr.trace ["evaluating block scope definitions"];
             evalDefns blockScope defns;
             LogErr.trace ["evaluating block scope statements"];

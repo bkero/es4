@@ -279,7 +279,7 @@ fun runTestCase (test : TEST_CASE) : TEST_RESULT =
              handle Parser.ParseError => (test, true)
                   | e => (unexpectedExn e; (test, false))
          )
-       | { name, stage=Verify, arg=true, source } =>
+(*       | { name, stage=Verify, arg=true, source } =>
          (
              (Verify.verifyProgram (parse source); (test, true))
              handle e => (unexpectedExn e; (test, false))
@@ -290,6 +290,7 @@ fun runTestCase (test : TEST_CASE) : TEST_RESULT =
              handle Verify.VerifyError _ => (test, true)
                   | e => (unexpectedExn e; (test, false))
          )
+*)
 )
 
 fun run (filename : string) : TEST_RESULT list =

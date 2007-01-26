@@ -28,7 +28,7 @@ package
 
         /* E262-3 15.3.1: The Function Constructor Called as a Function */
         intrinsic static function invoke(...args)
-            Function.construct.apply(null, ...args);
+            Function.construct.apply(null, args);
 
         /* E262-3 10.X / 13.X: function invocation.
 

@@ -174,21 +174,6 @@ fun getProp (b:PROP_BINDINGS)
     end
 
 
-fun getFixture (b:Ast.FIXTURE_BINDINGS) 
-               (n:NAME) 
-    : Ast.FIXTURE = 
-    let 
-        fun search [] = LogErr.hostError ["fixture binding not found: ", 
-                                          (#id n)]
-          | search ((k,v)::bs) = 
-            if k = n 
-            then v
-            else search bs
-    in
-        search b
-    end
-
-
 fun hasProp (b:PROP_BINDINGS) 
             (n:NAME) 
     : bool = 
@@ -202,19 +187,6 @@ fun hasProp (b:PROP_BINDINGS)
         search (!b)
     end
 
-
-fun hasFixture (b:Ast.FIXTURE_BINDINGS) 
-               (n:NAME) 
-    : bool = 
-    let 
-        fun search [] = false
-          | search ((k,v)::bs) = 
-            if k = n 
-            then true
-            else search bs
-    in
-        search b
-    end
 
 (* Standard runtime objects and functions. *)
 
@@ -338,7 +310,7 @@ fun newFunc (e:SCOPE)
 val (objectType:TYPE) = Ast.ObjectType []
 
 val (defaultAttrs:Ast.ATTRIBUTES) = 
-    Ast.Attributes { ns = Ast.LiteralExpr (Ast.LiteralNamespace (Ast.Public "")),
+    { ns = Ast.LiteralExpr (Ast.LiteralNamespace (Ast.Public "")),
                      override = false,
                      static = false,
                      final = false,
@@ -350,7 +322,7 @@ val (defaultAttrs:Ast.ATTRIBUTES) =
 val (emptyBlock:Ast.BLOCK) = Ast.Block { pragmas = [],
                                          defns = [],
                                          stmts = [],
-                                         fixtures = NONE }
+                                         fixtures = [] }
 
 val (globalObject:OBJ) = newObj intrinsicObjectBaseTag Null NONE
 
