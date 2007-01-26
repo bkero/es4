@@ -145,17 +145,15 @@ datatype PRAGMA =
          Func of { name: FUNC_NAME,
                    fsig: FUNC_SIG,                   
                    body: BLOCK,
-                   fixtures: FIXTURES }
+                   fixtures: FIXTURES option }
 
      and DEFN =
          ClassDefn of CLASS_DEFN
-       | VariableDefn of VAR_BINDING list
+       | VariableDefn of VAR_DEFN
        | FunctionDefn of FUNC_DEFN
        | InterfaceDefn of INTERFACE_DEFN
        | NamespaceDefn of NAMESPACE_DEFN 
-       | TypeDefn of { attrs: ATTRIBUTES,
-                       ident: IDENT,
-                       init: TYPE_EXPR }
+       | TypeDefn of TYPE_DEFN
 
      and FUNC_SIG =
          FunctionSignature of { typeParams: IDENT list,
@@ -166,32 +164,10 @@ datatype PRAGMA =
                                 hasBoundThis: bool, (*goes away, redundant with previous option*)
                                 hasRest: bool }
 
-
-     (* Improve this? Probably more mutual exclusion possible. *)
-     (* [jd] todo: as Attributes get passed into the parser functions
-                      for the various definition kinds, pick the relevant
-                                                             subset of attributes to capture in each definition.
-                                                                                                     for example,
-
-                                                                                                VariableDefn ( static, prototype, Binding { ns, ... } }
-      *)
-
-     and ATTRIBUTES =
-         Attributes of { ns: EXPR,
-                         override: bool,
-                         static: bool,
-                         final: bool,
-                         dynamic: bool,
-                         prototype: bool,
-                         native: bool,
-                         rest: bool }
-
      and VAR_BINDING =
-         Binding of { kind: VAR_DEFN_TAG,
-                      init: EXPR option,
-                      attrs: ATTRIBUTES,
-                      pattern: PATTERN,
-                      ty: TYPE_EXPR option }
+         Binding of { pattern: PATTERN,
+                      ty: TYPE_EXPR option,
+                      init: EXPR option }
 
      (* 
       * Note: no type parameters allowed on general typedefs,
@@ -203,12 +179,14 @@ datatype PRAGMA =
          SpecialType of SPECIAL_TY
        | UnionType of TYPE_EXPR list
        | ArrayType of TYPE_EXPR list
-       | NominalType of { ident : IDENT_EXPR, nullable: bool option }  (* todo: remove nullable *)
+       | NominalType of { ident : IDENT_EXPR, 
+                          nullable: bool option }  (* todo: remove nullable *)
        | FunctionType of FUNC_SIG
        | ObjectType of FIELD_TYPE list
        | AppType of { base: TYPE_EXPR,
                       args: TYPE_EXPR list }
-       | NullableType of {expr:TYPE_EXPR,nullable:bool}
+       | NullableType of { expr:TYPE_EXPR,
+                           nullable:bool }
   
      and STMT =
          EmptyStmt
@@ -227,6 +205,7 @@ datatype PRAGMA =
        | DoWhileStmt of WHILE_STMT
 
        | ForStmt of { defns: VAR_BINDING list,
+                      fixtures: FIXTURES option,
                       init: EXPR list,
                       cond: EXPR list,
                       update: EXPR list,
@@ -241,15 +220,22 @@ datatype PRAGMA =
                        ty: TYPE_EXPR,
                        body: STMT }
 
-       | TryStmt of { body: BLOCK,
-                      catches: {bind:VAR_BINDING, body:BLOCK} list,
-                      finally: BLOCK option}
+       | TryStmt of { 
+            body: BLOCK,
+            catches: { bind:VAR_BINDING, 
+                       fixtures: FIXTURES option,
+                       body:BLOCK} list,
+                       finally: BLOCK option}
 
-       | SwitchStmt of { cond: EXPR list,
-                         cases: CASE list }
+       | SwitchStmt of { 
+            cond: EXPR list,
+            cases: CASE list }
 
-       | SwitchTypeStmt of { cond: EXPR list, ty: TYPE_EXPR,
-                             cases: TYPE_CASE list }
+       | SwitchTypeStmt of { 
+            cond: EXPR list, 
+            ty: TYPE_EXPR,
+            cases: TYPE_CASE list }
+
        | Dxns of { expr: EXPR }
 
      and EXPR =
@@ -271,7 +257,7 @@ datatype PRAGMA =
 
        | LetExpr of { defs: VAR_BINDING list,                      
                       body: EXPR list,
-                      fixtures: FIXTURES}
+                      fixtures: FIXTURES option}
 
        | NewExpr of { obj: EXPR,
                       actuals: EXPR list }
@@ -279,8 +265,7 @@ datatype PRAGMA =
        | FunExpr of { ident: IDENT option,
                       fsig: FUNC_SIG,
                       body: BLOCK,
-                      fixtures: FIXTURES }
-
+                      fixtures: FIXTURES option}
        | ObjectRef of { base: EXPR, ident: IDENT_EXPR }
 
        | LexicalRef of { ident: IDENT_EXPR }
@@ -326,7 +311,7 @@ datatype PRAGMA =
                    Identifier { id, _ }
                    and should later be changed to IDENT
                  *)
-         ObjectPattern of { name: IDENT_EXPR, ptrn : PATTERN } list
+         ObjectPattern of FIELD_PATTERN list
        | ArrayPattern of PATTERN list
        | SimplePattern of EXPR
        | IdentifierPattern of IDENT_EXPR
@@ -350,38 +335,66 @@ datatype PRAGMA =
                      
 withtype FIELD =
          { kind: VAR_DEFN_TAG,
-           name: IDENT_EXPR,
+           name: IDENT,
            init: EXPR }
 
+     and FIELD_PATTERN =
+         { name: IDENT, 
+           ptrn : PATTERN }
+
      and FIELD_TYPE =
-         { name: IDENT_EXPR,
+         { name: IDENT,
            ty: TYPE_EXPR }
          
      and TYPED_IDENT =
          { name: IDENT,
            ty: TYPE_EXPR option }
 
+     and ATTRIBUTES =
+         { ns: EXPR,
+           override: bool,
+           static: bool,
+           final: bool,
+           dynamic: bool,
+           prototype: bool,
+           native: bool,
+           rest: bool }
+
      and FUNC_DEFN = 
-         { attrs : ATTRIBUTES,
-           kind : VAR_DEFN_TAG,
+         { kind : VAR_DEFN_TAG,
+           ns: EXPR,
+           final: bool,
+           native: bool,
+           override: bool,
+           prototype: bool,
+           static: bool,
            func : FUNC }
+
+     and VAR_DEFN =
+         { kind : VAR_DEFN_TAG,
+           ns : EXPR,
+           static : bool,
+           prototype : bool,
+           bindings : VAR_BINDING list }
 
      and FIXTURES = (NAME * FIXTURE) list
 
      and NAMESPACE_DEFN = 
-         { attrs: ATTRIBUTES,
-           ident: IDENT,
+         { ident: IDENT,
+           ns: EXPR,
            init: EXPR option }
 
      and CLASS_DEFN =
          { name: IDENT, 
+           ns: EXPR,
            nonnullable: bool,
-           attrs: ATTRIBUTES,
+           dynamic: bool,
+           final: bool,
            params: IDENT list,
            extends: IDENT_EXPR option,
            implements: IDENT_EXPR list,
-           classFixtures: FIXTURES,
-           instanceFixtures: FIXTURES,
+           classFixtures: FIXTURES option,
+           instanceFixtures: FIXTURES option,
            body: BLOCK,
            (* the following field will be populated during the definition phase *)
            protoVars: VAR_BINDING list,
@@ -395,16 +408,22 @@ withtype FIELD =
 
      and INTERFACE_DEFN =
          { name: IDENT,
+           ns: EXPR,
            nonnullable: bool,
-           attrs: ATTRIBUTES,
            params: IDENT list,
            extends: IDENT_EXPR list,
            body: BLOCK }
+
+     and TYPE_DEFN =
+         { name: IDENT,
+           ns: EXPR,
+           init: TYPE_EXPR }
 
      and FOR_ENUM_STMT =
          { ptrn: PATTERN option,
            obj: EXPR list,
            defns: VAR_BINDING list,
+           fixtures: FIXTURES option,
            contLabel: IDENT option,
            body: STMT }
 
@@ -417,11 +436,11 @@ withtype FIELD =
          { pragmas: PRAGMA list,
            defns: DEFN list,
            stmts: STMT list,
-           fixtures: FIXTURES }
+           fixtures: FIXTURES option }
 
      and BINDINGS =
-         { defns : VAR_BINDING list,
-           inits : EXPR list }
+         { b : VAR_BINDING list,
+           i : EXPR list }
 
      and CASE = (* Perhaps we can collapse this to EXPR list *)
          { label : EXPR list option, body : BLOCK }
