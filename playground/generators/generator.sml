@@ -11,7 +11,7 @@ struct
                     | Send of VALUE  (* client  => generator *)
                     | Close          (* client <=  generator *)
 
-    structure Coroutine : COROUTINE = MkCoroutine (type result = signal)
+    structure Coroutine : COROUTINE = MkCoroutine (type result = signal);
 
     (* This unnecessary polymorphism is a workaround for an SML/NJ compiler bug. *)
     datatype 'a generator = Generator of 'a
@@ -66,4 +66,4 @@ struct
                                   )))
 
     val run = Coroutine.run
-end
+end;

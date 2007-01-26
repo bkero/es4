@@ -65,4 +65,4 @@ struct
            | _ => false
 
     fun run f = f ()
-end
+end;

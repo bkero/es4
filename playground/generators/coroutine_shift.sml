@@ -4,7 +4,7 @@ functor ShiftCoroutine (type result) =
 struct
     type result = result
 
-    structure S = Shift (type result = result)
+    structure S = Shift (type result = result);
 
     open S
 
@@ -54,4 +54,4 @@ struct
            | _ => false
 
     fun run f = f ()
-end
+end;

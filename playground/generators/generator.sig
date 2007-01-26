@@ -11,4 +11,4 @@ sig
     val close : t -> unit
 
     val run : (unit -> unit) -> unit
-end
+end;

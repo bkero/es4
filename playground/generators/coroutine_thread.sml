@@ -95,4 +95,4 @@ struct
                          SOME x => raise x
                        | NONE => ()
                 end
-end
+end;
