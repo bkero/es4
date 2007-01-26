@@ -42,8 +42,9 @@ package
            intrinsic invoke methods that will be considered by the
            function calling machinery. 
         */
-        intrinsic function invoke()
+        intrinsic function invoke() {
             throw new Error("Implementation error");
+        }
 
         /* XXX: The prototype object behaves like a function (and
            system magic makes its classname be "Function", though it's

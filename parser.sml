@@ -33,7 +33,7 @@ fun log ss =
      List.app TextIO.print ss;
      TextIO.print "\n")
 
-val trace_on = false
+val trace_on = true
 
 fun trace ss =
     if trace_on then log ss else ()
@@ -5009,7 +5009,7 @@ and constructorSignature (ts) =
                                let
                                    val (ts4,nd4) = constructorInitialiser (tl ts3)
                                in
-                                (log(["<< functionSignature with next=",tokenname(hd ts4)]);
+                                (log(["<< constructorSignature with next=",tokenname(hd ts4)]);
                                 (ts4,Ast.FunctionSignature
                                         { typeParams=nd1,
                                             thisType=SOME (needType(nd2,NONE)),
@@ -5031,7 +5031,7 @@ and constructorSignature (ts) =
                        let
                            val (ts3,nd3) = constructorInitialiser (tl ts2)
                        in
-                        (log(["<< construcorSignature with next=",tokenname(hd ts3)]);
+                        (log(["<< constructorSignature with next=",tokenname(hd ts3)]);
                         (ts3,Ast.FunctionSignature
                                 { typeParams=nd1,
                                     params=nd2,
