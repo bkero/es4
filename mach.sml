@@ -224,9 +224,9 @@ fun intrinsicName id = Ast.QualifiedIdentifier { qual = intrinsicNsExpr, ident =
 
 (* Define some global intrinsic nominal types. *)
 
-val typeType = Ast.NominalType { ident = (intrinsicName "Type"), nullable = NONE }
-val namespaceType = Ast.NominalType { ident = (intrinsicName "Namespace"), nullable = NONE }
-val classType = Ast.NominalType { ident = intrinsicName "Class", nullable = NONE }
+val typeType = Ast.NominalType { ident = (intrinsicName "Type") }
+val namespaceType = Ast.NominalType { ident = (intrinsicName "Namespace") }
+val classType = Ast.NominalType { ident = intrinsicName "Class" }
 
 
 fun newObj (t:VAL_TAG) 
@@ -322,7 +322,7 @@ val (defaultAttrs:Ast.ATTRIBUTES) =
 val (emptyBlock:Ast.BLOCK) = Ast.Block { pragmas = [],
                                          defns = [],
                                          stmts = [],
-                                         fixtures = [] }
+                                         fixtures = NONE }
 
 val (globalObject:OBJ) = newObj intrinsicObjectBaseTag Null NONE
 
