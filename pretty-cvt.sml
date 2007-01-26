@@ -467,11 +467,11 @@ structure PrettyCvt = struct
          NONE => PrettyRep.Ctor ("NONE", NONE)
        | SOME x1000 => PrettyRep.Ctor ("SOME", SOME (cvtEXPR x1000))
        ))]
-   and cvtCLASS_DEFN {name=x1012, ns=x1013, nonnullable=b1014, dynamic=b1015, 
+   and cvtCLASS_DEFN {ident=x1012, ns=x1013, nonnullable=b1014, dynamic=b1015, 
           final=b1016, params=ls1018, extends=opt1023, implements=ls1028, classFixtures=opt1033, 
           instanceFixtures=opt1038, body=x1042, protoVars=ls1044, protoMethods=ls1049, 
           instanceVars=ls1054, instanceMethods=ls1059, vars=ls1064, methods=ls1069, 
-          constructor=opt1074, initializer=ls1079} = PrettyRep.Rec [("name", 
+          constructor=opt1074, initializer=ls1079} = PrettyRep.Rec [("ident", 
           cvtIDENT x1012), ("ns", cvtEXPR x1013), ("nonnullable", PrettyRep.Bool b1014), 
           ("dynamic", PrettyRep.Bool b1015), ("final", PrettyRep.Bool b1016), 
           ("params", PrettyRep.List (List.map (fn x1017 => cvtIDENT x1017
@@ -490,15 +490,15 @@ structure PrettyCvt = struct
          NONE => PrettyRep.Ctor ("NONE", NONE)
        | SOME x1037 => PrettyRep.Ctor ("SOME", SOME (cvtFIXTURES x1037))
        )), ("body", cvtBLOCK x1042), ("protoVars", PrettyRep.List (List.map (fn x1043 => 
-                                                                                   cvtVAR_BINDING x1043
+                                                                                   cvtVAR_DEFN x1043
                                                                             ) ls1044)), 
           ("protoMethods", PrettyRep.List (List.map (fn x1048 => cvtFUNC_DEFN x1048
                                                     ) ls1049)), ("instanceVars", 
-          PrettyRep.List (List.map (fn x1053 => cvtVAR_BINDING x1053
+          PrettyRep.List (List.map (fn x1053 => cvtVAR_DEFN x1053
                                    ) ls1054)), ("instanceMethods", PrettyRep.List (List.map (fn x1058 => 
                                                                                                    cvtFUNC_DEFN x1058
                                                                                             ) ls1059)), 
-          ("vars", PrettyRep.List (List.map (fn x1063 => cvtVAR_BINDING x1063
+          ("vars", PrettyRep.List (List.map (fn x1063 => cvtVAR_DEFN x1063
                                             ) ls1064)), ("methods", PrettyRep.List (List.map (fn x1068 => 
                                                                                                     cvtFUNC_DEFN x1068
                                                                                              ) ls1069)), 
@@ -508,15 +508,15 @@ structure PrettyCvt = struct
        | SOME x1073 => PrettyRep.Ctor ("SOME", SOME (cvtFUNC_DEFN x1073))
        )), ("initializer", PrettyRep.List (List.map (fn x1078 => cvtSTMT x1078
                                                     ) ls1079))]
-   and cvtINTERFACE_DEFN {name=x1122, ns=x1123, nonnullable=b1124, params=ls1126, 
-          extends=ls1131, body=x1135} = PrettyRep.Rec [("name", cvtIDENT x1122), 
+   and cvtINTERFACE_DEFN {ident=x1122, ns=x1123, nonnullable=b1124, params=ls1126, 
+          extends=ls1131, body=x1135} = PrettyRep.Rec [("ident", cvtIDENT x1122), 
           ("ns", cvtEXPR x1123), ("nonnullable", PrettyRep.Bool b1124), ("params", 
           PrettyRep.List (List.map (fn x1125 => cvtIDENT x1125
                                    ) ls1126)), ("extends", PrettyRep.List (List.map (fn x1130 => 
                                                                                            cvtIDENT_EXPR x1130
                                                                                     ) ls1131)), 
           ("body", cvtBLOCK x1135)]
-   and cvtTYPE_DEFN {name=x1149, ns=x1150, init=x1151} = PrettyRep.Rec [("name", 
+   and cvtTYPE_DEFN {ident=x1149, ns=x1150, init=x1151} = PrettyRep.Rec [("ident", 
           cvtIDENT x1149), ("ns", cvtEXPR x1150), ("init", cvtTYPE_EXPR x1151)]
    and cvtFOR_ENUM_STMT {ptrn=opt1160, obj=ls1165, defns=ls1170, fixtures=opt1175, 
           contLabel=opt1180, body=x1184} = PrettyRep.Rec [("ptrn", 

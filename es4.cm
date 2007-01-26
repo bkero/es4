@@ -1,14 +1,14 @@
 Library
-	structure LogErr
+    structure LogErr
     structure Main
     structure Ast
-	structure Pretty
+    structure Pretty
     structure Token
     structure Lexer
     structure Parser
-(*	structure Defn *)
+    structure Defn
     structure Verify
-	structure Eval
+    structure Eval
     structure Mach 	
     structure Native 
 is
@@ -21,9 +21,9 @@ is
     token.sml
     lexer.lex
     parser.sml
-(*    defn.sml *)
-	verify.sml
-	eval.sml
+    defn.sml
+    verify.sml
+    eval.sml
     mach.sml
     native.sml
 

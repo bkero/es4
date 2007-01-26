@@ -596,18 +596,31 @@ and evalLetExpr (scope:Mach.SCOPE)
         val newScope = extendScope scope Mach.Let obj        
     in
         allocScopeFixtures scope fixtures;
-        evalVarBindings scope (Ast.LiteralExpr (Ast.LiteralNamespace (Ast.Internal ""))) defs; (* todo: what do we use for a namespace here *)
+        (* todo: what do we use for a namespace here *)
+        evalVarBindings scope (Ast.Internal "") defs; 
         evalListExpr newScope body
+    end
+
+and processVarDefn (scope:Mach.SCOPE)
+                   (vd:Ast.VAR_DEFN)
+                   (procOneName:Mach.NAME -> Mach.VAL -> unit)
+    : unit = 
+    let
+        val ns = needNamespace (evalExpr scope (#ns vd))
+        fun procOneBinding (vb:Ast.VAR_BINDING) = 
+            processVarBinding scope NONE ns vb procOneName
+    in
+        List.app procOneBinding (#bindings vd)
     end
 
 
 and processVarBinding (scope:Mach.SCOPE) 
                       (v:Mach.VAL option)
-                      (ns:Ast.EXPR)
-                      (defn:Ast.VAR_BINDING)
-                      (procOneBinding:Mach.NAME -> Mach.VAL -> unit)
+                      (ns:Ast.NAMESPACE)
+                      (binding:Ast.VAR_BINDING)
+                      (procOneName:Mach.NAME -> Mach.VAL -> unit)
     : unit =
-    case defn of 
+    case binding of 
         Ast.Binding { init, pattern, ty } =>
         let 
         fun procWithValue v' = 
@@ -616,28 +629,27 @@ and processVarBinding (scope:Mach.SCOPE)
                     (case id of 
                          Ast.Identifier {ident, ...} => 
                          let 
-                             val n = { ns = needNamespace (evalExpr scope ns), 
-                                       id = ident}
+                             val n = { ns = ns, id = ident}
                          in
                  LogErr.trace ["binding variable ", LogErr.name n];
-                 procOneBinding n v'
+                 procOneName n v'
                          end
                        | _ => LogErr.unimplError ["unhandled identifier form in ",
                                                   "identifier binding pattern"])
                   | _ => LogErr.unimplError ["unhandled pattern form in binding"]                     
         in
             case v of 
-        SOME v' => procWithValue v'
+                SOME v' => procWithValue v'
               | NONE => 
                 (case init of 
-             SOME e => procWithValue (evalExpr scope e)
+                     SOME e => procWithValue (evalExpr scope e)
                    | NONE => ())
         end
-
+        
 
 and evalVarBinding (scope:Mach.SCOPE)
                    (v:Mach.VAL option)
-                   (ns:Ast.EXPR)
+                   (ns:Ast.NAMESPACE)
                    (defn:Ast.VAR_BINDING)
     : unit = 
     (* Here we are evaluating only the *definition* affect of the
@@ -648,7 +660,7 @@ and evalVarBinding (scope:Mach.SCOPE)
 
 
 and evalVarBindings (scope:Mach.SCOPE)
-                    (ns:Ast.EXPR)
+                    (ns:Ast.NAMESPACE)
                     (defns:Ast.VAR_BINDING list)
     : unit =
     List.app (evalVarBinding scope NONE ns) defns
@@ -756,6 +768,17 @@ and evalStmt (scope:Mach.SCOPE)
       | _ => LogErr.unimplError ["unimplemented statement type"]
 
 
+and multinameOf (n:Ast.NAME) = 
+    { nss = [(#ns n)], id = (#id n) }
+
+and findVal (scope:Mach.SCOPE) 
+            (mn:Ast.MULTINAME) 
+    : Mach.VAL = 
+    case resolveOnScopeChain scope mn of 
+        NONE => LogErr.evalError ["unable to resolve multiname: ", 
+                                  LogErr.multiname mn ]
+      | SOME (obj, name) => Mach.getValue obj name 
+            
 and evalClassDefn (scope:Mach.SCOPE) 
                   (cd:Ast.CLASS_DEFN) 
     : unit =
@@ -764,21 +787,11 @@ and evalClassDefn (scope:Mach.SCOPE)
      * the implicit prototype chains.
      *)
     let 
-        val ns = (#ns cd)
-        val currClassMname = { nss = [needNamespace (evalExpr scope ns)],
-                               id = (#name cd) }
+        val ns = needNamespace (evalExpr scope (#ns cd))
+        val currClassName = { ns = ns, id = (#ident cd) }
         val _ = LogErr.trace ["evaluating class defn for ", 
-                              LogErr.multiname currClassMname]
-        val currClassObj = 
-            case resolveOnScopeChain scope currClassMname of 
-                NONE => LogErr.evalError ["unable to resolve class multiname: ", 
-                                          LogErr.multiname currClassMname ]
-              | SOME (obj, name) => 
-                case Mach.getValue obj name of 
-                    Mach.Object ob => ob
-                  | _ => LogErr.evalError ["class name resolved to non-object: ",
-                                           LogErr.multiname currClassMname ]
-                         
+                              LogErr.name currClassName]
+        val currClassObj = needObj (findVal scope (multinameOf currClassName))
         val baseProtoVal = 
             case (#extends cd) of 
                 NONE => Mach.Null
@@ -788,17 +801,13 @@ and evalClassDefn (scope:Mach.SCOPE)
                     val _ = LogErr.trace ["looking up base class ", 
                                           LogErr.multiname baseClassMname]
                 in
-                    case resolveOnScopeChain scope baseClassMname of 
-                        NONE => LogErr.evalError ["unable to resolve base class multiname: ", 
-                                                  LogErr.multiname baseClassMname]
-                      | SOME (obj, name) => 
-                        case Mach.getValue obj name of 
-                            Mach.Object ob => 
-                            if Mach.hasOwnValue ob Mach.internalPrototypeName
-                            then Mach.getValue ob Mach.internalPrototypeName
-                            else Mach.Null
-                          | _ => LogErr.evalError ["base class resolved to non-object: ", 
-                                                   LogErr.multiname baseClassMname]
+                    case findVal scope baseClassMname of 
+                        Mach.Object ob => 
+                        if Mach.hasOwnValue ob Mach.internalPrototypeName
+                        then Mach.getValue ob Mach.internalPrototypeName
+                        else Mach.Null
+                      | _ => LogErr.evalError ["base class resolved to non-object: ", 
+                                               LogErr.multiname baseClassMname]
                 end
                 
         val _ = LogErr.trace ["constructing prototype"]
@@ -818,12 +827,12 @@ and evalClassDefn (scope:Mach.SCOPE)
                 Mach.setValue newPrototype n fval
             end
             
-        fun addProtoVar (vb:Ast.VAR_BINDING) = 
-            processVarBinding scope NONE ns vb (Mach.setValue newPrototype)        
+        fun addProtoVars (vd:Ast.VAR_DEFN) = 
+            processVarDefn scope vd (Mach.setValue newPrototype)
     in
         LogErr.trace ["filling in prototype"];
         List.app addProtoMethod (#protoMethods cd);
-        List.app addProtoVar (#protoVars cd);
+        List.app addProtoVars (#protoVars cd);
         Mach.setValue currClassObj Mach.internalPrototypeName (Mach.Object newPrototype);
         LogErr.trace ["finished defining class"]
     end
@@ -834,7 +843,8 @@ and evalDefn (scope:Mach.SCOPE)
     : unit = 
     case d of 
         Ast.FunctionDefn f => evalFuncDefn scope f
-      | Ast.VariableDefn {bindings,ns,...} => evalVarBindings scope ns bindings
+      | Ast.VariableDefn {bindings,ns,...} => 
+        evalVarBindings scope (needNamespace (evalExpr scope ns)) bindings
       | Ast.NamespaceDefn ns => () (* handled during allocation *)
       | Ast.ClassDefn cd => evalClassDefn scope cd
       | _ => LogErr.unimplError ["unimplemented definition type"]
@@ -875,7 +885,7 @@ and invokeFuncClosure (this:Mach.OBJ)
                 let
                     val (varObj:Mach.OBJ) = Mach.newSimpleObj NONE
                     val (varScope:Mach.SCOPE) = extendScope env Mach.VarActivation varObj
-                    fun bindArg (a, b) = evalVarBinding varScope (SOME a) (Ast.LiteralExpr (Ast.LiteralNamespace (Ast.Internal ""))) b 
+                    fun bindArg (a, b) = evalVarBinding varScope (SOME a) (Ast.Internal "") b 
 
                     (* FIXME: infer a fixture for "this" so that it's properly typed, dontDelete, etc.
                      * Also this will mean changing to defVar rather than setVar, for 'this'. *)
@@ -883,7 +893,7 @@ and invokeFuncClosure (this:Mach.OBJ)
                     val thisVal = Mach.Object this
 
                     (* FIXME: self-name binding is surely more complex than this! *)
-                    val selfName = { id=(#ident (#name f)), ns = Ast.Internal "" }
+                    val selfName = { id = (#ident (#name f)), ns = Ast.Internal "" }
                     val selfTag = Mach.FunctionTag (#fsig f)
                     val selfVal = Mach.newObject selfTag Mach.Null (SOME (Mach.Function closure))
                 in
@@ -911,7 +921,7 @@ and constructClassInstance (obj:Mach.OBJ)
                 let
                     val ns = (#ns definition)
                     val n = { ns = needNamespace (evalExpr env ns), 
-                              id = (#name definition) }
+                              id = (#ident definition) }
                     val _ = LogErr.trace ["constructing instance of ", LogErr.name n]
                     val classTag = Mach.ClassTag n
                     val proto = if Mach.hasOwnValue obj Mach.internalPrototypeName
@@ -933,13 +943,18 @@ and constructClassInstance (obj:Mach.OBJ)
                     allocObjFixtures env obj (valOf (#instanceFixtures definition));
                     case ctor of 
                         NONE => (checkAllPropertiesInitialized obj; instance)
-                      | SOME ({native, ns, func = Ast.Func { fsig=Ast.FunctionSignature { params, inits, ... }, 
-                                                 body, fixtures, ... }, ... }) => 
+                      | SOME ({native, ns,
+                               func = Ast.Func 
+                                          { fsig=Ast.FunctionSignature { params, inits, ... }, 
+                                            body, fixtures, ... }, ... }) => 
                         let 
+                            val ns = needNamespace (evalExpr env ns)
                             val (varObj:Mach.OBJ) = Mach.newSimpleObj NONE
                             val (varScope:Mach.SCOPE) = extendScope env Mach.VarActivation varObj
-                            fun bindArg (a, b) = evalVarBinding varScope (SOME a) ns b
-                            fun initInstanceVar d = processVarBinding env NONE ns d (Mach.defValue obj)
+                            fun bindArg (a, b) = evalVarBinding varScope (SOME a) (Ast.Internal "") b
+                            fun initInstanceVar (vd:Ast.VAR_DEFN) = 
+                                processVarDefn env vd (Mach.defValue obj)
+
                         in
                             allocScopeFixtures varScope (valOf fixtures);
                             (* FIXME: is this correct? we currently bind the self name on obj as well.. *)

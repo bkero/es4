@@ -219,21 +219,18 @@ datatype PRAGMA =
                        ty: TYPE_EXPR,
                        body: STMT }
 
-       | TryStmt of { 
-            body: BLOCK,
-            catches: { bind:VAR_BINDING, 
-                       fixtures: FIXTURES option,
-                       body:BLOCK} list,
-                       finally: BLOCK option}
+       | TryStmt of { body: BLOCK,
+                      catches: { bind:VAR_BINDING, 
+                                 fixtures: FIXTURES option,
+                                 body:BLOCK } list,
+                      finally: BLOCK option }
+                    
+       | SwitchStmt of { cond: EXPR list,
+                         cases: CASE list }
 
-       | SwitchStmt of { 
-            cond: EXPR list,
-            cases: CASE list }
-
-       | SwitchTypeStmt of { 
-            cond: EXPR list, 
-            ty: TYPE_EXPR,
-            cases: TYPE_CASE list }
+       | SwitchTypeStmt of { cond: EXPR list, 
+                             ty: TYPE_EXPR,
+                             cases: TYPE_CASE list }
 
        | Dxns of { expr: EXPR }
 
@@ -384,7 +381,7 @@ withtype FIELD =
            init: EXPR option }
 
      and CLASS_DEFN =
-         { name: IDENT, 
+         { ident: IDENT, 
            ns: EXPR,
            nonnullable: bool,
            dynamic: bool,
@@ -395,26 +392,25 @@ withtype FIELD =
            classFixtures: FIXTURES option,
            instanceFixtures: FIXTURES option,
            body: BLOCK,
-           (* the following field will be populated during the definition phase *)
-           protoVars: VAR_BINDING list,
+           protoVars: VAR_DEFN list,
            protoMethods: FUNC_DEFN list,
-           instanceVars: VAR_BINDING list,
+           instanceVars: VAR_DEFN list,
            instanceMethods: FUNC_DEFN list,
-           vars: VAR_BINDING list,
+           vars: VAR_DEFN list,
            methods: FUNC_DEFN list,
            constructor: FUNC_DEFN option,
            initializer: STMT list }
 
      and INTERFACE_DEFN =
-         { name: IDENT,
+         { ident: IDENT,
            ns: EXPR,
            nonnullable: bool,
            params: IDENT list,
            extends: IDENT_EXPR list,
            body: BLOCK }
-
+         
      and TYPE_DEFN =
-         { name: IDENT,
+         { ident: IDENT,
            ns: EXPR,
            init: TYPE_EXPR }
 

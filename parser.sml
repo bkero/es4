@@ -5122,7 +5122,7 @@ and classDefinition (ts,attrs) =
             in
                 (ts3,{pragmas=[],
                       stmts=[],
-                      defns=[Ast.ClassDefn { name=ident,
+                      defns=[Ast.ClassDefn { ident=ident,
                                              nonnullable=nonnullable,
                                              ns=ns,
                                              final=final,
@@ -5280,7 +5280,7 @@ and interfaceDefinition (ts,attrs) =
             in
                  (ts3,{pragmas=[],
                        stmts=[],
-                       defns=[Ast.InterfaceDefn {name=ident,
+                       defns=[Ast.InterfaceDefn {ident=ident,
                                                  nonnullable=nonnullable,
                                                  ns=ns,
                                                  params=params,
@@ -5384,7 +5384,7 @@ and typeDefinition (ts,attrs) =
                 (ts2,{pragmas=[],
                       stmts=[],
                       defns=[Ast.TypeDefn {ns=ns,
-                                           name=nd1,
+                                           ident=nd1,
                                            init=nd2}],
                       fixtures=NONE})
             end
