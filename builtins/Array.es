@@ -154,55 +154,69 @@ package
             Array.pop(this);
 
         // 15.4.4.7 Array.prototype.push ( [ item1 [ , item2 [ , … ] ] ] )
-        prototype function push(item)
-            this.push.apply(arguments);
-        intrinsic function push(...args:Array):uint {
-            let len:uint = this.length;
-            let argslen:uint = uint(args.length);
+        public static function pushHelper(self, args) {
+            let len:uint = self.length;
+            let argslen:uint = args.length;
 
             for (let i:uint = 0; i < argslen; i++)
-                this[len++] = args[i];
-            this.length = len;
+                self[len++] = args[i];
+            self.length = len;
             return len;
         }
 
-        // 15.4.4.8 Array.prototype.reverse ( )
-        prototype function reverse()
-            this.reverse();
-        intrinsic function reverse():Array {
-            let i:uint = 0;
-            let j:uint = this.length;
-            if (j)
-                --j;
+        public static function push(self, ...args)
+            Array.pushHelper(this, args);
 
-            while (i < j) {
-                [this[i], this[j]] = [this[j], this[i]];
+        prototype function push(...args)
+            Array.pushHelper(this, args);
+
+        intrinsic function push(...args:Array):uint
+            Array.pushHelper(this, args);
+
+        // 15.4.4.8 Array.prototype.reverse ( )
+        public static function reverse(self) {
+            let i:uint = 0;
+            let j:uint = self.length;
+            let h:uint = j >>> 1;
+
+            while (i < h) {
+                --j;
+                [self[i], self[j]] = [self[j], self[i]];
                 i++;
-                j--;
             }
-            return this;
+            return self;
         }
 
-        // 15.4.4.9 Array.prototype.shift ( )
-        prototype function shift()
-            this.shift();
+        prototype function reverse()
+            Array.reverse(this);
 
-        intrinsic function shift() {
-            let len:uint = this.length;
+        intrinsic function reverse():Array
+            Array.reverse(this);
+
+        // 15.4.4.9 Array.prototype.shift ( )
+        public static function shift(self) {
+            let len:uint = self.length;
             if (len == 0) {
-                this.length = 0;        // ECMA-262 requires explicit set here
+                self.length = 0;        // ECMA-262 requires explicit set here
                 return undefined;
             }
 
             // Get the 0th element to return
-            let x = this[0];
+            let x = self[0];
 
             // Move all of the elements down
             for (let i:uint = 1; i < len; i++)
-                this[i-1] = this[i];
-            delete this[len - 1];
-            this.length = len - 1;
+                self[i-1] = self[i];
+            delete self[len - 1];
+            self.length = len - 1;
+            return x;
         }
+
+        prototype function shift()
+            Array.shift(this);
+
+        intrinsic function shift()
+            Array.shift(this);
 
         // 15.4.4.10 Array.prototype.slice (start, end)
         public static function slice(self, start, end) {
@@ -238,41 +252,41 @@ package
         // allows for different sort implementations (quicksort is not required)
         type Comparator = function (x:*, y:*):double;
 
-        prototype function sort(comparefn)
-            this.sort(comparefn);
-
-        intrinsic function sort(comparefn:Comparator):Array {
-            let len:uint = this.length;
+        public static function sort(self, comparefn) {
+            let len:uint = self.length;
 
             if (len > 1)
                 qsort(0, len-1, comparefn);
 
-            return this;
+            return self;
         }
 
-        // 15.4.4.12 Array.prototype.splice (start, deleteCount [ , item1 [ , item2 [ , … ] ] ] )
-        prototype function splice(start, deleteCount)
-            this.splice.apply(arguments);
+        prototype function sort(comparefn)
+            Array.sort(this, comparefn);
 
-        intrinsic function splice(...args:Array):Array {
+        intrinsic function sort(comparefn:Comparator):Array
+            Array.sort(this, comparefn);
+
+        // 15.4.4.12 Array.prototype.splice (start, deleteCount [ , item1 [ , item2 [ , … ] ] ] )
+        public static function splice(self, start, deleteCount) {
+            let out:Array = new Array();
+
             let argslen:uint = uint(args.length);
             if (argslen == 0)
                 return undefined;
 
-            let len:uint = this.length;
+            let len:uint = self.length;
             let start:uint = clamp(double(args[0]), len);
             let d_deleteCount:double = argslen > 1 ? double(args[1]) : (len - start);
             let deleteCount:uint = (d_deleteCount < 0) ? 0 : uint(d_deleteCount);
-            if (deleteCount > (len - start))
+            if (deleteCount > len - start)
                 deleteCount = len - start;
 
             let end:uint = start + deleteCount;
 
             // Copy out the elements we are going to remove
-            let out:Array = new Array();
-
             for (let i:uint = 0; i < deleteCount; i++)
-                out.push(this[i + start]);
+                out.push(self[i + start]);
 
             let insertCount:uint = (argslen > 2) ? (argslen - 2) : 0;
             let l_shiftAmount:double = insertCount - deleteCount;
@@ -284,11 +298,11 @@ package
                 shiftAmount = uint(-l_shiftAmount);
 
                 for (let i:uint = end; i < len; i++)
-                    this[i - shiftAmount] = this[i];
+                    self[i - shiftAmount] = self[i];
 
                 // delete top elements here to match ECMAscript spec (generic object support)
                 for (let i:uint = len - shiftAmount; i < len; i++)
-                    delete this[i];
+                    delete self[i];
             }
             else {
                 // Shift the remaining elements up.
@@ -296,19 +310,24 @@ package
 
                 for (let i:uint = len; i > end; ) {
                     --i;
-                    this[i + shiftAmount] = this[i];
+                    self[i + shiftAmount] = self[i];
                 }
             }
 
             // Add the items to insert
             for (let i:uint = 0; i < insertCount; i++)
-                this[start+i] = args[i + 2];
+                self[start+i] = args[i + 2];
 
             // shrink array if shiftAmount is negative
-            this.length = len + l_shiftAmount;
-
+            self.length = len + l_shiftAmount;
             return out;
         }
+
+        prototype function splice(start, deleteCount)
+            Array.splice(this, arguments);
+
+        intrinsic function splice(...args:Array):Array
+            Array.splice(this, arguments);
 
         // 15.4.4.13 Array.prototype.unshift ( [ item1 [ , item2 [ , … ] ] ] )
         prototype function unshift(...args)
