@@ -921,10 +921,10 @@ and constructClassInstance (obj:Mach.OBJ)
                               id = (#name definition) }
                     val _ = LogErr.trace ["constructing instance of ", LogErr.name n]
                     val classTag = Mach.ClassTag n
-            val proto = if Mach.hasOwnValue obj Mach.internalPrototypeName
-                then Mach.getValue obj Mach.internalPrototypeName
-                else Mach.Null
-            val (obj:Mach.OBJ) = Mach.newObj classTag proto NONE
+                    val proto = if Mach.hasOwnValue obj Mach.internalPrototypeName
+                                then Mach.getValue obj Mach.internalPrototypeName
+                                else Mach.Null
+                    val (obj:Mach.OBJ) = Mach.newObj classTag proto NONE
                     val (objScope:Mach.SCOPE) = extendScope env Mach.VarInstance obj
                     val (instance:Mach.VAL) = Mach.Object obj
                     val ctor = (#constructor definition)
@@ -941,7 +941,8 @@ and constructClassInstance (obj:Mach.OBJ)
                     case ctor of 
                         NONE => (checkAllPropertiesInitialized obj; instance)
                       | SOME ({func = Ast.Func { fsig=Ast.FunctionSignature { params, inits, ... }, 
-                                                 attrs, body, fixtures, ... }, ... }) => 
+                                                 body, fixtures, ... }, 
+                               attrs, ... }) => 
                         let 
                             val (varObj:Mach.OBJ) = Mach.newSimpleObj NONE
                             val (varScope:Mach.SCOPE) = extendScope env Mach.VarActivation varObj
@@ -955,30 +956,40 @@ and constructClassInstance (obj:Mach.OBJ)
                             Mach.defValue varObj n selfVal;
                             (* FIXME: is this correct? we currently bind the self name on obj as well.. *)
                             Mach.defValue obj n selfVal;
-                            LogErr.trace ["initialializing methods of ", LogErr.name n];
+                            LogErr.trace ["initialializing instance methods of ", LogErr.name n];
                             List.app (evalFuncDefnFull env obj) (#instanceMethods definition);
-                            (* Run any initializers if they exist. *)
-                            LogErr.trace ["running initializers of ", LogErr.name n];
-                            (case inits of 
-                                 NONE => ()
-                               | SOME { defns, inits } => 
-                                 let
-                                     val (initVals:Mach.VAL list) = List.map (evalExpr varScope) inits
-                                     fun bindInit (a, b) = evalVarBinding objScope (SOME a) b
-                                 in
-                                     List.app bindInit (ListPair.zip (initVals, defns))
-                                 end);
-                            LogErr.trace ["checking initializers completed properly for ", LogErr.name n];
-                            checkAllPropertiesInitialized obj; 
-                            let 
-                                (* Now the strange part: we re-parent the arguments var object
-                                 * to the instance object, before running the constructor body. *)
-                                val _ = LogErr.trace ["running constructor of ", LogErr.name n]
-                                val (newVarScope:Mach.SCOPE) = extendScope objScope Mach.VarActivation varObj
-                                val _ = evalBlock newVarScope body 
-                            in 
-                                instance
-                            end
+
+                            if (#native (getAttrs attrs))
+                            then 
+                                (* Native constructors take over here. *)
+                                (LogErr.trace ["running native constructor for ", LogErr.name n];
+                                 (Native.getNativeMethod n n) env obj args;
+                                 LogErr.trace ["checking native initialization of ", LogErr.name n];
+                                 checkAllPropertiesInitialized obj;
+                                 instance)
+                            else 
+                                (* Otherwise run any initializers and constructor. *)
+                                (LogErr.trace ["running initializers of ", LogErr.name n];
+                                 (case inits of 
+                                      NONE => ()
+                                    | SOME { defns, inits } => 
+                                      let
+                                          val (initVals:Mach.VAL list) = List.map (evalExpr varScope) inits
+                                          fun bindInit (a, b) = evalVarBinding objScope (SOME a) b
+                                      in
+                                          List.app bindInit (ListPair.zip (initVals, defns))
+                                      end);
+                                 LogErr.trace ["checking initialization of ", LogErr.name n];
+                                 checkAllPropertiesInitialized obj; 
+                                 let 
+                                     (* Now the strange part: we re-parent the arguments var object
+                                      * to the instance object, before running the constructor body. *)
+                                     val _ = LogErr.trace ["running constructor of ", LogErr.name n]
+                                     val (newVarScope:Mach.SCOPE) = extendScope objScope Mach.VarActivation varObj
+                                     val _ = evalBlock newVarScope body 
+                                 in 
+                                     instance
+                                 end)
                         end
                 end
                 

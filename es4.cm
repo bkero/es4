@@ -10,6 +10,7 @@ Library
         structure Verify
    	structure Eval
 	structure Mach 
+	structure Native 
 is
 	logerr.sml
         main.sml
@@ -24,6 +25,7 @@ is
 	verify.sml
 	eval.sml
 	mach.sml
+	native.sml
 
         $/basis.cm
         $/smlnj-lib.cm
