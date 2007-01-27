@@ -52,7 +52,7 @@ package
            some things in the prototype that ensures that the object
            behaves like a function in some trivial ways.
          */
-        prototype intrinsic function invoke()
+        intrinsic prototype function invoke()
             undefined;
 
         prototype var source : string = "function () { }";
