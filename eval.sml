@@ -787,8 +787,7 @@ and evalClassDefn (scope:Mach.SCOPE)
      * the implicit prototype chains.
      *)
     let 
-        val ns = needNamespace (evalExpr scope (#ns cd))
-        val currClassName = { ns = ns, id = (#ident cd) }
+        val currClassName = valOf (#name cd) 
         val _ = LogErr.trace ["evaluating class defn for ", 
                               LogErr.name currClassName]
         val currClassObj = needObj (findVal scope (multinameOf currClassName))
@@ -908,7 +907,7 @@ and invokeFuncClosure (this:Mach.OBJ)
                 end
 
 
-and constructClassInstance (obj:Mach.OBJ) 
+and constructClassInstance (classObj:Mach.OBJ) 
                            (closure:Mach.CLS_CLOSURE) 
                            (args:Mach.VAL list) 
     : Mach.VAL = 
@@ -920,15 +919,13 @@ and constructClassInstance (obj:Mach.OBJ)
             case cls of 
                 Mach.Cls { definition, ... } =>
                 let
-                    val ns = (#ns definition)
-                    val n = { ns = needNamespace (evalExpr env ns), 
-                              id = (#ident definition) }
+                    val n = valOf (#name definition)
                     val _ = LogErr.trace ["constructing instance of ", LogErr.name n]
-                    val classTag = Mach.ClassTag n
-                    val proto = if Mach.hasOwnValue obj Mach.internalPrototypeName
-                                then Mach.getValue obj Mach.internalPrototypeName
+                    val tag = Mach.ClassTag n
+                    val proto = if Mach.hasOwnValue classObj Mach.internalPrototypeName
+                                then Mach.getValue classObj Mach.internalPrototypeName
                                 else Mach.Null
-                    val (obj:Mach.OBJ) = Mach.newObj classTag proto NONE
+                    val (obj:Mach.OBJ) = Mach.newObj tag proto NONE
                     val (objScope:Mach.SCOPE) = extendScope env Mach.VarInstance obj
                     val (instance:Mach.VAL) = Mach.Object obj
                     val ctor = (#constructor definition)
@@ -936,10 +933,6 @@ and constructClassInstance (obj:Mach.OBJ)
                     (* FIXME: infer a fixture for "this" so that it's properly typed, dontDelete, etc.
                      * Also this will mean changing to defVar rather than setVar, for 'this'. *)
                     val thisName = { id = "this", ns = Ast.Internal "" }
-
-                    (* FIXME: self-name binding is surely more complex than this! *)
-                    val selfTag = Mach.ClassTag n
-                    val selfVal = Mach.newObject selfTag Mach.Null (SOME (Mach.Class closure))
                 in
                     allocObjFixtures env obj (valOf (#instanceFixtures definition));
                     case ctor of 
@@ -959,8 +952,8 @@ and constructClassInstance (obj:Mach.OBJ)
                         in
                             allocScopeFixtures varScope (valOf paramFixtures);
                             allocScopeFixtures varScope (valOf bodyFixtures);
-                            (* FIXME: is this correct? we currently bind the self name on obj as well.. *)
-                            Mach.defValue obj n selfVal;
+                            (* FIXME: is this correct? We also bind this name on the ctor var obj, below. *)
+                            Mach.defValue obj n (Mach.Object classObj);
                             LogErr.trace ["initialializing instance methods of ", LogErr.name n];
                             List.app (evalFuncDefnFull env obj) (#instanceMethods definition);
                             List.app initInstanceVar (#instanceVars definition);
@@ -983,8 +976,8 @@ and constructClassInstance (obj:Mach.OBJ)
                                 ((* FIXME: handle arg-list length mismatch correctly. *)
                                  LogErr.trace ["binding constructor args of ", LogErr.name n];
                                  List.app bindArg (ListPair.zip (args, params));
+                                 Mach.defValue varObj n (Mach.Object classObj);
                                  Mach.setValue varObj thisName instance;
-                                 Mach.defValue varObj n selfVal;
                                  LogErr.trace ["running initializers of ", LogErr.name n];
                                  (case inits of 
                                       NONE => ()
