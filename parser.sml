@@ -33,7 +33,7 @@ fun log ss =
      List.app TextIO.print ss;
      TextIO.print "\n")
 
-val trace_on = true
+val trace_on = false
 
 fun trace ss =
     if trace_on then log ss else ()
@@ -1608,7 +1608,7 @@ and multiplicativeExpression (ts,a,b) =
                     let 
                         val (ts3,nd3) = unaryExpression (ts2,a,b) 
                     in 
-                        multiplicativeExpression' (ts3,Ast.BinaryExpr(Ast.Times,nd1,nd3),a,b) 
+                        multiplicativeExpression' (ts3,Ast.BinaryExpr(Ast.Times NONE,nd1,nd3),a,b) 
                     end
 
               | LexBreakDiv x :: _ =>
@@ -1618,7 +1618,7 @@ and multiplicativeExpression (ts,a,b) =
                             let 
                                 val (ts3,nd3) = unaryExpression (ts2,a,b) 
                             in 
-                                multiplicativeExpression' (ts3,Ast.BinaryExpr(Ast.Divide,nd1,nd3),a,b) 
+                                multiplicativeExpression' (ts3,Ast.BinaryExpr(Ast.Divide NONE,nd1,nd3),a,b) 
                             end
                       | _ => raise ParseError
                     end
@@ -1627,7 +1627,7 @@ and multiplicativeExpression (ts,a,b) =
                     let 
                         val (ts3,nd3) = unaryExpression (ts2,a,b) 
                     in 
-                        multiplicativeExpression' (ts3,Ast.BinaryExpr(Ast.Remainder,nd1,nd3),a,b) 
+                        multiplicativeExpression' (ts3,Ast.BinaryExpr(Ast.Remainder NONE,nd1,nd3),a,b) 
                     end
               | _ => (trace(["<< multiplicative"]);(ts1,nd1))
     in
@@ -1652,13 +1652,13 @@ and additiveExpression (ts,a,b) =
                     let 
                         val (ts3,nd3) = multiplicativeExpression (ts2,a,b) 
                     in 
-                        additiveExpression' (ts3,Ast.BinaryExpr(Ast.Plus,nd1,nd3),a,b) 
+                        additiveExpression' (ts3,Ast.BinaryExpr(Ast.Plus NONE,nd1,nd3),a,b) 
                     end
               | Minus :: ts2 => 
                     let 
                         val (ts3,nd3) = multiplicativeExpression (ts2,a,b) 
                     in 
-                        additiveExpression' (ts3,Ast.BinaryExpr(Ast.Minus,nd1,nd3),a,b) 
+                        additiveExpression' (ts3,Ast.BinaryExpr(Ast.Minus NONE,nd1,nd3),a,b) 
                     end
               | _ => 
                     (trace(["<< additiveExpression"]);
@@ -1744,7 +1744,7 @@ and relationalExpression (ts,a, b)=
                             let 
                                 val (ts3,nd3) = shiftExpression (ts2,a,b) 
                             in 
-                                relationalExpression' (ts3,Ast.BinaryExpr(Ast.Less,nd1,nd3),a,ALLOWIN) 
+                                relationalExpression' (ts3,Ast.BinaryExpr(Ast.Less NONE,nd1,nd3),a,ALLOWIN) 
                             end
                       | _ => raise ParseError
                     end
@@ -1753,19 +1753,19 @@ and relationalExpression (ts,a, b)=
                     let 
                         val (ts3,nd3) = shiftExpression (ts2,a,b)
                     in 
-                        relationalExpression' (ts3,Ast.BinaryExpr(Ast.Greater,nd1,nd3),a,ALLOWIN) 
+                        relationalExpression' (ts3,Ast.BinaryExpr(Ast.Greater NONE,nd1,nd3),a,ALLOWIN) 
                     end
               | (LessThanOrEquals :: ts2, _) => 
                     let 
                         val (ts3,nd3) = shiftExpression (ts2,a,b) 
                     in 
-                        relationalExpression' (ts3,Ast.BinaryExpr(Ast.LessOrEqual,nd1,nd3),a,ALLOWIN) 
+                        relationalExpression' (ts3,Ast.BinaryExpr(Ast.LessOrEqual NONE,nd1,nd3),a,ALLOWIN) 
                     end
               | (GreaterThanOrEquals :: ts2, _) => 
                     let 
                         val (ts3,nd3) = shiftExpression (ts2,a,b) 
                     in 
-                        relationalExpression' (ts3,Ast.BinaryExpr(Ast.GreaterOrEqual,nd1,nd3),a,ALLOWIN) 
+                        relationalExpression' (ts3,Ast.BinaryExpr(Ast.GreaterOrEqual NONE,nd1,nd3),a,ALLOWIN) 
                     end
               | (In :: ts2, ALLOWIN) => 
                     let 
@@ -1824,25 +1824,25 @@ and equalityExpression (ts,a,b)=
                     let 
                         val (ts3,nd3) = relationalExpression (ts2,a,b) 
                     in 
-                        equalityExpression' (ts3,Ast.BinaryExpr(Ast.Equals,nd1,nd3)) 
+                        equalityExpression' (ts3,Ast.BinaryExpr(Ast.Equals NONE,nd1,nd3)) 
                     end
               | NotEquals :: ts2 => 
                     let 
                         val (ts3,nd3) = relationalExpression (ts2,a,b) 
                     in 
-                        equalityExpression' (ts3,Ast.BinaryExpr(Ast.NotEquals,nd1,nd3)) 
+                        equalityExpression' (ts3,Ast.BinaryExpr(Ast.NotEquals NONE,nd1,nd3)) 
                     end
               | StrictEquals :: ts2 => 
                     let 
                         val (ts3,nd3) = relationalExpression (ts2,a,b) 
                     in 
-                        equalityExpression' (ts3,Ast.BinaryExpr(Ast.StrictEquals,nd1,nd3)) 
+                        equalityExpression' (ts3,Ast.BinaryExpr(Ast.StrictEquals NONE,nd1,nd3)) 
                     end
               | StrictNotEquals :: ts2 => 
                     let 
                         val (ts3,nd3) = relationalExpression (ts2,a,b) 
                     in 
-                        equalityExpression' (ts3,Ast.BinaryExpr(Ast.StrictNotEquals,nd1,nd3)) 
+                        equalityExpression' (ts3,Ast.BinaryExpr(Ast.StrictNotEquals NONE,nd1,nd3)) 
                     end
               | _ => 
                     (trace(["<< equalityExpression"]);(ts1,nd1))
@@ -2287,19 +2287,19 @@ and assignmentExpression (ts,a,b) : (token list * Ast.EXPR) =
 
     and compoundAssignmentOperator ts =
         case ts of
-            ModulusAssign :: _                 => (tl ts,Ast.AssignRemainder)
+            ModulusAssign :: _                 => (tl ts,Ast.AssignRemainder NONE)
           | LogicalAndAssign :: _             => (tl ts,Ast.AssignLogicalAnd)
           | BitwiseAndAssign :: _             => (tl ts,Ast.AssignBitwiseAnd)
-          | DivAssign :: _                     => (tl ts,Ast.AssignDivide)
+          | DivAssign :: _                     => (tl ts,Ast.AssignDivide NONE)
           | BitwiseXorAssign :: _             => (tl ts,Ast.AssignBitwiseXor)
           | LogicalOrAssign :: _             => (tl ts,Ast.AssignLogicalOr)
           | BitwiseOrAssign :: _             => (tl ts,Ast.AssignBitwiseOr)
-          | PlusAssign :: _                 => (tl ts,Ast.AssignPlus)
+          | PlusAssign :: _                 => (tl ts,Ast.AssignPlus NONE)
           | LeftShiftAssign :: _             => (tl ts,Ast.AssignLeftShift)
-          | MinusAssign :: _                 => (tl ts,Ast.AssignMinus)
+          | MinusAssign :: _                 => (tl ts,Ast.AssignMinus NONE)
           | RightShiftAssign :: _               => (tl ts,Ast.AssignRightShift)
           | UnsignedRightShiftAssign :: _     => (tl ts,Ast.AssignRightShiftUnsigned)
-          | MultAssign :: _                   => (tl ts,Ast.AssignTimes)
+          | MultAssign :: _                   => (tl ts,Ast.AssignTimes NONE)
           | _ => raise ParseError
 
 (*

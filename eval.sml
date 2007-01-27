@@ -364,11 +364,11 @@ and evalSetExpr (scope:Mach.SCOPE)
             in
                 case aop of 
                     Ast.Assign => v
-                  | Ast.AssignPlus => modifyWith Ast.Plus
-                  | Ast.AssignMinus => modifyWith Ast.Minus
-                  | Ast.AssignTimes => modifyWith Ast.Times
-                  | Ast.AssignDivide => modifyWith Ast.Divide
-                  | Ast.AssignRemainder => modifyWith Ast.Remainder
+                  | Ast.AssignPlus mode => modifyWith (Ast.Plus mode)
+                  | Ast.AssignMinus mode => modifyWith (Ast.Minus mode)
+                  | Ast.AssignTimes mode => modifyWith (Ast.Times mode)
+                  | Ast.AssignDivide mode => modifyWith (Ast.Divide mode)
+                  | Ast.AssignRemainder mode => modifyWith (Ast.Remainder mode)
                   | Ast.AssignLeftShift => modifyWith Ast.LeftShift
                   | Ast.AssignRightShift => modifyWith Ast.RightShift
                   | Ast.AssignRightShiftUnsigned => modifyWith Ast.RightShiftUnsigned
@@ -478,15 +478,15 @@ and performBinop (bop:Ast.BINOP)
               | _ => false
     in
         case bop of 
-            Ast.Plus => 
+            Ast.Plus _ => 
             if isNum a andalso isNum b
             then Mach.newNumber ((Mach.toNum a) + (Mach.toNum b))
             else Mach.newString ((Mach.toString a) ^ (Mach.toString b))
-          | Ast.Minus => Mach.newNumber ((Mach.toNum a) - (Mach.toNum b))
-          | Ast.Times => Mach.newNumber ((Mach.toNum a) * (Mach.toNum b))
-          | Ast.Divide => Mach.newNumber ((Mach.toNum a) / (Mach.toNum b))
-          | Ast.Remainder => Mach.newNumber (real (Int.rem ((trunc (Mach.toNum a)), 
-                                                            (trunc (Mach.toNum b)))))
+          | Ast.Minus _ => Mach.newNumber ((Mach.toNum a) - (Mach.toNum b))
+          | Ast.Times _ => Mach.newNumber ((Mach.toNum a) * (Mach.toNum b))
+          | Ast.Divide _ => Mach.newNumber ((Mach.toNum a) / (Mach.toNum b))
+          | Ast.Remainder _ => Mach.newNumber (real (Int.rem ((trunc (Mach.toNum a)), 
+                                                              (trunc (Mach.toNum b)))))
                              
           | Ast.LeftShift => wordOp Word.<<
           | Ast.RightShift => wordOp Word.>>
@@ -495,14 +495,14 @@ and performBinop (bop:Ast.BINOP)
           | Ast.BitwiseOr => wordOp Word.orb
           | Ast.BitwiseXor => wordOp Word.xorb
                               
-          | Ast.Equals => Mach.newBoolean (Mach.equals a b)
-          | Ast.NotEquals => Mach.newBoolean (not (Mach.equals a b))
-          | Ast.StrictEquals => Mach.newBoolean (Mach.equals a b)
-          | Ast.StrictNotEquals => Mach.newBoolean (not (Mach.equals a b))
-          | Ast.Less => Mach.newBoolean (Mach.less a b)
-          | Ast.LessOrEqual => Mach.newBoolean ((Mach.less a b) orelse (Mach.equals a b))
-          | Ast.Greater => Mach.newBoolean (not ((Mach.less a b) orelse (Mach.equals a b)))
-          | Ast.GreaterOrEqual => Mach.newBoolean (not (Mach.less a b))
+          | Ast.Equals _ => Mach.newBoolean (Mach.equals a b)
+          | Ast.NotEquals _ => Mach.newBoolean (not (Mach.equals a b))
+          | Ast.StrictEquals _ => Mach.newBoolean (Mach.equals a b)
+          | Ast.StrictNotEquals _ => Mach.newBoolean (not (Mach.equals a b))
+          | Ast.Less _ => Mach.newBoolean (Mach.less a b)
+          | Ast.LessOrEqual _ => Mach.newBoolean ((Mach.less a b) orelse (Mach.equals a b))
+          | Ast.Greater _ => Mach.newBoolean (not ((Mach.less a b) orelse (Mach.equals a b)))
+          | Ast.GreaterOrEqual _ => Mach.newBoolean (not (Mach.less a b))
                                   
           | _ => LogErr.unimplError ["unhandled binary operator type"]
     end
@@ -533,7 +533,6 @@ and evalBinaryOp (scope:Mach.SCOPE)
         end
         
       | _ => performBinop bop (evalExpr scope aexpr) (evalExpr scope bexpr)
-
 
 and evalCondExpr (scope:Mach.SCOPE) 
                  (cond:Ast.EXPR) 

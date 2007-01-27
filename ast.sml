@@ -37,6 +37,10 @@ datatype ROUNDING_MODE =
        | HalfDown
        | HalfEven
 
+type NUMERIC_MODE = { numberType: NUMBER_TYPE,
+                      roundingMode: ROUNDING_MODE,
+                      precision: int }
+     
 datatype TRIOP =
          Cond
 
@@ -46,11 +50,11 @@ datatype BINTYPEOP =
        | To
 
 datatype BINOP =
-         Plus
-       | Minus
-       | Times
-       | Divide
-       | Remainder
+         Plus of NUMERIC_MODE option
+       | Minus of NUMERIC_MODE option
+       | Times of NUMERIC_MODE option
+       | Divide of NUMERIC_MODE option
+       | Remainder of NUMERIC_MODE option
        | LeftShift
        | RightShift
        | RightShiftUnsigned
@@ -61,24 +65,24 @@ datatype BINOP =
        | LogicalOr
        | InstanceOf
        | In
-       | Equals
-       | NotEquals
-       | StrictEquals
-       | StrictNotEquals
-       | Less
-       | LessOrEqual
-       | Greater
-       | GreaterOrEqual
+       | Equals of NUMERIC_MODE option
+       | NotEquals of NUMERIC_MODE option
+       | StrictEquals of NUMERIC_MODE option
+       | StrictNotEquals of NUMERIC_MODE option
+       | Less of NUMERIC_MODE option
+       | LessOrEqual of NUMERIC_MODE option
+       | Greater of NUMERIC_MODE option
+       | GreaterOrEqual of NUMERIC_MODE option
        | Comma
        | DefVar
 
 datatype ASSIGNOP =
          Assign
-       | AssignPlus
-       | AssignMinus
-       | AssignTimes
-       | AssignDivide
-       | AssignRemainder
+       | AssignPlus of NUMERIC_MODE option
+       | AssignMinus of NUMERIC_MODE option
+       | AssignTimes of NUMERIC_MODE option
+       | AssignDivide of NUMERIC_MODE option
+       | AssignRemainder of NUMERIC_MODE option
        | AssignLeftShift
        | AssignRightShift
        | AssignRightShiftUnsigned
