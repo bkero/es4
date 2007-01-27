@@ -1,20 +1,33 @@
 /* E262-4 draft proposals:bytearray 
  *
- * Lars and Brendan agree (2007-01-26) that this class is final,
+ * The system needs to know to construct ByteArray instances that have
+ * some facility for storing byte data; those data are accessed by
+ * magic::getByteArrayByte and magic::setByteArrayByte.
+ *
+ *
+ * Lars and Brendan agreed (2007-01-26) that this class is final,
  * non-dynamic, and nullable.
+ *
+ * Lars and Brendan agreed (2007-01-26) that the arguments and return
+ * value of get* can't be constrained by types (because arbitrary
+ * properties can be added to the prototype object).  Thus the
+ * strict-mode typechecking behavior spelled out in the proposal must
+ * be special-cased in the type checker.
+ *
+ * In the case of set* the arguments can't be constrained because
+ * value conversion (from arbitrary things to uint) would be more
+ * permissive than we wish to be.
  */
 final class ByteArray
 {
     function ByteArray(n : uint = 0) {
-        for ( let i : uint ; i < n ; i++ )
-            magic::setByteArrayByte(this, i, 0);
-        _length = n;
+        length = n;
     }
 
     static function to(a : Array!) : ByteArray!
         this.intrinsic::to(a);
 
-    static intrinsic function to(a : Array!) : ByteArray! {
+    intrinsic static function to(a : Array!) : ByteArray! {
         let n  : uint = a.length;
         let ba : ByteArray = new ByteArray(n);
         for ( let i : uint = 0 ; i < n ; i++ )
@@ -24,48 +37,58 @@ final class ByteArray
 
     static function fromString(s : string) : ByteArray! {
         let n  : uint = s.length;
-        let ba : ByteArray = new ByteArray(n);
+        let ba : ByteArray! = new ByteArray(n);
             
         for ( let i : uint = 0; i < n; i++ )
             ba[i] = s.charCodeAt(i);
         return a;
     }
 
-    static function fromArray(a:Array) : ByteArray!
+    static function fromArray(a:Array) : ByteArray
         a to ByteArray;
 
     function get length() : uint
         _length;
 
     function set length(n : uint) : void {
-        for ( let i : uint = _length ; i < n ; i++ )
+        for ( let i : uint = length ; i < n ; i++ )
             magic::setByteArrayByte(this, n, 0);
         _length = n;
     }
 
-    function get *(k) : uint {
-        if (k is uint)
-            return magic::getByteArrayByte(this, k to uint);
+    function get *(k) {
+        if (k is Numeric && intrinsic::isIntegral(k) && k >= 0 && k <= 0xFFFFFFFE) {
+            let (k : uint = k to uint) 
+            {
+                if (k < length)
+                    return magic::getByteArrayByte(this, k to uint);
+                else
+                    return 0;
+            }
+        }
         else
-            return intrinsic::get(this, k);
+            return intrinsic::get(k);
     }
 
     function set *(k, v) : void {
-        if (k is uint) {
-            let idx : uint = k to uint;
-            if (idx >= _length)
-                length = idx+1;  // Setting "length" (not "_length") performs zero-filling
-            magic::setByteArrayByte(this, idx, (v to uint) & 255);
+        if (k is Numeric && intrinsic::isIntegral(k) && k >= 0 && k <= 0xFFFFFFFE) {
+            let (k : uint = k to uint,
+                 v : uint = v to uint)
+            {
+                if (k >= length)
+                    length = k+1;
+                magic::setByteArrayByte(this, k, v);
+            }
         }
         else
-            intrinisic::set(this, k, v);
+            intrinsic::set(k, v);
     }
 
     prototype function toString(this: ByteArray) 
-        this.toString();
+        this.intrinsic::toString();
 
     intrinsic function toString() : string {
-        var n : uint = _length;
+        var n : uint = length;
         var s : string = "";
         for ( let i:int = 0; i < n; i++ )
             s += String.fromCharCode(this[i]);
