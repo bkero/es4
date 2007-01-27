@@ -15,6 +15,15 @@ type CONTEXT =
 
 type ENV = CONTEXT list
 
+fun mergeOpts (a:('a list) option) 
+              (b:('a list) option)
+    : ('a list) option =
+    case (a,b) of
+        (NONE, NONE) => NONE
+      | (SOME x, NONE) => SOME x
+      | (SOME x, SOME y) => SOME (x @ y)
+      | (NONE, SOME x) => SOME x
+
 fun hasFixture (b:Ast.FIXTURES) 
                (n:Ast.NAME) 
     : bool = 
@@ -127,7 +136,11 @@ type classBlockAnalysis =
        constructor: Ast.FUNC_DEFN option,
        initializer: Ast.STMT list,
        ifixtures: Ast.FIXTURES, 
-       fixtures: Ast.FIXTURES }
+       fixtures: Ast.FIXTURES,
+       iinitializers: Ast.INITIALIZERS, 
+       pinitializers: Ast.INITIALIZERS, 
+       initializers: Ast.INITIALIZERS
+     }
 
 
 fun analyzeClassBlock (env:ENV) 
@@ -217,17 +230,12 @@ fun analyzeClassBlock (env:ENV)
               constructor = ctorDefn,
               initializer = newStmts,               
               fixtures = f1,
-              ifixtures = f2 }
+              ifixtures = f2,
+              iinitializers = [], 
+              pinitializers = [], 
+              initializers = [] }
     end
 
-and mergeFixtureOpts (a:Ast.FIXTURES option) 
-                     (b:Ast.FIXTURES option) :
-    Ast.FIXTURES option =
-    case (a,b) of
-        (NONE, NONE) => NONE
-      | (SOME x, NONE) => SOME x
-      | (SOME x, SOME y) => SOME (x @ y)
-      | (NONE, SOME x) => SOME x
 
 and mergeClasses (base:Ast.CLASS_DEFN) 
                  (curr:Ast.CLASS_DEFN) 
@@ -240,11 +248,20 @@ and mergeClasses (base:Ast.CLASS_DEFN)
       final = (#final curr),
       params = (#params curr),
       extends = (#extends curr),
-      implements = (#implements curr) @ (#implements base),
-      classFixtures = (#classFixtures curr),
-      instanceFixtures = (mergeFixtureOpts (#instanceFixtures base) 
-                                           (#instanceFixtures curr)),
+      implements = (#implements curr) @ (#implements base),      
       body = (#body curr),
+
+      classFixtures = (#classFixtures curr),
+
+      instanceFixtures = (mergeOpts (#instanceFixtures base) 
+                                    (#instanceFixtures curr)),
+      instanceInitializers = (mergeOpts (#instanceInitializers curr)
+                                        (#instanceInitializers base)),
+      protoInitializers = (mergeOpts (#protoInitializers curr)
+                                     (#protoInitializers base)),
+      classInitializers = (mergeOpts (#classInitializers curr)
+                                     (#classInitializers base)),
+
       protoVars = (#protoVars curr),
       protoMethods = (#protoMethods curr),
       instanceVars = (#instanceVars curr) @ (#instanceVars base),
@@ -308,6 +325,10 @@ and resolveOneClass (env:ENV)
                       
                       classFixtures = SOME (#fixtures cba),
                       instanceFixtures = SOME (#ifixtures cba),
+                      classInitializers = SOME (#initializers cba),
+                      protoInitializers = SOME (#pinitializers cba),
+                      instanceInitializers = SOME (#iinitializers cba),
+
                       body = (#body curr),
                       
                       protoVars = (#protoVars cba),
@@ -469,7 +490,11 @@ and defFunc (env:ENV)
             val newFunc = Ast.Func { name = name, 
                                      fsig = newFsig, 
                                      body = defBlock (funcCtx :: env) body,
-                                     fixtures = SOME innerFixtures }
+                                     typeParamFixtures = NONE,
+                                     paramFixtures = NONE,
+                                     bodyFixtures = SOME innerFixtures,
+                                     paramInitializers = NONE,
+                                     bodyInitializers = NONE }
         in
             (outerFixtures, { kind = (#kind f), 
                               ns = newNsExpr, 
@@ -571,7 +596,7 @@ and defExpr (env:ENV)
             Ast.ApplyTypeExpr { expr = sub expr,
                                 actuals = map (defTyExpr env) actuals }
 
-          | Ast.LetExpr { defs, body, fixtures } => 
+          | Ast.LetExpr { defs, body, fixtures, initializers } => 
             let
                 val (f0, newDefs) = defVars env defs 
                 val c0 = newContext env f0
@@ -579,14 +604,15 @@ and defExpr (env:ENV)
             in
                 Ast.LetExpr { defs = newDefs,
                               body = newBody,
-                              fixtures = SOME f0 }
+                              fixtures = SOME f0,
+                              initializers = NONE }
             end
 
           | Ast.NewExpr { obj, actuals } => 
             Ast.NewExpr { obj = sub obj,
                           actuals = subs actuals }
 
-          | Ast.FunExpr { ident, fsig, body, fixtures } => 
+          | Ast.FunExpr { ident, fsig, body, ...} => 
             let
                 val (newFsig, _, innerFixtures) = 
                     case ident of 
@@ -601,9 +627,13 @@ and defExpr (env:ENV)
                 Ast.FunExpr { ident = ident,
                               fsig = newFsig,
                               body = defBlock (funcCtx :: env) body,
-                              fixtures = SOME innerFixtures }
+                              typeParamFixtures = NONE,
+                              paramFixtures = NONE,
+                              bodyFixtures = SOME innerFixtures,
+                              paramInitializers = NONE,
+                              bodyInitializers = NONE }
             end
-
+            
           | Ast.ObjectRef { base, ident } =>
             Ast.ObjectRef { base = sub base,
                             ident = defIdentExpr env ident }
@@ -665,7 +695,8 @@ and defStmt (env:ENV)
     let
         fun reconstructForEnumStmt (fe:Ast.FOR_ENUM_STMT) = 
             case fe of 
-                { ptrn, obj, defns, contLabel, body, fixtures } => 
+                { ptrn, obj, defns, contLabel, body, 
+                  fixtures, initializers } => 
                 let
                     val newPtrn = 
                         case ptrn of 
@@ -681,7 +712,8 @@ and defStmt (env:ENV)
                       defns = newDefns,
                       contLabel = contLabel,
                       body = newBody, 
-                      fixtures = SOME f0 }
+                      fixtures = SOME f0,
+                      initializers = NONE }
                 end
         fun reconstructWhileStmt (w:Ast.WHILE_STMT) = 
             case w of 
@@ -695,7 +727,8 @@ and defStmt (env:ENV)
                       contLabel=contLabel }
                 end
 
-        fun reconstructForStmt { defns, init, cond, update, contLabel, body, fixtures } =
+        fun reconstructForStmt { defns, init, cond, update, contLabel, body, 
+                                 fixtures, initializers } =
             let
                 val (f0, newDefns) = defVars env defns
                 val c0 = newContext env f0
@@ -711,17 +744,19 @@ and defStmt (env:ENV)
                               update = newUpdate,
                               contLabel = contLabel,
                               body = newBody,
-                              fixtures = SOME f0}
+                              fixtures = SOME f0,
+                              initializers = NONE }
             end
             
-        fun reconstructCatch { bind, fixtures, body } =
+        fun reconstructCatch { bind, body, fixtures, initializers } =
             let 
                 val (f0, newBind) = defVar env Ast.Var (Ast.Internal "") bind
                 val c0 = newContext env f0
             in                     
                 { bind = newBind, 
                   body = defBlock (c0 :: env) body,
-                  fixtures = SOME f0 }
+                  fixtures = SOME f0,
+                  initializers = NONE }
             end            
 
         fun reconstructCase { label, body } =
@@ -942,7 +977,8 @@ and defBlockFull
                         fixtures = SOME (pragmaFixtures @ 
                                          nsFixtures @ 
                                          classFixtures @ 
-                                         defnFixtures) }
+                                         defnFixtures),
+                        initializers = NONE }
         end
 
 

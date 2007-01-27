@@ -369,7 +369,7 @@ and verifyExpr ((ctxt as {env,this,...}):CONTEXT) (e:EXPR) :TYPE_EXPR =
           annotatedTy
         end
       | ListExpr l => List.last (List.map (verifyExpr ctxt) l)
-      | LetExpr {defs, body, fixtures } => 
+      | LetExpr {defs, body, fixtures, initializers } => 
           let val extensions = List.concat (List.map (fn d => verifyBinding ctxt d) defs)
           in
 	    checkForDuplicates extensions;
@@ -385,7 +385,9 @@ and verifyExpr ((ctxt as {env,this,...}):CONTEXT) (e:EXPR) :TYPE_EXPR =
        | LexicalRef {ident=Identifier { ident, openNamespaces }} =>
 	 lookupProgramVariable env ident
 
-       | FunExpr { ident, fsig, body, fixtures } 
+       | FunExpr { ident, fsig, body, 
+		   typeParamFixtures, paramFixtures, bodyFixtures, 
+		   paramInitializers, bodyInitializers } 
 	 =>
 	 let val ctxt3 = verifyFunctionSignature ctxt fsig 
 	 in
@@ -712,7 +714,7 @@ and verifyStmt ((ctxt as {this,env,lbls,retTy}):CONTEXT) (stmt:STMT) =
         verifyStmt (withEnv (ctxt, foldl extendEnv env extensions)) body  
     end
 
-  | ForStmt { defns, init, cond, update, contLabel, body, fixtures } =>
+  | ForStmt { defns, init, cond, update, contLabel, body, fixtures, initializers } =>
     let val extensions = verifyVarBindings ctxt defns
         val ctxt' = withEnv (ctxt, foldl extendEnv env extensions)
 	fun verifyExprs exprs = 
@@ -767,7 +769,9 @@ and verifyDefn ((ctxt as {this,env,lbls,retTy}):CONTEXT) (d:DEFN) : (TYPE_ENV * 
 	 VariableDefn {bindings,...} => 
 	 (List.concat (List.map (fn d => verifyVarBinding ctxt d) bindings), []) 
        | FunctionDefn { kind, func,... } =>
-	 let val Func {name,fsig,body,fixtures} = func
+	 let val Func {name,fsig,body,
+		       typeParamFixtures, paramFixtures, bodyFixtures,
+		       paramInitializers, bodyInitializers } = func
 	     val FunctionSignature { typeParams, params, inits, 
 				     returnType, thisType, hasBoundThis, hasRest } 
 	       = fsig
@@ -795,7 +799,7 @@ and verifyDefns ctxt ([]:DEFN list) : (TYPE_ENV * int list) = ([], [])
             (extensions1 @ extensions2, classes1 @ classes2)
         end
 
-and verifyBlock (ctxt as {env,...}) (Block {pragmas=pragmas,defns=defns,stmts=stmts,fixtures}) =
+and verifyBlock (ctxt as {env,...}) (Block {pragmas=pragmas,defns=defns,stmts=stmts,fixtures,initializers}) =
     let val (extensions, classes) = verifyDefns ctxt defns
         val ctxt' = withEnv (ctxt, foldl extendEnv env extensions)
     in
