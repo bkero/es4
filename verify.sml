@@ -35,7 +35,24 @@ fun assert b s = if b then () else (raise Fail s)
 (* TODO: do we need to consider namespaces here ??? *)
 type TYPE_ENV = (IDENT * TYPE_EXPR option) list
 
-fun extendEnv ((name, ty), env:TYPE_ENV) :TYPE_ENV = (name, ty)::env
+fun checkForDuplicates [] = ()
+  | checkForDuplicates (x::xs) =
+    if List.exists (fn y => x = y) xs
+    then raise VerifyError "concurrent definition"
+    else checkForDuplicates xs
+      
+fun checkForDuplicateExtension extensions =
+    let val (names, _) = ListPair.unzip extensions
+    in
+      checkForDuplicates names
+end
+
+fun extendEnv ((name,ty),(env:TYPE_ENV)) : TYPE_ENV = (name, ty)::env
+fun extendEnvWithTypeVars (params:IDENT list) (env:TYPE_ENV):TYPE_ENV =
+    let in
+	checkForDuplicates params;
+	foldl (fn (p,env) => (extendEnv ((p,NONE),env))) env params
+    end
 
 fun lookupProgramVariable (env:TYPE_ENV) (name:IDENT) : TYPE_EXPR =
     case List.find (fn (n,_) => n=name) env of
@@ -51,17 +68,6 @@ fun withLbls  ({this=this, env=env, lbls=_,    retTy=retTy}, lbls) = {this=this,
 fun withRetTy ({this=this, env=env, lbls=lbls, retTy=_},    retTy) = {this=this, env=env, lbls=lbls, retTy=retTy}
 
 
-fun checkForDuplicates' [] = ()
-  | checkForDuplicates' (x::xs) =
-    if List.exists (fn y => x = y) xs
-    then raise VerifyError "concurrent definition"
-    else checkForDuplicates' xs
-      
-fun checkForDuplicates extensions =
-    let val (names, _) = ListPair.unzip extensions
-    in
-      checkForDuplicates' names
-end
 
 fun unOptionDefault NONE def = def
   | unOptionDefault (SOME v) _ = v
@@ -76,17 +82,17 @@ fun gensym (s:IDENT):IDENT =
 	s^"$"^(Int.toString (!gensymCounter))
     end
 
-fun subst (s:((IDENT*TYPE_EXPR) list)) (t:TYPE_EXPR):TYPE_EXPR = 
+fun substTypeExpr (s:(IDENT*TYPE_EXPR) list) (t:TYPE_EXPR):TYPE_EXPR = 
     let in
 	case t of
 	    UnionType ts => 
-	    UnionType (map (subst s) ts)
+	    UnionType (map (substTypeExpr s) ts)
 	  | ArrayType ts => 
-	    ArrayType (map (subst s) ts)
+	    ArrayType (map (substTypeExpr s) ts)
 	  | AppType {base, args} => 
-	    AppType {base=subst s base, args=map (subst s) args}
+	    AppType {base=substTypeExpr s base, args=map (substTypeExpr s) args}
 	  | NullableType {expr, nullable}
-	    => NullableType {expr=subst s expr, nullable=nullable}
+	    => NullableType {expr=substTypeExpr s expr, nullable=nullable}
 
 	  | NominalType { ident=(Identifier {ident=ident, openNamespaces=_})} =>
 	    let in
@@ -102,7 +108,7 @@ fun subst (s:((IDENT*TYPE_EXPR) list)) (t:TYPE_EXPR):TYPE_EXPR =
 
 	  | ObjectType fields =>
 	    ObjectType (map (fn {name,ty} => 
-				{name=name,ty=subst s ty})
+				{name=name,ty=substTypeExpr s ty})
 			fields)
 	  | SpecialType st => SpecialType st
 
@@ -116,25 +122,23 @@ fun subst (s:((IDENT*TYPE_EXPR) list)) (t:TYPE_EXPR):TYPE_EXPR =
 			     (oldId, 
 			      NominalType { ident=Identifier {ident=newId,openNamespaces=[]}}))
 			oldNew
-		val bothSubs = fn t => subst s (subst nuSub t)
+		val bothSubs = fn t => substTypeExpr s (substTypeExpr nuSub t)
 		val nuTypeParams = map (fn (oldId,newId) => newId) oldNew
-		val nuParams =
-		    map 
-			(fn Binding {init,pattern,ty} =>
-			    Binding {init=init,pattern=pattern, 
-				         ty=Option.map bothSubs ty})
-			params
+		val nuParams = map (fn t => substVarBinding s (substVarBinding nuSub t)) params
 		in
 		FunctionType (FunctionSignature {typeParams=nuTypeParams,
 						 params=nuParams,
-						 inits=inits,
+						 inits=inits, (* ignored in types *)
 						 returnType = bothSubs returnType,
 						 thisType = Option.map bothSubs thisType,
 						 hasBoundThis=hasBoundThis,
 						 hasRest=hasRest})
 		end
     end 
-	
+
+and substVarBinding (s:(IDENT*TYPE_EXPR) list) (Binding {init,pattern,ty}:VAR_BINDING):VAR_BINDING = 
+    Binding {init=init,pattern=pattern, ty=Option.map (substTypeExpr s) ty}
+
 (************************* Compatibility *********************************)
 
 fun l [] = 0
@@ -272,9 +276,25 @@ fun mergeTypes t1 t2 =
 	t1
 
 fun normalizeType (t:TYPE_EXPR):TYPE_EXPR =
-    case t of
-	AppType {base, args } => base (*TODO*)
-      | _ => t
+    let in
+	case t of
+	    AppType {base=FunctionType (FunctionSignature {typeParams,params,inits,returnType,
+							   thisType,hasBoundThis,hasRest}), 
+		     args } =>
+	    let val _ =	assert (length args = length typeParams);
+		val sub = ListPair.zip (typeParams,args)
+		fun applySub t = substTypeExpr sub t
+	    in
+		FunctionType (FunctionSignature { typeParams=[],
+						  params=map (substVarBinding sub) params,
+						  inits=inits,
+						  returnType=substTypeExpr sub returnType,
+						  thisType= Option.map (substTypeExpr sub) thisType,
+						  hasBoundThis=hasBoundThis,
+						  hasRest=hasRest })
+	    end
+	  | _ => t
+    end
 
 (*
  * TODO: when type checking a function body, handle CalledEval
@@ -303,14 +323,23 @@ fun verifyTypeExpr ((ctxt as {env,this,...}):CONTEXT) (ty:TYPE_EXPR) : unit =
 		verifyFunctionSignature ctxt fsig;
 		()
 	    end
+	  | ObjectType fields => 
+	    let val names: IDENT list =
+		    map (fn {name,ty} =>
+			     (verifyTypeExpr ctxt ty;
+			     name))
+			fields
+	    in
+		checkForDuplicates names
+	    end
+	
     (*TODO:
           | NominalType of { ident : IDENT_EXPR, nullable: bool option } 
- 	  | ObjectType of FIELD_TYPE list
-     *)	    
+      *)	    
     end
 
 and verifyTypeExprs  ((ctxt as {env,this,...}):CONTEXT) (tys:TYPE_EXPR list) : unit = 
-    (List.app (fn t => verifyTypeExpr ctxt t) tys)
+    (List.app (verifyTypeExpr ctxt) tys)
 
 and verifyFunctionSignature  ((ctxt as {env,this,...}):CONTEXT)
 			 (FunctionSignature {typeParams, params, inits, returnType, 
@@ -325,7 +354,7 @@ and verifyFunctionSignature  ((ctxt as {env,this,...}):CONTEXT)
 	(* Add the return type to the context. *)
 	val ctxt3 = withRetTy (ctxt2, SOME returnType)
     in
-	checkForDuplicates (extensions1 @ extensions2);
+	checkForDuplicateExtension (extensions1 @ extensions2);
 	verifyTypeExpr ctxt1 returnType;
 	(case thisType of
 	     NONE => ()
@@ -372,7 +401,7 @@ and verifyExpr ((ctxt as {env,this,...}):CONTEXT) (e:EXPR) :TYPE_EXPR =
       | LetExpr {defs, body, fixtures } => 
           let val extensions = List.concat (List.map (fn d => verifyBinding ctxt d) defs)
           in
-	    checkForDuplicates extensions;
+	    checkForDuplicateExtension extensions;
 	    verifyExprList (withEnv (ctxt, foldl extendEnv env extensions)) body
 	  end
        | NullaryExpr This => this
@@ -393,52 +422,7 @@ and verifyExpr ((ctxt as {env,this,...}):CONTEXT) (e:EXPR) :TYPE_EXPR =
 	     FunctionType fsig
          end
 
-       | CallExpr { func, actuals } =>
-         let val functy = verifyExpr ctxt func;
-	     val actualsTy = (map (fn a => verifyExpr ctxt a) actuals)
-	 in case normalizeType functy of
-		SpecialType Any =>
-		(* not much to do *)
-		anyType
-	      | FunctionType 
-		    (FunctionSignature { typeParams, params, returnType, inits, thisType, hasBoundThis (*deprecated*),
-					 hasRest })
-		=> 
-		let 
-		in
-		    if not (null typeParams)
-		    then raise VerifyError "Attempt to apply polymorphic function to values"
-		    else ();
-		    (* check this has compatible type *)
-		    case thisType of
-			NONE => ()  (* this lexically bound, nothing to check *)
-		      | SOME t => checkCompatible this t;
-		    (* check compatible parameters *)
-		    let val (normalParams, restParam) =
-			    if hasRest
-			    then (List.rev (List.tl (List.rev params)), SOME (List.last params))
-			    else (params, NONE)
-			(* handleArgs normalParams actualTys *)
-			fun handleArgs [] [] = ()
-			  | handleArgs (p::pr) (a::ar) =				
-			    let val Binding {init,pattern,ty} = p in
-				checkCompatible a (unOptionDefault ty anyType);
-				handleArgs pr ar
-			    end
-			  | handleArgs [] (_::_) = 
-			    if hasRest 
-			    then (* all ok, no type checking to do on rest arg *) ()
-			    else raise VerifyError "Too many args to function"
-			  | handleArgs (_::_) [] =
-			    raise VerifyError "Not enough args to function"
-		    in
-			handleArgs params actualsTy;
-			returnType
-		    end
-		end
-	      | _ => raise VerifyError "Function expression does not have a function type"
-	 end
-
+       | CallExpr { func, actuals } => verifyCallExpr ctxt func actuals
        | ApplyTypeExpr {expr, actuals} =>
 	 (* Can only instantiate Functions, classes, and interfaces *)
 	 let val exprTy = verifyExpr ctxt expr;
@@ -462,7 +446,6 @@ and verifyExpr ((ctxt as {env,this,...}):CONTEXT) (e:EXPR) :TYPE_EXPR =
 	     ty
 	 end
 
-
        | _ => (TextIO.print "verifyExpr incomplete: "; Pretty.ppExpr e; raise Match)
     end
     
@@ -476,12 +459,8 @@ and verifyExpr ((ctxt as {env,this,...}):CONTEXT) (e:EXPR) :TYPE_EXPR =
            init: EXPR } list
 
      and EXPR =
-       | TypeExpr of TYPE_EXPR
-       | YieldExpr of EXPR option
+        | YieldExpr of EXPR option
        | SuperExpr of EXPR option
-
-       | CallExpr of {func: EXPR,
-                      actuals: EXPR list}
 
        | Ref of { base: EXPR option,
                   ident: IDENT_EXPR }
@@ -499,6 +478,54 @@ and verifyExpr ((ctxt as {env,this,...}):CONTEXT) (e:EXPR) :TYPE_EXPR =
        | Expression of EXPR   (* for bracket exprs: o[x] and @[x] *)
 
 *)
+
+
+and verifyCallExpr  ((ctxt as {env,this,...}):CONTEXT) func actuals =
+    let val functy = verifyExpr ctxt func;
+	val actualsTy = (map (fn a => verifyExpr ctxt a) actuals)
+    in case normalizeType functy of
+	   SpecialType Any =>
+	   (* not much to do *)
+	   anyType
+	 | FunctionType 
+	       (FunctionSignature { typeParams, params, returnType, inits, thisType, hasBoundThis (*deprecated*),
+				    hasRest })
+	   => 
+	   let 
+	   in
+	       if not (null typeParams)
+	       then raise VerifyError "Attempt to apply polymorphic function to values"
+	       else ();
+	       (* check this has compatible type *)
+	       case thisType of
+		   NONE => ()  (* this lexically bound, nothing to check *)
+		 | SOME t => checkCompatible this t;
+	       (* check compatible parameters *)
+	       let val (normalParams, restParam) =
+		       if hasRest
+		       then (List.rev (List.tl (List.rev params)), SOME (List.last params))
+		       else (params, NONE)
+		   (* handleArgs normalParams actualTys *)
+		   fun handleArgs [] [] = ()
+		     | handleArgs (p::pr) (a::ar) =				
+		       let val Binding {init,pattern,ty} = p in
+			   checkCompatible a (unOptionDefault ty anyType);
+			   handleArgs pr ar
+		       end
+		     | handleArgs [] (_::_) = 
+		       if hasRest 
+		       then (* all ok, no type checking to do on rest arg *) ()
+		       else raise VerifyError "Too many args to function"
+		     | handleArgs (_::_) [] =
+		       raise VerifyError "Not enough args to function"
+	       in
+		   handleArgs params actualsTy;
+		   returnType
+	       end
+	   end
+	 | _ => raise VerifyError "Function expression does not have a function type"
+    end
+    
 
 (* TODO: verifyPattern returns a pair of env extension and (inferred) type?
          or takes a type (checked) and returns just extension? *)
@@ -642,16 +669,17 @@ and verifyBinaryTypeExpr (ctxt:CONTEXT) (bop:BINTYPEOP, arg:EXPR, t:TYPE_EXPR) =
 
 
 and verifyTrinaryExpr (ctxt:CONTEXT) (triop:TRIOP, a:EXPR, b:EXPR, c:EXPR) =
-    let
-    in
-	case triop of
-	    _ => 
-	    let in
-		TextIO.print "verifyTrinaryExpr incomplete: "; 
-		Pretty.ppExpr (TrinaryExpr (triop,a,b,c)); 
-		raise Match
-	    end
-    end
+    case triop of
+	Cond =>
+	let val aty = verifyExpr ctxt a
+	    val bty = verifyExpr ctxt b
+	    val cty = verifyExpr ctxt c
+	in
+	    checkConvertible aty boolType;
+	    (*FIXME*)
+	    checkConvertible bty cty;
+	    cty
+	end
 
 (****************************** Verifying Statements ********************************)
 
@@ -666,36 +694,39 @@ and verifyStmt ((ctxt as {this,env,lbls,retTy}):CONTEXT) (stmt:STMT) =
    case stmt of
     EmptyStmt => ()
   | ExprStmt e => (verifyExprList ctxt e; ())
-  | IfStmt {cnd,thn,els} => (
+  | IfStmt {cnd,thn,els} => 
+    let in
 	checkCompatible (verifyExpr ctxt cnd) boolType;
 	verifyStmt ctxt thn;
 	verifyStmt ctxt els
-    )
+    end
 
-  | (DoWhileStmt {cond,body,contLabel} | WhileStmt {cond,body,contLabel}) => (
+  | (DoWhileStmt {cond,body,contLabel} | WhileStmt {cond,body,contLabel}) => 
+    let in
 	checkCompatible (verifyExpr ctxt cond) boolType;
 	verifyStmt (withLbls (ctxt, contLabel::lbls)) body
-    )
+    end
 
-  | ReturnStmt e => (
+  | ReturnStmt e => 
+    let in
 	case retTy of
-	  NONE => raise VerifyError "return not allowed here"
-        | SOME retTy => checkCompatible (verifyExprList ctxt e) retTy
-    )
+	    NONE => raise VerifyError "return not allowed here"
+          | SOME retTy => checkCompatible (verifyExprList ctxt e) retTy
+    end
 
   | (BreakStmt NONE | ContinueStmt NONE) =>  
-    (
+    let in
 	case lbls of
-	  [] => raise VerifyError "Not in a loop"
-	| _ => ()
-    )
+	    [] => raise VerifyError "Not in a loop"
+	  | _ => ()
+    end
 
   | (BreakStmt (SOME lbl) | ContinueStmt (SOME lbl)) => 
-    (
+    let in
 	if List.exists (fn x => x=(SOME lbl)) lbls	
 	then ()
 	else raise VerifyError "No such label"
-    )
+    end
 
   | BlockStmt b => verifyBlock ctxt b
 
@@ -708,7 +739,7 @@ and verifyStmt ((ctxt as {this,env,lbls,retTy}):CONTEXT) (stmt:STMT) =
   | LetStmt (defns, body) =>
     let val extensions = List.concat (List.map (fn d => verifyBinding ctxt d) defns)
     in
-        checkForDuplicates extensions;
+        checkForDuplicateExtension extensions;
         verifyStmt (withEnv (ctxt, foldl extendEnv env extensions)) body  
     end
 
@@ -763,28 +794,50 @@ and verifyStmt ((ctxt as {this,env,lbls,retTy}):CONTEXT) (stmt:STMT) =
 (***************************** Verifying Definitions ****************************************)
 
 and verifyDefn ((ctxt as {this,env,lbls,retTy}):CONTEXT) (d:DEFN) : (TYPE_ENV * int list) =
-    (case d of
-	 VariableDefn {bindings,...} => 
-	 (List.concat (List.map (fn d => verifyVarBinding ctxt d) bindings), []) 
-       | FunctionDefn { kind, func,... } =>
-	 let val Func {name,fsig,body,fixtures} = func
-	     val FunctionSignature { typeParams, params, inits, 
-				     returnType, thisType, hasBoundThis, hasRest } 
-	       = fsig
-	     val { kind, ident } = name
-             val ctxt3 = verifyFunctionSignature ctxt fsig
-	 in
-	     verifyBlock ctxt3 body;
-	     ([(ident, SOME (FunctionType fsig))],[])
-         end
+    let
+    in
+	case d of
+	    VariableDefn {bindings,...} => 
+	    (List.concat (List.map (verifyVarBinding ctxt) bindings), []) 
+	  | FunctionDefn { kind, func,... } =>
+	    let val Func {name,fsig,body,fixtures} = func
+		val FunctionSignature { typeParams, params, inits, 
+					returnType, thisType, hasBoundThis, hasRest } 
+		  = fsig
+		val { kind, ident } = name
+		val ctxt3 = verifyFunctionSignature ctxt fsig
+	    in
+		verifyBlock ctxt3 body;
+		([(ident, SOME (FunctionType fsig))],[])
+            end
+	    
+	  | InterfaceDefn {ident,ns,nonnullable,params,extends,body} =>
+	    let val nuEnv = extendEnvWithTypeVars params env
+	    in
+		verifyBlock (withEnv (ctxt,nuEnv)) body;
+		List.app
+		(fn (superi:IDENT_EXPR) =>
+		    (* need to check that this interface implements _all_ methods of superinterface ident *)
+		    ()
+		)
+		extends;
+		([],[])
+	    end
+		
 
-       | InterfaceDefn {ident,ns,nonnullable,params,extends,body} =>
-	 
 
-	 ([],[])
-
-       | d => (TextIO.print "verifyDefn incomplete: "; Pretty.ppDefinition d; raise Match)
-    )
+(*
+and INTERFACE_DEFN =
+         { ident: IDENT,
+           ns: EXPR,
+           nonnullable: bool,
+           params: IDENT list,
+           extends: IDENT_EXPR list,
+           body: BLOCK }
+     *)
+	    
+	  | d => (TextIO.print "verifyDefn incomplete: "; Pretty.ppDefinition d; raise Match)
+    end
 
 
 and verifyDefns ctxt ([]:DEFN list) : (TYPE_ENV * int list) = ([], [])
@@ -805,6 +858,7 @@ and verifyBlock (ctxt as {env,...}) (Block {pragmas=pragmas,defns=defns,stmts=st
 
 fun verifyProgram { packages, body } = 
     (verifyBlock {this=anyType, env=[], lbls=[], retTy=NONE} body; true)
+
 (* CF: Let this propagate to top-level to see full trace
     handle VerifyError msg => 
 	   let in
