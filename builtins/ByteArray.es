@@ -20,6 +20,8 @@
  */
 final class ByteArray
 {
+    use strict;
+
     function ByteArray(n : uint = 0) {
         length = n;
     }

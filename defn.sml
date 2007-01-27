@@ -10,10 +10,14 @@ structure Defn = struct
 type CONTEXT = 
      { fixtures: Ast.FIXTURES,
        openNamespaces: Ast.NAMESPACE list, 
-       numberType: Ast.NUMBER_TYPE,
-       roundingMode: Ast.ROUNDING_MODE }
+       numericMode: Ast.NUMERIC_MODE }
 
 type ENV = CONTEXT list
+
+val defaultNumericMode : Ast.NUMERIC_MODE =
+    { numberType = Ast.Number,
+      roundingMode = Ast.HalfEven,
+      precision = 20 }
 
 fun hasFixture (b:Ast.FIXTURES) 
                (n:Ast.NAME) 
@@ -108,13 +112,11 @@ fun newContext (env:ENV)
     case env of 
         [] => { fixtures = newContext,
                 openNamespaces = [Ast.Internal ""],
-                numberType = Ast.Number,
-                roundingMode = Ast.HalfEven } 
-      | ({ numberType, roundingMode, openNamespaces, ... } :: _) =>
+                numericMode = defaultNumericMode }
+      | ({ numericMode, openNamespaces, ... } :: _) =>
         { fixtures = newContext,
           openNamespaces = openNamespaces, 
-          numberType = numberType,
-          roundingMode = roundingMode } 
+          numericMode = numericMode } 
 
 
 type classBlockAnalysis = 
@@ -188,8 +190,7 @@ fun analyzeClassBlock (env:ENV)
             val staticDefns = List.filter isStatic defns
             val instanceDefns = List.filter isInstance defns
 
-            val f0 = List.concat (List.map (defPragma env) pragmas)
-            val c0 = newContext env f0
+            val c0 = defPragmas (hd env) pragmas
 
             val (f1, newStaticDefns) = defDefns (c0 :: env) staticDefns
             val c1 = newContext (c0 :: env) f1
@@ -481,13 +482,25 @@ and defFunc (env:ENV)
                               func = newFunc })
         end
 
-        
-and defPragma (env:ENV) 
-              (pragma:Ast.PRAGMA) 
-    : Ast.FIXTURES = 
-    (* FIXME *)
-    []
-
+and defPragmas (ctx:CONTEXT)
+               (pragmas:Ast.PRAGMA list)
+    : CONTEXT =
+    let val mode      = #numericMode ctx
+        val numType   = ref (#numberType mode)
+        val rounding  = ref (#roundingMode mode)
+        val precision = ref (#precision mode)
+    in
+        ( List.app (fn x => case x of 
+                                Ast.UseNumber n => numType := n
+                              | Ast.UseRounding m => rounding := m
+                              | Ast.UsePrecision (Ast.LiteralNumber p) => precision := Real.trunc p
+                              | _ => ()) pragmas ;
+          { fixtures = #fixtures ctx,
+            openNamespaces = #openNamespaces ctx,
+            numericMode = { numberType = !numType, 
+                            roundingMode = !rounding,
+                            precision = !precision } } )
+    end
 
 and defIdentExpr (env:ENV) 
                  (ie:Ast.IDENT_EXPR) 
@@ -535,7 +548,25 @@ and defExpr (env:ENV)
             Ast.TrinaryExpr (t, sub e1, sub e2, sub e3)
             
           | Ast.BinaryExpr (b, e1, e2) => 
-            Ast.BinaryExpr (b, sub e1, sub e2) 
+            let val def = (SOME (#numericMode (hd env)))
+                val opx = (case b of
+                               Ast.Plus _ => Ast.Plus def
+                             | Ast.Minus _ => Ast.Minus def
+                             | Ast.Times _ => Ast.Times def
+                             | Ast.Divide _ => Ast.Divide def
+                             | Ast.Remainder _ => Ast.Remainder def
+                             | Ast.Equals _ => Ast.Equals def
+                             | Ast.NotEquals _ => Ast.NotEquals def
+                             | Ast.StrictEquals _ => Ast.StrictEquals def
+                             | Ast.StrictNotEquals _ => Ast.StrictNotEquals def
+                             | Ast.Less _ => Ast.Less def
+                             | Ast.LessOrEqual _ => Ast.LessOrEqual def
+                             | Ast.Greater _ => Ast.Greater def
+                             | Ast.GreaterOrEqual _ => Ast.GreaterOrEqual def
+                             | _ => b)
+            in
+                Ast.BinaryExpr (opx, sub e1, sub e2)
+            end
             
           | Ast.BinaryTypeExpr (b, e, te) => 
             Ast.BinaryTypeExpr (b, sub e, defTyExpr env te)
@@ -911,9 +942,7 @@ and defBlockFull
     case b of 
         Ast.Block { pragmas, defns, stmts, ... } => 
         let 
-            val pragmaFixtures = List.concat (List.map (defPragma env) pragmas)
-            val pragmaCtx = newContext env pragmaFixtures
-            val e0 = pragmaCtx :: env
+            val e0 = (defPragmas (hd env) pragmas) :: env
 
             val (nsDefns, classDefns, otherDefns) = List.foldl classifyDefnByType ([],[],[]) defns
             val (nsFixtures, newNsDefns) = defDefns e0 (map (Ast.NamespaceDefn) nsDefns)
@@ -939,8 +968,7 @@ and defBlockFull
             Ast.Block { pragmas = pragmas,
                         defns = (newNsDefns @ newClassDefns @ newOtherDefns),
                         stmts = map (defStmt e3) stmts,
-                        fixtures = SOME (pragmaFixtures @ 
-                                         nsFixtures @ 
+                        fixtures = SOME (nsFixtures @ 
                                          classFixtures @ 
                                          defnFixtures) }
         end
@@ -963,8 +991,7 @@ and defProgram (prog:Ast.PROGRAM)
         val topEnv = 
             [{ fixtures = map mkNamespaceFixtureBinding (#packages prog),
                openNamespaces = [Ast.Internal ""],
-               numberType = Ast.Number,
-               roundingMode = Ast.HalfEven }]
+               numericMode = defaultNumericMode }]
     in
         { packages = map (defPackage topEnv) (#packages prog),
           body = defTopBlock topEnv (#body prog) }

@@ -38,4 +38,10 @@ val ppVarDefn = ppRep o cvtVAR_BINDING
 
 val ppType = ppRep o cvtTYPE_EXPR
 
+val ppBinop = ppRep o cvtBINOP
+
+val ppNumericMode = ppRep o cvtNUMERIC_MODE
+
+val ppPragma = ppRep o cvtPRAGMA
+
 end
