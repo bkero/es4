@@ -251,6 +251,7 @@ and mergeClasses (base:Ast.CLASS_DEFN)
       implements = (#implements curr) @ (#implements base),      
       body = (#body curr),
 
+      name = (#name curr),
       classFixtures = (#classFixtures curr),
 
       instanceFixtures = (mergeOpts (#instanceFixtures base) 
@@ -330,6 +331,7 @@ and resolveOneClass (env:ENV)
                       instanceInitializers = SOME (#iinitializers cba),
 
                       body = (#body curr),
+                      name = SOME currName,
                       
                       protoVars = (#protoVars cba),
                       protoMethods = (#protoMethods cba),
@@ -868,7 +870,7 @@ and defNamespace (env:ENV)
                  (nd:Ast.NAMESPACE_DEFN)
     : (Ast.FIXTURES * Ast.NAMESPACE_DEFN) = 
     case nd of 
-        { ident, ns, init } => 
+        { ident, ns, init, name } => 
         let
             val qualNs = resolveExprToNamespace env ns
             val newNs = case init of 
@@ -882,7 +884,8 @@ and defNamespace (env:ENV)
             val fixtureName = { ns = qualNs, id = ident } 
             val newNd = { ident = ident,
                           ns = ns,
-                          init = init }
+                          init = init,
+                          name = SOME fixtureName }
         in
             ([(fixtureName, Ast.NamespaceFixture newNs)], newNd)
         end

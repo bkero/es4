@@ -5183,6 +5183,7 @@ and classDefinition (ts,attrs) =
                                              classFixtures=NONE,
                                              body=nd3,
                                              (* the following field will be populated during the definition phase *)
+                                             name=NONE,
                                              instanceFixtures=NONE,                                    
                                              protoInitializers=NONE,
                                              classInitializers=NONE,
@@ -5338,7 +5339,8 @@ and interfaceDefinition (ts,attrs) =
                                                  ns=ns,
                                                  params=params,
                                                  extends=extends,
-                                                 body=nd3}],
+                                                 body=nd3,
+                                                 name=NONE}],
                        fixtures=NONE,initializers=NONE})
             end
       | _ => raise ParseError
@@ -5388,7 +5390,8 @@ and namespaceDefinition (ts,attrs) =
                       stmts=[],
                       defns=[Ast.NamespaceDefn {ns=ns,
                                                 ident=nd1,
-                                                init=nd2}],
+                                                init=nd2,
+                                                name=NONE}],
                       fixtures=NONE,initializers=NONE})
             end
       | _ => raise ParseError
@@ -5438,7 +5441,8 @@ and typeDefinition (ts,attrs) =
                       stmts=[],
                       defns=[Ast.TypeDefn {ns=ns,
                                            ident=nd1,
-                                           init=nd2}],
+                                           init=nd2,
+                                           name=NONE}],
                       fixtures=NONE,initializers=NONE})
             end
       | _ => raise ParseError

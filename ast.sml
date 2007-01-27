@@ -400,7 +400,9 @@ withtype FIELD =
      and NAMESPACE_DEFN = 
          { ident: IDENT,
            ns: EXPR,
-           init: EXPR option }
+           init: EXPR option,
+           (* Filled in during defn phase *)
+           name: NAME option }
 
      and CLASS_DEFN =
          { ident: IDENT, 
@@ -413,6 +415,7 @@ withtype FIELD =
            implements: IDENT_EXPR list,
            body: BLOCK,
            (* Filled in during defn phase. *)
+           name: NAME option,
            classFixtures: FIXTURES option,
            instanceFixtures: FIXTURES option,
            classInitializers: INITIALIZERS option,
@@ -435,12 +438,16 @@ withtype FIELD =
            nonnullable: bool,
            params: IDENT list,
            extends: IDENT_EXPR list,
-           body: BLOCK }
+           body: BLOCK,
+           (* Filled in during defn phase *)
+           name: NAME option }
          
      and TYPE_DEFN =
          { ident: IDENT,
            ns: EXPR,
-           init: TYPE_EXPR }
+           init: TYPE_EXPR,
+           (* Filled in during defn phase *)
+           name: NAME option }
 
      and FOR_ENUM_STMT =
          { ptrn: PATTERN option,

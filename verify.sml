@@ -815,7 +815,7 @@ and verifyDefn ((ctxt as {this,env,lbls,retTy}):CONTEXT) (d:DEFN) : (TYPE_ENV * 
 		([(ident, SOME (FunctionType fsig))],[])
             end
 	    
-	  | InterfaceDefn {ident,ns,nonnullable,params,extends,body} =>
+	  | InterfaceDefn {ident,ns,nonnullable,params,extends,body,name} =>
 	    let val nuEnv = extendEnvWithTypeVars params env
 	    in
 		verifyBlock (withEnv (ctxt,nuEnv)) body;
