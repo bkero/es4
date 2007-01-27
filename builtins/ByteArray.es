@@ -97,5 +97,5 @@ final class ByteArray
         return s;
     }
 
-    let _length : uint = 0;
+    var _length : uint = 0;
 }
