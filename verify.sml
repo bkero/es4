@@ -144,7 +144,9 @@ and substVarBinding (s:(IDENT*TYPE_EXPR) list) (Binding {init,pattern,ty}:VAR_BI
 fun l [] = 0
   | l (h::t) = 1
 
-fun checkCompatible (t1:TYPE_EXPR) (t2:TYPE_EXPR) : unit = 
+fun checkCompatible (t1:TYPE_EXPR) 
+		    (t2:TYPE_EXPR) 
+    : unit = 
     if isCompatible t1 t2
     then ()
     else let in
@@ -154,7 +156,9 @@ fun checkCompatible (t1:TYPE_EXPR) (t2:TYPE_EXPR) : unit =
 	     raise VerifyError "Types are not compatible"
 	 end
 
-and isCompatible (t1:TYPE_EXPR) (t2:TYPE_EXPR) : bool = 
+and isCompatible (t1:TYPE_EXPR) 
+		 (t2:TYPE_EXPR) 
+    : bool = 
     let 
     in
 	TextIO.print ("Checking compatible\nFirst type: ");
@@ -260,13 +264,16 @@ and isCompatible (t1:TYPE_EXPR) (t2:TYPE_EXPR) : bool =
        | NullableType of {expr:TYPE_EXPR,nullable:bool}
 *)
 
-fun checkBicompatible ty1 ty2 = 
+fun checkBicompatible (ty1:TYPE_EXPR) 
+		      (ty2:TYPE_EXPR)
+    : unit = 
     let in
 	checkCompatible ty1 ty2;
 	checkCompatible ty2 ty1
     end
-
-fun checkConvertible ty1 ty2 =
+    
+fun checkConvertible (ty1:TYPE_EXPR) (ty2:TYPE_EXPR)
+    : unit =
     (* TODO: int to float, etc, and to() methods *)
     checkCompatible ty1 ty2
 
@@ -275,7 +282,8 @@ fun checkConvertible ty1 ty2 =
 fun mergeTypes t1 t2 =
 	t1
 
-fun normalizeType (t:TYPE_EXPR):TYPE_EXPR =
+fun normalizeType (t:TYPE_EXPR)
+    : TYPE_EXPR =
     let in
 	case t of
 	    AppType {base=FunctionType (FunctionSignature {typeParams,params,inits,returnType,
@@ -304,7 +312,9 @@ fun normalizeType (t:TYPE_EXPR):TYPE_EXPR =
 
 (******************** Checking types are well-formed **************************************************)
 
-fun verifyTypeExpr ((ctxt as {env,this,...}):CONTEXT) (ty:TYPE_EXPR) : unit = 
+fun verifyTypeExpr (ctxt as {env,this,...}:CONTEXT)
+		   (ty:TYPE_EXPR) 
+    : unit = 
     let
     in 
 	case ty of
@@ -338,12 +348,14 @@ fun verifyTypeExpr ((ctxt as {env,this,...}):CONTEXT) (ty:TYPE_EXPR) : unit =
       *)	    
     end
 
-and verifyTypeExprs  ((ctxt as {env,this,...}):CONTEXT) (tys:TYPE_EXPR list) : unit = 
+and verifyTypeExprs  (ctxt as {env,this,...}:CONTEXT) 
+		     (tys:TYPE_EXPR list) 
+    : unit = 
     (List.app (verifyTypeExpr ctxt) tys)
 
-and verifyFunctionSignature  ((ctxt as {env,this,...}):CONTEXT)
-			 (FunctionSignature {typeParams, params, inits, returnType, 
-					     thisType, hasBoundThis, hasRest})
+and verifyFunctionSignature  (ctxt as {env,this,...}:CONTEXT)
+			     (FunctionSignature {typeParams, params, inits, returnType, 
+						 thisType, hasBoundThis, hasRest})
     : CONTEXT =
     let (* Add the type parameters to the environment. *)
 	val extensions1 = List.map (fn id => (id,NONE)) typeParams;
@@ -365,7 +377,9 @@ and verifyFunctionSignature  ((ctxt as {env,this,...}):CONTEXT)
 
 (******************** Expressions **************************************************)
 
-and verifyExpr ((ctxt as {env,this,...}):CONTEXT) (e:EXPR) :TYPE_EXPR = 
+and verifyExpr (ctxt as {env,this,...}:CONTEXT) 
+	       (e:EXPR) 
+    : TYPE_EXPR = 
     let
     in 
       TextIO.print ("type checking expr: env len " ^ (Int.toString (List.length env)) ^"\n");
@@ -406,7 +420,7 @@ and verifyExpr ((ctxt as {env,this,...}):CONTEXT) (e:EXPR) :TYPE_EXPR =
 	  end
        | NullaryExpr This => this
        | NullaryExpr Empty => (TextIO.print "what is Empty?\n"; raise Match)
-       | UnaryExpr (unop, arg) => verifyUnaryExpr ctxt (unop, arg)
+       | UnaryExpr (unop, arg) => verifyUnaryExpr ctxt unop arg
        | BinaryExpr (binop, lhs, rhs ) => verifyBinaryExpr ctxt (binop, lhs, rhs)
        | BinaryTypeExpr (binop, lhs, rhs ) => verifyBinaryTypeExpr ctxt (binop, lhs, rhs)
        | TrinaryExpr (triop, a,b,c ) => verifyTrinaryExpr ctxt (triop, a,b,c)
@@ -480,7 +494,9 @@ and verifyExpr ((ctxt as {env,this,...}):CONTEXT) (e:EXPR) :TYPE_EXPR =
 *)
 
 
-and verifyCallExpr  ((ctxt as {env,this,...}):CONTEXT) func actuals =
+and verifyCallExpr  (ctxt as {env,this,...}:CONTEXT) 
+		    func actuals
+    : TYPE_EXPR =
     let val functy = verifyExpr ctxt func;
 	val actualsTy = (map (fn a => verifyExpr ctxt a) actuals)
     in case normalizeType functy of
@@ -536,17 +552,23 @@ and verifyPattern (ctxt:CONTEXT) (Ast.IdentifierPattern name) = (
   | verifyPattern ctxt (Ast.SimplePattern expr) = ??
 *)
 
-and verifyExprList ((ctxt as {env,this,...}):CONTEXT) (l:EXPR list) :TYPE_EXPR = 
-	let
-	in 	case l of
-		_  => List.last (List.map (verifyExpr ctxt) l)
-	end
-
-and verifyField (ctxt:CONTEXT) ({kind,name,init}:FIELD) : FIELD_TYPE =
+and verifyExprList (ctxt as {env,this,...}:CONTEXT)
+		   (l:EXPR list) 
+    : TYPE_EXPR = 
+    let
+    in 	case l of
+	    _  => List.last (List.map (verifyExpr ctxt) l)
+    end
+    
+and verifyField (ctxt:CONTEXT) 
+		({kind,name,init}:FIELD) 
+    : FIELD_TYPE =
     {name=name, ty = verifyExpr ctxt init }
 
 (* This type checksTODO: this needs to return some type structure as well *)
-and verifyBinding (ctxt:CONTEXT) (Binding {init,pattern,ty}) : TYPE_ENV =
+and verifyBinding (ctxt:CONTEXT) 
+		  (Binding {init,pattern,ty}) 
+    : TYPE_ENV =
     let val ty = unOptionDefault ty anyType in
 	case init of
 	    SOME expr => checkCompatible (verifyExpr ctxt expr) ty
@@ -562,33 +584,57 @@ and verifyBinding (ctxt:CONTEXT) (Binding {init,pattern,ty}) : TYPE_ENV =
 
 *)
 
-and verifyVarBinding (ctxt:CONTEXT) (Binding {init, pattern, ty}:VAR_BINDING) : TYPE_ENV =
+and verifyVarBinding (ctxt:CONTEXT) 
+		     (Binding {init, pattern, ty}:VAR_BINDING) 
+    : TYPE_ENV =
     let in
 	case pattern of
 	    IdentifierPattern (Identifier {ident, openNamespaces}) =>
 	    [(ident,SOME (unOptionDefault ty anyType))]
 	    end
     
-and verifyVarBindings (ctxt:CONTEXT) (vs:VAR_BINDING list) : TYPE_ENV =
+and verifyVarBindings (ctxt:CONTEXT) 
+		      (vs:VAR_BINDING list) 
+    : TYPE_ENV =
     case vs of
 	[] => []
       | h::t => (verifyVarBinding ctxt h) @ (verifyVarBindings ctxt t)
 
-and verifyIdentExpr (ctxt:CONTEXT) (id:IDENT_EXPR) =
+and verifyIdentExpr (ctxt:CONTEXT) 
+		    (id:IDENT_EXPR)
+    : unit =
     (case id of
-          QualifiedIdentifier { qual, ident=_ } => (checkCompatible (verifyExpr ctxt qual) namespaceType; ())
-        | QualifiedExpression { qual, expr } => (checkCompatible (verifyExpr ctxt qual) namespaceType;
-                                                 checkCompatible (verifyExpr ctxt expr) stringType;
-                                                 ())
-        | Identifier _ => ()
-        | ExpressionIdentifier expr => (checkCompatible (verifyExpr ctxt expr) stringType; ()))
+          QualifiedIdentifier { qual, ident=_ } => 
+	  let in
+	      checkCompatible (verifyExpr ctxt qual) namespaceType;
+	      ()
+	  end
+
+        | QualifiedExpression { qual, expr } => 
+	  let in
+	      checkCompatible (verifyExpr ctxt qual) namespaceType;
+              checkCompatible (verifyExpr ctxt expr) stringType;
+              ()
+	  end
+
+        | Identifier _ => 
+	  ()
+
+        | ExpressionIdentifier expr => 
+	  let in
+	      checkCompatible (verifyExpr ctxt expr) stringType; 
+	      ()
+	  end
 (*
        | AttributeIdentifier of IDENT_EXPR
        | TypeIdentifier of { ident : IDENT_EXPR, 
 			     typeParams : TYPE_EXPR list }
 *)
 
-and verifyUnaryExpr (ctxt:CONTEXT) (unop:UNOP, arg:EXPR) =
+and verifyUnaryExpr (ctxt:CONTEXT) 
+		    (unop:UNOP)
+		    (arg:EXPR) 
+    : unit =
     let val argType = verifyExpr ctxt arg
 	fun checkNumeric () = 
 	    let in
@@ -642,7 +688,8 @@ and verifyBinaryExpr (ctxt:CONTEXT) (bop:BINOP, lhs:EXPR, rhs:EXPR) =
 	    end
     end
 
-and verifyBinaryTypeExpr (ctxt:CONTEXT) (bop:BINTYPEOP, arg:EXPR, t:TYPE_EXPR) =
+and verifyBinaryTypeExpr (ctxt:CONTEXT) 
+			 (bop:BINTYPEOP, arg:EXPR, t:TYPE_EXPR) =
     let val argType = verifyExpr ctxt arg	
     in
 	verifyTypeExpr ctxt t;
@@ -650,7 +697,7 @@ and verifyBinaryTypeExpr (ctxt:CONTEXT) (bop:BINTYPEOP, arg:EXPR, t:TYPE_EXPR) =
 	    Cast =>
 	    let in
 		(* TODO: check *)
-		checkConvertible argType t;
+		(* checkConvertible argType t; *)
 		t
 	    end
 	  | To =>
@@ -685,7 +732,7 @@ and verifyTrinaryExpr (ctxt:CONTEXT) (triop:TRIOP, a:EXPR, b:EXPR, c:EXPR) =
 
 and verifyStmts ctxt ss = List.app (fn s => verifyStmt ctxt s) ss
 
-and verifyStmt ((ctxt as {this,env,lbls,retTy}):CONTEXT) (stmt:STMT) =
+and verifyStmt (ctxt as {this,env,lbls,retTy}:CONTEXT) (stmt:STMT) =
    let
    in
        TextIO.print ("type checking stmt: env len " ^ (Int.toString (List.length env)) ^"\n");
@@ -793,7 +840,7 @@ and verifyStmt ((ctxt as {this,env,lbls,retTy}):CONTEXT) (stmt:STMT) =
 
 (***************************** Verifying Definitions ****************************************)
 
-and verifyDefn ((ctxt as {this,env,lbls,retTy}):CONTEXT) (d:DEFN) : (TYPE_ENV * int list) =
+and verifyDefn (ctxt as {this,env,lbls,retTy}:CONTEXT) (d:DEFN) : (TYPE_ENV * int list) =
     let
     in
 	case d of
