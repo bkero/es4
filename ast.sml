@@ -145,7 +145,12 @@ datatype PRAGMA =
          Func of { name: FUNC_NAME,
                    fsig: FUNC_SIG,                   
                    body: BLOCK,
-                   fixtures: FIXTURES option }
+                   (* Filled in during defn phase. *)
+                   typeParamFixtures: FIXTURES option,
+                   paramFixtures: FIXTURES option,
+                   paramInitializers: INITIALIZERS option,
+                   bodyFixtures: FIXTURES option,
+                   bodyInitializers: INITIALIZERS option }
 
      and DEFN =
          ClassDefn of CLASS_DEFN
@@ -161,7 +166,7 @@ datatype PRAGMA =
                                 inits: BINDINGS option, 
                                 returnType: TYPE_EXPR,
                                 thisType: TYPE_EXPR option,
-                                hasBoundThis: bool, (*goes away, redundant with previous option*)
+                                hasBoundThis: bool, (* goes away, redundant with previous option *)
                                 hasRest: bool }
 
      and VAR_BINDING =
@@ -204,12 +209,14 @@ datatype PRAGMA =
        | DoWhileStmt of WHILE_STMT
 
        | ForStmt of { defns: VAR_BINDING list,
-                      fixtures: FIXTURES option,
                       init: EXPR list,
                       cond: EXPR list,
                       update: EXPR list,
                       contLabel: IDENT option,
-                      body: STMT }
+                      body: STMT,
+                      (* Filled in by defn phase. *)
+                      fixtures: FIXTURES option,
+                      initializers: INITIALIZERS option }
 
        | IfStmt of { cnd: EXPR,
                      thn: STMT,
@@ -220,9 +227,11 @@ datatype PRAGMA =
                        body: STMT }
 
        | TryStmt of { body: BLOCK,
-                      catches: { bind:VAR_BINDING, 
+                      catches: { bind:VAR_BINDING,                                  
+                                 body:BLOCK,
+                                 (* Filled in by defn phase. *)
                                  fixtures: FIXTURES option,
-                                 body:BLOCK } list,
+                                 initializers: INITIALIZERS option } list,
                       finally: BLOCK option }
                     
        | SwitchStmt of { cond: EXPR list,
@@ -253,7 +262,9 @@ datatype PRAGMA =
 
        | LetExpr of { defs: VAR_BINDING list,                      
                       body: EXPR list,
-                      fixtures: FIXTURES option}
+                      (* Filled in during defn phase. *)
+                      fixtures: FIXTURES option, 
+                      initializers: INITIALIZERS option }
 
        | NewExpr of { obj: EXPR,
                       actuals: EXPR list }
@@ -261,7 +272,13 @@ datatype PRAGMA =
        | FunExpr of { ident: IDENT option,
                       fsig: FUNC_SIG,
                       body: BLOCK,
-                      fixtures: FIXTURES option}
+                      (* Filled in during defn phase. *)
+                      typeParamFixtures: FIXTURES option,
+                      paramFixtures: FIXTURES option,
+                      paramInitializers: INITIALIZERS option,
+                      bodyFixtures: FIXTURES option,
+                      bodyInitializers: INITIALIZERS option}
+
        | ObjectRef of { base: EXPR, ident: IDENT_EXPR }
 
        | LexicalRef of { ident: IDENT_EXPR }
@@ -328,6 +345,9 @@ datatype PRAGMA =
                                 getter: FUNC_DEFN option,
                                 setter: FUNC_DEFN option }
 
+     and INITIALIZER = VarInit of (NAME * EXPR)
+                     | FunInit of (NAME * FUNC)
+
                      
 withtype FIELD =
          { kind: VAR_DEFN_TAG,
@@ -373,6 +393,8 @@ withtype FIELD =
            prototype : bool,
            bindings : VAR_BINDING list }
 
+     and INITIALIZERS = INITIALIZER list
+
      and FIXTURES = (NAME * FIXTURE) list
 
      and NAMESPACE_DEFN = 
@@ -389,17 +411,23 @@ withtype FIELD =
            params: IDENT list,
            extends: IDENT_EXPR option,
            implements: IDENT_EXPR list,
+           body: BLOCK,
+           (* Filled in during defn phase. *)
            classFixtures: FIXTURES option,
            instanceFixtures: FIXTURES option,
-           body: BLOCK,
+           classInitializers: INITIALIZERS option,
+           protoInitializers: INITIALIZERS option,
+           instanceInitializers: INITIALIZERS option,
+           constructor: FUNC_DEFN option,
+           initializer: STMT list,
+
+           (* These should go away *)
            protoVars: VAR_DEFN list,
            protoMethods: FUNC_DEFN list,
            instanceVars: VAR_DEFN list,
            instanceMethods: FUNC_DEFN list,
            vars: VAR_DEFN list,
-           methods: FUNC_DEFN list,
-           constructor: FUNC_DEFN option,
-           initializer: STMT list }
+           methods: FUNC_DEFN list }
 
      and INTERFACE_DEFN =
          { ident: IDENT,
@@ -417,10 +445,12 @@ withtype FIELD =
      and FOR_ENUM_STMT =
          { ptrn: PATTERN option,
            obj: EXPR list,
-           defns: VAR_BINDING list,
-           fixtures: FIXTURES option,
+           defns: VAR_BINDING list,           
            contLabel: IDENT option,
-           body: STMT }
+           body: STMT,
+           (* Filled in during defn phase. *)
+           fixtures: FIXTURES option,
+           initializers: INITIALIZERS option }
 
      and WHILE_STMT =
          { cond: EXPR,
@@ -431,7 +461,9 @@ withtype FIELD =
          { pragmas: PRAGMA list,
            defns: DEFN list,
            stmts: STMT list,
-           fixtures: FIXTURES option }
+           (* Filled in during defn phase. *)
+           fixtures: FIXTURES option,
+           initializers: INITIALIZERS option }
 
      and BINDINGS =
          { b : VAR_BINDING list,

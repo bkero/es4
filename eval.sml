@@ -220,7 +220,7 @@ fun evalExpr (scope:Mach.SCOPE)
         (case evalLhsExpr scope expr of
              (obj, name) => Mach.getValue obj name)
         
-      | Ast.LetExpr {defs, body, fixtures} =>
+      | Ast.LetExpr {defs, body, fixtures, initializers} =>
         evalLetExpr scope (valOf fixtures) defs body
 
       | Ast.TrinaryExpr (Ast.Cond, aexpr, bexpr, cexpr) => 
@@ -897,9 +897,10 @@ and invokeFuncClosure (this:Mach.OBJ)
                     val selfTag = Mach.FunctionTag (#fsig f)
                     val selfVal = Mach.newObject selfTag Mach.Null (SOME (Mach.Function closure))
                 in
-                    allocScopeFixtures varScope (valOf (#fixtures f));
+                    allocScopeFixtures varScope (valOf (#paramFixtures f));
                     (* FIXME: handle arg-list length mismatch correctly. *)
                     List.app bindArg (ListPair.zip (args, params));
+                    allocScopeFixtures varScope (valOf (#bodyFixtures f));
                     Mach.setValue varObj thisName thisVal;
                     Mach.defValue varObj selfName selfVal;
                     checkAllPropertiesInitialized varObj;
@@ -946,7 +947,7 @@ and constructClassInstance (obj:Mach.OBJ)
                       | SOME ({native, ns,
                                func = Ast.Func 
                                           { fsig=Ast.FunctionSignature { params, inits, ... }, 
-                                            body, fixtures, ... }, ... }) => 
+                                            body, paramFixtures, bodyFixtures, ... }, ... }) => 
                         let 
                             val ns = needNamespace (evalExpr env ns)
                             val (varObj:Mach.OBJ) = Mach.newSimpleObj NONE
@@ -956,7 +957,8 @@ and constructClassInstance (obj:Mach.OBJ)
                                 processVarDefn env vd (Mach.defValue obj)
 
                         in
-                            allocScopeFixtures varScope (valOf fixtures);
+                            allocScopeFixtures varScope (valOf paramFixtures);
+                            allocScopeFixtures varScope (valOf bodyFixtures);
                             (* FIXME: is this correct? we currently bind the self name on obj as well.. *)
                             Mach.defValue obj n selfVal;
                             LogErr.trace ["initialializing instance methods of ", LogErr.name n];
