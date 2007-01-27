@@ -4153,7 +4153,7 @@ and directive (ts,t:tau,w:omega) : (token list * Ast.DIRECTIVES) =
             in
                 (ts1,nd1)
             end
-      | (Dynamic | Final | Override | Native | Static ) :: _ =>
+      | (Dynamic | Final | Override | Native | Prototype | Static ) :: _ =>
             let
                 val (ts1,nd1) = attributes (ts,defaultAttrs,t)
                 val {native,...} = nd1
@@ -4172,7 +4172,7 @@ and directive (ts,t:tau,w:omega) : (token list * Ast.DIRECTIVES) =
                         (ts2,nd2)
                     end
             end
-      | (Identifier _ | Private | Public | Protected | Internal | Intrinsic | Prototype  ) :: 
+      | (Identifier _ | Private | Public | Protected | Internal | Intrinsic) :: 
         (Dynamic | Final | Native | Override | Prototype | Static | 
          Var | Let | Const | Function | Class | Interface | Namespace | Type) :: _ =>
             let
