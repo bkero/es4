@@ -624,7 +624,7 @@ and verifyIdentExpr (ctxt:CONTEXT)
 	  let in
 	      checkCompatible (verifyExpr ctxt expr) stringType; 
 	      ()
-	  end
+	  end)
 (*
        | AttributeIdentifier of IDENT_EXPR
        | TypeIdentifier of { ident : IDENT_EXPR, 
@@ -634,7 +634,7 @@ and verifyIdentExpr (ctxt:CONTEXT)
 and verifyUnaryExpr (ctxt:CONTEXT) 
 		    (unop:UNOP)
 		    (arg:EXPR) 
-    : unit =
+    : Ast.TYPE_EXPR =
     let val argType = verifyExpr ctxt arg
 	fun checkNumeric () = 
 	    let in
