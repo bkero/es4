@@ -142,7 +142,6 @@ datatype token =
     | Xml
     | Yield
 
-
     (* literals *)
 
     | AttributeIdentifier
@@ -150,7 +149,11 @@ datatype token =
     | DocComment
     | Eol
     | Identifier of string
-    | NumberLiteral of real
+    | NumberLiteral of real (* should be string *)
+    | DoubleLiteral of real
+    | DecmialLiteral of string
+    | IntLiteral of int
+    | UIntLiteral of word
     | PackageIdentifier of string
     | RegexpLiteral of string
     | SlashSlashComment
@@ -378,6 +381,10 @@ fun tokenname t =
       | Eol => "eol"
       | Identifier x => "identifier("^x^")"
       | NumberLiteral x => Real.toString(x)
+      | DoubleLiteral x => Real.toString(x)
+      | DecmialLiteral x => x
+      | IntLiteral x => Int.toString(x)
+      | UIntLiteral x => Word.toString(x)
       | PackageIdentifier x => "packageidentifier("^x^")"
       | RegexpLiteral x => "regexp("^x^")"
       | SlashSlashComment => ""

@@ -428,9 +428,10 @@ and verifyExpr (ctxt as {env,this,...}:CONTEXT)
        | LexicalRef {ident=Identifier { ident, openNamespaces }} =>
 	 lookupProgramVariable env ident
 
-       | FunExpr { ident, fsig, body, fixtures } 
+       | FunExpr (Func {fsig, body, ...})
 	 =>
-	 let val ctxt3 = verifyFunctionSignature ctxt fsig 
+	 let
+		val ctxt3 = verifyFunctionSignature ctxt fsig
 	 in
 	     verifyBlock ctxt3 body;
 	     FunctionType fsig
@@ -563,7 +564,11 @@ and verifyExprList (ctxt as {env,this,...}:CONTEXT)
 and verifyField (ctxt:CONTEXT) 
 		({kind,name,init}:FIELD) 
     : FIELD_TYPE =
-    {name=name, ty = verifyExpr ctxt init }
+	let
+		val Ast.Identifier {ident,...} = name
+	in
+	    {name=ident, ty = verifyExpr ctxt init }
+	end
 
 (* This type checksTODO: this needs to return some type structure as well *)
 and verifyBinding (ctxt:CONTEXT) 
@@ -574,7 +579,7 @@ and verifyBinding (ctxt:CONTEXT)
 	    SOME expr => checkCompatible (verifyExpr ctxt expr) ty
 	  | NONE => ();
 	case pattern of
-	    IdentifierPattern (Identifier {ident,openNamespaces}) => [(ident,SOME ty)]
+	    IdentifierPattern ident => [(ident,SOME ty)]
     end
 (*
  and VAR_BINDING =
@@ -589,7 +594,7 @@ and verifyVarBinding (ctxt:CONTEXT)
     : TYPE_ENV =
     let in
 	case pattern of
-	    IdentifierPattern (Identifier {ident, openNamespaces}) =>
+	    IdentifierPattern ident =>
 	    [(ident,SOME (unOptionDefault ty anyType))]
 	    end
     
@@ -847,7 +852,7 @@ and verifyDefn (ctxt as {this,env,lbls,retTy}:CONTEXT) (d:DEFN) : (TYPE_ENV * in
 	    VariableDefn {bindings,...} => 
 	    (List.concat (List.map (verifyVarBinding ctxt) bindings), []) 
 	  | FunctionDefn { kind, func,... } =>
-	    let val Func {name,fsig,body,fixtures} = func
+	    let val Func {name,fsig,body,fixtures,...} = func
 		val FunctionSignature { typeParams, params, inits, 
 					returnType, thisType, hasBoundThis, hasRest } 
 		  = fsig
@@ -895,7 +900,7 @@ and verifyDefns ctxt ([]:DEFN list) : (TYPE_ENV * int list) = ([], [])
             (extensions1 @ extensions2, classes1 @ classes2)
         end
 
-and verifyBlock (ctxt as {env,...}) (Block {pragmas=pragmas,defns=defns,stmts=stmts,fixtures}) =
+and verifyBlock (ctxt as {env,...}) (Block {pragmas=pragmas,defns=defns,stmts=stmts,fixtures,...}) =
     let val (extensions, classes) = verifyDefns ctxt defns
         val ctxt' = withEnv (ctxt, foldl extendEnv env extensions)
     in
@@ -903,7 +908,7 @@ and verifyBlock (ctxt as {env,...}) (Block {pragmas=pragmas,defns=defns,stmts=st
 		verifyStmts ctxt stmts
     end
 
-fun verifyProgram { packages, body } = 
+fun verifyProgram { packages, fixtures, body } = 
     (verifyBlock {this=anyType, env=[], lbls=[], retTy=NONE} body; true)
 
 (* CF: Let this propagate to top-level to see full trace

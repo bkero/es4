@@ -10,16 +10,17 @@ type USTRING = string
 type IDENT = USTRING
 
 datatype NAMESPACE =
-         Private
-       | Protected
-       | Intrinsic
+         Intrinsic
+       | OperatorNamespace
+       | Private of IDENT
+       | Protected of IDENT
        | Public of IDENT
        | Internal of IDENT
-       | UserDefined of IDENT
+       | UserNamespace of IDENT
 
 type NAME = { ns: NAMESPACE, id: IDENT }
 
-type MULTINAME = { nss: NAMESPACE list, id: IDENT }
+type MULTINAME = { nss: NAMESPACE list list, id: IDENT }
 
 datatype NUMBER_TYPE =
          Decimal
@@ -116,7 +117,6 @@ datatype VAR_DEFN_TAG =
        | Var
        | LetVar
        | LetConst
-       | Rest   (* Goes away, redundant with hasRest in FUNC_SIG *)
 
 datatype SPECIAL_TY =
          Any
@@ -149,7 +149,8 @@ datatype PRAGMA =
          Func of { name: FUNC_NAME,
                    fsig: FUNC_SIG,                   
                    body: BLOCK,
-                   fixtures: FIXTURES option }
+                   fixtures: FIXTURES option,
+                   inits: STMT list }
 
      and DEFN =
          ClassDefn of CLASS_DEFN
@@ -162,7 +163,7 @@ datatype PRAGMA =
      and FUNC_SIG =
          FunctionSignature of { typeParams: IDENT list,
                                 params: VAR_BINDING list,
-                                inits: BINDINGS option, 
+                                inits: STMT list, 
                                 returnType: TYPE_EXPR,
                                 thisType: TYPE_EXPR option,
                                 hasBoundThis: bool, (*goes away, redundant with previous option*)
@@ -194,6 +195,7 @@ datatype PRAGMA =
      and STMT =
          EmptyStmt
        | ExprStmt of EXPR list
+       | InitStmt of {ns:EXPR,inits:EXPR list}   (* turned into ExprStmt by definer *)
        | ForEachStmt of FOR_ENUM_STMT
        | ForInStmt of FOR_ENUM_STMT
        | ThrowStmt of EXPR list
@@ -262,15 +264,13 @@ datatype PRAGMA =
        | NewExpr of { obj: EXPR,
                       actuals: EXPR list }
 
-       | FunExpr of { ident: IDENT option,
-                      fsig: FUNC_SIG,
-                      body: BLOCK,
-                      fixtures: FIXTURES option}
+       | FunExpr of FUNC
        | ObjectRef of { base: EXPR, ident: IDENT_EXPR }
 
        | LexicalRef of { ident: IDENT_EXPR }
 
        | SetExpr of (ASSIGNOP * PATTERN * EXPR)
+       | AllocTemp of (IDENT_EXPR * EXPR)
 
        | ListExpr of EXPR list
        | SliceExpr of (EXPR list * EXPR list * EXPR list)
@@ -282,7 +282,7 @@ datatype PRAGMA =
                                   expr : EXPR }
        | AttributeIdentifier of IDENT_EXPR
        | Identifier of { ident : IDENT,
-                         openNamespaces : NAMESPACE list }
+                         openNamespaces : NAMESPACE list list }
        | ExpressionIdentifier of EXPR   (* for bracket exprs: o[x] and @[x] *)
        | TypeIdentifier of { ident : IDENT_EXPR, (*deprecated*)
                              typeParams : TYPE_EXPR list }
@@ -314,7 +314,7 @@ datatype PRAGMA =
          ObjectPattern of FIELD_PATTERN list
        | ArrayPattern of PATTERN list
        | SimplePattern of EXPR
-       | IdentifierPattern of IDENT_EXPR
+       | IdentifierPattern of IDENT
 
 (* FIXTURES are built by the definition phase, not the parser; but they 
  * are patched back into the AST in class-definition and block
@@ -327,7 +327,8 @@ datatype PRAGMA =
        | TypeFixture of TYPE_EXPR
        | ValFixture of { ty: TYPE_EXPR,
                          readOnly: bool,
-                         isOverride: bool }
+                         isOverride: bool,
+                         init: EXPR option }
        | VirtualValFixture of { ty: TYPE_EXPR, 
                                 getter: FUNC_DEFN option,
                                 setter: FUNC_DEFN option }
@@ -335,11 +336,11 @@ datatype PRAGMA =
                      
 withtype FIELD =
          { kind: VAR_DEFN_TAG,
-           name: IDENT,
+           name: IDENT_EXPR,
            init: EXPR }
 
      and FIELD_PATTERN =
-         { name: IDENT, 
+         { name: IDENT_EXPR, 
            ptrn : PATTERN }
 
      and FIELD_TYPE =
@@ -456,6 +457,7 @@ type PACKAGE =
      
 type PROGRAM =
      { packages: PACKAGE list,
+       fixtures: FIXTURES option,
        body : BLOCK }
 
 end

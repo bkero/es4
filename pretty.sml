@@ -44,4 +44,6 @@ val ppNumericMode = ppRep o cvtNUMERIC_MODE
 
 val ppPragma = ppRep o cvtPRAGMA
 
+val ppFixtures = ppRep o cvtFIXTURES
+
 end

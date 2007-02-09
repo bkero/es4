@@ -380,7 +380,7 @@ and evalSetExpr (scope:Mach.SCOPE)
             end
     in
         case pat of 
-            Ast.IdentifierPattern id => 
+(*            Ast.IdentifierPattern id => 
             let
                 val multiname = evalIdentExpr scope id
                 val refOpt = resolveOnScopeChain scope multiname
@@ -395,7 +395,9 @@ and evalSetExpr (scope:Mach.SCOPE)
                     end
                   | NONE => LogErr.evalError ["unresolved identifier pattern"]
         end
-      | Ast.SimplePattern expr => 
+      |
+*)
+      Ast.SimplePattern expr => 
         let
             val r = evalLhsExpr scope expr
         in
@@ -557,10 +559,10 @@ and evalIdentExpr (scope:Mach.SCOPE)
         { nss=openNamespaces, id=ident }
         
       | Ast.QualifiedIdentifier { qual, ident } => 
-        { nss = [needNamespace (evalExpr scope qual)], id = ident }
+        { nss = [[needNamespace (evalExpr scope qual)]], id = ident }
 
       | Ast.QualifiedExpression { qual, expr } => 
-        { nss = [needNamespace (evalExpr scope qual)], 
+        { nss = [[needNamespace (evalExpr scope qual)]], 
           id = Mach.toString (evalExpr scope expr) }
 
       | _ => LogErr.unimplError ["unimplemented identifier expression form"]
@@ -625,16 +627,12 @@ and processVarBinding (scope:Mach.SCOPE)
         fun procWithValue v' = 
                 case pattern of 
                     Ast.IdentifierPattern id => 
-                    (case id of 
-                         Ast.Identifier {ident, ...} => 
                          let 
-                             val n = { ns = ns, id = ident}
+                             val n = { ns = ns, id = id}
                          in
                  LogErr.trace ["binding variable ", LogErr.name n];
                  procOneName n v'
                          end
-                       | _ => LogErr.unimplError ["unhandled identifier form in ",
-                                                  "identifier binding pattern"])
                   | _ => LogErr.unimplError ["unhandled pattern form in binding"]                     
         in
             case v of 
@@ -717,7 +715,7 @@ and resolveOnObj (obj:Mach.OBJ)
                     else tryName xs
                 end
         in
-            tryName (#nss mname)
+            hd (map tryName (#nss mname))  (* todo: check for only one match *)
         end
 
 
@@ -768,7 +766,7 @@ and evalStmt (scope:Mach.SCOPE)
 
 
 and multinameOf (n:Ast.NAME) = 
-    { nss = [(#ns n)], id = (#id n) }
+    { nss = [[(#ns n)]], id = (#id n) }
 
 and findVal (scope:Mach.SCOPE) 
             (mn:Ast.MULTINAME) 
@@ -983,16 +981,17 @@ and constructClassInstance (obj:Mach.OBJ)
                                  Mach.setValue varObj thisName instance;
                                  Mach.defValue varObj n selfVal;
                                  LogErr.trace ["running initializers of ", LogErr.name n];
+(* FIXME
                                  (case inits of 
                                       NONE => ()
-                                    | SOME { b=bindings, i=inits } => 
+                                    | SOME inits => 
                                       let
                                           val (initVals:Mach.VAL list) = List.map (evalExpr varScope) inits
                                           fun bindInit (a, b) = evalVarBinding objScope (SOME a) ns b
                                       in
                                           List.app bindInit (ListPair.zip (initVals, bindings))
                                       end);
-                                 LogErr.trace ["checking initialization of ", LogErr.name n];
+*)                                 LogErr.trace ["checking initialization of ", LogErr.name n];
                                  checkAllPropertiesInitialized obj; 
                                  let 
                                      (* Now the strange part: we re-parent the arguments var object
