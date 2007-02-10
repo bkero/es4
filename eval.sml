@@ -158,7 +158,7 @@ fun allocObjFixtures (scope:Mach.SCOPE)
                                               readOnly = (case setter of NONE => true | _ => false),
                                               isFixed = true } }
                         
-                      | Ast.ClassFixture cd => 
+(* FIXME                      | Ast.ClassFixture cd => 
                         allocProp "class"
                                   { ty = Mach.classType,
                                     state = Mach.ValProp (Mach.newClass scope cd),
@@ -166,7 +166,7 @@ fun allocObjFixtures (scope:Mach.SCOPE)
                                               dontEnum = true,
                                               readOnly = true,
                                               isFixed = true } }
-                        
+*)                        
                       | Ast.NamespaceFixture ns => 
                         allocProp "namespace" 
                                   { ty = Mach.namespaceType,
@@ -827,9 +827,11 @@ and evalClassDefn (scope:Mach.SCOPE)
         fun addProtoVars (vd:Ast.VAR_DEFN) = 
             processVarDefn scope vd (Mach.setValue newPrototype)
     in
+(*
         LogErr.trace ["filling in prototype"];
         List.app addProtoMethod (#protoMethods cd);
         List.app addProtoVars (#protoVars cd);
+*)
         Mach.setValue currClassObj Mach.internalPrototypeName (Mach.Object newPrototype);
         LogErr.trace ["finished defining class"]
     end
@@ -927,7 +929,10 @@ and constructClassInstance (obj:Mach.OBJ)
                     val (obj:Mach.OBJ) = Mach.newObj classTag proto NONE
                     val (objScope:Mach.SCOPE) = extendScope env Mach.VarInstance obj
                     val (instance:Mach.VAL) = Mach.Object obj
+(* FIXME: need to get ctor from instance block
                     val ctor = (#constructor definition)
+*)
+                    val ctor:Ast.FUNC_DEFN option = NONE
 
                     (* FIXME: infer a fixture for "this" so that it's properly typed, dontDelete, etc.
                      * Also this will mean changing to defVar rather than setVar, for 'this'. *)
@@ -936,8 +941,9 @@ and constructClassInstance (obj:Mach.OBJ)
                     (* FIXME: self-name binding is surely more complex than this! *)
                     val selfTag = Mach.ClassTag n
                     val selfVal = Mach.newObject selfTag Mach.Null (SOME (Mach.Class closure))
+                    val Ast.Block iblk = (valOf (#instanceBlock definition))
                 in
-                    allocObjFixtures env obj (valOf (#instanceFixtures definition));
+                    allocObjFixtures env obj (valOf (#fixtures iblk));
                     case ctor of 
                         NONE => (checkAllPropertiesInitialized obj; instance)
                       | SOME ({native, ns,
@@ -957,8 +963,10 @@ and constructClassInstance (obj:Mach.OBJ)
                             (* FIXME: is this correct? we currently bind the self name on obj as well.. *)
                             Mach.defValue obj n selfVal;
                             LogErr.trace ["initialializing instance methods of ", LogErr.name n];
+(* FIXME: instantiate the instance fixtures
                             List.app (evalFuncDefnFull env obj) (#instanceMethods definition);
                             List.app initInstanceVar (#instanceVars definition);
+*)
                             (* FIXME: evaluate instance-var initializers declared in class as well. *)
 
                             if (native)

@@ -195,7 +195,7 @@ datatype PRAGMA =
      and STMT =
          EmptyStmt
        | ExprStmt of EXPR list
-       | InitStmt of {ns:EXPR,inits:EXPR list}   (* turned into ExprStmt by definer *)
+       | InitStmt of {kind:VAR_DEFN_TAG,ns:EXPR,prototype:bool,static:bool,inits:EXPR list}   (* turned into ExprStmt by definer *)
        | ForEachStmt of FOR_ENUM_STMT
        | ForInStmt of FOR_ENUM_STMT
        | ThrowStmt of EXPR list
@@ -322,7 +322,7 @@ datatype PRAGMA =
 
      and FIXTURE = 
          NamespaceFixture of NAMESPACE
-       | ClassFixture of CLASS_DEFN
+       | ClassFixture of { classBlock: BLOCK, instanceBlock: BLOCK } 
        | TypeVarFixture
        | TypeFixture of TYPE_EXPR
        | ValFixture of { ty: TYPE_EXPR,
@@ -394,9 +394,8 @@ withtype FIELD =
            params: IDENT list,
            extends: IDENT_EXPR option,
            implements: IDENT_EXPR list,
-           classFixtures: FIXTURES option,
-           instanceFixtures: FIXTURES option,
            body: BLOCK,
+(*
            protoVars: VAR_DEFN list,
            protoMethods: FUNC_DEFN list,
            instanceVars: VAR_DEFN list,
@@ -404,7 +403,11 @@ withtype FIELD =
            vars: VAR_DEFN list,
            methods: FUNC_DEFN list,
            constructor: FUNC_DEFN option,
-           initializer: STMT list }
+           initializer: STMT list,
+*)
+           classBlock: BLOCK option,
+           instanceBlock: BLOCK option
+     }
 
      and INTERFACE_DEFN =
          { ident: IDENT,
@@ -436,7 +439,8 @@ withtype FIELD =
          { pragmas: PRAGMA list,
            defns: DEFN list,
            stmts: STMT list,
-           fixtures: FIXTURES option }
+           fixtures: FIXTURES option,
+           inits: STMT list option }
 
      and BINDINGS =
          { b : VAR_BINDING list,

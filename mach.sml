@@ -322,7 +322,8 @@ val (defaultAttrs:Ast.ATTRIBUTES) =
 val (emptyBlock:Ast.BLOCK) = Ast.Block { pragmas = [],
                                          defns = [],
                                          stmts = [],
-                                         fixtures = NONE }
+                                         fixtures = NONE,
+                                         inits = NONE }
 
 val (globalObject:OBJ) = newObj intrinsicObjectBaseTag Null NONE
 

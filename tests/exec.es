@@ -12,9 +12,12 @@ class A
 {
   var x = 10
   static var y = 20
+  let z = 30
+
   function A([a,b,c]=o):x=10,y=20 {}
   function m () {}
   static function n() {}
+
 }
 
 /*

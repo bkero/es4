@@ -210,8 +210,16 @@ type classBlockAnalysis =
        methods: Ast.FUNC_DEFN list,
        constructor: Ast.FUNC_DEFN option,
        initializer: Ast.STMT list,
-       ifixtures: Ast.FIXTURES, 
-       fixtures: Ast.FIXTURES }
+       classBlock: Ast.BLOCK,
+       instanceBlock: Ast.BLOCK
+}
+
+(*
+
+       instanceBlock
+       classBlock
+
+*)
 
 
 fun analyzeClassBlock (env:ENV) 
@@ -221,6 +229,18 @@ fun analyzeClassBlock (env:ENV)
     case b of 
         Ast.Block { pragmas, defns, stmts, ... } => 
         let
+
+            fun isLet (k:Ast.VAR_DEFN_TAG) = (k=Ast.LetVar) orelse (k=Ast.LetConst)
+
+            fun isBlock (d:Ast.DEFN) 
+                : bool =
+                case d of 
+                    Ast.VariableDefn vd => isLet (#kind vd)
+                  | Ast.FunctionDefn fd => false
+                  | Ast.TypeDefn _ => false
+                  | Ast.NamespaceDefn _ => false
+                  | _ => LogErr.defnError ["illegal definition type in class"]
+
             fun isProto (d:Ast.DEFN) 
                 : bool = 
                 case d of 
@@ -244,7 +264,17 @@ fun analyzeClassBlock (env:ENV)
                 let
                     val _ = trace ["isInstance ", Bool.toString (not ((isProto d) orelse (isStatic d)))]
                 in
-                    not ((isProto d) orelse (isStatic d))
+                    not ((isProto d) orelse (isStatic d) orelse (isBlock d))
+                end
+
+            fun isInstanceInit (s:Ast.STMT)
+                : bool =
+                let
+                in case s of
+                    Ast.InitStmt {kind,static,prototype,...} =>
+                        not ((kind=Ast.LetVar) orelse (kind=Ast.LetConst) orelse
+                             prototype orelse static)
+                  | _ => false                    
                 end
 
             fun isCtor (d:Ast.DEFN) : bool = 
@@ -273,44 +303,56 @@ fun analyzeClassBlock (env:ENV)
                     Ast.VariableDefn vd => SOME vd
                   | _ => NONE
 
+            (*
+                partition the class definition into a class block
+                and an instance block, and then define both blocks
+            *)
+
             val protoDefns = List.filter isProto defns
             val staticDefns = List.filter isStatic defns
             val instanceDefns = List.filter isInstance defns
+            val blockDefns = List.filter isBlock defns
 
             val e0 = defPragmas env pragmas
 
-            (* static defns *)
-            val (uf1, hf1) = defDefinitions e0 [] [] staticDefns
-            val e1 = updateFixtures e0 (uf1@hf1)
+            (* separate instance init from non-instance init statements *)
+            val (iinits,stmts) = List.partition isInstanceInit stmts
 
-            (* static initialiser *)
-            val (newStmts,hoisted) = ListPair.unzip (map (defStmt e1) stmts)
+            val cinit = Ast.Block {pragmas=[],defns=blockDefns,stmts=stmts,fixtures=NONE,inits=NONE}
+
+            val cblk = defRegionalBlock env (Ast.Block {pragmas=pragmas,
+                                                        defns=staticDefns,
+                                                        stmts=[Ast.BlockStmt cinit],
+                                                        fixtures=NONE,inits=NONE})
+
 
             (* separate ctor from non-ctor definitions *)
             val (ctorDefns, nonCtorInstanceDefns) = List.partition isCtor instanceDefns
-
-            (* instance defns *)
-            val (uf2, hf2) = defDefinitions e1 [] [] nonCtorInstanceDefns
-            val e2 = updateFixtures e1 (uf2@hf2)
 
             val ctorDefn = case ctorDefns of 
                                [Ast.FunctionDefn fd] => SOME fd
                              | [] => NONE
                              | _ => LogErr.defnError ["illegal constructor definition(s)"]
 
-            val (_, newProtoDefns) = defDefns e2 protoDefns
+            val iblk = defRegionalBlock env (Ast.Block {pragmas=pragmas,
+                                                        defns=instanceDefns,   (* include the ctor *)
+                                                        stmts=[],
+                                                        inits=SOME iinits,
+                                                        fixtures=NONE})
+
+            val (_, newProtoDefns) = defDefns env protoDefns
 
         in
             { protoVars = List.mapPartial getVarDefn newProtoDefns,
               protoMethods = List.mapPartial getFunc newProtoDefns,
-              instanceVars = List.mapPartial getVarDefn nonCtorInstanceDefns,
-              instanceMethods = List.mapPartial getFunc nonCtorInstanceDefns,
-              vars = List.mapPartial getVarDefn staticDefns,
-              methods = List.mapPartial getFunc staticDefns,
+              instanceVars = [],  (* List.mapPartial getVarDefn nonCtorInstanceDefns,*)
+              instanceMethods = [], (* List.mapPartial getFunc nonCtorInstanceDefns, *)
+              vars = [], (* List.mapPartial getVarDefn staticDefns, *)
+              methods = [], (* List.mapPartial getFunc staticDefns, *)
               constructor = ctorDefn,
-              initializer = newStmts,
-              fixtures = (uf1@hf1),
-              ifixtures = (uf2@hf2) }
+              initializer = [],
+              classBlock = cblk,
+              instanceBlock = iblk }
     end
 
 and mergeFixtureOpts (a:Ast.FIXTURES option) 
@@ -325,6 +367,15 @@ and mergeFixtureOpts (a:Ast.FIXTURES option)
 and mergeClasses (base:Ast.CLASS_DEFN) 
                  (curr:Ast.CLASS_DEFN) 
     : Ast.CLASS_DEFN = 
+    let
+        
+        fun mergeBlocks (Ast.Block b1:Ast.BLOCK) (Ast. Block b2:Ast.BLOCK) : Ast.BLOCK = 
+            Ast.Block {pragmas=[],
+                       defns=[],
+                       stmts=(#stmts b2),
+                       fixtures=(#fixtures b2),inits=(#inits b2)  
+        }
+    in
     (* FIXME: check for name collisions and respect override / final modifiers. *)
     { ident = (#ident curr),
       ns = (#ns curr),
@@ -334,22 +385,16 @@ and mergeClasses (base:Ast.CLASS_DEFN)
       params = (#params curr),
       extends = (#extends curr),
       implements = (#implements curr) @ (#implements base),
-      classFixtures = (#classFixtures curr),
-      instanceFixtures = (mergeFixtureOpts (#instanceFixtures base) 
-                                           (#instanceFixtures curr)),
       body = (#body curr),
-      protoVars = (#protoVars curr),
-      protoMethods = (#protoMethods curr),
-      instanceVars = (#instanceVars curr) @ (#instanceVars base),
-      instanceMethods = (#instanceMethods curr) @ (#instanceMethods base),
-      vars = (#vars curr),
-      methods = (#methods curr),
-      constructor = (#constructor curr),
-      initializer = (#initializer curr) }
 
+      classBlock = (#classBlock curr),
+      instanceBlock = SOME (mergeBlocks (valOf (#instanceBlock base)) (valOf (#instanceBlock curr)))
+     }
+    end
 (*
     Analyze class to get its various kinds of definitions
-    Translate those definitions into fixture/initialiser pairs
+    Translate those definitions into 'block' form
+    Define the blocks, first the class block, then the instance block
     Merge fixtures in the inheritance chain
 *)
 
@@ -380,15 +425,17 @@ and resolveClass (env:ENV)
               | _ => LogErr.defnError ["unhandled form of identifier ",
                                        "expresison in class defn"]
 
-         val _ = trace ["analyzing class block for ", 
+        val _ = trace ["analyzing class block for ", 
                                       LogErr.name currName]
 
-         val cba = analyzeClassBlock env currName (#body curr)
-         val newExtends = case (#extends curr) of 
+        val cba = analyzeClassBlock env currName (#body curr)
+
+        val newExtends = case (#extends curr) of 
                                      SOME x => SOME (defIdentExpr env x)
                                    | NONE => NONE
-         val newImplements = map (defIdentExpr env) (#implements curr)
-         val analyzedCurrClassDef = 
+        val newImplements = map (defIdentExpr env) (#implements curr)
+
+        val analyzedCurrClassDef : Ast.CLASS_DEFN = 
                     { ident = (#ident curr),
                       ns = (#ns curr),
                       
@@ -399,30 +446,23 @@ and resolveClass (env:ENV)
                       extends = newExtends,
                       implements = newImplements,
                       
-                      classFixtures = SOME (#fixtures cba),
-                      instanceFixtures = SOME (#ifixtures cba),
                       body = (#body curr),
-                      
-                      protoVars = (#protoVars cba),
-                      protoMethods = (#protoMethods cba),
-                      instanceVars = (#instanceVars cba),
-                      instanceMethods = (#instanceMethods cba),
-                      vars = (#vars cba),
-                      methods = (#methods cba),
-                      constructor = (#constructor cba),
-                      initializer = (#initializer cba) }
+                      classBlock = SOME (#classBlock cba),
+                      instanceBlock = SOME (#instanceBlock cba) }
+
     in case (#extends curr) of 
         SOME baseIdentExpr => 
                     let 
                         val baseName = identExprToName baseIdentExpr
-                        val resolvedBaseClassDef = 
+                        val resolvedBaseClass : Ast.FIXTURE = 
                             if false (* seenAsChild baseName *)
                             then LogErr.defnError ["cyclical class inheritence detected at ", 
                                                    LogErr.multiname baseName]
-                            else findBaseClassDef baseName
+                            else (resolveMultinameToFixture env baseName)
+
                     in 
-                        (currName, mergeClasses resolvedBaseClassDef 
-                                                analyzedCurrClassDef)
+(*   FIXME                     (currName, mergeClasses resolvedBaseClassDef analyzedCurrClassDef) *)
+                          (currName, analyzedCurrClassDef)
                     end
       | NONE => ((qualName curr), analyzedCurrClassDef)
     end
@@ -1310,7 +1350,7 @@ and defStmt (env:ENV)
           | Ast.ExprStmt es => 
             (Ast.ExprStmt (defExprs env es),[])
             
-          | Ast.InitStmt {ns,inits} => 
+          | Ast.InitStmt {ns,inits,...} => 
                 let
                     val ns0 = resolveExprToNamespace env ns
                 in
@@ -1541,12 +1581,16 @@ and defDefns (env:ENV)
 (*
     CLASS_DEFN
 
+    The class definer analyzes the class definition into two blocks,
+    a class block that implements the class object and an instance
+    block that implements the instance objects.
+
     Class = {
         csig  = ...  (* structural type of this class *)
         isig  = ...  (* structural type of instances *)
         extends = ...
         implements = ...
-        block = {
+        cblk = {
             fxtrs = [ 'construct' => Block {
                           fxtrs = ...  (* ctor vars *)
                           inits = ...  (* ctor inits *)
@@ -1554,7 +1598,13 @@ and defDefns (env:ENV)
             inits = ...  (* static inits,  empty? *)
             stmts = ...  (* static initialiser *)
         }
+        iblk = { ... }
     }
+
+    The steps taken are:
+    * analyse the class definition
+    * resolve and inherit from the base class and interfaces
+    * define the class and instance blocks
 
 *)
 
@@ -1564,16 +1614,8 @@ and defClass (env: ENV) (cdef: Ast.CLASS_DEFN)
     let
         val tmp:(Ast.CLASS_DEFN list) ref = ref []
         val (cname,cdef) = resolveClass env [] cdef
-(*
-        val namedClass = resolveOneClass env classDefns tmp []
-        val newNamedClasses = map resolve classDefns
-        val newClassDefns = map (fn (_, cd) => Ast.ClassDefn cd) newNamedClasses
-        val classFixtures = map (inr (Ast.ClassFixture)) newNamedClasses
-        val classCtx = if classesOk then (updateFixtures nsCtx classFixtures) else nsCtx
-        val e2 = classCtx :: env
-        val (defnFixtures, newOtherDefns) = defDefns e1 otherDefns
-*)
-        val cfx = (cname,Ast.ClassFixture cdef)
+        val cfx = (cname,Ast.ClassFixture {classBlock=valOf (#classBlock cdef),
+                                           instanceBlock=valOf (#instanceBlock cdef)})
     in
         ([cfx],cdef)
     end
@@ -1591,19 +1633,35 @@ and defBlock (env:ENV)
              (b:Ast.BLOCK) 
     : (Ast.BLOCK * Ast.FIXTURES) =
     case b of 
-        Ast.Block { pragmas, defns, stmts, ... } => 
+        Ast.Block { pragmas, defns, stmts, inits,... } => 
         let 
             val env = defPragmas env pragmas
             val (unhoisted,defns_hoisted) = defDefinitions env [] [] defns
+            val (inits,_) = defStmts env (case inits of NONE => [] | _ => valOf inits)  (* do inits in outer scope, inits never result in hoisted defs *)
             val env = updateFixtures env unhoisted
             val (stmts,stmts_hoisted) = defStmts env stmts
+            val hoisted = defns_hoisted@stmts_hoisted
         in
             (Ast.Block { pragmas = pragmas,
-                         defns = [],
+                         defns = [], (* defns, *)
                          stmts = stmts,
-                         fixtures = SOME unhoisted },
-             (defns_hoisted @ stmts_hoisted))
+                         fixtures = SOME unhoisted,
+                         inits=SOME inits},
+             hoisted)
         end
+
+and defRegionalBlock env blk 
+    : Ast.BLOCK =
+        let
+            val (Ast.Block {defns,stmts,fixtures,pragmas,inits},hoisted) = defBlock env blk
+        in
+            Ast.Block {pragmas=pragmas,
+                       defns=defns,
+                       stmts=stmts,
+                       inits=inits,
+                       fixtures=SOME (hoisted@(valOf fixtures))}
+        end
+
 
 (*
     PACKAGE
