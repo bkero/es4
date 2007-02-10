@@ -7,9 +7,14 @@ var {a:i,b:j}:{a:int,b2:string} = o
 var f:function (_:[]):* = function .<t,u>(i,j,k) {var x=10; let y=20; print('foo')}
 */
 
-class f 
+
+class A
 {
-function f([a,b,c]=o):x=10,y=20 {}
+  var x = 10
+  static var y = 20
+  function A([a,b,c]=o):x=10,y=20 {}
+  function m () {}
+  static function n() {}
 }
 
 /*

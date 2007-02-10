@@ -241,7 +241,11 @@ fun analyzeClassBlock (env:ENV)
                          
             fun isInstance (d:Ast.DEFN) 
                 : bool = 
-                not ((isProto d) orelse (isStatic d))
+                let
+                    val _ = trace ["isInstance ", Bool.toString (not ((isProto d) orelse (isStatic d)))]
+                in
+                    not ((isProto d) orelse (isStatic d))
+                end
 
             fun isCtor (d:Ast.DEFN) : bool = 
                 case d of 
@@ -253,6 +257,7 @@ fun analyzeClassBlock (env:ENV)
                     let 
                         val fname = { id = ident, 
                                       ns = resolveExprToNamespace env ns }
+                        val _ = trace ["isCtor ", Bool.toString (fname=n)]
                     in
                         fname = n
                     end
@@ -274,33 +279,38 @@ fun analyzeClassBlock (env:ENV)
 
             val e0 = defPragmas env pragmas
 
-            val (f1, newStaticDefns) = defDefns e0 staticDefns
-            val c1 = newContext e0 f1
+            (* static defns *)
+            val (uf1, hf1) = defDefinitions e0 [] [] staticDefns
+            val e1 = updateFixtures e0 (uf1@hf1)
 
-            val (newStmts,hoisted) = ListPair.unzip (map (defStmt (c1 :: env)) stmts)
+            (* static initialiser *)
+            val (newStmts,hoisted) = ListPair.unzip (map (defStmt e1) stmts)
 
-            val (f2, newInstanceDefns) = defDefns (c1 :: e0) instanceDefns
-            val c2 = newContext (c1 :: e0) f2
+            (* separate ctor from non-ctor definitions *)
+            val (ctorDefns, nonCtorInstanceDefns) = List.partition isCtor instanceDefns
 
-            val (ctorDefns, nonCtorInstanceDefns) = List.partition isCtor newInstanceDefns
+            (* instance defns *)
+            val (uf2, hf2) = defDefinitions e1 [] [] nonCtorInstanceDefns
+            val e2 = updateFixtures e1 (uf2@hf2)
+
             val ctorDefn = case ctorDefns of 
                                [Ast.FunctionDefn fd] => SOME fd
                              | [] => NONE
                              | _ => LogErr.defnError ["illegal constructor definition(s)"]
 
-            val (_, newProtoDefns) = defDefns (c2 :: c1 :: e0) protoDefns
+            val (_, newProtoDefns) = defDefns e2 protoDefns
 
-        in 
+        in
             { protoVars = List.mapPartial getVarDefn newProtoDefns,
               protoMethods = List.mapPartial getFunc newProtoDefns,
               instanceVars = List.mapPartial getVarDefn nonCtorInstanceDefns,
               instanceMethods = List.mapPartial getFunc nonCtorInstanceDefns,
-              vars = List.mapPartial getVarDefn newStaticDefns,
-              methods = List.mapPartial getFunc newStaticDefns,
+              vars = List.mapPartial getVarDefn staticDefns,
+              methods = List.mapPartial getFunc staticDefns,
               constructor = ctorDefn,
-              initializer = newStmts,               
-              fixtures = f1,
-              ifixtures = f2 }
+              initializer = newStmts,
+              fixtures = (uf1@hf1),
+              ifixtures = (uf2@hf2) }
     end
 
 and mergeFixtureOpts (a:Ast.FIXTURES option) 
@@ -337,48 +347,48 @@ and mergeClasses (base:Ast.CLASS_DEFN)
       constructor = (#constructor curr),
       initializer = (#initializer curr) }
 
+(*
+    Analyze class to get its various kinds of definitions
+    Translate those definitions into fixture/initialiser pairs
+    Merge fixtures in the inheritance chain
+*)
 
-and resolveOneClass (env:ENV)
-                    (unresolved:Ast.CLASS_DEFN list)
-                    (resolved:(Ast.CLASS_DEFN list) ref)    
-                    (children:Ast.NAME list)
-                    (curr:Ast.CLASS_DEFN) 
+
+and resolveClass (env:ENV)
+                 (children:Ast.NAME list)
+                 (curr:Ast.CLASS_DEFN) 
     : (Ast.NAME * Ast.CLASS_DEFN) = 
-    let 
+    let
         fun qualName (cd:Ast.CLASS_DEFN) = {id = (#ident cd), 
                                             ns = (resolveExprToNamespace env (#ns cd)) }
         val currName = qualName curr
+
+
         fun seenAsChild (n:Ast.NAME) = List.exists (fn ch => ch = n) children
-        fun findResolved (n:Ast.NAME) = List.find (fn c => (qualName c) = n) (!resolved)
-        fun findBaseClassDef (n:Ast.NAME) (cds:Ast.CLASS_DEFN list) = 
-            case cds of 
-                [] => LogErr.defnError ["unable to find class definition ", 
-                                        LogErr.name n]
-              | x::xs => if n = (qualName x) 
-                         then (if (#final x)
-                               then LogErr.defnError ["attempting to extend final class ", 
-                                                      LogErr.name n]
-                               else x)
-                         else findBaseClassDef n xs
+        fun findBaseClassDef (n:Ast.MULTINAME) = 
+            let
+                val f = resolveMultinameToFixture env n
+            in case f of 
+                Ast.ClassFixture cd => cd
+              | _ => LogErr.defnError ["base class reference to non-class fixture"]
+            end
+
         fun identExprToName ie = 
             case ie of 
-                Ast.Identifier {ident, ...} => {ns = Ast.Internal "", 
+                Ast.Identifier {ident, ...} => {nss = (#openNamespaces (hd env)), 
                                                 id = ident}
               | _ => LogErr.defnError ["unhandled form of identifier ",
                                        "expresison in class defn"]
-    in
-        case findResolved currName of 
-            SOME existingDefn => (currName, existingDefn)
-          | NONE => 
-            let 
-                val _ = trace ["analyzing class block for ", 
+
+         val _ = trace ["analyzing class block for ", 
                                       LogErr.name currName]
-                val cba = analyzeClassBlock env currName (#body curr)
-                val newExtends = case (#extends curr) of 
+
+         val cba = analyzeClassBlock env currName (#body curr)
+         val newExtends = case (#extends curr) of 
                                      SOME x => SOME (defIdentExpr env x)
                                    | NONE => NONE
-                val newImplements = map (defIdentExpr env) (#implements curr)
-                val analyzedCurrClassDef = 
+         val newImplements = map (defIdentExpr env) (#implements curr)
+         val analyzedCurrClassDef = 
                     { ident = (#ident curr),
                       ns = (#ns curr),
                       
@@ -401,29 +411,20 @@ and resolveOneClass (env:ENV)
                       methods = (#methods cba),
                       constructor = (#constructor cba),
                       initializer = (#initializer cba) }
-            in
-                case (#extends curr) of 
-                    SOME baseIdentExpr => 
+    in case (#extends curr) of 
+        SOME baseIdentExpr => 
                     let 
                         val baseName = identExprToName baseIdentExpr
-                        val unresolvedBaseClassDef = 
-                            if seenAsChild baseName
+                        val resolvedBaseClassDef = 
+                            if false (* seenAsChild baseName *)
                             then LogErr.defnError ["cyclical class inheritence detected at ", 
-                                                   LogErr.name baseName]
-                            else findBaseClassDef baseName unresolved 
-                        val (_, resolvedBaseClassDef) = 
-                            resolveOneClass 
-                                env 
-                                unresolved 
-                                resolved
-                                (currName :: children) 
-                                unresolvedBaseClassDef
-                    in
+                                                   LogErr.multiname baseName]
+                            else findBaseClassDef baseName
+                    in 
                         (currName, mergeClasses resolvedBaseClassDef 
                                                 analyzedCurrClassDef)
                     end
-                  | NONE => ((qualName curr), analyzedCurrClassDef)
-            end
+      | NONE => ((qualName curr), analyzedCurrClassDef)
     end
 
 (*
@@ -537,27 +538,11 @@ and defVarsFull (env:ENV)
         }
     }
 
-    Class = {
-        csig  = ...  (* structural type of this class *)
-        isig  = ...  (* structural type of instances *)
-        extends = ...
-        implements = ...
-        block = {
-            fxtrs = [ 'construct' => Block {
-                          fxtrs = ...  (* ctor vars *)
-                          inits = ...  (* ctor inits *)
-                          stmts = ...  (* ctor code *) }, ... ]
-            inits = ...  (* static inits,  empty? *)
-            stmts = ...  (* static initialiser *)
-        }
-    }
-
     var c = o.f<A,B,C>(a,b)
 
     let g = o.f         bindThis
     let h = g.<A,B,C>   bindTypes
     let c = h(a,b)      callFunction
-
 *)
 
 (*
@@ -1504,8 +1489,12 @@ and defDefn (env:ENV)
             in
                 (unhoisted,[])
             end
-      | Ast.ClassDefn cd => 
-            LogErr.defnError ["class definition at non-top block"]
+      | Ast.ClassDefn cd =>
+            let
+                val (hoisted,def) = defClass env cd
+            in
+                (hoisted,[])
+            end
       | _ => ([],[])
 
 (*
@@ -1546,7 +1535,47 @@ and defDefns (env:ENV)
     let
         val (unhoisted, hoisted) = ListPair.unzip (map (defDefn env) defns)
     in
-        (List.concat unhoisted, [])
+        (List.concat hoisted, defns)
+    end
+
+(*
+    CLASS_DEFN
+
+    Class = {
+        csig  = ...  (* structural type of this class *)
+        isig  = ...  (* structural type of instances *)
+        extends = ...
+        implements = ...
+        block = {
+            fxtrs = [ 'construct' => Block {
+                          fxtrs = ...  (* ctor vars *)
+                          inits = ...  (* ctor inits *)
+                          stmts = ...  (* ctor code *) }, ... ]
+            inits = ...  (* static inits,  empty? *)
+            stmts = ...  (* static initialiser *)
+        }
+    }
+
+*)
+
+
+and defClass (env: ENV) (cdef: Ast.CLASS_DEFN)
+    : (Ast.FIXTURES * Ast.CLASS_DEFN) =
+    let
+        val tmp:(Ast.CLASS_DEFN list) ref = ref []
+        val (cname,cdef) = resolveClass env [] cdef
+(*
+        val namedClass = resolveOneClass env classDefns tmp []
+        val newNamedClasses = map resolve classDefns
+        val newClassDefns = map (fn (_, cd) => Ast.ClassDefn cd) newNamedClasses
+        val classFixtures = map (inr (Ast.ClassFixture)) newNamedClasses
+        val classCtx = if classesOk then (updateFixtures nsCtx classFixtures) else nsCtx
+        val e2 = classCtx :: env
+        val (defnFixtures, newOtherDefns) = defDefns e1 otherDefns
+*)
+        val cfx = (cname,Ast.ClassFixture cdef)
+    in
+        ([cfx],cdef)
     end
 
 (*
@@ -1567,23 +1596,6 @@ and defBlock (env:ENV)
             val env = defPragmas env pragmas
             val (unhoisted,defns_hoisted) = defDefinitions env [] [] defns
             val env = updateFixtures env unhoisted
-
-(*
-            val _ = if not ((List.null classDefns) orelse classesOk)
-                    then LogErr.defnError ["classes found in illegal block context"]
-                    else ()
-
-            val tmp:(Ast.CLASS_DEFN list) ref = ref []
-            val resolve = resolveOneClass e1 classDefns tmp []
-            val newNamedClasses = map resolve classDefns
-            val newClassDefns = map (fn (_, cd) => Ast.ClassDefn cd) newNamedClasses
-            val classFixtures = map (inr (Ast.ClassFixture)) newNamedClasses
-            val classCtx = if classesOk then (updateFixtures nsCtx classFixtures) else nsCtx
-            val e2 = classCtx :: env
-            val (defnFixtures, newOtherDefns) = defDefns e1 otherDefns
-            val e3 = updateFixtures e1 defnFixtures
-            val classFixtures = []
-*)
             val (stmts,stmts_hoisted) = defStmts env stmts
         in
             (Ast.Block { pragmas = pragmas,
