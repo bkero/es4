@@ -7,6 +7,18 @@ var {a:i,b:j}:{a:int,b2:string} = o
 var f:function (_:[]):* = function .<t,u>(i,j,k) {var x=10; let y=20; print('foo')}
 */
 
+class A 
+{
+  var x = 10
+  static var y = 20
+  let z = 30
+}
+
+class B extends A
+{
+  var x = 40
+}
+
 /*
 class A
 {
@@ -21,7 +33,7 @@ class A
 }
 */
 
-function f(x,y,z=10) { var i=20; let j=30 }
+
 /*
 {
 	use namespace foo

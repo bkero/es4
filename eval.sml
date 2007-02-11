@@ -941,9 +941,12 @@ and constructClassInstance (obj:Mach.OBJ)
                     (* FIXME: self-name binding is surely more complex than this! *)
                     val selfTag = Mach.ClassTag n
                     val selfVal = Mach.newObject selfTag Mach.Null (SOME (Mach.Class closure))
+(* FIXME: need to get instance block from fixture that is passed into this function
                     val Ast.Block iblk = (valOf (#instanceBlock definition))
+*)
+                    val iblk = NONE
                 in
-                    allocObjFixtures env obj (valOf (#fixtures iblk));
+                    allocObjFixtures env obj (valOf iblk);
                     case ctor of 
                         NONE => (checkAllPropertiesInitialized obj; instance)
                       | SOME ({native, ns,

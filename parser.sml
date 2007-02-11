@@ -480,8 +480,10 @@ and needType (nd:Ast.IDENT_EXPR,nullable:bool option) =
     case nd of
         Ast.Identifier {ident,...} =>
             if (ident="*")
-                then Ast.SpecialType Ast.Any 
-                else Ast.NominalType {ident=nd}
+                then Ast.SpecialType Ast.Any
+                else if( ident="Object" )  (* FIXME: check for *the* object name *)
+                    then Ast.NominalType {ident=nd}
+                    else Ast.NominalType {ident=nd}
       | _ => Ast.NominalType {ident=nd}
     
 and functionSignature (ts) : (token list * Ast.FUNC_SIG) =
@@ -5190,8 +5192,7 @@ and classDefinition (ts,attrs) =
                                              params=params,
                                              extends=extends,
                                              implements=implements,
-                                             classBlock=nd3,
-                                             instanceBlock=NONE }],
+                                             body=nd3 }],
                      fixtures=NONE, inits=NONE})
             end
       | _ => raise ParseError

@@ -124,7 +124,7 @@ fun inr f (a, b) = (a, f b)
 
 fun resolveMultinameToFixture (env:ENV) 
                    (mname:Ast.MULTINAME) 
-    : Ast.FIXTURE =
+    : Ast.NAME * Ast.FIXTURE =
     case env of 
         [] => LogErr.defnError ["unresolved fixture "^(LogErr.multiname mname)]
       | ({fixtures, ... }) :: parents => 
@@ -161,7 +161,7 @@ fun resolveMultinameToFixture (env:ENV)
                 end
         in
             case tryMultiname (#nss mname) of 
-                SOME n => getFixture fixtures n 
+                SOME n => (n,getFixture fixtures n)
               | NONE => resolveMultinameToFixture parents mname
         end
 
@@ -181,7 +181,7 @@ fun resolveExprToNamespace (env:ENV)
             val mname = {nss = (#openNamespaces (hd env)), id = ident}
         in
             case resolveMultinameToFixture env mname of 
-                Ast.NamespaceFixture ns => ns
+                (_,Ast.NamespaceFixture ns) => ns
               | _ => LogErr.defnError ["namespace expression resolved ",
                                        "to non-namespace fixture"]
         end
@@ -200,27 +200,67 @@ fun newContext (env:ENV)
           openNamespaces = openNamespaces, 
           numericMode = numericMode } 
 
+fun identExprToName (env:ENV) ie = 
+            case ie of 
+                Ast.Identifier {ident, ...} => {nss = (#openNamespaces (hd env)), 
+                                                id = ident}
+              | _ => LogErr.defnError ["unhandled form of identifier ",
+                                       "expresison in class defn"]
 
-type classBlockAnalysis = 
-     { classBlock: Ast.BLOCK,
-       instanceBlock: Ast.BLOCK }
 
 (*
+    CLASS_DEFN
+
+    The class definer analyzes the class definition into two blocks,
+    a class block that implements the class object and an instance
+    block that implements the instance objects.
+
+    ClassFixture = {
+        extends = ...
+        implements = ...
+        cblk = {
+            fxtrs = [ 'construct' => Block {
+                          fxtrs = ...  (* ctor vars *)
+                          inits = ...  (* ctor inits *)
+                          stmts = ...  (* ctor code *) }, ... ]
+            inits = ...  (* static inits,  empty? *)
+            stmts = ...  (* static initialiser *)
+        }
+        iblk = { ... }
+    }
+
+    The steps taken are:
+    - analyze class body into instance and class blocks
+    - resolve extends and implements and do inheritance
+    - return a fixture binding for the class
+*)
+
+fun defClass (env: ENV) 
+             (cdef: Ast.CLASS_DEFN)
+    : (Ast.FIXTURES * Ast.CLASS_DEFN) =
+    let
+        val (classBlock,instanceBlock) = analyzeClass env cdef
+        val (className,classFixture)   = resolveClass env cdef classBlock instanceBlock
+    in
+        ([(className,classFixture)],cdef)
+    end
+
+(*
+    analyzeClass
+
+    Partition a class body into an instance block and class block. The class block
+    implements the class object and the instance block implements class instances.
 
        instanceBlock
        classBlock
-
 *)
 
-
-fun analyzeClassBlock (env:ENV) 
-                      (n:Ast.NAME) 
-                      (b:Ast.BLOCK) 
-    : classBlockAnalysis = 
-    case b of 
-        Ast.Block { pragmas, defns, stmts, ... } => 
+and analyzeClass (env:ENV) 
+                 (cdef:Ast.CLASS_DEFN)
+    : (Ast.BLOCK * Ast.BLOCK) = 
+    case cdef of
+        {ns, ident, body=Ast.Block { pragmas, defns, stmts, ... },...} => 
         let
-
             fun isLet (k:Ast.VAR_DEFN_TAG) = (k=Ast.LetVar) orelse (k=Ast.LetConst)
 
             fun isBlock (d:Ast.DEFN) 
@@ -268,7 +308,7 @@ fun analyzeClassBlock (env:ENV)
                   | _ => false                    
                 end
 
-            fun isCtor (d:Ast.DEFN) : bool = 
+            fun isCtor (n:Ast.NAME,d:Ast.DEFN) : bool = 
                 case d of 
                     (* FIXME: this might be an incorrect algorithm for
                      * determining ctor-ness *)
@@ -299,6 +339,7 @@ fun analyzeClassBlock (env:ENV)
                 and an instance block, and then define both blocks
             *)
 
+            val name = {id=ident, ns=resolveExprToNamespace env ns}
             val protoDefns = List.filter isProto defns
             val staticDefns = List.filter isStatic defns
             val instanceDefns = List.filter isInstance defns
@@ -323,119 +364,117 @@ fun analyzeClassBlock (env:ENV)
                                                         fixtures=NONE})
 
             val (_, newProtoDefns) = defDefns env protoDefns
-
         in
-            { classBlock = cblk,
-              instanceBlock = iblk }
+            (cblk,iblk)
+        end
+
+(*
+    check for definition time errors
+    - override with non-override method
+    - ovveride of final member
+    
+    don't check type compatibility yet; we don't know the value of type
+    expressions until verify time. In standard mode we need to do a
+    light weight verification to ensure that overrides are type compatible
+    before a class is loaded.
+*)
+
+and inheritFixtures (a:Ast.FIXTURES)
+                    (b:Ast.FIXTURES)
+    : Ast.FIXTURES =
+    let
+        (* TODO: implement override and implements checks *)
+    in
+        a@b
     end
 
-and mergeFixtureOpts (a:Ast.FIXTURES option) 
-                     (b:Ast.FIXTURES option) :
-    Ast.FIXTURES option =
+and inheritFixtureOpts (a:Ast.FIXTURES option) 
+                       (b:Ast.FIXTURES option) 
+    : Ast.FIXTURES option =
     case (a,b) of
         (NONE, NONE) => NONE
       | (SOME x, NONE) => SOME x
-      | (SOME x, SOME y) => SOME (x @ y)
+      | (SOME x, SOME y) => SOME (inheritFixtures x y)
       | (NONE, SOME x) => SOME x
 
-and mergeClasses (base:Ast.CLASS_DEFN) 
-                 (curr:Ast.CLASS_DEFN) 
-    : Ast.CLASS_DEFN = 
-    let
-        
-        fun mergeBlocks (Ast.Block b1:Ast.BLOCK) (Ast. Block b2:Ast.BLOCK) : Ast.BLOCK = 
-            Ast.Block {pragmas=[],
-                       defns=[],
-                       stmts=(#stmts b2),
-                       fixtures=(#fixtures b2),inits=(#inits b2)  
-        }
-    in
-    (* FIXME: check for name collisions and respect override / final modifiers. *)
-    { ident = (#ident curr),
-      ns = (#ns curr),
-      nonnullable = (#nonnullable curr),
-      dynamic = (#dynamic curr),
-      final = (#final curr),
-      params = (#params curr),
-      extends = (#extends curr),
-      implements = (#implements curr) @ (#implements base),
-      classBlock = (#classBlock curr),
-      instanceBlock = SOME (mergeBlocks (valOf (#instanceBlock base)) (valOf (#instanceBlock curr)))
-     }
-    end
 (*
-    Analyze class to get its various kinds of definitions
-    Translate those definitions into 'block' form
-    Define the blocks, first the class block, then the instance block
-    Merge fixtures in the inheritance chain
 *)
 
+and resolveExtends (env: ENV)
+                   (currInstanceFixtures: Ast.FIXTURES option) 
+                   (extends: Ast.IDENT_EXPR option)
+                   (children:Ast.NAME list)
+    : (Ast.NAME option * Ast.FIXTURES option) =
+    let
+        fun seenAsChild (n:Ast.NAME) = List.exists (fn ch => ch = n) children
+    in case extends of
+        SOME baseIdentExpr => 
+            let 
+                val baseName = identExprToName env baseIdentExpr
+                val _ = trace ["inheriting from ",LogErr.multiname baseName]
+                val (baseClassName,baseClassFixture) = 
+                        if false (* seenAsChild baseName *)
+                        then LogErr.defnError ["cyclical class inheritence detected at ", 
+                                           LogErr.multiname baseName]
+                        else (resolveMultinameToFixture env baseName)
+            in case baseClassFixture of
+                Ast.ClassFixture {instanceBlock=Ast.Block{fixtures=baseInstanceFixtures,...},...} =>
+                    (SOME baseClassName,inheritFixtureOpts baseInstanceFixtures currInstanceFixtures)
+              | _ => LogErr.defnError ["base class not found"]
+            end
+      | NONE => (NONE,currInstanceFixtures)
+    end
+
+(*
+    Resolve each of the expressions in the 'implements' list to an interface
+    fixture. check that each of the methods declared by each interface is
+    implemented by the current set of  instance fixtures.
+*)
+
+and resolveImplements (env: ENV) 
+                      (currInstanceFixtures: Ast.FIXTURES option) 
+                      (implements: Ast.IDENT_EXPR list)
+    : (Ast.NAME list * Ast.FIXTURES option) =
+    let
+        val implements = map (identExprToName env) (map (defIdentExpr env) implements)
+    in
+        ([],currInstanceFixtures)
+    end
+
+(*
+    Resolve 
+*)
 
 and resolveClass (env:ENV)
-                 (children:Ast.NAME list)
-                 (curr:Ast.CLASS_DEFN) 
-    : (Ast.NAME * Ast.CLASS_DEFN) = 
+                 (curr:Ast.CLASS_DEFN)
+                 (classBlock:Ast.BLOCK) 
+                 (instanceBlock:Ast.BLOCK) 
+    : (Ast.NAME * Ast.FIXTURE) = 
     let
-        fun qualName (cd:Ast.CLASS_DEFN) = {id = (#ident cd), 
-                                            ns = (resolveExprToNamespace env (#ns cd)) }
-        val currName = qualName curr
+        fun qualName (cd:Ast.CLASS_DEFN) = {id=(#ident cd),ns=(resolveExprToNamespace env (#ns cd))}
 
-
-        fun seenAsChild (n:Ast.NAME) = List.exists (fn ch => ch = n) children
         fun findBaseClassDef (n:Ast.MULTINAME) = 
             let
-                val f = resolveMultinameToFixture env n
+                val (n,f) = resolveMultinameToFixture env n
             in case f of 
                 Ast.ClassFixture cd => cd
               | _ => LogErr.defnError ["base class reference to non-class fixture"]
             end
 
-        fun identExprToName ie = 
-            case ie of 
-                Ast.Identifier {ident, ...} => {nss = (#openNamespaces (hd env)), 
-                                                id = ident}
-              | _ => LogErr.defnError ["unhandled form of identifier ",
-                                       "expresison in class defn"]
+        val currName = qualName curr
 
-        val _ = trace ["analyzing class block for ", 
-                                      LogErr.name currName]
+        val {body,extends,implements,...} = curr
+        val Ast.Block {fixtures=fixtures,...} = instanceBlock
 
-        val cba = analyzeClassBlock env currName (#classBlock curr)
+        val _ = trace ["analyzing class block for ", LogErr.name currName]
 
-        val newExtends = case (#extends curr) of 
-                                     SOME x => SOME (defIdentExpr env x)
-                                   | NONE => NONE
-        val newImplements = map (defIdentExpr env) (#implements curr)
-
-        val analyzedCurrClassDef : Ast.CLASS_DEFN = 
-                    { ident = (#ident curr),
-                      ns = (#ns curr),
-                      
-                      nonnullable = (#nonnullable curr),
-                      dynamic = (#dynamic curr),
-                      final = (#final curr),                      
-                      params = (#params curr),
-                      extends = newExtends,
-                      implements = newImplements,
-                      
-                      classBlock = (#classBlock cba),
-                      instanceBlock = SOME (#instanceBlock cba) }
-
-    in case (#extends curr) of 
-        SOME baseIdentExpr => 
-                    let 
-                        val baseName = identExprToName baseIdentExpr
-                        val resolvedBaseClass : Ast.FIXTURE = 
-                            if false (* seenAsChild baseName *)
-                            then LogErr.defnError ["cyclical class inheritence detected at ", 
-                                                   LogErr.multiname baseName]
-                            else (resolveMultinameToFixture env baseName)
-
-                    in 
-(*   FIXME                     (currName, mergeClasses resolvedBaseClassDef analyzedCurrClassDef) *)
-                          (currName, analyzedCurrClassDef)
-                    end
-      | NONE => ((qualName curr), analyzedCurrClassDef)
+        val (extendsName, fixtures) = resolveExtends env fixtures extends []
+        val (implementsNames, fixtures) = resolveImplements env fixtures implements
+    in
+        (currName, Ast.ClassFixture {extends=extendsName,
+                                     implements=implementsNames,
+                                     classBlock=classBlock,
+                                     instanceBlock=instanceBlock})
     end
 
 (*
@@ -468,8 +507,6 @@ and resolveClass (env:ENV)
     out of their defining block. It is a definition error for
     a type annotation to resolve to a non-type fixture. This is
     to avoid changing the meaning of type annotations by hoisting
-
-
 *)
 
 and defineVar (env:ENV) 
@@ -587,7 +624,7 @@ and defFuncSig (env:ENV)
             val (paramFixtures, newParams) = defVars typeEnv params
 
             val ftype = Ast.FunctionType (Ast.FunctionSignature { typeParams=typeParams, params=params, 
-                                           inits= [], returnType=returnType, 
+                                           inits=[], returnType=returnType, 
                                            thisType=thisType, hasBoundThis=hasBoundThis, 
                                            hasRest=hasRest })
             val (inits,_) = defStmts env inits
@@ -641,15 +678,15 @@ and defFunc (env:ENV) (func:Ast.FUNC)
         val funcCtx = newContext env fxtrs
         val env = funcCtx :: env
         val (lblk,hoisted) = defBlock env body
-
         val fblk = Ast.Block { pragmas=[], defns=[], fixtures=SOME (fxtrs@hoisted), inits=SOME inits, stmts = [Ast.BlockStmt lblk]}
-    in
-        (ftype,
-         Ast.Func {name = name,
+    in case ftype of
+        Ast.FunctionType fsig =>
+            (ftype, Ast.Func {name = name,
                    fsig = fsig,
                    body = fblk,
                    fixtures = NONE,
                    inits = []})
+      | _ => LogErr.defnError ["internal definition error in defFunc"]
     end
 
 (*
@@ -735,7 +772,6 @@ and defPragmas (env:CONTEXT list)
 
 (*
     IDENT_EXPR
-
 *)
 
 and defIdentExpr (env:ENV) 
@@ -774,7 +810,6 @@ and defIdentExpr (env:ENV)
 
 (*
     EXPR
-
 *)
 
 and defExpr (env:ENV) 
@@ -888,8 +923,7 @@ and defExpr (env:ENV)
             Ast.ListExpr (subs es) 
 
           | Ast.SliceExpr (a, b, c) => 
-            Ast.SliceExpr (subs a, subs b, subs c) 
-
+            Ast.SliceExpr (subs a, subs b, subs c)
     end
 
 
@@ -1535,48 +1569,6 @@ and defDefns (env:ENV)
         val (unhoisted, hoisted) = ListPair.unzip (map (defDefn env) defns)
     in
         (List.concat hoisted, defns)
-    end
-
-(*
-    CLASS_DEFN
-
-    The class definer analyzes the class definition into two blocks,
-    a class block that implements the class object and an instance
-    block that implements the instance objects.
-
-    Class = {
-        csig  = ...  (* structural type of this class *)
-        isig  = ...  (* structural type of instances *)
-        extends = ...
-        implements = ...
-        cblk = {
-            fxtrs = [ 'construct' => Block {
-                          fxtrs = ...  (* ctor vars *)
-                          inits = ...  (* ctor inits *)
-                          stmts = ...  (* ctor code *) }, ... ]
-            inits = ...  (* static inits,  empty? *)
-            stmts = ...  (* static initialiser *)
-        }
-        iblk = { ... }
-    }
-
-    The steps taken are:
-    * analyse the class definition
-    * resolve and inherit from the base class and interfaces
-    * define the class and instance blocks
-
-*)
-
-
-and defClass (env: ENV) (cdef: Ast.CLASS_DEFN)
-    : (Ast.FIXTURES * Ast.CLASS_DEFN) =
-    let
-        val tmp:(Ast.CLASS_DEFN list) ref = ref []
-        val (cname,cdef) = resolveClass env [] cdef
-        val cfx = (cname,Ast.ClassFixture {classBlock=(#classBlock cdef),
-                                           instanceBlock=valOf (#instanceBlock cdef)})
-    in
-        ([cfx],cdef)
     end
 
 (*

@@ -104,7 +104,7 @@ fun substTypeExpr (s:(IDENT*TYPE_EXPR) list) (t:TYPE_EXPR):TYPE_EXPR =
 		    SOME (_,ty) => ty 
 		  | NONE => t
 	    end
-	  | NominalType { ident=_} => t
+	  | NominalType { ident=_ } => t
 
 	  | ObjectType fields =>
 	    ObjectType (map (fn {name,ty} => 
@@ -344,7 +344,7 @@ fun verifyTypeExpr (ctxt as {env,this,...}:CONTEXT)
 	    end
 	
     (*TODO:
-          | NominalType of { ident : IDENT_EXPR, nullable: bool option } 
+          | NominalType of { ident : IDENT_EXPR } 
       *)	    
     end
 

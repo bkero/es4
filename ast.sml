@@ -322,7 +322,10 @@ datatype PRAGMA =
 
      and FIXTURE = 
          NamespaceFixture of NAMESPACE
-       | ClassFixture of { classBlock: BLOCK, instanceBlock: BLOCK } 
+       | ClassFixture of { extends: NAME option, 
+                           implements: NAME list,
+                           classBlock: BLOCK, 
+                           instanceBlock: BLOCK } 
        | TypeVarFixture
        | TypeFixture of TYPE_EXPR
        | ValFixture of { ty: TYPE_EXPR,
@@ -394,8 +397,7 @@ withtype FIELD =
            params: IDENT list,
            extends: IDENT_EXPR option,
            implements: IDENT_EXPR list,
-           classBlock: BLOCK,
-           instanceBlock: BLOCK option
+           body: BLOCK
      }
 
      and INTERFACE_DEFN =
