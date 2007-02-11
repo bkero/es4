@@ -5190,18 +5190,8 @@ and classDefinition (ts,attrs) =
                                              params=params,
                                              extends=extends,
                                              implements=implements,
-                                             classBlock=NONE,
-                                             instanceBlock=NONE,                                    
-                                             body=nd3 }],
-                    (* the following field will be populated during the definition phase *)
-(*                                             protoVars=[],
-                                             protoMethods=[],
-                                             instanceVars=[],
-                                             instanceMethods=[],
-                                             vars=[],
-                                             methods=[],
-                                             constructor=NONE,
-                                             initializer=[]} *)
+                                             classBlock=nd3,
+                                             instanceBlock=NONE }],
                      fixtures=NONE, inits=NONE})
             end
       | _ => raise ParseError
@@ -5650,17 +5640,27 @@ and importPragma (ts) : token list * Ast.PRAGMA list =
 and importName (ts) =
     let val _ = trace([">> importName with next=", tokenname(hd ts)])
     in case ts of
-(*        PackageIdentifier p :: Dot :: _ =>  fixme: handle dotted package names *) 
         Identifier p :: Dot :: _ =>
             let
                 val (ts1,nd1) = (tl ts,p)
-                val (ts2,nd2) = propertyIdentifier (tl ts1)
+                val (ts2,nd2) = importName (tl ts1)
+                val dotOrNot = if (#package nd2) = "" then "" else "."
             in
-                (ts2,{package=nd1,name=nd2})
+                (ts2,{package=(nd1^dotOrNot^(#package nd2)),name=(#name nd2)})
             end
-      | _ => 
-            (error(["attempt to import an unknown package"]); 
-            raise ParseError)
+      | Mult :: _ =>
+            let
+                val (ts1,nd1) = (tl ts,"*")
+            in
+                (ts1,{package="",name=nd1})
+            end
+      | Identifier p :: _ =>
+            let
+                val (ts1,nd1) = (tl ts,p)
+            in
+                (ts1,{package="",name=nd1})
+            end
+      | _ => raise ParseError
     end
 
 (* BLOCKS AND PROGRAMS *)

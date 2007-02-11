@@ -75,8 +75,8 @@ fun hasFixture (b:Ast.FIXTURES)
             then true
             else search bs
     in
-        search b    end
-
+        search b    
+    end
 
 fun getFixture (b:Ast.FIXTURES) 
                (n:Ast.NAME) 
@@ -202,17 +202,8 @@ fun newContext (env:ENV)
 
 
 type classBlockAnalysis = 
-     { protoVars: Ast.VAR_DEFN list,
-       protoMethods: Ast.FUNC_DEFN list,
-       instanceVars: Ast.VAR_DEFN list,
-       instanceMethods: Ast.FUNC_DEFN list,
-       vars: Ast.VAR_DEFN list,
-       methods: Ast.FUNC_DEFN list,
-       constructor: Ast.FUNC_DEFN option,
-       initializer: Ast.STMT list,
-       classBlock: Ast.BLOCK,
-       instanceBlock: Ast.BLOCK
-}
+     { classBlock: Ast.BLOCK,
+       instanceBlock: Ast.BLOCK }
 
 (*
 
@@ -325,17 +316,8 @@ fun analyzeClassBlock (env:ENV)
                                                         stmts=[Ast.BlockStmt cinit],
                                                         fixtures=NONE,inits=NONE})
 
-
-            (* separate ctor from non-ctor definitions *)
-            val (ctorDefns, nonCtorInstanceDefns) = List.partition isCtor instanceDefns
-
-            val ctorDefn = case ctorDefns of 
-                               [Ast.FunctionDefn fd] => SOME fd
-                             | [] => NONE
-                             | _ => LogErr.defnError ["illegal constructor definition(s)"]
-
-            val iblk = defRegionalBlock env (Ast.Block {pragmas=pragmas,
-                                                        defns=instanceDefns,   (* include the ctor *)
+            val iblk = defRegionalBlock env (Ast.Block {pragmas=[],
+                                                        defns=instanceDefns,
                                                         stmts=[],
                                                         inits=SOME iinits,
                                                         fixtures=NONE})
@@ -343,15 +325,7 @@ fun analyzeClassBlock (env:ENV)
             val (_, newProtoDefns) = defDefns env protoDefns
 
         in
-            { protoVars = List.mapPartial getVarDefn newProtoDefns,
-              protoMethods = List.mapPartial getFunc newProtoDefns,
-              instanceVars = [],  (* List.mapPartial getVarDefn nonCtorInstanceDefns,*)
-              instanceMethods = [], (* List.mapPartial getFunc nonCtorInstanceDefns, *)
-              vars = [], (* List.mapPartial getVarDefn staticDefns, *)
-              methods = [], (* List.mapPartial getFunc staticDefns, *)
-              constructor = ctorDefn,
-              initializer = [],
-              classBlock = cblk,
+            { classBlock = cblk,
               instanceBlock = iblk }
     end
 
@@ -385,8 +359,6 @@ and mergeClasses (base:Ast.CLASS_DEFN)
       params = (#params curr),
       extends = (#extends curr),
       implements = (#implements curr) @ (#implements base),
-      body = (#body curr),
-
       classBlock = (#classBlock curr),
       instanceBlock = SOME (mergeBlocks (valOf (#instanceBlock base)) (valOf (#instanceBlock curr)))
      }
@@ -428,7 +400,7 @@ and resolveClass (env:ENV)
         val _ = trace ["analyzing class block for ", 
                                       LogErr.name currName]
 
-        val cba = analyzeClassBlock env currName (#body curr)
+        val cba = analyzeClassBlock env currName (#classBlock curr)
 
         val newExtends = case (#extends curr) of 
                                      SOME x => SOME (defIdentExpr env x)
@@ -446,8 +418,7 @@ and resolveClass (env:ENV)
                       extends = newExtends,
                       implements = newImplements,
                       
-                      body = (#body curr),
-                      classBlock = SOME (#classBlock cba),
+                      classBlock = (#classBlock cba),
                       instanceBlock = SOME (#instanceBlock cba) }
 
     in case (#extends curr) of 
@@ -588,26 +559,24 @@ and defVarsFull (env:ENV)
 (*
     FUNC_SIG
 
-    Compute: 
-        type arity
-        function type
-        fixtures (type and regular)
-        parameter initialisers
+    A function signature describes the type of the function, the fixtures of
+    an activation of the function, and the initialization of the parameters.
+
+    
 
 *)
-    
 
 and defFuncSig (env:ENV) 
                (fsig:Ast.FUNC_SIG)
-    : (int * Ast.TYPE_EXPR * Ast.FIXTURES * Ast.STMT list) =
+    : (Ast.TYPE_EXPR * Ast.FIXTURES * Ast.STMT list) =
+
     case fsig of 
         Ast.FunctionSignature { typeParams, params, inits, 
                                 returnType, thisType, 
                                 hasBoundThis, hasRest } =>
         let 
 
-            (* compute type fixtures (type parameters) *)
-
+            (* compute typeval fixtures (type parameters) *)
             val tyVarNs = Ast.Internal ""
             fun mkTypeVarFixture x = ({ns=tyVarNs, id=x}, Ast.TypeVarFixture)
             val typeParamFixtures = map mkTypeVarFixture typeParams
@@ -615,80 +584,72 @@ and defFuncSig (env:ENV)
             val typeEnv = (boundTypeFixtures :: env)
 
             (* compute val fixtures (parameters) *)
-
             val (paramFixtures, newParams) = defVars typeEnv params
 
-(* todo
-            val (initFixtures, newInits) = 
-                case inits of 
-                    NONE => ([], NONE)
-                  | SOME i => 
-                    let 
-                        val (fixtures, newBindings) = defVars typeEnv (#b i)
-                        val newInits = defExprs env (#i i)
-                    in
-                        (fixtures, SOME { b = newBindings, 
-                                          i = newInits })
-                    end
-
-            val newFsig = 
-                Ast.FunctionSignature 
-                    { typeParams = typeParams,
-                      params = newParams,
-                      inits = newInits,
-                      returnType = defTyExpr typeEnv returnType,
-                      thisType = case thisType of 
-                                     NONE => NONE
-                                   | SOME t => SOME (defTyExpr typeEnv t),
-                      hasBoundThis = hasBoundThis,
-                      hasRest = hasRest }
-            val selfFixtures = 
-                case name of 
-                    NONE => []
-                  | SOME n => [(n, Ast.ValFixture 
-                                       { ty = Ast.FunctionType newFsig,
-                                         readOnly = true,
-                                         isOverride = false
-                                         init = NONE })]
-
-            val allParamFixtures = paramFixtures @ initFixtures
-            val funcFixtures = (allParamFixtures @ typeParamFixtures @ selfFixtures)
-        in
-            (newFsig, selfFixtures, funcFixtures)
-*)
-            val type_param_count = 0
-            val fixtures = typeParamFixtures @ paramFixtures
-            val ftype = Ast.FunctionType fsig
+            val ftype = Ast.FunctionType (Ast.FunctionSignature { typeParams=typeParams, params=params, 
+                                           inits= [], returnType=returnType, 
+                                           thisType=thisType, hasBoundThis=hasBoundThis, 
+                                           hasRest=hasRest })
             val (inits,_) = defStmts env inits
         in
-            (type_param_count,ftype,fixtures,inits)
+            (ftype,typeParamFixtures @ paramFixtures, inits)
         end
 
 (*
     FUNC
 
-    When is code separated from fixtures? Always during parsing, or sometimes
-    during the definition phase. For example, the optional parameter expressions
-    in parameter lists, or function expressions in function definitions could
-    be refactored during parsing, but since there is no clear reason for doing
-    it during parsing, let's do it as late a possible during definition.
-    
+    The activation frame of a function is described by a BLOCK. The fixtures
+    are the parameters (type and ordinary) and (hoisted) vars. The optional
+    arguments are implemented using the inits. The body of the function is
+    contained in the statements list.
+
+    In addition to the block a function is described by its type tag, which
+    is a function type expression.
+
+    func : FUNC = {
+        type =
+        body : BLOCK = {
+            fxtrs
+            inits
+            stmts = 
+                [BlkStmt {
+                    fxtrs
+                    inits
+                    stmts }
+           ] 
+        }
+    }
+
+    Assemble the normal form of the fun
+
+    analyzeFuncSig
+    defBlock
+
+
+    function f(x,y,z) { var i=10; let j=20 }
+
+    {f=[x,y,z,i],i=[],
+      s=[{f=[j],i=[],
+        s=[i=10,j=20]}]}
 *)
 
 and defFunc (env:ENV) (func:Ast.FUNC)
     : (Ast.TYPE_EXPR * Ast.FUNC) =
     let
         val Ast.Func {name, fsig, body,...} = func
-        val (arity,ftype,fxtrs,inits) = defFuncSig env fsig
+        val (ftype,fxtrs,inits) = defFuncSig env fsig
         val funcCtx = newContext env fxtrs
-        val (body,hoisted) = defBlock (funcCtx :: env) body
+        val env = funcCtx :: env
+        val (lblk,hoisted) = defBlock env body
+
+        val fblk = Ast.Block { pragmas=[], defns=[], fixtures=SOME (fxtrs@hoisted), inits=SOME inits, stmts = [Ast.BlockStmt lblk]}
     in
         (ftype,
          Ast.Func {name = name,
                    fsig = fsig,
-                   body = body,
-                   fixtures = SOME (fxtrs@hoisted),
-                   inits = inits})
+                   body = fblk,
+                   fixtures = NONE,
+                   inits = []})
     end
 
 (*
@@ -704,12 +665,11 @@ and defFunc (env:ENV) (func:Ast.FUNC)
 
 *)
 
-and defFuncDefn (env:ENV) 
-            (f:Ast.FUNC_DEFN) 
+and defFuncDefn (env:ENV) (f:Ast.FUNC_DEFN) 
     : (Ast.FIXTURES * Ast.FUNC_DEFN) = 
-    case (#func f) of 
+    case (#func f) of
         Ast.Func { name, fsig, body, ... } =>
-        let 
+        let
             val newNsExpr = defExpr env (#ns f)
             val qualNs = resolveExprToNamespace env newNsExpr
             val ident = case (#kind name) of 
@@ -718,15 +678,14 @@ and defFuncDefn (env:ENV)
                           | _ => LogErr.unimplError ["defining unhandled type of function name"]
             val newName = { id = ident, ns = qualNs }
             val (ftype,newFunc) = defFunc env (#func f)
-            val outerFixtures = [(newName, Ast.ValFixture 
+            val outerFixtures = [(newName, Ast.ValFixture
                                        { ty = ftype,
                                          readOnly = true,
                                          isOverride = false,
                                          init = SOME (Ast.FunExpr newFunc) })]
         in
-
-            (outerFixtures, { kind = (#kind f), 
-                              ns = newNsExpr, 
+            (outerFixtures, { kind = (#kind f),
+                              ns = newNsExpr,
                               final = (#final f),
                               native = (#native f),
                               override = (#override f),
@@ -1614,7 +1573,7 @@ and defClass (env: ENV) (cdef: Ast.CLASS_DEFN)
     let
         val tmp:(Ast.CLASS_DEFN list) ref = ref []
         val (cname,cdef) = resolveClass env [] cdef
-        val cfx = (cname,Ast.ClassFixture {classBlock=valOf (#classBlock cdef),
+        val cfx = (cname,Ast.ClassFixture {classBlock=(#classBlock cdef),
                                            instanceBlock=valOf (#instanceBlock cdef)})
     in
         ([cfx],cdef)

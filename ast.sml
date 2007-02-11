@@ -394,18 +394,7 @@ withtype FIELD =
            params: IDENT list,
            extends: IDENT_EXPR option,
            implements: IDENT_EXPR list,
-           body: BLOCK,
-(*
-           protoVars: VAR_DEFN list,
-           protoMethods: FUNC_DEFN list,
-           instanceVars: VAR_DEFN list,
-           instanceMethods: FUNC_DEFN list,
-           vars: VAR_DEFN list,
-           methods: FUNC_DEFN list,
-           constructor: FUNC_DEFN option,
-           initializer: STMT list,
-*)
-           classBlock: BLOCK option,
+           classBlock: BLOCK,
            instanceBlock: BLOCK option
      }
 

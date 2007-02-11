@@ -1,5 +1,3 @@
-namespace foo
-{
-	use namespace foo
-	namespace bar = foo
-}
+import x.y.z.*
+var x
+
