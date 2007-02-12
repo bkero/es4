@@ -579,7 +579,7 @@ and resolveImplements (env: ENV)
 
 *)
 
-and defineVar (env:ENV) 
+and defVar (env:ENV) 
               (kind:Ast.VAR_DEFN_TAG)
               (ns:Ast.NAMESPACE)
               (var:Ast.VAR_BINDING) 
@@ -596,7 +596,7 @@ and defineVar (env:ENV)
             val patternType = case newTy of
                                 NONE => Ast.SpecialType Ast.Any
                               | SOME t => t
-            val fxtrs = defineBinding env kind ns pattern patternType
+            val fxtrs = defBinding env kind ns pattern patternType
             val isReadOnly = case kind of 
                                  Ast.Const => true
                                | Ast.LetConst => true
@@ -619,7 +619,7 @@ and defVarsFull (env:ENV)
                 (vars:Ast.VAR_BINDING list) 
     : (Ast.FIXTURES * (Ast.VAR_BINDING list)) = 
     let
-        val (fbl, vbl) = ListPair.unzip (map (defineVar env kind ns) vars)
+        val (fbl, vbl) = ListPair.unzip (map (defVar env kind ns) vars)
     in
         (List.concat fbl, vbl)
     end
@@ -802,7 +802,7 @@ and defPragmas (env:CONTEXT list)
         val precision = ref (#precision mode)
         val opennss   = ref []
     in
-        ( List.app (fn x => (* definePragma *)
+        ( List.app (fn x => (* defPragma *)
             case x of 
                 Ast.UseNumber n => numType := n
               | Ast.UseRounding m => rounding := m
@@ -963,7 +963,7 @@ and defExpr (env:ENV)
           | Ast.SetExpr (a, p, e) => 
             let 
             in
-                Ast.ListExpr (defineAssignment env p e)
+                Ast.ListExpr (defAssignment env p e)
             end
 
           | Ast.AllocTemp (i,e) => 
@@ -1018,7 +1018,7 @@ and defTyExpr (env:ENV)
         ns var {i:x,j:y} : {i:int,j:string}
         ns <init> {i:x,j:y} = o
 
-    which gets rewritten by 'defineBinding' and 'defineInit' as,
+    which gets rewritten by 'defBinding' and 'defInit' as,
 
         ns var x:int
         ns var y:string
@@ -1036,33 +1036,33 @@ and defTyExpr (env:ENV)
 
         [ns::x, ns::y] = o
 
-    gets rewriten by 'defineAssignment' as,
+    gets rewriten by 'defAssignment' as,
 
         <temp> t = o
         ns::x = t[0]
         ns::y = t[1]
 
-    Note: the difference between defineAssignment and defineInit is that
-    defineInit creates qualified identifiers using the namespace and the
+    Note: the difference between defineAssignment and defInit is that
+    defInit creates qualified identifiers using the namespace and the
     identifiers on the left side of each assignment.
 *)
 
-and defineInit (env: ENV) (ns: Ast.NAMESPACE) (init: Ast.EXPR)
+and defInit (env: ENV) (ns: Ast.NAMESPACE) (init: Ast.EXPR)
     : Ast.EXPR list =
     let
     in case init of
         (Ast.SetExpr (_,pattern,expr)) =>
-            definePatternAssign env ns pattern expr 0
-      | _ => LogErr.defnError ["internal definition error in defineInit"]
+            defPatternAssign env ns pattern expr 0
+      | _ => LogErr.defnError ["internal definition error in defInit"]
     end
 
-and defineAssignment (env:ENV) (pattern: Ast.PATTERN) (expr: Ast.EXPR)
+and defAssignment (env:ENV) (pattern: Ast.PATTERN) (expr: Ast.EXPR)
     : Ast.EXPR list =
     let
         val level = 0  (* to start with *)
         val ns = Ast.Intrinsic  (* unused since there are no IdentifierPatterns in this context *)
     in
-        definePatternAssign env ns pattern expr level
+        defPatternAssign env ns pattern expr level
     end
 
 (*
@@ -1072,10 +1072,10 @@ and defineAssignment (env:ENV) (pattern: Ast.PATTERN) (expr: Ast.EXPR)
     x = t
 *)
 
-and definePatternAssign (env:ENV) (ns: Ast.NAMESPACE) (pattern: Ast.PATTERN) (expr: Ast.EXPR) (level:int)
+and defPatternAssign (env:ENV) (ns: Ast.NAMESPACE) (pattern: Ast.PATTERN) (expr: Ast.EXPR) (level:int)
     : Ast.EXPR list =
     let
-        fun defineIdentifierAssign (id)
+        fun defIdentifierAssign (id)
             : Ast.EXPR list =
             let
                 val expr = defExpr env expr
@@ -1085,7 +1085,7 @@ and definePatternAssign (env:ENV) (ns: Ast.NAMESPACE) (pattern: Ast.PATTERN) (ex
                         {qual=Ast.LiteralExpr (Ast.LiteralNamespace ns),ident=id}}),expr)]
             end
 
-        fun defineSimpleAssign (ex)
+        fun defSimpleAssign (ex)
             : Ast.EXPR list =
             let
                 val expr = defExpr env expr
@@ -1101,7 +1101,7 @@ and definePatternAssign (env:ENV) (ns: Ast.NAMESPACE) (pattern: Ast.PATTERN) (ex
                    If so, what is the type of 's' here? int or *?
         *)
 
-        fun defineArrayAssign (elements:Ast.PATTERN list) (temp: Ast.EXPR) (n:int)
+        fun defArrayAssign (elements:Ast.PATTERN list) (temp: Ast.EXPR) (n:int)
             : Ast.EXPR list =
             let
             in case elements of
@@ -1109,8 +1109,8 @@ and definePatternAssign (env:ENV) (ns: Ast.NAMESPACE) (pattern: Ast.PATTERN) (ex
                     let
                         val expr   = Ast.ObjectRef {base=temp, ident=Ast.ExpressionIdentifier
                                         (Ast.LiteralExpr (Ast.LiteralString (Int.toString n)))}
-                        val inits  = definePatternAssign env ns p expr (level+1)
-                        val inits' = defineArrayAssign plist temp (n+1)
+                        val inits  = defPatternAssign env ns p expr (level+1)
+                        val inits' = defArrayAssign plist temp (n+1)
                     in
                         inits @ inits'
                     end
@@ -1128,7 +1128,7 @@ and definePatternAssign (env:ENV) (ns: Ast.NAMESPACE) (pattern: Ast.PATTERN) (ex
                 ns::y = t["j"]
         *)
             
-        fun defineObjectAssign (fields:Ast.FIELD_PATTERN list) (temp: Ast.EXPR)
+        fun defObjectAssign (fields:Ast.FIELD_PATTERN list) (temp: Ast.EXPR)
             : Ast.EXPR list =
 
             let
@@ -1136,8 +1136,8 @@ and definePatternAssign (env:ENV) (ns: Ast.NAMESPACE) (pattern: Ast.PATTERN) (ex
                 {name,ptrn}::plist =>
                    let
                         val expr   = Ast.ObjectRef {base=temp, ident=name}
-                        val inits  = definePatternAssign env ns ptrn expr (level+1)
-                        val inits' = defineObjectAssign plist temp
+                        val inits  = defPatternAssign env ns ptrn expr (level+1)
+                        val inits' = defObjectAssign plist temp
                     in
                         inits @ inits'
                     end
@@ -1154,28 +1154,28 @@ and definePatternAssign (env:ENV) (ns: Ast.NAMESPACE) (pattern: Ast.PATTERN) (ex
     in case (pattern) of
         (Ast.ObjectPattern fields) =>
             let
-                val inits = defineObjectAssign fields temp_base
+                val inits = defObjectAssign fields temp_base
             in
                 init::inits
             end
       | (Ast.ArrayPattern elements) => 
             let
                 val temp_index = 0    (* use register indexes to keep track of temps *)
-                val inits = defineArrayAssign elements temp_base temp_index
+                val inits = defArrayAssign elements temp_base temp_index
             in
                 init::inits
             end
       | (Ast.SimplePattern expr) =>
-            defineSimpleAssign expr
+            defSimpleAssign expr
       | (Ast.IdentifierPattern id) => 
-            defineIdentifierAssign id
+            defIdentifierAssign id
     end
 
-and defineBinding (env: ENV) (kind: Ast.VAR_DEFN_TAG) (ns: Ast.NAMESPACE)
+and defBinding (env: ENV) (kind: Ast.VAR_DEFN_TAG) (ns: Ast.NAMESPACE)
                   (pattern: Ast.PATTERN) (ty: Ast.TYPE_EXPR)
     : Ast.FIXTURES =
     let
-        fun defineIdentifierBinding (id) (ty) 
+        fun defIdentifierBinding (id) (ty) 
             : Ast.FIXTURES =
             let
                 val readOnly = if kind = Ast.Const then true else false
@@ -1191,21 +1191,21 @@ and defineBinding (env: ENV) (kind: Ast.VAR_DEFN_TAG) (ns: Ast.NAMESPACE)
                    If so, what is the type of 's' here? int or *?
         *)
 
-        fun defineArrayBinding (elements:Ast.PATTERN list) (element_types:Ast.TYPE_EXPR list)
+        fun defArrayBinding (elements:Ast.PATTERN list) (element_types:Ast.TYPE_EXPR list)
             : Ast.FIXTURES =
             let
             in case (elements,element_types) of
                 (e::elist,t::tlist) =>
                     let
-                        val fxtrs = defineBinding env kind ns e t
-                        val fxtrs' = defineArrayBinding elist tlist
+                        val fxtrs = defBinding env kind ns e t
+                        val fxtrs' = defArrayBinding elist tlist
                     in
                         fxtrs @ fxtrs'
                     end
               | (e::elist,_) =>
                     let
-                        val fxtrs = defineBinding env kind ns e (Ast.SpecialType Ast.Any)
-                        val fxtrs' = defineArrayBinding elist []
+                        val fxtrs = defBinding env kind ns e (Ast.SpecialType Ast.Any)
+                        val fxtrs' = defArrayBinding elist []
                     in
                         fxtrs @ fxtrs'
                     end
@@ -1217,14 +1217,14 @@ and defineBinding (env: ENV) (kind: Ast.VAR_DEFN_TAG) (ns: Ast.NAMESPACE)
         *)
 
 
-        fun defineObjectBinding (fields:Ast.FIELD_PATTERN list) (field_types:Ast.FIELD_TYPE list)
+        fun defObjectBinding (fields:Ast.FIELD_PATTERN list) (field_types:Ast.FIELD_TYPE list)
             : Ast.FIXTURES =
             let
             in case fields of
                 p::plist =>
                     let
-                        val fxtrs = defineFieldBinding p field_types
-                        val fxtrs' = defineObjectBinding plist field_types
+                        val fxtrs = defFieldBinding p field_types
+                        val fxtrs' = defObjectBinding plist field_types
                     in
                         fxtrs @ fxtrs'
                     end
@@ -1232,11 +1232,11 @@ and defineBinding (env: ENV) (kind: Ast.VAR_DEFN_TAG) (ns: Ast.NAMESPACE)
             end
 
         (*
-            define a field pattern - use the field name to get the field type and
+            def a field pattern - use the field name to get the field type and
             associate that field type with the field's pattern
         *)
 
-        and defineFieldBinding (field_pattern: Ast.FIELD_PATTERN) 
+        and defFieldBinding (field_pattern: Ast.FIELD_PATTERN) 
                                (field_types: Ast.FIELD_TYPE list)
             : Ast.FIXTURES =
             let
@@ -1249,9 +1249,9 @@ and defineBinding (env: ENV) (kind: Ast.VAR_DEFN_TAG) (ns: Ast.NAMESPACE)
                     let
                         val ty  = getFieldType ident field_types
                     in
-                        defineBinding env kind ns ptrn ty
+                        defBinding env kind ns ptrn ty
                     end
-              | ([],_) => defineBinding env kind ns ptrn (Ast.SpecialType Ast.Any)
+              | ([],_) => defBinding env kind ns ptrn (Ast.SpecialType Ast.Any)
               | (_,_)  => LogErr.defnError ["Typed patterns must have sub patterns with names that are known at definition time"]
             end
 
@@ -1278,15 +1278,15 @@ and defineBinding (env: ENV) (kind: Ast.VAR_DEFN_TAG) (ns: Ast.NAMESPACE)
 
     in case (pattern,ty) of
         (Ast.ObjectPattern fields,Ast.ObjectType field_types) =>
-            defineObjectBinding fields field_types
+            defObjectBinding fields field_types
       | (Ast.ArrayPattern elements,Ast.ArrayType element_types) =>
-            defineArrayBinding elements element_types
+            defArrayBinding elements element_types
       | (Ast.ArrayPattern elements,(Ast.SpecialType Ast.Any)) => 
-            defineArrayBinding elements []
+            defArrayBinding elements []
       | (Ast.SimplePattern expr,_) =>
             LogErr.defnError ["internal error: simple pattern found in binding context"]
       | (Ast.IdentifierPattern id,_) => 
-            defineIdentifierBinding id ty
+            defIdentifierBinding id ty
       | (_,_) => 
             LogErr.defnError ["Pattern with incompatible type"]
     end
@@ -1310,7 +1310,7 @@ and defStmt (env:ENV)
                     val newPtrn = 
                         case ptrn of 
                             NONE => NONE
-                          | SOME p => SOME (defineBinding env Ast.Var (Ast.Internal "") p (Ast.SpecialType Ast.Any))
+                          | SOME p => SOME (defBinding env Ast.Var (Ast.Internal "") p (Ast.SpecialType Ast.Any))
                     val newObj =  defExprs env obj
                     val (f0, newDefns) = defVars env defns
                     val c0 = extendEnvironment env f0
@@ -1356,7 +1356,7 @@ and defStmt (env:ENV)
             
         fun reconstructCatch { bind, fixtures, body } =
             let 
-                val (f0, newBind) = defineVar env Ast.Var (Ast.Internal "") bind
+                val (f0, newBind) = defVar env Ast.Var (Ast.Internal "") bind
                 val c0 = extendEnvironment env f0
                 val (body,fixtures) = defBlock (c0 :: env) body
             in                     
@@ -1381,7 +1381,7 @@ and defStmt (env:ENV)
                     case ptrn of NONE => 
                                  ([], NONE)
                                | SOME b => 
-                                 inr (SOME) (defineVar env Ast.Var (Ast.Internal "") b)
+                                 inr (SOME) (defVar env Ast.Var (Ast.Internal "") b)
                 val f0 = extendEnvironment env b0
                 val (body,hoisted) = defBlock (f0 :: env) body
             in
@@ -1400,7 +1400,7 @@ and defStmt (env:ENV)
                 let
                     val ns0 = resolveExprToNamespace env ns
                 in
-                    ((Ast.ExprStmt (List.concat (map (defineInit env ns0) inits))),[])
+                    ((Ast.ExprStmt (List.concat (map (defInit env ns0) inits))),[])
                 end
 
           | Ast.ForEachStmt fe => 
