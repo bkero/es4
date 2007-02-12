@@ -6,18 +6,24 @@ structure Defn = struct
  * of the program, as well as insert class, function and interface
  * objects into the global object.
 
-   To be specific, the definition phase completes the following tasks:
-   - fold type expressions
-   - fold namespace aliases
-   - de-sugar patterns
-   - translate defnitions to fixtures + initialisers
-   - check for conflicting fixtures
-   - hoist fixtures
-   - inherit super classes and interfaces
-   - evaluate pragmasx
-   - capture open namespaces in unqualified identifiers
-   - capture arithmetic modes in arithmetic operators
+    To be specific, the definition phase completes the following tasks:
+    - fold type expressions
+    - fold namespace aliases
+    - de-sugar patterns
+    - translate defnitions to fixtures + initialisers
+    - check for conflicting fixtures
+    - hoist fixtures
+    - inherit super classes and interfaces
+    - evaluate pragmas
+    - capture open namespaces in unqualified identifiers
+    - capture arithmetic modes in arithmetic operators
+    - disambiguate package / object references
 
+    TODO
+    - fold types
+    - inheritance
+    - rewrite prototype defns as statements in cinit
+    - disambiguate package / object references
  *)
 
 type CONTEXT = 
@@ -116,7 +122,7 @@ fun inr f (a, b) = (a, f b)
 
     for each nested context in the environment, look for a fixture that matches
     a multiname. see if a particular scope has a fixture with one of a list of 
-    multinames see if a particular
+    multinames
 
     multiname = { nss : NAMESPACE list list, id: IDENT }
     name = { ns: NAMESPACE, id: IDENT }
@@ -160,7 +166,7 @@ fun resolveMultinameToFixture (env:ENV)
                   | _  => LogErr.defnError ["ambiguous reference "^(LogErr.multiname mname)]
                 end
         in
-            case tryMultiname (#nss mname) of 
+            case tryMultiname (#nss mname) of
                 SOME n => (n,getFixture fixtures n)
               | NONE => resolveMultinameToFixture parents mname
         end
@@ -187,26 +193,57 @@ fun resolveExprToNamespace (env:ENV)
         end
       | _ => LogErr.defnError ["unexpected expression type ",
                                "in namespace context"]
+
+(*
+    Create a new context initialised with the provided fixtures and
+    inherited environment
+*)
              
-fun newContext (env:ENV) 
-               (newContext:Ast.FIXTURES) 
+fun extendEnvironment (env:ENV) 
+               (fixtures:Ast.FIXTURES) 
     : CONTEXT = 
     case env of 
-        [] => { fixtures = newContext,
+        [] => { fixtures = fixtures,
                 openNamespaces = [[Ast.Internal ""]],
                 numericMode = defaultNumericMode }
       | ({ numericMode, openNamespaces, ... } :: _) =>
-        { fixtures = newContext,
+        { fixtures = fixtures,
           openNamespaces = openNamespaces, 
           numericMode = numericMode } 
 
-fun identExprToName (env:ENV) ie = 
-            case ie of 
-                Ast.Identifier {ident, ...} => {nss = (#openNamespaces (hd env)), 
-                                                id = ident}
-              | _ => LogErr.defnError ["unhandled form of identifier ",
-                                       "expresison in class defn"]
+fun updateEnvironment (cx::ex) (fxtrs:Ast.FIXTURES) 
+    : ENV =
+        { fixtures = (fxtrs @ (#fixtures cx)),
+          openNamespaces = (#openNamespaces cx), 
+          numericMode = (#numericMode cx) } :: ex
+  | updateEnvironment ([]) (fxtrs:Ast.FIXTURES) 
+    : ENV =
+        LogErr.defnError ["cannot update an empty environment"]
 
+
+(*
+    Resolve an IDENT_EXPR to a multiname
+
+    A qualified name with a literal namespace qualifier (including package qualified) 
+    gets resolved to a multiname with a single namespace
+*)
+
+fun identExprToMultiname (env:ENV) (ie:Ast.IDENT_EXPR)
+    : Ast.MULTINAME = 
+    case ie of
+        Ast.Identifier {ident, ...} => 
+            let
+            in
+                {nss = (#openNamespaces (hd env)), id = ident}
+            end
+      | Ast.QualifiedIdentifier {ident, qual,...} => 
+            let
+            in case qual of
+                Ast.LiteralExpr (Ast.LiteralNamespace ns ) =>
+                    {nss = [[ns]], id = ident}
+              | _ => LogErr.defnError ["unknown namespace value needed during definition phase"]
+            end
+      | _ => LogErr.defnError ["unhandled form of identifier expression in identExprToMultiname"]
 
 (*
     CLASS_DEFN
@@ -219,11 +256,8 @@ fun identExprToName (env:ENV) ie =
         extends = ...
         implements = ...
         cblk = {
-            fxtrs = [ 'construct' => Block {
-                          fxtrs = ...  (* ctor vars *)
-                          inits = ...  (* ctor inits *)
-                          stmts = ...  (* ctor code *) }, ... ]
-            inits = ...  (* static inits,  empty? *)
+            fxtrs = ...  (* static fixtures *) 
+            inits = ...  (* static inits,  empty? static props are inited by statements *)
             stmts = ...  (* static initialiser *)
         }
         iblk = { ... }
@@ -261,12 +295,10 @@ and analyzeClass (env:ENV)
     case cdef of
         {ns, ident, body=Ast.Block { pragmas, defns, stmts, ... },...} => 
         let
-            fun isLet (k:Ast.VAR_DEFN_TAG) = (k=Ast.LetVar) orelse (k=Ast.LetConst)
-
-            fun isBlock (d:Ast.DEFN) 
+            fun isLet (d:Ast.DEFN) 
                 : bool =
                 case d of 
-                    Ast.VariableDefn vd => isLet (#kind vd)
+                    Ast.VariableDefn {kind,...} => (kind=Ast.LetVar) orelse (kind=Ast.LetConst)
                   | Ast.FunctionDefn fd => false
                   | Ast.TypeDefn _ => false
                   | Ast.NamespaceDefn _ => false
@@ -295,7 +327,7 @@ and analyzeClass (env:ENV)
                 let
                     val _ = trace ["isInstance ", Bool.toString (not ((isProto d) orelse (isStatic d)))]
                 in
-                    not ((isProto d) orelse (isStatic d) orelse (isBlock d))
+                    not ((isProto d) orelse (isStatic d) orelse (isLet d))
                 end
 
             fun isInstanceInit (s:Ast.STMT)
@@ -324,18 +356,8 @@ and analyzeClass (env:ENV)
                     end
                   | _ => false
 
-            fun getFunc (d:Ast.DEFN) : (Ast.FUNC_DEFN option) = 
-                case d of 
-                    Ast.FunctionDefn fd => SOME fd
-                  | _ => NONE
-
-            fun getVarDefn (d:Ast.DEFN) : Ast.VAR_DEFN option = 
-                case d of 
-                    Ast.VariableDefn vd => SOME vd
-                  | _ => NONE
-
             (*
-                partition the class definition into a class block
+                Partition the class definition into a class block
                 and an instance block, and then define both blocks
             *)
 
@@ -343,14 +365,18 @@ and analyzeClass (env:ENV)
             val protoDefns = List.filter isProto defns
             val staticDefns = List.filter isStatic defns
             val instanceDefns = List.filter isInstance defns
-            val blockDefns = List.filter isBlock defns
+            val letDefns = List.filter isLet defns
 
             val e0 = defPragmas env pragmas
 
-            (* separate instance init from non-instance init statements *)
-            val (iinits,stmts) = List.partition isInstanceInit stmts
+            (* 
+                Separate instance init from non-instance init statements 
+            *)
 
-            val cinit = Ast.Block {pragmas=[],defns=blockDefns,stmts=stmts,fixtures=NONE,inits=NONE}
+            val (iinits,stmts) = List.partition isInstanceInit stmts
+            val cinit = Ast.Block {pragmas=[],defns=letDefns,stmts=stmts,fixtures=NONE,inits=NONE}
+
+            (* TODO: rewrite prototype defns as assignment statements in the static block *)
 
             val cblk = defRegionalBlock env (Ast.Block {pragmas=pragmas,
                                                         defns=staticDefns,
@@ -362,17 +388,25 @@ and analyzeClass (env:ENV)
                                                         stmts=[],
                                                         inits=SOME iinits,
                                                         fixtures=NONE})
-
-            val (_, newProtoDefns) = defDefns env protoDefns
         in
             (cblk,iblk)
         end
 
 (*
-    check for definition time errors
-    - override with non-override method
-    - ovveride of final member
+    inheritFixtures
+
+    Steps:
+
+    - 
+
+    Errors:
+
+    - override by non-override fixture
+    - override of final fixture
+    - interface fixture not implemented
     
+    Notes:
+
     don't check type compatibility yet; we don't know the value of type
     expressions until verify time. In standard mode we need to do a
     light weight verification to ensure that overrides are type compatible
@@ -398,51 +432,7 @@ and inheritFixtureOpts (a:Ast.FIXTURES option)
       | (NONE, SOME x) => SOME x
 
 (*
-*)
-
-and resolveExtends (env: ENV)
-                   (currInstanceFixtures: Ast.FIXTURES option) 
-                   (extends: Ast.IDENT_EXPR option)
-                   (children:Ast.NAME list)
-    : (Ast.NAME option * Ast.FIXTURES option) =
-    let
-        fun seenAsChild (n:Ast.NAME) = List.exists (fn ch => ch = n) children
-    in case extends of
-        SOME baseIdentExpr => 
-            let 
-                val baseName = identExprToName env baseIdentExpr
-                val _ = trace ["inheriting from ",LogErr.multiname baseName]
-                val (baseClassName,baseClassFixture) = 
-                        if false (* seenAsChild baseName *)
-                        then LogErr.defnError ["cyclical class inheritence detected at ", 
-                                           LogErr.multiname baseName]
-                        else (resolveMultinameToFixture env baseName)
-            in case baseClassFixture of
-                Ast.ClassFixture {instanceBlock=Ast.Block{fixtures=baseInstanceFixtures,...},...} =>
-                    (SOME baseClassName,inheritFixtureOpts baseInstanceFixtures currInstanceFixtures)
-              | _ => LogErr.defnError ["base class not found"]
-            end
-      | NONE => (NONE,currInstanceFixtures)
-    end
-
-(*
-    Resolve each of the expressions in the 'implements' list to an interface
-    fixture. check that each of the methods declared by each interface is
-    implemented by the current set of  instance fixtures.
-*)
-
-and resolveImplements (env: ENV) 
-                      (currInstanceFixtures: Ast.FIXTURES option) 
-                      (implements: Ast.IDENT_EXPR list)
-    : (Ast.NAME list * Ast.FIXTURES option) =
-    let
-        val implements = map (identExprToName env) (map (defIdentExpr env) implements)
-    in
-        ([],currInstanceFixtures)
-    end
-
-(*
-    Resolve 
+    resolveClass
 *)
 
 and resolveClass (env:ENV)
@@ -478,6 +468,68 @@ and resolveClass (env:ENV)
     end
 
 (*
+    Resolve the base class
+
+    Steps
+    - resolve base class reference to a class fixture and its name
+    - inherit fixtures from the base class
+
+    Errors
+    - base class not found
+    - inheritance cycle detected
+
+*)
+
+and resolveExtends (env: ENV)
+                   (currInstanceFixtures: Ast.FIXTURES option) 
+                   (extends: Ast.IDENT_EXPR option)
+                   (children:Ast.NAME list)
+    : (Ast.NAME option * Ast.FIXTURES option) =
+    let
+        fun seenAsChild (n:Ast.NAME) = List.exists (fn ch => ch = n) children
+    in case extends of
+        SOME baseIdentExpr => 
+            let 
+                val baseClassMultiname = identExprToMultiname env baseIdentExpr
+                val _ = trace ["inheriting from ",LogErr.multiname baseClassMultiname]
+                val (baseClassName,baseClassFixture) = 
+                        if false (* seenAsChild baseName *)
+                        then LogErr.defnError ["cyclical class inheritence detected at ", 
+                                           LogErr.multiname baseClassMultiname]
+                        else (resolveMultinameToFixture env baseClassMultiname)
+            in case baseClassFixture of
+                Ast.ClassFixture {instanceBlock=Ast.Block{fixtures=baseInstanceFixtures,...},...} =>
+                    (SOME baseClassName,inheritFixtureOpts baseInstanceFixtures currInstanceFixtures)
+              | _ => LogErr.defnError ["base class not found"]
+            end
+      | NONE => (NONE,currInstanceFixtures)
+    end
+
+(*
+    Resolve each of the expressions in the 'implements' list to an interface
+    fixture. check that each of the methods declared by each interface is
+    implemented by the current set of  instance fixtures.
+
+    Steps
+    - resolve super interface references to interface fixtures
+    - inherit fixtures from the super interfaces
+
+    Errors
+    - super interface fixture not found
+
+*)
+
+and resolveImplements (env: ENV) 
+                      (currInstanceFixtures: Ast.FIXTURES option) 
+                      (implements: Ast.IDENT_EXPR list)
+    : (Ast.NAME list * Ast.FIXTURES option) =
+    let
+        val implements = map (identExprToMultiname env) (map (defIdentExpr env) implements)
+    in
+        ([],currInstanceFixtures)
+    end
+
+(*
     VAR_BINDING
 
     During parsing, variable definitions are split into a var binding
@@ -505,8 +557,26 @@ and resolveClass (env:ENV)
 
     The fxtrs and inits of a var definition might be hoisted
     out of their defining block. It is a definition error for
-    a type annotation to resolve to a non-type fixture. This is
-    to avoid changing the meaning of type annotations by hoisting
+    a type annotation to resolve to a local, non-type fixture. 
+    This is to avoid changing the meaning of type annotations 
+    by hoisting
+
+    Here's a problem case:
+
+    function f() 
+    {
+        type t = {i:I,s:S}
+
+        { 
+            type t = {i:int,s:string}
+            var v : t = {i:10,s:"hi"}
+            function g() : t {} {}
+        }
+    }
+
+    Without a definition error, the meaning of 't' changes 
+    after hoisting of 'v' and 'g'
+
 *)
 
 and defineVar (env:ENV) 
@@ -537,13 +607,6 @@ and defineVar (env:ENV)
                            pattern = pattern,
                            ty = newTy })
         end
-
-(*
-    VAR_BINDING list
-
-    translate a list of variable bindings into a list of
-    fixtures and a list of initialisers.
-*)
 
 and defVars (env:ENV) 
             (vars:Ast.VAR_BINDING list) 
@@ -593,16 +656,6 @@ and defVarsFull (env:ENV)
     let c = h(a,b)      callFunction
 *)
 
-(*
-    FUNC_SIG
-
-    A function signature describes the type of the function, the fixtures of
-    an activation of the function, and the initialization of the parameters.
-
-    
-
-*)
-
 and defFuncSig (env:ENV) 
                (fsig:Ast.FUNC_SIG)
     : (Ast.TYPE_EXPR * Ast.FIXTURES * Ast.STMT list) =
@@ -617,7 +670,7 @@ and defFuncSig (env:ENV)
             val tyVarNs = Ast.Internal ""
             fun mkTypeVarFixture x = ({ns=tyVarNs, id=x}, Ast.TypeVarFixture)
             val typeParamFixtures = map mkTypeVarFixture typeParams
-            val boundTypeFixtures = newContext env typeParamFixtures
+            val boundTypeFixtures = extendEnvironment env typeParamFixtures
             val typeEnv = (boundTypeFixtures :: env)
 
             (* compute val fixtures (parameters) *)
@@ -675,7 +728,7 @@ and defFunc (env:ENV) (func:Ast.FUNC)
     let
         val Ast.Func {name, fsig, body,...} = func
         val (ftype,fxtrs,inits) = defFuncSig env fsig
-        val funcCtx = newContext env fxtrs
+        val funcCtx = extendEnvironment env fxtrs
         val env = funcCtx :: env
         val (lblk,hoisted) = defBlock env body
         val fblk = Ast.Block { pragmas=[], defns=[], fixtures=SOME (fxtrs@hoisted), inits=SOME inits, stmts = [Ast.BlockStmt lblk]}
@@ -881,7 +934,7 @@ and defExpr (env:ENV)
           | Ast.LetExpr { defs, body, fixtures } => 
             let
                 val (f0, newDefs) = defVars env defs 
-                val c0 = newContext env f0
+                val c0 = extendEnvironment env f0
                 val newBody = defExprs (c0 :: env) body
             in
                 Ast.LetExpr { defs = newDefs,
@@ -1260,7 +1313,7 @@ and defStmt (env:ENV)
                           | SOME p => SOME (defineBinding env Ast.Var (Ast.Internal "") p (Ast.SpecialType Ast.Any))
                     val newObj =  defExprs env obj
                     val (f0, newDefns) = defVars env defns
-                    val c0 = newContext env f0
+                    val c0 = extendEnvironment env f0
                     val (newBody,hoisted) = defStmt (c0 :: env) body
                 in
                     ({ ptrn = ptrn, 
@@ -1285,7 +1338,7 @@ and defStmt (env:ENV)
         fun reconstructForStmt { defns, init, cond, update, contLabel, body, fixtures } =
             let
                 val (f0, newDefns) = defVars env defns
-                val c0 = newContext env f0
+                val c0 = extendEnvironment env f0
                 val newEnv = c0 :: env
                 val newInit = defExprs newEnv init
                 val newCond = defExprs newEnv cond
@@ -1304,7 +1357,7 @@ and defStmt (env:ENV)
         fun reconstructCatch { bind, fixtures, body } =
             let 
                 val (f0, newBind) = defineVar env Ast.Var (Ast.Internal "") bind
-                val c0 = newContext env f0
+                val c0 = extendEnvironment env f0
                 val (body,fixtures) = defBlock (c0 :: env) body
             in                     
                 { bind = newBind, 
@@ -1329,7 +1382,7 @@ and defStmt (env:ENV)
                                  ([], NONE)
                                | SOME b => 
                                  inr (SOME) (defineVar env Ast.Var (Ast.Internal "") b)
-                val f0 = newContext env b0
+                val f0 = extendEnvironment env b0
                 val (body,hoisted) = defBlock (f0 :: env) body
             in
                 { ptrn = newPtrn,
@@ -1385,7 +1438,7 @@ and defStmt (env:ENV)
           | Ast.LetStmt (vbs, stmt) => 
             let
                 val (b0, newVbs) = defVars env vbs
-                val f0 = newContext env b0
+                val f0 = extendEnvironment env b0
                 val (newStmt,hoisted) = defStmt (f0 :: env) stmt
             in
                 (Ast.LetStmt (newVbs, newStmt),hoisted)
@@ -1536,13 +1589,6 @@ and defDefn (env:ENV)
     Process each definition. 
 *)
 
-and updateFixtures (cx::ex) (fxtrs:Ast.FIXTURES) : ENV =
-        { fixtures = (fxtrs @ (#fixtures cx)),
-          openNamespaces = (#openNamespaces cx), 
-          numericMode = (#numericMode cx) } :: ex
-  | updateFixtures ([]) (fxtrs:Ast.FIXTURES) : ENV = 
-            LogErr.defnError ["cannot extend empty environment"]
-
 and defDefinitions (env:ENV) 
                    (unhoisted:Ast.FIXTURES)
                    (hoisted:Ast.FIXTURES)
@@ -1554,21 +1600,11 @@ and defDefinitions (env:ENV)
       | d::ds =>
             let
                 val (u,h) = defDefn env d    
-                val env'  = updateFixtures env u  
+                val env'  = updateEnvironment env u  
                             (* add the new unhoisted fxtrs to the current env *)
             in
                 defDefinitions env' (u@unhoisted) (h@hoisted) ds
             end
-    end
-
-(*** deprecated ***)
-and defDefns (env:ENV)
-             (defns:Ast.DEFN list) 
-    : (Ast.FIXTURES * (Ast.DEFN list)) = 
-    let
-        val (unhoisted, hoisted) = ListPair.unzip (map (defDefn env) defns)
-    in
-        (List.concat hoisted, defns)
     end
 
 (*
@@ -1588,8 +1624,9 @@ and defBlock (env:ENV)
         let 
             val env = defPragmas env pragmas
             val (unhoisted,defns_hoisted) = defDefinitions env [] [] defns
-            val (inits,_) = defStmts env (case inits of NONE => [] | _ => valOf inits)  (* do inits in outer scope, inits never result in hoisted defs *)
-            val env = updateFixtures env unhoisted
+            val (inits,_) = defStmts env (case inits of NONE => [] | _ => valOf inits)  
+                                    (* do inits in outer scope, inits never result in hoisted defs *)
+            val env = updateEnvironment env unhoisted
             val (stmts,stmts_hoisted) = defStmts env stmts
             val hoisted = defns_hoisted@stmts_hoisted
         in
