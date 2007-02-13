@@ -20,6 +20,8 @@
  */
 final class ByteArray
 {
+    use strict;
+
     function ByteArray(n : uint = 0) {
         length = n;
     }
@@ -58,10 +60,10 @@ final class ByteArray
 
     function get *(k) {
         if (k is Numeric && intrinsic::isIntegral(k) && k >= 0 && k <= 0xFFFFFFFE) {
-            let (k : uint = k to uint) 
+            let (k : uint = k) 
             {
                 if (k < length)
-                    return magic::getByteArrayByte(this, k to uint);
+                    return magic::getByteArrayByte(this, k);
                 else
                     return 0;
             }
@@ -72,8 +74,8 @@ final class ByteArray
 
     function set *(k, v) : void {
         if (k is Numeric && intrinsic::isIntegral(k) && k >= 0 && k <= 0xFFFFFFFE) {
-            let (k : uint = k to uint,
-                 v : uint = v to uint)
+            let (k : uint = k,
+                 v : uint = v)
             {
                 if (k >= length)
                     length = k+1;
@@ -88,8 +90,8 @@ final class ByteArray
         this.intrinsic::toString();
 
     intrinsic function toString() : string {
-        var n : uint = length;
-        var s : string = "";
+        let n : uint = length;
+        let s : string = "";
         for ( let i:int = 0; i < n; i++ )
             s += String.fromCharCode(this[i]);
         return s;

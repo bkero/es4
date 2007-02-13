@@ -10,16 +10,17 @@ type USTRING = string
 type IDENT = USTRING
 
 datatype NAMESPACE =
-         Private
-       | Protected
-       | Intrinsic
+         Intrinsic
+       | OperatorNamespace
+       | Private of IDENT
+       | Protected of IDENT
        | Public of IDENT
        | Internal of IDENT
-       | UserDefined of IDENT
+       | UserNamespace of IDENT
 
 type NAME = { ns: NAMESPACE, id: IDENT }
 
-type MULTINAME = { nss: NAMESPACE list, id: IDENT }
+type MULTINAME = { nss: NAMESPACE list list, id: IDENT }
 
 datatype NUMBER_TYPE =
          Decimal
@@ -37,6 +38,10 @@ datatype ROUNDING_MODE =
        | HalfDown
        | HalfEven
 
+type NUMERIC_MODE = { numberType: NUMBER_TYPE,
+                      roundingMode: ROUNDING_MODE,
+                      precision: int }
+     
 datatype TRIOP =
          Cond
 
@@ -46,11 +51,11 @@ datatype BINTYPEOP =
        | To
 
 datatype BINOP =
-         Plus
-       | Minus
-       | Times
-       | Divide
-       | Remainder
+         Plus of NUMERIC_MODE option
+       | Minus of NUMERIC_MODE option
+       | Times of NUMERIC_MODE option
+       | Divide of NUMERIC_MODE option
+       | Remainder of NUMERIC_MODE option
        | LeftShift
        | RightShift
        | RightShiftUnsigned
@@ -61,24 +66,24 @@ datatype BINOP =
        | LogicalOr
        | InstanceOf
        | In
-       | Equals
-       | NotEquals
-       | StrictEquals
-       | StrictNotEquals
-       | Less
-       | LessOrEqual
-       | Greater
-       | GreaterOrEqual
+       | Equals of NUMERIC_MODE option
+       | NotEquals of NUMERIC_MODE option
+       | StrictEquals of NUMERIC_MODE option
+       | StrictNotEquals of NUMERIC_MODE option
+       | Less of NUMERIC_MODE option
+       | LessOrEqual of NUMERIC_MODE option
+       | Greater of NUMERIC_MODE option
+       | GreaterOrEqual of NUMERIC_MODE option
        | Comma
        | DefVar
 
 datatype ASSIGNOP =
          Assign
-       | AssignPlus
-       | AssignMinus
-       | AssignTimes
-       | AssignDivide
-       | AssignRemainder
+       | AssignPlus of NUMERIC_MODE option
+       | AssignMinus of NUMERIC_MODE option
+       | AssignTimes of NUMERIC_MODE option
+       | AssignDivide of NUMERIC_MODE option
+       | AssignRemainder of NUMERIC_MODE option
        | AssignLeftShift
        | AssignRightShift
        | AssignRightShiftUnsigned
@@ -112,7 +117,6 @@ datatype VAR_DEFN_TAG =
        | Var
        | LetVar
        | LetConst
-       | Rest   (* Goes away, redundant with hasRest in FUNC_SIG *)
 
 datatype SPECIAL_TY =
          Any
@@ -145,12 +149,8 @@ datatype PRAGMA =
          Func of { name: FUNC_NAME,
                    fsig: FUNC_SIG,                   
                    body: BLOCK,
-                   (* Filled in during defn phase. *)
-                   typeParamFixtures: FIXTURES option,
-                   paramFixtures: FIXTURES option,
-                   paramInitializers: INITIALIZERS option,
-                   bodyFixtures: FIXTURES option,
-                   bodyInitializers: INITIALIZERS option }
+                   fixtures: FIXTURES option,
+                   inits: STMT list }
 
      and DEFN =
          ClassDefn of CLASS_DEFN
@@ -163,10 +163,10 @@ datatype PRAGMA =
      and FUNC_SIG =
          FunctionSignature of { typeParams: IDENT list,
                                 params: VAR_BINDING list,
-                                inits: BINDINGS option, 
+                                inits: STMT list, 
                                 returnType: TYPE_EXPR,
                                 thisType: TYPE_EXPR option,
-                                hasBoundThis: bool, (* goes away, redundant with previous option *)
+                                hasBoundThis: bool, (*goes away, redundant with previous option*)
                                 hasRest: bool }
 
      and VAR_BINDING =
@@ -195,6 +195,7 @@ datatype PRAGMA =
      and STMT =
          EmptyStmt
        | ExprStmt of EXPR list
+       | InitStmt of {kind:VAR_DEFN_TAG,ns:EXPR,prototype:bool,static:bool,inits:EXPR list}   (* turned into ExprStmt by definer *)
        | ForEachStmt of FOR_ENUM_STMT
        | ForInStmt of FOR_ENUM_STMT
        | ThrowStmt of EXPR list
@@ -209,14 +210,12 @@ datatype PRAGMA =
        | DoWhileStmt of WHILE_STMT
 
        | ForStmt of { defns: VAR_BINDING list,
+                      fixtures: FIXTURES option,
                       init: EXPR list,
                       cond: EXPR list,
                       update: EXPR list,
                       contLabel: IDENT option,
-                      body: STMT,
-                      (* Filled in by defn phase. *)
-                      fixtures: FIXTURES option,
-                      initializers: INITIALIZERS option }
+                      body: STMT }
 
        | IfStmt of { cnd: EXPR,
                      thn: STMT,
@@ -227,11 +226,9 @@ datatype PRAGMA =
                        body: STMT }
 
        | TryStmt of { body: BLOCK,
-                      catches: { bind:VAR_BINDING,                                  
-                                 body:BLOCK,
-                                 (* Filled in by defn phase. *)
+                      catches: { bind:VAR_BINDING, 
                                  fixtures: FIXTURES option,
-                                 initializers: INITIALIZERS option } list,
+                                 body:BLOCK } list,
                       finally: BLOCK option }
                     
        | SwitchStmt of { cond: EXPR list,
@@ -262,28 +259,18 @@ datatype PRAGMA =
 
        | LetExpr of { defs: VAR_BINDING list,                      
                       body: EXPR list,
-                      (* Filled in during defn phase. *)
-                      fixtures: FIXTURES option, 
-                      initializers: INITIALIZERS option }
+                      fixtures: FIXTURES option}
 
        | NewExpr of { obj: EXPR,
                       actuals: EXPR list }
 
-       | FunExpr of { ident: IDENT option,
-                      fsig: FUNC_SIG,
-                      body: BLOCK,
-                      (* Filled in during defn phase. *)
-                      typeParamFixtures: FIXTURES option,
-                      paramFixtures: FIXTURES option,
-                      paramInitializers: INITIALIZERS option,
-                      bodyFixtures: FIXTURES option,
-                      bodyInitializers: INITIALIZERS option}
-
+       | FunExpr of FUNC
        | ObjectRef of { base: EXPR, ident: IDENT_EXPR }
 
        | LexicalRef of { ident: IDENT_EXPR }
 
        | SetExpr of (ASSIGNOP * PATTERN * EXPR)
+       | AllocTemp of (IDENT_EXPR * EXPR)
 
        | ListExpr of EXPR list
        | SliceExpr of (EXPR list * EXPR list * EXPR list)
@@ -295,7 +282,7 @@ datatype PRAGMA =
                                   expr : EXPR }
        | AttributeIdentifier of IDENT_EXPR
        | Identifier of { ident : IDENT,
-                         openNamespaces : NAMESPACE list }
+                         openNamespaces : NAMESPACE list list }
        | ExpressionIdentifier of EXPR   (* for bracket exprs: o[x] and @[x] *)
        | TypeIdentifier of { ident : IDENT_EXPR, (*deprecated*)
                              typeParams : TYPE_EXPR list }
@@ -327,7 +314,7 @@ datatype PRAGMA =
          ObjectPattern of FIELD_PATTERN list
        | ArrayPattern of PATTERN list
        | SimplePattern of EXPR
-       | IdentifierPattern of IDENT_EXPR
+       | IdentifierPattern of IDENT
 
 (* FIXTURES are built by the definition phase, not the parser; but they 
  * are patched back into the AST in class-definition and block
@@ -335,27 +322,28 @@ datatype PRAGMA =
 
      and FIXTURE = 
          NamespaceFixture of NAMESPACE
-       | ClassFixture of CLASS_DEFN
+       | ClassFixture of { extends: NAME option, 
+                           implements: NAME list,
+                           classBlock: BLOCK, 
+                           instanceBlock: BLOCK } 
        | TypeVarFixture
        | TypeFixture of TYPE_EXPR
        | ValFixture of { ty: TYPE_EXPR,
                          readOnly: bool,
-                         isOverride: bool }
+                         isOverride: bool,
+                         init: EXPR option }
        | VirtualValFixture of { ty: TYPE_EXPR, 
                                 getter: FUNC_DEFN option,
                                 setter: FUNC_DEFN option }
 
-     and INITIALIZER = VarInit of (NAME * EXPR)
-                     | FunInit of (NAME * FUNC)
-
                      
 withtype FIELD =
          { kind: VAR_DEFN_TAG,
-           name: IDENT,
+           name: IDENT_EXPR,
            init: EXPR }
 
      and FIELD_PATTERN =
-         { name: IDENT, 
+         { name: IDENT_EXPR, 
            ptrn : PATTERN }
 
      and FIELD_TYPE =
@@ -393,16 +381,12 @@ withtype FIELD =
            prototype : bool,
            bindings : VAR_BINDING list }
 
-     and INITIALIZERS = INITIALIZER list
-
      and FIXTURES = (NAME * FIXTURE) list
 
      and NAMESPACE_DEFN = 
          { ident: IDENT,
            ns: EXPR,
-           init: EXPR option,
-           (* Filled in during defn phase *)
-           name: NAME option }
+           init: EXPR option }
 
      and CLASS_DEFN =
          { ident: IDENT, 
@@ -413,24 +397,8 @@ withtype FIELD =
            params: IDENT list,
            extends: IDENT_EXPR option,
            implements: IDENT_EXPR list,
-           body: BLOCK,
-           (* Filled in during defn phase. *)
-           name: NAME option,
-           classFixtures: FIXTURES option,
-           instanceFixtures: FIXTURES option,
-           classInitializers: INITIALIZERS option,
-           protoInitializers: INITIALIZERS option,
-           instanceInitializers: INITIALIZERS option,
-           constructor: FUNC_DEFN option,
-           initializer: STMT list,
-
-           (* These should go away *)
-           protoVars: VAR_DEFN list,
-           protoMethods: FUNC_DEFN list,
-           instanceVars: VAR_DEFN list,
-           instanceMethods: FUNC_DEFN list,
-           vars: VAR_DEFN list,
-           methods: FUNC_DEFN list }
+           body: BLOCK
+     }
 
      and INTERFACE_DEFN =
          { ident: IDENT,
@@ -438,26 +406,20 @@ withtype FIELD =
            nonnullable: bool,
            params: IDENT list,
            extends: IDENT_EXPR list,
-           body: BLOCK,
-           (* Filled in during defn phase *)
-           name: NAME option }
+           body: BLOCK }
          
      and TYPE_DEFN =
          { ident: IDENT,
            ns: EXPR,
-           init: TYPE_EXPR,
-           (* Filled in during defn phase *)
-           name: NAME option }
+           init: TYPE_EXPR }
 
      and FOR_ENUM_STMT =
          { ptrn: PATTERN option,
            obj: EXPR list,
-           defns: VAR_BINDING list,           
-           contLabel: IDENT option,
-           body: STMT,
-           (* Filled in during defn phase. *)
+           defns: VAR_BINDING list,
            fixtures: FIXTURES option,
-           initializers: INITIALIZERS option }
+           contLabel: IDENT option,
+           body: STMT }
 
      and WHILE_STMT =
          { cond: EXPR,
@@ -468,9 +430,8 @@ withtype FIELD =
          { pragmas: PRAGMA list,
            defns: DEFN list,
            stmts: STMT list,
-           (* Filled in during defn phase. *)
            fixtures: FIXTURES option,
-           initializers: INITIALIZERS option }
+           inits: STMT list option }
 
      and BINDINGS =
          { b : VAR_BINDING list,
@@ -491,6 +452,7 @@ type PACKAGE =
      
 type PROGRAM =
      { packages: PACKAGE list,
+       fixtures: FIXTURES option,
        body : BLOCK }
 
 end

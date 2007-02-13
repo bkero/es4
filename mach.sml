@@ -323,7 +323,7 @@ val (emptyBlock:Ast.BLOCK) = Ast.Block { pragmas = [],
                                          defns = [],
                                          stmts = [],
                                          fixtures = NONE,
-                                         initializers = NONE }
+                                         inits = NONE }
 
 val (globalObject:OBJ) = newObj intrinsicObjectBaseTag Null NONE
 
@@ -511,12 +511,12 @@ fun toString (v:VAL) : string =
                 | String s => s
                 | Bool true => "true"
                 | Bool false => "false"
-                | Namespace Ast.Private => "[private namespace]"
-                | Namespace Ast.Protected => "[protected namespace]"
-                | Namespace Ast.Intrinsic => "[intrinsic namespace]"
+                | Namespace (Ast.Private _)=> "[private namespace]"
+                | Namespace (Ast.Protected _)=> "[protected namespace]"
+                | Namespace Ast.Intrinsic=> "[intrinsic namespace]"
                 | Namespace (Ast.Public id) => "[public namespace: " ^ id ^ "]"
                 | Namespace (Ast.Internal _) => "[internal namespace]"
-                | Namespace (Ast.UserDefined id) => "[user-defined namespace " ^ id ^ "]"
+                | Namespace (Ast.UserNamespace id) => "[user-defined namespace " ^ id ^ "]"
                 | Class _ => "[class Class]"
                 | Interface _ => "[interface Interface]"
                 | Function _ => "[function Function]"
