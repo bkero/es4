@@ -269,7 +269,7 @@ charEscape            = "\\" ([btnvfr\"\'\\]|"x"{hexDigit}{2}|[0-7]{1,3});
 
 
 <INITIAL>"//"                => (YYBEGIN SINGLE_LINE_COMMENT; lex());
-<SINGLE_LINE_COMMENT>"\n"    => (YYBEGIN INITIAL; lex());
+<SINGLE_LINE_COMMENT>"\n"    => (YYBEGIN INITIAL; Eol);
 <SINGLE_LINE_COMMENT>.       => (lex());
 
 <INITIAL>"/*"                => (YYBEGIN MULTI_LINE_COMMENT; lex());
