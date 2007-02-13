@@ -9,14 +9,16 @@ var f:function (_:[]):* = function .<t,u>(i,j,k) {var x=10; let y=20; print('foo
 
 class A 
 {
-  var x = 10
+//  var x = 10
   static var y = 20
   let z = 30
+  function f.<t>(a,b,c):int { return "A.f" }
 }
 
 class B extends A
 {
   var x = 40
+  override function f.<t>(a,b,c):Number { return "B.f" }
 }
 
 /*

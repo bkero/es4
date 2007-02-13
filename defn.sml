@@ -21,7 +21,7 @@ structure Defn = struct
 
     TODO
     - fold types
-    - inheritance
+    - inheritance checks
     - rewrite prototype defns as statements in cinit
     - disambiguate package / object references
  *)
@@ -413,19 +413,109 @@ and analyzeClass (env:ENV)
     before a class is loaded.
 *)
 
-and inheritFixtures (a:Ast.FIXTURES)
-                    (b:Ast.FIXTURES)
+and inheritFixtures (base:Ast.FIXTURES)
+                    (derived:Ast.FIXTURES)
     : Ast.FIXTURES =
     let
-        (* TODO: implement override and implements checks *)
-    in
-        a@b
+        val _ = (trace ["inheritFixtures "];
+                 Pretty.ppFixtures base;
+                 Pretty.ppFixtures derived)
+
+        (* 
+           Recurse through the fixtures of a base class to see if the
+           given fixture binding is allowed. if so, then add it
+           return the updated fixtures 
+
+           TODO: check for name conflicts:
+
+                Any name can be overridden by any other name with the same 
+                identifier and a namespace that is at least as visible. Visibility
+                is an attribute of the builtin namespaces: private, protected,
+                internal and public. These are related by:
+
+                    private < protected
+                    protected < public
+                    private < internal
+                    internal < public
+
+                where < means less visible
+
+                Note that protected and internal are overlapping namespaces and 
+                therefore it is an error to attempt to override a name in one 
+                with a name in another.
+
+            It is an error for there to be a derived fixture with a name that is:
+
+               - less visible than a base fixture
+               - as visible or more visible than a base fixture but not overriding it 
+                 (this case is caught by the override check below)
+        *)
+
+        fun inheritFixture ((n,fb):(Ast.NAME * Ast.FIXTURE))
+            : Ast.FIXTURES =
+            let
+                val targetFixture = if (hasFixture derived n)
+                                        then SOME (getFixture derived n)
+                                        else NONE
+
+            in case targetFixture of
+                NONE => (n,fb)::derived    (* not in the derived class, so inherit it *)
+              | SOME fd => 
+                case (canOverride fb fd) of
+                    true => derived  (* return current fixtures *)
+                  | _ => LogErr.defnError ["illegal override of ", LogErr.name n]
+            end                    
+
+        (* 
+           Given two fixtures, one base and other derived, check to see if
+           the derived fixture can override the base fixture. Specifically,
+           check that:
+
+               - the base fixture is not 'final'
+               - the derived fixture is 'override'
+               - they have same number of type parameters and parameters
+               - they both have the return type void or neither has the return type void
+               - what else?
+           
+           Type compatibility of parameter and return types is done by the evaluator
+           (or verifier in strict mode) and not here because type annotations can have
+           forward references
+        *)
+
+        and canOverride (fb:Ast.FIXTURE) (fd:Ast.FIXTURE)
+            : bool = 
+            let
+                fun isVoid ty = case ty of Ast.SpecialType Ast.VoidType => true | _ => false
+
+                val isCompatible = case (fb,fd) of 
+                        (Ast.ValFixture {
+                            ty=Ast.FunctionType 
+                                (Ast.FunctionSignature 
+                                    {typeParams=tpb,params=pb,returnType=rtb,...}),...},
+                         Ast.ValFixture 
+                            {ty=Ast.FunctionType 
+                                (Ast.FunctionSignature 
+                                    {typeParams=tpd,params=pd,returnType=rtd,...}),...}) =>
+                            (length tpb)=(length tpd) andalso (length pb)=(length pd) andalso
+                                (((isVoid rtb) andalso (isVoid rtd)) orelse
+                                 ((not (isVoid rtb)) andalso (not (isVoid rtd)))) 
+                      | _ => false
+            
+            in case (fb,fd) of
+                (Ast.ValFixture {isFinal,...}, Ast.ValFixture {isOverride,...}) => 
+                    (not isFinal) andalso isOverride andalso isCompatible
+              | _ => false
+            end
+
+    in case base of
+        [] => derived (* done *)
+      | first::follows => inheritFixtures follows (inheritFixture first)
     end
 
-and inheritFixtureOpts (a:Ast.FIXTURES option) 
-                       (b:Ast.FIXTURES option) 
+and inheritFixtureOpts (base:Ast.FIXTURES option) 
+                       (derived:Ast.FIXTURES option) 
     : Ast.FIXTURES option =
-    case (a,b) of
+    case (base,derived) of
         (NONE, NONE) => NONE
       | (SOME x, NONE) => SOME x
       | (SOME x, SOME y) => SOME (inheritFixtures x y)
@@ -443,7 +533,12 @@ and resolveClass (env:ENV)
     let
         fun qualName (cd:Ast.CLASS_DEFN) = {id=(#ident cd),ns=(resolveExprToNamespace env (#ns cd))}
 
-        fun findBaseClassDef (n:Ast.MULTINAME) = 
+        fun updateFixtures (Ast.Block {inits,stmts,pragmas,defns,...}) fixtures =
+            Ast.Block { fixtures=fixtures,inits=inits,
+                        stmts=stmts,pragmas=pragmas,
+                        defns=defns }
+
+        fun findBaseClassDef (n:Ast.MULTINAME) =
             let
                 val (n,f) = resolveMultinameToFixture env n
             in case f of 
@@ -464,7 +559,7 @@ and resolveClass (env:ENV)
         (currName, Ast.ClassFixture {extends=extendsName,
                                      implements=implementsNames,
                                      classBlock=classBlock,
-                                     instanceBlock=instanceBlock})
+                                     instanceBlock=updateFixtures instanceBlock fixtures})
     end
 
 (*
@@ -713,7 +808,6 @@ and defFuncSig (env:ENV)
     analyzeFuncSig
     defBlock
 
-
     function f(x,y,z) { var i=10; let j=20 }
 
     {f=[x,y,z,i],i=[],
@@ -729,7 +823,8 @@ and defFunc (env:ENV) (func:Ast.FUNC)
         val funcCtx = extendEnvironment env fxtrs
         val env = funcCtx :: env
         val (lblk,hoisted) = defBlock env body
-        val fblk = Ast.Block { pragmas=[], defns=[], fixtures=SOME (fxtrs@hoisted), inits=SOME inits, stmts = [Ast.BlockStmt lblk]}
+        val fblk = Ast.Block { pragmas=[], defns=[], fixtures=SOME (fxtrs@hoisted), 
+                               inits=SOME inits, stmts = [Ast.BlockStmt lblk]}
     in case ftype of
         Ast.FunctionType fsig =>
             (ftype, Ast.Func {name = name,
@@ -769,7 +864,8 @@ and defFuncDefn (env:ENV) (f:Ast.FUNC_DEFN)
             val outerFixtures = [(newName, Ast.ValFixture
                                        { ty = ftype,
                                          readOnly = true,
-                                         isOverride = false,
+                                         isOverride = (#override f),
+                                         isFinal = (#final f),
                                          init = SOME (Ast.FunExpr newFunc) })]
         in
             (outerFixtures, { kind = (#kind f),
@@ -1178,7 +1274,7 @@ and defBinding (env: ENV) (kind: Ast.VAR_DEFN_TAG) (ns: Ast.NAMESPACE)
             let
                 val readOnly = if kind = Ast.Const then true else false
             in
-                [({ns=ns, id=id}, Ast.ValFixture { ty = ty, readOnly = readOnly, isOverride = false, init = NONE })]
+                [({ns=ns, id=id}, Ast.ValFixture { ty = ty, readOnly = readOnly, isOverride = false, isFinal=true, init = NONE })]
             end
 
         (*

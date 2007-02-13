@@ -349,6 +349,7 @@ datatype PRAGMA =
            { ty: TYPE_EXPR,
              readOnly: bool,
              isOverride: bool,
+             isFinal: bool,
              init: EXPR option }
        | VirtualValFixture of 
            { ty: TYPE_EXPR, 
