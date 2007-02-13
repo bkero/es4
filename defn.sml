@@ -662,8 +662,7 @@ and defFuncSig (env:ENV)
 
     case fsig of 
         Ast.FunctionSignature { typeParams, params, inits, 
-                                returnType, thisType, 
-                                hasBoundThis, hasRest } =>
+                                returnType, thisType, hasRest } =>
         let 
 
             (* compute typeval fixtures (type parameters) *)
@@ -678,8 +677,7 @@ and defFuncSig (env:ENV)
 
             val ftype = Ast.FunctionType (Ast.FunctionSignature { typeParams=typeParams, params=params, 
                                            inits=[], returnType=returnType, 
-                                           thisType=thisType, hasBoundThis=hasBoundThis, 
-                                           hasRest=hasRest })
+                                           thisType=thisType, hasRest=hasRest })
             val (inits,_) = defStmts env inits
         in
             (ftype,typeParamFixtures @ paramFixtures, inits)

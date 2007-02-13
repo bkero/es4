@@ -38,9 +38,10 @@ datatype ROUNDING_MODE =
        | HalfDown
        | HalfEven
 
-type NUMERIC_MODE = { numberType: NUMBER_TYPE,
-                      roundingMode: ROUNDING_MODE,
-                      precision: int }
+type NUMERIC_MODE = 
+           { numberType: NUMBER_TYPE,
+             roundingMode: ROUNDING_MODE,
+             precision: int }
      
 datatype TRIOP =
          Cond
@@ -132,9 +133,10 @@ datatype PRAGMA =
        | UsePrecision of LITERAL
        | UseStrict
        | UseStandard
-       | Import of { package: IDENT,
-                     name: IDENT,
-                     alias: IDENT option }
+       | Import of 
+           { package: IDENT,
+             name: IDENT,
+             alias: IDENT option }
 
      and FUNC_NAME_KIND =
          Ordinary
@@ -146,11 +148,12 @@ datatype PRAGMA =
        | ToFunc
 
      and FUNC =
-         Func of { name: FUNC_NAME,
-                   fsig: FUNC_SIG,                   
-                   body: BLOCK,
-                   fixtures: FIXTURES option,
-                   inits: STMT list }
+         Func of 
+           { name: FUNC_NAME,
+             fsig: FUNC_SIG,                   
+             body: BLOCK,
+             fixtures: FIXTURES option,
+             inits: STMT list }
 
      and DEFN =
          ClassDefn of CLASS_DEFN
@@ -161,18 +164,19 @@ datatype PRAGMA =
        | TypeDefn of TYPE_DEFN
 
      and FUNC_SIG =
-         FunctionSignature of { typeParams: IDENT list,
-                                params: VAR_BINDING list,
-                                inits: STMT list, 
-                                returnType: TYPE_EXPR,
-                                thisType: TYPE_EXPR option,
-                                hasBoundThis: bool, (*goes away, redundant with previous option*)
-                                hasRest: bool }
+         FunctionSignature of 
+           { typeParams: IDENT list,
+             params: VAR_BINDING list,
+             inits: STMT list, 
+             returnType: TYPE_EXPR,
+             thisType: TYPE_EXPR option,
+             hasRest: bool }
 
      and VAR_BINDING =
-         Binding of { pattern: PATTERN,
-                      ty: TYPE_EXPR option,
-                      init: EXPR option }
+         Binding of 
+           { pattern: PATTERN,
+             ty: TYPE_EXPR option,
+             init: EXPR option }
 
      (* 
       * Note: no type parameters allowed on general typedefs,

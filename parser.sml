@@ -509,7 +509,6 @@ and functionSignature (ts) : (token list * Ast.FUNC_SIG) =
                                             params=(#b nd3),
                                             returnType=nd4,
                                             inits=([Ast.InitStmt {kind=Ast.Var,ns=Ast.LiteralExpr (Ast.LiteralNamespace (Ast.Internal "")),prototype=false,static=false,inits=(#i nd3)}]),
-                                            hasBoundThis=false,
                                             hasRest=false })) (* do we need this *)
                                end
                          | _ => raise ParseError
@@ -525,7 +524,6 @@ and functionSignature (ts) : (token list * Ast.FUNC_SIG) =
                                        params=[],
                                        returnType=nd3,
                                     inits=[],
-                                    hasBoundThis=false,
                                     hasRest=false })) (* do we need this *)
                           end
                  | _ => raise ParseError
@@ -545,7 +543,6 @@ and functionSignature (ts) : (token list * Ast.FUNC_SIG) =
                                     returnType=nd3,
                                     inits=([Ast.InitStmt {kind=Ast.Var,ns=Ast.LiteralExpr (Ast.LiteralNamespace (Ast.Internal "")),prototype=false,static=false,inits=(#i nd2)}]),
                                     thisType=NONE,  (* todo *)
-                                    hasBoundThis=false, (* todo *)
                                     hasRest=false })) (* do we need this *)
                        end
                  | _ => raise ParseError
@@ -5042,7 +5039,6 @@ and constructorSignature (ts) =
                                             params=(#b nd3),
                                             returnType=(Ast.SpecialType Ast.VoidType),
                                             inits=[Ast.InitStmt {kind=Ast.Var,ns=Ast.LiteralExpr (Ast.LiteralNamespace (Ast.Internal "")),prototype=false,static=false,inits=(#i nd3)},Ast.ExprStmt nd4],
-                                            hasBoundThis=false,
                                             hasRest=false })) (* do we need this *)
                                end
                          | _ => raise ParseError
@@ -5064,7 +5060,6 @@ and constructorSignature (ts) =
                                     returnType=(Ast.SpecialType Ast.VoidType),
                                     inits=[Ast.InitStmt {kind=Ast.Var,ns=Ast.LiteralExpr (Ast.LiteralNamespace (Ast.Internal "")),prototype=false,static=false,inits=(#i nd2)},Ast.ExprStmt nd3],
                                     thisType=NONE,
-                                    hasBoundThis=false, (* todo *)
                                     hasRest=false })) (* do we need this *)
                        end
                  | _ => raise ParseError

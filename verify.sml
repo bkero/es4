@@ -113,7 +113,7 @@ fun substTypeExpr (s:(IDENT*TYPE_EXPR) list) (t:TYPE_EXPR):TYPE_EXPR =
 	  | SpecialType st => SpecialType st
 
 	  | FunctionType (FunctionSignature {typeParams,params,inits,
-					     returnType,thisType,hasBoundThis,hasRest}) =>
+					     returnType,thisType,hasRest}) =>
 	    (* Need to uniquify typeParams to avoid capture *)
 	    let val oldNew = map (fn id => (id, gensym id)) typeParams 
 		val nuSub = 
@@ -131,7 +131,6 @@ fun substTypeExpr (s:(IDENT*TYPE_EXPR) list) (t:TYPE_EXPR):TYPE_EXPR =
 						 inits=inits, (* ignored in types *)
 						 returnType = bothSubs returnType,
 						 thisType = Option.map bothSubs thisType,
-						 hasBoundThis=hasBoundThis,
 						 hasRest=hasRest})
 		end
     end 
@@ -221,12 +220,12 @@ and isCompatible (t1:TYPE_EXPR)
 		 (FunctionSignature 
 		      {typeParams=typeParams1,params=params1, 
 		       inits=inits1,returnType=returnType1,
-		       thisType=thisType1,hasBoundThis=hasBoundThis1,hasRest=hasRest1}),
+		       thisType=thisType1,hasRest=hasRest1}),
 	     FunctionType 
 		 (FunctionSignature 
 		      {typeParams=typeParams2,params=params2, 
 		       inits=inits2,returnType=returnType2,
-		       thisType=thisType2,hasBoundThis=hasBoundThis2,hasRest=hasRest2})) =>
+		       thisType=thisType2,hasRest=hasRest2})) =>
 	    let
 	    in
 		(* TODO: Assume for now that functions are not polymorphic *)
@@ -287,7 +286,7 @@ fun normalizeType (t:TYPE_EXPR)
     let in
 	case t of
 	    AppType {base=FunctionType (FunctionSignature {typeParams,params,inits,returnType,
-							   thisType,hasBoundThis,hasRest}), 
+							   thisType,hasRest}), 
 		     args } =>
 	    let val _ =	assert (length args = length typeParams);
 		val sub = ListPair.zip (typeParams,args)
@@ -298,7 +297,6 @@ fun normalizeType (t:TYPE_EXPR)
 						  inits=inits,
 						  returnType=substTypeExpr sub returnType,
 						  thisType= Option.map (substTypeExpr sub) thisType,
-						  hasBoundThis=hasBoundThis,
 						  hasRest=hasRest })
 	    end
 	  | _ => t
@@ -355,7 +353,7 @@ and verifyTypeExprs  (ctxt as {env,this,...}:CONTEXT)
 
 and verifyFunctionSignature  (ctxt as {env,this,...}:CONTEXT)
 			     (FunctionSignature {typeParams, params, inits, returnType, 
-						 thisType, hasBoundThis, hasRest})
+						 thisType, hasRest})
     : CONTEXT =
     let (* Add the type parameters to the environment. *)
 	val extensions1 = List.map (fn id => (id,NONE)) typeParams;
@@ -372,7 +370,7 @@ and verifyFunctionSignature  (ctxt as {env,this,...}:CONTEXT)
 	     NONE => ()
 	   | SOME t => verifyTypeExpr ctxt t);
 	ctxt3
-	(* TODO: check inits, hasBoundThis, hasRest *)
+	(* TODO: check inits, hasRest *)
     end
 
 (******************** Expressions **************************************************)
@@ -505,8 +503,7 @@ and verifyCallExpr  (ctxt as {env,this,...}:CONTEXT)
 	   (* not much to do *)
 	   anyType
 	 | FunctionType 
-	       (FunctionSignature { typeParams, params, returnType, inits, thisType, hasBoundThis (*deprecated*),
-				    hasRest })
+	       (FunctionSignature { typeParams, params, returnType, inits, thisType, hasRest })
 	   => 
 	   let 
 	   in
@@ -854,7 +851,7 @@ and verifyDefn (ctxt as {this,env,lbls,retTy}:CONTEXT) (d:DEFN) : (TYPE_ENV * in
 	  | FunctionDefn { kind, func,... } =>
 	    let val Func {name,fsig,body,fixtures,...} = func
 		val FunctionSignature { typeParams, params, inits, 
-					returnType, thisType, hasBoundThis, hasRest } 
+					returnType, thisType, hasRest } 
 		  = fsig
 		val { kind, ident } = name
 		val ctxt3 = verifyFunctionSignature ctxt fsig
