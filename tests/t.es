@@ -1,3 +1,2 @@
-class A {
-   function +(x,y) { }
-}
+var x = 10 // comment
+var y = 20

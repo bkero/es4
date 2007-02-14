@@ -108,7 +108,7 @@
 				>
 			</File>
 			<File
-				RelativePath="..\..\typechk.sml"
+				RelativePath="..\..\verify.sml"
 				>
 			</File>
 		</Filter>

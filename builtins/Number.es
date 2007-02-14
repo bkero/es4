@@ -1,128 +1,76 @@
-/* -*- mode: java; mode: font-lock; tab-width: 4 -*- 
+/* -*- indent-tabs-mode: nil -*- 
  *
  * ECMAScript 4 builtins - the "Number" object
+ *
  * E262-3 15.7
+ * E262-4 proposals:numbers
  *
- * "Number" is for backwards compatibility, but its semantics are not
- * yet entirely pinned down.
- *
- * Status: Incomplete.  
- *
- * TO DO:
- *  - toPrecision and toExponential currently punt to native code
- *    but are mostly expressible in ECMAScript.  toFixed shows how this
- *    might be done.
+ * The committee decided at the January 2007 meeting at Mozilla that
+ * "Number" is a heavyweight wrapper (non-final, dynamic) for a
+ * "double" value.
  */
 
 package
 {
-	final class Number! extends Object
-	{		
-		static const MAX_VALUE         = 1.7976931348623157e+308;	
-		static const MIN_VALUE         = 5e-324;	
-		static const NaN               = 0.0/0.0;	
-		static const NEGATIVE_INFINITY = -1.0/0.0;
-		static const POSITIVE_INFINITY = 1.0/0.0;
+    use namespace intrinsic;
+    use strict;
 
-		/* E262-3 15.7.1.1: The Number Constructor Called as a Function */
-		static intrinsic function call(value) {
-			if (value === intrinsic::undefined)
-				return 0;
-			return intrinsic::ToNumber(value);
-		}
+    dynamic class Number!
+    {
+        public static const MAX_VALUE : double         = double.MAX_VALUE;
+        public static const MIN_VALUE : double         = double.MIN_VALUE;
+        public static const NaN : double               = double.NaN;
+        public static const NEGATIVE_INFINITY : double = double.NEGATIVE_INFINITY;
+        public static const POSITIVE_INFINITY : double = double.POSITIVE_INFINITY;
 
-		/* E262-3 15.7.2.1: The Number constructor */
-		function Number(value) {
-			magic::setValue(this, intrinsic::ToNumber(value));
-		}
+        const value : double;
 
-		/* E262-3 15.7.4.2: Number.prototype.toString */
-		prototype function toString(this:Number, radix:Number) {
-			return this.intrinsic::toString(radix);
-		}
+        /* E262-4 draft */
+        intrinsic static function to(x : Numeric) : Number
+            x is Number ? x : new Number(ToDouble(x));
 
-		intrinsic function toString(radix:Number = 10) : String! {
-			if (radix === 10 || radix === intrinsic::undefined)
-				return intrinsic::ToString(magic::getValue(this));
-			else if (typeof radix === "number" && radix >= 2 && radix <= 36 && intrinsic::isIntegral(radix)) {
-				// FIXME
-				throw new Error("Unimplemented: non-decimal radix");
-			}
-			else
-				throw new TypeError("Invalid radix argument to Number.toString");
-		}
-		
-		/* E262-3 15.7.4.3: Number.prototype.toLocaleString() */
-		prototype function toLocaleString(this:Number) {
-			return this.intrinsic::toLocaleString();
-		}
+        /* E262-3 15.7.1.1: The Number Constructor Called as a Function */
+        intrinsic static function invoke(value) 
+            value === undefined ? 0.0 : new Number(value);
 
-		intrinsic function toLocaleString() : String! {
-			return this.intrinsic::toString();
-		}
+        /* E262-3 15.7.2.1: The Number constructor */
+        public function Number(value) 
+            value = ToDouble(value);
 
-		/* E262-3 15.7.4.4: Number.prototype.valueOf */
-		prototype function valueOf(this:Number) {
-			return this.intrinsic::valueOf();
-		}
+        prototype function toString(radix = 10)
+            this.toString(radix);
 
-		intrinsic function valueOf() : Object! {
-			return this;
-		}
+        intrinsic function toString(radix = 10) : string
+            value.toString(radix);
+        
+        prototype function toLocaleString()
+            this.toLocaleString();
 
-		/* E262-3 15.7.4.5 Number.prototype.toFixed */
-		prototype function toFixed(this:Number, fractionDigits) {
-			return this.intrinsic::toFixed(Number(fractionDigits));
-		}
+        intrinsic function toLocaleString() : string
+            value.toLocaleString();
 
-		intrinsic function toFixed(fractionDigits:Number) : String! {
-			let f : Number = intrinsic::ToInteger(fractionDigits);
-			if (f < 0 || f > 20)
-				throw new RangeError("fractionDigits out of range");
-			let x : Number = magic::getValue(this);
-			if (intrinsic::isNaN(x))
-				return "NaN";
-			let s : String! = "";
-			if (x < 0) {
-				s = "-";
-				x = -x;
-			}
+        prototype function valueOf()
+            this.valueOf();
 
-			if (x >= Math.intrinsic::pow(10,21)) 
-				return s + intrinsic::ToString(m);
-			
-			let n : Number = toFixedStep10(x, f);
-			let m : String! = n == 0 ? "0" : intrinsic::ToString(n);
-			if (f == 0)
-				return s + m;
-			let k : int = m.length;
-			if (k <= f) {
-				m = "00000000000000000000".substring(0,f+1-k) + m;
-				k = f+1;
-			}
-			return "-" + m.substring(0,k-f) + "." + m.substring(k-f);
-		}
+        intrinsic function valueOf() : Object!
+            value.valueOf();
 
-		/* Step 10 of the toFixed algorithm in E262-3 15.7.4.5: return
-		   an integer n such that n / 10^f - x is as close to zero as
-		   possible.  If there are two such n, pick the larger. 
+        prototype function toFixed(fractionDigits)
+            this.toFixed(fractionDigits);
 
-		   x must be positive, f is in the range [0,20]. */
+        intrinsic function toFixed(fractionDigits:double) : string 
+            value.toFixed(fractionDigits);
 
-		private native function toFixedStep10(x : double, f : int) : int;
+        prototype function toExponential(fractionDigits)
+            this.toExponential(fractionDigits);
 
-		/* E262-3 15.7.4.6: Number.prototype.toExponential */
-		prototype function toExponential(this:Number, fractionDigits) {
-			return this.intrinsic::toExponential(Number(fractionDigits));
-		}
+        intrinsic function toExponential(fractionDigits:double) : string
+            value.toExponential(fractionDigits);
 
-		intrinsic native function toExponential(fractionDigits:Number):String; // FIXME
+        prototype function toPrecision(precision)
+            this.toPrecision(precision);
 
-		/* E262-3 15.7.4.7: Number.prototype.toPrecision */
-		prototype function toPrecision(this:Number, precision) {
-			return this.intrinsic::toPrecision(Number(precision));
-		}
-
-		intrinsic native function toPrecision(precision:Number) : String!; // FIXME
-	}
+        intrinsic function toPrecision(precision:double) : string
+            value.toPrecision(precision);
+    }
 }

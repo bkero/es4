@@ -91,6 +91,9 @@ datatype VAL = Object of OBJ
                     | TypeProp
                     | UninitProp
                     | ValProp of VAL
+                    | VirtualValProp of 
+                      { getter: FUN_CLOSURE option,
+                        setter: FUN_CLOSURE option }
                 
 withtype FUN_CLOSURE = 
          { func: Ast.FUNC,
@@ -133,10 +136,17 @@ fun newPropBindings _ : PROP_BINDINGS =
         b
     end
 
-fun addProp (b:PROP_BINDINGS) (n:NAME) (x:PROP) = 
+
+fun addProp (b:PROP_BINDINGS) 
+            (n:NAME) 
+            (x:PROP) 
+    : unit = 
     b := ((n,x) :: (!b))
 
-fun delProp (b:PROP_BINDINGS) (n:NAME) = 
+
+fun delProp (b:PROP_BINDINGS) 
+            (n:NAME) 
+    : unit = 
     let 
         fun strip [] = LogErr.hostError ["deleting nonexistent property binding: ", 
                                          (#id n)]
@@ -148,7 +158,10 @@ fun delProp (b:PROP_BINDINGS) (n:NAME) =
         b := strip (!b)
     end    
 
-fun getProp (b:PROP_BINDINGS) (n:NAME) : PROP = 
+
+fun getProp (b:PROP_BINDINGS) 
+            (n:NAME) 
+    : PROP = 
     let 
         fun search [] = LogErr.hostError ["property binding not found: ", 
                                           (#id n)]
@@ -161,19 +174,9 @@ fun getProp (b:PROP_BINDINGS) (n:NAME) : PROP =
     end
 
 
-fun getFixture (b:Ast.FIXTURE_BINDINGS) (n:NAME) : Ast.FIXTURE = 
-    let 
-        fun search [] = LogErr.hostError ["fixture binding not found: ", 
-                                          (#id n)]
-          | search ((k,v)::bs) = 
-            if k = n 
-            then v
-            else search bs
-    in
-        search b
-    end
-
-fun hasProp (b:PROP_BINDINGS) (n:NAME) : bool = 
+fun hasProp (b:PROP_BINDINGS) 
+            (n:NAME) 
+    : bool = 
     let 
         fun search [] = false
           | search ((k,v)::bs) = 
@@ -184,16 +187,6 @@ fun hasProp (b:PROP_BINDINGS) (n:NAME) : bool =
         search (!b)
     end
 
-fun hasFixture (b:Ast.FIXTURE_BINDINGS) (n:NAME) : bool = 
-    let 
-        fun search [] = false
-          | search ((k,v)::bs) = 
-            if k = n 
-            then true
-            else search bs
-    in
-        search b
-    end
 
 (* Standard runtime objects and functions. *)
 
@@ -211,6 +204,10 @@ val intrinsicNamespaceName:NAME = { ns = Ast.Intrinsic, id = "Namespace" }
 val intrinsicClassName:NAME = { ns = Ast.Intrinsic, id = "Class" }
 val intrinsicInterfaceName:NAME = { ns = Ast.Intrinsic, id = "Interface" }
 
+val intrinsicApplyName:NAME = { ns = Ast.Intrinsic, id = "apply" }
+val intrinsicInvokeName:NAME = { ns = Ast.Intrinsic, id = "invoke" }
+val intrinsicConstructName:NAME = { ns = Ast.Intrinsic, id = "construct" }
+
 val intrinsicObjectBaseTag:VAL_TAG = ClassTag (intrinsicObjectName)
 val intrinsicArrayBaseTag:VAL_TAG = ClassTag (intrinsicArrayName)
 val intrinsicFunctionBaseTag:VAL_TAG = ClassTag (intrinsicFunctionName)
@@ -227,38 +224,61 @@ fun intrinsicName id = Ast.QualifiedIdentifier { qual = intrinsicNsExpr, ident =
 
 (* Define some global intrinsic nominal types. *)
 
-val typeType = Ast.NominalType { ident = (intrinsicName "Type"), nullable = NONE }
-val namespaceType = Ast.NominalType { ident = (intrinsicName "Namespace"), nullable = NONE }
-val classType = Ast.NominalType { ident = intrinsicName "Class", nullable = NONE }
+val typeType = Ast.NominalType { ident = (intrinsicName "Type") }
+val namespaceType = Ast.NominalType { ident = (intrinsicName "Namespace") }
+val classType = Ast.NominalType { ident = intrinsicName "Class" }
 
-fun newObj (t:VAL_TAG) (p:VAL) (m:MAGIC option) : OBJ = 
+
+fun newObj (t:VAL_TAG) 
+           (p:VAL) 
+           (m:MAGIC option) 
+    : OBJ = 
     Obj { tag = t,
           props = newPropBindings (),
           proto = ref p,
           magic = ref m }
-                          
-fun newSimpleObj (m:MAGIC option) : OBJ = 
+
+
+fun newSimpleObj (m:MAGIC option) 
+    : OBJ = 
     newObj intrinsicObjectBaseTag Null m
 
-fun newObject (t:VAL_TAG) (p:VAL) (m:MAGIC option) : VAL = 
+
+fun newObject (t:VAL_TAG) 
+              (p:VAL) 
+              (m:MAGIC option) 
+    : VAL = 
     Object (newObj t p m)
 
-fun newSimpleObject (m:MAGIC option) : VAL = 
+
+fun newSimpleObject (m:MAGIC option) 
+    : VAL = 
     Object (newSimpleObj m)
 
-fun newNumber (n:real) : VAL = 
+
+fun newNumber (n:real) 
+    : VAL = 
     newObject intrinsicNumberBaseTag Null (SOME (Number n))
 
-fun newString (s:STR) : VAL = 
+
+fun newString (s:STR) 
+    : VAL = 
     newObject intrinsicStringBaseTag Null (SOME (String s))
 
-fun newBoolean (b:bool) : VAL = 
+
+fun newBoolean (b:bool) 
+    : VAL = 
     newObject intrinsicBooleanBaseTag Null (SOME (Bool b))
 
-fun newNamespace (n:NS) : VAL = 
+
+fun newNamespace (n:NS) 
+    : VAL = 
     newObject intrinsicNamespaceBaseTag Null (SOME (Namespace n))
 
-fun newClass (e:SCOPE) (c:Ast.CLASS_DEFN) : VAL =
+
+fun newClass (e:SCOPE) 
+             (c:Ast.CLASS_DEFN) 
+    : VAL =
     let
         val cls = Cls { ty = classType,
                         definition = c }
@@ -270,7 +290,9 @@ fun newClass (e:SCOPE) (c:Ast.CLASS_DEFN) : VAL =
     end
 
 
-fun newFunc (e:SCOPE) (f:Ast.FUNC) : VAL = 
+fun newFunc (e:SCOPE) 
+            (f:Ast.FUNC) 
+    : VAL = 
     let 
         val fsig = case f of Ast.Func { fsig, ... } => fsig
         val tag = FunctionTag fsig
@@ -284,11 +306,11 @@ fun newFunc (e:SCOPE) (f:Ast.FUNC) : VAL =
     in
         newObject tag Null (SOME (Function closure))
     end
-            
+
 val (objectType:TYPE) = Ast.ObjectType []
 
 val (defaultAttrs:Ast.ATTRIBUTES) = 
-    Ast.Attributes { ns = Ast.LiteralExpr (Ast.LiteralNamespace (Ast.Public "")),
+    { ns = Ast.LiteralExpr (Ast.LiteralNamespace (Ast.Public "")),
                      override = false,
                      static = false,
                      final = false,
@@ -300,7 +322,8 @@ val (defaultAttrs:Ast.ATTRIBUTES) =
 val (emptyBlock:Ast.BLOCK) = Ast.Block { pragmas = [],
                                          defns = [],
                                          stmts = [],
-                                         fixtures = NONE }
+                                         fixtures = NONE,
+                                         inits = NONE }
 
 val (globalObject:OBJ) = newObj intrinsicObjectBaseTag Null NONE
 
@@ -313,11 +336,16 @@ val (globalScope:SCOPE) =
 val nan = Real.posInf / Real.posInf
 
 
-fun hasOwnValue (obj:OBJ) (n:NAME) : bool = 
+fun hasOwnValue (obj:OBJ) 
+                (n:NAME) 
+    : bool = 
     case obj of 
         Obj { props, ... } => hasProp props n
 
-fun hasValue (obj:OBJ) (n:NAME) : bool = 
+
+fun hasValue (obj:OBJ) 
+             (n:NAME) 
+    : bool = 
     if hasOwnValue obj n
     then true
     else (case obj of 
@@ -326,7 +354,10 @@ fun hasValue (obj:OBJ) (n:NAME) : bool =
                   Object p => hasValue p n
                 | _ => false)
 
-fun getValue (obj:OBJ) (name:NAME) : VAL = 
+
+fun getValue (obj:OBJ) 
+             (name:NAME) 
+    : VAL = 
     case obj of 
         Obj {props, ...} => 
         let 
@@ -339,11 +370,15 @@ fun getValue (obj:OBJ) (name:NAME) : VAL =
               | ValProp v => v
         end
 
+
 (* A "defValue" call occurs when assigning a property definition's 
  * initial value, as specified by the user. All other assignments
  * to a property go through "setValue". *)
 
-fun defValue (base:OBJ) (name:NAME) (v:VAL) : unit =
+fun defValue (base:OBJ) 
+             (name:NAME) 
+             (v:VAL) 
+    : unit =
     case base of 
         Obj { props, ... } => 
         if not (hasProp props name)
@@ -374,7 +409,11 @@ fun defValue (base:OBJ) (name:NAME) (v:VAL) : unit =
                 addProp props name newProp
             end
 
-fun setValue (base:OBJ) (name:NAME) (v:VAL) : unit = 
+
+fun setValue (base:OBJ) 
+             (name:NAME) 
+             (v:VAL) 
+    : unit = 
     case base of 
         Obj {props, ...} => 
         if hasProp props name
@@ -427,22 +466,29 @@ fun setValue (base:OBJ) (name:NAME) (v:VAL) : unit =
  * magic value pointing to the CLS.
  *)
 
-fun nominalBaseOfTag (t:VAL_TAG) = 
+fun nominalBaseOfTag (t:VAL_TAG) 
+    : NAME = 
     case t of 
         ObjectTag _ => intrinsicObjectName
       | ArrayTag _ => intrinsicArrayName
       | FunctionTag _ => intrinsicFunctionName
       | ClassTag c => c
 
-fun getMagic (v:VAL) : (MAGIC option) = 
+
+fun getMagic (v:VAL) 
+    : (MAGIC option) = 
     case v of 
         Object (Obj ob) => !(#magic ob)
       | _ => NONE
 
-fun getGlobalVal (n:NAME) : VAL = 
+
+fun getGlobalVal (n:NAME) 
+    : VAL = 
     getValue globalObject n
 
-fun valToCls (v:VAL) : (CLS option) = 
+
+fun valToCls (v:VAL) 
+    : (CLS option) = 
     case v of 
         Object (Obj ob) => 
         (case getMagic (getGlobalVal (nominalBaseOfTag (#tag ob))) of
@@ -465,12 +511,12 @@ fun toString (v:VAL) : string =
                 | String s => s
                 | Bool true => "true"
                 | Bool false => "false"
-                | Namespace Ast.Private => "[private namespace]"
-                | Namespace Ast.Protected => "[protected namespace]"
-                | Namespace Ast.Intrinsic => "[intrinsic namespace]"
+                | Namespace (Ast.Private _)=> "[private namespace]"
+                | Namespace (Ast.Protected _)=> "[protected namespace]"
+                | Namespace Ast.Intrinsic=> "[intrinsic namespace]"
                 | Namespace (Ast.Public id) => "[public namespace: " ^ id ^ "]"
                 | Namespace (Ast.Internal _) => "[internal namespace]"
-                | Namespace (Ast.UserDefined id) => "[user-defined namespace " ^ id ^ "]"
+                | Namespace (Ast.UserNamespace id) => "[user-defined namespace " ^ id ^ "]"
                 | Class _ => "[class Class]"
                 | Interface _ => "[interface Interface]"
                 | Function _ => "[function Function]"
@@ -563,3 +609,5 @@ fun populateIntrinsics globalObj =
             [ ("print", hostPrintFunction) ]
         end        
 end
+
+

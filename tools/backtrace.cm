@@ -1,8 +1,10 @@
 Library
         structure BackTrace
+        structure PrintTrace
 is
         $/basis.cm
         $/smlnj-lib.cm
+        printtrace.sml
 #if defined (BACKTRACE)
         $smlnj-tdp/plugins.cm
 #else

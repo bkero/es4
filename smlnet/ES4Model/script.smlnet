@@ -7,7 +7,7 @@ structure Lexer=../../lexer.lex.sml
 structure Parser=../../parser.sml
 structure Defn=../../defn.sml
 structure Mach=../../mach.sml
-structure TypeChk=../../typechk.sml
+structure Verify=../../verify.sml
 structure Eval=../../eval.sml
 
 (* add compiler flags common to all configurations here *)

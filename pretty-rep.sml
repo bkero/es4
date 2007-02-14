@@ -10,6 +10,7 @@ datatype smlDataRep =
        | Tuple of smlDataRep list
        | String of string
        | Ref of smlDataRep
+       | Int of int
        | Real of real
        | Bool of bool
 
@@ -43,6 +44,7 @@ fun ppSmlDataRep stream (rep : smlDataRep) =
       | Ref r => (ob(); str "("; str "ref"; sp; sub r; str ")"; cb())
       | Bool true => str "true"
       | Bool false => str "false"
+      | Int i => str (Int.toString i)
       | Real r => str (Real.toString r)
     end
 

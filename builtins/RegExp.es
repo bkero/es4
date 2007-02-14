@@ -13,14 +13,15 @@
 package RegExp
 {
     import Unicode.*;
+    use namespace intrinsic;
     use strict;
 
     /* E262-3 15.10: Regular expression object */
     public dynamic class RegExp
     {
         /* E262-3 15.10.3.1: The RegExp constructor called as a function */
-        static intrinsic function call( pattern, flags ) {
-            if (pattern is RegExp && flags === intrinsic::undefined)
+        static intrinsic function invoke( pattern, flags ) {
+            if (pattern is RegExp && flags === undefined)
                 return pattern;
             else
                 return new RegExp(pattern, flags);
@@ -28,10 +29,10 @@ package RegExp
 
         /* E262-3 15.10.4.1: The RegExp constructor */
         public function RegExp( pattern, flags ) {
-            let source : String! = "";
+            let source : string = "";
 
             if (pattern is RegExp) {
-                if (flags === intrinsic::undefined) {
+                if (flags === undefined) {
                     source = pattern.source;
                     flags = pattern.flags;
                 }
@@ -39,50 +40,50 @@ package RegExp
                     throw new TypeError("Illegal construction of regular expression");
             }
             else {
-                source = pattern === intrinsic::undefined ? "" : String(pattern);
-                flags = flags === intrinsic::undefined ? "" : String(flags);
+                source = pattern === undefined ? "" : ToString(pattern);
+                flags = flags === undefined ? "" : ToString(flags);
             }
 
-            let usedflags : Object! = { m: null, i: null, g: null, x: null, y: null };
+            let usedflags : Object! = { m: false, i: false, g: false, x: false, y: false };
 
-            for each ( let f : String! in flags.split("") ) {
+            for each ( let f : string in flags.split("") ) {
                 if (!(f in usedflags))
                     throw new SyntaxError("Invalid flag: " + f);
-                if (usedflags.f is Boolean)
+                if (usedflags.f)
                     throw new SyntaxError("Duplicated flag: " + f);
                 usedflags[f] = true;
             }
 
-            this.matcher = (new RegExpCompiler(source, flags)).compile();
+            matcher = (new RegExpCompiler(source, flags)).compile();
 
-            this.multiline = usedflags.m is Boolean ? usedflags.m : false;
-            this.ignoreCase = usedflags.i is Boolean ? usedflags.i : false;
-            this.global = usedflags.g is Boolean ? usedflags.g : false;
-            this.extended = usedflags.x is Boolean ? usedflags.x : false;
-            this.sticky = usedflags.y is Boolean ? usedflags.y : false;
-            this.lastIndex = 0;
-            this.source = source;
+            multiline = usedflags.m;
+            ignoreCase = usedflags.i;
+            global = usedflags.g;
+            extended = usedflags.x;
+            sticky = usedflags.y;
+            lastIndex = 0;
+            source = source;
         }
 
         /* E262-4 proposals:extend_regexps: RegExp instances are
            callable, and a call to an instance is equivalent to
            calling its exec() method.
         */
-        public function call(s) : Array
-            this.intrinsic::exec(s);
+        public function invoke(s) : Array
+            this.exec(s);
 
-        intrinsic function call(s : String!) : Array
-            this.intrinsic::exec(s);
+        intrinsic function invoke(s : string) : Array
+            exec(s);
 
         /* E262-3 15.10.6.2: RegExp.prototype.exec */
-        intrinsic function exec(s : String!) : Array {
-            let S : String! = intrinsic::ToString(s);
+        intrinsic function exec(s : string) : Array {
+            let S : string = ToString(s);
             let length : uint = S.length;
-            let i : Number = intrinsic::ToInteger(lastIndex);
+            let i : double = ToInteger(lastIndex);
             if (!global)
                 i = 0;
             let res : MatchResult = failure;
-            for (;;) {
+            while (true) {
                 if (i < 0 || i > length) {
                     lastIndex = 0;
                     return null;
@@ -105,21 +106,21 @@ package RegExp
         }
 
         prototype function exec(s)
-            this.intrinsic::exec(s);
+            this.exec(s);
 
         /* E262-3 15.10.6.3: RegExp.prototype.test */
-        intrinsic function test(s : String!) : Boolean
-            this.intrinsic::exec(s) !== null;
+        intrinsic function test(s : string) : Boolean
+            exec(s) !== null;
 
         prototype function test(s)
-            this.intrinsic::test(s);
+            this.test(s);
 
         /* E262-3 15.10.6.4: RegExp.prototype.toString */
-        intrinsic function toString() : String!
+        intrinsic function toString() : string
             "/" + (source.length == 0 ? "(?:)" : source) + "/" + flags;
 
         prototype function toString()
-            this.intrinsic::toString();
+            this.toString();
 
         /* E262-3 15.10.7: properties of regexp instances */
         public const multiline  : Boolean;
@@ -127,13 +128,25 @@ package RegExp
         public const global     : Boolean;
         public const extended   : Boolean;  // E262-4 proposals:extend_regexps
         public const sticky     : Boolean;  // E262-4 proposals:extend_regexps
-        public const source     : String!;
-        public var   lastIndex  : Number;
+        public const source     : string;
+        public var   lastIndex  : double;
+
+        /* E262-4 - [[Match]] may not *have* to be public, but String
+           uses it, and if we want to model the language in the
+           language we should expose it -- it's benign. 
+        */
+        intrinsic function match(s : string, i : uint) : MatchResult
+            matcher.match(s, i);
+
+        /* E262-4 - nCapturingParens used by String.prototype.replace 
+         */
+        intrinsic function get nCapturingParens() : uint
+            matcher.nCapturingParens;
 
         /* Internal */
         const matcher : RegExpMatcher;      // The [[Match]] property
 
-        function get flags() : String! {
+        function get flags() : string {
             return (multiline ? "m" : "") +
                    (ignoreCase ? "i" : "") +
                    (global ? "g" : "") +
@@ -141,5 +154,4 @@ package RegExp
                    (sticky ? "y" : "");
         }
     }
-
 }

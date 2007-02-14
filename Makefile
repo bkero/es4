@@ -1,6 +1,6 @@
 SML_BIN = $(shell dirname "`which sml`" )
-SOURCES = ast.sml main.sml pretty.sml typechk.sml eval.sml mach.sml \
-	parser.sml  pretty-rep.sml token.sml
+SOURCES = ast.sml main.sml pretty.sml verify.sml eval.sml mach.sml \
+	parser.sml  pretty-rep.sml token.sml defn.sml
 # HEAP_SUFFIX = $(shell if [ -e "$(SML_BIN)/.arch-n-opsys" ]; then "$(SML_BIN)/.arch-n-opsys" | sed 's/^.*HEAP_SUFFIX=//'; else echo x86-linux; fi )
 # dave, fixme: previous line is commented out because with it the heap does not get rebuilt on Jeff's machine
 

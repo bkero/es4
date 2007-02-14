@@ -11,6 +11,7 @@
 package RegExp
 {
     import Unicode.*;
+    use namespace intrinsic;
     use strict;
 
     /* Encapsulation of compiled regular expression as returned by the
@@ -18,7 +19,7 @@ package RegExp
     */
     class RegExpMatcher!
     {
-        public function RegExpMatcher(matcher : Matcher, nCapturingParens : int, names : [String]!) 
+        public function RegExpMatcher(matcher : Matcher, nCapturingParens : int, names : [string?]!) 
             : matcher = matcher
             , nCapturingParens = nCapturingParens
             , names = names
@@ -29,7 +30,7 @@ package RegExp
         /* Returns an array of matches, with additional named properties
            on the array for named submatches 
         */
-        public function match( input : String!, endIndex : int ) : MatchResult {
+        public function match( input : string, endIndex : int ) : MatchResult {
             return matcher.match(new Context(input, flags),
                                  new State(endIndex, makeCapArray(nCapturingParens)), 
                                  function (x : State) : State? { return x });
@@ -37,7 +38,7 @@ package RegExp
 
         var matcher : Matcher;
         var nCapturingParens : int;
-        var names : [String]!;
+        var names : [string?]!;
     }
 
     /* The Context contains static data for the matching, we use this
@@ -46,7 +47,7 @@ package RegExp
     */
     class Context!
     {
-        function Context(input : String!, flags : String!) 
+        function Context(input : string, flags : string) 
             : input = input
             , inputLength = input.length
             , ignoreCase = flags.indexOf("i") != -1
@@ -54,7 +55,7 @@ package RegExp
         {
         }
 
-        const input       : String!;
+        const input       : string;
         const inputLength : int;
         const ignoreCase  : Boolean;   // i
         const multiline   : Boolean;   // m
@@ -83,12 +84,12 @@ package RegExp
        This captures array can be an array that's copied like the
        E262-3 states, or it could be a functional data structure.  
     */
-    type CapArray = [String]!;
+    type CapArray = Array!;  /* Really [(string,Undefined)]! but we can't express that yet */
 
     function makeCapArray(nCapturingParens : uint) : CapArray {
         var a = [] : CapArray;
-        for ( let i : uint = 0 ; i <= nCapturingParens ; i++ )
-            a[i] = null;
+        for ( let i : uint = 0 ; i < nCapturingParens ; i++ )
+            a[i] = undefined;
         return a;
     }
 
@@ -96,8 +97,8 @@ package RegExp
         let b : CapArray = makeCapArray(a.length);
         for ( let i : uint = 0 ; i < a.length ; i++ )
             b[i] = a[i];
-        for ( let k : uint = parenIndex+1 ; k <= parenIndex+parenCount ; k++ )
-            b[i] = null;
+        for ( let k : uint = parenIndex ; k < parenIndex+parenCount ; k++ )
+            b[i] = undefined;
         return b;
     }
 
@@ -200,7 +201,7 @@ package RegExp
 
     class Quantified! implements Matcher
     {
-        function Quantified(parenIndex:uint, parenCount:uint, m:Matcher, min:Number, max:Number, 
+        function Quantified(parenIndex:uint, parenCount:uint, m:Matcher, min:double, max:double, 
                             greedy:Boolean) 
             : parenIndex = parenIndex
             , parenCount = parenCount
@@ -213,7 +214,7 @@ package RegExp
 
         function match(ctx : Context, x : State, c : Continuation) : MatchResult {
 
-            function RepeatMatcher(min : Number, max : Number, x : State) : MatchResult {
+            function RepeatMatcher(min : double, max : double, x : State) : MatchResult {
                 if (max === 0)
                     return c(x);
 
@@ -248,8 +249,8 @@ package RegExp
         var parenIndex : uint;
         var parenCount : uint;
         var m : Matcher;
-        var min : Number;
-        var max : Number;
+        var min : double;
+        var max : double;
         var greedy : Boolean;
     }
 
@@ -263,7 +264,7 @@ package RegExp
                 let cap : CapArray = copyCapArray( y.cap, 0, 0 );
                 let xe : int = x.endIndex;
                 let ye : int = y.endIndex;
-                cap[parenIndex+1] = ctx.input.substring(xe, ye);
+                cap[parenIndex] = ctx.input.substring(xe, ye);
                 return c(new State(ye, cap));
             }
 
@@ -351,14 +352,14 @@ package RegExp
 
     interface Charset!
     {
-        function match(c : String!) : Boolean;
+        function match(c : string) : Boolean;
     }
 
     class CharsetUnion implements Charset 
     {
         function CharsetUnion(m1 : Charset, m2 : Charset) : m1=m1, m2=m2 {}
 
-        function match(c : String!) : Boolean
+        function match(c : string) : Boolean
             m1.match(c, true) || m2.match(c, true);
 
         var m1 : Charset, m2 : Charset;
@@ -368,7 +369,7 @@ package RegExp
     {
         function CharsetIntersection(m1 : Charset, m2 : Charset) : m1=m1, m2=m2 {}
 
-        function match(c : String!) : Boolean
+        function match(c : string) : Boolean
             m1.match(c, true) && m2.match(c, true);
 
         var m1 : Charset, m2 : Charset;
@@ -378,7 +379,7 @@ package RegExp
     {
         function CharsetComplement(cs : Charset) : cs=cs {}
 
-        function match(c : String!) : Boolean
+        function match(c : string) : Boolean
             m.match(c) === failure;
 
         var cs : Charset;
@@ -386,25 +387,25 @@ package RegExp
 
     class CharsetRange implements Charset 
     {
-        function CharsetRange(lo : String!, hi : String!) : lo=lo, hi=hi {}
+        function CharsetRange(lo : string, hi : string) : lo=lo, hi=hi {}
 
-        function match(c : String!) : Boolean {
+        function match(c : string) : Boolean {
             let lo_code = lo.charCodeAt(0);
             let hi_code = hi.charCodeAt(0);
             for ( let i=lo_code ; i <= hi_code ; i++ )
-                if (Canonicalize(String.fromCharCode(i)) === c)
+                if (Canonicalize(string.fromCharCode(i)) === c)
                     return true;
             return false;
         }
 
-        var lo : String!, hi : String!;
+        var lo : string, hi : string;
     }
 
     class CharsetAdhoc implements Charset 
     {
-        function CharsetAdhoc(cs : [String!]) : cs=cs {}
+        function CharsetAdhoc(cs : [string]) : cs=cs {}
 
-        function match(c : String!) : Boolean {
+        function match(c : string) : Boolean {
             for each ( let d in cs ) {
                 if (Canonicalize(d) === c)
                     return true;
@@ -412,14 +413,14 @@ package RegExp
             return false;
         }
 
-        var cs : [String!];
+        var cs : [string];
     }
 
     class CharsetUnicodeClass implements Charset
     {
-        function CharsetUnicodeClass(name : String!) : name=name {}
+        function CharsetUnicodeClass(name : string) : name=name {}
 
-        function match(c : String!) : Boolean {
+        function match(c : string) : Boolean {
             throw new Error("character set not yet implemented: " + name);
         }
 
@@ -482,7 +483,7 @@ package RegExp
         "Cn": new CharsetUnicodeClass("Other, Not Assigned (no characters in the file have this property)") 
     };
 
-    function unicodeClass(name : String!, complement : Boolean) : Charset? {
+    function unicodeClass(name : string, complement : Boolean) : Charset? {
         let c = unicode_named_classes[name];
         if (!c)
             return null;

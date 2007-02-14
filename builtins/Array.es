@@ -1,4 +1,4 @@
-/* -*- mode: java; mode: font-lock; tab-width: 4 -*-
+/* -*- indent-tabs-mode: nil -*-
  *
  * ECMAScript 4 builtins - the "Array" object
  * ES-262-3 15.X
@@ -7,545 +7,498 @@
  * Status: not reviewed against specs.
  */
 
-dynamic class Array extends Object
-{		
-    // 15.4.1 The Array Constructor Called as a Function
-    static intrinsic function call(...args) {
-        // args is already an Array. just return it.
-        return args;
-    }
+package
+{
+    dynamic class Array extends Object
+    {
+        use namespace intrinsic;
+        use strict;
 
-    // 15.4.2 The Array Constructor
-    // 15.4.2.1 new Array( [ item0 [ , item1 [ , ... ] ] ] )
-    // 15.4.2.2 new Array(len)
-    //
-    // Here we rely on magic or optimization, since the Array
-    // constructor takes a variable number of arguments, which
-    // itself requires an array to be constructed.
-    //
-    // Optimization gets around this by avoiding allocation of the
-    // array if all references to args is in the form of
-    // args.length and args[n].
-    //
-    // Magic would solve this by creating an array without
-    // invoking the array constructor, ie, essentially making this
-    // code pointless.
-
-    function Array(...args) {
-        let argslen:uint = uint(args.length);
-        if (argslen == 1 && (args[0] is Number)) {
-            let dlen:Number = args[0];
-            let ulen:uint = uint(dlen);
-            if (ulen != dlen)
-                throw new RangeError;
-            length = ulen;
-        }
-        else {
-            length = argslen;
-            for (let i:uint = 0; i < argslen; i++)
-                this[i] = args[i];
-        }
-    }
-
-    // 15.4.4 Properties of the Array Prototype Object
-    // prototype.[[Prototype]] = prototype;
-    // prototype.[[Class]] = "Array";
-    prototype.length = 0;
-
-    // 15.4.4.1 Array.prototype.constructor
-    // prototype.constructor = Array;
-    
-    // 15.4.4.2 Array.prototype.toString ( )
-    prototype function toString()
-        this.intrinsic::join(",");
-    intrinsic function toString():String
-        this.intrinsic::join(",");
-
-    // 15.4.4.3 Array.prototype.toLocaleString ( )
-    prototype function toLocaleString()
-        this.intrinsic::toLocaleString();
-    intrinsic function toLocaleString():String {
-        let out:String = "";
-        for (let i:uint = 0, n:uint = a.length; i < n; i++) {
-            if (i != 0)
-                out += ",";
-            let x = a[i];
-            if (x != null)
-                out += x.toLocaleString();
-        }
-        return out;
-    }
-
-    // 15.4.4.4 Array.prototype.concat ( [ item1 [ , item2 [ , … ] ] ] )
-    prototype function concat(array)
-        this.intrinsic::concat.apply(arguments);
-    intrinsic function concat(...args):Array {
-        let out:Array = new Array;
-        
-        if (this is Array) {
-            let len:uint = uint(this.length);
-            for (let i:uint = 0; i < len; i++)
-                out.push(this[i]);
+        // 15.4.1 The Array Constructor Called as a Function
+        static intrinsic function invoke(...args) {
+            // args is already an Array. just return it.
+            return args;
         }
 
-        let argslen:uint = (args != null) ? uint(args.length) : 0;
-        for (let i:uint = 0; i < argslen; i++) {
-            let x = args[i];
-            if (x is Array) {
-                let xlen:uint = uint(x.length);
-                for (let j:uint = 0; j < xlen; j++)
-                    out.push(x[j]);
-                continue;
+        // 15.4.2 The Array Constructor
+        // 15.4.2.1 new Array( [ item0 [ , item1 [ , ... ] ] ] )
+        // 15.4.2.2 new Array(len)
+        //
+        // Here we rely on magic or optimization, since the Array
+        // constructor takes a variable number of arguments, which
+        // itself requires an array to be constructed.
+        //
+        // Optimization gets around this by avoiding allocation of the
+        // array if all references to args is in the form of
+        // args.length and args[n].
+        //
+        // Magic would solve this by creating an array without
+        // invoking the array constructor, ie, essentially making this
+        // code pointless.
+
+        function Array(...args) {
+            let argslen:uint = uint(args.length);
+            if (argslen == 1 && (args[0] is Number)) {
+                let dlen:Number = args[0];
+                let ulen:uint = uint(dlen);
+                if (ulen != dlen)
+                    throw new RangeError;
+                length = ulen;
             }
-            out.push(x);
+            else {
+                length = argslen;
+                for (let i:uint = 0; i < argslen; i++)
+                    this[i] = args[i];
+            }
         }
 
-        return out;
-    }
+        // 15.4.4 Properties of the Array Prototype Object
+        // prototype.[[Prototype]] = prototype;
+        // prototype.[[Class]] = "Array";
+        prototype._length = 0;
 
-    // 15.4.4.5 Array.prototype.join (separator)
-    prototype function join(sep = void 0)
-        this.intrinsic::join(sep);
-    intrinsic function join(sep = void 0):String {
-        let s:String = (sep === void 0) ? "," : String(sep);
-        let out:String = "";
-        let len:uint = uint(this.length);
-        for (let i:uint = 0; i < len; i++) {
-            if (i != 0)
-                out += s;
-            let x = this[i];
-            if (x != null)
-                out += String(x);
+        // 15.4.4.2 Array.prototype.toString ( )
+        prototype function toString(this:Array)
+            this.join();
+
+        intrinsic function toString():String
+            this.join();
+
+        // 15.4.4.3 Array.prototype.toLocaleString ( )
+        prototype function toLocaleString(this:Array)
+            this.toLocaleString();
+
+        intrinsic function toLocaleString():String {
+            let out:String = "";
+            for (let i:uint = 0, n:uint = a.length; i < n; i++) {
+                if (i != 0)
+                    out += ",";
+                let x = a[i];
+                if (x != null)
+                    out += x.toLocaleString();
+            }
+            return out;
         }
-        return out;
-    }
 
-    // 15.4.4.6 Array.prototype.pop ( )
-    prototype function pop()
-        this.intrinsic::pop();
-    intrinsic function pop():* {
-        let len:uint = uint(this.length);
+        // 15.4.4.4 Array.prototype.concat ( [ item1 [ , item2 [ , … ] ] ] )
+        private static function concatHelper(self, args) {
+            let out:Array = new Array;
+            let outlen:uint = 0;
 
-        if (len != 0) {
-            --len;
-            let x = this[len];
-            delete this[len];
-            this.length = len;
+            if (self is Array)
+                args.unshift(self);
+
+            let argslen:uint = args.length;
+            for (let i:uint = 0; i < argslen; i++) {
+                let x = args[i];
+                if (x is Array) {
+                    let xlen:uint = x._length;
+                    for (let j:uint = 0; j < xlen; j++)
+                        out[outlen] = x[j];
+                    outlen++;
+                    continue;
+                }
+                out[outlen++] = x;
+            }
+
+            return out;
+        }
+
+        public static function concat(self, ...args)
+            concatHelper(self, args);
+
+        prototype function concat(...args)
+            concatHelper(this, args);
+
+        intrinsic function concat(...args):Array
+            concatHelper(this, args);
+
+        // 15.4.4.5 Array.prototype.join (separator)
+        public static function join(self, sep = undefined) {
+            let s:String = (sep === undefined) ? "," : String(sep);
+            let out:String = "";
+            let len:uint = self.length;
+            for (let i:uint = 0; i < len; i++) {
+                if (i != 0)
+                    out += s;
+                let x = self[i];
+                if (x != null)
+                    out += String(x);
+            }
+            return out;
+        }
+
+        prototype function join(sep = undefined)
+            Array.join(this, sep);
+
+        intrinsic function join(sep = undefined):String
+            Array.join(this, sep);
+
+        // 15.4.4.6 Array.prototype.pop ( )
+        public static function pop(self) {
+            let len:uint = self.length;
+
+            if (len != 0) {
+                let x = self[--len];
+                delete self[len];
+                self.length = len;
+                return x;
+            }
+            return undefined;
+        }
+
+        prototype function pop()
+            Array.pop(this);
+
+        intrinsic function pop():*
+            Array.pop(this);
+
+        // 15.4.4.7 Array.prototype.push ( [ item1 [ , item2 [ , … ] ] ] )
+        public static function pushHelper(self, args) {
+            let len:uint = self.length;
+            let argslen:uint = args.length;
+
+            for (let i:uint = 0; i < argslen; i++)
+                self[len++] = args[i];
+            self.length = len;
+            return len;
+        }
+
+        public static function push(self, ...args)
+            Array.pushHelper(this, args);
+
+        prototype function push(...args)
+            Array.pushHelper(this, args);
+
+        intrinsic function push(...args:Array):uint
+            Array.pushHelper(this, args);
+
+        // 15.4.4.8 Array.prototype.reverse ( )
+        public static function reverse(self) {
+            let i:uint = 0;
+            let j:uint = self.length;
+            let h:uint = j >>> 1;
+
+            while (i < h) {
+                --j;
+                [self[i], self[j]] = [self[j], self[i]];
+                i++;
+            }
+            return self;
+        }
+
+        prototype function reverse()
+            Array.reverse(this);
+
+        intrinsic function reverse():Array
+            Array.reverse(this);
+
+        // 15.4.4.9 Array.prototype.shift ( )
+        public static function shift(self) {
+            let len:uint = self.length;
+            if (len == 0) {
+                self.length = 0;        // ECMA-262 requires explicit set here
+                return undefined;
+            }
+
+            // Get the 0th element to return
+            let x = self[0];
+
+            // Move all of the elements down
+            for (let i:uint = 1; i < len; i++)
+                self[i-1] = self[i];
+            delete self[len - 1];
+            self.length = len - 1;
             return x;
         }
-        return void 0;
-    }
 
-    // 15.4.4.7 Array.prototype.push ( [ item1 [ , item2 [ , … ] ] ] )
-    prototype function push(item)
-        this.intrinsic::push.apply(arguments);
-    intrinsic function push(...args:Array):uint {
-        let len:uint = uint(this.length);
-        let argslen:uint = uint(args.length);
+        prototype function shift()
+            Array.shift(this);
 
-        for (let i:uint = 0; i < argslen; i++)
-            this[len++] = args[i];
-        this.length = len;
-        return len;
-    }
+        intrinsic function shift()
+            Array.shift(this);
 
-    // 15.4.4.8 Array.prototype.reverse ( )
-    prototype function reverse()
-        this.intrinsic::reverse();
-    intrinsic function reverse():Array {
-        let i:uint = 0;
-        let j:uint = uint(this.length);
-        if (j)
-            --j;
+        // 15.4.4.10 Array.prototype.slice (start, end)
+        public static function slice(self, start, end) {
+            if (start === undefined)
+                start = 0;
+            if (end === undefined)
+                end = Infinity;
 
-        while (i < j) {
-            [this[i], this[j]] = [this[j], this[i]];
-            i++;
-            j--;
-        }
-        return this;
-    }
+            let len:uint = uint(self.length);
 
-    // 15.4.4.9 Array.prototype.shift ( )
-    prototype function shift()
-        this.intrinsic::shift();
-    intrinsic function shift() {
-        let len:uint = uint(this.length);
-        if (len == 0) {
-            this.length = 0;	// ECMA-262 requires explicit set here
-            return void 0;
+            // If a param is passed then the first one is start.
+            // If no params are passed then start = 0.
+            let a:uint = clamp(start, len);
+            let b:uint = clamp(end, len);
+            if (b < a)
+                b = a;
+
+            let out:Array = new Array;
+            for (let i:uint = a; i < b; i++)
+                out.push(self[i]);
+
+            return out;
         }
 
-        // Get the 0th element to return
-        let x = this[0];
+        prototype function slice(start, end)
+            Array.slice(this, start, end);
 
-        // Move all of the elements down
-        for (let i:uint = 1; i < len; i++)
-            this[i-1] = this[i];
-        delete this[len - 1];
-        this.length = len - 1;
-    }
+        intrinsic function slice(start:double = 0, end:double = Infinity):Array
+            Array.slice(this, start, end);
 
-    // 15.4.4.10 Array.prototype.slice (start, end)
-    prototype function slice(start, end) {
-        if (start === void 0)
-            start = 0;
-        if (end === void 0)
-            end = Infinity;
-        return this.intrinsic::slice(Number(start), Number(end))
-    }
+        // 15.4.4.11 Array.prototype.sort (comparefn)
+        // INFORMATIVE: this is an implementation that meets the spec, but the spec
+        // allows for different sort implementations (quicksort is not required)
+        type Comparator = function (x:*, y:*):double;
 
-    intrinsic function slice(start:Number = 0, end:Number = Infinity):Array {
-        let len:uint = uint(this.length);
+        public static function sort(self, comparefn) {
+            let len:uint = self.length;
 
-        // if a param is passed then the first one is start
-        // if no params are passed then start = 0
-        let a:uint = clampIndex(start, len);
-        let b:uint = clampIndex(end, len);
-        if (b < a)
-            b = a;
+            if (len > 1)
+                qsort(0, len-1, comparefn);
 
-        let out:Array = new Array;
-        for (let i:uint = a; i < b; i++)
-            out.push(this[i]);
+            return self;
+        }
 
-        return out;
-    }
+        prototype function sort(comparefn)
+            Array.sort(this, comparefn);
 
-    // 15.4.4.11 Array.prototype.sort (comparefn)
-    // Note: this is an implementation that meets the spec, but the spec
-    // allows for different sort implementations (quicksort is not required)
-    type Comparator = function (x:*, y:*):Number;
+        intrinsic function sort(comparefn:Comparator):Array
+            Array.sort(this, comparefn);
 
-    prototype function sort(comparefn)
-        this.intrinsic::sort(comparefn);
+        // 15.4.4.12 Array.prototype.splice (start, deleteCount [ , item1 [ , item2 [ , … ] ] ] )
+        public static function splice(self, start, deleteCount) {
+            let out:Array = new Array();
 
-    intrinsic function sort(comparefn:Comparator):Array {
-        let len:uint = uint(this.length);
+            let argslen:uint = uint(args.length);
+            if (argslen == 0)
+                return undefined;
 
-        if (len > 1)
-            _qsort(0, len-1, comparefn);
-
-        return this;
-    }
-
-    // 15.4.4.12 Array.prototype.splice (start, deleteCount [ , item1 [ , item2 [ , … ] ] ] )
-    prototype function splice(start, deleteCount)
-        this.intrinsic::splice.apply(arguments);
-    intrinsic function splice(...args:Array):Array {
-        let argslen:uint = uint(args.length);
-        if (argslen == 0)
-            return void 0;
-
-        let len:uint = uint(this.length);
-        let start:uint = clampIndex(Number(args[0]), len);
-        let d_deleteCount:Number = argslen > 1 ? Number(args[1]) : (len - start);
-        let deleteCount:uint = (d_deleteCount < 0) ? 0 : uint(d_deleteCount);
-        if (deleteCount > (len - start))
-        {
+            let len:uint = self.length;
+            let start:uint = clamp(double(args[0]), len);
+            let d_deleteCount:double = argslen > 1 ? double(args[1]) : (len - start);
+            let deleteCount:uint = (d_deleteCount < 0) ? 0 : uint(d_deleteCount);
+            if (deleteCount > len - start)
                 deleteCount = len - start;
-        }
-        let end:uint = start + deleteCount;
 
-        // Copy out the elements we are going to remove
-        let out:Array = new Array();
+            let end:uint = start + deleteCount;
 
-        for (let i:uint = 0; i < deleteCount; i++)
-        {
-                out.push(this[i + start]);
-        }
+            // Copy out the elements we are going to remove
+            for (let i:uint = 0; i < deleteCount; i++)
+                out.push(self[i + start]);
 
-        let insertCount:uint = (argslen > 2) ? (argslen - 2) : 0;
-        let l_shiftAmount:Number = insertCount - deleteCount; // Number because result could be negative
-        let shiftAmount:uint;
+            let insertCount:uint = (argslen > 2) ? (argslen - 2) : 0;
+            let l_shiftAmount:double = insertCount - deleteCount;
+            let shiftAmount:uint;
 
-        // delete items by shifting elements past end (of delete) by l_shiftAmount
-        if (l_shiftAmount < 0)
-        {
+            // delete items by shifting elements past end (of delete) by l_shiftAmount
+            if (l_shiftAmount < 0) {
                 // Shift the remaining elements down
                 shiftAmount = uint(-l_shiftAmount);
 
                 for (let i:uint = end; i < len; i++)
-                {
-                        this[i - shiftAmount] = this[i];
-                }
-                                
+                    self[i - shiftAmount] = self[i];
+
                 // delete top elements here to match ECMAscript spec (generic object support)
                 for (let i:uint = len - shiftAmount; i < len; i++)
-                {
-                        delete this[i];
-                }
-        }
-        else
-        {
+                    delete self[i];
+            }
+            else {
                 // Shift the remaining elements up.
                 shiftAmount = uint(l_shiftAmount);
 
-                for (let i:uint = len; i > end; )  // Note: i is unsigned, can't check if --i >=0.
-                {
-                        --i;
-                        this[i + shiftAmount] = this[i];
+                for (let i:uint = len; i > end; ) {
+                    --i;
+                    self[i + shiftAmount] = self[i];
                 }
+            }
+
+            // Add the items to insert
+            for (let i:uint = 0; i < insertCount; i++)
+                self[start+i] = args[i + 2];
+
+            // shrink array if shiftAmount is negative
+            self.length = len + l_shiftAmount;
+            return out;
         }
 
-        // Add the items to insert
-        for (let i:uint = 0; i < insertCount; i++)
-        {
-                this[start+i] = args[i + 2];
-        }
+        prototype function splice(start, deleteCount)
+            Array.splice(this, arguments);
 
-        // shrink array if shiftAmount is negative
-        this.length = len + l_shiftAmount;
-                
-        return out;
-    }
+        intrinsic function splice(...args:Array):Array
+            Array.splice(this, arguments);
 
-    // 15.4.4.13 Array.prototype.unshift ( [ item1 [ , item2 [ , … ] ] ] )
-    prototype function unshift(...args)
-    {
-            return _unshift(this, args);
-    }
-    intrinsic function unshift(...args:Array):uint
-    {
-            return _unshift(this, args);
-    }
-    private static function _unshift(o, args):uint
-    {
-            let len:uint = uint(o.length);
+        // 15.4.4.13 Array.prototype.unshift ( [ item1 [ , item2 [ , … ] ] ] )
+        prototype function unshift(...args)
+            this.unshift(this, args);
+
+        intrinsic function unshift(...args:Array):uint {
+            let len:uint = this.length;
             let argslen:uint = uint(args.length);
-            let k:uint;
-            for (k = len; k > 0; /*nothing*/)
-            {
-                    k--;
-                    let d:uint = k + argslen;
-                    if (k in o)
-                            o[d] = o[k];
-                    else
-                            delete o[d];
+            let k:uint = len;
+            while (k != 0) {
+                k--;
+                let d:uint = k + argslen;
+                if (k in this)
+                    this[d] = this[k];
+                else
+                    delete this[d];
             }
 
             for (let i:uint = 0; i < argslen; i++)
-                    o[k++] = args[i];
+                this[k++] = args[i];
 
             len += argslen;
-            o.length = len;
+            this.length = len;
             return len;
-    }		
+        }
 
-    // 15.4.5.1 [[Put]] (P, V)
-    // @todo: this will not function the way we want with current catchall behavior!
-    function set *(propertyName, value):void
-    {
-            let curLength:uint = uint(this.length);
-            intrinsic::set(propertyName, value);
-            let propertyNameAsNumber:Number = Number(propertyName);
-            let propertyNameAsInt:uint = uint(propertyNameAsNumber);
-            if (propertyNameAsInt == propertyNameAsNumber && propertyNameAsInt >= curLength)
-            {
-                    this.length = propertyNameAsInt+1;	
-            }
-    }
-    
-    // 15.4.5.2 length
-    private var _length:uint = 0;
-    public function get length():*
-    {
-            return this._length;
-    }
-    
-    // ECMA-262 requires a RangeError if non-ints are passed in,
-    // so we must not type it as uint in the setter's signature
-    public function set length(newLength:*):void
-    {
-            let curLength:uint = uint(this.length);
-            let valueAsNumber:Number = Number(newLength);
-            let valueAsInt:uint = uint(valueAsNumber);
-            if (valueAsInt != valueAsNumber)
-            {
-                    throw new RangeError();
-            }
-            for (let i:uint = valueAsInt; i < curLength; ++i)
-            {
-                    if (this.hasOwnProperty(i))
-                            delete this[i];
-            }
-            this._length = valueAsInt;
-    }
+        // 15.4.5.1 [[Put]] (P, V)
+        // @todo: ensure that catchall-set for undeclared properties runs on every set
+        function set *(id, value):void {
+            let oldLength:uint = this.length;
+            this.set(id, value);
+            let idAsDouble:double = double(id);
+            let idAsUint:uint = uint(idAsDouble);
+            if (idAsUint == idAsDouble && idAsUint >= oldLength)
+                this.length = idAsUint+1;
+        }
 
-    // --------------------------------------------------
-    // private utility methods
-    // --------------------------------------------------
-    private static function clampIndex(intValue:Number, len:uint):uint
-    {
-            let clamped:uint;
-            if (intValue < 0.0)
-            {
-                    if (intValue + len < 0.0)
-                            clamped = 0;
-                    else
-                            clamped = uint(intValue + len);
-            }
-            else if (intValue > len)
-                    clamped = len;
-            else if (isNaN(intValue)) // is NaN->uint conversion well-defined? if so, this may be unnecessary
-                    clamped = 0;
-            else
-                    clamped = uint(intValue);
+        // 15.4.5.2 length
+        private var _length:uint = 0;
+        public function get length():uint
+            this.length;
 
-            return clamped;
-    }
+        // ECMA-262 requires a RangeError if non-ints are passed in,
+        // so we must not type it as uint in the setter's signature
+        public function set length(newLength:*):void {
+            let oldLength:uint = length;
+            let newLengthAsDouble:double = double(newLength);
+            let newLengthAsUint:uint = uint(newLengthAsDouble);
+            if (newLengthAsUint != newLengthAsDouble)
+                throw new RangeError();
+            for (let i:uint = newLengthAsUint; i < oldLength; ++i)
+                if (this.hasOwnProperty(i))
+                    delete this[i];
+            length = newLengthAsUint;
+        }
 
-    private function _compare(j:uint, k:uint, comparefn:Comparator):Number
-    {
+        // --------------------------------------------------
+        // private utility methods
+        // --------------------------------------------------
+        private static function clamp(intValue:double, len:uint):uint
+        {
+            return (intValue < 0.0)
+                 ? (intValue + len < 0.0) ? 0 : uint(intValue + len)
+                 : (intValue > len) ? len : uint(intValue);
+        }
+
+        private function compare(j:uint, k:uint, comparefn:Comparator):double {
             let x = this[j];
             let y = this[k];
-            if (x === void 0)
-            {
-                    if (y === void 0)
-                            return 0;
-                    return 1;
-            }
-            else if (y === void 0)
-            {
-                    return -1;
-            }
-            else if (comparefn === void 0)
-            {
-                    x = x.toString();
-                    y = y.toString();
-                    if (x < y) return -1;
-                    if (x > y) return 1;
+            if (x === undefined) {
+                if (y === undefined)
                     return 0;
+                return 1;
+            }
+            if (y === undefined)
+                return -1;
+            if (comparefn === undefined) {
+                x = x.toString();
+                y = y.toString();
+                if (x < y) return -1;
+                if (x > y) return 1;
+                return 0;
             }
             return comparefn(x, y);
-    }
+        }
 
-    // note that this is (deliberately) a very simple recursive implementation of Quicksort.
-    // while it suffices for spec purposes, it is not efficient or performant enough
-    // for a real implementation.
-    private function _qsort(lo:uint, hi:uint, comparefn:Comparator):void
-    {
+        // INFORMATIVE note: as noted above, this is a very simple recursive
+        // implementation of Quicksort.  While it suffices for spec purposes,
+        // it is not efficient enough for a real implementation, which
+        // typically faces mostly-ordered inputs.  It is also not a stable
+        // sort, which may be desirable but is not required by the spec
+
+        private function qsort(lo:uint, hi:uint, comparefn:Comparator):void {
             if (lo >= hi)
-                    return;
+                return;
 
             let size:uint  = (hi - lo) + 1;
             let pivot:uint = lo + (size / 2);
             let i:uint = lo;
             let j:uint = hi;
-            while (i <= j)
-            {
-                    while (_compare(i, pivot, comparefn) < 0)
-                    {
-                            ++i;
-                    }
-                    while (_compare(j, pivot, comparefn) > 0)
-                    {
-                            --j;
-                    }
-                    if (i <= j)
-                    {
-                            let temp = this[i];
-                            this[i] = this[j];
-                            this[j] = temp;
-                            ++i;
-                            --j;
-                    }
+            while (i <= j) {
+                while (compare(i, pivot, comparefn) < 0)
+                    ++i;
+                while (compare(j, pivot, comparefn) > 0)
+                    --j;
+                if (i <= j) {
+                    let temp = this[i];
+                    this[i] = this[j];
+                    this[j] = temp;
+                    ++i;
+                    --j;
+                }
             }
 
             if (lo < j)
-            {
-                    _qsort(lo, j, comparefn);
-            }
+                qsort(lo, j, comparefn);
             if (i < hi)
-            {
-                    _qsort(i, hi, comparefn);
-            }
-    } // qsort
+                qsort(i, hi, comparefn);
+        }
 
-    // Array "extras" from JS1.6
-    // See http://developer.mozilla.org/en/docs/New_in_JavaScript_1.6#Array_extras
-    // The callback function typically takes (item, i, list) parameters
-    type Mapper  = function (_:*, _:uint, _:Object):*;
-    type Eacher  = function (_:*, _:uint, _:Object):void;
-    type Checker = function (_:*, _:uint, _:Object):Boolean;
-    type Reducer = function (_:*, _:*, _:uint, _:Object):*;
+        // Array "extras" from JS1.6 (@todo: and JS1.8 -- reduce/reduceRight)
+        // See http://developer.mozilla.org/en/docs/New_in_JavaScript_1.6#Array_extras
+        // The callback function typically takes (item, i, list) parameters
+        type Mapper  = function (_:*, _:uint, _:Object):*;
+        type Eacher  = function (_:*, _:uint, _:Object):void;
+        type Checker = function (_:*, _:uint, _:Object):Boolean;
+        type Reducer = function (_:*, _:*, _:uint, _:Object):*;
 
-    prototype function map(mapper, thisObj)
-    {
-            return _map(mapper, thisObj);
-    }
-    intrinsic function map(mapper:Mapper, thisObj:Object):Array
-    {
-            return _map(mapper, thisObj);
-    }
+        prototype function map(mapper, thisObj)
+            this.map(mapper, thisObj);
 
-    private function _map(mapper:Mapper, thisObj:Object):Array
-    {
+        intrinsic function map(mapper:Mapper, thisObj:Object):Array {
             let result:Array = [];
             for (let i:uint = 0; i < this.length; i++)
-            {
-                    result[i] = mapper.call(thisObj, this[i], i, this);
-            }
+                result[i] = mapper.call(thisObj, this[i], i, this);
             return result;
-    }
+        }
 
-    prototype function filter(checker, thisObj)
-    {
-            return _filter(checker, thisObj);
-    }
-    intrinsic function filter(checker:Checker, thisObj:Object):Array
-    {
-            return _filter(checker, thisObj);
-    }
+        prototype function filter(checker, thisObj)
+            this.filter(checker, thisObj);
 
-    private function _filter(checker:Checker, thisObj:Object):Array
-    {
+        intrinsic function filter(checker:Checker, thisObj:Object):Array {
             let result:Array = [];
-            for (let i:uint = 0; i < this.length; i++)
-            {
-                    let item = this[i];
-                    if (checker.call(thisObj, item, i, this))
-                            result[result.length] = item;
+            for (let i:uint = 0; i < this.length; i++) {
+                let item = this[i];
+                if (checker.call(thisObj, item, i, this))
+                    result[result.length] = item;
             }
             return result;
-    }
+        }
 
-    prototype function every(checker, thisObj)
-    {
-            return _every(checker, thisObj);
-    }
-    intrinsic function every(checker:Checker, thisObj:Object):Boolean
-    {
-            return _every(checker, thisObj);
-    }
+        prototype function every(checker, thisObj)
+            this.every(checker, thisObj);
 
-    private function _every(checker:Checker, thisObj:Object):Boolean
-    {
-            for (let i:uint = 0; i < this.length; i++)
-            {
-                    if (!checker.call(thisObj, this[i], i, this))
-                            return false;
+        intrinsic function every(checker:Checker, thisObj:Object):Boolean {
+            for (let i:uint = 0; i < this.length; i++) {
+                if (!checker.call(thisObj, this[i], i, this))
+                    return false;
             }
             return true;
-    }
+        }
 
-    prototype function some(checker, thisObj)
-    {
-            return _some(checker, thisObj);
-    }
-    intrinsic function some(checker:Checker, thisObj:Object):Boolean
-    {
-            return _some(checker, thisObj);
-    }
+        prototype function some(checker, thisObj)
+            this.some(checker, thisObj);
 
-    private function _some(checker:Checker, thisObj:Object):Boolean
-    {
-            for (let i:uint = 0; i < this.length; i++)
-            {
-                    if (checker.call(thisObj, this[i], i, this))
-                            return true;
+        intrinsic function some(checker:Checker, thisObj:Object):Boolean {
+            for (let i:uint = 0; i < this.length; i++) {
+                if (checker.call(thisObj, this[i], i, this))
+                    return true;
             }
             return false;
+        }
     }
-
-} // class
+}

@@ -1,4 +1,4 @@
-/* -*- mode: java; mode: font-lock; tab-width: 4; indent-tabs-mode: nil -*- 
+/* -*- mode: java -*- 
  *
  * ECMAScript 4 builtins - the "Boolean" object
  *
@@ -25,7 +25,7 @@ package
     final class Boolean! extends Object
     {       
         /* E262-3 15.6.1: The Boolean Constructor Called as a Function. */
-        static intrinsic function call(value) : Boolean
+        static intrinsic function invoke(value) : Boolean
             value ? true : false;
 
         /* E262-3 15.6.2.1: The Boolean Constructor. */

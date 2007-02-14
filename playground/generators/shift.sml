@@ -1,56 +1,52 @@
-functor ShiftCoroutine (type result) : COROUTINE =
+(* An implementation of delimited continuations in terms of
+   undelimited continuations, following:
+
+   - http://calculist.blogspot.com/2006/11/filinskis-implementation-of-shift-and.html
+   - http://calculist.blogspot.com/2007/01/non-native-shiftreset-with-exceptions.html
+ *)
+
+signature SHIFT =
+sig
+    type result
+    val shift : (('a -> result) -> result) -> 'a
+    val reset : (unit -> result) -> result
+end
+
+functor Shift (type result) : SHIFT =
 struct
+    open Callcc
+
     type result = result
 
-    structure S = DelimitedControl (type result = result)
+    datatype meta_result = Succeeded of result
+                         | Failed of exn
 
-    open S
+    exception MissingReset
 
-    datatype computation = Newborn of result -> result
-                         | Paused of result -> result
-                         | Running
-                         | Closed
+    val mk : (meta_result -> void) ref =
+        ref (fn _ => raise MissingReset)
 
-    type C = computation ref
+    fun abort x =
+        jump (!mk) x
 
-    fun new f = let val r = ref Closed (* temporary *)
-                in
-                    r := Newborn (fn s => reset (fn () =>
-                                                     let val s' = f (r, s) in
-                                                         r := Closed;
-                                                         s'
-                                                     end));
-                    r
-                end
+    fun reset thunk =
+        (case callcc (fn k => let val mk0 = !mk
+                              in
+                                  mk := (fn r => (mk := mk0; k r));
+                                  let val v = (Succeeded (thunk ()))
+                                              handle x => Failed x
+                                  in
+                                      abort v
+                                  end
+                              end) of
+             Succeeded v => v
+           | Failed exn => raise exn)
 
-    fun switch (r, x) =
-        case !r of
-             Newborn f => (r := Running; f x)
-           | Paused k => (r := Running; k x)
-           | Running => shift (fn k => (r := Paused k; x))
-           | Closed => raise Value.InternalError "dead coroutine"
-
-    fun kill r =
-        case !r of
-             Closed => ()
-           | Running => raise Value.InternalError "already executing"
-           | _ => r := Closed
-
-    fun newborn r =
-        case !r of
-             Newborn _ => true
-           | _ => false
-
-    fun alive r =
-        case !r of
-             Closed => false
-           | _ => true
-
-    fun running r =
-        case !r of
-             Running => true
-           | _ => false
-
-    fun run f = f ()
-                handle Value.InternalError s => TextIO.print ("internal error: " ^ s ^ "\n")
+    fun shift f =
+        callcc (fn k =>
+                   let val v = f (fn v =>
+                                     reset (fn () => jump k v))
+                   in
+                       abort (Succeeded v)
+                   end)
 end

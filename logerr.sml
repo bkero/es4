@@ -26,20 +26,21 @@ fun withTrace (ss:string list) (f:('a -> 'b)) (x:'a) : 'b =
 
 fun name (n:Ast.NAME) = 
     case (#ns n) of 
-	Ast.Private => "[private::" ^ (#id n) ^ "]"
-      | Ast.Protected => "[protected::" ^ (#id n) ^ "]"
-      | Ast.Intrinsic => "[intrinsic::" ^ (#id n) ^ "]"
-      | Ast.Public i => "[(public ns) " ^ i ^ "::" ^ (#id n) ^ "]"
-      | Ast.Internal i => "[(internal ns) " ^ i ^ "::" ^ (#id n) ^ "]"
-      | Ast.UserDefined i => "[(user ns) " ^ i ^ "::" ^ (#id n) ^ "]"
+        Ast.Intrinsic=> "[namespace intrinsic]::" ^ (#id n) ^ " "
+      | Ast.OperatorNamespace=> "[namespace operator]::" ^ (#id n) ^ " "
+      | Ast.Private i=> "[namespace private " ^ i ^ "]::" ^ (#id n) ^ " "
+      | Ast.Protected i=> "[namespace protected " ^ i ^ "]::" ^ (#id n) ^ " "
+      | Ast.Public i => "[namespace public " ^ i ^ "]::" ^ (#id n) ^ " "
+      | Ast.Internal i => "[namespace internal " ^ i ^ "]::" ^ (#id n) ^ " "
+      | Ast.UserNamespace i => "[namespace user " ^ i ^ "]::" ^ (#id n) ^ " "
 
 fun multiname (mn:Ast.MULTINAME) = 
     case (#nss mn) of 
 	[] => (String.concat ["{multiname: NO NAMESPACE :: ", (#id mn), "}"])
-      | _ => String.concat 
-		 (["{multiname: "] @
-		  (List.map (fn ns => name {ns = ns, id = (#id mn)}) (#nss mn)) @
-		  ["}"])
+      | _ => String.concat
+		 (["{multiname: "] @ (map String.concat
+		  (List.map (List.map (fn ns => name {ns = ns, id = (#id mn)})) (#nss mn)) @
+		  ["}"]))
 	     
 exception ParseError
 exception DefnError

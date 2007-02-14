@@ -1,3 +1,5 @@
+(* Coroutines implemented via CML threads. *)
+
 functor ThreadCoroutine (type result) : COROUTINE =
 struct
     open CML
@@ -7,12 +9,12 @@ struct
     exception Death
 
     (* To close a coroutine, we send it NONE. *)
-    datatype thread = Newborn of result option chan
-                    | Paused of result option chan
-                    | Running of result option chan
-                    | Closed
+    datatype COROUTINE = Newborn of result option chan
+                       | Paused of result option chan
+                       | Running of result option chan
+                       | Closed
 
-    type C = thread ref
+    type t = COROUTINE ref
 
     fun new f = let val c = channel ()
                     val r = ref (Newborn c)
@@ -81,9 +83,16 @@ struct
              Running _ => true
            | _ => false
 
-    fun run f = (RunCML.doit (fn () =>
-                              (
-                                  f ()
-                                  handle Value.InternalError s => TextIO.print ("internal error: " ^ s ^ "\n")
-                              ), NONE); ())
-end
+    fun run f = let val r : exn option ref = ref NONE
+                in
+                    (* CML ignores exceptions, so catch and save it. *)
+                    RunCML.doit ((fn () =>
+                                     f ()
+                                     handle x => r := SOME x),
+                                 NONE);
+                    (* Propagate the saved exception to top-level. *)
+                    case !r of
+                         SOME x => raise x
+                       | NONE => ()
+                end
+end;

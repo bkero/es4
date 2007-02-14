@@ -1,104 +1,111 @@
 
-(* 
- * This lexer is a sketch, confined to ASCII and covering only a subset of
- * the actual lexical grammar of ES4. 
- *)
 
-open Token
+%charset UTF8;
 
-type lexresult = token
 
-fun eof _ = Eof
+%defs (
+  open Token
 
-fun log ss = 
-    (TextIO.print "log: "; 
-     List.app TextIO.print ss; 
-     TextIO.print "\n")
+  type lexresult = token
 
-val line_breaks : int list ref = ref []
-val token_count : int ref = ref 0
+  fun eof _ = Eof
 
-fun token_list (token_fn : unit -> token) =
-let
-    val t = ref [] 
-    fun add tok = t := tok :: !t
-    fun add_lb offset = line_breaks := offset :: !line_breaks
-    fun stop _ = (token_count := length (!t); rev (!t))
-    fun step _ = 
-        let 
-	        val tok = token_fn ()
-	    in 
-          (* log ["lexed ", tokenname tok];  *)
+  fun log ss = 
+      (TextIO.print "log: "; 
+       List.app TextIO.print ss; 
+       TextIO.print "\n")
 
-	  (*
-	   * The lexbreak tokens represent choice points for the parser. We
-	   * return two thunks to it: one for each lexer start state
-	   * it might wish to resume lexing in.
-	   *)
-	    case tok of 
-            LexBreakDiv _ => (add tok; stop ())
-	      | LexBreakDivAssign _ => (add tok; stop ())
-	      | LexBreakLessThan _ => (add tok; stop ())
-	      | Eof => (add Eof; stop ())
-	      | Eol => (add_lb (length (!t)); step ())
-	      | x => (add x; step ())
-	end
-in
-    line_breaks := [];
-    step ()
-end
+  val line_breaks : int list ref = ref []
+  val token_count : int ref = ref 0
 
-fun followsLineBreak (ts) =
-	let val _ = log(["followsLineBreak"])
-	    val offset = length ts
-	    val max_offset = !token_count
-	    fun findBreak lbs =
+  fun token_list (token_fn : unit -> token) =
+    let
+        val t = ref [] 
+        fun add tok = t := tok :: !t
+        fun add_lb offset = line_breaks := offset :: !line_breaks
+        fun stop _ = (token_count := length (!t); rev (!t))
+        fun step _ = 
+            let 
+              val tok = token_fn ()
+            in 
+              (* log ["lexed ", tokenname tok]; *)
+
+          (*
+           * The lexbreak tokens represent choice points for the parser. We
+           * return two thunks to it: one for each lexer start state
+           * it might wish to resume lexing in.
+           *)
+            case tok of 
+                LexBreakDiv _ => (add tok; stop ())
+              | LexBreakDivAssign _ => (add tok; stop ())
+              | LexBreakLessThan _ => (add tok; stop ())
+              | Eof => (add Eof; stop ())
+              | Eol => (add_lb (length (!t)); step ())
+              | x => (add x; step ())
+        end
+    in
+        line_breaks := [];
+        step ()
+    end
+
+  fun followsLineBreak (ts) =
+    let val _ = log(["followsLineBreak"])
+        val offset = length ts
+        val max_offset = !token_count
+        fun findBreak lbs =
             case lbs of
                 [] => false
               | _ => 
-	              (  (* log(["token_count=",Int.toString(max_offset),
-						" offset=",Int.toString(max_offset-offset),
-							 " break=",Int.toString(hd lbs)]) ;*)
+                  (  (* log(["token_count=",Int.toString(max_offset),
+                        " offset=",Int.toString(max_offset-offset),
+                             " break=",Int.toString(hd lbs)]) ;*)
                   if (hd lbs) = (max_offset - offset) then true else findBreak (tl lbs))
-	in
-		findBreak (!line_breaks)
-	end
+    in
+        findBreak (!line_breaks)
+    end
 
-val (curr_quote : char ref) = ref #"\000"
-val (curr_chars : (char list) ref) = ref []
+  val (curr_quote : char ref) = ref #"\000"
+  val (curr_chars : (char list) ref) = ref []
+);
 
-%%
+%states REGEXP XML SINGLE_LINE_COMMENT MULTI_LINE_COMMENT STRING;
 
-%structure Lexer
+(* note: number and letter are predefined unicode
+ * character classes:
+ *
+ * %let int = [:number:]*;
+ * %let id  = [:letter:]([:letter:] | [:number:])*;
+ *)
 
-%s REGEXP XML SINGLE_LINE_COMMENT MULTI_LINE_COMMENT STRING;
+%let identifierStart = [$A-Za-z_];
+%let identifierPart  = [$A-Za-z_0-9];
+%let identifier      = ({identifierStart} {identifierPart}*);
 
-whitespace      = [\009\013\032]+;
+%let hexDigit           = [0-9A-Fa-f];
+%let decimalDigit       = [0-9];
+%let nonZeroDigit       = [1-9];
+%let exponentIndicator  = [Ee];
 
-identifierStart = [a-zA-Z_$];
-identifierPart  = [a-zA-Z_$0-9];
-identifier      = ({identifierStart} {identifierPart}*);
+%let decimalDigits      = ({decimalDigit}+);
+(* %let signedInteger      = ([+-]? {decimalDigits}); *)
+%let signedInteger      = (("+" | "-")? {decimalDigits});
+%let exponentPart       = ({exponentIndicator} {signedInteger});
 
-hexDigit           = [0-9a-fA-F];
-decimalDigit       = [0-9];
-nonZeroDigit       = [1-9];
-exponentIndicator  = [eE];
+%let decimalIntegerLiteral = ("0" | ({nonZeroDigit} {decimalDigits}?));
+%let decimalLiteral_1      = ({decimalIntegerLiteral} "." {decimalDigits}? {exponentPart}?);
+%let decimalLiteral_2      = ("." {decimalDigits} {exponentPart}?);
+%let decimalLiteral_3      = ({decimalIntegerLiteral} {exponentPart}?);
+%let decimalLiteral        = ({decimalLiteral_1} | {decimalLiteral_2} | {decimalLiteral_3});
 
-decimalDigits      = ({decimalDigit}+);
-signedInteger      = ([-+]? {decimalDigits});
-exponentPart       = ({exponentIndicator} {signedInteger});
+%let hexIntegerLiteral     = ("0" [Xx] {hexDigit}+);
 
-decimalIntegerLiteral = ("0" | ({nonZeroDigit} {decimalDigits}?));
-decimalLiteral_1      = ({decimalIntegerLiteral} "." {decimalDigits}? {exponentPart}?);
-decimalLiteral_2      = ("." {decimalDigits} {exponentPart}?);
-decimalLiteral_3      = ({decimalIntegerLiteral} {exponentPart}?);
-decimalLiteral        = ({decimalLiteral_1} | {decimalLiteral_2} | {decimalLiteral_3});
+(*
+  %let charEscape            = "\\" ([\"\'\\bfnrtv] | "x" {hexDigit}{2} | [0-7]{1,3});
+*)
+  %let charEscape            = "\\" (["'\\bfnrtv] | "x" {hexDigit}{2} | [0-7] | [0-7][0-7] | [0-7][0-7][0-7]);
 
-hexIntegerLiteral     = ("0" [xX] {hexDigit}+);
 
-charEscape            = "\\" ([btnvfr\"\'\\]|"x"{hexDigit}{2}|[0-7]{1,3});
 
-%%
 
 <INITIAL>"\n"              => (Eol);
 
@@ -124,20 +131,20 @@ charEscape            = "\\" ([btnvfr\"\'\\]|"x"{hexDigit}{2}|[0-7]{1,3});
 <INITIAL>".<"              => (LeftDotAngle);
 
 <INITIAL>"/"               => (LexBreakDiv
-				   { lex_initial = 
-				     (fn _ => Div :: token_list 
-						  (fn _ => (YYBEGIN INITIAL; lex ()))),
-				     lex_regexp = 
-				     (fn _ => token_list 
-						  (fn _ => (YYBEGIN REGEXP; lex ()))) });
+                                   { lex_initial = 
+                                     (fn _ => Div :: token_list 
+                                                  (fn _ => (YYBEGIN INITIAL; lex ()))),
+                                     lex_regexp = 
+                                     (fn _ => token_list 
+                                                  (fn _ => (YYBEGIN REGEXP; lex ()))) });
 
 <INITIAL>"/="              => (LexBreakDivAssign
-				   { lex_initial = 
-				     (fn _ => DivAssign :: token_list 
-						  (fn _ => (YYBEGIN INITIAL; lex ()))),
-				     lex_regexp = 
-				     (fn _ => token_list 
-						  (fn _ => (YYBEGIN REGEXP; lex ()))) });
+                                   { lex_initial = 
+                                     (fn _ => DivAssign :: token_list 
+                                                  (fn _ => (YYBEGIN INITIAL; lex ()))),
+                                     lex_regexp = 
+                                     (fn _ => token_list 
+                                                  (fn _ => (YYBEGIN REGEXP; lex ()))) });
 <INITIAL>":"               => (Colon);
 <INITIAL>"::"              => (DoubleColon);
 <INITIAL>";"               => (SemiColon);
@@ -159,12 +166,12 @@ charEscape            = "\\" ([btnvfr\"\'\\]|"x"{hexDigit}{2}|[0-7]{1,3});
 <INITIAL>"+="              => (PlusAssign);
 
 <INITIAL>"<"               => (LexBreakLessThan
-				   { lex_initial = 
-				     (fn _ => LessThan :: token_list 
-						  (fn _ => (YYBEGIN INITIAL; lex ()))),
-				     lex_xml = 
-				     (fn _ => token_list 
-						  (fn _ => (YYBEGIN XML; lex ()))) });
+                                   { lex_initial = 
+                                     (fn _ => LessThan :: token_list 
+                                                  (fn _ => (YYBEGIN INITIAL; lex ()))),
+                                     lex_xml = 
+                                     (fn _ => token_list 
+                                                  (fn _ => (YYBEGIN XML; lex ()))) });
 
 <INITIAL>"<<"              => (LeftShift);
 <INITIAL>"<<="             => (LeftShiftAssign);
@@ -256,7 +263,7 @@ charEscape            = "\\" ([btnvfr\"\'\\]|"x"{hexDigit}{2}|[0-7]{1,3});
 <INITIAL>"xml"             => (Token.Xml);
 <INITIAL>"yield"           => (Yield);
 
-<INITIAL>{whitespace}        => (lex());
+<INITIAL>[:whitespace:]      => (lex());
 <INITIAL>{identifier}        => (Identifier yytext);
                    
 <INITIAL>{decimalLiteral}    => (case Real.fromString yytext of 
@@ -269,7 +276,7 @@ charEscape            = "\\" ([btnvfr\"\'\\]|"x"{hexDigit}{2}|[0-7]{1,3});
 
 
 <INITIAL>"//"                => (YYBEGIN SINGLE_LINE_COMMENT; lex());
-<SINGLE_LINE_COMMENT>"\n"    => (YYBEGIN INITIAL; Eol);
+<SINGLE_LINE_COMMENT>"\n"    => (YYBEGIN INITIAL; lex());
 <SINGLE_LINE_COMMENT>.       => (lex());
 
 <INITIAL>"/*"                => (YYBEGIN MULTI_LINE_COMMENT; lex());
@@ -297,14 +304,16 @@ charEscape            = "\\" ([btnvfr\"\'\\]|"x"{hexDigit}{2}|[0-7]{1,3});
                                      lex()));
 
 <STRING>{charEscape}          => ((case Char.fromCString yytext of
-				       NONE => raise LexError
-				     | SOME c => curr_chars := c :: (!curr_chars));
-				  lex());
+                                       NONE => raise LexError
+                                     | SOME c => curr_chars := c :: (!curr_chars));
+                                  lex());
 
 <STRING>"\\".                 => (curr_chars := (String.sub (yytext,1)) :: (!curr_chars);
-				  lex());
+                                  lex());
 
 <STRING>.                     => (curr_chars := (String.sub (yytext,0)) :: (!curr_chars);
-				  lex());
+                                  lex());
 
 <INITIAL>.                    => (log ["unexpected input: '", yytext, "'"]; raise LexError);
+
+
