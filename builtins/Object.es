@@ -20,7 +20,7 @@ package
             ToObject(value);
 
         /* E262-3 15.2.2.1: The Object constructor. */
-        /* magic */ object function Object();
+        /* magic */ native function Object();
 
         /* E262-3 15.2.4.2: Object.prototype.toString */
         prototype function toString()

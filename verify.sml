@@ -416,8 +416,8 @@ and verifyExpr (ctxt as {env,this,...}:CONTEXT)
 	    checkForDuplicateExtension extensions;
 	    verifyExprList (withEnv (ctxt, foldl extendEnv env extensions)) body
 	  end
-       | NullaryExpr This => this
-       | NullaryExpr Empty => (TextIO.print "what is Empty?\n"; raise Match)
+       | ThisExpr => this
+(* jd: deleted       | NullaryExpr Empty => (TextIO.print "what is Empty?\n"; raise Match)   *)
        | UnaryExpr (unop, arg) => verifyUnaryExpr ctxt unop arg
        | BinaryExpr (binop, lhs, rhs ) => verifyBinaryExpr ctxt (binop, lhs, rhs)
        | BinaryTypeExpr (binop, lhs, rhs ) => verifyBinaryTypeExpr ctxt (binop, lhs, rhs)

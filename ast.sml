@@ -109,10 +109,6 @@ datatype UNOP =
        | MakeNamespace
        | Type
 
-datatype NULOP =
-         This
-       | Empty
-
 datatype VAR_DEFN_TAG =
          Const
        | Var
@@ -207,7 +203,7 @@ datatype PRAGMA =
              ns:EXPR,
              prototype:bool,
              static:bool,
-             inits:EXPR list}   
+             inits:EXPR list }
        | ForEachStmt of FOR_ENUM_STMT
        | ForInStmt of FOR_ENUM_STMT
        | ThrowStmt of EXPR list
@@ -260,7 +256,7 @@ datatype PRAGMA =
        | BinaryTypeExpr of (BINTYPEOP * EXPR * TYPE_EXPR)
        | UnaryExpr of (UNOP * EXPR)
        | TypeExpr of TYPE_EXPR
-       | NullaryExpr of NULOP
+       | ThisExpr
        | YieldExpr of EXPR list option
        | SuperExpr of EXPR option
        | LiteralExpr of LITERAL
@@ -281,7 +277,9 @@ datatype PRAGMA =
        | ObjectRef of { base: EXPR, ident: IDENT_EXPR }
        | LexicalRef of { ident: IDENT_EXPR }
        | SetExpr of (ASSIGNOP * PATTERN * EXPR)
-       | AllocTemp of (IDENT_EXPR * EXPR)
+       | AllocTemp of (int * EXPR)
+       | KillTemp of int
+       | GetTemp of int
        | ListExpr of EXPR list
        | SliceExpr of (EXPR list * EXPR list * EXPR list)
 
@@ -341,8 +339,8 @@ datatype PRAGMA =
        | ClassFixture of 
            { extends: NAME option, 
              implements: NAME list,
-             classBlock: BLOCK, 
-             instanceBlock: BLOCK } 
+             classFixtures: FIXTURES, (* includes a construct method *)
+             instanceFixtures: FIXTURES }  (* includes a user constructor *)
        | TypeVarFixture
        | TypeFixture of TYPE_EXPR
        | ValFixture of 
@@ -449,7 +447,7 @@ withtype FIELD =
              defns: DEFN list,
              stmts: STMT list,
              fixtures: FIXTURES option,
-             inits: STMT list option }
+             inits: STMT list option (* deprecated *) }
 
      and BINDINGS =
            { b : VAR_BINDING list,

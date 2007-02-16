@@ -1,2 +1,2 @@
-var x = 10 // comment
-var y = 20
+type F = function (this:T,U,...[V,W])
+

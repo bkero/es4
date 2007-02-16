@@ -7,19 +7,27 @@ var {a:i,b:j}:{a:int,b2:string} = o
 var f:function (_:[]):* = function .<t,u>(i,j,k) {var x=10; let y=20; print('foo')}
 */
 
+function f(this:int,x,y,z) { intrinsic::print(this,x,y,z) }
+f(1,2,3)
+
+/*
+public class Object {}
 class A 
 {
-//  var x = 10
+  var x = 10
   static var y = 20
   let z = 30
-  function f.<t>(a,b,c):int { return "A.f" }
+  prototype var u = 40
+//  function f.<t>(a,b,c):int { return "A.f" }
 }
-
+*/
+/*
 class B extends A
 {
   var x = 40
   override function f.<t>(a,b,c):Number { return "B.f" }
 }
+*/
 
 /*
 class A

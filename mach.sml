@@ -85,7 +85,8 @@ datatype VAL = Object of OBJ
      and SCOPE = 
          Scope of { tag: SCOPE_TAG, 
                     object: OBJ,
-                    parent: SCOPE option }
+                    parent: SCOPE option,
+                    temps: VAL list ref }
                         
      and PROP_STATE = TypeVarProp
                     | TypeProp
@@ -330,7 +331,8 @@ val (globalObject:OBJ) = newObj intrinsicObjectBaseTag Null NONE
 val (globalScope:SCOPE) = 
     Scope { tag = VarGlobal,
             object = globalObject,
-            parent = NONE }
+            parent = NONE,
+            temps = ref [] }
 
 
 val nan = Real.posInf / Real.posInf
