@@ -21,3 +21,18 @@
    a "catch-all" clause that prints out appropriate debugging information. 
    Java does this better, by printing out the full stack trace.
 
+ - error messages at the REPL are sent to stdout, not stderr
+
+ - there's no analog of perl -e to evaluate one-liners from the shell
+
+ - heap image files have architecture-dependent filename suffixes, which
+   makes it especially hard to create makefile targets for them
+
+ - there's no way to inspect a type from the REPL
+
+ - documentation is completely disorganized, out of date, and incomplete
+
+ - no GNU readline at the REPL
+
+ - no nested signatures (e.g., signatures declared inside of structures)
+
