@@ -1,3 +1,19 @@
+class Object 
+{
+//  intrinsic::print("start class init")
+//  var x = 10
+  static var y = 20
+//  let z = 30
+  prototype var u = 40
+  intrinsic::print(prototype.u)
+}
+
+//Object.prototype.u = 40
+//intrinsic::print(Object.y)
+//intrinsic::print(Object.prototype.u)
+
+
+
 /*
 let [x,[y],[z]]:[int,[int],[int]] = o
 let {i:x,j:{k:y,l:z}}:{i:I,j:{k:K,l:L}} = o
@@ -7,20 +23,7 @@ var {a:i,b:j}:{a:int,b2:string} = o
 var f:function (_:[]):* = function .<t,u>(i,j,k) {var x=10; let y=20; print('foo')}
 */
 
-function f(this:int,x,y,z) { intrinsic::print(this,x,y,z) }
-f(1,2,3)
 
-/*
-public class Object {}
-class A 
-{
-  var x = 10
-  static var y = 20
-  let z = 30
-  prototype var u = 40
-//  function f.<t>(a,b,c):int { return "A.f" }
-}
-*/
 /*
 class B extends A
 {

@@ -1,22 +1,35 @@
-SML_BIN = $(shell dirname "`which sml`" )
+# ------------------------------------------------------------
+# file listings
+# ------------------------------------------------------------
+
 SOURCES = ast.sml main.sml pretty.sml verify.sml eval.sml mach.sml \
 	parser.sml  pretty-rep.sml token.sml defn.sml
-# HEAP_SUFFIX = $(shell if [ -e "$(SML_BIN)/.arch-n-opsys" ]; then "$(SML_BIN)/.arch-n-opsys" | sed 's/^.*HEAP_SUFFIX=//'; else echo x86-linux; fi )
-# dave, fixme: previous line is commented out because with it the heap does not get rebuilt on Jeff's machine
 
 EV_TESTS = tests/exec.es
 
-# A total hack to check whether a given CM anchor is installed.
-anchorhome=$(shell cat .$(strip $(1)) 2>/dev/null || \
-	(echo -e '(\#get (CM.Anchor.anchor "$(strip $(1))"))();\n' \
-		| sml \
-		| fgrep 'val it =' \
-		| sed -e 's/.*\(NONE\|SOME "\(.*\)"\).*/\2/' \
-		>.$(strip $(1)) \
-	&& cat .$(strip $(1))))
+# ------------------------------------------------------------
+# make functions
+# ------------------------------------------------------------
+
+sml=$(shell echo -e 'TextIO.output (TextIO.stdErr, $(strip $(1)));' | (sml >/dev/null) 2>&1)
+
+anchorhome=$(call sml,valOf((\#get (CM.Anchor.anchor "$(strip $(1))")())))
+
+# ------------------------------------------------------------
+# build parameters
+# ------------------------------------------------------------
+
+HEAP_SUFFIX=$(call sml,SMLofNJ.SysInfo.getHeapSuffix())
 
 MLBUILD=ml-build
-# MLBUILD_ARGS=$(if $(call anchorhome,smlnj-tdp),-Ctdp.instrument=true -DBACKTRACE \$$smlnj-tdp/back-trace.cm)
+
+# ifneq ($(call anchorhome,smlnj-tdp),)
+# MLBUILD_ARGS=-Ctdp.instrument=true -DBACKTRACE \$$smlnj-tdp/back-trace.cm
+# endif
+
+# ------------------------------------------------------------
+# targets
+# ------------------------------------------------------------
 
 .PHONY: check checktc checkev wc clean cleanml
 
@@ -50,3 +63,6 @@ clean:
 
 cleanml:
 	rm -f .smlnj-tdp
+
+foo:
+	echo $(HEAP_SUFFIX)

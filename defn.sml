@@ -34,6 +34,9 @@ type CONTEXT =
 
 type ENV = CONTEXT list
 
+val currentClassName : Ast.NAME ref = ref {id="",ns=Ast.Intrinsic}
+    (* ISSUE: is there a beter way to manage this? *)
+
 fun log ss = 
     (TextIO.print "log: "; 
      List.app TextIO.print ss;
@@ -224,6 +227,11 @@ fun updateEnvironment (cx::ex) (fxtrs:Ast.FIXTURES)
     : ENV =
         LogErr.defnError ["cannot update an empty environment"]
 
+(* copied from eval.sml *)
+fun multinameOf (n:Ast.NAME) = 
+    { nss = [[(#ns n)]], id = (#id n) }
+
+
 
 (*
     Resolve an IDENT_EXPR to a multiname
@@ -278,7 +286,8 @@ fun defClass (env: ENV)
     : (Ast.FIXTURES * Ast.CLASS_DEFN) =
     let
         val (classFixtures,instanceFixtures) = analyzeClass env cdef
-        val (className,classFixture)   = resolveClass env cdef classFixtures instanceFixtures
+        val (className,classFixture) = resolveClass env cdef classFixtures instanceFixtures
+        val _ = LogErr.trace ["defining class ",LogErr.name className]
     in
         ([(className,classFixture)],cdef)
     end
@@ -364,7 +373,8 @@ and analyzeClass (env:ENV)
                 and an instance block, and then define both blocks
             *)
 
-            val name = {id=ident, ns=resolveExprToNamespace env ns}
+            val ns = resolveExprToNamespace env ns
+            val name = {id=ident, ns=ns}
             val protoDefns = List.filter isProto defns
             val staticDefns = List.filter isStatic defns
             val instanceDefns = List.filter isInstance defns
@@ -375,6 +385,20 @@ and analyzeClass (env:ENV)
             val (unhoisted,classFixtures) = defDefinitions env [] [] staticDefns
             val env = extendEnvironment env classFixtures
             val (unhoisted,instanceFixtures) = defDefinitions env [] [] instanceDefns
+
+            (*
+                Add static prototype fixture
+            *)
+
+            val pf = Ast.ValFixture {ty=Ast.NominalType {ident=Ast.QualifiedIdentifier 
+                                                {qual=Ast.LiteralExpr (Ast.LiteralNamespace ns),
+                                                 ident=ident}},
+                                     readOnly=true,
+                                     isOverride=false,
+                                     isFinal=false,
+                                     init=NONE }
+
+            val classFixtures = ({ns=Ast.Public "",id="prototype"},pf)::classFixtures
 
             (* 
                 Separate instance init from non-instance init statements 
@@ -540,12 +564,15 @@ and resolveClass (env:ENV)
         val _ = trace ["analyzing class block for ", LogErr.name currName]
 
         val (extendsName, fixtures) = resolveExtends env fixtures extends [currName]
-        val (implementsNames, fixtures) = resolveImplements env fixtures implements
+        val (implementsNames, instanceFixtures) = resolveImplements env fixtures implements
     in
-        (currName, Ast.ClassFixture {extends=extendsName,
-                                     implements=implementsNames,
-                                     classFixtures=classFixtures,
-                                     instanceFixtures=fixtures})
+        (currName, Ast.ClassFixture (Ast.Cls {extends=extendsName,
+                                              implements=implementsNames,
+                                              classFixtures=classFixtures,
+                                              instanceFixtures=fixtures,
+                                              (* FIXME: compute the actual types *)
+                                              classType=Ast.SpecialType Ast.Any,
+                                              instanceType=Ast.SpecialType Ast.Any}))
     end
 
 (*
@@ -567,12 +594,13 @@ and resolveExtends (env: ENV)
                    (children:Ast.NAME list)
     : (Ast.NAME option * Ast.FIXTURES) =
     let
+        val _ = LogErr.trace ["first child ",LogErr.name (hd children)]
         fun seenAsChild (n:Ast.NAME) = List.exists (fn ch => ch = n) children
         val extends:(Ast.IDENT_EXPR option) = case (extends,hd children) of 
                             (NONE, {id,...}) => 
                                 if (id="Object") 
                                     then NONE 
-                                    else SOME (Ast.QualifiedIdentifier {qual=(Ast.LiteralExpr (Ast.LiteralNamespace (Ast.Public ""))),ident="Object"})
+                                    else SOME (Ast.Identifier {ident="Object",openNamespaces=[]})
                           | _ => extends 
     in case extends of
         SOME baseIdentExpr => 
@@ -585,7 +613,7 @@ and resolveExtends (env: ENV)
                                            LogErr.multiname baseClassMultiname]
                         else (resolveMultinameToFixture env baseClassMultiname)
             in case baseClassFixture of
-                Ast.ClassFixture {instanceFixtures=baseInstanceFixtures,...} =>
+                Ast.ClassFixture (Ast.Cls {instanceFixtures=baseInstanceFixtures,...}) =>
                     (SOME baseClassName,inheritFixtures baseInstanceFixtures currInstanceFixtures)
               | _ => LogErr.defnError ["base class not found"]
             end
@@ -1196,10 +1224,10 @@ and defPatternAssign (env:ENV) (ns: Ast.NAMESPACE) (pattern: Ast.PATTERN) (expr:
                                     {base=Ast.ObjectRef 
                                         {base=Ast.LexicalRef 
                                             {ident=Ast.QualifiedIdentifier
-                                                {qual=Ast.LiteralExpr (Ast.LiteralNamespace Ast.Intrinsic),
-                                                 ident="A"}},
+                                                {qual=Ast.LiteralExpr (Ast.LiteralNamespace (#ns (!currentClassName))),
+                                                 ident=(#id (!currentClassName))}},
                                          ident=Ast.QualifiedIdentifier
-                                            {qual=Ast.LiteralExpr (Ast.LiteralNamespace ns),
+                                            {qual=Ast.LiteralExpr (Ast.LiteralNamespace (Ast.Public "")),   (* prototype props are always public *)
                                              ident="prototype"}},
                                      ident=Ast.QualifiedIdentifier
                                          {qual=Ast.LiteralExpr (Ast.LiteralNamespace ns),
@@ -1209,8 +1237,8 @@ and defPatternAssign (env:ENV) (ns: Ast.NAMESPACE) (pattern: Ast.PATTERN) (expr:
                           then Ast.ObjectRef (* A.x *)
                                 {base=Ast.LexicalRef 
                                     {ident=Ast.QualifiedIdentifier
-                                        {qual=Ast.LiteralExpr (Ast.LiteralNamespace Ast.Intrinsic),
-                                         ident="A"}},
+                                        {qual=Ast.LiteralExpr (Ast.LiteralNamespace (#ns (!currentClassName))),
+                                         ident=(#id (!currentClassName))}},
                                  ident=Ast.QualifiedIdentifier
                                     {qual=Ast.LiteralExpr (Ast.LiteralNamespace ns), 
                                      ident=id}}
@@ -1221,12 +1249,13 @@ and defPatternAssign (env:ENV) (ns: Ast.NAMESPACE) (pattern: Ast.PATTERN) (expr:
                 [Ast.SetExpr (Ast.Assign,Ast.SimplePattern lref,expr)]
             end
 
-        fun defSimpleAssign (ex)
+        fun defSimpleAssign (patternExpr)
             : Ast.EXPR list =
             let
+                val patternExpr = defExpr env patternExpr
                 val expr = defExpr env expr
             in
-                [Ast.SetExpr (Ast.Assign,pattern,expr)]
+                [Ast.SetExpr (Ast.Assign,Ast.SimplePattern patternExpr,expr)]
             end
 
         (*
@@ -1520,6 +1549,16 @@ and defStmt (env:ENV)
                 { ptrn = newPtrn,
                   body = body }
             end            
+
+        fun findClass (n:Ast.NAME) =
+            let
+                val (n,f) = resolveMultinameToFixture env (multinameOf n)
+            in case f of 
+                Ast.ClassFixture cd => cd
+              | _ => LogErr.defnError ["reference to non-class fixture"]
+            end
+
+
     in
         case stmt of
             Ast.EmptyStmt => 
@@ -1558,6 +1597,21 @@ and defStmt (env:ENV)
                 val (body,hoisted) = defBlock env b 
             in
                 (Ast.BlockStmt body,hoisted)
+            end
+            
+          | Ast.ClassBlock {ns,ident,block,...} =>
+            let
+                val name = {ns=resolveExprToNamespace env ns,id=ident}
+                val _ = (currentClassName := name)
+                val Ast.Cls cls = findClass name
+                val fixtures = (#classFixtures cls)
+                val extends = (#extends cls)
+                val env = extendEnvironment env fixtures
+                val block = defRegionalBlock env block
+                val _ = (currentClassName := {ns=Ast.Intrinsic,id=""})
+            in
+                (Ast.ClassBlock {ns=ns,ident=ident,name=SOME name,extends=extends,
+                                 fixtures=SOME fixtures,block=block},[])
             end
             
           | Ast.LabeledStmt (id, s) =>
@@ -1712,7 +1766,8 @@ and defDefn (env:ENV)
                 val (hoisted,def) = defClass env cd
             in
                 ([],hoisted)
-            end
+            end  
+
       | _ => ([],[])
 
 (*
@@ -1746,6 +1801,13 @@ and defDefinitions (env:ENV)
     definitions are not used after this definition phase. Traverse the
     statements so that embedded blocks (e.g. block statements, let 
     expressions) are initialised.
+
+    Class blocks have an outer scope that contain the class (static) 
+    fixtures. When entering a class block, extend the environment with
+    the class object and its base objects, in reverse order.
+
+    
+
 *)
 
 and defBlock (env:ENV) 
@@ -1756,6 +1818,8 @@ and defBlock (env:ENV)
         let 
             val env = defPragmas env pragmas
             val (unhoisted,defns_hoisted) = defDefinitions env [] [] defns
+            
+            val env  = updateEnvironment env (unhoisted@defns_hoisted )
             val (inits,_) = defStmts env (case inits of NONE => [] | _ => valOf inits)  
                                     (* do inits in outer scope, inits never result in hoisted defs *)
             val env = updateEnvironment env unhoisted

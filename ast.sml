@@ -143,6 +143,15 @@ datatype PRAGMA =
        | Construct
        | ToFunc
 
+     and CLS = (* stolen from mach.sml *)
+         Cls of 
+           { extends: NAME option, 
+             implements: NAME list,
+             classFixtures: FIXTURES, (* includes a construct method *)
+             instanceFixtures: FIXTURES,  (* includes a user constructor *)
+             classType: TYPE_EXPR,
+             instanceType: TYPE_EXPR }
+
      and FUNC =
          Func of 
            { name: FUNC_NAME,
@@ -185,7 +194,7 @@ datatype PRAGMA =
        | UnionType of TYPE_EXPR list
        | ArrayType of TYPE_EXPR list
        | NominalType of 
-           { ident : IDENT_EXPR }
+           { ident: IDENT_EXPR }
        | FunctionType of FUNC_SIG
        | ObjectType of FIELD_TYPE list
        | AppType of 
@@ -194,16 +203,26 @@ datatype PRAGMA =
        | NullableType of 
            { expr:TYPE_EXPR,
              nullable:bool }
-  
+
      and STMT =
          EmptyStmt
        | ExprStmt of EXPR list
        | InitStmt of (* turned into ExprStmt by definer *)
-           { kind:VAR_DEFN_TAG,
-             ns:EXPR,
-             prototype:bool,
-             static:bool,
-             inits:EXPR list }
+           { kind: VAR_DEFN_TAG,
+             ns: EXPR,
+             prototype: bool,
+             static: bool,
+             inits: EXPR list }
+       | ClassBlock of 
+           { ns: EXPR,
+             ident: IDENT,
+             name: NAME option,  (* set by the definer *)
+             extends: NAME option,
+             fixtures: FIXTURES option,
+             block: BLOCK }
+       | PackageBlock of
+           { name: IDENT,
+             block: BLOCK }
        | ForEachStmt of FOR_ENUM_STMT
        | ForInStmt of FOR_ENUM_STMT
        | ThrowStmt of EXPR list
@@ -216,7 +235,7 @@ datatype PRAGMA =
        | SuperStmt of EXPR list
        | WhileStmt of WHILE_STMT
        | DoWhileStmt of WHILE_STMT
-       | ForStmt of 
+       | ForStmt of
            { defns: VAR_BINDING list,
              fixtures: FIXTURES option,
              init: EXPR list,
@@ -310,11 +329,9 @@ datatype PRAGMA =
              ty:TYPE_EXPR option }
        | LiteralXML of EXPR list
        | LiteralNamespace of NAMESPACE
-
        | LiteralObject of
            { expr : FIELD list,
              ty: TYPE_EXPR option }
-
        | LiteralRegExp of
            { str: USTRING }
 
@@ -336,11 +353,7 @@ datatype PRAGMA =
 
      and FIXTURE = 
          NamespaceFixture of NAMESPACE
-       | ClassFixture of 
-           { extends: NAME option, 
-             implements: NAME list,
-             classFixtures: FIXTURES, (* includes a construct method *)
-             instanceFixtures: FIXTURES }  (* includes a user constructor *)
+       | ClassFixture of CLS
        | TypeVarFixture
        | TypeFixture of TYPE_EXPR
        | ValFixture of 

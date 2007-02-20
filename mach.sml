@@ -13,6 +13,7 @@ type NAME = Ast.NAME
 type MULTINAME = Ast.MULTINAME
 type BINDINGS = Ast.BINDINGS
 type FIXTURES = Ast.FIXTURES
+type CLS = Ast.CLS
 
 datatype SCOPE_TAG = 
          VarGlobal       (* Variable object created before execution starts *)
@@ -54,28 +55,6 @@ datatype VAL = Object of OBJ
                | Type of TYPE
                | HostFunction of (VAL list -> VAL)
                     
-     and CLS = 
-         Cls of { ty: TYPE,
-                  (* FIXME: revive these slots as needed; disabled for now *)
-    (*
-                  isSealed: bool,
-                  scope: SCOPE,
-                     base: CLS option,
-                  interfaces: IFACE list,
-                  
-                  call: FUN_CLOSURE option,
-     *)
-                  definition: Ast.CLASS_DEFN
-    (*
-                  constructor: FUN_CLOSURE option,
-                  
-                  instanceTy: TYPE,
-                  instancePrototype: VAL,
-                  
-                  initialized: bool ref
-     *)
-                }
-
      and IFACE = 
          Iface of { ty: TYPE,
                     bases: IFACE list,
@@ -191,7 +170,7 @@ fun hasProp (b:PROP_BINDINGS)
 
 (* Standard runtime objects and functions. *)
 
-val internalPrototypeName:NAME = { ns = (Ast.Internal ""), id = "prototype" }
+val publicPrototypeName:NAME = { ns = (Ast.Public ""), id = "prototype" }
 val internalConstructorName:NAME = { ns = (Ast.Internal ""), id = "constructor" }
 val internalObjectName:NAME = { ns = (Ast.Internal ""), id = "Object" }
                                             
@@ -278,18 +257,18 @@ fun newNamespace (n:NS)
 
 
 fun newClass (e:SCOPE) 
-             (c:Ast.CLASS_DEFN) 
+             (cls:CLS) 
     : VAL =
     let
-        val cls = Cls { ty = classType,
-                        definition = c }
         val closure = { cls = cls,
-                        allTypesBound = ((length (#params c)) = 0),
+                        (* FIXME: are all types bound? *)
+                        allTypesBound = true,
                         env = e }
+        val obj = newObject intrinsicClassBaseTag Null (SOME (Class closure))
     in
-        newObject intrinsicClassBaseTag Null (SOME (Class closure))
+        obj
     end
-
+        
 
 fun newFunc (e:SCOPE) 
             (f:Ast.FUNC) 
@@ -357,8 +336,8 @@ fun hasValue (obj:OBJ)
                 | _ => false)
 
 
-fun getValue (obj:OBJ) 
-             (name:NAME) 
+fun getValue (obj:OBJ, 
+              name:NAME) 
     : VAL = 
     case obj of 
         Obj {props, ...} => 
@@ -486,7 +465,7 @@ fun getMagic (v:VAL)
 
 fun getGlobalVal (n:NAME) 
     : VAL = 
-    getValue globalObject n
+    getValue (globalObject, n)
 
 
 fun valToCls (v:VAL) 

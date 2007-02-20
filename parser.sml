@@ -5212,7 +5212,17 @@ and classDefinition (ts,attrs) =
                 val letDefns = List.filter isLet defns
             in
                 (ts3,{pragmas=[],
-                      stmts=[Ast.BlockStmt (Ast.Block {stmts=stmts,inits=NONE,defns=letDefns,fixtures=NONE,pragmas=[]})],
+                      stmts=[Ast.ClassBlock 
+                                {ns=ns,
+                                 ident=ident,
+                                 name=NONE,
+                                 extends=NONE,  (* filled in by definer *)
+                                 fixtures=NONE,
+                                 block=Ast.Block {stmts=stmts,
+                                            inits=NONE,
+                                            defns=letDefns,
+                                            fixtures=NONE,
+                                            pragmas=[]}}],
                       defns=[Ast.ClassDefn {ident=ident,
                                             nonnullable=nonnullable,
                                             ns=ns,
@@ -5924,7 +5934,7 @@ fun logged thunk name =
          log ["parsed ", name, "\n"];
          ast
      end)
-    handle ParseError => (log ["parse error"]; raise ParseError)
+     handle ParseError => (log ["parse error"]; raise ParseError)
          | Lexer.LexError => (log ["lex error"]; raise Lexer.LexError)
 
 fun parseFile filename =
