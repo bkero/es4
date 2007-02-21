@@ -907,18 +907,38 @@ and invokeFuncClosure (this:Mach.OBJ)
                     evalBlock varScope (#body f)
                 end
 
+(*
+    instanceFixtures : FIXTURES
+    instanceInits : (NAME*EXPR) list
+    paramFixtures : FIXTURES
+    paramInits : (NAME*EXPR) list
+    settingsInits : (NAME*EXPR) list
+    ctorBody : BLOCK
+
+
+    val thisObj = newObj 
+    evalFixtures scope thisObj instanceFixtures
+    evalInits scope thisObj instanceInits
+    val paramsObj = newObj
+    evalFixtures scope paramObj paramFixtures
+    evalInits scope paramsObj paramInits
+    evalInits params::scope thisObj settingsInits
+    evalBlock params::(this::scope) thisObj ctorBody (* target of inits is local fixtures *)
+*)
+
+
 
 and constructClassInstance (closure:Mach.CLS_CLOSURE) 
                            (args:Mach.VAL list) 
     : Mach.VAL = 
     case closure of 
         { cls, allTypesBound, env } => 
-        if not allTypesBound
-        then LogErr.evalError ["constructing instance of class with unbound type variables"]
-        else 
-            case cls of 
-                Ast.Cls { instanceFixtures, ... } =>
+            if not allTypesBound
+            then LogErr.evalError ["constructing instance of class with unbound type variables"]
+            else case cls of 
+                Ast.Cls { instanceFixtures, instanceInits, ... } =>
                 let
+(**** val thisObj = newObj *)
                     val obj = Mach.newObj Mach.intrinsicObjectBaseTag Mach.Null NONE
 (*
                     val ns = (#ns definition)
@@ -932,24 +952,18 @@ and constructClassInstance (closure:Mach.CLS_CLOSURE)
                     val (obj:Mach.OBJ) = Mach.newObj classTag proto NONE
                     val (objScope:Mach.SCOPE) = extendScope env Mach.VarInstance obj
                     val (instance:Mach.VAL) = Mach.Object obj
-(* FIXME: need to get ctor from instance block
                     val ctor = (#constructor definition)
-*)
                     val ctor:Ast.FUNC_DEFN option = NONE
 
                     (* FIXME: infer a fixture for "this" so that it's properly typed, dontDelete, etc.
                      * Also this will mean changing to defVar rather than setVar, for 'this'. *)
                     val thisName = { id = "this", ns = Ast.Internal "" }
 
-                    (* FIXME: self-name binding is surely more complex than this! *)
-                    val selfTag = Mach.ClassTag n
-                    val selfVal = Mach.newObject selfTag Mach.Null (SOME (Mach.Class closure))
-(* FIXME: need to get instance block from fixture that is passed into this function
                     val Ast.Block iblk = (valOf (#instanceBlock definition))
-*)
                     val iblk = NONE
 *)
                 in
+(**** evalFixtures scope thisObj instanceFixtures *)
                     allocObjFixtures env obj instanceFixtures;
 (*
                     case ctor of 
@@ -967,6 +981,7 @@ and constructClassInstance (closure:Mach.CLS_CLOSURE)
                                 processVarDefn env vd (Mach.defValue obj)
 
                         in
+(**** evalFixtures scope obj paramFixtures *)
                             allocScopeFixtures varScope (valOf fixtures);
                             (* FIXME: is this correct? we currently bind the self name on obj as well.. *)
                             Mach.defValue obj n selfVal;
@@ -1153,7 +1168,6 @@ and evalClassBlock (scope:Mach.SCOPE)
     in
         evalBlock classScope block
     end
-
 
 (*
 

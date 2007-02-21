@@ -285,11 +285,11 @@ fun defClass (env: ENV)
              (cdef: Ast.CLASS_DEFN)
     : (Ast.FIXTURES * Ast.CLASS_DEFN) =
     let
-        val (classFixtures,instanceFixtures) = analyzeClass env cdef
-        val (className,classFixture) = resolveClass env cdef classFixtures instanceFixtures
+        val (className,class) = analyzeClass env cdef
+        val class = resolveClass env cdef className class
         val _ = LogErr.trace ["defining class ",LogErr.name className]
     in
-        ([(className,classFixture)],cdef)
+        ([(className,Ast.ClassFixture class)],cdef)
     end
 
 (*
@@ -301,15 +301,15 @@ fun defClass (env: ENV)
     that set the value of instance vars.
 *)
 
-and analyzeClass (env:ENV) 
+and analyzeClass (env:ENV)
                  (cdef:Ast.CLASS_DEFN)
-    : (Ast.FIXTURES * Ast.FIXTURES) = 
+    : (Ast.NAME*Ast.CLS) =
     case cdef of
-        {ns, ident, body=Ast.Block { pragmas, defns, stmts, ... },...} => 
+        {ns, ident, body=Ast.Block { pragmas, defns, stmts, ... },...} =>
         let
-            fun isLet (d:Ast.DEFN) 
+            fun isLet (d:Ast.DEFN)
                 : bool =
-                case d of 
+                case d of
                     Ast.VariableDefn {kind,...} => (kind=Ast.LetVar) orelse (kind=Ast.LetConst)
                   | Ast.FunctionDefn fd => false
                   | Ast.TypeDefn _ => false
@@ -406,7 +406,14 @@ and analyzeClass (env:ENV)
 
             val (iinits,stmts) = List.partition isInstanceInit stmts
         in
-            (classFixtures,instanceFixtures)
+            (name,Ast.Cls {extends = NONE,
+                     implements = [],
+                     classFixtures = classFixtures,
+                     instanceFixtures = instanceFixtures,
+                     instanceInits = iinits,
+                     constructor = NONE,
+                     classType = Ast.SpecialType Ast.Any,
+                     instanceType = Ast.SpecialType Ast.Any })
         end
 
 (*
@@ -540,39 +547,30 @@ and inheritFixtureOpts (base:Ast.FIXTURES option)
 
 (*
     resolveClass
+
+    Inherit instance fixtures from the base class. Check fixtures against
+    interface fixtures
 *)
 
 and resolveClass (env:ENV)
-                 (curr:Ast.CLASS_DEFN)
-                 (classFixtures: Ast.FIXTURES) 
-                 (fixtures: Ast.FIXTURES) 
-    : (Ast.NAME * Ast.FIXTURE) =
+                 ({extends,implements,...}: Ast.CLASS_DEFN)
+                 (name:Ast.NAME)
+                 (Ast.Cls {classFixtures,instanceFixtures,instanceInits,
+                   constructor,classType,instanceType,...}:Ast.CLS)
+    : Ast.CLS =
     let
-        fun qualName (cd:Ast.CLASS_DEFN) = {id=(#ident cd),ns=(resolveExprToNamespace env (#ns cd))}
-
-        fun findBaseClassDef (n:Ast.MULTINAME) =
-            let
-                val (n,f) = resolveMultinameToFixture env n
-            in case f of 
-                Ast.ClassFixture cd => cd
-              | _ => LogErr.defnError ["base class reference to non-class fixture"]
-            end
-
-        val currName = qualName curr
-        val {body,extends,implements,...} = curr
-
-        val _ = trace ["analyzing class block for ", LogErr.name currName]
-
-        val (extendsName, fixtures) = resolveExtends env fixtures extends [currName]
-        val (implementsNames, instanceFixtures) = resolveImplements env fixtures implements
+        val _ = trace ["analyzing class block for ", LogErr.name name]
+        val (extendsName, instanceFixtures) = resolveExtends env instanceFixtures extends [name]
+        val (implementsNames, instanceFixtures) = resolveImplements env instanceFixtures implements
     in
-        (currName, Ast.ClassFixture (Ast.Cls {extends=extendsName,
-                                              implements=implementsNames,
-                                              classFixtures=classFixtures,
-                                              instanceFixtures=fixtures,
-                                              (* FIXME: compute the actual types *)
-                                              classType=Ast.SpecialType Ast.Any,
-                                              instanceType=Ast.SpecialType Ast.Any}))
+        Ast.Cls {extends=extendsName,
+                 implements=implementsNames,
+                 classFixtures=classFixtures,
+                 instanceFixtures=instanceFixtures,
+                 instanceInits=instanceInits,
+                 constructor=constructor,
+                 classType=classType,
+                 instanceType=instanceType}
     end
 
 (*

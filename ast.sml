@@ -143,27 +143,35 @@ datatype PRAGMA =
        | Construct
        | ToFunc
 
-     and CLS = (* stolen from mach.sml *)
-         Cls of 
-           { extends: NAME option, 
+     and CLS =
+         Cls of
+           { extends: NAME option,
              implements: NAME list,
-             classFixtures: FIXTURES, (* includes a construct method *)
-             instanceFixtures: FIXTURES,  (* includes a user constructor *)
+             classFixtures: FIXTURES,
+             instanceFixtures: FIXTURES,
+             instanceInits: INITS,
+             constructor: CTOR option,
              classType: TYPE_EXPR,
              instanceType: TYPE_EXPR }
+
+     and CTOR =
+         Ctor of
+           { settings: INITS,
+             func: FUNC }
 
      and FUNC =
          Func of 
            { name: FUNC_NAME,
              fsig: FUNC_SIG,                   
-             body: BLOCK,
              fixtures: FIXTURES option,
-             inits: STMT list }
+             inits: STMT list,
+             body: BLOCK }
 
      and DEFN =
          ClassDefn of CLASS_DEFN
        | VariableDefn of VAR_DEFN
        | FunctionDefn of FUNC_DEFN
+       | ConstructorDefn of CTOR_DEFN
        | InterfaceDefn of INTERFACE_DEFN
        | NamespaceDefn of NAMESPACE_DEFN 
        | TypeDefn of TYPE_DEFN
@@ -404,6 +412,11 @@ withtype FIELD =
              static: bool,
              func : FUNC }
 
+     and CTOR_DEFN = 
+           { ns: EXPR,
+             native: bool,
+             ctor : CTOR }
+
      and VAR_DEFN =
            { kind : VAR_DEFN_TAG,
              ns : EXPR,
@@ -412,6 +425,7 @@ withtype FIELD =
              bindings : VAR_BINDING list }
 
      and FIXTURES = (NAME * FIXTURE) list
+     and INITS    = STMT list   (* FIXME: (NAME * EXPR) list *)
 
      and NAMESPACE_DEFN = 
            { ident: IDENT,
@@ -460,7 +474,7 @@ withtype FIELD =
              defns: DEFN list,
              stmts: STMT list,
              fixtures: FIXTURES option,
-             inits: STMT list option (* deprecated *) }
+             inits: STMT list option}
 
      and BINDINGS =
            { b : VAR_BINDING list,
