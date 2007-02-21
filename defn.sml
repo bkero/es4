@@ -285,11 +285,12 @@ fun defClass (env: ENV)
              (cdef: Ast.CLASS_DEFN)
     : (Ast.FIXTURES * Ast.CLASS_DEFN) =
     let
-        val (className,class) = analyzeClass env cdef
-        val class = resolveClass env cdef className class
-        val _ = LogErr.trace ["defining class ",LogErr.name className]
+        val class = analyzeClass env cdef
+        val class = resolveClass env cdef class
+        val Ast.Cls {name,...} = class
+        val _ = LogErr.trace ["defining class ",LogErr.name name]
     in
-        ([(className,Ast.ClassFixture class)],cdef)
+        ([(name,Ast.ClassFixture class)],cdef)
     end
 
 (*
@@ -303,7 +304,7 @@ fun defClass (env: ENV)
 
 and analyzeClass (env:ENV)
                  (cdef:Ast.CLASS_DEFN)
-    : (Ast.NAME*Ast.CLS) =
+    : Ast.CLS =
     case cdef of
         {ns, ident, body=Ast.Block { pragmas, defns, stmts, ... },...} =>
         let
@@ -381,10 +382,27 @@ and analyzeClass (env:ENV)
             val letDefns = List.filter isLet defns
 
             val env = defPragmas env pragmas
-
-            val (unhoisted,classFixtures) = defDefinitions env [] [] staticDefns
+            val (unhoisted,classFixtures) = defDefns env [] [] staticDefns
             val env = extendEnvironment env classFixtures
-            val (unhoisted,instanceFixtures) = defDefinitions env [] [] instanceDefns
+            val (unhoisted,instanceFixtures) = defDefns env [] [] instanceDefns
+            val (istmts,stmts) = List.partition isInstanceInit stmts
+
+            fun initFromStmt stmt =  (* FIXME: lots of unexhaustive matching here *)
+                let
+                    val (Ast.ExprStmt e0) = stmt
+                    val (Ast.SetExpr (_,p,expr))::[] = e0
+                    val Ast.SimplePattern r = p
+                    val Ast.LexicalRef {ident=i} = r
+                    val Ast.QualifiedIdentifier {qual=q,ident=id} = i
+                    val Ast.LiteralExpr (Ast.LiteralNamespace ns) = q
+                    val name = {ns=ns,id=id}
+                    val init = (name,expr)
+                in
+                    init
+                end
+
+            val (istmts,_) = defStmts env istmts
+            val iinits = map initFromStmt istmts
 
             (*
                 Add static prototype fixture
@@ -404,16 +422,16 @@ and analyzeClass (env:ENV)
                 Separate instance init from non-instance init statements 
             *)
 
-            val (iinits,stmts) = List.partition isInstanceInit stmts
         in
-            (name,Ast.Cls {extends = NONE,
+            Ast.Cls {name=name,
+                     extends = NONE,
                      implements = [],
                      classFixtures = classFixtures,
                      instanceFixtures = instanceFixtures,
                      instanceInits = iinits,
                      constructor = NONE,
                      classType = Ast.SpecialType Ast.Any,
-                     instanceType = Ast.SpecialType Ast.Any })
+                     instanceType = Ast.SpecialType Ast.Any }
         end
 
 (*
@@ -554,8 +572,7 @@ and inheritFixtureOpts (base:Ast.FIXTURES option)
 
 and resolveClass (env:ENV)
                  ({extends,implements,...}: Ast.CLASS_DEFN)
-                 (name:Ast.NAME)
-                 (Ast.Cls {classFixtures,instanceFixtures,instanceInits,
+                 (Ast.Cls {name,classFixtures,instanceFixtures,instanceInits,
                    constructor,classType,instanceType,...}:Ast.CLS)
     : Ast.CLS =
     let
@@ -563,7 +580,7 @@ and resolveClass (env:ENV)
         val (extendsName, instanceFixtures) = resolveExtends env instanceFixtures extends [name]
         val (implementsNames, instanceFixtures) = resolveImplements env instanceFixtures implements
     in
-        Ast.Cls {extends=extendsName,
+        Ast.Cls {name=name, extends=extendsName,
                  implements=implementsNames,
                  classFixtures=classFixtures,
                  instanceFixtures=instanceFixtures,
@@ -693,9 +710,9 @@ and resolveImplements (env: ENV)
 *)
 
 and defVar (env:ENV) 
-              (kind:Ast.VAR_DEFN_TAG)
-              (ns:Ast.NAMESPACE)
-              (var:Ast.VAR_BINDING) 
+           (kind:Ast.VAR_DEFN_TAG)
+           (ns:Ast.NAMESPACE)
+           (var:Ast.VAR_BINDING) 
     : (Ast.FIXTURES * Ast.VAR_BINDING) = 
     case var of 
         Ast.Binding { init, pattern, ty } => 
@@ -1599,17 +1616,29 @@ and defStmt (env:ENV)
             
           | Ast.ClassBlock {ns,ident,block,...} =>
             let
+                fun isInstanceInit (s:Ast.STMT)
+                    : bool =
+                    let
+                    in case s of
+                        Ast.InitStmt {kind,static,prototype,...} =>
+                            not ((kind=Ast.LetVar) orelse (kind=Ast.LetConst) orelse
+                                 prototype orelse static)
+                      | _ => false                    
+                    end
+
+                val Ast.Block {pragmas,defns,fixtures,inits,stmts} = block
+                val (_,stmts) = List.partition isInstanceInit stmts  (* filter out instance initializers *)
                 val name = {ns=resolveExprToNamespace env ns,id=ident}
                 val _ = (currentClassName := name)
                 val Ast.Cls cls = findClass name
-                val fixtures = (#classFixtures cls)
+                val classFixtures = (#classFixtures cls)
                 val extends = (#extends cls)
-                val env = extendEnvironment env fixtures
-                val block = defRegionalBlock env block
+                val env = extendEnvironment env classFixtures
+                val block = defRegionalBlock env (Ast.Block {pragmas=pragmas,defns=defns,fixtures=fixtures,inits=inits,stmts=stmts})
                 val _ = (currentClassName := {ns=Ast.Intrinsic,id=""})
             in
                 (Ast.ClassBlock {ns=ns,ident=ident,name=SOME name,extends=extends,
-                                 fixtures=SOME fixtures,block=block},[])
+                                 fixtures=SOME classFixtures,block=block},[])
             end
             
           | Ast.LabeledStmt (id, s) =>
@@ -1774,21 +1803,22 @@ and defDefn (env:ENV)
     Process each definition. 
 *)
 
-and defDefinitions (env:ENV) 
-                   (unhoisted:Ast.FIXTURES)
-                   (hoisted:Ast.FIXTURES)
-                   (defns:Ast.DEFN list)
+and defDefns (env:ENV) 
+             (unhoisted:Ast.FIXTURES)
+             (hoisted:Ast.FIXTURES)
+             (defns:Ast.DEFN list)
     : (Ast.FIXTURES * Ast.FIXTURES) = (* unhoisted, hoisted *)
-    let val _ = trace([">> defDefinitions"])
+    let val _ = trace([">> defDefns"])
     in case defns of
-        [] => (trace(["<< defDefinitions"]);(unhoisted,hoisted))
+        [] => (trace(["<< defDefns"]);(unhoisted,hoisted))
       | d::ds =>
             let
-                val (u,h) = defDefn env d    
-                val env'  = updateEnvironment env u  
-                            (* add the new unhoisted fxtrs to the current env *)
+                val (u,h) = defDefn env d
+                val temp = case d of Ast.ClassDefn _ => h | _ => []
+                val env'  = updateEnvironment env (u@temp)  
+                            (* add the new unhoisted and temporarily, hoisted class fxtrs to the current env *)
             in
-                defDefinitions env' (u@unhoisted) (h@hoisted) ds
+                defDefns env' (u@unhoisted) (h@hoisted) ds
             end
     end
 
@@ -1802,20 +1832,18 @@ and defDefinitions (env:ENV)
 
     Class blocks have an outer scope that contain the class (static) 
     fixtures. When entering a class block, extend the environment with
-    the class object and its base objects, in reverse order.
-
-    
+    the class object and its base objects, in reverse order
 
 *)
 
 and defBlock (env:ENV) 
              (b:Ast.BLOCK) 
     : (Ast.BLOCK * Ast.FIXTURES) =
-    case b of 
+    case b of
         Ast.Block { pragmas, defns, stmts, inits,... } => 
         let 
             val env = defPragmas env pragmas
-            val (unhoisted,defns_hoisted) = defDefinitions env [] [] defns
+            val (unhoisted,defns_hoisted) = defDefns env [] [] defns
             
             val env  = updateEnvironment env (unhoisted@defns_hoisted )
             val (inits,_) = defStmts env (case inits of NONE => [] | _ => valOf inits)  

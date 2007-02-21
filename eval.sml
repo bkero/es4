@@ -344,7 +344,7 @@ and evalNewExpr (obj:Mach.OBJ)
     case obj of 
         Mach.Obj { magic, ... } => 
         case (!magic) of 
-            SOME (Mach.Class c) => constructClassInstance c args
+            SOME (Mach.Class c) => constructClassInstance obj c args
           | SOME (Mach.Function f) => constructObjectViaFunction obj f args
           | _ => LogErr.evalError ["operator 'new' applied to unknown object"]
 
@@ -908,70 +908,117 @@ and invokeFuncClosure (this:Mach.OBJ)
                 end
 
 (*
-    instanceFixtures : FIXTURES
-    instanceInits : (NAME*EXPR) list
-    paramFixtures : FIXTURES
-    paramInits : (NAME*EXPR) list
-    settingsInits : (NAME*EXPR) list
-    ctorBody : BLOCK
+    
+    Here are the structures we have to work with to instantiate objects:
 
+     and CLS =
+         Cls of
+           { extends: NAME option,
+             implements: NAME list,
+             classFixtures: FIXTURES,
+             instanceFixtures: FIXTURES,
+             instanceInits: INITS,
+             constructor: CTOR option,
+             classType: TYPE_EXPR,
+             instanceType: TYPE_EXPR }
 
+     and CTOR =
+         Ctor of
+           { settings: INITS,
+             func: FUNC }
+
+     and FUNC =
+         Func of 
+           { name: FUNC_NAME,
+             fsig: FUNC_SIG,                   
+             fixtures: FIXTURES option,
+             inits: STMT list,
+             body: BLOCK }
+
+    Here how it works:
+
+    val scope = [globalObj,classObj]
     val thisObj = newObj 
     evalFixtures scope thisObj instanceFixtures
     evalInits scope thisObj instanceInits
+
     val paramsObj = newObj
-    evalFixtures scope paramObj paramFixtures
-    evalInits scope paramsObj paramInits
-    evalInits params::scope thisObj settingsInits
-    evalBlock params::(this::scope) thisObj ctorBody (* target of inits is local fixtures *)
+    val paramsFixtures = (#fixtures (#func (#constructor cls)))
+	evalFixtures scope paramsObj paramsFixtures
+    val paramsInits = (#inits (#func (#constructor class)))
+    evalInits scope paramsObj paramsInits
+
+	val settingsInits = (#settings (#constructor cls))
+    evalInits paramsObj::scope thisObj settingsInits
+
+	val ctorBody = (#body (#func (#constructor cls)))
+    evalBlock paramsObj::(thisObj::scope) thisObj ctorBody
+
 *)
 
+and evalFixtures (scope:Mach.SCOPE)
+                 (obj:Mach.OBJ)
+                 (fixtures:Ast.FIXTURES)
+    : unit = 
+    let val _ = LogErr.trace ["evalFixtures"]
+    in
+        allocObjFixtures scope obj fixtures
+    end
 
+and evalInits (scope:Mach.SCOPE)
+              (obj:Mach.OBJ)
+              (inits:Ast.INITS)
+    : unit =
+    let val _ = LogErr.trace ["evalInits"]
+    in case inits of
+        ((n,e)::inits) =>
+            let
+                val v = evalExpr scope e
+            in
+                Mach.defValue obj n v;
+                evalInits scope obj inits
+            end
+      | _ => ()
+    end
 
-and constructClassInstance (closure:Mach.CLS_CLOSURE) 
+and constructClassInstance (classObj:Mach.OBJ)
+                           (classClosure:Mach.CLS_CLOSURE) 
                            (args:Mach.VAL list) 
-    : Mach.VAL = 
-    case closure of 
-        { cls, allTypesBound, env } => 
+    : Mach.VAL =
+        let
+            val {cls,allTypesBound,env} = classClosure
+        in
             if not allTypesBound
             then LogErr.evalError ["constructing instance of class with unbound type variables"]
-            else case cls of 
-                Ast.Cls { instanceFixtures, instanceInits, ... } =>
+            else
                 let
-(**** val thisObj = newObj *)
-                    val obj = Mach.newObj Mach.intrinsicObjectBaseTag Mach.Null NONE
-(*
-                    val ns = (#ns definition)
-                    val n = { ns = needNamespace (evalExpr env ns), 
-                              id = (#ident definition) }
-                    val _ = LogErr.trace ["constructing instance of ", LogErr.name n]
-                    val classTag = Mach.ClassTag n
-                    val proto = if Mach.hasOwnValue obj Mach.publicPrototypeName
-                                then Mach.getValue (obj, Mach.publicPrototypeName)
+                    val classScope = extendScope env Mach.VarClass classObj
+
+                    val Ast.Cls { name, instanceFixtures, instanceInits, constructor, ... } = cls
+                    val tag = Mach.ClassTag name
+                    val proto = if Mach.hasOwnValue classObj Mach.publicPrototypeName
+                                then Mach.getValue (classObj, Mach.publicPrototypeName)
                                 else Mach.Null
-                    val (obj:Mach.OBJ) = Mach.newObj classTag proto NONE
-                    val (objScope:Mach.SCOPE) = extendScope env Mach.VarInstance obj
-                    val (instance:Mach.VAL) = Mach.Object obj
-                    val ctor = (#constructor definition)
-                    val ctor:Ast.FUNC_DEFN option = NONE
+                    val (thisObj:Mach.OBJ) = Mach.newObj tag proto NONE
+
+                    val (objScope:Mach.SCOPE) = extendScope classScope Mach.VarInstance thisObj
+                    val (instance:Mach.VAL) = Mach.Object thisObj
 
                     (* FIXME: infer a fixture for "this" so that it's properly typed, dontDelete, etc.
                      * Also this will mean changing to defVar rather than setVar, for 'this'. *)
                     val thisName = { id = "this", ns = Ast.Internal "" }
 
-                    val Ast.Block iblk = (valOf (#instanceBlock definition))
-                    val iblk = NONE
-*)
                 in
-(**** evalFixtures scope thisObj instanceFixtures *)
-                    allocObjFixtures env obj instanceFixtures;
-(*
-                    case ctor of 
-                        NONE => (checkAllPropertiesInitialized obj; instance)
+                    evalFixtures classScope thisObj instanceFixtures;
+                    evalInits classScope thisObj instanceInits;
+                    case constructor of 
+                        NONE => (checkAllPropertiesInitialized thisObj; instance)  (* TODO: run base class inits *)
+
+(* FIXME: needs resuscitation
                       | SOME ({native, ns,
                                func = Ast.Func 
                                           { fsig=Ast.FunctionSignature { params, inits, ... }, 
-                                            body, fixtures, ... }, ... }) => 
+                                            body, paramFixtures, bodyFixtures, ... }, ... }) => 
                         let 
                             val ns = needNamespace (evalExpr env ns)
                             val (varObj:Mach.OBJ) = Mach.newSimpleObj NONE
@@ -981,14 +1028,13 @@ and constructClassInstance (closure:Mach.CLS_CLOSURE)
                                 processVarDefn env vd (Mach.defValue obj)
 
                         in
-(**** evalFixtures scope obj paramFixtures *)
-                            allocScopeFixtures varScope (valOf fixtures);
-                            (* FIXME: is this correct? we currently bind the self name on obj as well.. *)
-                            Mach.defValue obj n selfVal;
+                            allocScopeFixtures varScope (valOf paramFixtures);
+                            allocScopeFixtures varScope (valOf bodyFixtures);
+                            (* FIXME: is this correct? We also bind this name on the ctor var obj, below. *)
+                            Mach.defValue obj n (Mach.Object classObj);
                             LogErr.trace ["initialializing instance methods of ", LogErr.name n];
                             List.app (evalFuncDefnFull env obj) (#instanceMethods definition);
                             List.app initInstanceVar (#instanceVars definition);
-
                             (* FIXME: evaluate instance-var initializers declared in class as well. *)
 
                             if (native)
@@ -1008,13 +1054,12 @@ and constructClassInstance (closure:Mach.CLS_CLOSURE)
                                 ((* FIXME: handle arg-list length mismatch correctly. *)
                                  LogErr.trace ["binding constructor args of ", LogErr.name n];
                                  List.app bindArg (ListPair.zip (args, params));
+                                 Mach.defValue varObj n (Mach.Object classObj);
                                  Mach.setValue varObj thisName instance;
-                                 Mach.defValue varObj n selfVal;
                                  LogErr.trace ["running initializers of ", LogErr.name n];
-
                                  (case inits of 
                                       NONE => ()
-                                    | SOME inits => 
+                                    | SOME { b=bindings, i=inits } => 
                                       let
                                           val (initVals:Mach.VAL list) = List.map (evalExpr varScope) inits
                                           fun bindInit (a, b) = evalVarBinding objScope (SOME a) ns b
@@ -1024,8 +1069,7 @@ and constructClassInstance (closure:Mach.CLS_CLOSURE)
                                  LogErr.trace ["checking initialization of ", LogErr.name n];
                                  checkAllPropertiesInitialized obj; 
                                  let 
-                                     (* Now the strange part: we re-parent the arguments var object
-                                      * to the instance object, before running the constructor body. *)
+                                     (* Build a scope containing both the args and the obj. *)
                                      val _ = LogErr.trace ["running constructor of ", LogErr.name n]
                                      val (newVarScope:Mach.SCOPE) = extendScope objScope Mach.VarActivation varObj
                                      val _ = evalBlock newVarScope body 
@@ -1033,10 +1077,10 @@ and constructClassInstance (closure:Mach.CLS_CLOSURE)
                                      instance
                                  end)
                         end
+                    Mach.Object thisObj
 *)
-                    Mach.Object obj
                 end
-
+        end
 (* 
  * This is the dynamic phase of function definition; it assumes that the 
  * function has already had its fixtures constructed during the

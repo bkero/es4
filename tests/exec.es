@@ -1,13 +1,15 @@
-class Object
-{
-  intrinsic::print("start class A init")
-  var x = 10
-  static var y = 20
-  let z = 30
-  prototype var u = 40
-  intrinsic::print("finish class A init")
+class Object {}
+class A {
+  static var x = 10
+  var y = x
+  prototype var z = x
 }
-var o = new Object
+
+var o = new A
+intrinsic::print(o.y,"\n")
+intrinsic::print(A.prototype.z,"\n")
+intrinsic::print(o.z,"\n")
+
 
 //Object.prototype.u = 40
 //intrinsic::print(Object.y)

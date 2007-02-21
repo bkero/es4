@@ -4108,8 +4108,8 @@ and directivesPrefix (ts,t:tau) : (token list * Ast.DIRECTIVES) =
                 (RightBrace | Eof) :: _ => (ts,{pragmas=[],defns=[],stmts=[],fixtures=NONE,inits=NONE})
               | _ => 
                     let
-                        val (ts1,{pragmas=p1,defns=d1,stmts=s1,...}) = directive (ts,t,FULL)
-                        val (ts2,{pragmas=p2,defns=d2,stmts=s2,...}) = directivesPrefix' (ts1,t)
+                        val (ts1,{pragmas=p1,defns=d1,stmts=s1,inits=i1,...}) = directive (ts,t,FULL)
+                        val (ts2,{pragmas=p2,defns=d2,stmts=s2,inits=i2,...}) = directivesPrefix' (ts1,t)
                     in
                         trace(["<< directivesPrefix' with next=", tokenname(hd ts2)]);
                         (ts2,{pragmas=(p1@p2),defns=(d1@d2),stmts=(s1@s2),fixtures=NONE,inits=NONE})
@@ -4607,19 +4607,11 @@ and variableDefinition (ts,ns:Ast.EXPR,prototype,static,b,t) : (token list * Ast
         val (ts1,nd1) = variableDefinitionKind(ts)
         val (ts2,{b,i}) = variableBindingList (ts1,ALLOWLIST,b)
 
-        (* Here we decide if the initailisation happens at the point of the original
-           statement, or in a separate initialiser. Instance variables are the only
-           ones whose initialiser get hoisted into the inits list *)
-
-        val (inits,stmts) = 
-                if (t=CLASS andalso (not (prototype orelse static orelse 
-                                                    (nd1=Ast.LetVar orelse nd1=Ast.LetConst))))
-                then (SOME [Ast.InitStmt {kind=nd1,ns=ns,prototype=prototype,static=static,inits=i}],[]) 
-                else (NONE,[Ast.InitStmt {kind=nd1,ns=ns,prototype=prototype,static=static,inits=i}])
+        val stmts = [Ast.InitStmt {kind=nd1,ns=ns,prototype=prototype,static=static,inits=i}]
     in
         (ts2,{pragmas=[],
               defns=[Ast.VariableDefn {kind=nd1,bindings=b,ns=ns,prototype=prototype,static=static}],
-              stmts=stmts,fixtures=NONE,inits=inits})
+              stmts=stmts,fixtures=NONE,inits=NONE})
     end
 
 and variableDefinitionKind (ts) =
@@ -5204,7 +5196,7 @@ and classDefinition (ts,attrs) =
                       | Ast.NamespaceDefn _ => false
                       | _ => LogErr.defnError ["illegal definition type in class"]
 
-                val (Ast.Block {stmts,defns,...}) = nd3
+                val (Ast.Block {stmts,defns,inits,...}) = nd3
                 val letDefns = List.filter isLet defns
             in
                 (ts3,{pragmas=[],
@@ -5215,7 +5207,7 @@ and classDefinition (ts,attrs) =
                                  extends=NONE,  (* filled in by definer *)
                                  fixtures=NONE,
                                  block=Ast.Block {stmts=stmts,
-                                            inits=NONE,
+                                            inits=inits,
                                             defns=letDefns,
                                             fixtures=NONE,
                                             pragmas=[]}}],

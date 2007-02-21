@@ -145,7 +145,8 @@ datatype PRAGMA =
 
      and CLS =
          Cls of
-           { extends: NAME option,
+           { name: NAME,
+             extends: NAME option,
              implements: NAME list,
              classFixtures: FIXTURES,
              instanceFixtures: FIXTURES,
@@ -425,7 +426,7 @@ withtype FIELD =
              bindings : VAR_BINDING list }
 
      and FIXTURES = (NAME * FIXTURE) list
-     and INITS    = STMT list   (* FIXME: (NAME * EXPR) list *)
+     and INITS    = (NAME * EXPR) list
 
      and NAMESPACE_DEFN = 
            { ident: IDENT,
