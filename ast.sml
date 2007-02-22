@@ -152,8 +152,8 @@ datatype PRAGMA =
              instanceFixtures: FIXTURES,
              instanceInits: INITS,
              constructor: CTOR option,
-             classType: TYPE_EXPR,
-             instanceType: TYPE_EXPR }
+             classType: TYPE_EXPR,  (* ObjectType *)
+             instanceType: TYPE_EXPR } (* InstanceType *)
 
      and CTOR =
          Ctor of
@@ -202,9 +202,13 @@ datatype PRAGMA =
          SpecialType of SPECIAL_TY
        | UnionType of TYPE_EXPR list
        | ArrayType of TYPE_EXPR list
-       | NominalType of 
-           { ident: IDENT_EXPR }
-       | FunctionType of FUNC_SIG
+       | TypeName of IDENT_EXPR
+       | FunctionType of 
+           { typeParams: IDENT list,
+             params: TYPE_EXPR list,
+             result: TYPE_EXPR,
+             thisType: TYPE_EXPR option,
+             hasRest: bool }
        | ObjectType of FIELD_TYPE list
        | AppType of 
            { base: TYPE_EXPR,
@@ -212,10 +216,14 @@ datatype PRAGMA =
        | NullableType of 
            { expr:TYPE_EXPR,
              nullable:bool }
+       | InstanceType of
+           { name: NAME, 
+             typeParams: IDENT list, 
+             ty: TYPE_EXPR }
 
      and STMT =
          EmptyStmt
-       | ExprStmt of EXPR list
+       | ExprStmt of EXPR
        | InitStmt of (* turned into ExprStmt by definer *)
            { kind: VAR_DEFN_TAG,
              ns: EXPR,
@@ -234,22 +242,22 @@ datatype PRAGMA =
              block: BLOCK }
        | ForEachStmt of FOR_ENUM_STMT
        | ForInStmt of FOR_ENUM_STMT
-       | ThrowStmt of EXPR list
-       | ReturnStmt of EXPR list
+       | ThrowStmt of EXPR
+       | ReturnStmt of EXPR
        | BreakStmt of IDENT option
        | ContinueStmt of IDENT option
        | BlockStmt of BLOCK
        | LabeledStmt of (IDENT * STMT)
        | LetStmt of ((VAR_BINDING list) * STMT)
-       | SuperStmt of EXPR list
+       | SuperStmt of EXPR
        | WhileStmt of WHILE_STMT
        | DoWhileStmt of WHILE_STMT
        | ForStmt of
            { defns: VAR_BINDING list,
              fixtures: FIXTURES option,
-             init: EXPR list,
-             cond: EXPR list,
-             update: EXPR list,
+             init: EXPR,
+             cond: EXPR,
+             update: EXPR,
              contLabel: IDENT option,
              body: STMT }
        | IfStmt of 
@@ -257,7 +265,7 @@ datatype PRAGMA =
              thn: STMT,
              els: STMT }
        | WithStmt of 
-           { obj: EXPR list,
+           { obj: EXPR,
              ty: TYPE_EXPR,
              body: STMT }
        | TryStmt of 
@@ -269,10 +277,10 @@ datatype PRAGMA =
              finally: BLOCK option }
 
        | SwitchStmt of 
-           { cond: EXPR list,
+           { cond: EXPR,
              cases: CASE list }
        | SwitchTypeStmt of 
-           { cond: EXPR list, 
+           { cond: EXPR, 
              ty: TYPE_EXPR,
              cases: TYPE_CASE list }
        | Dxns of 
@@ -285,7 +293,7 @@ datatype PRAGMA =
        | UnaryExpr of (UNOP * EXPR)
        | TypeExpr of TYPE_EXPR
        | ThisExpr
-       | YieldExpr of EXPR list option
+       | YieldExpr of EXPR option
        | SuperExpr of EXPR option
        | LiteralExpr of LITERAL
        | CallExpr of 
@@ -296,7 +304,7 @@ datatype PRAGMA =
              actuals: TYPE_EXPR list}
        | LetExpr of 
            { defs: VAR_BINDING list,                      
-             body: EXPR list,
+             body: EXPR,
              fixtures: FIXTURES option }
        | NewExpr of 
            { obj: EXPR,
@@ -309,7 +317,7 @@ datatype PRAGMA =
        | KillTemp of int
        | GetTemp of int
        | ListExpr of EXPR list
-       | SliceExpr of (EXPR list * EXPR list * EXPR list)
+       | SliceExpr of (EXPR * EXPR * EXPR)
 
      and IDENT_EXPR =
          QualifiedIdentifier of 
@@ -459,7 +467,7 @@ withtype FIELD =
 
      and FOR_ENUM_STMT =
            { ptrn: PATTERN option,
-             obj: EXPR list,
+             obj: EXPR,
              defns: VAR_BINDING list,
              fixtures: FIXTURES option,
              contLabel: IDENT option,

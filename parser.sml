@@ -394,7 +394,7 @@ and parenListExpression (ts) : (token list * Ast.EXPR) =
             in case ts1 of
                 RightParen :: _ => 
                     (trace(["<< parenListExpression with next=",tokenname(hd(ts1))]);
-                    (tl ts1,Ast.ListExpr nd1))
+                    (tl ts1,nd1))
               | _ => raise ParseError
             end
       | _ => raise ParseError
@@ -1444,11 +1444,10 @@ and brackets (ts) : (token list * Ast.EXPR) =
                     let
                         val (ts2,nd2) = listExpression (ts'',ALLOWIN)
                     in case ts2 of
-                        RightBracket :: ts'' => (ts'',Ast.SliceExpr (nd1,nd2,[])) 
-                            (* fixme: need an ast for slice *)
+                        RightBracket :: ts'' => (ts'',Ast.SliceExpr (nd1,nd2,Ast.ListExpr [])) 
                       | _ => raise ParseError
                     end
-              | RightBracket :: ts'' => (ts'',Ast.ListExpr nd1) 
+              | RightBracket :: ts'' => (ts'',nd1) 
               | _ => raise ParseError
             end
       | _ => raise ParseError
@@ -2328,21 +2327,21 @@ and assignmentExpression (ts,a,b) : (token list * Ast.EXPR) =
         , AssignmentExpression(b) ListExpressionPrime(b)
 *)
 
-and listExpression (ts,b) : (token list * Ast.EXPR list) = 
+and listExpression (ts,b) : (token list * Ast.EXPR) = 
     let
         val _ =    trace([">> listExpression with next=",tokenname(hd ts)])
-        fun listExpression' (ts,b) =
+        fun listExpression' (ts,b) : (token list * Ast.EXPR list) =
             let
                 val _ =    trace([">> listExpression' with next=",tokenname(hd ts)])
             in case ts of
                 Comma :: _ =>
                     let
                         val (ts1,nd1) = assignmentExpression(tl ts,ALLOWLIST,b)
-                           val (ts2,nd2) = listExpression'(ts1,b)
-                      in
+                        val (ts2,nd2) = listExpression'(ts1,b)
+                    in
                         (trace(["<< listExpression' with next=",tokenname(hd(ts2))]);
-                         (ts2, nd1 :: nd2))
-                      end
+                        (ts2, nd1 :: nd2))
+                    end
               | _ => 
                     (trace(["<< listExpression' with next=",tokenname(hd(ts))]);
                     (ts, []))
@@ -2351,7 +2350,7 @@ and listExpression (ts,b) : (token list * Ast.EXPR list) =
         val (ts2,nd2) = listExpression'(ts1,b)
     in
         trace(["<< listExpression with next=",tokenname(hd(ts2))]);
-        (ts2, nd1 :: nd2)
+        (ts2, Ast.ListExpr (nd1 :: nd2))
     end
 
 (*
@@ -3216,7 +3215,7 @@ and superStatement (ts) : (token list * Ast.STMT) =
             let
                 val (ts1,nd1) = arguments (tl ts)
             in
-                (ts1,Ast.SuperStmt nd1)
+                (ts1,Ast.SuperStmt (Ast.ListExpr nd1))
             end
       | _ => raise ParseError
     end
@@ -3275,12 +3274,12 @@ and switchStatement (ts) : (token list * Ast.STMT) =
       | Switch :: _ =>
             let
                 val (ts1,nd1) = parenListExpression (tl ts)
-            in case (ts1,nd1) of
-                (LeftBrace :: _, Ast.ListExpr cond) =>
+            in case ts1 of
+                (LeftBrace :: _) =>
                     let
                         val (ts2,nd2) = caseElements (tl ts1)
                     in case ts2 of
-                        RightBrace :: _ => (tl ts2,Ast.SwitchStmt{cond=cond,cases=nd2})
+                        RightBrace :: _ => (tl ts2,Ast.SwitchStmt{cond=nd1,cases=nd2})
                       | _ => raise ParseError
                     end
               | _ => raise ParseError
@@ -3365,7 +3364,7 @@ and caseElementsPrefix (ts,has_default) : (token list * Ast.CASE list) =
             end
     end
 
-and caseLabel (ts,has_default) : (token list * Ast.EXPR list option) =
+and caseLabel (ts,has_default) : (token list * Ast.EXPR option) =
     let val _ = trace([">> caseLabel with next=", tokenname(hd ts)])
     in case (ts,has_default) of
         (Case :: _,_) =>
@@ -3757,7 +3756,7 @@ and forInitialiser (ts) : (token list * Ast.BINDINGS) =
             end
     end
 
-and optionalExpression (ts) : (token list * Ast.EXPR list) =
+and optionalExpression (ts) : (token list * Ast.EXPR) =
     let val _ = trace([">> optionalExpression with next=", tokenname(hd ts)])
     in case ts of
         SemiColon :: _ =>
@@ -3929,10 +3928,10 @@ and returnStatement ts =
     let
     in case ts of
         Return :: (SemiColon | RightBrace) :: _ => 
-            (tl ts,Ast.ReturnStmt [])
+            (tl ts,Ast.ReturnStmt (Ast.ListExpr []))
       | Return :: _ =>
             if newline(tl ts) then 
-                (tl ts,Ast.ReturnStmt [])
+                (tl ts,Ast.ReturnStmt (Ast.ListExpr []))
             else 
                 let
                     val (ts1,nd1) = listExpression(tl ts, ALLOWIN)
@@ -5048,7 +5047,7 @@ and constructorSignature (ts) =
                                             thisType=SOME (needType(nd2,NONE)),
                                             params=(#b nd3),
                                             returnType=(Ast.SpecialType Ast.VoidType),
-                                            inits=[Ast.InitStmt {kind=Ast.Var,ns=Ast.LiteralExpr (Ast.LiteralNamespace (Ast.Internal "")),prototype=false,static=false,inits=(#i nd3)},Ast.ExprStmt nd4],
+                                            inits=[Ast.InitStmt {kind=Ast.Var,ns=Ast.LiteralExpr (Ast.LiteralNamespace (Ast.Internal "")),prototype=false,static=false,inits=(#i nd3)},Ast.ExprStmt (Ast.ListExpr nd4)],
                                             hasRest=false })) (* do we need this *)
                                end
                          | _ => raise ParseError
@@ -5068,7 +5067,7 @@ and constructorSignature (ts) =
                                 { typeParams=nd1,
                                     params=(#b nd2),
                                     returnType=(Ast.SpecialType Ast.VoidType),
-                                    inits=[Ast.InitStmt {kind=Ast.Var,ns=Ast.LiteralExpr (Ast.LiteralNamespace (Ast.Internal "")),prototype=false,static=false,inits=(#i nd2)},Ast.ExprStmt nd3],
+                                    inits=[Ast.InitStmt {kind=Ast.Var,ns=Ast.LiteralExpr (Ast.LiteralNamespace (Ast.Internal "")),prototype=false,static=false,inits=(#i nd2)},Ast.ExprStmt (Ast.ListExpr nd3)],
                                     thisType=NONE,
                                     hasRest=false })) (* do we need this *)
                        end

@@ -1011,8 +1011,9 @@ and constructClassInstance (classObj:Mach.OBJ)
                 in
                     evalFixtures classScope thisObj instanceFixtures;
                     evalInits classScope thisObj instanceInits;
-                    case constructor of 
-                        NONE => (checkAllPropertiesInitialized thisObj; instance)  (* TODO: run base class inits *)
+                    case constructor of
+                        NONE => (checkAllPropertiesInitialized thisObj; instance)
+                                    (* TODO: run base class inits *)
 
 (* FIXME: needs resuscitation
                       | SOME ({native, ns,

@@ -1,16 +1,21 @@
+function foo([a,b,c]) {}
+
+/*
+namespace ns = "http"
 class Object {}
-class A {
+ns class A {
   static var x = 10
   var y = x
   prototype var z = x
 }
+class B extends ns::A {}
 
-var o = new A
+var o = new ns::A
 intrinsic::print(o.y,"\n")
-intrinsic::print(A.prototype.z,"\n")
+intrinsic::print(ns::A.prototype.z,"\n")
 intrinsic::print(o.z,"\n")
 
-
+*/
 //Object.prototype.u = 40
 //intrinsic::print(Object.y)
 //intrinsic::print(Object.prototype.u)
