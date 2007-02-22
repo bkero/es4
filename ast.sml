@@ -350,7 +350,7 @@ datatype PRAGMA =
              ty: TYPE_EXPR option }
        | LiteralFunction of
            { func: FUNC,
-             ty: TYPE_EXPR option }  (* FunctionType *)
+             ty: TYPE_EXPR }  (* FunctionType *)
        | LiteralRegExp of
            { str: USTRING }
 
@@ -491,8 +491,8 @@ withtype FIELD =
            { b : VAR_BINDING list,
              i : EXPR list }
 
-     and CASE = (* Perhaps we can collapse this to EXPR list *)
-           { label : EXPR list option, 
+     and CASE =
+           { label : EXPR option, 
              body : BLOCK }
 
      and TYPE_CASE =
