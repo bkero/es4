@@ -13,15 +13,7 @@ type NAME = Ast.NAME
 type MULTINAME = Ast.MULTINAME
 type BINDINGS = Ast.BINDINGS
 type FIXTURES = Ast.FIXTURES
-
-datatype SCOPE_TAG = 
-         VarGlobal       (* Variable object created before execution starts *)
-       | VarClass        (* Variable object for class objects               *)
-       | VarInstance     (* Variable object for class instances             *)
-       | VarInitializer  (* Variable object created on entry an initializer *)
-       | VarActivation   (* Variable object created on entry to a function  *)
-       | With            (* Created by 'with' bindings                      *)
-       | Let             (* Created by 'catch', 'let', etc.                 *)
+type CLS = Ast.CLS
 
 datatype VAL = Object of OBJ
              | Null
@@ -54,28 +46,6 @@ datatype VAL = Object of OBJ
                | Type of TYPE
                | HostFunction of (VAL list -> VAL)
                     
-     and CLS = 
-         Cls of { ty: TYPE,
-                  (* FIXME: revive these slots as needed; disabled for now *)
-    (*
-                  isSealed: bool,
-                  scope: SCOPE,
-                     base: CLS option,
-                  interfaces: IFACE list,
-                  
-                  call: FUN_CLOSURE option,
-     *)
-                  definition: Ast.CLASS_DEFN
-    (*
-                  constructor: FUN_CLOSURE option,
-                  
-                  instanceTy: TYPE,
-                  instancePrototype: VAL,
-                  
-                  initialized: bool ref
-     *)
-                }
-
      and IFACE = 
          Iface of { ty: TYPE,
                     bases: IFACE list,
@@ -83,10 +53,12 @@ datatype VAL = Object of OBJ
                     isInitialized: bool ref }
                    
      and SCOPE = 
-         Scope of { tag: SCOPE_TAG, 
-                    object: OBJ,
+         Scope of { object: OBJ,
                     parent: SCOPE option,
-                    temps: VAL list ref }
+                    temps: TEMPS }
+
+     and TEMP_STATE = UninitTemp
+                    | ValTemp of VAL
                         
      and PROP_STATE = TypeVarProp
                     | TypeProp
@@ -121,6 +93,8 @@ withtype FUN_CLOSURE =
                    dontEnum: bool,
                    readOnly: bool,
                    isFixed: bool}
+
+     and TEMPS = (TYPE * TEMP_STATE) list ref
 
      and PROP = { ty: TYPE,
                   state: PROP_STATE,                  
@@ -191,7 +165,7 @@ fun hasProp (b:PROP_BINDINGS)
 
 (* Standard runtime objects and functions. *)
 
-val internalPrototypeName:NAME = { ns = (Ast.Internal ""), id = "prototype" }
+val publicPrototypeName:NAME = { ns = (Ast.Public ""), id = "prototype" }
 val internalConstructorName:NAME = { ns = (Ast.Internal ""), id = "constructor" }
 val internalObjectName:NAME = { ns = (Ast.Internal ""), id = "Object" }
                                             
@@ -225,9 +199,9 @@ fun intrinsicName id = Ast.QualifiedIdentifier { qual = intrinsicNsExpr, ident =
 
 (* Define some global intrinsic nominal types. *)
 
-val typeType = Ast.NominalType { ident = (intrinsicName "Type") }
-val namespaceType = Ast.NominalType { ident = (intrinsicName "Namespace") }
-val classType = Ast.NominalType { ident = intrinsicName "Class" }
+val typeType = Ast.TypeName (intrinsicName "Type")
+val namespaceType = Ast.TypeName (intrinsicName "Namespace")
+val classType = Ast.TypeName (intrinsicName "Class")
 
 
 fun newObj (t:VAL_TAG) 
@@ -278,18 +252,18 @@ fun newNamespace (n:NS)
 
 
 fun newClass (e:SCOPE) 
-             (c:Ast.CLASS_DEFN) 
+             (cls:CLS) 
     : VAL =
     let
-        val cls = Cls { ty = classType,
-                        definition = c }
         val closure = { cls = cls,
-                        allTypesBound = ((length (#params c)) = 0),
+                        (* FIXME: are all types bound? *)
+                        allTypesBound = true,
                         env = e }
+        val obj = newObject intrinsicClassBaseTag Null (SOME (Class closure))
     in
-        newObject intrinsicClassBaseTag Null (SOME (Class closure))
+        obj
     end
-
+        
 
 fun newFunc (e:SCOPE) 
             (f:Ast.FUNC) 
@@ -310,16 +284,6 @@ fun newFunc (e:SCOPE)
 
 val (objectType:TYPE) = Ast.ObjectType []
 
-val (defaultAttrs:Ast.ATTRIBUTES) = 
-    { ns = Ast.LiteralExpr (Ast.LiteralNamespace (Ast.Public "")),
-                     override = false,
-                     static = false,
-                     final = false,
-                     dynamic = true,
-                     prototype = false,
-                     native = false,
-                     rest = false }
-
 val (emptyBlock:Ast.BLOCK) = Ast.Block { pragmas = [],
                                          defns = [],
                                          stmts = [],
@@ -329,8 +293,7 @@ val (emptyBlock:Ast.BLOCK) = Ast.Block { pragmas = [],
 val (globalObject:OBJ) = newObj intrinsicObjectBaseTag Null NONE
 
 val (globalScope:SCOPE) = 
-    Scope { tag = VarGlobal,
-            object = globalObject,
+    Scope { object = globalObject,
             parent = NONE,
             temps = ref [] }
 
@@ -357,8 +320,8 @@ fun hasValue (obj:OBJ)
                 | _ => false)
 
 
-fun getValue (obj:OBJ) 
-             (name:NAME) 
+fun getValue (obj:OBJ, 
+              name:NAME) 
     : VAL = 
     case obj of 
         Obj {props, ...} => 
@@ -411,7 +374,26 @@ fun defValue (base:OBJ)
                 addProp props name newProp
             end
 
-
+fun defTemp (temps:TEMPS)
+            (n:int)
+            (v:VAL) 
+    : unit = 
+    let
+        fun replaceNth k [] = LogErr.machError ["temporary-definition error"]
+          | replaceNth k (x::xs) =
+            if k = 0 
+            then (case x of 
+                      (t, UninitTemp) => 
+                      ((* FIXME: put typecheck here *)
+                       (t, ValTemp v) :: xs)
+                    | (_, _) => LogErr.machError ["re-defining temporary"])
+            else x :: (replaceNth (k-1) xs)
+    in
+        if n >= (length (!temps))
+        then LogErr.machError ["defining out-of-bounds temporary"]
+        else temps := replaceNth n (!temps)
+    end
+             
 fun setValue (base:OBJ) 
              (name:NAME) 
              (v:VAL) 
@@ -486,7 +468,7 @@ fun getMagic (v:VAL)
 
 fun getGlobalVal (n:NAME) 
     : VAL = 
-    getValue globalObject n
+    getValue (globalObject, n)
 
 
 fun valToCls (v:VAL) 

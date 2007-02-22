@@ -20,11 +20,11 @@ package
         public static const MIN_VALUE : int = -0x80000000;
 
         /* E262-4 draft */
-        intrinsic static function to(x : Numeric) : int
+        function to int(x : Numeric)
             x is int ? x : ToInt(x);
 
         /* E262-4 draft: The int Constructor Called as a Function */
-        intrinsic static function invoke(value)
+        function call int(value)
             value === undefined ? 0i : ToInt(value);
 
         /* E262-4 draft: The int constructor */

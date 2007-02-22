@@ -26,6 +26,11 @@ fun getScopeObj (scope:Mach.SCOPE)
     case scope of 
         Mach.Scope { object, ...} => object
 
+fun getScopeObj (scope:Mach.SCOPE) 
+    : Mach.OBJ = 
+    case scope of 
+        Mach.Scope { object, ...} => object
+
 
 fun needNamespace (v:Mach.VAL) 
     : Ast.NAMESPACE = 
@@ -55,10 +60,11 @@ type REF = (Mach.OBJ * Mach.NAME)
 
 (* FIXME: possibly move this to mach.sml *) 
 
-fun allocObjFixtures (scope:Mach.SCOPE) 
-                     (obj:Mach.OBJ) 
-                     (f:Ast.FIXTURES) 
-    : unit = 
+fun allocFixtures (scope:Mach.SCOPE) 
+                  (obj:Mach.OBJ) 
+                  (temps:Mach.TEMPS)
+                  (f:Ast.FIXTURES) 
+    : unit =
     case obj of 
         Mach.Obj { props, ...} => 
         let 
@@ -99,7 +105,7 @@ fun allocObjFixtures (scope:Mach.SCOPE)
                   | Ast.ArrayType _ => 
                     Mach.ValProp (Mach.Null)
 
-                  | Ast.NominalType { ident, ... } => 
+                  | Ast.TypeName ident => 
                     (* FIXME: resolve nominal type to class or interface, check to see if 
                      * it is nullable, *then* decide whether to set to null or uninit. *)
                     Mach.ValProp (Mach.Null)
@@ -120,86 +126,109 @@ fun allocObjFixtures (scope:Mach.SCOPE)
                     Mach.UninitProp
 
             fun allocFixture (n, f) = 
-                let 
-                    fun allocProp state p = 
-                        if Mach.hasProp props n
-                        then LogErr.defnError 
-                                 ["allocating duplicate property name: ", 
-                                  LogErr.name n]
-                        else (LogErr.trace ["allocating ", state, " property ", 
-                                            LogErr.name n]; 
-                              Mach.addProp props n p)
-                in 
-                    case f of 
-                        Ast.TypeFixture te => 
-                        allocProp "type" 
-                                  { ty = te,
-                                    state = Mach.TypeProp,                                   
-                                    attrs = { dontDelete = true,
-                                              dontEnum = true,
-                                              readOnly = true,
-                                              isFixed = true } }
-                        
-                      | Ast.ValFixture { ty, readOnly, ... } => 
-                        allocProp "value" 
-                                  { ty = ty,
-                                    state = valAllocState ty,
-                                    attrs = { dontDelete = true,
-                                              dontEnum = false,
-                                              readOnly = readOnly,
-                                              isFixed = true } }
-                        
-                      | Ast.VirtualValFixture { ty, setter, ... } => 
-                        allocProp "virtual value" 
-                                  { ty = ty,
-                                    state = Mach.UninitProp,
-                                    attrs = { dontDelete = true,
-                                              dontEnum = false,
-                                              readOnly = (case setter of NONE => true | _ => false),
-                                              isFixed = true } }
-                        
-(* FIXME                      | Ast.ClassFixture cd => 
-                        allocProp "class"
-                                  { ty = Mach.classType,
-                                    state = Mach.ValProp (Mach.newClass scope cd),
-                                    attrs = { dontDelete = true,
-                                              dontEnum = true,
-                                              readOnly = true,
-                                              isFixed = true } }
-*)                        
-                      | Ast.NamespaceFixture ns => 
-                        allocProp "namespace" 
-                                  { ty = Mach.namespaceType,
-                                    state = Mach.ValProp (Mach.newNamespace ns),
-                                    attrs = { dontDelete = true,
-                                              dontEnum = true,
-                                              readOnly = true,
-                                              isFixed = true } }
-                        
-                      | Ast.TypeVarFixture =>
-                        allocProp "type variable"
-                                  { ty = Mach.typeType,
-                                    state = Mach.TypeVarProp,
-                                    attrs = { dontDelete = true,
-                                              dontEnum = true,
-                                              readOnly = true,
-                                              isFixed = true } }
-                end
+                case n of 
+                    Ast.TempName t => 
+                    (case f of 
+                         Ast.ValFixture { ty, ... } => 
+                         (if t = (List.length (!temps))
+                          then temps := (ty, Mach.UninitTemp)::(!temps) 
+                          else LogErr.evalError ["temp count out of sync"])
+                       | _ => LogErr.evalError ["allocating non-value temporary"])
+                  | Ast.PropName pn => 
+                    let 
+                        fun allocProp state p = 
+                            if Mach.hasProp props pn
+                            then LogErr.evalError 
+                                     ["allocating duplicate property name: ", 
+                                      LogErr.name pn]
+                            else (LogErr.trace ["allocating ", state, " property ", 
+                                                LogErr.name pn]; 
+                                  Mach.addProp props pn p)                            
+                    in 
+                        case f of 
+                            Ast.TypeFixture te => 
+                            allocProp "type" 
+                                      { ty = te,
+                                        state = Mach.TypeProp,                                   
+                                        attrs = { dontDelete = true,
+                                                  dontEnum = true,
+                                                  readOnly = true,
+                                                  isFixed = true } }
+                            
+                          | Ast.ValFixture { ty, readOnly, ... } => 
+                            allocProp "value" 
+                                      { ty = ty,
+                                        state = valAllocState ty,
+                                        attrs = { dontDelete = true,
+                                                  dontEnum = false,
+                                                  readOnly = readOnly,
+                                                  isFixed = true } }
+                            
+                          | Ast.VirtualValFixture { ty, setter, ... } => 
+                            allocProp "virtual value" 
+                                      { ty = ty,
+                                        state = Mach.UninitProp,
+                                        attrs = { dontDelete = true,
+                                                  dontEnum = false,
+                                                  readOnly = (case setter of NONE => true | _ => false),
+                                                  isFixed = true } }
+                            
+                          | Ast.ClassFixture cls => 
+                            allocProp "class"
+                                      { ty = Mach.classType,
+                                        state = Mach.ValProp (Mach.newClass scope cls),
+                                        attrs = { dontDelete = true,
+                                                  dontEnum = true,
+                                                  readOnly = true,
+                                                  isFixed = true } }
+                            
+                          | Ast.NamespaceFixture ns => 
+                            allocProp "namespace" 
+                                      { ty = Mach.namespaceType,
+                                        state = Mach.ValProp (Mach.newNamespace ns),
+                                        attrs = { dontDelete = true,
+                                                  dontEnum = true,
+                                                  readOnly = true,
+                                                  isFixed = true } }
+                            
+                          | Ast.TypeVarFixture =>
+                            allocProp "type variable"
+                                      { ty = Mach.typeType,
+                                        state = Mach.TypeVarProp,
+                                        attrs = { dontDelete = true,
+                                                  dontEnum = true,
+                                                  readOnly = true,
+                                                  isFixed = true } }
+                    end
         in                    
             List.app allocFixture f
         end
-        
+
 fun extendScope (p:Mach.SCOPE) 
-                (t:Mach.SCOPE_TAG) 
                 (ob:Mach.OBJ) 
     : Mach.SCOPE = 
-    Mach.Scope { parent=(SOME p), tag=t, object=ob, temps=ref [] }
+    Mach.Scope { parent=(SOME p), object=ob, temps=ref [] }
 
+    
+fun allocObjFixtures (scope:Mach.SCOPE) 
+                     (obj:Mach.OBJ) 
+                     (f:Ast.FIXTURES) 
+    : unit = 
+    let 
+        val (temps:Mach.TEMPS) = ref [] 
+    in
+        allocFixtures scope obj temps;
+        if not ((length (!temps)) = 0)
+        then LogErr.evalError ["allocated temporaries in non-scope object"]
+        else ()
+    end
     
 fun allocScopeFixtures (scope:Mach.SCOPE) 
                        (f:Ast.FIXTURES) 
     : unit = 
-        allocObjFixtures scope (getScopeObj scope) f
+    case scope of
+        Mach.Scope { object, temps, ...} => 
+        allocFixtures scope object temps f
 
     
 fun evalExpr (scope:Mach.SCOPE) 
@@ -207,18 +236,16 @@ fun evalExpr (scope:Mach.SCOPE)
     : Mach.VAL =
     case expr of
         Ast.LiteralExpr lit => 
-        evalLiteralExpr lit
+        evalLiteralExpr scope lit
         
       | Ast.ListExpr es =>
         evalListExpr scope es
         
       | Ast.LexicalRef { ident } =>
-        (case evalLhsExpr scope expr of
-             (obj, name) => Mach.getValue obj name)
-        
-      | Ast.ObjectRef { base, ident } =>
-        (case evalLhsExpr scope expr of
-             (obj, name) => Mach.getValue obj name)
+            Mach.getValue (evalRefExpr scope expr true)
+
+      | Ast.ObjectRef { base, ident } => 
+            Mach.getValue (evalRefExpr scope expr false)
         
       | Ast.LetExpr {defs, body, fixtures} =>
         evalLetExpr scope (valOf fixtures) defs body
@@ -242,10 +269,10 @@ fun evalExpr (scope:Mach.SCOPE)
         let
             val args = map (evalExpr scope) actuals
             fun withLhs e = 
-                case evalLhsExpr scope e of 
+                case evalRefExpr scope e true of 
                     (obj, name) => evalCallExpr 
                                        (SOME obj) 
-                                       (needObj (Mach.getValue obj name)) 
+                                       (needObj (Mach.getValue (obj, name))) 
                                        args
         in
             case func of 
@@ -261,42 +288,11 @@ fun evalExpr (scope:Mach.SCOPE)
             evalNewExpr (needObj (evalExpr scope obj)) args
         end
         
-      | Ast.FunExpr func => 
-        let
-        in
-            Mach.newFunc scope func
-        end
-      | Ast.AllocTemp (n,e) => 
-        let
-            val Mach.Scope frame = scope
-            val v = evalExpr scope e
-            val temps = !(#temps frame)
-        in
-            if n = (List.length temps)
-                then (#temps frame) := v::(!(#temps frame)) 
-                else LogErr.evalError ["temp count out of sync"];
-            v
-        end
-      | Ast.KillTemp n => 
-        let
-            val Mach.Scope frame = scope
-            val temps = !(#temps frame)
-        in
-            if n < (List.length temps)
-                then (#temps frame) := tl (!(#temps frame))
-                else LogErr.evalError ["temp count out of sync"];
-            Mach.Undef
-        end
-      | Ast.GetTemp n =>
-        let
-            val Mach.Scope frame = scope
-        in
-            List.nth (!(#temps frame),n)
-        end
       | _ => LogErr.unimplError ["unhandled expression type"]
 
 
-and evalLiteralExpr (lit:Ast.LITERAL) 
+and evalLiteralExpr (scope:Mach.SCOPE) 
+                    (lit:Ast.LITERAL) 
     : Mach.VAL = 
     case lit of 
         Ast.LiteralNull => Mach.Null
@@ -305,6 +301,7 @@ and evalLiteralExpr (lit:Ast.LITERAL)
       | Ast.LiteralBoolean b => Mach.newBoolean b
       | Ast.LiteralString s => Mach.newString s
       | Ast.LiteralNamespace n => Mach.newNamespace n
+      | Ast.LiteralFunction { func, ... } => Mach.newFunc scope func
       | _ => LogErr.unimplError ["unhandled literal type"]
 
 
@@ -327,8 +324,8 @@ and constructObjectViaFunction (ctorObj:Mach.OBJ)
             (* FIXME: the default prototype should be the initial Object prototype, 
              * as per ES3 13.2.2. *)
             val (proto:Mach.VAL) = 
-                if Mach.hasProp props Mach.internalPrototypeName
-                then Mach.getValue ctorObj Mach.internalPrototypeName
+                if Mach.hasProp props Mach.publicPrototypeName
+                then Mach.getValue (ctorObj, Mach.publicPrototypeName)
                 else Mach.Null
             val (newObj:Mach.OBJ) = 
                 Mach.newObj Mach.intrinsicObjectBaseTag proto NONE
@@ -374,7 +371,7 @@ and evalCallExpr (thisObjOpt:Mach.OBJ option)
                     if Mach.hasValue fobj Mach.intrinsicInvokeName
                     then
                         let 
-                            val invokeFn = Mach.getValue fobj Mach.intrinsicInvokeName
+                            val invokeFn = Mach.getValue (fobj, Mach.intrinsicInvokeName)
                         in
                             evalCallExpr NONE (needObj invokeFn) (thisVal :: args)
                         end
@@ -390,7 +387,7 @@ and evalSetExpr (scope:Mach.SCOPE)
         fun modified obj name = 
             let 
                 fun modifyWith bop = 
-                    performBinop bop (Mach.getValue obj name) v
+                    performBinop bop (Mach.getValue (obj, name)) v
             in
                 case aop of 
                     Ast.Assign => v
@@ -411,7 +408,7 @@ and evalSetExpr (scope:Mach.SCOPE)
     in case pat of 
         Ast.SimplePattern expr => 
             let
-                val r = evalLhsExpr scope expr
+                val r = evalRefExpr scope expr false
             in
                 case r of (obj, name) => 
                       let 
@@ -425,17 +422,6 @@ and evalSetExpr (scope:Mach.SCOPE)
     end
 
 
-and evalLhsExpr (scope:Mach.SCOPE) 
-                (expr:Ast.EXPR) 
-    : REF = 
-    case expr of         
-        Ast.LexicalRef { ident } => 
-        evalRefExpr scope NONE ident
-      | Ast.ObjectRef { base, ident } => 
-        evalRefExpr scope (SOME (evalExpr scope base)) ident
-      | _ => LogErr.evalError ["need lexical or object-reference expression"]
-
-
 and evalUnaryOp (scope:Mach.SCOPE) 
                 (unop:Ast.UNOP) 
                 (expr:Ast.EXPR) 
@@ -443,10 +429,10 @@ and evalUnaryOp (scope:Mach.SCOPE)
     let
         fun crement f isPre = 
             let 
-                val r = evalLhsExpr scope expr
+                val r = evalRefExpr scope expr false
                 val n = case r of 
                             (obj, name) => 
-                            Mach.toNum (Mach.getValue obj name)
+                            Mach.toNum (Mach.getValue (obj, name))
                 val n' = Mach.newNumber (f (n, 1.0))
                 val n'' = if isPre
                           then n'
@@ -459,7 +445,7 @@ and evalUnaryOp (scope:Mach.SCOPE)
     in            
         case unop of 
             Ast.Delete => 
-            (case evalLhsExpr scope expr of
+            (case evalRefExpr scope expr false of
                  (Mach.Obj {props, ...}, name) => 
                  (Mach.delProp props name; Mach.newBoolean true))
             
@@ -548,6 +534,7 @@ and evalBinaryOp (scope:Mach.SCOPE)
         
       | _ => performBinop bop (evalExpr scope aexpr) (evalExpr scope bexpr)
 
+
 and evalCondExpr (scope:Mach.SCOPE) 
                  (cond:Ast.EXPR) 
                  (thn:Ast.EXPR) 
@@ -580,21 +567,43 @@ and evalIdentExpr (scope:Mach.SCOPE)
       | _ => LogErr.unimplError ["unimplemented identifier expression form"]
 
 
-and evalRefExpr (scope:Mach.SCOPE) 
-                (b:Mach.VAL option) 
-                (r:Ast.IDENT_EXPR) 
+and evalRefExpr (scope:Mach.SCOPE)
+                (expr:Ast.EXPR)
+                (errIfNotFound:bool)
     : REF =
+
     let 
-        val (multiname:Mach.MULTINAME) = evalIdentExpr scope r
-        val refOpt = (case b of 
+        fun makeRefNotFound (b:Mach.VAL option) (mname:Mach.MULTINAME) 
+            : REF =
+            let
+            in case (b,mname) of
+                (SOME (Mach.Object ob),{id,...}) =>
+                    (ob,{ns=Ast.Internal "",id=id})  (* FIXME: ns might be user settable default *)
+              | (NONE,{id,...}) => 
+                    (Mach.globalObject,{ns=Ast.Internal "",id=id})
+              | _ => LogErr.evalError ["ref expression messed up in refOf"]
+            end
+
+        val (base,ident) =
+            case expr of         
+                Ast.LexicalRef { ident } => (NONE,ident)
+              | Ast.ObjectRef { base, ident } => (SOME (evalExpr scope base), ident)
+              | _ => LogErr.evalError ["need lexical or object-reference expression"]
+
+        val (multiname:Mach.MULTINAME) = evalIdentExpr scope ident
+
+        val refOpt = (case base of 
                           SOME (Mach.Object ob) => 
-                          resolveOnObjAndPrototypes ob multiname
+                              resolveOnObjAndPrototypes ob multiname
                         | NONE => 
-                          resolveOnScopeChain scope multiname
+                              resolveOnScopeChain scope multiname
                         | _ => LogErr.evalError ["ref expression on non-object value"])
+
     in
         case refOpt of 
-            NONE => LogErr.evalError ["unresolved identifier expression"]
+            NONE => if errIfNotFound 
+                        then LogErr.evalError ["unresolved identifier expression",LogErr.multiname multiname]
+                        else makeRefNotFound base multiname
           | SOME r' => r'
     end
 
@@ -602,17 +611,18 @@ and evalRefExpr (scope:Mach.SCOPE)
 and evalLetExpr (scope:Mach.SCOPE) 
                 (fixtures:Ast.FIXTURES) 
                 (defs:Ast.VAR_BINDING list) 
-                (body:Ast.EXPR list) 
+                (body:Ast.EXPR) 
     : Mach.VAL = 
     let 
         val obj = Mach.newObj Mach.intrinsicObjectBaseTag Mach.Null NONE
-        val newScope = extendScope scope Mach.Let obj        
+        val newScope = extendScope scope obj        
     in
         allocScopeFixtures scope fixtures;
         (* todo: what do we use for a namespace here *)
         evalVarBindings scope (Ast.Internal "") defs; 
-        evalListExpr newScope body
+        evalExpr newScope body
     end
+
 
 and processVarDefn (scope:Mach.SCOPE)
                    (vd:Ast.VAR_DEFN)
@@ -691,6 +701,7 @@ and resolveOnScopeChain (scope:Mach.SCOPE)
 and resolveOnObjAndPrototypes (obj:Mach.OBJ) 
                               (mname:Mach.MULTINAME) 
     : REF option = 
+    (LogErr.trace ["resolveOnObjAndPrototypes: ", LogErr.multiname mname];
     case obj of 
         Mach.Obj ob => 
         case resolveOnObj obj mname of 
@@ -702,7 +713,7 @@ and resolveOnObjAndPrototypes (obj:Mach.OBJ)
                     Mach.Object ob => resolveOnObjAndPrototypes ob mname
                   | _ => NONE
             end
-          | result => result
+          | result => result)
 
 
 and resolveOnObj (obj:Mach.OBJ) 
@@ -779,7 +790,7 @@ and evalStmt (scope:Mach.SCOPE)
              (stmt:Ast.STMT) 
     : Mach.VAL = 
     case stmt of 
-        Ast.ExprStmt e => evalListExpr scope e
+        Ast.ExprStmt e => evalExpr scope e
       | Ast.IfStmt {cnd,thn,els} => evalIfStmt scope cnd thn els
       | Ast.WhileStmt w => evalWhileStmt scope w
       | Ast.ReturnStmt r => evalReturnStmt scope r
@@ -788,6 +799,7 @@ and evalStmt (scope:Mach.SCOPE)
       | Ast.ThrowStmt t => evalThrowStmt scope t
       | Ast.LabeledStmt (lab, s) => evalLabelStmt scope lab s
       | Ast.BlockStmt b => evalBlock scope b
+      | Ast.ClassBlock c => evalClassBlock scope c
       | Ast.EmptyStmt => Mach.Undef
       | _ => LogErr.unimplError ["unimplemented statement type"]
 
@@ -801,67 +813,7 @@ and findVal (scope:Mach.SCOPE)
     case resolveOnScopeChain scope mn of 
         NONE => LogErr.evalError ["unable to resolve multiname: ", 
                                   LogErr.multiname mn ]
-      | SOME (obj, name) => Mach.getValue obj name 
-            
-and evalClassDefn (scope:Mach.SCOPE) 
-                  (cd:Ast.CLASS_DEFN) 
-    : unit =
-    (* The class objects were installed into the scope during allocation,
-     * all we do here is build a prototype for this class and link up
-     * the implicit prototype chains.
-     *)
-    let 
-        val ns = needNamespace (evalExpr scope (#ns cd))
-        val currClassName = { ns = ns, id = (#ident cd) }
-        val _ = LogErr.trace ["evaluating class defn for ", 
-                              LogErr.name currClassName]
-        val currClassObj = needObj (findVal scope (multinameOf currClassName))
-        val baseProtoVal = 
-            case (#extends cd) of 
-                NONE => Mach.Null
-              | SOME ie => 
-                let
-                    val baseClassMname = evalIdentExpr scope ie
-                    val _ = LogErr.trace ["looking up base class ", 
-                                          LogErr.multiname baseClassMname]
-                in
-                    case findVal scope baseClassMname of 
-                        Mach.Object ob => 
-                        if Mach.hasOwnValue ob Mach.internalPrototypeName
-                        then Mach.getValue ob Mach.internalPrototypeName
-                        else Mach.Null
-                      | _ => LogErr.evalError ["base class resolved to non-object: ", 
-                                               LogErr.multiname baseClassMname]
-                end
-                
-        val _ = LogErr.trace ["constructing prototype"]
-        val newPrototype = Mach.newObj Mach.intrinsicObjectBaseTag baseProtoVal NONE
-        fun addProtoMethod (f:Ast.FUNC_DEFN) = 
-            let 
-                val ns = (#ns f)
-                val n = case f of 
-                            {func = Ast.Func { name = { ident, ... }, ... }, ... } => 
-                            { ns = needNamespace (evalExpr scope ns), 
-                              id = ident }
-                (* FIXME: 'scope' is not the correct environment for the method; we actually want to use
-                 * the scope containing the class statics, which should really be stored in 
-                 * the class closure, but currently isn't. *)
-                val fval = Mach.newFunc scope (#func f)
-            in
-                Mach.setValue newPrototype n fval
-            end
-            
-        fun addProtoVars (vd:Ast.VAR_DEFN) = 
-            processVarDefn scope vd (Mach.setValue newPrototype)
-    in
-(*
-        LogErr.trace ["filling in prototype"];
-        List.app addProtoMethod (#protoMethods cd);
-        List.app addProtoVars (#protoVars cd);
-*)
-        Mach.setValue currClassObj Mach.internalPrototypeName (Mach.Object newPrototype);
-        LogErr.trace ["finished defining class"]
-    end
+      | SOME (obj, name) => Mach.getValue (obj, name) 
 
 
 and evalDefn (scope:Mach.SCOPE) 
@@ -872,7 +824,7 @@ and evalDefn (scope:Mach.SCOPE)
       | Ast.VariableDefn {bindings,ns,...} => 
         evalVarBindings scope (needNamespace (evalExpr scope ns)) bindings
       | Ast.NamespaceDefn ns => () (* handled during allocation *)
-      | Ast.ClassDefn cd => evalClassDefn scope cd
+(*      | Ast.ClassDefn cd => evalClassDefn scope cd  *)
       | _ => LogErr.unimplError ["unimplemented definition type"]
 
 
@@ -910,7 +862,7 @@ and invokeFuncClosure (this:Mach.OBJ)
                 Ast.FunctionSignature { params, ... } => 
                 let
                     val (varObj:Mach.OBJ) = Mach.newSimpleObj NONE
-                    val (varScope:Mach.SCOPE) = extendScope env Mach.VarActivation varObj
+                    val (varScope:Mach.SCOPE) = extendScope env varObj
 
                     fun initArg v = 
                         let
@@ -923,22 +875,36 @@ and invokeFuncClosure (this:Mach.OBJ)
                      * Also this will mean changing to defVar rather than setVar, for 'this'. *)
                     val thisName = { id = "this", ns = Ast.Internal "" }
                     val thisVal = Mach.Object this
-                    fun initThis v = 
-                        let
-                        in
-                            Mach.defValue varObj thisName thisVal
-                        end
+                    fun initThis v = Mach.defValue varObj thisName thisVal
 
                     (* FIXME: self-name binding is surely more complex than this! *)
                     val selfName = { id = (#ident (#name f)), ns = Ast.Internal "" }
                     val selfTag = Mach.FunctionTag (#fsig f)
                     val selfVal = Mach.newObject selfTag Mach.Null (SOME (Mach.Function closure))
 
+                    (* If we have:
+                     * 
+                     * P parameter fixtures
+                     * D parameter defaults (at the end)
+                     * A args 
+                     *
+                     * Then we must have A >= P-D
+                     *
+                     * We allocate P fixtures, assign the args to [0, P-A),
+                     * and assign the defaults for [P-A, P).
+                     *)
+
+                    fun hasDefault (Ast.Binding { init = NONE, ... }) = false
+                      | hasDefault (Ast.Binding { init = _, ... }) = true
+                    val p = length params
+                    val d = length (List.filter hasDefault params)
+                    val a = length args
                 in
                     allocScopeFixtures varScope (valOf (#fixtures f));
                     (* FIXME: handle arg-list length mismatch correctly. *)
                     initThis thisVal;
-                    List.app initArg (List.rev args);
+
+                    (* List.app initArg (List.rev args); *)
                     evalStmts varScope (#inits f);
 
                     (* NOTE: is this for the binding of a function expression to its optional
@@ -954,71 +920,148 @@ and invokeFuncClosure (this:Mach.OBJ)
                     evalBlock varScope (#body f)
                 end
 
+(*
+    
+    Here are the structures we have to work with to instantiate objects:
 
-and constructClassInstance (obj:Mach.OBJ) 
-                           (closure:Mach.CLS_CLOSURE) 
-                           (args:Mach.VAL list) 
-    : Mach.VAL = 
-    case closure of 
-        { cls, allTypesBound, env } => 
-        if not allTypesBound
-        then LogErr.evalError ["constructing instance of class with unbound type variables"]
-        else 
-            case cls of 
-                Mach.Cls { definition, ... } =>
-                let
-                    val ns = (#ns definition)
-                    val n = { ns = needNamespace (evalExpr env ns), 
-                              id = (#ident definition) }
-                    val _ = LogErr.trace ["constructing instance of ", LogErr.name n]
-                    val classTag = Mach.ClassTag n
-                    val proto = if Mach.hasOwnValue obj Mach.internalPrototypeName
-                                then Mach.getValue obj Mach.internalPrototypeName
-                                else Mach.Null
-                    val (obj:Mach.OBJ) = Mach.newObj classTag proto NONE
-                    val (objScope:Mach.SCOPE) = extendScope env Mach.VarInstance obj
-                    val (instance:Mach.VAL) = Mach.Object obj
-(* FIXME: need to get ctor from instance block
-                    val ctor = (#constructor definition)
+     and CLS =
+         Cls of
+           { extends: NAME option,
+             implements: NAME list,
+             classFixtures: FIXTURES,
+             instanceFixtures: FIXTURES,
+             instanceInits: INITS,
+             constructor: CTOR option,
+             classType: TYPE_EXPR,
+             instanceType: TYPE_EXPR }
+
+     and CTOR =
+         Ctor of
+           { settings: INITS,
+             func: FUNC }
+
+     and FUNC =
+         Func of 
+           { name: FUNC_NAME,
+             fsig: FUNC_SIG,                   
+             fixtures: FIXTURES option,
+             inits: STMT list,
+             body: BLOCK }
+
+    Here how it works:
+
+    val scope = [globalObj,classObj]
+    val thisObj = newObj 
+    evalFixtures scope thisObj instanceFixtures
+    evalInits scope thisObj instanceInits
+
+    val paramsObj = newObj
+    val paramsFixtures = (#fixtures (#func (#constructor cls)))
+	evalFixtures scope paramsObj paramsFixtures
+    val paramsInits = (#inits (#func (#constructor class)))
+    evalInits scope paramsObj paramsInits
+
+	val settingsInits = (#settings (#constructor cls))
+    evalInits paramsObj::scope thisObj settingsInits
+
+	val ctorBody = (#body (#func (#constructor cls)))
+    evalBlock paramsObj::(thisObj::scope) thisObj ctorBody
+
 *)
-                    val ctor:Ast.FUNC_DEFN option = NONE
+
+and evalInits (scope:Mach.SCOPE)
+              (obj:Mach.OBJ)
+              (temps:Mach.TEMPS)
+              (inits:Ast.INITS)
+    : unit =
+    let val _ = LogErr.trace ["evalInits"]
+    in case inits of
+        ((n,e)::rest) =>
+            let
+                val v = evalExpr scope e
+            in
+                (case n of 
+                     Ast.PropName pn => Mach.defValue obj pn v
+                   | Ast.TempName tn => Mach.defTemp temps tn v);
+                evalInits scope obj temps rest
+            end
+      | _ => ()
+    end
+
+and evalObjInits (scope:Mach.SCOPE)                   
+                 (obj:Mach.OBJ)
+                 (inits:Ast.INITS)
+    : unit = 
+    let
+        val (temps:Mach.TEMPS) = ref []
+    in
+        evalInits scope obj temps inits;
+        if not ((length (!temps)) = 0)
+        then LogErr.evalError ["initialized temporaries in non-scope object"]
+        else ()
+    end
+
+and evalScopeInits (scope:Mach.SCOPE)                   
+                   (inits:Ast.INITS)
+    : unit =
+    case scope of
+        Mach.Scope { object, temps, ...} => 
+        evalInits scope object temps inits
+
+and constructClassInstance (classObj:Mach.OBJ)
+                           (classClosure:Mach.CLS_CLOSURE) 
+                           (args:Mach.VAL list) 
+    : Mach.VAL =
+        let
+            val {cls,allTypesBound,env} = classClosure
+        in
+            if not allTypesBound
+            then LogErr.evalError ["constructing instance of class with unbound type variables"]
+            else
+                let
+                    val classScope = extendScope env classObj
+
+                    val Ast.Cls { name, instanceFixtures, instanceInits, constructor, ... } = cls
+                    val tag = Mach.ClassTag name
+                    val proto = if Mach.hasOwnValue classObj Mach.publicPrototypeName
+                                then Mach.getValue (classObj, Mach.publicPrototypeName)
+                                else Mach.Null
+                    val (thisObj:Mach.OBJ) = Mach.newObj tag proto NONE
+
+                    val (objScope:Mach.SCOPE) = extendScope classScope thisObj
+                    val (instance:Mach.VAL) = Mach.Object thisObj
 
                     (* FIXME: infer a fixture for "this" so that it's properly typed, dontDelete, etc.
                      * Also this will mean changing to defVar rather than setVar, for 'this'. *)
-                    val thisName = { id = "this", ns = Ast.Internal "" }
+                    val thisName = { id = "this", ns = Ast.Internal "" }                                   
 
-                    (* FIXME: self-name binding is surely more complex than this! *)
-                    val selfTag = Mach.ClassTag n
-                    val selfVal = Mach.newObject selfTag Mach.Null (SOME (Mach.Class closure))
-(* FIXME: need to get instance block from fixture that is passed into this function
-                    val Ast.Block iblk = (valOf (#instanceBlock definition))
-*)
-                    val iblk = NONE
                 in
-                    allocObjFixtures env obj (valOf iblk);
-                    case ctor of 
-                        NONE => (checkAllPropertiesInitialized obj; instance)
+                    allocObjFixtures classScope thisObj instanceFixtures;
+                    evalObjInits classScope thisObj instanceInits;
+                    case constructor of 
+                        NONE => (checkAllPropertiesInitialized thisObj; instance)  (* TODO: run base class inits *)
+
+(* FIXME: needs resuscitation
                       | SOME ({native, ns,
                                func = Ast.Func 
                                           { fsig=Ast.FunctionSignature { params, inits, ... }, 
-                                            body, fixtures, ... }, ... }) => 
+                                            body, paramFixtures, bodyFixtures, ... }, ... }) => 
                         let 
                             val ns = needNamespace (evalExpr env ns)
                             val (varObj:Mach.OBJ) = Mach.newSimpleObj NONE
-                            val (varScope:Mach.SCOPE) = extendScope env Mach.VarActivation varObj
+                            val (varScope:Mach.SCOPE) = extendScope env varObj
                             fun bindArg (a, b) = evalVarBinding varScope (SOME a) (Ast.Internal "") b
                             fun initInstanceVar (vd:Ast.VAR_DEFN) = 
                                 processVarDefn env vd (Mach.defValue obj)
 
                         in
-                            allocScopeFixtures varScope (valOf fixtures);
-                            (* FIXME: is this correct? we currently bind the self name on obj as well.. *)
-                            Mach.defValue obj n selfVal;
+                            allocScopeFixtures varScope (valOf paramFixtures);
+                            allocScopeFixtures varScope (valOf bodyFixtures);
+                            (* FIXME: is this correct? We also bind this name on the ctor var obj, below. *)
+                            Mach.defValue obj n (Mach.Object classObj);
                             LogErr.trace ["initialializing instance methods of ", LogErr.name n];
-(* FIXME: instantiate the instance fixtures
                             List.app (evalFuncDefnFull env obj) (#instanceMethods definition);
                             List.app initInstanceVar (#instanceVars definition);
-*)
                             (* FIXME: evaluate instance-var initializers declared in class as well. *)
 
                             if (native)
@@ -1038,33 +1081,33 @@ and constructClassInstance (obj:Mach.OBJ)
                                 ((* FIXME: handle arg-list length mismatch correctly. *)
                                  LogErr.trace ["binding constructor args of ", LogErr.name n];
                                  List.app bindArg (ListPair.zip (args, params));
+                                 Mach.defValue varObj n (Mach.Object classObj);
                                  Mach.setValue varObj thisName instance;
-                                 Mach.defValue varObj n selfVal;
                                  LogErr.trace ["running initializers of ", LogErr.name n];
-(* FIXME
                                  (case inits of 
                                       NONE => ()
-                                    | SOME inits => 
+                                    | SOME { b=bindings, i=inits } => 
                                       let
                                           val (initVals:Mach.VAL list) = List.map (evalExpr varScope) inits
                                           fun bindInit (a, b) = evalVarBinding objScope (SOME a) ns b
                                       in
                                           List.app bindInit (ListPair.zip (initVals, bindings))
                                       end);
-*)                                 LogErr.trace ["checking initialization of ", LogErr.name n];
+                                 LogErr.trace ["checking initialization of ", LogErr.name n];
                                  checkAllPropertiesInitialized obj; 
                                  let 
-                                     (* Now the strange part: we re-parent the arguments var object
-                                      * to the instance object, before running the constructor body. *)
+                                     (* Build a scope containing both the args and the obj. *)
                                      val _ = LogErr.trace ["running constructor of ", LogErr.name n]
-                                     val (newVarScope:Mach.SCOPE) = extendScope objScope Mach.VarActivation varObj
+                                     val (newVarScope:Mach.SCOPE) = extendScope objScope varObj
                                      val _ = evalBlock newVarScope body 
                                  in 
                                      instance
                                  end)
                         end
+                    Mach.Object thisObj
+*)
                 end
-                
+        end
 (* 
  * This is the dynamic phase of function definition; it assumes that the 
  * function has already had its fixtures constructed during the
@@ -1098,7 +1141,6 @@ and evalFuncDefnFull (scope:Mach.SCOPE)
 
 (*
     BLOCK
-
 *)
 
 and evalBlock (scope:Mach.SCOPE) 
@@ -1108,13 +1150,10 @@ and evalBlock (scope:Mach.SCOPE)
         Ast.Block {defns, stmts, fixtures, inits, ...} => 
         let 
             val blockObj = Mach.newObj Mach.intrinsicObjectBaseTag Mach.Null NONE
-            val blockScope = extendScope scope Mach.Let blockObj
+            val blockScope = extendScope scope blockObj
         in
             LogErr.trace ["initializing block scope"];
             allocScopeFixtures blockScope (valOf fixtures);
-            LogErr.trace ["evaluating block scope definitions"];
-            evalDefns blockScope defns;
-            evalStmts blockScope stmts;
             LogErr.trace ["evaluating block scope statements"];
             let 
                 val v = evalStmts blockScope stmts 
@@ -1125,9 +1164,89 @@ and evalBlock (scope:Mach.SCOPE)
         end
 
 
+
+(*
+    Initialise Class Prototype
+
+    Initialise a class object. A class object has been allocated and stored
+    in a global property. All that remains is to initialise it by executing
+    the class sttatement.
+
+    The class statement sets static and prototype properties while executing
+    its body.
+*)
+
+and initClassPrototype (scope)
+                       (classObj:Mach.OBJ) 
+                       (extends:Ast.NAME option) 
+    : unit =
+    let 
+        val baseProtoVal = 
+            case extends of 
+                NONE => Mach.Null
+              | SOME baseClassName => 
+                let
+                in
+                    case findVal scope (multinameOf baseClassName) of 
+                        Mach.Object ob => 
+                        if Mach.hasOwnValue ob Mach.publicPrototypeName
+                        then Mach.getValue (ob, Mach.publicPrototypeName)
+                        else Mach.Null
+                      | _ => LogErr.evalError ["base class resolved to non-object: ", 
+                                               LogErr.name baseClassName]
+                end
+                
+        val _ = LogErr.trace ["constructing prototype"]
+        val newPrototype = Mach.newObj Mach.intrinsicObjectBaseTag baseProtoVal NONE
+
+    in
+        Mach.defValue classObj Mach.publicPrototypeName (Mach.Object newPrototype);
+        LogErr.trace ["finished initialising class prototype"]
+    end
+
+and evalClassBlock (scope:Mach.SCOPE) 
+                   ({name:Ast.NAME option,fixtures:Ast.FIXTURES option,block:Ast.BLOCK,extends,...})
+    : Mach.VAL =
+
+    (* 
+        The property that holds the class object was allocated when the 
+        fixtures of the outer scope were allocated. Still to do is
+        allocating and initialising the class object
+
+        Steps:
+        - allocate the class object
+        - allocate the class prototype object (an instance of the class)
+        - set the outer class property
+        - push the class object on to the scope chain
+        - execute the current block
+    *)
+
+    let 
+        val _ = LogErr.trace ["evaluating class stmt for ", LogErr.name (valOf name)]
+
+        (* get the class object allocated when the property was instantiated *)
+        val classObj = needObj (findVal scope (multinameOf (valOf name)))
+
+        (* allocate the fixed properties for the class object *)
+        val _ = allocObjFixtures scope classObj (valOf fixtures)
+
+        (* init the class prototype if not going to be set by the user *)
+        val _ = initClassPrototype scope classObj extends
+
+        (* extend the scope chain with the class object *)
+        val classScope = extendScope scope classObj
+
+    in
+        evalBlock classScope block
+    end
+
+(*
+
+*)
+
 and evalIfStmt (scope:Mach.SCOPE) 
                (cnd:Ast.EXPR) 
-               (thn:Ast.STMT) 
+               (thn:Ast.STMT)
                (els:Ast.STMT) 
     : Mach.VAL = 
     let 
@@ -1187,15 +1306,15 @@ and evalWhileStmt (scope:Mach.SCOPE)
 
 
 and evalReturnStmt (scope:Mach.SCOPE) 
-                   (e:Ast.EXPR list) 
+                   (e:Ast.EXPR) 
     : Mach.VAL =
-    raise (ReturnException (evalListExpr scope e))
+    raise (ReturnException (evalExpr scope e))
 
 
 and evalThrowStmt (scope:Mach.SCOPE) 
-                  (e:Ast.EXPR list) 
+                  (e:Ast.EXPR) 
     : Mach.VAL =
-    raise (ThrowException (evalListExpr scope e))
+    raise (ThrowException (evalExpr scope e))
 
 
 and evalBreakStmt (scope:Mach.SCOPE) 

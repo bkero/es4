@@ -315,6 +315,10 @@ fun verifyTypeExpr (ctxt as {env,this,...}:CONTEXT)
     : unit = 
     let
     in 
+      TextIO.print ("type checking a type");
+      Pretty.ppType ty;
+      TextIO.print "\n";
+   
 	case ty of
 	    SpecialType _ => ()
 	  | UnionType tys => verifyTypeExprs ctxt tys
@@ -339,11 +343,11 @@ fun verifyTypeExpr (ctxt as {env,this,...}:CONTEXT)
 			fields
 	    in
 		checkForDuplicates names
-	    end
-	
-    (*TODO:
-          | NominalType of { ident : IDENT_EXPR } 
-      *)	    
+	    end	
+          | NominalType { ident } =>
+			   (* TODO *)
+			   ()
+   	    
     end
 
 and verifyTypeExprs  (ctxt as {env,this,...}:CONTEXT) 
@@ -414,7 +418,7 @@ and verifyExpr (ctxt as {env,this,...}:CONTEXT)
           let val extensions = List.concat (List.map (fn d => verifyBinding ctxt d) defs)
           in
 	    checkForDuplicateExtension extensions;
-	    verifyExprList (withEnv (ctxt, foldl extendEnv env extensions)) body
+	    verifyExpr (withEnv (ctxt, foldl extendEnv env extensions)) body
 	  end
        | ThisExpr => this
 (* jd: deleted       | NullaryExpr Empty => (TextIO.print "what is Empty?\n"; raise Match)   *)
@@ -742,7 +746,7 @@ and verifyStmt (ctxt as {this,env,lbls,retTy}:CONTEXT) (stmt:STMT) =
        TextIO.print "\n";
    case stmt of
     EmptyStmt => ()
-  | ExprStmt e => (verifyExprList ctxt e; ())
+  | ExprStmt e => (verifyExpr ctxt e; ())
   | IfStmt {cnd,thn,els} => 
     let in
 	checkCompatible (verifyExpr ctxt cnd) boolType;
@@ -760,7 +764,7 @@ and verifyStmt (ctxt as {this,env,lbls,retTy}:CONTEXT) (stmt:STMT) =
     let in
 	case retTy of
 	    NONE => raise VerifyError "return not allowed here"
-          | SOME retTy => checkCompatible (verifyExprList ctxt e) retTy
+          | SOME retTy => checkCompatible (verifyExpr ctxt e) retTy
     end
 
   | (BreakStmt NONE | ContinueStmt NONE) =>  
@@ -783,7 +787,7 @@ and verifyStmt (ctxt as {this,env,lbls,retTy}:CONTEXT) (stmt:STMT) =
 	verifyStmt (withLbls (ctxt, ((SOME lab)::lbls))) s
  
   | ThrowStmt t => 
-	checkCompatible (verifyExprList ctxt t) exceptionType
+	checkCompatible (verifyExpr ctxt t) exceptionType
 
   | LetStmt (defns, body) =>
     let val extensions = List.concat (List.map (fn d => verifyBinding ctxt d) defns)
@@ -795,16 +799,18 @@ and verifyStmt (ctxt as {this,env,lbls,retTy}:CONTEXT) (stmt:STMT) =
   | ForStmt { defns, init, cond, update, contLabel, body, fixtures } =>
     let val extensions = verifyVarBindings ctxt defns
         val ctxt' = withEnv (ctxt, foldl extendEnv env extensions)
+(* NOT USED 
 	fun verifyExprs exprs = 
 	    let in
 		if List.length exprs = 0
 		then boolType
 		else List.last (List.map (fn e => verifyExpr ctxt' e) exprs)
 	    end
+*)
     in
-  	verifyExprs init;
-	checkCompatible (verifyExprs cond) boolType;
-	verifyExprs update;
+  	verifyExpr ctxt' init;
+	checkCompatible (verifyExpr ctxt' cond) boolType;
+	verifyExpr ctxt' update;
 	verifyStmt (withLbls (ctxt', contLabel::lbls)) body
     end
 

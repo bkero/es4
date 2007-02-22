@@ -3,7 +3,7 @@
 # ------------------------------------------------------------
 
 SOURCES = ast.sml main.sml pretty.sml verify.sml eval.sml mach.sml \
-	parser.sml  pretty-rep.sml token.sml defn.sml
+	parser.sml  pretty-rep.sml token.sml defn.sml logerr.sml native.sml 
 
 EV_TESTS = tests/exec.es
 
@@ -43,7 +43,7 @@ pretty-cvt.sml: tools/gen-pretty.heap.$(HEAP_SUFFIX) ast.sml
 tools/gen-pretty.heap.$(HEAP_SUFFIX): tools/gen-pretty.cm tools/gen-convert.sml tools/gen-pretty.sml tools/quasiquote.sml tools/smlast.sml
 	cd tools && $(MLBUILD) $(MLBUILD_ARGS) gen-pretty.cm GenPretty.main gen-pretty.heap
 
-tools/unit.heap.$(HEAP_SUFFIX): tools/unit.cm tools/unit.sml
+tools/unit.heap.$(HEAP_SUFFIX): tools/unit.cm tools/unit.sml $(wildcard *.sml) pretty-cvt.sml
 	cd tools && $(MLBUILD) $(MLBUILD_ARGS) unit.cm UnitTests.main unit.heap
 
 # TODO: "check" should do all the *.test files, not just parse tests
