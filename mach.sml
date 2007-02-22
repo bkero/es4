@@ -15,15 +15,6 @@ type BINDINGS = Ast.BINDINGS
 type FIXTURES = Ast.FIXTURES
 type CLS = Ast.CLS
 
-datatype SCOPE_TAG = 
-         VarGlobal       (* Variable object created before execution starts *)
-       | VarClass        (* Variable object for class objects               *)
-       | VarInstance     (* Variable object for class instances             *)
-       | VarInitializer  (* Variable object created on entry an initializer *)
-       | VarActivation   (* Variable object created on entry to a function  *)
-       | With            (* Created by 'with' bindings                      *)
-       | Let             (* Created by 'catch', 'let', etc.                 *)
-
 datatype VAL = Object of OBJ
              | Null
              | Undef
@@ -62,8 +53,7 @@ datatype VAL = Object of OBJ
                     isInitialized: bool ref }
                    
      and SCOPE = 
-         Scope of { tag: SCOPE_TAG, 
-                    object: OBJ,
+         Scope of { object: OBJ,
                     parent: SCOPE option,
                     temps: VAL list ref }
                         
@@ -298,8 +288,7 @@ val (emptyBlock:Ast.BLOCK) = Ast.Block { pragmas = [],
 val (globalObject:OBJ) = newObj intrinsicObjectBaseTag Null NONE
 
 val (globalScope:SCOPE) = 
-    Scope { tag = VarGlobal,
-            object = globalObject,
+    Scope { object = globalObject,
             parent = NONE,
             temps = ref [] }
 
