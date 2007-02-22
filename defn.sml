@@ -1556,7 +1556,7 @@ and defStmt (env:ENV)
             in
                 { label = (case label of 
                            NONE => NONE 
-                         | SOME e => SOME (defExprs env e)),
+                         | SOME e => SOME (defExpr env e)),
                   body = body }
             end
             
