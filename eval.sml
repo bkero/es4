@@ -190,10 +190,9 @@ fun allocObjFixtures (scope:Mach.SCOPE)
         end
 
 fun extendScope (p:Mach.SCOPE) 
-                (t:Mach.SCOPE_TAG) 
                 (ob:Mach.OBJ) 
     : Mach.SCOPE = 
-    Mach.Scope { parent=(SOME p), tag=t, object=ob, temps=ref [] }
+    Mach.Scope { parent=(SOME p), object=ob, temps=ref [] }
 
     
 fun allocScopeFixtures (scope:Mach.SCOPE) 
@@ -616,7 +615,7 @@ and evalLetExpr (scope:Mach.SCOPE)
     : Mach.VAL = 
     let 
         val obj = Mach.newObj Mach.intrinsicObjectBaseTag Mach.Null NONE
-        val newScope = extendScope scope Mach.Let obj        
+        val newScope = extendScope scope obj        
     in
         allocScopeFixtures scope fixtures;
         (* todo: what do we use for a namespace here *)
@@ -863,7 +862,7 @@ and invokeFuncClosure (this:Mach.OBJ)
                 Ast.FunctionSignature { params, ... } => 
                 let
                     val (varObj:Mach.OBJ) = Mach.newSimpleObj NONE
-                    val (varScope:Mach.SCOPE) = extendScope env Mach.VarActivation varObj
+                    val (varScope:Mach.SCOPE) = extendScope env varObj
 
                     fun initArg v = 
                         let
@@ -992,7 +991,7 @@ and constructClassInstance (classObj:Mach.OBJ)
             then LogErr.evalError ["constructing instance of class with unbound type variables"]
             else
                 let
-                    val classScope = extendScope env Mach.VarClass classObj
+                    val classScope = extendScope env classObj
 
                     val Ast.Cls { name, instanceFixtures, instanceInits, constructor, ... } = cls
                     val tag = Mach.ClassTag name
@@ -1001,7 +1000,7 @@ and constructClassInstance (classObj:Mach.OBJ)
                                 else Mach.Null
                     val (thisObj:Mach.OBJ) = Mach.newObj tag proto NONE
 
-                    val (objScope:Mach.SCOPE) = extendScope classScope Mach.VarInstance thisObj
+                    val (objScope:Mach.SCOPE) = extendScope classScope thisObj
                     val (instance:Mach.VAL) = Mach.Object thisObj
 
                     (* FIXME: infer a fixture for "this" so that it's properly typed, dontDelete, etc.
@@ -1022,7 +1021,7 @@ and constructClassInstance (classObj:Mach.OBJ)
                         let 
                             val ns = needNamespace (evalExpr env ns)
                             val (varObj:Mach.OBJ) = Mach.newSimpleObj NONE
-                            val (varScope:Mach.SCOPE) = extendScope env Mach.VarActivation varObj
+                            val (varScope:Mach.SCOPE) = extendScope env varObj
                             fun bindArg (a, b) = evalVarBinding varScope (SOME a) (Ast.Internal "") b
                             fun initInstanceVar (vd:Ast.VAR_DEFN) = 
                                 processVarDefn env vd (Mach.defValue obj)
@@ -1071,7 +1070,7 @@ and constructClassInstance (classObj:Mach.OBJ)
                                  let 
                                      (* Build a scope containing both the args and the obj. *)
                                      val _ = LogErr.trace ["running constructor of ", LogErr.name n]
-                                     val (newVarScope:Mach.SCOPE) = extendScope objScope Mach.VarActivation varObj
+                                     val (newVarScope:Mach.SCOPE) = extendScope objScope varObj
                                      val _ = evalBlock newVarScope body 
                                  in 
                                      instance
@@ -1123,7 +1122,7 @@ and evalBlock (scope:Mach.SCOPE)
         Ast.Block {defns, stmts, fixtures, inits, ...} => 
         let 
             val blockObj = Mach.newObj Mach.intrinsicObjectBaseTag Mach.Null NONE
-            val blockScope = extendScope scope Mach.Let blockObj
+            val blockScope = extendScope scope blockObj
         in
             LogErr.trace ["initializing block scope"];
             allocScopeFixtures blockScope (valOf fixtures);
@@ -1207,7 +1206,7 @@ and evalClassBlock (scope:Mach.SCOPE)
         val _ = initClassPrototype scope classObj extends
 
         (* extend the scope chain with the class object *)
-        val classScope = extendScope scope Mach.VarClass classObj
+        val classScope = extendScope scope classObj
 
     in
         evalBlock classScope block
