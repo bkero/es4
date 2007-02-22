@@ -98,7 +98,7 @@ let (f=1) f(3)
 %% [function defn] verify, pass
 function f(x) { return x; }
 
-
+ 
 %% [fn52] verify, pass
 let (f:function(y:int):int=function f(x:int):int {return x}) f(3);
 

@@ -26,6 +26,11 @@ fun getScopeObj (scope:Mach.SCOPE)
     case scope of 
         Mach.Scope { object, ...} => object
 
+fun getScopeObj (scope:Mach.SCOPE) 
+    : Mach.OBJ = 
+    case scope of 
+        Mach.Scope { object, ...} => object
+
 
 fun needNamespace (v:Mach.VAL) 
     : Ast.NAMESPACE = 
@@ -55,9 +60,10 @@ type REF = (Mach.OBJ * Mach.NAME)
 
 (* FIXME: possibly move this to mach.sml *) 
 
-fun allocObjFixtures (scope:Mach.SCOPE) 
-                     (obj:Mach.OBJ) 
-                     (f:Ast.FIXTURES) 
+fun allocFixtures (scope:Mach.SCOPE) 
+                  (obj:Mach.OBJ) 
+                  (temps:Mach.TEMPS)
+                  (f:Ast.FIXTURES) 
     : unit =
     case obj of 
         Mach.Obj { props, ...} => 
@@ -99,7 +105,7 @@ fun allocObjFixtures (scope:Mach.SCOPE)
                   | Ast.ArrayType _ => 
                     Mach.ValProp (Mach.Null)
 
-                  | Ast.NominalType { ident, ... } => 
+                  | Ast.TypeName ident => 
                     (* FIXME: resolve nominal type to class or interface, check to see if 
                      * it is nullable, *then* decide whether to set to null or uninit. *)
                     Mach.ValProp (Mach.Null)
@@ -120,86 +126,109 @@ fun allocObjFixtures (scope:Mach.SCOPE)
                     Mach.UninitProp
 
             fun allocFixture (n, f) = 
-                let 
-                    fun allocProp state p = 
-                        if Mach.hasProp props n
-                        then LogErr.defnError 
-                                 ["allocating duplicate property name: ", 
-                                  LogErr.name n]
-                        else (LogErr.trace ["allocating ", state, " property ", 
-                                            LogErr.name n]; 
-                              Mach.addProp props n p)
-                in 
-                    case f of 
-                        Ast.TypeFixture te => 
-                        allocProp "type" 
-                                  { ty = te,
-                                    state = Mach.TypeProp,                                   
-                                    attrs = { dontDelete = true,
-                                              dontEnum = true,
-                                              readOnly = true,
-                                              isFixed = true } }
-                        
-                      | Ast.ValFixture { ty, readOnly, ... } => 
-                        allocProp "value" 
-                                  { ty = ty,
-                                    state = valAllocState ty,
-                                    attrs = { dontDelete = true,
-                                              dontEnum = false,
-                                              readOnly = readOnly,
-                                              isFixed = true } }
-                        
-                      | Ast.VirtualValFixture { ty, setter, ... } => 
-                        allocProp "virtual value" 
-                                  { ty = ty,
-                                    state = Mach.UninitProp,
-                                    attrs = { dontDelete = true,
-                                              dontEnum = false,
-                                              readOnly = (case setter of NONE => true | _ => false),
-                                              isFixed = true } }
-                        
-                      | Ast.ClassFixture cls => 
-                        allocProp "class"
-                                  { ty = Mach.classType,
-                                    state = Mach.ValProp (Mach.newClass scope cls),
-                                    attrs = { dontDelete = true,
-                                              dontEnum = true,
-                                              readOnly = true,
-                                              isFixed = true } }
-
-                      | Ast.NamespaceFixture ns => 
-                        allocProp "namespace" 
-                                  { ty = Mach.namespaceType,
-                                    state = Mach.ValProp (Mach.newNamespace ns),
-                                    attrs = { dontDelete = true,
-                                              dontEnum = true,
-                                              readOnly = true,
-                                              isFixed = true } }
-                        
-                      | Ast.TypeVarFixture =>
-                        allocProp "type variable"
-                                  { ty = Mach.typeType,
-                                    state = Mach.TypeVarProp,
-                                    attrs = { dontDelete = true,
-                                              dontEnum = true,
-                                              readOnly = true,
-                                              isFixed = true } }
-                end
+                case n of 
+                    Ast.TempName t => 
+                    (case f of 
+                         Ast.ValFixture { ty, ... } => 
+                         (if t = (List.length (!temps))
+                          then temps := (ty, Mach.UninitTemp)::(!temps) 
+                          else LogErr.evalError ["temp count out of sync"])
+                       | _ => LogErr.evalError ["allocating non-value temporary"])
+                  | Ast.PropName pn => 
+                    let 
+                        fun allocProp state p = 
+                            if Mach.hasProp props pn
+                            then LogErr.evalError 
+                                     ["allocating duplicate property name: ", 
+                                      LogErr.name pn]
+                            else (LogErr.trace ["allocating ", state, " property ", 
+                                                LogErr.name pn]; 
+                                  Mach.addProp props pn p)                            
+                    in 
+                        case f of 
+                            Ast.TypeFixture te => 
+                            allocProp "type" 
+                                      { ty = te,
+                                        state = Mach.TypeProp,                                   
+                                        attrs = { dontDelete = true,
+                                                  dontEnum = true,
+                                                  readOnly = true,
+                                                  isFixed = true } }
+                            
+                          | Ast.ValFixture { ty, readOnly, ... } => 
+                            allocProp "value" 
+                                      { ty = ty,
+                                        state = valAllocState ty,
+                                        attrs = { dontDelete = true,
+                                                  dontEnum = false,
+                                                  readOnly = readOnly,
+                                                  isFixed = true } }
+                            
+                          | Ast.VirtualValFixture { ty, setter, ... } => 
+                            allocProp "virtual value" 
+                                      { ty = ty,
+                                        state = Mach.UninitProp,
+                                        attrs = { dontDelete = true,
+                                                  dontEnum = false,
+                                                  readOnly = (case setter of NONE => true | _ => false),
+                                                  isFixed = true } }
+                            
+                          | Ast.ClassFixture cls => 
+                            allocProp "class"
+                                      { ty = Mach.classType,
+                                        state = Mach.ValProp (Mach.newClass scope cls),
+                                        attrs = { dontDelete = true,
+                                                  dontEnum = true,
+                                                  readOnly = true,
+                                                  isFixed = true } }
+                            
+                          | Ast.NamespaceFixture ns => 
+                            allocProp "namespace" 
+                                      { ty = Mach.namespaceType,
+                                        state = Mach.ValProp (Mach.newNamespace ns),
+                                        attrs = { dontDelete = true,
+                                                  dontEnum = true,
+                                                  readOnly = true,
+                                                  isFixed = true } }
+                            
+                          | Ast.TypeVarFixture =>
+                            allocProp "type variable"
+                                      { ty = Mach.typeType,
+                                        state = Mach.TypeVarProp,
+                                        attrs = { dontDelete = true,
+                                                  dontEnum = true,
+                                                  readOnly = true,
+                                                  isFixed = true } }
+                    end
         in                    
             List.app allocFixture f
         end
 
 fun extendScope (p:Mach.SCOPE) 
-                (t:Mach.SCOPE_TAG) 
                 (ob:Mach.OBJ) 
     : Mach.SCOPE = 
-    Mach.Scope { parent=(SOME p), tag=t, object=ob, temps=ref [] }
+    Mach.Scope { parent=(SOME p), object=ob, temps=ref [] }
 
+    
+fun allocObjFixtures (scope:Mach.SCOPE) 
+                     (obj:Mach.OBJ) 
+                     (f:Ast.FIXTURES) 
+    : unit = 
+    let 
+        val (temps:Mach.TEMPS) = ref [] 
+    in
+        allocFixtures scope obj temps;
+        if not ((length (!temps)) = 0)
+        then LogErr.evalError ["allocated temporaries in non-scope object"]
+        else ()
+    end
     
 fun allocScopeFixtures (scope:Mach.SCOPE) 
                        (f:Ast.FIXTURES) 
     : unit = 
-        allocObjFixtures scope (getScopeObj scope) f
+    case scope of
+        Mach.Scope { object, temps, ...} => 
+        allocFixtures scope object temps f
 
     
 fun evalExpr (scope:Mach.SCOPE) 
@@ -207,7 +236,7 @@ fun evalExpr (scope:Mach.SCOPE)
     : Mach.VAL =
     case expr of
         Ast.LiteralExpr lit => 
-        evalLiteralExpr lit
+        evalLiteralExpr scope lit
         
       | Ast.ListExpr es =>
         evalListExpr scope es
@@ -259,42 +288,11 @@ fun evalExpr (scope:Mach.SCOPE)
             evalNewExpr (needObj (evalExpr scope obj)) args
         end
         
-      | Ast.FunExpr func => 
-        let
-        in
-            Mach.newFunc scope func
-        end
-      | Ast.AllocTemp (n,e) => 
-        let
-            val Mach.Scope frame = scope
-            val v = evalExpr scope e
-            val temps = !(#temps frame)
-        in
-            if n = (List.length temps)
-                then (#temps frame) := v::(!(#temps frame)) 
-                else LogErr.evalError ["temp count out of sync"];
-            v
-        end
-      | Ast.KillTemp n => 
-        let
-            val Mach.Scope frame = scope
-            val temps = !(#temps frame)
-        in
-            if n < (List.length temps)
-                then (#temps frame) := tl (!(#temps frame))
-                else LogErr.evalError ["temp count out of sync"];
-            Mach.Undef
-        end
-      | Ast.GetTemp n =>
-        let
-            val Mach.Scope frame = scope
-        in
-            List.nth (!(#temps frame),n)
-        end
       | _ => LogErr.unimplError ["unhandled expression type"]
 
 
-and evalLiteralExpr (lit:Ast.LITERAL) 
+and evalLiteralExpr (scope:Mach.SCOPE) 
+                    (lit:Ast.LITERAL) 
     : Mach.VAL = 
     case lit of 
         Ast.LiteralNull => Mach.Null
@@ -303,6 +301,7 @@ and evalLiteralExpr (lit:Ast.LITERAL)
       | Ast.LiteralBoolean b => Mach.newBoolean b
       | Ast.LiteralString s => Mach.newString s
       | Ast.LiteralNamespace n => Mach.newNamespace n
+      | Ast.LiteralFunction { func, ... } => Mach.newFunc scope func
       | _ => LogErr.unimplError ["unhandled literal type"]
 
 
@@ -612,16 +611,16 @@ and evalRefExpr (scope:Mach.SCOPE)
 and evalLetExpr (scope:Mach.SCOPE) 
                 (fixtures:Ast.FIXTURES) 
                 (defs:Ast.VAR_BINDING list) 
-                (body:Ast.EXPR list) 
+                (body:Ast.EXPR) 
     : Mach.VAL = 
     let 
         val obj = Mach.newObj Mach.intrinsicObjectBaseTag Mach.Null NONE
-        val newScope = extendScope scope Mach.Let obj        
+        val newScope = extendScope scope obj        
     in
         allocScopeFixtures scope fixtures;
         (* todo: what do we use for a namespace here *)
         evalVarBindings scope (Ast.Internal "") defs; 
-        evalListExpr newScope body
+        evalExpr newScope body
     end
 
 
@@ -791,7 +790,7 @@ and evalStmt (scope:Mach.SCOPE)
              (stmt:Ast.STMT) 
     : Mach.VAL = 
     case stmt of 
-        Ast.ExprStmt e => evalListExpr scope e
+        Ast.ExprStmt e => evalExpr scope e
       | Ast.IfStmt {cnd,thn,els} => evalIfStmt scope cnd thn els
       | Ast.WhileStmt w => evalWhileStmt scope w
       | Ast.ReturnStmt r => evalReturnStmt scope r
@@ -863,7 +862,7 @@ and invokeFuncClosure (this:Mach.OBJ)
                 Ast.FunctionSignature { params, ... } => 
                 let
                     val (varObj:Mach.OBJ) = Mach.newSimpleObj NONE
-                    val (varScope:Mach.SCOPE) = extendScope env Mach.VarActivation varObj
+                    val (varScope:Mach.SCOPE) = extendScope env varObj
 
                     fun initArg v = 
                         let
@@ -876,22 +875,36 @@ and invokeFuncClosure (this:Mach.OBJ)
                      * Also this will mean changing to defVar rather than setVar, for 'this'. *)
                     val thisName = { id = "this", ns = Ast.Internal "" }
                     val thisVal = Mach.Object this
-                    fun initThis v = 
-                        let
-                        in
-                            Mach.defValue varObj thisName thisVal
-                        end
+                    fun initThis v = Mach.defValue varObj thisName thisVal
 
                     (* FIXME: self-name binding is surely more complex than this! *)
                     val selfName = { id = (#ident (#name f)), ns = Ast.Internal "" }
                     val selfTag = Mach.FunctionTag (#fsig f)
                     val selfVal = Mach.newObject selfTag Mach.Null (SOME (Mach.Function closure))
 
+                    (* If we have:
+                     * 
+                     * P parameter fixtures
+                     * D parameter defaults (at the end)
+                     * A args 
+                     *
+                     * Then we must have A >= P-D
+                     *
+                     * We allocate P fixtures, assign the args to [0, P-A),
+                     * and assign the defaults for [P-A, P).
+                     *)
+
+                    fun hasDefault (Ast.Binding { init = NONE, ... }) = false
+                      | hasDefault (Ast.Binding { init = _, ... }) = true
+                    val p = length params
+                    val d = length (List.filter hasDefault params)
+                    val a = length args
                 in
                     allocScopeFixtures varScope (valOf (#fixtures f));
                     (* FIXME: handle arg-list length mismatch correctly. *)
                     initThis thisVal;
-                    List.app initArg (List.rev args);
+
+                    (* List.app initArg (List.rev args); *)
                     evalStmts varScope (#inits f);
 
                     (* NOTE: is this for the binding of a function expression to its optional
@@ -956,30 +969,44 @@ and invokeFuncClosure (this:Mach.OBJ)
 
 *)
 
-and evalFixtures (scope:Mach.SCOPE)
-                 (obj:Mach.OBJ)
-                 (fixtures:Ast.FIXTURES)
-    : unit = 
-    let val _ = LogErr.trace ["evalFixtures"]
-    in
-        allocObjFixtures scope obj fixtures
-    end
-
 and evalInits (scope:Mach.SCOPE)
               (obj:Mach.OBJ)
+              (temps:Mach.TEMPS)
               (inits:Ast.INITS)
     : unit =
     let val _ = LogErr.trace ["evalInits"]
     in case inits of
-        ((n,e)::inits) =>
+        ((n,e)::rest) =>
             let
                 val v = evalExpr scope e
             in
-                Mach.defValue obj n v;
-                evalInits scope obj inits
+                (case n of 
+                     Ast.PropName pn => Mach.defValue obj pn v
+                   | Ast.TempName tn => Mach.defTemp temps tn v);
+                evalInits scope obj temps rest
             end
       | _ => ()
     end
+
+and evalObjInits (scope:Mach.SCOPE)                   
+                 (obj:Mach.OBJ)
+                 (inits:Ast.INITS)
+    : unit = 
+    let
+        val (temps:Mach.TEMPS) = ref []
+    in
+        evalInits scope obj temps inits;
+        if not ((length (!temps)) = 0)
+        then LogErr.evalError ["initialized temporaries in non-scope object"]
+        else ()
+    end
+
+and evalScopeInits (scope:Mach.SCOPE)                   
+                   (inits:Ast.INITS)
+    : unit =
+    case scope of
+        Mach.Scope { object, temps, ...} => 
+        evalInits scope object temps inits
 
 and constructClassInstance (classObj:Mach.OBJ)
                            (classClosure:Mach.CLS_CLOSURE) 
@@ -992,7 +1019,7 @@ and constructClassInstance (classObj:Mach.OBJ)
             then LogErr.evalError ["constructing instance of class with unbound type variables"]
             else
                 let
-                    val classScope = extendScope env Mach.VarClass classObj
+                    val classScope = extendScope env classObj
 
                     val Ast.Cls { name, instanceFixtures, instanceInits, constructor, ... } = cls
                     val tag = Mach.ClassTag name
@@ -1001,19 +1028,18 @@ and constructClassInstance (classObj:Mach.OBJ)
                                 else Mach.Null
                     val (thisObj:Mach.OBJ) = Mach.newObj tag proto NONE
 
-                    val (objScope:Mach.SCOPE) = extendScope classScope Mach.VarInstance thisObj
+                    val (objScope:Mach.SCOPE) = extendScope classScope thisObj
                     val (instance:Mach.VAL) = Mach.Object thisObj
 
                     (* FIXME: infer a fixture for "this" so that it's properly typed, dontDelete, etc.
                      * Also this will mean changing to defVar rather than setVar, for 'this'. *)
-                    val thisName = { id = "this", ns = Ast.Internal "" }
+                    val thisName = { id = "this", ns = Ast.Internal "" }                                   
 
                 in
-                    evalFixtures classScope thisObj instanceFixtures;
-                    evalInits classScope thisObj instanceInits;
-                    case constructor of
-                        NONE => (checkAllPropertiesInitialized thisObj; instance)
-                                    (* TODO: run base class inits *)
+                    allocObjFixtures classScope thisObj instanceFixtures;
+                    evalObjInits classScope thisObj instanceInits;
+                    case constructor of 
+                        NONE => (checkAllPropertiesInitialized thisObj; instance)  (* TODO: run base class inits *)
 
 (* FIXME: needs resuscitation
                       | SOME ({native, ns,
@@ -1023,7 +1049,7 @@ and constructClassInstance (classObj:Mach.OBJ)
                         let 
                             val ns = needNamespace (evalExpr env ns)
                             val (varObj:Mach.OBJ) = Mach.newSimpleObj NONE
-                            val (varScope:Mach.SCOPE) = extendScope env Mach.VarActivation varObj
+                            val (varScope:Mach.SCOPE) = extendScope env varObj
                             fun bindArg (a, b) = evalVarBinding varScope (SOME a) (Ast.Internal "") b
                             fun initInstanceVar (vd:Ast.VAR_DEFN) = 
                                 processVarDefn env vd (Mach.defValue obj)
@@ -1072,7 +1098,7 @@ and constructClassInstance (classObj:Mach.OBJ)
                                  let 
                                      (* Build a scope containing both the args and the obj. *)
                                      val _ = LogErr.trace ["running constructor of ", LogErr.name n]
-                                     val (newVarScope:Mach.SCOPE) = extendScope objScope Mach.VarActivation varObj
+                                     val (newVarScope:Mach.SCOPE) = extendScope objScope varObj
                                      val _ = evalBlock newVarScope body 
                                  in 
                                      instance
@@ -1124,7 +1150,7 @@ and evalBlock (scope:Mach.SCOPE)
         Ast.Block {defns, stmts, fixtures, inits, ...} => 
         let 
             val blockObj = Mach.newObj Mach.intrinsicObjectBaseTag Mach.Null NONE
-            val blockScope = extendScope scope Mach.Let blockObj
+            val blockScope = extendScope scope blockObj
         in
             LogErr.trace ["initializing block scope"];
             allocScopeFixtures blockScope (valOf fixtures);
@@ -1208,7 +1234,7 @@ and evalClassBlock (scope:Mach.SCOPE)
         val _ = initClassPrototype scope classObj extends
 
         (* extend the scope chain with the class object *)
-        val classScope = extendScope scope Mach.VarClass classObj
+        val classScope = extendScope scope classObj
 
     in
         evalBlock classScope block
@@ -1280,15 +1306,15 @@ and evalWhileStmt (scope:Mach.SCOPE)
 
 
 and evalReturnStmt (scope:Mach.SCOPE) 
-                   (e:Ast.EXPR list) 
+                   (e:Ast.EXPR) 
     : Mach.VAL =
-    raise (ReturnException (evalListExpr scope e))
+    raise (ReturnException (evalExpr scope e))
 
 
 and evalThrowStmt (scope:Mach.SCOPE) 
-                  (e:Ast.EXPR list) 
+                  (e:Ast.EXPR) 
     : Mach.VAL =
-    raise (ThrowException (evalListExpr scope e))
+    raise (ThrowException (evalExpr scope e))
 
 
 and evalBreakStmt (scope:Mach.SCOPE) 

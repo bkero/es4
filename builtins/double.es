@@ -27,11 +27,11 @@ package
         public static const POSITIVE_INFINITY : double = 1.0 / 0.0;
 
         /* E262-4 draft */
-        intrinsic static function to(x : Numeric) : double
+        function to double(x : Numeric)
             x is double ? x : ToDouble(x);
 
         /* E262-3 15.7.1.1: The double Constructor Called as a Function */
-        intrinsic static function invoke(value)
+        function call double(value)
             value === undefined ? 0d : ToDouble(value);
 
         /* E262-3 15.7.2.1: The double constructor */
