@@ -318,6 +318,9 @@ datatype PRAGMA =
        | ListExpr of EXPR list
        | SliceExpr of (EXPR * EXPR * EXPR)
 
+     and FIXTURE_NAME = TempName of int
+                      | PropName of NAME
+
      and IDENT_EXPR =
          QualifiedIdentifier of 
            { qual : EXPR,
@@ -425,8 +428,8 @@ withtype FIELD =
              prototype : bool,
              bindings : VAR_BINDING list }
 
-     and FIXTURES = (NAME * FIXTURE) list
-     and INITS    = (NAME * EXPR) list
+     and FIXTURES = (FIXTURE_NAME * FIXTURE) list
+     and INITS    = (FIXTURE_NAME * EXPR) list
 
      and NAMESPACE_DEFN = 
            { ident: IDENT,
