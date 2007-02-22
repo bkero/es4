@@ -26,10 +26,7 @@ final class ByteArray
         length = n;
     }
 
-    static function to(a : Array!) : ByteArray!
-        this.intrinsic::to(a);
-
-    intrinsic static function to(a : Array!) : ByteArray! {
+    function to ByteArray!(a : Array!) {
         let n  : uint = a.length;
         let ba : ByteArray = new ByteArray(n);
         for ( let i : uint = 0 ; i < n ; i++ )
@@ -46,7 +43,7 @@ final class ByteArray
         return a;
     }
 
-    static function fromArray(a:Array) : ByteArray
+    static function fromArray(a:Array) : ByteArray!
         a to ByteArray;
 
     function get length() : uint

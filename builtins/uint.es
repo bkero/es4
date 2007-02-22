@@ -20,11 +20,11 @@ package
         static const MIN_VALUE : uint = 0;
 
         /* E262-4 draft */
-        intrinsic static function to(x : Numeric) : uint
+        function to uint(x : Numeric)
             x is uint ? x : ToUint(x);
 
         /* E262-4 draft: The uint Constructor Called as a Function */
-        intrinsic static function invoke(value)
+        function call uint(value)
             value === undefined ? 0u : ToUint(value);
 
         /* E262-4 draft: The uint constructor */

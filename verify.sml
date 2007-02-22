@@ -315,6 +315,10 @@ fun verifyTypeExpr (ctxt as {env,this,...}:CONTEXT)
     : unit = 
     let
     in 
+      TextIO.print ("type checking a type");
+      Pretty.ppType ty;
+      TextIO.print "\n";
+   
 	case ty of
 	    SpecialType _ => ()
 	  | UnionType tys => verifyTypeExprs ctxt tys
@@ -339,11 +343,11 @@ fun verifyTypeExpr (ctxt as {env,this,...}:CONTEXT)
 			fields
 	    in
 		checkForDuplicates names
-	    end
-	
-    (*TODO:
-          | NominalType of { ident : IDENT_EXPR } 
-      *)	    
+	    end	
+          | NominalType { ident } =>
+			   (* TODO *)
+			   ()
+   	    
     end
 
 and verifyTypeExprs  (ctxt as {env,this,...}:CONTEXT) 
