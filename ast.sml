@@ -401,16 +401,6 @@ withtype FIELD =
            { name: IDENT,
              ty: TYPE_EXPR option }
 
-     and ATTRIBUTES =
-           { ns: EXPR,
-             override: bool,
-             static: bool,
-             final: bool,
-             dynamic: bool,
-             prototype: bool,
-             native: bool,
-             rest: bool }
-
      and FUNC_DEFN = 
            { kind : VAR_DEFN_TAG,
              ns: EXPR,
