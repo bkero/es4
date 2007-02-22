@@ -289,16 +289,6 @@ fun newFunc (e:SCOPE)
 
 val (objectType:TYPE) = Ast.ObjectType []
 
-val (defaultAttrs:Ast.ATTRIBUTES) = 
-    { ns = Ast.LiteralExpr (Ast.LiteralNamespace (Ast.Public "")),
-                     override = false,
-                     static = false,
-                     final = false,
-                     dynamic = true,
-                     prototype = false,
-                     native = false,
-                     rest = false }
-
 val (emptyBlock:Ast.BLOCK) = Ast.Block { pragmas = [],
                                          defns = [],
                                          stmts = [],
