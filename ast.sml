@@ -309,7 +309,6 @@ datatype PRAGMA =
        | NewExpr of 
            { obj: EXPR,
              actuals: EXPR list }
-       | FunExpr of FUNC
        | ObjectRef of { base: EXPR, ident: IDENT_EXPR }
        | LexicalRef of { ident: IDENT_EXPR }
        | SetExpr of (ASSIGNOP * PATTERN * EXPR)
@@ -349,6 +348,9 @@ datatype PRAGMA =
        | LiteralObject of
            { expr : FIELD list,
              ty: TYPE_EXPR option }
+       | LiteralFunction of
+           { func: FUNC,
+             ty: TYPE_EXPR option }  (* FunctionType *)
        | LiteralRegExp of
            { str: USTRING }
 
