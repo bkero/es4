@@ -1,0 +1,8 @@
+Tips and tricks for using SML/NJ effectively
+
+ - You can have a built-in library autoloaded at the REPL by passing it
+   as an argument to the `sml' command, using the same name as you would
+   use in your own .cm file. For example, to autoload the pretty-printing
+   library, where your .cm file would include $/pp-lib.cm, just use:
+
+     % sml '$/pp-lib.cm'

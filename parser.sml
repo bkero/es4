@@ -426,16 +426,28 @@ and functionExpression (ts,a:alpha,b:beta) =
                             let
                                 val (ts4,nd4) = block (ts3,LOCAL)
                             in
-                                (ts4,Ast.FunExpr (Ast.Func {name={kind=Ast.Ordinary,ident=""},fsig=nd3,body=nd4,fixtures=NONE,inits=[]}))
+                                (ts4,Ast.LiteralExpr (Ast.LiteralFunction 
+                                        {func=Ast.Func {name={kind=Ast.Ordinary,ident=""},
+                                                        fsig=nd3,
+                                                        body=nd4,
+                                                        fixtures=NONE,inits=[]},
+                                         ty=functionTypeFromSignature nd3}))
                             end
                       | (_,ALLOWLIST) => 
                             let
                                 val (ts4,nd4) = listExpression (ts3,b)
                             in
-                                (ts4,Ast.FunExpr (Ast.Func {name={kind=Ast.Ordinary,ident=""},fsig=nd3,
-                                         body=Ast.Block { pragmas=[],defns=[],stmts=[Ast.ReturnStmt nd4],fixtures=NONE,inits=NONE },
-                                         fixtures=NONE,
-                                         inits=[]}))
+                                (ts4,Ast.LiteralExpr (Ast.LiteralFunction 
+                                        {func=Ast.Func {name={kind=Ast.Ordinary,ident=""},
+                                                        fsig=nd3,
+                                                        body=Ast.Block {pragmas=[],
+                                                                        defns=[],
+                                                                        stmts=[Ast.ReturnStmt nd4],
+                                                                        fixtures=NONE,
+                                                                        inits=NONE},
+                                                        fixtures=NONE,
+                                                        inits=[]},
+                                         ty=functionTypeFromSignature nd3}))
 
                             end
                       | _ => raise ParseError
@@ -449,19 +461,26 @@ and functionExpression (ts,a:alpha,b:beta) =
                             let
                                 val (ts4,nd4) = block (ts3,LOCAL)
                             in
-                                (ts4,Ast.FunExpr (Ast.Func {name={kind=Ast.Ordinary,ident=nd2},fsig=nd3,body=nd4,fixtures=NONE,inits=[]}))
+                                (ts4,Ast.LiteralExpr (Ast.LiteralFunction 
+                                        {func=Ast.Func {name={kind=Ast.Ordinary,ident=nd2},
+                                                        fsig=nd3,
+                                                        body=nd4,
+                                                        fixtures=NONE,
+                                                        inits=[]},
+                                         ty=functionTypeFromSignature nd3}))
                             end
                       | (_,ALLOWLIST) => 
                             let
                                 val (ts4,nd4) = listExpression (ts3,b)
                             in
-                                (ts4,Ast.FunExpr (Ast.Func {name={kind=Ast.Ordinary,ident=nd2},fsig=nd3,
-                                         body=Ast.Block {pragmas=[],
-                                                         defns=[],
+                                (ts4,Ast.LiteralExpr (Ast.LiteralFunction 
+                                        {func=Ast.Func {name={kind=Ast.Ordinary,ident=nd2},fsig=nd3,
+                                                         body=Ast.Block {pragmas=[],
+                                                                         defns=[],
                                                          stmts=[Ast.ReturnStmt nd4],
                                                          fixtures=NONE,inits=NONE },
                                          fixtures=NONE,
-                                         inits=[]}))
+                                         inits=[]},ty=functionTypeFromSignature nd3}))
 
                             end
                       | _ => raise ParseError
@@ -482,9 +501,9 @@ and needType (nd:Ast.IDENT_EXPR,nullable:bool option) =
             if (ident="*")
                 then Ast.SpecialType Ast.Any
                 else if( ident="Object" )  (* FIXME: check for *the* object name *)
-                    then Ast.NominalType {ident=nd}
-                    else Ast.NominalType {ident=nd}
-      | _ => Ast.NominalType {ident=nd}
+                    then Ast.TypeName nd
+                    else Ast.TypeName nd
+      | _ => Ast.TypeName nd
     
 and functionSignature (ts) : (token list * Ast.FUNC_SIG) =
     let val _ = trace([">> functionSignature with next=",tokenname(hd(ts))]) 
@@ -857,16 +876,26 @@ and literalField (ts) =
                 val (ts1,nd1) = fieldName (tl ts)
                 val (ts2,{fsig,body,fixtures,inits}) = functionCommon (ts1)
             in
-                (ts2,{kind=Ast.Var,name=nd1,init=Ast.FunExpr (Ast.Func {name={kind=Ast.Get,ident=""},fsig=fsig,
-                                body=body,fixtures=fixtures,inits=inits})})
+                (ts2,{kind=Ast.Var,
+                      name=nd1,
+                      init=Ast.LiteralExpr (Ast.LiteralFunction 
+                               {func=Ast.Func {name={kind=Ast.Get,ident=""},fsig=fsig,
+                                               body=body,fixtures=fixtures,inits=inits},
+                                ty=functionTypeFromSignature fsig})})
             end
       | Set :: _ =>
             let
                 val (ts1,nd1) = fieldName (tl ts)
                 val (ts2,{fsig,body,fixtures,inits}) = functionCommon (ts1)
             in
-                (ts2,{kind=Ast.Var,name=nd1,init=Ast.FunExpr (Ast.Func {name={kind=Ast.Get,ident=""},fsig=fsig,
-                                body=body,fixtures=fixtures,inits=inits})})
+                (ts2,{kind=Ast.Var,
+                      name=nd1,
+                      init=Ast.LiteralExpr (Ast.LiteralFunction {func=Ast.Func {name={kind=Ast.Get,ident=""},
+                                                                                fsig=fsig,
+                                                                                body=body,
+                                                                                fixtures=fixtures,
+                                                                                inits=inits},
+                                                                 ty=functionTypeFromSignature fsig})})
             end
       | _ => 
             let
@@ -2766,21 +2795,35 @@ and functionType (ts) : (token list * Ast.TYPE_EXPR)  =
         Function :: _ => 
             let
                 val (ts1,nd1) = functionSignature (tl ts)
-                fun paramtypes (params:Ast.VAR_BINDING list):Ast.TYPE_EXPR option list =
+            in
+                trace(["<< functionType with next=",tokenname(hd ts1)]);
+                (ts1,functionTypeFromSignature nd1)
+            end
+      | _ => raise ParseError
+    end
+
+and functionTypeFromSignature fsig : Ast.TYPE_EXPR = 
+    let
+        fun paramTypes (params:Ast.VAR_BINDING list):Ast.TYPE_EXPR list =
                     case params of
                         [] => []
-                      | _ => 
+                      | _ =>
                             let
                                 val _ = log(["paramtypes"]);
                                 val Ast.Binding {ty,... } = hd params
-                            in
-                                ty :: paramtypes (tl params)
+                            in case ty of
+                                SOME t => t :: paramTypes (tl params)
+                              | NONE => (Ast.SpecialType Ast.Any) :: paramTypes (tl params)
                             end
-            in
-                trace(["<< functionType with next=",tokenname(hd ts1)]);
-                (ts1,Ast.FunctionType nd1)
-            end
-      | _ => raise ParseError
+
+    in case fsig of
+        Ast.FunctionSignature {typeParams,params,inits,returnType,
+                               thisType,hasRest} =>
+            Ast.FunctionType {typeParams=typeParams,
+                              params=paramTypes params,
+                              result=returnType,
+                              thisType=thisType,
+                              hasRest=hasRest}
     end
 
 (*
@@ -2891,7 +2934,6 @@ and arrayType (ts) : (token list * Ast.TYPE_EXPR)  =
             end
       | _ => raise ParseError
     end
-
 
 (*
     ElementTypeList    
@@ -3305,7 +3347,8 @@ and caseElements (ts) : (token list * Ast.CASE list) =
                 [] =>
                     let
                     in
-                        (ts2,{label=nd1,body=Ast.Block {pragmas=[],defns=[],stmts=[],fixtures=NONE,inits=NONE}}::[])
+                        (ts2,{label=nd1,
+                              body=Ast.Block {pragmas=[],defns=[],stmts=[],fixtures=NONE,inits=NONE}}::[])
                     end
               | first :: follows =>
                     let
@@ -3666,7 +3709,7 @@ and forStatement (ts,w) : (token list * Ast.STMT) =
                             in 
                                 (ts4,Ast.ForStmt{ 
                                             defns=b,
-                                            init=i,
+                                            init=Ast.ListExpr i,
                                             cond=nd2,
                                             update=nd3,
                                             contLabel=NONE,
@@ -3738,7 +3781,7 @@ and forInitialiser (ts) : (token list * Ast.BINDINGS) =
             in case (defns,stmts) of
                 (Ast.VariableDefn {bindings=bindings,...} :: [],Ast.ExprStmt inits :: []) =>
                     (trace(["<< forInitialiser with next=", tokenname(hd ts1)]);
-                    (ts1,{b=bindings,i=inits}))
+                    (ts1,{b=bindings,i=[inits]}))
               | _ => raise ParseError
             end
       | SemiColon :: _ =>
@@ -3752,7 +3795,7 @@ and forInitialiser (ts) : (token list * Ast.BINDINGS) =
                 val (ts1,nd1) = listExpression (ts,NOIN)
             in 
                 (trace(["<< forInitialiser with next=", tokenname(hd ts1)]);
-                (ts1,{b=[],i=nd1}))
+                (ts1,{b=[],i=[nd1]}))
             end
     end
 
@@ -3762,12 +3805,12 @@ and optionalExpression (ts) : (token list * Ast.EXPR) =
         SemiColon :: _ =>
             let
             in
-                (tl ts,[])
+                (tl ts,Ast.ListExpr [])
             end
       | RightParen :: _ =>
             let
             in
-                (ts,[])
+                (ts,Ast.ListExpr [])
             end
       | _ => 
             let
@@ -4903,9 +4946,14 @@ and functionDefinition (ts,attrs,CLASS) =
                                        func=Ast.Func {name=nd2,
                                                       fsig=nd3, fixtures = NONE,inits=[],
                                                       body=nd4}}],
-              stmts=[Ast.InitStmt {kind=Ast.Var,ns=ns,prototype=false,static=false,
+              stmts=[Ast.InitStmt {kind=Ast.Var,
+                                   ns=ns,
+                                   prototype=false,
+                                   static=false,
                                    inits=[Ast.SetExpr (Ast.Assign,Ast.IdentifierPattern ident,
-                                                       Ast.FunExpr func)]}],
+                                                       Ast.LiteralExpr (Ast.LiteralFunction 
+                                                           {func=func,
+                                                            ty=functionTypeFromSignature(nd3)}))]}],
               fixtures=NONE,
               inits=NONE})
     end

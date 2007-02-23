@@ -454,228 +454,224 @@ structure PrettyCvt = struct
                                                                                              ) ls910)))
      | cvtEXPR (SliceExpr(x916, x917, x918)) = PrettyRep.Ctor ("SliceExpr", 
           SOME (PrettyRep.Tuple [cvtEXPR x916, cvtEXPR x917, cvtEXPR x918]))
-   and cvtIDENT_EXPR (QualifiedIdentifier{qual=x922, ident=x923}) = PrettyRep.Ctor ("QualifiedIdentifier", 
-          SOME (PrettyRep.Rec [("qual", cvtEXPR x922), ("ident", cvtUSTRING x923)]))
-     | cvtIDENT_EXPR (QualifiedExpression{qual=x931, expr=x932}) = PrettyRep.Ctor ("QualifiedExpression", 
-          SOME (PrettyRep.Rec [("qual", cvtEXPR x931), ("expr", cvtEXPR x932)]))
-     | cvtIDENT_EXPR (AttributeIdentifier x940) = PrettyRep.Ctor ("AttributeIdentifier", 
-          SOME (cvtIDENT_EXPR x940))
-     | cvtIDENT_EXPR (Identifier{ident=x943, openNamespaces=ls949}) = PrettyRep.Ctor ("Identifier", 
-          SOME (PrettyRep.Rec [("ident", cvtIDENT x943), ("openNamespaces", 
-          PrettyRep.List (List.map (fn ls945 => PrettyRep.List (List.map (fn x944 => 
-                                                                                cvtNAMESPACE x944
-                                                                         ) ls945)
-                                   ) ls949))]))
-     | cvtIDENT_EXPR (ExpressionIdentifier x960) = PrettyRep.Ctor ("ExpressionIdentifier", 
-          SOME (cvtEXPR x960))
-     | cvtIDENT_EXPR (TypeIdentifier{ident=x963, typeParams=ls965}) = PrettyRep.Ctor ("TypeIdentifier", 
-          SOME (PrettyRep.Rec [("ident", cvtIDENT_EXPR x963), ("typeParams", 
-          PrettyRep.List (List.map (fn x964 => cvtTYPE_EXPR x964
-                                   ) ls965))]))
+   and cvtFIXTURE_NAME (TempName n922) = PrettyRep.Ctor ("TempName", SOME (PrettyRep.Int n922))
+     | cvtFIXTURE_NAME (PropName x925) = PrettyRep.Ctor ("PropName", SOME (cvtNAME x925))
+   and cvtIDENT_EXPR (QualifiedIdentifier{qual=x928, ident=x929}) = PrettyRep.Ctor ("QualifiedIdentifier", 
+          SOME (PrettyRep.Rec [("qual", cvtEXPR x928), ("ident", cvtUSTRING x929)]))
+     | cvtIDENT_EXPR (QualifiedExpression{qual=x937, expr=x938}) = PrettyRep.Ctor ("QualifiedExpression", 
+          SOME (PrettyRep.Rec [("qual", cvtEXPR x937), ("expr", cvtEXPR x938)]))
+     | cvtIDENT_EXPR (AttributeIdentifier x946) = PrettyRep.Ctor ("AttributeIdentifier", 
+          SOME (cvtIDENT_EXPR x946))
+     | cvtIDENT_EXPR (Identifier{ident=x949, openNamespaces=ls955}) = PrettyRep.Ctor ("Identifier", 
+          SOME (PrettyRep.Rec [("ident", cvtIDENT x949), ("openNamespaces", 
+          PrettyRep.List (List.map (fn ls951 => PrettyRep.List (List.map (fn x950 => 
+                                                                                cvtNAMESPACE x950
+                                                                         ) ls951)
+                                   ) ls955))]))
+     | cvtIDENT_EXPR (ExpressionIdentifier x966) = PrettyRep.Ctor ("ExpressionIdentifier", 
+          SOME (cvtEXPR x966))
+     | cvtIDENT_EXPR (TypeIdentifier{ident=x969, typeParams=ls971}) = PrettyRep.Ctor ("TypeIdentifier", 
+          SOME (PrettyRep.Rec [("ident", cvtIDENT_EXPR x969), ("typeParams", 
+          PrettyRep.List (List.map (fn x970 => cvtTYPE_EXPR x970
+                                   ) ls971))]))
    and cvtLITERAL (LiteralNull) = PrettyRep.Ctor ("LiteralNull", NONE)
      | cvtLITERAL (LiteralUndefined) = PrettyRep.Ctor ("LiteralUndefined", 
           NONE)
-     | cvtLITERAL (LiteralNumber r978) = PrettyRep.Ctor ("LiteralNumber", SOME (PrettyRep.Real r978))
-     | cvtLITERAL (LiteralBoolean b981) = PrettyRep.Ctor ("LiteralBoolean", 
-          SOME (PrettyRep.Bool b981))
-     | cvtLITERAL (LiteralString x984) = PrettyRep.Ctor ("LiteralString", SOME (cvtUSTRING x984))
-     | cvtLITERAL (LiteralArray{exprs=ls988, ty=opt993}) = PrettyRep.Ctor ("LiteralArray", 
-          SOME (PrettyRep.Rec [("exprs", PrettyRep.List (List.map (fn x987 => 
-                                                                         cvtEXPR x987
-                                                                  ) ls988)), 
+     | cvtLITERAL (LiteralNumber r984) = PrettyRep.Ctor ("LiteralNumber", SOME (PrettyRep.Real r984))
+     | cvtLITERAL (LiteralBoolean b987) = PrettyRep.Ctor ("LiteralBoolean", 
+          SOME (PrettyRep.Bool b987))
+     | cvtLITERAL (LiteralString x990) = PrettyRep.Ctor ("LiteralString", SOME (cvtUSTRING x990))
+     | cvtLITERAL (LiteralArray{exprs=ls994, ty=opt999}) = PrettyRep.Ctor ("LiteralArray", 
+          SOME (PrettyRep.Rec [("exprs", PrettyRep.List (List.map (fn x993 => 
+                                                                         cvtEXPR x993
+                                                                  ) ls994)), 
           ("ty", 
-       (case opt993 of
+       (case opt999 of
          NONE => PrettyRep.Ctor ("NONE", NONE)
-       | SOME x992 => PrettyRep.Ctor ("SOME", SOME (cvtTYPE_EXPR x992))
+       | SOME x998 => PrettyRep.Ctor ("SOME", SOME (cvtTYPE_EXPR x998))
        ))]))
-     | cvtLITERAL (LiteralXML ls1005) = PrettyRep.Ctor ("LiteralXML", SOME (PrettyRep.List (List.map (fn x1004 => 
-                                                                                                            cvtEXPR x1004
-                                                                                                     ) ls1005)))
-     | cvtLITERAL (LiteralNamespace x1011) = PrettyRep.Ctor ("LiteralNamespace", 
-          SOME (cvtNAMESPACE x1011))
-     | cvtLITERAL (LiteralObject{expr=ls1015, ty=opt1020}) = PrettyRep.Ctor ("LiteralObject", 
-          SOME (PrettyRep.Rec [("expr", PrettyRep.List (List.map (fn x1014 => 
-                                                                        cvtFIELD x1014
-                                                                 ) ls1015)), 
+     | cvtLITERAL (LiteralXML ls1011) = PrettyRep.Ctor ("LiteralXML", SOME (PrettyRep.List (List.map (fn x1010 => 
+                                                                                                            cvtEXPR x1010
+                                                                                                     ) ls1011)))
+     | cvtLITERAL (LiteralNamespace x1017) = PrettyRep.Ctor ("LiteralNamespace", 
+          SOME (cvtNAMESPACE x1017))
+     | cvtLITERAL (LiteralObject{expr=ls1021, ty=opt1026}) = PrettyRep.Ctor ("LiteralObject", 
+          SOME (PrettyRep.Rec [("expr", PrettyRep.List (List.map (fn x1020 => 
+                                                                        cvtFIELD x1020
+                                                                 ) ls1021)), 
           ("ty", 
-       (case opt1020 of
+       (case opt1026 of
          NONE => PrettyRep.Ctor ("NONE", NONE)
-       | SOME x1019 => PrettyRep.Ctor ("SOME", SOME (cvtTYPE_EXPR x1019))
+       | SOME x1025 => PrettyRep.Ctor ("SOME", SOME (cvtTYPE_EXPR x1025))
        ))]))
-     | cvtLITERAL (LiteralFunction{func=x1031, ty=opt1033}) = PrettyRep.Ctor ("LiteralFunction", 
-          SOME (PrettyRep.Rec [("func", cvtFUNC x1031), ("ty", 
-       (case opt1033 of
-         NONE => PrettyRep.Ctor ("NONE", NONE)
-       | SOME x1032 => PrettyRep.Ctor ("SOME", SOME (cvtTYPE_EXPR x1032))
-       ))]))
-     | cvtLITERAL (LiteralRegExp{str=x1044}) = PrettyRep.Ctor ("LiteralRegExp", 
-          SOME (PrettyRep.Rec [("str", cvtUSTRING x1044)]))
-   and cvtBLOCK (Block x1050) = PrettyRep.Ctor ("Block", SOME (cvtDIRECTIVES x1050))
-   and cvtPATTERN (ObjectPattern ls1054) = PrettyRep.Ctor ("ObjectPattern", 
-          SOME (PrettyRep.List (List.map (fn x1053 => cvtFIELD_PATTERN x1053
-                                         ) ls1054)))
-     | cvtPATTERN (ArrayPattern ls1061) = PrettyRep.Ctor ("ArrayPattern", SOME (PrettyRep.List (List.map (fn x1060 => 
-                                                                                                                cvtPATTERN x1060
-                                                                                                         ) ls1061)))
-     | cvtPATTERN (SimplePattern x1067) = PrettyRep.Ctor ("SimplePattern", 
-          SOME (cvtEXPR x1067))
-     | cvtPATTERN (IdentifierPattern x1070) = PrettyRep.Ctor ("IdentifierPattern", 
-          SOME (cvtIDENT x1070))
-   and cvtFIXTURE (NamespaceFixture x1073) = PrettyRep.Ctor ("NamespaceFixture", 
-          SOME (cvtNAMESPACE x1073))
-     | cvtFIXTURE (ClassFixture x1076) = PrettyRep.Ctor ("ClassFixture", SOME (cvtCLS x1076))
+     | cvtLITERAL (LiteralFunction{func=x1037, ty=x1038}) = PrettyRep.Ctor ("LiteralFunction", 
+          SOME (PrettyRep.Rec [("func", cvtFUNC x1037), ("ty", cvtTYPE_EXPR x1038)]))
+     | cvtLITERAL (LiteralRegExp{str=x1046}) = PrettyRep.Ctor ("LiteralRegExp", 
+          SOME (PrettyRep.Rec [("str", cvtUSTRING x1046)]))
+   and cvtBLOCK (Block x1052) = PrettyRep.Ctor ("Block", SOME (cvtDIRECTIVES x1052))
+   and cvtPATTERN (ObjectPattern ls1056) = PrettyRep.Ctor ("ObjectPattern", 
+          SOME (PrettyRep.List (List.map (fn x1055 => cvtFIELD_PATTERN x1055
+                                         ) ls1056)))
+     | cvtPATTERN (ArrayPattern ls1063) = PrettyRep.Ctor ("ArrayPattern", SOME (PrettyRep.List (List.map (fn x1062 => 
+                                                                                                                cvtPATTERN x1062
+                                                                                                         ) ls1063)))
+     | cvtPATTERN (SimplePattern x1069) = PrettyRep.Ctor ("SimplePattern", 
+          SOME (cvtEXPR x1069))
+     | cvtPATTERN (IdentifierPattern x1072) = PrettyRep.Ctor ("IdentifierPattern", 
+          SOME (cvtIDENT x1072))
+   and cvtFIXTURE (NamespaceFixture x1075) = PrettyRep.Ctor ("NamespaceFixture", 
+          SOME (cvtNAMESPACE x1075))
+     | cvtFIXTURE (ClassFixture x1078) = PrettyRep.Ctor ("ClassFixture", SOME (cvtCLS x1078))
      | cvtFIXTURE (TypeVarFixture) = PrettyRep.Ctor ("TypeVarFixture", NONE)
-     | cvtFIXTURE (TypeFixture x1080) = PrettyRep.Ctor ("TypeFixture", SOME (cvtTYPE_EXPR x1080))
-     | cvtFIXTURE (ValFixture{ty=x1083, readOnly=b1084, isOverride=b1085, isFinal=b1086, 
-          init=opt1088}) = PrettyRep.Ctor ("ValFixture", SOME (PrettyRep.Rec [("ty", 
-          cvtTYPE_EXPR x1083), ("readOnly", PrettyRep.Bool b1084), ("isOverride", 
-          PrettyRep.Bool b1085), ("isFinal", PrettyRep.Bool b1086), ("init", 
+     | cvtFIXTURE (TypeFixture x1082) = PrettyRep.Ctor ("TypeFixture", SOME (cvtTYPE_EXPR x1082))
+     | cvtFIXTURE (ValFixture{ty=x1085, readOnly=b1086, isOverride=b1087, isFinal=b1088, 
+          init=opt1090}) = PrettyRep.Ctor ("ValFixture", SOME (PrettyRep.Rec [("ty", 
+          cvtTYPE_EXPR x1085), ("readOnly", PrettyRep.Bool b1086), ("isOverride", 
+          PrettyRep.Bool b1087), ("isFinal", PrettyRep.Bool b1088), ("init", 
           
-       (case opt1088 of
+       (case opt1090 of
          NONE => PrettyRep.Ctor ("NONE", NONE)
-       | SOME x1087 => PrettyRep.Ctor ("SOME", SOME (cvtEXPR x1087))
+       | SOME x1089 => PrettyRep.Ctor ("SOME", SOME (cvtEXPR x1089))
        ))]))
-     | cvtFIXTURE (VirtualValFixture{ty=x1105, getter=opt1107, setter=opt1112}) = 
+     | cvtFIXTURE (VirtualValFixture{ty=x1107, getter=opt1109, setter=opt1114}) = 
           PrettyRep.Ctor ("VirtualValFixture", SOME (PrettyRep.Rec [("ty", 
-          cvtTYPE_EXPR x1105), ("getter", 
-       (case opt1107 of
+          cvtTYPE_EXPR x1107), ("getter", 
+       (case opt1109 of
          NONE => PrettyRep.Ctor ("NONE", NONE)
-       | SOME x1106 => PrettyRep.Ctor ("SOME", SOME (cvtFUNC_DEFN x1106))
+       | SOME x1108 => PrettyRep.Ctor ("SOME", SOME (cvtFUNC_DEFN x1108))
        )), ("setter", 
-       (case opt1112 of
+       (case opt1114 of
          NONE => PrettyRep.Ctor ("NONE", NONE)
-       | SOME x1111 => PrettyRep.Ctor ("SOME", SOME (cvtFUNC_DEFN x1111))
+       | SOME x1113 => PrettyRep.Ctor ("SOME", SOME (cvtFUNC_DEFN x1113))
        ))]))
-   and cvtFIELD {kind=x1125, name=x1126, init=x1127} = PrettyRep.Rec [("kind", 
-          cvtVAR_DEFN_TAG x1125), ("name", cvtIDENT_EXPR x1126), ("init", cvtEXPR x1127)]
-   and cvtFIELD_PATTERN {name=x1135, ptrn=x1136} = PrettyRep.Rec [("name", 
-          cvtIDENT_EXPR x1135), ("ptrn", cvtPATTERN x1136)]
-   and cvtFIELD_TYPE {name=x1142, ty=x1143} = PrettyRep.Rec [("name", cvtIDENT x1142), 
-          ("ty", cvtTYPE_EXPR x1143)]
-   and cvtTYPED_IDENT {name=x1149, ty=opt1151} = PrettyRep.Rec [("name", cvtIDENT x1149), 
+   and cvtFIELD {kind=x1127, name=x1128, init=x1129} = PrettyRep.Rec [("kind", 
+          cvtVAR_DEFN_TAG x1127), ("name", cvtIDENT_EXPR x1128), ("init", cvtEXPR x1129)]
+   and cvtFIELD_PATTERN {name=x1137, ptrn=x1138} = PrettyRep.Rec [("name", 
+          cvtIDENT_EXPR x1137), ("ptrn", cvtPATTERN x1138)]
+   and cvtFIELD_TYPE {name=x1144, ty=x1145} = PrettyRep.Rec [("name", cvtIDENT x1144), 
+          ("ty", cvtTYPE_EXPR x1145)]
+   and cvtTYPED_IDENT {name=x1151, ty=opt1153} = PrettyRep.Rec [("name", cvtIDENT x1151), 
           ("ty", 
-       (case opt1151 of
+       (case opt1153 of
          NONE => PrettyRep.Ctor ("NONE", NONE)
-       | SOME x1150 => PrettyRep.Ctor ("SOME", SOME (cvtTYPE_EXPR x1150))
+       | SOME x1152 => PrettyRep.Ctor ("SOME", SOME (cvtTYPE_EXPR x1152))
        ))]
-   and cvtFUNC_DEFN {kind=x1160, ns=x1161, final=b1162, native=b1163, override=b1164, 
-          prototype=b1165, static=b1166, func=x1167} = PrettyRep.Rec [("kind", 
-          cvtVAR_DEFN_TAG x1160), ("ns", cvtEXPR x1161), ("final", PrettyRep.Bool b1162), 
-          ("native", PrettyRep.Bool b1163), ("override", PrettyRep.Bool b1164), 
-          ("prototype", PrettyRep.Bool b1165), ("static", PrettyRep.Bool b1166), 
-          ("func", cvtFUNC x1167)]
-   and cvtCTOR_DEFN {ns=x1185, native=b1186, ctor=x1187} = PrettyRep.Rec [("ns", 
-          cvtEXPR x1185), ("native", PrettyRep.Bool b1186), ("ctor", cvtCTOR x1187)]
-   and cvtVAR_DEFN {kind=x1195, ns=x1196, static=b1197, prototype=b1198, bindings=ls1200} = 
-          PrettyRep.Rec [("kind", cvtVAR_DEFN_TAG x1195), ("ns", cvtEXPR x1196), 
-          ("static", PrettyRep.Bool b1197), ("prototype", PrettyRep.Bool b1198), 
-          ("bindings", PrettyRep.List (List.map (fn x1199 => cvtVAR_BINDING x1199
-                                                ) ls1200))]
-   and cvtFIXTURES ls1218 = PrettyRep.List (List.map (fn (x1215, x1216) => 
-                                                            PrettyRep.Tuple [cvtNAME x1215, 
-                                                            cvtFIXTURE x1216]
-                                                     ) ls1218)
-   and cvtINITS ls1225 = PrettyRep.List (List.map (fn (x1222, x1223) => PrettyRep.Tuple [cvtNAME x1222, 
-                                                         cvtEXPR x1223]
-                                                  ) ls1225)
-   and cvtNAMESPACE_DEFN {ident=x1229, ns=x1230, init=opt1232} = PrettyRep.Rec [("ident", 
-          cvtIDENT x1229), ("ns", cvtEXPR x1230), ("init", 
-       (case opt1232 of
+   and cvtFUNC_DEFN {kind=x1162, ns=x1163, final=b1164, native=b1165, override=b1166, 
+          prototype=b1167, static=b1168, func=x1169} = PrettyRep.Rec [("kind", 
+          cvtVAR_DEFN_TAG x1162), ("ns", cvtEXPR x1163), ("final", PrettyRep.Bool b1164), 
+          ("native", PrettyRep.Bool b1165), ("override", PrettyRep.Bool b1166), 
+          ("prototype", PrettyRep.Bool b1167), ("static", PrettyRep.Bool b1168), 
+          ("func", cvtFUNC x1169)]
+   and cvtCTOR_DEFN {ns=x1187, native=b1188, ctor=x1189} = PrettyRep.Rec [("ns", 
+          cvtEXPR x1187), ("native", PrettyRep.Bool b1188), ("ctor", cvtCTOR x1189)]
+   and cvtVAR_DEFN {kind=x1197, ns=x1198, static=b1199, prototype=b1200, bindings=ls1202} = 
+          PrettyRep.Rec [("kind", cvtVAR_DEFN_TAG x1197), ("ns", cvtEXPR x1198), 
+          ("static", PrettyRep.Bool b1199), ("prototype", PrettyRep.Bool b1200), 
+          ("bindings", PrettyRep.List (List.map (fn x1201 => cvtVAR_BINDING x1201
+                                                ) ls1202))]
+   and cvtFIXTURES ls1220 = PrettyRep.List (List.map (fn (x1217, x1218) => 
+                                                            PrettyRep.Tuple [cvtFIXTURE_NAME x1217, 
+                                                            cvtFIXTURE x1218]
+                                                     ) ls1220)
+   and cvtINITS ls1227 = PrettyRep.List (List.map (fn (x1224, x1225) => PrettyRep.Tuple [cvtFIXTURE_NAME x1224, 
+                                                         cvtEXPR x1225]
+                                                  ) ls1227)
+   and cvtNAMESPACE_DEFN {ident=x1231, ns=x1232, init=opt1234} = PrettyRep.Rec [("ident", 
+          cvtIDENT x1231), ("ns", cvtEXPR x1232), ("init", 
+       (case opt1234 of
          NONE => PrettyRep.Ctor ("NONE", NONE)
-       | SOME x1231 => PrettyRep.Ctor ("SOME", SOME (cvtEXPR x1231))
+       | SOME x1233 => PrettyRep.Ctor ("SOME", SOME (cvtEXPR x1233))
        ))]
-   and cvtCLASS_DEFN {ident=x1243, ns=x1244, nonnullable=b1245, dynamic=b1246, 
-          final=b1247, params=ls1249, extends=opt1254, implements=ls1259, body=x1263} = 
-          PrettyRep.Rec [("ident", cvtIDENT x1243), ("ns", cvtEXPR x1244), 
-          ("nonnullable", PrettyRep.Bool b1245), ("dynamic", PrettyRep.Bool b1246), 
-          ("final", PrettyRep.Bool b1247), ("params", PrettyRep.List (List.map (fn x1248 => 
-                                                                                      cvtIDENT x1248
-                                                                               ) ls1249)), 
+   and cvtCLASS_DEFN {ident=x1245, ns=x1246, nonnullable=b1247, dynamic=b1248, 
+          final=b1249, params=ls1251, extends=opt1256, implements=ls1261, body=x1265} = 
+          PrettyRep.Rec [("ident", cvtIDENT x1245), ("ns", cvtEXPR x1246), 
+          ("nonnullable", PrettyRep.Bool b1247), ("dynamic", PrettyRep.Bool b1248), 
+          ("final", PrettyRep.Bool b1249), ("params", PrettyRep.List (List.map (fn x1250 => 
+                                                                                      cvtIDENT x1250
+                                                                               ) ls1251)), 
           ("extends", 
-       (case opt1254 of
+       (case opt1256 of
          NONE => PrettyRep.Ctor ("NONE", NONE)
-       | SOME x1253 => PrettyRep.Ctor ("SOME", SOME (cvtIDENT_EXPR x1253))
-       )), ("implements", PrettyRep.List (List.map (fn x1258 => cvtIDENT_EXPR x1258
-                                                   ) ls1259)), ("body", cvtBLOCK x1263)]
-   and cvtINTERFACE_DEFN {ident=x1283, ns=x1284, nonnullable=b1285, params=ls1287, 
-          extends=ls1292, body=x1296} = PrettyRep.Rec [("ident", cvtIDENT x1283), 
-          ("ns", cvtEXPR x1284), ("nonnullable", PrettyRep.Bool b1285), ("params", 
-          PrettyRep.List (List.map (fn x1286 => cvtIDENT x1286
-                                   ) ls1287)), ("extends", PrettyRep.List (List.map (fn x1291 => 
-                                                                                           cvtIDENT_EXPR x1291
-                                                                                    ) ls1292)), 
-          ("body", cvtBLOCK x1296)]
-   and cvtTYPE_DEFN {ident=x1310, ns=x1311, init=x1312} = PrettyRep.Rec [("ident", 
-          cvtIDENT x1310), ("ns", cvtEXPR x1311), ("init", cvtTYPE_EXPR x1312)]
-   and cvtFOR_ENUM_STMT {ptrn=opt1321, obj=x1325, defns=ls1327, fixtures=opt1332, 
-          contLabel=opt1337, body=x1341} = PrettyRep.Rec [("ptrn", 
-       (case opt1321 of
+       | SOME x1255 => PrettyRep.Ctor ("SOME", SOME (cvtIDENT_EXPR x1255))
+       )), ("implements", PrettyRep.List (List.map (fn x1260 => cvtIDENT_EXPR x1260
+                                                   ) ls1261)), ("body", cvtBLOCK x1265)]
+   and cvtINTERFACE_DEFN {ident=x1285, ns=x1286, nonnullable=b1287, params=ls1289, 
+          extends=ls1294, body=x1298} = PrettyRep.Rec [("ident", cvtIDENT x1285), 
+          ("ns", cvtEXPR x1286), ("nonnullable", PrettyRep.Bool b1287), ("params", 
+          PrettyRep.List (List.map (fn x1288 => cvtIDENT x1288
+                                   ) ls1289)), ("extends", PrettyRep.List (List.map (fn x1293 => 
+                                                                                           cvtIDENT_EXPR x1293
+                                                                                    ) ls1294)), 
+          ("body", cvtBLOCK x1298)]
+   and cvtTYPE_DEFN {ident=x1312, ns=x1313, init=x1314} = PrettyRep.Rec [("ident", 
+          cvtIDENT x1312), ("ns", cvtEXPR x1313), ("init", cvtTYPE_EXPR x1314)]
+   and cvtFOR_ENUM_STMT {ptrn=opt1323, obj=x1327, defns=ls1329, fixtures=opt1334, 
+          contLabel=opt1339, body=x1343} = PrettyRep.Rec [("ptrn", 
+       (case opt1323 of
          NONE => PrettyRep.Ctor ("NONE", NONE)
-       | SOME x1320 => PrettyRep.Ctor ("SOME", SOME (cvtPATTERN x1320))
-       )), ("obj", cvtEXPR x1325), ("defns", PrettyRep.List (List.map (fn x1326 => 
-                                                                             cvtVAR_BINDING x1326
-                                                                      ) ls1327)), 
+       | SOME x1322 => PrettyRep.Ctor ("SOME", SOME (cvtPATTERN x1322))
+       )), ("obj", cvtEXPR x1327), ("defns", PrettyRep.List (List.map (fn x1328 => 
+                                                                             cvtVAR_BINDING x1328
+                                                                      ) ls1329)), 
           ("fixtures", 
-       (case opt1332 of
+       (case opt1334 of
          NONE => PrettyRep.Ctor ("NONE", NONE)
-       | SOME x1331 => PrettyRep.Ctor ("SOME", SOME (cvtFIXTURES x1331))
+       | SOME x1333 => PrettyRep.Ctor ("SOME", SOME (cvtFIXTURES x1333))
        )), ("contLabel", 
-       (case opt1337 of
+       (case opt1339 of
          NONE => PrettyRep.Ctor ("NONE", NONE)
-       | SOME x1336 => PrettyRep.Ctor ("SOME", SOME (cvtIDENT x1336))
-       )), ("body", cvtSTMT x1341)]
-   and cvtWHILE_STMT {cond=x1355, body=x1356, contLabel=opt1358} = PrettyRep.Rec [("cond", 
-          cvtEXPR x1355), ("body", cvtSTMT x1356), ("contLabel", 
-       (case opt1358 of
+       | SOME x1338 => PrettyRep.Ctor ("SOME", SOME (cvtIDENT x1338))
+       )), ("body", cvtSTMT x1343)]
+   and cvtWHILE_STMT {cond=x1357, body=x1358, contLabel=opt1360} = PrettyRep.Rec [("cond", 
+          cvtEXPR x1357), ("body", cvtSTMT x1358), ("contLabel", 
+       (case opt1360 of
          NONE => PrettyRep.Ctor ("NONE", NONE)
-       | SOME x1357 => PrettyRep.Ctor ("SOME", SOME (cvtIDENT x1357))
+       | SOME x1359 => PrettyRep.Ctor ("SOME", SOME (cvtIDENT x1359))
        ))]
-   and cvtDIRECTIVES {pragmas=ls1370, defns=ls1375, stmts=ls1380, fixtures=opt1385, 
-          inits=opt1394} = PrettyRep.Rec [("pragmas", PrettyRep.List (List.map (fn x1369 => 
-                                                                                      cvtPRAGMA x1369
-                                                                               ) ls1370)), 
-          ("defns", PrettyRep.List (List.map (fn x1374 => cvtDEFN x1374
-                                             ) ls1375)), ("stmts", PrettyRep.List (List.map (fn x1379 => 
-                                                                                                   cvtSTMT x1379
-                                                                                            ) ls1380)), 
+   and cvtDIRECTIVES {pragmas=ls1372, defns=ls1377, stmts=ls1382, fixtures=opt1387, 
+          inits=opt1396} = PrettyRep.Rec [("pragmas", PrettyRep.List (List.map (fn x1371 => 
+                                                                                      cvtPRAGMA x1371
+                                                                               ) ls1372)), 
+          ("defns", PrettyRep.List (List.map (fn x1376 => cvtDEFN x1376
+                                             ) ls1377)), ("stmts", PrettyRep.List (List.map (fn x1381 => 
+                                                                                                   cvtSTMT x1381
+                                                                                            ) ls1382)), 
           ("fixtures", 
-       (case opt1385 of
+       (case opt1387 of
          NONE => PrettyRep.Ctor ("NONE", NONE)
-       | SOME x1384 => PrettyRep.Ctor ("SOME", SOME (cvtFIXTURES x1384))
+       | SOME x1386 => PrettyRep.Ctor ("SOME", SOME (cvtFIXTURES x1386))
        )), ("inits", 
-       (case opt1394 of
+       (case opt1396 of
          NONE => PrettyRep.Ctor ("NONE", NONE)
-       | SOME ls1390 => PrettyRep.Ctor ("SOME", SOME (PrettyRep.List (List.map (fn x1389 => 
-                                                                                      cvtSTMT x1389
-                                                                               ) ls1390)))
+       | SOME ls1392 => PrettyRep.Ctor ("SOME", SOME (PrettyRep.List (List.map (fn x1391 => 
+                                                                                      cvtSTMT x1391
+                                                                               ) ls1392)))
        ))]
-   and cvtBINDINGS {b=ls1410, i=ls1415} = PrettyRep.Rec [("b", PrettyRep.List (List.map (fn x1409 => 
-                                                                                               cvtVAR_BINDING x1409
-                                                                                        ) ls1410)), 
-          ("i", PrettyRep.List (List.map (fn x1414 => cvtEXPR x1414
-                                         ) ls1415))]
-   and cvtCASE {label=opt1429, body=x1433} = PrettyRep.Rec [("label", 
-       (case opt1429 of
+   and cvtBINDINGS {b=ls1412, i=ls1417} = PrettyRep.Rec [("b", PrettyRep.List (List.map (fn x1411 => 
+                                                                                               cvtVAR_BINDING x1411
+                                                                                        ) ls1412)), 
+          ("i", PrettyRep.List (List.map (fn x1416 => cvtEXPR x1416
+                                         ) ls1417))]
+   and cvtCASE {label=opt1427, body=x1431} = PrettyRep.Rec [("label", 
+       (case opt1427 of
          NONE => PrettyRep.Ctor ("NONE", NONE)
-       | SOME ls1425 => PrettyRep.Ctor ("SOME", SOME (PrettyRep.List (List.map (fn x1424 => 
-                                                                                      cvtEXPR x1424
-                                                                               ) ls1425)))
-       )), ("body", cvtBLOCK x1433)]
-   and cvtTYPE_CASE {ptrn=opt1440, body=x1444} = PrettyRep.Rec [("ptrn", 
-       (case opt1440 of
+       | SOME x1426 => PrettyRep.Ctor ("SOME", SOME (cvtEXPR x1426))
+       )), ("body", cvtBLOCK x1431)]
+   and cvtTYPE_CASE {ptrn=opt1438, body=x1442} = PrettyRep.Rec [("ptrn", 
+       (case opt1438 of
          NONE => PrettyRep.Ctor ("NONE", NONE)
-       | SOME x1439 => PrettyRep.Ctor ("SOME", SOME (cvtVAR_BINDING x1439))
-       )), ("body", cvtBLOCK x1444)]
-   and cvtFUNC_NAME {kind=x1450, ident=x1451} = PrettyRep.Rec [("kind", cvtFUNC_NAME_KIND x1450), 
-          ("ident", cvtIDENT x1451)]
-   and cvtPACKAGE {name=x1457, body=x1458} = PrettyRep.Rec [("name", cvtUSTRING x1457), 
-          ("body", cvtBLOCK x1458)]
-   and cvtPROGRAM {packages=ls1465, fixtures=opt1470, body=x1474} = PrettyRep.Rec [("packages", 
-          PrettyRep.List (List.map (fn x1464 => cvtPACKAGE x1464
-                                   ) ls1465)), ("fixtures", 
-       (case opt1470 of
+       | SOME x1437 => PrettyRep.Ctor ("SOME", SOME (cvtVAR_BINDING x1437))
+       )), ("body", cvtBLOCK x1442)]
+   and cvtFUNC_NAME {kind=x1448, ident=x1449} = PrettyRep.Rec [("kind", cvtFUNC_NAME_KIND x1448), 
+          ("ident", cvtIDENT x1449)]
+   and cvtPACKAGE {name=x1455, body=x1456} = PrettyRep.Rec [("name", cvtUSTRING x1455), 
+          ("body", cvtBLOCK x1456)]
+   and cvtPROGRAM {packages=ls1463, fixtures=opt1468, body=x1472} = PrettyRep.Rec [("packages", 
+          PrettyRep.List (List.map (fn x1462 => cvtPACKAGE x1462
+                                   ) ls1463)), ("fixtures", 
+       (case opt1468 of
          NONE => PrettyRep.Ctor ("NONE", NONE)
-       | SOME x1469 => PrettyRep.Ctor ("SOME", SOME (cvtFIXTURES x1469))
-       )), ("body", cvtBLOCK x1474)]
+       | SOME x1467 => PrettyRep.Ctor ("SOME", SOME (cvtFIXTURES x1467))
+       )), ("body", cvtBLOCK x1472)]
 end
 

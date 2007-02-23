@@ -55,7 +55,10 @@ datatype VAL = Object of OBJ
      and SCOPE = 
          Scope of { object: OBJ,
                     parent: SCOPE option,
-                    temps: VAL list ref }
+                    temps: TEMPS }
+
+     and TEMP_STATE = UninitTemp
+                    | ValTemp of VAL
                         
      and PROP_STATE = TypeVarProp
                     | TypeProp
@@ -90,6 +93,8 @@ withtype FUN_CLOSURE =
                    dontEnum: bool,
                    readOnly: bool,
                    isFixed: bool}
+
+     and TEMPS = (TYPE * TEMP_STATE) list ref
 
      and PROP = { ty: TYPE,
                   state: PROP_STATE,                  
@@ -194,9 +199,9 @@ fun intrinsicName id = Ast.QualifiedIdentifier { qual = intrinsicNsExpr, ident =
 
 (* Define some global intrinsic nominal types. *)
 
-val typeType = Ast.NominalType { ident = (intrinsicName "Type") }
-val namespaceType = Ast.NominalType { ident = (intrinsicName "Namespace") }
-val classType = Ast.NominalType { ident = intrinsicName "Class" }
+val typeType = Ast.TypeName (intrinsicName "Type")
+val namespaceType = Ast.TypeName (intrinsicName "Namespace")
+val classType = Ast.TypeName (intrinsicName "Class")
 
 
 fun newObj (t:VAL_TAG) 
@@ -369,7 +374,26 @@ fun defValue (base:OBJ)
                 addProp props name newProp
             end
 
-
+fun defTemp (temps:TEMPS)
+            (n:int)
+            (v:VAL) 
+    : unit = 
+    let
+        fun replaceNth k [] = LogErr.machError ["temporary-definition error"]
+          | replaceNth k (x::xs) =
+            if k = 0 
+            then (case x of 
+                      (t, UninitTemp) => 
+                      ((* FIXME: put typecheck here *)
+                       (t, ValTemp v) :: xs)
+                    | (_, _) => LogErr.machError ["re-defining temporary"])
+            else x :: (replaceNth (k-1) xs)
+    in
+        if n >= (length (!temps))
+        then LogErr.machError ["defining out-of-bounds temporary"]
+        else temps := replaceNth n (!temps)
+    end
+             
 fun setValue (base:OBJ) 
              (name:NAME) 
              (v:VAL) 
