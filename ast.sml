@@ -181,6 +181,8 @@ datatype PRAGMA =
          FunctionSignature of 
            { typeParams: IDENT list,
              params: VAR_BINDING list,
+             (* argTypes: TYPE_EXPR list option *)
+             (*TODO: add fixtures *)
              inits: STMT list, 
              returnType: TYPE_EXPR,
              thisType: TYPE_EXPR option,
@@ -254,7 +256,7 @@ datatype PRAGMA =
        | DoWhileStmt of WHILE_STMT
        | ForStmt of
            { defns: VAR_BINDING list,
-             fixtures: FIXTURES option,
+             fixtures: FIXTURES option,  (* CF- Do we need the option? *)
              init: EXPR,
              cond: EXPR,
              update: EXPR,
@@ -370,6 +372,9 @@ datatype PRAGMA =
       * are patched back into the AST in class-definition and block
       * nodes, so we must define them here. *)
 
+(* ClassFixture only at package level,
+ * VirtualValFixture only in classes,
+ *)
      and FIXTURE = 
          NamespaceFixture of NAMESPACE
        | ClassFixture of CLS
@@ -380,7 +385,8 @@ datatype PRAGMA =
              readOnly: bool,
              isOverride: bool,
              isFinal: bool,
-             init: EXPR option }
+             init: EXPR option (* deprecated *)
+           }
        | VirtualValFixture of 
            { ty: TYPE_EXPR, 
              getter: FUNC_DEFN option,
