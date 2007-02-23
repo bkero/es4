@@ -388,7 +388,6 @@ datatype PRAGMA =
              readOnly: bool,
              isOverride: bool,
              isFinal: bool }
-           }
        | VirtualValFixture of 
            { ty: TYPE_EXPR, 
              getter: FUNC_DEFN option,
