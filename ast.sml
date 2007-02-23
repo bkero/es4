@@ -320,6 +320,9 @@ datatype PRAGMA =
        | ListExpr of EXPR list
        | SliceExpr of (EXPR * EXPR * EXPR)
 
+     and FIXTURE_NAME = TempName of int
+                      | PropName of NAME
+
      and IDENT_EXPR =
          QualifiedIdentifier of 
            { qual : EXPR,
@@ -352,7 +355,7 @@ datatype PRAGMA =
              ty: TYPE_EXPR option }
        | LiteralFunction of
            { func: FUNC,
-             ty: TYPE_EXPR option }  (* FunctionType *)
+             ty: TYPE_EXPR }  (* FunctionType *)
        | LiteralRegExp of
            { str: USTRING }
 
@@ -431,8 +434,8 @@ withtype FIELD =
              prototype : bool,
              bindings : VAR_BINDING list }
 
-     and FIXTURES = (NAME * FIXTURE) list
-     and INITS    = (NAME * EXPR) list
+     and FIXTURES = (FIXTURE_NAME * FIXTURE) list
+     and INITS    = (FIXTURE_NAME * EXPR) list
 
      and NAMESPACE_DEFN = 
            { ident: IDENT,
@@ -487,8 +490,8 @@ withtype FIELD =
            { b : VAR_BINDING list,
              i : EXPR list }
 
-     and CASE = (* Perhaps we can collapse this to EXPR list *)
-           { label : EXPR list option, 
+     and CASE =
+           { label : EXPR option, 
              body : BLOCK }
 
      and TYPE_CASE =

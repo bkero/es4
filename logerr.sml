@@ -34,6 +34,11 @@ fun name (n:Ast.NAME) =
       | Ast.Internal i => "[namespace internal " ^ i ^ "]::" ^ (#id n) ^ " "
       | Ast.UserNamespace i => "[namespace user " ^ i ^ "]::" ^ (#id n) ^ " "
 
+fun fname (n:Ast.FIXTURE_NAME) = 
+    case n of 
+	Ast.TempName n => "<temp " ^ (Int.toString n) ^ ">"			  
+      | Ast.PropName n => name n
+
 fun multiname (mn:Ast.MULTINAME) = 
     case (#nss mn) of 
 	[] => (String.concat ["{multiname: NO NAMESPACE :: ", (#id mn), "}"])

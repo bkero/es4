@@ -23,9 +23,10 @@ HEAP_SUFFIX=$(call sml,SMLofNJ.SysInfo.getHeapSuffix())
 
 MLBUILD=ml-build
 
-# ifneq ($(call anchorhome,smlnj-tdp),)
-# MLBUILD_ARGS=-Ctdp.instrument=true -DBACKTRACE \$$smlnj-tdp/back-trace.cm
-# endif
+ifneq ($(call anchorhome,smlnj-tdp),)
+# TODO: uncomment this once everyone is using the latest SML/NJ svn sources
+#MLBUILD_ARGS=-Ctdp.instrument=true -DBACKTRACE \$$smlnj-tdp/back-trace.cm
+endif
 
 # ------------------------------------------------------------
 # targets
@@ -60,9 +61,3 @@ wc:
 
 clean:
 	rm -rf .cm tools/.cm es4.heap.$(HEAP_SUFFIX) tools/gen-pretty.heap.$(HEAP_SUFFIX)
-
-cleanml:
-	rm -f .smlnj-tdp
-
-foo:
-	echo $(HEAP_SUFFIX)
