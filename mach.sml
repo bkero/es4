@@ -374,6 +374,13 @@ fun defValue (base:OBJ)
                 addProp props name newProp
             end
 
+fun getTemp (temps:TEMPS)
+            (n:int)
+    : VAL =
+    case List.nth ((!temps), n) of
+        (_, UninitTemp) => LogErr.machError ["getting uninitialized temporary"]
+      | (_, ValTemp v) => v
+
 fun defTemp (temps:TEMPS)
             (n:int)
             (v:VAL) 

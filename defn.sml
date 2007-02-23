@@ -102,21 +102,6 @@ fun getFixture (b:Ast.FIXTURES)
         search b
     end
 
-
-type DEFN_TYPE_CLASSIFICATION = 
-     ((Ast.NAMESPACE_DEFN list) * (Ast.CLASS_DEFN list) * (Ast.DEFN list))
-
-
-fun classifyDefnByType (curr:(Ast.DEFN * DEFN_TYPE_CLASSIFICATION))
-    : DEFN_TYPE_CLASSIFICATION = 
-    case curr of 
-        (next, (n, c, d)) => 
-        case next of 
-            Ast.NamespaceDefn x => ((x::n), c, d)
-          | Ast.ClassDefn x => (n, (x::c), d)
-          | x => (n, c, (x::d))
-
-                     
 fun inr f (a, b) = (a, f b)
 
 (*
@@ -347,9 +332,11 @@ and analyzeClass (env:ENV)
                 : bool =
                 let
                 in case s of
-                    Ast.InitStmt {kind,static,prototype,...} =>
-                        not ((kind=Ast.LetVar) orelse (kind=Ast.LetConst) orelse
-                             prototype orelse static)
+                    Ast.InitStmt {kind, static, prototype,...} =>
+                        not ((kind = Ast.LetVar) orelse 
+                             (kind = Ast.LetConst) orelse
+                             prototype orelse 
+                             static)
                   | _ => false                    
                 end
 
@@ -387,22 +374,22 @@ and analyzeClass (env:ENV)
             val (unhoisted,instanceFixtures) = defDefns env [] [] instanceDefns
             val (istmts,stmts) = List.partition isInstanceInit stmts
 
-            fun initFromStmt stmt =  (* FIXME: lots of unexhaustive matching here *)
-                let
-                    val (Ast.ExprStmt e0) = stmt
-                    val Ast.SetExpr (_,p,expr) = e0
-                    val Ast.SimplePattern r = p
-                    val Ast.LexicalRef {ident=i} = r
-                    val Ast.QualifiedIdentifier {qual=q,ident=id} = i
-                    val Ast.LiteralExpr (Ast.LiteralNamespace ns) = q
-                    val name = Ast.PropName {ns=ns,id=id}
-                    val init = (name,expr)
-                in
-                    init
-                end
+            fun initFromStmt (stmt:Ast.STMT) : (Ast.FIXTURE_NAME * Ast.EXPR) option =  
+                case stmt of 
+                    Ast.ExprStmt 
+                    (Ast.SetExpr 
+                     (_, 
+                      Ast.SimplePattern 
+                      (Ast.LexicalRef 
+                       {ident = Ast.QualifiedIdentifier 
+                                    {qual=Ast.LiteralExpr (Ast.LiteralNamespace ns),
+                                     ident}}),
+                      expr)) => 
+                    SOME (Ast.PropName {ns=ns, id=ident}, expr)
+                  | _ => NONE
 
             val (istmts,_) = defStmts env istmts
-            val iinits = map initFromStmt istmts
+            val iinits = List.mapPartial initFromStmt istmts
 
             (*
                 Add static prototype fixture
@@ -1104,28 +1091,10 @@ and defExpr (env:ENV)
             Ast.LexicalRef { ident = defIdentExpr env ident } 
 
           | Ast.SetExpr (a, p, e) => 
-            let 
-            in
-                Ast.ListExpr (defAssignment env p e)
-            end
-
-          | Ast.AllocTemp (n,e) => 
-            let 
-            in
-                Ast.AllocTemp (n,e)
-            end
-
-          | Ast.KillTemp n => 
-            let 
-            in
-                Ast.KillTemp n
-            end
+            Ast.ListExpr (defAssignment env p e)
 
           | Ast.GetTemp n => 
-            let 
-            in
-                Ast.GetTemp n
-            end
+            Ast.GetTemp n
 
           | Ast.ListExpr es => 
             Ast.ListExpr (map sub es) 
@@ -1202,7 +1171,11 @@ and defTyExpr (env:ENV)
     identifiers on the left side of each assignment.
 *)
 
-and defInit (env: ENV) (ns: Ast.NAMESPACE) (prototype: bool) (static: bool) (init: Ast.EXPR) 
+and defInit (env:ENV) 
+            (ns:Ast.NAMESPACE) 
+            (prototype:bool) 
+            (static:bool) 
+            (init:Ast.EXPR) 
     : Ast.EXPR list =
     let
     in case init of
@@ -1211,7 +1184,9 @@ and defInit (env: ENV) (ns: Ast.NAMESPACE) (prototype: bool) (static: bool) (ini
       | _ => LogErr.defnError ["internal definition error in defInit"]
     end
 
-and defAssignment (env:ENV) (pattern: Ast.PATTERN) (expr: Ast.EXPR)
+and defAssignment (env:ENV) 
+                  (pattern:Ast.PATTERN) 
+                  (expr:Ast.EXPR)
     : Ast.EXPR list =
     let
         val level = 0  (* to start with *)
@@ -1227,7 +1202,13 @@ and defAssignment (env:ENV) (pattern: Ast.PATTERN) (expr: Ast.EXPR)
     x = t
 *)
 
-and defPatternAssign (env:ENV) (ns: Ast.NAMESPACE) (pattern: Ast.PATTERN) (expr: Ast.EXPR) (prototype:bool) (static:bool) (level:int)
+and defPatternAssign (env:ENV)
+                     (ns: Ast.NAMESPACE) 
+                     (pattern: Ast.PATTERN) 
+                     (expr: Ast.EXPR) 
+                     (prototype:bool) 
+                     (static:bool) 
+                     (level:int)
     : Ast.EXPR list =
     let
         fun defIdentifierAssign (id)
@@ -1235,36 +1216,36 @@ and defPatternAssign (env:ENV) (ns: Ast.NAMESPACE) (pattern: Ast.PATTERN) (expr:
             let
                 val expr = defExpr env expr
                 val lref = if prototype (* A.prototype.x *)
-                          then 
-                                Ast.ObjectRef 
-                                    {base=Ast.ObjectRef 
+                           then 
+                               Ast.ObjectRef 
+                                   {base = Ast.ObjectRef 
+                                               {base = Ast.LexicalRef 
+                                                           {ident = Ast.QualifiedIdentifier
+                                                                        {qual = Ast.LiteralExpr (Ast.LiteralNamespace (#ns (!currentClassName))),
+                                                                         ident = (#id (!currentClassName))}},
+                                                ident = Ast.QualifiedIdentifier
+                                                            {qual = Ast.LiteralExpr (Ast.LiteralNamespace (Ast.Public "")),   (* prototype props are always public *)
+                                                             ident = "prototype"}},
+                                    ident = Ast.QualifiedIdentifier
+                                                {qual = Ast.LiteralExpr (Ast.LiteralNamespace ns),
+                                                 ident = id}}
+                           else
+                               if static
+                               then Ast.ObjectRef (* A.x *)
                                         {base=Ast.LexicalRef 
-                                            {ident=Ast.QualifiedIdentifier
-                                                {qual=Ast.LiteralExpr (Ast.LiteralNamespace (#ns (!currentClassName))),
-                                                 ident=(#id (!currentClassName))}},
+                                                  {ident=Ast.QualifiedIdentifier
+                                                             {qual=Ast.LiteralExpr (Ast.LiteralNamespace (#ns (!currentClassName))),
+                                                              ident=(#id (!currentClassName))}},
                                          ident=Ast.QualifiedIdentifier
-                                            {qual=Ast.LiteralExpr (Ast.LiteralNamespace (Ast.Public "")),   (* prototype props are always public *)
-                                             ident="prototype"}},
-                                     ident=Ast.QualifiedIdentifier
-                                         {qual=Ast.LiteralExpr (Ast.LiteralNamespace ns),
-                                          ident=id}}
-                          else
-                          if static
-                          then Ast.ObjectRef (* A.x *)
-                                {base=Ast.LexicalRef 
-                                    {ident=Ast.QualifiedIdentifier
-                                        {qual=Ast.LiteralExpr (Ast.LiteralNamespace (#ns (!currentClassName))),
-                                         ident=(#id (!currentClassName))}},
-                                 ident=Ast.QualifiedIdentifier
-                                    {qual=Ast.LiteralExpr (Ast.LiteralNamespace ns), 
-                                     ident=id}}
-                          else Ast.LexicalRef
-                                {ident=Ast.QualifiedIdentifier
-                                    {qual=Ast.LiteralExpr (Ast.LiteralNamespace ns), ident=id}}
+                                                   {qual=Ast.LiteralExpr (Ast.LiteralNamespace ns), 
+                                                    ident=id}}
+                               else Ast.LexicalRef
+                                        {ident=Ast.QualifiedIdentifier
+                                                   {qual=Ast.LiteralExpr (Ast.LiteralNamespace ns), ident=id}}
             in
                 [Ast.SetExpr (Ast.Assign,Ast.SimplePattern lref,expr)]
             end
-
+            
         fun defSimpleAssign (patternExpr)
             : Ast.EXPR list =
             let
@@ -1311,7 +1292,6 @@ and defPatternAssign (env:ENV) (ns: Ast.NAMESPACE) (pattern: Ast.PATTERN) (expr:
             
         fun defObjectAssign (fields:Ast.FIELD_PATTERN list) (temp: Ast.EXPR)
             : Ast.EXPR list =
-
             let
             in case fields of
                 {name,ptrn}::plist =>
@@ -1326,7 +1306,7 @@ and defPatternAssign (env:ENV) (ns: Ast.NAMESPACE) (pattern: Ast.PATTERN) (expr:
             end                  
 
         val temp_n = !(#temp_count (hd env))+level
-        val init = Ast.AllocTemp (temp_n, expr)
+        val init = Ast.DefTemp (temp_n, expr)
         val temp_base = Ast.GetTemp temp_n
 
     in case (pattern) of
@@ -1434,7 +1414,8 @@ and defBinding (env: ENV) (kind: Ast.VAR_DEFN_TAG) (ns: Ast.NAMESPACE)
                         defBinding env kind ns ptrn ty
                     end
               | ([],_) => defBinding env kind ns ptrn (Ast.SpecialType Ast.Any)
-              | (_,_)  => LogErr.defnError ["Typed patterns must have sub patterns with names that are known at definition time"]
+              | (_,_)  => LogErr.defnError ["Typed patterns must have sub patterns with ", 
+                                            "names that are known at definition time"]
             end
 
         (*
@@ -1498,12 +1479,12 @@ and defStmt (env:ENV)
                     val env = extendEnvironment env f0
                     val (newBody,hoisted) = defStmt env body
                 in
-                    ({ ptrn = ptrn, 
+                    { ptrn = ptrn, 
                       obj = newObj,
                       defns = newDefns,
                       contLabel = contLabel,
                       body = newBody, 
-                      fixtures = SOME f0 })
+                      fixtures = SOME f0 }
                 end
         fun reconstructWhileStmt (w:Ast.WHILE_STMT) = 
             case w of 
@@ -1587,12 +1568,15 @@ and defStmt (env:ENV)
           | Ast.ExprStmt es => 
             (Ast.ExprStmt (defExpr env es),[])
             
-          | Ast.InitStmt {ns,inits,prototype,static,...} => 
-                let
-                    val ns0 = resolveExprToNamespace env ns
-                in
-                    ((Ast.ExprStmt (Ast.ListExpr (List.concat (map (defInit env ns0 prototype static) inits))),[]))
-                end
+          | Ast.InitStmt {ns, inits, prototype, static, ...} => 
+            let
+                val ns' = resolveExprToNamespace env ns
+                fun defInit' i = defInit env ns' prototype static i
+            in
+                (Ast.ExprStmt 
+                     (Ast.ListExpr 
+                          (List.concat (map defInit' inits))), [])
+            end
 
           | Ast.ForEachStmt fe => 
             (Ast.ForEachStmt (reconstructForEnumStmt fe),[])

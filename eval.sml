@@ -26,10 +26,10 @@ fun getScopeObj (scope:Mach.SCOPE)
     case scope of 
         Mach.Scope { object, ...} => object
 
-fun getScopeObj (scope:Mach.SCOPE) 
-    : Mach.OBJ = 
+fun getScopeTemps (scope:Mach.SCOPE) 
+    : Mach.TEMPS = 
     case scope of 
-        Mach.Scope { object, ...} => object
+        Mach.Scope { temps, ...} => temps
 
 
 fun needNamespace (v:Mach.VAL) 
@@ -287,6 +287,13 @@ fun evalExpr (scope:Mach.SCOPE)
         in
             evalNewExpr (needObj (evalExpr scope obj)) args
         end
+
+      | Ast.GetTemp n => 
+        Mach.getTemp (getScopeTemps scope) n
+
+      | Ast.DefTemp (n, e) => 
+        (Mach.defTemp (getScopeTemps scope) n (evalExpr scope e);
+         Mach.Undef)
         
       | _ => LogErr.unimplError ["unhandled expression type"]
 

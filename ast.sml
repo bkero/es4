@@ -300,10 +300,10 @@ datatype PRAGMA =
        | LiteralExpr of LITERAL
        | CallExpr of 
            { func: EXPR,
-             actuals: EXPR list}
+             actuals: EXPR list }
        | ApplyTypeExpr of 
            { expr: EXPR,  (* apply expr to type list *)
-             actuals: TYPE_EXPR list}
+             actuals: TYPE_EXPR list }
        | LetExpr of 
            { defs: VAR_BINDING list,                      
              body: EXPR,
@@ -314,11 +314,10 @@ datatype PRAGMA =
        | ObjectRef of { base: EXPR, ident: IDENT_EXPR }
        | LexicalRef of { ident: IDENT_EXPR }
        | SetExpr of (ASSIGNOP * PATTERN * EXPR)
-       | AllocTemp of (int * EXPR)
-       | KillTemp of int
-       | GetTemp of int
        | ListExpr of EXPR list
        | SliceExpr of (EXPR * EXPR * EXPR)
+       | DefTemp of (int * EXPR)
+       | GetTemp of int
 
      and FIXTURE_NAME = TempName of int
                       | PropName of NAME
