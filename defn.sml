@@ -288,7 +288,7 @@ fun defClass (env: ENV)
         val class = analyzeClass env cdef
         val class = resolveClass env cdef class
         val Ast.Cls {name,...} = class
-        val _ = LogErr.trace ["defining class ",LogErr.name name]
+        val _ = LogErr.trace ["defining class ", LogErr.name name]
     in
         ([(Ast.PropName name, Ast.ClassFixture class)],cdef)
     end
@@ -408,13 +408,12 @@ and analyzeClass (env:ENV)
                 Add static prototype fixture
             *)
 
-            val pf = Ast.ValFixture {ty=Ast.TypeName (Ast.QualifiedIdentifier 
-                                                          {qual=Ast.LiteralExpr (Ast.LiteralNamespace ns),
-                                                           ident=ident}),
+            val pf = Ast.ValFixture { ty=Ast.TypeName (Ast.QualifiedIdentifier 
+                                                           {qual=Ast.LiteralExpr (Ast.LiteralNamespace ns),
+                                                            ident=ident}),
                                      readOnly=true,
                                      isOverride=false,
-                                     isFinal=false,
-                                     init=NONE }
+                                     isFinal=false }
 
             val protoPropFixture = Ast.PropName {ns=Ast.Public "",id="prototype"}
             val classFixtures = (protoPropFixture, pf)::classFixtures
@@ -812,8 +811,7 @@ and defFuncSig (env:ENV)
                                    { ty = thisType,
                                      readOnly = true,
                                      isOverride = false,
-                                     isFinal = false,
-                                     init = NONE })
+                                     isFinal = false })
 
             fun paramType (b:Ast.VAR_BINDING) = 
                 case b of 
@@ -924,8 +922,7 @@ and defFuncDefn (env:ENV) (f:Ast.FUNC_DEFN)
                                        { ty = ftype,
                                          readOnly = false,
                                          isOverride = (#override f),
-                                         isFinal = (#final f),
-                                         init = NONE })]
+                                         isFinal = (#final f) })]
         in
             (outerFixtures, { kind = (#kind f),
                               ns = newNsExpr,
@@ -1365,8 +1362,7 @@ and defBinding (env: ENV) (kind: Ast.VAR_DEFN_TAG) (ns: Ast.NAMESPACE)
                   Ast.ValFixture { ty = ty, 
                                    readOnly = readOnly, 
                                    isOverride = false, 
-                                   isFinal=true, 
-                                   init = NONE })]
+                                   isFinal=true })]
             end
 
         (*
@@ -1855,8 +1851,10 @@ and defBlock (env:ENV)
             val (unhoisted,defns_hoisted) = defDefns env [] [] defns
             
             val env  = updateEnvironment env (unhoisted@defns_hoisted )
-            val (inits,_) = defStmts env (case inits of NONE => [] | _ => valOf inits)  
-                                    (* do inits in outer scope, inits never result in hoisted defs *)
+(*
+ val (inits,_) = defStmts env (case inits of NONE => [] | _ => valOf inits)  
+ (* do inits in outer scope, inits never result in hoisted defs *)
+*)
             val env = updateEnvironment env unhoisted
             val (stmts,stmts_hoisted) = defStmts env stmts
             val hoisted = defns_hoisted@stmts_hoisted
@@ -1865,7 +1863,7 @@ and defBlock (env:ENV)
                          defns = [],  (* clear definitions *)
                          stmts = stmts,
                          fixtures = SOME unhoisted,
-                         inits=SOME inits},
+                         inits=NONE },
              hoisted)
         end
 

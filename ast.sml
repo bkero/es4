@@ -382,8 +382,7 @@ datatype PRAGMA =
            { ty: TYPE_EXPR,
              readOnly: bool,
              isOverride: bool,
-             isFinal: bool,
-             init: EXPR option }
+             isFinal: bool }
        | VirtualValFixture of 
            { ty: TYPE_EXPR, 
              getter: FUNC_DEFN option,
@@ -478,7 +477,7 @@ withtype FIELD =
              defns: DEFN list,
              stmts: STMT list,
              fixtures: FIXTURES option,
-             inits: STMT list option}
+             inits: INITS option }
 
      and BINDINGS =
            { b : VAR_BINDING list,
