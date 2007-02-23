@@ -960,7 +960,7 @@ and invokeFuncClosure (this:Mach.OBJ)
     val scope = [globalObj,classObj]
     val thisObj = newObj 
     evalFixtures scope thisObj instanceFixtures
-    evalInits scope thisObj instanceInits
+    evalInits scope thisObj instanceInits (* step 4 *)
 
     val paramsObj = newObj
     val paramsFixtures = (#fixtures (#func (#constructor cls)))
@@ -970,9 +970,17 @@ and invokeFuncClosure (this:Mach.OBJ)
 
 	val settingsInits = (#settings (#constructor cls))
     evalInits paramsObj::scope thisObj settingsInits
+        (* settings calls super constructor jumping to step 4 *)
+    
+    checkAllPropertiesInitialized obj
 
 	val ctorBody = (#body (#func (#constructor cls)))
     evalBlock paramsObj::(thisObj::scope) thisObj ctorBody
+
+    function C(x) : x=x,
+                    super(a,b,c)
+
+
 
 *)
 
