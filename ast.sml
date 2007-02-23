@@ -163,9 +163,9 @@ datatype PRAGMA =
      and FUNC =
          Func of 
            { name: FUNC_NAME,
-             fsig: FUNC_SIG,                   
+             fsig: FUNC_SIG,
              fixtures: FIXTURES option,
-             inits: STMT list,
+             defaults: INITS,
              body: BLOCK }
 
      and DEFN =
@@ -183,7 +183,7 @@ datatype PRAGMA =
              params: VAR_BINDING list,
              (* argTypes: TYPE_EXPR list option *)
              (*TODO: add fixtures *)
-             inits: STMT list, 
+             settings: STMT list, 
              returnType: TYPE_EXPR,
              thisType: TYPE_EXPR option,
              hasRest: bool }
@@ -473,6 +473,7 @@ withtype FIELD =
 
      and WHILE_STMT =
            { cond: EXPR,
+             fixtures: FIXTURES option,
              body: STMT,
              contLabel: IDENT option }
 
@@ -484,12 +485,13 @@ withtype FIELD =
              inits: INITS option }
 
      and BINDINGS =
-           { b : VAR_BINDING list,
-             i : EXPR list }
+           { b: VAR_BINDING list,
+             i: EXPR list }
 
      and CASE =
-           { label : EXPR option, 
-             body : BLOCK }
+           { label: EXPR option, 
+             fixtures: FIXTURES option,
+             body: BLOCK }
 
      and TYPE_CASE =
            { ptrn : VAR_BINDING option, 
