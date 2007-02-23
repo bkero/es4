@@ -1,14 +1,16 @@
 
-
+%name Lexer;
 %charset UTF8;
 
 
 %defs (
   open Token
 
-  type lexresult = token
+  type lex_result = token
 
+(*
   fun eof _ = Eof
+*)
 
   fun log ss = 
       (TextIO.print "log: "; 
@@ -18,7 +20,15 @@
   val line_breaks : int list ref = ref []
   val token_count : int ref = ref 0
 
-  fun token_list (token_fn : unit -> token) =
+  fun token_list (line_fn : unit -> string) = (* was token_fn : unit -> token *)
+    let
+      fun inputN _ = line_fn()
+      val this_strm = yyInput.mkStream(inputN)
+      val this_getc = yyInput.getc
+    in
+      yyUTF8.getList this_getc this_strm
+    end
+  (*
     let
         val t = ref [] 
         fun add tok = t := tok :: !t
@@ -47,6 +57,7 @@
         line_breaks := [];
         step ()
     end
+  *)
 
   fun followsLineBreak (ts) =
     let val _ = log(["followsLineBreak"])
@@ -268,11 +279,11 @@
                    
 <INITIAL>{decimalLiteral}    => (case Real.fromString yytext of 
                                      SOME r => NumberLiteral r 
-                                   | NONE   => raise LexError);
+                                   | NONE   => raise Fail "LexError: not a valid number literal");
 
 <INITIAL>{hexIntegerLiteral} => (case Int.fromString yytext of
                                      SOME i => NumberLiteral (Real.fromInt i)
-                                   | NONE => raise LexError);
+                                   | NONE => raise Fail "LexError: not a valid number literal");
 
 
 <INITIAL>"//"                => (YYBEGIN SINGLE_LINE_COMMENT; lex());
@@ -304,7 +315,7 @@
                                      lex()));
 
 <STRING>{charEscape}          => ((case Char.fromCString yytext of
-                                       NONE => raise LexError
+                                       NONE => raise Fail "LexError: not a valid escape sequence"
                                      | SOME c => curr_chars := c :: (!curr_chars));
                                   lex());
 
@@ -314,6 +325,6 @@
 <STRING>.                     => (curr_chars := (String.sub (yytext,0)) :: (!curr_chars);
                                   lex());
 
-<INITIAL>.                    => (log ["unexpected input: '", yytext, "'"]; raise LexError);
+<INITIAL>.                    => (log ["unexpected input: '", yytext, "'"]; raise Fail "LexError: unexpected input");
 
 
