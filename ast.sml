@@ -190,7 +190,7 @@ datatype PRAGMA =
 
      and VAR_BINDING =
          Binding of 
-           { pattern: PATTERN,
+           { ident: IDENT;
              ty: TYPE_EXPR option,
              init: EXPR option }
 
@@ -308,7 +308,7 @@ datatype PRAGMA =
              actuals: EXPR list }
        | ObjectRef of { base: EXPR, ident: IDENT_EXPR }
        | LexicalRef of { ident: IDENT_EXPR }
-       | SetExpr of (ASSIGNOP * PATTERN * EXPR)
+       | SetExpr of (ASSIGNOP * EXPR * EXPR)
        | ListExpr of EXPR list
        | SliceExpr of (EXPR * EXPR * EXPR)
        | DefTemp of (int * EXPR)
@@ -355,15 +355,6 @@ datatype PRAGMA =
 
      and BLOCK = Block of DIRECTIVES
 
-     and PATTERN = 
-                (* these IDENT_EXPRs are actually
-                   Identifier { id, _ }
-                   and should later be changed to IDENT
-                 *)
-         ObjectPattern of FIELD_PATTERN list
-       | ArrayPattern of PATTERN list
-       | SimplePattern of EXPR
-       | IdentifierPattern of IDENT
 
      (* FIXTURES are built by the definition phase, not the parser; but they 
       * are patched back into the AST in class-definition and block
@@ -377,11 +368,13 @@ datatype PRAGMA =
        | ClassFixture of CLS
        | TypeVarFixture
        | TypeFixture of TYPE_EXPR
+       | MethodFixture of 
+         { ty: TYPE_EXPR,
+           isOverride: bool,
+           isFinal: bool }
        | ValFixture of 
            { ty: TYPE_EXPR,
-             readOnly: bool,
-             isOverride: bool,
-             isFinal: bool }
+             readOnly: bool }
        | VirtualValFixture of 
            { ty: TYPE_EXPR, 
              getter: FUNC_DEFN option,
@@ -391,10 +384,6 @@ withtype FIELD =
            { kind: VAR_DEFN_TAG,
              name: IDENT_EXPR,
              init: EXPR }
-
-     and FIELD_PATTERN =
-           { name: IDENT_EXPR, 
-             ptrn : PATTERN }
 
      and FIELD_TYPE =
            { name: IDENT,
@@ -466,9 +455,9 @@ withtype FIELD =
              init: TYPE_EXPR }
 
      and FOR_ENUM_STMT =
-           { ptrn: PATTERN option,
+           { bind: (STMT list) option,
              obj: EXPR,
-             defns: VAR_BINDING list,
+             defns: VAR_BINDING list,             
              fixtures: FIXTURES option,
              contLabel: IDENT option,
              body: STMT }

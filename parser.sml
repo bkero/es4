@@ -28,6 +28,18 @@ datatype tau =
   | INTERFACE
   | LOCAL
 
+
+datatype PATTERN = 
+         ObjectPattern of FIELD_PATTERN list
+       | ArrayPattern of PATTERN list
+       | SimplePattern of Ast.EXPR
+       | IdentifierPattern of Ast.IDENT
+
+withtype FIELD_PATTERN =
+         { name: Ast.IDENT_EXPR, 
+           ptrn : PATTERN }
+         
+
 fun log ss = 
     (TextIO.print "log: "; 
      List.app TextIO.print ss;
