@@ -912,7 +912,7 @@ and invokeFuncClosure (this:Mach.OBJ)
                     initThis thisVal;
 
                     (* List.app initArg (List.rev args); *)
-                    evalStmts varScope (#inits f);
+                    evalScopeInits varScope (#defaults f);
 
                     (* NOTE: is this for the binding of a function expression to its optional
                        identifier? If so, we need to extend the scope chain before extending it
@@ -977,10 +977,23 @@ and invokeFuncClosure (this:Mach.OBJ)
 	val ctorBody = (#body (#func (#constructor cls)))
     evalBlock paramsObj::(thisObj::scope) thisObj ctorBody
 
-    function C(x) : x=x,
-                    super(a,b,c)
+*)
 
+(* 
 
+On the whiteboard today (feb 22):
+
+  - get class closure for RHS of operator "new"
+  - make an object
+  - allocate instance fixtures
+  CTOR(x) - eval inits in class scope [..., class]
+          - allocate param obj
+          - allocate param fixtures
+          - eval param inits in class scope [..., class]
+          - eval instance settings [...,class,params]
+          - call CTOR(parent), via super() call at end of settings
+          - check all allocated fixtures are initialized
+          - execute ctor body (if native, run native fn) [..,class,instance,params]
 
 *)
 
@@ -1023,12 +1036,63 @@ and evalScopeInits (scope:Mach.SCOPE)
         Mach.Scope { object, temps, ...} => 
         evalInits scope object temps inits
 
+(*
+and initializeAndConstruct (classClosure:Mach.CLS_CLOSURE)
+                           (classObj:Mach.OBJ)
+                           (classScope:Mach.SCOPE)                           
+                           (args:Mach.VAL list) 
+                           (instanceObj:Mach.OBJ)
+    : unit =
+    let
+        val {cls, allTypesBound, env} = classClosure
+    in
+        if not allTypesBound
+        then LogErr.evalError ["constructing instance of class with unbound type variables"]
+        else
+            let
+                val Ast.Cls { name, 
+                              extends,
+                              instanceInits, 
+                              constructor, 
+                              ... } = cls
+            in 
+                LogErr.trace ["evaluating instance initializers for ", LogErr.name name];
+                evalObjInits classScope instanceObj instanceInits;
+                case constructor of 
+                    NONE => ()
+                  | SOME {settings, func} => 
+                    let 
+                        val (varObj:Mach.OBJ) = Mach.newSimpleObj NONE
+                        val (varScope:Mach.SCOPE) = extendScope classScope varObj
+                        fun bindArg (a, b) = evalVarBinding varScope (SOME a) (Ast.Internal "") b
+                                                            
+                    (LogErr.trace ["evaluating settings for ", LogErr.name name];
+                     evalObjInits classScope instanceObj settings;
+                     LogErr.trace ["running constructor for ", LogErr.name name];)
+
+                LogErr.trace ["running instance settings for ", LogErr.name name];  
+                evalObjInits classScope instanceObj instanceInits;
+                case extends of 
+                    SOME baseName => 
+                    let 
+                        val (baseObj:Mach.OBJ) = needObj (findVal env (multinameOf baseClassName))
+                        val (baseClsClosure:Ast.CLS_CLOSURE) = 
+                            case Mach.getMagic baseObj of
+                                SOME (Mach.Class cc) => cc
+                              | _ => LogErr.evalError ["Base object ", 
+                                                       LogErr.name baseName, 
+                                                       "is not a class closure"]
+                                     
+*)
+
 and constructClassInstance (classObj:Mach.OBJ)
                            (classClosure:Mach.CLS_CLOSURE) 
                            (args:Mach.VAL list) 
     : Mach.VAL =
+    Mach.Undef
+(*
         let
-            val {cls,allTypesBound,env} = classClosure
+            val {cls, allTypesBound, env} = classClosure
         in
             if not allTypesBound
             then LogErr.evalError ["constructing instance of class with unbound type variables"]
@@ -1036,27 +1100,41 @@ and constructClassInstance (classObj:Mach.OBJ)
                 let
                     val classScope = extendScope env classObj
 
-                    val Ast.Cls { name, instanceFixtures, instanceInits, constructor, ... } = cls
+                    val Ast.Cls { name, 
+                                  extends,
+                                  instanceFixtures, 
+                                  instanceInits, 
+                                  constructor, 
+                                  ... } = cls
                     val tag = Mach.ClassTag name
                     val proto = if Mach.hasOwnValue classObj Mach.publicPrototypeName
                                 then Mach.getValue (classObj, Mach.publicPrototypeName)
                                 else Mach.Null
-                    val (thisObj:Mach.OBJ) = Mach.newObj tag proto NONE
 
-                    val (objScope:Mach.SCOPE) = extendScope classScope thisObj
-                    val (instance:Mach.VAL) = Mach.Object thisObj
+                    val constructBase = 
+                    val (baseObj, baseCls) = case extends of 
+                                      NONE => NONE
+                                      SOME baseClassName => 
+                                      case findVal scope (multinameOf baseClassName) of 
+                                          
+
+                    val (instanceObj:Mach.OBJ) = Mach.newObj tag proto NONE
+                    val (instanceScope:Mach.SCOPE) = extendScope classScope thisObj
+                    val (instanceVal:Mach.VAL) = Mach.Object thisObj
 
                     (* FIXME: infer a fixture for "this" so that it's properly typed, dontDelete, etc.
                      * Also this will mean changing to defVar rather than setVar, for 'this'. *)
                     val thisName = { id = "this", ns = Ast.Internal "" }                                   
 
                 in
-                    allocObjFixtures classScope thisObj instanceFixtures;
-                    evalObjInits classScope thisObj instanceInits;
+                    allocObjFixtures classScope instanceObj instanceFixtures;
+                    evalObjInits classScope instanceObj instanceInits;
                     case constructor of 
-                        NONE => (checkAllPropertiesInitialized thisObj; instance)  (* TODO: run base class inits *)
+                        NONE => (checkAllPropertiesInitialized instanceObj; 
+                                 instanceVal)  
+(* TODO: run base class inits *)
 
-(* FIXME: needs resuscitation
+ FIXME: needs resuscitation
                       | SOME ({native, ns,
                                func = Ast.Func 
                                           { fsig=Ast.FunctionSignature { params, inits, ... }, 
@@ -1120,9 +1198,10 @@ and constructClassInstance (classObj:Mach.OBJ)
                                  end)
                         end
                     Mach.Object thisObj
-*)
                 end
         end
+*)
+
 (* 
  * This is the dynamic phase of function definition; it assumes that the 
  * function has already had its fixtures constructed during the
@@ -1289,7 +1368,7 @@ and evalWhileStmt (scope:Mach.SCOPE)
                   (whileStmt:Ast.WHILE_STMT) 
     : Mach.VAL = 
     case whileStmt of 
-        { cond, body, contLabel } => 
+        { cond, body, fixtures, contLabel } => 
         let
             fun loop (accum:Mach.VAL option) = 
                 let 

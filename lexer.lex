@@ -66,12 +66,13 @@ fun followsLineBreak (ts) =
 
 val (curr_quote : char ref) = ref #"\000"
 val (curr_chars : (char list) ref) = ref []
+val (found_newline : bool ref)        = ref false
 
 %%
 
 %structure Lexer
 
-%s REGEXP XML SINGLE_LINE_COMMENT MULTI_LINE_COMMENT STRING;
+%s REGEXP REGEXP_CHARSET REGEXP_FLAGS XML SINGLE_LINE_COMMENT MULTI_LINE_COMMENT STRING;
 
 whitespace      = [\009\013\032]+;
 
@@ -97,6 +98,8 @@ decimalLiteral        = ({decimalLiteral_1} | {decimalLiteral_2} | {decimalLiter
 hexIntegerLiteral     = ("0" [xX] {hexDigit}+);
 
 charEscape            = "\\" ([btnvfr\"\'\\]|"x"{hexDigit}{2}|[0-7]{1,3});
+
+regexpFlags           = [a-zA-Z]*;
 
 %%
 
@@ -129,7 +132,7 @@ charEscape            = "\\" ([btnvfr\"\'\\]|"x"{hexDigit}{2}|[0-7]{1,3});
 						  (fn _ => (YYBEGIN INITIAL; lex ()))),
 				     lex_regexp = 
 				     (fn _ => token_list 
-						  (fn _ => (YYBEGIN REGEXP; lex ()))) });
+						  (fn _ => (curr_chars := [#"/"]; YYBEGIN REGEXP; lex ()))) });
 
 <INITIAL>"/="              => (LexBreakDivAssign
 				   { lex_initial = 
@@ -137,7 +140,7 @@ charEscape            = "\\" ([btnvfr\"\'\\]|"x"{hexDigit}{2}|[0-7]{1,3});
 						  (fn _ => (YYBEGIN INITIAL; lex ()))),
 				     lex_regexp = 
 				     (fn _ => token_list 
-						  (fn _ => (YYBEGIN REGEXP; lex ()))) });
+						  (fn _ => (curr_chars := [#"=",#"/"]; YYBEGIN REGEXP; lex ()))) });
 <INITIAL>":"               => (Colon);
 <INITIAL>"::"              => (DoubleColon);
 <INITIAL>";"               => (SemiColon);
@@ -276,6 +279,38 @@ charEscape            = "\\" ([btnvfr\"\'\\]|"x"{hexDigit}{2}|[0-7]{1,3});
 <MULTI_LINE_COMMENT>"*/"     => (YYBEGIN INITIAL; lex());
 <MULTI_LINE_COMMENT>.|"\n"   => (lex());
 
+<REGEXP>"/"{regexpFlags}    => (let
+				    val x_flag = String.isSubstring "x" yytext;
+				    val re = String.implode(rev (!curr_chars)) ^ yytext
+				in
+				    if !found_newline andalso (not x_flag)
+				    then (log ["Illegal newline in regexp"]; raise LexError)
+				    else
+				       (curr_chars := [];
+					found_newline := false;
+					YYBEGIN INITIAL;
+					RegexpLiteral re)
+				end);
+<REGEXP>"["                 => (curr_chars := #"[" :: !curr_chars;
+				YYBEGIN REGEXP_CHARSET;
+				lex());
+<REGEXP>"\n"|"\r"           => (found_newline := true;  lex());
+<REGEXP>"\\\n"|"\\\r".      => (lex());
+<REGEXP>"\\".               => (curr_chars := String.sub(yytext,1) :: #"\\" :: !curr_chars;
+				lex());
+<REGEXP>.                   => (curr_chars := String.sub(yytext,0) :: !curr_chars;
+				lex());
+
+<REGEXP_CHARSET>"]"         => (curr_chars := #"]" :: !curr_chars;
+				YYBEGIN REGEXP;
+				lex());
+<REGEXP_CHARSET>"\n"|"\r"   => (found_newline := true;  lex());
+<REGEXP_CHARSET>"\\\n"|"\\\r". => (lex());
+<REGEXP_CHARSET>"\\".       => (curr_chars := String.sub(yytext,1) :: #"\\" :: !curr_chars;
+				lex());
+<REGEXP_CHARSET>.           => (curr_chars := String.sub(yytext,0) :: !curr_chars;
+				lex());
+
 <INITIAL>"'"|"\""            => (curr_quote := String.sub (yytext,0); 
                                  curr_chars := [];
                                  YYBEGIN STRING;
@@ -295,6 +330,7 @@ charEscape            = "\\" ([btnvfr\"\'\\]|"x"{hexDigit}{2}|[0-7]{1,3});
                                  else
                                      (curr_chars := (String.sub (yytext,0)) :: (!curr_chars);
                                      lex()));
+
 
 <STRING>{charEscape}          => ((case Char.fromCString yytext of
 				       NONE => raise LexError
