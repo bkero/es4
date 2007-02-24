@@ -32,7 +32,7 @@ fun flattenOptionList NONE = []
 
 (* TODO: what is the proper way to resolve these built-ins? *)
 fun simpleIdent (s:string) : IDENT_EXPR 
-  = Identifier { ident=s, openNamespaces=[] }
+  = Identifier { ident=s, openNamespaces=[[Public ""]] }
     
 val boolType      = TypeName (simpleIdent "boolean")
 val numberType    = TypeName (simpleIdent "number")
@@ -43,6 +43,7 @@ val stringType    = TypeName (simpleIdent "string")
 val regexpType    = TypeName (simpleIdent "regexp")
 val exceptionType = TypeName (simpleIdent "exception")
 val namespaceType = TypeName (simpleIdent "Namespace")
+val typeType      = TypeName (Identifier { ident="Type", openNamespaces=[[Intrinsic]]})
 val undefinedType = SpecialType Undefined
 val nullType      = SpecialType Null
 val anyType       = SpecialType Any
@@ -52,11 +53,13 @@ val anyType       = SpecialType Any
 (* type env has program variables, with types, axnd type variables, with no types *)
 (* TODO: do we need to consider namespaces here ??? *)
 
+type ID = FIXTURE_NAME
+
 datatype KIND =
 	 TypeVar
        | ProgVar of TYPE_EXPR * bool
 		    
-type TYPE_ENV = (IDENT * KIND) list
+type TYPE_ENV = (ID * KIND) list
 		
 fun checkForDuplicateExtension extensions =
     let val (names, _) = ListPair.unzip extensions
@@ -64,8 +67,8 @@ fun checkForDuplicateExtension extensions =
       checkForDuplicates names
 end
 
-fun extendEnv (env:TYPE_ENV) (id:IDENT) (k:KIND) : TYPE_ENV = (id,k)::env
-fun extendEnvWithTypeVars (params:IDENT list) (env:TYPE_ENV):TYPE_ENV =
+fun extendEnv (env:TYPE_ENV) (id:ID) (k:KIND) : TYPE_ENV = (id,k)::env
+fun extendEnvWithTypeVars (params:ID list) (env:TYPE_ENV):TYPE_ENV =
     let in
 	checkForDuplicates params;
 	foldl (fn (p,env) => extendEnv env p TypeVar) env params
@@ -74,12 +77,44 @@ fun extendEnvs (env:TYPE_ENV) (ext:TYPE_ENV) =
     let in
 	ext @ env
     end
+fun fixtureNameToString (TempName i) = "TempName" ^ (Int.toString(i))
+  | fixtureNameToString (PropName { ns, id }) = id
 
-fun lookupProgramVariable (env:TYPE_ENV) (id:IDENT) : TYPE_EXPR =
-    case List.find (fn (i,_) => i=id) env of
-	NONE => raise VerifyError ("Unbound variable: " ^ id)
-      | SOME (_,TypeVar) => raise VerifyError "Refered to type variable as a program variable"
-      | SOME (_,ProgVar (t,_)) => t
+fun lookupIdNamespace (env:TYPE_ENV) 
+		      (id:IDENT) 
+		      (ns:NAMESPACE)
+    : KIND option =
+    case List.find (fn (i,_) => i=PropName {id=id,ns=ns}) env of
+	NONE => NONE
+      | SOME (_,k) => SOME k
+
+fun lookupIdNamespaces (env:TYPE_ENV) 
+		       (id:IDENT) 
+		       (nss : NAMESPACE list)
+    : KIND option =
+    let val theMatches
+	  = List.mapPartial (lookupIdNamespace env id) nss
+    in
+	case theMatches of
+	    [] => NONE
+	  | [k] => SOME k
+	  | _ =>
+	    raise VerifyError ("Ambiguous reference " ^ id)
+    end
+
+fun lookupIdNamespacess (env:TYPE_ENV) 
+			(id:IDENT) 
+			(nsss : NAMESPACE list list)
+    : KIND =
+    let in
+	case nsss of
+	    [] =>
+	    raise VerifyError ("Unbound variable " ^ id)
+	  | nss::nsss =>
+	    case lookupIdNamespaces env id nss of
+		SOME k => k
+	      | NONE => lookupIdNamespacess env id nsss
+    end
 
 (******************************** Contexts *********************************)
 
@@ -357,27 +392,32 @@ fun verifyTypeExpr (ctxt as {env,this,...}:CONTEXT)
 	    in
 		checkForDuplicates names
 	    end	
+(*
           | NominalType { ident } =>
 			   (* TODO *)
 			   ()
-   	    
+*)   	    
     end
 
-and verifyFunctionType  (ctxt as {env,this,...}:CONTEXT)
-			(FunctionType {typeParams, params, result, thisType, hasRest})
-    : TYPE_ENV =
-    let (* Add the type parameters to the environment. *)
-	val ctxt1 = withEnvExtn ctxt (List.map (fn id => (id,TypeVar)) typeParams);
+and verifyFunctionType  (ctxt:CONTEXT)
+			 {typeParams, params, result, thisType, hasRest} 
+    : CONTEXT = ctxt
+
+(*
+    let (* val FunctionType= t;
+	(* Add the type parameters to the environment. *)
+	val ctxt1 : CONTEXT = withEnvExtn ctxt (List.map (fn id => (id,TypeVar)) typeParams);
 	(* Add the return type to the context. *)
-	val ctxt2 = withRetTy (ctxt2, SOME returnType)
-    in
+	val ctxt2 : CONTEXT = withRetTy ctxt1 (SOME result)
+    *)in (*
 	List.app (verifyTypeExpr ctxt1) params;
 	verifyTypeExpr ctxt1 result;
 	(case thisType of
 	     NONE => ()
 	   | SOME t => verifyTypeExpr ctxt1 t);
-	ctxt2
+	*) ctxt
     end
+*)
 
 and verifyTypeExprs  (ctxt as {env,this,...}:CONTEXT) 
 		     (tys:TYPE_EXPR list) 
@@ -385,6 +425,39 @@ and verifyTypeExprs  (ctxt as {env,this,...}:CONTEXT)
     (List.app (verifyTypeExpr ctxt) tys)
 
 (******************** Expressions **************************************************)
+
+and verifyIdentExpr (ctxt as {env,this,...}:CONTEXT) 
+		    (ide:IDENT_EXPR) 
+    : TYPE_EXPR = 
+    let
+    in 
+	case ide of
+	    QualifiedIdentifier { qual, ident } =>
+	    let in
+		checkCompatible (verifyExpr ctxt qual) namespaceType;
+		anyType
+	    end	    
+	  | QualifiedExpression { qual, expr } =>
+	    let in
+		checkCompatible (verifyExpr ctxt qual) namespaceType;
+		checkCompatible (verifyExpr ctxt qual) stringType;
+		anyType
+	    end
+	  | AttributeIdentifier idexpr =>
+	    let in
+		verifyIdentExpr ctxt idexpr;
+		anyType
+	    end
+	  | Identifier { ident, openNamespaces } =>
+	    let val k : KIND = lookupIdNamespacess env ident openNamespaces
+	    in
+		case k of
+		    TypeVar => raise VerifyError ("Attempt to refer to type variable "
+						      ^ ident
+						  ^ " as a program variable")
+		  | ProgVar (ty,read_only) => ty
+	    end
+    end
 
 and verifyExpr (ctxt as {env,this,...}:CONTEXT) 
 	       (e:EXPR) 
@@ -421,19 +494,21 @@ and verifyExpr (ctxt as {env,this,...}:CONTEXT)
           annotatedTy
         end
       | LiteralExpr (LiteralFunction { func=Func { fixtures=SOME fixtures, inits, body, ... }, 
-					ty=SOME ty })
+					ty=ty })
 	 =>
 	 let
-		val ctxt1 = verifyFunctionType ctxt ty 
-		val extensions = verifyFixtures ctxt1 fixtures
-		val ctxt2 = withEnvExtn ctxt1 extensions
+	     val FunctionType ftype = ty
+	     val ctxt1 = verifyFunctionType ctxt ftype 
+	     val extensions = verifyFixtures ctxt1 fixtures
+	     val ctxt2 = withEnvExtn ctxt1 extensions
 	 in
 	     checkForDuplicateExtension extensions;
 	     verifyStmts ctxt2 inits;
 	     verifyBlock ctxt2 body;
 	     ty
          end
-
+      | LexicalRef { ident } =>
+	verifyIdentExpr ctxt ident
       | ListExpr l => List.last (List.map (verifyExpr ctxt) l)
       | LetExpr {defs=_, body, fixtures } => 
           let val extensions = verifyFixturesOption ctxt fixtures
@@ -442,14 +517,10 @@ and verifyExpr (ctxt as {env,this,...}:CONTEXT)
 	    verifyExpr (withEnvExtn ctxt extensions) body
 	  end
        | ThisExpr => this
-(* jd: deleted       | NullaryExpr Empty => (TextIO.print "what is Empty?\n"; raise Match)   *)
        | UnaryExpr (unop, arg) => verifyUnaryExpr ctxt unop arg
        | BinaryExpr (binop, lhs, rhs ) => verifyBinaryExpr ctxt (binop, lhs, rhs)
        | BinaryTypeExpr (binop, lhs, rhs ) => verifyBinaryTypeExpr ctxt (binop, lhs, rhs)
        | TrinaryExpr (triop, a,b,c ) => verifyTrinaryExpr ctxt (triop, a,b,c)
-
-       | LexicalRef {ident=Identifier { ident, openNamespaces }} =>
-	 lookupProgramVariable env ident
 
        | CallExpr { func, actuals } => verifyCallExpr ctxt func actuals
        | ApplyTypeExpr {expr, actuals} =>
@@ -457,7 +528,7 @@ and verifyExpr (ctxt as {env,this,...}:CONTEXT)
 	 let val exprTy = verifyExpr ctxt expr;
 	     val typeParams = 
 		 case exprTy of
-		     FunctionType (FunctionSignature {typeParams, ...}) => typeParams
+		     FunctionType {typeParams, ...} => typeParams
                    (* TODO: class and interface types *)
 		   | _ => raise VerifyError "Cannot instantiate a non-polymorphic type"
 	 in
@@ -469,10 +540,9 @@ and verifyExpr (ctxt as {env,this,...}:CONTEXT)
 	 end
 
        | TypeExpr ty => 
-	 let 
-	 in
+	 let in
 	     verifyTypeExpr ctxt ty;
-	     ty
+	     typeType
 	 end
 
        | _ => (TextIO.print "verifyExpr incomplete: "; Pretty.ppExpr e; raise Match)
@@ -518,8 +588,7 @@ and verifyCallExpr  (ctxt as {env,this,...}:CONTEXT)
 	   SpecialType Any =>
 	   (* not much to do *)
 	   anyType
-	 | FunctionType 
-	       (FunctionSignature { typeParams, params, returnType, inits, thisType, hasRest })
+	 | FunctionType { typeParams, params, result, thisType, hasRest }
 	   => 
 	   let 
 	   in
@@ -538,8 +607,8 @@ and verifyCallExpr  (ctxt as {env,this,...}:CONTEXT)
 		   (* handleArgs normalParams actualTys *)
 		   fun handleArgs [] [] = ()
 		     | handleArgs (p::pr) (a::ar) =				
-		       let val Binding {init,pattern,ty} = p in
-			   checkCompatible a (unOptionDefault ty anyType);
+		       let in
+			   checkCompatible a p;
 			   handleArgs pr ar
 		       end
 		     | handleArgs [] (_::_) = 
@@ -550,7 +619,7 @@ and verifyCallExpr  (ctxt as {env,this,...}:CONTEXT)
 		       raise VerifyError "Not enough args to function"
 	       in
 		   handleArgs params actualsTy;
-		   returnType
+		   result
 	       end
 	   end
 	 | _ => raise VerifyError "Function expression does not have a function type"
@@ -621,37 +690,6 @@ and verifyVarBindings (ctxt:CONTEXT)
     case vs of
 	[] => []
       | h::t => (verifyVarBinding ctxt h) @ (verifyVarBindings ctxt t)
-*)
-
-and verifyIdentExpr (ctxt:CONTEXT) 
-		    (id:IDENT_EXPR)
-    : unit =
-    (case id of
-          QualifiedIdentifier { qual, ident=_ } => 
-	  let in
-	      checkCompatible (verifyExpr ctxt qual) namespaceType;
-	      ()
-	  end
-
-        | QualifiedExpression { qual, expr } => 
-	  let in
-	      checkCompatible (verifyExpr ctxt qual) namespaceType;
-              checkCompatible (verifyExpr ctxt expr) stringType;
-              ()
-	  end
-
-        | Identifier _ => 
-	  ()
-
-        | ExpressionIdentifier expr => 
-	  let in
-	      checkCompatible (verifyExpr ctxt expr) stringType; 
-	      ()
-	  end)
-(*
-       | AttributeIdentifier of IDENT_EXPR
-       | TypeIdentifier of { ident : IDENT_EXPR, 
-			     typeParams : TYPE_EXPR list }
 *)
 
 and verifyUnaryExpr (ctxt:CONTEXT) 
@@ -834,14 +872,14 @@ and verifyStmt (ctxt as {this,env,lbls,retTy}:CONTEXT) (stmt:STMT) =
     end
 
   | SwitchStmt { cond, cases } =>
-    let val ty = verifyExprList ctxt cond
+    let val ty = verifyExpr ctxt cond
     in
 	List.app
 	    (fn {label,body} =>	
 		let in
-		    (List.app 
+		    (Option.app 
 			 (fn e => checkBicompatible ty (verifyExpr ctxt e))
-			 (flattenOptionList label));
+			 label);
 		    verifyBlock ctxt body
 		end)
 	    cases
@@ -945,13 +983,13 @@ and verifyDefns ctxt ([]:DEFN list) : (TYPE_ENV * int list) = ([], [])
 
 (* fixtures at the block level *)
 and verifyFixture (ctxt as {env,this,...}:CONTEXT) 
-		  (n:NAME,f:FIXTURE) 
+		  (n:FIXTURE_NAME,f:FIXTURE) 
     : TYPE_ENV
   = let in
 	case f of
 	    NamespaceFixture _ => []
 	  | ValFixture { ty, readOnly, ... } => 
-	    (n,ProgVar (ty,readOnly))
+	    [(n,ProgVar (ty,readOnly))]
     end	    
 
 and verifyFixtures (ctxt:CONTEXT) 

@@ -323,14 +323,14 @@ datatype PRAGMA =
                       | PropName of NAME
 
      and IDENT_EXPR =
-         QualifiedIdentifier of 
+         QualifiedIdentifier of  (* type * *)
            { qual : EXPR,
              ident : USTRING }
-       | QualifiedExpression of 
+       | QualifiedExpression of  (* type * *)
            { qual : EXPR,
              expr : EXPR }
        | AttributeIdentifier of IDENT_EXPR
-       | Identifier of 
+       | Identifier of  
            { ident : IDENT,
              openNamespaces : NAMESPACE list list }
        | ExpressionIdentifier of EXPR   (* for bracket exprs: o[x] and @[x] *)
