@@ -182,7 +182,7 @@ datatype PRAGMA =
            { typeParams: IDENT list,
              params: VAR_BINDING list,
              (* argTypes: TYPE_EXPR list option *)
-             (*TODO: add fixtures *)
+             defaults: STMT list, 
              settings: STMT list, 
              returnType: TYPE_EXPR,
              thisType: TYPE_EXPR option,
@@ -205,12 +205,7 @@ datatype PRAGMA =
        | UnionType of TYPE_EXPR list
        | ArrayType of TYPE_EXPR list
        | TypeName of IDENT_EXPR
-       | FunctionType of 
-           { typeParams: IDENT list,
-             params: TYPE_EXPR list,
-             result: TYPE_EXPR,
-             thisType: TYPE_EXPR option,
-             hasRest: bool }
+       | FunctionType of FUNC_TYPE
        | ObjectType of FIELD_TYPE list
        | AppType of 
            { base: TYPE_EXPR,
@@ -408,6 +403,13 @@ withtype FIELD =
      and TYPED_IDENT =
            { name: IDENT,
              ty: TYPE_EXPR option }
+
+     and FUNC_TYPE = 
+         { typeParams: IDENT list,
+           params: TYPE_EXPR list,
+           result: TYPE_EXPR,
+           thisType: TYPE_EXPR option,
+           hasRest: bool }
 
      and FUNC_DEFN = 
            { kind : VAR_DEFN_TAG,

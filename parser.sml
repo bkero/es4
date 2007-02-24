@@ -531,13 +531,14 @@ and functionSignature (ts) : (token list * Ast.FUNC_SIG) =
                                       thisType=SOME (needType (nd2,SOME false)),
                                       params=(#b nd3),
                                       returnType=nd4,
-                                      settings=([Ast.InitStmt 
-                                            {kind=Ast.Var,
-                                             ns=Ast.LiteralExpr (Ast.LiteralNamespace (Ast.Internal "")),
-                                             prototype=false,
-                                             static=false,
-                                             inits=(#i nd3)}]),
-                                             hasRest=false })) (* do we need this *)
+                                      settings=[],
+                                      defaults=([Ast.InitStmt 
+                                                     {kind=Ast.Var,
+                                                      ns=Ast.LiteralExpr (Ast.LiteralNamespace (Ast.Internal "")),
+                                                      prototype=false,
+                                                      static=false,
+                                                      inits=(#i nd3)}]),
+                                      hasRest=false })) (* do we need this *)
                                end
                          | _ => raise ParseError
                     end
@@ -548,11 +549,12 @@ and functionSignature (ts) : (token list * Ast.FUNC_SIG) =
                         (log(["<< functionSignature with next=",tokenname(hd ts3)]);
                         (ts3,Ast.FunctionSignature
                                 { typeParams=nd1,
-                                    thisType=SOME (needType (nd2,SOME false)),
-                                       params=[],
-                                       returnType=nd3,
-                                    settings=[],
-                                    hasRest=false })) (* do we need this *)
+                                  thisType=SOME (needType (nd2,SOME false)),
+                                  params=[],
+                                  returnType=nd3,
+                                  settings=[],
+                                  defaults=[],
+                                  hasRest=false })) (* do we need this *)
                           end
                  | _ => raise ParseError
             end
@@ -569,7 +571,8 @@ and functionSignature (ts) : (token list * Ast.FUNC_SIG) =
                                     {typeParams=nd1,
                                      params=(#b nd2),
                                      returnType=nd3,
-                                     settings=([Ast.InitStmt {
+                                     settings=[],
+                                     defaults=([Ast.InitStmt {
                                          kind=Ast.Var,
                                          ns=Ast.LiteralExpr (Ast.LiteralNamespace (Ast.Internal "")),
                                          prototype=false,
@@ -605,7 +608,8 @@ and functionSignatureType (ts) =
                                           thisType=SOME (needType (nd2,SOME false)),
                                           params=(#b nd3),
                                           returnType=nd4,
-                                          settings=([Ast.InitStmt {
+                                          settings=[],
+                                          defaults=([Ast.InitStmt {
                                               kind=Ast.Var,
                                               ns=Ast.LiteralExpr (Ast.LiteralNamespace (Ast.Internal "")),
                                               prototype=false,
@@ -622,11 +626,12 @@ and functionSignatureType (ts) =
                         (log(["<< functionSignature with next=",tokenname(hd ts3)]);
                         (ts3,Ast.FunctionSignature
                                 { typeParams=nd1,
-                                    thisType=SOME (needType (nd2,SOME false)),
-                                       params=[],
-                                       returnType=nd3,
-                                    settings=[],
-                                    hasRest=false })) (* do we need this *)
+                                  thisType=SOME (needType (nd2,SOME false)),
+                                  params=[],
+                                  returnType=nd3,
+                                  settings=[],
+                                  defaults=[],
+                                  hasRest=false })) (* do we need this *)
                           end
               | _ => raise ParseError
             end
@@ -641,16 +646,17 @@ and functionSignatureType (ts) =
                         (log(["<< functionSignature with next=",tokenname(hd ts3)]);
                         (ts3,Ast.FunctionSignature
                                 { typeParams=nd1,
-                                    params=(#b nd2),
-                                    returnType=nd3,
-                                    settings=([Ast.InitStmt 
-                                        {kind=Ast.Var,
-                                         ns=Ast.LiteralExpr (Ast.LiteralNamespace (Ast.Internal "")),
-                                         prototype=false,
-                                         static=false,
-                                         inits=(#i nd2)}]),
-                                    thisType=NONE,  (* todo *)
-                                    hasRest=false })) (* do we need this *)
+                                  params=(#b nd2),
+                                  returnType=nd3,
+                                  settings=[],
+                                  defaults=([Ast.InitStmt 
+                                                 {kind=Ast.Var,
+                                                  ns=Ast.LiteralExpr (Ast.LiteralNamespace (Ast.Internal "")),
+                                                  prototype=false,
+                                                  static=false,
+                                                  inits=(#i nd2)}]),
+                                  thisType=NONE,  (* todo *)
+                                  hasRest=false })) (* do we need this *)
                        end
                  | _ => raise ParseError
             end
@@ -2978,27 +2984,30 @@ and functionType (ts) : (token list * Ast.TYPE_EXPR)  =
 and functionTypeFromSignature fsig : Ast.TYPE_EXPR = 
     let
         fun paramTypes (params:Ast.VAR_BINDING list):Ast.TYPE_EXPR list =
-                    case params of
-                        [] => []
-                      | _ =>
-                            let
-                                val _ = log(["paramtypes"]);
-                                val Ast.Binding {pattern,ty,... } = hd params
-                            in case (pattern,ty) of
-                                (_,SOME t) => t :: paramTypes (tl params)
-                              | (p,NONE) => (typeFromPattern p) :: paramTypes (tl params) 
-                            end
-
+            case params of
+                [] => []
+              | (Ast.Binding {pattern,ty,... })::bs =>
+                let
+                    val _ = log(["paramtypes"]);
+                in case (pattern,ty) of
+                       (_,SOME t) => t :: paramTypes bs
+                     | (p,NONE) => (typeFromPattern p) :: paramTypes bs 
+                end
+                
     in case fsig of
-        Ast.FunctionSignature {typeParams,params,settings,returnType,
-                               thisType,hasRest} =>
-            Ast.FunctionType {typeParams=typeParams,
-                              params=paramTypes params,
-                              result=returnType,
-                              thisType=thisType,
-                              hasRest=hasRest}
+           Ast.FunctionSignature {typeParams, 
+                                  params, 
+                                  returnType,
+                                  thisType, 
+                                  hasRest, 
+                                  ...} =>
+           Ast.FunctionType {typeParams=typeParams,
+                             params=paramTypes params,
+                             result=returnType,
+                             thisType=thisType,
+                             hasRest=hasRest}
     end
-
+    
 and typeFromPattern pattern =
     case pattern of
         Ast.ArrayPattern elements => arrayTypeFromPattern elements
@@ -5313,11 +5322,17 @@ and constructorSignature (ts) =
                                 (log(["<< constructorSignature with next=",tokenname(hd ts4)]);
                                 (ts4,Ast.FunctionSignature
                                         { typeParams=nd1,
-                                            thisType=SOME (needType(nd2,NONE)),
-                                            params=(#b nd3),
-                                            returnType=(Ast.SpecialType Ast.VoidType),
-                                            settings=[Ast.InitStmt {kind=Ast.Var,ns=Ast.LiteralExpr (Ast.LiteralNamespace (Ast.Internal "")),prototype=false,static=false,inits=(#i nd3)},Ast.ExprStmt (Ast.ListExpr nd4)],
-                                            hasRest=false })) (* do we need this *)
+                                          thisType=SOME (needType(nd2,NONE)),
+                                          params=(#b nd3),
+                                          returnType=(Ast.SpecialType Ast.VoidType),
+                                          settings=[Ast.ExprStmt (Ast.ListExpr nd4)],
+                                          defaults=[Ast.InitStmt {kind=Ast.Var,
+                                                                  ns=Ast.LiteralExpr 
+                                                                         (Ast.LiteralNamespace (Ast.Internal "")),
+                                                                  prototype=false,
+                                                                  static=false,
+                                                                  inits=(#i nd3)}],
+                                          hasRest=false })) (* do we need this *)
                                end
                          | _ => raise ParseError
                     end
@@ -5334,9 +5349,15 @@ and constructorSignature (ts) =
                         (log(["<< constructorSignature with next=",tokenname(hd ts3)]);
                         (ts3,Ast.FunctionSignature
                                 { typeParams=nd1,
-                                    params=(#b nd2),
-                                    returnType=(Ast.SpecialType Ast.VoidType),
-                                    settings=[Ast.InitStmt {kind=Ast.Var,ns=Ast.LiteralExpr (Ast.LiteralNamespace (Ast.Internal "")),prototype=false,static=false,inits=(#i nd2)},Ast.ExprStmt (Ast.ListExpr nd3)],
+                                  params=(#b nd2),
+                                  returnType=(Ast.SpecialType Ast.VoidType),
+                                  settings=[Ast.ExprStmt (Ast.ListExpr nd3)],
+                                  defaults=[Ast.InitStmt {kind=Ast.Var,
+                                                          ns=Ast.LiteralExpr 
+                                                                 (Ast.LiteralNamespace (Ast.Internal "")),
+                                                          prototype=false,
+                                                          static=false,
+                                                          inits=(#i nd2)}],
                                     thisType=NONE,
                                     hasRest=false })) (* do we need this *)
                        end
