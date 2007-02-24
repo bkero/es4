@@ -190,7 +190,7 @@ datatype PRAGMA =
 
      and VAR_BINDING =
          Binding of 
-           { ident: IDENT;
+           { ident: IDENT,
              ty: TYPE_EXPR option,
              init: EXPR option }
 

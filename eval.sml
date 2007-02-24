@@ -387,11 +387,12 @@ and evalCallExpr (thisObjOpt:Mach.OBJ option)
 
 and evalSetExpr (scope:Mach.SCOPE) 
                 (aop:Ast.ASSIGNOP) 
-                (pat:Ast.PATTERN) 
+                (lhs:Ast.EXPR) 
                 (v:Mach.VAL) 
     : Mach.VAL = 
     let
-        fun modified obj name = 
+        val (obj, name) = evalRefExpr scope lhs false
+        val v =
             let 
                 fun modifyWith bop = 
                     performBinop bop (Mach.getValue (obj, name)) v
@@ -412,22 +413,11 @@ and evalSetExpr (scope:Mach.SCOPE)
                   | Ast.AssignLogicalAnd => modifyWith Ast.LogicalAnd
                   | Ast.AssignLogicalOr => modifyWith Ast.LogicalOr
             end
-    in case pat of 
-        Ast.SimplePattern expr => 
-            let
-                val r = evalRefExpr scope expr false
-            in
-                case r of (obj, name) => 
-                      let 
-                          val v = modified obj name
-                      in 
-                          Mach.setValue obj name v;
-                          v
-                      end
-            end
-      | _ => LogErr.unimplError ["unexpected pattern form in assignment"]
+    in
+        Mach.setValue obj name v;
+        v
     end
-
+    
 
 and evalUnaryOp (scope:Mach.SCOPE) 
                 (unop:Ast.UNOP) 
@@ -650,6 +640,8 @@ and processVarBinding (scope:Mach.SCOPE)
                       (binding:Ast.VAR_BINDING)
                       (procOneName:Mach.NAME -> Mach.VAL -> unit)
     : unit =
+()
+(*
     case binding of 
         Ast.Binding { init, pattern, ty } =>
         let 
@@ -671,7 +663,7 @@ and processVarBinding (scope:Mach.SCOPE)
                      SOME e => procWithValue (evalExpr scope e)
                    | NONE => ())
         end
-        
+  *)      
 
 and evalVarBinding (scope:Mach.SCOPE)
                    (v:Mach.VAL option)
@@ -1035,7 +1027,6 @@ and evalScopeInits (scope:Mach.SCOPE)
     case scope of
         Mach.Scope { object, temps, ...} => 
         evalInits scope object temps inits
-
 (*
 and initializeAndConstruct (classClosure:Mach.CLS_CLOSURE)
                            (classObj:Mach.OBJ)
@@ -1044,9 +1035,9 @@ and initializeAndConstruct (classClosure:Mach.CLS_CLOSURE)
                            (instanceObj:Mach.OBJ)
     : unit =
     let
-        val {cls, allTypesBound, env} = classClosure
+        val {cls, env} = classClosure
     in
-        if not allTypesBound
+        if not allTypesBound (#ty cls)
         then LogErr.evalError ["constructing instance of class with unbound type variables"]
         else
             let
@@ -1068,7 +1059,7 @@ and initializeAndConstruct (classClosure:Mach.CLS_CLOSURE)
                                                             
                     (LogErr.trace ["evaluating settings for ", LogErr.name name];
                      evalObjInits classScope instanceObj settings;
-                     LogErr.trace ["running constructor for ", LogErr.name name];)
+                     LogErr.trace ["running constructor for ", LogErr.name name])
 
                 LogErr.trace ["running instance settings for ", LogErr.name name];  
                 evalObjInits classScope instanceObj instanceInits;
