@@ -2973,34 +2973,33 @@ and functionType (ts) : (token list * Ast.TYPE_EXPR)  =
 
 and functionTypeFromSignature fsig : Ast.TYPE_EXPR = 
     let
-        fun paramTypes (params:Ast.VAR_BINDING list):Ast.TYPE_EXPR list =
+        fun paramTypes (params:Ast.VAR_BINDING list) (argsNeeded): (Ast.TYPE_EXPR list * int) =
                     case params of
-                        [] => []
+                        [] => ([],argsNeeded)
                       | _ =>
                             let
                                 val _ = log(["paramtypes"]);
-                                val Ast.Binding {pattern,ty,... } = hd params
+                                val Ast.Binding {pattern,ty,init} = hd params
+                                val (types,argsNeeded) = paramTypes (tl params) 
+                                                                    (argsNeeded + (case init of NONE => 1 | _ => 0))
                             in case (pattern,ty) of
-                                (_,SOME t) => t :: paramTypes (tl params)
-                              | (p,NONE) => (typeFromPattern p) :: paramTypes (tl params) 
+                                (_,SOME t) => (t :: types, argsNeeded)
+                              | (_,NONE) => (Ast.SpecialType Ast.Any::types, argsNeeded)
                             end
-
-    in case fsig of
-        Ast.FunctionSignature {typeParams,params,inits,returnType,
-                               thisType,hasRest} =>
-            Ast.FunctionType {typeParams=typeParams,
-                              params=paramTypes params,
-                              result=returnType,
-                              thisType=thisType,
-                              hasRest=hasRest}
+    in 
+       case fsig of
+        Ast.FunctionSignature {typeParams,params,inits,returnType,thisType,hasRest} =>
+            let
+                val (types, required) = paramTypes params 0
+            in
+                Ast.FunctionType {typeParams=typeParams,
+                                  params=types,
+                                  result=returnType,
+                                  thisType=thisType,
+                                  hasRest=hasRest,
+                                  requiredCount=required}
+            end
     end
-
-and typeFromPattern pattern =
-    case pattern of
-        Ast.ArrayPattern elements => arrayTypeFromPattern elements
-      | Ast.ObjectPattern fields => objectTypeFromPattern fields
-      | Ast.IdentifierPattern ident => Ast.TypeName (Ast.Identifier {ident=ident,openNamespaces=[]})
-      | _ => raise ParseError
 
 (*
     UnionType    
@@ -3040,8 +3039,6 @@ and objectType (ts) : (token list * Ast.TYPE_EXPR) =
             end
       | _ => raise ParseError
     end
-
-and objectTypeFromPattern fl = Ast.ObjectType []
 
 (*
     FieldTypeList
@@ -3113,15 +3110,6 @@ and arrayType (ts) : (token list * Ast.TYPE_EXPR)  =
       | _ => raise ParseError
     end
 
-and arrayTypeFromPattern e =
-    let val _ = trace([">> arrayTypeFromPattern"])
-        val t = elementTypeListFromPattern e
-    in
-        trace(["<< arrryTypeFromPattern"]);
-        Ast.ArrayType t
-    end
-
-
 (*
     ElementTypeList    
         «empty»
@@ -3152,31 +3140,6 @@ and elementTypeList (ts) : token list * Ast.TYPE_EXPR list =
                     end
               | _ => (ts1,nd1::[])
             end
-    end
-
-and elementTypeListFromPattern p =
-    let val _ = trace([">> elementTypeListFromPattern"])
-        fun elementTypeListFromPattern' p =
-            let
-            in case p of
-                [] =>
-                    let
-                    in
-                        []
-                    end
-              | _ => 
-                let
-                    val t1 = typeFromPattern (hd p)
-                    val t2 = elementTypeListFromPattern' (tl p)
-                in
-                    t1::t2
-                end
-            end
-        val t1 = typeFromPattern (hd p)
-        val t2 = elementTypeListFromPattern' (tl p)
-    in
-        trace(["<< elementTypeListFromPattern"]);
-        t1::t2
     end
 
 (*
@@ -5451,6 +5414,7 @@ and classDefinition (ts,attrs) =
                     case d of 
                         Ast.VariableDefn {kind,...} => (kind=Ast.LetVar) orelse (kind=Ast.LetConst)
                       | Ast.FunctionDefn fd => false
+                      | Ast.ConstructorDefn cd => false
                       | Ast.TypeDefn _ => false
                       | Ast.NamespaceDefn _ => false
                       | _ => LogErr.defnError ["illegal definition type in class"]

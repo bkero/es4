@@ -210,7 +210,8 @@ datatype PRAGMA =
              params: TYPE_EXPR list,
              result: TYPE_EXPR,
              thisType: TYPE_EXPR option,
-             hasRest: bool }
+             hasRest: bool,
+             requiredCount: int }
        | ObjectType of FIELD_TYPE list
        | AppType of 
            { base: TYPE_EXPR,
@@ -322,6 +323,14 @@ datatype PRAGMA =
      and FIXTURE_NAME = TempName of int
                       | PropName of NAME
 
+     and STATIC_IDENT_EXPR =
+         StaticQualifiedIdentifier of       (* turned into a NAME by defn *) 
+           { qual : EXPR,
+             ident : IDENT }
+       | StaticIdentifier of                      (* turned into a MULITINAME by defn *)
+           { ident : IDENT,
+             openNamespaces : NAMESPACE list list }
+
      and IDENT_EXPR =
          QualifiedIdentifier of 
            { qual : EXPR,
@@ -335,8 +344,9 @@ datatype PRAGMA =
              openNamespaces : NAMESPACE list list }
        | ExpressionIdentifier of EXPR   (* for bracket exprs: o[x] and @[x] *)
        | TypeIdentifier of 
-           { ident : IDENT_EXPR, (*deprecated*)
+           { ident : IDENT_EXPR,
              typeParams : TYPE_EXPR list }
+       | StaticIdentExpr of STATIC_IDENT_EXPR
 
      and LITERAL =
          LiteralNull
