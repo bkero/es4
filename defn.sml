@@ -362,7 +362,8 @@ and analyzeClass (env:ENV)
                 : bool =
                 case d of
                     Ast.VariableDefn {kind,...} => (kind=Ast.LetVar) orelse (kind=Ast.LetConst)
-                  | Ast.FunctionDefn fd => false
+                  | Ast.FunctionDefn _ => false
+                  | Ast.ConstructorDefn _ => false
                   | Ast.TypeDefn _ => false
                   | Ast.NamespaceDefn _ => false
                   | _ => LogErr.defnError ["illegal definition type in class"]
@@ -372,6 +373,7 @@ and analyzeClass (env:ENV)
                 case d of 
                     Ast.VariableDefn vd => (#prototype vd)
                   | Ast.FunctionDefn fd => (#prototype fd)
+                  | Ast.ConstructorDefn _ => false
                   | Ast.TypeDefn _ => false
                   | Ast.NamespaceDefn _ => false
                   | _ => LogErr.defnError ["illegal definition type in class"]
@@ -381,6 +383,7 @@ and analyzeClass (env:ENV)
                 case d of 
                     Ast.VariableDefn vd => (#static vd)
                   | Ast.FunctionDefn fd => (#static fd)
+                  | Ast.ConstructorDefn _ => false
                   | Ast.TypeDefn _ => true
                   | Ast.NamespaceDefn _ => true
                   | _ => LogErr.defnError ["illegal definition type in class"]
@@ -393,20 +396,21 @@ and analyzeClass (env:ENV)
                     not ((isProto d) orelse (isStatic d) orelse (isLet d))
                 end
 
-            fun isCtor (n:Ast.NAME,d:Ast.DEFN) : bool = 
+            fun isInstanceInit (s:Ast.STMT)
+                : bool =
+                let
+                in case s of
+                    Ast.InitStmt {kind, static, prototype,...} =>
+                        not ((kind = Ast.LetVar) orelse 
+                             (kind = Ast.LetConst) orelse
+                             prototype orelse 
+                             static)
+                  | _ => false                    
+                end
+
+            fun isCtor (d:Ast.DEFN) : bool = 
                 case d of 
-                    (* FIXME: this might be an incorrect algorithm for
-                     * determining ctor-ness *)
-                    Ast.FunctionDefn { ns, 
-                                       func = Ast.Func { name = { ident, ... }, ... },
-                                       ... } => 
-                    let 
-                        val fname = { id = ident, 
-                                      ns = resolveExprToNamespace env ns }
-                        val _ = trace ["isCtor ", Bool.toString (fname=n)]
-                    in
-                        fname = n
-                    end
+                    Ast.ConstructorDefn _ => true
                   | _ => false
 
             (*
@@ -420,6 +424,7 @@ and analyzeClass (env:ENV)
             val staticDefns = List.filter isStatic defns
             val instanceDefns = List.filter isInstance defns
             val letDefns = List.filter isLet defns
+            val ctorDefn = List.filter isCtor defns
 
             val env = defPragmas env pragmas
             val (unhoisted,classFixtures) = defDefns env [] [] staticDefns
@@ -469,7 +474,7 @@ and analyzeClass (env:ENV)
                      classFixtures = classFixtures,
                      instanceFixtures = instanceFixtures,
                      instanceInits = iinits,
-                     constructor = NONE,
+                     constructor = case ctorDefn of [] => NONE | [Ast.ConstructorDefn {ctor=cd,...}] => SOME cd,
                      classType = Ast.SpecialType Ast.Any,
                      instanceType = Ast.SpecialType Ast.Any }
         end
@@ -878,12 +883,14 @@ and defFuncSig (env:ENV)
                                                       
             (* compute val fixtures (parameters) *)
             val (paramFixtures, newParams) = defVars typeEnv params
-            val ftype = { typeParams = typeParams, 
-                          params     = map paramType params, 
-                          result     = returnType, 
-                          thisType   = SOME thisType, 
-                          hasRest    = hasRest }
-            val (settings, settingTmpFixtures) = defStmts env settings
+
+            val ftype = Ast.FunctionType { typeParams = typeParams, 
+                                           params     = map paramType params, 
+                                           result     = returnType, 
+                                           thisType   = SOME thisType, 
+                                           hasRest    = hasRest,
+                                           requiredCount = 0 }
+            val (inits,_) = defStmts env inits
         in
             { sigType = ftype,
               sigFixtures = (typeParamFixtures 
