@@ -182,8 +182,8 @@ datatype PRAGMA =
            { typeParams: IDENT list,
              params: VAR_BINDING list,
              (* argTypes: TYPE_EXPR list option *)
-             defaults: STMT list, 
-             settings: STMT list, 
+             (*TODO: add fixtures *)
+             inits: STMT list, 
              returnType: TYPE_EXPR,
              thisType: TYPE_EXPR option,
              hasRest: bool }
@@ -323,14 +323,6 @@ datatype PRAGMA =
      and FIXTURE_NAME = TempName of int
                       | PropName of NAME
 
-     and STATIC_IDENT_EXPR =
-         StaticQualifiedIdentifier of       (* turned into a NAME by defn *) 
-           { qual : EXPR,
-             ident : IDENT }
-       | StaticIdentifier of                      (* turned into a MULITINAME by defn *)
-           { ident : IDENT,
-             openNamespaces : NAMESPACE list list }
-
      and IDENT_EXPR =
          QualifiedIdentifier of  (* type * *)
            { qual : EXPR,
@@ -389,7 +381,11 @@ datatype PRAGMA =
            isFinal: bool }
        | ValFixture of 
            { ty: TYPE_EXPR,
-             readOnly: bool }
+             readOnly: bool,
+             isOverride: bool,
+             isFinal: bool,
+             init: EXPR option (* deprecated *)
+           }
        | VirtualValFixture of 
            { ty: TYPE_EXPR, 
              getter: FUNC_DEFN option,
@@ -495,9 +491,8 @@ withtype FIELD =
              i: EXPR list }
 
      and CASE =
-           { label: EXPR option, 
-             fixtures: FIXTURES option,
-             body: BLOCK }
+           { label : EXPR option, 
+             body : BLOCK }
 
      and TYPE_CASE =
            { ptrn : VAR_BINDING option, 
