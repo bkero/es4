@@ -1,7 +1,13 @@
+class Object {}
+class foo {
+function foo([a,b],[c,d]=bar()) : z = zug() {}
+}
+
+/*
 type ft = function .<A,B> (A?,B,boolean)
 var f : ft.<int,string> = function (i:int?,s:string,b:boolean) { }
 f(null,"hi",true)
-
+*/
 /*
 namespace ns = "http"
 class Object {}
