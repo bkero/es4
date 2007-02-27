@@ -389,7 +389,11 @@ datatype PRAGMA =
            isFinal: bool }
        | ValFixture of 
            { ty: TYPE_EXPR,
-             readOnly: bool }
+             readOnly: bool,
+             isOverride: bool,
+             isFinal: bool,
+             init: EXPR option (* deprecated *)
+           }
        | VirtualValFixture of 
            { ty: TYPE_EXPR, 
              getter: FUNC_DEFN option,
