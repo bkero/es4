@@ -34,7 +34,7 @@ val ppStmt = ppRep o cvtSTMT
 
 val ppDefinition = ppRep o cvtDEFN
 
-val ppVarDefn = ppRep o cvtVAR_BINDING
+val ppVarDefn = ppRep o cvtBINDING
 
 val ppType = ppRep o cvtTYPE_EXPR
 

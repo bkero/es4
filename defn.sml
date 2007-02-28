@@ -9,7 +9,7 @@ structure Defn = struct
     To be specific, the definition phase completes the following tasks:
     - fold type expressions
     - fold namespace aliases
-    - de-sugar patterns
+    - de-sugar patterns (parsing)
     - translate defnitions to fixtures + initialisers
     - check for conflicting fixtures
     - hoist fixtures
@@ -26,46 +26,6 @@ structure Defn = struct
     - disambiguate package / object references
  *)
 
-(* 
- * Patterns get desugared into FIXTURES (covering all temporaries) and
- * lists of PATTERN_STEPs.
- * 
- * Depending on context, the PATTERN_STEPs might be restricted to 
- * initializing single idents, thus of the form "Init (...)". This is
- * true of patterns in 4 contexts:
- * 
- *   - function parameters
- *   - class member initializers (including proto and static inits)
- *   - class constructor settings
- *   - variable binding forms like "var" and "let" in imperative blocks
- * 
- * In other contexts, a pattern represents just a sequence of general
- * assignments, and any expression that can evaluate to an object ref
- * is valid for the pattern LHS. In these cases the desugared form is
- * Assign (e1,e2) and e1 must be a "ref expr" (see eval.sml).
- *)
-
-datatype PATTERN_STEP = 
-         Init of (INIT_TARGET * Ast.FIXTURE_NAME * Ast.EXPR)
-       | Assign of (Ast.EXPR * Ast.EXPR)
-
-and INIT_TARGET = LocalInit
-                | ProtoInit
-                | StaticInit
-
-fun needInitSteps (pl:PATTERN_STEP list) 
-                  (targ:INIT_TARGET)
-    : Ast.INITS = 
-    case pl of 
-        [] => []
-      | (Assign _)::xs => LogErr.defnError ["deep pattern assignment ",
-                                            "in binding-initialization context"]
-      | (Init (t, f, e))::xs => 
-        if t = targ 
-        then (f, e)::(needInitSteps pl targ xs)
-        else LogErr.defnError ["unexpected initialization target ",
-                               "in binding-initialization context"]
-        
                    
 type CONTEXT = 
      { fixtures: Ast.FIXTURES,
@@ -81,12 +41,6 @@ type ANALYZED_SIG =
        sigDefaults: Ast.INITS,
        sigSettings: Ast.INITS,
        sigNParams: int }
-
-type PATTERN_BINDING_PART = 
-     { kind:Ast.VAR_DEFN_TAG,
-       ty:Ast.TYPE_EXPR,                              
-       prototype:bool,
-       static:bool }
 
 val currentClassName : Ast.NAME ref = ref {id="",ns=Ast.Intrinsic}
     (* ISSUE: is there a beter way to manage this? *)
@@ -141,6 +95,27 @@ fun hasFixture (b:Ast.FIXTURES)
     in
         search b    
     end
+
+        (*
+            Get the type of a field in a field pattern - lookup in a list of field types a field type 
+            with associated a name. if the list is empty then return type '*'. if the list is not
+            empty and the sought name is not found, then report a syntax error.
+        *)
+
+fun getFieldType (name : Ast.IDENT) (field_types: Ast.FIELD_TYPE list)
+            : Ast.TYPE_EXPR =
+            let
+            in case field_types of
+                [] => Ast.SpecialType Ast.Any
+              | field_type :: field_type_list =>
+                let
+                    val {name=field_type_name,ty} = field_type
+                in 
+                    if field_type_name = name 
+                        then ty
+                        else getFieldType name field_type_list
+                end
+            end
 
 fun getFixture (b:Ast.FIXTURES) 
                (n:Ast.FIXTURE_NAME) 
@@ -696,7 +671,7 @@ and resolveImplements (env: ENV)
     end
 
 (*
-    VAR_BINDING
+    BINDING
 
     During parsing, variable definitions are split into a var binding
     and optional init stmt. During the definition phase, the var binding 
@@ -748,11 +723,12 @@ and resolveImplements (env: ENV)
 and defVar (env:ENV) 
            (kind:Ast.VAR_DEFN_TAG)
            (ns:Ast.NAMESPACE)
-           (var:Ast.VAR_BINDING) 
-    : (Ast.FIXTURES * Ast.VAR_BINDING) = 
+           (var:Ast.BINDING) 
+    : (Ast.FIXTURES * Ast.BINDING) = 
     case var of 
-        Ast.Binding { init, pattern, ty } => 
+        Ast.Binding { ident, ty } => 
         let
+(*
             val newInit = case init of 
                               NONE => NONE
                             | SOME e => SOME (defExpr env e)
@@ -763,27 +739,25 @@ and defVar (env:ENV)
                                 NONE => Ast.SpecialType Ast.Any
                               | SOME t => t
             val fxtrs = defBinding env kind ns pattern patternType
-            val isReadOnly = case kind of 
+*)
+            val readOnly = case kind of 
                                  Ast.Const => true
                                | Ast.LetConst => true
                                | _ => false                
         in
-            (fxtrs, 
-             Ast.Binding { init = newInit,
-                           pattern = pattern,
-                           ty = newTy })
+            ([(Ast.PropName (ns,ident), Ast.ValFixture {ty=ty,readOnly=readOnly})], var)
         end
 
 and defVars (env:ENV) 
-            (vars:Ast.VAR_BINDING list) 
-    : (Ast.FIXTURES * (Ast.VAR_BINDING list)) = 
+            (vars:Ast.BINDING list) 
+    : (Ast.FIXTURES * (Ast.BINDING list)) = 
     defVarsFull env Ast.Var (Ast.Internal "") vars
     
 and defVarsFull (env:ENV) 
                 (kind:Ast.VAR_DEFN_TAG)
                 (ns:Ast.NAMESPACE)
-                (vars:Ast.VAR_BINDING list) 
-    : (Ast.FIXTURES * (Ast.VAR_BINDING list)) = 
+                (vars:Ast.BINDING list) 
+    : (Ast.FIXTURES * (Ast.BINDING list)) = 
     let
         val (fbl, vbl) = ListPair.unzip (map (defVar env kind ns) vars)
     in
@@ -827,7 +801,7 @@ and defFuncSig (env:ENV)
     : ANALYZED_SIG =
 
     case fsig of 
-        Ast.FunctionSignature { typeParams, params, defaults, settings, 
+        Ast.FunctionSignature { typeParams, params, settings, 
                                 returnType, thisType, hasRest } =>
         let 
 
@@ -843,11 +817,10 @@ and defFuncSig (env:ENV)
             val thisBinding = (Ast.PropName {ns=internalNs, id="this"}, 
                                Ast.ValFixture
                                    { ty = thisType,
-                                     readOnly = true,
-                                     isOverride = false,
-                                     isFinal = false })
+                                     readOnly = true })
 
-            fun defaultInit (b:Ast.VAR_BINDING) : Ast.INITS = 
+(**** not called
+            fun defaultInit (b:Ast.BINDING) : Ast.INITS = 
                 case b of 
                     Ast.Binding { init=NONE, ... } => []
                   | Ast.Binding { pattern, init=SOME e, ... } => 
@@ -863,8 +836,8 @@ and defFuncSig (env:ENV)
                     in
                         needInitSteps defaultSteps LocalInit
                     end
-                
-            fun paramType (b:Ast.VAR_BINDING) = 
+****)                
+            fun paramType (b:Ast.BINDING) = 
                 case b of 
                     Ast.Binding { ty=NONE, ... } => Ast.SpecialType Ast.Any
                   | Ast.Binding { ty=SOME t, ... } => t
@@ -1137,9 +1110,9 @@ and defExpr (env:ENV)
             ([], Ast.ApplyTypeExpr { expr = sub expr,
                                      actuals = map (defTyExpr env) actuals })
 
-          | Ast.LetExpr { defs, body, fixtures } => 
+          | Ast.LetExpr { defs=(b,i), body, fixtures } => 
             let
-                val (f0, newDefs) = defVars env defs 
+                val (f0, newDefs) = defVars env b   (* TODO: defBindings, defInits *)
                 val env = extendEnvironment env f0
                 val newBody = defExpr env body
             in
@@ -1192,353 +1165,6 @@ and defTyExpr (env:ENV)
     : Ast.TYPE_EXPR = 
     (* FIXME *)
     ty
-
-
-(*
-    PATTERN
-
-    Patterns in binding contexts (e.g. after 'var') cause fixtures
-    to be created. Other patterns de-sugar into assignment expressions
-    with the value of the right side stored in a temporary to avoid
-    multiple evaluation.
-
-    When the definition phase is complete, the only kind of patterns
-    that remain are SimplePatterns which are wrappers for the property
-    references that are the targets of assignments
-
-    Example:
-
-        ns var {i:x,j:y} : {i:int,j:string} = o
-
-    gets rewritten by the parser as,
-
-        ns var {i:x,j:y} : {i:int,j:string}
-        ns <init> {i:x,j:y} = o
-
-    which gets rewritten by 'defBinding' and 'defInit' as,
-
-        ns var x:int
-        ns var y:string
-
-    and 
-
-        <temp> t = o
-        ns::x = t["i"]
-        ns::y = t["j"]
-
-    respectively, where the name shown as 't' is guaranteed not to 
-    conflict with or shadow any other name in scope.
-
-    Example:
-
-        [ns::x, ns::y] = o
-
-    gets rewriten by 'defAssignment' as,
-
-        <temp> t = o
-        ns::x = t[0]
-        ns::y = t[1]
-
-    Note: the difference between defineAssignment and defInit is that
-    defInit creates qualified identifiers using the namespace and the
-    identifiers on the left side of each assignment.
-*)
-
-and defInit (env:ENV) 
-            (ns:Ast.NAMESPACE) 
-            (prototype:bool) 
-            (static:bool) 
-            (init:Ast.EXPR) 
-    : Ast.EXPR list =
-    let
-    in case init of
-        (Ast.SetExpr (_,pattern,expr)) =>
-            defPatternAssign env ns pattern expr prototype static 0
-      | _ => LogErr.defnError ["internal definition error in defInit"]
-    end
-
-and defAssignment (env:ENV) 
-                  (pattern:Ast.PATTERN) 
-                  (expr:Ast.EXPR)
-    : Ast.EXPR list =
-    let
-        val level = 0  (* to start with *)
-        val ns = Ast.Intrinsic  (* unused since there are no IdentifierPatterns in this context *)
-    in
-        defPatternAssign env ns pattern expr false false level
-    end
-
-(*
-    var x = o
-    
-    temp t = o
-    x = t
-*)
-                            
-and desugarPattern (env:ENV)
-                   (ns:Ast.NAMESPACE) 
-                   (pattern:Ast.PATTERN)
-                   (bindPart:PATTERN_BINDING_PART option)
-                   (assignExpr:Ast.EXPR option)
-    : (Ast.FIXTURES * PATTERN_STEP list) =
-    let
-        fun desugarIdentifierPattern (id:Ast.IDENT)
-            : (Ast.FIXTURES * PATTERN_STEP list) =
-            let
-                val name = Ast.PropName {ns=ns, id=id}
-                fun mkFix { kind, ty, prototype, static } = 
-                    (name, 
-                     Ast.ValFixture { ty = ty, 
-                                      readOnly = if kind = Ast.Const 
-                                                 then true 
-                                                 else false, 
-                                      isOverride = false, 
-                                      isFinal=true })
-            in
-                case (bindPart, assignExpr) of 
-                    (NONE, NONE) => LogErr.defnError ["identifier pattern with ",
-                                                      "neither binding nor assignment"]
-                  | (SOME bp, NONE) => ([mkFix bp], [])
-                  | (SOME bp, SOME e) => 
-                    let 
-                        val fix = mkFix bp
-                        val (efix, e') = defExpr env e
-                        val targ = if prototype 
-                                   then ProtoInit 
-                                   else (if static 
-                                         then StaticInit
-                                         else LocalInit)
-                    in
-                        (([fix] @ efix), [Init (targ, name, expr)])
-                    end
-                  | (NONE, SOME e) => 
-                    let
-                        val (efix, e') = defExpr env e
-                    in
-                        (efix, [Init (LocalInit, name, e')])
-                    end
-            end
-            
-        fun desugarSimplePattern (patternExpr:Ast.EXPR)
-            : (Ast.FIXTURES * PATTERN_STEP list) =
-            case (bindPart, assignExpr) of 
-                (SOME _, _) => LogErr.defnError ["simple pattern in binding form"]
-              | (NONE, NONE) => LogErr.defnError ["simple pattern without RHS expression"]
-              | (NONE, SOME e) => 
-                let
-                    val (lfxs, patternExpr) = defExpr env patternExpr
-                    val (rfxs, e') = defExpr env e
-                in
-                    ((lfxs @ rfxs), [Assign (patternExpr, e')])
-                end
-                
-        (*
-            [x,y] = o
-            let [i,s]:[int,String] = o
-
-            ISSUE: Are partial type annotations allowed? let [i,s]:[int]=...
-                   If so, what is the type of 's' here? int or *?
-        *)
-
-        fun desugarArrayPattern (elements:Ast.PATTERN list) 
-                                (temp:Ast.EXPR) 
-                                (n:int)
-            : (Ast.FIXTURES * PATTERN_STEP list) =
-            let
-            in case elements of
-                   p::plist =>
-                   let
-                       val str = Ast.LiteralString (Int.toString n)
-                       val ident = Ast.ExpressionIdentifier (Ast.LiteralExpr (str))
-                       val expr = Ast.ObjectRef {base=temp, ident=ident}
-                       val (fixs, steps) = desugarPattern env ns p bindPart (SOME expr) 
-                       val (fixs', steps') = desugarArrayPattern plist temp (n+1)
-                    in
-                       ((fixs @ fixs'), (steps @ steps'))
-                    end
-                 | [] => ([], [])
-            end
-
-        
-        (*
-                ns <init> {i:x,j:y} = o
-
-            becomes
-
-                <temp> t = o
-                ns::x = t["i"]
-                ns::y = t["j"]
-        *)
-            
-        fun desugarObjectPattern (fields:Ast.FIELD_PATTERN list) 
-                                 (temp:Ast.EXPR)
-            : (Ast.FIXTURES * PATTERN_STEP list) =
-            case fields of
-                { name, ptrn }::plist =>
-                let
-                    val expr = Ast.ObjectRef {base=temp, ident=name}
-                    val (fixs, steps) = desugarPattern env ns ptrn bindPart (SOME expr)
-                    val (fixs', steps') = desugarObjectPattern plist temp
-                in
-                    ((fixs @ fixs'), (steps @ steps'))
-                end
-              | [] => ([],[])  
-            
-        val temp_counter = (#temp_count (hd env))
-        val temp_n = !temp_counter; 
-        val temp_name = Ast.TempName temp_n
-        val temp_fix = Ast.ValFixture { ty = ty, 
-                                        readOnly = true, 
-                                        isOverride = false, 
-                                        isFinal = false }
-        val temp_step = Init (LocalInit, temp_name, expr)
-        val temp_expr = Ast.GetTemp temp_n
-                        
-    in 
-        temp_counter := temp_n + 1;
-        case pattern of
-            Ast.SimplePattern expr => desugarSimplePattern expr
-          | Ast.IdentifierPattern id => desugarIdentifierPattern id
-          | Ast.ObjectPattern fields =>
-            let
-               val (fixs, steps) = desugarObjectPattern fields temp_expr
-           in
-               ((temp_name, temp_fix)::fixs, temp_step::steps)
-           end
-         | Ast.ArrayPattern elements => 
-           let
-               (* use register indexes to keep track of temps *)
-               val temp_index = 0
-               val (fixs, steps) = desugarArrayPattern elements temp_expr temp_index
-           in
-               ((temp_name, temp_fix)::fixs, temp_step::steps)
-           end
-    end
-
-and defBinding (env: ENV) (kind: Ast.VAR_DEFN_TAG) (ns: Ast.NAMESPACE)
-               (pattern: Ast.PATTERN) (ty: Ast.TYPE_EXPR)
-    : Ast.FIXTURES =
-    let
-        fun defIdentifierBinding (id) (ty) 
-            : Ast.FIXTURES =
-            let
-                val readOnly = if kind = Ast.Const then true else false
-            in
-                [(Ast.PropName {ns=ns, id=id}, 
-                  Ast.ValFixture { ty = ty, 
-                                   readOnly = readOnly, 
-                                   isOverride = false, 
-                                   isFinal=true })]
-            end
-
-        (*
-            [x,y] = o
-            let [i,s]:[int,String] = o
-
-            ISSUE: Are partial type annotations allowed? let [i,s]:[int]=...
-                   If so, what is the type of 's' here? int or *?
-        *)
-
-        fun defArrayBinding (elements:Ast.PATTERN list) (element_types:Ast.TYPE_EXPR list)
-            : Ast.FIXTURES =
-            let
-            in case (elements,element_types) of
-                (e::elist,t::tlist) =>
-                    let
-                        val fxtrs = defBinding env kind ns e t
-                        val fxtrs' = defArrayBinding elist tlist
-                    in
-                        fxtrs @ fxtrs'
-                    end
-              | (e::elist,_) =>
-                    let
-                        val fxtrs = defBinding env kind ns e (Ast.SpecialType Ast.Any)
-                        val fxtrs' = defArrayBinding elist []
-                    in
-                        fxtrs @ fxtrs'
-                    end
-              | ([],_) => []                    
-            end
-
-        (*
-            let {i:x,j:y} : {i:int,j:string}
-        *)
-
-
-        fun defObjectBinding (fields:Ast.FIELD_PATTERN list) (field_types:Ast.FIELD_TYPE list)
-            : Ast.FIXTURES =
-            let
-            in case fields of
-                p::plist =>
-                    let
-                        val fxtrs = defFieldBinding p field_types
-                        val fxtrs' = defObjectBinding plist field_types
-                    in
-                        fxtrs @ fxtrs'
-                    end
-              | [] => []                    
-            end
-
-        (*
-            def a field pattern - use the field name to get the field type and
-            associate that field type with the field's pattern
-        *)
-
-        and defFieldBinding (field_pattern: Ast.FIELD_PATTERN) 
-                               (field_types: Ast.FIELD_TYPE list)
-            : Ast.FIXTURES =
-            let
-                val {name,ptrn} = field_pattern
-                val ident_expr  = defIdentExpr env name
-            in case (field_types,ident_expr) of
-                (_::_,Ast.Identifier {ident,...}) =>  
-                        (* if the field pattern is typed, it must have a identifier for
-                           its name so we can do the mapping to its field type *)
-                    let
-                        val ty  = getFieldType ident field_types
-                    in
-                        defBinding env kind ns ptrn ty
-                    end
-              | ([],_) => defBinding env kind ns ptrn (Ast.SpecialType Ast.Any)
-              | (_,_)  => LogErr.defnError ["Typed patterns must have sub patterns with ", 
-                                            "names that are known at definition time"]
-            end
-
-        (*
-            Get the type of a field in a field pattern - lookup in a list of field types a field type 
-            with associated a name. if the list is empty then return type '*'. if the list is not
-            empty and the sought name is not found, then report a syntax error.
-        *)
-
-        and getFieldType (name : Ast.IDENT) (field_types: Ast.FIELD_TYPE list)
-            : Ast.TYPE_EXPR =
-            let
-            in case field_types of
-                [] => Ast.SpecialType Ast.Any
-              | field_type :: field_type_list =>
-                let
-                    val {name=field_type_name,ty} = field_type
-                in 
-                    if field_type_name = name 
-                        then ty
-                        else getFieldType name field_type_list
-                end
-            end
-
-    in case (pattern,ty) of
-        (Ast.ObjectPattern fields,Ast.ObjectType field_types) =>
-            defObjectBinding fields field_types
-      | (Ast.ArrayPattern elements,Ast.ArrayType element_types) =>
-            defArrayBinding elements element_types
-      | (Ast.ArrayPattern elements,(Ast.SpecialType Ast.Any)) => 
-            defArrayBinding elements []
-      | (Ast.SimplePattern expr,_) =>
-            LogErr.defnError ["internal error: simple pattern found in binding context"]
-      | (Ast.IdentifierPattern id,_) => 
-            defIdentifierBinding id ty
-      | (_,_) => 
-            LogErr.defnError ["Pattern with incompatible type"]
-    end
 
 
 (*

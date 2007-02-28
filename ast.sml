@@ -180,19 +180,24 @@ datatype PRAGMA =
      and FUNC_SIG =
          FunctionSignature of 
            { typeParams: IDENT list,
-             params: VAR_BINDING list,
-             (* argTypes: TYPE_EXPR list option *)
-             defaults: STMT list, 
-             settings: STMT list, 
+             params: BINDINGS,
+             settings: BINDINGS option, 
              returnType: TYPE_EXPR,
              thisType: TYPE_EXPR option,
              hasRest: bool }
 
-     and VAR_BINDING =
+     and BINDING =
          Binding of 
-           { ident: IDENT;
-             ty: TYPE_EXPR option,
-             init: EXPR option }
+           { ident: BINDING_IDENT,
+             ty: TYPE_EXPR option }
+
+     and BINDING_IDENT = 
+         TempIdent of int
+       | PropIdent of IDENT
+
+     and INIT_STEP =   (* used to encode init of bindings *)
+         InitStep of (BINDING_IDENT * EXPR)
+       | AssignStep of (EXPR * EXPR)
 
      (* 
       * Note: no type parameters allowed on general typedefs,
@@ -205,6 +210,7 @@ datatype PRAGMA =
        | UnionType of TYPE_EXPR list
        | ArrayType of TYPE_EXPR list
        | TypeName of IDENT_EXPR
+       | TypeRef of (TYPE_EXPR * IDENT)  (* used to desugar typed patterns *)
        | FunctionType of 
            { typeParams: IDENT list,
              params: TYPE_EXPR list,
@@ -232,7 +238,7 @@ datatype PRAGMA =
              ns: EXPR,
              prototype: bool,
              static: bool,
-             inits: EXPR list }
+             inits: INIT_STEP list }
        | ClassBlock of 
            { ns: EXPR,
              ident: IDENT,
@@ -251,14 +257,15 @@ datatype PRAGMA =
        | ContinueStmt of IDENT option
        | BlockStmt of BLOCK
        | LabeledStmt of (IDENT * STMT)
-       | LetStmt of ((VAR_BINDING list) * STMT)
+       | LetStmt of (BINDINGS * STMT)
        | SuperStmt of EXPR
        | WhileStmt of WHILE_STMT
        | DoWhileStmt of WHILE_STMT
        | ForStmt of
-           { defns: VAR_BINDING list,
-             fixtures: FIXTURES option,  (* CF- Do we need the option? *)
-             init: EXPR,
+           { fixtures: FIXTURES option,  (* CF- Do we need the option? 
+                                            JD-it's nice to show change of state during comp *)
+             defns: BINDINGS,            (* there will be either defns or init, never both *)
+             init: EXPR,                  
              cond: EXPR,
              update: EXPR,
              contLabel: IDENT option,
@@ -274,7 +281,8 @@ datatype PRAGMA =
        | TryStmt of 
            { body: BLOCK,
              catches: 
-               { bind:VAR_BINDING, 
+               { bindings:BINDINGS,
+                 ty: TYPE_EXPR option, 
                  fixtures: FIXTURES option,
                  body:BLOCK } list,
              finally: BLOCK option }
@@ -306,7 +314,7 @@ datatype PRAGMA =
            { expr: EXPR,  (* apply expr to type list *)
              actuals: TYPE_EXPR list }
        | LetExpr of 
-           { defs: VAR_BINDING list,                      
+           { defs: BINDINGS,                      
              body: EXPR,
              fixtures: FIXTURES option }
        | NewExpr of 
@@ -315,6 +323,7 @@ datatype PRAGMA =
        | ObjectRef of { base: EXPR, ident: IDENT_EXPR }
        | LexicalRef of { ident: IDENT_EXPR }
        | SetExpr of (ASSIGNOP * EXPR * EXPR)
+       | BindingExpr of BINDINGS
        | ListExpr of EXPR list
        | SliceExpr of (EXPR * EXPR * EXPR)
        | DefTemp of (int * EXPR)
@@ -323,30 +332,28 @@ datatype PRAGMA =
      and FIXTURE_NAME = TempName of int
                       | PropName of NAME
 
-     and STATIC_IDENT_EXPR =
-         StaticQualifiedIdentifier of       (* turned into a NAME by defn *) 
-           { qual : EXPR,
-             ident : IDENT }
-       | StaticIdentifier of                      (* turned into a MULITINAME by defn *)
+(*
+     and STATIC_IDENT =
+         Identifier of 
            { ident : IDENT,
              openNamespaces : NAMESPACE list list }
-
+*)
      and IDENT_EXPR =
-         QualifiedIdentifier of 
-           { qual : EXPR,
-             ident : USTRING }
+(*         StaticIdent of STATIC_IDENT  *)
+         Identifier of 
+           { ident : IDENT,
+             openNamespaces : NAMESPACE list list }
        | QualifiedExpression of 
            { qual : EXPR,
              expr : EXPR }
        | AttributeIdentifier of IDENT_EXPR
-       | Identifier of 
-           { ident : IDENT,
-             openNamespaces : NAMESPACE list list }
        | ExpressionIdentifier of EXPR   (* for bracket exprs: o[x] and @[x] *)
+       | QualifiedIdentifier of 
+           { qual : EXPR,
+             ident : USTRING }
        | TypeIdentifier of 
-           { ident : IDENT_EXPR,
+           { ident : IDENT_EXPR, (* these should be TyApp *)
              typeParams : TYPE_EXPR list }
-       | StaticIdentExpr of STATIC_IDENT_EXPR
 
      and LITERAL =
          LiteralNull
@@ -395,7 +402,11 @@ datatype PRAGMA =
              getter: FUNC_DEFN option,
              setter: FUNC_DEFN option }
 
-withtype FIELD =
+withtype 
+
+         BINDINGS = (BINDING list * INIT_STEP list)
+
+     and FIELD =
            { kind: VAR_DEFN_TAG,
              name: IDENT_EXPR,
              init: EXPR }
@@ -435,7 +446,7 @@ withtype FIELD =
              ns : EXPR,
              static : bool,
              prototype : bool,
-             bindings : VAR_BINDING list }
+             bindings : BINDING list }
 
      and FIXTURES = (FIXTURE_NAME * FIXTURE) list
      and INITS    = (FIXTURE_NAME * EXPR) list
@@ -470,9 +481,8 @@ withtype FIELD =
              init: TYPE_EXPR }
 
      and FOR_ENUM_STMT =
-           { bind: (STMT list) option,
+           { defns: BINDINGS,             
              obj: EXPR,
-             defns: VAR_BINDING list,             
              fixtures: FIXTURES option,
              contLabel: IDENT option,
              body: STMT }
@@ -490,17 +500,14 @@ withtype FIELD =
              fixtures: FIXTURES option,
              inits: INITS option }
 
-     and BINDINGS =
-           { b: VAR_BINDING list,
-             i: EXPR list }
-
      and CASE =
            { label: EXPR option, 
              fixtures: FIXTURES option,
              body: BLOCK }
 
      and TYPE_CASE =
-           { ptrn : VAR_BINDING option, 
+           { ty : TYPE_EXPR option,
+             bindings : BINDINGS, 
              body : BLOCK }
 
      and FUNC_NAME =
