@@ -371,6 +371,18 @@ and analyzeClass (env:ENV)
                     not ((isProto d) orelse (isStatic d) orelse (isLet d))
                 end
 
+            fun isInstanceInit (s:Ast.STMT)
+                : bool =
+                let
+                in case s of
+                    Ast.InitStmt {kind, static, prototype,...} =>
+                        not ((kind = Ast.LetVar) orelse 
+                             (kind = Ast.LetConst) orelse
+                             prototype orelse 
+                             static)
+                  | _ => false                    
+                end
+
             fun isCtor (d:Ast.DEFN) : bool = 
                 case d of 
                     Ast.ConstructorDefn _ => true

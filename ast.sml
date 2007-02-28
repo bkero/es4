@@ -343,7 +343,7 @@ datatype PRAGMA =
          Identifier of 
            { ident : IDENT,
              openNamespaces : NAMESPACE list list }
-       | QualifiedExpression of 
+       | QualifiedExpression of  (* type * *)
            { qual : EXPR,
              expr : EXPR }
        | AttributeIdentifier of IDENT_EXPR
@@ -396,7 +396,11 @@ datatype PRAGMA =
            isFinal: bool }
        | ValFixture of 
            { ty: TYPE_EXPR,
-             readOnly: bool }
+             readOnly: bool,
+             isOverride: bool,
+             isFinal: bool,
+             init: EXPR option (* deprecated *)
+           }
        | VirtualValFixture of 
            { ty: TYPE_EXPR, 
              getter: FUNC_DEFN option,

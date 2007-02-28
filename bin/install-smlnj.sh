@@ -48,14 +48,15 @@ update_targets()
     for i in $@; do
         if echo $i | grep '^-' >/dev/null 2>&1; then
             i=`echo $i | sed -e s/^-//`
-            cmd="$cmd -e s/^request\\(\\s\\)$i/#request\\1$i/"
+            cmd="$cmd -e 's/^request[ ]$i/#request $i/'"
         else
             i=`echo $i | sed -e s/^+//`
-            cmd="$cmd -e s/^#request\\(\\s\\)$i/request\\1$i/"
+            cmd="$cmd -e 's/^#request[ ]$i/request $i/'"
         fi
     done
 
-    $cmd $FILE
+    cmd="$cmd $FILE"
+    eval $cmd
 }
 
 progress()
@@ -76,6 +77,7 @@ fi
 
 LOG_FILE=`abs_path \`dirname $0\``/install-smlnj.log
 TARGET_DIR=`abs_path $1`
+TARGETS='-src-smlnj -eXene +ml-lex +ml-yacc +ml-ulex +ml-antlr +ml-lpt-lib +smlnj-lib +tdp-util +cml +cml-lib +mlrisc +ml-nlffi-lib +ml-nlffigen +mlrisc-tools +heap2asm'
 
 echo 'Installing SML/NJ from subversion sources. The installation log lives at'
 echo
@@ -134,7 +136,7 @@ complete
 # Now that we've bootstrapped, request all the packages we want.
 progress '4. Installing SML/NJ packages...'
 cd $TARGET_DIR
-update_targets config/targets.initial -src-smlnj -eXene +ml-lex +ml-yacc +ml-ulex +ml-antlr +ml-lpt-lib +smlnj-lib +tdp-util +cml +cml-lib +mlrisc +ml-nlffi-lib +ml-nlffigen +mlrisc-tools +heap2asm > ./config/targets
+update_targets config/targets.initial $TARGETS > ./config/targets
 
 # Reinstall, forcing the new packages to be installed.
 (./config/install.sh >>"$LOG_FILE" 2>&1) || die 'failed to install full package set'

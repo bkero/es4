@@ -7,7 +7,7 @@ Library
     structure Lexer
     structure Parser
     structure Defn
-(*    structure Verify *)
+    structure Verify 
     structure Eval
     structure Mach 	
     structure Native 
@@ -22,7 +22,7 @@ is
     lexer.lex
     parser.sml
     defn.sml
-(*    verify.sml *)
+    verify.sml
     eval.sml
     mach.sml
     native.sml
