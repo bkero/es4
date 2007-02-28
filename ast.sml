@@ -506,7 +506,7 @@ withtype
 
      and CASE =
            { label: EXPR option, 
-             fixtures: FIXTURES option,
+(*             fixtures: FIXTURES option, *)
              body: BLOCK }
 
      and TYPE_CASE =

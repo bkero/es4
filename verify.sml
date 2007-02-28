@@ -175,7 +175,7 @@ fun substTypeExpr (s:(IDENT*TYPE_EXPR) list) (t:TYPE_EXPR):TYPE_EXPR =
 			fields)
 	  | SpecialType st => SpecialType st
 
-	  | FunctionType { typeParams, params, result, thisType, hasRest } =>
+	  | FunctionType { typeParams, params, result, thisType, hasRest, requiredCount } =>
 	    (* Need to uniquify typeParams to avoid capture *)
 	    let val oldNew = map (fn id => (id, gensym id)) typeParams 
 		val nuSub = 
@@ -192,7 +192,7 @@ fun substTypeExpr (s:(IDENT*TYPE_EXPR) list) (t:TYPE_EXPR):TYPE_EXPR =
 			      params = List.map bothSubs params,
 			      result = bothSubs result,      
 			      thisType = Option.map bothSubs thisType,
-			      hasRest=hasRest}
+			      hasRest=hasRest, requiredCount = requiredCount }
 		end
     end 
 
@@ -284,13 +284,15 @@ and isCompatible (t1:TYPE_EXPR)
 		  params  =params1, 
 		  result  =result1,
 		  thisType=thisType1,
-		  hasRest =hasRest1},
+		  hasRest =hasRest1,
+	      requiredCount=requiredCount},
 	     FunctionType 
 		 {typeParams=typeParams2,
 		  params=params2, 
 		  result=result2, 
 		  thisType=thisType2,
-		  hasRest=hasRest2}) =>
+		  hasRest=hasRest2,
+		  requiredCount=requiredCount2}) =>
 	    let
 	    in
 		(* TODO: Assume for now that functions are not polymorphic *)
@@ -335,7 +337,7 @@ fun normalizeType (t:TYPE_EXPR)
     : TYPE_EXPR =
     let in
 	case t of
-	    AppType {base=FunctionType {typeParams,params,result,thisType,hasRest}, 
+	    AppType {base=FunctionType {typeParams,params,result,thisType,hasRest,requiredCount}, 
 		     args } =>
 	    let val _ =	assert (length args = length typeParams);
 		val sub = ListPair.zip (typeParams,args)
@@ -345,7 +347,7 @@ fun normalizeType (t:TYPE_EXPR)
 			       params=map (substTypeExpr sub) params,
 			       result=substTypeExpr sub result,
 			       thisType= Option.map (substTypeExpr sub) thisType,
-			       hasRest=hasRest }
+			       hasRest=hasRest, requiredCount=requiredCount }
 	    end
 	  | _ => t
     end
@@ -400,7 +402,7 @@ fun verifyTypeExpr (ctxt as {env,this,...}:CONTEXT)
     end
 
 and verifyFunctionType  (ctxt:CONTEXT)
-			 {typeParams, params, result, thisType, hasRest} 
+			 {typeParams, params, result, thisType, hasRest, requiredCount} 
     : CONTEXT = ctxt
 
 (*
@@ -493,7 +495,7 @@ and verifyExpr (ctxt as {env,this,...}:CONTEXT)
           checkCompatible inferredTy annotatedTy;
           annotatedTy
         end
-      | LiteralExpr (LiteralFunction { func=Func { fixtures=SOME fixtures, inits, body, ... }, 
+      | LiteralExpr (LiteralFunction { func=Func { fixtures=SOME fixtures, body, ... }, 
 					ty=ty })
 	 =>
 	 let
@@ -503,7 +505,9 @@ and verifyExpr (ctxt as {env,this,...}:CONTEXT)
 	     val ctxt2 = withEnvExtn ctxt1 extensions
 	 in
 	     checkForDuplicateExtension extensions;
+(** FIXME: inits are now settings and are BINDINGS 
 	     verifyStmts ctxt2 inits;
+*)
 	     verifyBlock ctxt2 body;
 	     ty
          end
@@ -563,7 +567,7 @@ and verifyExpr (ctxt as {env,this,...}:CONTEXT)
 
        | Ref of { base: EXPR option,
                   ident: IDENT_EXPR }
-       | NewExpr of { obj: EXPR,
+       | NewExpr of { obj: EXPR,x
                       actuals: EXPR list }
 
 
@@ -588,7 +592,7 @@ and verifyCallExpr  (ctxt as {env,this,...}:CONTEXT)
 	   SpecialType Any =>
 	   (* not much to do *)
 	   anyType
-	 | FunctionType { typeParams, params, result, thisType, hasRest }
+	 | FunctionType { typeParams, params, result, thisType, hasRest, requiredCount }
 	   => 
 	   let 
 	   in
@@ -809,7 +813,7 @@ and verifyStmt (ctxt as {this,env,lbls,retTy}:CONTEXT) (stmt:STMT) =
 	verifyStmt ctxt els
     end
 
-  | (DoWhileStmt {cond,body,contLabel} | WhileStmt {cond,body,contLabel}) => 
+  | (DoWhileStmt {cond,body,contLabel,fixtures} | WhileStmt {cond,body,contLabel,fixtures}) => 
     let in
 	checkCompatible (verifyExpr ctxt cond) boolType;
 	verifyStmt (withLbls ctxt (contLabel::lbls)) body
@@ -893,7 +897,7 @@ and verifyStmt (ctxt as {this,env,lbls,retTy}:CONTEXT) (stmt:STMT) =
 	    NONE => ()
 	  | SOME blk => verifyBlock ctxt blk;
 	List.app
-	(fn {bind, fixtures, body} =>
+	(fn {bindings, ty, fixtures, body} =>
 	    ())
 	catches
     end

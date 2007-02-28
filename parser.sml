@@ -3828,13 +3828,12 @@ and caseElements (ts) : (token list * Ast.CASE list) =
                     let
                     in
                         (ts2,{label=nd1,
-                              fixtures=NONE,
                               body=Ast.Block {pragmas=[],defns=[],stmts=[],fixtures=NONE,inits=NONE}}::[])
                     end
               | first :: follows =>
                     let
                     in
-                        (ts2,{label=nd1,fixtures=NONE,body=(#body first)} :: follows)
+                        (ts2,{label=nd1,body=(#body first)} :: follows)
                     end
             end
       | _ => raise ParseError
@@ -3857,14 +3856,14 @@ and caseElementsPrefix (ts,has_default) : (token list * Ast.CASE list) =
                            seed the list of previously parsed directives,
                            which get added when the stack unwinds *)
 
-                        (ts2,{label=NONE,fixtures=NONE,body=Ast.Block{pragmas=[],defns=[],stmts=[],fixtures=NONE,inits=NONE}} ::
-                            ({label=nd1,fixtures=NONE,body=Ast.Block{pragmas=[],defns=[],stmts=[],fixtures=NONE,inits=NONE}}::[]))
+                        (ts2,{label=NONE,body=Ast.Block{pragmas=[],defns=[],stmts=[],fixtures=NONE,inits=NONE}} ::
+                            ({label=nd1,body=Ast.Block{pragmas=[],defns=[],stmts=[],fixtures=NONE,inits=NONE}}::[]))
                     end
               | first :: follows =>
                     let
                     in
-                        (ts2,{label=NONE,fixtures=NONE,body=Ast.Block{pragmas=[],defns=[],stmts=[],fixtures=NONE,inits=NONE}} ::
-                            ({label=nd1,fixtures=NONE,body=(#body first)} :: follows))
+                        (ts2,{label=NONE,body=Ast.Block{pragmas=[],defns=[],stmts=[],fixtures=NONE,inits=NONE}} ::
+                            ({label=nd1,body=(#body first)} :: follows))
                     end
             end
       | _ => 
@@ -3875,7 +3874,7 @@ and caseElementsPrefix (ts,has_default) : (token list * Ast.CASE list) =
                 [] =>
                     let
                     in
-                        (ts2,{label=NONE,fixtures=NONE,body=Ast.Block nd1}::[])
+                        (ts2,{label=NONE,body=Ast.Block nd1}::[])
                     end
               | first :: follows =>
                     let
@@ -3883,7 +3882,7 @@ and caseElementsPrefix (ts,has_default) : (token list * Ast.CASE list) =
                         val {pragmas=p2,defns=d2,stmts=s2, ...} = (case #body first of Ast.Block b => b)
                         val block = Ast.Block{pragmas=(p1@p2),defns=(d1@d2),stmts=(s1@s2),fixtures=NONE,inits=NONE}
                     in
-                        (ts2,{label=NONE,fixtures=NONE,body=block}::follows)
+                        (ts2,{label=NONE,body=block}::follows)
                     end
             end
     end
