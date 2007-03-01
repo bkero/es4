@@ -402,11 +402,12 @@ and analyzeClass (env:ENV)
             val ctorDefn = List.filter isCtor defns
 
             val env = defPragmas env pragmas
-            val (unhoisted,classFixtures) = defDefns env [] [] staticDefns
+            val (unhoisted,classFixtures,classInits) = defDefns env [] [] [] staticDefns
             val env = extendEnvironment env classFixtures
-            val (unhoisted,instanceFixtures) = defDefns env [] [] instanceDefns
+            val (unhoisted,instanceFixtures,instanceInits) = defDefns env [] [] [] instanceDefns
             val (istmts,stmts) = List.partition isInstanceInit stmts
 
+(****
             fun initFromStmt (stmt:Ast.STMT) : (Ast.FIXTURE_NAME * Ast.EXPR) option =  
                 case stmt of 
                     Ast.ExprStmt 
@@ -423,6 +424,7 @@ and analyzeClass (env:ENV)
 
             val (istmts,_) = defStmts env istmts
             val iinits = List.mapPartial initFromStmt istmts
+****)
 
             (*
                 Add static prototype fixture
@@ -431,9 +433,7 @@ and analyzeClass (env:ENV)
             val pf = Ast.ValFixture { ty=Ast.TypeName (Ast.QualifiedIdentifier 
                                                            {qual=Ast.LiteralExpr (Ast.LiteralNamespace ns),
                                                             ident=ident}),
-                                     readOnly=true,
-                                     isOverride=false,
-                                     isFinal=false }
+                                     readOnly=true }
 
             val protoPropFixture = Ast.PropName {ns=Ast.Public "",id="prototype"}
             val classFixtures = (protoPropFixture, pf)::classFixtures
@@ -448,7 +448,7 @@ and analyzeClass (env:ENV)
                      implements = [],
                      classFixtures = classFixtures,
                      instanceFixtures = instanceFixtures,
-                     instanceInits = iinits,
+                     instanceInits = [],  (* FIXME *)
                      constructor = case ctorDefn of [] => NONE | [Ast.ConstructorDefn {ctor=cd,...}] => SOME cd,
                      classType = Ast.SpecialType Ast.Any,
                      instanceType = Ast.SpecialType Ast.Any }
@@ -566,7 +566,7 @@ and inheritFixtures (base:Ast.FIXTURES)
                       | _ => false
             
             in case (fb,fd) of
-                (Ast.ValFixture {isFinal,...}, Ast.ValFixture {isOverride,...}) => 
+                (Ast.MethodFixture {isFinal,...}, Ast.MethodFixture {isOverride,...}) => 
                     (not isFinal) andalso isOverride andalso isCompatible
               | _ => false
             end
@@ -736,7 +736,7 @@ and defVar (env:ENV)
            (kind:Ast.VAR_DEFN_TAG)
            (ns:Ast.NAMESPACE)
            (var:Ast.BINDING) 
-    : (Ast.FIXTURES * Ast.BINDING) = 
+    : (Ast.FIXTURE_NAME*Ast.FIXTURE) = 
     case var of 
         Ast.Binding { ident, ty } => 
         let
@@ -744,9 +744,11 @@ and defVar (env:ENV)
             val newInit = case init of 
                               NONE => NONE
                             | SOME e => SOME (defExpr env e)
-            val newTy = case ty of 
-                            NONE => NONE
-                          | SOME t => SOME (defTyExpr env t)
+*)
+            val ty = case ty of 
+                            NONE => Ast.SpecialType Ast.Any
+                          | SOME t => (defTyExpr env t)
+(*
             val patternType = case newTy of
                                 NONE => Ast.SpecialType Ast.Any
                               | SOME t => t
@@ -756,24 +758,68 @@ and defVar (env:ENV)
                                  Ast.Const => true
                                | Ast.LetConst => true
                                | _ => false                
+            val name = fixtureNameFromPropIdent ns ident
         in
-            ([(Ast.PropName (ns,ident), Ast.ValFixture {ty=ty,readOnly=readOnly})], var)
+            (name, Ast.ValFixture {ty=ty,readOnly=readOnly})
         end
 
 and defVars (env:ENV) 
-            (vars:Ast.BINDING list) 
-    : (Ast.FIXTURES * (Ast.BINDING list)) = 
-    defVarsFull env Ast.Var (Ast.Internal "") vars
-    
-and defVarsFull (env:ENV) 
+            (vars:Ast.BINDINGS) 
+    : (Ast.FIXTURES * Ast.INITS) = 
+    defBindings env Ast.Var (Ast.Internal "") vars
+
+(*
+    (BINDING list * INIT_STEP list) -> (FIXTURES * INITS)
+
+     and INIT_STEP =   (* used to encode init of bindings *)
+         InitStep of (BINDING_IDENT * EXPR)
+       | AssignStep of (EXPR * EXPR)
+
+     and BINDING_IDENT = 
+         TempIdent of int
+       | PropIdent of IDENT
+
+    -->
+
+     and INITS    = (FIXTURE_NAME * EXPR) list
+
+     and FIXTURE_NAME = TempName of int
+                      | PropName of NAME
+
+*)    
+
+and fixtureNameFromPropIdent (ns:Ast.NAMESPACE) (ident:Ast.BINDING_IDENT) 
+    : Ast.FIXTURE_NAME =
+    case ident of
+        Ast.TempIdent n =>  Ast.TempName n
+      | Ast.PropIdent id => Ast.PropName {ns=ns,id=id}
+
+and defInitStep (env:ENV)
+            (ns:Ast.NAMESPACE)
+            (step:Ast.INIT_STEP)
+    : (Ast.FIXTURE_NAME * Ast.EXPR) = 
+    let
+    in case step of
+        Ast.InitStep (ident,expr) =>
+            let
+                val name = fixtureNameFromPropIdent ns ident
+            in 
+                (name,expr)
+            end
+      | Ast.AssignStep (left,right) =>
+            LogErr.defnError ["unhandled init kind"]
+    end
+
+and defBindings (env:ENV)
                 (kind:Ast.VAR_DEFN_TAG)
                 (ns:Ast.NAMESPACE)
-                (vars:Ast.BINDING list) 
-    : (Ast.FIXTURES * (Ast.BINDING list)) = 
+                ((binds,inits):Ast.BINDINGS) 
+    : (Ast.FIXTURES * Ast.INITS) = 
     let
-        val (fbl, vbl) = ListPair.unzip (map (defVar env kind ns) vars)
+        val fxtrs:Ast.FIXTURES = map (defVar env kind ns) binds
+        val inits:Ast.INITS = map (defInitStep env ns) inits
     in
-        (List.concat fbl, vbl)
+        (fxtrs,inits)
     end
 
 (*
@@ -806,56 +852,45 @@ and defVarsFull (env:ENV)
     let g = o.f         bindThis
     let h = g.<A,B,C>   bindTypes
     let c = h(a,b)      callFunction
+
+    paramBlock
+    settingsBlock
+    body
 *)
                     
 and defFuncSig (env:ENV) 
                (fsig:Ast.FUNC_SIG)
-    : ANALYZED_SIG =
+    : (Ast.FIXTURES * Ast.INITS * Ast.FIXTURES * Ast.INITS) =
 
     case fsig of 
         Ast.FunctionSignature { typeParams, params, settings, 
                                 returnType, thisType, hasRest } =>
         let 
 
+(**** FIXME
+
             (* compute typeval fixtures (type parameters) *)
             val internalNs = Ast.Internal ""
             fun mkTypeVarFixture x = (Ast.PropName {ns=internalNs, id=x}, 
                                       Ast.TypeVarFixture)
+
             val typeParamFixtures = map mkTypeVarFixture typeParams
             val typeEnv = extendEnvironment env typeParamFixtures
+
             val thisType = case thisType of NONE => Ast.SpecialType Ast.Any 
                                           | SOME x => x
-
             val thisBinding = (Ast.PropName {ns=internalNs, id="this"}, 
                                Ast.ValFixture
                                    { ty = thisType,
                                      readOnly = true })
 
-(**** not called
-            fun defaultInit (b:Ast.BINDING) : Ast.INITS = 
-                case b of 
-                    Ast.Binding { init=NONE, ... } => []
-                  | Ast.Binding { pattern, init=SOME e, ... } => 
-                    let 
-                        (* 
-                         * FIXME: need the temporary offset number to 
-                         * line up with the temporaries allocated by the
-                         * "defVars typeEnv params" call below. 
-                         *)
-                        val ns = Ast.Internal ""
-                        val (defaultTempFixtures, defaultSteps) = 
-                            defPatternAssign env ns pattern e false false 0
-                    in
-                        needInitSteps defaultSteps LocalInit
-                    end
-****)                
             fun paramType (b:Ast.BINDING) = 
                 case b of 
                     Ast.Binding { ty=NONE, ... } => Ast.SpecialType Ast.Any
                   | Ast.Binding { ty=SOME t, ... } => t
                                                       
             (* compute val fixtures (parameters) *)
-            val (paramFixtures, newParams) = defVars typeEnv params
+            val (paramFixtures, paramInits) = defVars typeEnv params
 
             val ftype = Ast.FunctionType { typeParams = typeParams, 
                                            params     = map paramType params, 
@@ -863,15 +898,18 @@ and defFuncSig (env:ENV)
                                            thisType   = SOME thisType, 
                                            hasRest    = hasRest,
                                            requiredCount = 0 }
-            val (inits,_) = defStmts env inits
+****)
+
+            val (paramFixtures,paramInits) = defBindings env Ast.Var (Ast.Internal "") params
+            val (settingsFixtures,settingsInits) = 
+                    case settings of 
+                        SOME s => defBindings env Ast.Var (Ast.Internal "") s
+                      | NONE => ([],[])
         in
-            { sigType = ftype,
-              sigFixtures = (typeParamFixtures 
-                             @ settingTmpFixtures 
-                             @ (thisBinding::paramFixtures)), 
-              sigDefaults = List.mapPartial Init params,
-              sigSettings = settings,
-              sigNParams = List.length params }
+            (paramFixtures,
+             paramInits,
+             settingsFixtures,
+             settingsInits)
         end
 
 (*
@@ -912,22 +950,20 @@ and defFuncSig (env:ENV)
 *)
 
 and defFunc (env:ENV) (func:Ast.FUNC)
-    : (Ast.FUNC_TYPE * Ast.INITS * Ast.FUNC) =
+    : (Ast.FIXTURES * Ast.INITS * Ast.FUNC) =
     let
         val Ast.Func {name, fsig, body, ...} = func
-        val (ftype, fxtrs, settings, defaults, param_count) = defFuncSig env fsig
-        val env = extendEnvironment env fxtrs
-        val (lblk, hoisted) = defBlock env body
-        val fblk = lblk  (* Ast.Block { pragmas=[], defns=[], fixtures=SOME (fxtrs@hoisted), 
-                               inits=SOME inits, stmts = [Ast.BlockStmt lblk]}*)
+        val (paramFixtures, paramInits, settingsFixtures, settingsInits) = defFuncSig env fsig
+
+        val env = extendEnvironment env paramFixtures
+        val (body, hoisted) = defBlock env body
     in 
-        ((#temp_count (hd env)) := (param_count+1);  
-         (* FIXME: this is intentionally ugly. it is an impl detail that needs to be hidden *)
-         (ftype, settings, Ast.Func {name = name,
-                                     fsig = fsig,
-                                     body = fblk,
-                                     fixtures = SOME (fxtrs@hoisted),
-                                     defaults = defaults}))
+        (settingsFixtures, settingsInits, 
+         Ast.Func {name = name,
+                   fsig = fsig,
+                   body = body,
+                   fixtures = SOME (paramFixtures@hoisted),
+                   defaults = paramInits})
     end
 
 (*
@@ -955,15 +991,13 @@ and defFuncDefn (env:ENV) (f:Ast.FUNC_DEFN)
                           | Ast.Call => "call" (* FIXME: hack until parser fixed. *)
                           | _ => LogErr.unimplError ["defining unhandled type of function name"]
             val newName = Ast.PropName { id = ident, ns = qualNs }
-            val (ftype,newFunc) = defFunc env (#func f)
+            val (_,_,newFunc) = defFunc env (#func f)
             val (ftype,isReadOnly) = if (#kind f) = Ast.Var 
                             then (Ast.SpecialType Ast.Any,false)    (* e3 style writeable function *)
-                            else (ftype,true)                      (* read only, method *)
+                            else ((#ty f),true)                      (* read only, method *)
             val outerFixtures = [(newName, Ast.ValFixture
-                                       { ty = Ast.FunctionType ftype,
-                                         readOnly = false,
-                                         isOverride = (#override f),
-                                         isFinal = (#final f) })]
+                                       { ty = ftype,
+                                         readOnly = false })]
         in
             (outerFixtures, { kind = (#kind f),
                               ns = newNsExpr,
@@ -972,7 +1006,8 @@ and defFuncDefn (env:ENV) (f:Ast.FUNC_DEFN)
                               override = (#override f),
                               prototype = (#prototype f),
                               static = (#static f),
-                              func = newFunc })
+                              func = newFunc,
+                              ty=ftype })
         end
 
 (*
@@ -1059,13 +1094,13 @@ and defIdentExpr (env:ENV)
 
 and defExpr (env:ENV) 
             (expr:Ast.EXPR) 
-    : (Ast.FIXTURES * Ast.EXPR) = 
+    : Ast.EXPR = 
     let 
         fun sub e = defExpr env e
     in
         case expr of 
             Ast.TrinaryExpr (t, e1, e2, e3) => 
-            ([], Ast.TrinaryExpr (t, sub e1, sub e2, sub e3))
+            Ast.TrinaryExpr (t, sub e1, sub e2, sub e3)
             
           | Ast.BinaryExpr (b, e1, e2) => 
             let val def = (SOME (#numericMode (hd env)))
@@ -1085,86 +1120,87 @@ and defExpr (env:ENV)
                              | Ast.GreaterOrEqual _ => Ast.GreaterOrEqual def
                              | _ => b)
             in
-                ([], Ast.BinaryExpr (opx, sub e1, sub e2))
+                Ast.BinaryExpr (opx, sub e1, sub e2)
             end
             
           | Ast.BinaryTypeExpr (b, e, te) => 
-            ([], Ast.BinaryTypeExpr (b, sub e, defTyExpr env te))
+            Ast.BinaryTypeExpr (b, sub e, defTyExpr env te)
 
           | Ast.UnaryExpr (u, e) => 
-            ([], Ast.UnaryExpr (u, sub e))
+            Ast.UnaryExpr (u, sub e)
 
           | Ast.TypeExpr t => 
-            ([], Ast.TypeExpr (defTyExpr env t))
+            Ast.TypeExpr (defTyExpr env t)
 
           | Ast.ThisExpr => 
-            ([], Ast.ThisExpr)
+            Ast.ThisExpr
 
           | Ast.YieldExpr eo => 
-            ([], (case eo of 
+            (case eo of 
                       NONE => Ast.YieldExpr NONE
-                    | SOME e => Ast.YieldExpr (SOME (sub e))))
+                    | SOME e => Ast.YieldExpr (SOME (sub e)))
 
           | Ast.SuperExpr eo => 
-            ([], (case eo of
+            (case eo of
                       NONE => Ast.SuperExpr NONE
-                    | SOME e => Ast.SuperExpr (SOME (sub e))))
+                    | SOME e => Ast.SuperExpr (SOME (sub e)))
             
           (* FIXME: possibly need to reinterpret literals given arithmetic modes. *)
           | Ast.LiteralExpr le => 
-            ([], Ast.LiteralExpr le)
+            Ast.LiteralExpr le
             
           | Ast.CallExpr {func, actuals} => 
-            ([], Ast.CallExpr {func = sub func,
-                               actuals = map sub actuals })
+            Ast.CallExpr {func = sub func,
+                          actuals = map sub actuals }
 
           | Ast.ApplyTypeExpr { expr, actuals } =>
-            ([], Ast.ApplyTypeExpr { expr = sub expr,
-                                     actuals = map (defTyExpr env) actuals })
+            Ast.ApplyTypeExpr { expr = sub expr,
+                                actuals = map (defTyExpr env) actuals }
 
-          | Ast.LetExpr { defs=(b,i), body, fixtures } => 
+          | Ast.LetExpr { defs, body,... } => 
             let
-                val (f0, newDefs) = defVars env b   (* TODO: defBindings, defInits *)
+                val (f0,i0) = defVars env defs
                 val env = extendEnvironment env f0
                 val newBody = defExpr env body
             in
-                ([], Ast.LetExpr { defs = newDefs,
-                                   body = newBody,
-                                   fixtures = SOME f0 })
+                Ast.LetExpr { defs = defs,
+                              body = newBody,
+                              fixtures = SOME f0,
+                              inits = SOME i0 }
             end
 
           | Ast.NewExpr { obj, actuals } => 
-            ([], Ast.NewExpr { obj = sub obj,
-                               actuals = map sub actuals })
+            Ast.NewExpr { obj = sub obj,
+                          actuals = map sub actuals }
 
           | Ast.ObjectRef { base, ident } =>
-            ([], Ast.ObjectRef { base = sub base,
-                                 ident = defIdentExpr env ident })
+            Ast.ObjectRef { base = sub base,
+                            ident = defIdentExpr env ident }
 
           | Ast.LexicalRef { ident } => 
-            ([], Ast.LexicalRef { ident = defIdentExpr env ident })
+            Ast.LexicalRef { ident = defIdentExpr env ident }
 
-          | Ast.SetExpr (a, p, e) => 
-            ([], Ast.ListExpr (defAssignment env p e))
+          | Ast.SetExpr (a, le, re) => 
+            Ast.SetExpr (a, (sub le), (sub re))
 
           | Ast.GetTemp n => 
-            ([], Ast.GetTemp n)
+            Ast.GetTemp n
 
           | Ast.ListExpr es => 
-            ([], Ast.ListExpr (map sub es))
+            Ast.ListExpr (map sub es)
 
           | Ast.SliceExpr (a, b, c) => 
-            ([], Ast.SliceExpr (sub a, sub b, sub c))
+            Ast.SliceExpr (sub a, sub b, sub c)
     end
     
     
 and defExprs (env:ENV) 
              (exprs:Ast.EXPR list) 
-    : (Ast.FIXTURES * Ast.EXPR list) = 
+    : Ast.EXPR list = 
     let
-        val (fxs, es) = ListPair.unzip (map (defExpr env) exprs)
+        val es = map (defExpr env) exprs
     in
-        (List.concat fxs, List.concat es)
+        es
     end
 
 (*
@@ -1192,98 +1228,99 @@ and defStmt (env:ENV)
     let
         fun reconstructForEnumStmt (fe:Ast.FOR_ENUM_STMT) = 
             case fe of 
-                { ptrn, obj, defns, contLabel, body, fixtures } => 
+                { obj, defns, contLabel, body, ... } => 
                 let
-                    val newPtrn = 
-                        case ptrn of 
-                            NONE => NONE
-                          | SOME p => SOME (defBinding env Ast.Var (Ast.Internal "") p (Ast.SpecialType Ast.Any))
-                    val (f0, newObj) =  defExpr env obj
-                    val (f1, newDefns) = defVars env defns
-                    val env = extendEnvironment env f0
+                    val newObj =  defExpr env obj
+                    val (f1, i1) = defVars env defns
+                    val env = extendEnvironment env f1
                     val (newBody,hoisted) = defStmt env body
                 in
-                    ({ ptrn = ptrn, 
-                       obj = newObj,
-                       defns = newDefns,
+                    ({ obj = newObj,
+                       defns = defns,
                        contLabel = contLabel,
                        body = newBody, 
-                       fixtures = SOME (f0 @ f1) }, 
+                       fixtures = SOME f1,
+                       inits = SOME i1 },
                      hoisted)
                 end
         fun reconstructWhileStmt (w:Ast.WHILE_STMT) = 
             case w of 
-                { cond, body, contLabel } => 
+                { cond, body, contLabel, fixtures } => (* FIXME: inits needed *)
                 let 
-                    val (f0, newCond) = defExpr env cond
+                    val newCond = defExpr env cond
                     val (newBody, hoisted) = defStmt env body
                 in
                     ({ cond=newCond, 
-                       fixtures=SOME f0,
+                       fixtures=NONE,
                        body=newBody, 
                        contLabel=contLabel }, hoisted)
                 end
 
         fun reconstructForStmt { defns, init, cond, update, contLabel, body, fixtures } =
             let
-                val (f0, newDefns) = defVars env defns
+                val (f0, i0) = defVars env defns
                 val env = extendEnvironment env f0
-                val (f1, newInit) = defExpr env init
-                val (f2, newCond) = defExpr env cond
-                val (f3, newUpdate) = defExpr env update
+                val newInit = defExpr env init
+                val newCond = defExpr env cond
+                val newUpdate = defExpr env update
                 val (newBody, hoisted) = defStmt env body
             in
-                ( Ast.ForStmt { defns = newDefns,
+                ( Ast.ForStmt { defns = defns,
                                 init = newInit,
                                 cond = newCond,
                                 update = newUpdate,
                                 contLabel = contLabel,
                                 body = newBody,
-                                fixtures = SOME (f0 @ f1 @ f2 @ f3) },
+                                fixtures = SOME f0 },
                   hoisted )
             end
             
-        fun reconstructCatch { bind, fixtures, body } =
+        fun reconstructCatch { bindings, fixtures, body, ty } =
             let 
-                val (f0, newBind) = defVar env Ast.Var (Ast.Internal "") bind
+                val (f0,i0) = defBindings env Ast.Var (Ast.Internal "") bindings
                 val env = extendEnvironment env f0
                 val (body,fixtures) = defBlock env body
             in                     
-                { bind = newBind, 
+                { bindings = bindings,   (* FIXME: what about inits *)
                   body = body,
-                  fixtures = SOME f0 }
+                  fixtures = SOME f0,
+                  ty=ty }
             end            
 
-        fun reconstructCase { label, body } =
+        fun reconstructCase { label, body, inits } 
+            : Ast.CASE * Ast.FIXTURES =
             let
                 val (body,hoisted) = defBlock env body
-                val (f, label) = 
+                val label = 
                     case label of 
-                        NONE => ([], NONE )
+                        NONE => NONE
                       | SOME e => 
                         let 
-                            val (f', e') = defExpr env e
+                            val e' = defExpr env e
                         in 
-                            (SOME f', SOME e')
+                            SOME e'
                         end
             in
-                { label = label,
-                  fixtures = f,
-                  body = body }
+                ({label = label,
+                  inits = SOME [],
+                  body = body},
+                [])
             end
-            
-        fun reconstructTyCase { ptrn, body } =
+
+        fun reconstructTyCase {ty: Ast.TYPE_EXPR option,
+                               bindings: Ast.BINDINGS, 
+                               body: Ast.BLOCK, inits: Ast.INITS option}
+            : Ast.TYPE_CASE * Ast.FIXTURES = 
             let 
-                val (b0, newPtrn) = 
-                    case ptrn of NONE => 
-                                 ([], NONE)
-                               | SOME b => 
-                                 inr (SOME) (defVar env Ast.Var (Ast.Internal "") b)
-                val env = extendEnvironment env b0
+                val (fxtrs,inits) = defBindings env Ast.Var (Ast.Internal "") bindings
+                val env = extendEnvironment env fxtrs
                 val (body,hoisted) = defBlock env body
             in
-                { ptrn = newPtrn,
-                  body = body }
+                ({ ty=ty,
+                  bindings=bindings,
+                  inits=SOME inits,
+                  body=body },
+                 fxtrs)                                      
             end            
 
         fun findClass (n:Ast.NAME) =
@@ -1294,15 +1331,15 @@ and defStmt (env:ENV)
               | _ => LogErr.defnError ["reference to non-class fixture"]
             end
 
-        fun reconstructClassBlock {ns, ident, block, ...} =
+        fun reconstructClassBlock {ns, ident, block, name, extends, fixtures } =
             let
                 val Ast.Block { pragmas, defns, fixtures, inits, stmts } = block
 
                 (* filter out instance initializers *)
                 val (_,stmts) = List.partition isInstanceInit stmts  
 
-                val ns = resolveExprToNamespace env ns
-                val name = {ns=ns, id=ident}
+                val namespace = resolveExprToNamespace env ns
+                val name = {ns=namespace, id=ident}
 
                 (* FIXME: remove curentClassName *)
                 val _ = (currentClassName := name)
@@ -1333,16 +1370,17 @@ and defStmt (env:ENV)
             (Ast.EmptyStmt,[])
          
           | Ast.ExprStmt es => 
-            (Ast.ExprStmt (defExpr env es),[])
-            
+            let
+            in
+                (Ast.ExprStmt (defExpr env es),[])
+            end
+
           | Ast.InitStmt {ns, inits, prototype, static, ...} => 
             let
-                val ns' = resolveExprToNamespace env ns
-                fun defInit' i = defInit env ns' prototype static i
+                val ns0 = resolveExprToNamespace env ns
             in
-                (Ast.ExprStmt 
-                     (Ast.ListExpr 
-                          (List.concat (map defInit' inits))), [])
+                (Ast.ExprStmt (Ast.InitExpr (prototype, static,  
+                          (map (defInitStep env ns0) inits))),[])
             end
 
           | Ast.ForEachStmt fe => 
@@ -1376,13 +1414,17 @@ and defStmt (env:ENV)
                 (Ast.LabeledStmt (id, stmt),hoisted)
             end 
             
-          | Ast.LetStmt (vbs, stmt) => 
+          | Ast.LetStmt (vbs, stmt) => (* let (x,[y]=o) { ... } *)
             let
-                val (b0, newVbs) = defVars env vbs
-                val env = extendEnvironment env b0
-                val (newStmt,hoisted) = defStmt env stmt
+                val (fxtrs,inits) = defVars env vbs
+                val env = extendEnvironment env fxtrs
+                val (stmt,hoisted) = defStmt env stmt
             in
-                (Ast.LetStmt (newVbs, newStmt),hoisted)
+                (Ast.BlockStmt (Ast.Block {pragmas=[],
+                                           defns=[],
+                                           fixtures=SOME fxtrs,
+                                           inits=SOME inits,
+                                           stmts=[stmt]}), hoisted)
             end
             
           | Ast.SuperStmt es => 
@@ -1423,9 +1465,9 @@ and defStmt (env:ENV)
             let
                 val (body,hoisted) = defBlock env body
             in
-                (Ast.TryStmt { body = body,
-                          catches = map reconstructCatch catches,
-                          finally = case finally of 
+                (Ast.TryStmt {body = body,
+                              catches = map reconstructCatch catches,
+                              finally = case finally of 
                                         NONE => 
                                         NONE
                                       | SOME b =>
@@ -1434,13 +1476,21 @@ and defStmt (env:ENV)
             end
         
           | Ast.SwitchStmt { cond, cases } => 
-            (Ast.SwitchStmt { cond = defExpr env cond,
-                             cases = map reconstructCase cases },[])
-            
+            let
+                val (cases,hoisted) = ListPair.unzip (map reconstructCase cases)
+            in
+                (Ast.SwitchStmt { cond = defExpr env cond,
+                                  cases = cases}, List.concat hoisted)
+            end
+        
           | Ast.SwitchTypeStmt { cond, ty, cases } =>
-            (Ast.SwitchTypeStmt { cond = defExpr env cond,
-                                 ty = defTyExpr env ty,
-                                 cases = map reconstructTyCase cases },[])
+            let
+                val (cases,hoisted) = ListPair.unzip (map reconstructTyCase cases)
+            in
+                (Ast.SwitchTypeStmt {cond = defExpr env cond,
+                                     ty = defTyExpr env ty,
+                                     cases = cases}, List.concat hoisted)
+            end
             
           | Ast.Dxns { expr } => 
             (Ast.Dxns { expr = defExpr env expr },[])
@@ -1495,36 +1545,36 @@ and defNamespace (env:ENV)
 
 and defDefn (env:ENV) 
             (defn:Ast.DEFN) 
-    : (Ast.FIXTURES * Ast.FIXTURES) = (* unhoisted, hoisted *)
+    : (Ast.FIXTURES * Ast.FIXTURES * Ast.INITS) = (* unhoisted, hoisted, inits *)
     case defn of 
         Ast.VariableDefn { kind, ns, static, prototype, bindings } =>
             let
-                val ns0 = resolveExprToNamespace env ns
-                val (fxtrs, newBindings) = defVarsFull env kind ns0 bindings
+                val ns = resolveExprToNamespace env ns
+                val (fxtrs,inits) = defBindings env kind ns bindings
             in case kind of
-                (Ast.Var | Ast.Const) => ([],fxtrs)  (* fxtrs are hoisted *)
-              | (Ast.LetVar | Ast.LetConst) => (fxtrs,[])  (* fxtrs are unhoisted *)
+                (Ast.Var | Ast.Const) => ([],fxtrs,inits)  (* hoisted fxtrs *)
+              | (Ast.LetVar | Ast.LetConst) => (fxtrs,[],inits)  (* don't hoisted fxtrs *)
             end
       | Ast.FunctionDefn fd => 
             let
                 val (hoisted,def) = defFuncDefn env fd
             in
-                ([],hoisted)
+                ([],hoisted,[])
             end
       | Ast.NamespaceDefn nd => 
             let
                 val (unhoisted,def) = defNamespace env nd
             in
-                (unhoisted,[])
+                (unhoisted,[],[])
             end
       | Ast.ClassDefn cd =>
             let
                 val (hoisted,def) = defClass env cd
             in
-                ([],hoisted)
+                ([],hoisted,[])
             end  
 
-      | _ => ([],[])
+      | _ => ([],[],[])
 
 (*
     DEFN list
@@ -1535,19 +1585,20 @@ and defDefn (env:ENV)
 and defDefns (env:ENV) 
              (unhoisted:Ast.FIXTURES)
              (hoisted:Ast.FIXTURES)
+             (inits:Ast.INITS)
              (defns:Ast.DEFN list)
-    : (Ast.FIXTURES * Ast.FIXTURES) = (* unhoisted, hoisted *)
+    : (Ast.FIXTURES * Ast.FIXTURES * Ast.INITS) = (* unhoisted, hoisted, inits *)
     let val _ = trace([">> defDefns"])
     in case defns of
-        [] => (trace(["<< defDefns"]);(unhoisted,hoisted))
+        [] => (trace(["<< defDefns"]);(unhoisted,hoisted,inits))
       | d::ds =>
             let
-                val (u,h) = defDefn env d
-                val temp = case d of Ast.ClassDefn _ => h | _ => []
-                val env'  = updateEnvironment env (u@temp)  
+                val (unhoisted',hoisted',inits') = defDefn env d
+                val temp = case d of Ast.ClassDefn _ => hoisted' | _ => []
+                val env'  = updateEnvironment env (unhoisted'@temp)  
                             (* add the new unhoisted and temporarily, hoisted class fxtrs to the current env *)
             in
-                defDefns env' (u@unhoisted) (h@hoisted) ds
+                defDefns env' (unhoisted@unhoisted') (hoisted@hoisted') (inits@inits') ds
             end
     end
 
@@ -1572,22 +1623,16 @@ and defBlock (env:ENV)
         Ast.Block { pragmas, defns, stmts, inits,... } => 
         let 
             val env = defPragmas env pragmas
-            val (unhoisted,defns_hoisted) = defDefns env [] [] defns
-            
-            val env  = updateEnvironment env (unhoisted@defns_hoisted )
-(*
- val (inits,_) = defStmts env (case inits of NONE => [] | _ => valOf inits)  
- (* do inits in outer scope, inits never result in hoisted defs *)
-*)
-            val env = updateEnvironment env unhoisted
-            val (stmts,stmts_hoisted) = defStmts env stmts
-            val hoisted = defns_hoisted@stmts_hoisted
+            val (unhoisted_defn_fxtrs,hoisted_defn_fxtrs,inits) = defDefns env [] [] [] defns
+            val env = updateEnvironment env unhoisted_defn_fxtrs
+            val (stmts,hoisted_stmt_fxtrs) = defStmts env stmts
+            val hoisted = hoisted_defn_fxtrs@hoisted_stmt_fxtrs
         in
             (Ast.Block { pragmas = pragmas,
-                         defns = [],  (* clear definitions *)
+                         defns = [],  (* clear definitions, we are done with them *)
                          stmts = stmts,
-                         fixtures = SOME unhoisted,
-                         inits=NONE },
+                         fixtures = SOME unhoisted_defn_fxtrs,
+                         inits= SOME inits },
              hoisted)
         end
 

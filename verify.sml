@@ -514,7 +514,7 @@ and verifyExpr (ctxt as {env,this,...}:CONTEXT)
       | LexicalRef { ident } =>
 	verifyIdentExpr ctxt ident
       | ListExpr l => List.last (List.map (verifyExpr ctxt) l)
-      | LetExpr {defs=_, body, fixtures } => 
+      | LetExpr {defs=_, body, fixtures, inits } =>  (* FIXME: inits added *)
           let val extensions = verifyFixturesOption ctxt fixtures
           in
 	    checkForDuplicateExtension extensions;
@@ -875,11 +875,11 @@ and verifyStmt (ctxt as {this,env,lbls,retTy}:CONTEXT) (stmt:STMT) =
 	verifyStmt (withLbls ctxt' (contLabel::lbls)) body
     end
 
-  | SwitchStmt { cond, cases } =>
+  | SwitchStmt { cond, cases } =>  
     let val ty = verifyExpr ctxt cond
     in
 	List.app
-	    (fn {label,body} =>	
+	    (fn {label,body,inits} =>	(* FIXME: verify inits *)
 		let in
 		    (Option.app 
 			 (fn e => checkBicompatible ty (verifyExpr ctxt e))

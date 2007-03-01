@@ -188,7 +188,7 @@ datatype PRAGMA =
 
      and BINDING =
          Binding of 
-           { ident: BINDING_IDENT,
+           { ident: BINDING_IDENT,    (* FIXME: use tuple *)
              ty: TYPE_EXPR option }
 
      and BINDING_IDENT = 
@@ -316,7 +316,8 @@ datatype PRAGMA =
        | LetExpr of 
            { defs: BINDINGS,                      
              body: EXPR,
-             fixtures: FIXTURES option }
+             fixtures: FIXTURES option,
+             inits: INITS option }
        | NewExpr of 
            { obj: EXPR,
              actuals: EXPR list }
@@ -325,6 +326,7 @@ datatype PRAGMA =
        | SetExpr of (ASSIGNOP * EXPR * EXPR)
        | BindingExpr of BINDINGS
        | ListExpr of EXPR list
+       | InitExpr of (bool * bool * INITS)
        | SliceExpr of (EXPR * EXPR * EXPR)
        | DefTemp of (int * EXPR)
        | GetTemp of int
@@ -396,10 +398,7 @@ datatype PRAGMA =
            isFinal: bool }
        | ValFixture of 
            { ty: TYPE_EXPR,
-             readOnly: bool,
-             isOverride: bool,
-             isFinal: bool,
-             init: EXPR option (* deprecated *)
+             readOnly: bool
            }
        | VirtualValFixture of 
            { ty: TYPE_EXPR, 
@@ -438,7 +437,8 @@ withtype
              override: bool,
              prototype: bool,
              static: bool,
-             func : FUNC }
+             func : FUNC,
+             ty: TYPE_EXPR }
 
      and CTOR_DEFN = 
            { ns: EXPR,
@@ -450,7 +450,7 @@ withtype
              ns : EXPR,
              static : bool,
              prototype : bool,
-             bindings : BINDING list }
+             bindings : BINDINGS }
 
      and FIXTURES = (FIXTURE_NAME * FIXTURE) list
      and INITS    = (FIXTURE_NAME * EXPR) list
@@ -488,6 +488,7 @@ withtype
            { defns: BINDINGS,             
              obj: EXPR,
              fixtures: FIXTURES option,
+             inits: INITS option,
              contLabel: IDENT option,
              body: STMT }
 
@@ -505,13 +506,14 @@ withtype
              inits: INITS option }
 
      and CASE =
-           { label: EXPR option, 
-(*             fixtures: FIXTURES option, *)
+           { label: EXPR option,
+             inits: INITS option, 
              body: BLOCK }
 
      and TYPE_CASE =
            { ty : TYPE_EXPR option,
-             bindings : BINDINGS, 
+             bindings : BINDINGS,
+             inits: INITS option, 
              body : BLOCK }
 
      and FUNC_NAME =
