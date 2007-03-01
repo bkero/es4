@@ -247,8 +247,8 @@ fun evalExpr (scope:Mach.SCOPE)
       | Ast.ObjectRef { base, ident } => 
             Mach.getValue (evalRefExpr scope expr false)
         
-      | Ast.LetExpr {defs, body, fixtures} =>
-        evalLetExpr scope (valOf fixtures) defs body
+      | Ast.LetExpr {defs, body, fixtures, inits} =>
+        evalLetExpr scope (valOf fixtures) (valOf inits) body
 
       | Ast.TrinaryExpr (Ast.Cond, aexpr, bexpr, cexpr) => 
         evalCondExpr scope aexpr bexpr cexpr
@@ -607,7 +607,7 @@ and evalRefExpr (scope:Mach.SCOPE)
 
 and evalLetExpr (scope:Mach.SCOPE) 
                 (fixtures:Ast.FIXTURES) 
-                (defs:Ast.VAR_BINDING list) 
+                (inits: Ast.INITS) 
                 (body:Ast.EXPR) 
     : Mach.VAL = 
     let 
@@ -616,7 +616,7 @@ and evalLetExpr (scope:Mach.SCOPE)
     in
         allocScopeFixtures scope fixtures;
         (* todo: what do we use for a namespace here *)
-        evalVarBindings scope (Ast.Internal "") defs; 
+        (* FIXME: do inits *)
         evalExpr newScope body
     end
 
@@ -627,17 +627,18 @@ and processVarDefn (scope:Mach.SCOPE)
     : unit = 
     let
         val ns = needNamespace (evalExpr scope (#ns vd))
-        fun procOneBinding (vb:Ast.VAR_BINDING) = 
+        fun procOneBinding (vb:Ast.BINDING) = 
             processVarBinding scope NONE ns vb procOneName
+        val (binds,inits) = (#bindings vd)
     in
-        List.app procOneBinding (#bindings vd)
+        List.app procOneBinding binds
     end
 
 
 and processVarBinding (scope:Mach.SCOPE) 
                       (v:Mach.VAL option)
                       (ns:Ast.NAMESPACE)
-                      (binding:Ast.VAR_BINDING)
+                      (binding:Ast.BINDING)
                       (procOneName:Mach.NAME -> Mach.VAL -> unit)
     : unit =
 ()
@@ -668,7 +669,7 @@ and processVarBinding (scope:Mach.SCOPE)
 and evalVarBinding (scope:Mach.SCOPE)
                    (v:Mach.VAL option)
                    (ns:Ast.NAMESPACE)
-                   (defn:Ast.VAR_BINDING)
+                   (defn:Ast.BINDING)
     : unit = 
     (* Here we are evaluating only the *definition* affect of the
      * binding, as the binding produced a fixture and we've already 
@@ -679,7 +680,7 @@ and evalVarBinding (scope:Mach.SCOPE)
 
 and evalVarBindings (scope:Mach.SCOPE)
                     (ns:Ast.NAMESPACE)
-                    (defns:Ast.VAR_BINDING list)
+                    (defns:Ast.BINDING list)
     : unit =
     List.app (evalVarBinding scope NONE ns) defns
 
@@ -820,8 +821,8 @@ and evalDefn (scope:Mach.SCOPE)
     : unit = 
     case d of 
         Ast.FunctionDefn f => evalFuncDefn scope f
-      | Ast.VariableDefn {bindings,ns,...} => 
-        evalVarBindings scope (needNamespace (evalExpr scope ns)) bindings
+      | Ast.VariableDefn {bindings,ns,...} => ()   (* FIXME: inits should take care of this *)
+        (**** evalVarBindings scope (needNamespace (evalExpr scope ns)) bindings ****)
       | Ast.NamespaceDefn ns => () (* handled during allocation *)
 (*      | Ast.ClassDefn cd => evalClassDefn scope cd  *)
       | _ => LogErr.unimplError ["unimplemented definition type"]
@@ -893,10 +894,13 @@ and invokeFuncClosure (this:Mach.OBJ)
                      * and assign the defaults for [P-A, P).
                      *)
 
+(****
                     fun hasDefault (Ast.Binding { init = NONE, ... }) = false
                       | hasDefault (Ast.Binding { init = _, ... }) = true
-                    val p = length params
-                    val d = length (List.filter hasDefault params)
+****)
+                    val (b,i) = params
+                    val p = length b
+                    val d = 0  (* FIXME: get this from the parser/definer, length (List.filter hasDefault params) *)
                     val a = length args
                 in
                     allocScopeFixtures varScope (valOf (#fixtures f));
