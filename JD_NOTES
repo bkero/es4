@@ -29,24 +29,22 @@ Evaluating Functions
 
 function ([x1,x2],[y]=a,z=10) { print('hi') }
 
-head =
-{[x1,x2,y,z,$t1],
- [$t1=argn<1?throw:arg[0],
-  $t2=argn<2?a:arg[1],
-  $t3=argn<3?10:arg[2]]
-  x1=$t1[0],
-  x2=$t1[1],
-  y=$t2[0],
-  z=$t3]}
 
-block =
-{head=([],[]),
- body=[print('hi')]}
+defaults = [a,10]
 
+head = {fxtrs=[x1,x2,y,z,$t1],
+        inits=[x1=$t1[0],
+               x2=$t1[1],
+               y=$t2[0],
+               z=$t3]}
+
+block = {head=([],[]),
+         body=[print('hi')]}
 
 Param heads (f+i) are instantiated with a list of actual
-arguments. Access to those arguments appears in the code
-as using the GetArg[n]
+arguments and a list of default expressions. The argument 
+or default values get bound to temporaries, and are accessed
+by the inits via GetTemp n instructions
 
 If a required arg is not given, then either an exception
 is thrown or the default value of undefined is used, 
@@ -54,7 +52,7 @@ depending on the kind of function the head belongs to
 
 Steps:
 
-obj = evalHead  env args paramHead
+obj = evalHead  env args defaults paramHead
 env = pushScope env obj
 ret = evalBlock env funcBlock
 
