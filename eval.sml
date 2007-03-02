@@ -572,14 +572,12 @@ and evalRefExpr (scope:Mach.SCOPE)
     let 
         fun makeRefNotFound (b:Mach.VAL option) (mname:Mach.MULTINAME) 
             : REF =
-            let
-            in case (b,mname) of
+            case (b,mname) of
                 (SOME (Mach.Object ob),{id,...}) =>
-                    (ob,{ns=Ast.Internal "",id=id})  (* FIXME: ns might be user settable default *)
+                (ob,{ns=Ast.Internal "",id=id})  (* FIXME: ns might be user settable default *)
               | (NONE,{id,...}) => 
-                    (Mach.globalObject,{ns=Ast.Internal "",id=id})
+                (Mach.globalObject,{ns=Ast.Internal "",id=id})
               | _ => LogErr.evalError ["ref expression messed up in refOf"]
-            end
 
         val (base,ident) =
             case expr of         
@@ -589,25 +587,26 @@ and evalRefExpr (scope:Mach.SCOPE)
 
         val (multiname:Mach.MULTINAME) = evalIdentExpr scope ident
 
-        val refOpt = (case base of 
-                          SOME (Mach.Object ob) => 
-                              resolveOnObjAndPrototypes ob multiname
-                        | NONE => 
-                              resolveOnScopeChain scope multiname
-                        | _ => LogErr.evalError ["ref expression on non-object value"])
-
+        val refOpt = 
+            case base of 
+                SOME (Mach.Object ob) => 
+                resolveOnObjAndPrototypes ob multiname
+              | NONE => 
+                resolveOnScopeChain scope multiname
+              | _ => LogErr.evalError ["ref expression on non-object value"]
+                                                                             
     in
         case refOpt of 
             NONE => if errIfNotFound 
-                        then LogErr.evalError ["unresolved identifier expression",LogErr.multiname multiname]
-                        else makeRefNotFound base multiname
+                    then LogErr.evalError ["unresolved identifier expression",
+                                           LogErr.multiname multiname]
+                    else makeRefNotFound base multiname
           | SOME r' => r'
     end
 
-
 and evalLetExpr (scope:Mach.SCOPE) 
                 (fixtures:Ast.FIXTURES) 
-                (inits: Ast.INITS) 
+                (inits:Ast.INITS) 
                 (body:Ast.EXPR) 
     : Mach.VAL = 
     let 
@@ -615,148 +614,61 @@ and evalLetExpr (scope:Mach.SCOPE)
         val newScope = extendScope scope obj        
     in
         allocScopeFixtures scope fixtures;
-        (* todo: what do we use for a namespace here *)
-        (* FIXME: do inits *)
+        evalInits scope obj (getScopeTemps scope) inits;
         evalExpr newScope body
     end
-
-
-and processVarDefn (scope:Mach.SCOPE)
-                   (vd:Ast.VAR_DEFN)
-                   (procOneName:Mach.NAME -> Mach.VAL -> unit)
-    : unit = 
-    let
-        val ns = needNamespace (evalExpr scope (#ns vd))
-        fun procOneBinding (vb:Ast.BINDING) = 
-            processVarBinding scope NONE ns vb procOneName
-        val (binds,inits) = (#bindings vd)
-    in
-        List.app procOneBinding binds
-    end
-
-
-and processVarBinding (scope:Mach.SCOPE) 
-                      (v:Mach.VAL option)
-                      (ns:Ast.NAMESPACE)
-                      (binding:Ast.BINDING)
-                      (procOneName:Mach.NAME -> Mach.VAL -> unit)
-    : unit =
-()
-(*
-    case binding of 
-        Ast.Binding { init, pattern, ty } =>
-        let 
-        fun procWithValue v' = 
-                case pattern of 
-                    Ast.IdentifierPattern id => 
-                         let 
-                             val n = { ns = ns, id = id}
-                         in
-                 LogErr.trace ["binding variable ", LogErr.name n];
-                 procOneName n v'
-                         end
-                  | _ => LogErr.unimplError ["unhandled pattern form in binding"]                     
-        in
-            case v of 
-                SOME v' => procWithValue v'
-              | NONE => 
-                (case init of 
-                     SOME e => procWithValue (evalExpr scope e)
-                   | NONE => ())
-        end
-  *)      
-
-and evalVarBinding (scope:Mach.SCOPE)
-                   (v:Mach.VAL option)
-                   (ns:Ast.NAMESPACE)
-                   (defn:Ast.BINDING)
-    : unit = 
-    (* Here we are evaluating only the *definition* affect of the
-     * binding, as the binding produced a fixture and we've already 
-     * allocated and possibly initialized a property for the fixture.
-     *)
-    processVarBinding scope v ns defn (Mach.defValue (getScopeObj scope))
-
-
-and evalVarBindings (scope:Mach.SCOPE)
-                    (ns:Ast.NAMESPACE)
-                    (defns:Ast.BINDING list)
-    : unit =
-    List.app (evalVarBinding scope NONE ns) defns
-
 
 and resolveOnScopeChain (scope:Mach.SCOPE) 
                         (mname:Mach.MULTINAME) 
     : REF option =
-    (LogErr.trace ["resolving multiname on scope chain: ", LogErr.multiname mname];     
-     case scope of 
-         Mach.Scope { parent, object, ... } => 
-         case resolveOnObjAndPrototypes object mname of
-             NONE => (case parent of 
-                          SOME p => resolveOnScopeChain p mname
-                        | NONE => NONE)
-           | result => result)
-
+    let 
+        val _ = LogErr.trace ["resolving multiname on scope chain: ", 
+                              LogErr.multiname mname]
+        fun getScopeParent (Mach.Scope { parent, ... }) = parent
+        fun hasFixedBinding (Mach.Scope {object=Mach.Obj {props, ...}, ... }, n)
+            = Mach.hasFixedProp props n
+    in
+        (* 
+         * First do a fixed-properties-only lookup along the scope chain alone. 
+         *)
+        case Multiname.resolve 
+                 mname scope hasFixedBinding getScopeParent of
+            SOME (Mach.Scope {object, ...}, name) => SOME (object, name)
+          | NONE => 
+            (* 
+             * If that fails, do a sequence of dynamic-property-permitted
+             * lookups on every scope object (and along its prototype chain)
+             * in the scope chain. 
+             *)
+            let
+                fun tryProtoChain (Mach.Scope {object, parent, ...}) = 
+                    case resolveOnObjAndPrototypes object mname of
+                        SOME result => SOME result
+                      | NONE => case parent of 
+                                    NONE => NONE
+                                  | SOME p => tryProtoChain p
+            in
+                tryProtoChain scope
+            end
+    end
 
 and resolveOnObjAndPrototypes (obj:Mach.OBJ) 
                               (mname:Mach.MULTINAME) 
     : REF option = 
-    (LogErr.trace ["resolveOnObjAndPrototypes: ", LogErr.multiname mname];
-    case obj of 
-        Mach.Obj ob => 
-        case resolveOnObj obj mname of 
-            NONE => 
-            let 
-                val proto = !(#proto ob)
-            in
-                case proto of 
-                    Mach.Object ob => resolveOnObjAndPrototypes ob mname
-                  | _ => NONE
-            end
-          | result => result)
-
-
-and resolveOnObj (obj:Mach.OBJ) 
-                 (mname:Mach.MULTINAME) 
-    : REF option =
-    case obj of 
-        Mach.Obj ob => 
-        let     
-            val id = (#id mname)                     
-            val _ = LogErr.trace ["candidate object props: "]
-            val _ = List.app (fn (k,_) => LogErr.trace ["prop: ", LogErr.name k]) (!(#props ob))
-
-            fun tryName [] = NONE
-              | tryName (x::xs) =
-                let 
-                    val n = { ns=x, id=id } 
-                    val _ = LogErr.trace(["trying ",LogErr.name n])
-                in
-                    if Mach.hasProp (#props ob) n
-                    then (LogErr.trace ["found property with name ", LogErr.name n]; 
-                          SOME (obj, n))
-                    else tryName xs
-                end
-
-            (* try each of the nested namespace sets in turn to see
-               if there is a match. raise an exception if there is
-               more than one match. continue down the scope stack
-               if there are none *)
-
-            fun tryMultiname [] = NONE  
-              | tryMultiname (x::xs:Ast.NAMESPACE list list) = 
-                let 
-                    val rf = tryName x
-                in case rf of
-                    SOME rf => SOME rf
-                  | NONE => tryMultiname xs
-                end
-
-        in
-            tryMultiname (#nss mname)  (* todo: check for only one match *)
-        end
-
-
+    let 
+        val _ = LogErr.trace ["resolveOnObjAndPrototypes: ", LogErr.multiname mname];
+        fun hasFixedProp (Mach.Obj {props, ...}, n) = Mach.hasFixedProp props n
+        fun hasProp (Mach.Obj {props, ...}, n) = Mach.hasProp props n
+        fun getObjProto (Mach.Obj {proto, ...}) = 
+            case (!proto) of 
+                Mach.Object ob => SOME ob
+              | _ => NONE
+    in
+        case Multiname.resolve mname obj hasFixedProp getObjProto of
+            NONE => Multiname.resolve mname obj hasProp getObjProto
+          | refOpt => refOpt
+    end
+     
 and evalTailCallExpr (scope:Mach.SCOPE) 
                      (e:Ast.EXPR) 
     : Mach.VAL = 
@@ -816,24 +728,6 @@ and findVal (scope:Mach.SCOPE)
       | SOME (obj, name) => Mach.getValue (obj, name) 
 
 
-and evalDefn (scope:Mach.SCOPE) 
-             (d:Ast.DEFN) 
-    : unit = 
-    case d of 
-        Ast.FunctionDefn f => evalFuncDefn scope f
-      | Ast.VariableDefn {bindings,ns,...} => ()   (* FIXME: inits should take care of this *)
-        (**** evalVarBindings scope (needNamespace (evalExpr scope ns)) bindings ****)
-      | Ast.NamespaceDefn ns => () (* handled during allocation *)
-(*      | Ast.ClassDefn cd => evalClassDefn scope cd  *)
-      | _ => LogErr.unimplError ["unimplemented definition type"]
-
-
-and evalDefns (scope:Mach.SCOPE) 
-              (ds:Ast.DEFN list) 
-    : unit = 
-    List.app (evalDefn scope) ds
-
-
 and checkAllPropertiesInitialized (obj:Mach.OBJ)
     : unit = 
     let 
@@ -854,7 +748,7 @@ and invokeFuncClosure (this:Mach.OBJ)
                       (args:Mach.VAL list) 
     : Mach.VAL =
     case closure of 
-        { func=(Ast.Func f), allTypesBound, env } => 
+        { func=(Ast.Func f), env, allTypesBound } => 
         if not allTypesBound
         then LogErr.evalError ["invoking function with unbound type variables"]
         else 
@@ -893,7 +787,7 @@ and invokeFuncClosure (this:Mach.OBJ)
                      * We allocate P fixtures, assign the args to [0, P-A),
                      * and assign the defaults for [P-A, P).
                      *)
-
+(*
 (****
                     fun hasDefault (Ast.Binding { init = NONE, ... }) = false
                       | hasDefault (Ast.Binding { init = _, ... }) = true
@@ -994,6 +888,23 @@ On the whiteboard today (feb 22):
 
 *)
 
+and bindArgs (argScope:Mach.SCOPE)
+             (bindings:Ast.BINDING list)
+             (args:Mach.VAL list)
+    : unit =
+    let
+        val argObj = getScopeObj argScope
+        val argTemps = getScopeTemps argScope
+        fun bindArg (arg, Ast.Binding {ident, ...}) = 
+            case ident of 
+                Ast.TempIdent ti => Mach.defTemp argTemps ti arg
+              | Ast.PropIdent pi => Mach.defValue argObj {ns=Ast.Internal "", id=pi} arg
+    in
+        List.app bindArg (ListPair.zip (args, bindings))
+    end
+
+
+
 and evalInits (scope:Mach.SCOPE)
               (obj:Mach.OBJ)
               (temps:Mach.TEMPS)
@@ -1032,17 +943,16 @@ and evalScopeInits (scope:Mach.SCOPE)
     case scope of
         Mach.Scope { object, temps, ...} => 
         evalInits scope object temps inits
-(*
+
 and initializeAndConstruct (classClosure:Mach.CLS_CLOSURE)
                            (classObj:Mach.OBJ)
                            (classScope:Mach.SCOPE)                           
                            (args:Mach.VAL list) 
                            (instanceObj:Mach.OBJ)
     : unit =
-    let
-        val {cls, env} = classClosure
-    in
-        if not allTypesBound (#ty cls)
+    case classClosure of 
+        { cls, env, allTypesBound } => 
+        if not allTypesBound 
         then LogErr.evalError ["constructing instance of class with unbound type variables"]
         else
             let
@@ -1051,35 +961,58 @@ and initializeAndConstruct (classClosure:Mach.CLS_CLOSURE)
                               instanceInits, 
                               constructor, 
                               ... } = cls
+                fun initializeAndConstructSuper (superArgs:Mach.VAL list) = 
+                    case extends of 
+                        NONE => 
+                        (LogErr.trace ["checking all properties initialized at root class", 
+                                       LogErr.name name];
+                         checkAllPropertiesInitialized instanceObj)
+                      | SOME superName => 
+                        let 
+                            val (superObj:Mach.OBJ) = needObj (findVal env (multinameOf superName))
+                            val (superClsClosure:Mach.CLS_CLOSURE) = 
+                                case Mach.getObjMagic superObj of
+                                    SOME (Mach.Class cc) => cc
+                                  | _ => LogErr.evalError ["Superclass object ", 
+                                                           LogErr.name superName, 
+                                                           "is not a class closure"]
+                            val (superEnv:Mach.SCOPE) = (#env superClsClosure)
+                        in
+                            initializeAndConstruct 
+                                superClsClosure superObj superEnv superArgs instanceObj
+                        end
             in 
                 LogErr.trace ["evaluating instance initializers for ", LogErr.name name];
                 evalObjInits classScope instanceObj instanceInits;
                 case constructor of 
-                    NONE => ()
-                  | SOME {settings, func} => 
+                    NONE => initializeAndConstructSuper []
+                  | SOME (Ast.Ctor 
+                              { settings, 
+                                func = Ast.Func 
+                                           { fsig = Ast.FunctionSignature 
+                                                        { params, 
+                                                          ... }, 
+                                             body, 
+                                             ...}}) => 
                     let 
                         val (varObj:Mach.OBJ) = Mach.newSimpleObj NONE
                         val (varScope:Mach.SCOPE) = extendScope classScope varObj
-                        fun bindArg (a, b) = evalVarBinding varScope (SOME a) (Ast.Internal "") b
-                                                            
-                    (LogErr.trace ["evaluating settings for ", LogErr.name name];
-                     evalObjInits classScope instanceObj settings;
-                     LogErr.trace ["running constructor for ", LogErr.name name])
-
-                LogErr.trace ["running instance settings for ", LogErr.name name];  
-                evalObjInits classScope instanceObj instanceInits;
-                case extends of 
-                    SOME baseName => 
-                    let 
-                        val (baseObj:Mach.OBJ) = needObj (findVal env (multinameOf baseClassName))
-                        val (baseClsClosure:Ast.CLS_CLOSURE) = 
-                            case Mach.getMagic baseObj of
-                                SOME (Mach.Class cc) => cc
-                              | _ => LogErr.evalError ["Base object ", 
-                                                       LogErr.name baseName, 
-                                                       "is not a class closure"]
+                        val (ctorScope:Mach.SCOPE) = extendScope varScope instanceObj
+                        val ((paramBindings:Ast.BINDING list), _) = params
+                    in
+                        LogErr.trace ["binding constructor args of ", LogErr.name name];
+                        bindArgs varScope paramBindings args;
+                        LogErr.trace ["evaluating settings for ", LogErr.name name];
+                        evalObjInits varScope instanceObj settings;
+                        LogErr.trace ["initializing and constructing superclass of ", LogErr.name name];
+                        (* FIXME: evaluate superArgs from super(...) call. *)
+                        initializeAndConstructSuper ([(*superArgs*)]);                        
+                        LogErr.trace ["entering constructo for ", LogErr.name name];
+                        evalBlock ctorScope body;
+                        ()
+                    end
+            end
                                      
-*)
 
 and constructClassInstance (classObj:Mach.OBJ)
                            (classClosure:Mach.CLS_CLOSURE) 

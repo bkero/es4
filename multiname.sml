@@ -4,11 +4,11 @@
 
 structure Multiname = struct
 
-fun resolveMultiname (mname:Ast.MULTINAME)
-		     (curr:'a)
-		     (nameExists:(('a, Ast.NAME) -> bool))
-		     (getParent:('a -> ('a option)))
-    : (Ast.NAME * 'a) option =
+fun resolve (mname:Ast.MULTINAME)
+		    (curr:'a)
+		    (nameExists:(('a * Ast.NAME) -> bool))
+		    (getParent:('a -> ('a option)))
+    : ('a * Ast.NAME) option =
     let     
         val _ = LogErr.trace ["resolving multiname ", LogErr.multiname mname]
         val id = (#id mname)
@@ -25,12 +25,13 @@ fun resolveMultiname (mname:Ast.MULTINAME)
                 then tryName (n::matches) xs
                 else tryName matches xs
             end
+
         (*
-	 * Try each of the nested namespace sets in turn to see
+	     * Try each of the nested namespace sets in turn to see
          * if there is a match. Raise an exception if there is
          * more than one match. Continue up to "parent" 
          * if there are none 
-	 *)
+	     *)
 	    
         fun tryMultiname [] = NONE  
           | tryMultiname (x::xs:Ast.NAMESPACE list list) : Ast.NAME option = 
@@ -44,15 +45,12 @@ fun resolveMultiname (mname:Ast.MULTINAME)
             end
     in
         case tryMultiname (#nss mname) of
-            SOME n => SOME (n, curr)
+            SOME n => SOME (curr, n)
           | NONE => 
-	    (case getParent curr of
-		 NONE => LogErr.nameError ["exhausted search for ", 
-					   LogErr.multiname mname]
-	       | SOME parent => resolveMultiname mname 
-						 parent 
-						 nameExists 
-						 getParent)
+	        (case getParent curr of
+		         NONE => LogErr.nameError ["exhausted search for ", 
+					                       LogErr.multiname mname]
+	           | SOME parent => resolve mname parent nameExists getParent)
     end
 end
 
