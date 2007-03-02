@@ -560,6 +560,10 @@ and evalIdentExpr (scope:Mach.SCOPE)
       | Ast.QualifiedExpression { qual, expr } => 
         { nss = [[needNamespace (evalExpr scope qual)]], 
           id = Mach.toString (evalExpr scope expr) }
+        
+      | Ast.ExpressionIdentifier expr =>
+        { nss = [[Ast.Internal ""]],
+          id = Mach.toString (evalExpr scope expr) }
 
       | _ => LogErr.unimplError ["unimplemented identifier expression form"]
 
@@ -612,8 +616,7 @@ and evalLetExpr (scope:Mach.SCOPE)
                 (body:Ast.EXPR) 
     : Mach.VAL = 
     let 
-        val letFrame = evalHead scope head
-        val letScope = extendScope scope letFrame
+        val letScope = evalHead scope head
     in
         evalExpr letScope body
     end
@@ -1161,14 +1164,16 @@ and evalFuncDefnFull (scope:Mach.SCOPE)
 
 and evalHead (scope:Mach.SCOPE)
              (head:Ast.HEAD)
-    : Mach.OBJ =
+    : Mach.SCOPE =
         let
-            val obj = Mach.newObj Mach.intrinsicObjectBaseTag Mach.Null NONE
             val (fixtures,inits) = head
+            val obj = Mach.newObj Mach.intrinsicObjectBaseTag Mach.Null NONE
+            val scope = extendScope scope obj
+            val temps = getScopeTemps scope
         in
-            allocObjFixtures scope obj fixtures;
-            evalObjInits scope obj inits;
-            obj
+            allocFixtures scope obj temps fixtures;
+            evalInits scope obj temps inits;
+            scope
         end
             
 (*
@@ -1181,8 +1186,7 @@ and evalBlock (scope:Mach.SCOPE)
     case block of 
         Ast.Block {head=SOME head, body, ...} => 
         let 
-            val blockFrame = evalHead scope head
-            val blockScope = extendScope scope blockFrame
+            val blockScope = evalHead scope head
         in
             evalStmts blockScope body
         end
