@@ -165,7 +165,9 @@ datatype PRAGMA =
            { name: FUNC_NAME,
              fsig: FUNC_SIG,
              block: BLOCK,
-             param: HEAD }
+             param: HEAD,
+             defaults: EXPR list,
+             ty: FUNC_TYPE option }
 
      and DEFN =
          ClassDefn of CLASS_DEFN
@@ -210,13 +212,7 @@ datatype PRAGMA =
        | ArrayType of TYPE_EXPR list
        | TypeName of IDENT_EXPR
        | TypeRef of (TYPE_EXPR * IDENT)  (* used to desugar typed patterns *)
-       | FunctionType of 
-           { typeParams: IDENT list,
-             params: TYPE_EXPR list,
-             result: TYPE_EXPR,
-             thisType: TYPE_EXPR option,
-             hasRest: bool,
-             requiredCount: int }
+       | FunctionType of FUNC_TYPE           
        | ObjectType of FIELD_TYPE list
        | AppType of 
            { base: TYPE_EXPR,
@@ -428,7 +424,8 @@ withtype
            params: TYPE_EXPR list,
            result: TYPE_EXPR,
            thisType: TYPE_EXPR option,
-           hasRest: bool }
+           hasRest: bool,
+           requiredCount: int }
 
      and FUNC_DEFN = 
            { kind : VAR_DEFN_TAG,

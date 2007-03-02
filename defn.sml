@@ -935,6 +935,8 @@ and defFunc (env:ENV) (func:Ast.FUNC)
          Ast.Func {name = name,
                    fsig = fsig,
                    block = block,
+                   defaults = [],
+                   ty = NONE,
                    param = (paramFixtures@hoisted,paramInits)})
     end
 

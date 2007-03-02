@@ -749,8 +749,7 @@ and invokeFuncClosure (this:Mach.OBJ)
     : Mach.VAL =
     let
         val { func, env, allTypesBound } = closure
-        val Ast.Func f = func
-        val Ast.FunctionSignature { params, ... } = (#fsig f)
+        val Ast.Func { name, fsig, block, param=(fixtures, inits), ... } = func
     in
         if not allTypesBound
         then LogErr.evalError ["invoking function with unbound type variables"]
@@ -766,14 +765,15 @@ and invokeFuncClosure (this:Mach.OBJ)
                 fun initThis v = Mach.defValue varObj thisName thisVal
                                  
                 (* FIXME: self-name binding is surely more complex than this! *)
-                val selfName = { id = (#ident (#name f)), ns = Ast.Internal "" }
-                val selfTag = Mach.FunctionTag (#fsig f)
+                val selfName = { id = (#ident name), ns = Ast.Internal "" }
+                val selfTag = Mach.FunctionTag fsig
                 val selfVal = Mach.newObject selfTag Mach.Null (SOME (Mach.Function closure))
             in
-                allocScopeFixtures varScope (valOf (#fixtures f));
+                allocScopeFixtures varScope fixtures;
                 initThis thisVal;
                 bindArgs env varScope func args;
-                
+                evalScopeInits varScope inits;
+
                 (* NOTE: is this for the binding of a function expression to its optional
                  * identifier? If so, we need to extend the scope chain before extending it
                  * with the activation object, and add the self-name binding to that new 
@@ -784,7 +784,7 @@ and invokeFuncClosure (this:Mach.OBJ)
 
                 Mach.setValue varObj selfName selfVal;                
                 checkAllPropertiesInitialized varObj;
-                evalBlock varScope (#body f)
+                evalBlock varScope block
             end
     end
 
@@ -863,38 +863,42 @@ and bindArgs (outerScope:Mach.SCOPE)
              (func:Ast.FUNC)
              (args:Mach.VAL list)
     : unit =
-    (* If we have:
-     * 
-     * P parameter fixtures
-     * D parameter defaults (at the end)
-     * A args 
-     *
-     * Then we must have A + D >= P, and we let
-     * I = (A+D) - P, the number of ignored defaults.
-     *
-     * We assign the args to [0, A),
-     * and assign the last D-I defaults for [A, P-A).
-     *)
     let
-        val Ast.Func f = func
-        val (paramFixtures:Ast.FIXTURES) = valOf (#fixtures f)
-        val (paramDefaults:Ast.INITS) = (#defaults f)
-        val p = length paramFixtures
-        val d = length paramDefaults
+        val Ast.Func { defaults, ty, ... } = func
+
+        (* If we have:
+         * 
+         * P formal parameters
+         * D parameter defaults (at the end)
+         * A args 
+         *
+         * Then we must have A + D >= P, and we let
+         * I = (A+D) - P, the number of ignored defaults.
+         *
+         * We assign the args to temps numbered [0, A),
+         * and assign the last D-I defaults to temps numbered [A, P-A).
+         *)
+
+        val p = length (#params (valOf ty))
+        val d = length defaults
         val a = length args
         val i = (a+d)-p
-        val argObj = getScopeObj argScope
         val argTemps = getScopeTemps argScope
-        fun bindArg (arg:Mach.VAL, (fname:Ast.FIXTURE_NAME, fixture:Ast.FIXTURE)) = 
-            case fname of 
-                Ast.TempName tn => Mach.defTemp argTemps tn arg
-              | Ast.PropName pn => Mach.defValue argObj pn arg
+        fun bindArg _ [] = ()
+          | bindArg (n:int) ((arg:Mach.VAL)::args) = 
+            (Mach.defTemp argTemps n arg; 
+             bindArg (n+1) args)
     in
         if a + d < p
         then LogErr.evalError ["not enough args to function"]
         else 
-            (List.app bindArg (ListPair.zip (args, (List.take (paramFixtures, a))));
-             evalInits outerScope argObj argTemps (List.drop (paramDefaults, i)))
+            let
+                val defExprs = List.drop (defaults, i)
+                val defVals = List.map (evalExpr outerScope) defExprs
+                val allArgs = args @ defVals
+            in
+                bindArg 0 allArgs
+            end
     end
 
 
@@ -982,20 +986,23 @@ and initializeAndConstruct (classClosure:Mach.CLS_CLOSURE)
                     NONE => initializeAndConstructSuper []
                   | SOME (Ast.Ctor { settings, func }) => 
                     let 
-                        val Ast.Func { body, ... } = func
+                        val Ast.Func { block, param=(fixtures,inits), ... } = func
                         val (varObj:Mach.OBJ) = Mach.newSimpleObj NONE
                         val (varScope:Mach.SCOPE) = extendScope classScope varObj
                         val (ctorScope:Mach.SCOPE) = extendScope varScope instanceObj
                     in
+                        allocScopeFixtures varScope fixtures;                
                         LogErr.trace ["binding constructor args of ", LogErr.name name];
                         bindArgs classScope varScope func args;
+                        LogErr.trace ["evaluating inits of ", LogErr.name name];
+                        evalScopeInits varScope inits;
                         LogErr.trace ["evaluating settings for ", LogErr.name name];
                         evalObjInits varScope instanceObj settings;
                         LogErr.trace ["initializing and constructing superclass of ", LogErr.name name];
                         (* FIXME: evaluate superArgs from super(...) call. *)
                         initializeAndConstructSuper ([(*superArgs*)]);                        
                         LogErr.trace ["entering constructo for ", LogErr.name name];
-                        evalBlock ctorScope body;
+                        evalBlock ctorScope block;
                         ()
                     end
             end
