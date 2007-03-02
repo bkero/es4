@@ -247,8 +247,8 @@ fun evalExpr (scope:Mach.SCOPE)
       | Ast.ObjectRef { base, ident } => 
             Mach.getValue (evalRefExpr scope expr false)
         
-      | Ast.LetExpr {defs, body, fixtures, inits} =>
-        evalLetExpr scope (valOf fixtures) (valOf inits) body
+      | Ast.LetExpr {defs, body, head} =>
+        evalLetExpr scope (valOf head) body
 
       | Ast.TrinaryExpr (Ast.Cond, aexpr, bexpr, cexpr) => 
         evalCondExpr scope aexpr bexpr cexpr
@@ -604,18 +604,19 @@ and evalRefExpr (scope:Mach.SCOPE)
           | SOME r' => r'
     end
 
+(*
+    EXPR = LetExpr
+*)
+
 and evalLetExpr (scope:Mach.SCOPE) 
-                (fixtures:Ast.FIXTURES) 
-                (inits:Ast.INITS) 
+                (head:Ast.HEAD) 
                 (body:Ast.EXPR) 
     : Mach.VAL = 
     let 
-        val obj = Mach.newObj Mach.intrinsicObjectBaseTag Mach.Null NONE
-        val newScope = extendScope scope obj        
+        val letFrame = evalHead scope head
+        val letScope = extendScope scope letFrame
     in
-        allocScopeFixtures scope fixtures;
-        evalInits scope obj (getScopeTemps scope) inits;
-        evalExpr newScope body
+        evalExpr letScope body
     end
 
 and resolveOnScopeChain (scope:Mach.SCOPE) 
@@ -788,7 +789,6 @@ and invokeFuncClosure (this:Mach.OBJ)
             end
     end
 
-(*
     
     Here are the structures we have to work with to instantiate objects:
 

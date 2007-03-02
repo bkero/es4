@@ -2647,7 +2647,7 @@ and letExpression (ts,b) =
                         val (ts4,nd4) = listExpression(ts3,b)
                     in
                         (trace(["<< letExpression with next=",tokenname(hd(ts4))]);
-                        (ts4,Ast.LetExpr{defs=nd2,body=nd4,fixtures=NONE,inits=NONE}))
+                        (ts4,Ast.LetExpr{defs=nd2,body=nd4,head=NONE}))
                     end
                |    _ => raise ParseError
             end
@@ -2755,11 +2755,24 @@ and assignmentExpression (ts,a,b) : (token list * Ast.EXPR) =
     in case ts1 of
         Assign :: _ => 
             let
+                fun isInitStep (b:Ast.INIT_STEP) : bool =
+                    case b of 
+                       Ast.InitStep _ => true
+                     | _ => false
+
+                fun makeSetExpr (Ast.AssignStep (lhs,rhs)) = Ast.SetExpr (Ast.Assign,lhs,rhs)
+
                 val p = patternFromExpr nd1
                 val (ts2,nd2) = assignmentExpression(tl ts1,a,b) 
-                val bindings = desugarPattern p NONE (SOME nd2)                       
-            in 
-                (ts2,Ast.BindingExpr bindings)
+                val (binds,inits) = desugarPattern p NONE (SOME nd2)
+                val (inits,assigns) = List.partition isInitStep inits    (* separate init steps and assign steps *)
+                val sets = map makeSetExpr assigns
+            in case binds of
+                [] => (ts2,hd sets)
+              | _ => (ts2,Ast.LetExpr {defs=(binds,inits),  
+                                         body=Ast.ListExpr sets,
+                                         head=NONE})
+                        (* introduce a letexpr to narrow the scope of the temps *)
             end
           | ( ModulusAssign :: _ 
           | LogicalAndAssign :: _
@@ -3299,14 +3312,14 @@ and functionTypeFromSignature fsig : Ast.TYPE_EXPR =
             let
                 val (b,i) = params
                 val types = paramTypes b
-                val required = 0  (* FIXME *)
+                val minArgs = 0  (* FIXME *)
             in
                 Ast.FunctionType {typeParams=typeParams,
                                   params=types,
                                   result=returnType,
                                   thisType=thisType,
                                   hasRest=hasRest,
-                                  requiredCount=required}
+                                  minArgs=minArgs}
             end
     end
     
@@ -4181,7 +4194,7 @@ and forStatement (ts,w) : (token list * Ast.STMT) =
     in case ts of
         For :: LeftParen :: _ =>
             let
-                val (ts1,bindings,init) = forInitialiser (tl (tl ts))
+                val (ts1,defn,init) = forInitialiser (tl (tl ts))
             in case ts1 of
                 SemiColon :: _ =>
                     let
@@ -4193,7 +4206,7 @@ and forStatement (ts,w) : (token list * Ast.STMT) =
                                 val (ts4,nd4) = substatement (tl ts3,w)
                             in 
                                 (ts4,Ast.ForStmt{ 
-                                            defns=bindings,
+                                            defn=defn,
                                             init=init,
                                             cond=nd2,
                                             update=nd3,
@@ -4205,13 +4218,16 @@ and forStatement (ts,w) : (token list * Ast.STMT) =
                     end
               | In :: _ =>
                     let
-                        val len = case bindings of (b,i) => length b
+                        val len = case defn of SOME {bindings=(b,i),...} => length b
                         val (b,i) = if (len > 1) 
                                     then (error(["too many bindings on left side of in"]); 
                                           raise ParseError)
                                     else if (len = 0) (* convert inits to pattern *)
-                                        then desugarPattern (patternFromListExpr init) NONE NONE
-                                        else bindings
+                                        then case init of 
+                                            Ast.ExprStmt e::[] => 
+                                                desugarPattern (patternFromListExpr e) NONE NONE
+                                          | _ => LogErr.internalError [""]
+                                        else (#bindings (valOf defn))
                         val (ts2,nd2) = listExpression (tl ts1,ALLOWIN)
                     in case ts2 of
                         RightParen :: _ =>
@@ -4219,7 +4235,7 @@ and forStatement (ts,w) : (token list * Ast.STMT) =
                                 val (ts3,nd3) = substatement (tl ts2,w)
                             in 
                                 (ts3,Ast.ForInStmt{ 
-                                             defns=bindings,
+                                             defn=defn,
                                              obj=nd2,
                                              contLabel=NONE,
                                              fixtures=NONE,
@@ -4230,6 +4246,8 @@ and forStatement (ts,w) : (token list * Ast.STMT) =
                     end
               | _ => raise ParseError
             end
+(* FIXME
+
       | For :: Each :: LeftParen :: _ =>
             let
                 val (ts1,bindings) = forInBinding (tl (tl (tl ts)))
@@ -4254,6 +4272,7 @@ and forStatement (ts,w) : (token list * Ast.STMT) =
                     end
               | _ => raise ParseError
             end
+*)
       | _ => raise ParseError
     end
 
@@ -4264,32 +4283,31 @@ and forStatement (ts,w) : (token list * Ast.STMT) =
 *)
 
 and forInitialiser (ts) 
-    : (token list * Ast.BINDINGS * Ast.EXPR) =
+    : (token list * Ast.VAR_DEFN option * Ast.STMT list) =
     let val _ = trace([">> forInitialiser with next=", tokenname(hd ts)])
     in case ts of
         (Var | Let | Const) :: _ =>
             let
                 val (ts1,{defns,body,...}) = variableDefinition (ts,hd (!defaultNamespace),
                                                     false,false,NOIN,LOCAL)
-            in case (defns,body) of
-                (Ast.VariableDefn {bindings=bindings,...} :: [],(Ast.InitStmt {inits,...}) :: []) =>
+            in case defns of
+                (Ast.VariableDefn vd :: []) =>
                     (trace(["<< forInitialiser with next=", tokenname(hd ts1)]);
-                    (ts1,bindings,Ast.BindingExpr ([],inits)))   
-                            (* FIXME: binding exprs are fiction, get rid of them *)
+                    (ts1,SOME vd,body))   
               | _ => raise ParseError
             end
       | SemiColon :: _ =>
             let
             in
                 trace(["<< forInitialiser with next=", tokenname(hd ts)]);
-                (ts,([],[]),Ast.ListExpr [])
+                (ts,NONE,[Ast.EmptyStmt])
             end
       | _ => 
             let
                 val (ts1,nd1) = listExpression (ts,NOIN)
             in 
                 trace ["<< forInitialiser with next=", tokenname(hd ts1)];
-                (ts1,([],[]),nd1)
+                (ts1,NONE,[Ast.ExprStmt nd1])
             end
     end
 
@@ -4359,13 +4377,18 @@ and letStatement (ts,w) : (token list * Ast.STMT) =
         Let :: LeftParen :: _ => 
             let
                 val (ts1,nd1) = letBindingList (tl (tl ts))
+                val defn = Ast.VariableDefn {kind=Ast.LetVar,
+                                             ns=Ast.LiteralExpr (Ast.LiteralNamespace (Ast.Internal "")),
+                                             static=false,
+                                             prototype=false,
+                                             bindings=nd1}
             in case ts1 of
                 RightParen :: _ =>
                     let
                         val (ts2,nd2) = substatement(tl ts1, w)
                     in
-                        (trace(["<< letStatement with next=",tokenname(hd(ts2))]);
-                        (ts2,Ast.LetStmt (nd1,nd2)))
+                        trace(["<< letStatement with next=",tokenname(hd(ts2))]);
+                        (ts2,Ast.LetStmt (Ast.Block {pragmas=[],defns=[defn],head=NONE,body=[nd2]}))
                     end
                |    _ => raise ParseError
             end
@@ -5159,8 +5182,15 @@ and variableDefinition (ts,ns:Ast.EXPR,prototype,static,b,t) : (token list * Ast
         val (tempBinds,propBinds) = List.partition isTempBinding b
         val (tempInits,propInits) = List.partition isTempInit i
 
-        val initStmt = Ast.InitStmt {kind=nd1,ns=ns,prototype=prototype,static=static,inits=propInits}
-        val stmt = Ast.LetStmt ((tempBinds,tempInits),initStmt)
+        val initStmts = [Ast.InitStmt {kind=nd1,ns=ns,prototype=prototype,static=static,inits=propInits}]
+        val tempDefns = case tempBinds of [] => [] 
+                          | _ => [Ast.VariableDefn {kind=Ast.LetVar,
+                                                   bindings=(tempBinds,tempInits),
+                                                   ns=Ast.LiteralExpr (Ast.LiteralNamespace (Ast.Internal "")),
+                                                   prototype=false,
+                                                   static=false}]
+
+        val stmt = Ast.BlockStmt (Ast.Block {pragmas=[],defns=tempDefns,head=NONE,body=initStmts})
 
     in
         (ts2,{pragmas=[],

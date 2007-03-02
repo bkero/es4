@@ -776,6 +776,7 @@ and defInitStep (env:ENV)
         Ast.InitStep (ident,expr) =>
             let
                 val name = fixtureNameFromPropIdent ns ident
+                val expr = defExpr env expr
             in 
                 (name,expr)
             end
@@ -925,11 +926,15 @@ and defFuncSig (env:ENV)
 and defFunc (env:ENV) (func:Ast.FUNC)
     : (Ast.FIXTURES * Ast.INITS * Ast.FUNC) =
     let
+        val _ = trace [">> defFunc"]
         val Ast.Func {name, fsig, block, ...} = func
         val (paramFixtures, paramInits, settingsFixtures, settingsInits) = defFuncSig env fsig
 
+ val _ =    Pretty.ppFixtures paramFixtures
+
         val env = extendEnvironment env paramFixtures
         val (block, hoisted) = defBlock env block
+        val _ = trace [">> defFunc"]
     in 
         (settingsFixtures, settingsInits, 
          Ast.Func {name = name,
@@ -1062,6 +1067,22 @@ and defIdentExpr (env:ENV)
             Ast.ExpressionIdentifier (defExpr env e)
     end
 
+
+and defLiteral (env:ENV) 
+               (lit:Ast.LITERAL) 
+    : Ast.LITERAL = 
+    let 
+        val _ = trace [">> defLiteral"]
+    in case lit of
+        Ast.LiteralFunction {func,ty} =>
+            let
+                val (_,_,func) = defFunc env func
+            in
+                Ast.LiteralFunction {func=func,ty=ty}
+            end
+      | _ => lit   (* FIXME: other cases to handle here *)
+    end
+
 (*
     EXPR
 *)
@@ -1119,9 +1140,8 @@ and defExpr (env:ENV)
                       NONE => Ast.SuperExpr NONE
                     | SOME e => Ast.SuperExpr (SOME (sub e)))
             
-          (* FIXME: possibly need to reinterpret literals given arithmetic modes. *)
           | Ast.LiteralExpr le => 
-            Ast.LiteralExpr le
+            Ast.LiteralExpr (defLiteral env le)
             
           | Ast.CallExpr {func, actuals} => 
             Ast.CallExpr {func = sub func,
@@ -1133,14 +1153,13 @@ and defExpr (env:ENV)
 
           | Ast.LetExpr { defs, body,... } => 
             let
-                val (f0,i0) = defVars env defs
-                val env = extendEnvironment env f0
+                val (f,i)   = defVars env defs
+                val env     = extendEnvironment env f
                 val newBody = defExpr env body
             in
                 Ast.LetExpr { defs = defs,
                               body = newBody,
-                              fixtures = SOME f0,
-                              inits = SOME i0 }
+                              head = SOME (f,i) }
             end
 
           | Ast.NewExpr { obj, actuals } => 
@@ -1200,23 +1219,25 @@ and defStmt (env:ENV)
             (stmt:Ast.STMT) 
     : (Ast.STMT * Ast.FIXTURES) = 
     let
+(*
         fun reconstructForEnumStmt (fe:Ast.FOR_ENUM_STMT) = 
             case fe of 
-                { obj, defns, contLabel, body, ... } => 
+                { obj, defn, contLabel, body, ... } => 
                 let
                     val newObj =  defExpr env obj
-                    val (f1, i1) = defVars env defns
+                    val (f1, i1) = ([],[])  (* FIXME defVars env (valOf defn) *)
                     val env = extendEnvironment env f1
                     val (newBody,hoisted) = defStmt env body
                 in
                     ({ obj = newObj,
-                       defns = defns,
+                       defn = defn,
                        contLabel = contLabel,
                        body = newBody, 
                        fixtures = SOME f1,
                        inits = SOME i1 },
                      hoisted)
                 end
+*)
         fun reconstructWhileStmt (w:Ast.WHILE_STMT) = 
             case w of 
                 { cond, body, contLabel, fixtures } => (* FIXME: inits needed *)
@@ -1230,17 +1251,18 @@ and defStmt (env:ENV)
                        contLabel=contLabel }, hoisted)
                 end
 
-        fun reconstructForStmt { defns, init, cond, update, contLabel, body, fixtures } =
+(*
+        fun reconstructForStmt { defn, init, cond, update, contLabel, body, fixtures } =
             let
-                val (f0, i0) = defVars env defns
+                val f0 : Ast.FIXTURES = []  (* FIXME defVars env defn *)
                 val env = extendEnvironment env f0
                 val newInit = defExpr env init
                 val newCond = defExpr env cond
                 val newUpdate = defExpr env update
                 val (newBody, hoisted) = defStmt env body
             in
-                ( Ast.ForStmt { defns = defns,
-                                init = newInit,
+                ( Ast.ForStmt { defn = defn,
+                                init = init,
                                 cond = newCond,
                                 update = newUpdate,
                                 contLabel = contLabel,
@@ -1248,7 +1270,7 @@ and defStmt (env:ENV)
                                 fixtures = SOME f0 },
                   hoisted )
             end
-            
+*)            
         fun reconstructCatch { bindings, fixtures, block, ty } =
             let 
                 val (f0,i0) = defBindings env Ast.Var (Ast.Internal "") bindings
@@ -1352,16 +1374,17 @@ and defStmt (env:ENV)
           | Ast.InitStmt {ns, inits, prototype, static, ...} => 
             let
                 val ns0 = resolveExprToNamespace env ns
-            in
-                (Ast.ExprStmt (Ast.InitExpr (prototype, static,  
-                          (map (defInitStep env ns0) inits))),[])
+            in case (prototype, static) of
+                (true,_) => LogErr.unimplError ["need code for setting prototype prop"]
+              | (_,true) => LogErr.unimplError ["need code for setting static prop"]
+              | _ => (Ast.ExprStmt (Ast.InitExpr (map (defInitStep env ns0) inits)),[])
             end
 
           | Ast.ForEachStmt fe => 
-            inl (Ast.ForEachStmt) (reconstructForEnumStmt fe)
+            (Ast.ForEachStmt fe,[])  (* FIXME inl (Ast.ForEachStmt) (reconstructForEnumStmt fe) *)
             
           | Ast.ForInStmt fe => 
-            inl (Ast.ForInStmt) (reconstructForEnumStmt fe)
+            (Ast.ForInStmt fe,[])   (* FIXME inl (Ast.ForInStmt) (reconstructForEnumStmt fe) *)
             
           | Ast.ThrowStmt es => 
             (Ast.ThrowStmt (defExpr env es), [])
@@ -1388,17 +1411,8 @@ and defStmt (env:ENV)
                 (Ast.LabeledStmt (id, stmt),hoisted)
             end 
             
-          | Ast.LetStmt (vbs, stmt) => (* let (x,[y]=o) { ... } *)
-            let
-                val (fxtrs,inits) = defVars env vbs
-                val env = extendEnvironment env fxtrs
-                val (stmt,hoisted) = defStmt env stmt
-            in
-                (Ast.BlockStmt (Ast.Block {pragmas=[],
-                                           defns=[],
-                                           head=SOME (fxtrs,inits),
-                                           body=[stmt]}), hoisted)
-            end
+          | Ast.LetStmt b =>
+            inl (Ast.LetStmt) (defBlock env b)
             
           | Ast.SuperStmt es => 
             (Ast.SuperStmt (defExpr env es),[])
@@ -1410,7 +1424,7 @@ and defStmt (env:ENV)
             inl (Ast.DoWhileStmt) (reconstructWhileStmt w)
             
           | Ast.ForStmt f => 
-            reconstructForStmt f
+            (Ast.ForStmt f,[]) (* FIXME reconstructForStmt f *)
             
           | Ast.IfStmt { cnd, thn, els } => 
             let

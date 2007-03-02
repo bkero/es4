@@ -228,7 +228,7 @@ datatype PRAGMA =
      and STMT =
          EmptyStmt
        | ExprStmt of EXPR
-       | InitStmt of (* turned into ExprStmt by definer *)
+       | InitStmt of (* *)
            { kind: VAR_DEFN_TAG,
              ns: EXPR,
              prototype: bool,
@@ -252,15 +252,15 @@ datatype PRAGMA =
        | ContinueStmt of IDENT option
        | BlockStmt of BLOCK
        | LabeledStmt of (IDENT * STMT)
-       | LetStmt of (BINDINGS * STMT)
+       | LetStmt of BLOCK
        | SuperStmt of EXPR
        | WhileStmt of WHILE_STMT
        | DoWhileStmt of WHILE_STMT
        | ForStmt of
            { fixtures: FIXTURES option,  (* CF- Do we need the option? 
                                             JD-it's nice to show change of state during comp *)
-             defns: BINDINGS,            (* there will be either defns or init, never both *)
-             init: EXPR,                  
+             defn: VAR_DEFN option,             (* there will be either defns or init, never both *)
+             init: STMT list,                  
              cond: EXPR,
              update: EXPR,
              contLabel: IDENT option,
@@ -311,9 +311,7 @@ datatype PRAGMA =
        | LetExpr of 
            { defs: BINDINGS,                      
              body: EXPR,
-             fixtures: FIXTURES option,
-             inits: INITS option }
-       | BindingExpr of BINDINGS
+             head: HEAD option }
        | NewExpr of 
            { obj: EXPR,
              actuals: EXPR list }
@@ -321,7 +319,7 @@ datatype PRAGMA =
        | LexicalRef of { ident: IDENT_EXPR }
        | SetExpr of (ASSIGNOP * EXPR * EXPR)
        | ListExpr of EXPR list
-       | InitExpr of (bool * bool * INITS)
+       | InitExpr of INITS
        | SliceExpr of (EXPR * EXPR * EXPR)
        | DefTemp of (int * EXPR)
        | GetTemp of int
@@ -482,7 +480,7 @@ withtype
              init: TYPE_EXPR }
 
      and FOR_ENUM_STMT =
-           { defns: BINDINGS,             
+           { defn: VAR_DEFN option,             
              obj: EXPR,
              fixtures: FIXTURES option,
              inits: INITS option,
