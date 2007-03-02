@@ -6,6 +6,7 @@ Library
     structure Token
     structure Lexer
     structure Parser
+    structure Multiname
     structure Defn
     structure Verify 
     structure Eval
@@ -21,6 +22,7 @@ is
     token.sml
     lexer.lex
     parser.sml
+    multiname.sml
     defn.sml
     verify.sml
     eval.sml

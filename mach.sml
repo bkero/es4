@@ -148,6 +148,33 @@ fun getProp (b:PROP_BINDINGS)
         search (!b)
     end
 
+fun getFixedProp (b:PROP_BINDINGS) 
+                 (n:NAME) 
+    : PROP = 
+    let 
+        fun search [] = LogErr.hostError ["property binding not found: ", 
+                                          (#id n)]
+          | search ((k,(v:PROP))::bs) = 
+            if k = n andalso (#isFixed (#attrs v))
+            then v
+            else search bs
+    in
+        search (!b)
+    end
+
+fun hasFixedProp (b:PROP_BINDINGS) 
+                 (n:NAME) 
+    : bool = 
+    let 
+        fun search [] = false
+          | search ((k,(v:PROP))::bs) = 
+            if k = n andalso (#isFixed (#attrs v))
+            then true
+            else search bs
+    in
+        search (!b)
+    end
+
 
 fun hasProp (b:PROP_BINDINGS) 
             (n:NAME) 
@@ -332,6 +359,7 @@ fun getValue (obj:OBJ,
                 TypeProp => LogErr.machError ["getValue on a type property"]
               | TypeVarProp => LogErr.machError ["getValue on a type variable property"]
               | UninitProp => LogErr.machError ["getValue on an uninitialized property"]
+              | VirtualValProp _ => LogErr.machError ["getValue on an virtual property"]
               | ValProp v => v
         end
 
@@ -361,6 +389,10 @@ fun defValue (base:OBJ)
                             
                           | TypeProp => 
                             LogErr.machError ["defValue on type property: ", 
+                                              LogErr.name name]
+
+                          | VirtualValProp _ => 
+                            LogErr.machError ["defValue on virtual property: ", 
                                               LogErr.name name]
                             
                           | UninitProp => ()
@@ -425,6 +457,10 @@ fun setValue (base:OBJ)
                             LogErr.machError ["setValue on type property: ", 
                                               LogErr.name name]
 
+                          | VirtualValProp _ => 
+                            LogErr.machError ["setValue on virtual property:", 
+                                              LogErr.name name]
+
                           | ValProp _ => ()
 
                 val existingAttrs = (#attrs existingProp)
@@ -465,7 +501,11 @@ fun nominalBaseOfTag (t:VAL_TAG)
       | FunctionTag _ => intrinsicFunctionName
       | ClassTag c => c
 
-
+fun getObjMagic (ob:OBJ) 
+    : (MAGIC option) = 
+    case ob of 
+        Obj ob' => !(#magic ob')
+                   
 fun getMagic (v:VAL) 
     : (MAGIC option) = 
     case v of 
@@ -502,9 +542,10 @@ fun toString (v:VAL) : string =
                 | String s => s
                 | Bool true => "true"
                 | Bool false => "false"
-                | Namespace (Ast.Private _)=> "[private namespace]"
-                | Namespace (Ast.Protected _)=> "[protected namespace]"
-                | Namespace Ast.Intrinsic=> "[intrinsic namespace]"
+                | Namespace (Ast.Private _) => "[private namespace]"
+                | Namespace (Ast.Protected _) => "[protected namespace]"
+                | Namespace Ast.Intrinsic => "[intrinsic namespace]"
+                | Namespace Ast.OperatorNamespace => "[operator namespace]"
                 | Namespace (Ast.Public id) => "[public namespace: " ^ id ^ "]"
                 | Namespace (Ast.Internal _) => "[internal namespace]"
                 | Namespace (Ast.UserNamespace id) => "[user-defined namespace " ^ id ^ "]"
