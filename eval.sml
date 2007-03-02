@@ -789,7 +789,7 @@ and invokeFuncClosure (this:Mach.OBJ)
             end
     end
 
-    
+(*    
     Here are the structures we have to work with to instantiate objects:
 
      and CLS =

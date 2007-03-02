@@ -423,7 +423,7 @@ withtype
            result: TYPE_EXPR,
            thisType: TYPE_EXPR option,
            hasRest: bool,
-           requiredCount: int }
+           minArgs: int }
 
      and FUNC_DEFN = 
            { kind : VAR_DEFN_TAG,
