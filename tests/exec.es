@@ -1,7 +1,14 @@
+intrinsic::print('hi')
+
+
+/*
 class Object {}
 class foo {
 function foo([a,b],[c,d]=bar()) : z = zug() {}
 }
+*/
+
+
 
 /*
 type ft = function .<A,B> (A?,B,boolean)

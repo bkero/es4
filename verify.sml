@@ -495,7 +495,7 @@ and verifyExpr (ctxt as {env,this,...}:CONTEXT)
           checkCompatible inferredTy annotatedTy;
           annotatedTy
         end
-      | LiteralExpr (LiteralFunction { func=Func { fixtures=SOME fixtures, body, ... }, 
+      | LiteralExpr (LiteralFunction { func=Func { param=(fixtures,inits), block, ... }, 
 					ty=ty })
 	 =>
 	 let
@@ -508,7 +508,7 @@ and verifyExpr (ctxt as {env,this,...}:CONTEXT)
 (** FIXME: inits are now settings and are BINDINGS 
 	     verifyStmts ctxt2 inits;
 *)
-	     verifyBlock ctxt2 body;
+	     verifyBlock ctxt2 block;
 	     ty
          end
       | LexicalRef { ident } =>
@@ -889,15 +889,15 @@ and verifyStmt (ctxt as {this,env,lbls,retTy}:CONTEXT) (stmt:STMT) =
 	    cases
     end
 
-  | TryStmt { body, catches, finally } =>
+  | TryStmt { block, catches, finally } =>
     let 
     in
-	verifyBlock ctxt body;
+	verifyBlock ctxt block;
 	case finally of
 	    NONE => ()
-	  | SOME blk => verifyBlock ctxt blk;
+	  | SOME block => verifyBlock ctxt block;
 	List.app
-	(fn {bindings, ty, fixtures, body} =>
+	(fn {bindings, ty, fixtures, block} =>
 	    ())
 	catches
     end
@@ -1009,15 +1009,15 @@ and verifyFixturesOption (ctxt:CONTEXT)
 
 (******************** Blocks **************************************************)
 
-and verifyBlock (ctxt as {env,...}) (Block {pragmas,defns=_,stmts,fixtures,inits}) =
-    let val extensions = verifyFixturesOption ctxt fixtures
+and verifyBlock (ctxt as {env,...}) (Block {pragmas,defns=_,body,head=SOME (fixtures,inits)}) =
+    let val extensions = verifyFixtures ctxt fixtures
         val ctxt' = withEnvExtn ctxt extensions
     in
-	verifyStmts ctxt' stmts
+	verifyStmts ctxt' body
     end
 
-fun verifyProgram { packages, fixtures, body } = 
-    (verifyBlock {this=anyType, env=[], lbls=[], retTy=NONE} body; true)
+fun verifyProgram { packages, fixtures, block } = 
+    (verifyBlock {this=anyType, env=[], lbls=[], retTy=NONE} block; true)
 
 (* CF: Let this propagate to top-level to see full trace
     handle VerifyError msg => 

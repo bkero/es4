@@ -164,7 +164,7 @@ fun resolveMultinameToFixture (env:ENV)
         [] => LogErr.defnError ["unresolved fixture "^(LogErr.multiname mname)]
       | ({fixtures, ... }) :: parents => 
         let     
-            val _ = trace(["looking for ",LogErr.multiname mname])
+            val _ = trace ["looking for ",LogErr.multiname mname]
             val id = (#id mname)
 
             (* try each namespace in the set and accumulate matches *)
@@ -295,7 +295,7 @@ fun identExprToMultiname (env:ENV) (ie:Ast.IDENT_EXPR)
         cblk = {
             fxtrs = ...  (* static fixtures *) 
             inits = ...  (* static inits,  empty? static props are inited by statements *)
-            stmts = ...  (* static initialiser *)
+            body = ...   (* static initialiser *)
         }
         iblk = { ... }
     }
@@ -310,10 +310,10 @@ fun defClass (env: ENV)
              (cdef: Ast.CLASS_DEFN)
     : (Ast.FIXTURES * Ast.CLASS_DEFN) =
     let
+        val _ = LogErr.trace ["defining class ",(#ident cdef)]
         val class = analyzeClass env cdef
         val class = resolveClass env cdef class
         val Ast.Cls {name,...} = class
-        val _ = LogErr.trace ["defining class ", LogErr.name name]
     in
         ([(Ast.PropName name, Ast.ClassFixture class)],cdef)
     end
@@ -331,7 +331,7 @@ and analyzeClass (env:ENV)
                  (cdef:Ast.CLASS_DEFN)
     : Ast.CLS =
     case cdef of
-        {ns, ident, body=Ast.Block { pragmas, defns, stmts, ... },...} =>
+        {ns, ident, block=Ast.Block { pragmas, defns, body, ... },...} =>
         let
             fun isLet (d:Ast.DEFN)
                 : bool =
@@ -405,7 +405,7 @@ and analyzeClass (env:ENV)
             val (unhoisted,classFixtures,classInits) = defDefns env [] [] [] staticDefns
             val env = extendEnvironment env classFixtures
             val (unhoisted,instanceFixtures,instanceInits) = defDefns env [] [] [] instanceDefns
-            val (istmts,stmts) = List.partition isInstanceInit stmts
+            val (istmts,stmts) = List.partition isInstanceInit body
 
 (****
             fun initFromStmt (stmt:Ast.STMT) : (Ast.FIXTURE_NAME * Ast.EXPR) option =  
@@ -841,9 +841,9 @@ and defBindings (env:ENV)
                           fxtrs = [ val {id='x'}, val {id='y'} ]
                           inits = [ ref(x).type = t,x=args[0] to ref(x).type,
                                     y=(args.length<2?10:args[1]) to ref(y).type ]
-                          stmts = [ ... ]}, ... ]
+                          body = [ ... ]}, ... ]
             inits = [ t=targ[0],... ]
-            stmts = [ ]
+            body = [ ]
         }
     }
 
@@ -952,18 +952,17 @@ and defFuncSig (env:ENV)
 and defFunc (env:ENV) (func:Ast.FUNC)
     : (Ast.FIXTURES * Ast.INITS * Ast.FUNC) =
     let
-        val Ast.Func {name, fsig, body, ...} = func
+        val Ast.Func {name, fsig, block, ...} = func
         val (paramFixtures, paramInits, settingsFixtures, settingsInits) = defFuncSig env fsig
 
         val env = extendEnvironment env paramFixtures
-        val (body, hoisted) = defBlock env body
+        val (block, hoisted) = defBlock env block
     in 
         (settingsFixtures, settingsInits, 
          Ast.Func {name = name,
                    fsig = fsig,
-                   body = body,
-                   fixtures = SOME (paramFixtures@hoisted),
-                   defaults = paramInits})
+                   block = block,
+                   param = (paramFixtures@hoisted,paramInits)})
     end
 
 (*
@@ -982,7 +981,7 @@ and defFunc (env:ENV) (func:Ast.FUNC)
 and defFuncDefn (env:ENV) (f:Ast.FUNC_DEFN) 
     : (Ast.FIXTURES * Ast.FUNC_DEFN) = 
     case (#func f) of
-        Ast.Func { name, fsig, body, ... } =>
+        Ast.Func { name, fsig, block, ... } =>
         let
             val newNsExpr = defExpr env (#ns f)
             val qualNs = resolveExprToNamespace env newNsExpr
@@ -1275,14 +1274,14 @@ and defStmt (env:ENV)
                   hoisted )
             end
             
-        fun reconstructCatch { bindings, fixtures, body, ty } =
+        fun reconstructCatch { bindings, fixtures, block, ty } =
             let 
                 val (f0,i0) = defBindings env Ast.Var (Ast.Internal "") bindings
                 val env = extendEnvironment env f0
-                val (body,fixtures) = defBlock env body
+                val (block,fixtures) = defBlock env block
             in                     
                 { bindings = bindings,   (* FIXME: what about inits *)
-                  body = body,
+                  block = block,
                   fixtures = SOME f0,
                   ty=ty }
             end            
@@ -1333,10 +1332,11 @@ and defStmt (env:ENV)
 
         fun reconstructClassBlock {ns, ident, block, name, extends, fixtures } =
             let
-                val Ast.Block { pragmas, defns, fixtures, inits, stmts } = block
+                val _ = trace ["reconstructing class block for ", ident]
+                val Ast.Block { pragmas, defns, head, body } = block
 
                 (* filter out instance initializers *)
-                val (_,stmts) = List.partition isInstanceInit stmts  
+                val (_,stmts) = List.partition isInstanceInit body 
 
                 val namespace = resolveExprToNamespace env ns
                 val name = {ns=namespace, id=ident}
@@ -1349,9 +1349,8 @@ and defStmt (env:ENV)
                 val env = extendEnvironment env classFixtures
                 val block = defRegionalBlock env (Ast.Block {pragmas=pragmas,
                                                              defns=defns,
-                                                             fixtures=fixtures,
-                                                             inits=inits,
-                                                             stmts=stmts})
+                                                             head=head,
+                                                             body=body})
 
                 (* FIXME: remove curentClassName *)
                 val _ = (currentClassName := {ns=Ast.Intrinsic, id=""})
@@ -1422,9 +1421,8 @@ and defStmt (env:ENV)
             in
                 (Ast.BlockStmt (Ast.Block {pragmas=[],
                                            defns=[],
-                                           fixtures=SOME fxtrs,
-                                           inits=SOME inits,
-                                           stmts=[stmt]}), hoisted)
+                                           head=SOME (fxtrs,inits),
+                                           body=[stmt]}), hoisted)
             end
             
           | Ast.SuperStmt es => 
@@ -1461,18 +1459,18 @@ and defStmt (env:ENV)
                            body = body }, hoisted)
             end
         
-          | Ast.TryStmt { body, catches, finally } => 
+          | Ast.TryStmt { block, catches, finally } => 
             let
-                val (body,hoisted) = defBlock env body
+                val (block,hoisted) = defBlock env block
             in
-                (Ast.TryStmt {body = body,
+                (Ast.TryStmt {block = block,
                               catches = map reconstructCatch catches,
                               finally = case finally of 
                                         NONE => 
                                         NONE
                                       | SOME b =>
-                                        let val (body,hoisted) = defBlock env b
-                                        in SOME body end }, hoisted)
+                                        let val (block,hoisted) = defBlock env b
+                                        in SOME block end }, hoisted)
             end
         
           | Ast.SwitchStmt { cond, cases } => 
@@ -1620,32 +1618,31 @@ and defBlock (env:ENV)
              (b:Ast.BLOCK) 
     : (Ast.BLOCK * Ast.FIXTURES) =
     case b of
-        Ast.Block { pragmas, defns, stmts, inits,... } => 
+        Ast.Block { pragmas, defns, body,... } => 
         let 
             val env = defPragmas env pragmas
             val (unhoisted_defn_fxtrs,hoisted_defn_fxtrs,inits) = defDefns env [] [] [] defns
-            val env = updateEnvironment env unhoisted_defn_fxtrs
-            val (stmts,hoisted_stmt_fxtrs) = defStmts env stmts
-            val hoisted = hoisted_defn_fxtrs@hoisted_stmt_fxtrs
+            val env = updateEnvironment env (unhoisted_defn_fxtrs@hoisted_defn_fxtrs) (* so stmts can see them *)
+            val (body,hoisted_body_fxtrs) = defStmts env body
+            val hoisted = hoisted_defn_fxtrs@hoisted_body_fxtrs
         in
             (Ast.Block { pragmas = pragmas,
                          defns = [],  (* clear definitions, we are done with them *)
-                         stmts = stmts,
-                         fixtures = SOME unhoisted_defn_fxtrs,
-                         inits= SOME inits },
+                         body = body,
+                         head = SOME (unhoisted_defn_fxtrs,inits) },
              hoisted)
         end
 
 and defRegionalBlock (env:ENV) (blk:Ast.BLOCK)
     : Ast.BLOCK =
         let
-            val (Ast.Block {defns,stmts,fixtures,pragmas,inits},hoisted) = defBlock env blk
+            val (Ast.Block {defns,body,head=head,pragmas},hoisted) = defBlock env blk
+            val (fixtures,inits) = valOf head
         in
             Ast.Block {pragmas=pragmas,
                        defns=defns,
-                       stmts=stmts,
-                       inits=inits,
-                       fixtures=SOME (hoisted@(valOf fixtures))}
+                       body=body,
+                       head=(SOME ((hoisted @ fixtures),inits))}
         end
 
 
@@ -1664,10 +1661,10 @@ and defPackage (env:ENV)
                (package:Ast.PACKAGE) 
     : (Ast.PACKAGE * Ast.FIXTURES) =
         let
-            val (body,hoisted) = defBlock env (#body package)
+            val (block,hoisted) = defBlock env (#block package)
         in
             ({ name = (#name package),
-              body = body }, hoisted)
+              block = block }, hoisted)
         end
 
 
@@ -1690,8 +1687,8 @@ and defProgram (prog:Ast.PROGRAM)
                openNamespaces = [[Ast.Internal "", Ast.Public ""]],
                numericMode = defaultNumericMode, temp_count = ref 0 }]
         val (packages,hoisted_pkg) = ListPair.unzip (map (defPackage topEnv) (#packages prog))
-        val (body,hoisted_gbl) = defBlock topEnv (#body prog)
+        val (block,hoisted_gbl) = defBlock topEnv (#block prog)
     in
-        {packages=packages,body=body,fixtures=SOME ((List.concat hoisted_pkg)@hoisted_gbl)}
+        {packages=packages,block=block,fixtures=SOME ((List.concat hoisted_pkg)@hoisted_gbl)}
     end
 end

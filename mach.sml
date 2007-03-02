@@ -286,9 +286,8 @@ val (objectType:TYPE) = Ast.ObjectType []
 
 val (emptyBlock:Ast.BLOCK) = Ast.Block { pragmas = [],
                                          defns = [],
-                                         stmts = [],
-                                         fixtures = NONE,
-                                         inits = NONE }
+                                         body = [],
+                                         head= NONE }
 
 val (globalObject:OBJ) = newObj intrinsicObjectBaseTag Null NONE
 

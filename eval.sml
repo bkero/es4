@@ -902,13 +902,14 @@ and invokeFuncClosure (this:Mach.OBJ)
                     val p = length b
                     val d = 0  (* FIXME: get this from the parser/definer, length (List.filter hasDefault params) *)
                     val a = length args
+                    val (fixtures,inits) = #param f
                 in
-                    allocScopeFixtures varScope (valOf (#fixtures f));
+                    allocScopeFixtures varScope fixtures;
                     (* FIXME: handle arg-list length mismatch correctly. *)
                     initThis thisVal;
 
                     (* List.app initArg (List.rev args); *)
-                    evalScopeInits varScope (#defaults f);
+                    evalScopeInits varScope inits;
 
                     (* NOTE: is this for the binding of a function expression to its optional
                        identifier? If so, we need to extend the scope chain before extending it
@@ -920,7 +921,7 @@ and invokeFuncClosure (this:Mach.OBJ)
                     Mach.setValue varObj selfName selfVal;
 
                     checkAllPropertiesInitialized varObj;
-                    evalBlock varScope (#body f)
+                    evalBlock varScope (#block f)
                 end
 
 (*
@@ -1229,6 +1230,22 @@ and evalFuncDefnFull (scope:Mach.SCOPE)
     end
 
 (*
+    HEAD
+*)
+
+and evalHead (scope:Mach.SCOPE)
+             (head:Ast.HEAD)
+    : Mach.OBJ =
+        let
+            val obj = Mach.newObj Mach.intrinsicObjectBaseTag Mach.Null NONE
+            val (fixtures,inits) = head
+        in
+            allocObjFixtures scope obj fixtures;
+            evalObjInits scope obj inits;
+            obj
+        end
+            
+(*
     BLOCK
 *)
 
@@ -1236,21 +1253,14 @@ and evalBlock (scope:Mach.SCOPE)
               (block:Ast.BLOCK) 
     : Mach.VAL = 
     case block of 
-        Ast.Block {defns, stmts, fixtures, inits, ...} => 
+        Ast.Block {head=SOME head, body, ...} => 
         let 
-            val blockObj = Mach.newObj Mach.intrinsicObjectBaseTag Mach.Null NONE
-            val blockScope = extendScope scope blockObj
+            val blockFrame = evalHead scope head
+            val blockScope = extendScope scope blockFrame
         in
-            LogErr.trace ["initializing block scope"];
-            allocScopeFixtures blockScope (valOf fixtures);
-            LogErr.trace ["evaluating block scope statements"];
-            let 
-                val v = evalStmts blockScope stmts 
-            in 
-                LogErr.trace ["exiting block"];
-                v
-            end
+            evalStmts blockScope body
         end
+      | _ => LogErr.internalError ["in evalBlock"]
 
 
 
@@ -1421,7 +1431,7 @@ and evalContinueStmt (scope:Mach.SCOPE)
 and evalPackage (scope:Mach.SCOPE) 
                 (package:Ast.PACKAGE) 
     : Mach.VAL = 
-    evalBlock scope (#body package)
+    evalBlock scope (#block package)
 
 
 and evalProgram (prog:Ast.PROGRAM) 
@@ -1429,6 +1439,6 @@ and evalProgram (prog:Ast.PROGRAM)
     (Mach.populateIntrinsics Mach.globalObject;
      allocScopeFixtures Mach.globalScope (valOf (#fixtures prog));
      map (evalPackage Mach.globalScope) (#packages prog);
-     evalBlock Mach.globalScope (#body prog))
+     evalBlock Mach.globalScope (#block prog))
 
 end

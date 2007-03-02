@@ -83,4 +83,8 @@ fun unimplError ss =
     (error ("unimplError " :: ss); 
      raise UnimplError)
 
+fun internalError ss = 
+    (error ("internalError " :: ss); 
+     raise UnimplError)
+
 end

@@ -164,9 +164,8 @@ datatype PRAGMA =
          Func of 
            { name: FUNC_NAME,
              fsig: FUNC_SIG,
-             fixtures: FIXTURES option,
-             defaults: INITS,
-             body: BLOCK }
+             block: BLOCK,
+             param: HEAD }
 
      and DEFN =
          ClassDefn of CLASS_DEFN
@@ -243,7 +242,7 @@ datatype PRAGMA =
            { ns: EXPR,
              ident: IDENT,
              name: NAME option,  (* set by the definer *)
-             extends: NAME option,
+             extends: NAME option,           (* TODO: maybe get these from the class fixture *)
              fixtures: FIXTURES option,
              block: BLOCK }
        | PackageBlock of
@@ -279,12 +278,12 @@ datatype PRAGMA =
              ty: TYPE_EXPR,
              body: STMT }
        | TryStmt of 
-           { body: BLOCK,
+           { block: BLOCK,
              catches: 
                { bindings:BINDINGS,
                  ty: TYPE_EXPR option, 
                  fixtures: FIXTURES option,
-                 body:BLOCK } list,
+                 block:BLOCK } list,
              finally: BLOCK option }
 
        | SwitchStmt of 
@@ -318,13 +317,13 @@ datatype PRAGMA =
              body: EXPR,
              fixtures: FIXTURES option,
              inits: INITS option }
+       | BindingExpr of BINDINGS
        | NewExpr of 
            { obj: EXPR,
              actuals: EXPR list }
        | ObjectRef of { base: EXPR, ident: IDENT_EXPR }
        | LexicalRef of { ident: IDENT_EXPR }
        | SetExpr of (ASSIGNOP * EXPR * EXPR)
-       | BindingExpr of BINDINGS
        | ListExpr of EXPR list
        | InitExpr of (bool * bool * INITS)
        | SliceExpr of (EXPR * EXPR * EXPR)
@@ -398,8 +397,7 @@ datatype PRAGMA =
            isFinal: bool }
        | ValFixture of 
            { ty: TYPE_EXPR,
-             readOnly: bool
-           }
+             readOnly: bool }
        | VirtualValFixture of 
            { ty: TYPE_EXPR, 
              getter: FUNC_DEFN option,
@@ -408,6 +406,9 @@ datatype PRAGMA =
 withtype 
 
          BINDINGS = (BINDING list * INIT_STEP list)
+     and FIXTURES = (FIXTURE_NAME * FIXTURE) list
+     and INITS = (FIXTURE_NAME * EXPR) list
+     and HEAD = (FIXTURES * INITS)
 
      and FIELD =
            { kind: VAR_DEFN_TAG,
@@ -452,9 +453,6 @@ withtype
              prototype : bool,
              bindings : BINDINGS }
 
-     and FIXTURES = (FIXTURE_NAME * FIXTURE) list
-     and INITS    = (FIXTURE_NAME * EXPR) list
-
      and NAMESPACE_DEFN = 
            { ident: IDENT,
              ns: EXPR,
@@ -469,7 +467,9 @@ withtype
              params: IDENT list,
              extends: IDENT_EXPR option,
              implements: IDENT_EXPR list,
-             body: BLOCK }
+             block: BLOCK,
+             classDefns: DEFN list,
+             instanceDefns: DEFN list }
 
      and INTERFACE_DEFN =
            { ident: IDENT,
@@ -477,7 +477,7 @@ withtype
              nonnullable: bool,
              params: IDENT list,
              extends: IDENT_EXPR list,
-             body: BLOCK }
+             block: BLOCK }
          
      and TYPE_DEFN =
            { ident: IDENT,
@@ -501,20 +501,19 @@ withtype
      and DIRECTIVES = 
            { pragmas: PRAGMA list,
              defns: DEFN list,
-             stmts: STMT list,
-             fixtures: FIXTURES option,
-             inits: INITS option }
+             head: HEAD option,
+             body: STMT list }
 
      and CASE =
            { label: EXPR option,
              inits: INITS option, 
-             body: BLOCK }
+             body: BLOCK }   (* FIXME: this will cause hoisting problems for lets *)
 
      and TYPE_CASE =
            { ty : TYPE_EXPR option,
              bindings : BINDINGS,
              inits: INITS option, 
-             body : BLOCK }
+             body: BLOCK }
 
      and FUNC_NAME =
            { kind : FUNC_NAME_KIND, 
@@ -522,11 +521,11 @@ withtype
 
 type PACKAGE =
            { name: USTRING,
-             body: BLOCK }
+             block: BLOCK }
 
 type PROGRAM =
            { packages: PACKAGE list,
              fixtures: FIXTURES option,
-             body : BLOCK }
+             block: BLOCK }
 
 end
