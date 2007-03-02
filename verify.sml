@@ -175,7 +175,7 @@ fun substTypeExpr (s:(IDENT*TYPE_EXPR) list) (t:TYPE_EXPR):TYPE_EXPR =
 			fields)
 	  | SpecialType st => SpecialType st
 
-	  | FunctionType { typeParams, params, result, thisType, hasRest, requiredCount } =>
+	  | FunctionType { typeParams, params, result, thisType, hasRest, minArgs } =>
 	    (* Need to uniquify typeParams to avoid capture *)
 	    let val oldNew = map (fn id => (id, gensym id)) typeParams 
 		val nuSub = 
@@ -192,7 +192,7 @@ fun substTypeExpr (s:(IDENT*TYPE_EXPR) list) (t:TYPE_EXPR):TYPE_EXPR =
 			      params = List.map bothSubs params,
 			      result = bothSubs result,      
 			      thisType = Option.map bothSubs thisType,
-			      hasRest=hasRest, requiredCount = requiredCount }
+			      hasRest=hasRest, minArgs = minArgs }
 		end
     end 
 
@@ -285,14 +285,14 @@ and isCompatible (t1:TYPE_EXPR)
 		  result  =result1,
 		  thisType=thisType1,
 		  hasRest =hasRest1,
-	      requiredCount=requiredCount},
+	      minArgs=minArgs},
 	     FunctionType 
 		 {typeParams=typeParams2,
 		  params=params2, 
 		  result=result2, 
 		  thisType=thisType2,
 		  hasRest=hasRest2,
-		  requiredCount=requiredCount2}) =>
+		  minArgs=minArgs2}) =>
 	    let
 	    in
 		(* TODO: Assume for now that functions are not polymorphic *)
@@ -337,7 +337,7 @@ fun normalizeType (t:TYPE_EXPR)
     : TYPE_EXPR =
     let in
 	case t of
-	    AppType {base=FunctionType {typeParams,params,result,thisType,hasRest,requiredCount}, 
+	    AppType {base=FunctionType {typeParams,params,result,thisType,hasRest,minArgs}, 
 		     args } =>
 	    let val _ =	assert (length args = length typeParams);
 		val sub = ListPair.zip (typeParams,args)
@@ -347,7 +347,7 @@ fun normalizeType (t:TYPE_EXPR)
 			       params=map (substTypeExpr sub) params,
 			       result=substTypeExpr sub result,
 			       thisType= Option.map (substTypeExpr sub) thisType,
-			       hasRest=hasRest, requiredCount=requiredCount }
+			       hasRest=hasRest, minArgs=minArgs }
 	    end
 	  | _ => t
     end
@@ -402,7 +402,7 @@ fun verifyTypeExpr (ctxt as {env,this,...}:CONTEXT)
     end
 
 and verifyFunctionType  (ctxt:CONTEXT)
-			 {typeParams, params, result, thisType, hasRest, requiredCount} 
+			 {typeParams, params, result, thisType, hasRest, minArgs} 
     : CONTEXT = ctxt
 
 (*
@@ -514,8 +514,8 @@ and verifyExpr (ctxt as {env,this,...}:CONTEXT)
       | LexicalRef { ident } =>
 	verifyIdentExpr ctxt ident
       | ListExpr l => List.last (List.map (verifyExpr ctxt) l)
-      | LetExpr {defs=_, body, fixtures, inits } =>  (* FIXME: inits added *)
-          let val extensions = verifyFixturesOption ctxt fixtures
+      | LetExpr {defs=_, body, head=SOME (fixtures,inits) } =>  (* FIXME: inits added *)
+          let val extensions = verifyFixtures ctxt fixtures
           in
 	    checkForDuplicateExtension extensions;
 	    verifyExpr (withEnvExtn ctxt extensions) body
@@ -592,7 +592,7 @@ and verifyCallExpr  (ctxt as {env,this,...}:CONTEXT)
 	   SpecialType Any =>
 	   (* not much to do *)
 	   anyType
-	 | FunctionType { typeParams, params, result, thisType, hasRest, requiredCount }
+	 | FunctionType { typeParams, params, result, thisType, hasRest, minArgs }
 	   => 
 	   let 
 	   in
@@ -857,7 +857,7 @@ and verifyStmt (ctxt as {this,env,lbls,retTy}:CONTEXT) (stmt:STMT) =
     end
 *)
 
-  | ForStmt { defns=_, fixtures, init, cond, update, contLabel, body } =>
+  | ForStmt { defn=_, fixtures, init, cond, update, contLabel, body } =>
     let val extensions = verifyFixturesOption ctxt fixtures
         val ctxt' = withEnvExtn ctxt extensions
 (* NOT USED 
@@ -869,7 +869,7 @@ and verifyStmt (ctxt as {this,env,lbls,retTy}:CONTEXT) (stmt:STMT) =
 	    end
 *)
     in
-  	verifyExpr ctxt' init;
+  	verifyStmts ctxt' init;
 	checkCompatible (verifyExpr ctxt' cond) boolType;
 	verifyExpr ctxt' update;
 	verifyStmt (withLbls ctxt' (contLabel::lbls)) body
