@@ -1,0 +1,193 @@
+VARIOUS NOTES ON THE REFERENCE IMPLEMENTATION OF ES4
+
+### 01-MAR-2007
+
+TO DO
+
+- partition class and instance definitions during parsing
+- revise function processing as described below
+- add default EXPR list to FUNC
+
+###
+
+Let Statements
+
+The following are equivalent,
+
+    let (x=10) { print(x) }
+    let (x=10) print(x)
+    {let x=10; print(x) }
+
+They translate to,
+
+    LetStmt Block {head=([x],[x=10]),body=[print(x)]}
+
+
+###
+
+Evaluating Functions
+
+function ([x1,x2],[y]=a,z=10) { print('hi') }
+
+head =
+{[x1,x2,y,z,$t1],
+ [$t1=argn<1?throw:arg[0],
+  $t2=argn<2?a:arg[1],
+  $t3=argn<3?10:arg[2]]
+  x1=$t1[0],
+  x2=$t1[1],
+  y=$t2[0],
+  z=$t3]}
+
+block =
+{head=([],[]),
+ body=[print('hi')]}
+
+
+Param heads (f+i) are instantiated with a list of actual
+arguments. Access to those arguments appears in the code
+as using the GetArg[n]
+
+If a required arg is not given, then either an exception
+is thrown or the default value of undefined is used, 
+depending on the kind of function the head belongs to
+
+Steps:
+
+obj = evalHead  env args paramHead
+env = pushScope env obj
+ret = evalBlock env funcBlock
+
+### 28-FEB-2007
+
+In general a definition results in a BINDING and zero or more
+INIT_STEPS.
+
+var x:t
+let (x:t=10) ...
+function (x:t=10) ...
+switch type .... case (x:t) ...
+catch (x:t) ...
+
+Binding {ident="x", ty="t"}
+InitStep ("x","10")
+
+These get translated by the definer into a FIXTURE binding and 
+an INIT binding call FIXTURES and INITS
+
+defBinds  = BINDINGS -> FIXTURES * INITS
+
+BINDINGS      = BINDING list * INIT_STEP list
+BINDING       = BINDING_IDENT * TYPE_EXPR option
+INIT_STEP     = InitStep of (BINDING_IDENT * EXPR)
+			  | AssignStep of (EXPR * EXPR)
+BINDING_IDENT = TempIdent of int
+              | PropIdent of IDENT
+
+
+FIXTURES      = (FIXTURE_NAME * FIXTURE) list
+INITS         = (FIXTURE_NAME * EXPR) list
+FIXTURE_NAME  = TempName of int
+              | PropName of NAME
+
+var [x,y,[z]] = o
+
+$t1 = o		  ; ValFixture, InitStep
+x = $t1[0]    ; ValFixture, InitStep
+y = $t1[1]    ; ValFixture, InitStep
+$t2 = $t1[2]  ; ValFixture, InitStep
+z = $t2[0]    ; ValFixture, InitStep
+
+
+InitStmt INIT_STEPS
+
+[x.y,[q::z]] = o
+
+$t1 = o		  ; ValFixture, InitStep
+x.y = $t1[0]  ; AssignStep
+$t2 = $t1[1]  ; ValFixture, InitStep
+q::z= $t2[0]    ; AssignStep
+
+Results in two temporary fixtures and several
+init steps including InitSteps and AssignSteps
+
+The parser produces a BINDINGS and a local block 
+statement, the definer produces the FIXTURES and 
+INITS
+
+{ f=[$t1,$t2], 
+  i=[$t1=o,$t2=$t1[1]], 
+  s=[x.y=$t1[0],q::z=$t2[0]] }
+
+[x.y,[q::z]] = o
+
+let ($t1=o,$t2=$t1[1]) { x.y=$t1[0], q::z=$t2[0] }
+
+Desugaring a pattern results in a LetStmt and a FIXTURES
+
+ns var [x,y,[z]] = o
+
+ns var x,y,z
+let ($t1=o,$t2=$t1[2]) InitStmt ns static prototype [x=$t1[0], y=$t1[1], z = $t2[0]]
+
+###
+
+23-FEB-2007
+
+
+Refactor Ast.Cls to reflect the various sets of fixtures and 
+initializers involved in creating instances. The AST types
+now look like this:
+
+     and CLS =
+         Cls of
+           { extends: NAME option,
+             implements: NAME list,
+             classFixtures: FIXTURES,
+             instanceFixtures: FIXTURES,
+             instanceInits: INITS,
+             constructor: CTOR option,
+             classType: TYPE_EXPR,
+             instanceType: TYPE_EXPR }
+
+     and CTOR =
+         Ctor of
+           { settings: INITS,
+             func: FUNC }
+
+     and FUNC =
+         Func of 
+           { name: FUNC_NAME,
+             fsig: FUNC_SIG,                   
+             fixtures: FIXTURES option,
+             inits: STMT list,
+             body: BLOCK }
+
+Instatiation goes like this:
+
+    val scope = [globalObj,classObj]
+    val thisObj = newObj 
+    evalFixtures scope thisObj instanceFixtures
+    evalInits scope thisObj instanceInits
+
+    val paramsObj = newObj
+    val paramsFixtures = (#fixtures (#func (#constructor cls)))
+	evalFixtures scope paramsObj paramsFixtures
+    val paramsInits = (#inits (#func (#constructor class)))
+    evalInits scope paramsObj paramsInits
+
+	val settingsInits = (#settings (#constructor cls))
+    evalInits paramsObj::scope thisObj settingsInits
+
+	val ctorBody = (#body (#func (#constructor cls)))
+    evalBlock paramsObj::(thisObj::scope) thisObj ctorBody
+
+where,
+
+	evalFixtures - allocates fixed properties on an object
+	evalInits - sets the value of some properties on an object
+	evalBlock - evaluates a block with the implicit 'this' set to an object
+
+Changes to eval.sml are pending
+
+PART 2
