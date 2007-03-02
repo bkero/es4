@@ -788,7 +788,6 @@ and invokeFuncClosure (this:Mach.OBJ)
                      * We allocate P fixtures, assign the args to [0, P-A),
                      * and assign the defaults for [P-A, P).
                      *)
-(*
 (****
                     fun hasDefault (Ast.Binding { init = NONE, ... }) = false
                       | hasDefault (Ast.Binding { init = _, ... }) = true
@@ -993,7 +992,7 @@ and initializeAndConstruct (classClosure:Mach.CLS_CLOSURE)
                                            { fsig = Ast.FunctionSignature 
                                                         { params, 
                                                           ... }, 
-                                             body, 
+                                             block, 
                                              ...}}) => 
                     let 
                         val (varObj:Mach.OBJ) = Mach.newSimpleObj NONE
@@ -1009,7 +1008,7 @@ and initializeAndConstruct (classClosure:Mach.CLS_CLOSURE)
                         (* FIXME: evaluate superArgs from super(...) call. *)
                         initializeAndConstructSuper ([(*superArgs*)]);                        
                         LogErr.trace ["entering constructo for ", LogErr.name name];
-                        evalBlock ctorScope body;
+                        evalBlock ctorScope block;
                         ()
                     end
             end
