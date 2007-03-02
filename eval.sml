@@ -747,76 +747,46 @@ and invokeFuncClosure (this:Mach.OBJ)
                       (closure:Mach.FUN_CLOSURE) 
                       (args:Mach.VAL list) 
     : Mach.VAL =
-    case closure of 
-        { func=(Ast.Func f), env, allTypesBound } => 
+    let
+        val { func, env, allTypesBound } = closure
+        val Ast.Func f = func
+        val Ast.FunctionSignature { params, ... } = (#fsig f)
+    in
         if not allTypesBound
         then LogErr.evalError ["invoking function with unbound type variables"]
-        else 
-            case (#fsig f) of 
-                Ast.FunctionSignature { params, ... } => 
-                let
-                    val (varObj:Mach.OBJ) = Mach.newSimpleObj NONE
-                    val (varScope:Mach.SCOPE) = extendScope env varObj
+        else
+            let 
+                val (varObj:Mach.OBJ) = Mach.newSimpleObj NONE
+                val (varScope:Mach.SCOPE) = extendScope env varObj
+                                            
+                (* FIXME: infer a fixture for "this" so that it's properly typed, dontDelete, etc.
+                 * Also this will mean changing to defVar rather than setVar, for 'this'. *)
+                val thisName = { id = "this", ns = Ast.Internal "" }
+                val thisVal = Mach.Object this
+                fun initThis v = Mach.defValue varObj thisName thisVal
+                                 
+                (* FIXME: self-name binding is surely more complex than this! *)
+                val selfName = { id = (#ident (#name f)), ns = Ast.Internal "" }
+                val selfTag = Mach.FunctionTag (#fsig f)
+                val selfVal = Mach.newObject selfTag Mach.Null (SOME (Mach.Function closure))
+            in
+                allocScopeFixtures varScope (valOf (#fixtures f));
+                initThis thisVal;
+                bindArgs env varScope func args;
+                
+                (* NOTE: is this for the binding of a function expression to its optional
+                 * identifier? If so, we need to extend the scope chain before extending it
+                 * with the activation object, and add the self-name binding to that new 
+                 * scope, as in sec 13 ed. 3.
+                 * 
+                 * Changing defValue to setValue for now.
+                 *)
 
-                    fun initArg v = 
-                        let
-                            val Mach.Scope frame = varScope
-                        in
-                            (#temps frame) := v::(!(#temps frame)) 
-                        end
-
-                    (* FIXME: infer a fixture for "this" so that it's properly typed, dontDelete, etc.
-                     * Also this will mean changing to defVar rather than setVar, for 'this'. *)
-                    val thisName = { id = "this", ns = Ast.Internal "" }
-                    val thisVal = Mach.Object this
-                    fun initThis v = Mach.defValue varObj thisName thisVal
-
-                    (* FIXME: self-name binding is surely more complex than this! *)
-                    val selfName = { id = (#ident (#name f)), ns = Ast.Internal "" }
-                    val selfTag = Mach.FunctionTag (#fsig f)
-                    val selfVal = Mach.newObject selfTag Mach.Null (SOME (Mach.Function closure))
-
-                    (* If we have:
-                     * 
-                     * P parameter fixtures
-                     * D parameter defaults (at the end)
-                     * A args 
-                     *
-                     * Then we must have A >= P-D
-                     *
-                     * We allocate P fixtures, assign the args to [0, P-A),
-                     * and assign the defaults for [P-A, P).
-                     *)
-(*
-(****
-                    fun hasDefault (Ast.Binding { init = NONE, ... }) = false
-                      | hasDefault (Ast.Binding { init = _, ... }) = true
-****)
-                    val (b,i) = params
-                    val p = length b
-                    val d = 0  (* FIXME: get this from the parser/definer, length (List.filter hasDefault params) *)
-                    val a = length args
-*)
-                in
-                    allocScopeFixtures varScope (valOf (#fixtures f));
-                    (* FIXME: handle arg-list length mismatch correctly. *)
-                    initThis thisVal;
-
-                    (* List.app initArg (List.rev args); *)
-                    evalScopeInits varScope (#defaults f);
-
-                    (* NOTE: is this for the binding of a function expression to its optional
-                       identifier? If so, we need to extend the scope chain before extending it
-                       with the activation object, and add the self-name binding to that new 
-                       scope, as in sec 13 ed. 3.
-
-                       Changing defValue to setValue for now.
-                    *)
-                    Mach.setValue varObj selfName selfVal;
-
-                    checkAllPropertiesInitialized varObj;
-                    evalBlock varScope (#body f)
-                end
+                Mach.setValue varObj selfName selfVal;                
+                checkAllPropertiesInitialized varObj;
+                evalBlock varScope (#body f)
+            end
+    end
 
 (*
     
@@ -888,19 +858,43 @@ On the whiteboard today (feb 22):
 
 *)
 
-and bindArgs (argScope:Mach.SCOPE)
-             (bindings:Ast.BINDING list)
+and bindArgs (outerScope:Mach.SCOPE)
+             (argScope:Mach.SCOPE)
+             (func:Ast.FUNC)
              (args:Mach.VAL list)
     : unit =
+    (* If we have:
+     * 
+     * P parameter fixtures
+     * D parameter defaults (at the end)
+     * A args 
+     *
+     * Then we must have A + D >= P, and we let
+     * I = (A+D) - P, the number of ignored defaults.
+     *
+     * We assign the args to [0, A),
+     * and assign the last D-I defaults for [A, P-A).
+     *)
     let
+        val Ast.Func f = func
+        val (paramFixtures:Ast.FIXTURES) = valOf (#fixtures f)
+        val (paramDefaults:Ast.INITS) = (#defaults f)
+        val p = length paramFixtures
+        val d = length paramDefaults
+        val a = length args
+        val i = (a+d)-p
         val argObj = getScopeObj argScope
         val argTemps = getScopeTemps argScope
-        fun bindArg (arg, Ast.Binding {ident, ...}) = 
-            case ident of 
-                Ast.TempIdent ti => Mach.defTemp argTemps ti arg
-              | Ast.PropIdent pi => Mach.defValue argObj {ns=Ast.Internal "", id=pi} arg
+        fun bindArg (arg:Mach.VAL, (fname:Ast.FIXTURE_NAME, fixture:Ast.FIXTURE)) = 
+            case fname of 
+                Ast.TempName tn => Mach.defTemp argTemps tn arg
+              | Ast.PropName pn => Mach.defValue argObj pn arg
     in
-        List.app bindArg (ListPair.zip (args, bindings))
+        if a + d < p
+        then LogErr.evalError ["not enough args to function"]
+        else 
+            (List.app bindArg (ListPair.zip (args, (List.take (paramFixtures, a))));
+             evalInits outerScope argObj argTemps (List.drop (paramDefaults, i)))
     end
 
 
@@ -986,22 +980,15 @@ and initializeAndConstruct (classClosure:Mach.CLS_CLOSURE)
                 evalObjInits classScope instanceObj instanceInits;
                 case constructor of 
                     NONE => initializeAndConstructSuper []
-                  | SOME (Ast.Ctor 
-                              { settings, 
-                                func = Ast.Func 
-                                           { fsig = Ast.FunctionSignature 
-                                                        { params, 
-                                                          ... }, 
-                                             body, 
-                                             ...}}) => 
+                  | SOME (Ast.Ctor { settings, func }) => 
                     let 
+                        val Ast.Func { body, ... } = func
                         val (varObj:Mach.OBJ) = Mach.newSimpleObj NONE
                         val (varScope:Mach.SCOPE) = extendScope classScope varObj
                         val (ctorScope:Mach.SCOPE) = extendScope varScope instanceObj
-                        val ((paramBindings:Ast.BINDING list), _) = params
                     in
                         LogErr.trace ["binding constructor args of ", LogErr.name name];
-                        bindArgs varScope paramBindings args;
+                        bindArgs classScope varScope func args;
                         LogErr.trace ["evaluating settings for ", LogErr.name name];
                         evalObjInits varScope instanceObj settings;
                         LogErr.trace ["initializing and constructing superclass of ", LogErr.name name];
