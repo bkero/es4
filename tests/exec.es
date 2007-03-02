@@ -1,4 +1,8 @@
-intrinsic::print('hi')
+[x] = 10
+x=20
+
+//ns var y
+//let ($t1=10) {ns::y=$t1[0]}
 
 
 /*
