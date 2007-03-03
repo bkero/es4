@@ -1,4 +1,4 @@
-VARIOUS NOTES ON THE REFERENCE IMPLEMENTATION OF ES4
+VARIOUS NOTES ON THE ES4 RIMPL
 
 ### 01-MAR-2007
 
@@ -10,25 +10,22 @@ TO DO
 
 ###
 
-Let Statements
+LET STATEMENTS
 
 The following are equivalent,
 
     let (x=10) { print(x) }
-    let (x=10) print(x)
     {let x=10; print(x) }
 
 They translate to,
 
     LetStmt Block {head=([x],[x=10]),body=[print(x)]}
 
-
 ###
 
-Evaluating Functions
+EVALUATING FUNCTIONS
 
 function ([x1,x2],[y]=a,z=10) { print('hi') }
-
 
 defaults = [a,10]
 
@@ -95,7 +92,6 @@ x = $t1[0]    ; ValFixture, InitStep
 y = $t1[1]    ; ValFixture, InitStep
 $t2 = $t1[2]  ; ValFixture, InitStep
 z = $t2[0]    ; ValFixture, InitStep
-
 
 InitStmt INIT_STEPS
 
@@ -188,4 +184,3 @@ where,
 
 Changes to eval.sml are pending
 
-PART 2
