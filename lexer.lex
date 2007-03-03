@@ -256,6 +256,7 @@ regexpFlags           = [a-zA-Z]*;
 <INITIAL>"set"             => (Set);
 <INITIAL>"static"          => (Static);
 <INITIAL>"type"            => (Type);
+<INITIAL>"undefined"       => (Undefined);
 <INITIAL>"xml"             => (Token.Xml);
 <INITIAL>"yield"           => (Yield);
 

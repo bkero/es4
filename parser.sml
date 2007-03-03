@@ -423,6 +423,7 @@ and identifier ts =
       | Set :: tr => (tr,"set")
       | Static :: tr => (tr,"static")
       | Type :: tr => (tr,"type")
+      | Undefined :: tr => (tr,"undefined")
       | Xml :: tr => (tr,"xml")
       | Yield :: tr => (tr,"yield")
       | _ => error(["expecting 'identifier' before '",tokenname(hd ts),"'"])
@@ -3236,6 +3237,8 @@ and typedPattern (ts,a,b) =
 
 (*
     NullableTypeExpression    
+        null
+        undefined
         TypeExpression
         TypeExpression  ?
         TypeExpression  !
@@ -3250,14 +3253,20 @@ and typedPattern (ts,a,b) =
 
 and nullableTypeExpression (ts) : (token list * Ast.TYPE_EXPR) =
     let val _ = trace([">> nullableTypeExpression with next=",tokenname(hd ts)])
-           val (ts1,nd1) = typeExpression ts
-    in case ts1 of
-        Not :: _ =>
-            (tl ts1,Ast.NullableType {expr=nd1,nullable=false})
-      | QuestionMark :: _ =>
-            (tl ts1,Ast.NullableType {expr=nd1,nullable=true}) 
+    in case ts of
+        Null :: _ => (tl ts, Ast.SpecialType Ast.Null)
+      | Undefined :: _ => (tl ts, Ast.SpecialType Ast.Undefined)
       | _ =>
-            (ts1,nd1) 
+            let
+                val (ts1,nd1) = typeExpression ts
+            in case ts1 of
+                Not :: _ =>
+                    (tl ts1,Ast.NullableType {expr=nd1,nullable=false})
+              | QuestionMark :: _ =>
+                    (tl ts1,Ast.NullableType {expr=nd1,nullable=true}) 
+              | _ =>
+                    (ts1,nd1) 
+            end
     end
 
 and typeExpression (ts) : (token list * Ast.TYPE_EXPR) =
@@ -3470,24 +3479,25 @@ and elementTypeList (ts) : token list * Ast.TYPE_EXPR list =
         TypeExpressionList  ,  TypeExpression
 *)
 
-and typeExpressionList (ts): (token list * Ast.TYPE_EXPR list) = 
+and typeExpressionList (ts)
+    : (token list * Ast.TYPE_EXPR list) = 
     let
-        fun typeExpressionList' (ts,nd) =
+        fun typeExpressionList' (ts) =
             let
             in case ts of
                 Comma :: _ =>
                     let
-                        val (ts1,nd1) = nullableTypeExpression(tl ts)
-                           val (ts2,nd2) = typeExpressionList'(ts1,nd1)
-                      in
-                         (ts2, nd1 :: nd2)
-                      end
-              | _ => (ts, nd :: [])
+                        val (ts1,nd1) = nullableTypeExpression (tl ts)
+                        val (ts2,nd2) = typeExpressionList' ts1
+                    in
+                        (ts2,nd1::nd2)
+                    end
+              | _ => (ts,[])
             end
-        val (ts1,nd1) = nullableTypeExpression(ts)
-        val (ts2,nd2) = typeExpressionList'(ts1,nd1)
+        val (ts1,nd1) = nullableTypeExpression ts
+        val (ts2,nd2) = typeExpressionList' ts1
     in
-        (ts2,nd2)
+        (ts2,nd1::nd2)
     end
 
 (* STATEMENTS *)

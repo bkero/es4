@@ -139,6 +139,7 @@ datatype token =
     | Set
     | Static
     | Type
+    | Undefined
     | Xml
     | Yield
 
@@ -366,10 +367,11 @@ fun tokenname t =
       | Rounding => "rounding"
       | Standard => "standard"
       | Strict => "strict"
-      | UInt => "uint"
       | Set => "set"
       | Static => "static"
       | Type => "type"
+      | UInt => "uint"
+      | Undefined => "undefined"
       | Xml => "xml"
       | Yield => "yield"
 
