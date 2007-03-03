@@ -295,6 +295,9 @@ fun evalExpr (scope:Mach.SCOPE)
         (Mach.defTemp (getScopeTemps scope) n (evalExpr scope e);
          Mach.Undef)
         
+      | Ast.InitExpr _ => 
+        Mach.Undef
+
       | _ => LogErr.unimplError ["unhandled expression type"]
 
 
@@ -715,6 +718,7 @@ and evalStmt (scope:Mach.SCOPE)
       | Ast.LabeledStmt (lab, s) => evalLabelStmt scope lab s
       | Ast.BlockStmt b => evalBlock scope b
       | Ast.ClassBlock c => evalClassBlock scope c
+      | Ast.LetStmt b => evalBlock scope b
       | Ast.EmptyStmt => Mach.Undef
       | _ => LogErr.unimplError ["unimplemented statement type"]
 
@@ -1014,118 +1018,21 @@ and constructClassInstance (classObj:Mach.OBJ)
                            (classClosure:Mach.CLS_CLOSURE) 
                            (args:Mach.VAL list) 
     : Mach.VAL =
-    Mach.Undef
-(*
-        let
-            val {cls, allTypesBound, env} = classClosure
-        in
-            if not allTypesBound
-            then LogErr.evalError ["constructing instance of class with unbound type variables"]
-            else
-                let
-                    val classScope = extendScope env classObj
+    let
+        val {cls = Ast.Cls { name, instanceFixtures, ...}, env, ...} = classClosure
 
-                    val Ast.Cls { name, 
-                                  extends,
-                                  instanceFixtures, 
-                                  instanceInits, 
-                                  constructor, 
-                                  ... } = cls
-                    val tag = Mach.ClassTag name
-                    val proto = if Mach.hasOwnValue classObj Mach.publicPrototypeName
-                                then Mach.getValue (classObj, Mach.publicPrototypeName)
-                                else Mach.Null
-
-                    val constructBase = 
-                    val (baseObj, baseCls) = case extends of 
-                                      NONE => NONE
-                                      SOME baseClassName => 
-                                      case findVal scope (multinameOf baseClassName) of 
-                                          
-
-                    val (instanceObj:Mach.OBJ) = Mach.newObj tag proto NONE
-                    val (instanceScope:Mach.SCOPE) = extendScope classScope thisObj
-                    val (instanceVal:Mach.VAL) = Mach.Object thisObj
-
-                    (* FIXME: infer a fixture for "this" so that it's properly typed, dontDelete, etc.
-                     * Also this will mean changing to defVar rather than setVar, for 'this'. *)
-                    val thisName = { id = "this", ns = Ast.Internal "" }                                   
-
-                in
-                    allocObjFixtures classScope instanceObj instanceFixtures;
-                    evalObjInits classScope instanceObj instanceInits;
-                    case constructor of 
-                        NONE => (checkAllPropertiesInitialized instanceObj; 
-                                 instanceVal)  
-(* TODO: run base class inits *)
-
- FIXME: needs resuscitation
-                      | SOME ({native, ns,
-                               func = Ast.Func 
-                                          { fsig=Ast.FunctionSignature { params, inits, ... }, 
-                                            body, paramFixtures, bodyFixtures, ... }, ... }) => 
-                        let 
-                            val ns = needNamespace (evalExpr env ns)
-                            val (varObj:Mach.OBJ) = Mach.newSimpleObj NONE
-                            val (varScope:Mach.SCOPE) = extendScope env varObj
-                            fun bindArg (a, b) = evalVarBinding varScope (SOME a) (Ast.Internal "") b
-                            fun initInstanceVar (vd:Ast.VAR_DEFN) = 
-                                processVarDefn env vd (Mach.defValue obj)
-
-                        in
-                            allocScopeFixtures varScope (valOf paramFixtures);
-                            allocScopeFixtures varScope (valOf bodyFixtures);
-                            (* FIXME: is this correct? We also bind this name on the ctor var obj, below. *)
-                            Mach.defValue obj n (Mach.Object classObj);
-                            LogErr.trace ["initialializing instance methods of ", LogErr.name n];
-                            List.app (evalFuncDefnFull env obj) (#instanceMethods definition);
-                            List.app initInstanceVar (#instanceVars definition);
-                            (* FIXME: evaluate instance-var initializers declared in class as well. *)
-
-                            if (native)
-                            then 
-                                (* Native constructors take over here. *)
-                                let 
-                                    val nativeCtor = Native.getNativeMethod n n
-                                    val _ = LogErr.trace ["running native constructor for ", LogErr.name n]
-                                    val result = nativeCtor env obj args
-                                in
-                                    LogErr.trace ["checking native initialization of ", LogErr.name n];
-                                    checkAllPropertiesInitialized obj;
-                                    result
-                                end
-                            else 
-                                (* Otherwise run any initializers and constructor. *)
-                                ((* FIXME: handle arg-list length mismatch correctly. *)
-                                 LogErr.trace ["binding constructor args of ", LogErr.name n];
-                                 List.app bindArg (ListPair.zip (args, params));
-                                 Mach.defValue varObj n (Mach.Object classObj);
-                                 Mach.setValue varObj thisName instance;
-                                 LogErr.trace ["running initializers of ", LogErr.name n];
-                                 (case inits of 
-                                      NONE => ()
-                                    | SOME { b=bindings, i=inits } => 
-                                      let
-                                          val (initVals:Mach.VAL list) = List.map (evalExpr varScope) inits
-                                          fun bindInit (a, b) = evalVarBinding objScope (SOME a) ns b
-                                      in
-                                          List.app bindInit (ListPair.zip (initVals, bindings))
-                                      end);
-                                 LogErr.trace ["checking initialization of ", LogErr.name n];
-                                 checkAllPropertiesInitialized obj; 
-                                 let 
-                                     (* Build a scope containing both the args and the obj. *)
-                                     val _ = LogErr.trace ["running constructor of ", LogErr.name n]
-                                     val (newVarScope:Mach.SCOPE) = extendScope objScope varObj
-                                     val _ = evalBlock newVarScope body 
-                                 in 
-                                     instance
-                                 end)
-                        end
-                    Mach.Object thisObj
-                end
-        end
-*)
+        val (tag:Mach.VAL_TAG) = Mach.ClassTag name
+        val (proto:Mach.VAL) = if Mach.hasOwnValue classObj Mach.publicPrototypeName
+                               then Mach.getValue (classObj, Mach.publicPrototypeName)
+                               else Mach.Null
+                                    
+        val (classScope:Mach.SCOPE) = extendScope env classObj                                 
+        val (instanceObj:Mach.OBJ) = Mach.newObj tag proto NONE
+    in
+        allocObjFixtures classScope instanceObj instanceFixtures;
+        initializeAndConstruct classClosure classObj classScope args instanceObj;
+        Mach.Object instanceObj
+    end
 
 (* 
  * This is the dynamic phase of function definition; it assumes that the 
