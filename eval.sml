@@ -205,9 +205,10 @@ fun allocFixtures (scope:Mach.SCOPE)
         end
 
 fun extendScope (p:Mach.SCOPE) 
-                (ob:Mach.OBJ) 
+                (ob:Mach.OBJ)
+                (isVarObject:bool) 
     : Mach.SCOPE = 
-    Mach.Scope { parent=(SOME p), object=ob, temps=ref [] }
+    Mach.Scope { parent=(SOME p), object=ob, temps=ref [], isVarObject=isVarObject }
 
     
 fun allocObjFixtures (scope:Mach.SCOPE) 
@@ -295,8 +296,8 @@ fun evalExpr (scope:Mach.SCOPE)
         (Mach.defTemp (getScopeTemps scope) n (evalExpr scope e);
          Mach.Undef)
         
-      | Ast.InitExpr inits => 
-        (evalScopeInits scope inits;
+      | Ast.InitExpr (target,inits) => 
+        (evalScopeInits scope target inits;
          Mach.Undef)
 
       | _ => LogErr.unimplError ["unhandled expression type"]
@@ -620,7 +621,7 @@ and evalLetExpr (scope:Mach.SCOPE)
                 (body:Ast.EXPR) 
     : Mach.VAL = 
     let 
-        val letScope = evalHead scope head
+        val letScope = evalHead scope head false
     in
         evalExpr letScope body
     end
@@ -764,13 +765,13 @@ and invokeFuncClosure (this:Mach.OBJ)
         else
             let 
                 val (varObj:Mach.OBJ) = Mach.newSimpleObj NONE
-                val (varScope:Mach.SCOPE) = extendScope env varObj
+                val (varScope:Mach.SCOPE) = extendScope env varObj true
                                             
                 (* FIXME: infer a fixture for "this" so that it's properly typed, dontDelete, etc.
                  * Also this will mean changing to defVar rather than setVar, for 'this'. *)
                 val thisName = { id = "this", ns = Ast.Internal "" }
                 val thisVal = Mach.Object this
-                fun initThis v = Mach.defValue varObj thisName thisVal
+                fun initThis v = Mach.setValue varObj thisName thisVal
                                  
                 (* FIXME: self-name binding is surely more complex than this! *)
                 val selfName = { id = (#ident name), ns = Ast.Internal "" }
@@ -780,7 +781,7 @@ and invokeFuncClosure (this:Mach.OBJ)
                 allocScopeFixtures varScope fixtures;
                 initThis thisVal;
                 bindArgs env varScope func args;
-                evalScopeInits varScope inits;
+                evalScopeInits varScope Ast.Local inits;
 
                 (* NOTE: is this for the binding of a function expression to its optional
                  * identifier? If so, we need to extend the scope chain before extending it
@@ -942,12 +943,24 @@ and evalObjInits (scope:Mach.SCOPE)
         else ()
     end
 
-and evalScopeInits (scope:Mach.SCOPE)                   
+and evalScopeInits (scope:Mach.SCOPE)
+                   (target:Ast.INIT_TARGET)
                    (inits:Ast.INITS)
     : unit =
-    case scope of
-        Mach.Scope { object, temps, ...} => 
-        evalInits scope object temps inits
+            let
+                fun targetOf (Mach.Scope { object, temps, isVarObject, parent}) =
+                    case (target,parent) of
+                         (Ast.Local,_) => object
+                       | (Ast.Outer,parent) => 
+                                 if isVarObject=true 
+                                    then object
+                                    else targetOf (valOf parent)
+                       | _ => LogErr.unimplError ["unhandled target kind"]
+                val obj = targetOf scope
+            in case scope of
+                Mach.Scope { temps, ...} =>
+                    evalInits scope obj temps inits
+            end
 
 and initializeAndConstruct (classClosure:Mach.CLS_CLOSURE)
                            (classObj:Mach.OBJ)
@@ -995,14 +1008,14 @@ and initializeAndConstruct (classClosure:Mach.CLS_CLOSURE)
                     let 
                         val Ast.Func { block, param=(fixtures,inits), ... } = func
                         val (varObj:Mach.OBJ) = Mach.newSimpleObj NONE
-                        val (varScope:Mach.SCOPE) = extendScope classScope varObj
-                        val (ctorScope:Mach.SCOPE) = extendScope varScope instanceObj
+                        val (varScope:Mach.SCOPE) = extendScope classScope varObj false
+                        val (ctorScope:Mach.SCOPE) = extendScope varScope instanceObj true
                     in
                         allocScopeFixtures varScope fixtures;                
                         LogErr.trace ["binding constructor args of ", LogErr.name name];
                         bindArgs classScope varScope func args;
                         LogErr.trace ["evaluating inits of ", LogErr.name name];
-                        evalScopeInits varScope inits;
+                        evalScopeInits varScope Ast.Local inits;
                         LogErr.trace ["evaluating settings for ", LogErr.name name];
                         evalObjInits varScope instanceObj settings;
                         LogErr.trace ["initializing and constructing superclass of ", LogErr.name name];
@@ -1027,7 +1040,7 @@ and constructClassInstance (classObj:Mach.OBJ)
                                then Mach.getValue (classObj, Mach.publicPrototypeName)
                                else Mach.Null
                                     
-        val (classScope:Mach.SCOPE) = extendScope env classObj                                 
+        val (classScope:Mach.SCOPE) = extendScope env classObj false
         val (instanceObj:Mach.OBJ) = Mach.newObj tag proto NONE
     in
         allocObjFixtures classScope instanceObj instanceFixtures;
@@ -1072,11 +1085,12 @@ and evalFuncDefnFull (scope:Mach.SCOPE)
 
 and evalHead (scope:Mach.SCOPE)
              (head:Ast.HEAD)
+             (isVarObject:bool)
     : Mach.SCOPE =
         let
             val (fixtures,inits) = head
             val obj = Mach.newObj Mach.intrinsicObjectBaseTag Mach.Null NONE
-            val scope = extendScope scope obj
+            val scope = extendScope scope obj isVarObject
             val temps = getScopeTemps scope
         in
             allocFixtures scope obj temps fixtures;
@@ -1094,7 +1108,7 @@ and evalBlock (scope:Mach.SCOPE)
     case block of 
         Ast.Block {head=SOME head, body, ...} => 
         let 
-            val blockScope = evalHead scope head
+            val blockScope = evalHead scope head false
         in
             evalStmts blockScope body
         end
@@ -1181,7 +1195,7 @@ and evalClassBlock (scope:Mach.SCOPE)
         val _ = initClassPrototype scope classObj extends
 
         (* extend the scope chain with the class object *)
-        val classScope = extendScope scope classObj
+        val classScope = extendScope scope classObj true
 
     in
         evalBlock classScope block

@@ -55,7 +55,8 @@ datatype VAL = Object of OBJ
      and SCOPE = 
          Scope of { object: OBJ,
                     parent: SCOPE option,
-                    temps: TEMPS }
+                    temps: TEMPS,
+                    isVarObject: bool }
 
      and TEMP_STATE = UninitTemp
                     | ValTemp of VAL
@@ -321,7 +322,8 @@ val (globalObject:OBJ) = newObj intrinsicObjectBaseTag Null NONE
 val (globalScope:SCOPE) = 
     Scope { object = globalObject,
             parent = NONE,
-            temps = ref [] }
+            temps = ref [],
+            isVarObject = true }
 
 
 val nan = Real.posInf / Real.posInf
@@ -374,7 +376,7 @@ fun defValue (base:OBJ)
     case base of 
         Obj { props, ... } => 
         if not (hasProp props name)
-        then LogErr.machError ["defValue on missing property"]
+        then LogErr.machError ["defValue on missing property:",LogErr.name name]
         else (* Here we have relaxed rules: you can write to an 
               * uninitialized property or a read-only property. *)
             let 

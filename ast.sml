@@ -211,7 +211,7 @@ datatype PRAGMA =
        | UnionType of TYPE_EXPR list
        | ArrayType of TYPE_EXPR list
        | TypeName of IDENT_EXPR
-       | TypeRef of (TYPE_EXPR * IDENT)  (* used to desugar typed patterns *)
+       | TypeRef of (TYPE_EXPR * IDENT)
        | FunctionType of FUNC_TYPE           
        | ObjectType of FIELD_TYPE list
        | AppType of 
@@ -319,10 +319,15 @@ datatype PRAGMA =
        | LexicalRef of { ident: IDENT_EXPR }
        | SetExpr of (ASSIGNOP * EXPR * EXPR)
        | ListExpr of EXPR list
-       | InitExpr of INITS
+       | InitExpr of (INIT_TARGET * INITS)
        | SliceExpr of (EXPR * EXPR * EXPR)
        | DefTemp of (int * EXPR)
        | GetTemp of int
+
+     and INIT_TARGET = Outer
+                     | Local
+                     | Prototype
+                     | Class
 
      and FIXTURE_NAME = TempName of int
                       | PropName of NAME

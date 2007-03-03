@@ -5204,7 +5204,8 @@ and variableDefinition (ts,ns:Ast.EXPR,prototype,static,b,t) : (token list * Ast
                                                    prototype=false,
                                                    static=false}]
 
-        val stmt = Ast.BlockStmt (Ast.Block {pragmas=[],defns=tempDefns,head=NONE,body=initStmts})
+        val body = case tempDefns of [] => initStmts
+                      | _ => [Ast.BlockStmt (Ast.Block {pragmas=[],defns=tempDefns,head=NONE,body=initStmts})]
 
     in
         (ts2,{pragmas=[],
@@ -5213,7 +5214,7 @@ and variableDefinition (ts,ns:Ast.EXPR,prototype,static,b,t) : (token list * Ast
                                        ns=ns,
                                        prototype=prototype,
                                        static=static}],
-              body=[stmt],
+              body=body,
               head=NONE})
     end
 

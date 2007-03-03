@@ -1238,7 +1238,7 @@ and defStmt (env:ENV)
                 let
                     val newObj =  defExpr env obj
                     val (f1, i1) = ([],[])  (* FIXME defVars env (valOf defn) *)
-                    val env = extendEnvironment env f1
+                    val env = updateEnvironment env f1
                     val (newBody,hoisted) = defStmt env body
                 in
                     ({ obj = newObj,
@@ -1267,7 +1267,7 @@ and defStmt (env:ENV)
         fun reconstructForStmt { defn, init, cond, update, contLabel, body, fixtures } =
             let
                 val f0 : Ast.FIXTURES = []  (* FIXME defVars env defn *)
-                val env = extendEnvironment env f0
+                val env = updateEnvironment env f0
                 val newInit = defExpr env init
                 val newCond = defExpr env cond
                 val newUpdate = defExpr env update
@@ -1383,13 +1383,17 @@ and defStmt (env:ENV)
                 (Ast.ExprStmt (defExpr env es),[])
             end
 
-          | Ast.InitStmt {ns, inits, prototype, static, ...} => 
+          | Ast.InitStmt {ns, inits, prototype, static, kind} => 
             let
                 val ns0 = resolveExprToNamespace env ns
-            in case (prototype, static) of
-                (true,_) => LogErr.unimplError ["need code for setting prototype prop"]
-              | (_,true) => LogErr.unimplError ["need code for setting static prop"]
-              | _ => (Ast.ExprStmt (Ast.InitExpr (map (defInitStep env ns0) inits)),[])
+
+                val target = case (kind, prototype, static) of
+                                 (_,true,_) => Ast.Prototype
+                               | (_,_,true) => Ast.Class
+                               | (Ast.Var,_,_) => Ast.Outer
+                               | _ => Ast.Local
+            in
+                (Ast.ExprStmt (Ast.InitExpr (target, (map (defInitStep env ns0) inits))),[])
             end
 
           | Ast.ForEachStmt fe => 

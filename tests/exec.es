@@ -1,6 +1,10 @@
-[x] = 10
-x=20
-
+function f() {
+var x = 10
+intrinsic::print(x)
+}
+f()
+//function f() { print("hi") }
+//f()
 //ns var y
 //let ($t1=10) {ns::y=$t1[0]}
 

@@ -1,6 +1,61 @@
 VARIOUS NOTES ON THE ES4 RIMPL
 
-### 01-MAR-2007
+### 
+
+02-MAR-2007
+
+TYPE REFS
+
+	type TYPE_EXPR = TypeRef of (TYPE_EXPR * IDENT)
+
+Since patterns are desugared during parsing, we have to defer
+the desugaring of type annotations on TypedPatterns until
+they are fully known during the verifier or evaluator phases. 
+
+	type t = [int]
+	var [x] : t = y
+
+The type of the fixture of x gets desugared to
+
+	TypeRef (TypeName "t", "0")
+
+which partially evaluates to,
+
+	TypeRef (ArrayType [int], "0")
+
+and then finally,
+
+	int
+
+A verifier error is reported if a TypeRef cannot be resolved
+before the program is evaluated
+
+###
+
+INITS
+
+	 datatype EXPR = InitExpr of INITS
+     type INITS = (FIXTURE_NAME * EXPR) list
+
+Variable definitions get desugared by the parser into bindings and 
+initialiser statement with a list of INIT_STEPs. The definer turns 
+the bindings into a FIXTURES and the INIT_STEPS into an InitExpr 
+which wraps the fixture INITS. The definer then hoists the FIXTURES
+according to their kind.
+
+This causes a reference problem because the FIXTURES and the fixture
+INITS might now be separated by any number of scopes.
+
+The problem is solved by adding a relative scope index to InitExpr. 
+This index is used by the evaluator to get the scope object that 
+holds the property being initialised
+
+	 datatype EXPR = InitExpr of (int * INITS)
+
+
+### 
+
+01-MAR-2007
 
 TO DO
 
