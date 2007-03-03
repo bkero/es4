@@ -270,12 +270,12 @@ fun runTestCase (test : TEST_CASE) : TEST_RESULT =
     case test of
          { name, stage=Parse, arg=true, source } =>
          (
-             (parse source; (test, true))
+             (Defn.defProgram (parse source); (test, true))
              handle e => (unexpectedExn e; (test, false))
          )
        | { name, stage=Parse, arg=false, source } =>
          (
-             (parse source; (test, false))
+             (Defn.defProgram (parse source); (test, false))
              handle Parser.ParseError => (test, true)
                   | e => (unexpectedExn e; (test, false))
          )

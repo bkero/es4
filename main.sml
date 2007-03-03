@@ -28,12 +28,23 @@ fun testEV argvRest =
 	()
     end
 
+fun testDefn argvRest =
+    let 
+    	val _ = TextIO.print "parsing ... \n";
+	    val asts = List.map Parser.parseFile argvRest
+    	val _ = TextIO.print "defining ... \n";
+	    val dps = map Defn.defProgram asts
+    	val _ = List.app Pretty.ppProgram dps
+    in
+    	()
+    end
+
 fun main (argv0:string, argvRest:string list) =
     BackTrace.monitor (fn () =>
                        ((case argvRest of
-                              ("-tc"::argvRest) => testTC argvRest
+                          ("-tc"::argvRest) => testTC argvRest
 	                    | ("-ev"::argvRest) => testEV argvRest
-                            | _ => (List.map Parser.parseFile argvRest; ()));
+                        | _ => testDefn argvRest);
                         0))
 
 end
