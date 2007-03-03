@@ -927,10 +927,11 @@ and defFunc (env:ENV) (func:Ast.FUNC)
     : (Ast.FIXTURES * Ast.INITS * Ast.FUNC) =
     let
         val _ = trace [">> defFunc"]
-        val Ast.Func {name, fsig, block, ...} = func
+        val Ast.Func {name, fsig, block, ty, ...} = func
         val (paramFixtures, paramInits, settingsFixtures, settingsInits) = defFuncSig env fsig
+        val newTy = defFuncTy env ty
 
- val _ =    Pretty.ppFixtures paramFixtures
+        val _ =    Pretty.ppFixtures paramFixtures
 
         val env = extendEnvironment env paramFixtures
         val (block, hoisted) = defBlock env block
@@ -941,7 +942,7 @@ and defFunc (env:ENV) (func:Ast.FUNC)
                    fsig = fsig,
                    block = block,
                    defaults = [],
-                   ty = NONE,
+                   ty = newTy,
                    param = (paramFixtures@hoisted,paramInits)})
     end
 
@@ -961,7 +962,7 @@ and defFunc (env:ENV) (func:Ast.FUNC)
 and defFuncDefn (env:ENV) (f:Ast.FUNC_DEFN) 
     : (Ast.FIXTURES * Ast.FUNC_DEFN) = 
     case (#func f) of
-        Ast.Func { name, fsig, block, ... } =>
+        Ast.Func { name, fsig, block, ty, ... } =>
         let
             val newNsExpr = defExpr env (#ns f)
             val qualNs = resolveExprToNamespace env newNsExpr
@@ -970,10 +971,12 @@ and defFuncDefn (env:ENV) (f:Ast.FUNC_DEFN)
                           | Ast.Call => "call" (* FIXME: hack until parser fixed. *)
                           | _ => LogErr.unimplError ["defining unhandled type of function name"]
             val newName = Ast.PropName { id = ident, ns = qualNs }
-            val (_,_,newFunc) = defFunc env (#func f)
-            val (ftype,isReadOnly) = if (#kind f) = Ast.Var 
-                            then (Ast.SpecialType Ast.Any,false)    (* e3 style writeable function *)
-                            else ((#ty f),true)                      (* read only, method *)
+            val (_, _, newFunc) = defFunc env (#func f)
+            val Ast.Func { ty, ... } = newFunc
+            val (ftype, isReadOnly) = 
+                if (#kind f) = Ast.Var 
+                then (Ast.SpecialType Ast.Any,false)      (* e3 style writeable function *)
+                else ((Ast.FunctionType ty),true)         (* read only, method *)
             val outerFixtures = [(newName, Ast.ValFixture
                                        { ty = ftype,
                                          readOnly = false })]
@@ -985,8 +988,7 @@ and defFuncDefn (env:ENV) (f:Ast.FUNC_DEFN)
                               override = (#override f),
                               prototype = (#prototype f),
                               static = (#static f),
-                              func = newFunc,
-                              ty=ftype })
+                              func = newFunc })
         end
 
 (*
@@ -1073,14 +1075,15 @@ and defLiteral (env:ENV)
     : Ast.LITERAL = 
     let 
         val _ = trace [">> defLiteral"]
-    in case lit of
-        Ast.LiteralFunction {func,ty} =>
+    in 
+        case lit of
+            Ast.LiteralFunction func =>
             let
                 val (_,_,func) = defFunc env func
             in
-                Ast.LiteralFunction {func=func,ty=ty}
+                Ast.LiteralFunction func
             end
-      | _ => lit   (* FIXME: other cases to handle here *)
+          | _ => lit   (* FIXME: other cases to handle here *)
     end
 
 (*
@@ -1201,11 +1204,20 @@ and defExprs (env:ENV)
 
 *)
 
+and defFuncTy (env:ENV)
+              (ty:Ast.FUNC_TYPE)
+    : Ast.FUNC_TYPE =
+    (* FIXME *)
+    ty
+
 and defTyExpr (env:ENV)
               (ty:Ast.TYPE_EXPR)
     : Ast.TYPE_EXPR = 
-    (* FIXME *)
-    ty
+    case ty of 
+        Ast.FunctionType t => 
+        Ast.FunctionType (defFuncTy env t)
+      (* FIXME *)
+      | t => t
 
 
 (*

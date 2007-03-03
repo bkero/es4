@@ -167,7 +167,7 @@ datatype PRAGMA =
              block: BLOCK,
              param: HEAD,
              defaults: EXPR list,
-             ty: FUNC_TYPE option }
+             ty: FUNC_TYPE }
 
      and DEFN =
          ClassDefn of CLASS_DEFN
@@ -364,9 +364,7 @@ datatype PRAGMA =
        | LiteralObject of
            { expr : FIELD list,
              ty: TYPE_EXPR option }
-       | LiteralFunction of
-           { func: FUNC,
-             ty: TYPE_EXPR }  (* FunctionType *)
+       | LiteralFunction of FUNC
        | LiteralRegExp of
            { str: USTRING }
 
@@ -433,8 +431,7 @@ withtype
              override: bool,
              prototype: bool,
              static: bool,
-             func : FUNC,
-             ty: TYPE_EXPR }
+             func : FUNC }
 
      and CTOR_DEFN = 
            { ns: EXPR,

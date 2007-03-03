@@ -495,12 +495,10 @@ and verifyExpr (ctxt as {env,this,...}:CONTEXT)
           checkCompatible inferredTy annotatedTy;
           annotatedTy
         end
-      | LiteralExpr (LiteralFunction { func=Func { param=(fixtures,inits), block, ... }, 
-					ty=ty })
-	 =>
+      | LiteralExpr (LiteralFunction (Func { param=(fixtures,inits), block, ty, ... }))
+	=>
 	 let
-	     val FunctionType ftype = ty
-	     val ctxt1 = verifyFunctionType ctxt ftype 
+	     val ctxt1 = verifyFunctionType ctxt ty 
 	     val extensions = verifyFixtures ctxt1 fixtures
 	     val ctxt2 = withEnvExtn ctxt1 extensions
 	 in
@@ -509,7 +507,7 @@ and verifyExpr (ctxt as {env,this,...}:CONTEXT)
 	     verifyStmts ctxt2 inits;
 *)
 	     verifyBlock ctxt2 block;
-	     ty
+	     Ast.FunctionType ty
          end
       | LexicalRef { ident } =>
 	verifyIdentExpr ctxt ident

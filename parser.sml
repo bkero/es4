@@ -746,31 +746,31 @@ and functionExpression (ts,a:alpha,b:beta) =
                             let
                                 val (ts4,nd4) = block (ts3,LOCAL)
                             in
-                                (ts4,Ast.LiteralExpr (Ast.LiteralFunction 
-                                        {func=Ast.Func {name={kind=Ast.Ordinary,ident=""},
-                                                        fsig=nd3,
-                                                        block=nd4,
-                                                        defaults=[],
-                                                        param=([],[]),
-                                                        ty=NONE },
-                                         ty=functionTypeFromSignature nd3}))
+                                (ts4,Ast.LiteralExpr 
+                                         (Ast.LiteralFunction 
+                                              (Ast.Func {name={kind=Ast.Ordinary,ident=""},
+                                                         fsig=nd3,
+                                                         block=nd4,
+                                                         defaults=[],
+                                                         param=([],[]),
+                                                         ty=functionTypeFromSignature nd3})))
                             end
                       | (_,ALLOWLIST) => 
                             let
                                 val (ts4,nd4) = listExpression (ts3,b)
                             in
-                                (ts4,Ast.LiteralExpr (Ast.LiteralFunction 
-                                        {func=Ast.Func {name={kind=Ast.Ordinary,ident=""},
-                                                        fsig=nd3,
-                                                        block=Ast.Block {pragmas=[],
-                                                                        defns=[],
-                                                                        body=[Ast.ReturnStmt nd4],
-                                                                        head=NONE},
-                                                        param=([],[]),
-                                                        defaults=[],
-                                                        ty=NONE},
-                                         ty=functionTypeFromSignature nd3}))
-
+                                (ts4,Ast.LiteralExpr 
+                                         (Ast.LiteralFunction 
+                                              (Ast.Func {name={kind=Ast.Ordinary,ident=""},
+                                                         fsig=nd3,
+                                                         block=Ast.Block {pragmas=[],
+                                                                          defns=[],
+                                                                          body=[Ast.ReturnStmt nd4],
+                                                                          head=NONE},
+                                                         param=([],[]),
+                                                         defaults=[],
+                                                         ty=functionTypeFromSignature nd3})))
+                                
                             end
                       | _ => raise ParseError
                     end
@@ -783,14 +783,14 @@ and functionExpression (ts,a:alpha,b:beta) =
                             let
                                 val (ts4,nd4) = block (ts3,LOCAL)
                             in
-                                (ts4,Ast.LiteralExpr (Ast.LiteralFunction 
-                                        {func=Ast.Func {name={kind=Ast.Ordinary,ident=nd2},
-                                                        fsig=nd3,
-                                                        block=nd4,
-                                                        param=([],[]),
-                                                        defaults=[],
-                                                        ty=NONE},
-                                         ty=functionTypeFromSignature nd3}))
+                                (ts4,Ast.LiteralExpr 
+                                         (Ast.LiteralFunction 
+                                              (Ast.Func {name={kind=Ast.Ordinary,ident=nd2},
+                                                         fsig=nd3,
+                                                         block=nd4,
+                                                         param=([],[]),
+                                                         defaults=[],
+                                                         ty=functionTypeFromSignature nd3})))
                             end
                       | (_,ALLOWLIST) => 
                             let
@@ -798,17 +798,17 @@ and functionExpression (ts,a:alpha,b:beta) =
                             in
                                 (ts4,Ast.LiteralExpr 
                                          (Ast.LiteralFunction 
-                                              {func=Ast.Func 
-                                                        {name={kind=Ast.Ordinary,ident=nd2},fsig=nd3,
-                                                         block=Ast.Block 
-                                                                   {pragmas=[],
-                                                                    defns=[],
-                                                                    body=[Ast.ReturnStmt nd4],
-                                                                    head=NONE },
-                                                         param=([],[]),
-                                                         defaults=[],
-                                                         ty=NONE},
-                                               ty=functionTypeFromSignature nd3}))
+                                              (Ast.Func 
+                                                   {name={kind=Ast.Ordinary,ident=nd2},
+                                                    fsig=nd3,
+                                                    block=Ast.Block 
+                                                              {pragmas=[],
+                                                               defns=[],
+                                                               body=[Ast.ReturnStmt nd4],
+                                                               head=NONE },
+                                                    param=([],[]),
+                                                    defaults=[],
+                                                    ty=functionTypeFromSignature nd3})))
                             end
                       | _ => raise ParseError
                     end
@@ -1355,10 +1355,14 @@ and literalField (ts) =
             in
                 (ts2,{kind=Ast.Var,
                       name=nd1,
-                      init=Ast.LiteralExpr (Ast.LiteralFunction 
-                               {func=Ast.Func {name={kind=Ast.Get,ident=""},fsig=fsig,
-                                               block=block,param=([],[]),defaults=[],ty=NONE},
-                                ty=functionTypeFromSignature fsig})})
+                      init=Ast.LiteralExpr 
+                               (Ast.LiteralFunction 
+                                    (Ast.Func {name={kind=Ast.Get, ident=""},
+                                               fsig=fsig,
+                                               block=block,
+                                               param=([],[]),
+                                               defaults=[],
+                                               ty=functionTypeFromSignature fsig}))})
             end
       | Set :: _ =>
             let
@@ -1367,14 +1371,14 @@ and literalField (ts) =
             in
                 (ts2,{kind=Ast.Var,
                       name=nd1,
-                      init=Ast.LiteralExpr (Ast.LiteralFunction 
-                                {func=Ast.Func {name={kind=Ast.Get,ident=""},
-                                                fsig=fsig,
-                                                block=block,
-                                                param=([],[]),
-                                                defaults=[],
-                                                ty=NONE},
-                                 ty=functionTypeFromSignature fsig})})
+                      init=Ast.LiteralExpr 
+                               (Ast.LiteralFunction 
+                                    (Ast.Func {name={kind=Ast.Get,ident=""},
+                                               fsig=fsig,
+                                               block=block,
+                                               param=([],[]),
+                                               defaults=[],
+                                               ty=functionTypeFromSignature fsig}))})
             end
       | _ => 
             let
@@ -3297,12 +3301,12 @@ and functionType (ts) : (token list * Ast.TYPE_EXPR)  =
                 val (ts1,nd1) = functionSignatureType (tl ts)
             in
                 trace(["<< functionType with next=",tokenname(hd ts1)]);
-                (ts1,functionTypeFromSignature nd1)
+                (ts1, (Ast.FunctionType (functionTypeFromSignature nd1)))
             end
       | _ => raise ParseError
     end
 
-and functionTypeFromSignature fsig : Ast.TYPE_EXPR = 
+and functionTypeFromSignature fsig : Ast.FUNC_TYPE = 
     let
         fun paramTypes (params:Ast.BINDING list) : (Ast.TYPE_EXPR list) =
                     case params of
@@ -3323,12 +3327,12 @@ and functionTypeFromSignature fsig : Ast.TYPE_EXPR =
                 val types = paramTypes b
                 val minArgs = 0  (* FIXME *)
             in
-                Ast.FunctionType {typeParams=typeParams,
-                                  params=types,
-                                  result=returnType,
-                                  thisType=thisType,
-                                  hasRest=hasRest,
-                                  minArgs=minArgs}
+                {typeParams=typeParams,
+                 params=types,
+                 result=returnType,
+                 thisType=thisType,
+                 hasRest=hasRest,
+                 minArgs=minArgs}
             end
     end
     
@@ -5329,12 +5333,13 @@ and functionDeclaration (ts,attrs) =
                                                               fsig=nd2, 
                                                               param=([],[]),
                                                               defaults=[],
-                                                              ty=NONE,
+                                                              ty=functionTypeFromSignature nd2,
                                                               block=Ast.Block {pragmas=[],
-                                                                              defns=[],body=[],
-                                                                              head=NONE}},
-                                               ty=functionTypeFromSignature nd2}],
-                        body=[],head=NONE})
+                                                                               defns=[],
+                                                                               body=[],
+                                                                               head=NONE}}}],
+                      body=[],
+                      head=NONE})
             end
       | _ => raise ParseError
     end
@@ -5387,12 +5392,12 @@ and functionDefinition (ts,attrs,CLASS) =
                                             {ns=ns,
                                              native=native,
                                              ctor=Ast.Ctor {settings=[],
-                                                   func=Ast.Func {name=nd2,
-                                                                  fsig=nd3,
-                                                                  param=([],[]),
-                                                                  defaults=[],
-                                                                  ty=NONE,
-                                                                  block=nd4}}}],
+                                                            func=Ast.Func {name=nd2,
+                                                                           fsig=nd3,
+                                                                           param=([],[]),
+                                                                           defaults=[],
+                                                                           ty=functionTypeFromSignature nd3,
+                                                                           block=nd4}}}],
                               body=[],
                               head=NONE})
                     end
@@ -5405,16 +5410,16 @@ and functionDefinition (ts,attrs,CLASS) =
                                             {ns=ns,
                                              native=native,
                                              ctor=Ast.Ctor {settings=[],
-                                                   func=Ast.Func {name=nd2,
-                                                                  fsig=nd3,
-                                                                  param=([],[]),
-                                                                  defaults=[],
-                                                                  ty=NONE,
-                                                                  block=Ast.Block 
-                                                                     {pragmas=[],
-                                                                      defns=[],
-                                                                      body=[Ast.ReturnStmt nd4],
-                                                                      head=NONE}}}}],
+                                                            func=Ast.Func {name=nd2,
+                                                                           fsig=nd3,
+                                                                           param=([],[]),
+                                                                           defaults=[],
+                                                                           ty=functionTypeFromSignature nd3,
+                                                                           block=Ast.Block 
+                                                                                     {pragmas=[],
+                                                                                      defns=[],
+                                                                                      body=[Ast.ReturnStmt nd4],
+                                                                                      head=NONE}}}}],
                               body=[],
                               head=NONE})
                     end
@@ -5428,7 +5433,12 @@ and functionDefinition (ts,attrs,CLASS) =
                     let
                         val (ts4,nd4) = functionBody (ts3)
                         val ident = (#ident nd2)
-                        val func = Ast.Func {name=nd2,fsig=nd3,param=([],[]),defaults=[],ty=NONE,block=nd4}
+                        val func = Ast.Func {name=nd2,
+                                             fsig=nd3,
+                                             param=([],[]),
+                                             defaults=[],
+                                             ty=functionTypeFromSignature nd3,
+                                             block=nd4}
                     in
                         (ts4,{pragmas=[],
                               defns=[Ast.FunctionDefn {kind=nd1, 
@@ -5438,13 +5448,7 @@ and functionDefinition (ts,attrs,CLASS) =
                                                        override=override,
                                                        prototype=prototype,
                                                        static=static,
-                                                       func=Ast.Func {name=nd2,
-                                                                      fsig=nd3, 
-                                                                      param=([],[]),
-                                                                      defaults=[],
-                                                                      ty=NONE,
-                                                                      block=nd4},
-                                                       ty=functionTypeFromSignature nd3}],
+                                                       func=func}],
                               body=[],
                               head=NONE})
                     end
@@ -5464,12 +5468,11 @@ and functionDefinition (ts,attrs,CLASS) =
                                                                       fsig=nd3, 
                                                                       param=([],[]),
                                                                       defaults=[],
-                                                                      ty=NONE,
+                                                                      ty=functionTypeFromSignature nd3,
                                                                       block=Ast.Block { pragmas=[],
                                                                                         defns=[],
                                                                                         body=[Ast.ReturnStmt nd4],
-                                                                                        head=NONE}},
-                                                      ty=functionTypeFromSignature nd3}],
+                                                                                        head=NONE}}}],
                               body=[],
                               head=NONE })
                     end
@@ -5484,7 +5487,12 @@ and functionDefinition (ts,attrs,CLASS) =
         val (ts3,nd3) = functionSignature (ts2)
         val (ts4,nd4) = functionBody (ts3)
         val ident = (#ident nd2)
-        val func = Ast.Func {name=nd2,fsig=nd3,param=([],[]),defaults=[],ty=NONE,block=nd4}
+        val func = Ast.Func {name=nd2,
+                             fsig=nd3,
+                             param=([],[]),
+                             defaults=[],
+                             ty=functionTypeFromSignature(nd3),
+                             block=nd4}
     in
         (ts4,{pragmas=[],
               defns=[Ast.FunctionDefn {kind=nd1, 
@@ -5494,21 +5502,13 @@ and functionDefinition (ts,attrs,CLASS) =
                                        override=override,
                                        prototype=prototype,
                                        static=static,
-                                       func=Ast.Func {name=nd2,
-                                                      fsig=nd3, 
-                                                      param=([],[]),
-                                                      defaults=[],
-                                                      ty=NONE,
-                                                      block=nd4},
-                                       ty=functionTypeFromSignature nd3}],
+                                       func=func}],
               body=[Ast.InitStmt {kind=nd1,
                                    ns=ns,
                                    prototype=false,
                                    static=false,
                                    inits=[Ast.InitStep (Ast.PropIdent ident,
-                                                        Ast.LiteralExpr (Ast.LiteralFunction 
-                                                           {func=func,
-                                                            ty=functionTypeFromSignature(nd3)}))]}],
+                                                        Ast.LiteralExpr (Ast.LiteralFunction func))]}],
               head=NONE})
     end
 

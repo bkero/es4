@@ -295,8 +295,9 @@ fun evalExpr (scope:Mach.SCOPE)
         (Mach.defTemp (getScopeTemps scope) n (evalExpr scope e);
          Mach.Undef)
         
-      | Ast.InitExpr _ => 
-        Mach.Undef
+      | Ast.InitExpr inits => 
+        (evalScopeInits scope inits;
+         Mach.Undef)
 
       | _ => LogErr.unimplError ["unhandled expression type"]
 
@@ -311,7 +312,7 @@ and evalLiteralExpr (scope:Mach.SCOPE)
       | Ast.LiteralBoolean b => Mach.newBoolean b
       | Ast.LiteralString s => Mach.newString s
       | Ast.LiteralNamespace n => Mach.newNamespace n
-      | Ast.LiteralFunction { func, ... } => Mach.newFunc scope func
+      | Ast.LiteralFunction f => Mach.newFunc scope f
       | _ => LogErr.unimplError ["unhandled literal type"]
 
 
@@ -885,7 +886,7 @@ and bindArgs (outerScope:Mach.SCOPE)
          * and assign the last D-I defaults to temps numbered [A, P-A).
          *)
 
-        val p = length (#params (valOf ty))
+        val p = length (#params ty)
         val d = length defaults
         val a = length args
         val i = (a+d)-p
