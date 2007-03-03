@@ -137,7 +137,8 @@ fun allocFixtures (scope:Mach.SCOPE)
                     (case f of 
                          Ast.ValFixture { ty, ... } => 
                          (if t = (List.length (!temps))
-                          then temps := (ty, Mach.UninitTemp)::(!temps) 
+                          then (trace ["allocating fixture for temporary ", Int.toString t];
+                                temps := (ty, Mach.UninitTemp)::(!temps)) 
                           else error ["temp count out of sync"])
                        | _ => error ["allocating non-value temporary"])
                   | Ast.PropName pn => 
@@ -146,7 +147,7 @@ fun allocFixtures (scope:Mach.SCOPE)
                             if Mach.hasProp props pn
                             then error ["allocating duplicate property name: ", 
                                         LogErr.name pn]
-                            else (trace ["allocating ", state, " property ", 
+                            else (trace ["allocating fixture for ", state, " property ", 
                                          LogErr.name pn]; 
                                   Mach.addProp props pn p)                            
                     in 
@@ -223,7 +224,7 @@ fun allocObjFixtures (scope:Mach.SCOPE)
     let 
         val (temps:Mach.TEMPS) = ref [] 
     in
-        allocFixtures scope obj temps;
+        allocFixtures scope obj temps f;
         if not ((length (!temps)) = 0)
         then error ["allocated temporaries in non-scope object"]
         else ()
@@ -1016,6 +1017,7 @@ and initializeAndConstruct (classClosure:Mach.CLS_CLOSURE)
                         val (varScope:Mach.SCOPE) = extendScope classScope varObj false
                         val (ctorScope:Mach.SCOPE) = extendScope varScope instanceObj true
                     in
+                        trace ["allocating scope fixtures for constructor of ", LogErr.name name];
                         allocScopeFixtures varScope fixtures;                
                         trace ["binding constructor args of ", LogErr.name name];
                         bindArgs classScope varScope func args;
@@ -1048,8 +1050,13 @@ and constructClassInstance (classObj:Mach.OBJ)
         val (classScope:Mach.SCOPE) = extendScope env classObj false
         val (instanceObj:Mach.OBJ) = Mach.newObj tag proto NONE
     in
+        trace ["allocating ", 
+               Int.toString (length instanceFixtures), 
+               " instance fixtures for new ", LogErr.name name];
         allocObjFixtures classScope instanceObj instanceFixtures;
+        trace ["entering most derived constructor for ", LogErr.name name];
         initializeAndConstruct classClosure classObj classScope args instanceObj;
+        trace ["finished constructing new ", LogErr.name name];
         Mach.Object instanceObj
     end
 
@@ -1155,18 +1162,10 @@ and initClassPrototype (scope)
                 
         val _ = trace ["constructing prototype"]
         val newPrototype = Mach.newObj Mach.intrinsicObjectBaseTag baseProtoVal NONE
-        val v = Mach.Object newPrototype
-        val n = Mach.publicPrototypeName
     in
-        if Mach.hasProp props n
-        then error ["class object has declared prototype"]
-        else Mach.addProp props n { ty = Ast.SpecialType Ast.Any,
-                                    state = Mach.ValProp v,
-                                    (* FIXME: are these the correct attrs for C.prototype ? *)
-                                    attrs = { dontDelete = true,
-                                              dontEnum = true,
-                                              readOnly = false,
-                                              isFixed = true } };
+        Mach.defValue classObj
+                      Mach.publicPrototypeName 
+                      (Mach.Object newPrototype);
         trace ["finished initialising class prototype"]
     end
 
