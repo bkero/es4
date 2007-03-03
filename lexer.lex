@@ -6,14 +6,15 @@
 
 open Token
 
+(* Local tracing machinery *)
+
+val doTrace = ref false
+fun trace ss = if (!doTrace) then LogErr.log ("[lex] " :: ss) else ()
+fun error ss = LogErr.lexError ss
+
 type lexresult = token
 
 fun eof _ = Eof
-
-fun log ss = 
-    (TextIO.print "log: "; 
-     List.app TextIO.print ss; 
-     TextIO.print "\n")
 
 val line_breaks : int list ref = ref []
 val token_count : int ref = ref 0
@@ -26,10 +27,10 @@ let
     fun stop _ = (token_count := length (!t); rev (!t))
     fun step _ = 
         let 
-	        val tok = token_fn ()
-	    in 
-          (* log ["lexed ", tokenname tok];  *)
-
+	    val tok = token_fn ()
+	in 
+            trace ["lexed ", tokenname tok]; 
+	    
 	  (*
 	   * The lexbreak tokens represent choice points for the parser. We
 	   * return two thunks to it: one for each lexer start state
@@ -49,20 +50,20 @@ in
 end
 
 fun followsLineBreak (ts) =
-	let val _ = log(["followsLineBreak"])
-	    val offset = length ts
-	    val max_offset = !token_count
-	    fun findBreak lbs =
+    let val _ = trace ["followsLineBreak"]
+	val offset = length ts
+	val max_offset = !token_count
+	fun findBreak lbs =
             case lbs of
                 [] => false
               | _ => 
-	              (  (* log(["token_count=",Int.toString(max_offset),
-						" offset=",Int.toString(max_offset-offset),
-							 " break=",Int.toString(hd lbs)]) ;*)
-                  if (hd lbs) = (max_offset - offset) then true else findBreak (tl lbs))
-	in
-		findBreak (!line_breaks)
-	end
+		(trace ["token_count=", Int.toString(max_offset),
+			" offset=", Int.toString(max_offset-offset),
+			" break=", Int.toString(hd lbs)];
+		 if (hd lbs) = (max_offset - offset) then true else findBreak (tl lbs))
+    in
+	findBreak (!line_breaks)
+    end
 
 val (curr_quote : char ref) = ref #"\000"
 val (curr_chars : (char list) ref) = ref []
@@ -285,7 +286,7 @@ regexpFlags           = [a-zA-Z]*;
 				    val re = String.implode(rev (!curr_chars)) ^ yytext
 				in
 				    if !found_newline andalso (not x_flag)
-				    then (log ["Illegal newline in regexp"]; raise LexError)
+				    then error ["Illegal newline in regexp"]
 				    else
 				       (curr_chars := [];
 					found_newline := false;
@@ -344,4 +345,4 @@ regexpFlags           = [a-zA-Z]*;
 <STRING>.                     => (curr_chars := (String.sub (yytext,0)) :: (!curr_chars);
 				  lex());
 
-<INITIAL>.                    => (log ["unexpected input: '", yytext, "'"]; raise LexError);
+<INITIAL>.                    => (error ["unexpected input: '", yytext, "'"]);

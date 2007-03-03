@@ -3,6 +3,11 @@
 
 structure Mach = struct 
 
+(* Local tracing machinery *)
+
+val doTrace = ref false
+fun trace ss = if (!doTrace) then LogErr.log ("[mach] " :: ss) else ()
+
 (* Local type aliases *)
 
 type TYPE = Ast.TYPE_EXPR
@@ -376,7 +381,7 @@ fun defValue (base:OBJ)
     case base of 
         Obj { props, ... } => 
         if not (hasProp props name)
-        then LogErr.machError ["defValue on missing property:",LogErr.name name]
+        then LogErr.machError ["defValue on missing property: ", LogErr.name name]
         else (* Here we have relaxed rules: you can write to an 
               * uninitialized property or a read-only property. *)
             let 
@@ -385,7 +390,7 @@ fun defValue (base:OBJ)
                 val _ = case (#state existingProp) of 
                             
                             TypeVarProp => 
-                            LogErr.machError ["defValue on type variable property:", 
+                            LogErr.machError ["defValue on type variable property: ", 
                                               LogErr.name name]
                             
                           | TypeProp => 

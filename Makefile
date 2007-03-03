@@ -48,13 +48,13 @@ tools/unit.heap.$(HEAP_SUFFIX): tools/unit.cm tools/unit.sml $(wildcard *.sml) p
 
 # TODO: "check" should do all the *.test files, not just parse tests
 check: tools/unit.heap.$(HEAP_SUFFIX) es4.heap.$(HEAP_SUFFIX)
-	sml @SMLload=tools/unit.heap tests/parse.test
+	sml @SMLload=tools/unit.heap $(TRACE) tests/parse.test
 
 checktc: tools/unit.heap.$(HEAP_SUFFIX) es4.heap.$(HEAP_SUFFIX)
-	sml @SMLload=tools/unit.heap tests/tc.test
+	sml @SMLload=tools/unit.heap $(TRACE) tests/tc.test
 
 checkev: es4.heap.$(HEAP_SUFFIX)
-	sml @SMLload=es4.heap -ev $(EV_TESTS)
+	sml @SMLload=es4.heap $(TRACE) -ev $(EV_TESTS)
 
 wc:
 	wc ${SOURCES}

@@ -39,9 +39,19 @@ fun testDefn argvRest =
     	()
     end
 
+fun consumeTraceOption (opt:string) : bool = 
+    case opt of 
+        "-Tlex" => (Lexer.UserDeclarations.doTrace := true; false)
+      | "-Tparse" => (Parser.doTrace := true; false)
+      | "-Tname" => (Multiname.doTrace := true; false)
+      | "-Tdefn" => (Defn.doTrace := true; false)
+      | "-Teval" => (Eval.doTrace := true; false)
+      | "-Tmach" => (Mach.doTrace := true; false)
+      | _ => true
+
 fun main (argv0:string, argvRest:string list) =
     BackTrace.monitor (fn () =>
-                       ((case argvRest of
+                       ((case List.filter consumeTraceOption argvRest of
                           ("-tc"::argvRest) => testTC argvRest
 	                    | ("-ev"::argvRest) => testEV argvRest
                         | _ => testDefn argvRest);
