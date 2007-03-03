@@ -1117,6 +1117,7 @@ and initClassPrototype (scope)
                        (extends:Ast.NAME option) 
     : unit =
     let 
+        val Mach.Obj { props, ... } = classObj
         val baseProtoVal = 
             case extends of 
                 NONE => Mach.Null
@@ -1134,9 +1135,18 @@ and initClassPrototype (scope)
                 
         val _ = LogErr.trace ["constructing prototype"]
         val newPrototype = Mach.newObj Mach.intrinsicObjectBaseTag baseProtoVal NONE
-
+        val v = Mach.Object newPrototype
+        val n = Mach.publicPrototypeName
     in
-        Mach.defValue classObj Mach.publicPrototypeName (Mach.Object newPrototype);
+        if Mach.hasProp props n
+        then LogErr.evalError ["class object has declared prototype"]
+        else Mach.addProp props n { ty = Ast.SpecialType Ast.Any,
+                                    state = Mach.ValProp v,
+                                    (* FIXME: are these the correct attrs for C.prototype ? *)
+                                    attrs = { dontDelete = true,
+                                              dontEnum = true,
+                                              readOnly = false,
+                                              isFixed = true } };
         LogErr.trace ["finished initialising class prototype"]
     end
 
