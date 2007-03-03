@@ -455,10 +455,10 @@ structure PrettyCvt = struct
      | cvtEXPR (DefTemp(n899, x900)) = PrettyRep.Ctor ("DefTemp", SOME (PrettyRep.Tuple [PrettyRep.Int n899, 
           cvtEXPR x900]))
      | cvtEXPR (GetTemp n904) = PrettyRep.Ctor ("GetTemp", SOME (PrettyRep.Int n904))
-   and cvtINIT_TARGET (Outer) = PrettyRep.Ctor ("Outer", NONE)
+   and cvtINIT_TARGET (Hoisted) = PrettyRep.Ctor ("Hoisted", NONE)
      | cvtINIT_TARGET (Local) = PrettyRep.Ctor ("Local", NONE)
      | cvtINIT_TARGET (Prototype) = PrettyRep.Ctor ("Prototype", NONE)
-     | cvtINIT_TARGET (Class) = PrettyRep.Ctor ("Class", NONE)
+     | cvtINIT_TARGET (Static) = PrettyRep.Ctor ("Static", NONE)
    and cvtFIXTURE_NAME (TempName n911) = PrettyRep.Ctor ("TempName", SOME (PrettyRep.Int n911))
      | cvtFIXTURE_NAME (PropName x914) = PrettyRep.Ctor ("PropName", SOME (cvtNAME x914))
    and cvtIDENT_EXPR (Identifier{ident=x917, openNamespaces=ls923}) = PrettyRep.Ctor ("Identifier", 

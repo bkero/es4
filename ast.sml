@@ -324,10 +324,10 @@ datatype PRAGMA =
        | DefTemp of (int * EXPR)
        | GetTemp of int
 
-     and INIT_TARGET = Outer
+     and INIT_TARGET = Hoisted
                      | Local
                      | Prototype
-                     | Class
+                     | Static
 
      and FIXTURE_NAME = TempName of int
                       | PropName of NAME

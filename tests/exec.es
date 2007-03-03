@@ -1,8 +1,8 @@
-function f() {
-var x = 10
+function f(x=20) {
 intrinsic::print(x)
 }
-f()
+f(10)
+
 //function f() { print("hi") }
 //f()
 //ns var y

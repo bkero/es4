@@ -951,7 +951,7 @@ and evalScopeInits (scope:Mach.SCOPE)
                 fun targetOf (Mach.Scope { object, temps, isVarObject, parent}) =
                     case (target,parent) of
                          (Ast.Local,_) => object
-                       | (Ast.Outer,parent) => 
+                       | (Ast.Hoisted,parent) => 
                                  if isVarObject=true 
                                     then object
                                     else targetOf (valOf parent)

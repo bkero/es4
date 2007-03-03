@@ -46,11 +46,24 @@ according to their kind.
 This causes a reference problem because the FIXTURES and the fixture
 INITS might now be separated by any number of scopes.
 
-The problem is solved by adding a relative scope index to InitExpr. 
-This index is used by the evaluator to get the scope object that 
-holds the property being initialised
+The problem is solved by adding an INIT_TARGET to InitExpr. This 
+value is used by the evaluator to determine whether the target 
+property was hoisted and if so to find it on the nearest enclosing 
+variable scope. Changes to the ASTs are:
 
-	 datatype EXPR = InitExpr of (int * INITS)
+	 datatype EXPR = InitExpr of (INIT_TARGET * INITS)
+          and INIT_TARGET = Hoisted
+                          | Local
+                          | Prototype
+                          | Static
+
+Scopes have a flag to indicate whether or not they are a variable
+object. 
+
+Initialisers with a Prototype target only occur in a ClassBlock, 
+and target the properties of that classes prototype object. Initialiser
+with a Class target also only occur at the top level of a ClassBlock
+and target properties of the class object.
 
 
 ### 

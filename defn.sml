@@ -831,7 +831,7 @@ and defBindings (env:ENV)
     settingsBlock
     body
 *)
-                    
+
 and defFuncSig (env:ENV) 
                (fsig:Ast.FUNC_SIG)
     : (Ast.FIXTURES * Ast.INITS * Ast.FIXTURES * Ast.INITS) =
@@ -1389,8 +1389,8 @@ and defStmt (env:ENV)
 
                 val target = case (kind, prototype, static) of
                                  (_,true,_) => Ast.Prototype
-                               | (_,_,true) => Ast.Class
-                               | (Ast.Var,_,_) => Ast.Outer
+                               | (_,_,true) => Ast.Static
+                               | (Ast.Var,_,_) => Ast.Hoisted
                                | _ => Ast.Local
             in
                 (Ast.ExprStmt (Ast.InitExpr (target, (map (defInitStep env ns0) inits))),[])

@@ -221,6 +221,7 @@ and defAssignment (env:ENV)
 fun desugarPattern (pattern:PATTERN)
                    (ty:Ast.TYPE_EXPR option)
                    (expr:Ast.EXPR option)
+                   (nesting:int)
     : (Ast.BINDING list * Ast.INIT_STEP list) =
     let
         fun desugarIdentifierPattern (id:Ast.IDENT)
@@ -281,14 +282,14 @@ fun desugarPattern (pattern:PATTERN)
                         SOME ty =>
                             let
                                 val t = SOME (Ast.TypeRef (ty,id))
-                                val (binds, inits) = desugarPattern p t e
+                                val (binds, inits) = desugarPattern p t e (nesting+1)
                                 val (binds', inits') = desugarArrayPattern plist element_types temp (n+1)
                              in
                                 ((binds @ binds'), (inits @ inits'))
                              end
                       | _ =>
                             let
-                                val (binds, inits) = desugarPattern p (SOME (Ast.SpecialType Ast.Any)) e
+                                val (binds, inits) = desugarPattern p (SOME (Ast.SpecialType Ast.Any)) e (nesting+1)
                                 val (binds', inits') = desugarArrayPattern plist element_types temp (n+1)  
                             in
                                 ((binds @ binds'), (inits @ inits'))
@@ -345,14 +346,14 @@ fun desugarPattern (pattern:PATTERN)
                             val t = SOME (Ast.TypeRef (ty,id))
                             val e = SOME (Ast.ObjectRef {base=temp, ident=ident})
                         in
-                            desugarPattern p t e
+                            desugarPattern p t e (nesting+1)
                         end
                   | (_,_) =>
                         let
                             val t = SOME (Ast.SpecialType Ast.Any)
                             val e = SOME (Ast.ObjectRef {base=temp, ident=ident})
                         in
-                            desugarPattern p t e
+                            desugarPattern p t e (nesting+1)
                         end
             end
 
@@ -362,9 +363,8 @@ fun desugarPattern (pattern:PATTERN)
           | (IdentifierPattern id,_) => desugarIdentifierPattern id
           | (_,_) =>
                 let
-                    val e = case expr of SOME e => e | _ => (Ast.GetTemp 0) (* FIXME: get arg *)
-                    val temp_counter = ref 0
-                    val temp_n = !temp_counter
+                    val e = case expr of SOME e => e | _ => (Ast.GetTemp 0)
+                    val temp_n = nesting
                     val temp_id = Ast.TempIdent temp_n
                     val temp_binding = Ast.Binding {ident=temp_id,ty=ty}
                     val temp_step = Ast.InitStep (temp_id, e)
@@ -831,7 +831,7 @@ and needType (nd:Ast.IDENT_EXPR,nullable:bool option) =
                     then Ast.TypeName nd
                     else Ast.TypeName nd
       | _ => Ast.TypeName nd
-    
+
 and functionSignature (ts) : (token list * Ast.FUNC_SIG) =
     let val _ = trace([">> functionSignature with next=",tokenname(hd(ts))]) 
         val (ts1,nd1) = typeParameters ts
@@ -839,10 +839,12 @@ and functionSignature (ts) : (token list * Ast.FUNC_SIG) =
         LeftParen :: This :: Colon ::  _ =>
             let
                 val (ts2,nd2) = typeIdentifier (tl (tl (tl ts1)))
+                val temp = Ast.Binding {ident=Ast.TempIdent 0, ty=SOME (Ast.SpecialType Ast.Any)}
+                                    (* FIXME: what is the type of this? *)
             in case ts2 of
                 Comma :: _ =>
                     let
-                           val (ts3,nd3) = nonemptyParameters (tl ts2)  
+                           val (ts3,(b,i)) = nonemptyParameters (tl ts2) 1
                        in case ts3 of
                            RightParen :: _ =>
                                let
@@ -852,7 +854,7 @@ and functionSignature (ts) : (token list * Ast.FUNC_SIG) =
                                 (ts4,Ast.FunctionSignature
                                      {typeParams=nd1,
                                       thisType=SOME (needType (nd2,SOME false)),
-                                      params=nd3,
+                                      params=(temp::b,i),
                                       returnType=nd4,
                                       settings=NONE,
                                       hasRest=false })) (* do we need this *)
@@ -1033,25 +1035,25 @@ and typeParameterList (ts) : token list * string list =
         RestParameter
 *)
 
-and nonemptyParameters (ts)
+and nonemptyParameters (ts) (n)
     : (token list * Ast.BINDINGS) = 
     let
     in case ts of
         TripleDot :: _ => 
             let
-                val (ts1,nd1) = restParameter ts
+                val (ts1,nd1) = restParameter ts n
             in case ts1 of
                 RightParen :: _ => (ts1,nd1)
               | _ => raise ParseError
             end
       | _ => 
             let
-                val (ts1,(b1,i1)) = parameterInit ts
+                val (ts1,(b1,i1)) = parameterInit ts n
             in case ts1 of
                 RightParen :: _ => (ts1,(b1,i1))
               | Comma :: _ =>
                     let
-                        val (ts2,(b2,i2)) = nonemptyParameters (tl ts1)
+                        val (ts2,(b2,i2)) = nonemptyParameters (tl ts1) (n+1)
                     in
                         (ts2,(b1@b2,i1@i2))
                     end
@@ -1090,7 +1092,7 @@ and parameters (ts)
     let val _ = trace([">> parameters with next=",tokenname(hd(ts))]) 
     in case ts of 
         RightParen :: ts1 => (ts,([],[]))
-      | _ => nonemptyParameters ts
+      | _ => nonemptyParameters ts 0
     end
 
 and parametersType (ts) 
@@ -1107,25 +1109,27 @@ and parametersType (ts)
         Parameter  =  NonAssignmentExpression(ALLOWIN)
 *)
 
-and parameterInit (ts) 
+and parameterInit (ts) (n)
     : (token list * Ast.BINDINGS) = 
     let val _ = trace([">> parameterInit with next=",tokenname(hd(ts))]) 
-        val (ts1,nd1) = parameter ts
+        val (ts1,(temp,nd1)) = parameter ts n
     in case ts1 of
         Assign :: _ => 
             let
                 val {pattern,ty,...} = nd1
                 val (ts2,nd2) = nonAssignmentExpression (tl ts1,NOLIST,ALLOWIN)
+                val (b,i) = desugarPattern pattern ty (SOME nd2) 0
             in 
                 trace(["<< parameterInit with next=",tokenname(hd(ts))]);
-                (ts2, desugarPattern pattern ty (SOME nd2))
+                (ts2, (temp::b,i))
             end
       | _ => 
             let
                 val {pattern,ty,...} = nd1
+                val (b,i) = desugarPattern pattern ty NONE 0
             in
                 trace(["<< parameterInit with next=",tokenname(hd(ts))]);
-                (ts1, desugarPattern pattern ty NONE)
+                (ts1, (temp::b,i))
             end
     end
 
@@ -1163,13 +1167,14 @@ and parameterInitType (ts)
         const
 *)
 
-and parameter (ts) =
+and parameter (ts) (n) : (token list * (Ast.BINDING * {pattern:PATTERN, ty:Ast.TYPE_EXPR option})) =
     let val _ = trace([">> parameter with next=",tokenname(hd(ts))]) 
         val (ts1,nd1) = parameterKind (ts)
         val (ts2,{p,t}) = typedPattern (ts1,NOLIST,ALLOWIN)
+        val temp = Ast.Binding {ident=Ast.TempIdent n,ty=t}
     in
         trace(["<< parameter with next=",tokenname(hd(ts2))]);
-        (ts2,{pattern=p,ty=t,init=NONE})
+        (ts2,(temp,{pattern=p,ty=t}))
     end
 
 and parameterType (ts) =
@@ -1195,7 +1200,7 @@ and parameterKind (ts)
         ...  ParameterKind TypedPattern
 *)
 
-and restParameter (ts) : (token list * Ast.BINDINGS) =
+and restParameter (ts) (n): (token list * Ast.BINDINGS) =
     let val _ = trace([">> restParameter with next=",tokenname(hd(ts))])
     in case ts of
         DOTDOTDOT :: _ =>
@@ -1205,9 +1210,10 @@ and restParameter (ts) : (token list * Ast.BINDINGS) =
                     (tl ts, ([Ast.Binding{ident=Ast.PropIdent "",ty=NONE}],[]))
               | _ =>
                     let
-                        val (ts1,{pattern,ty,...}) = parameter (tl ts)
+                        val (ts1,(temp,{pattern,ty,...})) = parameter (tl ts) n
+                        val (b,i) = desugarPattern pattern ty NONE 0
                     in
-                        (ts1, desugarPattern pattern ty NONE)
+                        (ts1, (temp::b,i))
                     end
             end
       | _ => raise ParseError
@@ -2769,7 +2775,7 @@ and assignmentExpression (ts,a,b) : (token list * Ast.EXPR) =
 
                 val p = patternFromExpr nd1
                 val (ts2,nd2) = assignmentExpression(tl ts1,a,b) 
-                val (binds,inits) = desugarPattern p NONE (SOME nd2)
+                val (binds,inits) = desugarPattern p NONE (SOME nd2) 0
                 val (inits,assigns) = List.partition isInitStep inits    (* separate init steps and assign steps *)
                 val sets = map makeSetExpr assigns
             in case binds of
@@ -3965,14 +3971,14 @@ and typeCaseBinding (ts) : (token list * Ast.BINDINGS) =
                         val (ts2,nd2) = variableInitialisation(ts1,ALLOWLIST,ALLOWIN)
                     in case ts2 of
                         RightParen :: _ =>
-                            (tl ts2, desugarPattern p t (SOME nd2))
+                            (tl ts2, desugarPattern p t (SOME nd2) 0)
                       | _ => raise ParseError
                     end
               | _ => 
                     let
                     in case ts1 of
                         RightParen :: _ =>
-                            (tl ts1, desugarPattern p t NONE)
+                            (tl ts1, desugarPattern p t NONE 0)
                       | _ => raise ParseError
                     end
             end
@@ -4039,7 +4045,7 @@ and typeCaseElement (ts,has_default)
                         val (ts2,nd2) = block (tl ts1,LOCAL)
                     in
                         trace(["<< typeCaseElement with next=", tokenname(hd ts2)]);
-                        (ts2, {bindings=desugarPattern p t NONE, ty=t, body=nd2,inits=NONE})
+                        (ts2, {bindings=desugarPattern p t NONE 0, ty=t, body=nd2,inits=NONE})
                     end
               | _ => raise ParseError
             end
@@ -4239,7 +4245,7 @@ and forStatement (ts,w) : (token list * Ast.STMT) =
                                     else if (len = 0) (* convert inits to pattern *)
                                         then case init of 
                                             Ast.ExprStmt e::[] => 
-                                                desugarPattern (patternFromListExpr e) NONE NONE
+                                                desugarPattern (patternFromListExpr e) NONE NONE 0
                                           | _ => LogErr.internalError [""]
                                         else (#bindings (valOf defn))
                         val (ts2,nd2) = listExpression (tl ts1,ALLOWIN)
@@ -4373,7 +4379,7 @@ and forInBinding (ts)
       | _ => 
             let
                 val (ts1,nd1) = pattern (ts,ALLOWLIST,NOIN,ALLOWEXPR)
-                val (b,i) = desugarPattern nd1 NONE NONE
+                val (b,i) = desugarPattern nd1 NONE NONE 0
             in 
                 trace ["<< forInitialiser with next=", tokenname(hd ts1)];
                 (ts1,(b,i))
@@ -4603,14 +4609,14 @@ and catchClause (ts) =
     in case ts of
         Catch :: LeftParen :: _ =>
             let
-                val (ts1,{pattern,ty,...}) = parameter (tl (tl ts))
-                val bindings = desugarPattern pattern ty NONE
+                val (ts1,(temp,{pattern,ty})) = parameter (tl (tl ts)) 0
+                val (b,i) = desugarPattern pattern ty NONE 0
             in case ts1 of
                 RightParen :: _ =>
                     let
                         val (ts2,nd2) = block (tl ts1,LOCAL)
                     in
-                        (ts2,{bindings=bindings,ty=ty,block=nd2,fixtures=NONE})
+                        (ts2,{bindings=((temp::b),[]),ty=ty,block=nd2,fixtures=NONE})
                     end
               | _ => raise ParseError
             end
@@ -5273,14 +5279,14 @@ and variableBinding (ts,a,beta) : (token list * Ast.BINDINGS) =
             (Assign :: _,_,_) =>
                 let
                     val (ts2,nd2) = variableInitialisation (ts1,a,beta)
-                    val (b,i) = desugarPattern p t (SOME nd2) 
+                    val (b,i) = desugarPattern p t (SOME nd2) 0
                 in
                     trace(["<< variableBinding with next=", tokenname(hd ts2)]);
                     (ts2, (b,i))
                 end
           | (In :: _,_,NOIN) => (* okay, we are in a for-in or for-each-in binding *)
                 let
-                    val (b,i) = desugarPattern p t NONE
+                    val (b,i) = desugarPattern p t NONE 0
                 in
                     trace(["<< variableBinding with next=", tokenname(hd ts1)]);
                     (ts1, (b,i))
@@ -5288,7 +5294,7 @@ and variableBinding (ts,a,beta) : (token list * Ast.BINDINGS) =
           | (_,IdentifierPattern _,_) =>   (* check for the more specific syntax allowed
                                                   when there is no init *)
                 let
-                    val (b,i) = desugarPattern p t NONE
+                    val (b,i) = desugarPattern p t NONE 0
                 in
                     trace(["<< variableBinding with next=", tokenname(hd ts1)]);
                     (ts1, (b,i))
@@ -5740,7 +5746,7 @@ and initialiser (ts)
                     val (ts2,nd2) = variableInitialisation (ts1,NOLIST,NOIN)
                 in
                     trace(["<< initialiser with next=", tokenname(hd ts2)]);
-                    (ts2, desugarPattern nd1 NONE (SOME nd2))
+                    (ts2, desugarPattern nd1 NONE (SOME nd2) 0)
                 end
           | _ => (error(["constructor initialiser without assignment"]); raise ParseError)
     end
