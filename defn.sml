@@ -1689,7 +1689,10 @@ and defProgram (prog:Ast.PROGRAM)
                numericMode = defaultNumericMode, temp_count = ref 0 }]
         val (packages,hoisted_pkg) = ListPair.unzip (map (defPackage topEnv) (#packages prog))
         val (block,hoisted_gbl) = defBlock topEnv (#block prog)
+        val result = {packages=packages,block=block,fixtures=SOME ((List.concat hoisted_pkg)@hoisted_gbl)}
     in
-        {packages=packages,block=block,fixtures=SOME ((List.concat hoisted_pkg)@hoisted_gbl)}
+        LogErr.trace ["definition complete:"];
+        Pretty.ppProgram result;
+        result
     end
 end

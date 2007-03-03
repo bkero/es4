@@ -57,7 +57,7 @@ fun log ss =
      List.app TextIO.print ss;
      TextIO.print "\n")
 
-val trace_on = true
+val trace_on = false
 
 fun trace ss =
     if trace_on then log ss else ()
@@ -6515,7 +6515,7 @@ fun parse ts =
       | check_residual _ = raise ParseError
     in
     check_residual residual;
-    log ["parsed all input, pretty-printing:"];
+    log ["parsing complete:"];
     Pretty.ppProgram result;
     result
     end
