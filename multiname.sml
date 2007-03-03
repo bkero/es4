@@ -4,13 +4,19 @@
 
 structure Multiname = struct
 
+(* Local tracing machinery *)
+
+val doTrace = ref false
+fun trace ss = if (!doTrace) then LogErr.log ("[multiname] " :: ss) else ()
+fun error ss = LogErr.nameError ss
+
 fun resolve (mname:Ast.MULTINAME)
 		    (curr:'a)
 		    (nameExists:(('a * Ast.NAME) -> bool))
 		    (getParent:('a -> ('a option)))
     : ('a * Ast.NAME) option =
     let     
-        val _ = LogErr.trace ["resolving multiname ", LogErr.multiname mname]
+        val _ = trace ["resolving multiname ", LogErr.multiname mname]
         val id = (#id mname)
 		 
         (* Try each namespace in the set and accumulate matches. *)
@@ -19,7 +25,7 @@ fun resolve (mname:Ast.MULTINAME)
           | tryName (matches:Ast.NAME list) (x::xs) : Ast.NAME list =
             let 
                 val n = { ns=x, id=id } 
-                val _ = LogErr.trace ["trying name ", LogErr.name n]
+                val _ = trace ["trying name ", LogErr.name n]
             in
                 if nameExists (curr, n)
                 then tryName (n::matches) xs
@@ -40,16 +46,16 @@ fun resolve (mname:Ast.MULTINAME)
             in case matches of
                    n :: [] => SOME n
                  | [] => tryMultiname xs
-                 | _  => LogErr.nameError ["ambiguous reference ", 
-					   LogErr.multiname mname]
+                 | _  => error ["ambiguous reference ", 
+					            LogErr.multiname mname]
             end
     in
         case tryMultiname (#nss mname) of
             SOME n => SOME (curr, n)
           | NONE => 
 	        (case getParent curr of
-		         NONE => LogErr.nameError ["exhausted search for ", 
-					                       LogErr.multiname mname]
+		         NONE => error ["exhausted search for ", 
+					            LogErr.multiname mname]
 	           | SOME parent => resolve mname parent nameExists getParent)
     end
 end

@@ -1,9 +1,15 @@
 (* -*- mode: sml; mode: font-lock; tab-width: 4; insert-tabs-mode: nil; indent-tabs-mode: nil -*- *)
 structure Parser = struct
 
-open Token
+(* Local tracing machinery *)
 
-exception ParseError
+val doTrace = ref false
+fun trace ss = if (!doTrace) then LogErr.log ("[parse] " :: ss) else ()
+fun error ss = LogErr.parseError ss
+
+exception ParseError = LogErr.ParseError
+
+open Token
 
 datatype alpha =
     ALLOWLIST
@@ -50,34 +56,21 @@ type PATTERN_BINDING_PART =
        prototype:bool,
        static:bool }
 
-
-
-fun log ss = 
-    (TextIO.print "log: "; 
-     List.app TextIO.print ss;
-     TextIO.print "\n")
-
-val trace_on = false
-
-fun trace ss =
-    if trace_on then log ss else ()
-
 val currentClassName : Ast.IDENT ref = ref ""
-
-fun error ss =
-    (log ("*syntax error: " :: ss); raise ParseError)
 
 fun newline ts = Lexer.UserDeclarations.followsLineBreak ts
 
-val defaultNamespace : Ast.EXPR list ref = ref [Ast.LiteralExpr (Ast.LiteralNamespace (Ast.Internal ""))]  (* todo: implement dns pragma *)
+val defaultNamespace : Ast.EXPR list ref = 
+    (* todo: implement dns pragma *)
+    ref [Ast.LiteralExpr (Ast.LiteralNamespace (Ast.Internal ""))]  
 
 val defaultAttrs = 
     { 
         ns = Ast.LiteralExpr (Ast.LiteralNamespace (Ast.Internal "")),
         override = false,
-           static = false,
+        static = false,
         final = false,
-           dynamic = false,
+        dynamic = false,
         prototype = false,
         native = false,
         rest = false }
@@ -484,7 +477,7 @@ and reservedNamespace ts =
             (tr, Ast.Protected "class name here")
       | Public :: tr => 
             (tr, Ast.Public "")
-      | _ => raise ParseError
+      | _ => error ["unknown reserved namespace"]
     end
 
 (*
@@ -522,8 +515,8 @@ and simpleQualifiedIdentifier ts =
           let 
               val (ts1, nd1) = reservedNamespace(ts)
           in case ts1 of
-              DoubleColon :: ts2 => qualifiedIdentifier'(ts2,Ast.LiteralExpr(Ast.LiteralNamespace nd1))
-            | _ => raise ParseError
+                 DoubleColon :: ts2 => qualifiedIdentifier'(ts2,Ast.LiteralExpr(Ast.LiteralNamespace nd1))
+               | _ => error ["qualified namespace without double colon"]
           end
       | _ => 
               let
@@ -550,7 +543,7 @@ and expressionQualifiedIdentifier (ts) =
                 (ts2,nd2)
             end
 
-      | _ => raise ParseError
+      | _ => error ["unknown form of expression-qualified identifier"]
     end
 
 and reservedOrPropertyIdentifier ts =
@@ -561,7 +554,7 @@ and reservedOrPropertyIdentifier ts =
 and reservedIdentifier ts =
     case isreserved(hd ts) of
         true => (tl ts, tokenname(hd ts))
-      | false => raise ParseError
+      | false => error ["non-reserved identifier"]
 
 and qualifiedIdentifier' (ts1, nd1) : (token list * Ast.IDENT_EXPR) =
     let val _ = trace([">> qualifiedIdentifier' with next=",tokenname(hd(ts1))]) 
@@ -582,7 +575,7 @@ and qualifiedIdentifier' (ts1, nd1) : (token list * Ast.IDENT_EXPR) =
             in
                 (ts3,nd3)
             end
-      | _ => raise ParseError
+      | _ => error ["empty token stream for qualified identifier"]
     end
 
 (*
@@ -620,7 +613,7 @@ and attributeIdentifier ts =
                 (ts1,Ast.AttributeIdentifier nd1)
             end
       | _ => 
-            raise ParseError
+            error ["unknown form of attribute identifier"]
     end
 
 (*
@@ -675,7 +668,7 @@ and typeIdentifier ts =
                 GreaterThan :: _ =>
                     (trace(["<< typeIdentifier with next=",tokenname(hd(tl ts2))]); 
                     (tl ts2,Ast.TypeIdentifier {ident=nd1,typeParams=nd2}))
-              | _ => raise ParseError
+              | _ => error ["unknown final token of parametric type expression"]
             end
       | _ =>
             (trace(["<< typeIdentifier with next=",tokenname(hd(ts1))]); 
@@ -695,9 +688,9 @@ and parenExpression ts =
                 val (ts2,nd2:Ast.EXPR) = assignmentExpression (ts1,ALLOWLIST,ALLOWIN)
             in case ts2 of
                 RightParen :: ts3 => (ts3,nd2)
-              | _ => raise ParseError
+              | _ => error ["unknown final token of paren expression"]
             end
-      | _ => raise ParseError
+      | _ => error ["unknown initial token of paren expression"]
     end
 
 (*
@@ -715,9 +708,9 @@ and parenListExpression (ts) : (token list * Ast.EXPR) =
                 RightParen :: _ => 
                     (trace(["<< parenListExpression with next=",tokenname(hd(ts1))]);
                     (tl ts1,nd1))
-              | _ => raise ParseError
+              | _ => error ["unknown final token of paren list expression"]
             end
-      | _ => raise ParseError
+      | _ => error ["unknown initial token of paren list expression"]
     end
 
 (*
@@ -772,7 +765,7 @@ and functionExpression (ts,a:alpha,b:beta) =
                                                          ty=functionTypeFromSignature nd3})))
                                 
                             end
-                      | _ => raise ParseError
+                      | _ => error ["unknown body form in anonymous function expression"]
                     end
               | _ => 
                     let
@@ -810,10 +803,10 @@ and functionExpression (ts,a:alpha,b:beta) =
                                                     defaults=[],
                                                     ty=functionTypeFromSignature nd3})))
                             end
-                      | _ => raise ParseError
+                      | _ => error ["unknown body form in named function expression"]
                     end
             end
-      | _ => raise ParseError
+      | _ => error ["unknown form of function expression"]
     end
 
 (*
@@ -845,34 +838,34 @@ and functionSignature (ts) : (token list * Ast.FUNC_SIG) =
                            val (ts3,nd3) = nonemptyParameters (tl ts2)  
                        in case ts3 of
                            RightParen :: _ =>
-                               let
-                                   val (ts4,nd4) = resultType (tl ts3)
-                               in
-                                (log(["<< functionSignature with next=",tokenname(hd ts4)]);
-                                (ts4,Ast.FunctionSignature
-                                     {typeParams=nd1,
-                                      thisType=SOME (needType (nd2,SOME false)),
-                                      params=nd3,
-                                      returnType=nd4,
-                                      settings=NONE,
-                                      hasRest=false })) (* do we need this *)
-                               end
-                         | _ => raise ParseError
+                           let
+                               val (ts4,nd4) = resultType (tl ts3)
+                           in
+                               trace ["<< functionSignature with next=",tokenname(hd ts4)];
+                               (ts4,Ast.FunctionSignature
+                                        {typeParams=nd1,
+                                         thisType=SOME (needType (nd2,SOME false)),
+                                         params=nd3,
+                                         returnType=nd4,
+                                         settings=NONE,
+                                         hasRest=false }) (* do we need this *)
+                           end
+                         | _ => error ["unknown final token of this-qualified nonempty function signature"]
                     end
                  | RightParen :: _ =>
-                       let
-                              val (ts3,nd3) = resultType (tl ts2)
-                          in
-                        (log(["<< functionSignature with next=",tokenname(hd ts3)]);
-                        (ts3,Ast.FunctionSignature
+                   let
+                       val (ts3,nd3) = resultType (tl ts2)
+                   in
+                       trace ["<< functionSignature with next=",tokenname(hd ts3)];
+                       (ts3,Ast.FunctionSignature
                                 { typeParams=nd1,
                                   thisType=SOME (needType (nd2,SOME false)),
                                   params=([],[]),
                                   returnType=nd3,
                                   settings=NONE,
-                                  hasRest=false })) (* do we need this *)
-                          end
-                 | _ => raise ParseError
+                                  hasRest=false }) (* do we need this *)
+                   end
+                 | _ => error ["unknown final token of this-qualified function signature"]
             end
       | LeftParen :: _ =>
                let
@@ -882,18 +875,18 @@ and functionSignature (ts) : (token list * Ast.FUNC_SIG) =
                        let
                            val (ts3,nd3) = resultType (tl ts2)
                        in
-                        (log(["<< functionSignature with next=",tokenname(hd ts3)]);
+                        trace ["<< functionSignature with next=",tokenname(hd ts3)];
                         (ts3,Ast.FunctionSignature
-                                    {typeParams=nd1,
-                                     params=nd2,
-                                     returnType=nd3,
-                                     settings=NONE,
-                                     thisType=NONE,  (* todo *)
-                                     hasRest=false })) (* do we need this *)
+                                 {typeParams=nd1,
+                                  params=nd2,
+                                  returnType=nd3,
+                                  settings=NONE,
+                                  thisType=NONE,  (* todo *)
+                                  hasRest=false }) (* do we need this *)
                        end
-                 | _ => raise ParseError
+                 | _ => error ["unknown final token of function signature"]
             end
-      | _ => raise ParseError
+      | _ => error ["unknown initial token of function signature"]
     end
 
 and functionSignatureType (ts) =
@@ -912,14 +905,14 @@ and functionSignatureType (ts) =
                            let
                                val (ts4,nd4) = resultType (tl ts3)
                            in
-                               (log(["<< functionSignature with next=",tokenname(hd ts4)]);
+                               trace ["<< functionSignature with next=",tokenname(hd ts4)];
                                (ts4,Ast.FunctionSignature
                                         { typeParams=nd1,
                                           thisType=SOME (needType (nd2,SOME false)),
                                           params=nd3,
                                           returnType=nd4,
                                           settings=NONE,
-                                          hasRest=false })) (* do we need this *)
+                                          hasRest=false }) (* do we need this *)
                                end
                       | _ => raise ParseError
                     end
@@ -927,14 +920,14 @@ and functionSignatureType (ts) =
                     let
                         val (ts3,nd3) = resultType (tl ts2)
                     in
-                        (log(["<< functionSignature with next=",tokenname(hd ts3)]);
+                        trace ["<< functionSignature with next=",tokenname(hd ts3)];
                         (ts3,Ast.FunctionSignature
-                                { typeParams=nd1,
-                                  thisType=SOME (needType (nd2,SOME false)),
-                                  params=([],[]),
-                                  returnType=nd3,
-                                  settings=NONE,
-                                  hasRest=false })) (* do we need this *)
+                                 { typeParams=nd1,
+                                   thisType=SOME (needType (nd2,SOME false)),
+                                   params=([],[]),
+                                   returnType=nd3,
+                                   settings=NONE,
+                                   hasRest=false }) (* do we need this *)
                           end
               | _ => raise ParseError
             end
@@ -946,14 +939,14 @@ and functionSignatureType (ts) =
                        let
                            val (ts3,nd3) = resultType (tl ts2)
                        in
-                        (log(["<< functionSignature with next=",tokenname(hd ts3)]);
+                        trace ["<< functionSignature with next=",tokenname(hd ts3)];
                         (ts3,Ast.FunctionSignature
-                                { typeParams=nd1,
-                                  params=nd2,
-                                  returnType=nd3,
-                                  settings=NONE,
-                                  thisType=NONE,  (* todo *)
-                                  hasRest=false })) (* do we need this *)
+                                 { typeParams=nd1,
+                                   params=nd2,
+                                   returnType=nd3,
+                                   settings=NONE,
+                                   thisType=NONE,  (* todo *)
+                                   hasRest=false }) (* do we need this *)
                        end
                  | _ => raise ParseError
             end
@@ -1246,7 +1239,7 @@ and resultType ts =
             let
                 val (ts1,nd1) = nullableTypeExpression (tl ts)
             in
-                log(["<< resultType with next=",tokenname(hd ts1)]);
+                trace ["<< resultType with next=",tokenname(hd ts1)];
                 (ts1,nd1)
             end
       | ts1 => (ts1,Ast.SpecialType(Ast.Any))
@@ -1858,8 +1851,8 @@ and argumentList (ts) : (token list * Ast.EXPR list)  =
               | RightParen :: _ => 
                     (ts,[])
               | _ => 
-                    (log(["*syntax error*: expect '",tokenname RightParen, "' before '",tokenname(hd ts),"'"]);
-                    raise ParseError)
+                (trace ["*syntax error*: expect '",tokenname RightParen, "' before '",tokenname(hd ts),"'"];
+                 raise ParseError)
             end
         val (ts1,nd1) = assignmentExpression(ts,NOLIST,ALLOWIN)
         val (ts2,nd2) = argumentList'(ts1)
@@ -3534,7 +3527,7 @@ and semicolon (ts,FULL) : (token list) =
         SemiColon :: _ => (tl ts)
       | (Eof | RightBrace) :: _ => (ts)   (* ABBREV special cases *)
       | _ => 
-            if newline ts then (log(["inserting semicolon"]);(ts))
+            if newline ts then (trace ["inserting semicolon"]; ts)
             else (error(["expecting semicolon before ",tokenname(hd ts)]); raise ParseError)
     end
   | semicolon (ts,_) =
@@ -5644,14 +5637,14 @@ and constructorSignature (ts) =
                                let
                                    val (ts4,nd4) = constructorInitialiser (tl ts3)
                                in
-                                (log(["<< constructorSignature with next=",tokenname(hd ts4)]);
-                                (ts4,Ast.FunctionSignature
-                                        { typeParams=nd1,
-                                          thisType=SOME (needType(nd2,NONE)),
-                                          params=nd3,
-                                          returnType=(Ast.SpecialType Ast.VoidType),
-                                          settings=SOME nd4,
-                                          hasRest=false })) (* do we need this *)
+                                   trace ["<< constructorSignature with next=",tokenname(hd ts4)];
+                                   (ts4,Ast.FunctionSignature
+                                            { typeParams=nd1,
+                                              thisType=SOME (needType(nd2,NONE)),
+                                              params=nd3,
+                                              returnType=(Ast.SpecialType Ast.VoidType),
+                                              settings=SOME nd4,
+                                              hasRest=false }) (* do we need this *)
                                end
                          | _ => raise ParseError
                     end
@@ -5665,14 +5658,14 @@ and constructorSignature (ts) =
                        let
                            val (ts3,nd3) = constructorInitialiser (tl ts2)
                        in
-                        (log(["<< constructorSignature with next=",tokenname(hd ts3)]);
-                        (ts3,Ast.FunctionSignature
-                                { typeParams=nd1,
-                                  params=nd2,
-                                  returnType=(Ast.SpecialType Ast.VoidType),
-                                  settings=SOME nd3,
-                                  thisType=NONE,
-                                  hasRest=false })) (* do we need this *)
+                           trace ["<< constructorSignature with next=",tokenname(hd ts3)];
+                           (ts3,Ast.FunctionSignature
+                                    { typeParams=nd1,
+                                      params=nd2,
+                                      returnType=(Ast.SpecialType Ast.VoidType),
+                                      settings=SOME nd3,
+                                      thisType=NONE,
+                                      hasRest=false }) (* do we need this *)
                        end
                  | _ => raise ParseError
             end
@@ -5700,7 +5693,7 @@ and constructorInitialiser ts
             let
                 val (ts1,nd1) = initialiserList (tl ts)
             in
-                log(["<< constructorInitialiser with next=",tokenname(hd ts1)]);
+                trace ["<< constructorInitialiser with next=",tokenname(hd ts1)];
                 (ts1,nd1)
             end
       | _ => (ts,([],[]))
@@ -6451,7 +6444,7 @@ fun mkReader filename =
         val stream = TextIO.openIn filename
     in
         fn _ => case TextIO.inputLine stream of
-                    SOME line => (log ["read line ", line]; line)
+                    SOME line => (trace ["read line ", line]; line)
                   | NONE => ""
     end
 
@@ -6480,8 +6473,8 @@ fun lex (reader) : (token list) =
         val tokens = Lexer.UserDeclarations.token_list lexer
         val line_breaks = !Lexer.UserDeclarations.line_breaks
     in
-        log ("tokens:" :: dumpTokens(tokens,[])); 
-        log ("line breaks:" :: dumpLineBreaks(line_breaks,[])); 
+        trace ("tokens:" :: dumpTokens(tokens,[])); 
+        trace ("line breaks:" :: dumpLineBreaks(line_breaks,[])); 
         tokens
     end
 
@@ -6492,8 +6485,8 @@ fun lexFile (filename : string) : (token list) = lex (mkReader filename)
         val tokens = Lexer.UserDeclarations.token_list lexer
         val line_breaks = !Lexer.UserDeclarations.line_breaks
     in
-        log ("tokens:" :: dumpTokens(tokens,[])); 
-        log ("line breaks:" :: dumpLineBreaks(line_breaks,[])); 
+        trace ("tokens:" :: dumpTokens(tokens,[])); 
+        trace ("line breaks:" :: dumpLineBreaks(line_breaks,[])); 
         tokens
     end
 *)
@@ -6516,33 +6509,35 @@ fun parse ts =
       | check_residual _ = raise ParseError
     in
     check_residual residual;
-    log ["parsing complete:"];
-    Pretty.ppProgram result;
+    trace ["parsing complete:"];
+    (if (!doTrace)
+     then Pretty.ppProgram result
+     else ());
     result
     end
 
 fun logged thunk name =
-    (log ["scanning ", name];
+    (trace ["scanning ", name];
      let val ast = thunk ()
      in
-         log ["parsed ", name, "\n"];
+         trace ["parsed ", name, "\n"];
          ast
      end)
-     handle ParseError => (log ["parse error"]; raise ParseError)
-         | Lexer.LexError => (log ["lex error"]; raise Lexer.LexError)
+     handle ParseError => (trace ["parse error"]; raise ParseError)
+          | Lexer.LexError => (trace ["lex error"]; raise Lexer.LexError)
 
 fun parseFile filename =
     logged (fn _ => parse (lexFile filename)) filename
 
 (*
-    (log ["scanning ", filename];
+    (trace ["scanning ", filename];
      let val ast = parse (lexFile filename)
      in
-         log ["parsed ", filename, "\n"];
+         trace ["parsed ", filename, "\n"];
          ast
      end)
-     handle ParseError => (log ["parse error"]; raise ParseError)
-          | Lexer.LexError => (log ["lex error"]; raise Lexer.LexError)
+     handle ParseError => (trace ["parse error"]; raise ParseError)
+          | Lexer.LexError => (trace ["lex error"]; raise Lexer.LexError)
 *)
 
 fun parseLines lines =

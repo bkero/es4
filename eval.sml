@@ -1,6 +1,12 @@
 (* -*- mode: sml; mode: font-lock; tab-width: 4; insert-tabs-mode: nil; indent-tabs-mode: nil -*- *)
 structure Eval = struct 
 
+(* Local tracing machinery *)
+
+val doTrace = ref false
+fun trace ss = if (!doTrace) then LogErr.log ("[eval] " :: ss) else ()
+fun error ss = LogErr.evalError ss
+
 (* Exceptions for object-language control transfer. *)
 exception ContinueException of (Ast.IDENT option)
 exception BreakException of (Ast.IDENT option)
@@ -38,15 +44,15 @@ fun needNamespace (v:Mach.VAL)
         Mach.Object (Mach.Obj ob) => 
         (case !(#magic ob) of 
              SOME (Mach.Namespace n) => n
-           | _ => LogErr.evalError ["need namespace"])
-      | _ => LogErr.evalError ["need namespace"]
+           | _ => error ["need namespace"])
+      | _ => error ["need namespace"]
 
 
 fun needObj (v:Mach.VAL) 
     : Mach.OBJ = 
     case v of 
         Mach.Object ob => ob
-      | _ => LogErr.evalError ["need object"]
+      | _ => error ["need object"]
 
 (* 
  * A small number of functions do not fully evaluate to Mach.VAL 
@@ -96,7 +102,7 @@ fun allocFixtures (scope:Mach.SCOPE)
                     Mach.ValProp (Mach.Undef)
 
                   | Ast.SpecialType (Ast.VoidType) => 
-                    LogErr.evalError ["attempt to allocate void-type property"]
+                    error ["attempt to allocate void-type property"]
 
                   (* FIXME: is this correct? Maybe we need to check them all to be nullable? *)
                   | Ast.UnionType _ => 
@@ -132,17 +138,16 @@ fun allocFixtures (scope:Mach.SCOPE)
                          Ast.ValFixture { ty, ... } => 
                          (if t = (List.length (!temps))
                           then temps := (ty, Mach.UninitTemp)::(!temps) 
-                          else LogErr.evalError ["temp count out of sync"])
-                       | _ => LogErr.evalError ["allocating non-value temporary"])
+                          else error ["temp count out of sync"])
+                       | _ => error ["allocating non-value temporary"])
                   | Ast.PropName pn => 
                     let 
                         fun allocProp state p = 
                             if Mach.hasProp props pn
-                            then LogErr.evalError 
-                                     ["allocating duplicate property name: ", 
-                                      LogErr.name pn]
-                            else (LogErr.trace ["allocating ", state, " property ", 
-                                                LogErr.name pn]; 
+                            then error ["allocating duplicate property name: ", 
+                                        LogErr.name pn]
+                            else (trace ["allocating ", state, " property ", 
+                                         LogErr.name pn]; 
                                   Mach.addProp props pn p)                            
                     in 
                         case f of 
@@ -220,7 +225,7 @@ fun allocObjFixtures (scope:Mach.SCOPE)
     in
         allocFixtures scope obj temps;
         if not ((length (!temps)) = 0)
-        then LogErr.evalError ["allocated temporaries in non-scope object"]
+        then error ["allocated temporaries in non-scope object"]
         else ()
     end
     
@@ -357,7 +362,7 @@ and evalNewExpr (obj:Mach.OBJ)
         case (!magic) of 
             SOME (Mach.Class c) => constructClassInstance obj c args
           | SOME (Mach.Function f) => constructObjectViaFunction obj f args
-          | _ => LogErr.evalError ["operator 'new' applied to unknown object"]
+          | _ => error ["operator 'new' applied to unknown object"]
 
                                                                                  
 and evalCallExpr (thisObjOpt:Mach.OBJ option) 
@@ -365,7 +370,7 @@ and evalCallExpr (thisObjOpt:Mach.OBJ option)
                  (args:Mach.VAL list) 
     : Mach.VAL =
     let 
-        val _ = LogErr.trace ["evalCallExpr"]
+        val _ = trace ["evalCallExpr"]
         val thisObj = case thisObjOpt of 
                           NONE => Mach.globalObject
                         | SOME t => t
@@ -387,7 +392,7 @@ and evalCallExpr (thisObjOpt:Mach.OBJ option)
                         in
                             evalCallExpr NONE (needObj invokeFn) (thisVal :: args)
                         end
-                    else LogErr.evalError ["calling non-callable object"]
+                    else error ["calling non-callable object"]
     end
 
 and evalSetExpr (scope:Mach.SCOPE) 
@@ -586,13 +591,13 @@ and evalRefExpr (scope:Mach.SCOPE)
                 (ob,{ns=Ast.Internal "",id=id})  (* FIXME: ns might be user settable default *)
               | (NONE,{id,...}) => 
                 (Mach.globalObject,{ns=Ast.Internal "",id=id})
-              | _ => LogErr.evalError ["ref expression messed up in refOf"]
+              | _ => error ["ref expression messed up in refOf"]
 
         val (base,ident) =
             case expr of         
                 Ast.LexicalRef { ident } => (NONE,ident)
               | Ast.ObjectRef { base, ident } => (SOME (evalExpr scope base), ident)
-              | _ => LogErr.evalError ["need lexical or object-reference expression"]
+              | _ => error ["need lexical or object-reference expression"]
 
         val (multiname:Mach.MULTINAME) = evalIdentExpr scope ident
 
@@ -602,12 +607,12 @@ and evalRefExpr (scope:Mach.SCOPE)
                 resolveOnObjAndPrototypes ob multiname
               | NONE => 
                 resolveOnScopeChain scope multiname
-              | _ => LogErr.evalError ["ref expression on non-object value"]
+              | _ => error ["ref expression on non-object value"]
                                                                              
     in
         case refOpt of 
             NONE => if errIfNotFound 
-                    then LogErr.evalError ["unresolved identifier expression",
+                    then error ["unresolved identifier expression",
                                            LogErr.multiname multiname]
                     else makeRefNotFound base multiname
           | SOME r' => r'
@@ -630,7 +635,7 @@ and resolveOnScopeChain (scope:Mach.SCOPE)
                         (mname:Mach.MULTINAME) 
     : REF option =
     let 
-        val _ = LogErr.trace ["resolving multiname on scope chain: ", 
+        val _ = trace ["resolving multiname on scope chain: ", 
                               LogErr.multiname mname]
         fun getScopeParent (Mach.Scope { parent, ... }) = parent
         fun hasFixedBinding (Mach.Scope {object=Mach.Obj {props, ...}, ... }, n)
@@ -664,7 +669,7 @@ and resolveOnObjAndPrototypes (obj:Mach.OBJ)
                               (mname:Mach.MULTINAME) 
     : REF option = 
     let 
-        val _ = LogErr.trace ["resolveOnObjAndPrototypes: ", LogErr.multiname mname];
+        val _ = trace ["resolveOnObjAndPrototypes: ", LogErr.multiname mname];
         fun hasFixedProp (Mach.Obj {props, ...}, n) = Mach.hasFixedProp props n
         fun hasProp (Mach.Obj {props, ...}, n) = Mach.hasProp props n
         fun getObjProto (Mach.Obj {proto, ...}) = 
@@ -732,7 +737,7 @@ and findVal (scope:Mach.SCOPE)
             (mn:Ast.MULTINAME) 
     : Mach.VAL = 
     case resolveOnScopeChain scope mn of 
-        NONE => LogErr.evalError ["unable to resolve multiname: ", 
+        NONE => error ["unable to resolve multiname: ", 
                                   LogErr.multiname mn ]
       | SOME (obj, name) => Mach.getValue (obj, name) 
 
@@ -742,7 +747,7 @@ and checkAllPropertiesInitialized (obj:Mach.OBJ)
     let 
         fun checkOne (n:Mach.NAME, p:Mach.PROP) = 
             case (#state p) of 
-                Mach.UninitProp => LogErr.evalError ["uninitialized property: ", 
+                Mach.UninitProp => error ["uninitialized property: ", 
                                                      LogErr.name n]
               | _ => ()
     in
@@ -761,7 +766,7 @@ and invokeFuncClosure (this:Mach.OBJ)
         val Ast.Func { name, fsig, block, param=(fixtures, inits), ... } = func
     in
         if not allTypesBound
-        then LogErr.evalError ["invoking function with unbound type variables"]
+        then error ["invoking function with unbound type variables"]
         else
             let 
                 val (varObj:Mach.OBJ) = Mach.newSimpleObj NONE
@@ -898,7 +903,7 @@ and bindArgs (outerScope:Mach.SCOPE)
              bindArg (n+1) args)
     in
         if a + d < p
-        then LogErr.evalError ["not enough args to function"]
+        then error ["not enough args to function"]
         else 
             let
                 val defExprs = List.drop (defaults, i)
@@ -916,7 +921,7 @@ and evalInits (scope:Mach.SCOPE)
               (temps:Mach.TEMPS)
               (inits:Ast.INITS)
     : unit =
-    let val _ = LogErr.trace ["evalInits"]
+    let val _ = trace ["evalInits"]
     in case inits of
         ((n,e)::rest) =>
             let
@@ -939,7 +944,7 @@ and evalObjInits (scope:Mach.SCOPE)
     in
         evalInits scope obj temps inits;
         if not ((length (!temps)) = 0)
-        then LogErr.evalError ["initialized temporaries in non-scope object"]
+        then error ["initialized temporaries in non-scope object"]
         else ()
     end
 
@@ -971,7 +976,7 @@ and initializeAndConstruct (classClosure:Mach.CLS_CLOSURE)
     case classClosure of 
         { cls, env, allTypesBound } => 
         if not allTypesBound 
-        then LogErr.evalError ["constructing instance of class with unbound type variables"]
+        then error ["constructing instance of class with unbound type variables"]
         else
             let
                 val Ast.Cls { name, 
@@ -982,7 +987,7 @@ and initializeAndConstruct (classClosure:Mach.CLS_CLOSURE)
                 fun initializeAndConstructSuper (superArgs:Mach.VAL list) = 
                     case extends of 
                         NONE => 
-                        (LogErr.trace ["checking all properties initialized at root class", 
+                        (trace ["checking all properties initialized at root class", 
                                        LogErr.name name];
                          checkAllPropertiesInitialized instanceObj)
                       | SOME superName => 
@@ -991,7 +996,7 @@ and initializeAndConstruct (classClosure:Mach.CLS_CLOSURE)
                             val (superClsClosure:Mach.CLS_CLOSURE) = 
                                 case Mach.getObjMagic superObj of
                                     SOME (Mach.Class cc) => cc
-                                  | _ => LogErr.evalError ["Superclass object ", 
+                                  | _ => error ["Superclass object ", 
                                                            LogErr.name superName, 
                                                            "is not a class closure"]
                             val (superEnv:Mach.SCOPE) = (#env superClsClosure)
@@ -1000,7 +1005,7 @@ and initializeAndConstruct (classClosure:Mach.CLS_CLOSURE)
                                 superClsClosure superObj superEnv superArgs instanceObj
                         end
             in 
-                LogErr.trace ["evaluating instance initializers for ", LogErr.name name];
+                trace ["evaluating instance initializers for ", LogErr.name name];
                 evalObjInits classScope instanceObj instanceInits;
                 case constructor of 
                     NONE => initializeAndConstructSuper []
@@ -1012,16 +1017,16 @@ and initializeAndConstruct (classClosure:Mach.CLS_CLOSURE)
                         val (ctorScope:Mach.SCOPE) = extendScope varScope instanceObj true
                     in
                         allocScopeFixtures varScope fixtures;                
-                        LogErr.trace ["binding constructor args of ", LogErr.name name];
+                        trace ["binding constructor args of ", LogErr.name name];
                         bindArgs classScope varScope func args;
-                        LogErr.trace ["evaluating inits of ", LogErr.name name];
+                        trace ["evaluating inits of ", LogErr.name name];
                         evalScopeInits varScope Ast.Local inits;
-                        LogErr.trace ["evaluating settings for ", LogErr.name name];
+                        trace ["evaluating settings for ", LogErr.name name];
                         evalObjInits varScope instanceObj settings;
-                        LogErr.trace ["initializing and constructing superclass of ", LogErr.name name];
+                        trace ["initializing and constructing superclass of ", LogErr.name name];
                         (* FIXME: evaluate superArgs from super(...) call. *)
                         initializeAndConstructSuper ([(*superArgs*)]);                        
-                        LogErr.trace ["entering constructo for ", LogErr.name name];
+                        trace ["entering constructo for ", LogErr.name name];
                         evalBlock ctorScope block;
                         ()
                     end
@@ -1075,7 +1080,7 @@ and evalFuncDefnFull (scope:Mach.SCOPE)
         val fname = {id = name, 
                      ns = (needNamespace (evalExpr scope (#ns f)))}
     in
-        LogErr.trace ["defining function ", LogErr.name fname];
+        trace ["defining function ", LogErr.name fname];
         Mach.defValue target fname fval
     end
 
@@ -1144,17 +1149,17 @@ and initClassPrototype (scope)
                         if Mach.hasOwnValue ob Mach.publicPrototypeName
                         then Mach.getValue (ob, Mach.publicPrototypeName)
                         else Mach.Null
-                      | _ => LogErr.evalError ["base class resolved to non-object: ", 
+                      | _ => error ["base class resolved to non-object: ", 
                                                LogErr.name baseClassName]
                 end
                 
-        val _ = LogErr.trace ["constructing prototype"]
+        val _ = trace ["constructing prototype"]
         val newPrototype = Mach.newObj Mach.intrinsicObjectBaseTag baseProtoVal NONE
         val v = Mach.Object newPrototype
         val n = Mach.publicPrototypeName
     in
         if Mach.hasProp props n
-        then LogErr.evalError ["class object has declared prototype"]
+        then error ["class object has declared prototype"]
         else Mach.addProp props n { ty = Ast.SpecialType Ast.Any,
                                     state = Mach.ValProp v,
                                     (* FIXME: are these the correct attrs for C.prototype ? *)
@@ -1162,7 +1167,7 @@ and initClassPrototype (scope)
                                               dontEnum = true,
                                               readOnly = false,
                                               isFixed = true } };
-        LogErr.trace ["finished initialising class prototype"]
+        trace ["finished initialising class prototype"]
     end
 
 and evalClassBlock (scope:Mach.SCOPE) 
@@ -1183,7 +1188,7 @@ and evalClassBlock (scope:Mach.SCOPE)
     *)
 
     let 
-        val _ = LogErr.trace ["evaluating class stmt for ", LogErr.name (valOf name)]
+        val _ = trace ["evaluating class stmt for ", LogErr.name (valOf name)]
 
         (* get the class object allocated when the property was instantiated *)
         val classObj = needObj (findVal scope (multinameOf (valOf name)))

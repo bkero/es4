@@ -1,6 +1,11 @@
 (* -*- mode: sml; mode: font-lock; tab-width: 4; insert-tabs-mode: nil; indent-tabs-mode: nil -*- *)
 structure Defn = struct
 
+(* Local tracing machinery *)
+
+val doTrace = ref false
+fun trace ss = if (!doTrace) then LogErr.log ("[eval] " :: ss) else ()
+
 (* 
  * The goal of the definition phase is to put together the fixtures
  * of the program, as well as insert class, function and interface
@@ -35,48 +40,8 @@ type CONTEXT =
 
 type ENV = CONTEXT list
 
-type ANALYZED_SIG = 
-     { sigType: Ast.FUNC_TYPE,
-       sigFixtures: Ast.FIXTURES,
-       sigDefaults: Ast.INITS,
-       sigSettings: Ast.INITS,
-       sigNParams: int }
-
 val currentClassName : Ast.NAME ref = ref {id="",ns=Ast.Intrinsic}
     (* ISSUE: is there a beter way to manage this? *)
-
-fun log ss = 
-    (TextIO.print "log: "; 
-     List.app TextIO.print ss;
-     TextIO.print "\n")
-
-val trace_on = true
-
-fun trace ss =
-    if trace_on then log ss else ()
-
-fun dumpNamespaces (nss:Ast.NAMESPACE list) =
-    let in
-    TextIO.print("\n>>> Namespaces");    
-    map Pretty.ppNamespace nss;
-    TextIO.print("\n<<< Namespaces")
-    end
-
-fun dumpContext (ctx:CONTEXT) =
-    let in
-    TextIO.print("\n>>> Context\n>>> Fixtures");
-    Pretty.ppFixtures (#fixtures ctx);
-    TextIO.print("\n<<< Fixtures");
-    map dumpNamespaces (#openNamespaces ctx);
-    TextIO.print("\n<<< Context\n")
-    end
-
-fun dumpEnv env =
-    let in
-    TextIO.print("\n>>> Env");
-    map dumpContext env;
-    TextIO.print("\n<<< Env\n")
-    end
 
 val defaultNumericMode : Ast.NUMERIC_MODE =
     { numberType = Ast.Number,
@@ -283,7 +248,7 @@ fun defClass (env: ENV)
              (cdef: Ast.CLASS_DEFN)
     : (Ast.FIXTURES * Ast.CLASS_DEFN) =
     let
-        val _ = LogErr.trace ["defining class ",(#ident cdef)]
+        val _ = trace ["defining class ",(#ident cdef)]
         val class = analyzeClass env cdef
         val class = resolveClass env cdef class
         val Ast.Cls {name,...} = class
@@ -604,7 +569,7 @@ and resolveExtends (env: ENV)
                    (children:Ast.NAME list)
     : (Ast.NAME option * Ast.FIXTURES) =
     let
-        val _ = LogErr.trace ["first child ",LogErr.name (hd children)]
+        val _ = trace ["first child ", LogErr.name (hd children)]
         fun seenAsChild (n:Ast.NAME) = List.exists (fn ch => ch = n) children
         val extends:(Ast.IDENT_EXPR option) = case (extends,hd children) of 
                             (NONE, {id,...}) => 
@@ -935,7 +900,7 @@ and defFunc (env:ENV) (func:Ast.FUNC)
 
         val env = extendEnvironment env paramFixtures
         val (block, hoisted) = defBlock env block
-        val _ = trace [">> defFunc"]
+        val _ = trace ["<< defFunc"]
     in 
         (settingsFixtures, settingsInits, 
          Ast.Func {name = name,
@@ -1695,8 +1660,10 @@ and defProgram (prog:Ast.PROGRAM)
         val (block,hoisted_gbl) = defBlock topEnv (#block prog)
         val result = {packages=packages,block=block,fixtures=SOME ((List.concat hoisted_pkg)@hoisted_gbl)}
     in
-        LogErr.trace ["definition complete:"];
-        Pretty.ppProgram result;
+        trace ["definition complete"];
+        (if !doTrace 
+         then Pretty.ppProgram result
+         else ());        
         result
     end
 end
