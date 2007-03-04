@@ -2,12 +2,24 @@ function f(x=20) {
 intrinsic::print(x)
 }
 f(10)
+f()
 
 //function f() { print("hi") }
 //f()
 //ns var y
 //let ($t1=10) {ns::y=$t1[0]}
 
+
+
+
+/*
+use namespace intrinsic
+class Object { var x }
+class A { function A() { print("making A\n") } }
+var a = new A
+a.x = 10
+print(a.x,"\n")
+*/
 
 /*
 class Object {}

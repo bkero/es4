@@ -75,7 +75,7 @@ fun getFieldType (name : Ast.IDENT) (field_types: Ast.FIELD_TYPE list)
               | field_type :: field_type_list =>
                 let
                     val {name=field_type_name,ty} = field_type
-                in 
+                in
                     if field_type_name = name 
                         then ty
                         else getFieldType name field_type_list
@@ -809,10 +809,10 @@ and defBindings (env:ENV)
 
 and defFuncSig (env:ENV) 
                (fsig:Ast.FUNC_SIG)
-    : (Ast.FIXTURES * Ast.INITS * Ast.FIXTURES * Ast.INITS) =
+    : (Ast.FIXTURES * Ast.INITS * Ast.EXPR list * Ast.FIXTURES * Ast.INITS) =
 
     case fsig of 
-        Ast.FunctionSignature { typeParams, params, settings, 
+        Ast.FunctionSignature { typeParams, params, defaults, settings, 
                                 returnType, thisType, hasRest } =>
         let 
 
@@ -857,6 +857,7 @@ and defFuncSig (env:ENV)
         in
             (paramFixtures,
              paramInits,
+             defaults,
              settingsFixtures,
              settingsInits)
         end
@@ -903,7 +904,8 @@ and defFunc (env:ENV) (func:Ast.FUNC)
     let
         val _ = trace [">> defFunc"]
         val Ast.Func {name, fsig, block, ty, ...} = func
-        val (paramFixtures, paramInits, settingsFixtures, settingsInits) = defFuncSig env fsig
+        val (paramFixtures, paramInits, defaults, settingsFixtures, settingsInits) = defFuncSig env fsig
+(*
         val tempParamFixtures = 
             let
                 val params = (#params ty)
@@ -913,10 +915,8 @@ and defFunc (env:ENV) (func:Ast.FUNC)
             in
                 List.map toFixtureBinding (ListPair.zip (params, nums))
             end
+*)
         val newTy = defFuncTy env ty
-
-        val _ =    Pretty.ppFixtures paramFixtures
-
         val env = extendEnvironment env paramFixtures
         val (block, hoisted) = defBlock env block
         val _ = trace ["<< defFunc"]
@@ -925,10 +925,10 @@ and defFunc (env:ENV) (func:Ast.FUNC)
          Ast.Func {name = name,
                    fsig = fsig,
                    block = block,
-                   defaults = [],
+                   defaults = defaults,
                    ty = newTy,
                    param = (paramFixtures
-                            @ tempParamFixtures
+(*                            @ tempParamFixtures *)
                             @ hoisted,
                             paramInits)})
     end

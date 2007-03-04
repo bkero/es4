@@ -904,7 +904,9 @@ and bindArgs (outerScope:Mach.SCOPE)
              bindArg (n+1) args)
     in
         if a + d < p
-        then error ["not enough args to function"]
+        then error ["not enough args to function ", 
+                        Int.toString a, " given ", 
+                        Int.toString (p-d), " expected"]
         else 
             let
                 val defExprs = List.drop (defaults, i)

@@ -182,6 +182,7 @@ datatype PRAGMA =
          FunctionSignature of 
            { typeParams: IDENT list,
              params: BINDINGS,
+             defaults: EXPR list,
              settings: BINDINGS option, 
              returnType: TYPE_EXPR,
              thisType: TYPE_EXPR option,

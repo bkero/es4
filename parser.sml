@@ -837,20 +837,21 @@ and functionSignature (ts) : (token list * Ast.FUNC_SIG) =
             in case ts2 of
                 Comma :: _ =>
                     let
-                           val (ts3,(b,i)) = nonemptyParameters (tl ts2) 1
+                           val (ts3,((b,i),e)) = nonemptyParameters (tl ts2) 1
                        in case ts3 of
                            RightParen :: _ =>
                                let
                                    val (ts4,nd4) = resultType (tl ts3)
                                in
-                                (log(["<< functionSignature with next=",tokenname(hd ts4)]);
+                                trace(["<< functionSignature with next=",tokenname(hd ts4)]);
                                 (ts4,Ast.FunctionSignature
                                      {typeParams=nd1,
                                       thisType=SOME (needType (nd2,SOME false)),
                                       params=(temp::b,i),
+                                      defaults=e,
                                       returnType=nd4,
                                       settings=NONE,
-                                      hasRest=false })) (* do we need this *)
+                                      hasRest=false }) (* do we need this *)
                                end
                          | _ => raise ParseError
                     end
@@ -863,6 +864,7 @@ and functionSignature (ts) : (token list * Ast.FUNC_SIG) =
                                 { typeParams=nd1,
                                   thisType=SOME (needType (nd2,SOME false)),
                                   params=([],[]),
+                                  defaults=[],
                                   returnType=nd3,
                                   settings=NONE,
                                   hasRest=false }) (* do we need this *)
@@ -871,7 +873,7 @@ and functionSignature (ts) : (token list * Ast.FUNC_SIG) =
             end
       | LeftParen :: _ =>
                let
-                   val (ts2, nd2) = parameters (tl ts1)
+                   val (ts2,((b,i),e)) = parameters (tl ts1)
                in case ts2 of
                    RightParen :: _ =>
                        let
@@ -880,7 +882,8 @@ and functionSignature (ts) : (token list * Ast.FUNC_SIG) =
                         trace ["<< functionSignature with next=",tokenname(hd ts3)];
                         (ts3,Ast.FunctionSignature
                                  {typeParams=nd1,
-                                  params=nd2,
+                                  params=(b,i),
+                                  defaults=e,
                                   returnType=nd3,
                                   settings=NONE,
                                   thisType=NONE,  (* todo *)
@@ -912,6 +915,7 @@ and functionSignatureType (ts) =
                                         { typeParams=nd1,
                                           thisType=SOME (needType (nd2,SOME false)),
                                           params=nd3,
+                                          defaults=[],
                                           returnType=nd4,
                                           settings=NONE,
                                           hasRest=false }) (* do we need this *)
@@ -927,6 +931,7 @@ and functionSignatureType (ts) =
                                  { typeParams=nd1,
                                    thisType=SOME (needType (nd2,SOME false)),
                                    params=([],[]),
+                                   defaults=[],
                                    returnType=nd3,
                                    settings=NONE,
                                    hasRest=false }) (* do we need this *)
@@ -945,6 +950,7 @@ and functionSignatureType (ts) =
                         (ts3,Ast.FunctionSignature
                                  { typeParams=nd1,
                                    params=nd2,
+                                   defaults=[],
                                    returnType=nd3,
                                    settings=NONE,
                                    thisType=NONE,  (* todo *)
@@ -1029,7 +1035,7 @@ and typeParameterList (ts) : token list * string list =
 *)
 
 and nonemptyParameters (ts) (n)
-    : (token list * Ast.BINDINGS) = 
+    : (token list * (Ast.BINDINGS * Ast.EXPR list)) = 
     let
     in case ts of
         TripleDot :: _ => 
@@ -1041,14 +1047,14 @@ and nonemptyParameters (ts) (n)
             end
       | _ => 
             let
-                val (ts1,(b1,i1)) = parameterInit ts n
+                val (ts1,((b1,i1),e1)) = parameterInit ts n
             in case ts1 of
-                RightParen :: _ => (ts1,(b1,i1))
+                RightParen :: _ => (ts1,((b1,i1),e1))
               | Comma :: _ =>
                     let
-                        val (ts2,(b2,i2)) = nonemptyParameters (tl ts1) (n+1)
+                        val (ts2,((b2,i2),e2)) = nonemptyParameters (tl ts1) (n+1)
                     in
-                        (ts2,(b1@b2,i1@i2))
+                        (ts2,((b1@b2,i1@i2),e1@e2))
                     end
               | _ => raise ParseError
             end
@@ -1081,10 +1087,10 @@ and nonemptyParametersType (ts)
     end
 
 and parameters (ts) 
-    : (token list * Ast.BINDINGS) =
+    : (token list * (Ast.BINDINGS * Ast.EXPR list)) =
     let val _ = trace([">> parameters with next=",tokenname(hd(ts))]) 
     in case ts of 
-        RightParen :: ts1 => (ts,([],[]))
+        RightParen :: ts1 => (ts,(([],[]),[]))
       | _ => nonemptyParameters ts 0
     end
 
@@ -1103,7 +1109,7 @@ and parametersType (ts)
 *)
 
 and parameterInit (ts) (n)
-    : (token list * Ast.BINDINGS) = 
+    : (token list * (Ast.BINDINGS * Ast.EXPR list)) = 
     let val _ = trace([">> parameterInit with next=",tokenname(hd(ts))]) 
         val (ts1,(temp,nd1)) = parameter ts n
     in case ts1 of
@@ -1111,18 +1117,18 @@ and parameterInit (ts) (n)
             let
                 val {pattern,ty,...} = nd1
                 val (ts2,nd2) = nonAssignmentExpression (tl ts1,NOLIST,ALLOWIN)
-                val (b,i) = desugarPattern pattern ty (SOME nd2) 0
+                val (b,i) = desugarPattern pattern ty (SOME (Ast.GetTemp n)) (n+1)
             in 
                 trace(["<< parameterInit with next=",tokenname(hd(ts))]);
-                (ts2, (temp::b,i))
+                (ts2, ((temp::b,i),[nd2]))
             end
       | _ => 
             let
                 val {pattern,ty,...} = nd1
-                val (b,i) = desugarPattern pattern ty NONE 0
+                val (b,i) = desugarPattern pattern ty (SOME (Ast.GetTemp n)) (n+1)
             in
                 trace(["<< parameterInit with next=",tokenname(hd(ts))]);
-                (ts1, (temp::b,i))
+                (ts1, ((temp::b,i),[]))
             end
     end
 
@@ -1193,20 +1199,20 @@ and parameterKind (ts)
         ...  ParameterKind TypedPattern
 *)
 
-and restParameter (ts) (n): (token list * Ast.BINDINGS) =
+and restParameter (ts) (n): (token list * (Ast.BINDINGS * Ast.EXPR list)) =
     let val _ = trace([">> restParameter with next=",tokenname(hd(ts))])
     in case ts of
         DOTDOTDOT :: _ =>
             let
             in case tl ts of
                 RightParen :: _ => 
-                    (tl ts, ([Ast.Binding{ident=Ast.PropIdent "",ty=NONE}],[]))
+                    (tl ts, (([Ast.Binding{ident=Ast.PropIdent "",ty=NONE}],[]),[]))
               | _ =>
                     let
                         val (ts1,(temp,{pattern,ty,...})) = parameter (tl ts) n
-                        val (b,i) = desugarPattern pattern ty NONE 0
+                        val (b,i) = desugarPattern pattern ty (SOME (Ast.GetTemp n)) (n+1)
                     in
-                        (ts1, (temp::b,i))
+                        (ts1, ((temp::b,i),[]))
                     end
             end
       | _ => raise ParseError
@@ -3314,9 +3320,10 @@ and functionTypeFromSignature fsig : Ast.FUNC_TYPE =
                             let
                                 val (Ast.Binding {ident,ty}) = hd params
                                 val types = paramTypes (tl params)
-                            in case (pattern,ty) of
-                                (_,SOME t) => t :: types
-                              | (_,NONE) => Ast.SpecialType Ast.Any::types
+                            in case (ident,ty) of
+                                (Ast.PropIdent _,SOME t) => t :: types
+                              | (Ast.PropIdent _,NONE) => Ast.SpecialType Ast.Any::types
+                              | _ => types   (* ignore temps from desugaring *)
                             end
     in 
        case fsig of
@@ -4038,7 +4045,7 @@ and typeCaseElement (ts,has_default)
                         val (ts2,nd2) = block (tl ts1,LOCAL)
                     in
                         trace(["<< typeCaseElement with next=", tokenname(hd ts2)]);
-                        (ts2, {bindings=desugarPattern p t NONE 0, ty=t, body=nd2,inits=NONE})
+                        (ts2, {bindings=desugarPattern p t (SOME (Ast.GetTemp 0)) 0, ty=t, body=nd2,inits=NONE})
                     end
               | _ => raise ParseError
             end
@@ -4238,7 +4245,7 @@ and forStatement (ts,w) : (token list * Ast.STMT) =
                                     else if (len = 0) (* convert inits to pattern *)
                                         then case init of 
                                             Ast.ExprStmt e::[] => 
-                                                desugarPattern (patternFromListExpr e) NONE NONE 0
+                                                desugarPattern (patternFromListExpr e) NONE (SOME (Ast.GetTemp 0)) 0
                                           | _ => LogErr.internalError [""]
                                         else (#bindings (valOf defn))
                         val (ts2,nd2) = listExpression (tl ts1,ALLOWIN)
@@ -4372,7 +4379,7 @@ and forInBinding (ts)
       | _ => 
             let
                 val (ts1,nd1) = pattern (ts,ALLOWLIST,NOIN,ALLOWEXPR)
-                val (b,i) = desugarPattern nd1 NONE NONE 0
+                val (b,i) = desugarPattern nd1 NONE (SOME (Ast.GetTemp 0)) 0
             in 
                 trace ["<< forInitialiser with next=", tokenname(hd ts1)];
                 (ts1,(b,i))
@@ -4603,7 +4610,7 @@ and catchClause (ts) =
         Catch :: LeftParen :: _ =>
             let
                 val (ts1,(temp,{pattern,ty})) = parameter (tl (tl ts)) 0
-                val (b,i) = desugarPattern pattern ty NONE 0
+                val (b,i) = desugarPattern pattern ty (SOME (Ast.GetTemp 0)) 0
             in case ts1 of
                 RightParen :: _ =>
                     let
@@ -5637,7 +5644,7 @@ and constructorSignature (ts) =
             in case ts2 of
                 Comma :: _ =>
                     let
-                           val (ts3,nd3) = parameters (tl ts2)  
+                           val (ts3,((b,i),e)) = parameters (tl ts2)  
                        in case ts3 of
                            RightParen :: _ =>
                                let
@@ -5647,7 +5654,8 @@ and constructorSignature (ts) =
                                    (ts4,Ast.FunctionSignature
                                             { typeParams=nd1,
                                               thisType=SOME (needType(nd2,NONE)),
-                                              params=nd3,
+                                              params=(b,i),
+                                              defaults=e,
                                               returnType=(Ast.SpecialType Ast.VoidType),
                                               settings=SOME nd4,
                                               hasRest=false }) (* do we need this *)
@@ -5658,7 +5666,7 @@ and constructorSignature (ts) =
             end
       | LeftParen :: _ =>
                let
-                   val (ts2, nd2) = parameters (tl ts1)
+                   val (ts2,((b,i),e)) = parameters (tl ts1)
                in case ts2 of
                    RightParen :: _ =>
                        let
@@ -5667,7 +5675,8 @@ and constructorSignature (ts) =
                            trace ["<< constructorSignature with next=",tokenname(hd ts3)];
                            (ts3,Ast.FunctionSignature
                                     { typeParams=nd1,
-                                      params=nd2,
+                                      params=(b,i),
+                                      defaults=e,
                                       returnType=(Ast.SpecialType Ast.VoidType),
                                       settings=SOME nd3,
                                       thisType=NONE,
