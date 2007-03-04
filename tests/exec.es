@@ -1,4 +1,5 @@
-function f(x=20) {
+function g() { return 20 }
+function f(x=g()) {
 intrinsic::print(x)
 }
 f(10)

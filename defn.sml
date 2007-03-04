@@ -905,18 +905,8 @@ and defFunc (env:ENV) (func:Ast.FUNC)
         val _ = trace [">> defFunc"]
         val Ast.Func {name, fsig, block, ty, ...} = func
         val (paramFixtures, paramInits, defaults, settingsFixtures, settingsInits) = defFuncSig env fsig
-(*
-        val tempParamFixtures = 
-            let
-                val params = (#params ty)
-                val nums = List.tabulate ((length params), (fn x => x))
-                fun toFixtureBinding (t,n) = (Ast.TempName n, 
-                                              Ast.ValFixture { ty = t, readOnly = true })
-            in
-                List.map toFixtureBinding (ListPair.zip (params, nums))
-            end
-*)
         val newTy = defFuncTy env ty
+        val defaults = defExprs env defaults
         val env = extendEnvironment env paramFixtures
         val (block, hoisted) = defBlock env block
         val _ = trace ["<< defFunc"]
@@ -928,7 +918,6 @@ and defFunc (env:ENV) (func:Ast.FUNC)
                    defaults = defaults,
                    ty = newTy,
                    param = (paramFixtures
-(*                            @ tempParamFixtures *)
                             @ hoisted,
                             paramInits)})
     end
