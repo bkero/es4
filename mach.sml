@@ -283,7 +283,6 @@ fun newNamespace (n:NS)
     : VAL = 
     newObject intrinsicNamespaceBaseTag Null (SOME (Namespace n))
 
-
 fun newClass (e:SCOPE) 
              (cls:CLS) 
     : VAL =

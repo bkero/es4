@@ -44,7 +44,8 @@ fun resolve (mname:Ast.MULTINAME)
             let 
                 val matches = tryName [] x
             in case matches of
-                   n :: [] => SOME n
+                   n :: [] => (trace ["resolved to specific name: ", LogErr.name n];
+                               SOME n)
                  | [] => tryMultiname xs
                  | _  => error ["ambiguous reference ", 
 					            LogErr.multiname mname]
@@ -54,9 +55,10 @@ fun resolve (mname:Ast.MULTINAME)
             SOME n => SOME (curr, n)
           | NONE => 
 	        (case getParent curr of
-		         NONE => error ["exhausted search for ", 
-					            LogErr.multiname mname]
-	           | SOME parent => resolve mname parent nameExists getParent)
+		         NONE => (trace ["exhausted search for ", LogErr.multiname mname]; 
+                          NONE)
+	           | SOME parent => (trace ["moving to parent"];
+                                 resolve mname parent nameExists getParent))
     end
 end
 

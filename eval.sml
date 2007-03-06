@@ -300,6 +300,31 @@ fun evalExpr (scope:Mach.SCOPE)
       | _ => LogErr.unimplError ["unhandled expression type"]
 
 
+and evalLiteralArrayExpr (scope:Mach.SCOPE)
+                         (exprs:Ast.EXPR list)
+                         (ty:Ast.TYPE_EXPR option)
+    : Mach.VAL =
+    let 
+        val vals = map (evalExpr scope) exprs
+        val tys = case ty of 
+                      NONE => [Ast.SpecialType Ast.Any]
+                    | SOME (Ast.ArrayType tys) => tys
+                    (* FIXME: hoist this to parsing or defn; don't use
+                     * a full TYPE_EXPR in LiteralArray. *)
+                    | SOME _ => error ["non-array type on array literal"]
+        val tag = Mach.ArrayTag tys
+        (* FIXME: hook up to Array.prototype. *)
+        val obj = Mach.newObj tag Mach.Undef NONE
+        fun putVal n [] = ()
+          | putVal n (x::xs) = 
+            (* FIXME: typecheck slot-write. *)
+            (Mach.setValue obj { ns = (Ast.Internal ""), id = (Int.toString n) } x;
+             putVal (n+1) xs)
+    in
+        putVal 0 vals;
+        Mach.Object obj
+    end
+
 and evalLiteralExpr (scope:Mach.SCOPE) 
                     (lit:Ast.LITERAL) 
     : Mach.VAL = 
@@ -309,6 +334,7 @@ and evalLiteralExpr (scope:Mach.SCOPE)
       | Ast.LiteralNumber n => Mach.newNumber n
       | Ast.LiteralBoolean b => Mach.newBoolean b
       | Ast.LiteralString s => Mach.newString s
+      | Ast.LiteralArray {exprs, ty} => evalLiteralArrayExpr scope exprs ty
       | Ast.LiteralNamespace n => Mach.newNamespace n
       | Ast.LiteralFunction f => Mach.newFunc scope f
       | _ => LogErr.unimplError ["unhandled literal type"]
@@ -416,6 +442,7 @@ and evalSetExpr (scope:Mach.SCOPE)
                   | Ast.AssignLogicalOr => modifyWith Ast.LogicalOr
             end
     in
+        trace ["setExpr assignment to slot ", LogErr.name name];
         Mach.setValue obj name v;
         v
     end
@@ -661,7 +688,6 @@ and resolveOnObjAndPrototypes (obj:Mach.OBJ)
                               (mname:Mach.MULTINAME) 
     : REF option = 
     let 
-        val _ = trace ["resolveOnObjAndPrototypes: ", LogErr.multiname mname];
         fun hasFixedProp (Mach.Obj {props, ...}, n) = Mach.hasFixedProp props n
         fun hasProp (Mach.Obj {props, ...}, n) = Mach.hasProp props n
         fun getObjProto (Mach.Obj {proto, ...}) = 
@@ -669,6 +695,7 @@ and resolveOnObjAndPrototypes (obj:Mach.OBJ)
                 Mach.Object ob => SOME ob
               | _ => NONE
     in
+        trace ["resolveOnObjAndPrototypes: ", LogErr.multiname mname];
         case Multiname.resolve mname obj hasFixedProp getObjProto of
             NONE => Multiname.resolve mname obj hasProp getObjProto
           | refOpt => refOpt
@@ -915,18 +942,25 @@ and evalInits (scope:Mach.SCOPE)
               (temps:Mach.TEMPS)
               (inits:Ast.INITS)
     : unit =
-    let val _ = trace ["evalInits"]
-    in case inits of
-        ((n,e)::rest) =>
+    let 
+        fun evalInit (n,e) =
             let
+                val _ = trace [">> evalInit"]
                 val v = evalExpr scope e
+                val _ = trace ["<< evalInit"]
             in
-                (case n of 
-                     Ast.PropName pn => Mach.defValue obj pn v
-                   | Ast.TempName tn => Mach.defTemp temps tn v);
-                evalInits scope obj temps rest
+                case n of 
+                    Ast.PropName pn => 
+                    (trace ["evalInit assigning to prop ", LogErr.name pn];
+                     Mach.defValue obj pn v)
+                  | Ast.TempName tn => 
+                    (trace ["evalInit assigning to temp ", (Int.toString tn)];
+                     Mach.defTemp temps tn v)
             end
-      | _ => ()
+    in 
+        trace [">> evalInits"];
+        List.app evalInit inits;
+        trace ["<< evalInits"]
     end
 
 and evalObjInits (scope:Mach.SCOPE)                   
@@ -1021,7 +1055,7 @@ and initializeAndConstruct (classClosure:Mach.CLS_CLOSURE)
                         trace ["initializing and constructing superclass of ", LogErr.name name];
                         (* FIXME: evaluate superArgs from super(...) call. *)
                         initializeAndConstructSuper ([(*superArgs*)]);                        
-                        trace ["entering constructo for ", LogErr.name name];
+                        trace ["entering constructor for ", LogErr.name name];
                         evalBlock ctorScope block;
                         ()
                     end
