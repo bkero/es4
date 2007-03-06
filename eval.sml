@@ -15,22 +15,13 @@ exception ThrowException of Mach.VAL
 exception ReturnException of Mach.VAL
 
 exception InternalError
+
     
-fun newName (i:Ast.IDENT) 
-            (n:Mach.NS) 
-  = { ns=n, id=i }
-
-
-fun getType (tyOpt:Ast.TYPE_EXPR option) 
-    : Ast.TYPE_EXPR = 
-    case tyOpt of 
-        SOME t => t
-      | NONE => Ast.SpecialType Ast.Any
-                
 fun getScopeObj (scope:Mach.SCOPE) 
     : Mach.OBJ = 
     case scope of 
         Mach.Scope { object, ...} => object
+
 
 fun getScopeTemps (scope:Mach.SCOPE) 
     : Mach.TEMPS = 
