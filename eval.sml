@@ -940,7 +940,6 @@ and bindArgs (outerScope:Mach.SCOPE)
     end
 
 
-
 and evalInits (scope:Mach.SCOPE)
               (obj:Mach.OBJ)
               (temps:Mach.TEMPS)
@@ -980,6 +979,10 @@ and evalObjInits (scope:Mach.SCOPE)
         else ()
     end
 
+(*
+    Evaluate INITs targeting an obj, in scope of temporaries
+*)
+
 and evalInstanceInits (scope:Mach.SCOPE)                   
                       (instanceObj:Mach.OBJ)
                       (head:Ast.HEAD)
@@ -987,8 +990,9 @@ and evalInstanceInits (scope:Mach.SCOPE)
         let
             val (fixtures,inits) = head
             val tempScope = evalHead scope (fixtures,[]) false
+            val temps = getScopeTemps tempScope
         in
-            evalObjInits tempScope instanceObj inits
+            evalInits tempScope instanceObj temps inits
         end
 
 and evalScopeInits (scope:Mach.SCOPE)
@@ -1049,8 +1053,7 @@ and initializeAndConstruct (classClosure:Mach.CLS_CLOSURE)
                         end
             in
                 trace ["evaluating instance initializers for ", LogErr.name name];
-                evalInstanceInits classScope instanceObj instanceInits;
-(* was                evalObjInits classScope instanceObj instanceInits; *)
+                evalInstanceInits classScope instanceObj instanceInits;   
                 case constructor of 
                     NONE => initializeAndConstructSuper []
                   | SOME (Ast.Ctor { settings, func }) => 
@@ -1067,12 +1070,13 @@ and initializeAndConstruct (classClosure:Mach.CLS_CLOSURE)
                         bindArgs classScope varScope func args;
                         trace ["evaluating inits of ", LogErr.name name];
                         evalScopeInits varScope Ast.Local inits;
-                        trace ["allocating scope fixtures for settings temps"];                        
-                        allocScopeFixtures varScope settings_fixtures;                
-                        trace ["evaluating settings for ", LogErr.name name];
-                        evalObjInits varScope instanceObj settings_inits;
+                        trace ["evaluating settings"];                        
+                        evalInstanceInits varScope instanceObj settings;
                         trace ["initializing and constructing superclass of ", LogErr.name name];
-                        (* FIXME: evaluate superArgs from super(...) call. *)
+                        (* FIXME: evaluate superArgs from super(...) call.
+                                  JD: the super initialiser call will be evaluated as part of the
+                                      settings, so there should be nothing to do here
+                        *)
                         initializeAndConstructSuper ([(*superArgs*)]);                        
                         trace ["entering constructor for ", LogErr.name name];
                         evalBlock ctorScope block;

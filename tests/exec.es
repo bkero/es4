@@ -11,15 +11,15 @@ new A
 */
 
 use namespace intrinsic
-function f() { return 30 }
-function g() { return 20 }
-function h() { return 10 }
+function f() { return [30] }
+function g() { return [20] }
+function h() { return [10] }
 class Object { }
-class A { var x=f(); function A(x=g):x=x() { print("making A\n") } }
+class A { var [x,y]=["x","y"]; function A(x=g):[x]=x() { print("making A\n") } }
 var a = new A(h)
-print(a.x,"\n")
+print(a.x," ",a.y,"\n")
 a = new A()
-print(a.x,"\n")
+print(a.x," ",a.y,"\n")
 
 
 /*
