@@ -1045,24 +1045,11 @@ and evalInits (scope:Mach.SCOPE)
         trace ["<< evalInits"]
     end
 
-and evalObjInits (scope:Mach.SCOPE)                   
-                 (obj:Mach.OBJ)
-                 (inits:Ast.INITS)
-    : unit = 
-    let
-        val (temps:Mach.TEMPS) = ref []
-    in
-        evalInits scope obj temps inits;
-        if not ((length (!temps)) = 0)
-        then error ["initialized temporaries in non-scope object"]
-        else ()
-    end
-
 (*
     Evaluate INITs targeting an obj, in scope of temporaries
 *)
 
-and evalInstanceInits (scope:Mach.SCOPE)                   
+and evalObjInits (scope:Mach.SCOPE)                   
                       (instanceObj:Mach.OBJ)
                       (head:Ast.HEAD)
     : unit = 
@@ -1132,7 +1119,7 @@ and initializeAndConstruct (classClosure:Mach.CLS_CLOSURE)
                         end
             in
                 trace ["evaluating instance initializers for ", LogErr.name name];
-                evalInstanceInits classScope instanceObj instanceInits;   
+                evalObjInits classScope instanceObj instanceInits;   
                 case constructor of 
                     NONE => initializeAndConstructSuper []
                   | SOME (Ast.Ctor { settings, func }) => 
@@ -1150,7 +1137,7 @@ and initializeAndConstruct (classClosure:Mach.CLS_CLOSURE)
                         trace ["evaluating inits of ", LogErr.name name];
                         evalScopeInits varScope Ast.Local inits;
                         trace ["evaluating settings"];                        
-                        evalInstanceInits varScope instanceObj settings;
+                        evalObjInits varScope instanceObj settings;
                         trace ["initializing and constructing superclass of ", LogErr.name name];
                         (* FIXME: evaluate superArgs from super(...) call.
                                   JD: the super initialiser call will be evaluated as part of the
