@@ -905,8 +905,8 @@ and bindArgs (outerScope:Mach.SCOPE)
     in
         if a + d < p
         then error ["not enough args to function ", 
-                        Int.toString a, " given ", 
-                        Int.toString (p-d), " expected"]
+                    Int.toString a, " given ", 
+                    Int.toString (p-d), " expected"]
         else 
             let
                 val defExprs = List.drop (defaults, i)
@@ -1060,37 +1060,6 @@ and constructClassInstance (classObj:Mach.OBJ)
         initializeAndConstruct classClosure classObj classScope args instanceObj;
         trace ["finished constructing new ", LogErr.name name];
         Mach.Object instanceObj
-    end
-
-(* 
- * This is the dynamic phase of function definition; it assumes that the 
- * function has already had its fixtures constructed during the
- * definition phase and a property for it has been allocated to the ininitialized
- * state.
- *) 
-
-and evalFuncDefn (scope:Mach.SCOPE) 
-                 (f:Ast.FUNC_DEFN) =
-    evalFuncDefnFull scope (getScopeObj scope) f
-
-and evalFuncDefnFull (scope:Mach.SCOPE) 
-                     (target:Mach.OBJ)
-                     (f:Ast.FUNC_DEFN)
-    : unit = 
-    let 
-        val func = (#func f)
-        val name = case func of Ast.Func { name={ident, kind}, ...} => 
-                                case kind of 
-                                    Ast.Ordinary => ident
-                                  | Ast.Call => "call" (* FIXME: hack until parser fixed *)
-                                  | _ => LogErr.unimplError ["evaluating unhandled type of function name"]
-
-        val fval = Mach.newFunc scope func
-        val fname = {id = name, 
-                     ns = (needNamespace (evalExpr scope (#ns f)))}
-    in
-        trace ["defining function ", LogErr.name fname];
-        Mach.defValue target fname fval
     end
 
 (*

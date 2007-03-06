@@ -40,9 +40,6 @@ type CONTEXT =
 
 type ENV = CONTEXT list
 
-val currentClassName : Ast.NAME ref = ref {id="",ns=Ast.Intrinsic}
-    (* ISSUE: is there a beter way to manage this? *)
-
 val defaultNumericMode : Ast.NUMERIC_MODE =
     { numberType = Ast.Number,
       roundingMode = Ast.HalfEven,
@@ -1326,8 +1323,6 @@ and defStmt (env:ENV)
                 val namespace = resolveExprToNamespace env ns
                 val name = {ns=namespace, id=ident}
 
-                (* FIXME: remove curentClassName *)
-                val _ = (currentClassName := name)
                 val Ast.Cls cls = findClass name
                 val classFixtures = (#classFixtures cls)
                 val extends = (#extends cls)
@@ -1336,9 +1331,6 @@ and defStmt (env:ENV)
                                                              defns=defns,
                                                              head=head,
                                                              body=body})
-
-                (* FIXME: remove curentClassName *)
-                val _ = (currentClassName := {ns=Ast.Intrinsic, id=""})
             in
                 Ast.ClassBlock { ns = ns,
                                  ident = ident,

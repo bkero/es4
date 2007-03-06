@@ -19,7 +19,6 @@ fun testEV argvRest =
 	val asts = List.map Parser.parseFile argvRest
 	val _ = TextIO.print "defining ... \n";
 	val dps = map Defn.defProgram asts
-	val _ = List.app Pretty.ppProgram dps
 	val _ = TextIO.print "evaluating ... \n";
 	val _ = map Eval.evalProgram dps
 	val _ = TextIO.print "evaluated! \n"
@@ -34,7 +33,6 @@ fun testDefn argvRest =
 	    val asts = List.map Parser.parseFile argvRest
     	val _ = TextIO.print "defining ... \n";
 	    val dps = map Defn.defProgram asts
-    	val _ = List.app Pretty.ppProgram dps
     in
     	()
     end
