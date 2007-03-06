@@ -39,6 +39,14 @@ fun needNamespace (v:Mach.VAL)
       | _ => error ["need namespace"]
 
 
+fun needName (mname:Ast.MULTINAME) 
+    : Ast.NAME = 
+    case mname of 
+        {nss=[[ns]], id} => {ns=ns, id=id}
+      | _ => error ["need unique namespace, got multiname ", 
+                    LogErr.multiname mname]
+
+
 fun needObj (v:Mach.VAL) 
     : Mach.OBJ = 
     case v of 
@@ -149,6 +157,15 @@ fun allocFixtures (scope:Mach.SCOPE)
                                         state = Mach.TypeProp,                                   
                                         attrs = { dontDelete = true,
                                                   dontEnum = true,
+                                                  readOnly = true,
+                                                  isFixed = true } }
+
+                          | Ast.MethodFixture { ty, ... } => 
+                            allocProp "method" 
+                                      { ty = ty,
+                                        state = valAllocState ty,
+                                        attrs = { dontDelete = true,
+                                                  dontEnum = false,
                                                   readOnly = true,
                                                   isFixed = true } }
                             
@@ -315,13 +332,74 @@ and evalLiteralArrayExpr (scope:Mach.SCOPE)
         val tag = Mach.ArrayTag tys
         (* FIXME: hook up to Array.prototype. *)
         val obj = Mach.newObj tag Mach.Undef NONE
+        val (Mach.Obj {props, ...}) = obj
         fun putVal n [] = ()
-          | putVal n (x::xs) = 
-            (* FIXME: typecheck slot-write. *)
-            (Mach.setValue obj { ns = (Ast.Internal ""), id = (Int.toString n) } x;
-             putVal (n+1) xs)
+          | putVal n (v::vs) = 
+            let 
+                val name = { ns = (Ast.Internal ""), id = (Int.toString n) }
+                (* FIXME: this is probably incorrect wrt. Array typing rules. *)
+                val ty = if n < (length tys) 
+                         then List.nth (tys, n)
+                         else (if (length tys) > 0
+                               then List.last tys
+                               else Ast.SpecialType Ast.Any)
+                val prop = { ty = ty,
+                             state = Mach.ValProp v,
+                             attrs = { dontDelete = false,
+                                       dontEnum = false,
+                                       readOnly = false,
+                                       isFixed = false } }
+            in
+                Mach.addProp props name prop;
+                putVal (n+1) vs
+            end
     in
         putVal 0 vals;
+        Mach.Object obj
+    end
+
+             
+and evalLiteralObjectExpr (scope:Mach.SCOPE)
+                          (fields:Ast.FIELD list)
+                          (ty:Ast.TYPE_EXPR option)
+    : Mach.VAL =
+    let 
+        fun searchFieldTypes n [] = Ast.SpecialType Ast.Any
+          | searchFieldTypes n ({name,ty}::ts) = 
+            if n = name 
+            then ty
+            else searchFieldTypes n ts
+        val tys = case ty of 
+                      NONE => []
+                    | SOME (Ast.ObjectType tys) => tys
+                    (* FIXME: hoist this to parsing or defn; don't use
+                     * a full TYPE_EXPR in LiteralObject. *)
+                    | SOME _ => error ["non-object type on object literal"]
+        val tag = Mach.ObjectTag tys
+        (* FIXME: hook up to Object.prototype. *)
+        val obj = Mach.newObj tag Mach.Undef NONE
+        val (Mach.Obj {props, ...}) = obj
+        fun processField {kind, name, init} = 
+            let 
+                val const = case kind of 
+                                Ast.Const => true
+                              | Ast.LetConst => true
+                              | _ => false
+                val n = needName (evalIdentExpr scope name)
+                val v = evalExpr scope init
+                val ty = searchFieldTypes (#id n) tys
+                val prop = { ty = ty,
+                             (* FIXME: handle virtuals *)
+                             state = Mach.ValProp v,
+                             attrs = { dontDelete = false,
+                                       dontEnum = false,
+                                       readOnly = const,
+                                       isFixed = false } }
+            in
+                Mach.addProp props n prop
+            end
+    in
+        List.app processField fields;
         Mach.Object obj
     end
 
@@ -335,6 +413,7 @@ and evalLiteralExpr (scope:Mach.SCOPE)
       | Ast.LiteralBoolean b => Mach.newBoolean b
       | Ast.LiteralString s => Mach.newString s
       | Ast.LiteralArray {exprs, ty} => evalLiteralArrayExpr scope exprs ty
+      | Ast.LiteralObject {expr, ty} => evalLiteralObjectExpr scope expr ty
       | Ast.LiteralNamespace n => Mach.newNamespace n
       | Ast.LiteralFunction f => Mach.newFunc scope f
       | _ => LogErr.unimplError ["unhandled literal type"]

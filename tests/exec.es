@@ -1,9 +1,20 @@
+/*
 function g() { return 20 }
 function f(x=g()) {
 intrinsic::print(x)
 }
 f(10)
 f()
+*/
+
+var x, y, z;
+
+z = [1,2];
+
+[x,y] = z;
+
+intrinsic::print(x);
+intrinsic::print(y);
 
 //function f() { print("hi") }
 //f()
