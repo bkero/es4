@@ -4313,7 +4313,7 @@ and forInitialiser (ts)
             in case defns of
                 (Ast.VariableDefn vd :: []) =>
                     (trace(["<< forInitialiser with next=", tokenname(hd ts1)]);
-                    (ts1,SOME vd,body))   
+                    (ts1,SOME vd,body))
               | _ => raise ParseError
             end
       | SemiColon :: _ =>
@@ -4322,10 +4322,10 @@ and forInitialiser (ts)
                 trace(["<< forInitialiser with next=", tokenname(hd ts)]);
                 (ts,NONE,[Ast.EmptyStmt])
             end
-      | _ => 
+      | _ =>
             let
                 val (ts1,nd1) = listExpression (ts,NOIN)
-            in 
+            in
                 trace ["<< forInitialiser with next=", tokenname(hd ts1)];
                 (ts1,NONE,[Ast.ExprStmt nd1])
             end
@@ -5202,7 +5202,9 @@ and variableDefinition (ts,ns:Ast.EXPR,prototype,static,b,t) : (token list * Ast
         val (tempBinds,propBinds) = List.partition isTempBinding b
         val (tempInits,propInits) = List.partition isTempInit i
 
-        val initStmts = [Ast.InitStmt {kind=nd1,ns=ns,prototype=prototype,static=static,inits=propInits}]
+        val initStmts = [Ast.InitStmt {kind=nd1,ns=ns,prototype=prototype,static=static,temps=(tempBinds,tempInits),inits=(propInits)}]
+
+(*
         val tempDefns = case tempBinds of [] => [] 
                           | _ => [Ast.VariableDefn {kind=Ast.LetVar,
                                                    bindings=(tempBinds,tempInits),
@@ -5212,6 +5214,7 @@ and variableDefinition (ts,ns:Ast.EXPR,prototype,static,b,t) : (token list * Ast
 
         val body = case tempDefns of [] => initStmts
                       | _ => [Ast.BlockStmt (Ast.Block {pragmas=[],defns=tempDefns,head=NONE,body=initStmts})]
+*)
 
     in
         (ts2,{pragmas=[],
@@ -5220,7 +5223,7 @@ and variableDefinition (ts,ns:Ast.EXPR,prototype,static,b,t) : (token list * Ast
                                        ns=ns,
                                        prototype=prototype,
                                        static=static}],
-              body=body,
+              body=initStmts,
               head=NONE})
     end
 
@@ -5268,7 +5271,7 @@ and variableBindingList (ts,a,b) : (token list * Ast.BINDINGS) =
     VariableInitialisation(a, b)    
         =  AssignmentExpression(a, b)    
 
-    Desugar patterns, types and initialisers into binding and 
+    Desugar patterns, types and initialisers into binding and init steps
 
 *)
 
@@ -5398,7 +5401,7 @@ and functionDefinition (ts,attrs,CLASS) =
                               defns=[Ast.ConstructorDefn 
                                             {ns=ns,
                                              native=native,
-                                             ctor=Ast.Ctor {settings=[],
+                                             ctor=Ast.Ctor {settings=([],[]),
                                                             func=Ast.Func {name=nd2,
                                                                            fsig=nd3,
                                                                            param=([],[]),
@@ -5416,7 +5419,7 @@ and functionDefinition (ts,attrs,CLASS) =
                               defns=[Ast.ConstructorDefn 
                                             {ns=ns,
                                              native=native,
-                                             ctor=Ast.Ctor {settings=[],
+                                             ctor=Ast.Ctor {settings=([],[]),
                                                             func=Ast.Func {name=nd2,
                                                                            fsig=nd3,
                                                                            param=([],[]),
@@ -5514,6 +5517,7 @@ and functionDefinition (ts,attrs,CLASS) =
                                    ns=ns,
                                    prototype=false,
                                    static=false,
+                                   temps=([],[]),
                                    inits=[Ast.InitStep (Ast.PropIdent ident,
                                                         Ast.LiteralExpr (Ast.LiteralFunction func))]}],
               head=NONE})
@@ -5811,8 +5815,55 @@ and classDefinition (ts,attrs) =
                       | Ast.NamespaceDefn _ => false
                       | _ => LogErr.defnError ["illegal definition type in class"]
 
+                fun isProto (d:Ast.DEFN) 
+                    : bool = 
+                    case d of 
+                        Ast.VariableDefn vd => (#prototype vd)
+                      | Ast.FunctionDefn fd => (#prototype fd)
+                      | Ast.ConstructorDefn _ => false
+                      | Ast.TypeDefn _ => false
+                      | Ast.NamespaceDefn _ => false
+                      | _ => LogErr.defnError ["illegal definition type in class"]
+        
+                fun isStatic (d:Ast.DEFN)
+                    : bool = 
+                    case d of 
+                        Ast.VariableDefn vd => (#static vd)
+                      | Ast.FunctionDefn fd => (#static fd)
+                      | Ast.ConstructorDefn _ => false
+                      | Ast.TypeDefn _ => true
+                      | Ast.NamespaceDefn _ => true
+                      | _ => LogErr.defnError ["illegal definition type in class"]
+
+                fun isCtor (d:Ast.DEFN) : bool = 
+                    case d of 
+                        Ast.ConstructorDefn _ => true
+                      | _ => false
+                         
+                fun isInstanceInit (s:Ast.STMT)
+                    : bool =
+                    let
+                    in case s of
+                        Ast.InitStmt {kind, static, prototype,...} =>
+                            not ((kind = Ast.LetVar) orelse 
+                                 (kind = Ast.LetConst) orelse
+                                 prototype orelse 
+                                 static)
+                      | _ => false                    
+                    end
+
                 val (Ast.Block {body,defns,...}) = nd3
-                val letDefns = List.filter isLet defns
+                val (letDefns,defns) = List.partition isLet defns
+                val (protoDefns,defns) = List.partition isProto defns
+                val (ctorDefns,defns) = List.partition isCtor defns
+                val (classDefns,instanceDefns) = List.partition isStatic defns
+
+                val ctorDefn = case ctorDefns of [Ast.ConstructorDefn cd] => SOME cd 
+                                               | [] => NONE 
+                                               | _ => LogErr.internalError ["more than one ctor"]
+
+                val (instanceStmts,body) = List.partition isInstanceInit body
+
             in
                 (ts3,{pragmas=[],
                       body=[Ast.ClassBlock 
@@ -5822,9 +5873,9 @@ and classDefinition (ts,attrs) =
                                  extends=NONE,  (* filled in by definer *)
                                  fixtures=NONE,
                                  block=Ast.Block {body=body,
-                                            defns=letDefns,
-                                            head=NONE,
-                                            pragmas=[]}}],
+                                                  defns=letDefns,
+                                                  head=NONE,
+                                                  pragmas=[]}}],
                       defns=[Ast.ClassDefn {ident=ident,
                                             nonnullable=nonnullable,
                                             ns=ns,
@@ -5833,9 +5884,10 @@ and classDefinition (ts,attrs) =
                                             params=params,
                                             extends=extends,
                                             implements=implements,
-                                            block=nd3,
-                                            classDefns=[],
-                                            instanceDefns=[] }],
+                                            classDefns=classDefns,
+                                            instanceDefns=instanceDefns,
+                                            instanceStmts=instanceStmts,
+                                            ctorDefn=ctorDefn }],
                      head=NONE})
             end
       | _ => raise ParseError

@@ -4,8 +4,8 @@ JEFF'S NOTES ON THE REFERENCE IMPLEMENTATION
 
 TO DO
 
-- partition class and instance definitions during parsing
 - array and object literals to test destructuring
+- revive for statements
 
 ###
 
@@ -13,14 +13,15 @@ TO DO
 
 ERRORS
 
-Errors may be reported by the: scanner, parser, definer, verifier, 
-and evaluator
+Errors might be reported by the scanner, parser, definer, verifier, 
+or evaluator
 
-* Definition errors occur if a program contains conflicting definitions
-  or other context sensitive syntax errors
-* Initialisation errors occur before the first time a block is entered when
-  a scope object cannot be ininitialised due to an unresolved type annotation 
-  or uninitialised property (non-nullable without default)
+* Definition errors occur when a program contains conflicting definitions
+  or other context sensitive syntax errors that make translating the concrete
+  syntax of definitions into fixtures and initialisers
+* Initialisation errors occur before the a block is entered when a scope 
+  object cannot be ininitialised due to an unresolved type annotation or 
+  uninitialised property (non-nullable without default)
 * Runtime errors occur when an expression is evaluated with invalid operands
 * Verifier errors occur in strict mode when certain static semantic rules 
   are violated. In standard mode, errors that would have been reported

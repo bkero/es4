@@ -1,26 +1,26 @@
-function g() { return 20 }
-function f(x=g()) {
-intrinsic::print(x)
-}
-f(10)
-f()
-
-//function f() { print("hi") }
-//f()
-//ns var y
-//let ($t1=10) {ns::y=$t1[0]}
-
-
-
-
 /*
-use namespace intrinsic
-class Object { var x }
-class A { function A() { print("making A\n") } }
-var a = new A
-a.x = 10
-print(a.x,"\n")
+class Object {}
+class A {
+var [x,y] = 10
+   // $t = 10
+   // x = $t[0]
+   // y = $t[1]
+   //   [InitStmt {[$t=10,x=$t[0],y=$t[1]]}}
+}
+new A
 */
+
+use namespace intrinsic
+function f() { return 30 }
+function g() { return 20 }
+function h() { return 10 }
+class Object { }
+class A { var x=f(); function A(x=g):x=x() { print("making A\n") } }
+var a = new A(h)
+print(a.x,"\n")
+a = new A()
+print(a.x,"\n")
+
 
 /*
 class Object {}
