@@ -139,7 +139,7 @@ fun allocFixtures (scope:Mach.SCOPE)
                          (if t = (List.length (!temps))
                           then (trace ["allocating fixture for temporary ", Int.toString t];
                                 temps := (ty, Mach.UninitTemp)::(!temps)) 
-                          else error ["temp count out of sync"])
+                          else (error ["temp count out of sync ", Int.toString t]);())
                        | _ => error ["allocating non-value temporary"])
                   | Ast.PropName pn => 
                     let 
@@ -302,9 +302,13 @@ fun evalExpr (scope:Mach.SCOPE)
         (Mach.defTemp (getScopeTemps scope) n (evalExpr scope e);
          Mach.Undef)
         
-      | Ast.InitExpr (target,inits) => 
-        (evalScopeInits scope target inits;
-         Mach.Undef)
+      | Ast.InitExpr (target,temps,inits) =>
+        let
+            val tempScope = evalHead scope temps false
+        in
+            evalScopeInits tempScope target inits;
+            Mach.Undef
+        end
 
       | _ => LogErr.unimplError ["unhandled expression type"]
 
@@ -951,6 +955,17 @@ and evalObjInits (scope:Mach.SCOPE)
         else ()
     end
 
+and evalInstanceInits (scope:Mach.SCOPE)                   
+                      (instanceObj:Mach.OBJ)
+                      (head:Ast.HEAD)
+    : unit = 
+        let
+            val (fixtures,inits) = head
+            val tempScope = evalHead scope (fixtures,[]) false
+        in
+            evalObjInits tempScope instanceObj inits
+        end
+
 and evalScopeInits (scope:Mach.SCOPE)
                    (target:Ast.INIT_TARGET)
                    (inits:Ast.INITS)
@@ -984,7 +999,7 @@ and initializeAndConstruct (classClosure:Mach.CLS_CLOSURE)
             let
                 val Ast.Cls { name, 
                               extends,
-                              instanceInits, 
+                              instanceInits,
                               constructor, 
                               ... } = cls
                 fun initializeAndConstructSuper (superArgs:Mach.VAL list) = 
@@ -1007,9 +1022,10 @@ and initializeAndConstruct (classClosure:Mach.CLS_CLOSURE)
                             initializeAndConstruct 
                                 superClsClosure superObj superEnv superArgs instanceObj
                         end
-            in 
+            in
                 trace ["evaluating instance initializers for ", LogErr.name name];
-                evalObjInits classScope instanceObj instanceInits;
+                evalInstanceInits classScope instanceObj instanceInits;
+(* was                evalObjInits classScope instanceObj instanceInits; *)
                 case constructor of 
                     NONE => initializeAndConstructSuper []
                   | SOME (Ast.Ctor { settings, func }) => 
@@ -1018,6 +1034,7 @@ and initializeAndConstruct (classClosure:Mach.CLS_CLOSURE)
                         val (varObj:Mach.OBJ) = Mach.newSimpleObj NONE
                         val (varScope:Mach.SCOPE) = extendScope classScope varObj false
                         val (ctorScope:Mach.SCOPE) = extendScope varScope instanceObj true
+                        val (settings_fixtures,settings_inits) = settings
                     in
                         trace ["allocating scope fixtures for constructor of ", LogErr.name name];
                         allocScopeFixtures varScope fixtures;                
@@ -1025,8 +1042,10 @@ and initializeAndConstruct (classClosure:Mach.CLS_CLOSURE)
                         bindArgs classScope varScope func args;
                         trace ["evaluating inits of ", LogErr.name name];
                         evalScopeInits varScope Ast.Local inits;
+                        trace ["allocating scope fixtures for settings temps"];                        
+                        allocScopeFixtures varScope settings_fixtures;                
                         trace ["evaluating settings for ", LogErr.name name];
-                        evalObjInits varScope instanceObj settings;
+                        evalObjInits varScope instanceObj settings_inits;
                         trace ["initializing and constructing superclass of ", LogErr.name name];
                         (* FIXME: evaluate superArgs from super(...) call. *)
                         initializeAndConstructSuper ([(*superArgs*)]);                        

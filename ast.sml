@@ -150,14 +150,14 @@ datatype PRAGMA =
              implements: NAME list,
              classFixtures: FIXTURES,
              instanceFixtures: FIXTURES,
-             instanceInits: INITS,
+             instanceInits: HEAD,  (* fixtures are for temps *) (* Stmts: STMT list,  ISSUE: only holds ExprStmt InitExprs *)
              constructor: CTOR option,
              classType: TYPE_EXPR,  (* ObjectType *)
              instanceType: TYPE_EXPR } (* InstanceType *)
 
      and CTOR =
          Ctor of
-           { settings: INITS,
+           { settings: HEAD,
              func: FUNC }
 
      and FUNC =
@@ -234,6 +234,7 @@ datatype PRAGMA =
              ns: EXPR,
              prototype: bool,
              static: bool,
+             temps: BINDINGS,
              inits: INIT_STEP list }
        | ClassBlock of 
            { ns: EXPR,
@@ -320,7 +321,7 @@ datatype PRAGMA =
        | LexicalRef of { ident: IDENT_EXPR }
        | SetExpr of (ASSIGNOP * EXPR * EXPR)
        | ListExpr of EXPR list
-       | InitExpr of (INIT_TARGET * INITS)
+       | InitExpr of (INIT_TARGET * HEAD * INITS)   (* HEAD is for temporaries *)
        | SliceExpr of (EXPR * EXPR * EXPR)
        | DefTemp of (int * EXPR)
        | GetTemp of int
@@ -465,9 +466,10 @@ withtype
              params: IDENT list,
              extends: IDENT_EXPR option,
              implements: IDENT_EXPR list,
-             block: BLOCK,
              classDefns: DEFN list,
-             instanceDefns: DEFN list }
+             instanceDefns: DEFN list,
+             instanceStmts: STMT list,
+             ctorDefn: CTOR_DEFN option }
 
      and INTERFACE_DEFN =
            { ident: IDENT,
