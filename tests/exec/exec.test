@@ -24,3 +24,6 @@
 
 %% [fibonacci] eval
 @tests/exec/fibo.es
+
+%% [simple class] eval
+@tests/exec/simple-class.es

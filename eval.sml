@@ -16,6 +16,13 @@ exception ReturnException of Mach.VAL
 
 exception InternalError
 
+
+fun extendScope (p:Mach.SCOPE) 
+                (ob:Mach.OBJ)
+                (isVarObject:bool) 
+    : Mach.SCOPE = 
+    Mach.Scope { parent=(SOME p), object=ob, temps=ref [], isVarObject=isVarObject }
+
     
 fun getScopeObj (scope:Mach.SCOPE) 
     : Mach.OBJ = 
@@ -65,6 +72,7 @@ fun allocFixtures (scope:Mach.SCOPE)
     case obj of 
         Mach.Obj { props, ...} => 
         let 
+            val methodScope = extendScope scope obj false
             fun valAllocState (t:Ast.TYPE_EXPR) 
                 : Mach.PROP_STATE = 
 
@@ -155,7 +163,7 @@ fun allocFixtures (scope:Mach.SCOPE)
                           | Ast.MethodFixture { func, ty, readOnly, ... } => 
                             allocProp "method" 
                                       { ty = ty,
-                                        state = Mach.ValProp (Mach.newFunc scope func),
+                                        state = Mach.ValProp (Mach.newFunc methodScope func),
                                         attrs = { dontDelete = true,
                                                   dontEnum = true,
                                                   readOnly = readOnly,
@@ -209,12 +217,6 @@ fun allocFixtures (scope:Mach.SCOPE)
         in                    
             List.app allocFixture f
         end
-
-fun extendScope (p:Mach.SCOPE) 
-                (ob:Mach.OBJ)
-                (isVarObject:bool) 
-    : Mach.SCOPE = 
-    Mach.Scope { parent=(SOME p), object=ob, temps=ref [], isVarObject=isVarObject }
 
     
 fun allocObjFixtures (scope:Mach.SCOPE) 

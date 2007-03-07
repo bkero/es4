@@ -2,10 +2,10 @@
 # file listings
 # ------------------------------------------------------------
 
-SOURCES = ast.sml main.sml pretty.sml verify.sml eval.sml mach.sml \
+SOURCES := ast.sml main.sml pretty.sml verify.sml eval.sml mach.sml \
 	parser.sml  pretty-rep.sml token.sml defn.sml logerr.sml native.sml 
 
-EV_TESTS = tests/exec.es
+EV_TESTS := tests/exec.es
 
 # ------------------------------------------------------------
 # make functions
@@ -19,14 +19,14 @@ anchorhome=$(call sml,valOf((\#get (CM.Anchor.anchor "$(strip $(1))")())))
 # build parameters
 # ------------------------------------------------------------
 
-HEAP_SUFFIX=$(call sml,SMLofNJ.SysInfo.getHeapSuffix())
+HEAP_SUFFIX := $(call sml,SMLofNJ.SysInfo.getHeapSuffix())
 
-MLBUILD=ml-build
+MLBUILD := ml-build
 
-ifneq ($(call anchorhome,smlnj-tdp),)
+#ifneq ($(call anchorhome,smlnj-tdp),)
 # TODO: uncomment this once everyone is using the latest SML/NJ svn sources
 #MLBUILD_ARGS=-Ctdp.instrument=true -DBACKTRACE \$$smlnj-tdp/back-trace.cm
-endif
+#endif
 
 # ------------------------------------------------------------
 # targets
