@@ -1,0 +1,17 @@
+%% [arithmetic] eval
+@tests/exec/arithmetic.es
+
+%% [literal number] eval
+@tests/exec/literal-number.es
+
+%% [literal string] eval
+@tests/exec/literal-string.es
+
+%% [literal array] eval
+@tests/exec/literal-array.es
+
+%% [literal function] eval
+@tests/exec/literal-function.es
+
+%% [while loop] eval
+@tests/exec/while-loop.es

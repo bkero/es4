@@ -290,6 +290,12 @@ fun runTestCase (test : TEST_CASE) : TEST_RESULT =
              handle Verify.VerifyError _ => (test, true)
                   | e => (unexpectedExn e; (test, false))
          )
+
+       | { name, stage=Eval, arg=true, source } =>
+         (
+             (Eval.evalProgram (Defn.defProgram (parse source)); (test, true))
+             handle e => (unexpectedExn e; (test, false))
+         )
 )
 
 fun run (filename : string) : TEST_RESULT list =
@@ -308,6 +314,7 @@ fun exitCode (b : bool) : int = if b then 0 else 1
 
 fun main (arg0 : string, args : string list) : int =
     BackTrace.monitor (fn _ => (report (concat (map run args)))
-                               handle (BadTestParameter _ | MixedContent _ | ExtraLink _) => 1)
+                               handle (BadTestParameter _ | MixedContent _ | ExtraLink _) => 1
+				    | e => (unexpectedExn e; 1))
 
 end
