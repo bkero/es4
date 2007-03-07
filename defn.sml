@@ -734,12 +734,12 @@ and defBindings (env:ENV)
 
 and defFuncSig (env:ENV) 
                (fsig:Ast.FUNC_SIG)
-    : (Ast.FIXTURES * Ast.INITS * Ast.EXPR list * Ast.FIXTURES * Ast.INITS) =
+    : (Ast.FIXTURES * Ast.INITS * Ast.EXPR list * Ast.FIXTURES * Ast.INITS * Ast.EXPR list) =
 
-    case fsig of 
-        Ast.FunctionSignature { typeParams, params, defaults, settings, 
+    case fsig of
+        Ast.FunctionSignature { typeParams, params, defaults, ctorInits,
                                 returnType, thisType, hasRest } =>
-        let 
+        let
 
 (**** FIXME
 
@@ -751,9 +751,9 @@ and defFuncSig (env:ENV)
             val typeParamFixtures = map mkTypeVarFixture typeParams
             val typeEnv = extendEnvironment env typeParamFixtures
 
-            val thisType = case thisType of NONE => Ast.SpecialType Ast.Any 
+            val thisType = case thisType of NONE => Ast.SpecialType Ast.Any
                                           | SOME x => x
-            val thisBinding = (Ast.PropName {ns=internalNs, id="this"}, 
+            val thisBinding = (Ast.PropName {ns=internalNs, id="this"},
                                Ast.ValFixture
                                    { ty = thisType,
                                      readOnly = true })
@@ -761,23 +761,25 @@ and defFuncSig (env:ENV)
 ****)
 
             fun isTempFixture (n,_) : bool =
-                case n of 
+                case n of
                    Ast.TempName _ => true
                  | _ => false
 
 
             val (paramFixtures,paramInits) = defBindings env Ast.Var (Ast.Internal "") params
-            val (settingsFixtures,settingsInits) = 
-                    case settings of 
-                        SOME s => defBindings env Ast.Var (Ast.Internal "") s
-                      | NONE => ([],[])
+            val ((settingsFixtures,settingsInits),superArgs) =
+                    case ctorInits of
+                        SOME (settings,args) => (defBindings env Ast.Var (Ast.Internal "") settings,
+                                          defExprs env args)
+                      | NONE => (([],[]),[])
             val settingsFixtures = List.filter isTempFixture settingsFixtures
         in
             (paramFixtures,
              paramInits,
              defaults,
              settingsFixtures,
-             settingsInits)
+             settingsInits,
+             superArgs)
         end
 
 (*
@@ -818,18 +820,18 @@ and defFuncSig (env:ENV)
 *)
 
 and defFunc (env:ENV) (func:Ast.FUNC)
-    : ((Ast.FIXTURES * Ast.INITS) * Ast.FUNC) =
+    : ((Ast.FIXTURES * Ast.INITS) * Ast.EXPR list * Ast.FUNC) =
     let
         val _ = trace [">> defFunc"]
         val Ast.Func {name, fsig, block, ty, ...} = func
-        val (paramFixtures, paramInits, defaults, settingsFixtures, settingsInits) = defFuncSig env fsig
+        val (paramFixtures, paramInits, defaults, settingsFixtures, settingsInits, superArgs) = defFuncSig env fsig
         val newTy = defFuncTy env ty
         val defaults = defExprs env defaults
         val env = extendEnvironment env paramFixtures
         val (block, hoisted) = defBlock env block
         val _ = trace ["<< defFunc"]
     in 
-        ((settingsFixtures, settingsInits), 
+        ((settingsFixtures, settingsInits), superArgs, 
          Ast.Func {name = name,
                    fsig = fsig,
                    block = block,
@@ -865,7 +867,7 @@ and defFuncDefn (env:ENV) (f:Ast.FUNC_DEFN)
                           | Ast.Call => "call" (* FIXME: hack until parser fixed. *)
                           | _ => LogErr.unimplError ["defining unhandled type of function name"]
             val newName = Ast.PropName { id = ident, ns = qualNs }
-            val (_, newFunc) = defFunc env (#func f)
+            val (_, _, newFunc) = defFunc env (#func f)
             val Ast.Func { ty, ... } = newFunc
             val (ftype, isReadOnly) = 
                 if (#kind f) = Ast.Var 
@@ -889,9 +891,9 @@ and defCtor (env:ENV) (ctor:Ast.CTOR)
     : Ast.CTOR =
     let
         val Ast.Ctor {func,...} = ctor
-        val (settings,newFunc) = defFunc env func
+        val (settings,superArgs,newFunc) = defFunc env func
     in
-        Ast.Ctor {settings=settings, func=newFunc} 
+        Ast.Ctor {settings=settings, superArgs=superArgs, func=newFunc} 
     end
 
 
@@ -983,7 +985,7 @@ and defLiteral (env:ENV)
         case lit of
             Ast.LiteralFunction func =>
             let
-                val (_,func) = defFunc env func
+                val (_,_,func) = defFunc env func
             in
                 Ast.LiteralFunction func
             end

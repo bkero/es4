@@ -865,7 +865,7 @@ and invokeFuncClosure (this:Mach.OBJ)
     : Mach.VAL =
     let
         val { func, env, allTypesBound } = closure
-        val Ast.Func { name, fsig, block, param=(fixtures, inits), ... } = func
+        val Ast.Func { name, fsig, block, param=(paramFixtures, paramInits), ... } = func
     in
         if not allTypesBound
         then error ["invoking function with unbound type variables"]
@@ -885,10 +885,10 @@ and invokeFuncClosure (this:Mach.OBJ)
                 val selfTag = Mach.FunctionTag fsig
                 val selfVal = Mach.newObject selfTag Mach.Null (SOME (Mach.Function closure))
             in
-                allocScopeFixtures varScope fixtures;
+                allocScopeFixtures varScope paramFixtures;
                 initThis thisVal;
                 bindArgs env varScope func args;
-                evalScopeInits varScope Ast.Local inits;
+                evalScopeInits varScope Ast.Local paramInits;
 
                 (* NOTE: is this for the binding of a function expression to its optional
                  * identifier? If so, we need to extend the scope chain before extending it
@@ -931,7 +931,7 @@ and invokeFuncClosure (this:Mach.OBJ)
              inits: STMT list,
              body: BLOCK }
 
-    Here how it works:
+    Here's how it works:
 
     val scope = [globalObj,classObj]
     val thisObj = newObj 
@@ -1050,8 +1050,8 @@ and evalInits (scope:Mach.SCOPE)
 *)
 
 and evalObjInits (scope:Mach.SCOPE)                   
-                      (instanceObj:Mach.OBJ)
-                      (head:Ast.HEAD)
+                 (instanceObj:Mach.OBJ)
+                 (head:Ast.HEAD)
     : unit = 
         let
             val (fixtures,inits) = head
@@ -1122,34 +1122,28 @@ and initializeAndConstruct (classClosure:Mach.CLS_CLOSURE)
                 evalObjInits classScope instanceObj instanceInits;   
                 case constructor of 
                     NONE => initializeAndConstructSuper []
-                  | SOME (Ast.Ctor { settings, func }) => 
+                  | SOME (Ast.Ctor { settings, superArgs, func }) => 
                     let 
-                        val Ast.Func { block, param=(fixtures,inits), ... } = func
+                        val Ast.Func { block, param=(paramFixtures,paramInits), ... } = func
                         val (varObj:Mach.OBJ) = Mach.newSimpleObj NONE
                         val (varScope:Mach.SCOPE) = extendScope classScope varObj false
                         val (ctorScope:Mach.SCOPE) = extendScope varScope instanceObj true
-                        val (settings_fixtures,settings_inits) = settings
                     in
                         trace ["allocating scope fixtures for constructor of ", LogErr.name name];
-                        allocScopeFixtures varScope fixtures;                
+                        allocScopeFixtures varScope paramFixtures;
                         trace ["binding constructor args of ", LogErr.name name];
                         bindArgs classScope varScope func args;
                         trace ["evaluating inits of ", LogErr.name name];
-                        evalScopeInits varScope Ast.Local inits;
+                        evalScopeInits varScope Ast.Local paramInits;
                         trace ["evaluating settings"];                        
                         evalObjInits varScope instanceObj settings;
                         trace ["initializing and constructing superclass of ", LogErr.name name];
-                        (* FIXME: evaluate superArgs from super(...) call.
-                                  JD: the super initialiser call will be evaluated as part of the
-                                      settings, so there should be nothing to do here
-                        *)
-                        initializeAndConstructSuper ([(*superArgs*)]);                        
+                        initializeAndConstructSuper (map (evalExpr varScope) superArgs);  
                         trace ["entering constructor for ", LogErr.name name];
                         evalBlock ctorScope block;
                         ()
                     end
             end
-                                     
 
 and constructClassInstance (classObj:Mach.OBJ)
                            (classClosure:Mach.CLS_CLOSURE) 

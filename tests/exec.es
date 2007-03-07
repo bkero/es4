@@ -11,16 +11,16 @@ new A
 */
 
 use namespace intrinsic
-function f() { return [30] }
-function g() { return [20] }
-function h() { return [10] }
-class Object { }
-class A { var [x,y]=["x","y"]; function A(x=g):[x]=x() { print("making A\n") } }
+function f() { return [30,30] }
+function g() { return [20,20] }
+function h() { return [10,10] }
+class Object { function Object() { print("making Object","\n") } }
+class B { function B(x) { print("making B with ",x,"\n") } }
+class A extends B { var [x,y]=["x","y"]; function A(x=g):[x,y]=x(),super(x()) { print("making A\n") } }
 var a = new A(h)
 print(a.x," ",a.y,"\n")
 a = new A()
 print(a.x," ",a.y,"\n")
-
 
 /*
 class Object {}

@@ -158,6 +158,7 @@ datatype PRAGMA =
      and CTOR =
          Ctor of
            { settings: HEAD,
+             superArgs: EXPR list,
              func: FUNC }
 
      and FUNC =
@@ -183,7 +184,7 @@ datatype PRAGMA =
            { typeParams: IDENT list,
              params: BINDINGS,
              defaults: EXPR list,
-             settings: BINDINGS option, 
+             ctorInits: (BINDINGS * EXPR list) option, (* settings + super args *)
              returnType: TYPE_EXPR,
              thisType: TYPE_EXPR option,
              hasRest: bool }

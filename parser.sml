@@ -850,7 +850,7 @@ and functionSignature (ts) : (token list * Ast.FUNC_SIG) =
                                       params=(temp::b,i),
                                       defaults=e,
                                       returnType=nd4,
-                                      settings=NONE,
+                                      ctorInits=NONE,
                                       hasRest=false }) (* do we need this *)
                                end
                          | _ => raise ParseError
@@ -866,7 +866,7 @@ and functionSignature (ts) : (token list * Ast.FUNC_SIG) =
                                   params=([],[]),
                                   defaults=[],
                                   returnType=nd3,
-                                  settings=NONE,
+                                  ctorInits=NONE,
                                   hasRest=false }) (* do we need this *)
                    end
                  | _ => error ["unknown final token of this-qualified function signature"]
@@ -885,7 +885,7 @@ and functionSignature (ts) : (token list * Ast.FUNC_SIG) =
                                   params=(b,i),
                                   defaults=e,
                                   returnType=nd3,
-                                  settings=NONE,
+                                  ctorInits=NONE,
                                   thisType=NONE,  (* todo *)
                                   hasRest=false }) (* do we need this *)
                        end
@@ -917,7 +917,7 @@ and functionSignatureType (ts) =
                                           params=nd3,
                                           defaults=[],
                                           returnType=nd4,
-                                          settings=NONE,
+                                          ctorInits=NONE,
                                           hasRest=false }) (* do we need this *)
                                end
                       | _ => raise ParseError
@@ -933,7 +933,7 @@ and functionSignatureType (ts) =
                                    params=([],[]),
                                    defaults=[],
                                    returnType=nd3,
-                                   settings=NONE,
+                                   ctorInits=NONE,
                                    hasRest=false }) (* do we need this *)
                           end
               | _ => raise ParseError
@@ -952,7 +952,7 @@ and functionSignatureType (ts) =
                                    params=nd2,
                                    defaults=[],
                                    returnType=nd3,
-                                   settings=NONE,
+                                   ctorInits=NONE,
                                    thisType=NONE,  (* todo *)
                                    hasRest=false }) (* do we need this *)
                        end
@@ -3526,7 +3526,6 @@ Statementw
     LabeledStatementw
     LetStatementw
     ReturnStatement Semicolon(omega)
-    SuperStatement Semicolonw
     SwitchStatement
     ThrowStatement Semicolonw
     TryStatement
@@ -3579,13 +3578,6 @@ and statement (ts,w) : (token list * Ast.STMT) =
                 val (ts1,nd1) = switchStatement ts
             in
                 (ts1,nd1)
-            end
-      | Super :: _ =>
-            let
-                val (ts1,nd1) = superStatement ts
-                val (ts2,nd2) = (semicolon (ts1,w),nd1)
-            in
-                (ts2,nd2)
             end
       | Do :: _ =>
             let
@@ -3760,23 +3752,6 @@ and expressionStatement (ts) : (token list * Ast.STMT) =
     in
         trace(["<< expressionStatement with next=", tokenname(hd ts1)]);
         (ts1,Ast.ExprStmt(nd1))
-    end
-
-(*
-    SuperStatement    
-        super Arguments
-*)
-
-and superStatement (ts) : (token list * Ast.STMT) =
-    let val _ = trace([">> superStatement with next=", tokenname(hd ts)])
-    in case ts of
-        Super :: _ =>
-            let
-                val (ts1,nd1) = arguments (tl ts)
-            in
-                (ts1,Ast.SuperStmt (Ast.ListExpr nd1))
-            end
-      | _ => raise ParseError
     end
 
 (*
@@ -5401,7 +5376,7 @@ and functionDefinition (ts,attrs,CLASS) =
                               defns=[Ast.ConstructorDefn 
                                             {ns=ns,
                                              native=native,
-                                             ctor=Ast.Ctor {settings=([],[]),
+                                             ctor=Ast.Ctor {settings=([],[]), superArgs=[],
                                                             func=Ast.Func {name=nd2,
                                                                            fsig=nd3,
                                                                            param=([],[]),
@@ -5419,7 +5394,7 @@ and functionDefinition (ts,attrs,CLASS) =
                               defns=[Ast.ConstructorDefn 
                                             {ns=ns,
                                              native=native,
-                                             ctor=Ast.Ctor {settings=([],[]),
+                                             ctor=Ast.Ctor {settings=([],[]),superArgs=[],
                                                             func=Ast.Func {name=nd2,
                                                                            fsig=nd3,
                                                                            param=([],[]),
@@ -5635,46 +5610,20 @@ and operatorName (ts) =
 (*
     ConstructorSignature    
         TypeParameters  (  Parameters  )
-        TypeParameters  (  Parameters  )  ConstructorInitialiser
+        TypeParameters  (  Parameters  )  : ConstructorInitialiser
 *)
 
 and constructorSignature (ts) = 
     let val _ = trace([">> constructorSignature with next=",tokenname(hd(ts))]) 
         val (ts1,nd1) = typeParameters ts
     in case ts1 of
-        LeftParen :: This :: Colon ::  _ =>
-               let
-                val (ts2,nd2) = typeIdentifier (tl (tl (tl ts1)))
-            in case ts2 of
-                Comma :: _ =>
-                    let
-                           val (ts3,((b,i),e)) = parameters (tl ts2)  
-                       in case ts3 of
-                           RightParen :: _ =>
-                               let
-                                   val (ts4,nd4) = constructorInitialiser (tl ts3)
-                               in
-                                   trace ["<< constructorSignature with next=",tokenname(hd ts4)];
-                                   (ts4,Ast.FunctionSignature
-                                            { typeParams=nd1,
-                                              thisType=SOME (needType(nd2,NONE)),
-                                              params=(b,i),
-                                              defaults=e,
-                                              returnType=(Ast.SpecialType Ast.VoidType),
-                                              settings=SOME nd4,
-                                              hasRest=false }) (* do we need this *)
-                               end
-                         | _ => raise ParseError
-                    end
-                 | _ => raise ParseError
-            end
-      | LeftParen :: _ =>
+        LeftParen :: _ =>
                let
                    val (ts2,((b,i),e)) = parameters (tl ts1)
                in case ts2 of
-                   RightParen :: _ =>
+                   RightParen :: Colon :: _ =>
                        let
-                           val (ts3,nd3) = constructorInitialiser (tl ts2)
+                           val (ts3,nd3) = constructorInitialiser (tl (tl ts2))
                        in
                            trace ["<< constructorSignature with next=",tokenname(hd ts3)];
                            (ts3,Ast.FunctionSignature
@@ -5682,7 +5631,20 @@ and constructorSignature (ts) =
                                       params=(b,i),
                                       defaults=e,
                                       returnType=(Ast.SpecialType Ast.VoidType),
-                                      settings=SOME nd3,
+                                      ctorInits=SOME nd3,
+                                      thisType=NONE,
+                                      hasRest=false }) (* do we need this *)
+                       end
+                 | RightParen :: _ =>
+                       let
+                       in
+                           trace ["<< constructorSignature with next=",tokenname(hd ts2)];
+                           (tl ts2,Ast.FunctionSignature
+                                    { typeParams=nd1,
+                                      params=(b,i),
+                                      defaults=e,
+                                      returnType=(Ast.SpecialType Ast.VoidType),
+                                      ctorInits=SOME (([],[]),[]),
                                       thisType=NONE,
                                       hasRest=false }) (* do we need this *)
                        end
@@ -5694,7 +5656,9 @@ and constructorSignature (ts) =
 
 (*
     ConstructorInitialiser    
-        :  InitialiserList
+        InitialiserList
+        InitialiserList SuperInitialiser
+        SuperInitialiser
         
     InitaliserList    
         Initialiser
@@ -5702,20 +5666,40 @@ and constructorSignature (ts) =
         
     Initialiser    
         Pattern(noList, noIn, noExpr)  VariableInitialisation(noList, allowIn)
+
+    SuperInitialiser
+        super Arguments
 *)
 
 and constructorInitialiser ts 
-    : (token list * Ast.BINDINGS) = 
+    : (token list * (Ast.BINDINGS * Ast.EXPR list)) =
     let val _ = trace([">> constructorInitialiser with next=",tokenname(hd(ts))]) 
     in case ts of
-        Colon :: _ => 
+        Super :: _ => 
             let
-                val (ts1,nd1) = initialiserList (tl ts)
+                val (ts1,nd1) = arguments (tl ts)
             in
                 trace ["<< constructorInitialiser with next=",tokenname(hd ts1)];
-                (ts1,nd1)
+                (ts1,(([],[]),nd1))
             end
-      | _ => (ts,([],[]))
+      | _ => 
+            let
+                val (ts1,nd1) = initialiserList ts
+            in case ts1 of
+                Super :: _ => 
+                    let
+                        val (ts2,nd2) = arguments (tl ts1)
+                    in
+                        trace ["<< constructorInitialiser with next=",tokenname(hd ts1)];
+                        (ts2,(nd1,nd2))
+                    end
+              | _ =>
+                    let
+                    in
+                        trace ["<< constructorInitialiser with next=",tokenname(hd ts1)];
+                        (ts1,(nd1,[]))
+                    end
+            end
     end
 
 and initialiserList (ts) 
@@ -5725,7 +5709,9 @@ and initialiserList (ts)
             : (token list * Ast.BINDINGS) = 
             let val _ = trace([">> initialiserList' with next=", tokenname(hd ts)])
             in case ts of
-                Comma :: _ =>
+                Comma :: Super :: _ =>
+                    (tl ts,([],[]))
+              | Comma :: _ =>
                     let
                         val (ts1,(b1,i1)) = initialiser(tl ts)
                         val (ts2,(b2,i2)) = initialiserList'(ts1)
@@ -5755,6 +5741,19 @@ and initialiser (ts)
                     (ts2, desugarPattern nd1 NONE (SOME nd2) 0)
                 end
           | _ => (error(["constructor initialiser without assignment"]); raise ParseError)
+    end
+
+and superInitialiser (ts) 
+    : (token list * Ast.EXPR list) =
+    let val _ = trace([">> superInitialiser with next=", tokenname(hd ts)])
+    in case ts of
+        Super :: _ =>
+            let
+                val (ts1,nd1) = arguments (tl ts)
+            in
+                (ts1,nd1)
+            end
+      | _ => raise ParseError
     end
 
 (*
