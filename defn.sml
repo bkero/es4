@@ -439,8 +439,8 @@ and inheritFixtures (base:Ast.FIXTURES)
                       | _ => false
             
             in case (fb,fd) of
-                (Ast.MethodFixture {isFinal,...}, Ast.MethodFixture {isOverride,...}) => 
-                    (not isFinal) andalso isOverride andalso isCompatible
+                (Ast.MethodFixture {final,...}, Ast.MethodFixture {override,...}) => 
+                    (not final) andalso override andalso isCompatible
               | _ => false
             end
 
@@ -873,9 +873,17 @@ and defFuncDefn (env:ENV) (f:Ast.FUNC_DEFN)
                 if (#kind f) = Ast.Var 
                 then (Ast.SpecialType Ast.Any,false)      (* e3 style writeable function *)
                 else ((Ast.FunctionType ty),true)         (* read only, method *)
+(*
             val outerFixtures = [(newName, Ast.ValFixture
                                        { ty = ftype,
                                          readOnly = false })]
+*)
+            val outerFixtures = [(newName, Ast.MethodFixture
+                                       { func = newFunc,
+                                         ty = ftype,
+                                         readOnly = isReadOnly,
+                                         final = (#final f),
+                                         override = (#override f)})]
         in
             (outerFixtures, { kind = (#kind f),
                               ns = newNsExpr,
@@ -1264,6 +1272,7 @@ and defStmt (env:ENV)
                                                              defns=defns,
                                                              head=head,
                                                              body=body})
+                (* FIXME: define instance and class fixtures, etc in the env of the class *)
             in
                 Ast.ClassBlock { ns = ns,
                                  ident = ident,
@@ -1462,9 +1471,11 @@ and defDefn (env:ENV)
             end
       | Ast.FunctionDefn fd => 
             let
-                val (hoisted,def) = defFuncDefn env fd
-            in
-                ([],hoisted,[])
+                val {kind,...} = fd
+                val (fxtrs,def) = defFuncDefn env fd
+            in case kind of
+                (Ast.Var | Ast.Const) => ([],fxtrs,[])  (* hoisted fxtrs *)
+              | (Ast.LetVar | Ast.LetConst) => (fxtrs,[],[])  (* don't hoisted fxtrs *)
             end
       | Ast.NamespaceDefn nd => 
             let

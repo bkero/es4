@@ -160,15 +160,15 @@ fun allocFixtures (scope:Mach.SCOPE)
                                                   readOnly = true,
                                                   isFixed = true } }
 
-                          | Ast.MethodFixture { ty, ... } => 
+                          | Ast.MethodFixture { func, ty, readOnly, ... } => 
                             allocProp "method" 
                                       { ty = ty,
-                                        state = valAllocState ty,
+                                        state = Mach.ValProp (Mach.newFunc scope func),
                                         attrs = { dontDelete = true,
-                                                  dontEnum = false,
-                                                  readOnly = true,
+                                                  dontEnum = true,
+                                                  readOnly = readOnly,
                                                   isFixed = true } }
-                            
+
                           | Ast.ValFixture { ty, readOnly, ... } => 
                             allocProp "value" 
                                       { ty = ty,

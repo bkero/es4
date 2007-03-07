@@ -1986,7 +1986,7 @@ and brackets (ts) : (token list * Ast.EXPR) =
 and leftHandSideExpression (ts,a,b) =
     let val _ = trace([">> leftHandSideExpression with next=",tokenname(hd(ts))]) 
     in case ts of
-        New :: _ =>
+        New :: New :: _ =>
             let
                 val (ts1,nd1) = newExpression(ts,a,b)
             in
@@ -4794,6 +4794,8 @@ and annotatableDirective (ts,attrs,GLOBAL,w) : (token list * Ast.DIRECTIVES)  =
     in case ts of
         Let :: Function :: _ =>
             functionDefinition (ts,attrs,GLOBAL)
+      | Const :: Function :: _ =>
+            functionDefinition (ts,attrs,GLOBAL)
       | Function :: _ =>
             functionDefinition (ts,attrs,GLOBAL)
       | Class :: _ =>
@@ -5426,7 +5428,7 @@ and functionDefinition (ts,attrs,CLASS) =
                                              block=nd4}
                     in
                         (ts4,{pragmas=[],
-                              defns=[Ast.FunctionDefn {kind=nd1, 
+                              defns=[Ast.FunctionDefn {kind=if (nd1=Ast.Var) then Ast.Const else nd1, (* in a class all functions are read only *)
                                                        ns=ns,
                                                        final=final,
                                                        native=native,
@@ -5488,6 +5490,8 @@ and functionDefinition (ts,attrs,CLASS) =
                                        prototype=prototype,
                                        static=static,
                                        func=func}],
+              body=[],
+(*
               body=[Ast.InitStmt {kind=nd1,
                                    ns=ns,
                                    prototype=false,
@@ -5495,6 +5499,7 @@ and functionDefinition (ts,attrs,CLASS) =
                                    temps=([],[]),
                                    inits=[Ast.InitStep (Ast.PropIdent ident,
                                                         Ast.LiteralExpr (Ast.LiteralFunction func))]}],
+*)
               head=NONE})
     end
 
@@ -5506,6 +5511,8 @@ and functionKind (ts) =
             (tl ts,Ast.Var))   (* reuse VAR_DEFN_KIND *)
       | Let :: Function :: _ => 
             (tl (tl ts), Ast.LetVar)
+      | Const :: Function :: _ => 
+            (tl (tl ts), Ast.Const)
       | _ => raise ParseError
     end
 

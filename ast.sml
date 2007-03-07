@@ -392,9 +392,11 @@ datatype PRAGMA =
        | TypeVarFixture
        | TypeFixture of TYPE_EXPR
        | MethodFixture of 
-         { ty: TYPE_EXPR,
-           isOverride: bool,
-           isFinal: bool }
+         { func: FUNC,
+           ty: TYPE_EXPR,
+           readOnly: bool,  (* ES3 funcs are r/w methods with ty=Ast.Special Ast.Any *)
+           override: bool,
+           final: bool }
        | ValFixture of 
            { ty: TYPE_EXPR,
              readOnly: bool }
