@@ -39,14 +39,6 @@ fun needNamespace (v:Mach.VAL)
       | _ => error ["need namespace"]
 
 
-fun needName (mname:Ast.MULTINAME) 
-    : Ast.NAME = 
-    case mname of 
-        {nss=[[ns]], id} => {ns=ns, id=id}
-      | _ => error ["need unique namespace, got multiname ", 
-                    LogErr.multiname mname]
-
-
 fun needObj (v:Mach.VAL) 
     : Mach.OBJ = 
     case v of 
@@ -389,7 +381,8 @@ and evalLiteralObjectExpr (scope:Mach.SCOPE)
                                 Ast.Const => true
                               | Ast.LetConst => true
                               | _ => false
-                val n = needName (evalIdentExpr scope name)
+                val n = { ns = Ast.Internal "", 
+                          id = (#id (evalIdentExpr scope name)) }
                 val v = evalExpr scope init
                 val ty = searchFieldTypes (#id n) tys
                 val prop = { ty = ty,
