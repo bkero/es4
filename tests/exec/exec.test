@@ -18,3 +18,9 @@
 
 %% [while loop] eval
 @tests/exec/while-loop.es
+
+%% [simple function] eval
+@tests/exec/simple-function.es
+
+%% [fibonacci] eval
+@tests/exec/fibo.es
