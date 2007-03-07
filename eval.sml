@@ -1381,7 +1381,7 @@ and evalPackage (scope:Mach.SCOPE)
 
 and evalProgram (prog:Ast.PROGRAM) 
     : Mach.VAL = 
-    (Mach.populateIntrinsics Mach.globalObject;
+    (Mach.resetGlobalObject ();
      allocScopeFixtures Mach.globalScope (valOf (#fixtures prog));
      map (evalPackage Mach.globalScope) (#packages prog);
      evalBlock Mach.globalScope (#block prog))

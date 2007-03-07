@@ -661,6 +661,17 @@ fun populateIntrinsics globalObj =
             [ ("print", hostPrintFunction),
               ("assert", hostAssertFunction) ]
         end        
+
+fun resetGlobalObject _ = 
+    case globalObject of
+        (Obj { props, magic, proto, ... }) => 
+        (props := [];
+         magic := NONE;
+         proto := Null;
+         populateIntrinsics globalObject)
+
 end
 
 
+         
+         
