@@ -53,8 +53,10 @@ check: tools/unit.heap.$(HEAP_SUFFIX) es4.heap.$(HEAP_SUFFIX)
 checktc: tools/unit.heap.$(HEAP_SUFFIX) es4.heap.$(HEAP_SUFFIX)
 	sml @SMLload=tools/unit.heap $(TRACE) tests/tc.test
 
-checkev: es4.heap.$(HEAP_SUFFIX)
-	sml @SMLload=es4.heap $(TRACE) -ev $(EV_TESTS)
+checkev: tools/unit.heap.$(HEAP_SUFFIX) es4.heap.$(HEAP_SUFFIX)
+	sml @SMLload=tools/unit.heap $(TRACE) tests/exec/exec.test
+
+#	sml @SMLload=es4.heap $(TRACE) -ev $(EV_TESTS)
 
 wc:
 	wc ${SOURCES}

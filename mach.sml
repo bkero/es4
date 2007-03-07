@@ -619,6 +619,19 @@ fun hostPrintFunction (vals:VAL list) : VAL =
         (List.app printOne vals; Undef)
     end
 
+fun hostAssertFunction (vals:VAL list) : VAL = 
+    case vals of 
+        [] => LogErr.hostError ["intrinsic::assert() called with zero args"]
+      | [a] => 
+        (case a of 
+             Null => LogErr.hostError ["intrinsic::assert() called with Null"]
+           | Undef => LogErr.hostError ["intrinsic::assert() called with Undef"]
+           | Object (Obj {magic, ...}) => 
+             (case !magic of 
+                  (SOME (Bool true)) => Undef
+                | (SOME (Bool false)) => LogErr.hostError ["intrinsic::assert() failed"]
+                | _ => LogErr.hostError ["intrinsic::assert() called with non-boolean"]))
+      | _ => LogErr.hostError ["intrinsic::assert() called with multiple args"]
 
 fun populateIntrinsics globalObj = 
     case globalObj of 
@@ -643,7 +656,8 @@ fun populateIntrinsics globalObj =
                 end
         in
             List.app bindFunc 
-            [ ("print", hostPrintFunction) ]
+            [ ("print", hostPrintFunction),
+              ("assert", hostAssertFunction) ]
         end        
 end
 

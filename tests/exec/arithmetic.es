@@ -1,0 +1,11 @@
+intrinsic::assert(5.5 < 6);
+intrinsic::assert(5.5 <= 6);
+intrinsic::assert(6 > 5.5);
+intrinsic::assert(6 >= 5.5);
+intrinsic::assert(1 + 1 == 2);
+intrinsic::assert(1 + 1 <= 2);
+intrinsic::assert(1 + 1 >= 2);
+intrinsic::assert(77 % 3 == 2);
+intrinsic::assert(5 * 4 == 20);
+intrinsic::assert(2 << 4 + 7 == 4096);
+intrinsic::assert((2 << 4) + 7 == 39);
