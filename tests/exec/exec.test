@@ -10,6 +10,9 @@
 %% [literal array] eval
 @tests/exec/literal-array.es
 
+%% [literal object] eval
+@tests/exec/literal-object.es
+
 %% [literal function] eval
 @tests/exec/literal-function.es
 

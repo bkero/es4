@@ -543,7 +543,9 @@ fun toString (v:VAL) : string =
              NONE => "[object Object]"
            | SOME magic => 
              (case magic of 
-                  Number n => Real.toString n
+                  Number n => if Real.== (n, (Real.realFloor n))
+                              then Int.toString (Real.floor n)
+                              else Real.toString n
                 | String s => s
                 | Bool true => "true"
                 | Bool false => "false"

@@ -312,9 +312,23 @@ fun run (filename : string) : TEST_RESULT list =
 
 fun exitCode (b : bool) : int = if b then 0 else 1
 
+fun consumeTraceOption (opt:string) : bool = 
+    case opt of 
+        "-Tlex" => (Lexer.UserDeclarations.doTrace := true; false)
+      | "-Tparse" => (Parser.doTrace := true; false)
+      | "-Tname" => (Multiname.doTrace := true; false)
+      | "-Tdefn" => (Defn.doTrace := true; false)
+      | "-Teval" => (Eval.doTrace := true; false)
+      | "-Tmach" => (Mach.doTrace := true; false)
+      | _ => true
+
 fun main (arg0 : string, args : string list) : int =
-    BackTrace.monitor (fn _ => (report (concat (map run args)))
-                               handle (BadTestParameter _ | MixedContent _ | ExtraLink _) => 1
-				    | e => (unexpectedExn e; 1))
+    let 
+	val nonTraceArgs = List.filter consumeTraceOption args
+    in
+	BackTrace.monitor (fn _ => (report (concat (map run nonTraceArgs)))
+                              handle (BadTestParameter _ | MixedContent _ | ExtraLink _) => 1
+				   | e => (unexpectedExn e; 1))
+    end
 
 end
