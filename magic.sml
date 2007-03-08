@@ -75,6 +75,27 @@ fun propQuery (vals:Mach.VAL list)
 	Mach.newBoolean (f props {id=id, ns=ns})
     end
 
+fun arrayToList (arr:Mach.OBJ) 
+    : Mach.VAL list = 
+    let 
+        val ns = Ast.Internal ""
+        val len = Real.floor (Mach.toNum (Eval.getValue (arr, {id="length", ns=ns})))
+        fun build i vs = 
+            if i < 0
+            then vs
+            else 
+                let
+                    val n = {id=(Int.toString i), ns=ns}
+                    val curr = if Eval.hasValue arr n
+                               then Eval.getValue (arr, n)
+                               else Mach.Undef
+                in
+                    build (i-1) (curr::vs)
+                end
+    in
+        build (len-1) []
+    end
+
 
 (* 
  * Retrieve the [[Class]] property of o
@@ -256,7 +277,7 @@ fun apply (vals:Mach.VAL list)
 	val fnObj = nthAsObj vals 0
 	val thisObj = nthAsObj vals 1
 	val argsObj = nthAsObj vals 2
-	val argsList = Mach.arrayToList argsObj
+	val argsList = arrayToList argsObj
     in
 	Eval.evalCallExpr (SOME thisObj) fnObj argsList
     end
