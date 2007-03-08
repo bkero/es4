@@ -35,6 +35,16 @@ fun nthAsStr (vals:Mach.VAL list) (n:int)
 	  | _ => LogErr.hostError ["Wanted String, got other"]
     end
 
+fun nthAsInt (vals:Mach.VAL list) (n:int) 
+    : int = 
+    let 
+	val Mach.Obj { magic, ... } = nthAsObj vals n
+    in
+	case !magic of 
+	    SOME (Mach.Number n) => (Real.floor n)
+	  | _ => LogErr.hostError ["Wanted Number, got other"]
+    end
+
 fun nthAsBool (vals:Mach.VAL list) (n:int) 
     : bool = 
     let 
@@ -238,37 +248,85 @@ fun apply (vals:Mach.VAL list)
 	Eval.evalCallExpr (SOME thisObj) fnObj argsList
     end
 
+(* 
+ * Given a string object 'src', copy its internal string data into
+ * another string object 'dest', replacing whatever data might
+ * have been in 'dest' to begin with.
+ * 
+ * magic native function setStringValue(dest : string, src : string) : void;
+ *)
+
+fun setStringValue (vals:Mach.VAL list) 
+    : Mach.VAL = 
+    let
+	val Mach.Obj { magic, ...} = nthAsObj vals 0
+	val src = nthAsStr vals 1
+    in
+	magic := SOME (Mach.String src);
+	Mach.Undef
+    end
+
+(* Given a string and a position in that string, return the
+ * numeric value of the character at that position in the
+ * string.
+ *
+ * magic native function charCodeAt(s : string, pos : uint) : string;
+ *)
+fun charCodeAt (vals:Mach.VAL list) 
+    : Mach.VAL = 
+    let
+	val s = nthAsStr vals 0
+	val i = nthAsInt vals 1
+    in
+	Mach.newNumber (Real.fromInt (Char.ord (String.sub (s,i))))
+    end
+
 (*
-    /* ----------------------------------------------------------------
+ * Given a numeric character value, return a string of length 1
+ * whose element 0 is the character with that same value.
+ *
+ * magic native function fromCharCode(ch : uint) : string;
+ *)
+fun fromCharCode (vals:Mach.VAL list)
+    : Mach.VAL =
+    let
+	val i = nthAsInt vals 0
+    in
+	Mach.newString (Char.toString (Char.chr i))
+    end
 
-       STRING MANIPULATION.  Strings contain string data in some
-       unspecified way - there is no representation of string data in
-       the language.  The following magic functions access and set
-       those string data.  */
+(* 
+ * Given a string object, return the number of characters in the
+ * string.
+ *
+ * magic native function stringLength(s : string) : uint;
+ *)
+fun stringLength (vals:Mach.VAL list)
+    : Mach.VAL =
+    let
+	val s = nthAsStr vals 0
+    in
+	Mach.newNumber (Real.fromInt (String.size s))
+    end
 
-    /* Given a string object 'src', copy its internal string data into
-       another string object 'dest', replacing whatever data might
-       have been in 'dest' to begin with.  */
-    magic native function setStringValue(dest : string, src : string) : void;
+(* 
+ * Given two string objects A and B , return a new string object
+ * containing the characters from A followed by the characters
+ * from B.
+ * 
+ * magic native function stringAppend(a : string, b : string) : string;
+ *)
 
-    /* Given a string and a position in that string, return the
-       numeric value of the character at that position in the
-       string.  */
-    magic native function charCodeAt(s : string, pos : uint) : string;
+fun stringAppend (vals:Mach.VAL list)
+    : Mach.VAL = 
+    let
+	val a = nthAsStr vals 0
+	val b = nthAsStr vals 1
+    in
+	Mach.newString (a ^ b)
+    end
 
-    /* Given a numeric character value, return a string of length 1
-       whose element 0 is the character with that same value.  */
-    magic native function fromCharCode(ch : uint) : string;
-
-    /* Given a string object, return the number of characters in the
-     * string. */
-    magic native function stringLength(s : string) : uint;
-
-    /* Given two string objects A and B , return a new string object
-       containing the characters from A followed by the characters
-       from B.  */
-    magic native function stringAppend(a : string, b : string) : string;
-
+(*
     /* ----------------------------------------------------------------
 
        BYTEARRAY MANIPULATION.  ByteArrays contain byte data in some
