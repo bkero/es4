@@ -11,6 +11,7 @@ Library
     structure Verify 
     structure Eval
     structure Mach 	
+    structure Magic 
     structure Native 
 is
     logerr.sml
@@ -27,6 +28,7 @@ is
     verify.sml
     eval.sml
     mach.sml
+    magic.sml
     native.sml
 
     $/basis.cm

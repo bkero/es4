@@ -211,6 +211,7 @@ val intrinsicStringName:NAME = { ns = Ast.Intrinsic, id = "String" }
 val intrinsicNamespaceName:NAME = { ns = Ast.Intrinsic, id = "Namespace" }
 val intrinsicClassName:NAME = { ns = Ast.Intrinsic, id = "Class" }
 val intrinsicInterfaceName:NAME = { ns = Ast.Intrinsic, id = "Interface" }
+val intrinsicTypeName:NAME = { ns = Ast.Intrinsic, id = "Type" }
 
 val intrinsicApplyName:NAME = { ns = Ast.Intrinsic, id = "apply" }
 val intrinsicInvokeName:NAME = { ns = Ast.Intrinsic, id = "invoke" }
@@ -225,6 +226,7 @@ val intrinsicStringBaseTag:VAL_TAG = ClassTag (intrinsicStringName)
 val intrinsicNamespaceBaseTag:VAL_TAG = ClassTag (intrinsicNamespaceName)
 val intrinsicClassBaseTag:VAL_TAG = ClassTag (intrinsicClassName)
 val intrinsicInterfaceBaseTag:VAL_TAG = ClassTag (intrinsicInterfaceName)
+val intrinsicTypeBaseTag:VAL_TAG = ClassTag (intrinsicTypeName)
 
 (* To reference something in the intrinsic namespace, you need a complicated expression. *)
 val intrinsicNsExpr = Ast.LiteralExpr (Ast.LiteralNamespace (Ast.Intrinsic))
@@ -278,6 +280,9 @@ fun newBoolean (b:bool)
     : VAL = 
     newObject intrinsicBooleanBaseTag Null (SOME (Bool b))
 
+fun newType (t:TYPE) 
+    : VAL = 
+    newObject intrinsicTypeBaseTag Null (SOME (Type t))
 
 fun newNamespace (n:NS) 
     : VAL = 
@@ -292,6 +297,19 @@ fun newClass (e:SCOPE)
                         allTypesBound = true,
                         env = e }
         val obj = newObject intrinsicClassBaseTag Null (SOME (Class closure))
+    in
+        obj
+    end
+
+fun newIface (e:SCOPE) 
+             (iface:IFACE) 
+    : VAL =
+    let
+        val closure = { iface = iface,
+                        (* FIXME: are all types bound? *)
+                        allTypesBound = true,
+                        env = e }
+        val obj = newObject intrinsicInterfaceBaseTag Null (SOME (Interface closure))
     in
         obj
     end
@@ -313,7 +331,13 @@ fun newFunc (e:SCOPE)
     in
         newObject tag Null (SOME (Function closure))
     end
-
+    
+fun newHostFunction (f:(VAL list -> VAL)) = 
+    Object (Obj { tag = intrinsicFunctionBaseTag,
+                  props = newPropBindings (),
+                  proto = ref Null,
+                  magic = ref (SOME (HostFunction f)) })
+    
 val (objectType:TYPE) = Ast.ObjectType []
 
 val (emptyBlock:Ast.BLOCK) = Ast.Block { pragmas = [],
@@ -576,6 +600,27 @@ fun toNum (v:VAL) : real =
                                    | NONE => nan)
            | _ => nan)
 
+fun arrayToList (arr:OBJ) 
+    : VAL list = 
+    let 
+        val ns = Ast.Internal ""
+        val len = Real.floor (toNum (getValue (arr, {id="length", ns=ns})))
+        fun build i vs = 
+            if i < 0
+            then vs
+            else 
+                let
+                    val n = {id=(Int.toString i), ns=ns}
+                    val curr = if hasValue arr n
+                               then getValue (arr, n)
+                               else Undef
+                in
+                    build (i-1) (curr::vs)
+                end
+    in
+        build (len-1) []
+    end
+
 fun toBoolean (v:VAL) : bool = 
     case v of 
         Undef => false
@@ -639,16 +684,11 @@ fun populateIntrinsics globalObj =
     case globalObj of 
         Obj { props, ... } => 
         let 
-            fun newHostFunctionObj f = 
-                Object (Obj { tag = intrinsicFunctionBaseTag,
-                              props = newPropBindings (),
-                              proto = ref Null,
-                              magic = ref (SOME (HostFunction f)) })
             fun bindFunc (n, f) = 
                 let 
                     val name = { id = n, ns = Ast.Intrinsic }
                     val prop = { ty = Ast.SpecialType Ast.Any,
-                                 state = ValProp (newHostFunctionObj f), 
+                                 state = ValProp (newHostFunction f), 
                                  attrs = { dontDelete = true,
                                            dontEnum = false,
                                            readOnly = true,

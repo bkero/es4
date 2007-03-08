@@ -9,12 +9,12 @@ class Cat {
   {}
 
   function die(n : int = 1) : int { 
-    if (lives - n <= 0) {
+    lives -= n;
+    if (lives <= 0) {
       intrinsic::print(name + "'s last life expired!\n");
     } else {
       intrinsic::print(name + " died " + n + " times, only " + lives + " left\n");
     }
-    lives -= n;
     return lives;
   }
 }
