@@ -49,7 +49,7 @@ datatype VAL = Object of OBJ
                | Interface of IFACE_CLOSURE
                | Function of FUN_CLOSURE
                | Type of TYPE
-               | HostFunction of (VAL list -> VAL)
+               | NativeFunction of NATIVE_FUNCTION
                     
      and IFACE = 
          Iface of { ty: TYPE,
@@ -88,6 +88,9 @@ withtype FUN_CLOSURE =
          { iface: IFACE, 
            allTypesBound: bool,
            env: SCOPE }
+
+     and NATIVE_FUNCTION = 
+         (VAL list -> VAL)
 
 
 (* Important to model "fixedness" separately from 
@@ -211,6 +214,7 @@ val intrinsicStringName:NAME = { ns = Ast.Intrinsic, id = "String" }
 val intrinsicNamespaceName:NAME = { ns = Ast.Intrinsic, id = "Namespace" }
 val intrinsicClassName:NAME = { ns = Ast.Intrinsic, id = "Class" }
 val intrinsicInterfaceName:NAME = { ns = Ast.Intrinsic, id = "Interface" }
+val intrinsicTypeName:NAME = { ns = Ast.Intrinsic, id = "Type" }
 
 val intrinsicApplyName:NAME = { ns = Ast.Intrinsic, id = "apply" }
 val intrinsicInvokeName:NAME = { ns = Ast.Intrinsic, id = "invoke" }
@@ -225,6 +229,7 @@ val intrinsicStringBaseTag:VAL_TAG = ClassTag (intrinsicStringName)
 val intrinsicNamespaceBaseTag:VAL_TAG = ClassTag (intrinsicNamespaceName)
 val intrinsicClassBaseTag:VAL_TAG = ClassTag (intrinsicClassName)
 val intrinsicInterfaceBaseTag:VAL_TAG = ClassTag (intrinsicInterfaceName)
+val intrinsicTypeBaseTag:VAL_TAG = ClassTag (intrinsicTypeName)
 
 (* To reference something in the intrinsic namespace, you need a complicated expression. *)
 val intrinsicNsExpr = Ast.LiteralExpr (Ast.LiteralNamespace (Ast.Intrinsic))
@@ -278,6 +283,9 @@ fun newBoolean (b:bool)
     : VAL = 
     newObject intrinsicBooleanBaseTag Null (SOME (Bool b))
 
+fun newType (t:TYPE) 
+    : VAL = 
+    newObject intrinsicTypeBaseTag Null (SOME (Type t))
 
 fun newNamespace (n:NS) 
     : VAL = 
@@ -292,6 +300,19 @@ fun newClass (e:SCOPE)
                         allTypesBound = true,
                         env = e }
         val obj = newObject intrinsicClassBaseTag Null (SOME (Class closure))
+    in
+        obj
+    end
+
+fun newIface (e:SCOPE) 
+             (iface:IFACE) 
+    : VAL =
+    let
+        val closure = { iface = iface,
+                        (* FIXME: are all types bound? *)
+                        allTypesBound = true,
+                        env = e }
+        val obj = newObject intrinsicInterfaceBaseTag Null (SOME (Interface closure))
     in
         obj
     end
@@ -313,7 +334,13 @@ fun newFunc (e:SCOPE)
     in
         newObject tag Null (SOME (Function closure))
     end
-
+    
+fun newNativeFunction (f:NATIVE_FUNCTION) = 
+    Object (Obj { tag = intrinsicFunctionBaseTag,
+                  props = newPropBindings (),
+                  proto = ref Null,
+                  magic = ref (SOME (NativeFunction f)) })
+    
 val (objectType:TYPE) = Ast.ObjectType []
 
 val (emptyBlock:Ast.BLOCK) = Ast.Block { pragmas = [],
@@ -543,7 +570,9 @@ fun toString (v:VAL) : string =
              NONE => "[object Object]"
            | SOME magic => 
              (case magic of 
-                  Number n => Real.toString n
+                  Number n => if Real.== (n, (Real.realFloor n))
+                              then Int.toString (Real.floor n)
+                              else Real.toString n
                 | String s => s
                 | Bool true => "true"
                 | Bool false => "false"
@@ -558,7 +587,7 @@ fun toString (v:VAL) : string =
                 | Interface _ => "[interface Interface]"
                 | Function _ => "[function Function]"
                 | Type _ => "[type Function]"
-                | HostFunction _ => "[function HostFunction]"))
+                | NativeFunction _ => "[function NativeFunction]"))
 
 fun toNum (v:VAL) : real = 
     case v of 
@@ -573,6 +602,27 @@ fun toNum (v:VAL) : real =
                                      SOME n => n
                                    | NONE => nan)
            | _ => nan)
+
+fun arrayToList (arr:OBJ) 
+    : VAL list = 
+    let 
+        val ns = Ast.Internal ""
+        val len = Real.floor (toNum (getValue (arr, {id="length", ns=ns})))
+        fun build i vs = 
+            if i < 0
+            then vs
+            else 
+                let
+                    val n = {id=(Int.toString i), ns=ns}
+                    val curr = if hasValue arr n
+                               then getValue (arr, n)
+                               else Undef
+                in
+                    build (i-1) (curr::vs)
+                end
+    in
+        build (len-1) []
+    end
 
 fun toBoolean (v:VAL) : bool = 
     case v of 
@@ -619,21 +669,52 @@ fun hostPrintFunction (vals:VAL list) : VAL =
         (List.app printOne vals; Undef)
     end
 
+fun hostAssertFunction (vals:VAL list) : VAL = 
+    case vals of 
+        [] => LogErr.hostError ["intrinsic::assert() called with zero args"]
+      | [a] => 
+        (case a of 
+             Null => LogErr.hostError ["intrinsic::assert() called with Null"]
+           | Undef => LogErr.hostError ["intrinsic::assert() called with Undef"]
+           | Object (Obj {magic, ...}) => 
+             (case !magic of 
+                  (SOME (Bool true)) => Undef
+                | (SOME (Bool false)) => LogErr.hostError ["intrinsic::assert() failed"]
+                | _ => LogErr.hostError ["intrinsic::assert() called with non-boolean"]))
+      | _ => LogErr.hostError ["intrinsic::assert() called with multiple args"]
 
+
+val nativeFunctions:(NAME * NATIVE_FUNCTION) list ref = ref [] 
+                                                        
+fun registerNativeFunction (name:NAME)
+                           (func:NATIVE_FUNCTION)
+    : unit =
+    (trace ["registering native function: ", LogErr.name name];
+     nativeFunctions := (name, func) :: (!nativeFunctions))
+    
+fun getNativeFunction (name:NAME) 
+    : NATIVE_FUNCTION = 
+    let 
+        fun search [] = LogErr.hostError ["native function not found: ",
+					                      LogErr.name name]
+          | search ((n,f)::bs) = 
+            if n = name
+            then f
+            else search bs
+    in
+        search (!nativeFunctions)
+    end
+
+(* FIXME: this should go away. *)
 fun populateIntrinsics globalObj = 
     case globalObj of 
         Obj { props, ... } => 
         let 
-            fun newHostFunctionObj f = 
-                Object (Obj { tag = intrinsicFunctionBaseTag,
-                              props = newPropBindings (),
-                              proto = ref Null,
-                              magic = ref (SOME (HostFunction f)) })
             fun bindFunc (n, f) = 
                 let 
                     val name = { id = n, ns = Ast.Intrinsic }
                     val prop = { ty = Ast.SpecialType Ast.Any,
-                                 state = ValProp (newHostFunctionObj f), 
+                                 state = ValProp (newNativeFunction f), 
                                  attrs = { dontDelete = true,
                                            dontEnum = false,
                                            readOnly = true,
@@ -643,8 +724,20 @@ fun populateIntrinsics globalObj =
                 end
         in
             List.app bindFunc 
-            [ ("print", hostPrintFunction) ]
+            [ ("print", hostPrintFunction),
+              ("assert", hostAssertFunction) ]
         end        
+
+fun resetGlobalObject _ = 
+    case globalObject of
+        (Obj { props, magic, proto, ... }) => 
+        (props := [];
+         magic := NONE;
+         proto := Null;
+         populateIntrinsics globalObject)
+
 end
 
 
+         
+         

@@ -16,6 +16,13 @@ exception ReturnException of Mach.VAL
 
 exception InternalError
 
+
+fun extendScope (p:Mach.SCOPE) 
+                (ob:Mach.OBJ)
+                (isVarObject:bool) 
+    : Mach.SCOPE = 
+    Mach.Scope { parent=(SOME p), object=ob, temps=ref [], isVarObject=isVarObject }
+
     
 fun getScopeObj (scope:Mach.SCOPE) 
     : Mach.OBJ = 
@@ -37,14 +44,6 @@ fun needNamespace (v:Mach.VAL)
              SOME (Mach.Namespace n) => n
            | _ => error ["need namespace"])
       | _ => error ["need namespace"]
-
-
-fun needName (mname:Ast.MULTINAME) 
-    : Ast.NAME = 
-    case mname of 
-        {nss=[[ns]], id} => {ns=ns, id=id}
-      | _ => error ["need unique namespace, got multiname ", 
-                    LogErr.multiname mname]
 
 
 fun needObj (v:Mach.VAL) 
@@ -73,6 +72,7 @@ fun allocFixtures (scope:Mach.SCOPE)
     case obj of 
         Mach.Obj { props, ...} => 
         let 
+            val methodScope = extendScope scope obj false
             fun valAllocState (t:Ast.TYPE_EXPR) 
                 : Mach.PROP_STATE = 
 
@@ -163,7 +163,7 @@ fun allocFixtures (scope:Mach.SCOPE)
                           | Ast.MethodFixture { func, ty, readOnly, ... } => 
                             allocProp "method" 
                                       { ty = ty,
-                                        state = Mach.ValProp (Mach.newFunc scope func),
+                                        state = Mach.ValProp (Mach.newFunc methodScope func),
                                         attrs = { dontDelete = true,
                                                   dontEnum = true,
                                                   readOnly = readOnly,
@@ -217,12 +217,6 @@ fun allocFixtures (scope:Mach.SCOPE)
         in                    
             List.app allocFixture f
         end
-
-fun extendScope (p:Mach.SCOPE) 
-                (ob:Mach.OBJ)
-                (isVarObject:bool) 
-    : Mach.SCOPE = 
-    Mach.Scope { parent=(SOME p), object=ob, temps=ref [], isVarObject=isVarObject }
 
     
 fun allocObjFixtures (scope:Mach.SCOPE) 
@@ -389,7 +383,8 @@ and evalLiteralObjectExpr (scope:Mach.SCOPE)
                                 Ast.Const => true
                               | Ast.LetConst => true
                               | _ => false
-                val n = needName (evalIdentExpr scope name)
+                val n = { ns = Ast.Internal "", 
+                          id = (#id (evalIdentExpr scope name)) }
                 val v = evalExpr scope init
                 val ty = searchFieldTypes (#id n) tys
                 val prop = { ty = ty,
@@ -480,7 +475,7 @@ and evalCallExpr (thisObjOpt:Mach.OBJ option)
         case fobj of
             Mach.Obj { magic, ... } => 
             case !magic of 
-                SOME (Mach.HostFunction f) => 
+                SOME (Mach.NativeFunction f) => 
                     f args
               | SOME (Mach.Function f) => 
                     (invokeFuncClosure thisObj f args
@@ -1438,7 +1433,7 @@ and evalPackage (scope:Mach.SCOPE)
 
 and evalProgram (prog:Ast.PROGRAM) 
     : Mach.VAL = 
-    (Mach.populateIntrinsics Mach.globalObject;
+    (Mach.resetGlobalObject ();
      allocScopeFixtures Mach.globalScope (valOf (#fixtures prog));
      map (evalPackage Mach.globalScope) (#packages prog);
      evalBlock Mach.globalScope (#block prog))
