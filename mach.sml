@@ -359,85 +359,6 @@ val (globalScope:SCOPE) =
 
 val nan = Real.posInf / Real.posInf
 
-
-fun hasOwnValue (obj:OBJ) 
-                (n:NAME) 
-    : bool = 
-    case obj of 
-        Obj { props, ... } => hasProp props n
-
-
-fun hasValue (obj:OBJ) 
-             (n:NAME) 
-    : bool = 
-    if hasOwnValue obj n
-    then true
-    else (case obj of 
-              Obj { proto, ... } => 
-              case (!proto) of 
-                  Object p => hasValue p n
-                | _ => false)
-
-
-fun getValue (obj:OBJ, 
-              name:NAME) 
-    : VAL = 
-    case obj of 
-        Obj {props, ...} => 
-        let 
-            val prop = getProp props name
-        in
-            case (#state prop) of 
-                TypeProp => LogErr.machError ["getValue on a type property"]
-              | TypeVarProp => LogErr.machError ["getValue on a type variable property"]
-              | UninitProp => LogErr.machError ["getValue on an uninitialized property"]
-              | VirtualValProp _ => LogErr.machError ["getValue on an virtual property"]
-              | ValProp v => v
-        end
-
-
-(* A "defValue" call occurs when assigning a property definition's 
- * initial value, as specified by the user. All other assignments
- * to a property go through "setValue". *)
-
-fun defValue (base:OBJ) 
-             (name:NAME) 
-             (v:VAL) 
-    : unit =
-    case base of 
-        Obj { props, ... } => 
-        if not (hasProp props name)
-        then LogErr.machError ["defValue on missing property: ", LogErr.name name]
-        else (* Here we have relaxed rules: you can write to an 
-              * uninitialized property or a read-only property. *)
-            let 
-                val existingProp = getProp props name
-                                   
-                val _ = case (#state existingProp) of 
-                            
-                            TypeVarProp => 
-                            LogErr.machError ["defValue on type variable property: ", 
-                                              LogErr.name name]
-                            
-                          | TypeProp => 
-                            LogErr.machError ["defValue on type property: ", 
-                                              LogErr.name name]
-
-                          | VirtualValProp _ => 
-                            LogErr.machError ["defValue on virtual property: ", 
-                                              LogErr.name name]
-                            
-                          | UninitProp => ()
-                          | ValProp _ => ()
-                val newProp = { state = ValProp v,
-                                ty = (#ty existingProp), 
-                                attrs = (#attrs existingProp) }
-            in
-                (* FIXME: insert typecheck here *)
-                delProp props name;
-                addProp props name newProp
-            end
-
 fun getTemp (temps:TEMPS)
             (n:int)
     : VAL =
@@ -465,59 +386,6 @@ fun defTemp (temps:TEMPS)
         else temps := replaceNth n (!temps)
     end
              
-fun setValue (base:OBJ) 
-             (name:NAME) 
-             (v:VAL) 
-    : unit = 
-    case base of 
-        Obj {props, ...} => 
-        if hasProp props name
-        then 
-            let 
-                val existingProp = getProp props name
-                                   
-                val _ = case (#state existingProp) of 
-                            UninitProp => 
-                            LogErr.machError ["setValue on uninitialized property", 
-                                              LogErr.name name]
-
-                          | TypeVarProp => 
-                            LogErr.machError ["setValue on type variable property:", 
-                                              LogErr.name name]
-
-                          | TypeProp => 
-                            LogErr.machError ["setValue on type property: ", 
-                                              LogErr.name name]
-
-                          | VirtualValProp _ => 
-                            LogErr.machError ["setValue on virtual property:", 
-                                              LogErr.name name]
-
-                          | ValProp _ => ()
-
-                val existingAttrs = (#attrs existingProp)
-                val newProp = { state = ValProp v,
-                                ty = (#ty existingProp), 
-                                attrs = existingAttrs }
-            in
-                if (#readOnly existingAttrs)
-                then LogErr.machError ["setValue on read-only property"]
-                else ((* FIXME: insert typecheck here *)
-                      delProp props name;
-                      addProp props name newProp)
-            end
-        else
-            let 
-                val prop = { state = ValProp v,
-                             ty = Ast.SpecialType Ast.Any,
-                             attrs = { dontDelete = false,
-                                       dontEnum = false,
-                                       readOnly = false,
-                                       isFixed = false } }
-            in
-                addProp props name prop
-            end
-
 (*
  * To get from any object to its CLS, you work out the
  * "nominal base" of the object's tag. You can then find
@@ -542,21 +410,6 @@ fun getMagic (v:VAL)
     : (MAGIC option) = 
     case v of 
         Object (Obj ob) => !(#magic ob)
-      | _ => NONE
-
-
-fun getGlobalVal (n:NAME) 
-    : VAL = 
-    getValue (globalObject, n)
-
-
-fun valToCls (v:VAL) 
-    : (CLS option) = 
-    case v of 
-        Object (Obj ob) => 
-        (case getMagic (getGlobalVal (nominalBaseOfTag (#tag ob))) of
-             SOME (Class {cls,...}) => SOME cls
-           | _ => NONE)
       | _ => NONE
 
 (* FIXME: this is not the correct toString *)
@@ -603,26 +456,6 @@ fun toNum (v:VAL) : real =
                                    | NONE => nan)
            | _ => nan)
 
-fun arrayToList (arr:OBJ) 
-    : VAL list = 
-    let 
-        val ns = Ast.Internal ""
-        val len = Real.floor (toNum (getValue (arr, {id="length", ns=ns})))
-        fun build i vs = 
-            if i < 0
-            then vs
-            else 
-                let
-                    val n = {id=(Int.toString i), ns=ns}
-                    val curr = if hasValue arr n
-                               then getValue (arr, n)
-                               else Undef
-                in
-                    build (i-1) (curr::vs)
-                end
-    in
-        build (len-1) []
-    end
 
 fun toBoolean (v:VAL) : bool = 
     case v of 
