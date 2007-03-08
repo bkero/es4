@@ -15,7 +15,9 @@ fun nthAsA (f:Mach.VAL -> 'a)
     else 
 	f (List.nth (vals, n))
 
-fun nthAsObj (vals:Mach.VAL list) (n:int) 
+
+fun nthAsObj (vals:Mach.VAL list) 
+	     (n:int) 
     : Mach.OBJ = 
     let 
 	fun f Mach.Undef = LogErr.hostError ["Wanted Object, got Undef"]
@@ -25,7 +27,9 @@ fun nthAsObj (vals:Mach.VAL list) (n:int)
 	nthAsA f vals n
     end
 
-fun nthAsStr (vals:Mach.VAL list) (n:int) 
+
+fun nthAsStr (vals:Mach.VAL list) 
+	     (n:int) 
     : string = 
     let 
 	val Mach.Obj { magic, ... } = nthAsObj vals n
@@ -35,7 +39,9 @@ fun nthAsStr (vals:Mach.VAL list) (n:int)
 	  | _ => LogErr.hostError ["Wanted String, got other"]
     end
 
-fun nthAsInt (vals:Mach.VAL list) (n:int) 
+
+fun nthAsInt (vals:Mach.VAL list) 
+	     (n:int) 
     : int = 
     let 
 	val Mach.Obj { magic, ... } = nthAsObj vals n
@@ -45,7 +51,9 @@ fun nthAsInt (vals:Mach.VAL list) (n:int)
 	  | _ => LogErr.hostError ["Wanted Number, got other"]
     end
 
-fun nthAsBool (vals:Mach.VAL list) (n:int) 
+
+fun nthAsBool (vals:Mach.VAL list) 
+	      (n:int) 
     : bool = 
     let 
 	val Mach.Obj { magic, ... } = nthAsObj vals n
@@ -54,6 +62,7 @@ fun nthAsBool (vals:Mach.VAL list) (n:int)
 	    SOME (Mach.Bool b) => b
 	  | _ => LogErr.hostError ["Wanted Boolean, got other"]
     end
+
 
 fun propQuery (vals:Mach.VAL list) 
 	      (f:(Mach.PROP_BINDINGS -> Ast.NAME -> bool))
@@ -66,12 +75,12 @@ fun propQuery (vals:Mach.VAL list)
 	Mach.newBoolean (f props {id=id, ns=ns})
     end
 
+
 (* 
  * Retrieve the [[Class]] property of o
  * 
  * magic native function getClassName(o : Object!) : string; 
  *)
-    
 fun getClassName (vals:Mach.VAL list) 
     : Mach.VAL = 
     let 
@@ -79,18 +88,18 @@ fun getClassName (vals:Mach.VAL list)
 	(* FIXME: is this right? *)
 	val str = case !magic of 
 		      SOME (Mach.Function _) => "Function"
-		    | SOME (Mach.HostFunction _) => "Function"
+		    | SOME (Mach.NativeFunction _) => "Function"
 		    | _ => "Object"
     in
 	Mach.newString str
     end
+
     
 (* 
  * Retrieve the possibly null [[Prototype]] property of o 
  * 
  * magic native function getPrototype(o : Object!) : Object;
  *)
-    
 fun getPrototype (vals:Mach.VAL list) 
     : Mach.VAL = 
     let 
@@ -98,6 +107,7 @@ fun getPrototype (vals:Mach.VAL list)
     in
 	!proto
     end
+
 
 (*
  * Return true iff o has a local property named by p.
@@ -107,6 +117,7 @@ fun getPrototype (vals:Mach.VAL list)
 fun hasOwnProperty (vals:Mach.VAL list) 
     : Mach.VAL = 
     propQuery vals Mach.hasProp
+
 
 (*
  * Return true if the property p does exists locally on o and its
@@ -124,6 +135,7 @@ fun getPropertyIsDontEnum (vals:Mach.VAL list)
     in
 	propQuery vals f
     end
+
 
 (* 
  * Return true if the property p does exists locally on o and its
@@ -143,13 +155,13 @@ fun getPropertyIsDontDelete (vals:Mach.VAL list)
 	propQuery vals f
     end
 	
+
 (* Provided that the property p exists locally on o, set its DontEnum
  * flag according to f.  If the property p does not exist locally on
  * o, it does nothing.
  * 
  * magic native function setPropertyIsDontEnum(o : Object!, p : string, f : Boolean) : void;
  *)
-
 fun setPropertyIsDontEnum (vals:Mach.VAL list) 
     : Mach.VAL = 
     let
@@ -178,6 +190,7 @@ fun setPropertyIsDontEnum (vals:Mach.VAL list)
 	Mach.Undef
     end
 
+
 (*
  * Retrieve the [[Value]] property of o
  * 
@@ -203,8 +216,9 @@ fun getValue (vals:Mach.VAL list)
 	  | SOME (Mach.Interface i) => Mach.newIface (#env i) (#iface i) 
 	  | SOME (Mach.Function f) => Mach.newFunc (#env f) (#func f)
 	  | SOME (Mach.Type t) => Mach.newType t
-	  | SOME (Mach.HostFunction f) => Mach.newHostFunction f
+	  | SOME (Mach.NativeFunction f) => Mach.newNativeFunction f
     end
+
 
 (*
  * Set the [[Value]] of o to v
@@ -229,14 +243,13 @@ fun setValue (vals:Mach.VAL list)
 	Mach.Undef
     end
 
+
 (*
  * Given a function object, a this object, and an array of argument
  * values, call the function with the this object and arguments. 
  *
  * magic native function apply(fn : Function!, t : Object!, args : Array) : *;
  *)
-
-    
 fun apply (vals:Mach.VAL list) 
     : Mach.VAL = 
     let 
@@ -248,6 +261,7 @@ fun apply (vals:Mach.VAL list)
 	Eval.evalCallExpr (SOME thisObj) fnObj argsList
     end
 
+
 (* 
  * Given a string object 'src', copy its internal string data into
  * another string object 'dest', replacing whatever data might
@@ -255,7 +269,6 @@ fun apply (vals:Mach.VAL list)
  * 
  * magic native function setStringValue(dest : string, src : string) : void;
  *)
-
 fun setStringValue (vals:Mach.VAL list) 
     : Mach.VAL = 
     let
@@ -265,6 +278,7 @@ fun setStringValue (vals:Mach.VAL list)
 	magic := SOME (Mach.String src);
 	Mach.Undef
     end
+
 
 (* Given a string and a position in that string, return the
  * numeric value of the character at that position in the
@@ -281,6 +295,7 @@ fun charCodeAt (vals:Mach.VAL list)
 	Mach.newNumber (Real.fromInt (Char.ord (String.sub (s,i))))
     end
 
+
 (*
  * Given a numeric character value, return a string of length 1
  * whose element 0 is the character with that same value.
@@ -294,6 +309,7 @@ fun fromCharCode (vals:Mach.VAL list)
     in
 	Mach.newString (Char.toString (Char.chr i))
     end
+
 
 (* 
  * Given a string object, return the number of characters in the
@@ -309,6 +325,7 @@ fun stringLength (vals:Mach.VAL list)
 	Mach.newNumber (Real.fromInt (String.size s))
     end
 
+
 (* 
  * Given two string objects A and B , return a new string object
  * containing the characters from A followed by the characters
@@ -316,7 +333,6 @@ fun stringLength (vals:Mach.VAL list)
  * 
  * magic native function stringAppend(a : string, b : string) : string;
  *)
-
 fun stringAppend (vals:Mach.VAL list)
     : Mach.VAL = 
     let
@@ -342,4 +358,30 @@ fun stringAppend (vals:Mach.VAL list)
        the low 8 bits before being stored. */
     magic native function setByteArrayByte(ba : ByteArray!, idx : uint, val : uint) : void;
 *)
+
+
+(* Register all the magic native functions in this file. *)
+val _ = 
+    let
+	fun addFn name f = 
+	    Mach.registerNativeFunction 
+		{ ns = (Ast.Public "magic"), 
+		  id = name } 
+		f
+    in
+	addFn "getClassName" getClassName;
+	addFn "getPrototype" getPrototype;
+	addFn "hasOwnProperty" hasOwnProperty;
+	addFn "getPropertyIsDontEnum" getPropertyIsDontEnum;
+	addFn "getPropertyIsDontDelete" getPropertyIsDontDelete;
+	addFn "setPropertyIsDontEnum" setPropertyIsDontEnum;
+	addFn "getValue" getValue;
+	addFn "setValue" setValue;
+	addFn "apply" apply;
+	addFn "setStringValue" setStringValue;
+	addFn "charCodeAt" charCodeAt;
+	addFn "fromCharCode" fromCharCode;
+	addFn "stringLength" stringLength;
+	addFn "stringAppend" stringAppend
+    end
 end

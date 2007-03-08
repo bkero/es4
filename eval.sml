@@ -475,7 +475,7 @@ and evalCallExpr (thisObjOpt:Mach.OBJ option)
         case fobj of
             Mach.Obj { magic, ... } => 
             case !magic of 
-                SOME (Mach.HostFunction f) => 
+                SOME (Mach.NativeFunction f) => 
                     f args
               | SOME (Mach.Function f) => 
                     (invokeFuncClosure thisObj f args

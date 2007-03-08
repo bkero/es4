@@ -12,7 +12,6 @@ Library
     structure Eval
     structure Mach 	
     structure Magic 
-    structure Native 
 is
     logerr.sml
     main.sml
@@ -29,7 +28,6 @@ is
     eval.sml
     mach.sml
     magic.sml
-    native.sml
 
     $/basis.cm
     $/smlnj-lib.cm

@@ -49,7 +49,7 @@ datatype VAL = Object of OBJ
                | Interface of IFACE_CLOSURE
                | Function of FUN_CLOSURE
                | Type of TYPE
-               | HostFunction of (VAL list -> VAL)
+               | NativeFunction of NATIVE_FUNCTION
                     
      and IFACE = 
          Iface of { ty: TYPE,
@@ -88,6 +88,9 @@ withtype FUN_CLOSURE =
          { iface: IFACE, 
            allTypesBound: bool,
            env: SCOPE }
+
+     and NATIVE_FUNCTION = 
+         (VAL list -> VAL)
 
 
 (* Important to model "fixedness" separately from 
@@ -332,11 +335,11 @@ fun newFunc (e:SCOPE)
         newObject tag Null (SOME (Function closure))
     end
     
-fun newHostFunction (f:(VAL list -> VAL)) = 
+fun newNativeFunction (f:NATIVE_FUNCTION) = 
     Object (Obj { tag = intrinsicFunctionBaseTag,
                   props = newPropBindings (),
                   proto = ref Null,
-                  magic = ref (SOME (HostFunction f)) })
+                  magic = ref (SOME (NativeFunction f)) })
     
 val (objectType:TYPE) = Ast.ObjectType []
 
@@ -584,7 +587,7 @@ fun toString (v:VAL) : string =
                 | Interface _ => "[interface Interface]"
                 | Function _ => "[function Function]"
                 | Type _ => "[type Function]"
-                | HostFunction _ => "[function HostFunction]"))
+                | NativeFunction _ => "[function NativeFunction]"))
 
 fun toNum (v:VAL) : real = 
     case v of 
@@ -680,6 +683,29 @@ fun hostAssertFunction (vals:VAL list) : VAL =
                 | _ => LogErr.hostError ["intrinsic::assert() called with non-boolean"]))
       | _ => LogErr.hostError ["intrinsic::assert() called with multiple args"]
 
+
+val nativeFunctions:(NAME * NATIVE_FUNCTION) list ref = ref [] 
+                                                        
+fun registerNativeFunction (name:NAME)
+                           (func:NATIVE_FUNCTION)
+    : unit =
+    (trace ["registering native function: ", LogErr.name name];
+     nativeFunctions := (name, func) :: (!nativeFunctions))
+    
+fun getNativeFunction (name:NAME) 
+    : NATIVE_FUNCTION = 
+    let 
+        fun search [] = LogErr.hostError ["native function not found: ",
+					                      LogErr.name name]
+          | search ((n,f)::bs) = 
+            if n = name
+            then f
+            else search bs
+    in
+        search (!nativeFunctions)
+    end
+
+(* FIXME: this should go away. *)
 fun populateIntrinsics globalObj = 
     case globalObj of 
         Obj { props, ... } => 
@@ -688,7 +714,7 @@ fun populateIntrinsics globalObj =
                 let 
                     val name = { id = n, ns = Ast.Intrinsic }
                     val prop = { ty = Ast.SpecialType Ast.Any,
-                                 state = ValProp (newHostFunction f), 
+                                 state = ValProp (newNativeFunction f), 
                                  attrs = { dontDelete = true,
                                            dontEnum = false,
                                            readOnly = true,
