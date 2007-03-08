@@ -867,7 +867,7 @@ and verifyStmt (ctxt as {this,env,lbls,retTy}:CONTEXT) (stmt:STMT) =
 	    end
 *)
     in
-  	verifyStmts ctxt' init;
+  	verifyStmt ctxt' init;
 	checkCompatible (verifyExpr ctxt' cond) boolType;
 	verifyExpr ctxt' update;
 	verifyStmt (withLbls ctxt' (contLabel::lbls)) body
@@ -1028,5 +1028,4 @@ fun verifyProgram { packages, fixtures, block } =
 
 *)   
 				    
-
 end

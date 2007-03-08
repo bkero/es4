@@ -424,10 +424,10 @@ and inheritFixtures (base:Ast.FIXTURES)
                                          | _ => false
                                                 
                 val isCompatible = case (fb,fd) of 
-                        (Ast.ValFixture 
+                        (Ast.MethodFixture 
                              {ty=(Ast.FunctionType 
                                       {typeParams=tpb,params=pb,result=rtb,...}),...},
-                         Ast.ValFixture 
+                         Ast.MethodFixture 
                              {ty=(Ast.FunctionType 
                                       {typeParams=tpd,params=pd,result=rtd,...}),...}) =>
                         (length tpb)=(length tpd) 
@@ -873,11 +873,7 @@ and defFuncDefn (env:ENV) (f:Ast.FUNC_DEFN)
                 if (#kind f) = Ast.Var 
                 then (Ast.SpecialType Ast.Any,false)      (* e3 style writeable function *)
                 else ((Ast.FunctionType ty),true)         (* read only, method *)
-(*
-            val outerFixtures = [(newName, Ast.ValFixture
-                                       { ty = ftype,
-                                         readOnly = false })]
-*)
+
             val outerFixtures = [(newName, Ast.MethodFixture
                                        { func = newFunc,
                                          ty = ftype,
@@ -894,6 +890,7 @@ and defFuncDefn (env:ENV) (f:Ast.FUNC_DEFN)
                               static = (#static f),
                               func = newFunc })
         end
+
 
 and defCtor (env:ENV) (ctor:Ast.CTOR)
     : Ast.CTOR =
@@ -1177,26 +1174,34 @@ and defStmt (env:ENV)
                        contLabel=contLabel }, hoisted)
                 end
 
-(*
+        (*
+            for ( var x = 10; x > 0; --x ) ...
+            for ( x=10; x > 0; --x ) ...
+        *)
+
         fun reconstructForStmt { defn, init, cond, update, contLabel, body, fixtures } =
             let
-                val f0 : Ast.FIXTURES = []  (* FIXME defVars env defn *)
-                val env = updateEnvironment env f0
-                val newInit = defExpr env init
+                fun defVarDefnOpt vd =
+                    case vd of
+                        SOME vd => defDefn env (Ast.VariableDefn vd)
+                      | NONE => ([],[],[])
+                val (uf,hf,_) = defVarDefnOpt defn
+                val env = updateEnvironment env (uf@hf)
+                val (newInit,_) = defStmt env init
                 val newCond = defExpr env cond
                 val newUpdate = defExpr env update
                 val (newBody, hoisted) = defStmt env body
             in
                 ( Ast.ForStmt { defn = defn,
-                                init = init,
+                                init = newInit,
                                 cond = newCond,
                                 update = newUpdate,
                                 contLabel = contLabel,
                                 body = newBody,
-                                fixtures = SOME f0 },
-                  hoisted )
+                                fixtures = SOME (uf) },
+                  hf@hoisted )
             end
-*)            
+
         fun reconstructCatch { bindings, fixtures, block, ty } =
             let 
                 val (f0,i0) = defBindings env Ast.Var (Ast.Internal "") bindings
@@ -1311,7 +1316,7 @@ and defStmt (env:ENV)
             (Ast.ForEachStmt fe,[])  (* FIXME inl (Ast.ForEachStmt) (reconstructForEnumStmt fe) *)
             
           | Ast.ForInStmt fe => 
-            (Ast.ForInStmt fe,[])   (* FIXME inl (Ast.ForInStmt) (reconstructForEnumStmt fe) *)
+            (Ast.ForInStmt fe,[])   (* FIXME (Ast.ForInStmt) (reconstructForEnumStmt fe) *)
             
           | Ast.ThrowStmt es => 
             (Ast.ThrowStmt (defExpr env es), [])
@@ -1351,7 +1356,7 @@ and defStmt (env:ENV)
             inl (Ast.DoWhileStmt) (reconstructWhileStmt w)
             
           | Ast.ForStmt f => 
-            (Ast.ForStmt f,[]) (* FIXME reconstructForStmt f *)
+            reconstructForStmt f
             
           | Ast.IfStmt { cnd, thn, els } => 
             let

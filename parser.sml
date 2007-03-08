@@ -4219,7 +4219,7 @@ and forStatement (ts,w) : (token list * Ast.STMT) =
                                           raise ParseError)
                                     else if (len = 0) (* convert inits to pattern *)
                                         then case init of 
-                                            Ast.ExprStmt e::[] => 
+                                            Ast.ExprStmt e => 
                                                 desugarPattern (patternFromListExpr e) NONE (SOME (Ast.GetTemp 0)) 0
                                           | _ => LogErr.internalError [""]
                                         else (#bindings (valOf defn))
@@ -4278,31 +4278,31 @@ and forStatement (ts,w) : (token list * Ast.STMT) =
 *)
 
 and forInitialiser (ts) 
-    : (token list * Ast.VAR_DEFN option * Ast.STMT list) =
+    : (token list * Ast.VAR_DEFN option * Ast.STMT) =
     let val _ = trace([">> forInitialiser with next=", tokenname(hd ts)])
     in case ts of
         (Var | Let | Const) :: _ =>
             let
                 val (ts1,{defns,body,...}) = variableDefinition (ts,hd (!defaultNamespace),
                                                     false,false,NOIN,LOCAL)
-            in case defns of
-                (Ast.VariableDefn vd :: []) =>
+            in case (defns,body) of
+                (Ast.VariableDefn vd :: [],stmt::[]) =>
                     (trace(["<< forInitialiser with next=", tokenname(hd ts1)]);
-                    (ts1,SOME vd,body))
+                    (ts1,SOME vd,stmt))
               | _ => raise ParseError
             end
       | SemiColon :: _ =>
             let
             in
                 trace(["<< forInitialiser with next=", tokenname(hd ts)]);
-                (ts,NONE,[Ast.EmptyStmt])
+                (ts,NONE,Ast.ExprStmt (Ast.ListExpr []))
             end
       | _ =>
             let
                 val (ts1,nd1) = listExpression (ts,NOIN)
             in
                 trace ["<< forInitialiser with next=", tokenname(hd ts1)];
-                (ts1,NONE,[Ast.ExprStmt nd1])
+                (ts1,NONE,Ast.ExprStmt nd1)
             end
     end
 
@@ -5180,18 +5180,6 @@ and variableDefinition (ts,ns:Ast.EXPR,prototype,static,b,t) : (token list * Ast
         val (tempInits,propInits) = List.partition isTempInit i
 
         val initStmts = [Ast.InitStmt {kind=nd1,ns=ns,prototype=prototype,static=static,temps=(tempBinds,tempInits),inits=(propInits)}]
-
-(*
-        val tempDefns = case tempBinds of [] => [] 
-                          | _ => [Ast.VariableDefn {kind=Ast.LetVar,
-                                                   bindings=(tempBinds,tempInits),
-                                                   ns=Ast.LiteralExpr (Ast.LiteralNamespace (Ast.Internal "")),
-                                                   prototype=false,
-                                                   static=false}]
-
-        val body = case tempDefns of [] => initStmts
-                      | _ => [Ast.BlockStmt (Ast.Block {pragmas=[],defns=tempDefns,head=NONE,body=initStmts})]
-*)
 
     in
         (ts2,{pragmas=[],

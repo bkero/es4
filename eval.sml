@@ -820,6 +820,7 @@ and evalStmt (scope:Mach.SCOPE)
         Ast.ExprStmt e => evalExpr scope e
       | Ast.IfStmt {cnd,thn,els} => evalIfStmt scope cnd thn els
       | Ast.WhileStmt w => evalWhileStmt scope w
+      | Ast.ForStmt w => evalForStmt scope w
       | Ast.ReturnStmt r => evalReturnStmt scope r
       | Ast.BreakStmt lbl => evalBreakStmt scope lbl
       | Ast.ContinueStmt lbl => evalContinueStmt scope lbl
@@ -1067,11 +1068,15 @@ and evalScopeInits (scope:Mach.SCOPE)
     : unit =
             let
                 fun targetOf (Mach.Scope { object, temps, isVarObject, parent}) =
-                    case (target,parent) of
-                         (Ast.Local,_) => object
-                       | (Ast.Hoisted,parent) => 
-                                 if isVarObject=true 
+                    case (target,parent,object) of
+                         (Ast.Local,parent,Mach.Obj {props,...}) => 
+                                 if (length (!props)) > 0 
                                     then object
+                                    else targetOf (valOf parent) 
+                                         (* if there are no props then it is at temp scope *)
+                       | (Ast.Hoisted,parent,obj) => 
+                                 if isVarObject=true 
+                                    then obj
                                     else targetOf (valOf parent)
                        | _ => LogErr.unimplError ["unhandled target kind"]
                 val obj = targetOf scope
@@ -1308,25 +1313,25 @@ and evalLabelStmt (scope:Mach.SCOPE)
                   (s:Ast.STMT) 
     : Mach.VAL = 
     evalStmt scope s
-    handle BreakException exnLabel 
+    handle BreakException exnLabel
            => if labelEq (SOME lab) exnLabel
               then Mach.Undef
               else raise BreakException exnLabel
 
 
-and evalWhileStmt (scope:Mach.SCOPE) 
-                  (whileStmt:Ast.WHILE_STMT) 
-    : Mach.VAL = 
-    case whileStmt of 
-        { cond, body, fixtures, contLabel } => 
+and evalWhileStmt (scope:Mach.SCOPE)
+                  (whileStmt:Ast.WHILE_STMT)
+    : Mach.VAL =
+    case whileStmt of
+        { cond, body, fixtures, contLabel } =>
         let
-            fun loop (accum:Mach.VAL option) = 
-                let 
+            fun loop (accum:Mach.VAL option) =
+                let
                     val v = evalExpr scope cond
                     val b = Mach.toBoolean v
                 in
-                    if b 
-                    then 
+                    if b
+                    then
                         let
                             val curr = (SOME (evalStmt scope body)
                                         handle ContinueException exnLabel => 
@@ -1343,6 +1348,58 @@ and evalWhileStmt (scope:Mach.SCOPE)
                         accum
                 end
         in
+            case loop NONE of
+                NONE => Mach.Undef
+              | SOME v => v
+        end
+
+(*
+    FOR_STMT
+
+*)
+
+and headOf (fixtures:Ast.FIXTURES option)
+           (inits:Ast.INITS option)
+    : Ast.HEAD =
+    case (fixtures,inits) of
+        (NONE,NONE) => ([],[])
+      | (NONE,SOME i) => ([],i)
+      | (SOME f,NONE) => (f,[])
+      | (SOME f,SOME i) => (f,i)
+
+and evalForStmt (scope:Mach.SCOPE)
+                (forStmt:Ast.FOR_STMT)
+    : Mach.VAL =
+    case forStmt of
+        { fixtures, init, cond, update, contLabel, body, ...} =>
+        let
+            val forScope = evalHead scope (headOf fixtures (SOME [])) false
+
+            fun loop (accum:Mach.VAL option) =
+                let
+                    val v = evalExpr forScope cond
+                    val b = Mach.toBoolean v
+                in
+                    if b
+                    then
+                        let
+                            val curr = (SOME (evalStmt forScope body)
+                                        handle ContinueException exnLabel => 
+                                               if labelEq contLabel exnLabel
+                                               then NONE
+                                               else raise ContinueException exnLabel)
+                            val next = (case curr 
+                                         of NONE => accum
+                                          | x => x)
+                        in
+                            evalExpr forScope update;
+                            loop next
+                        end
+                    else
+                        accum
+                end
+        in
+            evalStmt forScope init;
             case loop NONE of
                 NONE => Mach.Undef
               | SOME v => v

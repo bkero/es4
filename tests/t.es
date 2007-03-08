@@ -1,18 +1,5 @@
 use namespace intrinsic
-class Object {}
-class A { 
-  function f() { print("f","\n") }
+var x,y
+L1: for ( [x,y] = [20,10]; x > y; --x ) {
+print(x,"\n")
 }
-var a = new A()
-a.f()
-
-function g() { print("g","\n") }
-g()
-g=10
-print(g,"\n")
-
-const function h() { print("h","\n") }
-h()
-h=20
-print(h,"\n")
-

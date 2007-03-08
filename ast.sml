@@ -259,15 +259,7 @@ datatype PRAGMA =
        | SuperStmt of EXPR
        | WhileStmt of WHILE_STMT
        | DoWhileStmt of WHILE_STMT
-       | ForStmt of
-           { fixtures: FIXTURES option,  (* CF- Do we need the option? 
-                                            JD-it's nice to show change of state during comp *)
-             defn: VAR_DEFN option,             (* there will be either defns or init, never both *)
-             init: STMT list,                  
-             cond: EXPR,
-             update: EXPR,
-             contLabel: IDENT option,
-             body: STMT }
+       | ForStmt of FOR_STMT
        | IfStmt of 
            { cnd: EXPR,
              thn: STMT,
@@ -492,6 +484,15 @@ withtype
              obj: EXPR,
              fixtures: FIXTURES option,
              inits: INITS option,
+             contLabel: IDENT option,
+             body: STMT }
+
+     and FOR_STMT =
+           { fixtures: FIXTURES option,
+             defn: VAR_DEFN option,    
+             init: STMT,                  
+             cond: EXPR,
+             update: EXPR,
              contLabel: IDENT option,
              body: STMT }
 
