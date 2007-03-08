@@ -268,10 +268,25 @@ fun getValue (obj:Mach.OBJ,
             val prop = Mach.getProp props name
         in
             case (#state prop) of 
-                Mach.TypeProp => error ["getValue on a type property"]
-              | Mach.TypeVarProp => error ["getValue on a type variable property"]
-              | Mach.UninitProp => error ["getValue on an uninitialized property"]
-              | Mach.VirtualValProp _ => error ["getValue on an virtual property"]
+                Mach.TypeProp => 
+                error ["getValue on a type property: ",
+                       LogErr.name name]
+
+              | Mach.TypeVarProp => 
+                error ["getValue on a type variable property: ",
+                       LogErr.name name]
+
+              | Mach.UninitProp => 
+                error ["getValue on an uninitialized property: ",
+                       LogErr.name name]
+
+              | Mach.VirtualValProp { getter = SOME g, ... } => 
+                invokeFuncClosure obj g []
+
+              | Mach.VirtualValProp { getter = NONE, ... } => 
+                error ["getValue on a virtual property w/o getter: ",
+                       LogErr.name name]
+
               | Mach.ValProp v => v
         end
 
@@ -285,35 +300,37 @@ and setValue (base:Mach.OBJ)
         then 
             let 
                 val existingProp = Mach.getProp props name                                   
-                val _ = case (#state existingProp) of 
-                            Mach.UninitProp => 
-                            error ["setValue on uninitialized property", 
-                                   LogErr.name name]
-                            
-                          | Mach.TypeVarProp => 
-                            error ["setValue on type variable property:", 
-                                   LogErr.name name]
-                            
-                          | Mach.TypeProp => 
-                            error ["setValue on type property: ", 
-                                   LogErr.name name]
-                            
-                          | Mach.VirtualValProp _ => 
-                            error ["setValue on virtual property:", 
-                                   LogErr.name name]
-                            
-                          | Mach.ValProp _ => ()
-                                              
                 val existingAttrs = (#attrs existingProp)
                 val newProp = { state = Mach.ValProp v,
                                 ty = (#ty existingProp), 
                                 attrs = existingAttrs }
             in
-                if (#readOnly existingAttrs)
-                then error ["setValue on read-only property"]
-                else ((* FIXME: insert typecheck here *)
-                      Mach.delProp props name;
-                      Mach.addProp props name newProp)
+                case (#state existingProp) of 
+                    Mach.UninitProp => 
+                    error ["setValue on uninitialized property", 
+                           LogErr.name name]
+                    
+                  | Mach.TypeVarProp => 
+                    error ["setValue on type variable property:", 
+                           LogErr.name name]
+                    
+                  | Mach.TypeProp => 
+                    error ["setValue on type property: ", 
+                           LogErr.name name]
+                    
+                  | Mach.VirtualValProp { setter = SOME s, ... } => 
+                    (invokeFuncClosure base s [v]; ())
+                    
+                  | Mach.VirtualValProp { setter = NONE, ... } => 
+                    error ["setValue on virtual property w/o setter: ", 
+                           LogErr.name name]
+                    
+                  | Mach.ValProp _ => 
+                    if (#readOnly existingAttrs)
+                    then error ["setValue on read-only property"]
+                    else ((* FIXME: insert typecheck here *)
+                          Mach.delProp props name;
+                          Mach.addProp props name newProp)
             end
         else
             let 
@@ -340,36 +357,41 @@ and defValue (base:Mach.OBJ)
         Mach.Obj { props, ... } => 
         if not (Mach.hasProp props name)
         then error ["defValue on missing property: ", LogErr.name name]
-        else (* Here we have relaxed rules: you can write to an 
-              * uninitialized property or a read-only property. *)
+        else 
+            (* 
+             * defProp has relaxed rules: you can write to an 
+             * uninitialized property or a read-only property. 
+             *)
             let 
                 val existingProp = Mach.getProp props name
-                                   
-                val _ = case (#state existingProp) of 
-                            
-                            Mach.TypeVarProp => 
-                            error ["defValue on type variable property: ", 
-                                   LogErr.name name]
-                            
-                          | Mach.TypeProp => 
-                            error ["defValue on type property: ", 
-                                   LogErr.name name]
-
-                          | Mach.VirtualValProp _ => 
-                            error ["defValue on virtual property: ", 
-                                   LogErr.name name]
-                            
-                          | Mach.UninitProp => ()
-                          | Mach.ValProp _ => ()
                 val newProp = { state = Mach.ValProp v,
                                 ty = (#ty existingProp), 
                                 attrs = (#attrs existingProp) }
-            in
-                (* FIXME: insert typecheck here *)
-                Mach.delProp props name;
-                Mach.addProp props name newProp
+                fun writeProp _ = 
+                    ((* FIXME: insert typecheck here *)
+                     Mach.delProp props name;
+                     Mach.addProp props name newProp)
+            in       
+                case (#state existingProp) of                     
+                    Mach.TypeVarProp => 
+                    error ["defValue on type variable property: ", 
+                           LogErr.name name]
+                    
+                  | Mach.TypeProp => 
+                    error ["defValue on type property: ", 
+                           LogErr.name name]
+                    
+                  | Mach.VirtualValProp { setter = SOME s, ... } => 
+                    (invokeFuncClosure base s [v]; ())
+                    
+                  | Mach.VirtualValProp { setter = NONE, ... } => 
+                    error ["defValue on virtual property w/o setter: ", 
+                           LogErr.name name]
+                    
+                  | Mach.UninitProp => writeProp ()
+                  | Mach.ValProp _ => writeProp ()
             end
-
+            
     
 and evalExpr (scope:Mach.SCOPE) 
              (expr:Ast.EXPR)
