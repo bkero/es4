@@ -4,8 +4,9 @@ JEFF'S NOTES ON THE REFERENCE IMPLEMENTATION
 
 TO DO
 
-- array and object literals to test destructuring
-- revive for statements
+- revive for-in statements
+- continue labels
+
 
 ###
 
