@@ -165,6 +165,7 @@ datatype PRAGMA =
          Func of 
            { name: FUNC_NAME,
              fsig: FUNC_SIG,
+             isNative: bool,
              block: BLOCK,
              param: HEAD,
              defaults: EXPR list,
@@ -429,7 +430,6 @@ withtype
            { kind : VAR_DEFN_TAG,
              ns: EXPR,
              final: bool,
-             native: bool,
              override: bool,
              prototype: bool,
              static: bool,
@@ -437,7 +437,6 @@ withtype
 
      and CTOR_DEFN = 
            { ns: EXPR,
-             native: bool,
              ctor : CTOR }
 
      and VAR_DEFN =
@@ -484,7 +483,7 @@ withtype
              obj: EXPR,
              fixtures: FIXTURES option,
              inits: INITS option,
-             contLabel: IDENT option,
+             labels: IDENT list,
              body: STMT }
 
      and FOR_STMT =
@@ -493,14 +492,14 @@ withtype
              init: STMT,                  
              cond: EXPR,
              update: EXPR,
-             contLabel: IDENT option,
+             labels: IDENT list,
              body: STMT }
 
      and WHILE_STMT =
            { cond: EXPR,
              fixtures: FIXTURES option,
              body: STMT,
-             contLabel: IDENT option }
+             labels: IDENT list }
 
      and DIRECTIVES = 
            { pragmas: PRAGMA list,

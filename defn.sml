@@ -36,6 +36,7 @@ type CONTEXT =
      { fixtures: Ast.FIXTURES,
        openNamespaces: Ast.NAMESPACE list list, 
        numericMode: Ast.NUMERIC_MODE,
+       labels: Ast.IDENT list,
        temp_count: int ref }
 
 type ENV = CONTEXT list
@@ -167,31 +168,50 @@ fun extendEnvironment (env:ENV)
                       (fixtures:Ast.FIXTURES) 
     : ENV = 
     case env of 
-        [] => { fixtures = fixtures,
+        [] => (trace ["extending empty environment"];{ fixtures = fixtures,
                 openNamespaces = [[Ast.Internal ""]],
                 numericMode = defaultNumericMode,
-                temp_count = ref 0 } :: []
-      | ({ numericMode, openNamespaces, temp_count,... }) :: _ =>
+                labels = [],
+                temp_count = ref 0 } :: [])
+      | ({ numericMode, openNamespaces, temp_count, labels, ... }) :: _ =>
+        (trace [">> extendEnvironment with labels ", String.concat (map (fn l => l^" ") labels)];
         { fixtures = fixtures,
           openNamespaces = openNamespaces, 
           numericMode = numericMode,
-          temp_count = temp_count } :: env
+          labels = labels,
+          temp_count = temp_count } :: env)
 
-fun updateEnvironment (cx::ex) (fxtrs:Ast.FIXTURES) 
+fun updateEnvironment (ctx::ex) (fxtrs:Ast.FIXTURES) 
     : ENV =
-        { fixtures = (fxtrs @ (#fixtures cx)),
-          openNamespaces = (#openNamespaces cx), 
-          numericMode = (#numericMode cx),
-          temp_count = (#temp_count cx) } :: ex
+    let
+        val _ = trace [">> updateEnvironment with labels ", String.concat (map (fn l => l^" ") (#labels ctx))]
+    in
+        { fixtures = (fxtrs @ (#fixtures ctx)),
+          openNamespaces = (#openNamespaces ctx), 
+          numericMode = (#numericMode ctx),
+          labels = (#labels ctx),
+          temp_count = (#temp_count ctx) } :: ex
+    end
   | updateEnvironment ([]) (fxtrs:Ast.FIXTURES) 
     : ENV =
         LogErr.defnError ["cannot update an empty environment"]
 
+fun addLabel (env) (lbl:Ast.IDENT)
+    : ENV =
+        case env of 
+            ({fixtures,labels,openNamespaces,numericMode,temp_count}::e) =>
+                if List.exists (fn l => l = lbl) labels
+                then LogErr.defnError ["duplicate label ",lbl]
+                else { fixtures=fixtures,
+                       labels=lbl::labels,
+                       openNamespaces=openNamespaces,
+                       numericMode=numericMode,
+                       temp_count=temp_count } :: e
+          | [] => LogErr.internalError ["addLabel: cannot update an empty environment"]
+
 (* copied from eval.sml *)
 fun multinameOf (n:Ast.NAME) = 
     { nss = [[(#ns n)]], id = (#id n) }
-
-
 
 (*
     Resolve an IDENT_EXPR to a multiname
@@ -610,36 +630,23 @@ and defVar (env:ENV)
            (ns:Ast.NAMESPACE)
            (var:Ast.BINDING) 
     : (Ast.FIXTURE_NAME*Ast.FIXTURE) = 
+
     case var of 
         Ast.Binding { ident, ty } => 
         let
-(*
-            val newInit = case init of 
-                              NONE => NONE
-                            | SOME e => SOME (defExpr env e)
-*)
-            val ty = case ty of 
-                            NONE => Ast.SpecialType Ast.Any
-                          | SOME t => (defTyExpr env t)
-(*
-            val patternType = case newTy of
-                                NONE => Ast.SpecialType Ast.Any
-                              | SOME t => t
-            val fxtrs = defBinding env kind ns pattern patternType
-*)
-            val readOnly = case kind of 
+            val ty' = case ty of 
+                           NONE => Ast.SpecialType Ast.Any
+                         | SOME t => (defTyExpr env t)
+
+            val readOnly' = case kind of 
                                  Ast.Const => true
                                | Ast.LetConst => true
                                | _ => false                
-            val name = fixtureNameFromPropIdent ns ident
-        in
-            (name, Ast.ValFixture {ty=ty,readOnly=readOnly})
-        end
 
-and defVars (env:ENV) 
-            (vars:Ast.BINDINGS) 
-    : (Ast.FIXTURES * Ast.INITS) = 
-    defBindings env Ast.Var (Ast.Internal "") vars
+            val name' = fixtureNameFromPropIdent ns ident
+        in
+            (name', Ast.ValFixture {ty=ty',readOnly=readOnly'})
+        end
 
 (*
     (BINDING list * INIT_STEP list) -> (FIXTURES * INITS)
@@ -823,7 +830,7 @@ and defFunc (env:ENV) (func:Ast.FUNC)
     : ((Ast.FIXTURES * Ast.INITS) * Ast.EXPR list * Ast.FUNC) =
     let
         val _ = trace [">> defFunc"]
-        val Ast.Func {name, fsig, block, ty, ...} = func
+        val Ast.Func {name, fsig, block, ty, isNative, ...} = func
         val (paramFixtures, paramInits, defaults, settingsFixtures, settingsInits, superArgs) = defFuncSig env fsig
         val newTy = defFuncTy env ty
         val defaults = defExprs env defaults
@@ -839,7 +846,8 @@ and defFunc (env:ENV) (func:Ast.FUNC)
                    ty = newTy,
                    param = (paramFixtures
                             @ hoisted,
-                            paramInits)})
+                            paramInits),
+                   isNative=isNative})
     end
 
 (*
@@ -858,7 +866,7 @@ and defFunc (env:ENV) (func:Ast.FUNC)
 and defFuncDefn (env:ENV) (f:Ast.FUNC_DEFN) 
     : (Ast.FIXTURES * Ast.FUNC_DEFN) = 
     case (#func f) of
-        Ast.Func { name, fsig, block, ty, ... } =>
+        Ast.Func { name, fsig, block, ty, isNative, ... } =>
         let
             val newNsExpr = defExpr env (#ns f)
             val qualNs = resolveExprToNamespace env newNsExpr
@@ -884,7 +892,6 @@ and defFuncDefn (env:ENV) (f:Ast.FUNC_DEFN)
             (outerFixtures, { kind = (#kind f),
                               ns = newNsExpr,
                               final = (#final f),
-                              native = (#native f),
                               override = (#override f),
                               prototype = (#prototype f),
                               static = (#static f),
@@ -933,6 +940,7 @@ and defPragmas (env:CONTEXT list)
                     end
               | _ => ()) pragmas ;
           { fixtures = [],
+            labels = (#labels ctx),
             openNamespaces = (case !opennss of 
                                  [] => (#openNamespaces ctx)   (* if opennss is empty, don't concat *)
                                | _  => !opennss :: (#openNamespaces ctx)),
@@ -1067,7 +1075,7 @@ and defExpr (env:ENV)
 
           | Ast.LetExpr { defs, body,... } => 
             let
-                val (f,i)   = defVars env defs
+                val (f,i)   = defBindings env Ast.Var (Ast.Internal "") defs
                 val env     = extendEnvironment env f
                 val newBody = defExpr env body
             in
@@ -1142,10 +1150,12 @@ and defStmt (env:ENV)
             (stmt:Ast.STMT) 
     : (Ast.STMT * Ast.FIXTURES) = 
     let
+        val (ctx::_) = env
+        val _ = trace ["labels ", String.concat (map (fn l => l^" ") (#labels ctx))]
 (*
         fun reconstructForEnumStmt (fe:Ast.FOR_ENUM_STMT) = 
             case fe of 
-                { obj, defn, contLabel, body, ... } => 
+                { obj, defn, labels, body, ... } => 
                 let
                     val newObj =  defExpr env obj
                     val (f1, i1) = ([],[])  (* FIXME defVars env (valOf defn) *)
@@ -1154,7 +1164,7 @@ and defStmt (env:ENV)
                 in
                     ({ obj = newObj,
                        defn = defn,
-                       contLabel = contLabel,
+                       labels = labels,
                        body = newBody, 
                        fixtures = SOME f1,
                        inits = SOME i1 },
@@ -1163,7 +1173,7 @@ and defStmt (env:ENV)
 *)
         fun reconstructWhileStmt (w:Ast.WHILE_STMT) = 
             case w of 
-                { cond, body, contLabel, fixtures } => (* FIXME: inits needed *)
+                { cond, body, labels, fixtures } => (* FIXME: inits needed *)
                 let 
                     val newCond = defExpr env cond
                     val (newBody, hoisted) = defStmt env body
@@ -1171,7 +1181,7 @@ and defStmt (env:ENV)
                     ({ cond=newCond, 
                        fixtures=NONE,
                        body=newBody, 
-                       contLabel=contLabel }, hoisted)
+                       labels=(#labels ctx) }, hoisted)
                 end
 
         (*
@@ -1179,24 +1189,26 @@ and defStmt (env:ENV)
             for ( x=10; x > 0; --x ) ...
         *)
 
-        fun reconstructForStmt { defn, init, cond, update, contLabel, body, fixtures } =
+        fun reconstructForStmt { defn, init, cond, update, labels, body, fixtures } =
             let
+                val _ = trace [">> reconstructForStmt with labels ", String.concat (map (fn l => l^" ") (#labels ctx))]
                 fun defVarDefnOpt vd =
                     case vd of
                         SOME vd => defDefn env (Ast.VariableDefn vd)
                       | NONE => ([],[],[])
                 val (uf,hf,_) = defVarDefnOpt defn
-                val env = updateEnvironment env (uf@hf)
-                val (newInit,_) = defStmt env init
-                val newCond = defExpr env cond
-                val newUpdate = defExpr env update
-                val (newBody, hoisted) = defStmt env body
+                val env' = updateEnvironment env (uf@hf)
+                val (newInit,_) = defStmt env' init
+                val newCond = defExpr env' cond
+                val newUpdate = defExpr env' update
+                val (newBody, hoisted) = defStmt env' body
             in
+                trace ["<< reconstructForStmt"];
                 ( Ast.ForStmt { defn = defn,
                                 init = newInit,
                                 cond = newCond,
                                 update = newUpdate,
-                                contLabel = contLabel,
+                                labels = (#labels ctx),
                                 body = newBody,
                                 fixtures = SOME (uf) },
                   hf@hoisted )
@@ -1287,6 +1299,36 @@ and defStmt (env:ENV)
                                  block = block }
             end
 
+        fun checkBreakLabel id =
+            (* 
+                A break with an empty label shall only occur in an interation
+                statement or switch statement. A break with a non-empty label
+                shall only occur in a statement with that label as a member of
+                its label set
+            *)
+
+            true
+
+        fun checkContinueLabel id =
+            (*
+                A continue statement with an empty label shall only occur in
+                an interation statement. A continue statement with a non-empty
+                label shall only occur in an iteration statement with that
+                label as a member of its label set
+            *)
+
+            let
+                fun hasLabel labels label = List.exists (fn l => l = label) labels
+                fun isIterationContext (ctx:CONTEXT) = true  (* FIXME *)
+                fun hasValidContinueContext (({labels,...}::parentEnv):ENV) label = 
+                    if case label of NONE => isIterationContext ctx
+                                 | SOME l => (isIterationContext ctx) andalso (hasLabel labels l)
+                    then true
+                    else hasValidContinueContext parentEnv label
+            in
+                hasValidContinueContext env id
+            end
+
     in
         case stmt of
             Ast.EmptyStmt => 
@@ -1325,11 +1367,19 @@ and defStmt (env:ENV)
             (Ast.ReturnStmt (defExpr env es), [])
             
           | Ast.BreakStmt i => 
-            (Ast.BreakStmt i, [])
+            let
+            in
+                checkBreakLabel i;
+                (Ast.BreakStmt i, [])
+            end
 
-          | Ast.ContinueStmt i => 
-            (Ast.ContinueStmt i, [])
-                                  
+          | Ast.ContinueStmt i =>
+            let
+            in
+                checkContinueLabel i;
+                (Ast.ContinueStmt i, [])
+             end
+
           | Ast.BlockStmt b =>
             inl (Ast.BlockStmt) (defBlock env b)
             
@@ -1338,9 +1388,9 @@ and defStmt (env:ENV)
             
           | Ast.LabeledStmt (id, s) =>
             let
-                val (stmt,hoisted) = defStmt env s
+                val env' = addLabel env id
             in
-                (Ast.LabeledStmt (id, stmt),hoisted)
+                defStmt env' s
             end 
             
           | Ast.LetStmt b =>
@@ -1608,7 +1658,7 @@ and defProgram (prog:Ast.PROGRAM)
         val topEnv = 
             [{ fixtures = intrinsicBinding::(map mkNamespaceFixtureBinding (#packages prog)),
                openNamespaces = [[Ast.Internal "", Ast.Public ""]],
-               numericMode = defaultNumericMode, temp_count = ref 0 }]
+               numericMode = defaultNumericMode, labels = [], temp_count = ref 0 }]
         val (packages,hoisted_pkg) = ListPair.unzip (map (defPackage topEnv) (#packages prog))
         val (block,hoisted_gbl) = defBlock topEnv (#block prog)
         val result = {packages=packages,block=block,fixtures=SOME ((List.concat hoisted_pkg)@hoisted_gbl)}

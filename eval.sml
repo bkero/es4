@@ -946,13 +946,18 @@ and evalNonTailCallExpr (scope:Mach.SCOPE)
          | ReturnException v => v
 
 
-and labelEq (stmtLabel:Ast.IDENT option) 
+and labelEq (stmtLabels:Ast.IDENT list) 
             (exnLabel:Ast.IDENT option) 
     : bool = 
-    case (stmtLabel, exnLabel) of
-        (SOME sl, SOME el) => sl = el
-      | (NONE, SOME _) => false
+    case (stmtLabels, exnLabel) of
+        (sl::[], SOME el) => sl = el
       | (_, NONE) => true
+      | ([], SOME _) => false
+      | (sl::sls,SOME el) => 
+            (trace ["labelEq ",sl," ",el];
+            if sl = el
+            then true
+            else labelEq sls exnLabel)
 
 
 and evalStmts (scope:Mach.SCOPE) 
@@ -1462,7 +1467,8 @@ and evalLabelStmt (scope:Mach.SCOPE)
     : Mach.VAL = 
     evalStmt scope s
     handle BreakException exnLabel
-           => if labelEq (SOME lab) exnLabel
+           => if labelEq [lab] exnLabel  
+(* FIXME: labels need to be associated with their inner statements *)
               then Mach.Undef
               else raise BreakException exnLabel
 
@@ -1471,7 +1477,7 @@ and evalWhileStmt (scope:Mach.SCOPE)
                   (whileStmt:Ast.WHILE_STMT)
     : Mach.VAL =
     case whileStmt of
-        { cond, body, fixtures, contLabel } =>
+        { cond, body, fixtures, labels } =>
         let
             fun loop (accum:Mach.VAL option) =
                 let
@@ -1483,22 +1489,33 @@ and evalWhileStmt (scope:Mach.SCOPE)
                         let
                             val curr = (SOME (evalStmt scope body)
                                         handle ContinueException exnLabel => 
-                                               if labelEq contLabel exnLabel
+                                               if labelEq labels exnLabel
                                                then NONE
                                                else raise ContinueException exnLabel)
                             val next = (case curr 
                                          of NONE => accum
                                           | x => x)
                         in
-                            loop next
+                            loop next handle BreakException exnLabel => 
+                                          if labelEq labels exnLabel  
+                                          then accum
+                                          else raise BreakException exnLabel
                         end
                     else
                         accum
                 end
         in
-            case loop NONE of
+            case loop NONE handle BreakException exnLabel => 
+                               if labelEq labels exnLabel  
+                               then NONE
+                               else raise BreakException exnLabel
+ of
                 NONE => Mach.Undef
               | SOME v => v
+            handle BreakException exnLabel => 
+                if labelEq labels exnLabel  
+                then Mach.Undef
+                else raise ContinueException exnLabel
         end
 
 (*
@@ -1519,7 +1536,7 @@ and evalForStmt (scope:Mach.SCOPE)
                 (forStmt:Ast.FOR_STMT)
     : Mach.VAL =
     case forStmt of
-        { fixtures, init, cond, update, contLabel, body, ...} =>
+        { fixtures, init, cond, update, labels, body, ...} =>
         let
             val forScope = evalHead scope (headOf fixtures (SOME [])) false
 
@@ -1533,7 +1550,7 @@ and evalForStmt (scope:Mach.SCOPE)
                         let
                             val curr = (SOME (evalStmt forScope body)
                                         handle ContinueException exnLabel => 
-                                               if labelEq contLabel exnLabel
+                                               if labelEq labels exnLabel
                                                then NONE
                                                else raise ContinueException exnLabel)
                             val next = (case curr 
@@ -1541,14 +1558,22 @@ and evalForStmt (scope:Mach.SCOPE)
                                           | x => x)
                         in
                             evalExpr forScope update;
-                            loop next
+                            loop next handle BreakException exnLabel => 
+                                          if labelEq labels exnLabel  
+                                          then accum
+                                          else raise BreakException exnLabel
                         end
                     else
                         accum
                 end
         in
             evalStmt forScope init;
-            case loop NONE of
+            case 
+                loop NONE handle BreakException exnLabel => 
+                              if labelEq labels exnLabel  
+                              then NONE
+                              else raise BreakException exnLabel
+            of
                 NONE => Mach.Undef
               | SOME v => v
         end
@@ -1569,7 +1594,8 @@ and evalThrowStmt (scope:Mach.SCOPE)
 and evalBreakStmt (scope:Mach.SCOPE) 
                   (lbl:Ast.IDENT option) 
     : Mach.VAL =
-    raise (BreakException lbl)
+    (trace ["raising BreakException ",valOf lbl];
+    raise (BreakException lbl))
 
 
 and evalContinueStmt (scope:Mach.SCOPE) 

@@ -118,7 +118,7 @@ fun lookupIdNamespacess (env:TYPE_ENV)
 
 (******************************** Contexts *********************************)
 
-type CONTEXT = {this: TYPE_EXPR, env: TYPE_ENV, lbls: IDENT option list, retTy: TYPE_EXPR option}
+type CONTEXT = {this: TYPE_EXPR, env: TYPE_ENV, lbls: IDENT list, retTy: TYPE_EXPR option}
 
 fun withThis  {this=_,    env=env, lbls=lbls, retTy=retTy} this 
     = {this=this, env=env, lbls=lbls, retTy=retTy}
@@ -795,7 +795,7 @@ and verifyTrinaryExpr (ctxt:CONTEXT) (triop:TRIOP, a:EXPR, b:EXPR, c:EXPR) =
 
 and verifyStmts ctxt ss = List.app (fn s => verifyStmt ctxt s) ss
 
-and verifyStmt (ctxt as {this,env,lbls,retTy}:CONTEXT) (stmt:STMT) =
+and verifyStmt (ctxt as {this,env,lbls:(Ast.IDENT list),retTy}:CONTEXT) (stmt:STMT) =
    let
    in
        TextIO.print ("type checking stmt: env len " ^ (Int.toString (List.length env)) ^"\n");
@@ -811,10 +811,10 @@ and verifyStmt (ctxt as {this,env,lbls,retTy}:CONTEXT) (stmt:STMT) =
 	verifyStmt ctxt els
     end
 
-  | (DoWhileStmt {cond,body,contLabel,fixtures} | WhileStmt {cond,body,contLabel,fixtures}) => 
+  | (DoWhileStmt {cond,body,labels,fixtures} | WhileStmt {cond,body,labels,fixtures}) => 
     let in
 	checkCompatible (verifyExpr ctxt cond) boolType;
-	verifyStmt (withLbls ctxt (contLabel::lbls)) body
+	verifyStmt (withLbls ctxt (labels@lbls)) body
     end
 
   | ReturnStmt e => 
@@ -833,7 +833,7 @@ and verifyStmt (ctxt as {this,env,lbls,retTy}:CONTEXT) (stmt:STMT) =
 
   | (BreakStmt (SOME lbl) | ContinueStmt (SOME lbl)) => 
     let in
-	if List.exists (fn x => x=(SOME lbl)) lbls	
+	if List.exists (fn x => x=(lbl)) lbls
 	then ()
 	else raise VerifyError "No such label"
     end
@@ -841,7 +841,7 @@ and verifyStmt (ctxt as {this,env,lbls,retTy}:CONTEXT) (stmt:STMT) =
   | BlockStmt b => verifyBlock ctxt b
 
   | LabeledStmt (lab, s) => 
-	verifyStmt (withLbls ctxt ((SOME lab)::lbls)) s
+	verifyStmt (withLbls ctxt ((lab)::lbls)) s
  
   | ThrowStmt t => 
 	checkCompatible (verifyExpr ctxt t) exceptionType
@@ -855,7 +855,7 @@ and verifyStmt (ctxt as {this,env,lbls,retTy}:CONTEXT) (stmt:STMT) =
     end
 *)
 
-  | ForStmt { defn=_, fixtures, init, cond, update, contLabel, body } =>
+  | ForStmt { defn=_, fixtures, init, cond, update, labels, body } =>
     let val extensions = verifyFixturesOption ctxt fixtures
         val ctxt' = withEnvExtn ctxt extensions
 (* NOT USED 
@@ -870,7 +870,7 @@ and verifyStmt (ctxt as {this,env,lbls,retTy}:CONTEXT) (stmt:STMT) =
   	verifyStmt ctxt' init;
 	checkCompatible (verifyExpr ctxt' cond) boolType;
 	verifyExpr ctxt' update;
-	verifyStmt (withLbls ctxt' (contLabel::lbls)) body
+	verifyStmt (withLbls ctxt' (labels@lbls)) body
     end
 
   | SwitchStmt { cond, cases } =>  
