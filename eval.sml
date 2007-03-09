@@ -160,13 +160,20 @@ fun allocFixtures (scope:Mach.SCOPE)
                                                   isFixed = true } }
 
                           | Ast.MethodFixture { func, ty, readOnly, ... } => 
-                            allocProp "method" 
-                                      { ty = ty,
-                                        state = Mach.ValProp (Mach.newFunc methodScope func),
-                                        attrs = { dontDelete = true,
-                                                  dontEnum = true,
-                                                  readOnly = readOnly,
-                                                  isFixed = true } }
+                            let
+                                val Ast.Func { isNative, ... } = func
+                                val v = if isNative
+                                        then Mach.newNativeFunction (Mach.getNativeFunction pn)
+                                        else Mach.newFunc methodScope func
+                            in
+                                allocProp "method" 
+                                          { ty = ty,
+                                            state = Mach.ValProp v,
+                                            attrs = { dontDelete = true,
+                                                      dontEnum = true,
+                                                      readOnly = readOnly,
+                                                      isFixed = true } }
+                            end
 
                           | Ast.ValFixture { ty, readOnly, ... } => 
                             allocProp "value" 
