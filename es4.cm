@@ -12,6 +12,7 @@ Library
     structure Eval
     structure Mach 	
     structure Magic 
+    structure Decimal
 is
     logerr.sml
     main.sml
@@ -28,6 +29,7 @@ is
     eval.sml
     mach.sml
     magic.sml
+    decimal.sml
 
     $/basis.cm
     $/smlnj-lib.cm

@@ -29,15 +29,23 @@ datatype VAL = Object of OBJ
  * it is not visible to users.
  *)
                
-     and MAGIC = Number of real (* someday to be more complicated *)
-               | String of Ast.USTRING  (* someday to be unicode *)
-               | Bool of bool
-               | Namespace of Ast.NAMESPACE
-               | Class of CLS_CLOSURE
-               | Interface of IFACE_CLOSURE
-               | Function of FUN_CLOSURE
-               | Type of Ast.TYPE_EXPR
-               | NativeFunction of NATIVE_FUNCTION
+     and MAGIC = 
+(*
+         Int of Int32.int
+       | UInt of Word32.word
+       | Double of Real64.real
+       | Decimal of Decimal.DEC
+       | ByteArray of Word8Array.array
+*)
+         Number of real
+       | String of Ast.USTRING  (* someday to be unicode *)
+       | Bool of bool
+       | Namespace of Ast.NAMESPACE
+       | Class of CLS_CLOSURE
+       | Interface of IFACE_CLOSURE
+       | Function of FUN_CLOSURE
+       | Type of Ast.TYPE_EXPR
+       | NativeFunction of NATIVE_FUNCTION
                     
      and IFACE = 
          Iface of { ty: Ast.TYPE_EXPR,
