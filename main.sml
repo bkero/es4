@@ -15,16 +15,16 @@ fun testTC argvRest =
 
 fun testEV argvRest =
     let 
-	val _ = TextIO.print "parsing ... \n";
-	val asts = List.map Parser.parseFile argvRest
-	val _ = TextIO.print "defining ... \n";
-	val dps = map Defn.defProgram asts
-	val _ = TextIO.print "evaluating ... \n";
-	val _ = map Eval.evalProgram dps
-	val _ = TextIO.print "evaluated! \n"
-            
+        val _ = Magic.registerNatives ()
+        val _ = TextIO.print "parsing ... \n";
+        val asts = List.map Parser.parseFile argvRest
+        val _ = TextIO.print "defining ... \n";
+        val dps = map Defn.defProgram asts
+        val _ = TextIO.print "evaluating ... \n";
+        val _ = map Eval.evalProgram dps
+        val _ = TextIO.print "evaluated! \n"                
     in
-	()
+    ()
     end
 
 fun testDefn argvRest =
@@ -49,10 +49,10 @@ fun consumeTraceOption (opt:string) : bool =
 
 fun main (argv0:string, argvRest:string list) =
     BackTrace.monitor (fn () =>
-                       ((case List.filter consumeTraceOption argvRest of
-                          ("-tc"::argvRest) => testTC argvRest
-	                    | ("-ev"::argvRest) => testEV argvRest
-                        | _ => testDefn argvRest);
-                        0))
+                          ((case List.filter consumeTraceOption argvRest of
+                                ("-tc"::argvRest) => testTC argvRest
+	                          | ("-ev"::argvRest) => testEV argvRest
+                              | _ => testDefn argvRest);
+                           0))
 
 end

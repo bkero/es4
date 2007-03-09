@@ -382,11 +382,11 @@ fun stringAppend (vals:Mach.VAL list)
 
 
 (* Register all the magic native functions in this file. *)
-val _ = 
+fun registerNatives _ = 
     let
 	fun addFn name f = 
 	    Mach.registerNativeFunction 
-		{ ns = (Ast.Public "magic"), 
+		{ ns = (Ast.UserNamespace "magic"), 
 		  id = name } 
 		f
     in
@@ -405,4 +405,5 @@ val _ =
 	addFn "stringLength" stringLength;
 	addFn "stringAppend" stringAppend
     end
+
 end

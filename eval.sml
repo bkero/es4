@@ -57,7 +57,7 @@ fun needObj (v:Mach.VAL)
  * evaluation, not first-class values in the language. 
  *)
 
-type REF = (Mach.OBJ * Mach.NAME)
+type REF = (Mach.OBJ * Ast.NAME)
 
 (* Fundamental object methods *)
 
@@ -367,7 +367,7 @@ and setValue (base:Mach.OBJ)
  * to a property go through "setValue". *)
 
 and defValue (base:Mach.OBJ) 
-             (name:Mach.NAME) 
+             (name:Ast.NAME) 
              (v:Mach.VAL) 
     : unit =
     case base of 
@@ -826,7 +826,7 @@ and evalCondExpr (scope:Mach.SCOPE)
 
 and evalIdentExpr (scope:Mach.SCOPE) 
                   (r:Ast.IDENT_EXPR) 
-    : Mach.MULTINAME = 
+    : Ast.MULTINAME = 
     case r of 
         Ast.Identifier { ident, openNamespaces } => 
         { nss=openNamespaces, id=ident }
@@ -851,7 +851,7 @@ and evalRefExpr (scope:Mach.SCOPE)
     : REF =
 
     let 
-        fun makeRefNotFound (b:Mach.VAL option) (mname:Mach.MULTINAME) 
+        fun makeRefNotFound (b:Mach.VAL option) (mname:Ast.MULTINAME) 
             : REF =
             case (b,mname) of
                 (SOME (Mach.Object ob),{id,...}) =>
@@ -866,7 +866,7 @@ and evalRefExpr (scope:Mach.SCOPE)
               | Ast.ObjectRef { base, ident } => (SOME (evalExpr scope base), ident)
               | _ => error ["need lexical or object-reference expression"]
 
-        val (multiname:Mach.MULTINAME) = evalIdentExpr scope ident
+        val (multiname:Ast.MULTINAME) = evalIdentExpr scope ident
 
         val refOpt = 
             case base of 
@@ -899,7 +899,7 @@ and evalLetExpr (scope:Mach.SCOPE)
     end
 
 and resolveOnScopeChain (scope:Mach.SCOPE) 
-                        (mname:Mach.MULTINAME) 
+                        (mname:Ast.MULTINAME) 
     : REF option =
     let 
         val _ = trace ["resolving multiname on scope chain: ", 
@@ -933,7 +933,7 @@ and resolveOnScopeChain (scope:Mach.SCOPE)
     end
 
 and resolveOnObjAndPrototypes (obj:Mach.OBJ) 
-                              (mname:Mach.MULTINAME) 
+                              (mname:Ast.MULTINAME) 
     : REF option = 
     let 
         fun hasFixedProp (Mach.Obj {props, ...}, n) = Mach.hasFixedProp props n
@@ -1018,7 +1018,7 @@ and findVal (scope:Mach.SCOPE)
 and checkAllPropertiesInitialized (obj:Mach.OBJ)
     : unit = 
     let 
-        fun checkOne (n:Mach.NAME, p:Mach.PROP) = 
+        fun checkOne (n:Ast.NAME, p:Mach.PROP) = 
             case (#state p) of 
                 Mach.UninitProp => error ["uninitialized property: ", 
                                                      LogErr.name n]

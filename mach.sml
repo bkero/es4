@@ -8,18 +8,6 @@ structure Mach = struct
 val doTrace = ref false
 fun trace ss = if (!doTrace) then LogErr.log ("[mach] " :: ss) else ()
 
-(* Local type aliases *)
-
-type TYPE = Ast.TYPE_EXPR
-type STR = Ast.USTRING
-type ID = Ast.IDENT
-type NS = Ast.NAMESPACE
-type NAME = Ast.NAME
-type MULTINAME = Ast.MULTINAME
-type BINDINGS = Ast.BINDINGS
-type FIXTURES = Ast.FIXTURES
-type CLS = Ast.CLS
-
 datatype VAL = Object of OBJ
              | Null
              | Undef
@@ -32,9 +20,9 @@ datatype VAL = Object of OBJ
 
      and VAL_TAG =
          ObjectTag of Ast.FIELD_TYPE list
-       | ArrayTag of TYPE list
+       | ArrayTag of Ast.TYPE_EXPR list
        | FunctionTag of Ast.FUNC_SIG
-       | ClassTag of NAME
+       | ClassTag of Ast.NAME
 
 (* 
  * Magic is visible only to the interpreter; 
@@ -42,17 +30,17 @@ datatype VAL = Object of OBJ
  *)
                
      and MAGIC = Number of real (* someday to be more complicated *)
-               | String of STR  (* someday to be unicode *)
+               | String of Ast.USTRING  (* someday to be unicode *)
                | Bool of bool
-               | Namespace of NS
+               | Namespace of Ast.NAMESPACE
                | Class of CLS_CLOSURE
                | Interface of IFACE_CLOSURE
                | Function of FUN_CLOSURE
-               | Type of TYPE
+               | Type of Ast.TYPE_EXPR
                | NativeFunction of NATIVE_FUNCTION
                     
      and IFACE = 
-         Iface of { ty: TYPE,
+         Iface of { ty: Ast.TYPE_EXPR,
                     bases: IFACE list,
                     definition: Ast.INTERFACE_DEFN,                        
                     isInitialized: bool ref }
@@ -80,7 +68,7 @@ withtype FUN_CLOSURE =
            env: SCOPE }
 
      and CLS_CLOSURE = 
-         { cls: CLS, 
+         { cls: Ast.CLS, 
            allTypesBound: bool,
            env: SCOPE }
          
@@ -103,13 +91,13 @@ withtype FUN_CLOSURE =
                    readOnly: bool,
                    isFixed: bool}
 
-     and TEMPS = (TYPE * TEMP_STATE) list ref
+     and TEMPS = (Ast.TYPE_EXPR * TEMP_STATE) list ref
 
-     and PROP = { ty: TYPE,
+     and PROP = { ty: Ast.TYPE_EXPR,
                   state: PROP_STATE,                  
                   attrs: ATTRS }
 
-     and PROP_BINDINGS = ((NAME * PROP) list) ref
+     and PROP_BINDINGS = ((Ast.NAME * PROP) list) ref
 
 (* Binding operations. *)
 
@@ -122,14 +110,14 @@ fun newPropBindings _ : PROP_BINDINGS =
 
 
 fun addProp (b:PROP_BINDINGS) 
-            (n:NAME) 
+            (n:Ast.NAME) 
             (x:PROP) 
     : unit = 
     b := ((n,x) :: (!b))
 
 
 fun delProp (b:PROP_BINDINGS) 
-            (n:NAME) 
+            (n:Ast.NAME) 
     : unit = 
     let 
         fun strip [] = LogErr.hostError ["deleting nonexistent property binding: ", 
@@ -144,7 +132,7 @@ fun delProp (b:PROP_BINDINGS)
 
 
 fun getProp (b:PROP_BINDINGS) 
-            (n:NAME) 
+            (n:Ast.NAME) 
     : PROP = 
     let 
         fun search [] = LogErr.hostError ["property binding not found: ", 
@@ -158,7 +146,7 @@ fun getProp (b:PROP_BINDINGS)
     end
 
 fun getFixedProp (b:PROP_BINDINGS) 
-                 (n:NAME) 
+                 (n:Ast.NAME) 
     : PROP = 
     let 
         fun search [] = LogErr.hostError ["property binding not found: ", 
@@ -172,7 +160,7 @@ fun getFixedProp (b:PROP_BINDINGS)
     end
 
 fun hasFixedProp (b:PROP_BINDINGS) 
-                 (n:NAME) 
+                 (n:Ast.NAME) 
     : bool = 
     let 
         fun search [] = false
@@ -186,7 +174,7 @@ fun hasFixedProp (b:PROP_BINDINGS)
 
 
 fun hasProp (b:PROP_BINDINGS) 
-            (n:NAME) 
+            (n:Ast.NAME) 
     : bool = 
     let 
         fun search [] = false
@@ -201,24 +189,24 @@ fun hasProp (b:PROP_BINDINGS)
 
 (* Standard runtime objects and functions. *)
 
-val publicPrototypeName:NAME = { ns = (Ast.Public ""), id = "prototype" }
-val internalConstructorName:NAME = { ns = (Ast.Internal ""), id = "constructor" }
-val internalObjectName:NAME = { ns = (Ast.Internal ""), id = "Object" }
+val publicPrototypeName:Ast.NAME = { ns = (Ast.Public ""), id = "prototype" }
+val internalConstructorName:Ast.NAME = { ns = (Ast.Internal ""), id = "constructor" }
+val internalObjectName:Ast.NAME = { ns = (Ast.Internal ""), id = "Object" }
                                             
-val intrinsicObjectName:NAME = { ns = Ast.Intrinsic, id = "Object" }
-val intrinsicArrayName:NAME = { ns = Ast.Intrinsic, id = "Array" }
-val intrinsicFunctionName:NAME = { ns = Ast.Intrinsic, id = "Function" }
-val intrinsicBooleanName:NAME = { ns = Ast.Intrinsic, id = "Boolean" }
-val intrinsicNumberName:NAME = { ns = Ast.Intrinsic, id = "Number" }
-val intrinsicStringName:NAME = { ns = Ast.Intrinsic, id = "String" }
-val intrinsicNamespaceName:NAME = { ns = Ast.Intrinsic, id = "Namespace" }
-val intrinsicClassName:NAME = { ns = Ast.Intrinsic, id = "Class" }
-val intrinsicInterfaceName:NAME = { ns = Ast.Intrinsic, id = "Interface" }
-val intrinsicTypeName:NAME = { ns = Ast.Intrinsic, id = "Type" }
+val intrinsicObjectName:Ast.NAME = { ns = Ast.Intrinsic, id = "Object" }
+val intrinsicArrayName:Ast.NAME = { ns = Ast.Intrinsic, id = "Array" }
+val intrinsicFunctionName:Ast.NAME = { ns = Ast.Intrinsic, id = "Function" }
+val intrinsicBooleanName:Ast.NAME = { ns = Ast.Intrinsic, id = "Boolean" }
+val intrinsicNumberName:Ast.NAME = { ns = Ast.Intrinsic, id = "Number" }
+val intrinsicStringName:Ast.NAME = { ns = Ast.Intrinsic, id = "String" }
+val intrinsicNamespaceName:Ast.NAME = { ns = Ast.Intrinsic, id = "Namespace" }
+val intrinsicClassName:Ast.NAME = { ns = Ast.Intrinsic, id = "Class" }
+val intrinsicInterfaceName:Ast.NAME = { ns = Ast.Intrinsic, id = "Interface" }
+val intrinsicTypeName:Ast.NAME = { ns = Ast.Intrinsic, id = "Type" }
 
-val intrinsicApplyName:NAME = { ns = Ast.Intrinsic, id = "apply" }
-val intrinsicInvokeName:NAME = { ns = Ast.Intrinsic, id = "invoke" }
-val intrinsicConstructName:NAME = { ns = Ast.Intrinsic, id = "construct" }
+val intrinsicApplyName:Ast.NAME = { ns = Ast.Intrinsic, id = "apply" }
+val intrinsicInvokeName:Ast.NAME = { ns = Ast.Intrinsic, id = "invoke" }
+val intrinsicConstructName:Ast.NAME = { ns = Ast.Intrinsic, id = "construct" }
 
 val intrinsicObjectBaseTag:VAL_TAG = ClassTag (intrinsicObjectName)
 val intrinsicArrayBaseTag:VAL_TAG = ClassTag (intrinsicArrayName)
@@ -274,7 +262,7 @@ fun newNumber (n:real)
     newObject intrinsicNumberBaseTag Null (SOME (Number n))
 
 
-fun newString (s:STR) 
+fun newString (s:Ast.USTRING) 
     : VAL = 
     newObject intrinsicStringBaseTag Null (SOME (String s))
 
@@ -283,16 +271,16 @@ fun newBoolean (b:bool)
     : VAL = 
     newObject intrinsicBooleanBaseTag Null (SOME (Bool b))
 
-fun newType (t:TYPE) 
+fun newType (t:Ast.TYPE_EXPR) 
     : VAL = 
     newObject intrinsicTypeBaseTag Null (SOME (Type t))
 
-fun newNamespace (n:NS) 
+fun newNamespace (n:Ast.NAMESPACE) 
     : VAL = 
     newObject intrinsicNamespaceBaseTag Null (SOME (Namespace n))
 
 fun newClass (e:SCOPE) 
-             (cls:CLS) 
+             (cls:Ast.CLS) 
     : VAL =
     let
         val closure = { cls = cls,
@@ -349,7 +337,7 @@ fun newNativeFunction (f:NATIVE_FUNCTION) =
                   proto = ref Null,
                   magic = ref (SOME (NativeFunction f)) })
     
-val (objectType:TYPE) = Ast.ObjectType []
+val (objectType:Ast.TYPE_EXPR) = Ast.ObjectType []
 
 val (emptyBlock:Ast.BLOCK) = Ast.Block { pragmas = [],
                                          defns = [],
@@ -402,7 +390,7 @@ fun defTemp (temps:TEMPS)
  *)
 
 fun nominalBaseOfTag (t:VAL_TAG) 
-    : NAME = 
+    : Ast.NAME = 
     case t of 
         ObjectTag _ => intrinsicObjectName
       | ArrayTag _ => intrinsicArrayName
@@ -525,15 +513,15 @@ fun hostAssertFunction (vals:VAL list) : VAL =
       | _ => LogErr.hostError ["intrinsic::assert() called with multiple args"]
 
 
-val nativeFunctions:(NAME * NATIVE_FUNCTION) list ref = ref [] 
+val nativeFunctions:(Ast.NAME * NATIVE_FUNCTION) list ref = ref [] 
                                                         
-fun registerNativeFunction (name:NAME)
+fun registerNativeFunction (name:Ast.NAME)
                            (func:NATIVE_FUNCTION)
     : unit =
     (trace ["registering native function: ", LogErr.name name];
      nativeFunctions := (name, func) :: (!nativeFunctions))
     
-fun getNativeFunction (name:NAME) 
+fun getNativeFunction (name:Ast.NAME) 
     : NATIVE_FUNCTION = 
     let 
         fun search [] = LogErr.hostError ["native function not found: ",
