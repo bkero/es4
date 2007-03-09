@@ -177,14 +177,24 @@ fun allocFixtures (scope:Mach.SCOPE)
                                                   readOnly = readOnly,
                                                   isFixed = true } }
                             
-                          | Ast.VirtualValFixture { ty, setter, ... } => 
-                            allocProp "virtual value" 
-                                      { ty = ty,
-                                        state = Mach.UninitProp,
-                                        attrs = { dontDelete = true,
-                                                  dontEnum = false,
-                                                  readOnly = (case setter of NONE => true | _ => false),
-                                                  isFixed = true } }
+                          | Ast.VirtualValFixture { ty, getter, setter, ... } => 
+                            let
+                                val getFn = case getter of
+                                                NONE => NONE
+                                              | SOME f => SOME (Mach.newFunClosure methodScope (#func f))
+                                val setFn = case setter of
+                                                NONE => NONE
+                                              | SOME f => SOME (Mach.newFunClosure methodScope (#func f))
+                            in
+                                allocProp "virtual value" 
+                                          { ty = ty,
+                                            state = Mach.VirtualValProp { getter = getFn,
+                                                                          setter = setFn },
+                                            attrs = { dontDelete = true,
+                                                      dontEnum = false,
+                                                      readOnly = true,
+                                                      isFixed = true } }
+                            end
                             
                           | Ast.ClassFixture cls => 
                             allocProp "class"

@@ -318,19 +318,27 @@ fun newIface (e:SCOPE)
     end
         
 
+fun newFunClosure (e:SCOPE)
+                  (f:Ast.FUNC)
+    : FUN_CLOSURE = 
+    let
+        val fsig = case f of Ast.Func { fsig, ... } => fsig
+        val allTypesBound = (case fsig of 
+                                 Ast.FunctionSignature { typeParams, ... } 
+                                 => (length typeParams) = 0)
+    in
+        { func = f, 
+          allTypesBound = allTypesBound,
+          env = e }
+    end
+
 fun newFunc (e:SCOPE) 
             (f:Ast.FUNC) 
     : VAL = 
     let 
         val fsig = case f of Ast.Func { fsig, ... } => fsig
         val tag = FunctionTag fsig
-        val allTypesBound = (case fsig of 
-                                 Ast.FunctionSignature { typeParams, ... } 
-                                 => (length typeParams) = 0)
-                            
-        val closure = { func = f, 
-                        allTypesBound = allTypesBound,
-                        env = e }
+        val closure = newFunClosure e f
     in
         newObject tag Null (SOME (Function closure))
     end
