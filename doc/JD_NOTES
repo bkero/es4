@@ -6,6 +6,22 @@ TO DO
 
 - revive for-in statements
 - continue labels
+  - check for valid labels
+  - complete all statements
+
+###
+
+09-MAR-2007
+
+CLASSES
+
+Classes are compiled in two steps
+
+* The parser creates a ClassBlock and a ClassDefinition which contains 
+  the instanceDefinitions and classDefinitions. The ClassDefinition is 
+  put into the ClassBlock defns list.
+* The definer translates the ClassDefinition into a ClassFixture and 
+  hoists it into the global object
 
 
 ###
