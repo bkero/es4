@@ -29,18 +29,9 @@ datatype NUMBER_TYPE =
        | UInt
        | Number
 
-datatype ROUNDING_MODE =
-         Ceiling
-       | Floor
-       | Up
-       | Down
-       | HalfUp
-       | HalfDown
-       | HalfEven
-
 type NUMERIC_MODE = 
            { numberType: NUMBER_TYPE,
-             roundingMode: ROUNDING_MODE,
+             roundingMode: Decimal.ROUNDING_MODE,
              precision: int }
      
 datatype TRIOP =
@@ -125,8 +116,8 @@ datatype PRAGMA =
          UseNamespace of IDENT_EXPR
        | UseDefaultNamespace of IDENT_EXPR
        | UseNumber of NUMBER_TYPE
-       | UseRounding of ROUNDING_MODE
-       | UsePrecision of LITERAL
+       | UseRounding of Decimal.ROUNDING_MODE
+       | UsePrecision of int
        | UseStrict
        | UseStandard
        | Import of 
@@ -351,7 +342,13 @@ datatype PRAGMA =
      and LITERAL =
          LiteralNull
        | LiteralUndefined
-       | LiteralNumber of real
+       | LiteralContextualDecimal of string        (* Should be erased after defn time. *)
+       | LiteralContextualDecimalInteger of string (* Should be erased after defn time. *)
+       | LiteralContextualHexInteger of string     (* Should be erased after defn time. *)
+       | LiteralDouble of Real64.real
+       | LiteralDecimal of Decimal.DEC
+       | LiteralInt of Int32.int
+       | LiteralUInt of Word32.word
        | LiteralBoolean of bool
        | LiteralString of USTRING
        | LiteralArray of 

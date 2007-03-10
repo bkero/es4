@@ -5,6 +5,7 @@ structure Defn = struct
 
 val doTrace = ref false
 fun trace ss = if (!doTrace) then LogErr.log ("[eval] " :: ss) else ()
+fun error ss = LogErr.defnError ss
 
 (* 
  * The goal of the definition phase is to put together the fixtures
@@ -56,8 +57,8 @@ fun dumpEnv (e:ENV) : unit =
 
 val defaultNumericMode : Ast.NUMERIC_MODE =
     { numberType = Ast.Number,
-      roundingMode = Ast.HalfEven,
-      precision = 20 }
+      roundingMode = Decimal.defaultRoundingMode,
+      precision = Decimal.defaultPrecision }
 
 fun hasFixture (b:Ast.FIXTURES) 
                (n:Ast.FIXTURE_NAME) 
@@ -975,7 +976,7 @@ and defPragmas (env:CONTEXT list)
             case x of 
                 Ast.UseNumber n => numType := n
               | Ast.UseRounding m => rounding := m
-              | Ast.UsePrecision (Ast.LiteralNumber p) => precision := Real.trunc p
+              | Ast.UsePrecision p => precision := p
               | Ast.UseNamespace ns =>
                     let
                         val namespace = resolveExprToNamespace env (Ast.LexicalRef {ident=ns})
@@ -1032,6 +1033,76 @@ and defIdentExpr (env:ENV)
             Ast.ExpressionIdentifier (defExpr env e)
     end
 
+and defContextualNumberLiteral (env:ENV) 
+                               (n:string) 
+                               (isIntegral:bool)
+                               (isHex:bool)
+    : Ast.LITERAL =
+    let 
+        val {numberType, roundingMode, precision} = (#numericMode (hd env))
+        fun asDecimal _ = 
+            Ast.LiteralDecimal (case Decimal.fromString precision roundingMode n of
+                                    NONE => error ["failure converting '", n, 
+                                                   "' to decimal literal "]
+                                  | SOME d => d)
+        fun asDouble _ = 
+            Ast.LiteralDouble (case Real64.fromString n of
+                                   NONE => error ["failure converting '", n, 
+                                                  "' to double literal "]
+                                 | SOME d => d)
+        fun asInt _ = 
+            Ast.LiteralInt (case Int32.fromString n of
+                                NONE => error ["failure converting '", n, 
+                                               "' to int literal "]
+                              | SOME d => d)
+        fun asUInt _ = 
+            Ast.LiteralUInt (case Word32.fromString n of
+                                 NONE => error ["failure converting '", n, 
+                                                "' to uint literal "]
+                               | SOME d => d)
+    in
+        if isHex andalso (not isIntegral)
+        then error ["non-integral hex literal"]
+        else
+            case numberType of 
+                Ast.Decimal => asDecimal ()                  
+              | Ast.Double => asDouble ()
+                              
+              (* 
+               * FIXME: The language in the draft spec describes
+               * what happens to "integer literals" in the 
+               * "use int" or "use uint" context. It says nothing 
+               * about non-integral literals. What should we do
+               * in those cases?
+               *)
+                              
+              | Ast.Int => asInt ()
+              | Ast.UInt => asUInt ()                  
+                            
+              (* This part is for ES3 backward-compatibility. *)
+              | Ast.Number => 
+                if isIntegral
+                then 
+                    let 
+                        val v = valOf (IntInf.fromString n)
+                        val uintMax = IntInf.pow(2, 32) - 1
+                        val uintMin = IntInf.fromInt 0
+                        val intMax = IntInf.pow(2, 31) - 1
+                        val intMin = ~ (IntInf.pow(2, 31))
+                    in
+                        if isHex andalso uintMin <= v andalso v <= uintMax
+                        then asUInt ()
+                        else 
+                            (if intMin <= v andalso v <= intMax
+                             then asInt ()
+                             else 
+                                 (if 0 <= v andalso v <= uintMax
+                                  then asUInt ()
+                                  else asDouble ()))
+                    end
+                else
+                    asDouble ()
+    end                                         
 
 and defLiteral (env:ENV) 
                (lit:Ast.LITERAL) 
@@ -1046,6 +1117,15 @@ and defLiteral (env:ENV)
             in
                 Ast.LiteralFunction func
             end
+          | Ast.LiteralContextualDecimalInteger n => 
+            defContextualNumberLiteral env n true false
+
+          | Ast.LiteralContextualDecimal n => 
+            defContextualNumberLiteral env n false false
+
+          | Ast.LiteralContextualHexInteger n => 
+            defContextualNumberLiteral env n true true
+
           | _ => lit   (* FIXME: other cases to handle here *)
     end
 

@@ -584,7 +584,10 @@ and evalLiteralExpr (scope:Mach.SCOPE)
     case lit of 
         Ast.LiteralNull => Mach.Null
       | Ast.LiteralUndefined => Mach.Undef
-      | Ast.LiteralNumber n => Mach.newNumber n
+      | Ast.LiteralDouble r => Mach.newDouble r
+      | Ast.LiteralDecimal d => Mach.newDecimal d
+      | Ast.LiteralInt i => Mach.newInt i
+      | Ast.LiteralUInt u => Mach.newUInt u
       | Ast.LiteralBoolean b => Mach.newBoolean b
       | Ast.LiteralString s => Mach.newString s
       | Ast.LiteralArray {exprs, ty} => evalLiteralArrayExpr scope exprs ty
@@ -706,6 +709,8 @@ and evalUnaryOp (scope:Mach.SCOPE)
                 (unop:Ast.UNOP) 
                 (expr:Ast.EXPR) 
     : Mach.VAL =
+    Mach.Undef
+(*
     let
         fun crement f isPre = 
             let 
@@ -735,12 +740,14 @@ and evalUnaryOp (scope:Mach.SCOPE)
           | Ast.PostDecrement => crement Real.- false
           | _ => LogErr.unimplError ["unhandled unary operator"]
     end
-
+*)
 
 and performBinop (bop:Ast.BINOP) 
                  (a:Mach.VAL) 
                  (b:Mach.VAL) 
     : Mach.VAL = 
+    Mach.Undef
+(*
     let 
         fun wordOp wop = 
             let 
@@ -786,7 +793,7 @@ and performBinop (bop:Ast.BINOP)
                                   
           | _ => LogErr.unimplError ["unhandled binary operator type"]
     end
-
+*)
 
 and evalBinaryOp (scope:Mach.SCOPE) 
                  (bop:Ast.BINOP) 

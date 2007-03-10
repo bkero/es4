@@ -30,14 +30,11 @@ datatype VAL = Object of OBJ
  *)
                
      and MAGIC = 
-(*
-         Int of Int32.int
-       | UInt of Word32.word
+         UInt of Word32.word
+       | Int of Int32.int
        | Double of Real64.real
        | Decimal of Decimal.DEC
        | ByteArray of Word8Array.array
-*)
-         Number of real
        | String of Ast.USTRING  (* someday to be unicode *)
        | Bool of bool
        | Namespace of Ast.NAMESPACE
@@ -215,7 +212,12 @@ val intrinsicArrayName:Ast.NAME = { ns = Ast.Intrinsic, id = "Array" }
 val intrinsicFunctionName:Ast.NAME = { ns = Ast.Intrinsic, id = "Function" }
 val intrinsicBooleanName:Ast.NAME = { ns = Ast.Intrinsic, id = "Boolean" }
 val intrinsicNumberName:Ast.NAME = { ns = Ast.Intrinsic, id = "Number" }
+val intrinsicDoubleName:Ast.NAME = { ns = Ast.Intrinsic, id = "double" }
+val intrinsicDecimalName:Ast.NAME = { ns = Ast.Intrinsic, id = "decimal" }
+val intrinsicIntName:Ast.NAME = { ns = Ast.Intrinsic, id = "int" }
+val intrinsicUIntName:Ast.NAME = { ns = Ast.Intrinsic, id = "uint" }
 val intrinsicStringName:Ast.NAME = { ns = Ast.Intrinsic, id = "String" }
+val intrinsicByteArrayName:Ast.NAME = { ns = Ast.Intrinsic, id = "ByteArray" }
 val intrinsicNamespaceName:Ast.NAME = { ns = Ast.Intrinsic, id = "Namespace" }
 val intrinsicClassName:Ast.NAME = { ns = Ast.Intrinsic, id = "Class" }
 val intrinsicInterfaceName:Ast.NAME = { ns = Ast.Intrinsic, id = "Interface" }
@@ -230,7 +232,12 @@ val intrinsicArrayBaseTag:VAL_TAG = ClassTag (intrinsicArrayName)
 val intrinsicFunctionBaseTag:VAL_TAG = ClassTag (intrinsicFunctionName)
 val intrinsicBooleanBaseTag:VAL_TAG = ClassTag (intrinsicBooleanName)
 val intrinsicNumberBaseTag:VAL_TAG = ClassTag (intrinsicNumberName)
+val intrinsicDoubleBaseTag:VAL_TAG = ClassTag (intrinsicDoubleName)
+val intrinsicDecimalBaseTag:VAL_TAG = ClassTag (intrinsicDecimalName)
+val intrinsicIntBaseTag:VAL_TAG = ClassTag (intrinsicIntName)
+val intrinsicUIntBaseTag:VAL_TAG = ClassTag (intrinsicUIntName)
 val intrinsicStringBaseTag:VAL_TAG = ClassTag (intrinsicStringName)
+val intrinsicByteArrayBaseTag:VAL_TAG = ClassTag (intrinsicByteArrayName)
 val intrinsicNamespaceBaseTag:VAL_TAG = ClassTag (intrinsicNamespaceName)
 val intrinsicClassBaseTag:VAL_TAG = ClassTag (intrinsicClassName)
 val intrinsicInterfaceBaseTag:VAL_TAG = ClassTag (intrinsicInterfaceName)
@@ -274,15 +281,29 @@ fun newSimpleObject (m:MAGIC option)
     Object (newSimpleObj m)
 
 
-fun newNumber (n:real) 
+fun newDouble (n:Real64.real) 
     : VAL = 
-    newObject intrinsicNumberBaseTag Null (SOME (Number n))
+    newObject intrinsicDoubleBaseTag Null (SOME (Double n))
 
+fun newDecimal (n:Decimal.DEC) 
+    : VAL = 
+    newObject intrinsicDecimalBaseTag Null (SOME (Decimal n))
+
+fun newInt (n:Int32.int) 
+    : VAL = 
+    newObject intrinsicIntBaseTag Null (SOME (Int n))
+
+fun newUInt (n:Word32.word) 
+    : VAL = 
+    newObject intrinsicUIntBaseTag Null (SOME (UInt n))
 
 fun newString (s:Ast.USTRING) 
     : VAL = 
     newObject intrinsicStringBaseTag Null (SOME (String s))
 
+fun newByteArray (b:Word8Array.array) 
+    : VAL = 
+    newObject intrinsicByteArrayBaseTag Null (SOME (ByteArray b))
 
 fun newBoolean (b:bool) 
     : VAL = 
@@ -436,9 +457,12 @@ fun toString (v:VAL) : string =
              NONE => "[object Object]"
            | SOME magic => 
              (case magic of 
-                  Number n => if Real.== (n, (Real.realFloor n))
-                              then Int.toString (Real.floor n)
-                              else Real.toString n
+                  Double n => if Real64.== (n, (Real64.realFloor n))
+                              then Int.toString (Real64.floor n)
+                              else Real64.toString n
+                | Decimal d => Decimal.toString d
+                | Int i => Int32.toString i
+                | UInt u => Word32.toString u
                 | String s => s
                 | Bool true => "true"
                 | Bool false => "false"
@@ -453,8 +477,21 @@ fun toString (v:VAL) : string =
                 | Interface _ => "[interface Interface]"
                 | Function _ => "[function Function]"
                 | Type _ => "[type Function]"
+                | ByteArray _ => "[ByteArray]"
                 | NativeFunction _ => "[function NativeFunction]"))
 
+
+fun toBoolean (v:VAL) : bool = 
+    case v of 
+        Undef => false
+      | Null => false
+      | Object (Obj ob) => 
+        (case !(#magic ob) of 
+             SOME (Bool b) => b
+           | _ => true)
+
+
+(* 
 fun toNum (v:VAL) : real = 
     case v of 
         Undef => nan
@@ -468,17 +505,6 @@ fun toNum (v:VAL) : real =
                                      SOME n => n
                                    | NONE => nan)
            | _ => nan)
-
-
-fun toBoolean (v:VAL) : bool = 
-    case v of 
-        Undef => false
-      | Null => false
-      | Object (Obj ob) => 
-        (case !(#magic ob) of 
-             SOME (Bool b) => b
-           | _ => true)
-
                   
 fun equals (va:VAL) (vb:VAL) : bool = 
     case (va,vb) of 
@@ -506,6 +532,7 @@ fun less (va:VAL) (vb:VAL) : bool =
                 | _ => (toNum va) < (toNum vb))
            | _ => (toNum va) < (toNum vb))
       | _ => (toNum va) < (toNum vb)
+*)
 
 
 fun hostPrintFunction (vals:VAL list) : VAL = 

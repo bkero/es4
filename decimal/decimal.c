@@ -6,12 +6,14 @@
 #include <decimal128.h>
 
 void
-exitIfError(decContext *c)
+exitIfError(char const *activity, decContext *c)
 {
   if (c->status & DEC_Errors)
     {
       c->status &= DEC_Errors;
-      printf("ERROR: %s\n", decContextStatusToString(c));
+      printf("ERROR: %s (while %s)\n", 
+	     decContextStatusToString(c), 
+	     activity);
       exit(1);
     }
 }
@@ -70,19 +72,19 @@ main(int argc, char **argv)
   context.digits = precision;
   context.traps = 0;
 
-  if (strcmp(argv[2], "ROUND_CEILING") == 0)
+  if (strcmp(argv[2], "Ceiling") == 0)
     context.round = DEC_ROUND_CEILING;
-  else if (strcmp(argv[2], "ROUND_UP") == 0)
+  else if (strcmp(argv[2], "Up") == 0)
     context.round = DEC_ROUND_UP;
-  else if (strcmp(argv[2], "ROUND_HALF_UP") == 0)
+  else if (strcmp(argv[2], "HalfUp") == 0)
     context.round = DEC_ROUND_HALF_UP;
-  else if (strcmp(argv[2], "ROUND_HALF_EVEN") == 0)
+  else if (strcmp(argv[2], "HalfEven") == 0)
     context.round = DEC_ROUND_HALF_EVEN;
-  else if (strcmp(argv[2], "ROUND_HALF_DOWN") == 0)
+  else if (strcmp(argv[2], "HalfDown") == 0)
     context.round = DEC_ROUND_HALF_DOWN;
-  else if (strcmp(argv[2], "ROUND_DOWN") == 0)
+  else if (strcmp(argv[2], "Down") == 0)
     context.round = DEC_ROUND_DOWN;
-  else if (strcmp(argv[2], "ROUND_FLOOR") == 0)
+  else if (strcmp(argv[2], "Floor") == 0)
     context.round = DEC_ROUND_FLOOR;
   else 
     {
@@ -92,7 +94,7 @@ main(int argc, char **argv)
 
   decimal128FromString(&tmp, argv[4], &context);
   decimal128ToNumber(&tmp, &left);
-  exitIfError(&context);
+  exitIfError("reading left arg", &context);
 
   if (argc == 6)
     {
@@ -102,7 +104,7 @@ main(int argc, char **argv)
   else
     decNumberZero(&right);
   
-  exitIfError(&context);
+  exitIfError("reading right arg", &context);
 
   if (strcmp(argv[3], "abs") == 0)
     decNumberAbs(&result, &left, &context);
@@ -158,10 +160,10 @@ main(int argc, char **argv)
       exit(1);
     }
 
-  exitIfError(&context);
+  exitIfError("performing operation", &context);
 
   decimal128FromNumber(&tmp, &result, &context);
-  exitIfError(&context);
+  exitIfError("converting result", &context);
   decimal128ToString(&tmp, buf);
   printf("%s\n", buf);
 

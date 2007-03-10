@@ -36,19 +36,30 @@ fun nthAsStr (vals:Mach.VAL list)
     in
 	case !magic of 
 	    SOME (Mach.String s) => s
-	  | _ => LogErr.hostError ["Wanted String, got other"]
+	  | _ => LogErr.hostError ["Wanted string, got other"]
     end
 
 
 fun nthAsInt (vals:Mach.VAL list) 
 	     (n:int) 
-    : int = 
+    : Int32.int = 
     let 
 	val Mach.Obj { magic, ... } = nthAsObj vals n
     in
 	case !magic of 
-	    SOME (Mach.Number n) => (Real.floor n)
-	  | _ => LogErr.hostError ["Wanted Number, got other"]
+	    SOME (Mach.Int n) => n
+	  | _ => LogErr.hostError ["Wanted int, got other"]
+    end
+
+fun nthAsUInt (vals:Mach.VAL list) 
+	     (n:int) 
+    : Word32.word = 
+    let 
+	val Mach.Obj { magic, ... } = nthAsObj vals n
+    in
+	case !magic of 
+	    SOME (Mach.UInt n) => n
+	  | _ => LogErr.hostError ["Wanted uint, got other"]
     end
 
 
@@ -79,7 +90,7 @@ fun arrayToList (arr:Mach.OBJ)
     : Mach.VAL list = 
     let 
         val ns = Ast.Internal ""
-        val len = Real.floor (Mach.toNum (Eval.getValue (arr, {id="length", ns=ns})))
+        val len = 0 (* Real.floor (Mach.toNum (Eval.getValue (arr, {id="length", ns=ns}))) *)
         fun build i vs = 
             if i < 0
             then vs
@@ -229,7 +240,10 @@ fun getValue (vals:Mach.VAL list)
     in
 	case !magic of 
 	    NONE => Mach.Undef
-	  | SOME (Mach.Number n) => Mach.newNumber n
+	  | SOME (Mach.UInt u) => Mach.newUInt u
+	  | SOME (Mach.Int i) => Mach.newInt i
+	  | SOME (Mach.Double d) => Mach.newDouble d
+	  | SOME (Mach.Decimal d) => Mach.newDecimal d
 	  | SOME (Mach.String s) => Mach.newString s
 	  | SOME (Mach.Bool b) => Mach.newBoolean b
 	  | SOME (Mach.Namespace ns) => Mach.newNamespace ns
@@ -238,6 +252,7 @@ fun getValue (vals:Mach.VAL list)
 	  | SOME (Mach.Function f) => Mach.newFunc (#env f) (#func f)
 	  | SOME (Mach.Type t) => Mach.newType t
 	  | SOME (Mach.NativeFunction f) => Mach.newNativeFunction f
+	  | SOME (Mach.ByteArray b) => Mach.newByteArray b
     end
 
 
@@ -305,15 +320,15 @@ fun setStringValue (vals:Mach.VAL list)
  * numeric value of the character at that position in the
  * string.
  *
- * magic native function charCodeAt(s : string, pos : uint) : string;
+ * magic native function charCodeAt(s : string, pos : uint) : uint;
  *)
 fun charCodeAt (vals:Mach.VAL list) 
     : Mach.VAL = 
     let
 	val s = nthAsStr vals 0
-	val i = nthAsInt vals 1
+	val i = nthAsUInt vals 1
     in
-	Mach.newNumber (Real.fromInt (Char.ord (String.sub (s,i))))
+	Mach.newUInt (Word32.fromInt (Char.ord (String.sub (s, (Word32.toInt i)))))
     end
 
 
@@ -326,9 +341,9 @@ fun charCodeAt (vals:Mach.VAL list)
 fun fromCharCode (vals:Mach.VAL list)
     : Mach.VAL =
     let
-	val i = nthAsInt vals 0
+	val i = nthAsUInt vals 0
     in
-	Mach.newString (Char.toString (Char.chr i))
+	Mach.newString (Char.toString (Char.chr (Word32.toInt i)))
     end
 
 
@@ -343,7 +358,7 @@ fun stringLength (vals:Mach.VAL list)
     let
 	val s = nthAsStr vals 0
     in
-	Mach.newNumber (Real.fromInt (String.size s))
+	Mach.newUInt (Word32.fromInt (String.size s))
     end
 
 

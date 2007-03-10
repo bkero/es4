@@ -45,6 +45,7 @@ fun consumeTraceOption (opt:string) : bool =
       | "-Tdefn" => (Defn.doTrace := true; false)
       | "-Teval" => (Eval.doTrace := true; false)
       | "-Tmach" => (Mach.doTrace := true; false)
+      | "-Tdecimal" => (Decimal.doTrace := true; false)
       | _ => true
 
 fun main (argv0:string, argvRest:string list) =

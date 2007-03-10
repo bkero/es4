@@ -49,6 +49,10 @@ in
     step ()
 end
 
+fun chopTrailing (s:string) 
+    : string = 
+    String.substring (s, 0, ((String.size s) - 1))
+
 fun followsLineBreak (ts) =
     let val _ = trace ["followsLineBreak"]
 	val offset = length ts
@@ -97,6 +101,11 @@ decimalLiteral_3      = ({decimalIntegerLiteral} {exponentPart}?);
 decimalLiteral        = ({decimalLiteral_1} | {decimalLiteral_2} | {decimalLiteral_3});
 
 hexIntegerLiteral     = ("0" [xX] {hexDigit}+);
+
+explicitIntLiteral      = ({hexIntegerLiteral} | {decimalIntegerLiteral}) "i";
+explicitUIntLiteral     = ({hexIntegerLiteral} | {decimalIntegerLiteral}) "u";
+explicitDoubleLiteral   = {decimalLiteral} "d";
+explicitDecimalLiteral  = {decimalLiteral} "m";
 
 charEscape            = "\\" ([btnvfr\"\'\\]|"x"{hexDigit}{2}|[0-7]{1,3});
 
@@ -264,13 +273,23 @@ regexpFlags           = [a-zA-Z]*;
 <INITIAL>{whitespace}        => (lex());
 <INITIAL>{identifier}        => (Identifier yytext);
                    
-<INITIAL>{decimalLiteral}    => (case Real.fromString yytext of 
-                                     SOME r => NumberLiteral r 
-                                   | NONE   => raise LexError);
 
-<INITIAL>{hexIntegerLiteral} => (case Int.fromString yytext of
-                                     SOME i => NumberLiteral (Real.fromInt i)
+<INITIAL>{explicitIntLiteral} => (case Int32.fromString (chopTrailing yytext) of
+                                     SOME i => ExplicitIntLiteral i
                                    | NONE => raise LexError);
+<INITIAL>{explicitUIntLiteral} => (case Word32.fromString (chopTrailing yytext) of
+                                     SOME i => ExplicitUIntLiteral i
+                                   | NONE => raise LexError);
+<INITIAL>{explicitDoubleLiteral} => (case Real64.fromString (chopTrailing yytext) of
+					 SOME i => ExplicitDoubleLiteral i
+                                       | NONE => raise LexError);
+<INITIAL>{explicitDecimalLiteral} => (case Decimal.fromStringDefault (chopTrailing yytext) of
+					  SOME i => ExplicitDecimalLiteral i
+					| NONE => raise LexError);
+
+<INITIAL>{decimalIntegerLiteral} => (DecimalIntegerLiteral yytext);
+<INITIAL>{hexIntegerLiteral}     => (HexIntegerLiteral yytext);
+<INITIAL>{decimalLiteral}        => (DecimalLiteral yytext);
 
 
 <INITIAL>"//"                => (YYBEGIN SINGLE_LINE_COMMENT; lex());

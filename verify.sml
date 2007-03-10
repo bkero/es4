@@ -36,6 +36,7 @@ fun simpleIdent (s:string) : IDENT_EXPR
     
 val boolType      = TypeName (simpleIdent "boolean")
 val numberType    = TypeName (simpleIdent "number")
+val doubleType    = TypeName (simpleIdent "double")
 val decimalType   = TypeName (simpleIdent "decimal")
 val intType       = TypeName (simpleIdent "int")
 val uintType      = TypeName (simpleIdent "uint")
@@ -471,7 +472,10 @@ and verifyExpr (ctxt as {env,this,...}:CONTEXT)
       TextIO.print "\n";
       case e of
 	LiteralExpr LiteralNull => nullType
-      | LiteralExpr (LiteralNumber _) => intType
+      | LiteralExpr (LiteralInt _) => intType
+      | LiteralExpr (LiteralUInt _) => uintType
+      | LiteralExpr (LiteralDecimal _) => decimalType
+      | LiteralExpr (LiteralDouble _) => doubleType
       | LiteralExpr (LiteralBoolean _) => boolType
       | LiteralExpr (LiteralString _) => stringType
       | LiteralExpr (LiteralRegExp _) => regexpType

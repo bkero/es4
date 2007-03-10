@@ -1566,7 +1566,16 @@ and primaryExpression (ts,a,b) =
         Null :: ts1 => (ts1, Ast.LiteralExpr(Ast.LiteralNull))
       | True :: ts1 => (ts1, Ast.LiteralExpr(Ast.LiteralBoolean true))
       | False :: ts1 => (ts1, Ast.LiteralExpr(Ast.LiteralBoolean false))
-      | NumberLiteral n :: ts1 => (ts1, Ast.LiteralExpr(Ast.LiteralNumber n))
+
+      | DecimalLiteral n :: ts1 => (ts1, Ast.LiteralExpr(Ast.LiteralContextualDecimal n))
+      | DecimalIntegerLiteral n :: ts1 => (ts1, Ast.LiteralExpr(Ast.LiteralContextualDecimalInteger n))
+      | HexIntegerLiteral n :: ts1 => (ts1, Ast.LiteralExpr(Ast.LiteralContextualHexInteger n))
+
+      | ExplicitDecimalLiteral n :: ts1 => (ts1, Ast.LiteralExpr(Ast.LiteralDecimal n))
+      | ExplicitDoubleLiteral n :: ts1 => (ts1, Ast.LiteralExpr(Ast.LiteralDouble n))
+      | ExplicitIntLiteral n :: ts1 => (ts1, Ast.LiteralExpr(Ast.LiteralInt n))
+      | ExplicitUIntLiteral n :: ts1 => (ts1, Ast.LiteralExpr(Ast.LiteralUInt n))
+
       | StringLiteral s :: ts1 => (ts1, Ast.LiteralExpr(Ast.LiteralString s))
       | This :: ts1 => (ts1, Ast.ThisExpr)
       | LeftParen :: _ => 
@@ -6267,15 +6276,17 @@ and pragmaItem ts =
       | Int :: _ => (tl ts,Ast.UseNumber Ast.Int)
       | Number :: _ => (tl ts,Ast.UseNumber Ast.Number)
       | UInt :: _ => (tl ts,Ast.UseNumber Ast.UInt)
-      | Precision :: NumberLiteral n :: _ => 
+      | Precision :: DecimalIntegerLiteral n :: _ => 
             let
-                val i = Ast.LiteralNumber n
+                val i = case (Int.fromString n) of 
+                            SOME i => i
+                          | NONE => error ["non-integral number literal in 'use precision' pragma"]
             in
                 (tl (tl ts), Ast.UsePrecision i)
             end
       | Rounding :: Identifier s :: _ => 
             let
-                val m = Ast.HalfUp
+                val m = Decimal.HalfUp
             in
                 (tl (tl ts), Ast.UseRounding m)
             end

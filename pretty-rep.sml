@@ -11,7 +11,11 @@ datatype smlDataRep =
        | String of string
        | Ref of smlDataRep
        | Int of int
-       | Real of real
+       | Real64 of Real64.real
+       | Int32 of Int32.int
+       | UInt32 of Word32.word
+       | Dec of Decimal.DEC
+       | DecRm of Decimal.ROUNDING_MODE
        | Bool of bool
 
 fun ppSmlDataRep stream (rep : smlDataRep) =
@@ -45,7 +49,11 @@ fun ppSmlDataRep stream (rep : smlDataRep) =
       | Bool true => str "true"
       | Bool false => str "false"
       | Int i => str (Int.toString i)
-      | Real r => str (Real.toString r)
+      | Real64 r => str ("(Real64.fromString \"" ^ (Real64.toString r) ^ "\"")
+      | UInt32 r => str ("(Word32.fromString \"" ^ (Word32.toString r) ^ "\"")
+      | Int32 r => str ("(Int32.fromString \"" ^ (Int32.toString r) ^ "\"")
+      | Dec r => str ("(Decimal.fromString \"" ^ (Decimal.toString r) ^ "\"")
+      | DecRm r => str ("Decimal." ^ (Decimal.rmToString r))
     end
 
 end
