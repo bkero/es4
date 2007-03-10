@@ -242,8 +242,7 @@ datatype PRAGMA =
        | ClassBlock of 
            { ns: EXPR,
              ident: IDENT,
-             name: NAME option,  (* set by the definer *)
-             extends: NAME option,           (* TODO: maybe get these from the class fixture *)
+             name: NAME option,
              block: BLOCK }
        | PackageBlock of
            { name: IDENT,

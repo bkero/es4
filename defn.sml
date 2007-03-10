@@ -1317,7 +1317,7 @@ and defStmt (env:ENV)
               | _ => LogErr.defnError ["reference to non-class fixture"]
             end
 
-        fun reconstructClassBlock {ns, ident, block, name, extends } =
+        fun reconstructClassBlock {ns, ident, block, name } =
             let
                 val _ = trace ["reconstructing class block for ", ident]
                 val Ast.Block { pragmas, defns, head, body } = block
@@ -1332,7 +1332,6 @@ and defStmt (env:ENV)
 
                 val Ast.Cls cls = findClass name
                 val classFixtures = (#classFixtures cls)
-                val extends = (#extends cls)
                 val env = extendEnvironment env classFixtures
 *)
 
@@ -1345,7 +1344,6 @@ and defStmt (env:ENV)
                 (Ast.ClassBlock { ns = ns,
                                  ident = ident,
                                  name = SOME name,
-                                 extends = extends,
                                  block = block }, hoisted)
             end
 

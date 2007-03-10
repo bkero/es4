@@ -143,8 +143,17 @@ fun getProp (b:PROP_BINDINGS)
             (n:Ast.NAME) 
     : PROP = 
     let 
-        fun search [] = LogErr.hostError ["property binding not found: ", 
-                                          (#id n)]
+        (*
+            If not found, then cons up a temporary property
+            with value undefined. Any property not found
+            errors would have been caught by evalRefExpr
+        *)
+        fun search [] = {ty=Ast.SpecialType Ast.Undefined,
+                              state=ValProp Undef,
+                              attrs={dontDelete=false,  (* unused attrs *)
+                                     dontEnum=false,
+                                     readOnly=false,
+                                     isFixed=false}}
           | search ((k,v)::bs) = 
             if k = n 
             then v

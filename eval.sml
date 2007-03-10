@@ -1200,11 +1200,17 @@ and bindArgs (outerScope:Mach.SCOPE)
             end
     end
 
-
 and evalInits (scope:Mach.SCOPE)
               (obj:Mach.OBJ)
               (temps:Mach.TEMPS)
               (inits:Ast.INITS)
+    : unit = evalInitsMaybePrototype scope obj temps inits false
+
+and evalInitsMaybePrototype (scope:Mach.SCOPE)
+              (obj:Mach.OBJ)
+              (temps:Mach.TEMPS)
+              (inits:Ast.INITS)
+              (isPrototypeInit:bool)
     : unit =
     let 
         fun evalInit (n,e) =
@@ -1216,7 +1222,9 @@ and evalInits (scope:Mach.SCOPE)
                 case n of 
                     Ast.PropName pn => 
                     (trace ["evalInit assigning to prop ", LogErr.name pn];
-                     defValue obj pn v)
+                     if isPrototypeInit 
+                     then setValue obj pn v
+                     else defValue obj pn v)
                   | Ast.TempName tn => 
                     (trace ["evalInit assigning to temp ", (Int.toString tn)];
                      Mach.defTemp temps tn v)
@@ -1247,24 +1255,28 @@ and evalScopeInits (scope:Mach.SCOPE)
                    (target:Ast.INIT_TARGET)
                    (inits:Ast.INITS)
     : unit =
-            let
-                fun targetOf (Mach.Scope { object, temps, isVarObject, parent}) =
-                    case (target,parent,object) of
-                         (Ast.Local,parent,Mach.Obj {props,...}) => 
-                                 if (length (!props)) > 0 
-                                    then object
-                                    else targetOf (valOf parent) 
-                                         (* if there are no props then it is at temp scope *)
-                       | (Ast.Hoisted,parent,obj) => 
-                                 if isVarObject=true 
-                                    then obj
-                                    else targetOf (valOf parent)
-                       | _ => LogErr.unimplError ["unhandled target kind"]
-                val obj = targetOf scope
-            in case scope of
-                Mach.Scope { temps, ...} =>
-                    evalInits scope obj temps inits
-            end
+        let
+            fun targetOf (Mach.Scope { object, temps, isVarObject, parent}) =
+                case (target,parent,object) of
+                     (Ast.Local,parent,Mach.Obj {props,...}) => 
+                             if (length (!props)) > 0 
+                                then object
+                                else targetOf (valOf parent) 
+                                     (* if there are no props then it is at temp scope *)
+                   | (Ast.Hoisted,parent,obj) => 
+                             if isVarObject=true 
+                                then obj
+                                else targetOf (valOf parent)
+                   | (Ast.Prototype,parent,obj) => 
+                             if isVarObject=true 
+                                then ((fn (Mach.Object ob) => ob) (* FIXME: there must be a builtin way to do this *)
+                                          (getValue (obj, Mach.publicPrototypeName)))
+                                else targetOf (valOf parent)
+            val obj = targetOf scope
+        in case scope of
+            Mach.Scope { temps, ...} =>
+                evalInitsMaybePrototype scope obj temps inits (target=Ast.Prototype)
+        end
 
 and initializeAndConstruct (classClosure:Mach.CLS_CLOSURE)
                            (classObj:Mach.OBJ)
@@ -1406,10 +1418,10 @@ and evalBlock (scope:Mach.SCOPE)
 
 and initClassPrototype (scope)
                        (classObj:Mach.OBJ) 
-                       (extends:Ast.NAME option) 
     : unit =
     let 
-        val Mach.Obj { props, ... } = classObj
+        val Mach.Obj { props, magic, ... } = classObj
+        val SOME (Mach.Class {cls=Ast.Cls {extends,...},...}) = !magic
         val baseProtoVal = 
             case extends of 
                 NONE => Mach.Null
@@ -1448,12 +1460,13 @@ and evalClassBlock (scope:Mach.SCOPE)
     *)
 
     let 
-        val {name, block, extends, ...} = classBlock
+        val {name, block, ...} = classBlock
 
         val _ = trace ["evaluating class stmt for ", LogErr.name (valOf name)]
         
         val classObj = needObj (findVal scope (multinameOf (valOf name)))
-        val _ = initClassPrototype scope classObj extends
+
+        val _ = initClassPrototype scope classObj
         val classScope = extendScope scope classObj true
     in
         evalBlock classScope block

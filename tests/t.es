@@ -1,9 +1,12 @@
+use namespace intrinsic
 class Object {}
-class A {
-    use namespace intrinsic
-    function f() { print("A.f","\n") }
-    let l = 20
-	static var x = l
-	print("A.x ",A.x,"=",l,"\n")
+class A 
+{
+	prototype var [x,[y,[z]]] = [1,[2,[3]]]
 }
-new A().f()
+class B extends A {}
+let b = new B
+print(b.x," ",b.y," ",b.z,"\n")
+A.prototype.x=10
+delete A.prototype.y
+print(b.x," ",b.y," ",b.z,"\n")
