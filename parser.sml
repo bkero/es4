@@ -5884,7 +5884,6 @@ and classDefinition (ts,attrs) =
                                  ident=ident,
                                  name=NONE,
                                  extends=NONE,  (* filled in by definer *)
-                                 fixtures=NONE,
                                  block=Ast.Block {body=body,
                                                   defns=classDefn::letDefns,
                                                   head=NONE,

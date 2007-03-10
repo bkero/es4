@@ -1428,48 +1428,33 @@ and initClassPrototype (scope)
         val _ = trace ["constructing prototype"]
         val newPrototype = Mach.newObj Mach.intrinsicObjectBaseTag baseProtoVal NONE
     in
-        defValue classObj
-                 Mach.publicPrototypeName 
-                 (Mach.Object newPrototype);
+        defValue classObj Mach.publicPrototypeName (Mach.Object newPrototype);
         trace ["finished initialising class prototype"]
     end
 
+(*
+    ClassBlock classBlock
+
+*)
+
 and evalClassBlock (scope:Mach.SCOPE) 
-                   ({name:Ast.NAME option,fixtures:Ast.FIXTURES option,block:Ast.BLOCK,extends,...})
+                   (classBlock)
     : Mach.VAL =
 
     (* 
         The property that holds the class object was allocated when the 
         fixtures of the outer scope were allocated. Still to do is
-        allocating and initialising the class object
-
-        Steps:
-        - allocate the class object
-        - allocate the class prototype object (an instance of the class)
-        - set the outer class property
-        - push the class object on to the scope chain
-        - execute the current block
+        initialising the class object, including creating its prototype
     *)
 
     let 
+        val {name, block, extends, ...} = classBlock
+
         val _ = trace ["evaluating class stmt for ", LogErr.name (valOf name)]
-
-        (* get the class object allocated when the property was instantiated *)
+        
         val classObj = needObj (findVal scope (multinameOf (valOf name)))
-
-(*
-        (* allocate the fixed properties for the class object *)
-        val _ = trace ["allocating fixtures ", LogErr.name (valOf name)]
-        val _ = allocObjFixtures scope classObj (valOf fixtures)
-*)
-
-        (* init the class prototype if not going to be set by the user *)
-        val _ = trace ["intializing prototype "]
         val _ = initClassPrototype scope classObj extends
-
-        (* extend the scope chain with the class object *)
         val classScope = extendScope scope classObj true
-
     in
         evalBlock classScope block
     end

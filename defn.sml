@@ -51,7 +51,7 @@ type ENV = CONTEXT list
 
 fun dumpEnv (e:ENV) : unit =
     case e of
-        {fixtures,...}::p => (Pretty.ppFixtures fixtures; dumpEnv p)
+        {fixtures,...}::p => if (!doTrace) then (Pretty.ppFixtures fixtures; dumpEnv p) else ()
       | _ => ()
 
 val defaultNumericMode : Ast.NUMERIC_MODE =
@@ -420,10 +420,6 @@ and inheritFixtures (base:Ast.FIXTURES)
                     (derived:Ast.FIXTURES)
     : Ast.FIXTURES =
     let
-        val _ = (trace ["inheritFixtures "];
-                 Pretty.ppFixtures base;
-                 Pretty.ppFixtures derived)
-
         (* 
            Recurse through the fixtures of a base class to see if the
            given fixture binding is allowed. if so, then add it
@@ -1321,7 +1317,7 @@ and defStmt (env:ENV)
               | _ => LogErr.defnError ["reference to non-class fixture"]
             end
 
-        fun reconstructClassBlock {ns, ident, block, name, extends, fixtures } =
+        fun reconstructClassBlock {ns, ident, block, name, extends } =
             let
                 val _ = trace ["reconstructing class block for ", ident]
                 val Ast.Block { pragmas, defns, head, body } = block
@@ -1350,7 +1346,6 @@ and defStmt (env:ENV)
                                  ident = ident,
                                  name = SOME name,
                                  extends = extends,
-                                 fixtures = NONE, (* SOME classFixtures, *)
                                  block = block }, hoisted)
             end
 
@@ -1410,7 +1405,7 @@ and defStmt (env:ENV)
 
                 val target = case (kind, prototype, static) of
                                  (_,true,_) => Ast.Prototype
-                               | (_,_,true) => Ast.Static
+                               | (_,_,true) => Ast.Hoisted
                                | (Ast.Var,_,_) => Ast.Hoisted
                                | _ => Ast.Local
                 val temps = defBindings env kind ns0 temps  (* ISSUE: kind and ns are irrelevant *)
