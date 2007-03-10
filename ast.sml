@@ -214,7 +214,8 @@ datatype PRAGMA =
        | UnionType of TYPE_EXPR list
        | ArrayType of TYPE_EXPR list
        | TypeName of IDENT_EXPR
-       | TypeRef of (TYPE_EXPR * IDENT)
+       | ElementTypeRef of (TYPE_EXPR * int)
+       | FieldTypeRef of (TYPE_EXPR * IDENT)
        | FunctionType of FUNC_TYPE           
        | ObjectType of FIELD_TYPE list
        | AppType of 
@@ -257,7 +258,6 @@ datatype PRAGMA =
        | BlockStmt of BLOCK
        | LabeledStmt of (IDENT * STMT)
        | LetStmt of BLOCK
-       | SuperStmt of EXPR
        | WhileStmt of WHILE_STMT
        | DoWhileStmt of WHILE_STMT
        | ForStmt of FOR_STMT

@@ -274,7 +274,7 @@ fun desugarPattern (pattern:PATTERN)
                     in case element_types of
                         SOME ty =>
                             let
-                                val t = SOME (Ast.TypeRef (ty,id))
+                                val t = SOME (Ast.ElementTypeRef (ty,n))
                                 val (binds, inits) = desugarPattern p t e (nesting+1)
                                 val (binds', inits') = desugarArrayPattern plist element_types temp (n+1)
                              in
@@ -336,7 +336,7 @@ fun desugarPattern (pattern:PATTERN)
                         (* if the field pattern is typed, it must have a identifier for
                            its name so we can do the mapping to its field type *)
                         let
-                            val t = SOME (Ast.TypeRef (ty,id))
+                            val t = SOME (Ast.FieldTypeRef (ty,id))
                             val e = SOME (Ast.ObjectRef {base=temp, ident=ident})
                         in
                             desugarPattern p t e (nesting+1)
@@ -5852,7 +5852,7 @@ and classDefinition (ts,attrs) =
                       | _ => false                    
                     end
 
-                val (Ast.Block {body,defns,...}) = nd3
+                val (Ast.Block {pragmas,body,defns,...}) = nd3
                 val (letDefns,defns) = List.partition isLet defns
                 val (protoDefns,defns) = List.partition isProto defns
                 val (ctorDefns,defns) = List.partition isCtor defns
@@ -5864,19 +5864,7 @@ and classDefinition (ts,attrs) =
 
                 val (instanceStmts,body) = List.partition isInstanceInit body
 
-            in
-                (ts3,{pragmas=[],
-                      body=[Ast.ClassBlock 
-                                {ns=ns,
-                                 ident=ident,
-                                 name=NONE,
-                                 extends=NONE,  (* filled in by definer *)
-                                 fixtures=NONE,
-                                 block=Ast.Block {body=body,
-                                                  defns=letDefns,
-                                                  head=NONE,
-                                                  pragmas=[]}}],
-                      defns=[Ast.ClassDefn {ident=ident,
+                val classDefn = Ast.ClassDefn {ident=ident,
                                             nonnullable=nonnullable,
                                             ns=ns,
                                             final=final,
@@ -5887,8 +5875,22 @@ and classDefinition (ts,attrs) =
                                             classDefns=classDefns,
                                             instanceDefns=instanceDefns,
                                             instanceStmts=instanceStmts,
-                                            ctorDefn=ctorDefn }],
-                     head=NONE})
+                                            ctorDefn=ctorDefn }
+
+            in
+                (ts3,{pragmas=pragmas,  (* pragmas apply for whole class body *)
+                      body=[Ast.ClassBlock 
+                                {ns=ns,
+                                 ident=ident,
+                                 name=NONE,
+                                 extends=NONE,  (* filled in by definer *)
+                                 fixtures=NONE,
+                                 block=Ast.Block {body=body,
+                                                  defns=classDefn::letDefns,
+                                                  head=NONE,
+                                                  pragmas=[]}}],
+                      defns=[],
+                      head=NONE})
             end
       | _ => raise ParseError
     end

@@ -203,14 +203,20 @@ fun allocFixtures (scope:Mach.SCOPE)
                                                       isFixed = true } }
                             end
                             
-                          | Ast.ClassFixture cls => 
+                          | Ast.ClassFixture cls =>
+                            let
+                                val Ast.Cls {classFixtures,...} = cls
+                                val Mach.Object classObj = Mach.newClass scope cls
+                                val _ = allocObjFixtures scope classObj classFixtures
+                            in 
                             allocProp "class"
                                       { ty = Mach.classType,
-                                        state = Mach.ValProp (Mach.newClass scope cls),
+                                        state = Mach.ValProp (Mach.Object classObj),
                                         attrs = { dontDelete = true,
                                                   dontEnum = true,
                                                   readOnly = true,
                                                   isFixed = true } }
+                            end
                             
                           | Ast.NamespaceFixture ns => 
                             allocProp "namespace" 
@@ -235,7 +241,7 @@ fun allocFixtures (scope:Mach.SCOPE)
         end
 
     
-fun allocObjFixtures (scope:Mach.SCOPE) 
+and  allocObjFixtures (scope:Mach.SCOPE) 
                      (obj:Mach.OBJ) 
                      (f:Ast.FIXTURES) 
     : unit = 
@@ -913,7 +919,7 @@ and resolveOnScopeChain (scope:Mach.SCOPE)
          *)
         case Multiname.resolve 
                  mname scope hasFixedBinding getScopeParent of
-            SOME (Mach.Scope {object, ...}, name) => SOME (object, name)
+            SOME (Mach.Scope {object, ...}, name) => (trace ["found ",LogErr.name name]; SOME (object, name))
           | NONE => 
             (* 
              * If that fails, do a sequence of dynamic-property-permitted
@@ -962,19 +968,24 @@ and evalNonTailCallExpr (scope:Mach.SCOPE)
     handle TailCallException thunk => thunk ()
          | ReturnException v => v
 
+    
 
 and labelEq (stmtLabels:Ast.IDENT list) 
             (exnLabel:Ast.IDENT option) 
     : bool = 
     case (stmtLabels, exnLabel) of
         (sl::[], SOME el) => sl = el
-      | (_, NONE) => true
-      | ([], SOME _) => false
+      | (sl::[], NONE) => sl = ""
+      | ([], NONE) => false                   (* FIXME: refactor *)
+      | ([], SOME el) => false
+      | (sl::sls,NONE) => 
+            if sl = ""
+            then true
+            else labelEq sls exnLabel
       | (sl::sls,SOME el) => 
-            (trace ["labelEq ",sl," ",el];
             if sl = el
             then true
-            else labelEq sls exnLabel)
+            else labelEq sls exnLabel
 
 
 and evalStmts (scope:Mach.SCOPE) 
@@ -1446,10 +1457,14 @@ and evalClassBlock (scope:Mach.SCOPE)
         (* get the class object allocated when the property was instantiated *)
         val classObj = needObj (findVal scope (multinameOf (valOf name)))
 
+(*
         (* allocate the fixed properties for the class object *)
+        val _ = trace ["allocating fixtures ", LogErr.name (valOf name)]
         val _ = allocObjFixtures scope classObj (valOf fixtures)
+*)
 
         (* init the class prototype if not going to be set by the user *)
+        val _ = trace ["intializing prototype "]
         val _ = initClassPrototype scope classObj extends
 
         (* extend the scope chain with the class object *)
@@ -1481,14 +1496,12 @@ and evalIfStmt (scope:Mach.SCOPE)
 and evalLabelStmt (scope:Mach.SCOPE) 
                   (lab:Ast.IDENT) 
                   (s:Ast.STMT) 
-    : Mach.VAL = 
+    : Mach.VAL =
     evalStmt scope s
     handle BreakException exnLabel
-           => if labelEq [lab] exnLabel  
-(* FIXME: labels need to be associated with their inner statements *)
+           => if labelEq [lab] exnLabel
               then Mach.Undef
               else raise BreakException exnLabel
-
 
 and evalWhileStmt (scope:Mach.SCOPE)
                   (whileStmt:Ast.WHILE_STMT)
@@ -1611,7 +1624,7 @@ and evalThrowStmt (scope:Mach.SCOPE)
 and evalBreakStmt (scope:Mach.SCOPE) 
                   (lbl:Ast.IDENT option) 
     : Mach.VAL =
-    (trace ["raising BreakException ",valOf lbl];
+    (trace ["raising BreakException ",case lbl of NONE => "empty" | SOME id => id];
     raise (BreakException lbl))
 
 

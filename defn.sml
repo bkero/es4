@@ -31,15 +31,28 @@ fun trace ss = if (!doTrace) then LogErr.log ("[eval] " :: ss) else ()
     - disambiguate package / object references
  *)
 
+
                    
+datatype LABEL_KIND =
+          IterationLabel
+        | SwitchLabel
+        | StatementLabel
+
+type LABEL = (Ast.IDENT * LABEL_KIND)
+
 type CONTEXT = 
      { fixtures: Ast.FIXTURES,
        openNamespaces: Ast.NAMESPACE list list, 
        numericMode: Ast.NUMERIC_MODE,
-       labels: Ast.IDENT list,
+       labels: LABEL list,
        temp_count: int ref }
 
 type ENV = CONTEXT list
+
+fun dumpEnv (e:ENV) : unit =
+    case e of
+        {fixtures,...}::p => (Pretty.ppFixtures fixtures; dumpEnv p)
+      | _ => ()
 
 val defaultNumericMode : Ast.NUMERIC_MODE =
     { numberType = Ast.Number,
@@ -174,17 +187,15 @@ fun extendEnvironment (env:ENV)
                 labels = [],
                 temp_count = ref 0 } :: [])
       | ({ numericMode, openNamespaces, temp_count, labels, ... }) :: _ =>
-        (trace [">> extendEnvironment with labels ", String.concat (map (fn l => l^" ") labels)];
         { fixtures = fixtures,
           openNamespaces = openNamespaces, 
           numericMode = numericMode,
           labels = labels,
-          temp_count = temp_count } :: env)
+          temp_count = temp_count } :: env
 
 fun updateEnvironment (ctx::ex) (fxtrs:Ast.FIXTURES) 
     : ENV =
     let
-        val _ = trace [">> updateEnvironment with labels ", String.concat (map (fn l => l^" ") (#labels ctx))]
     in
         { fixtures = (fxtrs @ (#fixtures ctx)),
           openNamespaces = (#openNamespaces ctx), 
@@ -196,18 +207,55 @@ fun updateEnvironment (ctx::ex) (fxtrs:Ast.FIXTURES)
     : ENV =
         LogErr.defnError ["cannot update an empty environment"]
 
-fun addLabel (env) (lbl:Ast.IDENT)
+fun dumpLabels labels = trace ["labels ", concat (map (fn (id,_) => id^" ") labels)]
+
+(*
+    Add a label to the current environment context. Report an error
+    if there is a duplicate. Labels and switch and iteration statements
+    have special meaning. They get lifted into the switch or iteration
+    statement so the correct continuation value can be returned in case
+    of break, and the correct control flow produced in case of continue.
+    Also, the definition phase must distinguish between ordinary statement
+    labels and iteration and switch labels to validate continue statements.
+*)
+
+fun addLabel (env:ENV) (label:LABEL)
     : ENV =
-        case env of 
-            ({fixtures,labels,openNamespaces,numericMode,temp_count}::e) =>
-                if List.exists (fn l => l = lbl) labels
-                then LogErr.defnError ["duplicate label ",lbl]
-                else { fixtures=fixtures,
-                       labels=lbl::labels,
-                       openNamespaces=openNamespaces,
-                       numericMode=numericMode,
-                       temp_count=temp_count } :: e
-          | [] => LogErr.internalError ["addLabel: cannot update an empty environment"]
+        let 
+            fun checkLabel (env:ENV) ((labelId,labelKnd):LABEL) =
+                case env of
+                {labels,...}::_ =>
+                    (dumpLabels labels;
+                    if List.exists (fn (id,knd) => 
+                            not (id = "") andalso   (* ignore empty labels *) 
+                            id = labelId andalso    (* compare ids *)
+                            knd = labelKnd) labels  (* and kinds *)
+                    then LogErr.defnError ["duplicate label ",labelId]
+                    else ())
+        in
+            checkLabel env label;
+            case env of 
+                ({fixtures,labels,openNamespaces,numericMode,temp_count}::e) =>
+                       { fixtures=fixtures,
+                         labels=label::labels,
+                         openNamespaces=openNamespaces,
+                         numericMode=numericMode,
+                         temp_count=temp_count } :: e
+              | [] => LogErr.internalError ["addLabels: cannot update an empty environment"]
+        end
+
+fun addLabels (env:ENV) (labels:LABEL list)
+    : ENV =
+    let
+    in case labels of
+        [] => env
+      | _ =>
+        let
+            val env' = addLabel env (hd labels)
+        in
+            addLabels env' (tl labels)
+        end
+    end
 
 (* copied from eval.sml *)
 fun multinameOf (n:Ast.NAME) = 
@@ -1147,11 +1195,11 @@ and defTyExpr (env:ENV)
 *)
 
 and defStmt (env:ENV) 
+            (labelIds:Ast.IDENT list)
             (stmt:Ast.STMT) 
     : (Ast.STMT * Ast.FIXTURES) = 
     let
         val (ctx::_) = env
-        val _ = trace ["labels ", String.concat (map (fn l => l^" ") (#labels ctx))]
 (*
         fun reconstructForEnumStmt (fe:Ast.FOR_ENUM_STMT) = 
             case fe of 
@@ -1160,7 +1208,7 @@ and defStmt (env:ENV)
                     val newObj =  defExpr env obj
                     val (f1, i1) = ([],[])  (* FIXME defVars env (valOf defn) *)
                     val env = updateEnvironment env f1
-                    val (newBody,hoisted) = defStmt env body
+                    val (newBody,hoisted) = defStmt env [] body
                 in
                     ({ obj = newObj,
                        defn = defn,
@@ -1171,17 +1219,21 @@ and defStmt (env:ENV)
                      hoisted)
                 end
 *)
-        fun reconstructWhileStmt (w:Ast.WHILE_STMT) = 
+
+        fun makeIterationLabel id = (id,IterationLabel)
+        fun makeStatementLabel id = (id,StatementLabel)
+
+        fun defWhileStmt (env) (w:Ast.WHILE_STMT) = 
             case w of 
                 { cond, body, labels, fixtures } => (* FIXME: inits needed *)
                 let 
                     val newCond = defExpr env cond
-                    val (newBody, hoisted) = defStmt env body
+                    val (newBody, hoisted) = defStmt env [] body
                 in
                     ({ cond=newCond, 
                        fixtures=NONE,
                        body=newBody, 
-                       labels=(#labels ctx) }, hoisted)
+                       labels=""::labelIds}, hoisted)
                 end
 
         (*
@@ -1191,24 +1243,23 @@ and defStmt (env:ENV)
 
         fun reconstructForStmt { defn, init, cond, update, labels, body, fixtures } =
             let
-                val _ = trace [">> reconstructForStmt with labels ", String.concat (map (fn l => l^" ") (#labels ctx))]
                 fun defVarDefnOpt vd =
                     case vd of
                         SOME vd => defDefn env (Ast.VariableDefn vd)
                       | NONE => ([],[],[])
                 val (uf,hf,_) = defVarDefnOpt defn
                 val env' = updateEnvironment env (uf@hf)
-                val (newInit,_) = defStmt env' init
+                val (newInit,_) = defStmt env' [] init
                 val newCond = defExpr env' cond
                 val newUpdate = defExpr env' update
-                val (newBody, hoisted) = defStmt env' body
+                val (newBody, hoisted) = defStmt env' [] body
             in
                 trace ["<< reconstructForStmt"];
                 ( Ast.ForStmt { defn = defn,
                                 init = newInit,
                                 cond = newCond,
                                 update = newUpdate,
-                                labels = (#labels ctx),
+                                labels = labels,
                                 body = newBody,
                                 fixtures = SOME (uf) },
                   hf@hoisted )
@@ -1259,13 +1310,13 @@ and defStmt (env:ENV)
                   bindings=bindings,
                   inits=SOME inits,
                   body=body },
-                 fxtrs)                                      
-            end            
+                 fxtrs)
+            end
 
         fun findClass (n:Ast.NAME) =
             let
                 val (n,f) = resolveMultinameToFixture env (multinameOf n)
-            in case f of 
+            in case f of
                 Ast.ClassFixture cd => cd
               | _ => LogErr.defnError ["reference to non-class fixture"]
             end
@@ -1276,58 +1327,71 @@ and defStmt (env:ENV)
                 val Ast.Block { pragmas, defns, head, body } = block
 
                 (* filter out instance initializers *)
-                val (_,stmts) = List.partition isInstanceInit body 
+                val (_,stmts) = List.partition isInstanceInit body
 
                 val namespace = resolveExprToNamespace env ns
                 val name = {ns=namespace, id=ident}
+
+(* FIXME: get the class definition and define it here
 
                 val Ast.Cls cls = findClass name
                 val classFixtures = (#classFixtures cls)
                 val extends = (#extends cls)
                 val env = extendEnvironment env classFixtures
-                val block = defRegionalBlock env (Ast.Block {pragmas=pragmas,
-                                                             defns=defns,
-                                                             head=head,
-                                                             body=body})
+*)
+
+                val (block,hoisted) = defBlock env (Ast.Block {pragmas=pragmas,
+                                                               defns=defns,
+                                                               head=head,
+                                                               body=body})
                 (* FIXME: define instance and class fixtures, etc in the env of the class *)
             in
-                Ast.ClassBlock { ns = ns,
+                (Ast.ClassBlock { ns = ns,
                                  ident = ident,
                                  name = SOME name,
                                  extends = extends,
-                                 fixtures = SOME classFixtures,
-                                 block = block }
+                                 fixtures = NONE, (* SOME classFixtures, *)
+                                 block = block }, hoisted)
             end
 
-        fun checkBreakLabel id =
+
+        fun checkLabel labelIdOpt labelKnd =
+            let
+                val labelId = case labelIdOpt of NONE => "" | SOME i => i
+            in case env of
+                {labels,...}::_ =>
+                    (dumpLabels labels;
+                    if List.exists (fn (id,knd) => 
+                        id = labelId andalso    (* compare ids *)
+                        knd = labelKnd) labels  (* and kinds *)
+                    then true
+                    else false)
+            end
+
+        fun checkBreakLabel (id:Ast.IDENT option) =
             (* 
-                A break with an empty label shall only occur in an interation
+                A break with an empty label shall only occur in an iteration
                 statement or switch statement. A break with a non-empty label
                 shall only occur in a statement with that label as a member of
                 its label set
             *)
+            if case id of
+                NONE => (checkLabel id SwitchLabel) orelse (checkLabel id IterationLabel)
+              | _ => (checkLabel id StatementLabel)
+            then ()
+            else LogErr.defnError ["invalid break label"]
 
-            true
-
-        fun checkContinueLabel id =
+        fun checkContinueLabel (id:Ast.IDENT option) =
             (*
                 A continue statement with an empty label shall only occur in
-                an interation statement. A continue statement with a non-empty
+                an iteration statement. A continue statement with a non-empty
                 label shall only occur in an iteration statement with that
                 label as a member of its label set
             *)
 
-            let
-                fun hasLabel labels label = List.exists (fn l => l = label) labels
-                fun isIterationContext (ctx:CONTEXT) = true  (* FIXME *)
-                fun hasValidContinueContext (({labels,...}::parentEnv):ENV) label = 
-                    if case label of NONE => isIterationContext ctx
-                                 | SOME l => (isIterationContext ctx) andalso (hasLabel labels l)
-                    then true
-                    else hasValidContinueContext parentEnv label
-            in
-                hasValidContinueContext env id
-            end
+            if checkLabel id IterationLabel
+            then ()
+            else LogErr.defnError ["invalid label in continue statement"]
 
     in
         case stmt of
@@ -1384,26 +1448,34 @@ and defStmt (env:ENV)
             inl (Ast.BlockStmt) (defBlock env b)
             
           | Ast.ClassBlock cb =>
-            (reconstructClassBlock cb, [])
+            reconstructClassBlock cb
             
           | Ast.LabeledStmt (id, s) =>
-            let
-                val env' = addLabel env id
+            let 
+                val env' = addLabel env (makeStatementLabel id)
+                val (s',f') = defStmt env' (id::labelIds) s
             in
-                defStmt env' s
-            end 
+                (Ast.LabeledStmt (id,s'),f')
+            end
             
           | Ast.LetStmt b =>
             inl (Ast.LetStmt) (defBlock env b)
             
-          | Ast.SuperStmt es => 
-            (Ast.SuperStmt (defExpr env es),[])
-            
           | Ast.WhileStmt w => 
-            inl (Ast.WhileStmt) (reconstructWhileStmt w)
+            let
+                val env' = addLabels env (map makeIterationLabel labelIds)
+                val env'' = addLabel env' (makeIterationLabel "")
+            in
+                inl (Ast.WhileStmt) (defWhileStmt env'' w)
+            end
             
           | Ast.DoWhileStmt w => 
-            inl (Ast.DoWhileStmt) (reconstructWhileStmt w)
+            let
+                val env' = addLabels env (map makeIterationLabel labelIds);
+                val env'' = addLabel env' (makeIterationLabel "")
+            in
+                inl (Ast.DoWhileStmt) (defWhileStmt env'' w)
+            end
             
           | Ast.ForStmt f => 
             reconstructForStmt f
@@ -1411,8 +1483,8 @@ and defStmt (env:ENV)
           | Ast.IfStmt { cnd, thn, els } => 
             let
                 val cnd = defExpr env cnd
-                val (thn,thn_hoisted) = defStmt env thn
-                val (els,els_hoisted) = defStmt env els
+                val (thn,thn_hoisted) = defStmt env [] thn
+                val (els,els_hoisted) = defStmt env [] els
             in
 
                 (Ast.IfStmt { cnd = cnd,
@@ -1423,7 +1495,7 @@ and defStmt (env:ENV)
             
           | Ast.WithStmt { obj, ty, body } =>
             let
-                val (body,hoisted) = defStmt env body
+                val (body,hoisted) = defStmt env [] body
             in 
                 (Ast.WithStmt { obj = (defExpr env obj),
                            ty = (defTyExpr env ty),
@@ -1465,13 +1537,22 @@ and defStmt (env:ENV)
             (Ast.Dxns { expr = defExpr env expr },[])
     end            
 
-and defStmts (env) (stmts)
+and defStmts (env) (stmts:Ast.STMT list)
     : (Ast.STMT list * Ast.FIXTURES) = 
-    let
-        val (stmts,hoisted) = ListPair.unzip (map (defStmt env) stmts)
-    in
-        (stmts,List.concat hoisted)
-    end
+    case stmts of
+        (stmt::stmts) =>
+            let 
+                val (s1,f1):(Ast.STMT*Ast.FIXTURES) = defStmt env [] stmt
+
+                (* Class definitions are embedded in the ClassBlock so we
+                   need to update the environment in that case *)
+
+                val env' = updateEnvironment env f1
+                val (s2,f2) = defStmts env' stmts
+            in
+                (s1::s2,f1@f2)
+            end
+      | [] => ([],[])
 
 (*
     NAMESPACE_DEFN
