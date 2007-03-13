@@ -1,0 +1,287 @@
+JEFF'S NOTES ON THE REFERENCE IMPLEMENTATION
+
+###
+
+TO DO
+
+- revive for-in statements
+- continue labels
+  - check for valid labels
+  - complete all statements
+
+###
+
+09-MAR-2007
+
+CLASSES
+
+Classes are compiled in two steps
+
+* The parser creates a ClassBlock and a ClassDefinition which contains 
+  the instanceDefinitions and classDefinitions. The ClassDefinition is 
+  put into the ClassBlock defns list.
+* The definer translates the ClassDefinition into a ClassFixture and 
+  hoists it into the global object
+
+
+###
+
+03-MAR-2007
+
+ERRORS
+
+Errors might be reported by the scanner, parser, definer, verifier, 
+or evaluator
+
+* Definition errors occur when a program contains conflicting definitions
+  or other context sensitive syntax errors that make translating the concrete
+  syntax of definitions into fixtures and initialisers
+* Initialisation errors occur before the a block is entered when a scope 
+  object cannot be ininitialised due to an unresolved type annotation or 
+  uninitialised property (non-nullable without default)
+* Runtime errors occur when an expression is evaluated with invalid operands
+* Verifier errors occur in strict mode when certain static semantic rules 
+  are violated. In standard mode, errors that would have been reported
+  by the verifier might result in initialisation or runtime errors
+
+### 
+
+02-MAR-2007
+
+TYPE REFS
+
+	type TYPE_EXPR = TypeRef of (TYPE_EXPR * IDENT)
+
+Since patterns are desugared during parsing, we have to defer
+the desugaring of type annotations on TypedPatterns until
+they are fully known during the verifier or evaluator phases. 
+
+	type t = [int]
+	var [x] : t = y
+
+The type of the fixture of x gets desugared to
+
+	TypeRef (TypeName "t", "0")
+
+which partially evaluates to,
+
+	TypeRef (ArrayType [int], "0")
+
+and then finally,
+
+	int
+
+###
+
+INITS
+
+	 datatype EXPR = InitExpr of INITS
+     type INITS = (FIXTURE_NAME * EXPR) list
+
+Variable definitions get desugared by the parser into bindings and 
+initialiser statement with a list of INIT_STEPs. The definer turns 
+the bindings into a FIXTURES and the INIT_STEPS into an InitExpr 
+which wraps the fixture INITS. The definer then hoists the FIXTURES
+according to their kind.
+
+This causes a reference problem because the FIXTURES and the fixture
+INITS might now be separated by any number of scopes.
+
+The problem is solved by adding an INIT_TARGET to InitExpr. This 
+value is used by the evaluator to determine whether the target 
+property was hoisted and if so to find it on the nearest enclosing 
+variable scope. Changes to the ASTs are:
+
+	 datatype EXPR = InitExpr of (INIT_TARGET * INITS)
+          and INIT_TARGET = Hoisted
+                          | Local
+                          | Prototype
+                          | Static
+
+Scopes have a flag to indicate whether or not they are a variable
+object. 
+
+Initialisers with a Prototype target only occur in a ClassBlock, 
+and target the properties of that classes prototype object. Initialiser
+with a Class target also only occur at the top level of a ClassBlock
+and target properties of the class object.
+
+
+### 
+
+01-MAR-2007
+
+LET STATEMENTS
+
+The following are equivalent,
+
+    let (x=10) { print(x) }
+    {let x=10; print(x) }
+
+They translate to,
+
+    LetStmt Block {head=([x],[x=10]),body=[print(x)]}
+
+###
+
+EVALUATING FUNCTIONS
+
+function ([x1,x2],[y]=a,z=10) { print('hi') }
+
+defaults = [a,10]
+
+head = {fxtrs=[x1,x2,y,z,$t1],
+        inits=[x1=$t1[0],
+               x2=$t1[1],
+               y=$t2[0],
+               z=$t3]}
+
+block = {head=([],[]),
+         body=[print('hi')]}
+
+Param heads (f+i) are instantiated with a list of actual
+arguments and a list of default expressions. The argument 
+or default values get bound to temporaries, and are accessed
+by the inits via GetTemp n instructions
+
+If a required arg is not given, then either an exception
+is thrown or the default value of undefined is used, 
+depending on the kind of function the head belongs to
+
+Steps:
+
+obj = evalHead  env args defaults paramHead
+env = pushScope env obj
+ret = evalBlock env funcBlock
+
+### 28-FEB-2007
+
+In general a definition results in a BINDING and zero or more
+INIT_STEPS.
+
+var x:t
+let (x:t=10) ...
+function (x:t=10) ...
+switch type .... case (x:t) ...
+catch (x:t) ...
+
+Binding {ident="x", ty="t"}
+InitStep ("x","10")
+
+These get translated by the definer into a FIXTURE binding and 
+an INIT binding call FIXTURES and INITS
+
+defBinds  = BINDINGS -> FIXTURES * INITS
+
+BINDINGS      = BINDING list * INIT_STEP list
+BINDING       = BINDING_IDENT * TYPE_EXPR option
+INIT_STEP     = InitStep of (BINDING_IDENT * EXPR)
+			  | AssignStep of (EXPR * EXPR)
+BINDING_IDENT = TempIdent of int
+              | PropIdent of IDENT
+
+
+FIXTURES      = (FIXTURE_NAME * FIXTURE) list
+INITS         = (FIXTURE_NAME * EXPR) list
+FIXTURE_NAME  = TempName of int
+              | PropName of NAME
+
+var [x,y,[z]] = o
+
+$t1 = o		  ; ValFixture, InitStep
+x = $t1[0]    ; ValFixture, InitStep
+y = $t1[1]    ; ValFixture, InitStep
+$t2 = $t1[2]  ; ValFixture, InitStep
+z = $t2[0]    ; ValFixture, InitStep
+
+InitStmt INIT_STEPS
+
+[x.y,[q::z]] = o
+
+$t1 = o		  ; ValFixture, InitStep
+x.y = $t1[0]  ; AssignStep
+$t2 = $t1[1]  ; ValFixture, InitStep
+q::z= $t2[0]    ; AssignStep
+
+Results in two temporary fixtures and several
+init steps including InitSteps and AssignSteps
+
+The parser produces a BINDINGS and a local block 
+statement, the definer produces the FIXTURES and 
+INITS
+
+{ f=[$t1,$t2], 
+  i=[$t1=o,$t2=$t1[1]], 
+  s=[x.y=$t1[0],q::z=$t2[0]] }
+
+[x.y,[q::z]] = o
+
+let ($t1=o,$t2=$t1[1]) { x.y=$t1[0], q::z=$t2[0] }
+
+Desugaring a pattern results in a LetStmt and a FIXTURES
+
+ns var [x,y,[z]] = o
+
+ns var x,y,z
+let ($t1=o,$t2=$t1[2]) InitStmt ns static prototype [x=$t1[0], y=$t1[1], z = $t2[0]]
+
+###
+
+23-FEB-2007
+
+
+Refactor Ast.Cls to reflect the various sets of fixtures and 
+initializers involved in creating instances. The AST types
+now look like this:
+
+     and CLS =
+         Cls of
+           { extends: NAME option,
+             implements: NAME list,
+             classFixtures: FIXTURES,
+             instanceFixtures: FIXTURES,
+             instanceInits: INITS,
+             constructor: CTOR option,
+             classType: TYPE_EXPR,
+             instanceType: TYPE_EXPR }
+
+     and CTOR =
+         Ctor of
+           { settings: INITS,
+             func: FUNC }
+
+     and FUNC =
+         Func of 
+           { name: FUNC_NAME,
+             fsig: FUNC_SIG,                   
+             fixtures: FIXTURES option,
+             inits: STMT list,
+             body: BLOCK }
+
+Instatiation goes like this:
+
+    val scope = [globalObj,classObj]
+    val thisObj = newObj 
+    evalFixtures scope thisObj instanceFixtures
+    evalInits scope thisObj instanceInits
+
+    val paramsObj = newObj
+    val paramsFixtures = (#fixtures (#func (#constructor cls)))
+	evalFixtures scope paramsObj paramsFixtures
+    val paramsInits = (#inits (#func (#constructor class)))
+    evalInits scope paramsObj paramsInits
+
+	val settingsInits = (#settings (#constructor cls))
+    evalInits paramsObj::scope thisObj settingsInits
+
+	val ctorBody = (#body (#func (#constructor cls)))
+    evalBlock paramsObj::(thisObj::scope) thisObj ctorBody
+
+where,
+
+	evalFixtures - allocates fixed properties on an object
+	evalInits - sets the value of some properties on an object
+	evalBlock - evaluates a block with the implicit 'this' set to an object
+
+Changes to eval.sml are pending
+

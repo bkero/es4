@@ -1,28 +1,8 @@
 structure LogErr = struct
 
-val log_level = ref 3
+fun log ss = (List.app TextIO.print ss; TextIO.print "\n")
 
-fun log n ss = 
-    if n <= (!log_level)
-    then (List.app TextIO.print ss; TextIO.print "\n")
-    else ()
-
-fun trace ss = log 3 ss
-
-fun error ss = log 0 ("**ERROR** " :: ss)
-
-fun traceIn ss = trace (">>> " :: ss)
-
-fun traceOut ss = trace ("<<< " :: ss)
-
-fun withTrace (ss:string list) (f:('a -> 'b)) (x:'a) : 'b = 
-    let 
-	val _ = traceIn ss
-	val r:'b = f x
-	val _ = traceOut ss
-    in
-	r
-    end
+fun error ss = log ("**ERROR** " :: ss)
 
 fun name (n:Ast.NAME) = 
     case (#ns n) of 
@@ -47,16 +27,26 @@ fun multiname (mn:Ast.MULTINAME) =
 		  (List.map (List.map (fn ns => name {ns = ns, id = (#id mn)})) (#nss mn)) @
 		  ["}"]))
 	     
+exception LexError
 exception ParseError
+exception NameError
 exception DefnError
 exception EvalError
 exception MachError
 exception HostError
 exception UnimplError
 
+fun lexError ss = 
+    (error ("lexError " :: ss); 
+     raise LexError)
+
 fun parseError ss = 
     (error ("parseError " :: ss); 
      raise ParseError)
+
+fun nameError ss = 
+    (error ("nameError " :: ss); 
+     raise NameError)
 
 fun defnError ss = 
     (error ("defnError " :: ss); 
@@ -76,6 +66,10 @@ fun hostError ss =
 
 fun unimplError ss = 
     (error ("unimplError " :: ss); 
+     raise UnimplError)
+
+fun internalError ss = 
+    (error ("internalError " :: ss); 
      raise UnimplError)
 
 end

@@ -29,18 +29,9 @@ datatype NUMBER_TYPE =
        | UInt
        | Number
 
-datatype ROUNDING_MODE =
-         Ceiling
-       | Floor
-       | Up
-       | Down
-       | HalfUp
-       | HalfDown
-       | HalfEven
-
 type NUMERIC_MODE = 
            { numberType: NUMBER_TYPE,
-             roundingMode: ROUNDING_MODE,
+             roundingMode: Decimal.ROUNDING_MODE,
              precision: int }
      
 datatype TRIOP =
@@ -76,7 +67,6 @@ datatype BINOP =
        | Greater of NUMERIC_MODE option
        | GreaterOrEqual of NUMERIC_MODE option
        | Comma
-       | DefVar
 
 datatype ASSIGNOP =
          Assign
@@ -106,7 +96,6 @@ datatype UNOP =
        | UnaryMinus
        | BitwiseNot
        | LogicalNot
-       | MakeNamespace
        | Type
 
 datatype VAR_DEFN_TAG =
@@ -125,8 +114,8 @@ datatype PRAGMA =
          UseNamespace of IDENT_EXPR
        | UseDefaultNamespace of IDENT_EXPR
        | UseNumber of NUMBER_TYPE
-       | UseRounding of ROUNDING_MODE
-       | UsePrecision of LITERAL
+       | UseRounding of Decimal.ROUNDING_MODE
+       | UsePrecision of int
        | UseStrict
        | UseStandard
        | Import of 
@@ -150,23 +139,26 @@ datatype PRAGMA =
              implements: NAME list,
              classFixtures: FIXTURES,
              instanceFixtures: FIXTURES,
-             instanceInits: INITS,
+             instanceInits: HEAD,
              constructor: CTOR option,
              classType: TYPE_EXPR,  (* ObjectType *)
              instanceType: TYPE_EXPR } (* InstanceType *)
 
      and CTOR =
          Ctor of
-           { settings: INITS,
+           { settings: HEAD,
+             superArgs: EXPR list,
              func: FUNC }
 
      and FUNC =
          Func of 
            { name: FUNC_NAME,
              fsig: FUNC_SIG,
-             fixtures: FIXTURES option,
-             defaults: INITS,
-             body: BLOCK }
+             isNative: bool,
+             block: BLOCK,
+             param: HEAD,
+             defaults: EXPR list,
+             ty: FUNC_TYPE }
 
      and DEFN =
          ClassDefn of CLASS_DEFN
@@ -180,19 +172,25 @@ datatype PRAGMA =
      and FUNC_SIG =
          FunctionSignature of 
            { typeParams: IDENT list,
-             params: VAR_BINDING list,
-             (* argTypes: TYPE_EXPR list option *)
-             defaults: STMT list, 
-             settings: STMT list, 
+             params: BINDINGS,
+             defaults: EXPR list,
+             ctorInits: (BINDINGS * EXPR list) option, (* settings + super args *)
              returnType: TYPE_EXPR,
              thisType: TYPE_EXPR option,
              hasRest: bool }
 
-     and VAR_BINDING =
+     and BINDING =
          Binding of 
-           { ident: IDENT;
-             ty: TYPE_EXPR option,
-             init: EXPR option }
+           { ident: BINDING_IDENT,    (* FIXME: use tuple *)
+             ty: TYPE_EXPR option }
+
+     and BINDING_IDENT = 
+         TempIdent of int
+       | PropIdent of IDENT
+
+     and INIT_STEP =   (* used to encode init of bindings *)
+         InitStep of (BINDING_IDENT * EXPR)
+       | AssignStep of (EXPR * EXPR)
 
      (* 
       * Note: no type parameters allowed on general typedefs,
@@ -205,7 +203,9 @@ datatype PRAGMA =
        | UnionType of TYPE_EXPR list
        | ArrayType of TYPE_EXPR list
        | TypeName of IDENT_EXPR
-       | FunctionType of FUNC_TYPE
+       | ElementTypeRef of (TYPE_EXPR * int)
+       | FieldTypeRef of (TYPE_EXPR * IDENT)
+       | FunctionType of FUNC_TYPE           
        | ObjectType of FIELD_TYPE list
        | AppType of 
            { base: TYPE_EXPR,
@@ -221,18 +221,17 @@ datatype PRAGMA =
      and STMT =
          EmptyStmt
        | ExprStmt of EXPR
-       | InitStmt of (* turned into ExprStmt by definer *)
+       | InitStmt of
            { kind: VAR_DEFN_TAG,
-             ns: EXPR,
+             ns: EXPR option,
              prototype: bool,
              static: bool,
-             inits: EXPR list }
+             temps: BINDINGS,
+             inits: INIT_STEP list }
        | ClassBlock of 
-           { ns: EXPR,
+           { ns: EXPR option,
              ident: IDENT,
-             name: NAME option,  (* set by the definer *)
-             extends: NAME option,
-             fixtures: FIXTURES option,
+             name: NAME option,
              block: BLOCK }
        | PackageBlock of
            { name: IDENT,
@@ -245,18 +244,10 @@ datatype PRAGMA =
        | ContinueStmt of IDENT option
        | BlockStmt of BLOCK
        | LabeledStmt of (IDENT * STMT)
-       | LetStmt of ((VAR_BINDING list) * STMT)
-       | SuperStmt of EXPR
+       | LetStmt of BLOCK
        | WhileStmt of WHILE_STMT
        | DoWhileStmt of WHILE_STMT
-       | ForStmt of
-           { defns: VAR_BINDING list,
-             fixtures: FIXTURES option,  (* CF- Do we need the option? *)
-             init: EXPR,
-             cond: EXPR,
-             update: EXPR,
-             contLabel: IDENT option,
-             body: STMT }
+       | ForStmt of FOR_STMT
        | IfStmt of 
            { cnd: EXPR,
              thn: STMT,
@@ -266,14 +257,15 @@ datatype PRAGMA =
              ty: TYPE_EXPR,
              body: STMT }
        | TryStmt of 
-           { body: BLOCK,
+           { block: BLOCK,
              catches: 
-               { bind:VAR_BINDING, 
+               { bindings:BINDINGS,
+                 ty: TYPE_EXPR option, 
                  fixtures: FIXTURES option,
-                 body:BLOCK } list,
+                 block:BLOCK } list,
              finally: BLOCK option }
 
-       | SwitchStmt of 
+       | SwitchStmt of         (* FIXME: needs HEAD, DEFNS for defns hoisted from body *)
            { cond: EXPR,
              cases: CASE list }
        | SwitchTypeStmt of 
@@ -300,9 +292,9 @@ datatype PRAGMA =
            { expr: EXPR,  (* apply expr to type list *)
              actuals: TYPE_EXPR list }
        | LetExpr of 
-           { defs: VAR_BINDING list,                      
+           { defs: BINDINGS,                      
              body: EXPR,
-             fixtures: FIXTURES option }
+             head: HEAD option }
        | NewExpr of 
            { obj: EXPR,
              actuals: EXPR list }
@@ -310,33 +302,43 @@ datatype PRAGMA =
        | LexicalRef of { ident: IDENT_EXPR }
        | SetExpr of (ASSIGNOP * EXPR * EXPR)
        | ListExpr of EXPR list
+       | InitExpr of (INIT_TARGET * HEAD * INITS)   (* HEAD is for temporaries *)
        | SliceExpr of (EXPR * EXPR * EXPR)
-       | DefTemp of (int * EXPR)
        | GetTemp of int
+
+     and INIT_TARGET = Hoisted
+                     | Local
+                     | Prototype
 
      and FIXTURE_NAME = TempName of int
                       | PropName of NAME
 
      and IDENT_EXPR =
-         QualifiedIdentifier of  (* type * *)
-           { qual : EXPR,
-             ident : USTRING }
+         Identifier of 
+           { ident : IDENT,
+             openNamespaces : NAMESPACE list list }
        | QualifiedExpression of  (* type * *)
            { qual : EXPR,
              expr : EXPR }
        | AttributeIdentifier of IDENT_EXPR
-       | Identifier of  
-           { ident : IDENT,
-             openNamespaces : NAMESPACE list list }
        | ExpressionIdentifier of EXPR   (* for bracket exprs: o[x] and @[x] *)
+       | QualifiedIdentifier of 
+           { qual : EXPR,
+             ident : USTRING }
        | TypeIdentifier of 
-           { ident : IDENT_EXPR, (*deprecated*)
+           { ident : IDENT_EXPR, (* these should be TyApp *)
              typeParams : TYPE_EXPR list }
 
      and LITERAL =
          LiteralNull
        | LiteralUndefined
-       | LiteralNumber of real
+       | LiteralContextualDecimal of string        (* Should be erased after defn time. *)
+       | LiteralContextualDecimalInteger of string (* Should be erased after defn time. *)
+       | LiteralContextualHexInteger of string     (* Should be erased after defn time. *)
+       | LiteralDouble of Real64.real
+       | LiteralDecimal of Decimal.DEC
+       | LiteralInt of Int32.int
+       | LiteralUInt of Word32.word
        | LiteralBoolean of bool
        | LiteralString of USTRING
        | LiteralArray of 
@@ -347,9 +349,7 @@ datatype PRAGMA =
        | LiteralObject of
            { expr : FIELD list,
              ty: TYPE_EXPR option }
-       | LiteralFunction of
-           { func: FUNC,
-             ty: TYPE_EXPR }  (* FunctionType *)
+       | LiteralFunction of FUNC
        | LiteralRegExp of
            { str: USTRING }
 
@@ -369,9 +369,11 @@ datatype PRAGMA =
        | TypeVarFixture
        | TypeFixture of TYPE_EXPR
        | MethodFixture of 
-         { ty: TYPE_EXPR,
-           isOverride: bool,
-           isFinal: bool }
+         { func: FUNC,
+           ty: TYPE_EXPR,
+           readOnly: bool,  (* ES3 funcs are r/w methods with ty=Ast.Special Ast.Any *)
+           override: bool,
+           final: bool }
        | ValFixture of 
            { ty: TYPE_EXPR,
              readOnly: bool }
@@ -380,7 +382,14 @@ datatype PRAGMA =
              getter: FUNC_DEFN option,
              setter: FUNC_DEFN option }
 
-withtype FIELD =
+withtype 
+
+         BINDINGS = (BINDING list * INIT_STEP list)
+     and FIXTURES = (FIXTURE_NAME * FIXTURE) list
+     and INITS = (FIXTURE_NAME * EXPR) list
+     and HEAD = (FIXTURES * INITS)
+
+     and FIELD =
            { kind: VAR_DEFN_TAG,
              name: IDENT_EXPR,
              init: EXPR }
@@ -398,95 +407,98 @@ withtype FIELD =
            params: TYPE_EXPR list,
            result: TYPE_EXPR,
            thisType: TYPE_EXPR option,
-           hasRest: bool }
+           hasRest: bool,
+           minArgs: int }
 
      and FUNC_DEFN = 
            { kind : VAR_DEFN_TAG,
-             ns: EXPR,
+             ns: EXPR option,
              final: bool,
-             native: bool,
              override: bool,
              prototype: bool,
              static: bool,
              func : FUNC }
 
-     and CTOR_DEFN = 
-           { ns: EXPR,
-             native: bool,
-             ctor : CTOR }
+     and CTOR_DEFN = CTOR
 
      and VAR_DEFN =
            { kind : VAR_DEFN_TAG,
-             ns : EXPR,
+             ns : EXPR option,
              static : bool,
              prototype : bool,
-             bindings : VAR_BINDING list }
-
-     and FIXTURES = (FIXTURE_NAME * FIXTURE) list
-     and INITS    = (FIXTURE_NAME * EXPR) list
+             bindings : BINDINGS }
 
      and NAMESPACE_DEFN = 
            { ident: IDENT,
-             ns: EXPR,
+             ns: EXPR option,
              init: EXPR option }
 
      and CLASS_DEFN =
            { ident: IDENT, 
-             ns: EXPR,
+             ns: EXPR option,
              nonnullable: bool,
              dynamic: bool,
              final: bool,
              params: IDENT list,
              extends: IDENT_EXPR option,
              implements: IDENT_EXPR list,
-             body: BLOCK }
+             classDefns: DEFN list,
+             instanceDefns: DEFN list,
+             instanceStmts: STMT list,
+             ctorDefn: CTOR option }
 
      and INTERFACE_DEFN =
            { ident: IDENT,
-             ns: EXPR,
+             ns: EXPR option,
              nonnullable: bool,
              params: IDENT list,
              extends: IDENT_EXPR list,
-             body: BLOCK }
+             block: BLOCK }
          
      and TYPE_DEFN =
            { ident: IDENT,
-             ns: EXPR,
+             ns: EXPR option,
              init: TYPE_EXPR }
 
      and FOR_ENUM_STMT =
-           { bind: (STMT list) option,
+           { defn: VAR_DEFN option,             
              obj: EXPR,
-             defns: VAR_BINDING list,             
              fixtures: FIXTURES option,
-             contLabel: IDENT option,
+             inits: INITS option,
+             labels: IDENT list,
+             body: STMT }
+
+     and FOR_STMT =
+           { fixtures: FIXTURES option,
+             defn: VAR_DEFN option,    
+             init: STMT,                  
+             cond: EXPR,
+             update: EXPR,
+             labels: IDENT list,
              body: STMT }
 
      and WHILE_STMT =
            { cond: EXPR,
              fixtures: FIXTURES option,
              body: STMT,
-             contLabel: IDENT option }
+             labels: IDENT list }
 
      and DIRECTIVES = 
            { pragmas: PRAGMA list,
              defns: DEFN list,
-             stmts: STMT list,
-             fixtures: FIXTURES option,
-             inits: INITS option }
-
-     and BINDINGS =
-           { b: VAR_BINDING list,
-             i: EXPR list }
+             head: HEAD option,
+             body: STMT list }
 
      and CASE =
-           { label: EXPR option, 
-             fixtures: FIXTURES option,
-             body: BLOCK }
+           { label: EXPR option,
+             inits: INITS option, 
+             body: BLOCK }   (* FIXME: should be STMT list *)
 
      and TYPE_CASE =
-           { ptrn : VAR_BINDING option, 
-             body : BLOCK }
+           { ty : TYPE_EXPR option,
+             bindings : BINDINGS,
+             inits: INITS option, 
+             body: BLOCK }
 
      and FUNC_NAME =
            { kind : FUNC_NAME_KIND, 
@@ -494,11 +506,11 @@ withtype FIELD =
 
 type PACKAGE =
            { name: USTRING,
-             body: BLOCK }
+             block: BLOCK }
 
 type PROGRAM =
            { packages: PACKAGE list,
              fixtures: FIXTURES option,
-             body : BLOCK }
+             block: BLOCK }
 
 end

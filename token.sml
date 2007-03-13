@@ -139,6 +139,7 @@ datatype token =
     | Set
     | Static
     | Type
+    | Undefined
     | Xml
     | Yield
 
@@ -149,11 +150,18 @@ datatype token =
     | DocComment
     | Eol
     | Identifier of string
-    | NumberLiteral of real (* should be string *)
-    | DoubleLiteral of real
-    | DecmialLiteral of string
-    | IntLiteral of int
-    | UIntLiteral of word
+
+    (* The interpretation of these 4 literal types can be done during lexing. *)
+    | ExplicitDecimalLiteral of Decimal.DEC
+    | ExplicitDoubleLiteral of Real64.real
+    | ExplicitIntLiteral of Int32.int
+    | ExplicitUIntLiteral of Word32.word
+
+    (* The interpretation of these 3 literal types is deferred until defn phase. *)
+    | DecimalIntegerLiteral of string 
+    | DecimalLiteral of string 
+    | HexIntegerLiteral of string 
+
     | PackageIdentifier of string
     | RegexpLiteral of string
     | SlashSlashComment
@@ -366,10 +374,11 @@ fun tokenname t =
       | Rounding => "rounding"
       | Standard => "standard"
       | Strict => "strict"
-      | UInt => "uint"
       | Set => "set"
       | Static => "static"
       | Type => "type"
+      | UInt => "uint"
+      | Undefined => "undefined"
       | Xml => "xml"
       | Yield => "yield"
 
@@ -380,11 +389,16 @@ fun tokenname t =
       | DocComment => ""
       | Eol => "eol"
       | Identifier x => "identifier("^x^")"
-      | NumberLiteral x => Real.toString(x)
-      | DoubleLiteral x => Real.toString(x)
-      | DecmialLiteral x => x
-      | IntLiteral x => Int.toString(x)
-      | UIntLiteral x => Word.toString(x)
+
+      | DecimalIntegerLiteral x => x
+      | DecimalLiteral x => x
+      | HexIntegerLiteral x => x
+
+      | ExplicitDecimalLiteral x => Decimal.toString(x) ^ "m"
+      | ExplicitDoubleLiteral x => Real64.toString(x) ^ "d"
+      | ExplicitIntLiteral x => Int32.toString(x) ^ "i"
+      | ExplicitUIntLiteral x => Word32.toString(x) ^ "u"
+
       | PackageIdentifier x => "packageidentifier("^x^")"
       | RegexpLiteral x => "regexp("^x^")"
       | SlashSlashComment => ""

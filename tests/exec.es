@@ -1,7 +1,41 @@
+/*
+class Object {}
+class A {
+var [x,y] = 10
+   // $t = 10
+   // x = $t[0]
+   // y = $t[1]
+   //   [InitStmt {[$t=10,x=$t[0],y=$t[1]]}}
+}
+new A
+*/
+
+use namespace intrinsic
+function f() { return [30,30] }
+function g() { return [20,20] }
+function h() { return [10,10] }
+class Object { function Object() { print("making Object","\n") } }
+class B { function B(x) { print("making B with ",x,"\n") } }
+class A extends B { var [x,y]=["x","y"]; function A(x=g):[x,y]=x(),super(x()) { print("making A\n") } }
+var a = new A(h)
+print(a.x," ",a.y,"\n")
+a = new A()
+print(a.x," ",a.y,"\n")
+
+/*
+class Object {}
+class foo {
+function foo([a,b],[c,d]=bar()) : z = zug() {}
+}
+*/
+
+
+
+/*
 type ft = function .<A,B> (A?,B,boolean)
 var f : ft.<int,string> = function (i:int?,s:string,b:boolean) { }
 f(null,"hi",true)
-
+*/
 /*
 namespace ns = "http"
 class Object {}

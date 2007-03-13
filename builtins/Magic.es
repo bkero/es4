@@ -84,7 +84,7 @@ package
     /* Given a string and a position in that string, return the
        numeric value of the character at that position in the
        string.  */
-    magic native function charCodeAt(s : string, pos : uint) : string;
+    magic native function charCodeAt(s : string, pos : uint) : uint;
 
     /* Given a numeric character value, return a string of length 1
        whose element 0 is the character with that same value.  */

@@ -6,11 +6,13 @@ Library
     structure Token
     structure Lexer
     structure Parser
+    structure Multiname
     structure Defn
     structure Verify 
     structure Eval
     structure Mach 	
-    structure Native 
+    structure Magic 
+    structure Decimal
 is
     logerr.sml
     main.sml
@@ -21,11 +23,13 @@ is
     token.sml
     lexer.lex
     parser.sml
+    multiname.sml
     defn.sml
     verify.sml
     eval.sml
     mach.sml
-    native.sml
+    magic.sml
+    decimal.sml
 
     $/basis.cm
     $/smlnj-lib.cm

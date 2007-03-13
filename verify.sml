@@ -36,6 +36,7 @@ fun simpleIdent (s:string) : IDENT_EXPR
     
 val boolType      = TypeName (simpleIdent "boolean")
 val numberType    = TypeName (simpleIdent "number")
+val doubleType    = TypeName (simpleIdent "double")
 val decimalType   = TypeName (simpleIdent "decimal")
 val intType       = TypeName (simpleIdent "int")
 val uintType      = TypeName (simpleIdent "uint")
@@ -118,7 +119,7 @@ fun lookupIdNamespacess (env:TYPE_ENV)
 
 (******************************** Contexts *********************************)
 
-type CONTEXT = {this: TYPE_EXPR, env: TYPE_ENV, lbls: IDENT option list, retTy: TYPE_EXPR option}
+type CONTEXT = {this: TYPE_EXPR, env: TYPE_ENV, lbls: IDENT list, retTy: TYPE_EXPR option}
 
 fun withThis  {this=_,    env=env, lbls=lbls, retTy=retTy} this 
     = {this=this, env=env, lbls=lbls, retTy=retTy}
@@ -175,7 +176,7 @@ fun substTypeExpr (s:(IDENT*TYPE_EXPR) list) (t:TYPE_EXPR):TYPE_EXPR =
 			fields)
 	  | SpecialType st => SpecialType st
 
-	  | FunctionType { typeParams, params, result, thisType, hasRest } =>
+	  | FunctionType { typeParams, params, result, thisType, hasRest, minArgs } =>
 	    (* Need to uniquify typeParams to avoid capture *)
 	    let val oldNew = map (fn id => (id, gensym id)) typeParams 
 		val nuSub = 
@@ -192,7 +193,7 @@ fun substTypeExpr (s:(IDENT*TYPE_EXPR) list) (t:TYPE_EXPR):TYPE_EXPR =
 			      params = List.map bothSubs params,
 			      result = bothSubs result,      
 			      thisType = Option.map bothSubs thisType,
-			      hasRest=hasRest}
+			      hasRest=hasRest, minArgs = minArgs }
 		end
     end 
 
@@ -284,13 +285,15 @@ and isCompatible (t1:TYPE_EXPR)
 		  params  =params1, 
 		  result  =result1,
 		  thisType=thisType1,
-		  hasRest =hasRest1},
+		  hasRest =hasRest1,
+	      minArgs=minArgs},
 	     FunctionType 
 		 {typeParams=typeParams2,
 		  params=params2, 
 		  result=result2, 
 		  thisType=thisType2,
-		  hasRest=hasRest2}) =>
+		  hasRest=hasRest2,
+		  minArgs=minArgs2}) =>
 	    let
 	    in
 		(* TODO: Assume for now that functions are not polymorphic *)
@@ -335,7 +338,7 @@ fun normalizeType (t:TYPE_EXPR)
     : TYPE_EXPR =
     let in
 	case t of
-	    AppType {base=FunctionType {typeParams,params,result,thisType,hasRest}, 
+	    AppType {base=FunctionType {typeParams,params,result,thisType,hasRest,minArgs}, 
 		     args } =>
 	    let val _ =	assert (length args = length typeParams);
 		val sub = ListPair.zip (typeParams,args)
@@ -345,7 +348,7 @@ fun normalizeType (t:TYPE_EXPR)
 			       params=map (substTypeExpr sub) params,
 			       result=substTypeExpr sub result,
 			       thisType= Option.map (substTypeExpr sub) thisType,
-			       hasRest=hasRest }
+			       hasRest=hasRest, minArgs=minArgs }
 	    end
 	  | _ => t
     end
@@ -400,7 +403,7 @@ fun verifyTypeExpr (ctxt as {env,this,...}:CONTEXT)
     end
 
 and verifyFunctionType  (ctxt:CONTEXT)
-			 {typeParams, params, result, thisType, hasRest} 
+			 {typeParams, params, result, thisType, hasRest, minArgs} 
     : CONTEXT = ctxt
 
 (*
@@ -469,7 +472,10 @@ and verifyExpr (ctxt as {env,this,...}:CONTEXT)
       TextIO.print "\n";
       case e of
 	LiteralExpr LiteralNull => nullType
-      | LiteralExpr (LiteralNumber _) => intType
+      | LiteralExpr (LiteralInt _) => intType
+      | LiteralExpr (LiteralUInt _) => uintType
+      | LiteralExpr (LiteralDecimal _) => decimalType
+      | LiteralExpr (LiteralDouble _) => doubleType
       | LiteralExpr (LiteralBoolean _) => boolType
       | LiteralExpr (LiteralString _) => stringType
       | LiteralExpr (LiteralRegExp _) => regexpType
@@ -493,25 +499,25 @@ and verifyExpr (ctxt as {env,this,...}:CONTEXT)
           checkCompatible inferredTy annotatedTy;
           annotatedTy
         end
-      | LiteralExpr (LiteralFunction { func=Func { fixtures=SOME fixtures, inits, body, ... }, 
-					ty=ty })
-	 =>
+      | LiteralExpr (LiteralFunction (Func { param=(fixtures,inits), block, ty, ... }))
+	=>
 	 let
-	     val FunctionType ftype = ty
-	     val ctxt1 = verifyFunctionType ctxt ftype 
+	     val ctxt1 = verifyFunctionType ctxt ty 
 	     val extensions = verifyFixtures ctxt1 fixtures
 	     val ctxt2 = withEnvExtn ctxt1 extensions
 	 in
 	     checkForDuplicateExtension extensions;
+(** FIXME: inits are now settings and are BINDINGS 
 	     verifyStmts ctxt2 inits;
-	     verifyBlock ctxt2 body;
-	     ty
+*)
+	     verifyBlock ctxt2 block;
+	     Ast.FunctionType ty
          end
       | LexicalRef { ident } =>
 	verifyIdentExpr ctxt ident
       | ListExpr l => List.last (List.map (verifyExpr ctxt) l)
-      | LetExpr {defs=_, body, fixtures } => 
-          let val extensions = verifyFixturesOption ctxt fixtures
+      | LetExpr {defs=_, body, head=SOME (fixtures,inits) } =>  (* FIXME: inits added *)
+          let val extensions = verifyFixtures ctxt fixtures
           in
 	    checkForDuplicateExtension extensions;
 	    verifyExpr (withEnvExtn ctxt extensions) body
@@ -563,7 +569,7 @@ and verifyExpr (ctxt as {env,this,...}:CONTEXT)
 
        | Ref of { base: EXPR option,
                   ident: IDENT_EXPR }
-       | NewExpr of { obj: EXPR,
+       | NewExpr of { obj: EXPR,x
                       actuals: EXPR list }
 
 
@@ -588,7 +594,7 @@ and verifyCallExpr  (ctxt as {env,this,...}:CONTEXT)
 	   SpecialType Any =>
 	   (* not much to do *)
 	   anyType
-	 | FunctionType { typeParams, params, result, thisType, hasRest }
+	 | FunctionType { typeParams, params, result, thisType, hasRest, minArgs }
 	   => 
 	   let 
 	   in
@@ -793,7 +799,7 @@ and verifyTrinaryExpr (ctxt:CONTEXT) (triop:TRIOP, a:EXPR, b:EXPR, c:EXPR) =
 
 and verifyStmts ctxt ss = List.app (fn s => verifyStmt ctxt s) ss
 
-and verifyStmt (ctxt as {this,env,lbls,retTy}:CONTEXT) (stmt:STMT) =
+and verifyStmt (ctxt as {this,env,lbls:(Ast.IDENT list),retTy}:CONTEXT) (stmt:STMT) =
    let
    in
        TextIO.print ("type checking stmt: env len " ^ (Int.toString (List.length env)) ^"\n");
@@ -809,10 +815,10 @@ and verifyStmt (ctxt as {this,env,lbls,retTy}:CONTEXT) (stmt:STMT) =
 	verifyStmt ctxt els
     end
 
-  | (DoWhileStmt {cond,body,contLabel} | WhileStmt {cond,body,contLabel}) => 
+  | (DoWhileStmt {cond,body,labels,fixtures} | WhileStmt {cond,body,labels,fixtures}) => 
     let in
 	checkCompatible (verifyExpr ctxt cond) boolType;
-	verifyStmt (withLbls ctxt (contLabel::lbls)) body
+	verifyStmt (withLbls ctxt (labels@lbls)) body
     end
 
   | ReturnStmt e => 
@@ -831,7 +837,7 @@ and verifyStmt (ctxt as {this,env,lbls,retTy}:CONTEXT) (stmt:STMT) =
 
   | (BreakStmt (SOME lbl) | ContinueStmt (SOME lbl)) => 
     let in
-	if List.exists (fn x => x=(SOME lbl)) lbls	
+	if List.exists (fn x => x=(lbl)) lbls
 	then ()
 	else raise VerifyError "No such label"
     end
@@ -839,7 +845,7 @@ and verifyStmt (ctxt as {this,env,lbls,retTy}:CONTEXT) (stmt:STMT) =
   | BlockStmt b => verifyBlock ctxt b
 
   | LabeledStmt (lab, s) => 
-	verifyStmt (withLbls ctxt ((SOME lab)::lbls)) s
+	verifyStmt (withLbls ctxt ((lab)::lbls)) s
  
   | ThrowStmt t => 
 	checkCompatible (verifyExpr ctxt t) exceptionType
@@ -853,7 +859,7 @@ and verifyStmt (ctxt as {this,env,lbls,retTy}:CONTEXT) (stmt:STMT) =
     end
 *)
 
-  | ForStmt { defns=_, fixtures, init, cond, update, contLabel, body } =>
+  | ForStmt { defn=_, fixtures, init, cond, update, labels, body } =>
     let val extensions = verifyFixturesOption ctxt fixtures
         val ctxt' = withEnvExtn ctxt extensions
 (* NOT USED 
@@ -865,17 +871,17 @@ and verifyStmt (ctxt as {this,env,lbls,retTy}:CONTEXT) (stmt:STMT) =
 	    end
 *)
     in
-  	verifyExpr ctxt' init;
+  	verifyStmt ctxt' init;
 	checkCompatible (verifyExpr ctxt' cond) boolType;
 	verifyExpr ctxt' update;
-	verifyStmt (withLbls ctxt' (contLabel::lbls)) body
+	verifyStmt (withLbls ctxt' (labels@lbls)) body
     end
 
-  | SwitchStmt { cond, cases } =>
+  | SwitchStmt { cond, cases } =>  
     let val ty = verifyExpr ctxt cond
     in
 	List.app
-	    (fn {label,body} =>	
+	    (fn {label,body,inits} =>	(* FIXME: verify inits *)
 		let in
 		    (Option.app 
 			 (fn e => checkBicompatible ty (verifyExpr ctxt e))
@@ -885,15 +891,15 @@ and verifyStmt (ctxt as {this,env,lbls,retTy}:CONTEXT) (stmt:STMT) =
 	    cases
     end
 
-  | TryStmt { body, catches, finally } =>
+  | TryStmt { block, catches, finally } =>
     let 
     in
-	verifyBlock ctxt body;
+	verifyBlock ctxt block;
 	case finally of
 	    NONE => ()
-	  | SOME blk => verifyBlock ctxt blk;
+	  | SOME block => verifyBlock ctxt block;
 	List.app
-	(fn {bind, fixtures, body} =>
+	(fn {bindings, ty, fixtures, block} =>
 	    ())
 	catches
     end
@@ -1005,15 +1011,15 @@ and verifyFixturesOption (ctxt:CONTEXT)
 
 (******************** Blocks **************************************************)
 
-and verifyBlock (ctxt as {env,...}) (Block {pragmas,defns=_,stmts,fixtures,inits}) =
-    let val extensions = verifyFixturesOption ctxt fixtures
+and verifyBlock (ctxt as {env,...}) (Block {pragmas,defns=_,body,head=SOME (fixtures,inits)}) =
+    let val extensions = verifyFixtures ctxt fixtures
         val ctxt' = withEnvExtn ctxt extensions
     in
-	verifyStmts ctxt' stmts
+	verifyStmts ctxt' body
     end
 
-fun verifyProgram { packages, fixtures, body } = 
-    (verifyBlock {this=anyType, env=[], lbls=[], retTy=NONE} body; true)
+fun verifyProgram { packages, fixtures, block } = 
+    (verifyBlock {this=anyType, env=[], lbls=[], retTy=NONE} block; true)
 
 (* CF: Let this propagate to top-level to see full trace
     handle VerifyError msg => 
@@ -1026,5 +1032,4 @@ fun verifyProgram { packages, fixtures, body } =
 
 *)   
 				    
-
 end
