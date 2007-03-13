@@ -1,2 +1,2 @@
 x = "hello";
-intrinsic::assert(x == "hello");
+intrinsic::assert(x=="hello");
