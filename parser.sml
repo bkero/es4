@@ -71,7 +71,7 @@ fun newline ts = Lexer.UserDeclarations.followsLineBreak ts
 
 val defaultAttrs : ATTRS = 
     {
-        ns = SOME (Ast.LiteralExpr (Ast.LiteralNamespace (Ast.Internal ""))),
+        ns = NONE,
         override = false,
         static = false,
         final = false,
@@ -82,7 +82,7 @@ val defaultAttrs : ATTRS =
 
 val defaultRestAttrs : ATTRS = 
     { 
-        ns = SOME (Ast.LiteralExpr (Ast.LiteralNamespace (Ast.Internal ""))),
+        ns = NONE,
         override = false,
            static = false,
         final = false,
@@ -164,45 +164,6 @@ val defaultRestAttrs : ATTRS =
  * INITS or STMTS.
  *)
 
-
-(****
-
-fun needInitSteps (pl:Ast.INIT_STEP list)
-                  (targ:Ast.INIT_TARGET)
-    : Ast.INITS =
-    case pl of
-        [] => []
-      | (Ast.AssignStep _)::xs => LogErr.defnError ["deep pattern assignment ",
-                                            "in binding-initialization context"]
-      | (Ast.InitStep (t, f, e))::xs =>
-        if t = targ
-        then (f, e)::(needInitSteps pl targ xs)
-        else LogErr.defnError ["unexpected initialization target ",
-                               "in binding-initialization context"]
-and defInit (env:ENV)
-            (ns:Ast.NAMESPACE)
-            (prototype:bool)
-            (static:bool)
-            (init:Ast.EXPR)
-    : Ast.EXPR list =
-    let
-    in case init of
-        (Ast.SetExpr (_,pattern,expr)) =>
-            defPatternAssign env ns pattern expr prototype static 0
-      | _ => LogErr.defnError ["internal definition error in defInit"]
-    end
-
-and defAssignment (env:ENV)
-                  (pattern:PATTERN)
-                  (expr:Ast.EXPR)
-    : Ast.EXPR list =
-    let
-        val level = 0  (* to start with *)
-        val ns = Ast.Intrinsic  (* unused since there are no IdentifierPatterns in this context *)
-    in
-        defPatternAssign env ns pattern expr false false level
-    end
-****)
 
 (*
     var x : int = 10
@@ -6298,9 +6259,9 @@ and pragmaItem ts =
             end
       | Standard :: _ => (tl ts,Ast.UseStandard)
       | Strict :: _ => (tl ts,Ast.UseStrict)
-      | Default :: Namespace :: _ => 
+      | Default :: Namespace :: (Public | Internal | Intrinsic) :: _ => 
             let
-                val (ts1,nd1) = simpleTypeIdentifier (tl (tl ts))
+                val (ts1,nd1) = reservedNamespace (tl (tl ts))
             in
                 (ts1, Ast.UseDefaultNamespace nd1)
             end

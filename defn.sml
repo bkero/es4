@@ -1011,11 +1011,14 @@ and defPragmas (env:ENV)
                     in
                         opennss := (namespace :: !opennss)
                     end
-              | Ast.UseDefaultNamespace dns => 
+              | Ast.UseDefaultNamespace dn => 
                     let
-                        val namespace = resolveExprToNamespace env (Ast.LexicalRef {ident=dns})
-                    in
-                        defaultNamespace := namespace
+                    in case dn of
+                        Ast.Intrinsic =>
+                            (opennss := (dn :: !opennss);
+                             defaultNamespace := dn)
+                      | _ =>
+                            defaultNamespace := dn
                     end
               | _ => ()) pragmas;
 
@@ -1445,18 +1448,10 @@ and defStmt (env:ENV)
                 val namespace = resolveExprOptToNamespace env ns
                 val name = {ns=namespace, id=ident}
 
-(* FIXME: get the class definition and define it here
-
-                val Ast.Cls cls = findClass name
-                val classFixtures = (#classFixtures cls)
-                val env = extendEnvironment env classFixtures
-*)
-
                 val (block,hoisted) = defBlock env (Ast.Block {pragmas=pragmas,
                                                                defns=defns,
                                                                head=head,
                                                                body=body})
-                (* FIXME: define instance and class fixtures, etc in the env of the class *)
             in
                 (Ast.ClassBlock { ns = ns,
                                  ident = ident,

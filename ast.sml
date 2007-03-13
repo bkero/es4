@@ -112,7 +112,7 @@ datatype SPECIAL_TY =
 
 datatype PRAGMA =
          UseNamespace of IDENT_EXPR
-       | UseDefaultNamespace of IDENT_EXPR
+       | UseDefaultNamespace of NAMESPACE
        | UseNumber of NUMBER_TYPE
        | UseRounding of Decimal.ROUNDING_MODE
        | UsePrecision of int
