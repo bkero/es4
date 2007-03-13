@@ -46,7 +46,9 @@ type CONTEXT =
        openNamespaces: Ast.NAMESPACE list list, 
        numericMode: Ast.NUMERIC_MODE,
        labels: LABEL list,
-       temp_count: int ref }
+       className: Ast.NAME option,
+       packageName: Ast.IDENT option,
+       defaultNamespace: Ast.NAMESPACE }
 
 type ENV = CONTEXT list
 
@@ -73,12 +75,16 @@ fun hasFixture (b:Ast.FIXTURES)
         search b    
     end
 
-        (*
-            Get the type of a field in a field pattern - lookup in a list of field types a field type 
-            with associated a name. if the list is empty then return type '*'. if the list is not
-            empty and the sought name is not found, then report a syntax error.
-        *)
+(*
+    FIXME: Move this to Mach or Eval. Something like this is used to eval Ast.FieldTypeRef
+           and ElementTypeRef
 
+    Get the type of a field in a field pattern - lookup in a list of field types a field type 
+    with associated a name. if the list is empty then return type '*'. if the list is not
+    empty and the sought name is not found, then report a syntax error.
+*)
+
+(*
 fun getFieldType (name : Ast.IDENT) (field_types: Ast.FIELD_TYPE list)
             : Ast.TYPE_EXPR =
             let
@@ -93,6 +99,7 @@ fun getFieldType (name : Ast.IDENT) (field_types: Ast.FIELD_TYPE list)
                         else getFieldType name field_type_list
                 end
             end
+*)
 
 fun getFixture (b:Ast.FIXTURES) 
                (n:Ast.FIXTURE_NAME) 
@@ -173,6 +180,15 @@ fun resolveExprToNamespace (env:ENV)
       | _ => LogErr.defnError ["unexpected expression type ",
                                "in namespace context"]
 
+and defaultNamespace (c::_) = (#defaultNamespace c)
+
+and resolveExprOptToNamespace (env: ENV) 
+                              (ns : Ast.EXPR option) 
+    : Ast.NAMESPACE =
+       case ns of 
+           NONE => defaultNamespace env 
+         | SOME n => resolveExprToNamespace env n
+
 (*
     Create a new context initialised with the provided fixtures and
     inherited environment
@@ -186,13 +202,17 @@ fun extendEnvironment (env:ENV)
                 openNamespaces = [[Ast.Internal ""]],
                 numericMode = defaultNumericMode,
                 labels = [],
-                temp_count = ref 0 } :: [])
-      | ({ numericMode, openNamespaces, temp_count, labels, ... }) :: _ =>
+                className = NONE,
+                packageName = NONE,
+                defaultNamespace = Ast.Internal "" } :: [])
+      | ({ numericMode, openNamespaces, labels, className, packageName, defaultNamespace, ... }) :: _ =>
         { fixtures = fixtures,
           openNamespaces = openNamespaces, 
           numericMode = numericMode,
           labels = labels,
-          temp_count = temp_count } :: env
+          className = className,
+          packageName = packageName,
+          defaultNamespace = defaultNamespace } :: env
 
 fun updateEnvironment (ctx::ex) (fxtrs:Ast.FIXTURES) 
     : ENV =
@@ -202,7 +222,9 @@ fun updateEnvironment (ctx::ex) (fxtrs:Ast.FIXTURES)
           openNamespaces = (#openNamespaces ctx), 
           numericMode = (#numericMode ctx),
           labels = (#labels ctx),
-          temp_count = (#temp_count ctx) } :: ex
+          className = (#className ctx),
+          packageName = (#packageName ctx),
+          defaultNamespace = (#defaultNamespace ctx) } :: ex
     end
   | updateEnvironment ([]) (fxtrs:Ast.FIXTURES) 
     : ENV =
@@ -236,12 +258,14 @@ fun addLabel (env:ENV) (label:LABEL)
         in
             checkLabel env label;
             case env of 
-                ({fixtures,labels,openNamespaces,numericMode,temp_count}::e) =>
+                ({fixtures,labels,openNamespaces,numericMode,className,packageName,defaultNamespace}::e) =>
                        { fixtures=fixtures,
                          labels=label::labels,
                          openNamespaces=openNamespaces,
                          numericMode=numericMode,
-                         temp_count=temp_count } :: e
+                         className = className,
+                         packageName = packageName,
+                         defaultNamespace = defaultNamespace } :: e
               | [] => LogErr.internalError ["addLabels: cannot update an empty environment"]
         end
 
@@ -258,7 +282,6 @@ fun addLabels (env:ENV) (labels:LABEL list)
         end
     end
 
-(* copied from eval.sml *)
 fun multinameOf (n:Ast.NAME) = 
     { nss = [[(#ns n)]], id = (#id n) }
 
@@ -271,7 +294,9 @@ fun multinameOf (n:Ast.NAME) =
 
 fun identExprToMultiname (env:ENV) (ie:Ast.IDENT_EXPR)
     : Ast.MULTINAME = 
-    case ie of
+    let
+        val ie' = defIdentExpr env ie
+    in case ie' of
         Ast.Identifier {ident, ...} => 
             let
             in
@@ -284,7 +309,8 @@ fun identExprToMultiname (env:ENV) (ie:Ast.IDENT_EXPR)
                     {nss = [[ns]], id = ident}
               | _ => LogErr.defnError ["unknown namespace value needed during definition phase"]
             end
-      | _ => LogErr.defnError ["unhandled form of identifier expression in identExprToMultiname"]
+      | _ => LogErr.defnError ["unhandled form of identifier expression in defIdentExpr"]
+    end
 
 (*
     CLASS_DEFN
@@ -310,7 +336,7 @@ fun identExprToMultiname (env:ENV) (ie:Ast.IDENT_EXPR)
     - return a fixture binding for the class
 *)
 
-fun defClass (env: ENV) 
+and defClass (env: ENV) 
              (cdef: Ast.CLASS_DEFN)
     : (Ast.FIXTURES * Ast.CLASS_DEFN) =
     let
@@ -343,19 +369,16 @@ and analyzeClass (env:ENV)
                 and an instance block, and then define both blocks
             *)
 
-            val ns = resolveExprToNamespace env ns
+            val ns = resolveExprOptToNamespace env ns
             val name = {id=ident, ns=ns}
 
-(* FIXME: need to process pragmas and definitions in the context of the ClassBlock
-            val env = defPragmas env pragmas
-*)
             val (unhoisted,classFixtures,classInits) = defDefns env [] [] [] classDefns
             val env = extendEnvironment env classFixtures
 
             val ctor = 
                 case ctorDefn of 
                     NONE => NONE 
-                  | SOME {ctor,...} => SOME (defCtor env ctor)
+                  | SOME c => SOME (defCtor env c)
 
 
 
@@ -363,6 +386,12 @@ and analyzeClass (env:ENV)
 
             val (instanceStmts,_) = defStmts env instanceStmts  (* no hoisted fixture produced *)
             
+            (* 
+                The parser separates variable definitions into defns and stmts. The only stmts
+                in this case will be InitStmts and what we really want is INITs so we translate
+                to to INITs here.
+            *)
+
             fun initsFromStmt stmt =
                 case stmt of
                      Ast.ExprStmt (Ast.InitExpr (target,(temp_fxtrs,temp_inits),inits)) => (temp_fxtrs,temp_inits@inits)
@@ -614,8 +643,7 @@ and resolveImplements (env: ENV)
                       (implements: Ast.IDENT_EXPR list)
     : (Ast.NAME list * Ast.FIXTURES) =
     let
-        val implements = map (identExprToMultiname env) 
-                             (map (defIdentExpr env) implements)
+        val implements = map (identExprToMultiname env) implements
     in
         ([],currInstanceFixtures)
     end
@@ -913,8 +941,7 @@ and defFuncDefn (env:ENV) (f:Ast.FUNC_DEFN)
     case (#func f) of
         Ast.Func { name, fsig, block, ty, isNative, ... } =>
         let
-            val newNsExpr = defExpr env (#ns f)
-            val qualNs = resolveExprToNamespace env newNsExpr
+            val qualNs = resolveExprOptToNamespace env (#ns f)
             val ident = case (#kind name) of 
                             Ast.Ordinary => (#ident name)
                           | Ast.Call => "call" (* FIXME: hack until parser fixed. *)
@@ -935,7 +962,7 @@ and defFuncDefn (env:ENV) (f:Ast.FUNC_DEFN)
                                          override = (#override f)})]
         in
             (outerFixtures, { kind = (#kind f),
-                              ns = newNsExpr,
+                              ns = (#ns f),
                               final = (#final f),
                               override = (#override f),
                               prototype = (#prototype f),
@@ -962,17 +989,18 @@ and defCtor (env:ENV) (ctor:Ast.CTOR)
     each pragma and initialise a new context using the results
 *)
 
-and defPragmas (env:CONTEXT list)
+and defPragmas (env:ENV)
                (pragmas:Ast.PRAGMA list)
-    : CONTEXT list =
-    let val ctx       = hd env
+    : ENV =
+    let val ctx : CONTEXT  = hd env
         val mode      = #numericMode ctx
         val numType   = ref (#numberType mode)
         val rounding  = ref (#roundingMode mode)
         val precision = ref (#precision mode)
+        val defaultNamespace = ref (#defaultNamespace ctx)
         val opennss   = ref []
     in
-        ( List.app (fn x => (* defPragma *)
+        List.app (fn x => (* defPragma *)
             case x of 
                 Ast.UseNumber n => numType := n
               | Ast.UseRounding m => rounding := m
@@ -983,7 +1011,14 @@ and defPragmas (env:CONTEXT list)
                     in
                         opennss := (namespace :: !opennss)
                     end
-              | _ => ()) pragmas ;
+              | Ast.UseDefaultNamespace dns => 
+                    let
+                        val namespace = resolveExprToNamespace env (Ast.LexicalRef {ident=dns})
+                    in
+                        defaultNamespace := namespace
+                    end
+              | _ => ()) pragmas;
+
           { fixtures = [],
             labels = (#labels ctx),
             openNamespaces = (case !opennss of 
@@ -992,7 +1027,9 @@ and defPragmas (env:CONTEXT list)
             numericMode = { numberType = !numType, 
                             roundingMode = !rounding,
                             precision = !precision },
-            temp_count = (#temp_count ctx) } :: env )
+            className = (#className ctx),
+            packageName = (#packageName ctx),
+            defaultNamespace = !defaultNamespace } :: env
     end
 
 (*
@@ -1405,7 +1442,7 @@ and defStmt (env:ENV)
                 (* filter out instance initializers *)
                 val (_,stmts) = List.partition isInstanceInit body
 
-                val namespace = resolveExprToNamespace env ns
+                val namespace = resolveExprOptToNamespace env ns
                 val name = {ns=namespace, id=ident}
 
 (* FIXME: get the class definition and define it here
@@ -1479,7 +1516,7 @@ and defStmt (env:ENV)
 
           | Ast.InitStmt {ns, temps, inits, prototype, static, kind} => 
             let
-                val ns0 = resolveExprToNamespace env ns
+                val ns0 = resolveExprOptToNamespace env ns
 
                 val target = case (kind, prototype, static) of
                                  (_,true,_) => Ast.Prototype
@@ -1642,7 +1679,7 @@ and defNamespace (env:ENV)
     case nd of 
         { ident, ns, init } => 
         let
-            val qualNs = resolveExprToNamespace env ns
+            val qualNs = resolveExprOptToNamespace env ns
             val newNs = case init of 
                             (* FIXME: a nonce perhaps? *)
                             NONE => Ast.UserNamespace ident 
@@ -1666,13 +1703,14 @@ and defNamespace (env:ENV)
     empty) list of initialisers.
 *)
 
+
 and defDefn (env:ENV) 
             (defn:Ast.DEFN) 
     : (Ast.FIXTURES * Ast.FIXTURES * Ast.INITS) = (* unhoisted, hoisted, inits *)
     case defn of 
         Ast.VariableDefn { kind, ns, static, prototype, bindings } =>
             let
-                val ns = resolveExprToNamespace env ns
+                val ns = resolveExprOptToNamespace env ns
                 val (fxtrs,inits) = defBindings env kind ns bindings
             in case kind of
                 (Ast.Var | Ast.Const) => ([],fxtrs,inits)  (* hoisted fxtrs *)
@@ -1747,7 +1785,7 @@ and defBlock (env:ENV)
     case b of
         Ast.Block { pragmas, defns, body,... } => 
         let 
-            val env = defPragmas env pragmas
+            val env : ENV = defPragmas env pragmas
             val (unhoisted_defn_fxtrs,hoisted_defn_fxtrs,inits) = defDefns env [] [] [] defns
             val env = updateEnvironment env (unhoisted_defn_fxtrs@hoisted_defn_fxtrs) (* so stmts can see them *)
             val (body,hoisted_body_fxtrs) = defStmts env body
@@ -1812,7 +1850,8 @@ and defProgram (prog:Ast.PROGRAM)
         val topEnv = 
             [{ fixtures = intrinsicBinding::(map mkNamespaceFixtureBinding (#packages prog)),
                openNamespaces = [[Ast.Internal "", Ast.Public ""]],
-               numericMode = defaultNumericMode, labels = [], temp_count = ref 0 }]
+               numericMode = defaultNumericMode, labels = [], 
+               className = NONE, packageName = NONE, defaultNamespace = Ast.Internal "" }]
         val (packages,hoisted_pkg) = ListPair.unzip (map (defPackage topEnv) (#packages prog))
         val (block,hoisted_gbl) = defBlock topEnv (#block prog)
         val result = {packages=packages,block=block,fixtures=SOME ((List.concat hoisted_pkg)@hoisted_gbl)}

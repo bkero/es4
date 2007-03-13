@@ -67,7 +67,6 @@ datatype BINOP =
        | Greater of NUMERIC_MODE option
        | GreaterOrEqual of NUMERIC_MODE option
        | Comma
-       | DefVar
 
 datatype ASSIGNOP =
          Assign
@@ -97,7 +96,6 @@ datatype UNOP =
        | UnaryMinus
        | BitwiseNot
        | LogicalNot
-       | MakeNamespace
        | Type
 
 datatype VAR_DEFN_TAG =
@@ -141,7 +139,7 @@ datatype PRAGMA =
              implements: NAME list,
              classFixtures: FIXTURES,
              instanceFixtures: FIXTURES,
-             instanceInits: HEAD,  (* fixtures are for temps *) (* Stmts: STMT list,  ISSUE: only holds ExprStmt InitExprs *)
+             instanceInits: HEAD,
              constructor: CTOR option,
              classType: TYPE_EXPR,  (* ObjectType *)
              instanceType: TYPE_EXPR } (* InstanceType *)
@@ -223,15 +221,15 @@ datatype PRAGMA =
      and STMT =
          EmptyStmt
        | ExprStmt of EXPR
-       | InitStmt of (* *)
+       | InitStmt of
            { kind: VAR_DEFN_TAG,
-             ns: EXPR,
+             ns: EXPR option,
              prototype: bool,
              static: bool,
              temps: BINDINGS,
              inits: INIT_STEP list }
        | ClassBlock of 
-           { ns: EXPR,
+           { ns: EXPR option,
              ident: IDENT,
              name: NAME option,
              block: BLOCK }
@@ -267,7 +265,7 @@ datatype PRAGMA =
                  block:BLOCK } list,
              finally: BLOCK option }
 
-       | SwitchStmt of 
+       | SwitchStmt of         (* FIXME: needs HEAD, DEFNS for defns hoisted from body *)
            { cond: EXPR,
              cases: CASE list }
        | SwitchTypeStmt of 
@@ -306,7 +304,6 @@ datatype PRAGMA =
        | ListExpr of EXPR list
        | InitExpr of (INIT_TARGET * HEAD * INITS)   (* HEAD is for temporaries *)
        | SliceExpr of (EXPR * EXPR * EXPR)
-       | DefTemp of (int * EXPR)
        | GetTemp of int
 
      and INIT_TARGET = Hoisted
@@ -316,14 +313,7 @@ datatype PRAGMA =
      and FIXTURE_NAME = TempName of int
                       | PropName of NAME
 
-(*
-     and STATIC_IDENT =
-         Identifier of 
-           { ident : IDENT,
-             openNamespaces : NAMESPACE list list }
-*)
      and IDENT_EXPR =
-(*         StaticIdent of STATIC_IDENT  *)
          Identifier of 
            { ident : IDENT,
              openNamespaces : NAMESPACE list list }
@@ -422,32 +412,30 @@ withtype
 
      and FUNC_DEFN = 
            { kind : VAR_DEFN_TAG,
-             ns: EXPR,
+             ns: EXPR option,
              final: bool,
              override: bool,
              prototype: bool,
              static: bool,
              func : FUNC }
 
-     and CTOR_DEFN = 
-           { ns: EXPR,
-             ctor : CTOR }
+     and CTOR_DEFN = CTOR
 
      and VAR_DEFN =
            { kind : VAR_DEFN_TAG,
-             ns : EXPR,
+             ns : EXPR option,
              static : bool,
              prototype : bool,
              bindings : BINDINGS }
 
      and NAMESPACE_DEFN = 
            { ident: IDENT,
-             ns: EXPR,
+             ns: EXPR option,
              init: EXPR option }
 
      and CLASS_DEFN =
            { ident: IDENT, 
-             ns: EXPR,
+             ns: EXPR option,
              nonnullable: bool,
              dynamic: bool,
              final: bool,
@@ -457,11 +445,11 @@ withtype
              classDefns: DEFN list,
              instanceDefns: DEFN list,
              instanceStmts: STMT list,
-             ctorDefn: CTOR_DEFN option }
+             ctorDefn: CTOR option }
 
      and INTERFACE_DEFN =
            { ident: IDENT,
-             ns: EXPR,
+             ns: EXPR option,
              nonnullable: bool,
              params: IDENT list,
              extends: IDENT_EXPR list,
@@ -469,7 +457,7 @@ withtype
          
      and TYPE_DEFN =
            { ident: IDENT,
-             ns: EXPR,
+             ns: EXPR option,
              init: TYPE_EXPR }
 
      and FOR_ENUM_STMT =
@@ -504,7 +492,7 @@ withtype
      and CASE =
            { label: EXPR option,
              inits: INITS option, 
-             body: BLOCK }   (* FIXME: this will cause hoisting problems for lets *)
+             body: BLOCK }   (* FIXME: should be STMT list *)
 
      and TYPE_CASE =
            { ty : TYPE_EXPR option,

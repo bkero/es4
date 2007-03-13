@@ -476,10 +476,6 @@ and evalExpr (scope:Mach.SCOPE)
       | Ast.GetTemp n => 
         Mach.getTemp (getScopeTemps scope) n
 
-      | Ast.DefTemp (n, e) => 
-        (Mach.defTemp (getScopeTemps scope) n (evalExpr scope e);
-         Mach.Undef)
-        
       | Ast.InitExpr (target,temps,inits) =>
         let
             val tempScope = evalHead scope temps false
@@ -1628,10 +1624,10 @@ and evalLabelStmt (scope:Mach.SCOPE)
                   (s:Ast.STMT) 
     : Mach.VAL =
     evalStmt scope s
-    handle BreakException exnLabel
-           => if labelEq [lab] exnLabel
-              then Mach.Undef
-              else raise BreakException exnLabel
+        handle BreakException exnLabel => 
+            if labelEq [lab] exnLabel
+                then Mach.Undef
+                else raise BreakException exnLabel
 
 and evalWhileStmt (scope:Mach.SCOPE)
                   (whileStmt:Ast.WHILE_STMT)
