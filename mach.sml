@@ -7,6 +7,7 @@ structure Mach = struct
 
 val doTrace = ref false
 fun trace ss = if (!doTrace) then LogErr.log ("[mach] " :: ss) else ()
+fun error ss = LogErr.machError ss
 
 datatype VAL = Object of OBJ
              | Null
@@ -446,6 +447,12 @@ fun getMagic (v:VAL)
         Object (Obj ob) => !(#magic ob)
       | _ => NONE
 
+fun needMagic (v:VAL) 
+    : (MAGIC) = 
+    case v of 
+        Object (Obj ob) => valOf (!(#magic ob))
+      | _ => error ["require object with magic"]
+
 (* FIXME: this is not the correct toString *)
 
 fun toString (v:VAL) : string = 
@@ -489,6 +496,58 @@ fun toBoolean (v:VAL) : bool =
         (case !(#magic ob) of 
              SOME (Bool b) => b
            | _ => true)
+
+        
+fun coerceToDecimal (magic:MAGIC) 
+    : Decimal.DEC = 
+    case magic of 
+        Decimal d => d
+      | Double d => valOf (Decimal.fromStringDefault (Real64.toString d))
+      | Int i => valOf (Decimal.fromStringDefault (Int32.toString i))
+      | UInt u => valOf (Decimal.fromStringDefault (Word32.toString u))
+      | _ => error ["unexpected magic in coercion to decimal"]
+
+fun coerceToDouble (magic:MAGIC) 
+    : Real64.real = 
+    case magic of 
+        Double d => d
+      | Decimal d => valOf (Real64.fromString (Decimal.toString d))
+      | Int i => Real64.fromLargeInt (Int32.toLarge i)
+      | UInt u => Real64.fromLargeInt (Word32.toLargeInt u)
+      | _ => error ["unexpected magic in coercion to double"]
+
+fun coerceToUInt (magic:MAGIC) 
+    : Word32.word =
+    case magic of 
+        UInt u => u
+      | Int i => 
+        (* FIXME: is < 0 really an error? Or do we want to permit it? *)
+        if i >= 0 
+        then Word32.fromInt (Int32.toInt i)
+        else error ["negative integer to unsigned integer conversion"]
+      | Decimal d => valOf (Word32.fromString (Decimal.toString d))
+      (* FIXME: might want to involve the rounding mode and IEEEReal here. *)
+      | Double d => Word32.fromInt (Real64.trunc d)
+      | _ => error ["unexpected magic in coercion to uint"]
+
+fun coerceToInt (magic:MAGIC) 
+    : Int32.int =
+    case magic of
+        Int i => i
+      | UInt u => 
+        let 
+            val lu = Word32.toLargeInt u
+            val lmax = Int32.toLarge (valOf (Int32.maxInt))
+        in
+            if LargeInt.<=(lu, lmax)
+            then Int32.fromLarge lu
+            (* FIXME: is > maxint really an error? Or do we want to permit it? *)
+            else error ["unsigned integer out of range of signed integer"]
+        end
+      | Decimal d => valOf (Int32.fromString (Decimal.toString d))
+      (* FIXME: might want to involve the rounding mode and IEEEReal here. *)
+      | Double d => Int32.fromInt (Real64.trunc d)
+      | _ => error ["unexpected magic in coercion to int"]
 
 
 (* 

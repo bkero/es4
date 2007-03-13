@@ -76,8 +76,8 @@ fun runOp (precision:int)
     end
 
 fun fromString (prec:int)
-	       (mode:ROUNDING_MODE)
-	       (s:string)
+	           (mode:ROUNDING_MODE)
+	           (s:string)
     : DEC option =
     SOME (runOp prec mode "normalize" (Dec s) NONE)
     handle DecimalException e => NONE
@@ -92,10 +92,49 @@ fun toString (d:DEC)
 	Dec d' => d'
 
 fun add (prec:int)
-	(mode:ROUNDING_MODE)
-	(a:DEC) 
-	(b:DEC) 
+	    (mode:ROUNDING_MODE)
+	    (a:DEC) 
+	    (b:DEC) 
     : DEC = 
     runOp prec mode "add" a (SOME b)
+
+fun subtract (prec:int)
+	         (mode:ROUNDING_MODE)
+	         (a:DEC) 
+	         (b:DEC) 
+    : DEC = 
+    runOp prec mode "subtract" a (SOME b)
+
+fun multiply (prec:int)
+	         (mode:ROUNDING_MODE)
+	         (a:DEC) 
+	         (b:DEC) 
+    : DEC = 
+    runOp prec mode "multiply" a (SOME b)
+
+fun divide (prec:int)
+	       (mode:ROUNDING_MODE)
+	       (a:DEC) 
+	       (b:DEC) 
+    : DEC = 
+    runOp prec mode "divide" a (SOME b)
+
+fun remainder (prec:int)
+	          (mode:ROUNDING_MODE)
+	          (a:DEC) 
+	          (b:DEC) 
+    : DEC = 
+    runOp prec mode "remainder" a (SOME b)
+
+fun compare (prec:int)
+	        (mode:ROUNDING_MODE)
+	        (a:DEC) 
+	        (b:DEC) 
+    : order = 
+    case runOp prec mode "compare" a (SOME b) of
+        Dec "-1" => LESS
+      | Dec "0" => EQUAL
+      | Dec "1" => GREATER
+      | _ => raise (DecimalException "bad comparison")
 
 end
