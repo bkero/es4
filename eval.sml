@@ -787,7 +787,9 @@ and performBinop (bop:Ast.BINOP)
         fun dispatchComparison mode cmp =
             let
                 fun decimalOp da db =
-                    Mach.newBoolean (cmp (Decimal.compare (#precision mode) (#roundingMode mode) da db))
+                    Mach.newBoolean (cmp (Decimal.compare (#precision mode) 
+                                                          (#roundingMode mode) 
+                                                          da db))
                 fun doubleOp da db = 
                     Mach.newBoolean (cmp (Real64.compare (da, db)))
                 fun intOp ia ib = 
@@ -802,7 +804,8 @@ and performBinop (bop:Ast.BINOP)
             in
                 if isNumeric a andalso isNumeric b
                 then dispatch mode decimalOp doubleOp intOp uintOp
-                else Mach.newBoolean (cmp (String.compare ((Mach.magicToString a), (Mach.magicToString b))))
+                else Mach.newBoolean (cmp (String.compare ((Mach.magicToString a), 
+                                                           (Mach.magicToString b))))
             end
             
         fun dispatchNumeric mode decimalFn doubleFn intFn uintFn =
@@ -818,6 +821,24 @@ and performBinop (bop:Ast.BINOP)
             in
                 dispatch mode decimalOp doubleOp intOp uintOp
             end            
+
+            
+        fun masku32 (x:Word32.word) : Word32.word = 
+            Word32.andb (x, (valOf (Word32.fromString "0xFFFFFFFF")))
+
+        fun masku5 (x:Word32.word) : Word.word = 
+            Word.fromInt (Word32.toInt (Word32.andb (x, (valOf (Word32.fromString "0x1F")))))
+
+        fun i2u (x:Int32.int) : Word32.word = 
+            Word32.fromLargeInt (Int32.toLarge x)
+
+        fun u2i (x:Word32.word) : Int32.int = 
+            Int32.fromLarge (Word32.toLargeInt x)
+
+        fun bitwiseWordOp f = 
+            Mach.newUInt (f ((Mach.coerceToUInt a),
+                             (Mach.coerceToUInt b)))
+                          
     in
         case bop of
             Ast.Plus mode => 
@@ -857,7 +878,24 @@ and performBinop (bop:Ast.BINOP)
                             ( Real64.rem )
                             ( Int32.mod )
                             ( Word32.mod )
-                                  
+
+          | Ast.LeftShift => 
+            Mach.newInt (u2i (masku32 (Word32.<< ((i2u (Mach.coerceToInt a)),
+                                                  (masku5 (Mach.coerceToUInt b))))))
+
+
+          | Ast.RightShift => 
+            Mach.newInt (u2i (Word32.>> ((i2u (Mach.coerceToInt a)),
+                                         (masku5 (Mach.coerceToUInt b)))))
+
+          | Ast.RightShiftUnsigned => 
+            Mach.newUInt (Word32.~>> ((Mach.coerceToUInt a),
+                                      (masku5 (Mach.coerceToUInt b))))
+
+          | Ast.BitwiseAnd => bitwiseWordOp (Word32.andb)
+          | Ast.BitwiseOr => bitwiseWordOp (Word32.orb)
+          | Ast.BitwiseXor => bitwiseWordOp (Word32.xorb)
+
           | Ast.Equals mode => 
             dispatchComparison (valOf mode) 
                                (fn x => x = EQUAL)
@@ -892,55 +930,7 @@ and performBinop (bop:Ast.BINOP)
 
           | _ => LogErr.unimplError ["unhandled binary operator type"]
     end
-            
 
-(*
-    let 
-        fun wordOp wop = 
-            let 
-                val wa = Word.fromInt (trunc (Mach.toNum a))
-                val wb = Word.fromInt (trunc (Mach.toNum b))
-            in
-                Mach.newNumber (real (Word.toInt (wop (wa, wb))))
-            end
-        fun isNum n = 
-            case n of 
-                Mach.Object (Mach.Obj {magic, ... }) => 
-                             (case !magic of 
-                                  SOME (Mach.Number _) => true
-                                | _ => false)
-              | _ => false
-    in
-        case bop of 
-            Ast.Plus _ => 
-            if isNum a andalso isNum b
-            then Mach.newNumber ((Mach.toNum a) + (Mach.toNum b))
-            else Mach.newString ((Mach.toString a) ^ (Mach.toString b))
-          | Ast.Minus _ => Mach.newNumber ((Mach.toNum a) - (Mach.toNum b))
-          | Ast.Times _ => Mach.newNumber ((Mach.toNum a) * (Mach.toNum b))
-          | Ast.Divide _ => Mach.newNumber ((Mach.toNum a) / (Mach.toNum b))
-          | Ast.Remainder _ => Mach.newNumber (real (Int.rem ((trunc (Mach.toNum a)), 
-                                                              (trunc (Mach.toNum b)))))
-                             
-          | Ast.LeftShift => wordOp Word.<<
-          | Ast.RightShift => wordOp Word.>>
-          | Ast.RightShiftUnsigned => wordOp Word.~>>
-          | Ast.BitwiseAnd => wordOp Word.andb
-          | Ast.BitwiseOr => wordOp Word.orb
-          | Ast.BitwiseXor => wordOp Word.xorb
-                              
-          | Ast.Equals _ => Mach.newBoolean (Mach.equals a b)
-          | Ast.NotEquals _ => Mach.newBoolean (not (Mach.equals a b))
-          | Ast.StrictEquals _ => Mach.newBoolean (Mach.equals a b)
-          | Ast.StrictNotEquals _ => Mach.newBoolean (not (Mach.equals a b))
-          | Ast.Less _ => Mach.newBoolean (Mach.less a b)
-          | Ast.LessOrEqual _ => Mach.newBoolean ((Mach.less a b) orelse (Mach.equals a b))
-          | Ast.Greater _ => Mach.newBoolean (not ((Mach.less a b) orelse (Mach.equals a b)))
-          | Ast.GreaterOrEqual _ => Mach.newBoolean (not (Mach.less a b))
-                                  
-          | _ => LogErr.unimplError ["unhandled binary operator type"]
-    end
-*)
 
 and evalBinaryOp (scope:Mach.SCOPE) 
                  (bop:Ast.BINOP) 
