@@ -1316,7 +1316,7 @@ and defStmt (env:ENV)
     : (Ast.STMT * Ast.FIXTURES) = 
     let
         val (ctx::_) = env
-(*
+
         fun reconstructForEnumStmt (fe:Ast.FOR_ENUM_STMT) = 
             case fe of 
                 { obj, defn, labels, body, ... } => 
@@ -1334,7 +1334,6 @@ and defStmt (env:ENV)
                        inits = SOME i1 },
                      hoisted)
                 end
-*)
 
         fun makeIterationLabel id = (id,IterationLabel)
         fun makeStatementLabel id = (id,StatementLabel)
@@ -1524,10 +1523,10 @@ and defStmt (env:ENV)
             end
 
           | Ast.ForEachStmt fe => 
-            (Ast.ForEachStmt fe,[])  (* FIXME inl (Ast.ForEachStmt) (reconstructForEnumStmt fe) *)
+            (inl Ast.ForEachStmt (reconstructForEnumStmt fe))
             
           | Ast.ForInStmt fe => 
-            (Ast.ForInStmt fe,[])   (* FIXME (Ast.ForInStmt) (reconstructForEnumStmt fe) *)
+            (inl Ast.ForInStmt (reconstructForEnumStmt fe))
             
           | Ast.ThrowStmt es => 
             (Ast.ThrowStmt (defExpr env es), [])

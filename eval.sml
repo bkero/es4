@@ -1130,6 +1130,7 @@ and evalStmt (scope:Mach.SCOPE)
       | Ast.IfStmt {cnd,thn,els} => evalIfStmt scope cnd thn els
       | Ast.WhileStmt w => evalWhileStmt scope w
       | Ast.ForStmt w => evalForStmt scope w
+      | Ast.ForInStmt w => evalForInStmt scope w
       | Ast.ReturnStmt r => evalReturnStmt scope r
       | Ast.BreakStmt lbl => evalBreakStmt scope lbl
       | Ast.ContinueStmt lbl => evalContinueStmt scope lbl
