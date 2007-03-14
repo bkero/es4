@@ -5337,8 +5337,8 @@ and functionDefinition (ts,attrs:ATTRS,CLASS) =
         val {ns,final,override,prototype,static,...} = attrs
         val (ts1,nd1) = functionKind (ts)
         val (ts2,nd2) = functionName (ts1)
-    in case (nd1,isCurrentClass(nd2)) of
-        (Ast.Var,true) =>
+    in case (nd1,isCurrentClass(nd2),prototype) of
+        (Ast.Var,true,false) =>
             let
                 val (ts3,nd3) = constructorSignature (ts2)
             in case ts3 of
@@ -5381,8 +5381,8 @@ and functionDefinition (ts,attrs:ATTRS,CLASS) =
                               head=NONE})
                     end
             end
-      | (Ast.LetVar,true) => (error (["class name not allowed in 'let function'"]);raise ParseError)
-      | _ =>
+      | (Ast.LetVar,true,_) => (error (["class name not allowed in 'let function'"]);raise ParseError)
+      | (_,false,false) =>  (* static or instance method *)
             let
                 val (ts3,nd3) = functionSignature (ts2)
             in case ts3 of
@@ -5399,7 +5399,8 @@ and functionDefinition (ts,attrs:ATTRS,CLASS) =
                                              block=nd4}
                     in
                         (ts4,{pragmas=[],
-                              defns=[Ast.FunctionDefn {kind=if (nd1=Ast.Var) then Ast.Const else nd1, (* in a class all functions are read only *)
+                              defns=[Ast.FunctionDefn {kind=if (nd1=Ast.Var) then Ast.Const else nd1, 
+                                          (* in a class all functions are read only *)
                                                        ns=ns,
                                                        final=final,
                                                        override=override,
@@ -5430,6 +5431,64 @@ and functionDefinition (ts,attrs:ATTRS,CLASS) =
                                                                                         defns=[],
                                                                                         body=[Ast.ReturnStmt nd4],
                                                                                         head=NONE}}}],
+                              body=[],
+                              head=NONE })
+                    end
+            end
+      | (_,false,true) =>  (* prototype function *)
+            let
+                val (ts3,nd3) = functionSignature (ts2)
+            in case ts3 of
+                LeftBrace :: _ =>
+                    let
+                        val (ts4,nd4) = functionBody (ts3)
+                        val ident = (#ident nd2)
+                        val func = Ast.Func {name=nd2,
+                                             fsig=nd3,
+                                             param=([],[]),
+                                             defaults=[],
+                                             ty=functionTypeFromSignature nd3,
+                                             isNative=false,
+                                             block=nd4}
+                        val initSteps = [Ast.InitStep (Ast.PropIdent ident, Ast.LiteralExpr (Ast.LiteralFunction func))]
+                        val initStmts = [Ast.InitStmt {kind=nd1,
+                                                       ns=ns,
+                                                       prototype=prototype,
+                                                       static=static,
+                                                       temps=([],[]),
+                                                       inits=initSteps}]
+
+                    in
+                        (ts4,{pragmas=[],
+                              defns=[],
+                              body=initStmts,
+                              head=NONE})
+                    end
+              | _ => 
+                    let
+                        val (ts4,nd4) = listExpression (ts3,ALLOWIN)
+                        val ident = (#ident nd2)
+                        val func = Ast.Func {name=nd2,
+                                             fsig=nd3,
+                                             param=([],[]),
+                                             defaults=[],
+                                             ty=functionTypeFromSignature nd3,
+                                             isNative=false,
+                                             block=Ast.Block {pragmas=[],
+                                                              defns=[],
+                                                              body=[Ast.ReturnStmt nd4],
+                                                              head=NONE}}
+                        val initSteps = [Ast.InitStep (Ast.PropIdent ident, 
+                                                       Ast.LiteralExpr (Ast.LiteralFunction func))]
+                        val initStmts = [Ast.InitStmt {kind=nd1,
+                                                       ns=ns,
+                                                       prototype=prototype,
+                                                       static=static,
+                                                       temps=([],[]),
+                                                       inits=initSteps}]
+                    in
+                        (ts4,{pragmas=[],
+                              defns=[],
                               body=[],
                               head=NONE })
                     end
