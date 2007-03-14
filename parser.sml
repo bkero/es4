@@ -3532,7 +3532,7 @@ and semicolon (ts,FULL) : (token list) =
           (ts))
     end
 
-and statement (ts,w) : (token list * Ast.STMT) =
+and statement (ts,t,w) : (token list * Ast.STMT) =
     let val _ = trace([">> statement with next=", tokenname(hd ts)])
     in case ts of
         If :: _ =>
@@ -3550,7 +3550,7 @@ and statement (ts,w) : (token list * Ast.STMT) =
             end
       | LeftBrace :: _ =>
             let
-                val (ts1,nd1) = blockStatement ts
+                val (ts1,nd1) = blockStatement (ts,t)
             in
                 (ts1,nd1)
             end
@@ -3652,7 +3652,7 @@ and substatement (ts,w) : (token list * Ast.STMT) =
         SemiColon :: _ =>
             (tl ts, Ast.EmptyStmt)
       | _ => 
-            statement(ts,w)
+            statement(ts,LOCAL,w)
     end
 
 (*    
@@ -3689,12 +3689,12 @@ and emptyStatement ts =
         Block
 *)
 
-and blockStatement (ts) =
+and blockStatement (ts,t:tau) =
     let val _ = trace([">> blockStatement with next=", tokenname(hd ts)])
     in case ts of
         LeftBrace :: _ => 
             let
-                val (ts1,nd1) = block (ts,LOCAL)
+                val (ts1,nd1) = block (ts,t)
             in
                 trace(["<< blockStatement with next=", tokenname(hd ts)]);
                 (ts1,Ast.BlockStmt nd1)
@@ -4692,7 +4692,7 @@ and directive (ts,t:tau,w:omega) : (token list * Ast.DIRECTIVES) =
             end
       | Let :: LeftParen :: _  => (* dispatch let statement before let var *)
             let
-                val (ts1,nd1) = statement (ts,w)
+                val (ts1,nd1) = statement (ts,LOCAL,w)
             in
                 (ts1,{pragmas=[],defns=[],body=[nd1],head=NONE})
             end
@@ -4744,7 +4744,7 @@ and directive (ts,t:tau,w:omega) : (token list * Ast.DIRECTIVES) =
             end
       | _ => 
             let
-                val (ts1,nd1) = statement (ts,w)
+                val (ts1,nd1) = statement (ts,t,w)
             in
                 (ts1,{pragmas=[],defns=[],body=[nd1],head=NONE})
             end
@@ -6318,15 +6318,21 @@ and pragmaItem ts =
             end
       | Standard :: _ => (tl ts,Ast.UseStandard)
       | Strict :: _ => (tl ts,Ast.UseStrict)
-      | Default :: Namespace :: (Public | Internal | Intrinsic) :: _ => 
+      | Default :: Namespace :: (Public | Internal | Intrinsic | Protected | Private) :: _ => 
             let
                 val (ts1,nd1) = reservedNamespace (tl (tl ts))
             in
-                (ts1, Ast.UseDefaultNamespace nd1)
+                (ts1, Ast.UseDefaultNamespace (Ast.LiteralExpr (Ast.LiteralNamespace nd1)))
+            end
+      | Default :: Namespace :: _ => 
+            let
+                val (ts1,nd1) = simpleTypeIdentifier (tl (tl ts))
+            in
+                (ts1, Ast.UseDefaultNamespace (Ast.LexicalRef {ident=nd1}))
             end
       | Namespace :: Intrinsic :: _ => 
             let
-                val (ts1,nd1) = (tl (tl ts), Ast.Identifier {ident="intrinsic",openNamespaces=[]})
+                val (ts1,nd1) = (tl (tl ts), (Ast.LexicalRef {ident=Ast.Identifier {ident="intrinsic",openNamespaces=[]}}))
             in
                 (ts1, Ast.UseNamespace nd1)
             end
@@ -6334,10 +6340,10 @@ and pragmaItem ts =
             let
                 val (ts1,nd1) = simpleTypeIdentifier (tl ts)
             in
-                (ts1, Ast.UseNamespace nd1)
+                (ts1, Ast.UseNamespace (Ast.LexicalRef {ident=nd1}))
             end
       | _ =>
-            raise ParseError
+            LogErr.parseError ["invalid pragma"]
     end
 
 (*

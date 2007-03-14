@@ -171,9 +171,9 @@ structure PrettyCvt = struct
      | cvtSPECIAL_TY (Null) = PrettyRep.Ctor ("Null", NONE)
      | cvtSPECIAL_TY (Undefined) = PrettyRep.Ctor ("Undefined", NONE)
      | cvtSPECIAL_TY (VoidType) = PrettyRep.Ctor ("VoidType", NONE)
-   and cvtPRAGMA (UseNamespace x226) = PrettyRep.Ctor ("UseNamespace", SOME (cvtIDENT_EXPR x226))
+   and cvtPRAGMA (UseNamespace x226) = PrettyRep.Ctor ("UseNamespace", SOME (cvtEXPR x226))
      | cvtPRAGMA (UseDefaultNamespace x229) = PrettyRep.Ctor ("UseDefaultNamespace", 
-          SOME (cvtNAMESPACE x229))
+          SOME (cvtEXPR x229))
      | cvtPRAGMA (UseNumber x232) = PrettyRep.Ctor ("UseNumber", SOME (cvtNUMBER_TYPE x232))
      | cvtPRAGMA (UseRounding r235) = PrettyRep.Ctor ("UseRounding", SOME (PrettyRep.DecRm r235))
      | cvtPRAGMA (UsePrecision n238) = PrettyRep.Ctor ("UsePrecision", SOME (PrettyRep.Int n238))
