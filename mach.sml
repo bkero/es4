@@ -455,6 +455,32 @@ fun needMagic (v:VAL)
 
 (* FIXME: this is not the correct toString *)
 
+fun magicToString (magic:MAGIC) 
+    : string =
+    case magic of 
+        Double n => if Real64.== (n, (Real64.realFloor n))
+                    then Int.toString (Real64.floor n)
+                    else Real64.toString n
+      | Decimal d => Decimal.toString d
+      | Int i => Int32.toString i
+      | UInt u => Word32.toString u
+      | String s => s
+      | Bool true => "true"
+      | Bool false => "false"
+      | Namespace (Ast.Private _) => "[private namespace]"
+      | Namespace (Ast.Protected _) => "[protected namespace]"
+      | Namespace Ast.Intrinsic => "[intrinsic namespace]"
+      | Namespace Ast.OperatorNamespace => "[operator namespace]"
+      | Namespace (Ast.Public id) => "[public namespace: " ^ id ^ "]"
+      | Namespace (Ast.Internal _) => "[internal namespace]"
+      | Namespace (Ast.UserNamespace id) => "[user-defined namespace " ^ id ^ "]"
+      | Class _ => "[class Class]"
+      | Interface _ => "[interface Interface]"
+      | Function _ => "[function Function]"
+      | Type _ => "[type Function]"
+      | ByteArray _ => "[ByteArray]"
+      | NativeFunction _ => "[function NativeFunction]"
+
 fun toString (v:VAL) : string = 
     case v of 
         Undef => "undefined"
@@ -463,30 +489,8 @@ fun toString (v:VAL) : string =
         (case !(#magic ob) of 
              NONE => "[object Object]"
            | SOME magic => 
-             (case magic of 
-                  Double n => if Real64.== (n, (Real64.realFloor n))
-                              then Int.toString (Real64.floor n)
-                              else Real64.toString n
-                | Decimal d => Decimal.toString d
-                | Int i => Int32.toString i
-                | UInt u => Word32.toString u
-                | String s => s
-                | Bool true => "true"
-                | Bool false => "false"
-                | Namespace (Ast.Private _) => "[private namespace]"
-                | Namespace (Ast.Protected _) => "[protected namespace]"
-                | Namespace Ast.Intrinsic => "[intrinsic namespace]"
-                | Namespace Ast.OperatorNamespace => "[operator namespace]"
-                | Namespace (Ast.Public id) => "[public namespace: " ^ id ^ "]"
-                | Namespace (Ast.Internal _) => "[internal namespace]"
-                | Namespace (Ast.UserNamespace id) => "[user-defined namespace " ^ id ^ "]"
-                | Class _ => "[class Class]"
-                | Interface _ => "[interface Interface]"
-                | Function _ => "[function Function]"
-                | Type _ => "[type Function]"
-                | ByteArray _ => "[ByteArray]"
-                | NativeFunction _ => "[function NativeFunction]"))
-
+             magicToString magic)
+        
 
 fun toBoolean (v:VAL) : bool = 
     case v of 

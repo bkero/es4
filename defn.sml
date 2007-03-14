@@ -1166,12 +1166,29 @@ and defLiteral (env:ENV)
           | Ast.LiteralContextualHexInteger n => 
             defContextualNumberLiteral env n true true
 
+          | Ast.LiteralArray {exprs, ty} => 
+            Ast.LiteralArray {exprs = defExprs env exprs,
+                              ty = case ty of 
+                                       NONE => NONE
+                                     | SOME t => SOME (defTyExpr env t) }
+          | Ast.LiteralXML exprs => 
+            Ast.LiteralXML (defExprs env exprs)
+
+          | Ast.LiteralObject {expr, ty} => 
+            Ast.LiteralObject {expr = List.map (fn { kind, name, init } => 
+                                                   { kind = kind,
+                                                     name = defIdentExpr env name, 
+                                                     init = defExpr env init }) expr,
+                               ty = case ty of 
+                                        NONE => NONE
+                                      | SOME t => SOME (defTyExpr env t) }
+
           | _ => lit   (* FIXME: other cases to handle here *)
     end
 
 (*
     EXPR
-*)
+*)    
 
 and defExpr (env:ENV) 
             (expr:Ast.EXPR) 
@@ -1184,7 +1201,8 @@ and defExpr (env:ENV)
             Ast.TrinaryExpr (t, sub e1, sub e2, sub e3)
             
           | Ast.BinaryExpr (b, e1, e2) => 
-            let val def = (SOME (#numericMode (hd env)))
+            let 
+                val def = (SOME (#numericMode (hd env)))
                 val opx = (case b of
                                Ast.Plus _ => Ast.Plus def
                              | Ast.Minus _ => Ast.Minus def
@@ -1260,7 +1278,18 @@ and defExpr (env:ENV)
             Ast.LexicalRef { ident = defIdentExpr env ident }
 
           | Ast.SetExpr (a, le, re) => 
-            Ast.SetExpr (a, (sub le), (sub re))
+            let
+                val def = (SOME (#numericMode (hd env)))
+                val a' = case a of
+                             Ast.AssignPlus _ => Ast.AssignPlus def
+                           | Ast.AssignMinus _ => Ast.AssignMinus def
+                           | Ast.AssignTimes _ => Ast.AssignTimes def
+                           | Ast.AssignDivide _ => Ast.AssignDivide def
+                           | Ast.AssignRemainder _ => Ast.AssignRemainder def
+                           | x => x
+            in
+                Ast.SetExpr (a', (sub le), (sub re))
+            end
 
           | Ast.GetTemp n => 
             Ast.GetTemp n

@@ -590,6 +590,9 @@ and evalLiteralExpr (scope:Mach.SCOPE)
       | Ast.LiteralObject {expr, ty} => evalLiteralObjectExpr scope expr ty
       | Ast.LiteralNamespace n => Mach.newNamespace n
       | Ast.LiteralFunction f => Mach.newFunc scope f
+      | Ast.LiteralContextualDecimal _ => error ["contextual decimal literal at runtime"]
+      | Ast.LiteralContextualDecimalInteger _ => error ["contextual decimal integer literal at runtime"]
+      | Ast.LiteralContextualHexInteger _ => error ["contextual hex integer literal at runtime"]
       | _ => LogErr.unimplError ["unhandled literal type"]
 
 
@@ -744,42 +747,43 @@ and performBinop (bop:Ast.BINOP)
     : Mach.VAL = 
 
     let
+        val (a,b) = (Mach.needMagic a, Mach.needMagic b)
+
+        fun stringConcat _ = 
+            Mach.newString ((Mach.magicToString a) ^ (Mach.magicToString b))
+
         fun dispatch (mode:Ast.NUMERIC_MODE) decimalOp doubleOp intOp uintOp =
-            let
-                val (a,b) = (Mach.needMagic a, Mach.needMagic b)
-            in
-                case (#numberType mode) of 
-                    Ast.Decimal => decimalOp (Mach.coerceToDecimal a) (Mach.coerceToDecimal b)
-                  | Ast.Double => doubleOp (Mach.coerceToDouble a) (Mach.coerceToDouble b)
-                  | Ast.Int => intOp (Mach.coerceToInt a) (Mach.coerceToInt b)
-                  | Ast.UInt => uintOp (Mach.coerceToUInt a) (Mach.coerceToUInt b)
-                                
-                  | Ast.Number => 
-                    (* Ast.Number implies operand-based dispatch. *)
-                    case (a, b) of 
-                        (Mach.Decimal da, b) => decimalOp da (Mach.coerceToDecimal b)
-                      | (a, Mach.Decimal db) => decimalOp (Mach.coerceToDecimal a) db
-                                                
-                      | (Mach.Double da, b) => doubleOp da (Mach.coerceToDouble b)
-                      | (a, Mach.Double db) => doubleOp (Mach.coerceToDouble a) db
-                                               
-                      | (Mach.Int i, Mach.UInt u) => 
-                        if i >= 0 
-                        then uintOp (Mach.coerceToUInt a) u
-                        else doubleOp (Mach.coerceToDouble a) (Mach.coerceToDouble b)
-                             
-                      | (Mach.UInt u, Mach.Int i) => 
-                        if i >= 0 
-                        then uintOp u (Mach.coerceToUInt b)
-                        else doubleOp (Mach.coerceToDouble a) (Mach.coerceToDouble b)
-                             
-                      | (Mach.Int ia, Mach.Int ib) => intOp ia ib
-                      | (Mach.UInt ua, Mach.UInt ub) => uintOp ua ub
-                                                        
-                      | _ => error ["non-numeric magic type while ",
-                                    "selecting arithmetic coersions"]
-            end
-            
+            case (#numberType mode) of 
+                Ast.Decimal => decimalOp (Mach.coerceToDecimal a) (Mach.coerceToDecimal b)
+              | Ast.Double => doubleOp (Mach.coerceToDouble a) (Mach.coerceToDouble b)
+              | Ast.Int => intOp (Mach.coerceToInt a) (Mach.coerceToInt b)
+              | Ast.UInt => uintOp (Mach.coerceToUInt a) (Mach.coerceToUInt b)
+                            
+              | Ast.Number => 
+                (* Ast.Number implies operand-based dispatch. *)
+                case (a, b) of 
+                    (Mach.Decimal da, b) => decimalOp da (Mach.coerceToDecimal b)
+                  | (a, Mach.Decimal db) => decimalOp (Mach.coerceToDecimal a) db
+                                            
+                  | (Mach.Double da, b) => doubleOp da (Mach.coerceToDouble b)
+                  | (a, Mach.Double db) => doubleOp (Mach.coerceToDouble a) db
+                                           
+                  | (Mach.Int i, Mach.UInt u) => 
+                    if i >= 0 
+                    then uintOp (Mach.coerceToUInt a) u
+                    else doubleOp (Mach.coerceToDouble a) (Mach.coerceToDouble b)
+                         
+                  | (Mach.UInt u, Mach.Int i) => 
+                    if i >= 0 
+                    then uintOp u (Mach.coerceToUInt b)
+                    else doubleOp (Mach.coerceToDouble a) (Mach.coerceToDouble b)
+                         
+                  | (Mach.Int ia, Mach.Int ib) => intOp ia ib
+                  | (Mach.UInt ua, Mach.UInt ub) => uintOp ua ub
+                                                    
+                  | _ => error ["non-numeric magic type while ",
+                                "selecting arithmetic coersions"]
+                         
         fun dispatchComparison mode cmp =
             let
                 fun decimalOp da db =
@@ -790,8 +794,15 @@ and performBinop (bop:Ast.BINOP)
                     Mach.newBoolean (cmp (Int32.compare (ia, ib)))
                 fun uintOp ua ub = 
                     Mach.newBoolean (cmp (Word32.compare (ua, ub)))
+                fun isNumeric (Mach.Decimal _) = true
+                  | isNumeric (Mach.Double _) = true
+                  | isNumeric (Mach.Int _) = true
+                  | isNumeric (Mach.UInt _) = true
+                  | isNumeric _ = false
             in
-                dispatch mode decimalOp doubleOp intOp uintOp
+                if isNumeric a andalso isNumeric b
+                then dispatch mode decimalOp doubleOp intOp uintOp
+                else Mach.newBoolean (cmp (String.compare ((Mach.magicToString a), (Mach.magicToString b))))
             end
             
         fun dispatchNumeric mode decimalFn doubleFn intFn uintFn =
@@ -806,63 +817,78 @@ and performBinop (bop:Ast.BINOP)
                     Mach.newUInt (uintFn (ua, ub))
             in
                 dispatch mode decimalOp doubleOp intOp uintOp
-            end
-         
+            end            
     in
         case bop of
-            Ast.Plus mode => dispatchNumeric ( valOf mode ) 
-                                             ( Decimal.add )
-                                             ( Real64.+ )
-                                             ( Int32.+ )
-                                             ( Word32.+ )
+            Ast.Plus mode => 
+            (case (a, b) of 
+                 (Mach.String sa, _) => stringConcat ()
+               | (_, Mach.String sb) => stringConcat ()
+               | _ => dispatchNumeric ( valOf mode ) 
+                                      ( Decimal.add )
+                                      ( Real64.+ )
+                                      ( Int32.+ )
+                                      ( Word32.+ ))
                              
-          | Ast.Minus mode => dispatchNumeric ( valOf mode ) 
-                                              ( Decimal.subtract )
-                                              ( Real64.- )
-                                              ( Int32.- )
-                                              ( Word32.- )
+          | Ast.Minus mode => 
+            dispatchNumeric ( valOf mode ) 
+                            ( Decimal.subtract )
+                            ( Real64.- )
+                            ( Int32.- )
+                            ( Word32.- )
 
-          | Ast.Times mode => dispatchNumeric (valOf mode) 
-                                              ( Decimal.multiply )
-                                              ( Real64.* )
-                                              ( Int32.* )
-                                              ( Word32.* )
+          | Ast.Times mode => 
+            dispatchNumeric (valOf mode) 
+                            ( Decimal.multiply )
+                            ( Real64.* )
+                            ( Int32.* )
+                            ( Word32.* )
 
-          | Ast.Divide mode => dispatchNumeric ( valOf mode ) 
-                                               ( Decimal.divide )
-                                               ( Real64./ )
-                                               ( Int32.div )
-                                               ( Word32.div )
+          | Ast.Divide mode => 
+            dispatchNumeric ( valOf mode ) 
+                            ( Decimal.divide )
+                            ( Real64./ )
+                            ( Int32.div )
+                            ( Word32.div )
 
-          | Ast.Remainder mode => dispatchNumeric ( valOf mode ) 
-                                                  ( Decimal.remainder )
-                                                  ( Real64.rem )
-                                                  ( Int32.mod )
-                                                  ( Word32.mod )
+          | Ast.Remainder mode => 
+            dispatchNumeric ( valOf mode ) 
+                            ( Decimal.remainder )
+                            ( Real64.rem )
+                            ( Int32.mod )
+                            ( Word32.mod )
                                   
-          | Ast.Equals mode => dispatchComparison (valOf mode) 
-                                                  (fn x => x = EQUAL)
+          | Ast.Equals mode => 
+            dispatchComparison (valOf mode) 
+                               (fn x => x = EQUAL)
+            
+          | Ast.NotEquals mode => 
+            dispatchComparison (valOf mode) 
+                               (fn x => not (x = EQUAL))
+            
+          | Ast.StrictEquals mode => 
+            dispatchComparison (valOf mode) 
+                               (fn x => x = EQUAL)
 
-          | Ast.NotEquals mode => dispatchComparison (valOf mode) 
-                                                     (fn x => not (x = EQUAL))
+          | Ast.StrictNotEquals mode => 
+            dispatchComparison (valOf mode) 
+                               (fn x => not (x = EQUAL))
 
-          | Ast.StrictEquals mode => dispatchComparison (valOf mode) 
-                                                        (fn x => x = EQUAL)
+          | Ast.Less mode => 
+            dispatchComparison (valOf mode) 
+                               (fn x => x = LESS)
 
-          | Ast.StrictNotEquals mode => dispatchComparison (valOf mode) 
-                                                           (fn x => not (x = EQUAL))
+          | Ast.LessOrEqual mode => 
+            dispatchComparison (valOf mode) 
+                               (fn x => (x = LESS) orelse (x = EQUAL))
 
-          | Ast.Less mode => dispatchComparison (valOf mode) 
-                                                (fn x => x = LESS)
+          | Ast.Greater mode => 
+            dispatchComparison (valOf mode) 
+                               (fn x => x = GREATER)
 
-          | Ast.LessOrEqual mode => dispatchComparison (valOf mode) 
-                                                       (fn x => (x = LESS) orelse (x = EQUAL))
-
-          | Ast.Greater mode => dispatchComparison (valOf mode) 
-                                                (fn x => x = GREATER)
-
-          | Ast.GreaterOrEqual mode => dispatchComparison (valOf mode) 
-                                                          (fn x => (x = GREATER) orelse (x = EQUAL))
+          | Ast.GreaterOrEqual mode => 
+            dispatchComparison (valOf mode) 
+                               (fn x => (x = GREATER) orelse (x = EQUAL))
 
           | _ => LogErr.unimplError ["unhandled binary operator type"]
     end
@@ -1688,6 +1714,11 @@ and headOf (fixtures:Ast.FIXTURES option)
       | (NONE,SOME i) => ([],i)
       | (SOME f,NONE) => (f,[])
       | (SOME f,SOME i) => (f,i)
+
+and evalForInStmt (scope:Mach.SCOPE)
+                  (forStmt:Ast.FOR_ENUM_STMT)
+    : Mach.VAL = 
+    Mach.Undef
 
 and evalForStmt (scope:Mach.SCOPE)
                 (forStmt:Ast.FOR_STMT)
