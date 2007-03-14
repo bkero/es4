@@ -111,8 +111,8 @@ datatype SPECIAL_TY =
        | VoidType
 
 datatype PRAGMA =
-         UseNamespace of IDENT_EXPR
-       | UseDefaultNamespace of NAMESPACE
+         UseNamespace of EXPR
+       | UseDefaultNamespace of EXPR
        | UseNumber of NUMBER_TYPE
        | UseRounding of Decimal.ROUNDING_MODE
        | UsePrecision of int
@@ -511,6 +511,6 @@ type PACKAGE =
 type PROGRAM =
            { packages: PACKAGE list,
              fixtures: FIXTURES option,
-             block: BLOCK }
+              block: BLOCK }
 
 end

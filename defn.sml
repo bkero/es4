@@ -182,11 +182,11 @@ fun resolveExprToNamespace (env:ENV)
 
 and defaultNamespace (c::_) = (#defaultNamespace c)
 
-and resolveExprOptToNamespace (env: ENV) 
-                              (ns : Ast.EXPR option) 
+and resolveExprOptToNamespace (env: ENV)
+                              (ns : Ast.EXPR option)
     : Ast.NAMESPACE =
-       case ns of 
-           NONE => defaultNamespace env 
+       case ns of
+           NONE => defaultNamespace env
          | SOME n => resolveExprToNamespace env n
 
 (*
@@ -1007,18 +1007,21 @@ and defPragmas (env:ENV)
               | Ast.UsePrecision p => precision := p
               | Ast.UseNamespace ns =>
                     let
-                        val namespace = resolveExprToNamespace env (Ast.LexicalRef {ident=ns})
+                        val namespace = resolveExprToNamespace env ns
                     in
                         opennss := (namespace :: !opennss)
                     end
-              | Ast.UseDefaultNamespace dn => 
+              | Ast.UseDefaultNamespace ns =>
                     let
-                    in case dn of
-                        Ast.Intrinsic =>
-                            (opennss := (dn :: !opennss);
-                             defaultNamespace := dn)
+                        val namespace = resolveExprToNamespace env ns
+                        val _ = trace ["use default namespace ",LogErr.name {ns=namespace,id=""}]
+                    in case namespace of
+                        (Ast.Public _ | Ast.Protected _ | Ast.Private _ | Ast.Internal _) => 
+                            (* these ones are already open *)
+                            defaultNamespace := namespace
                       | _ =>
-                            defaultNamespace := dn
+                            (opennss := (namespace :: !opennss);
+                             defaultNamespace := namespace)
                     end
               | _ => ()) pragmas;
 
