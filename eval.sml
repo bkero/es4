@@ -22,7 +22,7 @@ fun extendScope (p:Mach.SCOPE)
     : Mach.SCOPE = 
     Mach.Scope { parent=(SOME p), object=ob, temps=ref [], isVarObject=isVarObject }
 
-    
+
 fun getScopeObj (scope:Mach.SCOPE) 
     : Mach.OBJ = 
     case scope of 
@@ -679,7 +679,7 @@ and evalSetExpr (scope:Mach.SCOPE)
         val v =
             let 
                 fun modifyWith bop = 
-                    performBinop bop (getValue (obj, name)) v
+                    performMagicBinop bop (getValue (obj, name)) v
             in
                 case aop of 
                     Ast.Assign => v
@@ -741,9 +741,9 @@ and evalUnaryOp (scope:Mach.SCOPE)
     end
 *)
 
-and performBinop (bop:Ast.BINOP) 
-                 (a:Mach.VAL) 
-                 (b:Mach.VAL) 
+and performMagicBinop (bop:Ast.BINOP) 
+                      (av:Mach.VAL) 
+                      (bv:Mach.VAL) 
     : Mach.VAL = 
 
     let
@@ -928,7 +928,7 @@ and performBinop (bop:Ast.BINOP)
             dispatchComparison (valOf mode) 
                                (fn x => (x = GREATER) orelse (x = EQUAL))
 
-          | _ => LogErr.unimplError ["unhandled binary operator type"]
+          | _ => error ["unexpected binary operator in performMagicBinOp"]
     end
 
 
@@ -955,8 +955,37 @@ and evalBinaryOp (scope:Mach.SCOPE)
             then a
             else evalExpr scope bexpr
         end
+
+      | Ast.Comma => (evalExpr scope aexpr;
+                      evalExpr scope bexpr)
+
+      | Ast.InstanceOf => 
+        let 
+            val a = evalExpr scope aexpr
+            val b = evalExpr scope bexpr
+        in
+            (* FIXME *)
+            Mach.Undef
+        end
+
+      | Ast.In =>
+        let 
+            val a = evalExpr scope aexpr
+            val astr = Mach.toString a
+            val aname = {id=astr, ns=Ast.Internal ""}
+            val b = evalExpr scope bexpr
+        in
+            case b of 
+                Mach.Object (Mach.Obj {props, ...}) =>
+                Mach.newBoolean (Mach.hasProp props aname)
+              (* FIXME: raise TypeError here *)
+              | _ => error ["non-object on RHS of operator 'in'"]
+                     
+        end
         
-      | _ => performBinop bop (evalExpr scope aexpr) (evalExpr scope bexpr)
+      | _ => performMagicBinop bop 
+                               (evalExpr scope aexpr) 
+                               (evalExpr scope bexpr)
 
 
 and evalCondExpr (scope:Mach.SCOPE) 
