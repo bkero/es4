@@ -115,7 +115,6 @@ datatype token =
     (* contextually reserved identifiers *)
 
     | Call
-    | Construct
     | Debugger
     | Decimal
     | Double
@@ -126,6 +125,7 @@ datatype token =
     | Goto
     | Include
     | Int
+    | Invoke
     | Namespace
     | Native
     | Number
@@ -244,7 +244,7 @@ fun tokenname t =
     
     (* punctuators *)
     
-    Minus => "-"
+        Minus => "-"
       | MinusMinus => "--"
       | Not => "!"
       | NotEquals => "!="
@@ -354,7 +354,6 @@ fun tokenname t =
       (* contextually reserved identifiers *)
 
       | Call => "call"
-      | Construct => "construct"
       | Debugger => "debugger"
       | Decimal => "decimal"
       | Double => "double"
@@ -365,6 +364,7 @@ fun tokenname t =
       | Goto => "goto"
       | Include => "include"
       | Int => "int"
+      | Invoke => "invoke"
       | Namespace => "namespace"
       | Native => "native"
       | Number => "number"

@@ -358,7 +358,6 @@ and identifier ts =
     in case ts of
         Identifier(str) :: tr => (tr,str)
       | Call :: tr => (tr,"call")
-      | Construct :: tr => (tr,"construct")
       | Debugger :: tr => (tr,"debugger")
       | Decimal :: tr => (tr,"decimal")
       | Double :: tr => (tr,"double")
@@ -369,6 +368,7 @@ and identifier ts =
       | Goto :: tr => (tr,"goto")
       | Include :: tr => (tr,"include")
       | Int :: tr => (tr,"int")
+      | Invoke :: tr => (tr,"invoke")
       | Namespace :: tr => (tr,"namespace")
       | Native :: tr => (tr,"native")
       | Number :: tr => (tr,"number")
@@ -2752,6 +2752,7 @@ and assignmentExpression (ts,a,b) : (token list * Ast.EXPR) =
                      | _ => false
 
                 fun makeSetExpr (Ast.AssignStep (lhs,rhs)) = Ast.SetExpr (Ast.Assign,lhs,rhs)
+                  | makeSetExpr (Ast.InitStep _) = LogErr.internalError ["makeSetExpr: shouldn't get here"]
 
                 val p = patternFromExpr nd1
                 val (ts2,nd2) = assignmentExpression(tl ts1,a,b) 
@@ -3403,13 +3404,16 @@ and fieldTypeList ts =
 
 and fieldType (ts) : (token list * Ast.FIELD_TYPE) =
     let val _ = trace([">> fieldType with next=",tokenname(hd(ts))]) 
-        val (ts1,Ast.Identifier{ident=nd1,...}) = fieldName ts   (* fixme: non exhaustive *)
+        val (ts1,nd1) = fieldName ts
+        val ident = case nd1 of
+                        Ast.Identifier{ident,...} => ident
+                      | _ => LogErr.internalError ["fieldType: unexpected field name"]
     in case ts1 of
         Colon :: _ =>
             let
                 val (ts2,nd2) = nullableTypeExpression (tl ts1)
             in
-                (ts2,{name=nd1,ty=nd2})
+                (ts2,{name=ident,ty=nd2})
             end
       | _ => raise ParseError
     end
@@ -4194,7 +4198,7 @@ and forStatement (ts,w) : (token list * Ast.STMT) =
                     end
               | In :: _ =>
                     let
-                        val len = case defn of SOME {bindings=(b,i),...} => length b
+                        val len = case defn of SOME {bindings=(b,i),...} => length b | NONE => 0
                         val (b,i) = if (len > 1) 
                                     then (error(["too many bindings on left side of in"]); 
                                           raise ParseError)
@@ -4691,6 +4695,12 @@ and directive (ts,t:tau,w:omega) : (token list * Ast.DIRECTIVES) =
                 (ts1,{pragmas=[],defns=[],body=[nd1],head=NONE})
             end
       | Let :: LeftParen :: _  => (* dispatch let statement before let var *)
+            let
+                val (ts1,nd1) = statement (ts,LOCAL,w)
+            in
+                (ts1,{pragmas=[],defns=[],body=[nd1],head=NONE})
+            end
+      | Prototype :: (Dot | Assign) :: _  => (* dispatch non attr prototype ref *)
             let
                 val (ts1,nd1) = statement (ts,LOCAL,w)
             in
@@ -5493,6 +5503,7 @@ and functionDefinition (ts,attrs:ATTRS,CLASS) =
                               head=NONE })
                     end
             end
+      | _ => LogErr.unimplError ["functionDefinition"]
     end
 
   | functionDefinition (ts,attrs,t) =
@@ -5564,21 +5575,6 @@ and functionName (ts) : (token list * Ast.FUNC_NAME) =
                 (tl ts,{kind=Ast.ToFunc,ident=""})
             end
       | Call :: _ => 
-            let
-            in case (tl ts) of
-                (LeftParen | LeftDotAngle) :: _ =>
-                    let
-                    in
-                        (tl ts,{kind=Ast.Call,ident=""})
-                    end
-              | _ =>
-                    let
-                        val (ts1,nd1) = propertyIdentifier (tl ts)
-                    in
-                        (ts1,{kind=Ast.Call,ident=nd1})
-                    end
-            end
-      | Construct :: _ => 
             let
             in case (tl ts) of
                 (LeftParen | LeftDotAngle) :: _ =>
