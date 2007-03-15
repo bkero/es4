@@ -2001,8 +2001,8 @@ and postfixExpression (ts,a,b) =
     let val _ = trace([">> postfixExpression with next=",tokenname(hd(ts))]) 
         val (ts1,nd1) = leftHandSideExpression(ts,a,b)
     in case ts1 of
-        PlusPlus :: ts2 => (ts2,Ast.UnaryExpr(Ast.PostIncrement,nd1))
-      | MinusMinus :: ts2 => (ts2,Ast.UnaryExpr(Ast.PostDecrement,nd1))
+        PlusPlus :: ts2 => (ts2,Ast.UnaryExpr(Ast.PostIncrement NONE,nd1))
+      | MinusMinus :: ts2 => (ts2,Ast.UnaryExpr(Ast.PostDecrement NONE,nd1))
       | _ => (trace(["<< postfixExpression"]);(ts1,nd1))
     end
 
@@ -2046,25 +2046,25 @@ and unaryExpression (ts,a,b) =
             let 
                 val (ts2,nd2) = postfixExpression (ts1,a,b) 
             in 
-                (ts2,Ast.UnaryExpr(Ast.PreIncrement,nd2)) 
+                (ts2,Ast.UnaryExpr(Ast.PreIncrement NONE,nd2)) 
             end
       | MinusMinus :: ts1 => 
             let 
                 val (ts2,nd2) = postfixExpression (ts1,a,b) 
             in 
-                (ts2,Ast.UnaryExpr(Ast.PreDecrement,nd2)) 
+                (ts2,Ast.UnaryExpr(Ast.PreDecrement NONE,nd2)) 
             end
       | Plus :: ts1 => 
             let 
                 val (ts2,nd2) = unaryExpression (ts1,a,b) 
             in 
-                (ts2,Ast.UnaryExpr(Ast.UnaryPlus,nd2)) 
+                (ts2,Ast.UnaryExpr(Ast.UnaryPlus NONE,nd2)) 
             end
       | Minus :: ts1 => 
             let 
                 val (ts2,nd2) = unaryExpression (ts1,a,b) 
             in 
-                (ts2,Ast.UnaryExpr(Ast.UnaryMinus,nd2)) 
+                (ts2,Ast.UnaryExpr(Ast.UnaryMinus NONE,nd2)) 
             end
       | BitwiseNot :: ts1 => 
             let 

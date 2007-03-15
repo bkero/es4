@@ -714,12 +714,12 @@ and verifyUnaryExpr (ctxt:CONTEXT)
           | Typeof => (verifyExpr ctxt arg; stringType)
 
 	  (* Assume arg is an l-value *)
-          | PreIncrement  => checkNumeric ()
-          | PostIncrement => checkNumeric ()
-          | PreDecrement  => checkNumeric ()
-          | UnaryPlus     => checkNumeric ()
-          | UnaryMinus    => checkNumeric ()
-          | BitwiseNot    => 
+          | PreIncrement _  => checkNumeric ()
+          | PostIncrement _ => checkNumeric ()
+          | PreDecrement _  => checkNumeric ()
+          | UnaryPlus _     => checkNumeric ()
+          | UnaryMinus _    => checkNumeric ()
+          | BitwiseNot      => 
 	    let in checkConvertible argType uintType; uintType end
           | LogicalNot    => 
 	    let in checkConvertible argType boolType; boolType end
