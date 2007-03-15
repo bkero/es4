@@ -27,3 +27,6 @@
 
 %% [simple class] eval
 @tests/exec/simple-class.es
+
+%% [operator in] eval
+@tests/exec/operator-in.es

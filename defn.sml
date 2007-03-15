@@ -1203,32 +1203,44 @@ and defExpr (env:ENV)
             
           | Ast.BinaryExpr (b, e1, e2) => 
             let 
-                val def = (SOME (#numericMode (hd env)))
-                val opx = (case b of
-                               Ast.Plus _ => Ast.Plus def
-                             | Ast.Minus _ => Ast.Minus def
-                             | Ast.Times _ => Ast.Times def
-                             | Ast.Divide _ => Ast.Divide def
-                             | Ast.Remainder _ => Ast.Remainder def
-                             | Ast.Equals _ => Ast.Equals def
-                             | Ast.NotEquals _ => Ast.NotEquals def
-                             | Ast.StrictEquals _ => Ast.StrictEquals def
-                             | Ast.StrictNotEquals _ => Ast.StrictNotEquals def
-                             | Ast.Less _ => Ast.Less def
-                             | Ast.LessOrEqual _ => Ast.LessOrEqual def
-                             | Ast.Greater _ => Ast.Greater def
-                             | Ast.GreaterOrEqual _ => Ast.GreaterOrEqual def
+                val m = (SOME (#numericMode (hd env)))
+                val b' = (case b of
+                               Ast.Plus _ => Ast.Plus m
+                             | Ast.Minus _ => Ast.Minus m
+                             | Ast.Times _ => Ast.Times m
+                             | Ast.Divide _ => Ast.Divide m
+                             | Ast.Remainder _ => Ast.Remainder m
+                             | Ast.Equals _ => Ast.Equals m
+                             | Ast.NotEquals _ => Ast.NotEquals m
+                             | Ast.StrictEquals _ => Ast.StrictEquals m
+                             | Ast.StrictNotEquals _ => Ast.StrictNotEquals m
+                             | Ast.Less _ => Ast.Less m
+                             | Ast.LessOrEqual _ => Ast.LessOrEqual m
+                             | Ast.Greater _ => Ast.Greater m
+                             | Ast.GreaterOrEqual _ => Ast.GreaterOrEqual m
                              | _ => b)
             in
-                Ast.BinaryExpr (opx, sub e1, sub e2)
+                Ast.BinaryExpr (b', sub e1, sub e2)
             end
             
           | Ast.BinaryTypeExpr (b, e, te) => 
             Ast.BinaryTypeExpr (b, sub e, defTyExpr env te)
 
           | Ast.UnaryExpr (u, e) => 
-            Ast.UnaryExpr (u, sub e)
-
+            let 
+                val m = (SOME (#numericMode (hd env)))
+                val u' = (case u of
+                               Ast.PreIncrement _ => Ast.PreIncrement m
+                             | Ast.PreDecrement _ => Ast.PreDecrement m
+                             | Ast.PostIncrement _ => Ast.PostIncrement m
+                             | Ast.PostDecrement _ => Ast.PostDecrement m
+                             | Ast.UnaryPlus _ => Ast.UnaryPlus m
+                             | Ast.UnaryMinus _ => Ast.UnaryMinus m
+                             | _ => u)
+            in
+                Ast.UnaryExpr (u', sub e)
+            end
+                         
           | Ast.TypeExpr t => 
             Ast.TypeExpr (defTyExpr env t)
 

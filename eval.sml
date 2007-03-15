@@ -22,7 +22,7 @@ fun extendScope (p:Mach.SCOPE)
     : Mach.SCOPE = 
     Mach.Scope { parent=(SOME p), object=ob, temps=ref [], isVarObject=isVarObject }
 
-    
+
 fun getScopeObj (scope:Mach.SCOPE) 
     : Mach.OBJ = 
     case scope of 
@@ -679,7 +679,7 @@ and evalSetExpr (scope:Mach.SCOPE)
         val v =
             let 
                 fun modifyWith bop = 
-                    performBinop bop (getValue (obj, name)) v
+                    performMagicBinop bop (getValue (obj, name)) v
             in
                 case aop of 
                     Ast.Assign => v
@@ -708,42 +708,114 @@ and evalUnaryOp (scope:Mach.SCOPE)
                 (unop:Ast.UNOP) 
                 (expr:Ast.EXPR) 
     : Mach.VAL =
-    Mach.Undef
-(*
     let
-        fun crement f isPre = 
+        fun crement (mode:Ast.NUMERIC_MODE) decimalOp doubleOp intOp uintOp isPre = 
             let 
-                val r = evalRefExpr scope expr false
-                val n = case r of 
-                            (obj, name) => 
-                            Mach.toNum (getValue (obj, name))
-                val n' = Mach.newNumber (f (n, 1.0))
-                val n'' = if isPre
-                          then n'
-                          else Mach.newNumber n
+                val (obj, name) = evalRefExpr scope expr false
+                val v = Mach.needMagic (getValue (obj, name))
+
+                fun asDecimal _ =                         
+                    let 
+                        val vd = Mach.coerceToDecimal v
+                        val one = valOf (Decimal.fromStringDefault "1")
+                    in
+                        (Mach.newDecimal vd, 
+                         Mach.newDecimal (decimalOp 
+                                              (#precision mode) 
+                                              (#roundingMode mode) 
+                                              vd one))
+                    end
+
+                fun asDouble _ = 
+                    let
+                        val vd = Mach.coerceToDouble v
+                        val one = Real64.fromInt 1
+                    in
+                        (Mach.newDouble vd, Mach.newDouble (doubleOp (vd, one)))
+                    end
+
+                fun asInt _ = 
+                    let
+                        val vi = Mach.coerceToInt v
+                        val one = Int32.fromInt 1
+                    in
+                        (Mach.newInt vi, Mach.newInt (intOp (vi, one)))
+                    end
+
+                fun asUInt _ = 
+                    let
+                        val vu = Mach.coerceToUInt v
+                        val one = Word32.fromInt 1
+                    in
+                        (Mach.newUInt vu, Mach.newUInt (uintOp (vu, one)))
+                    end
+                    
+                val (n, n') = 
+                    case (#numberType mode) of 
+                        Ast.Decimal => asDecimal ()         
+                      | Ast.Double => asDouble ()
+                      | Ast.Int => asInt ()
+                      | Ast.UInt => asUInt ()
+                      | Ast.Number => 
+                        (* 
+                         * FIXME: not clear in the spec what conversions to perform here. 
+                         * Draft spec language says "converted to a number". Defaulting to
+                         * "keep the value in whatever type it is before crement".
+                         *)                        
+                        (case v of
+                             Mach.Decimal _ => asDecimal ()
+                           | Mach.Double _ => asDouble ()
+                           | Mach.Int _ => asInt ()
+                           | Mach.UInt _ => asUInt ()
+                           | _ => error ["non-numeric operand to crement operation"])
             in
-                case r of 
-                    (obj, name) => 
-                    (setValue obj name n'; n'')
+                setValue obj name n'; 
+                if isPre then n' else n
             end
-    in            
+    in
         case unop of 
             Ast.Delete => 
             (case evalRefExpr scope expr false of
                  (Mach.Obj {props, ...}, name) => 
                  (Mach.delProp props name; Mach.newBoolean true))
-            
-          | Ast.PreIncrement => crement Real.+ true
-          | Ast.PreDecrement => crement Real.- true
-          | Ast.PostIncrement => crement Real.+ false
-          | Ast.PostDecrement => crement Real.- false
+
+          | Ast.PreIncrement mode => crement (valOf mode)
+                                             (Decimal.add) 
+                                             (Real64.+) 
+                                             (Int32.+) 
+                                             (Word32.+) 
+                                             true
+
+          | Ast.PreDecrement mode => crement (valOf mode)
+                                             (Decimal.subtract) 
+                                             (Real64.-) 
+                                             (Int32.-) 
+                                             (Word32.-) 
+                                             true
+
+          | Ast.PostIncrement mode => crement (valOf mode)
+                                              (Decimal.add) 
+                                              (Real64.+) 
+                                              (Int32.+) 
+                                              (Word32.+) 
+                                              false
+
+          | Ast.PostDecrement mode => crement (valOf mode)
+                                              (Decimal.subtract) 
+                                              (Real64.-) 
+                                              (Int32.-) 
+                                              (Word32.-) 
+                                              false
+
+          | Ast.LogicalNot => 
+            Mach.newBoolean (not (Mach.toBoolean (evalExpr scope expr)))
+
           | _ => LogErr.unimplError ["unhandled unary operator"]
     end
-*)
 
-and performBinop (bop:Ast.BINOP) 
-                 (a:Mach.VAL) 
-                 (b:Mach.VAL) 
+and performMagicBinop (bop:Ast.BINOP) 
+                      (a:Mach.VAL) 
+                      (b:Mach.VAL) 
     : Mach.VAL = 
 
     let
@@ -928,7 +1000,7 @@ and performBinop (bop:Ast.BINOP)
             dispatchComparison (valOf mode) 
                                (fn x => (x = GREATER) orelse (x = EQUAL))
 
-          | _ => LogErr.unimplError ["unhandled binary operator type"]
+          | _ => error ["unexpected binary operator in performMagicBinOp"]
     end
 
 
@@ -955,8 +1027,37 @@ and evalBinaryOp (scope:Mach.SCOPE)
             then a
             else evalExpr scope bexpr
         end
+
+      | Ast.Comma => (evalExpr scope aexpr;
+                      evalExpr scope bexpr)
+
+      | Ast.InstanceOf => 
+        let 
+            val a = evalExpr scope aexpr
+            val b = evalExpr scope bexpr
+        in
+            (* FIXME *)
+            Mach.Undef
+        end
+
+      | Ast.In =>
+        let 
+            val a = evalExpr scope aexpr
+            val astr = Mach.toString a
+            val aname = {id=astr, ns=Ast.Internal ""}
+            val b = evalExpr scope bexpr
+        in
+            case b of 
+                Mach.Object (Mach.Obj {props, ...}) =>
+                Mach.newBoolean (Mach.hasProp props aname)
+              (* FIXME: raise TypeError here *)
+              | _ => error ["non-object on RHS of operator 'in'"]
+                     
+        end
         
-      | _ => performBinop bop (evalExpr scope aexpr) (evalExpr scope bexpr)
+      | _ => performMagicBinop bop 
+                               (evalExpr scope aexpr) 
+                               (evalExpr scope bexpr)
 
 
 and evalCondExpr (scope:Mach.SCOPE) 

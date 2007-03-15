@@ -88,12 +88,12 @@ datatype UNOP =
          Delete
        | Void
        | Typeof
-       | PreIncrement
-       | PreDecrement
-       | PostIncrement
-       | PostDecrement
-       | UnaryPlus
-       | UnaryMinus
+       | PreIncrement of NUMERIC_MODE option
+       | PreDecrement of NUMERIC_MODE option
+       | PostIncrement of NUMERIC_MODE option
+       | PostDecrement of NUMERIC_MODE option
+       | UnaryPlus of NUMERIC_MODE option
+       | UnaryMinus of NUMERIC_MODE option
        | BitwiseNot
        | LogicalNot
        | Type
