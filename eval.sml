@@ -742,8 +742,8 @@ and evalUnaryOp (scope:Mach.SCOPE)
 *)
 
 and performMagicBinop (bop:Ast.BINOP) 
-                      (av:Mach.VAL) 
-                      (bv:Mach.VAL) 
+                      (a:Mach.VAL) 
+                      (b:Mach.VAL) 
     : Mach.VAL = 
 
     let
