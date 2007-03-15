@@ -47,8 +47,9 @@ fun resolve (mname:Ast.MULTINAME)
                    n :: [] => (trace ["resolved to specific name: ", LogErr.name n];
                                SOME n)
                  | [] => tryMultiname xs
-                 | _  => error ["ambiguous reference ", 
-					            LogErr.multiname mname]
+                 | matches  => (List.app (fn m => trace ["matched:", LogErr.name m]) matches;
+                                error ["ambiguous reference ", 
+					                   LogErr.multiname mname])
             end
     in
         case tryMultiname (#nss mname) of

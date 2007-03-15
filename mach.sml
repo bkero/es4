@@ -598,28 +598,6 @@ fun less (va:VAL) (vb:VAL) : bool =
 *)
 
 
-fun hostPrintFunction (vals:VAL list) : VAL = 
-    let
-        fun printOne v = print (toString v) 
-    in
-        (List.app printOne vals; Undef)
-    end
-
-fun hostAssertFunction (vals:VAL list) : VAL = 
-    case vals of 
-        [] => LogErr.hostError ["intrinsic::assert() called with zero args"]
-      | [a] => 
-        (case a of 
-             Null => LogErr.hostError ["intrinsic::assert() called with Null"]
-           | Undef => LogErr.hostError ["intrinsic::assert() called with Undef"]
-           | Object (Obj {magic, ...}) => 
-             (case !magic of 
-                  (SOME (Bool true)) => Undef
-                | (SOME (Bool false)) => LogErr.hostError ["intrinsic::assert() failed"]
-                | _ => LogErr.hostError ["intrinsic::assert() called with non-boolean"]))
-      | _ => LogErr.hostError ["intrinsic::assert() called with multiple args"]
-
-
 val nativeFunctions:(Ast.NAME * NATIVE_FUNCTION) list ref = ref [] 
                                                         
 fun registerNativeFunction (name:Ast.NAME)
@@ -641,36 +619,12 @@ fun getNativeFunction (name:Ast.NAME)
         search (!nativeFunctions)
     end
 
-(* FIXME: this should go away. *)
-fun populateIntrinsics globalObj = 
-    case globalObj of 
-        Obj { props, ... } => 
-        let 
-            fun bindFunc (n, f) = 
-                let 
-                    val name = { id = n, ns = Ast.Intrinsic }
-                    val prop = { ty = Ast.SpecialType Ast.Any,
-                                 state = ValProp (newNativeFunction f), 
-                                 attrs = { dontDelete = true,
-                                           dontEnum = false,
-                                           readOnly = true,
-                                           isFixed = true } }
-                in
-                    addProp props name prop
-                end
-        in
-            List.app bindFunc 
-            [ ("print", hostPrintFunction),
-              ("assert", hostAssertFunction) ]
-        end        
-
 fun resetGlobalObject _ = 
     case globalObject of
         (Obj { props, magic, proto, ... }) => 
         (props := [];
          magic := NONE;
-         proto := Null;
-         populateIntrinsics globalObject)
+         proto := Null)
 
 end
 

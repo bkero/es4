@@ -16,7 +16,6 @@
 
 package
 {
-    public class Object {}
     dynamic class Function
     {       
         use namespace intrinsic;

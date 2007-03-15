@@ -11,7 +11,8 @@ Library
     structure Verify 
     structure Eval
     structure Mach 	
-    structure Magic 
+    structure Native 
+    structure Boot
     structure Decimal
 is
     logerr.sml
@@ -28,7 +29,8 @@ is
     verify.sml
     eval.sml
     mach.sml
-    magic.sml
+    native.sml
+    boot.sml
     decimal.sml
 
     $/basis.cm

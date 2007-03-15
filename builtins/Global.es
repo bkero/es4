@@ -31,7 +31,7 @@ package
     // 15.1.2.4 isNaN (number)
     intrinsic native function isNaN(number:*):boolean;
 
-    // 15.1.2.4 isFinite (number)
+    // 15.1.2.5 isFinite (number)
     intrinsic native function isFinite(number:*):boolean;
     
     // 15.1.3.1 decodeURI (encodedURI)

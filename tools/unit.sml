@@ -299,16 +299,17 @@ fun runTestCase (test : TEST_CASE) : TEST_RESULT =
 )
 
 fun run (filename : string) : TEST_RESULT list =
-    (map runTestCase (parseScript filename))
-    handle e as (BadTestParameter (s, lineNum)) =>
-           (error ("bad test parameter (" ^ s ^ ")") filename lineNum;
-            raise e)
-         | e as (MixedContent lineNum) =>
-           (error ("combined external and inline source") filename lineNum;
-            raise e)
-         | e as (ExtraLink lineNum) =>
-           (error ("multiple external sources") filename lineNum;
-            raise e)
+    (Boot.boot ();
+     (map runTestCase (parseScript filename))
+     handle e as (BadTestParameter (s, lineNum)) =>
+            (error ("bad test parameter (" ^ s ^ ")") filename lineNum;
+             raise e)
+          | e as (MixedContent lineNum) =>
+            (error ("combined external and inline source") filename lineNum;
+             raise e)
+          | e as (ExtraLink lineNum) =>
+            (error ("multiple external sources") filename lineNum;
+             raise e))
 
 fun exitCode (b : bool) : int = if b then 0 else 1
 
@@ -320,6 +321,9 @@ fun consumeTraceOption (opt:string) : bool =
       | "-Tdefn" => (Defn.doTrace := true; false)
       | "-Teval" => (Eval.doTrace := true; false)
       | "-Tmach" => (Mach.doTrace := true; false)
+      | "-Tdecimal" => (Decimal.doTrace := true; false)
+      | "-Tnative" => (Native.doTrace := true; false)
+      | "-Tboot" => (Boot.doTrace := true; false)
       | _ => true
 
 fun main (arg0 : string, args : string list) : int =

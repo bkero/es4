@@ -6,16 +6,21 @@
 structure Main = struct
 
 fun testTC argvRest =
-    let val asts = List.map Parser.parseFile argvRest
+    let 
+    	val _ = TextIO.print "booting ... \n";
+        val _ = Boot.boot (); 
+        val asts = List.map Parser.parseFile argvRest
+	    val _ = TextIO.print "type checking ... \n";
+        val _ = List.map Verify.verifyProgram asts;  
+	    val _ = TextIO.print "type checked! \n"
     in
-	TextIO.print "type checking ... \n";
-    List.map Verify.verifyProgram asts;  
-	TextIO.print "type checked! \n"
+        ()
     end
 
 fun testEV argvRest =
     let 
-        val _ = Magic.registerNatives ()
+    	val _ = TextIO.print "booting ... \n";
+        val _ = Boot.boot (); 
         val _ = TextIO.print "parsing ... \n";
         val asts = List.map Parser.parseFile argvRest
         val _ = TextIO.print "defining ... \n";
@@ -29,6 +34,8 @@ fun testEV argvRest =
 
 fun testDefn argvRest =
     let 
+    	val _ = TextIO.print "booting ... \n";
+        val _ = Boot.boot (); 
     	val _ = TextIO.print "parsing ... \n";
 	    val asts = List.map Parser.parseFile argvRest
     	val _ = TextIO.print "defining ... \n";
@@ -46,11 +53,14 @@ fun consumeTraceOption (opt:string) : bool =
       | "-Teval" => (Eval.doTrace := true; false)
       | "-Tmach" => (Mach.doTrace := true; false)
       | "-Tdecimal" => (Decimal.doTrace := true; false)
+      | "-Tnative" => (Native.doTrace := true; false)
+      | "-Tboot" => (Boot.doTrace := true; false)
       | _ => true
 
 fun main (argv0:string, argvRest:string list) =
-    BackTrace.monitor (fn () =>
-                          ((case List.filter consumeTraceOption argvRest of
+    BackTrace.monitor (fn () =>                          
+                          (
+                           (case List.filter consumeTraceOption argvRest of
                                 ("-tc"::argvRest) => testTC argvRest
 	                          | ("-ev"::argvRest) => testEV argvRest
                               | _ => testDefn argvRest);

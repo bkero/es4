@@ -62,6 +62,12 @@ val defaultNumericMode : Ast.NUMERIC_MODE =
       roundingMode = Decimal.defaultRoundingMode,
       precision = Decimal.defaultPrecision }
 
+val (topFixtures:Ast.FIXTURES ref) = ref []
+
+fun resetTopFixtures _ = 
+    topFixtures := [ (Ast.PropName {ns=Ast.Internal "", id="intrinsic"}, 
+                      Ast.NamespaceFixture Ast.Intrinsic) ]
+
 fun hasFixture (b:Ast.FIXTURES) 
                (n:Ast.FIXTURE_NAME) 
     : bool = 
@@ -1878,26 +1884,25 @@ and defPackage (env:ENV)
 and defProgram (prog:Ast.PROGRAM) 
     : Ast.PROGRAM = 
     let 
-        fun mkNamespaceFixtureBinding pkg = 
-            case (pkg:Ast.PACKAGE) of 
-                {name, ...} => (Ast.PropName {ns=Ast.Internal "", id=name}, 
-                                Ast.NamespaceFixture (Ast.Public name))
-
-        val intrinsicBinding = (Ast.PropName {ns=Ast.Internal "", id="intrinsic"}, 
-                                Ast.NamespaceFixture Ast.Intrinsic)
-        val topEnv = 
-            [{ fixtures = intrinsicBinding::(map mkNamespaceFixtureBinding (#packages prog)),
-               openNamespaces = [[Ast.Internal "", Ast.Public ""]],
-               numericMode = defaultNumericMode, labels = [], 
-               className = NONE, packageName = NONE, defaultNamespace = Ast.Internal "" }]
-        val (packages,hoisted_pkg) = ListPair.unzip (map (defPackage topEnv) (#packages prog))
-        val (block,hoisted_gbl) = defBlock topEnv (#block prog)
-        val result = {packages=packages,block=block,fixtures=SOME ((List.concat hoisted_pkg)@hoisted_gbl)}
+        val topEnv = [ { fixtures = !topFixtures,
+                         openNamespaces = [[Ast.Internal "", Ast.Public ""]],
+                         numericMode = defaultNumericMode, 
+                         labels = [], 
+                         className = NONE, 
+                         packageName = NONE, 
+                         defaultNamespace = Ast.Internal "" } ]
+        val (packages, hoisted_pkg) = ListPair.unzip (map (defPackage topEnv) (#packages prog))
+        val (block, hoisted_gbl) = defBlock topEnv (#block prog)
+        val fixtures = ((List.concat hoisted_pkg)@hoisted_gbl)
+        val result = {packages = packages,
+                      block = block,
+                      fixtures = SOME fixtures}
     in
         trace ["definition complete"];
         (if !doTrace 
          then Pretty.ppProgram result
-         else ());        
+         else ());
+        topFixtures := fixtures @ (!topFixtures);
         result
     end
 end

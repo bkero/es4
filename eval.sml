@@ -810,6 +810,8 @@ and evalUnaryOp (scope:Mach.SCOPE)
           | Ast.LogicalNot => 
             Mach.newBoolean (not (Mach.toBoolean (evalExpr scope expr)))
 
+          | Ast.Void => Mach.Undef
+
           | _ => LogErr.unimplError ["unhandled unary operator"]
     end
 
@@ -1892,8 +1894,7 @@ and evalPackage (scope:Mach.SCOPE)
 
 and evalProgram (prog:Ast.PROGRAM) 
     : Mach.VAL = 
-    (Mach.resetGlobalObject ();
-     allocScopeFixtures Mach.globalScope (valOf (#fixtures prog));
+    (allocScopeFixtures Mach.globalScope (valOf (#fixtures prog));
      map (evalPackage Mach.globalScope) (#packages prog);
      evalBlock Mach.globalScope (#block prog))
 
