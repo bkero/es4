@@ -5,9 +5,52 @@ JEFF'S NOTES ON THE REFERENCE IMPLEMENTATION
 TO DO
 
 - revive for-in statements
-- continue labels
-  - check for valid labels
-  - complete all statements
+- implement paths
+
+###
+
+14-MAR-2007
+
+PATH EXPRESSIONS
+
+Dot separated lists of identifiers appear in the grammar in two places:
+in package names and in member expressions. The meaning of such lists
+is determined by the definer according to the following rules:
+
+* If the first identifier in the list matches a fixture binding in
+  scope, then that identifier is a lexical reference and the path
+  is one or more object references
+* If the first N identifiers match a known package name then the path 
+  is a package name
+* Otherwise the path is assumed to begin with a lexical reference to
+  an unknown global name followed by one or more object references
+
+The definer builds a table of PATHs from the import directives and 
+package definitions it has seen. 
+
+import p.q.* => Path (["p","q"])
+import r.s.A => Path (["r","s"])
+var r
+
+p.q.x.f
+    parser  => (Path ["p","q","x","f"])
+    definer => (ObjRef (LexRef (QualId (PackageName "p.q", "x"), "f")))
+
+	* p.q is a package name so it qualifies x
+    * f is referenced through p.q::x
+
+r.s.A
+    parser  => (Path ["r","s","t"])  
+    definer => (ObjRef (ObjRef (LexRef "r"), "s"), "t")   
+    
+    * r is a fixture, so path is an object path
+
+a.b.c
+    parser  => (Path ["a","b","c"])  
+    definer => (ObjRef (ObjRef (LexRef "a"), "b"), "c")   
+    
+    * 'a' is neither a fixture nor the head of a package name,
+      so path is an object path
 
 ###
 

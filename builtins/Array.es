@@ -250,7 +250,7 @@ package
         // 15.4.4.11 Array.prototype.sort (comparefn)
         // INFORMATIVE: this is an implementation that meets the spec, but the spec
         // allows for different sort implementations (quicksort is not required)
-        type Comparator = function (x:*, y:*):double;
+        type Comparator = function (*,*):double;
 
         public static function sort(self, comparefn) {
             let len:uint = self.length;
@@ -451,10 +451,10 @@ package
         // Array "extras" from JS1.6 (@todo: and JS1.8 -- reduce/reduceRight)
         // See http://developer.mozilla.org/en/docs/New_in_JavaScript_1.6#Array_extras
         // The callback function typically takes (item, i, list) parameters
-        type Mapper  = function (_:*, _:uint, _:Object):*;
-        type Eacher  = function (_:*, _:uint, _:Object):void;
-        type Checker = function (_:*, _:uint, _:Object):Boolean;
-        type Reducer = function (_:*, _:*, _:uint, _:Object):*;
+        type Mapper  = function (*, uint, Object):*;
+        type Eacher  = function (*, uint, Object):void;
+        type Checker = function (*, uint, Object):Boolean;
+        type Reducer = function (*, *, uint, Object):*;
 
         prototype function map(mapper, thisObj)
             this.map(mapper, thisObj);

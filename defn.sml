@@ -15,7 +15,6 @@ fun error ss = LogErr.defnError ss
     To be specific, the definition phase completes the following tasks:
     - fold type expressions
     - fold namespace aliases
-    - de-sugar patterns (parsing)
     - translate defnitions to fixtures + initialisers
     - check for conflicting fixtures
     - hoist fixtures
@@ -28,7 +27,6 @@ fun error ss = LogErr.defnError ss
     TODO
     - fold types
     - inheritance checks
-    - rewrite prototype defns as statements in cinit
     - disambiguate package / object references
  *)
 
@@ -1406,7 +1404,7 @@ and defStmt (env:ENV)
             for ( x=10; x > 0; --x ) ...
         *)
 
-        fun reconstructForStmt { defn, init, cond, update, labels, body, fixtures } =
+        fun defnForStmt env { defn, init, cond, update, labels, body, fixtures } =
             let
                 fun defVarDefnOpt vd =
                     case vd of
@@ -1424,7 +1422,7 @@ and defStmt (env:ENV)
                                 init = newInit,
                                 cond = newCond,
                                 update = newUpdate,
-                                labels = labels,
+                                labels = ""::labels,  (* add the default break/continue label *)
                                 body = newBody,
                                 fixtures = SOME (uf) },
                   hf@hoisted )
@@ -1512,6 +1510,7 @@ and defStmt (env:ENV)
         fun checkLabel labelIdOpt labelKnd =
             let
                 val labelId = case labelIdOpt of NONE => "" | SOME i => i
+                val _ = trace ["checkLabel ",labelId]
             in case env of
                 {labels,...}::_ =>
                     (dumpLabels labels;
@@ -1632,7 +1631,12 @@ and defStmt (env:ENV)
             end
             
           | Ast.ForStmt f => 
-            reconstructForStmt f
+            let
+                val env' = addLabels env (map makeIterationLabel labelIds);
+                val env'' = addLabel env' (makeIterationLabel "")
+            in
+                defnForStmt env'' f
+            end
             
           | Ast.IfStmt { cnd, thn, els } => 
             let
