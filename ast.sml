@@ -216,7 +216,8 @@ datatype PRAGMA =
        | InstanceType of
            { name: NAME, 
              typeParams: IDENT list, 
-             ty: TYPE_EXPR }
+             ty: TYPE_EXPR,
+             isDynamic: bool }
 
      and STMT =
          EmptyStmt
@@ -232,9 +233,6 @@ datatype PRAGMA =
            { ns: EXPR option,
              ident: IDENT,
              name: NAME option,
-             block: BLOCK }
-       | PackageBlock of
-           { name: IDENT,
              block: BLOCK }
        | ForEachStmt of FOR_ENUM_STMT
        | ForInStmt of FOR_ENUM_STMT

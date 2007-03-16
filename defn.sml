@@ -44,8 +44,9 @@ type CONTEXT =
        openNamespaces: Ast.NAMESPACE list list, 
        numericMode: Ast.NUMERIC_MODE,
        labels: LABEL list,
+       imports: Ast.IDENT list list,
        className: Ast.NAME option,
-       packageName: Ast.IDENT option,
+       packageName: Ast.IDENT list,
        defaultNamespace: Ast.NAMESPACE }
 
 type ENV = CONTEXT list
@@ -181,11 +182,35 @@ fun multinameHasFixture (env:ENV)
     expression
 *)
 
+fun packageIdentFromPath path ident
+    : Ast.IDENT =
+    case (path) of
+       [] => ident
+     | (pthid::pth) => 
+       let
+           val dot = if ident="" then "" else "."
+       in
+           packageIdentFromPath pth (ident^dot^pthid)
+       end
+
+
 fun resolveExprToNamespace (env:ENV) 
                            (expr:Ast.EXPR) 
     : Ast.NAMESPACE = 
     case expr of 
-        Ast.LiteralExpr (Ast.LiteralNamespace ns) => ns
+        Ast.LiteralExpr (Ast.LiteralNamespace ns) => 
+        let
+            val packageName = (#packageName (hd env))
+val _ = trace ["packageIdent ",packageIdentFromPath packageName ""]
+            val ident = case packageName of 
+                             [] => "" 
+                           | p => packageIdentFromPath p ""
+            val _ = trace ["packageName ",ident]
+        in case ns of
+            Ast.Public _ => Ast.Public ident
+          | Ast.Internal _ => Ast.Internal ident
+          | _ => ns
+        end
       | Ast.LexicalRef {ident = Ast.Identifier {ident,...} } => 
         let 
             val mname = {nss = (#openNamespaces (hd env)), id = ident}
@@ -220,14 +245,17 @@ fun extendEnvironment (env:ENV)
                 openNamespaces = [[Ast.Internal ""]],
                 numericMode = defaultNumericMode,
                 labels = [],
+                imports = [],
                 className = NONE,
-                packageName = NONE,
+                packageName = [],
                 defaultNamespace = Ast.Internal "" } :: [])
-      | ({ numericMode, openNamespaces, labels, className, packageName, defaultNamespace, ... }) :: _ =>
+      | ({ numericMode, openNamespaces, labels, imports, className, 
+           packageName, defaultNamespace, ... }) :: _ =>
         { fixtures = fixtures,
           openNamespaces = openNamespaces, 
           numericMode = numericMode,
           labels = labels,
+          imports = imports,
           className = className,
           packageName = packageName,
           defaultNamespace = defaultNamespace } :: env
@@ -240,6 +268,7 @@ fun updateEnvironment (ctx::ex) (fxtrs:Ast.FIXTURES)
           openNamespaces = (#openNamespaces ctx), 
           numericMode = (#numericMode ctx),
           labels = (#labels ctx),
+          imports = (#imports ctx),
           className = (#className ctx),
           packageName = (#packageName ctx),
           defaultNamespace = (#defaultNamespace ctx) } :: ex
@@ -276,9 +305,11 @@ fun addLabel (env:ENV) (label:LABEL)
         in
             checkLabel env label;
             case env of 
-                ({fixtures,labels,openNamespaces,numericMode,className,packageName,defaultNamespace}::e) =>
+                ({fixtures,labels,imports,openNamespaces,numericMode,className,
+                  packageName,defaultNamespace}::e) =>
                        { fixtures=fixtures,
                          labels=label::labels,
+                         imports=imports,
                          openNamespaces=openNamespaces,
                          numericMode=numericMode,
                          className = className,
@@ -1017,15 +1048,17 @@ and defCtor (env:ENV) (ctor:Ast.CTOR)
 and defPragmas (env:ENV)
                (pragmas:Ast.PRAGMA list)
     : ENV =
-    let val ctx : CONTEXT  = hd env
+    let 
+        val ctx : CONTEXT  = hd env
         val mode      = #numericMode ctx
         val numType   = ref (#numberType mode)
         val rounding  = ref (#roundingMode mode)
         val precision = ref (#precision mode)
         val defaultNamespace = ref (#defaultNamespace ctx)
         val opennss   = ref []
-    in
-        List.app (fn x => (* defPragma *)
+        val imports  = ref (#imports ctx)
+
+        fun defPragma x =
             case x of 
                 Ast.UseNumber n => numType := n
               | Ast.UseRounding m => rounding := m
@@ -1048,10 +1081,21 @@ and defPragmas (env:ENV)
                             (opennss := (namespace :: !opennss);
                              defaultNamespace := namespace)
                     end
-              | _ => ()) pragmas;
+              | Ast.Import {package,name,alias} =>  
+(* FIXME: need to define alias and disciminate between * and named imports *)
+                    let   
+                    in
+                        imports := package::(!imports);
+                        opennss  := (Ast.Public name)::(!opennss)
+                    end
+              | _ => ()
+
+    in
+        List.app defPragma pragmas;
 
           { fixtures = [],
             labels = (#labels ctx),
+            imports = (#imports ctx),
             openNamespaces = (case !opennss of 
                                  [] => (#openNamespaces ctx)   (* if opennss is empty, don't concat *)
                                | _  => !opennss :: (#openNamespaces ctx)),
@@ -1226,8 +1270,8 @@ and resolvePath (env:ENV) (path:Ast.IDENT list)
             then resolveObjectPath env path NONE
             else 
             let
-                val package = ["a","b"]
-                val (pkg,pth) = resolvePackagePath package path ""
+                val imports = [["a","b"]]  (* (#imports (hd env)) *)
+                val (pkg,pth) = resolvePackagePath imports path
             in case (pkg,pth) of
                      (SOME pk,[]) => Ast.LiteralExpr (Ast.LiteralNamespace (Ast.Public pk))
                    | (SOME pk,_) => resolveObjectPath env pth NONE  (* FIXME: qualify with package *)
@@ -1262,18 +1306,31 @@ and resolveObjectPath (env:ENV) (path:Ast.IDENT list) (expr:Ast.EXPR option)
     return the package qualifier expression and the remaining path
 *)
 
-and resolvePackagePath (package: Ast.IDENT list) (path:Ast.IDENT list) (ident:Ast.IDENT)
+and resolvePackagePath (imports: Ast.IDENT list list) (path:Ast.IDENT list)
     : Ast.IDENT option * Ast.IDENT list =
     let
-    in case (package,path) of
-        ([],_) => (SOME ident,path)
-      | (pkgid::pkg,pthid::pth) => 
+
+        fun resolvePackage (package:Ast.IDENT list) (path:Ast.IDENT list) (ident:Ast.IDENT)
+            : Ast.IDENT option * Ast.IDENT list =
+            case (package,path) of
+                ([],_) => (SOME ident,path)
+          | (pkgid::pkg,pthid::pth) => 
+            let
+                val dot = if ident="" then "" else "."
+            in
+                if pkgid = pthid 
+                then resolvePackage pkg pth (ident^dot^pkgid)
+                else (NONE,path)
+            end
+
+    in case (imports,path) of
+        ([],_) => (NONE,path)  (* no match *)
+      | (pkg::pkgs,_) => 
         let
-            val dot = if ident="" then "" else "."
-        in
-            if pkgid = pthid 
-            then resolvePackagePath pkg pth (ident^dot^pkgid)
-            else (NONE,path)
+            val (ident,path) = resolvePackage pkg path ""
+        in case (ident,pkgs) of
+            (NONE,_) => resolvePackagePath pkgs path (* no match yet, try again *)
+          | (SOME _,_) => (ident,path) (* match, return the remainder of the path *)
         end
     end
 
@@ -1968,9 +2025,21 @@ and defPackage (env:ENV)
                (package:Ast.PACKAGE) 
     : (Ast.PACKAGE * Ast.FIXTURES) =
         let
-            val (block,hoisted) = defBlock env (#block package)
+            val packageName : Ast.IDENT list = (#name package)
+            val packageIdent = packageIdentFromPath packageName ""
+            val _ = trace ["packageIdent ",packageIdent]
+            val env' = {fixtures = [],
+                        openNamespaces = [[Ast.Internal packageIdent, Ast.Public packageIdent]],
+                        numericMode = defaultNumericMode, 
+                        labels = [],
+                        imports = [],
+                        className = NONE, 
+                        packageName = packageName, 
+                        defaultNamespace = Ast.Internal packageIdent } :: env
+
+            val (block,hoisted) = defBlock env' (#block package)
         in
-            ({ name = (#name package),
+            ({ name = packageName,
               block = block }, hoisted)
         end
 
@@ -1985,9 +2054,10 @@ and defProgram (prog:Ast.PROGRAM)
         val topEnv = [ { fixtures = !topFixtures,
                          openNamespaces = [[Ast.Internal "", Ast.Public ""]],
                          numericMode = defaultNumericMode, 
-                         labels = [], 
+                         labels = [],
+                         imports = [],
                          className = NONE, 
-                         packageName = NONE, 
+                         packageName = [], 
                          defaultNamespace = Ast.Internal "" } ]
         val (packages, hoisted_pkg) = ListPair.unzip (map (defPackage topEnv) (#packages prog))
         val (block, hoisted_gbl) = defBlock topEnv (#block prog)

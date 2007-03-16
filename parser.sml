@@ -5575,8 +5575,9 @@ and functionName (ts) : (token list * Ast.FUNC_NAME) =
             end            
       | To :: _ => 
             let
+                val (ts1,nd1) = identifier (tl ts)
             in
-                (tl ts,{kind=Ast.ToFunc,ident=""})
+                (ts1,{kind=Ast.ToFunc,ident=nd1})
             end
       | Call :: _ => 
             let
@@ -6471,7 +6472,8 @@ and program (ts) : (token list * Ast.PROGRAM) =
             end
     end
 
-and packages ts =
+and packages ts 
+    : token list * Ast.PACKAGE list =
     let val _ = trace([">> packages with next=",tokenname(hd(ts))])
     in case ts of
         (Internal :: Package :: _ | Package :: _) =>
@@ -6505,7 +6507,7 @@ and packages ts =
         Block(global)
 *)
 
-and package ts =
+and package ts : (token list * Ast.PACKAGE) =
     let val _ = trace([">> package with next=",tokenname(hd(ts))])
     in case ts of
         Internal :: Package :: _ => 
@@ -6513,7 +6515,7 @@ and package ts =
                 val (ts1,nd1) = packageName (tl (tl ts))
                 val (ts2,nd2) = block (ts1,GLOBAL)
             in
-                (ts2,{name=nd1, block=nd2})
+                (ts2, {name=nd1, block=nd2})
             end
       | Package :: LeftBrace :: _ =>
             let
