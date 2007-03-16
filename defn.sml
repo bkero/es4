@@ -539,10 +539,9 @@ and inheritFixtures (base:Ast.FIXTURES)
             in case targetFixture of
                 NONE => (n,fb)::derived    (* not in the derived class, so inherit it *)
               | SOME fd => 
-                (Pretty.ppFixtures [(n,fb)]; Pretty.ppFixtures [(n,fd)];
                 case (canOverride fb fd) of
                     true => derived  (* return current fixtures *)
-                  | _ => LogErr.defnError ["illegal override of ", LogErr.fname n])
+                  | _ => LogErr.defnError ["illegal override of ", LogErr.fname n]
             end                    
 
         (* 
