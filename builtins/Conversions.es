@@ -83,3 +83,4 @@ package
             throw new TypeError("Can't convert undefined or null to Object");
         return value;
     }
+}

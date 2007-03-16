@@ -45,7 +45,7 @@ package
             this;
 
         /* E262-4 draft ch 19 */
-        intrinsic function valueOf() : Boolean
+        override intrinsic function valueOf() : Boolean
             this;
     }
 }

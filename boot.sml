@@ -58,7 +58,33 @@ fun boot _ =
      Native.registerNatives ();
      load "builtins/Object.es";
      load "builtins/Global.es";
-     load "builtins/Function.es";
      load "builtins/Error.es";
+     load "builtins/Conversions.es";
+     load "builtins/Function.es";
+
+     load "builtins/Boolean.es";
+
+     load "builtins/uint.es";
+     load "builtins/int.es";
+     load "builtins/double.es";
+     load "builtins/decimal.es";
+     load "builtins/Number.es";
+     load "builtins/Numeric.es";
+     load "builtins/Math.es";
+
+     load "builtins/string_primitive.es";
+     load "builtins/String.es";
+     load "builtins/Unicode.es";
+
+     load "builtins/Array.es";
+     load "builtins/ByteArray.es";
+     load "builtins/Function.es";
+     load "builtins/Date.es";
+     load "builtins/JSON.es";
+
+     load "builtins/RegExpCompiler.es";
+     load "builtins/RegExpEvaluator.es";
+     load "builtins/RegExp.es";
+
      describeGlobal ())
 end
