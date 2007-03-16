@@ -133,8 +133,6 @@ fun isInstanceInit (s:Ast.STMT)
     end
 
 (*
-    resolve a multiname to a fixture
-
     resolve a multiname to a name and then get the corresponding fixture
 
     for each nested context in the environment, look for a fixture that matches
@@ -159,6 +157,22 @@ fun resolveMultinameToFixture (env:ENV)
             NONE => LogErr.defnError ["unresolved fixture ", LogErr.multiname mname]
           | SOME (({fixtures, ...}::_), n) => (n, getFixture fixtures (Ast.PropName n))
           | SOME _ => LogErr.defnError ["fixture lookup error ", LogErr.multiname mname]
+    end
+
+fun multinameHasFixture (env:ENV) 
+                        (mname:Ast.MULTINAME) 
+    : bool =
+    let
+        fun envHeadHasFixture ([],n) = false
+          | envHeadHasFixture ((env:ENV),n) = hasFixture (#fixtures (List.hd env)) (Ast.PropName n) 
+        fun getEnvParent [] = NONE
+          | getEnvParent (x::[]) = NONE
+          | getEnvParent (x::xs) = SOME xs
+    in
+        case Multiname.resolve mname env envHeadHasFixture getEnvParent of
+            NONE => false
+          | SOME (({fixtures, ...}::_), n) => true
+          | _ => LogErr.defnError ["fixture lookup error ", LogErr.multiname mname]
     end
 
 (*
@@ -494,9 +508,10 @@ and inheritFixtures (base:Ast.FIXTURES)
             in case targetFixture of
                 NONE => (n,fb)::derived    (* not in the derived class, so inherit it *)
               | SOME fd => 
+                (Pretty.ppFixtures [(n,fb)]; Pretty.ppFixtures [(n,fd)];
                 case (canOverride fb fd) of
                     true => derived  (* return current fixtures *)
-                  | _ => LogErr.defnError ["illegal override of ", LogErr.fname n]
+                  | _ => LogErr.defnError ["illegal override of ", LogErr.fname n])
             end                    
 
         (* 
@@ -528,13 +543,19 @@ and inheritFixtures (base:Ast.FIXTURES)
                          Ast.MethodFixture 
                              {ty=(Ast.FunctionType 
                                       {typeParams=tpd,params=pd,result=rtd,...}),...}) =>
-                        (length tpb)=(length tpd) 
-                        andalso (length pb)=(length pd) 
-                        andalso (((isVoid rtb) andalso (isVoid rtd)) 
-                                 orelse
-                                 ((not (isVoid rtb)) andalso (not (isVoid rtd)))) 
+                            let
+                                val _ = trace ["length tpb ",Int.toString (length tpb)," length tpd ",Int.toString (length tpd),"\n"]
+                                val _ = trace ["length pb ",Int.toString (length pb)," length pd ",Int.toString (length pd),"\n"]
+                            in
+                                (length tpb)=(length tpd) 
+                                    andalso (length pb)=(length pd) 
+                                    andalso (((isVoid rtb) andalso (isVoid rtd)) 
+                                        orelse
+                                        ((not (isVoid rtb)) andalso (not (isVoid rtd)))) 
                                 (* FIXME: check compatibility of return types? *)
+                            end
                       | _ => false
+                val _ = trace ["isCompatible = ",Bool.toString isCompatible]
             
             in case (fb,fd) of
                 (Ast.MethodFixture {final,...}, Ast.MethodFixture {override,...}) => 
@@ -1065,9 +1086,9 @@ and defIdentExpr (env:ENV)
           | Ast.AttributeIdentifier ai => 
             Ast.AttributeIdentifier (defIdentExpr env ai)
 
-          | Ast.TypeIdentifier { ident, typeParams } => 
+          | Ast.TypeIdentifier { ident, typeArgs } => 
             Ast.TypeIdentifier { ident=(defIdentExpr env ident), 
-                                 typeParams=typeParams }
+                                 typeArgs=typeArgs }
 
           | Ast.QualifiedIdentifier { qual, ident } => 
             Ast.QualifiedIdentifier { qual = defExpr env qual, 
@@ -1194,8 +1215,68 @@ and defLiteral (env:ENV)
     end
 
 (*
-    EXPR
 *)    
+
+and resolvePath (env:ENV) (path:Ast.IDENT list)
+    : Ast.EXPR =
+    let
+        val ident = Ast.Identifier {ident=(hd path),openNamespaces=[]}
+    in 
+        if multinameHasFixture env (identExprToMultiname env ident)
+            then resolveObjectPath env path NONE
+            else 
+            let
+                val package = ["a","b"]
+                val (pkg,pth) = resolvePackagePath package path ""
+            in case (pkg,pth) of
+                     (SOME pk,[]) => Ast.LiteralExpr (Ast.LiteralNamespace (Ast.Public pk))
+                   | (SOME pk,_) => resolveObjectPath env pth NONE  (* FIXME: qualify with package *)
+                   | (NONE,_) => resolveObjectPath env path NONE
+            end
+    end
+
+and resolveObjectPath (env:ENV) (path:Ast.IDENT list) (expr:Ast.EXPR option)
+    : Ast.EXPR =
+    let
+    in case (expr, path) of
+        (NONE, ident::identList) => 
+            let
+                val base = Ast.LexicalRef {ident=Ast.Identifier {ident=ident,openNamespaces=[]}}
+            in
+                resolveObjectPath env identList (SOME base)
+            end
+      | (SOME expr, ident::identList) =>
+            let
+                val base = Ast.ObjectRef {base=expr, ident=Ast.Identifier {ident=ident,openNamespaces=[]}}
+            in
+                resolveObjectPath env identList (SOME base)
+            end
+      | (SOME expr, []) =>
+            let
+            in
+                expr
+            end
+    end
+
+(*
+    return the package qualifier expression and the remaining path
+*)
+
+and resolvePackagePath (package: Ast.IDENT list) (path:Ast.IDENT list) (ident:Ast.IDENT)
+    : Ast.IDENT option * Ast.IDENT list =
+    let
+    in case (package,path) of
+        ([],_) => (SOME ident,path)
+      | (pkgid::pkg,pthid::pth) => 
+        let
+            val dot = if ident="" then "" else "."
+        in
+            if pkgid = pthid 
+            then resolvePackagePath pkg pth (ident^dot^pkgid)
+            else (NONE,path)
+        end
+    end
+
 
 and defExpr (env:ENV) 
             (expr:Ast.EXPR) 
@@ -1294,7 +1375,20 @@ and defExpr (env:ENV)
                             ident = defIdentExpr env ident }
 
           | Ast.LexicalRef { ident } => 
-            Ast.LexicalRef { ident = defIdentExpr env ident }
+            let
+            in case ident of
+                Ast.UnresolvedPath (p,i) =>
+                    let
+                        val base = resolvePath env p
+                    in case (base,i) of
+                        (Ast.LiteralExpr _,Ast.Identifier {ident=id,...}) => 
+                            Ast.LexicalRef {ident=Ast.QualifiedIdentifier {qual=base,ident=id}}
+                      | (Ast.LiteralExpr _,_) => LogErr.defnError ["invalid package qualification"]
+                      | (_,_) => Ast.ObjectRef { base=(defExpr env base), ident=i }
+                    end
+              | _ =>
+                    Ast.LexicalRef { ident = defIdentExpr env ident }
+            end
 
           | Ast.SetExpr (a, le, re) => 
             let

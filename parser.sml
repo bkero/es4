@@ -606,13 +606,17 @@ and qualifiedIdentifier ts =
 and simpleTypeIdentifier ts =
     let val _ = trace([">> simpleTypeIdentifier with next=",tokenname(hd(ts))]) 
     in case ts of
-        PackageIdentifier p :: Dot :: ts1 => 
-            let val (ts2,nd2) = identifier(ts1) 
-                val nd' = Ast.QualifiedIdentifier(
-                           {qual=Ast.LiteralExpr(Ast.LiteralNamespace(Ast.Public(p))),
-                            ident=nd2})
-            in 
-                (ts2,nd') 
+        Identifier _ :: Dot :: _ => 
+            let 
+                val (ts1,nd1) = dottedPath ts
+            in case ts1 of
+                Dot :: _ =>
+                    let
+                       val (ts2,nd2) = nonAttributeQualifiedIdentifier (tl ts1)
+                    in
+                       (ts2,Ast.UnresolvedPath (nd1,nd2)) 
+                    end
+              | _ => LogErr.internalError ["simpleTypeIdentifier"]
             end
       | _ => nonAttributeQualifiedIdentifier(ts)
     end
@@ -633,7 +637,7 @@ and typeIdentifier ts =
             in case ts2 of
                 GreaterThan :: _ =>
                     (trace(["<< typeIdentifier with next=",tokenname(hd(tl ts2))]); 
-                    (tl ts2,Ast.TypeIdentifier {ident=nd1,typeParams=nd2}))
+                    (tl ts2,Ast.TypeIdentifier {ident=nd1,typeArgs=nd2}))
               | _ => error ["unknown final token of parametric type expression"]
             end
       | _ =>
@@ -1894,7 +1898,7 @@ and propertyOperator (ts, nd) =
                         ((true,(Intrinsic | Private | Public | Protected | Internal) ::_) |
                          (false,_)) => 
                             let
-                                val (ts1,nd1) = qualifiedIdentifier(tl ts)
+                                val (ts1,nd1) = typeIdentifier (tl ts)  (* qualifiedIdentifier(tl ts) *)
                             in
                                 (ts1,Ast.ObjectRef {base=nd,ident=nd1})
                             end
@@ -5425,7 +5429,7 @@ and functionDefinition (ts,attrs:ATTRS,CLASS) =
                         val (ts4,nd4) = listExpression (ts3,ALLOWIN)
                     in
                         (ts4,{pragmas=[],
-                              defns=[Ast.FunctionDefn {kind=nd1, 
+                              defns=[Ast.FunctionDefn {kind=if (nd1=Ast.Var) then Ast.Const else nd1,
                                                        ns=ns,
                                                        final=final,
                                                        override=override,
@@ -6357,41 +6361,40 @@ and importPragma (ts) : token list * Ast.PRAGMA list =
         Import :: _ :: Assign :: _ =>
             let
                 val (ts1,nd1) = identifier (tl ts)
-                val (ts2,{package,name}) = importName (tl ts1)
+                val (ts2,(p,i)) = importName (tl ts1)
             in
-                (ts2,[Ast.Import {package=package,name=name,alias=SOME nd1}])
+                (ts2,[Ast.Import {package=p,name=i,alias=SOME nd1}])
             end
       | Import :: _ =>
             let
-                val (ts1,{package,name}) = importName (tl ts)
+                val (ts1,(p,i)) = importName (tl ts)
             in
-                (ts1,[Ast.Import {package=package,name=name,alias=NONE}])
+                (ts1,[Ast.Import {package=p,name=i,alias=NONE}])
             end
       | _ => raise ParseError
     end
 
-and importName (ts) =
+and importName (ts) : (token list * (Ast.IDENT list * Ast.IDENT)) =
     let val _ = trace([">> importName with next=", tokenname(hd ts)])
     in case ts of
         Identifier p :: Dot :: _ =>
             let
                 val (ts1,nd1) = (tl ts,p)
-                val (ts2,nd2) = importName (tl ts1)
-                val dotOrNot = if (#package nd2) = "" then "" else "."
+                val (ts2,(p,i)) = importName (tl ts1)
             in
-                (ts2,{package=(nd1^dotOrNot^(#package nd2)),name=(#name nd2)})
+                (ts2,(nd1::p,i))
             end
       | Mult :: _ =>
             let
                 val (ts1,nd1) = (tl ts,"*")
             in
-                (ts1,{package="",name=nd1})
+                (ts1,([],nd1))
             end
       | Identifier p :: _ =>
             let
                 val (ts1,nd1) = (tl ts,p)
             in
-                (ts1,{package="",name=nd1})
+                (ts1,([],nd1))
             end
       | _ => raise ParseError
     end
@@ -6494,7 +6497,7 @@ and packages ts =
         empty
         PackageName
         
-    PackageName [create a lexical PackageIdentifier with the sequence of characters that make a PackageName]    
+    PackageName
         Identifier
         PackageName  .  Identifier
         
@@ -6516,7 +6519,7 @@ and package ts =
             let
                 val (ts1,nd1) = block (tl ts,GLOBAL)
             in
-                (ts1, {name="", block=nd1})
+                (ts1, {name=[], block=nd1})
             end
       | Package :: _ =>
             let
@@ -6528,20 +6531,37 @@ and package ts =
       | _ => raise ParseError
     end
 
-and packageName (ts) =
-    let val _ = trace([">> packageName with next=", tokenname(hd ts)])
+and packageName (ts) : token list * Ast.IDENT list =
+    let val _ = trace([">> dottedPath with next=", tokenname(hd ts)])
         val (ts1,nd1) = identifier ts
     in case ts1 of
-        Dot :: _ =>
+        Dot :: Identifier _ :: _ =>
             let
                 val (ts2,nd2) = packageName (tl ts1)
             in
-                (ts2,nd1^"."^nd2)
+                (ts2,nd1::nd2)
             end
       | _ =>
             let
             in
-                (ts1,nd1)
+                (ts1,nd1::[])
+            end
+    end
+
+and dottedPath (ts) : token list * Ast.IDENT list =
+    let val _ = trace([">> dottedPath with next=", tokenname(hd ts)])
+        val (ts1,nd1) = identifier ts
+    in case ts1 of
+        Dot :: Identifier _ :: Dot :: Identifier _ :: _ =>
+            let
+                val (ts2,nd2) = dottedPath (tl ts1)
+            in
+                (ts2,nd1::nd2)
+            end
+      | _ =>
+            let
+            in
+                (ts1,nd1::[])
             end
     end
 

@@ -40,7 +40,7 @@ package
         prototype function toString(radix = 10)
             this.toString(radix);
 
-        intrinsic function toString(radix = 10) : string
+        override intrinsic function toString(radix = 10) : string
             value.toString(radix);
         
         prototype function toLocaleString()

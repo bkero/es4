@@ -119,7 +119,7 @@ datatype PRAGMA =
        | UseStrict
        | UseStandard
        | Import of 
-           { package: IDENT,
+           { package: IDENT list,
              name: IDENT,
              alias: IDENT option }
 
@@ -325,9 +325,10 @@ datatype PRAGMA =
        | QualifiedIdentifier of 
            { qual : EXPR,
              ident : USTRING }
-       | TypeIdentifier of 
-           { ident : IDENT_EXPR, (* these should be TyApp *)
-             typeParams : TYPE_EXPR list }
+       | TypeIdentifier of (* in a type context, these this will be a AppType *)
+           { ident : IDENT_EXPR, 
+             typeArgs : TYPE_EXPR list }
+       | UnresolvedPath of (IDENT list * IDENT_EXPR)
 
      and LITERAL =
          LiteralNull
@@ -505,7 +506,7 @@ withtype
              ident : IDENT }
 
 type PACKAGE =
-           { name: USTRING,
+           { name: IDENT list,
              block: BLOCK }
 
 type PROGRAM =

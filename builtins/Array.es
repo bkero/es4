@@ -61,7 +61,7 @@ package
         prototype function toString(this:Array)
             this.join();
 
-        intrinsic function toString():String
+        override intrinsic function toString():String
             this.join();
 
         // 15.4.4.3 Array.prototype.toLocaleString ( )

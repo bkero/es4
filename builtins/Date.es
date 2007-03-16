@@ -268,7 +268,7 @@ package
             this.toString(); 
 
         /* INFORMATIVE */
-        intrinsic function toString() : string
+        override intrinsic function toString() : string
             /* "Fri, 15 Dec 2006 23:45:09 GMT-0800" */
             let (tz:double = timezoneOffset)
                 let (atz:double = Math.abs(tz))

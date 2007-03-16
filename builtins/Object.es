@@ -16,7 +16,7 @@ package
         use strict;
 
         /* E262-3 15.2.1.1: The Object constructor called as a function */
-        function call Object(value)
+        public static function call (value)
             ToObject(value);
 
         /* E262-3 15.2.2.1: The Object constructor. */

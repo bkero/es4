@@ -74,7 +74,7 @@ package
         prototype function toString(this : string)
             this;
 
-        intrinsic function toString() : string
+        override intrinsic function toString() : string
             this;
         
         /* E262-3 15.5.4.3: String.prototype.valueOf */

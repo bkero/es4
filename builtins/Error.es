@@ -39,7 +39,7 @@ package
             this.toString();
 
         /* INFORMATIVE */
-        intrinsic function toString()
+        override intrinsic function toString()
             this.name + ": " + this.message;   /* "this" qualification in case they've been deleted */
     }
 

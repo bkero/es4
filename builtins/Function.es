@@ -63,7 +63,7 @@ package
         prototype function toString()
             this.source;
 
-        intrinsic function toString() : string
+        override intrinsic function toString() : string
             source;
         
         /* E262-3 15.3.4.3: Function.prototype.apply */
@@ -96,7 +96,7 @@ package
            "length" of the function, so the length of
            Function.prototype.call is 1, which is what we want. 
         */
-        prototype function call(thisObj, ...args)
+        public prototype function call(thisObj, ...args)
             Function.apply(this, thisObj, args);
 
         intrinsic function call(thisObj, ...args:Array):*

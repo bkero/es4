@@ -37,7 +37,7 @@ package
             this.intrinsic::toString();
 
         /* E262-4 draft ch 19 */
-        intrinsic function toString() : String
+        override intrinsic function toString() : String
             this === true ? "true" : "false";
         
         /* E262-3 15.6.4.3: Boolean.prototype.valueOf. */

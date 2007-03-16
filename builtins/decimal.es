@@ -39,7 +39,7 @@ package
         prototype function toString(this:decimal, radix)
             this.toString(radix);
 
-        intrinsic function toString(radix = 10) : string {
+        override intrinsic function toString(radix = 10) : string {
             if (radix === 10 || radix === undefined)
                 return ToString(magic::getValue(this));
             else if (typeof radix === "number" && radix >= 2 && radix <= 36 && isIntegral(radix)) {

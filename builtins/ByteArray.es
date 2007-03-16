@@ -86,7 +86,7 @@ final class ByteArray
     prototype function toString(this: ByteArray) 
         this.intrinsic::toString();
 
-    intrinsic function toString() : string {
+    override intrinsic function toString() : string {
         let n : uint = length;
         let s : string = "";
         for ( let i:int = 0; i < n; i++ )
