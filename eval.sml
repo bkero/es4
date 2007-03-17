@@ -621,7 +621,6 @@ and constructObjectViaFunction (ctorObj:Mach.OBJ)
             val (newObj:Mach.OBJ) = 
                 Mach.newObj Mach.intrinsicObjectBaseTag proto NONE
         in
-            defValue newObj Mach.internalConstructorName (Mach.Object ctorObj);
             case invokeFuncClosure newObj ctor args of 
                 Mach.Object ob => Mach.Object ob
               | _ => Mach.Object newObj

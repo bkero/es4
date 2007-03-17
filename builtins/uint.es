@@ -36,7 +36,8 @@ package
         prototype function toString(this:uint, radix)
             this.toString(radix);
 
-        override intrinsic function toString(radix = 10) : string {
+        override intrinsic function toString() {
+            var radix = 10  /* FIXME */
             if (radix === 10 || radix === undefined)
                 return ToString(magic::getValue(this));
             else if (typeof radix === "number" && radix >= 2 && radix <= 36 && isIntegral(radix)) {
@@ -52,14 +53,14 @@ package
             this.toLocaleString();
 
         /* INFORMATIVE */
-        intrinsic function toLocaleString() : string
+        override intrinsic function toLocaleString() : string
             toString();
 
         /* E262-4 draft: uint.prototype.valueOf */
         prototype function valueOf(this:uint)
             this.valueOf();
 
-        intrinsic function valueOf() : Object!
+        override intrinsic function valueOf() : Object!
             this;
 
         /* E262-3 15.7.4.5 uint.prototype.toFixed */

@@ -1,5 +1,3 @@
-class Object {}
-
 class Cat { 
   var lives : int = 9;
   var name : string;

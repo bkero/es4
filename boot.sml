@@ -63,7 +63,7 @@ fun boot _ =
      load "builtins/Function.es";
 
      load "builtins/Boolean.es";
-
+(*
      load "builtins/uint.es";
      load "builtins/int.es";
      load "builtins/double.es";
@@ -85,6 +85,6 @@ fun boot _ =
      load "builtins/RegExpCompiler.es";
      load "builtins/RegExpEvaluator.es";
      load "builtins/RegExp.es";
-
+*)
      describeGlobal ())
 end

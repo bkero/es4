@@ -5,7 +5,62 @@ JEFF'S NOTES ON THE REFERENCE IMPLEMENTATION
 TO DO
 
 - revive for-in statements
-- implement paths
+- limited namespaces
+- nested public
+
+###
+
+16-MAR-2007
+
+IMPORT
+
+An import pragma opens a public namespace for one or more identifiers.
+
+import p.q.A
+import r.s.*
+
+LimitedNamespace ("A", Public "p.q")
+Public "r.s"
+
+When name resolution encounters a limited namespace, it check that the
+sought after identifier matches the namespace govenor. It is only necessary
+to search for LimitedNamespaces in LexicalRefs, but doing so for all
+references is simpler and compatible.
+
+PUBLIC
+
+'public' has two meanings inside of a package. At the top level it means
+Public "packagename", at nested levels it means Public "". This is so that
+programs such as the following have the expected meaning:
+
+package p {
+   public class A { public static var x = 10 }
+}
+import p.A
+print(p.A.x)   // prints 10
+
+
+DEFAULT NAMESPACE
+
+Inside of a package the default namespace is Internal "packagename".
+Outside of a package the default namespace is Internal "".
+Users may set the default namespace with the 'use default namespace'
+pragma
+
+###
+
+15-MAR-2007
+
+PACKAGES
+
+A package block introduces a package name into the global environment.
+A package name used in an import pragma must be known at the time
+the import pragma is encountered by the definers. Only those package
+names that are imported can are used to resolve UnresolvedPath 
+expressions.
+
+package p.q { }
+import p.q.*
 
 ###
 

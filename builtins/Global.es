@@ -19,6 +19,7 @@ package
     
     // @todo: "dynamic function" is probably redundant at the top level, but is useful for clarity
     
+
     // 15.1.2.1 eval (x)
     intrinsic native function eval(x);
 
@@ -60,4 +61,11 @@ package
     var decodeURIComponent = intrinsic::decodeURIComponent;
     var encodeURI = intrinsic::encodeURI;
     var encodeURIComponent = intrinsic::encodeURIComponent;
+
+    // non-standard helpers
+
+    intrinsic native function print(x);
+    intrinsic native function assert(x);
+
+
 }

@@ -999,7 +999,8 @@ and defFuncDefn (env:ENV) (f:Ast.FUNC_DEFN)
             val qualNs = resolveExprOptToNamespace env (#ns f)
             val ident = case (#kind name) of 
                             Ast.Ordinary => (#ident name)
-                          | Ast.Call => "call" (* FIXME: hack until parser fixed. *)
+                          | Ast.Call => "call" (* FIXME: hack until parser is fixed. *)
+                          | Ast.ToFunc => "to" (* FIXME: hack until parser is fixed *)
                           | _ => LogErr.unimplError ["defining unhandled type of function name"]
             val newName = Ast.PropName { id = ident, ns = qualNs }
             val (_, _, newFunc) = defFunc env (#func f)
@@ -2028,7 +2029,7 @@ and defPackage (env:ENV)
             val packageIdent = packageIdentFromPath packageName ""
             val _ = trace ["packageIdent ",packageIdent]
             val env' = {fixtures = [],
-                        openNamespaces = [[Ast.Internal packageIdent, Ast.Public packageIdent]],
+                        openNamespaces = [[Ast.Internal packageIdent, Ast.Public packageIdent]]@(#openNamespaces (hd env)),
                         numericMode = defaultNumericMode, 
                         labels = [],
                         imports = [],

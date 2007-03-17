@@ -1,6 +1,11 @@
-package a.b {
-public var c = 20
+package mx.util
+{
+  public class Vector {} 
 }
-//var a = { b : { c : 10 } }
-import a.b.c
-a.b.c
+
+var mx
+
+{
+  import mx.util.Vector
+  var v : mx.util.Vector = new mx.util.Vector
+}
