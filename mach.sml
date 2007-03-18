@@ -554,50 +554,6 @@ fun coerceToInt (magic:MAGIC)
       | _ => error ["unexpected magic in coercion to int"]
 
 
-(* 
-fun toNum (v:VAL) : real = 
-    case v of 
-        Undef => nan
-      | Null => 0.0
-      | Object (Obj ob) => 
-        (case !(#magic ob) of 
-             SOME (Number n) => n
-           | SOME (Bool true) => 1.0
-           | SOME (Bool false) => 0.0
-           | SOME (String s) => (case Real.fromString s of 
-                                     SOME n => n
-                                   | NONE => nan)
-           | _ => nan)
-                  
-fun equals (va:VAL) (vb:VAL) : bool = 
-    case (va,vb) of 
-        (Object (Obj oa), Object (Obj ob)) => 
-        (case (!(#magic oa), !(#magic ob)) of 
-             (SOME ma, SOME mb) => 
-             (case (ma, mb) of
-                  (Number na, String _) => Real.== (na, (toNum vb))
-                | (String _, Number nb) => Real.== ((toNum va), nb)
-                | (Number a, Number b) => Real.==(a, b)
-                | _ => (toString va) = (toString vb))
-           | (_, _) => (toString va) = (toString vb))
-      | _ => (toString va) = (toString vb)
-
-
-fun less (va:VAL) (vb:VAL) : bool = 
-    case (va,vb) of 
-        (Object (Obj oa), Object (Obj ob)) =>
-        (case (!(#magic oa), !(#magic ob)) of 
-             (SOME ma, SOME mb) => 
-             (case (ma, mb) of 
-                  (Number na, String _) => na < (toNum vb)
-                | (String _, Number nb) => (toNum va) < nb
-                | (String sa, String sb) => sa < sb
-                | _ => (toNum va) < (toNum vb))
-           | _ => (toNum va) < (toNum vb))
-      | _ => (toNum va) < (toNum vb)
-*)
-
-
 val nativeFunctions:(Ast.NAME * NATIVE_FUNCTION) list ref = ref [] 
                                                         
 fun registerNativeFunction (name:Ast.NAME)
