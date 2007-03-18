@@ -18,6 +18,8 @@ package
 {
     use namespace intrinsic;
 
+    namespace core;
+
     final class double!
     {       
         public static const MAX_VALUE : double         = 1.7976931348623157e+308;  /* INFORMATIVE */
@@ -27,11 +29,11 @@ package
         public static const POSITIVE_INFINITY : double = 1.0 / 0.0;
 
         /* E262-4 draft */
-        function to double(x : Numeric)
+        core static function convert(x : Numeric)
             x is double ? x : ToDouble(x);
 
         /* E262-3 15.7.1.1: The double Constructor Called as a Function */
-        function call double(value)
+        core static function invoke(value)
             value === undefined ? 0d : ToDouble(value);
 
         /* E262-3 15.7.2.1: The double constructor */

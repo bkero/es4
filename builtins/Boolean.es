@@ -22,10 +22,12 @@ package
        there will be only two, one for "true" and the other for
        "false".
      */
+    namespace core;
+
     final class Boolean! extends Object
     {       
         /* E262-3 15.6.1: The Boolean Constructor Called as a Function. */
-        static intrinsic function invoke(value) : Boolean
+        core static function invoke(value) : Boolean
             value ? true : false;
 
         /* E262-3 15.6.2.1: The Boolean Constructor. */

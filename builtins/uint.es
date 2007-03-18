@@ -14,17 +14,19 @@ package
     use namespace intrinsic;
     use strict;
 
+    namespace core;
+
     final class uint!
     {       
         static const MAX_VALUE : uint = 0xFFFFFFFFu;
         static const MIN_VALUE : uint = 0;
 
         /* E262-4 draft */
-        function to uint(x : Numeric)
+        core static function convert(x : Numeric)
             x is uint ? x : ToUint(x);
 
         /* E262-4 draft: The uint Constructor Called as a Function */
-        function call uint(value)
+        core static function invoke(value)
             value === undefined ? 0u : ToUint(value);
 
         /* E262-4 draft: The uint constructor */

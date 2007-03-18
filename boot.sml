@@ -56,6 +56,7 @@ fun boot _ =
     (Defn.resetTopFixtures ();
      Mach.resetGlobalObject ();
      Native.registerNatives ();
+
      load "builtins/Object.es";
      load "builtins/Global.es";
      load "builtins/Error.es";

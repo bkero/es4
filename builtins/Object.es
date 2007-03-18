@@ -10,17 +10,19 @@
  */
 package
 {
+    namespace core;
+
     dynamic class Object 
     {       
         use namespace intrinsic;
         use strict;
 
         /* E262-3 15.2.1.1: The Object constructor called as a function */
-        public static function call (value)
+        core static function invoke(value)
             ToObject(value);
 
         /* E262-3 15.2.2.1: The Object constructor. */
-        /* magic */ native function Object();
+        function Object() {}
 
         /* E262-3 15.2.4.2: Object.prototype.toString */
         prototype function toString()

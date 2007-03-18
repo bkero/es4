@@ -16,33 +16,45 @@
 
 package
 {
+    namespace core;
+
     dynamic class Function
     {       
         use namespace intrinsic;
         use strict;
 
-        /* E262-3 15.3.1.1: The Function constructor.  This
-           initializes the field "source" in the constructed object.
+        /* E262-3 15.3.1.1: The Function constructor. This does not
+	   directly use the standard construction protocol, though it
+	   calls it indirectly.
          */
-        /* magic */ native function Function(...args);
+         core static function construct(...args)
+            apply(Function, null, args);
 
         /* E262-3 15.3.1: The Function Constructor Called as a Function */
-        function call Function(...args)
-            Function.construct.apply(null, args);
+         core static function invoke(...args) {
+            let src : string = args.pop();
+  	    let f = magic::construct(Function, [src]);
+            magic::compileInto(f, args, src);
+            return f;
+        }
+      
+        function Function(source: string) 
+	    : source = source 
+        {}
 
         /* E262-3 10.X / 13.X: function invocation.
 
            This method is never called.  The Function constructor
            marks instances of Function specially, and recognizes these
            instances in the implementation of function calling.  The
-           intrinsic invoke method is defined here to prevent
-           subclasses of Function to override it.
+           instance core::invoke method is defined here to prevent
+           subclasses of Function from overriding it.
 
            Other parts of the class hierarchy may however create
-           intrinsic invoke methods that will be considered by the
+           core::invoke methods that will be considered by the
            function calling machinery. 
-        */
-        intrinsic function invoke() {
+        */        
+        core final function invoke(...args) {
             throw new Error("Implementation error");
         }
 
@@ -52,7 +64,7 @@ package
            some things in the prototype that ensures that the object
            behaves like a function in some trivial ways.
          */
-        intrinsic prototype function invoke()
+        core prototype function invoke()
             undefined;
 
         prototype var source : string = "function () { }";

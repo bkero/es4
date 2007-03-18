@@ -658,10 +658,10 @@ and evalCallExpr (thisObjOpt:Mach.OBJ option)
                     (invokeFuncClosure thisObj f args
                         handle ReturnException v => v)
               | _ => 
-                    if hasValue fobj Mach.intrinsicInvokeName
+                    if hasValue fobj Mach.coreInvokeName
                     then
                         let 
-                            val invokeFn = getValue (fobj, Mach.intrinsicInvokeName)
+                            val invokeFn = getValue (fobj, Mach.coreInvokeName)
                         in
                             evalCallExpr NONE (needObj invokeFn) (thisVal :: args)
                         end

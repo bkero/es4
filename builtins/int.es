@@ -14,17 +14,19 @@ package
     use namespace intrinsic;
     use strict;
 
+    namespace core;
+
     final class int!
     {       
         public static const MAX_VALUE : int = 0x7FFFFFFF;
         public static const MIN_VALUE : int = -0x80000000;
 
         /* E262-4 draft */
-        function to int(x : Numeric)
+        core static function convert(x : Numeric)
             x is int ? x : ToInt(x);
 
         /* E262-4 draft: The int Constructor Called as a Function */
-        function call int(value)
+        core static function invoke(value)
             value === undefined ? 0i : ToInt(value);
 
         /* E262-4 draft: The int constructor */

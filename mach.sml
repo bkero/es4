@@ -225,8 +225,8 @@ val intrinsicInterfaceName:Ast.NAME = { ns = Ast.Intrinsic, id = "Interface" }
 val intrinsicTypeName:Ast.NAME = { ns = Ast.Intrinsic, id = "Type" }
 
 val intrinsicApplyName:Ast.NAME = { ns = Ast.Intrinsic, id = "apply" }
-val intrinsicInvokeName:Ast.NAME = { ns = Ast.Intrinsic, id = "invoke" }
-val intrinsicConstructName:Ast.NAME = { ns = Ast.Intrinsic, id = "construct" }
+val coreInvokeName:Ast.NAME = { ns = Ast.UserNamespace "core", id = "invoke" }
+val coreConstructName:Ast.NAME = { ns = Ast.UserNamespace "core", id = "construct" }
 
 val intrinsicObjectBaseTag:VAL_TAG = ClassTag (intrinsicObjectName)
 val intrinsicArrayBaseTag:VAL_TAG = ClassTag (intrinsicArrayName)

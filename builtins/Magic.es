@@ -29,6 +29,18 @@ package
 
     /* --------------------------------------------------------------
 
+       CLASS INSTANTIATION.  */
+
+    /* 
+     * Given a class object, run the standard object-construction
+     * protocol for it (and its base classes, initializers, settings,
+     * ctors). Return the resulting instance, always an Object!
+     */
+    magic native function construct(cls:Class!, args:[*]) : Object!;
+
+
+    /* --------------------------------------------------------------
+
        PROPERTY MANIPULATION.  */
 
     /* Retrieve the [[Class]] property of o */
@@ -63,6 +75,11 @@ package
     /* ----------------------------------------------------------------
 
        FUNCTION MANIPULATION.  */
+
+    /* Given a function object, arguments to bind and source to run, 
+     * compiles the source and arguments into a magic function value
+     * and sets the magic slot inside the function to contain it. */
+    magic native function compileInto(fn : Function!, argNames : [String!], src : String!) : void;
 
     /* Given a function object, a this object, and an array of argument
        values, call the function with the this object and arguments. */

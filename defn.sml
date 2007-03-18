@@ -1439,9 +1439,14 @@ and defExpr (env:ENV)
                         val base = resolvePath env p
                     in case (base,i) of
                         (Ast.LiteralExpr _,Ast.Identifier {ident=id,...}) => 
-                            Ast.LexicalRef {ident=Ast.QualifiedIdentifier {qual=base,ident=id}}
-                      | (Ast.LiteralExpr _,_) => LogErr.defnError ["invalid package qualification"]
-                      | (_,_) => Ast.ObjectRef { base=(defExpr env base), ident=i }
+                        Ast.LexicalRef {ident=Ast.QualifiedIdentifier {qual=(defExpr env base),
+                                                                       ident=id}}
+                      | (Ast.LiteralExpr _,_) => 
+                        LogErr.defnError ["invalid package qualification"]
+
+                      | (_,_) => 
+                        Ast.ObjectRef { base=(defExpr env base), 
+                                        ident=(defIdentExpr env i) }
                     end
               | _ =>
                     Ast.LexicalRef { ident = defIdentExpr env ident }
@@ -2048,19 +2053,21 @@ and defPackage (env:ENV)
     PROGRAM
 *)
 
+and topEnv _ = [ { fixtures = !topFixtures,
+                   openNamespaces = [[Ast.Internal "", Ast.Public ""]],
+                   numericMode = defaultNumericMode, 
+                   labels = [],
+                   imports = [],
+                   className = NONE, 
+                   packageName = [], 
+                   defaultNamespace = Ast.Internal "" } ]
+
 and defProgram (prog:Ast.PROGRAM) 
     : Ast.PROGRAM = 
     let 
-        val topEnv = [ { fixtures = !topFixtures,
-                         openNamespaces = [[Ast.Internal "", Ast.Public ""]],
-                         numericMode = defaultNumericMode, 
-                         labels = [],
-                         imports = [],
-                         className = NONE, 
-                         packageName = [], 
-                         defaultNamespace = Ast.Internal "" } ]
-        val (packages, hoisted_pkg) = ListPair.unzip (map (defPackage topEnv) (#packages prog))
-        val (block, hoisted_gbl) = defBlock topEnv (#block prog)
+        val e = topEnv ()
+        val (packages, hoisted_pkg) = ListPair.unzip (map (defPackage e) (#packages prog))
+        val (block, hoisted_gbl) = defBlock e (#block prog)
         val fixtures = ((List.concat hoisted_pkg)@hoisted_gbl)
         val result = {packages = packages,
                       block = block,
