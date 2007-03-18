@@ -14,7 +14,7 @@ fun nthAsA (f:Mach.VAL -> 'a)
            (n:int) 
     : 'a = 
     if n >= length vals
-    then LogErr.hostError ["trying to fetch arg #",
+    then error ["trying to fetch arg #",
                            (Int.toString n), 
                            " from arg list of length ",
                            (Int.toString (length vals))]
@@ -26,11 +26,24 @@ fun nthAsObj (vals:Mach.VAL list)
              (n:int) 
     : Mach.OBJ = 
     let 
-        fun f Mach.Undef = LogErr.hostError ["Wanted Object, got Undef"]
-          | f Mach.Null = LogErr.hostError ["Wanted Object, got Null"]
+        fun f Mach.Undef = error ["Wanted Object, got Undef"]
+          | f Mach.Null = error ["Wanted Object, got Null"]
           | f (Mach.Object ob) = ob
     in
         nthAsA f vals n
+    end
+
+
+fun nthAsObjAndCls (vals:Mach.VAL list) 
+                   (n:int) 
+    : (Mach.OBJ * Mach.CLS_CLOSURE) = 
+    let
+        val obj = nthAsObj vals n
+        val Mach.Obj { magic, ... } = obj
+    in
+        case !magic of 
+            SOME (Mach.Class c) => (obj, c)
+          | _ => error ["Wanted class, got other"]
     end
 
 
@@ -42,7 +55,7 @@ fun nthAsStr (vals:Mach.VAL list)
     in
         case !magic of 
             SOME (Mach.String s) => s
-          | _ => LogErr.hostError ["Wanted string, got other"]
+          | _ => error ["Wanted string, got other"]
     end
 
 
@@ -54,7 +67,7 @@ fun nthAsInt (vals:Mach.VAL list)
     in
         case !magic of 
             SOME (Mach.Int n) => n
-          | _ => LogErr.hostError ["Wanted int, got other"]
+          | _ => error ["Wanted int, got other"]
     end
 
 fun nthAsUInt (vals:Mach.VAL list) 
@@ -65,7 +78,7 @@ fun nthAsUInt (vals:Mach.VAL list)
     in
         case !magic of 
             SOME (Mach.UInt n) => n
-          | _ => LogErr.hostError ["Wanted uint, got other"]
+          | _ => error ["Wanted uint, got other"]
     end
 
 
@@ -77,7 +90,7 @@ fun nthAsBool (vals:Mach.VAL list)
     in
         case !magic of 
             SOME (Mach.Bool b) => b
-          | _ => LogErr.hostError ["Wanted Boolean, got other"]
+          | _ => error ["Wanted Boolean, got other"]
     end
 
 fun nthAsByteArray (vals:Mach.VAL list) 
@@ -88,7 +101,7 @@ fun nthAsByteArray (vals:Mach.VAL list)
     in
         case !magic of 
             SOME (Mach.ByteArray b) => b
-          | _ => LogErr.hostError ["Wanted ByteArray, got other"]
+          | _ => error ["Wanted ByteArray, got other"]
     end
 
 
@@ -107,7 +120,10 @@ fun arrayToList (arr:Mach.OBJ)
     : Mach.VAL list = 
     let 
         val ns = Ast.Internal ""
-        val len = 0 (* Real.floor (Mach.toNum (Eval.getValue (arr, {id="length", ns=ns}))) *)
+        val len = Word32.toInt 
+                      (Mach.coerceToUInt 
+                           (Mach.needMagic 
+                                (Eval.getValue (arr, {id="length", ns=ns}))))
         fun build i vs = 
             if i < 0
             then vs
@@ -122,6 +138,23 @@ fun arrayToList (arr:Mach.OBJ)
                 end
     in
         build (len-1) []
+    end
+
+
+(* 
+ * Given a class object, run the standard object-construction
+ * protocol for it (and its base classes, initializers, settings,
+ * ctors). Return the resulting instance, always an Object!
+ *
+ * magic native function construct(cls:Class!, args:[*]) : Object!;
+ *)
+fun construct (vals:Mach.VAL list)
+    : Mach.VAL = 
+    let
+        val (obj, cls) = nthAsObjAndCls vals 0
+        val args = arrayToList (nthAsObj vals 1)
+    in
+        Eval.constructClassInstance obj cls args
     end
 
 
@@ -288,7 +321,7 @@ fun setValue (vals:Mach.VAL list)
         val Mach.Obj { magic, ... } = nthAsObj vals 0
         val v = case vals of 
                     [_,x] => x
-                  | _ => LogErr.hostError ["bad number of arguments to setValue"]            
+                  | _ => error ["bad number of arguments to setValue"]            
     in
         case v of 
             Mach.Object (Mach.Obj ob) => magic := !(#magic ob)
@@ -314,6 +347,53 @@ fun apply (vals:Mach.VAL list)
         Eval.evalCallExpr (SOME thisObj) fnObj argsList
     end
 
+
+(* Given a function object, arguments to bind and source to run, 
+ * compiles the source and arguments into a magic function value
+ * and sets the magic slot inside the function to contain it.
+ *
+ * magic native function compileInto(fn: Function!, argNames: [String!], src: String!): void;
+ *)
+fun compileInto (vals:Mach.VAL list) 
+    : Mach.VAL = 
+    (*
+     * We synthesize a token stream here that feeds back into the parser.
+     *)
+    let 
+        val funcObj = nthAsObj vals 0
+        fun ident v = Token.Identifier (Mach.toString v)
+        val argIdents = map ident (arrayToList (nthAsObj vals 1))
+        val argList = case argIdents of
+                          [] => []
+                        | x::xs => (x :: (List.concat 
+                                              (map (fn i => [Token.Comma, i]) xs)))
+        val source = nthAsStr vals 2
+        val lines = [source] (* FIXME: split lines *)
+        val lineTokens = Parser.lexLines lines
+        val funcTokens = [Token.Function, Token.LeftParen]
+                         @ argList
+                         @ [Token.LeftParen]
+                         @ lineTokens
+        val (_,funcExpr) = Parser.functionExpression (funcTokens, 
+                                                      Parser.NOLIST, 
+                                                      Parser.ALLOWIN)
+
+        val funcExpr = Defn.defExpr (Defn.topEnv()) funcExpr
+        val funcVal = Eval.evalExpr Mach.globalScope funcExpr
+    in
+        case funcVal of 
+            Mach.Object obj =>
+            let 
+                val Mach.Obj { magic, ...} = funcObj
+                val sname = {ns=Ast.Internal "", id="source"}
+                val sval = (Mach.newString source)
+            in
+                Eval.setValue obj sname sval;
+                magic := Mach.getObjMagic obj
+            end
+          | _ => error ["function did not compile to object"];
+        Mach.Undef
+    end
 
 (* 
  * Given a string object 'src', copy its internal string data into
@@ -533,6 +613,7 @@ fun registerNatives _ =
         fun addFn ns name f = 
             Mach.registerNativeFunction { ns = ns, id = name } f
     in
+        addFn (Ast.UserNamespace "magic") "construct" construct;
         addFn (Ast.UserNamespace "magic") "getClassName" getClassName;
         addFn (Ast.UserNamespace "magic") "getPrototype" getPrototype;
         addFn (Ast.UserNamespace "magic") "hasOwnProperty" hasOwnProperty;
@@ -542,6 +623,7 @@ fun registerNatives _ =
         addFn (Ast.UserNamespace "magic") "getValue" getValue;
         addFn (Ast.UserNamespace "magic") "setValue" setValue;
         addFn (Ast.UserNamespace "magic") "apply" apply;
+        addFn (Ast.UserNamespace "magic") "compileInto" compileInto;
         addFn (Ast.UserNamespace "magic") "setStringValue" setStringValue;
         addFn (Ast.UserNamespace "magic") "charCodeAt" charCodeAt;
         addFn (Ast.UserNamespace "magic") "fromCharCode" fromCharCode;
