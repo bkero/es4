@@ -8,9 +8,14 @@
 void
 exitIfError(char const *activity, decContext *c)
 {
-  if (c->status & DEC_Errors)
+  uint32_t e = 
+    DEC_Conversion_syntax |
+    DEC_Insufficient_storage |
+    DEC_Invalid_context;
+
+  if (c->status & e)
     {
-      c->status &= DEC_Errors;
+      c->status &= e;
       printf("ERROR: %s (while %s)\n", 
 	     decContextStatusToString(c), 
 	     activity);

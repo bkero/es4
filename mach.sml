@@ -391,9 +391,6 @@ val (globalScope:SCOPE) =
             temps = ref [],
             isVarObject = true }
 
-
-val nan = Real.posInf / Real.posInf
-
 fun getTemp (temps:TEMPS)
             (n:int)
     : VAL =
@@ -481,7 +478,65 @@ fun magicToString (magic:MAGIC)
       | ByteArray _ => "[ByteArray]"
       | NativeFunction _ => "[function NativeFunction]"
 
-fun toString (v:VAL) : string = 
+
+fun isString (v:VAL) 
+    : bool = 
+    case v of 
+        Object (Obj ob) => 
+        (case !(#magic ob) of 
+             SOME (String _) => true
+           | _ => false)
+      | _ => false
+
+
+fun isDecimal (v:VAL) : bool = 
+    case v of 
+        Object (Obj ob) => 
+        (case !(#magic ob) of 
+             SOME (Decimal _) => true
+           | _ => false)
+      | _ => false
+
+
+fun isBoolean (v:VAL) : bool = 
+    case v of 
+        Object (Obj ob) => 
+        (case !(#magic ob) of 
+             SOME (Bool _) => true
+           | _ => false)
+      | _ => false
+
+
+
+fun isInt (v:VAL) : bool = 
+    case v of 
+        Object (Obj ob) => 
+        (case !(#magic ob) of 
+             SOME (Int _) => true
+           | _ => false)
+      | _ => false
+
+
+fun isDouble (v:VAL) : bool = 
+    case v of 
+        Object (Obj ob) => 
+        (case !(#magic ob) of 
+             SOME (Double _) => true
+           | _ => false)
+      | _ => false
+
+
+fun isUInt (v:VAL) : bool = 
+    case v of 
+        Object (Obj ob) => 
+        (case !(#magic ob) of 
+             SOME (UInt _) => true
+           | _ => false)
+      | _ => false
+
+
+fun toString (v:VAL) 
+    : string = 
     case v of 
         Undef => "undefined"
       | Null => "null"
@@ -501,66 +556,359 @@ fun toBoolean (v:VAL) : bool =
              SOME (Bool b) => b
            | _ => true)
 
-        
-fun coerceToDecimal (magic:MAGIC) 
+
+fun isNumeric (v:VAL) : bool = 
+    case v of 
+        Object (Obj ob) => 
+        (case !(#magic ob) of 
+             SOME (Double _) => true
+           | SOME (Decimal _) => true
+           | SOME (Int _) => true
+           | SOME (UInt _) => true
+           | _ => false)
+      | _ => false
+
+
+fun toNumeric (v:VAL) 
+    : VAL =          
+    let 
+        fun NaN _ = newDouble (Real64.posInf / Real64.posInf)
+        fun zero _ = newDouble (Real64.fromInt 0)
+        fun one _ = newDouble (Real64.fromInt 1)
+    in
+        case v of 
+            Undef => NaN ()
+          | Null => zero ()
+          | Object (Obj ob) => 
+            (case !(#magic ob) of 
+                 SOME (Double _) => v
+               | SOME (Decimal _) => v
+               | SOME (Int _) => v
+               | SOME (UInt _) => v
+               | SOME (Bool false) => zero ()
+               | SOME (Bool true) => one ()
+               (* 
+                * FIXME: This is not the correct definition of ToNumber applied to string.
+                * See ES3 9.3.1. We need to talk it over.
+                *) 
+               | SOME (String s) => (case Real64.fromString s of
+                                         SOME s' => newDouble s'
+                                       | NONE => NaN ())
+               (* 
+                * FIXME: ES3 9.3 defines ToNumber on objects in terms of primitives. We've
+                * reorganized the classification of primitives vs. objects. Revisit this.
+                *)
+               | _ => zero ())
+    end
+    
+
+fun toDecimal (precision:int) 
+              (mode:Decimal.ROUNDING_MODE) 
+              (v:VAL) 
     : Decimal.DEC = 
-    case magic of 
-        Decimal d => d
-      | Double d => valOf (Decimal.fromStringDefault (Real64.toString d))
-      | Int i => valOf (Decimal.fromStringDefault (Int32.toString i))
-      | UInt u => valOf (Decimal.fromStringDefault (Word32.toString u))
-      | _ => error ["unexpected magic in coercion to decimal"]
+    case v of 
+        Undef => Decimal.NaN
+      | Null => Decimal.zero
+      | Object (Obj ob) => 
+        (case !(#magic ob) of 
+             SOME (Double d) => 
+             (* NB: Lossy. *)
+             (case Decimal.fromString precision mode (Real64.toString d) of
+                  SOME d' => d'
+                | NONE => Decimal.NaN)
+           | SOME (Decimal d) => d
+           | SOME (Int i) => Decimal.fromLargeInt (Int32.toLarge i)
+           | SOME (UInt u) => Decimal.fromLargeInt (Word32.toLargeInt u)
+           | SOME (Bool false) => Decimal.zero
+           | SOME (Bool true) => Decimal.one
+           (* 
+            * FIXME: This is not the correct definition either. See toNumeric.
+            *) 
+           | SOME (String s) => (case Decimal.fromString precision mode s of
+                                     SOME s' => s'
+                                   | NONE => Decimal.NaN)
+           (* 
+            * FIXME: Possibly wrong here also. See comment in toNumeric.
+            *)
+           | _ => Decimal.zero)
 
-fun coerceToDouble (magic:MAGIC) 
+
+fun toDouble (v:VAL) 
     : Real64.real = 
-    case magic of 
-        Double d => d
-      | Decimal d => valOf (Real64.fromString (Decimal.toString d))
-      | Int i => Real64.fromLargeInt (Int32.toLarge i)
-      | UInt u => Real64.fromLargeInt (Word32.toLargeInt u)
-      | _ => error ["unexpected magic in coercion to double"]
+    let 
+        fun NaN _ = (Real64.posInf / Real64.posInf)
+        fun zero _ = (Real64.fromInt 0)
+        fun one _ = (Real64.fromInt 1)
+    in            
+        case v of 
+            Undef => NaN ()
+          | Null => zero ()
+          | Object (Obj ob) => 
+            (case !(#magic ob) of 
+                 SOME (Double d) => d
+               | SOME (Decimal d) => 
+                 (* NB: Lossy. *)
+                 (case Real64.fromString (Decimal.toString d) of
+                      SOME d' => d'
+                    | NONE => NaN ())
+                 
+               | SOME (Int i) => Real64.fromLargeInt (Int32.toLarge i)
+               | SOME (UInt u) => Real64.fromLargeInt (Word32.toLargeInt u)
+               | SOME (Bool false) => zero ()
+               | SOME (Bool true) => one ()
+               (* 
+                * FIXME: This is not the correct definition either. See toNumeric.
+                *) 
+               | SOME (String s) => (case Real64.fromString s  of
+                                         SOME s' => s'
+                                       | NONE => NaN())
+               (* 
+                * FIXME: Possibly wrong here also. See comment in toNumeric.
+                *)
+               | _ => zero ())
+    end
 
-fun coerceToUInt (magic:MAGIC) 
-    : Word32.word =
-    case magic of 
-        UInt u => u
-      | Int i => 
-        (* FIXME: is < 0 really an error? Or do we want to permit it? *)
-        if i >= 0 
-        then Word32.fromInt (Int32.toInt i)
-        else error ["negative integer to unsigned integer conversion"]
-      | Decimal d => valOf (Word32.fromString (Decimal.toString d))
-      (* FIXME: might want to involve the rounding mode and IEEEReal here. *)
-      | Double d => Word32.fromInt (Real64.trunc d)
-      | _ => error ["unexpected magic in coercion to uint"]
 
-fun coerceToInt (magic:MAGIC) 
+fun mathOp (v:VAL) 
+           (decimalFn:(Decimal.DEC -> 'a) option)
+           (doubleFn:(Real64.real -> 'a) option)
+           (intFn:(Int32.int -> 'a) option)
+           (uintFn:(Word32.word -> 'a) option)
+           (default:'a)
+    : 'a = 
+    let 
+        fun fnOrDefault fo v = case fo of 
+                                   NONE => default
+                                 | SOME f => f v
+    in
+        case v of 
+            Object (Obj ob) => 
+            (case !(#magic ob) of 
+                 SOME (Decimal d) => fnOrDefault decimalFn d
+               | SOME (Double d) => fnOrDefault doubleFn d
+               | SOME (Int i) => fnOrDefault intFn i
+               | SOME (UInt u) => fnOrDefault uintFn u
+               | _ => default)
+          | _ => default
+    end
+
+
+fun isPositiveZero (v:VAL) 
+    : bool =
+    let 
+        fun doubleIsPosZero x = 
+            Real64.class x = IEEEReal.ZERO
+            andalso not (Real64.signBit x)
+    in        
+        mathOp v 
+               (SOME Decimal.isPositiveZero)
+               (SOME doubleIsPosZero)
+               NONE NONE false
+    end
+
+
+fun isNegativeZero (v:VAL) 
+    : bool =
+    let 
+        fun doubleIsNegZero x = 
+            Real64.class x = IEEEReal.ZERO
+            andalso Real64.signBit x
+    in        
+        mathOp v 
+               (SOME Decimal.isPositiveZero) 
+               (SOME doubleIsNegZero)
+               NONE NONE false
+    end
+
+
+fun isPositiveInf (v:VAL) 
+    : bool =
+    let 
+        fun doubleIsPosInf x = 
+            Real64.class x = IEEEReal.INF
+            andalso not (Real64.signBit x)
+    in        
+        mathOp v 
+               (SOME Decimal.isPositiveZero)
+               (SOME doubleIsPosInf)
+               NONE NONE false
+    end
+
+
+fun isNegativeInf (v:VAL) 
+    : bool =
+    let 
+        fun doubleIsNegInf x = 
+            Real64.class x = IEEEReal.INF
+            andalso Real64.signBit x
+    in        
+        mathOp v 
+               (SOME Decimal.isPositiveZero)
+               (SOME doubleIsNegInf)
+               NONE NONE false
+    end
+
+    
+fun isNaN (v:VAL)
+    : bool = 
+    mathOp v 
+           (SOME Decimal.isNaN) 
+           (SOME Real64.isNan)
+           NONE NONE false
+
+
+fun sign (v:VAL)
+    : int = 
+    let 
+        (* 
+         * FIXME: this implemented 'sign' function returns 1, 0, or -1
+         * depending on proximity to 0. Some definitions only return 1 or 0,
+         * or only return 1 or -1. Don't know which one the ES3 spec means.
+         *)
+
+        (* FIXME: should decimal rounding mode and precision used in sign-determination? *)
+        fun decimalSign d = case Decimal.compare Decimal.defaultPrecision 
+                                                 Decimal.defaultRoundingMode 
+                                                 d Decimal.zero 
+                             of 
+                                LESS => ~1
+                              | EQUAL => 0
+                              | GREATER => 1
+
+        fun uint32Sign u = if u = (Word32.fromInt 0)
+                           then 0
+                           else 1
+    in
+        mathOp v 
+               (SOME decimalSign)
+               (SOME Real64.sign)
+               (SOME Int32.sign)
+               (SOME uint32Sign)
+               0
+    end
+
+
+fun floor (v:VAL)
+    : LargeInt.int =
+    mathOp v 
+           (SOME Decimal.floor)
+           (SOME (Real64.toLargeInt IEEEReal.TO_NEGINF))
+           (SOME Int32.toLarge)
+           (SOME Word32.toLargeInt)
+           (LargeInt.fromInt 0)
+    
+
+fun signFloorAbs (v:VAL)
+    : LargeInt.int =
+    let
+        val sign = Int.toLarge (sign v)
+        val floor = floor v
+    in
+        LargeInt.*(sign, (LargeInt.abs floor))
+    end
+    
+
+(* ES3 9.4 ToInteger 
+ *
+ * FIXME: If I understand the compatibility requirements
+ * correctly, this should return an integral double. 
+ * Not certain though. 
+ *)
+
+fun toInteger (v:VAL)
+    : VAL = 
+    let
+        val v' = toNumeric v
+    in
+        if isNaN v'
+        then newDouble (Real64.fromInt 0)
+        else (if (isPositiveInf v' orelse
+                  isNegativeInf v' orelse
+                  isPositiveZero v' orelse
+                  isNegativeZero v')
+              then v'
+              else newDouble (Real64.fromLargeInt (signFloorAbs v')))
+    end
+
+(* ES3 9.5 ToInt32 *)
+
+fun toInt32 (v:VAL) 
     : Int32.int =
-    case magic of
-        Int i => i
-      | UInt u => 
-        let 
-            val lu = Word32.toLargeInt u
-            val lmax = Int32.toLarge (valOf (Int32.maxInt))
-        in
-            if LargeInt.<=(lu, lmax)
-            then Int32.fromLarge lu
-            (* FIXME: is > maxint really an error? Or do we want to permit it? *)
-            else error ["unsigned integer out of range of signed integer"]
-        end
-      | Decimal d => valOf (Int32.fromString (Decimal.toString d))
-      (* FIXME: might want to involve the rounding mode and IEEEReal here. *)
-      | Double d => Int32.fromInt (Real64.trunc d)
-      | _ => error ["unexpected magic in coercion to int"]
+    let 
+        val v' = toNumeric v
+    in
+        if (isNaN v' orelse
+            isPositiveInf v' orelse
+            isNegativeInf v' orelse
+            isPositiveZero v' orelse
+            isNegativeZero v')
+        then Int32.fromInt 0
+        else 
+            let 
+                val l31 = IntInf.pow (2, 31)
+                val l32 = IntInf.pow (2, 32)
+                val v'' = LargeInt.mod (signFloorAbs v', l32)
+            in
+                Int32.fromLarge (if LargeInt.>= (v'', l31)
+                                 then LargeInt.- (v'', l32)
+                                 else v'')
+            end
+    end
+
+
+(* ES3 9.6 ToUInt32 *)
+
+fun toUInt32 (v:VAL) 
+    : Word32.word =
+    let 
+        val v' = toNumeric v
+    in
+        if (isNaN v' orelse
+            isPositiveInf v' orelse
+            isNegativeInf v' orelse
+            isPositiveZero v' orelse
+            isNegativeZero v')
+        then Word32.fromInt 0
+        else 
+            let 
+                val l32 = IntInf.pow (2, 32)
+            in
+                Word32.fromLargeInt (LargeInt.mod (signFloorAbs v', l32))
+            end
+    end
+
+(* ES3 9.6 ToUInt16 *)
+
+fun toUInt32 (v:VAL) 
+    : Word32.word =
+    let 
+        val v' = toNumeric v
+    in
+        if (isNaN v' orelse
+            isPositiveInf v' orelse
+            isNegativeInf v' orelse
+            isPositiveZero v' orelse
+            isNegativeZero v')
+        then Word32.fromInt 0
+        else 
+            let 
+                val l16 = IntInf.pow (2, 16)
+            in
+                Word32.fromLargeInt (LargeInt.mod (signFloorAbs v', l16))
+            end
+    end
+    
 
 
 val nativeFunctions:(Ast.NAME * NATIVE_FUNCTION) list ref = ref [] 
-                                                        
+
+                                                            
 fun registerNativeFunction (name:Ast.NAME)
                            (func:NATIVE_FUNCTION)
     : unit =
     (trace ["registering native function: ", LogErr.name name];
      nativeFunctions := (name, func) :: (!nativeFunctions))
+
     
 fun getNativeFunction (name:Ast.NAME) 
     : NATIVE_FUNCTION = 
@@ -575,6 +923,7 @@ fun getNativeFunction (name:Ast.NAME)
         search (!nativeFunctions)
     end
 
+
 fun resetGlobalObject _ = 
     case globalObject of
         (Obj { props, magic, proto, ... }) => 
@@ -585,5 +934,5 @@ fun resetGlobalObject _ =
 end
 
 
-         
-         
+
+

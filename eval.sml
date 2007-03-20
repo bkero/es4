@@ -678,7 +678,7 @@ and evalSetExpr (scope:Mach.SCOPE)
         val v =
             let 
                 fun modifyWith bop = 
-                    performMagicBinop bop (getValue (obj, name)) v
+                    performBinop bop (getValue (obj, name)) v
             in
                 case aop of 
                     Ast.Assign => v
@@ -711,11 +711,11 @@ and evalUnaryOp (scope:Mach.SCOPE)
         fun crement (mode:Ast.NUMERIC_MODE) decimalOp doubleOp intOp uintOp isPre = 
             let 
                 val (obj, name) = evalRefExpr scope expr false
-                val v = Mach.needMagic (getValue (obj, name))
+                val v = getValue (obj, name)
 
                 fun asDecimal _ =                         
                     let 
-                        val vd = Mach.coerceToDecimal v
+                        val vd = Mach.toDecimal (#precision mode) (#roundingMode mode) v
                         val one = valOf (Decimal.fromStringDefault "1")
                     in
                         (Mach.newDecimal vd, 
@@ -727,7 +727,7 @@ and evalUnaryOp (scope:Mach.SCOPE)
 
                 fun asDouble _ = 
                     let
-                        val vd = Mach.coerceToDouble v
+                        val vd = Mach.toDouble v
                         val one = Real64.fromInt 1
                     in
                         (Mach.newDouble vd, Mach.newDouble (doubleOp (vd, one)))
@@ -735,7 +735,7 @@ and evalUnaryOp (scope:Mach.SCOPE)
 
                 fun asInt _ = 
                     let
-                        val vi = Mach.coerceToInt v
+                        val vi = Mach.toInt32 v
                         val one = Int32.fromInt 1
                     in
                         (Mach.newInt vi, Mach.newInt (intOp (vi, one)))
@@ -743,7 +743,7 @@ and evalUnaryOp (scope:Mach.SCOPE)
 
                 fun asUInt _ = 
                     let
-                        val vu = Mach.coerceToUInt v
+                        val vu = Mach.toUInt32 v
                         val one = Word32.fromInt 1
                     in
                         (Mach.newUInt vu, Mach.newUInt (uintOp (vu, one)))
@@ -759,9 +759,10 @@ and evalUnaryOp (scope:Mach.SCOPE)
                         (* 
                          * FIXME: not clear in the spec what conversions to perform here. 
                          * Draft spec language says "converted to a number". Defaulting to
-                         * "keep the value in whatever type it is before crement".
+                         * "calling toNumeric but otherwise keeping the value in whatever 
+                         * type it is before crement".
                          *)                        
-                        (case v of
+                        (case Mach.needMagic (Mach.toNumeric v) of
                              Mach.Decimal _ => asDecimal ()
                            | Mach.Double _ => asDouble ()
                            | Mach.Int _ => asInt ()
@@ -806,57 +807,131 @@ and evalUnaryOp (scope:Mach.SCOPE)
                                               (Word32.-) 
                                               false
 
+          | Ast.BitwiseNot => 
+            Mach.newInt (Int32.fromLarge 
+                         (Word32.toLargeInt 
+                              (Word32.notb 
+                                   (Mach.toUInt32 
+                                        (evalExpr scope expr)))))
+
           | Ast.LogicalNot => 
             Mach.newBoolean (not (Mach.toBoolean (evalExpr scope expr)))
+
+          | Ast.UnaryPlus mode => 
+            let 
+                val v = evalExpr scope expr
+                val mode = valOf mode
+            in
+                case (#numberType mode) of 
+                    Ast.Decimal => Mach.newDecimal (Mach.toDecimal (#precision mode) 
+                                                                   (#roundingMode mode) 
+                                                                   v)
+                  | Ast.Double => Mach.newDouble (Mach.toDouble v)
+                  | Ast.Int => Mach.newInt (Mach.toInt32 v)
+                  | Ast.UInt => Mach.newUInt (Mach.toUInt32 v)
+                  | Ast.Number => Mach.toNumeric v
+            end
+
+          | Ast.UnaryMinus mode => 
+            let 
+                val v = evalExpr scope expr
+                val mode = valOf mode
+                fun asDecimal _ = Mach.newDecimal (Decimal.minus 
+                                                       (#precision mode) 
+                                                       (#roundingMode mode) 
+                                                       (Mach.toDecimal (#precision mode)
+                                                                       (#roundingMode mode)
+                                                                       v))
+                fun asDouble _ = Mach.newDouble (Real64.~ (Mach.toDouble v))
+                fun asInt _ = Mach.newInt (Int32.~ (Mach.toInt32 v))
+                fun asUInt _ = Mach.newUInt (Word32.~ (Mach.toUInt32 v))
+            in
+                case (#numberType mode) of 
+                    Ast.Decimal => asDecimal ()
+                  | Ast.Double => asDouble ()
+                  | Ast.Int => asInt ()
+                  | Ast.UInt => asUInt ()
+                  | Ast.Number => 
+                    (case Mach.needMagic (Mach.toNumeric v) of 
+                         Mach.Decimal _ => asDecimal ()
+                       | Mach.Double _ => asDouble ()
+                       (* 
+                        * FIXME: The "numbers" proposal says that when there's no pragma in effect,
+                        * unary minus on int and uint stays in the representation if it can be 
+                        * performed without loss of precision, else it's converted to double.
+                        *
+                        * It's not clear to me what "loss of precision" means on unary minus applied
+                        * to twos complement numbers, since negation is just "flip bits and add 1". 
+                        * Maybe it has to do with overflow? Until this is clarified I'll leave it 
+                        * as "preserve the representation" in all cases.
+                        *)
+                       | Mach.Int _ => asInt ()
+                       | Mach.UInt _ => asUInt ()
+                       | _ => asDouble ())
+            end
 
           | Ast.Void => Mach.Undef
 
           | _ => LogErr.unimplError ["unhandled unary operator"]
     end
 
-and performMagicBinop (bop:Ast.BINOP) 
-                      (a:Mach.VAL) 
-                      (b:Mach.VAL) 
+and performBinop (bop:Ast.BINOP) 
+                 (a:Mach.VAL) 
+                 (b:Mach.VAL) 
     : Mach.VAL = 
 
     let
-        val (a,b) = (Mach.needMagic a, Mach.needMagic b)
-
         fun stringConcat _ = 
-            Mach.newString ((Mach.magicToString a) ^ (Mach.magicToString b))
+            Mach.newString ((Mach.toString a) ^ (Mach.toString b))
 
         fun dispatch (mode:Ast.NUMERIC_MODE) decimalOp doubleOp intOp uintOp =
             case (#numberType mode) of 
-                Ast.Decimal => decimalOp (Mach.coerceToDecimal a) (Mach.coerceToDecimal b)
-              | Ast.Double => doubleOp (Mach.coerceToDouble a) (Mach.coerceToDouble b)
-              | Ast.Int => intOp (Mach.coerceToInt a) (Mach.coerceToInt b)
-              | Ast.UInt => uintOp (Mach.coerceToUInt a) (Mach.coerceToUInt b)
+                Ast.Decimal => decimalOp (Mach.toDecimal 
+                                              (#precision mode) 
+                                              (#roundingMode mode) a) 
+                                         (Mach.toDecimal 
+                                              (#precision mode) 
+                                              (#roundingMode mode) b)
+              | Ast.Double => doubleOp (Mach.toDouble a) (Mach.toDouble b)
+              | Ast.Int => intOp (Mach.toInt32 a) (Mach.toInt32 b)
+              | Ast.UInt => uintOp (Mach.toUInt32 a) (Mach.toUInt32 b)
                             
               | Ast.Number => 
-                (* Ast.Number implies operand-based dispatch. *)
-                case (a, b) of 
-                    (Mach.Decimal da, b) => decimalOp da (Mach.coerceToDecimal b)
-                  | (a, Mach.Decimal db) => decimalOp (Mach.coerceToDecimal a) db
-                                            
-                  | (Mach.Double da, b) => doubleOp da (Mach.coerceToDouble b)
-                  | (a, Mach.Double db) => doubleOp (Mach.coerceToDouble a) db
-                                           
-                  | (Mach.Int i, Mach.UInt u) => 
-                    if i >= 0 
-                    then uintOp (Mach.coerceToUInt a) u
-                    else doubleOp (Mach.coerceToDouble a) (Mach.coerceToDouble b)
-                         
-                  | (Mach.UInt u, Mach.Int i) => 
-                    if i >= 0 
-                    then uintOp u (Mach.coerceToUInt b)
-                    else doubleOp (Mach.coerceToDouble a) (Mach.coerceToDouble b)
-                         
-                  | (Mach.Int ia, Mach.Int ib) => intOp ia ib
-                  | (Mach.UInt ua, Mach.UInt ub) => uintOp ua ub
-                                                    
-                  | _ => error ["non-numeric magic type while ",
-                                "selecting arithmetic coersions"]
-                         
+                (* 
+                 * Ast.Number implies magic operand-based dispatch. 
+                 * FIXME: Refactor this if you can figure out how. 
+                 *)
+                    
+                if Mach.isDecimal a orelse Mach.isDecimal b
+                then decimalOp (Mach.toDecimal
+                                    (#precision mode) 
+                                    (#roundingMode mode) a)
+                               (Mach.toDecimal 
+                                    (#precision mode) 
+                                    (#roundingMode mode) b)
+                else 
+                    (if Mach.isDouble a orelse Mach.isDouble b
+                     then doubleOp (Mach.toDouble a) (Mach.toDouble b)
+                     else (if Mach.isInt a andalso Mach.isInt b
+                           then intOp (Mach.toInt32 a) (Mach.toInt32 b)
+                           else 
+                               (if Mach.isUInt a andalso Mach.isUInt b
+                                then uintOp (Mach.toUInt32 a) (Mach.toUInt32 b)
+                                else 
+                                    (if Mach.isInt a andalso Mach.isUInt b
+                                     then 
+                                         (if (Mach.toInt32 a) >= (Int32.fromInt 0)
+                                          then uintOp (Mach.toUInt32 a) (Mach.toUInt32 b)
+                                          else doubleOp (Mach.toDouble a) (Mach.toDouble b))
+                                     else 
+                                         (if Mach.isUInt a andalso Mach.isInt b
+                                          then 
+                                              (if (Mach.toInt32 b) >= (Int32.fromInt 0)
+                                               then uintOp (Mach.toUInt32 a) (Mach.toUInt32 b)
+                                               else doubleOp (Mach.toDouble a) (Mach.toDouble b))
+                                          else
+                                              doubleOp (Mach.toDouble a) (Mach.toDouble b))))))
+                    
         fun dispatchComparison mode cmp =
             let
                 fun decimalOp da db =
@@ -869,16 +944,11 @@ and performMagicBinop (bop:Ast.BINOP)
                     Mach.newBoolean (cmp (Int32.compare (ia, ib)))
                 fun uintOp ua ub = 
                     Mach.newBoolean (cmp (Word32.compare (ua, ub)))
-                fun isNumeric (Mach.Decimal _) = true
-                  | isNumeric (Mach.Double _) = true
-                  | isNumeric (Mach.Int _) = true
-                  | isNumeric (Mach.UInt _) = true
-                  | isNumeric _ = false
             in
-                if isNumeric a andalso isNumeric b
+                if Mach.isNumeric a andalso Mach.isNumeric b
                 then dispatch mode decimalOp doubleOp intOp uintOp
-                else Mach.newBoolean (cmp (String.compare ((Mach.magicToString a), 
-                                                           (Mach.magicToString b))))
+                else Mach.newBoolean (cmp (String.compare ((Mach.toString a), 
+                                                           (Mach.toString b))))
             end
             
         fun dispatchNumeric mode decimalFn doubleFn intFn uintFn =
@@ -909,21 +979,21 @@ and performMagicBinop (bop:Ast.BINOP)
             Int32.fromLarge (Word32.toLargeInt x)
 
         fun bitwiseWordOp f = 
-            Mach.newUInt (f ((Mach.coerceToUInt a),
-                             (Mach.coerceToUInt b)))
+            Mach.newUInt (f ((Mach.toUInt32 a),
+                             (Mach.toUInt32 b)))
                           
     in
         case bop of
             Ast.Plus mode => 
-            (case (a, b) of 
-                 (Mach.String sa, _) => stringConcat ()
-               | (_, Mach.String sb) => stringConcat ()
-               | _ => dispatchNumeric ( valOf mode ) 
-                                      ( Decimal.add )
-                                      ( Real64.+ )
-                                      ( Int32.+ )
-                                      ( Word32.+ ))
-                             
+            if Mach.isString a orelse
+               Mach.isString b
+            then stringConcat ()
+            else dispatchNumeric ( valOf mode ) 
+                                 ( Decimal.add )
+                                 ( Real64.+ )
+                                 ( Int32.+ )
+                                 ( Word32.+ )
+                                              
           | Ast.Minus mode => 
             dispatchNumeric ( valOf mode ) 
                             ( Decimal.subtract )
@@ -953,17 +1023,17 @@ and performMagicBinop (bop:Ast.BINOP)
                             ( Word32.mod )
 
           | Ast.LeftShift => 
-            Mach.newInt (u2i (masku32 (Word32.<< ((i2u (Mach.coerceToInt a)),
-                                                  (masku5 (Mach.coerceToUInt b))))))
+            Mach.newInt (u2i (masku32 (Word32.<< ((i2u (Mach.toInt32 a)),
+                                                  (masku5 (Mach.toUInt32 b))))))
 
 
           | Ast.RightShift => 
-            Mach.newInt (u2i (Word32.>> ((i2u (Mach.coerceToInt a)),
-                                         (masku5 (Mach.coerceToUInt b)))))
+            Mach.newInt (u2i (Word32.>> ((i2u (Mach.toInt32 a)),
+                                         (masku5 (Mach.toUInt32 b)))))
 
           | Ast.RightShiftUnsigned => 
-            Mach.newUInt (Word32.~>> ((Mach.coerceToUInt a),
-                                      (masku5 (Mach.coerceToUInt b))))
+            Mach.newUInt (Word32.~>> ((Mach.toUInt32 a),
+                                      (masku5 (Mach.toUInt32 b))))
 
           | Ast.BitwiseAnd => bitwiseWordOp (Word32.andb)
           | Ast.BitwiseOr => bitwiseWordOp (Word32.orb)
@@ -1001,7 +1071,7 @@ and performMagicBinop (bop:Ast.BINOP)
             dispatchComparison (valOf mode) 
                                (fn x => (x = GREATER) orelse (x = EQUAL))
 
-          | _ => error ["unexpected binary operator in performMagicBinOp"]
+          | _ => error ["unexpected binary operator in performBinOp"]
     end
 
 
@@ -1056,9 +1126,9 @@ and evalBinaryOp (scope:Mach.SCOPE)
                      
         end
         
-      | _ => performMagicBinop bop 
-                               (evalExpr scope aexpr) 
-                               (evalExpr scope bexpr)
+      | _ => performBinop bop 
+                          (evalExpr scope aexpr) 
+                          (evalExpr scope bexpr)
 
 
 and evalCondExpr (scope:Mach.SCOPE) 

@@ -121,9 +121,8 @@ fun arrayToList (arr:Mach.OBJ)
     let 
         val ns = Ast.Internal ""
         val len = Word32.toInt 
-                      (Mach.coerceToUInt 
-                           (Mach.needMagic 
-                                (Eval.getValue (arr, {id="length", ns=ns}))))
+                      (Mach.toUInt32 
+                           (Eval.getValue (arr, {id="length", ns=ns})))
         fun build i vs = 
             if i < 0
             then vs
