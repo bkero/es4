@@ -267,6 +267,7 @@ fun parse (source : INPUT_SOURCE) : Ast.PROGRAM =
 fun runTestCase (test : TEST_CASE) : TEST_RESULT =
 (
     logTestCase (#name test);
+    Boot.boot ();
     case test of
          { name, stage=Parse, arg=true, source } =>
          (
@@ -299,17 +300,16 @@ fun runTestCase (test : TEST_CASE) : TEST_RESULT =
 )
 
 fun run (filename : string) : TEST_RESULT list =
-    (Boot.boot ();
-     (map runTestCase (parseScript filename))
-     handle e as (BadTestParameter (s, lineNum)) =>
-            (error ("bad test parameter (" ^ s ^ ")") filename lineNum;
-             raise e)
-          | e as (MixedContent lineNum) =>
-            (error ("combined external and inline source") filename lineNum;
-             raise e)
-          | e as (ExtraLink lineNum) =>
-            (error ("multiple external sources") filename lineNum;
-             raise e))
+    map runTestCase (parseScript filename)
+    handle e as (BadTestParameter (s, lineNum)) =>
+           (error ("bad test parameter (" ^ s ^ ")") filename lineNum;
+            raise e)
+         | e as (MixedContent lineNum) =>
+           (error ("combined external and inline source") filename lineNum;
+            raise e)
+         | e as (ExtraLink lineNum) =>
+           (error ("multiple external sources") filename lineNum;
+            raise e)
 
 fun exitCode (b : bool) : int = if b then 0 else 1
 

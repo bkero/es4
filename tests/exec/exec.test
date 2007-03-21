@@ -30,3 +30,9 @@
 
 %% [operator in] eval
 @tests/exec/operator-in.es
+
+%% [decimal] eval
+@tests/exec/decimal.es
+
+%% [uint] eval
+@tests/exec/uint.es
