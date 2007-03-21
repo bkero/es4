@@ -827,7 +827,8 @@ and functionSignature (ts) : (token list * Ast.FUNC_SIG) =
                                       ctorInits=NONE,
                                       hasRest=false }) (* do we need this *)
                                end
-                         | _ => raise ParseError
+                         | _ => error ["unknown final token after nonempty parameters",
+                                       " of this-qualified function signature"]
                     end
                  | RightParen :: _ =>
                    let
@@ -864,7 +865,7 @@ and functionSignature (ts) : (token list * Ast.FUNC_SIG) =
                                   hasRest=false }) (* do we need this *)
                        end
                  | _ => error ["unknown final token of function signature"]
-            end
+               end
       | _ => error ["unknown initial token of function signature"]
     end
 
@@ -894,7 +895,8 @@ and functionSignatureType (ts) =
                                           ctorInits=NONE,
                                           hasRest=false }) (* do we need this *)
                                end
-                      | _ => raise ParseError
+                      | _ => error ["unknown final token after nonempty parameters",
+                                    " of this-qualified function signature type"]
                     end
               | RightParen :: _ =>
                     let
@@ -910,7 +912,7 @@ and functionSignatureType (ts) =
                                    ctorInits=NONE,
                                    hasRest=false }) (* do we need this *)
                           end
-              | _ => raise ParseError
+              | _ => error ["unknown final token of this-qualified function signature type"]
             end
       | LeftParen :: _ =>
             let
@@ -930,9 +932,9 @@ and functionSignatureType (ts) =
                                    thisType=NONE,  (* todo *)
                                    hasRest=false }) (* do we need this *)
                        end
-                 | _ => raise ParseError
+                 | _ => error ["unknown final token of function signature type"]
             end
-      | _ => raise ParseError
+      | _ => error ["unknown initial token of function signature type"]
     end
 
 (*
@@ -954,7 +956,7 @@ and typeParameters ts =
                         trace(["<< typeParameters with next=",tokenname(hd(tl ts1))]);
                         (tl ts1,nd1)
                     end
-              | _ => raise ParseError
+              | _ => error ["unknown final token of type parameters"]
             end
       | _ => 
             (trace(["<< typeParameters with next=",tokenname(hd(ts))]);
@@ -1017,7 +1019,7 @@ and nonemptyParameters (ts) (n)
                 val (ts1,nd1) = restParameter ts n
             in case ts1 of
                 RightParen :: _ => (ts1,nd1)
-              | _ => raise ParseError
+              | _ => error ["unknown final token of nonempty parameters after rest-arg"]
             end
       | _ => 
             let
@@ -1030,7 +1032,7 @@ and nonemptyParameters (ts) (n)
                     in
                         (ts2,((b1@b2,i1@i2),e1@e2))
                     end
-              | _ => raise ParseError
+              | _ => error ["unknown final token of nonempty parameters"]
             end
     end
 
@@ -1043,7 +1045,8 @@ and nonemptyParametersType (ts)
                 val (ts1,nd1) = restParameterType ts
             in case ts1 of
                 RightParen :: _ => (ts1,nd1)
-              | _ => raise ParseError
+              | _ => error ["unknown final token of nonempty ",
+                            "parameters type after rest-arg"]
             end
       | _ => 
             let
@@ -1056,7 +1059,7 @@ and nonemptyParametersType (ts)
                     in
                         (ts3,(b1@b3,i1@i3))
                     end
-              | _ => raise ParseError
+              | _ => error ["unknown final token of nonempty parameters type"]
             end
     end
 
@@ -1189,7 +1192,7 @@ and restParameter (ts) (n): (token list * (Ast.BINDINGS * Ast.EXPR list)) =
                         (ts1, ((temp::b,i),[]))
                     end
             end
-      | _ => raise ParseError
+      | _ => error ["unknown initial token of rest parameter"]
     end
 
 and restParameterType (ts) : (token list * Ast.BINDINGS) =
@@ -1207,7 +1210,7 @@ and restParameterType (ts) : (token list * Ast.BINDINGS) =
                         (ts1,([Ast.Binding {ident=Ast.PropIdent "", ty=ty}],[]))
                     end
             end
-      | _ => raise ParseError
+      | _ => error ["unknown initial token of rest parameter type"]
     end
 
 (*
@@ -1252,9 +1255,9 @@ and objectLiteral ts =
                     end
               | RightBrace :: _ => 
                     (tl ts1,Ast.LiteralObject {expr=nd1,ty=NONE})
-              | _ => raise ParseError
+              | _ => error ["unknown final token of object literal"]
             end
-      | _ => raise ParseError
+      | _ => error ["unknown initial token of object literal"]
     end
 
 (*
@@ -1325,7 +1328,7 @@ and literalField (ts) =
                     in
                         (ts3,{kind=nd1,name=nd2,init=nd3})
                     end
-              | _ => raise ParseError
+              | _ => error ["unknown non-colon token after literal get/set field label"]
             end
       | Get :: _ =>
             let
@@ -1372,7 +1375,7 @@ and literalField (ts) =
                     in
                         (ts3,{kind=nd1,name=nd2,init=nd3})
                     end
-              | _ => raise ParseError
+              | _ => error ["unknown non-colon token after literal field label"]
             end
     end
 
@@ -1407,7 +1410,7 @@ and functionCommon ts =
             in
                 (ts2,{fsig=nd1,block=nd2})
             end
-      | _ => (error(["expecting {"]); raise ParseError)
+      | _ => error ["unknown initial token in function common"]
     end
 
 (*
@@ -1431,9 +1434,9 @@ and arrayLiteral (ts) =
                     end
               | RightBracket :: _ => 
                     (tl ts1,Ast.LiteralArray {exprs=nd1,ty=NONE})
-              | _ => raise ParseError
+              | _ => error ["unknown final token in array literal"]
             end
-      | _ => raise ParseError
+      | _ => error ["unknown initial token in array literal"]
     end
 
 (*
@@ -1563,19 +1566,12 @@ and primaryExpression (ts,a,b) =
                 (ts1,Ast.LiteralExpr nd1) 
             end
       | Function :: _ => functionExpression (ts,a,b)
-      | LexBreakDiv x :: _ => 
-            let 
-                val ts1 = (#lex_regexp x)()
-            in case ts1 of
-                RegExp :: _ => 
-                    let 
-                    in case ts1 of
-                        RegexpLiteral str :: _ =>
-                            (tl ts1,Ast.LiteralExpr(Ast.LiteralRegExp {str=str}))
-                      | _ => raise ParseError
-                    end
-              | _ => raise ParseError
-            end
+      | LexBreakDiv thunks :: _ => 
+        (case (#lex_regexp thunks)() of
+             RegexpLiteral str :: rest =>
+             (rest, Ast.LiteralExpr(Ast.LiteralRegExp {str=str}))
+           | _ => error ["non-regexp-literal token after '/' lexbreak"])
+
 (* todo:
       | (XmlMarkup | LessThan ) :: _ => xmlInitializer ts
 *)
@@ -1615,7 +1611,7 @@ and superExpression ts =
                 | _ => 
                     (tl ts,Ast.SuperExpr(NONE))
             end
-      | _ => raise ParseError
+      | _ => error ["unknown token in superExpression"]
     end
 
 (*
@@ -1813,9 +1809,9 @@ and arguments (ts) : (token list * Ast.EXPR list)  =
                         trace(["<< arguments with next=",tokenname(hd(tl ts1))]);
                         (tl ts1,nd1)
                     end
-              | _ => raise ParseError
+              | _ => error ["unknown token in arguments"]
             end
-      | _ => raise ParseError
+      | _ => error ["unknown token in arguments"]
     end
 
 (*
@@ -1849,7 +1845,7 @@ and argumentList (ts) : (token list * Ast.EXPR list)  =
                     (ts,[])
               | _ => 
                 (trace ["*syntax error*: expect '",tokenname RightParen, "' before '",tokenname(hd ts),"'"];
-                 raise ParseError)
+                 error ["unknown token in argumentList"])
             end
         val (ts1,nd1) = assignmentExpression(ts,NOLIST,ALLOWIN)
         val (ts2,nd2) = argumentList'(ts1)
@@ -1890,7 +1886,7 @@ and propertyOperator (ts, nd) =
                                 (ts2,Ast.ObjectRef({base=nd,ident=Ast.QualifiedIdentifier {
                                             qual=nd1, ident=nd2}}))
                             end
-                      | _ => raise ParseError (* e4x filter expr *)
+                      | _ => error ["unknown token in propertyOperator"] (* e4x filter expr *)
                     end
       | Dot :: _ => 
                     let
@@ -1916,7 +1912,7 @@ and propertyOperator (ts, nd) =
             in
                 (ts1,Ast.ObjectRef({base=nd,ident=Ast.ExpressionIdentifier(nd1)}))
             end
-      | _ => raise ParseError
+      | _ => error ["unknown token in propertyOperator"]
     end
 
 (*
@@ -1947,12 +1943,12 @@ and brackets (ts) : (token list * Ast.EXPR) =
                         val (ts2,nd2) = listExpression (ts'',ALLOWIN)
                     in case ts2 of
                         RightBracket :: ts'' => (ts'',Ast.SliceExpr (nd1,nd2,Ast.ListExpr [])) 
-                      | _ => raise ParseError
+                      | _ => error ["unknown token in brackets"]
                     end
               | RightBracket :: ts'' => (ts'',nd1) 
-              | _ => raise ParseError
+              | _ => error ["unknown token in brackets"]
             end
-      | _ => raise ParseError
+      | _ => error ["unknown token in brackets"]
     end
 
 (*
@@ -2132,7 +2128,7 @@ and multiplicativeExpression (ts,a,b) =
                             in 
                                 multiplicativeExpression' (ts3,Ast.BinaryExpr(Ast.Divide NONE,nd1,nd3),a,b) 
                             end
-                      | _ => raise ParseError
+                      | _ => error ["unknown token in multiplicativeExpression"]
                     end
 
               | Modulus :: ts2 => 
@@ -2258,7 +2254,7 @@ and relationalExpression (ts,a, b)=
                             in 
                                 relationalExpression' (ts3,Ast.BinaryExpr(Ast.Less NONE,nd1,nd3),a,ALLOWIN) 
                             end
-                      | _ => raise ParseError
+                      | _ => error ["unknown token in relationalExpression"]
                     end
 
               | (GreaterThan :: ts2,_) => 
@@ -2521,7 +2517,7 @@ and conditionalExpression (ts,ALLOWLIST,b) =
                             in
                                 (ts6,nd6)
                             end
-                      | _ => raise ParseError                            
+                      | _ => error ["unknown token in conditionalExpression"]                            
                     end
               | _ => 
                     (trace(["<< conditionalExpression ALLOWLIST with next=",tokenname(hd(ts2))]);
@@ -2547,7 +2543,7 @@ and conditionalExpression (ts,ALLOWLIST,b) =
                             in
                                 (ts6,nd6)
                             end
-                      | _ => raise ParseError                            
+                      | _ => error ["unknown token in conditionalExpression"]                            
                     end
               | _ => 
                     (trace(["<< conditionalExpression NOLIST with next=",tokenname(hd(ts2))]);
@@ -2589,7 +2585,7 @@ and nonAssignmentExpression (ts,ALLOWLIST,b) =
                             in
                                 (ts6,nd6)
                             end
-                      | _ => raise ParseError                            
+                      | _ => error ["unknown token in nonAssignmentExpression"]                            
                     end
               | _ => 
                     (trace(["<< nonAssignmentExpression ALLOWLIST with next=",tokenname(hd(ts2))]);
@@ -2615,7 +2611,7 @@ and nonAssignmentExpression (ts,ALLOWLIST,b) =
                             in
                                 (ts6,nd6)
                             end
-                      | _ => raise ParseError                            
+                      | _ => error ["unknown token in nonAssignmentExpression"]                            
                     end
               | _ => 
                     (trace(["<< nonAssignmentExpression NOLIST with next=",tokenname(hd(ts2))]);
@@ -2644,9 +2640,9 @@ and letExpression (ts,b) =
                         (trace(["<< letExpression with next=",tokenname(hd(ts4))]);
                         (ts4,Ast.LetExpr{defs=nd2,body=nd4,head=NONE}))
                     end
-               |    _ => raise ParseError
+               |    _ => error ["unknown token in letExpression"]
             end
-      | _ => raise ParseError
+      | _ => error ["unknown token in letExpression"]
     end
 
 (*
@@ -2673,7 +2669,7 @@ and letBindingList (ts) : (token list * Ast.BINDINGS) =
                         (trace(["<< nonemptyLetBindingList with next=",tokenname(hd ts2)]);
                         (ts2,(b1@b2,i1@i2)))
                     end
-              | _ => raise ParseError
+              | _ => error ["unknown token in letBindingList"]
             end
     in case ts of 
         RightParen :: _ => 
@@ -2708,7 +2704,7 @@ and yieldExpression (ts,b) =
                         (ts2,Ast.YieldExpr(SOME nd2))
                     end
             end
-      | _ => raise ParseError
+      | _ => error ["unknown token in yieldExpression"]
     end
 
 (*
@@ -2719,7 +2715,7 @@ and yieldExpression (ts,b) =
 and simpleYieldExpression ts =
     case ts of
         Yield :: ts1 => (ts1,Ast.YieldExpr NONE)
-      | _ => raise ParseError
+      | _ => error ["unknown token in simpleYieldExpression"]
 
 (*
     AssignmentExpression(a, b)    
@@ -2826,7 +2822,7 @@ and assignmentExpression (ts,a,b) : (token list * Ast.EXPR) =
           | RightShiftAssign :: _               => (tl ts,Ast.AssignRightShift)
           | UnsignedRightShiftAssign :: _     => (tl ts,Ast.AssignRightShiftUnsigned)
           | MultAssign :: _                   => (tl ts,Ast.AssignTimes NONE)
-          | _ => raise ParseError
+          | _ => error ["unknown token in assignmentExpression"]
 
 (*
     ListExpression(b)    
@@ -2893,7 +2889,7 @@ and patternFromExpr (e) : (PATTERN) =
     end
 
 and patternFromListExpr (Ast.ListExpr (e::[])) : (PATTERN) = patternFromExpr e
-  | patternFromListExpr (_)  = (error(["invalid pattern"]); raise ParseError)
+  | patternFromListExpr (_)  = (error(["invalid pattern"]); error ["unknown token in patternFromListExpr"])
 
 (*
     SimplePattern(a, b, noExpr)    
@@ -2926,7 +2922,7 @@ and simplePatternFromExpr (e) : (PATTERN) =  (* only ever called from ALLOWEXPR 
             SimplePattern e)
       | _ => 
             (error(["invalid pattern expression"]);
-            raise ParseError)
+            error ["unknown token in simplePatternFromExpr"])
     end
 
 (*
@@ -2942,9 +2938,9 @@ and objectPattern (ts,g) =
                 val (ts1,nd1) = destructuringFieldList (ts,g)
             in case ts1 of
                 RightBrace :: _ => (tl ts1,ObjectPattern nd1)
-              | _ => raise ParseError
+              | _ => error ["unknown token in objectPattern"]
             end
-      | _ => raise ParseError
+      | _ => error ["unknown token in objectPattern"]
     end
 
 and objectPatternFromExpr e =
@@ -2957,7 +2953,7 @@ and objectPatternFromExpr e =
                 trace(["<< objectPatternFromExpr"]);
                 ObjectPattern p
             end
-      | _ => raise ParseError
+      | _ => error ["unknown token in objectPatternFromExpr"]
     end
     
 (*
@@ -3027,7 +3023,7 @@ and destructuringField (ts,g) =
             in
                 (ts2,{ident=nd1,pattern=nd2})
             end
-      | _ => raise ParseError
+      | _ => error ["unknown token in destructuringField"]
     end
 
 and destructuringFieldFromExpr e =
@@ -3052,9 +3048,9 @@ and arrayPattern (ts,g) =
                 val (ts1,nd1) = destructuringElementList (tl ts,g)
             in case ts1 of
                 RightBracket :: _ => (tl ts1,ArrayPattern nd1)
-              | _ => raise ParseError
+              | _ => error ["unknown token in arrayPattern"]
             end
-      | _ => raise ParseError
+      | _ => error ["unknown token in arrayPattern"]
     end
 
 and arrayPatternFromExpr (e) =
@@ -3067,7 +3063,7 @@ and arrayPatternFromExpr (e) =
                 trace(["<< arrryPatternFromExpr"]);
                 ArrayPattern p
             end
-      | _ => raise ParseError
+      | _ => error ["unknown token in arrayPatternFromExpr"]
     end
 
 (*
@@ -3294,7 +3290,7 @@ and functionType (ts) : (token list * Ast.TYPE_EXPR)  =
                 trace(["<< functionType with next=",tokenname(hd ts1)]);
                 (ts1, (Ast.FunctionType (functionTypeFromSignature nd1)))
             end
-      | _ => raise ParseError
+      | _ => error ["unknown token in functionType"]
     end
 
 and functionTypeFromSignature fsig : Ast.FUNC_TYPE = 
@@ -3342,9 +3338,9 @@ and unionType (ts) : (token list * Ast.TYPE_EXPR)  =
             in case ts1 of
                 RightParen :: _ =>
                     (tl ts1, Ast.UnionType nd1)
-              | _ => raise ParseError
+              | _ => error ["unknown token in unionType"]
             end
-      | _ => raise ParseError
+      | _ => error ["unknown token in unionType"]
     end
 
 (*
@@ -3362,9 +3358,9 @@ and objectType (ts) : (token list * Ast.TYPE_EXPR) =
                 RightBrace :: ts3 => 
                     (trace(["<< objectType with next=",tokenname(hd(ts3))]);
                     (ts3,Ast.ObjectType nd2))
-              | _ => raise ParseError
+              | _ => error ["unknown token in objectType"]
             end
-      | _ => raise ParseError
+      | _ => error ["unknown token in objectType"]
     end
 
 (*
@@ -3419,7 +3415,7 @@ and fieldType (ts) : (token list * Ast.FIELD_TYPE) =
             in
                 (ts2,{name=ident,ty=nd2})
             end
-      | _ => raise ParseError
+      | _ => error ["unknown token in fieldType"]
     end
 
 (*
@@ -3435,9 +3431,9 @@ and arrayType (ts) : (token list * Ast.TYPE_EXPR)  =
                 val (ts1,nd1) = elementTypeList (tl ts)
             in case ts1 of
                 RightBracket :: _ => (tl ts1,Ast.ArrayType nd1)
-              | _ => raise ParseError
+              | _ => error ["unknown token in arrayType"]
             end
-      | _ => raise ParseError
+      | _ => error ["unknown token in arrayType"]
     end
 
 (*
@@ -3529,7 +3525,7 @@ and semicolon (ts,FULL) : (token list) =
       | (Eof | RightBrace) :: _ => (ts)   (* ABBREV special cases *)
       | _ => 
             if newline ts then (trace ["inserting semicolon"]; ts)
-            else (error(["expecting semicolon before ",tokenname(hd ts)]); raise ParseError)
+            else (error(["expecting semicolon before ",tokenname(hd ts)]); error ["unknown token in semicolon"])
     end
   | semicolon (ts,_) =
     let val _ = trace([">> semicolon(ABBREV | NOSHORTIF) with next=", tokenname(hd ts)])
@@ -3689,7 +3685,7 @@ and emptyStatement ts =
     let
     in case ts of
         SemiColon :: ts1 => (ts1,Ast.EmptyStmt)
-      | _ => raise ParseError
+      | _ => error ["unknown token in emptyStatement"]
     end
 
 (*
@@ -3707,7 +3703,7 @@ and blockStatement (ts,t:tau) =
                 trace(["<< blockStatement with next=", tokenname(hd ts)]);
                 (ts1,Ast.BlockStmt nd1)
             end
-      | _ => raise ParseError
+      | _ => error ["unknown token in blockStatement"]
     end
 
 (*
@@ -3725,7 +3721,7 @@ and labeledStatement (ts,w) =
             in
                 (ts1,Ast.LabeledStmt (id,nd1))
             end
-      | _ => raise ParseError
+      | _ => error ["unknown token in labeledStatement"]
     end
 
 (*
@@ -3788,11 +3784,11 @@ and switchStatement (ts) : (token list * Ast.STMT) =
                                 val (ts3,nd3) = typeCaseElements (tl (tl ts2))
                             in case ts3 of
                                 RightBrace :: _ => (tl ts3,Ast.SwitchTypeStmt{cond=nd1,ty=nd2,cases=nd3})
-                              | _ => raise ParseError
+                              | _ => error ["unknown token in switchStatement"]
                             end
-                      | _ => raise ParseError
+                      | _ => error ["unknown token in switchStatement"]
                     end
-              | _ => raise ParseError
+              | _ => error ["unknown token in switchStatement"]
             end
       | Switch :: _ =>
             let
@@ -3803,11 +3799,11 @@ and switchStatement (ts) : (token list * Ast.STMT) =
                         val (ts2,nd2) = caseElements (tl ts1)
                     in case ts2 of
                         RightBrace :: _ => (tl ts2,Ast.SwitchStmt{cond=nd1,cases=nd2})
-                      | _ => raise ParseError
+                      | _ => error ["unknown token in switchStatement"]
                     end
-              | _ => raise ParseError
+              | _ => error ["unknown token in switchStatement"]
             end
-      | _ => raise ParseError
+      | _ => error ["unknown token in switchStatement"]
     end
 
 and isDefaultCase (x) =
@@ -3838,7 +3834,7 @@ and caseElements (ts) : (token list * Ast.CASE list) =
                         (ts2,{label=nd1,body=(#body first),inits=NONE} :: follows)
                     end
             end
-      | _ => raise ParseError
+      | _ => error ["unknown token in caseElements"]
     end
 
 and caseElementsPrefix (ts,has_default) : (token list * Ast.CASE list) =
@@ -3897,17 +3893,17 @@ and caseLabel (ts,has_default) : (token list * Ast.EXPR option) =
                 val (ts1,nd1) = listExpression (tl ts,ALLOWIN)
             in case ts1 of
                 Colon :: _ => (tl ts1,SOME nd1)
-              | _ => raise ParseError
+              | _ => error ["unknown token in caseLabel"]
             end
       | (Default :: _,false) =>
             let
             in case tl ts of
                 Colon :: _ => (tl (tl ts),NONE)
-              | _ => raise ParseError
+              | _ => error ["unknown token in caseLabel"]
             end
       | (Default :: _,true) =>
-            (error(["redundant default switch case"]); raise ParseError)
-      | _ => raise ParseError
+            (error(["redundant default switch case"]); error ["unknown token in caseLabel"])
+      | _ => error ["unknown token in caseLabel"]
     end
 
 (*
@@ -3936,18 +3932,18 @@ and typeCaseBinding (ts) : (token list * Ast.BINDINGS) =
                     in case ts2 of
                         RightParen :: _ =>
                             (tl ts2, desugarPattern p t (SOME nd2) 0)
-                      | _ => raise ParseError
+                      | _ => error ["unknown token in typeCaseBinding"]
                     end
               | _ => 
                     let
                     in case ts1 of
                         RightParen :: _ =>
                             (tl ts1, desugarPattern p t NONE 0)
-                      | _ => raise ParseError
+                      | _ => error ["unknown token in typeCaseBinding"]
                     end
             end
       | _ => 
-            raise ParseError
+            error ["unknown token in typeCaseBinding"]
     end
 
 (*
@@ -4011,7 +4007,7 @@ and typeCaseElement (ts,has_default)
                         trace(["<< typeCaseElement with next=", tokenname(hd ts2)]);
                         (ts2, {bindings=desugarPattern p t (SOME (Ast.GetTemp 0)) 0, ty=t, body=nd2,inits=NONE})
                     end
-              | _ => raise ParseError
+              | _ => error ["unknown token in typeCaseElement"]
             end
       | (Default :: _,false) =>
             let
@@ -4021,8 +4017,8 @@ and typeCaseElement (ts,has_default)
                 (ts1, {bindings=([],[]), ty=SOME (Ast.SpecialType Ast.Any), body=nd1, inits=NONE})
             end
       | (Default :: _,true) =>
-            (error(["redundant default switch type case"]); raise ParseError)
-      | _ => raise ParseError
+            (error(["redundant default switch type case"]); error ["unknown token in typeCaseElement"])
+      | _ => error ["unknown token in typeCaseElement"]
     end
 (*
     
@@ -4063,7 +4059,7 @@ and ifStatement (ts,ABBREV) =
                         (ts2,Ast.IfStmt {cnd=nd1,thn=nd2,els=Ast.EmptyStmt})
                     end
             end
-          | _ => raise ParseError
+          | _ => error ["unknown token in ifStatement"]
     end
   | ifStatement (ts,FULL) =
     let val _ = trace([">> ifStatement(FULL) with next=", tokenname(hd ts)])
@@ -4085,7 +4081,7 @@ and ifStatement (ts,ABBREV) =
                         (ts2,Ast.IfStmt {cnd=nd1,thn=nd2,els=Ast.EmptyStmt})
                     end
             end
-          | _ => raise ParseError
+          | _ => error ["unknown token in ifStatement"]
     end
   | ifStatement (ts,SHORTIF) =
     let val _ = trace([">> ifStatement(SHORTIF) with next=", tokenname(hd ts)])
@@ -4102,9 +4098,9 @@ and ifStatement (ts,ABBREV) =
                         (ts3,Ast.IfStmt {cnd=nd1,thn=nd2,els=nd3})
                     end
               | _ => 
-                    raise ParseError
+                    error ["unknown token in ifStatement"]
             end
-          | _ => raise ParseError
+          | _ => error ["unknown token in ifStatement"]
     end
 
 (*
@@ -4125,9 +4121,9 @@ and doStatement (ts) : (token list * Ast.STMT) =
                     in
                         (ts2,Ast.DoWhileStmt {body=nd1,cond=nd2,fixtures=NONE,labels=[]})
                     end
-              | _ => raise ParseError
+              | _ => error ["unknown token in doStatement"]
             end
-      | _ => raise ParseError
+      | _ => error ["unknown token in doStatement"]
     end
 
 (*
@@ -4145,7 +4141,7 @@ and whileStatement (ts,w) : (token list * Ast.STMT) =
             in
                 (ts2,Ast.WhileStmt {cond=nd1,fixtures=NONE,body=nd2,labels=[]})
             end
-      | _ => raise ParseError
+      | _ => error ["unknown token in whileStatement"]
     end
 
 (*
@@ -4198,14 +4194,14 @@ and forStatement (ts,w) : (token list * Ast.STMT) =
                                             fixtures=NONE,
                                             body=nd4})
                             end
-                      | _ => raise ParseError
+                      | _ => error ["unknown token in forStatement"]
                     end
               | In :: _ =>
                     let
                         val len = case defn of SOME {bindings=(b,i),...} => length b | NONE => 0
                         val (b,i) = if (len > 1) 
                                     then (error(["too many bindings on left side of in"]); 
-                                          raise ParseError)
+                                          error ["unknown token in forStatement"])
                                     else if (len = 0) (* convert inits to pattern *)
                                         then case init of 
                                             Ast.ExprStmt e => 
@@ -4226,9 +4222,9 @@ and forStatement (ts,w) : (token list * Ast.STMT) =
                                              inits=NONE,
                                              body=nd3 })
                             end
-                      | _ => raise ParseError
+                      | _ => error ["unknown token in forStatement"]
                     end
-              | _ => raise ParseError
+              | _ => error ["unknown token in forStatement"]
             end
 (* FIXME
 
@@ -4252,12 +4248,12 @@ and forStatement (ts,w) : (token list * Ast.STMT) =
                                              inits=NONE,
                                              body=nd3 })
                             end
-                      | _ => raise ParseError
+                      | _ => error ["unknown token in forStatement"]
                     end
-              | _ => raise ParseError
+              | _ => error ["unknown token in forStatement"]
             end
 *)
-      | _ => raise ParseError
+      | _ => error ["unknown token in forStatement"]
     end
 
 (*
@@ -4278,7 +4274,7 @@ and forInitialiser (ts)
                 (Ast.VariableDefn vd :: [],stmt::[]) =>
                     (trace(["<< forInitialiser with next=", tokenname(hd ts1)]);
                     (ts1,SOME vd,stmt))
-              | _ => raise ParseError
+              | _ => error ["unknown token in forInitialiser"]
             end
       | SemiColon :: _ =>
             let
@@ -4374,9 +4370,9 @@ and letStatement (ts,w) : (token list * Ast.STMT) =
                         trace(["<< letStatement with next=",tokenname(hd(ts2))]);
                         (ts2,Ast.LetStmt (Ast.Block {pragmas=[],defns=[defn],head=NONE,body=[nd2]}))
                     end
-               |    _ => raise ParseError
+               |    _ => error ["unknown token in letStatement"]
             end
-      | _ => raise ParseError
+      | _ => error ["unknown token in letStatement"]
     end
 
 (*
@@ -4410,11 +4406,11 @@ and withStatement (ts,w) : (token list * Ast.STMT) =
                                 (trace(["<< withStatement with next=",tokenname(hd(ts3))]);
                                 (ts3,Ast.WithStmt {obj=nd1,ty=nd2,body=nd3}))
                             end
-                       |    _ => raise ParseError
+                       |    _ => error ["unknown token in withStatement"]
                     end
-               |    _ => raise ParseError
+               |    _ => error ["unknown token in withStatement"]
             end
-      | _ => raise ParseError
+      | _ => error ["unknown token in withStatement"]
     end
 
 (*
@@ -4437,7 +4433,7 @@ and continueStatement ts: (token list * Ast.STMT) =
                 in
                     (ts1,Ast.ContinueStmt (SOME nd1))
                 end
-      | _ => raise ParseError
+      | _ => error ["unknown token in continueStatement"]
     end
 
 (*
@@ -4461,7 +4457,7 @@ and breakStatement ts: (token list * Ast.STMT) =
                     trace(["<< breakStatement with next=", tokenname(hd ts)]);
                     (ts1,Ast.BreakStmt (SOME nd1))
                 end
-      | _ => raise ParseError
+      | _ => error ["unknown token in breakStatement"]
     end
 
 (*
@@ -4484,7 +4480,7 @@ and returnStatement ts =
                 in
                     (ts1,Ast.ReturnStmt nd1)
                 end
-      | _ => raise ParseError
+      | _ => error ["unknown token in returnStatement"]
     end
 
 (*
@@ -4501,7 +4497,7 @@ and throwStatement ts =
             in
                 (ts1,Ast.ThrowStmt nd1)
             end
-      | _ => raise ParseError
+      | _ => error ["unknown token in throwStatement"]
     end
 
 (*
@@ -4548,7 +4544,7 @@ and tryStatement (ts) : (token list * Ast.STMT) =
                             end
                     end
             end
-      | _ => raise ParseError
+      | _ => error ["unknown token in tryStatement"]
     end
 
 and catchClauses (ts) =
@@ -4582,9 +4578,9 @@ and catchClause (ts) =
                     in
                         (ts2,{bindings=((temp::b),[]),ty=ty,block=nd2,fixtures=NONE})
                     end
-              | _ => raise ParseError
+              | _ => error ["unknown token in catchClause"]
             end
-      | _ => raise ParseError
+      | _ => error ["unknown token in catchClause"]
     end
 
 (*
@@ -4601,7 +4597,7 @@ and defaultXmlNamespaceStatement (ts) =
             in
                 (ts1,Ast.Dxns {expr=nd1})
             end
-      | _ => raise ParseError
+      | _ => error ["unknown token in defaultXmlNamespaceStatement"]
     end
     
 (* DIRECTIVES *)
@@ -4819,7 +4815,7 @@ and annotatableDirective (ts, attrs:ATTRS, GLOBAL, w) : (token list * Ast.DIRECT
                 (ts2,nd2)
             end
       | _ => 
-            raise ParseError
+            error ["unknown token in annotatableDirective"]
     end
   | annotatableDirective (ts,attrs,INTERFACE,w) : (token list * Ast.DIRECTIVES)  =
     let val _ = trace([">> annotatableDirective INTERFACE with next=", tokenname(hd ts)])
@@ -4839,7 +4835,7 @@ and annotatableDirective (ts, attrs:ATTRS, GLOBAL, w) : (token list * Ast.DIRECT
                 (ts2,nd2)
             end
       | _ => 
-            raise ParseError
+            error ["unknown token in annotatableDirective"]
     end
   | annotatableDirective (ts,attrs,t,w) : (token list * Ast.DIRECTIVES)  =
     let val _ = trace([">> annotatableDirective omega with next=", tokenname(hd ts)])
@@ -4871,7 +4867,7 @@ and annotatableDirective (ts, attrs:ATTRS, GLOBAL, w) : (token list * Ast.DIRECT
                 (ts2,nd2)
             end
       | _ => 
-            raise ParseError
+            error ["unknown token in annotatableDirective"]
     end
 
 (*
@@ -4961,7 +4957,7 @@ and attribute (ts, attrs:ATTRS, GLOBAL)
                         rest = rest})
             end
       | (Override | Static | Prototype ) :: _ => 
-            (error(["invalid attribute in global context"]);raise ParseError)
+            (error(["invalid attribute in global context"]);error ["unknown token in attribute"])
       | _ => 
             let
                 val (ts1,nd1) = namespaceAttribute (ts,GLOBAL)
@@ -5047,7 +5043,7 @@ and attribute (ts, attrs:ATTRS, GLOBAL)
                         rest = rest})
             end
       | Dynamic :: _ => 
-            (error(["invalid attribute in class context"]);raise ParseError)
+            (error(["invalid attribute in class context"]);error ["unknown token in attribute"])
       | _ => 
             let
                 val (ts1,nd1) = namespaceAttribute (ts,CLASS)
@@ -5070,7 +5066,7 @@ and attribute (ts, attrs:ATTRS, GLOBAL)
             (Dynamic | Final | Native | Override | Prototype | Static | 
              Private | Protected | Public | Internal | Intrinsic | Identifier _) :: _ =>
                 (error(["attributes not allowed on a interface methods"]);
-                 raise ParseError)
+                 error ["unknown token in attribute"])
           | _ =>
                 (ts,{ 
                         ns = ns,
@@ -5089,7 +5085,7 @@ and attribute (ts, attrs:ATTRS, GLOBAL)
             (Dynamic | Final | Native | Override | Prototype | Static | 
              Private | Protected | Public | Internal | Intrinsic | Identifier _) :: _ =>
                 (error(["attributes not allowed on local definitions"]);
-                 raise ParseError)
+                 error ["unknown token in attribute"])
           | _ =>
             (ts,{ 
                     ns = ns,
@@ -5117,7 +5113,7 @@ and namespaceAttribute (ts,GLOBAL)
             in
                 (tl ts, SOME (Ast.LexicalRef {ident=Ast.Identifier{ident=s,openNamespaces=[]}}))
             end
-      | _ => raise ParseError
+      | _ => error ["unknown token in namespaceAttribute"]
     end
   | namespaceAttribute (ts,CLASS) =
     let val _ = trace([">> namespaceAttribute with next=", tokenname(hd ts)])
@@ -5133,12 +5129,12 @@ and namespaceAttribute (ts,GLOBAL)
             in
                 (tl ts, SOME (Ast.LexicalRef {ident=Ast.Identifier{ident=s,openNamespaces=[]}}))
             end
-      | _ => raise ParseError
+      | _ => error ["unknown token in namespaceAttribute"]
     end
   | namespaceAttribute (ts,_) =
     let val _ = trace([">> namespaceAttribute with next=", tokenname(hd ts)])
     in case ts of
-        _ => raise ParseError
+        _ => error ["unknown token in namespaceAttribute"]
     end
         
 
@@ -5201,7 +5197,7 @@ and variableDefinitionKind (ts) =
             (tl (tl ts), Ast.LetConst)
       | Let :: _ => 
             (tl ts, Ast.LetVar)
-      | _ => raise ParseError
+      | _ => error ["unknown token in variableDefinitionKind"]
     end
 
 and variableBindingList (ts,a,b) : (token list * Ast.BINDINGS) = 
@@ -5265,7 +5261,7 @@ and variableBinding (ts,a,beta) : (token list * Ast.BINDINGS) =
                     trace(["<< variableBinding with next=", tokenname(hd ts1)]);
                     (ts1, (b,i))
                 end
-          | (_,_,_) => (error(["destructuring pattern without initialiser"]); raise ParseError)
+          | (_,_,_) => (error(["destructuring pattern without initialiser"]); error ["unknown token in variableBinding"])
     end
 
 and variableInitialisation (ts,a,b) : (token list * Ast.EXPR) =
@@ -5277,7 +5273,7 @@ and variableInitialisation (ts,a,b) : (token list * Ast.EXPR) =
             in
                 (ts1,nd1)
             end
-      | _ => raise ParseError
+      | _ => error ["unknown token in variableInitialisation"]
     end
 
 (*
@@ -5314,7 +5310,7 @@ and functionDeclaration (ts,attrs) =
                       body=[],
                       head=NONE})
             end
-      | _ => raise ParseError
+      | _ => error ["unknown token in functionDeclaration"]
     end
 
 (*
@@ -5395,7 +5391,7 @@ and functionDefinition (ts,attrs:ATTRS,CLASS) =
                               head=NONE})
                     end
             end
-      | (Ast.LetVar,true,_) => (error (["class name not allowed in 'let function'"]);raise ParseError)
+      | (Ast.LetVar,true,_) => (error (["class name not allowed in 'let function'"]);error ["unknown token in functionDefinition"])
       | (_,false,false) =>  (* static or instance method *)
             let
                 val (ts3,nd3) = functionSignature (ts2)
@@ -5557,7 +5553,7 @@ and functionKind (ts) =
             (tl (tl ts), Ast.LetVar)
       | Const :: Function :: _ => 
             (tl (tl ts), Ast.Const)
-      | _ => raise ParseError
+      | _ => error ["unknown token in functionKind"]
     end
 
 
@@ -5641,7 +5637,7 @@ and operatorName (ts) =
       | StrictEquals :: _ => (tl ts,"===")
       | NotEquals :: _ => (tl ts,"!=")
       | NotStrictEquals :: _ => (tl ts,"!==")
-      | _ => raise ParseError
+      | _ => error ["unknown token in operatorName"]
     end
 
 (*
@@ -5685,9 +5681,9 @@ and constructorSignature (ts) =
                                       thisType=NONE,
                                       hasRest=false }) (* do we need this *)
                        end
-                 | _ => raise ParseError
+                 | _ => error ["unknown token in constructorSignature"]
             end
-      | _ => raise ParseError
+      | _ => error ["unknown token in constructorSignature"]
     end
 
 
@@ -5777,7 +5773,7 @@ and initialiser (ts)
                     trace(["<< initialiser with next=", tokenname(hd ts2)]);
                     (ts2, desugarPattern nd1 NONE (SOME nd2) 0)
                 end
-          | _ => (error(["constructor initialiser without assignment"]); raise ParseError)
+          | _ => (error(["constructor initialiser without assignment"]); error ["unknown token in initialiser"])
     end
 
 and superInitialiser (ts) 
@@ -5790,7 +5786,7 @@ and superInitialiser (ts)
             in
                 (ts1,nd1)
             end
-      | _ => raise ParseError
+      | _ => error ["unknown token in superInitialiser"]
     end
 
 (*
@@ -5926,7 +5922,7 @@ and classDefinition (ts,attrs:ATTRS) =
                       defns=[],
                       head=NONE})
             end
-      | _ => raise ParseError
+      | _ => error ["unknown token in classDefinition"]
     end
 
 and className (ts) =
@@ -6070,7 +6066,7 @@ and interfaceDefinition (ts,attrs:ATTRS) =
                                                  block=nd3}],
                        head=NONE})
             end
-      | _ => raise ParseError
+      | _ => error ["unknown token in interfaceDefinition"]
     end
 
 and interfaceInheritance (ts) = 
@@ -6120,7 +6116,7 @@ and namespaceDefinition (ts,attrs:ATTRS) =
                                                 init=nd2}],
                       head=NONE})
             end
-      | _ => raise ParseError
+      | _ => error ["unknown token in namespaceDefinition"]
     end
         
 and namespaceInitialisation (ts) : (token list * Ast.EXPR option) =
@@ -6170,7 +6166,7 @@ and typeDefinition (ts,attrs:ATTRS) =
                                            init=nd2}],
                       head=NONE})
             end
-      | _ => raise ParseError
+      | _ => error ["unknown token in typeDefinition"]
     end
         
 and typeInitialisation (ts) : (token list * Ast.TYPE_EXPR) =
@@ -6183,7 +6179,7 @@ and typeInitialisation (ts) : (token list * Ast.TYPE_EXPR) =
                 trace(["<< typeInitialisation with next=", tokenname(hd ts1)]);
                 (ts1,nd1)
             end
-      | _ => raise ParseError
+      | _ => error ["unknown token in typeInitialisation"]
     end
 
 (* PRAGMAS *)
@@ -6230,7 +6226,7 @@ and pragma ts =
             in
                 (ts2,nd2)
             end
-      | _ => raise ParseError
+      | _ => error ["unknown token in pragma"]
     end
 
 (*
@@ -6242,7 +6238,7 @@ and usePragma ts =
     let val _ = trace([">> usePragma with next=", tokenname(hd ts)])
     in case ts of
         Use :: _ => pragmaItems (tl ts)
-      | _ => raise ParseError
+      | _ => error ["unknown token in usePragma"]
     end
 
 (*
@@ -6372,7 +6368,7 @@ and importPragma (ts) : token list * Ast.PRAGMA list =
             in
                 (ts1,[Ast.Import {package=p,name=i,alias=NONE}])
             end
-      | _ => raise ParseError
+      | _ => error ["unknown token in importPragma"]
     end
 
 and importName (ts) : (token list * (Ast.IDENT list * Ast.IDENT)) =
@@ -6397,7 +6393,7 @@ and importName (ts) : (token list * (Ast.IDENT list * Ast.IDENT)) =
             in
                 (ts1,([],nd1))
             end
-      | _ => raise ParseError
+      | _ => error ["unknown token in importName"]
     end
 
 (* BLOCKS AND PROGRAMS *)
@@ -6420,9 +6416,9 @@ and block (ts,t) : (token list * Ast.BLOCK) =
                 RightBrace :: _ => 
                     (trace(["<< block with next=", tokenname(hd (tl ts1))]);
                     (tl ts1,Ast.Block nd1))
-              | _ => raise ParseError
+              | _ => error ["unknown token in block"]
             end
-      | _ => raise ParseError
+      | _ => error ["unknown token in block"]
     end
 
 (*
@@ -6530,7 +6526,7 @@ and package ts : (token list * Ast.PACKAGE) =
             in
                 (ts2, {name=nd1, block=nd2})
             end
-      | _ => raise ParseError
+      | _ => error ["unknown token in package"]
     end
 
 and packageName (ts) : token list * Ast.IDENT list =
@@ -6634,7 +6630,7 @@ fun parse ts =
     let 
     val (residual, result) = (program ts) 
     fun check_residual [Eof] = ()
-      | check_residual _ = raise ParseError
+      | check_residual _ = error ["unknown token in dottedPath"]
     in
     check_residual residual;
     trace ["parsing complete:"];
@@ -6651,7 +6647,7 @@ fun logged thunk name =
          trace ["parsed ", name, "\n"];
          ast
      end)
-     handle ParseError => (trace ["parse error"]; raise ParseError)
+     handle ParseError => (trace ["parse error"]; error ["unknown token in dottedPath"])
           | Lexer.LexError => (trace ["lex error"]; raise Lexer.LexError)
 
 fun parseFile filename =
@@ -6664,7 +6660,7 @@ fun parseFile filename =
          trace ["parsed ", filename, "\n"];
          ast
      end)
-     handle ParseError => (trace ["parse error"]; raise ParseError)
+     handle ParseError => (trace ["parse error"]; error ["unknown token in dottedPath"])
           | Lexer.LexError => (trace ["lex error"]; raise Lexer.LexError)
 *)
 
