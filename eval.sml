@@ -1307,7 +1307,10 @@ and labelEq (stmtLabels:Ast.IDENT list)
 and evalStmts (scope:Mach.SCOPE) 
               (stmts:Ast.STMT list) 
     : Mach.VAL = 
-    (map (evalStmt scope) stmts; Mach.Undef)
+    case stmts of 
+        [s] => evalStmt scope s
+      | (s::ss) => (evalStmt scope s; evalStmts scope ss)
+      | [] => Mach.Undef
 
 
 and evalStmt (scope:Mach.SCOPE) 

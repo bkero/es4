@@ -5,6 +5,108 @@
 
 structure Main = struct
 
+fun findTraceOption (tname:string) 
+    : (bool ref) option = 
+    case tname of 
+        "lex" => SOME (Lexer.UserDeclarations.doTrace)
+      | "parse" => SOME (Parser.doTrace)
+      | "name" => SOME (Multiname.doTrace)
+      | "defn" => SOME (Defn.doTrace)
+      | "eval" => SOME (Eval.doTrace)
+      | "mach" => SOME (Mach.doTrace)
+      | "decimal" => SOME (Decimal.doTrace)
+      | "native" => SOME (Native.doTrace)
+      | "boot" => SOME (Boot.doTrace)
+      | _ => NONE
+
+exception quitException
+    
+fun repl _ = 
+    let
+        val doParse = ref true
+        val doDefn = ref true
+        val doEval = ref true
+
+        fun toggleRef (n:string) (r:bool ref) = 
+            (r := not (!r);
+             print ("set " ^ n ^ " = " ^ (Bool.toString (!r))))
+
+        fun doLine _ = 
+            let 
+                val _ = print "\n>> "
+                val line = case TextIO.inputLine TextIO.stdIn of 
+                               NONE => ""
+                             | SOME s => s
+                val toks = String.tokens Char.isSpace line
+                fun help _ = (List.app print 
+                                       [
+                                        ":quit          - quit repl\n",
+                                        ":trace <T>     - toggle tracing of <T>\n",
+                                        ":help          - this message\n",
+                                        ":reboot        - reload the boot environment\n",
+                                        ":parse         - toggle parse stage\n",
+                                        ":defn          - toggle defn stage\n",
+                                        ":eval          - toggle evaluation stage\n" 
+                                       ]; 
+                              doLine())
+            in
+                case toks of 
+                    [":quit"] => raise quitException
+                  | [":q"] => raise quitException
+                  | [":h"] => help ()
+                  | [":help"] => help ()
+                  | [":?"] => help ()
+                  | ["?"] => help ()
+                  | [":reboot"] => (Boot.boot(); doLine ())
+                  | [":parse"] => toggleRef "parse" doParse
+                  | [":defn"] => toggleRef "defn" doDefn
+                  | [":eval"] => toggleRef "eval" doEval
+                  | [":trace", t] => 
+                    ((case findTraceOption t of 
+                          NONE => 
+                          (print ("unknown trace option " ^ t))
+                        | SOME r => toggleRef ("trace option " ^ t) r);
+                     doLine())
+                  | [] => doLine ()
+                  | _ => 
+                    if (!doParse)
+                    then 
+                        let 
+                            val p = Parser.parseLines [line]
+                        in
+                            if (!doDefn)
+                            then 
+                                let
+                                    val d = Defn.defProgram p
+                                in
+                                    if (!doEval)
+                                    then 
+                                        (print (Mach.toString (Eval.evalProgram d));
+                                         doLine ())
+                                    else 
+                                        doLine ()
+                                end
+                            else 
+                                doLine ()
+                        end
+                    else
+                        doLine ()
+            end
+
+        fun runUntilQuit _ = 
+            ((doLine () 
+              handle 
+              (LogErr.LexError | LogErr.ParseError | LogErr.NameError 
+            | LogErr.DefnError | LogErr.EvalError | LogErr.MachError 
+            | LogErr.HostError | LogErr.UnimplError) => ());
+             runUntilQuit ())
+    in
+        Boot.boot();
+        runUntilQuit ()
+        handle quitException => print "bye\n"
+    end
+            
+
 fun testTC argvRest =
     let 
     	val _ = TextIO.print "booting ... \n";
@@ -45,23 +147,19 @@ fun testDefn argvRest =
     end
 
 fun consumeTraceOption (opt:string) : bool = 
-    case opt of 
-        "-Tlex" => (Lexer.UserDeclarations.doTrace := true; false)
-      | "-Tparse" => (Parser.doTrace := true; false)
-      | "-Tname" => (Multiname.doTrace := true; false)
-      | "-Tdefn" => (Defn.doTrace := true; false)
-      | "-Teval" => (Eval.doTrace := true; false)
-      | "-Tmach" => (Mach.doTrace := true; false)
-      | "-Tdecimal" => (Decimal.doTrace := true; false)
-      | "-Tnative" => (Native.doTrace := true; false)
-      | "-Tboot" => (Boot.doTrace := true; false)
+    case explode opt of
+        (#"-" :: #"T" :: rest) => 
+        (case findTraceOption (String.implode rest) of 
+             SOME r => (r := true; false)
+           | NONE => true)
       | _ => true
 
 fun main (argv0:string, argvRest:string list) =
     BackTrace.monitor (fn () =>                          
                           (
                            (case List.filter consumeTraceOption argvRest of
-                                ("-tc"::argvRest) => testTC argvRest
+                                ("-r"::argvRest) => repl ()
+                              | ("-tc"::argvRest) => testTC argvRest
 	                          | ("-ev"::argvRest) => testEV argvRest
                               | _ => testDefn argvRest);
                            0))
