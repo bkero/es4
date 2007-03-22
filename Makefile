@@ -60,6 +60,9 @@ run: es4.heap.$(HEAP_SUFFIX)
 	sml @SMLload=es4.heap $(TRACE) -ev $(FILE)
 
 repl: es4.heap.$(HEAP_SUFFIX)
+	perl repl-with-readline.pl
+
+replNoReadline: es4.heap.$(HEAP_SUFFIX)
 	sml @SMLload=es4.heap -r
 
 wc:

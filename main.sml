@@ -21,7 +21,7 @@ fun findTraceOption (tname:string)
 
 exception quitException
     
-fun repl _ = 
+fun repl doPrompt = 
     let
         val doParse = ref true
         val doDefn = ref true
@@ -33,7 +33,7 @@ fun repl _ =
 
         fun doLine _ = 
             let 
-                val _ = print "\n>> "
+                val _ = if doPrompt then print ">> " else ()
                 val line = case TextIO.inputLine TextIO.stdIn of 
                                NONE => ""
                              | SOME s => s
@@ -81,7 +81,7 @@ fun repl _ =
                                 in
                                     if (!doEval)
                                     then 
-                                        (print (Mach.toString (Eval.evalProgram d));
+                                        (print ((Mach.toString (Eval.evalProgram d)) ^ "\n");
                                          doLine ())
                                     else 
                                         doLine ()
@@ -158,7 +158,8 @@ fun main (argv0:string, argvRest:string list) =
     BackTrace.monitor (fn () =>                          
                           (
                            (case List.filter consumeTraceOption argvRest of
-                                ("-r"::argvRest) => repl ()
+                                ("-r"::argvRest) => repl true 
+                              | ("-rq"::argvRest) => repl false 
                               | ("-tc"::argvRest) => testTC argvRest
 	                          | ("-ev"::argvRest) => testEV argvRest
                               | _ => testDefn argvRest);
