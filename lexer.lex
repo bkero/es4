@@ -77,7 +77,7 @@ val (found_newline : bool ref)        = ref false
 
 %structure Lexer
 
-%s REGEXP REGEXP_CHARSET REGEXP_FLAGS XML SINGLE_LINE_COMMENT MULTI_LINE_COMMENT STRING;
+%s REGEXP REGEXP_CHARSET XML SINGLE_LINE_COMMENT MULTI_LINE_COMMENT STRING;
 
 whitespace      = [\009\013\032]+;
 
@@ -142,16 +142,20 @@ regexpFlags           = [a-zA-Z]*;
 				     (fn _ => Div :: token_list 
 						  (fn _ => (YYBEGIN INITIAL; lex ()))),
 				     lex_regexp = 
-				     (fn _ => token_list 
-						  (fn _ => (curr_chars := [#"/"]; YYBEGIN REGEXP; lex ()))) });
+				        (curr_chars := [#"/"];
+				         YYBEGIN REGEXP;
+				         fn _ => token_list 
+						  (fn _ => lex ())) });
 
 <INITIAL>"/="              => (LexBreakDivAssign
 				   { lex_initial = 
 				     (fn _ => DivAssign :: token_list 
 						  (fn _ => (YYBEGIN INITIAL; lex ()))),
 				     lex_regexp = 
-				     (fn _ => token_list 
-						  (fn _ => (curr_chars := [#"=",#"/"]; YYBEGIN REGEXP; lex ()))) });
+				        (curr_chars := [#"=",#"/"];
+				         YYBEGIN REGEXP;
+					 fn _ => token_list 
+						  (fn _ => (lex ()))) });
 <INITIAL>":"               => (Colon);
 <INITIAL>"::"              => (DoubleColon);
 <INITIAL>";"               => (SemiColon);
@@ -309,7 +313,8 @@ regexpFlags           = [a-zA-Z]*;
 				    val re = String.implode(rev (!curr_chars)) ^ yytext
 				in
 				    if !found_newline andalso (not x_flag)
-				    then error ["Illegal newline in regexp"]
+				    (* then error ["Illegal newline in regexp"]   *)
+				    then error [re]
 				    else
 				       (curr_chars := [];
 					found_newline := false;
@@ -320,7 +325,7 @@ regexpFlags           = [a-zA-Z]*;
 				YYBEGIN REGEXP_CHARSET;
 				lex());
 <REGEXP>"\n"|"\r"           => (found_newline := true;  lex());
-<REGEXP>"\\\n"|"\\\r".      => (lex());
+<REGEXP>"\\\n"|"\\\r"       => (lex());
 <REGEXP>"\\".               => (curr_chars := String.sub(yytext,1) :: #"\\" :: !curr_chars;
 				lex());
 <REGEXP>.                   => (curr_chars := String.sub(yytext,0) :: !curr_chars;
