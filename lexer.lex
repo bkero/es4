@@ -138,23 +138,21 @@ regexpFlags           = [a-zA-Z]*;
 
 <INITIAL>"/"               => (LexBreakDiv
 				   { lex_initial = 
-				     (fn _ => Div :: token_list 
-						  (fn _ => (YYBEGIN INITIAL; lex ()))),
+					fn _ => Div :: token_list (fn _ => lex ()),
 				     lex_regexp = 
-				        (curr_chars := [#"/"];
-				         YYBEGIN REGEXP;
-				         fn _ => token_list 
-						  (fn _ => lex ())) });
-
+					fn _ =>
+					  (curr_chars := [#"/"];
+					   YYBEGIN REGEXP;
+					   token_list (fn _ => lex ())) });
 <INITIAL>"/="              => (LexBreakDivAssign
 				   { lex_initial = 
-				     (fn _ => DivAssign :: token_list 
-						  (fn _ => (YYBEGIN INITIAL; lex ()))),
+					fn _ => DivAssign :: token_list (fn _ => lex ()),
 				     lex_regexp = 
-				        (curr_chars := [#"=",#"/"];
-				         YYBEGIN REGEXP;
-					 fn _ => token_list 
-						  (fn _ => (lex ()))) });
+					fn _ =>
+					  (curr_chars := [#"=",#"/"];
+					   YYBEGIN REGEXP;
+					   token_list (fn _ => lex ())) });
+
 <INITIAL>":"               => (Colon);
 <INITIAL>"::"              => (DoubleColon);
 <INITIAL>";"               => (SemiColon);
@@ -177,11 +175,12 @@ regexpFlags           = [a-zA-Z]*;
 
 <INITIAL>"<"               => (LexBreakLessThan
 				   { lex_initial = 
-				     (fn _ => LessThan :: token_list 
-						  (fn _ => (YYBEGIN INITIAL; lex ()))),
+					fn _ => LessThan :: token_list (fn _ => lex ()),
 				     lex_xml = 
-				     (fn _ => token_list 
-						  (fn _ => (YYBEGIN XML; lex ()))) });
+					fn _ => 
+					  (YYBEGIN XML;
+					   token_list (fn _ => lex ())) });
+
 
 <INITIAL>"<<"              => (LeftShift);
 <INITIAL>"<<="             => (LeftShiftAssign);
@@ -309,8 +308,7 @@ regexpFlags           = [a-zA-Z]*;
 				    val re = String.implode(rev (!curr_chars)) ^ yytext
 				in
 				    if !found_newline andalso (not x_flag)
-				    (* then error ["Illegal newline in regexp"]   *)
-				    then error [re]
+				    then error ["Illegal newline in regexp"]
 				    else
 				       (curr_chars := [];
 					found_newline := false;
