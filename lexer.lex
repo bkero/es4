@@ -103,7 +103,8 @@ decimalLiteral        = ({decimalLiteral_1} | {decimalLiteral_2} | {decimalLiter
 hexIntegerLiteral     = ("0" [xX] {hexDigit}+);
 
 explicitIntLiteral      = ({hexIntegerLiteral} | {decimalIntegerLiteral}) "i";
-explicitUIntLiteral     = ({hexIntegerLiteral} | {decimalIntegerLiteral}) "u";
+explicitUIntHexLiteral  = ({hexIntegerLiteral}) "u";
+explicitUIntDecLiteral  = ({decimalIntegerLiteral}) "u";
 explicitDoubleLiteral   = {decimalLiteral} "d";
 explicitDecimalLiteral  = {decimalLiteral} "m";
 
@@ -144,6 +145,7 @@ regexpFlags           = [a-zA-Z]*;
 					  (curr_chars := [#"/"];
 					   YYBEGIN REGEXP;
 					   token_list (fn _ => lex ())) });
+						  (fn _ => lex ())) });
 <INITIAL>"/="              => (LexBreakDivAssign
 				   { lex_initial = 
 					fn _ => DivAssign :: token_list (fn _ => lex ()),
@@ -278,11 +280,14 @@ regexpFlags           = [a-zA-Z]*;
                    
 
 <INITIAL>{explicitIntLiteral} => (case Int32.fromString (chopTrailing yytext) of
-                                     SOME i => ExplicitIntLiteral i
-                                   | NONE => raise LexError);
-<INITIAL>{explicitUIntLiteral} => (case Word32.fromString (chopTrailing yytext) of
-                                     SOME i => ExplicitUIntLiteral i
-                                   | NONE => raise LexError);
+                                      SOME i => ExplicitIntLiteral i
+                                    | NONE => raise LexError);
+<INITIAL>{explicitUIntDecLiteral} => (case LargeInt.fromString (chopTrailing yytext) of
+					  SOME i => ExplicitUIntLiteral (Word32.fromLargeInt i)
+					| NONE => raise LexError);
+<INITIAL>{explicitUIntHexLiteral} => (case Word32.fromString (chopTrailing yytext) of
+					  SOME i => ExplicitUIntLiteral i
+					| NONE => raise LexError);
 <INITIAL>{explicitDoubleLiteral} => (case Real64.fromString (chopTrailing yytext) of
 					 SOME i => ExplicitDoubleLiteral i
                                        | NONE => raise LexError);
@@ -308,7 +313,8 @@ regexpFlags           = [a-zA-Z]*;
 				    val re = String.implode(rev (!curr_chars)) ^ yytext
 				in
 				    if !found_newline andalso (not x_flag)
-				    then error ["Illegal newline in regexp"]
+				    (* then error ["Illegal newline in regexp"]   *)
+				    then error [re]
 				    else
 				       (curr_chars := [];
 					found_newline := false;

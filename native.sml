@@ -606,6 +606,29 @@ fun assert (vals:Mach.VAL list)
     then Mach.Undef
     else error ["intrinsic::assert() failed"]
 
+fun typename (vals:Mach.VAL list) 
+    : Mach.VAL = 
+    Mach.newString 
+    (case hd vals of 
+        Mach.Null => "null"
+      | Mach.Undef => "undefined"
+      | Mach.Object (Mach.Obj ob) => 
+        (case !(#magic ob) of
+             NONE => "object"
+           | SOME (Mach.UInt _) => "uint"
+           | SOME (Mach.Int _) => "int"
+           | SOME (Mach.Double _) => "double"
+           | SOME (Mach.Decimal _) => "decimal"
+           | SOME (Mach.ByteArray _) => "bytearray"
+           | SOME (Mach.String _) => "string"
+           | SOME (Mach.Bool _) => "bool"
+           | SOME (Mach.Namespace _) => "namespace"
+           | SOME (Mach.Class _) => "class"
+           | SOME (Mach.Interface _) => "interface"
+           | SOME (Mach.Function _) => "function"
+           | SOME (Mach.Type _) => "type"
+           | SOME (Mach.NativeFunction _) => "native function"))
+
 (* Register all the native functions in this file. *)
 fun registerNatives _ = 
     let
@@ -642,7 +665,8 @@ fun registerNatives _ =
         addFn Ast.Intrinsic "encodeURIComponent" encodeURIComponent;
         
         addFn Ast.Intrinsic "print" print;
-        addFn Ast.Intrinsic "assert" assert
+        addFn Ast.Intrinsic "assert" assert;
+        addFn Ast.Intrinsic "typename" typename
 
     end
 

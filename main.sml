@@ -29,7 +29,7 @@ fun repl doPrompt =
 
         fun toggleRef (n:string) (r:bool ref) = 
             (r := not (!r);
-             print ("set " ^ n ^ " = " ^ (Bool.toString (!r))))
+             print ("set " ^ n ^ " = " ^ (Bool.toString (!r)) ^ "\n"))
 
         fun doLine _ = 
             let 
@@ -64,7 +64,7 @@ fun repl doPrompt =
                   | [":trace", t] => 
                     ((case findTraceOption t of 
                           NONE => 
-                          (print ("unknown trace option " ^ t))
+                          (print ("unknown trace option " ^ t ^ "\n"))
                         | SOME r => toggleRef ("trace option " ^ t) r);
                      doLine())
                   | [] => doLine ()

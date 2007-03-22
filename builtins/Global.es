@@ -66,6 +66,7 @@ package
 
     intrinsic native function print(x);
     intrinsic native function assert(x);
+    intrinsic native function typename(x);
 
 
 }

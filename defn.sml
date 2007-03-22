@@ -1168,18 +1168,25 @@ and defContextualNumberLiteral (env:ENV)
                                                "' to int literal "]
                               | SOME d => d)
         fun asUInt _ = 
-            Ast.LiteralUInt (case Word32.fromString n of
-                                 NONE => error ["failure converting '", n, 
-                                                "' to uint literal "]
-                               | SOME d => d)
+            Ast.LiteralUInt (if isHex
+                             then 
+                                 (case Word32.fromString n of 
+                                      NONE => error ["failure converting '", n, 
+                                                     "' to uint literal "]
+                                    | SOME x => x)
+                             else 
+                                 (case LargeInt.fromString n of
+                                      NONE => error ["failure converting '", n, 
+                                                     "' to uint literal "]
+                                    | SOME d => Word32.fromLargeInt d))
     in
         if isHex andalso (not isIntegral)
         then error ["non-integral hex literal"]
         else
             case numberType of 
-                Ast.Decimal => asDecimal ()                  
+                Ast.Decimal => asDecimal ()
               | Ast.Double => asDouble ()
-                              
+
               (* 
                * FIXME: The language in the draft spec describes
                * what happens to "integer literals" in the 
@@ -1187,34 +1194,31 @@ and defContextualNumberLiteral (env:ENV)
                * about non-integral literals. What should we do
                * in those cases?
                *)
-                              
+
               | Ast.Int => asInt ()
               | Ast.UInt => asUInt ()                  
-                            
+
               (* This part is for ES3 backward-compatibility. *)
               | Ast.Number => 
                 if isIntegral
                 then 
                     let 
-                        val v = valOf (IntInf.fromString n)
-                        val uintMax = IntInf.pow(2, 32) - 1
-                        val uintMin = IntInf.fromInt 0
-                        val intMax = IntInf.pow(2, 31) - 1
-                        val intMin = ~ (IntInf.pow(2, 31))
+                        fun v _ = valOf (LargeInt.fromString n)
                     in
-                        if isHex andalso uintMin <= v andalso v <= uintMax
+                        if isHex 
                         then asUInt ()
                         else 
-                            (if intMin <= v andalso v <= intMax
+                            (if Mach.fitsInInt (v())
                              then asInt ()
                              else 
-                                 (if 0 <= v andalso v <= uintMax
+                                 (if Mach.fitsInUInt (v())
                                   then asUInt ()
                                   else asDouble ()))
                     end
                 else
                     asDouble ()
-    end                                         
+    end
+
 
 and defLiteral (env:ENV) 
                (lit:Ast.LITERAL) 

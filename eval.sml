@@ -884,7 +884,7 @@ and performBinop (bop:Ast.BINOP)
         fun stringConcat _ = 
             Mach.newString ((Mach.toString a) ^ (Mach.toString b))
 
-        fun dispatch (mode:Ast.NUMERIC_MODE) decimalOp doubleOp intOp uintOp =
+        fun dispatch (mode:Ast.NUMERIC_MODE) decimalOp doubleOp intOp uintOp largeOp =
             case (#numberType mode) of 
                 Ast.Decimal => decimalOp (Mach.toDecimal 
                                               (#precision mode) 
@@ -911,26 +911,23 @@ and performBinop (bop:Ast.BINOP)
                                     (#roundingMode mode) b)
                 else 
                     (if Mach.isDouble a orelse Mach.isDouble b
-                     then doubleOp (Mach.toDouble a) (Mach.toDouble b)
-                     else (if Mach.isInt a andalso Mach.isInt b
-                           then intOp (Mach.toInt32 a) (Mach.toInt32 b)
-                           else 
-                               (if Mach.isUInt a andalso Mach.isUInt b
-                                then uintOp (Mach.toUInt32 a) (Mach.toUInt32 b)
-                                else 
-                                    (if Mach.isInt a andalso Mach.isUInt b
-                                     then 
-                                         (if (Mach.toInt32 a) >= (Int32.fromInt 0)
-                                          then uintOp (Mach.toUInt32 a) (Mach.toUInt32 b)
-                                          else doubleOp (Mach.toDouble a) (Mach.toDouble b))
-                                     else 
-                                         (if Mach.isUInt a andalso Mach.isInt b
-                                          then 
-                                              (if (Mach.toInt32 b) >= (Int32.fromInt 0)
-                                               then uintOp (Mach.toUInt32 a) (Mach.toUInt32 b)
-                                               else doubleOp (Mach.toDouble a) (Mach.toDouble b))
-                                          else
-                                              doubleOp (Mach.toDouble a) (Mach.toDouble b))))))
+                     then (trace ["dynamic dispatch as double op"];
+                           doubleOp (Mach.toDouble a) (Mach.toDouble b))
+                     else
+                         let
+                             fun isIntegral x = Mach.isUInt x orelse Mach.isInt x
+                             fun enlarge x = if Mach.isUInt x 
+                                             then Word32.toLargeInt (Mach.toUInt32 x)
+                                             else Int32.toLarge (Mach.toInt32 x)
+                         in
+                             if isIntegral a andalso isIntegral b
+                             then 
+                                 (trace ["dynamic dispatch as large op"];
+                                  largeOp (enlarge a) (enlarge b))
+                             else
+                                 (trace ["dynamic dispatch as double op"];
+                                  doubleOp (Mach.toDouble a) (Mach.toDouble b))
+                         end)
                     
         fun dispatchComparison mode cmp =
             let
@@ -944,14 +941,16 @@ and performBinop (bop:Ast.BINOP)
                     Mach.newBoolean (cmp (Int32.compare (ia, ib)))
                 fun uintOp ua ub = 
                     Mach.newBoolean (cmp (Word32.compare (ua, ub)))
+                fun largeOp la lb = 
+                    Mach.newBoolean (cmp (LargeInt.compare (la, lb)))
             in
                 if Mach.isNumeric a andalso Mach.isNumeric b
-                then dispatch mode decimalOp doubleOp intOp uintOp
+                then dispatch mode decimalOp doubleOp intOp uintOp largeOp
                 else Mach.newBoolean (cmp (String.compare ((Mach.toString a), 
                                                            (Mach.toString b))))
             end
             
-        fun dispatchNumeric mode decimalFn doubleFn intFn uintFn =
+        fun dispatchNumeric mode decimalFn doubleFn intFn uintFn largeFn =
             let
                 fun decimalOp da db =
                     Mach.newDecimal (decimalFn (#precision mode) (#roundingMode mode) da db)
@@ -961,13 +960,23 @@ and performBinop (bop:Ast.BINOP)
                     Mach.newInt (intFn (ia, ib))
                 fun uintOp ua ub = 
                     Mach.newUInt (uintFn (ua, ub))
+                fun largeOp la lb = 
+                    let 
+                        val x = largeFn (la, lb)
+                    in
+                        if Mach.fitsInInt x
+                        then Mach.newInt (Int32.fromLarge x)
+                        else (if Mach.fitsInUInt x
+                              then Mach.newUInt (Word32.fromLargeInt x)
+                              else (case Real64.fromString (LargeInt.toString x) of 
+                                        SOME d => Mach.newDouble d
+                                      | NONE => (case Decimal.fromStringDefault (LargeInt.toString x) of
+                                                     SOME d => Mach.newDecimal d
+                                                   | NONE => error ["arithmetic overflow"])))
+                    end                                 
             in
-                dispatch mode decimalOp doubleOp intOp uintOp
+                dispatch mode decimalOp doubleOp intOp uintOp largeOp
             end            
-
-            
-        fun masku32 (x:Word32.word) : Word32.word = 
-            Word32.andb (x, (valOf (Word32.fromString "0xFFFFFFFF")))
 
         fun masku5 (x:Word32.word) : Word.word = 
             Word.fromInt (Word32.toInt (Word32.andb (x, (valOf (Word32.fromString "0x1F")))))
@@ -981,6 +990,11 @@ and performBinop (bop:Ast.BINOP)
         fun bitwiseWordOp f = 
             Mach.newUInt (f ((Mach.toUInt32 a),
                              (Mach.toUInt32 b)))
+
+        fun pickRepByA (x:Word32.word) = 
+            if Mach.isUInt a
+            then Mach.newUInt x
+            else Mach.newInt (u2i x)
                           
     in
         case bop of
@@ -993,6 +1007,7 @@ and performBinop (bop:Ast.BINOP)
                                  ( Real64.+ )
                                  ( Int32.+ )
                                  ( Word32.+ )
+                                 ( LargeInt.+ )
                                               
           | Ast.Minus mode => 
             dispatchNumeric ( valOf mode ) 
@@ -1000,6 +1015,7 @@ and performBinop (bop:Ast.BINOP)
                             ( Real64.- )
                             ( Int32.- )
                             ( Word32.- )
+                            ( LargeInt.- )
 
           | Ast.Times mode => 
             dispatchNumeric (valOf mode) 
@@ -1007,6 +1023,7 @@ and performBinop (bop:Ast.BINOP)
                             ( Real64.* )
                             ( Int32.* )
                             ( Word32.* )
+                            ( LargeInt.* )
 
           | Ast.Divide mode => 
             dispatchNumeric ( valOf mode ) 
@@ -1014,6 +1031,7 @@ and performBinop (bop:Ast.BINOP)
                             ( Real64./ )
                             ( Int32.div )
                             ( Word32.div )
+                            ( LargeInt.div )
 
           | Ast.Remainder mode => 
             dispatchNumeric ( valOf mode ) 
@@ -1021,20 +1039,21 @@ and performBinop (bop:Ast.BINOP)
                             ( Real64.rem )
                             ( Int32.mod )
                             ( Word32.mod )
+                            ( LargeInt.mod )
 
           | Ast.LeftShift => 
-            Mach.newInt (u2i (masku32 (Word32.<< ((i2u (Mach.toInt32 a)),
-                                                  (masku5 (Mach.toUInt32 b))))))
-
+            pickRepByA (Word32.<< ((i2u (Mach.toInt32 a)),
+                                   (masku5 (Mach.toUInt32 b))))
 
           | Ast.RightShift => 
-            Mach.newInt (u2i (Word32.>> ((i2u (Mach.toInt32 a)),
-                                         (masku5 (Mach.toUInt32 b)))))
+            pickRepByA (Word32.>> ((i2u (Mach.toInt32 a)),
+                                   (masku5 (Mach.toUInt32 b))))
 
           | Ast.RightShiftUnsigned => 
-            Mach.newUInt (Word32.~>> ((Mach.toUInt32 a),
-                                      (masku5 (Mach.toUInt32 b))))
+            pickRepByA (Word32.~>> ((Mach.toUInt32 a),
+                                    (masku5 (Mach.toUInt32 b))))
 
+          (* FIXME: should we return int if we do int|int or int&int ? *)
           | Ast.BitwiseAnd => bitwiseWordOp (Word32.andb)
           | Ast.BitwiseOr => bitwiseWordOp (Word32.orb)
           | Ast.BitwiseXor => bitwiseWordOp (Word32.xorb)
