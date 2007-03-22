@@ -141,11 +141,11 @@ regexpFlags           = [a-zA-Z]*;
 				   { lex_initial = 
 					fn _ => Div :: token_list (fn _ => lex ()),
 				     lex_regexp = 
-					fn _ =>
+				        fn _ =>
 					  (curr_chars := [#"/"];
 					   YYBEGIN REGEXP;
 					   token_list (fn _ => lex ())) });
-						  (fn _ => lex ())) });
+
 <INITIAL>"/="              => (LexBreakDivAssign
 				   { lex_initial = 
 					fn _ => DivAssign :: token_list (fn _ => lex ()),
