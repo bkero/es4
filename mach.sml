@@ -105,6 +105,14 @@ withtype FUN_CLOSURE =
 
      and PROP_BINDINGS = ((Ast.NAME * PROP) list) ref
 
+(* Exceptions for control transfer. *)
+
+exception ContinueException of (Ast.IDENT option)
+exception BreakException of (Ast.IDENT option)
+exception TailCallException of (unit -> VAL)
+exception ThrowException of VAL
+exception ReturnException of VAL
+
 (* Binding operations. *)
 
 fun newPropBindings _ : PROP_BINDINGS = 
@@ -207,6 +215,9 @@ fun hasProp (b:PROP_BINDINGS)
 val publicPrototypeName:Ast.NAME = { ns = (Ast.Public ""), id = "prototype" }
 val internalConstructorName:Ast.NAME = { ns = (Ast.Internal ""), id = "constructor" }
 val internalObjectName:Ast.NAME = { ns = (Ast.Internal ""), id = "Object" }
+
+val internalErrorName:Ast.NAME = { ns = (Ast.Internal ""), id = "Error" }
+val internalTypeErrorName:Ast.NAME = { ns = (Ast.Internal ""), id = "TypeError" }
                                             
 val intrinsicObjectName:Ast.NAME = { ns = Ast.Intrinsic, id = "Object" }
 val intrinsicArrayName:Ast.NAME = { ns = Ast.Intrinsic, id = "Array" }
@@ -389,7 +400,7 @@ val (globalScope:SCOPE) =
     Scope { object = globalObject,
             parent = NONE,
             temps = ref [],
-            isVarObject = true }
+            isVarObject = true }    
 
 fun getTemp (temps:TEMPS)
             (n:int)
@@ -545,7 +556,7 @@ fun toString (v:VAL)
              NONE => "[object Object]"
            | SOME magic => 
              magicToString magic)
-        
+
 
 fun toBoolean (v:VAL) : bool = 
     case v of 

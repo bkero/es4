@@ -36,3 +36,12 @@
 
 %% [uint] eval
 @tests/exec/uint.es
+
+%% [with] eval
+@tests/exec/with-statement.es
+
+%% [while] eval
+@tests/exec/while-statement.es
+
+%% [do while] eval
+@tests/exec/do-while-statement.es

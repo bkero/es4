@@ -1378,6 +1378,11 @@ and evalStmt (scope:Mach.SCOPE)
         Ast.ExprStmt e => evalExpr scope e
       | Ast.IfStmt {cnd,thn,els} => evalIfStmt scope cnd thn els
       | Ast.WhileStmt w => evalWhileStmt scope w
+      | Ast.DoWhileStmt w => evalDoWhileStmt scope w
+      | Ast.WithStmt { obj, ty, body } => evalWithStmt scope obj ty body
+      (* | Ast.SwitchStmt { cond, cases } => evalSwitchStmt cond cases
+         | Ast.SwitchTypeStmt { cond, ty, cases } => evalSwitchTypeStmt cond ty cases
+       *)
       | Ast.ForStmt w => evalForStmt scope w
 (*      | Ast.ForInStmt w => evalForInStmt scope w
 *)
@@ -1747,6 +1752,35 @@ and constructClassInstance (classObj:Mach.OBJ)
         Mach.Object instanceObj
     end
 
+
+and throwNamedException (n:Ast.NAME) =
+    let
+        val (cls:Mach.VAL) = getValue (Mach.globalObject, n)
+    in
+        raise ThrowException (case cls of 
+                                  Mach.Object ob => evalNewExpr ob []
+                                | _ => cls)
+    end
+
+
+and throwTypeError () = 
+    throwNamedException Mach.internalTypeErrorName
+
+
+(* 
+ * ES3 9.9 ToObject 
+ * 
+ * FIXME: no idea if this makes the most sense given 
+ * the ES3 meaning of the operation. 
+ *)
+
+and toObject (v:Mach.VAL) 
+    : Mach.OBJ = 
+    case v of 
+        Mach.Undef => throwTypeError ()
+      | Mach.Null => throwTypeError ()
+      | Mach.Object ob => ob
+
 (*
     HEAD
 *)
@@ -1880,50 +1914,76 @@ and evalLabelStmt (scope:Mach.SCOPE)
                 then Mach.Undef
                 else raise BreakException exnLabel
 
+
 and evalWhileStmt (scope:Mach.SCOPE)
                   (whileStmt:Ast.WHILE_STMT)
     : Mach.VAL =
     case whileStmt of
         { cond, body, fixtures, labels } =>
         let
-            fun loop (accum:Mach.VAL option) =
-                let
-                    val v = evalExpr scope cond
-                    val b = Mach.toBoolean v
-                in
-                    if b
-                    then
-                        let
-                            val curr = (SOME (evalStmt scope body)
-                                        handle ContinueException exnLabel => 
-                                               if labelEq labels exnLabel
-                                               then NONE
-                                               else raise ContinueException exnLabel)
-                            val next = (case curr 
-                                         of NONE => accum
-                                          | x => x)
-                        in
-                            loop next handle BreakException exnLabel => 
-                                          if labelEq labels exnLabel  
-                                          then accum
-                                          else raise BreakException exnLabel
-                        end
-                    else
-                        accum
+            val accum = ref Mach.Undef
+            fun loop _ =
+                if Mach.toBoolean (evalExpr scope cond)
+                then 
+                    (accum := evalStmt scope body;
+                     loop ())
+                    handle ContinueException exnLabel => 
+                           if labelEq labels exnLabel
+                           then loop ()
+                           else raise ContinueException exnLabel
+                                      
+                         | BreakException exnLabel => 
+                           if labelEq labels exnLabel
+                           then (!accum)
+                           else raise BreakException exnLabel
+                else 
+                    (!accum)
+        in
+            loop ()
+        end
+
+
+and evalDoWhileStmt (scope:Mach.SCOPE)
+                    (whileStmt:Ast.WHILE_STMT)
+    : Mach.VAL =
+    case whileStmt of
+        { cond, body, fixtures, labels } =>
+        let
+            val accum = ref Mach.Undef
+            fun loop _ =
+                let 
+                    fun bottom _ = 
+                        if Mach.toBoolean (evalExpr scope cond)
+                        then loop ()
+                        else (!accum)
+                in                
+                    (accum := evalStmt scope body;
+                     bottom ())
+                    handle ContinueException exnLabel => 
+                           if labelEq labels exnLabel
+                           then bottom ()
+                           else raise ContinueException exnLabel
+                                      
+                         | BreakException exnLabel => 
+                           if labelEq labels exnLabel
+                           then (!accum)
+                           else raise BreakException exnLabel
                 end
         in
-            case loop NONE handle BreakException exnLabel => 
-                               if labelEq labels exnLabel  
-                               then NONE
-                               else raise BreakException exnLabel
- of
-                NONE => Mach.Undef
-              | SOME v => v
-            handle BreakException exnLabel => 
-                if labelEq labels exnLabel  
-                then Mach.Undef
-                else raise ContinueException exnLabel
+            loop ()
         end
+
+
+and evalWithStmt (scope:Mach.SCOPE) (obj:Ast.EXPR) (ty:Ast.TYPE_EXPR) (body:Ast.STMT) 
+    : Mach.VAL = 
+    let 
+        val v = evalExpr scope obj
+        val s = extendScope scope (toObject v) false
+    in
+        evalStmt s body
+    end
+        
+    
 
 (*
     FOR_STMT
