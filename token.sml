@@ -397,7 +397,7 @@ fun tokenname t =
       | ExplicitDecimalLiteral x => Decimal.toString(x) ^ "m"
       | ExplicitDoubleLiteral x => Real64.toString(x) ^ "d"
       | ExplicitIntLiteral x => Int32.toString(x) ^ "i"
-      | ExplicitUIntLiteral x => Word32.toString(x) ^ "u"
+      | ExplicitUIntLiteral x => LargeInt.toString (Word32.toLargeInt(x)) ^ "u"
 
       | PackageIdentifier x => "packageidentifier("^x^")"
       | RegexpLiteral x => "regexp("^x^")"

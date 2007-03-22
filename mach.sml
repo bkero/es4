@@ -460,7 +460,7 @@ fun magicToString (magic:MAGIC)
                     else Real64.toString n
       | Decimal d => Decimal.toString d
       | Int i => Int32.toString i
-      | UInt u => Word32.toString u
+      | UInt u => LargeInt.toString (Word32.toLargeInt u)
       | String s => s
       | Bool true => "true"
       | Bool false => "false"
@@ -847,7 +847,7 @@ fun toInt32 (v:VAL)
             let 
                 val l31 = IntInf.pow (2, 31)
                 val l32 = IntInf.pow (2, 32)
-                val v'' = LargeInt.mod (signFloorAbs v', l32)
+                val v'' = IntInf.mod (signFloorAbs v', l32)
             in
                 Int32.fromLarge (if LargeInt.>= (v'', l31)
                                  then LargeInt.- (v'', l32)
@@ -879,7 +879,7 @@ fun toUInt32 (v:VAL)
 
 (* ES3 9.6 ToUInt16 *)
 
-fun toUInt32 (v:VAL) 
+fun toUInt16 (v:VAL) 
     : Word32.word =
     let 
         val v' = toNumeric v
@@ -897,7 +897,26 @@ fun toUInt32 (v:VAL)
                 Word32.fromLargeInt (LargeInt.mod (signFloorAbs v', l16))
             end
     end
-    
+
+
+fun fitsInUInt (x:LargeInt.int) 
+    : bool = 
+    let
+        val uintMax = IntInf.pow(2, 32) - 1
+        val uintMin = IntInf.fromInt 0
+    in
+        uintMin <= x andalso x <= uintMax
+    end
+
+
+fun fitsInInt (x:LargeInt.int) 
+    : bool = 
+    let
+        val intMax = IntInf.pow(2, 31) - 1
+        val intMin = ~ (IntInf.pow(2, 31))
+    in
+        intMin <= x andalso x <= intMax
+    end
 
 
 val nativeFunctions:(Ast.NAME * NATIVE_FUNCTION) list ref = ref [] 

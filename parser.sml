@@ -6569,7 +6569,7 @@ fun mkReader filename =
     in
         fn _ => case TextIO.inputLine stream of
                     SOME line => (trace ["read line ", line]; line)
-                  | NONE => ""
+                  | NONE => (TextIO.closeIn stream; "")
     end
 
 (*
