@@ -872,7 +872,46 @@ and evalUnaryOp (scope:Mach.SCOPE)
 
           | Ast.Void => Mach.Undef
 
-          | _ => LogErr.unimplError ["unhandled unary operator"]
+          | Ast.Type => 
+            (* 
+             * FIXME: not clear what this operator does; I thought it just 
+             * affected parse context. 
+             *)
+            evalExpr scope expr
+
+          | Ast.Typeof => 
+            (* 
+             * ES3 1.4.3 backward-compatibility operation.
+             *)
+            let
+                fun typeOfVal (v:Mach.VAL) = 
+                    case v of 
+                        Mach.Null => "null"
+                      | Mach.Undef => "undefined"
+                      | Mach.Object (Mach.Obj ob) => 
+                        (case !(#magic ob) of 
+                             SOME (Mach.UInt _) => "number"
+                           | SOME (Mach.Int _) => "number"
+                           | SOME (Mach.Double _) => "number"
+                           | SOME (Mach.Decimal _) => "number"
+                           | SOME (Mach.Bool _) => "boolean"
+                           | SOME (Mach.Function _) => "function"
+                           | SOME (Mach.NativeFunction _) => "function"
+                           | SOME (Mach.String _) => "string"
+                           | _ => "object")
+            in
+                Mach.newString 
+                    (case expr of 
+                         Ast.LexicalRef { ident } => 
+                         let 
+                             val multiname = evalIdentExpr scope ident
+                         in
+                             case resolveOnScopeChain scope multiname of 
+                                 NONE => "undefined"
+                               | SOME (obj, name) => typeOfVal (getValue (obj, name))
+                         end
+                       | _ => typeOfVal (evalExpr scope expr))
+            end
     end
 
 and performBinop (bop:Ast.BINOP) 
