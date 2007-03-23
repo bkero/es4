@@ -282,6 +282,10 @@ fun hasValue (obj:Mach.OBJ)
                 | _ => false)
 
 
+(* 
+ * *Similar to* ES3 8.7.1 GetValue(V), there's 
+ * no Reference type in ES4.
+ *)
 fun getValue (obj:Mach.OBJ, 
               name:Ast.NAME) 
     : Mach.VAL = 
@@ -312,6 +316,7 @@ fun getValue (obj:Mach.OBJ,
 
               | Mach.ValProp v => v
         end
+
 
 and setValue (base:Mach.OBJ) 
              (name:Ast.NAME) 
@@ -574,6 +579,7 @@ and evalLiteralObjectExpr (scope:Mach.SCOPE)
         Mach.Object obj
     end
 
+
 and evalLiteralExpr (scope:Mach.SCOPE) 
                     (lit:Ast.LITERAL) 
     : Mach.VAL = 
@@ -667,6 +673,7 @@ and evalCallExpr (thisObjOpt:Mach.OBJ option)
                         end
                     else error ["calling non-callable object"]
     end
+
 
 and evalSetExpr (scope:Mach.SCOPE) 
                 (aop:Ast.ASSIGNOP) 
@@ -1316,6 +1323,7 @@ and evalLetExpr (scope:Mach.SCOPE)
         evalExpr letScope body
     end
 
+
 and resolveOnScopeChain (scope:Mach.SCOPE) 
                         (mname:Ast.MULTINAME) 
     : REF option =
@@ -1350,6 +1358,7 @@ and resolveOnScopeChain (scope:Mach.SCOPE)
             end
     end
 
+
 and resolveOnObjAndPrototypes (obj:Mach.OBJ) 
                               (mname:Ast.MULTINAME) 
     : REF option = 
@@ -1366,6 +1375,7 @@ and resolveOnObjAndPrototypes (obj:Mach.OBJ)
             NONE => Multiname.resolve mname obj hasProp getObjProto
           | refOpt => refOpt
     end
+
      
 and evalTailCallExpr (scope:Mach.SCOPE) 
                      (e:Ast.EXPR) 
@@ -1380,7 +1390,6 @@ and evalNonTailCallExpr (scope:Mach.SCOPE)
     handle TailCallException thunk => thunk ()
          | ReturnException v => v
 
-    
 
 and labelEq (stmtLabels:Ast.IDENT list) 
             (exnLabel:Ast.IDENT option) 
@@ -1439,6 +1448,7 @@ and evalStmt (scope:Mach.SCOPE)
 
 and multinameOf (n:Ast.NAME) = 
     { nss = [[(#ns n)]], id = (#id n) }
+
 
 and findVal (scope:Mach.SCOPE) 
             (mn:Ast.MULTINAME) 
@@ -1623,11 +1633,13 @@ and bindArgs (outerScope:Mach.SCOPE)
             end
     end
 
+
 and evalInits (scope:Mach.SCOPE)
               (obj:Mach.OBJ)
               (temps:Mach.TEMPS)
               (inits:Ast.INITS)
     : unit = evalInitsMaybePrototype scope obj temps inits false
+
 
 and evalInitsMaybePrototype (scope:Mach.SCOPE)
               (obj:Mach.OBJ)
@@ -1674,6 +1686,7 @@ and evalObjInits (scope:Mach.SCOPE)
             evalInits tempScope instanceObj temps inits
         end
 
+
 and evalScopeInits (scope:Mach.SCOPE)
                    (target:Ast.INIT_TARGET)
                    (inits:Ast.INITS)
@@ -1700,6 +1713,7 @@ and evalScopeInits (scope:Mach.SCOPE)
             Mach.Scope { temps, ...} =>
                 evalInitsMaybePrototype scope obj temps inits (target=Ast.Prototype)
         end
+
 
 and initializeAndConstruct (classClosure:Mach.CLS_CLOSURE)
                            (classObj:Mach.OBJ)
@@ -1766,6 +1780,7 @@ and initializeAndConstruct (classClosure:Mach.CLS_CLOSURE)
                     end
             end
 
+
 and constructClassInstance (classObj:Mach.OBJ)
                            (classClosure:Mach.CLS_CLOSURE) 
                            (args:Mach.VAL list) 
@@ -1816,6 +1831,105 @@ and toObject (v:Mach.VAL)
         Mach.Undef => raise ThrowException (newByGlobalName Mach.internalTypeErrorName)
       | Mach.Null => raise ThrowException (newByGlobalName Mach.internalTypeErrorName)
       | Mach.Object ob => ob
+
+
+(* 
+ * ES3 8.6.2.1 [[Get]](P)
+ * 
+ * FIXME: no idea if this makes the most sense given 
+ * the ES3 meaning of the operation. 
+ *)
+and get (obj:Mach.OBJ) 
+        (n:Ast.NAME) 
+    : Mach.VAL =
+    let
+        fun tryObj ob => 
+            if hasOwnValue ob n
+            then getValue ob n
+            else 
+                case obj of 
+                    Mach.Obj { proto, ... } => 
+                    (case (!proto) of 
+                         Mach.Object p => tryObj p
+                       | _ => Mach.Undef)
+    in
+        tryObj obj
+    end
+
+
+(* 
+ * ES3 8.6.2.6 [[DefaultValue]](hint)
+ * 
+ * FIXME: no idea if this makes the most sense given 
+ * the ES3 meaning of the operation. 
+ *)
+and defaultValue (obj:Mach.OBJ) 
+                 (hint:string option)
+    : Mach.VAL = 
+    let 
+        fun tryProps [] = raise ThrowException 
+                                    (newByGlobalName 
+                                         Mach.internalTypeErrorName)
+          | tryProps (n::ns) =
+            let 
+                val f = get obj n
+            in 
+                if Mach.isObject f
+                then 
+                    let 
+                        val v = evalCallExpr (SOME obj) f []
+                    in
+                        if isPrimitive v
+                        then v
+                        else tryProps ns
+                    end
+                else
+                    tryProps ns
+            end
+    in
+        (* FIXME: Date objects are supposed to default to "String" hint. *)
+        if hint = (SOME "String")
+        then tryProps [Mach.publicToStringName, Mach.publicValueOfName]
+        else tryProps [Mach.publicValueOfName, Mach.publicToStringName]
+    end
+
+
+and isPrimitive (v:Mach.VAL) 
+    : bool = 
+    case v of 
+        Mach.Null => true
+      | Mach.Undef => true
+      | Mach.Object (Mach.Obj ob) => 
+        (case !(#magic ob) of
+             Mach.UInt _ => true
+           | Mach.Int _ => true
+           | Mach.Double _ => true
+           | Mach.Decimal _ => true
+           | Mach.String _ => true
+           | Mach.Bool _ => true
+           | _ => false)
+
+(* 
+ * ES3 1.9 ToPrimitive 
+ * 
+ * FIXME: no idea if this makes the most sense given 
+ * the ES3 meaning of the operation. 
+ *)
+and toPrimitive (v:Mach.VAL) 
+                (preferredType:string option)
+    : Mach.VAL = 
+    case v of 
+        Mach.Null => v
+      | Mach.Undef => v
+      | Mach.Object (Mach.Obj ob) => 
+        (case !(#magic ob) of
+             Mach.UInt _ => v
+           | Mach.Int _ => v
+           | Mach.Double _ => v
+           | Mach.Decimal _ => v
+           | Mach.String _ => v
+           | Mach.Bool _ => 
+           | _ => defaultValue ob preferredType)
 
 
 (*

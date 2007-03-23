@@ -339,6 +339,9 @@ fun hasProp (b:PROP_BINDINGS)
 
 (* Standard runtime objects and functions. *)
 
+val publicToStringName:Ast.NAME = { ns = (Ast.Public ""), id = "toString" }
+val publicValueOfName:Ast.NAME = { ns = (Ast.Public ""), id = "valueOf" }
+
 val publicPrototypeName:Ast.NAME = { ns = (Ast.Public ""), id = "prototype" }
 val internalConstructorName:Ast.NAME = { ns = (Ast.Internal ""), id = "constructor" }
 val internalObjectName:Ast.NAME = { ns = (Ast.Internal ""), id = "Object" }
