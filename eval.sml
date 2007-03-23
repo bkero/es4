@@ -1141,6 +1141,35 @@ and doubleEquals (mode:Ast.NUMERIC_MODE option)
     Mach.toBoolean (performBinop (Ast.Equals mode) a b)
 
 
+(*
+fun hasInstance (ob:OBJ)
+                (v:VAL)
+    : bool = 
+    let 
+        val Obj { magic, ... } = ob
+        fun functionHasInstance _ = 
+            case v of 
+                Object ob => 
+                if hasValue ob Mach.publicPrototypeName
+                else 
+                    let 
+                        val proto = getValue ob Mach.publicPrototypeName
+                    in
+                        if Mach.isObject proto
+                        then tripleEquals ...
+                
+            if not isObject v
+            then false
+            else 
+    in
+        case !magic of 
+            Function => isFunction v orelse isNativeFunction v
+          | NativeFunction => isFunction v orelse isNativeFunction v
+          | _ => false
+    end
+*)
+
+
 and evalBinaryOp (scope:Mach.SCOPE) 
                  (bop:Ast.BINOP) 
                  (aexpr:Ast.EXPR) 
@@ -1173,8 +1202,10 @@ and evalBinaryOp (scope:Mach.SCOPE)
             val a = evalExpr scope aexpr
             val b = evalExpr scope bexpr
         in
-            (* FIXME *)
-            Mach.Undef
+            case b of 
+                Mach.Object (ob) =>
+                Mach.newBoolean true (* FIXME: (hasInstance ob b) *)
+              | _ => raise ThrowException (newByGlobalName Mach.internalTypeErrorName)
         end
 
       | Ast.In =>
@@ -1187,8 +1218,7 @@ and evalBinaryOp (scope:Mach.SCOPE)
             case b of 
                 Mach.Object (Mach.Obj {props, ...}) =>
                 Mach.newBoolean (Mach.hasProp props aname)
-              (* FIXME: raise TypeError here *)
-              | _ => error ["non-object on RHS of operator 'in'"]
+              | _ => raise ThrowException (newByGlobalName Mach.internalTypeErrorName)
                      
         end
         
@@ -1762,18 +1792,15 @@ and constructClassInstance (classObj:Mach.OBJ)
     end
 
 
-and throwNamedException (n:Ast.NAME) =
+and newByGlobalName (n:Ast.NAME) 
+    : Mach.VAL = 
     let
         val (cls:Mach.VAL) = getValue (Mach.globalObject, n)
     in
-        raise ThrowException (case cls of 
-                                  Mach.Object ob => evalNewExpr ob []
-                                | _ => cls)
+        case cls of 
+            Mach.Object ob => evalNewExpr ob []
+          | _ => error ["trying to 'new' non-object global value"]
     end
-
-
-and throwTypeError () = 
-    throwNamedException Mach.internalTypeErrorName
 
 
 (* 
@@ -1786,9 +1813,10 @@ and throwTypeError () =
 and toObject (v:Mach.VAL) 
     : Mach.OBJ = 
     case v of 
-        Mach.Undef => throwTypeError ()
-      | Mach.Null => throwTypeError ()
+        Mach.Undef => raise ThrowException (newByGlobalName Mach.internalTypeErrorName)
+      | Mach.Null => raise ThrowException (newByGlobalName Mach.internalTypeErrorName)
       | Mach.Object ob => ob
+
 
 (*
     HEAD

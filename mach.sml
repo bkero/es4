@@ -113,6 +113,133 @@ exception TailCallException of (unit -> VAL)
 exception ThrowException of VAL
 exception ReturnException of VAL
 
+fun isObject (v:VAL) : bool = 
+    case v of 
+        Object _ => true
+      | _ => false
+
+
+fun isUInt (v:VAL) : bool = 
+    case v of 
+        Object (Obj ob) => 
+        (case !(#magic ob) of 
+             SOME (UInt _) => true
+           | _ => false)
+      | _ => false
+
+
+fun isInt (v:VAL) : bool = 
+    case v of 
+        Object (Obj ob) => 
+        (case !(#magic ob) of 
+             SOME (Int _) => true
+           | _ => false)
+      | _ => false
+
+
+fun isDouble (v:VAL) : bool = 
+    case v of 
+        Object (Obj ob) => 
+        (case !(#magic ob) of 
+             SOME (Double _) => true
+           | _ => false)
+      | _ => false
+
+
+fun isDecimal (v:VAL) : bool = 
+    case v of 
+        Object (Obj ob) => 
+        (case !(#magic ob) of 
+             SOME (Decimal _) => true
+           | _ => false)
+      | _ => false
+
+
+fun isString (v:VAL) 
+    : bool = 
+    case v of 
+        Object (Obj ob) => 
+        (case !(#magic ob) of 
+             SOME (String _) => true
+           | _ => false)
+      | _ => false
+
+
+fun isBoolean (v:VAL) : bool = 
+    case v of 
+        Object (Obj ob) => 
+        (case !(#magic ob) of 
+             SOME (Bool _) => true
+           | _ => false)
+      | _ => false
+
+
+fun isNamespace (v:VAL) : bool = 
+    case v of 
+        Object (Obj ob) => 
+        (case !(#magic ob) of 
+             SOME (Namespace _) => true
+           | _ => false)
+      | _ => false
+
+
+fun isClass (v:VAL) : bool = 
+    case v of 
+        Object (Obj ob) => 
+        (case !(#magic ob) of 
+             SOME (Class _) => true
+           | _ => false)
+      | _ => false
+
+
+fun isInterface (v:VAL) : bool = 
+    case v of 
+        Object (Obj ob) => 
+        (case !(#magic ob) of 
+             SOME (Interface _) => true
+           | _ => false)
+      | _ => false
+
+
+fun isFunction (v:VAL) : bool = 
+    case v of 
+        Object (Obj ob) => 
+        (case !(#magic ob) of 
+             SOME (Function _) => true
+           | _ => false)
+      | _ => false
+
+
+fun isType (v:VAL) : bool = 
+    case v of 
+        Object (Obj ob) => 
+        (case !(#magic ob) of 
+             SOME (Type _) => true
+           | _ => false)
+      | _ => false
+
+
+fun isNativeFunction (v:VAL) : bool = 
+    case v of 
+        Object (Obj ob) => 
+        (case !(#magic ob) of 
+             SOME (NativeFunction _) => true
+           | _ => false)
+      | _ => false
+
+
+fun isNumeric (v:VAL) : bool = 
+    case v of 
+        Object (Obj ob) => 
+        (case !(#magic ob) of 
+             SOME (Double _) => true
+           | SOME (Decimal _) => true
+           | SOME (Int _) => true
+           | SOME (UInt _) => true
+           | _ => false)
+      | _ => false
+
+
 (* Binding operations. *)
 
 fun newPropBindings _ : PROP_BINDINGS = 
@@ -490,62 +617,6 @@ fun magicToString (magic:MAGIC)
       | NativeFunction _ => "[function NativeFunction]"
 
 
-fun isString (v:VAL) 
-    : bool = 
-    case v of 
-        Object (Obj ob) => 
-        (case !(#magic ob) of 
-             SOME (String _) => true
-           | _ => false)
-      | _ => false
-
-
-fun isDecimal (v:VAL) : bool = 
-    case v of 
-        Object (Obj ob) => 
-        (case !(#magic ob) of 
-             SOME (Decimal _) => true
-           | _ => false)
-      | _ => false
-
-
-fun isBoolean (v:VAL) : bool = 
-    case v of 
-        Object (Obj ob) => 
-        (case !(#magic ob) of 
-             SOME (Bool _) => true
-           | _ => false)
-      | _ => false
-
-
-
-fun isInt (v:VAL) : bool = 
-    case v of 
-        Object (Obj ob) => 
-        (case !(#magic ob) of 
-             SOME (Int _) => true
-           | _ => false)
-      | _ => false
-
-
-fun isDouble (v:VAL) : bool = 
-    case v of 
-        Object (Obj ob) => 
-        (case !(#magic ob) of 
-             SOME (Double _) => true
-           | _ => false)
-      | _ => false
-
-
-fun isUInt (v:VAL) : bool = 
-    case v of 
-        Object (Obj ob) => 
-        (case !(#magic ob) of 
-             SOME (UInt _) => true
-           | _ => false)
-      | _ => false
-
-
 fun toString (v:VAL) 
     : string = 
     case v of 
@@ -566,18 +637,6 @@ fun toBoolean (v:VAL) : bool =
         (case !(#magic ob) of 
              SOME (Bool b) => b
            | _ => true)
-
-
-fun isNumeric (v:VAL) : bool = 
-    case v of 
-        Object (Obj ob) => 
-        (case !(#magic ob) of 
-             SOME (Double _) => true
-           | SOME (Decimal _) => true
-           | SOME (Int _) => true
-           | SOME (UInt _) => true
-           | _ => false)
-      | _ => false
 
 
 fun toNumeric (v:VAL) 
