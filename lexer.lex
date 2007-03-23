@@ -17,7 +17,7 @@ type lexresult = token
 fun eof _ = Eof
 
 val line_breaks : int list ref = ref []
-val token_count : int ref = ref 0
+val token_count : int      ref = ref 0
 
 fun token_list (token_fn : unit -> token) =
 let
@@ -69,9 +69,9 @@ fun followsLineBreak (ts) =
 	findBreak (!line_breaks)
     end
 
-val (curr_quote : char ref) = ref #"\000"
-val (curr_chars : (char list) ref) = ref []
-val (found_newline : bool ref)        = ref false
+val (curr_quote    :  char       ref) = ref #"\000"
+val (curr_chars    : (char list) ref) = ref []
+val (found_newline :  bool       ref) = ref false
 
 %%
 
@@ -183,7 +183,6 @@ regexpFlags           = [a-zA-Z]*;
 					  (YYBEGIN XML;
 					   token_list (fn _ => lex ())) });
 
-
 <INITIAL>"<<"              => (LeftShift);
 <INITIAL>"<<="             => (LeftShiftAssign);
 <INITIAL>"<="              => (LessThanOrEquals);
@@ -277,7 +276,6 @@ regexpFlags           = [a-zA-Z]*;
 
 <INITIAL>{whitespace}        => (lex());
 <INITIAL>{identifier}        => (Identifier yytext);
-                   
 
 <INITIAL>{explicitIntLiteral} => (case Int32.fromString (chopTrailing yytext) of
                                       SOME i => ExplicitIntLiteral i

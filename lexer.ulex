@@ -6,20 +6,22 @@
 %defs (
   open Token
 
+  (* Local tracing machinery *)
+
+  val doTrace = ref false
+  fun trace ss = if (!doTrace) then LogErr.log ("[lex] " :: ss) else ()
+  fun error ss = LogErr.lexError ss
+
   type lex_result = token
 
 (*
   fun eof _ = Eof
 *)
 
-  fun log ss = 
-      (TextIO.print "log: "; 
-       List.app TextIO.print ss; 
-       TextIO.print "\n")
-
   val line_breaks : int list ref = ref []
-  val token_count : int ref = ref 0
+  val token_count : int      ref = ref 0
 
+(*
   fun token_list (line_fn : unit -> string) = (* was token_fn : unit -> token *)
     let
       fun inputN _ = line_fn()
@@ -28,58 +30,63 @@
     in
       yyUTF8.getList this_getc this_strm
     end
-  (*
-    let
-        val t = ref [] 
-        fun add tok = t := tok :: !t
-        fun add_lb offset = line_breaks := offset :: !line_breaks
-        fun stop _ = (token_count := length (!t); rev (!t))
-        fun step _ = 
-            let 
-              val tok = token_fn ()
-            in 
-              (* log ["lexed ", tokenname tok]; *)
+*)
+  fun token_list (token_fn : unit -> token) =
+  let
+    val t = ref [] 
+    fun add tok = t := tok :: !t
+    fun add_lb offset = line_breaks := offset :: !line_breaks
+    fun stop _ = (token_count := length (!t); rev (!t))
+    fun step _ = 
+        let 
+	    val tok = token_fn ()
+	in 
+            trace ["lexed ", tokenname tok]; 
+	    
+	  (*
+	   * The lexbreak tokens represent choice points for the parser. We
+	   * return two thunks to it: one for each lexer start state
+	   * it might wish to resume lexing in.
+	   *)
+	    case tok of 
+            LexBreakDiv _ => (add tok; stop ())
+	      | LexBreakDivAssign _ => (add tok; stop ())
+	      | LexBreakLessThan _ => (add tok; stop ())
+	      | Eof => (add Eof; stop ())
+	      | Eol => (add_lb (length (!t)); step ())
+	      | x => (add x; step ())
+	end
+  in
+    line_breaks := [];
+    step ()
+  end
 
-          (*
-           * The lexbreak tokens represent choice points for the parser. We
-           * return two thunks to it: one for each lexer start state
-           * it might wish to resume lexing in.
-           *)
-            case tok of 
-                LexBreakDiv _ => (add tok; stop ())
-              | LexBreakDivAssign _ => (add tok; stop ())
-              | LexBreakLessThan _ => (add tok; stop ())
-              | Eof => (add Eof; stop ())
-              | Eol => (add_lb (length (!t)); step ())
-              | x => (add x; step ())
-        end
-    in
-        line_breaks := [];
-        step ()
-    end
-  *)
+  fun chopTrailing (s:string) 
+    : string = 
+    String.substring (s, 0, ((String.size s) - 1))
 
   fun followsLineBreak (ts) =
-    let val _ = log(["followsLineBreak"])
-        val offset = length ts
-        val max_offset = !token_count
-        fun findBreak lbs =
+    let val _ = trace ["followsLineBreak"]
+	val offset = length ts
+	val max_offset = !token_count
+	fun findBreak lbs =
             case lbs of
                 [] => false
               | _ => 
-                  (  (* log(["token_count=",Int.toString(max_offset),
-                        " offset=",Int.toString(max_offset-offset),
-                             " break=",Int.toString(hd lbs)]) ;*)
-                  if (hd lbs) = (max_offset - offset) then true else findBreak (tl lbs))
+		(trace ["token_count=", Int.toString(max_offset),
+			" offset=", Int.toString(max_offset-offset),
+			" break=", Int.toString(hd lbs)];
+		 if (hd lbs) = (max_offset - offset) then true else findBreak (tl lbs))
     in
-        findBreak (!line_breaks)
+	findBreak (!line_breaks)
     end
 
-  val (curr_quote : char ref) = ref #"\000"
-  val (curr_chars : (char list) ref) = ref []
+  val (curr_quote    :  char       ref) = ref #"\000"
+  val (curr_chars    : (char list) ref) = ref []
+  val (found_newline :  bool       ref) = ref false
 );
 
-%states REGEXP XML SINGLE_LINE_COMMENT MULTI_LINE_COMMENT STRING;
+%states REGEXP REGEXP_CHARSET XML SINGLE_LINE_COMMENT MULTI_LINE_COMMENT STRING;
 
 (* note: number and letter are predefined unicode
  * character classes:
@@ -110,11 +117,18 @@
 
 %let hexIntegerLiteral     = ("0" [Xx] {hexDigit}+);
 
+%let explicitIntLiteral      = ({hexIntegerLiteral} | {decimalIntegerLiteral}) "i";
+%let explicitUIntHexLiteral  = ({hexIntegerLiteral}) "u";
+%let explicitUIntDecLiteral  = ({decimalIntegerLiteral}) "u";
+%let explicitDoubleLiteral   = {decimalLiteral} "d";
+%let explicitDecimalLiteral  = {decimalLiteral} "m";
+
 (*
   %let charEscape            = "\\" ([\"\'\\bfnrtv] | "x" {hexDigit}{2} | [0-7]{1,3});
 *)
   %let charEscape            = "\\" (["'\\bfnrtv] | "x" {hexDigit}{2} | [0-7] | [0-7][0-7] | [0-7][0-7][0-7]);
 
+%let regexpFlags           = [a-zA-Z]*;
 
 
 
@@ -142,20 +156,23 @@
 <INITIAL>".<"              => (LeftDotAngle);
 
 <INITIAL>"/"               => (LexBreakDiv
-                                   { lex_initial = 
-                                     (fn _ => Div :: token_list 
-                                                  (fn _ => (YYBEGIN INITIAL; lex ()))),
-                                     lex_regexp = 
-                                     (fn _ => token_list 
-                                                  (fn _ => (YYBEGIN REGEXP; lex ()))) });
+				   { lex_initial = 
+					fn _ => Div :: token_list (fn _ => lex ()),
+				     lex_regexp = 
+				        fn _ =>
+					  (curr_chars := [#"/"];
+					   YYBEGIN REGEXP;
+					   token_list (fn _ => lex ())) });
 
 <INITIAL>"/="              => (LexBreakDivAssign
-                                   { lex_initial = 
-                                     (fn _ => DivAssign :: token_list 
-                                                  (fn _ => (YYBEGIN INITIAL; lex ()))),
-                                     lex_regexp = 
-                                     (fn _ => token_list 
-                                                  (fn _ => (YYBEGIN REGEXP; lex ()))) });
+				   { lex_initial = 
+					fn _ => DivAssign :: token_list (fn _ => lex ()),
+				     lex_regexp = 
+					fn _ =>
+					  (curr_chars := [#"=",#"/"];
+					   YYBEGIN REGEXP;
+					   token_list (fn _ => lex ())) });
+
 <INITIAL>":"               => (Colon);
 <INITIAL>"::"              => (DoubleColon);
 <INITIAL>";"               => (SemiColon);
@@ -177,12 +194,12 @@
 <INITIAL>"+="              => (PlusAssign);
 
 <INITIAL>"<"               => (LexBreakLessThan
-                                   { lex_initial = 
-                                     (fn _ => LessThan :: token_list 
-                                                  (fn _ => (YYBEGIN INITIAL; lex ()))),
-                                     lex_xml = 
-                                     (fn _ => token_list 
-                                                  (fn _ => (YYBEGIN XML; lex ()))) });
+				   { lex_initial = 
+					fn _ => LessThan :: token_list (fn _ => lex ()),
+				     lex_xml = 
+					fn _ => 
+					  (YYBEGIN XML;
+					   token_list (fn _ => lex ())) });
 
 <INITIAL>"<<"              => (LeftShift);
 <INITIAL>"<<="             => (LeftShiftAssign);
@@ -271,28 +288,72 @@
 <INITIAL>"set"             => (Set);
 <INITIAL>"static"          => (Static);
 <INITIAL>"type"            => (Type);
+<INITIAL>"undefined"       => (Undefined);
 <INITIAL>"xml"             => (Token.Xml);
 <INITIAL>"yield"           => (Yield);
 
 <INITIAL>[:whitespace:]      => (lex());
 <INITIAL>{identifier}        => (Identifier yytext);
-                   
-<INITIAL>{decimalLiteral}    => (case Real.fromString yytext of 
-                                     SOME r => NumberLiteral r 
-                                   | NONE   => raise Fail "LexError: not a valid number literal");
+<INITIAL>{explicitIntLiteral} => (case Int32.fromString (chopTrailing yytext) of
+                                          SOME i => ExplicitIntLiteral i
+                                        | NONE => error ["unexpected input in {explicitIntLiteral}: '", yytext, "'"]);
+<INITIAL>{explicitUIntDecLiteral} => (case LargeInt.fromString (chopTrailing yytext) of
+					  SOME i => ExplicitUIntLiteral (Word32.fromLargeInt i)
+					| NONE => error ["unexpected input in {explicitUIntDecLiteral}: '", yytext, "'"]);
+<INITIAL>{explicitUIntHexLiteral} => (case Word32.fromString (chopTrailing yytext) of
+					  SOME i => ExplicitUIntLiteral i
+					| NONE => error ["unexpected input in {explicitUIntHexLiteral}: '", yytext, "'"]);
+<INITIAL>{explicitDoubleLiteral} => (case Real64.fromString (chopTrailing yytext) of
+					  SOME i => ExplicitDoubleLiteral i
+                                        | NONE => error ["unexpected input in {explicitDoubleLiteral}: '", yytext, "'"]);
+<INITIAL>{explicitDecimalLiteral} => (case Decimal.fromStringDefault (chopTrailing yytext) of
+					  SOME i => ExplicitDecimalLiteral i
+					| NONE => error ["unexpected input in {explicitDecimalLiteral}: '", yytext, "'"]);
 
-<INITIAL>{hexIntegerLiteral} => (case Int.fromString yytext of
-                                     SOME i => NumberLiteral (Real.fromInt i)
-                                   | NONE => raise Fail "LexError: not a valid number literal");
+<INITIAL>{decimalIntegerLiteral} => (DecimalIntegerLiteral yytext);
+<INITIAL>{hexIntegerLiteral}     => (HexIntegerLiteral yytext);
+<INITIAL>{decimalLiteral}        => (DecimalLiteral yytext);
 
 
 <INITIAL>"//"                => (YYBEGIN SINGLE_LINE_COMMENT; lex());
-<SINGLE_LINE_COMMENT>"\n"    => (YYBEGIN INITIAL; lex());
+<SINGLE_LINE_COMMENT>"\n"    => (YYBEGIN INITIAL; Eol);
 <SINGLE_LINE_COMMENT>.       => (lex());
 
 <INITIAL>"/*"                => (YYBEGIN MULTI_LINE_COMMENT; lex());
 <MULTI_LINE_COMMENT>"*/"     => (YYBEGIN INITIAL; lex());
 <MULTI_LINE_COMMENT>.|"\n"   => (lex());
+
+<REGEXP>"/"{regexpFlags}    => (let
+				    val x_flag = String.isSubstring "x" yytext;
+				    val re = String.implode(rev (!curr_chars)) ^ yytext
+				in
+				    if !found_newline andalso (not x_flag)
+				    then error ["Illegal newline in regexp"]
+				    else
+				       (curr_chars := [];
+					found_newline := false;
+					YYBEGIN INITIAL;
+					RegexpLiteral re)
+				end);
+<REGEXP>"["                 => (curr_chars := #"[" :: !curr_chars;
+				YYBEGIN REGEXP_CHARSET;
+				lex());
+<REGEXP>"\n"|"\r"           => (found_newline := true;  lex());
+<REGEXP>"\\\n"|"\\\r"       => (lex());
+<REGEXP>"\\".               => (curr_chars := String.sub(yytext,1) :: #"\\" :: !curr_chars;
+				lex());
+<REGEXP>.                   => (curr_chars := String.sub(yytext,0) :: !curr_chars;
+				lex());
+
+<REGEXP_CHARSET>"]"         => (curr_chars := #"]" :: !curr_chars;
+				YYBEGIN REGEXP;
+				lex());
+<REGEXP_CHARSET>"\n"|"\r"   => (found_newline := true;  lex());
+<REGEXP_CHARSET>"\\\n"|"\\\r" => (lex());
+<REGEXP_CHARSET>"\\".       => (curr_chars := String.sub(yytext,1) :: #"\\" :: !curr_chars;
+				lex());
+<REGEXP_CHARSET>.           => (curr_chars := String.sub(yytext,0) :: !curr_chars;
+				lex());
 
 <INITIAL>"'"|"\""            => (curr_quote := String.sub (yytext,0); 
                                  curr_chars := [];
@@ -314,17 +375,16 @@
                                      (curr_chars := (String.sub (yytext,0)) :: (!curr_chars);
                                      lex()));
 
+
 <STRING>{charEscape}          => ((case Char.fromCString yytext of
-                                       NONE => raise Fail "LexError: not a valid escape sequence"
-                                     | SOME c => curr_chars := c :: (!curr_chars));
-                                  lex());
+				       NONE => error ["unexpected input in <STRING>{charEscape}: '", yytext, "'"]
+				     | SOME c => curr_chars := c :: (!curr_chars));
+				  lex());
 
 <STRING>"\\".                 => (curr_chars := (String.sub (yytext,1)) :: (!curr_chars);
-                                  lex());
+				  lex());
 
 <STRING>.                     => (curr_chars := (String.sub (yytext,0)) :: (!curr_chars);
-                                  lex());
+				  lex());
 
-<INITIAL>.                    => (log ["unexpected input: '", yytext, "'"]; raise Fail "LexError: unexpected input");
-
-
+<INITIAL>.                    => (error ["unexpected input: '", yytext, "'"]);
