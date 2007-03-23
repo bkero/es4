@@ -2161,15 +2161,6 @@ and evalSwitchStmt (scope:Mach.SCOPE)
 
 *)
 
-and headOf (fixtures:Ast.FIXTURES option)
-           (inits:Ast.INITS option)
-    : Ast.HEAD =
-    case (fixtures,inits) of
-        (NONE,NONE) => ([],[])
-      | (NONE,SOME i) => ([],i)
-      | (SOME f,NONE) => (f,[])
-      | (SOME f,SOME i) => (f,i)
-
 and evalForInStmt (scope:Mach.SCOPE)
                   (forStmt:Ast.FOR_ENUM_STMT)
     : Mach.VAL = 
@@ -2181,7 +2172,7 @@ and evalForStmt (scope:Mach.SCOPE)
     case forStmt of
         { fixtures, init, cond, update, labels, body, ...} =>
         let
-            val forScope = evalHead scope (headOf fixtures (SOME [])) false
+            val forScope = evalHead scope (valOf fixtures, []) false
 
             fun loop (accum:Mach.VAL option) =
                 let
