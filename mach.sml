@@ -14,7 +14,8 @@ datatype VAL = Object of OBJ
              | Undef
 
      and OBJ = 
-         Obj of { tag: VAL_TAG,                           
+         Obj of { ident: OBJ_IDENT,
+                  tag: VAL_TAG,                           
                   props: PROP_BINDINGS,
                   proto: VAL ref,
                   magic: (MAGIC option) ref }
@@ -86,6 +87,8 @@ withtype FUN_CLOSURE =
      and NATIVE_FUNCTION = 
          (VAL list -> VAL)
 
+     and OBJ_IDENT = 
+         LargeInt.int
 
 (* Important to model "fixedness" separately from 
  * "dontDelete-ness" because fixedness affects 
@@ -396,11 +399,17 @@ val namespaceType = Ast.TypeName (intrinsicName "Namespace")
 val classType = Ast.TypeName (intrinsicName "Class")
 
 
+val currIdent = ref (LargeInt.fromInt 0)
+fun nextIdent _ =
+    (currIdent := (!currIdent) + (LargeInt.fromInt 1);
+     !currIdent)
+
 fun newObj (t:VAL_TAG) 
            (p:VAL) 
            (m:MAGIC option) 
     : OBJ = 
-    Obj { tag = t,
+    Obj { ident = nextIdent (), 
+          tag = t,
           props = newPropBindings (),
           proto = ref p,
           magic = ref m }
@@ -512,26 +521,28 @@ fun newFunc (e:SCOPE)
     end
     
 fun newNativeFunction (f:NATIVE_FUNCTION) = 
-    Object (Obj { tag = intrinsicFunctionBaseTag,
-                  props = newPropBindings (),
-                  proto = ref Null,
-                  magic = ref (SOME (NativeFunction f)) })
+    newObject intrinsicFunctionBaseTag 
+              Null 
+              (SOME (NativeFunction f))
     
-val (objectType:Ast.TYPE_EXPR) = Ast.ObjectType []
+val (objectType:Ast.TYPE_EXPR) = 
+    Ast.ObjectType []
 
-val (emptyBlock:Ast.BLOCK) = Ast.Block { pragmas = [],
-                                         defns = [],
-                                         body = [],
-                                         head= NONE }
-
-val (globalObject:OBJ) = newObj intrinsicObjectBaseTag Null NONE
-
+val (emptyBlock:Ast.BLOCK) = 
+    Ast.Block { pragmas = [],
+                defns = [],
+                body = [],
+                head= NONE }
+    
+val (globalObject:OBJ) = 
+    newObj intrinsicObjectBaseTag Null NONE
+    
 val (globalScope:SCOPE) = 
     Scope { object = globalObject,
             parent = NONE,
             temps = ref [],
             isVarObject = true }    
-
+    
 fun getTemp (temps:TEMPS)
             (n:int)
     : VAL =
