@@ -1,6 +1,6 @@
 /* -*- indent-tabs-mode: nil -*-
  *
- * ECMAScript 4 builtins - the "String" object
+ * ECMAScript 4 builtins - the "string" object
  *
  * E262-3 15.5
  * E262-4 proposals:json_encoding_and_decoding
@@ -16,14 +16,14 @@
  * Status: incomplete; not reviewed; not tested.
  *
  * Strings are constructed by:
- *    new String + magic::setStringValue
+ *    new string + magic::setStringValue
  *    magic::fromCharCode
  *    magic::stringAppend
  *
  * A string's length is obtained by:
  *    magic::stringLength
  *
- * Strings are picked apart by:
+ * strings are picked apart by:
  *    magic::charCodeAt
  *
  * (We would expect "+" to map to magic::stringAppend().)
