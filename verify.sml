@@ -877,7 +877,7 @@ and verifyStmt (ctxt as {this,env,lbls:(Ast.IDENT list),retTy}:CONTEXT) (stmt:ST
 	verifyStmt (withLbls ctxt' (labels@lbls)) body
     end
 
-  | SwitchStmt { cond, cases } =>  
+  | SwitchStmt { cond, cases, ... } =>  
     let val ty = verifyExpr ctxt cond
     in
 	List.app

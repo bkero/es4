@@ -45,3 +45,6 @@
 
 %% [do while] eval
 @tests/exec/do-while-statement.es
+
+%% [switch] eval
+@tests/exec/switch-statement.es

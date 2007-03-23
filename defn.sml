@@ -1834,11 +1834,12 @@ and defStmt (env:ENV)
                                         in SOME block end }, hoisted)
             end
         
-          | Ast.SwitchStmt { cond, cases } => 
+          | Ast.SwitchStmt { cond, cases, ... } => 
             let
                 val (cases,hoisted) = ListPair.unzip (map reconstructCase cases)
             in
-                (Ast.SwitchStmt { cond = defExpr env cond,
+                (Ast.SwitchStmt { mode = SOME (#numericMode ctx),
+                                  cond = defExpr env cond,
                                   cases = cases}, List.concat hoisted)
             end
         

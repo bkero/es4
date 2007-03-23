@@ -3798,7 +3798,7 @@ and switchStatement (ts) : (token list * Ast.STMT) =
                     let
                         val (ts2,nd2) = caseElements (tl ts1)
                     in case ts2 of
-                        RightBrace :: _ => (tl ts2,Ast.SwitchStmt{cond=nd1,cases=nd2})
+                        RightBrace :: _ => (tl ts2,Ast.SwitchStmt{mode=NONE,cond=nd1,cases=nd2})
                       | _ => error ["unknown token in switchStatement"]
                     end
               | _ => error ["unknown token in switchStatement"]

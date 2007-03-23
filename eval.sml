@@ -914,6 +914,7 @@ and evalUnaryOp (scope:Mach.SCOPE)
             end
     end
 
+
 and performBinop (bop:Ast.BINOP) 
                  (a:Mach.VAL) 
                  (b:Mach.VAL) 
@@ -1131,6 +1132,13 @@ and performBinop (bop:Ast.BINOP)
 
           | _ => error ["unexpected binary operator in performBinOp"]
     end
+
+
+and doubleEquals (mode:Ast.NUMERIC_MODE option)
+                 (a:Mach.VAL) 
+                 (b:Mach.VAL)                  
+  : bool = 
+    Mach.toBoolean (performBinop (Ast.Equals mode) a b)
 
 
 and evalBinaryOp (scope:Mach.SCOPE) 
@@ -1380,8 +1388,9 @@ and evalStmt (scope:Mach.SCOPE)
       | Ast.WhileStmt w => evalWhileStmt scope w
       | Ast.DoWhileStmt w => evalDoWhileStmt scope w
       | Ast.WithStmt { obj, ty, body } => evalWithStmt scope obj ty body
-      (* | Ast.SwitchStmt { cond, cases } => evalSwitchStmt cond cases
-         | Ast.SwitchTypeStmt { cond, ty, cases } => evalSwitchTypeStmt cond ty cases
+      | Ast.SwitchStmt { mode, cond, cases } => 
+        evalSwitchStmt scope mode cond cases
+      (*   | Ast.SwitchTypeStmt { cond, ty, cases } => evalSwitchTypeStmt cond ty cases
        *)
       | Ast.ForStmt w => evalForStmt scope w
 (*      | Ast.ForInStmt w => evalForInStmt scope w
@@ -1974,7 +1983,10 @@ and evalDoWhileStmt (scope:Mach.SCOPE)
         end
 
 
-and evalWithStmt (scope:Mach.SCOPE) (obj:Ast.EXPR) (ty:Ast.TYPE_EXPR) (body:Ast.STMT) 
+and evalWithStmt (scope:Mach.SCOPE) 
+                 (obj:Ast.EXPR) 
+                 (ty:Ast.TYPE_EXPR) 
+                 (body:Ast.STMT) 
     : Mach.VAL = 
     let 
         val v = evalExpr scope obj
@@ -1982,7 +1994,34 @@ and evalWithStmt (scope:Mach.SCOPE) (obj:Ast.EXPR) (ty:Ast.TYPE_EXPR) (body:Ast.
     in
         evalStmt s body
     end
-        
+
+
+and evalSwitchStmt (scope:Mach.SCOPE)
+                   (mode:Ast.NUMERIC_MODE option)
+                   (cond:Ast.EXPR)
+                   (cases:Ast.CASE list) 
+    : Mach.VAL = 
+    let
+        fun tryCases (v:Mach.VAL) [] = Mach.Undef
+          | tryCases (v:Mach.VAL) ({label, inits, body}::cs) =
+            if (case label of 
+                    NONE => true
+                  | SOME e => doubleEquals mode v (evalExpr scope e))
+            then 
+                (* FIXME: This will change when switch stmt bodies are
+                 * reorganized and get a proper head. *)
+                let
+                    val head = ([], case inits of NONE => [] 
+                                                | SOME i => i)
+                    val caseScope = evalHead scope head false
+                in
+                    evalBlock caseScope body
+                end
+            else
+                tryCases v cs
+    in
+        tryCases (evalExpr scope cond) cases
+    end
     
 
 (*

@@ -264,7 +264,8 @@ datatype PRAGMA =
              finally: BLOCK option }
 
        | SwitchStmt of         (* FIXME: needs HEAD, DEFNS for defns hoisted from body *)
-           { cond: EXPR,
+           { mode: NUMERIC_MODE option,
+             cond: EXPR,
              cases: CASE list }
        | SwitchTypeStmt of 
            { cond: EXPR, 
