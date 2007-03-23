@@ -1843,9 +1843,9 @@ and get (obj:Mach.OBJ)
         (n:Ast.NAME) 
     : Mach.VAL =
     let
-        fun tryObj ob => 
+        fun tryObj ob = 
             if hasOwnValue ob n
-            then getValue ob n
+            then getValue (ob, n)
             else 
                 case obj of 
                     Mach.Obj { proto, ... } => 
@@ -1877,7 +1877,7 @@ and defaultValue (obj:Mach.OBJ)
                 if Mach.isObject f
                 then 
                     let 
-                        val v = evalCallExpr (SOME obj) f []
+                        val v = evalCallExpr (SOME obj) (needObj f) []
                     in
                         if isPrimitive v
                         then v
@@ -1901,12 +1901,12 @@ and isPrimitive (v:Mach.VAL)
       | Mach.Undef => true
       | Mach.Object (Mach.Obj ob) => 
         (case !(#magic ob) of
-             Mach.UInt _ => true
-           | Mach.Int _ => true
-           | Mach.Double _ => true
-           | Mach.Decimal _ => true
-           | Mach.String _ => true
-           | Mach.Bool _ => true
+             SOME (Mach.UInt _) => true
+           | SOME (Mach.Int _) => true
+           | SOME (Mach.Double _) => true
+           | SOME (Mach.Decimal _) => true
+           | SOME (Mach.String _) => true
+           | SOME (Mach.Bool _) => true
            | _ => false)
 
 (* 
@@ -1918,20 +1918,10 @@ and isPrimitive (v:Mach.VAL)
 and toPrimitive (v:Mach.VAL) 
                 (preferredType:string option)
     : Mach.VAL = 
-    case v of 
-        Mach.Null => v
-      | Mach.Undef => v
-      | Mach.Object (Mach.Obj ob) => 
-        (case !(#magic ob) of
-             Mach.UInt _ => v
-           | Mach.Int _ => v
-           | Mach.Double _ => v
-           | Mach.Decimal _ => v
-           | Mach.String _ => v
-           | Mach.Bool _ => 
-           | _ => defaultValue ob preferredType)
-
-
+    if isPrimitive v 
+    then v
+    else defaultValue (needObj v) preferredType
+         
 (*
     HEAD
 *)
