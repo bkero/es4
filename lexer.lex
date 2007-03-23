@@ -313,8 +313,7 @@ regexpFlags           = [a-zA-Z]*;
 				    val re = String.implode(rev (!curr_chars)) ^ yytext
 				in
 				    if !found_newline andalso (not x_flag)
-				    (* then error ["Illegal newline in regexp"]   *)
-				    then error [re]
+				    then error ["Illegal newline in regexp"]
 				    else
 				       (curr_chars := [];
 					found_newline := false;
@@ -335,7 +334,7 @@ regexpFlags           = [a-zA-Z]*;
 				YYBEGIN REGEXP;
 				lex());
 <REGEXP_CHARSET>"\n"|"\r"   => (found_newline := true;  lex());
-<REGEXP_CHARSET>"\\\n"|"\\\r". => (lex());
+<REGEXP_CHARSET>"\\\n"|"\\\r" => (lex());
 <REGEXP_CHARSET>"\\".       => (curr_chars := String.sub(yytext,1) :: #"\\" :: !curr_chars;
 				lex());
 <REGEXP_CHARSET>.           => (curr_chars := String.sub(yytext,0) :: !curr_chars;
