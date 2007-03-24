@@ -119,16 +119,13 @@ package
         prototype function toExponential(this:double, fractionDigits)
             this.toExponential(ToDouble(fractionDigits));
 
-        // FIXME this is supposed to be native, but the parser has trouble
-        // parsing "override intrinsic function native". No idea why.
-        override intrinsic function toExponential(fractionDigits:double) : string ""; 
-
         /* E262-3 15.7.4.7: Number.prototype.toPrecision */
         prototype function toPrecision(this:double, precision)
             this.toPrecision(ToDouble(precision));
 
-        // FIXME this is supposed to be native, but the parser has trouble
+        // FIXME these are supposed to be native, but the parser has trouble
         // parsing "override intrinsic function native". No idea why.
+        override intrinsic function toExponential(fractionDigits:double) : string ""; 
         override intrinsic function toPrecision(precision:double) : string "";
     }
 }

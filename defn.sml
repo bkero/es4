@@ -1916,6 +1916,22 @@ and defNamespace (env:ENV)
             ([(fixtureName, Ast.NamespaceFixture newNs)], newNd)
         end
 
+
+and defType (env:ENV)
+            (td:Ast.TYPE_DEFN)
+    : Ast.FIXTURES = 
+    let
+        val { ident, ns, init } = td 
+        val ns = case ns of 
+                     NONE => Ast.Internal ""
+                   | SOME e => resolveExprToNamespace env e
+        val n = { id=ident, ns=ns }
+    in
+        [(Ast.PropName n, 
+          Ast.TypeFixture (defTyExpr env init))]
+    end
+
+
 (*
     DEFN
 
@@ -1956,6 +1972,13 @@ and defDefn (env:ENV)
             in
                 ([],hoisted,[])
             end  
+
+      | Ast.TypeDefn td =>
+        let
+            val unhoisted = defType env td
+        in
+            (unhoisted, [], [])
+        end
 
       | _ => LogErr.unimplError ["defDefn"]
 

@@ -70,21 +70,21 @@ fun boot _ =
      load "builtins/Number.es";
      load "builtins/double.es";
      load "builtins/int.es";
-
-(*
      load "builtins/uint.es";
      load "builtins/decimal.es";
      load "builtins/Numeric.es";
 
-     load "builtins/Math.es";
+(*
 
      load "builtins/String.es";
      load "builtins/string_primitive.es";
+
+     load "builtins/Math.es";
+
      load "builtins/Unicode.es";
 
      load "builtins/Array.es";
      load "builtins/ByteArray.es";
-     load "builtins/Function.es";
      load "builtins/Date.es";
      load "builtins/JSON.es";
 

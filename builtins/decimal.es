@@ -33,9 +33,8 @@ package
             value === undefined ? 0m : ToDecimal(value);
 
         /* E262-3 15.7.2.1: The decimal constructor */
-        public function decimal(value) {
-            magic::setValue(this, ToDecimal(value));
-        }
+        public function decimal(value)
+            magic::copyValue(ToDecimal(value), this);
 
         /* E262-3 15.7.4.2: decimal.prototype.toString */
         prototype function toString(this:decimal, radix)
@@ -43,7 +42,7 @@ package
 
         override intrinsic function toString(radix = 10) : string {
             if (radix === 10 || radix === undefined)
-                return ToString(magic::getValue(this));
+                return ToString(this);
             else if (typeof radix === "number" && radix >= 2 && radix <= 36 && isIntegral(radix)) {
                 // FIXME
                 throw new Error("Unimplemented: non-decimal radix");
@@ -57,32 +56,32 @@ package
             this.toLocaleString();
 
         /* INFORMATIVE */
-        intrinsic function toLocaleString() : string
+        override intrinsic function toLocaleString() : string
             toString();
 
         /* E262-3 15.7.4.4: decimal.prototype.valueOf */
         prototype function valueOf(this:decimal)
             this.valueOf();
 
-        intrinsic function valueOf() : Object!
+        override intrinsic function valueOf() : decimal
             this;
 
         /* E262-3 15.7.4.5 Number.prototype.toFixed */
         prototype function toFixed(this:decimal, fractionDigits)
             this.toFixed(ToDouble(fractionDigits));
 
-        intrinsic native function toFixed(fractionDigits:double) : string; // FIXME
-
         /* E262-3 15.7.4.6: Number.prototype.toExponential */
         prototype function toExponential(this:decimal, fractionDigits)
             this.toExponential(ToDouble(fractionDigits));
-
-        intrinsic native function toExponential(fractionDigits:double) : string; // FIXME
 
         /* E262-3 15.7.4.7: Number.prototype.toPrecision */
         prototype function toPrecision(this:decimal, precision)
             this.toPrecision(ToDouble(precision));
 
-        intrinsic native function toPrecision(precision:double) : string; // FIXME
+        // FIXME these are supposed to be native, but the parser has trouble
+        // parsing "override intrinsic function native". No idea why.
+        override intrinsic function toFixed(fractionDigits:double) : string "";
+        override intrinsic function toExponential(fractionDigits:double) : string ""; 
+        override intrinsic function toPrecision(precision:double) : string "";
     }
 }
