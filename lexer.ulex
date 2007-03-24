@@ -157,21 +157,21 @@
 
 <INITIAL>"/"               => (LexBreakDiv
 				   { lex_initial = 
-					fn _ => Div :: token_list (fn _ => lex ()),
+					fn _ => Div :: token_list (fn _ => continue ()),
 				     lex_regexp = 
 				        fn _ =>
 					  (curr_chars := [#"/"];
 					   YYBEGIN REGEXP;
-					   token_list (fn _ => lex ())) });
+					   token_list (fn _ => continue ())) });
 
 <INITIAL>"/="              => (LexBreakDivAssign
 				   { lex_initial = 
-					fn _ => DivAssign :: token_list (fn _ => lex ()),
+					fn _ => DivAssign :: token_list (fn _ => continue ()),
 				     lex_regexp = 
 					fn _ =>
 					  (curr_chars := [#"=",#"/"];
 					   YYBEGIN REGEXP;
-					   token_list (fn _ => lex ())) });
+					   token_list (fn _ => continue ())) });
 
 <INITIAL>":"               => (Colon);
 <INITIAL>"::"              => (DoubleColon);
@@ -195,11 +195,11 @@
 
 <INITIAL>"<"               => (LexBreakLessThan
 				   { lex_initial = 
-					fn _ => LessThan :: token_list (fn _ => lex ()),
+					fn _ => LessThan :: token_list (fn _ => continue ()),
 				     lex_xml = 
 					fn _ => 
 					  (YYBEGIN XML;
-					   token_list (fn _ => lex ())) });
+					   token_list (fn _ => continue ())) });
 
 <INITIAL>"<<"              => (LeftShift);
 <INITIAL>"<<="             => (LeftShiftAssign);
@@ -292,7 +292,7 @@
 <INITIAL>"xml"             => (Token.Xml);
 <INITIAL>"yield"           => (Yield);
 
-<INITIAL>[:whitespace:]      => (lex());
+<INITIAL>[:whitespace:]      => (continue());
 <INITIAL>{identifier}        => (Identifier yytext);
 <INITIAL>{explicitIntLiteral} => (case Int32.fromString (chopTrailing yytext) of
                                           SOME i => ExplicitIntLiteral i
@@ -315,13 +315,13 @@
 <INITIAL>{decimalLiteral}        => (DecimalLiteral yytext);
 
 
-<INITIAL>"//"                => (YYBEGIN SINGLE_LINE_COMMENT; lex());
+<INITIAL>"//"                => (YYBEGIN SINGLE_LINE_COMMENT; continue());
 <SINGLE_LINE_COMMENT>"\n"    => (YYBEGIN INITIAL; Eol);
-<SINGLE_LINE_COMMENT>.       => (lex());
+<SINGLE_LINE_COMMENT>.       => (continue());
 
-<INITIAL>"/*"                => (YYBEGIN MULTI_LINE_COMMENT; lex());
-<MULTI_LINE_COMMENT>"*/"     => (YYBEGIN INITIAL; lex());
-<MULTI_LINE_COMMENT>.|"\n"   => (lex());
+<INITIAL>"/*"                => (YYBEGIN MULTI_LINE_COMMENT; continue());
+<MULTI_LINE_COMMENT>"*/"     => (YYBEGIN INITIAL; continue());
+<MULTI_LINE_COMMENT>.|"\n"   => (continue());
 
 <REGEXP>"/"{regexpFlags}    => (let
 				    val x_flag = String.isSubstring "x" yytext;
@@ -337,28 +337,28 @@
 				end);
 <REGEXP>"["                 => (curr_chars := #"[" :: !curr_chars;
 				YYBEGIN REGEXP_CHARSET;
-				lex());
-<REGEXP>"\n"|"\r"           => (found_newline := true;  lex());
-<REGEXP>"\\\n"|"\\\r"       => (lex());
+				continue());
+<REGEXP>"\n"|"\r"           => (found_newline := true;  continue());
+<REGEXP>"\\\n"|"\\\r"       => (continue());
 <REGEXP>"\\".               => (curr_chars := String.sub(yytext,1) :: #"\\" :: !curr_chars;
-				lex());
+				continue());
 <REGEXP>.                   => (curr_chars := String.sub(yytext,0) :: !curr_chars;
-				lex());
+				continue());
 
 <REGEXP_CHARSET>"]"         => (curr_chars := #"]" :: !curr_chars;
 				YYBEGIN REGEXP;
-				lex());
-<REGEXP_CHARSET>"\n"|"\r"   => (found_newline := true;  lex());
-<REGEXP_CHARSET>"\\\n"|"\\\r" => (lex());
+				continue());
+<REGEXP_CHARSET>"\n"|"\r"   => (found_newline := true;  continue());
+<REGEXP_CHARSET>"\\\n"|"\\\r" => (continue());
 <REGEXP_CHARSET>"\\".       => (curr_chars := String.sub(yytext,1) :: #"\\" :: !curr_chars;
-				lex());
+				continue());
 <REGEXP_CHARSET>.           => (curr_chars := String.sub(yytext,0) :: !curr_chars;
-				lex());
+				continue());
 
 <INITIAL>"'"|"\""            => (curr_quote := String.sub (yytext,0); 
                                  curr_chars := [];
                                  YYBEGIN STRING;
-                                 lex());
+                                 continue());
 
 <STRING>"'"|"\""             => (if 
                                      (!curr_quote) = String.sub (yytext,0)
@@ -373,18 +373,18 @@
                                      end
                                  else
                                      (curr_chars := (String.sub (yytext,0)) :: (!curr_chars);
-                                     lex()));
+                                     continue()));
 
 
 <STRING>{charEscape}          => ((case Char.fromCString yytext of
 				       NONE => error ["unexpected input in <STRING>{charEscape}: '", yytext, "'"]
 				     | SOME c => curr_chars := c :: (!curr_chars));
-				  lex());
+				  continue());
 
 <STRING>"\\".                 => (curr_chars := (String.sub (yytext,1)) :: (!curr_chars);
-				  lex());
+				  continue());
 
 <STRING>.                     => (curr_chars := (String.sub (yytext,0)) :: (!curr_chars);
-				  lex());
+				  continue());
 
 <INITIAL>.                    => (error ["unexpected input: '", yytext, "'"]);
