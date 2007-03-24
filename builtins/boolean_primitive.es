@@ -18,12 +18,12 @@ package
      * 
      * The literals true and false denote instances of this class.
      */
-    namespace core;
+    namespace meta;
 
     final class boolean! extends Boolean
     {       
         /* E262-3 15.6.1: The boolean Constructor Called as a Function. */
-        core static function invoke(value) : boolean
+        meta static function invoke(value) : boolean
             value ? true : false;
 
         /* E262-3 15.6.2.1: The boolean Constructor. */

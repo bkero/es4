@@ -1,4 +1,4 @@
-/* -*- indent-tabs-mode: nil -*- 
+/* -*- mode: java; indent-tabs-mode: nil -*- 
  *
  * ECMAScript 4 builtins - magic functions
  *
@@ -65,11 +65,8 @@ package
        o, it does nothing. */
     magic native function setPropertyIsDontEnum(o : Object!, p : string, f : Boolean) : void;
 
-    /* Retrieve the [[Value]] property of o */
-    magic native function getValue(o : Object!) : *;
-
-    /* Set the [[Value]] of o to v */
-    magic native function setValue(o : Object!, v : *) : void;
+    /* Copy the magic value slot from src to dst. */
+    magic native function copyValue(src: Object!, dst:Object!) : void;
 
 
     /* ----------------------------------------------------------------
@@ -92,11 +89,6 @@ package
        unspecified way - there is no representation of string data in
        the language.  The following magic functions access and set
        those string data.  */
-
-    /* Given a string object 'src', copy its internal string data into
-       another string object 'dest', replacing whatever data might
-       have been in 'dest' to begin with.  */
-    magic native function setStringValue(dest : string, src : string) : void;
 
     /* Given a string and a position in that string, return the
        numeric value of the character at that position in the

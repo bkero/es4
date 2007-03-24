@@ -4,7 +4,7 @@ structure Defn = struct
 (* Local tracing machinery *)
 
 val doTrace = ref false
-fun trace ss = if (!doTrace) then LogErr.log ("[eval] " :: ss) else ()
+fun trace ss = if (!doTrace) then LogErr.log ("[defn] " :: ss) else ()
 fun error ss = LogErr.defnError ss
 
 (* 
@@ -532,17 +532,21 @@ and inheritFixtures (base:Ast.FIXTURES)
         fun inheritFixture ((n,fb):(Ast.FIXTURE_NAME * Ast.FIXTURE))
             : Ast.FIXTURES =
             let
-                val targetFixture = if (hasFixture derived n)
-                                        then SOME (getFixture derived n)
-                                        else NONE
-
-            in case targetFixture of
-                NONE => (n,fb)::derived    (* not in the derived class, so inherit it *)
-              | SOME fd => 
-                case (canOverride fb fd) of
-                    true => derived  (* return current fixtures *)
-                  | _ => LogErr.defnError ["illegal override of ", LogErr.fname n]
-            end                    
+                fun targetFixture _ = if (hasFixture derived n)
+                                      then SOME (getFixture derived n)
+                                      else NONE
+                val _ = trace ["checking override of ", LogErr.fname n]
+            in 
+                case n of 
+                    (* Private fixtures never "inherit", so it's meaningless to ask. *)
+                    Ast.PropName {ns=Ast.Private _, ...} => derived
+                  | _ => case targetFixture () of
+                             NONE => (n,fb)::derived    (* not in the derived class, so inherit it *)
+                           | SOME fd => 
+                             case (canOverride fb fd) of
+                                 true => derived  (* return current fixtures *)
+                               | _ => LogErr.defnError ["illegal override of ", LogErr.fname n]
+            end
 
         (* 
            Given two fixtures, one base and other derived, check to see if
@@ -569,18 +573,25 @@ and inheritFixtures (base:Ast.FIXTURES)
                 val isCompatible = case (fb,fd) of 
                         (Ast.MethodFixture 
                              {ty=(Ast.FunctionType 
-                                      {typeParams=tpb,params=pb,result=rtb,...}),...},
+                                      {typeParams=tpb,params=pb,result=rtb,minArgs=mb,...}),
+                              func=(Ast.Func {fsig=Ast.FunctionSignature {defaults=db, ...}, ...}),...},
                          Ast.MethodFixture 
                              {ty=(Ast.FunctionType 
-                                      {typeParams=tpd,params=pd,result=rtd,...}),...}) =>
+                                      {typeParams=tpd,params=pd,result=rtd,minArgs=md,...}),
+                              func=(Ast.Func {fsig=Ast.FunctionSignature {defaults=dd, ...}, ...}),...}) =>
                             let
-                                val _ = trace ["length tpb ",Int.toString (length tpb)," length tpd ",Int.toString (length tpd),"\n"]
-                                val _ = trace ["length pb ",Int.toString (length pb)," length pd ",Int.toString (length pd),"\n"]
+                                val _ = trace ["length tpb ",Int.toString (length tpb),
+                                               " length tpd ",Int.toString (length tpd),"\n"]
+                                val _ = trace ["mb ",Int.toString mb, " md ",Int.toString md,"\n"]
+                                val _ = trace ["length pb ",Int.toString (length pb),
+                                               " length pd ",Int.toString (length pd),"\n"]
+                                val _ = trace ["length db ",Int.toString (length db),
+                                               " length dd ",Int.toString (length dd),"\n"]
                             in
                                 (length tpb)=(length tpd) 
-                                    andalso (length pb)=(length pd) 
-                                    andalso (((isVoid rtb) andalso (isVoid rtd)) 
-                                        orelse
+                                andalso true (* FIXME: mb=md *)
+                                andalso (((isVoid rtb) andalso (isVoid rtd)) 
+                                         orelse
                                         ((not (isVoid rtb)) andalso (not (isVoid rtd)))) 
                                 (* FIXME: check compatibility of return types? *)
                             end

@@ -1,6 +1,6 @@
-/* -*- indent-tabs-mode: nil -*- 
+/* -*- mode: java; indent-tabs-mode: nil -*- 
  *
- * ECMAScript 4 builtins - the "Number" object
+ * ECMAScript 4 builtins - the "Number" wrapper object
  *
  * E262-3 15.7
  * E262-4 proposals:numbers
@@ -15,62 +15,86 @@ package
     use namespace intrinsic;
     use strict;
 
-    dynamic class Number!
-    {
-        public static const MAX_VALUE : double         = double.MAX_VALUE;
-        public static const MIN_VALUE : double         = double.MIN_VALUE;
-        public static const NaN : double               = double.NaN;
-        public static const NEGATIVE_INFINITY : double = double.NEGATIVE_INFINITY;
-        public static const POSITIVE_INFINITY : double = double.POSITIVE_INFINITY;
+    namespace meta;
 
-        const value : double;
+    dynamic class Number
+    {
+        public static const MAX_VALUE : double         = 1.7976931348623157e+308;  /* INFORMATIVE */
+        public static const MIN_VALUE : double         = 5e-324;                   /* INFORMATIVE */
+        public static const NaN : double               = 0.0 / 0.0;
+        public static const NEGATIVE_INFINITY : double = -1.0 / 0.0;
+        public static const POSITIVE_INFINITY : double = 1.0 / 0.0;
 
         /* E262-4 draft */
-        function to Number(x : Numeric)
+        meta static function convert(x : Numeric) : Number
             x is Number ? x : new Number(ToDouble(x));
 
         /* E262-3 15.7.1.1: The Number Constructor Called as a Function */
-        function call Number(value) 
-            value === undefined ? 0.0 : new Number(value);
+        meta static function invoke(value) 
+            value === undefined ? 0.0 : ToDouble(value);
 
         /* E262-3 15.7.2.1: The Number constructor */
         public function Number(value) 
-            value = ToDouble(value);
+            magic::copyValue(ToDouble(value), this);
+
 
         prototype function toString(radix = 10)
             this.toString(radix);
 
         override intrinsic function toString(radix = 10) : string
-            value.toString(radix);
+	    private::toString(radix);
+
+	private function toString(radix = 10) : string
+            ToDouble(this).toString(radix);
         
+
         prototype function toLocaleString()
             this.toLocaleString();
 
-        intrinsic function toLocaleString() : string
+        override intrinsic function toLocaleString() : string
             value.toLocaleString();
+
+	private function toLocaleString() : string
+	    ToDouble(this).toLocaleString();
+
 
         prototype function valueOf()
             this.valueOf();
 
-        intrinsic function valueOf() : Object!
-            value.valueOf();
+        override intrinsic function valueOf() : Numeric
+            private::valueOf();
+
+	private function valueOf() : Numeric
+	    toNumeric(this);
+
 
         prototype function toFixed(fractionDigits)
             this.toFixed(fractionDigits);
 
         intrinsic function toFixed(fractionDigits:double) : string 
-            value.toFixed(fractionDigits);
+            private::toFixed(fracitonDigits);
+
+        private function toFixed(fractionDigits:double) : string 
+            ToDouble(this).toFixed(fractionDigits);
+
 
         prototype function toExponential(fractionDigits)
             this.toExponential(fractionDigits);
 
         intrinsic function toExponential(fractionDigits:double) : string
-            value.toExponential(fractionDigits);
+            private::toExponential(fractionDigits);
+
+        private function toExponential(fractionDigits:double) : string
+            ToDouble(this).toExponential(fractionDigits);
+
 
         prototype function toPrecision(precision)
             this.toPrecision(precision);
 
         intrinsic function toPrecision(precision:double) : string
-            value.toPrecision(precision);
+            private::toPrecision(precision);
+
+        private function toPrecision(precision:double) : string
+            ToDouble(this).toPrecision(precision);
     }
 }

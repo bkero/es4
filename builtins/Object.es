@@ -1,4 +1,4 @@
-/* -*- indent-tabs-mode: nil -*- 
+/* -*- mode: java; indent-tabs-mode: nil -*- 
  *
  * ECMAScript 4 builtins - the "Object" object
  *
@@ -10,7 +10,7 @@
  */
 package
 {
-    namespace core;
+    namespace meta;
 
     dynamic class Object 
     {       
@@ -18,7 +18,7 @@ package
         use strict;
 
         /* E262-3 15.2.1.1: The Object constructor called as a function */
-        core static function invoke(value)
+        meta static function invoke(value)
             ToObject(value);
 
         /* E262-3 15.2.2.1: The Object constructor. */

@@ -1,4 +1,4 @@
-/* -*- indent-tabs-mode: nil -*-
+/* -*- mode: java; indent-tabs-mode: nil -*-
  *
  * ECMAScript 4 builtins - the "string" object
  *
@@ -34,23 +34,18 @@ package
     use namespace intrinsic;
     use strict;
 
-    final class string!
+    final class string! extends String
     {       
         /* E262-3 15.5.1: The String Constructor Called as a Function */
         static intrinsic function invoke(value)
             return arguments.length === 0 ? "" : ToString(value);
 
-        /* 15.5.2 The String Constructor 
-           Be careful to always return a new String object here, so don't
-           optimize by returning the return value of 
-         */
+        /* 15.5.2 The String Constructor */
         function string(value) {
             if (arguments.length === 0)
-                magic::setStringValue(this,"");
-            else if (value instanceof string)
-                magic::setStringValue(this,value);
+                magic::copyValue("",this);
             else
-                magic::setStringValue(this,ToString(value));
+                magic::copyValue(ToString(value),this);
         }
         
         /* E262-3 15.5.3.2: String.fromCharCode
@@ -63,7 +58,7 @@ package
             fromCharCodeHelper(args);
 
         static function fromCharCodeHelper(codes : Array) : double {
-            let s : String = "";
+            let s : string = "";
             let n : uint = codes.length;
             for (let i : uint = 0 ; i < n ; ++i)
                 s += magic::fromCharCode(codes[i]);
@@ -75,13 +70,19 @@ package
             this;
 
         override intrinsic function toString() : string
+            private::toString();
+
+        private final function toString() : string
             this;
         
         /* E262-3 15.5.4.3: String.prototype.valueOf */
         prototype function valueOf(this : string)
             this;
 
-        intrinsic function valueOf() : Object
+        intrinsic function valueOf() : string
+            private::valueOf();
+
+        private final function valueOf() : string
             this;
 
         /* E262-3 15.5.4.4: String.prototype.charAt

@@ -273,58 +273,17 @@ fun setPropertyIsDontEnum (vals:Mach.VAL list)
 
 
 (*
- * Retrieve the [[Value]] property of o
+ * Copy the magic value slot from src to dst.
  * 
- * magic native function getValue(o : Object!) : *;
- *) 
-fun getValue (vals:Mach.VAL list) 
-    : Mach.VAL = 
-    (* 
-     * FIXME: is this right? I'm assuming the point is to rebuild the VAL
-     * in the "normal" state associated with its magic: no props,
-     * appropriate proto, etc.
-     *)
-    let 
-        val Mach.Obj { magic, ... } = nthAsObj vals 0
-    in
-        case !magic of 
-            NONE => Mach.Undef
-          | SOME (Mach.UInt u) => Mach.newUInt u
-          | SOME (Mach.Int i) => Mach.newInt i
-          | SOME (Mach.Double d) => Mach.newDouble d
-          | SOME (Mach.Decimal d) => Mach.newDecimal d
-          | SOME (Mach.String s) => Mach.newString s
-          | SOME (Mach.Bool b) => Mach.newBoolean b
-          | SOME (Mach.Namespace ns) => Mach.newNamespace ns
-          | SOME (Mach.Class cc) => Mach.newClass (#env cc) (#cls cc) 
-          | SOME (Mach.Interface i) => Mach.newIface (#env i) (#iface i) 
-          | SOME (Mach.Function f) => Mach.newFunc (#env f) (#func f)
-          | SOME (Mach.Type t) => Mach.newType t
-          | SOME (Mach.NativeFunction f) => Mach.newNativeFunction f
-          | SOME (Mach.ByteArray b) => Mach.newByteArray b
-    end
-
-
-(*
- * Set the [[Value]] of o to v
- * 
- * magic native function setValue(o : Object!, v : * ) : void;
+ *  magic native function copyValue(src: Object!, dst:Object!) : void;
  *)
-fun setValue (vals:Mach.VAL list) 
+fun copyValue (vals:Mach.VAL list) 
     : Mach.VAL = 
-    (* 
-     * FIXME: is this right? I'm assuming the point is to set (or reset to empty)
-     * the magic slot of 'o' to whatever magic can be found in 'v'.
-     *)
     let 
-        val Mach.Obj { magic, ... } = nthAsObj vals 0
-        val v = case vals of 
-                    [_,x] => x
-                  | _ => error ["bad number of arguments to setValue"]            
+        val Mach.Obj src = nthAsObj vals 0
+        val Mach.Obj dst = nthAsObj vals 1
     in
-        case v of 
-            Mach.Object (Mach.Obj ob) => magic := !(#magic ob)
-          | _ => magic := NONE;
+        (#magic dst) := !(#magic src);
         Mach.Undef
     end
 
@@ -391,23 +350,6 @@ fun compileInto (vals:Mach.VAL list)
                 magic := Mach.getObjMagic obj
             end
           | _ => error ["function did not compile to object"];
-        Mach.Undef
-    end
-
-(* 
- * Given a string object 'src', copy its internal string data into
- * another string object 'dest', replacing whatever data might
- * have been in 'dest' to begin with.
- * 
- * magic native function setStringValue(dest : string, src : string) : void;
- *)
-fun setStringValue (vals:Mach.VAL list) 
-    : Mach.VAL = 
-    let
-        val Mach.Obj { magic, ...} = nthAsObj vals 0
-        val src = nthAsStr vals 1
-    in
-        magic := SOME (Mach.String src);
         Mach.Undef
     end
 
@@ -642,11 +584,9 @@ fun registerNatives _ =
         addFn (Ast.UserNamespace "magic") "getPropertyIsDontEnum" getPropertyIsDontEnum;
         addFn (Ast.UserNamespace "magic") "getPropertyIsDontDelete" getPropertyIsDontDelete;
         addFn (Ast.UserNamespace "magic") "setPropertyIsDontEnum" setPropertyIsDontEnum;
-        addFn (Ast.UserNamespace "magic") "getValue" getValue;
-        addFn (Ast.UserNamespace "magic") "setValue" setValue;
+        addFn (Ast.UserNamespace "magic") "copyValue" copyValue;
         addFn (Ast.UserNamespace "magic") "apply" apply;
         addFn (Ast.UserNamespace "magic") "compileInto" compileInto;
-        addFn (Ast.UserNamespace "magic") "setStringValue" setStringValue;
         addFn (Ast.UserNamespace "magic") "charCodeAt" charCodeAt;
         addFn (Ast.UserNamespace "magic") "fromCharCode" fromCharCode;
         addFn (Ast.UserNamespace "magic") "stringLength" stringLength;
@@ -663,6 +603,11 @@ fun registerNatives _ =
         addFn Ast.Intrinsic "decodeURIComponent" decodeURIComponent;
         addFn Ast.Intrinsic "encodeURI" encodeURI;
         addFn Ast.Intrinsic "encodeURIComponent" encodeURIComponent;
+
+        (* FIXME: stubs to get double loading. Implement. *)
+        addFn Ast.Intrinsic "toFixedStep10" (fn _ => Mach.newString(""));
+        addFn Ast.Intrinsic "toExponential" (fn _ => Mach.newString(""));
+        addFn Ast.Intrinsic "toPrecision" (fn _ => Mach.newString(""));
         
         addFn Ast.Intrinsic "print" print;
         addFn Ast.Intrinsic "assert" assert;

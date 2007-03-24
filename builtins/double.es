@@ -1,4 +1,4 @@
-/* -*- indent-tabs-mode: nil -*- 
+/* -*- mode: java; indent-tabs-mode: nil -*- 
  *
  * ECMAScript 4 builtins - the "double" object
  *
@@ -18,9 +18,9 @@ package
 {
     use namespace intrinsic;
 
-    namespace core;
+    namespace meta;
 
-    final class double!
+    final class double! extends Number
     {       
         public static const MAX_VALUE : double         = 1.7976931348623157e+308;  /* INFORMATIVE */
         public static const MIN_VALUE : double         = 5e-324;                   /* INFORMATIVE */
@@ -29,25 +29,28 @@ package
         public static const POSITIVE_INFINITY : double = 1.0 / 0.0;
 
         /* E262-4 draft */
-        core static function convert(x : Numeric)
+        meta static function convert(x : Numeric)
             x is double ? x : ToDouble(x);
 
         /* E262-3 15.7.1.1: The double Constructor Called as a Function */
-        core static function invoke(value)
+        meta static function invoke(value)
             value === undefined ? 0d : ToDouble(value);
 
         /* E262-3 15.7.2.1: The double constructor */
-        public function double(value) {
-            magic::setValue(this, ToDouble(value));
-        }
+        public function double(value)
+            magic::copyValue(ToDouble(value), this);
+
 
         /* E262-3 15.7.4.2: double.prototype.toString */
         prototype function toString(this:double, radix)
             this.toString(radix);
 
-        override intrinsic function toString(radix = 10) : string {
+        override intrinsic function toString(radix = 10) : string 
+            private::toString(radix);
+
+        private function toString() : string {
             if (radix === 10 || radix === undefined)
-                return ToString(magic::getValue(this));
+                return ToString(this);
             else if (typeof radix === "number" && radix >= 2 && radix <= 36 && isIntegral(radix)) {
                 // FIXME
                 throw new Error("Unimplemented: non-decimal radix");
@@ -55,31 +58,32 @@ package
             else
                 throw new TypeError("Invalid radix argument to double.toString");
         }
+
         
         /* E262-3 15.7.4.3: double.prototype.toLocaleString() */
         prototype function toLocaleString(this:double)
             this.toLocaleString();
 
         /* INFORMATIVE */
-        intrinsic function toLocaleString() : string
+        override intrinsic function toLocaleString() : string
             toString();
 
         /* E262-3 15.7.4.4: double.prototype.valueOf */
         prototype function valueOf(this:double)
             this.valueOf();
 
-        intrinsic function valueOf() : Object!
+        override intrinsic function valueOf() : double
             this;
 
         /* E262-3 15.7.4.5 Number.prototype.toFixed */
         prototype function toFixed(this:double, fractionDigits)
             this.toFixed(ToDouble(fractionDigits));
 
-        intrinsic function toFixed(fractionDigits:double) : string {
+        override intrinsic function toFixed(fractionDigits:double) : string {
             let f : double = ToInteger(fractionDigits);
             if (f < 0 || f > 20)
                 throw new RangeError("fractionDigits out of range");
-            let x : double = magic::getValue(this);
+            let x : double = this;
             if (isNaN(x))
                 return "NaN";
             let s : string = "";
@@ -115,12 +119,16 @@ package
         prototype function toExponential(this:double, fractionDigits)
             this.toExponential(ToDouble(fractionDigits));
 
-        intrinsic native function toExponential(fractionDigits:double) : string; // FIXME
+        // FIXME this is supposed to be native, but the parser has trouble
+        // parsing "override intrinsic function native". No idea why.
+        override intrinsic function toExponential(fractionDigits:double) : string ""; 
 
         /* E262-3 15.7.4.7: Number.prototype.toPrecision */
         prototype function toPrecision(this:double, precision)
             this.toPrecision(ToDouble(precision));
 
-        intrinsic native function toPrecision(precision:double) : string; // FIXME
+        // FIXME this is supposed to be native, but the parser has trouble
+        // parsing "override intrinsic function native". No idea why.
+        override intrinsic function toPrecision(precision:double) : string "";
     }
 }

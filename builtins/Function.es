@@ -1,4 +1,4 @@
-/* -*- indent-tabs-mode: nil -*- 
+/* -*- mode: java; indent-tabs-mode: nil -*- 
  *
  * ECMAScript 4 builtins - the "Function" object
  * E262-3 15.3
@@ -16,7 +16,7 @@
 
 package
 {
-    namespace core;
+    namespace meta;
 
     dynamic class Function
     {       
@@ -27,11 +27,11 @@ package
 	   directly use the standard construction protocol, though it
 	   calls it indirectly.
          */
-         core static function construct(...args)
+         meta static function construct(...args)
             apply(Function, null, args);
 
         /* E262-3 15.3.1: The Function Constructor Called as a Function */
-         core static function invoke(...args) {
+         meta static function invoke(...args) {
             let src : string = args.pop();
   	    let f = magic::construct(Function, [src]);
             magic::compileInto(f, args, src);
@@ -47,14 +47,14 @@ package
            This method is never called.  The Function constructor
            marks instances of Function specially, and recognizes these
            instances in the implementation of function calling.  The
-           instance core::invoke method is defined here to prevent
+           instance meta::invoke method is defined here to prevent
            subclasses of Function from overriding it.
 
            Other parts of the class hierarchy may however create
-           core::invoke methods that will be considered by the
+           meta::invoke methods that will be considered by the
            function calling machinery. 
         */        
-        core final function invoke(...args) {
+        meta final function invoke(...args) {
             throw new Error("Implementation error");
         }
 
@@ -64,7 +64,7 @@ package
            some things in the prototype that ensures that the object
            behaves like a function in some trivial ways.
          */
-        core prototype function invoke()
+        meta prototype function invoke()
             undefined;
 
         prototype var source : string = "function () { }";

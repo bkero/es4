@@ -1,4 +1,4 @@
-/* -*- indent-tabs-mode: nil -*- 
+/* -*- mode: java; indent-tabs-mode: nil -*- 
  *
  * ECMAScript 4 builtins - the "uint" object
  *
@@ -14,7 +14,7 @@ package
     use namespace intrinsic;
     use strict;
 
-    namespace core;
+    namespace meta;
 
     final class uint!
     {       
@@ -22,17 +22,16 @@ package
         static const MIN_VALUE : uint = 0;
 
         /* E262-4 draft */
-        core static function convert(x : Numeric)
+        meta static function convert(x : Numeric)
             x is uint ? x : ToUint(x);
 
         /* E262-4 draft: The uint Constructor Called as a Function */
-        core static function invoke(value)
+        meta static function invoke(value)
             value === undefined ? 0u : ToUint(value);
 
         /* E262-4 draft: The uint constructor */
-        public function uint(value) {
-            magic::setValue(this, ToUint(value));
-	}
+        public function uint(value) 
+            magic::copyValue(ToUint(value), this);
 
         /* E262-4 draft: uint.prototype.toString */
         prototype function toString(this:uint, radix)
@@ -41,7 +40,7 @@ package
         override intrinsic function toString() {
             var radix = 10  /* FIXME */
             if (radix === 10 || radix === undefined)
-                return ToString(magic::getValue(this));
+                return ToString(this);
             else if (typeof radix === "number" && radix >= 2 && radix <= 36 && isIntegral(radix)) {
                 // FIXME
                 throw new Error("Unimplemented: non-decimal radix");

@@ -1,4 +1,4 @@
-/* -*- indent-tabs-mode: nil -*- 
+/* -*- mode: java; indent-tabs-mode: nil -*- 
  *
  * ECMAScript 4 builtins - the "decimal" object
  *
@@ -13,7 +13,7 @@ package
 {
     use namespace intrinsic;
 
-    namespace core;
+    namespace meta;
 
     final class decimal!
     {       
@@ -25,11 +25,11 @@ package
         public static const POSITIVE_INFINITY = 1.0m / 0.0m;  // ???
 
         /* E262-4 draft */
-        core static function convert(x : Numeric)
+        meta static function convert(x : Numeric)
             x is decimal ? x : ToDecimal(x);
 
         /* E262-3 15.7.1.1: The decimal Constructor Called as a Function */
-        core static function invoke(value)
+        meta static function invoke(value)
             value === undefined ? 0m : ToDecimal(value);
 
         /* E262-3 15.7.2.1: The decimal constructor */
