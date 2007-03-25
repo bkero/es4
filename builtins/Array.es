@@ -1,4 +1,4 @@
-/* -*- indent-tabs-mode: nil -*-
+/* -*- mode: java; indent-tabs-mode: nil -*-
  *
  * ECMAScript 4 builtins - the "Array" object
  * ES-262-3 15.X
@@ -9,13 +9,15 @@
 
 package
 {
+    namespace meta;
+
     dynamic class Array extends Object
     {
         use namespace intrinsic;
         use strict;
 
         // 15.4.1 The Array Constructor Called as a Function
-        static intrinsic function invoke(...args) {
+        meta static function invoke(...args) {
             // args is already an Array. just return it.
             return args;
         }
@@ -356,9 +358,9 @@ package
 
         // 15.4.5.1 [[Put]] (P, V)
         // @todo: ensure that catchall-set for undeclared properties runs on every set
-        function set *(id, value):void {
+        meta function set(id, value):void {
             let oldLength:uint = this.length;
-            this.set(id, value);
+            intrinsic::set(id, value);
             let idAsDouble:double = double(id);
             let idAsUint:uint = uint(idAsDouble);
             if (idAsUint == idAsDouble && idAsUint >= oldLength)

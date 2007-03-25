@@ -75,7 +75,6 @@ fun boot _ =
      load "builtins/Numeric.es";
 
 (*
-
      load "builtins/String.es";
      load "builtins/string_primitive.es";
 
