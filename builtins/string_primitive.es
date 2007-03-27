@@ -38,7 +38,7 @@ package
     {       
         /* E262-3 15.5.1: The String Constructor Called as a Function */
         static intrinsic function invoke(value)
-            return arguments.length === 0 ? "" : ToString(value);
+            arguments.length === 0 ? "" : ToString(value);
 
         /* 15.5.2 The String Constructor */
         function string(value) {

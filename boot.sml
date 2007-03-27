@@ -63,9 +63,10 @@ fun boot _ =
      load "builtins/Global.es";
      load "builtins/Function.es";
 
-
      load "builtins/Boolean.es";
      load "builtins/boolean_primitive.es";
+
+     load "builtins/String.es";
 
      load "builtins/Number.es";
      load "builtins/double.es";
@@ -74,18 +75,19 @@ fun boot _ =
      load "builtins/decimal.es";
      load "builtins/Numeric.es";
 
+     load "builtins/ByteArray.es";
+
 (*
-     load "builtins/String.es";
+
      load "builtins/string_primitive.es";
 
      load "builtins/Math.es";
 
      load "builtins/Unicode.es";
 
-     load "builtins/Array.es";
-     load "builtins/ByteArray.es";
-     load "builtins/Date.es";
      load "builtins/JSON.es";
+     load "builtins/Array.es";
+     load "builtins/Date.es";
 
      load "builtins/RegExpCompiler.es";
      load "builtins/RegExpEvaluator.es";

@@ -357,7 +357,6 @@ and identifier ts =
     let
     in case ts of
         Identifier(str) :: tr => (tr,str)
-      | Call :: tr => (tr,"call")
       | Debugger :: tr => (tr,"debugger")
       | Decimal :: tr => (tr,"decimal")
       | Double :: tr => (tr,"double")
@@ -5567,24 +5566,8 @@ and functionName (ts) : (token list * Ast.FUNC_NAME) =
             let 
                 val (ts1,nd1) = operatorName ts
             in
-                (ts1,{kind=Ast.Operator,ident=nd1})
+                (ts1,{kind=Ast.Ordinary,ident=nd1})
             end            
-
-      | To :: _ => 
-            let
-                val (ts1,nd1) = identifier (tl ts)
-            in
-                (ts1,{kind=Ast.ToFunc,ident=nd1})
-            end
-
-      | Call :: LeftParen :: _ => (tl ts,{kind=Ast.Ordinary, ident="call"})
-      | Call :: LeftDotAngle :: _ => (tl ts,{kind=Ast.Ordinary, ident="call"})
-      | Call :: _ => 
-        let
-            val (ts1,nd1) = propertyIdentifier (tl ts)
-        in
-            (ts1,{kind=Ast.Call,ident=nd1})
-        end
 
       | Get :: LeftParen :: _ => (tl ts,{kind=Ast.Ordinary, ident="get"})
       | Get :: LeftDotAngle :: _ => (tl ts,{kind=Ast.Ordinary, ident="get"})

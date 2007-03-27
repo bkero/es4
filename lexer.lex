@@ -247,7 +247,6 @@ regexpFlags           = [a-zA-Z]*;
 <INITIAL>"while"           => (While);
 <INITIAL>"with"            => (With);
 
-<INITIAL>"call"            => (Call);
 <INITIAL>"debugger"        => (Debugger);
 <INITIAL>"decimal"         => (Decimal);
 <INITIAL>"double"          => (Double);

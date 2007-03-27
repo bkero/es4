@@ -125,12 +125,8 @@ datatype PRAGMA =
 
      and FUNC_NAME_KIND =
          Ordinary
-       | Operator
        | Get
        | Set
-       | Call
-       | Construct
-       | ToFunc
 
      and CLS =
          Cls of
@@ -378,9 +374,8 @@ datatype PRAGMA =
            { ty: TYPE_EXPR,
              readOnly: bool }
        | VirtualValFixture of 
-           { ty: TYPE_EXPR, 
-             getter: FUNC_DEFN option,
-             setter: FUNC_DEFN option }
+         VIRTUAL_VAL_FIXTURE
+             
 
 withtype 
 
@@ -503,6 +498,11 @@ withtype
      and FUNC_NAME =
            { kind : FUNC_NAME_KIND, 
              ident : IDENT }
+
+     and VIRTUAL_VAL_FIXTURE = 
+         { ty: TYPE_EXPR, 
+           getter: FUNC_DEFN option,
+           setter: FUNC_DEFN option }
 
 type PACKAGE =
            { name: IDENT list,

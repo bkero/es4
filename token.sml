@@ -114,7 +114,6 @@ datatype token =
 
     (* contextually reserved identifiers *)
 
-    | Call
     | Debugger
     | Decimal
     | Double
@@ -353,7 +352,6 @@ fun tokenname t =
 
       (* contextually reserved identifiers *)
 
-      | Call => "call"
       | Debugger => "debugger"
       | Decimal => "decimal"
       | Double => "double"

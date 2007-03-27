@@ -120,6 +120,22 @@ fun getFixture (b:Ast.FIXTURES)
         search b
     end
 
+
+fun replaceFixture (b:Ast.FIXTURES) 
+                   (n:Ast.FIXTURE_NAME) 
+                   (v:Ast.FIXTURE)
+    : Ast.FIXTURES = 
+    let 
+        fun search [] = LogErr.hostError ["fixture binding not found: ", 
+                                          (LogErr.fname n)]
+          | search ((k,v0)::bs) = 
+            if k = n 
+            then (k,v) :: bs
+            else (k,v0) :: (search bs)
+    in
+        search b
+    end
+
 fun inl f (a, b) = (f a, b)
 fun inr f (a, b) = (a, f b)
 
@@ -1008,33 +1024,50 @@ and defFuncDefn (env:ENV) (f:Ast.FUNC_DEFN)
         Ast.Func { name, fsig, block, ty, isNative, ... } =>
         let
             val qualNs = resolveExprOptToNamespace env (#ns f)
-            val ident = case (#kind name) of 
-                            Ast.Ordinary => (#ident name)
-                          | Ast.Call => "call" (* FIXME: hack until parser is fixed. *)
-                          | Ast.ToFunc => "to" (* FIXME: hack until parser is fixed *)
-                          | _ => LogErr.unimplError ["defining unhandled type of function name"]
-            val newName = Ast.PropName { id = ident, ns = qualNs }
+            val newName = Ast.PropName { id = (#ident name), ns = qualNs }
             val (_, _, newFunc) = defFunc env (#func f)
             val Ast.Func { ty, ... } = newFunc
-            val (ftype, isReadOnly) = 
-                if (#kind f) = Ast.Var 
-                then (Ast.SpecialType Ast.Any,false)      (* e3 style writeable function *)
-                else ((Ast.FunctionType ty),true)         (* read only, method *)
+            val newDefn = { kind = (#kind f),
+                            ns = (#ns f),
+                            final = (#final f),
+                            override = (#override f),
+                            prototype = (#prototype f),
+                            static = (#static f),
+                            func = newFunc }
 
-            val outerFixtures = [(newName, Ast.MethodFixture
-                                       { func = newFunc,
-                                         ty = ftype,
-                                         readOnly = isReadOnly,
-                                         final = (#final f),
-                                         override = (#override f)})]
-        in
-            (outerFixtures, { kind = (#kind f),
-                              ns = (#ns f),
+            val fixture = 
+                case (#kind name) of 
+                    Ast.Get => 
+                    Ast.VirtualValFixture 
+                        { ty = (#result ty), 
+                          getter = SOME newDefn,
+                          setter = NONE }
+                  | Ast.Set => 
+                    Ast.VirtualValFixture 
+                        { ty = (case (#params ty) of 
+                                    [t] => t
+                                  | _ => error ["expected one parameter in setter for ", 
+                                                LogErr.fname newName]), 
+                          getter = NONE,
+                          setter = SOME newDefn }
+                  | Ast.Ordinary =>
+                    let 
+                        val (ftype, isReadOnly) = 
+                            if (#kind f) = Ast.Var 
+                            then (Ast.SpecialType Ast.Any,false)      (* e3 style writeable function *)
+                            else ((Ast.FunctionType ty),true)         (* read only, method *)
+                    in
+                        Ast.MethodFixture
+                            { func = newFunc,
+                              ty = ftype,
+                              readOnly = isReadOnly,
                               final = (#final f),
-                              override = (#override f),
-                              prototype = (#prototype f),
-                              static = (#static f),
-                              func = newFunc })
+                              override = (#override f)}
+                    end
+
+            val outerFixtures = [(newName, fixture)]
+        in
+            (outerFixtures, newDefn)
         end
 
 
@@ -1950,7 +1983,7 @@ and defDefn (env:ENV)
                 val (fxtrs,inits) = defBindings env kind ns bindings
             in case kind of
                 (Ast.Var | Ast.Const) => ([],fxtrs,inits)  (* hoisted fxtrs *)
-              | (Ast.LetVar | Ast.LetConst) => (fxtrs,[],inits)  (* don't hoisted fxtrs *)
+              | (Ast.LetVar | Ast.LetConst) => (fxtrs,[],inits)  (* unhoisted fxtrs *)
             end
       | Ast.FunctionDefn fd => 
             let
@@ -1958,7 +1991,7 @@ and defDefn (env:ENV)
                 val (fxtrs,def) = defFuncDefn env fd
             in case kind of
                 (Ast.Var | Ast.Const) => ([],fxtrs,[])  (* hoisted fxtrs *)
-              | (Ast.LetVar | Ast.LetConst) => (fxtrs,[],[])  (* don't hoisted fxtrs *)
+              | (Ast.LetVar | Ast.LetConst) => (fxtrs,[],[])  (* unhoisted fxtrs *)
             end
       | Ast.NamespaceDefn nd => 
             let
@@ -1994,18 +2027,61 @@ and defDefns (env:ENV)
              (inits:Ast.INITS)
              (defns:Ast.DEFN list)
     : (Ast.FIXTURES * Ast.FIXTURES * Ast.INITS) = (* unhoisted, hoisted, inits *)
-    let val _ = trace([">> defDefns"])
+    let 
+        val _ = trace([">> defDefns"])
     in case defns of
-        [] => (trace(["<< defDefns"]);(unhoisted,hoisted,inits))
-      | d::ds =>
-            let
-                val (unhoisted',hoisted',inits') = defDefn env d
-                val temp = case d of Ast.ClassDefn _ => hoisted' | _ => []
-                val env'  = updateEnvironment env (unhoisted'@temp)  
-                            (* add the new unhoisted and temporarily, hoisted class fxtrs to the current env *)
-            in
-                defDefns env' (unhoisted@unhoisted') (hoisted@hoisted') (inits@inits') ds
-            end
+           [] => (trace(["<< defDefns"]);(unhoisted,hoisted,inits))
+         | d::ds =>
+           let
+               fun mergeVirtuals (fName:Ast.FIXTURE_NAME)
+                                 (vnew:Ast.VIRTUAL_VAL_FIXTURE)
+                                 (vold:Ast.VIRTUAL_VAL_FIXTURE) = 
+                   let 
+                       val ty = if (#ty vnew) = (#ty vold)
+                                then (#ty vnew)
+                                else (if (#ty vnew) = Ast.SpecialType Ast.Any
+                                      then (#ty vold)
+                                      else (if (#ty vold) = Ast.SpecialType Ast.Any
+                                            then (#ty vnew)
+                                            else error ["mismatched get/set types on fixture ", 
+                                                        LogErr.fname fName]))
+                       fun either a b = 
+                           case (a,b) of 
+                               (SOME x, NONE) => SOME x
+                             | (NONE, SOME x) => SOME x
+                             | (NONE, NONE) => NONE
+                             | _ => error ["multiply defined get/set functions on fixture ", 
+                                           LogErr.fname fName]
+                   in
+                       { ty = ty,
+                         getter = either (#getter vold) (#getter vnew),
+                         setter = either (#setter vold) (#setter vnew) }
+                   end
+
+
+               fun mergeFixtures ((newName,newFix),oldFixs) =                    
+                   if hasFixture oldFixs newName
+                   then 
+                       case (newFix, getFixture oldFixs newName) of
+                           (Ast.VirtualValFixture vnew,
+                            Ast.VirtualValFixture vold) => 
+                           replaceFixture oldFixs newName 
+                                          (Ast.VirtualValFixture 
+                                               (mergeVirtuals newName vnew vold))
+                         | _ => error ["redefining fixture name: ", LogErr.fname newName]
+                   else
+                       (newName,newFix) :: oldFixs
+
+               val (unhoisted',hoisted',inits') = defDefn env d
+               val temp = case d of Ast.ClassDefn _ => hoisted' | _ => []
+               val env'  = updateEnvironment env (unhoisted'@temp)  
+           (* add the new unhoisted and temporarily, hoisted class fxtrs to the current env *)
+           in
+               defDefns env' 
+                        (List.foldl mergeFixtures unhoisted unhoisted') 
+                        (List.foldl mergeFixtures hoisted hoisted') 
+                        (inits@inits') ds
+           end
     end
 
 (*
