@@ -539,6 +539,7 @@ fun print (vals:Mach.VAL list)
         fun printOne v = TextIO.print (Mach.toString v) 
     in
         List.app printOne vals; 
+        TextIO.print "\n";
         Mach.Undef
     end
     

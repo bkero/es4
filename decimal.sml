@@ -68,9 +68,10 @@ fun runOp (precision:int)
 	  | SOME child => 
 	    let 
 		val _ = Posix.IO.close outfd
-		val vec = Posix.IO.readVec (infd, 1024)
+		val vec = Posix.IO.readVec (infd, 1024)                  
 		fun getCharN (n:int) = Char.chr (Word8.toInt (Word8Vector.sub (vec, n)))
 		val _ = Posix.Process.wait ()
+        val _ = Posix.IO.close infd
 		val res = CharVector.tabulate (Word8Vector.length vec, getCharN)
 	    in
 		if String.isPrefix "ERROR:" res

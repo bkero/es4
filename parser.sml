@@ -5569,39 +5569,41 @@ and functionName (ts) : (token list * Ast.FUNC_NAME) =
             in
                 (ts1,{kind=Ast.Operator,ident=nd1})
             end            
+
       | To :: _ => 
             let
                 val (ts1,nd1) = identifier (tl ts)
             in
                 (ts1,{kind=Ast.ToFunc,ident=nd1})
             end
+
+      | Call :: LeftParen :: _ => (tl ts,{kind=Ast.Ordinary, ident="call"})
+      | Call :: LeftDotAngle :: _ => (tl ts,{kind=Ast.Ordinary, ident="call"})
       | Call :: _ => 
-            let
-            in case (tl ts) of
-                (LeftParen | LeftDotAngle) :: _ =>
-                    let
-                    in
-                        (tl ts,{kind=Ast.Call,ident=""})
-                    end
-              | _ =>
-                    let
-                        val (ts1,nd1) = propertyIdentifier (tl ts)
-                    in
-                        (ts1,{kind=Ast.Call,ident=nd1})
-                    end
-            end
+        let
+            val (ts1,nd1) = propertyIdentifier (tl ts)
+        in
+            (ts1,{kind=Ast.Call,ident=nd1})
+        end
+
+      | Get :: LeftParen :: _ => (tl ts,{kind=Ast.Ordinary, ident="get"})
+      | Get :: LeftDotAngle :: _ => (tl ts,{kind=Ast.Ordinary, ident="get"})
       | Get :: _ => 
             let
                 val (ts1,nd1) = propertyIdentifier (tl ts)
             in
                 (ts1,{kind=Ast.Get,ident=nd1})
             end
+
+      | Set :: LeftParen :: _ => (tl ts,{kind=Ast.Ordinary, ident="set"})
+      | Set :: LeftDotAngle :: _ => (tl ts,{kind=Ast.Ordinary, ident="set"})
       | Set :: _ => 
             let
                 val (ts1,nd1) = propertyIdentifier (tl ts)
             in
                 (ts1,{kind=Ast.Set,ident=nd1})
             end
+
       | _ => 
             let
                 val (ts1,nd1) = identifier ts

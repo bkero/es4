@@ -81,8 +81,14 @@ fun repl doPrompt =
                                 in
                                     if (!doEval)
                                     then 
-                                        (print ((Mach.toString (Eval.evalProgram d)) ^ "\n");
-                                         doLine ())
+                                        let 
+                                            val res = Eval.evalProgram d
+                                        in
+                                            if res = Mach.Undef
+                                            then ()
+                                            else print ((Mach.toString res) ^ "\n");
+                                            doLine ()
+                                        end
                                     else 
                                         doLine ()
                                 end

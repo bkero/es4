@@ -47,9 +47,9 @@ ns class A {
 class B extends ns::A {}
 
 var o = new ns::A
-intrinsic::print(o.y,"\n")
-intrinsic::print(ns::A.prototype.z,"\n")
-intrinsic::print(o.z,"\n")
+intrinsic::print(o.y)
+intrinsic::print(ns::A.prototype.z)
+intrinsic::print(o.z)
 
 */
 //Object.prototype.u = 40
@@ -106,7 +106,6 @@ function withAsterisks(y) {
 
 function printWithLine(x) {
 	intrinsic::print(withAsterisks(x));
-	intrinsic::print("\n");
 }
 
 class bar {
