@@ -447,11 +447,13 @@ and evalExpr (scope:Mach.SCOPE)
       | Ast.ListExpr es =>
         evalListExpr scope es
         
-      | Ast.LexicalRef { ident } =>
-            getValue (evalRefExpr scope expr true)
+      | Ast.LexicalRef { ident, pos } =>
+        (LogErr.setPos pos;
+         getValue (evalRefExpr scope expr true))
 
-      | Ast.ObjectRef { base, ident } => 
-            getValue (evalRefExpr scope expr false)
+      | Ast.ObjectRef { base, ident, pos } => 
+        (LogErr.setPos pos;
+         getValue (evalRefExpr scope expr false))
         
       | Ast.LetExpr {defs, body, head} =>
         evalLetExpr scope (valOf head) body
@@ -925,8 +927,9 @@ and evalUnaryOp (scope:Mach.SCOPE)
             in
                 Mach.newString 
                     (case expr of 
-                         Ast.LexicalRef { ident } => 
+                         Ast.LexicalRef { ident, pos } => 
                          let 
+                             val _ = LogErr.setPos pos
                              val multiname = evalIdentExpr scope ident
                          in
                              case resolveOnScopeChain scope multiname of 
@@ -1303,8 +1306,14 @@ and evalRefExpr (scope:Mach.SCOPE)
 
         val (base,ident) =
             case expr of         
-                Ast.LexicalRef { ident } => (NONE,ident)
-              | Ast.ObjectRef { base, ident } => (SOME (evalExpr scope base), ident)
+                Ast.LexicalRef { ident, pos } => 
+                (LogErr.setPos pos; 
+                 (NONE,ident))
+
+              | Ast.ObjectRef { base, ident, pos } => 
+                (LogErr.setPos pos; 
+                 (SOME (evalExpr scope base), ident))
+
               | _ => error ["need lexical or object-reference expression"]
 
         val (multiname:Ast.MULTINAME) = evalIdentExpr scope ident

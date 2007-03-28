@@ -228,8 +228,9 @@ val _ = trace ["packageIdent ",packageIdentFromPath packageName ""]
           | Ast.Internal _ => Ast.Internal ident
           | _ => ns
         end
-      | Ast.LexicalRef {ident = Ast.Identifier {ident,...} } => 
+      | Ast.LexicalRef {ident = Ast.Identifier {ident,...}, pos } => 
         let 
+            val _ = LogErr.setPos pos
             val mname = {nss = (#openNamespaces (hd env)), id = ident}
         in
             case resolveMultinameToFixture env mname of 
@@ -1359,13 +1360,13 @@ and resolveObjectPath (env:ENV) (path:Ast.IDENT list) (expr:Ast.EXPR option)
     in case (expr, path) of
         (NONE, ident::identList) => 
             let
-                val base = Ast.LexicalRef {ident=Ast.Identifier {ident=ident,openNamespaces=[]}}
+                val base = Ast.LexicalRef {ident=Ast.Identifier {ident=ident,openNamespaces=[]},pos=NONE}
             in
                 resolveObjectPath env identList (SOME base)
             end
       | (SOME expr, ident::identList) =>
             let
-                val base = Ast.ObjectRef {base=expr, ident=Ast.Identifier {ident=ident,openNamespaces=[]}}
+                val base = Ast.ObjectRef {base=expr, ident=Ast.Identifier {ident=ident,openNamespaces=[]},pos=NONE}
             in
                 resolveObjectPath env identList (SOME base)
             end
@@ -1501,29 +1502,36 @@ and defExpr (env:ENV)
             Ast.NewExpr { obj = sub obj,
                           actuals = map sub actuals }
 
-          | Ast.ObjectRef { base, ident } =>
-            Ast.ObjectRef { base = sub base,
-                            ident = defIdentExpr env ident }
+          | Ast.ObjectRef { base, ident, pos } =>
+            (LogErr.setPos pos;
+             Ast.ObjectRef { base = sub base,
+                             ident = defIdentExpr env ident,
+                             pos = pos })
 
-          | Ast.LexicalRef { ident } => 
+          | Ast.LexicalRef { ident, pos } => 
             let
-            in case ident of
-                Ast.UnresolvedPath (p,i) =>
+                val _ = LogErr.setPos pos
+            in 
+                case ident of
+                    Ast.UnresolvedPath (p,i) =>
                     let
                         val base = resolvePath env p
                     in case (base,i) of
-                        (Ast.LiteralExpr _,Ast.Identifier {ident=id,...}) => 
-                        Ast.LexicalRef {ident=Ast.QualifiedIdentifier {qual=(defExpr env base),
-                                                                       ident=id}}
-                      | (Ast.LiteralExpr _,_) => 
-                        LogErr.defnError ["invalid package qualification"]
-
-                      | (_,_) => 
-                        Ast.ObjectRef { base=(defExpr env base), 
-                                        ident=(defIdentExpr env i) }
+                           (Ast.LiteralExpr _,Ast.Identifier {ident=id,...}) => 
+                           Ast.LexicalRef {ident=Ast.QualifiedIdentifier {qual=(defExpr env base),
+                                                                          ident=id},
+                                           pos=pos}
+                         | (Ast.LiteralExpr _,_) => 
+                           LogErr.defnError ["invalid package qualification"]
+                           
+                         | (_,_) => 
+                           Ast.ObjectRef { base=(defExpr env base), 
+                                           ident=(defIdentExpr env i),
+                                           pos=pos}
                     end
-              | _ =>
-                    Ast.LexicalRef { ident = defIdentExpr env ident }
+                  | _ =>
+                    Ast.LexicalRef { ident = defIdentExpr env ident,
+                                     pos = pos}
             end
 
           | Ast.SetExpr (a, le, re) => 
@@ -1972,8 +1980,8 @@ and defNamespace (env:ENV)
                             NONE => Ast.UserNamespace ident 
                           | SOME (Ast.LiteralExpr (Ast.LiteralString s)) => 
                             Ast.UserNamespace s
-                          | SOME (Ast.LexicalRef {ident}) => 
-                            resolveExprToNamespace env (Ast.LexicalRef {ident=ident})
+                          | SOME (Ast.LexicalRef lref) => 
+                            resolveExprToNamespace env (Ast.LexicalRef lref)
                           | _ => LogErr.evalError ["illegal form of namespace initializer"]
             val fixtureName = Ast.PropName { ns = qualNs, id = ident } 
             val newNd = { ident = ident,

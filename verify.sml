@@ -513,7 +513,7 @@ and verifyExpr (ctxt as {env,this,...}:CONTEXT)
 	     verifyBlock ctxt2 block;
 	     Ast.FunctionType ty
          end
-      | LexicalRef { ident } =>
+      | LexicalRef { ident, pos } =>
 	verifyIdentExpr ctxt ident
       | ListExpr l => List.last (List.map (verifyExpr ctxt) l)
       | LetExpr {defs=_, body, head=SOME (fixtures,inits) } =>  (* FIXME: inits added *)

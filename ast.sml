@@ -298,8 +298,8 @@ datatype PRAGMA =
        | NewExpr of 
            { obj: EXPR,
              actuals: EXPR list }
-       | ObjectRef of { base: EXPR, ident: IDENT_EXPR }
-       | LexicalRef of { ident: IDENT_EXPR }
+       | ObjectRef of { base: EXPR, ident: IDENT_EXPR, pos: POS option }
+       | LexicalRef of { ident: IDENT_EXPR, pos: POS option }
        | SetExpr of (ASSIGNOP * EXPR * EXPR)
        | ListExpr of EXPR list
        | InitExpr of (INIT_TARGET * HEAD * INITS)   (* HEAD is for temporaries *)
