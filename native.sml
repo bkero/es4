@@ -323,15 +323,19 @@ fun compileInto (vals:Mach.VAL list)
         val argIdents = map ident (arrayToList (nthAsObj vals 1))
         val argList = case argIdents of
                           [] => []
-                        | x::xs => (x :: (List.concat 
-                                              (map (fn i => [Token.Comma, i]) xs)))
+                        | x::xs => ((x, 1) :: (List.concat 
+                                                   (map (fn i => [(Token.Comma, 1), (i, 1)]) xs)))
         val source = nthAsStr vals 2
         val lines = [source] (* FIXME: split lines *)
         val lineTokens = Parser.lexLines lines
-        val funcTokens = [Token.Function, Token.LeftParen]
+        val funcTokens = [(Token.Function, 1), 
+                          (Token.LeftParen, 1)]
                          @ argList
-                         @ [Token.LeftParen]
+                         @ [(Token.RightParen, 1)]
+                         @ [(Token.LeftBrace, 1)]
                          @ lineTokens
+                         @ [(Token.RightBrace, 1)]
+                         
         val (_,funcExpr) = Parser.functionExpression (funcTokens, 
                                                       Parser.NOLIST, 
                                                       Parser.ALLOWIN)

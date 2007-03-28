@@ -1691,7 +1691,7 @@ and defStmt (env:ENV)
         fun reconstructClassBlock {ns, ident, block, name } =
             let
                 val _ = trace ["reconstructing class block for ", ident]
-                val Ast.Block { pragmas, defns, head, body } = block
+                val Ast.Block { pragmas, defns, head, body, pos } = block
 
                 (* filter out instance initializers *)
                 val (_,stmts) = List.partition isInstanceInit body
@@ -1702,7 +1702,8 @@ and defStmt (env:ENV)
                 val (block,hoisted) = defBlock env (Ast.Block {pragmas=pragmas,
                                                                defns=defns,
                                                                head=head,
-                                                               body=body})
+                                                               body=body, 
+                                                               pos=pos})
             in
                 (Ast.ClassBlock { ns = ns,
                                  ident = ident,
@@ -2102,7 +2103,7 @@ and defBlock (env:ENV)
              (b:Ast.BLOCK) 
     : (Ast.BLOCK * Ast.FIXTURES) =
     case b of
-        Ast.Block { pragmas, defns, body,... } => 
+        Ast.Block { pragmas, defns, body, pos, ... } => 
         let 
             val env : ENV = defPragmas env pragmas
             val (unhoisted_defn_fxtrs,hoisted_defn_fxtrs,inits) = defDefns env [] [] [] defns
@@ -2113,20 +2114,22 @@ and defBlock (env:ENV)
             (Ast.Block { pragmas = pragmas,
                          defns = [],  (* clear definitions, we are done with them *)
                          body = body,
-                         head = SOME (unhoisted_defn_fxtrs,inits) },
+                         head = SOME (unhoisted_defn_fxtrs,inits),
+                         pos = pos},
              hoisted)
         end
 
 and defRegionalBlock (env:ENV) (blk:Ast.BLOCK)
     : Ast.BLOCK =
         let
-            val (Ast.Block {defns,body,head=head,pragmas},hoisted) = defBlock env blk
+            val (Ast.Block {defns,body,head=head,pragmas,pos},hoisted) = defBlock env blk
             val (fixtures,inits) = valOf head
         in
             Ast.Block {pragmas=pragmas,
                        defns=defns,
                        body=body,
-                       head=(SOME ((hoisted @ fixtures),inits))}
+                       head=(SOME ((hoisted @ fixtures),inits)),
+                       pos=pos}
         end
 
 

@@ -12,24 +12,30 @@ val doTrace = ref false
 fun trace ss = if (!doTrace) then LogErr.log ("[lex] " :: ss) else ()
 fun error ss = LogErr.lexError ss
 
-type lexresult = token
+type lexresult = TOKEN
 
 fun eof _ = Eof
+
+val lineno = ref 1
+fun incr_line _ = 
+    lineno := (!lineno + 1); 
+fun reset_coords _ = 
+    lineno := 1
 
 val line_breaks : int list ref = ref []
 val token_count : int      ref = ref 0
 
-fun token_list (token_fn : unit -> token) =
+fun token_list (token_fn : unit -> TOKEN) =
 let
     val t = ref [] 
-    fun add tok = t := tok :: !t
+    fun add tok = t := (tok, (!lineno)) :: !t
     fun add_lb offset = line_breaks := offset :: !line_breaks
     fun stop _ = (token_count := length (!t); rev (!t))
     fun step _ = 
         let 
 	    val tok = token_fn ()
 	in 
-            trace ["lexed ", tokenname tok]; 
+            trace ["lexed ", tokenname (tok,!lineno)]; 
 	    
 	  (*
 	   * The lexbreak tokens represent choice points for the parser. We
@@ -114,7 +120,7 @@ regexpFlags           = [a-zA-Z]*;
 
 %%
 
-<INITIAL>"\n"              => (Eol);
+<INITIAL>"\n"              => (incr_line(); Eol);
 
 <INITIAL>"-"               => (Minus);
 <INITIAL>"--"              => (MinusMinus);
@@ -139,7 +145,7 @@ regexpFlags           = [a-zA-Z]*;
 
 <INITIAL>"/"               => (LexBreakDiv
 				   { lex_initial = 
-					fn _ => Div :: token_list (fn _ => lex ()),
+					fn _ => (Div, !lineno) :: token_list (fn _ => lex ()),
 				     lex_regexp = 
 				        fn _ =>
 					  (curr_chars := [#"/"];
@@ -148,7 +154,7 @@ regexpFlags           = [a-zA-Z]*;
 
 <INITIAL>"/="              => (LexBreakDivAssign
 				   { lex_initial = 
-					fn _ => DivAssign :: token_list (fn _ => lex ()),
+					fn _ => (DivAssign, !lineno) :: token_list (fn _ => lex ()),
 				     lex_regexp = 
 					fn _ =>
 					  (curr_chars := [#"=",#"/"];
@@ -177,7 +183,7 @@ regexpFlags           = [a-zA-Z]*;
 
 <INITIAL>"<"               => (LexBreakLessThan
 				   { lex_initial = 
-					fn _ => LessThan :: token_list (fn _ => lex ()),
+					fn _ => (LessThan, !lineno) :: token_list (fn _ => lex ()),
 				     lex_xml = 
 					fn _ => 
 					  (YYBEGIN XML;
@@ -298,12 +304,14 @@ regexpFlags           = [a-zA-Z]*;
 
 
 <INITIAL>"//"                => (YYBEGIN SINGLE_LINE_COMMENT; lex());
-<SINGLE_LINE_COMMENT>"\n"    => (YYBEGIN INITIAL; Eol);
+<SINGLE_LINE_COMMENT>"\n"    => (YYBEGIN INITIAL; incr_line(); Eol);
 <SINGLE_LINE_COMMENT>.       => (lex());
 
 <INITIAL>"/*"                => (YYBEGIN MULTI_LINE_COMMENT; lex());
 <MULTI_LINE_COMMENT>"*/"     => (YYBEGIN INITIAL; lex());
-<MULTI_LINE_COMMENT>.|"\n"   => (lex());
+<MULTI_LINE_COMMENT>"\n"     => (incr_line(); lex());
+<MULTI_LINE_COMMENT>.        => (lex());
+
 
 <REGEXP>"/"{regexpFlags}    => (let
 				    val x_flag = String.isSubstring "x" yytext;
@@ -320,7 +328,7 @@ regexpFlags           = [a-zA-Z]*;
 <REGEXP>"["                 => (curr_chars := #"[" :: !curr_chars;
 				YYBEGIN REGEXP_CHARSET;
 				lex());
-<REGEXP>"\n"|"\r"           => (found_newline := true;  lex());
+<REGEXP>"\n"|"\r"           => (found_newline := true; incr_line(); lex());
 <REGEXP>"\\\n"|"\\\r"       => (lex());
 <REGEXP>"\\".               => (curr_chars := String.sub(yytext,1) :: #"\\" :: !curr_chars;
 				lex());
@@ -330,7 +338,7 @@ regexpFlags           = [a-zA-Z]*;
 <REGEXP_CHARSET>"]"         => (curr_chars := #"]" :: !curr_chars;
 				YYBEGIN REGEXP;
 				lex());
-<REGEXP_CHARSET>"\n"|"\r"   => (found_newline := true;  lex());
+<REGEXP_CHARSET>"\n"|"\r"   => (found_newline := true; incr_line(); lex());
 <REGEXP_CHARSET>"\\\n"|"\\\r" => (lex());
 <REGEXP_CHARSET>"\\".       => (curr_chars := String.sub(yytext,1) :: #"\\" :: !curr_chars;
 				lex());

@@ -1,7 +1,7 @@
 (* -*- mode: sml; mode: font-lock; tab-width: 4; insert-tabs-mode: nil; indent-tabs-mode: nil -*- *)
 structure Token = struct
 
-datatype token = 
+datatype TOKEN = 
 
     (* punctuators *)
 
@@ -176,17 +176,17 @@ datatype token =
     (* meta *)
 
     | Error
-    | LexBreakDiv of { lex_initial: unit -> (token list),
-               lex_regexp: unit -> (token list) }
-    | LexBreakDivAssign of { lex_initial: unit -> (token list),
-                 lex_regexp: unit -> (token list) }
-    | LexBreakLessThan of { lex_initial: unit -> (token list),
-                lex_xml: unit -> (token list) }
+    | LexBreakDiv of { lex_initial: unit -> ((TOKEN * Ast.POS) list),
+                       lex_regexp: unit -> ((TOKEN * Ast.POS) list) }
+    | LexBreakDivAssign of { lex_initial: unit -> ((TOKEN * Ast.POS) list),
+                             lex_regexp: unit -> ((TOKEN * Ast.POS) list) }
+    | LexBreakLessThan of { lex_initial: unit -> ((TOKEN * Ast.POS) list),
+                            lex_xml: unit -> ((TOKEN * Ast.POS) list) }
     | Eof
 
 exception TokenError
 
-fun isreserved t = 
+fun isreserved (t,_) = 
     case t of
     ( As
       | Break
@@ -238,7 +238,7 @@ fun isreserved t =
       | With ) => true
       | _ => false
          
-fun tokenname t =
+fun tokenname (t,_) =
     case t of
     
     (* punctuators *)

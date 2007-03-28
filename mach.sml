@@ -532,7 +532,8 @@ val (emptyBlock:Ast.BLOCK) =
     Ast.Block { pragmas = [],
                 defns = [],
                 body = [],
-                head= NONE }
+                head= NONE,
+                pos=NONE }
     
 val (globalObject:OBJ) = 
     newObj intrinsicObjectBaseTag Null NONE

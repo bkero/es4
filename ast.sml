@@ -5,6 +5,8 @@ structure Ast = struct
 
 (* not actually unicode, maybe switch to int array to be unicode-y? *)
 
+type POS = int
+
 type USTRING = string
 
 type IDENT = USTRING
@@ -482,7 +484,8 @@ withtype
            { pragmas: PRAGMA list,
              defns: DEFN list,
              head: HEAD option,
-             body: STMT list }
+             body: STMT list,
+             pos: POS option }
 
      and CASE =
            { label: EXPR option,

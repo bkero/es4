@@ -285,7 +285,10 @@ package
                     else if (res[2]) s += substring(start, end);
                     else if (res[3]) s += substring(0, start);
                     else if (res[4]) s += substring(end);
-                    else             let c : int = parseInt(res[5])+1 { if (c in cap) s += cap[c]; }
+                    else             
+                        let (c : int = parseInt(res[5])+1) { 
+                            if (c in cap) s += cap[c]; 
+                        }
                 }
                 s += replaceString.substring(i);
 
@@ -408,7 +411,7 @@ package
 
             function splitMatch(R: matcher, S: string, q: uint) : [uint, [string]] {
                 switch type (R : matcher) {
-                case (x : string) : {
+                case (x : string) {
                     let r : uint = x.length;
                     if (q + r <= S.length && S.substring(q, q + r) === R)
                         return [q+r, []];
@@ -416,7 +419,7 @@ package
                         return null;
                 }
 
-                case (x : RegExp!) : {
+                case (x : RegExp!) {
                     let mr : MatchResult = x.match(S, q);
                     if (mr === null)
                         return null;

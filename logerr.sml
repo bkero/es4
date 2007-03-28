@@ -2,7 +2,15 @@ structure LogErr = struct
 
 fun log ss = (List.app TextIO.print ss; TextIO.print "\n")
 
-fun error ss = log ("**ERROR** " :: ss)
+fun posToString p = 
+    ("line " ^ (Int.toString p))
+
+val (pos:(Ast.POS option) ref) = ref NONE
+fun setPos (p:Ast.POS option) = pos := p
+
+fun error ss = case !pos of 
+		   NONE => log ("**ERROR** (unknown location)" :: ss)
+		 | SOME p => log ("**ERROR** (near " :: (posToString p) :: ") " :: ss)
 
 fun name (n:Ast.NAME) = 
     case (#ns n) of 
