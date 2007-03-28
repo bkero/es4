@@ -562,7 +562,9 @@ fun defTemp (temps:TEMPS)
                       (t, UninitTemp) => 
                       ((* FIXME: put typecheck here *)
                        (t, ValTemp v) :: xs)
-                    | (_, _) => LogErr.machError ["re-defining temporary"])
+                    | (t, _) => 
+                       (t, ValTemp v) :: xs)
+                (* ISSUE: we allow redef of temps: LogErr.machError ["re-defining temporary"]) *)
             else x :: (replaceNth (k-1) xs)
     in
         if n >= (length (!temps))

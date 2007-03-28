@@ -17,6 +17,7 @@ datatype NAMESPACE =
        | Public of IDENT
        | Internal of IDENT
        | UserNamespace of IDENT
+       | Imported of (IDENT * IDENT)
 
 type NAME = { ns: NAMESPACE, id: IDENT }
 
@@ -129,7 +130,6 @@ datatype PRAGMA =
        | Get
        | Set
        | Call
-       | Construct
        | ToFunc
 
      and CLS =
@@ -173,6 +173,7 @@ datatype PRAGMA =
          FunctionSignature of 
            { typeParams: IDENT list,
              params: BINDINGS,
+             paramTypes: TYPE_EXPR list,
              defaults: EXPR list,
              ctorInits: (BINDINGS * EXPR list) option, (* settings + super args *)
              returnType: TYPE_EXPR,
@@ -182,10 +183,11 @@ datatype PRAGMA =
      and BINDING =
          Binding of 
            { ident: BINDING_IDENT,    (* FIXME: use tuple *)
-             ty: TYPE_EXPR option }
+             ty: TYPE_EXPR }
 
      and BINDING_IDENT = 
          TempIdent of int
+       | ParamIdent of int
        | PropIdent of IDENT
 
      and INIT_STEP =   (* used to encode init of bindings *)
@@ -258,7 +260,7 @@ datatype PRAGMA =
            { block: BLOCK,
              catches: 
                { bindings:BINDINGS,
-                 ty: TYPE_EXPR option, 
+                 ty: TYPE_EXPR, 
                  fixtures: FIXTURES option,
                  block:BLOCK } list,
              finally: BLOCK option }
@@ -304,6 +306,7 @@ datatype PRAGMA =
        | InitExpr of (INIT_TARGET * HEAD * INITS)   (* HEAD is for temporaries *)
        | SliceExpr of (EXPR * EXPR * EXPR)
        | GetTemp of int
+       | GetParam of int
 
      and INIT_TARGET = Hoisted
                      | Local

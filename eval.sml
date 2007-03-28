@@ -129,15 +129,31 @@ fun allocFixtures (scope:Mach.SCOPE)
                   | Ast.NullableType { expr, nullable=false } => 
                     Mach.UninitProp
 
+                  | Ast.ElementTypeRef _ => 
+                    Mach.ValProp (Mach.Undef)  (* FIXME: should get the type of the element from the array type *)
+ 
+                  | Ast.FieldTypeRef _ => (* FIXME: get type from object type *)
+                    Mach.ValProp (Mach.Undef)
+
+            fun tempPadding n =
+                if n = 0
+                    then []
+                    else (Ast.SpecialType Ast.Any, Mach.UninitTemp)::(tempPadding (n-1))
+
             fun allocFixture (n, f) = 
                 case n of 
                     Ast.TempName t => 
                     (case f of 
-                         Ast.ValFixture { ty, ... } => 
+                         Ast.ValFixture { ty, ... } =>  (* FIXME: temp types are not needed, use the value tag for rt typechecking *)
                          (if t = (List.length (!temps))
                           then (trace ["allocating fixture for temporary ", Int.toString t];
-                                temps := (ty, Mach.UninitTemp)::(!temps)) 
-                          else (error ["temp count out of sync ", Int.toString t]);())
+                                temps := (Ast.SpecialType Ast.Any, Mach.UninitTemp)::(!temps)) 
+                          else if t < (List.length (!temps))
+                                then (trace ["ignoring fixture, already allocated ", Int.toString t];
+                                      temps := (List.take (!temps,((length (!temps))-t-1)))@((ty, Mach.UninitTemp)::(List.drop (!temps,(length (!temps)-t))))) 
+                          else (trace ["allocating fixtures for temporaries ", Int.toString (length (!temps)), " to ", Int.toString t];
+                                temps := (Ast.SpecialType Ast.Any, Mach.UninitTemp)
+                                            ::(((tempPadding (t-(length (!temps))))@(!temps)))))  
                        | _ => error ["allocating non-value temporary"])
                   | Ast.PropName pn => 
                     let 
@@ -1642,7 +1658,7 @@ and evalInits (scope:Mach.SCOPE)
 
 
 and evalInitsMaybePrototype (scope:Mach.SCOPE)
-              (obj:Mach.OBJ)
+              (obj:Mach.OBJ)   
               (temps:Mach.TEMPS)
               (inits:Ast.INITS)
               (isPrototypeInit:bool)
