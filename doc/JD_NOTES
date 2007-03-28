@@ -12,6 +12,13 @@ TO DO
 
 16-MAR-2007
 
+MAGIC FUNCTIONS
+
+There are a handful of functions that get associated directly with a
+class definition. These are:
+
+get, set, call, construct, to, the operators and the constructor body
+
 IMPORT
 
 An import pragma opens a public namespace for one or more identifiers.

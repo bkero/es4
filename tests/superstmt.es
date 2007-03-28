@@ -1,7 +1,7 @@
-// class A   ** classes and functions not yet implemented
+class A
 {
-//  function A()
+  function A():super(x,y,z)
   {
-    super(x,y,z)
+    
   }
 }
