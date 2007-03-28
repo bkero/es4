@@ -41,6 +41,7 @@ type LABEL = (Ast.IDENT * LABEL_KIND)
 
 type CONTEXT = 
      { fixtures: Ast.FIXTURES,
+       tempOffset: int,
        openNamespaces: Ast.NAMESPACE list list, 
        numericMode: Ast.NUMERIC_MODE,
        labels: LABEL list,
@@ -258,6 +259,7 @@ fun extendEnvironment (env:ENV)
     : ENV = 
     case env of 
         [] => (trace ["extending empty environment"];{ fixtures = fixtures,
+                tempOffset = 0,
                 openNamespaces = [[Ast.Internal ""]],
                 numericMode = defaultNumericMode,
                 labels = [],
@@ -265,9 +267,10 @@ fun extendEnvironment (env:ENV)
                 className = NONE,
                 packageName = [],
                 defaultNamespace = Ast.Internal "" } :: [])
-      | ({ numericMode, openNamespaces, labels, imports, className, 
+      | ({ tempOffset, numericMode, openNamespaces, labels, imports, className, 
            packageName, defaultNamespace, ... }) :: _ =>
         { fixtures = fixtures,
+          tempOffset = tempOffset,
           openNamespaces = openNamespaces, 
           numericMode = numericMode,
           labels = labels,
@@ -276,11 +279,12 @@ fun extendEnvironment (env:ENV)
           packageName = packageName,
           defaultNamespace = defaultNamespace } :: env
 
-fun updateEnvironment (ctx::ex) (fxtrs:Ast.FIXTURES) 
+fun updateEnvironment (ctx::ex) (fxtrs:Ast.FIXTURES)
     : ENV =
     let
     in
         { fixtures = (fxtrs @ (#fixtures ctx)),
+          tempOffset = (#tempOffset ctx),
           openNamespaces = (#openNamespaces ctx), 
           numericMode = (#numericMode ctx),
           labels = (#labels ctx),
@@ -290,6 +294,24 @@ fun updateEnvironment (ctx::ex) (fxtrs:Ast.FIXTURES)
           defaultNamespace = (#defaultNamespace ctx) } :: ex
     end
   | updateEnvironment ([]) (fxtrs:Ast.FIXTURES) 
+    : ENV =
+        LogErr.defnError ["cannot update an empty environment"]
+
+fun updateTempOffset (ctx::ex) (tempOffset:int)
+    : ENV =
+    let
+    in
+        { fixtures = (#fixtures ctx),
+          tempOffset = tempOffset,
+          openNamespaces = (#openNamespaces ctx), 
+          numericMode = (#numericMode ctx),
+          labels = (#labels ctx),
+          imports = (#imports ctx),
+          className = (#className ctx),
+          packageName = (#packageName ctx),
+          defaultNamespace = (#defaultNamespace ctx) } :: ex
+    end
+  | updateTempOffset ([]) (tempOffset:int)
     : ENV =
         LogErr.defnError ["cannot update an empty environment"]
 
@@ -321,9 +343,10 @@ fun addLabel (env:ENV) (label:LABEL)
         in
             checkLabel env label;
             case env of 
-                ({fixtures,labels,imports,openNamespaces,numericMode,className,
+                ({fixtures,tempOffset,labels,imports,openNamespaces,numericMode,className,
                   packageName,defaultNamespace}::e) =>
                        { fixtures=fixtures,
+                         tempOffset=tempOffset,
                          labels=label::labels,
                          imports=imports,
                          openNamespaces=openNamespaces,
@@ -789,16 +812,13 @@ and defVar (env:ENV)
     case var of 
         Ast.Binding { ident, ty } => 
         let
-            val ty' = case ty of 
-                           NONE => Ast.SpecialType Ast.Any
-                         | SOME t => (defTyExpr env t)
-
+            val ty' = defTyExpr env ty
             val readOnly' = case kind of 
                                  Ast.Const => true
                                | Ast.LetConst => true
-                               | _ => false                
-
-            val name' = fixtureNameFromPropIdent ns ident
+                               | _ => false           
+            val offset = (#tempOffset (hd env))     
+            val name' = fixtureNameFromPropIdent ns ident offset
         in
             (name', Ast.ValFixture {ty=ty',readOnly=readOnly'})
         end
@@ -823,10 +843,11 @@ and defVar (env:ENV)
 
 *)    
 
-and fixtureNameFromPropIdent (ns:Ast.NAMESPACE) (ident:Ast.BINDING_IDENT) 
+and fixtureNameFromPropIdent (ns:Ast.NAMESPACE) (ident:Ast.BINDING_IDENT) (tempOffset:int)
     : Ast.FIXTURE_NAME =
     case ident of
-        Ast.TempIdent n =>  Ast.TempName n
+        Ast.TempIdent n =>  Ast.TempName (n+tempOffset)
+      | Ast.ParamIdent n => Ast.TempName n
       | Ast.PropIdent id => Ast.PropName {ns=ns,id=id}
 
 and defInitStep (env:ENV)
@@ -837,7 +858,8 @@ and defInitStep (env:ENV)
     in case step of
         Ast.InitStep (ident,expr) =>
             let
-                val name = fixtureNameFromPropIdent ns ident
+                val tempOffset = (#tempOffset (hd env))
+                val name = fixtureNameFromPropIdent ns ident tempOffset
                 val expr = defExpr env expr
             in 
                 (name,expr)
@@ -899,7 +921,7 @@ and defFuncSig (env:ENV)
     : (Ast.FIXTURES * Ast.INITS * Ast.EXPR list * Ast.FIXTURES * Ast.INITS * Ast.EXPR list) =
 
     case fsig of
-        Ast.FunctionSignature { typeParams, params, defaults, ctorInits,
+        Ast.FunctionSignature { typeParams, params, paramTypes, defaults, ctorInits,
                                 returnType, thisType, hasRest } =>
         let
 
@@ -911,7 +933,7 @@ and defFuncSig (env:ENV)
                                       Ast.TypeVarFixture)
 
             val typeParamFixtures = map mkTypeVarFixture typeParams
-            val typeEnv = extendEnvironment env typeParamFixtures
+            val typeEnv = extendEnvironment env typeParamFixtures 0
 
             val thisType = case thisType of NONE => Ast.SpecialType Ast.Any
                                           | SOME x => x
@@ -986,6 +1008,8 @@ and defFunc (env:ENV) (func:Ast.FUNC)
     let
         val _ = trace [">> defFunc"]
         val Ast.Func {name, fsig, block, ty, isNative, ...} = func
+        val paramTypes = (#params ty)
+        val env = updateTempOffset env (length paramTypes)
         val (paramFixtures, paramInits, defaults, settingsFixtures, settingsInits, superArgs) = defFuncSig env fsig
         val newTy = defFuncTy env ty
         val defaults = defExprs env defaults
@@ -1101,6 +1125,7 @@ and defPragmas (env:ENV)
         val defaultNamespace = ref (#defaultNamespace ctx)
         val opennss   = ref []
         val imports  = ref (#imports ctx)
+        val tempOffset = #tempOffset ctx
 
         fun defPragma x =
             case x of 
@@ -1138,6 +1163,7 @@ and defPragmas (env:ENV)
         List.app defPragma pragmas;
 
           { fixtures = [],
+            tempOffset = tempOffset,
             labels = (#labels ctx),
             imports = (#imports ctx),
             openNamespaces = (case !opennss of 
@@ -1515,6 +1541,13 @@ and defExpr (env:ENV)
             end
 
           | Ast.GetTemp n => 
+            let
+                val tempOffset = (#tempOffset (hd env))
+            in
+                Ast.GetTemp (n+tempOffset)
+            end
+
+          | Ast.GetParam n => 
             Ast.GetTemp n
 
           | Ast.ListExpr es => 
@@ -1673,10 +1706,10 @@ and defStmt (env:ENV)
                 val env = extendEnvironment env fxtrs
                 val (body,hoisted) = defBlock env body
             in
-                ({ ty=ty,
+                ({ty=ty,
                   bindings=bindings,
                   inits=SOME inits,
-                  body=body },
+                  body=body},
                  fxtrs)
             end
 
@@ -2075,7 +2108,7 @@ and defDefns (env:ENV)
 
                val (unhoisted',hoisted',inits') = defDefn env d
                val temp = case d of Ast.ClassDefn _ => hoisted' | _ => []
-               val env'  = updateEnvironment env (unhoisted'@temp)  
+                val env'  = updateEnvironment env (unhoisted'@temp) 
            (* add the new unhoisted and temporarily, hoisted class fxtrs to the current env *)
            in
                defDefns env' 
@@ -2152,6 +2185,7 @@ and defPackage (env:ENV)
             val packageIdent = packageIdentFromPath packageName ""
             val _ = trace ["packageIdent ",packageIdent]
             val env' = {fixtures = [],
+                        tempOffset = 0,
                         openNamespaces = [[Ast.Internal packageIdent, Ast.Public packageIdent]]@(#openNamespaces (hd env)),
                         numericMode = defaultNumericMode, 
                         labels = [],
@@ -2172,6 +2206,7 @@ and defPackage (env:ENV)
 *)
 
 and topEnv _ = [ { fixtures = !topFixtures,
+                   tempOffset = 0,
                    openNamespaces = [[Ast.Internal "", Ast.Public ""]],
                    numericMode = defaultNumericMode, 
                    labels = [],
