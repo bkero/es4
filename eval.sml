@@ -1964,14 +1964,13 @@ and evalHead (scope:Mach.SCOPE)
 and evalBlock (scope:Mach.SCOPE) 
               (block:Ast.BLOCK) 
     : Mach.VAL = 
-    case block of 
-        Ast.Block {head=SOME head, body, ...} => 
-        let 
-            val blockScope = evalHead scope head false
-        in
-            evalStmts blockScope body
-        end
-      | _ => LogErr.internalError ["in evalBlock"]
+    let 
+        val Ast.Block {head, body, pos, ...} = block
+        val _ = LogErr.setPos pos
+        val blockScope = evalHead scope (valOf head) false
+    in
+        evalStmts blockScope body
+    end
 
 
 
@@ -2262,7 +2261,8 @@ and evalPackage (scope:Mach.SCOPE)
 
 and evalProgram (prog:Ast.PROGRAM) 
     : Mach.VAL = 
-    (allocScopeFixtures Mach.globalScope (valOf (#fixtures prog));
+    (LogErr.setPos NONE;
+     allocScopeFixtures Mach.globalScope (valOf (#fixtures prog));
      map (evalPackage Mach.globalScope) (#packages prog);
      evalBlock Mach.globalScope (#block prog))
 
