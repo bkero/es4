@@ -6680,11 +6680,11 @@ fun dumpLineBreaks (lbs,lst) =
         [] => rev lst
       | _ => dumpLineBreaks(tl lbs, Int.toString(hd lbs) :: "\n  " :: lst)
 
-fun lex (reader) : ((TOKEN * Ast.POS) list) =
+fun lex (filename, reader) : ((TOKEN * Ast.POS) list) =
     let 
         val _ = Lexer.UserDeclarations.reset_coords ()
         val lexer = Lexer.makeLexer reader
-        val tokens = Lexer.UserDeclarations.token_list lexer
+        val tokens = Lexer.UserDeclarations.token_list (filename, lexer)
         val line_breaks = !Lexer.UserDeclarations.line_breaks
     in
         trace ("tokens:" :: dumpTokens(tokens,[])); 
@@ -6693,7 +6693,7 @@ fun lex (reader) : ((TOKEN * Ast.POS) list) =
     end
 
 fun lexFile (filename : string) : ((TOKEN * Ast.POS) list) = 
-    lex (mkReader filename)
+    lex (filename, mkReader filename)
 
 fun lexLines (lines : string list) : ((TOKEN * Ast.POS) list) =
     let val reader = let val r = ref lines
@@ -6703,7 +6703,7 @@ fun lexLines (lines : string list) : ((TOKEN * Ast.POS) list) =
                                      | [] => "")
                      end
     in
-        lex reader
+        lex ("<no filename>", reader)
     end
 
 fun parse ts =

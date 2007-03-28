@@ -3,7 +3,7 @@
 
 structure Ast = struct
 
-type POS = int
+type POS = { file: string, line: int }
 
 (* not actually unicode, maybe switch to int array to be unicode-y? *)
 

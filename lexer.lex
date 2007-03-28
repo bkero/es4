@@ -22,13 +22,15 @@ fun incr_line _ =
 fun reset_coords _ = 
     lineno := 1
 
+val filename = ref ""
+
 val line_breaks : int list ref = ref []
 val token_count : int      ref = ref 0
 
-fun token_list (token_fn : unit -> TOKEN) =
+fun token_list (fname, token_fn : unit -> TOKEN) =
 let
     val t = ref [] 
-    fun add tok = t := (tok, (!lineno)) :: !t
+    fun add tok = t := (tok, {file = !filename, line = !lineno}) :: !t
     fun add_lb offset = line_breaks := offset :: !line_breaks
     fun stop _ = (token_count := length (!t); rev (!t))
     fun step _ = 
@@ -51,6 +53,7 @@ let
 	      | x => (add x; step ())
 	end
 in
+    filename := fname;
     line_breaks := [];
     step ()
 end
@@ -145,21 +148,21 @@ regexpFlags           = [a-zA-Z]*;
 
 <INITIAL>"/"               => (LexBreakDiv
 				   { lex_initial = 
-					fn _ => (Div, !lineno) :: token_list (fn _ => lex ()),
+					fn _ => (Div, {file = !filename, line = !lineno}) :: token_list (!filename, fn _ => lex ()),
 				     lex_regexp = 
 				        fn _ =>
 					  (curr_chars := [#"/"];
 					   YYBEGIN REGEXP;
-					   token_list (fn _ => lex ())) });
+					   token_list (!filename, fn _ => lex ())) });
 
 <INITIAL>"/="              => (LexBreakDivAssign
 				   { lex_initial = 
-					fn _ => (DivAssign, !lineno) :: token_list (fn _ => lex ()),
+					fn _ => (DivAssign, {file = !filename, line = !lineno}) :: token_list (!filename, fn _ => lex ()),
 				     lex_regexp = 
 					fn _ =>
 					  (curr_chars := [#"=",#"/"];
 					   YYBEGIN REGEXP;
-					   token_list (fn _ => lex ())) });
+					   token_list (!filename, fn _ => lex ())) });
 
 <INITIAL>":"               => (Colon);
 <INITIAL>"::"              => (DoubleColon);
@@ -183,11 +186,11 @@ regexpFlags           = [a-zA-Z]*;
 
 <INITIAL>"<"               => (LexBreakLessThan
 				   { lex_initial = 
-					fn _ => (LessThan, !lineno) :: token_list (fn _ => lex ()),
+					fn _ => (LessThan, {file = !filename, line = !lineno}) :: token_list (!filename, fn _ => lex ()),
 				     lex_xml = 
 					fn _ => 
 					  (YYBEGIN XML;
-					   token_list (fn _ => lex ())) });
+					   token_list (!filename, fn _ => lex ())) });
 
 <INITIAL>"<<"              => (LeftShift);
 <INITIAL>"<<="             => (LeftShiftAssign);

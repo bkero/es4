@@ -2,8 +2,8 @@ structure LogErr = struct
 
 fun log ss = (List.app TextIO.print ss; TextIO.print "\n")
 
-fun posToString p = 
-    ("line " ^ (Int.toString p))
+fun posToString {file, line} =
+    file ^ ":" ^ (Int.toString line)
 
 val (pos:(Ast.POS option) ref) = ref NONE
 fun setPos (p:Ast.POS option) = pos := p
