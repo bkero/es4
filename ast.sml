@@ -3,9 +3,9 @@
 
 structure Ast = struct
 
-(* not actually unicode, maybe switch to int array to be unicode-y? *)
-
 type POS = int
+
+(* not actually unicode, maybe switch to int array to be unicode-y? *)
 
 type USTRING = string
 
