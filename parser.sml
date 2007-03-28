@@ -1596,7 +1596,8 @@ and primaryExpression (ts,a,b) =
                 (ts1,Ast.LiteralExpr nd1) 
             end
       | (Function, _) :: _ => functionExpression (ts,a,b)
-      | (LexBreakDiv thunks, _) :: _ => 
+      | ( (LexBreakDiv thunks, _) :: _ 
+      | (LexBreakDivAssign thunks, _) :: _ ) => 
         (case (#lex_regexp thunks)() of
              (RegexpLiteral str, _) :: rest =>
              (rest, Ast.LiteralExpr(Ast.LiteralRegExp {str=str}))
@@ -2809,7 +2810,7 @@ and assignmentExpression (ts,a,b) : ((TOKEN * Ast.POS) list * Ast.EXPR) =
           | ( (ModulusAssign, _) :: _ 
           | (LogicalAndAssign, _) :: _
           | (BitwiseAndAssign, _) :: _
-          | (DivAssign, _) :: _
+    (*    | (DivAssign, _) :: _         Chris asks:  Does this ever happen?  *)
           | (BitwiseXorAssign, _) :: _
           | (LogicalOrAssign, _) :: _
           | (BitwiseOrAssign, _) :: _
@@ -2824,6 +2825,20 @@ and assignmentExpression (ts,a,b) : ((TOKEN * Ast.POS) list * Ast.EXPR) =
                 val (ts3,nd3) = assignmentExpression(tl ts1,a,b)                        
             in
                 (ts3,Ast.SetExpr(nd2,nd1,nd3))
+            end
+          | (LexBreakDivAssign thunks, _) :: _ =>
+            let
+                val tok_list = (#lex_initial thunks)()
+            in
+                case tok_list of
+                    (DivAssign, _) :: _ =>
+						let
+							val (ts2,nd2) = compoundAssignmentOperator tok_list
+							val (ts3,nd3) = assignmentExpression(tl tok_list,a,b)                        
+						in
+							(ts3,Ast.SetExpr(nd2,nd1,nd3))
+						end
+                  | _ => error ["non-div-assign token after '/' lexbreak"]
             end
       | _ =>
             (trace(["<< assignmentExpression with next=",tokenname(hd(ts1))]);
