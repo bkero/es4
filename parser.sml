@@ -6425,12 +6425,7 @@ and pragmaItem ts =
             end
       | (Namespace, _) :: (Intrinsic, _) :: _ => 
             let
-                val (ts1,nd1) = (tl (tl ts), 
-                                 Ast.LexicalRef 
-                                     { ident = Ast.Identifier 
-                                                   { ident = "intrinsic",
-                                                     openNamespaces = [] },
-                                       pos = posOf ts })
+                val (ts1,nd1) = (tl (tl ts), Ast.LiteralExpr (Ast.LiteralNamespace Ast.Intrinsic))
             in
                 (ts1, Ast.UseNamespace nd1)
             end

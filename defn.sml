@@ -65,8 +65,7 @@ val defaultNumericMode : Ast.NUMERIC_MODE =
 val (topFixtures:Ast.FIXTURES ref) = ref []
 
 fun resetTopFixtures _ = 
-    topFixtures := [ (Ast.PropName {ns=Ast.Internal "", id="intrinsic"}, 
-                      Ast.NamespaceFixture Ast.Intrinsic) ]
+    topFixtures := []
 
 fun hasFixture (b:Ast.FIXTURES) 
                (n:Ast.FIXTURE_NAME) 
@@ -218,7 +217,7 @@ fun resolveExprToNamespace (env:ENV)
         Ast.LiteralExpr (Ast.LiteralNamespace ns) => 
         let
             val packageName = (#packageName (hd env))
-val _ = trace ["packageIdent ",packageIdentFromPath packageName ""]
+            val _ = trace ["packageIdent ",packageIdentFromPath packageName ""]
             val ident = case packageName of 
                              [] => "" 
                            | p => packageIdentFromPath p ""
@@ -635,12 +634,19 @@ and inheritFixtures (base:Ast.FIXTURES)
                                         ((not (isVoid rtb)) andalso (not (isVoid rtd)))) 
                                 (* FIXME: check compatibility of return types? *)
                             end
+                        
                       | _ => false
                 val _ = trace ["isCompatible = ",Bool.toString isCompatible]
             
             in case (fb,fd) of
                 (Ast.MethodFixture {final,...}, Ast.MethodFixture {override,...}) => 
                     (not final) andalso override andalso isCompatible
+
+              (* FIXME: what are the rules for getter/setter overriding? *)
+              | (Ast.VirtualValFixture vb,
+                 Ast.VirtualValFixture vd) => 
+                (#ty vb) = (#ty vd)
+                
               | _ => false
             end
 

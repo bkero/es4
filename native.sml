@@ -613,6 +613,11 @@ fun registerNatives _ =
         addFn Ast.Intrinsic "toFixedStep10" (fn _ => Mach.newString(""));
         addFn Ast.Intrinsic "toExponential" (fn _ => Mach.newString(""));
         addFn Ast.Intrinsic "toPrecision" (fn _ => Mach.newString(""));
+
+        (* FIXME: stubs to get Date loading. Implement. *)
+        addFn Ast.Intrinsic "now" (fn _ => Mach.newDouble 0.0);
+        addFn (Ast.Internal "") "LocalTZA" (fn _ => Mach.newDouble 0.0);
+        addFn (Ast.Internal "") "DaylightSavingTA" (fn _ => Mach.newDouble 0.0);
         
         addFn Ast.Intrinsic "print" print;
         addFn Ast.Intrinsic "assert" assert;

@@ -1,4 +1,4 @@
-/* -*- indent-tabs-mode: nil -*- 
+/* -*- mode: java; indent-tabs-mode: nil -*- 
  *
  * ECMAScript 4 builtins - the "date" object
  *
@@ -187,9 +187,9 @@ package
                          argc >= 6 ? ToDouble(seconds) : 0,
                          argc >= 7 ? ToDouble(ms) : 0);
 
-        static instrinsic function UTC(year : double, month : double, 
-                                       date : double=1, hours : double?=0, minutes : double?=0,
-                                       seconds : double=0, ms : double?=0) : double {
+        static intrinsic function UTC(year : double, month : double, 
+				      date : double=1, hours : double?=0, minutes : double?=0,
+				      seconds : double=0, ms : double?=0) : double {
             let intYear:double = Integer(year);
             if (!isNaN(year) && 0 <= intYear && intYear <= 99)
                 intYear += 1900;
@@ -271,10 +271,15 @@ package
         override intrinsic function toString() : string
             /* "Fri, 15 Dec 2006 23:45:09 GMT-0800" */
             let (tz:double = timezoneOffset)
-                let (atz:double = Math.abs(tz))
-                    dayNames[date] + ", " + twoDigit(day) + " " + monthNames[month] + " " fullYear +
-                    " " + twoDigit(hours) + ":" + twoDigit(minutes) + ":" + twoDigit(seconds) +
-                    " GMT" + sign(tz) + twoDigit(Math.floor(atz / 60)) + twoDigit(atz % 60);
+	    let (atz:double = Math.abs(tz))
+	    (dayNames[date] + ", " + 
+	     twoDigit(day) + " " + 
+	     monthNames[month] + " " + 
+	     fullYear + " " + 
+	     twoDigit(hours) + ":" + 
+	     twoDigit(minutes) + ":" + 
+	     twoDigit(seconds) + " GMT" + 
+	     sign(tz) + twoDigit(Math.floor(atz / 60)) + twoDigit(atz % 60));
 
         /* E262-3 15.9.5.42: Date.prototype.toUTCString */
         prototype function toUTCString(this:Date)
@@ -298,7 +303,10 @@ package
         /* INFORMATIVE */
         intrinsic function toDateString() : string
             /* "Sat, 16 Dec 2006" */
-            dayNames[date] + ", " + twoDigit(day) + " " + monthNames[month] + " " fullYear;
+            dayNames[date] + ", " + 
+	    twoDigit(day) + " " + 
+	    monthNames[month] + " " + 
+	    fullYear;
 
         /* E262-3 15.9.5.4: Date.prototype.toTimeString */
         prototype function toTimeString(this:Date)
@@ -317,7 +325,7 @@ package
             this.toLocaleString(); 
 
         /* INFORMATIVE */
-        intrinsic function toLocaleString() : string
+        override intrinsic function toLocaleString() : string
             toString();
 
         /* E262-3 15.9.5.6: Date.prototype.toLocaleDateString */
@@ -340,7 +348,7 @@ package
         prototype function valueOf(this:Date)
             this.valueOf(); 
 
-        intrinsic function valueOf() : Object
+        override intrinsic function valueOf() : Object
             getTime();
 
         /* E262-4 proposals:date_and_time: the logical components of
