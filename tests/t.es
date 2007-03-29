@@ -12,5 +12,5 @@ var mx
 }
 */
 
-function f([x],[y],z):void {intrinsic::print(x,y,z,"\n"); return}
-f([1],[2],3)
+var x : function (int,string=) = function (x:int,y:string="foo") { intrinsic::print(x,y) }
+x(10,'hi')

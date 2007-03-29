@@ -835,7 +835,7 @@ and functionSignature (ts) : ((TOKEN * Ast.POS) list * Ast.FUNC_SIG) =
             in case ts2 of
                 (Comma, _) :: _ =>
                     let
-                           val (ts3,((b,i),e,t)) = nonemptyParameters (tl ts2) 1
+                           val (ts3,((b,i),e,t)) = nonemptyParameters (tl ts2) 1 false
                        in case ts3 of
                            (RightParen, _) :: _ =>
                                let
@@ -906,7 +906,7 @@ and functionSignatureType (ts) =
             in case ts2 of
                 (Comma, _) :: _ =>
                     let
-                        val (ts3,nd3) = nonemptyParametersType (tl ts2)  
+                        val (ts3,(d,t)) = nonemptyParametersType (tl ts2)  
                     in case ts3 of
                         (RightParen, _) :: _ =>
                            let
@@ -916,9 +916,9 @@ and functionSignatureType (ts) =
                                (ts4,Ast.FunctionSignature
                                         { typeParams=nd1,
                                           thisType=SOME (needType (nd2,SOME false)),
-                                          params=nd3,
-                                          paramTypes=[],
-                                          defaults=[],
+                                          params=([],[]),
+                                          paramTypes=t,
+                                          defaults=d,
                                           returnType=nd4,
                                           ctorInits=NONE,
                                           hasRest=false }) (* do we need this *)
@@ -944,7 +944,7 @@ and functionSignatureType (ts) =
             end
       | (LeftParen, _) :: _ =>
             let
-                val (ts2, nd2) = parametersType (tl ts1)
+                val (ts2, (d,t)) = parametersType (tl ts1)
             in case ts2 of
                    (RightParen, _) :: _ =>
                        let
@@ -953,9 +953,9 @@ and functionSignatureType (ts) =
                         trace ["<< functionSignature with next=",tokenname(hd ts3)];
                         (ts3,Ast.FunctionSignature
                                  { typeParams=nd1,
-                                   params=nd2,
-                                   paramTypes=[],
-                                   defaults=[],
+                                   params=([],[]),
+                                   paramTypes=t,
+                                   defaults=d,
                                    returnType=nd3,
                                    ctorInits=NONE,
                                    thisType=NONE,  (* todo *)
@@ -1039,7 +1039,7 @@ and typeParameterList (ts) : (TOKEN * Ast.POS) list * string list =
         RestParameter
 *)
 
-and nonemptyParameters (ts) (n)
+and nonemptyParameters (ts) (n) (initRequired)
     : ((TOKEN * Ast.POS) list * (Ast.BINDINGS * Ast.EXPR list * Ast.TYPE_EXPR list)) = 
     let
     in case ts of
@@ -1052,12 +1052,12 @@ and nonemptyParameters (ts) (n)
             end
       | _ => 
             let
-                val (ts1,((b1,i1),e1,t1)) = parameterInit ts n
+                val (ts1,((b1,i1),e1,t1)) = parameterInit ts n initRequired
             in case ts1 of
                 (RightParen, _) :: _ => (ts1,((b1,i1),e1,t1))
               | (Comma, _) :: _ =>
-                    let
-                        val (ts2,((b2,i2),e2,t2)) = nonemptyParameters (tl ts1) (n+1)
+                    let                        
+                        val (ts2,((b2,i2),e2,t2)) = nonemptyParameters (tl ts1) (n+1) (not (length e1 = 0))
                     in
                         (ts2,((b1@b2,i1@i2),e1@e2,t1@t2))
                     end
@@ -1066,7 +1066,7 @@ and nonemptyParameters (ts) (n)
     end
 
 and nonemptyParametersType (ts)
-    : ((TOKEN * Ast.POS) list * Ast.BINDINGS) = 
+    : ((TOKEN * Ast.POS) list * (Ast.EXPR list * Ast.TYPE_EXPR list)) = 
     let
     in case ts of
         (TripleDot, _) :: _ => 
@@ -1078,14 +1078,14 @@ and nonemptyParametersType (ts)
             end
       | _ => 
             let
-                val (ts1,(b1,i1)) = parameterInitType ts
+                val (ts1,(d1,t1)) = parameterInitType ts
             in case ts1 of
-                (RightParen, _) :: _ => (ts1,(b1,i1))
+                (RightParen, _) :: _ => (ts1,(d1,t1))
               | (Comma, _) :: ts2 =>
                     let
-                        val (ts3,(b3,i3)) = nonemptyParametersType ts2
+                        val (ts3,(d3,t3)) = nonemptyParametersType ts2
                     in
-                        (ts3,(b1@b3,i1@i3))
+                        (ts3,(d1@d3,t1@t3))
                     end
               | _ => error ["unknown token in nonemptyParametersType"]
             end
@@ -1096,11 +1096,11 @@ and parameters (ts)
     let val _ = trace([">> parameters with next=",tokenname(hd(ts))]) 
     in case ts of 
         (RightParen, _) :: ts1 => (ts,(([],[]),[],[]))
-      | _ => nonemptyParameters ts 0
+      | _ => nonemptyParameters ts 0 false
     end
 
 and parametersType (ts) 
-    : ((TOKEN * Ast.POS) list * Ast.BINDINGS)=
+    : ((TOKEN * Ast.POS) list * (Ast.EXPR list * Ast.TYPE_EXPR list))=
     let val _ = trace([">> parameters with next=",tokenname(hd(ts))]) 
     in case ts of 
         (RightParen, _) :: ts1 => (ts,([],[]))
@@ -1113,12 +1113,12 @@ and parametersType (ts)
         Parameter  =  NonAssignmentExpression(ALLOWIN)
 *)
 
-and parameterInit (ts) (n)
+and parameterInit (ts) (n) (initRequired)
     : ((TOKEN * Ast.POS) list * (Ast.BINDINGS * Ast.EXPR list * Ast.TYPE_EXPR list)) =
     let val _ = trace([">> parameterInit with next=",tokenname(hd(ts))]) 
         val (ts1,(temp,nd1)) = parameter ts n
-    in case ts1 of
-        (Assign, _) :: _ => 
+    in case (ts1,initRequired) of
+        ((Assign, _) :: _,_) => 
             let
                 val {pattern,ty,...} = nd1
                 val (ts2,nd2) = nonAssignmentExpression (tl ts1,NOLIST,ALLOWIN)
@@ -1127,7 +1127,7 @@ and parameterInit (ts) (n)
                 trace(["<< parameterInit with next=",tokenname(hd(ts))]);
                 (ts2, ((temp::b,i),[nd2],[ty]))
             end
-      | _ => 
+      | (_,false) => 
             let
                 val {pattern,ty,...} = nd1
                 val (b,i) = desugarPattern pattern ty (SOME (Ast.GetParam n)) (0)
@@ -1135,29 +1135,26 @@ and parameterInit (ts) (n)
                 trace(["<< parameterInit with next=",tokenname(hd(ts))]);
                 (ts1, ((temp::b,i),[],[ty]))
             end
+      | _ => error ["default expression required"]
     end
 
 and parameterInitType (ts) 
-    : ((TOKEN * Ast.POS) list * Ast.BINDINGS) = 
+    : ((TOKEN * Ast.POS) list * (Ast.EXPR list * Ast.TYPE_EXPR list)) = 
     let val _ = trace([">> parameterInitType with next=",tokenname(hd(ts))]) 
         val (ts1,nd1) = parameterType ts
     in case ts1 of
-        (Assign, _) :: _ =>
+        (Assign,_) :: _ =>
             let
-                val {pattern,ty,...} = nd1
-                val (ts2,nd2) = (tl ts1,Ast.LiteralExpr Ast.LiteralUndefined)
+                val (ts2,init) = (tl ts1,Ast.LiteralExpr Ast.LiteralUndefined)
             in
                 trace(["<< parameterInitType with next=",tokenname(hd(ts))]);
-                (ts2, ([Ast.Binding {ident=Ast.PropIdent "", ty = ty}],
-                       [Ast.InitStep (Ast.PropIdent "",nd2)]))
+                (ts2, ([init],[nd1]))
             end
       | _ =>
             let
-                val {pattern,ty,...} = nd1
             in
                 trace(["<< parameterInitType with next=",tokenname(hd(ts))]);
-                (ts1, ([Ast.Binding {ident=Ast.PropIdent "", ty = Ast.SpecialType Ast.Any}],
-                       []))
+                (ts1, ([],[nd1]))
             end
     end
 
@@ -1187,7 +1184,7 @@ and parameterType (ts) =
         val (ts2,t) = nullableTypeExpression ts
     in
         trace(["<< parameter with next=",tokenname(hd(ts2))]);
-        (ts2,{pattern=IdentifierPattern "",ty=t,init=NONE})
+        (ts2,t)
     end
 
 and parameterKind (ts) 
@@ -1224,19 +1221,19 @@ and restParameter (ts) (n): ((TOKEN * Ast.POS) list * (Ast.BINDINGS * Ast.EXPR l
       | _ => error ["unknown token in restParameter"]
     end
 
-and restParameterType (ts) : ((TOKEN * Ast.POS) list * Ast.BINDINGS) =
+and restParameterType (ts) : ((TOKEN * Ast.POS) list * (Ast.EXPR list * Ast.TYPE_EXPR list)) =
     let val _ = trace([">> restParameter with next=",tokenname(hd(ts))])
     in case ts of
         (TripleDot, _) :: _ =>
             let
             in case tl ts of
                 (RightParen, _) :: _ => 
-                    (tl ts,([Ast.Binding {ident=Ast.PropIdent "",ty=Ast.SpecialType Ast.Any}],[])) 
+                    (tl ts,([],[Ast.ArrayType []])) 
               | _ =>
                     let
-                        val (ts1:(TOKEN * Ast.POS) list,{pattern,ty,...}) = parameterType (tl ts)
+                        val (ts1:(TOKEN * Ast.POS) list,ty) = parameterType (tl ts)
                     in
-                        (ts1,([Ast.Binding {ident=Ast.PropIdent "", ty=ty}],[]))
+                        (ts1,([],[ty]))
                     end
             end
       | _ => error ["unknown token in restParameterType"]
