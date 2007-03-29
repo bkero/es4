@@ -323,18 +323,18 @@ fun compileInto (vals:Mach.VAL list)
         val argIdents = map ident (arrayToList (nthAsObj vals 1))
         val argList = case argIdents of
                           [] => []
-                        | x::xs => ((x, 1) :: (List.concat 
-                                                   (map (fn i => [(Token.Comma, 1), (i, 1)]) xs)))
+                        | x::xs => ((x, {file="<no filename>", line=1}) :: (List.concat 
+                                                   (map (fn i => [(Token.Comma, {file="<no filename>", line=1}), (i, {file="<no filename>", line=1})]) xs)))
         val source = nthAsStr vals 2
         val lines = [source] (* FIXME: split lines *)
         val lineTokens = Parser.lexLines lines
-        val funcTokens = [(Token.Function, 1), 
-                          (Token.LeftParen, 1)]
+        val funcTokens = [(Token.Function, {file="<no filename>", line=1}), 
+                          (Token.LeftParen, {file="<no filename>", line=1})]
                          @ argList
-                         @ [(Token.RightParen, 1)]
-                         @ [(Token.LeftBrace, 1)]
+                         @ [(Token.RightParen, {file="<no filename>", line=1})]
+                         @ [(Token.LeftBrace, {file="<no filename>", line=1})]
                          @ lineTokens
-                         @ [(Token.RightBrace, 1)]
+                         @ [(Token.RightBrace, {file="<no filename>", line=1})]
                          
         val (_,funcExpr) = Parser.functionExpression (funcTokens, 
                                                       Parser.NOLIST, 

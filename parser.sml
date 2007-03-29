@@ -185,7 +185,8 @@ val defaultRestAttrs : ATTRS =
     
 *)
                             
-fun desugarPattern (pattern:PATTERN)
+fun desugarPattern (pos:Ast.POS option)
+                   (pattern:PATTERN)
                    (ty:Ast.TYPE_EXPR)
                    (expr:Ast.EXPR option)
                    (nesting:int)
@@ -244,9 +245,9 @@ fun desugarPattern (pattern:PATTERN)
                         val id = Int.toString n
                         val str = Ast.LiteralString id
                         val ident = Ast.ExpressionIdentifier (Ast.LiteralExpr (str))
-                        val e = SOME (Ast.ObjectRef {base=temp, ident=ident})
+                        val e = SOME (Ast.ObjectRef {base=temp, ident=ident, pos=pos})
                         val t = Ast.ElementTypeRef (element_types,n)
-                        val (binds, inits) = desugarPattern p t e (nesting+1)
+                        val (binds, inits) = desugarPattern pos p t e (nesting+1)
                         val (binds', inits') = desugarArrayPattern plist element_types temp (n+1)
                     in
                         ((binds @ binds'), (inits @ inits'))
@@ -303,16 +304,16 @@ fun desugarPattern (pattern:PATTERN)
                            its name so we can do the mapping to its field type *)
                         let
                             val t = Ast.FieldTypeRef (ty,id)
-                            val e = SOME (Ast.ObjectRef {base=temp, ident=ident})
+                            val e = SOME (Ast.ObjectRef {base=temp, ident=ident, pos=pos})
                         in
-                            desugarPattern p t e (nesting+1)
+                            desugarPattern pos p t e (nesting+1)
                         end
                   | (_,_) =>
                         let
                             val t = Ast.SpecialType Ast.Any
-                            val e = SOME (Ast.ObjectRef {base=temp, ident=ident})
+                            val e = SOME (Ast.ObjectRef {base=temp, ident=ident, pos=pos})
                         in
-                            desugarPattern p t e (nesting+1)
+                            desugarPattern pos p t e (nesting+1)
                         end
             end
 
@@ -426,7 +427,7 @@ and qualifier ts =
           let
               val (ts1,nd1) = propertyIdentifier (ts)
           in
-              (ts1,Ast.LexicalRef{ident=Ast.Identifier {ident=nd1, openNamespaces=[]}})
+              (ts1,Ast.LexicalRef{ident=Ast.Identifier {ident=nd1, openNamespaces=[]}, pos=posOf ts})
           end
     end
 
@@ -490,7 +491,7 @@ and simpleQualifiedIdentifier ts =
                 val id = Ast.Identifier {ident=nd1, openNamespaces=[]}
               in case ts1 of
                   (DoubleColon, _) :: _ => 
-                    qualifiedIdentifier'(tl ts1,Ast.LexicalRef ({ident=id}))
+                    qualifiedIdentifier'(tl ts1,Ast.LexicalRef ({ident=id, pos=posOf ts}))
               | _ => 
                     (trace(["<< simpleQualifiedIdentifier with next=",tokenname(hd(ts1))]);
                     (ts1,id))
@@ -1122,7 +1123,7 @@ and parameterInit (ts) (n) (initRequired)
             let
                 val {pattern,ty,...} = nd1
                 val (ts2,nd2) = nonAssignmentExpression (tl ts1,NOLIST,ALLOWIN)
-                val (b,i) = desugarPattern pattern ty (SOME (Ast.GetParam n)) (0)
+                val (b,i) = desugarPattern (posOf ts) pattern ty (SOME (Ast.GetParam n)) (0)
             in 
                 trace(["<< parameterInit with next=",tokenname(hd(ts))]);
                 (ts2, ((temp::b,i),[nd2],[ty]))
@@ -1130,7 +1131,7 @@ and parameterInit (ts) (n) (initRequired)
       | (_,false) => 
             let
                 val {pattern,ty,...} = nd1
-                val (b,i) = desugarPattern pattern ty (SOME (Ast.GetParam n)) (0)
+                val (b,i) = desugarPattern (posOf ts) pattern ty (SOME (Ast.GetParam n)) (0)
             in
                 trace(["<< parameterInit with next=",tokenname(hd(ts))]);
                 (ts1, ((temp::b,i),[],[ty]))
@@ -1213,7 +1214,7 @@ and restParameter (ts) (n): ((TOKEN * Ast.POS) list * (Ast.BINDINGS * Ast.EXPR l
               | _ =>
                     let
                         val (ts1,(temp,{pattern,ty,...})) = parameter (tl ts) n
-                        val (b,i) = desugarPattern pattern ty (SOME (Ast.GetParam n)) (0)
+                        val (b,i) = desugarPattern (posOf ts) pattern ty (SOME (Ast.GetParam n)) (0)
                     in
                         (ts1, ((temp::b,i),[],[Ast.ArrayType [Ast.SpecialType Ast.Any]]))
                     end
@@ -1592,7 +1593,8 @@ and primaryExpression (ts,a,b) =
                 (ts1,Ast.LiteralExpr nd1) 
             end
       | (Function, _) :: _ => functionExpression (ts,a,b)
-      | (LexBreakDiv thunks, _) :: _ => 
+      | ( (LexBreakDiv thunks, _) :: _ 
+      | (LexBreakDivAssign thunks, _) :: _ ) => 
         (case (#lex_regexp thunks)() of
              (RegexpLiteral str, _) :: rest =>
              (rest, Ast.LiteralExpr(Ast.LiteralRegExp {str=str}))
@@ -1606,13 +1608,13 @@ and primaryExpression (ts,a,b) =
             let
                 val (ts1,nd1) = attributeIdentifier ts
             in
-                (ts1,Ast.LexicalRef {ident=nd1})
+                (ts1,Ast.LexicalRef {ident=nd1, pos=posOf ts})
             end
       | _ => 
             let
                 val (ts1,nd1) = typeIdentifier ts
             in
-                (ts1,Ast.LexicalRef {ident=nd1})
+                (ts1,Ast.LexicalRef {ident=nd1, pos=posOf ts})
             end
     end
 
@@ -1903,14 +1905,16 @@ and propertyOperator (ts, nd) =
                                 val (ts2,nd2) = brackets(tl ts1)
                                in
                                    (ts2,Ast.ObjectRef {base=nd,ident=Ast.QualifiedExpression {
-                                            qual=nd1, expr=nd2}})
+                                            qual=nd1, expr=nd2}, pos=posOf ts})
                             end
                       | (DoubleColon, _) :: _ => 
                             let
                                 val (ts2,nd2) = reservedOrPropertyIdentifier(tl ts1)
                             in
-                                (ts2,Ast.ObjectRef({base=nd,ident=Ast.QualifiedIdentifier {
-                                            qual=nd1, ident=nd2}}))
+                                (ts2,Ast.ObjectRef({base=nd,
+                                                    ident=Ast.QualifiedIdentifier 
+                                                              {qual=nd1, ident=nd2}, 
+                                                    pos=posOf ts}))
                             end
                       | _ => error ["unknown token in propertyOperator"] (* e4x filter expr *)
                     end
@@ -1922,21 +1926,28 @@ and propertyOperator (ts, nd) =
                             let
                                 val (ts1,nd1) = typeIdentifier (tl ts)  (* qualifiedIdentifier(tl ts) *)
                             in
-                                (ts1,Ast.ObjectRef {base=nd,ident=nd1})
+                                (ts1,Ast.ObjectRef {base=nd,ident=nd1,pos=posOf ts})
                             end
                       | (true,_) =>
                             let
                                 val (ts1,nd1) = reservedIdentifier (tl ts)
                             in
-                                (ts1,Ast.ObjectRef {base=nd,ident=Ast.Identifier {ident=nd1,
-                                                    openNamespaces=[]}})
+                                (ts1,Ast.ObjectRef 
+                                         { base=nd,
+                                           ident=Ast.Identifier 
+                                                     { ident=nd1,
+                                                       openNamespaces=[] },
+                                           pos=posOf ts})
                             end 
                     end
       | (LeftBracket, _) :: _ => 
             let
                 val (ts1,nd1) = brackets(ts)
             in
-                (ts1,Ast.ObjectRef({base=nd,ident=Ast.ExpressionIdentifier(nd1)}))
+                (ts1,Ast.ObjectRef 
+                         { base=nd,
+                           ident=Ast.ExpressionIdentifier nd1,
+                           pos=posOf ts})
             end
       | _ => error ["unknown token in propertyOperator"]
     end
@@ -2783,7 +2794,7 @@ and assignmentExpression (ts,a,b) : ((TOKEN * Ast.POS) list * Ast.EXPR) =
 
                 val p = patternFromExpr nd1
                 val (ts2,nd2) = assignmentExpression(tl ts1,a,b) 
-                val (binds,inits) = desugarPattern p (Ast.SpecialType Ast.Any) (SOME nd2) 0  (* type is meaningless *)
+                val (binds,inits) = desugarPattern (posOf ts) p (Ast.SpecialType Ast.Any) (SOME nd2) 0  (* type is meaningless *)
                 val (inits,assigns) = List.partition isInitStep inits    (* separate init steps and assign steps *)
                 val sets = map makeSetExpr assigns
             in case binds of
@@ -2796,7 +2807,7 @@ and assignmentExpression (ts,a,b) : ((TOKEN * Ast.POS) list * Ast.EXPR) =
           | ( (ModulusAssign, _) :: _ 
           | (LogicalAndAssign, _) :: _
           | (BitwiseAndAssign, _) :: _
-          | (DivAssign, _) :: _
+    (*    | (DivAssign, _) :: _         Chris asks:  Does this ever happen?  *)
           | (BitwiseXorAssign, _) :: _
           | (LogicalOrAssign, _) :: _
           | (BitwiseOrAssign, _) :: _
@@ -2811,6 +2822,20 @@ and assignmentExpression (ts,a,b) : ((TOKEN * Ast.POS) list * Ast.EXPR) =
                 val (ts3,nd3) = assignmentExpression(tl ts1,a,b)                        
             in
                 (ts3,Ast.SetExpr(nd2,nd1,nd3))
+            end
+          | (LexBreakDivAssign thunks, _) :: _ =>
+            let
+                val tok_list = (#lex_initial thunks)()
+            in
+                case tok_list of
+                    (DivAssign, _) :: _ =>
+						let
+							val (ts2,nd2) = compoundAssignmentOperator tok_list
+							val (ts3,nd3) = assignmentExpression(tl tok_list,a,b)                        
+						in
+							(ts3,Ast.SetExpr(nd2,nd1,nd3))
+						end
+                  | _ => error ["non-div-assign token after '/' lexbreak"]
             end
       | _ =>
             (trace(["<< assignmentExpression with next=",tokenname(hd(ts1))]);
@@ -3967,14 +3992,14 @@ and typeCaseBinding (ts) : ((TOKEN * Ast.POS) list * Ast.BINDINGS) =
                         val (ts2,nd2) = variableInitialisation(ts1,ALLOWLIST,ALLOWIN)
                     in case ts2 of
                         (RightParen, _) :: _ =>
-                            (tl ts2, desugarPattern p t (SOME nd2) 0)
+                            (tl ts2, desugarPattern (posOf ts) p t (SOME nd2) 0)
                       | _ => error ["unknown token in typeCaseBinding"]
                     end
               | _ => 
                     let
                     in case ts1 of
                         (RightParen, _) :: _ =>
-                            (tl ts1, desugarPattern p t NONE 0)
+                            (tl ts1, desugarPattern (posOf ts) p t NONE 0)
                       | _ => error ["unknown token in typeCaseBinding"]
                     end
             end
@@ -4041,7 +4066,7 @@ and typeCaseElement (ts,has_default)
                         val (ts2,nd2) = block (tl ts1,LOCAL)
                     in
                         trace(["<< typeCaseElement with next=", tokenname(hd ts2)]);
-                        (ts2, {bindings=desugarPattern p t (SOME (Ast.GetTemp 0)) 0, ty=SOME t, body=nd2,inits=NONE})
+                        (ts2, {bindings=desugarPattern (posOf ts) p t (SOME (Ast.GetTemp 0)) 0, ty=SOME t, body=nd2,inits=NONE})
                     end
               | _ => error ["unknown token in typeCaseElement"]
             end
@@ -4241,7 +4266,7 @@ and forStatement (ts,w) : ((TOKEN * Ast.POS) list * Ast.STMT) =
                                     else if (len = 0) (* convert inits to pattern *)
                                         then case init of 
                                             Ast.ExprStmt e => 
-                                                desugarPattern (patternFromListExpr e) (Ast.SpecialType Ast.Any) (SOME (Ast.GetTemp 0)) 0
+                                                desugarPattern (posOf ts) (patternFromListExpr e) (Ast.SpecialType Ast.Any) (SOME (Ast.GetTemp 0)) 0
                                           | _ => LogErr.internalError [""]
                                         else (#bindings (valOf defn))
                         val (ts2,nd2) = listExpression (tl ts1,ALLOWIN)
@@ -4375,7 +4400,7 @@ and forInBinding (ts)
       | _ => 
             let
                 val (ts1,nd1) = pattern (ts,ALLOWLIST,NOIN,ALLOWEXPR)
-                val (b,i) = desugarPattern nd1 (Ast.SpecialType Ast.Any) (SOME (Ast.GetTemp 0)) 0
+                val (b,i) = desugarPattern (posOf ts) nd1 (Ast.SpecialType Ast.Any) (SOME (Ast.GetTemp 0)) 0
             in 
                 trace ["<< forInitialiser with next=", tokenname(hd ts1)];
                 (ts1,(b,i))
@@ -4608,7 +4633,7 @@ and catchClause (ts)
         (Catch, _) :: (LeftParen, _) :: _ =>
             let
                 val (ts1,(temp,{pattern,ty})) = parameter (tl (tl ts)) 0
-                val (b,i) = desugarPattern pattern ty (SOME (Ast.GetParam 0)) 0
+                val (b,i) = desugarPattern (posOf ts) pattern ty (SOME (Ast.GetParam 0)) 0
             in case ts1 of
                 (RightParen, _) :: _ =>
                     let
@@ -5156,7 +5181,8 @@ and namespaceAttribute (ts,GLOBAL)
       | (Identifier s, _) :: _ =>
             let
             in
-                (tl ts, SOME (Ast.LexicalRef {ident=Ast.Identifier{ident=s,openNamespaces=[]}}))
+                (tl ts, SOME (Ast.LexicalRef {ident=Ast.Identifier {ident=s, openNamespaces=[]},
+                                              pos=posOf ts}))
             end
       | _ => error ["unknown token in namespaceAttribute"]
     end
@@ -5172,7 +5198,8 @@ and namespaceAttribute (ts,GLOBAL)
       | (Identifier s, _) :: _ =>
             let
             in
-                (tl ts, SOME (Ast.LexicalRef {ident=Ast.Identifier{ident=s,openNamespaces=[]}}))
+                (tl ts, SOME (Ast.LexicalRef {ident=Ast.Identifier{ident=s,openNamespaces=[]},
+                                              pos=posOf ts}))
             end
       | _ => error ["unknown token in namespaceAttribute"]
     end
@@ -5298,14 +5325,14 @@ and variableBinding (ts,a,beta) : ((TOKEN * Ast.POS) list * Ast.BINDINGS) =
             ((Assign, _) :: _,_,_) =>
                 let
                     val (ts2,nd2) = variableInitialisation (ts1,a,beta)
-                    val (b,i) = desugarPattern p t (SOME nd2) 0
+                    val (b,i) = desugarPattern (posOf ts) p t (SOME nd2) 0
                 in
                     trace(["<< variableBinding with next=", tokenname(hd ts2)]);
                     (ts2, (b,i))
                 end
           | ((In, _) :: _,_,NOIN) => (* okay, we are in a for-in or for-each-in binding *)
                 let
-                    val (b,i) = desugarPattern p t NONE 0
+                    val (b,i) = desugarPattern (posOf ts) p t NONE 0
                 in
                     trace(["<< variableBinding with next=", tokenname(hd ts1)]);
                     (ts1, (b,i))
@@ -5313,7 +5340,7 @@ and variableBinding (ts,a,beta) : ((TOKEN * Ast.POS) list * Ast.BINDINGS) =
           | (_,IdentifierPattern _,_) =>   (* check for the more specific syntax allowed
                                                   when there is no init *)
                 let
-                    val (b,i) = desugarPattern p t NONE 0
+                    val (b,i) = desugarPattern (posOf ts) p t NONE 0
                 in
                     trace(["<< variableBinding with next=", tokenname(hd ts1)]);
                     (ts1, (b,i))
@@ -5831,7 +5858,7 @@ and initialiser (ts)
                     val (ts2,nd2) = variableInitialisation (ts1,NOLIST,NOIN)
                 in
                     trace(["<< initialiser with next=", tokenname(hd ts2)]);
-                    (ts2, desugarPattern nd1 (Ast.SpecialType Ast.Any) (SOME nd2) 0) (* type meaningless *)
+                    (ts2, desugarPattern (posOf ts) nd1 (Ast.SpecialType Ast.Any) (SOME nd2) 0) (* type meaningless *)
                 end
           | _ => (error(["constructor initialiser without assignment"]); error ["unknown token in initialiser"])
     end
@@ -6203,7 +6230,7 @@ and namespaceInitialisation (ts) : ((TOKEN * Ast.POS) list * Ast.EXPR option) =
                 val (ts1,nd1) = simpleTypeIdentifier (tl ts)
             in
                 trace(["<< namespaceInitialisation simpleTypeIdentifer with next=", tokenname(hd ts1)]);
-                (ts1,SOME (Ast.LexicalRef {ident=nd1}))
+                (ts1,SOME (Ast.LexicalRef {ident=nd1, pos=posOf ts}))
             end
       | _ => (trace(["<< namespaceInitialisation none with next=", tokenname(hd ts)]);
              (ts,NONE))
@@ -6394,11 +6421,16 @@ and pragmaItem ts =
             let
                 val (ts1,nd1) = simpleTypeIdentifier (tl (tl ts))
             in
-                (ts1, Ast.UseDefaultNamespace (Ast.LexicalRef {ident=nd1}))
+                (ts1, Ast.UseDefaultNamespace (Ast.LexicalRef {ident=nd1, pos=posOf ts}))
             end
       | (Namespace, _) :: (Intrinsic, _) :: _ => 
             let
-                val (ts1,nd1) = (tl (tl ts), (Ast.LexicalRef {ident=Ast.Identifier {ident="intrinsic",openNamespaces=[]}}))
+                val (ts1,nd1) = (tl (tl ts), 
+                                 Ast.LexicalRef 
+                                     { ident = Ast.Identifier 
+                                                   { ident = "intrinsic",
+                                                     openNamespaces = [] },
+                                       pos = posOf ts })
             in
                 (ts1, Ast.UseNamespace nd1)
             end
@@ -6406,7 +6438,7 @@ and pragmaItem ts =
             let
                 val (ts1,nd1) = simpleTypeIdentifier (tl ts)
             in
-                (ts1, Ast.UseNamespace (Ast.LexicalRef {ident=nd1}))
+                (ts1, Ast.UseNamespace (Ast.LexicalRef { ident = nd1, pos = posOf ts}))
             end
       | _ =>
             LogErr.parseError ["invalid pragma"]
@@ -6645,11 +6677,11 @@ fun dumpLineBreaks (lbs,lst) =
         [] => rev lst
       | _ => dumpLineBreaks(tl lbs, Int.toString(hd lbs) :: "\n  " :: lst)
 
-fun lex (reader) : ((TOKEN * Ast.POS) list) =
+fun lex (filename, reader) : ((TOKEN * Ast.POS) list) =
     let 
         val _ = Lexer.UserDeclarations.reset_coords ()
         val lexer = Lexer.makeLexer reader
-        val tokens = Lexer.UserDeclarations.token_list lexer
+        val tokens = Lexer.UserDeclarations.token_list (filename, lexer)
         val line_breaks = !Lexer.UserDeclarations.line_breaks
     in
         trace ("tokens:" :: dumpTokens(tokens,[])); 
@@ -6658,7 +6690,7 @@ fun lex (reader) : ((TOKEN * Ast.POS) list) =
     end
 
 fun lexFile (filename : string) : ((TOKEN * Ast.POS) list) = 
-    lex (mkReader filename)
+    lex (filename, mkReader filename)
 
 fun lexLines (lines : string list) : ((TOKEN * Ast.POS) list) =
     let val reader = let val r = ref lines
@@ -6668,7 +6700,7 @@ fun lexLines (lines : string list) : ((TOKEN * Ast.POS) list) =
                                      | [] => "")
                      end
     in
-        lex reader
+        lex ("<no filename>", reader)
     end
 
 fun parse ts =

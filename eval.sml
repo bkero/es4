@@ -16,6 +16,8 @@ exception ReturnException of Mach.VAL
 
 exception InternalError
 
+val thisName = { id = "this", ns = Ast.Internal "" }
+
 fun extendScope (p:Mach.SCOPE) 
                 (ob:Mach.OBJ)
                 (isVarObject:bool) 
@@ -447,11 +449,13 @@ and evalExpr (scope:Mach.SCOPE)
       | Ast.ListExpr es =>
         evalListExpr scope es
         
-      | Ast.LexicalRef { ident } =>
-            getValue (evalRefExpr scope expr true)
+      | Ast.LexicalRef { ident, pos } =>
+        (LogErr.setPos pos;
+         getValue (evalRefExpr scope expr true))
 
-      | Ast.ObjectRef { base, ident } => 
-            getValue (evalRefExpr scope expr false)
+      | Ast.ObjectRef { base, ident, pos } => 
+        (LogErr.setPos pos;
+         getValue (evalRefExpr scope expr false))
         
       | Ast.LetExpr {defs, body, head} =>
         evalLetExpr scope (valOf head) body
@@ -925,8 +929,9 @@ and evalUnaryOp (scope:Mach.SCOPE)
             in
                 Mach.newString 
                     (case expr of 
-                         Ast.LexicalRef { ident } => 
+                         Ast.LexicalRef { ident, pos } => 
                          let 
+                             val _ = LogErr.setPos pos
                              val multiname = evalIdentExpr scope ident
                          in
                              case resolveOnScopeChain scope multiname of 
@@ -1303,8 +1308,14 @@ and evalRefExpr (scope:Mach.SCOPE)
 
         val (base,ident) =
             case expr of         
-                Ast.LexicalRef { ident } => (NONE,ident)
-              | Ast.ObjectRef { base, ident } => (SOME (evalExpr scope base), ident)
+                Ast.LexicalRef { ident, pos } => 
+                (LogErr.setPos pos; 
+                 (NONE,ident))
+
+              | Ast.ObjectRef { base, ident, pos } => 
+                (LogErr.setPos pos; 
+                 (SOME (evalExpr scope base), ident))
+
               | _ => error ["need lexical or object-reference expression"]
 
         val (multiname:Ast.MULTINAME) = evalIdentExpr scope ident
@@ -1445,11 +1456,7 @@ and evalStmt (scope:Mach.SCOPE)
       | Ast.WithStmt { obj, ty, body } => evalWithStmt scope obj ty body
       | Ast.SwitchStmt { mode, cond, cases } => 
         evalSwitchStmt scope mode cond cases
-      (*   | Ast.SwitchTypeStmt { cond, ty, cases } => evalSwitchTypeStmt cond ty cases
-       *)
       | Ast.ForStmt w => evalForStmt scope w
-(*      | Ast.ForInStmt w => evalForInStmt scope w
-*)
       | Ast.ReturnStmt r => evalReturnStmt scope r
       | Ast.BreakStmt lbl => evalBreakStmt scope lbl
       | Ast.ContinueStmt lbl => evalContinueStmt scope lbl
@@ -1459,7 +1466,12 @@ and evalStmt (scope:Mach.SCOPE)
       | Ast.ClassBlock c => evalClassBlock scope c
       | Ast.LetStmt b => evalBlock scope b
       | Ast.EmptyStmt => Mach.Undef
-      | _ => LogErr.unimplError ["unimplemented statement type"]
+      | Ast.TryStmt { block, catches, finally } => 
+        evalTryStmt scope block catches finally
+      | Ast.SwitchTypeStmt { cond, ty, cases } => 
+        LogErr.unimplError ["switch-type statements not handled"]
+      | Ast.ForInStmt w => 
+        LogErr.unimplError ["for-in loops not handled"]
 
 
 and multinameOf (n:Ast.NAME) = 
@@ -1507,7 +1519,6 @@ and invokeFuncClosure (this:Mach.OBJ)
                                             
                 (* FIXME: infer a fixture for "this" so that it's properly typed, dontDelete, etc.
                  * Also this will mean changing to defVar rather than setVar, for 'this'. *)
-                val thisName = { id = "this", ns = Ast.Internal "" }
                 val thisVal = Mach.Object this
                 fun initThis v = setValue varObj thisName thisVal
                                  
@@ -1534,6 +1545,53 @@ and invokeFuncClosure (this:Mach.OBJ)
                 evalBlock varScope block
             end
     end
+
+
+and evalTryStmt (scope:Mach.SCOPE) 
+                (block:Ast.BLOCK) 
+                (catches:Ast.CATCH_CLAUSE list)
+                (finally:Ast.BLOCK option) 
+    : Mach.VAL = 
+    let
+        fun typesCompatible a b = true (* FIXME: do a real type test here! *)
+
+        fun catch (e:Mach.VAL) 
+                  (clauses:Ast.CATCH_CLAUSE list) 
+            : Mach.VAL option = 
+            case clauses of
+                [] => NONE
+              | {ty, fixtures, block, ...}::cs => 
+                if typesCompatible ty e
+                then 
+                    let 
+                        (* FIXME: doesn't this need inits? *)
+                        val head = (valOf fixtures, [])
+                        val scope = evalHead scope head false
+                    in
+                        SOME (evalBlock scope block)
+                    end
+                else
+                    catch e cs
+
+        fun finishWith (v:Mach.VAL) 
+            : Mach.VAL = 
+            case finally of 
+                NONE => v
+              (* 
+               * FIXME: Not sure how to read the spec wrt. labels; 
+               * are we supposed to return the finally-block's value
+               * or the main block's value? 
+               *)
+              | SOME f => evalBlock scope f
+    in
+        evalBlock scope block
+        handle ThrowException v => 
+               case catch v catches of 
+                   SOME fix => finishWith fix
+                 | NONE => (finishWith v; 
+                            raise ThrowException v)
+    end
+           
 
 (*    
     Here are the structures we have to work with to instantiate objects:
@@ -1964,14 +2022,13 @@ and evalHead (scope:Mach.SCOPE)
 and evalBlock (scope:Mach.SCOPE) 
               (block:Ast.BLOCK) 
     : Mach.VAL = 
-    case block of 
-        Ast.Block {head=SOME head, body, ...} => 
-        let 
-            val blockScope = evalHead scope head false
-        in
-            evalStmts blockScope body
-        end
-      | _ => LogErr.internalError ["in evalBlock"]
+    let 
+        val Ast.Block {head, body, pos, ...} = block
+        val _ = LogErr.setPos pos
+        val blockScope = evalHead scope (valOf head) false
+    in
+        evalStmts blockScope body
+    end
 
 
 
@@ -2262,7 +2319,9 @@ and evalPackage (scope:Mach.SCOPE)
 
 and evalProgram (prog:Ast.PROGRAM) 
     : Mach.VAL = 
-    (allocScopeFixtures Mach.globalScope (valOf (#fixtures prog));
+    (LogErr.setPos NONE;
+     setValue Mach.globalObject thisName (Mach.Object Mach.globalObject);
+     allocScopeFixtures Mach.globalScope (valOf (#fixtures prog));
      map (evalPackage Mach.globalScope) (#packages prog);
      evalBlock Mach.globalScope (#block prog))
 

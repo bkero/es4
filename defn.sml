@@ -228,8 +228,9 @@ val _ = trace ["packageIdent ",packageIdentFromPath packageName ""]
           | Ast.Internal _ => Ast.Internal ident
           | _ => ns
         end
-      | Ast.LexicalRef {ident = Ast.Identifier {ident,...} } => 
+      | Ast.LexicalRef {ident = Ast.Identifier {ident,...}, pos } => 
         let 
+            val _ = LogErr.setPos pos
             val mname = {nss = (#openNamespaces (hd env)), id = ident}
         in
             case resolveMultinameToFixture env mname of 
@@ -1359,13 +1360,13 @@ and resolveObjectPath (env:ENV) (path:Ast.IDENT list) (expr:Ast.EXPR option)
     in case (expr, path) of
         (NONE, ident::identList) => 
             let
-                val base = Ast.LexicalRef {ident=Ast.Identifier {ident=ident,openNamespaces=[]}}
+                val base = Ast.LexicalRef {ident=Ast.Identifier {ident=ident,openNamespaces=[]},pos=NONE}
             in
                 resolveObjectPath env identList (SOME base)
             end
       | (SOME expr, ident::identList) =>
             let
-                val base = Ast.ObjectRef {base=expr, ident=Ast.Identifier {ident=ident,openNamespaces=[]}}
+                val base = Ast.ObjectRef {base=expr, ident=Ast.Identifier {ident=ident,openNamespaces=[]},pos=NONE}
             in
                 resolveObjectPath env identList (SOME base)
             end
@@ -1501,29 +1502,36 @@ and defExpr (env:ENV)
             Ast.NewExpr { obj = sub obj,
                           actuals = map sub actuals }
 
-          | Ast.ObjectRef { base, ident } =>
-            Ast.ObjectRef { base = sub base,
-                            ident = defIdentExpr env ident }
+          | Ast.ObjectRef { base, ident, pos } =>
+            (LogErr.setPos pos;
+             Ast.ObjectRef { base = sub base,
+                             ident = defIdentExpr env ident,
+                             pos = pos })
 
-          | Ast.LexicalRef { ident } => 
+          | Ast.LexicalRef { ident, pos } => 
             let
-            in case ident of
-                Ast.UnresolvedPath (p,i) =>
+                val _ = LogErr.setPos pos
+            in 
+                case ident of
+                    Ast.UnresolvedPath (p,i) =>
                     let
                         val base = resolvePath env p
                     in case (base,i) of
-                        (Ast.LiteralExpr _,Ast.Identifier {ident=id,...}) => 
-                        Ast.LexicalRef {ident=Ast.QualifiedIdentifier {qual=(defExpr env base),
-                                                                       ident=id}}
-                      | (Ast.LiteralExpr _,_) => 
-                        LogErr.defnError ["invalid package qualification"]
-
-                      | (_,_) => 
-                        Ast.ObjectRef { base=(defExpr env base), 
-                                        ident=(defIdentExpr env i) }
+                           (Ast.LiteralExpr _,Ast.Identifier {ident=id,...}) => 
+                           Ast.LexicalRef {ident=Ast.QualifiedIdentifier {qual=(defExpr env base),
+                                                                          ident=id},
+                                           pos=pos}
+                         | (Ast.LiteralExpr _,_) => 
+                           LogErr.defnError ["invalid package qualification"]
+                           
+                         | (_,_) => 
+                           Ast.ObjectRef { base=(defExpr env base), 
+                                           ident=(defIdentExpr env i),
+                                           pos=pos}
                     end
-              | _ =>
-                    Ast.LexicalRef { ident = defIdentExpr env ident }
+                  | _ =>
+                    Ast.LexicalRef { ident = defIdentExpr env ident,
+                                     pos = pos}
             end
 
           | Ast.SetExpr (a, le, re) => 
@@ -1972,8 +1980,8 @@ and defNamespace (env:ENV)
                             NONE => Ast.UserNamespace ident 
                           | SOME (Ast.LiteralExpr (Ast.LiteralString s)) => 
                             Ast.UserNamespace s
-                          | SOME (Ast.LexicalRef {ident}) => 
-                            resolveExprToNamespace env (Ast.LexicalRef {ident=ident})
+                          | SOME (Ast.LexicalRef lref) => 
+                            resolveExprToNamespace env (Ast.LexicalRef lref)
                           | _ => LogErr.evalError ["illegal form of namespace initializer"]
             val fixtureName = Ast.PropName { ns = qualNs, id = ident } 
             val newNd = { ident = ident,
@@ -2135,26 +2143,28 @@ and defDefns (env:ENV)
 and defBlock (env:ENV) 
              (b:Ast.BLOCK) 
     : (Ast.BLOCK * Ast.FIXTURES) =
-    case b of
-        Ast.Block { pragmas, defns, body, pos, ... } => 
-        let 
-            val env : ENV = defPragmas env pragmas
-            val (unhoisted_defn_fxtrs,hoisted_defn_fxtrs,inits) = defDefns env [] [] [] defns
-            val env = updateEnvironment env (unhoisted_defn_fxtrs@hoisted_defn_fxtrs) (* so stmts can see them *)
-            val (body,hoisted_body_fxtrs) = defStmts env body
-            val hoisted = hoisted_defn_fxtrs@hoisted_body_fxtrs
-        in
-            (Ast.Block { pragmas = pragmas,
-                         defns = [],  (* clear definitions, we are done with them *)
-                         body = body,
-                         head = SOME (unhoisted_defn_fxtrs,inits),
-                         pos = pos},
-             hoisted)
-        end
+    let 
+        val Ast.Block { pragmas, defns, body, pos, ... } = b
+        val _ = LogErr.setPos pos
+        val env : ENV = defPragmas env pragmas
+        val (unhoisted_defn_fxtrs,hoisted_defn_fxtrs,inits) = defDefns env [] [] [] defns
+        val env = updateEnvironment env (unhoisted_defn_fxtrs@hoisted_defn_fxtrs) (* so stmts can see them *)
+        val (body,hoisted_body_fxtrs) = defStmts env body
+        val hoisted = hoisted_defn_fxtrs@hoisted_body_fxtrs
+    in
+        (Ast.Block { pragmas = pragmas,
+                     defns = [],  (* clear definitions, we are done with them *)
+                     body = body,
+                     head = SOME (unhoisted_defn_fxtrs,inits),
+                     pos = pos},
+         hoisted)
+    end
 
 and defRegionalBlock (env:ENV) (blk:Ast.BLOCK)
     : Ast.BLOCK =
         let
+            val Ast.Block {pos, ...} = blk
+            val _ = LogErr.setPos pos
             val (Ast.Block {defns,body,head=head,pragmas,pos},hoisted) = defBlock env blk
             val (fixtures,inits) = valOf head
         in
@@ -2218,6 +2228,7 @@ and topEnv _ = [ { fixtures = !topFixtures,
 and defProgram (prog:Ast.PROGRAM) 
     : Ast.PROGRAM = 
     let 
+        val _ = LogErr.setPos NONE
         val e = topEnv ()
         val (packages, hoisted_pkg) = ListPair.unzip (map (defPackage e) (#packages prog))
         val (block, hoisted_gbl) = defBlock e (#block prog)
