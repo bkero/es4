@@ -12,5 +12,5 @@ var mx
 }
 */
 
-var x : function (int,string=) = function (x:int,y:string="foo") { intrinsic::print(x,y) }
-x(10,'hi')
+for ( var x=f(y), m = 0; m < 9; m++ ) ;
+

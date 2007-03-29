@@ -2274,7 +2274,7 @@ and evalForStmt (scope:Mach.SCOPE)
                         accum
                 end
         in
-            evalStmt forScope init;
+            evalStmts forScope init;
             case 
                 loop NONE handle BreakException exnLabel => 
                               if labelEq labels exnLabel  

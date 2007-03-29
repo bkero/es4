@@ -871,7 +871,7 @@ and verifyStmt (ctxt as {this,env,lbls:(Ast.IDENT list),retTy}:CONTEXT) (stmt:ST
 	    end
 *)
     in
-  	verifyStmt ctxt' init;
+  	verifyStmts ctxt' init;
 	checkCompatible (verifyExpr ctxt' cond) boolType;
 	verifyExpr ctxt' update;
 	verifyStmt (withLbls ctxt' (labels@lbls)) body

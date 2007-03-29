@@ -599,18 +599,31 @@ and qualifiedIdentifier ts =
     end
 
 (*
-    SimpleTypeIdentifier    
-        Path  .  Identifier
-        NonAttributeQualifiedIdentifier
-
-    Path
-        Identifier
-        Identifier  . Path
-        
+    TypeIdentifier    
+        SimpleTypeIdentifier
+        SimpleTypeIdentifier  .<  TypeExpressionList  >
 *)
 
-and simpleTypeIdentifier ts =
-    let val _ = trace([">> simpleTypeIdentifier with next=",tokenname(hd(ts))]) 
+and typeIdentifier ts =
+    let val _ = trace([">> typeIdentifier with next=",tokenname(hd(ts))]) 
+        val (ts1,nd1) = nonAttributeQualifiedIdentifier ts
+    in case ts1 of
+        (LeftDotAngle, _) :: _ => 
+            let
+                val (ts2,nd2) = typeExpressionList (tl ts1)
+            in case ts2 of
+                (GreaterThan, _) :: _ =>
+                    (trace(["<< typeIdentifier with next=",tokenname(hd(tl ts2))]); 
+                    (tl ts2,Ast.TypeIdentifier {ident=nd1,typeArgs=nd2}))
+              | _ => error ["unknown final token of parametric type expression"]
+            end
+      | _ =>
+            (trace(["<< typeIdentifier with next=",tokenname(hd(ts1))]); 
+            (ts1, nd1))
+    end
+
+and primaryIdentifier ts =
+    let val _ = trace([">> primaryIdentifier with next=",tokenname(hd(ts))]) 
     in case ts of
         (Identifier _, _) :: (Dot, _) :: _ => 
             let 
@@ -618,13 +631,13 @@ and simpleTypeIdentifier ts =
             in case ts1 of
                 (Dot, _) :: _ =>
                     let
-                       val (ts2,nd2) = nonAttributeQualifiedIdentifier (tl ts1)
+                       val (ts2,nd2) = typeIdentifier (tl ts1)
                     in
                        (ts2,Ast.UnresolvedPath (nd1,nd2)) 
                     end
-              | _ => LogErr.internalError ["simpleTypeIdentifier"]
+              | _ => LogErr.internalError ["primaryIdentifier"]
             end
-      | _ => nonAttributeQualifiedIdentifier(ts)
+      | _ => typeIdentifier(ts)
     end
 
 and path (ts) : (TOKEN * Ast.POS) list * Ast.IDENT list =
@@ -642,30 +655,6 @@ and path (ts) : (TOKEN * Ast.POS) list * Ast.IDENT list =
            in
                (ts1,nd1::[])
            end
-    end
-
-(*
-    TypeIdentifier    
-        SimpleTypeIdentifier
-        SimpleTypeIdentifier  .<  TypeExpressionList  >
-*)
-
-and typeIdentifier ts =
-    let val _ = trace([">> typeIdentifier with next=",tokenname(hd(ts))]) 
-        val (ts1,nd1) = simpleTypeIdentifier ts
-    in case ts1 of
-        (LeftDotAngle, _) :: _ => 
-            let
-                val (ts2,nd2) = typeExpressionList (tl ts1)
-            in case ts2 of
-                (GreaterThan, _) :: _ =>
-                    (trace(["<< typeIdentifier with next=",tokenname(hd(tl ts2))]); 
-                    (tl ts2,Ast.TypeIdentifier {ident=nd1,typeArgs=nd2}))
-              | _ => error ["unknown final token of parametric type expression"]
-            end
-      | _ =>
-            (trace(["<< typeIdentifier with next=",tokenname(hd(ts1))]); 
-            (ts1, nd1))
     end
 
 (*
@@ -1612,7 +1601,7 @@ and primaryExpression (ts,a,b) =
             end
       | _ => 
             let
-                val (ts1,nd1) = typeIdentifier ts
+                val (ts1,nd1) = primaryIdentifier ts
             in
                 (ts1,Ast.LexicalRef {ident=nd1, pos=posOf ts})
             end
@@ -1924,7 +1913,7 @@ and propertyOperator (ts, nd) =
                         ((true,((Intrinsic | Private | Public | Protected | Internal),_) ::_) |
                          (false,_)) => 
                             let
-                                val (ts1,nd1) = typeIdentifier (tl ts)  (* qualifiedIdentifier(tl ts) *)
+                                val (ts1,nd1) = typeIdentifier (tl ts)
                             in
                                 (ts1,Ast.ObjectRef {base=nd,ident=nd1,pos=posOf ts})
                             end
@@ -4245,7 +4234,7 @@ and forStatement (ts,w) : ((TOKEN * Ast.POS) list * Ast.STMT) =
                         (RightParen, _) :: _ =>
                             let
                                 val (ts4,nd4) = substatement (tl ts3,w)
-                            in 
+                            in
                                 (ts4,Ast.ForStmt{ 
                                             defn=defn,
                                             init=init,
@@ -4265,7 +4254,7 @@ and forStatement (ts,w) : ((TOKEN * Ast.POS) list * Ast.STMT) =
                                           error ["unknown token in forStatement"])
                                     else if (len = 0) (* convert inits to pattern *)
                                         then case init of 
-                                            Ast.ExprStmt e => 
+                                            Ast.ExprStmt e::[] => 
                                                 desugarPattern (posOf ts) (patternFromListExpr e) (Ast.SpecialType Ast.Any) (SOME (Ast.GetTemp 0)) 0
                                           | _ => LogErr.internalError [""]
                                         else (#bindings (valOf defn))
@@ -4324,31 +4313,31 @@ and forStatement (ts,w) : ((TOKEN * Ast.POS) list * Ast.STMT) =
 *)
 
 and forInitialiser (ts) 
-    : ((TOKEN * Ast.POS) list * Ast.VAR_DEFN option * Ast.STMT) =
+    : ((TOKEN * Ast.POS) list * Ast.VAR_DEFN option * Ast.STMT list) =
     let val _ = trace([">> forInitialiser with next=", tokenname(hd ts)])
     in case ts of
         ((Var | Let | Const), _) :: _ =>
             let
                 val (ts1,{defns,body,...}) = variableDefinition (ts,NONE,
                                                     false,false,NOIN,LOCAL)
-            in case (defns,body) of
-                (Ast.VariableDefn vd :: [],stmt::[]) =>
+            in case (defns) of
+                (Ast.VariableDefn vd :: []) =>
                     (trace(["<< forInitialiser with next=", tokenname(hd ts1)]);
-                    (ts1,SOME vd,stmt))
+                    (ts1,SOME vd,body))
               | _ => error ["unknown token in forInitialiser"]
             end
       | (SemiColon, _) :: _ =>
             let
             in
                 trace(["<< forInitialiser with next=", tokenname(hd ts)]);
-                (ts,NONE,Ast.ExprStmt (Ast.ListExpr []))
+                (ts,NONE,[Ast.ExprStmt (Ast.ListExpr [])])
             end
       | _ =>
             let
                 val (ts1,nd1) = listExpression (ts,NOIN)
             in
                 trace ["<< forInitialiser with next=", tokenname(hd ts1)];
-                (ts1,NONE,Ast.ExprStmt nd1)
+                (ts1,NONE,[Ast.ExprStmt nd1])
             end
     end
 
@@ -5288,22 +5277,11 @@ and variableBindingList (ts,a,b) : ((TOKEN * Ast.POS) list * Ast.BINDINGS) =
                     end
               | _ => (ts,([],[]))
             end
-    in case b of
-        NOIN =>
-            let
-                val (ts1,(d1,s1)) = variableBinding(ts,a,b)
-            in
-                trace(["<< variableBindingList with next=", tokenname(hd ts1)]);
-                (ts1,(d1,s1))
-            end
-      | _ => 
-            let
-                val (ts1,(d1,s1)) = variableBinding(ts,a,b)
-                val (ts2,(d2,s2)) = variableBindingList'(ts1,a,b)
-            in
-                trace(["<< variableBindingList with next=", tokenname(hd ts2)]);
-                (ts2,(d1@d2,s1@s2))
-            end
+        val (ts1,(d1,s1)) = variableBinding(ts,a,b)
+        val (ts2,(d2,s2)) = variableBindingList'(ts1,a,b)
+    in
+        trace(["<< variableBindingList with next=", tokenname(hd ts2)]);
+        (ts2,(d1@d2,s1@s2))
     end
 
 (*
@@ -6227,7 +6205,7 @@ and namespaceInitialisation (ts) : ((TOKEN * Ast.POS) list * Ast.EXPR option) =
             end
       | (Assign, _) :: _ =>
             let
-                val (ts1,nd1) = simpleTypeIdentifier (tl ts)
+                val (ts1,nd1) = primaryIdentifier (tl ts)
             in
                 trace(["<< namespaceInitialisation simpleTypeIdentifer with next=", tokenname(hd ts1)]);
                 (ts1,SOME (Ast.LexicalRef {ident=nd1, pos=posOf ts}))
@@ -6419,7 +6397,7 @@ and pragmaItem ts =
             end
       | (Default, _) :: (Namespace, _) :: _ => 
             let
-                val (ts1,nd1) = simpleTypeIdentifier (tl (tl ts))
+                val (ts1,nd1) = primaryIdentifier (tl (tl ts))
             in
                 (ts1, Ast.UseDefaultNamespace (Ast.LexicalRef {ident=nd1, pos=posOf ts}))
             end
@@ -6431,7 +6409,7 @@ and pragmaItem ts =
             end
       | (Namespace, _) :: _ => 
             let
-                val (ts1,nd1) = simpleTypeIdentifier (tl ts)
+                val (ts1,nd1) = primaryIdentifier (tl ts)
             in
                 (ts1, Ast.UseNamespace (Ast.LexicalRef { ident = nd1, pos = posOf ts}))
             end
