@@ -635,12 +635,19 @@ and inheritFixtures (base:Ast.FIXTURES)
                                         ((not (isVoid rtb)) andalso (not (isVoid rtd)))) 
                                 (* FIXME: check compatibility of return types? *)
                             end
+                        
                       | _ => false
                 val _ = trace ["isCompatible = ",Bool.toString isCompatible]
             
             in case (fb,fd) of
                 (Ast.MethodFixture {final,...}, Ast.MethodFixture {override,...}) => 
                     (not final) andalso override andalso isCompatible
+
+              (* FIXME: what are the rules for getter/setter overriding? *)
+              | (Ast.VirtualValFixture vb,
+                 Ast.VirtualValFixture vd) => 
+                (#ty vb) = (#ty vd)
+                
               | _ => false
             end
 

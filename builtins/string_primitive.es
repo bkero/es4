@@ -79,7 +79,7 @@ package
         prototype function valueOf(this : string)
             this;
 
-        intrinsic function valueOf() : string
+        override intrinsic function valueOf() : string
             private::valueOf();
 
         private final function valueOf() : string
@@ -94,7 +94,7 @@ package
         public static function charAt(self, pos)
             ToString(self).charAt(pos);
             
-        intrinsic function charAt(pos: double = 0) : string
+        override intrinsic function charAt(pos: double = 0) : string
             let (ipos = ToInteger(pos))
                 (ipos < 0 || ipos >= length) ? "" : magic::fromCharCode(magic::charCodeAt(this, ToUint(ipos)));
 
@@ -107,7 +107,7 @@ package
         public static function charCodeAt(self, pos)
             ToString(selft).charCodeAt(pos);
 
-        intrinsic function charCodeAt(pos: double = 0) : uint
+        override intrinsic function charCodeAt(pos: double = 0) : uint
             let (ipos: double = ToInteger(pos))
                 (ipos < 0 || ipos >= length) ? NaN : magic::charCodeAt(this, ToUint(ipos));
 
@@ -121,7 +121,7 @@ package
         public static function concat(self, ...args)
             ToString(self).concatHelper(args);
 
-        intrinsic function concat(...args) : string
+        override intrinsic function concat(...args) : string
             concatHelper(args);
 
         function concatHelper(strings : Array!) : string {
@@ -142,7 +142,7 @@ package
         public static function indexOf(self, searchString, position)
             ToString(self).indexOf(searchString, position);
 
-        intrinsic function indexOf(searchString: string, position: double = 0.0) : double {
+        override intrinsic function indexOf(searchString: string, position: double = 0.0) : double {
             position = ToInteger(position);
 
             let slen  : uint = length;
@@ -172,7 +172,7 @@ package
         public static function lastIndexOf(self, searchString, position)
             ToString(self).lastIndexOf(searchString, position);
 
-        intrinsic function lastIndexOf(searchString: string, position: double) : double {
+        override intrinsic function lastIndexOf(searchString: string, position: double) : double {
             position = isNaN(position) ? Infinity : ToInteger(x);
 
             let slen  : uint = length;
@@ -200,7 +200,7 @@ package
             ToString(self).localeCompare(that);
 
         /* INFORMATIVE - this is correct for a "simple" locale, eg English */
-        intrinsic function localeCompare(that : string) : double {
+        override intrinsic function localeCompare(that : string) : double {
             let la : uint = length;
             let lb : uint = that.length;
             let l  : uint = la < lb ? la : lb;
@@ -223,7 +223,7 @@ package
         public static function match(self, regexp)
             ToString(self).match(regexp);
 
-        intrinsic function match(r) : Array {
+        override intrinsic function match(r) : Array {
             let regexp : RegExp! = r instanceof RegExp ? r : new RegExp(r);
 
             if (!regexp.global)
@@ -255,7 +255,7 @@ package
         public static function replace(self, searchValue, replaceValue)
             ToString(self).replace(searchValue, replaceValue);
 
-        intrinsic function replace(s, r) : string {
+        override intrinsic function replace(s, r) : string {
 
             /* paragraph 4 */
             function substituteFunction(start: uint, end: uint, m: uint, cap: Array) : string {
@@ -365,7 +365,7 @@ package
         public static function search(self, regexp)
             ToString(self).search(regexp);
 
-        intrinsic function search(r) : double {
+        override intrinsic function search(r) : double {
             let regexp : RegExp = r instanceof RegExp ? r : new RegExp(r);
             let lim    : uint = length;
 
@@ -384,7 +384,7 @@ package
         public static function slice(self, start, end)
             ToString(self).slice(start, end);
 
-        intrinsic function slice(s, e) : Array {
+        override intrinsic function slice(s, e) : Array {
             let len   : double = length;
             let start : double = ToInteger(s);
             let end   : double = e === undefined ? len : ToInteger(e);
@@ -405,7 +405,7 @@ package
         public static function split(self, separator, limit)
             ToString(self).split(separator, limit);
 
-        intrinsic function split(separator, limit) : Array {
+        override intrinsic function split(separator, limit) : Array {
 
             type matcher = (string,RegExp!);
 
@@ -498,7 +498,7 @@ package
         public static function substring(self, start, end)
             ToString(self).substring(start, end)
 
-        intrinsic function substring(start: double, end: double) : string {
+        override intrinsic function substring(start: double, end: double) : string {
             let len : double = length;
 
             start = ToInteger(start);
@@ -529,7 +529,7 @@ package
         public static function toLowerCase(selft)
             ToString(self).toLowerCase();
 
-        intrinsic function toLowerCase() : string {
+        override intrinsic function toLowerCase() : string {
             let s   : string = "";
             let len : uint = length;
             for ( let i : uint = 0 ; i < len ; i++ )
@@ -547,7 +547,7 @@ package
             ToString(self).toLocaleLowerCase();
 
         /* INFORMATIVE - this is correct for a "simple" locale, eg English */
-        intrinsic function toLocaleLowerCase() : string
+        override intrinsic function toLocaleLowerCase() : string
             toLowerCase();
 
         /* E262-3 15.5.4.18: String.prototype.toUpperCase 
@@ -559,7 +559,7 @@ package
         public static function toUpperCase(self)
             ToString(self).toUpperCase();
 
-        intrinsic function toUpperCase() : string {
+        override intrinsic function toUpperCase() : string {
             let s   : string = "";
             let len : uint = this.length;
             for ( let i : uint = 0 ; i < len ; i++ )
@@ -577,21 +577,21 @@ package
             ToString(self).toLocaleUpperCase();
 
         /* INFORMATIVE - this is correct for a "simple" locale, eg English */
-        intrinsic function toLocaleUpperCase() : string
+        override intrinsic function toLocaleUpperCase() : string
             toUpperCase();
 
         /* E262-4 draft proposals:json_encoding_and_decoding */
         prototype function parseJSON() 
             this.parseJSON();
 
-        intrinsic function parseJSON(...args)
+        override intrinsic function parseJSON(...args)
             JSON.parse.apply(null, args.unshift(this));
 
         /* E262-4 draft proposals:string.prototype.trim */
         prototype function trim()
             this.trim();
 
-        intrinsic function trim() : string {
+        override intrinsic function trim() : string {
             let len  : uint = length;
             let i, j : uint;
 
