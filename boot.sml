@@ -37,7 +37,7 @@ fun printFixture ((n:Ast.FIXTURE_NAME), (f:Ast.FIXTURE)) =
     in
 	case n of
 	    Ast.TempName n => trace ["temp #", Int.toString n, " -> ", fs]
-          | Ast.PropName n => trace [LogErr.name n, " -> ", fs]
+      | Ast.PropName n => trace [LogErr.name n, " -> ", fs]
     end
 
 fun describeGlobal _ = 
@@ -77,6 +77,7 @@ fun boot _ =
      load "builtins/string_primitive.es";
 
      load "builtins/ByteArray.es";
+     load "builtins/Date.es";
 
 (*
      load "builtins/Array.es";
@@ -86,7 +87,6 @@ fun boot _ =
      load "builtins/Unicode.es";
 
      load "builtins/JSON.es";
-     load "builtins/Date.es";
 
      load "builtins/RegExpCompiler.es";
      load "builtins/RegExpEvaluator.es";
