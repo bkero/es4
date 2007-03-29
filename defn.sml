@@ -1214,6 +1214,8 @@ and defIdentExpr (env:ENV)
                                       expr = defExpr env expr }
           | Ast.ExpressionIdentifier e => 
             Ast.ExpressionIdentifier (defExpr env e)
+          | Ast.UnresolvedPath (p,i) =>
+            LogErr.unimplError ["UnresolvedPath ",(hd p)]
     end
 
 and defContextualNumberLiteral (env:ENV) 
@@ -1518,14 +1520,14 @@ and defExpr (env:ENV)
                         val base = resolvePath env p
                     in case (base,i) of
                            (Ast.LiteralExpr _,Ast.Identifier {ident=id,...}) => 
-                           Ast.LexicalRef {ident=Ast.QualifiedIdentifier {qual=(defExpr env base),
+                               Ast.LexicalRef {ident=Ast.QualifiedIdentifier {qual=(defExpr env base),
                                                                           ident=id},
                                            pos=pos}
                          | (Ast.LiteralExpr _,_) => 
-                           LogErr.defnError ["invalid package qualification"]
+                               LogErr.defnError ["invalid package qualification"]
                            
                          | (_,_) => 
-                           Ast.ObjectRef { base=(defExpr env base), 
+                               Ast.ObjectRef { base=(defExpr env base), 
                                            ident=(defIdentExpr env i),
                                            pos=pos}
                     end
@@ -1657,7 +1659,7 @@ and defStmt (env:ENV)
                       | NONE => ([],[],[])
                 val (uf,hf,_) = defVarDefnOpt defn
                 val env' = updateEnvironment env (uf@hf)
-                val (newInit,_) = defStmt env' [] init
+                val (newInit,_) = defStmts env' init
                 val newCond = defExpr env' cond
                 val newUpdate = defExpr env' update
                 val (newBody, hoisted) = defStmt env' [] body

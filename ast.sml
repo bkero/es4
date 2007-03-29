@@ -469,7 +469,7 @@ withtype
      and FOR_STMT =
            { fixtures: FIXTURES option,
              defn: VAR_DEFN option,    
-             init: STMT,                  
+             init: STMT list,                  
              cond: EXPR,
              update: EXPR,
              labels: IDENT list,
