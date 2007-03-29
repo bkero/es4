@@ -257,11 +257,8 @@ datatype PRAGMA =
              body: STMT }
        | TryStmt of 
            { block: BLOCK,
-             catches: 
-               { bindings:BINDINGS,
-                 ty: TYPE_EXPR, 
-                 fixtures: FIXTURES option,
-                 block:BLOCK } list,
+             catches: CATCH_CLAUSE
+                list,
              finally: BLOCK option }
 
        | SwitchStmt of         (* FIXME: needs HEAD, DEFNS for defns hoisted from body *)
@@ -501,6 +498,12 @@ withtype
              bindings : BINDINGS,
              inits: INITS option, 
              body: BLOCK }
+
+     and CATCH_CLAUSE = 
+         { bindings:BINDINGS,
+           ty: TYPE_EXPR, 
+           fixtures: FIXTURES option,
+           block:BLOCK }
 
      and FUNC_NAME =
            { kind : FUNC_NAME_KIND, 

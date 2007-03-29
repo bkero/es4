@@ -1,0 +1,243 @@
+%% [class.js] eval
+@tests/lth_tests/class.js
+
+%% [const.js] eval
+@tests/lth_tests/const.js
+
+%% [const_hoist.js] eval
+@tests/lth_tests/const_hoist.js
+
+%% [const_let.js] eval
+@tests/lth_tests/const_let.js
+
+%% [constructor.js] eval
+@tests/lth_tests/constructor.js
+
+%% [destructure.js] eval
+@tests/lth_tests/destructure.js
+
+%% [destructure_array.js] eval
+@tests/lth_tests/destructure_array.js
+
+%% [destructure_const.js] eval
+@tests/lth_tests/destructure_const.js
+
+%% [destructure_for_each_let.js] eval
+@tests/lth_tests/destructure_for_each_let.js
+
+%% [destructure_for_in_let.js] eval
+@tests/lth_tests/destructure_for_in_let.js
+
+%% [destructure_let.js] eval
+@tests/lth_tests/destructure_let.js
+
+%% [destructure_mixed.js] eval
+@tests/lth_tests/destructure_mixed.js
+
+%% [destructure_object.js] eval
+@tests/lth_tests/destructure_object.js
+
+%% [destructure_var.js] eval
+@tests/lth_tests/destructure_var.js
+
+%% [do_while.js] eval
+@tests/lth_tests/do_while.js
+
+%% [do_while_break.js] eval
+@tests/lth_tests/do_while_break.js
+
+%% [do_while_continue.js] eval
+@tests/lth_tests/do_while_continue.js
+
+%% [dynamic_class.js] eval
+@tests/lth_tests/dynamic_class.js
+
+%% [fib10.js] eval
+@tests/lth_tests/fib10.js
+
+%% [for.js] eval
+@tests/lth_tests/for.js
+
+%% [for_each.js] eval
+@tests/lth_tests/for_each.js
+
+%% [for_each_let.js] eval
+@tests/lth_tests/for_each_let.js
+
+%% [for_let.js] eval
+@tests/lth_tests/for_let.js
+
+%% [for_var.js] eval
+@tests/lth_tests/for_var.js
+
+%% [function_let.js] eval
+@tests/lth_tests/function_let.js
+
+%% [generic.js] eval
+@tests/lth_tests/generic.js
+
+%% [import.js] eval
+@tests/lth_tests/import.js
+
+%% [import_assign.js] eval
+@tests/lth_tests/import_assign.js
+
+%% [import_name.js] eval
+@tests/lth_tests/import_name.js
+
+%% [import_rename.js] eval
+@tests/lth_tests/import_rename.js
+
+%% [import_twice.js] eval
+@tests/lth_tests/import_twice.js
+
+%% [include.js] eval
+@tests/lth_tests/include.js
+
+%% [include_sub.js] eval
+@tests/lth_tests/include_sub.js
+
+%% [inheritance.js] eval
+@tests/lth_tests/inheritance.js
+
+%% [interface.js] eval
+@tests/lth_tests/interface.js
+
+%% [label.js] eval
+@tests/lth_tests/label.js
+
+%% [label_continue.js] eval
+@tests/lth_tests/label_continue.js
+
+%% [letbind.js] eval
+@tests/lth_tests/letbind.js
+
+%% [letexpr.js] eval
+@tests/lth_tests/letexpr.js
+
+%% [letfunction.js] eval
+@tests/lth_tests/letfunction.js
+
+%% [letglobal.js] eval
+@tests/lth_tests/letglobal.js
+
+%% [letglobal_function.js] eval
+@tests/lth_tests/letglobal_function.js
+
+%% [letstmt.js] eval
+@tests/lth_tests/letstmt.js
+
+%% [letstmt_destructure.js] eval
+@tests/lth_tests/letstmt_destructure.js
+
+%% [method.js] eval
+@tests/lth_tests/method.js
+
+%% [namespace.js] eval
+@tests/lth_tests/namespace.js
+
+%% [namespace_definition.js] eval
+@tests/lth_tests/namespace_definition.js
+
+%% [namespace_use.js] eval
+@tests/lth_tests/namespace_use.js
+
+%% [no_method_inheritance.js] eval
+@tests/lth_tests/no_method_inheritance.js
+
+%% [no_property_inheritance.js] eval
+@tests/lth_tests/no_property_inheritance.js
+
+%% [override.js] eval
+@tests/lth_tests/override.js
+
+%% [package.js] eval
+@tests/lth_tests/package.js
+
+%% [package_anon.js] eval
+@tests/lth_tests/package_anon.js
+
+%% [package_assign.js] eval
+@tests/lth_tests/package_assign.js
+
+%% [prototype_property.js] eval
+@tests/lth_tests/prototype_property.js
+
+%% [prototype_soup.js] eval
+@tests/lth_tests/prototype_soup.js
+
+%% [retsum.js] eval
+@tests/lth_tests/retsum.js
+
+%% [static_class.js] eval
+@tests/lth_tests/static_class.js
+
+%% [static_inheritance.js] eval
+@tests/lth_tests/static_inheritance.js
+
+%% [static_invisible.js] eval
+@tests/lth_tests/static_invisible.js
+
+%% [string_sum.js] eval
+@tests/lth_tests/string_sum.js
+
+%% [sum.js] eval
+@tests/lth_tests/sum.js
+
+%% [super.js] eval
+@tests/lth_tests/super.js
+
+%% [super_added.js] eval
+@tests/lth_tests/super_added.js
+
+%% [super_bypass.js] eval
+@tests/lth_tests/super_bypass.js
+
+%% [super_call.js] eval
+@tests/lth_tests/super_call.js
+
+%% [super_implicit.js] eval
+@tests/lth_tests/super_implicit.js
+
+%% [switch.js] eval
+@tests/lth_tests/switch.js
+
+%% [switch_default.js] eval
+@tests/lth_tests/switch_default.js
+
+%% [switch_none.js] eval
+@tests/lth_tests/switch_none.js
+
+%% [this.js] eval
+@tests/lth_tests/this.js
+
+%% [thisglobal.js] eval
+@tests/lth_tests/thisglobal.js
+
+%% [try_catch.js] eval
+@tests/lth_tests/try_catch.js
+
+%% [typed.js] eval
+@tests/lth_tests/typed.js
+
+%% [typed_badly.js] eval
+@tests/lth_tests/typed_badly.js
+
+%% [typed_nonnullable.js] eval
+@tests/lth_tests/typed_nonnullable.js
+
+%% [typed_nullable.js] eval
+@tests/lth_tests/typed_nullable.js
+
+%% [while.js] eval
+@tests/lth_tests/while.js
+
+%% [while_break.js] eval
+@tests/lth_tests/while_break.js
+
+%% [while_continue.js] eval
+@tests/lth_tests/while_continue.js
+
+%% [with.js] eval
+@tests/lth_tests/with.js
+
