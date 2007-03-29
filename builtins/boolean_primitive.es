@@ -9,6 +9,8 @@
 
 package
 {
+    use default namespace public;
+
     /* 
      * The boolean class is final and non-dynamic because most
      * implementations will in fact represent boolean objects not
@@ -18,8 +20,6 @@ package
      * 
      * The literals true and false denote instances of this class.
      */
-    namespace meta;
-
     final class boolean! extends Boolean
     {       
         /* E262-3 15.6.1: The boolean Constructor Called as a Function. */

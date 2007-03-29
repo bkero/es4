@@ -10,7 +10,7 @@
  */
 package
 {
-    namespace meta;
+    use default namespace public;
 
     dynamic class Object 
     {       

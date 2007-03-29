@@ -11,15 +11,14 @@
 
 package
 {
+    use default namespace public;
     use namespace intrinsic;
     use strict;
 
-    namespace meta;
-
     final class int! extends Number
     {       
-        public static const MAX_VALUE : int = 0x7FFFFFFFi;
-        public static const MIN_VALUE : int = -0x80000000i;
+        static const MAX_VALUE : int = 0x7FFFFFFFi;
+        static const MIN_VALUE : int = -0x80000000i;
 
         /* E262-4 draft */
         meta static function convert(x : Numeric)
@@ -30,7 +29,7 @@ package
             value === undefined ? 0i : ToInt(value);
 
         /* E262-4 draft: The int constructor */
-        public function int(value)
+        function int(value)
             magic::copyValue(ToInt(value), this);
 
         /* E262-4 draft: int.prototype.toString */

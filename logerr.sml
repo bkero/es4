@@ -21,6 +21,7 @@ fun name (n:Ast.NAME) =
       | Ast.Public i => "[namespace public " ^ i ^ "]::" ^ (#id n) ^ " "
       | Ast.Internal i => "[namespace internal " ^ i ^ "]::" ^ (#id n) ^ " "
       | Ast.UserNamespace i => "[namespace user " ^ i ^ "]::" ^ (#id n) ^ " "
+      | Ast.AnonUserNamespace i => "[namespace user anon #" ^ (Int.toString i) ^ "]::" ^ (#id n) ^ " "
 
 fun fname (n:Ast.FIXTURE_NAME) = 
     case n of 

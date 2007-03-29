@@ -65,7 +65,8 @@ val defaultNumericMode : Ast.NUMERIC_MODE =
 val (topFixtures:Ast.FIXTURES ref) = ref []
 
 fun resetTopFixtures _ = 
-    topFixtures := []
+    topFixtures := [ (Ast.PropName (Name.public "meta"), 
+                      Ast.NamespaceFixture Name.metaNS) ]
 
 fun hasFixture (b:Ast.FIXTURES) 
                (n:Ast.FIXTURE_NAME) 

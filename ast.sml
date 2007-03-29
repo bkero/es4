@@ -18,7 +18,8 @@ datatype NAMESPACE =
        | Protected of IDENT
        | Public of IDENT
        | Internal of IDENT
-       | UserNamespace of IDENT
+       | UserNamespace of USTRING
+       | AnonUserNamespace of int
        | Imported of (IDENT * IDENT)
 
 type NAME = { ns: NAMESPACE, id: IDENT }
