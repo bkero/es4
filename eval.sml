@@ -16,6 +16,8 @@ exception ReturnException of Mach.VAL
 
 exception InternalError
 
+val thisName = { id = "this", ns = Ast.Internal "" }
+
 fun extendScope (p:Mach.SCOPE) 
                 (ob:Mach.OBJ)
                 (isVarObject:bool) 
@@ -1517,7 +1519,6 @@ and invokeFuncClosure (this:Mach.OBJ)
                                             
                 (* FIXME: infer a fixture for "this" so that it's properly typed, dontDelete, etc.
                  * Also this will mean changing to defVar rather than setVar, for 'this'. *)
-                val thisName = { id = "this", ns = Ast.Internal "" }
                 val thisVal = Mach.Object this
                 fun initThis v = setValue varObj thisName thisVal
                                  
@@ -2319,6 +2320,7 @@ and evalPackage (scope:Mach.SCOPE)
 and evalProgram (prog:Ast.PROGRAM) 
     : Mach.VAL = 
     (LogErr.setPos NONE;
+     setValue Mach.globalObject thisName (Mach.Object Mach.globalObject);
      allocScopeFixtures Mach.globalScope (valOf (#fixtures prog));
      map (evalPackage Mach.globalScope) (#packages prog);
      evalBlock Mach.globalScope (#block prog))
