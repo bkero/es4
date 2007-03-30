@@ -92,10 +92,11 @@ fun boot _ =
           "builtins/ByteArray.es",
           "builtins/Date.es",
           
-          "builtins/JSON.es"
+          "builtins/JSON.es",
+          "builtins/Array.es"
+
          ];
 (*
-     "builtins/Array.es",
      "builtins/Math.es",
      "builtins/Unicode.es",
      "builtins/RegExpCompiler.es",
@@ -104,3 +105,4 @@ fun boot _ =
 *)
      describeGlobal ())
 end
+

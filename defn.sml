@@ -1406,6 +1406,7 @@ and resolvePackagePath (imports: Ast.IDENT list list) (path:Ast.IDENT list)
                 then resolvePackage pkg pth (ident^dot^pkgid)
                 else (NONE,path)
             end
+          | (_,[]) => error ["resolving package portion of empty path"];
 
     in case (imports,path) of
         ([],_) => (NONE,path)  (* no match *)
