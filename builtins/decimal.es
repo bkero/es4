@@ -11,18 +11,18 @@
 
 package
 {
+    use default namespace public;
     use namespace intrinsic;
-
-    namespace meta;
+    use strict;
 
     final class decimal!
     {       
 	// FIXME
-        public static const MAX_VALUE         = 1.7976931348623157e+308m;
-        public static const MIN_VALUE         = 5e-324m;
-        public static const NaN               = 0.0m / 0.0m;  // ???
-        public static const NEGATIVE_INFINITY = -1.0m / 0.0m; // ???
-        public static const POSITIVE_INFINITY = 1.0m / 0.0m;  // ???
+        static const MAX_VALUE         = 1.7976931348623157e+308m;
+        static const MIN_VALUE         = 5e-324m;
+        static const NaN               = 0.0m / 0.0m;  // ???
+        static const NEGATIVE_INFINITY = -1.0m / 0.0m; // ???
+        static const POSITIVE_INFINITY = 1.0m / 0.0m;  // ???
 
         /* E262-4 draft */
         meta static function convert(x : Numeric)
@@ -33,7 +33,7 @@ package
             value === undefined ? 0m : ToDecimal(value);
 
         /* E262-3 15.7.2.1: The decimal constructor */
-        public function decimal(value)
+        function decimal(value)
             magic::copyValue(ToDecimal(value), this);
 
         /* E262-3 15.7.4.2: decimal.prototype.toString */

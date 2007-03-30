@@ -65,7 +65,8 @@ val defaultNumericMode : Ast.NUMERIC_MODE =
 val (topFixtures:Ast.FIXTURES ref) = ref []
 
 fun resetTopFixtures _ = 
-    topFixtures := []
+    topFixtures := [ (Ast.PropName (Name.public "meta"), 
+                      Ast.NamespaceFixture Name.metaNS) ]
 
 fun hasFixture (b:Ast.FIXTURES) 
                (n:Ast.FIXTURE_NAME) 
@@ -1405,6 +1406,7 @@ and resolvePackagePath (imports: Ast.IDENT list list) (path:Ast.IDENT list)
                 then resolvePackage pkg pth (ident^dot^pkgid)
                 else (NONE,path)
             end
+          | (_,[]) => error ["resolving package portion of empty path"];
 
     in case (imports,path) of
         ([],_) => (NONE,path)  (* no match *)

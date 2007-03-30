@@ -339,66 +339,6 @@ fun hasProp (b:PROP_BINDINGS)
         search (!b)
     end
 
-
-(* Standard runtime objects and functions. *)
-
-val publicToStringName:Ast.NAME = { ns = (Ast.Public ""), id = "toString" }
-val publicValueOfName:Ast.NAME = { ns = (Ast.Public ""), id = "valueOf" }
-
-val publicPrototypeName:Ast.NAME = { ns = (Ast.Public ""), id = "prototype" }
-val internalConstructorName:Ast.NAME = { ns = (Ast.Internal ""), id = "constructor" }
-val internalObjectName:Ast.NAME = { ns = (Ast.Internal ""), id = "Object" }
-
-val internalErrorName:Ast.NAME = { ns = (Ast.Internal ""), id = "Error" }
-val internalTypeErrorName:Ast.NAME = { ns = (Ast.Internal ""), id = "TypeError" }
-                                            
-val intrinsicObjectName:Ast.NAME = { ns = Ast.Intrinsic, id = "Object" }
-val intrinsicArrayName:Ast.NAME = { ns = Ast.Intrinsic, id = "Array" }
-val intrinsicFunctionName:Ast.NAME = { ns = Ast.Intrinsic, id = "Function" }
-val intrinsicBooleanName:Ast.NAME = { ns = Ast.Intrinsic, id = "Boolean" }
-val intrinsicNumberName:Ast.NAME = { ns = Ast.Intrinsic, id = "Number" }
-val intrinsicDoubleName:Ast.NAME = { ns = Ast.Intrinsic, id = "double" }
-val intrinsicDecimalName:Ast.NAME = { ns = Ast.Intrinsic, id = "decimal" }
-val intrinsicIntName:Ast.NAME = { ns = Ast.Intrinsic, id = "int" }
-val intrinsicUIntName:Ast.NAME = { ns = Ast.Intrinsic, id = "uint" }
-val intrinsicStringName:Ast.NAME = { ns = Ast.Intrinsic, id = "String" }
-val intrinsicByteArrayName:Ast.NAME = { ns = Ast.Intrinsic, id = "ByteArray" }
-val intrinsicNamespaceName:Ast.NAME = { ns = Ast.Intrinsic, id = "Namespace" }
-val intrinsicClassName:Ast.NAME = { ns = Ast.Intrinsic, id = "Class" }
-val intrinsicInterfaceName:Ast.NAME = { ns = Ast.Intrinsic, id = "Interface" }
-val intrinsicTypeName:Ast.NAME = { ns = Ast.Intrinsic, id = "Type" }
-
-val intrinsicApplyName:Ast.NAME = { ns = Ast.Intrinsic, id = "apply" }
-val coreInvokeName:Ast.NAME = { ns = Ast.UserNamespace "core", id = "invoke" }
-val coreConstructName:Ast.NAME = { ns = Ast.UserNamespace "core", id = "construct" }
-
-val intrinsicObjectBaseTag:VAL_TAG = ClassTag (intrinsicObjectName)
-val intrinsicArrayBaseTag:VAL_TAG = ClassTag (intrinsicArrayName)
-val intrinsicFunctionBaseTag:VAL_TAG = ClassTag (intrinsicFunctionName)
-val intrinsicBooleanBaseTag:VAL_TAG = ClassTag (intrinsicBooleanName)
-val intrinsicNumberBaseTag:VAL_TAG = ClassTag (intrinsicNumberName)
-val intrinsicDoubleBaseTag:VAL_TAG = ClassTag (intrinsicDoubleName)
-val intrinsicDecimalBaseTag:VAL_TAG = ClassTag (intrinsicDecimalName)
-val intrinsicIntBaseTag:VAL_TAG = ClassTag (intrinsicIntName)
-val intrinsicUIntBaseTag:VAL_TAG = ClassTag (intrinsicUIntName)
-val intrinsicStringBaseTag:VAL_TAG = ClassTag (intrinsicStringName)
-val intrinsicByteArrayBaseTag:VAL_TAG = ClassTag (intrinsicByteArrayName)
-val intrinsicNamespaceBaseTag:VAL_TAG = ClassTag (intrinsicNamespaceName)
-val intrinsicClassBaseTag:VAL_TAG = ClassTag (intrinsicClassName)
-val intrinsicInterfaceBaseTag:VAL_TAG = ClassTag (intrinsicInterfaceName)
-val intrinsicTypeBaseTag:VAL_TAG = ClassTag (intrinsicTypeName)
-
-(* To reference something in the intrinsic namespace, you need a complicated expression. *)
-val intrinsicNsExpr = Ast.LiteralExpr (Ast.LiteralNamespace (Ast.Intrinsic))
-fun intrinsicName id = Ast.QualifiedIdentifier { qual = intrinsicNsExpr, ident = id }
-
-(* Define some global intrinsic nominal types. *)
-
-val typeType = Ast.TypeName (intrinsicName "Type")
-val namespaceType = Ast.TypeName (intrinsicName "Namespace")
-val classType = Ast.TypeName (intrinsicName "Class")
-
-
 val currIdent = ref (LargeInt.fromInt 0)
 fun nextIdent _ =
     (currIdent := (!currIdent) + (LargeInt.fromInt 1);
@@ -417,7 +357,7 @@ fun newObj (t:VAL_TAG)
 
 fun newSimpleObj (m:MAGIC option) 
     : OBJ = 
-    newObj intrinsicObjectBaseTag Null m
+    newObj (ClassTag Name.public_Object) Null m
 
 
 fun newObject (t:VAL_TAG) 
@@ -434,39 +374,35 @@ fun newSimpleObject (m:MAGIC option)
 
 fun newDouble (n:Real64.real) 
     : VAL = 
-    newObject intrinsicDoubleBaseTag Null (SOME (Double n))
+    newObject (ClassTag Name.public_double) Null (SOME (Double n))
 
 fun newDecimal (n:Decimal.DEC) 
     : VAL = 
-    newObject intrinsicDecimalBaseTag Null (SOME (Decimal n))
+    newObject (ClassTag Name.public_decimal) Null (SOME (Decimal n))
 
 fun newInt (n:Int32.int) 
     : VAL = 
-    newObject intrinsicIntBaseTag Null (SOME (Int n))
+    newObject (ClassTag Name.public_int) Null (SOME (Int n))
 
 fun newUInt (n:Word32.word) 
     : VAL = 
-    newObject intrinsicUIntBaseTag Null (SOME (UInt n))
+    newObject (ClassTag Name.public_uint) Null (SOME (UInt n))
 
 fun newString (s:Ast.USTRING) 
     : VAL = 
-    newObject intrinsicStringBaseTag Null (SOME (String s))
+    newObject (ClassTag Name.public_string) Null (SOME (String s))
 
 fun newByteArray (b:Word8Array.array) 
     : VAL = 
-    newObject intrinsicByteArrayBaseTag Null (SOME (ByteArray b))
+    newObject (ClassTag Name.public_ByteArray) Null (SOME (ByteArray b))
 
 fun newBoolean (b:bool) 
     : VAL = 
-    newObject intrinsicBooleanBaseTag Null (SOME (Bool b))
-
-fun newType (t:Ast.TYPE_EXPR) 
-    : VAL = 
-    newObject intrinsicTypeBaseTag Null (SOME (Type t))
+    newObject (ClassTag Name.public_boolean) Null (SOME (Bool b))
 
 fun newNamespace (n:Ast.NAMESPACE) 
     : VAL = 
-    newObject intrinsicNamespaceBaseTag Null (SOME (Namespace n))
+    newObject (ClassTag Name.public_Namespace) Null (SOME (Namespace n))
 
 fun newClass (e:SCOPE) 
              (cls:Ast.CLS) 
@@ -476,7 +412,7 @@ fun newClass (e:SCOPE)
                         (* FIXME: are all types bound? *)
                         allTypesBound = true,
                         env = e }
-        val obj = newObject intrinsicClassBaseTag Null (SOME (Class closure))
+        val obj = newObject (ClassTag Name.public_Class) Null (SOME (Class closure))
     in
         obj
     end
@@ -489,7 +425,7 @@ fun newIface (e:SCOPE)
                         (* FIXME: are all types bound? *)
                         allTypesBound = true,
                         env = e }
-        val obj = newObject intrinsicInterfaceBaseTag Null (SOME (Interface closure))
+        val obj = newObject (ClassTag Name.public_Interface) Null (SOME (Interface closure))
     in
         obj
     end
@@ -521,7 +457,7 @@ fun newFunc (e:SCOPE)
     end
     
 fun newNativeFunction (f:NATIVE_FUNCTION) = 
-    newObject intrinsicFunctionBaseTag 
+    newObject (ClassTag Name.public_Function)
               Null 
               (SOME (NativeFunction f))
     
@@ -536,14 +472,14 @@ val (emptyBlock:Ast.BLOCK) =
                 pos=NONE }
     
 val (globalObject:OBJ) = 
-    newObj intrinsicObjectBaseTag Null NONE
+    newSimpleObj NONE
     
 val (globalScope:SCOPE) = 
     Scope { object = globalObject,
             parent = NONE,
             temps = ref [],
             isVarObject = true }    
-    
+
 fun getTemp (temps:TEMPS)
             (n:int)
     : VAL =
@@ -583,9 +519,9 @@ fun defTemp (temps:TEMPS)
 fun nominalBaseOfTag (t:VAL_TAG) 
     : Ast.NAME = 
     case t of 
-        ObjectTag _ => intrinsicObjectName
-      | ArrayTag _ => intrinsicArrayName
-      | FunctionTag _ => intrinsicFunctionName
+        ObjectTag _ => Name.public_Object
+      | ArrayTag _ => Name.public_Array
+      | FunctionTag _ => Name.public_Function
       | ClassTag c => c
 
 fun getObjMagic (ob:OBJ) 

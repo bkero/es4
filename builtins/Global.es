@@ -1,4 +1,4 @@
-/* -*- indent-tabs-mode: nil -*- 
+/* -*- mode: java; indent-tabs-mode: nil -*- 
  *
  * ECMAScript 4 builtins - the "Global" object
  * ES-262-3 15.1
@@ -9,6 +9,8 @@
 
 package
 {
+    use default namespace public;
+
     // 15.1.1.1 NaN
     // 15.1.1.2 Infinity
     // 15.1.1.3 undefined
@@ -51,7 +53,7 @@ package
     var NaN = intrinsic::NaN;
     var Infinity = intrinsic::Infinity;
     var undefined = intrinsic::undefined;
-
+    
     var eval = intrinsic::eval;
     var parseInt = intrinsic::parseInt;
     var parseFloat = intrinsic::parseFloat;
@@ -61,12 +63,10 @@ package
     var decodeURIComponent = intrinsic::decodeURIComponent;
     var encodeURI = intrinsic::encodeURI;
     var encodeURIComponent = intrinsic::encodeURIComponent;
-
+    
     // non-standard helpers
 
     intrinsic native function print(x);
     intrinsic native function assert(x);
     intrinsic native function typename(x);
-
-
 }

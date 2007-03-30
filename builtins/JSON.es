@@ -1,14 +1,16 @@
-/* -*- indent-tabs-mode: nil -*- */
+/* -*- mode: java; indent-tabs-mode: nil -*- */
 
 package JSON
 {
+    use default namespace public;
+
     // API not yet determined
-    public function emit(o : Object, ...args) : String! {
+    function emit(o : Object, ...args) : String! {
         return "";
     }
 
     // API not yet determined
-    public function parse(s : String, ...args) : Object! {
+    function parse(s : String, ...args) : Object! {
         return {};
     }
 }

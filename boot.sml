@@ -8,9 +8,20 @@ val doTrace = ref false
 fun trace ss = if (!doTrace) then LogErr.log ("[boot] " :: ss) else ()
 fun error ss = LogErr.hostError ss
 
-fun load f = 
-    (trace ["loading boot file ", f];
-     Eval.evalProgram (Defn.defProgram (Parser.parseFile f)))
+fun loadFiles fs = 
+    let
+        fun parse f = 
+            (trace ["parsing boot file ", f]; 
+             (f, Parser.parseFile f))
+        fun def (f,p) = 
+            (trace ["defining boot file ", f]; 
+             (f, Defn.defProgram p))
+        fun eval (f, p) = 
+            (trace ["evaluating boot file ", f]; 
+             Eval.evalProgram p)
+    in
+        map eval (map def (map parse fs))
+    end
 
 fun printProp ((n:Ast.NAME), (p:Mach.PROP)) = 
     let 
@@ -57,40 +68,41 @@ fun boot _ =
      Mach.resetGlobalObject ();
      Native.registerNatives ();
 
-     load "builtins/Object.es";
-     load "builtins/Error.es";
-     load "builtins/Conversions.es";
-     load "builtins/Global.es";
-     load "builtins/Function.es";
+     loadFiles 
+         [
+          "builtins/Object.es",
+          "builtins/Error.es",      
+          "builtins/Conversions.es",
+          "builtins/Global.es",
+          "builtins/Function.es",
+          
+          "builtins/Boolean.es",
+          "builtins/boolean_primitive.es",
+          
+          "builtins/Number.es",
+          "builtins/double.es",
+          "builtins/int.es",
+          "builtins/uint.es",
+          "builtins/decimal.es",
+          "builtins/Numeric.es",
+          
+          "builtins/String.es",
+          "builtins/string_primitive.es",
+          
+          "builtins/ByteArray.es",
+          "builtins/Date.es",
+          
+          "builtins/JSON.es",
+          "builtins/Array.es"
 
-     load "builtins/Boolean.es";
-     load "builtins/boolean_primitive.es";
-
-     load "builtins/Number.es";
-     load "builtins/double.es";
-     load "builtins/int.es";
-     load "builtins/uint.es";
-     load "builtins/decimal.es";
-     load "builtins/Numeric.es";
-
-     load "builtins/String.es";
-     load "builtins/string_primitive.es";
-
-     load "builtins/ByteArray.es";
-     load "builtins/Date.es";
-
+         ];
 (*
-     load "builtins/Array.es";
-
-     load "builtins/Math.es";
-
-     load "builtins/Unicode.es";
-
-     load "builtins/JSON.es";
-
-     load "builtins/RegExpCompiler.es";
-     load "builtins/RegExpEvaluator.es";
-     load "builtins/RegExp.es";
+     "builtins/Math.es",
+     "builtins/Unicode.es",
+     "builtins/RegExpCompiler.es",
+     "builtins/RegExpEvaluator.es",
+     "builtins/RegExp.es",
 *)
      describeGlobal ())
 end
+

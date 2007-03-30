@@ -23,7 +23,7 @@
 
 package {
 
-    namespace meta;
+    use default namespace public;
 
     final class ByteArray
     {
@@ -101,6 +101,6 @@ package {
             return s;
         }
 
-        var _length : uint = 0;
+        private var _length : uint = 0;
     }
 }

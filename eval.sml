@@ -228,7 +228,7 @@ fun allocFixtures (scope:Mach.SCOPE)
                                 val _ = allocObjFixtures scope classObj classFixtures
                             in 
                             allocProp "class"
-                                      { ty = Mach.classType,
+                                      { ty = (Name.typename Name.public_Class),
                                         state = Mach.ValProp (Mach.Object classObj),
                                         attrs = { dontDelete = true,
                                                   dontEnum = true,
@@ -238,7 +238,7 @@ fun allocFixtures (scope:Mach.SCOPE)
                             
                           | Ast.NamespaceFixture ns => 
                             allocProp "namespace" 
-                                      { ty = Mach.namespaceType,
+                                      { ty = (Name.typename Name.public_Namespace),
                                         state = Mach.ValProp (Mach.newNamespace ns),
                                         attrs = { dontDelete = true,
                                                   dontEnum = true,
@@ -247,7 +247,7 @@ fun allocFixtures (scope:Mach.SCOPE)
                             
                           | Ast.TypeVarFixture =>
                             allocProp "type variable"
-                                      { ty = Mach.typeType,
+                                      { ty = (Name.typename Name.public_Type),
                                         state = Mach.TypeVarProp,
                                         attrs = { dontDelete = true,
                                                   dontEnum = true,
@@ -641,11 +641,11 @@ and constructObjectViaFunction (ctorObj:Mach.OBJ)
             (* FIXME: the default prototype should be the initial Object prototype, 
              * as per ES3 13.2.2. *)
             val (proto:Mach.VAL) = 
-                if Mach.hasProp props Mach.publicPrototypeName
-                then getValue (ctorObj, Mach.publicPrototypeName)
+                if Mach.hasProp props Name.public_prototype
+                then getValue (ctorObj, Name.public_prototype)
                 else Mach.Null
             val (newObj:Mach.OBJ) = 
-                Mach.newObj Mach.intrinsicObjectBaseTag proto NONE
+                Mach.newObj (Mach.ClassTag Name.public_Object) proto NONE
         in
             case invokeFuncClosure newObj ctor args of 
                 Mach.Object ob => Mach.Object ob
@@ -684,10 +684,10 @@ and evalCallExpr (thisObjOpt:Mach.OBJ option)
                     (invokeFuncClosure thisObj f args
                         handle ReturnException v => v)
               | _ => 
-                    if hasValue fobj Mach.coreInvokeName
+                    if hasValue fobj Name.meta_invoke
                     then
                         let 
-                            val invokeFn = getValue (fobj, Mach.coreInvokeName)
+                            val invokeFn = getValue (fobj, Name.meta_invoke)
                         in
                             evalCallExpr NONE (needObj invokeFn) (thisVal :: args)
                         end
@@ -1178,10 +1178,10 @@ fun hasInstance (ob:OBJ)
         fun functionHasInstance _ = 
             case v of 
                 Object ob => 
-                if hasValue ob Mach.publicPrototypeName
+                if hasValue ob Name.public_prototype
                 else 
                     let 
-                        val proto = getValue ob Mach.publicPrototypeName
+                        val proto = getValue ob Name.public_prototype
                     in
                         if Mach.isObject proto
                         then tripleEquals ...
@@ -1233,7 +1233,7 @@ and evalBinaryOp (scope:Mach.SCOPE)
             case b of 
                 Mach.Object (ob) =>
                 Mach.newBoolean true (* FIXME: (hasInstance ob b) *)
-              | _ => raise ThrowException (newByGlobalName Mach.internalTypeErrorName)
+              | _ => raise ThrowException (newByGlobalName Name.public_TypeError)
         end
 
       | Ast.In =>
@@ -1246,7 +1246,7 @@ and evalBinaryOp (scope:Mach.SCOPE)
             case b of 
                 Mach.Object (Mach.Obj {props, ...}) =>
                 Mach.newBoolean (Mach.hasProp props aname)
-              | _ => raise ThrowException (newByGlobalName Mach.internalTypeErrorName)
+              | _ => raise ThrowException (newByGlobalName Name.public_TypeError)
                      
         end
         
@@ -1780,7 +1780,7 @@ and evalScopeInits (scope:Mach.SCOPE)
                    | (Ast.Prototype,parent,obj) => 
                              if isVarObject=true 
                                 then ((fn (Mach.Object ob) => ob) (* FIXME: there must be a builtin way to do this *)
-                                          (getValue (obj, Mach.publicPrototypeName)))
+                                          (getValue (obj, Name.public_prototype)))
                                 else targetOf (valOf parent)
             val obj = targetOf scope
         in case scope of
@@ -1863,8 +1863,8 @@ and constructClassInstance (classObj:Mach.OBJ)
         val {cls = Ast.Cls { name, instanceFixtures, ...}, env, ...} = classClosure
 
         val (tag:Mach.VAL_TAG) = Mach.ClassTag name
-        val (proto:Mach.VAL) = if hasOwnValue classObj Mach.publicPrototypeName
-                               then getValue (classObj, Mach.publicPrototypeName)
+        val (proto:Mach.VAL) = if hasOwnValue classObj Name.public_prototype
+                               then getValue (classObj, Name.public_prototype)
                                else Mach.Null
                                     
         val (classScope:Mach.SCOPE) = extendScope env classObj false
@@ -1902,8 +1902,8 @@ and newByGlobalName (n:Ast.NAME)
 and toObject (v:Mach.VAL) 
     : Mach.OBJ = 
     case v of 
-        Mach.Undef => raise ThrowException (newByGlobalName Mach.internalTypeErrorName)
-      | Mach.Null => raise ThrowException (newByGlobalName Mach.internalTypeErrorName)
+        Mach.Undef => raise ThrowException (newByGlobalName Name.public_TypeError)
+      | Mach.Null => raise ThrowException (newByGlobalName Name.public_TypeError)
       | Mach.Object ob => ob
 
 
@@ -1943,7 +1943,7 @@ and defaultValue (obj:Mach.OBJ)
     let 
         fun tryProps [] = raise ThrowException 
                                     (newByGlobalName 
-                                         Mach.internalTypeErrorName)
+                                         Name.public_TypeError)
           | tryProps (n::ns) =
             let 
                 val f = get obj n
@@ -1963,8 +1963,8 @@ and defaultValue (obj:Mach.OBJ)
     in
         (* FIXME: Date objects are supposed to default to "String" hint. *)
         if hint = (SOME "String")
-        then tryProps [Mach.publicToStringName, Mach.publicValueOfName]
-        else tryProps [Mach.publicValueOfName, Mach.publicToStringName]
+        then tryProps [Name.public_toString, Name.public_valueOf]
+        else tryProps [Name.public_valueOf, Name.public_toString]
     end
 
 
@@ -2006,7 +2006,7 @@ and evalHead (scope:Mach.SCOPE)
     : Mach.SCOPE =
         let
             val (fixtures,inits) = head
-            val obj = Mach.newObj Mach.intrinsicObjectBaseTag Mach.Null NONE
+            val obj = Mach.newObj (Mach.ClassTag Name.public_Object) Mach.Null NONE
             val scope = extendScope scope obj isVarObject
             val temps = getScopeTemps scope
         in
@@ -2057,17 +2057,17 @@ and initClassPrototype (scope)
                 in
                     case findVal scope (multinameOf baseClassName) of 
                         Mach.Object ob => 
-                        if hasOwnValue ob Mach.publicPrototypeName
-                        then getValue (ob, Mach.publicPrototypeName)
+                        if hasOwnValue ob Name.public_prototype
+                        then getValue (ob, Name.public_prototype)
                         else Mach.Null
                       | _ => error ["base class resolved to non-object: ", 
                                     LogErr.name baseClassName]
                 end
                 
         val _ = trace ["constructing prototype"]
-        val newPrototype = Mach.newObj Mach.intrinsicObjectBaseTag baseProtoVal NONE
+        val newPrototype = Mach.newObj (Mach.ClassTag Name.public_Object) baseProtoVal NONE
     in
-        defValue classObj Mach.publicPrototypeName (Mach.Object newPrototype);
+        defValue classObj Name.public_prototype (Mach.Object newPrototype);
         trace ["finished initialising class prototype"]
     end
 

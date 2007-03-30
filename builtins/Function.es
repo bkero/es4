@@ -16,10 +16,10 @@
 
 package
 {
-    namespace meta;
+    use default namespace public;
 
     dynamic class Function
-    {       
+    {
         use namespace intrinsic;
         use strict;
 
@@ -92,7 +92,7 @@ package
            Note ES4 bug fix: the arguments object is an 'Array', so the test
            for applicability of argArray is simpler than in ES3.
         */
-        public static function apply(fn : Function!, thisArg, argArray) {
+        static function apply(fn : Function!, thisArg, argArray) {
             if (thisArg === undefined || thisArg === null)
                 thisArg = global;
             if (argArray === undefined || argArray === null)
@@ -108,7 +108,7 @@ package
            "length" of the function, so the length of
            Function.prototype.call is 1, which is what we want. 
         */
-        public prototype function call(thisObj, ...args)
+        prototype function call(thisObj, ...args)
             Function.apply(this, thisObj, args);
 
         intrinsic function call(thisObj, ...args:Array):*
@@ -116,7 +116,7 @@ package
 
         /* E262-4 draft: "apply" and "call" are static methods on the
            Function object. */
-        public static function call(thisObj, ...args:Array):*
+        static function call(thisObj, ...args:Array):*
             Function.apply(this, thisObj, args);
         
         /* E262-3 15.3.5.3: [[HasInstance]] */
@@ -137,6 +137,7 @@ package
             }
         }
 
-        var source : string;  /* Source code for decompilation, installed by the constructor */
+        /* Source code for decompilation, installed by the constructor */
+        var source : string;  
     }
 }

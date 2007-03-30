@@ -12,18 +12,17 @@
 
 package
 {
+    use default namespace public;
     use namespace intrinsic;
     use strict;
 
-    namespace meta;
-
     dynamic class Number
     {
-        public static const MAX_VALUE : double         = 1.7976931348623157e+308;  /* INFORMATIVE */
-        public static const MIN_VALUE : double         = 5e-324;                   /* INFORMATIVE */
-        public static const NaN : double               = 0.0 / 0.0;
-        public static const NEGATIVE_INFINITY : double = -1.0 / 0.0;
-        public static const POSITIVE_INFINITY : double = 1.0 / 0.0;
+        static const MAX_VALUE : double         = 1.7976931348623157e+308;  /* INFORMATIVE */
+        static const MIN_VALUE : double         = 5e-324;                   /* INFORMATIVE */
+        static const NaN : double               = 0.0 / 0.0;
+        static const NEGATIVE_INFINITY : double = -1.0 / 0.0;
+        static const POSITIVE_INFINITY : double = 1.0 / 0.0;
 
         /* E262-4 draft */
         meta static function convert(x : Numeric) : Number
@@ -34,9 +33,8 @@ package
             value === undefined ? 0.0 : ToDouble(value);
 
         /* E262-3 15.7.2.1: The Number constructor */
-        public function Number(value) 
+        function Number(value) 
             magic::copyValue(ToDouble(value), this);
-
 
         prototype function toString(radix = 10)
             this.toString(radix);
@@ -47,7 +45,6 @@ package
 	private function toString(radix = 10) : string
             ToDouble(this).toString(radix);
         
-
         prototype function toLocaleString()
             this.toLocaleString();
 
@@ -56,7 +53,6 @@ package
 
 	private function toLocaleString() : string
 	    ToDouble(this).toLocaleString();
-
 
         prototype function valueOf()
             this.valueOf();
@@ -67,7 +63,6 @@ package
 	private function valueOf() : Numeric
 	    toNumeric(this);
 
-
         prototype function toFixed(fractionDigits)
             this.toFixed(fractionDigits);
 
@@ -77,7 +72,6 @@ package
         private function toFixed(fractionDigits:double) : string 
             ToDouble(this).toFixed(fractionDigits);
 
-
         prototype function toExponential(fractionDigits)
             this.toExponential(fractionDigits);
 
@@ -86,7 +80,6 @@ package
 
         private function toExponential(fractionDigits:double) : string
             ToDouble(this).toExponential(fractionDigits);
-
 
         prototype function toPrecision(precision)
             this.toPrecision(precision);

@@ -5,5 +5,5 @@
 
 package 
 {
-    type Numeric = (int, uint, double, decimal, Number);
+    public type Numeric = (int, uint, double, decimal, Number);
 }

@@ -11,10 +11,9 @@
 
 package
 {
+    use default namespace public;
     use namespace intrinsic;
     use strict;
-
-    namespace meta;
 
     final class uint!
     {       
@@ -30,7 +29,7 @@ package
             value === undefined ? 0u : ToUint(value);
 
         /* E262-4 draft: The uint constructor */
-        public function uint(value) 
+        function uint(value) 
             magic::copyValue(ToUint(value), this);
 
         /* E262-4 draft: uint.prototype.toString */
