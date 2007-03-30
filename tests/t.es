@@ -12,5 +12,6 @@ var mx
 }
 */
 
-for ( var x=f(y), m = 0; m < 9; m++ ) ;
+function f(x,y,z,...rest) { intrinsic::print('f ',rest) }
+f(1,2,3,4,5)
 

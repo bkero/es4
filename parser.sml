@@ -826,7 +826,7 @@ and functionSignature (ts) : ((TOKEN * Ast.POS) list * Ast.FUNC_SIG) =
             in case ts2 of
                 (Comma, _) :: _ =>
                     let
-                           val (ts3,((b,i),e,t)) = nonemptyParameters (tl ts2) 1 false
+                           val (ts3,((b,i),e,t),hasRest) = nonemptyParameters (tl ts2) 1 false
                        in case ts3 of
                            (RightParen, _) :: _ =>
                                let
@@ -842,7 +842,7 @@ and functionSignature (ts) : ((TOKEN * Ast.POS) list * Ast.FUNC_SIG) =
                                       defaults=e,
                                       returnType=nd4,
                                       ctorInits=NONE,
-                                      hasRest=false })
+                                      hasRest=hasRest })
                                end
                          | _ => error ["unknown token in functionSignature"]
                     end
@@ -865,7 +865,7 @@ and functionSignature (ts) : ((TOKEN * Ast.POS) list * Ast.FUNC_SIG) =
             end
       | (LeftParen, _) :: _ =>
                let
-                   val (ts2,((b,i),e,t)) = parameters (tl ts1)
+                   val (ts2,((b,i),e,t),hasRest) = parameters (tl ts1)
                in case ts2 of
                    (RightParen, _) :: _ =>
                        let
@@ -880,7 +880,7 @@ and functionSignature (ts) : ((TOKEN * Ast.POS) list * Ast.FUNC_SIG) =
                                   returnType=nd3,
                                   ctorInits=NONE,
                                   thisType=NONE,  (* todo *)
-                                  hasRest=false }) (* do we need this *)
+                                  hasRest=hasRest })
                        end
                  | _ => error ["unknown final token of function signature"]
             end
@@ -1031,26 +1031,26 @@ and typeParameterList (ts) : (TOKEN * Ast.POS) list * string list =
 *)
 
 and nonemptyParameters (ts) (n) (initRequired)
-    : ((TOKEN * Ast.POS) list * (Ast.BINDINGS * Ast.EXPR list * Ast.TYPE_EXPR list)) = 
+    : ((TOKEN * Ast.POS) list * (Ast.BINDINGS * Ast.EXPR list * Ast.TYPE_EXPR list) * bool) = 
     let
     in case ts of
         (TripleDot, _) :: _ => 
             let
                 val (ts1,nd1) = restParameter ts n
             in case ts1 of
-                (RightParen, _) :: _ => (ts1,nd1)
+                (RightParen, _) :: _ => (ts1,nd1,true)
               | _ => error ["unknown token in nonemptyParameters"]
             end
       | _ => 
             let
                 val (ts1,((b1,i1),e1,t1)) = parameterInit ts n initRequired
             in case ts1 of
-                (RightParen, _) :: _ => (ts1,((b1,i1),e1,t1))
+                (RightParen, _) :: _ => (ts1,((b1,i1),e1,t1),false)
               | (Comma, _) :: _ =>
                     let                        
-                        val (ts2,((b2,i2),e2,t2)) = nonemptyParameters (tl ts1) (n+1) (not (length e1 = 0))
+                        val (ts2,((b2,i2),e2,t2),hasRest) = nonemptyParameters (tl ts1) (n+1) (not (length e1 = 0))
                     in
-                        (ts2,((b1@b2,i1@i2),e1@e2,t1@t2))
+                        (ts2,((b1@b2,i1@i2),e1@e2,t1@t2),hasRest)
                     end
               | _ => error ["unknown token in nonemptyParameters"]
             end
@@ -1083,10 +1083,10 @@ and nonemptyParametersType (ts)
     end
 
 and parameters (ts) 
-    : ((TOKEN * Ast.POS) list * (Ast.BINDINGS * Ast.EXPR list * Ast.TYPE_EXPR list)) =
+    : ((TOKEN * Ast.POS) list * (Ast.BINDINGS * Ast.EXPR list * Ast.TYPE_EXPR list) * bool) =
     let val _ = trace([">> parameters with next=",tokenname(hd(ts))]) 
     in case ts of 
-        (RightParen, _) :: ts1 => (ts,(([],[]),[],[]))
+        (RightParen, _) :: ts1 => (ts,(([],[]),[],[]),false)
       | _ => nonemptyParameters ts 0 false
     end
 
@@ -1206,7 +1206,7 @@ and restParameter (ts) (n): ((TOKEN * Ast.POS) list * (Ast.BINDINGS * Ast.EXPR l
                         val (ts1,(temp,{pattern,ty,...})) = parameter (tl ts) n
                         val (b,i) = desugarPattern (posOf ts) pattern ty (SOME (Ast.GetParam n)) (0)
                     in
-                        (ts1, ((temp::b,i),[],[Ast.ArrayType [Ast.SpecialType Ast.Any]]))
+                        (ts1, ((temp::b,i),[Ast.LiteralExpr (Ast.LiteralArray {exprs=[],ty=NONE})],[Ast.ArrayType [Ast.SpecialType Ast.Any]]))
                     end
             end
       | _ => error ["unknown token in restParameter"]
@@ -3358,7 +3358,6 @@ and functionTypeFromSignature fsig : Ast.FUNC_TYPE =
         Ast.FunctionSignature {typeParams,params,paramTypes,returnType,thisType,hasRest,defaults,...} =>
             let
                 val (b,i) = params
-                val minArgs = 0  (* FIXME *)
             in
                 {typeParams=typeParams,
                  params=paramTypes,
@@ -5722,7 +5721,7 @@ and constructorSignature (ts) =
     in case ts1 of
         (LeftParen, _) :: _ =>
                let
-                   val (ts2,((b,i),e,t)) = parameters (tl ts1)
+                   val (ts2,((b,i),e,t),hasRest) = parameters (tl ts1)
                in case ts2 of
                    (RightParen, _) :: (Colon, _) :: _ =>
                        let
@@ -5737,7 +5736,7 @@ and constructorSignature (ts) =
                                       returnType=(Ast.SpecialType Ast.VoidType),
                                       ctorInits=SOME nd3,
                                       thisType=NONE,
-                                      hasRest=false }) (* do we need this *)
+                                      hasRest=hasRest })
                        end
                  | (RightParen, _) :: _ =>
                        let
@@ -5751,7 +5750,7 @@ and constructorSignature (ts) =
                                       returnType=(Ast.SpecialType Ast.VoidType),
                                       ctorInits=SOME (([],[]),[]),
                                       thisType=NONE,
-                                      hasRest=false }) (* do we need this *)
+                                      hasRest=hasRest })
                        end
                  | _ => error ["unknown token in constructorSignature"]
             end
