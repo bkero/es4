@@ -4211,98 +4211,89 @@ and whileStatement (ts,w) : ((TOKEN * Ast.POS) list * Ast.STMT) =
 
 *)
 
-(* note: even though for-each-in and for-in use ForInBinding, we get there by two different
+(* note: even though for-each-in and for-in use ForInBinding, we can get there by two different
          paths. With for-in we parse for ForInitializer, which is more general and translate
-         when we see 'in'. With for-each-in, we parse immediately for ForInBinding. Positive
-         and negative cases should produce the same error or ast result
+         when we see 'in'. With for-each-in, we could parse immediately for ForInBinding but
+         with desugaring it seems simpler to use the same parsing code. Positive and negative 
+         cases should produce the same error or ast result
 *)
 
 (* todo: code reuse opps here *)
 
 and forStatement (ts,w) : ((TOKEN * Ast.POS) list * Ast.STMT) =
     let val _ = trace([">> forStatement with next=", tokenname(hd ts)])
-    in case ts of
-        (For, _) :: (LeftParen, _) :: _ =>
+        val (ts,isEach) = case ts of (For, _) :: (Each, _) :: _ => (tl (tl (tl ts)),true) | _ => (tl (tl ts),false)
+        val (ts1,defn,inits) = forInitialiser ts
+    in case ts1 of
+        (SemiColon, _) :: _ =>
             let
-                val (ts1,defn,init) = forInitialiser (tl (tl ts))
-            in case ts1 of
-                (SemiColon, _) :: _ =>
+                val (ts2,nd2) = optionalExpression (tl ts1)
+                val (ts3,nd3) = optionalExpression (ts2)
+            in case ts3 of
+                (RightParen, _) :: _ =>
                     let
-                        val (ts2,nd2) = optionalExpression (tl ts1)
-                        val (ts3,nd3) = optionalExpression (ts2)
-                    in case ts3 of
-                        (RightParen, _) :: _ =>
-                            let
-                                val (ts4,nd4) = substatement (tl ts3,w)
-                            in
-                                (ts4,Ast.ForStmt{ 
-                                            defn=defn,
-                                            init=init,
-                                            cond=nd2,
-                                            update=nd3,
-                                            labels=[],
-                                            fixtures=NONE,
-                                            body=nd4})
-                            end
-                      | _ => error ["unknown token in forStatement"]
-                    end
-              | (In, _) :: _ =>
-                    let
-                        val len = case defn of SOME {bindings=(b,i),...} => length b | NONE => 0
-                        val (b,i) = if (len > 1) 
-                                    then (error(["too many bindings on left side of in ", Int.toString len]); 
-                                          error ["unknown token in forStatement"])
-                                    else if (len = 0) (* convert inits to pattern *)
-                                        then case init of 
-                                            Ast.ExprStmt e::[] => 
-                                                desugarPattern (posOf ts) (patternFromListExpr e) (Ast.SpecialType Ast.Any) (SOME (Ast.GetTemp 0)) 0
-                                          | _ => LogErr.internalError [""]
-                                        else (#bindings (valOf defn))
-                        val (ts2,nd2) = listExpression (tl ts1,ALLOWIN)
-                    in case ts2 of
-                        (RightParen, _) :: _ =>
-                            let
-                                val (ts3,nd3) = substatement (tl ts2,w)
-                            in 
-                                (ts3,Ast.ForInStmt{ 
-                                             defn=defn,
-                                             obj=nd2,
-                                             labels=[],
-                                             fixtures=NONE,
-                                             inits=NONE,
-                                             body=nd3 })
-                            end
-                      | _ => error ["unknown token in forStatement"]
+                        val (ts4,nd4) = substatement (tl ts3,w)
+                    in
+                        (ts4,Ast.ForStmt{ 
+                                    defn=defn,
+                                    init=inits,
+                                    cond=nd2,
+                                    update=nd3,
+                                    labels=[],
+                                    fixtures=NONE,
+                                    body=nd4})
                     end
               | _ => error ["unknown token in forStatement"]
             end
-(* FIXME
+      | (In, _) :: _ =>
+            let
+                fun desugarForInInit (init:Ast.EXPR) : Ast.EXPR =   
+                    (* ISSUE: there might be an opportunity to share code here with assignmentExpression *)
+                    let
+                        fun isInitStep (b:Ast.INIT_STEP) : bool =
+                            case b of 
+                               Ast.InitStep _ => true
+                             | _ => false
+                
+                        fun makeSetExpr (Ast.AssignStep (lhs,rhs)) = Ast.SetExpr (Ast.Assign,lhs,rhs)
+                          | makeSetExpr (Ast.InitStep _) = LogErr.internalError ["makeSetExpr: shouldn't get here"]
+                
+                        val p = patternFromListExpr init
+                        val (binds,inits) = desugarPattern (posOf ts) p (Ast.SpecialType Ast.Any) (SOME (Ast.GetTemp 0)) 0  (* type is meaningless *)
+                        val (inits,assigns) = List.partition isInitStep inits    (* separate init steps and assign steps *)
+                        val sets = map makeSetExpr assigns
+                    in case binds of
+                        [] => hd sets
+                      | _ => Ast.LetExpr {defs=(binds,inits),  
+                                                 body=Ast.ListExpr sets,
+                                                 head=NONE}
+                                (* introduce a letexpr to narrow the scope of the temps *)
+                    end
 
-      | (For, _) :: (Each, _) :: (LeftParen, _) :: _ =>
-            let
-                val (ts1,bindings) = forInBinding (tl (tl (tl ts)))
-            in case ts1 of
-                (In, _) :: _ =>
+                val len = case defn of SOME {bindings=(b,i),...} => length b | NONE => 0
+                val inits = if (len = 0) (* convert inits to pattern *)
+                            then case inits of 
+                                Ast.ExprStmt e::[] => 
+                                Ast.ExprStmt (desugarForInInit e)::[]
+                              | _ => LogErr.internalError [""]
+                            else inits  (* already desugared *)
+                val (ts2,nd2) = listExpression (tl ts1,ALLOWIN)
+            in case ts2 of
+                (RightParen, _) :: _ =>
                     let
-                        val (ts2,nd2) = listExpression (tl ts1,ALLOWIN)
-                    in case ts2 of
-                        (RightParen, _) :: _ =>
-                            let
-                                val (ts3,nd3) = substatement (tl ts2,w)
-                            in 
-                                (ts3,Ast.ForEachStmt{ 
-                                             defns=bindings,
-                                             obj=nd2,
-                                             labels=[],
-                                             fixtures=NONE,
-                                             inits=NONE,
-                                             body=nd3 })
-                            end
-                      | _ => error ["unknown token in forStatement"]
+                        val (ts3,nd3) = substatement (tl ts2,w)
+                    in
+                            (ts3,Ast.ForInStmt{ 
+                                     isEach=isEach,
+                                     defn=defn,
+                                     obj=nd2,
+                                     labels=[],
+                                     fixtures=NONE,
+                                     init=inits,
+                                     body=nd3 })
                     end
               | _ => error ["unknown token in forStatement"]
             end
-*)
       | _ => error ["unknown token in forStatement"]
     end
 
@@ -4337,8 +4328,8 @@ and forInitialiser (ts)
                 val (ts1,nd1) = listExpression (ts,NOIN)
             in
                 trace ["<< forInitialiser with next=", tokenname(hd ts1)];
-                (ts1,NONE,[Ast.ExprStmt nd1])
-            end
+                (ts1,NONE,[Ast.ExprStmt nd1])           
+             end
     end
 
 and optionalExpression (ts) : ((TOKEN * Ast.POS) list * Ast.EXPR) =
@@ -5223,12 +5214,12 @@ and variableDefinition (ts,ns:Ast.EXPR option,prototype,static,b,t) : ((TOKEN * 
 
         fun isTempBinding (b:Ast.BINDING) : bool =
             case b of 
-               Ast.Binding {ident=Ast.TempIdent _,...} => true
+               Ast.Binding {ident=(Ast.TempIdent _|Ast.ParamIdent _),...} => true
              | _ => false
 
         fun isTempInit (b:Ast.INIT_STEP) : bool =
             case b of 
-               Ast.InitStep (Ast.TempIdent _,_) => true
+               Ast.InitStep ((Ast.TempIdent _|Ast.ParamIdent _),_) => true
              | _ => false
 
         val (tempBinds,propBinds) = List.partition isTempBinding b
@@ -5271,9 +5262,11 @@ and variableBindingList (ts,a,b) : ((TOKEN * Ast.POS) list * Ast.BINDINGS) =
                     let
                         val (ts1,(d1,s1)) = variableBinding(tl ts,a,b)
                         val (ts2,(d2,s2)) = variableBindingList'(ts1,a,b)
-                    in
-                        trace(["<< variableBindingList' with next=", tokenname(hd ts2)]);
-                        (ts2,(d1@d2,s1@s2))
+                    in case b of
+                        NOIN => error ["too many for-in bindings"]
+                      | _ =>
+                            (trace(["<< variableBindingList' with next=", tokenname(hd ts2)]);
+                            (ts2,(d1@d2,s1@s2)))
                     end
               | _ => (ts,([],[]))
             end
@@ -5310,10 +5303,11 @@ and variableBinding (ts,a,beta) : ((TOKEN * Ast.POS) list * Ast.BINDINGS) =
                 end
           | ((In, _) :: _,_,NOIN) => (* okay, we are in a for-in or for-each-in binding *)
                 let
-                    val (b,i) = desugarPattern (posOf ts) p t NONE 0
+                    val temp = Ast.Binding {ident=Ast.ParamIdent 0,ty=t}
+                    val (b,i) = desugarPattern (posOf ts) p t (SOME (Ast.GetParam 0)) 1
                 in
-                    trace(["<< variableBinding with next=", tokenname(hd ts1)]);
-                    (ts1, (b,i))
+                    trace(["<< variableBinding IN with next=", tokenname(hd ts1)]);
+                    (ts1, (temp::b,i))
                 end
           | (_,IdentifierPattern _,_) =>   (* check for the more specific syntax allowed
                                                   when there is no init *)

@@ -235,7 +235,6 @@ datatype PRAGMA =
              ident: IDENT,
              name: NAME option,
              block: BLOCK }
-       | ForEachStmt of FOR_ENUM_STMT
        | ForInStmt of FOR_ENUM_STMT
        | ThrowStmt of EXPR
        | ReturnStmt of EXPR
@@ -459,10 +458,11 @@ withtype
              init: TYPE_EXPR }
 
      and FOR_ENUM_STMT =
-           { defn: VAR_DEFN option,             
+           { isEach: bool,
+             defn: VAR_DEFN option,             
              obj: EXPR,
              fixtures: FIXTURES option,
-             inits: INITS option,
+             init: STMT list,
              labels: IDENT list,
              body: STMT }
 

@@ -1619,22 +1619,31 @@ and defStmt (env:ENV)
         val (ctx::_) = env
 
         fun reconstructForEnumStmt (fe:Ast.FOR_ENUM_STMT) = 
+            let
+                fun defVarDefnOpt vd =
+                    case vd of
+                        SOME vd => defDefn env (Ast.VariableDefn vd)
+                      | NONE => ([],[],[])
+            in
             case fe of 
-                { obj, defn, labels, body, ... } => 
+                { isEach, obj, defn, labels, body, init, ... } => 
                 let
                     val newObj =  defExpr env obj
-                    val (f1, i1) = ([],[])  (* FIXME defVars env (valOf defn) *)
-                    val env = updateEnvironment env f1
+                    val (uf1,hf1,i1) = defVarDefnOpt defn
+                    val env = updateEnvironment env uf1
                     val (newBody,hoisted) = defStmt env [] body
+                    val (newInit,_) = defStmts env init
                 in
-                    ({ obj = newObj,
+                    ({ isEach=isEach, 
+                       obj = newObj,
                        defn = defn,
                        labels = labels,
                        body = newBody, 
-                       fixtures = SOME f1,
-                       inits = SOME i1 },
-                     hoisted)
+                       fixtures = SOME uf1,
+                       init = newInit },
+                     hf1@hoisted)
                 end
+            end
 
         fun makeIterationLabel id = (id,IterationLabel)
         fun makeStatementLabel id = (id,StatementLabel)
@@ -1825,9 +1834,6 @@ and defStmt (env:ENV)
                 (Ast.ExprStmt (Ast.InitExpr (target, temps, (map (defInitStep env ns0) inits))),[])
             end
 
-          | Ast.ForEachStmt fe => 
-            (inl Ast.ForEachStmt (reconstructForEnumStmt fe))
-            
           | Ast.ForInStmt fe => 
             (inl Ast.ForInStmt (reconstructForEnumStmt fe))
             
