@@ -114,6 +114,7 @@ datatype TOKEN =
 
     (* contextually reserved identifiers *)
 
+    | Call
     | Debugger
     | Decimal
     | Double
@@ -122,6 +123,7 @@ datatype TOKEN =
     | Final
     | Get
     | Goto
+    | Has
     | Include
     | Int
     | Invoke
@@ -352,6 +354,7 @@ fun tokenname (t,_) =
 
       (* contextually reserved identifiers *)
 
+      | Call => "call"
       | Debugger => "debugger"
       | Decimal => "decimal"
       | Double => "double"
@@ -360,6 +363,7 @@ fun tokenname (t,_) =
       | Final => "final"
       | Get => "get"
       | Goto => "goto"
+      | Has => "has"
       | Include => "include"
       | Int => "int"
       | Invoke => "invoke"

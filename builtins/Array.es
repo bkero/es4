@@ -70,7 +70,7 @@ package
         prototype function toLocaleString(this:Array)
             this.toLocaleString();
 
-        intrinsic function toLocaleString():String {
+        override intrinsic function toLocaleString():string {
             let out:String = "";
             for (let i:uint = 0, n:uint = a.length; i < n; i++) {
                 if (i != 0)

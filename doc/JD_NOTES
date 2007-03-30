@@ -4,9 +4,18 @@ JEFF'S NOTES ON THE REFERENCE IMPLEMENTATION
 
 TO DO
 
-- revive for-in statements
 - limited namespaces
 - nested public
+- interface definitions
+
+###
+
+29-MAR-2007
+
+TYPE IDENTIFIERS
+
+class A.<t> extends B.<t> {}
+
 
 ###
 

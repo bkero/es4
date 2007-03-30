@@ -358,6 +358,7 @@ and identifier ts =
     let
     in case ts of
         (Identifier(str), _) :: tr => (tr,str)
+      | (Call, _) :: tr => (tr,"call")
       | (Debugger, _) :: tr => (tr,"debugger")
       | (Decimal, _) :: tr => (tr,"decimal")
       | (Double, _) :: tr => (tr,"double")
@@ -366,9 +367,9 @@ and identifier ts =
       | (Final, _) :: tr => (tr,"final")
       | (Get, _) :: tr => (tr,"get")
       | (Goto, _) :: tr => (tr,"goto")
+      | (Has, _) :: tr => (tr,"has")
       | (Include, _) :: tr => (tr,"include")
       | (Int, _) :: tr => (tr,"int")
-      | (Invoke, _) :: tr => (tr,"invoke")
       | (Namespace, _) :: tr => (tr,"namespace")
       | (Native, _) :: tr => (tr,"native")
       | (Number, _) :: tr => (tr,"number")
@@ -1407,7 +1408,7 @@ and fieldName (ts) : (TOKEN * Ast.POS) list * Ast.IDENT_EXPR =
     let val _ = trace([">> fieldName with next=",tokenname(hd(ts))]) 
     in case ts of
         (StringLiteral s, _) :: ts1 => (ts1,Ast.Identifier {ident=s,openNamespaces=[]})
-(*      | NumberLiteral n :: ts1 => (ts1,n)  *) (* todo: convert number to string *)
+      | (DecimalLiteral n, _) :: ts1 => (ts1,Ast.Identifier {ident=n,openNamespaces=[]})   (* todo: convert number to string *)
       | _ => 
             let
                 val (ts1,nd1) = reservedOrPropertyIdentifier (ts)
@@ -5262,8 +5263,8 @@ and variableBindingList (ts,a,b) : ((TOKEN * Ast.POS) list * Ast.BINDINGS) =
                     let
                         val (ts1,(d1,s1)) = variableBinding(tl ts,a,b)
                         val (ts2,(d2,s2)) = variableBindingList'(ts1,a,b)
-                    in case b of
-                        NOIN => error ["too many for-in bindings"]
+                    in case (ts2,b) of
+                        ((In,_)::_, NOIN) => error ["too many for-in bindings"]
                       | _ =>
                             (trace(["<< variableBindingList' with next=", tokenname(hd ts2)]);
                             (ts2,(d1@d2,s1@s2)))
@@ -5368,29 +5369,28 @@ and functionDeclaration (ts,attrs) =
                       head=NONE,
                       pos=posOf ts})
             end
-      | _ => error ["unknown token in functionDeclaration"]
+      | _ => error ["execting function declaration"]
     end
 
 (*
     FunctionDefinition(class)    
         function  ClassName  ConstructorSignature  FunctionBody
+        function  OperatorName  FunctionSignature  FunctionBody
         function  FunctionName  FunctionSignature  FunctionBody
-        let  function  FunctionName  FunctionSignature  FunctionBody
         
     FunctionDefinition(t)    
         function  FunctionName  FunctionSignature  FunctionBody
         let  function  FunctionName  FunctionSignature  FunctionBody
+        const  function  FunctionName  FunctionSignature  FunctionBody
         
     FunctionName    
         Identifier
-        OperatorName
-        to
-        call
-        construct
-        get  PropertyIdentifier
-        set  PropertyIdentifier
-        call  PropertyIdentifier
-        construct  PropertyIdentifier
+		get  Identifier
+		set  Identifier
+		get  *
+		set  *
+		call  *
+		has  *
 
     OperatorName [one of]    
         +   -   ~   *   /   %   <   >   <=   >=   ==   <<   >>   >>>   &   |   ===   !=   !==
@@ -5638,11 +5638,9 @@ and functionName (ts) : ((TOKEN * Ast.POS) list * Ast.FUNC_NAME) =
             let 
                 val (ts1,nd1) = operatorName ts
             in
-                (ts1,{kind=Ast.Ordinary,ident=nd1})
-            end            
-
-      | (Get, _) :: (LeftParen, _) :: _ => (tl ts,{kind=Ast.Ordinary, ident="get"})
-      | (Get, _) :: (LeftDotAngle, _) :: _ => (tl ts,{kind=Ast.Ordinary, ident="get"})
+                (ts1,{kind=Ast.Operator,ident=nd1})
+            end
+      | (Get, _) :: ((LeftParen | LeftDotAngle), _) :: _ => (tl ts,{kind=Ast.Ordinary, ident="get"})
       | (Get, _) :: _ => 
             let
                 val (ts1,nd1) = propertyIdentifier (tl ts)
@@ -5650,13 +5648,28 @@ and functionName (ts) : ((TOKEN * Ast.POS) list * Ast.FUNC_NAME) =
                 (ts1,{kind=Ast.Get,ident=nd1})
             end
 
-      | (Set, _) :: (LeftParen, _) :: _ => (tl ts,{kind=Ast.Ordinary, ident="set"})
-      | (Set, _) :: (LeftDotAngle, _) :: _ => (tl ts,{kind=Ast.Ordinary, ident="set"})
+      | (Set, _) :: ((LeftParen | LeftDotAngle), _) :: _ => (tl ts,{kind=Ast.Ordinary, ident="set"})
       | (Set, _) :: _ => 
             let
                 val (ts1,nd1) = propertyIdentifier (tl ts)
             in
                 (ts1,{kind=Ast.Set,ident=nd1})
+            end
+
+      | (Call, _) :: ((LeftParen | LeftDotAngle), _) :: _ => (tl ts,{kind=Ast.Ordinary, ident="call"})
+      | (Call, _) :: (Mult, _) :: _ => 
+            let
+                val (ts1,nd1) = propertyIdentifier (tl ts)
+            in
+                (ts1,{kind=Ast.Call,ident="*"})
+            end
+
+      | (Has, _) :: ((LeftParen | LeftDotAngle), _) :: _ => (tl ts,{kind=Ast.Ordinary, ident="has"})
+      | (Has, _) :: (Mult, _) :: _ => 
+            let
+                val (ts1,nd1) = propertyIdentifier (tl ts)
+            in
+                (ts1,{kind=Ast.Has,ident="*"})
             end
 
       | _ => 

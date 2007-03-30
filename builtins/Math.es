@@ -2,8 +2,7 @@
 
 package
 {
-    // ECMA4 version which allows early-binding.
-    ECMA4 final class Math extends Object
+    final class Math extends Object
     {       
         // 15.8.1 Value Properties of the Math Object
         static const E; 

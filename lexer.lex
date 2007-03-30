@@ -256,6 +256,7 @@ regexpFlags           = [a-zA-Z]*;
 <INITIAL>"while"           => (While);
 <INITIAL>"with"            => (With);
 
+<INITIAL>"call"            => (Call);
 <INITIAL>"debugger"        => (Debugger);
 <INITIAL>"decimal"         => (Decimal);
 <INITIAL>"double"          => (Double);
@@ -264,6 +265,7 @@ regexpFlags           = [a-zA-Z]*;
 <INITIAL>"final"           => (Final);
 <INITIAL>"get"             => (Get);
 <INITIAL>"goto"            => (Goto);
+<INITIAL>"has"             => (Has);
 <INITIAL>"include"         => (Include);
 <INITIAL>"int"             => (Int);
 <INITIAL>"namespace"       => (Namespace);

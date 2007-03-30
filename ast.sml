@@ -128,8 +128,11 @@ datatype PRAGMA =
 
      and FUNC_NAME_KIND =
          Ordinary
+       | Operator
        | Get
        | Set
+       | Call
+       | Has
 
      and CLS =
          Cls of
@@ -364,6 +367,7 @@ datatype PRAGMA =
      and FIXTURE = 
          NamespaceFixture of NAMESPACE
        | ClassFixture of CLS
+       | InterfaceFixture  (* FIXME *)
        | TypeVarFixture
        | TypeFixture of TYPE_EXPR
        | MethodFixture of 
