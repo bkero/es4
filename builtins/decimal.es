@@ -1,4 +1,4 @@
-/* -*- indent-tabs-mode: nil -*- 
+/* -*- mode: java; indent-tabs-mode: nil -*- 
  *
  * ECMAScript 4 builtins - the "decimal" object
  *
@@ -11,37 +11,38 @@
 
 package
 {
+    use default namespace public;
     use namespace intrinsic;
+    use strict;
 
     final class decimal!
     {       
 	// FIXME
-        public static const MAX_VALUE         = 1.7976931348623157e+308m;
-        public static const MIN_VALUE         = 5e-324m;
-        public static const NaN               = 0.0m / 0.0m;  // ???
-        public static const NEGATIVE_INFINITY = -1.0m / 0.0m; // ???
-        public static const POSITIVE_INFINITY = 1.0m / 0.0m;  // ???
+        static const MAX_VALUE         = 1.7976931348623157e+308m;
+        static const MIN_VALUE         = 5e-324m;
+        static const NaN               = 0.0m / 0.0m;  // ???
+        static const NEGATIVE_INFINITY = -1.0m / 0.0m; // ???
+        static const POSITIVE_INFINITY = 1.0m / 0.0m;  // ???
 
         /* E262-4 draft */
-        intrinsic static function to(x : Numeric) : decimal
+        meta static function convert(x : Numeric)
             x is decimal ? x : ToDecimal(x);
 
         /* E262-3 15.7.1.1: The decimal Constructor Called as a Function */
-        intrinsic static function invoke(value)
+        meta static function invoke(value)
             value === undefined ? 0m : ToDecimal(value);
 
         /* E262-3 15.7.2.1: The decimal constructor */
-        public function decimal(value) {
-            magic::setValue(this, ToDecimal(value));
-        }
+        function decimal(value)
+            magic::copyValue(ToDecimal(value), this);
 
         /* E262-3 15.7.4.2: decimal.prototype.toString */
         prototype function toString(this:decimal, radix)
             this.toString(radix);
 
-        intrinsic function toString(radix = 10) : string {
+        override intrinsic function toString(radix = 10) : string {
             if (radix === 10 || radix === undefined)
-                return ToString(magic::getValue(this));
+                return ToString(this);
             else if (typeof radix === "number" && radix >= 2 && radix <= 36 && isIntegral(radix)) {
                 // FIXME
                 throw new Error("Unimplemented: non-decimal radix");
@@ -55,32 +56,32 @@ package
             this.toLocaleString();
 
         /* INFORMATIVE */
-        intrinsic function toLocaleString() : string
+        override intrinsic function toLocaleString() : string
             toString();
 
         /* E262-3 15.7.4.4: decimal.prototype.valueOf */
         prototype function valueOf(this:decimal)
             this.valueOf();
 
-        intrinsic function valueOf() : Object!
+        override intrinsic function valueOf() : decimal
             this;
 
         /* E262-3 15.7.4.5 Number.prototype.toFixed */
         prototype function toFixed(this:decimal, fractionDigits)
             this.toFixed(ToDouble(fractionDigits));
 
-        intrinsic native function toFixed(fractionDigits:double) : string; // FIXME
-
         /* E262-3 15.7.4.6: Number.prototype.toExponential */
         prototype function toExponential(this:decimal, fractionDigits)
             this.toExponential(ToDouble(fractionDigits));
-
-        intrinsic native function toExponential(fractionDigits:double) : string; // FIXME
 
         /* E262-3 15.7.4.7: Number.prototype.toPrecision */
         prototype function toPrecision(this:decimal, precision)
             this.toPrecision(ToDouble(precision));
 
-        intrinsic native function toPrecision(precision:double) : string; // FIXME
+        // FIXME these are supposed to be native, but the parser has trouble
+        // parsing "override intrinsic function native". No idea why.
+        override intrinsic function toFixed(fractionDigits:double) : string "";
+        override intrinsic function toExponential(fractionDigits:double) : string ""; 
+        override intrinsic function toPrecision(precision:double) : string "";
     }
 }

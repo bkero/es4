@@ -267,15 +267,16 @@ fun parse (source : INPUT_SOURCE) : Ast.PROGRAM =
 fun runTestCase (test : TEST_CASE) : TEST_RESULT =
 (
     logTestCase (#name test);
+    Boot.boot ();
     case test of
          { name, stage=Parse, arg=true, source } =>
          (
-             (parse source; (test, true))
+             (Defn.defProgram (parse source); (test, true))
              handle e => (unexpectedExn e; (test, false))
          )
        | { name, stage=Parse, arg=false, source } =>
          (
-             (parse source; (test, false))
+             (Defn.defProgram (parse source); (test, false))
              handle Parser.ParseError => (test, true)
                   | e => (unexpectedExn e; (test, false))
          )
@@ -290,10 +291,16 @@ fun runTestCase (test : TEST_CASE) : TEST_RESULT =
              handle Verify.VerifyError _ => (test, true)
                   | e => (unexpectedExn e; (test, false))
          )
+
+       | { name, stage=Eval, arg=true, source } =>
+         (
+             (Eval.evalProgram (Defn.defProgram (parse source)); (test, true))
+             handle e => (unexpectedExn e; (test, false))
+         )
 )
 
 fun run (filename : string) : TEST_RESULT list =
-    (map runTestCase (parseScript filename))
+    map runTestCase (parseScript filename)
     handle e as (BadTestParameter (s, lineNum)) =>
            (error ("bad test parameter (" ^ s ^ ")") filename lineNum;
             raise e)
@@ -306,8 +313,26 @@ fun run (filename : string) : TEST_RESULT list =
 
 fun exitCode (b : bool) : int = if b then 0 else 1
 
+fun consumeTraceOption (opt:string) : bool = 
+    case opt of 
+        "-Tlex" => (Lexer.UserDeclarations.doTrace := true; false)
+      | "-Tparse" => (Parser.doTrace := true; false)
+      | "-Tname" => (Multiname.doTrace := true; false)
+      | "-Tdefn" => (Defn.doTrace := true; false)
+      | "-Teval" => (Eval.doTrace := true; false)
+      | "-Tmach" => (Mach.doTrace := true; false)
+      | "-Tdecimal" => (Decimal.doTrace := true; false)
+      | "-Tnative" => (Native.doTrace := true; false)
+      | "-Tboot" => (Boot.doTrace := true; false)
+      | _ => true
+
 fun main (arg0 : string, args : string list) : int =
-    BackTrace.monitor (fn _ => (report (concat (map run args)))
-                               handle (BadTestParameter _ | MixedContent _ | ExtraLink _) => 1)
+    let 
+	val nonTraceArgs = List.filter consumeTraceOption args
+    in
+	BackTrace.monitor (fn _ => (report (concat (map run nonTraceArgs)))
+                              handle (BadTestParameter _ | MixedContent _ | ExtraLink _) => 1
+				   | e => (unexpectedExn e; 1))
+    end
 
 end

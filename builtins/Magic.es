@@ -1,4 +1,4 @@
-/* -*- indent-tabs-mode: nil -*- 
+/* -*- mode: java; indent-tabs-mode: nil -*- 
  *
  * ECMAScript 4 builtins - magic functions
  *
@@ -29,6 +29,18 @@ package
 
     /* --------------------------------------------------------------
 
+       CLASS INSTANTIATION.  */
+
+    /* 
+     * Given a class object, run the standard object-construction
+     * protocol for it (and its base classes, initializers, settings,
+     * ctors). Return the resulting instance, always an Object!
+     */
+    magic native function construct(cls:Class!, args:[*]) : Object!;
+
+
+    /* --------------------------------------------------------------
+
        PROPERTY MANIPULATION.  */
 
     /* Retrieve the [[Class]] property of o */
@@ -53,16 +65,18 @@ package
        o, it does nothing. */
     magic native function setPropertyIsDontEnum(o : Object!, p : string, f : Boolean) : void;
 
-    /* Retrieve the [[Value]] property of o */
-    magic native function getValue(o : Object!) : *;
-
-    /* Set the [[Value]] of o to v */
-    magic native function setValue(o : Object!, v : *) : void;
+    /* Copy the magic value slot from src to dst. */
+    magic native function copyValue(src: Object!, dst:Object!) : void;
 
 
     /* ----------------------------------------------------------------
 
        FUNCTION MANIPULATION.  */
+
+    /* Given a function object, arguments to bind and source to run, 
+     * compiles the source and arguments into a magic function value
+     * and sets the magic slot inside the function to contain it. */
+    magic native function compileInto(fn : Function!, argNames : [String!], src : String!) : void;
 
     /* Given a function object, a this object, and an array of argument
        values, call the function with the this object and arguments. */
@@ -76,15 +90,10 @@ package
        the language.  The following magic functions access and set
        those string data.  */
 
-    /* Given a string object 'src', copy its internal string data into
-       another string object 'dest', replacing whatever data might
-       have been in 'dest' to begin with.  */
-    magic native function setStringValue(dest : string, src : string) : void;
-
     /* Given a string and a position in that string, return the
        numeric value of the character at that position in the
        string.  */
-    magic native function charCodeAt(s : string, pos : uint) : string;
+    magic native function charCodeAt(s : string, pos : uint) : uint;
 
     /* Given a numeric character value, return a string of length 1
        whose element 0 is the character with that same value.  */

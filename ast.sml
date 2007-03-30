@@ -3,6 +3,8 @@
 
 structure Ast = struct
 
+type POS = { file: string, line: int }
+
 (* not actually unicode, maybe switch to int array to be unicode-y? *)
 
 type USTRING = string
@@ -16,7 +18,9 @@ datatype NAMESPACE =
        | Protected of IDENT
        | Public of IDENT
        | Internal of IDENT
-       | UserNamespace of IDENT
+       | UserNamespace of USTRING
+       | AnonUserNamespace of int
+       | Imported of (IDENT * IDENT)
 
 type NAME = { ns: NAMESPACE, id: IDENT }
 
@@ -29,18 +33,10 @@ datatype NUMBER_TYPE =
        | UInt
        | Number
 
-datatype ROUNDING_MODE =
-         Ceiling
-       | Floor
-       | Up
-       | Down
-       | HalfUp
-       | HalfDown
-       | HalfEven
-
-type NUMERIC_MODE = { numberType: NUMBER_TYPE,
-                      roundingMode: ROUNDING_MODE,
-                      precision: int }
+type NUMERIC_MODE = 
+           { numberType: NUMBER_TYPE,
+             roundingMode: Decimal.ROUNDING_MODE,
+             precision: int }
      
 datatype TRIOP =
          Cond
@@ -75,7 +71,6 @@ datatype BINOP =
        | Greater of NUMERIC_MODE option
        | GreaterOrEqual of NUMERIC_MODE option
        | Comma
-       | DefVar
 
 datatype ASSIGNOP =
          Assign
@@ -97,20 +92,15 @@ datatype UNOP =
          Delete
        | Void
        | Typeof
-       | PreIncrement
-       | PreDecrement
-       | PostIncrement
-       | PostDecrement
-       | UnaryPlus
-       | UnaryMinus
+       | PreIncrement of NUMERIC_MODE option
+       | PreDecrement of NUMERIC_MODE option
+       | PostIncrement of NUMERIC_MODE option
+       | PostDecrement of NUMERIC_MODE option
+       | UnaryPlus of NUMERIC_MODE option
+       | UnaryMinus of NUMERIC_MODE option
        | BitwiseNot
        | LogicalNot
-       | MakeNamespace
        | Type
-
-datatype NULOP =
-         This
-       | Empty
 
 datatype VAR_DEFN_TAG =
          Const
@@ -125,54 +115,84 @@ datatype SPECIAL_TY =
        | VoidType
 
 datatype PRAGMA =
-         UseNamespace of IDENT_EXPR
-       | UseDefaultNamespace of IDENT_EXPR
+         UseNamespace of EXPR
+       | UseDefaultNamespace of EXPR
        | UseNumber of NUMBER_TYPE
-       | UseRounding of ROUNDING_MODE
-       | UsePrecision of LITERAL
+       | UseRounding of Decimal.ROUNDING_MODE
+       | UsePrecision of int
        | UseStrict
        | UseStandard
-       | Import of { package: IDENT,
-                     name: IDENT,
-                     alias: IDENT option }
+       | Import of 
+           { package: IDENT list,
+             name: IDENT,
+             alias: IDENT option }
 
      and FUNC_NAME_KIND =
          Ordinary
-       | Operator
        | Get
        | Set
-       | Call
-       | Construct
-       | ToFunc
+
+     and CLS =
+         Cls of
+           { name: NAME,
+             extends: NAME option,
+             implements: NAME list,
+             classFixtures: FIXTURES,
+             instanceFixtures: FIXTURES,
+             instanceInits: HEAD,
+             constructor: CTOR option,
+             classType: TYPE_EXPR,  (* ObjectType *)
+             instanceType: TYPE_EXPR } (* InstanceType *)
+
+     and CTOR =
+         Ctor of
+           { settings: HEAD,
+             superArgs: EXPR list,
+             func: FUNC }
 
      and FUNC =
-         Func of { name: FUNC_NAME,
-                   fsig: FUNC_SIG,                   
-                   body: BLOCK,
-                   fixtures: FIXTURES option,
-                   inits: STMT list }
+         Func of 
+           { name: FUNC_NAME,
+             fsig: FUNC_SIG,
+             isNative: bool,
+             block: BLOCK,
+             param: HEAD,
+             defaults: EXPR list,
+             ty: FUNC_TYPE }
 
      and DEFN =
          ClassDefn of CLASS_DEFN
        | VariableDefn of VAR_DEFN
        | FunctionDefn of FUNC_DEFN
+       | ConstructorDefn of CTOR_DEFN
        | InterfaceDefn of INTERFACE_DEFN
        | NamespaceDefn of NAMESPACE_DEFN 
        | TypeDefn of TYPE_DEFN
 
      and FUNC_SIG =
-         FunctionSignature of { typeParams: IDENT list,
-                                params: VAR_BINDING list,
-                                inits: STMT list, 
-                                returnType: TYPE_EXPR,
-                                thisType: TYPE_EXPR option,
-                                hasBoundThis: bool, (*goes away, redundant with previous option*)
-                                hasRest: bool }
+         FunctionSignature of 
+           { typeParams: IDENT list,
+             params: BINDINGS,
+             paramTypes: TYPE_EXPR list,
+             defaults: EXPR list,
+             ctorInits: (BINDINGS * EXPR list) option, (* settings + super args *)
+             returnType: TYPE_EXPR,
+             thisType: TYPE_EXPR option,
+             hasRest: bool }
 
-     and VAR_BINDING =
-         Binding of { pattern: PATTERN,
-                      ty: TYPE_EXPR option,
-                      init: EXPR option }
+     and BINDING =
+         Binding of 
+           { ident: BINDING_IDENT,    (* FIXME: use tuple *)
+             ty: TYPE_EXPR }
+
+     and BINDING_IDENT = 
+         TempIdent of int
+       | ParamIdent of int
+       | PropIdent of IDENT
+
+     and INIT_STEP =   (* used to encode init of bindings *)
+         InitStep of (BINDING_IDENT * EXPR)
+       | AssignStep of (EXPR * EXPR)
 
      (* 
       * Note: no type parameters allowed on general typedefs,
@@ -184,61 +204,74 @@ datatype PRAGMA =
          SpecialType of SPECIAL_TY
        | UnionType of TYPE_EXPR list
        | ArrayType of TYPE_EXPR list
-       | NominalType of { ident : IDENT_EXPR }
-       | FunctionType of FUNC_SIG
+       | TypeName of IDENT_EXPR
+       | ElementTypeRef of (TYPE_EXPR * int)
+       | FieldTypeRef of (TYPE_EXPR * IDENT)
+       | FunctionType of FUNC_TYPE           
        | ObjectType of FIELD_TYPE list
-       | AppType of { base: TYPE_EXPR,
-                      args: TYPE_EXPR list }
-       | NullableType of { expr:TYPE_EXPR,
-                           nullable:bool }
-  
+       | AppType of 
+           { base: TYPE_EXPR,
+             args: TYPE_EXPR list }
+       | NullableType of 
+           { expr:TYPE_EXPR,
+             nullable:bool }
+       | InstanceType of
+           { name: NAME, 
+             typeParams: IDENT list, 
+             ty: TYPE_EXPR,
+             isDynamic: bool }
+
      and STMT =
          EmptyStmt
-       | ExprStmt of EXPR list
-       | InitStmt of {kind:VAR_DEFN_TAG,ns:EXPR,prototype:bool,static:bool,inits:EXPR list}   (* turned into ExprStmt by definer *)
+       | ExprStmt of EXPR
+       | InitStmt of
+           { kind: VAR_DEFN_TAG,
+             ns: EXPR option,
+             prototype: bool,
+             static: bool,
+             temps: BINDINGS,
+             inits: INIT_STEP list }
+       | ClassBlock of 
+           { ns: EXPR option,
+             ident: IDENT,
+             name: NAME option,
+             block: BLOCK }
        | ForEachStmt of FOR_ENUM_STMT
        | ForInStmt of FOR_ENUM_STMT
-       | ThrowStmt of EXPR list
-       | ReturnStmt of EXPR list
+       | ThrowStmt of EXPR
+       | ReturnStmt of EXPR
        | BreakStmt of IDENT option
        | ContinueStmt of IDENT option
        | BlockStmt of BLOCK
        | LabeledStmt of (IDENT * STMT)
-       | LetStmt of ((VAR_BINDING list) * STMT)
-       | SuperStmt of EXPR list
+       | LetStmt of BLOCK
        | WhileStmt of WHILE_STMT
        | DoWhileStmt of WHILE_STMT
+       | ForStmt of FOR_STMT
+       | IfStmt of 
+           { cnd: EXPR,
+             thn: STMT,
+             els: STMT }
+       | WithStmt of 
+           { obj: EXPR,
+             ty: TYPE_EXPR,
+             body: STMT }
+       | TryStmt of 
+           { block: BLOCK,
+             catches: CATCH_CLAUSE
+                list,
+             finally: BLOCK option }
 
-       | ForStmt of { defns: VAR_BINDING list,
-                      fixtures: FIXTURES option,
-                      init: EXPR list,
-                      cond: EXPR list,
-                      update: EXPR list,
-                      contLabel: IDENT option,
-                      body: STMT }
-
-       | IfStmt of { cnd: EXPR,
-                     thn: STMT,
-                     els: STMT }
-
-       | WithStmt of { obj: EXPR list,
-                       ty: TYPE_EXPR,
-                       body: STMT }
-
-       | TryStmt of { body: BLOCK,
-                      catches: { bind:VAR_BINDING, 
-                                 fixtures: FIXTURES option,
-                                 body:BLOCK } list,
-                      finally: BLOCK option }
-                    
-       | SwitchStmt of { cond: EXPR list,
-                         cases: CASE list }
-
-       | SwitchTypeStmt of { cond: EXPR list, 
-                             ty: TYPE_EXPR,
-                             cases: TYPE_CASE list }
-
-       | Dxns of { expr: EXPR }
+       | SwitchStmt of         (* FIXME: needs HEAD, DEFNS for defns hoisted from body *)
+           { mode: NUMERIC_MODE option,
+             cond: EXPR,
+             cases: CASE list }
+       | SwitchTypeStmt of 
+           { cond: EXPR, 
+             ty: TYPE_EXPR,
+             cases: TYPE_CASE list }
+       | Dxns of 
+           { expr: EXPR }
 
      and EXPR =
          TrinaryExpr of (TRIOP * EXPR * EXPR * EXPR)
@@ -246,213 +279,249 @@ datatype PRAGMA =
        | BinaryTypeExpr of (BINTYPEOP * EXPR * TYPE_EXPR)
        | UnaryExpr of (UNOP * EXPR)
        | TypeExpr of TYPE_EXPR
-       | NullaryExpr of NULOP
-       | YieldExpr of EXPR list option
+       | ThisExpr
+       | YieldExpr of EXPR option
        | SuperExpr of EXPR option
        | LiteralExpr of LITERAL
-
-       | CallExpr of {func: EXPR,
-                      actuals: EXPR list}
-
-       | ApplyTypeExpr of {expr: EXPR,  (* apply expr to type list *)
-                      actuals: TYPE_EXPR list}
-
-       | LetExpr of { defs: VAR_BINDING list,                      
-                      body: EXPR list,
-                      fixtures: FIXTURES option}
-
-       | NewExpr of { obj: EXPR,
-                      actuals: EXPR list }
-
-       | FunExpr of FUNC
-       | ObjectRef of { base: EXPR, ident: IDENT_EXPR }
-
-       | LexicalRef of { ident: IDENT_EXPR }
-
-       | SetExpr of (ASSIGNOP * PATTERN * EXPR)
-       | AllocTemp of (IDENT_EXPR * EXPR)
-
+       | CallExpr of 
+           { func: EXPR,
+             actuals: EXPR list }
+       | ApplyTypeExpr of 
+           { expr: EXPR,  (* apply expr to type list *)
+             actuals: TYPE_EXPR list }
+       | LetExpr of 
+           { defs: BINDINGS,                      
+             body: EXPR,
+             head: HEAD option }
+       | NewExpr of 
+           { obj: EXPR,
+             actuals: EXPR list }
+       | ObjectRef of { base: EXPR, ident: IDENT_EXPR, pos: POS option }
+       | LexicalRef of { ident: IDENT_EXPR, pos: POS option }
+       | SetExpr of (ASSIGNOP * EXPR * EXPR)
        | ListExpr of EXPR list
-       | SliceExpr of (EXPR list * EXPR list * EXPR list)
+       | InitExpr of (INIT_TARGET * HEAD * INITS)   (* HEAD is for temporaries *)
+       | SliceExpr of (EXPR * EXPR * EXPR)
+       | GetTemp of int
+       | GetParam of int
+
+     and INIT_TARGET = Hoisted
+                     | Local
+                     | Prototype
+
+     and FIXTURE_NAME = TempName of int
+                      | PropName of NAME
 
      and IDENT_EXPR =
-         QualifiedIdentifier of { qual : EXPR,
-                                  ident : USTRING }
-       | QualifiedExpression of { qual : EXPR,
-                                  expr : EXPR }
+         Identifier of 
+           { ident : IDENT,
+             openNamespaces : NAMESPACE list list }
+       | QualifiedExpression of  (* type * *)
+           { qual : EXPR,
+             expr : EXPR }
        | AttributeIdentifier of IDENT_EXPR
-       | Identifier of { ident : IDENT,
-                         openNamespaces : NAMESPACE list list }
        | ExpressionIdentifier of EXPR   (* for bracket exprs: o[x] and @[x] *)
-       | TypeIdentifier of { ident : IDENT_EXPR, (*deprecated*)
-                             typeParams : TYPE_EXPR list }
+       | QualifiedIdentifier of 
+           { qual : EXPR,
+             ident : USTRING }
+       | TypeIdentifier of (* in a type context, these this will be a AppType *)
+           { ident : IDENT_EXPR, 
+             typeArgs : TYPE_EXPR list }
+       | UnresolvedPath of (IDENT list * IDENT_EXPR)
 
      and LITERAL =
          LiteralNull
        | LiteralUndefined
-       | LiteralNumber of real
+       | LiteralContextualDecimal of string        (* Should be erased after defn time. *)
+       | LiteralContextualDecimalInteger of string (* Should be erased after defn time. *)
+       | LiteralContextualHexInteger of string     (* Should be erased after defn time. *)
+       | LiteralDouble of Real64.real
+       | LiteralDecimal of Decimal.DEC
+       | LiteralInt of Int32.int
+       | LiteralUInt of Word32.word
        | LiteralBoolean of bool
        | LiteralString of USTRING
-       | LiteralArray of { exprs:EXPR list, ty:TYPE_EXPR option }
+       | LiteralArray of 
+           { exprs:EXPR list, 
+             ty:TYPE_EXPR option }
        | LiteralXML of EXPR list
        | LiteralNamespace of NAMESPACE
-
        | LiteralObject of
-         { expr : FIELD list,
-           ty: TYPE_EXPR option }
-
+           { expr : FIELD list,
+             ty: TYPE_EXPR option }
+       | LiteralFunction of FUNC
        | LiteralRegExp of
-         { str: USTRING }
+           { str: USTRING }
 
      and BLOCK = Block of DIRECTIVES
 
-     and PATTERN = 
-                (* these IDENT_EXPRs are actually
-                   Identifier { id, _ }
-                   and should later be changed to IDENT
-                 *)
-         ObjectPattern of FIELD_PATTERN list
-       | ArrayPattern of PATTERN list
-       | SimplePattern of EXPR
-       | IdentifierPattern of IDENT
 
-(* FIXTURES are built by the definition phase, not the parser; but they 
- * are patched back into the AST in class-definition and block
- * nodes, so we must define them here. *)
+     (* FIXTURES are built by the definition phase, not the parser; but they 
+      * are patched back into the AST in class-definition and block
+      * nodes, so we must define them here. *)
 
+(* ClassFixture only at package level,
+ * VirtualValFixture only in classes,
+ *)
      and FIXTURE = 
          NamespaceFixture of NAMESPACE
-       | ClassFixture of { extends: NAME option, 
-                           implements: NAME list,
-                           classBlock: BLOCK, 
-                           instanceBlock: BLOCK } 
+       | ClassFixture of CLS
        | TypeVarFixture
        | TypeFixture of TYPE_EXPR
-       | ValFixture of { ty: TYPE_EXPR,
-                         readOnly: bool,
-                         isOverride: bool,
-                         init: EXPR option }
-       | VirtualValFixture of { ty: TYPE_EXPR, 
-                                getter: FUNC_DEFN option,
-                                setter: FUNC_DEFN option }
+       | MethodFixture of 
+         { func: FUNC,
+           ty: TYPE_EXPR,
+           readOnly: bool,  (* ES3 funcs are r/w methods with ty=Ast.Special Ast.Any *)
+           override: bool,
+           final: bool }
+       | ValFixture of 
+           { ty: TYPE_EXPR,
+             readOnly: bool }
+       | VirtualValFixture of 
+         VIRTUAL_VAL_FIXTURE
+             
 
-                     
-withtype FIELD =
-         { kind: VAR_DEFN_TAG,
-           name: IDENT_EXPR,
-           init: EXPR }
+withtype 
 
-     and FIELD_PATTERN =
-         { name: IDENT_EXPR, 
-           ptrn : PATTERN }
+         BINDINGS = (BINDING list * INIT_STEP list)
+     and FIXTURES = (FIXTURE_NAME * FIXTURE) list
+     and INITS = (FIXTURE_NAME * EXPR) list
+     and HEAD = (FIXTURES * INITS)
+
+     and FIELD =
+           { kind: VAR_DEFN_TAG,
+             name: IDENT_EXPR,
+             init: EXPR }
 
      and FIELD_TYPE =
-         { name: IDENT,
-           ty: TYPE_EXPR }
+           { name: IDENT,
+             ty: TYPE_EXPR }
          
      and TYPED_IDENT =
-         { name: IDENT,
-           ty: TYPE_EXPR option }
+           { name: IDENT,
+             ty: TYPE_EXPR option }
 
-     and ATTRIBUTES =
-         { ns: EXPR,
-           override: bool,
-           static: bool,
-           final: bool,
-           dynamic: bool,
-           prototype: bool,
-           native: bool,
-           rest: bool }
+     and FUNC_TYPE = 
+         { typeParams: IDENT list,
+           params: TYPE_EXPR list,
+           result: TYPE_EXPR,
+           thisType: TYPE_EXPR option,
+           hasRest: bool,
+           minArgs: int }
 
      and FUNC_DEFN = 
-         { kind : VAR_DEFN_TAG,
-           ns: EXPR,
-           final: bool,
-           native: bool,
-           override: bool,
-           prototype: bool,
-           static: bool,
-           func : FUNC }
+           { kind : VAR_DEFN_TAG,
+             ns: EXPR option,
+             final: bool,
+             override: bool,
+             prototype: bool,
+             static: bool,
+             func : FUNC }
+
+     and CTOR_DEFN = CTOR
 
      and VAR_DEFN =
-         { kind : VAR_DEFN_TAG,
-           ns : EXPR,
-           static : bool,
-           prototype : bool,
-           bindings : VAR_BINDING list }
-
-     and FIXTURES = (NAME * FIXTURE) list
+           { kind : VAR_DEFN_TAG,
+             ns : EXPR option,
+             static : bool,
+             prototype : bool,
+             bindings : BINDINGS }
 
      and NAMESPACE_DEFN = 
-         { ident: IDENT,
-           ns: EXPR,
-           init: EXPR option }
+           { ident: IDENT,
+             ns: EXPR option,
+             init: EXPR option }
 
      and CLASS_DEFN =
-         { ident: IDENT, 
-           ns: EXPR,
-           nonnullable: bool,
-           dynamic: bool,
-           final: bool,
-           params: IDENT list,
-           extends: IDENT_EXPR option,
-           implements: IDENT_EXPR list,
-           body: BLOCK
-     }
+           { ident: IDENT, 
+             ns: EXPR option,
+             nonnullable: bool,
+             dynamic: bool,
+             final: bool,
+             params: IDENT list,
+             extends: IDENT_EXPR option,
+             implements: IDENT_EXPR list,
+             classDefns: DEFN list,
+             instanceDefns: DEFN list,
+             instanceStmts: STMT list,
+             ctorDefn: CTOR option }
 
      and INTERFACE_DEFN =
-         { ident: IDENT,
-           ns: EXPR,
-           nonnullable: bool,
-           params: IDENT list,
-           extends: IDENT_EXPR list,
-           body: BLOCK }
+           { ident: IDENT,
+             ns: EXPR option,
+             nonnullable: bool,
+             params: IDENT list,
+             extends: IDENT_EXPR list,
+             block: BLOCK }
          
      and TYPE_DEFN =
-         { ident: IDENT,
-           ns: EXPR,
-           init: TYPE_EXPR }
+           { ident: IDENT,
+             ns: EXPR option,
+             init: TYPE_EXPR }
 
      and FOR_ENUM_STMT =
-         { ptrn: PATTERN option,
-           obj: EXPR list,
-           defns: VAR_BINDING list,
-           fixtures: FIXTURES option,
-           contLabel: IDENT option,
-           body: STMT }
+           { defn: VAR_DEFN option,             
+             obj: EXPR,
+             fixtures: FIXTURES option,
+             inits: INITS option,
+             labels: IDENT list,
+             body: STMT }
+
+     and FOR_STMT =
+           { fixtures: FIXTURES option,
+             defn: VAR_DEFN option,    
+             init: STMT list,                  
+             cond: EXPR,
+             update: EXPR,
+             labels: IDENT list,
+             body: STMT }
 
      and WHILE_STMT =
-         { cond: EXPR,
-           body: STMT,
-           contLabel: IDENT option }
+           { cond: EXPR,
+             fixtures: FIXTURES option,
+             body: STMT,
+             labels: IDENT list }
 
      and DIRECTIVES = 
-         { pragmas: PRAGMA list,
-           defns: DEFN list,
-           stmts: STMT list,
-           fixtures: FIXTURES option,
-           inits: STMT list option }
+           { pragmas: PRAGMA list,
+             defns: DEFN list,
+             head: HEAD option,
+             body: STMT list,
+             pos: POS option }
 
-     and BINDINGS =
-         { b : VAR_BINDING list,
-           i : EXPR list }
-
-     and CASE = (* Perhaps we can collapse this to EXPR list *)
-         { label : EXPR list option, body : BLOCK }
+     and CASE =
+           { label: EXPR option,
+             inits: INITS option, 
+             body: BLOCK }   (* FIXME: should be STMT list *)
 
      and TYPE_CASE =
-         { ptrn : VAR_BINDING option, body : BLOCK }
+           { ty : TYPE_EXPR option,
+             bindings : BINDINGS,
+             inits: INITS option, 
+             body: BLOCK }
+
+     and CATCH_CLAUSE = 
+         { bindings:BINDINGS,
+           ty: TYPE_EXPR, 
+           fixtures: FIXTURES option,
+           block:BLOCK }
 
      and FUNC_NAME =
-         { kind : FUNC_NAME_KIND, ident : IDENT }
+           { kind : FUNC_NAME_KIND, 
+             ident : IDENT }
+
+     and VIRTUAL_VAL_FIXTURE = 
+         { ty: TYPE_EXPR, 
+           getter: FUNC_DEFN option,
+           setter: FUNC_DEFN option }
 
 type PACKAGE =
-     { name: USTRING,
-       body: BLOCK }
-     
+           { name: IDENT list,
+             block: BLOCK }
+
 type PROGRAM =
-     { packages: PACKAGE list,
-       fixtures: FIXTURES option,
-       body : BLOCK }
+           { packages: PACKAGE list,
+             fixtures: FIXTURES option,
+              block: BLOCK }
 
 end

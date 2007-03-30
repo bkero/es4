@@ -3,89 +3,63 @@
 
 structure Mach = struct 
 
-(* Local type aliases *)
+(* Local tracing machinery *)
 
-type TYPE = Ast.TYPE_EXPR
-type STR = Ast.USTRING
-type ID = Ast.IDENT
-type NS = Ast.NAMESPACE
-type NAME = Ast.NAME
-type MULTINAME = Ast.MULTINAME
-type BINDINGS = Ast.BINDINGS
-type FIXTURES = Ast.FIXTURES
-
-datatype SCOPE_TAG = 
-         VarGlobal       (* Variable object created before execution starts *)
-       | VarClass        (* Variable object for class objects               *)
-       | VarInstance     (* Variable object for class instances             *)
-       | VarInitializer  (* Variable object created on entry an initializer *)
-       | VarActivation   (* Variable object created on entry to a function  *)
-       | With            (* Created by 'with' bindings                      *)
-       | Let             (* Created by 'catch', 'let', etc.                 *)
+val doTrace = ref false
+fun trace ss = if (!doTrace) then LogErr.log ("[mach] " :: ss) else ()
+fun error ss = LogErr.machError ss
 
 datatype VAL = Object of OBJ
              | Null
              | Undef
 
      and OBJ = 
-         Obj of { tag: VAL_TAG,                           
+         Obj of { ident: OBJ_IDENT,
+                  tag: VAL_TAG,                           
                   props: PROP_BINDINGS,
                   proto: VAL ref,
                   magic: (MAGIC option) ref }
 
      and VAL_TAG =
          ObjectTag of Ast.FIELD_TYPE list
-       | ArrayTag of TYPE list
+       | ArrayTag of Ast.TYPE_EXPR list
        | FunctionTag of Ast.FUNC_SIG
-       | ClassTag of NAME
+       | ClassTag of Ast.NAME
 
 (* 
  * Magic is visible only to the interpreter; 
  * it is not visible to users.
  *)
                
-     and MAGIC = Number of real (* someday to be more complicated *)
-               | String of STR  (* someday to be unicode *)
-               | Bool of bool
-               | Namespace of NS
-               | Class of CLS_CLOSURE
-               | Interface of IFACE_CLOSURE
-               | Function of FUN_CLOSURE
-               | Type of TYPE
-               | HostFunction of (VAL list -> VAL)
+     and MAGIC = 
+         UInt of Word32.word
+       | Int of Int32.int
+       | Double of Real64.real
+       | Decimal of Decimal.DEC
+       | ByteArray of Word8Array.array
+       | String of Ast.USTRING  (* someday to be unicode *)
+       | Bool of bool
+       | Namespace of Ast.NAMESPACE
+       | Class of CLS_CLOSURE
+       | Interface of IFACE_CLOSURE
+       | Function of FUN_CLOSURE
+       | Type of Ast.TYPE_EXPR
+       | NativeFunction of NATIVE_FUNCTION
                     
-     and CLS = 
-         Cls of { ty: TYPE,
-                  (* FIXME: revive these slots as needed; disabled for now *)
-    (*
-                  isSealed: bool,
-                  scope: SCOPE,
-                     base: CLS option,
-                  interfaces: IFACE list,
-                  
-                  call: FUN_CLOSURE option,
-     *)
-                  definition: Ast.CLASS_DEFN
-    (*
-                  constructor: FUN_CLOSURE option,
-                  
-                  instanceTy: TYPE,
-                  instancePrototype: VAL,
-                  
-                  initialized: bool ref
-     *)
-                }
-
      and IFACE = 
-         Iface of { ty: TYPE,
+         Iface of { ty: Ast.TYPE_EXPR,
                     bases: IFACE list,
                     definition: Ast.INTERFACE_DEFN,                        
                     isInitialized: bool ref }
                    
      and SCOPE = 
-         Scope of { tag: SCOPE_TAG, 
-                    object: OBJ,
-                    parent: SCOPE option }
+         Scope of { object: OBJ,
+                    parent: SCOPE option,
+                    temps: TEMPS,
+                    isVarObject: bool }
+
+     and TEMP_STATE = UninitTemp
+                    | ValTemp of VAL
                         
      and PROP_STATE = TypeVarProp
                     | TypeProp
@@ -101,7 +75,7 @@ withtype FUN_CLOSURE =
            env: SCOPE }
 
      and CLS_CLOSURE = 
-         { cls: CLS, 
+         { cls: Ast.CLS, 
            allTypesBound: bool,
            env: SCOPE }
          
@@ -110,6 +84,11 @@ withtype FUN_CLOSURE =
            allTypesBound: bool,
            env: SCOPE }
 
+     and NATIVE_FUNCTION = 
+         (VAL list -> VAL)
+
+     and OBJ_IDENT = 
+         LargeInt.int
 
 (* Important to model "fixedness" separately from 
  * "dontDelete-ness" because fixedness affects 
@@ -121,11 +100,148 @@ withtype FUN_CLOSURE =
                    readOnly: bool,
                    isFixed: bool}
 
-     and PROP = { ty: TYPE,
+     and TEMPS = (Ast.TYPE_EXPR * TEMP_STATE) list ref
+
+     and PROP = { ty: Ast.TYPE_EXPR,
                   state: PROP_STATE,                  
                   attrs: ATTRS }
 
-     and PROP_BINDINGS = ((NAME * PROP) list) ref
+     and PROP_BINDINGS = ((Ast.NAME * PROP) list) ref
+
+(* Exceptions for control transfer. *)
+
+exception ContinueException of (Ast.IDENT option)
+exception BreakException of (Ast.IDENT option)
+exception TailCallException of (unit -> VAL)
+exception ThrowException of VAL
+exception ReturnException of VAL
+
+fun isObject (v:VAL) : bool = 
+    case v of 
+        Object _ => true
+      | _ => false
+
+
+fun isUInt (v:VAL) : bool = 
+    case v of 
+        Object (Obj ob) => 
+        (case !(#magic ob) of 
+             SOME (UInt _) => true
+           | _ => false)
+      | _ => false
+
+
+fun isInt (v:VAL) : bool = 
+    case v of 
+        Object (Obj ob) => 
+        (case !(#magic ob) of 
+             SOME (Int _) => true
+           | _ => false)
+      | _ => false
+
+
+fun isDouble (v:VAL) : bool = 
+    case v of 
+        Object (Obj ob) => 
+        (case !(#magic ob) of 
+             SOME (Double _) => true
+           | _ => false)
+      | _ => false
+
+
+fun isDecimal (v:VAL) : bool = 
+    case v of 
+        Object (Obj ob) => 
+        (case !(#magic ob) of 
+             SOME (Decimal _) => true
+           | _ => false)
+      | _ => false
+
+
+fun isString (v:VAL) 
+    : bool = 
+    case v of 
+        Object (Obj ob) => 
+        (case !(#magic ob) of 
+             SOME (String _) => true
+           | _ => false)
+      | _ => false
+
+
+fun isBoolean (v:VAL) : bool = 
+    case v of 
+        Object (Obj ob) => 
+        (case !(#magic ob) of 
+             SOME (Bool _) => true
+           | _ => false)
+      | _ => false
+
+
+fun isNamespace (v:VAL) : bool = 
+    case v of 
+        Object (Obj ob) => 
+        (case !(#magic ob) of 
+             SOME (Namespace _) => true
+           | _ => false)
+      | _ => false
+
+
+fun isClass (v:VAL) : bool = 
+    case v of 
+        Object (Obj ob) => 
+        (case !(#magic ob) of 
+             SOME (Class _) => true
+           | _ => false)
+      | _ => false
+
+
+fun isInterface (v:VAL) : bool = 
+    case v of 
+        Object (Obj ob) => 
+        (case !(#magic ob) of 
+             SOME (Interface _) => true
+           | _ => false)
+      | _ => false
+
+
+fun isFunction (v:VAL) : bool = 
+    case v of 
+        Object (Obj ob) => 
+        (case !(#magic ob) of 
+             SOME (Function _) => true
+           | _ => false)
+      | _ => false
+
+
+fun isType (v:VAL) : bool = 
+    case v of 
+        Object (Obj ob) => 
+        (case !(#magic ob) of 
+             SOME (Type _) => true
+           | _ => false)
+      | _ => false
+
+
+fun isNativeFunction (v:VAL) : bool = 
+    case v of 
+        Object (Obj ob) => 
+        (case !(#magic ob) of 
+             SOME (NativeFunction _) => true
+           | _ => false)
+      | _ => false
+
+
+fun isNumeric (v:VAL) : bool = 
+    case v of 
+        Object (Obj ob) => 
+        (case !(#magic ob) of 
+             SOME (Double _) => true
+           | SOME (Decimal _) => true
+           | SOME (Int _) => true
+           | SOME (UInt _) => true
+           | _ => false)
+      | _ => false
+
 
 (* Binding operations. *)
 
@@ -138,14 +254,14 @@ fun newPropBindings _ : PROP_BINDINGS =
 
 
 fun addProp (b:PROP_BINDINGS) 
-            (n:NAME) 
+            (n:Ast.NAME) 
             (x:PROP) 
     : unit = 
     b := ((n,x) :: (!b))
 
 
 fun delProp (b:PROP_BINDINGS) 
-            (n:NAME) 
+            (n:Ast.NAME) 
     : unit = 
     let 
         fun strip [] = LogErr.hostError ["deleting nonexistent property binding: ", 
@@ -160,11 +276,20 @@ fun delProp (b:PROP_BINDINGS)
 
 
 fun getProp (b:PROP_BINDINGS) 
-            (n:NAME) 
+            (n:Ast.NAME) 
     : PROP = 
     let 
-        fun search [] = LogErr.hostError ["property binding not found: ", 
-                                          (#id n)]
+        (*
+            If not found, then cons up a temporary property
+            with value undefined. Any property not found
+            errors would have been caught by evalRefExpr
+        *)
+        fun search [] = {ty=Ast.SpecialType Ast.Undefined,
+                              state=ValProp Undef,
+                              attrs={dontDelete=false,  (* unused attrs *)
+                                     dontEnum=false,
+                                     readOnly=false,
+                                     isFixed=false}}
           | search ((k,v)::bs) = 
             if k = n 
             then v
@@ -173,9 +298,36 @@ fun getProp (b:PROP_BINDINGS)
         search (!b)
     end
 
+fun getFixedProp (b:PROP_BINDINGS) 
+                 (n:Ast.NAME) 
+    : PROP = 
+    let 
+        fun search [] = LogErr.hostError ["property binding not found: ", 
+                                          (#id n)]
+          | search ((k,(v:PROP))::bs) = 
+            if k = n andalso (#isFixed (#attrs v))
+            then v
+            else search bs
+    in
+        search (!b)
+    end
+
+fun hasFixedProp (b:PROP_BINDINGS) 
+                 (n:Ast.NAME) 
+    : bool = 
+    let 
+        fun search [] = false
+          | search ((k,(v:PROP))::bs) = 
+            if k = n andalso (#isFixed (#attrs v))
+            then true
+            else search bs
+    in
+        search (!b)
+    end
+
 
 fun hasProp (b:PROP_BINDINGS) 
-            (n:NAME) 
+            (n:Ast.NAME) 
     : bool = 
     let 
         fun search [] = false
@@ -187,53 +339,17 @@ fun hasProp (b:PROP_BINDINGS)
         search (!b)
     end
 
-
-(* Standard runtime objects and functions. *)
-
-val internalPrototypeName:NAME = { ns = (Ast.Internal ""), id = "prototype" }
-val internalConstructorName:NAME = { ns = (Ast.Internal ""), id = "constructor" }
-val internalObjectName:NAME = { ns = (Ast.Internal ""), id = "Object" }
-                                            
-val intrinsicObjectName:NAME = { ns = Ast.Intrinsic, id = "Object" }
-val intrinsicArrayName:NAME = { ns = Ast.Intrinsic, id = "Array" }
-val intrinsicFunctionName:NAME = { ns = Ast.Intrinsic, id = "Function" }
-val intrinsicBooleanName:NAME = { ns = Ast.Intrinsic, id = "Boolean" }
-val intrinsicNumberName:NAME = { ns = Ast.Intrinsic, id = "Number" }
-val intrinsicStringName:NAME = { ns = Ast.Intrinsic, id = "String" }
-val intrinsicNamespaceName:NAME = { ns = Ast.Intrinsic, id = "Namespace" }
-val intrinsicClassName:NAME = { ns = Ast.Intrinsic, id = "Class" }
-val intrinsicInterfaceName:NAME = { ns = Ast.Intrinsic, id = "Interface" }
-
-val intrinsicApplyName:NAME = { ns = Ast.Intrinsic, id = "apply" }
-val intrinsicInvokeName:NAME = { ns = Ast.Intrinsic, id = "invoke" }
-val intrinsicConstructName:NAME = { ns = Ast.Intrinsic, id = "construct" }
-
-val intrinsicObjectBaseTag:VAL_TAG = ClassTag (intrinsicObjectName)
-val intrinsicArrayBaseTag:VAL_TAG = ClassTag (intrinsicArrayName)
-val intrinsicFunctionBaseTag:VAL_TAG = ClassTag (intrinsicFunctionName)
-val intrinsicBooleanBaseTag:VAL_TAG = ClassTag (intrinsicBooleanName)
-val intrinsicNumberBaseTag:VAL_TAG = ClassTag (intrinsicNumberName)
-val intrinsicStringBaseTag:VAL_TAG = ClassTag (intrinsicStringName)
-val intrinsicNamespaceBaseTag:VAL_TAG = ClassTag (intrinsicNamespaceName)
-val intrinsicClassBaseTag:VAL_TAG = ClassTag (intrinsicClassName)
-val intrinsicInterfaceBaseTag:VAL_TAG = ClassTag (intrinsicInterfaceName)
-
-(* To reference something in the intrinsic namespace, you need a complicated expression. *)
-val intrinsicNsExpr = Ast.LiteralExpr (Ast.LiteralNamespace (Ast.Intrinsic))
-fun intrinsicName id = Ast.QualifiedIdentifier { qual = intrinsicNsExpr, ident = id }
-
-(* Define some global intrinsic nominal types. *)
-
-val typeType = Ast.NominalType { ident = (intrinsicName "Type") }
-val namespaceType = Ast.NominalType { ident = (intrinsicName "Namespace") }
-val classType = Ast.NominalType { ident = intrinsicName "Class" }
-
+val currIdent = ref (LargeInt.fromInt 0)
+fun nextIdent _ =
+    (currIdent := (!currIdent) + (LargeInt.fromInt 1);
+     !currIdent)
 
 fun newObj (t:VAL_TAG) 
            (p:VAL) 
            (m:MAGIC option) 
     : OBJ = 
-    Obj { tag = t,
+    Obj { ident = nextIdent (), 
+          tag = t,
           props = newPropBindings (),
           proto = ref p,
           magic = ref m }
@@ -241,7 +357,7 @@ fun newObj (t:VAL_TAG)
 
 fun newSimpleObj (m:MAGIC option) 
     : OBJ = 
-    newObj intrinsicObjectBaseTag Null m
+    newObj (ClassTag Name.public_Object) Null m
 
 
 fun newObject (t:VAL_TAG) 
@@ -256,39 +372,78 @@ fun newSimpleObject (m:MAGIC option)
     Object (newSimpleObj m)
 
 
-fun newNumber (n:real) 
+fun newDouble (n:Real64.real) 
     : VAL = 
-    newObject intrinsicNumberBaseTag Null (SOME (Number n))
+    newObject (ClassTag Name.public_double) Null (SOME (Double n))
 
-
-fun newString (s:STR) 
+fun newDecimal (n:Decimal.DEC) 
     : VAL = 
-    newObject intrinsicStringBaseTag Null (SOME (String s))
+    newObject (ClassTag Name.public_decimal) Null (SOME (Decimal n))
 
+fun newInt (n:Int32.int) 
+    : VAL = 
+    newObject (ClassTag Name.public_int) Null (SOME (Int n))
+
+fun newUInt (n:Word32.word) 
+    : VAL = 
+    newObject (ClassTag Name.public_uint) Null (SOME (UInt n))
+
+fun newString (s:Ast.USTRING) 
+    : VAL = 
+    newObject (ClassTag Name.public_string) Null (SOME (String s))
+
+fun newByteArray (b:Word8Array.array) 
+    : VAL = 
+    newObject (ClassTag Name.public_ByteArray) Null (SOME (ByteArray b))
 
 fun newBoolean (b:bool) 
     : VAL = 
-    newObject intrinsicBooleanBaseTag Null (SOME (Bool b))
+    newObject (ClassTag Name.public_boolean) Null (SOME (Bool b))
 
-
-fun newNamespace (n:NS) 
+fun newNamespace (n:Ast.NAMESPACE) 
     : VAL = 
-    newObject intrinsicNamespaceBaseTag Null (SOME (Namespace n))
-
+    newObject (ClassTag Name.public_Namespace) Null (SOME (Namespace n))
 
 fun newClass (e:SCOPE) 
-             (c:Ast.CLASS_DEFN) 
+             (cls:Ast.CLS) 
     : VAL =
     let
-        val cls = Cls { ty = classType,
-                        definition = c }
         val closure = { cls = cls,
-                        allTypesBound = ((length (#params c)) = 0),
+                        (* FIXME: are all types bound? *)
+                        allTypesBound = true,
                         env = e }
+        val obj = newObject (ClassTag Name.public_Class) Null (SOME (Class closure))
     in
-        newObject intrinsicClassBaseTag Null (SOME (Class closure))
+        obj
     end
 
+fun newIface (e:SCOPE) 
+             (iface:IFACE) 
+    : VAL =
+    let
+        val closure = { iface = iface,
+                        (* FIXME: are all types bound? *)
+                        allTypesBound = true,
+                        env = e }
+        val obj = newObject (ClassTag Name.public_Interface) Null (SOME (Interface closure))
+    in
+        obj
+    end
+        
+
+fun newFunClosure (e:SCOPE)
+                  (f:Ast.FUNC)
+    : FUN_CLOSURE = 
+    let
+        val fsig = case f of Ast.Func { fsig, ... } => fsig
+        val allTypesBound = (case fsig of 
+                                 Ast.FunctionSignature { typeParams, ... } 
+                                 => (length typeParams) = 0)
+    in
+        { func = f, 
+          allTypesBound = allTypesBound,
+          env = e }
+    end
 
 fun newFunc (e:SCOPE) 
             (f:Ast.FUNC) 
@@ -296,169 +451,64 @@ fun newFunc (e:SCOPE)
     let 
         val fsig = case f of Ast.Func { fsig, ... } => fsig
         val tag = FunctionTag fsig
-        val allTypesBound = (case fsig of 
-                                 Ast.FunctionSignature { typeParams, ... } 
-                                 => (length typeParams) = 0)
-                            
-        val closure = { func = f, 
-                        allTypesBound = allTypesBound,
-                        env = e }
+        val closure = newFunClosure e f
     in
         newObject tag Null (SOME (Function closure))
     end
+    
+fun newNativeFunction (f:NATIVE_FUNCTION) = 
+    newObject (ClassTag Name.public_Function)
+              Null 
+              (SOME (NativeFunction f))
+    
+val (objectType:Ast.TYPE_EXPR) = 
+    Ast.ObjectType []
 
-val (objectType:TYPE) = Ast.ObjectType []
-
-val (defaultAttrs:Ast.ATTRIBUTES) = 
-    { ns = Ast.LiteralExpr (Ast.LiteralNamespace (Ast.Public "")),
-                     override = false,
-                     static = false,
-                     final = false,
-                     dynamic = true,
-                     prototype = false,
-                     native = false,
-                     rest = false }
-
-val (emptyBlock:Ast.BLOCK) = Ast.Block { pragmas = [],
-                                         defns = [],
-                                         stmts = [],
-                                         fixtures = NONE,
-                                         inits = NONE }
-
-val (globalObject:OBJ) = newObj intrinsicObjectBaseTag Null NONE
-
+val (emptyBlock:Ast.BLOCK) = 
+    Ast.Block { pragmas = [],
+                defns = [],
+                body = [],
+                head= NONE,
+                pos=NONE }
+    
+val (globalObject:OBJ) = 
+    newSimpleObj NONE
+    
 val (globalScope:SCOPE) = 
-    Scope { tag = VarGlobal,
-            object = globalObject,
-            parent = NONE }
+    Scope { object = globalObject,
+            parent = NONE,
+            temps = ref [],
+            isVarObject = true }    
 
+fun getTemp (temps:TEMPS)
+            (n:int)
+    : VAL =
+    case List.nth ((!temps), n) of
+        (_, UninitTemp) => LogErr.machError ["getting uninitialized temporary"]
+      | (_, ValTemp v) => v
 
-val nan = Real.posInf / Real.posInf
-
-
-fun hasOwnValue (obj:OBJ) 
-                (n:NAME) 
-    : bool = 
-    case obj of 
-        Obj { props, ... } => hasProp props n
-
-
-fun hasValue (obj:OBJ) 
-             (n:NAME) 
-    : bool = 
-    if hasOwnValue obj n
-    then true
-    else (case obj of 
-              Obj { proto, ... } => 
-              case (!proto) of 
-                  Object p => hasValue p n
-                | _ => false)
-
-
-fun getValue (obj:OBJ) 
-             (name:NAME) 
-    : VAL = 
-    case obj of 
-        Obj {props, ...} => 
-        let 
-            val prop = getProp props name
-        in
-            case (#state prop) of 
-                TypeProp => LogErr.machError ["getValue on a type property"]
-              | TypeVarProp => LogErr.machError ["getValue on a type variable property"]
-              | UninitProp => LogErr.machError ["getValue on an uninitialized property"]
-              | ValProp v => v
-        end
-
-
-(* A "defValue" call occurs when assigning a property definition's 
- * initial value, as specified by the user. All other assignments
- * to a property go through "setValue". *)
-
-fun defValue (base:OBJ) 
-             (name:NAME) 
-             (v:VAL) 
-    : unit =
-    case base of 
-        Obj { props, ... } => 
-        if not (hasProp props name)
-        then LogErr.machError ["defValue on missing property"]
-        else (* Here we have relaxed rules: you can write to an 
-              * uninitialized property or a read-only property. *)
-            let 
-                val existingProp = getProp props name
-                                   
-                val _ = case (#state existingProp) of 
-                            
-                            TypeVarProp => 
-                            LogErr.machError ["defValue on type variable property:", 
-                                              LogErr.name name]
-                            
-                          | TypeProp => 
-                            LogErr.machError ["defValue on type property: ", 
-                                              LogErr.name name]
-                            
-                          | UninitProp => ()
-                          | ValProp _ => ()
-                val newProp = { state = ValProp v,
-                                ty = (#ty existingProp), 
-                                attrs = (#attrs existingProp) }
-            in
-                (* FIXME: insert typecheck here *)
-                delProp props name;
-                addProp props name newProp
-            end
-
-
-fun setValue (base:OBJ) 
-             (name:NAME) 
-             (v:VAL) 
+fun defTemp (temps:TEMPS)
+            (n:int)
+            (v:VAL) 
     : unit = 
-    case base of 
-        Obj {props, ...} => 
-        if hasProp props name
-        then 
-            let 
-                val existingProp = getProp props name
-                                   
-                val _ = case (#state existingProp) of 
-                            UninitProp => 
-                            LogErr.machError ["setValue on uninitialized property", 
-                                              LogErr.name name]
-
-                          | TypeVarProp => 
-                            LogErr.machError ["setValue on type variable property:", 
-                                              LogErr.name name]
-
-                          | TypeProp => 
-                            LogErr.machError ["setValue on type property: ", 
-                                              LogErr.name name]
-
-                          | ValProp _ => ()
-
-                val existingAttrs = (#attrs existingProp)
-                val newProp = { state = ValProp v,
-                                ty = (#ty existingProp), 
-                                attrs = existingAttrs }
-            in
-                if (#readOnly existingAttrs)
-                then LogErr.machError ["setValue on read-only property"]
-                else ((* FIXME: insert typecheck here *)
-                      delProp props name;
-                      addProp props name newProp)
-            end
-        else
-            let 
-                val prop = { state = ValProp v,
-                             ty = Ast.SpecialType Ast.Any,
-                             attrs = { dontDelete = false,
-                                       dontEnum = false,
-                                       readOnly = false,
-                                       isFixed = false } }
-            in
-                addProp props name prop
-            end
-
+    let
+        fun replaceNth k [] = LogErr.machError ["temporary-definition error"]
+          | replaceNth k (x::xs) =
+            if k = 0 
+            then (case x of 
+                      (t, UninitTemp) => 
+                      ((* FIXME: put typecheck here *)
+                       (t, ValTemp v) :: xs)
+                    | (t, _) => 
+                       (t, ValTemp v) :: xs)
+                (* ISSUE: we allow redef of temps: LogErr.machError ["re-defining temporary"]) *)
+            else x :: (replaceNth (k-1) xs)
+    in
+        if n >= (length (!temps))
+        then LogErr.machError ["defining out-of-bounds temporary"]
+        else temps := replaceNth n (!temps)
+    end
+             
 (*
  * To get from any object to its CLS, you work out the
  * "nominal base" of the object's tag. You can then find
@@ -467,38 +517,61 @@ fun setValue (base:OBJ)
  *)
 
 fun nominalBaseOfTag (t:VAL_TAG) 
-    : NAME = 
+    : Ast.NAME = 
     case t of 
-        ObjectTag _ => intrinsicObjectName
-      | ArrayTag _ => intrinsicArrayName
-      | FunctionTag _ => intrinsicFunctionName
+        ObjectTag _ => Name.public_Object
+      | ArrayTag _ => Name.public_Array
+      | FunctionTag _ => Name.public_Function
       | ClassTag c => c
 
-
+fun getObjMagic (ob:OBJ) 
+    : (MAGIC option) = 
+    case ob of 
+        Obj ob' => !(#magic ob')
+                   
 fun getMagic (v:VAL) 
     : (MAGIC option) = 
     case v of 
         Object (Obj ob) => !(#magic ob)
       | _ => NONE
 
-
-fun getGlobalVal (n:NAME) 
-    : VAL = 
-    getValue globalObject n
-
-
-fun valToCls (v:VAL) 
-    : (CLS option) = 
+fun needMagic (v:VAL) 
+    : (MAGIC) = 
     case v of 
-        Object (Obj ob) => 
-        (case getMagic (getGlobalVal (nominalBaseOfTag (#tag ob))) of
-             SOME (Class {cls,...}) => SOME cls
-           | _ => NONE)
-      | _ => NONE
+        Object (Obj ob) => valOf (!(#magic ob))
+      | _ => error ["require object with magic"]
 
 (* FIXME: this is not the correct toString *)
 
-fun toString (v:VAL) : string = 
+fun magicToString (magic:MAGIC) 
+    : string =
+    case magic of 
+        Double n => if Real64.== (n, (Real64.realFloor n))
+                    then Int.toString (Real64.floor n)
+                    else Real64.toString n
+      | Decimal d => Decimal.toString d
+      | Int i => Int32.toString i
+      | UInt u => LargeInt.toString (Word32.toLargeInt u)
+      | String s => s
+      | Bool true => "true"
+      | Bool false => "false"
+      | Namespace (Ast.Private _) => "[private namespace]"
+      | Namespace (Ast.Protected _) => "[protected namespace]"
+      | Namespace Ast.Intrinsic => "[intrinsic namespace]"
+      | Namespace Ast.OperatorNamespace => "[operator namespace]"
+      | Namespace (Ast.Public id) => "[public namespace: " ^ id ^ "]"
+      | Namespace (Ast.Internal _) => "[internal namespace]"
+      | Namespace (Ast.UserNamespace id) => "[user-defined namespace " ^ id ^ "]"
+      | Class _ => "[class Class]"
+      | Interface _ => "[interface Interface]"
+      | Function _ => "[function Function]"
+      | Type _ => "[type Function]"
+      | ByteArray _ => "[ByteArray]"
+      | NativeFunction _ => "[function NativeFunction]"
+
+
+fun toString (v:VAL) 
+    : string = 
     case v of 
         Undef => "undefined"
       | Null => "null"
@@ -506,36 +579,8 @@ fun toString (v:VAL) : string =
         (case !(#magic ob) of 
              NONE => "[object Object]"
            | SOME magic => 
-             (case magic of 
-                  Number n => Real.toString n
-                | String s => s
-                | Bool true => "true"
-                | Bool false => "false"
-                | Namespace (Ast.Private _)=> "[private namespace]"
-                | Namespace (Ast.Protected _)=> "[protected namespace]"
-                | Namespace Ast.Intrinsic=> "[intrinsic namespace]"
-                | Namespace (Ast.Public id) => "[public namespace: " ^ id ^ "]"
-                | Namespace (Ast.Internal _) => "[internal namespace]"
-                | Namespace (Ast.UserNamespace id) => "[user-defined namespace " ^ id ^ "]"
-                | Class _ => "[class Class]"
-                | Interface _ => "[interface Interface]"
-                | Function _ => "[function Function]"
-                | Type _ => "[type Function]"
-                | HostFunction _ => "[function HostFunction]"))
+             magicToString magic)
 
-fun toNum (v:VAL) : real = 
-    case v of 
-        Undef => nan
-      | Null => 0.0
-      | Object (Obj ob) => 
-        (case !(#magic ob) of 
-             SOME (Number n) => n
-           | SOME (Bool true) => 1.0
-           | SOME (Bool false) => 0.0
-           | SOME (String s) => (case Real.fromString s of 
-                                     SOME n => n
-                                   | NONE => nan)
-           | _ => nan)
 
 fun toBoolean (v:VAL) : bool = 
     case v of 
@@ -546,68 +591,390 @@ fun toBoolean (v:VAL) : bool =
              SOME (Bool b) => b
            | _ => true)
 
-                  
-fun equals (va:VAL) (vb:VAL) : bool = 
-    case (va,vb) of 
-        (Object (Obj oa), Object (Obj ob)) => 
-        (case (!(#magic oa), !(#magic ob)) of 
-             (SOME ma, SOME mb) => 
-             (case (ma, mb) of
-                  (Number na, String _) => Real.== (na, (toNum vb))
-                | (String _, Number nb) => Real.== ((toNum va), nb)
-                | (Number a, Number b) => Real.==(a, b)
-                | _ => (toString va) = (toString vb))
-           | (_, _) => (toString va) = (toString vb))
-      | _ => (toString va) = (toString vb)
 
-
-fun less (va:VAL) (vb:VAL) : bool = 
-    case (va,vb) of 
-        (Object (Obj oa), Object (Obj ob)) =>
-        (case (!(#magic oa), !(#magic ob)) of 
-             (SOME ma, SOME mb) => 
-             (case (ma, mb) of 
-                  (Number na, String _) => na < (toNum vb)
-                | (String _, Number nb) => (toNum va) < nb
-                | (String sa, String sb) => sa < sb
-                | _ => (toNum va) < (toNum vb))
-           | _ => (toNum va) < (toNum vb))
-      | _ => (toNum va) < (toNum vb)
-
-
-fun hostPrintFunction (vals:VAL list) : VAL = 
-    let
-        fun printOne v = print (toString v) 
+fun toNumeric (v:VAL) 
+    : VAL =          
+    let 
+        fun NaN _ = newDouble (Real64.posInf / Real64.posInf)
+        fun zero _ = newDouble (Real64.fromInt 0)
+        fun one _ = newDouble (Real64.fromInt 1)
     in
-        (List.app printOne vals; Undef)
+        case v of 
+            Undef => NaN ()
+          | Null => zero ()
+          | Object (Obj ob) => 
+            (case !(#magic ob) of 
+                 SOME (Double _) => v
+               | SOME (Decimal _) => v
+               | SOME (Int _) => v
+               | SOME (UInt _) => v
+               | SOME (Bool false) => zero ()
+               | SOME (Bool true) => one ()
+               (* 
+                * FIXME: This is not the correct definition of ToNumber applied to string.
+                * See ES3 9.3.1. We need to talk it over.
+                *) 
+               | SOME (String s) => (case Real64.fromString s of
+                                         SOME s' => newDouble s'
+                                       | NONE => NaN ())
+               (* 
+                * FIXME: ES3 9.3 defines ToNumber on objects in terms of primitives. We've
+                * reorganized the classification of primitives vs. objects. Revisit this.
+                *)
+               | _ => zero ())
+    end
+    
+
+fun toDecimal (precision:int) 
+              (mode:Decimal.ROUNDING_MODE) 
+              (v:VAL) 
+    : Decimal.DEC = 
+    case v of 
+        Undef => Decimal.NaN
+      | Null => Decimal.zero
+      | Object (Obj ob) => 
+        (case !(#magic ob) of 
+             SOME (Double d) => 
+             (* NB: Lossy. *)
+             (case Decimal.fromString precision mode (Real64.toString d) of
+                  SOME d' => d'
+                | NONE => Decimal.NaN)
+           | SOME (Decimal d) => d
+           | SOME (Int i) => Decimal.fromLargeInt (Int32.toLarge i)
+           | SOME (UInt u) => Decimal.fromLargeInt (Word32.toLargeInt u)
+           | SOME (Bool false) => Decimal.zero
+           | SOME (Bool true) => Decimal.one
+           (* 
+            * FIXME: This is not the correct definition either. See toNumeric.
+            *) 
+           | SOME (String s) => (case Decimal.fromString precision mode s of
+                                     SOME s' => s'
+                                   | NONE => Decimal.NaN)
+           (* 
+            * FIXME: Possibly wrong here also. See comment in toNumeric.
+            *)
+           | _ => Decimal.zero)
+
+
+fun toDouble (v:VAL) 
+    : Real64.real = 
+    let 
+        fun NaN _ = (Real64.posInf / Real64.posInf)
+        fun zero _ = (Real64.fromInt 0)
+        fun one _ = (Real64.fromInt 1)
+    in            
+        case v of 
+            Undef => NaN ()
+          | Null => zero ()
+          | Object (Obj ob) => 
+            (case !(#magic ob) of 
+                 SOME (Double d) => d
+               | SOME (Decimal d) => 
+                 (* NB: Lossy. *)
+                 (case Real64.fromString (Decimal.toString d) of
+                      SOME d' => d'
+                    | NONE => NaN ())
+                 
+               | SOME (Int i) => Real64.fromLargeInt (Int32.toLarge i)
+               | SOME (UInt u) => Real64.fromLargeInt (Word32.toLargeInt u)
+               | SOME (Bool false) => zero ()
+               | SOME (Bool true) => one ()
+               (* 
+                * FIXME: This is not the correct definition either. See toNumeric.
+                *) 
+               | SOME (String s) => (case Real64.fromString s  of
+                                         SOME s' => s'
+                                       | NONE => NaN())
+               (* 
+                * FIXME: Possibly wrong here also. See comment in toNumeric.
+                *)
+               | _ => zero ())
     end
 
 
-fun populateIntrinsics globalObj = 
-    case globalObj of 
-        Obj { props, ... } => 
-        let 
-            fun newHostFunctionObj f = 
-                Object (Obj { tag = intrinsicFunctionBaseTag,
-                              props = newPropBindings (),
-                              proto = ref Null,
-                              magic = ref (SOME (HostFunction f)) })
-            fun bindFunc (n, f) = 
-                let 
-                    val name = { id = n, ns = Ast.Intrinsic }
-                    val prop = { ty = Ast.SpecialType Ast.Any,
-                                 state = ValProp (newHostFunctionObj f), 
-                                 attrs = { dontDelete = true,
-                                           dontEnum = false,
-                                           readOnly = true,
-                                           isFixed = true } }
-                in
-                    addProp props name prop
-                end
-        in
-            List.app bindFunc 
-            [ ("print", hostPrintFunction) ]
-        end        
+fun mathOp (v:VAL) 
+           (decimalFn:(Decimal.DEC -> 'a) option)
+           (doubleFn:(Real64.real -> 'a) option)
+           (intFn:(Int32.int -> 'a) option)
+           (uintFn:(Word32.word -> 'a) option)
+           (default:'a)
+    : 'a = 
+    let 
+        fun fnOrDefault fo v = case fo of 
+                                   NONE => default
+                                 | SOME f => f v
+    in
+        case v of 
+            Object (Obj ob) => 
+            (case !(#magic ob) of 
+                 SOME (Decimal d) => fnOrDefault decimalFn d
+               | SOME (Double d) => fnOrDefault doubleFn d
+               | SOME (Int i) => fnOrDefault intFn i
+               | SOME (UInt u) => fnOrDefault uintFn u
+               | _ => default)
+          | _ => default
+    end
+
+
+fun isPositiveZero (v:VAL) 
+    : bool =
+    let 
+        fun doubleIsPosZero x = 
+            Real64.class x = IEEEReal.ZERO
+            andalso not (Real64.signBit x)
+    in        
+        mathOp v 
+               (SOME Decimal.isPositiveZero)
+               (SOME doubleIsPosZero)
+               NONE NONE false
+    end
+
+
+fun isNegativeZero (v:VAL) 
+    : bool =
+    let 
+        fun doubleIsNegZero x = 
+            Real64.class x = IEEEReal.ZERO
+            andalso Real64.signBit x
+    in        
+        mathOp v 
+               (SOME Decimal.isPositiveZero) 
+               (SOME doubleIsNegZero)
+               NONE NONE false
+    end
+
+
+fun isPositiveInf (v:VAL) 
+    : bool =
+    let 
+        fun doubleIsPosInf x = 
+            Real64.class x = IEEEReal.INF
+            andalso not (Real64.signBit x)
+    in        
+        mathOp v 
+               (SOME Decimal.isPositiveZero)
+               (SOME doubleIsPosInf)
+               NONE NONE false
+    end
+
+
+fun isNegativeInf (v:VAL) 
+    : bool =
+    let 
+        fun doubleIsNegInf x = 
+            Real64.class x = IEEEReal.INF
+            andalso Real64.signBit x
+    in        
+        mathOp v 
+               (SOME Decimal.isPositiveZero)
+               (SOME doubleIsNegInf)
+               NONE NONE false
+    end
+
+    
+fun isNaN (v:VAL)
+    : bool = 
+    mathOp v 
+           (SOME Decimal.isNaN) 
+           (SOME Real64.isNan)
+           NONE NONE false
+
+
+fun sign (v:VAL)
+    : int = 
+    let 
+        (* 
+         * FIXME: this implemented 'sign' function returns 1, 0, or -1
+         * depending on proximity to 0. Some definitions only return 1 or 0,
+         * or only return 1 or -1. Don't know which one the ES3 spec means.
+         *)
+
+        (* FIXME: should decimal rounding mode and precision used in sign-determination? *)
+        fun decimalSign d = case Decimal.compare Decimal.defaultPrecision 
+                                                 Decimal.defaultRoundingMode 
+                                                 d Decimal.zero 
+                             of 
+                                LESS => ~1
+                              | EQUAL => 0
+                              | GREATER => 1
+
+        fun uint32Sign u = if u = (Word32.fromInt 0)
+                           then 0
+                           else 1
+    in
+        mathOp v 
+               (SOME decimalSign)
+               (SOME Real64.sign)
+               (SOME Int32.sign)
+               (SOME uint32Sign)
+               0
+    end
+
+
+fun floor (v:VAL)
+    : LargeInt.int =
+    mathOp v 
+           (SOME Decimal.floor)
+           (SOME (Real64.toLargeInt IEEEReal.TO_NEGINF))
+           (SOME Int32.toLarge)
+           (SOME Word32.toLargeInt)
+           (LargeInt.fromInt 0)
+    
+
+fun signFloorAbs (v:VAL)
+    : LargeInt.int =
+    let
+        val sign = Int.toLarge (sign v)
+        val floor = floor v
+    in
+        LargeInt.*(sign, (LargeInt.abs floor))
+    end
+    
+
+(* ES3 9.4 ToInteger 
+ *
+ * FIXME: If I understand the compatibility requirements
+ * correctly, this should return an integral double. 
+ * Not certain though. 
+ *)
+
+fun toInteger (v:VAL)
+    : VAL = 
+    let
+        val v' = toNumeric v
+    in
+        if isNaN v'
+        then newDouble (Real64.fromInt 0)
+        else (if (isPositiveInf v' orelse
+                  isNegativeInf v' orelse
+                  isPositiveZero v' orelse
+                  isNegativeZero v')
+              then v'
+              else newDouble (Real64.fromLargeInt (signFloorAbs v')))
+    end
+
+(* ES3 9.5 ToInt32 *)
+
+fun toInt32 (v:VAL) 
+    : Int32.int =
+    let 
+        val v' = toNumeric v
+    in
+        if (isNaN v' orelse
+            isPositiveInf v' orelse
+            isNegativeInf v' orelse
+            isPositiveZero v' orelse
+            isNegativeZero v')
+        then Int32.fromInt 0
+        else 
+            let 
+                val l31 = IntInf.pow (2, 31)
+                val l32 = IntInf.pow (2, 32)
+                val v'' = IntInf.mod (signFloorAbs v', l32)
+            in
+                Int32.fromLarge (if LargeInt.>= (v'', l31)
+                                 then LargeInt.- (v'', l32)
+                                 else v'')
+            end
+    end
+
+
+(* ES3 9.6 ToUInt32 *)
+
+fun toUInt32 (v:VAL) 
+    : Word32.word =
+    let 
+        val v' = toNumeric v
+    in
+        if (isNaN v' orelse
+            isPositiveInf v' orelse
+            isNegativeInf v' orelse
+            isPositiveZero v' orelse
+            isNegativeZero v')
+        then Word32.fromInt 0
+        else 
+            let 
+                val l32 = IntInf.pow (2, 32)
+            in
+                Word32.fromLargeInt (LargeInt.mod (signFloorAbs v', l32))
+            end
+    end
+
+(* ES3 9.6 ToUInt16 *)
+
+fun toUInt16 (v:VAL) 
+    : Word32.word =
+    let 
+        val v' = toNumeric v
+    in
+        if (isNaN v' orelse
+            isPositiveInf v' orelse
+            isNegativeInf v' orelse
+            isPositiveZero v' orelse
+            isNegativeZero v')
+        then Word32.fromInt 0
+        else 
+            let 
+                val l16 = IntInf.pow (2, 16)
+            in
+                Word32.fromLargeInt (LargeInt.mod (signFloorAbs v', l16))
+            end
+    end
+
+
+fun fitsInUInt (x:LargeInt.int) 
+    : bool = 
+    let
+        val uintMax = IntInf.pow(2, 32) - 1
+        val uintMin = IntInf.fromInt 0
+    in
+        uintMin <= x andalso x <= uintMax
+    end
+
+
+fun fitsInInt (x:LargeInt.int) 
+    : bool = 
+    let
+        val intMax = IntInf.pow(2, 31) - 1
+        val intMin = ~ (IntInf.pow(2, 31))
+    in
+        intMin <= x andalso x <= intMax
+    end
+
+
+val nativeFunctions:(Ast.NAME * NATIVE_FUNCTION) list ref = ref [] 
+
+                                                            
+fun registerNativeFunction (name:Ast.NAME)
+                           (func:NATIVE_FUNCTION)
+    : unit =
+    (trace ["registering native function: ", LogErr.name name];
+     nativeFunctions := (name, func) :: (!nativeFunctions))
+
+    
+fun getNativeFunction (name:Ast.NAME) 
+    : NATIVE_FUNCTION = 
+    let 
+        fun search [] = LogErr.hostError ["native function not found: ",
+					                      LogErr.name name]
+          | search ((n,f)::bs) = 
+            if n = name
+            then f
+            else search bs
+    in
+        search (!nativeFunctions)
+    end
+
+
+fun resetGlobalObject _ = 
+    case globalObject of
+        (Obj { props, magic, proto, ... }) => 
+        (props := [];
+         magic := NONE;
+         proto := Null)
+
 end
+
+
 
 

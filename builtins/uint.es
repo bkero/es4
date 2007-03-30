@@ -1,4 +1,4 @@
-/* -*- indent-tabs-mode: nil -*- 
+/* -*- mode: java; indent-tabs-mode: nil -*- 
  *
  * ECMAScript 4 builtins - the "uint" object
  *
@@ -11,6 +11,7 @@
 
 package
 {
+    use default namespace public;
     use namespace intrinsic;
     use strict;
 
@@ -20,25 +21,25 @@ package
         static const MIN_VALUE : uint = 0;
 
         /* E262-4 draft */
-        intrinsic static function to(x : Numeric) : uint
+        meta static function convert(x : Numeric)
             x is uint ? x : ToUint(x);
 
         /* E262-4 draft: The uint Constructor Called as a Function */
-        intrinsic static function invoke(value)
+        meta static function invoke(value)
             value === undefined ? 0u : ToUint(value);
 
         /* E262-4 draft: The uint constructor */
-        public function uint(value) {
-            magic::setValue(this, ToUint(value));
-	}
+        function uint(value) 
+            magic::copyValue(ToUint(value), this);
 
         /* E262-4 draft: uint.prototype.toString */
         prototype function toString(this:uint, radix)
             this.toString(radix);
 
-        intrinsic function toString(radix = 10) : string {
+        override intrinsic function toString() {
+            var radix = 10  /* FIXME */
             if (radix === 10 || radix === undefined)
-                return ToString(magic::getValue(this));
+                return ToString(this);
             else if (typeof radix === "number" && radix >= 2 && radix <= 36 && isIntegral(radix)) {
                 // FIXME
                 throw new Error("Unimplemented: non-decimal radix");
@@ -52,14 +53,14 @@ package
             this.toLocaleString();
 
         /* INFORMATIVE */
-        intrinsic function toLocaleString() : string
+        override intrinsic function toLocaleString() : string
             toString();
 
         /* E262-4 draft: uint.prototype.valueOf */
         prototype function valueOf(this:uint)
             this.valueOf();
 
-        intrinsic function valueOf() : Object!
+        override intrinsic function valueOf() : Object!
             this;
 
         /* E262-3 15.7.4.5 uint.prototype.toFixed */

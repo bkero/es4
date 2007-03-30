@@ -6,30 +6,39 @@
 
 open Token
 
-type lexresult = token
+(* Local tracing machinery *)
+
+val doTrace = ref false
+fun trace ss = if (!doTrace) then LogErr.log ("[lex] " :: ss) else ()
+fun error ss = LogErr.lexError ss
+
+type lexresult = TOKEN
 
 fun eof _ = Eof
 
-fun log ss = 
-    (TextIO.print "log: "; 
-     List.app TextIO.print ss; 
-     TextIO.print "\n")
+val lineno = ref 1
+fun incr_line _ = 
+    lineno := (!lineno + 1); 
+fun reset_coords _ = 
+    lineno := 1
+
+val filename = ref ""
 
 val line_breaks : int list ref = ref []
-val token_count : int ref = ref 0
+val token_count : int      ref = ref 0
 
-fun token_list (token_fn : unit -> token) =
+fun token_list (fname, token_fn : unit -> TOKEN) =
 let
     val t = ref [] 
-    fun add tok = t := tok :: !t
+    fun add tok = t := (tok, {file = !filename, line = !lineno}) :: !t
     fun add_lb offset = line_breaks := offset :: !line_breaks
     fun stop _ = (token_count := length (!t); rev (!t))
     fun step _ = 
         let 
-	        val tok = token_fn ()
-	    in 
-          (* log ["lexed ", tokenname tok];  *)
-
+	    val tok = token_fn ()
+	in 
+            trace ["lexed ", tokenname (tok,!lineno)]; 
+	    
 	  (*
 	   * The lexbreak tokens represent choice points for the parser. We
 	   * return two thunks to it: one for each lexer start state
@@ -44,34 +53,40 @@ let
 	      | x => (add x; step ())
 	end
 in
+    filename := fname;
     line_breaks := [];
     step ()
 end
 
+fun chopTrailing (s:string) 
+    : string = 
+    String.substring (s, 0, ((String.size s) - 1))
+
 fun followsLineBreak (ts) =
-	let val _ = log(["followsLineBreak"])
-	    val offset = length ts
-	    val max_offset = !token_count
-	    fun findBreak lbs =
+    let val _ = trace ["followsLineBreak"]
+	val offset = length ts
+	val max_offset = !token_count
+	fun findBreak lbs =
             case lbs of
                 [] => false
               | _ => 
-	              (  (* log(["token_count=",Int.toString(max_offset),
-						" offset=",Int.toString(max_offset-offset),
-							 " break=",Int.toString(hd lbs)]) ;*)
-                  if (hd lbs) = (max_offset - offset) then true else findBreak (tl lbs))
-	in
-		findBreak (!line_breaks)
-	end
+		(trace ["token_count=", Int.toString(max_offset),
+			" offset=", Int.toString(max_offset-offset),
+			" break=", Int.toString(hd lbs)];
+		 if (hd lbs) = (max_offset - offset) then true else findBreak (tl lbs))
+    in
+	findBreak (!line_breaks)
+    end
 
-val (curr_quote : char ref) = ref #"\000"
-val (curr_chars : (char list) ref) = ref []
+val (curr_quote    :  char       ref) = ref #"\000"
+val (curr_chars    : (char list) ref) = ref []
+val (found_newline :  bool       ref) = ref false
 
 %%
 
 %structure Lexer
 
-%s REGEXP XML SINGLE_LINE_COMMENT MULTI_LINE_COMMENT STRING;
+%s REGEXP REGEXP_CHARSET XML SINGLE_LINE_COMMENT MULTI_LINE_COMMENT STRING;
 
 whitespace      = [\009\013\032]+;
 
@@ -96,11 +111,19 @@ decimalLiteral        = ({decimalLiteral_1} | {decimalLiteral_2} | {decimalLiter
 
 hexIntegerLiteral     = ("0" [xX] {hexDigit}+);
 
+explicitIntLiteral      = ({hexIntegerLiteral} | {decimalIntegerLiteral}) "i";
+explicitUIntHexLiteral  = ({hexIntegerLiteral}) "u";
+explicitUIntDecLiteral  = ({decimalIntegerLiteral}) "u";
+explicitDoubleLiteral   = {decimalLiteral} "d";
+explicitDecimalLiteral  = {decimalLiteral} "m";
+
 charEscape            = "\\" ([btnvfr\"\'\\]|"x"{hexDigit}{2}|[0-7]{1,3});
+
+regexpFlags           = [a-zA-Z]*;
 
 %%
 
-<INITIAL>"\n"              => (Eol);
+<INITIAL>"\n"              => (incr_line(); Eol);
 
 <INITIAL>"-"               => (Minus);
 <INITIAL>"--"              => (MinusMinus);
@@ -125,19 +148,22 @@ charEscape            = "\\" ([btnvfr\"\'\\]|"x"{hexDigit}{2}|[0-7]{1,3});
 
 <INITIAL>"/"               => (LexBreakDiv
 				   { lex_initial = 
-				     (fn _ => Div :: token_list 
-						  (fn _ => (YYBEGIN INITIAL; lex ()))),
+					fn _ => (Div, {file = !filename, line = !lineno}) :: token_list (!filename, fn _ => lex ()),
 				     lex_regexp = 
-				     (fn _ => token_list 
-						  (fn _ => (YYBEGIN REGEXP; lex ()))) });
+				        fn _ =>
+					  (curr_chars := [#"/"];
+					   YYBEGIN REGEXP;
+					   token_list (!filename, fn _ => lex ())) });
 
 <INITIAL>"/="              => (LexBreakDivAssign
 				   { lex_initial = 
-				     (fn _ => DivAssign :: token_list 
-						  (fn _ => (YYBEGIN INITIAL; lex ()))),
+					fn _ => (DivAssign, {file = !filename, line = !lineno}) :: token_list (!filename, fn _ => lex ()),
 				     lex_regexp = 
-				     (fn _ => token_list 
-						  (fn _ => (YYBEGIN REGEXP; lex ()))) });
+					fn _ =>
+					  (curr_chars := [#"=",#"/"];
+					   YYBEGIN REGEXP;
+					   token_list (!filename, fn _ => lex ())) });
+
 <INITIAL>":"               => (Colon);
 <INITIAL>"::"              => (DoubleColon);
 <INITIAL>";"               => (SemiColon);
@@ -160,11 +186,11 @@ charEscape            = "\\" ([btnvfr\"\'\\]|"x"{hexDigit}{2}|[0-7]{1,3});
 
 <INITIAL>"<"               => (LexBreakLessThan
 				   { lex_initial = 
-				     (fn _ => LessThan :: token_list 
-						  (fn _ => (YYBEGIN INITIAL; lex ()))),
+					fn _ => (LessThan, {file = !filename, line = !lineno}) :: token_list (!filename, fn _ => lex ()),
 				     lex_xml = 
-				     (fn _ => token_list 
-						  (fn _ => (YYBEGIN XML; lex ()))) });
+					fn _ => 
+					  (YYBEGIN XML;
+					   token_list (!filename, fn _ => lex ())) });
 
 <INITIAL>"<<"              => (LeftShift);
 <INITIAL>"<<="             => (LeftShiftAssign);
@@ -230,7 +256,6 @@ charEscape            = "\\" ([btnvfr\"\'\\]|"x"{hexDigit}{2}|[0-7]{1,3});
 <INITIAL>"while"           => (While);
 <INITIAL>"with"            => (With);
 
-<INITIAL>"call"            => (Call);
 <INITIAL>"debugger"        => (Debugger);
 <INITIAL>"decimal"         => (Decimal);
 <INITIAL>"double"          => (Double);
@@ -253,28 +278,75 @@ charEscape            = "\\" ([btnvfr\"\'\\]|"x"{hexDigit}{2}|[0-7]{1,3});
 <INITIAL>"set"             => (Set);
 <INITIAL>"static"          => (Static);
 <INITIAL>"type"            => (Type);
+<INITIAL>"undefined"       => (Undefined);
 <INITIAL>"xml"             => (Token.Xml);
 <INITIAL>"yield"           => (Yield);
 
 <INITIAL>{whitespace}        => (lex());
 <INITIAL>{identifier}        => (Identifier yytext);
-                   
-<INITIAL>{decimalLiteral}    => (case Real.fromString yytext of 
-                                     SOME r => NumberLiteral r 
-                                   | NONE   => raise LexError);
 
-<INITIAL>{hexIntegerLiteral} => (case Int.fromString yytext of
-                                     SOME i => NumberLiteral (Real.fromInt i)
-                                   | NONE => raise LexError);
+<INITIAL>{explicitIntLiteral} => (case Int32.fromString (chopTrailing yytext) of
+                                      SOME i => ExplicitIntLiteral i
+                                    | NONE => raise LexError);
+<INITIAL>{explicitUIntDecLiteral} => (case LargeInt.fromString (chopTrailing yytext) of
+					  SOME i => ExplicitUIntLiteral (Word32.fromLargeInt i)
+					| NONE => raise LexError);
+<INITIAL>{explicitUIntHexLiteral} => (case Word32.fromString (chopTrailing yytext) of
+					  SOME i => ExplicitUIntLiteral i
+					| NONE => raise LexError);
+<INITIAL>{explicitDoubleLiteral} => (case Real64.fromString (chopTrailing yytext) of
+					 SOME i => ExplicitDoubleLiteral i
+                                       | NONE => raise LexError);
+<INITIAL>{explicitDecimalLiteral} => (case Decimal.fromStringDefault (chopTrailing yytext) of
+					  SOME i => ExplicitDecimalLiteral i
+					| NONE => raise LexError);
+
+<INITIAL>{decimalIntegerLiteral} => (DecimalIntegerLiteral yytext);
+<INITIAL>{hexIntegerLiteral}     => (HexIntegerLiteral yytext);
+<INITIAL>{decimalLiteral}        => (DecimalLiteral yytext);
 
 
 <INITIAL>"//"                => (YYBEGIN SINGLE_LINE_COMMENT; lex());
-<SINGLE_LINE_COMMENT>"\n"    => (YYBEGIN INITIAL; Eol);
+<SINGLE_LINE_COMMENT>"\n"    => (YYBEGIN INITIAL; incr_line(); Eol);
 <SINGLE_LINE_COMMENT>.       => (lex());
 
 <INITIAL>"/*"                => (YYBEGIN MULTI_LINE_COMMENT; lex());
 <MULTI_LINE_COMMENT>"*/"     => (YYBEGIN INITIAL; lex());
-<MULTI_LINE_COMMENT>.|"\n"   => (lex());
+<MULTI_LINE_COMMENT>"\n"     => (incr_line(); lex());
+<MULTI_LINE_COMMENT>.        => (lex());
+
+
+<REGEXP>"/"{regexpFlags}    => (let
+				    val x_flag = String.isSubstring "x" yytext;
+				    val re = String.implode(rev (!curr_chars)) ^ yytext
+				in
+				    if !found_newline andalso (not x_flag)
+				    then error ["Illegal newline in regexp"]
+				    else
+				       (curr_chars := [];
+					found_newline := false;
+					YYBEGIN INITIAL;
+					RegexpLiteral re)
+				end);
+<REGEXP>"["                 => (curr_chars := #"[" :: !curr_chars;
+				YYBEGIN REGEXP_CHARSET;
+				lex());
+<REGEXP>"\n"|"\r"           => (found_newline := true; incr_line(); lex());
+<REGEXP>"\\\n"|"\\\r"       => (incr_line(); lex());
+<REGEXP>"\\".               => (curr_chars := String.sub(yytext,1) :: #"\\" :: !curr_chars;
+				lex());
+<REGEXP>.                   => (curr_chars := String.sub(yytext,0) :: !curr_chars;
+				lex());
+
+<REGEXP_CHARSET>"]"         => (curr_chars := #"]" :: !curr_chars;
+				YYBEGIN REGEXP;
+				lex());
+<REGEXP_CHARSET>"\n"|"\r"   => (found_newline := true; incr_line(); lex());
+<REGEXP_CHARSET>"\\\n"|"\\\r" => (incr_line(); lex());
+<REGEXP_CHARSET>"\\".       => (curr_chars := String.sub(yytext,1) :: #"\\" :: !curr_chars;
+				lex());
+<REGEXP_CHARSET>.           => (curr_chars := String.sub(yytext,0) :: !curr_chars;
+				lex());
 
 <INITIAL>"'"|"\""            => (curr_quote := String.sub (yytext,0); 
                                  curr_chars := [];
@@ -296,6 +368,7 @@ charEscape            = "\\" ([btnvfr\"\'\\]|"x"{hexDigit}{2}|[0-7]{1,3});
                                      (curr_chars := (String.sub (yytext,0)) :: (!curr_chars);
                                      lex()));
 
+
 <STRING>{charEscape}          => ((case Char.fromCString yytext of
 				       NONE => raise LexError
 				     | SOME c => curr_chars := c :: (!curr_chars));
@@ -307,4 +380,4 @@ charEscape            = "\\" ([btnvfr\"\'\\]|"x"{hexDigit}{2}|[0-7]{1,3});
 <STRING>.                     => (curr_chars := (String.sub (yytext,0)) :: (!curr_chars);
 				  lex());
 
-<INITIAL>.                    => (log ["unexpected input: '", yytext, "'"]; raise LexError);
+<INITIAL>.                    => (error ["unexpected input: '", yytext, "'"]);

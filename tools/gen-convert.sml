@@ -20,7 +20,11 @@ struct
                    | UNITcvt
                    | BOOLcvt
                    | INTcvt
-                   | REALcvt
+                   | INT32cvt
+                   | UINT32cvt
+                   | REAL64cvt
+                   | DECcvt
+                   | DECRMcvt
 
     fun typeName (DATATYPEcvt (id, _)) = id
       | typeName (TYPEcvt (id, _)) = id
@@ -35,7 +39,14 @@ struct
            | IDty (IDENT ([], "string")) => STRINGcvt
            | IDty (IDENT ([], "unit")) => UNITcvt
            | IDty (IDENT ([], "bool")) => BOOLcvt
-           | IDty (IDENT ([], "real")) => REALcvt
+
+	   (* Some module-qualified type names we want to support. *)
+           | IDty (IDENT (["Real64"], "real")) => REAL64cvt
+           | IDty (IDENT (["Word32"], "word")) => UINT32cvt
+           | IDty (IDENT (["Int32"], "int")) => INT32cvt
+           | IDty (IDENT (["Decimal"], "DEC")) => DECcvt
+           | IDty (IDENT (["Decimal"], "ROUNDING_MODE")) => DECRMcvt
+
            | IDty (IDENT ([], name)) =>
                  if exists (fn name' => (name' = name)) names then
                      IDcvt name
@@ -105,9 +116,25 @@ struct
                        in
                            (IDpat sym, APPexp (ID "PrettyRep.Int", ID sym))
                        end
-           | REALcvt => let val sym = gensym "r"
+           | REAL64cvt => let val sym = gensym "r"
                         in
-                            (IDpat sym, APPexp (ID "PrettyRep.Real", ID sym))
+                            (IDpat sym, APPexp (ID "PrettyRep.Real64", ID sym))
+                        end
+           | UINT32cvt => let val sym = gensym "u"
+                        in
+                            (IDpat sym, APPexp (ID "PrettyRep.UInt32", ID sym))
+                        end
+           | INT32cvt => let val sym = gensym "i"
+                        in
+                            (IDpat sym, APPexp (ID "PrettyRep.Int32", ID sym))
+                        end
+           | DECcvt => let val sym = gensym "d"
+                        in
+                            (IDpat sym, APPexp (ID "PrettyRep.Dec", ID sym))
+                        end
+           | DECRMcvt => let val sym = gensym "r"
+                        in
+                            (IDpat sym, APPexp (ID "PrettyRep.DecRm", ID sym))
                         end
            | BOOLcvt => let val sym = gensym "b"
                         in

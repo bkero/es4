@@ -1,4 +1,4 @@
-/* -*- indent-tabs-mode: nil -*- 
+/* -*- mode: java; indent-tabs-mode: nil -*- 
  *
  * ECMAScript 4 builtins - the "Function" object
  * E262-3 15.3
@@ -16,33 +16,45 @@
 
 package
 {
+    use default namespace public;
+
     dynamic class Function
-    {       
+    {
         use namespace intrinsic;
         use strict;
 
-        /* E262-3 15.3.1.1: The Function constructor.  This
-           initializes the field "source" in the constructed object.
+        /* E262-3 15.3.1.1: The Function constructor. This does not
+	   directly use the standard construction protocol, though it
+	   calls it indirectly.
          */
-        /* magic */ native function Function(...args);
+         meta static function construct(...args)
+            apply(Function, null, args);
 
         /* E262-3 15.3.1: The Function Constructor Called as a Function */
-        intrinsic static function invoke(...args)
-            Function.construct.apply(null, args);
+         meta static function invoke(...args) {
+            let src : string = args.pop();
+  	    let f = magic::construct(Function, [src]);
+            magic::compileInto(f, args, src);
+            return f;
+        }
+      
+        function Function(source: string) 
+	    : source = source 
+        {}
 
         /* E262-3 10.X / 13.X: function invocation.
 
            This method is never called.  The Function constructor
            marks instances of Function specially, and recognizes these
            instances in the implementation of function calling.  The
-           intrinsic invoke method is defined here to prevent
-           subclasses of Function to override it.
+           instance meta::invoke method is defined here to prevent
+           subclasses of Function from overriding it.
 
            Other parts of the class hierarchy may however create
-           intrinsic invoke methods that will be considered by the
+           meta::invoke methods that will be considered by the
            function calling machinery. 
-        */
-        intrinsic function invoke() {
+        */        
+        meta final function invoke(...args) {
             throw new Error("Implementation error");
         }
 
@@ -52,7 +64,7 @@ package
            some things in the prototype that ensures that the object
            behaves like a function in some trivial ways.
          */
-        intrinsic prototype function invoke()
+        meta prototype function invoke()
             undefined;
 
         prototype var source : string = "function () { }";
@@ -63,7 +75,7 @@ package
         prototype function toString()
             this.source;
 
-        intrinsic function toString() : string
+        override intrinsic function toString() : string
             source;
         
         /* E262-3 15.3.4.3: Function.prototype.apply */
@@ -80,7 +92,7 @@ package
            Note ES4 bug fix: the arguments object is an 'Array', so the test
            for applicability of argArray is simpler than in ES3.
         */
-        public static function apply(fn : Function!, thisArg, argArray) {
+        static function apply(fn : Function!, thisArg, argArray) {
             if (thisArg === undefined || thisArg === null)
                 thisArg = global;
             if (argArray === undefined || argArray === null)
@@ -104,7 +116,7 @@ package
 
         /* E262-4 draft: "apply" and "call" are static methods on the
            Function object. */
-        public static function call(thisObj, ...args:Array):*
+        static function call(thisObj, ...args:Array):*
             Function.apply(this, thisObj, args);
         
         /* E262-3 15.3.5.3: [[HasInstance]] */
@@ -125,6 +137,7 @@ package
             }
         }
 
-        var source : string;  /* Source code for decompilation, installed by the constructor */
+        /* Source code for decompilation, installed by the constructor */
+        var source : string;  
     }
 }

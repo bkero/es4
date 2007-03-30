@@ -1,6 +1,6 @@
-/* -*- indent-tabs-mode: nil -*-
+/* -*- mode: java; indent-tabs-mode: nil -*-
  *
- * ECMAScript 4 builtins - the "String" object
+ * ECMAScript 4 builtins - the "string" object
  *
  * E262-3 15.5
  * E262-4 proposals:json_encoding_and_decoding
@@ -16,14 +16,14 @@
  * Status: incomplete; not reviewed; not tested.
  *
  * Strings are constructed by:
- *    new String + magic::setStringValue
+ *    new string + magic::setStringValue
  *    magic::fromCharCode
  *    magic::stringAppend
  *
  * A string's length is obtained by:
  *    magic::stringLength
  *
- * Strings are picked apart by:
+ * strings are picked apart by:
  *    magic::charCodeAt
  *
  * (We would expect "+" to map to magic::stringAppend().)
@@ -31,39 +31,35 @@
 
 package
 {
+    use default namespace public;
     use namespace intrinsic;
     use strict;
 
-    final class string!
+    final class string! extends String
     {       
         /* E262-3 15.5.1: The String Constructor Called as a Function */
         static intrinsic function invoke(value)
-            return arguments.length === 0 ? "" : ToString(value);
+            arguments.length === 0 ? "" : ToString(value);
 
-        /* 15.5.2 The String Constructor 
-           Be careful to always return a new String object here, so don't
-           optimize by returning the return value of 
-         */
+        /* 15.5.2 The String Constructor */
         function string(value) {
             if (arguments.length === 0)
-                magic::setStringValue(this,"");
-            else if (value instanceof string)
-                magic::setStringValue(this,value);
+                magic::copyValue("",this);
             else
-                magic::setStringValue(this,ToString(value));
+                magic::copyValue(ToString(value),this);
         }
         
         /* E262-3 15.5.3.2: String.fromCharCode
            E262-4 draft proposals:bug_fixes - FUNCTION.LENGTH
         */
-        public static function fromCharCode(...args)
+        static function fromCharCode(...args)
             fromCharCodeHelper(args);
 
         intrinsic static function fromCharCode(...args) : double
             fromCharCodeHelper(args);
 
         static function fromCharCodeHelper(codes : Array) : double {
-            let s : String = "";
+            let s : string = "";
             let n : uint = codes.length;
             for (let i : uint = 0 ; i < n ; ++i)
                 s += magic::fromCharCode(codes[i]);
@@ -74,14 +70,20 @@ package
         prototype function toString(this : string)
             this;
 
-        intrinsic function toString() : string
+        override intrinsic function toString() : string
+            private::toString();
+
+        private final function toString() : string
             this;
         
         /* E262-3 15.5.4.3: String.prototype.valueOf */
         prototype function valueOf(this : string)
             this;
 
-        intrinsic function valueOf() : Object
+        override intrinsic function valueOf() : string
+            private::valueOf();
+
+        private final function valueOf() : string
             this;
 
         /* E262-3 15.5.4.4: String.prototype.charAt
@@ -90,10 +92,10 @@ package
         prototype function charAt(pos)
             ToString(this).charAt(pos);
 
-        public static function charAt(self, pos)
+        static function charAt(self, pos)
             ToString(self).charAt(pos);
             
-        intrinsic function charAt(pos: double = 0) : string
+        override intrinsic function charAt(pos: double = 0) : string
             let (ipos = ToInteger(pos))
                 (ipos < 0 || ipos >= length) ? "" : magic::fromCharCode(magic::charCodeAt(this, ToUint(ipos)));
 
@@ -103,10 +105,10 @@ package
         prototype function charCodeAt(pos)
             ToString(this).charCodeAt(pos);
 
-        public static function charCodeAt(self, pos)
+        static function charCodeAt(self, pos)
             ToString(selft).charCodeAt(pos);
 
-        intrinsic function charCodeAt(pos: double = 0) : uint
+        override intrinsic function charCodeAt(pos: double = 0) : uint
             let (ipos: double = ToInteger(pos))
                 (ipos < 0 || ipos >= length) ? NaN : magic::charCodeAt(this, ToUint(ipos));
 
@@ -117,10 +119,10 @@ package
         prototype function concat(...args)
             ToString(this).concatHelper(args);
 
-        public static function concat(self, ...args)
+        static function concat(self, ...args)
             ToString(self).concatHelper(args);
 
-        intrinsic function concat(...args) : string
+        override intrinsic function concat(...args) : string
             concatHelper(args);
 
         function concatHelper(strings : Array!) : string {
@@ -138,10 +140,10 @@ package
         prototype function indexOf(searchString, position)
             ToString(this).indexOf(searchString, position);
 
-        public static function indexOf(self, searchString, position)
+        static function indexOf(self, searchString, position)
             ToString(self).indexOf(searchString, position);
 
-        intrinsic function indexOf(searchString: string, position: double = 0.0) : double {
+        override intrinsic function indexOf(searchString: string, position: double = 0.0) : double {
             position = ToInteger(position);
 
             let slen  : uint = length;
@@ -168,10 +170,10 @@ package
         prototype function lastIndexOf(searchString, position)
             ToString(this).lastIndexOf(searchString, position);
 
-        public static function lastIndexOf(self, searchString, position)
+        static function lastIndexOf(self, searchString, position)
             ToString(self).lastIndexOf(searchString, position);
 
-        intrinsic function lastIndexOf(searchString: string, position: double) : double {
+        override intrinsic function lastIndexOf(searchString: string, position: double) : double {
             position = isNaN(position) ? Infinity : ToInteger(x);
 
             let slen  : uint = length;
@@ -195,11 +197,11 @@ package
         prototype function localeCompare(that)
             ToString(this).localeCompare(that);
 
-        public static function localeCompare(self, that)
+        static function localeCompare(self, that)
             ToString(self).localeCompare(that);
 
         /* INFORMATIVE - this is correct for a "simple" locale, eg English */
-        intrinsic function localeCompare(that : string) : double {
+        override intrinsic function localeCompare(that : string) : double {
             let la : uint = length;
             let lb : uint = that.length;
             let l  : uint = la < lb ? la : lb;
@@ -219,10 +221,10 @@ package
         prototype function match(regexp)
             ToString(this).match(regexp);
 
-        public static function match(self, regexp)
+        static function match(self, regexp)
             ToString(self).match(regexp);
 
-        intrinsic function match(r) : Array {
+        override intrinsic function match(r) : Array {
             let regexp : RegExp! = r instanceof RegExp ? r : new RegExp(r);
 
             if (!regexp.global)
@@ -251,10 +253,10 @@ package
         prototype function replace(searchValue, replaceValue)
             ToString(this).replace(searchValue, replaceValue);
 
-        public static function replace(self, searchValue, replaceValue)
+        static function replace(self, searchValue, replaceValue)
             ToString(self).replace(searchValue, replaceValue);
 
-        intrinsic function replace(s, r) : string {
+        override intrinsic function replace(s, r) : string {
 
             /* paragraph 4 */
             function substituteFunction(start: uint, end: uint, m: uint, cap: Array) : string {
@@ -284,7 +286,10 @@ package
                     else if (res[2]) s += substring(start, end);
                     else if (res[3]) s += substring(0, start);
                     else if (res[4]) s += substring(end);
-                    else             let c : int = parseInt(res[5])+1 { if (c in cap) s += cap[c]; }
+                    else             
+                        let (c : int = parseInt(res[5])+1) { 
+                            if (c in cap) s += cap[c]; 
+                        }
                 }
                 s += replaceString.substring(i);
 
@@ -358,10 +363,10 @@ package
         prototype function search(regexp)
             ToString(this).search(regexp);
 
-        public static function search(self, regexp)
+        static function search(self, regexp)
             ToString(self).search(regexp);
 
-        intrinsic function search(r) : double {
+        override intrinsic function search(r) : double {
             let regexp : RegExp = r instanceof RegExp ? r : new RegExp(r);
             let lim    : uint = length;
 
@@ -377,10 +382,10 @@ package
         prototype function slice(start, end)
             ToString(this).slice(start, end);
 
-        public static function slice(self, start, end)
+        static function slice(self, start, end)
             ToString(self).slice(start, end);
 
-        intrinsic function slice(s, e) : Array {
+        override intrinsic function slice(s, e) : Array {
             let len   : double = length;
             let start : double = ToInteger(s);
             let end   : double = e === undefined ? len : ToInteger(e);
@@ -398,16 +403,16 @@ package
         prototype function split(separator, limit)
             ToString(this).split(separator, limit);
 
-        public static function split(self, separator, limit)
+        static function split(self, separator, limit)
             ToString(self).split(separator, limit);
 
-        intrinsic function split(separator, limit) : Array {
+        override intrinsic function split(separator, limit) : Array {
 
             type matcher = (string,RegExp!);
 
             function splitMatch(R: matcher, S: string, q: uint) : [uint, [string]] {
                 switch type (R : matcher) {
-                case (x : string) : {
+                case (x : string) {
                     let r : uint = x.length;
                     if (q + r <= S.length && S.substring(q, q + r) === R)
                         return [q+r, []];
@@ -415,7 +420,7 @@ package
                         return null;
                 }
 
-                case (x : RegExp!) : {
+                case (x : RegExp!) {
                     let mr : MatchResult = x.match(S, q);
                     if (mr === null)
                         return null;
@@ -491,10 +496,10 @@ package
         prototype function substring(start, end)
             ToString(this).substring(start, end);
 
-        public static function substring(self, start, end)
+        static function substring(self, start, end)
             ToString(self).substring(start, end)
 
-        intrinsic function substring(start: double, end: double) : string {
+        override intrinsic function substring(start: double, end: double) : string {
             let len : double = length;
 
             start = ToInteger(start);
@@ -522,10 +527,10 @@ package
         prototype function toLowerCase()
             ToString(this).toLowerCase();
 
-        public static function toLowerCase(selft)
+        static function toLowerCase(selft)
             ToString(self).toLowerCase();
 
-        intrinsic function toLowerCase() : string {
+        override intrinsic function toLowerCase() : string {
             let s   : string = "";
             let len : uint = length;
             for ( let i : uint = 0 ; i < len ; i++ )
@@ -539,11 +544,11 @@ package
         prototype function toLocaleLowerCase()
             ToString(this).toLocaleLowerCase();
 
-        public prototype function toLocaleLowerCase(self)
+        prototype function toLocaleLowerCase(self)
             ToString(self).toLocaleLowerCase();
 
         /* INFORMATIVE - this is correct for a "simple" locale, eg English */
-        intrinsic function toLocaleLowerCase() : string
+        override intrinsic function toLocaleLowerCase() : string
             toLowerCase();
 
         /* E262-3 15.5.4.18: String.prototype.toUpperCase 
@@ -552,10 +557,10 @@ package
         prototype function toUpperCase()
             ToString(this).toUpperCase();
 
-        public static function toUpperCase(self)
+        static function toUpperCase(self)
             ToString(self).toUpperCase();
 
-        intrinsic function toUpperCase() : string {
+        override intrinsic function toUpperCase() : string {
             let s   : string = "";
             let len : uint = this.length;
             for ( let i : uint = 0 ; i < len ; i++ )
@@ -569,25 +574,25 @@ package
         prototype function toLocaleUpperCase()
             ToString(this).toLocaleUpperCase();
 
-        public static function toLocaleUpperCase(self)
+        static function toLocaleUpperCase(self)
             ToString(self).toLocaleUpperCase();
 
         /* INFORMATIVE - this is correct for a "simple" locale, eg English */
-        intrinsic function toLocaleUpperCase() : string
+        override intrinsic function toLocaleUpperCase() : string
             toUpperCase();
 
         /* E262-4 draft proposals:json_encoding_and_decoding */
         prototype function parseJSON() 
             this.parseJSON();
 
-        intrinsic function parseJSON(...args)
+        override intrinsic function parseJSON(...args)
             JSON.parse.apply(null, args.unshift(this));
 
         /* E262-4 draft proposals:string.prototype.trim */
         prototype function trim()
             this.trim();
 
-        intrinsic function trim() : string {
+        override intrinsic function trim() : string {
             let len  : uint = length;
             let i, j : uint;
 
@@ -599,7 +604,7 @@ package
         }
 
         /* E262-3 15.5.5.1: length. */
-        public function get length() : uint
+        function get length() : uint
             magic::stringLength(this);
     }
 }

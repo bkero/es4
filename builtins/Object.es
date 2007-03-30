@@ -1,4 +1,4 @@
-/* -*- indent-tabs-mode: nil -*- 
+/* -*- mode: java; indent-tabs-mode: nil -*- 
  *
  * ECMAScript 4 builtins - the "Object" object
  *
@@ -10,17 +10,19 @@
  */
 package
 {
+    use default namespace public;
+
     dynamic class Object 
     {       
         use namespace intrinsic;
         use strict;
 
         /* E262-3 15.2.1.1: The Object constructor called as a function */
-        intrinsic static function invoke(value)
+        meta static function invoke(value)
             ToObject(value);
 
         /* E262-3 15.2.2.1: The Object constructor. */
-        /* magic */ object function Object();
+        function Object() {}
 
         /* E262-3 15.2.4.2: Object.prototype.toString */
         prototype function toString()

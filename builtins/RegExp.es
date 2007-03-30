@@ -116,7 +116,7 @@ package RegExp
             this.test(s);
 
         /* E262-3 15.10.6.4: RegExp.prototype.toString */
-        intrinsic function toString() : string
+        override intrinsic function toString() : string
             "/" + (source.length == 0 ? "(?:)" : source) + "/" + flags;
 
         prototype function toString()

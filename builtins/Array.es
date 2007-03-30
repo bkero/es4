@@ -1,4 +1,4 @@
-/* -*- indent-tabs-mode: nil -*-
+/* -*- mode: java; indent-tabs-mode: nil -*-
  *
  * ECMAScript 4 builtins - the "Array" object
  * ES-262-3 15.X
@@ -9,13 +9,15 @@
 
 package
 {
+    namespace meta;
+
     dynamic class Array extends Object
     {
         use namespace intrinsic;
         use strict;
 
         // 15.4.1 The Array Constructor Called as a Function
-        static intrinsic function invoke(...args) {
+        meta static function invoke(...args) {
             // args is already an Array. just return it.
             return args;
         }
@@ -61,7 +63,7 @@ package
         prototype function toString(this:Array)
             this.join();
 
-        intrinsic function toString():String
+        override intrinsic function toString():String
             this.join();
 
         // 15.4.4.3 Array.prototype.toLocaleString ( )
@@ -250,7 +252,7 @@ package
         // 15.4.4.11 Array.prototype.sort (comparefn)
         // INFORMATIVE: this is an implementation that meets the spec, but the spec
         // allows for different sort implementations (quicksort is not required)
-        type Comparator = function (x:*, y:*):double;
+        type Comparator = function (*,*):double;
 
         public static function sort(self, comparefn) {
             let len:uint = self.length;
@@ -356,9 +358,9 @@ package
 
         // 15.4.5.1 [[Put]] (P, V)
         // @todo: ensure that catchall-set for undeclared properties runs on every set
-        function set *(id, value):void {
+        meta function set(id, value):void {
             let oldLength:uint = this.length;
-            this.set(id, value);
+            intrinsic::set(id, value);
             let idAsDouble:double = double(id);
             let idAsUint:uint = uint(idAsDouble);
             if (idAsUint == idAsDouble && idAsUint >= oldLength)
@@ -451,10 +453,10 @@ package
         // Array "extras" from JS1.6 (@todo: and JS1.8 -- reduce/reduceRight)
         // See http://developer.mozilla.org/en/docs/New_in_JavaScript_1.6#Array_extras
         // The callback function typically takes (item, i, list) parameters
-        type Mapper  = function (_:*, _:uint, _:Object):*;
-        type Eacher  = function (_:*, _:uint, _:Object):void;
-        type Checker = function (_:*, _:uint, _:Object):Boolean;
-        type Reducer = function (_:*, _:*, _:uint, _:Object):*;
+        type Mapper  = function (*, uint, Object):*;
+        type Eacher  = function (*, uint, Object):void;
+        type Checker = function (*, uint, Object):Boolean;
+        type Reducer = function (*, *, uint, Object):*;
 
         prototype function map(mapper, thisObj)
             this.map(mapper, thisObj);

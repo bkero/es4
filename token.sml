@@ -1,7 +1,7 @@
 (* -*- mode: sml; mode: font-lock; tab-width: 4; insert-tabs-mode: nil; indent-tabs-mode: nil -*- *)
 structure Token = struct
 
-datatype token = 
+datatype TOKEN = 
 
     (* punctuators *)
 
@@ -114,8 +114,6 @@ datatype token =
 
     (* contextually reserved identifiers *)
 
-    | Call
-    | Construct
     | Debugger
     | Decimal
     | Double
@@ -126,6 +124,7 @@ datatype token =
     | Goto
     | Include
     | Int
+    | Invoke
     | Namespace
     | Native
     | Number
@@ -139,6 +138,7 @@ datatype token =
     | Set
     | Static
     | Type
+    | Undefined
     | Xml
     | Yield
 
@@ -149,11 +149,18 @@ datatype token =
     | DocComment
     | Eol
     | Identifier of string
-    | NumberLiteral of real (* should be string *)
-    | DoubleLiteral of real
-    | DecmialLiteral of string
-    | IntLiteral of int
-    | UIntLiteral of word
+
+    (* The interpretation of these 4 literal types can be done during lexing. *)
+    | ExplicitDecimalLiteral of Decimal.DEC
+    | ExplicitDoubleLiteral of Real64.real
+    | ExplicitIntLiteral of Int32.int
+    | ExplicitUIntLiteral of Word32.word
+
+    (* The interpretation of these 3 literal types is deferred until defn phase. *)
+    | DecimalIntegerLiteral of string 
+    | DecimalLiteral of string 
+    | HexIntegerLiteral of string 
+
     | PackageIdentifier of string
     | RegexpLiteral of string
     | SlashSlashComment
@@ -169,17 +176,17 @@ datatype token =
     (* meta *)
 
     | Error
-    | LexBreakDiv of { lex_initial: unit -> (token list),
-               lex_regexp: unit -> (token list) }
-    | LexBreakDivAssign of { lex_initial: unit -> (token list),
-                 lex_regexp: unit -> (token list) }
-    | LexBreakLessThan of { lex_initial: unit -> (token list),
-                lex_xml: unit -> (token list) }
+    | LexBreakDiv of { lex_initial: unit -> ((TOKEN * Ast.POS) list),
+                       lex_regexp: unit -> ((TOKEN * Ast.POS) list) }
+    | LexBreakDivAssign of { lex_initial: unit -> ((TOKEN * Ast.POS) list),
+                             lex_regexp: unit -> ((TOKEN * Ast.POS) list) }
+    | LexBreakLessThan of { lex_initial: unit -> ((TOKEN * Ast.POS) list),
+                            lex_xml: unit -> ((TOKEN * Ast.POS) list) }
     | Eof
 
 exception TokenError
 
-fun isreserved t = 
+fun isreserved (t,_) = 
     case t of
     ( As
       | Break
@@ -231,12 +238,12 @@ fun isreserved t =
       | With ) => true
       | _ => false
          
-fun tokenname t =
+fun tokenname (t,_) =
     case t of
     
     (* punctuators *)
     
-    Minus => "-"
+        Minus => "-"
       | MinusMinus => "--"
       | Not => "!"
       | NotEquals => "!="
@@ -345,8 +352,6 @@ fun tokenname t =
 
       (* contextually reserved identifiers *)
 
-      | Call => "call"
-      | Construct => "construct"
       | Debugger => "debugger"
       | Decimal => "decimal"
       | Double => "double"
@@ -357,6 +362,7 @@ fun tokenname t =
       | Goto => "goto"
       | Include => "include"
       | Int => "int"
+      | Invoke => "invoke"
       | Namespace => "namespace"
       | Native => "native"
       | Number => "number"
@@ -366,10 +372,11 @@ fun tokenname t =
       | Rounding => "rounding"
       | Standard => "standard"
       | Strict => "strict"
-      | UInt => "uint"
       | Set => "set"
       | Static => "static"
       | Type => "type"
+      | UInt => "uint"
+      | Undefined => "undefined"
       | Xml => "xml"
       | Yield => "yield"
 
@@ -380,11 +387,16 @@ fun tokenname t =
       | DocComment => ""
       | Eol => "eol"
       | Identifier x => "identifier("^x^")"
-      | NumberLiteral x => Real.toString(x)
-      | DoubleLiteral x => Real.toString(x)
-      | DecmialLiteral x => x
-      | IntLiteral x => Int.toString(x)
-      | UIntLiteral x => Word.toString(x)
+
+      | DecimalIntegerLiteral x => x
+      | DecimalLiteral x => x
+      | HexIntegerLiteral x => x
+
+      | ExplicitDecimalLiteral x => Decimal.toString(x) ^ "m"
+      | ExplicitDoubleLiteral x => Real64.toString(x) ^ "d"
+      | ExplicitIntLiteral x => Int32.toString(x) ^ "i"
+      | ExplicitUIntLiteral x => LargeInt.toString (Word32.toLargeInt(x)) ^ "u"
+
       | PackageIdentifier x => "packageidentifier("^x^")"
       | RegexpLiteral x => "regexp("^x^")"
       | SlashSlashComment => ""

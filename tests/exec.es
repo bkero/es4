@@ -1,4 +1,64 @@
 /*
+class Object {}
+class A {
+var [x,y] = 10
+   // $t = 10
+   // x = $t[0]
+   // y = $t[1]
+   //   [InitStmt {[$t=10,x=$t[0],y=$t[1]]}}
+}
+new A
+*/
+
+use namespace intrinsic
+function f() { return [30,30] }
+function g() { return [20,20] }
+function h() { return [10,10] }
+class Object { function Object() { print("making Object","\n") } }
+class B { function B(x) { print("making B with ",x,"\n") } }
+class A extends B { var [x,y]=["x","y"]; function A(x=g):[x,y]=x(),super(x()) { print("making A\n") } }
+var a = new A(h)
+print(a.x," ",a.y,"\n")
+a = new A()
+print(a.x," ",a.y,"\n")
+
+/*
+class Object {}
+class foo {
+function foo([a,b],[c,d]=bar()) : z = zug() {}
+}
+*/
+
+
+
+/*
+type ft = function .<A,B> (A?,B,boolean)
+var f : ft.<int,string> = function (i:int?,s:string,b:boolean) { }
+f(null,"hi",true)
+*/
+/*
+namespace ns = "http"
+class Object {}
+ns class A {
+  static var x = 10
+  var y = x
+  prototype var z = x
+}
+class B extends ns::A {}
+
+var o = new ns::A
+intrinsic::print(o.y)
+intrinsic::print(ns::A.prototype.z)
+intrinsic::print(o.z)
+
+*/
+//Object.prototype.u = 40
+//intrinsic::print(Object.y)
+//intrinsic::print(Object.prototype.u)
+
+
+
+/*
 let [x,[y],[z]]:[int,[int],[int]] = o
 let {i:x,j:{k:y,l:z}}:{i:I,j:{k:K,l:L}} = o
 var {a:i,b:j}:{a:int,b2:string} = o
@@ -7,17 +67,14 @@ var {a:i,b:j}:{a:int,b2:string} = o
 var f:function (_:[]):* = function .<t,u>(i,j,k) {var x=10; let y=20; print('foo')}
 */
 
-class A 
-{
-  var x = 10
-  static var y = 20
-  let z = 30
-}
 
+/*
 class B extends A
 {
   var x = 40
+  override function f.<t>(a,b,c):Number { return "B.f" }
 }
+*/
 
 /*
 class A
@@ -49,7 +106,6 @@ function withAsterisks(y) {
 
 function printWithLine(x) {
 	intrinsic::print(withAsterisks(x));
-	intrinsic::print("\n");
 }
 
 class bar {

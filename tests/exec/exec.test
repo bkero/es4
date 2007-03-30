@@ -1,0 +1,50 @@
+%% [arithmetic] eval
+@tests/exec/arithmetic.es
+
+%% [literal number] eval
+@tests/exec/literal-number.es
+
+%% [literal string] eval
+@tests/exec/literal-string.es
+
+%% [literal array] eval
+@tests/exec/literal-array.es
+
+%% [literal object] eval
+@tests/exec/literal-object.es
+
+%% [literal function] eval
+@tests/exec/literal-function.es
+
+%% [while loop] eval
+@tests/exec/while-loop.es
+
+%% [simple function] eval
+@tests/exec/simple-function.es
+
+%% [fibonacci] eval
+@tests/exec/fibo.es
+
+%% [simple class] eval
+@tests/exec/simple-class.es
+
+%% [operator in] eval
+@tests/exec/operator-in.es
+
+%% [decimal] eval
+@tests/exec/decimal.es
+
+%% [uint] eval
+@tests/exec/uint.es
+
+%% [with] eval
+@tests/exec/with-statement.es
+
+%% [while] eval
+@tests/exec/while-statement.es
+
+%% [do while] eval
+@tests/exec/do-while-statement.es
+
+%% [switch] eval
+@tests/exec/switch-statement.es

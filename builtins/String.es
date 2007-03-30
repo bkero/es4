@@ -1,6 +1,6 @@
-/* -*- indent-tabs-mode: nil -*-
+/* -*- mode: java; indent-tabs-mode: nil -*-
  *
- * ECMAScript 4 builtins - the "String" object
+ * ECMAScript 4 builtins - the "String" wrapper object
  *
  * E262-3 15.5
  * E262-4 proposals:json_encoding_and_decoding
@@ -31,39 +31,31 @@
 
 package
 {
+    use default namespace public;
     use namespace intrinsic;
     use strict;
-
+    
     /* The January 2007 meeting resolved that String is open and
-       dynamic, and the implementations will just have to work a
-       little harder.  Go ECMA!  */
+     * dynamic
+     */
     dynamic class String
     {       
         /* E262-3 15.5.1: The String Constructor Called as a Function */
         static intrinsic function invoke(value)
-            return arguments.length === 0 ? "" : ToString(value);
+            arguments.length === 0 ? "" : ToString(value);
 
-        /* 15.5.2 The String Constructor 
-           Be careful to always return a new String object here, so don't
-           optimize by returning the return value of 
-         */
+        /* 15.5.2 The String Constructor */
         function String(v) {
             if (arguments.length === 0)
-                value = "";
-            else if (v instanceof string)
-                value = v;
-            else if (v instanceof String)
-                value = v.value;
+                magic::copyValue("", this);
             else
-                value = ToString(value);
+                magic::copyValue(ToString(value), this);
         }
-
-        var value : string = "";
 
         /* E262-3 15.5.3.2: String.fromCharCode
            E262-4 draft proposals:bug_fixes - FUNCTION.LENGTH
         */
-        public static function fromCharCode(...args)
+        static function fromCharCode(...args)
             Function.apply(string.fromCharCodeHelper, null, args);
 
         intrinsic static function fromCharCode(...args) : double
@@ -73,14 +65,20 @@ package
         prototype function toString(this : String)
             ToString(this);
 
-        intrinsic function toString() : String
-            value;
+        override intrinsic function toString() : string
+            private::toString();
+        
+        private final function toString() : string
+            ToString(this);
         
         /* E262-3 15.5.4.3: String.prototype.valueOf */
         prototype function valueOf(this : String)
             this;
+        
+        override intrinsic function valueOf() : String
+            private::valueOf();
 
-        intrinsic function valueOf() : Object
+        private final function valueOf() : String
             this;
 
         /* E262-3 15.5.4.4: String.prototype.charAt
@@ -89,7 +87,7 @@ package
         prototype function charAt(pos)
             ToString(this).charAt(pos);
 
-        public static function charAt(self, pos)
+        static function charAt(self, pos)
             ToString(self).charAt(pos);
             
         intrinsic function charAt(pos: double = 0) : String
@@ -101,7 +99,7 @@ package
         prototype function charCodeAt(pos)
             ToString(this).charCodeAt(pos);
 
-        public static function charCodeAt(self, pos)
+        static function charCodeAt(self, pos)
             ToString(self).charCodeAt(pos);
 
         intrinsic function charCodeAt(pos: double = 0) : double
@@ -114,7 +112,7 @@ package
         prototype function concat(...args)
             Function.apply(string.concat, ToString(this), args);
 
-        public static function concat(self, ...args)
+        static function concat(self, ...args)
             Function.apply(string.concat, ToString(self), args);
 
         intrinsic function concat(...args) : String
@@ -128,7 +126,7 @@ package
         prototype function indexOf(searchString, position)
             ToString(this).indexOf(searchString, position);
 
-        public static function indexOf(self, searchString, position)
+        static function indexOf(self, searchString, position)
             ToString(self).indexOf(searchString, position);
 
         intrinsic function indexOf(searchString: String!, position: double = 0.0) : double 
@@ -141,7 +139,7 @@ package
         prototype function lastIndexOf(searchString, position)
             ToString(this).lastIndexOf(searchString, position);
 
-        public static function lastIndexOf(self, searchString, position)
+        static function lastIndexOf(self, searchString, position)
             ToString(self).lastIndexOf(searchString, position);
 
         intrinsic function lastIndexOf(searchString: String!, position: double) : double 
@@ -153,7 +151,7 @@ package
         prototype function localeCompare(that)
             ToString(this).localeCompare(that);
 
-        public static function localeCompare(self, that)
+        static function localeCompare(self, that)
             ToString(self).localeCompare(that);
 
         intrinsic function localeCompare(that : String!) : double
@@ -165,7 +163,7 @@ package
         prototype function match(regexp)
             ToString(this).match(regexp);
 
-        public static function match(self, regexp)
+        static function match(self, regexp)
             ToString(self).match(regexp);
 
         intrinsic function match(r) : Array 
@@ -177,7 +175,7 @@ package
         prototype function replace(searchValue, replaceValue)
             ToString(this).replace(searchValue, replaceValue);
 
-        public static function replace(self, searchValue, replaceValue)
+        static function replace(self, searchValue, replaceValue)
             ToString(self).replace(searchValue, replaceValue);
 
         intrinsic function replace(s, r) : String
@@ -189,7 +187,7 @@ package
         prototype function search(regexp)
             ToString(this).search(regexp);
 
-        public static function search(self, regexp)
+        static function search(self, regexp)
             ToString(self).search(regexp);
 
         intrinsic function search(r) : double 
@@ -201,7 +199,7 @@ package
         prototype function slice(start, end)
             ToString(this).slice(start, end);
 
-        public static function slice(self, start, end)
+        static function slice(self, start, end)
             ToString(self).slice(start, end);
 
         intrinsic function slice(s, e) : Array
@@ -213,7 +211,7 @@ package
         prototype function split(separator, limit)
             ToString(this).split(separator, limit);
 
-        public static function split(self, separator, limit)
+        static function split(self, separator, limit)
             ToString(self).split(separator, limit);
 
         intrinsic function split(separator, limit) : Array
@@ -225,7 +223,7 @@ package
         prototype function substring(start, end)
             ToString(this).substring(start, end);
 
-        public static function substring(self, start, end)
+        static function substring(self, start, end)
             ToString(self).substring(start, end)
 
         intrinsic function substring(start: double, end: double) : string
@@ -237,7 +235,7 @@ package
         prototype function toLowerCase()
             ToString(this).toLowerCase();
 
-        public static function toLowerCase(selft)
+        static function toLowerCase(selft)
             ToString(self).toLowerCase();
 
         intrinsic function toLowerCase() : string
@@ -249,7 +247,7 @@ package
         prototype function toLocaleLowerCase()
             ToString(this).toLocaleLowerCase();
 
-        public prototype function toLocaleLowerCase(self)
+        prototype function toLocaleLowerCase(self)
             ToString(self).toLocaleLowerCase();
 
         intrinsic function toLocaleLowerCase() : string
@@ -261,7 +259,7 @@ package
         prototype function toUpperCase()
             ToString(this).toUpperCase();
 
-        public static function toUpperCase(self)
+        static function toUpperCase(self)
             ToString(self).toUpperCase();
 
         intrinsic function toUpperCase() : string
@@ -273,7 +271,7 @@ package
         prototype function toLocaleUpperCase()
             ToString(this).toLocaleUpperCase();
 
-        public static function toLocaleUpperCase(self)
+        static function toLocaleUpperCase(self)
             ToString(self).toLocaleUpperCase();
 
         intrinsic function toLocaleUpperCase() : string
@@ -294,7 +292,7 @@ package
             value.trim();
 
         /* E262-3 15.5.5.1: length. */
-        public function get length() : uint
+        function get length() : uint
             magic::stringLength(this);
     }
 }
