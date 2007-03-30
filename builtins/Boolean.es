@@ -9,7 +9,7 @@
 
 package
 {
-    namespace meta;
+    use default namespace public;
 
     dynamic class Boolean extends Object
     {       
@@ -20,7 +20,6 @@ package
         /* E262-3 15.6.2.1: The Boolean Constructor. */
         function Boolean(value)
 	    magic::copyValue(boolean(value), this);
-
 
         /* E262-4 draft ch 19 */
 	private final function toString() : string

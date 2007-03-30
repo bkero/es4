@@ -72,10 +72,10 @@ package
 
         override intrinsic function toLocaleString():string {
             let out:String = "";
-            for (let i:uint = 0, n:uint = a.length; i < n; i++) {
+            for (let i:uint = 0, n:uint = this.length; i < n; i++) {
                 if (i != 0)
                     out += ",";
-                let x = a[i];
+                let x = this[i];
                 if (x != null)
                     out += x.toLocaleString();
             }

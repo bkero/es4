@@ -22,7 +22,7 @@ package
     use namespace intrinsic;
 
     /* E262-3 15.11 */
-    dynamic class Error 
+    public dynamic class Error 
     {
         static intrinsic function call(... args)
             Error.construct.apply(null, args);
@@ -44,7 +44,7 @@ package
     }
 
     /* E262-3 15.11.6.1; 15.11.7 */
-    dynamic class EvalError extends Error
+    public dynamic class EvalError extends Error
     {
         /* E262-3 15.11.7.9: "name" property on NativeError prototype */
         prototype var name = "EvalError";
@@ -55,7 +55,7 @@ package
     }
 
     /* E262-3 15.11.6.2; 15.11.7 */
-    dynamic class RangeError extends Error
+    public dynamic class RangeError extends Error
     {
         /* E262-3 15.11.7.9: "name" property on NativeError prototype */
         prototype var name = "RangeError";
@@ -66,7 +66,7 @@ package
     }
 
     /* E262-3 15.11.6.3; 15.11.7 */
-    dynamic class ReferenceError extends Error
+    public dynamic class ReferenceError extends Error
     {
         /* E262-3 15.11.7.9: "name" property on NativeError prototype */
         prototype var name = "ReferenceError";
@@ -77,7 +77,7 @@ package
     }
 
     /* E262-3 15.11.6.4; 15.11.7 */
-    dynamic class SyntaxError extends Error
+    public dynamic class SyntaxError extends Error
     {
         /* E262-3 15.11.7.9: "name" property on NativeError prototype */
         prototype var name = "SyntaxError";
@@ -88,7 +88,7 @@ package
     }
 
     /* E262-3 15.11.6.5; 15.11.7 */
-    dynamic class TypeError extends Error
+    public dynamic class TypeError extends Error
     {
         /* E262-3 15.11.7.9: "name" property on NativeError prototype */
         prototype var name = "TypeError";
@@ -99,7 +99,7 @@ package
     }
 
     /* E262-3 15.11.6.6; 15.11.7 */
-    dynamic class URIError extends Error
+    public dynamic class URIError extends Error
     {
         /* E262-3 15.11.7.9: "name" property on NativeError prototype */
         prototype var name = "URIError";
