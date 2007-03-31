@@ -390,26 +390,6 @@ and identifier ts =
     end
 
 (*
-    PropertyIdentifier ->
-        Identifier
-        *
-*)
-
-and propertyIdentifier ts =
-    let 
-        val _ = setPos ts
-        val _ = trace([">> propertyIdentifier with next=",tokenname(hd(ts))]) 
-    in case ts of
-        (Mult, _) :: tr => (tr,"*")
-      | _ => 
-            let
-                val (ts1,nd1) = identifier ts
-            in
-                (trace(["<< propertyIdentifier with next=",tokenname(hd(ts1))]);(ts1,nd1)) 
-            end
-    end
-
-(*
     Qualifier
         ReservedNamespace
         PropertyIdentifier
@@ -419,17 +399,22 @@ and qualifier ts =
     let
     in case ts of
         ((Internal, _) :: _ | (Intrinsic, _) :: _ | (Private, _) :: _ | (Protected, _) :: _ | (Public, _) :: _) => 
-          let
-              val (ts1,nd1) = reservedNamespace (ts)
-          in
-              (ts1,Ast.LiteralExpr(Ast.LiteralNamespace nd1))
-          end
+            let
+                val (ts1,nd1) = reservedNamespace ts
+            in
+                (ts1,Ast.LiteralExpr(Ast.LiteralNamespace nd1))
+            end
+      | (Mult, _) :: _ =>
+            let
+            in
+                (tl ts,Ast.LexicalRef{ident=Ast.WildcardIdentifier, pos=posOf ts})
+            end
       | _ => 
-          let
-              val (ts1,nd1) = propertyIdentifier (ts)
-          in
-              (ts1,Ast.LexicalRef{ident=Ast.Identifier {ident=nd1, openNamespaces=[]}, pos=posOf ts})
-          end
+            let
+                val (ts1,nd1) = identifier ts
+            in
+                (ts1,Ast.LexicalRef{ident=Ast.Identifier {ident=nd1, openNamespaces=[]}, pos=posOf ts})
+            end
     end
 
 and reservedNamespace ts =
@@ -486,16 +471,26 @@ and simpleQualifiedIdentifier ts =
                  (DoubleColon, _) :: ts2 => qualifiedIdentifier'(ts2,Ast.LiteralExpr(Ast.LiteralNamespace nd1))
                | _ => error ["qualified namespace without double colon"]
           end
+      | (Mult,_) :: _ => 
+          let
+              val (ts1, nd1) = (tl ts, Ast.WildcardIdentifier)
+          in case ts1 of
+              (DoubleColon, _) :: _ =>
+                  qualifiedIdentifier'(tl ts1,Ast.LexicalRef ({ident=nd1, pos=posOf ts1}))
+            | _ =>
+                  (trace(["<< simpleQualifiedIdentifier with next=",tokenname(hd(ts1))]);
+                   (ts1,nd1))
+          end
       | _ => 
-              let
-                  val (ts1, nd1) = propertyIdentifier(ts)
-                val id = Ast.Identifier {ident=nd1, openNamespaces=[]}
-              in case ts1 of
-                  (DoubleColon, _) :: _ => 
-                    qualifiedIdentifier'(tl ts1,Ast.LexicalRef ({ident=id, pos=posOf ts}))
-              | _ => 
-                    (trace(["<< simpleQualifiedIdentifier with next=",tokenname(hd(ts1))]);
-                    (ts1,id))
+          let
+              val (ts1, nd1) = identifier(ts)
+              val id = Ast.Identifier {ident=nd1, openNamespaces=[]}
+          in case ts1 of
+              (DoubleColon, _) :: _ =>
+                  qualifiedIdentifier'(tl ts1,Ast.LexicalRef ({ident=id, pos=posOf ts}))
+            | _ =>
+                  (trace(["<< simpleQualifiedIdentifier with next=",tokenname(hd(ts1))]);
+                   (ts1,id))
           end
     end
 
@@ -514,10 +509,13 @@ and expressionQualifiedIdentifier (ts) =
       | _ => error ["unknown form of expression-qualified identifier"]
     end
 
-and reservedOrPropertyIdentifier ts =
+and reservedOrOrdinaryIdentifier ts =
     case isreserved(hd ts) of
         true => (tl ts, tokenname(hd ts))
-      | false => propertyIdentifier(ts)
+      | false => 
+            case ts of
+                (Mult, _) :: _ => (tl ts, "*")
+              | _ => identifier(ts)
 
 and reservedIdentifier ts =
     case isreserved(hd ts) of
@@ -537,7 +535,7 @@ and qualifiedIdentifier' (ts1, nd1) : ((TOKEN * Ast.POS) list * Ast.IDENT_EXPR) 
             end
       | tk :: ts =>
             let
-                val (ts2,nd2) = reservedOrPropertyIdentifier(ts1)
+                val (ts2,nd2) = reservedOrOrdinaryIdentifier(ts1)
                 val qid = Ast.QualifiedIdentifier({qual=nd1, ident=nd2})
                 val (ts3,nd3) = (ts2,qid)
             in
@@ -605,8 +603,8 @@ and qualifiedIdentifier ts =
         SimpleTypeIdentifier  .<  TypeExpressionList  >
 *)
 
-and typeIdentifier ts =
-    let val _ = trace([">> typeIdentifier with next=",tokenname(hd(ts))]) 
+and propertyIdentifier ts =
+    let val _ = trace([">> propertyIdentifier with next=",tokenname(hd(ts))]) 
         val (ts1,nd1) = nonAttributeQualifiedIdentifier ts
     in case ts1 of
         (LeftDotAngle, _) :: _ => 
@@ -614,12 +612,12 @@ and typeIdentifier ts =
                 val (ts2,nd2) = typeExpressionList (tl ts1)
             in case ts2 of
                 (GreaterThan, _) :: _ =>
-                    (trace(["<< typeIdentifier with next=",tokenname(hd(tl ts2))]); 
+                    (trace(["<< propertyIdentifier with next=",tokenname(hd(tl ts2))]); 
                     (tl ts2,Ast.TypeIdentifier {ident=nd1,typeArgs=nd2}))
               | _ => error ["unknown final token of parametric type expression"]
             end
       | _ =>
-            (trace(["<< typeIdentifier with next=",tokenname(hd(ts1))]); 
+            (trace(["<< propertyIdentifier with next=",tokenname(hd(ts1))]); 
             (ts1, nd1))
     end
 
@@ -632,13 +630,13 @@ and primaryIdentifier ts =
             in case ts1 of
                 (Dot, _) :: _ =>
                     let
-                       val (ts2,nd2) = typeIdentifier (tl ts1)
+                       val (ts2,nd2) = propertyIdentifier (tl ts1)
                     in
                        (ts2,Ast.UnresolvedPath (nd1,nd2)) 
                     end
               | _ => LogErr.internalError ["primaryIdentifier"]
             end
-      | _ => typeIdentifier(ts)
+      | _ => propertyIdentifier(ts)
     end
 
 and path (ts) : (TOKEN * Ast.POS) list * Ast.IDENT list =
@@ -820,7 +818,7 @@ and functionSignature (ts) : ((TOKEN * Ast.POS) list * Ast.FUNC_SIG) =
     in case ts1 of
         (LeftParen, _) :: (This, _) :: (Colon, _) ::  _ =>
             let
-                val (ts2,nd2) = typeIdentifier (tl (tl (tl ts1)))
+                val (ts2,nd2) = primaryIdentifier (tl (tl (tl ts1)))
                 val temp = Ast.Binding {ident=Ast.ParamIdent 0, ty=Ast.SpecialType Ast.Any}
                                     (* FIXME: what is the type of this? *)
             in case ts2 of
@@ -893,7 +891,7 @@ and functionSignatureType (ts) =
     in case ts1 of
         (LeftParen, _) :: (This, _) :: (Colon, _) ::  _ =>
             let
-                val (ts2,nd2) = typeIdentifier (tl (tl (tl ts1)))
+                val (ts2,nd2) = primaryIdentifier (tl (tl (tl ts1)))
             in case ts2 of
                 (Comma, _) :: _ =>
                     let
@@ -1411,7 +1409,7 @@ and fieldName (ts) : (TOKEN * Ast.POS) list * Ast.IDENT_EXPR =
       | (DecimalLiteral n, _) :: ts1 => (ts1,Ast.Identifier {ident=n,openNamespaces=[]})   (* todo: convert number to string *)
       | _ => 
             let
-                val (ts1,nd1) = reservedOrPropertyIdentifier (ts)
+                val (ts1,nd1) = reservedOrOrdinaryIdentifier (ts)
             in
                 (ts1,Ast.Identifier {ident=nd1,openNamespaces=[]})  (* todo: allow qualified identifier *)
             end
@@ -1899,7 +1897,7 @@ and propertyOperator (ts, nd) =
                             end
                       | (DoubleColon, _) :: _ => 
                             let
-                                val (ts2,nd2) = reservedOrPropertyIdentifier(tl ts1)
+                                val (ts2,nd2) = reservedOrOrdinaryIdentifier(tl ts1)
                             in
                                 (ts2,Ast.ObjectRef({base=nd,
                                                     ident=Ast.QualifiedIdentifier 
@@ -1914,7 +1912,7 @@ and propertyOperator (ts, nd) =
                         ((true,((Intrinsic | Private | Public | Protected | Internal),_) ::_) |
                          (false,_)) => 
                             let
-                                val (ts1,nd1) = typeIdentifier (tl ts)
+                                val (ts1,nd1) = propertyIdentifier (tl ts)
                             in
                                 (ts1,Ast.ObjectRef {base=nd,ident=nd1,pos=posOf ts})
                             end
@@ -3313,7 +3311,7 @@ and typeExpression (ts) : ((TOKEN * Ast.POS) list * Ast.TYPE_EXPR) =
       | (LeftBracket, _) :: _ => arrayType ts
       | _ =>
             let
-                val (ts1,nd1) = typeIdentifier ts
+                val (ts1,nd1) = primaryIdentifier ts
             in
                 (ts1,needType(nd1,NONE))
             end
@@ -5640,36 +5638,28 @@ and functionName (ts) : ((TOKEN * Ast.POS) list * Ast.FUNC_NAME) =
                 (ts1,{kind=Ast.Operator,ident=nd1})
             end
       | (Get, _) :: ((LeftParen | LeftDotAngle), _) :: _ => (tl ts,{kind=Ast.Ordinary, ident="get"})
+      | (Get, _) :: (Mult, _) :: _ => (tl ts,{kind=Ast.Get,ident="*"})
       | (Get, _) :: _ => 
             let
-                val (ts1,nd1) = propertyIdentifier (tl ts)
+                val (ts1,nd1) = identifier (tl ts)
             in
                 (ts1,{kind=Ast.Get,ident=nd1})
             end
 
       | (Set, _) :: ((LeftParen | LeftDotAngle), _) :: _ => (tl ts,{kind=Ast.Ordinary, ident="set"})
+      | (Set, _) :: (Mult, _) :: _ => (tl ts,{kind=Ast.Set,ident="*"})
       | (Set, _) :: _ => 
             let
-                val (ts1,nd1) = propertyIdentifier (tl ts)
+                val (ts1,nd1) = identifier (tl ts)
             in
                 (ts1,{kind=Ast.Set,ident=nd1})
             end
 
       | (Call, _) :: ((LeftParen | LeftDotAngle), _) :: _ => (tl ts,{kind=Ast.Ordinary, ident="call"})
-      | (Call, _) :: (Mult, _) :: _ => 
-            let
-                val (ts1,nd1) = propertyIdentifier (tl ts)
-            in
-                (ts1,{kind=Ast.Call,ident="*"})
-            end
+      | (Call, _) :: (Mult, _) :: _ => (tl ts,{kind=Ast.Call,ident="*"})
 
       | (Has, _) :: ((LeftParen | LeftDotAngle), _) :: _ => (tl ts,{kind=Ast.Ordinary, ident="has"})
-      | (Has, _) :: (Mult, _) :: _ => 
-            let
-                val (ts1,nd1) = propertyIdentifier (tl ts)
-            in
-                (ts1,{kind=Ast.Has,ident="*"})
-            end
+      | (Has, _) :: (Mult, _) :: _ => (tl ts,{kind=Ast.Has,ident="*"})
 
       | _ => 
             let
@@ -6055,7 +6045,7 @@ and classInheritance (ts) =
     in case ts of
         (Extends, _) :: _ =>
             let
-                val (ts1,nd1) = typeIdentifier (tl ts)
+                val (ts1,nd1) = primaryIdentifier (tl ts)
             in case ts1 of
                 (Implements, _) :: _ =>
                     let
@@ -6085,7 +6075,7 @@ and typeIdentifierList (ts) =
             in case ts of
                 (Comma, _) :: _ =>
                     let
-                        val (ts1,nd1) = typeIdentifier (tl ts)
+                        val (ts1,nd1) = primaryIdentifier (tl ts)
                         val (ts2,nd2) = typeIdentifierList' (ts1)
                     in
                         (ts2,nd1::nd2)
@@ -6096,7 +6086,7 @@ and typeIdentifierList (ts) =
                         (ts,[])
                     end
             end
-        val (ts1,nd1) = typeIdentifier (ts)
+        val (ts1,nd1) = primaryIdentifier (ts)
         val (ts2,nd2) = typeIdentifierList' (ts1)
     in
         trace(["<< typeIdentifierList with next=", tokenname(hd ts2)]);

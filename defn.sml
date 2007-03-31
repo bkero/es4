@@ -1383,7 +1383,7 @@ and resolvePath (env:ENV) (path:Ast.IDENT list)
             then resolveObjectPath env path NONE
             else 
             let
-                val imports = [] (* (#imports (hd env)) *)
+                val imports = (#imports (hd env))
                 val (pkg,pth) = resolvePackagePath imports path
             in case (pkg,pth) of
                      (SOME pk,[]) => Ast.LiteralExpr (Ast.LiteralNamespace (Ast.Public pk))

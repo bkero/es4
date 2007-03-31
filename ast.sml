@@ -330,6 +330,7 @@ datatype PRAGMA =
            { ident : IDENT_EXPR, 
              typeArgs : TYPE_EXPR list }
        | UnresolvedPath of (IDENT list * IDENT_EXPR)
+       | WildcardIdentifier
 
      and LITERAL =
          LiteralNull
@@ -343,7 +344,7 @@ datatype PRAGMA =
        | LiteralUInt of Word32.word
        | LiteralBoolean of bool
        | LiteralString of USTRING
-       | LiteralArray of 
+       | LiteralArray of
            { exprs:EXPR list, 
              ty:TYPE_EXPR option }
        | LiteralXML of EXPR list

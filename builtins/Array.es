@@ -374,7 +374,7 @@ package
 
         // ECMA-262 requires a RangeError if non-ints are passed in,
         // so we must not type it as uint in the setter's signature
-        public function set length(newLength:*):void {
+        public function set length(newLength:uint):void {
             let oldLength:uint = length;
             let newLengthAsDouble:double = double(newLength);
             let newLengthAsUint:uint = uint(newLengthAsDouble);
