@@ -103,7 +103,7 @@ decimalDigits      = ({decimalDigit}+);
 signedInteger      = ([-+]? {decimalDigits});
 exponentPart       = ({exponentIndicator} {signedInteger});
 
-decimalIntegerLiteral = ("0" | ({nonZeroDigit} {decimalDigits}?));
+decimalIntegerLiteral = ({decimalDigits});   
 decimalLiteral_1      = ({decimalIntegerLiteral} "." {decimalDigits}? {exponentPart}?);
 decimalLiteral_2      = ("." {decimalDigits} {exponentPart}?);
 decimalLiteral_3      = ({decimalIntegerLiteral} {exponentPart}?);
