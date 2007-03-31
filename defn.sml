@@ -1678,6 +1678,7 @@ and defStmt (env:ENV)
 
         fun makeIterationLabel id = (id,IterationLabel)
         fun makeStatementLabel id = (id,StatementLabel)
+        fun makeSwitchLabel id = (id,SwitchLabel)
 
         fun defWhileStmt (env) (w:Ast.WHILE_STMT) = 
             case w of 
@@ -1733,7 +1734,7 @@ and defStmt (env:ENV)
                   ty=ty }
             end            
 
-        fun reconstructCase { label, body, inits } 
+        fun defCase env { label, body, inits } 
             : Ast.CASE * Ast.FIXTURES =
             let
                 val (body,hoisted) = defBlock env body
@@ -1967,11 +1968,14 @@ and defStmt (env:ENV)
         
           | Ast.SwitchStmt { cond, cases, ... } => 
             let
-                val (cases,hoisted) = ListPair.unzip (map reconstructCase cases)
+                val env' = addLabels env (map makeSwitchLabel labelIds);
+                val env'' = addLabel env' (makeSwitchLabel "")
+                val (cases,hoisted) = ListPair.unzip (map (defCase env'') cases)
             in
                 (Ast.SwitchStmt { mode = SOME (#numericMode ctx),
                                   cond = defExpr env cond,
-                                  cases = cases}, List.concat hoisted)
+                                  cases = cases,
+                                  labels=""::labelIds}, List.concat hoisted)
             end
         
           | Ast.SwitchTypeStmt { cond, ty, cases } =>
@@ -2162,6 +2166,10 @@ and defDefns (env:ENV)
                            replaceFixture oldFixs newName 
                                           (Ast.VirtualValFixture 
                                                (mergeVirtuals newName vnew vold))
+                         | (Ast.ValFixture new, Ast.ValFixture old) =>
+                                if (#ty new) = (#ty old) andalso (#readOnly new) = (#readOnly old)
+                                then oldFixs
+                                else error ["incompatible redefinition of fixture name: ", LogErr.fname newName]
                          | _ => error ["redefining fixture name: ", LogErr.fname newName]
                    else
                        (newName,newFix) :: oldFixs

@@ -267,6 +267,7 @@ datatype PRAGMA =
        | SwitchStmt of         (* FIXME: needs HEAD, DEFNS for defns hoisted from body *)
            { mode: NUMERIC_MODE option,
              cond: EXPR,
+             labels: IDENT list,
              cases: CASE list }
        | SwitchTypeStmt of 
            { cond: EXPR, 

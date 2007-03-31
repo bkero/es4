@@ -1436,12 +1436,13 @@ and labelEq (stmtLabels:Ast.IDENT list)
             else labelEq sls exnLabel
 
 
-and evalStmts (scope:Mach.SCOPE) 
+and evalStmts (scope:Mach.SCOPE)    
               (stmts:Ast.STMT list) 
     : Mach.VAL = 
     case stmts of 
         [s] => evalStmt scope s
-      | (s::ss) => (evalStmt scope s; evalStmts scope ss)
+      | (s::ss) => (evalStmt scope s; evalStmts scope ss) 
+                (* FIXME: need to keep the last non-empty value and fixup abrupt completions here *)
       | [] => Mach.Undef
 
 
@@ -1454,8 +1455,8 @@ and evalStmt (scope:Mach.SCOPE)
       | Ast.WhileStmt w => evalWhileStmt scope w
       | Ast.DoWhileStmt w => evalDoWhileStmt scope w
       | Ast.WithStmt { obj, ty, body } => evalWithStmt scope obj ty body
-      | Ast.SwitchStmt { mode, cond, cases } => 
-        evalSwitchStmt scope mode cond cases
+      | Ast.SwitchStmt { mode, cond, cases, labels } => 
+        evalSwitchStmt scope mode cond cases labels
       | Ast.ForStmt w => evalForStmt scope w
       | Ast.ReturnStmt r => evalReturnStmt scope r
       | Ast.BreakStmt lbl => evalBreakStmt scope lbl
@@ -2139,7 +2140,8 @@ and evalWhileStmt (scope:Mach.SCOPE)
             fun loop _ =
                 if Mach.toBoolean (evalExpr scope cond)
                 then 
-                    (accum := evalStmt scope body;
+                    (accum := evalStmt scope body;   
+                                    (* FIXME: doesn't this need to happen in evalStmts? *)
                      loop ())
                     handle ContinueException exnLabel => 
                            if labelEq labels exnLabel
@@ -2204,7 +2206,8 @@ and evalWithStmt (scope:Mach.SCOPE)
 and evalSwitchStmt (scope:Mach.SCOPE)
                    (mode:Ast.NUMERIC_MODE option)
                    (cond:Ast.EXPR)
-                   (cases:Ast.CASE list) 
+                   (cases:Ast.CASE list)
+                   (labels:Ast.IDENT list) 
     : Mach.VAL = 
     let
         fun tryCases (v:Mach.VAL) [] = Mach.Undef
@@ -2226,6 +2229,10 @@ and evalSwitchStmt (scope:Mach.SCOPE)
                 tryCases v cs
     in
         tryCases (evalExpr scope cond) cases
+                    handle BreakException exnLabel => 
+                           if labelEq labels exnLabel
+                           then Mach.Undef
+                           else raise BreakException exnLabel
     end
     
 

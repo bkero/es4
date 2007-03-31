@@ -1406,7 +1406,9 @@ and fieldName (ts) : (TOKEN * Ast.POS) list * Ast.IDENT_EXPR =
     let val _ = trace([">> fieldName with next=",tokenname(hd(ts))]) 
     in case ts of
         (StringLiteral s, _) :: ts1 => (ts1,Ast.Identifier {ident=s,openNamespaces=[]})
-      | (DecimalLiteral n, _) :: ts1 => (ts1,Ast.Identifier {ident=n,openNamespaces=[]})   (* todo: convert number to string *)
+      | (DecimalLiteral n, _) :: ts1 => (ts1, Ast.ExpressionIdentifier (Ast.LiteralExpr(Ast.LiteralContextualDecimal n)))
+      | (DecimalIntegerLiteral n, _) :: ts1 => (ts1, Ast.ExpressionIdentifier (Ast.LiteralExpr(Ast.LiteralContextualDecimalInteger n)))
+      | (HexIntegerLiteral n, _) :: ts1 => (ts1, Ast.ExpressionIdentifier (Ast.LiteralExpr(Ast.LiteralContextualHexInteger n)))
       | _ => 
             let
                 val (ts1,nd1) = reservedOrOrdinaryIdentifier (ts)
@@ -3843,7 +3845,7 @@ and switchStatement (ts) : ((TOKEN * Ast.POS) list * Ast.STMT) =
                     let
                         val (ts2,nd2) = caseElements (tl ts1)
                     in case ts2 of
-                        (RightBrace, _) :: _ => (tl ts2,Ast.SwitchStmt{mode=NONE,cond=nd1,cases=nd2})
+                        (RightBrace, _) :: _ => (tl ts2,Ast.SwitchStmt{mode=NONE,cond=nd1,cases=nd2,labels=[]})
                       | _ => error ["unknown token in switchStatement"]
                     end
               | _ => error ["unknown token in switchStatement"]
