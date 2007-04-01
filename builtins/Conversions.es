@@ -37,25 +37,28 @@ package
             return 0;
         if (value === 0 || !intrinsic::isFinite(value))
             return value;
-        var sign = value < 0 ? -1 : 1;
+        var sign:double = value < 0d ? -1d : 1d;
         return sign * Math.floor(Math.abs(value));
     }
 
-    intrinsic function ToInt(value) : int {
-        // FIXME
-    }
+    // FIXME: these can probably be decomposed into smaller steps with
+    // less magic. For now we just want it to start running.
+    //
+    // NB. be careful to check if the parameter matches the desired
+    // type already and bottom out, since the converters call back
+    // into the constructors, which call back *here*.
 
-    intrinsic function ToUint(value) : uint {
-        // FIXME
-    }
+    intrinsic function ToInt(value) : int
+	(value is int) ? value : magic::toInt(value);
 
-    intrinsic function ToDouble(value) : double {
-        // FIXME
-    }
+    intrinsic function ToUint(value) : uint 
+	(value is uint) ? value : magic::toUint(value);
 
-    intrinsic function ToDecimal(value) : decimal {
-        // FIXME
-    }
+    intrinsic function ToDouble(value) : double
+	(value is double) ? value : magic::toDouble(value);
+
+    intrinsic function ToDecimal(value) : decimal
+	(value is decimal) ? value : magic::toDecimal(value);
 
     intrinsic function ToString(value) : string {
         if (value is string)

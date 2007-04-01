@@ -16,7 +16,28 @@ exception ReturnException of Mach.VAL
 
 exception InternalError
 
-val thisName = { id = "this", ns = Ast.Internal "" }
+fun mathOp (v:Mach.VAL) 
+           (decimalFn:(Decimal.DEC -> 'a) option)
+           (doubleFn:(Real64.real -> 'a) option)
+           (intFn:(Int32.int -> 'a) option)
+           (uintFn:(Word32.word -> 'a) option)
+           (default:'a)
+    : 'a = 
+    let 
+        fun fnOrDefault fo v = case fo of 
+                                   NONE => default
+                                 | SOME f => f v
+    in
+        case v of 
+            Mach.Object (Mach.Obj ob) => 
+            (case !(#magic ob) of 
+                 SOME (Mach.Decimal d) => fnOrDefault decimalFn d
+               | SOME (Mach.Double d) => fnOrDefault doubleFn d
+               | SOME (Mach.Int i) => fnOrDefault intFn i
+               | SOME (Mach.UInt u) => fnOrDefault uintFn u
+               | _ => default)
+          | _ => default
+    end
 
 fun extendScope (p:Mach.SCOPE) 
                 (ob:Mach.OBJ)
@@ -52,6 +73,34 @@ fun needObj (v:Mach.VAL)
     case v of 
         Mach.Object ob => ob
       | _ => error ["need object"]
+
+
+(* 
+ * The global object and scope.
+ *)
+
+val (globalObject:(Mach.OBJ option) ref) = ref NONE
+val (globalScope:(Mach.SCOPE option) ref) = ref NONE
+
+fun getGlobalObject _ 
+    : Mach.OBJ = 
+    case !globalObject of 
+        NONE => error ["missing global object"]
+      | SOME ob => ob
+
+fun getGlobalScope _ 
+    : Mach.SCOPE = 
+    case !globalScope of 
+        NONE => error ["missing global scope"]
+      | SOME ob => ob
+
+fun resetGlobal (ob:Mach.OBJ) 
+    : unit = 
+    (globalObject := SOME ob;
+     globalScope := SOME (Mach.Scope { object = ob,
+                                       parent = NONE,
+                                       temps = ref [],
+                                       isVarObject = true }))
 
 (* 
  * A small number of functions do not fully evaluate to Mach.VAL 
@@ -159,6 +208,7 @@ fun allocFixtures (scope:Mach.SCOPE)
                        | _ => error ["allocating non-value temporary"])
                   | Ast.PropName pn => 
                     let 
+                        val _ = trace ["allocating fixture for property ", LogErr.name pn]
                         fun allocProp state p = 
                             if Mach.hasProp props pn
                             then error ["allocating duplicate property name: ", 
@@ -181,8 +231,8 @@ fun allocFixtures (scope:Mach.SCOPE)
                             let
                                 val Ast.Func { isNative, ... } = func
                                 val v = if isNative
-                                        then Mach.newNativeFunction (Mach.getNativeFunction pn)
-                                        else Mach.newFunc methodScope func
+                                        then newNativeFunction (Mach.getNativeFunction pn)
+                                        else newFunctionFromFunc methodScope func
                             in
                                 allocProp "method" 
                                           { ty = ty,
@@ -206,10 +256,10 @@ fun allocFixtures (scope:Mach.SCOPE)
                             let
                                 val getFn = case getter of
                                                 NONE => NONE
-                                              | SOME f => SOME (Mach.newFunClosure methodScope (#func f))
+                                              | SOME f => SOME (newFunClosure methodScope (#func f))
                                 val setFn = case setter of
                                                 NONE => NONE
-                                              | SOME f => SOME (Mach.newFunClosure methodScope (#func f))
+                                              | SOME f => SOME (newFunClosure methodScope (#func f))
                             in
                                 allocProp "virtual value" 
                                           { ty = ty,
@@ -224,7 +274,7 @@ fun allocFixtures (scope:Mach.SCOPE)
                           | Ast.ClassFixture cls =>
                             let
                                 val Ast.Cls {classFixtures,...} = cls
-                                val Mach.Object classObj = Mach.newClass scope cls
+                                val Mach.Object classObj = newClass scope cls
                                 val _ = allocObjFixtures scope classObj classFixtures
                             in 
                             allocProp "class"
@@ -239,7 +289,7 @@ fun allocFixtures (scope:Mach.SCOPE)
                           | Ast.NamespaceFixture ns => 
                             allocProp "namespace" 
                                       { ty = (Name.typename Name.public_Namespace),
-                                        state = Mach.ValProp (Mach.newNamespace ns),
+                                        state = Mach.ValProp (newNamespace ns),
                                         attrs = { dontDelete = true,
                                                   dontEnum = true,
                                                   readOnly = true,
@@ -272,7 +322,7 @@ and  allocObjFixtures (scope:Mach.SCOPE)
         else ()
     end
     
-fun allocScopeFixtures (scope:Mach.SCOPE) 
+and allocScopeFixtures (scope:Mach.SCOPE) 
                        (f:Ast.FIXTURES) 
     : unit = 
     case scope of
@@ -280,7 +330,7 @@ fun allocScopeFixtures (scope:Mach.SCOPE)
         allocFixtures scope object temps f
 
 
-fun hasOwnValue (obj:Mach.OBJ) 
+and hasOwnValue (obj:Mach.OBJ) 
                 (n:Ast.NAME) 
     : bool = 
     case obj of 
@@ -288,7 +338,7 @@ fun hasOwnValue (obj:Mach.OBJ)
         Mach.hasProp props n
 
 
-fun hasValue (obj:Mach.OBJ) 
+and hasValue (obj:Mach.OBJ) 
              (n:Ast.NAME) 
     : bool = 
     if hasOwnValue obj n
@@ -304,7 +354,7 @@ fun hasValue (obj:Mach.OBJ)
  * *Similar to* ES3 8.7.1 GetValue(V), there's 
  * no Reference type in ES4.
  *)
-fun getValue (obj:Mach.OBJ, 
+and getValue (obj:Mach.OBJ, 
               name:Ast.NAME) 
     : Mach.VAL = 
     case obj of 
@@ -438,6 +488,476 @@ and defValue (base:Mach.OBJ)
                   | Mach.ValProp _ => writeProp ()
             end
             
+and instantiateGlobalClass (n:Ast.NAME) 
+                           (args:Mach.VAL list)
+    : Mach.VAL = 
+      let
+          val _ = trace ["instantiating global class ", LogErr.name n];
+          val (cls:Mach.VAL) = getValue (getGlobalObject (), n)
+      in
+          case cls of 
+              Mach.Object ob => evalNewExpr ob args
+            | _ => error ["global class name ", LogErr.name n, 
+                          " did not resolve to object"]
+      end
+
+and newObject _ = 
+    instantiateGlobalClass Name.public_Object []
+
+and newObj _ = 
+    needObj (instantiateGlobalClass Name.public_Object [])
+
+and newBuiltin (n:Ast.NAME) (m:Mach.MAGIC option) 
+    : Mach.VAL = 
+    instantiateGlobalClass n [Mach.Object (Mach.setMagic (newObj ()) m)]
+
+
+and newDouble (n:Real64.real) 
+    : Mach.VAL = 
+    newBuiltin Name.public_double (SOME (Mach.Double n))
+
+and newDecimal (n:Decimal.DEC) 
+    : Mach.VAL = 
+    newBuiltin Name.public_decimal (SOME (Mach.Decimal n))
+
+and newInt (n:Int32.int) 
+    : Mach.VAL = 
+    newBuiltin Name.public_int (SOME (Mach.Int n))
+
+and newUInt (n:Word32.word) 
+    : Mach.VAL = 
+    newBuiltin Name.public_uint (SOME (Mach.UInt n))
+
+and newString (s:Ast.USTRING) 
+    : Mach.VAL = 
+    newBuiltin Name.public_string (SOME (Mach.String s))
+
+and newByteArray (b:Word8Array.array) 
+    : Mach.VAL = 
+    newBuiltin Name.public_ByteArray (SOME (Mach.ByteArray b))
+
+and newBoolean (b:bool) 
+    : Mach.VAL = 
+    newBuiltin Name.public_boolean (SOME (Mach.Boolean b))
+
+and newNamespace (n:Ast.NAMESPACE) 
+    : Mach.VAL = 
+    newBuiltin Name.public_Namespace (SOME (Mach.Namespace n))
+
+and newClsClosure (env:Mach.SCOPE)
+                  (cls:Ast.CLS)
+    : Mach.CLS_CLOSURE =
+    { cls = cls,
+      (* FIXME: are all types bound? *)
+      allTypesBound = true,
+      env = env }
+    
+and newClass (e:Mach.SCOPE) 
+             (cls:Ast.CLS) 
+    : Mach.VAL =
+    let
+        val closure = newClsClosure e cls 
+    in
+        newBuiltin Name.public_Class (SOME (Mach.Class closure))
+    end
+
+and newFunClosure (e:Mach.SCOPE)
+                  (f:Ast.FUNC)
+    : Mach.FUN_CLOSURE = 
+    let
+        val Ast.Func { fsig, ... } = f
+        val allTypesBound = (case fsig of 
+                                 Ast.FunctionSignature { typeParams, ... } 
+                                 => (length typeParams) = 0)
+    in
+        { func = f, 
+          allTypesBound = allTypesBound,
+          env = e }
+    end
+
+and newFunctionFromClosure (closure:Mach.FUN_CLOSURE) = 
+    let 
+        val { func, ... } = closure
+        val Ast.Func { fsig, ... } = func
+        val tag = Mach.FunctionTag fsig
+        (* 
+         * To build a Function from an existing closure, we run the
+         * builtin constructor with an empty arg list and then clobber the 
+         * resulting Function's magic slot with setMagic. This is not
+         * quite the same as the other builtins.
+         *)
+        val obj = needObj (instantiateGlobalClass Name.public_Function [])
+    in
+        Mach.Object (Mach.setMagic obj (SOME (Mach.Function closure)))
+    end
+
+and newFunctionFromFunc (e:Mach.SCOPE) 
+                        (f:Ast.FUNC) 
+    : Mach.VAL = 
+    newFunctionFromClosure (newFunClosure e f)
+
+and newNativeFunction (f:Mach.NATIVE_FUNCTION) = 
+    newBuiltin Name.public_Function (SOME (Mach.NativeFunction f))
+
+
+
+(* 
+ * Arithmetic operations.
+ *)
+
+(* FIXME: this is not the correct toString *)
+
+and magicToString (magic:Mach.MAGIC) 
+    : string =
+    case magic of 
+        Mach.Double n => if Real64.== (n, (Real64.realFloor n))
+                         then Int.toString (Real64.floor n)
+                         else Real64.toString n
+      | Mach.Decimal d => Decimal.toString d
+      | Mach.Int i => Int32.toString i
+      | Mach.UInt u => LargeInt.toString (Word32.toLargeInt u)
+      | Mach.String s => s
+      | Mach.Boolean true => "true"
+      | Mach.Boolean false => "false"
+      | Mach.Namespace (Ast.Private _) => "[private namespace]"
+      | Mach.Namespace (Ast.Protected _) => "[protected namespace]"
+      | Mach.Namespace Ast.Intrinsic => "[intrinsic namespace]"
+      | Mach.Namespace Ast.OperatorNamespace => "[operator namespace]"
+      | Mach.Namespace (Ast.Public id) => "[public namespace: " ^ id ^ "]"
+      | Mach.Namespace (Ast.Internal _) => "[internal namespace]"
+      | Mach.Namespace (Ast.UserNamespace id) => "[user-defined namespace " ^ id ^ "]"
+      | Mach.Class _ => "[class Class]"
+      | Mach.Interface _ => "[interface Interface]"
+      | Mach.Function _ => "[function Function]"
+      | Mach.Type _ => "[type Function]"
+      | Mach.ByteArray _ => "[ByteArray]"
+      | Mach.NativeFunction _ => "[function NativeFunction]"
+
+and toString (v:Mach.VAL) 
+    : string = 
+    case v of 
+        Mach.Undef => "undefined"
+      | Mach.Null => "null"
+      | Mach.Object (Mach.Obj ob) => 
+        (case !(#magic ob) of 
+             NONE => "[object Object]"
+           | SOME magic => 
+             magicToString magic)
+
+and toBoolean (v:Mach.VAL) : bool = 
+    case v of 
+        Mach.Undef => false
+      | Mach.Null => false
+      | Mach.Object (Mach.Obj ob) => 
+        (case !(#magic ob) of 
+             SOME (Mach.Boolean b) => b
+           | _ => true)
+
+and toNumeric (v:Mach.VAL) 
+    : Mach.VAL =          
+    let 
+        fun NaN _ = newDouble (Real64.posInf / Real64.posInf)
+        fun zero _ = newDouble (Real64.fromInt 0)
+        fun one _ = newDouble (Real64.fromInt 1)
+    in
+        case v of 
+            Mach.Undef => NaN ()
+          | Mach.Null => zero ()
+          | Mach.Object (Mach.Obj ob) => 
+            (case !(#magic ob) of 
+                 SOME (Mach.Double _) => v
+               | SOME (Mach.Decimal _) => v
+               | SOME (Mach.Int _) => v
+               | SOME (Mach.UInt _) => v
+               | SOME (Mach.Boolean false) => zero ()
+               | SOME (Mach.Boolean true) => one ()
+               (* 
+                * FIXME: This is not the correct definition of ToNumber applied to string.
+                * See ES3 9.3.1. We need to talk it over.
+                *) 
+               | SOME (Mach.String s) => (case Real64.fromString s of
+                                              SOME s' => newDouble s'
+                                            | NONE => NaN ())
+               (* 
+                * FIXME: ES3 9.3 defines ToNumber on objects in terms of primitives. We've
+                * reorganized the classification of primitives vs. objects. Revisit this.
+                *)
+               | _ => zero ())
+    end
+    
+
+and toDecimal (precision:int) 
+              (mode:Decimal.ROUNDING_MODE) 
+              (v:Mach.VAL) 
+    : Decimal.DEC = 
+    case v of 
+        Mach.Undef => Decimal.NaN
+      | Mach.Null => Decimal.zero
+      | Mach.Object (Mach.Obj ob) => 
+        (case !(#magic ob) of 
+             SOME (Mach.Double d) => 
+             (* NB: Lossy. *)
+             (case Decimal.fromString precision mode (Real64.toString d) of
+                  SOME d' => d'
+                | NONE => Decimal.NaN)
+           | SOME (Mach.Decimal d) => d
+           | SOME (Mach.Int i) => Decimal.fromLargeInt (Int32.toLarge i)
+           | SOME (Mach.UInt u) => Decimal.fromLargeInt (Word32.toLargeInt u)
+           | SOME (Mach.Boolean false) => Decimal.zero
+           | SOME (Mach.Boolean true) => Decimal.one
+           (* 
+            * FIXME: This is not the correct definition either. See toNumeric.
+            *) 
+           | SOME (Mach.String s) => (case Decimal.fromString precision mode s of
+                                     SOME s' => s'
+                                   | NONE => Decimal.NaN)
+           (* 
+            * FIXME: Possibly wrong here also. See comment in toNumeric.
+            *)
+           | _ => Decimal.zero)
+
+
+and toDouble (v:Mach.VAL) 
+    : Real64.real = 
+    let 
+        fun NaN _ = (Real64.posInf / Real64.posInf)
+        fun zero _ = (Real64.fromInt 0)
+        fun one _ = (Real64.fromInt 1)
+    in            
+        case v of 
+            Mach.Undef => NaN ()
+          | Mach.Null => zero ()
+          | Mach.Object (Mach.Obj ob) => 
+            (case !(#magic ob) of 
+                 SOME (Mach.Double d) => d
+               | SOME (Mach.Decimal d) => 
+                 (* NB: Lossy. *)
+                 (case Real64.fromString (Decimal.toString d) of
+                      SOME d' => d'
+                    | NONE => NaN ())
+                 
+               | SOME (Mach.Int i) => Real64.fromLargeInt (Int32.toLarge i)
+               | SOME (Mach.UInt u) => Real64.fromLargeInt (Word32.toLargeInt u)
+               | SOME (Mach.Boolean false) => zero ()
+               | SOME (Mach.Boolean true) => one ()
+               (* 
+                * FIXME: This is not the correct definition either. See toNumeric.
+                *) 
+               | SOME (Mach.String s) => (case Real64.fromString s  of
+                                              SOME s' => s'
+                                            | NONE => NaN())
+               (* 
+                * FIXME: Possibly wrong here also. See comment in toNumeric.
+                *)
+               | _ => zero ())
+    end
+
+
+and isPositiveZero (v:Mach.VAL) 
+    : bool =
+    let 
+        fun doubleIsPosZero x = 
+            Real64.class x = IEEEReal.ZERO
+            andalso not (Real64.signBit x)
+    in        
+        mathOp v 
+               (SOME Decimal.isPositiveZero)
+               (SOME doubleIsPosZero)
+               NONE NONE false
+    end
+
+
+and isNegativeZero (v:Mach.VAL) 
+    : bool =
+    let 
+        fun doubleIsNegZero x = 
+            Real64.class x = IEEEReal.ZERO
+            andalso Real64.signBit x
+    in        
+        mathOp v 
+               (SOME Decimal.isPositiveZero) 
+               (SOME doubleIsNegZero)
+               NONE NONE false
+    end
+
+
+and isPositiveInf (v:Mach.VAL) 
+    : bool =
+    let 
+        fun doubleIsPosInf x = 
+            Real64.class x = IEEEReal.INF
+            andalso not (Real64.signBit x)
+    in        
+        mathOp v 
+               (SOME Decimal.isPositiveZero)
+               (SOME doubleIsPosInf)
+               NONE NONE false
+    end
+
+
+and isNegativeInf (v:Mach.VAL) 
+    : bool =
+    let 
+        fun doubleIsNegInf x = 
+            Real64.class x = IEEEReal.INF
+            andalso Real64.signBit x
+    in        
+        mathOp v 
+               (SOME Decimal.isPositiveZero)
+               (SOME doubleIsNegInf)
+               NONE NONE false
+    end
+
+    
+and isNaN (v:Mach.VAL)
+    : bool = 
+    mathOp v 
+           (SOME Decimal.isNaN) 
+           (SOME Real64.isNan)
+           NONE NONE false
+
+
+and sign (v:Mach.VAL)
+    : int = 
+    let 
+        (* 
+         * FIXME: this implemented 'sign' function returns 1, 0, or -1
+         * depending on proximity to 0. Some definitions only return 1 or 0,
+         * or only return 1 or -1. Don't know which one the ES3 spec means.
+         *)
+
+        (* FIXME: should decimal rounding mode and precision used in sign-determination? *)
+        fun decimalSign d = case Decimal.compare Decimal.defaultPrecision 
+                                                 Decimal.defaultRoundingMode 
+                                                 d Decimal.zero 
+                             of 
+                                LESS => ~1
+                              | EQUAL => 0
+                              | GREATER => 1
+
+        fun uint32Sign u = if u = (Word32.fromInt 0)
+                           then 0
+                           else 1
+    in
+        mathOp v 
+               (SOME decimalSign)
+               (SOME Real64.sign)
+               (SOME Int32.sign)
+               (SOME uint32Sign)
+               0
+    end
+
+
+and floor (v:Mach.VAL)
+    : LargeInt.int =
+    mathOp v 
+           (SOME Decimal.floor)
+           (SOME (Real64.toLargeInt IEEEReal.TO_NEGINF))
+           (SOME Int32.toLarge)
+           (SOME Word32.toLargeInt)
+           (LargeInt.fromInt 0)
+    
+
+and signFloorAbs (v:Mach.VAL)
+    : LargeInt.int =
+    let
+        val sign = Int.toLarge (sign v)
+        val floor = floor v
+    in
+        LargeInt.*(sign, (LargeInt.abs floor))
+    end
+    
+
+(* ES3 9.4 ToInteger 
+ *
+ * FIXME: If I understand the compatibility requirements
+ * correctly, this should return an integral double. 
+ * Not certain though. 
+ *)
+
+and toInteger (v:Mach.VAL)
+    : Mach.VAL = 
+    let
+        val v' = toNumeric v
+    in
+        if isNaN v'
+        then newDouble (Real64.fromInt 0)
+        else (if (isPositiveInf v' orelse
+                  isNegativeInf v' orelse
+                  isPositiveZero v' orelse
+                  isNegativeZero v')
+              then v'
+              else newDouble (Real64.fromLargeInt (signFloorAbs v')))
+    end
+
+(* ES3 9.5 ToInt32 *)
+
+and toInt32 (v:Mach.VAL) 
+    : Int32.int =
+    let 
+        val v' = toNumeric v
+    in
+        if (isNaN v' orelse
+            isPositiveInf v' orelse
+            isNegativeInf v' orelse
+            isPositiveZero v' orelse
+            isNegativeZero v')
+        then Int32.fromInt 0
+        else 
+            let 
+                val l31 = IntInf.pow (2, 31)
+                val l32 = IntInf.pow (2, 32)
+                val v'' = IntInf.mod (signFloorAbs v', l32)
+            in
+                Int32.fromLarge (if LargeInt.>= (v'', l31)
+                                 then LargeInt.- (v'', l32)
+                                 else v'')
+            end
+    end
+
+
+(* ES3 9.6 ToUInt32 *)
+
+and toUInt32 (v:Mach.VAL) 
+    : Word32.word =
+    let 
+        val v' = toNumeric v
+    in
+        if (isNaN v' orelse
+            isPositiveInf v' orelse
+            isNegativeInf v' orelse
+            isPositiveZero v' orelse
+            isNegativeZero v')
+        then Word32.fromInt 0
+        else 
+            let 
+                val l32 = IntInf.pow (2, 32)
+            in
+                Word32.fromLargeInt (LargeInt.mod (signFloorAbs v', l32))
+            end
+    end
+
+(* ES3 9.6 ToUInt16 *)
+
+and toUInt16 (v:Mach.VAL) 
+    : Word32.word =
+    let 
+        val v' = toNumeric v
+    in
+        if (isNaN v' orelse
+            isPositiveInf v' orelse
+            isNegativeInf v' orelse
+            isPositiveZero v' orelse
+            isNegativeZero v')
+        then Word32.fromInt 0
+        else 
+            let 
+                val l16 = IntInf.pow (2, 16)
+            in
+                Word32.fromLargeInt (LargeInt.mod (signFloorAbs v', l16))
+            end
+    end
+
     
 and evalExpr (scope:Mach.SCOPE) 
              (expr:Ast.EXPR)
@@ -526,7 +1046,7 @@ and evalLiteralArrayExpr (scope:Mach.SCOPE)
                     | SOME _ => error ["non-array type on array literal"]
         val tag = Mach.ArrayTag tys
         (* FIXME: hook up to Array.prototype. *)
-        val obj = Mach.newObj tag Mach.Undef NONE
+        val obj = newObj ()
         val (Mach.Obj {props, ...}) = obj
         fun putVal n [] = ()
           | putVal n (v::vs) = 
@@ -572,7 +1092,7 @@ and evalLiteralObjectExpr (scope:Mach.SCOPE)
                     | SOME _ => error ["non-object type on object literal"]
         val tag = Mach.ObjectTag tys
         (* FIXME: hook up to Object.prototype. *)
-        val obj = Mach.newObj tag Mach.Undef NONE
+        val obj = newObj ()
         val (Mach.Obj {props, ...}) = obj
         fun processField {kind, name, init} = 
             let 
@@ -606,16 +1126,16 @@ and evalLiteralExpr (scope:Mach.SCOPE)
     case lit of 
         Ast.LiteralNull => Mach.Null
       | Ast.LiteralUndefined => Mach.Undef
-      | Ast.LiteralDouble r => Mach.newDouble r
-      | Ast.LiteralDecimal d => Mach.newDecimal d
-      | Ast.LiteralInt i => Mach.newInt i
-      | Ast.LiteralUInt u => Mach.newUInt u
-      | Ast.LiteralBoolean b => Mach.newBoolean b
-      | Ast.LiteralString s => Mach.newString s
+      | Ast.LiteralDouble r => newDouble r
+      | Ast.LiteralDecimal d => newDecimal d
+      | Ast.LiteralInt i => newInt i
+      | Ast.LiteralUInt u => newUInt u
+      | Ast.LiteralBoolean b => newBoolean b
+      | Ast.LiteralString s => newString s
       | Ast.LiteralArray {exprs, ty} => evalLiteralArrayExpr scope exprs ty
       | Ast.LiteralObject {expr, ty} => evalLiteralObjectExpr scope expr ty
-      | Ast.LiteralNamespace n => Mach.newNamespace n
-      | Ast.LiteralFunction f => Mach.newFunc scope f
+      | Ast.LiteralNamespace n => newNamespace n
+      | Ast.LiteralFunction f => newFunctionFromFunc scope f
       | Ast.LiteralContextualDecimal _ => error ["contextual decimal literal at runtime"]
       | Ast.LiteralContextualDecimalInteger _ => error ["contextual decimal integer literal at runtime"]
       | Ast.LiteralContextualHexInteger _ => error ["contextual hex integer literal at runtime"]
@@ -644,8 +1164,7 @@ and constructObjectViaFunction (ctorObj:Mach.OBJ)
                 if Mach.hasProp props Name.public_prototype
                 then getValue (ctorObj, Name.public_prototype)
                 else Mach.Null
-            val (newObj:Mach.OBJ) = 
-                Mach.newObj (Mach.ClassTag Name.public_Object) proto NONE
+            val (newObj:Mach.OBJ) = Mach.setProto (newObj ()) proto 
         in
             case invokeFuncClosure newObj ctor args of 
                 Mach.Object ob => Mach.Object ob
@@ -671,7 +1190,7 @@ and evalCallExpr (thisObjOpt:Mach.OBJ option)
     let 
         val _ = trace ["evalCallExpr"]
         val thisObj = case thisObjOpt of 
-                          NONE => Mach.globalObject
+                          NONE => getGlobalObject ()
                         | SOME t => t
         val thisVal = Mach.Object thisObj
     in
@@ -742,11 +1261,11 @@ and evalUnaryOp (scope:Mach.SCOPE)
 
                 fun asDecimal _ =                         
                     let 
-                        val vd = Mach.toDecimal (#precision mode) (#roundingMode mode) v
+                        val vd = toDecimal (#precision mode) (#roundingMode mode) v
                         val one = valOf (Decimal.fromStringDefault "1")
                     in
-                        (Mach.newDecimal vd, 
-                         Mach.newDecimal (decimalOp 
+                        (newDecimal vd, 
+                         newDecimal (decimalOp 
                                               (#precision mode) 
                                               (#roundingMode mode) 
                                               vd one))
@@ -754,26 +1273,26 @@ and evalUnaryOp (scope:Mach.SCOPE)
 
                 fun asDouble _ = 
                     let
-                        val vd = Mach.toDouble v
+                        val vd = toDouble v
                         val one = Real64.fromInt 1
                     in
-                        (Mach.newDouble vd, Mach.newDouble (doubleOp (vd, one)))
+                        (newDouble vd, newDouble (doubleOp (vd, one)))
                     end
 
                 fun asInt _ = 
                     let
-                        val vi = Mach.toInt32 v
+                        val vi = toInt32 v
                         val one = Int32.fromInt 1
                     in
-                        (Mach.newInt vi, Mach.newInt (intOp (vi, one)))
+                        (newInt vi, newInt (intOp (vi, one)))
                     end
 
                 fun asUInt _ = 
                     let
-                        val vu = Mach.toUInt32 v
+                        val vu = toUInt32 v
                         val one = Word32.fromInt 1
                     in
-                        (Mach.newUInt vu, Mach.newUInt (uintOp (vu, one)))
+                        (newUInt vu, newUInt (uintOp (vu, one)))
                     end
                     
                 val (n, n') = 
@@ -789,7 +1308,7 @@ and evalUnaryOp (scope:Mach.SCOPE)
                          * "calling toNumeric but otherwise keeping the value in whatever 
                          * type it is before crement".
                          *)                        
-                        (case Mach.needMagic (Mach.toNumeric v) of
+                        (case Mach.needMagic (toNumeric v) of
                              Mach.Decimal _ => asDecimal ()
                            | Mach.Double _ => asDouble ()
                            | Mach.Int _ => asInt ()
@@ -804,7 +1323,7 @@ and evalUnaryOp (scope:Mach.SCOPE)
             Ast.Delete => 
             (case evalRefExpr scope expr false of
                  (Mach.Obj {props, ...}, name) => 
-                 (Mach.delProp props name; Mach.newBoolean true))
+                 (Mach.delProp props name; newBoolean true))
 
           | Ast.PreIncrement mode => crement (valOf mode)
                                              (Decimal.add) 
@@ -835,14 +1354,14 @@ and evalUnaryOp (scope:Mach.SCOPE)
                                               false
 
           | Ast.BitwiseNot => 
-            Mach.newInt (Int32.fromLarge 
+            newInt (Int32.fromLarge 
                          (Word32.toLargeInt 
                               (Word32.notb 
-                                   (Mach.toUInt32 
+                                   (toUInt32 
                                         (evalExpr scope expr)))))
 
           | Ast.LogicalNot => 
-            Mach.newBoolean (not (Mach.toBoolean (evalExpr scope expr)))
+            newBoolean (not (toBoolean (evalExpr scope expr)))
 
           | Ast.UnaryPlus mode => 
             let 
@@ -850,28 +1369,28 @@ and evalUnaryOp (scope:Mach.SCOPE)
                 val mode = valOf mode
             in
                 case (#numberType mode) of 
-                    Ast.Decimal => Mach.newDecimal (Mach.toDecimal (#precision mode) 
+                    Ast.Decimal => newDecimal (toDecimal (#precision mode) 
                                                                    (#roundingMode mode) 
                                                                    v)
-                  | Ast.Double => Mach.newDouble (Mach.toDouble v)
-                  | Ast.Int => Mach.newInt (Mach.toInt32 v)
-                  | Ast.UInt => Mach.newUInt (Mach.toUInt32 v)
-                  | Ast.Number => Mach.toNumeric v
+                  | Ast.Double => newDouble (toDouble v)
+                  | Ast.Int => newInt (toInt32 v)
+                  | Ast.UInt => newUInt (toUInt32 v)
+                  | Ast.Number => toNumeric v
             end
 
           | Ast.UnaryMinus mode => 
             let 
                 val v = evalExpr scope expr
                 val mode = valOf mode
-                fun asDecimal _ = Mach.newDecimal (Decimal.minus 
+                fun asDecimal _ = newDecimal (Decimal.minus 
                                                        (#precision mode) 
                                                        (#roundingMode mode) 
-                                                       (Mach.toDecimal (#precision mode)
+                                                       (toDecimal (#precision mode)
                                                                        (#roundingMode mode)
                                                                        v))
-                fun asDouble _ = Mach.newDouble (Real64.~ (Mach.toDouble v))
-                fun asInt _ = Mach.newInt (Int32.~ (Mach.toInt32 v))
-                fun asUInt _ = Mach.newUInt (Word32.~ (Mach.toUInt32 v))
+                fun asDouble _ = newDouble (Real64.~ (toDouble v))
+                fun asInt _ = newInt (Int32.~ (toInt32 v))
+                fun asUInt _ = newUInt (Word32.~ (toUInt32 v))
             in
                 case (#numberType mode) of 
                     Ast.Decimal => asDecimal ()
@@ -879,7 +1398,7 @@ and evalUnaryOp (scope:Mach.SCOPE)
                   | Ast.Int => asInt ()
                   | Ast.UInt => asUInt ()
                   | Ast.Number => 
-                    (case Mach.needMagic (Mach.toNumeric v) of 
+                    (case Mach.needMagic (toNumeric v) of 
                          Mach.Decimal _ => asDecimal ()
                        | Mach.Double _ => asDouble ()
                        (* 
@@ -921,13 +1440,13 @@ and evalUnaryOp (scope:Mach.SCOPE)
                            | SOME (Mach.Int _) => "number"
                            | SOME (Mach.Double _) => "number"
                            | SOME (Mach.Decimal _) => "number"
-                           | SOME (Mach.Bool _) => "boolean"
+                           | SOME (Mach.Boolean _) => "boolean"
                            | SOME (Mach.Function _) => "function"
                            | SOME (Mach.NativeFunction _) => "function"
                            | SOME (Mach.String _) => "string"
                            | _ => "object")
             in
-                Mach.newString 
+                newString 
                     (case expr of 
                          Ast.LexicalRef { ident, pos } => 
                          let 
@@ -950,19 +1469,19 @@ and performBinop (bop:Ast.BINOP)
 
     let
         fun stringConcat _ = 
-            Mach.newString ((Mach.toString a) ^ (Mach.toString b))
+            newString ((toString a) ^ (toString b))
 
         fun dispatch (mode:Ast.NUMERIC_MODE) decimalOp doubleOp intOp uintOp largeOp =
             case (#numberType mode) of 
-                Ast.Decimal => decimalOp (Mach.toDecimal 
+                Ast.Decimal => decimalOp (toDecimal 
                                               (#precision mode) 
                                               (#roundingMode mode) a) 
-                                         (Mach.toDecimal 
+                                         (toDecimal 
                                               (#precision mode) 
                                               (#roundingMode mode) b)
-              | Ast.Double => doubleOp (Mach.toDouble a) (Mach.toDouble b)
-              | Ast.Int => intOp (Mach.toInt32 a) (Mach.toInt32 b)
-              | Ast.UInt => uintOp (Mach.toUInt32 a) (Mach.toUInt32 b)
+              | Ast.Double => doubleOp (toDouble a) (toDouble b)
+              | Ast.Int => intOp (toInt32 a) (toInt32 b)
+              | Ast.UInt => uintOp (toUInt32 a) (toUInt32 b)
                             
               | Ast.Number => 
                 (* 
@@ -971,22 +1490,22 @@ and performBinop (bop:Ast.BINOP)
                  *)
                     
                 if Mach.isDecimal a orelse Mach.isDecimal b
-                then decimalOp (Mach.toDecimal
+                then decimalOp (toDecimal
                                     (#precision mode) 
                                     (#roundingMode mode) a)
-                               (Mach.toDecimal 
+                               (toDecimal 
                                     (#precision mode) 
                                     (#roundingMode mode) b)
                 else 
                     (if Mach.isDouble a orelse Mach.isDouble b
                      then (trace ["dynamic dispatch as double op"];
-                           doubleOp (Mach.toDouble a) (Mach.toDouble b))
+                           doubleOp (toDouble a) (toDouble b))
                      else
                          let
                              fun isIntegral x = Mach.isUInt x orelse Mach.isInt x
                              fun enlarge x = if Mach.isUInt x 
-                                             then Word32.toLargeInt (Mach.toUInt32 x)
-                                             else Int32.toLarge (Mach.toInt32 x)
+                                             then Word32.toLargeInt (toUInt32 x)
+                                             else Int32.toLarge (toInt32 x)
                          in
                              if isIntegral a andalso isIntegral b
                              then 
@@ -994,52 +1513,52 @@ and performBinop (bop:Ast.BINOP)
                                   largeOp (enlarge a) (enlarge b))
                              else
                                  (trace ["dynamic dispatch as double op"];
-                                  doubleOp (Mach.toDouble a) (Mach.toDouble b))
+                                  doubleOp (toDouble a) (toDouble b))
                          end)
                     
         fun dispatchComparison mode cmp =
             let
                 fun decimalOp da db =
-                    Mach.newBoolean (cmp (Decimal.compare (#precision mode) 
+                    newBoolean (cmp (Decimal.compare (#precision mode) 
                                                           (#roundingMode mode) 
                                                           da db))
                 fun doubleOp da db = 
-                    Mach.newBoolean (cmp (Real64.compare (da, db)))
+                    newBoolean (cmp (Real64.compare (da, db)))
                 fun intOp ia ib = 
-                    Mach.newBoolean (cmp (Int32.compare (ia, ib)))
+                    newBoolean (cmp (Int32.compare (ia, ib)))
                 fun uintOp ua ub = 
-                    Mach.newBoolean (cmp (Word32.compare (ua, ub)))
+                    newBoolean (cmp (Word32.compare (ua, ub)))
                 fun largeOp la lb = 
-                    Mach.newBoolean (cmp (LargeInt.compare (la, lb)))
+                    newBoolean (cmp (LargeInt.compare (la, lb)))
             in
                 if Mach.isNumeric a andalso Mach.isNumeric b
                 then dispatch mode decimalOp doubleOp intOp uintOp largeOp
-                else Mach.newBoolean (cmp (String.compare ((Mach.toString a), 
-                                                           (Mach.toString b))))
+                else newBoolean (cmp (String.compare ((toString a), 
+                                                      (toString b))))
             end
             
         fun dispatchNumeric mode decimalFn doubleFn intFn uintFn largeFn =
             let
                 fun decimalOp da db =
-                    Mach.newDecimal (decimalFn (#precision mode) (#roundingMode mode) da db)
+                    newDecimal (decimalFn (#precision mode) (#roundingMode mode) da db)
                 fun doubleOp da db = 
-                    Mach.newDouble (doubleFn (da, db))
+                    newDouble (doubleFn (da, db))
                 fun intOp ia ib = 
-                    Mach.newInt (intFn (ia, ib))
+                    newInt (intFn (ia, ib))
                 fun uintOp ua ub = 
-                    Mach.newUInt (uintFn (ua, ub))
+                    newUInt (uintFn (ua, ub))
                 fun largeOp la lb = 
                     let 
                         val x = largeFn (la, lb)
                     in
                         if Mach.fitsInInt x
-                        then Mach.newInt (Int32.fromLarge x)
+                        then newInt (Int32.fromLarge x)
                         else (if Mach.fitsInUInt x
-                              then Mach.newUInt (Word32.fromLargeInt x)
+                              then newUInt (Word32.fromLargeInt x)
                               else (case Real64.fromString (LargeInt.toString x) of 
-                                        SOME d => Mach.newDouble d
+                                        SOME d => newDouble d
                                       | NONE => (case Decimal.fromStringDefault (LargeInt.toString x) of
-                                                     SOME d => Mach.newDecimal d
+                                                     SOME d => newDecimal d
                                                    | NONE => error ["arithmetic overflow"])))
                     end                                 
             in
@@ -1056,13 +1575,13 @@ and performBinop (bop:Ast.BINOP)
             Int32.fromLarge (Word32.toLargeInt x)
 
         fun bitwiseWordOp f = 
-            Mach.newUInt (f ((Mach.toUInt32 a),
-                             (Mach.toUInt32 b)))
+            newUInt (f ((toUInt32 a),
+                             (toUInt32 b)))
 
         fun pickRepByA (x:Word32.word) = 
             if Mach.isUInt a
-            then Mach.newUInt x
-            else Mach.newInt (u2i x)
+            then newUInt x
+            else newInt (u2i x)
                           
     in
         case bop of
@@ -1110,16 +1629,16 @@ and performBinop (bop:Ast.BINOP)
                             ( LargeInt.mod )
 
           | Ast.LeftShift => 
-            pickRepByA (Word32.<< ((i2u (Mach.toInt32 a)),
-                                   (masku5 (Mach.toUInt32 b))))
+            pickRepByA (Word32.<< ((i2u (toInt32 a)),
+                                   (masku5 (toUInt32 b))))
 
           | Ast.RightShift => 
-            pickRepByA (Word32.>> ((i2u (Mach.toInt32 a)),
-                                   (masku5 (Mach.toUInt32 b))))
+            pickRepByA (Word32.>> ((i2u (toInt32 a)),
+                                   (masku5 (toUInt32 b))))
 
           | Ast.RightShiftUnsigned => 
-            pickRepByA (Word32.~>> ((Mach.toUInt32 a),
-                                    (masku5 (Mach.toUInt32 b))))
+            pickRepByA (Word32.~>> ((toUInt32 a),
+                                    (masku5 (toUInt32 b))))
 
           (* FIXME: should we return int if we do int|int or int&int ? *)
           | Ast.BitwiseAnd => bitwiseWordOp (Word32.andb)
@@ -1166,11 +1685,11 @@ and doubleEquals (mode:Ast.NUMERIC_MODE option)
                  (a:Mach.VAL) 
                  (b:Mach.VAL)                  
   : bool = 
-    Mach.toBoolean (performBinop (Ast.Equals mode) a b)
+    toBoolean (performBinop (Ast.Equals mode) a b)
 
 
 (*
-fun hasInstance (ob:OBJ)
+and hasInstance (ob:OBJ)
                 (v:VAL)
     : bool = 
     let 
@@ -1208,7 +1727,7 @@ and evalBinaryOp (scope:Mach.SCOPE)
         let 
             val a = evalExpr scope aexpr
         in
-            if Mach.toBoolean a
+            if toBoolean a
             then evalExpr scope bexpr
             else a
         end
@@ -1217,7 +1736,7 @@ and evalBinaryOp (scope:Mach.SCOPE)
         let 
             val a = evalExpr scope aexpr
         in
-            if Mach.toBoolean a
+            if toBoolean a
             then a
             else evalExpr scope bexpr
         end
@@ -1232,20 +1751,20 @@ and evalBinaryOp (scope:Mach.SCOPE)
         in
             case b of 
                 Mach.Object (ob) =>
-                Mach.newBoolean true (* FIXME: (hasInstance ob b) *)
+                newBoolean true (* FIXME: (hasInstance ob b) *)
               | _ => raise ThrowException (newByGlobalName Name.public_TypeError)
         end
 
       | Ast.In =>
         let 
             val a = evalExpr scope aexpr
-            val astr = Mach.toString a
-            val aname = {id=astr, ns=Ast.Internal ""}
+            val astr = toString a
+            val aname = Name.internal astr
             val b = evalExpr scope bexpr
         in
             case b of 
                 Mach.Object (Mach.Obj {props, ...}) =>
-                Mach.newBoolean (Mach.hasProp props aname)
+                newBoolean (Mach.hasProp props aname)
               | _ => raise ThrowException (newByGlobalName Name.public_TypeError)
                      
         end
@@ -1262,7 +1781,7 @@ and evalCondExpr (scope:Mach.SCOPE)
     : Mach.VAL = 
     let 
         val v = evalExpr scope cond
-        val b = Mach.toBoolean v
+        val b = toBoolean v
     in
         if b 
         then evalExpr scope thn
@@ -1282,11 +1801,11 @@ and evalIdentExpr (scope:Mach.SCOPE)
 
       | Ast.QualifiedExpression { qual, expr } => 
         { nss = [[needNamespace (evalExpr scope qual)]], 
-          id = Mach.toString (evalExpr scope expr) }
+          id = toString (evalExpr scope expr) }
         
       | Ast.ExpressionIdentifier expr =>
         { nss = [[Ast.Internal ""]],
-          id = Mach.toString (evalExpr scope expr) }
+          id = toString (evalExpr scope expr) }
 
       | _ => LogErr.unimplError ["unimplemented identifier expression form"]
 
@@ -1300,10 +1819,9 @@ and evalRefExpr (scope:Mach.SCOPE)
         fun makeRefNotFound (b:Mach.VAL option) (mname:Ast.MULTINAME) 
             : REF =
             case (b,mname) of
-                (SOME (Mach.Object ob),{id,...}) =>
-                (ob,{ns=Ast.Internal "",id=id})  (* FIXME: ns might be user settable default *)
-              | (NONE,{id,...}) => 
-                (Mach.globalObject,{ns=Ast.Internal "",id=id})
+                (* FIXME: ns might be user settable default *)
+                (SOME (Mach.Object ob),{id, ...}) => (ob, (Name.internal id))  
+              | (NONE,{id, ...}) => (getGlobalObject (), (Name.internal id))
               | _ => error ["ref expression messed up in refOf"]
 
         val (base,ident) =
@@ -1515,21 +2033,20 @@ and invokeFuncClosure (this:Mach.OBJ)
         then error ["invoking function with unbound type variables"]
         else
             let 
-                val (varObj:Mach.OBJ) = Mach.newSimpleObj NONE
+                val (varObj:Mach.OBJ) = newObj ()
                 val (varScope:Mach.SCOPE) = extendScope env varObj true
                                             
                 (* FIXME: infer a fixture for "this" so that it's properly typed, dontDelete, etc.
                  * Also this will mean changing to defVar rather than setVar, for 'this'. *)
                 val thisVal = Mach.Object this
-                fun initThis v = setValue varObj thisName thisVal
+                fun initThis _ = setValue varObj Name.this thisVal
                                  
                 (* FIXME: self-name binding is surely more complex than this! *)
-                val selfName = { id = (#ident name), ns = Ast.Internal "" }
-                val selfTag = Mach.FunctionTag fsig
-                val selfVal = Mach.newObject selfTag Mach.Null (SOME (Mach.Function closure))
+                val selfName = Name.internal (#ident name)
+                val selfVal = newFunctionFromClosure closure
             in
                 allocScopeFixtures varScope paramFixtures;
-                initThis thisVal;
+                initThis ();
                 bindArgs env varScope func args;
                 evalScopeInits varScope Ast.Local paramInits;
 
@@ -1815,6 +2332,7 @@ and initializeAndConstruct (classClosure:Mach.CLS_CLOSURE)
                          checkAllPropertiesInitialized instanceObj)
                       | SOME superName => 
                         let 
+                            val _ = trace ["initializing and constructing superclass ", LogErr.name superName ]
                             val (superObj:Mach.OBJ) = needObj (findVal env (multinameOf superName))
                             val (superClsClosure:Mach.CLS_CLOSURE) = 
                                 case Mach.getObjMagic superObj of
@@ -1835,7 +2353,7 @@ and initializeAndConstruct (classClosure:Mach.CLS_CLOSURE)
                   | SOME (Ast.Ctor { settings, superArgs, func }) => 
                     let 
                         val Ast.Func { block, param=(paramFixtures,paramInits), ... } = func
-                        val (varObj:Mach.OBJ) = Mach.newSimpleObj NONE
+                        val (varObj:Mach.OBJ) = newObj ()
                         val (varScope:Mach.SCOPE) = extendScope classScope varObj false
                         val (ctorScope:Mach.SCOPE) = extendScope varScope instanceObj true
                     in
@@ -1885,7 +2403,7 @@ and constructClassInstance (classObj:Mach.OBJ)
 and newByGlobalName (n:Ast.NAME) 
     : Mach.VAL = 
     let
-        val (cls:Mach.VAL) = getValue (Mach.globalObject, n)
+        val (cls:Mach.VAL) = getValue (getGlobalObject (), n)
     in
         case cls of 
             Mach.Object ob => evalNewExpr ob []
@@ -1981,7 +2499,7 @@ and isPrimitive (v:Mach.VAL)
            | SOME (Mach.Double _) => true
            | SOME (Mach.Decimal _) => true
            | SOME (Mach.String _) => true
-           | SOME (Mach.Bool _) => true
+           | SOME (Mach.Boolean _) => true
            | _ => false)
 
 (* 
@@ -2007,7 +2525,7 @@ and evalHead (scope:Mach.SCOPE)
     : Mach.SCOPE =
         let
             val (fixtures,inits) = head
-            val obj = Mach.newObj (Mach.ClassTag Name.public_Object) Mach.Null NONE
+            val obj = newObj ()
             val scope = extendScope scope obj isVarObject
             val temps = getScopeTemps scope
         in
@@ -2044,7 +2562,7 @@ and evalBlock (scope:Mach.SCOPE)
     its body.
 *)
 
-and initClassPrototype (scope)
+and initClassPrototype (scope:Mach.SCOPE)
                        (classObj:Mach.OBJ) 
     : unit =
     let 
@@ -2066,7 +2584,7 @@ and initClassPrototype (scope)
                 end
                 
         val _ = trace ["constructing prototype"]
-        val newPrototype = Mach.newObj (Mach.ClassTag Name.public_Object) baseProtoVal NONE
+        val newPrototype = Mach.setProto (newObj ()) baseProtoVal
     in
         defValue classObj Name.public_prototype (Mach.Object newPrototype);
         trace ["finished initialising class prototype"]
@@ -2111,7 +2629,7 @@ and evalIfStmt (scope:Mach.SCOPE)
     : Mach.VAL = 
     let 
         val v = evalExpr scope cnd 
-        val b = Mach.toBoolean v
+        val b = toBoolean v
     in
         if b 
         then evalStmt scope thn
@@ -2138,7 +2656,7 @@ and evalWhileStmt (scope:Mach.SCOPE)
         let
             val accum = ref Mach.Undef
             fun loop _ =
-                if Mach.toBoolean (evalExpr scope cond)
+                if toBoolean (evalExpr scope cond)
                 then 
                     (accum := evalStmt scope body;   
                                     (* FIXME: doesn't this need to happen in evalStmts? *)
@@ -2169,7 +2687,7 @@ and evalDoWhileStmt (scope:Mach.SCOPE)
             fun loop _ =
                 let 
                     fun bottom _ = 
-                        if Mach.toBoolean (evalExpr scope cond)
+                        if toBoolean (evalExpr scope cond)
                         then loop ()
                         else (!accum)
                 in                
@@ -2257,7 +2775,7 @@ and evalForStmt (scope:Mach.SCOPE)
             fun loop (accum:Mach.VAL option) =
                 let
                     val v = evalExpr forScope cond
-                    val b = Mach.toBoolean v
+                    val b = toBoolean v
                 in
                     if b
                     then
@@ -2326,10 +2844,15 @@ and evalPackage (scope:Mach.SCOPE)
 
 and evalProgram (prog:Ast.PROGRAM) 
     : Mach.VAL = 
-    (LogErr.setPos NONE;
-     setValue Mach.globalObject thisName (Mach.Object Mach.globalObject);
-     allocScopeFixtures Mach.globalScope (valOf (#fixtures prog));
-     map (evalPackage Mach.globalScope) (#packages prog);
-     evalBlock Mach.globalScope (#block prog))
+    let
+        val gObj = getGlobalObject()
+        val gScope = getGlobalScope()
+    in
+        LogErr.setPos NONE;
+        setValue gObj Name.this (Mach.Object gObj);
+        allocScopeFixtures gScope (valOf (#fixtures prog));
+        map (evalPackage gScope) (#packages prog);
+        evalBlock gScope (#block prog)
+    end
 
 end

@@ -89,7 +89,7 @@ fun nthAsBool (vals:Mach.VAL list)
         val Mach.Obj { magic, ... } = nthAsObj vals n
     in
         case !magic of 
-            SOME (Mach.Bool b) => b
+            SOME (Mach.Boolean b) => b
           | _ => error ["Wanted Boolean, got other"]
     end
 
@@ -113,7 +113,7 @@ fun propQuery (vals:Mach.VAL list)
         val id = nthAsStr vals 1
         val ns = Ast.Internal ""
     in
-        Mach.newBoolean (f props {id=id, ns=ns})
+        Eval.newBoolean (f props {id=id, ns=ns})
     end
 
 fun arrayToList (arr:Mach.OBJ) 
@@ -121,7 +121,7 @@ fun arrayToList (arr:Mach.OBJ)
     let 
         val ns = Ast.Internal ""
         val len = Word32.toInt 
-                      (Mach.toUInt32 
+                      (Eval.toUInt32 
                            (Eval.getValue (arr, {id="length", ns=ns})))
         fun build i vs = 
             if i < 0
@@ -172,7 +172,7 @@ fun getClassName (vals:Mach.VAL list)
                     | SOME (Mach.NativeFunction _) => "Function"
                     | _ => "Object"
     in
-        Mach.newString str
+        Eval.newString str
     end
 
     
@@ -319,7 +319,7 @@ fun compileInto (vals:Mach.VAL list)
      *)
     let 
         val funcObj = nthAsObj vals 0
-        fun ident v = Token.Identifier (Mach.toString v)
+        fun ident v = Token.Identifier (Eval.toString v)
         val argIdents = map ident (arrayToList (nthAsObj vals 1))
         val argList = case argIdents of
                           [] => []
@@ -341,14 +341,14 @@ fun compileInto (vals:Mach.VAL list)
                                                       Parser.ALLOWIN)
 
         val funcExpr = Defn.defExpr (Defn.topEnv()) funcExpr
-        val funcVal = Eval.evalExpr Mach.globalScope funcExpr
+        val funcVal = Eval.evalExpr (Eval.getGlobalScope ()) funcExpr
     in
         case funcVal of 
             Mach.Object obj =>
             let 
                 val Mach.Obj { magic, ...} = funcObj
                 val sname = {ns=Ast.Internal "", id="source"}
-                val sval = (Mach.newString source)
+                val sval = (Eval.newString source)
             in
                 Eval.setValue obj sname sval;
                 magic := Mach.getObjMagic obj
@@ -370,7 +370,7 @@ fun charCodeAt (vals:Mach.VAL list)
         val s = nthAsStr vals 0
         val i = nthAsUInt vals 1
     in
-        Mach.newUInt (Word32.fromInt (Char.ord (String.sub (s, (Word32.toInt i)))))
+        Eval.newUInt (Word32.fromInt (Char.ord (String.sub (s, (Word32.toInt i)))))
     end
 
 
@@ -385,7 +385,7 @@ fun fromCharCode (vals:Mach.VAL list)
     let
         val i = nthAsUInt vals 0
     in
-        Mach.newString (Char.toString (Char.chr (Word32.toInt i)))
+        Eval.newString (Char.toString (Char.chr (Word32.toInt i)))
     end
 
 
@@ -400,7 +400,7 @@ fun stringLength (vals:Mach.VAL list)
     let
         val s = nthAsStr vals 0
     in
-        Mach.newUInt (Word32.fromInt (String.size s))
+        Eval.newUInt (Word32.fromInt (String.size s))
     end
     
 
@@ -417,7 +417,7 @@ fun stringAppend (vals:Mach.VAL list)
         val a = nthAsStr vals 0
         val b = nthAsStr vals 1
     in
-        Mach.newString (a ^ b)
+        Eval.newString (a ^ b)
     end
     
     
@@ -433,7 +433,7 @@ fun getByteArrayByte (vals:Mach.VAL list)
         val b = nthAsByteArray vals 0
         val i = nthAsUInt vals 1
     in
-        Mach.newUInt (Word32.fromInt (Word8.toInt (Word8Array.sub (b, (Word32.toInt i)))))
+        Eval.newUInt (Word32.fromInt (Word8.toInt (Word8Array.sub (b, (Word32.toInt i)))))
     end
 
 (*
@@ -540,7 +540,7 @@ fun encodeURIComponent (vals:Mach.VAL list)
 fun print (vals:Mach.VAL list) 
     : Mach.VAL = 
     let
-        fun printOne v = TextIO.print (Mach.toString v) 
+        fun printOne v = TextIO.print (Eval.toString v) 
     in
         List.app printOne vals; 
         TextIO.print "\n";
@@ -555,7 +555,7 @@ fun assert (vals:Mach.VAL list)
 
 fun typename (vals:Mach.VAL list) 
     : Mach.VAL = 
-    Mach.newString 
+    Eval.newString 
     (case hd vals of 
         Mach.Null => "null"
       | Mach.Undef => "undefined"
@@ -568,13 +568,23 @@ fun typename (vals:Mach.VAL list)
            | SOME (Mach.Decimal _) => "decimal"
            | SOME (Mach.ByteArray _) => "bytearray"
            | SOME (Mach.String _) => "string"
-           | SOME (Mach.Bool _) => "bool"
+           | SOME (Mach.Boolean _) => "bool"
            | SOME (Mach.Namespace _) => "namespace"
            | SOME (Mach.Class _) => "class"
            | SOME (Mach.Interface _) => "interface"
            | SOME (Mach.Function _) => "function"
            | SOME (Mach.Type _) => "type"
            | SOME (Mach.NativeFunction _) => "native function"))
+
+fun converter (convert:Mach.VAL -> 'a) 
+              (construct:'a -> Mach.VAL)
+    : ((Mach.VAL list) -> Mach.VAL) = 
+    let
+        fun cvt [] = Mach.Undef
+          | cvt (x::_) = construct (convert x)
+    in
+        cvt
+    end
 
 (* Register all the native functions in this file. *)
 fun registerNatives _ = 
@@ -599,6 +609,14 @@ fun registerNatives _ =
         addFn (Ast.UserNamespace "magic") "getByteArrayByte" getByteArrayByte;
         addFn (Ast.UserNamespace "magic") "setByteArrayByte" setByteArrayByte;
 
+        addFn (Ast.UserNamespace "magic") "toInt" (converter Eval.toInt32 Eval.newInt);
+        addFn (Ast.UserNamespace "magic") "toUint" (converter Eval.toUInt32 Eval.newUInt);
+        addFn (Ast.UserNamespace "magic") "toDouble" (converter Eval.toDouble Eval.newDouble);
+        addFn (Ast.UserNamespace "magic") "toDecimal" (converter (Eval.toDecimal 
+                                                                      Decimal.defaultPrecision 
+                                                                      Decimal.defaultRoundingMode) 
+                                                                 Eval.newDecimal);
+
         addFn Ast.Intrinsic "eval" eval;
         addFn Ast.Intrinsic "parseInt" parseInt;
         addFn Ast.Intrinsic "parseFloat" parseFloat;
@@ -610,14 +628,14 @@ fun registerNatives _ =
         addFn Ast.Intrinsic "encodeURIComponent" encodeURIComponent;
 
         (* FIXME: stubs to get double loading. Implement. *)
-        addFn Ast.Intrinsic "toFixedStep10" (fn _ => Mach.newString(""));
-        addFn Ast.Intrinsic "toExponential" (fn _ => Mach.newString(""));
-        addFn Ast.Intrinsic "toPrecision" (fn _ => Mach.newString(""));
+        addFn Ast.Intrinsic "toFixedStep10" (fn _ => Eval.newString(""));
+        addFn Ast.Intrinsic "toExponential" (fn _ => Eval.newString(""));
+        addFn Ast.Intrinsic "toPrecision" (fn _ => Eval.newString(""));
 
         (* FIXME: stubs to get Date loading. Implement. *)
-        addFn Ast.Intrinsic "now" (fn _ => Mach.newDouble 0.0);
-        addFn (Ast.Internal "") "LocalTZA" (fn _ => Mach.newDouble 0.0);
-        addFn (Ast.Internal "") "DaylightSavingTA" (fn _ => Mach.newDouble 0.0);
+        addFn Ast.Intrinsic "now" (fn _ => Eval.newDouble 0.0);
+        addFn (Ast.Internal "") "LocalTZA" (fn _ => Eval.newDouble 0.0);
+        addFn (Ast.Internal "") "DaylightSavingTA" (fn _ => Eval.newDouble 0.0);
         
         addFn Ast.Intrinsic "print" print;
         addFn Ast.Intrinsic "assert" assert;

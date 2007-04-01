@@ -38,7 +38,7 @@ datatype VAL = Object of OBJ
        | Decimal of Decimal.DEC
        | ByteArray of Word8Array.array
        | String of Ast.USTRING  (* someday to be unicode *)
-       | Bool of bool
+       | Boolean of bool
        | Namespace of Ast.NAMESPACE
        | Class of CLS_CLOSURE
        | Interface of IFACE_CLOSURE
@@ -172,7 +172,7 @@ fun isBoolean (v:VAL) : bool =
     case v of 
         Object (Obj ob) => 
         (case !(#magic ob) of 
-             SOME (Bool _) => true
+             SOME (Boolean _) => true
            | _ => false)
       | _ => false
 
@@ -354,11 +354,23 @@ fun newObj (t:VAL_TAG)
           proto = ref p,
           magic = ref m }
 
+fun setProto (ob:OBJ) (p:VAL) 
+    : OBJ =
+    let 
+         val Obj {proto, ...} = ob
+    in
+        proto := p;
+        ob
+    end
 
-fun newSimpleObj (m:MAGIC option) 
-    : OBJ = 
-    newObj (ClassTag Name.public_Object) Null m
-
+fun setMagic (ob:OBJ) (m:MAGIC option) 
+    : OBJ =
+    let 
+         val Obj {magic, ...} = ob
+    in
+        magic := m;
+        ob
+    end
 
 fun newObject (t:VAL_TAG) 
               (p:VAL) 
@@ -366,100 +378,6 @@ fun newObject (t:VAL_TAG)
     : VAL = 
     Object (newObj t p m)
 
-
-fun newSimpleObject (m:MAGIC option) 
-    : VAL = 
-    Object (newSimpleObj m)
-
-
-fun newDouble (n:Real64.real) 
-    : VAL = 
-    newObject (ClassTag Name.public_double) Null (SOME (Double n))
-
-fun newDecimal (n:Decimal.DEC) 
-    : VAL = 
-    newObject (ClassTag Name.public_decimal) Null (SOME (Decimal n))
-
-fun newInt (n:Int32.int) 
-    : VAL = 
-    newObject (ClassTag Name.public_int) Null (SOME (Int n))
-
-fun newUInt (n:Word32.word) 
-    : VAL = 
-    newObject (ClassTag Name.public_uint) Null (SOME (UInt n))
-
-fun newString (s:Ast.USTRING) 
-    : VAL = 
-    newObject (ClassTag Name.public_string) Null (SOME (String s))
-
-fun newByteArray (b:Word8Array.array) 
-    : VAL = 
-    newObject (ClassTag Name.public_ByteArray) Null (SOME (ByteArray b))
-
-fun newBoolean (b:bool) 
-    : VAL = 
-    newObject (ClassTag Name.public_boolean) Null (SOME (Bool b))
-
-fun newNamespace (n:Ast.NAMESPACE) 
-    : VAL = 
-    newObject (ClassTag Name.public_Namespace) Null (SOME (Namespace n))
-
-fun newClass (e:SCOPE) 
-             (cls:Ast.CLS) 
-    : VAL =
-    let
-        val closure = { cls = cls,
-                        (* FIXME: are all types bound? *)
-                        allTypesBound = true,
-                        env = e }
-        val obj = newObject (ClassTag Name.public_Class) Null (SOME (Class closure))
-    in
-        obj
-    end
-
-fun newIface (e:SCOPE) 
-             (iface:IFACE) 
-    : VAL =
-    let
-        val closure = { iface = iface,
-                        (* FIXME: are all types bound? *)
-                        allTypesBound = true,
-                        env = e }
-        val obj = newObject (ClassTag Name.public_Interface) Null (SOME (Interface closure))
-    in
-        obj
-    end
-        
-
-fun newFunClosure (e:SCOPE)
-                  (f:Ast.FUNC)
-    : FUN_CLOSURE = 
-    let
-        val fsig = case f of Ast.Func { fsig, ... } => fsig
-        val allTypesBound = (case fsig of 
-                                 Ast.FunctionSignature { typeParams, ... } 
-                                 => (length typeParams) = 0)
-    in
-        { func = f, 
-          allTypesBound = allTypesBound,
-          env = e }
-    end
-
-fun newFunc (e:SCOPE) 
-            (f:Ast.FUNC) 
-    : VAL = 
-    let 
-        val fsig = case f of Ast.Func { fsig, ... } => fsig
-        val tag = FunctionTag fsig
-        val closure = newFunClosure e f
-    in
-        newObject tag Null (SOME (Function closure))
-    end
-    
-fun newNativeFunction (f:NATIVE_FUNCTION) = 
-    newObject (ClassTag Name.public_Function)
-              Null 
-              (SOME (NativeFunction f))
     
 val (objectType:Ast.TYPE_EXPR) = 
     Ast.ObjectType []
@@ -470,16 +388,7 @@ val (emptyBlock:Ast.BLOCK) =
                 body = [],
                 head= NONE,
                 pos=NONE }
-    
-val (globalObject:OBJ) = 
-    newSimpleObj NONE
-    
-val (globalScope:SCOPE) = 
-    Scope { object = globalObject,
-            parent = NONE,
-            temps = ref [],
-            isVarObject = true }    
-
+                             
 fun getTemp (temps:TEMPS)
             (n:int)
     : VAL =
@@ -541,387 +450,6 @@ fun needMagic (v:VAL)
         Object (Obj ob) => valOf (!(#magic ob))
       | _ => error ["require object with magic"]
 
-(* FIXME: this is not the correct toString *)
-
-fun magicToString (magic:MAGIC) 
-    : string =
-    case magic of 
-        Double n => if Real64.== (n, (Real64.realFloor n))
-                    then Int.toString (Real64.floor n)
-                    else Real64.toString n
-      | Decimal d => Decimal.toString d
-      | Int i => Int32.toString i
-      | UInt u => LargeInt.toString (Word32.toLargeInt u)
-      | String s => s
-      | Bool true => "true"
-      | Bool false => "false"
-      | Namespace (Ast.Private _) => "[private namespace]"
-      | Namespace (Ast.Protected _) => "[protected namespace]"
-      | Namespace Ast.Intrinsic => "[intrinsic namespace]"
-      | Namespace Ast.OperatorNamespace => "[operator namespace]"
-      | Namespace (Ast.Public id) => "[public namespace: " ^ id ^ "]"
-      | Namespace (Ast.Internal _) => "[internal namespace]"
-      | Namespace (Ast.UserNamespace id) => "[user-defined namespace " ^ id ^ "]"
-      | Class _ => "[class Class]"
-      | Interface _ => "[interface Interface]"
-      | Function _ => "[function Function]"
-      | Type _ => "[type Function]"
-      | ByteArray _ => "[ByteArray]"
-      | NativeFunction _ => "[function NativeFunction]"
-
-
-fun toString (v:VAL) 
-    : string = 
-    case v of 
-        Undef => "undefined"
-      | Null => "null"
-      | Object (Obj ob) => 
-        (case !(#magic ob) of 
-             NONE => "[object Object]"
-           | SOME magic => 
-             magicToString magic)
-
-
-fun toBoolean (v:VAL) : bool = 
-    case v of 
-        Undef => false
-      | Null => false
-      | Object (Obj ob) => 
-        (case !(#magic ob) of 
-             SOME (Bool b) => b
-           | _ => true)
-
-
-fun toNumeric (v:VAL) 
-    : VAL =          
-    let 
-        fun NaN _ = newDouble (Real64.posInf / Real64.posInf)
-        fun zero _ = newDouble (Real64.fromInt 0)
-        fun one _ = newDouble (Real64.fromInt 1)
-    in
-        case v of 
-            Undef => NaN ()
-          | Null => zero ()
-          | Object (Obj ob) => 
-            (case !(#magic ob) of 
-                 SOME (Double _) => v
-               | SOME (Decimal _) => v
-               | SOME (Int _) => v
-               | SOME (UInt _) => v
-               | SOME (Bool false) => zero ()
-               | SOME (Bool true) => one ()
-               (* 
-                * FIXME: This is not the correct definition of ToNumber applied to string.
-                * See ES3 9.3.1. We need to talk it over.
-                *) 
-               | SOME (String s) => (case Real64.fromString s of
-                                         SOME s' => newDouble s'
-                                       | NONE => NaN ())
-               (* 
-                * FIXME: ES3 9.3 defines ToNumber on objects in terms of primitives. We've
-                * reorganized the classification of primitives vs. objects. Revisit this.
-                *)
-               | _ => zero ())
-    end
-    
-
-fun toDecimal (precision:int) 
-              (mode:Decimal.ROUNDING_MODE) 
-              (v:VAL) 
-    : Decimal.DEC = 
-    case v of 
-        Undef => Decimal.NaN
-      | Null => Decimal.zero
-      | Object (Obj ob) => 
-        (case !(#magic ob) of 
-             SOME (Double d) => 
-             (* NB: Lossy. *)
-             (case Decimal.fromString precision mode (Real64.toString d) of
-                  SOME d' => d'
-                | NONE => Decimal.NaN)
-           | SOME (Decimal d) => d
-           | SOME (Int i) => Decimal.fromLargeInt (Int32.toLarge i)
-           | SOME (UInt u) => Decimal.fromLargeInt (Word32.toLargeInt u)
-           | SOME (Bool false) => Decimal.zero
-           | SOME (Bool true) => Decimal.one
-           (* 
-            * FIXME: This is not the correct definition either. See toNumeric.
-            *) 
-           | SOME (String s) => (case Decimal.fromString precision mode s of
-                                     SOME s' => s'
-                                   | NONE => Decimal.NaN)
-           (* 
-            * FIXME: Possibly wrong here also. See comment in toNumeric.
-            *)
-           | _ => Decimal.zero)
-
-
-fun toDouble (v:VAL) 
-    : Real64.real = 
-    let 
-        fun NaN _ = (Real64.posInf / Real64.posInf)
-        fun zero _ = (Real64.fromInt 0)
-        fun one _ = (Real64.fromInt 1)
-    in            
-        case v of 
-            Undef => NaN ()
-          | Null => zero ()
-          | Object (Obj ob) => 
-            (case !(#magic ob) of 
-                 SOME (Double d) => d
-               | SOME (Decimal d) => 
-                 (* NB: Lossy. *)
-                 (case Real64.fromString (Decimal.toString d) of
-                      SOME d' => d'
-                    | NONE => NaN ())
-                 
-               | SOME (Int i) => Real64.fromLargeInt (Int32.toLarge i)
-               | SOME (UInt u) => Real64.fromLargeInt (Word32.toLargeInt u)
-               | SOME (Bool false) => zero ()
-               | SOME (Bool true) => one ()
-               (* 
-                * FIXME: This is not the correct definition either. See toNumeric.
-                *) 
-               | SOME (String s) => (case Real64.fromString s  of
-                                         SOME s' => s'
-                                       | NONE => NaN())
-               (* 
-                * FIXME: Possibly wrong here also. See comment in toNumeric.
-                *)
-               | _ => zero ())
-    end
-
-
-fun mathOp (v:VAL) 
-           (decimalFn:(Decimal.DEC -> 'a) option)
-           (doubleFn:(Real64.real -> 'a) option)
-           (intFn:(Int32.int -> 'a) option)
-           (uintFn:(Word32.word -> 'a) option)
-           (default:'a)
-    : 'a = 
-    let 
-        fun fnOrDefault fo v = case fo of 
-                                   NONE => default
-                                 | SOME f => f v
-    in
-        case v of 
-            Object (Obj ob) => 
-            (case !(#magic ob) of 
-                 SOME (Decimal d) => fnOrDefault decimalFn d
-               | SOME (Double d) => fnOrDefault doubleFn d
-               | SOME (Int i) => fnOrDefault intFn i
-               | SOME (UInt u) => fnOrDefault uintFn u
-               | _ => default)
-          | _ => default
-    end
-
-
-fun isPositiveZero (v:VAL) 
-    : bool =
-    let 
-        fun doubleIsPosZero x = 
-            Real64.class x = IEEEReal.ZERO
-            andalso not (Real64.signBit x)
-    in        
-        mathOp v 
-               (SOME Decimal.isPositiveZero)
-               (SOME doubleIsPosZero)
-               NONE NONE false
-    end
-
-
-fun isNegativeZero (v:VAL) 
-    : bool =
-    let 
-        fun doubleIsNegZero x = 
-            Real64.class x = IEEEReal.ZERO
-            andalso Real64.signBit x
-    in        
-        mathOp v 
-               (SOME Decimal.isPositiveZero) 
-               (SOME doubleIsNegZero)
-               NONE NONE false
-    end
-
-
-fun isPositiveInf (v:VAL) 
-    : bool =
-    let 
-        fun doubleIsPosInf x = 
-            Real64.class x = IEEEReal.INF
-            andalso not (Real64.signBit x)
-    in        
-        mathOp v 
-               (SOME Decimal.isPositiveZero)
-               (SOME doubleIsPosInf)
-               NONE NONE false
-    end
-
-
-fun isNegativeInf (v:VAL) 
-    : bool =
-    let 
-        fun doubleIsNegInf x = 
-            Real64.class x = IEEEReal.INF
-            andalso Real64.signBit x
-    in        
-        mathOp v 
-               (SOME Decimal.isPositiveZero)
-               (SOME doubleIsNegInf)
-               NONE NONE false
-    end
-
-    
-fun isNaN (v:VAL)
-    : bool = 
-    mathOp v 
-           (SOME Decimal.isNaN) 
-           (SOME Real64.isNan)
-           NONE NONE false
-
-
-fun sign (v:VAL)
-    : int = 
-    let 
-        (* 
-         * FIXME: this implemented 'sign' function returns 1, 0, or -1
-         * depending on proximity to 0. Some definitions only return 1 or 0,
-         * or only return 1 or -1. Don't know which one the ES3 spec means.
-         *)
-
-        (* FIXME: should decimal rounding mode and precision used in sign-determination? *)
-        fun decimalSign d = case Decimal.compare Decimal.defaultPrecision 
-                                                 Decimal.defaultRoundingMode 
-                                                 d Decimal.zero 
-                             of 
-                                LESS => ~1
-                              | EQUAL => 0
-                              | GREATER => 1
-
-        fun uint32Sign u = if u = (Word32.fromInt 0)
-                           then 0
-                           else 1
-    in
-        mathOp v 
-               (SOME decimalSign)
-               (SOME Real64.sign)
-               (SOME Int32.sign)
-               (SOME uint32Sign)
-               0
-    end
-
-
-fun floor (v:VAL)
-    : LargeInt.int =
-    mathOp v 
-           (SOME Decimal.floor)
-           (SOME (Real64.toLargeInt IEEEReal.TO_NEGINF))
-           (SOME Int32.toLarge)
-           (SOME Word32.toLargeInt)
-           (LargeInt.fromInt 0)
-    
-
-fun signFloorAbs (v:VAL)
-    : LargeInt.int =
-    let
-        val sign = Int.toLarge (sign v)
-        val floor = floor v
-    in
-        LargeInt.*(sign, (LargeInt.abs floor))
-    end
-    
-
-(* ES3 9.4 ToInteger 
- *
- * FIXME: If I understand the compatibility requirements
- * correctly, this should return an integral double. 
- * Not certain though. 
- *)
-
-fun toInteger (v:VAL)
-    : VAL = 
-    let
-        val v' = toNumeric v
-    in
-        if isNaN v'
-        then newDouble (Real64.fromInt 0)
-        else (if (isPositiveInf v' orelse
-                  isNegativeInf v' orelse
-                  isPositiveZero v' orelse
-                  isNegativeZero v')
-              then v'
-              else newDouble (Real64.fromLargeInt (signFloorAbs v')))
-    end
-
-(* ES3 9.5 ToInt32 *)
-
-fun toInt32 (v:VAL) 
-    : Int32.int =
-    let 
-        val v' = toNumeric v
-    in
-        if (isNaN v' orelse
-            isPositiveInf v' orelse
-            isNegativeInf v' orelse
-            isPositiveZero v' orelse
-            isNegativeZero v')
-        then Int32.fromInt 0
-        else 
-            let 
-                val l31 = IntInf.pow (2, 31)
-                val l32 = IntInf.pow (2, 32)
-                val v'' = IntInf.mod (signFloorAbs v', l32)
-            in
-                Int32.fromLarge (if LargeInt.>= (v'', l31)
-                                 then LargeInt.- (v'', l32)
-                                 else v'')
-            end
-    end
-
-
-(* ES3 9.6 ToUInt32 *)
-
-fun toUInt32 (v:VAL) 
-    : Word32.word =
-    let 
-        val v' = toNumeric v
-    in
-        if (isNaN v' orelse
-            isPositiveInf v' orelse
-            isNegativeInf v' orelse
-            isPositiveZero v' orelse
-            isNegativeZero v')
-        then Word32.fromInt 0
-        else 
-            let 
-                val l32 = IntInf.pow (2, 32)
-            in
-                Word32.fromLargeInt (LargeInt.mod (signFloorAbs v', l32))
-            end
-    end
-
-(* ES3 9.6 ToUInt16 *)
-
-fun toUInt16 (v:VAL) 
-    : Word32.word =
-    let 
-        val v' = toNumeric v
-    in
-        if (isNaN v' orelse
-            isPositiveInf v' orelse
-            isNegativeInf v' orelse
-            isPositiveZero v' orelse
-            isNegativeZero v')
-        then Word32.fromInt 0
-        else 
-            let 
-                val l16 = IntInf.pow (2, 16)
-            in
-                Word32.fromLargeInt (LargeInt.mod (signFloorAbs v', l16))
-            end
-    end
-
-
 fun fitsInUInt (x:LargeInt.int) 
     : bool = 
     let
@@ -964,14 +492,6 @@ fun getNativeFunction (name:Ast.NAME)
     in
         search (!nativeFunctions)
     end
-
-
-fun resetGlobalObject _ = 
-    case globalObject of
-        (Obj { props, magic, proto, ... }) => 
-        (props := [];
-         magic := NONE;
-         proto := Null)
 
 end
 

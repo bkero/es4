@@ -122,5 +122,12 @@ package
     /* Set the byte at index idx to val, which will be truncated to
        the low 8 bits before being stored. */
     magic native function setByteArrayByte(ba : ByteArray!, idx : uint, val : uint) : void;
+
+
+    magic native function toInt(value) : int;
+    magic native function toUint(value) : uint;
+    magic native function toDouble(value) : double;
+    magic native function toDecimal(value) : decimal;
+
 }
 

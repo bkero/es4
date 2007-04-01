@@ -55,54 +55,103 @@ fun describeGlobal _ =
      if !doTrace
      then 
 	 (trace ["global object contents:"];
-	  case Mach.globalObject of 
+	  case Eval.getGlobalObject () of 
 	      Mach.Obj {props, ...} => 
 	      List.app printProp (!props);
 	  trace ["top fixture contents:"];
 	  List.app printFixture (!Defn.topFixtures))    
      else ()
-    
+          
     
 fun boot _ = 
-    (Defn.resetTopFixtures ();
-     Mach.resetGlobalObject ();
-     Native.registerNatives ();
+    let
+        val _ = trace ["resetting top fixtures"];
+        val _ = Defn.resetTopFixtures ()
 
-     loadFiles 
-         [
-          "builtins/Object.es",
-          "builtins/Error.es",      
-          "builtins/Conversions.es",
-          "builtins/Global.es",
-          "builtins/Function.es",
-          
-          "builtins/Boolean.es",
-          "builtins/boolean_primitive.es",
-          
-          "builtins/Number.es",
-          "builtins/double.es",
-          "builtins/int.es",
-          "builtins/uint.es",
-          "builtins/decimal.es",
-          "builtins/Numeric.es",
-          
-          "builtins/String.es",
-          "builtins/string_primitive.es",
-          
-          "builtins/ByteArray.es",
-          "builtins/Date.es",
-          
-          "builtins/JSON.es",
-          "builtins/Array.es"
+        val _ = trace ["allocating global object"];
+        val globalObj = Mach.newObj (Mach.ClassTag Name.public_Object) Mach.Null NONE
+        val _ = trace ["installing global object"];
+        val _ = Eval.resetGlobal globalObj
+        val globalScope = Eval.getGlobalScope ()
 
-         ];
-(*
-     "builtins/Math.es",
-     "builtins/Unicode.es",
-     "builtins/RegExpCompiler.es",
-     "builtins/RegExpEvaluator.es",
-     "builtins/RegExp.es",
-*)
-     describeGlobal ())
+        (* 
+         * We have to do a small bit of delicate work here because the global object
+         * needs to get installed as the root scope *inbetween* the moment of its
+         * allocation and the execution of its (class Object) constructor body. 
+         * 
+         * There is no provision for this in the standard object-construction 
+         * protocol Eval.constructClassInstance, so we inline it here. 
+         *)
+
+        fun loadRootClass (name:Ast.IDENT) 
+          =
+          let 
+              val fullName = Name.public name
+              val _ = trace ["loading fundamental ", name, " class from builtin/", name ,".es"];
+              val prog = Defn.defProgram (Parser.parseFile ("builtins/" ^ name ^ ".es"))
+              val _ = trace ["fetching Object class"];
+              val fix = Defn.getFixture (valOf (#fixtures prog)) (Ast.PropName fullName)
+              val _ = trace ["fetching ", LogErr.name fullName, " class definition"];
+              val cls = case fix of 
+                            Ast.ClassFixture cls => cls
+                          | _ => error [LogErr.name fullName, " did not resolve to a class fixture"]
+              val _ = trace ["allocating class ", LogErr.name fullName];
+              val closure = Eval.newClsClosure globalScope cls
+              val obj = Mach.newObj (Mach.ClassTag Name.public_Class) Mach.Null (SOME (Mach.Class closure))
+              val _ = trace ["binding class ", LogErr.name fullName];
+              val _ = Eval.setValue globalObj fullName (Mach.Object obj)
+          in
+              (cls, closure, obj)
+          end           
+
+        val (objClass, objClassClosure, objClassObj) = loadRootClass "Object"
+        val (funClass, funClassClosure, funClassObj) = loadRootClass "Function"
+
+        val _ = trace ["running Object constructor on global object"];
+        val Ast.Cls { instanceFixtures, ...} = objClass
+        val objClassScope = Eval.extendScope globalScope objClassObj false
+        val _ = Eval.allocObjFixtures objClassScope globalObj instanceFixtures
+        val _ = Eval.initializeAndConstruct objClassClosure objClassObj objClassScope [] globalObj
+    in
+        Native.registerNatives ();
+        loadFiles 
+            [
+             "builtins/Namespace.es",
+             "builtins/Class.es",
+             
+             "builtins/Error.es",      
+             "builtins/Conversions.es",
+             "builtins/Global.es",
+             
+             "builtins/Boolean.es",
+             "builtins/boolean_primitive.es",
+             
+             "builtins/Number.es",
+             "builtins/double.es",
+             "builtins/int.es",
+             "builtins/uint.es",
+             "builtins/decimal.es",
+             "builtins/Numeric.es",
+             
+             "builtins/String.es",
+             "builtins/string_primitive.es",
+             
+             "builtins/ByteArray.es",
+             "builtins/Date.es",
+             
+             "builtins/JSON.es",
+             "builtins/Array.es"
+             
+            ];
+         
+        (*
+         "builtins/Math.es",
+         "builtins/Unicode.es",
+         "builtins/RegExpCompiler.es",
+         "builtins/RegExpEvaluator.es",
+         "builtins/RegExp.es",
+         *)
+        describeGlobal ()
+    end
 end
 

@@ -40,6 +40,8 @@ val meta_invoke = meta "invoke"
 val meta_get = meta "get"
 val meta_set = meta "set"
 
+val this = public "this"
+
 (* 
  * Names that are supposed to be present in the global scope 
  * once we finish booting.

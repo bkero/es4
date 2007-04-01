@@ -23,24 +23,15 @@ package
         use namespace intrinsic;
         use strict;
 
-        /* E262-3 15.3.1.1: The Function constructor. This does not
-	   directly use the standard construction protocol, though it
-	   calls it indirectly.
-         */
-         meta static function construct(...args)
-            apply(Function, null, args);
-
         /* E262-3 15.3.1: The Function Constructor Called as a Function */
-         meta static function invoke(...args) {
-            let src : string = args.pop();
-  	    let f = magic::construct(Function, [src]);
-            magic::compileInto(f, args, src);
-            return f;
+        meta static function invoke(...args) 
+            magic::construct(Function, args);
+
+        function Function(...args) 
+	    : source = (args.length > 0 ? args.pop() : "")
+        {
+            magic::compileInto(this, args, source);
         }
-      
-        function Function(source: string) 
-	    : source = source 
-        {}
 
         /* E262-3 10.X / 13.X: function invocation.
 
