@@ -7,11 +7,13 @@ fun newAnonNS _ =
      (Ast.AnonUserNamespace (!anonNsCounter)))
     
 val metaNS = newAnonNS ()
+val magicNS = newAnonNS ()
 val publicNS = Ast.Public ""
 val internalNS = Ast.Internal ""
 val intrinsicNS = Ast.Intrinsic
 
 fun meta id = { id = id, ns = metaNS }
+fun magic id = { id = id, ns = magicNS }
 fun public id = { id = id, ns = publicNS }
 fun internal id = { id = id, ns = internalNS }
 fun intrinsic id = { id = id, ns = internalNS }
@@ -40,7 +42,7 @@ val meta_invoke = meta "invoke"
 val meta_get = meta "get"
 val meta_set = meta "set"
 
-val this = public "this"
+val this = internal "this"
 
 (* 
  * Names that are supposed to be present in the global scope 

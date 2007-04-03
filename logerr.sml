@@ -1,12 +1,23 @@
 structure LogErr = struct
 
-fun log ss = (List.app TextIO.print ss; TextIO.print "\n")
-
 fun posToString {file, line} =
     file ^ ":" ^ (Int.toString line)
 
 val (pos:(Ast.POS option) ref) = ref NONE
 fun setPos (p:Ast.POS option) = pos := p
+
+val (lastReported:(Ast.POS option) ref) = ref NONE
+
+fun log ss = 
+    (if not ((!lastReported) = (!pos))
+     then 
+	 ((case !pos of 
+	      NONE => ()
+	    | SOME p => TextIO.print ("[posn] " ^ (posToString p) ^ "\n"));
+	  lastReported := (!pos))
+     else ();
+     List.app TextIO.print ss; 
+     TextIO.print "\n")
 
 fun error ss = case !pos of 
 		   NONE => log ("**ERROR** (unknown location)" :: ss)

@@ -30,7 +30,10 @@ fun printProp ((n:Ast.NAME), (p:Mach.PROP)) =
 		   | Mach.TypeProp => "[type]"
 		   | Mach.UninitProp => "[uninit]"
 		   | Mach.ValProp _ => "[val]"
-		   | Mach.VirtualValProp _ => "[virtualProp]"
+		   | Mach.VirtualValProp _ => "[virtual val]"
+           | Mach.MethodProp _ => "[method]"
+           | Mach.NativeFunctionProp _ => "[native function]"
+           | Mach.NamespaceProp _ => "[namespace]"
     in
 	trace [LogErr.name n, " -> ", ps]
     end
@@ -40,6 +43,7 @@ fun printFixture ((n:Ast.FIXTURE_NAME), (f:Ast.FIXTURE)) =
 	val fs = case f of 
 		     Ast.NamespaceFixture _ => "[namespace]"
 		   | Ast.ClassFixture _ => "[class]"
+		   | Ast.InterfaceFixture => "[interface]"
 		   | Ast.TypeVarFixture => "[typeVar]"
 		   | Ast.TypeFixture _ => "[type]"
 		   | Ast.MethodFixture _ => "[method]"
@@ -81,6 +85,9 @@ fun boot _ =
          * 
          * There is no provision for this in the standard object-construction 
          * protocol Eval.constructClassInstance, so we inline it here. 
+         * 
+         * There are also a few other "root" classes that require special processing
+         * during startup to avoid feedback loops in their definition.
          *)
 
         fun loadRootClass (name:Ast.IDENT) 
@@ -89,9 +96,8 @@ fun boot _ =
               val fullName = Name.public name
               val _ = trace ["loading fundamental ", name, " class from builtin/", name ,".es"];
               val prog = Defn.defProgram (Parser.parseFile ("builtins/" ^ name ^ ".es"))
-              val _ = trace ["fetching Object class"];
-              val fix = Defn.getFixture (valOf (#fixtures prog)) (Ast.PropName fullName)
               val _ = trace ["fetching ", LogErr.name fullName, " class definition"];
+              val fix = Defn.getFixture (valOf (#fixtures prog)) (Ast.PropName fullName)
               val cls = case fix of 
                             Ast.ClassFixture cls => cls
                           | _ => error [LogErr.name fullName, " did not resolve to a class fixture"]
@@ -104,24 +110,29 @@ fun boot _ =
               (cls, closure, obj)
           end           
 
+        val nonBootTopFixtures = !Defn.topFixtures
         val (objClass, objClassClosure, objClassObj) = loadRootClass "Object"
-        val (funClass, funClassClosure, funClassObj) = loadRootClass "Function"
 
         val _ = trace ["running Object constructor on global object"];
         val Ast.Cls { instanceFixtures, ...} = objClass
         val objClassScope = Eval.extendScope globalScope objClassObj false
         val _ = Eval.allocObjFixtures objClassScope globalObj instanceFixtures
         val _ = Eval.initializeAndConstruct objClassClosure objClassObj objClassScope [] globalObj
+
+        val _ = loadRootClass "Namespace"
+        val _ = loadRootClass "Class"
+        val _ = loadRootClass "Function"
+
+        val _ = Eval.allocScopeFixtures (Eval.getGlobalScope()) nonBootTopFixtures
     in
         Native.registerNatives ();
         loadFiles 
             [
-             "builtins/Namespace.es",
-             "builtins/Class.es",
-             
-             "builtins/Error.es",      
+             "builtins/Magic.es",
              "builtins/Conversions.es",
-             "builtins/Global.es",
+
+             "builtins/String.es",
+             "builtins/string_primitive.es",
              
              "builtins/Boolean.es",
              "builtins/boolean_primitive.es",
@@ -133,15 +144,15 @@ fun boot _ =
              "builtins/decimal.es",
              "builtins/Numeric.es",
              
-             "builtins/String.es",
-             "builtins/string_primitive.es",
+             "builtins/Global.es",
              
              "builtins/ByteArray.es",
              "builtins/Date.es",
              
              "builtins/JSON.es",
-             "builtins/Array.es"
-             
+             "builtins/Array.es",
+
+             "builtins/Error.es"             
             ];
          
         (*

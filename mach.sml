@@ -25,6 +25,12 @@ datatype VAL = Object of OBJ
        | ArrayTag of Ast.TYPE_EXPR list
        | FunctionTag of Ast.FUNC_SIG
        | ClassTag of Ast.NAME
+       | ScopeTag (* 
+                   * ScopeTag objects are *not* instances of Object;
+                   * in fact they're not instances of any named classes,
+                   * or even subtypes of named classes. The properties 
+                   * and fixtures they have vary on a scope-by-scope basis.
+                   *)
 
 (* 
  * Magic is visible only to the interpreter; 
@@ -65,6 +71,7 @@ datatype VAL = Object of OBJ
                     | TypeProp
                     | UninitProp
                     | ValProp of VAL
+                    | NamespaceProp of Ast.NAMESPACE
                     | MethodProp of FUN_CLOSURE
                     | NativeFunctionProp of NATIVE_FUNCTION
                     | VirtualValProp of 
@@ -356,6 +363,10 @@ fun newObj (t:VAL_TAG)
           proto = ref p,
           magic = ref m }
 
+fun newScopeObj _ 
+    : OBJ = 
+    newObj ScopeTag Null NONE
+
 fun setProto (ob:OBJ) (p:VAL) 
     : OBJ =
     let 
@@ -434,6 +445,7 @@ fun nominalBaseOfTag (t:VAL_TAG)
       | ArrayTag _ => Name.public_Array
       | FunctionTag _ => Name.public_Function
       | ClassTag c => c
+      | ScopeTag => error ["searching for nominal base of scope object"]
 
 fun getObjMagic (ob:OBJ) 
     : (MAGIC option) = 

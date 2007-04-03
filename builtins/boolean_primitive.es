@@ -26,10 +26,6 @@ package
         meta static function invoke(value) : boolean
             value ? true : false;
 
-        /* E262-3 15.6.2.1: The boolean Constructor. */
-        function boolean(value)
-            value ? true : false;
-
         /* E262-4 draft ch 19 */
         override intrinsic function toString() : string
             this === true ? "true" : "false";

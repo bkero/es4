@@ -65,8 +65,8 @@ val defaultNumericMode : Ast.NUMERIC_MODE =
 val (topFixtures:Ast.FIXTURES ref) = ref []
 
 fun resetTopFixtures _ = 
-    topFixtures := [ (Ast.PropName (Name.public "meta"), 
-                      Ast.NamespaceFixture Name.metaNS) ]
+    topFixtures := [ (Ast.PropName (Name.public "meta"), Ast.NamespaceFixture Name.metaNS),
+                     (Ast.PropName (Name.public "magic"), Ast.NamespaceFixture Name.magicNS)]
 
 fun hasFixture (b:Ast.FIXTURES) 
                (n:Ast.FIXTURE_NAME) 
@@ -602,19 +602,6 @@ and analyzeClass (env:ENV)
             
             val (fxtrs,inits) = ListPair.unzip(map initsFromStmt instanceStmts)
             val instanceInits = (List.concat fxtrs, List.concat inits)
-
-
-            (*
-                Add static prototype fixture
-            *)
-
-            val pf = Ast.ValFixture { ty=Ast.TypeName (Ast.QualifiedIdentifier 
-                                                           {qual=Ast.LiteralExpr (Ast.LiteralNamespace ns),
-                                                            ident=ident}),
-                                     readOnly=true }
-
-            val protoPropFixture = Ast.PropName {ns=Ast.Public "",id="prototype"}
-            val classFixtures = (protoPropFixture, pf)::classFixtures
 
         in
             Ast.Cls {name=name,

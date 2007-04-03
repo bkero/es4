@@ -274,22 +274,24 @@ fun allocFixtures (scope:Mach.SCOPE)
                           | Ast.ClassFixture cls =>
                             let
                                 val Ast.Cls {classFixtures,...} = cls
+                                val _ = trace ["allocating class object for class ", LogErr.name pn]
                                 val Mach.Object classObj = newClass scope cls
+                                val _ = trace ["allocating class fixtures on class ", LogErr.name pn]
                                 val _ = allocObjFixtures scope classObj classFixtures
-                            in 
-                            allocProp "class"
-                                      { ty = (Name.typename Name.public_Class),
-                                        state = Mach.ValProp (Mach.Object classObj),
-                                        attrs = { dontDelete = true,
-                                                  dontEnum = true,
-                                                  readOnly = true,
-                                                  isFixed = true } }
+                            in
+                                allocProp "class"
+                                          { ty = (Name.typename Name.public_Class),
+                                            state = Mach.ValProp (Mach.Object classObj),
+                                            attrs = { dontDelete = true,
+                                                      dontEnum = true,
+                                                      readOnly = true,
+                                                      isFixed = true } }
                             end
                             
                           | Ast.NamespaceFixture ns => 
                             allocProp "namespace" 
                                       { ty = (Name.typename Name.public_Namespace),
-                                        state = Mach.ValProp (newNamespace ns),
+                                        state = Mach.NamespaceProp ns,
                                         attrs = { dontDelete = true,
                                                   dontEnum = true,
                                                   readOnly = true,
@@ -382,6 +384,9 @@ and getValue (obj:Mach.OBJ,
                 error ["getValue on a virtual property w/o getter: ",
                        LogErr.name name]
 
+              | Mach.NamespaceProp n =>
+                newNamespace n
+
               | Mach.NativeFunctionProp nf =>
                 newNativeFunction nf
                 
@@ -418,6 +423,10 @@ and setValue (base:Mach.OBJ)
                     
                   | Mach.TypeProp => 
                     error ["setValue on type property: ", 
+                           LogErr.name name]
+
+                  | Mach.NamespaceProp _ => 
+                    error ["setValue on namespace property: ", 
                            LogErr.name name]
 
                   | Mach.NativeFunctionProp _ => 
@@ -490,6 +499,10 @@ and defValue (base:Mach.OBJ)
                   | Mach.TypeProp => 
                     error ["defValue on type property: ", 
                            LogErr.name name]
+
+                  | Mach.NamespaceProp _ => 
+                    error ["defValue on namespace property: ", 
+                           LogErr.name name]
                     
                   | Mach.NativeFunctionProp _ => 
                     error ["defValue on native function property: ", 
@@ -529,9 +542,40 @@ and newObject _ =
 and newObj _ = 
     needObj (instantiateGlobalClass Name.public_Object [])
 
+and newRootBuiltin (n:Ast.NAME) (m:Mach.MAGIC) 
+    : Mach.VAL = 
+    (* 
+     * Five of our builtin types require special handling when it comes
+     * to constructing them: we wish to run the builtin ctors with no 
+     * arguments at all, then clobber the magic slot in the resulting 
+     * object. All other builtins we can pass an "ur-Object" into the
+     * builtin ctor and let it modify its own magic slot using magic::setValue.
+     * 
+     * For these cases (Function, Class, Namespace, Boolean and boolean) we 
+     * cannot rely on  the builtin ctor calling magic::setValue, as they need 
+     * to exist in order to *execute* a call to magic::setValue (or execute 
+     * the tiny amount of surrounding control flow that is used to bottom our 
+     * of the conversion functions in Conversion.es).
+     *)
+    let 
+        val obj = needObj (instantiateGlobalClass n [])
+        val _ = trace ["finished building root builtin ", LogErr.name n]
+    in
+        Mach.Object (Mach.setMagic obj (SOME m))
+    end
+
+
 and newBuiltin (n:Ast.NAME) (m:Mach.MAGIC option) 
     : Mach.VAL = 
-    instantiateGlobalClass n [Mach.Object (Mach.setMagic (newObj ()) m)]
+    let
+        val _ = trace ["forming temp object for argument to builtin ctor ", LogErr.name n]
+        val tmp = newObj ()
+        val _ = trace ["formed temp object for argument to builtin ctor ", LogErr.name n]
+        val res = instantiateGlobalClass n [Mach.Object (Mach.setMagic (tmp) m)]
+        val _ = trace ["formed instance of builtin ", LogErr.name n]
+    in
+        res
+    end
 
 
 and newDouble (n:Real64.real) 
@@ -560,11 +604,11 @@ and newByteArray (b:Word8Array.array)
 
 and newBoolean (b:bool) 
     : Mach.VAL = 
-    newBuiltin Name.public_boolean (SOME (Mach.Boolean b))
+    newRootBuiltin Name.public_boolean (Mach.Boolean b)
 
 and newNamespace (n:Ast.NAMESPACE) 
-    : Mach.VAL = 
-    newBuiltin Name.public_Namespace (SOME (Mach.Namespace n))
+    : Mach.VAL =
+    newRootBuiltin Name.public_Namespace (Mach.Namespace n)
 
 and newClsClosure (env:Mach.SCOPE)
                   (cls:Ast.CLS)
@@ -580,7 +624,7 @@ and newClass (e:Mach.SCOPE)
     let
         val closure = newClsClosure e cls 
     in
-        newBuiltin Name.public_Class (SOME (Mach.Class closure))
+        newRootBuiltin Name.public_Class (Mach.Class closure)
     end
 
 and newFunClosure (e:Mach.SCOPE)
@@ -602,15 +646,12 @@ and newFunctionFromClosure (closure:Mach.FUN_CLOSURE) =
         val { func, ... } = closure
         val Ast.Func { fsig, ... } = func
         val tag = Mach.FunctionTag fsig
-        (* 
-         * To build a Function from an existing closure, we run the
-         * builtin constructor with an empty arg list and then clobber the 
-         * resulting Function's magic slot with setMagic. This is not
-         * quite the same as the other builtins.
-         *)
-        val obj = needObj (instantiateGlobalClass Name.public_Function [])
     in
-        Mach.Object (Mach.setMagic obj (SOME (Mach.Function closure)))
+        (* 
+         * FIXME: modify the returned object to have the proper tag, a subtype
+         * of Function. 
+         *)
+        newRootBuiltin Name.public_Function (Mach.Function closure)
     end
 
 and newFunctionFromFunc (e:Mach.SCOPE) 
@@ -619,7 +660,7 @@ and newFunctionFromFunc (e:Mach.SCOPE)
     newFunctionFromClosure (newFunClosure e f)
 
 and newNativeFunction (f:Mach.NATIVE_FUNCTION) = 
-    newBuiltin Name.public_Function (SOME (Mach.NativeFunction f))
+    newRootBuiltin Name.public_Function (Mach.NativeFunction f)
 
 
 
@@ -654,6 +695,11 @@ and magicToString (magic:Mach.MAGIC)
       | Mach.Type _ => "[type Function]"
       | Mach.ByteArray _ => "[ByteArray]"
       | Mach.NativeFunction _ => "[function NativeFunction]"
+
+(* 
+ * FIXME: want to transfer *some* of these up to Conversions.es, but it's
+ * very easy to get into feedback loops if you do so. 
+ *)
 
 and toString (v:Mach.VAL) 
     : string = 
@@ -1051,6 +1097,9 @@ and evalExpr (scope:Mach.SCOPE)
             Mach.Undef
         end
 
+      | Ast.BinaryTypeExpr (typeOp, expr, tyExpr) => 
+        evalBinaryTypeOp scope typeOp expr tyExpr
+
       | _ => LogErr.unimplError ["unhandled expression type"]
 
 
@@ -1220,19 +1269,21 @@ and evalCallExpr (thisObjOpt:Mach.OBJ option)
             Mach.Obj { magic, ... } => 
             case !magic of 
                 SOME (Mach.NativeFunction f) => 
-                    f args
+                (trace ["entering native function"]; 
+                 f args)
               | SOME (Mach.Function f) => 
-                    (invokeFuncClosure thisObj f args
-                        handle ReturnException v => v)
+                (trace ["entering standard function"]; 
+                 invokeFuncClosure thisObj f args)
               | _ => 
-                    if hasValue fobj Name.meta_invoke
-                    then
-                        let 
-                            val invokeFn = getValue (fobj, Name.meta_invoke)
-                        in
-                            evalCallExpr NONE (needObj invokeFn) (thisVal :: args)
-                        end
-                    else error ["calling non-callable object"]
+                if hasValue fobj Name.meta_invoke
+                then
+                    let 
+                        val _ = trace ["redirecting through meta::invoke"]
+                        val invokeFn = getValue (fobj, Name.meta_invoke)
+                    in
+                        evalCallExpr NONE (needObj invokeFn) (thisVal :: args)
+                    end
+                else error ["calling non-callable object"]
     end
 
 
@@ -1738,6 +1789,35 @@ and hasInstance (ob:OBJ)
     end
 *)
 
+and evalBinaryTypeOp (scope:Mach.SCOPE)
+                     (bop:Ast.BINTYPEOP)
+                     (expr:Ast.EXPR)
+                     (tyExpr:Ast.TYPE_EXPR) 
+    : Mach.VAL = 
+    case bop of 
+        Ast.Cast => error ["unimplemented: operator 'cast'"]
+      | Ast.To => error ["unimplemented: operator 'to'"]
+      | Ast.Is => 
+        (* 
+         * FIXME: hook up to verifier when it's ready. At the moment
+         * this is a fantastically hackish definition.
+         *)
+        let 
+            val v = evalExpr scope expr
+        in
+            case tyExpr of 
+                Ast.TypeName (Ast.Identifier { ident, ... }) => 
+                (case ident of 
+                     "double" => newBoolean (Mach.isDouble v)
+                   | "decimal" => newBoolean (Mach.isDecimal v)
+                   | "int" => newBoolean (Mach.isInt v)
+                   | "uint" => newBoolean (Mach.isUInt v)
+                   | "string" => newBoolean (Mach.isString v)
+                   | "boolean" => newBoolean (Mach.isBoolean v)
+                   | _ => error ["operator 'is' on unknown type name: ", ident])
+              | _ => error ["operator 'is' on unknown type expression"]
+        end
+        
 
 and evalBinaryOp (scope:Mach.SCOPE) 
                  (bop:Ast.BINOP) 
@@ -1802,6 +1882,7 @@ and evalCondExpr (scope:Mach.SCOPE)
                  (els:Ast.EXPR) 
     : Mach.VAL = 
     let 
+        val _ = trace ["evalCondExpr"]
         val v = evalExpr scope cond
         val b = toBoolean v
     in
@@ -2055,7 +2136,7 @@ and invokeFuncClosure (this:Mach.OBJ)
         then error ["invoking function with unbound type variables"]
         else
             let 
-                val (varObj:Mach.OBJ) = newObj ()
+                val (varObj:Mach.OBJ) = Mach.newScopeObj ()
                 val (varScope:Mach.SCOPE) = extendScope env varObj true
                                             
                 (* FIXME: infer a fixture for "this" so that it's properly typed, dontDelete, etc.
@@ -2083,6 +2164,7 @@ and invokeFuncClosure (this:Mach.OBJ)
                 setValue varObj selfName selfVal;                
                 checkAllPropertiesInitialized varObj;
                 evalBlock varScope block
+                handle ReturnException v => v
             end
     end
 
@@ -2240,6 +2322,7 @@ and bindArgs (outerScope:Mach.SCOPE)
         else 
             let
                 val defExprs = List.drop (defaults, i)
+                val _ = trace ["binding ", Int.toString a, " real args, ", Int.toString (d-i), " default args"]
                 val defVals = List.map (evalExpr outerScope) defExprs
                 val allArgs = args @ defVals
             in
@@ -2375,7 +2458,7 @@ and initializeAndConstruct (classClosure:Mach.CLS_CLOSURE)
                   | SOME (Ast.Ctor { settings, superArgs, func }) => 
                     let 
                         val Ast.Func { block, param=(paramFixtures,paramInits), ... } = func
-                        val (varObj:Mach.OBJ) = newObj ()
+                        val (varObj:Mach.OBJ) = Mach.newScopeObj ()
                         val (varScope:Mach.SCOPE) = extendScope classScope varObj false
                         val (ctorScope:Mach.SCOPE) = extendScope varScope instanceObj true
                     in
@@ -2389,8 +2472,11 @@ and initializeAndConstruct (classClosure:Mach.CLS_CLOSURE)
                         evalObjInits varScope instanceObj settings;
                         trace ["initializing and constructing superclass of ", LogErr.name name];
                         initializeAndConstructSuper (map (evalExpr varScope) superArgs);  
+                        trace ["binding ", LogErr.name Name.this];
+                        setValue varObj Name.this (Mach.Object instanceObj);
                         trace ["entering constructor for ", LogErr.name name];
-                        evalBlock ctorScope block;
+                        evalBlock ctorScope block
+                        handle ReturnException v => v;
                         ()
                     end
             end
@@ -2547,7 +2633,7 @@ and evalHead (scope:Mach.SCOPE)
     : Mach.SCOPE =
         let
             val (fixtures,inits) = head
-            val obj = newObj ()
+            val obj = Mach.newScopeObj ()
             val scope = extendScope scope obj isVarObject
             val temps = getScopeTemps scope
         in

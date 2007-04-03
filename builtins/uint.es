@@ -15,7 +15,7 @@ package
     use namespace intrinsic;
     use strict;
 
-    final class uint!
+    final class uint! extends Number
     {       
         static const MAX_VALUE : uint = 0xFFFFFFFFu;
         static const MIN_VALUE : uint = 0;
@@ -29,7 +29,7 @@ package
             value === undefined ? 0u : ToUint(value);
 
         /* E262-4 draft: The uint constructor */
-        function uint(value) 
+        function uint(value) : super(value)
             magic::copyValue(ToUint(value), this);
 
         /* E262-4 draft: uint.prototype.toString */
@@ -67,21 +67,21 @@ package
         prototype function toFixed(this : uint, fractionDigits)
             this.toFixed(ToDouble(fractionDigits));
 
-        intrinsic function toFixed(fractionDigits : double) : string 
+        override intrinsic function toFixed(fractionDigits : double) : string 
 	    ToDouble(this).toFixed(fractionDigits);
 
         /* E262-4 draft: uint.prototype.toExponential */
         prototype function toExponential(this : uint, fractionDigits)
             this.toExponential(ToDouble(fractionDigits));
 
-        intrinsic function toExponential(fractionDigits : double) : string
+        override intrinsic function toExponential(fractionDigits : double) : string
 	    ToDouble(this).toExponential(fractionDigits);
 
         /* E262-4 draft: uint.prototype.toPrecision */
         prototype function toPrecision(this : uint, precision)
             this.toPrecision(ToDouble(precision));
 
-        intrinsic function toPrecision(precision : double) : string
+        override intrinsic function toPrecision(precision : double) : string
 	    ToDouble(this).toPrecision(precision);
     }
 }

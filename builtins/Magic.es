@@ -25,8 +25,6 @@
  */
 package
 {
-    namespace magic;
-
     /* --------------------------------------------------------------
 
        CLASS INSTANTIATION.  */

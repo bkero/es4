@@ -37,7 +37,7 @@ package
             value === undefined ? 0d : ToDouble(value);
 
         /* E262-3 15.7.2.1: The double constructor */
-        function double(value)
+        function double(value) : super(value)
             magic::copyValue(ToDouble(value), this);
 
 
@@ -113,7 +113,7 @@ package
 
            x must be positive, f is in the range [0,20]. */
 
-        native function toFixedStep10(x : double, f : int) : int;
+        native intrinsic function toFixedStep10(x : double, f : int) : int;
 
         /* E262-3 15.7.4.6: Number.prototype.toExponential */
         prototype function toExponential(this:double, fractionDigits)

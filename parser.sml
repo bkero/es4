@@ -2543,7 +2543,7 @@ and conditionalExpression (ts,ALLOWLIST,b) =
                             let
                                 val (ts6,nd6) = assignmentExpression(ts5,ALLOWLIST,b)
                             in
-                                (ts6,nd6)
+                                (ts6, Ast.TrinaryExpr (Ast.Cond, nd2, nd4, nd6))
                             end
                       | _ => error ["unknown token in conditionalExpression"]                            
                     end
@@ -2569,7 +2569,7 @@ and conditionalExpression (ts,ALLOWLIST,b) =
                             let
                                 val (ts6,nd6) = assignmentExpression(ts5,NOLIST,b)
                             in
-                                (ts6,nd6)
+                                (ts6, Ast.TrinaryExpr (Ast.Cond, nd2, nd4, nd6))
                             end
                       | _ => error ["unknown token in conditionalExpression"]                            
                     end

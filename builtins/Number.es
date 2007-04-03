@@ -18,11 +18,11 @@ package
 
     dynamic class Number
     {
-        static const MAX_VALUE : double         = 1.7976931348623157e+308;  /* INFORMATIVE */
-        static const MIN_VALUE : double         = 5e-324;                   /* INFORMATIVE */
-        static const NaN : double               = 0.0 / 0.0;
-        static const NEGATIVE_INFINITY : double = -1.0 / 0.0;
-        static const POSITIVE_INFINITY : double = 1.0 / 0.0;
+        //static const MAX_VALUE : double         = 1.7976931348623157e+308;  /* INFORMATIVE */
+        //static const MIN_VALUE : double         = 5e-324;                   /* INFORMATIVE */
+        //static const NaN : double               = 0.0 / 0.0;
+        //static const NEGATIVE_INFINITY : double = -1.0 / 0.0;
+        //static const POSITIVE_INFINITY : double = 1.0 / 0.0;
 
         /* E262-4 draft */
         meta static function convert(x : Numeric) : Number

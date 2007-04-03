@@ -17,9 +17,6 @@ package
 
         const prototype;
 
-        function Class(value)
-            magic::copyValue(value, this);
-
         private var classname : String;
         
         intrinsic function getClass() : String! { return classname; }

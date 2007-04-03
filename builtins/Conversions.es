@@ -1,4 +1,4 @@
-/* -*- indent-tabs-mode: nil -*- */
+/* -*- mode: java; indent-tabs-mode: nil -*- */
 
 /* Primitive conversion functions.  These are all "intrinsic"-only, in
    E262-3 they are hidden in the implementation but there's no real

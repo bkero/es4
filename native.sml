@@ -592,54 +592,54 @@ fun registerNatives _ =
         fun addFn ns name f = 
             Mach.registerNativeFunction { ns = ns, id = name } f
     in
-        addFn (Ast.UserNamespace "magic") "construct" construct;
-        addFn (Ast.UserNamespace "magic") "getClassName" getClassName;
-        addFn (Ast.UserNamespace "magic") "getPrototype" getPrototype;
-        addFn (Ast.UserNamespace "magic") "hasOwnProperty" hasOwnProperty;
-        addFn (Ast.UserNamespace "magic") "getPropertyIsDontEnum" getPropertyIsDontEnum;
-        addFn (Ast.UserNamespace "magic") "getPropertyIsDontDelete" getPropertyIsDontDelete;
-        addFn (Ast.UserNamespace "magic") "setPropertyIsDontEnum" setPropertyIsDontEnum;
-        addFn (Ast.UserNamespace "magic") "copyValue" copyValue;
-        addFn (Ast.UserNamespace "magic") "apply" apply;
-        addFn (Ast.UserNamespace "magic") "compileInto" compileInto;
-        addFn (Ast.UserNamespace "magic") "charCodeAt" charCodeAt;
-        addFn (Ast.UserNamespace "magic") "fromCharCode" fromCharCode;
-        addFn (Ast.UserNamespace "magic") "stringLength" stringLength;
-        addFn (Ast.UserNamespace "magic") "stringAppend" stringAppend;
-        addFn (Ast.UserNamespace "magic") "getByteArrayByte" getByteArrayByte;
-        addFn (Ast.UserNamespace "magic") "setByteArrayByte" setByteArrayByte;
+        addFn Name.magicNS "construct" construct;
+        addFn Name.magicNS "getClassName" getClassName;
+        addFn Name.magicNS "getPrototype" getPrototype;
+        addFn Name.magicNS "hasOwnProperty" hasOwnProperty;
+        addFn Name.magicNS "getPropertyIsDontEnum" getPropertyIsDontEnum;
+        addFn Name.magicNS "getPropertyIsDontDelete" getPropertyIsDontDelete;
+        addFn Name.magicNS "setPropertyIsDontEnum" setPropertyIsDontEnum;
+        addFn Name.magicNS "copyValue" copyValue;
+        addFn Name.magicNS "apply" apply;
+        addFn Name.magicNS "compileInto" compileInto;
+        addFn Name.magicNS "charCodeAt" charCodeAt;
+        addFn Name.magicNS "fromCharCode" fromCharCode;
+        addFn Name.magicNS "stringLength" stringLength;
+        addFn Name.magicNS "stringAppend" stringAppend;
+        addFn Name.magicNS "getByteArrayByte" getByteArrayByte;
+        addFn Name.magicNS "setByteArrayByte" setByteArrayByte;
 
-        addFn (Ast.UserNamespace "magic") "toInt" (converter Eval.toInt32 Eval.newInt);
-        addFn (Ast.UserNamespace "magic") "toUint" (converter Eval.toUInt32 Eval.newUInt);
-        addFn (Ast.UserNamespace "magic") "toDouble" (converter Eval.toDouble Eval.newDouble);
-        addFn (Ast.UserNamespace "magic") "toDecimal" (converter (Eval.toDecimal 
+        addFn Name.magicNS "toInt" (converter Eval.toInt32 Eval.newInt);
+        addFn Name.magicNS "toUint" (converter Eval.toUInt32 Eval.newUInt);
+        addFn Name.magicNS "toDouble" (converter Eval.toDouble Eval.newDouble);
+        addFn Name.magicNS "toDecimal" (converter (Eval.toDecimal 
                                                                       Decimal.defaultPrecision 
                                                                       Decimal.defaultRoundingMode) 
                                                                  Eval.newDecimal);
 
-        addFn Ast.Intrinsic "eval" eval;
-        addFn Ast.Intrinsic "parseInt" parseInt;
-        addFn Ast.Intrinsic "parseFloat" parseFloat;
-        addFn Ast.Intrinsic "isNaN" isNaN;
-        addFn Ast.Intrinsic "isFinite" isFinite;
-        addFn Ast.Intrinsic "decodeURI" decodeURI;
-        addFn Ast.Intrinsic "decodeURIComponent" decodeURIComponent;
-        addFn Ast.Intrinsic "encodeURI" encodeURI;
-        addFn Ast.Intrinsic "encodeURIComponent" encodeURIComponent;
+        addFn Name.intrinsicNS "eval" eval;
+        addFn Name.intrinsicNS "parseInt" parseInt;
+        addFn Name.intrinsicNS "parseFloat" parseFloat;
+        addFn Name.intrinsicNS "isNaN" isNaN;
+        addFn Name.intrinsicNS "isFinite" isFinite;
+        addFn Name.intrinsicNS "decodeURI" decodeURI;
+        addFn Name.intrinsicNS "decodeURIComponent" decodeURIComponent;
+        addFn Name.intrinsicNS "encodeURI" encodeURI;
+        addFn Name.intrinsicNS "encodeURIComponent" encodeURIComponent;
 
         (* FIXME: stubs to get double loading. Implement. *)
-        addFn Ast.Intrinsic "toFixedStep10" (fn _ => Eval.newString(""));
-        addFn Ast.Intrinsic "toExponential" (fn _ => Eval.newString(""));
-        addFn Ast.Intrinsic "toPrecision" (fn _ => Eval.newString(""));
+        addFn Name.intrinsicNS "toFixedStep10" (fn _ => Eval.newString(""));
+        addFn Name.intrinsicNS "toExponential" (fn _ => Eval.newString(""));
+        addFn Name.intrinsicNS "toPrecision" (fn _ => Eval.newString(""));
 
         (* FIXME: stubs to get Date loading. Implement. *)
-        addFn Ast.Intrinsic "now" (fn _ => Eval.newDouble 0.0);
-        addFn (Ast.Internal "") "LocalTZA" (fn _ => Eval.newDouble 0.0);
-        addFn (Ast.Internal "") "DaylightSavingTA" (fn _ => Eval.newDouble 0.0);
+        addFn Name.intrinsicNS "now" (fn _ => Eval.newDouble 0.0);
+        addFn Name.internalNS "LocalTZA" (fn _ => Eval.newDouble 0.0);
+        addFn Name.internalNS "DaylightSavingTA" (fn _ => Eval.newDouble 0.0);
         
-        addFn Ast.Intrinsic "print" print;
-        addFn Ast.Intrinsic "assert" assert;
-        addFn Ast.Intrinsic "typename" typename
+        addFn Name.intrinsicNS "print" print;
+        addFn Name.intrinsicNS "assert" assert;
+        addFn Name.intrinsicNS "typename" typename
 
     end
 

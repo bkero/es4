@@ -15,7 +15,7 @@ package
     use namespace intrinsic;
     use strict;
 
-    final class decimal!
+    final class decimal! extends Number
     {       
 	// FIXME
         static const MAX_VALUE         = 1.7976931348623157e+308m;
@@ -33,7 +33,7 @@ package
             value === undefined ? 0m : ToDecimal(value);
 
         /* E262-3 15.7.2.1: The decimal constructor */
-        function decimal(value)
+        function decimal(value) : super(value)
             magic::copyValue(ToDecimal(value), this);
 
         /* E262-3 15.7.4.2: decimal.prototype.toString */
