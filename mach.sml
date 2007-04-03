@@ -65,6 +65,8 @@ datatype VAL = Object of OBJ
                     | TypeProp
                     | UninitProp
                     | ValProp of VAL
+                    | MethodProp of FUN_CLOSURE
+                    | NativeFunctionProp of NATIVE_FUNCTION
                     | VirtualValProp of 
                       { getter: FUN_CLOSURE option,
                         setter: FUN_CLOSURE option }

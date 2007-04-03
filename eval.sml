@@ -230,13 +230,13 @@ fun allocFixtures (scope:Mach.SCOPE)
                           | Ast.MethodFixture { func, ty, readOnly, ... } => 
                             let
                                 val Ast.Func { isNative, ... } = func
-                                val v = if isNative
-                                        then newNativeFunction (Mach.getNativeFunction pn)
-                                        else newFunctionFromFunc methodScope func
+                                val p = if isNative
+                                        then Mach.NativeFunctionProp (Mach.getNativeFunction pn)
+                                        else Mach.MethodProp (newFunClosure methodScope func)
                             in
                                 allocProp "method" 
                                           { ty = ty,
-                                            state = Mach.ValProp v,
+                                            state = p,
                                             attrs = { dontDelete = true,
                                                       dontEnum = true,
                                                       readOnly = readOnly,
@@ -382,6 +382,12 @@ and getValue (obj:Mach.OBJ,
                 error ["getValue on a virtual property w/o getter: ",
                        LogErr.name name]
 
+              | Mach.NativeFunctionProp nf =>
+                newNativeFunction nf
+                
+              | Mach.MethodProp closure => 
+                newFunctionFromClosure closure
+
               | Mach.ValProp v => v
         end
 
@@ -412,6 +418,14 @@ and setValue (base:Mach.OBJ)
                     
                   | Mach.TypeProp => 
                     error ["setValue on type property: ", 
+                           LogErr.name name]
+
+                  | Mach.NativeFunctionProp _ => 
+                    error ["setValue on native function property: ", 
+                           LogErr.name name]
+
+                  | Mach.MethodProp _ => 
+                    error ["setValue on method property: ", 
                            LogErr.name name]
                     
                   | Mach.VirtualValProp { setter = SOME s, ... } => 
@@ -477,6 +491,14 @@ and defValue (base:Mach.OBJ)
                     error ["defValue on type property: ", 
                            LogErr.name name]
                     
+                  | Mach.NativeFunctionProp _ => 
+                    error ["defValue on native function property: ", 
+                           LogErr.name name]
+
+                  | Mach.MethodProp _ => 
+                    error ["defValue on method property: ", 
+                           LogErr.name name]
+
                   | Mach.VirtualValProp { setter = SOME s, ... } => 
                     (invokeFuncClosure base s [v]; ())
                     
