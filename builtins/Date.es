@@ -20,7 +20,7 @@ package
        that the getters for the components of a Date can be
        inlined.  */
 
-    final dynamic class Date extends Object
+    final dynamic class Date
     {       
         /* E262-3 15.9.2: The Date Constructor Called as a Function */
         static intrinsic function date(...args)   // args are ignored.

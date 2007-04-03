@@ -9,9 +9,9 @@
 
 package
 {
-    namespace meta;
+    use default namespace public;
 
-    dynamic class Array extends Object
+    dynamic class Array
     {
         use namespace intrinsic;
         use strict;
@@ -370,12 +370,12 @@ package
         // 15.4.5.2 length
         private var _length:uint = 0;
         public function get length():uint
-            this.length;
+            this._length;
 
         // ECMA-262 requires a RangeError if non-ints are passed in,
         // so we must not type it as uint in the setter's signature
         public function set length(newLength:uint):void {
-            let oldLength:uint = length;
+            let oldLength:uint = _length;
             let newLengthAsDouble:double = double(newLength);
             let newLengthAsUint:uint = uint(newLengthAsDouble);
             if (newLengthAsUint != newLengthAsDouble)
@@ -383,7 +383,7 @@ package
             for (let i:uint = newLengthAsUint; i < oldLength; ++i)
                 if (this.hasOwnProperty(i))
                     delete this[i];
-            length = newLengthAsUint;
+            _length = newLengthAsUint;
         }
 
         // --------------------------------------------------

@@ -1210,7 +1210,9 @@ and evalLiteralExpr (scope:Mach.SCOPE)
       | Ast.LiteralContextualDecimal _ => error ["contextual decimal literal at runtime"]
       | Ast.LiteralContextualDecimalInteger _ => error ["contextual decimal integer literal at runtime"]
       | Ast.LiteralContextualHexInteger _ => error ["contextual hex integer literal at runtime"]
-      | _ => LogErr.unimplError ["unhandled literal type"]
+
+      | Ast.LiteralXML _ => LogErr.unimplError ["unhandled literal XML"]
+      | Ast.LiteralRegExp _ => LogErr.unimplError ["unhandled literal regexp"]
 
 
 and evalListExpr (scope:Mach.SCOPE) 
@@ -1281,7 +1283,7 @@ and evalCallExpr (thisObjOpt:Mach.OBJ option)
                         val _ = trace ["redirecting through meta::invoke"]
                         val invokeFn = getValue (fobj, Name.meta_invoke)
                     in
-                        evalCallExpr NONE (needObj invokeFn) (thisVal :: args)
+                        evalCallExpr NONE (needObj invokeFn) args
                     end
                 else error ["calling non-callable object"]
     end
@@ -2148,9 +2150,12 @@ and invokeFuncClosure (this:Mach.OBJ)
                 val selfName = Name.internal (#ident name)
                 val selfVal = newFunctionFromClosure closure
             in
+                trace ["invokeFuncClosure: allocating scope fixtures"];
                 allocScopeFixtures varScope paramFixtures;
                 initThis ();
+                trace ["invokeFuncClosure: binding args"];
                 bindArgs env varScope func args;
+                trace ["invokeFuncClosure: evaluating scope inits"];
                 evalScopeInits varScope Ast.Local paramInits;
 
                 (* NOTE: is this for the binding of a function expression to its optional
@@ -2163,6 +2168,7 @@ and invokeFuncClosure (this:Mach.OBJ)
 
                 setValue varObj selfName selfVal;                
                 checkAllPropertiesInitialized varObj;
+                trace ["invokeFuncClosure: evaluating block"];
                 evalBlock varScope block
                 handle ReturnException v => v
             end
@@ -2309,14 +2315,19 @@ and bindArgs (outerScope:Mach.SCOPE)
         val d = length defaults
         val a = length args
         val i = (a+d)-p
+        val _ = trace ["bindArgs: p=", Int.toString p,
+                       ", d=", Int.toString d,
+                       ", a=", Int.toString a,
+                       ", i=", Int.toString i]
+                       
         val argTemps = getScopeTemps argScope
         fun bindArg _ [] = ()
           | bindArg (n:int) ((arg:Mach.VAL)::args) = 
             (Mach.defTemp argTemps n arg; 
              bindArg (n+1) args)
     in
-        if a + d < p
-        then error ["not enough args to function ", 
+        if a + d < p orelse a > p
+        then error ["bad number of args to function ", 
                     Int.toString a, " given ", 
                     Int.toString (p-d), " expected"]
         else 
