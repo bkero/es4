@@ -1212,7 +1212,7 @@ and evalLiteralExpr (scope:Mach.SCOPE)
       | Ast.LiteralContextualHexInteger _ => error ["contextual hex integer literal at runtime"]
 
       | Ast.LiteralXML _ => LogErr.unimplError ["unhandled literal XML"]
-      | Ast.LiteralRegExp _ => LogErr.unimplError ["unhandled literal regexp"]
+      | Ast.LiteralRegExp re => LogErr.unimplError ["unhandled literal regexp ",(#str re)]
 
 
 and evalListExpr (scope:Mach.SCOPE) 

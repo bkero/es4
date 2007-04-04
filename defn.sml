@@ -319,7 +319,7 @@ fun dumpLabels labels = trace ["labels ", concat (map (fn (id,_) => id^" ") labe
 
 (*
     Add a label to the current environment context. Report an error
-    if there is a duplicate. Labels and switch and iteration statements
+    if there is a duplicate. Labels on switch and iteration statements
     have special meaning. They get lifted into the switch or iteration
     statement so the correct continuation value can be returned in case
     of break, and the correct control flow produced in case of continue.

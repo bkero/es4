@@ -38,7 +38,7 @@ package
         // invoking the array constructor, ie, essentially making this
         // code pointless.
 
-        function Array(...args) {
+        function Array(args=[]/*FIXME:...args*/) {
             let argslen:uint = uint(args.length);
             if (argslen == 1 && (args[0] is Number)) {
                 let dlen:Number = args[0];

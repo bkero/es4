@@ -73,17 +73,17 @@ fun chopTrailing (s:string)
     String.substring (s, 0, ((String.size s) - 1))
 
 fun followsLineBreak (ts) =
-    let val _ = trace ["followsLineBreak"]
+    let 
 	val offset = length ts
 	val max_offset = !token_count
 	fun findBreak lbs =
 	    case lbs of
-		[] => false
+	[] => (trace ["followsLineBreak false"];false)
 	      | _ => 
 		(trace ["token_count=", Int.toString(max_offset),
 			" offset=", Int.toString(max_offset-offset),
 			" break=", Int.toString(hd lbs)];
-		 if (hd lbs) = (max_offset - offset) then true else findBreak (tl lbs))
+		 if (hd lbs) = (max_offset - offset) then (trace ["followsLineBreak true"];true) else findBreak (tl lbs))
     in
 	findBreak (!line_breaks)
     end

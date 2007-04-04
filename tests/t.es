@@ -12,7 +12,6 @@ package mx.util
 }
 */
 
-while (true) { break }
-switch (10) {
-case 10: break
-}
+var a = new Array
+a[0] = 'hi'
+intrinsic::print(a[0])

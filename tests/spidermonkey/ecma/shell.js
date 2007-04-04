@@ -246,6 +246,8 @@ function getFailedCases() {
  * Date functions used by tests in Date suite
  *
  */
+let ticket = 0
+
 var msPerDay =   86400000;
 var HoursPerDay =  24;
 var MinutesPerHour = 60;
@@ -253,12 +255,19 @@ var SecondsPerMinute = 60;
 var msPerSecond =  1000;
 var msPerMinute =  60000;  // msPerSecond * SecondsPerMinute
 var msPerHour =   3600000; // msPerMinute * MinutesPerHour
+intrinsic::print("** ",ticket++," **")
 var TZ_DIFF = getTimeZoneDiff();  // offset of tester's timezone from UTC
+intrinsic::print("** ",ticket++," **")
 var TZ_PST = -8;  // offset of Pacific Standard Time from UTC
+intrinsic::print("** ",ticket++," **")
 var PST_DIFF = TZ_DIFF - TZ_PST;  // offset of tester's timezone from PST
+intrinsic::print("** ",ticket++," **")
 var TIME_1970  = 0;
+intrinsic::print("** ",ticket++," **")
 var TIME_2000  = 946684800000;
+intrinsic::print("** ",ticket++," **")
 var TIME_1900  = -2208988800000;
+intrinsic::print("** ",ticket++," **")
 
 
 /*
@@ -269,7 +278,7 @@ var TIME_1900  = -2208988800000;
  */
 function getTimeZoneDiff()
 {
-  return -((new Date(2000, 1, 1)).getTimezoneOffset())/60;
+    return -((new Date(2000, 1, 1)).getTimezoneOffset())/60;
 }
 
 

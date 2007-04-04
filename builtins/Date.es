@@ -27,23 +27,24 @@ package
             (new Date()).public::toString();
 
         /* E262-3 15.9.3: The Date Constructor. */
-        public function Date(year, month, a, b, c, d, e) {
-            let date=1, hours=0, minutes=0, seconds=0, ms=0;
-
+        public function Date(year, month, date:double=1, hours:double=0, minutes:double=0, seconds:double=0, ms:double=0) {
+            print(">> Date constructor","\n")
             setupNanoAge();
 
+            /* FIXME: cases 0 and 1 belong in 'invoke'; the conversions are implicit; only the fall through code goes here
+
             switch (arguments.length) {
-            case 0:  /* 15.9.3.3 */
+            case 0:
                 timeval = Date.now();
                 return;
-            case 1:  /* 15.9.3.2 */
+            case 1:
                 let v = ToPrimitive(year);
                 if (v is string)
                     return parse(v cast string);
 
                 timeval = TimeClip(ToDouble(v));
                 return;
-            default:  /* 15.9.3.1 */
+            default:
                 ms = ToDouble(e);
             case 6:
                 seconds = ToDouble(d);
@@ -65,6 +66,17 @@ package
                                                     MakeTime(hours, minutes, seconds, ms))));
                 return;
             }
+
+            END FIXME */
+
+            let intYear = ToInteger(year);
+            if (!isNaN(year) && 0 <= intYear && intYear <= 99)
+                intYear += 1900;
+
+            timeval = TimeClip(UTCTime(MakeDate(MakeDay(intYear, month, date), 
+                                                MakeTime(hours, minutes, seconds, ms))));
+            print("<< Date constructor","\n")
+            return;
         }
 
         /* E262-3 15.9.4.2: Date.parse
@@ -89,7 +101,7 @@ package
 
             function fractionToMilliseconds(frac : string) : double
                 Math.floor(1000 * (parseInt(frac) / Math.pow(10,frac.length)));
-
+            intrinsic::print("\nDate.parse with ",s,"\n")
             let isoRes : Object = isoTimestamp.exec(s);
             let defaults : Date! = new Date(reference);
             if (isoRes !== undefined) {
@@ -172,7 +184,9 @@ package
 
         /* INFORMATIVE */
         function setupNanoAge() : void {
-            d.birthtime = Date.now();
+            print(">> setupNanoAge");
+            this.birthtime = Date.now();
+            print("<< setupNanoAge")
         }
 
         /* E262-3 15.9.4.3: Date.UTC */
@@ -203,6 +217,8 @@ package
 
         /* Format of string produced by Date.toString, recognized by Date.parse */
         /* e.g., "Fri, 15 Dec 2006 23:45:09 GMT-0800" */
+        const adhocTimestamp 
+            /*
         const adhocTimestamp : RegExp! = 
             /(?: Mon|Tue|Wed|Thu|Fri|Sat|Sun )\s+
              (?P<day> [0-9]+ )\s+
@@ -212,10 +228,12 @@ package
              (?P<minute> [0-9]{2} ):
              (?P<second> [0-9]{2} )\s+
              GMT
-             (?P<tz> (?: \\+ | - ) [0-9]{4} )?/x;
-
+            (?P<tz> (?: \\+ | - ) [0-9]{4} )?/x;
+            */
         /* Format of string produced by Date.toISOString, recognized by Date.parse */
         /* e.g, "2006-12-15T23:45:09.33-08:00" */
+        const isoTimestamp
+            /*
         const isoTimestamp : RegExp! =
             /^
             # Date, optional
@@ -235,7 +253,7 @@ package
                 (?P<tzhr> [0-9]{2} )
                 (?: : (?P<tzmin> [0-9]{2} ) )? ) )?
             $/x;
-
+            */
         /* E262-4 proposals:date_and_time - "ISO Date strings" */
         prototype function toISOString(this:Date)
             this.toISOString();
@@ -768,9 +786,11 @@ package
         }
 
         function MakeDate(day : double, time : double) : double {
+            print(">> MakeDate")
             if (!isFinite(day) || !isFinite(time))
                 return NaN;
 
+            print("<< MakeDate")
             return day * msPerDay + time;
         }
 
