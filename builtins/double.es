@@ -38,7 +38,10 @@ package
 
         /* E262-3 15.7.2.1: The double constructor */
         function double(value) : super(value)
-            magic::copyValue(ToDouble(value), this);
+        {
+            // No need to magic::copyValue a second time, 
+            // since our super(value) call did it for us.
+        }
 
 
         /* E262-3 15.7.4.2: double.prototype.toString */

@@ -29,7 +29,7 @@ package
             value === undefined ? 0u : ToUint(value);
 
         /* E262-4 draft: The uint constructor */
-        function uint(value) : super(value)
+        function uint(value)
             magic::copyValue(ToUint(value), this);
 
         /* E262-4 draft: uint.prototype.toString */

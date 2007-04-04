@@ -3,8 +3,12 @@ structure Eval = struct
 
 (* Local tracing machinery *)
 
+val (tracePrefix:string list list ref) = ref []
+fun pushPrefix ss = tracePrefix := (ss) :: (!tracePrefix)
+fun popPrefix _ = tracePrefix := tl (!tracePrefix)
+
 val doTrace = ref false
-fun trace ss = if (!doTrace) then LogErr.log ("[eval] " :: ss) else ()
+fun trace ss = if (!doTrace) then LogErr.log ("[eval] " :: ((List.concat (List.rev (!tracePrefix))) @ ss)) else ()
 fun error ss = LogErr.evalError ss
 
 (* Exceptions for object-language control transfer. *)
@@ -548,7 +552,7 @@ and newRootBuiltin (n:Ast.NAME) (m:Mach.MAGIC)
      * Five of our builtin types require special handling when it comes
      * to constructing them: we wish to run the builtin ctors with no 
      * arguments at all, then clobber the magic slot in the resulting 
-     * object. All other builtins we can pass an "ur-Object" into the
+     * object. All other builtins we can pass a tagless "ur-Objects" into the
      * builtin ctor and let it modify its own magic slot using magic::setValue.
      * 
      * For these cases (Function, Class, Namespace, Boolean and boolean) we 
@@ -567,16 +571,7 @@ and newRootBuiltin (n:Ast.NAME) (m:Mach.MAGIC)
 
 and newBuiltin (n:Ast.NAME) (m:Mach.MAGIC option) 
     : Mach.VAL = 
-    let
-        val _ = trace ["forming temp object for argument to builtin ctor ", LogErr.name n]
-        val tmp = newObj ()
-        val _ = trace ["formed temp object for argument to builtin ctor ", LogErr.name n]
-        val res = instantiateGlobalClass n [Mach.Object (Mach.setMagic (tmp) m)]
-        val _ = trace ["formed instance of builtin ", LogErr.name n]
-    in
-        res
-    end
-
+    instantiateGlobalClass n [Mach.Object (Mach.setMagic (Mach.newObjNoTag()) m)]
 
 and newDouble (n:Real64.real) 
     : Mach.VAL = 
@@ -1058,7 +1053,7 @@ and evalExpr (scope:Mach.SCOPE)
         evalUnaryOp scope unop expr
 
       | Ast.ThisExpr => 
-        findVal scope (multinameOf {id="this", ns=Ast.Internal ""})
+        findVal scope (multinameOf Name.this)
 
       | Ast.SetExpr (aop, pat, expr) => 
         evalSetExpr scope aop pat (evalExpr scope expr)
@@ -1066,16 +1061,10 @@ and evalExpr (scope:Mach.SCOPE)
       | Ast.CallExpr { func, actuals } => 
         let
             val args = map (evalExpr scope) actuals
-            fun withLhs e = 
-                case evalRefExpr scope e true of 
-                    (obj, name) => evalCallExpr 
-                                       (SOME obj) 
-                                       (needObj (getValue (obj, name))) 
-                                       args
         in
             case func of 
-                Ast.LexicalRef _ => withLhs func
-              | Ast.ObjectRef _ => withLhs func
+                Ast.LexicalRef _ => evalCallMethod scope func args
+              | Ast.ObjectRef _ => evalCallMethod scope func args
               | _ => evalCallExpr NONE (needObj (evalExpr scope func)) args
         end
 
@@ -1255,7 +1244,33 @@ and evalNewExpr (obj:Mach.OBJ)
           | SOME (Mach.Function f) => constructObjectViaFunction obj f args
           | _ => error ["operator 'new' applied to unknown object"]
 
-                                                                                 
+
+and evalCallMethod (scope:Mach.SCOPE) 
+                   (func:Ast.EXPR)
+                   (args:Mach.VAL list)
+    : Mach.VAL = 
+    let
+        (* 
+         * If we have a method or native function *property*, we can just 
+         * call it directly without manufacturing a temporary Function 
+         * wrapper object. 
+         *)
+        val (obj, name) = evalRefExpr scope func true
+        val { id, ... } = name
+        val _ = trace [">>> call method: ", LogErr.name name]
+        val _ = pushPrefix ["[call ", id, "] " ]
+        val Mach.Obj { props, ... } = obj
+        val res = case (#state (Mach.getProp props name)) of
+                      Mach.NativeFunctionProp nf => nf args
+                    | Mach.MethodProp f => invokeFuncClosure obj f args
+                    | _ => evalCallExpr (SOME obj) (needObj (getValue (obj, name))) args
+        val _ = popPrefix ()
+        val _ = trace ["<<< call method: ", LogErr.name name]
+    in
+        res
+    end
+
+                                
 and evalCallExpr (thisObjOpt:Mach.OBJ option) 
                  (fobj:Mach.OBJ) 
                  (args:Mach.VAL list) 
@@ -1265,7 +1280,6 @@ and evalCallExpr (thisObjOpt:Mach.OBJ option)
         val thisObj = case thisObjOpt of 
                           NONE => getGlobalObject ()
                         | SOME t => t
-        val thisVal = Mach.Object thisObj
     in
         case fobj of
             Mach.Obj { magic, ... } => 
@@ -1806,7 +1820,8 @@ and evalBinaryTypeOp (scope:Mach.SCOPE)
          *)
         let 
             val v = evalExpr scope expr
-        in
+            val _ = trace ["processing 'is' operator"]
+        in            
             case tyExpr of 
                 Ast.TypeName (Ast.Identifier { ident, ... }) => 
                 (case ident of 
@@ -1889,10 +1904,35 @@ and evalCondExpr (scope:Mach.SCOPE)
         val b = toBoolean v
     in
         if b 
-        then evalExpr scope thn
-        else evalExpr scope els
+        then (trace ["trinary cond returned TRUE"]; evalExpr scope thn)
+        else (trace ["trinary cond returned FALSE"]; evalExpr scope els)
     end
     
+
+and evalExprToNamespace (scope:Mach.SCOPE) 
+                        (expr:Ast.EXPR)
+    : Ast.NAMESPACE = 
+    (* 
+     * If we have a namespace property we can evaluate to an Ast.Namespace 
+     * directly without manufacturing a temporary Namespace wrapper object.
+     *)
+    let 
+        fun evalRefNamespace _ = 
+            let 
+                val (obj, name) = evalRefExpr scope expr true
+                val Mach.Obj { props, ... } = obj
+            in
+                case (#state (Mach.getProp props name)) of
+                    Mach.NamespaceProp ns => ns
+                  | _ => needNamespace (getValue (obj, name))
+            end
+    in
+        case expr of 
+            Ast.LexicalRef _ => evalRefNamespace ()
+          | Ast.ObjectRef _ => evalRefNamespace ()
+          | _ => needNamespace (evalExpr scope expr)
+    end
+
 
 and evalIdentExpr (scope:Mach.SCOPE) 
                   (r:Ast.IDENT_EXPR) 
@@ -1902,14 +1942,14 @@ and evalIdentExpr (scope:Mach.SCOPE)
         { nss=openNamespaces, id=ident }
         
       | Ast.QualifiedIdentifier { qual, ident } => 
-        { nss = [[needNamespace (evalExpr scope qual)]], id = ident }
+        { nss = [[evalExprToNamespace scope qual]], id = ident }
 
       | Ast.QualifiedExpression { qual, expr } => 
-        { nss = [[needNamespace (evalExpr scope qual)]], 
+        { nss = [[evalExprToNamespace scope qual]], 
           id = toString (evalExpr scope expr) }
         
       | Ast.ExpressionIdentifier expr =>
-        { nss = [[Ast.Internal ""]],
+        { nss = [[Name.internalNS]],
           id = toString (evalExpr scope expr) }
 
       | _ => LogErr.unimplError ["unimplemented identifier expression form"]
@@ -2138,8 +2178,9 @@ and invokeFuncClosure (this:Mach.OBJ)
         then error ["invoking function with unbound type variables"]
         else
             let 
-                val (varObj:Mach.OBJ) = Mach.newScopeObj ()
+                val (varObj:Mach.OBJ) = Mach.newObjNoTag ()
                 val (varScope:Mach.SCOPE) = extendScope env varObj true
+                val (Mach.Obj {props, ...}) = varObj
                                             
                 (* FIXME: infer a fixture for "this" so that it's properly typed, dontDelete, etc.
                  * Also this will mean changing to defVar rather than setVar, for 'this'. *)
@@ -2148,7 +2189,12 @@ and invokeFuncClosure (this:Mach.OBJ)
                                  
                 (* FIXME: self-name binding is surely more complex than this! *)
                 val selfName = Name.internal (#ident name)
-                val selfVal = newFunctionFromClosure closure
+                fun initSelf _ = Mach.addProp props selfName { ty = Ast.SpecialType Ast.Any,
+                                                               state = Mach.MethodProp closure,
+                                                               attrs = { dontDelete = true,
+                                                                         dontEnum = true,
+                                                                         readOnly = true,
+                                                                         isFixed = true } }
             in
                 trace ["invokeFuncClosure: allocating scope fixtures"];
                 allocScopeFixtures varScope paramFixtures;
@@ -2166,7 +2212,7 @@ and invokeFuncClosure (this:Mach.OBJ)
                  * Changing defValue to setValue for now.
                  *)
 
-                setValue varObj selfName selfVal;                
+                initSelf ();
                 checkAllPropertiesInitialized varObj;
                 trace ["invokeFuncClosure: evaluating block"];
                 evalBlock varScope block
@@ -2333,7 +2379,6 @@ and bindArgs (outerScope:Mach.SCOPE)
         else 
             let
                 val defExprs = List.drop (defaults, i)
-                val _ = trace ["binding ", Int.toString a, " real args, ", Int.toString (d-i), " default args"]
                 val defVals = List.map (evalExpr outerScope) defExprs
                 val allArgs = args @ defVals
             in
@@ -2346,7 +2391,8 @@ and evalInits (scope:Mach.SCOPE)
               (obj:Mach.OBJ)
               (temps:Mach.TEMPS)
               (inits:Ast.INITS)
-    : unit = evalInitsMaybePrototype scope obj temps inits false
+    : unit = 
+    evalInitsMaybePrototype scope obj temps inits false
 
 
 and evalInitsMaybePrototype (scope:Mach.SCOPE)
@@ -2358,9 +2404,11 @@ and evalInitsMaybePrototype (scope:Mach.SCOPE)
     let 
         fun evalInit (n,e) =
             let
-                val _ = trace [">> evalInit"]
+                val id = case n of 
+                             Ast.PropName { id, ... } => id
+                           | Ast.TempName t => ("#" ^ Int.toString t)
+                val _ = pushPrefix ["[init ", id, "] "]
                 val v = evalExpr scope e
-                val _ = trace ["<< evalInit"]
             in
                 case n of 
                     Ast.PropName pn => 
@@ -2370,12 +2418,13 @@ and evalInitsMaybePrototype (scope:Mach.SCOPE)
                      else defValue obj pn v)
                   | Ast.TempName tn => 
                     (trace ["evalInit assigning to temp ", (Int.toString tn)];
-                     Mach.defTemp temps tn v)
+                     Mach.defTemp temps tn v);
+                popPrefix ()
             end
     in 
-        trace [">> evalInits"];
+        pushPrefix ["[inits] "];
         List.app evalInit inits;
-        trace ["<< evalInits"]
+        popPrefix ()
     end
 
 (*
@@ -2468,8 +2517,10 @@ and initializeAndConstruct (classClosure:Mach.CLS_CLOSURE)
                     NONE => initializeAndConstructSuper []
                   | SOME (Ast.Ctor { settings, superArgs, func }) => 
                     let 
+                        val { id, ... } = name
+                        val _ = pushPrefix ["[ctor ", id, "] " ]                                
                         val Ast.Func { block, param=(paramFixtures,paramInits), ... } = func
-                        val (varObj:Mach.OBJ) = Mach.newScopeObj ()
+                        val (varObj:Mach.OBJ) = Mach.newObjNoTag ()
                         val (varScope:Mach.SCOPE) = extendScope classScope varObj false
                         val (ctorScope:Mach.SCOPE) = extendScope varScope instanceObj true
                     in
@@ -2488,6 +2539,7 @@ and initializeAndConstruct (classClosure:Mach.CLS_CLOSURE)
                         trace ["entering constructor for ", LogErr.name name];
                         evalBlock ctorScope block
                         handle ReturnException v => v;
+                        popPrefix ();
                         ()
                     end
             end
@@ -2499,7 +2551,8 @@ and constructClassInstance (classObj:Mach.OBJ)
     : Mach.VAL =
     let
         val {cls = Ast.Cls { name, instanceFixtures, ...}, env, ...} = classClosure
-
+        val {id, ...} = name
+        val _ = pushPrefix ["[new ", id, "] " ]
         val (tag:Mach.VAL_TAG) = Mach.ClassTag name
         val (proto:Mach.VAL) = if hasOwnValue classObj Name.public_prototype
                                then getValue (classObj, Name.public_prototype)
@@ -2515,6 +2568,7 @@ and constructClassInstance (classObj:Mach.OBJ)
         trace ["entering most derived constructor for ", LogErr.name name];
         initializeAndConstruct classClosure classObj classScope args instanceObj;
         trace ["finished constructing new ", LogErr.name name];
+        popPrefix ();
         Mach.Object instanceObj
     end
 
@@ -2644,7 +2698,7 @@ and evalHead (scope:Mach.SCOPE)
     : Mach.SCOPE =
         let
             val (fixtures,inits) = head
-            val obj = Mach.newScopeObj ()
+            val obj = Mach.newObjNoTag ()
             val scope = extendScope scope obj isVarObject
             val temps = getScopeTemps scope
         in

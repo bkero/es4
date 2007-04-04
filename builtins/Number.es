@@ -33,7 +33,7 @@ package
             value === undefined ? 0.0 : ToDouble(value);
 
         /* E262-3 15.7.2.1: The Number constructor */
-        function Number(value) 
+        function Number(value=0.0) 
             magic::copyValue(ToDouble(value), this);
 
         prototype function toString(radix = 10)

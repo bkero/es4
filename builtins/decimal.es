@@ -33,7 +33,7 @@ package
             value === undefined ? 0m : ToDecimal(value);
 
         /* E262-3 15.7.2.1: The decimal constructor */
-        function decimal(value) : super(value)
+        function decimal(value)
             magic::copyValue(ToDecimal(value), this);
 
         /* E262-3 15.7.4.2: decimal.prototype.toString */

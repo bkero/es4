@@ -25,12 +25,11 @@ datatype VAL = Object of OBJ
        | ArrayTag of Ast.TYPE_EXPR list
        | FunctionTag of Ast.FUNC_SIG
        | ClassTag of Ast.NAME
-       | ScopeTag (* 
-                   * ScopeTag objects are *not* instances of Object;
-                   * in fact they're not instances of any named classes,
-                   * or even subtypes of named classes. The properties 
-                   * and fixtures they have vary on a scope-by-scope basis.
-                   *)
+       | NoTag (* 
+                * NoTag objects are made for scopes and 
+                * temporaries passed as arguments during 
+                * builtin construction. 
+                *)
 
 (* 
  * Magic is visible only to the interpreter; 
@@ -363,9 +362,9 @@ fun newObj (t:VAL_TAG)
           proto = ref p,
           magic = ref m }
 
-fun newScopeObj _ 
+fun newObjNoTag _ 
     : OBJ = 
-    newObj ScopeTag Null NONE
+    newObj NoTag Null NONE
 
 fun setProto (ob:OBJ) (p:VAL) 
     : OBJ =

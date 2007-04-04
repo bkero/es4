@@ -29,7 +29,7 @@ package
             value === undefined ? 0i : ToInt(value);
 
         /* E262-4 draft: The int constructor */
-        function int(value) : super(value)
+        function int(value)
             magic::copyValue(ToInt(value), this);
 
         /* E262-4 draft: int.prototype.toString */
