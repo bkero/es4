@@ -144,6 +144,7 @@ fun boot _ =
              "builtins/decimal.es",
              "builtins/Numeric.es",
              
+             "builtins/Math.es",
              "builtins/Global.es",
              
              "builtins/ByteArray.es",
@@ -152,11 +153,10 @@ fun boot _ =
              "builtins/JSON.es",
              "builtins/Array.es",
 
-             "builtins/Error.es"             
+             "builtins/Error.es"           
             ];
-         
+
         (*
-         "builtins/Math.es",
          "builtins/Unicode.es",
          "builtins/RegExpCompiler.es",
          "builtins/RegExpEvaluator.es",

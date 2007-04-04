@@ -533,6 +533,101 @@ fun encodeURIComponent (vals:Mach.VAL list)
     : Mach.VAL =
     LogErr.unimplError ["intrinsic::encodeURIComponent"]
 
+(*
+    Math natives
+
+        addFn Name.intrinsicNS "abs" abs
+        addFn Name.intrinsicNS "acos" acos
+        addFn Name.intrinsicNS "asin" asin
+        addFn Name.intrinsicNS "atan" atan
+        addFn Name.intrinsicNS "atan2" atan2
+        addFn Name.intrinsicNS "ceil" ceil
+        addFn Name.intrinsicNS "cos" cos
+        addFn Name.intrinsicNS "exp" exp
+        addFn Name.intrinsicNS "floor" floor
+        addFn Name.intrinsicNS "log" log
+        addFn Name.intrinsicNS "max" max
+        addFn Name.intrinsicNS "min" min
+        addFn Name.intrinsicNS "pow" pow
+        addFn Name.intrinsicNS "random" random
+        addFn Name.intrinsicNS "round" round
+        addFn Name.intrinsicNS "sin" sin
+        addFn Name.intrinsicNS "sqrt" sqrt
+        addFn Name.intrinsicNS "tan" tan;
+*)
+
+fun abs (v:Mach.VAL list)
+    : Mach.VAL = 
+    hd v
+
+fun acos (v:Mach.VAL list)
+    : Mach.VAL =
+    LogErr.unimplError ["intrinsic::acos"]
+
+fun asin (v:Mach.VAL list)
+    : Mach.VAL =
+    LogErr.unimplError ["intrinsic::acos"]
+
+fun atan (v:Mach.VAL list)
+    : Mach.VAL =
+    LogErr.unimplError ["intrinsic::acos"]
+
+fun atan2 (v:Mach.VAL list)
+    : Mach.VAL =
+    LogErr.unimplError ["intrinsic::acos"]
+
+fun ceil (v:Mach.VAL list)
+    : Mach.VAL =
+    LogErr.unimplError ["intrinsic::acos"]
+
+fun cos (v:Mach.VAL list)
+    : Mach.VAL =
+    LogErr.unimplError ["intrinsic::acos"]
+
+fun exp (v:Mach.VAL list)
+    : Mach.VAL =
+    LogErr.unimplError ["intrinsic::acos"]
+
+fun floor (v:Mach.VAL list)
+    : Mach.VAL =
+    hd v
+
+fun log (v:Mach.VAL list)
+    : Mach.VAL =
+    LogErr.unimplError ["intrinsic::log"]
+
+fun max (v:Mach.VAL list)
+    : Mach.VAL =
+    LogErr.unimplError ["intrinsic::max"]
+
+fun min (v:Mach.VAL list)
+    : Mach.VAL =
+    LogErr.unimplError ["intrinsic::min"]
+
+fun pow (v:Mach.VAL list)
+    : Mach.VAL =
+    LogErr.unimplError ["intrinsic::pow"]
+
+fun random (v:Mach.VAL list)
+    : Mach.VAL =
+    LogErr.unimplError ["intrinsic::random"]
+
+fun round (v:Mach.VAL list)
+    : Mach.VAL =
+    LogErr.unimplError ["intrinsic::round"]
+
+fun sin (v:Mach.VAL list)
+    : Mach.VAL =
+    LogErr.unimplError ["intrinsic::sin"]
+
+fun sqrt (v:Mach.VAL list)
+    : Mach.VAL =
+    LogErr.unimplError ["intrinsic::sqrt"]
+
+fun tan (v:Mach.VAL list)
+    : Mach.VAL =
+    LogErr.unimplError ["intrinsic::tan"]
+
 
 (* Some helpers not specified in the wiki at the moment. Maybe get rid
  * of them eventually? *)
@@ -636,7 +731,27 @@ fun registerNatives _ =
         addFn Name.intrinsicNS "now" (fn _ => Eval.newDouble 0.0);
         addFn Name.internalNS "LocalTZA" (fn _ => Eval.newDouble 0.0);
         addFn Name.internalNS "DaylightSavingsTA" (fn _ => Eval.newDouble 0.0);
-        
+       
+        (* Math.es natives *) 
+        addFn Name.intrinsicNS "abs" abs;
+        addFn Name.intrinsicNS "acos" acos;
+        addFn Name.intrinsicNS "asin" asin;
+        addFn Name.intrinsicNS "atan" atan;
+        addFn Name.intrinsicNS "atan2" atan2;
+        addFn Name.intrinsicNS "ceil" ceil;
+        addFn Name.intrinsicNS "cos" cos;
+        addFn Name.intrinsicNS "exp" exp;
+        addFn Name.intrinsicNS "floor" floor;
+        addFn Name.intrinsicNS "log" log;
+        addFn Name.intrinsicNS "max" max;
+        addFn Name.intrinsicNS "min" min;
+        addFn Name.intrinsicNS "pow" pow;
+        addFn Name.intrinsicNS "random" random;
+        addFn Name.intrinsicNS "round" round;
+        addFn Name.intrinsicNS "sin" sin;
+        addFn Name.intrinsicNS "sqrt" sqrt;
+        addFn Name.intrinsicNS "tan" tan;
+
         addFn Name.intrinsicNS "print" print;
         addFn Name.intrinsicNS "assert" assert;
         addFn Name.intrinsicNS "typename" typename

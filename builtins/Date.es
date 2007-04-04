@@ -28,7 +28,7 @@ package
 
         /* E262-3 15.9.3: The Date Constructor. */
         public function Date(year, month, date:double=1, hours:double=0, minutes:double=0, seconds:double=0, ms:double=0) {
-            print(">> Date constructor","\n")
+
             setupNanoAge();
 
             /* FIXME: cases 0 and 1 belong in 'invoke'; the conversions are implicit; only the fall through code goes here
@@ -183,11 +183,8 @@ package
             (Date.now() - birthtime) * 1000;
 
         /* INFORMATIVE */
-        function setupNanoAge() : void {
-            print(">> setupNanoAge");
+        function setupNanoAge() : void
             this.birthtime = Date.now();
-            print("<< setupNanoAge")
-        }
 
         /* E262-3 15.9.4.3: Date.UTC */
         public static var UTC = 

@@ -1,81 +1,77 @@
 /* -*- indent-tabs-mode: nil -*- */
 
-package
-{
-    final class Math extends Object
-    {       
-        // 15.8.1 Value Properties of the Math Object
-        static const E; 
-        static const LN10;  
-        static const LN2;   
-        static const LOG2E; 
-        static const LOG10E;    
-        static const PI;    
-        static const SQRT1_2;   
-        static const SQRT2; 
+//package
+//{
 
-        // 15.8.2 Function Properties of the Math Object
-        static native function abs(x:Number):Number;
-        static native function acos(x):Number;
-        static native function asin(x):Number;
-        static native function atan(x):Number;
-        static native function atan2(x,y):Number;
-        static native function ceil(x):Number;
-        static native function cos(x):Number;
-        static native function exp(x):Number;
-        static native function floor(x):Number;
-        static native function log(x):Number;
-        static native function max(...args):Number;
-        static native function min(...args):Number;
-        static native function pow(x,y):Number;
-        static native function random():Number;
-        static native function round(x):Number;
-        static native function sin(x):Number;
-        static native function sqrt(x):Number;
-        static native function tan(x):Number;
-
-    } // class
-    
     // Math is a singleton object, not a class, but has the type "Math"
     // which suggests a private Math class that created the singleton.
 
-    var Math = new private::Math;
+    intrinsic dynamic final class Math extends Object
+    {
+        intrinsic static const E
+        intrinsic static const LN10
+        intrinsic static const LN2
+        intrinsic static const LOG2E
+        intrinsic static const LOG10E
+        intrinsic static const PI
+        intrinsic static const SQRT1_2
+        intrinsic static const SQRT2
 
-    dynamic class Math extends Object
-    {       
+        intrinsic static native function abs(x:Number):Number;
+        intrinsic static native function acos(x):Number;
+        intrinsic static native function asin(x):Number;
+        intrinsic static native function atan(x):Number;
+        intrinsic static native function atan2(x,y):Number;
+        intrinsic static native function ceil(x):Number;
+        intrinsic static native function cos(x):Number;
+        intrinsic static native function exp(x):Number;
+        intrinsic static native function floor(x):Number;
+        intrinsic static native function log(x):Number;
+        intrinsic static native function max(...args):Number;
+        intrinsic static native function min(...args):Number;
+        intrinsic static native function pow(x,y):Number;
+        intrinsic static native function random():Number;
+        intrinsic static native function round(x):Number;
+        intrinsic static native function sin(x):Number;
+        intrinsic static native function sqrt(x):Number;
+        intrinsic static native function tan(x):Number;
+
         // 15.8.1 Value Properties of the Math Object
-        const E = ECMA4::Math.E;    
-        const LN10 = ECMA4::Math.LN10;  
-        const LN2 = ECMA4::Math.LN2;    
-        const LOG2E = ECMA4::Math.LOG2E;    
-        const LOG10E = ECMA4::Math.LOG10E;  
-        const PI = ECMA4::Math.PI;  
-        const SQRT1_2 = ECMA4::Math.SQRT1_2;    
-        const SQRT2 = ECMA4::Math.SQRT2;    
+        const E = intrinsic::E;    
+        const LN10 = intrinsic::LN10;  
+        const LN2 = intrinsic::LN2;    
+        const LOG2E = intrinsic::LOG2E;    
+        const LOG10E = intrinsic::LOG10E;  
+        const PI = intrinsic::PI;  
+        const SQRT1_2 = intrinsic::SQRT1_2;    
+        const SQRT2 = intrinsic::SQRT2;    
 
         // 15.8.2 Function Properties of the Math Object
-        var abs = ECMA4::Math.abs;
-        var acos = ECMA4::Math.acos;
-        var asin = ECMA4::Math.asin;
-        var atan = ECMA4::Math.atan;
-        var atan2 = ECMA4::Math.atan2;
-        var ceil = ECMA4::Math.ceil;
-        var cos = ECMA4::Math.cos;
-        var exp = ECMA4::Math.exp;
-        var floor = ECMA4::Math.floor;
-        var log = ECMA4::Math.log;
-        var max = ECMA4::Math.max;
-        var min = ECMA4::Math.min;
-        var pow = ECMA4::Math.pow;
-        var random = ECMA4::Math.random;
-        var round = ECMA4::Math.round;
-        var sin = ECMA4::Math.sin;
-        var sqrt = ECMA4::Math.sqrt;
-        var tan = ECMA4::Math.tan;
+        var abs = intrinsic::abs;
+        var acos = intrinsic::acos;
+        var asin = intrinsic::asin;
+        var atan = intrinsic::atan;
+        var atan2 = intrinsic::atan2;
+        var ceil = intrinsic::ceil;
+        var cos = intrinsic::cos;
+        var exp = intrinsic::exp;
+        var floor = intrinsic::floor;
+        var log = intrinsic::log;
+        var max = intrinsic::max;
+        var min = intrinsic::min;
+        var pow = intrinsic::pow;
+        var random = intrinsic::random;
+        var round = intrinsic::round;
+        var sin = intrinsic::sin;
+        var sqrt = intrinsic::sqrt;
+        var tan = intrinsic::tan;
 
         // E262 specifies that length=2 for these.
-        max.length = 2;
-        min.length = 2;
+        // max.length = 2;  /* FIXME: this will cons a function, set its length and throw it away */
+        // min.length = 2;
 
     } // class
-} // package
+    var Math = new intrinsic::Math;
+
+
+//} // package

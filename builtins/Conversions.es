@@ -32,10 +32,10 @@ package
     }
         
     intrinsic function ToInteger(value) : Number {
-        value = ToNumber(value);
+        value = ToDouble(value);
         if (value !== value)
             return 0;
-        if (value === 0 || !intrinsic::isFinite(value))
+        if (value === 0 || !isFinite(value))
             return value;
         var sign:double = value < 0d ? -1d : 1d;
         return sign * Math.floor(Math.abs(value));

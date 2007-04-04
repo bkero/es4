@@ -1949,7 +1949,7 @@ and evalRefExpr (scope:Mach.SCOPE)
                 resolveOnObjAndPrototypes ob multiname
               | NONE => 
                 resolveOnScopeChain scope multiname
-              | _ => error ["ref expression on non-object value"]
+              | _ => error ["ref expression on non-object value with ",LogErr.multiname multiname]
                                                                              
     in
         case refOpt of 
