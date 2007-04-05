@@ -570,8 +570,18 @@ and newRootBuiltin (n:Ast.NAME) (m:Mach.MAGIC)
 
 
 and newBuiltin (n:Ast.NAME) (m:Mach.MAGIC option) 
-    : Mach.VAL = 
-    instantiateGlobalClass n [Mach.Object (Mach.setMagic (Mach.newObjNoTag()) m)]
+    : Mach.VAL =
+    let 
+        val { id, ... } = n
+        val s = case m of 
+                    NONE => ""
+                  | SOME m' => magicToString m'
+        val _ = pushPrefix ["builtin new ", id, "(", s, ")"]
+        val res = instantiateGlobalClass n [Mach.Object (Mach.setMagic (Mach.newObjNoTag()) m)]
+    in
+        popPrefix ();
+        res
+    end
 
 and newDouble (n:Real64.real) 
     : Mach.VAL = 
@@ -668,9 +678,7 @@ and newNativeFunction (f:Mach.NATIVE_FUNCTION) =
 and magicToString (magic:Mach.MAGIC) 
     : string =
     case magic of 
-        Mach.Double n => if Real64.== (n, (Real64.realFloor n))
-                         then Int.toString (Real64.floor n)
-                         else Real64.toString n
+        Mach.Double n => Real64.toString n
       | Mach.Decimal d => Decimal.toString d
       | Mach.Int i => Int32.toString i
       | Mach.UInt u => LargeInt.toString (Word32.toLargeInt u)
@@ -1587,8 +1595,9 @@ and performBinop (bop:Ast.BINOP)
                                     (#roundingMode mode) b)
                 else 
                     (if Mach.isDouble a orelse Mach.isDouble b
-                     then (trace ["dynamic dispatch as double op"];
-                           doubleOp (toDouble a) (toDouble b))
+                     then 
+                         (trace ["dynamic dispatch as double op"];
+                          doubleOp (toDouble a) (toDouble b))
                      else
                          let
                              fun isIntegral x = Mach.isUInt x orelse Mach.isInt x
@@ -1621,7 +1630,9 @@ and performBinop (bop:Ast.BINOP)
                     newBoolean (cmp (LargeInt.compare (la, lb)))
             in
                 if Mach.isNumeric a andalso Mach.isNumeric b
-                then dispatch mode decimalOp doubleOp intOp uintOp largeOp
+                then (if isNaN a orelse isNaN b
+                      then newBoolean false
+                      else dispatch mode decimalOp doubleOp intOp uintOp largeOp)
                 else newBoolean (cmp (String.compare ((toString a), 
                                                       (toString b))))
             end
@@ -1671,6 +1682,36 @@ and performBinop (bop:Ast.BINOP)
             if Mach.isUInt a
             then newUInt x
             else newInt (u2i x)
+
+        val binOpName = 
+            case bop of 
+                Ast.Plus _ => "+"
+              | Ast.Minus _ => "-"
+              | Ast.Times _ => "*"
+              | Ast.Divide _ => "/"
+              | Ast.Remainder _ => "%"
+              | Ast.LeftShift => "<<"
+              | Ast.RightShift => ">>"
+              | Ast.RightShiftUnsigned => ">>>"
+              | Ast.BitwiseAnd => "&"
+              | Ast.BitwiseOr => "|"
+              | Ast.BitwiseXor => "^"
+              | Ast.LogicalAnd => "&&"
+              | Ast.LogicalOr => "||"
+              | Ast.InstanceOf => "instanceof"
+              | Ast.In => "in"
+              | Ast.Equals _ => "=="
+              | Ast.NotEquals _ => "!="
+              | Ast.StrictEquals _ => "==="
+              | Ast.StrictNotEquals _ => "!=="
+              | Ast.Less _ => "<"
+              | Ast.LessOrEqual _ => "<="
+              | Ast.Greater _ => ">"
+              | Ast.GreaterOrEqual _ => ">="
+              | Ast.Comma => ","
+                
+
+        val _ = trace ["binop ", toString a, " ", binOpName, " ", toString b];
                           
     in
         case bop of
@@ -1899,13 +1940,12 @@ and evalCondExpr (scope:Mach.SCOPE)
                  (els:Ast.EXPR) 
     : Mach.VAL = 
     let 
-        val _ = trace ["evalCondExpr"]
         val v = evalExpr scope cond
         val b = toBoolean v
     in
         if b 
-        then (trace ["trinary cond returned TRUE"]; evalExpr scope thn)
-        else (trace ["trinary cond returned FALSE"]; evalExpr scope els)
+        then evalExpr scope thn
+        else evalExpr scope els
     end
     
 
