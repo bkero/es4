@@ -336,7 +336,7 @@ fun allocFixtures (scope:Mach.SCOPE)
         end
 
     
-and  allocObjFixtures (scope:Mach.SCOPE) 
+and allocObjFixtures (scope:Mach.SCOPE) 
                      (obj:Mach.OBJ) 
                      (f:Ast.FIXTURES) 
     : unit = 

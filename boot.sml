@@ -78,6 +78,9 @@ fun boot _ =
         val _ = Eval.resetGlobal globalObj
         val globalScope = Eval.getGlobalScope ()
 
+        (* Allocate any standard anonymous user namespaces like magic and meta. *)
+        val _ = Eval.allocScopeFixtures (Eval.getGlobalScope()) (!Defn.topFixtures)
+
         (* 
          * We have to do a small bit of delicate work here because the global object
          * needs to get installed as the root scope *inbetween* the moment of its
@@ -94,45 +97,93 @@ fun boot _ =
           =
           let 
               val fullName = Name.public name
+
               val _ = trace ["loading fundamental ", name, " class from builtin/", name ,".es"];
               val prog = Defn.defProgram (Parser.parseFile ("builtins/" ^ name ^ ".es"))
+
               val _ = trace ["fetching ", LogErr.name fullName, " class definition"];
               val fix = Defn.getFixture (valOf (#fixtures prog)) (Ast.PropName fullName)
               val cls = case fix of 
                             Ast.ClassFixture cls => cls
                           | _ => error [LogErr.name fullName, " did not resolve to a class fixture"]
+
               val _ = trace ["allocating class ", LogErr.name fullName];
               val closure = Eval.newClsClosure globalScope cls
               val obj = Mach.newObj (Mach.ClassTag Name.public_Class) Mach.Null (SOME (Mach.Class closure))
+              val classScope = Eval.extendScope globalScope obj false
+
+              val _ = trace ["allocating class fixtures for ", LogErr.name fullName];
+              val Ast.Cls { classFixtures, ... } = cls
+              val _ = Eval.allocObjFixtures classScope obj classFixtures
+
               val _ = trace ["binding class ", LogErr.name fullName];
-              val _ = Eval.setValue globalObj fullName (Mach.Object obj)
+              val Mach.Obj { props, ... } = globalObj
+              val _ = Mach.addProp props fullName
+                                   { ty = Name.typename Name.public_Class,
+                                     state = Mach.ValProp (Mach.Object obj),
+                                     attrs = { dontDelete = true,
+                                               dontEnum = false,
+                                               readOnly = true,
+                                               isFixed = true } }
+              (* 
+               * We return a "residual" program for each root class, to evaluate after 
+               * all other classes load, typically because the packages & block of the 
+               * root prog involves init statements that hit classes like "string" 
+               * or "boolean" that are not yet defined. 
+               *)
+              val residualProg = { packages = (#packages prog),
+                                   fixtures = SOME [],
+                                   block = (#block prog) }
           in
-              (cls, closure, obj)
+              (cls, closure, obj, residualProg)
           end           
 
-        val nonBootTopFixtures = !Defn.topFixtures
-        val (objClass, objClassClosure, objClassObj) = loadRootClass "Object"
+        fun completeClassFixtures classObj = 
+            let 
+              (* 
+               * Now the weird / feedbacky part: we go find the class "Class" and allocate
+               * its instance fixtures on the object we just built. For non-root classes
+               * this happens automatically because they're *instances* of class "Class",
+               * but the object we build only *says* it's an instance of class "Class"; it
+               * hasn't actually run through any sort of normal construction protocol for
+               * class "Class".
+               *
+               * Note that we do this *after* we bound the object to a position in the 
+               * global object, because we want this tying-the-knot trick to work when
+               * we're defining class "Class" itself, and we won't be able to find it 
+               * by name until just now.
+               *)
+                val classScope = Eval.extendScope globalScope classObj false
+                val classClass = Eval.findVal globalScope (Eval.multinameOf Name.public_Class)
+                val Ast.Cls { instanceFixtures, ... } = (#cls (Mach.needClass classClass))
+            in
+                Eval.allocObjFixtures classScope classObj instanceFixtures
+            end
 
+        val (objClass, objClassClosure, objClassObj, residualObjectProg) = loadRootClass "Object"
         val _ = trace ["running Object constructor on global object"];
         val Ast.Cls { instanceFixtures, ...} = objClass
         val objClassScope = Eval.extendScope globalScope objClassObj false
         val _ = Eval.allocObjFixtures objClassScope globalObj instanceFixtures
         val _ = Eval.initializeAndConstruct objClassClosure objClassObj objClassScope [] globalObj
 
-        val _ = loadRootClass "Namespace"
-        val _ = loadRootClass "Class"
-        val _ = loadRootClass "Function"
+        val (_, _, classClassObj, residualClassProg) = loadRootClass "Class"
+        val (_, _, functionClassObj, residualFunctionProg) = loadRootClass "Function"
 
-        val _ = Eval.allocScopeFixtures (Eval.getGlobalScope()) nonBootTopFixtures
+        val _ = completeClassFixtures objClassObj
+        val _ = completeClassFixtures classClassObj
+        val _ = completeClassFixtures functionClassObj
     in
         Native.registerNatives ();
         loadFiles 
             [
+             "builtins/Namespace.es",
              "builtins/Magic.es",
              "builtins/Conversions.es",
 
              "builtins/String.es",
              "builtins/string_primitive.es",
+
              
              "builtins/Boolean.es",
              "builtins/boolean_primitive.es",
@@ -160,6 +211,10 @@ fun boot _ =
          "builtins/RegExpEvaluator.es",
          "builtins/RegExp.es",
          *)
+        trace ["running residual programs"];
+        Eval.evalProgram residualObjectProg;
+        Eval.evalProgram residualClassProg;
+        Eval.evalProgram residualFunctionProg;
         describeGlobal ()
     end
 end

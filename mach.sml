@@ -463,6 +463,12 @@ fun needMagic (v:VAL)
         Object (Obj ob) => valOf (!(#magic ob))
       | _ => error ["require object with magic"]
 
+fun needClass (v:VAL) 
+    : (CLS_CLOSURE) = 
+    case needMagic v of 
+        Class cls => cls
+      | _ => error ["require class object"]
+
 fun fitsInUInt (x:LargeInt.int) 
     : bool = 
     let
