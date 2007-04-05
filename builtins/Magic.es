@@ -23,8 +23,10 @@
  * magically know about "magic" when the library files are being
  * compiled.
  */
-package
+//package
 {
+    namespace magic
+
     /* --------------------------------------------------------------
 
        CLASS INSTANTIATION.  */

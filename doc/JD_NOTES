@@ -31,7 +31,7 @@ import r.s.*
 LimitedNamespace ("A", Public "p.q")
 Public "r.s"
 
-When name resolution encounters a limited namespace, it check that the
+When name resolution encounters a limited namespace, it checks that the
 sought after identifier matches the namespace govenor. It is only necessary
 to search for LimitedNamespaces in LexicalRefs, but doing so for all
 references is simpler and compatible.
@@ -89,8 +89,8 @@ is determined by the definer according to the following rules:
 * Otherwise the path is assumed to begin with a lexical reference to
   an unknown global name followed by one or more object references
 
-The definer builds a table of PATHs from the import directives and 
-package definitions it has seen. 
+The definer builds a table of PATHs from the import directives (but not
+the package definitions) it has seen. 
 
 import p.q.* => Path (["p","q"])
 import r.s.A => Path (["r","s"])
@@ -104,8 +104,8 @@ p.q.x.f
     * f is referenced through p.q::x
 
 r.s.A
-    parser  => (Path ["r","s","t"])  
-    definer => (ObjRef (ObjRef (LexRef "r"), "s"), "t")   
+    parser  => (Path ["r","s","A"])
+    definer => (ObjRef (ObjRef (LexRef "r"), "s"), "A")
     
     * r is a fixture, so path is an object path
 

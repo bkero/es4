@@ -65,8 +65,8 @@ val defaultNumericMode : Ast.NUMERIC_MODE =
 val (topFixtures:Ast.FIXTURES ref) = ref []
 
 fun resetTopFixtures _ = 
-    topFixtures := [ (Ast.PropName (Name.public "meta"), Ast.NamespaceFixture Name.metaNS),
-                     (Ast.PropName (Name.public "magic"), Ast.NamespaceFixture Name.magicNS)]
+    topFixtures := [ (Ast.PropName (Name.public "meta"), 
+                      Ast.NamespaceFixture Name.metaNS) ]
 
 fun hasFixture (b:Ast.FIXTURES) 
                (n:Ast.FIXTURE_NAME) 
@@ -274,12 +274,12 @@ fun extendEnvironment (env:ENV)
           openNamespaces = openNamespaces, 
           numericMode = numericMode,
           labels = labels,
-          imports = imports,
+          imports = [],
           className = className,
           packageName = packageName,
           defaultNamespace = defaultNamespace } :: env
 
-fun updateEnvironment (ctx::ex) (fxtrs:Ast.FIXTURES)
+fun updateFixtures (ctx::ex) (fxtrs:Ast.FIXTURES)
     : ENV =
     let
     in
@@ -293,7 +293,7 @@ fun updateEnvironment (ctx::ex) (fxtrs:Ast.FIXTURES)
           packageName = (#packageName ctx),
           defaultNamespace = (#defaultNamespace ctx) } :: ex
     end
-  | updateEnvironment ([]) (fxtrs:Ast.FIXTURES) 
+  | updateFixtures ([]) (fxtrs:Ast.FIXTURES) 
     : ENV =
         LogErr.defnError ["cannot update an empty environment"]
 
@@ -316,6 +316,7 @@ fun updateTempOffset (ctx::ex) (tempOffset:int)
         LogErr.defnError ["cannot update an empty environment"]
 
 fun dumpLabels labels = trace ["labels ", concat (map (fn (id,_) => id^" ") labels)]
+fun dumpPath path = trace ["path ", concat (map (fn (id) => id^" ") path)]
 
 (*
     Add a label to the current environment context. Report an error
@@ -602,6 +603,19 @@ and analyzeClass (env:ENV)
             
             val (fxtrs,inits) = ListPair.unzip(map initsFromStmt instanceStmts)
             val instanceInits = (List.concat fxtrs, List.concat inits)
+
+
+            (*
+                Add static prototype fixture
+            *)
+
+            val pf = Ast.ValFixture { ty=Ast.TypeName (Ast.QualifiedIdentifier 
+                                                           {qual=Ast.LiteralExpr (Ast.LiteralNamespace ns),
+                                                            ident=ident}),
+                                     readOnly=true }
+
+            val protoPropFixture = Ast.PropName {ns=Ast.Public "",id="prototype"}
+            val classFixtures = (protoPropFixture, pf)::classFixtures
 
         in
             Ast.Cls {name=name,
@@ -1359,25 +1373,94 @@ and defLiteral (env:ENV)
     end
 
 (*
-*)    
+    resolvePackageQualifier
+
+    - for each scope
+      - if there is a fixture that matches the head of the path, 
+            return NONE and the path
+      - else if there is an import that matches a prefix of the path, 
+            return the prefix and the rest of the path
+*)
 
 and resolvePath (env:ENV) (path:Ast.IDENT list)
     : Ast.EXPR =
     let
-        val ident = Ast.Identifier {ident=(hd path),openNamespaces=[]}
-    in 
-        if multinameHasFixture env (identExprToMultiname env ident)
-            then resolveObjectPath env path NONE
-            else 
-            let
-                val imports = (#imports (hd env))
-                val (pkg,pth) = resolvePackagePath imports path
-            in case (pkg,pth) of
-                     (SOME pk,[]) => Ast.LiteralExpr (Ast.LiteralNamespace (Ast.Public pk))
-                   | (SOME pk,_) => resolveObjectPath env pth NONE  (* FIXME: qualify with package *)
-                   | (NONE,_) => resolveObjectPath env path NONE
-            end
+        val _ = trace [">> resolve path"]
+        val (pkg,pth) = matchImport env path
+        val _ = trace ["xx resolve path with "]
+
+    in case (pkg,pth) of
+             (SOME pk,[]) => Ast.LiteralExpr (Ast.LiteralNamespace (Ast.Public pk))
+           | (SOME pk,_) => resolveObjectPath env pth NONE  (* FIXME: qualify with package *)
+           | (NONE,_) => resolveObjectPath env path NONE
     end
+
+(*
+    return the package qualifier expression and the remaining path
+*)
+
+and matchImport (env:ENV) 
+                (path:Ast.IDENT list)
+    : Ast.IDENT option * Ast.IDENT list =
+    let
+        val _ = (trace [">> matchImport"]; dumpPath path)
+        fun envHeadHasFixture ([],n) = false
+          | envHeadHasFixture ((env:ENV),n) = hasFixture (#fixtures (List.hd env)) (Ast.PropName n)
+        fun getEnvParent _ = NONE (* one scope at a time *)
+        val _ = trace ["xx matchImport"]
+    in case env of
+        [] => (trace ["<< matchImport none found"];(NONE,path))  (* none found *)
+      | _ =>
+        let
+            val mname = identExprToMultiname env (Ast.Identifier {ident=(hd path),openNamespaces=[]})
+        in
+            case Multiname.resolve mname env envHeadHasFixture getEnvParent of
+                NONE => 
+                    let
+                        val _ = trace ["xx matchImport looking for import"]
+                        val { imports, ... } = hd env
+                    in case pathInImports imports path of
+                        (NONE,_) => matchImport (tl env) path
+                      | (SOME pkg,rest) => (SOME pkg,rest)
+                    end
+              | SOME (({fixtures, ...}::_), n) => 
+                    (trace ["<< matchImport fixture found ",hd path]; (NONE,path))   (* found fixture, imports trumped *)
+              | _ => LogErr.defnError ["fixture lookup error ", LogErr.multiname mname]
+        end
+    end
+
+and pathInImports (imports: Ast.IDENT list list) (path:Ast.IDENT list)
+    : Ast.IDENT option * Ast.IDENT list =
+    let
+        val _ = trace [">> pathInImports"]
+
+        fun resolvePackage (package:Ast.IDENT list) (path:Ast.IDENT list) (ident:Ast.IDENT)
+            : Ast.IDENT option * Ast.IDENT list =
+            case (package,path) of
+                ([],_) => (trace [">> resolvePackage"];
+                           (SOME ident,path))
+          | (pkgid::pkg,pthid::pth) => 
+            let
+                val _ = trace [">> resolvePackage"]
+                val dot = if ident="" then "" else "."
+            in
+                if pkgid = pthid 
+                then resolvePackage pkg pth (ident^dot^pkgid)
+                else (NONE,path)
+            end
+          | (_,[]) => error ["resolving package portion of empty path"];
+
+    in case (imports,path) of
+        ([],_) => (trace ["<< pathInImports no match"];(NONE,path))  (* no match *)
+      | (pkg::pkgs,_) => 
+        let
+            val (ident,path) = resolvePackage pkg path ""
+        in case (ident,pkgs) of
+            (NONE,_) => pathInImports pkgs path (* no match yet, try again *)
+          | (SOME _,_) => (trace ["<< pathInImports match"];(ident,path)) (* match, return the remainder of the path *)
+        end
+    end
+
 
 and resolveObjectPath (env:ENV) (path:Ast.IDENT list) (expr:Ast.EXPR option)
     : Ast.EXPR =
@@ -1400,39 +1483,6 @@ and resolveObjectPath (env:ENV) (path:Ast.IDENT list) (expr:Ast.EXPR option)
             in
                 expr
             end
-    end
-
-(*
-    return the package qualifier expression and the remaining path
-*)
-
-and resolvePackagePath (imports: Ast.IDENT list list) (path:Ast.IDENT list)
-    : Ast.IDENT option * Ast.IDENT list =
-    let
-
-        fun resolvePackage (package:Ast.IDENT list) (path:Ast.IDENT list) (ident:Ast.IDENT)
-            : Ast.IDENT option * Ast.IDENT list =
-            case (package,path) of
-                ([],_) => (SOME ident,path)
-          | (pkgid::pkg,pthid::pth) => 
-            let
-                val dot = if ident="" then "" else "."
-            in
-                if pkgid = pthid 
-                then resolvePackage pkg pth (ident^dot^pkgid)
-                else (NONE,path)
-            end
-          | (_,[]) => error ["resolving package portion of empty path"];
-
-    in case (imports,path) of
-        ([],_) => (NONE,path)  (* no match *)
-      | (pkg::pkgs,_) => 
-        let
-            val (ident,path) = resolvePackage pkg path ""
-        in case (ident,pkgs) of
-            (NONE,_) => resolvePackagePath pkgs path (* no match yet, try again *)
-          | (SOME _,_) => (ident,path) (* match, return the remainder of the path *)
-        end
     end
 
 
@@ -1648,7 +1698,7 @@ and defStmt (env:ENV)
                 let
                     val newObj =  defExpr env obj
                     val (uf1,hf1,i1) = defVarDefnOpt defn
-                    val env = updateEnvironment env uf1
+                    val env = updateFixtures env uf1
                     val (newBody,hoisted) = defStmt env [] body
                     val (newInit,_) = defStmts env init
                 in
@@ -1692,7 +1742,7 @@ and defStmt (env:ENV)
                         SOME vd => defDefn env (Ast.VariableDefn vd)
                       | NONE => ([],[],[])
                 val (uf,hf,_) = defVarDefnOpt defn
-                val env' = updateEnvironment env (uf@hf)
+                val env' = updateFixtures env (uf@hf)
                 val (newInit,_) = defStmts env' init
                 val newCond = defExpr env' cond
                 val newUpdate = defExpr env' update
@@ -1976,7 +2026,7 @@ and defStmt (env:ENV)
             
           | Ast.Dxns { expr } => 
             (Ast.Dxns { expr = defExpr env expr },[])
-    end            
+    end
 
 and defStmts (env) (stmts:Ast.STMT list)
     : (Ast.STMT list * Ast.FIXTURES) = 
@@ -1988,7 +2038,7 @@ and defStmts (env) (stmts:Ast.STMT list)
                 (* Class definitions are embedded in the ClassBlock so we
                    need to update the environment in that case *)
 
-                val env' = updateEnvironment env f1
+                val env' = updateFixtures env f1
                 val (s2,f2) = defStmts env' stmts
             in
                 (s1::s2,f1@f2)
@@ -2163,7 +2213,7 @@ and defDefns (env:ENV)
 
                val (unhoisted',hoisted',inits') = defDefn env d
                val temp = case d of Ast.ClassDefn _ => hoisted' | _ => []
-                val env'  = updateEnvironment env (unhoisted'@temp) 
+                val env'  = updateFixtures env (unhoisted'@temp) 
            (* add the new unhoisted and temporarily, hoisted class fxtrs to the current env *)
            in
                defDefns env' 
@@ -2195,7 +2245,7 @@ and defBlock (env:ENV)
         val _ = LogErr.setPos pos
         val env : ENV = defPragmas env pragmas
         val (unhoisted_defn_fxtrs,hoisted_defn_fxtrs,inits) = defDefns env [] [] [] defns
-        val env = updateEnvironment env (unhoisted_defn_fxtrs@hoisted_defn_fxtrs) (* so stmts can see them *)
+        val env = updateFixtures env (unhoisted_defn_fxtrs@hoisted_defn_fxtrs) (* so stmts can see them *)
         val (body,hoisted_body_fxtrs) = defStmts env body
         val hoisted = hoisted_defn_fxtrs@hoisted_body_fxtrs
     in
