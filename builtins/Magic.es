@@ -63,8 +63,20 @@ package
        o, it does nothing. */
     magic native function setPropertyIsDontEnum(o : Object!, p : string, f : Boolean) : void;
 
-    /* Copy the magic value slot from src to dst. */
-    magic native function copyValue(src: Object!, dst:Object!) : void;
+
+    /*
+     * Given a target object and a value, select a magic
+     * representation for the value, of the type implied by the
+     * function name, and set the target's magic slot to that
+     * representation.
+     */
+
+    magic native function bindInt(target:Object!, value:*) : void;
+    magic native function bindUInt(target:Object!, value:*) : void;
+    magic native function bindDouble(target:Object!, value:*) : void;
+    magic native function bindDecimal(target:Object!, value:*) : void;
+    magic native function bindBoolean(target:Object!, value:*) : void;
+    magic native function bindString(target:Object!, value:*) : void;
 
 
     /* ----------------------------------------------------------------
@@ -120,12 +132,5 @@ package
     /* Set the byte at index idx to val, which will be truncated to
        the low 8 bits before being stored. */
     magic native function setByteArrayByte(ba : ByteArray!, idx : uint, val : uint) : void;
-
-
-    magic native function toInt(value) : int;
-    magic native function toUint(value) : uint;
-    magic native function toDouble(value) : double;
-    magic native function toDecimal(value) : decimal;
-
 }
 

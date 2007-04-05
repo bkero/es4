@@ -17,6 +17,7 @@ fun findTraceOption (tname:string)
       | "decimal" => SOME (Decimal.doTrace)
       | "native" => SOME (Native.doTrace)
       | "boot" => SOME (Boot.doTrace)
+      | "stack" => SOME (Eval.traceStack)
       | _ => NONE
 
 exception quitException

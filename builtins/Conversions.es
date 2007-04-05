@@ -41,24 +41,17 @@ package
         return sign * Math.floor(Math.abs(value));
     }
 
-    // FIXME: these can probably be decomposed into smaller steps with
-    // less magic. For now we just want it to start running.
-    //
-    // NB. be careful to check if the parameter matches the desired
-    // type already and bottom out, since the converters call back
-    // into the constructors, which call back *here*.
+    intrinsic function ToInt(v) : int
+        int(value)
 
-    intrinsic function ToInt(value) : int
-	(value is int) ? value : magic::toInt(value);
+    intrinsic function ToUint(x) : uint 
+        uint(x);
 
-    intrinsic function ToUint(value) : uint 
-	(value is uint) ? value : magic::toUint(value);
+    intrinsic function ToDouble(x) : double
+        double(x);
 
-    intrinsic function ToDouble(value) : double
-	(value is double) ? value : magic::toDouble(value);
-
-    intrinsic function ToDecimal(value) : decimal
-	(value is decimal) ? value : magic::toDecimal(value);
+    intrinsic function ToDecimal(x) : decimal
+        decimal(x);
 
     intrinsic function ToString(value) : string {
         if (value is string)

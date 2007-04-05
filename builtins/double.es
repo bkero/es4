@@ -30,16 +30,16 @@ package
 
         /* E262-4 draft */
         meta static function convert(x : Numeric)
-            x is double ? x : ToDouble(x);
+            double(x);
 
         /* E262-3 15.7.1.1: The double Constructor Called as a Function */
-        meta static function invoke(value)
-            value === undefined ? 0d : ToDouble(value);
+        meta static function invoke(x)
+            x is double ? x : new double(x);
 
         /* E262-3 15.7.2.1: The double constructor */
-        function double(value) : super(value)
+        function double(x) : super(x)
         {
-            // No need to magic::copyValue a second time, 
+            // No need to magic::bindDouble a second time, 
             // since our super(value) call did it for us.
         }
 

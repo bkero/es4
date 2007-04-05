@@ -26,15 +26,15 @@ package
 
         /* E262-4 draft */
         meta static function convert(x : Numeric)
-            x is decimal ? x : ToDecimal(x);
+            decimal(x);
 
         /* E262-3 15.7.1.1: The decimal Constructor Called as a Function */
-        meta static function invoke(value)
-            value === undefined ? 0m : ToDecimal(value);
+        meta static function invoke(x)
+            x is decimal ? x : new decimal(x);
 
         /* E262-3 15.7.2.1: The decimal constructor */
-        function decimal(value)
-            magic::copyValue(ToDecimal(value), this);
+        function decimal(x)
+            magic::bindDecimal(this, x);
 
         /* E262-3 15.7.4.2: decimal.prototype.toString */
         prototype function toString(this:decimal, radix)

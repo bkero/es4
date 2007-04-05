@@ -22,15 +22,15 @@ package
 
         /* E262-4 draft */
         meta static function convert(x : Numeric)
-            x is uint ? x : ToUint(x);
+            uint(x);
 
         /* E262-4 draft: The uint Constructor Called as a Function */
-        meta static function invoke(value)
-            value === undefined ? 0u : ToUint(value);
+        meta static function invoke(x)
+            x is uint ? x : new uint(x);
 
         /* E262-4 draft: The uint constructor */
-        function uint(value)
-            magic::copyValue(ToUint(value), this);
+        function uint(x)
+            magic::bindUInt(this, x);
 
         /* E262-4 draft: uint.prototype.toString */
         prototype function toString(this:uint, radix)

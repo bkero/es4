@@ -3,12 +3,33 @@ structure Eval = struct
 
 (* Local tracing machinery *)
 
-val (tracePrefix:string list list ref) = ref []
-fun pushPrefix ss = tracePrefix := (ss) :: (!tracePrefix)
-fun popPrefix _ = tracePrefix := tl (!tracePrefix)
+
+val traceStack = ref false
+val (stack:string list list ref) = ref []
+
+fun join sep ss = 
+    case ss of 
+        [] => ""
+      | [x] => x
+      | x :: xs => x ^ sep ^ (join sep xs)
+
+fun stackString _ =
+    "[" ^ (join " | " (map String.concat (List.rev (!stack)))) ^ "]"
+
+fun push ss = 
+    (stack := (ss) :: (!stack);     
+     if !traceStack
+     then LogErr.log ("[stack] " :: [stackString ()])
+     else ())
+
+fun pop _ = 
+    (stack := tl (!stack);
+     if !traceStack
+     then LogErr.log ("[stack] " :: [stackString()])
+     else ())
 
 val doTrace = ref false
-fun trace ss = if (!doTrace) then LogErr.log ("[eval] " :: ((List.concat (List.rev (!tracePrefix))) @ ss)) else ()
+fun trace ss = if (!doTrace) then LogErr.log ("[eval] " :: ss) else ()
 fun error ss = LogErr.evalError ss
 
 (* Exceptions for object-language control transfer. *)
@@ -568,20 +589,9 @@ and newRootBuiltin (n:Ast.NAME) (m:Mach.MAGIC)
         Mach.Object (Mach.setMagic obj (SOME m))
     end
 
-
 and newBuiltin (n:Ast.NAME) (m:Mach.MAGIC option) 
     : Mach.VAL =
-    let 
-        val { id, ... } = n
-        val s = case m of 
-                    NONE => ""
-                  | SOME m' => magicToString m'
-        val _ = pushPrefix ["builtin new ", id, "(", s, ")"]
-        val res = instantiateGlobalClass n [Mach.Object (Mach.setMagic (Mach.newObjNoTag()) m)]
-    in
-        popPrefix ();
-        res
-    end
+    instantiateGlobalClass n [Mach.Object (Mach.setMagic (Mach.newObjNoTag()) m)]
 
 and newDouble (n:Real64.real) 
     : Mach.VAL = 
@@ -668,10 +678,16 @@ and newNativeFunction (f:Mach.NATIVE_FUNCTION) =
     newRootBuiltin Name.public_Function (Mach.NativeFunction f)
 
 
-
-(* 
- * Arithmetic operations.
- *)
+(* An approximation of an invocation argument list, for debugging. *)
+and callApprox (n:Ast.NAME option) (args:Mach.VAL list) 
+    : string = 
+    let
+        val n = case n of 
+                    NONE => "?"
+                  | SOME { id, ... } => id
+    in
+        n ^ "(" ^ (join ", " (map toString args)) ^ ")"
+    end
 
 (* FIXME: this is not the correct toString *)
 
@@ -723,6 +739,10 @@ and toBoolean (v:Mach.VAL) : bool =
         (case !(#magic ob) of 
              SOME (Mach.Boolean b) => b
            | _ => true)
+
+(* 
+ * Arithmetic operations.
+ *)
 
 and toNumeric (v:Mach.VAL) 
     : Mach.VAL =          
@@ -1073,7 +1093,14 @@ and evalExpr (scope:Mach.SCOPE)
             case func of 
                 Ast.LexicalRef _ => evalCallMethod scope func args
               | Ast.ObjectRef _ => evalCallMethod scope func args
-              | _ => evalCallExpr NONE (needObj (evalExpr scope func)) args
+              | _ =>                 
+                let 
+                    val _ = push [callApprox NONE args]
+                    val v = evalCallExpr NONE (needObj (evalExpr scope func)) args
+                in
+                    pop ();
+                    v
+                end
         end
 
       | Ast.NewExpr { obj, actuals } => 
@@ -1264,15 +1291,14 @@ and evalCallMethod (scope:Mach.SCOPE)
          * wrapper object. 
          *)
         val (obj, name) = evalRefExpr scope func true
-        val { id, ... } = name
         val _ = trace [">>> call method: ", LogErr.name name]
-        val _ = pushPrefix ["[call ", id, "] " ]
+        val _ = push [callApprox (SOME name) args]
         val Mach.Obj { props, ... } = obj
         val res = case (#state (Mach.getProp props name)) of
                       Mach.NativeFunctionProp nf => nf args
                     | Mach.MethodProp f => invokeFuncClosure obj f args
                     | _ => evalCallExpr (SOME obj) (needObj (getValue (obj, name))) args
-        val _ = popPrefix ()
+        val _ = pop ()
         val _ = trace ["<<< call method: ", LogErr.name name]
     in
         res
@@ -1872,7 +1898,17 @@ and evalBinaryTypeOp (scope:Mach.SCOPE)
                    | "uint" => newBoolean (Mach.isUInt v)
                    | "string" => newBoolean (Mach.isString v)
                    | "boolean" => newBoolean (Mach.isBoolean v)
-                   | _ => error ["operator 'is' on unknown type name: ", ident])
+                   | n => 
+                     (case v of 
+                          Mach.Undef => newBoolean false
+                        | Mach.Null => newBoolean true
+                        | Mach.Object (Mach.Obj { tag, ... }) => 
+                          (case tag of 
+                               Mach.ObjectTag _ => newBoolean (n = "Object")
+                             | Mach.ArrayTag _ => newBoolean (n = "Array")
+                             | Mach.FunctionTag _ => newBoolean (n = "Function")
+                             | Mach.ClassTag {id, ...} => newBoolean (n = id)
+                             | Mach.NoTag => newBoolean false)))
               | _ => error ["operator 'is' on unknown type expression"]
         end
         
@@ -2447,7 +2483,7 @@ and evalInitsMaybePrototype (scope:Mach.SCOPE)
                 val id = case n of 
                              Ast.PropName { id, ... } => id
                            | Ast.TempName t => ("#" ^ Int.toString t)
-                val _ = pushPrefix ["[init ", id, "] "]
+                val _ = push ["init ", id]
                 val v = evalExpr scope e
             in
                 case n of 
@@ -2459,12 +2495,10 @@ and evalInitsMaybePrototype (scope:Mach.SCOPE)
                   | Ast.TempName tn => 
                     (trace ["evalInit assigning to temp ", (Int.toString tn)];
                      Mach.defTemp temps tn v);
-                popPrefix ()
+                pop ()
             end
     in 
-        pushPrefix ["[inits] "];
-        List.app evalInit inits;
-        popPrefix ()
+        List.app evalInit inits
     end
 
 (*
@@ -2557,8 +2591,7 @@ and initializeAndConstruct (classClosure:Mach.CLS_CLOSURE)
                     NONE => initializeAndConstructSuper []
                   | SOME (Ast.Ctor { settings, superArgs, func }) => 
                     let 
-                        val { id, ... } = name
-                        val _ = pushPrefix ["[ctor ", id, "] " ]                                
+                        val _ = push ["ctor ", callApprox (SOME name) args]
                         val Ast.Func { block, param=(paramFixtures,paramInits), ... } = func
                         val (varObj:Mach.OBJ) = Mach.newObjNoTag ()
                         val (varScope:Mach.SCOPE) = extendScope classScope varObj false
@@ -2579,7 +2612,7 @@ and initializeAndConstruct (classClosure:Mach.CLS_CLOSURE)
                         trace ["entering constructor for ", LogErr.name name];
                         evalBlock ctorScope block
                         handle ReturnException v => v;
-                        popPrefix ();
+                        pop ();
                         ()
                     end
             end
@@ -2591,8 +2624,7 @@ and constructClassInstance (classObj:Mach.OBJ)
     : Mach.VAL =
     let
         val {cls = Ast.Cls { name, instanceFixtures, ...}, env, ...} = classClosure
-        val {id, ...} = name
-        val _ = pushPrefix ["[new ", id, "] " ]
+        val _ = push ["new ", callApprox (SOME name) args]
         val (tag:Mach.VAL_TAG) = Mach.ClassTag name
         val (proto:Mach.VAL) = if hasOwnValue classObj Name.public_prototype
                                then getValue (classObj, Name.public_prototype)
@@ -2608,7 +2640,7 @@ and constructClassInstance (classObj:Mach.OBJ)
         trace ["entering most derived constructor for ", LogErr.name name];
         initializeAndConstruct classClosure classObj classScope args instanceObj;
         trace ["finished constructing new ", LogErr.name name];
-        popPrefix ();
+        pop ();
         Mach.Object instanceObj
     end
 

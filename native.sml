@@ -9,18 +9,23 @@ val doTrace = ref false
 fun trace ss = if (!doTrace) then LogErr.log ("[native] " :: ss) else ()
 fun error ss = LogErr.hostError ss
 
+fun rawNth (vals:Mach.VAL list)
+           (n:int) 
+    : Mach.VAL =
+    if n >= length vals
+    then error ["trying to fetch arg #",
+                (Int.toString n), 
+                " from arg list of length ",
+                (Int.toString (length vals))]
+    else 
+        List.nth (vals, n)
+
+
 fun nthAsA (f:Mach.VAL -> 'a) 
            (vals:Mach.VAL list) 
            (n:int) 
     : 'a = 
-    if n >= length vals
-    then error ["trying to fetch arg #",
-                           (Int.toString n), 
-                           " from arg list of length ",
-                           (Int.toString (length vals))]
-    else 
-        f (List.nth (vals, n))
-
+    f (rawNth vals n)
 
 fun nthAsObj (vals:Mach.VAL list) 
              (n:int) 
@@ -271,21 +276,57 @@ fun setPropertyIsDontEnum (vals:Mach.VAL list)
         Mach.Undef
     end
 
-
-(*
- * Copy the magic value slot from src to dst.
- * 
- *  magic native function copyValue(src: Object!, dst:Object!) : void;
- *)
-fun copyValue (vals:Mach.VAL list) 
+fun convertAndBindMagic (vals:Mach.VAL list) 
+                        (cvt:(Mach.VAL -> 'a))
+                        (mag:('a -> Mach.MAGIC)) 
     : Mach.VAL = 
-    let 
-        val Mach.Obj src = nthAsObj vals 0
-        val Mach.Obj dst = nthAsObj vals 1
+    let
+        val ob = nthAsObj vals 0
+        val v = rawNth vals 1
+        val p = cvt v
+        val m = mag p
     in
-        (#magic dst) := !(#magic src);
+        Mach.setMagic ob (SOME m);
         Mach.Undef
     end
+
+(*
+ * Given a target object and a value, select a magic representation for 
+ * the value, of the type implied by the function name, and set the
+ * target's magic slot to that representation.
+ *
+ * magic native function bindInt(target : Object!, value : * );
+ * magic native function bindUInt(target : Object!, value : * );
+ * magic native function bindBoolean(target : Object!, value : * );
+ * magic native function bindDouble(target : Object!, value : * );
+ * magic native function bindDecimal(target : Object!, value : * );
+ * magic native function bindString(target : Object!, value : * );
+ *)
+fun bindUInt (vals:Mach.VAL list) 
+    : Mach.VAL = 
+    convertAndBindMagic vals (Eval.toUInt32) (Mach.UInt)
+
+fun bindInt (vals:Mach.VAL list) 
+    : Mach.VAL = 
+    convertAndBindMagic vals (Eval.toInt32) (Mach.Int)
+
+fun bindBoolean (vals:Mach.VAL list) 
+    : Mach.VAL = 
+    convertAndBindMagic vals (Eval.toBoolean) (Mach.Boolean)
+
+fun bindDouble (vals:Mach.VAL list) 
+    : Mach.VAL = 
+    convertAndBindMagic vals (Eval.toDouble) (Mach.Double)
+
+fun bindDecimal (vals:Mach.VAL list) 
+    : Mach.VAL = 
+    convertAndBindMagic vals (Eval.toDecimal 
+                                  Decimal.defaultPrecision 
+                                  Decimal.defaultRoundingMode) (Mach.Decimal)
+
+fun bindString (vals:Mach.VAL list) 
+    : Mach.VAL = 
+    convertAndBindMagic vals (Eval.toString) (Mach.String)
 
 
 (*
@@ -694,7 +735,14 @@ fun registerNatives _ =
         addFn Name.magicNS "getPropertyIsDontEnum" getPropertyIsDontEnum;
         addFn Name.magicNS "getPropertyIsDontDelete" getPropertyIsDontDelete;
         addFn Name.magicNS "setPropertyIsDontEnum" setPropertyIsDontEnum;
-        addFn Name.magicNS "copyValue" copyValue;
+
+        addFn Name.magicNS "bindInt" bindInt;
+        addFn Name.magicNS "bindUInt" bindUInt;
+        addFn Name.magicNS "bindDouble" bindDouble;
+        addFn Name.magicNS "bindDecimal" bindDecimal;
+        addFn Name.magicNS "bindBoolean" bindBoolean;
+        addFn Name.magicNS "bindString" bindString;
+
         addFn Name.magicNS "apply" apply;
         addFn Name.magicNS "compileInto" compileInto;
         addFn Name.magicNS "charCodeAt" charCodeAt;
@@ -703,14 +751,6 @@ fun registerNatives _ =
         addFn Name.magicNS "stringAppend" stringAppend;
         addFn Name.magicNS "getByteArrayByte" getByteArrayByte;
         addFn Name.magicNS "setByteArrayByte" setByteArrayByte;
-
-        addFn Name.magicNS "toInt" (converter Eval.toInt32 Eval.newInt);
-        addFn Name.magicNS "toUint" (converter Eval.toUInt32 Eval.newUInt);
-        addFn Name.magicNS "toDouble" (converter Eval.toDouble Eval.newDouble);
-        addFn Name.magicNS "toDecimal" (converter (Eval.toDecimal 
-                                                                      Decimal.defaultPrecision 
-                                                                      Decimal.defaultRoundingMode) 
-                                                                 Eval.newDecimal);
 
         addFn Name.intrinsicNS "eval" eval;
         addFn Name.intrinsicNS "parseInt" parseInt;

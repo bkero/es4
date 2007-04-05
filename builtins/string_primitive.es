@@ -38,12 +38,14 @@ package
     final class string! extends String
     {       
         /* E262-3 15.5.1: The String Constructor Called as a Function */
-        static intrinsic function invoke(value="")
-            ToString(value);
+        static intrinsic function invoke(x="")
+            x is string ? x : new string(x);
 
-        /* 15.5.2 The String Constructor */
-        function string(value="") : super(value) {
-            // Superclass does the magic::copyValue, we don't need to.
+        /* 15.5.2 The string Constructor */
+        function string(x="") : super(x) 
+        {
+            // No need to magic::bindString a second time, 
+            // since our super(x) call did it for us.
         }
         
         /* E262-3 15.5.3.2: String.fromCharCode

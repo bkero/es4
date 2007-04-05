@@ -41,13 +41,12 @@ package
     dynamic class String
     {       
         /* E262-3 15.5.1: The String Constructor Called as a Function */
-        static intrinsic function invoke(value="")
-            ToString(value);
+        static intrinsic function invoke(x="")
+            x is String ? x : new String(x);
 
         /* 15.5.2 The String Constructor */
-        function String(value="") {
-            magic::copyValue(ToString(value), this);
-        }
+        function String(x="")
+            magic::bindString(this, x);
 
         /* E262-3 15.5.3.2: String.fromCharCode
            E262-4 draft proposals:bug_fixes - FUNCTION.LENGTH

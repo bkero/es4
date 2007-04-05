@@ -26,15 +26,15 @@ package
 
         /* E262-4 draft */
         meta static function convert(x : Numeric) : Number
-            x is Number ? x : new Number(ToDouble(x));
+            Number(x);
 
         /* E262-3 15.7.1.1: The Number Constructor Called as a Function */
-        meta static function invoke(value) 
-            value === undefined ? 0.0 : ToDouble(value);
+        meta static function invoke(x) 
+            x is Number ? x : new Number(x);
 
         /* E262-3 15.7.2.1: The Number constructor */
-        function Number(value=0.0) 
-            magic::copyValue(ToDouble(value), this);
+        function Number(x=0.0) 
+            magic::bindDouble(this, x);
 
         prototype function toString(radix = 10)
             this.toString(radix);

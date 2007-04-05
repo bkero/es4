@@ -22,15 +22,15 @@ package
 
         /* E262-4 draft */
         meta static function convert(x : Numeric)
-            x is int ? x : ToInt(x);
+            int(x);
 
         /* E262-4 draft: The int Constructor Called as a Function */
-        meta static function invoke(value)
-            value === undefined ? 0i : ToInt(value);
+        meta static function invoke(x)
+            x is int ? x : new int(x);
 
         /* E262-4 draft: The int constructor */
-        function int(value)
-            magic::copyValue(ToInt(value), this);
+        function int(x)
+            magic::bindInt(this, x);
 
         /* E262-4 draft: int.prototype.toString */
         prototype function toString(this:int, radix)
