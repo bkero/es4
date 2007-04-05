@@ -1180,7 +1180,7 @@ and defPragmas (env:ENV)
                     let   
                     in
                         imports := package::(!imports);
-                        opennss  := (Ast.Public name)::(!opennss)
+                        opennss  := (Ast.Public (packageIdentFromPath package ""))::(!opennss)
                     end
               | _ => ()
 
@@ -1190,7 +1190,7 @@ and defPragmas (env:ENV)
           { fixtures = [],
             tempOffset = tempOffset,
             labels = (#labels ctx),
-            imports = (#imports ctx),
+            imports = !imports,
             openNamespaces = (case !opennss of 
                                  [] => (#openNamespaces ctx)   (* if opennss is empty, don't concat *)
                                | _  => !opennss :: (#openNamespaces ctx)),
@@ -1378,7 +1378,15 @@ and resolvePath (env:ENV) (path:Ast.IDENT list)
 
     in case (pkg,pth) of
              (SOME pk,[]) => Ast.LiteralExpr (Ast.LiteralNamespace (Ast.Public pk))
-           | (SOME pk,_) => resolveObjectPath env pth NONE  (* FIXME: qualify with package *)
+           | (SOME pk,id::ids) => 
+                let
+                    val expr = Ast.LexicalRef {ident=Ast.QualifiedIdentifier {qual=Ast.LiteralExpr (Ast.LiteralNamespace (Ast.Public pk)),
+                                                                              ident=id},
+                                               pos=NONE}
+
+                in
+                    resolveObjectPath env ids (SOME expr)  (* FIXME: qualify with package *)
+                end
            | (NONE,_) => resolveObjectPath env path NONE
     end
 
@@ -1419,16 +1427,16 @@ and matchImport (env:ENV)
 and pathInImports (imports: Ast.IDENT list list) (path:Ast.IDENT list)
     : Ast.IDENT option * Ast.IDENT list =
     let
-        val _ = trace [">> pathInImports"]
+        val _ = trace [">> pathInImports length=",Int.toString (length imports)]
 
         fun resolvePackage (package:Ast.IDENT list) (path:Ast.IDENT list) (ident:Ast.IDENT)
             : Ast.IDENT option * Ast.IDENT list =
             case (package,path) of
-                ([],_) => (trace [">> resolvePackage"];
+                ([],_) => (trace ["<< resolvePackage "];dumpPath path;
                            (SOME ident,path))
           | (pkgid::pkg,pthid::pth) => 
             let
-                val _ = trace [">> resolvePackage"]
+                val _ = (trace [">> resolvePackage"]; dumpPath pkg; dumpPath path)
                 val dot = if ident="" then "" else "."
             in
                 if pkgid = pthid 
