@@ -661,12 +661,20 @@ and newFunctionFromClosure (closure:Mach.FUN_CLOSURE) =
         val { func, ... } = closure
         val Ast.Func { fsig, ... } = func
         val tag = Mach.FunctionTag fsig
+        val res = newRootBuiltin Name.public_Function (Mach.Function closure)
+        val _ = trace ["finding Function.prototype"]
+        val globalFuncObj = needObj (getValue (getGlobalObject(), Name.public_Function))
+        val globalFuncProto = getValue (globalFuncObj, Name.public_prototype)
+        val _ = trace ["building new prototype chained to Function.prototype"]
+        val newProto = Mach.Object (Mach.setProto (newObj ()) globalFuncProto)
+        val _ = trace ["built new prototype chained to Function.prototype"]
     in
         (* 
          * FIXME: modify the returned object to have the proper tag, a subtype
          * of Function. 
          *)
-        newRootBuiltin Name.public_Function (Mach.Function closure)
+        setValue (needObj res) Name.public_prototype newProto;
+        res
     end
 
 and newFunctionFromFunc (e:Mach.SCOPE) 
