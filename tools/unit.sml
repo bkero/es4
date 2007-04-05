@@ -324,6 +324,7 @@ fun consumeTraceOption (opt:string) : bool =
       | "-Tdecimal" => (Decimal.doTrace := true; false)
       | "-Tnative" => (Native.doTrace := true; false)
       | "-Tboot" => (Boot.doTrace := true; false)
+      | "-Tstack" => (Eval.traceStack := true; false)
       | _ => true
 
 fun main (arg0 : string, args : string list) : int =
