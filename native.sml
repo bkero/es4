@@ -769,8 +769,8 @@ fun registerNatives _ =
 
         (* FIXME: stubs to get Date loading. Implement. *)
         addFn Name.intrinsicNS "now" (fn _ => Eval.newDouble 1.0);
-        addFn Name.internalNS "LocalTZA" (fn _ => Eval.newDouble 1.0);
-        addFn Name.internalNS "DaylightSavingsTA" (fn _ => Eval.newDouble 1.0);
+        addFn Name.publicNS "LocalTZA" (fn _ => Eval.newDouble 1.0);
+        addFn Name.publicNS "DaylightSavingsTA" (fn _ => Eval.newDouble 1.0);
        
         (* Math.es natives *) 
         addFn Name.intrinsicNS "abs" abs;

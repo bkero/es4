@@ -13,6 +13,7 @@
 
 package
 {
+    use default namespace public;
     use namespace intrinsic;  // Override with "public::" when necessary
 
     /* The Date class is "final dynamic" in ActionScript 3.0, though
@@ -201,7 +202,7 @@ package
         static intrinsic function UTC(year : double, month : double, 
 				      date : double=1, hours : double?=0, minutes : double?=0,
 				      seconds : double=0, ms : double?=0) : double {
-            let intYear:double = Integer(year);
+            let intYear:double = ToInteger(year);
             if (!isNaN(year) && 0 <= intYear && intYear <= 99)
                 intYear += 1900;
             return TimeClip(MakeDate(MakeDay(intYear, month, date), 
@@ -753,19 +754,19 @@ package
             if (!isFinite(hour) || !isFinite(min) || !isFinite(sec) || !isFinite(ms))
                 return NaN;
 
-            return Integer(hour) * msPerHour +
-                Integer(min) * msPerMinute +
-                Integer(sec) * msPerSecond +
-                Integer(ms);
+            return ToInteger(hour) * msPerHour +
+                ToInteger(min) * msPerMinute +
+                ToInteger(sec) * msPerSecond +
+                ToInteger(ms);
         }
 
         function MakeDay(year : double, month : double, date : double) : double {
             if (!isFinite(year) || !isFinite(month) || !isFinite(date))
                 return NaN;
 
-            year = Integer(year);
-            month = Integer(month);
-            date = Integer(date);
+            year = ToInteger(year);
+            month = ToInteger(month);
+            date = ToInteger(date);
 
             /* INFORMATIVE, the spec is non-operational. */
             year += Math.floor(month / 12);
@@ -845,10 +846,10 @@ package
             t + LocalTZA() + DaylightSavingTA(t);
 
         function UTCTime(t : double) : double
-            t - LocalTZA() - DaylighSavingsTA(t - LocalTZA());
+            t - LocalTZA() - DaylightSavingsTA(t - LocalTZA());
 
         function TimeClip(t : double) : double 
-            (!isFinite(t) || Math.abs(t) > 8.64e15) ? NaN : Integer(t);
+            (!isFinite(t) || Math.abs(t) > 8.64e15) ? NaN : ToInteger(t);
 
         /* INFORMATIVE */
         function YearFromTime(t : double) : double {

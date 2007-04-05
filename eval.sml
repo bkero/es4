@@ -2595,7 +2595,8 @@ and initializeAndConstruct (classClosure:Mach.CLS_CLOSURE)
                         val Ast.Func { block, param=(paramFixtures,paramInits), ... } = func
                         val (varObj:Mach.OBJ) = Mach.newObjNoTag ()
                         val (varScope:Mach.SCOPE) = extendScope classScope varObj false
-                        val (ctorScope:Mach.SCOPE) = extendScope varScope instanceObj true
+                        val (instanceScope:Mach.SCOPE) = extendScope classScope instanceObj false
+                        val (ctorScope:Mach.SCOPE) = extendScope instanceScope varObj true
                     in
                         trace ["allocating scope fixtures for constructor of ", LogErr.name name];
                         allocScopeFixtures varScope paramFixtures;
@@ -2603,7 +2604,7 @@ and initializeAndConstruct (classClosure:Mach.CLS_CLOSURE)
                         bindArgs classScope varScope func args;
                         trace ["evaluating inits of ", LogErr.name name];
                         evalScopeInits varScope Ast.Local paramInits;
-                        trace ["evaluating settings"];                        
+                        trace ["evaluating settings"];
                         evalObjInits varScope instanceObj settings;
                         trace ["initializing and constructing superclass of ", LogErr.name name];
                         initializeAndConstructSuper (map (evalExpr varScope) superArgs);  
