@@ -1,3 +1,4 @@
+/*
 package mx.util
 {
   public class Vector {} 
@@ -10,3 +11,8 @@ package mx.util
   var v : mx.util.Vector = new mx.util.Vector
 }
 
+*/
+
+class A {
+prototype function f() {}
+}

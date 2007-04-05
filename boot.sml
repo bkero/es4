@@ -152,10 +152,8 @@ fun boot _ =
              
              "builtins/JSON.es",
              "builtins/Array.es",
-
              "builtins/Error.es"           
             ];
-
         (*
          "builtins/Unicode.es",
          "builtins/RegExpCompiler.es",

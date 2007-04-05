@@ -5567,7 +5567,7 @@ and functionDefinition (ts,attrs:ATTRS,CLASS) =
                     in
                         (ts4,{pragmas=[],
                               defns=[],
-                              body=[],
+                              body=initStmts,
                               head=NONE,
                               pos=posOf ts})
                     end
