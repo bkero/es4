@@ -278,7 +278,8 @@ intrinsic::print("** ",ticket++," **")
  */
 function getTimeZoneDiff()
 {
-    return -((new Date(2000, 1, 1)).getTimezoneOffset())/60;
+  return 0;
+  // return -((new Date(2000, 1, 1)).getTimezoneOffset())/60;
 }
 
 
