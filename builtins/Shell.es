@@ -13,4 +13,6 @@ package
         } 
         return gVersion; 
     }   
+    public function toString() { return "[object global]" }
+
 }

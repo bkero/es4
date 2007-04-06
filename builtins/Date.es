@@ -76,7 +76,6 @@ package
 
             timeval = TimeClip(UTCTime(MakeDate(MakeDay(intYear, month, date), 
                                                 MakeTime(hours, minutes, seconds, ms))));
-            print("<< Date constructor","\n")
             return;
         }
 
@@ -102,7 +101,6 @@ package
 
             function fractionToMilliseconds(frac : string) : double
                 Math.floor(1000 * (parseInt(frac) / Math.pow(10,frac.length)));
-            intrinsic::print("\nDate.parse with ",s,"\n")
             let isoRes : Object = isoTimestamp.exec(s);
             let defaults : Date! = new Date(reference);
             if (isoRes !== undefined) {
@@ -784,11 +782,9 @@ package
         }
 
         function MakeDate(day : double, time : double) : double {
-            print(">> MakeDate")
             if (!isFinite(day) || !isFinite(time))
                 return NaN;
 
-            print("<< MakeDate")
             return day * msPerDay + time;
         }
 

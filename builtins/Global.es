@@ -79,5 +79,4 @@ package
     intrinsic native function get(obj:Object!, name:string) : *;
     intrinsic native function set(obj:Object!, name:string, val:*) : void;
 
-
 }
