@@ -14,8 +14,12 @@ package
     dynamic class Boolean
     {       
         /* E262-3 15.6.1: The Boolean Constructor Called as a Function. */
-        meta static function invoke(value) : boolean
-	    boolean(value);
+        meta static function invoke(x=null) : boolean
+	    boolean(x);
+
+        /* E262-3 15.6.2: The Boolean Constructor. */
+        function Boolean(x=null)
+            magic::bindBoolean(this, x);
 
         /* E262-4 draft ch 19 */
 	private final function toString() : string

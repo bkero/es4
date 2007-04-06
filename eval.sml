@@ -687,14 +687,15 @@ and newNativeFunction (f:Mach.NATIVE_FUNCTION) =
 
 
 (* An approximation of an invocation argument list, for debugging. *)
-and callApprox (n:Ast.NAME option) (args:Mach.VAL list) 
+and callApprox (id:Ast.IDENT) (args:Mach.VAL list) 
     : string = 
     let
-        val n = case n of 
-                    NONE => "?"
-                  | SOME { id, ... } => id
+        fun approx arg = 
+            if Mach.isString arg
+            then "\"" ^ (toString arg) ^ "\""
+            else toString arg
     in
-        n ^ "(" ^ (join ", " (map toString args)) ^ ")"
+        id ^ "(" ^ (join ", " (map approx args)) ^ ")"
     end
 
 (* FIXME: this is not the correct toString *)
@@ -1101,14 +1102,7 @@ and evalExpr (scope:Mach.SCOPE)
             case func of 
                 Ast.LexicalRef _ => evalCallMethod scope func args
               | Ast.ObjectRef _ => evalCallMethod scope func args
-              | _ =>                 
-                let 
-                    val _ = push [callApprox NONE args]
-                    val v = evalCallExpr NONE (needObj (evalExpr scope func)) args
-                in
-                    pop ();
-                    v
-                end
+              | _ => evalCallExpr NONE (needObj (evalExpr scope func)) args
         end
 
       | Ast.NewExpr { obj, actuals } => 
@@ -1300,13 +1294,11 @@ and evalCallMethod (scope:Mach.SCOPE)
          *)
         val (obj, name) = evalRefExpr scope func true
         val _ = trace [">>> call method: ", LogErr.name name]
-        val _ = push [callApprox (SOME name) args]
         val Mach.Obj { props, ... } = obj
         val res = case (#state (Mach.getProp props name)) of
                       Mach.NativeFunctionProp nf => nf args
                     | Mach.MethodProp f => invokeFuncClosure obj f args
                     | _ => evalCallExpr (SOME obj) (needObj (getValue (obj, name))) args
-        val _ = pop ()
         val _ = trace ["<<< call method: ", LogErr.name name]
     in
         res
@@ -2263,6 +2255,17 @@ and invokeFuncClosure (this:Mach.OBJ)
         then error ["invoking function with unbound type variables"]
         else
             let 
+                val id = (#ident name)
+                val strname = case (#kind name) of 
+                                  Ast.Ordinary => id 
+                                | Ast.Operator => "operator " ^ id
+                                | Ast.Get => "get " ^ id
+                                | Ast.Set => "set " ^ id
+                                | Ast.Call => "call " ^ id
+                                | Ast.Has => "has " ^ id
+
+                val _ = push [callApprox strname args]
+
                 val (varObj:Mach.OBJ) = Mach.newObjNoTag ()
                 val (varScope:Mach.SCOPE) = extendScope env varObj true
                 val (Mach.Obj {props, ...}) = varObj
@@ -2300,8 +2303,13 @@ and invokeFuncClosure (this:Mach.OBJ)
                 initSelf ();
                 checkAllPropertiesInitialized varObj;
                 trace ["invokeFuncClosure: evaluating block"];
-                evalBlock varScope block
-                handle ReturnException v => v
+                let 
+                    val res = (evalBlock varScope block
+                               handle ReturnException v => v)
+                in
+                    pop ();
+                    res
+                end
             end
     end
 
@@ -2600,7 +2608,7 @@ and initializeAndConstruct (classClosure:Mach.CLS_CLOSURE)
                     NONE => initializeAndConstructSuper []
                   | SOME (Ast.Ctor { settings, superArgs, func }) => 
                     let 
-                        val _ = push ["ctor ", callApprox (SOME name) args]
+                        val _ = push ["ctor ", callApprox (#id name) args]
                         val Ast.Func { block, param=(paramFixtures,paramInits), ... } = func
                         val (varObj:Mach.OBJ) = Mach.newObjNoTag ()
                         val (varScope:Mach.SCOPE) = extendScope classScope varObj false
@@ -2634,7 +2642,7 @@ and constructClassInstance (classObj:Mach.OBJ)
     : Mach.VAL =
     let
         val {cls = Ast.Cls { name, instanceFixtures, ...}, env, ...} = classClosure
-        val _ = push ["new ", callApprox (SOME name) args]
+        val _ = push ["new ", callApprox (#id name) args]
         val (tag:Mach.VAL_TAG) = Mach.ClassTag name
         val (proto:Mach.VAL) = if hasOwnValue classObj Name.public_prototype
                                then getValue (classObj, Name.public_prototype)
