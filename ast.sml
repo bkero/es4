@@ -322,8 +322,11 @@ datatype PRAGMA =
        | QualifiedExpression of  (* type * *)
            { qual : EXPR,
              expr : EXPR }
-       | AttributeIdentifier of IDENT_EXPR
-       | ExpressionIdentifier of EXPR   (* for bracket exprs: o[x] and @[x] *)
+       | AttributeIdentifier of IDENT_EXPR       
+       (* for bracket exprs: o[x] and @[x] *)
+       | ExpressionIdentifier of 
+         { expr: EXPR,
+           openNamespaces : NAMESPACE list list }
        | QualifiedIdentifier of 
            { qual : EXPR,
              ident : USTRING }

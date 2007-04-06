@@ -2091,8 +2091,8 @@ and evalIdentExpr (scope:Mach.SCOPE)
         { nss = [[evalExprToNamespace scope qual]], 
           id = toString (evalExpr scope expr) }
         
-      | Ast.ExpressionIdentifier expr =>
-        { nss = [[Name.internalNS]],
+      | Ast.ExpressionIdentifier { expr, openNamespaces } =>
+        { nss = openNamespaces,
           id = toString (evalExpr scope expr) }
 
       | _ => LogErr.unimplError ["unimplemented identifier expression form"]

@@ -244,7 +244,8 @@ fun desugarPattern (pos:Ast.POS option)
                     let
                         val id = Int.toString n
                         val str = Ast.LiteralString id
-                        val ident = Ast.ExpressionIdentifier (Ast.LiteralExpr (str))
+                        val ident = Ast.ExpressionIdentifier { expr = (Ast.LiteralExpr (str)), 
+                                                               openNamespaces = [] }
                         val e = SOME (Ast.ObjectRef {base=temp, ident=ident, pos=pos})
                         val t = Ast.ElementTypeRef (element_types,n)
                         val (binds, inits) = desugarPattern pos p t e (nesting+1)
@@ -570,7 +571,8 @@ and attributeIdentifier ts =
             let
                 val (ts1,nd1) = brackets(tl ts)
             in
-                (ts1,Ast.AttributeIdentifier (Ast.ExpressionIdentifier nd1))
+                (ts1,Ast.AttributeIdentifier (Ast.ExpressionIdentifier { expr = nd1, 
+                                                                         openNamespaces = [] }))
             end
       | (At, _) :: _ => 
             let
@@ -1406,9 +1408,17 @@ and fieldName (ts) : (TOKEN * Ast.POS) list * Ast.IDENT_EXPR =
     let val _ = trace([">> fieldName with next=",tokenname(hd(ts))]) 
     in case ts of
         (StringLiteral s, _) :: ts1 => (ts1,Ast.Identifier {ident=s,openNamespaces=[]})
-      | (DecimalLiteral n, _) :: ts1 => (ts1, Ast.ExpressionIdentifier (Ast.LiteralExpr(Ast.LiteralContextualDecimal n)))
-      | (DecimalIntegerLiteral n, _) :: ts1 => (ts1, Ast.ExpressionIdentifier (Ast.LiteralExpr(Ast.LiteralContextualDecimalInteger n)))
-      | (HexIntegerLiteral n, _) :: ts1 => (ts1, Ast.ExpressionIdentifier (Ast.LiteralExpr(Ast.LiteralContextualHexInteger n)))
+
+      | (DecimalLiteral n, _) :: ts1 => 
+        (ts1, Ast.ExpressionIdentifier { expr = (Ast.LiteralExpr(Ast.LiteralContextualDecimal n)),
+                                         openNamespaces = []})
+
+      | (DecimalIntegerLiteral n, _) :: ts1 => 
+        (ts1, Ast.ExpressionIdentifier { expr = (Ast.LiteralExpr(Ast.LiteralContextualDecimalInteger n)),
+                                         openNamespaces = [] })
+      | (HexIntegerLiteral n, _) :: ts1 => 
+        (ts1, Ast.ExpressionIdentifier { expr = (Ast.LiteralExpr(Ast.LiteralContextualHexInteger n)),
+                                         openNamespaces = []})
       | _ => 
             let
                 val (ts1,nd1) = reservedOrOrdinaryIdentifier (ts)
@@ -1936,7 +1946,7 @@ and propertyOperator (ts, nd) =
             in
                 (ts1,Ast.ObjectRef 
                          { base=nd,
-                           ident=Ast.ExpressionIdentifier nd1,
+                           ident=Ast.ExpressionIdentifier {expr = nd1, openNamespaces = []},
                            pos=posOf ts})
             end
       | _ => error ["unknown token in propertyOperator"]

@@ -1297,8 +1297,9 @@ and defIdentExpr (env:ENV)
           | Ast.QualifiedExpression { qual, expr } => 
             Ast.QualifiedExpression { qual = defExpr env qual, 
                                       expr = defExpr env expr }
-          | Ast.ExpressionIdentifier e => 
-            Ast.ExpressionIdentifier (defExpr env e)
+          | Ast.ExpressionIdentifier { expr, ...} => 
+            Ast.ExpressionIdentifier { expr = (defExpr env expr),
+                                       openNamespaces = openNamespaces }
           | Ast.UnresolvedPath (p,i) =>
             LogErr.unimplError ["UnresolvedPath ",(hd p)]
     end
