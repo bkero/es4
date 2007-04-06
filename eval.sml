@@ -6,6 +6,8 @@ structure Eval = struct
 
 val traceStack = ref false
 val (stack:string list list ref) = ref []
+fun resetStack _ = 
+    stack := []
 
 fun join sep ss = 
     case ss of 

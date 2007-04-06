@@ -179,7 +179,7 @@ package
 
         /* INFORMATIVE */
         intrinsic function nanoAge() : double
-            (Date.now() - birthtime) * 1000;
+            (Date.now() - birthtime) * 1000000;
 
         /* INFORMATIVE */
         function setupNanoAge() : void

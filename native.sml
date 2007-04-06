@@ -598,6 +598,16 @@ fun set (vals:Mach.VAL list)
          false;
      Mach.Undef)
 
+(* 
+ * Return the current time in milliseconds since January 1 1970 00:00:00 UTC.
+ * 
+ * static intrinsic native function now() : double;
+ *)
+
+fun now (vals:Mach.VAL list)
+    : Mach.VAL = 
+    Eval.newDouble ((Time.toReal (Time.now())) * 1000.0)
+
 (*
     Math natives
 
@@ -795,7 +805,7 @@ fun registerNatives _ =
         addFn Name.intrinsicNS "toPrecision" (fn _ => Eval.newString(""));
 
         (* FIXME: stubs to get Date loading. Implement. *)
-        addFn Name.intrinsicNS "now" (fn _ => Eval.newDouble 1.0);
+        addFn Name.intrinsicNS "now" now;
         addFn Name.publicNS "LocalTZA" (fn _ => Eval.newDouble 1.0);
         addFn Name.publicNS "DaylightSavingsTA" (fn _ => Eval.newDouble 1.0);
        
