@@ -41,6 +41,8 @@ val public_valueOf = public "valueOf"
 val meta_invoke = meta "invoke"
 val meta_get = meta "get"
 val meta_set = meta "set"
+val meta_has = meta "has"
+val meta_call = meta "call"
 
 val this = internal "this"
 

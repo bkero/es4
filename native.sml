@@ -127,7 +127,7 @@ fun arrayToList (arr:Mach.OBJ)
         val ns = Ast.Internal ""
         val len = Word32.toInt 
                       (Eval.toUInt32 
-                           (Eval.getValue (arr, {id="length", ns=ns})))
+                           (Eval.getValue arr {id="length", ns=ns}))
         fun build i vs = 
             if i < 0
             then vs
@@ -135,7 +135,7 @@ fun arrayToList (arr:Mach.OBJ)
                 let
                     val n = {id=(Int.toString i), ns=ns}
                     val curr = if Eval.hasValue arr n
-                               then Eval.getValue (arr, n)
+                               then Eval.getValue arr n
                                else Mach.Undef
                 in
                     build (i-1) (curr::vs)
@@ -574,6 +574,30 @@ fun encodeURIComponent (vals:Mach.VAL list)
     : Mach.VAL =
     LogErr.unimplError ["intrinsic::encodeURIComponent"]
 
+(* 
+ * intrinsic function get (obj: Object!, name: string) : *
+ *)
+fun get (vals:Mach.VAL list)
+    : Mach.VAL = 
+    (* FIXME: arg #1 should be a Name, and convert to Ast.Name. *)
+    Eval.getValueOrVirtual 
+        (nthAsObj vals 0) 
+        {id=(nthAsStr vals 1), ns=Name.publicNS} 
+        false
+
+(* 
+ * intrinsic function set (obj: Object!, name: string, val: * ) : void
+ *)
+fun set (vals:Mach.VAL list)
+    : Mach.VAL = 
+    (* FIXME: arg #1 should be a Name, and convert to Ast.Name. *)
+    (Eval.setValueOrVirtual 
+         (nthAsObj vals 0) 
+         {id=(nthAsStr vals 1), ns=Name.publicNS} 
+         (rawNth vals 2) 
+         false;
+     Mach.Undef)
+
 (*
     Math natives
 
@@ -761,6 +785,9 @@ fun registerNatives _ =
         addFn Name.intrinsicNS "decodeURIComponent" decodeURIComponent;
         addFn Name.intrinsicNS "encodeURI" encodeURI;
         addFn Name.intrinsicNS "encodeURIComponent" encodeURIComponent;
+
+        addFn Name.intrinsicNS "set" get;
+        addFn Name.intrinsicNS "get" set;
 
         (* FIXME: stubs to get double loading. Implement. *)
         addFn Name.intrinsicNS "toFixedStep10" (fn _ => Eval.newString(""));
