@@ -41,6 +41,9 @@
  * then load the test script.
  */
 
+var version
+const print = intrinsic::print
+
 var completed = false;
 var testcases = new Array();
 var tc = testcases.length; 
@@ -56,7 +59,7 @@ var GLOBAL = "[object global]";
 var PASSED = " PASSED!"
 var FAILED = " FAILED! expected: ";
 
-var DEBUG = false;
+var DEBUG = true;
 
 var DESCRIPTION;
 var EXPECTED;
@@ -96,7 +99,6 @@ function TestCase( n, d, e, a ) {
    * to the constructor, then we are assured that the tc
    * index has not been incremented.
    */
-  
   testcases[tc++] = this;
 }
 
@@ -131,10 +133,12 @@ function startTest() {
 }
 
 function test() {
+  print("testcases.length ",testcases.length)
   for ( tc=0; tc < testcases.length; tc++ ) {
     // temporary hack to work around some unknown issue in 1.7
     try
     {
+      print("test:",tc)
     testcases[tc].passed = writeTestCaseResult(
       testcases[tc].expect,
       testcases[tc].actual,
@@ -246,7 +250,6 @@ function getFailedCases() {
  * Date functions used by tests in Date suite
  *
  */
-let ticket = 0
 
 var msPerDay =   86400000;
 var HoursPerDay =  24;
@@ -255,19 +258,12 @@ var SecondsPerMinute = 60;
 var msPerSecond =  1000;
 var msPerMinute =  60000;  // msPerSecond * SecondsPerMinute
 var msPerHour =   3600000; // msPerMinute * MinutesPerHour
-intrinsic::print("** ",ticket++," **")
 var TZ_DIFF = getTimeZoneDiff();  // offset of tester's timezone from UTC
-intrinsic::print("** ",ticket++," **")
 var TZ_PST = -8;  // offset of Pacific Standard Time from UTC
-intrinsic::print("** ",ticket++," **")
 var PST_DIFF = TZ_DIFF - TZ_PST;  // offset of tester's timezone from PST
-intrinsic::print("** ",ticket++," **")
 var TIME_1970  = 0;
-intrinsic::print("** ",ticket++," **")
 var TIME_2000  = 946684800000;
-intrinsic::print("** ",ticket++," **")
 var TIME_1900  = -2208988800000;
-intrinsic::print("** ",ticket++," **")
 
 
 /*

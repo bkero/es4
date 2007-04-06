@@ -8,6 +8,11 @@ TO DO
 - nested public
 - interface definitions
 
+ISSUES
+
+- implementation of import aliases
+- nil qualified names (e.g. local vars), do they exist?
+
 ###
 
 29-MAR-2007

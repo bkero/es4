@@ -209,6 +209,67 @@ fun packageIdentFromPath path ident
            packageIdentFromPath pth (ident^dot^pthid)
        end
 
+fun mergeVirtuals (fName:Ast.FIXTURE_NAME)
+                  (vnew:Ast.VIRTUAL_VAL_FIXTURE)
+                  (vold:Ast.VIRTUAL_VAL_FIXTURE) = 
+    let 
+        val ty = if (#ty vnew) = (#ty vold)
+                 then (#ty vnew)
+                 else (if (#ty vnew) = Ast.SpecialType Ast.Any
+                       then (#ty vold)
+                       else (if (#ty vold) = Ast.SpecialType Ast.Any
+                             then (#ty vnew)
+                             else error ["mismatched get/set types on fixture ", 
+                                         LogErr.fname fName]))
+        fun either a b = 
+            case (a,b) of 
+                (SOME x, NONE) => SOME x
+              | (NONE, SOME x) => SOME x
+              | (NONE, NONE) => NONE
+              | _ => error ["multiply defined get/set functions on fixture ", 
+                            LogErr.fname fName]
+    in
+        { ty = ty,
+          getter = either (#getter vold) (#getter vnew),
+          setter = either (#setter vold) (#setter vnew) }
+    end
+
+fun mergeFixtures ((newName,newFix),oldFixs) =
+    if hasFixture oldFixs newName
+    then 
+        case (newFix, getFixture oldFixs newName) of
+            (Ast.VirtualValFixture vnew,
+             Ast.VirtualValFixture vold) => 
+            replaceFixture oldFixs newName 
+                           (Ast.VirtualValFixture 
+                                (mergeVirtuals newName vnew vold))
+          | (Ast.ValFixture new, Ast.ValFixture old) =>
+                 if (#ty new) = (#ty old) andalso (#readOnly new) = (#readOnly old)
+                 then (trace ["skipping fixture ",LogErr.name (case newName of Ast.PropName n => n | _ => {ns=Ast.Internal "",id="temp"})]; oldFixs)
+                 else error ["incompatible redefinition of fixture name: ", LogErr.fname newName]
+          | _ => error ["redefining fixture name: ", LogErr.fname newName]
+    else
+        (newName,newFix) :: oldFixs
+
+
+fun eraseFixtures oldFixs ((newName,newFix),newFixs) =
+    (trace ["oldFixs"];
+    if hasFixture oldFixs newName
+    then 
+        case (newFix, getFixture oldFixs newName) of
+            (Ast.VirtualValFixture vnew,
+             Ast.VirtualValFixture vold) => 
+            replaceFixture newFixs newName 
+                           (Ast.VirtualValFixture 
+                                (mergeVirtuals newName vnew vold))
+          | (Ast.ValFixture new, Ast.ValFixture old) =>
+                 if (#ty new) = (#ty old) andalso (#readOnly new) = (#readOnly old)
+                 then (trace ["erasing fixture ",LogErr.name (case newName of Ast.PropName n => n | _ => {ns=Ast.Internal "",id="temp"})]; newFixs)
+                 else error ["incompatible redefinition of fixture name: ", LogErr.fname newName]
+          | _ => error ["redefining fixture name: ", LogErr.fname newName]
+    else
+        (newName,newFix) :: newFixs)
+
 
 fun resolveExprToNamespace (env:ENV) 
                            (expr:Ast.EXPR) 
@@ -1592,6 +1653,11 @@ and defExpr (env:ENV)
                                Ast.LexicalRef {ident=Ast.QualifiedIdentifier {qual=(defExpr env base),
                                                                           ident=id},
                                            pos=pos}
+                         | (Ast.LiteralExpr _,Ast.TypeIdentifier {ident=Ast.Identifier {ident=id,...},typeArgs}) => 
+                               Ast.LexicalRef {ident=Ast.TypeIdentifier {ident=Ast.QualifiedIdentifier {qual=(defExpr env base),
+                                                                                                        ident=id},
+                                                                         typeArgs=typeArgs},
+                                               pos=pos}
                          | (Ast.LiteralExpr _,_) => 
                                LogErr.defnError ["invalid package qualification"]
                            
@@ -2163,48 +2229,7 @@ and defDefns (env:ENV)
            [] => (trace(["<< defDefns"]);(unhoisted,hoisted,inits))
          | d::ds =>
            let
-               fun mergeVirtuals (fName:Ast.FIXTURE_NAME)
-                                 (vnew:Ast.VIRTUAL_VAL_FIXTURE)
-                                 (vold:Ast.VIRTUAL_VAL_FIXTURE) = 
-                   let 
-                       val ty = if (#ty vnew) = (#ty vold)
-                                then (#ty vnew)
-                                else (if (#ty vnew) = Ast.SpecialType Ast.Any
-                                      then (#ty vold)
-                                      else (if (#ty vold) = Ast.SpecialType Ast.Any
-                                            then (#ty vnew)
-                                            else error ["mismatched get/set types on fixture ", 
-                                                        LogErr.fname fName]))
-                       fun either a b = 
-                           case (a,b) of 
-                               (SOME x, NONE) => SOME x
-                             | (NONE, SOME x) => SOME x
-                             | (NONE, NONE) => NONE
-                             | _ => error ["multiply defined get/set functions on fixture ", 
-                                           LogErr.fname fName]
-                   in
-                       { ty = ty,
-                         getter = either (#getter vold) (#getter vnew),
-                         setter = either (#setter vold) (#setter vnew) }
-                   end
 
-
-               fun mergeFixtures ((newName,newFix),oldFixs) =                    
-                   if hasFixture oldFixs newName
-                   then 
-                       case (newFix, getFixture oldFixs newName) of
-                           (Ast.VirtualValFixture vnew,
-                            Ast.VirtualValFixture vold) => 
-                           replaceFixture oldFixs newName 
-                                          (Ast.VirtualValFixture 
-                                               (mergeVirtuals newName vnew vold))
-                         | (Ast.ValFixture new, Ast.ValFixture old) =>
-                                if (#ty new) = (#ty old) andalso (#readOnly new) = (#readOnly old)
-                                then oldFixs
-                                else error ["incompatible redefinition of fixture name: ", LogErr.fname newName]
-                         | _ => error ["redefining fixture name: ", LogErr.fname newName]
-                   else
-                       (newName,newFix) :: oldFixs
 
                val (unhoisted',hoisted',inits') = defDefn env d
                val temp = case d of Ast.ClassDefn _ => hoisted' | _ => []
@@ -2324,16 +2349,16 @@ and defProgram (prog:Ast.PROGRAM)
         val e = topEnv ()
         val (packages, hoisted_pkg) = ListPair.unzip (map (defPackage e) (#packages prog))
         val (block, hoisted_gbl) = defBlock e (#block prog)
-        val fixtures = ((List.concat hoisted_pkg)@hoisted_gbl)
+        val fixtures = List.foldl (eraseFixtures (!topFixtures)) [] ((List.concat hoisted_pkg)@hoisted_gbl)
         val result = {packages = packages,
                       block = block,
-                      fixtures = SOME fixtures}
+                      fixtures = SOME fixtures }
     in
         trace ["definition complete"];
         (if !doTrace 
          then Pretty.ppProgram result
          else ());
-        topFixtures := fixtures @ (!topFixtures);
+        topFixtures := (List.foldl mergeFixtures fixtures (!topFixtures));
         result
     end
 end
