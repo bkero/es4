@@ -786,8 +786,8 @@ fun registerNatives _ =
         addFn Name.intrinsicNS "encodeURI" encodeURI;
         addFn Name.intrinsicNS "encodeURIComponent" encodeURIComponent;
 
-        addFn Name.intrinsicNS "set" get;
-        addFn Name.intrinsicNS "get" set;
+        addFn Name.intrinsicNS "get" get;
+        addFn Name.intrinsicNS "set" set;
 
         (* FIXME: stubs to get double loading. Implement. *)
         addFn Name.intrinsicNS "toFixedStep10" (fn _ => Eval.newString(""));
