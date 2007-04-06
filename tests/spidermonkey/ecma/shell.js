@@ -41,9 +41,6 @@
  * then load the test script.
  */
 
-var version
-const print = intrinsic::print
-
 var completed = false;
 var testcases = new Array();
 var tc = testcases.length; 

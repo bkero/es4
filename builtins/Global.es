@@ -75,13 +75,9 @@ package
     var encodeURI = intrinsic::encodeURI;
     var encodeURIComponent = intrinsic::encodeURIComponent;
     
-    // non-standard helpers
-
-    intrinsic native function print(x);
-    intrinsic native function assert(x);
-    intrinsic native function typename(x);
-
     // The non-virtual property get/set helpers.
     intrinsic native function get(obj:Object!, name:string) : *;
     intrinsic native function set(obj:Object!, name:string, val:*) : void;
+
+
 }

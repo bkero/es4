@@ -203,7 +203,8 @@ fun boot _ =
              
              "builtins/JSON.es",
              "builtins/Array.es",
-             "builtins/Error.es"           
+             "builtins/Error.es",           
+             "builtins/Shell.es"
             ];
         (*
          "builtins/Unicode.es",
