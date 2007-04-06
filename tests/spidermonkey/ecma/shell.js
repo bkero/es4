@@ -56,7 +56,7 @@ var GLOBAL = "[object global]";
 var PASSED = " PASSED!"
 var FAILED = " FAILED! expected: ";
 
-var DEBUG = true;
+var DEBUG = false;
 
 var DESCRIPTION;
 var EXPECTED;
@@ -96,6 +96,7 @@ function TestCase( n, d, e, a ) {
    * to the constructor, then we are assured that the tc
    * index has not been incremented.
    */
+  
   testcases[tc++] = this;
 }
 
@@ -130,12 +131,10 @@ function startTest() {
 }
 
 function test() {
-  print("testcases.length ",testcases.length)
   for ( tc=0; tc < testcases.length; tc++ ) {
     // temporary hack to work around some unknown issue in 1.7
     try
     {
-      print("test:",tc)
     testcases[tc].passed = writeTestCaseResult(
       testcases[tc].expect,
       testcases[tc].actual,
@@ -247,7 +246,6 @@ function getFailedCases() {
  * Date functions used by tests in Date suite
  *
  */
-
 var msPerDay =   86400000;
 var HoursPerDay =  24;
 var MinutesPerHour = 60;
@@ -271,8 +269,7 @@ var TIME_1900  = -2208988800000;
  */
 function getTimeZoneDiff()
 {
-  return 0;
-  // return -((new Date(2000, 1, 1)).getTimezoneOffset())/60;
+  return -((new Date(2000, 1, 1)).getTimezoneOffset())/60;
 }
 
 

@@ -758,7 +758,11 @@ and callApprox (id:Ast.IDENT) (args:Mach.VAL list)
 and magicToString (magic:Mach.MAGIC) 
     : string =
     case magic of 
-        Mach.Double n => Real64.toString n
+        Mach.Double n => 
+        if Real64.isFinite n andalso Real64.==(Real64.realFloor n, n)
+        then LargeInt.toString (Real64.toLargeInt IEEEReal.TO_NEGINF n)
+        else Real64.toString n
+
       | Mach.Decimal d => Decimal.toString d
       | Mach.Int i => Int32.toString i
       | Mach.UInt u => LargeInt.toString (Word32.toLargeInt u)
@@ -1355,13 +1359,13 @@ and evalCallMethod (scope:Mach.SCOPE)
          * call it directly without manufacturing a temporary Function 
          * wrapper object. 
          *)
-        val (obj, name) = evalRefExpr scope func true
+        val (thisObj, (obj, name)) = evalRefExprFull scope func true
         val _ = trace [">>> call method: ", LogErr.name name]
         val Mach.Obj { props, ... } = obj
         val res = case (#state (Mach.getProp props name)) of
                       Mach.NativeFunctionProp nf => nf args
-                    | Mach.MethodProp f => invokeFuncClosure obj f args
-                    | _ => evalCallExpr (SOME obj) (needObj (getValue obj name)) args
+                    | Mach.MethodProp f => invokeFuncClosure thisObj f args
+                    | _ => evalCallExpr (SOME thisObj) (needObj (getValue obj name)) args
         val _ = trace ["<<< call method: ", LogErr.name name]
     in
         res
@@ -2093,21 +2097,21 @@ and evalIdentExpr (scope:Mach.SCOPE)
 
       | _ => LogErr.unimplError ["unimplemented identifier expression form"]
 
-
 and evalRefExpr (scope:Mach.SCOPE)
                 (expr:Ast.EXPR)
                 (errIfNotFound:bool)
     : REF =
+    let
+        val (thisObj, r) = evalRefExprFull scope expr errIfNotFound
+    in
+        r
+    end
 
+and evalRefExprFull (scope:Mach.SCOPE)
+                    (expr:Ast.EXPR)
+                    (errIfNotFound:bool)
+    : (Mach.OBJ * REF) =
     let 
-        fun makeRefNotFound (b:Mach.VAL option) (mname:Ast.MULTINAME) 
-            : REF =
-            case (b,mname) of
-                (* FIXME: ns might be user settable default *)
-                (SOME (Mach.Object ob),{id, ...}) => (ob, (Name.internal id))  
-              | (NONE,{id, ...}) => (getGlobalObject (), (Name.internal id))
-              | _ => error ["ref expression messed up in refOf"]
-
         val (base,ident) =
             case expr of         
                 Ast.LexicalRef { ident, pos } => 
@@ -2119,6 +2123,14 @@ and evalRefExpr (scope:Mach.SCOPE)
                  (SOME (evalExpr scope base), ident))
 
               | _ => error ["need lexical or object-reference expression"]
+                     
+        val thisObj = case base of 
+                          SOME (Mach.Object ob) => ob
+                        | _ => getGlobalObject ()
+                                       
+        (* FIXME: ns might be user settable default *)
+        fun makeRefNotFound (b:Mach.VAL option) (mname:Ast.MULTINAME) 
+            : REF = (thisObj, (Name.internal (#id mname)))
 
         val (multiname:Ast.MULTINAME) = evalIdentExpr scope ident
 
@@ -2136,8 +2148,8 @@ and evalRefExpr (scope:Mach.SCOPE)
             NONE => if errIfNotFound 
                     then error ["unresolved identifier expression",
                                            LogErr.multiname multiname]
-                    else makeRefNotFound base multiname
-          | SOME r' => r'
+                    else (thisObj, makeRefNotFound base multiname)
+          | SOME r' => (thisObj, r')
     end
 
 (*
