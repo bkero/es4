@@ -73,7 +73,7 @@ package {
                     }
             }
             else
-                return intrinsic::get(k);
+                return intrinsic::get(this, k);
         }
 
         meta function set(k, v) : void {
@@ -87,7 +87,7 @@ package {
                     }
             }
             else
-                intrinsic::set(k, v);
+                intrinsic::set(this, k, v);
         }
 
         prototype function toString(this: ByteArray) 

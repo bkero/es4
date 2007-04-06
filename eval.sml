@@ -381,53 +381,83 @@ and hasValue (obj:Mach.OBJ)
  * *Similar to* ES3 8.7.1 GetValue(V), there's 
  * no Reference type in ES4.
  *)
-and getValue (obj:Mach.OBJ, 
-              name:Ast.NAME) 
+and getValueOrVirtual (obj:Mach.OBJ)
+                      (name:Ast.NAME) 
+                      (doVirtual:bool)
     : Mach.VAL = 
-    case obj of 
-        Mach.Obj { props, ... } => 
-        let 
-            val prop = Mach.getProp props name
-        in
-            case (#state prop) of 
-                Mach.TypeProp => 
-                error ["getValue on a type property: ",
-                       LogErr.name name]
+    let 
+        val Mach.Obj { props, ... } = obj
+    in
+        if Mach.hasProp props name
+        then 
+            let
+                val prop = Mach.getProp props name
+            in
+                case (#state prop) of 
+                    Mach.TypeProp => 
+                    error ["getValue on a type property: ",
+                           LogErr.name name]
 
-              | Mach.TypeVarProp => 
-                error ["getValue on a type variable property: ",
-                       LogErr.name name]
+                  | Mach.TypeVarProp => 
+                    error ["getValue on a type variable property: ",
+                           LogErr.name name]
 
-              | Mach.UninitProp => 
-                error ["getValue on an uninitialized property: ",
-                       LogErr.name name]
+                  | Mach.UninitProp => 
+                    error ["getValue on an uninitialized property: ",
+                           LogErr.name name]
 
-              | Mach.VirtualValProp { getter = SOME g, ... } => 
-                invokeFuncClosure obj g []
+                  | Mach.VirtualValProp { getter, ... } => 
+                    if doVirtual
+                    then 
+                        case getter of 
+                            SOME g => 
+                            invokeFuncClosure obj g []
+                          | NONE => 
+                            error ["getValue on a virtual property w/o getter: ",
+                                   LogErr.name name]
+                    else 
+                        (* FIXME: possibly throw here? *)
+                        Mach.Undef
 
-              | Mach.VirtualValProp { getter = NONE, ... } => 
-                error ["getValue on a virtual property w/o getter: ",
-                       LogErr.name name]
+                  | Mach.NamespaceProp n =>
+                    newNamespace n
 
-              | Mach.NamespaceProp n =>
-                newNamespace n
+                  | Mach.NativeFunctionProp nf =>
+                    newNativeFunction nf
+                    
+                  | Mach.MethodProp closure => 
+                    newFunctionFromClosure closure
 
-              | Mach.NativeFunctionProp nf =>
-                newNativeFunction nf
-                
-              | Mach.MethodProp closure => 
-                newFunctionFromClosure closure
+                  | Mach.ValProp v => v
+            end
+        else
+            if Mach.hasProp props Name.meta_get
+            then 
+                let 
+                    (* FIXME: no idea if this is correct behavior for meta::get *)
+                    val metaGetFn = needObj (getValueOrVirtual obj Name.meta_get false)
+                    val nameObj = (* FIXME: need a builtin Name.es object here. *)
+                        newString (#id name)
+                in
+                    evalCallExpr (SOME obj) metaGetFn [nameObj]
+                end
+            else
+                Mach.Undef
+    end
 
-              | Mach.ValProp v => v
-        end
+and getValue (obj:Mach.OBJ)
+             (name:Ast.NAME)
+    : Mach.VAL = 
+    getValueOrVirtual obj name true
 
-
-and setValue (base:Mach.OBJ) 
-             (name:Ast.NAME) 
-             (v:Mach.VAL) 
-    : unit = 
-    case base of 
-        Mach.Obj { props, ... } => 
+and setValueOrVirtual (base:Mach.OBJ) 
+                      (name:Ast.NAME) 
+                      (v:Mach.VAL) 
+                      (doVirtual:bool) 
+    : unit =     
+    let
+        val Mach.Obj { props, ... } = base
+    in
         if Mach.hasProp props name
         then 
             let 
@@ -436,6 +466,10 @@ and setValue (base:Mach.OBJ)
                 val newProp = { state = Mach.ValProp v,
                                 ty = (#ty existingProp), 
                                 attrs = existingAttrs }
+                fun write _ = 
+                    ((* FIXME: insert typecheck here *)
+                      Mach.delProp props name;
+                      Mach.addProp props name newProp)                    
             in
                 case (#state existingProp) of 
                     Mach.UninitProp => 
@@ -463,31 +497,52 @@ and setValue (base:Mach.OBJ)
                            LogErr.name name]
                     
                   | Mach.VirtualValProp { setter = SOME s, ... } => 
-                    (invokeFuncClosure base s [v]; ())
-                    
+                    if doVirtual
+                    then (invokeFuncClosure base s [v]; ())
+                    else write ()
+                         
                   | Mach.VirtualValProp { setter = NONE, ... } => 
-                    error ["setValue on virtual property w/o setter: ", 
-                           LogErr.name name]
-                    
+                    if doVirtual
+                    then error ["setValue on virtual property w/o setter: ", 
+                                LogErr.name name]
+                    else write ()
+                         
                   | Mach.ValProp _ => 
                     if (#readOnly existingAttrs)
                     then error ["setValue on read-only property"]
-                    else ((* FIXME: insert typecheck here *)
-                          Mach.delProp props name;
-                          Mach.addProp props name newProp)
+                    else write ()
             end
         else
-            let 
-                val prop = { state = Mach.ValProp v,
-                             ty = Ast.SpecialType Ast.Any,
-                             attrs = { dontDelete = false,
-                                       dontEnum = false,
-                                       readOnly = false,
-                                       isFixed = false } }
-            in
-                Mach.addProp props name prop
-            end
+            if doVirtual andalso Mach.hasProp props Name.meta_set
+            then 
+                let 
+                    (* FIXME: no idea if this is correct behavior for meta::set *)
+                    val metaSetFn = needObj (getValueOrVirtual base Name.meta_set false)
+                    val nameObj = (* FIXME: need a builtin Name.es object here. *)
+                        newString (#id name)
+                in
+                    evalCallExpr (SOME base) metaSetFn [nameObj, v];
+                    ()
+                end
+            else
+                let 
+                    val prop = { state = Mach.ValProp v,
+                                 ty = Ast.SpecialType Ast.Any,
+                                 attrs = { dontDelete = false,
+                                           dontEnum = false,
+                                           readOnly = false,
+                                           isFixed = false } }
+                in
+                    Mach.addProp props name prop
+                end
+    end
 
+
+and setValue (base:Mach.OBJ) 
+             (name:Ast.NAME) 
+             (v:Mach.VAL) 
+    : unit = 
+    setValueOrVirtual base name v true
 
 (* A "defValue" call occurs when assigning a property definition's 
  * initial value, as specified by the user. All other assignments
@@ -553,7 +608,7 @@ and instantiateGlobalClass (n:Ast.NAME)
     : Mach.VAL = 
       let
           val _ = trace ["instantiating global class ", LogErr.name n];
-          val (cls:Mach.VAL) = getValue (getGlobalObject (), n)
+          val (cls:Mach.VAL) = getValue (getGlobalObject ()) n
       in
           case cls of 
               Mach.Object ob => evalNewExpr ob args
@@ -663,8 +718,8 @@ and newFunctionFromClosure (closure:Mach.FUN_CLOSURE) =
         val tag = Mach.FunctionTag fsig
         val res = newRootBuiltin Name.public_Function (Mach.Function closure)
         val _ = trace ["finding Function.prototype"]
-        val globalFuncObj = needObj (getValue (getGlobalObject(), Name.public_Function))
-        val globalFuncProto = getValue (globalFuncObj, Name.public_prototype)
+        val globalFuncObj = needObj (getValue (getGlobalObject()) Name.public_Function)
+        val globalFuncProto = getValue globalFuncObj Name.public_prototype
         val _ = trace ["building new prototype chained to Function.prototype"]
         val newProto = Mach.Object (Mach.setProto (newObj ()) globalFuncProto)
         val _ = trace ["built new prototype chained to Function.prototype"]
@@ -1070,12 +1125,20 @@ and evalExpr (scope:Mach.SCOPE)
         evalListExpr scope es
         
       | Ast.LexicalRef { ident, pos } =>
-        (LogErr.setPos pos;
-         getValue (evalRefExpr scope expr true))
+        let 
+            val _ = LogErr.setPos pos;
+            val (obj, name) = evalRefExpr scope expr true
+        in
+            getValue obj name
+        end
 
       | Ast.ObjectRef { base, ident, pos } => 
-        (LogErr.setPos pos;
-         getValue (evalRefExpr scope expr false))
+        let 
+            val _ = LogErr.setPos pos
+            val (obj, name) = evalRefExpr scope expr false
+        in
+            getValue obj name
+        end
         
       | Ast.LetExpr {defs, body, head} =>
         evalLetExpr scope (valOf head) body
@@ -1261,7 +1324,7 @@ and constructObjectViaFunction (ctorObj:Mach.OBJ)
              * as per ES3 13.2.2. *)
             val (proto:Mach.VAL) = 
                 if Mach.hasProp props Name.public_prototype
-                then getValue (ctorObj, Name.public_prototype)
+                then getValue ctorObj Name.public_prototype
                 else Mach.Null
             val (newObj:Mach.OBJ) = Mach.setProto (newObj ()) proto 
         in
@@ -1298,7 +1361,7 @@ and evalCallMethod (scope:Mach.SCOPE)
         val res = case (#state (Mach.getProp props name)) of
                       Mach.NativeFunctionProp nf => nf args
                     | Mach.MethodProp f => invokeFuncClosure obj f args
-                    | _ => evalCallExpr (SOME obj) (needObj (getValue (obj, name))) args
+                    | _ => evalCallExpr (SOME obj) (needObj (getValue obj name)) args
         val _ = trace ["<<< call method: ", LogErr.name name]
     in
         res
@@ -1329,7 +1392,7 @@ and evalCallExpr (thisObjOpt:Mach.OBJ option)
                 then
                     let 
                         val _ = trace ["redirecting through meta::invoke"]
-                        val invokeFn = getValue (fobj, Name.meta_invoke)
+                        val invokeFn = getValue fobj Name.meta_invoke
                     in
                         evalCallExpr NONE (needObj invokeFn) args
                     end
@@ -1347,7 +1410,7 @@ and evalSetExpr (scope:Mach.SCOPE)
         val v =
             let 
                 fun modifyWith bop = 
-                    performBinop bop (getValue (obj, name)) v
+                    performBinop bop (getValue obj name) v
             in
                 case aop of 
                     Ast.Assign => v
@@ -1380,7 +1443,7 @@ and evalUnaryOp (scope:Mach.SCOPE)
         fun crement (mode:Ast.NUMERIC_MODE) decimalOp doubleOp intOp uintOp isPre = 
             let 
                 val (obj, name) = evalRefExpr scope expr false
-                val v = getValue (obj, name)
+                val v = getValue obj name
 
                 fun asDecimal _ =                         
                     let 
@@ -1578,7 +1641,7 @@ and evalUnaryOp (scope:Mach.SCOPE)
                          in
                              case resolveOnScopeChain scope multiname of 
                                  NONE => "undefined"
-                               | SOME (obj, name) => typeOfVal (getValue (obj, name))
+                               | SOME (obj, name) => typeOfVal (getValue obj name)
                          end
                        | _ => typeOfVal (evalExpr scope expr))
             end
@@ -2000,7 +2063,7 @@ and evalExprToNamespace (scope:Mach.SCOPE)
             in
                 case (#state (Mach.getProp props name)) of
                     Mach.NamespaceProp ns => ns
-                  | _ => needNamespace (getValue (obj, name))
+                  | _ => needNamespace (getValue obj name)
             end
     in
         case expr of 
@@ -2225,7 +2288,7 @@ and findVal (scope:Mach.SCOPE)
     case resolveOnScopeChain scope mn of 
         NONE => error ["unable to resolve multiname: ", 
                                   LogErr.multiname mn ]
-      | SOME (obj, name) => getValue (obj, name) 
+      | SOME (obj, name) => getValue obj name 
 
 
 and checkAllPropertiesInitialized (obj:Mach.OBJ)
@@ -2554,7 +2617,7 @@ and evalScopeInits (scope:Mach.SCOPE)
                    | (Ast.Prototype,parent,obj) => 
                              if isVarObject=true 
                                 then ((fn (Mach.Object ob) => ob) (* FIXME: there must be a builtin way to do this *)
-                                          (getValue (obj, Name.public_prototype)))
+                                          (getValue obj Name.public_prototype))
                                 else targetOf (valOf parent)
             val obj = targetOf scope
         in case scope of
@@ -2645,7 +2708,7 @@ and constructClassInstance (classObj:Mach.OBJ)
         val _ = push ["new ", callApprox (#id name) args]
         val (tag:Mach.VAL_TAG) = Mach.ClassTag name
         val (proto:Mach.VAL) = if hasOwnValue classObj Name.public_prototype
-                               then getValue (classObj, Name.public_prototype)
+                               then getValue classObj Name.public_prototype
                                else Mach.Null
                                     
         val (classScope:Mach.SCOPE) = extendScope env classObj false
@@ -2666,7 +2729,7 @@ and constructClassInstance (classObj:Mach.OBJ)
 and newByGlobalName (n:Ast.NAME) 
     : Mach.VAL = 
     let
-        val (cls:Mach.VAL) = getValue (getGlobalObject (), n)
+        val (cls:Mach.VAL) = getValue (getGlobalObject ()) n
     in
         case cls of 
             Mach.Object ob => evalNewExpr ob []
@@ -2701,7 +2764,7 @@ and get (obj:Mach.OBJ)
     let
         fun tryObj ob = 
             if hasOwnValue ob n
-            then getValue (ob, n)
+            then getValue ob n
             else 
                 case obj of 
                     Mach.Obj { proto, ... } => 
@@ -2840,7 +2903,7 @@ and initClassPrototype (scope:Mach.SCOPE)
                     case findVal scope (multinameOf baseClassName) of 
                         Mach.Object ob => 
                         if hasOwnValue ob Name.public_prototype
-                        then getValue (ob, Name.public_prototype)
+                        then getValue ob Name.public_prototype
                         else Mach.Null
                       | _ => error ["base class resolved to non-object: ", 
                                     LogErr.name baseClassName]

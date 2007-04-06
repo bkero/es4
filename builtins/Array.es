@@ -360,11 +360,11 @@ package
         // @todo: ensure that catchall-set for undeclared properties runs on every set
         meta function set(id, value):void {
             let oldLength:uint = this.length;
-            intrinsic::set(id, value);
+            intrinsic::set(this, id, value);
             let idAsDouble:double = double(id);
             let idAsUint:uint = uint(idAsDouble);
             if (idAsUint == idAsDouble && idAsUint >= oldLength)
-                this.length = idAsUint+1;
+                this._length = idAsUint+1;
         }
 
         // 15.4.5.2 length
