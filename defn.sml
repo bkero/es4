@@ -1239,9 +1239,31 @@ and defPragmas (env:ENV)
               | Ast.Import {package,name,alias} =>  
 (* FIXME: need to define alias and disciminate between * and named imports *)
                     let   
-                    in
-                        imports := package::(!imports);
-                        opennss  := (Ast.Public (packageIdentFromPath package ""))::(!opennss)
+                    in case alias of
+                        NONE =>
+                            (imports := package::(!imports);
+                             opennss  := (Ast.Public (packageIdentFromPath package ""))::(!opennss))
+(*
+                      | _ => 
+                            let
+                                val targetFixture = (* lookup fixture *)
+                                val getterDefn = {kind=Ast.ConstVar,
+                                                  ns=SOME (!defaultNamespace),
+                                                  final=false,
+                                                  override=false,
+                                                  prototype=false,
+                                                  static=false,
+                                                  func = {name=
+                                                          fsig=
+                                                          isNative=false,
+                                                          block=
+                                                          param=(([],[]),[])
+                                                          defaults=[],
+                                                          ty=fixtureType}}
+                                val aliasFixture = { ty
+                            in
+                            end
+*)
                     end
               | _ => ()
 

@@ -131,7 +131,7 @@ function startTest() {
 }
 
 function test() {
-  for ( tc=0; tc < testcases.length; tc++ ) {
+    for ( tc=0; tc < testcases.length; tc++ ) {
     // temporary hack to work around some unknown issue in 1.7
     try
     {

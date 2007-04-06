@@ -66,7 +66,7 @@
      *  "PO Box 12345 Boston, MA 02134".match(zip) );                      // actual result
      *
      */
-    AddTestCase("print('hello, world!')",10,print('hello'))
+    AddTestCase("print('hello, world!')",undefined,print('hello'))
     AddTestCase("10",10,20)
 
     test();       // leave this alone.  this executes the test cases and

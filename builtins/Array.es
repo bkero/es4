@@ -359,6 +359,7 @@ package
         // 15.4.5.1 [[Put]] (P, V)
         // @todo: ensure that catchall-set for undeclared properties runs on every set
         meta function set(id, value):void {
+            print("Array.set ",id," ",value)
             let oldLength:uint = this.length;
             intrinsic::set(this, id, value);
             let idAsDouble:double = double(id);
@@ -383,7 +384,8 @@ package
             for (let i:uint = newLengthAsUint; i < oldLength; ++i)
                 if (this.hasOwnProperty(i))
                     delete this[i];
-            _length = newLengthAsUint;
+            print("newLengthAsUint ",newLengthAsUint)
+            this._length = newLengthAsUint;
         }
 
         // --------------------------------------------------
