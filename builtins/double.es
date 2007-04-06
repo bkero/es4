@@ -40,7 +40,7 @@ package
         function double(x) : super(x)
         {
             // No need to magic::bindDouble a second time, 
-            // since our super(value) call did it for us.
+            // since our super(x) call did it for us.
         }
 
 
