@@ -15,8 +15,8 @@ structure PrettyCvt = struct
           SOME (cvtUSTRING x23))
      | cvtNAMESPACE (AnonUserNamespace n26) = PrettyRep.Ctor ("AnonUserNamespace", 
           SOME (PrettyRep.Int n26))
-     | cvtNAMESPACE (Imported(x29, x30)) = PrettyRep.Ctor ("Imported", SOME (PrettyRep.Tuple [cvtIDENT x29, 
-          cvtIDENT x30]))
+     | cvtNAMESPACE (LimitedNamespace(x29, x30)) = PrettyRep.Ctor ("LimitedNamespace", 
+          SOME (PrettyRep.Tuple [cvtIDENT x29, cvtNAMESPACE x30]))
    and cvtNAME {ns=x34, id=x35} = PrettyRep.Rec [("ns", cvtNAMESPACE x34), 
           ("id", cvtIDENT x35)]
    and cvtMULTINAME {nss=ls46, id=x50} = PrettyRep.Rec [("nss", PrettyRep.List (List.map (fn ls42 => 
