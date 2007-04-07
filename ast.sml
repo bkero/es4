@@ -419,7 +419,7 @@ withtype
 
      and FUNC_DEFN = 
            { kind : VAR_DEFN_TAG,
-             ns: EXPR option,
+             ns:  EXPR option,
              final: bool,
              override: bool,
              prototype: bool,

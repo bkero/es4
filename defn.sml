@@ -432,7 +432,7 @@ fun addLabels (env:ENV) (labels:LABEL list)
         end
     end
 
-fun multinameOf (n:Ast.NAME) = 
+fun multinameFromName (n:Ast.NAME) = 
     { nss = [[(#ns n)]], id = (#id n) }
 
 (*
@@ -1201,7 +1201,7 @@ and defCtor (env:ENV) (ctor:Ast.CTOR)
 
 and defPragmas (env:ENV)
                (pragmas:Ast.PRAGMA list)
-    : ENV =
+    : (ENV * Ast.FIXTURES) =
     let 
         val ctx : CONTEXT  = hd env
         val mode      = #numericMode ctx
@@ -1211,6 +1211,7 @@ and defPragmas (env:ENV)
         val defaultNamespace = ref (#defaultNamespace ctx)
         val opennss   = ref []
         val imports  = ref (#imports ctx)
+        val fixtures = ref []
         val tempOffset = #tempOffset ctx
 
         fun defPragma x =
@@ -1243,34 +1244,114 @@ and defPragmas (env:ENV)
                         NONE =>
                             (imports := package::(!imports);
                              opennss  := (Ast.Public (packageIdentFromPath package ""))::(!opennss))
-(*
                       | _ => 
                             let
-                                val targetFixture = (* lookup fixture *)
-                                val getterDefn = {kind=Ast.ConstVar,
-                                                  ns=SOME (!defaultNamespace),
+                                fun makeAliasFixture env alias package name =
+                                    let
+                                        val targetName = {ns=Ast.Public package,id=name}
+                                        val (n,targetFixture) = resolveMultinameToFixture env (multinameFromName targetName)
+                                        val fixtureType = case targetFixture of Ast.ValFixture {ty,...} => ty | _ => LogErr.unimplError ["unhandle fixture type"]
+                                        val targetRef = defExpr env (Ast.LexicalRef {ident=Ast.QualifiedIdentifier {
+                                                                                    qual=Ast.LiteralExpr (Ast.LiteralNamespace (Ast.Public package)),
+                                                                                    ident=name},pos=NONE})
+                                        val getterDefn : Ast.FUNC_DEFN = 
+                                                 {kind=Ast.Const,
+                                                  ns=NONE, (*SOME (!defaultNamespace),*)
                                                   final=false,
                                                   override=false,
                                                   prototype=false,
                                                   static=false,
-                                                  func = {name=
-                                                          fsig=
+                                                  func = Ast.Func {name={kind=Ast.Get,ident=""},
+                                                          fsig=Ast.FunctionSignature {typeParams=[],params=([],[]),paramTypes=[],
+                                                                        defaults=[],ctorInits=NONE,returnType=fixtureType,
+                                                                        thisType=NONE,hasRest=false},
                                                           isNative=false,
-                                                          block=
-                                                          param=(([],[]),[])
+                                                          block=Ast.Block {pragmas=[],defns=[],head=SOME ([],[]),pos=NONE,
+                                                                           body=[Ast.ReturnStmt targetRef]},
+                                                          param=([],[]),
                                                           defaults=[],
-                                                          ty=fixtureType}}
-                                val aliasFixture = { ty
+                                                          ty = {typeParams=[],
+                                                                params=[],
+                                                                result=fixtureType,
+                                                                thisType=NONE,
+                                                                hasRest=false,
+                                                                minArgs=0}}}
+
+
+                                        val setterDefn : Ast.FUNC_DEFN = 
+                                                 {kind=Ast.Const,
+                                                  ns=NONE, (*SOME (!defaultNamespace),*)
+                                                  final=false,
+                                                  override=false,
+                                                  prototype=false,
+                                                  static=false,
+                                                  func = Ast.Func {name={kind=Ast.Set,ident=""},
+                                                          fsig=Ast.FunctionSignature {typeParams=[],params=([],[]),paramTypes=[],
+                                                                        defaults=[],ctorInits=NONE,returnType=fixtureType,
+                                                                        thisType=NONE,hasRest=false},
+                                                          isNative=false,
+                                              block = Ast.Block
+                                                        { pragmas = [],
+                                                          defns = [],
+                                                          head = SOME ([], []),
+                                                          body = [Ast.ExprStmt
+                                                                      (Ast.SetExpr
+                                                                         (Ast.Assign, targetRef,
+                                                                           Ast.LexicalRef
+                                                                             { ident = Ast.Identifier
+                                                                                         { ident = "x",
+                                                                                           openNamespaces = [[Ast.Public
+                                                                                                                "p"],
+                                                                                                              [Ast.Internal
+                                                                                                                 "",
+                                                                                                                Ast.Public
+                                                                                                                  ""]]},
+                                                                               pos = NONE}))],
+                                                          pos = NONE},
+                                              param = ([(Ast.TempName 0,
+                                                          Ast.ValFixture
+                                                            { ty = Ast.SpecialType
+                                                                     Ast.Any,
+                                                              readOnly = false}),
+                                                         (Ast.PropName
+                                                            { ns = Ast.Internal "",
+                                                              id = "x"},
+                                                           Ast.ValFixture
+                                                             { ty = Ast.SpecialType
+                                                                      Ast.Any,
+                                                               readOnly = false})],
+                                                        [(Ast.PropName
+                                                            { ns = Ast.Internal "",
+                                                              id = "x"},
+                                                           Ast.GetTemp 0)]),
+
+                                                          defaults=[],
+                                                          ty = {typeParams=[],
+                                                                params=[fixtureType],
+                                                                result=Ast.SpecialType Ast.VoidType,
+                                                                thisType=NONE,
+                                                                hasRest=false,
+                                                                minArgs=1}}}
+                                    in
+                                        Ast.VirtualValFixture {ty=fixtureType,
+                                                               getter=SOME getterDefn,
+                                                               setter=SOME setterDefn}
+                                    end
+                                val aliasFixture = makeAliasFixture env alias (packageIdentFromPath package "") name
+                                val aliasName = {ns=(!defaultNamespace),id=valOf alias}
+                                val _ = trace ["aliasName ",LogErr.name aliasName]
                             in
+                                (fixtures := (Ast.PropName aliasName,aliasFixture)::(!fixtures);
+                                 imports := package::(!imports);
+                                 opennss  := (Ast.Public (packageIdentFromPath package ""))::(!opennss))
                             end
-*)
                     end
               | _ => ()
 
     in
         List.app defPragma pragmas;
 
-          { fixtures = [],
+          ({ fixtures = !fixtures,
             tempOffset = tempOffset,
             labels = (#labels ctx),
             imports = !imports,
@@ -1282,7 +1363,8 @@ and defPragmas (env:ENV)
                             precision = !precision },
             className = (#className ctx),
             packageName = (#packageName ctx),
-            defaultNamespace = !defaultNamespace } :: env
+            defaultNamespace = !defaultNamespace } :: env,
+        !fixtures)
     end
 
 (*
@@ -1893,7 +1975,7 @@ and defStmt (env:ENV)
 
         fun findClass (n:Ast.NAME) =
             let
-                val (n,f) = resolveMultinameToFixture env (multinameOf n)
+                val (n,f) = resolveMultinameToFixture env (multinameFromName n)
             in case f of
                 Ast.ClassFixture cd => cd
               | _ => LogErr.defnError ["reference to non-class fixture"]
@@ -2286,7 +2368,7 @@ and defBlock (env:ENV)
     let 
         val Ast.Block { pragmas, defns, body, pos, ... } = b
         val _ = LogErr.setPos pos
-        val env : ENV = defPragmas env pragmas
+        val (env,unhoisted_pragma_fxtrs) = defPragmas env pragmas
         val (unhoisted_defn_fxtrs,hoisted_defn_fxtrs,inits) = defDefns env [] [] [] defns
         val env = updateFixtures env (unhoisted_defn_fxtrs@hoisted_defn_fxtrs) (* so stmts can see them *)
         val (body,hoisted_body_fxtrs) = defStmts env body
@@ -2295,7 +2377,7 @@ and defBlock (env:ENV)
         (Ast.Block { pragmas = pragmas,
                      defns = [],  (* clear definitions, we are done with them *)
                      body = body,
-                     head = SOME (unhoisted_defn_fxtrs,inits),
+                     head = SOME (unhoisted_defn_fxtrs@unhoisted_pragma_fxtrs,inits),
                      pos = pos},
          hoisted)
     end
@@ -2371,7 +2453,7 @@ and defProgram (prog:Ast.PROGRAM)
         val _ = LogErr.setPos NONE
         val e = topEnv ()
         val (packages, hoisted_pkg) = ListPair.unzip (map (defPackage e) (#packages prog))
-        val (block, hoisted_gbl) = defBlock e (#block prog)
+        val (block, hoisted_gbl) = defBlock (updateFixtures e (List.concat hoisted_pkg)) (#block prog)
         val fixtures = List.foldl (eraseFixtures (!topFixtures)) [] ((List.concat hoisted_pkg)@hoisted_gbl)
         val result = {packages = packages,
                       block = block,
