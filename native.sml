@@ -502,7 +502,30 @@ fun setByteArrayByte (vals:Mach.VAL list)
 
 fun eval (vals:Mach.VAL list) 
     : Mach.VAL =
-    LogErr.unimplError ["intrinsic::eval"]
+    let
+        val x = rawNth vals 0
+    in
+        if not (Mach.isString x)
+        then x
+        else 
+            let
+                val s = nthAsStr vals 0
+                val lines = [s] (* FIXME: split lines *)
+                (* 
+                 * FIXME: catch parse errors and throw a user SyntaxError
+                 * exception here once natives grow the ability to throw 
+                 * user exceptions. 
+                 *)                            
+                val prog = Parser.parseLines lines
+            in
+                (* 
+                 * FIXME: maybe don't want to permit the full set of 
+                 * program constructs (classes?) so possibly sanitize the
+                 * result of parsing a bit, strip out some sorts of things...
+                 *)
+                Eval.evalProgram (Defn.defProgram prog)
+            end
+    end
     
 (* 
  * 15.1.2.2

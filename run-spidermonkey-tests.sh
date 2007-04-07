@@ -25,3 +25,36 @@ for ECMA in $ROOT/ecma*
   done
 done
 
+
+echo "----------------------------------------------"
+echo "TOTALS"
+if [ ! -z $LIMIT ]
+then
+    echo " (under $LIMIT)"
+fi
+echo "----------------------------------------------"
+
+function count {
+    grep -F -c "$1" "$LOG"
+}
+
+function percent {
+    echo "scale=2; 100 * ($1 / ($1 + $2))" | bc
+}
+
+function report { 
+    printf "%10.10s=%-.f, %10.10s=%-.f (%.2f%% %s)\n" $1 $2 $3 $4 $(percent $2 $4) $1
+}
+
+FINISHED=$(count 'evaluated!')
+CRASHED=$(( $(count '**ERROR**') + $(count 'Alarm clock') ))
+
+PASSED=$(count 'PASSED!')
+FAILED=$(count 'FAILED!')
+
+echo -n "tests in suite:"
+report "FINISHED" $FINISHED "CRASHED" $CRASHED
+echo -n "cases in tests:"
+report "PASSED" $PASSED "FAILED" $FAILED
+
+echo "----------------------------------------------"
