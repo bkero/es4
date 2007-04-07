@@ -23,16 +23,19 @@ fun error ss = case !pos of
 		   NONE => log ("**ERROR** (unknown location)" :: ss)
 		 | SOME p => log ("**ERROR** (near " :: (posToString p) :: ") " :: ss)
 
-fun name (n:Ast.NAME) = 
-    case (#ns n) of 
-        Ast.Intrinsic=> "[namespace intrinsic]::" ^ (#id n) ^ " "
-      | Ast.OperatorNamespace=> "[namespace operator]::" ^ (#id n) ^ " "
-      | Ast.Private i=> "[namespace private " ^ i ^ "]::" ^ (#id n) ^ " "
-      | Ast.Protected i=> "[namespace protected " ^ i ^ "]::" ^ (#id n) ^ " "
-      | Ast.Public i => "[namespace public " ^ i ^ "]::" ^ (#id n) ^ " "
-      | Ast.Internal i => "[namespace internal " ^ i ^ "]::" ^ (#id n) ^ " "
-      | Ast.UserNamespace i => "[namespace user " ^ i ^ "]::" ^ (#id n) ^ " "
-      | Ast.AnonUserNamespace i => "[namespace user anon #" ^ (Int.toString i) ^ "]::" ^ (#id n) ^ " "
+fun namespace (ns:Ast.NAMESPACE) = 
+    case ns of 
+        Ast.Intrinsic=> "[namespace intrinsic]"
+      | Ast.OperatorNamespace=> "[namespace operator]"
+      | Ast.Private i=> "[namespace private " ^ i ^ "]"
+      | Ast.Protected i=> "[namespace protected " ^ i ^ "]"
+      | Ast.Public i => "[namespace public " ^ i ^ "]"
+      | Ast.Internal i => "[namespace internal " ^ i ^ "]"
+      | Ast.UserNamespace i => "[namespace user " ^ i ^ "]"
+      | Ast.AnonUserNamespace i => "[namespace user anon #" ^ (Int.toString i) ^ "]"
+      | Ast.LimitedNamespace (i,n) => "[namespace limited " ^ i ^ " => " ^ (namespace n) ^ "]"
+
+fun name ({ns,id}:Ast.NAME) = (namespace ns) ^ "::" ^ id ^ " "
 
 fun fname (n:Ast.FIXTURE_NAME) = 
     case n of 

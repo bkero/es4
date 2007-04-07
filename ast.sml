@@ -20,7 +20,7 @@ datatype NAMESPACE =
        | Internal of IDENT
        | UserNamespace of USTRING
        | AnonUserNamespace of int
-       | Imported of (IDENT * IDENT)
+       | LimitedNamespace of (IDENT * NAMESPACE)
 
 type NAME = { ns: NAMESPACE, id: IDENT }
 

@@ -26,11 +26,26 @@ fun resolve (mname:Ast.MULTINAME)
             let 
                 val n = { ns=x, id=id } 
                 val _ = trace ["trying name ", LogErr.name n]
-            in
-                if nameExists (curr, n)
-                then tryName (n::matches) xs
-                else tryName matches xs
+            in case x of
+                Ast.LimitedNamespace (ident,ns) =>
+                    if id=ident
+                    then
+                        let
+                            val n = {ns=ns,id=id}
+                        in
+                            (trace ["limited match ",id];
+                            if nameExists (curr, n)
+                            then tryName (n::matches) xs
+                            else tryName matches xs)
+                        end
+                    else 
+                        tryName matches xs  (* skip it *)
+              | _ =>
+                    if nameExists (curr, n)
+                    then tryName (n::matches) xs
+                    else tryName matches xs
             end
+
 
         (*
 	     * Try each of the nested namespace sets in turn to see

@@ -81,6 +81,19 @@ fun hasFixture (b:Ast.FIXTURES)
         search b    
     end
 
+fun hasNamespace (nl:Ast.NAMESPACE list) 
+                 (n:Ast.NAMESPACE) 
+    : bool = 
+    let 
+        fun search [] = false
+          | search (first::rest) = 
+            if n = first
+            then true
+            else search rest
+    in
+        search nl    
+    end
+
 (*
     FIXME: Move this to Mach or Eval. Something like this is used to eval Ast.FieldTypeRef
            and ElementTypeRef
@@ -251,6 +264,11 @@ fun mergeFixtures ((newName,newFix),oldFixs) =
     else
         (newName,newFix) :: oldFixs
 
+fun addNamespace (ns,opennss) =
+    if hasNamespace opennss ns
+    then (trace ["skipping namespace ",LogErr.namespace ns]; opennss)   (* FIXME: should be an error to open namspaces redundantly *)
+    else ns :: opennss
+
 
 fun eraseFixtures oldFixs ((newName,newFix),newFixs) =
     (trace ["oldFixs"];
@@ -301,7 +319,7 @@ fun resolveExprToNamespace (env:ENV)
       | _ => LogErr.defnError ["unexpected expression type ",
                                "in namespace context"]
 
-and defaultNamespace (c::_) = (#defaultNamespace c)
+and defaultNamespace e = case e of c::_ => (#defaultNamespace c) | _ => LogErr.internalError ["empty environment in defaultNamespace"]
 
 and resolveExprOptToNamespace (env: ENV)
                               (ns : Ast.EXPR option)
@@ -402,6 +420,7 @@ fun addLabel (env:ENV) (label:LABEL)
                             knd = labelKnd) labels  (* and kinds *)
                     then LogErr.defnError ["duplicate label ",labelId]
                     else ())
+                  | [] => LogErr.internalError ["empty environment in addLabel"]
         in
             checkLabel env label;
             case env of 
@@ -1174,6 +1193,8 @@ and defFuncDefn (env:ENV) (f:Ast.FUNC_DEFN)
                               final = true,
                               override = false}
                     end
+                  | Ast.Operator =>
+                    LogErr.unimplError ["operator function not implemented"]
 
             val outerFixtures = [(newName, fixture)]
         in
@@ -1238,19 +1259,36 @@ and defPragmas (env:ENV)
                              defaultNamespace := namespace)
                     end
               | Ast.Import {package,name,alias} =>  
-(* FIXME: need to define alias and disciminate between * and named imports *)
                     let   
                     in case alias of
                         NONE =>
-                            (imports := package::(!imports);
-                             opennss  := (Ast.Public (packageIdentFromPath package ""))::(!opennss))
+                            let
+                                val id = packageIdentFromPath package ""
+                                val ns = if name="*" then Ast.Public id
+                                                     else Ast.LimitedNamespace (name,Ast.Public id)
+                            in
+                                (imports := package::(!imports);
+                                 opennss  := addNamespace (ns, (!opennss)))
+                            end
                       | _ => 
                             let
-                                fun makeAliasFixture env alias package name =
+
+                                (* FIXME: replace this boilerplate getter/setter code with a new kind of fixture for import aliasing?
+                                   In the cases of ClassFixture and TypeFixture, the verifier has to evaluate the getter to see the 
+                                   concrete type of the alias *)
+
+                                fun makeAliasFixture env alias package ident =
                                     let
-                                        val targetName = {ns=Ast.Public package,id=name}
+                                        val targetName = {ns=Ast.Public package,id=ident}
                                         val (n,targetFixture) = resolveMultinameToFixture env (multinameFromName targetName)
-                                        val fixtureType = case targetFixture of Ast.ValFixture {ty,...} => ty | _ => LogErr.unimplError ["unhandle fixture type"]
+                                        val fixtureType = case targetFixture of 
+                                                               Ast.ValFixture {ty,...} => ty 
+                                                             | Ast.NamespaceFixture _ => (Name.typename Name.public_Namespace)
+                                                             | Ast.ClassFixture _ => (Name.typename Name.public_Class)   (* ISSUE: the is the base type of the class object *)
+                                                             | Ast.TypeFixture _ => (Name.typename Name.public_Type)
+                                                             | Ast.MethodFixture {ty,...} => ty
+                                                             | Ast.VirtualValFixture {ty,...} => ty
+                                                             | _ => LogErr.unimplError ["unhandle fixture type"]
                                         val targetRef = defExpr env (Ast.LexicalRef {ident=Ast.QualifiedIdentifier {
                                                                                     qual=Ast.LiteralExpr (Ast.LiteralNamespace (Ast.Public package)),
                                                                                     ident=name},pos=NONE})
@@ -1263,7 +1301,7 @@ and defPragmas (env:ENV)
                                                   static=false,
                                                   func = Ast.Func {name={kind=Ast.Get,ident=""},
                                                           fsig=Ast.FunctionSignature {typeParams=[],params=([],[]),paramTypes=[],
-                                                                        defaults=[],ctorInits=NONE,returnType=fixtureType,
+                                                                        defaults=[],ctorInits=NONE,returnType=Ast.SpecialType Ast.Any,
                                                                         thisType=NONE,hasRest=false},
                                                           isNative=false,
                                                           block=Ast.Block {pragmas=[],defns=[],head=SOME ([],[]),pos=NONE,
@@ -1287,7 +1325,7 @@ and defPragmas (env:ENV)
                                                   static=false,
                                                   func = Ast.Func {name={kind=Ast.Set,ident=""},
                                                           fsig=Ast.FunctionSignature {typeParams=[],params=([],[]),paramTypes=[],
-                                                                        defaults=[],ctorInits=NONE,returnType=fixtureType,
+                                                                        defaults=[],ctorInits=NONE,returnType=Ast.SpecialType Ast.Any,
                                                                         thisType=NONE,hasRest=false},
                                                           isNative=false,
                                               block = Ast.Block
@@ -1340,10 +1378,13 @@ and defPragmas (env:ENV)
                                 val aliasFixture = makeAliasFixture env alias (packageIdentFromPath package "") name
                                 val aliasName = {ns=(!defaultNamespace),id=valOf alias}
                                 val _ = trace ["aliasName ",LogErr.name aliasName]
+                                val id = packageIdentFromPath package ""
+                                val ns = if name="*" then Ast.Public id
+                                                     else Ast.LimitedNamespace (name,Ast.Public id)
                             in
                                 (fixtures := (Ast.PropName aliasName,aliasFixture)::(!fixtures);
                                  imports := package::(!imports);
-                                 opennss  := (Ast.Public (packageIdentFromPath package ""))::(!opennss))
+                                 opennss  := addNamespace (ns, (!opennss)))
                             end
                     end
               | _ => ()
@@ -1375,12 +1416,13 @@ and defIdentExpr (env:ENV)
                  (ie:Ast.IDENT_EXPR) 
     : Ast.IDENT_EXPR = 
     let 
+        val _ = trace [">> defIdentExpr"]
         val openNamespaces = 
             case env of 
                 [] => []
               | ({ openNamespaces, ... }) :: _ => 
                 openNamespaces
-
+        val _ = trace ["<< defIdentExpr"]
     in
         case ie of 
             Ast.Identifier { ident, ... } => 
@@ -1406,6 +1448,9 @@ and defIdentExpr (env:ENV)
                                        openNamespaces = openNamespaces }
           | Ast.UnresolvedPath (p,i) =>
             LogErr.unimplError ["UnresolvedPath ",(hd p)]
+
+          | _ =>
+            LogErr.unimplError ["unhandled ident expr "]
     end
 
 and defContextualNumberLiteral (env:ENV) 
@@ -1644,6 +1689,7 @@ and resolveObjectPath (env:ENV) (path:Ast.IDENT list) (expr:Ast.EXPR option)
             in
                 expr
             end
+      | _ => LogErr.internalError ["unhandled case in resolveObjectPath"]
     end
 
 
@@ -1805,6 +1851,9 @@ and defExpr (env:ENV)
 
           | Ast.SliceExpr (a, b, c) => 
             Ast.SliceExpr (sub a, sub b, sub c)
+
+          | Ast.InitExpr ie =>
+            Ast.InitExpr ie
     end
     
     
@@ -1850,7 +1899,7 @@ and defStmt (env:ENV)
             (stmt:Ast.STMT) 
     : (Ast.STMT * Ast.FIXTURES) = 
     let
-        val (ctx::_) = env
+        val ctx = case env of ctx::_ => ctx | _ => LogErr.internalError ["empty evironment in defStmt"]
 
         fun reconstructForEnumStmt (fe:Ast.FOR_ENUM_STMT) = 
             let
@@ -2017,6 +2066,7 @@ and defStmt (env:ENV)
                         knd = labelKnd) labels  (* and kinds *)
                     then true
                     else false)
+              | _ => LogErr.internalError ["checkLabel called with empty environment"]
             end
 
         fun checkBreakLabel (id:Ast.IDENT option) =
