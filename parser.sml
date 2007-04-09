@@ -2115,12 +2115,24 @@ and unaryExpression (ts,a,b) =
             in 
                 (ts2,Ast.UnaryExpr(Ast.LogicalNot,nd2)) 
             end
-      | (Type, _) :: ts1 => 
-            let 
-                val (ts2,nd2) = nullableTypeExpression (ts1)
-            in 
-                (ts2,Ast.TypeExpr(nd2)) 
-            end
+      | (Type, _) :: _ =>
+            (case (hd (tl ts)) of
+                ((Null | Undefined | Identifier _ | LeftParen | LeftBrace | LeftBracket | Function
+                 | Private | Protected | Public | Internal | Intrinsic | Mult),_) =>
+                   if newline (tl ts)
+                   then 
+                       (tl ts,Ast.LexicalRef {ident=Ast.Identifier {ident="type",openNamespaces=[[]]},pos=NONE})
+                   else
+                       let 
+                           val (ts1,nd1) = nullableTypeExpression (tl ts)
+                       in 
+                           (ts1,Ast.TypeExpr(nd1)) 
+                       end
+              | _ =>
+                    let
+                    in
+                        (tl ts,Ast.LexicalRef {ident=Ast.Identifier {ident="type",openNamespaces=[[]]},pos=NONE})
+                    end)
       | _ => 
             postfixExpression (ts,a,b)
     end
