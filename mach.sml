@@ -106,7 +106,7 @@ withtype FUN_CLOSURE =
      and ATTRS = { dontDelete: bool,
                    dontEnum: bool,
                    readOnly: bool,
-                   isFixed: bool}
+                   isFixed: bool }
 
      and TEMPS = (Ast.TYPE_EXPR * TEMP_STATE) list ref
 
@@ -123,6 +123,7 @@ exception BreakException of (Ast.IDENT option)
 exception TailCallException of (unit -> VAL)
 exception ThrowException of VAL
 exception ReturnException of VAL
+exception StopIterationException
 
 fun isObject (v:VAL) : bool = 
     case v of 

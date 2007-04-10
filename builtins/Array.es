@@ -10,12 +10,11 @@
 package
 {
     use default namespace public;
+    use namespace intrinsic;
+    use strict;
 
     dynamic class Array
     {
-        use namespace intrinsic;
-        use strict;
-
         // 15.4.1 The Array Constructor Called as a Function
         meta static function invoke(...args) {
             // args is already an Array. just return it.
@@ -381,7 +380,7 @@ package
             if (newLengthAsUint != newLengthAsDouble)
                 throw new RangeError();
             for (let i:uint = newLengthAsUint; i < oldLength; ++i)
-                if (this.hasOwnProperty(i))
+                if (this.hasOwnProperty(i.toString()))  /* FIXME: when type annos work, won't need explicit conversion */
                     delete this[i];
             this._length = newLengthAsUint;
         }
