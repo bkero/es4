@@ -10,11 +10,11 @@
 package
 {
     use default namespace public;
+    use namespace intrinsic;
+    use strict;
 
     dynamic class Array
     {
-        use namespace intrinsic;
-        use strict;
 
         // 15.4.1 The Array Constructor Called as a Function
         meta static function invoke(...args) {
