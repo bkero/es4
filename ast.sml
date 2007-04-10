@@ -473,6 +473,7 @@ withtype
              obj: EXPR,
              fixtures: FIXTURES option,
              init: STMT list,
+             next: STMT list,
              labels: IDENT list,
              body: STMT }
 

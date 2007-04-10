@@ -4311,7 +4311,8 @@ and forStatement (ts,w) : ((TOKEN * Ast.POS) list * Ast.STMT) =
                                      obj=nd2,
                                      labels=[],
                                      fixtures=NONE,
-                                     init=inits,
+                                     init=[],   (* FIXME *)
+                                     next=inits,
                                      body=nd3 })
                     end
               | _ => error ["unknown token in forStatement"]
