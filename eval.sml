@@ -3203,8 +3203,8 @@ and evalForInStmt (scope:Mach.SCOPE)
                                                then NONE
                                                else raise ContinueException exnLabel)
                             val nextVal = (case curr
-                                         of NONE => accum
-                                          | x => x)
+                                            of NONE => accum
+                                             | x => x)
                         in
                             loop nextVal handle BreakException exnLabel =>
                                           if labelMatch labels exnLabel
