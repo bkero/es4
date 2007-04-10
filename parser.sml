@@ -687,6 +687,9 @@ and parenListExpression (ts) : ((TOKEN * Ast.POS) list * Ast.EXPR) =
         (LeftParen, _) :: _ => 
             let
                 val (ts1,nd1) = listExpression (tl ts,ALLOWIN)
+                val nd1 = case nd1 of 
+                              Ast.ListExpr [x] => x
+                            | x => x
             in case ts1 of
                 (RightParen, _) :: _ => 
                     (trace(["<< parenListExpression with next=",tokenname(hd(ts1))]);
