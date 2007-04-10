@@ -4,13 +4,12 @@ JEFF'S NOTES ON THE REFERENCE IMPLEMENTATION
 
 TO DO
 
-- limited namespaces
 - nested public
 - interface definitions
 
 ISSUES
 
-- implementation of import aliases
+- implementation of import aliases using fixtures
 - nil qualified names (e.g. local vars), do they exist?
 
 ###

@@ -1,1 +1,6 @@
-function f () { for( var x in this ) print(x) }
+//for( var x in this )
+package p.q {
+public class A {
+public static var x = 10
+}
+}

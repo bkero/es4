@@ -16,4 +16,4 @@ print(A.y)
 print(x2)
 x2=20
 print(x2)
-print(p.y)   
+print(p.y)

@@ -45,7 +45,7 @@ type CONTEXT =
        openNamespaces: Ast.NAMESPACE list list, 
        numericMode: Ast.NUMERIC_MODE,
        labels: LABEL list,
-       imports: Ast.IDENT list list,
+       packageNames: Ast.IDENT list list,
        className: Ast.NAME option,
        packageName: Ast.IDENT list,
        defaultNamespace: Ast.NAMESPACE }
@@ -63,10 +63,14 @@ val defaultNumericMode : Ast.NUMERIC_MODE =
       precision = Decimal.defaultPrecision }
 
 val (topFixtures:Ast.FIXTURES ref) = ref []
+val (topPackageNames:Ast.IDENT list list ref) = ref []
 
 fun resetTopFixtures _ = 
     topFixtures := [ (Ast.PropName (Name.public "meta"), Ast.NamespaceFixture Name.metaNS),
                      (Ast.PropName (Name.public "magic"), Ast.NamespaceFixture Name.magicNS) ]
+
+fun resetTopPackageNames _ = 
+    topPackageNames := []
 
 fun hasFixture (b:Ast.FIXTURES) 
                (n:Ast.FIXTURE_NAME) 
@@ -342,18 +346,18 @@ fun extendEnvironment (env:ENV)
                 openNamespaces = [[Ast.Internal ""]],
                 numericMode = defaultNumericMode,
                 labels = [],
-                imports = [],
+                packageNames = [],
                 className = NONE,
                 packageName = [],
                 defaultNamespace = Ast.Internal "" } :: [])
-      | ({ tempOffset, numericMode, openNamespaces, labels, imports, className, 
+      | ({ tempOffset, numericMode, openNamespaces, labels, packageNames, className, 
            packageName, defaultNamespace, ... }) :: _ =>
         { fixtures = fixtures,
           tempOffset = tempOffset,
           openNamespaces = openNamespaces, 
           numericMode = numericMode,
           labels = labels,
-          imports = [],
+          packageNames = [],
           className = className,
           packageName = packageName,
           defaultNamespace = defaultNamespace } :: env
@@ -367,7 +371,7 @@ fun updateFixtures (ctx::ex) (fxtrs:Ast.FIXTURES)
           openNamespaces = (#openNamespaces ctx), 
           numericMode = (#numericMode ctx),
           labels = (#labels ctx),
-          imports = (#imports ctx),
+          packageNames = (#packageNames ctx),
           className = (#className ctx),
           packageName = (#packageName ctx),
           defaultNamespace = (#defaultNamespace ctx) } :: ex
@@ -375,6 +379,24 @@ fun updateFixtures (ctx::ex) (fxtrs:Ast.FIXTURES)
   | updateFixtures ([]) (fxtrs:Ast.FIXTURES) 
     : ENV =
         LogErr.defnError ["cannot update an empty environment"]
+
+fun addPackageName ({name,...}:Ast.PACKAGE,(ctx::ex))
+    : ENV =
+    let
+    in
+        { fixtures = (#fixtures ctx),
+          tempOffset = (#tempOffset ctx),
+          openNamespaces = (#openNamespaces ctx), 
+          numericMode = (#numericMode ctx),
+          labels = (#labels ctx),
+          packageNames = name::(#packageNames ctx),
+          className = (#className ctx),
+          packageName = (#packageName ctx),
+          defaultNamespace = (#defaultNamespace ctx) } :: ex
+    end
+  | addPackageName (_,[])
+    : ENV =
+        LogErr.defnError ["cannot add package name to an empty environment"]
 
 fun updateTempOffset (ctx::ex) (tempOffset:int)
     : ENV =
@@ -385,7 +407,7 @@ fun updateTempOffset (ctx::ex) (tempOffset:int)
           openNamespaces = (#openNamespaces ctx), 
           numericMode = (#numericMode ctx),
           labels = (#labels ctx),
-          imports = (#imports ctx),
+          packageNames = (#packageNames ctx),
           className = (#className ctx),
           packageName = (#packageName ctx),
           defaultNamespace = (#defaultNamespace ctx) } :: ex
@@ -424,12 +446,12 @@ fun addLabel (env:ENV) (label:LABEL)
         in
             checkLabel env label;
             case env of 
-                ({fixtures,tempOffset,labels,imports,openNamespaces,numericMode,className,
+                ({fixtures,tempOffset,labels,packageNames,openNamespaces,numericMode,className,
                   packageName,defaultNamespace}::e) =>
                        { fixtures=fixtures,
                          tempOffset=tempOffset,
                          labels=label::labels,
-                         imports=imports,
+                         packageNames=packageNames,
                          openNamespaces=openNamespaces,
                          numericMode=numericMode,
                          className = className,
@@ -1231,7 +1253,7 @@ and defPragmas (env:ENV)
         val precision = ref (#precision mode)
         val defaultNamespace = ref (#defaultNamespace ctx)
         val opennss   = ref []
-        val imports  = ref (#imports ctx)
+        val packageNames  = ref (#packageNames ctx)
         val fixtures = ref []
         val tempOffset = #tempOffset ctx
 
@@ -1267,7 +1289,7 @@ and defPragmas (env:ENV)
                                 val ns = if name="*" then Ast.Public id
                                                      else Ast.LimitedNamespace (name,Ast.Public id)
                             in
-                                (imports := package::(!imports);
+                                (packageNames := package::(!packageNames);
                                  opennss  := addNamespace (ns, (!opennss)))
                             end
                       | _ => 
@@ -1383,7 +1405,7 @@ and defPragmas (env:ENV)
                                                      else Ast.LimitedNamespace (name,Ast.Public id)
                             in
                                 (fixtures := (Ast.PropName aliasName,aliasFixture)::(!fixtures);
-                                 imports := package::(!imports);
+                                 packageNames := package::(!packageNames);
                                  opennss  := addNamespace (ns, (!opennss)))
                             end
                     end
@@ -1395,7 +1417,7 @@ and defPragmas (env:ENV)
           ({ fixtures = !fixtures,
             tempOffset = tempOffset,
             labels = (#labels ctx),
-            imports = !imports,
+            packageNames = !packageNames,
             openNamespaces = (case !opennss of 
                                  [] => (#openNamespaces ctx)   (* if opennss is empty, don't concat *)
                                | _  => !opennss :: (#openNamespaces ctx)),
@@ -1624,21 +1646,21 @@ and matchImport (env:ENV)
                 NONE => 
                     let
                         val _ = trace ["xx matchImport looking for import"]
-                        val { imports, ... } = hd env
-                    in case pathInImports imports path of
+                        val { packageNames, ... } = hd env
+                    in case pathInPackageNames packageNames path of
                         (NONE,_) => matchImport (tl env) path
                       | (SOME pkg,rest) => (SOME pkg,rest)
                     end
               | SOME (({fixtures, ...}::_), n) => 
-                    (trace ["<< matchImport fixture found ",hd path]; (NONE,path))   (* found fixture, imports trumped *)
+                    (trace ["<< matchImport fixture found ",hd path]; (NONE,path))   (* found fixture, packageNames trumped *)
               | _ => LogErr.defnError ["fixture lookup error ", LogErr.multiname mname]
         end
     end
 
-and pathInImports (imports: Ast.IDENT list list) (path:Ast.IDENT list)
+and pathInPackageNames (packageNames: Ast.IDENT list list) (path:Ast.IDENT list)
     : Ast.IDENT option * Ast.IDENT list =
     let
-        val _ = trace [">> pathInImports length=",Int.toString (length imports)]
+        val _ = trace [">> pathInPackageNames length=",Int.toString (length packageNames)]
 
         fun resolvePackage (package:Ast.IDENT list) (path:Ast.IDENT list) (ident:Ast.IDENT)
             : Ast.IDENT option * Ast.IDENT list =
@@ -1656,14 +1678,14 @@ and pathInImports (imports: Ast.IDENT list list) (path:Ast.IDENT list)
             end
           | (_,[]) => error ["resolving package portion of empty path"];
 
-    in case (imports,path) of
-        ([],_) => (trace ["<< pathInImports no match"];(NONE,path))  (* no match *)
+    in case (packageNames,path) of
+        ([],_) => (trace ["<< pathInPackageNames no match"];(NONE,path))  (* no match *)
       | (pkg::pkgs,_) => 
         let
             val (ident,path) = resolvePackage pkg path ""
         in case (ident,pkgs) of
-            (NONE,_) => pathInImports pkgs path (* no match yet, try again *)
-          | (SOME _,_) => (trace ["<< pathInImports match"];(ident,path)) (* match, return the remainder of the path *)
+            (NONE,_) => pathInPackageNames pkgs path (* no match yet, try again *)
+          | (SOME _,_) => (trace ["<< pathInPackageNames match"];(ident,path)) (* match, return the remainder of the path *)
         end
     end
 
@@ -2471,7 +2493,7 @@ and defPackage (env:ENV)
                         openNamespaces = [[Ast.Internal packageIdent, Ast.Public packageIdent]]@(#openNamespaces (hd env)),
                         numericMode = defaultNumericMode, 
                         labels = [],
-                        imports = [],
+                        packageNames = [packageName],
                         className = NONE, 
                         packageName = packageName, 
                         defaultNamespace = Ast.Internal packageIdent } :: env
@@ -2492,7 +2514,7 @@ and topEnv _ = [ { fixtures = !topFixtures,
                    openNamespaces = [[Ast.Internal "", Ast.Public ""]],
                    numericMode = defaultNumericMode, 
                    labels = [],
-                   imports = [],
+                   packageNames = !topPackageNames,
                    className = NONE, 
                    packageName = [], 
                    defaultNamespace = Ast.Internal "" } ]
@@ -2503,6 +2525,7 @@ and defProgram (prog:Ast.PROGRAM)
         val _ = LogErr.setPos NONE
         val e = topEnv ()
         val (packages, hoisted_pkg) = ListPair.unzip (map (defPackage e) (#packages prog))
+        val e = List.foldl addPackageName e packages
         val (block, hoisted_gbl) = defBlock (updateFixtures e (List.concat hoisted_pkg)) (#block prog)
         val fixtures = List.foldl (eraseFixtures (!topFixtures)) [] ((List.concat hoisted_pkg)@hoisted_gbl)
         val result = {packages = packages,
@@ -2514,6 +2537,7 @@ and defProgram (prog:Ast.PROGRAM)
          then Pretty.ppProgram result
          else ());
         topFixtures := (List.foldl mergeFixtures fixtures (!topFixtures));
+        topPackageNames := (#packageNames (hd e));
         result
     end
 end
