@@ -76,13 +76,13 @@ fun extendScope (p:Mach.SCOPE)
 fun getScopeObj (scope:Mach.SCOPE) 
     : Mach.OBJ = 
     case scope of 
-        Mach.Scope { object, ...} => object
+        Mach.Scope { object, ... } => object
 
 
 fun getScopeTemps (scope:Mach.SCOPE) 
     : Mach.TEMPS = 
     case scope of 
-        Mach.Scope { temps, ...} => temps
+        Mach.Scope { temps, ... } => temps
 
 
 fun needNamespace (v:Mach.VAL) 
@@ -147,7 +147,7 @@ fun allocFixtures (scope:Mach.SCOPE)
                   (f:Ast.FIXTURES) 
     : unit =
     case obj of 
-        Mach.Obj { props, ...} => 
+        Mach.Obj { props, ... } => 
         let 
             val methodScope = extendScope scope obj false
             fun valAllocState (t:Ast.TYPE_EXPR) 
@@ -300,7 +300,7 @@ fun allocFixtures (scope:Mach.SCOPE)
                             
                           | Ast.ClassFixture cls =>
                             let
-                                val Ast.Cls {classFixtures,...} = cls
+                                val Ast.Cls {classFixtures, ...} = cls
                                 val _ = trace ["allocating class object for class ", LogErr.name pn]
                                 val Mach.Object classObj = newClass scope cls
                                 val _ = trace ["allocating class fixtures on class ", LogErr.name pn]
@@ -355,7 +355,7 @@ and allocScopeFixtures (scope:Mach.SCOPE)
                        (f:Ast.FIXTURES) 
     : unit = 
     case scope of
-        Mach.Scope { object, temps, ...} => 
+        Mach.Scope { object, temps, ... } => 
         allocFixtures scope object temps f
 
 
@@ -1217,7 +1217,7 @@ and evalLiteralArrayExpr (scope:Mach.SCOPE)
         fun putVal n [] = ()
           | putVal n (v::vs) = 
             let 
-                val name = { ns = (Ast.Internal ""), id = (Int.toString n) }
+                val name = Name.public (Int.toString n)
                 (* FIXME: this is probably incorrect wrt. Array typing rules. *)
                 val ty = if n < (length tys) 
                          then List.nth (tys, n)
@@ -1266,8 +1266,7 @@ and evalLiteralObjectExpr (scope:Mach.SCOPE)
                                 Ast.Const => true
                               | Ast.LetConst => true
                               | _ => false
-                val n = { ns = Ast.Internal "", 
-                          id = (#id (evalIdentExpr scope name)) }
+                val n = Name.public (#id (evalIdentExpr scope name))
                 val v = evalExpr scope init
                 val ty = searchFieldTypes (#id n) tys
                 val prop = { ty = ty,
@@ -2235,7 +2234,7 @@ and evalNonTailCallExpr (scope:Mach.SCOPE)
          | ReturnException v => v
 
 
-and labelEq (stmtLabels:Ast.IDENT list) 
+and labelMatch (stmtLabels:Ast.IDENT list) 
             (exnLabel:Ast.IDENT option) 
     : bool = 
     case (stmtLabels, exnLabel) of
@@ -2246,11 +2245,11 @@ and labelEq (stmtLabels:Ast.IDENT list)
       | (sl::sls,NONE) => 
             if sl = ""
             then true
-            else labelEq sls exnLabel
+            else labelMatch sls exnLabel
       | (sl::sls,SOME el) => 
             if sl = el
             then true
-            else labelEq sls exnLabel
+            else labelMatch sls exnLabel
 
 
 and evalStmts (scope:Mach.SCOPE)    
@@ -2288,8 +2287,7 @@ and evalStmt (scope:Mach.SCOPE)
         evalTryStmt scope block catches finally
       | Ast.SwitchTypeStmt { cond, ty, cases } => 
         LogErr.unimplError ["switch-type statements not handled"]
-      | Ast.ForInStmt w => 
-        LogErr.unimplError ["for-in loops not handled"]
+      | Ast.ForInStmt w => evalForInStmt scope w
 
 
 and multinameOf (n:Ast.NAME) = 
@@ -2983,7 +2981,7 @@ and evalLabelStmt (scope:Mach.SCOPE)
     : Mach.VAL =
     evalStmt scope s
         handle BreakException exnLabel => 
-            if labelEq [lab] exnLabel
+            if labelMatch [lab] exnLabel
                 then Mach.Undef
                 else raise BreakException exnLabel
 
@@ -3002,12 +3000,12 @@ and evalWhileStmt (scope:Mach.SCOPE)
                                     (* FIXME: doesn't this need to happen in evalStmts? *)
                      loop ())
                     handle ContinueException exnLabel => 
-                           if labelEq labels exnLabel
+                           if labelMatch labels exnLabel
                            then loop ()
                            else raise ContinueException exnLabel
                                       
                          | BreakException exnLabel => 
-                           if labelEq labels exnLabel
+                           if labelMatch labels exnLabel
                            then (!accum)
                            else raise BreakException exnLabel
                 else 
@@ -3034,12 +3032,12 @@ and evalDoWhileStmt (scope:Mach.SCOPE)
                     (accum := evalStmt scope body;
                      bottom ())
                     handle ContinueException exnLabel => 
-                           if labelEq labels exnLabel
+                           if labelMatch labels exnLabel
                            then bottom ()
                            else raise ContinueException exnLabel
                                       
                          | BreakException exnLabel => 
-                           if labelEq labels exnLabel
+                           if labelMatch labels exnLabel
                            then (!accum)
                            else raise BreakException exnLabel
                 end
@@ -3088,27 +3086,151 @@ and evalSwitchStmt (scope:Mach.SCOPE)
     in
         tryCases (evalExpr scope cond) cases
                     handle BreakException exnLabel => 
-                           if labelEq labels exnLabel
+                           if labelMatch labels exnLabel
                            then Mach.Undef
                            else raise BreakException exnLabel
     end
-    
+
 
 (*
     FOR_STMT
-
+        structural subtype test in evalIterable
+        TODO isEach
 *)
 
+and evalIterable (scope:Mach.SCOPE)
+                 (obj:Ast.EXPR)
+    : Mach.OBJ =
+    let
+        val v = evalExpr scope obj
+    in
+        (*
+         * Implement the IE JScript quirk where for (i in null) and
+         * for (i in undefined) do not loop at all by returning an
+         * empty object for Undef and Null.
+         *)
+        case v of
+            Mach.Object ob => ob
+          | (Mach.Undef | Mach.Null) => newObj ()
+    end
+
+and callIteratorGet (scope:Mach.SCOPE)
+                    (iterable:Mach.OBJ)
+    : Mach.OBJ =
+    let
+        val iterValue = newBuiltin Name.public_Array NONE
+        val iterator  = (case iterValue of
+                             Mach.Object ob => ob
+                           | _ => raise InternalError)
+    in
+        case iterable of
+            Mach.Obj { props, ... } => 
+            let
+                val cursorName = Name.public "cursor"
+                val cursorInit = newInt 0
+                fun enumerate ((name, prop):(Ast.NAME * Mach.PROP)) : bool =
+                    if #dontEnum (#attrs prop)
+                    then
+                        true
+                    else
+                        let 
+                            val lengthValue = getValue iterator Name.public_length
+                            val length      = toInt32 lengthValue
+                            val elemIndex   = Name.public (Int32.toString length)
+                            val elemValue   = newString (#id name)
+                        in
+                            setValue iterator elemIndex elemValue;
+                            true
+                        end
+            in
+                setValue iterator cursorName cursorInit;
+                List.all enumerate (!props);
+                iterator
+            end
+    end
+
+and callIteratorNext (scope:Mach.SCOPE)
+                     (iterator:Mach.OBJ)
+    : Mach.VAL =
+    let
+        val lengthValue = getValue iterator Name.public_length
+        val length      = toInt32 lengthValue
+        val cursorName  = Name.public "cursor"
+        val cursorValue = getValue iterator cursorName
+        val cursor      = toInt32 cursorValue
+    in
+        if cursor < length
+        then
+            let
+                val nextName       = Name.public (Int32.toString cursor)
+                val newCursorValue = newInt (cursor + 1)
+            in
+                setValue iterator Name.public_length newCursorValue;
+                getValue iterator nextName
+            end
+        else
+            raise Mach.StopIterationException
+    end
+
 and evalForInStmt (scope:Mach.SCOPE)
-                  (forStmt:Ast.FOR_ENUM_STMT)
-    : Mach.VAL = 
-    Mach.Undef
+                  (forInStmt:Ast.FOR_ENUM_STMT)
+    : Mach.VAL =
+    case forInStmt of
+        { isEach, defn, obj, fixtures, init, next, labels, body, ... } =>
+        let
+            val iterable = evalIterable scope obj
+            val iterator = callIteratorGet scope iterable
+            val forInScope = evalHead scope (valOf fixtures, []) false
+            val forInTemps = getScopeTemps forInScope
+
+            fun loop (accum:Mach.VAL option) =
+                let
+                    val v = (SOME (callIteratorNext forInScope iterator)
+                             handle Mach.StopIterationException =>
+                                    NONE)
+                    val b = (case v
+                              of NONE => false
+                               | x => true)
+                in
+                    if b
+                    then
+                        let
+                            val _ = Mach.defTemp forInTemps 0 (valOf v)
+                            val _ = evalStmts forInScope next
+                            val curr = (SOME (evalStmt forInScope body)
+                                        handle ContinueException exnLabel =>
+                                               if labelMatch labels exnLabel
+                                               then NONE
+                                               else raise ContinueException exnLabel)
+                            val nextVal = (case curr
+                                         of NONE => accum
+                                          | x => x)
+                        in
+                            loop nextVal handle BreakException exnLabel =>
+                                          if labelMatch labels exnLabel
+                                          then accum
+                                          else raise BreakException exnLabel
+                        end
+                    else
+                        accum
+                end
+        in
+            evalStmts forInScope init;
+            case
+                loop NONE handle BreakException exnLabel =>
+                              if labelMatch labels exnLabel
+                              then NONE
+                              else raise BreakException exnLabel
+            of
+                NONE => Mach.Undef
+              | SOME v => v
+        end
 
 and evalForStmt (scope:Mach.SCOPE)
                 (forStmt:Ast.FOR_STMT)
     : Mach.VAL =
     case forStmt of
-        { fixtures, init, cond, update, labels, body, ...} =>
+        { fixtures, init, cond, update, labels, body, ... } =>
         let
             val forScope = evalHead scope (valOf fixtures, []) false
 
@@ -3121,8 +3243,8 @@ and evalForStmt (scope:Mach.SCOPE)
                     then
                         let
                             val curr = (SOME (evalStmt forScope body)
-                                        handle ContinueException exnLabel => 
-                                               if labelEq labels exnLabel
+                                        handle ContinueException exnLabel =>
+                                               if labelMatch labels exnLabel
                                                then NONE
                                                else raise ContinueException exnLabel)
                             val next = (case curr 
@@ -3131,7 +3253,7 @@ and evalForStmt (scope:Mach.SCOPE)
                         in
                             evalExpr forScope update;
                             loop next handle BreakException exnLabel => 
-                                          if labelEq labels exnLabel  
+                                          if labelMatch labels exnLabel  
                                           then accum
                                           else raise BreakException exnLabel
                         end
@@ -3142,7 +3264,7 @@ and evalForStmt (scope:Mach.SCOPE)
             evalStmts forScope init;
             case 
                 loop NONE handle BreakException exnLabel => 
-                              if labelEq labels exnLabel  
+                              if labelMatch labels exnLabel  
                               then NONE
                               else raise BreakException exnLabel
             of

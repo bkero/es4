@@ -271,7 +271,7 @@ fun mergeFixtures ((newName,newFix),oldFixs) =
 fun addNamespace (ns,opennss) =
     if hasNamespace opennss ns
     then (trace ["skipping namespace ",LogErr.namespace ns]; opennss)   (* FIXME: should be an error to open namspaces redundantly *)
-    else ns :: opennss
+    else (trace ["adding namespace ", LogErr.namespace ns]; ns :: opennss)
 
 
 fun eraseFixtures oldFixs ((newName,newFix),newFixs) =
@@ -1266,7 +1266,7 @@ and defPragmas (env:ENV)
                     let
                         val namespace = resolveExprToNamespace env ns
                     in
-                        opennss := (namespace :: !opennss)
+                        opennss := addNamespace (namespace, (!opennss))
                     end
               | Ast.UseDefaultNamespace ns =>
                     let
