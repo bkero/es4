@@ -12,10 +12,10 @@ val doTrace = ref false
 fun trace ss = if (!doTrace) then LogErr.log ("[lex] " :: ss) else ()
 fun error ss = LogErr.lexError ss
 
-type lexresult = TOKEN
-(*
+type lex_result = TOKEN
+
 fun eof _ = Eof
-*)
+
 val lineno = ref 1
 fun incr_line _ = 
     lineno := (!lineno + 1); 
@@ -73,17 +73,17 @@ fun chopTrailing (s:string)
     String.substring (s, 0, ((String.size s) - 1))
 
 fun followsLineBreak (ts) =
-    let val _ = trace ["followsLineBreak"]
+    let 
 	val offset = length ts
 	val max_offset = !token_count
 	fun findBreak lbs =
 	    case lbs of
-		[] => false
+	[] => (trace ["followsLineBreak false"];false)
 	      | _ => 
 		(trace ["token_count=", Int.toString(max_offset),
 			" offset=", Int.toString(max_offset-offset),
 			" break=", Int.toString(hd lbs)];
-		 if (hd lbs) = (max_offset - offset) then true else findBreak (tl lbs))
+		 if (hd lbs) = (max_offset - offset) then (trace ["followsLineBreak true"];true) else findBreak (tl lbs))
     in
 	findBreak (!line_breaks)
     end
@@ -300,7 +300,6 @@ val (found_newline :  bool       ref) = ref false
 <INITIAL>"yield"           => (Yield);
 
 <INITIAL>{whitespace}        => (continue());
-<INITIAL>{identifier}        => (Identifier yytext);
 
 <INITIAL>{explicitIntLiteral} => (case Int32.fromString (chopTrailing yytext) of
 					  SOME i => ExplicitIntLiteral i

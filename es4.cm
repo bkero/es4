@@ -40,4 +40,5 @@ is
     $/pp-lib.cm
     $/mllex-tool.cm
     $/lex-ext.cm
+    $/ml-lpt-lib.cm
     tools/backtrace.cm
