@@ -6003,7 +6003,7 @@ and classDefinition (ts,attrs:ATTRS) =
                                             ctorDefn=ctorDefn }
 
             in
-                (ts3,{pragmas=pragmas,  (* pragmas apply for whole class body *)
+                (ts3,{pragmas=[],
                       body=[Ast.ClassBlock 
                                 {ns=ns,
                                  ident=ident,
@@ -6011,7 +6011,7 @@ and classDefinition (ts,attrs:ATTRS) =
                                  block=Ast.Block {body=body,
                                                   defns=classDefn::letDefns,
                                                   head=NONE,
-                                                  pragmas=[],
+                                                  pragmas=pragmas,
                                                   pos=posOf ts2}}],
                       defns=[],
                       head=NONE,

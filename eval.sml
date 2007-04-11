@@ -32,7 +32,9 @@ fun pop _ =
 
 val doTrace = ref false
 fun trace ss = if (!doTrace) then LogErr.log ("[eval] " :: ss) else ()
-fun error ss = LogErr.evalError ss
+fun error ss = 
+    (LogErr.log ("[stack] " :: [stackString()]);
+     LogErr.evalError ss)
 
 (* Exceptions for object-language control transfer. *)
 exception ContinueException of (Ast.IDENT option)

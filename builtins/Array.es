@@ -44,7 +44,7 @@ package
                 let ulen:uint = uint(dlen);
                 if (ulen != dlen)
                     throw new RangeError;
-                length = ulen;
+                _length = ulen;
             }
             else {
                 length = argslen;
