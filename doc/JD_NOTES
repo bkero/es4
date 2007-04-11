@@ -14,6 +14,21 @@ ISSUES
 
 ###
 
+10-APR-2007
+
+FOR-IN STATEMENTS
+
+for ( x in y ) ;
+for ( var x in y ) ;
+for ( var x = f() in y ) ;
+
+obj - expr after in
+next - desugaring before each iteration
+init - expression after = in binding form evaluated once before obj
+
+
+###
+
 29-MAR-2007
 
 TYPE IDENTIFIERS

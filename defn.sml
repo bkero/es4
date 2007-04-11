@@ -1627,26 +1627,28 @@ and resolvePath (env:ENV) (path:Ast.IDENT list)
     return the package qualifier expression and the remaining path
 *)
 
-and matchImport (env:ENV) 
+and matchImport (env:ENV)
                 (path:Ast.IDENT list)
-    : Ast.IDENT option * Ast.IDENT list =
+    : Ast.IDENT option * Ast.IDENT list = (NONE,path)
+(*
     let
-        val _ = (trace [">> matchImport"]; dumpPath path)
-        fun envHeadHasFixture ([],n) = false
-          | envHeadHasFixture ((env:ENV),n) = hasFixture (#fixtures (List.hd env)) (Ast.PropName n)
-        fun getEnvParent _ = NONE (* one scope at a time *)
-        val _ = trace ["xx matchImport"]
     in case env of
         [] => (trace ["<< matchImport none found"];(NONE,path))  (* none found *)
       | _ =>
         let
+            val _ = (trace [">> matchImport"]; dumpPath path)
+            fun envHeadHasFixture ([],n) = false
+              | envHeadHasFixture ((env:ENV),n) = hasFixture (#fixtures (List.hd env)) (Ast.PropName n)
+            fun getEnvParent _ = NONE (* one scope at a time *)
+            val _ = trace ["xx matchImport"]
             val mname = identExprToMultiname env (Ast.Identifier {ident=(hd path),openNamespaces=[]})
+            val _ = trace ["xx matchImport"]
         in
             case Multiname.resolve mname env envHeadHasFixture getEnvParent of
                 NONE => 
                     let
-                        val _ = trace ["xx matchImport looking for import"]
                         val { packageNames, ... } = hd env
+                        val _ = trace ["xx matchImport looking for head ",hd (hd packageNames)]
                     in case pathInPackageNames packageNames path of
                         (NONE,_) => matchImport (tl env) path
                       | (SOME pkg,rest) => (SOME pkg,rest)
@@ -1658,15 +1660,15 @@ and matchImport (env:ENV)
     end
 
 and pathInPackageNames (packageNames: Ast.IDENT list list) (path:Ast.IDENT list)
-    : Ast.IDENT option * Ast.IDENT list =
+    : Ast.IDENT option * Ast.IDENT list = (NONE,path)
     let
         val _ = trace [">> pathInPackageNames length=",Int.toString (length packageNames)]
 
         fun resolvePackage (package:Ast.IDENT list) (path:Ast.IDENT list) (ident:Ast.IDENT)
             : Ast.IDENT option * Ast.IDENT list =
             case (package,path) of
-                ([],_) => (trace ["<< resolvePackage "];dumpPath path;
-                           (SOME ident,path))
+                ([],_) => (trace ["<< resolvePackage ",ident];dumpPath path;
+                           (ident,path))
           | (pkgid::pkg,pthid::pth) => 
             let
                 val _ = (trace [">> resolvePackage"]; dumpPath pkg; dumpPath path)
@@ -1688,7 +1690,7 @@ and pathInPackageNames (packageNames: Ast.IDENT list list) (path:Ast.IDENT list)
           | (SOME _,_) => (trace ["<< pathInPackageNames match"];(ident,path)) (* match, return the remainder of the path *)
         end
     end
-
+*)
 
 and resolveObjectPath (env:ENV) (path:Ast.IDENT list) (expr:Ast.EXPR option)
     : Ast.EXPR =

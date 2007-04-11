@@ -44,7 +44,6 @@ package
                     return parse(v cast string);
 
                 timeval = TimeClip(ToDouble(v));
-                return;
             default:
                 ms = ToDouble(e);
             case 6:

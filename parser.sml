@@ -4293,27 +4293,29 @@ and forStatement (ts,w) : ((TOKEN * Ast.POS) list * Ast.STMT) =
                     end
 
                 val len = case defn of SOME {bindings=(b,i),...} => length b | NONE => 0
-                val inits = if (len = 0) (* convert inits to pattern *)
+                val (init,next) = if (len = 0) (* convert inits to pattern *)
                             then case inits of 
                                 Ast.ExprStmt e::[] => 
-                                Ast.ExprStmt (desugarForInInit e)::[]
+                                ([],Ast.ExprStmt (desugarForInInit e)::[])
                               | _ => LogErr.internalError [""]
-                            else inits  (* already desugared *)
+                            else ([hd inits],tl inits)  (* already desugared *)
                 val (ts2,nd2) = listExpression (tl ts1,ALLOWIN)
             in case ts2 of
                 (RightParen, _) :: _ =>
                     let
                         val (ts3,nd3) = substatement (tl ts2,w)
                     in
+(Pretty.ppStmt (hd init);
+
                             (ts3,Ast.ForInStmt{ 
                                      isEach=isEach,
                                      defn=defn,
                                      obj=nd2,
                                      labels=[],
                                      fixtures=NONE,
-                                     init=[],   (* FIXME *)
-                                     next=inits,
-                                     body=nd3 })
+                                     init=init,
+                                     next=next,
+                                     body=nd3 }))
                     end
               | _ => error ["unknown token in forStatement"]
             end
@@ -4352,7 +4354,7 @@ and forInitialiser (ts)
             in
                 trace ["<< forInitialiser with next=", tokenname(hd ts1)];
                 (ts1,NONE,[Ast.ExprStmt nd1])           
-             end
+            end
     end
 
 and optionalExpression (ts) : ((TOKEN * Ast.POS) list * Ast.EXPR) =
@@ -5319,18 +5321,32 @@ and variableBinding (ts,a,beta) : ((TOKEN * Ast.POS) list * Ast.BINDINGS) =
             ((Assign, _) :: _,_,_) =>
                 let
                     val (ts2,nd2) = variableInitialisation (ts1,a,beta)
-                    val (b,i) = desugarPattern (posOf ts) p t (SOME nd2) 0
-                in
-                    trace(["<< variableBinding with next=", tokenname(hd ts2)]);
-                    (ts2, (b,i))
+                in case (ts2,beta) of
+                    ((In, _) :: _, NOIN) =>
+                        let
+                           val temp = Ast.Binding {ident=Ast.ParamIdent 0,ty=t}
+                           val init = Ast.InitStep (Ast.ParamIdent 0,nd2)   (* ISSUE: should this value be desugared for side effects *)
+                           val (b,i) = desugarPattern (posOf ts) p t (SOME (Ast.GetParam 0)) 1
+                        in
+                           trace(["<< variableBinding with next=", tokenname(hd ts2)]);
+                           (ts2, (temp::b,init::i))
+                        end
+                  | _ =>
+                        let
+                           val (b,i) = desugarPattern (posOf ts) p t (SOME nd2) 0
+                        in
+                           trace(["<< variableBinding with next=", tokenname(hd ts2)]);
+                           (ts2, (b,i))
+                        end
                 end
           | ((In, _) :: _,_,NOIN) => (* okay, we are in a for-in or for-each-in binding *)
                 let
                     val temp = Ast.Binding {ident=Ast.ParamIdent 0,ty=t}
+                    val init = Ast.InitStep (Ast.ParamIdent 0, Ast.LiteralExpr Ast.LiteralUndefined)  (* for symmetry with above for-in case *)
                     val (b,i) = desugarPattern (posOf ts) p t (SOME (Ast.GetParam 0)) 1
                 in
                     trace(["<< variableBinding IN with next=", tokenname(hd ts1)]);
-                    (ts1, (temp::b,i))
+                    (ts1, (temp::b,init::i))
                 end
           | (_,IdentifierPattern _,_) =>   (* check for the more specific syntax allowed
                                                   when there is no init *)
