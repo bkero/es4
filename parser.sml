@@ -687,6 +687,9 @@ and parenListExpression (ts) : ((TOKEN * Ast.POS) list * Ast.EXPR) =
         (LeftParen, _) :: _ => 
             let
                 val (ts1,nd1) = listExpression (tl ts,ALLOWIN)
+                val nd1 = case nd1 of 
+                              Ast.ListExpr [x] => x
+                            | x => x
             in case ts1 of
                 (RightParen, _) :: _ => 
                     (trace(["<< parenListExpression with next=",tokenname(hd(ts1))]);
@@ -6016,7 +6019,7 @@ and classDefinition (ts,attrs:ATTRS) =
                                             ctorDefn=ctorDefn }
 
             in
-                (ts3,{pragmas=pragmas,  (* pragmas apply for whole class body *)
+                (ts3,{pragmas=[],
                       body=[Ast.ClassBlock 
                                 {ns=ns,
                                  ident=ident,
@@ -6024,7 +6027,7 @@ and classDefinition (ts,attrs:ATTRS) =
                                  block=Ast.Block {body=body,
                                                   defns=classDefn::letDefns,
                                                   head=NONE,
-                                                  pragmas=[],
+                                                  pragmas=pragmas,
                                                   pos=posOf ts2}}],
                       defns=[],
                       head=NONE,

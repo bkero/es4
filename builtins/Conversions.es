@@ -10,11 +10,27 @@ package
     use namespace intrinsic;
     use strict;
 
+    intrinsic function DefaultValue(obj, preferredType) {
+        var x = undefined;
+        if (preferredType == "String") {
+            if ("toString" in obj)
+                x = obj.toString();
+            if (x == undefined && "valueOf" in obj)
+                x = obj.valueOf();
+        } else {
+            if ("valueOf" in obj)
+                x = obj.valueOf();
+            if (x == undefined && "toString" in obj)
+                x = obj.toString();
+        }
+        return x;
+    }
+
     /* ... */
     intrinsic function ToPrimitive(value, preferredType)    {
         if (value === undefined || value === null || value is String || value is Boolean || value is Numeric)
             return value;
-        return value.intrinsic::DefaultValue(preferredType);
+        return DefaultValue(value, preferredType);
     }
 
     /* ES-262-3 9.2: The ToBoolean operation */

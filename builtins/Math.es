@@ -17,8 +17,32 @@
         intrinsic static const SQRT1_2
         intrinsic static const SQRT2
 
-        intrinsic static native function abs(x:Number):Number;
-        intrinsic static native function acos(x):Number;
+        intrinsic static function abs(x:Number):Number
+	    x > 0 ? x : -x;
+
+        intrinsic static function max(...args):Number
+	{
+	    var x : double = double.NEGATIVE_INFINITY;
+	    for (let i : uint = 0; i < args.length; ++i) {
+		if (args[i] > x) {
+		    x = args[i];
+		}
+	    }
+	    return x;
+	}
+
+        intrinsic static function min(...args):Number
+	{
+	    var x : double = double.NEGATIVE_INFINITY;
+	    for (let i : uint = 0; i < args.length; ++i) {
+		if (args[i] < x) {
+		    x = args[i];
+		}
+	    }
+	    return x;
+	}
+
+	intrinsic static native function acos(x):Number;
         intrinsic static native function asin(x):Number;
         intrinsic static native function atan(x):Number;
         intrinsic static native function atan2(x,y):Number;
@@ -27,8 +51,6 @@
         intrinsic static native function exp(x):Number;
         intrinsic static native function floor(x):Number;
         intrinsic static native function log(x):Number;
-        intrinsic static native function max(...args):Number;
-        intrinsic static native function min(...args):Number;
         intrinsic static native function pow(x,y):Number;
         intrinsic static native function random():Number;
         intrinsic static native function round(x):Number;
@@ -71,7 +93,7 @@
         // min.length = 2;
 
     } // class
-    var Math = new intrinsic::Math;
+    public var Math = new intrinsic::Math;
 
 
 //} // package

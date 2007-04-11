@@ -130,7 +130,7 @@ fun testTC argvRest =
 fun testEV argvRest =
     let 
         (* 10 seconds to run, then we get SIGALRM. *)
-        val _ = Posix.Process.alarm (Time.fromReal 10.0)
+        val _ = Posix.Process.alarm (Time.fromReal 100.0)
     	val _ = TextIO.print "booting ... \n";
         val _ = Boot.boot (); 
         val _ = TextIO.print "parsing ... \n";

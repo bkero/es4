@@ -86,6 +86,17 @@ fun nthAsUInt (vals:Mach.VAL list)
           | _ => error ["Wanted uint, got other"]
     end
 
+fun nthAsDouble (vals:Mach.VAL list) 
+                (n:int) 
+    : Real64.real = 
+    let 
+        val Mach.Obj { magic, ... } = nthAsObj vals n
+    in
+        case !magic of 
+            SOME (Mach.Double d) => d
+          | _ => error ["Wanted double, got other"]
+    end
+
 
 fun nthAsBool (vals:Mach.VAL list) 
               (n:int) 
@@ -652,79 +663,42 @@ fun now (vals:Mach.VAL list)
         addFn Name.intrinsicNS "sin" sin
         addFn Name.intrinsicNS "sqrt" sqrt
         addFn Name.intrinsicNS "tan" tan;
+
+ NOTE: all of these only work on doubles. We need versions that
+ also work on decimals.
+
 *)
-
-fun abs (v:Mach.VAL list)
-    : Mach.VAL = 
-    hd v
-
-fun acos (v:Mach.VAL list)
-    : Mach.VAL =
-    LogErr.unimplError ["intrinsic::acos"]
-
-fun asin (v:Mach.VAL list)
-    : Mach.VAL =
-    LogErr.unimplError ["intrinsic::acos"]
-
-fun atan (v:Mach.VAL list)
-    : Mach.VAL =
-    LogErr.unimplError ["intrinsic::acos"]
-
-fun atan2 (v:Mach.VAL list)
-    : Mach.VAL =
-    LogErr.unimplError ["intrinsic::acos"]
-
-fun ceil (v:Mach.VAL list)
-    : Mach.VAL =
-    LogErr.unimplError ["intrinsic::acos"]
-
-fun cos (v:Mach.VAL list)
-    : Mach.VAL =
-    LogErr.unimplError ["intrinsic::acos"]
-
-fun exp (v:Mach.VAL list)
-    : Mach.VAL =
-    LogErr.unimplError ["intrinsic::acos"]
-
-fun floor (v:Mach.VAL list)
-    : Mach.VAL =
-    hd v
-
-fun log (v:Mach.VAL list)
-    : Mach.VAL =
-    LogErr.unimplError ["intrinsic::log"]
-
-fun max (v:Mach.VAL list)
-    : Mach.VAL =
-    LogErr.unimplError ["intrinsic::max"]
-
-fun min (v:Mach.VAL list)
-    : Mach.VAL =
-    LogErr.unimplError ["intrinsic::min"]
-
-fun pow (v:Mach.VAL list)
-    : Mach.VAL =
-    LogErr.unimplError ["intrinsic::pow"]
 
 fun random (v:Mach.VAL list)
     : Mach.VAL =
     LogErr.unimplError ["intrinsic::random"]
 
-fun round (v:Mach.VAL list)
-    : Mach.VAL =
-    LogErr.unimplError ["intrinsic::round"]
 
-fun sin (v:Mach.VAL list)
-    : Mach.VAL =
-    LogErr.unimplError ["intrinsic::sin"]
+fun unaryDoubleFn (f:(Real64.real -> Real64.real)) : 
+    ((Mach.VAL list) -> Mach.VAL) =
+ fn vals => Eval.newDouble (f (Eval.toDouble (rawNth vals 0)))
+         
+fun binaryDoubleFn (f:((Real64.real * Real64.real) -> Real64.real)) : 
+    ((Mach.VAL list) -> Mach.VAL) =
+ fn vals => Eval.newDouble (f ((Eval.toDouble (rawNth vals 0)),
+                               (Eval.toDouble (rawNth vals 1))))
 
-fun sqrt (v:Mach.VAL list)
-    : Mach.VAL =
-    LogErr.unimplError ["intrinsic::sqrt"]
+val abs = unaryDoubleFn Real64.abs 
+val ceil = unaryDoubleFn Real64.realCeil
+val floor = unaryDoubleFn Real64.realFloor
+val round = unaryDoubleFn Real64.realRound
 
-fun tan (v:Mach.VAL list)
-    : Mach.VAL =
-    LogErr.unimplError ["intrinsic::tan"]
+val acos = unaryDoubleFn Math.acos
+val asin = unaryDoubleFn Math.asin
+val atan = unaryDoubleFn Math.atan
+val atan2 = binaryDoubleFn Math.atan2
+val cos = unaryDoubleFn Math.cos
+val exp = unaryDoubleFn Math.exp
+val log = unaryDoubleFn Math.ln
+val pow = binaryDoubleFn Math.pow 
+val sin = unaryDoubleFn Math.sin
+val sqrt = unaryDoubleFn Math.sqrt
+val tan = unaryDoubleFn Math.tan
 
 
 (* Some helpers not specified in the wiki at the moment. Maybe get rid
@@ -843,8 +817,6 @@ fun registerNatives _ =
         addFn Name.intrinsicNS "exp" exp;
         addFn Name.intrinsicNS "floor" floor;
         addFn Name.intrinsicNS "log" log;
-        addFn Name.intrinsicNS "max" max;
-        addFn Name.intrinsicNS "min" min;
         addFn Name.intrinsicNS "pow" pow;
         addFn Name.intrinsicNS "random" random;
         addFn Name.intrinsicNS "round" round;

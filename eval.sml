@@ -32,7 +32,9 @@ fun pop _ =
 
 val doTrace = ref false
 fun trace ss = if (!doTrace) then LogErr.log ("[eval] " :: ss) else ()
-fun error ss = LogErr.evalError ss
+fun error ss = 
+    (LogErr.log ("[stack] " :: [stackString()]);
+     LogErr.evalError ss)
 
 (* Exceptions for object-language control transfer. *)
 exception ContinueException of (Ast.IDENT option)
@@ -1134,6 +1136,7 @@ and evalExpr (scope:Mach.SCOPE)
         let 
             val _ = LogErr.setPos pos;
             val (obj, name) = evalRefExpr scope expr true
+            val _ = LogErr.setPos pos;
         in
             getValue obj name
         end
@@ -1142,6 +1145,7 @@ and evalExpr (scope:Mach.SCOPE)
         let 
             val _ = LogErr.setPos pos
             val (obj, name) = evalRefExpr scope expr false
+            val _ = LogErr.setPos pos
         in
             getValue obj name
         end
@@ -1360,6 +1364,7 @@ and evalCallMethod (scope:Mach.SCOPE)
          * call it directly without manufacturing a temporary Function 
          * wrapper object. 
          *)
+        val _ = trace ["evaluating ref expr for call-method"];
         val (thisObj, (obj, name)) = evalRefExprFull scope func true
         val _ = trace [">>> call method: ", LogErr.name name]
         val Mach.Obj { props, ... } = obj
@@ -1411,6 +1416,7 @@ and evalSetExpr (scope:Mach.SCOPE)
                 (v:Mach.VAL) 
     : Mach.VAL = 
     let
+        val _ = trace ["evalSetExpr"]
         val (obj, name) = evalRefExpr scope lhs false
         val v =
             let 
@@ -1447,6 +1453,7 @@ and evalUnaryOp (scope:Mach.SCOPE)
     let
         fun crement (mode:Ast.NUMERIC_MODE) decimalOp doubleOp intOp uintOp isPre = 
             let 
+                val _ = trace ["performing crement"]
                 val (obj, name) = evalRefExpr scope expr false
                 val v = getValue obj name
 
@@ -1511,8 +1518,9 @@ and evalUnaryOp (scope:Mach.SCOPE)
             end
     in
         case unop of 
-            Ast.Delete => 
-            (case evalRefExpr scope expr false of
+            Ast.Delete =>             
+            (trace ["performing operator delete"];
+             case evalRefExpr scope expr false of
                  (Mach.Obj {props, ...}, name) => 
                  (Mach.delProp props name; newBoolean true))
 
@@ -2063,6 +2071,7 @@ and evalExprToNamespace (scope:Mach.SCOPE)
     let 
         fun evalRefNamespace _ = 
             let 
+                val _ = trace ["evaluating ref to namespace"];
                 val (obj, name) = evalRefExpr scope expr true
                 val Mach.Obj { props, ... } = obj
             in
@@ -2883,8 +2892,10 @@ and evalBlock (scope:Mach.SCOPE)
         val Ast.Block {head, body, pos, ...} = block
         val _ = LogErr.setPos pos
         val blockScope = evalHead scope (valOf head) false
+        val res = evalStmts blockScope body
+        val _ = LogErr.setPos pos
     in
-        evalStmts blockScope body
+        res
     end
 
 
@@ -3203,8 +3214,8 @@ and evalForInStmt (scope:Mach.SCOPE)
                                                then NONE
                                                else raise ContinueException exnLabel)
                             val nextVal = (case curr
-                                         of NONE => accum
-                                          | x => x)
+                                            of NONE => accum
+                                             | x => x)
                         in
                             loop nextVal handle BreakException exnLabel =>
                                           if labelMatch labels exnLabel
