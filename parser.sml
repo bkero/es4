@@ -4308,8 +4308,6 @@ and forStatement (ts,w) : ((TOKEN * Ast.POS) list * Ast.STMT) =
                     let
                         val (ts3,nd3) = substatement (tl ts2,w)
                     in
-(Pretty.ppStmt (hd init);
-
                             (ts3,Ast.ForInStmt{ 
                                      isEach=isEach,
                                      defn=defn,
@@ -4318,7 +4316,7 @@ and forStatement (ts,w) : ((TOKEN * Ast.POS) list * Ast.STMT) =
                                      fixtures=NONE,
                                      init=init,
                                      next=next,
-                                     body=nd3 }))
+                                     body=nd3 })
                     end
               | _ => error ["unknown token in forStatement"]
             end
