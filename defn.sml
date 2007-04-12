@@ -1593,104 +1593,95 @@ and defLiteral (env:ENV)
     end
 
 (*
-    resolvePackageQualifier
+    Resolve a path in an environment
 
-    - for each scope
-      - if there is a fixture that matches the head of the path, 
-            return NONE and the path
-      - else if there is an import that matches a prefix of the path, 
-            return the prefix and the rest of the path
+    For each context in the environment: if there is a fixture that matches the
+    head of the path, then resolve the path as an object path; if some prefix of
+    the path matches a package name introduced in that context, then resolve the
+    prefix as a package qualifier and the rest of the path as an object path,
+    the head (if any) is qualified by the package qualifier.
+
+    If no context has a matching fixture or package name, then resolve the path as
+    as an object reference.
 *)
 
 and resolvePath (env:ENV) (path:Ast.IDENT list)
     : Ast.EXPR =
     let
-        val _ = trace [">> resolve path"]
-        val (pkg,pth) = matchImport env path
-        val _ = trace ["xx resolve path with "]
-
+        val (pkg,pth) = matchPackageName env path
     in case (pkg,pth) of
              (SOME pk,[]) => Ast.LiteralExpr (Ast.LiteralNamespace (Ast.Public pk))
            | (SOME pk,id::ids) => 
                 let
-                    val expr = Ast.LexicalRef {ident=Ast.QualifiedIdentifier {qual=Ast.LiteralExpr (Ast.LiteralNamespace (Ast.Public pk)),
-                                                                              ident=id},
-                                               pos=NONE}
-
+                    val expr = Ast.LexicalRef 
+                                    {ident=Ast.QualifiedIdentifier 
+                                        {qual=Ast.LiteralExpr (Ast.LiteralNamespace (Ast.Public pk)),
+                                         ident=id},
+                                     pos=NONE}
                 in
-                    resolveObjectPath env ids (SOME expr)  (* FIXME: qualify with package *)
+                    resolveObjectPath env ids (SOME expr)
                 end
            | (NONE,_) => resolveObjectPath env path NONE
     end
 
 (*
-    return the package qualifier expression and the remaining path
+    Return the package qualifier, if any, and the remaining path
 *)
 
-and matchImport (env:ENV)
-                (path:Ast.IDENT list)
-    : Ast.IDENT option * Ast.IDENT list = (NONE,path)
-(*
+and matchPackageName (env:ENV)
+                     (path:Ast.IDENT list)
+    : Ast.IDENT option * Ast.IDENT list =
     let
     in case env of
-        [] => (trace ["<< matchImport none found"];(NONE,path))  (* none found *)
+        [] => (NONE,path)
       | _ =>
         let
-            val _ = (trace [">> matchImport"]; dumpPath path)
-            fun envHeadHasFixture ([],n) = false
-              | envHeadHasFixture ((env:ENV),n) = hasFixture (#fixtures (List.hd env)) (Ast.PropName n)
-            fun getEnvParent _ = NONE (* one scope at a time *)
-            val _ = trace ["xx matchImport"]
+            fun nameExists ([],n) = false
+              | nameExists ((env:ENV),n) = hasFixture (#fixtures (List.hd env)) (Ast.PropName n)
+            fun parentEnv _ = NONE (* just do one scope at a time *)
+
             val mname = identExprToMultiname env (Ast.Identifier {ident=(hd path),openNamespaces=[]})
-            val _ = trace ["xx matchImport"]
         in
-            case Multiname.resolve mname env envHeadHasFixture getEnvParent of
-                NONE => 
+            case Multiname.resolve mname env nameExists parentEnv of
+                SOME (({fixtures, ...}::_), n) => 
+                    (NONE,path)   (* head of path matches fixture *)
+              | NONE => (* head of path does not match fixture, try finding a package name that matches prefix of path *)
                     let
                         val { packageNames, ... } = hd env
-                        val _ = trace ["xx matchImport looking for head ",hd (hd packageNames)]
                     in case pathInPackageNames packageNames path of
-                        (NONE,_) => matchImport (tl env) path
+                        (NONE,_) => matchPackageName (tl env) path
                       | (SOME pkg,rest) => (SOME pkg,rest)
                     end
-              | SOME (({fixtures, ...}::_), n) => 
-                    (trace ["<< matchImport fixture found ",hd path]; (NONE,path))   (* found fixture, packageNames trumped *)
-              | _ => LogErr.defnError ["fixture lookup error ", LogErr.multiname mname]
+              | _ => LogErr.internalError ["matchPackageName with mname=", LogErr.multiname mname]
         end
     end
 
 and pathInPackageNames (packageNames: Ast.IDENT list list) (path:Ast.IDENT list)
-    : Ast.IDENT option * Ast.IDENT list = (NONE,path)
+    : Ast.IDENT option * Ast.IDENT list =
     let
-        val _ = trace [">> pathInPackageNames length=",Int.toString (length packageNames)]
-
-        fun resolvePackage (package:Ast.IDENT list) (path:Ast.IDENT list) (ident:Ast.IDENT)
+        fun matchPackage (package:Ast.IDENT list) (path:Ast.IDENT list) (prefix:Ast.IDENT list)
             : Ast.IDENT option * Ast.IDENT list =
-            case (package,path) of
-                ([],_) => (trace ["<< resolvePackage ",ident];dumpPath path;
-                           (ident,path))
-          | (pkgid::pkg,pthid::pth) => 
-            let
-                val _ = (trace [">> resolvePackage"]; dumpPath pkg; dumpPath path)
-                val dot = if ident="" then "" else "."
-            in
-                if pkgid = pthid 
-                then resolvePackage pkg pth (ident^dot^pkgid)
-                else (NONE,path)
-            end
-          | (_,[]) => error ["resolving package portion of empty path"];
+            case (package,path,prefix) of
+                ([],_,[]) => 
+                    (NONE,path)
+              | ([],_,_) => 
+                    (SOME (packageIdentFromPath (List.rev prefix) ""),path)
+              | (pkgid::pkg,pthid::pth,_) => 
+                    if pkgid = pthid 
+                    then matchPackage pkg pth (pkgid::prefix)
+                    else (NONE,path)
+          | (_,[],_) => error ["resolving package portion of empty path"];
 
-    in case (packageNames,path) of
-        ([],_) => (trace ["<< pathInPackageNames no match"];(NONE,path))  (* no match *)
-      | (pkg::pkgs,_) => 
+    in case packageNames of
+        [] => (NONE,path)  (* no match *)
+      | pkg::pkgs => 
         let
-            val (ident,path) = resolvePackage pkg path ""
-        in case (ident,pkgs) of
-            (NONE,_) => pathInPackageNames pkgs path (* no match yet, try again *)
-          | (SOME _,_) => (trace ["<< pathInPackageNames match"];(ident,path)) (* match, return the remainder of the path *)
+            val (ident,path) = matchPackage pkg path []
+        in case ident of
+            NONE => pathInPackageNames pkgs path (* no match yet, try again *)
+          | _ => (ident,path) (* match, return the remainder of the path *)
         end
     end
-*)
 
 and resolveObjectPath (env:ENV) (path:Ast.IDENT list) (expr:Ast.EXPR option)
     : Ast.EXPR =
