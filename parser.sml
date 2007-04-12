@@ -4273,19 +4273,26 @@ and forStatement (ts,w) : ((TOKEN * Ast.POS) list * Ast.STMT) =
       | (In, _) :: _ =>
             let
                 fun desugarForInInit (init:Ast.EXPR) : Ast.EXPR =   
-                    (* ISSUE: there might be an opportunity to share code here with assignmentExpression *)
+                    (* ISSUE: there might be an opportunity to share 
+                              code here with assignmentExpression *)
                     let
                         fun isInitStep (b:Ast.INIT_STEP) : bool =
                             case b of 
                                Ast.InitStep _ => true
                              | _ => false
                 
-                        fun makeSetExpr (Ast.AssignStep (lhs,rhs)) = Ast.SetExpr (Ast.Assign,lhs,rhs)
-                          | makeSetExpr (Ast.InitStep _) = LogErr.internalError ["makeSetExpr: shouldn't get here"]
+                        fun makeSetExpr (Ast.AssignStep (lhs,rhs)) 
+                                = Ast.SetExpr (Ast.Assign,lhs,rhs)
+                          | makeSetExpr (Ast.InitStep _) 
+                                = LogErr.internalError ["makeSetExpr: shouldn't get here"]
                 
                         val p = patternFromListExpr init
-                        val (binds,inits) = desugarPattern (posOf ts) p (Ast.SpecialType Ast.Any) (SOME (Ast.GetTemp 0)) 0  (* type is meaningless *)
-                        val (inits,assigns) = List.partition isInitStep inits    (* separate init steps and assign steps *)
+                        val (binds,inits) = desugarPattern (posOf ts) p 
+                                                           (Ast.SpecialType Ast.Any) 
+                                                           (SOME (Ast.GetTemp 0)) 0  
+                                                                          (* type is meaningless *)
+                        val (inits,assigns) = List.partition isInitStep inits
+                                                         (* separate init steps and assign steps *)
                         val sets = map makeSetExpr assigns
                     in case binds of
                         [] => hd sets
@@ -4296,12 +4303,13 @@ and forStatement (ts,w) : ((TOKEN * Ast.POS) list * Ast.STMT) =
                     end
 
                 val len = case defn of SOME {bindings=(b,i),...} => length b | NONE => 0
-                val (init,next) = if (len = 0) (* convert inits to pattern *)
+                val (init,next) = 
+                        if len = 0 (* convert inits to pattern *)
                             then case inits of 
                                 Ast.ExprStmt e::[] => 
                                 ([],Ast.ExprStmt (desugarForInInit e)::[])
                               | _ => LogErr.internalError [""]
-                            else ([hd inits],tl inits)  (* already desugared *)
+                            else ([],inits)  (* already desugared *)
                 val (ts2,nd2) = listExpression (tl ts1,ALLOWIN)
             in case ts2 of
                 (RightParen, _) :: _ =>

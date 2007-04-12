@@ -3139,6 +3139,7 @@ and callIteratorGet (scope:Mach.SCOPE)
             let
                 val cursorName = Name.public "cursor"
                 val cursorInit = newInt 0
+                val length = ref 0
                 fun enumerate ((name, prop):(Ast.NAME * Mach.PROP)) : bool =
                     if #dontEnum (#attrs prop)
                     then
@@ -3146,8 +3147,8 @@ and callIteratorGet (scope:Mach.SCOPE)
                     else
                         let 
                             val lengthValue = getValue iterator Name.public_length
-                            val length      = toInt32 lengthValue
-                            val elemIndex   = Name.public (Int32.toString length)
+                            val _ = length := toInt32 lengthValue
+                            val elemIndex   = Name.public (Int32.toString (!length))
                             val elemValue   = newString (#id name)
                         in
                             setValue iterator elemIndex elemValue;
@@ -3156,6 +3157,7 @@ and callIteratorGet (scope:Mach.SCOPE)
             in
                 setValue iterator cursorName cursorInit;
                 List.all enumerate (!props);
+                setValue iterator Name.public_length (newInt (!length+1));
                 iterator
             end
     end
@@ -3176,7 +3178,7 @@ and callIteratorNext (scope:Mach.SCOPE)
                 val nextName       = Name.public (Int32.toString cursor)
                 val newCursorValue = newInt (cursor + 1)
             in
-                setValue iterator Name.public_length newCursorValue;
+                setValue iterator cursorName newCursorValue;
                 getValue iterator nextName
             end
         else
@@ -3192,7 +3194,14 @@ and evalForInStmt (scope:Mach.SCOPE)
             val iterable = evalIterable scope obj
             val iterator = callIteratorGet scope iterable
             val forInScope = evalHead scope (valOf fixtures, []) false
-            val forInTemps = getScopeTemps forInScope
+
+            val (nextTarget,nextHead,nextInits) = 
+                    case next of
+                        Ast.ExprStmt (Ast.InitExpr (target,head,inits))::[] => (target,head,inits)
+                      | _ => (Ast.Hoisted,([],[]),[])
+
+            val tempScope = evalHead forInScope nextHead false
+            val temps = getScopeTemps tempScope
 
             fun loop (accum:Mach.VAL option) =
                 let
@@ -3206,8 +3215,8 @@ and evalForInStmt (scope:Mach.SCOPE)
                     if b
                     then
                         let
-                            val _ = Mach.defTemp forInTemps 0 (valOf v)
-                            val _ = evalStmts forInScope next
+                            val _ = Mach.defTemp temps 0 (valOf v)
+                            val _ = evalScopeInits tempScope nextTarget nextInits;
                             val curr = (SOME (evalStmt forInScope body)
                                         handle ContinueException exnLabel =>
                                                if labelMatch labels exnLabel
