@@ -1924,14 +1924,14 @@ and defStmt (env:ENV)
                       | NONE => ([],[],[])
             in
             case fe of 
-                { isEach, obj, defn, labels, body, init, next, ... } => 
+                { isEach, obj, defn, labels, body, next, ... } => 
                 let
                     val newObj =  defExpr env obj
                     val (uf1,hf1,i1) = defVarDefnOpt defn
                     val env = updateFixtures env uf1
                     val (newBody,hoisted) = defStmt env [] body
-                    val (newInit,_) = defStmts env init
-                    val (newNext,_) = defStmts env next
+                    val tempEnv = updateTempOffset env 1   (* alloc temp for iteration value *)
+                    val (newNext,_) = defStmt tempEnv [] next
                 in
                     ({ isEach=isEach, 
                        obj = newObj,
@@ -1939,7 +1939,6 @@ and defStmt (env:ENV)
                        labels = labels,
                        body = newBody, 
                        fixtures = SOME uf1,
-                       init = newInit,
                        next = newNext },
                      hf1@hoisted)
                 end

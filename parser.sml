@@ -4272,7 +4272,7 @@ and forStatement (ts,w) : ((TOKEN * Ast.POS) list * Ast.STMT) =
             end
       | (In, _) :: _ =>
             let
-                fun desugarForInInit (init:Ast.EXPR) : Ast.EXPR =   
+                fun desugarForInInit (init:Ast.EXPR) : Ast.EXPR =
                     (* ISSUE: there might be an opportunity to share 
                               code here with assignmentExpression *)
                     let
@@ -4289,27 +4289,30 @@ and forStatement (ts,w) : ((TOKEN * Ast.POS) list * Ast.STMT) =
                         val p = patternFromListExpr init
                         val (binds,inits) = desugarPattern (posOf ts) p 
                                                            (Ast.SpecialType Ast.Any) 
-                                                           (SOME (Ast.GetTemp 0)) 0  
+                                                           (SOME (Ast.GetParam 0)) 0  
                                                                           (* type is meaningless *)
                         val (inits,assigns) = List.partition isInitStep inits
                                                          (* separate init steps and assign steps *)
                         val sets = map makeSetExpr assigns
-                    in case binds of
-                        [] => hd sets
-                      | _ => Ast.LetExpr {defs=(binds,inits),  
-                                                 body=Ast.ListExpr sets,
-                                                 head=NONE}
-                                (* introduce a letexpr to narrow the scope of the temps *)
+                        val paramBind = Ast.Binding {ident=Ast.ParamIdent 0,
+                                                     ty=Ast.SpecialType Ast.Any}
+                    in
+                        Ast.LetExpr {defs=(paramBind::binds,inits),
+                                     body=Ast.ListExpr sets,
+                                     head=NONE}
                     end
 
                 val len = case defn of SOME {bindings=(b,i),...} => length b | NONE => 0
-                val (init,next) = 
+                val next = 
                         if len = 0 (* convert inits to pattern *)
                             then case inits of 
                                 Ast.ExprStmt e::[] => 
-                                ([],Ast.ExprStmt (desugarForInInit e)::[])
-                              | _ => LogErr.internalError [""]
-                            else ([],inits)  (* already desugared *)
+                                Ast.ExprStmt (desugarForInInit e)
+                              | _ => LogErr.internalError ["invalid forIn inits 1"]
+                            else case inits of
+                                Ast.InitStmt i :: [] => 
+                                Ast.InitStmt i (* already desugared *)
+                              | _ => LogErr.internalError ["invalid forIn inits 2"]
                 val (ts2,nd2) = listExpression (tl ts1,ALLOWIN)
             in case ts2 of
                 (RightParen, _) :: _ =>
@@ -4322,7 +4325,6 @@ and forStatement (ts,w) : ((TOKEN * Ast.POS) list * Ast.STMT) =
                                      obj=nd2,
                                      labels=[],
                                      fixtures=NONE,
-                                     init=init,
                                      next=next,
                                      body=nd3 })
                     end

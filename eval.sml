@@ -3189,16 +3189,35 @@ and evalForInStmt (scope:Mach.SCOPE)
                   (forInStmt:Ast.FOR_ENUM_STMT)
     : Mach.VAL =
     case forInStmt of
-        { isEach, defn, obj, fixtures, init, next, labels, body, ... } =>
+        { isEach, defn, obj, fixtures, next, labels, body, ... } =>
         let
             val iterable = evalIterable scope obj
             val iterator = callIteratorGet scope iterable
             val forInScope = evalHead scope (valOf fixtures, []) false
 
-            val (nextTarget,nextHead,nextInits) = 
+            (* 
+                The following code is ugly but it needs to handle the cases
+                when there is a binding on the lhs of 'in' and not. If there
+                is no binding on the lhs, then the parser uses a LetExpr to
+                allocate a temporary fixture for the iteration value and any
+                possibly some for desugaring. The associated inits (i) are 
+                separated out as 'nextInits' for execution after the iteration 
+                value is set each time around the loop.
+
+                FIXME: maybe unify 'next' as a new kind of expr. This would
+                trade redundancy for clarity. Not sure it worth it.
+            *)
+
+            val (nextTarget,nextHead,nextInits,nextExpr) = 
                     case next of
-                        Ast.ExprStmt (Ast.InitExpr (target,head,inits))::[] => (target,head,inits)
-                      | _ => (Ast.Hoisted,([],[]),[])
+                        Ast.ExprStmt (Ast.InitExpr (target,head,inits)) => (target,head,inits,[])
+                      | Ast.ExprStmt (Ast.LetExpr {defs,body,head=SOME (f,i)}) => (Ast.Hoisted,(f,[]),i,body::[])
+                      | _ => LogErr.internalError ["evalForInStmt: invalid structure"]
+
+            (*
+                A binding init on the lhs of 'in' will be included in nextHead
+                and evaluated once when the tempScope is created here
+            *)
 
             val tempScope = evalHead forInScope nextHead false
             val temps = getScopeTemps tempScope
@@ -3215,8 +3234,9 @@ and evalForInStmt (scope:Mach.SCOPE)
                     if b
                     then
                         let
-                            val _ = Mach.defTemp temps 0 (valOf v)
-                            val _ = evalScopeInits tempScope nextTarget nextInits;
+                            val _ = Mach.defTemp temps 0 (valOf v)   (* def the iteration value *)
+                            val _ = evalScopeInits tempScope nextTarget nextInits
+                            val _ = map (evalExpr tempScope) nextExpr
                             val curr = (SOME (evalStmt forInScope body)
                                         handle ContinueException exnLabel =>
                                                if labelMatch labels exnLabel
@@ -3235,7 +3255,6 @@ and evalForInStmt (scope:Mach.SCOPE)
                         accum
                 end
         in
-            evalStmts forInScope init;
             case
                 loop NONE handle BreakException exnLabel =>
                               if labelMatch labels exnLabel

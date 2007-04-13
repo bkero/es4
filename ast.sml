@@ -472,8 +472,7 @@ withtype
              defn: VAR_DEFN option,             
              obj: EXPR,
              fixtures: FIXTURES option,
-             init: STMT list,
-             next: STMT list,
+             next: STMT,
              labels: IDENT list,
              body: STMT }
 

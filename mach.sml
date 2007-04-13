@@ -406,7 +406,7 @@ fun getTemp (temps:TEMPS)
             (n:int)
     : VAL =
     case List.nth ((!temps), n) of
-        (_, UninitTemp) => LogErr.machError ["getting uninitialized temporary"]
+        (_, UninitTemp) => LogErr.machError ["getting uninitialized temporary ",Int.toString n]
       | (_, ValTemp v) => v
 
 fun defTemp (temps:TEMPS)
@@ -414,6 +414,7 @@ fun defTemp (temps:TEMPS)
             (v:VAL) 
     : unit = 
     let
+        val _ = trace ["defTemp ",Int.toString n]
         fun replaceNth k [] = LogErr.machError ["temporary-definition error"]
           | replaceNth k (x::xs) =
             if k = 0 
