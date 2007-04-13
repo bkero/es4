@@ -96,7 +96,7 @@ withtype FUN_CLOSURE =
          (VAL list -> VAL)
 
      and OBJ_IDENT = 
-         LargeInt.int
+         int
 
 (* Important to model "fixedness" separately from 
  * "dontDelete-ness" because fixedness affects 
@@ -348,9 +348,10 @@ fun hasProp (b:PROP_BINDINGS)
         search (!b)
     end
 
-val currIdent = ref (LargeInt.fromInt 0)
+(* Safe: will overflow when it runs out of identities. *)
+val currIdent = ref 0
 fun nextIdent _ =
-    (currIdent := (!currIdent) + (LargeInt.fromInt 1);
+    (currIdent := (!currIdent) + 1;
      !currIdent)
 
 fun newObj (t:VAL_TAG) 

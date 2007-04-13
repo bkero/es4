@@ -25,33 +25,10 @@ package
         // 15.4.2.1 new Array( [ item0 [ , item1 [ , ... ] ] ] )
         // 15.4.2.2 new Array(len)
         //
-        // Here we rely on magic or optimization, since the Array
-        // constructor takes a variable number of arguments, which
-        // itself requires an array to be constructed.
-        //
-        // Optimization gets around this by avoiding allocation of the
-        // array if all references to args is in the form of
-        // args.length and args[n].
-        //
-        // Magic would solve this by creating an array without
-        // invoking the array constructor, ie, essentially making this
-        // code pointless.
+        // Implemented in a special case of the evaluator. Necessary
+        // because the implementation here would rely on rest args,
+        // and we use Array to *implement* those.
 
-        function Array(args=[]/*FIXME:...args*/) {
-            let argslen:uint = uint(args.length);
-            if (argslen == 1 && (args[0] is Number)) {
-                let dlen:Number = args[0];
-                let ulen:uint = uint(dlen);
-                if (ulen != dlen)
-                    throw new RangeError;
-                _length = ulen;
-            }
-            else {
-                length = argslen;
-                for (let i:uint = 0; i < argslen; i++)
-                    this[i] = args[i];
-            }
-        }
 
         // 15.4.4 Properties of the Array Prototype Object
         // prototype.[[Prototype]] = prototype;

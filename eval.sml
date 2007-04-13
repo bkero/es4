@@ -9,6 +9,9 @@ val (stack:string list list ref) = ref []
 fun resetStack _ = 
     stack := []
 
+val functionClassIdentity = ref (~1)
+val arrayClassIdentity = ref (~1)
+
 fun join sep ss = 
     case ss of 
         [] => ""
@@ -30,8 +33,9 @@ fun pop _ =
      then LogErr.log ("[stack] " :: [stackString()])
      else ())
 
+fun log ss = LogErr.log ("[eval] " :: ss)
 val doTrace = ref false
-fun trace ss = if (!doTrace) then LogErr.log ("[eval] " :: ss) else ()
+fun trace ss = if (!doTrace) then log ss else ()
 fun error ss = 
     (LogErr.log ("[stack] " :: [stackString()]);
      LogErr.evalError ss)
@@ -122,14 +126,6 @@ fun getGlobalScope _
     case !globalScope of 
         NONE => error ["missing global scope"]
       | SOME ob => ob
-
-fun resetGlobal (ob:Mach.OBJ) 
-    : unit = 
-    (globalObject := SOME ob;
-     globalScope := SOME (Mach.Scope { object = ob,
-                                       parent = NONE,
-                                       temps = ref [],
-                                       isVarObject = true }))
 
 (* 
  * A small number of functions do not fully evaluate to Mach.VAL 
@@ -647,6 +643,10 @@ and newRootBuiltin (n:Ast.NAME) (m:Mach.MAGIC)
     in
         Mach.Object (Mach.setMagic obj (SOME m))
     end
+
+and newArray (vals:Mach.VAL list)
+    : Mach.VAL = 
+    instantiateGlobalClass Name.public_Array vals
 
 and newBuiltin (n:Ast.NAME) (m:Mach.MAGIC option) 
     : Mach.VAL =
@@ -1983,7 +1983,8 @@ and evalBinaryTypeOp (scope:Mach.SCOPE)
                                Mach.ObjectTag _ => newBoolean (n = "Object")
                              | Mach.ArrayTag _ => newBoolean (n = "Array")
                              | Mach.FunctionTag _ => newBoolean (n = "Function")
-                             | Mach.ClassTag {id, ...} => newBoolean (n = id)
+                             | Mach.ClassTag {id, ...} => (trace ["operator 'is' on object of class ", id]; 
+                                                           newBoolean (n = id))
                              | Mach.NoTag => newBoolean false)))
               | _ => error ["operator 'is' on unknown type expression"]
         end
@@ -2519,8 +2520,10 @@ and bindArgs (outerScope:Mach.SCOPE)
              (args:Mach.VAL list)
     : unit =
     let
-        val Ast.Func { defaults, ty, ... } = func
-
+        val Ast.Func { defaults, ty, 
+                       fsig = Ast.FunctionSignature { hasRest, ... }, 
+                       ... } = func
+            
         (* If we have:
          * 
          * P formal parameters
@@ -2532,35 +2535,64 @@ and bindArgs (outerScope:Mach.SCOPE)
          *
          * We assign the args to temps numbered [0, A),
          * and assign the last D-I defaults to temps numbered [A, P-A).
+         *
+         * If the function has a ...rest arg and A <= (P-1), we do as above. 
+         * 
+         * If the function has a ...rest arg and A > (P-1), we do the above
+         * for the (P-1) args and then take the A-(P-1) args and put them 
+         * in a new array, bound to the ...rest name.
          *)
 
         val p = length (#params ty)
         val d = length defaults
         val a = length args
-        val i = (a+d)-p
+        val i = Int.min (d, (a+d) - p);
         val _ = trace ["bindArgs: p=", Int.toString p,
                        ", d=", Int.toString d,
                        ", a=", Int.toString a,
-                       ", i=", Int.toString i]
+                       ", i=", Int.toString i,
+                       ", hasRest=", Bool.toString hasRest]
                        
         val argTemps = getScopeTemps argScope
-        fun bindArg _ [] = ()
+        fun bindArg _ [] = ()                           
           | bindArg (n:int) ((arg:Mach.VAL)::args) = 
-            (Mach.defTemp argTemps n arg; 
+            (trace ["defining temp ", Int.toString n];
+             Mach.defTemp argTemps n arg; 
              bindArg (n+1) args)
+
     in
-        if a + d < p orelse a > p
-        then error ["bad number of args to function ", 
-                    Int.toString a, " given ", 
-                    Int.toString (p-d), " expected"]
+        if hasRest andalso a > (p-1)
+        then 
+            if a + d < (p-1)
+            then error ["bad number of args to function ", 
+                        Int.toString a, " given ", 
+                        Int.toString (p-(1+d)), " expected"]
+            else
+                let
+                    val _ = trace ["dropping ", Int.toString i, " defaults"]
+                    val defExprs = List.drop (defaults, i)
+                    val defVals = List.map (evalExpr outerScope) defExprs
+                    val restArgs = List.drop (args, (p-1))
+                    val _ = trace ["dropping ", Int.toString (p-1), 
+                                   " args, binding ", Int.toString (List.length restArgs), 
+                                   " rest args"];
+                    val allArgs = (List.take (args, (p-1))) @ defVals @ [newArray restArgs]
+                in
+                    bindArg 0 allArgs
+                end
         else 
-            let
-                val defExprs = List.drop (defaults, i)
-                val defVals = List.map (evalExpr outerScope) defExprs
-                val allArgs = args @ defVals
-            in
-                bindArg 0 allArgs
-            end
+            if a + d < p orelse a > p
+            then error ["bad number of args to function ", 
+                        Int.toString a, " given ", 
+                        Int.toString (p-d), " expected"]
+            else 
+                let
+                    val defExprs = List.drop (defaults, i)
+                    val defVals = List.map (evalExpr outerScope) defExprs
+                    val allArgs = args @ defVals
+                in
+                    bindArg 0 allArgs
+                end
     end
 
 
@@ -2719,6 +2751,28 @@ and initializeAndConstruct (classClosure:Mach.CLS_CLOSURE)
                     end
             end
 
+and runAnySpecialConstructor (id:Mach.OBJ_IDENT) 
+                             (args:Mach.VAL list) 
+                             (instanceObj:Mach.OBJ) 
+    : unit =
+    (trace ["checking for special case constructors with value ", Int.toString id];
+    if id = !functionClassIdentity
+    then (* FIXME: bring the function ctor in here. *) ()
+    else 
+        if id = !arrayClassIdentity
+        then 
+            let
+                fun bindVal _ [] = ()
+                  | bindVal n (x::xs) = 
+                    (setValue instanceObj (Name.public (Int.toString n)) x;
+                     bindVal (n+1) xs)
+            in
+                trace ["running special-case array constructor"];
+                bindVal 0 args
+            end
+        else 
+            ())
+    
 
 and constructClassInstance (classObj:Mach.OBJ)
                            (classClosure:Mach.CLS_CLOSURE) 
@@ -2734,6 +2788,7 @@ and constructClassInstance (classObj:Mach.OBJ)
                                     
         val (classScope:Mach.SCOPE) = extendScope env classObj false
         val (instanceObj:Mach.OBJ) = Mach.newObj tag proto NONE
+        val Mach.Obj { ident, ... } = classObj
     in
         trace ["allocating ", 
                Int.toString (length instanceFixtures), 
@@ -2741,6 +2796,7 @@ and constructClassInstance (classObj:Mach.OBJ)
         allocObjFixtures classScope instanceObj instanceFixtures;
         trace ["entering most derived constructor for ", LogErr.name name];
         initializeAndConstruct classClosure classObj classScope args instanceObj;
+        runAnySpecialConstructor ident args instanceObj;
         trace ["finished constructing new ", LogErr.name name];
         pop ();
         Mach.Object instanceObj
@@ -3354,6 +3410,27 @@ and evalProgram (prog:Ast.PROGRAM)
         allocScopeFixtures gScope (valOf (#fixtures prog));
         map (evalPackage gScope) (#packages prog);
         evalBlock gScope (#block prog)
+    end
+
+fun resetGlobal (ob:Mach.OBJ) 
+    : unit = 
+    (globalObject := SOME ob;
+     globalScope := SOME (Mach.Scope { object = ob,
+                                       parent = NONE,
+                                       temps = ref [],
+                                       isVarObject = true });
+     setValue ob Name.public_global (Mach.Object ob))
+
+
+fun bindSpecialIdentities _ = 
+    let 
+        val Mach.Obj arrObj = needObj (getValue (getGlobalObject()) Name.public_Array)
+        val Mach.Obj funcObj = needObj (getValue (getGlobalObject()) Name.public_Function)
+    in
+        trace ["binding array class to object identity ", Int.toString (#ident arrObj)];
+        arrayClassIdentity := (#ident arrObj);
+        trace ["binding function class to object identity ", Int.toString (#ident funcObj)];
+        functionClassIdentity := (#ident funcObj)
     end
 
 end

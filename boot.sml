@@ -216,6 +216,7 @@ fun boot _ =
         Eval.evalProgram residualObjectProg;
         Eval.evalProgram residualClassProg;
         Eval.evalProgram residualFunctionProg;
+        Eval.bindSpecialIdentities ();
         describeGlobal ()
     end
 end
