@@ -3191,7 +3191,7 @@ and callIteratorGet (scope:Mach.SCOPE)
                            | _ => raise InternalError)
     in
         case iterable of
-            Mach.Obj { props, ... } => 
+            Mach.Obj { props, ... } =>
             let
                 val cursorName = Name.public "cursor"
                 val cursorInit = newInt 0
@@ -3201,7 +3201,7 @@ and callIteratorGet (scope:Mach.SCOPE)
                     then
                         true
                     else
-                        let 
+                        let
                             val lengthValue = getValue iterator Name.public_length
                             val _ = length := toInt32 lengthValue
                             val elemIndex   = Name.public (Int32.toString (!length))
@@ -3251,24 +3251,26 @@ and evalForInStmt (scope:Mach.SCOPE)
             val iterator = callIteratorGet scope iterable
             val forInScope = evalHead scope (valOf fixtures, []) false
 
-            (* 
+            (*
                 The following code is ugly but it needs to handle the cases
                 when there is a binding on the lhs of 'in' and not. If there
                 is no binding on the lhs, then the parser uses a LetExpr to
-                allocate a temporary fixture for the iteration value and any
-                possibly some for desugaring. The associated inits (i) are 
-                separated out as 'nextInits' for execution after the iteration 
+                allocate a temporary fixture for the iteration value and
+                possibly some for desugaring. The associated inits (i) are
+                separated out as 'nextInits' for execution after the iteration
                 value is set each time around the loop.
 
                 FIXME: maybe unify 'next' as a new kind of expr. This would
                 trade redundancy for clarity. Not sure it worth it.
             *)
 
-            val (nextTarget,nextHead,nextInits,nextExpr) = 
-                    case next of
-                        Ast.ExprStmt (Ast.InitExpr (target,head,inits)) => (target,head,inits,[])
-                      | Ast.ExprStmt (Ast.LetExpr {defs,body,head=SOME (f,i)}) => (Ast.Hoisted,(f,[]),i,body::[])
-                      | _ => LogErr.internalError ["evalForInStmt: invalid structure"]
+            val (nextTarget, nextHead, nextInits, nextExpr) =
+                case next of
+                    Ast.ExprStmt (Ast.InitExpr (target, head, inits)) =>
+                        (target, head, inits, [])
+                  | Ast.ExprStmt (Ast.LetExpr {defs, body, head = SOME (f, i)}) =>
+                        (Ast.Hoisted, (f, []), i, body::[])
+                  | _ => LogErr.internalError ["evalForInStmt: invalid structure"]
 
             (*
                 A binding init on the lhs of 'in' will be included in nextHead
@@ -3283,8 +3285,8 @@ and evalForInStmt (scope:Mach.SCOPE)
                     val v = (SOME (callIteratorNext forInScope iterator)
                              handle Mach.StopIterationException =>
                                     NONE)
-                    val b = (case v
-                              of NONE => false
+                    val b = (case v of
+                                 NONE => false
                                | x => true)
                 in
                     if b
@@ -3298,8 +3300,8 @@ and evalForInStmt (scope:Mach.SCOPE)
                                                if labelMatch labels exnLabel
                                                then NONE
                                                else raise ContinueException exnLabel)
-                            val nextVal = (case curr
-                                            of NONE => accum
+                            val nextVal = (case curr of
+                                               NONE => accum
                                              | x => x)
                         in
                             loop nextVal handle BreakException exnLabel =>
@@ -3342,13 +3344,13 @@ and evalForStmt (scope:Mach.SCOPE)
                                                if labelMatch labels exnLabel
                                                then NONE
                                                else raise ContinueException exnLabel)
-                            val next = (case curr 
-                                         of NONE => accum
+                            val next = (case curr of
+                                            NONE => accum
                                           | x => x)
                         in
                             evalExpr forScope update;
-                            loop next handle BreakException exnLabel => 
-                                          if labelMatch labels exnLabel  
+                            loop next handle BreakException exnLabel =>
+                                          if labelMatch labels exnLabel
                                           then accum
                                           else raise BreakException exnLabel
                         end
@@ -3357,9 +3359,9 @@ and evalForStmt (scope:Mach.SCOPE)
                 end
         in
             evalStmts forScope init;
-            case 
-                loop NONE handle BreakException exnLabel => 
-                              if labelMatch labels exnLabel  
+            case
+                loop NONE handle BreakException exnLabel =>
+                              if labelMatch labels exnLabel
                               then NONE
                               else raise BreakException exnLabel
             of
