@@ -3170,8 +3170,16 @@ and evalSwitchStmt (scope:Mach.SCOPE)
                     val head = ([], case inits of NONE => [] 
                                                 | SOME i => i)
                     val caseScope = evalHead scope head false
+                    val first = evalBlock caseScope body
+                    fun evalRest accum [] = accum
+                      | evalRest accum ({label, inits, body}::xs) = 
+                        let
+                            val a = evalBlock caseScope body
+                        in
+                            evalRest a xs
+                        end
                 in
-                    evalBlock caseScope body
+                    evalRest first cs
                 end
             else
                 tryCases v cs

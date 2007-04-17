@@ -16,24 +16,24 @@ Library
     structure Decimal
     structure Name
 is
-    logerr.sml
+    logerr.sml (lambdasplit: infinity)
     main.sml
-    ast.sml
+    ast.sml (lambdasplit: infinity)
     pretty.sml
     pretty-cvt.sml
     pretty-rep.sml
-    token.sml
-    lexer.lex
-    parser.sml
-    multiname.sml
-    defn.sml
-    verify.sml
-    eval.sml
-    mach.sml
-    native.sml
+    token.sml (lambdasplit: infinity)
+    lexer.lex (lambdasplit: infinity)
+    parser.sml (lambdasplit: infinity)
+    multiname.sml (lambdasplit: infinity)
+    defn.sml (lambdasplit: infinity)
+    verify.sml (lambdasplit: infinity)
+    eval.sml (lambdasplit: infinity)
+    mach.sml (lambdasplit: infinity)
+    native.sml (lambdasplit: infinity)
     boot.sml
-    decimal.sml
-    name.sml
+    decimal.sml (lambdasplit: infinity)
+    name.sml (lambdasplit: infinity)
 
     $/basis.cm
     $/smlnj-lib.cm

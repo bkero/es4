@@ -33,7 +33,7 @@ package
         // 15.4.4 Properties of the Array Prototype Object
         // prototype.[[Prototype]] = prototype;
         // prototype.[[Class]] = "Array";
-        prototype._length = 0;
+        // prototype.length = 0;
 
         // 15.4.4.2 Array.prototype.toString ( )
         prototype function toString(this:Array)
@@ -70,7 +70,7 @@ package
             for (let i:uint = 0; i < argslen; i++) {
                 let x = args[i];
                 if (x is Array) {
-                    let xlen:uint = x._length;
+                    let xlen:uint = x.length;
                     for (let j:uint = 0; j < xlen; j++)
                         out[outlen] = x[j];
                     outlen++;
@@ -136,8 +136,9 @@ package
             let len:uint = self.length;
             let argslen:uint = args.length;
 
-            for (let i:uint = 0; i < argslen; i++)
+            for (let i:uint = 0; i < argslen; i++) 
                 self[len++] = args[i];
+
             self.length = len;
             return len;
         }
@@ -340,18 +341,18 @@ package
             let idAsDouble:double = double(id);
             let idAsUint:uint = uint(idAsDouble);
             if (idAsUint == idAsDouble && idAsUint >= oldLength)
-                this._length = idAsUint+1;
+                this.length = idAsUint+1;
         }
 
         // 15.4.5.2 length
         private var _length:uint = 0;
         public function get length():uint
-            this._length;
+            this.private::_length;
 
         // ECMA-262 requires a RangeError if non-ints are passed in,
         // so we must not type it as uint in the setter's signature
         public function set length(newLength:uint):void {
-            let oldLength:uint = _length;
+            let oldLength:uint = this.private::_length;
             let newLengthAsDouble:double = double(newLength);
             let newLengthAsUint:uint = uint(newLengthAsDouble);
             if (newLengthAsUint != newLengthAsDouble)
@@ -359,7 +360,7 @@ package
             for (let i:uint = newLengthAsUint; i < oldLength; ++i)
                 if (this.hasOwnProperty(i.toString()))  /* FIXME: when type annos work, won't need explicit conversion */
                     delete this[i];
-            this._length = newLengthAsUint;
+            this.private::_length = newLengthAsUint;
         }
 
         // --------------------------------------------------

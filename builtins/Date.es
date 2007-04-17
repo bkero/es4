@@ -841,11 +841,7 @@ package
         /* INFORMATIVE */
         function YearFromTime(t : double) : double {
             let y : double = t / (msPerDay * 365);
-            while (TimeFromYear(y) < t)
-                y += 1;
-            while (TimeFromYear(y) > t)
-                y -= 1;
-            return y;
+            return 1970 - y;
         }
 
         native function LocalTZA() : double;

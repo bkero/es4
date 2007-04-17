@@ -135,16 +135,15 @@ fun propQuery (vals:Mach.VAL list)
 fun arrayToList (arr:Mach.OBJ) 
     : Mach.VAL list = 
     let 
-        val ns = Ast.Internal ""
         val len = Word32.toInt 
                       (Eval.toUInt32 
-                           (Eval.getValue arr {id="length", ns=ns}))
+                           (Eval.getValue arr Name.public_length))
         fun build i vs = 
             if i < 0
             then vs
             else 
                 let
-                    val n = {id=(Int.toString i), ns=ns}
+                    val n = Name.public (Int.toString i)
                     val curr = if Eval.hasValue arr n
                                then Eval.getValue arr n
                                else Mach.Undef
