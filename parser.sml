@@ -6698,10 +6698,36 @@ fun dumpLineBreaks (lbs,lst) =
         [] => rev lst
       | _ => dumpLineBreaks(tl lbs, Int.toString(hd lbs) :: "\n  " :: lst)
 
-fun lex (filename, reader) : ((TOKEN * Ast.POS) list) =
+
+
+fun makeLexer reader =
+    Lexer.makeLexer reader
+
+(*
+fun makeLexer reader =
     let 
+        val lex_stream = ref (Lexer.streamify reader)
+        val sm = StreamPos.mkSourcemap ()
+        val prelexer = Lexer.lex sm
+        fun lexer _ =
+            let
+                val (token, span, new_stream) : (TOKEN * StreamPos.span * Lexer.strm) = prelexer (!lex_stream)
+            in
+                lex_stream := new_stream;
+                token
+            end
+    in
+        lexer
+    end
+*)
+
+
+
+
+fun lex (filename : string, reader) : ((TOKEN * Ast.POS) list) =
+    let
+        val lexer = makeLexer reader
         val _ = Lexer.UserDeclarations.reset_coords ()
-        val lexer = Lexer.makeLexer reader
         val tokens = Lexer.UserDeclarations.token_list (filename, lexer)
         val line_breaks = !Lexer.UserDeclarations.line_breaks
     in
@@ -6746,7 +6772,7 @@ fun logged thunk name =
          ast
      end)
     handle ParseError => error ["parse error"]
-         | Lexer.LexError => error ["lex error"]
+         | LexError => error ["lex error"]
 
 fun parseFile filename =
     logged (fn _ => parse (lexFile filename)) filename
