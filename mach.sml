@@ -72,6 +72,7 @@ datatype VAL = Object of OBJ
                     | ValProp of VAL
                     | NamespaceProp of Ast.NAMESPACE
                     | MethodProp of FUN_CLOSURE
+                    | ValListProp of VAL list
                     | NativeFunctionProp of NATIVE_FUNCTION
                     | VirtualValProp of 
                       { getter: FUN_CLOSURE option,

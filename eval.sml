@@ -428,6 +428,9 @@ and getValueOrVirtual (obj:Mach.OBJ)
                   | Mach.MethodProp closure => 
                     newFunctionFromClosure closure
 
+                  | Mach.ValListProp vals =>
+                    newArray vals
+
                   | Mach.ValProp v => v
             end
         else
@@ -494,6 +497,10 @@ and setValueOrVirtual (base:Mach.OBJ)
 
                   | Mach.MethodProp _ => 
                     error ["setValue on method property: ", 
+                           LogErr.name name]
+
+                  | Mach.ValListProp _ => 
+                    error ["setValue on value-list property: ", 
                            LogErr.name name]
                     
                   | Mach.VirtualValProp { setter = SOME s, ... } => 
@@ -590,6 +597,10 @@ and defValue (base:Mach.OBJ)
 
                   | Mach.MethodProp _ => 
                     error ["defValue on method property: ", 
+                           LogErr.name name]
+
+                  | Mach.ValListProp _ => 
+                    error ["defValue on value-list property: ", 
                            LogErr.name name]
 
                   | Mach.VirtualValProp { setter = SOME s, ... } => 
@@ -2520,6 +2531,7 @@ and bindArgs (outerScope:Mach.SCOPE)
              (args:Mach.VAL list)
     : unit =
     let
+        val Mach.Scope { object = Mach.Obj { props, ... }, ... } = argScope
         val Ast.Func { defaults, ty, 
                        fsig = Ast.FunctionSignature { hasRest, ... }, 
                        ... } = func
@@ -2560,6 +2572,19 @@ and bindArgs (outerScope:Mach.SCOPE)
              Mach.defTemp argTemps n arg; 
              bindArg (n+1) args)
 
+        fun bind (finalArgs:Mach.VAL list) = 
+            (* 
+             * FIXME: this is a random guess at the appropriate form
+             * of 'arguments'. 
+             *)
+            (Mach.addProp props Name.arguments { state = Mach.ValListProp finalArgs,
+                                                 ty = Name.typename Name.public_Array,
+                                                 attrs = { dontDelete = true,
+                                                           dontEnum = true,
+                                                           readOnly = true, 
+                                                           isFixed = true } };
+             bindArg 0 finalArgs)
+            
     in
         if hasRest andalso a > (p-1)
         then 
@@ -2578,7 +2603,7 @@ and bindArgs (outerScope:Mach.SCOPE)
                                    " rest args"];
                     val allArgs = (List.take (args, (p-1))) @ defVals @ [newArray restArgs]
                 in
-                    bindArg 0 allArgs
+                    bind allArgs
                 end
         else 
             if a + d < p orelse a > p
@@ -2591,7 +2616,7 @@ and bindArgs (outerScope:Mach.SCOPE)
                     val defVals = List.map (evalExpr outerScope) defExprs
                     val allArgs = args @ defVals
                 in
-                    bindArg 0 allArgs
+                    bind allArgs
                 end
     end
 

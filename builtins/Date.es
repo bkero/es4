@@ -27,12 +27,15 @@ package
         static intrinsic function date(...args)   // args are ignored.
             (new Date()).public::toString();
 
-        /* E262-3 15.9.3: The Date Constructor. */
-        public function Date(year, month, date:double=1, hours:double=0, minutes:double=0, seconds:double=0, ms:double=0) {
+        /* E262-3 15.9.3: The Date Constructor. 
+         *
+         * Plus spidermonkey extension: we accept 0 args (interpreted as "now") or 
+         * 1 arg (interpreted as a timespec).
+         */
+        public function Date(year:double=0, month:double=0, date:double=1, 
+                             hours:double=0, minutes:double=0, seconds:double=0, ms:double=0) {
 
             setupNanoAge();
-
-            /* FIXME: cases 0 and 1 belong in 'invoke'; the conversions are implicit; only the fall through code goes here
 
             switch (arguments.length) {
             case 0:
@@ -45,37 +48,26 @@ package
 
                 timeval = TimeClip(ToDouble(v));
             default:
-                ms = ToDouble(e);
+                ms = ToDouble(ms);
             case 6:
-                seconds = ToDouble(d);
+                seconds = ToDouble(seconds);
             case 5:
-                minutes = ToDouble(c);
+                minutes = ToDouble(minutes);
             case 4:
-                hours = ToDouble(b);
+                hours = ToDouble(hours);
             case 3:
-                date = ToDouble(a);
+                date = ToDouble(date);
             case 2:
                 year = ToDouble(year);
                 month = ToDouble(month);
 
-                let intYear = ToInteger(year);
+                let intYear : int = ToInteger(year);
                 if (!isNaN(year) && 0 <= intYear && intYear <= 99)
                     intYear += 1900;
 
                 timeval = TimeClip(UTCTime(MakeDate(MakeDay(intYear, month, date), 
                                                     MakeTime(hours, minutes, seconds, ms))));
-                return;
             }
-
-            END FIXME */
-
-            let intYear = ToInteger(year);
-            if (!isNaN(year) && 0 <= intYear && intYear <= 99)
-                intYear += 1900;
-
-            timeval = TimeClip(UTCTime(MakeDate(MakeDay(intYear, month, date), 
-                                                MakeTime(hours, minutes, seconds, ms))));
-            return;
         }
 
         /* E262-3 15.9.4.2: Date.parse

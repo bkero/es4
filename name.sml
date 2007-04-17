@@ -47,6 +47,7 @@ val meta_has = meta "has"
 val meta_call = meta "call"
 
 val this = internal "this"
+val arguments = internal "arguments"
 
 (* 
  * Names that are supposed to be present in the global scope 
