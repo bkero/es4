@@ -830,7 +830,7 @@ package
             (Day(t) + 4) % 7;
 
         function LocalTime(t : double) : double
-            t + LocalTZA() + DaylightSavingTA(t);
+            t + LocalTZA() + DaylightSavingsTA(t);
 
         function UTCTime(t : double) : double
             t - LocalTZA() - DaylightSavingsTA(t - LocalTZA());
