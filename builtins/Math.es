@@ -33,7 +33,7 @@
 
         intrinsic static function min(...args):Number
 	{
-	    var x : double = double.NEGATIVE_INFINITY;
+	    var x : double = double.POSITIVE_INFINITY;
 	    for (let i : uint = 0; i < args.length; ++i) {
 		if (args[i] < x) {
 		    x = args[i];

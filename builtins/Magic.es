@@ -88,6 +88,8 @@
     magic native function apply(fn : Function!, t : Object!, args : Array) : *;
 
 
+    magic native function fnLength(fn: Function!) : uint;
+
     /* ----------------------------------------------------------------
 
        STRING MANIPULATION.  Strings contain string data in some

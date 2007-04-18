@@ -2849,14 +2849,14 @@ and runAnySpecialConstructor (id:Mach.OBJ_IDENT)
              val funcVal = evalExpr (getGlobalScope ()) funcExpr
          in
              case funcVal of 
-                 Mach.Object obj =>
+                 Mach.Object tmp =>
                  let 
                      val Mach.Obj { magic, ...} = instanceObj
                      val sname = Name.public_source
                      val sval = newString source
                  in
-                     setValue obj sname sval;
-                     magic := Mach.getObjMagic obj
+                     magic := Mach.getObjMagic tmp;
+                     setValue instanceObj sname sval
                  end
                | _ => error ["function did not compile to object"]
          end        

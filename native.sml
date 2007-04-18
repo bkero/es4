@@ -64,6 +64,18 @@ fun nthAsStr (vals:Mach.VAL list)
     end
 
 
+fun nthAsFn (vals:Mach.VAL list) 
+             (n:int) 
+    : Mach.FUN_CLOSURE = 
+    let 
+        val Mach.Obj { magic, ... } = nthAsObj vals n
+    in
+        case !magic of 
+            SOME (Mach.Function f) => f
+          | _ => error ["Wanted function, got other"]
+    end
+
+
 fun nthAsInt (vals:Mach.VAL list) 
              (n:int) 
     : Int32.int = 
@@ -354,6 +366,14 @@ fun apply (vals:Mach.VAL list)
         val argsList = arrayToList argsObj
     in
         Eval.evalCallExpr (SOME thisObj) fnObj argsList
+    end
+
+fun fnLength (vals:Mach.VAL list) 
+    : Mach.VAL = 
+    let 
+        val {func=Ast.Func{ty, ...}, ...} = nthAsFn vals 0
+    in
+        Eval.newUInt (Word32.fromInt (length (#params ty)))
     end
 
 
@@ -722,6 +742,8 @@ fun registerNatives _ =
         addFn Name.magicNS "bindString" bindString;
 
         addFn Name.magicNS "apply" apply;
+        addFn Name.magicNS "fnLength" fnLength;
+
         addFn Name.magicNS "charCodeAt" charCodeAt;
         addFn Name.magicNS "fromCharCode" fromCharCode;
         addFn Name.magicNS "stringLength" stringLength;
