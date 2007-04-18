@@ -2798,22 +2798,65 @@ and runAnySpecialConstructor (id:Mach.OBJ_IDENT)
                              (instanceObj:Mach.OBJ) 
     : unit =
     (trace ["checking for special case constructors with value ", Int.toString id];
-    if id = !FunctionClassIdentity
-    then (* FIXME: bring the function ctor in here. *) ()
-    else 
-        if id = !ArrayClassIdentity
-        then 
-            let
-                fun bindVal _ [] = ()
-                  | bindVal n (x::xs) = 
-                    (setValue instanceObj (Name.public (Int.toString n)) x;
-                     bindVal (n+1) xs)
-            in
-                trace ["running special-case Array constructor"];
-                bindVal 0 args
-            end
-        else 
-            ())
+     if id = !FunctionClassIdentity
+     then
+         (*
+          * We synthesize a token stream here that feeds back into the parser.
+          *)
+         let 
+             val nargs = length args
+             val argArgs = if nargs > 0 then List.take (args, nargs-1) else []
+             val source = if nargs > 0 then toString (List.last args) else ""
+             fun ident v = Token.Identifier (toString v)
+             val argIdents = map ident argArgs
+             val nloc = {file="<no filename>", line=1}
+             val argList = case argIdents of
+                               [] => []
+                             | x::xs => ((x, nloc) :: 
+                                         (List.concat 
+                                              (map (fn i => [(Token.Comma, nloc), (i, nloc)]) xs)))
+             val lines = [source] (* FIXME: split lines *)
+             val lineTokens = Parser.lexLines lines
+             val funcTokens = [(Token.Function, nloc), 
+                               (Token.LeftParen, nloc)]
+                              @ argList
+                              @ [(Token.RightParen, nloc)]
+                              @ [(Token.LeftBrace, nloc)]
+                              @ lineTokens
+                              @ [(Token.RightBrace, nloc)]
+                             
+             val (_,funcExpr) = Parser.functionExpression (funcTokens, 
+                                                           Parser.NOLIST, 
+                                                           Parser.ALLOWIN)
+                                
+             val funcExpr = Defn.defExpr (Defn.topEnv()) funcExpr
+             val funcVal = evalExpr (getGlobalScope ()) funcExpr
+         in
+             case funcVal of 
+                 Mach.Object obj =>
+                 let 
+                     val Mach.Obj { magic, ...} = instanceObj
+                     val sname = Name.public_source
+                     val sval = newString source
+                 in
+                     setValue obj sname sval;
+                     magic := Mach.getObjMagic obj
+                 end
+               | _ => error ["function did not compile to object"]
+         end        
+     else 
+         if id = !ArrayClassIdentity
+         then 
+             let
+                 fun bindVal _ [] = ()
+                   | bindVal n (x::xs) = 
+                     (setValue instanceObj (Name.public (Int.toString n)) x;
+                      bindVal (n+1) xs)
+             in
+                 bindVal 0 args
+             end
+         else 
+             ())
     
 
 and constructClassInstance (classObj:Mach.OBJ)

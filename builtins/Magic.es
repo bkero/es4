@@ -83,11 +83,6 @@
 
        FUNCTION MANIPULATION.  */
 
-    /* Given a function object, arguments to bind and source to run, 
-     * compiles the source and arguments into a magic function value
-     * and sets the magic slot inside the function to contain it. */
-    magic native function compileInto(fn : Function!, argNames : [String!], src : String!) : void;
-
     /* Given a function object, a this object, and an array of argument
        values, call the function with the this object and arguments. */
     magic native function apply(fn : Function!, t : Object!, args : Array) : *;
