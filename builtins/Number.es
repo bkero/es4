@@ -18,11 +18,14 @@ package
 
     dynamic class Number
     {
-        //static const MAX_VALUE : double         = 1.7976931348623157e+308;  /* INFORMATIVE */
-        //static const MIN_VALUE : double         = 5e-324;                   /* INFORMATIVE */
-        //static const NaN : Number               = 0.0 / 0.0;
-        //static const NEGATIVE_INFINITY : Number = -1.0 / 0.0;
-        //static const POSITIVE_INFINITY : Number = 1.0 / 0.0;
+        // These need to be static getters rather than static consts,
+        // since 'Number' initializes before 'double'.
+
+        static function get MAX_VALUE() : double         1.7976931348623157e+308;  /* INFORMATIVE */
+        static function get MIN_VALUE() : double         5e-324;                   /* INFORMATIVE */
+        static function get NaN() : Number               0.0 / 0.0;
+        static function get NEGATIVE_INFINITY() : Number -1.0 / 0.0;
+        static function get POSITIVE_INFINITY() : Number 1.0 / 0.0;
 
         /* E262-4 draft */
         meta static function convert(x : Numeric) : Number

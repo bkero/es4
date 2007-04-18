@@ -105,7 +105,7 @@ package
             ToString(this).charCodeAt(pos);
 
         static function charCodeAt(self, pos)
-            ToString(selft).charCodeAt(pos);
+            ToString(self).charCodeAt(pos);
 
         override intrinsic function charCodeAt(pos: double = 0) : uint
             let (ipos: double = ToInteger(pos))
@@ -492,13 +492,14 @@ package
         /* E262-3 15.5.4.15: String.prototype.substring
            E262-4 draft proposals:static_generics
          */
-        prototype function substring(start, end)
-            ToString(this).substring(start, end);
+        prototype function substring(start=0.0, end=undefined)
+            ToString(this).substring(start, end == undefined ? this.length : end);
 
         static function substring(self, start, end)
             ToString(self).substring(start, end)
 
         override intrinsic function substring(start: double, end: double) : string {
+
             let len : double = length;
 
             start = ToInteger(start);

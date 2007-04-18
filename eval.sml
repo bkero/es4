@@ -9,8 +9,8 @@ val (stack:string list list ref) = ref []
 fun resetStack _ = 
     stack := []
 
-val functionClassIdentity = ref (~1)
-val arrayClassIdentity = ref (~1)
+val ArrayClassIdentity = ref (~1)
+val FunctionClassIdentity = ref (~1)
 
 fun join sep ss = 
     case ss of 
@@ -689,7 +689,7 @@ and newByteArray (b:Word8Array.array)
 
 and newBoolean (b:bool) 
     : Mach.VAL = 
-    newRootBuiltin Name.public_boolean (Mach.Boolean b)
+    newBuiltin Name.public_boolean (SOME (Mach.Boolean b))
 
 and newNamespace (n:Ast.NAMESPACE) 
     : Mach.VAL =
@@ -776,7 +776,13 @@ and magicToString (magic:Mach.MAGIC)
         Mach.Double n => 
         if Real64.isFinite n andalso Real64.==(Real64.realFloor n, n)
         then LargeInt.toString (Real64.toLargeInt IEEEReal.TO_NEGINF n)
-        else Real64.toString n
+        else (if Real64.isNan n
+              then "NaN"
+              else (if Real64.==(Real64.posInf, n)
+                    then "Infinity"
+                    else (if Real64.==(Real64.negInf, n)
+                          then "-Infinity"
+                          else Real64.toString n)))
 
       | Mach.Decimal d => Decimal.toString d
       | Mach.Int i => Int32.toString i
@@ -821,6 +827,12 @@ and toBoolean (v:Mach.VAL) : bool =
       | Mach.Object (Mach.Obj ob) => 
         (case !(#magic ob) of 
              SOME (Mach.Boolean b) => b
+           | SOME (Mach.Int x) => not (x = (Int32.fromInt 0))
+           | SOME (Mach.UInt x) => not (x = (Word32.fromInt 0))
+           | SOME (Mach.Double x) => not (Real64.==(x,(Real64.fromInt 0))
+                                          orelse
+                                          Real64.isNan x)
+           | SOME (Mach.Decimal x) => not (x = Decimal.zero)
            | _ => true)
 
 (* 
@@ -1341,11 +1353,16 @@ and constructObjectViaFunction (ctorObj:Mach.OBJ)
         Mach.Obj { props, ... } => 
         let
             (* FIXME: the default prototype should be the initial Object prototype, 
-             * as per ES3 13.2.2. *)
+             * as per ES3 13.2.2, not the current Object prototype. *)
             val (proto:Mach.VAL) = 
                 if Mach.hasProp props Name.public_prototype
                 then getValue ctorObj Name.public_prototype
-                else Mach.Null
+                else 
+                    let
+                        val globalObjectObj = needObj (getValue (getGlobalObject()) Name.public_Object)
+                    in
+                        getValue globalObjectObj Name.public_prototype
+                    end
             val (newObj:Mach.OBJ) = Mach.setProto (newObj ()) proto 
         in
             case invokeFuncClosure newObj ctor args of 
@@ -1533,7 +1550,9 @@ and evalUnaryOp (scope:Mach.SCOPE)
             (trace ["performing operator delete"];
              case evalRefExpr scope expr false of
                  (Mach.Obj {props, ...}, name) => 
-                 (Mach.delProp props name; newBoolean true))
+                 (if (#dontDelete (#attrs (Mach.getProp props name)))
+                  then newBoolean false
+                  else (Mach.delProp props name; newBoolean true)))
 
           | Ast.PreIncrement mode => crement (valOf mode)
                                              (Decimal.add) 
@@ -1645,16 +1664,25 @@ and evalUnaryOp (scope:Mach.SCOPE)
                         Mach.Null => "null"
                       | Mach.Undef => "undefined"
                       | Mach.Object (Mach.Obj ob) => 
-                        (case !(#magic ob) of 
-                             SOME (Mach.UInt _) => "number"
-                           | SOME (Mach.Int _) => "number"
-                           | SOME (Mach.Double _) => "number"
-                           | SOME (Mach.Decimal _) => "number"
-                           | SOME (Mach.Boolean _) => "boolean"
-                           | SOME (Mach.Function _) => "function"
-                           | SOME (Mach.NativeFunction _) => "function"
-                           | SOME (Mach.String _) => "string"
-                           | _ => "object")
+                        let 
+                            val n = Mach.nominalBaseOfTag (#tag ob)
+                        in
+                            if n = Name.public_int orelse 
+                               n = Name.public_uint orelse 
+                               n = Name.public_double orelse 
+                               n = Name.public_decimal
+                            then "number"
+                            else 
+                                (if n = Name.public_boolean
+                                 then "boolean"
+                                 else 
+                                     (if n = Name.public_Function
+                                      then "function"
+                                      else 
+                                          (if n = Name.public_string
+                                           then "string"
+                                           else "object")))
+                        end
             in
                 newString 
                     (case expr of 
@@ -2400,7 +2428,8 @@ and invokeFuncClosure (this:Mach.OBJ)
                 checkAllPropertiesInitialized varObj;
                 trace ["invokeFuncClosure: evaluating block"];
                 let 
-                    val res = (evalBlock varScope block
+                    val res = ((evalBlock varScope block; 
+                                Mach.Undef)
                                handle ReturnException v => v)
                 in
                     pop ();
@@ -2781,22 +2810,69 @@ and runAnySpecialConstructor (id:Mach.OBJ_IDENT)
                              (instanceObj:Mach.OBJ) 
     : unit =
     (trace ["checking for special case constructors with value ", Int.toString id];
-    if id = !functionClassIdentity
-    then (* FIXME: bring the function ctor in here. *) ()
-    else 
-        if id = !arrayClassIdentity
-        then 
-            let
-                fun bindVal _ [] = ()
-                  | bindVal n (x::xs) = 
-                    (setValue instanceObj (Name.public (Int.toString n)) x;
-                     bindVal (n+1) xs)
-            in
-                trace ["running special-case array constructor"];
-                bindVal 0 args
-            end
-        else 
-            ())
+     if id = !FunctionClassIdentity andalso (not (args = []))
+     then
+         (*
+          * We synthesize a token stream here that feeds back into the parser.
+          *)
+         let 
+             val nargs = length args
+             val argArgs = List.take (args, nargs-1)
+             val source = toString (List.last args) 
+             fun ident v = Token.Identifier (toString v)
+             val argIdents = map ident argArgs
+             val nloc = {file="<no filename>", line=1}
+             val argList = case argIdents of
+                               [] => []
+                             | x::xs => ((x, nloc) :: 
+                                         (List.concat 
+                                              (map (fn i => [(Token.Comma, nloc), (i, nloc)]) xs)))
+             val lines = [source] (* FIXME: split lines *)
+             val lineTokens = List.filter (fn t => case t of 
+                                                       (Token.Eof, _) => false 
+                                                     | _ => true)
+                                          (Parser.lexLines lines)
+             val funcTokens = [(Token.Function, nloc), 
+                               (Token.LeftParen, nloc)]
+                              @ argList
+                              @ [(Token.RightParen, nloc)]
+                              @ [(Token.LeftBrace, nloc)]
+                              @ lineTokens
+                              @ [(Token.RightBrace, nloc)]
+                              @ [(Token.Eof, nloc)]
+
+             val (_,funcExpr) = Parser.functionExpression (funcTokens, 
+                                                           Parser.NOLIST, 
+                                                           Parser.ALLOWIN)
+
+             val funcExpr = Defn.defExpr (Defn.topEnv()) funcExpr
+             val funcVal = evalExpr (getGlobalScope ()) funcExpr
+         in
+             case funcVal of 
+                 Mach.Object tmp =>
+                 let 
+                     val Mach.Obj { magic, ...} = instanceObj
+                     val sname = Name.public_source
+                     val sval = newString source
+                 in
+                     magic := Mach.getObjMagic tmp;
+                     setValue instanceObj sname sval
+                 end
+               | _ => error ["function did not compile to object"]
+         end        
+     else 
+         if id = !ArrayClassIdentity
+         then 
+             let
+                 fun bindVal _ [] = ()
+                   | bindVal n (x::xs) = 
+                     (setValue instanceObj (Name.public (Int.toString n)) x;
+                      bindVal (n+1) xs)
+             in
+                 bindVal 0 args
+             end
+         else 
+             ())
     
 
 and constructClassInstance (classObj:Mach.OBJ)
@@ -3366,8 +3442,9 @@ and evalForStmt (scope:Mach.SCOPE)
 
             fun loop (accum:Mach.VAL option) =
                 let
-                    val v = evalExpr forScope cond
-                    val b = toBoolean v
+                    val b = case cond of 
+                                Ast.ListExpr [] => true
+                              | _ => toBoolean (evalExpr forScope cond)
                 in
                     if b
                     then
@@ -3459,13 +3536,20 @@ fun resetGlobal (ob:Mach.OBJ)
 
 fun bindSpecialIdentities _ = 
     let 
-        val Mach.Obj arrObj = needObj (getValue (getGlobalObject()) Name.public_Array)
-        val Mach.Obj funcObj = needObj (getValue (getGlobalObject()) Name.public_Function)
+        fun bindIdent (n, r) = 
+            let 
+                val Mach.Obj obj = needObj (getValue (getGlobalObject()) n)
+                val id = (#ident obj)
+            in
+                trace ["noting identity ", Int.toString id, " of class ", LogErr.name n];
+                r := id
+            end
     in
-        trace ["binding array class to object identity ", Int.toString (#ident arrObj)];
-        arrayClassIdentity := (#ident arrObj);
-        trace ["binding function class to object identity ", Int.toString (#ident funcObj)];
-        functionClassIdentity := (#ident funcObj)
+        List.app bindIdent
+                 [ 
+                  (Name.public_Array, ArrayClassIdentity),
+                  (Name.public_Function, FunctionClassIdentity)
+                 ]
     end
 
 end

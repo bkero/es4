@@ -64,6 +64,18 @@ fun nthAsStr (vals:Mach.VAL list)
     end
 
 
+fun nthAsFn (vals:Mach.VAL list) 
+             (n:int) 
+    : Mach.FUN_CLOSURE = 
+    let 
+        val Mach.Obj { magic, ... } = nthAsObj vals n
+    in
+        case !magic of 
+            SOME (Mach.Function f) => f
+          | _ => error ["Wanted function, got other"]
+    end
+
+
 fun nthAsInt (vals:Mach.VAL list) 
              (n:int) 
     : Int32.int = 
@@ -356,56 +368,12 @@ fun apply (vals:Mach.VAL list)
         Eval.evalCallExpr (SOME thisObj) fnObj argsList
     end
 
-
-(* Given a function object, arguments to bind and source to run, 
- * compiles the source and arguments into a magic function value
- * and sets the magic slot inside the function to contain it.
- *
- * magic native function compileInto(fn: Function!, argNames: [String!], src: String!): void;
- *)
-fun compileInto (vals:Mach.VAL list) 
+fun fnLength (vals:Mach.VAL list) 
     : Mach.VAL = 
-    (*
-     * We synthesize a token stream here that feeds back into the parser.
-     *)
     let 
-        val funcObj = nthAsObj vals 0
-        fun ident v = Token.Identifier (Eval.toString v)
-        val argIdents = map ident (arrayToList (nthAsObj vals 1))
-        val argList = case argIdents of
-                          [] => []
-                        | x::xs => ((x, {file="<no filename>", line=1}) :: (List.concat 
-                                                   (map (fn i => [(Token.Comma, {file="<no filename>", line=1}), (i, {file="<no filename>", line=1})]) xs)))
-        val source = nthAsStr vals 2
-        val lines = [source] (* FIXME: split lines *)
-        val lineTokens = Parser.lexLines lines
-        val funcTokens = [(Token.Function, {file="<no filename>", line=1}), 
-                          (Token.LeftParen, {file="<no filename>", line=1})]
-                         @ argList
-                         @ [(Token.RightParen, {file="<no filename>", line=1})]
-                         @ [(Token.LeftBrace, {file="<no filename>", line=1})]
-                         @ lineTokens
-                         @ [(Token.RightBrace, {file="<no filename>", line=1})]
-                         
-        val (_,funcExpr) = Parser.functionExpression (funcTokens, 
-                                                      Parser.NOLIST, 
-                                                      Parser.ALLOWIN)
-
-        val funcExpr = Defn.defExpr (Defn.topEnv()) funcExpr
-        val funcVal = Eval.evalExpr (Eval.getGlobalScope ()) funcExpr
+        val {func=Ast.Func{ty, ...}, ...} = nthAsFn vals 0
     in
-        case funcVal of 
-            Mach.Object obj =>
-            let 
-                val Mach.Obj { magic, ...} = funcObj
-                val sname = {ns=Ast.Internal "", id="source"}
-                val sval = (Eval.newString source)
-            in
-                Eval.setValue obj sname sval;
-                magic := Mach.getObjMagic obj
-            end
-          | _ => error ["function did not compile to object"];
-        Mach.Undef
+        Eval.newUInt (Word32.fromInt (length (#params ty)))
     end
 
 
@@ -774,7 +742,8 @@ fun registerNatives _ =
         addFn Name.magicNS "bindString" bindString;
 
         addFn Name.magicNS "apply" apply;
-        addFn Name.magicNS "compileInto" compileInto;
+        addFn Name.magicNS "fnLength" fnLength;
+
         addFn Name.magicNS "charCodeAt" charCodeAt;
         addFn Name.magicNS "fromCharCode" fromCharCode;
         addFn Name.magicNS "stringLength" stringLength;

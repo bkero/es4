@@ -133,5 +133,10 @@ package
 
         /* Source code for decompilation, installed by the constructor */
         var source : string;  
+
+        // This is a getter because 'uint' is not defined by the time we
+        // start constructing Functions.
+        function get length() 
+            magic::fnLength(this);
     }
 }

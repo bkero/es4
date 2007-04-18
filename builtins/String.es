@@ -41,7 +41,7 @@ package
     dynamic class String
     {       
         /* E262-3 15.5.1: The String Constructor Called as a Function */
-        static intrinsic function invoke(x="")
+        static meta function invoke(x="")
             x is String ? x : new String(x);
 
         /* 15.5.2 The String Constructor */
@@ -99,7 +99,7 @@ package
             ToString(self).charCodeAt(pos);
 
         intrinsic function charCodeAt(pos: double = 0) : double
-            value.charCodeAt(pos);
+            ToString(this).charCodeAt(pos);
 
         /* E262-3 15.5.4.6: String.prototype.concat.
            E262-4 draft proposals:static_generics
@@ -112,7 +112,7 @@ package
             Function.apply(string.concat, ToString(self), args);
 
         intrinsic function concat(...args) : String
-            Function.apply(string.concat, value, args);
+            Function.apply(string.concat, ToString(this), args);
 
 
         /* E262-3 15.5.4.7: String.prototype.indexOf
@@ -126,7 +126,7 @@ package
             ToString(self).indexOf(searchString, position);
 
         intrinsic function indexOf(searchString: String!, position: double = 0.0) : double 
-            value.indexOf(searchString, position);
+            ToString(this).indexOf(searchString, position);
 
         /* E262-3 15.5.4.8: String.prototype.lastIndexOf
            E262-4 draft proposals:static_generics
@@ -139,7 +139,7 @@ package
             ToString(self).lastIndexOf(searchString, position);
 
         intrinsic function lastIndexOf(searchString: String!, position: double) : double 
-            value.lastIndexOf(searchString, position);
+            ToString(this).lastIndexOf(searchString, position);
 
         /* E262-3 15.5.4.9: String.prototype.localeCompare 
            E262-4 draft proposals:static_generics
@@ -151,7 +151,7 @@ package
             ToString(self).localeCompare(that);
 
         intrinsic function localeCompare(that : String!) : double
-            value.localeCompare(that);
+            ToString(this).localeCompare(that);
 
         /* E262-3 15.5.4.10: String.prototype.match
            E262-4 draft proposals:static_generics
@@ -163,7 +163,7 @@ package
             ToString(self).match(regexp);
 
         intrinsic function match(r) : Array 
-            value.match(r);
+            ToString(this).match(r);
 
         /* E262-3 15.5.4.11: String.prototype.replace 
            E262-4 draft proposals:static_generics
@@ -175,7 +175,7 @@ package
             ToString(self).replace(searchValue, replaceValue);
 
         intrinsic function replace(s, r) : String
-            value.replace(searchValue, replaceValue);
+            ToString(this).replace(searchValue, replaceValue);
         
         /* E262-3 15.5.4.12: String.prototype.search 
            E262-4 draft proposals:static_generics
@@ -187,7 +187,7 @@ package
             ToString(self).search(regexp);
 
         intrinsic function search(r) : double 
-            value.search(r);
+            ToString(this).search(r);
 
         /* E262-3 15.5.4.13: String.prototype.slice 
            E262-4 draft proposals:static_generics
@@ -199,7 +199,7 @@ package
             ToString(self).slice(start, end);
 
         intrinsic function slice(s, e) : Array
-            value.slice(s, e);
+            ToString(this).slice(s, e);
         
         /* ES262-3 15.5.4.14: String.prototype.split
            E262-4 draft proposals:static_generics
@@ -211,19 +211,19 @@ package
             ToString(self).split(separator, limit);
 
         intrinsic function split(separator, limit) : Array
-            value.split(separator, limit);
+            ToString(this).split(separator, limit);
 
         /* E262-3 15.5.4.15: String.prototype.substring
            E262-4 draft proposals:static_generics
          */
-        prototype function substring(start, end)
-            ToString(this).substring(start, end);
+        prototype function substring(start=0.0, end=undefined)
+            ToString(this).substring(start, end == undefined ? this.length : end);
 
         static function substring(self, start, end)
             ToString(self).substring(start, end)
 
         intrinsic function substring(start: double, end: double) : string
-            value.substring(start, end);
+            ToString(this).substring(start, end);
 
         /* E262-3 15.5.4.16: String.prototype.toLowerCase 
            E262-4 draft proposals:static_generics
@@ -235,7 +235,7 @@ package
             ToString(self).toLowerCase();
 
         intrinsic function toLowerCase() : string
-            value.toLowerCase();
+            ToString(this).toLowerCase();
 
         /* E262-3 15.5.4.17: String.prototype.toLocaleLowerCase 
            E262-4 draft proposals:static_generics
@@ -247,7 +247,7 @@ package
             ToString(self).toLocaleLowerCase();
 
         intrinsic function toLocaleLowerCase() : string
-            value.toLocaleLowerCase();
+            ToString(this).toLocaleLowerCase();
 
         /* E262-3 15.5.4.18: String.prototype.toUpperCase 
            E262-4 draft proposals:static_generics
@@ -259,7 +259,7 @@ package
             ToString(self).toUpperCase();
 
         intrinsic function toUpperCase() : string
-            value.toUpperCase();
+            ToString(this).toUpperCase();
 
         /* E262-3 15.5.4.19: String.prototype.toLocaleUpperCase 
            E262-4 draft proposals:static_generics
@@ -271,21 +271,21 @@ package
             ToString(self).toLocaleUpperCase();
 
         intrinsic function toLocaleUpperCase() : string
-            value.toLocaleUpperCase();
+            ToString(this).toLocaleUpperCase();
 
         /* E262-4 draft proposals:json_encoding_and_decoding */
         prototype function parseJSON() 
             ToString(this).parseJSON();
 
         intrinsic function parseJSON(...args)
-            Function.apply(string.parseJSON, value, args);
+            Function.apply(string.parseJSON, ToString(this), args);
 
         /* E262-4 draft proposals:string.prototype.trim */
         prototype function trim()
             ToString(this).trim();
 
         intrinsic function trim() : string
-            value.trim();
+            ToString(this).trim();
 
         /* E262-3 15.5.5.1: length. */
         function get length() : uint

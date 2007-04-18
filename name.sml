@@ -36,6 +36,7 @@ fun typename (n:Ast.NAME) =
 
 val public_constructor = public "constructor"
 val public_length = public "length"
+val public_source = public "source"
 val public_prototype = public "prototype"
 val public_toString = public "toString"
 val public_valueOf = public "valueOf"
