@@ -821,6 +821,12 @@ and toBoolean (v:Mach.VAL) : bool =
       | Mach.Object (Mach.Obj ob) => 
         (case !(#magic ob) of 
              SOME (Mach.Boolean b) => b
+           | SOME (Mach.Int x) => not (x = (Int32.fromInt 0))
+           | SOME (Mach.UInt x) => not (x = (Word32.fromInt 0))
+           | SOME (Mach.Double x) => not (Real64.==(x,(Real64.fromInt 0))
+                                          orelse
+                                          Real64.isNan x)
+           | SOME (Mach.Decimal x) => not (x = Decimal.zero)
            | _ => true)
 
 (* 
