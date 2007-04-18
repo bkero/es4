@@ -300,6 +300,7 @@ val (found_newline :  bool       ref) = ref false
 <INITIAL>"yield"           => (Yield);
 
 <INITIAL>{whitespace}        => (continue());
+<INITIAL>{identifier}        => (Identifier yytext);
 
 <INITIAL>{explicitIntLiteral} => (case Int32.fromString (chopTrailing yytext) of
 					  SOME i => ExplicitIntLiteral i
