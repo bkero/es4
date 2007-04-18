@@ -2816,7 +2816,10 @@ and runAnySpecialConstructor (id:Mach.OBJ_IDENT)
                                          (List.concat 
                                               (map (fn i => [(Token.Comma, nloc), (i, nloc)]) xs)))
              val lines = [source] (* FIXME: split lines *)
-             val lineTokens = Parser.lexLines lines
+             val lineTokens = List.filter (fn t => case t of 
+                                                       (Token.Eof, _) => false 
+                                                     | _ => true)
+                                          (Parser.lexLines lines)
              val funcTokens = [(Token.Function, nloc), 
                                (Token.LeftParen, nloc)]
                               @ argList
@@ -2824,11 +2827,11 @@ and runAnySpecialConstructor (id:Mach.OBJ_IDENT)
                               @ [(Token.LeftBrace, nloc)]
                               @ lineTokens
                               @ [(Token.RightBrace, nloc)]
-                             
+
              val (_,funcExpr) = Parser.functionExpression (funcTokens, 
                                                            Parser.NOLIST, 
                                                            Parser.ALLOWIN)
-                                
+
              val funcExpr = Defn.defExpr (Defn.topEnv()) funcExpr
              val funcVal = evalExpr (getGlobalScope ()) funcExpr
          in
