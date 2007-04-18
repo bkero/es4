@@ -776,7 +776,13 @@ and magicToString (magic:Mach.MAGIC)
         Mach.Double n => 
         if Real64.isFinite n andalso Real64.==(Real64.realFloor n, n)
         then LargeInt.toString (Real64.toLargeInt IEEEReal.TO_NEGINF n)
-        else Real64.toString n
+        else (if Real64.isNan n
+              then "NaN"
+              else (if Real64.==(Real64.posInf, n)
+                    then "Infinity"
+                    else (if Real64.==(Real64.negInf, n)
+                          then "-Infinity"
+                          else Real64.toString n)))
 
       | Mach.Decimal d => Decimal.toString d
       | Mach.Int i => Int32.toString i
