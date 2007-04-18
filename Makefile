@@ -59,6 +59,9 @@ checkev: tools/unit.heap.$(HEAP_SUFFIX) es4.heap.$(HEAP_SUFFIX)
 checklth: tools/unit.heap.$(HEAP_SUFFIX) es4.heap.$(HEAP_SUFFIX)
 	sml @SMLload=tools/unit.heap $(TRACE) tests/lth_tests/lth_tests.test
 
+smoketest: es4.heap.$(HEAP_SUFFIX)
+	sml @SMLload=es4.heap $(TRACE) -ev tests/spidermonkey/ecma/shell.js tests/spidermonkey/ecma/Boolean/15.6.1.js
+
 run: es4.heap.$(HEAP_SUFFIX)
 	sml @SMLload=es4.heap $(TRACE) -ev $(FILE)
 
