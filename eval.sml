@@ -9,8 +9,8 @@ val (stack:string list list ref) = ref []
 fun resetStack _ = 
     stack := []
 
-val functionClassIdentity = ref (~1)
-val arrayClassIdentity = ref (~1)
+val ArrayClassIdentity = ref (~1)
+val FunctionClassIdentity = ref (~1)
 
 fun join sep ss = 
     case ss of 
@@ -689,7 +689,7 @@ and newByteArray (b:Word8Array.array)
 
 and newBoolean (b:bool) 
     : Mach.VAL = 
-    newRootBuiltin Name.public_boolean (Mach.Boolean b)
+    newBuiltin Name.public_boolean (SOME (Mach.Boolean b))
 
 and newNamespace (n:Ast.NAMESPACE) 
     : Mach.VAL =
@@ -1651,16 +1651,25 @@ and evalUnaryOp (scope:Mach.SCOPE)
                         Mach.Null => "null"
                       | Mach.Undef => "undefined"
                       | Mach.Object (Mach.Obj ob) => 
-                        (case !(#magic ob) of 
-                             SOME (Mach.UInt _) => "number"
-                           | SOME (Mach.Int _) => "number"
-                           | SOME (Mach.Double _) => "number"
-                           | SOME (Mach.Decimal _) => "number"
-                           | SOME (Mach.Boolean _) => "boolean"
-                           | SOME (Mach.Function _) => "function"
-                           | SOME (Mach.NativeFunction _) => "function"
-                           | SOME (Mach.String _) => "string"
-                           | _ => "object")
+                        let 
+                            val n = Mach.nominalBaseOfTag (#tag ob)
+                        in
+                            if n = Name.public_int orelse 
+                               n = Name.public_uint orelse 
+                               n = Name.public_double orelse 
+                               n = Name.public_decimal
+                            then "number"
+                            else 
+                                (if n = Name.public_boolean
+                                 then "boolean"
+                                 else 
+                                     (if n = Name.public_Function
+                                      then "function"
+                                      else 
+                                          (if n = Name.public_string
+                                           then "string"
+                                           else "object")))
+                        end
             in
                 newString 
                     (case expr of 
@@ -2787,10 +2796,10 @@ and runAnySpecialConstructor (id:Mach.OBJ_IDENT)
                              (instanceObj:Mach.OBJ) 
     : unit =
     (trace ["checking for special case constructors with value ", Int.toString id];
-    if id = !functionClassIdentity
+    if id = !FunctionClassIdentity
     then (* FIXME: bring the function ctor in here. *) ()
     else 
-        if id = !arrayClassIdentity
+        if id = !ArrayClassIdentity
         then 
             let
                 fun bindVal _ [] = ()
@@ -2798,7 +2807,7 @@ and runAnySpecialConstructor (id:Mach.OBJ_IDENT)
                     (setValue instanceObj (Name.public (Int.toString n)) x;
                      bindVal (n+1) xs)
             in
-                trace ["running special-case array constructor"];
+                trace ["running special-case Array constructor"];
                 bindVal 0 args
             end
         else 
@@ -3465,13 +3474,20 @@ fun resetGlobal (ob:Mach.OBJ)
 
 fun bindSpecialIdentities _ = 
     let 
-        val Mach.Obj arrObj = needObj (getValue (getGlobalObject()) Name.public_Array)
-        val Mach.Obj funcObj = needObj (getValue (getGlobalObject()) Name.public_Function)
+        fun bindIdent (n, r) = 
+            let 
+                val Mach.Obj obj = needObj (getValue (getGlobalObject()) n)
+                val id = (#ident obj)
+            in
+                trace ["noting identity ", Int.toString id, " of class ", LogErr.name n];
+                r := id
+            end
     in
-        trace ["binding array class to object identity ", Int.toString (#ident arrObj)];
-        arrayClassIdentity := (#ident arrObj);
-        trace ["binding function class to object identity ", Int.toString (#ident funcObj)];
-        functionClassIdentity := (#ident funcObj)
+        List.app bindIdent
+                 [ 
+                  (Name.public_Array, ArrayClassIdentity),
+                  (Name.public_Function, FunctionClassIdentity)
+                 ]
     end
 
 end
