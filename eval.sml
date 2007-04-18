@@ -3383,8 +3383,9 @@ and evalForStmt (scope:Mach.SCOPE)
 
             fun loop (accum:Mach.VAL option) =
                 let
-                    val v = evalExpr forScope cond
-                    val b = toBoolean v
+                    val b = case cond of 
+                                Ast.ListExpr [] => true
+                              | _ => toBoolean (evalExpr forScope cond)
                 in
                     if b
                     then
