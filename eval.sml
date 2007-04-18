@@ -1347,11 +1347,16 @@ and constructObjectViaFunction (ctorObj:Mach.OBJ)
         Mach.Obj { props, ... } => 
         let
             (* FIXME: the default prototype should be the initial Object prototype, 
-             * as per ES3 13.2.2. *)
+             * as per ES3 13.2.2, not the current Object prototype. *)
             val (proto:Mach.VAL) = 
                 if Mach.hasProp props Name.public_prototype
                 then getValue ctorObj Name.public_prototype
-                else Mach.Null
+                else 
+                    let
+                        val globalObjectObj = needObj (getValue (getGlobalObject()) Name.public_Object)
+                    in
+                        getValue globalObjectObj Name.public_prototype
+                    end
             val (newObj:Mach.OBJ) = Mach.setProto (newObj ()) proto 
         in
             case invokeFuncClosure newObj ctor args of 
@@ -2417,7 +2422,8 @@ and invokeFuncClosure (this:Mach.OBJ)
                 checkAllPropertiesInitialized varObj;
                 trace ["invokeFuncClosure: evaluating block"];
                 let 
-                    val res = (evalBlock varScope block
+                    val res = ((evalBlock varScope block; 
+                                Mach.Undef)
                                handle ReturnException v => v)
                 in
                     pop ();
@@ -2798,15 +2804,15 @@ and runAnySpecialConstructor (id:Mach.OBJ_IDENT)
                              (instanceObj:Mach.OBJ) 
     : unit =
     (trace ["checking for special case constructors with value ", Int.toString id];
-     if id = !FunctionClassIdentity
+     if id = !FunctionClassIdentity andalso (not (args = []))
      then
          (*
           * We synthesize a token stream here that feeds back into the parser.
           *)
          let 
              val nargs = length args
-             val argArgs = if nargs > 0 then List.take (args, nargs-1) else []
-             val source = if nargs > 0 then toString (List.last args) else ""
+             val argArgs = List.take (args, nargs-1)
+             val source = toString (List.last args) 
              fun ident v = Token.Identifier (toString v)
              val argIdents = map ident argArgs
              val nloc = {file="<no filename>", line=1}
@@ -2827,6 +2833,7 @@ and runAnySpecialConstructor (id:Mach.OBJ_IDENT)
                               @ [(Token.LeftBrace, nloc)]
                               @ lineTokens
                               @ [(Token.RightBrace, nloc)]
+                              @ [(Token.Eof, nloc)]
 
              val (_,funcExpr) = Parser.functionExpression (funcTokens, 
                                                            Parser.NOLIST, 
