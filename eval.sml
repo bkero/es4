@@ -1539,7 +1539,9 @@ and evalUnaryOp (scope:Mach.SCOPE)
             (trace ["performing operator delete"];
              case evalRefExpr scope expr false of
                  (Mach.Obj {props, ...}, name) => 
-                 (Mach.delProp props name; newBoolean true))
+                 (if (#dontDelete (#attrs (Mach.getProp props name)))
+                  then newBoolean false
+                  else (Mach.delProp props name; newBoolean true)))
 
           | Ast.PreIncrement mode => crement (valOf mode)
                                              (Decimal.add) 
