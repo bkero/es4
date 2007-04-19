@@ -662,11 +662,30 @@ val atan2 = binaryDoubleFn Math.atan2
 val cos = unaryDoubleFn Math.cos
 val exp = unaryDoubleFn Math.exp
 val log = unaryDoubleFn Math.ln
-val pow = binaryDoubleFn Math.pow 
 val sin = unaryDoubleFn Math.sin
 val sqrt = unaryDoubleFn Math.sqrt
 val tan = unaryDoubleFn Math.tan
 
+(* Math.pow in smlnj 110.60 has an error of 3.33e~6 on computing 2^32! *)
+
+val pow = binaryDoubleFn (fn (a,b) => 
+                             if Real64.compare((Real64.realFloor b), b) = EQUAL andalso b >= ~2147483648.0 andalso b <= 2147483647.0 then
+                                 let val b = Real64.floor b
+                                     fun loop res expt =
+                                         if expt = 1 then
+                                             res
+                                         else if Int.mod(expt, 2) = 1 then
+                                             loop (res * a) (expt - 1)
+                                         else 
+                                             loop (res * res) (Int.div(expt, 2))
+                                 in
+                                     if b = 0 then
+                                         1.0
+                                     else
+                                         loop a b
+                                 end
+                             else
+                                 Math.pow (a,b))
 
 (* Some helpers not specified in the wiki at the moment. Maybe get rid
  * of them eventually? *)
