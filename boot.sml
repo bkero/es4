@@ -198,11 +198,12 @@ fun boot _ =
              "builtins/Math.es",
              "builtins/Global.es",
              
+             "builtins/Array.es",  (* before Date *)
+
              "builtins/ByteArray.es",
              "builtins/Date.es",
              
              "builtins/JSON.es",
-             "builtins/Array.es",
              "builtins/Error.es",           
              "builtins/Shell.es"
             ];

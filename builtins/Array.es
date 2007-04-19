@@ -40,7 +40,7 @@ package
             this.join();
 
         override intrinsic function toString():String
-            this.join();
+            join();
 
         // 15.4.4.3 Array.prototype.toLocaleString ( )
         prototype function toLocaleString(this:Array)
@@ -93,6 +93,8 @@ package
 
         // 15.4.4.5 Array.prototype.join (separator)
         public static function join(self, sep = undefined) {
+            return "Array join not yet working due to other bug...";
+
             let s:String = (sep === undefined) ? "," : String(sep);
             let out:String = "";
             let len:uint = self.length;
@@ -351,17 +353,18 @@ package
 
         // ECMA-262 requires a RangeError if non-ints are passed in,
         // so we must not type it as uint in the setter's signature
-        public function set length(newLength:uint):void {
+        public function set length(newLength):void {
             let oldLength:uint = this.private::_length;
             let newLengthAsDouble:double = double(newLength);
             let newLengthAsUint:uint = uint(newLengthAsDouble);
             if (newLengthAsUint != newLengthAsDouble)
                 throw new RangeError();
             for (let i:uint = newLengthAsUint; i < oldLength; ++i)
-                if (this.hasOwnProperty(i.toString()))  /* FIXME: when type annos work, won't need explicit conversion */
+                if (this.hasOwnProperty(i.toString()))  // FIXME: when type annos work, won't need explicit conversion
                     delete this[i];
             this.private::_length = newLengthAsUint;
         }
+
 
         // --------------------------------------------------
         // private utility methods
