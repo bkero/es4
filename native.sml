@@ -669,20 +669,19 @@ val tan = unaryDoubleFn Math.tan
 (* Math.pow in smlnj 110.60 has an error of 3.33e~6 on computing 2^32! *)
 
 val pow = binaryDoubleFn (fn (a,b) => 
-                             if Real64.compare((Real64.realFloor b), b) = EQUAL andalso b >= ~2147483648.0 andalso b <= 2147483647.0 then
-                                 let val b = Real64.floor b
-                                     fun loop res expt =
-                                         if expt = 1 then
-                                             res
+                             if Real64.compare((Real64.realFloor b), b) = EQUAL andalso b >= 0.0 andalso b <= 2147483647.0 then
+                                 let fun exponentiate expt =
+                                         if expt = 0 then
+                                             1.0
                                          else if Int.mod(expt, 2) = 1 then
-                                             loop (res * a) (expt - 1)
+                                             a * (exponentiate (expt - 1))
                                          else 
-                                             loop (res * res) (Int.div(expt, 2))
+                                             let val v = exponentiate (expt div 2)
+                                             in 
+                                                 v * v
+                                             end
                                  in
-                                     if b = 0 then
-                                         1.0
-                                     else
-                                         loop a b
+                                     exponentiate (Real64.floor b)
                                  end
                              else
                                  Math.pow (a,b))
