@@ -2587,7 +2587,7 @@ and bindArgs (outerScope:Mach.SCOPE)
         val p = length (#params ty)
         val d = length defaults
         val a = length args
-        val i = Int.min (d, (a+d) - p);
+        val i = Int.min (d, Int.max(0, (a+d) - p));
         val _ = trace ["bindArgs: p=", Int.toString p,
                        ", d=", Int.toString d,
                        ", a=", Int.toString a,
@@ -2613,40 +2613,37 @@ and bindArgs (outerScope:Mach.SCOPE)
                                                            readOnly = true, 
                                                            isFixed = true } };
              bindArg 0 finalArgs)
-            
+
+    (* 
+     * FIXME: should handle a flag in func that indicates whether 
+     * to insist on precise number of args. 
+     *)
     in
         if hasRest andalso a > (p-1)
         then 
-            if a + d < (p-1)
-            then error ["bad number of args to function ", 
-                        Int.toString a, " given ", 
-                        Int.toString (p-(1+d)), " expected"]
-            else
-                let
-                    val _ = trace ["dropping ", Int.toString i, " defaults"]
-                    val defExprs = List.drop (defaults, i)
-                    val defVals = List.map (evalExpr outerScope) defExprs
-                    val restArgs = List.drop (args, (p-1))
-                    val _ = trace ["dropping ", Int.toString (p-1), 
-                                   " args, binding ", Int.toString (List.length restArgs), 
-                                   " rest args"];
-                    val allArgs = (List.take (args, (p-1))) @ defVals @ [newArray restArgs]
-                in
-                    bind allArgs
-                end
+            let
+                val _ = trace ["dropping ", Int.toString i, " defaults"]
+                val defExprs = List.drop (defaults, i)
+                val defVals = List.map (evalExpr outerScope) defExprs
+                val restArgs = List.drop (args, (p-1))
+                val _ = trace ["dropping ", Int.toString (p-1), 
+                               " args, binding ", Int.toString (List.length restArgs), 
+                               " rest args"];
+                val allArgs = (List.take (args, (p-1))) @ defVals @ [newArray restArgs]
+            in
+                bind allArgs
+            end
         else 
-            if a + d < p orelse a > p
-            then error ["bad number of args to function ", 
-                        Int.toString a, " given ", 
-                        Int.toString (p-d), " expected"]
-            else 
-                let
-                    val defExprs = List.drop (defaults, i)
-                    val defVals = List.map (evalExpr outerScope) defExprs
-                    val allArgs = args @ defVals
-                in
-                    bind allArgs
-                end
+            let
+                val padding = if a < (p-d) 
+                              then (List.tabulate (((p-d) - a), (fn _ => Mach.Undef)))
+                              else []
+                val defExprs = List.drop (defaults, i)
+                val defVals = List.map (evalExpr outerScope) defExprs
+                val allArgs = args @ padding @ defVals
+            in
+                bind (List.take (allArgs, p))
+            end
     end
 
 

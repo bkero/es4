@@ -293,9 +293,9 @@ package
         /* INFORMATIVE */
         intrinsic function toUTCString() : string
             /* "Sat, 16 Dec 2006 08:06:21 GMT" */
-            dayNames[UTCdate] + ", " + 
-            twoDigit(UTCday) + " " + 
-            monthNames[UTCmonth] + " " +
+            dayNames[UTCDate] + ", " + 
+            twoDigit(UTCDay) + " " + 
+            monthNames[UTCMonth] + " " +
             UTCFullYear + " " + 
             twoDigit(UTCHours) + ":" + 
             twoDigit(UTCMinutes) + ":" + 

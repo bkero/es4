@@ -16,7 +16,7 @@ for ECMA in $ROOT/ecma*
 	  echo $FILE
 	  if [ -s $SECTION/shell.js ]
 	      then 
-	      make run FILE="$SECTION/shell.js $FILE" >>$LOG 2>&1
+	      make run FILE="$ECMA/shell.js $SECTION/shell.js $FILE" >>$LOG 2>&1
 	  else
 	      make run FILE="$ECMA/shell.js $FILE" >>$LOG 2>&1
 	  fi
