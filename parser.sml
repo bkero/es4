@@ -6700,10 +6700,11 @@ fun dumpLineBreaks (lbs,lst) =
 
 
 
+(*
 fun makeLexer reader =
     Lexer.makeLexer reader
+*)
 
-(*
 fun makeLexer reader =
     let 
         val lex_stream = ref (Lexer.streamify reader)
@@ -6719,7 +6720,6 @@ fun makeLexer reader =
     in
         lexer
     end
-*)
 
 
 

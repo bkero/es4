@@ -28,15 +28,6 @@ val line_breaks : int list ref = ref []
 val token_count : int      ref = ref 0
 
 
-
-
-
-
-
-
-
-
-
 fun token_list (fname, token_fn : unit -> TOKEN) =
 let
     val t = ref [] 
@@ -96,9 +87,7 @@ val (found_newline :  bool       ref) = ref false
 
 %structure Lexer
 
-%s	    REGEXP REGEXP_CHARSET XML SINGLE_LINE_COMMENT MULTI_LINE_COMMENT STRING;
-
-
+%s      REGEXP REGEXP_CHARSET XML SINGLE_LINE_COMMENT MULTI_LINE_COMMENT STRING;
 
 
 
@@ -385,7 +374,6 @@ val (found_newline :  bool       ref) = ref false
 				     (curr_chars := (String.sub (yytext,0)) :: (!curr_chars);
 				     continue()));
 
-
 <STRING>{charEscape}          => ((case Char.fromCString yytext of
 				       NONE => error ["unexpected input in <STRING>{charEscape}: '", yytext, "'"]
 				     | SOME c => curr_chars := c :: (!curr_chars));
@@ -397,4 +385,9 @@ val (found_newline :  bool       ref) = ref false
 <STRING>.                     => (curr_chars := (String.sub (yytext,0)) :: (!curr_chars);
 				  continue());
 
-<INITIAL>.                    => (error ["unexpected input: '", yytext, "'"]);
+<INITIAL>.                    => (error [
+					    "unexpected input: '",
+					    yytext,
+					    "' -- char code: ",
+					    Int.toString (Char.ord (String.sub (yytext,0)))
+					]);
