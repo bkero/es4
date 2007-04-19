@@ -86,7 +86,7 @@ package
             concatHelper(self, args);
 
         prototype function concat(...args)
-            concatHelper(this, args);
+            concatHelper(this, args);  /* Static method should be in scope, and instance methods do not hide it */
 
         intrinsic function concat(...args):Array
             concatHelper(this, args);
@@ -109,7 +109,7 @@ package
         }
 
         prototype function join(sep = undefined)
-            Array.join(this, sep);
+            join(this, sep);  /* Static method should be in scope, and instance methods do not hide it */
 
         intrinsic function join(sep = undefined):String
             Array.join(this, sep);
@@ -146,13 +146,13 @@ package
         }
 
         public static function push(self, ...args)
-            Array.pushHelper(this, args);
+            pushHelper(this, args);
 
         prototype function push(...args)
-            Array.pushHelper(this, args);
+            pushHelper(this, args);  /* Static method should be in scope, and instance methods do not hide it */
 
         intrinsic function push(...args:Array):uint
-            Array.pushHelper(this, args);
+            pushHelper(this, args);
 
         // 15.4.4.8 Array.prototype.reverse ( )
         public static function reverse(self) {
@@ -169,7 +169,7 @@ package
         }
 
         prototype function reverse()
-            Array.reverse(this);
+            reverse(this);
 
         intrinsic function reverse():Array
             Array.reverse(this);
