@@ -169,7 +169,7 @@ package
         }
 
         prototype function reverse()
-            reverse(this);
+            Array.reverse(this);
 
         intrinsic function reverse():Array
             Array.reverse(this);
@@ -237,7 +237,7 @@ package
             let len:uint = self.length;
 
             if (len > 1)
-                qsort(0, len-1, comparefn);
+                self.qsort(0, len-1, comparefn);
 
             return self;
         }
