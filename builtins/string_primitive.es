@@ -419,8 +419,8 @@ package
                         return null;
                 }
 
-                case (x : RegExp!) {
-                    let mr : MatchResult = x.match(S, q);
+                case (xx : RegExp!) {  /* FIXME: rename back to x when Jeff has fixed the definer */
+                    let mr : MatchResult = xx.match(S, q);
                     if (mr === null)
                         return null;
                     else
