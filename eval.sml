@@ -1799,27 +1799,34 @@ and performBinop (bop:Ast.BINOP)
                                   doubleOp (toDouble a) (toDouble b))
                          end)
                     
+        fun reorder (ord:order) : IEEEReal.real_order =
+            case ord of
+                EQUAL => IEEEReal.EQUAL
+              | LESS => IEEEReal.LESS
+              | GREATER => IEEEReal.GREATER
+
         fun dispatchComparison mode cmp =
             let
                 fun decimalOp da db =
-                    newBoolean (cmp (Decimal.compare (#precision mode) 
-                                                          (#roundingMode mode) 
-                                                          da db))
+                    newBoolean (cmp (reorder (Decimal.compare (#precision mode) 
+                                                              (#roundingMode mode) 
+                                                              da
+                                                              db)))
                 fun doubleOp da db = 
-                    newBoolean (cmp (Real64.compare (da, db)))
+                    newBoolean (cmp (Real64.compareReal (da, db)))
                 fun intOp ia ib = 
-                    newBoolean (cmp (Int32.compare (ia, ib)))
+                    newBoolean (cmp (reorder (Int32.compare (ia, ib))))
                 fun uintOp ua ub = 
-                    newBoolean (cmp (Word32.compare (ua, ub)))
+                    newBoolean (cmp (reorder (Word32.compare (ua, ub))))
                 fun largeOp la lb = 
-                    newBoolean (cmp (LargeInt.compare (la, lb)))
+                    newBoolean (cmp (reorder (LargeInt.compare (la, lb))))
             in
                 if Mach.isNumeric a andalso Mach.isNumeric b
                 then (if isNaN a orelse isNaN b
                       then newBoolean false
                       else dispatch mode decimalOp doubleOp intOp uintOp largeOp)
-                else newBoolean (cmp (String.compare ((toString a), 
-                                                      (toString b))))
+                else newBoolean (cmp (reorder (String.compare ((toString a), 
+                                                               (toString b)))))
             end
             
         fun dispatchNumeric mode decimalFn doubleFn intFn uintFn largeFn =
@@ -1962,35 +1969,35 @@ and performBinop (bop:Ast.BINOP)
 
           | Ast.Equals mode => 
             dispatchComparison (valOf mode) 
-                               (fn x => x = EQUAL)
+                               (fn x => x = IEEEReal.EQUAL)
             
           | Ast.NotEquals mode => 
             dispatchComparison (valOf mode) 
-                               (fn x => not (x = EQUAL))
+                               (fn x => not (x = IEEEReal.EQUAL))
             
           | Ast.StrictEquals mode => 
             dispatchComparison (valOf mode) 
-                               (fn x => x = EQUAL)
+                               (fn x => x = IEEEReal.EQUAL)
 
           | Ast.StrictNotEquals mode => 
             dispatchComparison (valOf mode) 
-                               (fn x => not (x = EQUAL))
+                               (fn x => not (x = IEEEReal.EQUAL))
 
           | Ast.Less mode => 
             dispatchComparison (valOf mode) 
-                               (fn x => x = LESS)
+                               (fn x => x = IEEEReal.LESS)
 
           | Ast.LessOrEqual mode => 
             dispatchComparison (valOf mode) 
-                               (fn x => (x = LESS) orelse (x = EQUAL))
+                               (fn x => (x = IEEEReal.LESS) orelse (x = IEEEReal.EQUAL))
 
           | Ast.Greater mode => 
             dispatchComparison (valOf mode) 
-                               (fn x => x = GREATER)
+                               (fn x => x = IEEEReal.GREATER)
 
           | Ast.GreaterOrEqual mode => 
             dispatchComparison (valOf mode) 
-                               (fn x => (x = GREATER) orelse (x = EQUAL))
+                               (fn x => (x = IEEEReal.GREATER) orelse (x = IEEEReal.EQUAL))
 
           | _ => error ["unexpected binary operator in performBinOp"]
     end
