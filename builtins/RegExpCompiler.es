@@ -11,13 +11,13 @@
  * Status: Complete; Not reviewed; Not tested.
  */
 
-package RegExp
+package RegExpInternals
 {
     import Unicode.*;
     use namespace intrinsic;
     use strict;
 
-    class RegExpCompiler
+    public class RegExpCompiler
     {
         /* Invariant for token handling: either idx==source.length or source[idx] is a significant char */
 
@@ -76,10 +76,10 @@ package RegExp
             let x : Matcher? = assertion();
             if (x !== null)
                 return x;
-            let x : Matcher = atom();
+            let xx : Matcher = atom();
             let y : [double, double, Boolean]? = quantifier();
             if (y === null)
-                return x;
+                return xx;
             let [min, max, greedy] : [double,double,Boolean] = y;
             return new Quantified(parenIndex, parenCount, min, max, greedy);
         }

@@ -10,9 +10,10 @@
  * See RegExpEvaluator.es for the evaluator and compiled code representation.
  */
 
-package RegExp
+package
 {
     import Unicode.*;
+    import RegExpInternals.*;
     use namespace intrinsic;
     use strict;
 
@@ -46,7 +47,7 @@ package RegExp
 
             let usedflags : Object! = { m: false, i: false, g: false, x: false, y: false };
 
-            for each ( let f : string in flags.split("") ) {
+            for each ( let f : string in explodeString(flags) ) {
                 if (!(f in usedflags))
                     throw new SyntaxError("Invalid flag: " + f);
                 if (usedflags.f)
@@ -110,7 +111,7 @@ package RegExp
 
         /* E262-3 15.10.6.3: RegExp.prototype.test */
         intrinsic function test(s : string) : Boolean
-            exec(s) !== null;
+             exec(s) !== null;
 
         prototype function test(s)
             this.test(s);
