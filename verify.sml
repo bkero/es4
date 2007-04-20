@@ -3,19 +3,23 @@ structure Verify = struct
 
 open LogErr
 
-type CONTEXT = Ast.FIXTURES
+type RIB = Ast.FIXTURES
 
 type ENV = { returnType: Ast.TYPE_EXPR option,
-             context: CONTEXT }
+             strict: bool,
+             ribs: RIB list }
 
-fun withReturnType { returnType=_, context } returnType =
-    { returnType=returnType, context=context }
+fun withReturnType { returnType=_, strict, ribs } returnType =
+    { returnType=returnType, strict=strict, ribs=ribs }
 
-fun withContext { returnType, context=_ } context =
-    { returnType=returnType, context=context }
+fun withRibs { returnType, strict, ribs=_ } ribs =
+    { returnType=returnType, strict=strict, ribs=ribs }
 
-fun withContextExtn { returnType, context} extn =
-    { returnType=returnType, context=extn @ context }
+fun withStrict { returnType, strict=_, ribs } strict =
+    { returnType=returnType, strict=strict, ribs=ribs }
+
+fun withRib { returnType, strict, ribs} extn =
+    { returnType=returnType, strict=strict, ribs=extn :: ribs }
 
 (* Local tracing machinery *)
 
@@ -195,10 +199,10 @@ fun verifyTypeExpr (env:ENV)
 	        let 
 	            (* Add the type parameters to the environment. *)
 	            val env' : ENV = 
-                    withContextExtn env (List.map 
-                                             (fn id => (Ast.PropName (Name.internal id),
-                                                        Ast.TypeVarFixture)) 
-                                             typeParams)
+                    withRib env (List.map 
+                                     (fn id => (Ast.PropName (Name.internal id),
+                                                Ast.TypeVarFixture)) 
+                                     typeParams)
                 val params' = verifyTypeExprs env' params
                 val result' = verifyTypeExpr env' result
                 val thisType' = Option.map (verifyTypeExpr env') thisType
@@ -385,71 +389,160 @@ and verifyExpr (env:ENV)
         val dummyType = Ast.SpecialType Ast.Any
     in
         case expr of 
-            Ast.TernaryExpr (t, e1, e2, e3) => 
-            (Ast.TernaryExpr (t, e1, e2, e3), dummyType)
+            Ast.TernaryExpr (t, e1, e2, e3) =>
+            let
+                val e1' = verifySub e1
+                val e2' = verifySub e2
+                val e3' = verifySub e3
+            in
+                (Ast.TernaryExpr (t, e1', e2', e3'), dummyType)
+            end
             
-          | Ast.BinaryExpr (b, e1, e2) => 
-            (Ast.BinaryExpr (b, e1, e2), dummyType)
-            
+          | Ast.BinaryExpr (b, e1, e2) =>
+            let
+                val e1' = verifySub e1
+                val e2' = verifySub e2
+            in
+                (Ast.BinaryExpr (b, e1', e2'), dummyType)
+            end
+
           | Ast.BinaryTypeExpr (b, e, te) =>
-            (Ast.BinaryTypeExpr (b, e, te), dummyType)
+            let
+                val e' = verifySub e
+                val te' = verifyTypeExpr env te
+            in
+                (Ast.BinaryTypeExpr (b, e', te'), dummyType)
+            end
 
           | Ast.UnaryExpr (u, e) =>
-            (Ast.UnaryExpr (u, e), dummyType)
-                         
-          | Ast.TypeExpr t => 
-            (Ast.TypeExpr t, dummyType)
+            let
+                val e' = verifySub e
+            in
+                (Ast.UnaryExpr (u, e'), dummyType)
+            end
 
-          | Ast.ThisExpr => 
+          | Ast.TypeExpr t => 
+            let
+                val t' = verifyTypeExpr env t
+            in
+                (Ast.TypeExpr t', dummyType)
+            end
+
+          | Ast.ThisExpr =>
             (Ast.ThisExpr, dummyType)
 
-          | Ast.YieldExpr eo => 
-            (Ast.YieldExpr eo, dummyType)
+          | Ast.YieldExpr eo =>
+            let
+                val eo' = Option.map verifySub eo
+            in
+                (Ast.YieldExpr eo', dummyType)
+            end
 
-          | Ast.SuperExpr eo => 
-            (Ast.SuperExpr eo, dummyType)
+          | Ast.SuperExpr eo =>
+            let
+                val eo' = Option.map verifySub eo
+            in
+                (Ast.SuperExpr eo', dummyType)
+            end
             
           | Ast.LiteralExpr le => 
+            (* TODO *)
             (Ast.LiteralExpr le, dummyType)
             
           | Ast.CallExpr {func, actuals} => 
-            (Ast.CallExpr {func = verifySub func,
-                          actuals = map verifySub actuals}, dummyType)
+            let
+                val func' = verifySub func
+                val actuals' = List.map verifySub actuals
+            in
+                (Ast.CallExpr { func = func',
+                                actuals = actuals' }, dummyType)
+            end
 
           | Ast.ApplyTypeExpr { expr, actuals } =>
-            (Ast.ApplyTypeExpr { expr = expr,
-                                actuals = actuals }, dummyType)
+            let
+                val expr' = verifySub expr
+                val actuals' = List.map (verifyTypeExpr env) actuals
+            in
+                (Ast.ApplyTypeExpr { expr = expr',
+                                     actuals = actuals' }, dummyType)
+            end
 
-          | Ast.LetExpr le => 
-            (Ast.LetExpr le, dummyType)
+          | Ast.LetExpr { defs, body, head } =>
+            let
+                val defs' = defs (* TODO *)
+                val head' = Option.map (verifyHead env) head
+                (* TODO: verify body with `head' fixtures in env *)
+                val body' = verifySub body
+            in
+                (Ast.LetExpr { defs = defs',
+                               body = body',
+                               head = head' }, dummyType)
+            end
 
           | Ast.NewExpr { obj, actuals } => 
-            (Ast.NewExpr { obj = verifySub obj,
-                          actuals = map verifySub actuals }, dummyType)
+            let
+                val obj' = verifySub obj
+                val actuals' = List.map verifySub actuals
+            in
+                (Ast.NewExpr { obj = obj',
+                               actuals = actuals' }, dummyType)
+            end
 
           | Ast.ObjectRef { base, ident, pos } =>
-            (Ast.ObjectRef { base=base, ident=ident, pos=pos }, dummyType)
+            let
+                val base' = verifySub base
+                val ident' = ident (* TODO *)
+            in
+                (Ast.ObjectRef { base=base', ident=ident', pos=pos }, dummyType)
+            end
 
-          | Ast.LexicalRef { ident, pos } => 
-            (Ast.LexicalRef { ident=ident, pos=pos }, dummyType)
+          | Ast.LexicalRef { ident, pos } =>
+            let
+                val ident' = ident (* TODO *)
+            in
+                (Ast.LexicalRef { ident=ident', pos=pos }, dummyType)
+            end
 
           | Ast.SetExpr (a, le, re) => 
-            (Ast.SetExpr (a, le, re), dummyType)
+            let
+                val le' = verifySub le
+                val re' = verifySub re
+            in
+                (Ast.SetExpr (a, le', re'), dummyType)
+            end
 
           | Ast.GetTemp n => 
+            (* TODO: these only occur on the RHS of compiled destructuring assignments. how to type-check? *)
             (Ast.GetTemp n, dummyType)
 
           | Ast.GetParam n => 
-            (Ast.GetParam n, dummyType)
+            internalError ["GetParam not eliminated by Defn"]
 
           | Ast.ListExpr es => 
-            (Ast.ListExpr (map verifySub es), dummyType)
+            let
+                val es' = List.map verifySub es
+            in
+                (Ast.ListExpr es', dummyType)
+            end
 
           | Ast.SliceExpr (a, b, c) => 
-            (Ast.SliceExpr (verifySub a, verifySub b, verifySub c), dummyType)
+            let
+                val a' = verifySub a
+                val b' = verifySub b
+                val c' = verifySub c
+            in
+                (Ast.SliceExpr (a, b, c), dummyType)
+            end
 
-          | Ast.InitExpr ie =>
-            (Ast.InitExpr ie, dummyType)
+          | Ast.InitExpr (it, head, inits) =>
+            let
+                val it' = it (* TODO *)
+                val head' = verifyHead env head
+                val inits' = inits (* TODO *)
+            in
+                (Ast.InitExpr (it', head', inits'), dummyType)
+            end
+
     end
     
     
@@ -586,7 +679,8 @@ and verifyBlock (env:ENV)
     PROGRAM
 *)
 
-and topEnv () = { context = !Defn.topFixtures,
+and topEnv () = { ribs = [!Defn.topFixtures],
+                  strict = false,
                   returnType = NONE }
 
 and verifyPackage (p:Ast.PACKAGE)
@@ -671,7 +765,7 @@ fun lookupIdNamespaces (env:TYPE_ENV)
 
 (******************** Expressions **************************************************)
 
-and verifyIdentExpr (env as {env,this,...}:CONTEXT) 
+and verifyIdentExpr (env as {env,this,...}:RIB) 
 		    (ide:Ast.IDENT_EXPR) 
     : Ast.TYPE_EXPR = 
     let
@@ -704,7 +798,7 @@ and verifyIdentExpr (env as {env,this,...}:CONTEXT)
 	    end
     end
 
-and verifyExpr (env as {env,this,...}:CONTEXT) 
+and verifyExpr (env as {env,this,...}:RIB) 
 	       (e:EXPR) 
     : Ast.TYPE_EXPR = 
     let
@@ -827,7 +921,7 @@ and verifyExpr (env as {env,this,...}:CONTEXT)
 *)
 
 
-and verifyCallExpr  (env as {env,this,...}:CONTEXT) 
+and verifyCallExpr  (env as {env,this,...}:RIB) 
 		    func actuals
     : Ast.TYPE_EXPR =
     let val functy = verifyExpr env func;
@@ -877,13 +971,13 @@ and verifyCallExpr  (env as {env,this,...}:CONTEXT)
 (* TODO: verifyPattern returns a pair of env extension and (inferred) type?
          or takes a type (checked) and returns just extension? *)
 (*
-and verifyPattern (env:CONTEXT) (Ast.IdentifierPattern name) = (
+and verifyPattern (env:RIB) (Ast.IdentifierPattern name) = (
   | verifyPattern env (Ast.ObjectPattern props) =
   | verifyPattern env (Ast.ArrayPattern elts) =
   | verifyPattern env (Ast.SimplePattern expr) = ??
 *)
 
-and verifyExprList (env as {env,this,...}:CONTEXT)
+and verifyExprList (env as {env,this,...}:RIB)
 		   (l:EXPR list) 
     : Ast.TYPE_EXPR = 
     let
@@ -891,7 +985,7 @@ and verifyExprList (env as {env,this,...}:CONTEXT)
 	List.last (List.map (verifyExpr env) l)
     end
     
-and verifyField (env:CONTEXT) 
+and verifyField (env:RIB) 
 		({kind,name,init}:FIELD) 
     : FIELD_TYPE =
 	let
@@ -903,7 +997,7 @@ and verifyField (env:CONTEXT)
 (* This type checksTODO: this needs to return some type structure as well *)
 
 (* deprecated due to fixtures
-and verifyBinding (env:CONTEXT) 
+and verifyBinding (env:RIB) 
 		  (Binding {init,pattern,ty}) 
     : TYPE_ENV =
     let val ty = unOptionDefault ty anyType in
@@ -923,7 +1017,7 @@ and verifyBinding (env:CONTEXT)
 *)
 
 
-and verifyVarBinding (env:CONTEXT) 
+and verifyVarBinding (env:RIB) 
 		     (Binding {init, pattern, ty}:VAR_BINDING) 
     : TYPE_ENV =
     let in
@@ -932,7 +1026,7 @@ and verifyVarBinding (env:CONTEXT)
 	    [(ident,SOME (unOptionDefault ty anyType))]
 	    end
     
-and verifyVarBindings (env:CONTEXT) 
+and verifyVarBindings (env:RIB) 
 		      (vs:VAR_BINDING list) 
     : TYPE_ENV =
     case vs of
@@ -940,7 +1034,7 @@ and verifyVarBindings (env:CONTEXT)
       | h::t => (verifyVarBinding env h) @ (verifyVarBindings env t)
 *)
 
-and verifyUnaryExpr (env:CONTEXT) 
+and verifyUnaryExpr (env:RIB) 
 		    (unop:UNOP)
 		    (arg:EXPR) 
     : Ast.TYPE_EXPR =
@@ -985,7 +1079,7 @@ and verifyUnaryExpr (env:CONTEXT)
 	    end
     end
 
-and verifyBinaryExpr (env:CONTEXT) (bop:BINOP, lhs:EXPR, rhs:EXPR) =
+and verifyBinaryExpr (env:RIB) (bop:BINOP, lhs:EXPR, rhs:EXPR) =
     let
     in
 	case bop of
@@ -997,7 +1091,7 @@ and verifyBinaryExpr (env:CONTEXT) (bop:BINOP, lhs:EXPR, rhs:EXPR) =
 	    end
     end
 
-and verifyBinaryTypeExpr (env:CONTEXT) 
+and verifyBinaryTypeExpr (env:RIB) 
 			 (bop:BINTYPEOP, arg:EXPR, t:Ast.TYPE_EXPR) =
     let val argType = verifyExpr env arg	
     in
@@ -1024,7 +1118,7 @@ and verifyBinaryTypeExpr (env:CONTEXT)
     end
 
 
-and verifyTrinaryExpr (env:CONTEXT) (triop:TRIOP, a:EXPR, b:EXPR, c:EXPR) =
+and verifyTrinaryExpr (env:RIB) (triop:TRIOP, a:EXPR, b:EXPR, c:EXPR) =
     case triop of
 	Cond =>
 	let val aty = verifyExpr env a
@@ -1041,7 +1135,7 @@ and verifyTrinaryExpr (env:CONTEXT) (triop:TRIOP, a:EXPR, b:EXPR, c:EXPR) =
 
 and verifyStmts env ss = List.app (fn s => verifyStmt env s) ss
 
-and verifyStmt (env as {this,env,lbls:(Ast.IDENT list),retTy}:CONTEXT) (stmt:STMT) =
+and verifyStmt (env as {this,env,lbls:(Ast.IDENT list),retTy}:RIB) (stmt:STMT) =
    let
    in
        TextIO.print ("type checking stmt: env len " ^ (Int.toString (List.length env)) ^"\n");
@@ -1169,7 +1263,7 @@ and verifyStmt (env as {this,env,lbls:(Ast.IDENT list),retTy}:CONTEXT) (stmt:STM
 
 
 (*
-and verifyDefn (env as {this,env,lbls,retTy}:CONTEXT) (d:DEFN) : (TYPE_ENV * int list) =
+and verifyDefn (env as {this,env,lbls,retTy}:RIB) (d:DEFN) : (TYPE_ENV * int list) =
     let
     in
 	case d of
@@ -1230,7 +1324,7 @@ and verifyDefns env ([]:DEFN list) : (TYPE_ENV * int list) = ([], [])
 (******************** Fixtures **************************************************)
 
 (* fixtures at the block level *)
-and verifyFixture (env as {env,this,...}:CONTEXT) 
+and verifyFixture (env as {env,this,...}:RIB) 
 		  (n:FIXTURE_NAME,f:FIXTURE) 
     : TYPE_ENV
   = let in
@@ -1240,12 +1334,12 @@ and verifyFixture (env as {env,this,...}:CONTEXT)
 	    [(n,ProgVar (ty,readOnly))]
     end	    
 
-and verifyFixtures (env:CONTEXT) 
+and verifyFixtures (env:RIB) 
 		   (fs:FIXTURES)  
     : TYPE_ENV 
   = List.concat (List.map (verifyFixture env) fs)
 
-and verifyFixturesOption (env:CONTEXT) 
+and verifyFixturesOption (env:RIB) 
 		   (fs:FIXTURES option)  
     : TYPE_ENV
   = verifyFixtures env (flattenOptionList fs)
