@@ -339,6 +339,8 @@ and verifyStmt (env:ENV)
           | Ast.Dxns x => 
             Ast.Dxns x
 
+          | _ => error ["Shouldn't happen: failed to match in Verify.verifyStmt"]
+
     end
 
 and verifyStmts (env) (stmts:Ast.STMT list)
