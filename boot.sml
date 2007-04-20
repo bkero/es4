@@ -34,6 +34,7 @@ fun printProp ((n:Ast.NAME), (p:Mach.PROP)) =
            | Mach.MethodProp _ => "[method]"
            | Mach.NativeFunctionProp _ => "[native function]"
            | Mach.NamespaceProp _ => "[namespace]"
+           | Mach.ValListProp _ => "[val list]"
     in
 	trace [LogErr.name n, " -> ", ps]
     end
@@ -198,11 +199,12 @@ fun boot _ =
              "builtins/Math.es",
              "builtins/Global.es",
              
+             "builtins/Array.es",  (* before Date *)
+
              "builtins/ByteArray.es",
              "builtins/Date.es",
              
              "builtins/JSON.es",
-             "builtins/Array.es",
              "builtins/Error.es",           
              "builtins/Shell.es"
             ];

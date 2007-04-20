@@ -811,14 +811,37 @@ and magicToString (magic:Mach.MAGIC)
 
 and toString (v:Mach.VAL) 
     : string = 
+    ( trace ["toString"] ;
     case v of 
         Mach.Undef => "undefined"
       | Mach.Null => "null"
       | Mach.Object (Mach.Obj ob) => 
-        (case !(#magic ob) of 
-             NONE => "[object Object]"
-           | SOME magic => 
-             magicToString magic)
+        case !(#magic ob) of 
+            NONE => let val r = resolveOnObjAndPrototypes (Mach.Obj ob) 
+                                                          { nss=[[Name.internalNS], [Name.publicNS]], id="toString" }
+                    in
+                        case r of 
+                            NONE => "[Object object 0]"
+                          | SOME (base, name) => 
+                            let val meth = getValue base name
+                            in
+                                case meth of 
+                                    Mach.Object metho => 
+                                    let val res = Mach.Undef (* evalCallExpr (SOME (Mach.Obj ob)) metho [] *) (* Awaiting fix to "this" bug *)
+                                    in
+                                        case res of 
+                                            Mach.Object (Mach.Obj ro) =>
+                                            (case !(#magic ro) of
+                                                 SOME (Mach.String s) => s
+                                               | _ => "[Object object 1]")
+                                          | _ => "[Object object 2]"
+                                    end
+                                  | Mach.Null => "[Object object 3.1]"
+                                  | Mach.Undef => "[Object object 3.2]"
+                            end
+                    end
+          | SOME magic => 
+            magicToString magic)
 
 and toBoolean (v:Mach.VAL) : bool = 
     case v of 
@@ -1238,10 +1261,18 @@ and evalLiteralArrayExpr (scope:Mach.SCOPE)
                      * a full TYPE_EXPR in LiteralArray. *)
                     | SOME _ => error ["non-array type on array literal"]
         val tag = Mach.ArrayTag tys
-        (* FIXME: hook up to Array.prototype. *)
-        val obj = newObj ()
+        fun constructArray _ = 
+            let val Array = needObj (getValue (getGlobalObject ()) Name.public_Array)
+            in
+                case Array of
+                    Mach.Obj { magic, ... } =>
+                    (case (!magic) of 
+                         SOME (Mach.Class ArrayClass) => needObj (constructClassInstance Array ArrayClass [])
+                       | _ => error ["Error in constructing array literal"])
+             end
+        val obj = constructArray ()
         val (Mach.Obj {props, ...}) = obj
-        fun putVal n [] = ()
+        fun putVal n [] = n
           | putVal n (v::vs) = 
             let 
                 val name = Name.public (Int.toString n)
@@ -1261,8 +1292,9 @@ and evalLiteralArrayExpr (scope:Mach.SCOPE)
                 Mach.addProp props name prop;
                 putVal (n+1) vs
             end
+        val numProps = putVal 0 vals 
     in
-        putVal 0 vals;
+        setValue obj Name.public_length (newUInt (Word32.fromInt numProps)) ;
         Mach.Object obj
     end
 
@@ -2587,7 +2619,7 @@ and bindArgs (outerScope:Mach.SCOPE)
         val p = length (#params ty)
         val d = length defaults
         val a = length args
-        val i = Int.min (d, (a+d) - p);
+        val i = Int.min (d, Int.max(0, (a+d) - p));
         val _ = trace ["bindArgs: p=", Int.toString p,
                        ", d=", Int.toString d,
                        ", a=", Int.toString a,
@@ -2613,40 +2645,37 @@ and bindArgs (outerScope:Mach.SCOPE)
                                                            readOnly = true, 
                                                            isFixed = true } };
              bindArg 0 finalArgs)
-            
+
+    (* 
+     * FIXME: should handle a flag in func that indicates whether 
+     * to insist on precise number of args. 
+     *)
     in
         if hasRest andalso a > (p-1)
         then 
-            if a + d < (p-1)
-            then error ["bad number of args to function ", 
-                        Int.toString a, " given ", 
-                        Int.toString (p-(1+d)), " expected"]
-            else
-                let
-                    val _ = trace ["dropping ", Int.toString i, " defaults"]
-                    val defExprs = List.drop (defaults, i)
-                    val defVals = List.map (evalExpr outerScope) defExprs
-                    val restArgs = List.drop (args, (p-1))
-                    val _ = trace ["dropping ", Int.toString (p-1), 
-                                   " args, binding ", Int.toString (List.length restArgs), 
-                                   " rest args"];
-                    val allArgs = (List.take (args, (p-1))) @ defVals @ [newArray restArgs]
-                in
-                    bind allArgs
-                end
+            let
+                val _ = trace ["dropping ", Int.toString i, " defaults"]
+                val defExprs = List.drop (defaults, i)
+                val defVals = List.map (evalExpr outerScope) defExprs
+                val restArgs = List.drop (args, (p-1))
+                val _ = trace ["dropping ", Int.toString (p-1), 
+                               " args, binding ", Int.toString (List.length restArgs), 
+                               " rest args"];
+                val allArgs = (List.take (args, (p-1))) @ defVals @ [newArray restArgs]
+            in
+                bind allArgs
+            end
         else 
-            if a + d < p orelse a > p
-            then error ["bad number of args to function ", 
-                        Int.toString a, " given ", 
-                        Int.toString (p-d), " expected"]
-            else 
-                let
-                    val defExprs = List.drop (defaults, i)
-                    val defVals = List.map (evalExpr outerScope) defExprs
-                    val allArgs = args @ defVals
-                in
-                    bind allArgs
-                end
+            let
+                val padding = if a < (p-d) 
+                              then (List.tabulate (((p-d) - a), (fn _ => Mach.Undef)))
+                              else []
+                val defExprs = List.drop (defaults, i)
+                val defVals = List.map (evalExpr outerScope) defExprs
+                val allArgs = args @ padding @ defVals
+            in
+                bind (List.take (allArgs, p))
+            end
     end
 
 
@@ -2676,6 +2705,10 @@ and evalInitsMaybePrototype (scope:Mach.SCOPE)
                 case n of 
                     Ast.PropName pn => 
                     (trace ["evalInit assigning to prop ", LogErr.name pn];
+(*                     if isPrototypeInit then
+                         LogErr.log ["Propname: ", LogErr.name pn] 
+                     else
+                         () ; *)
                      if isPrototypeInit 
                      then setValue obj pn v
                      else defValue obj pn v)
@@ -2869,7 +2902,13 @@ and runAnySpecialConstructor (id:Mach.OBJ_IDENT)
                      (setValue instanceObj (Name.public (Int.toString n)) x;
                       bindVal (n+1) xs)
              in
-                 bindVal 0 args
+                 case args of
+                     [] => setValue instanceObj (Name.public "length") (newUInt 0w0)
+                   | [k] => if Mach.isNumeric k then
+                                setValue instanceObj (Name.public "length") k
+                            else
+                                bindVal 0 args
+                   | _ => bindVal 0 args
              end
          else 
              ())

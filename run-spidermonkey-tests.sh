@@ -1,22 +1,32 @@
 #!/bin/sh
+#
+# Usage:
+#    run-spidermonkey-tests.sh [-p prefix] [limit]
 
-LIMIT=$1
+LIMIT=""
+PREFIX=""
 ROOT=tests/spidermonkey
 LOG=spidermonkey-test.log
 rm -f $LOG
+
+if [ "$1" = "-p" ]; then
+  PREFIX=$2
+  shift ; shift
+fi
+LIMIT=$1
 
 for ECMA in $ROOT/ecma*
   do
   for SECTION in $(find $ECMA -mindepth 1 -maxdepth 1 -type d)
     do
-    for FILE in $(find $SECTION -type f -name \*.js)
+    for FILE in $(find $SECTION -type f -name $PREFIX\*.js)
       do
       if [ \( -z "$LIMIT" \) -o \( "$LIMIT" == $( dirname $FILE ) \) ]
 	  then 
 	  echo $FILE
 	  if [ -s $SECTION/shell.js ]
 	      then 
-	      make run FILE="$SECTION/shell.js $FILE" >>$LOG 2>&1
+	      make run FILE="$ECMA/shell.js $SECTION/shell.js $FILE" >>$LOG 2>&1
 	  else
 	      make run FILE="$ECMA/shell.js $FILE" >>$LOG 2>&1
 	  fi

@@ -1011,8 +1011,13 @@ and verifyFixturesOption (ctxt:CONTEXT)
 
 (******************** Blocks **************************************************)
 
-and verifyBlock (ctxt as {env,...}) (Block {pragmas,defns=_,body,head=SOME (fixtures,inits),pos}) =
-    let val extensions = verifyFixtures ctxt fixtures
+
+
+
+and verifyBlock (ctxt as {env,...}) 
+		(Block {pragmas,defns=_,body,head,pos}) =
+    let val SOME (fixtures,inits) = head 
+	val extensions = verifyFixtures ctxt fixtures
         val ctxt' = withEnvExtn ctxt extensions
     in
 	verifyStmts ctxt' body

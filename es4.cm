@@ -23,7 +23,7 @@ is
     pretty-cvt.sml
     pretty-rep.sml
     token.sml (lambdasplit: infinity)
-    lexer.lex (lambdasplit: infinity)
+    lexer.ulex.sml (lambdasplit: infinity)
     parser.sml (lambdasplit: infinity)
     multiname.sml (lambdasplit: infinity)
     defn.sml (lambdasplit: infinity)
@@ -38,7 +38,5 @@ is
     $/basis.cm
     $/smlnj-lib.cm
     $/pp-lib.cm
-    $/mllex-tool.cm
-    $/lex-ext.cm
     $/ml-lpt-lib.cm
     tools/backtrace.cm

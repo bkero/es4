@@ -17,5 +17,7 @@ while ( defined ($line = $term->readline($prompt)) ) {
 
     # This is pathetic, but it returns faster than main::sleep(1) and
     # seems to be sufficient.
-    system("true")
+    system("true");
+    system("true");    
+    system("true");
 }
