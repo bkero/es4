@@ -262,8 +262,3 @@ test();
 function MyObject( arg0, arg1, arg2, arg3, arg4 ) {
   this.name   = arg0;
 }
-function Property( object, name, type ) {
-  this.object = object;
-  this.name = name;
-  this.type = type;
-}

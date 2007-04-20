@@ -4078,18 +4078,36 @@ and typeCaseElement (ts,has_default)
                 (RightParen, _) :: _ =>
                     let
                         val (ts2,nd2) = block (tl ts1,LOCAL)
+                        val bindings=desugarPattern (posOf ts) p t (SOME (Ast.GetParam 0)) 0
+                        val defn = Ast.VariableDefn 
+                                      {kind=Ast.LetVar,
+                                       ns=SOME (Ast.LiteralExpr (Ast.LiteralNamespace (Ast.Internal ""))),
+                                       static=false,
+                                       prototype=false,
+                                       bindings=bindings}
+
+                        val Ast.Block {pragmas,defns,head,body,pos} = nd2
                     in
                         trace(["<< typeCaseElement with next=", tokenname(hd ts2)]);
-                        (ts2, {bindings=desugarPattern (posOf ts) p t (SOME (Ast.GetTemp 0)) 0, ty=SOME t, body=nd2,inits=NONE})
+                        (ts2, {ty=SOME t, body=Ast.LetStmt (Ast.Block {pragmas=[],
+                                                                       defns=[defn],
+                                                                       body=body,
+                                                                       head=head,
+                                                                       pos=pos})})
                     end
               | _ => error ["unknown token in typeCaseElement"]
             end
       | ((Default, _) :: _,false) =>
             let
                 val (ts1,nd1) = block (tl ts,LOCAL)
+                val Ast.Block {pragmas,defns,head,body,pos} = nd1
             in
                 trace(["<< typeCaseElement with next=", tokenname(hd ts1)]);
-                (ts1, {bindings=([],[]), ty=NONE, body=nd1, inits=NONE})
+                (ts1, {ty=NONE, body=Ast.LetStmt (Ast.Block {pragmas=[],
+                                                             defns=[],
+                                                             body=body,
+                                                             head=head,
+                                                             pos=pos})})
             end
       | ((Default, _) :: _,true) =>
             (error(["redundant default switch type case"]); error ["unknown token in typeCaseElement"])
