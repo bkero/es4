@@ -17,7 +17,7 @@ fun assert b s = if b then () else (raise Fail s)
 fun checkForDuplicates [] = ()
   | checkForDuplicates (x::xs) =
     if List.exists (fn y => x = y) xs
-    then raise VerifyError "concurrent definition"
+    then error ["concurrent definition"]
     else checkForDuplicates xs
       
 fun unOptionDefault NONE def = def
@@ -27,7 +27,7 @@ fun flattenOptionList NONE = []
   | flattenOptionList (SOME l) = l
 
 val gensymCounter : int ref = ref 0
-fun gensym (s:IDENT):IDENT = 
+fun gensym (s) = 
     let
     in 
 	gensymCounter := 1+(!gensymCounter);
