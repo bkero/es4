@@ -3419,7 +3419,7 @@ and evalForInStmt (scope:Mach.SCOPE)
                 value is set each time around the loop.
 
                 FIXME: maybe unify 'next' as a new kind of expr. This would
-                trade redundancy for clarity. Not sure it worth it.
+                trade redundancy for clarity. Not sure it's worth it.
             *)
 
             val (nextTarget, nextHead, nextInits, nextExpr) =

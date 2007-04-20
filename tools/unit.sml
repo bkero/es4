@@ -288,7 +288,7 @@ fun runTestCase (test : TEST_CASE) : TEST_RESULT =
        | { name, stage=Verify, arg=false, source } =>
          (
              (Verify.verifyProgram (parse source); (test, false))
-             handle Verify.VerifyError _ => (test, true)
+             handle LogErr.VerifyError => (test, true)
                   | e => (unexpectedExn e; (test, false))
          )
 
