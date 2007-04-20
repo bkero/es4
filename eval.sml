@@ -333,7 +333,10 @@ fun allocFixtures (scope:Mach.SCOPE)
                                                   readOnly = true,
                                                   isFixed = true } }
 
-                          | _ => error ["Shouldn't happen: failed to match in Eval.allocFixtures#allocFixture."]
+                          | Ast.InterfaceFixture =>  (* FIXME *)
+                            ()
+
+                          (* | _ => error ["Shouldn't happen: failed to match in Eval.allocFixtures#allocFixture."] *)
 
                     end
         in                    
