@@ -365,7 +365,8 @@ and verifyBlock (env:ENV)
         Ast.Block { head, body, pos, ... } =>
             let
                 val _ = LogErr.setPos pos
-                val head = verifyHead env (valOf head) (* head is never NONE after defn *)
+                val head = case head of SOME h => verifyHead env h 
+                                      | _ => ([],[])
                 val body = verifyStmts env body
             in
                 Ast.Block { pragmas = [],
