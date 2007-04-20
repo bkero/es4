@@ -8,7 +8,7 @@
  * Status: Complete, not reviewed, not tested.
  */
 
-package RegExp
+package RegExpInternals
 {
     import Unicode.*;
     use namespace intrinsic;
@@ -17,7 +17,7 @@ package RegExp
     /* Encapsulation of compiled regular expression as returned by the
        compiler.  
     */
-    class RegExpMatcher!
+    public class RegExpMatcher!
     {
         public function RegExpMatcher(matcher : Matcher, nCapturingParens : int, names : [string?]!) 
             : matcher = matcher
@@ -63,9 +63,9 @@ package RegExp
 
     /* MatchResult and State. 
      */
-    type MatchResult = State?;
+    public type MatchResult = State?;
 
-    const failure : State? = null;
+    public var failure : State? = null;  /* FIXME: const */
 
     class State!
     {
@@ -84,7 +84,7 @@ package RegExp
        This captures array can be an array that's copied like the
        E262-3 states, or it could be a functional data structure.  
     */
-    type CapArray = Array!;  /* Really [(string,Undefined)]! but we can't express that yet */
+    public type CapArray = Array!;  /* Really [(string,Undefined)]! but we can't express that yet */
 
     function makeCapArray(nCapturingParens : uint) : CapArray {
         var a = [] : CapArray;
@@ -111,7 +111,7 @@ package RegExp
         function match(ctx : Context, x : State, c : Continuation) : MatchResult;
     }
 
-    type Continuation = function(ctx : Context, x : State) : MatchResult;
+    type Continuation = function(Context, State) : MatchResult;
 
     class Empty! implements Matcher
     {
@@ -403,7 +403,9 @@ package RegExp
 
     class CharsetAdhoc implements Charset 
     {
-        function CharsetAdhoc(cs : [string]) : cs=cs {}
+        function CharsetAdhoc(s : string) {
+            cs = explodeString(s);
+        }
 
         function match(c : string) : Boolean {
             for each ( let d in cs ) {
@@ -413,7 +415,7 @@ package RegExp
             return false;
         }
 
-        var cs : [string];
+        var cs : [string] = [] : [string];
     }
 
     class CharsetUnicodeClass implements Charset
@@ -427,23 +429,23 @@ package RegExp
         var name : String!;
     }
 
-    const charset_linebreak : Charset = new CharsetAdhoc("\u000A\u000D\u0085\u2028\u2029".split(""));
-    const charset_notlinebreak : Charset = new CharsetComplement(charset_linebreak);
+    var charset_linebreak : Charset = new CharsetAdhoc("\u000A\u000D\u0085\u2028\u2029"); /* FIXME: const */
+    var charset_notlinebreak : Charset = new CharsetComplement(charset_linebreak);        /* FIXME: const */
 
-    const charset_space : Charset = 
-        new CharsetAdhoc(("\u0009\u000B\u000C\u0020\u00A0\u1680\u180E\u2000\u2001\u2002" +
-                          "\u203\u2004\u2005\u2006\u2007\u2008\u2009\u200A\u202F\u205F" +
-                          "\u3000\u000A\u000D\u0085\u2028\u2029").split(""));
-    const charset_notspace : Charset = new CharsetComplement(charset_space);
+    var charset_space : Charset = /* FIXME: const */
+        new CharsetAdhoc("\u0009\u000B\u000C\u0020\u00A0\u1680\u180E\u2000\u2001\u2002" +
+                         "\u203\u2004\u2005\u2006\u2007\u2008\u2009\u200A\u202F\u205F" +
+                         "\u3000\u000A\u000D\u0085\u2028\u2029");
+    var charset_notspace : Charset = new CharsetComplement(charset_space); /* FIXME: const */
 
-    const charset_digits : Charset = new CharsetAdhoc("0123456789".split(""));
-    const charset_notdigits : Charset = new CharsetComplement(charset_digits);
+    var charset_digits : Charset = new CharsetAdhoc("0123456789"); /* FIXME: const */
+    var charset_notdigits : Charset = new CharsetComplement(charset_digits); /* FIXME: const */
 
-    const charset_word : Charset = 
-        new CharsetAdhoc("abcdefghijklmnopqrstuvwzyzABCDEFGHIJKLMNOPQRSTUVWZYZ0123456789_".split(""));
-    const charset_notword : Charset = new CharsetComplement(charset_word);
+    var charset_word : Charset = /* FIXME: const */
+        new CharsetAdhoc("abcdefghijklmnopqrstuvwzyzABCDEFGHIJKLMNOPQRSTUVWZYZ0123456789_");
+    var charset_notword : Charset = new CharsetComplement(charset_word); /* FIXME: const */
 
-    const unicode_named_classes = {
+    var unicode_named_classes = { /* FIXME: const */
         "L":  new CharsetUnicodeClass("Letter"),
         "Lu": new CharsetUnicodeClass("Letter, Uppercase"),
         "Ll": new CharsetUnicodeClass("Letter, Lowercase"),
