@@ -178,7 +178,7 @@ datatype directive =
                          default: stmt list }
 
      and expr =
-         TrinaryExpr of (triOp * expr * expr * expr)
+         TernaryExpr of (triOp * expr * expr * expr)
        | BinaryExpr of (binOp * expr * expr)
        | BinaryTypeExpr of (binOp * expr * tyExpr)
        | UnaryExpr of (unOp * expr)

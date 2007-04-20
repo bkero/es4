@@ -1205,7 +1205,7 @@ and evalExpr (scope:Mach.SCOPE)
       | Ast.LetExpr {defs, body, head} =>
         evalLetExpr scope (valOf head) body
 
-      | Ast.TrinaryExpr (Ast.Cond, aexpr, bexpr, cexpr) => 
+      | Ast.TernaryExpr (Ast.Cond, aexpr, bexpr, cexpr) => 
         evalCondExpr scope aexpr bexpr cexpr
 
       | Ast.BinaryExpr (bop, aexpr, bexpr) => 

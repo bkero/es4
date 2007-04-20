@@ -1711,8 +1711,8 @@ and defExpr (env:ENV)
         fun sub e = defExpr env e
     in
         case expr of 
-            Ast.TrinaryExpr (t, e1, e2, e3) => 
-            Ast.TrinaryExpr (t, sub e1, sub e2, sub e3)
+            Ast.TernaryExpr (t, e1, e2, e3) => 
+            Ast.TernaryExpr (t, sub e1, sub e2, sub e3)
             
           | Ast.BinaryExpr (b, e1, e2) => 
             let 

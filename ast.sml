@@ -277,9 +277,10 @@ datatype PRAGMA =
            { expr: EXPR }
 
      and EXPR =
-         TrinaryExpr of (TRIOP * EXPR * EXPR * EXPR)
+         TernaryExpr of (TRIOP * EXPR * EXPR * EXPR)
        | BinaryExpr of (BINOP * EXPR * EXPR)
        | BinaryTypeExpr of (BINTYPEOP * EXPR * TYPE_EXPR)
+       | ExpectedTypeExpr of (TYPE_EXPR * EXPR)
        | UnaryExpr of (UNOP * EXPR)
        | TypeExpr of TYPE_EXPR
        | ThisExpr

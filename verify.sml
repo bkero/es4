@@ -1,6 +1,8 @@
 (* -*- mode: sml; mode: font-lock; tab-width: 4; insert-tabs-mode: nil; indent-tabs-mode: nil -*- *)
 structure Verify = struct
 
+open LogErr
+
 (* Local tracing machinery *)
 
 val doTrace = ref false
@@ -11,154 +13,16 @@ fun error ss = LogErr.verifyError ss
     Verify a program
  *)
 
-datatype LABEL_KIND =
-          IterationLabel
-        | SwitchLabel
-        | StatementLabel
+type CONTEXT = Ast.FIXTURES
 
-type LABEL = (Ast.IDENT * LABEL_KIND)
+type ENV = { returnType: Ast.TYPE_EXPR option,
+             context: CONTEXT }
 
-type CONTEXT = { fixtures: Ast.FIXTURES }
+fun withReturnType { returnType=_, context } returnType =
+    { returnType=returnType, context=context }
 
-type ENV = CONTEXT list
-
-fun dumpEnv (e:ENV) : unit =
-    case e of
-        {fixtures,...}::p => if (!doTrace) then (Pretty.ppFixtures fixtures; dumpEnv p) else ()
-      | _ => ()
-
-val (topFixtures:Ast.FIXTURES ref) = ref []
-
-fun resetTopFixtures _ = 
-    topFixtures := [ (Ast.PropName (Name.public "meta"), Ast.NamespaceFixture Name.metaNS),
-                     (Ast.PropName (Name.public "magic"), Ast.NamespaceFixture Name.magicNS) ]
-
-fun hasFixture (b:Ast.FIXTURES) 
-               (n:Ast.FIXTURE_NAME) 
-    : bool = 
-    let 
-        fun search [] = false
-          | search ((k,v)::bs) = 
-            if k = n 
-            then true
-            else search bs
-    in
-        search b    
-    end
-
-fun hasNamespace (nl:Ast.NAMESPACE list) 
-                 (n:Ast.NAMESPACE) 
-    : bool = 
-    let 
-        fun search [] = false
-          | search (first::rest) = 
-            if n = first
-            then true
-            else search rest
-    in
-        search nl    
-    end
-
-
-fun getFixture (b:Ast.FIXTURES) 
-               (n:Ast.FIXTURE_NAME) 
-    : Ast.FIXTURE = 
-    let 
-        fun search [] = LogErr.hostError ["fixture binding not found: ", 
-                                          (LogErr.fname n)]
-          | search ((k,v)::bs) = 
-            if k = n 
-            then v
-            else search bs
-    in
-        search b
-    end
-
-
-fun replaceFixture (b:Ast.FIXTURES) 
-                   (n:Ast.FIXTURE_NAME) 
-                   (v:Ast.FIXTURE)
-    : Ast.FIXTURES = 
-    let 
-        fun search [] = LogErr.hostError ["fixture binding not found: ", 
-                                          (LogErr.fname n)]
-          | search ((k,v0)::bs) = 
-            if k = n 
-            then (k,v) :: bs
-            else (k,v0) :: (search bs)
-    in
-        search b
-    end
-
-
-(*
-    resolve a multiname to a name and then get the corresponding fixture
-
-    for each nested context in the environment, look for a fixture that matches
-    a multiname. see if a particular scope has a fixture with one of a list of 
-    multinames
-
-    multiname = { nss : NAMESPACE list list, id: IDENT }
-    name = { ns: NAMESPACE, id: IDENT }
-*)
-
-fun resolveMultinameToFixture (env:ENV) 
-                              (mname:Ast.MULTINAME) 
-    : Ast.NAME * Ast.FIXTURE =
-    let
-        fun envHeadHasFixture ([],n) = false
-          | envHeadHasFixture ((env:ENV),n) = hasFixture (#fixtures (List.hd env)) (Ast.PropName n) 
-        fun getEnvParent [] = NONE
-          | getEnvParent (x::[]) = NONE
-          | getEnvParent (x::xs) = SOME xs
-    in
-        case Multiname.resolve mname env envHeadHasFixture getEnvParent of
-            NONE => LogErr.defnError ["unresolved fixture ", LogErr.multiname mname]
-          | SOME (({fixtures, ...}::_), n) => (n, getFixture fixtures (Ast.PropName n))
-          | SOME _ => LogErr.defnError ["fixture lookup error ", LogErr.multiname mname]
-    end
-
-fun multinameHasFixture (env:ENV) 
-                        (mname:Ast.MULTINAME) 
-    : bool =
-    let
-        fun envHeadHasFixture ([],n) = false
-          | envHeadHasFixture ((env:ENV),n) = hasFixture (#fixtures (List.hd env)) (Ast.PropName n) 
-        fun getEnvParent [] = NONE
-          | getEnvParent (x::[]) = NONE
-          | getEnvParent (x::xs) = SOME xs
-    in
-        case Multiname.resolve mname env envHeadHasFixture getEnvParent of
-            NONE => false
-          | SOME (({fixtures, ...}::_), n) => true
-          | _ => LogErr.defnError ["fixture lookup error ", LogErr.multiname mname]
-    end
-
-(*
-    Create a new context initialised with the provided fixtures and
-    inherited environment
-*)
-             
-fun extendEnvironment (env:ENV) 
-                      (fixtures:Ast.FIXTURES) 
-    : ENV = 
-    case env of 
-        [] => (trace ["extending empty environment"];
-               {fixtures = fixtures} :: [])
-      | _ => { fixtures = fixtures } :: env
-
-fun updateFixtures (env:ENV) (fxtrs:Ast.FIXTURES)
-    : ENV =
-    let
-    in case env of
-        { fixtures } :: outer =>
-            { fixtures = fxtrs @ fixtures } :: outer
-      | [] =>
-            LogErr.defnError ["cannot update an empty environment"]
-    end
-
-fun multinameFromName (n:Ast.NAME) = 
-    { nss = [[(#ns n)]], id = (#id n) }
+fun withContext { returnType, context=_ } context =
+    { returnType=returnType, context=context }
 
 (*
     HEAD
@@ -184,8 +48,8 @@ and verifyExpr (env:ENV)
         val dummyType = Ast.SpecialType Ast.Any
     in
         case expr of 
-            Ast.TrinaryExpr (t, e1, e2, e3) => 
-            (Ast.TrinaryExpr (t, e1, e2, e3), dummyType)
+            Ast.TernaryExpr (t, e1, e2, e3) => 
+            (Ast.TernaryExpr (t, e1, e2, e3), dummyType)
             
           | Ast.BinaryExpr (b, e1, e2) => 
             (Ast.BinaryExpr (b, e1, e2), dummyType)
@@ -362,7 +226,7 @@ and verifyBlock (env:ENV)
     : Ast.BLOCK =
     let
     in case b of
-        Ast.Block { head, body, pos, ... } =>
+        Ast.Block { head, body, pos, pragmas=[], defns=[] } =>
             let
                 val _ = LogErr.setPos pos
                 val head = case head of SOME h => verifyHead env h 
@@ -375,6 +239,7 @@ and verifyBlock (env:ENV)
                             head = SOME head,
                             pos = pos }
             end
+      | _ => internalError ["defn did not remove pragmas and definitions"]
     end
 
 
@@ -382,7 +247,12 @@ and verifyBlock (env:ENV)
     PROGRAM
 *)
 
-and topEnv _ = [ { fixtures = !topFixtures } ]
+and topEnv () = { context = !Defn.topFixtures,
+                  returnType = NONE }
+
+and verifyPackage (p:Ast.PACKAGE)
+    : Ast.PACKAGE =
+    raise UnimplError
 
 and verifyProgram (p:Ast.PROGRAM) 
     : Ast.PROGRAM =
