@@ -3,7 +3,7 @@
 
 structure Ast = struct
 
-type POS = { file: string, line: int }
+type POS = { file: string, span: StreamPos.span, sm: StreamPos.sourcemap, post_newline: bool }
 
 (* not actually unicode, maybe switch to int array to be unicode-y? *)
 

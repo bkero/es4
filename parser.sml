@@ -67,7 +67,13 @@ type PATTERN_BINDING_PART =
 
 val currentClassName : Ast.IDENT ref = ref ""
 
-fun newline ts = Lexer.UserDeclarations.followsLineBreak ts
+fun newline (ts : (TOKEN * Ast.POS) list) =
+    (* fun newline ts = Lexer.UserDeclarations.followsLineBreak ts *)
+    let
+        val (_, {file, span, sm, post_newline}) = hd ts
+    in
+        post_newline
+    end
 
 fun posOf ts = 
     case ts of 
@@ -6706,51 +6712,92 @@ fun mkReader filename =
    switch slash contexts at the normal points in the program.
 *)
 
-fun dumpTokens (ts,lst) =
-    case ts of
-        [] => rev lst
-      | _ => dumpTokens(tl ts, tokenname(hd ts) :: "\n  " :: lst)
+fun dumpTokens (h::t, lst) = dumpTokens(t, tokenname h :: "\n  " :: lst)
+  | dumpTokens ([  ], lst) = rev lst
 
-fun dumpLineBreaks (lbs,lst) =
-    case lbs of
-        [] => rev lst
-      | _ => dumpLineBreaks(tl lbs, Int.toString(hd lbs) :: "\n  " :: lst)
-
-
-
-(*
-fun makeLexer reader =
-    Lexer.makeLexer reader
-*)
-
-fun makeLexer reader =
-    let 
-        val lex_stream = ref (Lexer.streamify reader)
-        val sm = StreamPos.mkSourcemap ()
-        val prelexer = Lexer.lex sm
-        fun lexer _ =
+fun get_token_list (filename : string,
+                    lexer    : Lexer.strm -> (TOKEN * StreamPos.span * Lexer.strm),
+                    srcmap   : StreamPos.sourcemap,
+                    stream   : Lexer.strm)
+    : (TOKEN * Ast.POS) list =
+    let
+        fun mk_pos (tok_span, just_got_a_newline) =
+            {file = filename, span = tok_span, sm = srcmap, post_newline = just_got_a_newline}
+        fun build_token_list (tokens, old_stream, just_got_a_newline) : (TOKEN * Ast.POS) list = 
             let
-                val (token, span, new_stream) : (TOKEN * StreamPos.span * Lexer.strm) = prelexer (!lex_stream)
+                val (tok, tok_span, new_stream) = lexer old_stream
             in
-                lex_stream := new_stream;
-                token
+                trace ["lexed ", tokenname (tok, 0)];
+                
+              (*
+               * The lexbreak tokens represent choice points for the parser. We
+               * return two thunks to it: one for each lexer start state
+               * it might wish to resume lexing in.
+               *)
+                case tok of
+                    (LexBreakDiv _ | LexBreakDivAssign _) =>
+                        let
+                            val (init_tok, regexp_prefix, lex_break_type) = case tok of
+                                LexBreakDiv       _ => (Div      , "/" , LexBreakDiv      )
+                              | LexBreakDivAssign _ => (DivAssign, "/=", LexBreakDivAssign)
+                              | _ => error ["squelch warning -- impossible to actually get here"]
+                            fun fn_initial _ =
+                                let
+                                    val pos:Ast.POS = {file = filename, span = tok_span, sm = srcmap, post_newline = just_got_a_newline}
+                                in
+                                    trace ["lexed ", tokenname (init_tok, 0)];
+                                    build_token_list ([(init_tok, pos)], new_stream, false)
+                                end
+                            fun fn_regexp _ =
+                                let
+                                    val (pre_stream, _) = new_stream
+                                    val (re_lit, re_frag_span, post_re_stream) = lexer (pre_stream, Lexer.REGEXP)
+                                    val re_frag = case re_lit of
+                                        RegexpLiteral re_fragment => re_fragment
+                                      | _ => error ["squelch warning -- impossible to actually get here"]
+                                    val re_tok = RegexpLiteral (regexp_prefix ^ re_frag)
+                                    val re_span = (#1 tok_span, #2 re_frag_span)
+                                    val pos:Ast.POS = {file = filename, span = re_span, sm = srcmap, post_newline = just_got_a_newline}
+                                in
+                                    trace ["lexed ", tokenname (re_tok, 0)];
+                                    build_token_list ([(re_tok, pos)], post_re_stream, false)
+                                end
+                            val good_tok = lex_break_type { lex_initial = fn_initial, lex_regexp = fn_regexp }
+                        in
+                            rev ((good_tok, mk_pos (tok_span, just_got_a_newline)) ::  tokens)
+                        end
+                  | LexBreakLessThan _ =>
+                        let
+                            fun fn_initial _ =
+                                let
+                                    val pos:Ast.POS = {file = filename, span = tok_span, sm = srcmap, post_newline = just_got_a_newline}
+                                in
+                                    trace ["lexed ", tokenname (LessThan, 0)];
+                                    build_token_list ([(LessThan, pos)], new_stream, false)
+                                end
+                            fun fn_xml _ =
+                                (error ["XML lexing not implemented"];
+                                [])
+                            val good_tok = LexBreakLessThan { lex_initial = fn_initial, lex_xml = fn_xml }
+                        in
+                            rev ((good_tok, mk_pos (tok_span, just_got_a_newline)) ::  tokens)
+                        end
+                  | Eof => rev ((Eof, mk_pos (tok_span, just_got_a_newline)) ::  tokens)
+                  | Eol => build_token_list (tokens, new_stream, true)
+                  | x   => build_token_list ((x, mk_pos (tok_span, just_got_a_newline)) :: tokens, new_stream, false)
             end
     in
-        lexer
+        build_token_list ([], stream, false)
     end
-
-
-
 
 fun lex (filename : string, reader) : ((TOKEN * Ast.POS) list) =
     let
-        val lexer = makeLexer reader
-        val _ = Lexer.UserDeclarations.reset_coords ()
-        val tokens = Lexer.UserDeclarations.token_list (filename, lexer)
-        val line_breaks = !Lexer.UserDeclarations.line_breaks
+        val stream = Lexer.streamify reader
+        val srcmap = StreamPos.mkSourcemap ()
+        val lexer  = Lexer.lex srcmap
+        val tokens = get_token_list (filename, lexer, srcmap, stream)
     in
         trace ("tokens:" :: dumpTokens(tokens,[])); 
-        trace ("line breaks:" :: dumpLineBreaks(line_breaks,[])); 
         tokens
     end
 
@@ -6758,12 +6805,12 @@ fun lexFile (filename : string) : ((TOKEN * Ast.POS) list) =
     lex (filename, mkReader filename)
 
 fun lexLines (lines : string list) : ((TOKEN * Ast.POS) list) =
-    let val reader = let val r = ref lines
-                     in
-                         fn _ => (case !r of
-                                       (line::lines) => (r := lines; line)
-                                     | [] => "")
-                     end
+    let
+        val r = ref lines
+        fun reader _ = 
+            case !r of
+                (line::lines) => (r := lines; line)
+              | [] => ""
     in
         lex ("<no filename>", reader)
     end
@@ -6790,7 +6837,7 @@ fun logged thunk name =
          ast
      end)
     handle ParseError => error ["parse error"]
-         | LexError => error ["lex error"]
+         | LexError   => error ["lex error"]
 
 fun parseFile filename =
     logged (fn _ => parse (lexFile filename)) filename

@@ -10,81 +10,21 @@ open Token
 
 val doTrace = ref false
 fun trace ss = if (!doTrace) then LogErr.log ("[lex] " :: ss) else ()
+
 fun error ss = LogErr.lexError ss
 
 type lex_result = TOKEN
 
 fun eof _ = Eof
 
-val lineno = ref 1
-fun incr_line _ = 
-    lineno := (!lineno + 1); 
-fun reset_coords _ = 
-    lineno := 1
-
-val filename = ref ""
-
-val line_breaks : int list ref = ref []
-val token_count : int      ref = ref 0
-
-
-fun token_list (fname, token_fn : unit -> TOKEN) =
-let
-    val t = ref [] 
-    fun add tok = t := (tok, {file = !filename, line = !lineno}) :: !t
-    fun add_lb offset = line_breaks := offset :: !line_breaks
-    fun stop _ = (token_count := length (!t); rev (!t))
-    fun step _ = 
-	let 
-	    val tok = token_fn ()
-	in 
-	    trace ["lexed ", tokenname (tok,!lineno)]; 
-	    
-	  (*
-	   * The lexbreak tokens represent choice points for the parser. We
-	   * return two thunks to it: one for each lexer start state
-	   * it might wish to resume lexing in.
-	   *)
-	    case tok of 
-	    LexBreakDiv _ => (add tok; stop ())
-	      | LexBreakDivAssign _ => (add tok; stop ())
-	      | LexBreakLessThan _ => (add tok; stop ())
-	      | Eof => (add Eof; stop ())
-	      | Eol => (add_lb (length (!t)); step ())
-	      | x => (add x; step ())
-	end
-in
-    filename := fname;
-    line_breaks := [];
-    step ()
-end
-
 fun chopTrailing (s:string) 
     : string = 
     String.substring (s, 0, ((String.size s) - 1))
-
-fun followsLineBreak (ts) =
-    let 
-	val offset = length ts
-	val max_offset = !token_count
-	fun findBreak lbs =
-	    case lbs of
-	[] => (trace ["followsLineBreak false"];false)
-	      | _ => 
-		(trace ["token_count=", Int.toString(max_offset),
-			" offset=", Int.toString(max_offset-offset),
-			" break=", Int.toString(hd lbs)];
-		 if (hd lbs) = (max_offset - offset) then (trace ["followsLineBreak true"];true) else findBreak (tl lbs))
-    in
-	findBreak (!line_breaks)
-    end
 
 val (curr_quote    :  char       ref) = ref #"\000"
 val (curr_chars    : (char list) ref) = ref []
 val (found_newline :  bool       ref) = ref false
 );
-
-
 
 
 %states REGEXP REGEXP_CHARSET XML SINGLE_LINE_COMMENT MULTI_LINE_COMMENT STRING;
@@ -127,7 +67,7 @@ val (found_newline :  bool       ref) = ref false
 
 
 
-<INITIAL>"\n"              => (incr_line(); Eol);
+<INITIAL>"\n"              => (Eol);
 
 <INITIAL>"-"               => (Minus);
 <INITIAL>"--"              => (MinusMinus);
@@ -150,23 +90,8 @@ val (found_newline :  bool       ref) = ref false
 <INITIAL>"..."             => (TripleDot);
 <INITIAL>".<"              => (LeftDotAngle);
 
-<INITIAL>"/"               => (LexBreakDiv
-				   { lex_initial = 
-					fn _ => (Div, {file = !filename, line = !lineno}) :: token_list (!filename, fn _ => continue ()),
-				     lex_regexp = 
-				        fn _ =>
-					  (curr_chars := [#"/"];
-					   YYBEGIN REGEXP;
-					   token_list (!filename, fn _ => continue ())) });
-
-<INITIAL>"/="              => (LexBreakDivAssign
-				   { lex_initial = 
-					fn _ => (DivAssign, {file = !filename, line = !lineno}) :: token_list (!filename, fn _ => continue ()),
-				     lex_regexp = 
-					fn _ =>
-					  (curr_chars := [#"=",#"/"];
-					   YYBEGIN REGEXP;
-					   token_list (!filename, fn _ => continue ())) });
+<INITIAL>"/"               => (LexBreakDiv       { lex_initial = fn _ => [], lex_regexp = fn _ => [] });
+<INITIAL>"/="              => (LexBreakDivAssign { lex_initial = fn _ => [], lex_regexp = fn _ => [] });
 
 <INITIAL>":"               => (Colon);
 <INITIAL>"::"              => (DoubleColon);
@@ -188,13 +113,7 @@ val (found_newline :  bool       ref) = ref false
 <INITIAL>"++"              => (PlusPlus);
 <INITIAL>"+="              => (PlusAssign);
 
-<INITIAL>"<"               => (LexBreakLessThan
-				   { lex_initial = 
-					fn _ => (LessThan, {file = !filename, line = !lineno}) :: token_list (!filename, fn _ => continue ()),
-				     lex_xml = 
-					fn _ => 
-					  (YYBEGIN XML;
-					   token_list (!filename, fn _ => continue ())) });
+<INITIAL>"<"               => (LexBreakLessThan { lex_initial = fn _ => [], lex_xml = fn _ => [] });
 
 <INITIAL>"<<"              => (LeftShift);
 <INITIAL>"<<="             => (LeftShiftAssign);
@@ -288,8 +207,8 @@ val (found_newline :  bool       ref) = ref false
 <INITIAL>"xml"             => (Token.Xml);
 <INITIAL>"yield"           => (Yield);
 
-<INITIAL>{whitespace}        => (continue());
-<INITIAL>{identifier}        => (Identifier yytext);
+<INITIAL>{whitespace}      => (continue());
+<INITIAL>{identifier}      => (Identifier yytext);
 
 <INITIAL>{explicitIntLiteral} => (case Int32.fromString (chopTrailing yytext) of
 					  SOME i => ExplicitIntLiteral i
@@ -313,12 +232,12 @@ val (found_newline :  bool       ref) = ref false
 
 
 <INITIAL>"//"                => (YYBEGIN SINGLE_LINE_COMMENT; continue());
-<SINGLE_LINE_COMMENT>"\n"    => (YYBEGIN INITIAL; incr_line(); Eol);
+<SINGLE_LINE_COMMENT>"\n"    => (YYBEGIN INITIAL; Eol);
 <SINGLE_LINE_COMMENT>.       => (continue());
 
 <INITIAL>"/*"                => (YYBEGIN MULTI_LINE_COMMENT; continue());
 <MULTI_LINE_COMMENT>"*/"     => (YYBEGIN INITIAL; continue());
-<MULTI_LINE_COMMENT>"\n"     => (incr_line(); continue());
+<MULTI_LINE_COMMENT>"\n"     => (continue());
 <MULTI_LINE_COMMENT>.        => (continue());
 
 
@@ -337,8 +256,8 @@ val (found_newline :  bool       ref) = ref false
 <REGEXP>"["                 => (curr_chars := #"[" :: !curr_chars;
 				YYBEGIN REGEXP_CHARSET;
 				continue());
-<REGEXP>"\n"|"\r"           => (found_newline := true; incr_line(); continue());
-<REGEXP>"\\\n"|"\\\r"       => (incr_line(); continue());
+<REGEXP>"\n"|"\r"           => (found_newline := true; continue());
+<REGEXP>"\\\n"|"\\\r"       => (continue());
 <REGEXP>"\\".               => (curr_chars := String.sub(yytext,1) :: #"\\" :: !curr_chars;
 				continue());
 <REGEXP>.                   => (curr_chars := String.sub(yytext,0) :: !curr_chars;
@@ -347,47 +266,49 @@ val (found_newline :  bool       ref) = ref false
 <REGEXP_CHARSET>"]"         => (curr_chars := #"]" :: !curr_chars;
 				YYBEGIN REGEXP;
 				continue());
-<REGEXP_CHARSET>"\n"|"\r"   => (found_newline := true; incr_line(); continue());
-<REGEXP_CHARSET>"\\\n"|"\\\r" => (incr_line(); continue());
+<REGEXP_CHARSET>"\n"|"\r"   => (found_newline := true; continue());
+<REGEXP_CHARSET>"\\\n"|"\\\r" => (continue());
 <REGEXP_CHARSET>"\\".       => (curr_chars := String.sub(yytext,1) :: #"\\" :: !curr_chars;
 				continue());
 <REGEXP_CHARSET>.           => (curr_chars := String.sub(yytext,0) :: !curr_chars;
 				continue());
 
-<INITIAL>"'"|"\""            => (curr_quote := String.sub (yytext,0); 
-				 curr_chars := [];
-				 YYBEGIN STRING;
-				 continue());
+<INITIAL>"'"|"\""           => (curr_quote := String.sub (yytext,0); 
+				curr_chars := [];
+				YYBEGIN STRING;
+				continue());
 
-<STRING>"'"|"\""             => (if 
-				     (!curr_quote) = String.sub (yytext,0)
-				 then 
-				     let 
-					 val str = (String.implode (rev (!curr_chars)))
-				     in
-					 curr_quote := #"\000";
-					 curr_chars := [];
-					 YYBEGIN INITIAL;
-					 StringLiteral str
-				     end
-				 else
-				     (curr_chars := (String.sub (yytext,0)) :: (!curr_chars);
-				     continue()));
+<STRING>"'"|"\""            => (if 
+				    (!curr_quote) = String.sub (yytext,0)
+				then 
+				    let 
+					val str = (String.implode (rev (!curr_chars)))
+					(* val str_span = *)
+				    in
+					curr_quote := #"\000";
+					curr_chars := [];
+					YYBEGIN INITIAL;
+					(* (StringLiteral str, str_span) *)
+					StringLiteral str
+				    end
+				else
+				    (curr_chars := (String.sub (yytext,0)) :: (!curr_chars);
+				    continue()));
 
-<STRING>{charEscape}          => ((case Char.fromCString yytext of
-				       NONE => error ["unexpected input in <STRING>{charEscape}: '", yytext, "'"]
-				     | SOME c => curr_chars := c :: (!curr_chars));
-				  continue());
+<STRING>{charEscape}        =>((case Char.fromCString yytext of
+				    NONE => error ["unexpected input in <STRING>{charEscape}: '", yytext, "'"]
+				  | SOME c => curr_chars := c :: (!curr_chars));
+				continue());
 
-<STRING>"\\".                 => (curr_chars := (String.sub (yytext,1)) :: (!curr_chars);
-				  continue());
+<STRING>"\\".               => (curr_chars := (String.sub (yytext,1)) :: (!curr_chars);
+				continue());
 
-<STRING>.                     => (curr_chars := (String.sub (yytext,0)) :: (!curr_chars);
-				  continue());
+<STRING>.                   => (curr_chars := (String.sub (yytext,0)) :: (!curr_chars);
+				continue());
 
-<INITIAL>.                    => (error [
-					    "unexpected input: '",
-					    yytext,
-					    "' -- char code: ",
-					    Int.toString (Char.ord (String.sub (yytext,0)))
-					]);
+<INITIAL>.                  => (error [
+					"unexpected input: '",
+					yytext,
+					"' -- char code: ",
+					Int.toString (Char.ord (String.sub (yytext,0)))
+				      ]);
