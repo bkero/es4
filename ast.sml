@@ -223,6 +223,7 @@ datatype PRAGMA =
              typeParams: IDENT list, 
              ty: TYPE_EXPR,
              isDynamic: bool }
+       | NominalType of NAME
 
      and STMT =
          EmptyStmt
@@ -388,7 +389,6 @@ datatype PRAGMA =
              readOnly: bool }
        | VirtualValFixture of 
          VIRTUAL_VAL_FIXTURE
-             
 
 withtype 
 
