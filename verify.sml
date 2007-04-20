@@ -555,18 +555,26 @@ and verifyExprs (env:ENV)
         es
     end
 
-
-
-
+and verifyExprAndCheck (env:ENV)
+                       (expr:Ast.EXPR)
+                       (expectedType:TYPE_VALUE)
+    : Ast.EXPR =
+    let val (expr',ty') = verifyExpr env expr
+        val _ = if #strict env
+                then checkCompatible ty' expectedType
+                else ()
+    in
+        expr'
+    end
 
 (*
     STMT
 *)
 
 and verifyStmt (env:ENV) 
-            (stmt:Ast.STMT) 
+               (stmt:Ast.STMT) 
     : Ast.STMT = 
-    let
+    let fun verifySub s = verifyStmt env s
     in
         case stmt of
             Ast.EmptyStmt => 
@@ -579,14 +587,26 @@ and verifyStmt (env:ENV)
                 Ast.ExprStmt expr
             end
 
-          | Ast.ForInStmt fe => 
+          | Ast.ForInStmt fe => (*TODO*)
             Ast.ForInStmt fe
             
           | Ast.ThrowStmt es =>
-            Ast.ThrowStmt es
-            
+            let val (es',_) = verifyExpr env es
+            in
+                Ast.ThrowStmt es'
+            end
+
           | Ast.ReturnStmt es =>
-            Ast.ReturnStmt es
+            let val (es',ty) = verifyExpr env es
+            in
+                if #strict env
+                then
+	                case #returnType env of
+	                    NONE => verifyError ["return not allowed here"]
+                      | SOME retTy => checkCompatible ty retTy
+                else ();
+                Ast.ReturnStmt es'
+            end
             
           | Ast.BreakStmt i => 
             Ast.BreakStmt i
@@ -594,67 +614,85 @@ and verifyStmt (env:ENV)
           | Ast.ContinueStmt i =>
             Ast.ContinueStmt i
 
-          | Ast.BlockStmt b =>
-            Ast.BlockStmt b 
+          | Ast.BlockStmt block =>
+            Ast.BlockStmt (verifyBlock env block)
             
-          | Ast.ClassBlock cb =>
-            Ast.ClassBlock cb
+          | Ast.ClassBlock { ns, ident, name, block } =>
+            Ast.ClassBlock { ns=ns, ident=ident, name=name, 
+                             block=verifyBlock env block }
             
           | Ast.LabeledStmt (id, s) =>
-            Ast.LabeledStmt (id, s)
+            Ast.LabeledStmt (id, verifySub s)
             
-          | Ast.LetStmt b =>
-            Ast.LetStmt b
-            
-          | Ast.WhileStmt w => 
-            Ast.WhileStmt w
-            
-          | Ast.DoWhileStmt w => 
-            Ast.DoWhileStmt w
-            
-          | Ast.ForStmt f => 
-            Ast.ForStmt f
+          | Ast.LetStmt block =>
+            Ast.LetStmt (verifyBlock env block) 
 
-          | Ast.IfStmt {cnd, els, thn} => 
-            Ast.IfStmt {cnd=cnd, els=els, thn=thn}
+          | Ast.WhileStmt {cond,body,labels,fixtures=NONE} => 
+            Ast.WhileStmt {cond=verifyExprAndCheck env cond boolType,
+                           body=verifySub body,
+                           labels=labels,
+                           fixtures=NONE}
             
-          | Ast.WithStmt {obj, ty, body} =>
+          | Ast.DoWhileStmt {cond,body,labels,fixtures=NONE} => 
+            Ast.DoWhileStmt {cond=verifyExprAndCheck env cond boolType,
+                             body=verifySub body,
+                             labels=labels,
+                             fixtures=NONE}
+
+          | Ast.ForStmt  { defn=_, fixtures, init, cond, update, labels, body } => 
+            let val fixtures' = verifyFixturesOption env fixtures
+                val env' = withRib env fixtures'
+                val init' = verifyStmts env' init
+                val cond' = verifyExprAndCheck env' cond boolType
+                val (update',_) = verifyExpr env' update
+                val body' = verifyStmt env' body
+            in
+                Ast.ForStmt  { defn=NONE, fixtures=SOME fixtures', init=init', cond=cond', 
+                               update=update', labels=labels, body=body' } 
+            end
+          | Ast.IfStmt {cnd, els, thn} => 
+            Ast.IfStmt {cnd=verifyExprAndCheck env cnd boolType, 
+                        els=verifySub els, 
+                        thn=verifySub thn}
+            
+          | Ast.WithStmt {obj, ty, body} => (*TODO*)
             Ast.WithStmt {obj=obj, ty=ty, body=body}
         
           | Ast.TryStmt {block, catches, finally} =>
-            Ast.TryStmt {block=block, catches=catches, finally=finally}
+            Ast.TryStmt {block=verifyBlock env block, 
+                         catches=List.map (verifyCatchClause env) catches, 
+                         finally=Option.map (verifyBlock env) finally }
         
-          | Ast.SwitchStmt {cond, cases, mode, labels} => 
+          | Ast.SwitchStmt {cond, cases, mode, labels} => (*TODO*)
             Ast.SwitchStmt {cond=cond, cases=cases, mode=mode, labels=labels}
         
-          | Ast.SwitchTypeStmt {cond, ty, cases} =>
+          | Ast.SwitchTypeStmt {cond, ty, cases} => (*TODO*)
             Ast.SwitchTypeStmt {cond=cond, ty=ty, cases=cases}
             
-          | Ast.Dxns x => 
+          | Ast.Dxns x => (*TODO*)
             Ast.Dxns x
 
           | _ => error ["Shouldn't happen: failed to match in Verify.verifyStmt"]
 
     end
 
+and verifyCatchClause (env:ENV)
+                      ({bindings, ty, fixtures, block}:Ast.CATCH_CLAUSE)
+    : Ast.CATCH_CLAUSE =
+    let val fixtures' = verifyFixturesOption env fixtures
+        val env' = withRib env fixtures'
+        val block' = verifyBlock env' block
+    in
+        {bindings=bindings, ty=ty, 
+         fixtures=SOME fixtures', block=block'}
+    end
+
 and verifyStmts (env) (stmts:Ast.STMT list)
     : Ast.STMT list =
-    case stmts of
-        (stmt::stmts) =>
-            let 
-                val s = verifyStmt env stmt
-                val ss = verifyStmts env stmts
-            in
-                s::ss
-            end
-      | [] => []
-
-(*
-    BLOCK
-*)
+    List.map (verifyStmt env) stmts
 
 and verifyBlock (env:ENV) 
-             (b:Ast.BLOCK) 
+                (b:Ast.BLOCK) 
     : Ast.BLOCK =
     let
     in case b of
@@ -674,6 +712,23 @@ and verifyBlock (env:ENV)
       | _ => internalError ["defn did not remove pragmas and definitions"]
     end
 
+(*
+    FIXTURES
+*)
+
+and verifyFixture (env:ENV)
+		          (f:Ast.FIXTURE) 
+    : Ast.FIXTURE (*TODO*)
+      = f
+
+and verifyFixturesOption (env:ENV) 
+		                 (fs:Ast.FIXTURES option)  
+    : Ast.FIXTURES = 
+    let in
+        case fs of
+            SOME fixtures => map (fn (name,fixture) => (name,verifyFixture env fixture)) fixtures
+          | _ => internalError ["missing fixtures"]
+    end
 
 (*
     PROGRAM
@@ -1324,26 +1379,6 @@ and verifyDefns env ([]:DEFN list) : (TYPE_ENV * int list) = ([], [])
 (******************** Fixtures **************************************************)
 
 (* fixtures at the block level *)
-and verifyFixture (env as {env,this,...}:RIB) 
-		  (n:FIXTURE_NAME,f:FIXTURE) 
-    : TYPE_ENV
-  = let in
-	case f of
-	    NamespaceFixture _ => []
-	  | ValFixture { ty, readOnly, ... } => 
-	    [(n,ProgVar (ty,readOnly))]
-    end	    
-
-and verifyFixtures (env:RIB) 
-		   (fs:FIXTURES)  
-    : TYPE_ENV 
-  = List.concat (List.map (verifyFixture env) fs)
-
-and verifyFixturesOption (env:RIB) 
-		   (fs:FIXTURES option)  
-    : TYPE_ENV
-  = verifyFixtures env (flattenOptionList fs)
-
 
 (******************** Blocks **************************************************)
 
