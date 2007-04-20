@@ -366,7 +366,7 @@ fun updateFixtures (ctx::ex) (fxtrs:Ast.FIXTURES)
     : ENV =
     let
     in
-        { fixtures = (fxtrs @ (#fixtures ctx)),
+        { fixtures = List.foldl mergeFixtures fxtrs (#fixtures ctx),
           tempOffset = (#tempOffset ctx),
           openNamespaces = (#openNamespaces ctx), 
           numericMode = (#numericMode ctx),
@@ -1973,7 +1973,7 @@ and defStmt (env:ENV)
                         SOME vd => defDefn env (Ast.VariableDefn vd)
                       | NONE => ([],[],[])
                 val (uf,hf,_) = defVarDefnOpt defn
-                val env' = updateFixtures env (uf@hf)
+                val env' = updateFixtures env (List.foldl mergeFixtures uf hf)
                 val (newInit,_) = defStmts env' init
                 val newCond = defExpr env' cond
                 val newUpdate = defExpr env' update
@@ -1987,7 +1987,7 @@ and defStmt (env:ENV)
                                 labels = ""::labels,  (* add the default break/continue label *)
                                 body = newBody,
                                 fixtures = SOME (uf) },
-                  hf@hoisted )
+                  (List.foldl mergeFixtures hf hoisted) )
             end
 
         fun reconstructCatch { bindings, fixtures, block, ty } =
@@ -2273,7 +2273,7 @@ and defStmts (env) (stmts:Ast.STMT list)
                 val env' = updateFixtures env f1
                 val (s2,f2) = defStmts env' stmts
             in
-                (s1::s2,f1@f2)
+                (s1::s2,(List.foldl mergeFixtures f1 f2))
             end
       | [] => ([],[])
 
@@ -2404,7 +2404,7 @@ and defDefns (env:ENV)
 
                val (unhoisted',hoisted',inits') = defDefn env d
                val temp = case d of Ast.ClassDefn _ => hoisted' | _ => []
-                val env'  = updateFixtures env (unhoisted'@temp) 
+                val env'  = updateFixtures env (List.foldl mergeFixtures unhoisted' temp) 
            (* add the new unhoisted and temporarily, hoisted class fxtrs to the current env *)
            in
                defDefns env' 
@@ -2436,14 +2436,14 @@ and defBlock (env:ENV)
         val _ = LogErr.setPos pos
         val (env,unhoisted_pragma_fxtrs) = defPragmas env pragmas
         val (unhoisted_defn_fxtrs,hoisted_defn_fxtrs,inits) = defDefns env [] [] [] defns
-        val env = updateFixtures env (unhoisted_defn_fxtrs@hoisted_defn_fxtrs) (* so stmts can see them *)
+        val env = updateFixtures env (List.foldl mergeFixtures unhoisted_defn_fxtrs hoisted_defn_fxtrs) (* so stmts can see them *)
         val (body,hoisted_body_fxtrs) = defStmts env body
-        val hoisted = hoisted_defn_fxtrs@hoisted_body_fxtrs
+        val hoisted = List.foldl mergeFixtures hoisted_defn_fxtrs hoisted_body_fxtrs
     in
         (Ast.Block { pragmas = pragmas,
                      defns = [],  (* clear definitions, we are done with them *)
                      body = body,
-                     head = SOME (unhoisted_defn_fxtrs@unhoisted_pragma_fxtrs,inits),
+                     head = SOME (List.foldl mergeFixtures unhoisted_defn_fxtrs unhoisted_pragma_fxtrs,inits),
                      pos = pos},
          hoisted)
     end
@@ -2459,7 +2459,7 @@ and defRegionalBlock (env:ENV) (blk:Ast.BLOCK)
             Ast.Block {pragmas=pragmas,
                        defns=defns,
                        body=body,
-                       head=(SOME ((hoisted @ fixtures),inits)),
+                       head=(SOME ((List.foldl mergeFixtures hoisted fixtures),inits)),
                        pos=pos}
         end
 
