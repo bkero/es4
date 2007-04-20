@@ -70,9 +70,24 @@ datatype VAL = Object of OBJ
                     | TypeProp
                     | UninitProp
                     | ValProp of VAL
+
+                    (* One might imagine that namespaces, methods and 
+                     * the 'arguments' object in a function can all be stored
+                     * as instances of the classes Namespace, Function and 
+                     * Array, respectively. This works in some contexts, but leads
+                     * to feedback loops when constructing the classes Function,
+                     * Namespace and Array themselves. So instead of eagerly instantiating
+                     * such values, we allocate them as the following 3 "lazy" 
+                     * property states. If anyone performs a "get" on these property
+                     * states, a Namespace, Function or Array object (respectively) is 
+                     * constructed. We then ensure that the Namespace, Function and Array
+                     * constructors, settings and initializers (in the builtins) 
+                     * do *not* cause any "get" operations on properties in these states.
+                     *)
                     | NamespaceProp of Ast.NAMESPACE
                     | MethodProp of FUN_CLOSURE
                     | ValListProp of VAL list
+
                     | NativeFunctionProp of NATIVE_FUNCTION
                     | VirtualValProp of 
                       { getter: FUN_CLOSURE option,
