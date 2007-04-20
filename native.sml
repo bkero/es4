@@ -729,6 +729,109 @@ fun typename (vals:Mach.VAL list)
            | SOME (Mach.Type _) => "type"
            | SOME (Mach.NativeFunction _) => "native function"))
 
+fun inspect (vals:Mach.VAL list)
+    : Mach.VAL = 
+    let 
+        val pad = "          "
+        fun p 0 s = List.app TextIO.print s
+          | p n s = (TextIO.print pad; p (n-1) s)
+
+        fun nl _ = TextIO.print "\n";
+
+        fun att {dontDelete,dontEnum,readOnly,isFixed} = 
+            if not dontDelete 
+               andalso not dontEnum
+               andalso not readOnly
+               andalso not isFixed
+            then ""
+            else
+                (" (" 
+                 ^ (if dontDelete then "DD," else "")
+                 ^ (if dontEnum then "DE," else "")
+                 ^ (if readOnly then "RO," else "")
+                 ^ (if isFixed then "FX" else "")
+                 ^ ") ")
+                
+        fun id (Mach.Obj ob) = Int.toString (#ident ob)
+
+        fun tag (Mach.Obj ob) = 
+            case (#tag ob) of 
+                (* FIXME: elaborate printing of structural tags. *)
+                Mach.ObjectTag _ => "<Obj>"
+              | Mach.ArrayTag _ => "<Arr>"
+              | Mach.FunctionTag _ => "<Fn>"
+              | Mach.ClassTag n => ("<Class " ^ (LogErr.name n) ^ ">")
+              | Mach.NoTag => "<NoTag>"
+
+        (* FIXME: elaborate printing of type expressions. *)
+        fun typ t = "<TypeExpr>"
+        fun mag m = case m of 
+                        Mach.String s => ("\"" ^ (String.toString s) ^ "\"")
+                      | m => Eval.magicToString m
+                                 
+        fun printVal indent _ Mach.Undef = TextIO.print "undefined\n"
+          | printVal indent _ Mach.Null = TextIO.print "null\n"
+          | printVal indent 0 (Mach.Object (Mach.Obj ob)) = 
+            (TextIO.print (case !(#magic ob) of 
+                               NONE => tag (Mach.Obj ob)
+                             | SOME m => mag m);
+             TextIO.print "\n")
+
+          | printVal indent n (Mach.Object obj) = 
+            let
+                fun subVal i v = printVal (i+1) (n-1) v
+                fun prop np = 
+                    let
+                        val (n,{ty,state,attrs}) = np
+                        val indent = indent + 1
+                        val stateStr = 
+                            case state of 
+		                        Mach.TypeVarProp => "[typeVar]"
+		                      | Mach.TypeProp => "[type]"
+		                      | Mach.UninitProp => "[uninit]"
+		                      | Mach.ValProp v => "[val]"
+		                      | Mach.VirtualValProp _ => "[virtual val]"
+                              | Mach.MethodProp _ => "[method]"
+                              | Mach.NativeFunctionProp _ => "[native function]"
+                              | Mach.NamespaceProp _ => "[namespace]"
+                              | Mach.ValListProp _ => "[val list]"
+                    in
+                        p indent ["   prop = ", LogErr.name n, att attrs, "= "];
+                        (* p indent ["   type = ", typ ty]; nl(); *)
+                        case state of 
+                            Mach.ValProp v => subVal indent v
+                          | _ => TextIO.print (stateStr ^ "\n")
+                    end
+                val Mach.Obj { magic, props, proto, ... } = obj
+            in
+                TextIO.print "Obj {\n";
+                (case !magic of 
+                     SOME m => (p indent ["  magic = ", (mag m)]; nl())
+                   | NONE => ());
+                p indent ["    tag = ", (tag obj)]; nl();
+                p indent ["  ident = ", (id obj)]; nl();
+                p indent ["  proto = "]; subVal indent (!proto);
+                p indent ["  props = ["]; nl();
+                List.app prop (!props);
+                p indent ["          ] }"]; nl()
+            end
+
+        val v = rawNth vals 0
+        val d = if length vals > 1 then nthAsInt vals 1 else 1
+    in
+        printVal 0 d v;
+        Mach.Undef
+    end
+
+fun proto (vals:Mach.VAL list) 
+    : Mach.VAL = 
+    let
+        val Mach.Obj { proto, ... } = nthAsObj vals 0
+    in
+        !proto
+    end
+
+
 fun converter (convert:Mach.VAL -> 'a) 
               (construct:'a -> Mach.VAL)
     : ((Mach.VAL list) -> Mach.VAL) = 
@@ -813,8 +916,9 @@ fun registerNatives _ =
 
         addFn Name.intrinsicNS "print" print;
         addFn Name.intrinsicNS "assert" assert;
-        addFn Name.intrinsicNS "typename" typename
-
+        addFn Name.intrinsicNS "typename" typename;
+        addFn Name.intrinsicNS "inspect" inspect;
+        addFn Name.intrinsicNS "proto" proto
     end
 
 end
