@@ -211,6 +211,8 @@ fun allocFixtures (scope:Mach.SCOPE)
                   | Ast.FieldTypeRef _ => (* FIXME: get type from object type *)
                     Mach.ValProp (Mach.Undef)
 
+                  | _ => error ["Shouldn't happen: failed to match in Eval.allocFixtures#valAllocState."]
+
             fun tempPadding n =
                 if n = 0
                     then []
@@ -330,6 +332,9 @@ fun allocFixtures (scope:Mach.SCOPE)
                                                   dontEnum = true,
                                                   readOnly = true,
                                                   isFixed = true } }
+
+                          | _ => error ["Shouldn't happen: failed to match in Eval.allocFixtures#allocFixture."]
+
                     end
         in                    
             List.app allocFixture f
@@ -803,6 +808,7 @@ and magicToString (magic:Mach.MAGIC)
       | Mach.Type _ => "[type Function]"
       | Mach.ByteArray _ => "[ByteArray]"
       | Mach.NativeFunction _ => "[function NativeFunction]"
+      | _ => error ["Shouldn't happen: failed to match in Eval.magicToString."]
 
 (* 
  * FIXME: want to transfer *some* of these up to Conversions.es, but it's
@@ -1215,6 +1221,9 @@ and evalExpr (scope:Mach.SCOPE)
         evalSetExpr scope aop pat (evalExpr scope expr)
 
       | Ast.CallExpr { func, actuals } => 
+        (* FIXME: order of evaluation: func must be evaluated first.  (Actuals must be
+         * evaluated left-to-right, but map does this so we're fine.)
+         *)
         let
             val args = map (evalExpr scope) actuals
         in
@@ -2369,6 +2378,7 @@ and evalStmt (scope:Mach.SCOPE)
       | Ast.SwitchTypeStmt { cond, ty, cases } => 
         LogErr.unimplError ["switch-type statements not handled"]
       | Ast.ForInStmt w => evalForInStmt scope w
+      | _ => error ["Shouldn't happen: failed to match in Eval.evalStmt."]
 
 
 and multinameOf (n:Ast.NAME) = 
