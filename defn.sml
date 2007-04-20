@@ -264,6 +264,8 @@ fun mergeFixtures ((newName,newFix),oldFixs) =
                  if (#ty new) = (#ty old) andalso (#readOnly new) = (#readOnly old)
                  then (trace ["skipping fixture ",LogErr.name (case newName of Ast.PropName n => n | _ => {ns=Ast.Internal "",id="temp"})]; oldFixs)
                  else error ["incompatible redefinition of fixture name: ", LogErr.fname newName]
+          | (Ast.MethodFixture new, Ast.MethodFixture old) => 
+            replaceFixture oldFixs newName (Ast.MethodFixture new) (* FIXME: types *)
           | _ => error ["redefining fixture name: ", LogErr.fname newName]
     else
         (newName,newFix) :: oldFixs
@@ -1140,9 +1142,7 @@ and defFunc (env:ENV) (func:Ast.FUNC)
                    block = block,
                    defaults = defaults,
                    ty = newTy,
-                   param = (paramFixtures
-                            @ hoisted,
-                            paramInits),
+                   param = (List.foldl mergeFixtures paramFixtures hoisted, paramInits),
                    isNative=isNative})
     end
 
@@ -1940,7 +1940,7 @@ and defStmt (env:ENV)
                        body = newBody, 
                        fixtures = SOME uf1,
                        next = newNext },
-                     hf1@hoisted)
+                     List.foldl mergeFixtures hf1 hoisted)
                 end
             end
 
@@ -2209,7 +2209,7 @@ and defStmt (env:ENV)
                 (Ast.IfStmt { cnd = cnd,
                               thn = thn,
                               els = els }, 
-                 (thn_hoisted @ els_hoisted))
+                 (List.foldl mergeFixtures thn_hoisted els_hoisted))
             end
             
           | Ast.WithStmt { obj, ty, body } =>
@@ -2521,7 +2521,7 @@ and defProgram (prog:Ast.PROGRAM)
         val (packages, hoisted_pkg) = ListPair.unzip (map (defPackage e) (#packages prog))
         val e = List.foldl addPackageName e packages
         val (block, hoisted_gbl) = defBlock (updateFixtures e (List.concat hoisted_pkg)) (#block prog)
-        val fixtures = List.foldl (eraseFixtures (!topFixtures)) [] ((List.concat hoisted_pkg)@hoisted_gbl)
+        val fixtures = List.foldl (eraseFixtures (!topFixtures)) [] (List.foldl mergeFixtures (List.concat hoisted_pkg) hoisted_gbl)
         val result = {packages = packages,
                       block = block,
                       fixtures = SOME fixtures }
