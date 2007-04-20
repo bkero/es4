@@ -54,6 +54,7 @@ exception LexError
 exception ParseError
 exception NameError
 exception DefnError
+exception VerifyError
 exception EvalError
 exception MachError
 exception HostError
@@ -74,6 +75,10 @@ fun nameError ss =
 fun defnError ss = 
     (error ("defnError " :: ss); 
      raise DefnError)
+
+fun verifyError ss = 
+    (error ("verifyError " :: ss); 
+     raise VerifyError)
 
 fun evalError ss = 
     (error ("evalError " :: ss); 

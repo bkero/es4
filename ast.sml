@@ -505,9 +505,7 @@ withtype
 
      and TYPE_CASE =
            { ty : TYPE_EXPR option,
-             bindings : BINDINGS,
-             inits: INITS option, 
-             body: BLOCK }
+             body: STMT }  (* LetStmt, actually *)
 
      and CATCH_CLAUSE = 
          { bindings:BINDINGS,
@@ -531,6 +529,6 @@ type PACKAGE =
 type PROGRAM =
            { packages: PACKAGE list,
              fixtures: FIXTURES option,
-              block: BLOCK }
+             block: BLOCK }
 
 end

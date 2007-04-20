@@ -12,6 +12,7 @@ fun findTraceOption (tname:string)
       | "parse" => SOME (Parser.doTrace)
       | "name" => SOME (Multiname.doTrace)
       | "defn" => SOME (Defn.doTrace)
+      | "verify" => SOME (Verify.doTrace)
       | "eval" => SOME (Eval.doTrace)
       | "mach" => SOME (Mach.doTrace)
       | "decimal" => SOME (Decimal.doTrace)
@@ -120,8 +121,10 @@ fun testTC argvRest =
     	val _ = TextIO.print "booting ... \n";
         val _ = Boot.boot (); 
         val asts = List.map Parser.parseFile argvRest
+        val _ = TextIO.print "defining ... \n";
+        val dps = map Defn.defProgram asts
 	    val _ = TextIO.print "type checking ... \n";
-        val _ = List.map Verify.verifyProgram asts;  
+        val _ = List.map Verify.verifyProgram dps;
 	    val _ = TextIO.print "type checked! \n"
     in
         ()
@@ -137,6 +140,8 @@ fun testEV argvRest =
         val asts = List.map Parser.parseFile argvRest
         val _ = TextIO.print "defining ... \n";
         val dps = map Defn.defProgram asts
+	    val _ = TextIO.print "type checking ... \n";
+        val _ = List.map Verify.verifyProgram dps;
         val _ = TextIO.print "evaluating ... \n";
         val _ = map Eval.evalProgram dps
         val _ = TextIO.print "evaluated! \n"                

@@ -27,7 +27,6 @@ fun error ss = LogErr.defnError ss
     TODO
     - fold types
     - inheritance checks
-    - disambiguate package / object references
  *)
 
 
@@ -1306,7 +1305,8 @@ and defPragmas (env:ENV)
                                         val fixtureType = case targetFixture of 
                                                                Ast.ValFixture {ty,...} => ty 
                                                              | Ast.NamespaceFixture _ => (Name.typename Name.public_Namespace)
-                                                             | Ast.ClassFixture _ => (Name.typename Name.public_Class)   (* ISSUE: the is the base type of the class object *)
+                                                             | Ast.ClassFixture _ => (Name.typename Name.public_Class)   
+                                                                 (* ISSUE: this is the base type of the class object *)
                                                              | Ast.TypeFixture _ => (Name.typename Name.public_Type)
                                                              | Ast.MethodFixture {ty,...} => ty
                                                              | Ast.VirtualValFixture {ty,...} => ty
@@ -1360,12 +1360,8 @@ and defPragmas (env:ENV)
                                                                            Ast.LexicalRef
                                                                              { ident = Ast.Identifier
                                                                                          { ident = "x",
-                                                                                           openNamespaces = [[Ast.Public
-                                                                                                                "p"],
-                                                                                                              [Ast.Internal
-                                                                                                                 "",
-                                                                                                                Ast.Public
-                                                                                                                  ""]]},
+                                                                                           openNamespaces = [[Ast.Internal
+                                                                                                                ""]]},
                                                                                pos = NONE}))],
                                                           pos = NONE},
                                               param = ([(Ast.TempName 0,
@@ -2023,19 +2019,14 @@ and defStmt (env:ENV)
             end
 
         fun reconstructTyCase {ty: Ast.TYPE_EXPR option,
-                               bindings: Ast.BINDINGS, 
-                               body: Ast.BLOCK, inits: Ast.INITS option}
+                               body: Ast.STMT}
             : Ast.TYPE_CASE * Ast.FIXTURES = 
             let 
-                val (fxtrs,inits) = defBindings env Ast.Var (Ast.Internal "") bindings
-                val env = extendEnvironment env fxtrs
-                val (body,hoisted) = defBlock env body
+                val (body,hoisted) = defStmt env [] body
             in
                 ({ty=ty,
-                  bindings=bindings,
-                  inits=SOME inits,
-                  body=body},
-                 fxtrs)
+                  body=body},  (* FIXME: fxtrs are lost, but them in block *)
+                 hoisted)
             end
 
         fun findClass (n:Ast.NAME) =
@@ -2438,7 +2429,7 @@ and defBlock (env:ENV)
         val (unhoisted_defn_fxtrs,hoisted_defn_fxtrs,inits) = defDefns env [] [] [] defns
         val env = updateFixtures env (unhoisted_defn_fxtrs@hoisted_defn_fxtrs) (* so stmts can see them *)
         val (body,hoisted_body_fxtrs) = defStmts env body
-        val hoisted = hoisted_defn_fxtrs@hoisted_body_fxtrs
+        val hoisted = List.foldl mergeFixtures hoisted_defn_fxtrs hoisted_body_fxtrs
     in
         (Ast.Block { pragmas = pragmas,
                      defns = [],  (* clear definitions, we are done with them *)

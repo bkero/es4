@@ -718,45 +718,40 @@ structure PrettyCvt = struct
          NONE => PrettyRep.Ctor ("NONE", NONE)
        | SOME x1554 => PrettyRep.Ctor ("SOME", SOME (cvtINITS x1554))
        )), ("body", cvtBLOCK x1559)]
-   and cvtTYPE_CASE {ty=opt1568, bindings=x1572, inits=opt1574, body=x1578} = 
-          PrettyRep.Rec [("ty", 
+   and cvtTYPE_CASE {ty=opt1568, body=x1572} = PrettyRep.Rec [("ty", 
        (case opt1568 of
          NONE => PrettyRep.Ctor ("NONE", NONE)
        | SOME x1567 => PrettyRep.Ctor ("SOME", SOME (cvtTYPE_EXPR x1567))
-       )), ("bindings", cvtBINDINGS x1572), ("inits", 
-       (case opt1574 of
-         NONE => PrettyRep.Ctor ("NONE", NONE)
-       | SOME x1573 => PrettyRep.Ctor ("SOME", SOME (cvtINITS x1573))
-       )), ("body", cvtBLOCK x1578)]
-   and cvtCATCH_CLAUSE {bindings=x1588, ty=x1589, fixtures=opt1591, block=x1595} = 
-          PrettyRep.Rec [("bindings", cvtBINDINGS x1588), ("ty", cvtTYPE_EXPR x1589), 
+       )), ("body", cvtSTMT x1572)]
+   and cvtCATCH_CLAUSE {bindings=x1578, ty=x1579, fixtures=opt1581, block=x1585} = 
+          PrettyRep.Rec [("bindings", cvtBINDINGS x1578), ("ty", cvtTYPE_EXPR x1579), 
           ("fixtures", 
-       (case opt1591 of
+       (case opt1581 of
          NONE => PrettyRep.Ctor ("NONE", NONE)
-       | SOME x1590 => PrettyRep.Ctor ("SOME", SOME (cvtFIXTURES x1590))
-       )), ("block", cvtBLOCK x1595)]
-   and cvtFUNC_NAME {kind=x1605, ident=x1606} = PrettyRep.Rec [("kind", cvtFUNC_NAME_KIND x1605), 
-          ("ident", cvtIDENT x1606)]
-   and cvtVIRTUAL_VAL_FIXTURE {ty=x1612, getter=opt1614, setter=opt1619} = 
-          PrettyRep.Rec [("ty", cvtTYPE_EXPR x1612), ("getter", 
-       (case opt1614 of
+       | SOME x1580 => PrettyRep.Ctor ("SOME", SOME (cvtFIXTURES x1580))
+       )), ("block", cvtBLOCK x1585)]
+   and cvtFUNC_NAME {kind=x1595, ident=x1596} = PrettyRep.Rec [("kind", cvtFUNC_NAME_KIND x1595), 
+          ("ident", cvtIDENT x1596)]
+   and cvtVIRTUAL_VAL_FIXTURE {ty=x1602, getter=opt1604, setter=opt1609} = 
+          PrettyRep.Rec [("ty", cvtTYPE_EXPR x1602), ("getter", 
+       (case opt1604 of
          NONE => PrettyRep.Ctor ("NONE", NONE)
-       | SOME x1613 => PrettyRep.Ctor ("SOME", SOME (cvtFUNC_DEFN x1613))
+       | SOME x1603 => PrettyRep.Ctor ("SOME", SOME (cvtFUNC_DEFN x1603))
        )), ("setter", 
-       (case opt1619 of
+       (case opt1609 of
          NONE => PrettyRep.Ctor ("NONE", NONE)
-       | SOME x1618 => PrettyRep.Ctor ("SOME", SOME (cvtFUNC_DEFN x1618))
+       | SOME x1608 => PrettyRep.Ctor ("SOME", SOME (cvtFUNC_DEFN x1608))
        ))]
-   and cvtPACKAGE {name=ls1631, block=x1635} = PrettyRep.Rec [("name", PrettyRep.List (List.map (fn x1630 => 
-                                                                                                       cvtIDENT x1630
-                                                                                                ) ls1631)), 
-          ("block", cvtBLOCK x1635)]
-   and cvtPROGRAM {packages=ls1642, fixtures=opt1647, block=x1651} = PrettyRep.Rec [("packages", 
-          PrettyRep.List (List.map (fn x1641 => cvtPACKAGE x1641
-                                   ) ls1642)), ("fixtures", 
-       (case opt1647 of
+   and cvtPACKAGE {name=ls1621, block=x1625} = PrettyRep.Rec [("name", PrettyRep.List (List.map (fn x1620 => 
+                                                                                                       cvtIDENT x1620
+                                                                                                ) ls1621)), 
+          ("block", cvtBLOCK x1625)]
+   and cvtPROGRAM {packages=ls1632, fixtures=opt1637, block=x1641} = PrettyRep.Rec [("packages", 
+          PrettyRep.List (List.map (fn x1631 => cvtPACKAGE x1631
+                                   ) ls1632)), ("fixtures", 
+       (case opt1637 of
          NONE => PrettyRep.Ctor ("NONE", NONE)
-       | SOME x1646 => PrettyRep.Ctor ("SOME", SOME (cvtFIXTURES x1646))
-       )), ("block", cvtBLOCK x1651)]
+       | SOME x1636 => PrettyRep.Ctor ("SOME", SOME (cvtFIXTURES x1636))
+       )), ("block", cvtBLOCK x1641)]
 end
 
