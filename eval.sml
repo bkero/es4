@@ -1485,13 +1485,16 @@ and evalCallMethod (regs:Mach.REGS)
          * wrapper object. 
          *)
         val _ = trace ["evaluating ref expr for call-method"];
-        val (obj, name) = evalRefExpr regs func true
+        val (baseOpt, (obj, name)) = evalRefExprFull regs func true
+        val thisObj = case baseOpt of 
+                       NONE => (#this regs)
+                     | SOME base => base
         val _ = trace [">>> call method: ", LogErr.name name]
         val Mach.Obj { props, ... } = obj
         val res = case (#state (Mach.getProp props name)) of
                       Mach.NativeFunctionProp nf => nf args
-                    | Mach.MethodProp f => invokeFuncClosure (#this regs) f args
-                    | _ => evalCallExpr (#this regs) (needObj (getValue obj name)) args
+                    | Mach.MethodProp f => invokeFuncClosure thisObj f args
+                    | _ => evalCallExpr thisObj (needObj (getValue obj name)) args
         val _ = trace ["<<< call method: ", LogErr.name name]
     in
         res
@@ -2252,10 +2255,21 @@ and evalIdentExpr (regs:Mach.REGS)
 
       | _ => LogErr.unimplError ["unimplemented identifier expression form"]
 
+
 and evalRefExpr (regs:Mach.REGS)
                 (expr:Ast.EXPR)
                 (errIfNotFound:bool)
-    : REF =
+    : REF = 
+    let
+        val (_, r) = evalRefExprFull regs expr errIfNotFound
+    in
+        r
+    end
+
+and evalRefExprFull (regs:Mach.REGS)
+                    (expr:Ast.EXPR)
+                    (errIfNotFound:bool)
+    : (Mach.OBJ option * REF) =
     let 
         val (base,ident) =
             case expr of         
@@ -2272,6 +2286,10 @@ and evalRefExpr (regs:Mach.REGS)
         val defaultObj = case base of 
                              SOME (Mach.Object ob) => ob
                            | _ => getGlobalObject ()
+
+        val baseObj = case base of
+                          SOME (Mach.Object ob) => SOME ob
+                        | NONE => NONE
                                        
         (* FIXME: ns might be user settable default *)
         fun makeRefNotFound (b:Mach.VAL option) (mname:Ast.MULTINAME) 
@@ -2289,12 +2307,12 @@ and evalRefExpr (regs:Mach.REGS)
               | SOME Mach.Null => error ["ref expression on null value with ",LogErr.multiname multiname]
                                                                              
     in
-        case refOpt of 
-            NONE => if errIfNotFound 
-                    then error ["unresolved identifier expression",
+        (baseObj, (case refOpt of 
+                       NONE => if errIfNotFound 
+                               then error ["unresolved identifier expression",
                                            LogErr.multiname multiname]
-                    else makeRefNotFound base multiname
-          | SOME r' => r'
+                               else makeRefNotFound base multiname
+                     | SOME r' => r'))
     end
 
 (*

@@ -39,6 +39,11 @@ class C
 		intrinsic::assert(this !== global);
 		return inner2;
 	}
+
+	prototype function proto()
+	{
+		this.foo();
+	}
 }
 
 
