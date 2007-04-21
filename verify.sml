@@ -369,8 +369,19 @@ fun checkConvertible (ty1:TYPE_VALUE)
     HEAD
 *)
 
-and verifyHead (env:ENV) (h:Ast.HEAD)
-    : Ast.HEAD = h
+and verifyInits (env:ENV) (inits:Ast.INITS)
+    : Ast.INITS =
+    List.map (fn (name, expr) =>
+                 let
+                     val (expr', t) = verifyExpr env expr
+                 in
+                     (name, expr')
+                 end)
+             inits
+
+and verifyHead (env:ENV) ((fixtures, inits):Ast.HEAD)
+    : Ast.HEAD =
+    (fixtures, verifyInits env inits)
 
 (*
     EXPR
@@ -386,6 +397,8 @@ and verifyExpr (env:ENV)
             in
                 e
             end
+        fun return (e, t) =
+            (Ast.ExpectedTypeExpr (t, e), t)
         val dummyType = Ast.SpecialType Ast.Any
     in
         case expr of 
@@ -395,7 +408,7 @@ and verifyExpr (env:ENV)
                 val e2' = verifySub e2
                 val e3' = verifySub e3
             in
-                (Ast.TernaryExpr (t, e1', e2', e3'), dummyType)
+                return (Ast.TernaryExpr (t, e1', e2', e3'), dummyType)
             end
             
           | Ast.BinaryExpr (b, e1, e2) =>
@@ -403,59 +416,62 @@ and verifyExpr (env:ENV)
                 val e1' = verifySub e1
                 val e2' = verifySub e2
             in
-                (Ast.BinaryExpr (b, e1', e2'), dummyType)
+                return (Ast.BinaryExpr (b, e1', e2'), dummyType)
             end
+
+          | Ast.ExpectedTypeExpr (t, e) =>
+            internalError ["Defn produced ExpectedTypeExpr"]
 
           | Ast.BinaryTypeExpr (b, e, te) =>
             let
                 val e' = verifySub e
                 val te' = verifyTypeExpr env te
             in
-                (Ast.BinaryTypeExpr (b, e', te'), dummyType)
+                return (Ast.BinaryTypeExpr (b, e', te'), dummyType)
             end
 
           | Ast.UnaryExpr (u, e) =>
             let
                 val e' = verifySub e
             in
-                (Ast.UnaryExpr (u, e'), dummyType)
+                return (Ast.UnaryExpr (u, e'), dummyType)
             end
 
           | Ast.TypeExpr t => 
             let
                 val t' = verifyTypeExpr env t
             in
-                (Ast.TypeExpr t', dummyType)
+                return (Ast.TypeExpr t', dummyType)
             end
 
           | Ast.ThisExpr =>
-            (Ast.ThisExpr, dummyType)
+            return (Ast.ThisExpr, dummyType)
 
           | Ast.YieldExpr eo =>
             let
                 val eo' = Option.map verifySub eo
             in
-                (Ast.YieldExpr eo', dummyType)
+                return (Ast.YieldExpr eo', dummyType)
             end
 
           | Ast.SuperExpr eo =>
             let
                 val eo' = Option.map verifySub eo
             in
-                (Ast.SuperExpr eo', dummyType)
+                return (Ast.SuperExpr eo', dummyType)
             end
             
           | Ast.LiteralExpr le => 
             (* TODO *)
-            (Ast.LiteralExpr le, dummyType)
+            return (Ast.LiteralExpr le, dummyType)
             
           | Ast.CallExpr {func, actuals} => 
             let
                 val func' = verifySub func
                 val actuals' = List.map verifySub actuals
             in
-                (Ast.CallExpr { func = func',
-                                actuals = actuals' }, dummyType)
+                return (Ast.CallExpr { func = func',
+                                       actuals = actuals' }, dummyType)
             end
 
           | Ast.ApplyTypeExpr { expr, actuals } =>
@@ -463,8 +479,8 @@ and verifyExpr (env:ENV)
                 val expr' = verifySub expr
                 val actuals' = List.map (verifyTypeExpr env) actuals
             in
-                (Ast.ApplyTypeExpr { expr = expr',
-                                     actuals = actuals' }, dummyType)
+                return (Ast.ApplyTypeExpr { expr = expr',
+                                            actuals = actuals' }, dummyType)
             end
 
           | Ast.LetExpr { defs, body, head } =>
@@ -474,9 +490,9 @@ and verifyExpr (env:ENV)
                 (* TODO: verify body with `head' fixtures in env *)
                 val body' = verifySub body
             in
-                (Ast.LetExpr { defs = defs',
-                               body = body',
-                               head = head' }, dummyType)
+                return (Ast.LetExpr { defs = defs',
+                                      body = body',
+                                      head = head' }, dummyType)
             end
 
           | Ast.NewExpr { obj, actuals } => 
@@ -484,8 +500,8 @@ and verifyExpr (env:ENV)
                 val obj' = verifySub obj
                 val actuals' = List.map verifySub actuals
             in
-                (Ast.NewExpr { obj = obj',
-                               actuals = actuals' }, dummyType)
+                return (Ast.NewExpr { obj = obj',
+                                      actuals = actuals' }, dummyType)
             end
 
           | Ast.ObjectRef { base, ident, pos } =>
@@ -493,14 +509,14 @@ and verifyExpr (env:ENV)
                 val base' = verifySub base
                 val ident' = ident (* TODO *)
             in
-                (Ast.ObjectRef { base=base', ident=ident', pos=pos }, dummyType)
+                return (Ast.ObjectRef { base=base', ident=ident', pos=pos }, dummyType)
             end
 
           | Ast.LexicalRef { ident, pos } =>
             let
                 val ident' = ident (* TODO *)
             in
-                (Ast.LexicalRef { ident=ident', pos=pos }, dummyType)
+                return (Ast.LexicalRef { ident=ident', pos=pos }, dummyType)
             end
 
           | Ast.SetExpr (a, le, re) => 
@@ -508,12 +524,12 @@ and verifyExpr (env:ENV)
                 val le' = verifySub le
                 val re' = verifySub re
             in
-                (Ast.SetExpr (a, le', re'), dummyType)
+                return (Ast.SetExpr (a, le', re'), dummyType)
             end
 
           | Ast.GetTemp n => 
             (* TODO: these only occur on the RHS of compiled destructuring assignments. how to type-check? *)
-            (Ast.GetTemp n, dummyType)
+            return (Ast.GetTemp n, dummyType)
 
           | Ast.GetParam n => 
             internalError ["GetParam not eliminated by Defn"]
@@ -522,7 +538,7 @@ and verifyExpr (env:ENV)
             let
                 val es' = List.map verifySub es
             in
-                (Ast.ListExpr es', dummyType)
+                return (Ast.ListExpr es', dummyType)
             end
 
           | Ast.SliceExpr (a, b, c) => 
@@ -531,16 +547,16 @@ and verifyExpr (env:ENV)
                 val b' = verifySub b
                 val c' = verifySub c
             in
-                (Ast.SliceExpr (a, b, c), dummyType)
+                return (Ast.SliceExpr (a, b, c), dummyType)
             end
 
           | Ast.InitExpr (it, head, inits) =>
             let
                 val it' = it (* TODO *)
                 val head' = verifyHead env head
-                val inits' = inits (* TODO *)
+                val inits' = verifyInits env inits
             in
-                (Ast.InitExpr (it', head', inits'), dummyType)
+                return (Ast.InitExpr (it', head', inits'), dummyType)
             end
 
     end
