@@ -56,12 +56,19 @@ datatype VAL = Object of OBJ
                     bases: IFACE list,
                     definition: Ast.INTERFACE_DEFN,                        
                     isInitialized: bool ref }
-                   
-     and SCOPE = 
+
+     and SCOPE =          
          Scope of { object: OBJ,
                     parent: SCOPE option,
                     temps: TEMPS,
-                    isVarObject: bool }
+                    kind: SCOPE_KIND }
+                  
+     and SCOPE_KIND = 
+         WithScope
+       | GlobalScope
+       | InstanceScope
+       | ActivationScope
+       | TempScope
 
      and TEMP_STATE = UninitTemp
                     | ValTemp of VAL
@@ -95,6 +102,7 @@ datatype VAL = Object of OBJ
                 
 withtype FUN_CLOSURE = 
          { func: Ast.FUNC,
+           this: OBJ option,
            allTypesBound: bool,
            env: SCOPE }
 
@@ -131,6 +139,9 @@ withtype FUN_CLOSURE =
                   attrs: ATTRS }
 
      and PROP_BINDINGS = ((Ast.NAME * PROP) list) ref
+
+     and REGS = { scope: SCOPE, 
+                  this: OBJ }
 
 (* Exceptions for control transfer. *)
 
