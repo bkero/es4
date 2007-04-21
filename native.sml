@@ -636,10 +636,11 @@ fun now (vals:Mach.VAL list)
 
 *)
 
+val random_state = Random.rand (37, 79)
+
 fun random (v:Mach.VAL list)
     : Mach.VAL =
-    LogErr.unimplError ["intrinsic::random"]
-
+    Eval.newDouble (Random.randReal random_state)
 
 fun unaryDoubleFn (f:(Real64.real -> Real64.real)) : 
     ((Mach.VAL list) -> Mach.VAL) =
