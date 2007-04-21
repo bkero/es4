@@ -375,6 +375,14 @@ fun hasProp (b:PROP_BINDINGS)
         search (!b)
     end
 
+fun hasMagic (ob:OBJ) = 
+    case ob of 
+        Obj { magic, ... } => 
+        case !magic of 
+            SOME _ => true
+          | NONE => false
+    
+
 (* Safe: will overflow when it runs out of identities. *)
 val currIdent = ref 0
 fun nextIdent _ =

@@ -1889,6 +1889,21 @@ and performBinop (bop:Ast.BINOP)
             then newUInt x
             else newInt (u2i x)
 
+        fun tripleEquals mode = 
+            case (a, b) of 
+                (Mach.Null, Mach.Null) => newBoolean true
+              | (Mach.Undef, Mach.Undef) => newBoolean true
+              | (Mach.Object oa, Mach.Object ob) => 
+                if Mach.hasMagic oa andalso 
+                   Mach.hasMagic ob 
+                then                     
+                    dispatchComparison (valOf mode) 
+                                       (fn x => x = EQUAL)
+                else
+                    newBoolean ((getObjId oa) = (getObjId ob))
+              | (_, _) => newBoolean false
+
+
         val binOpName = 
             case bop of 
                 Ast.Plus _ => "+"
@@ -1990,12 +2005,10 @@ and performBinop (bop:Ast.BINOP)
                                (fn x => not (x = EQUAL))
             
           | Ast.StrictEquals mode => 
-            dispatchComparison (valOf mode) 
-                               (fn x => x = EQUAL)
+            tripleEquals mode
 
           | Ast.StrictNotEquals mode => 
-            dispatchComparison (valOf mode) 
-                               (fn x => not (x = EQUAL))
+            newBoolean (not (toBoolean (tripleEquals mode))) 
 
           | Ast.Less mode => 
             dispatchComparison (valOf mode) 
