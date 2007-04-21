@@ -524,7 +524,7 @@ and setValueOrVirtual (base:Mach.OBJ)
                          
                   | Mach.ValProp _ => 
                     if (#readOnly existingAttrs)
-                    then error ["setValue on read-only property"]
+                    then ()  (* ignore it *)
                     else write ()
             end
         else
@@ -665,7 +665,15 @@ and newRootBuiltin (n:Ast.NAME) (m:Mach.MAGIC)
 
 and newArray (vals:Mach.VAL list)
     : Mach.VAL = 
-    instantiateGlobalClass Name.public_Array vals
+    let val a = instantiateGlobalClass Name.public_Array [newInt (Int32.fromInt (List.length vals))]
+        fun init a _ [] = ()
+          | init a k (x::xs) =
+            (setValue a (Name.public (Int.toString k)) x ;
+             init a (k+1) xs)
+    in
+        init (needObj a) 0 vals;
+        a
+    end
 
 and newBuiltin (n:Ast.NAME) (m:Mach.MAGIC option) 
     : Mach.VAL =
@@ -1823,7 +1831,7 @@ and performBinop (bop:Ast.BINOP)
             in
                 if Mach.isNumeric a andalso Mach.isNumeric b
                 then (if isNaN a orelse isNaN b
-                      then newBoolean false
+                      then newBoolean (cmp IEEEReal.UNORDERED)
                       else dispatch mode decimalOp doubleOp intOp uintOp largeOp)
                 else newBoolean (cmp (reorder (String.compare ((toString a), 
                                                                (toString b)))))
