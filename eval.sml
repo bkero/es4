@@ -2882,7 +2882,7 @@ and runAnySpecialConstructor (id:Mach.OBJ_IDENT)
              val source = toString (List.last args) 
              fun ident v = Token.Identifier (toString v)
              val argIdents = map ident argArgs
-             val nloc = {file="<no filename>", line=1}
+             val nloc = {file="<no filename>", span=(1,1), sm=StreamPos.mkSourcemap (), post_newline=false}
              val argList = case argIdents of
                                [] => []
                              | x::xs => ((x, nloc) :: 

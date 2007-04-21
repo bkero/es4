@@ -3,7 +3,7 @@
 
 structure Ast = struct
 
-type POS = { file: string, line: int }
+type POS = { file: string, span: StreamPos.span, sm: StreamPos.sourcemap, post_newline: bool }
 
 (* not actually unicode, maybe switch to int array to be unicode-y? *)
 
@@ -223,6 +223,7 @@ datatype PRAGMA =
              typeParams: IDENT list, 
              ty: TYPE_EXPR,
              isDynamic: bool }
+       | NominalType of NAME
 
      and STMT =
          EmptyStmt
@@ -388,7 +389,6 @@ datatype PRAGMA =
              readOnly: bool }
        | VirtualValFixture of 
          VIRTUAL_VAL_FIXTURE
-             
 
 withtype 
 

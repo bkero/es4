@@ -12,74 +12,16 @@ open Token
 
 val doTrace = ref false
 fun trace ss = if (!doTrace) then LogErr.log ("[lex] " :: ss) else ()
+
 fun error ss = LogErr.lexError ss
 
 type lex_result = TOKEN
 
 fun eof _ = Eof
 
-val lineno = ref 1
-fun incr_line _ = 
-    lineno := (!lineno + 1); 
-fun reset_coords _ = 
-    lineno := 1
-
-val filename = ref ""
-
-val line_breaks : int list ref = ref []
-val token_count : int      ref = ref 0
-
-
-fun token_list (fname, token_fn : unit -> TOKEN) =
-let
-    val t = ref [] 
-    fun add tok = t := (tok, {file = !filename, line = !lineno}) :: !t
-    fun add_lb offset = line_breaks := offset :: !line_breaks
-    fun stop _ = (token_count := length (!t); rev (!t))
-    fun step _ = 
-	let 
-	    val tok = token_fn ()
-	in 
-	    trace ["lexed ", tokenname (tok,!lineno)]; 
-	    
-	  (*
-	   * The lexbreak tokens represent choice points for the parser. We
-	   * return two thunks to it: one for each lexer start state
-	   * it might wish to resume lexing in.
-	   *)
-	    case tok of 
-	    LexBreakDiv _ => (add tok; stop ())
-	      | LexBreakDivAssign _ => (add tok; stop ())
-	      | LexBreakLessThan _ => (add tok; stop ())
-	      | Eof => (add Eof; stop ())
-	      | Eol => (add_lb (length (!t)); step ())
-	      | x => (add x; step ())
-	end
-in
-    filename := fname;
-    line_breaks := [];
-    step ()
-end
-
 fun chopTrailing (s:string) 
     : string = 
     String.substring (s, 0, ((String.size s) - 1))
-
-fun followsLineBreak (ts) =
-    let 
-	val offset = length ts
-	val max_offset = !token_count
-	fun findBreak lbs =
-	    case lbs of
-	[] => (trace ["followsLineBreak false"];false)
-	      | _ => 
-		(trace ["token_count=", Int.toString(max_offset),
-			" offset=", Int.toString(max_offset-offset),
-			" break=", Int.toString(hd lbs)];
-		 if (hd lbs) = (max_offset - offset) then (trace ["followsLineBreak true"];true) else findBreak (tl lbs))
-    in
-	findBreak (!line_breaks)
-    end
 
 val (curr_quote    :  char       ref) = ref #"\000"
 val (curr_chars    : (char list) ref) = ref []
@@ -133,7 +75,7 @@ val (found_newline :  bool       ref) = ref false
 	    fun yygetcolNo  strm = StreamPos.colNo  yysm (ULexBuffer.getpos strm)
 	    fun continue() = 
 let
-fun yyAction0 (strm, lastMatch) = (yystrm := strm;  incr_line(); Eol)
+fun yyAction0 (strm, lastMatch) = (yystrm := strm;  Eol)
 fun yyAction1 (strm, lastMatch) = (yystrm := strm;  Minus)
 fun yyAction2 (strm, lastMatch) = (yystrm := strm;  MinusMinus)
 fun yyAction3 (strm, lastMatch) = (yystrm := strm;  Not)
@@ -155,23 +97,9 @@ fun yyAction18 (strm, lastMatch) = (yystrm := strm;  DoubleDot)
 fun yyAction19 (strm, lastMatch) = (yystrm := strm;  TripleDot)
 fun yyAction20 (strm, lastMatch) = (yystrm := strm;  LeftDotAngle)
 fun yyAction21 (strm, lastMatch) = (yystrm := strm;
-       LexBreakDiv
-				   { lex_initial = 
-					fn _ => (Div, {file = !filename, line = !lineno}) :: token_list (!filename, fn _ => continue ()),
-				     lex_regexp = 
-				        fn _ =>
-					  (curr_chars := [#"/"];
-					   YYBEGIN REGEXP;
-					   token_list (!filename, fn _ => continue ())) })
+       LexBreakDiv       { lex_initial = fn _ => [], lex_regexp = fn _ => [] })
 fun yyAction22 (strm, lastMatch) = (yystrm := strm;
-       LexBreakDivAssign
-				   { lex_initial = 
-					fn _ => (DivAssign, {file = !filename, line = !lineno}) :: token_list (!filename, fn _ => continue ()),
-				     lex_regexp = 
-					fn _ =>
-					  (curr_chars := [#"=",#"/"];
-					   YYBEGIN REGEXP;
-					   token_list (!filename, fn _ => continue ())) })
+       LexBreakDivAssign { lex_initial = fn _ => [], lex_regexp = fn _ => [] })
 fun yyAction23 (strm, lastMatch) = (yystrm := strm;  Colon)
 fun yyAction24 (strm, lastMatch) = (yystrm := strm;  DoubleColon)
 fun yyAction25 (strm, lastMatch) = (yystrm := strm;  SemiColon)
@@ -192,13 +120,7 @@ fun yyAction39 (strm, lastMatch) = (yystrm := strm;  Plus)
 fun yyAction40 (strm, lastMatch) = (yystrm := strm;  PlusPlus)
 fun yyAction41 (strm, lastMatch) = (yystrm := strm;  PlusAssign)
 fun yyAction42 (strm, lastMatch) = (yystrm := strm;
-       LexBreakLessThan
-				   { lex_initial = 
-					fn _ => (LessThan, {file = !filename, line = !lineno}) :: token_list (!filename, fn _ => continue ()),
-				     lex_xml = 
-					fn _ => 
-					  (YYBEGIN XML;
-					   token_list (!filename, fn _ => continue ())) })
+       LexBreakLessThan { lex_initial = fn _ => [], lex_xml = fn _ => [] })
 fun yyAction43 (strm, lastMatch) = (yystrm := strm;  LeftShift)
 fun yyAction44 (strm, lastMatch) = (yystrm := strm;  LeftShiftAssign)
 fun yyAction45 (strm, lastMatch) = (yystrm := strm;  LessThanOrEquals)
@@ -351,14 +273,13 @@ fun yyAction141 (strm, lastMatch) = let
       end
 fun yyAction142 (strm, lastMatch) = (yystrm := strm;
        YYBEGIN SINGLE_LINE_COMMENT; continue())
-fun yyAction143 (strm, lastMatch) = (yystrm := strm;
-       YYBEGIN INITIAL; incr_line(); Eol)
+fun yyAction143 (strm, lastMatch) = (yystrm := strm;  YYBEGIN INITIAL; Eol)
 fun yyAction144 (strm, lastMatch) = (yystrm := strm;  continue())
 fun yyAction145 (strm, lastMatch) = (yystrm := strm;
        YYBEGIN MULTI_LINE_COMMENT; continue())
 fun yyAction146 (strm, lastMatch) = (yystrm := strm;
        YYBEGIN INITIAL; continue())
-fun yyAction147 (strm, lastMatch) = (yystrm := strm;  incr_line(); continue())
+fun yyAction147 (strm, lastMatch) = (yystrm := strm;  continue())
 fun yyAction148 (strm, lastMatch) = (yystrm := strm;  continue())
 fun yyAction149 (strm, lastMatch) = let
       val yytext = yymktext(strm)
@@ -382,8 +303,8 @@ fun yyAction150 (strm, lastMatch) = (yystrm := strm;
 				YYBEGIN REGEXP_CHARSET;
 				continue())
 fun yyAction151 (strm, lastMatch) = (yystrm := strm;
-       found_newline := true; incr_line(); continue())
-fun yyAction152 (strm, lastMatch) = (yystrm := strm;  incr_line(); continue())
+       found_newline := true; continue())
+fun yyAction152 (strm, lastMatch) = (yystrm := strm;  continue())
 fun yyAction153 (strm, lastMatch) = let
       val yytext = yymktext(strm)
       in
@@ -403,8 +324,8 @@ fun yyAction155 (strm, lastMatch) = (yystrm := strm;
 				YYBEGIN REGEXP;
 				continue())
 fun yyAction156 (strm, lastMatch) = (yystrm := strm;
-       found_newline := true; incr_line(); continue())
-fun yyAction157 (strm, lastMatch) = (yystrm := strm;  incr_line(); continue())
+       found_newline := true; continue())
+fun yyAction157 (strm, lastMatch) = (yystrm := strm;  continue())
 fun yyAction158 (strm, lastMatch) = let
       val yytext = yymktext(strm)
       in
@@ -424,62 +345,64 @@ fun yyAction160 (strm, lastMatch) = let
       in
         yystrm := strm;
          curr_quote := String.sub (yytext,0); 
-				 curr_chars := [];
-				 YYBEGIN STRING;
-				 continue()
+				curr_chars := [];
+				YYBEGIN STRING;
+				continue()
       end
 fun yyAction161 (strm, lastMatch) = let
       val yytext = yymktext(strm)
       in
         yystrm := strm;
          if 
-				     (!curr_quote) = String.sub (yytext,0)
-				 then 
-				     let 
-					 val str = (String.implode (rev (!curr_chars)))
-				     in
-					 curr_quote := #"\000";
-					 curr_chars := [];
-					 YYBEGIN INITIAL;
-					 StringLiteral str
-				     end
-				 else
-				     (curr_chars := (String.sub (yytext,0)) :: (!curr_chars);
-				     continue())
+				    (!curr_quote) = String.sub (yytext,0)
+				then 
+				    let 
+					val str = (String.implode (rev (!curr_chars)))
+					(* val str_span = *)
+				    in
+					curr_quote := #"\000";
+					curr_chars := [];
+					YYBEGIN INITIAL;
+					(* (StringLiteral str, str_span) *)
+					StringLiteral str
+				    end
+				else
+				    (curr_chars := (String.sub (yytext,0)) :: (!curr_chars);
+				    continue())
       end
 fun yyAction162 (strm, lastMatch) = let
       val yytext = yymktext(strm)
       in
         yystrm := strm;
-         (case Char.fromCString yytext of
-				       NONE => error ["unexpected input in <STRING>{charEscape}: '", yytext, "'"]
-				     | SOME c => curr_chars := c :: (!curr_chars));
-				  continue()
+        (case Char.fromCString yytext of
+				    NONE => error ["unexpected input in <STRING>{charEscape}: '", yytext, "'"]
+				  | SOME c => curr_chars := c :: (!curr_chars));
+				continue()
       end
 fun yyAction163 (strm, lastMatch) = let
       val yytext = yymktext(strm)
       in
         yystrm := strm;
          curr_chars := (String.sub (yytext,1)) :: (!curr_chars);
-				  continue()
+				continue()
       end
 fun yyAction164 (strm, lastMatch) = let
       val yytext = yymktext(strm)
       in
         yystrm := strm;
          curr_chars := (String.sub (yytext,0)) :: (!curr_chars);
-				  continue()
+				continue()
       end
 fun yyAction165 (strm, lastMatch) = let
       val yytext = yymktext(strm)
       in
         yystrm := strm;
          error [
-					    "unexpected input: '",
-					    yytext,
-					    "' -- char code: ",
-					    Int.toString (Char.ord (String.sub (yytext,0)))
-					]
+					"unexpected input: '",
+					yytext,
+					"' -- char code: ",
+					Int.toString (Char.ord (String.sub (yytext,0)))
+				      ]
       end
 fun yyQ429 (strm, lastMatch) = yyAction143(strm, yyNO_MATCH)
 fun yyQ430 (strm, lastMatch) = yyAction144(strm, yyNO_MATCH)
