@@ -365,7 +365,7 @@ fun apply (vals:Mach.VAL list)
         val argsObj = nthAsObj vals 2
         val argsList = arrayToList argsObj
     in
-        Eval.evalCallExpr (SOME thisObj) fnObj argsList
+        Eval.evalCallExpr thisObj fnObj argsList
     end
 
 fun fnLength (vals:Mach.VAL list) 

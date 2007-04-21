@@ -25,7 +25,7 @@ MLBUILD := ml-build
 
 #ifneq ($(call anchorhome,smlnj-tdp),)
 # TODO: uncomment this once everyone is using the latest SML/NJ svn sources
-#MLBUILD_ARGS=-Ctdp.instrument=true -DBACKTRACE \$$smlnj-tdp/back-trace.cm
+MLBUILD_ARGS=-Ctdp.instrument=true -DBACKTRACE \$$smlnj-tdp/back-trace.cm
 #endif
 
 # ------------------------------------------------------------
