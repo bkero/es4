@@ -84,7 +84,7 @@ package RegExpInternals
        This captures array can be an array that's copied like the
        E262-3 states, or it could be a functional data structure.  
     */
-    public type CapArray = Array!;  /* Really [(string,Undefined)]! but we can't express that yet */
+    public type CapArray = Array!;  /* FIXME: really [(string,Undefined)]! but we can't express that yet */
 
     function makeCapArray(nCapturingParens : uint) : CapArray {
         var a = [] : CapArray;
@@ -121,7 +121,7 @@ package RegExpInternals
 
     class Disjunct! implements Matcher
     {
-        function Disjunct(m1 : Matcher, m2 : Matcher) : m1=m1, m2=m2 {}
+        function Disjunct(m1 : Matcher, m2 : Matcher) /* : m1=m1, m2=m2 */ { this.m1=m1; this.m2=m2; }  /* FIXME */
 
         function match(ctx : Context, x : State, c : Continuation) : MatchResult {
             let r : MatchResult = m1.match(ctx, x, c);
@@ -135,7 +135,7 @@ package RegExpInternals
 
     class Alternative! implements Matcher
     {
-        function Alternative(m1 : Matcher, m2 : Matcher) : m1=m1, m2=m2 {}
+        function Alternative(m1 : Matcher, m2 : Matcher) /* : m1=m1, m2=m2 */ { this.m1=m1, this.m2=m2; } /* FIXME */
 
         function match(ctx : Context, x : State, c : Continuation) : MatchResult
             m1.match(ctx, x, (function (ctx : Context, y : State) m2.match(ctx, y, c)) );
@@ -203,13 +203,19 @@ package RegExpInternals
     {
         function Quantified(parenIndex:uint, parenCount:uint, m:Matcher, min:double, max:double, 
                             greedy:Boolean) 
-            : parenIndex = parenIndex
+        /*    : parenIndex = parenIndex
             , parenCount = parenCount
             , m = m
             , min = min
             , max = max
-            , greedy = greedy
+            , greedy = greedy */
         {
+            this.parenIndex = parenIndex;  /* FIXME */
+            this.parenCount = parenCount;  /* FIXME */
+            this.m = m;                    /* FIXME */
+            this.min = min;                /* FIXME */
+            this.max = max;                /* FIXME */
+            this.greedy = greedy;          /* FIXME */
         }
 
         function match(ctx : Context, x : State, c : Continuation) : MatchResult {
@@ -256,7 +262,7 @@ package RegExpInternals
 
     class Capturing! implements Matcher
     {
-        function Capturing(m : Matcher, parenIndex : uint) : m=m, parenIndex=parenIndex {}
+        function Capturing(m : Matcher, parenIndex : uint) /* : m=m, parenIndex=parenIndex */ { this.m=m; this.parenIndex=parenIndex; } /* FIXME */
 
         function match(ctx : Context, x : State, c : Continuation) : MatchResult {
 
@@ -276,7 +282,7 @@ package RegExpInternals
 
     class Backref! implements Matcher
     {
-        function Backref(capno : uint) : capno=capno {}
+        function Backref(capno : uint) /* : capno=capno */ { this.capno=capno; }  /* FIXME */
 
         function match(ctx : Context, x : State, c : Continuation) : MatchResult {
             let cap = x.cap;
@@ -319,7 +325,7 @@ package RegExpInternals
 
     class CharsetMatcher! implements Matcher
     {
-        function CharsetMatcher(cs : Charset) : cs=cs {}
+        function CharsetMatcher(cs : Charset) /* : cs=cs */ { this.cs=cs; }  /* FIXME */
 
         function match(ctx : Context, x : State, c : Continuation) : MatchResult {
             let e = x.endIndex;
@@ -357,7 +363,7 @@ package RegExpInternals
 
     class CharsetUnion implements Charset 
     {
-        function CharsetUnion(m1 : Charset, m2 : Charset) : m1=m1, m2=m2 {}
+        function CharsetUnion(m1 : Charset, m2 : Charset) /* : m1=m1, m2=m2 */ { this.m1=m1; this.m2=m2; }  /* FIXME */
 
         function match(c : string) : Boolean
             m1.match(c, true) || m2.match(c, true);
@@ -367,7 +373,7 @@ package RegExpInternals
 
     class CharsetIntersection implements Charset 
     {
-        function CharsetIntersection(m1 : Charset, m2 : Charset) : m1=m1, m2=m2 {}
+        function CharsetIntersection(m1 : Charset, m2 : Charset) /* : m1=m1, m2=m2 */ { this.m1=m1; this.m2=m2; }  /* FIXME */
 
         function match(c : string) : Boolean
             m1.match(c, true) && m2.match(c, true);
@@ -377,7 +383,7 @@ package RegExpInternals
 
     class CharsetComplement implements Charset 
     {
-        function CharsetComplement(cs : Charset) : cs=cs {}
+        function CharsetComplement(cs : Charset) /* : cs=cs */ { this.cs=cs; }  /* FIXME */
 
         function match(c : string) : Boolean
             m.match(c) === failure;
@@ -387,7 +393,7 @@ package RegExpInternals
 
     class CharsetRange implements Charset 
     {
-        function CharsetRange(lo : string, hi : string) : lo=lo, hi=hi {}
+        function CharsetRange(lo : string, hi : string) /* : lo=lo, hi=hi */ { this.lo=lo; this.hi=hi; }  /* FIXME */
 
         function match(c : string) : Boolean {
             let lo_code = lo.charCodeAt(0);
@@ -420,13 +426,13 @@ package RegExpInternals
 
     class CharsetUnicodeClass implements Charset
     {
-        function CharsetUnicodeClass(name : string) : name=name {}
+        function CharsetUnicodeClass(name : string) /* : name=name */ { this.name=name; }  /* FIXME */
 
         function match(c : string) : Boolean {
             throw new Error("character set not yet implemented: " + name);
         }
 
-        var name : String!;
+        var name : string;
     }
 
     var charset_linebreak : Charset = new CharsetAdhoc("\u000A\u000D\u0085\u2028\u2029"); /* FIXME: const */
