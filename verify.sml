@@ -163,9 +163,8 @@ fun verifyTypeExpr (env:ENV)
                    (ty:Ast.TYPE_EXPR)
     : TYPE_VALUE =
     let in
-        TextIO.print ("type checking and normalizing a type");
-        Pretty.ppType ty;
-        TextIO.print "\n";
+        trace ["type checking and normalizing a type"];
+        if (!doTrace) then Pretty.ppType ty else ();
 
 	    case ty of
 	        Ast.SpecialType _ => 
@@ -220,7 +219,11 @@ fun verifyTypeExpr (env:ENV)
                 Ast.ObjectType fields'
 	        end	
 
-	  | _ => unimplError ["verifyTypeExpr"]
+	  | _ => 
+        let in
+            Pretty.ppType ty;
+            unimplError ["verifyTypeExpr"]
+        end
     end
     
 and verifyTypeExprs  (env:ENV) 
@@ -258,90 +261,90 @@ and isCompatible (t1:TYPE_VALUE)
     : bool = 
     let 
     in
-	TextIO.print ("Checking compatible\nFirst type: ");
-	Pretty.ppType t1;
-	TextIO.print("\nSecond type: ");
-	Pretty.ppType t2; 
-	TextIO.print("\n");
-	(t1=t2) orelse
-	(t1=anyType) orelse
-	(t2=anyType) orelse
-	case (t1,t2) of
-	    (Ast.UnionType types1,_) => 
-	    List.all (fn t => isCompatible t t2) types1
-	  | (_, Ast.UnionType types2) =>
-	    (* t1 must exist in types2 *)
-	    List.exists (fn t => isCompatible t1 t) types2 
-	  | (Ast.ArrayType types1, Ast.ArrayType types2) => 
-	    (* arrays are invariant, every entry should be compatible in both directions *)
-	    let fun check (h1::t1) (h2::t2) =
-		    (isCompatible h1 h2)
-		    andalso
-		    (isCompatible h2 h1)
-		    andalso
-		    (case (t1,t2) of
-			 ([],[]) => true
-		       | ([],_::_) => check [h1] t2
-		       | (_::_,[]) => check t1 [h2]
-		       | (_::_,_::_) => check t1 t2)
-	    in
-		check types1 types2
-	    end
+        trace ["Checking compatible - First type:"];
+        if (!doTrace) then Pretty.ppType t1 else ();
+	    trace ["Second type: "];
+        if (!doTrace) then Pretty.ppType t2 else ();
 
-	  | (Ast.ArrayType _, 
-	     Ast.TypeName (Ast.Identifier {ident="Array", openNamespaces=[]})) 
-	    => true
-
-	  | (Ast.ArrayType _, 
-	     Ast.TypeName (Ast.Identifier {ident="Object", openNamespaces=[]})) 
-	    => true
-
-	  | (Ast.FunctionType _, 
-	     Ast.TypeName (Ast.Identifier {ident="Function", openNamespaces=[]})) 
-	    => true
-
-	  | (Ast.FunctionType _, 
-	     Ast.TypeName (Ast.Identifier {ident="Object", openNamespaces=[]}))
-	    => true
-
-	  | (Ast.AppType {base=base1,args=args1}, Ast.AppType {base=base2,args=args2}) => 
-	    (* We keep types normalized wrt beta-reduction, 
-	     * so base1 and base2 must be class or interface types.
-	     * Type arguments are covariant, and so must be intra-compatible - CHECK 
-	     *)
-	    false
-	    
-	  | (Ast.ObjectType fields1, Ast.ObjectType fields2) =>
-	    false
-
-	  | (Ast.FunctionType 
-		 {typeParams=typeParams1,
-		  params  =params1, 
-		  result  =result1,
-		  thisType=thisType1,
-		  hasRest =hasRest1,
-	      minArgs=minArgs},
-	     Ast.FunctionType 
-		 {typeParams=typeParams2,
-		  params=params2, 
-		  result=result2, 
-		  thisType=thisType2,
-		  hasRest=hasRest2,
-		  minArgs=minArgs2}) =>
-	    let
-	    in
-		(* TODO: Assume for now that functions are not polymorphic *)
-		assert (typeParams1 = [] andalso typeParams2=[]) "cannot handle polymorphic fns";
-		assert (not hasRest1 andalso not hasRest2) "cannot handle rest args";
-
-		ListPair.all (fn (t1,t2) => isCompatible t1 t2) (params1,params2)
-		andalso
-		isCompatible result1 result2
-	    end
-
-
-	  (* catch all *)
-	  | _ => unimplError ["isCompatible"]
+	    (t1=t2) orelse
+	    (t1=anyType) orelse
+	    (t2=anyType) orelse
+	    case (t1,t2) of
+	        (Ast.UnionType types1,_) => 
+	        List.all (fn t => isCompatible t t2) types1
+	      | (_, Ast.UnionType types2) =>
+	        (* t1 must exist in types2 *)
+	        List.exists (fn t => isCompatible t1 t) types2 
+	      | (Ast.ArrayType types1, Ast.ArrayType types2) => 
+	        (* arrays are invariant, every entry should be compatible in both directions *)
+	        let fun check (h1::t1) (h2::t2) =
+		            (isCompatible h1 h2)
+		            andalso
+		            (isCompatible h2 h1)
+		            andalso
+		            (case (t1,t2) of
+			             ([],[]) => true
+		               | ([],_::_) => check [h1] t2
+		               | (_::_,[]) => check t1 [h2]
+		               | (_::_,_::_) => check t1 t2)
+	        in
+		        check types1 types2
+	        end
+            
+	      | (Ast.ArrayType _, 
+	         Ast.TypeName (Ast.Identifier {ident="Array", openNamespaces=[]})) 
+	        => true
+               
+	      | (Ast.ArrayType _, 
+	         Ast.TypeName (Ast.Identifier {ident="Object", openNamespaces=[]})) 
+	        => true
+               
+	      | (Ast.FunctionType _, 
+	         Ast.TypeName (Ast.Identifier {ident="Function", openNamespaces=[]})) 
+	        => true
+               
+	      | (Ast.FunctionType _, 
+	         Ast.TypeName (Ast.Identifier {ident="Object", openNamespaces=[]}))
+	        => true
+               
+	      | (Ast.AppType {base=base1,args=args1}, Ast.AppType {base=base2,args=args2}) => 
+	        (* We keep types normalized wrt beta-reduction, 
+	         * so base1 and base2 must be class or interface types.
+	         * Type arguments are covariant, and so must be intra-compatible - CHECK 
+	         *)
+	        false
+	        
+	      | (Ast.ObjectType fields1, Ast.ObjectType fields2) =>
+	        false
+            
+	      | (Ast.FunctionType 
+		         {typeParams=typeParams1,
+		          params  =params1, 
+		          result  =result1,
+		          thisType=thisType1,
+		          hasRest =hasRest1,
+	              minArgs=minArgs},
+	         Ast.FunctionType 
+		         {typeParams=typeParams2,
+		          params=params2, 
+		          result=result2, 
+		          thisType=thisType2,
+		          hasRest=hasRest2,
+		          minArgs=minArgs2}) =>
+	        let
+	        in
+		        (* TODO: Assume for now that functions are not polymorphic *)
+		        assert (typeParams1 = [] andalso typeParams2=[]) "cannot handle polymorphic fns";
+		        assert (not hasRest1 andalso not hasRest2) "cannot handle rest args";
+                
+		        ListPair.all (fn (t1,t2) => isCompatible t1 t2) (params1,params2)
+		        andalso
+		        isCompatible result1 result2
+	        end
+            
+            
+	      (* catch all *)
+	      | _ => unimplError ["isCompatible"]
     end
     
 fun checkBicompatible (ty1:TYPE_VALUE) 
@@ -360,10 +363,6 @@ fun checkConvertible (ty1:TYPE_VALUE)
     
 
 (******************** Verification **************************************************)
-
-(* 
-    Verify a program
- *)
 
 (*
     HEAD
@@ -712,20 +711,18 @@ and verifyBlock (env:ENV)
     : Ast.BLOCK =
     let
     in case b of
-        Ast.Block { head, body, pos, pragmas=[], defns=[] } =>
+        Ast.Block { head, body, pos, pragmas=pragmas, defns=defns } =>
             let
                 val _ = LogErr.setPos pos
-                val head = case head of SOME h => verifyHead env h 
-                                      | _ => ([],[])
+                val head = Option.map (verifyHead env) head
                 val body = verifyStmts env body
             in
-                Ast.Block { pragmas = [],
-                            defns = [],
+                Ast.Block { pragmas = pragmas,
+                            defns = defns,
                             body = body,
-                            head = SOME head,
+                            head = head,
                             pos = pos }
             end
-      | _ => internalError ["defn did not remove pragmas and definitions"]
     end
 
 (*
@@ -734,8 +731,26 @@ and verifyBlock (env:ENV)
 
 and verifyFixture (env:ENV)
 		          (f:Ast.FIXTURE) 
-    : Ast.FIXTURE (*TODO*)
-      = f
+    : Ast.FIXTURE = (*TODO*)
+    let in
+        case f of
+         Ast.NamespaceFixture ns =>
+         Ast.NamespaceFixture ns
+       | Ast.ClassFixture (Ast.Cls {name, extends, implements, classFixtures, instanceFixtures,
+                                    instanceInits, constructor, classType, instanceType }) =>
+         (*TODO*)
+         f
+       | Ast.TypeVarFixture =>
+         Ast.TypeVarFixture 
+       | Ast.TypeFixture ty =>
+         Ast.TypeFixture (verifyTypeExpr env ty)
+       | Ast.ValFixture {ty, readOnly} =>
+         Ast.ValFixture {ty=verifyTypeExpr env ty, readOnly=readOnly}
+       | Ast.MethodFixture { func, ty, readOnly, override, final } =>
+         (* TODO *)
+         f
+       | _ => unimplError ["in verifyFixture"]
+    end
 
 and verifyFixturesOption (env:ENV) 
 		                 (fs:Ast.FIXTURES option)  
