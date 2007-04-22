@@ -61,7 +61,7 @@ package
             let s : string = "";
             let n : uint = codes.length;
             for (let i : uint = 0 ; i < n ; ++i)
-                s += magic::fromCharCode(codes[i]);
+                s += magic::fromCharCode(uint(codes[i]));
             return s;
         }
 

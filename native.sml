@@ -365,7 +365,7 @@ fun apply (vals:Mach.VAL list)
         val argsObj = nthAsObj vals 2
         val argsList = arrayToList argsObj
     in
-        Eval.evalCallExpr (SOME thisObj) fnObj argsList
+        Eval.evalCallExpr thisObj fnObj argsList
     end
 
 fun fnLength (vals:Mach.VAL list) 
@@ -636,10 +636,11 @@ fun now (vals:Mach.VAL list)
 
 *)
 
+val random_state = Random.rand (37, 79)
+
 fun random (v:Mach.VAL list)
     : Mach.VAL =
-    LogErr.unimplError ["intrinsic::random"]
-
+    Eval.newDouble (Random.randReal random_state)
 
 fun unaryDoubleFn (f:(Real64.real -> Real64.real)) : 
     ((Mach.VAL list) -> Mach.VAL) =

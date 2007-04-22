@@ -1,43 +1,50 @@
 /* -*- indent-tabs-mode: nil -*- */
 
-//package
+/* FIXME: The name hiding trick with MathInternals will work (provided
+ * the visible properties on the Math class are changed to "public")
+ * but does not work now due to a bug.  */
+
+//package MathInternals
 //{
+    /* Math is a singleton object, not a class, but has the type "Math"
+     * which suggests a private Math class that created the singleton.  
+     */
 
-    // Math is a singleton object, not a class, but has the type "Math"
-    // which suggests a private Math class that created the singleton.
-
-    intrinsic dynamic final class Math extends Object
+/*public*/ intrinsic dynamic final class Math
     {
-        intrinsic static const E
-        intrinsic static const LN10
-        intrinsic static const LN2
-        intrinsic static const LOG2E
-        intrinsic static const LOG10E
-        intrinsic static const PI
-        intrinsic static const SQRT1_2
-        intrinsic static const SQRT2
+        /* E262-3 15.8.2.1 */
+        intrinsic static function abs(x:Numeric = NaN):Numeric {
+            if (isNaN(x))
+                return x;
+            if (x === 0.0)
+                return 0.0;  /* Handles -0 => 0 */
+            if (x < 0)
+                return -x;
+            return x;
+        }
 
-        intrinsic static function abs(x:Number):Number
-	    x > 0 ? x : -x;
-
-        intrinsic static function max(...args):Number
+        intrinsic static function max(...args):Numeric
 	{
-	    var x : double = double.NEGATIVE_INFINITY;
+	    let x = double.NEGATIVE_INFINITY;
 	    for (let i : uint = 0; i < args.length; ++i) {
-		if (args[i] > x) {
-		    x = args[i];
-		}
+                let v = Number(args[i]);  /* FIXME: is this conversion right? */
+                if (isNaN(v))
+                    return v;
+		if (!(v < x))  /* Handles -0 < +0 */
+		    x = v;
 	    }
 	    return x;
 	}
 
-        intrinsic static function min(...args):Number
+        intrinsic static function min(...args):Numeric
 	{
-	    var x : double = double.POSITIVE_INFINITY;
+	    let x = double.POSITIVE_INFINITY;
 	    for (let i : uint = 0; i < args.length; ++i) {
-		if (args[i] < x) {
-		    x = args[i];
-		}
+                let v = Number(args[i]);  /* FIXME: is this conversion right? */
+                if (isNaN(v))
+                    return v;
+		if (!(v > x))  /* Handles -0 < +0 */
+		    x = v;
 	    }
 	    return x;
 	}
@@ -58,15 +65,15 @@
         intrinsic static native function sqrt(x):Number;
         intrinsic static native function tan(x):Number;
 
-        // 15.8.1 Value Properties of the Math Object
-        const E = intrinsic::E;    
-        const LN10 = intrinsic::LN10;  
-        const LN2 = intrinsic::LN2;    
-        const LOG2E = intrinsic::LOG2E;    
-        const LOG10E = intrinsic::LOG10E;  
-        const PI = intrinsic::PI;  
-        const SQRT1_2 = intrinsic::SQRT1_2;    
-        const SQRT2 = intrinsic::SQRT2;    
+        // 15.8.1 Value Properties of the Math Object.
+        const E = 2.7182818284590452354;   /* Approximately */
+        const LN10 = 2.302585092994046;    /* Approximately */
+        const LN2 = 0.6931471805599453;    /* Approximately */
+        const LOG2E = 1.4426950408889634;  /* Approximately */
+        const LOG10E = 0.4342944819032518; /* Approximately */
+        const PI = 3.1415926535897932;     /* Approximately */
+        const SQRT1_2 = 0.7071067811865476;/* Approximately */
+        const SQRT2 = 1.4142135623730951;  /* Approximately */
 
         // 15.8.2 Function Properties of the Math Object
         var abs = intrinsic::abs;
@@ -92,8 +99,14 @@
         // max.length = 2;  /* FIXME: this will cons a function, set its length and throw it away */
         // min.length = 2;
 
-    } // class
-    public var Math = new intrinsic::Math;
+    }
+//}
 
+/*package 
+{
+    import MathInternals.*;
 
-//} // package
+    public var Math = new MathInternals.Math;
+}*/
+
+    var Math = new intrinsic::Math;
