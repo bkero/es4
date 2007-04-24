@@ -80,10 +80,10 @@ this
 let (f=function f() {}) f(3);
 
 %% [fn6] verify, pass
-(type function(int):int);
+type function(int):int;
 
 %% [fn5] verify, pass
-let (f:function(x:int):int=function f(x:int):int {return x}) f(3);
+let (f:function(int):int=function f(x:int):int {return x}) f(3);
 
 
 %% [fn7] verify, pass
@@ -98,18 +98,21 @@ let (f=1) f(3)
 %% [function defn] verify, pass
 function f(x) { return x; }
  
+%% [fn51] verify, pass
+let (f:* =function f(x:int):int {return x}) f(3);
+ 
 %% [fn52] verify, pass
-let (f:function(y:int):int=function f(x:int):int {return x}) f(3);
+let (f:  function(int):int   =function f(x:int):int {return x}) f(3);
 
 %% [fn53] verify, pass
-let (f:function(y:*):* =function f(x:int):int {return x}) f(3);
+let (f:function(*):* =function f(x:int):int {return x}) f(3);
 
 %% [fn54] verify, pass
-let (f:function(y:int):int=function f(x:int):int {return x}) f(3);
+let (f:function(int):int=function f(x:int):int {return x}) f(3);
 
 %% [fn55] verify, pass
 let (f:function(y)=function f(x:int):int {return x}) f(3);
 
 %% [fn56] verify, pass
-let (f:function(y:int):int=function f(x) {return x}) f(3);
+let (f:function(int):int=function f(x) {return x}) f(3);
 

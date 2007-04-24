@@ -1,23 +1,37 @@
 structure LogErr = struct
 
-fun posToString {file, line} =
-    file ^ ":" ^ (Int.toString line)
+fun posToString {file, span, sm, post_newline} =
+    let val (pos1, pos2) = span
+    in
+        file ^ ":" ^
+        (Int.toString (StreamPos.lineNo sm pos1)) ^ "." ^ (Int.toString (StreamPos.colNo sm pos1)) ^ "-" ^
+        (Int.toString (StreamPos.lineNo sm pos2)) ^ "." ^ (Int.toString (StreamPos.colNo sm pos2))
+    end
 
 val (pos:(Ast.POS option) ref) = ref NONE
 fun setPos (p:Ast.POS option) = pos := p
 
 val (lastReported:(Ast.POS option) ref) = ref NONE
 
+fun pos_equal (NONE, NONE) = true
+  | pos_equal (SOME (p:Ast.POS), SOME (q:Ast.POS)) =
+    ((#file p) = (#file q)) andalso ((#span p) = (#span q))
+  | pos_equal (_, _) = false
+
 fun log ss = 
-    (if not ((!lastReported) = (!pos))
-     then 
-	 ((case !pos of 
-	      NONE => ()
-	    | SOME p => TextIO.print ("[posn] " ^ (posToString p) ^ "\n"));
-	  lastReported := (!pos))
-     else ();
-     List.app TextIO.print ss; 
-     TextIO.print "\n")
+    let
+        val pos_changed = not (pos_equal (!lastReported, !pos))
+    in
+        if pos_changed
+        then 
+            ((case !pos of 
+              NONE => ()
+            | SOME p => TextIO.print ("[posn] " ^ (posToString p) ^ "\n"));
+            lastReported := (!pos))
+        else ();
+        List.app TextIO.print ss;
+        TextIO.print "\n"
+    end
 
 fun error ss = case !pos of 
 		   NONE => log ("**ERROR** (unknown location)" :: ss)

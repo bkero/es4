@@ -34,8 +34,8 @@ package
     // 15.1.2.4 isNaN (v)
     intrinsic function isNaN(v:*):boolean
     {
-        let const n = intrinsic::ToDouble(v)
-        return n == Number.NaN 
+        let const n = intrinsic::ToDouble(v);
+        return !(n === n);
     }
 
     // 15.1.2.5 isFinite (number)

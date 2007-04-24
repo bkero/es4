@@ -48,3 +48,6 @@
 
 %% [switch] eval
 @tests/exec/switch-statement.es
+
+%% [scopes] eval
+@tests/exec/scopes.es

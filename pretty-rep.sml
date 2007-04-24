@@ -16,6 +16,8 @@ datatype smlDataRep =
        | UInt32 of Word32.word
        | Dec of Decimal.DEC
        | DecRm of Decimal.ROUNDING_MODE
+       | StrmPosSpan of StreamPos.span
+       | StrmPosSM of StreamPos.sourcemap
        | Bool of bool
 
 fun ppSmlDataRep stream (rep : smlDataRep) =
@@ -54,6 +56,8 @@ fun ppSmlDataRep stream (rep : smlDataRep) =
       | Int32 r => str ("(Int32.fromString \"" ^ (Int32.toString r) ^ "\"")
       | Dec r => str ("(Decimal.fromString \"" ^ (Decimal.toString r) ^ "\"")
       | DecRm r => str ("Decimal." ^ (Decimal.rmToString r))
+      | StrmPosSpan _ => str "<StreamPos.span>"
+      | StrmPosSM _ => str "<StreamPos.sourcemap"
     end
 
 end

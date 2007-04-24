@@ -52,10 +52,10 @@ package
            E262-4 draft proposals:bug_fixes - FUNCTION.LENGTH
         */
         static function fromCharCode(...args)
-            Function.apply(string.fromCharCodeHelper, null, args);
+            string.fromCharCodeHelper(args);
 
         intrinsic static function fromCharCode(...args) : double
-            Function.apply(string.fromCharCodeHelper, null, args);
+            string.fromCharCodeHelper(args);
 
         /* E262-3 15.5.4.2: String.prototype.toString */
         prototype function toString(this : String)
@@ -87,7 +87,7 @@ package
             ToString(self).charAt(pos);
             
         intrinsic function charAt(pos: double = 0) : String
-            ToString(self).charAt(pos);
+            ToString(this).charAt(pos);
 
         /* E262-3 15.5.4.5: String.prototype.charCodeAt
            E262-4 draft proposals:static_generics

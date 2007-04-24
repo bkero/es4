@@ -77,10 +77,10 @@ fun boot _ =
         val globalObj = Mach.newObj (Mach.ClassTag Name.public_Object) Mach.Null NONE
         val _ = trace ["installing global object"];
         val _ = Eval.resetGlobal globalObj
-        val globalScope = Eval.getGlobalScope ()
+        val globalRegs = Eval.getInitialRegs ()
 
         (* Allocate any standard anonymous user namespaces like magic and meta. *)
-        val _ = Eval.allocScopeFixtures (Eval.getGlobalScope()) (!Defn.topFixtures)
+        val _ = Eval.allocScopeFixtures (Eval.getInitialRegs()) (!Defn.topFixtures)
 
         (* 
          * We have to do a small bit of delicate work here because the global object
@@ -109,13 +109,13 @@ fun boot _ =
                           | _ => error [LogErr.name fullName, " did not resolve to a class fixture"]
 
               val _ = trace ["allocating class ", LogErr.name fullName];
-              val closure = Eval.newClsClosure globalScope cls
+              val closure = Eval.newClsClosure (#scope globalRegs) cls
               val obj = Mach.newObj (Mach.ClassTag Name.public_Class) Mach.Null (SOME (Mach.Class closure))
-              val classScope = Eval.extendScope globalScope obj false
+              val classRegs = Eval.extendScopeReg globalRegs obj Mach.InstanceScope
 
               val _ = trace ["allocating class fixtures for ", LogErr.name fullName];
               val Ast.Cls { classFixtures, ... } = cls
-              val _ = Eval.allocObjFixtures classScope obj classFixtures
+              val _ = Eval.allocObjFixtures classRegs obj NONE classFixtures
 
               val _ = trace ["binding class ", LogErr.name fullName];
               val Mach.Obj { props, ... } = globalObj
@@ -154,19 +154,19 @@ fun boot _ =
                * we're defining class "Class" itself, and we won't be able to find it 
                * by name until just now.
                *)
-                val classScope = Eval.extendScope globalScope classObj false
-                val classClass = Eval.findVal globalScope (Eval.multinameOf Name.public_Class)
+                val classRegs = Eval.extendScopeReg globalRegs classObj Mach.InstanceScope
+                val classClass = Eval.findVal (#scope globalRegs) (Eval.multinameOf Name.public_Class)
                 val Ast.Cls { instanceFixtures, ... } = (#cls (Mach.needClass classClass))
             in
-                Eval.allocObjFixtures classScope classObj instanceFixtures
+                Eval.allocObjFixtures classRegs classObj (SOME classObj) instanceFixtures
             end
 
         val (objClass, objClassClosure, objClassObj, residualObjectProg) = loadRootClass "Object"
         val _ = trace ["running Object constructor on global object"];
         val Ast.Cls { instanceFixtures, ...} = objClass
-        val objClassScope = Eval.extendScope globalScope objClassObj false
-        val _ = Eval.allocObjFixtures objClassScope globalObj instanceFixtures
-        val _ = Eval.initializeAndConstruct objClassClosure objClassObj objClassScope [] globalObj
+        val objClassRegs = Eval.extendScopeReg globalRegs objClassObj Mach.InstanceScope
+        val _ = Eval.allocObjFixtures objClassRegs globalObj (SOME globalObj) instanceFixtures
+        val _ = Eval.initializeAndConstruct objClassClosure objClassObj objClassRegs [] globalObj
 
         val (_, _, classClassObj, residualClassProg) = loadRootClass "Class"
         val (_, _, functionClassObj, residualFunctionProg) = loadRootClass "Function"
@@ -205,6 +205,11 @@ fun boot _ =
              "builtins/Date.es",
              
              "builtins/Unicode.es",
+             "builtins/RegExpCompiler.es",
+             "builtins/RegExpEvaluator.es",
+             "builtins/RegExp.es",
+
+             "builtins/Unicode.es",
 (*             "builtins/RegExpCompiler.es",
              "builtins/RegExpEvaluator.es",
              "builtins/RegExp.es",
@@ -212,8 +217,6 @@ fun boot _ =
              "builtins/Error.es",           
              "builtins/Shell.es"
             ];
-        (*
-         *)
         trace ["running residual programs"];
         Eval.evalProgram residualObjectProg;
         Eval.evalProgram residualClassProg;
