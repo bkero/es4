@@ -8,6 +8,10 @@ function foo()
 
 class C 
 {
+    function C(x) : x=x {
+        intrinsic::assert(this.x == x)
+    }
+
 	function foo() 
 	{
 		intrinsic::assert(this === c);
@@ -47,7 +51,7 @@ class C
 }
 
 
-c = new C;
+c = new C(10);
 c.bar();
 var y = c.outer();
 y();

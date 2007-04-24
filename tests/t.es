@@ -9,14 +9,15 @@ let f = function (x:int) { return x + x }
 f(10)
 */
 
-
-package p.q {
+package {
+namespace foo
 class A { 
-function A (xx) x=xx {}
-var x
+use namespace foo
+function A (x) : x=x { }
+foo var x
 }
 var a = new A(10)
-intrinsic::print(a.x)
+intrinsic::print(a.foo::x)
 }
 
 

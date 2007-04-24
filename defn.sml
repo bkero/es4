@@ -496,10 +496,9 @@ fun identExprToMultiname (env:ENV) (ie:Ast.IDENT_EXPR)
             end
       | Ast.QualifiedIdentifier {ident, qual,...} => 
             let
-            in case qual of
-                Ast.LiteralExpr (Ast.LiteralNamespace ns ) =>
-                    {nss = [[ns]], id = ident}
-              | _ => LogErr.defnError ["unknown namespace value needed during definition phase"]
+                val ns = resolveExprToNamespace env qual
+            in
+                {nss = [[ns]], id = ident}
             end
       | Ast.TypeIdentifier {ident,typeArgs} =>
             let
@@ -680,18 +679,17 @@ and analyzeClass (env:ENV)
             val name = {id=ident, ns=ns}
 
             val (unhoisted,classFixtures,classInits) = defDefns env [] [] [] classDefns
-            val env = extendEnvironment env classFixtures
+            val staticEnv = extendEnvironment env classFixtures
+
+            val (unhoisted,instanceFixtures,_) = defDefns staticEnv [] [] [] instanceDefns
+            val instanceEnv = extendEnvironment staticEnv instanceFixtures
 
             val ctor = 
                 case ctorDefn of 
                     NONE => NONE 
-                  | SOME c => SOME (defCtor env c)
+                  | SOME c => SOME (defCtor instanceEnv c)
 
-
-
-            val (unhoisted,instanceFixtures,_) = defDefns env [] [] [] instanceDefns
-
-            val (instanceStmts,_) = defStmts env instanceStmts  (* no hoisted fixture produced *)
+            val (instanceStmts,_) = defStmts staticEnv instanceStmts  (* no hoisted fixture produced *)
             
             (* 
                 The parser separates variable definitions into defns and stmts. The only stmts
@@ -1020,8 +1018,10 @@ and defSettings (env:ENV)
                 ((binds,inits):Ast.BINDINGS) 
     : (Ast.FIXTURES * Ast.INITS) = 
     let
+        val _ = trace [">> defSettings"]
         val fxtrs:Ast.FIXTURES = map (defVar env Ast.Var (Ast.Internal "")) binds
         val inits:Ast.INITS = map (defInitStep env NONE) inits   (* FIXME: lookup ident in open namespaces *)
+        val _ = trace ["<< defSettings"]
     in
         (fxtrs,inits)
     end
