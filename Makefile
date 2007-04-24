@@ -32,7 +32,7 @@ MLBUILD := ml-build
 # targets
 # ------------------------------------------------------------
 
-.PHONY: check checktc checkev wc clean cleanml
+.PHONY: check checktc checkev wc clean cleanml profile
 
 es4.heap.$(HEAP_SUFFIX): $(wildcard *.sml) lexer.lex pretty-cvt.sml
 	$(MLBUILD) $(MLBUILD_ARGS) es4.cm Main.main es4.heap
@@ -76,3 +76,7 @@ wc:
 
 clean:
 	rm -rf .cm tools/.cm es4.heap.$(HEAP_SUFFIX) tools/gen-pretty.heap.$(HEAP_SUFFIX)
+
+profile: 
+	touch multiname.sml mach.sml eval.sml 
+	sml -Ctdp.instrument=true profile.sml 2>&1 | tee profile.txt

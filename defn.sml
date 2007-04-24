@@ -87,15 +87,7 @@ fun hasFixture (b:Ast.FIXTURES)
 fun hasNamespace (nl:Ast.NAMESPACE list) 
                  (n:Ast.NAMESPACE) 
     : bool = 
-    let 
-        fun search [] = false
-          | search (first::rest) = 
-            if n = first
-            then true
-            else search rest
-    in
-        search nl    
-    end
+    List.exists (fn x => n = x) nl
 
 (*
     FIXME: Move this to Mach or Eval. Something like this is used to eval Ast.FieldTypeRef
@@ -176,37 +168,55 @@ fun isInstanceInit (s:Ast.STMT)
     name = { ns: NAMESPACE, id: IDENT }
 *)
 
+fun matchFixtures ((env:ENV),
+                   (searchId:Ast.IDENT),
+                   (nss:Ast.NAMESPACE list))
+    : Ast.NAME list =
+    case env of 
+        [] => []
+      | ({fixtures,...}:CONTEXT)::_ => 
+        let 
+            fun matchFixture (fxn:Ast.FIXTURE_NAME,_) : Ast.NAME option = 
+                case fxn of 
+                    Ast.TempName _ => NONE
+                  | Ast.PropName n => 
+                    let
+                        val {id,ns} = n
+                        fun matchNS candidateNS = 
+                            case candidateNS of
+                                Ast.LimitedNamespace (ident,limNS) =>
+                                if id = ident
+                                then ns = limNS
+                                else false
+                              | _ => ns = candidateNS
+                    in
+                        if searchId = id andalso (List.exists matchNS nss)
+                        then SOME n
+                        else NONE
+                    end
+        in
+            List.mapPartial matchFixture fixtures
+        end
+
+fun getEnvParent [] = NONE
+  | getEnvParent (x::[]) = NONE
+  | getEnvParent (x::xs) = SOME xs
+
 fun resolveMultinameToFixture (env:ENV) 
                               (mname:Ast.MULTINAME) 
     : Ast.NAME * Ast.FIXTURE =
-    let
-        fun envHeadHasFixture ([],n) = false
-          | envHeadHasFixture ((env:ENV),n) = hasFixture (#fixtures (List.hd env)) (Ast.PropName n) 
-        fun getEnvParent [] = NONE
-          | getEnvParent (x::[]) = NONE
-          | getEnvParent (x::xs) = SOME xs
-    in
-        case Multiname.resolve mname env envHeadHasFixture getEnvParent of
-            NONE => LogErr.defnError ["unresolved fixture ", LogErr.multiname mname]
-          | SOME (({fixtures, ...}::_), n) => (n, getFixture fixtures (Ast.PropName n))
-          | SOME _ => LogErr.defnError ["fixture lookup error ", LogErr.multiname mname]
-    end
+    case Multiname.resolve mname env matchFixtures getEnvParent of
+        NONE => LogErr.defnError ["unresolved fixture ", LogErr.multiname mname]
+      | SOME (({fixtures, ...}::_), n) => (n, getFixture fixtures (Ast.PropName n))
+      | SOME _ => LogErr.defnError ["fixture lookup error ", LogErr.multiname mname]
 
 fun multinameHasFixture (env:ENV) 
                         (mname:Ast.MULTINAME) 
     : bool =
-    let
-        fun envHeadHasFixture ([],n) = false
-          | envHeadHasFixture ((env:ENV),n) = hasFixture (#fixtures (List.hd env)) (Ast.PropName n) 
-        fun getEnvParent [] = NONE
-          | getEnvParent (x::[]) = NONE
-          | getEnvParent (x::xs) = SOME xs
-    in
-        case Multiname.resolve mname env envHeadHasFixture getEnvParent of
-            NONE => false
-          | SOME (({fixtures, ...}::_), n) => true
-          | _ => LogErr.defnError ["fixture lookup error ", LogErr.multiname mname]
-    end
+    case Multiname.resolve mname env matchFixtures getEnvParent of
+        NONE => false
+      | SOME (({fixtures, ...}::_), n) => true
+      | _ => LogErr.defnError ["fixture lookup error ", LogErr.multiname mname]
 
 (*
     Since we are in the definition phase the open namespaces have not been
@@ -1660,13 +1670,10 @@ and matchPackageName (env:ENV)
         [] => (NONE,path)
       | _ =>
         let
-            fun nameExists ([],n) = false
-              | nameExists ((env:ENV),n) = hasFixture (#fixtures (List.hd env)) (Ast.PropName n)
             fun parentEnv _ = NONE (* just do one scope at a time *)
-
             val mname = identExprToMultiname env (Ast.Identifier {ident=(hd path),openNamespaces=[]})
         in
-            case Multiname.resolve mname env nameExists parentEnv of
+            case Multiname.resolve mname env matchFixtures parentEnv of
                 SOME (({fixtures, ...}::_), n) => 
                     (NONE,path)   (* head of path matches fixture *)
               | NONE => (* head of path does not match fixture, try finding a package name that matches prefix of path *)

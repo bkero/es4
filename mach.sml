@@ -9,6 +9,8 @@ val doTrace = ref false
 fun trace ss = if (!doTrace) then LogErr.log ("[mach] " :: ss) else ()
 fun error ss = LogErr.machError ss
 
+fun nameEq (a:Ast.NAME) (b:Ast.NAME) = ((#id a) = (#id b) andalso (#ns a) = (#ns b))
+
 datatype VAL = Object of OBJ
              | Null
              | Undef
@@ -302,14 +304,47 @@ fun delProp (b:PROP_BINDINGS)
     let 
         fun strip [] = LogErr.hostError ["deleting nonexistent property binding: ", 
                                          (#id n)]
-          | strip ((k,v)::bs) = 
-            if k = n 
+          | strip (((k:Ast.NAME),v)::bs) = 
+            if (#ns k) = (#ns n) andalso 
+               (#id k) = (#id n)
             then bs
             else (k,v)::(strip bs)
     in
         b := strip (!b)
     end    
 
+fun matchProps (fixedProps:bool)
+               (b:PROP_BINDINGS)
+               (searchId:Ast.IDENT)
+               (nss:Ast.NAMESPACE list)
+    : Ast.NAME list =
+    let 
+        fun matchProp (n:Ast.NAME,p:PROP) : Ast.NAME option = 
+            if not (searchId = (#id n))
+            then NONE
+            else 
+                let
+                    fun matchNS candidateNS = 
+                        case candidateNS of
+                            Ast.LimitedNamespace (ident,limNS) =>
+                            if searchId = ident
+                            then (#ns n) = limNS
+                            else false
+                          | _ => (#ns n) = candidateNS
+                in
+                    if ((fixedProps andalso (#isFixed (#attrs p))) orelse
+                        (not fixedProps andalso not (#isFixed (#attrs p))))
+                    then 
+                        if List.exists matchNS nss
+                        then SOME n
+                        else NONE
+                    else
+                        NONE
+                end
+    in
+        List.mapPartial matchProp (!b)
+    end
+      
 
 fun getProp (b:PROP_BINDINGS) 
             (n:Ast.NAME) 
@@ -326,8 +361,8 @@ fun getProp (b:PROP_BINDINGS)
                                      dontEnum=false,
                                      readOnly=false,
                                      isFixed=false}}
-          | search ((k,v)::bs) = 
-            if k = n 
+          | search (((k:Ast.NAME),v)::bs) = 
+            if ((#id k) = (#id n) andalso (#ns k) = (#ns n))
             then v
             else search bs
     in
@@ -340,8 +375,10 @@ fun getFixedProp (b:PROP_BINDINGS)
     let 
         fun search [] = LogErr.hostError ["property binding not found: ", 
                                           (#id n)]
-          | search ((k,(v:PROP))::bs) = 
-            if k = n andalso (#isFixed (#attrs v))
+          | search (((k:Ast.NAME),(v:PROP))::bs) = 
+            if (#isFixed (#attrs v)) andalso 
+               (#id k) = (#id n) andalso 
+               (#ns k) = (#ns n)
             then v
             else search bs
     in
@@ -353,8 +390,10 @@ fun hasFixedProp (b:PROP_BINDINGS)
     : bool = 
     let 
         fun search [] = false
-          | search ((k,(v:PROP))::bs) = 
-            if k = n andalso (#isFixed (#attrs v))
+          | search (((k:Ast.NAME),(v:PROP))::bs) = 
+            if (#isFixed (#attrs v)) andalso 
+               (#id k) = (#id n) andalso 
+               (#ns k) = (#ns n)
             then true
             else search bs
     in
@@ -367,8 +406,9 @@ fun hasProp (b:PROP_BINDINGS)
     : bool = 
     let 
         fun search [] = false
-          | search ((k,v)::bs) = 
-            if k = n 
+          | search (((k:Ast.NAME),_)::bs) = 
+            if (#id k) = (#id n) andalso 
+               (#ns k) = (#ns n)
             then true
             else search bs
     in
