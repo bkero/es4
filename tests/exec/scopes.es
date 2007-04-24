@@ -8,6 +8,7 @@ function foo()
 
 class C 
 {
+    var x
     function C(x) : x=x {
         intrinsic::assert(this.x == x)
     }
