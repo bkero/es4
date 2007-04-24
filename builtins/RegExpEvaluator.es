@@ -375,7 +375,7 @@ package RegExpInternals
         var m1 : Charset, m2 : Charset;
     }
 
-    class CharsetComplement implements Charset 
+    class CharsetComplement implements Charset
     {
         function CharsetComplement(cs : Charset) : cs=cs {}
 

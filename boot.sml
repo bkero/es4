@@ -204,15 +204,15 @@ fun boot _ =
              "builtins/ByteArray.es",
              "builtins/Date.es",
              
-             "builtins/JSON.es",
+             "builtins/Unicode.es",
+(*             "builtins/RegExpCompiler.es",
+             "builtins/RegExpEvaluator.es",
+             "builtins/RegExp.es",
+*)             "builtins/JSON.es",
              "builtins/Error.es",           
              "builtins/Shell.es"
             ];
         (*
-         "builtins/Unicode.es",
-         "builtins/RegExpCompiler.es",
-         "builtins/RegExpEvaluator.es",
-         "builtins/RegExp.es",
          *)
         trace ["running residual programs"];
         Eval.evalProgram residualObjectProg;

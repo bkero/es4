@@ -936,7 +936,7 @@ and defVar (env:ENV)
                                | Ast.LetConst => true
                                | _ => false           
             val offset = (#tempOffset (hd env))     
-            val name' = fixtureNameFromPropIdent ns ident offset
+            val name' = fixtureNameFromPropIdent env (SOME ns) ident offset
         in
             (name', Ast.ValFixture {ty=ty',readOnly=readOnly'})
         end
@@ -961,29 +961,47 @@ and defVar (env:ENV)
 
 *)    
 
-and fixtureNameFromPropIdent (ns:Ast.NAMESPACE) (ident:Ast.BINDING_IDENT) (tempOffset:int)
+and fixtureNameFromPropIdent (env:ENV) (ns:Ast.NAMESPACE option) (ident:Ast.BINDING_IDENT) (tempOffset:int)
     : Ast.FIXTURE_NAME =
     case ident of
         Ast.TempIdent n =>  Ast.TempName (n+tempOffset)
       | Ast.ParamIdent n => Ast.TempName n
-      | Ast.PropIdent id => Ast.PropName {ns=ns,id=id}
+      | Ast.PropIdent id => 
+        let
+        in case ns of
+            SOME ns => Ast.PropName {ns=ns,id=id}
+          | _ =>
+                let
+                    val mname = identExprToMultiname env (Ast.Identifier {ident=id,openNamespaces=[]})
+                    val ({ns,id},f) = resolveMultinameToFixture env mname
+                in
+                    Ast.PropName {ns=ns,id=id}
+                end
+        end
 
 and defInitStep (env:ENV)
-            (ns:Ast.NAMESPACE)
-            (step:Ast.INIT_STEP)
+                (ns:Ast.NAMESPACE option)
+                (step:Ast.INIT_STEP)
     : (Ast.FIXTURE_NAME * Ast.EXPR) = 
     let
     in case step of
         Ast.InitStep (ident,expr) =>
             let
                 val tempOffset = (#tempOffset (hd env))
-                val name = fixtureNameFromPropIdent ns ident tempOffset
+                val name = fixtureNameFromPropIdent env ns ident tempOffset
                 val expr = defExpr env expr
             in 
                 (name,expr)
             end
-      | Ast.AssignStep (left,right) =>
-            LogErr.defnError ["unhandled init kind"]
+      | Ast.AssignStep (left,right) => (* resolve lhs to fixture name, and rhs to expr *)
+            let
+                val ie = case left of Ast.LexicalRef {ident,...} => ident 
+                                    | _ => error ["invalid lhs in InitStep"]
+                val mname = identExprToMultiname env ie
+                val ({ns,id},f) = resolveMultinameToFixture env mname
+            in
+                (Ast.PropName {ns=ns,id=id}, defExpr env right)
+            end
     end
 
 and defBindings (env:ENV)
@@ -993,7 +1011,17 @@ and defBindings (env:ENV)
     : (Ast.FIXTURES * Ast.INITS) = 
     let
         val fxtrs:Ast.FIXTURES = map (defVar env kind ns) binds
-        val inits:Ast.INITS = map (defInitStep env ns) inits
+        val inits:Ast.INITS = map (defInitStep env (SOME ns)) inits
+    in
+        (fxtrs,inits)
+    end
+
+and defSettings (env:ENV)
+                ((binds,inits):Ast.BINDINGS) 
+    : (Ast.FIXTURES * Ast.INITS) = 
+    let
+        val fxtrs:Ast.FIXTURES = map (defVar env Ast.Var (Ast.Internal "")) binds
+        val inits:Ast.INITS = map (defInitStep env NONE) inits   (* FIXME: lookup ident in open namespaces *)
     in
         (fxtrs,inits)
     end
@@ -1071,8 +1099,7 @@ and defFuncSig (env:ENV)
             val (paramFixtures,paramInits) = defBindings env Ast.Var (Ast.Internal "") params
             val ((settingsFixtures,settingsInits),superArgs) =
                     case ctorInits of
-                        SOME (settings,args) => (defBindings env Ast.Var (Ast.Internal "") settings,
-                                          defExprs env args)
+                        SOME (settings,args) => (defSettings env settings, defExprs env args)
                       | NONE => (([],[]),[])
             val settingsFixtures = List.filter isTempFixture settingsFixtures
         in
@@ -1467,8 +1494,9 @@ and defIdentExpr (env:ENV)
           | Ast.UnresolvedPath (p,i) =>
             LogErr.unimplError ["UnresolvedPath ",(hd p)]
 
-          | _ =>
-            LogErr.unimplError ["unhandled ident expr "]
+          | Ast.WildcardIdentifier =>
+            Ast.WildcardIdentifier
+
     end
 
 and defContextualNumberLiteral (env:ENV) 
@@ -1885,8 +1913,18 @@ and defExprs (env:ENV)
 and defFuncTy (env:ENV)
               (ty:Ast.FUNC_TYPE)
     : Ast.FUNC_TYPE =
-    (* FIXME *)
-    ty
+        let
+            val {typeParams,params,result,thisType,hasRest,minArgs} = ty
+            val params = map (defTyExpr env) params
+            val result = defTyExpr env result
+        in
+            {typeParams=typeParams,
+             params=params,
+             result=result,
+             thisType=thisType,
+             hasRest=hasRest,
+             minArgs=minArgs}            
+        end
 
 and defTyExpr (env:ENV)
               (ty:Ast.TYPE_EXPR)
@@ -1894,6 +1932,8 @@ and defTyExpr (env:ENV)
     case ty of 
         Ast.FunctionType t => 
         Ast.FunctionType (defFuncTy env t)
+      | Ast.TypeName n =>
+        Ast.TypeName (defIdentExpr env n)
       (* FIXME *)
       | t => t
 
@@ -2123,7 +2163,7 @@ and defStmt (env:ENV)
                                | _ => Ast.Local
                 val temps = defBindings env kind ns0 temps  (* ISSUE: kind and ns are irrelevant *)
             in
-                (Ast.ExprStmt (Ast.InitExpr (target, temps, (map (defInitStep env ns0) inits))),[])
+                (Ast.ExprStmt (Ast.InitExpr (target, temps, (map (defInitStep env (SOME ns0)) inits))),[])
             end
 
           | Ast.ForInStmt fe => 
