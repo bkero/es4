@@ -53,10 +53,10 @@ package
 
         /* E262-3 15.2.4.5:  Object.prototype.hasOwnProperty */
         prototype function hasOwnProperty(V)
-            private::hasOwnProperty(this, string);
+            Object.private::hasOwnProperty(this, String(V));  /* FIXME: "Object." should not be necessary */
 
         intrinsic function hasOwnProperty(V : string) : boolean 
-            private::hasOwnProperty(this, string);
+            Object.private::hasOwnProperty(this, V); /* FIXME: "Object." should not be necessary */
 
         private static function hasOwnProperty(obj, V:string) : boolean
             magic::hasOwnProperty(obj, V);
