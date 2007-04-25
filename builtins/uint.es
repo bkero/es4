@@ -54,7 +54,7 @@ package
 
         /* INFORMATIVE */
         override intrinsic function toLocaleString() : string
-            toString();
+            this.toString();  /* FIXME: "this." should not be necessary */
 
         /* E262-4 draft: uint.prototype.valueOf */
         prototype function valueOf(this:uint)
