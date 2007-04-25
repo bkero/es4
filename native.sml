@@ -409,7 +409,7 @@ fun fromCharCode (vals:Mach.VAL list)
     let
         val i = nthAsUInt vals 0
     in
-        Eval.newString (Char.toString (Char.chr (Word32.toInt i)))
+        Eval.newString (String.str (Char.chr (Word32.toInt i)))
     end
 
 
