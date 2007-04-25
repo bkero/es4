@@ -485,7 +485,7 @@ package RegExpInternals
 
         function lookingAt(c : string) : void {
             for ( let i : uint=0 ; i < c.length && i+idx < source.length ; i++ )
-                if (c[i] != source[i+idx])
+                if (c[i] != source.charAt(i+idx))  /* FIXME: [] */
                     return false;
             return true;
         }
@@ -493,12 +493,12 @@ package RegExpInternals
         function identifier() : string {
             let name : string? = null;
             if (idx < source.length) {
-                let c : string = source[idx++];
+                let c : string = source.charAt(idx++);  /* FIXME: [] */
                 if (!isIdentifierStart(c))
                     throw new SyntaxError("Expected identifier");
                 let name = c;
                 while (idx < source.length && isIdentPart(source[idx]))
-                    name += source[idx++];
+                    name += source.charAt(idx++);       /* FIXME: [] */
                 skip();
                 return name;
             }
@@ -520,14 +520,14 @@ package RegExpInternals
 
         function peekChar() {
             if (!atEnd())
-                return source[idx];
+                return source.charAt(idx);  /* FIXME: [] */
             else
                 return "*END*";
         }
 
         function consumeChar(c : string? = null) : string {
-            if (!atEnd() && c === null || source[idx] == c)
-                return source[idx++];
+            if (!atEnd() && c === null || source.charAt(idx) == c)  /* FIXME: [] */
+                return source.charAt(idx++);  /* FIXME: [] */
             if (c !== null)
                 throw new SyntaxError("Expected character " + c);
             else
@@ -535,7 +535,7 @@ package RegExpInternals
         }
 
         function consumeUntil(c : string) : void {
-            while (!atEnd() && source[idx] != c)
+            while (!atEnd() && source.charAt(idx) != c)  /* FIXME: [] */
                 ++idx;
         }
 
@@ -544,11 +544,11 @@ package RegExpInternals
                 return;
 
             while (!atEnd()) {
-                if (source[idx] == '#') {
-                    while (!atEnd() && !isTerminator(source[idx]))
+                if (source.charAt(idx) == '#') {  /* FIXME: [] */
+                    while (!atEnd() && !isTerminator(source.charAt(idx)))  /* FIXME: [] */
                         ++idx;
                 }
-                else if (isBlank(source[idx]) || isTerminator(source[idx]) || isFormatControl(source[idx]))
+                else if (isBlank(source.charAt(idx)) || isTerminator(source.charAt(idx)) || isFormatControl(source.charAt(idx)))  /* FIXME: [] * 3 */
                     ++idx;
                 else
                     return;
