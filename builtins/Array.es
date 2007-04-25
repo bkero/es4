@@ -59,37 +59,34 @@ package
         }
 
         // 15.4.4.4 Array.prototype.concat ( [ item1 [ , item2 [ , ... ] ] ] )
-        /* private */ static function concatHelper(self, args) {  /* FIXME: "private" should be posible */
+        private static function concatHelper(self, args) {
             let out:Array = new Array;
             let outlen:uint = 0;
 
-            if (self is Array)
-                args.unshift(self);
-
-            let argslen:uint = args.length;
-            for (let i:uint = 0; i < argslen; i++) {
-                let x = args[i];
+            let function emit(x) {  /* FIXME: should not have to be "let function"?? */
                 if (x is Array) {
-                    let xlen:uint = x.length;
-                    for (let j:uint = 0; j < xlen; j++)
-                        out[outlen] = x[j];
-                    outlen++;
-                    continue;
+                    for (let j:uint = 0; j < x.length; j++)
+                        out[outlen++] = x[j];
                 }
-                out[outlen++] = x;
+                else
+                    out[outlen++] = x;
             }
+
+            emit( self );
+            for (let i:uint = 0; i < args.length; i++)
+                emit( args[i] );
 
             return out;
         }
 
         public static function concat(self, ...args)
-            concatHelper(self, args);        /* FIXME: "Array." should not be necessary */
+            private::concatHelper(self, args);        /* FIXME: "private::" should not be necessary */
 
         prototype function concat(...args)
-            Array.concatHelper(this, args);  /* FIXME: "Array." should not be necessary */
+            Array.private::concatHelper(this, args);  /* FIXME: "Array." should not be necessary, nor "private::" */
 
         intrinsic function concat(...args):Array
-            Array.concatHelper(this, args);  /* FIXME: "Array." should not be necessary */
+            Array.private::concatHelper(this, args);  /* FIXME: "Array." should not be necessary, nor "private::" */
 
         // 15.4.4.5 Array.prototype.join (separator)
         public static function join(self, sep = undefined) {
@@ -208,8 +205,8 @@ package
 
             // If a param is passed then the first one is start.
             // If no params are passed then start = 0.
-            let a:uint = clamp(start, len);
-            let b:uint = clamp(end, len);
+            let a:uint = private::clamp(start, len);  /* FIXME: private should not be necessary */
+            let b:uint = private::clamp(end, len);    /* FIXME: private should not be necessary */
             if (b < a)
                 b = a;
 
@@ -235,7 +232,7 @@ package
             let len:uint = self.length;
 
             if (len > 1)
-                self.qsort(0, len-1, comparefn);
+                self.private::qsort(0, len-1, comparefn);  /* FIXME: "private::" should not be necessary */
 
             return self;
         }
@@ -246,8 +243,8 @@ package
         intrinsic function sort(comparefn:Comparator):Array
             Array.sort(this, comparefn);
 
-        // 15.4.4.12 Array.prototype.splice (start, deleteCount [ , item1 [ , item2 [ , … ] ] ] )
-        public static function splice(self, start, deleteCount) {
+        // 15.4.4.12 Array.prototype.splice (start, deleteCount [ , item1 [ , item2 [ , ... ] ] ] )
+        public static function splice(self, start, deleteCount, ...args) {
             let out:Array = new Array();
 
             let argslen:uint = uint(args.length);
@@ -255,7 +252,7 @@ package
                 return undefined;
 
             let len:uint = self.length;
-            let start:uint = clamp(double(args[0]), len);
+            let start:uint = private::clamp(double(args[0]), len);  /* FIXME: "private::" should not be necessary */
             let d_deleteCount:double = argslen > 1 ? double(args[1]) : (len - start);
             let deleteCount:uint = (d_deleteCount < 0) ? 0 : uint(d_deleteCount);
             if (deleteCount > len - start)
@@ -324,6 +321,8 @@ package
 
             for (let i:uint = 0; i < argslen; i++)
                 A[i] = args[i];
+
+            A.length = len+argslen;   /* Required by E262-3; observable by means of a setter method on A */
 
             return len+argslen;
         }
@@ -411,9 +410,9 @@ package
             let i:uint = lo;
             let j:uint = hi;
             while (i <= j) {
-                while (compare(i, pivot, comparefn) < 0)
+                while (private::compare(i, pivot, comparefn) < 0)  /* FIXME: "private::" should not be necessary */
                     ++i;
-                while (compare(j, pivot, comparefn) > 0)
+                while (private::compare(j, pivot, comparefn) > 0)  /* FIXME: "private::" should not be necessary */
                     --j;
                 if (i <= j) {
                     let temp = this[i];
