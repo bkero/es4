@@ -65,7 +65,7 @@ package RegExpInternals
      */
     public type MatchResult = State?;
 
-    public var failure : State? = null;  /* FIXME: const */
+    public const failure : State? = null;
 
     class State!
     {

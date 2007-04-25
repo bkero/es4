@@ -8,6 +8,7 @@ fun trace ss = if (!doTrace) then LogErr.log ("[parse] " :: ss) else ()
 fun error ss = LogErr.parseError ss
 
 exception ParseError = LogErr.ParseError
+exception LexError = LogErr.LexError
 
 open Token
 

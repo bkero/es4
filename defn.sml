@@ -2167,6 +2167,7 @@ and defStmt (env:ENV)
                                  (_,true,_) => Ast.Prototype
                                | (_,_,true) => Ast.Hoisted
                                | (Ast.Var,_,_) => Ast.Hoisted
+                               | (Ast.Const,_,_) => Ast.Hoisted
                                | _ => Ast.Local
                 val temps = defBindings env kind ns0 temps  (* ISSUE: kind and ns are irrelevant *)
             in
