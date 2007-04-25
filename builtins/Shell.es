@@ -3,6 +3,7 @@ package
     // non-standard helpers that a variety of tests in our testsuite use.
 
     intrinsic native function print(x);
+    intrinsic native function load(x);
     intrinsic native function assert(x);
     intrinsic native function typename(x);
     intrinsic native function inspect(x, depth);

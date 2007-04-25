@@ -87,15 +87,7 @@ fun hasFixture (b:Ast.FIXTURES)
 fun hasNamespace (nl:Ast.NAMESPACE list) 
                  (n:Ast.NAMESPACE) 
     : bool = 
-    let 
-        fun search [] = false
-          | search (first::rest) = 
-            if n = first
-            then true
-            else search rest
-    in
-        search nl    
-    end
+    List.exists (fn x => n = x) nl
 
 (*
     FIXME: Move this to Mach or Eval. Something like this is used to eval Ast.FieldTypeRef
@@ -176,37 +168,55 @@ fun isInstanceInit (s:Ast.STMT)
     name = { ns: NAMESPACE, id: IDENT }
 *)
 
+fun matchFixtures ((env:ENV),
+                   (searchId:Ast.IDENT),
+                   (nss:Ast.NAMESPACE list))
+    : Ast.NAME list =
+    case env of 
+        [] => []
+      | ({fixtures,...}:CONTEXT)::_ => 
+        let 
+            fun matchFixture (fxn:Ast.FIXTURE_NAME,_) : Ast.NAME option = 
+                case fxn of 
+                    Ast.TempName _ => NONE
+                  | Ast.PropName n => 
+                    let
+                        val {id,ns} = n
+                        fun matchNS candidateNS = 
+                            case candidateNS of
+                                Ast.LimitedNamespace (ident,limNS) =>
+                                if id = ident
+                                then ns = limNS
+                                else false
+                              | _ => ns = candidateNS
+                    in
+                        if searchId = id andalso (List.exists matchNS nss)
+                        then SOME n
+                        else NONE
+                    end
+        in
+            List.mapPartial matchFixture fixtures
+        end
+
+fun getEnvParent [] = NONE
+  | getEnvParent (x::[]) = NONE
+  | getEnvParent (x::xs) = SOME xs
+
 fun resolveMultinameToFixture (env:ENV) 
                               (mname:Ast.MULTINAME) 
     : Ast.NAME * Ast.FIXTURE =
-    let
-        fun envHeadHasFixture ([],n) = false
-          | envHeadHasFixture ((env:ENV),n) = hasFixture (#fixtures (List.hd env)) (Ast.PropName n) 
-        fun getEnvParent [] = NONE
-          | getEnvParent (x::[]) = NONE
-          | getEnvParent (x::xs) = SOME xs
-    in
-        case Multiname.resolve mname env envHeadHasFixture getEnvParent of
-            NONE => LogErr.defnError ["unresolved fixture ", LogErr.multiname mname]
-          | SOME (({fixtures, ...}::_), n) => (n, getFixture fixtures (Ast.PropName n))
-          | SOME _ => LogErr.defnError ["fixture lookup error ", LogErr.multiname mname]
-    end
+    case Multiname.resolve mname env matchFixtures getEnvParent of
+        NONE => LogErr.defnError ["unresolved fixture ", LogErr.multiname mname]
+      | SOME (({fixtures, ...}::_), n) => (n, getFixture fixtures (Ast.PropName n))
+      | SOME _ => LogErr.defnError ["fixture lookup error ", LogErr.multiname mname]
 
 fun multinameHasFixture (env:ENV) 
                         (mname:Ast.MULTINAME) 
     : bool =
-    let
-        fun envHeadHasFixture ([],n) = false
-          | envHeadHasFixture ((env:ENV),n) = hasFixture (#fixtures (List.hd env)) (Ast.PropName n) 
-        fun getEnvParent [] = NONE
-          | getEnvParent (x::[]) = NONE
-          | getEnvParent (x::xs) = SOME xs
-    in
-        case Multiname.resolve mname env envHeadHasFixture getEnvParent of
-            NONE => false
-          | SOME (({fixtures, ...}::_), n) => true
-          | _ => LogErr.defnError ["fixture lookup error ", LogErr.multiname mname]
-    end
+    case Multiname.resolve mname env matchFixtures getEnvParent of
+        NONE => false
+      | SOME (({fixtures, ...}::_), n) => true
+      | _ => LogErr.defnError ["fixture lookup error ", LogErr.multiname mname]
 
 (*
     Since we are in the definition phase the open namespaces have not been
@@ -496,10 +506,9 @@ fun identExprToMultiname (env:ENV) (ie:Ast.IDENT_EXPR)
             end
       | Ast.QualifiedIdentifier {ident, qual,...} => 
             let
-            in case qual of
-                Ast.LiteralExpr (Ast.LiteralNamespace ns ) =>
-                    {nss = [[ns]], id = ident}
-              | _ => LogErr.defnError ["unknown namespace value needed during definition phase"]
+                val ns = resolveExprToNamespace env qual
+            in
+                {nss = [[ns]], id = ident}
             end
       | Ast.TypeIdentifier {ident,typeArgs} =>
             let
@@ -680,18 +689,17 @@ and analyzeClass (env:ENV)
             val name = {id=ident, ns=ns}
 
             val (unhoisted,classFixtures,classInits) = defDefns env [] [] [] classDefns
-            val env = extendEnvironment env classFixtures
+            val staticEnv = extendEnvironment env classFixtures
+
+            val (unhoisted,instanceFixtures,_) = defDefns staticEnv [] [] [] instanceDefns
+            val instanceEnv = extendEnvironment staticEnv instanceFixtures
 
             val ctor = 
                 case ctorDefn of 
                     NONE => NONE 
-                  | SOME c => SOME (defCtor env c)
+                  | SOME c => SOME (defCtor instanceEnv c)
 
-
-
-            val (unhoisted,instanceFixtures,_) = defDefns env [] [] [] instanceDefns
-
-            val (instanceStmts,_) = defStmts env instanceStmts  (* no hoisted fixture produced *)
+            val (instanceStmts,_) = defStmts staticEnv instanceStmts  (* no hoisted fixture produced *)
             
             (* 
                 The parser separates variable definitions into defns and stmts. The only stmts
@@ -936,7 +944,7 @@ and defVar (env:ENV)
                                | Ast.LetConst => true
                                | _ => false           
             val offset = (#tempOffset (hd env))     
-            val name' = fixtureNameFromPropIdent ns ident offset
+            val name' = fixtureNameFromPropIdent env (SOME ns) ident offset
         in
             (name', Ast.ValFixture {ty=ty',readOnly=readOnly'})
         end
@@ -961,29 +969,47 @@ and defVar (env:ENV)
 
 *)    
 
-and fixtureNameFromPropIdent (ns:Ast.NAMESPACE) (ident:Ast.BINDING_IDENT) (tempOffset:int)
+and fixtureNameFromPropIdent (env:ENV) (ns:Ast.NAMESPACE option) (ident:Ast.BINDING_IDENT) (tempOffset:int)
     : Ast.FIXTURE_NAME =
     case ident of
         Ast.TempIdent n =>  Ast.TempName (n+tempOffset)
       | Ast.ParamIdent n => Ast.TempName n
-      | Ast.PropIdent id => Ast.PropName {ns=ns,id=id}
+      | Ast.PropIdent id => 
+        let
+        in case ns of
+            SOME ns => Ast.PropName {ns=ns,id=id}
+          | _ =>
+                let
+                    val mname = identExprToMultiname env (Ast.Identifier {ident=id,openNamespaces=[]})
+                    val ({ns,id},f) = resolveMultinameToFixture env mname
+                in
+                    Ast.PropName {ns=ns,id=id}
+                end
+        end
 
 and defInitStep (env:ENV)
-            (ns:Ast.NAMESPACE)
-            (step:Ast.INIT_STEP)
+                (ns:Ast.NAMESPACE option)
+                (step:Ast.INIT_STEP)
     : (Ast.FIXTURE_NAME * Ast.EXPR) = 
     let
     in case step of
         Ast.InitStep (ident,expr) =>
             let
                 val tempOffset = (#tempOffset (hd env))
-                val name = fixtureNameFromPropIdent ns ident tempOffset
+                val name = fixtureNameFromPropIdent env ns ident tempOffset
                 val expr = defExpr env expr
             in 
                 (name,expr)
             end
-      | Ast.AssignStep (left,right) =>
-            LogErr.defnError ["unhandled init kind"]
+      | Ast.AssignStep (left,right) => (* resolve lhs to fixture name, and rhs to expr *)
+            let
+                val ie = case left of Ast.LexicalRef {ident,...} => ident 
+                                    | _ => error ["invalid lhs in InitStep"]
+                val mname = identExprToMultiname env ie
+                val ({ns,id},f) = resolveMultinameToFixture env mname
+            in
+                (Ast.PropName {ns=ns,id=id}, defExpr env right)
+            end
     end
 
 and defBindings (env:ENV)
@@ -993,7 +1019,19 @@ and defBindings (env:ENV)
     : (Ast.FIXTURES * Ast.INITS) = 
     let
         val fxtrs:Ast.FIXTURES = map (defVar env kind ns) binds
-        val inits:Ast.INITS = map (defInitStep env ns) inits
+        val inits:Ast.INITS = map (defInitStep env (SOME ns)) inits
+    in
+        (fxtrs,inits)
+    end
+
+and defSettings (env:ENV)
+                ((binds,inits):Ast.BINDINGS) 
+    : (Ast.FIXTURES * Ast.INITS) = 
+    let
+        val _ = trace [">> defSettings"]
+        val fxtrs:Ast.FIXTURES = map (defVar env Ast.Var (Ast.Internal "")) binds
+        val inits:Ast.INITS = map (defInitStep env NONE) inits   (* FIXME: lookup ident in open namespaces *)
+        val _ = trace ["<< defSettings"]
     in
         (fxtrs,inits)
     end
@@ -1071,8 +1109,7 @@ and defFuncSig (env:ENV)
             val (paramFixtures,paramInits) = defBindings env Ast.Var (Ast.Internal "") params
             val ((settingsFixtures,settingsInits),superArgs) =
                     case ctorInits of
-                        SOME (settings,args) => (defBindings env Ast.Var (Ast.Internal "") settings,
-                                          defExprs env args)
+                        SOME (settings,args) => (defSettings env settings, defExprs env args)
                       | NONE => (([],[]),[])
             val settingsFixtures = List.filter isTempFixture settingsFixtures
         in
@@ -1467,8 +1504,9 @@ and defIdentExpr (env:ENV)
           | Ast.UnresolvedPath (p,i) =>
             LogErr.unimplError ["UnresolvedPath ",(hd p)]
 
-          | _ =>
-            LogErr.unimplError ["unhandled ident expr "]
+          | Ast.WildcardIdentifier =>
+            Ast.WildcardIdentifier
+
     end
 
 and defContextualNumberLiteral (env:ENV) 
@@ -1632,13 +1670,10 @@ and matchPackageName (env:ENV)
         [] => (NONE,path)
       | _ =>
         let
-            fun nameExists ([],n) = false
-              | nameExists ((env:ENV),n) = hasFixture (#fixtures (List.hd env)) (Ast.PropName n)
             fun parentEnv _ = NONE (* just do one scope at a time *)
-
             val mname = identExprToMultiname env (Ast.Identifier {ident=(hd path),openNamespaces=[]})
         in
-            case Multiname.resolve mname env nameExists parentEnv of
+            case Multiname.resolve mname env matchFixtures parentEnv of
                 SOME (({fixtures, ...}::_), n) => 
                     (NONE,path)   (* head of path matches fixture *)
               | NONE => (* head of path does not match fixture, try finding a package name that matches prefix of path *)
@@ -1885,8 +1920,18 @@ and defExprs (env:ENV)
 and defFuncTy (env:ENV)
               (ty:Ast.FUNC_TYPE)
     : Ast.FUNC_TYPE =
-    (* FIXME *)
-    ty
+        let
+            val {typeParams,params,result,thisType,hasRest,minArgs} = ty
+            val params = map (defTyExpr env) params
+            val result = defTyExpr env result
+        in
+            {typeParams=typeParams,
+             params=params,
+             result=result,
+             thisType=thisType,
+             hasRest=hasRest,
+             minArgs=minArgs}            
+        end
 
 and defTyExpr (env:ENV)
               (ty:Ast.TYPE_EXPR)
@@ -1894,6 +1939,8 @@ and defTyExpr (env:ENV)
     case ty of 
         Ast.FunctionType t => 
         Ast.FunctionType (defFuncTy env t)
+      | Ast.TypeName n =>
+        Ast.TypeName (defIdentExpr env n)
       (* FIXME *)
       | t => t
 
@@ -2120,10 +2167,11 @@ and defStmt (env:ENV)
                                  (_,true,_) => Ast.Prototype
                                | (_,_,true) => Ast.Hoisted
                                | (Ast.Var,_,_) => Ast.Hoisted
+                               | (Ast.Const,_,_) => Ast.Hoisted
                                | _ => Ast.Local
                 val temps = defBindings env kind ns0 temps  (* ISSUE: kind and ns are irrelevant *)
             in
-                (Ast.ExprStmt (Ast.InitExpr (target, temps, (map (defInitStep env ns0) inits))),[])
+                (Ast.ExprStmt (Ast.InitExpr (target, temps, (map (defInitStep env (SOME ns0)) inits))),[])
             end
 
           | Ast.ForInStmt fe => 

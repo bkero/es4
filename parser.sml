@@ -8,6 +8,7 @@ fun trace ss = if (!doTrace) then LogErr.log ("[parse] " :: ss) else ()
 fun error ss = LogErr.parseError ss
 
 exception ParseError = LogErr.ParseError
+exception LexError = LogErr.LexError
 
 open Token
 
@@ -5901,7 +5902,7 @@ and initialiserList (ts)
 and initialiser (ts) 
     : ((TOKEN * Ast.POS) list * Ast.BINDINGS) =
     let val _ = trace([">> initialiser with next=", tokenname(hd ts)])
-        val (ts1,nd1) = pattern (ts,NOLIST,NOIN,NOEXPR)
+        val (ts1,nd1) = pattern (ts,NOLIST,NOIN,ALLOWEXPR)
     in case (ts1) of
             (Assign, _) :: _ =>
                 let

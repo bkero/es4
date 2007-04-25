@@ -9,43 +9,17 @@ structure Multiname = struct
 val doTrace = ref false
 fun trace ss = if (!doTrace) then LogErr.log ("[multiname] " :: ss) else ()
 fun error ss = LogErr.nameError ss
+fun fmtName n = if (!doTrace) then LogErr.name n else ""
+fun fmtMultiname n = if (!doTrace) then LogErr.multiname n else ""
 
 fun resolve (mname:Ast.MULTINAME)
 		    (curr:'a)
-		    (nameExists:(('a * Ast.NAME) -> bool))
+            (matchNamespaces:('a * Ast.IDENT * (Ast.NAMESPACE list)) -> Ast.NAME list)
 		    (getParent:('a -> ('a option)))
     : ('a * Ast.NAME) option =
     let     
-        val _ = trace ["resolving multiname ", LogErr.multiname mname]
+        val _ = trace ["resolving multiname ", fmtMultiname mname]
         val id = (#id mname)
-		 
-        (* Try each namespace in the set and accumulate matches. *)
-		 
-        fun tryName (matches:Ast.NAME list) [] = matches
-          | tryName (matches:Ast.NAME list) (x::xs) : Ast.NAME list =
-            let 
-                val n = { ns=x, id=id } 
-                val _ = trace ["trying name ", LogErr.name n]
-            in case x of
-                Ast.LimitedNamespace (ident,ns) =>
-                    if id=ident
-                    then
-                        let
-                            val n = {ns=ns,id=id}
-                        in
-                            (trace ["limited match ",id];
-                            if nameExists (curr, n)
-                            then tryName (n::matches) xs
-                            else tryName matches xs)
-                        end
-                    else 
-                        tryName matches xs  (* skip it *)
-              | _ =>
-                    if nameExists (curr, n)
-                    then tryName (n::matches) xs
-                    else tryName matches xs
-            end
-
 
         (*
 	     * Try each of the nested namespace sets in turn to see
@@ -57,24 +31,24 @@ fun resolve (mname:Ast.MULTINAME)
         fun tryMultiname [] = NONE  
           | tryMultiname (x::xs:Ast.NAMESPACE list list) : Ast.NAME option = 
             let 
-                val matches = tryName [] x
+                val matches = matchNamespaces (curr, id, x)
             in case matches of
-                   n :: [] => (trace ["resolved to specific name: ", LogErr.name n];
+                   n :: [] => (trace ["resolved to specific name: ", fmtName n];
                                SOME n)
                  | [] => tryMultiname xs
-                 | matches  => (List.app (fn m => trace ["matched:", LogErr.name m]) matches;
+                 | matches  => (List.app (fn m => trace ["matched:", fmtName m]) matches;
                                 error ["ambiguous reference ", 
-					                   LogErr.multiname mname])
+					                   fmtMultiname mname])
             end
     in
         case tryMultiname (#nss mname) of
             SOME n => SOME (curr, n)
           | NONE => 
 	        (case getParent curr of
-		         NONE => (trace ["exhausted search for ", LogErr.multiname mname]; 
+		         NONE => (trace ["exhausted search for ", fmtMultiname mname]; 
                           NONE)
 	           | SOME parent => (trace ["moving to parent"];
-                                 resolve mname parent nameExists getParent))
+                                 resolve mname parent matchNamespaces getParent))
     end
 end
 

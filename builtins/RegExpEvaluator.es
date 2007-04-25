@@ -65,7 +65,7 @@ package RegExpInternals
      */
     public type MatchResult = State?;
 
-    public var failure : State? = null;  /* FIXME: const */
+    public const failure : State? = null;
 
     class State!
     {
@@ -373,7 +373,7 @@ package RegExpInternals
 
     class CharsetIntersection implements Charset 
     {
-        function CharsetIntersection(m1 : Charset, m2 : Charset) /* : m1=m1, m2=m2 */ { this.m1=m1; this.m2=m2; }  /* FIXME */
+        function CharsetIntersection(m1 : Charset, m2 : Charset) : m1=m1, m2=m2 {}
 
         function match(c : string) : Boolean
             m1.match(c, true) && m2.match(c, true);
@@ -381,9 +381,9 @@ package RegExpInternals
         var m1 : Charset, m2 : Charset;
     }
 
-    class CharsetComplement implements Charset 
+    class CharsetComplement implements Charset
     {
-        function CharsetComplement(cs : Charset) /* : cs=cs */ { this.cs=cs; }  /* FIXME */
+        function CharsetComplement(cs : Charset) : cs=cs { }
 
         function match(c : string) : Boolean
             m.match(c) === failure;
@@ -393,7 +393,7 @@ package RegExpInternals
 
     class CharsetRange implements Charset 
     {
-        function CharsetRange(lo : string, hi : string) /* : lo=lo, hi=hi */ { this.lo=lo; this.hi=hi; }  /* FIXME */
+        function CharsetRange(lo : string, hi : string) : lo=lo, hi=hi { }
 
         function match(c : string) : Boolean {
             let lo_code = lo.charCodeAt(0);

@@ -42,7 +42,7 @@ package
     {       
         /* E262-3 15.5.1: The String Constructor Called as a Function */
         static meta function invoke(x="")
-            x is String ? x : new String(x);
+            string(x);
 
         /* 15.5.2 The String Constructor */
         function String(x="")
@@ -56,6 +56,9 @@ package
 
         intrinsic static function fromCharCode(...args) : double
             string.fromCharCodeHelper(args);
+
+        /* E262-3 15.5.4.1: String.prototype.constructor */
+        String.prototype.constructor = String;
 
         /* E262-3 15.5.4.2: String.prototype.toString */
         prototype function toString(this : String)
@@ -218,10 +221,10 @@ package
          */
         prototype function substring(start=0.0, end=undefined)
             ToString(this).substring(start, end == undefined ? this.length : end);
-
-        static function substring(self, start, end)
-            ToString(self).substring(start, end)
-
+        
+        static function substring(self, start, end) 
+            ToString(self).substring(start, end);
+            
         intrinsic function substring(start: double, end: double) : string
             ToString(this).substring(start, end);
 

@@ -9,6 +9,8 @@ val doTrace = ref false
 fun trace ss = if (!doTrace) then LogErr.log ("[mach] " :: ss) else ()
 fun error ss = LogErr.machError ss
 
+fun nameEq (a:Ast.NAME) (b:Ast.NAME) = ((#id a) = (#id b) andalso (#ns a) = (#ns b))
+
 datatype VAL = Object of OBJ
              | Null
              | Undef
@@ -302,8 +304,9 @@ fun delProp (b:PROP_BINDINGS)
     let 
         fun strip [] = LogErr.hostError ["deleting nonexistent property binding: ", 
                                          (#id n)]
-          | strip ((k,v)::bs) = 
-            if k = n 
+          | strip (((k:Ast.NAME),v)::bs) = 
+            if (#ns k) = (#ns n) andalso 
+               (#id k) = (#id n)
             then bs
             else (k,v)::(strip bs)
     in
@@ -311,69 +314,80 @@ fun delProp (b:PROP_BINDINGS)
     end    
 
 
+fun findProp (b:PROP_BINDINGS) 
+             (n:Ast.NAME) 
+    : PROP option = 
+    let 
+        fun search [] = NONE
+          | search (((k:Ast.NAME),v)::bs) = 
+            if (#id k) = (#id n) andalso 
+               (#ns k) = (#ns n)
+            then SOME v
+            else search bs
+    in
+        search (!b)
+    end
+
+
+fun matchProps (fixedProps:bool)
+               (b:PROP_BINDINGS)
+               (searchId:Ast.IDENT)
+               (nss:Ast.NAMESPACE list)
+    : Ast.NAME list =
+    let 
+        fun matchProp (n:Ast.NAME,p:PROP) : Ast.NAME option = 
+            if not (searchId = (#id n))
+            then NONE
+            else 
+                let
+                    fun matchNS candidateNS = 
+                        case candidateNS of
+                            Ast.LimitedNamespace (ident,limNS) =>
+                            if searchId = ident
+                            then (#ns n) = limNS
+                            else false
+                          | _ => (#ns n) = candidateNS
+                in
+                    if ((fixedProps andalso (#isFixed (#attrs p))) orelse
+                        (not fixedProps andalso not (#isFixed (#attrs p))))
+                    then 
+                        if List.exists matchNS nss
+                        then SOME n
+                        else NONE
+                    else
+                        NONE
+                end
+    in
+        List.mapPartial matchProp (!b)
+    end
+      
+
 fun getProp (b:PROP_BINDINGS) 
             (n:Ast.NAME) 
     : PROP = 
-    let 
+    case findProp b n of
+        SOME p => p
+      | NONE => 
         (*
-            If not found, then cons up a temporary property
-            with value undefined. Any property not found
-            errors would have been caught by evalRefExpr
-        *)
-        fun search [] = {ty=Ast.SpecialType Ast.Undefined,
-                              state=ValProp Undef,
-                              attrs={dontDelete=false,  (* unused attrs *)
-                                     dontEnum=false,
-                                     readOnly=false,
-                                     isFixed=false}}
-          | search ((k,v)::bs) = 
-            if k = n 
-            then v
-            else search bs
-    in
-        search (!b)
-    end
-
-fun getFixedProp (b:PROP_BINDINGS) 
-                 (n:Ast.NAME) 
-    : PROP = 
-    let 
-        fun search [] = LogErr.hostError ["property binding not found: ", 
-                                          (#id n)]
-          | search ((k,(v:PROP))::bs) = 
-            if k = n andalso (#isFixed (#attrs v))
-            then v
-            else search bs
-    in
-        search (!b)
-    end
-
-fun hasFixedProp (b:PROP_BINDINGS) 
-                 (n:Ast.NAME) 
-    : bool = 
-    let 
-        fun search [] = false
-          | search ((k,(v:PROP))::bs) = 
-            if k = n andalso (#isFixed (#attrs v))
-            then true
-            else search bs
-    in
-        search (!b)
-    end
+         * If not found, then cons up a temporary property
+         * with value undefined. Any property not found
+         * errors would have been caught by evalRefExpr
+         *)
+        {ty=Ast.SpecialType Ast.Undefined,
+         state=ValProp Undef,
+         attrs={dontDelete=false,  (* unused attrs *)
+                dontEnum=false,
+                readOnly=false,
+                isFixed=false}}
 
 
 fun hasProp (b:PROP_BINDINGS) 
             (n:Ast.NAME) 
     : bool = 
-    let 
-        fun search [] = false
-          | search ((k,v)::bs) = 
-            if k = n 
-            then true
-            else search bs
-    in
-        search (!b)
-    end
+    case findProp b n of 
+        NONE => false
+      | SOME _ => true
+
 
 fun hasMagic (ob:OBJ) = 
     case ob of 

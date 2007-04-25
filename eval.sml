@@ -34,7 +34,10 @@ fun pop _ =
      else ())
 
 fun log ss = LogErr.log ("[eval] " :: ss)
+
 val doTrace = ref false
+fun fmtName n = if (!doTrace) then LogErr.name n else ""
+fun fmtMultiname n = if (!doTrace) then LogErr.multiname n else ""
 fun trace ss = if (!doTrace) then log ss else ()
 fun error ss = 
     (LogErr.log ("[stack] " :: [stackString()]);
@@ -267,13 +270,13 @@ fun allocFixtures (regs:Mach.REGS)
                        | _ => error ["allocating non-value temporary"])
                   | Ast.PropName pn => 
                     let 
-                        val _ = trace ["allocating fixture for property ", LogErr.name pn]
+                        val _ = trace ["allocating fixture for property ", fmtName pn]
                         fun allocProp state p = 
                             if Mach.hasProp props pn
                             then error ["allocating duplicate property name: ", 
-                                        LogErr.name pn]
+                                        fmtName pn]
                             else (trace ["allocating fixture for ", state, " property ", 
-                                         LogErr.name pn]; 
+                                         fmtName pn]; 
                                   Mach.addProp props pn p)                            
                     in 
                         case f of 
@@ -333,9 +336,9 @@ fun allocFixtures (regs:Mach.REGS)
                           | Ast.ClassFixture cls =>
                             let
                                 val Ast.Cls {classFixtures, ...} = cls
-                                val _ = trace ["allocating class object for class ", LogErr.name pn]
-                                val Mach.Object classObj = newClass scope cls
-                                val _ = trace ["allocating class fixtures on class ", LogErr.name pn]
+                                val _ = trace ["allocating class object for class ", fmtName pn]
+                                val classObj = needObj (newClass scope cls)
+                                val _ = trace ["allocating class fixtures on class ", fmtName pn]
                                 (* FIXME: 'this' binding in class objects might be wrong here. *)
                                 val _ = allocObjFixtures regs classObj NONE classFixtures
                             in
@@ -430,52 +433,48 @@ and getValueOrVirtual (obj:Mach.OBJ)
     let 
         val Mach.Obj { props, ... } = obj
     in
-        if Mach.hasProp props name
-        then 
-            let
-                val prop = Mach.getProp props name
-            in
-                case (#state prop) of 
-                    Mach.TypeProp => 
-                    error ["getValue on a type property: ",
-                           LogErr.name name]
-
-                  | Mach.TypeVarProp => 
-                    error ["getValue on a type variable property: ",
-                           LogErr.name name]
-
-                  | Mach.UninitProp => 
-                    error ["getValue on an uninitialized property: ",
-                           LogErr.name name]
-
-                  | Mach.VirtualValProp { getter, ... } => 
-                    if doVirtual
-                    then 
-                        case getter of 
-                            SOME g => 
-                            invokeFuncClosure obj g []
-                          | NONE => 
-                            error ["getValue on a virtual property w/o getter: ",
-                                   LogErr.name name]
-                    else 
-                        (* FIXME: possibly throw here? *)
-                        Mach.Undef
-
-                  | Mach.NamespaceProp n =>
-                    newNamespace n
-
-                  | Mach.NativeFunctionProp nf =>
-                    newNativeFunction nf
-                    
-                  | Mach.MethodProp closure => 
-                    newFunctionFromClosure closure
-
-                  | Mach.ValListProp vals =>
-                    newArray vals
-
-                  | Mach.ValProp v => v
-            end
-        else
+        case Mach.findProp props name of 
+            SOME prop => 
+            (case (#state prop) of 
+                 Mach.TypeProp => 
+                 error ["getValue on a type property: ",
+                        fmtName name]
+                 
+               | Mach.TypeVarProp => 
+                 error ["getValue on a type variable property: ",
+                        fmtName name]
+                 
+               | Mach.UninitProp => 
+                 error ["getValue on an uninitialized property: ",
+                        fmtName name]
+                 
+               | Mach.VirtualValProp { getter, ... } => 
+                 if doVirtual
+                 then 
+                     case getter of 
+                         SOME g => 
+                         invokeFuncClosure obj g []
+                       | NONE => 
+                         error ["getValue on a virtual property w/o getter: ",
+                                fmtName name]
+                 else 
+                     (* FIXME: possibly throw here? *)
+                     Mach.Undef
+                     
+               | Mach.NamespaceProp n =>
+                 newNamespace n
+                 
+               | Mach.NativeFunctionProp nf =>
+                 newNativeFunction nf
+                 
+               | Mach.MethodProp closure => 
+                 newFunctionFromClosure closure
+                 
+               | Mach.ValListProp vals =>
+                 newArray vals
+                 
+               | Mach.ValProp v => v)
+          | NONE => 
             if Mach.hasProp props Name.meta_get
             then 
                 let 
@@ -503,10 +502,9 @@ and setValueOrVirtual (base:Mach.OBJ)
     let
         val Mach.Obj { props, ... } = base
     in
-        if Mach.hasProp props name
-        then 
+        case Mach.findProp props name of
+            SOME existingProp => 
             let 
-                val existingProp = Mach.getProp props name                                   
                 val existingAttrs = (#attrs existingProp)
                 val newProp = { state = Mach.ValProp v,
                                 ty = (#ty existingProp), 
@@ -519,31 +517,31 @@ and setValueOrVirtual (base:Mach.OBJ)
                 case (#state existingProp) of 
                     Mach.UninitProp => 
                     error ["setValue on uninitialized property", 
-                           LogErr.name name]
+                           fmtName name]
                     
                   | Mach.TypeVarProp => 
                     error ["setValue on type variable property:", 
-                           LogErr.name name]
+                           fmtName name]
                     
                   | Mach.TypeProp => 
                     error ["setValue on type property: ", 
-                           LogErr.name name]
+                           fmtName name]
 
                   | Mach.NamespaceProp _ => 
                     error ["setValue on namespace property: ", 
-                           LogErr.name name]
+                           fmtName name]
 
                   | Mach.NativeFunctionProp _ => 
                     error ["setValue on native function property: ", 
-                           LogErr.name name]
+                           fmtName name]
 
                   | Mach.MethodProp _ => 
                     error ["setValue on method property: ", 
-                           LogErr.name name]
+                           fmtName name]
 
                   | Mach.ValListProp _ => 
                     error ["setValue on value-list property: ", 
-                           LogErr.name name]
+                           fmtName name]
                     
                   | Mach.VirtualValProp { setter = SOME s, ... } => 
                     if doVirtual
@@ -553,7 +551,7 @@ and setValueOrVirtual (base:Mach.OBJ)
                   | Mach.VirtualValProp { setter = NONE, ... } => 
                     if doVirtual
                     then error ["setValue on virtual property w/o setter: ", 
-                                LogErr.name name]
+                                fmtName name]
                     else write ()
                          
                   | Mach.ValProp _ => 
@@ -561,7 +559,7 @@ and setValueOrVirtual (base:Mach.OBJ)
                     then ()  (* ignore it *)
                     else write ()
             end
-        else
+          | NONE =>  
             if doVirtual andalso Mach.hasProp props Name.meta_set
             then 
                 let 
@@ -604,7 +602,7 @@ and defValue (base:Mach.OBJ)
     case base of 
         Mach.Obj { props, ... } => 
         if not (Mach.hasProp props name)
-        then error ["defValue on missing property: ", LogErr.name name]
+        then error ["defValue on missing property: ", fmtName name]
         else 
             (* 
              * defProp has relaxed rules: you can write to an 
@@ -623,34 +621,34 @@ and defValue (base:Mach.OBJ)
                 case (#state existingProp) of                     
                     Mach.TypeVarProp => 
                     error ["defValue on type variable property: ", 
-                           LogErr.name name]
+                           fmtName name]
                     
                   | Mach.TypeProp => 
                     error ["defValue on type property: ", 
-                           LogErr.name name]
+                           fmtName name]
 
                   | Mach.NamespaceProp _ => 
                     error ["defValue on namespace property: ", 
-                           LogErr.name name]
+                           fmtName name]
                     
                   | Mach.NativeFunctionProp _ => 
                     error ["defValue on native function property: ", 
-                           LogErr.name name]
+                           fmtName name]
 
                   | Mach.MethodProp _ => 
                     error ["defValue on method property: ", 
-                           LogErr.name name]
+                           fmtName name]
 
                   | Mach.ValListProp _ => 
                     error ["defValue on value-list property: ", 
-                           LogErr.name name]
+                           fmtName name]
 
                   | Mach.VirtualValProp { setter = SOME s, ... } => 
                     (invokeFuncClosure base s [v]; ())
                     
                   | Mach.VirtualValProp { setter = NONE, ... } => 
                     error ["defValue on virtual property w/o setter: ", 
-                           LogErr.name name]
+                           fmtName name]
                     
                   | Mach.UninitProp => writeProp ()
                   | Mach.ValProp _ => writeProp ()
@@ -660,12 +658,12 @@ and instantiateGlobalClass (n:Ast.NAME)
                            (args:Mach.VAL list)
     : Mach.VAL = 
       let
-          val _ = trace ["instantiating global class ", LogErr.name n];
+          val _ = trace ["instantiating global class ", fmtName n];
           val (cls:Mach.VAL) = getValue (getGlobalObject ()) n
       in
           case cls of 
               Mach.Object ob => evalNewExpr ob args
-            | _ => error ["global class name ", LogErr.name n, 
+            | _ => error ["global class name ", fmtName n, 
                           " did not resolve to object"]
       end
 
@@ -692,7 +690,7 @@ and newRootBuiltin (n:Ast.NAME) (m:Mach.MAGIC)
      *)
     let 
         val obj = needObj (instantiateGlobalClass n [])
-        val _ = trace ["finished building root builtin ", LogErr.name n]
+        val _ = trace ["finished building root builtin ", fmtName n]
     in
         Mach.Object (Mach.setMagic obj (SOME m))
     end
@@ -1489,13 +1487,13 @@ and evalCallMethod (regs:Mach.REGS)
         val thisObj = case baseOpt of 
                        NONE => (#this regs)
                      | SOME base => base
-        val _ = trace [">>> call method: ", LogErr.name name]
+        val _ = trace [">>> call method: ", fmtName name]
         val Mach.Obj { props, ... } = obj
         val res = case (#state (Mach.getProp props name)) of
                       Mach.NativeFunctionProp nf => nf args
                     | Mach.MethodProp f => invokeFuncClosure thisObj f args
                     | _ => evalCallExpr thisObj (needObj (getValue obj name)) args
-        val _ = trace ["<<< call method: ", LogErr.name name]
+        val _ = trace ["<<< call method: ", fmtName name]
     in
         res
     end
@@ -1556,7 +1554,7 @@ and evalSetExpr (regs:Mach.REGS)
                   | Ast.AssignLogicalOr => modifyWith Ast.LogicalOr
             end
     in
-        trace ["setExpr assignment to slot ", LogErr.name name];
+        trace ["setExpr assignment to slot ", fmtName name];
         setValue obj name v;
         v
     end
@@ -2119,8 +2117,8 @@ and evalBinaryTypeOp (regs:Mach.REGS)
                    | "decimal" => newBoolean (Mach.isDecimal v)
                    | "int" => newBoolean (Mach.isInt v)
                    | "uint" => newBoolean (Mach.isUInt v)
-                   | "string" => newBoolean (Mach.isString v)
-                   | "boolean" => newBoolean (Mach.isBoolean v)
+                   | "String" => newBoolean (Mach.isString v)
+                   | "Boolean" => newBoolean (Mach.isBoolean v)
                    | n => 
                      (case v of 
                           Mach.Undef => newBoolean false
@@ -2289,7 +2287,7 @@ and evalRefExprFull (regs:Mach.REGS)
 
         val baseObj = case base of
                           SOME (Mach.Object ob) => SOME ob
-                        | NONE => NONE
+                        | _ => NONE
                                        
         (* FIXME: ns might be user settable default *)
         fun makeRefNotFound (b:Mach.VAL option) (mname:Ast.MULTINAME) 
@@ -2303,14 +2301,14 @@ and evalRefExprFull (regs:Mach.REGS)
                 resolveOnObjAndPrototypes ob multiname
               | NONE => 
                 resolveOnScopeChain (#scope regs) multiname
-              | SOME Mach.Undef => error ["ref expression on undef value with ",LogErr.multiname multiname]
-              | SOME Mach.Null => error ["ref expression on null value with ",LogErr.multiname multiname]
+              | SOME Mach.Undef => error ["ref expression on undef value with ",fmtMultiname multiname]
+              | SOME Mach.Null => error ["ref expression on null value with ",fmtMultiname multiname]
                                                                              
     in
         (baseObj, (case refOpt of 
                        NONE => if errIfNotFound 
                                then error ["unresolved identifier expression",
-                                           LogErr.multiname multiname]
+                                           fmtMultiname multiname]
                                else makeRefNotFound base multiname
                      | SOME r' => r'))
     end
@@ -2328,27 +2326,26 @@ and evalLetExpr (regs:Mach.REGS)
         evalExpr letRegs body
     end
 
-
 and resolveOnScopeChain (scope:Mach.SCOPE) 
                         (mname:Ast.MULTINAME) 
     : REF option =
     let 
         val _ = trace ["resolving multiname on scope chain: ", 
-                              LogErr.multiname mname]
+                              fmtMultiname mname]
         fun getScopeParent (Mach.Scope { parent, ... }) = parent
-        fun hasFixedBinding (Mach.Scope {object=Mach.Obj {props, ...}, ... }, n)
-            = Mach.hasFixedProp props n
+        fun matchFixedScopeBinding (Mach.Scope {object=Mach.Obj {props, ...}, ... }, n, nss)
+            = Mach.matchProps true props n nss
     in
         (* 
          * First do a fixed-properties-only lookup along the scope chain alone. 
          *)
         case Multiname.resolve 
                  mname scope 
-                 hasFixedBinding 
+                 matchFixedScopeBinding
                  getScopeParent
          of
             SOME (Mach.Scope {object, ...}, name) => 
-            (trace ["found ",LogErr.name name]; SOME (object, name))
+            (trace ["found ",fmtName name]; SOME (object, name))
           | NONE => 
             (* 
              * If that fails, do a sequence of dynamic-property-permitted
@@ -2372,16 +2369,18 @@ and resolveOnObjAndPrototypes (obj:Mach.OBJ)
                               (mname:Ast.MULTINAME) 
     : REF option = 
     let 
-        fun hasFixedProp (Mach.Obj {props, ...}, n) = Mach.hasFixedProp props n
-        fun hasProp (Mach.Obj {props, ...}, n) = Mach.hasProp props n
+        fun matchFixedBinding (Mach.Obj {props, ...}, n, nss)
+            = Mach.matchProps true props n nss
+        fun matchBinding (Mach.Obj {props, ...}, n, nss)
+            = Mach.matchProps false props n nss
         fun getObjProto (Mach.Obj {proto, ...}) = 
             case (!proto) of 
                 Mach.Object ob => SOME ob
               | _ => NONE
     in
-        trace ["resolveOnObjAndPrototypes: ", LogErr.multiname mname];
-        case Multiname.resolve mname obj hasFixedProp getObjProto of
-            NONE => Multiname.resolve mname obj hasProp getObjProto
+        trace ["resolveOnObjAndPrototypes: ", fmtMultiname mname];
+        case Multiname.resolve mname obj matchFixedBinding getObjProto of
+            NONE => Multiname.resolve mname obj matchBinding getObjProto
           | refOpt => refOpt
     end
 
@@ -2467,7 +2466,7 @@ and findVal (scope:Mach.SCOPE)
     : Mach.VAL = 
     case resolveOnScopeChain scope mn of 
         NONE => error ["unable to resolve multiname: ", 
-                       LogErr.multiname mn ]
+                       fmtMultiname mn ]
       | SOME (obj, name) => getValue obj name 
 
 
@@ -2477,7 +2476,7 @@ and checkAllPropertiesInitialized (obj:Mach.OBJ)
         fun checkOne (n:Ast.NAME, p:Mach.PROP) = 
             case (#state p) of 
                 Mach.UninitProp => error ["uninitialized property: ", 
-                                                     LogErr.name n]
+                                                     fmtName n]
               | _ => ()
     in
         case obj of 
@@ -2792,10 +2791,10 @@ and evalInitsMaybePrototype (regs:Mach.REGS)
             in
                 case n of 
                     Ast.PropName pn => 
-                    (trace ["evalInit assigning to prop ", LogErr.name pn, 
+                    (trace ["evalInit assigning to prop ", fmtName pn, 
                            " on object #", (Int.toString (getObjId obj))];
 (*                     if isPrototypeInit then
-                         LogErr.log ["Propname: ", LogErr.name pn] 
+                         LogErr.log ["Propname: ", fmtName pn] 
                      else
                          () ; *)
                      if isPrototypeInit 
@@ -2891,17 +2890,17 @@ and initializeAndConstruct (classClosure:Mach.CLS_CLOSURE)
                     case extends of 
                         NONE => 
                         (trace ["checking all properties initialized at root class", 
-                                       LogErr.name name];
+                                       fmtName name];
                          checkAllPropertiesInitialized instanceObj)
                       | SOME superName => 
                         let 
-                            val _ = trace ["initializing and constructing superclass ", LogErr.name superName ]
+                            val _ = trace ["initializing and constructing superclass ", fmtName superName ]
                             val (superObj:Mach.OBJ) = needObj (findVal env (multinameOf superName))
                             val (superClsClosure:Mach.CLS_CLOSURE) = 
                                 case Mach.getObjMagic superObj of
                                     SOME (Mach.Class cc) => cc
                                   | _ => error ["Superclass object ", 
-                                                           LogErr.name superName, 
+                                                           fmtName superName, 
                                                            "is not a class closure"]
                             val (superEnv:Mach.REGS) = {scope=(#env superClsClosure), 
                                                         this=(#this classRegs)}
@@ -2910,7 +2909,7 @@ and initializeAndConstruct (classClosure:Mach.CLS_CLOSURE)
                                 superClsClosure superObj superEnv superArgs instanceObj
                         end
             in
-                trace ["evaluating instance initializers for ", LogErr.name name];
+                trace ["evaluating instance initializers for ", fmtName name];
                 evalObjInits classRegs instanceObj instanceInits;   
                 case constructor of 
                     NONE => initializeAndConstructSuper []
@@ -2930,18 +2929,18 @@ and initializeAndConstruct (classClosure:Mach.CLS_CLOSURE)
                                                                   varObj 
                                                                   Mach.ActivationScope
                     in
-                        trace ["allocating scope fixtures for constructor of ", LogErr.name name];
+                        trace ["allocating scope fixtures for constructor of ", fmtName name];
                         allocScopeFixtures varRegs paramFixtures;
-                        trace ["binding constructor args of ", LogErr.name name];
+                        trace ["binding constructor args of ", fmtName name];
                         bindArgs classRegs varScope func args;
-                        trace ["evaluating inits of ", LogErr.name name,
+                        trace ["evaluating inits of ", fmtName name,
                                " in scope #", Int.toString (getScopeId varScope)];
                         evalScopeInits varRegs Ast.Local paramInits;
                         trace ["evaluating settings"];
                         evalObjInits varRegs instanceObj settings;
-                        trace ["initializing and constructing superclass of ", LogErr.name name];
+                        trace ["initializing and constructing superclass of ", fmtName name];
                         initializeAndConstructSuper (map (evalExpr varRegs) superArgs);  
-                        trace ["entering constructor for ", LogErr.name name];
+                        trace ["entering constructor for ", fmtName name];
                         evalBlock ctorRegs block
                         handle ReturnException v => v;
                         pop ();
@@ -3048,12 +3047,12 @@ and constructClassInstance (classObj:Mach.OBJ)
     in
         trace ["allocating ", 
                Int.toString (length instanceFixtures), 
-               " instance fixtures for new ", LogErr.name name];
+               " instance fixtures for new ", fmtName name];
         allocObjFixtures classRegs instanceObj (SOME instanceObj) instanceFixtures;
-        trace ["entering most derived constructor for ", LogErr.name name];
+        trace ["entering most derived constructor for ", fmtName name];
         initializeAndConstruct classClosure classObj classRegs args instanceObj;
         runAnySpecialConstructor ident args instanceObj;
-        trace ["finished constructing new ", LogErr.name name];
+        trace ["finished constructing new ", fmtName name];
         pop ();
         Mach.Object instanceObj
     end
@@ -3248,7 +3247,7 @@ and initClassPrototype (regs:Mach.REGS)
                         then getValue ob Name.public_prototype
                         else Mach.Null
                       | _ => error ["base class resolved to non-object: ", 
-                                    LogErr.name baseClassName]
+                                    fmtName baseClassName]
                 end
                 
         val _ = trace ["constructing prototype"]
@@ -3277,17 +3276,17 @@ and evalClassBlock (regs:Mach.REGS)
         val {name, block, ...} = classBlock
         val {scope, ...} = regs
 
-        val _ = trace ["evaluating class stmt for ", LogErr.name (valOf name)]
+        val _ = trace ["evaluating class stmt for ", fmtName (valOf name)]
         
         val classObj = needObj (findVal scope (multinameOf (valOf name)))
 
         val _ = initClassPrototype regs classObj
 
         (* FIXME: might have 'this' binding wrong in class scope *)
-        val _ = trace ["extending scope for class block of ", LogErr.name (valOf name)]
+        val _ = trace ["extending scope for class block of ", fmtName (valOf name)]
         val classRegs = extendScopeReg regs classObj Mach.InstanceScope
     in
-        trace ["evaluating class block of ", LogErr.name (valOf name)];
+        trace ["evaluating class block of ", fmtName (valOf name)];
         evalBlock classRegs block
     end
 
@@ -3707,7 +3706,7 @@ fun bindSpecialIdentities _ =
                 val Mach.Obj obj = needObj (getValue (getGlobalObject()) n)
                 val id = (#ident obj)
             in
-                trace ["noting identity ", Int.toString id, " of class ", LogErr.name n];
+                trace ["noting identity ", Int.toString id, " of class ", fmtName n];
                 r := id
             end
     in

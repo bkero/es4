@@ -197,6 +197,11 @@ fun getClassName (vals:Mach.VAL list)
         val str = case !magic of 
                       SOME (Mach.Function _) => "Function"
                     | SOME (Mach.NativeFunction _) => "Function"
+                    | SOME (Mach.String _) => "String"
+                    | SOME (Mach.Decimal _) => "Number"
+                    | SOME (Mach.Int _) => "Number"
+                    | SOME (Mach.UInt _) => "Number"
+                    | SOME (Mach.Double _) => "Number"
                     | _ => "Object"
     in
         Eval.newString str
@@ -699,6 +704,15 @@ fun print (vals:Mach.VAL list)
         TextIO.print "\n";
         Mach.Undef
     end
+
+fun load (vals:Mach.VAL list) 
+    : Mach.VAL = 
+    let
+        val fname = nthAsStr vals 0
+    in
+        Eval.evalProgram (Defn.defProgram (Parser.parseFile fname));
+        Mach.Undef
+    end
     
 fun assert (vals:Mach.VAL list) 
     : Mach.VAL = 
@@ -915,6 +929,7 @@ fun registerNatives _ =
         addFn Name.intrinsicNS "tan" tan;
 
         addFn Name.intrinsicNS "print" print;
+        addFn Name.intrinsicNS "load" load;
         addFn Name.intrinsicNS "assert" assert;
         addFn Name.intrinsicNS "typename" typename;
         addFn Name.intrinsicNS "inspect" inspect;
