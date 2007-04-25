@@ -121,7 +121,7 @@ package RegExpInternals
 
     class Disjunct! implements Matcher
     {
-        function Disjunct(m1 : Matcher, m2 : Matcher) /* : m1=m1, m2=m2 */ { this.m1=m1; this.m2=m2; }  /* FIXME */
+        function Disjunct(m1 : Matcher, m2 : Matcher) : m1=m1, m2=m2 {}
 
         function match(ctx : Context, x : State, c : Continuation) : MatchResult {
             let r : MatchResult = m1.match(ctx, x, c);
@@ -135,7 +135,7 @@ package RegExpInternals
 
     class Alternative! implements Matcher
     {
-        function Alternative(m1 : Matcher, m2 : Matcher) /* : m1=m1, m2=m2 */ { this.m1=m1, this.m2=m2; } /* FIXME */
+        function Alternative(m1 : Matcher, m2 : Matcher) : m1=m1, m2=m2 {}
 
         function match(ctx : Context, x : State, c : Continuation) : MatchResult
             m1.match(ctx, x, (function (ctx : Context, y : State) m2.match(ctx, y, c)) );
@@ -203,19 +203,13 @@ package RegExpInternals
     {
         function Quantified(parenIndex:uint, parenCount:uint, m:Matcher, min:double, max:double, 
                             greedy:Boolean) 
-        /*    : parenIndex = parenIndex
+          : parenIndex = parenIndex
             , parenCount = parenCount
             , m = m
             , min = min
             , max = max
-            , greedy = greedy */
+            , greedy = greedy
         {
-            this.parenIndex = parenIndex;  /* FIXME */
-            this.parenCount = parenCount;  /* FIXME */
-            this.m = m;                    /* FIXME */
-            this.min = min;                /* FIXME */
-            this.max = max;                /* FIXME */
-            this.greedy = greedy;          /* FIXME */
         }
 
         function match(ctx : Context, x : State, c : Continuation) : MatchResult {
@@ -262,7 +256,7 @@ package RegExpInternals
 
     class Capturing! implements Matcher
     {
-        function Capturing(m : Matcher, parenIndex : uint) /* : m=m, parenIndex=parenIndex */ { this.m=m; this.parenIndex=parenIndex; } /* FIXME */
+        function Capturing(m : Matcher, parenIndex : uint) : m=m, parenIndex=parenIndex {}
 
         function match(ctx : Context, x : State, c : Continuation) : MatchResult {
 
@@ -282,7 +276,7 @@ package RegExpInternals
 
     class Backref! implements Matcher
     {
-        function Backref(capno : uint) /* : capno=capno */ { this.capno=capno; }  /* FIXME */
+        function Backref(capno : uint) : capno=capno {}
 
         function match(ctx : Context, x : State, c : Continuation) : MatchResult {
             let cap = x.cap;
@@ -325,7 +319,7 @@ package RegExpInternals
 
     class CharsetMatcher! implements Matcher
     {
-        function CharsetMatcher(cs : Charset) /* : cs=cs */ { this.cs=cs; }  /* FIXME */
+        function CharsetMatcher(cs : Charset) : cs=cs {}
 
         function match(ctx : Context, x : State, c : Continuation) : MatchResult {
             let e = x.endIndex;
@@ -363,7 +357,7 @@ package RegExpInternals
 
     class CharsetUnion implements Charset 
     {
-        function CharsetUnion(m1 : Charset, m2 : Charset) /* : m1=m1, m2=m2 */ { this.m1=m1; this.m2=m2; }  /* FIXME */
+        function CharsetUnion(m1 : Charset, m2 : Charset) : m1=m1, m2=m2 {}
 
         function match(c : string) : Boolean
             m1.match(c, true) || m2.match(c, true);
@@ -426,7 +420,7 @@ package RegExpInternals
 
     class CharsetUnicodeClass implements Charset
     {
-        function CharsetUnicodeClass(name : string) /* : name=name */ { this.name=name; }  /* FIXME */
+        function CharsetUnicodeClass(name : string) : name=name {}
 
         function match(c : string) : Boolean {
             throw new Error("character set not yet implemented: " + name);
@@ -435,23 +429,23 @@ package RegExpInternals
         var name : string;
     }
 
-    var charset_linebreak : Charset = new CharsetAdhoc("\u000A\u000D\u0085\u2028\u2029"); /* FIXME: const */
-    var charset_notlinebreak : Charset = new CharsetComplement(charset_linebreak);        /* FIXME: const */
+    const charset_linebreak : Charset = new CharsetAdhoc("\u000A\u000D\u0085\u2028\u2029");
+    const charset_notlinebreak : Charset = new CharsetComplement(charset_linebreak);
 
-    var charset_space : Charset = /* FIXME: const */
+    const charset_space : Charset =
         new CharsetAdhoc("\u0009\u000B\u000C\u0020\u00A0\u1680\u180E\u2000\u2001\u2002" +
                          "\u203\u2004\u2005\u2006\u2007\u2008\u2009\u200A\u202F\u205F" +
                          "\u3000\u000A\u000D\u0085\u2028\u2029");
-    var charset_notspace : Charset = new CharsetComplement(charset_space); /* FIXME: const */
+    const charset_notspace : Charset = new CharsetComplement(charset_space);
 
-    var charset_digits : Charset = new CharsetAdhoc("0123456789"); /* FIXME: const */
-    var charset_notdigits : Charset = new CharsetComplement(charset_digits); /* FIXME: const */
+    const charset_digits : Charset = new CharsetAdhoc("0123456789");
+    const charset_notdigits : Charset = new CharsetComplement(charset_digits);
 
-    var charset_word : Charset = /* FIXME: const */
+    const charset_word : Charset =
         new CharsetAdhoc("abcdefghijklmnopqrstuvwzyzABCDEFGHIJKLMNOPQRSTUVWZYZ0123456789_");
-    var charset_notword : Charset = new CharsetComplement(charset_word); /* FIXME: const */
+    const charset_notword : Charset = new CharsetComplement(charset_word);
 
-    var unicode_named_classes = { /* FIXME: const */
+    const unicode_named_classes = {
         "L":  new CharsetUnicodeClass("Letter"),
         "Lu": new CharsetUnicodeClass("Letter, Uppercase"),
         "Ll": new CharsetUnicodeClass("Letter, Lowercase"),
