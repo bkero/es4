@@ -138,5 +138,10 @@ package
         // start constructing Functions.
         function get length() 
             magic::fnLength(this);
+
+        // 'length' is logically a read-only property, so setting it should fail silently
+        function set length(x) {
+            // ignore it
+        }
     }
 }
