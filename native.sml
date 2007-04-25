@@ -197,6 +197,11 @@ fun getClassName (vals:Mach.VAL list)
         val str = case !magic of 
                       SOME (Mach.Function _) => "Function"
                     | SOME (Mach.NativeFunction _) => "Function"
+                    | SOME (Mach.String _) => "String"
+                    | SOME (Mach.Decimal _) => "Number"
+                    | SOME (Mach.Int _) => "Number"
+                    | SOME (Mach.UInt _) => "Number"
+                    | SOME (Mach.Double _) => "Number"
                     | _ => "Object"
     in
         Eval.newString str

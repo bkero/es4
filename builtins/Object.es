@@ -26,17 +26,23 @@ package
 
         /* E262-3 15.2.4.2: Object.prototype.toString */
         prototype function toString()
-            this.toString();
+            private::toString(this);
 
         intrinsic function toString() : string
-            "[object " + magic::getClassName(this) + "]";
+            private::toString(this);
+
+        private static function toString(obj) : string
+            "[object " + magic::getClassName(obj) + "]";
 
         /* E262-3 15.2.4.3: Object.prototype.toLocaleString */
         prototype function toLocaleString()
-            this.toLocaleString();
+            private::toLocaleString(this);
 
         intrinsic function toLocaleString() : string
-            "[object " + magic::getClassName(this) + "]";
+            private::toLocaleString(this);
+
+        private static function toLocaleString(obj)
+            "[object " + magic::getClassName(obj) + "]";
 
         /* E262-3 15.2.4.4:  Object.prototype.valueOf */
         prototype function valueOf()
@@ -47,53 +53,64 @@ package
 
         /* E262-3 15.2.4.5:  Object.prototype.hasOwnProperty */
         prototype function hasOwnProperty(V)
-            this.hasOwnProperty(V);
+            private::hasOwnProperty(this, string);
 
-        intrinsic function hasOwnProperty(V : string) : Boolean 
-            magic::hasOwnProperty(this, V);
+        intrinsic function hasOwnProperty(V : string) : boolean 
+            private::hasOwnProperty(this, string);
+
+        private static function hasOwnProperty(obj, V:string) : boolean
+            magic::hasOwnProperty(obj, V);
         
         /* E262-3 15.2.4.6:  Object.prototype.isPrototypeOf */
         prototype function isPrototypeOf(V)
-            this.isPrototypeOf(V);
+            private::isPrototypeOf(this, V);
+        
+        intrinsic function isPrototypeOf(V)
+            private::isPrototypeOf(this, V);
 
-        intrinsic function isPrototypeOf(V) : Boolean {
-            if (!(V is Object))
+        private static function isPrototypeOf(target, v) : boolean {
+            if (!(v is Object))
                 return false;
 
-            let VO : Object = V to Object;
+            let vo : Object = v to Object;
             while (true) {
-                VO = magic::getPrototype(VO);
-                if (VO === null)
+                vo = magic::getPrototype(VO);
+                if (vo === null || vo === undefined)
                     return false;
-                if (VO === this)
+                if (vo === target)
                     return true;
             }
         }
 
         /* E262-3 15.2.4.7: Object.prototype.propertyIsEnumerable (V) */
-        prototype function propertyIsEnumerable(V, E=undefined)
-            this.propertyIsEnumerable(V, E);
+        prototype function propertyIsEnumerable(prop, e=undefined)
+            private::propertyIsEnumerable(this, prop, e);
+
+        intrinsic function propertyIsEnumerable(prop : string, e=undefined) : boolean
+            private::propertyIsEnumerable(this, prop, e);
 
         /* E262-4 draft proposals:enumerability */
-        intrinsic function propertyIsEnumerable(V : string, E=undefined) : Boolean {
-            let O : Object = this;
-            while (O !== null) {
-                if (O.hasOwnProperty(V)) {
-                    let old : Boolean = !magic::getPropertyIsDontEnum(O, V);
-                    if (!magic::getPropertyIsDontDelete(O, V))
-                        if (E is Boolean)
-                            magic::setPropertyIsDontEnum(O, V, !E);
+        private static function propertyIsEnumerable(obj : Object, prop : string, e=undefined) : boolean {
+            while (obj !== null) {
+                if (obj.hasOwnProperty(prop)) {
+                    let old : boolean = !magic::getPropertyIsDontEnum(obj, prop);
+                    if (!magic::getPropertyIsDontDelete(obj, prop))
+                        if (e is Boolean)
+                            magic::setPropertyIsDontEnum(obj, prop, !e);
                     return old;
                 }
-                O = magic::getPrototype(O);
+                obj = magic::getPrototype(obj);
             }
         }
 
         /* E262-4 draft proposals:json_encoding_and_decoding */
         prototype function toJSONString() 
-            this.toJSONString();
+            private::toJSONString(this);
 
         intrinsic function toJSONString(...args) : string
-            JSON.emit.apply(null, args.unshift(this));
+            private::toJSONString.apply(obj, args);
+
+        private static function toJSONString(obj, args) : string
+            JSON.emit.apply(null, args.unshift(obj));
     }
 }

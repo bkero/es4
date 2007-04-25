@@ -57,6 +57,9 @@ package
         intrinsic static function fromCharCode(...args) : double
             string.fromCharCodeHelper(args);
 
+        /* E262-3 15.5.4.1: String.prototype.constructor */
+        String.prototype.constructor = String;
+
         /* E262-3 15.5.4.2: String.prototype.toString */
         prototype function toString(this : String)
             ToString(this);
