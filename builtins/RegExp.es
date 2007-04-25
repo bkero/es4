@@ -41,15 +41,16 @@ package
                     throw new TypeError("Illegal construction of regular expression");
             }
             else {
-                source = pattern === undefined ? "" : ToString(pattern);
-                flags = flags === undefined ? "" : ToString(flags);
+                source = pattern === undefined ? "" : String(pattern);
+                flags = flags === undefined ? "" : String(flags);
             }
 
             let usedflags : Object! = { m: false, i: false, g: false, x: false, y: false };
 
             for each ( let f : string in explodeString(flags) ) {
-                if (!(f in usedflags))
-                    throw new SyntaxError("Invalid flag: " + f);
+                /* FIXME: uncomment when enumerability works right */
+                /*if (!(f in usedflags))
+                  throw new SyntaxError("Invalid flag: " + f); */
                 if (usedflags.f)
                     throw new SyntaxError("Duplicated flag: " + f);
                 usedflags[f] = true;
