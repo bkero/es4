@@ -707,6 +707,11 @@ and newArray (vals:Mach.VAL list)
         a
     end
 
+and newRegExp (pattern:Ast.USTRING) 
+              (flags:Ast.USTRING)
+    : Mach.VAL =
+    instantiateGlobalClass Name.public_RegExp [newString pattern, newString flags]
+
 and newBuiltin (n:Ast.NAME) (m:Mach.MAGIC option) 
     : Mach.VAL =
     instantiateGlobalClass n [Mach.Object (Mach.setMagic (Mach.newObjNoTag()) m)]
@@ -1402,6 +1407,21 @@ and evalLiteralObjectExpr (regs:Mach.REGS)
     end
 
 
+and evalLiteralRegExp (re:Ast.USTRING)
+    : Mach.VAL =
+    let fun findSplit 0 = 0
+          | findSplit n =
+            if String.sub (re, n) = #"/" then
+                n
+            else
+                findSplit (n-1)
+        val len = String.size re
+        val split = findSplit (len - 1) 
+    in
+        newRegExp (String.substring (re, 1, (split - 1))) (String.substring (re, (split + 1), (len - (split + 1))))
+    end
+
+
 and evalLiteralExpr (regs:Mach.REGS) 
                     (lit:Ast.LITERAL) 
     : Mach.VAL = 
@@ -1423,7 +1443,7 @@ and evalLiteralExpr (regs:Mach.REGS)
       | Ast.LiteralContextualHexInteger _ => error ["contextual hex integer literal at runtime"]
 
       | Ast.LiteralXML _ => LogErr.unimplError ["unhandled literal XML"]
-      | Ast.LiteralRegExp re => LogErr.unimplError ["unhandled literal regexp ",(#str re)]
+      | Ast.LiteralRegExp re => evalLiteralRegExp (#str re)
 
 
 and evalListExpr (regs:Mach.REGS) 
@@ -2307,8 +2327,9 @@ and evalRefExprFull (regs:Mach.REGS)
     in
         (baseObj, (case refOpt of 
                        NONE => if errIfNotFound 
-                               then error ["unresolved identifier expression",
-                                           fmtMultiname multiname]
+                               then ( (* Pretty.ppExpr expr ; *)
+                                      error ["unresolved identifier expression",
+                                             fmtMultiname multiname] )
                                else makeRefNotFound base multiname
                      | SOME r' => r'))
     end
@@ -3657,7 +3678,8 @@ and evalReturnStmt (regs:Mach.REGS)
 and evalThrowStmt (regs:Mach.REGS) 
                   (e:Ast.EXPR) 
     : Mach.VAL =
-    raise (ThrowException (evalExpr regs e))
+    ( (* Pretty.ppExpr e ; *)
+     raise (ThrowException (evalExpr regs e)) )
 
 
 and evalBreakStmt (regs:Mach.REGS) 
@@ -3683,10 +3705,12 @@ and evalProgram (prog:Ast.PROGRAM)
     let
         val regs = getInitialRegs ()
     in
-        LogErr.setPos NONE;
-        allocScopeFixtures regs (valOf (#fixtures prog));
-        map (evalPackage regs) (#packages prog);
-        evalBlock regs (#block prog)
+        (LogErr.setPos NONE;
+         allocScopeFixtures regs (valOf (#fixtures prog));
+         map (evalPackage regs) (#packages prog);
+         evalBlock regs (#block prog))
+        handle ThrowException v => 
+               error ["*** UNHANDLED EXCEPTION ***", toString v]
     end
 
 fun resetGlobal (ob:Mach.OBJ) 
