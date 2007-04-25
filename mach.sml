@@ -313,6 +313,22 @@ fun delProp (b:PROP_BINDINGS)
         b := strip (!b)
     end    
 
+
+fun findProp (b:PROP_BINDINGS) 
+             (n:Ast.NAME) 
+    : PROP option = 
+    let 
+        fun search [] = NONE
+          | search (((k:Ast.NAME),v)::bs) = 
+            if (#id k) = (#id n) andalso 
+               (#ns k) = (#ns n)
+            then SOME v
+            else search bs
+    in
+        search (!b)
+    end
+
+
 fun matchProps (fixedProps:bool)
                (b:PROP_BINDINGS)
                (searchId:Ast.IDENT)
@@ -349,71 +365,29 @@ fun matchProps (fixedProps:bool)
 fun getProp (b:PROP_BINDINGS) 
             (n:Ast.NAME) 
     : PROP = 
-    let 
+    case findProp b n of
+        SOME p => p
+      | NONE => 
         (*
-            If not found, then cons up a temporary property
-            with value undefined. Any property not found
-            errors would have been caught by evalRefExpr
-        *)
-        fun search [] = {ty=Ast.SpecialType Ast.Undefined,
-                              state=ValProp Undef,
-                              attrs={dontDelete=false,  (* unused attrs *)
-                                     dontEnum=false,
-                                     readOnly=false,
-                                     isFixed=false}}
-          | search (((k:Ast.NAME),v)::bs) = 
-            if ((#id k) = (#id n) andalso (#ns k) = (#ns n))
-            then v
-            else search bs
-    in
-        search (!b)
-    end
-
-fun getFixedProp (b:PROP_BINDINGS) 
-                 (n:Ast.NAME) 
-    : PROP = 
-    let 
-        fun search [] = LogErr.hostError ["property binding not found: ", 
-                                          (#id n)]
-          | search (((k:Ast.NAME),(v:PROP))::bs) = 
-            if (#isFixed (#attrs v)) andalso 
-               (#id k) = (#id n) andalso 
-               (#ns k) = (#ns n)
-            then v
-            else search bs
-    in
-        search (!b)
-    end
-
-fun hasFixedProp (b:PROP_BINDINGS) 
-                 (n:Ast.NAME) 
-    : bool = 
-    let 
-        fun search [] = false
-          | search (((k:Ast.NAME),(v:PROP))::bs) = 
-            if (#isFixed (#attrs v)) andalso 
-               (#id k) = (#id n) andalso 
-               (#ns k) = (#ns n)
-            then true
-            else search bs
-    in
-        search (!b)
-    end
+         * If not found, then cons up a temporary property
+         * with value undefined. Any property not found
+         * errors would have been caught by evalRefExpr
+         *)
+        {ty=Ast.SpecialType Ast.Undefined,
+         state=ValProp Undef,
+         attrs={dontDelete=false,  (* unused attrs *)
+                dontEnum=false,
+                readOnly=false,
+                isFixed=false}}
 
 
 fun hasProp (b:PROP_BINDINGS) 
             (n:Ast.NAME) 
     : bool = 
-    let 
-        fun search [] = false
-          | search (((k:Ast.NAME),_)::bs) = 
-            if (#id k) = (#id n) andalso 
-               (#ns k) = (#ns n)
-            then true
-            else search bs
-    in
-        search (!b)
-    end
+    case findProp b n of 
+        NONE => false
+      | SOME _ => true
+
 
 fun hasMagic (ob:OBJ) = 
     case ob of 

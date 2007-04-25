@@ -433,52 +433,48 @@ and getValueOrVirtual (obj:Mach.OBJ)
     let 
         val Mach.Obj { props, ... } = obj
     in
-        if Mach.hasProp props name
-        then 
-            let
-                val prop = Mach.getProp props name
-            in
-                case (#state prop) of 
-                    Mach.TypeProp => 
-                    error ["getValue on a type property: ",
-                           fmtName name]
-
-                  | Mach.TypeVarProp => 
-                    error ["getValue on a type variable property: ",
-                           fmtName name]
-
-                  | Mach.UninitProp => 
-                    error ["getValue on an uninitialized property: ",
-                           fmtName name]
-
-                  | Mach.VirtualValProp { getter, ... } => 
-                    if doVirtual
-                    then 
-                        case getter of 
-                            SOME g => 
-                            invokeFuncClosure obj g []
-                          | NONE => 
-                            error ["getValue on a virtual property w/o getter: ",
-                                   fmtName name]
-                    else 
-                        (* FIXME: possibly throw here? *)
-                        Mach.Undef
-
-                  | Mach.NamespaceProp n =>
-                    newNamespace n
-
-                  | Mach.NativeFunctionProp nf =>
-                    newNativeFunction nf
-                    
-                  | Mach.MethodProp closure => 
-                    newFunctionFromClosure closure
-
-                  | Mach.ValListProp vals =>
-                    newArray vals
-
-                  | Mach.ValProp v => v
-            end
-        else
+        case Mach.findProp props name of 
+            SOME prop => 
+            (case (#state prop) of 
+                 Mach.TypeProp => 
+                 error ["getValue on a type property: ",
+                        fmtName name]
+                 
+               | Mach.TypeVarProp => 
+                 error ["getValue on a type variable property: ",
+                        fmtName name]
+                 
+               | Mach.UninitProp => 
+                 error ["getValue on an uninitialized property: ",
+                        fmtName name]
+                 
+               | Mach.VirtualValProp { getter, ... } => 
+                 if doVirtual
+                 then 
+                     case getter of 
+                         SOME g => 
+                         invokeFuncClosure obj g []
+                       | NONE => 
+                         error ["getValue on a virtual property w/o getter: ",
+                                fmtName name]
+                 else 
+                     (* FIXME: possibly throw here? *)
+                     Mach.Undef
+                     
+               | Mach.NamespaceProp n =>
+                 newNamespace n
+                 
+               | Mach.NativeFunctionProp nf =>
+                 newNativeFunction nf
+                 
+               | Mach.MethodProp closure => 
+                 newFunctionFromClosure closure
+                 
+               | Mach.ValListProp vals =>
+                 newArray vals
+                 
+               | Mach.ValProp v => v)
+          | NONE => 
             if Mach.hasProp props Name.meta_get
             then 
                 let 
@@ -506,10 +502,9 @@ and setValueOrVirtual (base:Mach.OBJ)
     let
         val Mach.Obj { props, ... } = base
     in
-        if Mach.hasProp props name
-        then 
+        case Mach.findProp props name of
+            SOME existingProp => 
             let 
-                val existingProp = Mach.getProp props name                                   
                 val existingAttrs = (#attrs existingProp)
                 val newProp = { state = Mach.ValProp v,
                                 ty = (#ty existingProp), 
@@ -564,7 +559,7 @@ and setValueOrVirtual (base:Mach.OBJ)
                     then ()  (* ignore it *)
                     else write ()
             end
-        else
+          | NONE =>  
             if doVirtual andalso Mach.hasProp props Name.meta_set
             then 
                 let 
