@@ -162,6 +162,9 @@ val public_ByteArray = public "ByteArray"
 (* From Date.es *)
 val public_Date = public "Date"
 
+(* From RegExp.es *)
+val public_RegExp = public "RegExp"
+
 (* From JSON.es *)
 val JSON_emit = { ns = Ast.Public "JSON", id = "emit" }
 val JSON_parse = { ns = Ast.Public "JSON", id = "parse" }
