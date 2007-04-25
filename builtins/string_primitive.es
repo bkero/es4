@@ -496,10 +496,10 @@ package
             ToString(this).substring(start, end == undefined ? this.length : end);
 
         static function substring(self, start, end)
-            ToString(self).substring(start, end)
+            ToString(self).substring(start, end);
 
         override intrinsic function substring(start: double, end: double) : string {
-
+            
             let len : double = length;
 
             start = ToInteger(start);
@@ -516,7 +516,7 @@ package
             let b : uint = end;
 
             for ( let i : uint = a ; i < b ; i++ )
-                s += charCodeAt(i);
+                s += charAt(i);
 
             return s;
         }

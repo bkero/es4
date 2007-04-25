@@ -221,10 +221,10 @@ package
          */
         prototype function substring(start=0.0, end=undefined)
             ToString(this).substring(start, end == undefined ? this.length : end);
-
-        static function substring(self, start, end)
-            ToString(self).substring(start, end)
-
+        
+        static function substring(self, start, end) 
+            ToString(self).substring(start, end);
+            
         intrinsic function substring(start: double, end: double) : string
             ToString(this).substring(start, end);
 

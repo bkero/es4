@@ -2117,9 +2117,7 @@ and evalBinaryTypeOp (regs:Mach.REGS)
                    | "decimal" => newBoolean (Mach.isDecimal v)
                    | "int" => newBoolean (Mach.isInt v)
                    | "uint" => newBoolean (Mach.isUInt v)
-                   | "string" => newBoolean (Mach.isString v)
                    | "String" => newBoolean (Mach.isString v)
-                   | "boolean" => newBoolean (Mach.isBoolean v)
                    | "Boolean" => newBoolean (Mach.isBoolean v)
                    | n => 
                      (case v of 
