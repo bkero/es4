@@ -410,8 +410,9 @@ package
             type matcher = (string,RegExp!);
 
             function splitMatch(R: matcher, S: string, q: uint) : [uint, [string]] {
-                switch type (R : matcher) {
-                case (x : string) {
+                /* FIXME: use "switch type" when it works */
+                if (R is string) {
+                    let x : string = R cast string;
                     let r : uint = x.length;
                     if (q + r <= S.length && S.substring(q, q + r) === R)
                         return [q+r, []];
@@ -419,13 +420,13 @@ package
                         return null;
                 }
 
-                case (xx : RegExp!) {  /* FIXME: rename back to x when Jeff has fixed the definer */
-                    let mr : MatchResult = xx.match(S, q);
+                if (R is RegExp) {
+                    let x : RegExp! = R cast RegExp;
+                    let mr : MatchResult = x.match(S, q);
                     if (mr === null)
                         return null;
                     else
                         return [mr.endIndex, mr.cap];
-                }
                 }
             }
 
