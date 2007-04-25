@@ -58,8 +58,8 @@ package
             return out;
         }
 
-        // 15.4.4.4 Array.prototype.concat ( [ item1 [ , item2 [ , … ] ] ] )
-        private static function concatHelper(self, args) {
+        // 15.4.4.4 Array.prototype.concat ( [ item1 [ , item2 [ , ... ] ] ] )
+        /* private */ static function concatHelper(self, args) {  /* FIXME: "private" should be posible */
             let out:Array = new Array;
             let outlen:uint = 0;
 
@@ -83,18 +83,16 @@ package
         }
 
         public static function concat(self, ...args)
-            concatHelper(self, args);
+            concatHelper(self, args);        /* FIXME: "Array." should not be necessary */
 
         prototype function concat(...args)
-            concatHelper(this, args);  /* Static method should be in scope, and instance methods do not hide it */
+            Array.concatHelper(this, args);  /* FIXME: "Array." should not be necessary */
 
         intrinsic function concat(...args):Array
-            concatHelper(this, args);
+            Array.concatHelper(this, args);  /* FIXME: "Array." should not be necessary */
 
         // 15.4.4.5 Array.prototype.join (separator)
         public static function join(self, sep = undefined) {
-            return "Array join not yet working due to other bug...";
-
             let s:String = (sep === undefined) ? "," : String(sep);
             let out:String = "";
             let len:uint = self.length;
@@ -109,10 +107,10 @@ package
         }
 
         prototype function join(sep = undefined)
-            join(this, sep);  /* Static method should be in scope, and instance methods do not hide it */
+            Array.join(this, sep);  /* FIXME: "Array." should not be necessary */
 
         intrinsic function join(sep = undefined):String
-            Array.join(this, sep);
+            Array.join(this, sep);  /* FIXME: "Array." should not be necessary */
 
         // 15.4.4.6 Array.prototype.pop ( )
         public static function pop(self) {
@@ -310,30 +308,32 @@ package
         intrinsic function splice(...args:Array):Array
             Array.splice(this, arguments);
 
-        // 15.4.4.13 Array.prototype.unshift ( [ item1 [ , item2 [ , … ] ] ] )
-        prototype function unshift(...args)
-            this.unshift(this, args);
-
-        intrinsic function unshift(...args:Array):uint {
-            let len:uint = this.length;
+        private static function unshift(A:Array, args:Array) : uint {
+            let len:uint = A.length;
             let argslen:uint = uint(args.length);
             let k:uint = len;
+
             while (k != 0) {
                 k--;
                 let d:uint = k + argslen;
-                if (k in this)
-                    this[d] = this[k];
+                if (k in A)
+                    A[d] = A[k];
                 else
-                    delete this[d];
+                    delete A[d];
             }
 
             for (let i:uint = 0; i < argslen; i++)
-                this[k++] = args[i];
+                A[i] = args[i];
 
-            len += argslen;
-            this.length = len;
-            return len;
+            return len+argslen;
         }
+
+        // 15.4.4.13 Array.prototype.unshift ( [ item1 [ , item2 [ , … ] ] ] )
+        prototype function unshift(...args)
+            Array.private::unshift(this, args);   /* FIXME: "Array." should not be necessary; "private::" neither */
+
+        intrinsic function unshift(...args:Array):uint
+            Array.private::unshift(this, args);   /* FIXME: "Array." should not be necessary; "private::" neither */
 
         // 15.4.5.1 [[Put]] (P, V)
         // @todo: ensure that catchall-set for undeclared properties runs on every set
