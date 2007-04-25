@@ -34,6 +34,7 @@ package RegExpInternals
             , source = source
             , idx = 0
         {
+            print(source);
             skip();
         }
 
@@ -208,7 +209,7 @@ package RegExpInternals
                 lookingAt("|"))
                 throw new SyntaxError("Illegal character in expression.");
 
-            return new CharsetMatcher(new CharsetAdhoc[consume()]);
+            return new CharsetMatcher(new CharsetAdhoc(consumeChar()));
         }
 
         function atomEscape() : Matcher {
@@ -217,7 +218,7 @@ package RegExpInternals
                 if (t >= nCapturingParens)
                     throw new SyntaxError("Illegal backreference " + t);
                 if (t === 0)
-                    return new CharsetMatcher(new CharsetAdhoc(["\x00"]));
+                    return new CharsetMatcher(new CharsetAdhoc("\x00"));
                 else {
                     largest_backref = Math.max(largest_backref, t);  // Will check validity later
                     return new Backref(t);
@@ -229,7 +230,7 @@ package RegExpInternals
             }
 
             function characterEscape(t : string) : Matcher {
-                return new CharsetMatcher(new CharsetAdhoc([t]));
+                return new CharsetMatcher(new CharsetAdhoc(t));
             }
 
             return escape( decimalEscape, characterClassEscape, characterEscape, false );
@@ -304,9 +305,9 @@ package RegExpInternals
                 return a1;
 
             if (lookingAt("-")) {
-                consume();
+                consumeChar();
                 if (lookingAt("]"))
-                    return accumulate(acc, CharsetAdhoc(["-"]));
+                    return accumulate(acc, CharsetAdhoc("-"));
 
                 let a2 : Charset = classAtom();
                 let a3 : Charset = accumulate(acc, CharsetRange(a1, a2));
@@ -326,11 +327,11 @@ package RegExpInternals
             if (lookingAt("\\"))
                 return classEscape();
 
-            return new CharsetAdhoc(consume());
+            return new CharsetAdhoc(consumeChar());
         }
 
         function classEscape() : Charset {
-            return escape( (function(t : double) : Charset new CharsetAdhoc([string.fromCharCode(t)])),
+            return escape( (function(t : double) : Charset new CharsetAdhoc(string.fromCharCode(t))),
                            (function(t : Charset) : Charset t),
                            (function(t : string) : Charset new CharsetAdhoc(t)),
                            true );
@@ -478,6 +479,7 @@ package RegExpInternals
         function eat(c : string) : Boolean {
             if (!lookingAt(c))
                 return false;
+            print( "eat, idx=" + idx + ", len=" + c.length + ", c=" + c );
             idx += c.length;
             skip();
             return true;
@@ -485,7 +487,7 @@ package RegExpInternals
 
         function lookingAt(c : string) : void {
             for ( let i : uint=0 ; i < c.length && i+idx < source.length ; i++ )
-                if (c[i] != source.charAt(i+idx))  /* FIXME: [] */
+                if (c.charAt(i) !== source.charAt(i+idx))  /* FIXME: [] * 2 */
                     return false;
             return true;
         }
@@ -493,12 +495,15 @@ package RegExpInternals
         function identifier() : string {
             let name : string? = null;
             if (idx < source.length) {
+                print("identifier #1, idx=" + idx);
                 let c : string = source.charAt(idx++);  /* FIXME: [] */
                 if (!isIdentifierStart(c))
                     throw new SyntaxError("Expected identifier");
                 let name = c;
-                while (idx < source.length && isIdentPart(source[idx]))
+                while (idx < source.length && isIdentPart(source[idx])) {
+                    print("identifier #2, idx=" + idx);
                     name += source.charAt(idx++);       /* FIXME: [] */
+                }
                 skip();
                 return name;
             }
@@ -515,7 +520,8 @@ package RegExpInternals
         }
 
         function atEnd() {
-            return idx < source.length;
+            print( "atEnd? idx=" + idx );
+            return idx >= source.length;
         }
 
         function peekChar() {
@@ -526,8 +532,11 @@ package RegExpInternals
         }
 
         function consumeChar(c : string? = null) : string {
-            if (!atEnd() && c === null || source.charAt(idx) == c)  /* FIXME: [] */
+            print( "Want to consume at idx=" + idx + "; c=" + source.charAt(idx) + "; atEnd=" + atEnd() );
+            if (!atEnd() && (c === null || source.charAt(idx) == c))  /* FIXME: [] */ {
+                print("consumeChar, idx=" + idx);
                 return source.charAt(idx++);  /* FIXME: [] */
+            }
             if (c !== null)
                 throw new SyntaxError("Expected character " + c);
             else
@@ -545,11 +554,15 @@ package RegExpInternals
 
             while (!atEnd()) {
                 if (source.charAt(idx) == '#') {  /* FIXME: [] */
-                    while (!atEnd() && !isTerminator(source.charAt(idx)))  /* FIXME: [] */
+                    while (!atEnd() && !isTerminator(source.charAt(idx)))  /* FIXME: [] */ {
+                        print("skip #1, idx=" + idx);
                         ++idx;
+                    }
                 }
-                else if (isBlank(source.charAt(idx)) || isTerminator(source.charAt(idx)) || isFormatControl(source.charAt(idx)))  /* FIXME: [] * 3 */
+                else if (isBlank(source.charAt(idx)) || isTerminator(source.charAt(idx)) || isFormatControl(source.charAt(idx)))  /* FIXME: [] * 3 */ {
+                    print("skip #2, idx=" + idx);
                     ++idx;
+                }
                 else
                     return;
             }
