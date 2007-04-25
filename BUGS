@@ -1,0 +1,93 @@
+====== OPEN BUGS ======
+
+When fixing a bug, remove it from this list.  When we get a BTS things
+will be more streamlined.  --lars
+
+
+2007-04-22 / lth
+  string[index] does not work like string.charAt(index)
+
+2007-04-22 / lth
+  Example:
+    for ( i in [1] ) print(i)
+  Output:
+    [Object object]
+    _length
+    0
+    length
+  Expected:
+    0
+
+2007-04-24 / lth
+  Incorrect namespace sets for property lookup.  Consider code in the
+  Array package:
+
+        public static function join(self, sep = undefined)
+           ...
+
+        prototype function join(sep = undefined)
+            Array.join(this, sep);
+
+        intrinsic function join(sep = undefined):String
+            Array.join(this, sep);
+
+  Here the "Array." qualification is currently necessary, but it should not
+  be, because statics should be visible and should not be shadowed by instance
+  methods (I think).
+
+2007-04-24 / lth
+
+  >> (1).toString()
+  [posn] builtins/int.es:33.1-33.18
+  **ERROR** (near builtins/int.es:33.1-33.18) machError getting uninitialized temporary 1
+
+  >> (1u).toString()
+  [posn] builtins/uint.es:33.1-33.18
+  **ERROR** (near builtins/uint.es:33.1-33.18) machError getting uninitialized temporary 1
+
+2007-04-24 / lth
+
+  <numbertype>.toLocaleString() generally fails, sometimes catastrophically, sometimes just
+  returning undefined:
+
+  >> (1).toLocaleString();
+  undefined
+
+  >> new Number(1).toLocaleString()
+  [stack] [toLocaleString() | toLocaleString()]
+  **ERROR** (unknown location)evalError unresolved identifier expression{multiname: [namespace intrinsic]::value [namespace internal ]::value [namespace public ]::value [namespace internal ]::value [namespace public ]::value }
+
+  >> (1.0).toLocaleString()
+  [posn] builtins/double.es:55.17-55.22
+  [stack] [toLocaleString() | toLocaleString() | toString() | toString(10)]
+  **ERROR** (near builtins/double.es:55.17-55.22) evalError unresolved identifier expression{multiname: [namespace intrinsic]::radix [namespace internal ]::radix [namespace public ]::radix [namespace internal ]::radix [namespace public ]::radix }
+
+2007-04-25 / lth
+
+  Lexer treats input coming from eval as UTF8:
+
+    $ make repl
+    perl repl-with-readline.pl
+
+    >> eval("\x80")
+    uncaught exception Incomplete
+      raised at: main.sml:115.46
+                 main.sml:110.33
+                 parser.sml:6841.45
+                 ../../smlnj-lib/Util/utf8.sml:59.21-59.31
+
+
+2007-04-25 / lth
+
+  For-each-in does not work, it enumerates property names, not values:
+
+    >> for each ( let x in [10,20,30] ) print(x)
+    [Object object 0]
+    _length
+    2
+    1
+    0
+    length
+
+  (It also ignores the issue of enumerability, but so does for-in.)
+
