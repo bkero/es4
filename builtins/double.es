@@ -51,7 +51,7 @@ package
         override intrinsic function toString(radix = 10) : string 
             private::toString(radix);
 
-        private function toString() : string {
+        private function toString(radix) : string {
             if (radix === 10 || radix === undefined)
                 return ToString(this);
             else if (typeof radix === "number" && radix >= 2 && radix <= 36 && isIntegral(radix)) {
