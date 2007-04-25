@@ -153,8 +153,9 @@ package
             outer:
             for ( let k : uint = m ; k < lim ; k++ ) {
                 for ( let w : uint = 0 ; w < sslen ; w++ ) {
-                    if (magic::charCodeAt(this, k+w) !== magic::charCodeAt(searchString, w)) 
-                        continue outer;
+                    if (magic::charCodeAt(this, uint(k+w)) !== magic::charCodeAt(searchString, uint(w))) /* FIXME: casts redundant */
+                        /* continue outer; */  /* FIXME: doesn't work */
+                        break;
                 }
                 return k;
             }
