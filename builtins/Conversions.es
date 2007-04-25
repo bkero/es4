@@ -69,21 +69,8 @@ package
     intrinsic function ToDecimal(x) : decimal
         decimal(x);
 
-    intrinsic function ToString(value) : string {
-        if (value is string)
-            return value;
-        if (value is String)
-            return value.valueOf();
-        if (value === undefined)
-            return "undefined";
-        if (value === null)
-            return "null";
-        if (value is Boolean)
-            return value ? "true" : "false";
-        if (value is Number)
-            intrinsic::NumberToString(value, 10);  // Not quite
-        return ToString(ToPrimitive(value, "String"));
-    }
+    intrinsic function ToString(x) : string
+        string(x);
 
     /* ES-262-3 9.9: ToObject.
 

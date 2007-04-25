@@ -337,7 +337,7 @@ fun allocFixtures (regs:Mach.REGS)
                             let
                                 val Ast.Cls {classFixtures, ...} = cls
                                 val _ = trace ["allocating class object for class ", fmtName pn]
-                                val Mach.Object classObj = newClass scope cls
+                                val classObj = needObj (newClass scope cls)
                                 val _ = trace ["allocating class fixtures on class ", fmtName pn]
                                 (* FIXME: 'this' binding in class objects might be wrong here. *)
                                 val _ = allocObjFixtures regs classObj NONE classFixtures
@@ -2118,7 +2118,9 @@ and evalBinaryTypeOp (regs:Mach.REGS)
                    | "int" => newBoolean (Mach.isInt v)
                    | "uint" => newBoolean (Mach.isUInt v)
                    | "string" => newBoolean (Mach.isString v)
+                   | "String" => newBoolean (Mach.isString v)
                    | "boolean" => newBoolean (Mach.isBoolean v)
+                   | "Boolean" => newBoolean (Mach.isBoolean v)
                    | n => 
                      (case v of 
                           Mach.Undef => newBoolean false
@@ -2287,7 +2289,7 @@ and evalRefExprFull (regs:Mach.REGS)
 
         val baseObj = case base of
                           SOME (Mach.Object ob) => SOME ob
-                        | NONE => NONE
+                        | _ => NONE
                                        
         (* FIXME: ns might be user settable default *)
         fun makeRefNotFound (b:Mach.VAL option) (mname:Ast.MULTINAME) 
