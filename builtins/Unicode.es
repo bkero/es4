@@ -71,7 +71,7 @@ package Unicode
     public function explodeString(s : string) : [string] {
         let cs : [string] = [] : [string];
         for ( let i=0 ; i < s.length ; i++ )
-            cs[i] = s[i];
+            cs[i] = s.charAt(i);   /* FIXME: use [] syntax when it works */
         return cs;
     }
 }
