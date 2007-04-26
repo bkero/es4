@@ -3,7 +3,8 @@
 When fixing a bug, remove it from this list.  When we get a BTS things
 will be more streamlined.  --lars
 
-2007-04-24 / lth
+#0001  2007-04-24 / lth
+
   Incorrect namespace sets for property lookup.  Consider code in the
   Array package:
 
@@ -20,7 +21,8 @@ will be more streamlined.  --lars
   be, because statics should be visible and should not be shadowed by instance
   methods (I think).
 
-2007-04-24 / lth
+
+#0002  2007-04-24 / lth
 
   >> (1).toString()
   [posn] builtins/int.es:33.1-33.18
@@ -30,7 +32,8 @@ will be more streamlined.  --lars
   [posn] builtins/uint.es:33.1-33.18
   **ERROR** (near builtins/uint.es:33.1-33.18) machError getting uninitialized temporary 1
 
-2007-04-24 / lth
+
+#0003  2007-04-24 / lth
 
   <numbertype>.toLocaleString() generally fails, sometimes catastrophically, sometimes just
   returning undefined:
@@ -47,7 +50,8 @@ will be more streamlined.  --lars
   [stack] [toLocaleString() | toLocaleString() | toString() | toString(10)]
   **ERROR** (near builtins/double.es:55.17-55.22) evalError unresolved identifier expression{multiname: [namespace intrinsic]::radix [namespace internal ]::radix [namespace public ]::radix [namespace internal ]::radix [namespace public ]::radix }
 
-2007-04-25 / lth
+
+#0004  2007-04-25 / lth
 
   Lexer treats input coming from eval as UTF8:
 
@@ -62,7 +66,7 @@ will be more streamlined.  --lars
                  ../../smlnj-lib/Util/utf8.sml:59.21-59.31
 
 
-2007-04-25 / lth
+#0005  2007-04-25 / lth
 
   For-each-in does not work, it enumerates property names, not values:
 
@@ -75,4 +79,41 @@ will be more streamlined.  --lars
     length
 
   (It also ignores the issue of enumerability, but so does for-in.)
+
+
+#0006  2007-04-26 / lth
+
+  The arguments object is wrong.  It can't be an Array object, it
+  needs to be an Object that delegates to the Array prototype.  This
+  is important because the "length" field must always be the actual
+  number of arguments passed, not taking into account defaults or rest
+  args.  Thus initializing it from the instantiated formal argument
+  list is not at all correct.
+
+  Also, the arguments object must appear to share storage with its
+  activation record, this can be handled by instantiating it with
+  scoped getters and setters when it is created (and this is a good
+  specification mechanism, probably).
+
+
+#0007  2007-04-27 / lth
+
+  Division is broken:
+
+    1/3 => 0   // should be 0.33333....
+
+
+#0008  2007-04-27 / lth
+
+  "switch type" statements are not implemented.
+
+
+#0009  2007-04-27 / lth
+
+  The Mach.OBJ type must carry the class of the object so that
+  magic::getClassName can do its thing for Array, String, Date,
+  RegExp, and all the others -- their class names are really not
+  "Object".
+
+  (Causes one Array test to fail.)
 
