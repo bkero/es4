@@ -30,33 +30,33 @@ package
 
         /* E262-3 15.10.4.1: The RegExp constructor */
         public function RegExp( pattern, flags ) {
-            let source : string = "";
+            let src : string = "";
 
             if (pattern is RegExp) {
                 if (flags === undefined) {
-                    source = pattern.source;
+                    src = pattern.source;
                     flags = pattern.flags;
                 }
                 else 
                     throw new TypeError("Illegal construction of regular expression");
             }
             else {
-                source = pattern === undefined ? "" : String(pattern);
+                src = pattern === undefined ? "" : String(pattern);
                 flags = flags === undefined ? "" : String(flags);
             }
 
             let usedflags : Object! = { m: false, i: false, g: false, x: false, y: false };
 
-            for each ( let f : string in explodeString(flags) ) {
-                /* FIXME: uncomment when enumerability works right */
-                /*if (!(f in usedflags))
-                  throw new SyntaxError("Invalid flag: " + f); */
-                if (usedflags.f)
+            for ( let i=0, cs=explodeString(flags) ; i < cs.length ; i++ ) {
+                let f = cs[i];
+                if (!(f in usedflags))
+                  throw new SyntaxError("Invalid flag: " + f);
+                if (usedflags[f])
                     throw new SyntaxError("Duplicated flag: " + f);
                 usedflags[f] = true;
             }
 
-            matcher = (new RegExpCompiler(source, flags)).compile();
+            matcher = (new RegExpCompiler(src, flags)).compile();
 
             multiline = usedflags.m;
             ignoreCase = usedflags.i;
@@ -64,7 +64,7 @@ package
             extended = usedflags.x;
             sticky = usedflags.y;
             lastIndex = 0;
-            source = source;
+            source = src;
         }
 
         /* E262-4 proposals:extend_regexps: RegExp instances are
@@ -111,7 +111,7 @@ package
             this.exec(s);
 
         /* E262-3 15.10.6.3: RegExp.prototype.test */
-        intrinsic function test(s : string) : Boolean
+        intrinsic function test(s : string) : boolean
              exec(s) !== null;
 
         prototype function test(s)
@@ -125,13 +125,14 @@ package
             this.toString();
 
         /* E262-3 15.10.7: properties of regexp instances */
-        public const multiline  : Boolean;
-        public const ignoreCase : Boolean;
-        public const global     : Boolean;
-        public const extended   : Boolean;  // E262-4 proposals:extend_regexps
-        public const sticky     : Boolean;  // E262-4 proposals:extend_regexps
-        public const source     : string;
-        public var   lastIndex  : double;
+        /* FIXME: the flags should be 'const', see bug #000C */
+        public var multiline  : boolean;
+        public var ignoreCase : boolean;
+        public var global     : boolean;
+        public var extended   : boolean; // E262-4 proposals:extend_regexps
+        public var sticky     : boolean; // E262-4 proposals:extend_regexps
+        public var source     : string;
+        public var lastIndex  : double;
 
         /* E262-4 - [[Match]] may not *have* to be public, but String
            uses it, and if we want to model the language in the

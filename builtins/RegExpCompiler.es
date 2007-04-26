@@ -32,18 +32,18 @@ package RegExpInternals
         function RegExpCompiler( source : string, flags : string )
             : extended = flags.indexOf("x") != -1
             , source = source
-            , idx = 0
+            , idx = 0              /* FIXME: redundant */
+            , largest_backref = 0  /* FIXME: redundant */
         {
-            print(source);
             skip();
         }
 
         public function compile() : RegExpMatcher {
             let p : Matcher = pattern();
             if (idx !== source.length)
-                throw new SyntaxError("Invalid character in input \"" + source + "\", position " + idx);
-            if (largest_backref >= parenIndex)
-                throw new SyntaxError("Reference to undefined capture " + largest_backref);
+                fail( SyntaxError, "Invalid character in input \"" + source + "\", position " + idx );
+            if (largest_backref >= parenIndex && largest_backref > 0)
+                fail( SyntaxError, "Reference to undefined capture " + largest_backref );
             return new RegExpMatcher(p, parenIndex, names);
         }
 
@@ -118,14 +118,20 @@ package RegExpInternals
                     }
                 }
                 if (isFinite(max) && max < min)
-                    throw new SyntaxError("max must be at least as large as min");
+                    fail( SyntaxError, "max quant must be at least as large as min" );
                 return [min,max];
             }
             else 
                 return null;
         }
 
-        function atom() : Matcher {
+        function atom() : Matcher? {
+            if (atEnd())
+                return null;
+
+            if (lookingAt(")"))
+                return null;
+
             if (eat("."))
                 return new CharsetMatcher(charset_notlinebreak);
 
@@ -163,7 +169,7 @@ package RegExpInternals
                 match(")");
                 for each ( let n : string in names ) {
                     if (n === name)
-                        throw new SyntaxError("Multiply defined capture name: " + name );
+                        fail( SyntaxError, "Multiply defined capture name: " + name );
                 }
                 names[capno] = name;
                 return new Capturing(d, capno);
@@ -176,11 +182,11 @@ package RegExpInternals
                     if (n === name)
                         return new Backref(uint(i));
                 }
-                throw new SyntaxError("Unknown backref name " + name );
+                fail( SyntaxError, "Unknown backref name " + name );
             }
 
             if (eat("(?"))
-                throw new SyntaxError("Bogus (? pattern");
+                fail( SyntaxError, "Bogus (? pattern" );
 
             if (eat("(")) {
                 let capno : uint = parenIndex++;
@@ -205,9 +211,8 @@ package RegExpInternals
                 lookingAt("{") ||
                 lookingAt("}") ||
                 lookingAt("]") ||
-                lookingAt(")") ||
                 lookingAt("|"))
-                throw new SyntaxError("Illegal character in expression.");
+                fail( SyntaxError, "Illegal character in expression." );
 
             return new CharsetMatcher(new CharsetAdhoc(consumeChar()));
         }
@@ -216,7 +221,7 @@ package RegExpInternals
 
             function decimalEscape(t : double) : Matcher {
                 if (t >= nCapturingParens)
-                    throw new SyntaxError("Illegal backreference " + t);
+                    fail( SyntaxError, "Illegal backreference " + t );
                 if (t === 0)
                     return new CharsetMatcher(new CharsetAdhoc("\x00"));
                 else {
@@ -322,7 +327,7 @@ package RegExpInternals
 
         function classAtom() : Charset {
             if (lookingAt("]") || atEnd())
-                throw SyntaxError("Premature end of input");
+                fail( SyntaxError, "Premature end of input" );
 
             if (lookingAt("\\"))
                 return classEscape();
@@ -357,7 +362,7 @@ package RegExpInternals
                     return ch(t);
             }
 
-            throw new SyntaxError("Failed to match escape sequence");
+            fail( SyntaxError, "Failed to match escape sequence" );
         }
 
         /* Returns null if it does not consume anything but fails;
@@ -384,7 +389,7 @@ package RegExpInternals
                 match("}");
                 let (cls : Charset? = unicodeClass(name, invert));
                 if (cls === null)
-                    throw new ReferenceError("Unsupported unicode character class " + name);
+                    fail( ReferenceError, "Unsupported unicode character class " + name );
                 return cls;
             }
 
@@ -425,7 +430,7 @@ package RegExpInternals
                     }
                 }
                 if (n !== null && i < m || i == 0)
-                    throw new SyntaxError("hex sequence too short");
+                    fail( SyntaxError, "hex sequence too short" );
                 skip();
                 return string.fromCharCode(k);
             }
@@ -446,7 +451,7 @@ package RegExpInternals
                         return string.fromCharCode(c.charCodeAt(0) - "A".charCodeAt(0));
                     if (c >= "a" && c <= "z")
                         return string.fromCharCode(c.charCodeAt(0) - "a".charCodeAt(0));
-                    throw new SyntaxError("Bogus \\c sequence: " + c);
+                    fail( SyntaxError, "Bogus \\c sequence: " + c );
                 }
             if (eat("\\x{") || eat("\\X{") || eat("\\u{") || eat("\\U{")) {
                 let s : string = hexDigits();
@@ -457,11 +462,11 @@ package RegExpInternals
                 return hexDigits(2);
             if (eat("\\u") || eat("\\U"))
                 return hexDigits(4);
-            if (isIdentifierPart(c))
+            if (isIdentifierPart(peekChar()))
                 return null;
             consumeChar("\\");
             if (atEnd())
-                throw new SyntaxError("EOF inside escape sequence");
+                fail( SyntaxError, "EOF inside escape sequence" );
             return consumeChar();
         }
 
@@ -473,21 +478,22 @@ package RegExpInternals
 
         function match(c : string) : void {
             if (!eat(c))
-                throw new SyntaxError("Expected token here: " + c);
+                fail( SyntaxError, "Expected token here: " + c );
         }
 
         function eat(c : string) : Boolean {
             if (!lookingAt(c))
                 return false;
-            print( "eat, idx=" + idx + ", len=" + c.length + ", c=" + c );
             idx += c.length;
             skip();
             return true;
         }
 
         function lookingAt(c : string) : void {
+            if (atEnd())
+                return false;
             for ( let i : uint=0 ; i < c.length && i+idx < source.length ; i++ )
-                if (c.charAt(i) !== source.charAt(i+idx))  /* FIXME: [] * 2 */
+                if (c[i] !== source[i+idx])
                     return false;
             return true;
         }
@@ -495,20 +501,17 @@ package RegExpInternals
         function identifier() : string {
             let name : string? = null;
             if (idx < source.length) {
-                print("identifier #1, idx=" + idx);
-                let c : string = source.charAt(idx++);  /* FIXME: [] */
+                let c : string = source[idx++];
                 if (!isIdentifierStart(c))
-                    throw new SyntaxError("Expected identifier");
+                    fail( SyntaxError, "Expected identifier" );
                 let name = c;
-                while (idx < source.length && isIdentPart(source[idx])) {
-                    print("identifier #2, idx=" + idx);
-                    name += source.charAt(idx++);       /* FIXME: [] */
-                }
+                while (idx < source.length && isIdentPart(source[idx]))
+                    name += source[idx++];
                 skip();
                 return name;
             }
             else
-                throw new SyntaxError("Expected identifier");
+                fail( SyntaxError, "Expected identifier" );
         }
 
         function decimalDigits() : double {
@@ -519,32 +522,27 @@ package RegExpInternals
             return k;
         }
 
-        function atEnd() {
-            print( "atEnd? idx=" + idx );
-            return idx >= source.length;
-        }
+        function atEnd()
+            idx >= source.length;
 
         function peekChar() {
             if (!atEnd())
-                return source.charAt(idx);  /* FIXME: [] */
+                return source[idx];
             else
                 return "*END*";
         }
 
         function consumeChar(c : string? = null) : string {
-            print( "Want to consume at idx=" + idx + "; c=" + source.charAt(idx) + "; atEnd=" + atEnd() );
-            if (!atEnd() && (c === null || source.charAt(idx) == c))  /* FIXME: [] */ {
-                print("consumeChar, idx=" + idx);
-                return source.charAt(idx++);  /* FIXME: [] */
-            }
+            if (!atEnd() && (c === null || source[idx] == c)) 
+                return source[idx++];
             if (c !== null)
-                throw new SyntaxError("Expected character " + c);
+                fail( SyntaxError, "Expected character " + c );
             else
-                throw new SyntaxError("Unexected EOF");
+                fail( SyntaxError, "Unexected EOF" );
         }
 
         function consumeUntil(c : string) : void {
-            while (!atEnd() && source.charAt(idx) != c)  /* FIXME: [] */
+            while (!atEnd() && source[idx] != c)
                 ++idx;
         }
 
@@ -553,19 +551,22 @@ package RegExpInternals
                 return;
 
             while (!atEnd()) {
-                if (source.charAt(idx) == '#') {  /* FIXME: [] */
-                    while (!atEnd() && !isTerminator(source.charAt(idx)))  /* FIXME: [] */ {
-                        print("skip #1, idx=" + idx);
+                if (source[idx] == '#') {
+                    while (!atEnd() && !isTerminator(source[idx]))
                         ++idx;
-                    }
                 }
-                else if (isBlank(source.charAt(idx)) || isTerminator(source.charAt(idx)) || isFormatControl(source.charAt(idx)))  /* FIXME: [] * 3 */ {
-                    print("skip #2, idx=" + idx);
+                else if (isBlank(source[idx]) || isTerminator(source[idx]) || isFormatControl(source[idx])) 
                     ++idx;
-                }
                 else
                     return;
             }
+        }
+
+        function fail( err, msg ) {
+            throw new err( "Error in RegExp compiler:\n" +
+                           "  input: " + source + "\n" +
+                           "  pos: " + idx + "\n" +
+                           "  msg: " + msg );
         }
     }
 }
