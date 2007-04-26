@@ -284,22 +284,7 @@ fun setPropertyIsDontEnum (vals:Mach.VAL list)
         val n = { id = id, ns = ns }
         val b = nthAsBool vals 2
     in
-        if Mach.hasProp props n
-        then 
-            let 
-                val prop = Mach.getProp props n
-                val attrs = (#attrs prop)
-                val newProp = { ty = (#ty prop),
-                                state = (#state prop),
-                                attrs = { dontDelete = (#dontDelete attrs),
-                                          dontEnum = b,
-                                          readOnly = (#readOnly attrs),
-                                          isFixed = (#isFixed attrs) } }
-            in
-                Mach.delProp props n;
-                Mach.addProp props n newProp
-            end
-        else ();
+        Mach.setPropDontEnum props n b;
         Mach.Undef
     end
 

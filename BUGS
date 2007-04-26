@@ -3,17 +3,6 @@
 When fixing a bug, remove it from this list.  When we get a BTS things
 will be more streamlined.  --lars
 
-2007-04-22 / lth
-  Example:
-    for ( i in [1] ) print(i)
-  Output:
-    [Object object]
-    _length
-    0
-    length
-  Expected:
-    0
-
 2007-04-24 / lth
   Incorrect namespace sets for property lookup.  Consider code in the
   Array package:

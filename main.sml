@@ -35,7 +35,7 @@ fun repl doPrompt =
 
         fun doLine _ = 
             let 
-                val _ = if doPrompt then print ">> " else ()
+                val _ = if doPrompt then print ">> " else print "<SMLREADY>\n"
                 val line = case TextIO.inputLine TextIO.stdIn of 
                                NONE => ""
                              | SOME s => s

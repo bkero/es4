@@ -1,23 +1,29 @@
 #!/usr/bin/perl -w
 
 use Term::ReadLine;
-use FileHandle;
+use IPC::Open2;
 
 my $term = new Term::ReadLine 'ES4 repl';
 my $prompt = ">> ";
-my $sml = new FileHandle("|sml \@SMLload=es4.heap -rq");
-my $line = "";
+my ($sml_response, $sml_call);
+my $sml_pid = open2($sml_response, $sml_call, 'sml', '@SMLload=es4.heap', '-rq');
+my $input = "", $response = "";
 
-while ( defined ($line = $term->readline($prompt)) ) {
-    $sml->print($line);
-    $sml->print("\n");
-    $sml->flush();
-    if ($line =~ /^:q/) { exit(0); }
-    $term->addhistory($line) if ($line =~ /\S/);
+print("booting...\n");
+while (1) {
+    while (1) {
+	$response = <$sml_response>;
+	if (not defined($response)) { exit(0); }
+	last if ($response =~ /^<SMLREADY>/);
+	print $response;
+    }
 
-    # This is pathetic, but it returns faster than main::sleep(1) and
-    # seems to be sufficient.
-    system("true");
-    system("true");    
-    system("true");
+    $input = $term->readline($prompt);
+    if ((not defined($input)) || $input =~ /^:q/) {
+	print $sml_call ":q\n";
+	exit(0);
+    }
+    
+    print $sml_call $input, "\n";
+    $term->addhistory($input) if ($input =~ /\S/);
 }

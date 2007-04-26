@@ -11,12 +11,15 @@ val magicNS = newAnonNS ()
 val publicNS = Ast.Public ""
 val internalNS = Ast.Internal ""
 val intrinsicNS = Ast.Intrinsic
+(* FIXME: private is incomplete. *)
+val privateNS = Ast.Private "class name here"
 
 fun meta id = { id = id, ns = metaNS }
 fun magic id = { id = id, ns = magicNS }
 fun public id = { id = id, ns = publicNS }
 fun internal id = { id = id, ns = internalNS }
 fun intrinsic id = { id = id, ns = internalNS }
+fun private cls id = { id = id, ns = privateNS }
 
 (* 
  * To reference a name as a type expression, you need 
@@ -36,6 +39,8 @@ fun typename (n:Ast.NAME) =
 
 val public_constructor = public "constructor"
 val public_length = public "length"
+val public_cursor = public "cursor"
+val private_Array__length = private "Array" "_length"
 val public_source = public "source"
 val public_prototype = public "prototype"
 val public_toString = public "toString"

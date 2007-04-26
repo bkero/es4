@@ -6,7 +6,8 @@ structure Mach = struct
 (* Local tracing machinery *)
 
 val doTrace = ref false
-fun trace ss = if (!doTrace) then LogErr.log ("[mach] " :: ss) else ()
+fun log ss = LogErr.log ("[mach] " :: ss) 
+fun trace ss = if (!doTrace) then log ss else ()
 fun error ss = LogErr.machError ss
 
 fun nameEq (a:Ast.NAME) (b:Ast.NAME) = ((#id a) = (#id b) andalso (#ns a) = (#ns b))
@@ -395,6 +396,26 @@ fun hasMagic (ob:OBJ) =
         case !magic of 
             SOME _ => true
           | NONE => false
+
+fun setPropDontEnum (props:PROP_BINDINGS)
+                    (n:Ast.NAME)
+                    (dontEnum:bool) 
+    : unit = 
+    case findProp props n of
+        SOME prop => 
+        let 
+            val attrs = (#attrs prop)
+            val newProp = { ty = (#ty prop),
+                            state = (#state prop),
+                            attrs = { dontDelete = (#dontDelete attrs),
+                                      dontEnum = dontEnum,
+                                      readOnly = (#readOnly attrs),
+                                      isFixed = (#isFixed attrs) } }
+        in
+            delProp props n;
+            addProp props n newProp
+        end
+      | NONE => ()
     
 
 (* Safe: will overflow when it runs out of identities. *)

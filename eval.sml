@@ -697,15 +697,7 @@ and newRootBuiltin (n:Ast.NAME) (m:Mach.MAGIC)
 
 and newArray (vals:Mach.VAL list)
     : Mach.VAL = 
-    let val a = instantiateGlobalClass Name.public_Array [newInt (Int32.fromInt (List.length vals))]
-        fun init a _ [] = ()
-          | init a k (x::xs) =
-            (setValue a (Name.public (Int.toString k)) x ;
-             init a (k+1) xs)
-    in
-        init (needObj a) 0 vals;
-        a
-    end
+    instantiateGlobalClass Name.public_Array vals
 
 and newRegExp (pattern:Ast.USTRING) 
               (flags:Ast.USTRING)
@@ -3029,18 +3021,21 @@ and runAnySpecialConstructor (id:Mach.OBJ_IDENT)
          if id = !ArrayClassIdentity
          then 
              let
+                 val Mach.Obj { props, ... } = instanceObj
                  fun bindVal _ [] = ()
                    | bindVal n (x::xs) = 
                      (setValue instanceObj (Name.public (Int.toString n)) x;
                       bindVal (n+1) xs)
              in
                  case args of
-                     [] => setValue instanceObj (Name.public "length") (newUInt 0w0)
+                     [] => setValue instanceObj Name.public_length (newUInt 0w0)
                    | [k] => if Mach.isNumeric k then
-                                setValue instanceObj (Name.public "length") k
+                                setValue instanceObj Name.public_length k
                             else
                                 bindVal 0 args
-                   | _ => bindVal 0 args
+                   | _ => bindVal 0 args;
+                 Mach.setPropDontEnum props Name.public_length true;
+                 Mach.setPropDontEnum props Name.private_Array__length true
              end
          else 
              ())
@@ -3484,37 +3479,17 @@ and callIteratorGet (regs:Mach.REGS)
                     (iterable:Mach.OBJ)
     : Mach.OBJ =
     let
-        val iterValue = newBuiltin Name.public_Array NONE
-        val iterator  = (case iterValue of
-                             Mach.Object ob => ob
-                           | _ => raise InternalError)
+        val Mach.Obj { props, ... } = iterable
+        fun f (name:Ast.NAME, prop:Mach.PROP) = 
+            case prop of 
+                { state = Mach.ValProp _, 
+                  attrs = { dontEnum = false, ... }, 
+                  ... } => SOME (newString (#id name))
+              | _ => NONE
+        val iterator = needObj (newArray (List.mapPartial f (!props)))
     in
-        case iterable of
-            Mach.Obj { props, ... } =>
-            let
-                val cursorName = Name.public "cursor"
-                val cursorInit = newInt 0
-                val length = ref 0
-                fun enumerate ((name, prop):(Ast.NAME * Mach.PROP)) : bool =
-                    if #dontEnum (#attrs prop)
-                    then
-                        true
-                    else
-                        let
-                            val lengthValue = getValue iterator Name.public_length
-                            val _ = length := toInt32 lengthValue
-                            val elemIndex   = Name.public (Int32.toString (!length))
-                            val elemValue   = newString (#id name)
-                        in
-                            setValue iterator elemIndex elemValue;
-                            true
-                        end
-            in
-                setValue iterator cursorName cursorInit;
-                List.all enumerate (!props);
-                setValue iterator Name.public_length (newInt (!length+1));
-                iterator
-            end
+        setValue iterator Name.public_cursor (newInt 0);
+        iterator
     end
 
 and callIteratorNext (regs:Mach.REGS)
@@ -3523,8 +3498,7 @@ and callIteratorNext (regs:Mach.REGS)
     let
         val lengthValue = getValue iterator Name.public_length
         val length      = toInt32 lengthValue
-        val cursorName  = Name.public "cursor"
-        val cursorValue = getValue iterator cursorName
+        val cursorValue = getValue iterator Name.public_cursor
         val cursor      = toInt32 cursorValue
     in
         if cursor < length
@@ -3533,7 +3507,7 @@ and callIteratorNext (regs:Mach.REGS)
                 val nextName       = Name.public (Int32.toString cursor)
                 val newCursorValue = newInt (cursor + 1)
             in
-                setValue iterator cursorName newCursorValue;
+                setValue iterator Name.public_cursor newCursorValue;
                 getValue iterator nextName
             end
         else
