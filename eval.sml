@@ -473,6 +473,7 @@ and getValueOrVirtual (obj:Mach.OBJ)
                  newFunctionFromClosure closure
                  
                | Mach.ValListProp vals =>
+                 (* FIXME: The 'arguments' object can't be an array. *)
                  newArray vals
                  
                | Mach.ValProp v => v)
@@ -2747,13 +2748,13 @@ and bindArgs (regs:Mach.REGS)
         fun bind (finalArgs:Mach.VAL list) = 
             (* 
              * FIXME: this is a random guess at the appropriate form
-             * of 'arguments'. 
+             * of 'arguments'.
              *)
-            (Mach.addProp props Name.arguments { state = Mach.ValListProp finalArgs,
-                                                 ty = Name.typename Name.public_Array,
+            (Mach.addProp props Name.arguments { state = Mach.ValListProp args,  (* args is a better approximation than finalArgs *)
+                                                 ty = Name.typename Name.public_Object,
                                                  attrs = { dontDelete = true,
                                                            dontEnum = true,
-                                                           readOnly = true, 
+                                                           readOnly = false, 
                                                            isFixed = true } };
              bindArg 0 finalArgs)
 

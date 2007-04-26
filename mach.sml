@@ -93,6 +93,8 @@ datatype VAL = Object of OBJ
                      * constructed. We then ensure that the Namespace, Function and Array
                      * constructors, settings and initializers (in the builtins) 
                      * do *not* cause any "get" operations on properties in these states.
+                     *
+                     * FIXME: The 'arguments' object can't be an array.
                      *)
                     | NamespaceProp of Ast.NAMESPACE
                     | MethodProp of FUN_CLOSURE
