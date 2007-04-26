@@ -293,5 +293,13 @@ package
         /* E262-3 15.5.5.1: length. */
         function get length() : uint
             magic::stringLength(this);
+
+        /* Catchall indexing operation. */
+        meta function get(pos) {
+            let x : double = ToDouble(pos);
+            if (isNaN(x))
+                return undefined;
+            return charAt(x);
+        }
     }
 }

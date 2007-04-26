@@ -2139,6 +2139,7 @@ and evalBinaryTypeOp (regs:Mach.REGS)
                    | "uint" => newBoolean (Mach.isUInt v)
                    | "String" => newBoolean (Mach.isString v)
                    | "Boolean" => newBoolean (Mach.isBoolean v)
+                   | "Numeric" => newBoolean (Mach.isNumeric v)
                    | n => 
                      (case v of 
                           Mach.Undef => newBoolean false
