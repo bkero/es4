@@ -15,6 +15,7 @@ Library
     structure Boot
     structure Decimal
     structure Name
+    structure Ustring
 is
     logerr.sml (lambdasplit: infinity)
     main.sml
@@ -34,6 +35,7 @@ is
     boot.sml
     decimal.sml (lambdasplit: infinity)
     name.sml (lambdasplit: infinity)
+    ustring.sml
 
     $/basis.cm
     $/smlnj-lib.cm

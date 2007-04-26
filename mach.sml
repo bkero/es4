@@ -42,7 +42,7 @@ datatype VAL = Object of OBJ
        | Double of Real64.real
        | Decimal of Decimal.DEC
        | ByteArray of Word8Array.array
-       | String of Ast.USTRING  (* someday to be unicode *)
+       | String of Ustring.STRING
        | Boolean of bool
        | Namespace of Ast.NAMESPACE
        | Class of CLS_CLOSURE
@@ -290,7 +290,7 @@ fun delProp (b:PROP_BINDINGS)
     : unit = 
     let 
         fun strip [] = LogErr.hostError ["deleting nonexistent property binding: ", 
-                                         (#id n)]
+                                         Ustring.toString (#id n)]
           | strip ((k,v)::bs) = 
             if k = n 
             then bs
@@ -328,7 +328,7 @@ fun getFixedProp (b:PROP_BINDINGS)
     : PROP = 
     let 
         fun search [] = LogErr.hostError ["property binding not found: ", 
-                                          (#id n)]
+                                          Ustring.toString (#id n)]
           | search ((k,(v:PROP))::bs) = 
             if k = n andalso (#isFixed (#attrs v))
             then v

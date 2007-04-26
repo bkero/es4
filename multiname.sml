@@ -33,7 +33,7 @@ fun resolve (mname:Ast.MULTINAME)
                         let
                             val n = {ns=ns,id=id}
                         in
-                            (trace ["limited match ",id];
+                            (trace ["limited match ",Ustring.toString id];
                             if nameExists (curr, n)
                             then tryName (n::matches) xs
                             else tryName matches xs)

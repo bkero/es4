@@ -150,7 +150,7 @@ datatype TOKEN =
     | BlockComment
     | DocComment
     | Eol
-    | Identifier of string
+    | Identifier of Ustring.STRING
 
     (* The interpretation of these 4 literal types can be done during lexing. *)
     | ExplicitDecimalLiteral of Decimal.DEC
@@ -163,10 +163,10 @@ datatype TOKEN =
     | DecimalLiteral of string 
     | HexIntegerLiteral of string 
 
-    | PackageIdentifier of string
-    | RegexpLiteral of string
+    | PackageIdentifier of Ustring.STRING
+    | RegexpLiteral of Ustring.STRING
     | SlashSlashComment
-    | StringLiteral of string
+    | StringLiteral of Ustring.STRING
     | Whitespace
     | XmlLiteral
     | XmlPart
@@ -390,7 +390,7 @@ fun tokenname (t,_) =
       | BlockComment => ""
       | DocComment => ""
       | Eol => "eol"
-      | Identifier x => "identifier("^x^")"
+      | Identifier x => "identifier("^(Ustring.toString x)^")"
 
       | DecimalIntegerLiteral x => x
       | DecimalLiteral x => x
@@ -401,10 +401,10 @@ fun tokenname (t,_) =
       | ExplicitIntLiteral x => Int32.toString(x) ^ "i"
       | ExplicitUIntLiteral x => LargeInt.toString (Word32.toLargeInt(x)) ^ "u"
 
-      | PackageIdentifier x => "packageidentifier("^x^")"
-      | RegexpLiteral x => "regexp("^x^")"
+      | PackageIdentifier x => "packageidentifier("^(Ustring.toString x)^")"
+      | RegexpLiteral x => "regexp("^(Ustring.toString x)^")"
       | SlashSlashComment => ""
-      | StringLiteral x => "string("^x^")"
+      | StringLiteral x => "string("^(Ustring.toString x)^")"
       | Whitespace => "<ws>"
       | XmlLiteral => "xmlliteral()"
       | XmlPart => "xmlpart()"

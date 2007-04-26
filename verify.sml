@@ -810,7 +810,7 @@ and verifyExpr (ctxt as {env,this,...}:CONTEXT)
 
      and IDENT_EXPR =
          QualifiedIdentifier of { qual : EXPR,
-                                  ident : USTRING }
+                                  ident : Ustring.STRING }
        | QualifiedExpression of { qual : EXPR,
                                   expr : EXPR }
        | AttributeIdentifier of IDENT_EXPR

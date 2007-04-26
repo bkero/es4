@@ -99,8 +99,8 @@ fun boot _ =
           let 
               val fullName = Name.public name
 
-              val _ = trace ["loading fundamental ", name, " class from builtin/", name ,".es"];
-              val prog = Defn.defProgram (Parser.parseFile ("builtins/" ^ name ^ ".es"))
+              val _ = trace ["loading fundamental ", Ustring.toString name, " class from builtin/", Ustring.toString name ,".es"];
+              val prog = Defn.defProgram (Parser.parseFile ("builtins/" ^ Ustring.toString name ^ ".es"))
 
               val _ = trace ["fetching ", LogErr.name fullName, " class definition"];
               val fix = Defn.getFixture (valOf (#fixtures prog)) (Ast.PropName fullName)
@@ -161,15 +161,15 @@ fun boot _ =
                 Eval.allocObjFixtures classScope classObj instanceFixtures
             end
 
-        val (objClass, objClassClosure, objClassObj, residualObjectProg) = loadRootClass "Object"
+        val (objClass, objClassClosure, objClassObj, residualObjectProg) = loadRootClass Ustring.Object_
         val _ = trace ["running Object constructor on global object"];
         val Ast.Cls { instanceFixtures, ...} = objClass
         val objClassScope = Eval.extendScope globalScope objClassObj false
         val _ = Eval.allocObjFixtures objClassScope globalObj instanceFixtures
         val _ = Eval.initializeAndConstruct objClassClosure objClassObj objClassScope [] globalObj
 
-        val (_, _, classClassObj, residualClassProg) = loadRootClass "Class"
-        val (_, _, functionClassObj, residualFunctionProg) = loadRootClass "Function"
+        val (_, _, classClassObj, residualClassProg) = loadRootClass Ustring.Class_
+        val (_, _, functionClassObj, residualFunctionProg) = loadRootClass Ustring.Function_
 
         val _ = completeClassFixtures objClassObj
         val _ = completeClassFixtures classClassObj

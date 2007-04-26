@@ -214,7 +214,7 @@ fun yyAction132 (strm, lastMatch) = (yystrm := strm;  continue())
 fun yyAction133 (strm, lastMatch) = let
       val yytext = yymktext(strm)
       in
-        yystrm := strm;  Identifier yytext
+        yystrm := strm;  Identifier (Ustring.fromString yytext)
       end
 fun yyAction134 (strm, lastMatch) = let
       val yytext = yymktext(strm)
@@ -295,7 +295,7 @@ fun yyAction149 (strm, lastMatch) = let
 				       (curr_chars := [];
 					found_newline := false;
 					YYBEGIN INITIAL;
-					RegexpLiteral re)
+					RegexpLiteral (Ustring.fromString re))
 				end
       end
 fun yyAction150 (strm, lastMatch) = (yystrm := strm;
@@ -364,7 +364,7 @@ fun yyAction161 (strm, lastMatch) = let
 					curr_chars := [];
 					YYBEGIN INITIAL;
 					(* (StringLiteral str, str_span) *)
-					StringLiteral str
+					StringLiteral (Ustring.fromString str)
 				    end
 				else
 				    (curr_chars := (String.sub (yytext,0)) :: (!curr_chars);
