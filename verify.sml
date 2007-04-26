@@ -292,20 +292,12 @@ and isCompatible (t1:TYPE_VALUE)
 	        end
             
 	      | (Ast.ArrayType _, 
-	         Ast.TypeName (Ast.Identifier {ident=Ustring.UniString "Array", openNamespaces=[]})) 
-	        => true
-               
-	      | (Ast.ArrayType _, 
-	         Ast.TypeName (Ast.Identifier {ident=Ustring.UniString "Object", openNamespaces=[]})) 
-	        => true
+	         Ast.TypeName (Ast.Identifier {ident=ustr, openNamespaces=[]})) 
+	        => (ustr = Ustring.Array_) orelse (ustr = Ustring.Object_)
                
 	      | (Ast.FunctionType _, 
-	         Ast.TypeName (Ast.Identifier {ident=Ustring.UniString "Function", openNamespaces=[]})) 
-	        => true
-               
-	      | (Ast.FunctionType _, 
-	         Ast.TypeName (Ast.Identifier {ident=Ustring.UniString "Object", openNamespaces=[]}))
-	        => true
+	         Ast.TypeName (Ast.Identifier {ident=ustr, openNamespaces=[]})) 
+	        => (ustr = Ustring.Function_) orelse (ustr = Ustring.Object_)
                
 	      | (Ast.AppType {base=base1,args=args1}, Ast.AppType {base=base2,args=args2}) => 
 	        (* We keep types normalized wrt beta-reduction, 
