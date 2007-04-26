@@ -97,7 +97,7 @@ package
                 if (i != 0)
                     out += s;
                 let x = self[i];
-                if (x != null)
+                if (x !== undefined && x !== null)
                     out += String(x);
             }
             return out;
