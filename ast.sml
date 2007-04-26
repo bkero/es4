@@ -5,11 +5,8 @@ structure Ast = struct
 
 type POS = { file: string, span: StreamPos.span, sm: StreamPos.sourcemap, post_newline: bool }
 
-(* not actually unicode, maybe switch to int array to be unicode-y? *)
 
-type USTRING = string
-
-type IDENT = USTRING
+type IDENT = Ustring.STRING
 
 datatype NAMESPACE =
          Intrinsic
@@ -18,7 +15,7 @@ datatype NAMESPACE =
        | Protected of IDENT
        | Public of IDENT
        | Internal of IDENT
-       | UserNamespace of USTRING
+       | UserNamespace of Ustring.STRING
        | AnonUserNamespace of int
        | LimitedNamespace of (IDENT * NAMESPACE)
 
@@ -331,7 +328,7 @@ datatype PRAGMA =
            openNamespaces : NAMESPACE list list }
        | QualifiedIdentifier of 
            { qual : EXPR,
-             ident : USTRING }
+             ident : Ustring.STRING }
        | TypeIdentifier of (* in a type context, these this will be a AppType *)
            { ident : IDENT_EXPR, 
              typeArgs : TYPE_EXPR list }
@@ -349,7 +346,7 @@ datatype PRAGMA =
        | LiteralInt of Int32.int
        | LiteralUInt of Word32.word
        | LiteralBoolean of bool
-       | LiteralString of USTRING
+       | LiteralString of Ustring.STRING
        | LiteralArray of
            { exprs:EXPR list, 
              ty:TYPE_EXPR option }
@@ -360,7 +357,7 @@ datatype PRAGMA =
              ty: TYPE_EXPR option }
        | LiteralFunction of FUNC
        | LiteralRegExp of
-           { str: USTRING }
+           { str: Ustring.STRING }
 
      and BLOCK = Block of DIRECTIVES
 

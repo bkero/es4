@@ -27,6 +27,7 @@ struct
                    | DECRMcvt
                    | STREAMPOS_SPANcvt
                    | STREAMPOS_SMcvt
+                   | USTRINGcvt
 
     fun typeName (DATATYPEcvt (id, _)) = id
       | typeName (TYPEcvt (id, _)) = id
@@ -50,13 +51,14 @@ struct
            | IDty (IDENT (["Decimal"], "ROUNDING_MODE")) => DECRMcvt
            | IDty (IDENT (["StreamPos"], "span")) => STREAMPOS_SPANcvt
            | IDty (IDENT (["StreamPos"], "sourcemap")) => STREAMPOS_SMcvt
+           | IDty (IDENT (["Ustring"], "STRING")) => USTRINGcvt
 
            | IDty (IDENT ([], name)) =>
                  if exists (fn name' => (name' = name)) names then
                      IDcvt name
                  else
-                     raise (Fail "out of scope")
-           | IDty (IDENT (_, name)) => raise (Fail "unknown type")
+                     raise (Fail ("out of scope: " ^ name))
+           | IDty (IDENT (_, name)) => raise (Fail ("unknown type: " ^ name))
            | VARty _ => raise (Fail "var type")
            | TUPLEty tys => TUPLEcvt (map (makeCvtType names) tys)
            | RECORDty pairs => RECORDcvt (map (fn (id, ty') => (id, makeCvtType names ty')) pairs)
@@ -156,6 +158,10 @@ struct
                           in
                               (IDpat sym, APPexp (ID "PrettyRep.String", ID sym))
                           end
+           | USTRINGcvt => let val sym = gensym "s"
+                           in
+                               (IDpat sym, APPexp (ID "PrettyRep.UniStr", ID sym))
+                           end
            | UNITcvt => (TUPLEpat [], IDexp (ident "Unit"))
            | OPTIONcvt ty' => let val (pat, tem) = genCvtTy ty'
                                   val pat = PAThole pat

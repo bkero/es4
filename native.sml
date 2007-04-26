@@ -52,9 +52,9 @@ fun nthAsObjAndCls (vals:Mach.VAL list)
     end
 
 
-fun nthAsStr (vals:Mach.VAL list) 
+fun nthAsUstr (vals:Mach.VAL list) 
              (n:int) 
-    : string = 
+    : Ustring.STRING = 
     let 
         val Mach.Obj { magic, ... } = nthAsObj vals n
     in
@@ -154,7 +154,7 @@ fun arrayToList (arr:Mach.OBJ)
             then vs
             else 
                 let
-                    val n = Name.public (Int.toString i)
+                    val n = Name.public (Ustring.fromInt i)
                     val curr = if Eval.hasValue arr n
                                then Eval.getValue arr n
                                else Mach.Undef
@@ -278,8 +278,8 @@ fun setPropertyIsDontEnum (vals:Mach.VAL list)
     : Mach.VAL = 
     let
         val Mach.Obj { props, ...} = nthAsObj vals 0
-        val id = nthAsStr vals 1
-        val ns = Ast.Internal ""
+        val id = nthAsUstr vals 1
+        val ns = Ast.Internal Ustring.empty
         val n = { id = id, ns = ns }
         val b = nthAsBool vals 2
     in
@@ -337,7 +337,7 @@ fun bindDecimal (vals:Mach.VAL list)
 
 fun bindString (vals:Mach.VAL list) 
     : Mach.VAL = 
-    convertAndBindMagic vals (Eval.toString) (Mach.String)
+    convertAndBindMagic vals Eval.toUstring Mach.String
 
 
 (*
@@ -375,10 +375,10 @@ fun fnLength (vals:Mach.VAL list)
 fun charCodeAt (vals:Mach.VAL list) 
     : Mach.VAL = 
     let
-        val s = nthAsStr vals 0
+        val s = nthAsUstr vals 0
         val i = nthAsUInt vals 1
     in
-        Eval.newUInt (Word32.fromInt (Char.ord (String.sub (s, (Word32.toInt i)))))
+        Eval.newUInt (Word32.fromInt (Ustring.charCodeAt s (Word32.toInt i)))
     end
 
 
@@ -393,8 +393,7 @@ fun fromCharCode (vals:Mach.VAL list)
     let
         val i = nthAsUInt vals 0
     in
-        (* FIXME: this does not know unicode. *)
-        Eval.newString (String.str (Char.chr (Int.mod(Word32.toInt i, 256))))
+        Eval.newString (Ustring.fromCharCode (Word32.toInt i))
     end
 
 
@@ -407,9 +406,9 @@ fun fromCharCode (vals:Mach.VAL list)
 fun stringLength (vals:Mach.VAL list)
     : Mach.VAL =
     let
-        val s = nthAsStr vals 0
+        val s = nthAsUstr vals 0
     in
-        Eval.newUInt (Word32.fromInt (String.size s))
+        Eval.newUInt (Word32.fromInt (Ustring.stringLength s))
     end
     
 
@@ -423,10 +422,10 @@ fun stringLength (vals:Mach.VAL list)
 fun stringAppend (vals:Mach.VAL list)
     : Mach.VAL = 
     let
-        val a = nthAsStr vals 0
-        val b = nthAsStr vals 1
+        val a = nthAsUstr vals 0
+        val b = nthAsUstr vals 1
     in
-        Eval.newString (a ^ b)
+        Eval.newString (Ustring.stringAppend a b)
     end
     
     
@@ -477,8 +476,8 @@ fun eval (vals:Mach.VAL list)
         then x
         else 
             let
-                val s = nthAsStr vals 0
-                val lines = [s] (* FIXME: split lines *)
+                val s = nthAsUstr vals 0
+                val lines = [Ustring.toString s] (* FIXME: split lines *)
                 (* 
                  * FIXME: catch parse errors and throw a user SyntaxError
                  * exception here once natives grow the ability to throw 
@@ -573,7 +572,7 @@ fun get (vals:Mach.VAL list)
     (* FIXME: arg #1 should be a Name, and convert to Ast.Name. *)
     Eval.getValueOrVirtual 
         (nthAsObj vals 0) 
-        {id=(nthAsStr vals 1), ns=Name.publicNS} 
+        {id=(nthAsUstr vals 1), ns=Name.publicNS} 
         false
 
 (* 
@@ -584,7 +583,7 @@ fun set (vals:Mach.VAL list)
     (* FIXME: arg #1 should be a Name, and convert to Ast.Name. *)
     (Eval.setValueOrVirtual 
          (nthAsObj vals 0) 
-         {id=(nthAsStr vals 1), ns=Name.publicNS} 
+         {id=(nthAsUstr vals 1), ns=Name.publicNS} 
          (rawNth vals 2) 
          false;
      Mach.Undef)
@@ -683,7 +682,7 @@ val pow = binaryDoubleFn (fn (a,b) =>
 fun print (vals:Mach.VAL list) 
     : Mach.VAL = 
     let
-        fun printOne v = TextIO.print (Eval.toString v) 
+        fun printOne v = TextIO.print (Ustring.toString (Eval.toUstring v))
     in
         List.app printOne vals; 
         TextIO.print "\n";
@@ -709,24 +708,24 @@ fun typename (vals:Mach.VAL list)
     : Mach.VAL = 
     Eval.newString 
     (case hd vals of 
-        Mach.Null => "null"
-      | Mach.Undef => "undefined"
+        Mach.Null => Ustring.null_
+      | Mach.Undef => Ustring.undefined_
       | Mach.Object (Mach.Obj ob) => 
         (case !(#magic ob) of
-             NONE => "object"
-           | SOME (Mach.UInt _) => "uint"
-           | SOME (Mach.Int _) => "int"
-           | SOME (Mach.Double _) => "double"
-           | SOME (Mach.Decimal _) => "decimal"
-           | SOME (Mach.ByteArray _) => "bytearray"
-           | SOME (Mach.String _) => "string"
-           | SOME (Mach.Boolean _) => "bool"
-           | SOME (Mach.Namespace _) => "namespace"
-           | SOME (Mach.Class _) => "class"
-           | SOME (Mach.Interface _) => "interface"
-           | SOME (Mach.Function _) => "function"
-           | SOME (Mach.Type _) => "type"
-           | SOME (Mach.NativeFunction _) => "native function"))
+             NONE => Ustring.object_
+           | SOME (Mach.UInt _) => Ustring.uint_
+           | SOME (Mach.Int _) => Ustring.int_
+           | SOME (Mach.Double _) => Ustring.double_
+           | SOME (Mach.Decimal _) => Ustring.decimal_
+           | SOME (Mach.ByteArray _) => Ustring.bytearray_
+           | SOME (Mach.String _) => Ustring.string_
+           | SOME (Mach.Boolean _) => Ustring.bool_
+           | SOME (Mach.Namespace _) => Ustring.namespace_
+           | SOME (Mach.Class _) => Ustring.class_
+           | SOME (Mach.Interface _) => Ustring.interface_
+           | SOME (Mach.Function _) => Ustring.function_
+           | SOME (Mach.Type _) => Ustring.type_
+           | SOME (Mach.NativeFunction _) => Ustring.native_function_))
 
 fun inspect (vals:Mach.VAL list)
     : Mach.VAL = 
@@ -759,14 +758,14 @@ fun inspect (vals:Mach.VAL list)
                 Mach.ObjectTag _ => "<Obj>"
               | Mach.ArrayTag _ => "<Arr>"
               | Mach.FunctionTag _ => "<Fn>"
-              | Mach.ClassTag n => ("<Class " ^ (LogErr.name n) ^ ">")
+              | Mach.ClassTag n => "<Class " ^ (LogErr.name n) ^ ">"
               | Mach.NoTag => "<NoTag>"
 
         (* FIXME: elaborate printing of type expressions. *)
         fun typ t = "<TypeExpr>"
         fun mag m = case m of 
-                        Mach.String s => ("\"" ^ (String.toString s) ^ "\"")
-                      | m => Eval.magicToString m
+                        Mach.String s => ("\"" ^ (Ustring.toString s) ^ "\"")
+                      | m => Ustring.toString (Eval.magicToUstring m)
                                  
         fun printVal indent _ Mach.Undef = TextIO.print "undefined\n"
           | printVal indent _ Mach.Null = TextIO.print "null\n"
@@ -844,76 +843,76 @@ fun converter (convert:Mach.VAL -> 'a)
 (* Register all the native functions in this file. *)
 fun registerNatives _ = 
     let
-        fun addFn ns name f = 
-            Mach.registerNativeFunction { ns = ns, id = name } f
+        fun addFn (name:Ast.NAME) f = 
+            Mach.registerNativeFunction name f
     in
-        addFn Name.magicNS "construct" construct;
-        addFn Name.magicNS "getClassName" getClassName;
-        addFn Name.magicNS "getPrototype" getPrototype;
-        addFn Name.magicNS "hasOwnProperty" hasOwnProperty;
-        addFn Name.magicNS "getPropertyIsDontEnum" getPropertyIsDontEnum;
-        addFn Name.magicNS "getPropertyIsDontDelete" getPropertyIsDontDelete;
-        addFn Name.magicNS "setPropertyIsDontEnum" setPropertyIsDontEnum;
+        addFn Name.magic_construct construct;
+        addFn Name.magic_getClassName getClassName;
+        addFn Name.magic_getPrototype getPrototype;
+        addFn Name.magic_hasOwnProperty hasOwnProperty;
+        addFn Name.magic_getPropertyIsDontEnum getPropertyIsDontEnum;
+        addFn Name.magic_getPropertyIsDontDelete getPropertyIsDontDelete;
+        addFn Name.magic_setPropertyIsDontEnum setPropertyIsDontEnum;
 
-        addFn Name.magicNS "bindInt" bindInt;
-        addFn Name.magicNS "bindUInt" bindUInt;
-        addFn Name.magicNS "bindDouble" bindDouble;
-        addFn Name.magicNS "bindDecimal" bindDecimal;
-        addFn Name.magicNS "bindBoolean" bindBoolean;
-        addFn Name.magicNS "bindString" bindString;
+        addFn Name.magic_bindInt bindInt;
+        addFn Name.magic_bindUInt bindUInt;
+        addFn Name.magic_bindDouble bindDouble;
+        addFn Name.magic_bindDecimal bindDecimal;
+        addFn Name.magic_bindBoolean bindBoolean;
+        addFn Name.magic_bindString bindString;
 
-        addFn Name.magicNS "apply" apply;
-        addFn Name.magicNS "fnLength" fnLength;
+        addFn Name.magic_apply apply;
+        addFn Name.magic_fnLength fnLength;
 
-        addFn Name.magicNS "charCodeAt" charCodeAt;
-        addFn Name.magicNS "fromCharCode" fromCharCode;
-        addFn Name.magicNS "stringLength" stringLength;
-        addFn Name.magicNS "stringAppend" stringAppend;
-        addFn Name.magicNS "getByteArrayByte" getByteArrayByte;
-        addFn Name.magicNS "setByteArrayByte" setByteArrayByte;
+        addFn Name.magic_charCodeAt charCodeAt;
+        addFn Name.magic_fromCharCode fromCharCode;
+        addFn Name.magic_stringLength stringLength;
+        addFn Name.magic_stringAppend stringAppend;
+        addFn Name.magic_getByteArrayByte getByteArrayByte;
+        addFn Name.magic_setByteArrayByte setByteArrayByte;
 
-        addFn Name.intrinsicNS "eval" eval;
-        addFn Name.intrinsicNS "parseInt" parseInt;
-        addFn Name.intrinsicNS "parseFloat" parseFloat;
-        addFn Name.intrinsicNS "isNaN" isNaN;
-        addFn Name.intrinsicNS "isFinite" isFinite;
-        addFn Name.intrinsicNS "decodeURI" decodeURI;
-        addFn Name.intrinsicNS "decodeURIComponent" decodeURIComponent;
-        addFn Name.intrinsicNS "encodeURI" encodeURI;
-        addFn Name.intrinsicNS "encodeURIComponent" encodeURIComponent;
+        addFn Name.intrinsic_eval eval;
+        addFn Name.intrinsic_parseInt parseInt;
+        addFn Name.intrinsic_parseFloat parseFloat;
+        addFn Name.intrinsic_isNaN isNaN;
+        addFn Name.intrinsic_isFinite isFinite;
+        addFn Name.intrinsic_decodeURI decodeURI;
+        addFn Name.intrinsic_decodeURIComponent decodeURIComponent;
+        addFn Name.intrinsic_encodeURI encodeURI;
+        addFn Name.intrinsic_encodeURIComponent encodeURIComponent;
 
-        addFn Name.intrinsicNS "get" get;
-        addFn Name.intrinsicNS "set" set;
+        addFn Name.intrinsic_get get;
+        addFn Name.intrinsic_set set;
 
         (* FIXME: stubs to get double loading. Implement. *)
-        addFn Name.intrinsicNS "toFixedStep10" (fn _ => Eval.newString(""));
-        addFn Name.intrinsicNS "toExponential" (fn _ => Eval.newString(""));
-        addFn Name.intrinsicNS "toPrecision" (fn _ => Eval.newString(""));
+        addFn Name.intrinsic_toFixedStep10 (fn _ => Eval.newString Ustring.empty);
+        addFn Name.intrinsic_toExponential (fn _ => Eval.newString Ustring.empty);
+        addFn Name.intrinsic_toPrecision (fn _ => Eval.newString Ustring.empty);
 
         (* FIXME: stubs to get Date loading. Implement. *)
-        addFn Name.intrinsicNS "now" now;
-        addFn Name.publicNS "LocalTZA" (fn _ => Eval.newDouble 1.0);
-        addFn Name.publicNS "DaylightSavingsTA" (fn _ => Eval.newDouble 1.0);
+        addFn Name.intrinsic_now now;
+        addFn Name.public_LocalTZA (fn _ => Eval.newDouble 1.0);
+        addFn Name.public_DaylightSavingsTA (fn _ => Eval.newDouble 1.0);
        
         (* Math.es natives *) 
-        addFn Name.intrinsicNS "abs" abs;
-        addFn Name.intrinsicNS "acos" acos;
-        addFn Name.intrinsicNS "asin" asin;
-        addFn Name.intrinsicNS "atan" atan;
-        addFn Name.intrinsicNS "atan2" atan2;
-        addFn Name.intrinsicNS "ceil" ceil;
-        addFn Name.intrinsicNS "cos" cos;
-        addFn Name.intrinsicNS "exp" exp;
-        addFn Name.intrinsicNS "floor" floor;
-        addFn Name.intrinsicNS "log" log;
-        addFn Name.intrinsicNS "pow" pow;
-        addFn Name.intrinsicNS "random" random;
-        addFn Name.intrinsicNS "round" round;
-        addFn Name.intrinsicNS "sin" sin;
-        addFn Name.intrinsicNS "sqrt" sqrt;
-        addFn Name.intrinsicNS "tan" tan;
+        addFn Name.intrinsic_abs abs;
+        addFn Name.intrinsic_acos acos;
+        addFn Name.intrinsic_asin asin;
+        addFn Name.intrinsic_atan atan;
+        addFn Name.intrinsic_atan2 atan2;
+        addFn Name.intrinsic_ceil ceil;
+        addFn Name.intrinsic_cos cos;
+        addFn Name.intrinsic_exp exp;
+        addFn Name.intrinsic_floor floor;
+        addFn Name.intrinsic_log log;
+        addFn Name.intrinsic_pow pow;
+        addFn Name.intrinsic_random random;
+        addFn Name.intrinsic_round round;
+        addFn Name.intrinsic_sin sin;
+        addFn Name.intrinsic_sqrt sqrt;
+        addFn Name.intrinsic_tan tan;
 
-        addFn Name.intrinsicNS "print" print;
+        addFn Name.intrinsic_print print;
         addFn Name.intrinsicNS "load" load;
         addFn Name.intrinsicNS "assert" assert;
         addFn Name.intrinsicNS "typename" typename;

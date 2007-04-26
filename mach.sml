@@ -45,7 +45,7 @@ datatype VAL = Object of OBJ
        | Double of Real64.real
        | Decimal of Decimal.DEC
        | ByteArray of Word8Array.array
-       | String of Ast.USTRING  (* someday to be unicode *)
+       | String of Ustring.STRING
        | Boolean of bool
        | Namespace of Ast.NAMESPACE
        | Class of CLS_CLOSURE
@@ -304,7 +304,7 @@ fun delProp (b:PROP_BINDINGS)
     : unit = 
     let 
         fun strip [] = LogErr.hostError ["deleting nonexistent property binding: ", 
-                                         (#id n)]
+                                         Ustring.toString (#id n)]
           | strip (((k:Ast.NAME),v)::bs) = 
             if (#ns k) = (#ns n) andalso 
                (#id k) = (#id n)

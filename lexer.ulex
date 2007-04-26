@@ -208,7 +208,7 @@ val (found_newline :  bool       ref) = ref false
 <INITIAL>"yield"           => (Yield);
 
 <INITIAL>{whitespace}      => (continue());
-<INITIAL>{identifier}      => (Identifier yytext);
+<INITIAL>{identifier}      => (Identifier (Ustring.fromString yytext));
 
 <INITIAL>{explicitIntLiteral} => (case Int32.fromString (chopTrailing yytext) of
 					  SOME i => ExplicitIntLiteral i
@@ -251,7 +251,7 @@ val (found_newline :  bool       ref) = ref false
 				       (curr_chars := [];
 					found_newline := false;
 					YYBEGIN INITIAL;
-					RegexpLiteral re)
+					RegexpLiteral (Ustring.fromString re))
 				end);
 <REGEXP>"["                 => (curr_chars := #"[" :: !curr_chars;
 				YYBEGIN REGEXP_CHARSET;
@@ -289,7 +289,7 @@ val (found_newline :  bool       ref) = ref false
 					curr_chars := [];
 					YYBEGIN INITIAL;
 					(* (StringLiteral str, str_span) *)
-					StringLiteral str
+					StringLiteral (Ustring.fromString str)
 				    end
 				else
 				    (curr_chars := (String.sub (yytext,0)) :: (!curr_chars);

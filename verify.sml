@@ -997,7 +997,7 @@ and verifyExpr (env as {env,this,...}:RIB)
 
      and Ast.IDENT_EXPR =
          Ast.QualifiedIdentifier of { qual : EXPR,
-                                  ident : USTRING }
+                                  ident : Ustring.STRING }
        | Ast.QualifiedExpression of { qual : EXPR,
                                   expr : EXPR }
        | Ast.AttributeIdentifier of Ast.IDENT_EXPR
