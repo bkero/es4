@@ -62,7 +62,15 @@ checklth: tools/unit.heap.$(HEAP_SUFFIX) es4.heap.$(HEAP_SUFFIX)
 smoketest: es4.heap.$(HEAP_SUFFIX)
 	sml @SMLload=es4.heap $(TRACE) -ev tests/spidermonkey/ecma/shell.js tests/spidermonkey/ecma/Boolean/15.6.1.js
 
-run: es4.heap.$(HEAP_SUFFIX)
+dump-heap-for-running: es4.heap.$(HEAP_SUFFIX)
+	sml @SMLload=es4.heap $(TRACE) -dump run.heap
+
+# Do *not* give this dependencies to see if the heap is up-to-date.
+run-dumped:
+	sml @SMLload=run.heap $(TRACE) $(FILE)
+
+# Obsolete now?
+run:
 	sml @SMLload=es4.heap $(TRACE) -ev $(FILE)
 
 repl: es4.heap.$(HEAP_SUFFIX)

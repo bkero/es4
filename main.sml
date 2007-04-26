@@ -149,6 +149,32 @@ fun testEV argvRest =
     ()
     end
 
+fun testDump dumpfile =
+    let 
+        (* 10 seconds to run, then we get SIGALRM. *)
+        (* val _ = Posix.Process.alarm (Time.fromReal 100.0) *)
+    	val _ = TextIO.print "booting ... \n";
+        val _ = Boot.boot (); 
+    in
+        SMLofNJ.exportFn (dumpfile, 
+                          (fn (arg0, argvRest) => 
+                              let 
+                                  val _ = Posix.Process.alarm (Time.fromReal 100.0)
+                                  val _ = TextIO.print "parsing ... \n";
+                                  val asts = List.map Parser.parseFile argvRest
+                                  val _ = TextIO.print "defining ... \n";
+                                  val dps = map Defn.defProgram asts
+	                              val _ = TextIO.print "type checking ... \n";
+                                  val _ = List.map Verify.verifyProgram dps;
+                                  val _ = TextIO.print "evaluating ... \n";
+                                  val _ = map Eval.evalProgram dps
+                                  val _ = TextIO.print "evaluated! \n"                
+                              in
+                                  0
+                              end)) ;
+        ()
+    end
+
 fun testDefn argvRest =
     let 
     	val _ = TextIO.print "booting ... \n";
@@ -177,6 +203,7 @@ fun main (argv0:string, argvRest:string list) =
                               | ("-rq"::argvRest) => repl false 
                               | ("-tc"::argvRest) => testTC argvRest
 	                          | ("-ev"::argvRest) => testEV argvRest
+                              | ("-dump"::filename::argvRest) => testDump filename
                               | _ => testDefn argvRest);
                            0))
 

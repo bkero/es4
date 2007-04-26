@@ -15,6 +15,7 @@ if [ "$1" = "-p" ]; then
 fi
 LIMIT=$1
 
+make dump-heap-for-running >>$LOG 2>&1
 for ECMA in $ROOT/ecma*
   do
   for SECTION in $(find $ECMA -mindepth 1 -maxdepth 1 -type d)
@@ -26,9 +27,9 @@ for ECMA in $ROOT/ecma*
 	  echo $FILE
 	  if [ -s $SECTION/shell.js ]
 	      then 
-	      make run FILE="$ECMA/shell.js $SECTION/shell.js $FILE" >>$LOG 2>&1
+	      make run-dumped FILE="$ECMA/shell.js $SECTION/shell.js $FILE" >>$LOG 2>&1
 	  else
-	      make run FILE="$ECMA/shell.js $FILE" >>$LOG 2>&1
+	      make run-dumped FILE="$ECMA/shell.js $FILE" >>$LOG 2>&1
 	  fi
       fi
     done
