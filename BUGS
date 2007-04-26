@@ -117,3 +117,53 @@ will be more streamlined.  --lars
 
   (Causes one Array test to fail.)
 
+
+#000A  2007-04-27 / lth
+
+  Type annotations on parameters of methods and functions don't force
+  coercions or errors.
+
+     >> function f(a : string) { print(typeof a) }
+     >> f(1)
+     number
+
+
+#000B  2007-04-27 / lth
+
+  Type annotations on properties of classes don't force coercion of
+  undefined to that type upon initialization.
+
+#000C  2007-04-27 / lth
+
+  Instance "const" properties without an initializer are initialized anyway and
+  are then not changeable:
+
+       >> class D { function D() { xyzzy=true } public const xyzzy : boolean }
+       >> y = new D
+       [object Object]
+       >> y.xyzzy
+       null
+       >> y.xyzzy = false
+       false
+       >> y.xyzzy
+       null
+
+  (Also without the type annotation:
+
+       >> class C { function C() { xyzzy=true } public const xyzzy }
+       >> w = new C
+       [object Object]
+       >> w.xyzzy
+       >> w.xyzzy = 10
+       10
+       >> w.xyzzy     
+       >>
+
+#000D  2007-04-27 / lth
+
+  The 'cast' operator is unimplemented
+
+
+#000E  2007-04-27 / lth
+
+  The 'to' operator is unimplemented
