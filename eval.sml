@@ -832,8 +832,8 @@ and callApprox (idStr:string) (args:Mach.VAL list)
                 if Mach.hasMagic ob 
                 then 
                     if Mach.isString arg
-                    then "\"" ^ (Ustring.toString (toUstring arg)) ^ "\""
-                    else Ustring.toString (toUstring arg)
+                    then "\"" ^ (Ustring.toAscii (toUstring arg)) ^ "\""
+                    else Ustring.toAscii (toUstring arg)
                 else 
                     "obj"                
     in
@@ -866,9 +866,9 @@ and magicToUstring (magic:Mach.MAGIC)
       | Mach.Namespace (Ast.Protected _) => Ustring.fromString "[protected namespace]"
       | Mach.Namespace Ast.Intrinsic => Ustring.fromString "[intrinsic namespace]"
       | Mach.Namespace Ast.OperatorNamespace => Ustring.fromString "[operator namespace]"
-      | Mach.Namespace (Ast.Public id) => Ustring.fromString ("[public namespace: " ^ (Ustring.toString id) ^ "]")
+      | Mach.Namespace (Ast.Public id) => Ustring.append [Ustring.fromString "[public namespace: ", id, Ustring.fromString "]"]
       | Mach.Namespace (Ast.Internal _) => Ustring.fromString "[internal namespace]"
-      | Mach.Namespace (Ast.UserNamespace id) => Ustring.fromString ("[user-defined namespace " ^ (Ustring.toString id) ^ "]")
+      | Mach.Namespace (Ast.UserNamespace id) => Ustring.append [Ustring.fromString "[user-defined namespace ", id, Ustring.fromString "]"]
       | Mach.Class _ => Ustring.fromString "[class Class]"
       | Mach.Interface _ => Ustring.fromString "[interface Interface]"
       | Mach.Function _ => Ustring.fromString "[function Function]"
@@ -947,7 +947,7 @@ and toNumeric (v:Mach.VAL)
                 * See ES3 9.3.1. We need to talk it over.
                 *) 
                | SOME (Mach.String us) =>
-                    let val s = Ustring.toString us
+                    let val s = Ustring.toAscii us
                     in
                         case Real64.fromString s of
                             SOME s' => newDouble s'
@@ -984,7 +984,7 @@ and toDecimal (precision:int)
             * FIXME: This is not the correct definition either. See toNumeric.
             *) 
            | SOME (Mach.String us) =>
-                let val s = Ustring.toString us
+                let val s = Ustring.toAscii us
                 in
                     case Decimal.fromString precision mode s of
                         SOME s' => s'
@@ -1023,7 +1023,7 @@ and toDouble (v:Mach.VAL)
                 * FIXME: This is not the correct definition either. See toNumeric.
                 *) 
                | SOME (Mach.String us) =>
-                    let val s = Ustring.toString us
+                    let val s = Ustring.toAscii us
                     in
                         case Real64.fromString s  of
                             SOME s' => s'
@@ -2147,7 +2147,7 @@ and evalBinaryTypeOp (regs:Mach.REGS)
         in            
             case tyExpr of 
                 Ast.TypeName (Ast.Identifier { ident:Ast.IDENT, ... }) => 
-                (case Ustring.toString ident of 
+                (case Ustring.toAscii ident of   (* Strange use of toAscii, but ML won't match vals, and nested ifs are ugly. *)
                      "double" => newBoolean (Mach.isDouble v)
                    | "decimal" => newBoolean (Mach.isDecimal v)
                    | "int" => newBoolean (Mach.isInt v)
@@ -2164,7 +2164,7 @@ and evalBinaryTypeOp (regs:Mach.REGS)
                                Mach.ObjectTag _ => newBoolean (n = "Object")
                              | Mach.ArrayTag _ => newBoolean (n = "Array")
                              | Mach.FunctionTag _ => newBoolean (n = "Function")
-                             | Mach.ClassTag {id, ...} => (trace ["operator 'is' on object of class ", Ustring.toString id]; 
+                             | Mach.ClassTag {id, ...} => (trace ["operator 'is' on object of class ", Ustring.toAscii id]; 
                                                            newBoolean (ident = id))
                              | Mach.NoTag => newBoolean false)))
               | _ => error ["operator 'is' on unknown type expression"]
@@ -2538,7 +2538,7 @@ and invokeFuncClosure (callerThis:Mach.OBJ)
         then error ["invoking function with unbound type variables"]
         else
             let 
-                val idStr = Ustring.toString (#ident name)
+                val idStr = Ustring.toAscii (#ident name)
                 val strname = case (#kind name) of 
                                   Ast.Ordinary => idStr 
                                 | Ast.Operator => "operator " ^ idStr
@@ -2821,7 +2821,7 @@ and evalInitsMaybePrototype (regs:Mach.REGS)
         fun evalInit (n,e) =
             let
                 val idStr = case n of 
-                             Ast.PropName { id, ... } => Ustring.toString id
+                             Ast.PropName { id, ... } => Ustring.toAscii id
                            | Ast.TempName t => ("#" ^ Int.toString t)
                 val _ = push ["init ", idStr]
                 val v = evalExpr regs e
@@ -2952,7 +2952,7 @@ and initializeAndConstruct (classClosure:Mach.CLS_CLOSURE)
                     NONE => initializeAndConstructSuper []
                   | SOME (Ast.Ctor { settings, superArgs, func }) => 
                     let 
-                        val _ = push ["ctor ", callApprox (Ustring.toString (#id name)) args]
+                        val _ = push ["ctor ", callApprox (Ustring.toAscii (#id name)) args]
                         val Ast.Func { block, param=(paramFixtures,paramInits), ... } = func
                         val (varObj:Mach.OBJ) = Mach.newObjNoTag ()
                         val (varRegs:Mach.REGS) = extendScopeReg classRegs
@@ -2998,7 +2998,7 @@ and runAnySpecialConstructor (id:Mach.OBJ_IDENT)
          let 
              val nargs = length args
              val argArgs = List.take (args, nargs-1)
-             val source = Ustring.toString (toUstring (List.last args))
+             val source = Ustring.toSource (toUstring (List.last args))
              fun ident v = Token.Identifier (toUstring v)
              val argIdents = map ident argArgs
              val nloc = {file="<no filename>", span=(1,1), sm=StreamPos.mkSourcemap (), post_newline=false}
@@ -3009,7 +3009,7 @@ and runAnySpecialConstructor (id:Mach.OBJ_IDENT)
                                               (map (fn i => [(Token.Comma, nloc), (i, nloc)]) xs)))
              val lines = [source] (* FIXME: split lines *)
              val lineTokens = List.filter (fn t => case t of 
-                                                       (Token.Eof, _) => false 
+                                                       (Token.Eof, _) => false (* FIXME: this won't work if there's a regexp, because the token list won't be complete *)
                                                      | _ => true)
                                           (Parser.lexLines lines)
              val funcTokens = [(Token.Function, nloc), 
@@ -3070,7 +3070,7 @@ and constructClassInstance (classObj:Mach.OBJ)
     : Mach.VAL =
     let
         val {cls = Ast.Cls { name, instanceFixtures, ...}, env, ...} = classClosure
-        val _ = push ["new ", callApprox (Ustring.toString (#id name)) args]
+        val _ = push ["new ", callApprox (Ustring.toAscii (#id name)) args]
         val (tag:Mach.VAL_TAG) = Mach.ClassTag name
         val (proto:Mach.VAL) = if hasOwnValue classObj Name.public_prototype
                                then getValue classObj Name.public_prototype
@@ -3615,7 +3615,7 @@ and evalThrowStmt (regs:Mach.REGS)
 and evalBreakStmt (regs:Mach.REGS) 
                   (lbl:Ast.IDENT option) 
     : Mach.VAL =
-    (trace ["raising BreakException ",case lbl of NONE => "empty" | SOME id => Ustring.toString id];
+    (trace ["raising BreakException ",case lbl of NONE => "empty" | SOME id => Ustring.toAscii id];
     raise (BreakException lbl))
 
 
@@ -3640,7 +3640,7 @@ and evalProgram (prog:Ast.PROGRAM)
          map (evalPackage regs) (#packages prog);
          evalBlock regs (#block prog))
         handle ThrowException v => 
-               error ["*** UNHANDLED EXCEPTION ***", Ustring.toString (toUstring v)]
+               error ["*** UNHANDLED EXCEPTION ***", Ustring.toAscii (toUstring v)]
     end
 
 fun resetGlobal (ob:Mach.OBJ) 

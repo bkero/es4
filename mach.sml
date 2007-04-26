@@ -304,7 +304,7 @@ fun delProp (b:PROP_BINDINGS)
     : unit = 
     let 
         fun strip [] = LogErr.hostError ["deleting nonexistent property binding: ", 
-                                         Ustring.toString (#id n)]
+                                         Ustring.toAscii (#id n)]
           | strip (((k:Ast.NAME),v)::bs) = 
             if (#ns k) = (#ns n) andalso 
                (#id k) = (#id n)

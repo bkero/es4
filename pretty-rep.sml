@@ -59,7 +59,7 @@ fun ppSmlDataRep stream (rep : smlDataRep) =
       | DecRm r => str ("Decimal." ^ (Decimal.rmToString r))
       | StrmPosSpan _ => str "<StreamPos.span>"
       | StrmPosSM _ => str "<StreamPos.sourcemap>"
-      | UniStr us => (str "\""; str (Ustring.toString us); str "\"")
+      | UniStr us => (str "\""; str (Ustring.toAscii us); str "\"")
     end
 
 end

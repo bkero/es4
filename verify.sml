@@ -70,7 +70,7 @@ fun gensym (s:Ustring.STRING) : Ustring.STRING =
     let
     in 
 	gensymCounter := 1+(!gensymCounter);
-	Ustring.fromString (Ustring.toString s^"$"^(Int.toString (!gensymCounter)))
+	Ustring.append [s, Ustring.dollar, Ustring.fromInt (!gensymCounter)]
     end
 
 (************************* Normalized types *********************************)

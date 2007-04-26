@@ -6761,7 +6761,7 @@ fun get_token_list (filename : string,
                                     val re_frag = case re_lit of
                                         RegexpLiteral re_fragment => re_fragment
                                       | _ => error ["squelch warning -- impossible to actually get here"]
-                                    val re_tok = RegexpLiteral (Ustring.fromString(regexp_prefix ^ (Ustring.toString re_frag)))
+                                    val re_tok = RegexpLiteral (Ustring.stringAppend (Ustring.fromString regexp_prefix) re_frag)
                                     val re_span = (#1 tok_span, #2 re_frag_span)
                                     val pos:Ast.POS = {file = filename, span = re_span, sm = srcmap, post_newline = just_got_a_newline}
                                 in

@@ -477,7 +477,7 @@ fun eval (vals:Mach.VAL list)
         else 
             let
                 val s = nthAsUstr vals 0
-                val lines = [Ustring.toString s] (* FIXME: split lines *)
+                val lines = [Ustring.toSource s] (* FIXME: split lines *)
                 (* 
                  * FIXME: catch parse errors and throw a user SyntaxError
                  * exception here once natives grow the ability to throw 
@@ -682,7 +682,7 @@ val pow = binaryDoubleFn (fn (a,b) =>
 fun print (vals:Mach.VAL list) 
     : Mach.VAL = 
     let
-        fun printOne v = TextIO.print (Ustring.toString (Eval.toUstring v))
+        fun printOne v = TextIO.print (Ustring.toAscii (Eval.toUstring v))
     in
         List.app printOne vals; 
         TextIO.print "\n";
@@ -692,7 +692,7 @@ fun print (vals:Mach.VAL list)
 fun load (vals:Mach.VAL list) 
     : Mach.VAL = 
     let
-        val fname = Ustring.toString (nthAsUstr vals 0)
+        val fname = Ustring.toFilename (nthAsUstr vals 0)
     in
         Eval.evalProgram (Defn.defProgram (Parser.parseFile fname));
         Mach.Undef
@@ -764,8 +764,8 @@ fun inspect (vals:Mach.VAL list)
         (* FIXME: elaborate printing of type expressions. *)
         fun typ t = "<TypeExpr>"
         fun mag m = case m of 
-                        Mach.String s => ("\"" ^ (Ustring.toString s) ^ "\"")
-                      | m => Ustring.toString (Eval.magicToUstring m)
+                        Mach.String s => ("\"" ^ (Ustring.toAscii s) ^ "\"")
+                      | m => Ustring.toAscii (Eval.magicToUstring m)
                                  
         fun printVal indent _ Mach.Undef = TextIO.print "undefined\n"
           | printVal indent _ Mach.Null = TextIO.print "null\n"

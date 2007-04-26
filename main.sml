@@ -88,7 +88,7 @@ fun repl doPrompt =
                                         in
                                             if res = Mach.Undef
                                             then ()
-                                            else print (Ustring.toString (Eval.toUstring res) ^ "\n");
+                                            else print (Ustring.toAscii (Eval.toUstring res) ^ "\n");
                                             doLine ()
                                         end
                                     else 

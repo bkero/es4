@@ -5,13 +5,15 @@ structure Ustring = struct
 
 datatype STRING = UniString of string
 
+val empty:STRING = UniString ""
+
 
 (*
  * Internal functions with intentionally ugly names
  * (only these guys know what a STRING really is)
  *)
 
-fun internal_toString (UniString s) = s
+fun internal_toEscapedAscii (UniString s) = s
 
 fun internal_fromString s = UniString s
 
@@ -31,16 +33,25 @@ fun internal_compare (UniString a) (UniString b) = String.compare (a,b)
 
 fun internal_substring (UniString s) m n = UniString (String.substring (s, m, n))
 
+fun internal_append [] accum = accum
+  | internal_append ((UniString s)::ss) (UniString accum) =
+        internal_append ss (UniString (s ^ accum))
+
+
 
 (*
  * Public interface
  *)
 
-fun toString     (s:STRING   ) : string = internal_toString     s
-fun fromString   (s:string   ) : STRING = internal_fromString   s  (* Should be used SPARINGLY! *)
+fun toAscii      (s:STRING   ) : string = internal_toEscapedAscii s
+fun toFilename   (s:STRING   ) : string = internal_toEscapedAscii s  (* FIXME: what should I do here? *)
+fun toSource     (s:STRING   ) : string = internal_toEscapedAscii s  (* FIXME: what should I do here? *)
+
+fun fromString   (s:string   ) : STRING = internal_fromString   s  (* Should be used sparingly. *)
 fun fromInt      (i:int      ) : STRING = internal_fromInt      i
 fun fromInt32    (i:Int32.int) : STRING = internal_fromInt32    i
 fun fromCharCode (i:int      ) : STRING = internal_fromCharCode i
+
 fun stringLength (s:STRING   ) : int    = internal_stringLength s
 
 fun stringAppend (a:STRING) (b:STRING) : STRING = internal_stringAppend a b
@@ -49,12 +60,16 @@ fun compare      (a:STRING) (b:STRING) : order  = internal_compare      a b
 
 fun substring    (s:STRING) (m:int) (n:int) : STRING = internal_substring s m n
 
+fun append       (l:STRING list) : STRING = internal_append (rev l) empty
+
+
 (*
  * pre-defined strings
  *)
 
-val empty                    = fromString ""
 val asterisk                 = fromString "*"
+val dollar                   = fromString "$"
+val dot                      = fromString "."
 val undefined_               = fromString "undefined"
 val temp_                    = fromString "temp"
 val Object_                  = fromString "Object"

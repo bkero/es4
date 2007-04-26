@@ -390,7 +390,7 @@ fun tokenname (t,_) =
       | BlockComment => ""
       | DocComment => ""
       | Eol => "eol"
-      | Identifier x => "identifier("^(Ustring.toString x)^")"
+      | Identifier x => "identifier("^(Ustring.toAscii x)^")"
 
       | DecimalIntegerLiteral x => x
       | DecimalLiteral x => x
@@ -401,10 +401,10 @@ fun tokenname (t,_) =
       | ExplicitIntLiteral x => Int32.toString(x) ^ "i"
       | ExplicitUIntLiteral x => LargeInt.toString (Word32.toLargeInt(x)) ^ "u"
 
-      | PackageIdentifier x => "packageidentifier("^(Ustring.toString x)^")"
-      | RegexpLiteral x => "regexp("^(Ustring.toString x)^")"
+      | PackageIdentifier x => "packageidentifier("^(Ustring.toAscii x)^")"
+      | RegexpLiteral x => "regexp("^(Ustring.toAscii x)^")"
       | SlashSlashComment => ""
-      | StringLiteral x => "string("^(Ustring.toString x)^")"
+      | StringLiteral x => "string("^(Ustring.toAscii x)^")"
       | Whitespace => "<ws>"
       | XmlLiteral => "xmlliteral()"
       | XmlPart => "xmlpart()"

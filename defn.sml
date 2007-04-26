@@ -5,7 +5,7 @@ structure Defn = struct
 
 val doTrace = ref false
 fun trace ss = if (!doTrace) then LogErr.log ("[defn] " :: ss) else ()
-fun trace2 (s, us) = if (!doTrace) then LogErr.log ["[defn] ", s, Ustring.toString us] else ()
+fun trace2 (s, us) = if (!doTrace) then LogErr.log ["[defn] ", s, Ustring.toAscii us] else ()
 fun error ss = LogErr.defnError ss
 
 (* 
@@ -230,9 +230,9 @@ fun packageIdentFromPath origPath
     let fun packageIdentFromPath_ [] ident = ident
           | packageIdentFromPath_ (pthid::pth) ident =
            let
-               val dot = if ident=Ustring.empty then "" else "."
+               val dot = if ident=Ustring.empty then Ustring.empty else Ustring.dot
            in
-               packageIdentFromPath_ pth (Ustring.fromString (Ustring.toString ident ^ dot ^ (Ustring.toString pthid)))
+               packageIdentFromPath_ pth (Ustring.append [ident, dot, pthid])
            end
     in
         packageIdentFromPath_ origPath Ustring.empty
@@ -428,7 +428,7 @@ fun updateTempOffset (ctx::ex) (tempOffset:int)
     : ENV =
         LogErr.defnError ["cannot update an empty environment"]
 
-fun dumpLabels (labels : LABEL list) = trace ["labels ", concat (map (fn (id,_) => (Ustring.toString id)^" ") labels)]
+fun dumpLabels (labels : LABEL list) = trace ["labels ", concat (map (fn (id,_) => (Ustring.toAscii id)^" ") labels)]
 fun dumpPath path = trace ["path ", concat (map (fn (id) => id^" ") path)]
 
 (*
@@ -452,7 +452,7 @@ fun addLabel (env:ENV) (label:LABEL)
                             not (id = Ustring.empty) andalso  (* ignore empty labels *) 
                             id = labelId andalso              (* compare ids *)
                             knd = labelKnd) labels            (* and kinds *)
-                    then LogErr.defnError ["duplicate label ", Ustring.toString labelId]
+                    then LogErr.defnError ["duplicate label ", Ustring.toAscii labelId]
                     else ())
                   | [] => LogErr.internalError ["empty environment in addLabel"]
         in
@@ -1504,7 +1504,7 @@ and defIdentExpr (env:ENV)
             Ast.ExpressionIdentifier { expr = (defExpr env expr),
                                        openNamespaces = openNamespaces }
           | Ast.UnresolvedPath (p,i) =>
-            LogErr.unimplError ["UnresolvedPath ", Ustring.toString (hd p)]
+            LogErr.unimplError ["UnresolvedPath ", Ustring.toAscii (hd p)]
 
           | Ast.WildcardIdentifier =>
             Ast.WildcardIdentifier

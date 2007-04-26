@@ -41,15 +41,15 @@ fun namespace (ns:Ast.NAMESPACE) =
     case ns of 
         Ast.Intrinsic=> "[namespace intrinsic]"
       | Ast.OperatorNamespace=> "[namespace operator]"
-      | Ast.Private i=> "[namespace private " ^ (Ustring.toString i) ^ "]"
-      | Ast.Protected i=> "[namespace protected " ^ (Ustring.toString i) ^ "]"
-      | Ast.Public i => "[namespace public " ^ (Ustring.toString i) ^ "]"
-      | Ast.Internal i => "[namespace internal " ^ (Ustring.toString i) ^ "]"
-      | Ast.UserNamespace i => "[namespace user " ^ (Ustring.toString i) ^ "]"
+      | Ast.Private i=> "[namespace private " ^ (Ustring.toAscii i) ^ "]"
+      | Ast.Protected i=> "[namespace protected " ^ (Ustring.toAscii i) ^ "]"
+      | Ast.Public i => "[namespace public " ^ (Ustring.toAscii i) ^ "]"
+      | Ast.Internal i => "[namespace internal " ^ (Ustring.toAscii i) ^ "]"
+      | Ast.UserNamespace i => "[namespace user " ^ (Ustring.toAscii i) ^ "]"
       | Ast.AnonUserNamespace i => "[namespace user anon #" ^ (Int.toString i) ^ "]"
-      | Ast.LimitedNamespace (i,n) => "[namespace limited " ^ (Ustring.toString i) ^ " => " ^ (namespace n) ^ "]"
+      | Ast.LimitedNamespace (i,n) => "[namespace limited " ^ (Ustring.toAscii i) ^ " => " ^ (namespace n) ^ "]"
 
-fun name ({ns,id}:Ast.NAME) = (namespace ns) ^ "::" ^ (Ustring.toString id) ^ " "
+fun name ({ns,id}:Ast.NAME) = (namespace ns) ^ "::" ^ (Ustring.toAscii id) ^ " "
 
 fun fname (n:Ast.FIXTURE_NAME) = 
     case n of 
@@ -58,7 +58,7 @@ fun fname (n:Ast.FIXTURE_NAME) =
 
 fun multiname (mn:Ast.MULTINAME) = 
     case (#nss mn) of 
-	[] => (String.concat ["{multiname: NO NAMESPACE :: ", Ustring.toString (#id mn), "}"])
+	[] => (String.concat ["{multiname: NO NAMESPACE :: ", Ustring.toAscii (#id mn), "}"])
       | _ => String.concat
 		 (["{multiname: "] @ (map String.concat
 		  (List.map (List.map (fn ns => name {ns = ns, id = (#id mn)})) (#nss mn)) @

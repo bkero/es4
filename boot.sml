@@ -99,8 +99,8 @@ fun boot _ =
           let 
               val fullName = Name.public name
 
-              val _ = trace ["loading fundamental ", Ustring.toString name, " class from builtin/", Ustring.toString name ,".es"];
-              val prog = Defn.defProgram (Parser.parseFile ("builtins/" ^ Ustring.toString name ^ ".es"))
+              val _ = trace ["loading fundamental ", Ustring.toAscii name, " class from builtin/", Ustring.toFilename name ,".es"];
+              val prog = Defn.defProgram (Parser.parseFile ("builtins/" ^ (Ustring.toFilename name) ^ ".es"))
 
               val _ = trace ["fetching ", LogErr.name fullName, " class definition"];
               val fix = Defn.getFixture (valOf (#fixtures prog)) (Ast.PropName fullName)
