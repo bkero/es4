@@ -201,7 +201,11 @@ fun getClassName (vals:Mach.VAL list)
                     | SOME (Mach.Int _) => "Number"
                     | SOME (Mach.UInt _) => "Number"
                     | SOME (Mach.Double _) => "Number"
-                    | _ => "Object"
+                    | _ => 
+                      (* FIXME: "Array", "RegExp", "String", ...  The object needs
+                       * to carry a reference to its class, but it doesn't.
+                       *)
+                      "Object"
     in
         Eval.newString str
     end
@@ -597,7 +601,7 @@ fun set (vals:Mach.VAL list)
 
 fun now (vals:Mach.VAL list)
     : Mach.VAL = 
-    Eval.newDouble ((Time.toReal (Time.now())) * 1000.0)
+    Eval.newDouble (Real.realFloor ((Time.toReal (Time.now())) * 1000.0))
 
 (*
     Math natives
@@ -892,8 +896,8 @@ fun registerNatives _ =
 
         (* FIXME: stubs to get Date loading. Implement. *)
         addFn Name.intrinsicNS "now" now;
-        addFn Name.publicNS "LocalTZA" (fn _ => Eval.newDouble 1.0);
-        addFn Name.publicNS "DaylightSavingsTA" (fn _ => Eval.newDouble 1.0);
+        addFn Name.publicNS "LocalTZA" (fn _ => Eval.newDouble 0.0);
+        addFn Name.publicNS "DaylightSavingsTA" (fn _ => Eval.newDouble 0.0);
        
         (* Math.es natives *) 
         addFn Name.intrinsicNS "abs" abs;
