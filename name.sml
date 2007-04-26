@@ -12,14 +12,14 @@ val publicNS = Ast.Public (Ustring.empty)
 val internalNS = Ast.Internal (Ustring.empty)
 val intrinsicNS = Ast.Intrinsic
 (* FIXME: private is incomplete. *)
-val privateNS = Ast.Private "class name here"
+val privateNS = Ast.Private (Ustring.fromString "class name here")
 
 fun meta (id:Ast.IDENT) : Ast.NAME = { id = id, ns = metaNS }
 fun magic (id:Ast.IDENT) : Ast.NAME = { id = id, ns = magicNS }
 fun public (id:Ast.IDENT) : Ast.NAME = { id = id, ns = publicNS }
 fun internal (id:Ast.IDENT) : Ast.NAME= { id = id, ns = internalNS }
 fun intrinsic (id:Ast.IDENT) : Ast.NAME = { id = id, ns = intrinsicNS }
-fun private cls id = { id = id, ns = privateNS }
+fun private cls (id:Ast.IDENT) : Ast.NAME = { id = id, ns = privateNS }
 
 (* 
  * To reference a name as a type expression, you need 
@@ -37,20 +37,20 @@ fun typename (n:Ast.NAME) =
  * Property names that have special meanings to the interpreter.
  *)
 
-val public_constructor = public "constructor"
-val public_length = public "length"
-val public_cursor = public "cursor"
-val private_Array__length = private "Array" "_length"
-val public_source = public "source"
-val public_prototype = public "prototype"
-val public_toString = public "toString"
-val public_valueOf = public "valueOf"
-val public_global = public "global"
-val meta_invoke = meta "invoke"
-val meta_get = meta "get"
-val meta_set = meta "set"
-val meta_has = meta "has"
-val meta_call = meta "call"
+val public_constructor = public Ustring.constructor_
+val public_length = public Ustring.length_
+val public_cursor = public Ustring.cursor_
+val private_Array__length = private (Ustring.fromString "Array") (Ustring.fromString "_length")
+val public_source = public Ustring.source_
+val public_prototype = public Ustring.prototype_
+val public_toString = public Ustring.toString_
+val public_valueOf = public Ustring.valueOf_
+val public_global = public Ustring.global_
+val meta_invoke = meta Ustring.invoke_
+val meta_get = meta Ustring.get_
+val meta_set = meta Ustring.set_
+val meta_has = meta Ustring.has_
+val meta_call = meta Ustring.call_
 
 val this = internal Ustring.this_
 val arguments = internal Ustring.arguments_
@@ -122,6 +122,7 @@ val public_encodeURI = public Ustring.encodeURI_
 val public_encodeURIComponent = public Ustring.encodeURIComponent_
 
 val intrinsic_print = intrinsic Ustring.print_
+val intrinsic_load = intrinsic Ustring.load_
 val intrinsic_assert = intrinsic Ustring.assert_
 val intrinsic_typename = intrinsic Ustring.typename_
 
@@ -168,7 +169,7 @@ val public_ByteArray = public Ustring.ByteArray_
 val public_Date = public Ustring.Date_
 
 (* From RegExp.es *)
-val public_RegExp = public "RegExp"
+val public_RegExp = public Ustring.RegExp_
 
 (* From JSON.es *)
 val JSON_emit = { ns = Ast.Public Ustring.JSON_, id = Ustring.emit_ }

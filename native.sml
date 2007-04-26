@@ -138,7 +138,7 @@ fun propQuery (vals:Mach.VAL list)
     : Mach.VAL = 
     let 
         val Mach.Obj { props, ...} = nthAsObj vals 0
-        val n = Name.public (nthAsStr vals 1)
+        val n = Name.public (nthAsUstr vals 1)
     in
         Eval.newBoolean (f props n)
     end
@@ -193,17 +193,17 @@ fun getClassName (vals:Mach.VAL list)
     let 
         val Mach.Obj { magic, ... } = nthAsObj vals 0
         (* FIXME: is this right? *)
-        val str = case !magic of 
-                      SOME (Mach.Function _) => "Function"
-                    | SOME (Mach.NativeFunction _) => "Function"
-                    | SOME (Mach.String _) => "String"
-                    | SOME (Mach.Decimal _) => "Number"
-                    | SOME (Mach.Int _) => "Number"
-                    | SOME (Mach.UInt _) => "Number"
-                    | SOME (Mach.Double _) => "Number"
-                    | _ => "Object"
+        val ustr = case !magic of 
+                      SOME (Mach.Function _) => Ustring.Function_
+                    | SOME (Mach.NativeFunction _) => Ustring.Function_
+                    | SOME (Mach.String _) => Ustring.String_
+                    | SOME (Mach.Decimal _) => Ustring.Number_
+                    | SOME (Mach.Int _) => Ustring.Number_
+                    | SOME (Mach.UInt _) => Ustring.Number_
+                    | SOME (Mach.Double _) => Ustring.Number_
+                    | _ => Ustring.Object_
     in
-        Eval.newString str
+        Eval.newString ustr
     end
 
     
@@ -692,7 +692,7 @@ fun print (vals:Mach.VAL list)
 fun load (vals:Mach.VAL list) 
     : Mach.VAL = 
     let
-        val fname = nthAsStr vals 0
+        val fname = Ustring.toString (nthAsUstr vals 0)
     in
         Eval.evalProgram (Defn.defProgram (Parser.parseFile fname));
         Mach.Undef
@@ -913,11 +913,11 @@ fun registerNatives _ =
         addFn Name.intrinsic_tan tan;
 
         addFn Name.intrinsic_print print;
-        addFn Name.intrinsicNS "load" load;
-        addFn Name.intrinsicNS "assert" assert;
-        addFn Name.intrinsicNS "typename" typename;
-        addFn Name.intrinsicNS "inspect" inspect;
-        addFn Name.intrinsicNS "proto" proto
+        addFn Name.intrinsic_load load;
+        addFn Name.intrinsic_assert assert;
+        addFn Name.intrinsic_typename typename;
+        addFn Name.intrinsic_inspect inspect;
+        addFn Name.intrinsic_proto proto
     end
 
 end

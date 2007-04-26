@@ -29,6 +29,8 @@ fun internal_charCodeAt (UniString s) n = Char.ord (String.sub (s,n))
 
 fun internal_compare (UniString a) (UniString b) = String.compare (a,b)
 
+fun internal_substring (UniString s) m n = UniString (String.substring (s, m, n))
+
 
 (*
  * Public interface
@@ -36,14 +38,16 @@ fun internal_compare (UniString a) (UniString b) = String.compare (a,b)
 
 fun toString     (s:STRING   ) : string = internal_toString     s
 fun fromString   (s:string   ) : STRING = internal_fromString   s  (* Should be used SPARINGLY! *)
-fun fromInt      (n:int      ) : STRING = internal_fromInt      n
-fun fromInt32    (n:Int32.int) : STRING = internal_fromInt32    n
-fun fromCharCode (n:int      ) : STRING = internal_fromCharCode n
+fun fromInt      (i:int      ) : STRING = internal_fromInt      i
+fun fromInt32    (i:Int32.int) : STRING = internal_fromInt32    i
+fun fromCharCode (i:int      ) : STRING = internal_fromCharCode i
 fun stringLength (s:STRING   ) : int    = internal_stringLength s
 
 fun stringAppend (a:STRING) (b:STRING) : STRING = internal_stringAppend a b
 fun charCodeAt   (s:STRING) (i:int   ) : int    = internal_charCodeAt   s i
 fun compare      (a:STRING) (b:STRING) : order  = internal_compare      a b
+
+fun substring    (s:STRING) (m:int) (n:int) : STRING = internal_substring s m n
 
 (*
  * pre-defined strings
@@ -107,6 +111,7 @@ val encodeURI_               = fromString "encodeURI"
 val encodeURIComponent_      = fromString "encodeURIComponent"
 val JSON_                    = fromString "JSON"
 val print_                   = fromString "print"
+val load_                    = fromString "load"
 val assert_                  = fromString "assert"
 val typename_                = fromString "typename"
 val Function_                = fromString "Function"
@@ -121,6 +126,9 @@ val String_                  = fromString "String"
 val Array_                   = fromString "Array"
 val ByteArray_               = fromString "ByteArray"
 val Date_                    = fromString "Date"
+val RegExp_                  = fromString "RegExp"
+val regexp_                  = fromString "regexp"
+val exception_               = fromString "exception"
 val emit_                    = fromString "emit"
 val parse_                   = fromString "parse"
 val magic_                   = fromString "magic"

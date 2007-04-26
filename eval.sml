@@ -708,7 +708,7 @@ and newArray (vals:Mach.VAL list)
     let val a = instantiateGlobalClass Name.public_Array [newInt (Int32.fromInt (List.length vals))]
         fun init a _ [] = ()
           | init a k (x::xs) =
-            (setValue a (Name.public (Int.toString k)) x ;
+            (setValue a (Name.public (Ustring.fromInt k)) x ;
              init a (k+1) xs)
     in
         init (needObj a) 0 vals;
@@ -716,8 +716,8 @@ and newArray (vals:Mach.VAL list)
     end
 
 
-and newRegExp (pattern:Ast.USTRING) 
-              (flags:Ast.USTRING)
+and newRegExp (pattern:Ustring.STRING) 
+              (flags:Ustring.STRING)
     : Mach.VAL =
     instantiateGlobalClass Name.public_RegExp [newString pattern, newString flags]
 
@@ -832,8 +832,8 @@ and callApprox (idStr:string) (args:Mach.VAL list)
                 if Mach.hasMagic ob 
                 then 
                     if Mach.isString arg
-                    then "\"" ^ (toString arg) ^ "\""
-                    else toString arg
+                    then "\"" ^ (Ustring.toString (toUstring arg)) ^ "\""
+                    else Ustring.toString (toUstring arg)
                 else 
                     "obj"                
     in
@@ -895,13 +895,13 @@ and toUstring (v:Mach.VAL)
             val Mach.Obj ob = obj
         in
             case !(#magic ob) of 
-                SOME magic => magicToString magic
+                SOME magic => magicToUstring magic
               | NONE => 
                 let 
                     val toPrimitiveFn = needObj (getValue (getGlobalObject ()) Name.intrinsic_ToPrimitive)
-                    val prim = evalCallExpr obj toPrimitiveFn [v, newString "String"]
+                    val prim = evalCallExpr obj toPrimitiveFn [v, newString Ustring.String_]
                 in
-                    toString prim
+                    toUstring prim
                 end
         end
         
@@ -1425,18 +1425,19 @@ and evalLiteralObjectExpr (regs:Mach.REGS)
     end
 
 
-and evalLiteralRegExp (re:Ast.USTRING)
+and evalLiteralRegExp (re:Ustring.STRING)
     : Mach.VAL =
     let fun findSplit 0 = 0
           | findSplit n =
-            if String.sub (re, n) = #"/" then
+            if Ustring.charCodeAt re n = Char.ord #"/" then
                 n
             else
                 findSplit (n-1)
-        val len = String.size re
+        val len = Ustring.stringLength re
         val split = findSplit (len - 1) 
     in
-        newRegExp (String.substring (re, 1, (split - 1))) (String.substring (re, (split + 1), (len - (split + 1))))
+        newRegExp (Ustring.substring re      1             (split - 1) )
+                  (Ustring.substring re (split + 1) (len - (split + 1)))
     end
 
 
@@ -2280,11 +2281,11 @@ and evalIdentExpr (regs:Mach.REGS)
         
       | Ast.QualifiedExpression { qual, expr } => 
         { nss = [[evalExprToNamespace regs qual]], 
-          id = toString (evalExpr regs expr) }
+          id = toUstring (evalExpr regs expr) }
         
       | Ast.ExpressionIdentifier { expr, openNamespaces } =>
         { nss = openNamespaces,
-          id = toString (evalExpr regs expr) }
+          id = toUstring (evalExpr regs expr) }
 
       | _ => LogErr.unimplError ["unimplemented identifier expression form"]
 
@@ -3639,7 +3640,7 @@ and evalProgram (prog:Ast.PROGRAM)
          map (evalPackage regs) (#packages prog);
          evalBlock regs (#block prog))
         handle ThrowException v => 
-               error ["*** UNHANDLED EXCEPTION ***", toString v]
+               error ["*** UNHANDLED EXCEPTION ***", Ustring.toString (toUstring v)]
     end
 
 fun resetGlobal (ob:Mach.OBJ) 
@@ -3679,7 +3680,7 @@ fun bindSpecialIdentities _ =
                  ];
         List.app bindProtoMagic
                  [ 
-                  (Name.public_String, Mach.String ""),
+                  (Name.public_String, Mach.String Ustring.empty),
                   (Name.public_Number, Mach.Double 0.0)
                  ]
     end

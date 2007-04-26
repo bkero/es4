@@ -1030,7 +1030,7 @@ and defSettings (env:ENV)
     : (Ast.FIXTURES * Ast.INITS) = 
     let
         val _ = trace [">> defSettings"]
-        val fxtrs:Ast.FIXTURES = map (defVar env Ast.Var (Ast.Internal "")) binds
+        val fxtrs:Ast.FIXTURES = map (defVar env Ast.Var (Ast.Internal Ustring.empty)) binds
         val inits:Ast.INITS = map (defInitStep env NONE) inits   (* FIXME: lookup ident in open namespaces *)
         val _ = trace ["<< defSettings"]
     in
