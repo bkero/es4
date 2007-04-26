@@ -10,25 +10,36 @@ package
     use namespace intrinsic;
     use strict;
 
+    intrinsic function IsPrimitive(value)
+        (value === undefined || 
+         value === null ||
+         value is String || 
+         value is Boolean || 
+         value is Numeric);
+
     intrinsic function DefaultValue(obj, preferredType) {
         var x = undefined;
         if (preferredType == "String") {
             if ("toString" in obj)
-                x = obj.toString();
-            if (x == undefined && "valueOf" in obj)
-                x = obj.valueOf();
+                x = obj.public::toString();
+            if (x === undefined && "valueOf" in obj)
+                x = obj.public::valueOf();
         } else {
             if ("valueOf" in obj)
-                x = obj.valueOf();
-            if (x == undefined && "toString" in obj)
-                x = obj.toString();
+                x = obj.public::valueOf();
+            if (x === undefined && "toString" in obj)
+                x = obj.public::toString();
         }
-        return x;
+
+        if (IsPrimitive(x))
+            return x;
+
+        throw new TypeError();
     }
 
     /* ... */
-    intrinsic function ToPrimitive(value, preferredType)    {
-        if (value === undefined || value === null || value is String || value is Boolean || value is Numeric)
+    intrinsic function ToPrimitive(value, preferredType) {
+        if (IsPrimitive(value))
             return value;
         return DefaultValue(value, preferredType);
     }
@@ -46,7 +57,7 @@ package
             return value !== 0 && value === value;
         return true;
     }
-        
+
     intrinsic function ToInteger(value) : Number {
         value = ToDouble(value);
         if (value !== value)

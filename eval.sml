@@ -11,6 +11,8 @@ fun resetStack _ =
 
 val ArrayClassIdentity = ref (~1)
 val FunctionClassIdentity = ref (~1)
+val StringClassIdentity = ref (~1)
+val NumberClassIdentity = ref (~1)
 
 fun join sep ss = 
     case ss of 
@@ -697,7 +699,22 @@ and newRootBuiltin (n:Ast.NAME) (m:Mach.MAGIC)
 
 and newArray (vals:Mach.VAL list)
     : Mach.VAL = 
-    instantiateGlobalClass Name.public_Array vals
+    (* 
+     * NB: Do not reorganize this to call the public Array constructor with the val list
+     * directly: that constructor is a bit silly. It interprets a single-argument list as
+     * a number, and sets the array to that length. We want to always return an array from
+     * this call containing as many values as we were passed, no more no less.
+     *)
+    let val a = instantiateGlobalClass Name.public_Array [newInt (Int32.fromInt (List.length vals))]
+        fun init a _ [] = ()
+          | init a k (x::xs) =
+            (setValue a (Name.public (Int.toString k)) x ;
+             init a (k+1) xs)
+    in
+        init (needObj a) 0 vals;
+        a
+    end
+
 
 and newRegExp (pattern:Ast.USTRING) 
               (flags:Ast.USTRING)
@@ -808,9 +825,17 @@ and callApprox (id:Ast.IDENT) (args:Mach.VAL list)
     : string = 
     let
         fun approx arg = 
-            if Mach.isString arg
-            then "\"" ^ (toString arg) ^ "\""
-            else toString arg
+            case arg of 
+                Mach.Null => "null"
+              | Mach.Undef => "undefined"
+              | Mach.Object ob => 
+                if Mach.hasMagic ob 
+                then 
+                    if Mach.isString arg
+                    then "\"" ^ (toString arg) ^ "\""
+                    else toString arg
+                else 
+                    "obj"                
     in
         id ^ "(" ^ (join ", " (map approx args)) ^ ")"
     end
@@ -853,44 +878,33 @@ and magicToString (magic:Mach.MAGIC)
       | _ => error ["Shouldn't happen: failed to match in Eval.magicToString."]
 
 (* 
- * FIXME: want to transfer *some* of these up to Conversions.es, but it's
- * very easy to get into feedback loops if you do so. 
+ * ES3 9.8 ToString. 
+ *
+ * We do it down here because we have some actual callers who 
+ * need it inside the implementation of the runtime. Most of the rest
+ * is done up in Conversions.es.
  *)
 
 and toString (v:Mach.VAL) 
     : string = 
-    ( trace ["toString"] ;
     case v of 
         Mach.Undef => "undefined"
       | Mach.Null => "null"
-      | Mach.Object (Mach.Obj ob) => 
-        case !(#magic ob) of 
-            NONE => let val r = resolveOnObjAndPrototypes (Mach.Obj ob) 
-                                                          { nss=[[Name.internalNS], [Name.publicNS]], id="toString" }
-                    in
-                        case r of 
-                            NONE => "[Object object 0]"
-                          | SOME (base, name) => 
-                            let val meth = getValue base name
-                            in
-                                case meth of 
-                                    Mach.Object metho => 
-                                    let val res = Mach.Undef (* evalCallExpr (SOME (Mach.Obj ob)) metho [] *) (* Awaiting fix to "this" bug *)
-                                    in
-                                        case res of 
-                                            Mach.Object (Mach.Obj ro) =>
-                                            (case !(#magic ro) of
-                                                 SOME (Mach.String s) => s
-                                               | _ => "[Object object 1]")
-                                          | _ => "[Object object 2]"
-                                    end
-                                  | Mach.Null => "[Object object 3.1]"
-                                  | Mach.Undef => "[Object object 3.2]"
-                            end
-                    end
-          | SOME magic => 
-            magicToString magic)
-
+      | Mach.Object obj => 
+        let
+            val Mach.Obj ob = obj
+        in
+            case !(#magic ob) of 
+                SOME magic => magicToString magic
+              | NONE => 
+                let 
+                    val toPrimitiveFn = needObj (getValue (getGlobalObject ()) Name.intrinsic_ToPrimitive)
+                    val prim = evalCallExpr obj toPrimitiveFn [v, newString "String"]
+                in
+                    toString prim
+                end
+        end
+        
 and toBoolean (v:Mach.VAL) : bool = 
     case v of 
         Mach.Undef => false
@@ -1970,10 +1984,6 @@ and performBinop (bop:Ast.BINOP)
               | Ast.Greater _ => ">"
               | Ast.GreaterOrEqual _ => ">="
               | Ast.Comma => ","
-                
-
-        val _ = trace ["binop ", toString a, " ", binOpName, " ", toString b];
-                          
     in
         case bop of
             Ast.Plus mode => 
@@ -2194,8 +2204,8 @@ and evalBinaryOp (regs:Mach.REGS)
             val b = evalExpr regs bexpr
         in
             case b of 
-                Mach.Object (Mach.Obj {props, ...}) =>
-                newBoolean (Mach.hasProp props aname)
+                Mach.Object obj =>
+                newBoolean (hasValue obj aname)
               | _ => raise ThrowException (newByGlobalName regs Name.public_TypeError)
                      
         end
@@ -2322,7 +2332,7 @@ and evalRefExprFull (regs:Mach.REGS)
                        NONE => if errIfNotFound 
                                then ( (* Pretty.ppExpr expr ; *)
                                       error ["unresolved identifier expression",
-                                             fmtMultiname multiname] )
+                                             LogErr.multiname multiname] )
                                else makeRefNotFound base multiname
                      | SOME r' => r'))
     end
@@ -3125,74 +3135,6 @@ and get (obj:Mach.OBJ)
     in
         tryObj obj
     end
-
-
-(* 
- * ES3 8.6.2.6 [[DefaultValue]](hint)
- * 
- * FIXME: no idea if this makes the most sense given 
- * the ES3 meaning of the operation. 
- *)
-and defaultValue (regs:Mach.REGS)
-                 (obj:Mach.OBJ) 
-                 (hint:string option)
-    : Mach.VAL = 
-    let 
-        fun tryProps [] = raise ThrowException 
-                                    (newByGlobalName regs
-                                         Name.public_TypeError)
-          | tryProps (n::ns) =
-            let 
-                val f = get obj n
-            in 
-                if Mach.isObject f
-                then 
-                    let 
-                        val v = evalCallExpr obj (needObj f) []
-                    in
-                        if isPrimitive v
-                        then v
-                        else tryProps ns
-                    end
-                else
-                    tryProps ns
-            end
-    in
-        (* FIXME: Date objects are supposed to default to "String" hint. *)
-        if hint = (SOME "String")
-        then tryProps [Name.public_toString, Name.public_valueOf]
-        else tryProps [Name.public_valueOf, Name.public_toString]
-    end
-
-
-and isPrimitive (v:Mach.VAL) 
-    : bool = 
-    case v of 
-        Mach.Null => true
-      | Mach.Undef => true
-      | Mach.Object (Mach.Obj ob) => 
-        (case !(#magic ob) of
-             SOME (Mach.UInt _) => true
-           | SOME (Mach.Int _) => true
-           | SOME (Mach.Double _) => true
-           | SOME (Mach.Decimal _) => true
-           | SOME (Mach.String _) => true
-           | SOME (Mach.Boolean _) => true
-           | _ => false)
-
-(* 
- * ES3 1.9 ToPrimitive 
- * 
- * FIXME: no idea if this makes the most sense given 
- * the ES3 meaning of the operation. 
- *)
-and toPrimitive (regs:Mach.REGS)
-                (v:Mach.VAL) 
-                (preferredType:string option)
-    : Mach.VAL = 
-    if isPrimitive v 
-    then v
-    else defaultValue regs (needObj v) preferredType
          
 (*
     HEAD
@@ -3250,7 +3192,7 @@ and initClassPrototype (regs:Mach.REGS)
                        (classObj:Mach.OBJ) 
     : unit =
     let 
-        val Mach.Obj { props, magic, ... } = classObj
+        val Mach.Obj { ident, props, magic, ... } = classObj
         val SOME (Mach.Class {cls=Ast.Cls {extends,...},...}) = !magic
         val baseProtoVal = 
             case extends of 
@@ -3264,7 +3206,7 @@ and initClassPrototype (regs:Mach.REGS)
                         then getValue ob Name.public_prototype
                         else Mach.Null
                       | _ => error ["base class resolved to non-object: ", 
-                                    fmtName baseClassName]
+                                    LogErr.name baseClassName]
                 end
                 
         val _ = trace ["constructing prototype"]
@@ -3705,14 +3647,28 @@ fun bindSpecialIdentities _ =
                 val Mach.Obj obj = needObj (getValue (getGlobalObject()) n)
                 val id = (#ident obj)
             in
-                trace ["noting identity ", Int.toString id, " of class ", fmtName n];
+                trace ["noting identity ", Int.toString id, " of class ", LogErr.name n];
                 r := id
+            end
+        fun bindProtoMagic (n, m) = 
+            let 
+                val classObj = needObj (getValue (getGlobalObject()) n)
+                val protoObj = needObj (getValue classObj Name.public_prototype)
+            in
+                trace ["setting magic slot in prototype of ", LogErr.name n];
+                Mach.setMagic protoObj (SOME m);
+                ()
             end
     in
         List.app bindIdent
                  [ 
                   (Name.public_Array, ArrayClassIdentity),
                   (Name.public_Function, FunctionClassIdentity)
+                 ];
+        List.app bindProtoMagic
+                 [ 
+                  (Name.public_String, Mach.String ""),
+                  (Name.public_Number, Mach.Double 0.0)
                  ]
     end
 

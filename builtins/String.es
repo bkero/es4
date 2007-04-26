@@ -42,7 +42,7 @@ package
     {       
         /* E262-3 15.5.1: The String Constructor Called as a Function */
         static meta function invoke(x="")
-            string(x);
+            ToString(x);
 
         /* 15.5.2 The String Constructor */
         function String(x="")
@@ -61,13 +61,13 @@ package
         String.prototype.constructor = String;
 
         /* E262-3 15.5.4.2: String.prototype.toString */
-        prototype function toString(this : String)
-            ToString(this);
+        prototype function toString(this : String) {
+            if (this is String)
+                return this;
+            throw new TypeError();
+        }
 
         override intrinsic function toString() : string
-            private::toString();
-        
-        private final function toString() : string
             ToString(this);
         
         /* E262-3 15.5.4.3: String.prototype.valueOf */

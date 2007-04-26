@@ -18,7 +18,7 @@ fun meta id = { id = id, ns = metaNS }
 fun magic id = { id = id, ns = magicNS }
 fun public id = { id = id, ns = publicNS }
 fun internal id = { id = id, ns = internalNS }
-fun intrinsic id = { id = id, ns = internalNS }
+fun intrinsic id = { id = id, ns = intrinsicNS }
 fun private cls id = { id = id, ns = privateNS }
 
 (* 

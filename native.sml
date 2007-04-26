@@ -138,10 +138,9 @@ fun propQuery (vals:Mach.VAL list)
     : Mach.VAL = 
     let 
         val Mach.Obj { props, ...} = nthAsObj vals 0
-        val id = nthAsStr vals 1
-        val ns = Ast.Internal ""
+        val n = Name.public (nthAsStr vals 1)
     in
-        Eval.newBoolean (f props {id=id, ns=ns})
+        Eval.newBoolean (f props n)
     end
 
 fun arrayToList (arr:Mach.OBJ) 
@@ -394,7 +393,8 @@ fun fromCharCode (vals:Mach.VAL list)
     let
         val i = nthAsUInt vals 0
     in
-        Eval.newString (String.str (Char.chr (Word32.toInt i)))
+        (* FIXME: this does not know unicode. *)
+        Eval.newString (String.str (Char.chr (Int.mod(Word32.toInt i, 256))))
     end
 
 

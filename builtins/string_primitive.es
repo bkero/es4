@@ -67,12 +67,12 @@ package
 
         /* E262-3 15.5.4.2: String.prototype.toString */
         prototype function toString(this : string)
-            this;
+            private::toString(this);
 
         override intrinsic function toString() : string
-            private::toString();
+            private::toString(this);
 
-        private final function toString() : string
+        private function toString() : string
             this;
         
         /* E262-3 15.5.4.3: String.prototype.valueOf */
