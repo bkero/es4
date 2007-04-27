@@ -205,7 +205,7 @@ fun getClassName (vals:Mach.VAL list)
                       (* FIXME: "Array", "RegExp", "String", ...  The object needs
                        * to carry a reference to its class, but it doesn't.
                        *)
-                      "Object"
+                      Ustring.Object_
     in
         Eval.newString ustr
     end
@@ -895,8 +895,8 @@ fun registerNatives _ =
 
         (* FIXME: stubs to get Date loading. Implement. *)
         addFn Name.intrinsic_now now;
-        addFn Name.public_LocalTZA (fn _ => Eval.newDouble 1.0);
-        addFn Name.public_DaylightSavingsTA (fn _ => Eval.newDouble 1.0);
+        addFn Name.public_LocalTZA (fn _ => Eval.newDouble 0.0);
+        addFn Name.public_DaylightSavingsTA (fn _ => Eval.newDouble 0.0);
        
         (* Math.es natives *) 
         addFn Name.intrinsic_abs abs;
