@@ -14,9 +14,10 @@ f(10)
 intrinsic::print(x)
 */
 
-/*
-(type function(int):int)
-*/
-
-type t = int
-const x = 10
+package p {
+public class A {
+public static var x = 10
+}
+}
+import p.A
+intrinsic::print(p.A.x)
