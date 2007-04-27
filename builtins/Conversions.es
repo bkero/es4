@@ -37,27 +37,14 @@ package
         throw new TypeError();
     }
 
-    /* ... */
+    /* ES-262-3 9.1: The ToPrimitive operation */
     intrinsic function ToPrimitive(value, preferredType) {
         if (IsPrimitive(value))
             return value;
         return DefaultValue(value, preferredType);
     }
 
-    /* ES-262-3 9.2: The ToBoolean operation */
-    intrinsic function ToBoolean(value) : Boolean {
-        if (value is Boolean)
-            return value;
-
-        if (value === undefined || value === null)
-            return false;
-        if (value is String)
-            return value !== "";
-        if (value is Numeric)
-            return value !== 0 && value === value;
-        return true;
-    }
-
+    /* ES-262-3 9.4: The ToInteger operation */
     intrinsic function ToInteger(value) : Number {
         value = ToDouble(value);
         if (value !== value)
@@ -67,6 +54,39 @@ package
         var sign:double = value < 0d ? -1d : 1d;
         return sign * Math.floor(Math.abs(value));
     }
+
+    /* 
+     * ES-262-3 9.9: ToObject.
+     * 
+     * ES-262-4 draft: All values except undefined and null are
+     * already objects, no conversion is necessary.
+    */
+
+    intrinsic function ToObject(value) : Object! {
+        if (value === undefined || value === null)
+            throw new TypeError("Can't convert undefined or null to Object");
+        return value;
+    }
+
+    /* 
+     * The remaining ES-262-3 9.x primitive conversions are formulated
+     * in terms of calling the class meta::invoke of the associated
+     * primitive, which generally calls the primitive constructor and
+     * thus one of the native magic::bindFoo() primitive conversion
+     * routines provided by the implementation.
+     *
+     * It is done this way because expressing the conversion
+     * algorithms in ES4 code proved difficult: the code invariably
+     * fed back on primitive constructors (for literals, control-flow
+     * booleans, temporaries, etc). This meant that the conversions
+     * could seldom be called from primitive constructors without
+     * entering infinite loops. This was unacceptable since the
+     * conversion algorithms are primarily *intended* to be called
+     * from the bodies of primitive constructors.
+     */
+
+    intrinsic function ToBoolean(value) : boolean
+        boolean(value);
 
     intrinsic function ToInt(v) : int
         int(value)
@@ -83,14 +103,5 @@ package
     intrinsic function ToString(x) : string
         string(x);
 
-    /* ES-262-3 9.9: ToObject.
 
-       ES-262-4 draft: All values except undefined and null are
-       already objects, no conversion is necessary.  */
-
-    intrinsic function ToObject(value) : Object! {
-        if (value === undefined || value === null)
-            throw new TypeError("Can't convert undefined or null to Object");
-        return value;
-    }
 }

@@ -447,7 +447,7 @@ and hasValue (obj:Mach.OBJ)
 
 
 (* 
- * *Similar to* ES3 8.7.1 GetValue(V), there's 
+ * *Similar to* ES-262-3 8.7.1 GetValue(V), there's 
  * no Reference type in ES4.
  *)
 and getValueOrVirtual (obj:Mach.OBJ)
@@ -870,15 +870,15 @@ and magicToUstring (magic:Mach.MAGIC)
     case magic of 
         Mach.Double n => 
         if Real64.isFinite n andalso Real64.==(Real64.realFloor n, n)
-        then Ustring.fromString (LargeInt.toString (Real64.toLargeInt IEEEReal.TO_NEGINF n))
+        then Ustring.fromString (Ustring.fixNegatives (LargeInt.toString (Real64.toLargeInt IEEEReal.TO_NEGINF n)))
         else (if Real64.isNan n
               then Ustring.NaN_
               else (if Real64.==(Real64.posInf, n)
                     then Ustring.Infinity_
                     else (if Real64.==(Real64.negInf, n)
                           then Ustring.fromString "-Infinity"
-                          else Ustring.fromString (Real64.toString n))))
-
+                          else Ustring.fromString (Ustring.fixNegatives (Real64.toString n)))))
+             
       | Mach.Decimal d => Ustring.fromString (Decimal.toString d)
       | Mach.Int i => Ustring.fromInt32 i
       | Mach.UInt u => Ustring.fromString (LargeInt.toString (Word32.toLargeInt u))
@@ -901,7 +901,7 @@ and magicToUstring (magic:Mach.MAGIC)
       | _ => error ["Shouldn't happen: failed to match in Eval.magicToUstring."]
 
 (* 
- * ES3 9.8 ToString. 
+ * ES-262-3 9.8 ToString. 
  *
  * We do it down here because we have some actual callers who 
  * need it inside the implementation of the runtime. Most of the rest
@@ -919,14 +919,13 @@ and toUstring (v:Mach.VAL)
         in
             case !(#magic ob) of 
                 SOME magic => magicToUstring magic
-              | NONE => 
-                let 
-                    val toPrimitiveFn = needObj (getValue (getGlobalObject ()) Name.intrinsic_ToPrimitive)
-                    val prim = evalCallExpr obj toPrimitiveFn [v, newString Ustring.String_]
-                in
-                    toUstring prim
-                end
+              | NONE => toUstring (callGlobal Name.intrinsic_ToPrimitive 
+                                              [v, newString Ustring.String_])
         end
+        
+(* 
+ * ES-262-3 9.2: The ToBoolean operation 
+ *)
         
 and toBoolean (v:Mach.VAL) : bool = 
     case v of 
@@ -940,7 +939,10 @@ and toBoolean (v:Mach.VAL) : bool =
            | SOME (Mach.Double x) => not (Real64.==(x,(Real64.fromInt 0))
                                           orelse
                                           Real64.isNan x)
-           | SOME (Mach.Decimal x) => not (x = Decimal.zero)
+           | SOME (Mach.Decimal x) => not ((x = Decimal.zero)
+                                           orelse
+                                           (Decimal.isNaN x))
+           | SOME (Mach.String s) => not (Ustring.stringLength s = 0)
            | _ => true)
 
 (* 
@@ -967,7 +969,7 @@ and toNumeric (v:Mach.VAL)
                | SOME (Mach.Boolean true) => one ()
                (* 
                 * FIXME: This is not the correct definition of ToNumber applied to string.
-                * See ES3 9.3.1. We need to talk it over.
+                * See ES-262-3 9.3.1. We need to talk it over.
                 *) 
                | SOME (Mach.String us) =>
                     let val s = Ustring.toAscii us
@@ -977,7 +979,7 @@ and toNumeric (v:Mach.VAL)
                           | NONE => NaN ()
                     end
                (* 
-                * FIXME: ES3 9.3 defines ToNumber on objects in terms of primitives. We've
+                * FIXME: ES-262-3 9.3 defines ToNumber on objects in terms of primitives. We've
                 * reorganized the classification of primitives vs. objects. Revisit this.
                 *)
                | _ => zero ())
@@ -1129,7 +1131,7 @@ and sign (v:Mach.VAL)
         (* 
          * FIXME: this implemented 'sign' function returns 1, 0, or -1
          * depending on proximity to 0. Some definitions only return 1 or 0,
-         * or only return 1 or -1. Don't know which one the ES3 spec means.
+         * or only return 1 or -1. Don't know which one the ES-262-3 spec means.
          *)
 
         (* FIXME: should decimal rounding mode and precision used in sign-determination? *)
@@ -1174,29 +1176,7 @@ and signFloorAbs (v:Mach.VAL)
     end
     
 
-(* ES3 9.4 ToInteger 
- *
- * FIXME: If I understand the compatibility requirements
- * correctly, this should return an integral double. 
- * Not certain though. 
- *)
-
-and toInteger (v:Mach.VAL)
-    : Mach.VAL = 
-    let
-        val v' = toNumeric v
-    in
-        if isNaN v'
-        then newDouble (Real64.fromInt 0)
-        else (if (isPositiveInf v' orelse
-                  isNegativeInf v' orelse
-                  isPositiveZero v' orelse
-                  isNegativeZero v')
-              then v'
-              else newDouble (Real64.fromLargeInt (signFloorAbs v')))
-    end
-
-(* ES3 9.5 ToInt32 *)
+(* ES-262-3 9.5 ToInt32 *)
 
 and toInt32 (v:Mach.VAL) 
     : Int32.int =
@@ -1222,7 +1202,7 @@ and toInt32 (v:Mach.VAL)
     end
 
 
-(* ES3 9.6 ToUInt32 *)
+(* ES-262-3 9.6 ToUInt32 *)
 
 and toUInt32 (v:Mach.VAL) 
     : Word32.word =
@@ -1243,7 +1223,7 @@ and toUInt32 (v:Mach.VAL)
             end
     end
 
-(* ES3 9.6 ToUInt16 *)
+(* ES-262-3 9.6 ToUInt16 *)
 
 and toUInt16 (v:Mach.VAL) 
     : Word32.word =
@@ -1323,8 +1303,8 @@ and evalExpr (regs:Mach.REGS)
             val args = map (evalExpr regs) actuals
         in
             case func of 
-                Ast.LexicalRef _ => evalCallMethod regs func args
-              | Ast.ObjectRef _ => evalCallMethod regs func args
+                Ast.LexicalRef _ => evalCallMethodByExpr regs func args
+              | Ast.ObjectRef _ => evalCallMethodByExpr regs func args
               | _ => evalCallExpr (#this regs) (needObj (evalExpr regs func)) args
         end
 
@@ -1505,7 +1485,7 @@ and constructObjectViaFunction (ctorObj:Mach.OBJ)
         Mach.Obj { props, ... } => 
         let
             (* FIXME: the default prototype should be the initial Object prototype, 
-             * as per ES3 13.2.2, not the current Object prototype. *)
+             * as per ES-262-3 13.2.2, not the current Object prototype. *)
             val (proto:Mach.VAL) = 
                 if Mach.hasProp props Name.public_prototype
                 then getValue ctorObj Name.public_prototype
@@ -1534,9 +1514,20 @@ and evalNewExpr (obj:Mach.OBJ)
           | _ => error ["operator 'new' applied to unknown object"]
 
 
-and evalCallMethod (regs:Mach.REGS) 
-                   (func:Ast.EXPR)
-                   (args:Mach.VAL list)
+and callGlobal (n:Ast.NAME) 
+               (args:Mach.VAL list) 
+  : Mach.VAL = 
+    let
+        val _ = trace ["evaluator calling up to global function ", fmtName n]
+        val global = getGlobalObject()
+    in
+        evalCallMethodByRef global (global, n) args
+    end
+
+
+and evalCallMethodByExpr (regs:Mach.REGS) 
+                         (func:Ast.EXPR)
+                         (args:Mach.VAL list)
     : Mach.VAL = 
     let
         (* 
@@ -1545,10 +1536,21 @@ and evalCallMethod (regs:Mach.REGS)
          * wrapper object. 
          *)
         val _ = trace ["evaluating ref expr for call-method"];
-        val (baseOpt, (obj, name)) = evalRefExprFull regs func true
+        val (baseOpt, r) = evalRefExprFull regs func true
         val thisObj = case baseOpt of 
                        NONE => (#this regs)
                      | SOME base => base
+    in
+        evalCallMethodByRef thisObj r args
+    end
+
+
+and evalCallMethodByRef (thisObj:Mach.OBJ) 
+                        (r:REF)
+                        (args:Mach.VAL list)
+    : Mach.VAL = 
+    let
+        val (obj, name) = r
         val _ = trace [">>> call method: ", fmtName name]
         val Mach.Obj { props, ... } = obj
         val res = case (#state (Mach.getProp props name)) of
@@ -1559,7 +1561,6 @@ and evalCallMethod (regs:Mach.REGS)
     in
         res
     end
-
                                 
 and evalCallExpr (thisObj:Mach.OBJ) 
                  (fobj:Mach.OBJ) 
@@ -1804,7 +1805,7 @@ and evalUnaryOp (regs:Mach.REGS)
 
           | Ast.Typeof => 
             (* 
-             * ES3 1.4.3 backward-compatibility operation.
+             * ES-262-3 1.4.3 backward-compatibility operation.
              *)
             let
                 fun typeOfVal (v:Mach.VAL) = 
@@ -2176,7 +2177,9 @@ and evalBinaryTypeOp (regs:Mach.REGS)
                    | "int" => newBoolean (Mach.isInt v)
                    | "uint" => newBoolean (Mach.isUInt v)
                    | "String" => newBoolean (Mach.isString v)
+                   | "string" => newBoolean ((Mach.isString v) andalso (Mach.isDirectInstanceOf Name.public_string v))
                    | "Boolean" => newBoolean (Mach.isBoolean v)
+                   | "boolean" => newBoolean ((Mach.isBoolean v) andalso (Mach.isDirectInstanceOf Name.public_boolean v))
                    | "Numeric" => newBoolean (Mach.isNumeric v)
                    | n => 
                      (case v of 
@@ -3137,26 +3140,10 @@ and newByGlobalName (regs:Mach.REGS)
 
 
 (* 
- * ES3 9.9 ToObject 
+ * ES-262-3 8.6.2.1 [[Get]](P)
  * 
  * FIXME: no idea if this makes the most sense given 
- * the ES3 meaning of the operation. 
- *)
-
-and toObject (regs:Mach.REGS)
-             (v:Mach.VAL) 
-    : Mach.OBJ = 
-    case v of 
-        Mach.Undef => raise ThrowException (newByGlobalName regs Name.public_TypeError)
-      | Mach.Null => raise ThrowException (newByGlobalName regs Name.public_TypeError)
-      | Mach.Object ob => ob
-
-
-(* 
- * ES3 8.6.2.1 [[Get]](P)
- * 
- * FIXME: no idea if this makes the most sense given 
- * the ES3 meaning of the operation. 
+ * the ES-262-3 meaning of the operation. 
  *)
 and get (obj:Mach.OBJ) 
         (n:Ast.NAME) 
@@ -3385,7 +3372,7 @@ and evalWithStmt (regs:Mach.REGS)
     : Mach.VAL = 
     let 
         val v = evalExpr regs obj
-        val ob = (toObject regs v)
+        val ob = needObj (callGlobal Name.intrinsic_ToObject [v])
         val s = extendScope (#scope regs) ob Mach.WithScope
         val regs = {this=ob, scope=s}
     in

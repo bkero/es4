@@ -284,6 +284,17 @@ fun isNumeric (v:VAL) : bool =
       | _ => false
 
 
+fun isDirectInstanceOf (n:Ast.NAME) 
+                       (v:VAL) 
+    : bool = 
+    case v of 
+        Object (Obj { tag, ... }) => 
+        (case tag of 
+             ClassTag cn => nameEq cn n
+           | _ => false)
+      | _ => false
+
+
 (* Binding operations. *)
 
 fun newPropBindings _ : PROP_BINDINGS = 

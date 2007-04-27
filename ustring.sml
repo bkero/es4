@@ -27,9 +27,13 @@ fun internal_toEscapedAscii us =
         toEscapedAscii us []
     end
 
-fun internal_fromInt n = internal_fromString (Int.toString n)
+fun fixNegative #"~" = "-"
+  | fixNegative c = String.str c
+fun fixNegatives s = String.translate fixNegative s
 
-fun internal_fromInt32 n = internal_fromString (Int32.toString n)
+fun internal_fromInt n = internal_fromString (fixNegatives (Int.toString n))
+
+fun internal_fromInt32 n = internal_fromString (fixNegatives (Int32.toString n))
 
 fun internal_fromCharCode n = internal_fromString (Char.toString (Char.chr n))
 
