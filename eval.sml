@@ -137,6 +137,7 @@ fun needObj (v:Mach.VAL)
       | _ => error ["need object"]
 
 
+    
 (* 
  * The global object and scope.
  *)
@@ -403,6 +404,28 @@ and allocScopeFixtures (regs:Mach.REGS)
         Mach.Scope { object, temps, ... } => 
         allocFixtures regs object NONE temps f
 
+
+and asArrayIndex (v:Mach.VAL) 
+    : Word32.word =
+    ( LogErr.log ["asArrayIndex: ", toString v] ;
+      case v of 
+          Mach.Object (Mach.Obj ob) => 
+          (case !(#magic ob) of 
+               SOME (Mach.Int i) => if i >= 0 then
+                                        Word32.fromInt (Int32.toInt i)
+                                    else
+                                        0wxFFFFFFFF
+             | SOME (Mach.UInt u) => u
+             | SOME (Mach.Double d) => if Real64.compare(Real64.realFloor d, d) = EQUAL andalso 
+                                          d >= 0.0 andalso 
+                                          d < 4294967295.0
+                                       then
+                                           Word32.fromLargeInt (Real64.toLargeInt IEEEReal.TO_NEAREST d)
+                                       else
+                                           0wxFFFFFFFF
+             | SOME (Mach.Decimal d) => 0wxFFFFFFFF (* FIXME *)
+             | _ => 0wxFFFFFFFF)
+        | _ => 0wxFFFFFFFF)
 
 and hasOwnValue (obj:Mach.OBJ) 
                 (n:Ast.NAME) 
@@ -3040,10 +3063,13 @@ and runAnySpecialConstructor (id:Mach.OBJ_IDENT)
              in
                  case args of
                      [] => setValue instanceObj Name.public_length (newUInt 0w0)
-                   | [k] => if Mach.isNumeric k then
-                                setValue instanceObj Name.public_length k
-                            else
-                                bindVal 0 args
+                   | [k] => let val idx = asArrayIndex k 
+                            in
+                                if not (idx = 0wxFFFFFFFF) then
+                                    setValue instanceObj Name.public_length k
+                                else
+                                    bindVal 0 args
+                            end
                    | _ => bindVal 0 args;
                  Mach.setPropDontEnum props Name.public_length true;
                  Mach.setPropDontEnum props Name.private_Array__length true
