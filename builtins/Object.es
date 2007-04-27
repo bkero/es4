@@ -26,10 +26,10 @@ package
 
         /* E262-3 15.2.4.2: Object.prototype.toString */
         prototype function toString()
-            private::toString(this);
+            Object.private::toString(this);
 
         intrinsic function toString() : string
-            private::toString(this);
+            Object.private::toString(this);
 
         private static function toString(obj) : string
             "[object " + magic::getClassName(obj) + "]";
