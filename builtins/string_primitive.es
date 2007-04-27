@@ -306,15 +306,15 @@ package
                 return [0, null];
             }
 
-            let replaceString : string? = r instanceof string ? r cast string : null;
-            let replaceFun    : Function = r instanceof Function ? r cast Function : null;
+            let replaceString : string? = r instanceof string ? r /* cast string */ : null;  /* FIXME: cast not implemented */
+            let replaceFun    : Function = r instanceof Function ? r /* cast Function */ : null;  /* FIXME: cast not implemented */
 
             let substitute : function (uint, uint, uint, Array) : string =
                 replaceFun !== null ? substituteFunction : substituteString;
 
             if (s instanceof RegExp) {
                 /* paragraph 2 */
-                let regexp : RegExp = s cast RegExp;
+                let regexp : RegExp = s /* cast RegExp */ ;  /* FIXME: cast not implemented */
                 let res : Array = null;
                 let m : uint = regexp.nCapturingParens;
 
@@ -413,7 +413,7 @@ package
             function splitMatch(R: matcher, S: string, q: uint) : [uint, [string]] {
                 /* FIXME: use "switch type" when it works */
                 if (R is string) {
-                    let x : string = R cast string;
+                    let x : string = R /* cast string */;  /* FIXME: cast not implemented */
                     let r : uint = x.length;
                     if (q + r <= S.length && S.substring(q, q + r) === R)
                         return [q+r, []];
@@ -422,7 +422,7 @@ package
                 }
 
                 if (R is RegExp) {
-                    let x : RegExp! = R cast RegExp;
+                    let x : RegExp! = R /* cast RegExp */;  /* FIXME: cast not implemented */
                     let mr : MatchResult = x.match(S, q);
                     if (mr === null)
                         return null;
