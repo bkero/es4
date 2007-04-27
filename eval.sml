@@ -40,6 +40,7 @@ fun log ss = LogErr.log ("[eval] " :: ss)
 val doTrace = ref false
 fun fmtName n = if (!doTrace) then LogErr.name n else ""
 fun fmtMultiname n = if (!doTrace) then LogErr.multiname n else ""
+
 fun trace ss = if (!doTrace) then log ss else ()
 fun error ss = 
     (LogErr.log ("[stack] " :: [stackString()]);
@@ -627,7 +628,7 @@ and defValue (base:Mach.OBJ)
     case base of 
         Mach.Obj { props, ... } => 
         if not (Mach.hasProp props name)
-        then error ["defValue on missing property: ", fmtName name]
+        then error ["defValue on missing property: ", LogErr.name name]
         else 
             (* 
              * defProp has relaxed rules: you can write to an 

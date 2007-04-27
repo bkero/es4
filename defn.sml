@@ -350,7 +350,7 @@ and resolveExprOptToNamespace (env: ENV)
 *)
              
 fun extendEnvironment (env:ENV) 
-                      (fixtures:Ast.FIXTURES) 
+                      (fixtures:Ast.FIXTURES)
     : ENV = 
     case env of 
         [] => (trace ["extending empty environment"];{ fixtures = fixtures,
@@ -425,6 +425,24 @@ fun updateTempOffset (ctx::ex) (tempOffset:int)
           defaultNamespace = (#defaultNamespace ctx) } :: ex
     end
   | updateTempOffset ([]) (tempOffset:int)
+    : ENV =
+        LogErr.defnError ["cannot update an empty environment"]
+
+fun clearPackageName (ctx::ex)
+    : ENV =
+    let
+    in
+        { fixtures = (#fixtures ctx),
+          tempOffset = (#tempOffset ctx),
+          openNamespaces = (#openNamespaces ctx), 
+          numericMode = (#numericMode ctx),
+          labels = (#labels ctx),
+          packageNames = (#packageNames ctx),
+          className = (#className ctx),
+          packageName = [],
+          defaultNamespace = (#defaultNamespace ctx) } :: ex
+    end
+  | clearPackageName ([])
     : ENV =
         LogErr.defnError ["cannot update an empty environment"]
 
@@ -688,6 +706,7 @@ and analyzeClass (env:ENV)
 
             val ns = resolveExprOptToNamespace env ns
             val name = {id=ident, ns=ns}
+            val env = clearPackageName env
 
             val (unhoisted,classFixtures,classInits) = defDefns env [] [] [] classDefns
             val staticEnv = extendEnvironment env classFixtures
@@ -1203,6 +1222,7 @@ and defFuncDefn (env:ENV) (f:Ast.FUNC_DEFN)
         let
             val qualNs = resolveExprOptToNamespace env (#ns f)
             val newName = Ast.PropName { id = (#ident name), ns = qualNs }
+            val env = clearPackageName env
             val (_, _, newFunc) = defFunc env (#func f)
             val Ast.Func { ty, ... } = newFunc
             val newDefn = { kind = (#kind f),
@@ -2096,6 +2116,8 @@ and defStmt (env:ENV)
 
                 val namespace = resolveExprOptToNamespace env ns
                 val name = {ns=namespace, id=ident}
+
+                val env = clearPackageName env (* only top level pakcage defns use package specific namespaces *)
 
                 val (block,hoisted) = defBlock env (Ast.Block {pragmas=pragmas,
                                                                defns=defns,
