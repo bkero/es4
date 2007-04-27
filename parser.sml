@@ -66,7 +66,7 @@ type PATTERN_BINDING_PART =
        prototype:bool,
        static:bool }
 
-val currentClassName : Ast.IDENT ref = ref ""
+val currentClassName : Ast.IDENT ref = ref Ustring.empty
 
 fun newline (ts : (TOKEN * Ast.POS) list) =
     (* fun newline ts = Lexer.UserDeclarations.followsLineBreak ts *)
@@ -249,9 +249,8 @@ fun desugarPattern (pos:Ast.POS option)
             in case element_ptrns of
                 p::plist =>
                     let
-                        val id = Int.toString n
-                        val str = Ast.LiteralString id
-                        val ident = Ast.ExpressionIdentifier { expr = (Ast.LiteralExpr (str)), 
+                        val str = Ast.LiteralString (Ustring.fromInt n)
+                        val ident = Ast.ExpressionIdentifier { expr = (Ast.LiteralExpr str), 
                                                                openNamespaces = [] }
                         val e = SOME (Ast.ObjectRef {base=temp, ident=ident, pos=pos})
                         val t = Ast.ElementTypeRef (element_types,n)
@@ -362,39 +361,42 @@ Identifier
     ContextuallyReservedIdentifier
 *)
 
-and identifier ts =
-    let
-    in case ts of
-        (Identifier(str), _) :: tr => (tr,str)
-      | (Call, _) :: tr => (tr,"call")
-      | (Debugger, _) :: tr => (tr,"debugger")
-      | (Decimal, _) :: tr => (tr,"decimal")
-      | (Double, _) :: tr => (tr,"double")
-      | (Dynamic, _) :: tr => (tr,"dynamic")
-      | (Each, _) :: tr => (tr,"each")
-      | (Final, _) :: tr => (tr,"final")
-      | (Get, _) :: tr => (tr,"get")
-      | (Goto, _) :: tr => (tr,"goto")
-      | (Has, _) :: tr => (tr,"has")
-      | (Include, _) :: tr => (tr,"include")
-      | (Int, _) :: tr => (tr,"int")
-      | (Namespace, _) :: tr => (tr,"namespace")
-      | (Native, _) :: tr => (tr,"native")
-      | (Number, _) :: tr => (tr,"number")
-      | (Override, _) :: tr => (tr,"override")
-      | (Precision, _) :: tr => (tr,"precision")
-      | (Prototype, _) :: tr => (tr,"prototype")
-      | (Rounding, _) :: tr => (tr,"rounding")
-      | (Standard, _) :: tr => (tr,"standard")
-      | (Strict, _) :: tr => (tr,"strict")
-      | (UInt, _) :: tr => (tr,"uint")
-      | (Set, _) :: tr => (tr,"set")
-      | (Static, _) :: tr => (tr,"static")
-      | (Type, _) :: tr => (tr,"type")
-      | (Undefined, _) :: tr => (tr,"undefined")
-      | (Xml, _) :: tr => (tr,"xml")
-      | (Yield, _) :: tr => (tr,"yield")
-      | _ => error(["expecting 'identifier' before '",tokenname(hd ts),"'"])
+and identifier [] = error ["expecting 'identifier', but ran out of tokens"]
+  | identifier ((t,_)::ts) =
+    let val ustr = case t of
+        Identifier(us) => us
+      | (Call
+      | Debugger
+      | Decimal
+      | Double
+      | Dynamic
+      | Each
+      | Final
+      | Get
+      | Goto
+      | Has
+      | Include
+      | Int
+      | Invoke
+      | Namespace
+      | Native
+      | Number
+      | Override
+      | Precision
+      | Prototype
+      | Rounding
+      | Standard
+      | Strict
+      | UInt
+      | Set
+      | Static
+      | Type
+      | Undefined
+      | Xml
+      | Yield) => Ustring.fromString (tokenname (t,()))
+      | _ => error ["expecting 'identifier' before '",tokenname (t,()),"'"]
+    in
+        (ts, ustr)
     end
 
 (*
@@ -429,15 +431,15 @@ and reservedNamespace ts =
     let val _ = trace([">> reservedNamespace with next=",tokenname(hd(ts))])
     in case ts of
         (Internal, _) :: tr => 
-            (tr, Ast.Internal "")
+            (tr, Ast.Internal Ustring.empty)
       | (Intrinsic, _) :: tr => 
             (tr, Ast.Intrinsic)
       | (Private, _) :: tr => 
-            (tr, Ast.Private "class name here")
+            (tr, Ast.Private (Ustring.fromString "class name here"))
       | (Protected, _) :: tr => 
-            (tr, Ast.Protected "class name here")
+            (tr, Ast.Protected (Ustring.fromString "class name here"))
       | (Public, _) :: tr => 
-            (tr, Ast.Public "")
+            (tr, Ast.Public Ustring.empty)
       | _ => error ["unknown reserved namespace"]
     end
 
@@ -519,15 +521,16 @@ and expressionQualifiedIdentifier (ts) =
 
 and reservedOrOrdinaryIdentifier ts =
     case isreserved(hd ts) of
-        true => (tl ts, tokenname(hd ts))
+        true => (tl ts, Ustring.fromString (tokenname(hd ts)))
       | false => 
             case ts of
-                (Mult, _) :: _ => (tl ts, "*")
+                (Mult, _) :: _ => (tl ts, Ustring.asterisk)
               | _ => identifier(ts)
 
-and reservedIdentifier ts =
-    case isreserved(hd ts) of
-        true => (tl ts, tokenname(hd ts))
+and reservedIdentifier [] = error ["no reserved identifier"]
+  | reservedIdentifier (t::ts) =
+    case isreserved(t) of
+        true => (ts, Ustring.fromString (tokenname t))
       | false => error ["non-reserved identifier"]
 
 and qualifiedIdentifier' (ts1, nd1) : ((TOKEN * Ast.POS) list * Ast.IDENT_EXPR) =
@@ -734,7 +737,7 @@ and functionExpression (ts,a:alpha,b:beta) =
                             in
                                 (ts4,Ast.LiteralExpr 
                                          (Ast.LiteralFunction 
-                                              (Ast.Func {name={kind=Ast.Ordinary,ident=""},
+                                              (Ast.Func {name={kind=Ast.Ordinary,ident=Ustring.empty},
                                                          fsig=nd3,
                                                          block=nd4,
                                                          isNative=false,
@@ -748,7 +751,7 @@ and functionExpression (ts,a:alpha,b:beta) =
                             in
                                 (ts4,Ast.LiteralExpr 
                                          (Ast.LiteralFunction 
-                                              (Ast.Func {name={kind=Ast.Ordinary,ident=""},
+                                              (Ast.Func {name={kind=Ast.Ordinary,ident=Ustring.empty},
                                                          fsig=nd3,
                                                          block=Ast.Block {pragmas=[],
                                                                           defns=[],
@@ -817,9 +820,9 @@ and functionExpression (ts,a:alpha,b:beta) =
 and needType (nd:Ast.IDENT_EXPR,nullable:bool option) = 
     case nd of
         Ast.Identifier {ident,...} =>
-            if (ident="*")
+            if (ident=Ustring.asterisk)
                 then Ast.SpecialType Ast.Any
-                else if( ident="Object" )  (* FIXME: check for *the* object name *)
+                else if( ident=Ustring.Object_ )  (* FIXME: check for *the* object name *)
                     then Ast.TypeName nd
                     else Ast.TypeName nd
       | _ => Ast.TypeName nd
@@ -1008,7 +1011,7 @@ and typeParameters ts =
         ,  Identififier  TypeParameterListPrime
 *)
 
-and typeParameterList (ts) : (TOKEN * Ast.POS) list * string list =
+and typeParameterList (ts) : (TOKEN * Ast.POS) list * Ustring.STRING list =
     let val _ = trace([">> typeParameterList with next=",tokenname(hd(ts))]) 
         fun typeParameterList' (ts) =
             let
@@ -1210,7 +1213,7 @@ and restParameter (ts) (n): ((TOKEN * Ast.POS) list * (Ast.BINDINGS * Ast.EXPR l
             let
             in case tl ts of
                 (RightParen, _) :: _ => 
-                    (tl ts, (([Ast.Binding{ident=Ast.PropIdent "",ty=Ast.SpecialType Ast.Any}],[]),[],[Ast.ArrayType [Ast.SpecialType Ast.Any]]))
+                    (tl ts, (([Ast.Binding{ident=Ast.PropIdent Ustring.empty,ty=Ast.SpecialType Ast.Any}],[]),[],[Ast.ArrayType [Ast.SpecialType Ast.Any]]))
               | _ =>
                     let
                         val (ts1,(temp,{pattern,ty,...})) = parameter (tl ts) n
@@ -1366,7 +1369,7 @@ and literalField (ts) =
                       name=nd1,
                       init=Ast.LiteralExpr 
                                (Ast.LiteralFunction 
-                                    (Ast.Func {name={kind=Ast.Get, ident=""},
+                                    (Ast.Func {name={kind=Ast.Get, ident=Ustring.empty},
                                                fsig=fsig,
                                                block=block,
                                                isNative=false,
@@ -1383,7 +1386,7 @@ and literalField (ts) =
                       name=nd1,
                       init=Ast.LiteralExpr 
                                (Ast.LiteralFunction 
-                                    (Ast.Func {name={kind=Ast.Get,ident=""},
+                                    (Ast.Func {name={kind=Ast.Get,ident=Ustring.empty},
                                                fsig=fsig,
                                                block=block,
                                                isNative=false,
@@ -2131,7 +2134,7 @@ and unaryExpression (ts,a,b) =
                  | Private | Protected | Public | Internal | Intrinsic | Mult),_) =>
                    if newline (tl ts)
                    then 
-                       (tl ts,Ast.LexicalRef {ident=Ast.Identifier {ident="type",openNamespaces=[[]]},pos=NONE})
+                       (tl ts,Ast.LexicalRef {ident=Ast.Identifier {ident=Ustring.type_,openNamespaces=[[]]},pos=NONE})
                    else
                        let 
                            val (ts1,nd1) = nullableTypeExpression (tl ts)
@@ -2141,7 +2144,7 @@ and unaryExpression (ts,a,b) =
               | _ =>
                     let
                     in
-                        (tl ts,Ast.LexicalRef {ident=Ast.Identifier {ident="type",openNamespaces=[[]]},pos=NONE})
+                        (tl ts,Ast.LexicalRef {ident=Ast.Identifier {ident=Ustring.type_,openNamespaces=[[]]},pos=NONE})
                     end)
       | _ => 
             postfixExpression (ts,a,b)
@@ -4088,7 +4091,7 @@ and typeCaseElement (ts,has_default)
                         val bindings=desugarPattern (posOf ts) p t (SOME (Ast.GetParam 0)) 0
                         val defn = Ast.VariableDefn 
                                       {kind=Ast.LetVar,
-                                       ns=SOME (Ast.LiteralExpr (Ast.LiteralNamespace (Ast.Internal ""))),
+                                       ns=SOME (Ast.LiteralExpr (Ast.LiteralNamespace (Ast.Internal Ustring.empty))),
                                        static=false,
                                        prototype=false,
                                        bindings=bindings}
@@ -4460,7 +4463,7 @@ and letStatement (ts,w) : ((TOKEN * Ast.POS) list * Ast.STMT) =
             let
                 val (ts1,nd1) = letBindingList (tl (tl ts))
                 val defn = Ast.VariableDefn {kind=Ast.LetVar,
-                                             ns=SOME (Ast.LiteralExpr (Ast.LiteralNamespace (Ast.Internal ""))),
+                                             ns=SOME (Ast.LiteralExpr (Ast.LiteralNamespace (Ast.Internal Ustring.empty))),
                                              static=false,
                                              prototype=false,
                                              bindings=nd1}
@@ -5714,8 +5717,8 @@ and functionName (ts) : ((TOKEN * Ast.POS) list * Ast.FUNC_NAME) =
             in
                 (ts1,{kind=Ast.Operator,ident=nd1})
             end
-      | (Get, _) :: ((LeftParen | LeftDotAngle), _) :: _ => (tl ts,{kind=Ast.Ordinary, ident="get"})
-      | (Get, _) :: (Mult, _) :: _ => (tl ts,{kind=Ast.Get,ident="*"})
+      | (Get, _) :: ((LeftParen | LeftDotAngle), _) :: _ => (tl ts,{kind=Ast.Ordinary, ident=Ustring.get_})
+      | (Get, _) :: (Mult, _) :: _ => (tl ts,{kind=Ast.Get,ident=Ustring.asterisk})
       | (Get, _) :: _ => 
             let
                 val (ts1,nd1) = identifier (tl ts)
@@ -5723,8 +5726,8 @@ and functionName (ts) : ((TOKEN * Ast.POS) list * Ast.FUNC_NAME) =
                 (ts1,{kind=Ast.Get,ident=nd1})
             end
 
-      | (Set, _) :: ((LeftParen | LeftDotAngle), _) :: _ => (tl ts,{kind=Ast.Ordinary, ident="set"})
-      | (Set, _) :: (Mult, _) :: _ => (tl ts,{kind=Ast.Set,ident="*"})
+      | (Set, _) :: ((LeftParen | LeftDotAngle), _) :: _ => (tl ts,{kind=Ast.Ordinary, ident=Ustring.set_})
+      | (Set, _) :: (Mult, _) :: _ => (tl ts,{kind=Ast.Set,ident=Ustring.asterisk})
       | (Set, _) :: _ => 
             let
                 val (ts1,nd1) = identifier (tl ts)
@@ -5732,11 +5735,11 @@ and functionName (ts) : ((TOKEN * Ast.POS) list * Ast.FUNC_NAME) =
                 (ts1,{kind=Ast.Set,ident=nd1})
             end
 
-      | (Call, _) :: ((LeftParen | LeftDotAngle), _) :: _ => (tl ts,{kind=Ast.Ordinary, ident="call"})
-      | (Call, _) :: (Mult, _) :: _ => (tl ts,{kind=Ast.Call,ident="*"})
+      | (Call, _) :: ((LeftParen | LeftDotAngle), _) :: _ => (tl ts,{kind=Ast.Ordinary, ident=Ustring.call_})
+      | (Call, _) :: (Mult, _) :: _ => (tl ts,{kind=Ast.Call,ident=Ustring.asterisk})
 
-      | (Has, _) :: ((LeftParen | LeftDotAngle), _) :: _ => (tl ts,{kind=Ast.Ordinary, ident="has"})
-      | (Has, _) :: (Mult, _) :: _ => (tl ts,{kind=Ast.Has,ident="*"})
+      | (Has, _) :: ((LeftParen | LeftDotAngle), _) :: _ => (tl ts,{kind=Ast.Ordinary, ident=Ustring.has_})
+      | (Has, _) :: (Mult, _) :: _ => (tl ts,{kind=Ast.Has,ident=Ustring.asterisk})
 
       | _ => 
             let
@@ -5751,29 +5754,31 @@ and functionName (ts) : ((TOKEN * Ast.POS) list * Ast.FUNC_NAME) =
     +   -   ~   *   /   %   <   >   <=   >=   ==   <<   >>   >>>   &   |   ===   !=   !== 
 *)
 
-and operatorName (ts) =
-    let
-    in case ts of
-        (Plus, _) :: _ => (tl ts,"+")
-      | (Minus, _) :: _ => (tl ts,"-")
-      | (BitwiseNot, _) :: _ => (tl ts,"~")
-      | (Mult, _) :: _ => (tl ts,"*")
-      | (Div, _) :: _ => (tl ts,"/")
-      | (Modulus, _) :: _ => (tl ts,"%")
-      | (LessThan, _) :: _ => (tl ts,"<")
-      | (GreaterThan, _) :: _ => (tl ts,">")
-      | (LessThanOrEquals, _) :: _ => (tl ts,"<=")
-      | (GreaterThanOrEquals, _) :: _ => (tl ts,">=")
-      | (Equals, _) :: _ => (tl ts,"=")
-      | (LeftShift, _) :: _ => (tl ts,">>")
-      | (RightShift, _) :: _ => (tl ts,"<<")
-      | (UnsignedRightShift, _) :: _ => (tl ts,"<<<")
-      | (BitwiseAnd, _) :: _ => (tl ts,"&")
-      | (BitwiseOr, _) :: _ => (tl ts,"|")
-      | (StrictEquals, _) :: _ => (tl ts,"===")
-      | (NotEquals, _) :: _ => (tl ts,"!=")
-      | NotStrictEquals :: _ => (tl ts,"!==")
+and operatorName [] = error ["missing token in operatorName"]
+  | operatorName ((t,_)::ts) =
+    let val opStr = case t of
+       (Plus
+      | Minus
+      | BitwiseNot
+      | Mult
+      | Div
+      | Modulus
+      | LessThan
+      | GreaterThan
+      | LessThanOrEquals
+      | GreaterThanOrEquals
+      | Equals
+      | LeftShift
+      | RightShift
+      | UnsignedRightShift
+      | BitwiseAnd
+      | BitwiseOr
+      | StrictEquals
+      | NotEquals
+      | StrictNotEquals) => tokenname (t,())
       | _ => error ["unknown token in operatorName"]
+    in
+        (ts, Ustring.fromString opStr)
     end
 
 (*
@@ -5977,7 +5982,7 @@ and classDefinition (ts,attrs:ATTRS) =
                 val (ts2,{extends,implements}) = classInheritance (ts1)
                 val _ = currentClassName := ident;
                 val (ts3,nd3) = classBody (ts2)
-                val _ = currentClassName := "";
+                val _ = currentClassName := Ustring.empty;
 
                 fun isLet (d:Ast.DEFN) (* borrowed from defn.sml *)
                     : bool =
@@ -6530,7 +6535,7 @@ and importName (ts) : ((TOKEN * Ast.POS) list * (Ast.IDENT list * Ast.IDENT)) =
             end
       | (Mult, _) :: _ =>
             let
-                val (ts1,nd1) = (tl ts,"*")
+                val (ts1,nd1) = (tl ts, Ustring.asterisk)
             in
                 (ts1,([],nd1))
             end
@@ -6756,7 +6761,7 @@ fun get_token_list (filename : string,
                                     val re_frag = case re_lit of
                                         RegexpLiteral re_fragment => re_fragment
                                       | _ => error ["squelch warning -- impossible to actually get here"]
-                                    val re_tok = RegexpLiteral (regexp_prefix ^ re_frag)
+                                    val re_tok = RegexpLiteral (Ustring.stringAppend (Ustring.fromString regexp_prefix) re_frag)
                                     val re_span = (#1 tok_span, #2 re_frag_span)
                                     val pos:Ast.POS = {file = filename, span = re_span, sm = srcmap, post_newline = just_got_a_newline}
                                 in

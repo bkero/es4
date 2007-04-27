@@ -19,6 +19,7 @@ datatype smlDataRep =
        | StrmPosSpan of StreamPos.span
        | StrmPosSM of StreamPos.sourcemap
        | Bool of bool
+       | UniStr of Ustring.STRING
 
 fun ppSmlDataRep stream (rep : smlDataRep) =
     let
@@ -57,7 +58,8 @@ fun ppSmlDataRep stream (rep : smlDataRep) =
       | Dec r => str ("(Decimal.fromString \"" ^ (Decimal.toString r) ^ "\"")
       | DecRm r => str ("Decimal." ^ (Decimal.rmToString r))
       | StrmPosSpan _ => str "<StreamPos.span>"
-      | StrmPosSM _ => str "<StreamPos.sourcemap"
+      | StrmPosSM _ => str "<StreamPos.sourcemap>"
+      | UniStr us => (str "\""; str (Ustring.toAscii us); str "\"")
     end
 
 end

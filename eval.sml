@@ -732,7 +732,7 @@ and newArray (vals:Mach.VAL list)
     let val a = instantiateGlobalClass Name.public_Array [newInt (Int32.fromInt (List.length vals))]
         fun init a _ [] = ()
           | init a k (x::xs) =
-            (setValue a (Name.public (Int.toString k)) x ;
+            (setValue a (Name.public (Ustring.fromInt k)) x ;
              init a (k+1) xs)
     in
         init (needObj a) 0 vals;
@@ -740,8 +740,8 @@ and newArray (vals:Mach.VAL list)
     end
 
 
-and newRegExp (pattern:Ast.USTRING) 
-              (flags:Ast.USTRING)
+and newRegExp (pattern:Ustring.STRING) 
+              (flags:Ustring.STRING)
     : Mach.VAL =
     instantiateGlobalClass Name.public_RegExp [newString pattern, newString flags]
 
@@ -765,7 +765,7 @@ and newUInt (n:Word32.word)
     : Mach.VAL = 
     newBuiltin Name.public_uint (SOME (Mach.UInt n))
 
-and newString (s:Ast.USTRING) 
+and newString (s:Ustring.STRING) 
     : Mach.VAL = 
     newBuiltin Name.public_string (SOME (Mach.String s))
 
@@ -845,7 +845,7 @@ and newNativeFunction (f:Mach.NATIVE_FUNCTION) =
 
 
 (* An approximation of an invocation argument list, for debugging. *)
-and callApprox (id:Ast.IDENT) (args:Mach.VAL list) 
+and callApprox (idStr:string) (args:Mach.VAL list) 
     : string = 
     let
         fun approx arg = 
@@ -856,50 +856,50 @@ and callApprox (id:Ast.IDENT) (args:Mach.VAL list)
                 if Mach.hasMagic ob 
                 then 
                     if Mach.isString arg
-                    then "\"" ^ (toString arg) ^ "\""
-                    else toString arg
+                    then "\"" ^ (Ustring.toAscii (toUstring arg)) ^ "\""
+                    else Ustring.toAscii (toUstring arg)
                 else 
                     "obj"                
     in
-        id ^ "(" ^ (join ", " (map approx args)) ^ ")"
+        idStr ^ "(" ^ (join ", " (map approx args)) ^ ")"
     end
 
 (* FIXME: this is not the correct toString *)
 
-and magicToString (magic:Mach.MAGIC) 
-    : string =
+and magicToUstring (magic:Mach.MAGIC) 
+    : Ustring.STRING =
     case magic of 
         Mach.Double n => 
         if Real64.isFinite n andalso Real64.==(Real64.realFloor n, n)
-        then LargeInt.toString (Real64.toLargeInt IEEEReal.TO_NEGINF n)
+        then Ustring.fromString (LargeInt.toString (Real64.toLargeInt IEEEReal.TO_NEGINF n))
         else (if Real64.isNan n
-              then "NaN"
+              then Ustring.NaN_
               else (if Real64.==(Real64.posInf, n)
-                    then "Infinity"
+                    then Ustring.Infinity_
                     else (if Real64.==(Real64.negInf, n)
-                          then "-Infinity"
-                          else Real64.toString n)))
+                          then Ustring.fromString "-Infinity"
+                          else Ustring.fromString (Real64.toString n))))
 
-      | Mach.Decimal d => Decimal.toString d
-      | Mach.Int i => Int32.toString i
-      | Mach.UInt u => LargeInt.toString (Word32.toLargeInt u)
+      | Mach.Decimal d => Ustring.fromString (Decimal.toString d)
+      | Mach.Int i => Ustring.fromInt32 i
+      | Mach.UInt u => Ustring.fromString (LargeInt.toString (Word32.toLargeInt u))
       | Mach.String s => s
-      | Mach.Boolean true => "true"
-      | Mach.Boolean false => "false"
-      | Mach.Namespace (Ast.Private _) => "[private namespace]"
-      | Mach.Namespace (Ast.Protected _) => "[protected namespace]"
-      | Mach.Namespace Ast.Intrinsic => "[intrinsic namespace]"
-      | Mach.Namespace Ast.OperatorNamespace => "[operator namespace]"
-      | Mach.Namespace (Ast.Public id) => "[public namespace: " ^ id ^ "]"
-      | Mach.Namespace (Ast.Internal _) => "[internal namespace]"
-      | Mach.Namespace (Ast.UserNamespace id) => "[user-defined namespace " ^ id ^ "]"
-      | Mach.Class _ => "[class Class]"
-      | Mach.Interface _ => "[interface Interface]"
-      | Mach.Function _ => "[function Function]"
-      | Mach.Type _ => "[type Function]"
-      | Mach.ByteArray _ => "[ByteArray]"
-      | Mach.NativeFunction _ => "[function NativeFunction]"
-      | _ => error ["Shouldn't happen: failed to match in Eval.magicToString."]
+      | Mach.Boolean true => Ustring.true_
+      | Mach.Boolean false => Ustring.false_
+      | Mach.Namespace (Ast.Private _) => Ustring.fromString "[private namespace]"
+      | Mach.Namespace (Ast.Protected _) => Ustring.fromString "[protected namespace]"
+      | Mach.Namespace Ast.Intrinsic => Ustring.fromString "[intrinsic namespace]"
+      | Mach.Namespace Ast.OperatorNamespace => Ustring.fromString "[operator namespace]"
+      | Mach.Namespace (Ast.Public id) => Ustring.append [Ustring.fromString "[public namespace: ", id, Ustring.fromString "]"]
+      | Mach.Namespace (Ast.Internal _) => Ustring.fromString "[internal namespace]"
+      | Mach.Namespace (Ast.UserNamespace id) => Ustring.append [Ustring.fromString "[user-defined namespace ", id, Ustring.fromString "]"]
+      | Mach.Class _ => Ustring.fromString "[class Class]"
+      | Mach.Interface _ => Ustring.fromString "[interface Interface]"
+      | Mach.Function _ => Ustring.fromString "[function Function]"
+      | Mach.Type _ => Ustring.fromString "[type Function]"
+      | Mach.ByteArray _ => Ustring.fromString "[ByteArray]"
+      | Mach.NativeFunction _ => Ustring.fromString "[function NativeFunction]"
+      | _ => error ["Shouldn't happen: failed to match in Eval.magicToUstring."]
 
 (* 
  * ES3 9.8 ToString. 
@@ -909,23 +909,23 @@ and magicToString (magic:Mach.MAGIC)
  * is done up in Conversions.es.
  *)
 
-and toString (v:Mach.VAL) 
-    : string = 
+and toUstring (v:Mach.VAL) 
+    : Ustring.STRING = 
     case v of 
-        Mach.Undef => "undefined"
-      | Mach.Null => "null"
+        Mach.Undef => Ustring.undefined_
+      | Mach.Null => Ustring.null_
       | Mach.Object obj => 
         let
             val Mach.Obj ob = obj
         in
             case !(#magic ob) of 
-                SOME magic => magicToString magic
+                SOME magic => magicToUstring magic
               | NONE => 
                 let 
                     val toPrimitiveFn = needObj (getValue (getGlobalObject ()) Name.intrinsic_ToPrimitive)
-                    val prim = evalCallExpr obj toPrimitiveFn [v, newString "String"]
+                    val prim = evalCallExpr obj toPrimitiveFn [v, newString Ustring.String_]
                 in
-                    toString prim
+                    toUstring prim
                 end
         end
         
@@ -970,9 +970,13 @@ and toNumeric (v:Mach.VAL)
                 * FIXME: This is not the correct definition of ToNumber applied to string.
                 * See ES3 9.3.1. We need to talk it over.
                 *) 
-               | SOME (Mach.String s) => (case Real64.fromString s of
-                                              SOME s' => newDouble s'
-                                            | NONE => NaN ())
+               | SOME (Mach.String us) =>
+                    let val s = Ustring.toAscii us
+                    in
+                        case Real64.fromString s of
+                            SOME s' => newDouble s'
+                          | NONE => NaN ()
+                    end
                (* 
                 * FIXME: ES3 9.3 defines ToNumber on objects in terms of primitives. We've
                 * reorganized the classification of primitives vs. objects. Revisit this.
@@ -1003,9 +1007,13 @@ and toDecimal (precision:int)
            (* 
             * FIXME: This is not the correct definition either. See toNumeric.
             *) 
-           | SOME (Mach.String s) => (case Decimal.fromString precision mode s of
-                                     SOME s' => s'
-                                   | NONE => Decimal.NaN)
+           | SOME (Mach.String us) =>
+                let val s = Ustring.toAscii us
+                in
+                    case Decimal.fromString precision mode s of
+                        SOME s' => s'
+                      | NONE => Decimal.NaN
+                end
            (* 
             * FIXME: Possibly wrong here also. See comment in toNumeric.
             *)
@@ -1038,9 +1046,13 @@ and toDouble (v:Mach.VAL)
                (* 
                 * FIXME: This is not the correct definition either. See toNumeric.
                 *) 
-               | SOME (Mach.String s) => (case Real64.fromString s  of
-                                              SOME s' => s'
-                                            | NONE => NaN())
+               | SOME (Mach.String us) =>
+                    let val s = Ustring.toAscii us
+                    in
+                        case Real64.fromString s  of
+                            SOME s' => s'
+                          | NONE => NaN()
+                    end
                (* 
                 * FIXME: Possibly wrong here also. See comment in toNumeric.
                 *)
@@ -1368,7 +1380,7 @@ and evalLiteralArrayExpr (regs:Mach.REGS)
         fun putVal n [] = n
           | putVal n (v::vs) = 
             let 
-                val name = Name.public (Int.toString n)
+                val name = Name.public (Ustring.fromInt n)
                 (* FIXME: this is probably incorrect wrt. Array typing rules. *)
                 val ty = if n < (length tys) 
                          then List.nth (tys, n)
@@ -1437,18 +1449,19 @@ and evalLiteralObjectExpr (regs:Mach.REGS)
     end
 
 
-and evalLiteralRegExp (re:Ast.USTRING)
+and evalLiteralRegExp (re:Ustring.STRING)
     : Mach.VAL =
     let fun findSplit 0 = 0
           | findSplit n =
-            if String.sub (re, n) = #"/" then
+            if Ustring.charCodeAt re n = Char.ord #"/" then
                 n
             else
                 findSplit (n-1)
-        val len = String.size re
+        val len = Ustring.stringLength re
         val split = findSplit (len - 1) 
     in
-        newRegExp (String.substring (re, 1, (split - 1))) (String.substring (re, (split + 1), (len - (split + 1))))
+        newRegExp (Ustring.substring re      1             (split - 1) )
+                  (Ustring.substring re (split + 1) (len - (split + 1)))
     end
 
 
@@ -1797,8 +1810,8 @@ and evalUnaryOp (regs:Mach.REGS)
             let
                 fun typeOfVal (v:Mach.VAL) = 
                     case v of 
-                        Mach.Null => "null"
-                      | Mach.Undef => "undefined"
+                        Mach.Null => Ustring.null_
+                      | Mach.Undef => Ustring.undefined_
                       | Mach.Object (Mach.Obj ob) => 
                         let 
                             val n = Mach.nominalBaseOfTag (#tag ob)
@@ -1807,17 +1820,17 @@ and evalUnaryOp (regs:Mach.REGS)
                                n = Name.public_uint orelse 
                                n = Name.public_double orelse 
                                n = Name.public_decimal
-                            then "number"
+                            then Ustring.number_
                             else 
                                 (if n = Name.public_boolean
-                                 then "boolean"
+                                 then Ustring.boolean_
                                  else 
                                      (if n = Name.public_Function
-                                      then "function"
+                                      then Ustring.function_
                                       else 
                                           (if n = Name.public_string
-                                           then "string"
-                                           else "object")))
+                                           then Ustring.string_
+                                           else Ustring.object_)))
                         end
             in
                 newString 
@@ -1828,7 +1841,7 @@ and evalUnaryOp (regs:Mach.REGS)
                              val multiname = evalIdentExpr regs ident
                          in
                              case resolveOnScopeChain (#scope regs) multiname of 
-                                 NONE => "undefined"
+                                 NONE => Ustring.undefined_
                                | SOME (obj, name) => typeOfVal (getValue obj name)
                          end
                        | _ => typeOfVal (evalExpr regs expr))
@@ -1843,7 +1856,7 @@ and performBinop (bop:Ast.BINOP)
 
     let
         fun stringConcat _ = 
-            newString ((toString a) ^ (toString b))
+            newString (Ustring.stringAppend (toUstring a) (toUstring b))
 
         fun dispatch (mode:Ast.NUMERIC_MODE) decimalOp doubleOp intOp uintOp largeOp =
             case (#numberType mode) of 
@@ -1917,8 +1930,8 @@ and performBinop (bop:Ast.BINOP)
                 then (if isNaN a orelse isNaN b
                       then newBoolean (cmp IEEEReal.UNORDERED)
                       else dispatch mode decimalOp doubleOp intOp uintOp largeOp)
-                else newBoolean (cmp (reorder (String.compare ((toString a), 
-                                                               (toString b)))))
+                else newBoolean (cmp (reorder (Ustring.compare (toUstring a)
+                                                               (toUstring b))))
             end
             
         fun dispatchNumeric mode decimalFn doubleFn intFn uintFn largeFn =
@@ -2157,8 +2170,8 @@ and evalBinaryTypeOp (regs:Mach.REGS)
             val _ = trace ["processing 'is' operator"]
         in            
             case tyExpr of 
-                Ast.TypeName (Ast.Identifier { ident, ... }) => 
-                (case ident of 
+                Ast.TypeName (Ast.Identifier { ident:Ast.IDENT, ... }) => 
+                (case Ustring.toAscii ident of   (* Strange use of toAscii, but ML won't match vals, and nested ifs are ugly. *)
                      "double" => newBoolean (Mach.isDouble v)
                    | "decimal" => newBoolean (Mach.isDecimal v)
                    | "int" => newBoolean (Mach.isInt v)
@@ -2175,8 +2188,8 @@ and evalBinaryTypeOp (regs:Mach.REGS)
                                Mach.ObjectTag _ => newBoolean (n = "Object")
                              | Mach.ArrayTag _ => newBoolean (n = "Array")
                              | Mach.FunctionTag _ => newBoolean (n = "Function")
-                             | Mach.ClassTag {id, ...} => (trace ["operator 'is' on object of class ", id]; 
-                                                           newBoolean (n = id))
+                             | Mach.ClassTag {id, ...} => (trace ["operator 'is' on object of class ", Ustring.toAscii id]; 
+                                                           newBoolean (ident = id))
                              | Mach.NoTag => newBoolean false)))
               | _ => error ["operator 'is' on unknown type expression"]
         end
@@ -2223,7 +2236,7 @@ and evalBinaryOp (regs:Mach.REGS)
       | Ast.In =>
         let 
             val a = evalExpr regs aexpr
-            val astr = toString a
+            val astr = toUstring a
             val aname = Name.public astr
             val b = evalExpr regs bexpr
         in
@@ -2282,21 +2295,21 @@ and evalExprToNamespace (regs:Mach.REGS)
 
 and evalIdentExpr (regs:Mach.REGS) 
                   (r:Ast.IDENT_EXPR) 
-    : Ast.MULTINAME = 
+    : Ast.MULTINAME =
     case r of 
-        Ast.Identifier { ident, openNamespaces } => 
+        Ast.Identifier { ident:Ast.IDENT, openNamespaces:Ast.NAMESPACE list list } => 
         { nss=openNamespaces, id=ident }
         
       | Ast.QualifiedIdentifier { qual, ident } => 
         { nss = [[evalExprToNamespace regs qual]], id = ident }
-
+        
       | Ast.QualifiedExpression { qual, expr } => 
         { nss = [[evalExprToNamespace regs qual]], 
-          id = toString (evalExpr regs expr) }
+          id = toUstring (evalExpr regs expr) }
         
       | Ast.ExpressionIdentifier { expr, openNamespaces } =>
         { nss = openNamespaces,
-          id = toString (evalExpr regs expr) }
+          id = toUstring (evalExpr regs expr) }
 
       | _ => LogErr.unimplError ["unimplemented identifier expression form"]
 
@@ -2452,11 +2465,11 @@ and labelMatch (stmtLabels:Ast.IDENT list)
     : bool = 
     case (stmtLabels, exnLabel) of
         (sl::[], SOME el) => sl = el
-      | (sl::[], NONE) => sl = ""
+      | (sl::[], NONE) => sl = Ustring.empty
       | ([], NONE) => false                   (* FIXME: refactor *)
       | ([], SOME el) => false
       | (sl::sls,NONE) => 
-            if sl = ""
+            if sl = Ustring.empty
             then true
             else labelMatch sls exnLabel
       | (sl::sls,SOME el) => 
@@ -2549,14 +2562,14 @@ and invokeFuncClosure (callerThis:Mach.OBJ)
         then error ["invoking function with unbound type variables"]
         else
             let 
-                val id = (#ident name)
+                val idStr = Ustring.toAscii (#ident name)
                 val strname = case (#kind name) of 
-                                  Ast.Ordinary => id 
-                                | Ast.Operator => "operator " ^ id
-                                | Ast.Get => "get " ^ id
-                                | Ast.Set => "set " ^ id
-                                | Ast.Call => "call " ^ id
-                                | Ast.Has => "has " ^ id
+                                  Ast.Ordinary => idStr 
+                                | Ast.Operator => "operator " ^ idStr
+                                | Ast.Get => "get " ^ idStr
+                                | Ast.Set => "set " ^ idStr
+                                | Ast.Call => "call " ^ idStr
+                                | Ast.Has => "has " ^ idStr
 
                 val _ = push [callApprox strname args]
 
@@ -2831,10 +2844,10 @@ and evalInitsMaybePrototype (regs:Mach.REGS)
     let 
         fun evalInit (n,e) =
             let
-                val id = case n of 
-                             Ast.PropName { id, ... } => id
+                val idStr = case n of 
+                             Ast.PropName { id, ... } => Ustring.toAscii id
                            | Ast.TempName t => ("#" ^ Int.toString t)
-                val _ = push ["init ", id]
+                val _ = push ["init ", idStr]
                 val v = evalExpr regs e
             in
                 case n of 
@@ -2963,7 +2976,7 @@ and initializeAndConstruct (classClosure:Mach.CLS_CLOSURE)
                     NONE => initializeAndConstructSuper []
                   | SOME (Ast.Ctor { settings, superArgs, func }) => 
                     let 
-                        val _ = push ["ctor ", callApprox (#id name) args]
+                        val _ = push ["ctor ", callApprox (Ustring.toAscii (#id name)) args]
                         val Ast.Func { block, param=(paramFixtures,paramInits), ... } = func
                         val (varObj:Mach.OBJ) = Mach.newObjNoTag ()
                         val (varRegs:Mach.REGS) = extendScopeReg classRegs
@@ -3009,8 +3022,8 @@ and runAnySpecialConstructor (id:Mach.OBJ_IDENT)
          let 
              val nargs = length args
              val argArgs = List.take (args, nargs-1)
-             val source = toString (List.last args) 
-             fun ident v = Token.Identifier (toString v)
+             val source = Ustring.toSource (toUstring (List.last args))
+             fun ident v = Token.Identifier (toUstring v)
              val argIdents = map ident argArgs
              val nloc = {file="<no filename>", span=(1,1), sm=StreamPos.mkSourcemap (), post_newline=false}
              val argList = case argIdents of
@@ -3020,7 +3033,7 @@ and runAnySpecialConstructor (id:Mach.OBJ_IDENT)
                                               (map (fn i => [(Token.Comma, nloc), (i, nloc)]) xs)))
              val lines = [source] (* FIXME: split lines *)
              val lineTokens = List.filter (fn t => case t of 
-                                                       (Token.Eof, _) => false 
+                                                       (Token.Eof, _) => false (* FIXME: this won't work if there's a regexp, because the token list won't be complete *)
                                                      | _ => true)
                                           (Parser.lexLines lines)
              val funcTokens = [(Token.Function, nloc), 
@@ -3044,7 +3057,7 @@ and runAnySpecialConstructor (id:Mach.OBJ_IDENT)
                  let 
                      val Mach.Obj { magic, ...} = instanceObj
                      val sname = Name.public_source
-                     val sval = newString source
+                     val sval = newString (Ustring.fromString source)
                  in
                      magic := Mach.getObjMagic tmp;
                      setValue instanceObj sname sval
@@ -3058,7 +3071,7 @@ and runAnySpecialConstructor (id:Mach.OBJ_IDENT)
                  val Mach.Obj { props, ... } = instanceObj
                  fun bindVal _ [] = ()
                    | bindVal n (x::xs) = 
-                     (setValue instanceObj (Name.public (Int.toString n)) x;
+                     (setValue instanceObj (Name.public (Ustring.fromInt n)) x;
                       bindVal (n+1) xs)
              in
                  case args of
@@ -3074,7 +3087,7 @@ and runAnySpecialConstructor (id:Mach.OBJ_IDENT)
                  Mach.setPropDontEnum props Name.public_length true;
                  Mach.setPropDontEnum props Name.private_Array__length true
              end
-         else 
+         else
              ())
     
 
@@ -3084,7 +3097,7 @@ and constructClassInstance (classObj:Mach.OBJ)
     : Mach.VAL =
     let
         val {cls = Ast.Cls { name, instanceFixtures, ...}, env, ...} = classClosure
-        val _ = push ["new ", callApprox (#id name) args]
+        val _ = push ["new ", callApprox (Ustring.toAscii (#id name)) args]
         val (tag:Mach.VAL_TAG) = Mach.ClassTag name
         val (proto:Mach.VAL) = if hasOwnValue classObj Name.public_prototype
                                then getValue classObj Name.public_prototype
@@ -3473,7 +3486,7 @@ and callIteratorNext (regs:Mach.REGS)
         if cursor < length
         then
             let
-                val nextName       = Name.public (Int32.toString cursor)
+                val nextName       = Name.public (Ustring.fromInt32 cursor)
                 val newCursorValue = newInt (cursor + 1)
             in
                 setValue iterator Name.public_cursor newCursorValue;
@@ -3629,7 +3642,7 @@ and evalThrowStmt (regs:Mach.REGS)
 and evalBreakStmt (regs:Mach.REGS) 
                   (lbl:Ast.IDENT option) 
     : Mach.VAL =
-    (trace ["raising BreakException ",case lbl of NONE => "empty" | SOME id => id];
+    (trace ["raising BreakException ",case lbl of NONE => "empty" | SOME id => Ustring.toAscii id];
     raise (BreakException lbl))
 
 
@@ -3654,7 +3667,7 @@ and evalProgram (prog:Ast.PROGRAM)
          map (evalPackage regs) (#packages prog);
          evalBlock regs (#block prog))
         handle ThrowException v => 
-               error ["*** UNHANDLED EXCEPTION ***", toString v]
+               error ["*** UNHANDLED EXCEPTION ***", Ustring.toAscii (toUstring v)]
     end
 
 fun resetGlobal (ob:Mach.OBJ) 
@@ -3694,7 +3707,7 @@ fun bindSpecialIdentities _ =
                  ];
         List.app bindProtoMagic
                  [ 
-                  (Name.public_String, Mach.String ""),
+                  (Name.public_String, Mach.String Ustring.empty),
                   (Name.public_Number, Mach.Double 0.0)
                  ]
     end

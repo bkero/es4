@@ -5,6 +5,7 @@ structure Defn = struct
 
 val doTrace = ref false
 fun trace ss = if (!doTrace) then LogErr.log ("[defn] " :: ss) else ()
+fun trace2 (s, us) = if (!doTrace) then LogErr.log ["[defn] ", s, Ustring.toAscii us] else ()
 fun error ss = LogErr.defnError ss
 
 (* 
@@ -65,8 +66,8 @@ val (topFixtures:Ast.FIXTURES ref) = ref []
 val (topPackageNames:Ast.IDENT list list ref) = ref []
 
 fun resetTopFixtures _ = 
-    topFixtures := [ (Ast.PropName (Name.public "meta"), Ast.NamespaceFixture Name.metaNS),
-                     (Ast.PropName (Name.public "magic"), Ast.NamespaceFixture Name.magicNS) ]
+    topFixtures := [ (Ast.PropName (Name.public Ustring.meta_), Ast.NamespaceFixture Name.metaNS),
+                     (Ast.PropName (Name.public Ustring.magic_), Ast.NamespaceFixture Name.magicNS) ]
 
 fun resetTopPackageNames _ = 
     topPackageNames := []
@@ -224,16 +225,18 @@ fun multinameHasFixture (env:ENV)
     expression
 *)
 
-fun packageIdentFromPath path ident
+fun packageIdentFromPath origPath
     : Ast.IDENT =
-    case (path) of
-       [] => ident
-     | (pthid::pth) => 
-       let
-           val dot = if ident="" then "" else "."
-       in
-           packageIdentFromPath pth (ident^dot^pthid)
-       end
+    let fun packageIdentFromPath_ [] ident = ident
+          | packageIdentFromPath_ (pthid::pth) ident =
+           let
+               val dot = if ident=Ustring.empty then Ustring.empty else Ustring.dot
+           in
+               packageIdentFromPath_ pth (Ustring.append [ident, dot, pthid])
+           end
+    in
+        packageIdentFromPath_ origPath Ustring.empty
+    end
 
 fun mergeVirtuals (fName:Ast.FIXTURE_NAME)
                   (vnew:Ast.VIRTUAL_VAL_FIXTURE)
@@ -271,7 +274,7 @@ fun mergeFixtures ((newName,newFix),oldFixs) =
                                 (mergeVirtuals newName vnew vold))
           | (Ast.ValFixture new, Ast.ValFixture old) =>
                  if (#ty new) = (#ty old) andalso (#readOnly new) = (#readOnly old)
-                 then (trace ["skipping fixture ",LogErr.name (case newName of Ast.PropName n => n | _ => {ns=Ast.Internal "",id="temp"})]; oldFixs)
+                 then (trace ["skipping fixture ",LogErr.name (case newName of Ast.PropName n => n | _ => {ns=Ast.Internal Ustring.empty,id=Ustring.temp_})]; oldFixs)
                  else error ["incompatible redefinition of fixture name: ", LogErr.fname newName]
           | (Ast.MethodFixture new, Ast.MethodFixture old) => 
             replaceFixture oldFixs newName (Ast.MethodFixture new) (* FIXME: types *)
@@ -297,7 +300,7 @@ fun eraseFixtures oldFixs ((newName,newFix),newFixs) =
                                 (mergeVirtuals newName vnew vold))
           | (Ast.ValFixture new, Ast.ValFixture old) =>
                  if (#ty new) = (#ty old) andalso (#readOnly new) = (#readOnly old)
-                 then (trace ["erasing fixture ",LogErr.name (case newName of Ast.PropName n => n | _ => {ns=Ast.Internal "",id="temp"})]; newFixs)
+                 then (trace ["erasing fixture ",LogErr.name (case newName of Ast.PropName n => n | _ => {ns=Ast.Internal Ustring.empty,id=Ustring.temp_})]; newFixs)
                  else error ["incompatible redefinition of fixture name: ", LogErr.fname newName]
           | _ => error ["redefining fixture name: ", LogErr.fname newName]
     else
@@ -311,11 +314,9 @@ fun resolveExprToNamespace (env:ENV)
         Ast.LiteralExpr (Ast.LiteralNamespace ns) => 
         let
             val packageName = (#packageName (hd env))
-            val _ = trace ["packageIdent ",packageIdentFromPath packageName ""]
-            val ident = case packageName of 
-                             [] => "" 
-                           | p => packageIdentFromPath p ""
-            val _ = trace ["packageName ",ident]
+            val ident = packageIdentFromPath packageName
+            val _ = trace2 ("packageIdent ",ident)
+            val _ = trace2 ("packageName ",ident)
         in case ns of
             Ast.Public _ => Ast.Public ident
           | Ast.Internal _ => Ast.Internal ident
@@ -354,13 +355,13 @@ fun extendEnvironment (env:ENV)
     case env of 
         [] => (trace ["extending empty environment"];{ fixtures = fixtures,
                 tempOffset = 0,
-                openNamespaces = [[Ast.Internal ""]],
+                openNamespaces = [[Ast.Internal Ustring.empty]],
                 numericMode = defaultNumericMode,
                 labels = [],
                 packageNames = [],
                 className = NONE,
                 packageName = [],
-                defaultNamespace = Ast.Internal "" } :: [])
+                defaultNamespace = Ast.Internal Ustring.empty } :: [])
       | ({ tempOffset, numericMode, openNamespaces, labels, packageNames, className, 
            packageName, defaultNamespace, ... }) :: _ =>
         { fixtures = fixtures,
@@ -427,7 +428,7 @@ fun updateTempOffset (ctx::ex) (tempOffset:int)
     : ENV =
         LogErr.defnError ["cannot update an empty environment"]
 
-fun dumpLabels labels = trace ["labels ", concat (map (fn (id,_) => id^" ") labels)]
+fun dumpLabels (labels : LABEL list) = trace ["labels ", concat (map (fn (id,_) => (Ustring.toAscii id)^" ") labels)]
 fun dumpPath path = trace ["path ", concat (map (fn (id) => id^" ") path)]
 
 (*
@@ -445,13 +446,13 @@ fun addLabel (env:ENV) (label:LABEL)
         let 
             fun checkLabel (env:ENV) ((labelId,labelKnd):LABEL) =
                 case env of
-                {labels,...}::_ =>
+                {labels:LABEL list,...}::_ =>
                     (dumpLabels labels;
-                    if List.exists (fn (id,knd) => 
-                            not (id = "") andalso   (* ignore empty labels *) 
-                            id = labelId andalso    (* compare ids *)
-                            knd = labelKnd) labels  (* and kinds *)
-                    then LogErr.defnError ["duplicate label ",labelId]
+                    if List.exists (fn ((id,knd):LABEL) => 
+                            not (id = Ustring.empty) andalso  (* ignore empty labels *) 
+                            id = labelId andalso              (* compare ids *)
+                            knd = labelKnd) labels            (* and kinds *)
+                    then LogErr.defnError ["duplicate label ", Ustring.toAscii labelId]
                     else ())
                   | [] => LogErr.internalError ["empty environment in addLabel"]
         in
@@ -546,7 +547,7 @@ and defClass (env: ENV)
              (cdef: Ast.CLASS_DEFN)
     : (Ast.FIXTURES * Ast.CLASS_DEFN) =
     let
-        val _ = trace ["defining class ",(#ident cdef)]
+        val _ = trace2 ("defining class ",(#ident cdef))
         val class = analyzeClass env cdef
         val class = resolveClass env cdef class
         val Ast.Cls {name,...} = class
@@ -558,14 +559,14 @@ and defInterface (env: ENV)
              (idef: Ast.INTERFACE_DEFN)
     : (Ast.FIXTURES * Ast.INTERFACE_DEFN) =
     let
-        val _ = trace ["defining interface ",(#ident idef)]
+        val _ = trace2 ("defining interface ",(#ident idef))
 (* FIXME
         val class = analyzeClass env cdef
         val class = resolveClass env cdef class
         val Ast.Cls {name,...} = class
 *)
     in
-        ([(Ast.PropName {ns=Ast.Public "",id=(#ident idef)}, Ast.InterfaceFixture)],idef)
+        ([(Ast.PropName {ns=Ast.Public Ustring.empty,id=(#ident idef)}, Ast.InterfaceFixture)],idef)
     end
 
 (*
@@ -618,9 +619,9 @@ and resolveExtends (env: ENV)
         fun seenAsChild (n:Ast.NAME) = List.exists (fn ch => ch = n) children
         val extends:(Ast.IDENT_EXPR option) = case (extends,hd children) of 
                             (NONE, {id,...}) => 
-                                if (id="Object") 
+                                if (id=Ustring.Object_) 
                                     then NONE 
-                                    else SOME (Ast.Identifier {ident="Object",openNamespaces=[]})
+                                    else SOME (Ast.Identifier {ident=Ustring.Object_,openNamespaces=[]})
                           | _ => extends 
     in case extends of
         SOME baseIdentExpr =>
@@ -1029,7 +1030,7 @@ and defSettings (env:ENV)
     : (Ast.FIXTURES * Ast.INITS) = 
     let
         val _ = trace [">> defSettings"]
-        val fxtrs:Ast.FIXTURES = map (defVar env Ast.Var (Ast.Internal "")) binds
+        val fxtrs:Ast.FIXTURES = map (defVar env Ast.Var (Ast.Internal Ustring.empty)) binds
         val inits:Ast.INITS = map (defInitStep env NONE) inits   (* FIXME: lookup ident in open namespaces *)
         val _ = trace ["<< defSettings"]
     in
@@ -1106,7 +1107,7 @@ and defFuncSig (env:ENV)
                  | _ => false
 
 
-            val (paramFixtures,paramInits) = defBindings env Ast.Var (Ast.Internal "") params
+            val (paramFixtures,paramInits) = defBindings env Ast.Var (Ast.Internal Ustring.empty) params
             val ((settingsFixtures,settingsInits),superArgs) =
                     case ctorInits of
                         SOME (settings,args) => (defSettings env settings, defExprs env args)
@@ -1307,7 +1308,7 @@ and defPragmas (env:ENV)
               | Ast.UseDefaultNamespace ns =>
                     let
                         val namespace = resolveExprToNamespace env ns
-                        val _ = trace ["use default namespace ",LogErr.name {ns=namespace,id=""}]
+                        val _ = trace ["use default namespace ",LogErr.name {ns=namespace,id=Ustring.empty}]
                     in case namespace of
                         (Ast.Public _ | Ast.Protected _ | Ast.Private _ | Ast.Internal _) => 
                             (* these ones are already open *)
@@ -1321,9 +1322,10 @@ and defPragmas (env:ENV)
                     in case alias of
                         NONE =>
                             let
-                                val id = packageIdentFromPath package ""
-                                val ns = if name="*" then Ast.Public id
-                                                     else Ast.LimitedNamespace (name,Ast.Public id)
+                                val id = packageIdentFromPath package
+                                val ns = if name = Ustring.asterisk
+                                         then Ast.Public id
+                                         else Ast.LimitedNamespace (name,Ast.Public id)
                             in
                                 (packageNames := package::(!packageNames);
                                  opennss  := addNamespace (ns, (!opennss)))
@@ -1358,7 +1360,7 @@ and defPragmas (env:ENV)
                                                   override=false,
                                                   prototype=false,
                                                   static=false,
-                                                  func = Ast.Func {name={kind=Ast.Get,ident=""},
+                                                  func = Ast.Func {name={kind=Ast.Get,ident=Ustring.empty},
                                                           fsig=Ast.FunctionSignature {typeParams=[],params=([],[]),paramTypes=[],
                                                                         defaults=[],ctorInits=NONE,returnType=Ast.SpecialType Ast.Any,
                                                                         thisType=NONE,hasRest=false},
@@ -1382,7 +1384,7 @@ and defPragmas (env:ENV)
                                                   override=false,
                                                   prototype=false,
                                                   static=false,
-                                                  func = Ast.Func {name={kind=Ast.Set,ident=""},
+                                                  func = Ast.Func {name={kind=Ast.Set,ident=Ustring.empty},
                                                           fsig=Ast.FunctionSignature {typeParams=[],params=([],[]),paramTypes=[],
                                                                         defaults=[],ctorInits=NONE,returnType=Ast.SpecialType Ast.Any,
                                                                         thisType=NONE,hasRest=false},
@@ -1396,9 +1398,9 @@ and defPragmas (env:ENV)
                                                                          (Ast.Assign, targetRef,
                                                                            Ast.LexicalRef
                                                                              { ident = Ast.Identifier
-                                                                                         { ident = "x",
+                                                                                         { ident = Ustring.x_,
                                                                                            openNamespaces = [[Ast.Internal
-                                                                                                                ""]]},
+                                                                                                                Ustring.empty]]},
                                                                                pos = NONE}))],
                                                           pos = NONE},
                                               param = ([(Ast.TempName 0,
@@ -1407,15 +1409,15 @@ and defPragmas (env:ENV)
                                                                      Ast.Any,
                                                               readOnly = false}),
                                                          (Ast.PropName
-                                                            { ns = Ast.Internal "",
-                                                              id = "x"},
+                                                            { ns = Ast.Internal Ustring.empty,
+                                                              id = Ustring.x_},
                                                            Ast.ValFixture
                                                              { ty = Ast.SpecialType
                                                                       Ast.Any,
                                                                readOnly = false})],
                                                         [(Ast.PropName
-                                                            { ns = Ast.Internal "",
-                                                              id = "x"},
+                                                            { ns = Ast.Internal Ustring.empty,
+                                                              id = Ustring.x_},
                                                            Ast.GetTemp 0)]),
 
                                                           defaults=[],
@@ -1430,12 +1432,12 @@ and defPragmas (env:ENV)
                                                                getter=SOME getterDefn,
                                                                setter=SOME setterDefn}
                                     end
-                                val aliasFixture = makeAliasFixture env alias (packageIdentFromPath package "") name
+                                val aliasFixture = makeAliasFixture env alias (packageIdentFromPath package) name
                                 val aliasName = {ns=(!defaultNamespace),id=valOf alias}
                                 val _ = trace ["aliasName ",LogErr.name aliasName]
-                                val id = packageIdentFromPath package ""
-                                val ns = if name="*" then Ast.Public id
-                                                     else Ast.LimitedNamespace (name,Ast.Public id)
+                                val id = packageIdentFromPath package
+                                val ns = if name=Ustring.asterisk then Ast.Public id
+                                                                      else Ast.LimitedNamespace (name,Ast.Public id)
                             in
                                 (fixtures := (Ast.PropName aliasName,aliasFixture)::(!fixtures);
                                  packageNames := package::(!packageNames);
@@ -1502,7 +1504,7 @@ and defIdentExpr (env:ENV)
             Ast.ExpressionIdentifier { expr = (defExpr env expr),
                                        openNamespaces = openNamespaces }
           | Ast.UnresolvedPath (p,i) =>
-            LogErr.unimplError ["UnresolvedPath ",(hd p)]
+            LogErr.unimplError ["UnresolvedPath ", Ustring.toAscii (hd p)]
 
           | Ast.WildcardIdentifier =>
             Ast.WildcardIdentifier
@@ -1696,7 +1698,7 @@ and pathInPackageNames (packageNames: Ast.IDENT list list) (path:Ast.IDENT list)
                 ([],_,[]) => 
                     (NONE,path)
               | ([],_,_) => 
-                    (SOME (packageIdentFromPath (List.rev prefix) ""),path)
+                    (SOME (packageIdentFromPath (List.rev prefix)),path)
               | (pkgid::pkg,pthid::pth,_) => 
                     if pkgid = pthid 
                     then matchPackage pkg pth (pkgid::prefix)
@@ -1818,7 +1820,7 @@ and defExpr (env:ENV)
 
           | Ast.LetExpr { defs, body,... } => 
             let
-                val (f,i)   = defBindings env Ast.Var (Ast.Internal "") defs
+                val (f,i)   = defBindings env Ast.Var (Ast.Internal Ustring.empty) defs
                 val env     = extendEnvironment env f
                 val newBody = defExpr env body
             in
@@ -2001,7 +2003,7 @@ and defStmt (env:ENV)
                     ({ cond=newCond, 
                        fixtures=NONE,
                        body=newBody, 
-                       labels=""::labelIds}, hoisted)
+                       labels=Ustring.empty::labelIds}, hoisted)
                 end
 
         (*
@@ -2027,7 +2029,7 @@ and defStmt (env:ENV)
                                 init = newInit,
                                 cond = newCond,
                                 update = newUpdate,
-                                labels = ""::labels,  (* add the default break/continue label *)
+                                labels = Ustring.empty::labels,  (* add the default break/continue label *)
                                 body = newBody,
                                 fixtures = SOME (uf) },
                   (List.foldl mergeFixtures hf hoisted) )
@@ -2035,7 +2037,7 @@ and defStmt (env:ENV)
 
         fun reconstructCatch { bindings, fixtures, block, ty } =
             let 
-                val (f0,i0) = defBindings env Ast.Var (Ast.Internal "") bindings
+                val (f0,i0) = defBindings env Ast.Var (Ast.Internal Ustring.empty) bindings
                 val env = extendEnvironment env f0
                 val (block,fixtures) = defBlock env block
             in                     
@@ -2084,9 +2086,9 @@ and defStmt (env:ENV)
               | _ => LogErr.defnError ["reference to non-class fixture"]
             end
 
-        fun reconstructClassBlock {ns, ident, block, name } =
+        fun reconstructClassBlock {ns, ident:Ast.IDENT, block, name:Ast.NAME option } =
             let
-                val _ = trace ["reconstructing class block for ", ident]
+                val _ = trace2 ("reconstructing class block for ", ident)
                 val Ast.Block { pragmas, defns, head, body, pos } = block
 
                 (* filter out instance initializers *)
@@ -2110,8 +2112,8 @@ and defStmt (env:ENV)
 
         fun checkLabel labelIdOpt labelKnd =
             let
-                val labelId = case labelIdOpt of NONE => "" | SOME i => i
-                val _ = trace ["checkLabel ",labelId]
+                val labelId = case labelIdOpt of NONE => Ustring.empty | SOME i => i
+                val _ = trace2 ("checkLabel ",labelId)
             in case env of
                 {labels,...}::_ =>
                     (dumpLabels labels;
@@ -2217,7 +2219,7 @@ and defStmt (env:ENV)
           | Ast.WhileStmt w => 
             let
                 val env' = addLabels env (map makeIterationLabel labelIds)
-                val env'' = addLabel env' (makeIterationLabel "")
+                val env'' = addLabel env' (makeIterationLabel Ustring.empty)
             in
                 inl (Ast.WhileStmt) (defWhileStmt env'' w)
             end
@@ -2225,7 +2227,7 @@ and defStmt (env:ENV)
           | Ast.DoWhileStmt w => 
             let
                 val env' = addLabels env (map makeIterationLabel labelIds);
-                val env'' = addLabel env' (makeIterationLabel "")
+                val env'' = addLabel env' (makeIterationLabel Ustring.empty)
             in
                 inl (Ast.DoWhileStmt) (defWhileStmt env'' w)
             end
@@ -2233,7 +2235,7 @@ and defStmt (env:ENV)
           | Ast.ForStmt f => 
             let
                 val env' = addLabels env (map makeIterationLabel labelIds);
-                val env'' = addLabel env' (makeIterationLabel "")
+                val env'' = addLabel env' (makeIterationLabel Ustring.empty)
             in
                 defnForStmt env'' f
             end
@@ -2277,13 +2279,13 @@ and defStmt (env:ENV)
           | Ast.SwitchStmt { cond, cases, ... } => 
             let
                 val env' = addLabels env (map makeSwitchLabel labelIds);
-                val env'' = addLabel env' (makeSwitchLabel "")
+                val env'' = addLabel env' (makeSwitchLabel Ustring.empty)
                 val (cases,hoisted) = ListPair.unzip (map (defCase env'') cases)
             in
                 (Ast.SwitchStmt { mode = SOME (#numericMode ctx),
                                   cond = defExpr env cond,
                                   cases = cases,
-                                  labels=""::labelIds}, List.concat hoisted)
+                                  labels=Ustring.empty::labelIds}, List.concat hoisted)
             end
         
           | Ast.SwitchTypeStmt { cond, ty, cases } =>
@@ -2355,7 +2357,7 @@ and defType (env:ENV)
     let
         val { ident, ns, init } = td 
         val ns = case ns of 
-                     NONE => Ast.Internal ""
+                     NONE => Ast.Internal Ustring.empty
                    | SOME e => resolveExprToNamespace env e
         val n = { id=ident, ns=ns }
     in
@@ -2519,8 +2521,8 @@ and defPackage (env:ENV)
     : (Ast.PACKAGE * Ast.FIXTURES) =
         let
             val packageName : Ast.IDENT list = (#name package)
-            val packageIdent = packageIdentFromPath packageName ""
-            val _ = trace ["packageIdent ",packageIdent]
+            val packageIdent = packageIdentFromPath packageName
+            val _ = trace2 ("packageIdent ",packageIdent)
             val env' = {fixtures = [],
                         tempOffset = 0,
                         openNamespaces = [[Ast.Internal packageIdent, Ast.Public packageIdent]]@(#openNamespaces (hd env)),
@@ -2544,13 +2546,13 @@ and defPackage (env:ENV)
 
 and topEnv _ = [ { fixtures = !topFixtures,
                    tempOffset = 0,
-                   openNamespaces = [[Ast.Internal "", Ast.Public ""]],
+                   openNamespaces = [[Ast.Internal Ustring.empty, Ast.Public Ustring.empty]],
                    numericMode = defaultNumericMode, 
                    labels = [],
                    packageNames = !topPackageNames,
                    className = NONE, 
                    packageName = [], 
-                   defaultNamespace = Ast.Internal "" } ]
+                   defaultNamespace = Ast.Internal Ustring.empty } ]
 
 and defProgram (prog:Ast.PROGRAM) 
     : Ast.PROGRAM = 

@@ -31,20 +31,20 @@ fun error ss = LogErr.verifyError ss
 
 (* TODO: what is the proper way to resolve these built-ins? *)
 (* FIXME: change Ast to have a variant of TypeName(?) that should be looked up in the global class table *)
-fun builtInType (s:string) : Ast.TYPE_EXPR
+fun builtInType (s:Ustring.STRING) : Ast.TYPE_EXPR
   = Ast.NominalType (Name.intrinsic s)
 
-val boolType      = builtInType "boolean"
-val numberType    = builtInType "number"
-val doubleType    = builtInType "double"
-val decimalType   = builtInType "decimal" 
-val intType       = builtInType "int"
-val uintType      = builtInType "uint"
-val stringType    = builtInType "string"
-val regexpType    = builtInType "regexp"
-val exceptionType = builtInType "exception"
-val namespaceType = builtInType "Namespace"
-val typeType      = builtInType "Type"
+val boolType      = builtInType Ustring.boolean_
+val numberType    = builtInType Ustring.number_
+val doubleType    = builtInType Ustring.double_
+val decimalType   = builtInType Ustring.decimal_ 
+val intType       = builtInType Ustring.int_
+val uintType      = builtInType Ustring.uint_
+val stringType    = builtInType Ustring.string_
+val regexpType    = builtInType Ustring.regexp_
+val exceptionType = builtInType Ustring.exception_
+val namespaceType = builtInType Ustring.Namespace_
+val typeType      = builtInType Ustring.Type_
 val undefinedType = Ast.SpecialType Ast.Undefined
 val nullType      = Ast.SpecialType Ast.Null
 val anyType       = Ast.SpecialType Ast.Any
@@ -66,11 +66,11 @@ fun flattenOptionList NONE = []
   | flattenOptionList (SOME l) = l
 
 val gensymCounter : int ref = ref 0
-fun gensym (s) = 
+fun gensym (s:Ustring.STRING) : Ustring.STRING = 
     let
     in 
 	gensymCounter := 1+(!gensymCounter);
-	s^"$"^(Int.toString (!gensymCounter))
+	Ustring.append [s, Ustring.dollar, Ustring.fromInt (!gensymCounter)]
     end
 
 (************************* Normalized types *********************************)
@@ -292,20 +292,12 @@ and isCompatible (t1:TYPE_VALUE)
 	        end
             
 	      | (Ast.ArrayType _, 
-	         Ast.TypeName (Ast.Identifier {ident="Array", openNamespaces=[]})) 
-	        => true
-               
-	      | (Ast.ArrayType _, 
-	         Ast.TypeName (Ast.Identifier {ident="Object", openNamespaces=[]})) 
-	        => true
+	         Ast.TypeName (Ast.Identifier {ident=ustr, openNamespaces=[]})) 
+	        => (ustr = Ustring.Array_) orelse (ustr = Ustring.Object_)
                
 	      | (Ast.FunctionType _, 
-	         Ast.TypeName (Ast.Identifier {ident="Function", openNamespaces=[]})) 
-	        => true
-               
-	      | (Ast.FunctionType _, 
-	         Ast.TypeName (Ast.Identifier {ident="Object", openNamespaces=[]}))
-	        => true
+	         Ast.TypeName (Ast.Identifier {ident=ustr, openNamespaces=[]})) 
+	        => (ustr = Ustring.Function_) orelse (ustr = Ustring.Object_)
                
 	      | (Ast.AppType {base=base1,args=args1}, Ast.AppType {base=base2,args=args2}) => 
 	        (* We keep types normalized wrt beta-reduction, 
@@ -997,7 +989,7 @@ and verifyExpr (env as {env,this,...}:RIB)
 
      and Ast.IDENT_EXPR =
          Ast.QualifiedIdentifier of { qual : EXPR,
-                                  ident : USTRING }
+                                  ident : Ustring.STRING }
        | Ast.QualifiedExpression of { qual : EXPR,
                                   expr : EXPR }
        | Ast.AttributeIdentifier of Ast.IDENT_EXPR

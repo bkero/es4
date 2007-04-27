@@ -23,9 +23,9 @@ fun chopTrailing (s:string)
     : string = 
     String.substring (s, 0, ((String.size s) - 1))
 
-val (curr_quote    :  char       ref) = ref #"\000"
-val (curr_chars    : (char list) ref) = ref []
-val (found_newline :  bool       ref) = ref false
+val (found_newline : bool ref) = ref false
+val (curr_quote    : char ref) = ref #"\000"
+val (curr_chars    : UTF8.wchar list ref) = ref []
 
 
       end
@@ -212,9 +212,9 @@ fun yyAction130 (strm, lastMatch) = (yystrm := strm;  Token.Xml)
 fun yyAction131 (strm, lastMatch) = (yystrm := strm;  Yield)
 fun yyAction132 (strm, lastMatch) = (yystrm := strm;  continue())
 fun yyAction133 (strm, lastMatch) = let
-      val yytext = yymktext(strm)
+      val yyunicode = yymkunicode(strm)
       in
-        yystrm := strm;  Identifier yytext
+        yystrm := strm;  Identifier yyunicode
       end
 fun yyAction134 (strm, lastMatch) = let
       val yytext = yymktext(strm)
@@ -282,12 +282,13 @@ fun yyAction146 (strm, lastMatch) = (yystrm := strm;
 fun yyAction147 (strm, lastMatch) = (yystrm := strm;  continue())
 fun yyAction148 (strm, lastMatch) = (yystrm := strm;  continue())
 fun yyAction149 (strm, lastMatch) = let
+      val yyunicode = yymkunicode(strm)
       val yytext = yymktext(strm)
       in
         yystrm := strm;
          let
 				    val x_flag = String.isSubstring "x" yytext;
-				    val re = String.implode(rev (!curr_chars)) ^ yytext
+				    val re = rev (!curr_chars) @ yyunicode
 				in
 				    if !found_newline andalso (not x_flag)
 				    then error ["Illegal newline in regexp"]
@@ -299,45 +300,45 @@ fun yyAction149 (strm, lastMatch) = let
 				end
       end
 fun yyAction150 (strm, lastMatch) = (yystrm := strm;
-       curr_chars := #"[" :: !curr_chars;
+       curr_chars := (UTF8.fromAscii #"[") :: !curr_chars;
 				YYBEGIN REGEXP_CHARSET;
 				continue())
 fun yyAction151 (strm, lastMatch) = (yystrm := strm;
        found_newline := true; continue())
 fun yyAction152 (strm, lastMatch) = (yystrm := strm;  continue())
 fun yyAction153 (strm, lastMatch) = let
-      val yytext = yymktext(strm)
+      val yyunicode = yymkunicode(strm)
       in
         yystrm := strm;
-         curr_chars := String.sub(yytext,1) :: #"\\" :: !curr_chars;
+         curr_chars := List.nth(yyunicode,1) :: (UTF8.fromAscii #"\\") :: !curr_chars;
 				continue()
       end
 fun yyAction154 (strm, lastMatch) = let
-      val yytext = yymktext(strm)
+      val yyunicode = yymkunicode(strm)
       in
         yystrm := strm;
-         curr_chars := String.sub(yytext,0) :: !curr_chars;
+         curr_chars := List.nth(yyunicode,0) :: !curr_chars;
 				continue()
       end
 fun yyAction155 (strm, lastMatch) = (yystrm := strm;
-       curr_chars := #"]" :: !curr_chars;
+       curr_chars := (UTF8.fromAscii #"]") :: !curr_chars;
 				YYBEGIN REGEXP;
 				continue())
 fun yyAction156 (strm, lastMatch) = (yystrm := strm;
        found_newline := true; continue())
 fun yyAction157 (strm, lastMatch) = (yystrm := strm;  continue())
 fun yyAction158 (strm, lastMatch) = let
-      val yytext = yymktext(strm)
+      val yyunicode = yymkunicode(strm)
       in
         yystrm := strm;
-         curr_chars := String.sub(yytext,1) :: #"\\" :: !curr_chars;
+         curr_chars := List.nth(yyunicode,1) :: (UTF8.fromAscii #"\\") :: !curr_chars;
 				continue()
       end
 fun yyAction159 (strm, lastMatch) = let
-      val yytext = yymktext(strm)
+      val yyunicode = yymkunicode(strm)
       in
         yystrm := strm;
-         curr_chars := String.sub(yytext,0) :: !curr_chars;
+         curr_chars := List.nth(yyunicode,0) :: !curr_chars;
 				continue()
       end
 fun yyAction160 (strm, lastMatch) = let
@@ -350,6 +351,7 @@ fun yyAction160 (strm, lastMatch) = let
 				continue()
       end
 fun yyAction161 (strm, lastMatch) = let
+      val yyunicode = yymkunicode(strm)
       val yytext = yymktext(strm)
       in
         yystrm := strm;
@@ -357,7 +359,7 @@ fun yyAction161 (strm, lastMatch) = let
 				    (!curr_quote) = String.sub (yytext,0)
 				then 
 				    let 
-					val str = (String.implode (rev (!curr_chars)))
+					val str = rev (!curr_chars)
 					(* val str_span = *)
 				    in
 					curr_quote := #"\000";
@@ -367,7 +369,7 @@ fun yyAction161 (strm, lastMatch) = let
 					StringLiteral str
 				    end
 				else
-				    (curr_chars := (String.sub (yytext,0)) :: (!curr_chars);
+				    (curr_chars := (hd yyunicode) :: (!curr_chars);
 				    continue())
       end
 fun yyAction162 (strm, lastMatch) = let
@@ -376,21 +378,21 @@ fun yyAction162 (strm, lastMatch) = let
         yystrm := strm;
         (case Char.fromCString yytext of
 				    NONE => error ["unexpected input in <STRING>{charEscape}: '", yytext, "'"]
-				  | SOME c => curr_chars := c :: (!curr_chars));
+				  | SOME c => curr_chars := (UTF8.fromAscii c) :: (!curr_chars));
 				continue()
       end
 fun yyAction163 (strm, lastMatch) = let
-      val yytext = yymktext(strm)
+      val yyunicode = yymkunicode(strm)
       in
         yystrm := strm;
-         curr_chars := (String.sub (yytext,1)) :: (!curr_chars);
+         curr_chars := (List.nth(yyunicode,1)) :: (!curr_chars);
 				continue()
       end
 fun yyAction164 (strm, lastMatch) = let
-      val yytext = yymktext(strm)
+      val yyunicode = yymkunicode(strm)
       in
         yystrm := strm;
-         curr_chars := (String.sub (yytext,0)) :: (!curr_chars);
+         curr_chars := (List.nth(yyunicode,0)) :: (!curr_chars);
 				continue()
       end
 fun yyAction165 (strm, lastMatch) = let
