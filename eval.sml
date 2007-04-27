@@ -865,20 +865,68 @@ and callApprox (idStr:string) (args:Mach.VAL list)
 
 (* FIXME: this is not the correct toString *)
 
+(* 
+ * ES-262-3 9.8.1: ToString applied to the Number (double) type.
+ *)
+and NumberToString (r:Real64.real) 
+    : Ustring.STRING =     
+    if Real64.isNan r
+    then Ustring.NaN_
+    else 
+        if Real64.==(0.0, r) orelse Real64.==(~0.0, r)
+        then Ustring.zero
+        else
+            if Real64.<(r, 0.0)
+            then Ustring.append [Ustring.dash, NumberToString (Real64.~(r))]
+            else 
+                if Real64.==(Real64.posInf, r)
+                then Ustring.Infinity_
+                else 
+                    let
+                        (* 
+                         * Unfortunately SML/NJ has a pretty deficient selection of the numerical 
+                         * primitives; about the best we can get from it is a high-precision SCI
+                         * conversion that we then parse. This is significantly more fun than 
+                         * writing your own dtoa.
+                         *)
+                        val x = Real64.fmt (StringCvt.SCI (SOME 30)) r
+
+                        val (mantissaSS,expSS) = Substring.splitr (fn c => not (c = #"E")) (Substring.full x)
+                        val mantissaSS = Substring.dropr (fn c => (c = #"E") orelse (c = #"0")) mantissaSS
+                        val (preDot,postDot) = Substring.position "." mantissaSS
+                        val postDot = Substring.triml 1 postDot
+
+                        val exp = valOf (Int.fromString (Substring.string expSS))
+                        val digits = (Substring.explode preDot) @ (Substring.explode postDot)
+                        val k = length digits
+                        val n = exp + 1
+
+                        fun zeroes z = List.tabulate (z, (fn _ => #"0"))
+                        fun expstr _ = (#"e" :: 
+                                        (if (n-1) < 0 then #"-" else #"+") :: 
+                                        (String.explode (Int.toString (Int.abs (n-1)))))
+                    in
+                        Ustring.fromString 
+                        (String.implode 
+                         (if k <= n andalso n <= 21
+                          then digits @ (zeroes (n-k))
+                          else 
+                              if 0 < n andalso n <= 21
+                              then (List.take (digits, n)) @ [#"."] @ (List.drop (digits, n))
+                              else
+                                  if ~6 < n andalso n <= 0
+                                  then [#"0", #"."] @ (zeroes (~n)) @ digits
+                                  else 
+                                      if k = 1 
+                                      then digits @ (expstr()) 
+                                      else (hd digits) :: #"." :: ((tl digits) @ expstr())))
+                    end
+                    
+
 and magicToUstring (magic:Mach.MAGIC) 
     : Ustring.STRING =
     case magic of 
-        Mach.Double n => 
-        if Real64.isFinite n andalso Real64.==(Real64.realFloor n, n)
-        then Ustring.fromString (Ustring.fixNegatives (LargeInt.toString (Real64.toLargeInt IEEEReal.TO_NEGINF n)))
-        else (if Real64.isNan n
-              then Ustring.NaN_
-              else (if Real64.==(Real64.posInf, n)
-                    then Ustring.Infinity_
-                    else (if Real64.==(Real64.negInf, n)
-                          then Ustring.fromString "-Infinity"
-                          else Ustring.fromString (Ustring.fixNegatives (Real64.toString n)))))
-             
+        Mach.Double n => NumberToString n             
       | Mach.Decimal d => Ustring.fromString (Decimal.toString d)
       | Mach.Int i => Ustring.fromInt32 i
       | Mach.UInt u => Ustring.fromString (LargeInt.toString (Word32.toLargeInt u))

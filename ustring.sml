@@ -27,13 +27,14 @@ fun internal_toEscapedAscii us =
         toEscapedAscii us []
     end
 
-fun fixNegative #"~" = "-"
-  | fixNegative c = String.str c
-fun fixNegatives s = String.translate fixNegative s
+fun fixNegative s = 
+    if String.sub (s, 0) = #"~"
+    then "-" ^ String.extract (s, 1, NONE)
+    else s
+	 
+fun internal_fromInt n = internal_fromString (fixNegative (Int.toString n))
 
-fun internal_fromInt n = internal_fromString (fixNegatives (Int.toString n))
-
-fun internal_fromInt32 n = internal_fromString (fixNegatives (Int32.toString n))
+fun internal_fromInt32 n = internal_fromString (fixNegative (Int32.toString n))
 
 fun internal_fromCharCode n = internal_fromString (Char.toString (Char.chr n))
 
@@ -84,9 +85,11 @@ fun append       (l:STRING list) : STRING = internal_append l
  * pre-defined strings
  *)
 
+val zero                     = fromString "0"
 val asterisk                 = fromString "*"
 val dollar                   = fromString "$"
 val dot                      = fromString "."
+val dash                     = fromString "-"
 val undefined_               = fromString "undefined"
 val temp_                    = fromString "temp"
 val Object_                  = fromString "Object"
