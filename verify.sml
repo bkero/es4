@@ -241,8 +241,33 @@ fun mergeTypes t1 t2 =
 	(*FIXME*)
     t1
 
-
 (************************* Compatibility *********************************)
+
+and isSubtype (t1:TYPE_VALUE)
+              (t2:TYPE_VALUE)
+    : bool =
+    let
+    in
+        trace ["Checking subtyping - First type:"];
+        if (!doTrace) then Pretty.ppType t1 else ();
+        trace ["Second type: "];
+        if (!doTrace) then Pretty.ppType t2 else ();
+
+        if t1 = t2 then
+            true
+        else
+            case (t1,t2) of
+                 (Ast.SpecialType _, _) => false
+               | (Ast.UnionType ts1, Ast.UnionType ts2) =>
+                 unimplError ["isSubtype"]
+               | (Ast.ArrayType ts1, Ast.ArrayType ts2) =>
+                 unimplError ["isSubtype"]
+               | (Ast.FunctionType ft1, Ast.FunctionType ft2) =>
+                 unimplError ["isSubtype"]
+               | (Ast.ObjectType fts1, Ast.ObjectType fts2) =>
+                 unimplError ["isSubtype"]
+               | _ => unimplError ["isSubtype"]
+    end
 
 fun checkCompatible (t1:TYPE_VALUE) 
 		            (t2:TYPE_VALUE) 
@@ -391,13 +416,14 @@ and verifyExpr (env:ENV)
         fun return (e, t) =
             (Ast.ExpectedTypeExpr (t, e), t)
         val dummyType = Ast.SpecialType Ast.Any
+        val { strict, ... } = env
     in
         case expr of 
             Ast.TernaryExpr (t, e1, e2, e3) =>
             let
                 val e1' = verifySub e1
-                val e2' = verifySub e2
-                val e3' = verifySub e3
+                val (e2', t2) = verifyExpr env e2
+                val (e3', t3) = verifyExpr env e3
             in
                 return (Ast.TernaryExpr (t, e1', e2', e3'), dummyType)
             end
