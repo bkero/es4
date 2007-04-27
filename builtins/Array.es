@@ -17,8 +17,10 @@ package
     {
         // 15.4.1 The Array Constructor Called as a Function
         meta static function invoke(...args) {
-            // args is already an Array. just return it.
-            return args;
+            if (args.length == 1)
+                return new Array(args[0]);
+            else
+                return args; /* Already an array */
         }
 
         // 15.4.2 The Array Constructor
