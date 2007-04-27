@@ -21,9 +21,9 @@ fun chopTrailing (s:string)
     : string = 
     String.substring (s, 0, ((String.size s) - 1))
 
-val (curr_quote    :  char       ref) = ref #"\000"
-val (curr_chars    : (char list) ref) = ref []
-val (found_newline :  bool       ref) = ref false
+val (found_newline : bool ref) = ref false
+val (curr_quote    : char ref) = ref #"\000"
+val (curr_chars    : UTF8.wchar list ref) = ref []
 );
 
 
@@ -208,7 +208,7 @@ val (found_newline :  bool       ref) = ref false
 <INITIAL>"yield"           => (Yield);
 
 <INITIAL>{whitespace}      => (continue());
-<INITIAL>{identifier}      => (Identifier (Ustring.fromString yytext));
+<INITIAL>{identifier}      => (Identifier yyunicode);
 
 <INITIAL>{explicitIntLiteral} => (case Int32.fromString (chopTrailing yytext) of
 					  SOME i => ExplicitIntLiteral i
@@ -243,7 +243,7 @@ val (found_newline :  bool       ref) = ref false
 
 <REGEXP>"/"{regexpFlags}    => (let
 				    val x_flag = String.isSubstring "x" yytext;
-				    val re = String.implode(rev (!curr_chars)) ^ yytext
+				    val re = rev (!curr_chars) @ yyunicode
 				in
 				    if !found_newline andalso (not x_flag)
 				    then error ["Illegal newline in regexp"]
@@ -251,26 +251,26 @@ val (found_newline :  bool       ref) = ref false
 				       (curr_chars := [];
 					found_newline := false;
 					YYBEGIN INITIAL;
-					RegexpLiteral (Ustring.fromString re))
+					RegexpLiteral re)
 				end);
-<REGEXP>"["                 => (curr_chars := #"[" :: !curr_chars;
+<REGEXP>"["                 => (curr_chars := (UTF8.fromAscii #"[") :: !curr_chars;
 				YYBEGIN REGEXP_CHARSET;
 				continue());
 <REGEXP>"\n"|"\r"           => (found_newline := true; continue());
 <REGEXP>"\\\n"|"\\\r"       => (continue());
-<REGEXP>"\\".               => (curr_chars := String.sub(yytext,1) :: #"\\" :: !curr_chars;
+<REGEXP>"\\".               => (curr_chars := List.nth(yyunicode,1) :: (UTF8.fromAscii #"\\") :: !curr_chars;
 				continue());
-<REGEXP>.                   => (curr_chars := String.sub(yytext,0) :: !curr_chars;
+<REGEXP>.                   => (curr_chars := List.nth(yyunicode,0) :: !curr_chars;
 				continue());
 
-<REGEXP_CHARSET>"]"         => (curr_chars := #"]" :: !curr_chars;
+<REGEXP_CHARSET>"]"         => (curr_chars := (UTF8.fromAscii #"]") :: !curr_chars;
 				YYBEGIN REGEXP;
 				continue());
 <REGEXP_CHARSET>"\n"|"\r"   => (found_newline := true; continue());
 <REGEXP_CHARSET>"\\\n"|"\\\r" => (continue());
-<REGEXP_CHARSET>"\\".       => (curr_chars := String.sub(yytext,1) :: #"\\" :: !curr_chars;
+<REGEXP_CHARSET>"\\".       => (curr_chars := List.nth(yyunicode,1) :: (UTF8.fromAscii #"\\") :: !curr_chars;
 				continue());
-<REGEXP_CHARSET>.           => (curr_chars := String.sub(yytext,0) :: !curr_chars;
+<REGEXP_CHARSET>.           => (curr_chars := List.nth(yyunicode,0) :: !curr_chars;
 				continue());
 
 <INITIAL>"'"|"\""           => (curr_quote := String.sub (yytext,0); 
@@ -282,28 +282,28 @@ val (found_newline :  bool       ref) = ref false
 				    (!curr_quote) = String.sub (yytext,0)
 				then 
 				    let 
-					val str = (String.implode (rev (!curr_chars)))
+					val str = rev (!curr_chars)
 					(* val str_span = *)
 				    in
 					curr_quote := #"\000";
 					curr_chars := [];
 					YYBEGIN INITIAL;
 					(* (StringLiteral str, str_span) *)
-					StringLiteral (Ustring.fromString str)
+					StringLiteral str
 				    end
 				else
-				    (curr_chars := (String.sub (yytext,0)) :: (!curr_chars);
+				    (curr_chars := (hd yyunicode) :: (!curr_chars);
 				    continue()));
 
 <STRING>{charEscape}        =>((case Char.fromCString yytext of
 				    NONE => error ["unexpected input in <STRING>{charEscape}: '", yytext, "'"]
-				  | SOME c => curr_chars := c :: (!curr_chars));
+				  | SOME c => curr_chars := (UTF8.fromAscii c) :: (!curr_chars));
 				continue());
 
-<STRING>"\\".               => (curr_chars := (String.sub (yytext,1)) :: (!curr_chars);
+<STRING>"\\".               => (curr_chars := (List.nth(yyunicode,1)) :: (!curr_chars);
 				continue());
 
-<STRING>.                   => (curr_chars := (String.sub (yytext,0)) :: (!curr_chars);
+<STRING>.                   => (curr_chars := (List.nth(yyunicode,0)) :: (!curr_chars);
 				continue());
 
 <INITIAL>.                  => (error [

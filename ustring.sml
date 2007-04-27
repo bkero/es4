@@ -1,42 +1,55 @@
 
 structure Ustring = struct
 
-(* type STRING = Word32.word list *)
+type STRING = UTF8.wchar list
 
-datatype STRING = UniString of string
-
-val empty:STRING = UniString ""
-
+val empty:STRING = []
 
 (*
  * Internal functions with intentionally ugly names
  * (only these guys know what a STRING really is)
  *)
 
-fun internal_toEscapedAscii (UniString s) = s
 
-fun internal_fromString s = UniString s
+fun internal_fromString s = UTF8.explode s
 
-fun internal_fromInt n = UniString (Int.toString n)
+fun internal_toEscapedAscii us =
+    let
+        fun escapeChar c = explode (UTF8.toString c)
+        
+        fun toEscapedAscii [     ] accum = implode (List.rev accum)
+          | toEscapedAscii (c::cs) accum =
+            if UTF8.isAscii c then
+                toEscapedAscii cs (UTF8.toAscii c :: accum)
+            else
+                toEscapedAscii cs (List.revAppend (escapeChar c, accum))
+    in
+        toEscapedAscii us []
+    end
 
-fun internal_fromInt32 n = UniString (Int32.toString n)
+fun internal_fromInt n = internal_fromString (Int.toString n)
 
-fun internal_fromCharCode n = UniString (Char.toString (Char.chr n))
+fun internal_fromInt32 n = internal_fromString (Int32.toString n)
 
-fun internal_stringLength (UniString s) = String.size s
+fun internal_fromCharCode n = internal_fromString (Char.toString (Char.chr n))
 
-fun internal_stringAppend (UniString a) (UniString b) = UniString (a ^ b)
+fun internal_stringLength us = length us
 
-fun internal_charCodeAt (UniString s) n = Char.ord (String.sub (s,n))
+fun internal_stringAppend a b = a @ b
 
-fun internal_compare (UniString a) (UniString b) = String.compare (a,b)
+fun internal_charCodeAt us n = Word.toInt (List.nth (us, n))
 
-fun internal_substring (UniString s) m n = UniString (String.substring (s, m, n))
+fun internal_compare [     ] [     ] = EQUAL
+  | internal_compare [     ] (b::bb) = LESS
+  | internal_compare (a::aa) [     ] = GREATER
+  | internal_compare (a::aa) (b::bb) =
+        case Word.compare (a,b) of
+            EQUAL   => internal_compare aa bb
+          | unequal => unequal
 
-fun internal_append [] accum = accum
-  | internal_append ((UniString s)::ss) (UniString accum) =
-        internal_append ss (UniString (s ^ accum))
+fun internal_substring us m n = List.take (List.drop (us, m), n)
 
+fun internal_append uss = List.concat uss
 
 
 (*
@@ -60,7 +73,7 @@ fun compare      (a:STRING) (b:STRING) : order  = internal_compare      a b
 
 fun substring    (s:STRING) (m:int) (n:int) : STRING = internal_substring s m n
 
-fun append       (l:STRING list) : STRING = internal_append (rev l) empty
+fun append       (l:STRING list) : STRING = internal_append l
 
 
 (*
