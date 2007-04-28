@@ -9,6 +9,7 @@ val (stack:string list list ref) = ref []
 fun resetStack _ = 
     stack := []
 
+val ObjectClassIdentity = ref (~1)
 val ArrayClassIdentity = ref (~1)
 val FunctionClassIdentity = ref (~1)
 val StringClassIdentity = ref (~1)
@@ -3053,138 +3054,202 @@ and initializeAndConstruct (classClosure:Mach.CLS_CLOSURE)
                     end
             end
 
-and runAnySpecialConstructor (id:Mach.OBJ_IDENT) 
+
+and constructStandard (classObj:Mach.OBJ)
+                      (classClosure:Mach.CLS_CLOSURE)
+                      (args:Mach.VAL list) 
+    : Mach.OBJ = 
+    let
+        val {cls = Ast.Cls { name, instanceFixtures, ...}, env, ...} = classClosure
+        val (tag:Mach.VAL_TAG) = Mach.ClassTag name
+        val (proto:Mach.VAL) = if hasOwnValue classObj Name.public_prototype
+                               then getValue classObj Name.public_prototype
+                               else Mach.Null
+        val (instanceObj:Mach.OBJ) = Mach.newObj tag proto NONE
+        (* FIXME: might have 'this' binding wrong in class scope here. *)
+        val (classScope:Mach.SCOPE) = extendScope env classObj Mach.InstanceScope
+        val classRegs = { scope = classScope, this = instanceObj }
+    in
+        trace ["allocating ", Int.toString (length instanceFixtures), 
+               " instance fixtures for new ", fmtName name];
+        allocObjFixtures classRegs instanceObj (SOME instanceObj) instanceFixtures;
+        trace ["entering most derived constructor for ", fmtName name];
+        initializeAndConstruct classClosure classObj classRegs args instanceObj;
+        trace ["finished constructing new ", fmtName name];
+        instanceObj
+    end
+
+
+and specialFunctionConstructor (classObj:Mach.OBJ)
+                               (classClosure:Mach.CLS_CLOSURE)
+                               (args:Mach.VAL list) 
+    : Mach.VAL = 
+    let
+        val instanceObj = constructStandard classObj classClosure args
+        val _ = trace ["finding Function.prototype"]
+        val globalFuncObj = needObj (getValue (getGlobalObject()) Name.public_Function)
+        val globalFuncProto = getValue globalFuncObj Name.public_prototype
+        val _ = trace ["building new prototype chained to Function.prototype"]
+        val newProto = Mach.Object (Mach.setProto (newObj ()) globalFuncProto)
+        val _ = trace ["built new prototype chained to Function.prototype"]
+    in
+        setValue instanceObj Name.public_prototype newProto;
+        if args = [] 
+        then 
+            let 
+                val Mach.Obj { magic, ...} = instanceObj
+                fun empty (vs:Mach.VAL list) : Mach.VAL = Mach.Undef
+            in
+                magic := SOME (Mach.NativeFunction { func = empty, length = 0 })
+            end
+        else 
+            (*
+             * We synthesize a token stream here that feeds back into the parser.
+             *)
+            let 
+                val source = Ustring.toSource (toUstring (List.last args))
+                val argArgs = List.take (args, (length args)-1)
+                val argIdents = map (fn x => Token.Identifier (toUstring x)) argArgs
+                val nloc = {file="<no filename>", span=(1,1), sm=StreamPos.mkSourcemap (), post_newline=false}
+                val argList = case argIdents of
+                                  [] => []
+                                | x::xs => ((x, nloc) :: 
+                                            (List.concat 
+                                                 (map (fn i => [(Token.Comma, nloc), (i, nloc)]) xs)))
+                val lines = [source] (* FIXME: split lines *)
+                val lineTokens = List.filter (fn t => case t of 
+                                                          (Token.Eof, _) => false (* FIXME: this won't work if there's a regexp, because the token list won't be complete *)
+                                                        | _ => true)
+                                             (Parser.lexLines lines)
+                val funcTokens = [(Token.Function, nloc), 
+                                  (Token.LeftParen, nloc)]
+                                 @ argList
+                                 @ [(Token.RightParen, nloc)]
+                                 @ [(Token.LeftBrace, nloc)]
+                                 @ lineTokens
+                                 @ [(Token.RightBrace, nloc)]
+                                 @ [(Token.Eof, nloc)]
+                                 
+                val (_,funcExpr) = Parser.functionExpression (funcTokens, 
+                                                              Parser.NOLIST, 
+                                                              Parser.ALLOWIN)
+                                   
+                val funcExpr = Defn.defExpr (Defn.topEnv()) funcExpr
+            in
+                case funcExpr of 
+                    Ast.LiteralExpr (Ast.LiteralFunction f) => 
+                    let 
+                        val Mach.Obj { magic, ...} = instanceObj
+                        val sname = Name.public_source
+                        val sval = newString (Ustring.fromString source)
+                    in
+                        magic := SOME (Mach.Function { func = f, 
+                                                       this = NONE,
+                                                       allTypesBound = true,
+                                                       env = getGlobalScope() });
+                        setValue instanceObj sname sval
+                    end
+                  | _ => error ["function did not parse"]
+            end;
+        Mach.Object instanceObj
+    end
+
+
+and specialArrayConstructor (classObj:Mach.OBJ)
+                            (classClosure:Mach.CLS_CLOSURE)
+                            (args:Mach.VAL list) : 
+    Mach.VAL =
+    let
+        val instanceObj = constructStandard classObj classClosure args
+        val Mach.Obj { props, ... } = instanceObj
+        fun bindVal _ [] = ()
+          | bindVal n (x::xs) = 
+            (setValue instanceObj (Name.public (Ustring.fromInt n)) x;
+             bindVal (n+1) xs)
+    in
+        case args of
+            [] => setValue instanceObj Name.public_length (newUInt 0w0)
+          | [k] => let val idx = asArrayIndex k 
+                   in
+                       if not (idx = 0wxFFFFFFFF) then
+                           setValue instanceObj Name.public_length k
+                       else
+                           bindVal 0 args
+                   end
+          | _ => bindVal 0 args;
+        Mach.setPropDontEnum props Name.public_length true;
+        Mach.setPropDontEnum props Name.private_Array__length true;
+        Mach.Object instanceObj
+    end    
+
+(* 
+ * ES-262-3 15.2.2.1 The Object Constructor
+ *)
+
+and specialObjectConstructor (classObj:Mach.OBJ)
+                             (classClosure:Mach.CLS_CLOSURE)
                              (args:Mach.VAL list) 
-                             (instanceObj:Mach.OBJ) 
-    : unit =
-    (trace ["checking for special case constructors with value ", Int.toString id];
-     if id = !FunctionClassIdentity         
-     then 
-         let
-             val _ = trace ["finding Function.prototype"]
-             val globalFuncObj = needObj (getValue (getGlobalObject()) Name.public_Function)
-             val globalFuncProto = getValue globalFuncObj Name.public_prototype
-             val _ = trace ["building new prototype chained to Function.prototype"]
-             val newProto = Mach.Object (Mach.setProto (newObj ()) globalFuncProto)
-             val _ = trace ["built new prototype chained to Function.prototype"]
-         in
-             setValue instanceObj Name.public_prototype newProto;
-             if args = [] 
-             then 
-                 let 
-                     val Mach.Obj { magic, ...} = instanceObj
-                     fun empty (vs:Mach.VAL list) : Mach.VAL = Mach.Undef
-                 in
-                     magic := SOME (Mach.NativeFunction { func = empty, length = 0 })
-                 end
-             else 
-                 (*
-                  * We synthesize a token stream here that feeds back into the parser.
-                  *)
-                 let 
-                     val source = Ustring.toSource (toUstring (List.last args))
-                     val argArgs = List.take (args, (length args)-1)
-                     val argIdents = map (fn x => Token.Identifier (toUstring x)) argArgs
-                     val nloc = {file="<no filename>", span=(1,1), sm=StreamPos.mkSourcemap (), post_newline=false}
-                     val argList = case argIdents of
-                                       [] => []
-                                     | x::xs => ((x, nloc) :: 
-                                                 (List.concat 
-                                                      (map (fn i => [(Token.Comma, nloc), (i, nloc)]) xs)))
-                     val lines = [source] (* FIXME: split lines *)
-                     val lineTokens = List.filter (fn t => case t of 
-                                                               (Token.Eof, _) => false (* FIXME: this won't work if there's a regexp, because the token list won't be complete *)
-                                                             | _ => true)
-                                                  (Parser.lexLines lines)
-                     val funcTokens = [(Token.Function, nloc), 
-                                       (Token.LeftParen, nloc)]
-                                      @ argList
-                                      @ [(Token.RightParen, nloc)]
-                                      @ [(Token.LeftBrace, nloc)]
-                                      @ lineTokens
-                                      @ [(Token.RightBrace, nloc)]
-                                      @ [(Token.Eof, nloc)]
-                                      
-                     val (_,funcExpr) = Parser.functionExpression (funcTokens, 
-                                                                   Parser.NOLIST, 
-                                                                   Parser.ALLOWIN)
-                                        
-                     val funcExpr = Defn.defExpr (Defn.topEnv()) funcExpr
-                 in
-                     case funcExpr of 
-                         Ast.LiteralExpr (Ast.LiteralFunction f) => 
-                         let 
-                             val Mach.Obj { magic, ...} = instanceObj
-                             val sname = Name.public_source
-                             val sval = newString (Ustring.fromString source)
-                         in
-                             magic := SOME (Mach.Function { func = f, 
-                                                            this = NONE,
-                                                            allTypesBound = true,
-                                                            env = getGlobalScope() });
-                             setValue instanceObj sname sval
-                         end
-                       | _ => error ["function did not parse"]
-                 end        
-         end
-     else 
-         if id = !ArrayClassIdentity
-         then 
-             let
-                 val Mach.Obj { props, ... } = instanceObj
-                 fun bindVal _ [] = ()
-                   | bindVal n (x::xs) = 
-                     (setValue instanceObj (Name.public (Ustring.fromInt n)) x;
-                      bindVal (n+1) xs)
-             in
-                 case args of
-                     [] => setValue instanceObj Name.public_length (newUInt 0w0)
-                   | [k] => let val idx = asArrayIndex k 
-                            in
-                                if not (idx = 0wxFFFFFFFF) then
-                                    setValue instanceObj Name.public_length k
-                                else
-                                    bindVal 0 args
-                            end
-                   | _ => bindVal 0 args;
-                 Mach.setPropDontEnum props Name.public_length true;
-                 Mach.setPropDontEnum props Name.private_Array__length true
-             end
-         else
-             ())
+    : Mach.VAL =
+    let
+        fun instantiate _ = constructStandard classObj classClosure args
+    in
+        Mach.Object 
+            (case args of 
+                 [] => instantiate ()
+               | (Mach.Null :: _) => instantiate ()
+               | (Mach.Undef :: _) => instantiate ()
+               | (Mach.Object obj :: _) => 
+                 case Mach.getObjMagic obj of
+                     NONE => obj
+                   | SOME m => 
+                     let
+                         (* 
+                          * FIXME: This part is dubioius. ES-262-3 says to call ToObject
+                          * on non-Object primitives. We do not do so here: rather, ToObject 
+                          * implements its lower half (primitive values) by calling into *here*, 
+                          * so here is where we do any cloning and magic-copying.
+                          *)
+                         val nobj = instantiate ()
+                     in
+                         Mach.setMagic nobj (Mach.getObjMagic obj);
+                         nobj
+                     end)
+    end
     
+and constructSpecial (id:Mach.OBJ_IDENT)
+                     (classObj:Mach.OBJ)
+                     (classClosure:Mach.CLS_CLOSURE)
+                     (args:Mach.VAL list) : 
+    Mach.VAL option = 
+    (trace ["checking for special case constructors with value ", Int.toString id];
+     if id = !ObjectClassIdentity
+     then SOME (specialObjectConstructor classObj classClosure args)
+     else 
+         if id = !FunctionClassIdentity         
+         then SOME (specialFunctionConstructor classObj classClosure args)
+         else 
+             if id = !ArrayClassIdentity
+             then SOME (specialArrayConstructor classObj classClosure args)             
+             else NONE)
 
 and constructClassInstance (classObj:Mach.OBJ)
                            (classClosure:Mach.CLS_CLOSURE) 
                            (args:Mach.VAL list) 
     : Mach.VAL =
     let
-        val {cls = Ast.Cls { name, instanceFixtures, ...}, env, ...} = classClosure
-        val _ = push ["new ", callApprox (Ustring.toAscii (#id name)) args]
-        val (tag:Mach.VAL_TAG) = Mach.ClassTag name
-        val (proto:Mach.VAL) = if hasOwnValue classObj Name.public_prototype
-                               then getValue classObj Name.public_prototype
-                               else Mach.Null
-                                    
-        (* FIXME: might have 'this' binding wrong in class scope here. *)
-        val (classScope:Mach.SCOPE) = extendScope env 
-                                                  classObj 
-                                                  Mach.InstanceScope
-        val (instanceObj:Mach.OBJ) = Mach.newObj tag proto NONE
         val Mach.Obj { ident, ... } = classObj
-        val classRegs = { scope = classScope, 
-                          this = instanceObj }
+        val {cls = Ast.Cls { name, ...}, ...} = classClosure
+        val _ = push ["new ", callApprox (Ustring.toAscii (#id name)) args]
     in
-        trace ["allocating ", 
-               Int.toString (length instanceFixtures), 
-               " instance fixtures for new ", fmtName name];
-        allocObjFixtures classRegs instanceObj (SOME instanceObj) instanceFixtures;
-        trace ["entering most derived constructor for ", fmtName name];
-        initializeAndConstruct classClosure classObj classRegs args instanceObj;
-        runAnySpecialConstructor ident args instanceObj;
-        trace ["finished constructing new ", fmtName name];
-        pop ();
-        Mach.Object instanceObj
+        case constructSpecial ident classObj classClosure args of
+            SOME v => (pop (); v)
+          | NONE => 
+            let     
+                val obj = constructStandard classObj classClosure args
+            in
+                pop ();
+                Mach.Object obj
+            end                
     end
 
 
@@ -3749,6 +3814,7 @@ fun bindSpecialIdentities _ =
     in
         List.app bindIdent
                  [ 
+                  (Name.public_Object, ObjectClassIdentity),
                   (Name.public_Array, ArrayClassIdentity),
                   (Name.public_Function, FunctionClassIdentity)
                  ];
