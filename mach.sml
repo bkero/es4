@@ -122,7 +122,8 @@ withtype FUN_CLOSURE =
            env: SCOPE }
 
      and NATIVE_FUNCTION = 
-         (VAL list -> VAL)
+         { func: (VAL list -> VAL),
+           length: int } 
 
      and OBJ_IDENT = 
          int

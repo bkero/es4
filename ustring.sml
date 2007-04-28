@@ -85,6 +85,7 @@ fun append       (l:STRING list) : STRING = internal_append l
  * pre-defined strings
  *)
 
+val empty                    = fromString ""
 val zero                     = fromString "0"
 val asterisk                 = fromString "*"
 val dollar                   = fromString "$"
