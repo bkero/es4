@@ -11,7 +11,7 @@
  * Status: Complete; Not reviewed; Not tested.
  */
 
-package RegExpInternals
+package /*RegExpInternals*/  // FIXME: package bug
 {
     import Unicode.*;
     use namespace intrinsic;
