@@ -4,7 +4,8 @@ structure Defn = struct
 (* Local tracing machinery *)
 
 val doTrace = ref false
-fun trace ss = if (!doTrace) then LogErr.log ("[defn] " :: ss) else ()
+fun log ss = LogErr.log ("[defn] " :: ss)
+fun trace ss = if (!doTrace) then log ss else ()
 fun trace2 (s, us) = if (!doTrace) then LogErr.log ["[defn] ", s, Ustring.toAscii us] else ()
 fun error ss = LogErr.defnError ss
 
@@ -1981,7 +1982,7 @@ and defStmt (env:ENV)
     let
         val ctx = case env of ctx::_ => ctx | _ => LogErr.internalError ["empty evironment in defStmt"]
 
-        fun reconstructForEnumStmt (fe:Ast.FOR_ENUM_STMT) = 
+        fun defForEnumStmt env (fe:Ast.FOR_ENUM_STMT) = 
             let
                 fun defVarDefnOpt vd =
                     case vd of
@@ -1998,13 +1999,13 @@ and defStmt (env:ENV)
                     val tempEnv = updateTempOffset env 1   (* alloc temp for iteration value *)
                     val (newNext,_) = defStmt tempEnv [] next
                 in
-                    ({ isEach=isEach, 
-                       obj = newObj,
-                       defn = defn,
-                       labels = labels,
-                       body = newBody, 
-                       fixtures = SOME uf1,
-                       next = newNext },
+                    (Ast.ForInStmt { isEach=isEach, 
+                                     obj = newObj,
+                                     defn = defn,
+                                     labels = Ustring.empty::labelIds,
+                                     body = newBody, 
+                                     fixtures = SOME uf1,
+                                     next = newNext },
                      List.foldl mergeFixtures hf1 hoisted)
                 end
             end
@@ -2031,7 +2032,7 @@ and defStmt (env:ENV)
             for ( x=10; x > 0; --x ) ...
         *)
 
-        fun defnForStmt env { defn, init, cond, update, labels, body, fixtures } =
+        fun defForStmt env { defn, init, cond, update, labels, body, fixtures } =
             let
                 fun defVarDefnOpt vd =
                     case vd of
@@ -2049,7 +2050,7 @@ and defStmt (env:ENV)
                                 init = newInit,
                                 cond = newCond,
                                 update = newUpdate,
-                                labels = Ustring.empty::labels,  (* add the default break/continue label *)
+                                labels = Ustring.empty::labelIds,
                                 body = newBody,
                                 fixtures = SOME (uf) },
                   (List.foldl mergeFixtures hf hoisted) )
@@ -2199,7 +2200,12 @@ and defStmt (env:ENV)
             end
 
           | Ast.ForInStmt fe => 
-            (inl Ast.ForInStmt (reconstructForEnumStmt fe))
+            let
+                val env' = addLabels env (map makeIterationLabel labelIds)
+                val env'' = addLabel env' (makeIterationLabel Ustring.empty)
+            in
+                defForEnumStmt env'' fe
+            end
             
           | Ast.ThrowStmt es => 
             (Ast.ThrowStmt (defExpr env es), [])
@@ -2259,7 +2265,7 @@ and defStmt (env:ENV)
                 val env' = addLabels env (map makeIterationLabel labelIds);
                 val env'' = addLabel env' (makeIterationLabel Ustring.empty)
             in
-                defnForStmt env'' f
+                defForStmt env'' f
             end
             
           | Ast.IfStmt { cnd, thn, els } => 
