@@ -6063,11 +6063,11 @@ and classDefinition (ts,attrs:ATTRS) =
                                  ident=ident,
                                  name=NONE,
                                  block=Ast.Block {body=body,
-                                                  defns=letDefns,
+                                                  defns=classDefn::letDefns,
                                                   head=NONE,
                                                   pragmas=pragmas,
                                                   pos=posOf ts2}}],
-                      defns=[classDefn],
+                      defns=[],
                       head=NONE,
                       pos=posOf ts})
             end

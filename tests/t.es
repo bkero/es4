@@ -1,8 +1,8 @@
-/*
 package p.q {
-public class A { var x = 10 }
+public class A { public var x = 10 }
 }
-*/
+import p.q.A
+intrinsic::print(new A().x)
 
 /*
 let f = function (x:int) { return x + x }
@@ -14,10 +14,3 @@ f(10)
 intrinsic::print(x)
 */
 
-package p {
-public class A {
-public static var x = 10
-}
-}
-import p.A
-intrinsic::print(p.A.x)
