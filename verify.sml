@@ -378,6 +378,19 @@ fun checkConvertible (ty1:TYPE_VALUE)
     (* TODO: int to float, etc, and to() methods *)
     checkCompatible ty1 ty2
     
+fun leastUpperBound (t1:TYPE_VALUE)
+                    (t2:TYPE_VALUE)
+    : TYPE_VALUE =
+    let
+    in
+        if (isSubtype t1 t2) then
+            t2
+        else if (isSubtype t2 t1) then
+            t1
+        else
+            Ast.UnionType [t1, t2]
+    end
+
 
 (******************** Verification **************************************************)
 
@@ -405,7 +418,7 @@ and verifyHead (env:ENV) ((fixtures, inits):Ast.HEAD)
 
 and verifyExpr (env:ENV) 
                (expr:Ast.EXPR) 
-    : (Ast.EXPR * Ast.TYPE_EXPR) = 
+    : (Ast.EXPR * TYPE_VALUE) = 
     let
         fun verifySub e = 
             let
@@ -417,23 +430,63 @@ and verifyExpr (env:ENV)
             (Ast.ExpectedTypeExpr (t, e), t)
         val dummyType = Ast.SpecialType Ast.Any
         val { strict, ... } = env
+        fun whenStrict (thunk:unit -> unit) : unit =
+            if strict
+            then thunk ()
+            else ()
     in
         case expr of 
             Ast.TernaryExpr (t, e1, e2, e3) =>
             let
-                val e1' = verifySub e1
+                val (e1', t1) = verifyExpr env e1
                 val (e2', t2) = verifyExpr env e2
                 val (e3', t3) = verifyExpr env e3
             in
-                return (Ast.TernaryExpr (t, e1', e2', e3'), dummyType)
+                whenStrict (fn () => checkConvertible t1 boolType);
+                (* FIXME: this produces a union type. is that right? *)
+                return (Ast.TernaryExpr (t, e1', e2', e3'), leastUpperBound t2 t3)
             end
             
           | Ast.BinaryExpr (b, e1, e2) =>
             let
-                val e1' = verifySub e1
-                val e2' = verifySub e2
+                val (e1', t1) = verifyExpr env e1
+                val (e2', t2) = verifyExpr env e2
+                (* FIXME: these are way wrong. *)
+                (* FIXME: need to deal with operator overloading *)
+                val (expectedType1, expectedType2, resultType) =
+                    case b of
+                         Ast.Plus mode => (numberType, numberType, numberType)
+                       | Ast.Minus mode => (numberType, numberType, numberType)
+                       | Ast.Times mode => (numberType, numberType, numberType)
+                       | Ast.Divide mode => (numberType, numberType, numberType)
+                       | Ast.Remainder mode => (numberType, numberType, numberType)
+                       | Ast.LeftShift => (numberType, numberType, numberType)
+                       | Ast.RightShift => (numberType, numberType, numberType)
+                       | Ast.RightShiftUnsigned => (numberType, numberType, numberType)
+                       | Ast.BitwiseAnd => (numberType, numberType, numberType)
+                       | Ast.BitwiseOr => (numberType, numberType, numberType)
+                       | Ast.BitwiseXor => (numberType, numberType, numberType)
+                       | Ast.LogicalAnd => (boolType, boolType, boolType)
+                       | Ast.LogicalOr => (boolType, boolType, boolType)
+                       | Ast.InstanceOf => (anyType, typeType, boolType)
+                       | Ast.In => (anyType, anyType, boolType)
+                       | Ast.Equals mode => (anyType, anyType, boolType)
+                       | Ast.NotEquals mode => (anyType, anyType, boolType)
+                       | Ast.StrictEquals mode => (anyType, anyType, boolType)
+                       | Ast.StrictNotEquals mode => (anyType, anyType, boolType)
+                       | Ast.Less mode => (numberType, numberType, boolType)
+                       | Ast.LessOrEqual mode => (numberType, numberType, boolType)
+                       | Ast.Greater mode => (numberType, numberType, boolType)
+                       | Ast.GreaterOrEqual mode => (numberType, numberType, boolType)
+                       | Ast.Comma => (anyType, anyType, t2)
             in
-                return (Ast.BinaryExpr (b, e1', e2'), dummyType)
+                whenStrict (fn () =>
+                               let
+                               in
+                                   checkCompatible t1 expectedType1;
+                                   checkCompatible t2 expectedType2
+                               end);
+                return (Ast.BinaryExpr (b, e1', e2'), resultType)
             end
 
           | Ast.ExpectedTypeExpr (t, e) =>
