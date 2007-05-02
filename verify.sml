@@ -241,6 +241,12 @@ fun mergeTypes t1 t2 =
 	(*FIXME*)
     t1
 
+fun funcSigType (env:ENV)
+                (fsig:Ast.FUNC_SIG)
+    : TYPE_VALUE =
+    (* TODO: implement this *)
+    anyType
+
 (************************* Compatibility *********************************)
 
 and isSubtype (t1:TYPE_VALUE)
@@ -420,11 +426,14 @@ and verifyExpr (env:ENV)
                (expr:Ast.EXPR) 
     : (Ast.EXPR * TYPE_VALUE) = 
     let
-        fun verifySub e = 
+        fun verifySub e = verifyExpr env e
+        fun verifySubList es = verifyExprs env es
+        fun verifySubOption NONE = (NONE, NONE)
+          | verifySubOption (SOME e) =
             let
-                val (e,t) = verifyExpr env e
+                val (e', t) = verifySub e
             in
-                e
+                (SOME e', SOME t)
             end
         fun return (e, t) =
             (Ast.ExpectedTypeExpr (t, e), t)
@@ -438,9 +447,9 @@ and verifyExpr (env:ENV)
         case expr of 
             Ast.TernaryExpr (t, e1, e2, e3) =>
             let
-                val (e1', t1) = verifyExpr env e1
-                val (e2', t2) = verifyExpr env e2
-                val (e3', t3) = verifyExpr env e3
+                val (e1', t1) = verifySub e1
+                val (e2', t2) = verifySub e2
+                val (e3', t3) = verifySub e3
             in
                 whenStrict (fn () => checkConvertible t1 boolType);
                 (* FIXME: this produces a union type. is that right? *)
@@ -449,8 +458,8 @@ and verifyExpr (env:ENV)
             
           | Ast.BinaryExpr (b, e1, e2) =>
             let
-                val (e1', t1) = verifyExpr env e1
-                val (e2', t2) = verifyExpr env e2
+                val (e1', t1) = verifySub e1
+                val (e2', t2) = verifySub e2
                 (* FIXME: these are way wrong. *)
                 (* FIXME: need to deal with operator overloading *)
                 val (expectedType1, expectedType2, resultType) =
@@ -494,51 +503,114 @@ and verifyExpr (env:ENV)
 
           | Ast.BinaryTypeExpr (b, e, te) =>
             let
-                val e' = verifySub e
-                val te' = verifyTypeExpr env te
+                val (e', t1) = verifySub e
+                val t2 = verifyTypeExpr env te
+                val resultType = case b of
+                                      Ast.Is => boolType
+                                    | _ => t2
             in
-                return (Ast.BinaryTypeExpr (b, e', te'), dummyType)
+                whenStrict (fn () => case b of
+                                          Ast.To => checkConvertible t1 t2
+                                        | _ => checkCompatible t1 t2);
+                return (Ast.BinaryTypeExpr (b, e', t2), resultType)
             end
 
           | Ast.UnaryExpr (u, e) =>
             let
-                val e' = verifySub e
+                val (e', t) = verifySub e
+                val resultType = case u of
+                                      (* FIXME: these are probably mostly wrong *)
+                                      Ast.Delete => boolType
+                                    | Ast.Void => undefinedType
+                                    | Ast.Typeof => stringType
+                                    | Ast.PreIncrement mode => numberType
+                                    | Ast.PreDecrement mode => numberType
+                                    | Ast.PostIncrement mode => numberType
+                                    | Ast.PostDecrement mode => numberType
+                                    | Ast.UnaryPlus mode => numberType
+                                    | Ast.UnaryMinus mode => numberType
+                                    | Ast.BitwiseNot => numberType
+                                    | Ast.LogicalNot => boolType
+                                    (* TODO: isn't this supposed to be the prefix of a type expression? *)
+                                    | Ast.Type => typeType
             in
-                return (Ast.UnaryExpr (u, e'), dummyType)
+                whenStrict (fn () =>
+                               case u of
+                                    (* FIXME: these are probably wrong *)
+                                    Ast.Delete => ()
+                                  | ( Ast.PreIncrement mode | Ast.PreDecrement mode
+                                    | Ast.PostIncrement mode | Ast.PostDecrement mode
+                                    | Ast.UnaryPlus mode | Ast.UnaryMinus mode ) =>
+                                    checkCompatible t numberType
+                                  | Ast.BitwiseNot =>
+                                    checkCompatible t numberType
+                                  | Ast.LogicalNot =>
+                                    checkConvertible t boolType
+                                  (* TODO: Ast.Type? *)
+                                  | _ => ());
+                return (Ast.UnaryExpr (u, e'), resultType)
             end
 
           | Ast.TypeExpr t => 
             let
                 val t' = verifyTypeExpr env t
             in
-                return (Ast.TypeExpr t', dummyType)
+                return (Ast.TypeExpr t', typeType)
             end
 
           | Ast.ThisExpr =>
+            (* FIXME: type of current class, if any... also Self type? *)
             return (Ast.ThisExpr, dummyType)
 
           | Ast.YieldExpr eo =>
             let
-                val eo' = Option.map verifySub eo
+                val (eo', t) = verifySubOption eo
             in
-                return (Ast.YieldExpr eo', dummyType)
+                (* TODO: strict check that returnType is Generator.<t> *)
+                return (Ast.YieldExpr eo', anyType)
             end
 
           | Ast.SuperExpr eo =>
             let
-                val eo' = Option.map verifySub eo
+                val (eo', t) = verifySubOption eo
             in
+                (* TODO: what is this AST form again? *)
                 return (Ast.SuperExpr eo', dummyType)
             end
             
           | Ast.LiteralExpr le => 
-            (* TODO *)
-            return (Ast.LiteralExpr le, dummyType)
-            
+            let
+                val resultType = case le of
+                                      Ast.LiteralNull => nullType
+                                    | Ast.LiteralUndefined => undefinedType
+                                    | Ast.LiteralDouble _ => doubleType
+                                    | Ast.LiteralDecimal _ => decimalType
+                                    | Ast.LiteralInt _ => intType
+                                    | Ast.LiteralUInt _ => uintType
+                                    | Ast.LiteralBoolean _ => boolType
+                                    | Ast.LiteralString _ => stringType
+                                    | Ast.LiteralArray { ty=SOME ty, ... } => verifyTypeExpr env ty
+                                    (* FIXME: how do we want to represent [*] ? *)
+                                    | Ast.LiteralArray { ty=NONE, ... } => Ast.ArrayType []
+                                    (* TODO: define this *)
+                                    | Ast.LiteralXML _ => anyType
+                                    | Ast.LiteralNamespace _ => namespaceType
+                                    | Ast.LiteralObject { ty=SOME ty, ... } => verifyTypeExpr env ty
+                                    (* FIXME: how do we want to represent {*} ? *)
+                                    | Ast.LiteralObject { ty=NONE, ... } => anyType
+                                    | Ast.LiteralFunction (Ast.Func { fsig, ... }) => funcSigType env fsig
+                                    | Ast.LiteralRegExp _ => regexpType
+                                    | _ => internalError ["unprocessed literal returned by Defn"]
+            in
+                return (Ast.LiteralExpr le, resultType)
+            end
+
+          (* TODO: ---------- left off here ---------- *)
+
           | Ast.CallExpr {func, actuals} => 
             let
-                val func' = verifySub func
-                val actuals' = List.map verifySub actuals
+                val (func', t) = verifySub func
+                val (actuals', ts) = verifySubList actuals
             in
                 return (Ast.CallExpr { func = func',
                                        actuals = actuals' }, dummyType)
@@ -546,7 +618,7 @@ and verifyExpr (env:ENV)
 
           | Ast.ApplyTypeExpr { expr, actuals } =>
             let
-                val expr' = verifySub expr
+                val (expr', t) = verifySub expr
                 val actuals' = List.map (verifyTypeExpr env) actuals
             in
                 return (Ast.ApplyTypeExpr { expr = expr',
@@ -558,7 +630,7 @@ and verifyExpr (env:ENV)
                 val defs' = defs (* TODO *)
                 val head' = Option.map (verifyHead env) head
                 (* TODO: verify body with `head' fixtures in env *)
-                val body' = verifySub body
+                val (body', t) = verifySub body
             in
                 return (Ast.LetExpr { defs = defs',
                                       body = body',
@@ -567,8 +639,8 @@ and verifyExpr (env:ENV)
 
           | Ast.NewExpr { obj, actuals } => 
             let
-                val obj' = verifySub obj
-                val actuals' = List.map verifySub actuals
+                val (obj', t) = verifySub obj
+                val (actuals', ts) = verifySubList actuals
             in
                 return (Ast.NewExpr { obj = obj',
                                       actuals = actuals' }, dummyType)
@@ -576,7 +648,7 @@ and verifyExpr (env:ENV)
 
           | Ast.ObjectRef { base, ident, pos } =>
             let
-                val base' = verifySub base
+                val (base', t) = verifySub base
                 val ident' = ident (* TODO *)
             in
                 return (Ast.ObjectRef { base=base', ident=ident', pos=pos }, dummyType)
@@ -591,8 +663,8 @@ and verifyExpr (env:ENV)
 
           | Ast.SetExpr (a, le, re) => 
             let
-                val le' = verifySub le
-                val re' = verifySub re
+                val (le', t1) = verifySub le
+                val (re', t2) = verifySub re
             in
                 return (Ast.SetExpr (a, le', re'), dummyType)
             end
@@ -606,16 +678,16 @@ and verifyExpr (env:ENV)
 
           | Ast.ListExpr es => 
             let
-                val es' = List.map verifySub es
+                val (es', ts) = verifySubList es
             in
                 return (Ast.ListExpr es', dummyType)
             end
 
           | Ast.SliceExpr (a, b, c) => 
             let
-                val a' = verifySub a
-                val b' = verifySub b
-                val c' = verifySub c
+                val (a', t1) = verifySub a
+                val (b', t2) = verifySub b
+                val (c', t3) = verifySub c
             in
                 return (Ast.SliceExpr (a, b, c), dummyType)
             end
