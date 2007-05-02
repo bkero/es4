@@ -15,6 +15,9 @@ val FunctionClassIdentity = ref (~1)
 val StringClassIdentity = ref (~1)
 val NumberClassIdentity = ref (~1)
 
+val booleanTrue : (Mach.VAL option) ref = ref NONE
+val booleanFalse : (Mach.VAL option) ref = ref NONE
+
 fun join sep ss = 
     case ss of 
         [] => ""
@@ -278,8 +281,13 @@ fun allocFixtures (regs:Mach.REGS)
                         val _ = trace ["allocating fixture for property ", fmtName pn]
                         fun allocProp state p = 
                             if Mach.hasProp props pn
-                            then error ["allocating duplicate property name: ", 
-                                        fmtName pn]
+                               (* FIXME: make a detailed check of fixture-compatibility here! *)
+                               (* error ["allocating duplicate property name: ", 
+                                        fmtName pn] *)
+                            then (trace ["replacing fixture for ", state, " property ", 
+                                         fmtName pn];
+                                  Mach.delProp props pn; Mach.addProp props pn p)
+                                 
                             else (trace ["allocating fixture for ", state, " property ", 
                                          fmtName pn]; 
                                   Mach.addProp props pn p)                            
@@ -502,18 +510,16 @@ and getValueOrVirtual (obj:Mach.OBJ)
                  
                | Mach.ValProp v => v)
           | NONE => 
-            if Mach.hasProp props Name.meta_get
-            then 
-                let 
-                    (* FIXME: no idea if this is correct behavior for meta::get *)
-                    val metaGetFn = needObj (getValueOrVirtual obj Name.meta_get false)
-                    val nameObj = (* FIXME: need a builtin Name.es object here. *)
-                        newString (#id name)
-                in
-                    evalCallExpr obj metaGetFn [nameObj]
-                end
-            else
-                Mach.Undef
+            let
+                fun catchAll _ = 
+                    (* FIXME: need to use builtin Name.es object here, when that file exists. *)
+                    evalCallMethodByRef obj (obj, Name.meta_get) [newString (#id name)]
+            in
+                case Mach.findProp props Name.meta_get of                    
+                    SOME { state = Mach.MethodProp _, ... } => catchAll ()
+                  | SOME { state = Mach.NativeFunctionProp _, ... } => catchAll ()
+                  | _ => Mach.Undef
+            end
     end
 
 and getValue (obj:Mach.OBJ)
@@ -521,13 +527,13 @@ and getValue (obj:Mach.OBJ)
     : Mach.VAL = 
     getValueOrVirtual obj name true
 
-and setValueOrVirtual (base:Mach.OBJ) 
+and setValueOrVirtual (obj:Mach.OBJ) 
                       (name:Ast.NAME) 
                       (v:Mach.VAL) 
                       (doVirtual:bool) 
     : unit =     
     let
-        val Mach.Obj { props, ... } = base
+        val Mach.Obj { props, ... } = obj
     in
         case Mach.findProp props name of
             SOME existingProp => 
@@ -572,7 +578,7 @@ and setValueOrVirtual (base:Mach.OBJ)
                     
                   | Mach.VirtualValProp { setter = SOME s, ... } => 
                     if doVirtual
-                    then (invokeFuncClosure base s [v]; ())
+                    then (invokeFuncClosure obj s [v]; ())
                     else write ()
                          
                   | Mach.VirtualValProp { setter = NONE, ... } => 
@@ -587,28 +593,31 @@ and setValueOrVirtual (base:Mach.OBJ)
                     else write ()
             end
           | NONE =>  
-            if doVirtual andalso Mach.hasProp props Name.meta_set
-            then 
-                let 
-                    (* FIXME: no idea if this is correct behavior for meta::set *)
-                    val metaSetFn = needObj (getValueOrVirtual base Name.meta_set false)
-                    val nameObj = (* FIXME: need a builtin Name.es object here. *)
-                        newString (#id name)
-                in
-                    evalCallExpr base metaSetFn [nameObj, v];
-                    ()
-                end
-            else
-                let 
-                    val prop = { state = Mach.ValProp v,
-                                 ty = Ast.SpecialType Ast.Any,
-                                 attrs = { dontDelete = false,
-                                           dontEnum = false,
-                                           readOnly = false,
-                                           isFixed = false } }
-                in
-                    Mach.addProp props name prop
-                end
+            let
+                fun newProp _ = 
+                    let 
+                        val prop = { state = Mach.ValProp v,
+                                     ty = Ast.SpecialType Ast.Any,
+                                     attrs = { dontDelete = false,
+                                               dontEnum = false,
+                                               readOnly = false,
+                                               isFixed = false } }
+                    in
+                        Mach.addProp props name prop
+                    end                    
+                fun catchAll _ = 
+                    (* FIXME: need to use builtin Name.es object here, when that file exists. *)
+                    (evalCallMethodByRef obj (obj, Name.meta_set) [newString (#id name), v]; ())
+            in
+                if doVirtual
+                then 
+                    case Mach.findProp props Name.meta_set of                    
+                        SOME { state = Mach.MethodProp _, ... } => catchAll ()
+                      | SOME { state = Mach.NativeFunctionProp _, ... } => catchAll ()
+                      | _ => newProp ()
+                else
+                    newProp ()
+            end
     end
 
 
@@ -776,7 +785,20 @@ and newByteArray (b:Word8Array.array)
 
 and newBoolean (b:bool) 
     : Mach.VAL = 
-    newBuiltin Name.public_boolean (SOME (Mach.Boolean b))
+    let
+        val refcell = if b then booleanTrue else booleanFalse
+    in
+        case !refcell of
+            SOME v => v
+          | NONE => 
+            let
+                val v = newBuiltin Name.public_boolean (SOME (Mach.Boolean b))
+            in
+                refcell := SOME v;
+                v
+            end
+    end
+    
 
 and newNamespace (n:Ast.NAMESPACE) 
     : Mach.VAL =
@@ -1619,14 +1641,10 @@ and evalCallExpr (thisObj:Mach.OBJ)
             (trace ["entering standard function"]; 
              invokeFuncClosure thisObj f args)
           | _ => 
-            if hasValue fobj Name.meta_invoke
+            if hasOwnValue fobj Name.meta_invoke
             then
-                let 
-                    val _ = trace ["redirecting through meta::invoke"]
-                    val invokeFn = getValue fobj Name.meta_invoke
-                in
-                    evalCallExpr thisObj (needObj invokeFn) args
-                end
+                (trace ["redirecting through meta::invoke"];
+                 evalCallMethodByRef thisObj (fobj, Name.meta_invoke) args)
             else error ["calling non-callable object"]
 
 
@@ -2102,12 +2120,25 @@ and performBinop (bop:Ast.BINOP)
                             ( LargeInt.div )
 
           | Ast.Remainder mode => 
-            dispatchNumeric ( valOf mode ) 
-                            ( Decimal.remainder )
-                            ( Real64.rem )
-                            ( Int32.mod )
-                            ( Word32.mod )
-                            ( LargeInt.mod )
+            let
+                (* 
+                 * Something is numerically *very wrong* 
+                 * with the Real64.rem operation.
+                 *)
+                fun realRem (x,y) = 
+                    let 
+                        val n = Real.realTrunc(x / y)
+                    in
+                        x - ( n * y)
+                    end
+            in
+                dispatchNumeric ( valOf mode ) 
+                                ( Decimal.remainder )
+                                ( realRem )
+                                ( Int32.mod )
+                                ( Word32.mod )
+                                ( LargeInt.mod )
+            end
 
           | Ast.LeftShift => 
             pickRepByA (Word32.<< ((i2u (toInt32 a)),

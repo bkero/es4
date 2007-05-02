@@ -29,7 +29,7 @@ package
             x is uint ? x : new uint(x);
 
         /* E262-4 draft: The uint constructor */
-        function uint(x)
+        function uint(x) : super(x)
             magic::bindUInt(this, x);
 
         /* E262-4 draft: uint.prototype.toString */

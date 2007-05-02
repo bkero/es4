@@ -208,7 +208,7 @@ val (curr_chars    : UTF8.wchar list ref) = ref []
 <INITIAL>"yield"           => (Yield);
 
 <INITIAL>{whitespace}      => (continue());
-<INITIAL>{identifier}      => (Identifier yyunicode);
+<INITIAL>{identifier}      => (Identifier (Vector.fromList yyunicode));
 
 <INITIAL>{explicitIntLiteral} => (case Int32.fromString (chopTrailing yytext) of
 					  SOME i => ExplicitIntLiteral i
@@ -251,7 +251,7 @@ val (curr_chars    : UTF8.wchar list ref) = ref []
 				       (curr_chars := [];
 					found_newline := false;
 					YYBEGIN INITIAL;
-					RegexpLiteral re)
+					RegexpLiteral (Vector.fromList re))
 				end);
 <REGEXP>"["                 => (curr_chars := (UTF8.fromAscii #"[") :: !curr_chars;
 				YYBEGIN REGEXP_CHARSET;
@@ -289,7 +289,7 @@ val (curr_chars    : UTF8.wchar list ref) = ref []
 					curr_chars := [];
 					YYBEGIN INITIAL;
 					(* (StringLiteral str, str_span) *)
-					StringLiteral str
+					StringLiteral (Vector.fromList str)
 				    end
 				else
 				    (curr_chars := (hd yyunicode) :: (!curr_chars);

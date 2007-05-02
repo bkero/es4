@@ -63,8 +63,8 @@ package
         /* E262-3 15.5.4.2: String.prototype.toString */
         prototype function toString(this : String) {
             if (this is String)
-                return this;
-            throw new TypeError();
+                return string(this);
+            throw new TypeError("String.prototype.toString called on incompatible " + typeof(this));
         }
 
         override intrinsic function toString() : string
@@ -84,10 +84,10 @@ package
            E262-4 draft proposals:static_generics
         */
         prototype function charAt(pos)
-            ToString(this).charAt(pos);
+            ToString(this).charAt(ToDouble(pos));
 
         static function charAt(self, pos)
-            ToString(self).charAt(pos);
+            ToString(self).charAt(ToDouble(pos));
             
         intrinsic function charAt(pos: double = 0) : String
             ToString(this).charAt(pos);
@@ -96,10 +96,10 @@ package
            E262-4 draft proposals:static_generics
         */
         prototype function charCodeAt(pos)
-            ToString(this).charCodeAt(pos);
+            ToString(this).charCodeAt(ToDouble(pos));
 
         static function charCodeAt(self, pos)
-            ToString(self).charCodeAt(pos);
+            ToString(self).charCodeAt(ToDouble(pos));
 
         intrinsic function charCodeAt(pos: double = 0) : double
             ToString(this).charCodeAt(pos);
@@ -122,11 +122,11 @@ package
            E262-4 draft proposals:static_generics
            E262-4 draft proposals:bug_fixes - FUNCTION.LENGTH
         */
-        prototype function indexOf(searchString, position)
-            ToString(this).indexOf(searchString, position);
+        prototype function indexOf(searchString, position = 0.0)
+            ToString(this).indexOf(ToString(searchString), ToDouble(position));
 
-        static function indexOf(self, searchString, position)
-            ToString(self).indexOf(searchString, position);
+        static function indexOf(self, searchString, position = 0.0)
+            ToString(self).indexOf(ToString(searchString), ToDouble(position));
 
         intrinsic function indexOf(searchString: String!, position: double = 0.0) : double 
             ToString(this).indexOf(searchString, position);
@@ -135,11 +135,11 @@ package
            E262-4 draft proposals:static_generics
            E262-4 draft proposals:bug_fixes - FUNCTION.LENGTH
         */
-        prototype function lastIndexOf(searchString, position)
-            ToString(this).lastIndexOf(searchString, position);
+        prototype function lastIndexOf(searchString, position = 0.0)
+            ToString(this).lastIndexOf(ToString(searchString), ToDouble(position));
 
-        static function lastIndexOf(self, searchString, position)
-            ToString(self).lastIndexOf(searchString, position);
+        static function lastIndexOf(self, searchString, position = 0.0)
+            ToString(self).lastIndexOf(ToString(searchString), ToDouble(position));
 
         intrinsic function lastIndexOf(searchString: String!, position: double) : double 
             ToString(this).lastIndexOf(searchString, position);
@@ -148,10 +148,10 @@ package
            E262-4 draft proposals:static_generics
          */
         prototype function localeCompare(that)
-            ToString(this).localeCompare(that);
+            ToString(this).localeCompare(ToString(that));
 
         static function localeCompare(self, that)
-            ToString(self).localeCompare(that);
+            ToString(self).localeCompare(ToString(that));
 
         intrinsic function localeCompare(that : String!) : double
             ToString(this).localeCompare(that);
@@ -172,10 +172,10 @@ package
            E262-4 draft proposals:static_generics
          */
         prototype function replace(searchValue, replaceValue)
-            ToString(this).replace(searchValue, replaceValue);
+            ToString(this).replace(ToString(searchValue), ToString(replaceValue));
 
         static function replace(self, searchValue, replaceValue)
-            ToString(self).replace(searchValue, replaceValue);
+            ToString(self).replace(ToString(searchValue), ToString(replaceValue));
 
         intrinsic function replace(s, r) : String
             ToString(this).replace(searchValue, replaceValue);
@@ -196,10 +196,10 @@ package
            E262-4 draft proposals:static_generics
          */
         prototype function slice(start, end)
-            ToString(this).slice(start, end);
+            ToString(this).slice(ToDouble(start), ToDouble(end));
 
         static function slice(self, start, end)
-            ToString(self).slice(start, end);
+            ToString(self).slice(ToDouble(start), ToDouble(end));
 
         intrinsic function slice(s, e) : Array
             ToString(this).slice(s, e);
@@ -208,10 +208,10 @@ package
            E262-4 draft proposals:static_generics
         */
         prototype function split(separator, limit)
-            ToString(this).split(separator, limit);
+            ToString(this).split(ToString(separator), ToDouble(limit));
 
         static function split(self, separator, limit)
-            ToString(self).split(separator, limit);
+            ToString(self).split(ToString(separator), ToDouble(limit));
 
         intrinsic function split(separator, limit) : Array
             ToString(this).split(separator, limit);
@@ -220,10 +220,10 @@ package
            E262-4 draft proposals:static_generics
          */
         prototype function substring(start=0.0, end=undefined)
-            ToString(this).substring(start, end == undefined ? this.length : end);
+            ToString(this).substring(ToDouble(start), ToDouble(end == undefined ? this.length : end));
         
         static function substring(self, start, end) 
-            ToString(self).substring(start, end);
+            ToString(self).substring(ToDouble(start), ToDouble(end));
             
         intrinsic function substring(start: double, end: double) : string
             ToString(this).substring(start, end);

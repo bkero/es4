@@ -214,7 +214,7 @@ fun yyAction132 (strm, lastMatch) = (yystrm := strm;  continue())
 fun yyAction133 (strm, lastMatch) = let
       val yyunicode = yymkunicode(strm)
       in
-        yystrm := strm;  Identifier yyunicode
+        yystrm := strm;  Identifier (Vector.fromList yyunicode)
       end
 fun yyAction134 (strm, lastMatch) = let
       val yytext = yymktext(strm)
@@ -296,7 +296,7 @@ fun yyAction149 (strm, lastMatch) = let
 				       (curr_chars := [];
 					found_newline := false;
 					YYBEGIN INITIAL;
-					RegexpLiteral re)
+					RegexpLiteral (Vector.fromList re))
 				end
       end
 fun yyAction150 (strm, lastMatch) = (yystrm := strm;
@@ -366,7 +366,7 @@ fun yyAction161 (strm, lastMatch) = let
 					curr_chars := [];
 					YYBEGIN INITIAL;
 					(* (StringLiteral str, str_span) *)
-					StringLiteral str
+					StringLiteral (Vector.fromList str)
 				    end
 				else
 				    (curr_chars := (hd yyunicode) :: (!curr_chars);
@@ -546,7 +546,7 @@ fun yyQ388 (strm, lastMatch) = (case (yygetc(strm))
               then yyQ396(strm', lastMatch)
               else yystuck(lastMatch)
       (* end case *))
-fun yyQ394 (strm, lastMatch) = (case (yygetc(strm))
+fun yyQ389 (strm, lastMatch) = (case (yygetc(strm))
        of NONE => yyAction141(strm, yyNO_MATCH)
         | SOME(inp, strm') =>
             if inp = 0wx64
@@ -557,7 +557,7 @@ fun yyQ394 (strm, lastMatch) = (case (yygetc(strm))
                 else if inp < 0wx3A
                   then if inp <= 0wx2F
                       then yyAction141(strm, yyNO_MATCH)
-                      else yyQ394(strm', yyMATCH(strm, yyAction141, yyNO_MATCH))
+                      else yyQ389(strm', yyMATCH(strm, yyAction141, yyNO_MATCH))
                 else if inp = 0wx45
                   then yyQ388(strm', yyMATCH(strm, yyAction141, yyNO_MATCH))
                   else yyAction141(strm, yyNO_MATCH)
@@ -573,7 +573,7 @@ fun yyQ44 (strm, lastMatch) = (case (yygetc(strm))
        of NONE => yyAction17(strm, yyNO_MATCH)
         | SOME(inp, strm') =>
             if inp = 0wx30
-              then yyQ394(strm', yyMATCH(strm, yyAction17, yyNO_MATCH))
+              then yyQ389(strm', yyMATCH(strm, yyAction17, yyNO_MATCH))
             else if inp < 0wx30
               then if inp = 0wx2E
                   then yyQ417(strm', yyMATCH(strm, yyAction17, yyNO_MATCH))
@@ -582,7 +582,7 @@ fun yyQ44 (strm, lastMatch) = (case (yygetc(strm))
               then yyQ418(strm', yyMATCH(strm, yyAction17, yyNO_MATCH))
             else if inp < 0wx3C
               then if inp <= 0wx39
-                  then yyQ394(strm', yyMATCH(strm, yyAction17, yyNO_MATCH))
+                  then yyQ389(strm', yyMATCH(strm, yyAction17, yyNO_MATCH))
                   else yyAction17(strm, yyNO_MATCH)
               else yyAction17(strm, yyNO_MATCH)
       (* end case *))
@@ -734,29 +734,6 @@ fun yyQ61 (strm, lastMatch) = yyAction160(strm, yyNO_MATCH)
 fun yyQ62 (strm, lastMatch) = yyAction165(strm, yyNO_MATCH)
 fun yyQ384 (strm, lastMatch) = yyAction134(strm, yyNO_MATCH)
 fun yyQ385 (strm, lastMatch) = yyAction135(strm, yyNO_MATCH)
-fun yyQ389 (strm, lastMatch) = (case (yygetc(strm))
-       of NONE => yyAction141(strm, yyNO_MATCH)
-        | SOME(inp, strm') =>
-            if inp = 0wx64
-              then yyQ386(strm', yyMATCH(strm, yyAction141, yyNO_MATCH))
-            else if inp < 0wx64
-              then if inp = 0wx3A
-                  then yyAction141(strm, yyNO_MATCH)
-                else if inp < 0wx3A
-                  then if inp <= 0wx2F
-                      then yyAction141(strm, yyNO_MATCH)
-                      else yyQ394(strm', yyMATCH(strm, yyAction141, yyNO_MATCH))
-                else if inp = 0wx45
-                  then yyQ388(strm', yyMATCH(strm, yyAction141, yyNO_MATCH))
-                  else yyAction141(strm, yyNO_MATCH)
-            else if inp = 0wx6D
-              then yyQ387(strm', yyMATCH(strm, yyAction141, yyNO_MATCH))
-            else if inp < 0wx6D
-              then if inp = 0wx65
-                  then yyQ388(strm', yyMATCH(strm, yyAction141, yyNO_MATCH))
-                  else yyAction141(strm, yyNO_MATCH)
-              else yyAction141(strm, yyNO_MATCH)
-      (* end case *))
 fun yyQ391 (strm, lastMatch) = (case (yygetc(strm))
        of NONE => yyAction139(strm, yyNO_MATCH)
         | SOME(inp, strm') =>
