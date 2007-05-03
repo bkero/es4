@@ -3,7 +3,6 @@ structure Ustring = struct
 
 type STRING = UTF8.wchar vector
 
-val empty:STRING = #[]
 
 (*
  * Internal functions with intentionally ugly names
@@ -28,7 +27,7 @@ fun fixNegative s =
     if String.sub (s, 0) = #"~"
     then "-" ^ String.extract (s, 1, NONE)
     else s
-	 
+
 fun internal_fromInt n = internal_fromString (fixNegative (Int.toString n))
 
 fun internal_fromInt32 n = internal_fromString (fixNegative (Int32.toString n))
