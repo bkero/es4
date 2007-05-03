@@ -605,17 +605,32 @@ and verifyExpr (env:ENV)
                 return (Ast.LiteralExpr le, resultType)
             end
 
-          (* TODO: ---------- left off here ---------- *)
-
           | Ast.CallExpr {func, actuals} => 
             let
                 val (func', t) = verifySub func
                 val (actuals', ts) = verifySubList actuals
+                val resultType = case t of
+                                      Ast.FunctionType { result, ... } => result
+                                    | _ => anyType
             in
-                return (Ast.CallExpr { func = func',
-                                       actuals = actuals' }, dummyType)
+                whenStrict (fn () =>
+                               case t of
+                                    (* FIXME: deal with type parameters *)
+                                    Ast.FunctionType { typeParams, params, result, thisType, hasRest, minArgs } =>
+                                    if (List.length actuals) < minArgs then
+                                        verifyError ["too few actuals"]
+                                    else if (not hasRest) andalso
+                                            ((List.length actuals) > (List.length params)) then
+                                        verifyError ["too many actuals"]
+                                    else
+                                        List.app (fn (formal, actual) => checkCompatible formal actual)
+                                                 (ListPair.zip (params, ts))
+                                  | Ast.SpecialType Ast.Any => ()
+                                  | _ => verifyError ["ill-typed call"]);
+                return (Ast.CallExpr { func = func', actuals = actuals' }, resultType)
             end
 
+            (* TODO: what is this? *)
           | Ast.ApplyTypeExpr { expr, actuals } =>
             let
                 val (expr', t) = verifySub expr
@@ -624,6 +639,8 @@ and verifyExpr (env:ENV)
                 return (Ast.ApplyTypeExpr { expr = expr',
                                             actuals = actuals' }, dummyType)
             end
+
+          (* TODO: ---------- left off here ---------- *)
 
           | Ast.LetExpr { defs, body, head } =>
             let
