@@ -44,10 +44,10 @@ package
             case 1:
                 let v = ToPrimitive(year);
                 if (v is string)
-                    return parse(v cast string);
+                    return parse(v);
 
                 timeval = TimeClip(ToDouble(v));
-                year = YearFromTime(timeval);
+                return;
             default:
                 ms = ToDouble(ms);
             case 6:
@@ -65,7 +65,6 @@ package
                 let intYear : int = ToInteger(year);
                 if (!isNaN(year) && 0 <= intYear && intYear <= 99)
                     intYear += 1900;
-
                 timeval = TimeClip(UTCTime(MakeDate(MakeDay(intYear, month, date), 
                                                     MakeTime(hours, minutes, seconds, ms))));
             }
@@ -199,7 +198,7 @@ package
                                      MakeTime(hours, minutes, seconds, ms)));
         }
 
-        static const dayNames = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+        static const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
         static const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", 
                                    "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
@@ -278,8 +277,8 @@ package
             /* "Fri, 15 Dec 2006 23:45:09 GMT-0800" */
             let (tz:double = timezoneOffset)
 	    let (atz:double = Math.abs(tz))
-	    (dayNames[date] + ", " + 
-	     twoDigit(day) + " " + 
+	    (dayNames[day] + ", " + 
+	     twoDigit(date) + " " + 
 	     monthNames[month] + " " + 
 	     fullYear + " " + 
 	     twoDigit(hours) + ":" + 
@@ -294,8 +293,8 @@ package
         /* INFORMATIVE */
         intrinsic function toUTCString() : string
             /* "Sat, 16 Dec 2006 08:06:21 GMT" */
-            dayNames[UTCDate] + ", " + 
-            twoDigit(UTCDay) + " " + 
+            dayNames[UTCDay] + ", " + 
+            twoDigit(UTCDate) + " " + 
             monthNames[UTCMonth] + " " +
             UTCFullYear + " " + 
             twoDigit(UTCHours) + ":" + 
@@ -309,8 +308,8 @@ package
         /* INFORMATIVE */
         intrinsic function toDateString() : string
             /* "Sat, 16 Dec 2006" */
-            dayNames[date] + ", " + 
-	    twoDigit(day) + " " + 
+            dayNames[day] + ", " + 
+	    twoDigit(date) + " " + 
 	    monthNames[month] + " " + 
 	    fullYear;
 
@@ -733,11 +732,13 @@ package
         static const hoursPerDay : double = 24;
         static const minutesPerHour : double = 60;
         static const secondsPerMinute : double = 60;
+        static const daysPerYear : double = 365.2425;
 
         static const msPerSecond : double = 1000;
         static const msPerMinute : double = msPerSecond * secondsPerMinute;
         static const msPerHour : double = msPerMinute * minutesPerHour;
         static const msPerDay : double = msPerHour * hoursPerDay;
+        static const msPerYear : double = msPerDay * daysPerYear;
 
         static const monthOffsets : [double] 
             = [0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334] : [double];
@@ -805,22 +806,22 @@ package
         }
 
         function DayFromYear(y : double) : double 
-            365*(y-1970) + Math.floor((y-1969)/4) - Math.floor((y-1901)/100) + Math.floor((y-1601)/400);
+            Math.floor((y - 1970) * daysPerYear);
 
         function TimeFromYear(y : double) : double
             msPerDay * DayFromYear(y);
 
         function InLeapYear(t : double) : double
-            (DaysInYear(YearFromTime(t)) == 365) ? 1 : 0;
+            (DaysInYear(YearFromTime(t)) == 365) ? 0 : 1;
 
         function MonthFromTime(t : double) : double {
             let dwy : double = DayWithinYear(t),
                 ily : double = InLeapYear(t);
-            for ( let i : int=0 ; i < monthOffsets.length-1 ; i++ ) {                
-                let j = i + 1;
-                let x = (monthOffsets[i] + ((i >= 2) ? ily : 0));
-                let y = (monthOffsets[j] + ((j >= 2) ? ily : 0));
-                if (dwy >= x && dwy < y)
+            for ( let i : int=monthOffsets.length-1; i >= 0; i-- ) {
+                let monthBegin = monthOffsets[i];                
+                if (i >= 2)
+                    monthBegin += ily;
+                if (dwy >= monthBegin)
                     return i;
             }
             /*NOTREACHED*/
@@ -830,13 +831,13 @@ package
             Day(t) - DayFromYear(YearFromTime(t));
 
         function DayFromMonth(m : double, leap : boolean) : double 
-            (monthOffsets[m] - 1) + (leap && m >= 2 ? 1 : 0);
+            monthOffsets[m] + (leap && m >= 2 ? 1 : 0);
 
         function DateFromTime(t : double) : double
             let (dwy : double = DayWithinYear(t),
                  mft : double = MonthFromTime(t),
                  ily : double = InLeapYear(t))
-                dwy - (monthOffsets[mft] - 1) - (mft >= 2 ? ily : 0);
+                dwy - (monthOffsets[mft]) - (mft >= 2 ? ily : 0);
 
         function WeekDay(t : double) : double
             (Day(t) + 4) % 7;
@@ -852,7 +853,7 @@ package
 
         /* INFORMATIVE */
         function YearFromTime(t : double) : double {
-            let y : double = Math.floor(t / (msPerDay * 365));
+            let y : double = Math.floor(t / msPerYear);
             return 1970 + y;
         }
 
