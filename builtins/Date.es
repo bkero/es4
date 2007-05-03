@@ -62,6 +62,17 @@ package
                 year = ToDouble(year);
                 month = ToDouble(month);
 
+                /*
+                print("Date() :",
+                      " year=", year, 
+                      ", month=", month,
+                      ", date=", date,
+                      ", hours=", hours,
+                      ", minutes=", minutes,
+                      ", seconds=", seconds,
+                      ", ms=", ms);
+                */
+
                 let intYear : int = ToInteger(year);
                 if (!isNaN(year) && 0 <= intYear && intYear <= 99)
                     intYear += 1900;
@@ -773,6 +784,16 @@ package
             let yearday = Math.floor(TimeFromYear(year) / msPerDay);
             let monthday = DayFromMonth(month, leap);
 
+            /*
+            print("MakeDay() : ",
+                  "year=", year,
+                  ", month=", month,
+                  ", date=", date,
+                  ", yearday=", yearday,
+                  ", monthday=", monthday,
+                  ", leap=", leap);
+            */
+
             return yearday + monthday + date - 1;
         }
 
@@ -780,23 +801,45 @@ package
             if (!isFinite(day) || !isFinite(time))
                 return NaN;
 
-            return day * msPerDay + time;
+            let res = day * msPerDay + time;
+
+            /*
+            print("MakeDate() : ",
+                  "day=", day,
+                  ", time=", time,
+                  ", result=", res);
+            */
+            
+            return res;
         }
 
         function Day(t : double) : double
             Math.floor(t / msPerDay);
 
-        function TimeWithinDay(t : double) : double
+        function TimeWithinDay(t : double) : double 
             t % msPerDay;
 
-        function HourFromTime(t : double) : double
-            Math.floor(t / msPerHour) % hoursPerDay;
+        function HourFromTime(t : double) : double {
+            let v : double = Math.floor(t / msPerHour) % hoursPerDay;
+            if (v < 0)
+                return v + hoursPerDay;
+            return v;
+        }        
 
-        function MinFromTime(t : double) : double
-            Math.floor(t / msPerMinute) % minutesPerHour;
+        function MinFromTime(t : double) : double {
+            let v : double = Math.floor(t / msPerMinute) % minutesPerHour;
+            if (v < 0)
+                return v + minutesPerHour;
+            return v;
+        }        
 
-        function SecFromTime(t : double) : double
-            Math.floor(t / msPerSecond) % secondsPerMinute;
+        function SecFromTime(t : double) : double {
+            let v : double = Math.floor(t / msPerSecond) % secondsPerMinute;
+            if (v < 0)
+                return v + secondsPerMinute;
+            return v;
+        }        
+
         
         function DaysInYear(y : double) : double {
             if (y % 4 !== 0) return 365;
@@ -806,7 +849,7 @@ package
         }
 
         function DayFromYear(y : double) : double 
-            Math.floor((y - 1970) * daysPerYear);
+            365 * (y-1970) + Math.floor((y-1969)/4) - Math.floor((y-1901)/100) + Math.floor((y-1601)/400);
 
         function TimeFromYear(y : double) : double
             msPerDay * DayFromYear(y);
@@ -834,13 +877,19 @@ package
             monthOffsets[m] + (leap && m >= 2 ? 1 : 0);
 
         function DateFromTime(t : double) : double
+            // Days-within-year are 0-based. Dates-within-months
+            // are 1-based. Hence the dwy+1 below: day 0 == Jan 1.
             let (dwy : double = DayWithinYear(t),
                  mft : double = MonthFromTime(t),
                  ily : double = InLeapYear(t))
-                dwy - (monthOffsets[mft]) - (mft >= 2 ? ily : 0);
+                (dwy+1) - (monthOffsets[mft]) - (mft >= 2 ? ily : 0);
 
-        function WeekDay(t : double) : double
-            (Day(t) + 4) % 7;
+        function WeekDay(t : double) : double {
+            let v : double = (Day(t) + 4) % 7;
+            if (v < 0)
+                return v + 7;
+            return v;
+        }
 
         function LocalTime(t : double) : double
             t + LocalTZA() + DaylightSavingsTA(t);
@@ -853,8 +902,15 @@ package
 
         /* INFORMATIVE */
         function YearFromTime(t : double) : double {
-            let y : double = Math.floor(t / msPerYear);
-            return 1970 + y;
+            let y : double = Math.floor(t / msPerYear) + 1970;
+            let t2 : double = TimeFromYear(y);
+            if (t2 > t) {
+                y--;
+            } else {
+                if (t2 + msPerDay * DaysInYear(y) <= t)
+                    y++;
+            }
+            return y;
         }
 
         native function LocalTZA() : double;
