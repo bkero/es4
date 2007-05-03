@@ -65,7 +65,7 @@ package
     intrinsic function ToObject(value) : Object! {
         if (value === undefined || value === null)
             throw new TypeError("Can't convert undefined or null to Object");
-        return value;
+        return new Object(value);
     }
 
     /* 

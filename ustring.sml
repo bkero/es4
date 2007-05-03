@@ -1,9 +1,9 @@
 
 structure Ustring = struct
 
-type STRING = UTF8.wchar list
+type STRING = UTF8.wchar vector
 
-val empty:STRING = []
+val empty:STRING = #[]
 
 (*
  * Internal functions with intentionally ugly names
@@ -11,20 +11,17 @@ val empty:STRING = []
  *)
 
 
-fun internal_fromString s = UTF8.explode s
+fun internal_fromString s = Vector.fromList (UTF8.explode s)
 
 fun internal_toEscapedAscii us =
     let
-        fun escapeChar c = explode (UTF8.toString c)
-        
-        fun toEscapedAscii [     ] accum = implode (List.rev accum)
-          | toEscapedAscii (c::cs) accum =
+	fun esc (c, ls) = 
             if UTF8.isAscii c then
-                toEscapedAscii cs (UTF8.toAscii c :: accum)
+		(UTF8.toAscii c) :: ls
             else
-                toEscapedAscii cs (List.revAppend (escapeChar c, accum))
+		(List.rev (explode (UTF8.toString c))) @ ls
     in
-        toEscapedAscii us []
+	implode (List.rev (Vector.foldl esc [] us))
     end
 
 fun fixNegative s = 
@@ -36,25 +33,19 @@ fun internal_fromInt n = internal_fromString (fixNegative (Int.toString n))
 
 fun internal_fromInt32 n = internal_fromString (fixNegative (Int32.toString n))
 
-fun internal_fromCharCode n = internal_fromString (Char.toString (Char.chr n))
+fun internal_fromCharCode n = #[Word.fromInt n]
 
-fun internal_stringLength us = length us
+fun internal_stringLength us = Vector.length us
 
-fun internal_stringAppend a b = a @ b
+fun internal_stringAppend a b = Vector.concat [a, b]
 
-fun internal_charCodeAt us n = Word.toInt (List.nth (us, n))
+fun internal_charCodeAt us n = Word.toInt (Vector.sub (us, n))
 
-fun internal_compare [     ] [     ] = EQUAL
-  | internal_compare [     ] (b::bb) = LESS
-  | internal_compare (a::aa) [     ] = GREATER
-  | internal_compare (a::aa) (b::bb) =
-        case Word.compare (a,b) of
-            EQUAL   => internal_compare aa bb
-          | unequal => unequal
+fun internal_compare a b = Vector.collate Word.compare (a,b)
 
-fun internal_substring us m n = List.take (List.drop (us, m), n)
+fun internal_substring us m n = VectorSlice.vector (VectorSlice.slice(us, m, SOME n))
 
-fun internal_append uss = List.concat uss
+fun internal_append uss = Vector.concat uss
 
 
 (*

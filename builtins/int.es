@@ -29,7 +29,7 @@ package
             x is int ? x : new int(x);
 
         /* E262-4 draft: The int constructor */
-        function int(x)
+        function int(x) : super(x)
             magic::bindInt(this, x);
 
         /* E262-4 draft: int.prototype.toString */

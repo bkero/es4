@@ -1,4 +1,4 @@
-/* -*- indent-tabs-mode: nil -*- */
+/* -*- mode: java; indent-tabs-mode: nil -*- */
 
 package Unicode
 {
@@ -130,4 +130,11 @@ package Unicode
             cs[i] = s.charAt(i);   /* FIXME: use [] syntax when it works */
         return cs;
     }
+
+    public function toUpperCaseCharCode(i : uint) : uint 
+        uint(i);
+
+    public function toLowerCaseCharCode(i : uint) : uint 
+        uint(i);
+
 }

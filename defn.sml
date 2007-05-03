@@ -279,7 +279,11 @@ fun mergeFixtures ((newName,newFix),oldFixs) =
                  else error ["incompatible redefinition of fixture name: ", LogErr.fname newName]
           | (Ast.MethodFixture new, Ast.MethodFixture old) => 
             replaceFixture oldFixs newName (Ast.MethodFixture new) (* FIXME: types *)
-          | _ => error ["redefining fixture name: ", LogErr.fname newName]
+          | (Ast.MethodFixture new, Ast.ValFixture old) => 
+            replaceFixture oldFixs newName (Ast.MethodFixture new) (* FIXME: types *)
+          | (Ast.ValFixture new, Ast.MethodFixture old) => 
+            replaceFixture oldFixs newName (Ast.ValFixture new) (* FIXME: types *)
+          | _ => error ["mergeFixtures: redefining fixture name: ", LogErr.fname newName]
     else
         (newName,newFix) :: oldFixs
 
@@ -294,16 +298,13 @@ fun eraseFixtures oldFixs ((newName,newFix),newFixs) =
     if hasFixture oldFixs newName
     then 
         case (newFix, getFixture oldFixs newName) of
-            (Ast.VirtualValFixture vnew,
-             Ast.VirtualValFixture vold) => 
-            replaceFixture newFixs newName 
-                           (Ast.VirtualValFixture 
-                                (mergeVirtuals newName vnew vold))
+            (Ast.VirtualValFixture vnew, Ast.VirtualValFixture vold) => newFixs
           | (Ast.ValFixture new, Ast.ValFixture old) =>
                  if (#ty new) = (#ty old) andalso (#readOnly new) = (#readOnly old)
                  then (trace ["erasing fixture ",LogErr.name (case newName of Ast.PropName n => n | _ => {ns=Ast.Internal Ustring.empty,id=Ustring.temp_})]; newFixs)
                  else error ["incompatible redefinition of fixture name: ", LogErr.fname newName]
-          | _ => error ["redefining fixture name: ", LogErr.fname newName]
+          | (Ast.MethodFixture new, Ast.MethodFixture old) => newFixs  (* FIXME: types *)
+          | _ => error ["eraseFixtures: redefining fixture name: ", LogErr.fname newName]
     else
         (newName,newFix) :: newFixs)
 
@@ -2590,7 +2591,11 @@ and defProgram (prog:Ast.PROGRAM)
         val (packages, hoisted_pkg) = ListPair.unzip (map (defPackage e) (#packages prog))
         val e = List.foldl addPackageName e packages
         val (block, hoisted_gbl) = defBlock (updateFixtures e (List.concat hoisted_pkg)) (#block prog)
-        val fixtures = List.foldl (eraseFixtures (!topFixtures)) [] (List.foldl mergeFixtures (List.concat hoisted_pkg) hoisted_gbl)
+
+        (* FIXME: erasefixtures seems completely wrong! -graydon *)
+        (* val fixtures = List.foldl (eraseFixtures (!topFixtures)) [] (List.foldl mergeFixtures (List.concat hoisted_pkg) hoisted_gbl)  *)
+        val fixtures = List.foldl mergeFixtures (List.concat hoisted_pkg) hoisted_gbl
+
         val result = {packages = packages,
                       block = block,
                       fixtures = SOME fixtures }

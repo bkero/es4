@@ -47,6 +47,7 @@ package
                     return parse(v cast string);
 
                 timeval = TimeClip(ToDouble(v));
+                year = YearFromTime(timeval);
             default:
                 ms = ToDouble(ms);
             case 6:
@@ -719,7 +720,7 @@ package
         /* Utilities */
 
         function twoDigit(n : double)
-            (n + 100).toString().substring(1);
+            (n + 100).toString().substring(1,3);
 
         function sign(n : double)
             n < 0 ? "-" : "+";
@@ -729,13 +730,15 @@ package
         var timeval : double;    // This object's time value
         var birthtime : double;  // INFORMATIVE.  For use by nanoAge
 
-        static const msPerDay : double = 86400000;
         static const hoursPerDay : double = 24;
         static const minutesPerHour : double = 60;
         static const secondsPerMinute : double = 60;
+
         static const msPerSecond : double = 1000;
         static const msPerMinute : double = msPerSecond * secondsPerMinute;
         static const msPerHour : double = msPerMinute * minutesPerHour;
+        static const msPerDay : double = msPerHour * hoursPerDay;
+
         static const monthOffsets : [double] 
             = [0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334] : [double];
 
@@ -785,8 +788,14 @@ package
         function TimeWithinDay(t : double) : double
             t % msPerDay;
 
-        function HoursFromTime(t : double) : double
+        function HourFromTime(t : double) : double
             Math.floor(t / msPerHour) % hoursPerDay;
+
+        function MinFromTime(t : double) : double
+            Math.floor(t / msPerMinute) % minutesPerHour;
+
+        function SecFromTime(t : double) : double
+            Math.floor(t / msPerSecond) % secondsPerMinute;
         
         function DaysInYear(y : double) : double {
             if (y % 4 !== 0) return 365;
@@ -802,15 +811,18 @@ package
             msPerDay * DayFromYear(y);
 
         function InLeapYear(t : double) : double
-            DaysInYear(YearFromTime(t)) ? 1 : 0;
+            (DaysInYear(YearFromTime(t)) == 365) ? 1 : 0;
 
         function MonthFromTime(t : double) : double {
             let dwy : double = DayWithinYear(t),
                 ily : double = InLeapYear(t);
-            for ( let i : int=0 ; i < monthOffsets.length-1 ; i++ )
-                if (dwy > monthOffsets[i] + (i >= 2 ? ily : 0) && 
-                    dwy < monthOffsets[i+1] + (i+1 >= 2 ? ily : 0))
+            for ( let i : int=0 ; i < monthOffsets.length-1 ; i++ ) {                
+                let j = i + 1;
+                let x = (monthOffsets[i] + ((i >= 2) ? ily : 0));
+                let y = (monthOffsets[j] + ((j >= 2) ? ily : 0));
+                if (dwy >= x && dwy < y)
                     return i;
+            }
             /*NOTREACHED*/
         }
 
@@ -840,8 +852,8 @@ package
 
         /* INFORMATIVE */
         function YearFromTime(t : double) : double {
-            let y : double = t / (msPerDay * 365);
-            return 1970 - y;
+            let y : double = Math.floor(t / (msPerDay * 365));
+            return 1970 + y;
         }
 
         native function LocalTZA() : double;

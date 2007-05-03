@@ -159,7 +159,7 @@ fun testDump dumpfile =
         SMLofNJ.exportFn (dumpfile, 
                           (fn (arg0, argvRest) => 
                               let 
-                                  val _ = Posix.Process.alarm (Time.fromReal 100.0)
+                                  val _ = Posix.Process.alarm (Time.fromReal 300.0)
                                   val _ = TextIO.print "parsing ... \n";
                                   val asts = List.map Parser.parseFile argvRest
                                   val _ = TextIO.print "defining ... \n";
