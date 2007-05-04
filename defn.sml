@@ -139,7 +139,7 @@ fun replaceFixture (b:Ast.FIXTURES)
                                           (LogErr.fname n)]
           | search ((k,v0)::bs) = 
             if k = n 
-            then (k,v) :: bs
+            then (LogErr.log ["replaceFixture ",LogErr.fname n];(k,v)::bs)
             else (k,v0) :: (search bs)
     in
         search b
@@ -295,13 +295,23 @@ fun eraseFixtures oldFixs ((newName,newFix),newFixs) =
         case (newFix, getFixture oldFixs newName) of
             (Ast.VirtualValFixture vnew,
              Ast.VirtualValFixture vold) => 
-            replaceFixture newFixs newName 
+                replaceFixture newFixs newName 
                            (Ast.VirtualValFixture 
                                 (mergeVirtuals newName vnew vold))
           | (Ast.ValFixture new, Ast.ValFixture old) =>
-                 if (#ty new) = (#ty old) andalso (#readOnly new) = (#readOnly old)
-                 then (trace ["erasing fixture ",LogErr.name (case newName of Ast.PropName n => n | _ => {ns=Ast.Internal Ustring.empty,id=Ustring.temp_})]; newFixs)
-                 else error ["incompatible redefinition of fixture name: ", LogErr.fname newName]
+                if (#ty new) = (#ty old) andalso (#readOnly new) = (#readOnly old)
+                then (trace ["erasing fixture ",LogErr.name (case newName of Ast.PropName n => n | _ => 
+                                               {ns=Ast.Internal Ustring.empty,id=Ustring.temp_})]; newFixs)
+                else error ["incompatible redefinition of fixture name: ", LogErr.fname newName]
+          | (Ast.MethodFixture new,
+             Ast.MethodFixture old) =>
+                if (#ty new) = (#ty old) andalso (#readOnly new) = (#readOnly old)
+                then (LogErr.log ["erasing fixture ",LogErr.name (case newName of Ast.PropName n => n | _ => 
+                                               {ns=Ast.Internal Ustring.empty,id=Ustring.temp_})]; 
+                              if hasFixture newFixs newName
+                              then replaceFixture newFixs newName (Ast.MethodFixture new)
+                              else (newName,newFix)::newFixs)
+                else error ["incompatible redefinition of fixture name: ", LogErr.fname newName]
           | _ => error ["redefining fixture name: ", LogErr.fname newName]
     else
         (newName,newFix) :: newFixs)

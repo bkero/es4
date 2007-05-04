@@ -72,17 +72,17 @@ fun repl doPrompt =
                   | [] => doLine ()
                   | _ => 
                     if (!doParse)
-                    then 
-                        let 
+                    then
+                        let
                             val p = Parser.parseLines [line]
                         in
                             if (!doDefn)
-                            then 
+                            then
                                 let
                                     val d = Defn.defProgram p
                                 in
                                     if (!doEval)
-                                    then 
+                                    then
                                         let 
                                             val res = Eval.evalProgram d
                                         in
@@ -144,7 +144,7 @@ fun testEV argvRest =
         val _ = List.map Verify.verifyProgram dps;
         val _ = TextIO.print "evaluating ... \n";
         val _ = map Eval.evalProgram dps
-        val _ = TextIO.print "evaluated! \n"                
+        val _ = TextIO.print "evaluated! \n"
     in
     ()
     end
