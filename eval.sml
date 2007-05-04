@@ -279,7 +279,7 @@ fun allocFixtures (regs:Mach.REGS)
                         fun allocProp state p = 
                             if Mach.hasProp props pn
                             then error ["allocating duplicate property name: ", 
-                                        fmtName pn]
+                                        LogErr.name pn]
                             else (trace ["allocating fixture for ", state, " property ", 
                                          fmtName pn]; 
                                   Mach.addProp props pn p)                            
@@ -2572,7 +2572,7 @@ and findVal (scope:Mach.SCOPE)
     : Mach.VAL = 
     case resolveOnScopeChain scope mn of 
         NONE => error ["unable to resolve multiname: ", 
-                       fmtMultiname mn ]
+                       LogErr.multiname mn ]
       | SOME (obj, name) => getValue obj name 
 
 
