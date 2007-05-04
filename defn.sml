@@ -139,7 +139,7 @@ fun replaceFixture (b:Ast.FIXTURES)
                                           (LogErr.fname n)]
           | search ((k,v0)::bs) = 
             if k = n 
-            then (LogErr.log ["replaceFixture ",LogErr.fname n];(k,v)::bs)
+            then (k,v)::bs
             else (k,v0) :: (search bs)
     in
         search b
@@ -306,11 +306,9 @@ fun eraseFixtures oldFixs ((newName,newFix),newFixs) =
           | (Ast.MethodFixture new,
              Ast.MethodFixture old) =>
                 if (#ty new) = (#ty old) andalso (#readOnly new) = (#readOnly old)
-                then (LogErr.log ["erasing fixture ",LogErr.name (case newName of Ast.PropName n => n | _ => 
-                                               {ns=Ast.Internal Ustring.empty,id=Ustring.temp_})]; 
-                              if hasFixture newFixs newName
-                              then replaceFixture newFixs newName (Ast.MethodFixture new)
-                              else (newName,newFix)::newFixs)
+                then if hasFixture newFixs newName
+                     then replaceFixture newFixs newName (Ast.MethodFixture new)
+                     else (newName,newFix)::newFixs
                 else error ["incompatible redefinition of fixture name: ", LogErr.fname newName]
           | _ => error ["redefining fixture name: ", LogErr.fname newName]
     else

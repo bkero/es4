@@ -16,6 +16,7 @@ f(10)
 intrinsic::print(x)
 */
 
-function f() print(1); 
+//function f() print(1); 
 //function f() print(2)
 //f()
+var x
