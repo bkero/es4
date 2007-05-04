@@ -122,7 +122,8 @@ withtype FUN_CLOSURE =
            env: SCOPE }
 
      and NATIVE_FUNCTION = 
-         (VAL list -> VAL)
+         { func: (VAL list -> VAL),
+           length: int } 
 
      and OBJ_IDENT = 
          int
@@ -280,6 +281,17 @@ fun isNumeric (v:VAL) : bool =
            | SOME (Decimal _) => true
            | SOME (Int _) => true
            | SOME (UInt _) => true
+           | _ => false)
+      | _ => false
+
+
+fun isDirectInstanceOf (n:Ast.NAME) 
+                       (v:VAL) 
+    : bool = 
+    case v of 
+        Object (Obj { tag, ... }) => 
+        (case tag of 
+             ClassTag cn => nameEq cn n
            | _ => false)
       | _ => false
 

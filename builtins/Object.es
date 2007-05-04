@@ -18,8 +18,12 @@ package
         use strict;
 
         /* E262-3 15.2.1.1: The Object constructor called as a function */
-        meta static function invoke(value)
-            ToObject(value);
+        meta static function invoke(value) {
+            if (value === null ||
+                value === undefined)
+                return new Object();
+            return ToObject(value);
+        }
 
         /* E262-3 15.2.2.1: The Object constructor. */
         function Object() {}

@@ -25,5 +25,4 @@ while (1) {
     }
     
     print $sml_call $input, "\n";
-    $term->addhistory($input) if ($input =~ /\S/);
 }

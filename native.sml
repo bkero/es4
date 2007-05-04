@@ -363,10 +363,14 @@ fun apply (vals:Mach.VAL list)
 
 fun fnLength (vals:Mach.VAL list) 
     : Mach.VAL = 
-    let 
-        val {func=Ast.Func{ty, ...}, ...} = nthAsFn vals 0
+    let
+        val Mach.Obj { magic, ... } = nthAsObj vals 0
+        val len = case !magic of                           
+                      SOME (Mach.Function {func=Ast.Func{ty, ...}, ...}) => (length (#params ty))
+                    | SOME (Mach.NativeFunction {length, ...}) => length
+                    | _ => error ["wrong kind of magic to fnLength"]
     in
-        Eval.newUInt (Word32.fromInt (length (#params ty)))
+        Eval.newUInt (Word32.fromInt len)
     end
 
 
@@ -847,81 +851,81 @@ fun converter (convert:Mach.VAL -> 'a)
 (* Register all the native functions in this file. *)
 fun registerNatives _ = 
     let
-        fun addFn (name:Ast.NAME) f = 
-            Mach.registerNativeFunction name f
+        fun addFn (len:int) (name:Ast.NAME) f = 
+            Mach.registerNativeFunction name {length=len, func=f}
     in
-        addFn Name.magic_construct construct;
-        addFn Name.magic_getClassName getClassName;
-        addFn Name.magic_getPrototype getPrototype;
-        addFn Name.magic_hasOwnProperty hasOwnProperty;
-        addFn Name.magic_getPropertyIsDontEnum getPropertyIsDontEnum;
-        addFn Name.magic_getPropertyIsDontDelete getPropertyIsDontDelete;
-        addFn Name.magic_setPropertyIsDontEnum setPropertyIsDontEnum;
+        addFn 2 Name.magic_construct construct;
+        addFn 1 Name.magic_getClassName getClassName;
+        addFn 1 Name.magic_getPrototype getPrototype;
+        addFn 2 Name.magic_hasOwnProperty hasOwnProperty;
+        addFn 2 Name.magic_getPropertyIsDontEnum getPropertyIsDontEnum;
+        addFn 2 Name.magic_getPropertyIsDontDelete getPropertyIsDontDelete;
+        addFn 3 Name.magic_setPropertyIsDontEnum setPropertyIsDontEnum;
 
-        addFn Name.magic_bindInt bindInt;
-        addFn Name.magic_bindUInt bindUInt;
-        addFn Name.magic_bindDouble bindDouble;
-        addFn Name.magic_bindDecimal bindDecimal;
-        addFn Name.magic_bindBoolean bindBoolean;
-        addFn Name.magic_bindString bindString;
+        addFn 2 Name.magic_bindInt bindInt;
+        addFn 2 Name.magic_bindUInt bindUInt;
+        addFn 2 Name.magic_bindDouble bindDouble;
+        addFn 2 Name.magic_bindDecimal bindDecimal;
+        addFn 2 Name.magic_bindBoolean bindBoolean;
+        addFn 2 Name.magic_bindString bindString;
 
-        addFn Name.magic_apply apply;
-        addFn Name.magic_fnLength fnLength;
+        addFn 3 Name.magic_apply apply;
+        addFn 1 Name.magic_fnLength fnLength;
 
-        addFn Name.magic_charCodeAt charCodeAt;
-        addFn Name.magic_fromCharCode fromCharCode;
-        addFn Name.magic_stringLength stringLength;
-        addFn Name.magic_stringAppend stringAppend;
-        addFn Name.magic_getByteArrayByte getByteArrayByte;
-        addFn Name.magic_setByteArrayByte setByteArrayByte;
+        addFn 2 Name.magic_charCodeAt charCodeAt;
+        addFn 1 Name.magic_fromCharCode fromCharCode;
+        addFn 1 Name.magic_stringLength stringLength;
+        addFn 2 Name.magic_stringAppend stringAppend;
+        addFn 2 Name.magic_getByteArrayByte getByteArrayByte;
+        addFn 3 Name.magic_setByteArrayByte setByteArrayByte;
 
-        addFn Name.intrinsic_eval eval;
-        addFn Name.intrinsic_parseInt parseInt;
-        addFn Name.intrinsic_parseFloat parseFloat;
-        addFn Name.intrinsic_isNaN isNaN;
-        addFn Name.intrinsic_isFinite isFinite;
-        addFn Name.intrinsic_decodeURI decodeURI;
-        addFn Name.intrinsic_decodeURIComponent decodeURIComponent;
-        addFn Name.intrinsic_encodeURI encodeURI;
-        addFn Name.intrinsic_encodeURIComponent encodeURIComponent;
+        addFn 1 Name.intrinsic_eval eval;
+        addFn 2 Name.intrinsic_parseInt parseInt;
+        addFn 1 Name.intrinsic_parseFloat parseFloat;
+        addFn 1 Name.intrinsic_isNaN isNaN;
+        addFn 1 Name.intrinsic_isFinite isFinite;
+        addFn 1 Name.intrinsic_decodeURI decodeURI;
+        addFn 1 Name.intrinsic_decodeURIComponent decodeURIComponent;
+        addFn 1 Name.intrinsic_encodeURI encodeURI;
+        addFn 1 Name.intrinsic_encodeURIComponent encodeURIComponent;
 
-        addFn Name.intrinsic_get get;
-        addFn Name.intrinsic_set set;
+        addFn 2 Name.intrinsic_get get;
+        addFn 3 Name.intrinsic_set set;
 
         (* FIXME: stubs to get double loading. Implement. *)
-        addFn Name.intrinsic_toFixedStep10 (fn _ => Eval.newString Ustring.empty);
-        addFn Name.intrinsic_toExponential (fn _ => Eval.newString Ustring.empty);
-        addFn Name.intrinsic_toPrecision (fn _ => Eval.newString Ustring.empty);
+        addFn 1 Name.intrinsic_toFixedStep10 (fn _ => Eval.newString Ustring.empty);
+        addFn 1 Name.intrinsic_toExponential (fn _ => Eval.newString Ustring.empty);
+        addFn 1 Name.intrinsic_toPrecision (fn _ => Eval.newString Ustring.empty);
 
         (* FIXME: stubs to get Date loading. Implement. *)
-        addFn Name.intrinsic_now now;
-        addFn Name.public_LocalTZA (fn _ => Eval.newDouble 0.0);
-        addFn Name.public_DaylightSavingsTA (fn _ => Eval.newDouble 0.0);
+        addFn 0 Name.intrinsic_now now;
+        addFn 0 Name.public_LocalTZA (fn _ => Eval.newDouble 0.0);
+        addFn 0 Name.public_DaylightSavingsTA (fn _ => Eval.newDouble 0.0);
        
         (* Math.es natives *) 
-        addFn Name.intrinsic_abs abs;
-        addFn Name.intrinsic_acos acos;
-        addFn Name.intrinsic_asin asin;
-        addFn Name.intrinsic_atan atan;
-        addFn Name.intrinsic_atan2 atan2;
-        addFn Name.intrinsic_ceil ceil;
-        addFn Name.intrinsic_cos cos;
-        addFn Name.intrinsic_exp exp;
-        addFn Name.intrinsic_floor floor;
-        addFn Name.intrinsic_log log;
-        addFn Name.intrinsic_pow pow;
-        addFn Name.intrinsic_random random;
-        addFn Name.intrinsic_round round;
-        addFn Name.intrinsic_sin sin;
-        addFn Name.intrinsic_sqrt sqrt;
-        addFn Name.intrinsic_tan tan;
+        addFn 1 Name.intrinsic_abs abs;
+        addFn 1 Name.intrinsic_acos acos;
+        addFn 1 Name.intrinsic_asin asin;
+        addFn 1 Name.intrinsic_atan atan;
+        addFn 2 Name.intrinsic_atan2 atan2;
+        addFn 1 Name.intrinsic_ceil ceil;
+        addFn 1 Name.intrinsic_cos cos;
+        addFn 1 Name.intrinsic_exp exp;
+        addFn 1 Name.intrinsic_floor floor;
+        addFn 1 Name.intrinsic_log log;
+        addFn 2 Name.intrinsic_pow pow;
+        addFn 1 Name.intrinsic_random random;
+        addFn 1 Name.intrinsic_round round;
+        addFn 1 Name.intrinsic_sin sin;
+        addFn 1 Name.intrinsic_sqrt sqrt;
+        addFn 1 Name.intrinsic_tan tan;
 
-        addFn Name.intrinsic_print print;
-        addFn Name.intrinsic_load load;
-        addFn Name.intrinsic_assert assert;
-        addFn Name.intrinsic_typename typename;
-        addFn Name.intrinsic_inspect inspect;
-        addFn Name.intrinsic_proto proto
+        addFn 1 Name.intrinsic_print print;
+        addFn 1 Name.intrinsic_load load;
+        addFn 1 Name.intrinsic_assert assert;
+        addFn 1 Name.intrinsic_typename typename;
+        addFn 1 Name.intrinsic_inspect inspect;
+        addFn 1 Name.intrinsic_proto proto
     end
 
 end
