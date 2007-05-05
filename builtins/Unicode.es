@@ -2,6 +2,8 @@
 
 package Unicode
 {
+    use namespace intrinsic;
+
     /* FIXME: Unicode
 
     const spaces = ("\u0020\u00A0\u1680\u180E\u2000\u2001\u2002\u2003\u2004" +
