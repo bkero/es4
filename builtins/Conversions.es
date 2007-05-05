@@ -103,5 +103,9 @@ package
     intrinsic function ToString(x) : string
         string(x);
 
-
+    intrinsic function ToNumeric(x) : Numeric {
+        if (x is Numeric)
+            return x;
+        ToDouble(x);
+    }
 }
