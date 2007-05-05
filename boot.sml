@@ -181,11 +181,9 @@ fun boot _ =
              "builtins/Namespace.es",
              "builtins/Magic.es",
              "builtins/Conversions.es",
-
              "builtins/String.es",
              "builtins/string_primitive.es",
 
-             
              "builtins/Boolean.es",
              "builtins/boolean_primitive.es",
              

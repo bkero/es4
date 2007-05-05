@@ -8,7 +8,7 @@
  * Status: Complete, not reviewed, not tested.
  */
 
-package /*RegExpInternals*/  // FIXME: package bug
+package RegExpInternals
 {
     import Unicode.*;
     use namespace intrinsic;
