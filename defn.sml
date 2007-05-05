@@ -573,7 +573,6 @@ and defClass (env: ENV)
              (cdef: Ast.CLASS_DEFN)
     : (Ast.FIXTURES * Ast.CLASS_DEFN) =
     let
-        val _ = trace2 ("defining class ",(#ident cdef))
         val class = analyzeClass env cdef
         val class = resolveClass env cdef class
         val Ast.Cls {name,...} = class
@@ -717,7 +716,9 @@ and analyzeClass (env:ENV)
             val env = clearPackageName env
 
             val (unhoisted,classFixtures,classInits) = defDefns env [] [] [] classDefns
+            val classFixtures = (List.foldl mergeFixtures unhoisted classFixtures)
             val staticEnv = extendEnvironment env classFixtures
+                             (* namespace and type definitions aren't normally hoisted *)
 
             val (unhoisted,instanceFixtures,_) = defDefns staticEnv [] [] [] instanceDefns
             val instanceEnv = extendEnvironment staticEnv instanceFixtures
@@ -2125,7 +2126,7 @@ and defStmt (env:ENV)
                 val namespace = resolveExprOptToNamespace env ns
                 val name = {ns=namespace, id=ident}
 
-                val env = clearPackageName env (* only top level pakcage defns use package specific namespaces *)
+                val env = clearPackageName env (* only top level package defns use package specific namespaces *)
 
                 val (block,hoisted) = defBlock env (Ast.Block {pragmas=pragmas,
                                                                defns=defns,
@@ -2366,7 +2367,7 @@ and defNamespace (env:ENV)
             val qualNs = resolveExprOptToNamespace env ns
             val newNs = case init of 
                             (* FIXME: a nonce perhaps? *)
-                            NONE => Ast.UserNamespace ident 
+                            NONE => Ast.UserNamespace ident
                           | SOME (Ast.LiteralExpr (Ast.LiteralString s)) => 
                             Ast.UserNamespace s
                           | SOME (Ast.LexicalRef lref) => 
@@ -2471,11 +2472,9 @@ and defDefns (env:ENV)
            [] => (trace(["<< defDefns"]);(unhoisted,hoisted,inits))
          | d::ds =>
            let
-
-
                val (unhoisted',hoisted',inits') = defDefn env d
                val temp = case d of Ast.ClassDefn _ => hoisted' | _ => []
-                val env'  = updateFixtures env (List.foldl mergeFixtures unhoisted' temp) 
+               val env'  = updateFixtures env (List.foldl mergeFixtures unhoisted' temp) 
            (* add the new unhoisted and temporarily, hoisted class fxtrs to the current env *)
            in
                defDefns env' 

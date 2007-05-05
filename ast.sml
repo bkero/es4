@@ -5,7 +5,6 @@ structure Ast = struct
 
 type POS = { file: string, span: StreamPos.span, sm: StreamPos.sourcemap, post_newline: bool }
 
-
 type IDENT = Ustring.STRING
 
 datatype NAMESPACE =
