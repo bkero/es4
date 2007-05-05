@@ -1365,10 +1365,10 @@ and defPragmas (env:ENV)
                                         val (n,targetFixture) = resolveMultinameToFixture env (multinameFromName targetName)
                                         val fixtureType = case targetFixture of 
                                                                Ast.ValFixture {ty,...} => ty 
-                                                             | Ast.NamespaceFixture _ => (Name.typename Name.public_Namespace)
-                                                             | Ast.ClassFixture _ => (Name.typename Name.public_Class)   
+                                                             | Ast.NamespaceFixture _ => (Name.typename Name.intrinsic_Namespace)
+                                                             | Ast.ClassFixture _ => (Name.typename Name.intrinsic_Class)   
                                                                  (* ISSUE: this is the base type of the class object *)
-                                                             | Ast.TypeFixture _ => (Name.typename Name.public_Type)
+                                                             | Ast.TypeFixture _ => (Name.typename Name.intrinsic_Type)
                                                              | Ast.MethodFixture {ty,...} => ty
                                                              | Ast.VirtualValFixture {ty,...} => ty
                                                              | _ => LogErr.unimplError ["unhandle fixture type"]

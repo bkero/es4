@@ -356,7 +356,7 @@ fun allocFixtures (regs:Mach.REGS)
                                 val _ = allocObjFixtures regs classObj NONE classFixtures
                             in
                                 allocProp "class"
-                                          { ty = (Name.typename Name.public_Class),
+                                          { ty = (Name.typename Name.intrinsic_Class),
                                             state = Mach.ValProp (Mach.Object classObj),
                                             attrs = { dontDelete = true,
                                                       dontEnum = true,
@@ -366,7 +366,7 @@ fun allocFixtures (regs:Mach.REGS)
                             
                           | Ast.NamespaceFixture ns => 
                             allocProp "namespace" 
-                                      { ty = (Name.typename Name.public_Namespace),
+                                      { ty = (Name.typename Name.intrinsic_Namespace),
                                         state = Mach.NamespaceProp ns,
                                         attrs = { dontDelete = true,
                                                   dontEnum = true,
@@ -375,7 +375,7 @@ fun allocFixtures (regs:Mach.REGS)
                             
                           | Ast.TypeVarFixture =>
                             allocProp "type variable"
-                                      { ty = (Name.typename Name.public_Type),
+                                      { ty = (Name.typename Name.intrinsic_Type),
                                         state = Mach.TypeVarProp,
                                         attrs = { dontDelete = true,
                                                   dontEnum = true,
@@ -761,27 +761,27 @@ and newBuiltin (n:Ast.NAME) (m:Mach.MAGIC option)
 
 and newDouble (n:Real64.real) 
     : Mach.VAL = 
-    newBuiltin Name.public_double (SOME (Mach.Double n))
+    newBuiltin Name.intrinsic_double (SOME (Mach.Double n))
 
 and newDecimal (n:Decimal.DEC) 
     : Mach.VAL = 
-    newBuiltin Name.public_decimal (SOME (Mach.Decimal n))
+    newBuiltin Name.intrinsic_decimal (SOME (Mach.Decimal n))
 
 and newInt (n:Int32.int) 
     : Mach.VAL = 
-    newBuiltin Name.public_int (SOME (Mach.Int n))
+    newBuiltin Name.intrinsic_int (SOME (Mach.Int n))
 
 and newUInt (n:Word32.word) 
     : Mach.VAL = 
-    newBuiltin Name.public_uint (SOME (Mach.UInt n))
+    newBuiltin Name.intrinsic_uint (SOME (Mach.UInt n))
 
 and newString (s:Ustring.STRING) 
     : Mach.VAL = 
-    newBuiltin Name.public_string (SOME (Mach.String s))
+    newBuiltin Name.intrinsic_string (SOME (Mach.String s))
 
 and newByteArray (b:Word8Array.array) 
     : Mach.VAL = 
-    newBuiltin Name.public_ByteArray (SOME (Mach.ByteArray b))
+    newBuiltin Name.intrinsic_ByteArray (SOME (Mach.ByteArray b))
 
 and newBoolean (b:bool) 
     : Mach.VAL = 
@@ -792,7 +792,7 @@ and newBoolean (b:bool)
             SOME v => v
           | NONE => 
             let
-                val v = newBuiltin Name.public_boolean (SOME (Mach.Boolean b))
+                val v = newBuiltin Name.intrinsic_boolean (SOME (Mach.Boolean b))
             in
                 refcell := SOME v;
                 v
@@ -802,7 +802,7 @@ and newBoolean (b:bool)
 
 and newNamespace (n:Ast.NAMESPACE) 
     : Mach.VAL =
-    newRootBuiltin Name.public_Namespace (Mach.Namespace n)
+    newRootBuiltin Name.intrinsic_Namespace (Mach.Namespace n)
 
 and newClsClosure (env:Mach.SCOPE)
                   (cls:Ast.CLS)
@@ -818,7 +818,7 @@ and newClass (e:Mach.SCOPE)
     let
         val closure = newClsClosure e cls 
     in
-        newRootBuiltin Name.public_Class (Mach.Class closure)
+        newRootBuiltin Name.intrinsic_Class (Mach.Class closure)
     end
 
 and newFunClosure (e:Mach.SCOPE)
@@ -1877,19 +1877,19 @@ and evalUnaryOp (regs:Mach.REGS)
                         let 
                             val n = Mach.nominalBaseOfTag (#tag ob)
                         in
-                            if n = Name.public_int orelse 
-                               n = Name.public_uint orelse 
-                               n = Name.public_double orelse 
-                               n = Name.public_decimal
+                            if n = Name.intrinsic_int orelse 
+                               n = Name.intrinsic_uint orelse 
+                               n = Name.intrinsic_double orelse 
+                               n = Name.intrinsic_decimal
                             then Ustring.number_
                             else 
-                                (if n = Name.public_boolean
+                                (if n = Name.intrinsic_boolean
                                  then Ustring.boolean_
                                  else 
                                      (if n = Name.public_Function
                                       then Ustring.function_
                                       else 
-                                          (if n = Name.public_string
+                                          (if n = Name.intrinsic_string
                                            then Ustring.string_
                                            else Ustring.object_)))
                         end
@@ -2246,14 +2246,14 @@ and evalBinaryTypeOp (regs:Mach.REGS)
             case tyExpr of 
                 Ast.TypeName (Ast.Identifier { ident:Ast.IDENT, ... }) => 
                 (case Ustring.toAscii ident of   (* Strange use of toAscii, but ML won't match vals, and nested ifs are ugly. *)
-                     "double" => newBoolean ((Mach.isDouble v) andalso (Mach.isDirectInstanceOf Name.public_double v))
-                   | "decimal" => newBoolean ((Mach.isDecimal v) andalso (Mach.isDirectInstanceOf Name.public_decimal v))
-                   | "int" => newBoolean ((Mach.isInt v) andalso (Mach.isDirectInstanceOf Name.public_int v))
-                   | "uint" => newBoolean ((Mach.isUInt v) andalso (Mach.isDirectInstanceOf Name.public_uint v))
+                     "double" => newBoolean ((Mach.isDouble v) andalso (Mach.isDirectInstanceOf Name.intrinsic_double v))
+                   | "decimal" => newBoolean ((Mach.isDecimal v) andalso (Mach.isDirectInstanceOf Name.intrinsic_decimal v))
+                   | "int" => newBoolean ((Mach.isInt v) andalso (Mach.isDirectInstanceOf Name.intrinsic_int v))
+                   | "uint" => newBoolean ((Mach.isUInt v) andalso (Mach.isDirectInstanceOf Name.intrinsic_uint v))
                    | "String" => newBoolean (Mach.isString v)
-                   | "string" => newBoolean ((Mach.isString v) andalso (Mach.isDirectInstanceOf Name.public_string v))
+                   | "string" => newBoolean ((Mach.isString v) andalso (Mach.isDirectInstanceOf Name.intrinsic_string v))
                    | "Boolean" => newBoolean (Mach.isBoolean v)
-                   | "boolean" => newBoolean ((Mach.isBoolean v) andalso (Mach.isDirectInstanceOf Name.public_boolean v))
+                   | "boolean" => newBoolean ((Mach.isBoolean v) andalso (Mach.isDirectInstanceOf Name.intrinsic_boolean v))
                    | "Numeric" => newBoolean (Mach.isNumeric v)
                    | n => 
                      (case v of 

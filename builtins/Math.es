@@ -1,4 +1,4 @@
-/* -*- indent-tabs-mode: nil -*- */
+/* -*- mode: java; indent-tabs-mode: nil -*- */
 
 /* FIXME: The name hiding trick with MathInternals will work (provided
  * the visible properties on the Math class are changed to "public")
@@ -12,6 +12,8 @@
 
 /*public*/ intrinsic dynamic final class Math
     {
+        use namespace intrinsic;
+
         /* E262-3 15.8.2.1 */
         intrinsic static function abs(x:Numeric = NaN):Numeric {
             if (isNaN(x))

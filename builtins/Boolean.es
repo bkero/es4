@@ -10,9 +10,10 @@
 package
 {
     use default namespace public;
+    use namespace intrinsic;
 
     dynamic class Boolean
-    {       
+    {    
         /* E262-3 15.6.1: The Boolean Constructor Called as a Function. */
         meta static function invoke(x=null) : boolean
 	    boolean(x);

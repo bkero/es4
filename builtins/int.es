@@ -15,7 +15,7 @@ package
     use namespace intrinsic;
     use strict;
 
-    final class int! extends Number
+    intrinsic final class int! extends Number
     {       
         static const MAX_VALUE : int = 0x7FFFFFFFi;
         static const MIN_VALUE : int = -0x80000000i;

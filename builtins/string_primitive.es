@@ -35,7 +35,7 @@ package
     use namespace intrinsic;
     use strict;
 
-    final class string! extends String
+    intrinsic final class string! extends String
     {       
         /* E262-3 15.5.1: The String Constructor Called as a Function */
         static meta function invoke(x="")
@@ -174,7 +174,7 @@ package
             ToString(self).lastIndexOf(searchString, position);
 
         override intrinsic function lastIndexOf(searchString: string, position: double) : double {
-            position = isNaN(position) ? Infinity : ToInteger(x);
+            position = isNaN(position) ? Infinity : ToInteger(position);
 
             let slen  : uint = length;
             let m     : uint = Math.min(Math.max(position, 0), slen);
