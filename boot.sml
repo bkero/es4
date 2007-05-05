@@ -94,13 +94,14 @@ fun boot _ =
          * during startup to avoid feedback loops in their definition.
          *)
 
-        fun loadRootClass (name:Ast.IDENT) 
+        fun loadRootClass (fullName:Ast.NAME) 
           =
           let 
-              val fullName = Name.public name
+              val id = (#id fullName)
+              val filename = ("builtins/" ^ (Ustring.toFilename id) ^ ".es")
 
-              val _ = trace ["loading fundamental ", Ustring.toAscii name, " class from builtin/", Ustring.toFilename name ,".es"];
-              val prog = Defn.defProgram (Parser.parseFile ("builtins/" ^ (Ustring.toFilename name) ^ ".es"))
+              val _ = trace ["loading fundamental ", LogErr.name fullName, " class from ", filename];
+              val prog = Defn.defProgram (Parser.parseFile filename)
 
               val _ = trace ["fetching ", LogErr.name fullName, " class definition"];
               val fix = Defn.getFixture (valOf (#fixtures prog)) (Ast.PropName fullName)
@@ -110,7 +111,7 @@ fun boot _ =
 
               val _ = trace ["allocating class ", LogErr.name fullName];
               val closure = Eval.newClsClosure (#scope globalRegs) cls
-              val obj = Mach.newObj (Mach.ClassTag Name.public_Class) Mach.Null (SOME (Mach.Class closure))
+              val obj = Mach.newObj (Mach.ClassTag Name.intrinsic_Class) Mach.Null (SOME (Mach.Class closure))
               val classRegs = Eval.extendScopeReg globalRegs obj Mach.InstanceScope
 
               val _ = trace ["allocating class fixtures for ", LogErr.name fullName];
@@ -120,7 +121,7 @@ fun boot _ =
               val _ = trace ["binding class ", LogErr.name fullName];
               val Mach.Obj { props, ... } = globalObj
               val _ = Mach.addProp props fullName
-                                   { ty = Name.typename Name.public_Class,
+                                   { ty = Name.typename Name.intrinsic_Class,
                                      state = Mach.ValProp (Mach.Object obj),
                                      attrs = { dontDelete = true,
                                                dontEnum = false,
@@ -155,21 +156,21 @@ fun boot _ =
                * by name until just now.
                *)
                 val classRegs = Eval.extendScopeReg globalRegs classObj Mach.InstanceScope
-                val classClass = Eval.findVal (#scope globalRegs) (Eval.multinameOf Name.public_Class)
+                val classClass = Eval.findVal (#scope globalRegs) (Eval.multinameOf Name.intrinsic_Class)
                 val Ast.Cls { instanceFixtures, ... } = (#cls (Mach.needClass classClass))
             in
                 Eval.allocObjFixtures classRegs classObj (SOME classObj) instanceFixtures
             end
 
-        val (objClass, objClassClosure, objClassObj, residualObjectProg) = loadRootClass Ustring.Object_
+        val (objClass, objClassClosure, objClassObj, residualObjectProg) = loadRootClass Name.public_Object
         val _ = trace ["running Object constructor on global object"];
         val Ast.Cls { instanceFixtures, ...} = objClass
         val objClassRegs = Eval.extendScopeReg globalRegs objClassObj Mach.InstanceScope
         val _ = Eval.allocObjFixtures objClassRegs globalObj (SOME globalObj) instanceFixtures
         val _ = Eval.initializeAndConstruct objClassClosure objClassObj objClassRegs [] globalObj
 
-        val (_, _, classClassObj, residualClassProg) = loadRootClass Ustring.Class_
-        val (_, _, functionClassObj, residualFunctionProg) = loadRootClass Ustring.Function_
+        val (_, _, classClassObj, residualClassProg) = loadRootClass Name.intrinsic_Class
+        val (_, _, functionClassObj, residualFunctionProg) = loadRootClass Name.public_Function
 
         val _ = completeClassFixtures objClassObj
         val _ = completeClassFixtures classClassObj

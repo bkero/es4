@@ -32,8 +32,8 @@ package
             Number(x);
 
         /* E262-3 15.7.1.1: The Number Constructor Called as a Function */
-        meta static function invoke(x) 
-            x is Numeric ? x : double(x)
+        meta static function invoke(x=0.0) 
+            x is double ? x : double(x)
 
         /* E262-3 15.7.2.1: The Number constructor */
         function Number(x=0.0) 
@@ -64,7 +64,7 @@ package
             private::valueOf();
 
 	private function valueOf() : Numeric
-	    toNumeric(this);
+	    ToNumeric(this);
 
         prototype function toFixed(fractionDigits)
             this.toFixed(fractionDigits);

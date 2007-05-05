@@ -17,7 +17,7 @@ package RegExpInternals
     /* Encapsulation of compiled regular expression as returned by the
        compiler.  
     */
-    public class RegExpMatcher!
+    intrinsic class RegExpMatcher!
     {
         public function RegExpMatcher(matcher : Matcher, nCapturingParens : int, names : [string?]!) 
             : matcher = matcher

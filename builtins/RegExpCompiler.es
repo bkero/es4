@@ -17,7 +17,7 @@ package RegExpInternals
     use namespace intrinsic;
     use strict;
 
-    public class RegExpCompiler
+    intrinsic class RegExpCompiler
     {
         /* Invariant for token handling: either idx==source.length or source[idx] is a significant char */
 
