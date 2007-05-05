@@ -34,10 +34,6 @@ package
 	}
 
         /* E262-4 draft ch 19 */
-        override intrinsic function toString() : string
-            this === true ? "true" : "false";
-
-        /* E262-4 draft ch 19 */
         override intrinsic function valueOf() : boolean
             this;
     }

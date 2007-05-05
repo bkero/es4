@@ -3852,7 +3852,8 @@ fun bindSpecialIdentities _ =
         List.app bindProtoMagic
                  [ 
                   (Name.public_String, Mach.String Ustring.empty),
-                  (Name.public_Number, Mach.Double 0.0)
+                  (Name.public_Number, Mach.Double 0.0),
+                  (Name.public_Boolean, Mach.Boolean false)
                  ]
     end
 

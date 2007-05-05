@@ -2,7 +2,7 @@
 
 package Unicode
 {
-    use namespace intrinsic
+    use namespace intrinsic;
 
     /* FIXME: Unicode
 
