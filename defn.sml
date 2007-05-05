@@ -315,7 +315,6 @@ fun eraseFixtures oldFixs ((newName,newFix),newFixs) =
                      then replaceFixture newFixs newName (Ast.MethodFixture new)
                      else (newName,newFix)::newFixs
                 else error ["incompatible redefinition of fixture name: ", LogErr.fname newName]
-          | (Ast.MethodFixture new, Ast.MethodFixture old) => newFixs  (* FIXME: types *)
           | _ => error ["eraseFixtures: redefining fixture name: ", LogErr.fname newName]
     else
         (newName,newFix) :: newFixs)
@@ -891,12 +890,20 @@ and inheritFixtures (base:Ast.FIXTURES)
                 (Ast.MethodFixture {final,...}, Ast.MethodFixture {override,...}) => 
                     (not final) andalso override andalso isCompatible
 
-              (* FIXME: what are the rules for getter/setter overriding? *)
+              (* FIXME: what are the rules for getter/setter overriding? 
+                 1/base fixture is not final
+                 2/derived fixture is override
+                 3/getter is compatible
+                 4/setter is compatible
+              *)
               | (Ast.VirtualValFixture vb,
-                 Ast.VirtualValFixture vd) => 
-                (#ty vb) = (#ty vd)
-                
-              | _ => false
+                 Ast.VirtualValFixture vd) =>
+                    let
+                        val _ = trace ["checking override of VirtualValFixture"]
+                    in
+                       true               
+                    end 
+              | _ => LogErr.unimplError ["checkOverride"]
             end
 
     in case base of

@@ -1,6 +1,10 @@
-package p.q {
-public class A { public var x = 'hi' }
+package p.q {}
+package {
+    use default namespace public;
+    use namespace intrinsic;
+//    use strict;
+    import p.q.*
+    class A extends String {
+        override function get length() : uint undefined
+    }
 }
-import p.q.A
-intrinsic::print(new A().x)
-

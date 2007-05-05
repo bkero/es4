@@ -34,6 +34,7 @@ package
     use default namespace public;
     use namespace intrinsic;
     use strict;
+    import Unicode.*
 
     intrinsic final class string! extends String
     {       
@@ -42,12 +43,12 @@ package
             x is string ? x : new string(x);
 
         /* 15.5.2 The string Constructor */
-        function string(x="") : super(x) 
+        function string(x="") : super(x)
         {
             // No need to magic::bindString a second time, 
             // since our super(x) call did it for us.
         }
-        
+
         /* E262-3 15.5.3.2: String.fromCharCode
            E262-4 draft proposals:bug_fixes - FUNCTION.LENGTH
         */
