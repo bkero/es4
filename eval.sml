@@ -1341,7 +1341,7 @@ and evalExpr (regs:Mach.REGS)
       | Ast.LetExpr {defs, body, head} =>
         evalLetExpr regs (valOf head) body
 
-      | Ast.TernaryExpr (Ast.Cond, aexpr, bexpr, cexpr) => 
+      | Ast.TernaryExpr (aexpr, bexpr, cexpr) => 
         evalCondExpr regs aexpr bexpr cexpr
 
       | Ast.BinaryExpr (bop, aexpr, bexpr) => 

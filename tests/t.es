@@ -1,10 +1,3 @@
-package p.q {}
-package {
-    use default namespace public;
-    use namespace intrinsic;
-//    use strict;
-    import p.q.*
-    class A extends String {
-        override function get length() : uint undefined
-    }
-}
+package p { public var x = 10 }
+var p = {x:20}
+print(p.x)

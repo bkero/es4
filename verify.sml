@@ -445,7 +445,7 @@ and verifyExpr (env:ENV)
             else ()
     in
         case expr of 
-            Ast.TernaryExpr (t, e1, e2, e3) =>
+            Ast.TernaryExpr (e1, e2, e3) =>
             let
                 val (e1', t1) = verifySub e1
                 val (e2', t2) = verifySub e2
@@ -453,7 +453,7 @@ and verifyExpr (env:ENV)
             in
                 whenStrict (fn () => checkConvertible t1 boolType);
                 (* FIXME: this produces a union type. is that right? *)
-                return (Ast.TernaryExpr (t, e1', e2', e3'), leastUpperBound t2 t3)
+                return (Ast.TernaryExpr (e1', e2', e3'), leastUpperBound t2 t3)
             end
             
           | Ast.BinaryExpr (b, e1, e2) =>
@@ -844,8 +844,8 @@ and verifyStmt (env:ENV)
           | Ast.SwitchTypeStmt {cond, ty, cases} => (*TODO*)
             Ast.SwitchTypeStmt {cond=cond, ty=ty, cases=cases}
             
-          | Ast.Dxns x => (*TODO*)
-            Ast.Dxns x
+          | Ast.DXNStmt x => (*TODO*)
+            Ast.DXNStmt x
 
           | _ => error ["Shouldn't happen: failed to match in Verify.verifyStmt"]
 
