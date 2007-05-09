@@ -45,7 +45,7 @@ package
 
 
         /* E262-3 15.7.4.2: double.prototype.toString */
-        prototype function toString(this:double, radix)
+        prototype function toString(radix = 10)
             this.toString(radix);
 
         override intrinsic function toString(radix = 10) : string 

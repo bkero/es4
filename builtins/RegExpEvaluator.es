@@ -63,7 +63,9 @@ package RegExpInternals
 
     /* MatchResult and State. 
      */
-    public type MatchResult = State?;
+
+    // FIXME: should be 'public type', but this causes it to vanish. Why?
+    type MatchResult = State?;
 
     public const failure : State? = null;
 
@@ -106,10 +108,14 @@ package RegExpInternals
     /* The matcher is a single object that implements the Matcher
        interface.  Normally a Matcher object references other Matcher
        objects.  */
+    // FIXME: interfaces are completely missing.
+    /*
     interface Matcher!
     {
         function match(ctx : Context, x : State, c : Continuation) : MatchResult;
     }
+    */
+    type Matcher = *;
 
     type Continuation = function(Context, State) : MatchResult;
 
@@ -350,10 +356,16 @@ package RegExpInternals
 
     /*** Character sets ***/
 
+    // FIXME: interfaces are completely missing.
+
+    /*
     interface Charset!
     {
         function match(c : string) : Boolean;
     }
+    */
+    type Charset = *;
+
 
     class CharsetUnion implements Charset 
     {

@@ -13,6 +13,18 @@ package
     use namespace intrinsic;
     use strict;
 
+    // Array "extras" from JS1.6 (@todo: and JS1.8 -- reduce/reduceRight)
+    // See http://developer.mozilla.org/en/docs/New_in_JavaScript_1.6#Array_extras
+    // The callback function typically takes (item, i, list) parameters
+    type Mapper  = function (*, uint, Object):*;
+    type Eacher  = function (*, uint, Object):void;
+    type Checker = function (*, uint, Object):Boolean;
+    type Reducer = function (*, *, uint, Object):*;
+
+    // INFORMATIVE: this is an implementation that meets the spec, but the spec
+    // allows for different sort implementations (quicksort is not required)
+    type Comparator = function (*,*):double;
+
     dynamic class Array
     {
         // 15.4.1 The Array Constructor Called as a Function
@@ -225,11 +237,6 @@ package
         intrinsic function slice(start:double = 0, end:double = Infinity):Array
             Array.slice(this, start, end);
 
-        // 15.4.4.11 Array.prototype.sort (comparefn)
-        // INFORMATIVE: this is an implementation that meets the spec, but the spec
-        // allows for different sort implementations (quicksort is not required)
-        type Comparator = function (*,*):double;
-
         public static function sort(self, comparefn) {
             let len:uint = self.length;
 
@@ -242,6 +249,7 @@ package
         prototype function sort(comparefn)
             Array.sort(this, comparefn);
 
+        // 15.4.4.11 Array.prototype.sort (comparefn)
         intrinsic function sort(comparefn:Comparator):Array
             Array.sort(this, comparefn);
 
@@ -430,14 +438,6 @@ package
             if (i < hi)
                 qsort(i, hi, comparefn);
         }
-
-        // Array "extras" from JS1.6 (@todo: and JS1.8 -- reduce/reduceRight)
-        // See http://developer.mozilla.org/en/docs/New_in_JavaScript_1.6#Array_extras
-        // The callback function typically takes (item, i, list) parameters
-        type Mapper  = function (*, uint, Object):*;
-        type Eacher  = function (*, uint, Object):void;
-        type Checker = function (*, uint, Object):Boolean;
-        type Reducer = function (*, *, uint, Object):*;
 
         prototype function map(mapper, thisObj)
             this.map(mapper, thisObj);

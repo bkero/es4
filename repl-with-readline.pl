@@ -14,7 +14,7 @@ while (1) {
     while (1) {
 	$response = <$sml_response>;
 	if (not defined($response)) { exit(0); }
-	last if ($response =~ /^<SMLREADY>/);
+	last if ($response =~ /<SMLREADY>$/);
 	print $response;
     }
 

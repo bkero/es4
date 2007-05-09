@@ -131,6 +131,7 @@ datatype PRAGMA =
      and CLS =
          Cls of
            { name: NAME,
+             nonnullable: bool,
              extends: NAME option,
              implements: NAME list,
              classFixtures: FIXTURES,
@@ -216,7 +217,6 @@ datatype PRAGMA =
              typeParams: IDENT list, 
              ty: TYPE_EXPR,
              isDynamic: bool }
-       | NominalType of NAME
 
      and STMT =
          EmptyStmt
