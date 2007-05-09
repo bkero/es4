@@ -11,13 +11,13 @@
  * Status: Complete; Not reviewed; Not tested.
  */
 
-package /*RegExpInternals*/  // FIXME: package bug
+package RegExpInternals
 {
     import Unicode.*;
     use namespace intrinsic;
     use strict;
 
-    public class RegExpCompiler
+    intrinsic class RegExpCompiler
     {
         /* Invariant for token handling: either idx==source.length or source[idx] is a significant char */
 

@@ -15,7 +15,7 @@ package
     use namespace intrinsic;
     use strict;
 
-    final class int! extends Number
+    intrinsic final class int! extends Number
     {       
         static const MAX_VALUE : int = 0x7FFFFFFFi;
         static const MIN_VALUE : int = -0x80000000i;
@@ -29,7 +29,7 @@ package
             x is int ? x : new int(x);
 
         /* E262-4 draft: The int constructor */
-        function int(x)
+        function int(x) : super(x)
             magic::bindInt(this, x);
 
         /* E262-4 draft: int.prototype.toString */

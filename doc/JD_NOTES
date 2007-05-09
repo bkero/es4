@@ -14,6 +14,44 @@ ISSUES
 
 ###
 
+03-MAY-2007
+
+TOPLEVEL ENVIRONMENT
+
+The toplevel environment gets constructed by the definer. This includes
+the case of multiple compilation units. Every session consists of a
+particular ordering of programs. As each program is defined, duplicate
+fixtures are erased or, in case of incompatibility, result in an error.
+
+Programs can be loaded dynamically, but not unloaded until the session
+is over.
+
+* To avoid definition conflicts, use packages and namespaces
+* Ambiguous reference errors still may occur at compile or run time, but
+  those can be resolved by qualification
+
+AS3 uses shadowing to resolve duplicate definitions. Each program closes
+over its global definitions. Programs are in scope of earlier loaded 
+programs, but
+
+SEPARATE COMPILATION
+
+Separately compiled programs must behave as though they are compiled
+together with the following exceptions
+
+* top level functions in earlier loaded programs are shadowed by 
+  those in the current program. Fixed properties, including those
+  of earlier programs, shadow dynamic properties that result from
+  execution of the current program. In other words, the global
+  object is shadowed by the global fixed properties
+
+SEPARATE GLOBAL OBJECTS
+
+Programs compiled together or separately may share the dyanamic properties
+of a global object, or not. Separately compiled programs in AS3 do not.
+
+###
+
 10-APR-2007
 
 FOR-IN STATEMENTS

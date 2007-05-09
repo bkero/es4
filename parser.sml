@@ -2578,7 +2578,7 @@ and conditionalExpression (ts,ALLOWLIST,b) =
                             let
                                 val (ts6,nd6) = assignmentExpression(ts5,ALLOWLIST,b)
                             in
-                                (ts6, Ast.TernaryExpr (Ast.Cond, nd2, nd4, nd6))
+                                (ts6, Ast.TernaryExpr (nd2, nd4, nd6))
                             end
                       | _ => error ["unknown token in conditionalExpression"]                            
                     end
@@ -2604,7 +2604,7 @@ and conditionalExpression (ts,ALLOWLIST,b) =
                             let
                                 val (ts6,nd6) = assignmentExpression(ts5,NOLIST,b)
                             in
-                                (ts6, Ast.TernaryExpr (Ast.Cond, nd2, nd4, nd6))
+                                (ts6, Ast.TernaryExpr (nd2, nd4, nd6))
                             end
                       | _ => error ["unknown token in conditionalExpression"]                            
                     end
@@ -4702,7 +4702,7 @@ and defaultXmlNamespaceStatement (ts) =
             let
                 val (ts1,nd1) = nonAssignmentExpression ((tl (tl (tl (tl ts)))),ALLOWLIST,ALLOWIN)
             in
-                (ts1,Ast.Dxns {expr=nd1})
+                (ts1,Ast.DXNStmt {expr=nd1})
             end
       | _ => error ["unknown token in defaultXmlNamespaceStatement"]
     end
@@ -6063,11 +6063,11 @@ and classDefinition (ts,attrs:ATTRS) =
                                  ident=ident,
                                  name=NONE,
                                  block=Ast.Block {body=body,
-                                                  defns=classDefn::letDefns,
+                                                  defns=letDefns,
                                                   head=NONE,
                                                   pragmas=pragmas,
                                                   pos=posOf ts2}}],
-                      defns=[],
+                      defns=[classDefn],
                       head=NONE,
                       pos=posOf ts})
             end

@@ -34,20 +34,21 @@ package
     use default namespace public;
     use namespace intrinsic;
     use strict;
+    import Unicode.*
 
-    final class string! extends String
+    intrinsic final class string! extends String
     {       
         /* E262-3 15.5.1: The String Constructor Called as a Function */
         static meta function invoke(x="")
             x is string ? x : new string(x);
 
         /* 15.5.2 The string Constructor */
-        function string(x="") : super(x) 
+        function string(x="") : super(x)
         {
             // No need to magic::bindString a second time, 
             // since our super(x) call did it for us.
         }
-        
+
         /* E262-3 15.5.3.2: String.fromCharCode
            E262-4 draft proposals:bug_fixes - FUNCTION.LENGTH
         */
@@ -102,10 +103,10 @@ package
            E262-4 draft proposals:static_generics
         */
         prototype function charCodeAt(pos)
-            ToString(this).charCodeAt(pos);
+            ToString(this).charCodeAt(ToDouble(pos));
 
         static function charCodeAt(self, pos)
-            ToString(self).charCodeAt(pos);
+            ToString(self).charCodeAt(ToDouble(pos));
 
         override intrinsic function charCodeAt(pos: double = 0) : uint
             let (ipos: double = ToInteger(pos))
@@ -136,11 +137,11 @@ package
            E262-4 draft proposals:static_generics
            E262-4 draft proposals:bug_fixes - FUNCTION.LENGTH
         */
-        prototype function indexOf(searchString, position)
-            ToString(this).indexOf(searchString, position);
+        prototype function indexOf(searchString, position = 0.0)
+            ToString(this).indexOf(ToString(searchString), ToDouble(position));
 
-        static function indexOf(self, searchString, position)
-            ToString(self).indexOf(searchString, position);
+        static function indexOf(self, searchString, position = 0.0)
+            ToString(self).indexOf(ToString(searchString), ToDouble(position));
 
         override intrinsic function indexOf(searchString: string, position: double = 0.0) : double {
             position = ToInteger(position);
@@ -152,10 +153,10 @@ package
 
             outer:
             for ( let k : uint = m ; k < lim ; k++ ) {
-                for ( let w : uint = 0 ; w < sslen ; w++ ) {
-                    if (magic::charCodeAt(this, uint(k+w)) !== magic::charCodeAt(searchString, uint(w))) /* FIXME: casts redundant */
-                        /* continue outer; */  /* FIXME: doesn't work */
-                        break;
+                for ( let w : uint = 0u ; w < sslen ; w++ ) {
+                    /* FIXME: casts redundant */
+                    if (magic::charCodeAt(this, uint(k+w)) !== magic::charCodeAt(searchString, uint(w))) 
+                        continue outer;
                 }
                 return k;
             }
@@ -174,15 +175,15 @@ package
             ToString(self).lastIndexOf(searchString, position);
 
         override intrinsic function lastIndexOf(searchString: string, position: double) : double {
-            position = isNaN(position) ? Infinity : ToInteger(x);
+            position = isNaN(position) ? Infinity : ToInteger(position);
 
             let slen  : uint = length;
             let m     : uint = Math.min(Math.max(position, 0), slen);
             let sslen : uint = searchString.length;
 
             outer:
-            for ( let k : uint = m ; k >= 0 ; k-- ) {
-                for ( let w : uint = 0 ; w < sslen ; w++ ) {
+            for ( let k : uint = m ; k >= 0u ; k-- ) {
+                for ( let w : uint = 0u ; w < sslen ; w++ ) {
                     if (magic::charCodeAt(this, k+w) !== magic::charCodeAt(searchString, w)) 
                         continue outer;
                 }
@@ -535,7 +536,7 @@ package
         override intrinsic function toLowerCase() : string {
             let s   : string = "";
             let len : uint = length;
-            for ( let i : uint = 0 ; i < len ; i++ )
+            for ( let i : uint = 0u ; i < len ; i++ )
                 s += magic::fromCharCode(Unicode.toLowerCaseCharCode(magic::charCodeAt(this,i)));
             return s;
         }
@@ -565,7 +566,7 @@ package
         override intrinsic function toUpperCase() : string {
             let s   : string = "";
             let len : uint = this.length;
-            for ( let i : uint = 0 ; i < len ; i++ )
+            for ( let i : uint = 0u ; i < len ; i++ )
                 s += magic::fromCharCode(Unicode.toUpperCaseCharCode(magic::charCodeAt(this,i)));
             return s;
         }
@@ -606,7 +607,7 @@ package
         }
 
         /* E262-3 15.5.5.1: length. */
-        function get length() : uint
+        override function get length() : uint
             magic::stringLength(this);
     }
 }

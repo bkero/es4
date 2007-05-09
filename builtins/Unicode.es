@@ -1,7 +1,9 @@
-/* -*- indent-tabs-mode: nil -*- */
+/* -*- mode: java; indent-tabs-mode: nil -*- */
 
 package Unicode
 {
+    use namespace intrinsic;
+
     /* FIXME: Unicode
 
     const spaces = ("\u0020\u00A0\u1680\u180E\u2000\u2001\u2002\u2003\u2004" +
@@ -130,4 +132,11 @@ package Unicode
             cs[i] = s.charAt(i);   /* FIXME: use [] syntax when it works */
         return cs;
     }
+
+    public function toUpperCaseCharCode(i : uint) : uint 
+        uint(i);
+
+    public function toLowerCaseCharCode(i : uint) : uint 
+        uint(i);
+
 }

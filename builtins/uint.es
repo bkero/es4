@@ -15,7 +15,7 @@ package
     use namespace intrinsic;
     use strict;
 
-    final class uint! extends Number
+    intrinsic final class uint! extends Number
     {       
         static const MAX_VALUE : uint = 0xFFFFFFFFu;
         static const MIN_VALUE : uint = 0;
@@ -29,7 +29,7 @@ package
             x is uint ? x : new uint(x);
 
         /* E262-4 draft: The uint constructor */
-        function uint(x)
+        function uint(x) : super(x)
             magic::bindUInt(this, x);
 
         /* E262-4 draft: uint.prototype.toString */
