@@ -254,7 +254,10 @@ fun allocFixtures (regs:Mach.REGS)
                   | Ast.FieldTypeRef _ => (* FIXME: get type from object type *)
                     Mach.ValProp (Mach.Undef)
 
-                  | _ => error ["Shouldn't happen: failed to match in Eval.allocFixtures#valAllocState."]
+                  | _ => Mach.ValProp (Mach.Undef)
+
+                  (* FIXME: this error should probably be turned on. *)
+                  (* | _ => error ["Shouldn't happen: failed to match in Eval.allocFixtures#valAllocState."] *)
 
             fun tempPadding n =
                 if n = 0
@@ -527,6 +530,23 @@ and getValue (obj:Mach.OBJ)
     : Mach.VAL = 
     getValueOrVirtual obj name true
 
+and checkAndConvert (v:Mach.VAL)                    
+                    (tyExpr:Ast.TYPE_EXPR)
+    : Mach.VAL = 
+    if (isCompatible v tyExpr)
+    then v
+    else v
+         (* FIXME: 
+          * 
+          * - find nominal type (assuming typenames are erased by here, which they should be)
+          * - find converter
+          * - call converter in a way that doesn't loop back on itself
+          *)
+                 
+                 
+                 
+      
+
 and setValueOrVirtual (obj:Mach.OBJ) 
                       (name:Ast.NAME) 
                       (v:Mach.VAL) 
@@ -539,13 +559,13 @@ and setValueOrVirtual (obj:Mach.OBJ)
             SOME existingProp => 
             let 
                 val existingAttrs = (#attrs existingProp)
-                val newProp = { state = Mach.ValProp v,
-                                ty = (#ty existingProp), 
-                                attrs = existingAttrs }
+                val ty = (#ty existingProp)
+                fun newProp _ = { state = Mach.ValProp (checkAndConvert v ty),
+                                  ty = ty, 
+                                  attrs = existingAttrs }
                 fun write _ = 
-                    ((* FIXME: insert typecheck here *)
-                      Mach.delProp props name;
-                      Mach.addProp props name newProp)                    
+                    (Mach.delProp props name;
+                     Mach.addProp props name (newProp ()))
             in
                 case (#state existingProp) of 
                     Mach.UninitProp => 
@@ -1381,7 +1401,8 @@ and evalExpr (regs:Mach.REGS)
         end
 
       | Ast.GetTemp n => 
-        Mach.getTemp (getScopeTemps (#scope regs)) n
+        (trace ["getTemp #", Int.toString n];
+         Mach.getTemp (getScopeTemps (#scope regs)) n)
 
       | Ast.InitExpr (target,temps,inits) =>
         let
@@ -1393,6 +1414,24 @@ and evalExpr (regs:Mach.REGS)
 
       | Ast.BinaryTypeExpr (typeOp, expr, tyExpr) => 
         evalBinaryTypeOp regs typeOp expr tyExpr
+
+      | Ast.ExpectedTypeExpr (ty, e) => 
+        let
+            val v = evalExpr regs e
+        in
+            if isCompatible v ty
+            then v
+            else (trace ["runtime typecheck failed"]; v)
+        end
+
+      | Ast.GetParam n => 
+        LogErr.unimplError ["unhandled GetParam expression"]
+
+      | Ast.SliceExpr _ => 
+        LogErr.unimplError ["unhandled Slice expression"]
+
+      | Ast.ApplyTypeExpr _ => 
+        LogErr.unimplError ["unhandled ApplyType expression"]
 
       | _ => LogErr.unimplError ["unhandled expression type"]
 
@@ -1655,6 +1694,10 @@ and evalSetExpr (regs:Mach.REGS)
     : Mach.VAL = 
     let
         val _ = trace ["evalSetExpr"]
+        (* FIXME: this cripples typechecking on set exprs *)
+        val lhs = case lhs of 
+                      Ast.ExpectedTypeExpr(ty, e) => e
+                    | _ => lhs
         val (obj, name) = evalRefExpr regs lhs false
         val v =
             let 
@@ -1692,6 +1735,10 @@ and evalUnaryOp (regs:Mach.REGS)
         fun crement (mode:Ast.NUMERIC_MODE) decimalOp doubleOp intOp uintOp isPre = 
             let 
                 val _ = trace ["performing crement"]
+                (* FIXME: this cripples typechecking on crement exprs *)
+                val expr = case expr of 
+                              Ast.ExpectedTypeExpr(ty, e) => e
+                            | _ => expr
                 val (obj, name) = evalRefExpr regs expr false
                 val v = getValue obj name
 
@@ -2224,7 +2271,28 @@ and hasInstance (ob:OBJ)
           | NativeFunction => isFunction v orelse isNativeFunction v
           | _ => false
     end
+
 *)
+
+and typeOfVal (v:Mach.VAL)
+    : Ast.TYPE_EXPR = 
+    case v of 
+        Mach.Undef => Ast.SpecialType Ast.Undefined
+      | Mach.Null => Ast.SpecialType Ast.Null
+      | Mach.Object (Mach.Obj {tag, ...}) => 
+        (case tag of
+             Mach.ClassTag name => Verify.instanceType name
+           | Mach.ObjectTag tys => Ast.ObjectType tys
+           | Mach.ArrayTag tys => Ast.ArrayType tys
+           | Mach.FunctionTag fsig => Ast.FunctionType (Parser.functionTypeFromSignature fsig)
+           | Mach.NoTag => error ["typeOfVal on NoTag object"])
+    
+
+and isCompatible (v:Mach.VAL)
+                 (tyExpr:Ast.TYPE_EXPR)
+    : bool = 
+    Verify.isCompatible (typeOfVal v) tyExpr
+
 
 and evalBinaryTypeOp (regs:Mach.REGS)
                      (bop:Ast.BINTYPEOP)
@@ -2235,39 +2303,11 @@ and evalBinaryTypeOp (regs:Mach.REGS)
         Ast.Cast => error ["unimplemented: operator 'cast'"]
       | Ast.To => error ["unimplemented: operator 'to'"]
       | Ast.Is => 
-        (* 
-         * FIXME: hook up to verifier when it's ready. At the moment
-         * this is a fantastically hackish definition.
-         *)
         let 
             val v = evalExpr regs expr
             val _ = trace ["processing 'is' operator"]
-        in            
-            case tyExpr of 
-                Ast.TypeName (Ast.Identifier { ident:Ast.IDENT, ... }) => 
-                (case Ustring.toAscii ident of   (* Strange use of toAscii, but ML won't match vals, and nested ifs are ugly. *)
-                     "double" => newBoolean ((Mach.isDouble v) andalso (Mach.isDirectInstanceOf Name.intrinsic_double v))
-                   | "decimal" => newBoolean ((Mach.isDecimal v) andalso (Mach.isDirectInstanceOf Name.intrinsic_decimal v))
-                   | "int" => newBoolean ((Mach.isInt v) andalso (Mach.isDirectInstanceOf Name.intrinsic_int v))
-                   | "uint" => newBoolean ((Mach.isUInt v) andalso (Mach.isDirectInstanceOf Name.intrinsic_uint v))
-                   | "String" => newBoolean (Mach.isString v)
-                   | "string" => newBoolean ((Mach.isString v) andalso (Mach.isDirectInstanceOf Name.intrinsic_string v))
-                   | "Boolean" => newBoolean (Mach.isBoolean v)
-                   | "boolean" => newBoolean ((Mach.isBoolean v) andalso (Mach.isDirectInstanceOf Name.intrinsic_boolean v))
-                   | "Numeric" => newBoolean (Mach.isNumeric v)
-                   | n => 
-                     (case v of 
-                          Mach.Undef => newBoolean false
-                        | Mach.Null => newBoolean true
-                        | Mach.Object (Mach.Obj { tag, ... }) => 
-                          (case tag of 
-                               Mach.ObjectTag _ => newBoolean (n = "Object")
-                             | Mach.ArrayTag _ => newBoolean (n = "Array")
-                             | Mach.FunctionTag _ => newBoolean (n = "Function")
-                             | Mach.ClassTag {id, ...} => (trace ["operator 'is' on object of class ", Ustring.toAscii id]; 
-                                                           newBoolean (ident = id))
-                             | Mach.NoTag => newBoolean false)))
-              | _ => error ["operator 'is' on unknown type expression"]
+        in
+            newBoolean (Verify.isSubtype (typeOfVal v) tyExpr)
         end
         
 
@@ -2470,7 +2510,7 @@ and resolveOnScopeChain (scope:Mach.SCOPE)
         val _ = trace ["resolving multiname on scope chain: ", 
                               fmtMultiname mname]
         fun getScopeParent (Mach.Scope { parent, ... }) = parent
-        fun matchFixedScopeBinding (Mach.Scope {object=Mach.Obj {props, ...}, ... }, n, nss)
+        fun matchFixedScopeBinding (Mach.Scope {object=Mach.Obj {props, ...}, ... }) n nss
             = Mach.matchProps true props n nss
     in
         (* 
@@ -2506,9 +2546,9 @@ and resolveOnObjAndPrototypes (obj:Mach.OBJ)
                               (mname:Ast.MULTINAME) 
     : REF option = 
     let 
-        fun matchFixedBinding (Mach.Obj {props, ...}, n, nss)
+        fun matchFixedBinding (Mach.Obj {props, ...}) n nss
             = Mach.matchProps true props n nss
-        fun matchBinding (Mach.Obj {props, ...}, n, nss)
+        fun matchBinding (Mach.Obj {props, ...}) n nss
             = Mach.matchProps false props n nss
         fun getObjProto (Mach.Obj {proto, ...}) = 
             case (!proto) of 

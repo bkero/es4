@@ -170,55 +170,30 @@ fun isInstanceInit (s:Ast.STMT)
     name = { ns: NAMESPACE, id: IDENT }
 *)
 
-fun matchFixtures ((env:ENV),
-                   (searchId:Ast.IDENT),
-                   (nss:Ast.NAMESPACE list))
-    : Ast.NAME list =
-    case env of 
-        [] => []
-      | ({fixtures,...}:CONTEXT)::_ => 
-        let 
-            fun matchFixture (fxn:Ast.FIXTURE_NAME,_) : Ast.NAME option = 
-                case fxn of 
-                    Ast.TempName _ => NONE
-                  | Ast.PropName n => 
-                    let
-                        val {id,ns} = n
-                        fun matchNS candidateNS = 
-                            case candidateNS of
-                                Ast.LimitedNamespace (ident,limNS) =>
-                                if id = ident
-                                then ns = limNS
-                                else false
-                              | _ => ns = candidateNS
-                    in
-                        if searchId = id andalso (List.exists matchNS nss)
-                        then SOME n
-                        else NONE
-                    end
-        in
-            List.mapPartial matchFixture fixtures
-        end
 
 fun getEnvParent [] = NONE
   | getEnvParent (x::[]) = NONE
   | getEnvParent (x::xs) = SOME xs
 
+fun getEnvFixtures [] = error ["getEnvFixtures on empty environment"]
+  | getEnvFixtures (({fixtures, ...}:CONTEXT) :: _) = fixtures
+
+fun resolve env mname = 
+    Multiname.resolveInFixtures mname env getEnvFixtures getEnvParent
+
 fun resolveMultinameToFixture (env:ENV) 
                               (mname:Ast.MULTINAME) 
     : Ast.NAME * Ast.FIXTURE =
-    case Multiname.resolve mname env matchFixtures getEnvParent of
+    case resolve env mname of
         NONE => LogErr.defnError ["unresolved fixture ", LogErr.multiname mname]
-      | SOME (({fixtures, ...}::_), n) => (n, getFixture fixtures (Ast.PropName n))
-      | SOME _ => LogErr.defnError ["fixture lookup error ", LogErr.multiname mname]
+      | SOME (fixtures, n) => (n, getFixture fixtures (Ast.PropName n))
 
 fun multinameHasFixture (env:ENV) 
                         (mname:Ast.MULTINAME) 
     : bool =
-    case Multiname.resolve mname env matchFixtures getEnvParent of
+    case resolve env mname of
         NONE => false
-      | SOME (({fixtures, ...}::_), n) => true
-      | _ => LogErr.defnError ["fixture lookup error ", LogErr.multiname mname]
+      | SOME (fixtures, n) => true
 
 (*
     Since we are in the definition phase the open namespaces have not been
@@ -608,7 +583,7 @@ and defInterface (env: ENV)
 
 and resolveClass (env:ENV)
                  ({extends,implements,...}: Ast.CLASS_DEFN)
-                 (Ast.Cls {name,classFixtures,instanceFixtures,instanceInits,
+                 (Ast.Cls {name,nonnullable,classFixtures,instanceFixtures,instanceInits,
                    constructor,classType,instanceType,...}:Ast.CLS)
     : Ast.CLS =
     let
@@ -617,6 +592,7 @@ and resolveClass (env:ENV)
         val (implementsNames, instanceFixtures) = resolveImplements env instanceFixtures implements
     in
         Ast.Cls {name=name, extends=extendsName,
+                 nonnullable=nonnullable,
                  implements=implementsNames,
                  classFixtures=classFixtures,
                  instanceFixtures=instanceFixtures,
@@ -708,7 +684,7 @@ and analyzeClass (env:ENV)
                  (cdef:Ast.CLASS_DEFN)
     : Ast.CLS =
     case cdef of
-        {ns, ident, instanceDefns, instanceStmts, classDefns, ctorDefn, (* block=Ast.Block { pragmas, body, ... },*) ...} =>
+        {ns, ident, instanceDefns, instanceStmts, classDefns, ctorDefn, nonnullable, (* block=Ast.Block { pragmas, body, ... },*) ...} =>
         let
 
             (*
@@ -751,6 +727,7 @@ and analyzeClass (env:ENV)
 
         in
             Ast.Cls {name=name,
+                     nonnullable=nonnullable,
                      extends = NONE,
                      implements = [],                     
                      classFixtures = classFixtures,
@@ -1717,17 +1694,15 @@ and matchPackageName (env:ENV)
             fun parentEnv _ = NONE (* just do one scope at a time *)
             val mname = identExprToMultiname env (Ast.Identifier {ident=(hd path),openNamespaces=[]})
         in
-            case Multiname.resolve mname env matchFixtures parentEnv of
-                SOME (({fixtures, ...}::_), n) => 
-                    (NONE,path)   (* head of path matches fixture *)
+            case Multiname.resolveInFixtures mname env getEnvFixtures parentEnv of
+                SOME (fixtures, n) => (NONE,path)   (* head of path matches fixture *)
               | NONE => (* head of path does not match fixture, try finding a package name that matches prefix of path *)
-                    let
-                        val { packageNames, ... } = hd env
-                    in case pathInPackageNames packageNames path of
-                        (NONE,_) => matchPackageName (tl env) path
-                      | (SOME pkg,rest) => (SOME pkg,rest)
-                    end
-              | _ => LogErr.internalError ["matchPackageName with mname=", LogErr.multiname mname]
+                let
+                    val { packageNames, ... } = hd env
+                in case pathInPackageNames packageNames path of
+                       (NONE,_) => matchPackageName (tl env) path
+                     | (SOME pkg,rest) => (SOME pkg,rest)
+                end
         end
     end
 
@@ -1985,6 +1960,14 @@ and defTyExpr (env:ENV)
         Ast.FunctionType (defFuncTy env t)
       | Ast.TypeName n =>
         Ast.TypeName (defIdentExpr env n)
+      | Ast.UnionType tys => 
+        Ast.UnionType (map (defTyExpr env) tys)
+      | Ast.ArrayType tys => 
+        Ast.ArrayType (map (defTyExpr env) tys)
+      | Ast.NullableType { expr, nullable } => 
+        Ast.NullableType { expr = defTyExpr env expr,
+                           nullable = nullable } 
+        
       (* FIXME *)
       | t => t
 
@@ -2465,9 +2448,10 @@ and defDefn (env:ENV)
 
       | Ast.TypeDefn td =>
         let
-            val unhoisted = defType env td
+            (* FIXME: this should be unhoisted, but it causes type 'Numeric' to vanish. Why? *)
+            val hoisted = defType env td
         in
-            (unhoisted, [], [])
+            ([], hoisted, [])
         end
 
       | _ => LogErr.unimplError ["defDefn"]

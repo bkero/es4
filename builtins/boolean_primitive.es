@@ -10,6 +10,7 @@
 package
 {
     use default namespace public;
+    use namespace intrinsic;
 
     /* 
      * The boolean class is final and non-dynamic because most

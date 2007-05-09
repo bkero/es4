@@ -46,4 +46,6 @@ val ppPragma = ppRep o cvtPRAGMA
 
 val ppFixtures = ppRep o cvtFIXTURES
 
+val ppFunc = ppRep o cvtFUNC
+
 end

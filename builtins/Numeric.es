@@ -5,5 +5,6 @@
 
 package 
 {
+    use namespace intrinsic;
     intrinsic type Numeric = (int, uint, double, decimal, Number);
 }

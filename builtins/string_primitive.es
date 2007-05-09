@@ -36,6 +36,11 @@ package
     use strict;
     import Unicode.*
 
+
+    // FIXME: should be declared down in the function it's used in, but this 
+    // causes it to vanish. Why?
+    type matcher = (string,RegExp!);
+
     intrinsic final class string! extends String
     {       
         /* E262-3 15.5.1: The String Constructor Called as a Function */
@@ -68,7 +73,7 @@ package
 
         /* E262-3 15.5.4.2: String.prototype.toString */
         prototype function toString(this : string)
-            private::toString(this);
+            this.private::toString();
 
         override intrinsic function toString() : string
             private::toString(this);
@@ -408,8 +413,6 @@ package
             ToString(self).split(separator, limit);
 
         override intrinsic function split(separator, limit) : Array {
-
-            type matcher = (string,RegExp!);
 
             function splitMatch(R: matcher, S: string, q: uint) : [uint, [string]] {
                 /* FIXME: use "switch type" when it works */
