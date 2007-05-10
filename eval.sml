@@ -1320,20 +1320,20 @@ and evalExpr (regs:Mach.REGS)
       | Ast.ListExpr es =>
         evalListExpr regs es
         
-      | Ast.LexicalRef { ident, pos } =>
+      | Ast.LexicalRef { ident, loc } =>
         let 
-            val _ = LogErr.setPos pos;
+            val _ = LogErr.setLoc loc;
             val (obj, name) = evalRefExpr regs expr true
-            val _ = LogErr.setPos pos;
+            val _ = LogErr.setLoc loc;
         in
             getValue obj name
         end
 
-      | Ast.ObjectRef { base, ident, pos } => 
+      | Ast.ObjectRef { base, ident, loc } => 
         let 
-            val _ = LogErr.setPos pos
+            val _ = LogErr.setLoc loc
             val (obj, name) = evalRefExpr regs expr false
-            val _ = LogErr.setPos pos
+            val _ = LogErr.setLoc loc
         in
             getValue obj name
         end
@@ -1896,9 +1896,9 @@ and evalUnaryOp (regs:Mach.REGS)
             in
                 newString 
                     (case expr of 
-                         Ast.LexicalRef { ident, pos } => 
+                         Ast.LexicalRef { ident, loc } => 
                          let 
-                             val _ = LogErr.setPos pos
+                             val _ = LogErr.setLoc loc
                              val multiname = evalIdentExpr regs ident
                          in
                              case resolveOnScopeChain (#scope regs) multiname of 
@@ -2407,12 +2407,12 @@ and evalRefExprFull (regs:Mach.REGS)
     let 
         val (base,ident) =
             case expr of         
-                Ast.LexicalRef { ident, pos } => 
-                (LogErr.setPos pos; 
+                Ast.LexicalRef { ident, loc } => 
+                (LogErr.setLoc loc; 
                  (NONE,ident))
 
-              | Ast.ObjectRef { base, ident, pos } => 
-                (LogErr.setPos pos; 
+              | Ast.ObjectRef { base, ident, loc } => 
+                (LogErr.setLoc loc; 
                  (SOME (evalExpr regs base), ident))
 
               | _ => error ["need lexical or object-reference expression"]
@@ -3138,16 +3138,16 @@ and specialFunctionConstructor (classObj:Mach.OBJ)
              * We synthesize a token stream here that feeds back into the parser.
              *)
             let 
-                val source = Ustring.toSource (toUstring (List.last args))
+                val source = toUstring (List.last args)
                 val argArgs = List.take (args, (length args)-1)
                 val argIdents = map (fn x => Token.Identifier (toUstring x)) argArgs
-                val nloc = {file="<no filename>", span=(1,1), sm=StreamPos.mkSourcemap (), post_newline=false}
+                val nloc = {file="<no filename>", span=({line=1,col=1},{line=1,col=1}), post_newline=false}
                 val argList = case argIdents of
                                   [] => []
                                 | x::xs => ((x, nloc) :: 
                                             (List.concat 
                                                  (map (fn i => [(Token.Comma, nloc), (i, nloc)]) xs)))
-                val lines = [source] (* FIXME: split lines *)
+                val lines = [Ustring.sourceFromUstring source] (* FIXME: split lines *)
                 val lineTokens = List.filter (fn t => case t of 
                                                           (Token.Eof, _) => false (* FIXME: this won't work if there's a regexp, because the token list won't be complete *)
                                                         | _ => true)
@@ -3172,7 +3172,7 @@ and specialFunctionConstructor (classObj:Mach.OBJ)
                     let 
                         val Mach.Obj { magic, ...} = instanceObj
                         val sname = Name.public_source
-                        val sval = newString (Ustring.fromString source)
+                        val sval = newString source
                     in
                         magic := SOME (Mach.Function { func = f, 
                                                        this = NONE,
@@ -3348,12 +3348,12 @@ and evalBlock (regs:Mach.REGS)
               (block:Ast.BLOCK) 
     : Mach.VAL = 
     let 
-        val Ast.Block {head, body, pos, ...} = block
-        val _ = LogErr.setPos pos
+        val Ast.Block {head, body, loc, ...} = block
+        val _ = LogErr.setLoc loc
         val blockRegs = evalHead regs (valOf head)
-        val _ = LogErr.setPos pos
+        val _ = LogErr.setLoc loc
         val res = evalStmts blockRegs body
-        val _ = LogErr.setPos pos
+        val _ = LogErr.setLoc loc
     in
         res
     end
@@ -3805,7 +3805,7 @@ and evalProgram (prog:Ast.PROGRAM)
     let
         val regs = getInitialRegs ()
     in
-        (LogErr.setPos NONE;
+        (LogErr.setLoc NONE;
          allocScopeFixtures regs (valOf (#fixtures prog));
          map (evalPackage regs) (#packages prog);
          evalBlock regs (#block prog))

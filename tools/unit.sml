@@ -8,7 +8,7 @@ datatype STAGE = Parse
                | VerifyEval
                | Eval
 
-datatype INPUT_SOURCE = Raw of string list
+datatype INPUT_SOURCE = Raw of Ustring.SOURCE list
                       | File of string
 
 type TEST_CASE = { name: string option,
@@ -226,14 +226,14 @@ fun parseScript (filename : string) : TEST_CASE list =
                  NONE => if null accum then
                              k NONE
                          else
-                             k (SOME (Raw (rev accum), NONE, lineNum))
+                             k (SOME (Raw (map Ustring.fromSource (rev accum)), NONE, lineNum))
                | SOME (SourceLine s, lineNum') => parseContents (s::accum) lineNum' k
                | SOME (Link s, lineNum') =>
                  if null accum then
                      finishLink s lineNum' k
                  else
                      raise (MixedContent (lineNum' - 1))
-               | SOME (Header h, lineNum') => k (SOME (Raw (rev accum), SOME h, lineNum'))
+               | SOME (Header h, lineNum') => k (SOME (Raw (map Ustring.fromSource (rev accum)), SOME h, lineNum'))
         )
 
         and finishLink (link : string)
@@ -315,7 +315,7 @@ fun exitCode (b : bool) : int = if b then 0 else 1
 
 fun consumeTraceOption (opt:string) : bool = 
     case opt of 
-        "-Tlex" => (Lexer.UserDeclarations.doTrace := true; false)
+        "-Tlex" => (Lexer.doTrace := true; false)
       | "-Tparse" => (Parser.doTrace := true; false)
       | "-Tname" => (Multiname.doTrace := true; false)
       | "-Tdefn" => (Defn.doTrace := true; false)

@@ -25,8 +25,6 @@ struct
                    | REAL64cvt
                    | DECcvt
                    | DECRMcvt
-                   | STREAMPOS_SPANcvt
-                   | STREAMPOS_SMcvt
                    | USTRINGcvt
 
     fun typeName (DATATYPEcvt (id, _)) = id
@@ -49,8 +47,6 @@ struct
            | IDty (IDENT (["Int32"], "int")) => INT32cvt
            | IDty (IDENT (["Decimal"], "DEC")) => DECcvt
            | IDty (IDENT (["Decimal"], "ROUNDING_MODE")) => DECRMcvt
-           | IDty (IDENT (["StreamPos"], "span")) => STREAMPOS_SPANcvt
-           | IDty (IDENT (["StreamPos"], "sourcemap")) => STREAMPOS_SMcvt
            | IDty (IDENT (["Ustring"], "STRING")) => USTRINGcvt
 
            | IDty (IDENT ([], name)) =>
@@ -142,14 +138,6 @@ struct
                         in
                             (IDpat sym, APPexp (ID "PrettyRep.DecRm", ID sym))
                         end
-           | STREAMPOS_SPANcvt => let val sym = gensym "s"
-                             in
-                                 (IDpat sym, APPexp (ID "PrettyRep.StrmPosSpan", ID sym))
-                             end
-           | STREAMPOS_SMcvt => let val sym = gensym "s"
-                             in
-                                 (IDpat sym, APPexp (ID "PrettyRep.StrmPosSM", ID sym))
-                             end
            | BOOLcvt => let val sym = gensym "b"
                         in
                             (IDpat sym, APPexp (ID "PrettyRep.Bool", ID sym))

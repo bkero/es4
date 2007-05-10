@@ -2,6 +2,7 @@
 structure Ustring = struct
 
 type STRING = UTF8.wchar vector
+type SOURCE = UTF8.wchar list
 
 
 (*
@@ -12,12 +13,14 @@ type STRING = UTF8.wchar vector
 
 fun internal_fromString s = Vector.fromList (UTF8.explode s)
 
+fun internal_fromSource s = UTF8.explode s
+
 fun internal_toEscapedAscii us =
     let
 	fun esc (c, ls) = 
-            if UTF8.isAscii c then
+	    if UTF8.isAscii c then
 		(UTF8.toAscii c) :: ls
-            else
+	    else
 		(List.rev (explode (UTF8.toString c))) @ ls
     in
 	implode (List.rev (Vector.foldl esc [] us))
@@ -46,6 +49,8 @@ fun internal_substring us m n = VectorSlice.vector (VectorSlice.slice(us, m, SOM
 
 fun internal_append uss = Vector.concat uss
 
+fun internal_sourceFromUstring s = Vector.foldr (op ::) [] s
+
 
 (*
  * Public interface
@@ -53,9 +58,9 @@ fun internal_append uss = Vector.concat uss
 
 fun toAscii      (s:STRING   ) : string = internal_toEscapedAscii s
 fun toFilename   (s:STRING   ) : string = internal_toEscapedAscii s  (* FIXME: what should I do here? *)
-fun toSource     (s:STRING   ) : string = internal_toEscapedAscii s  (* FIXME: what should I do here? *)
 
 fun fromString   (s:string   ) : STRING = internal_fromString   s  (* Should be used sparingly. *)
+fun fromSource   (s:string   ) : SOURCE = internal_fromSource   s
 fun fromInt      (i:int      ) : STRING = internal_fromInt      i
 fun fromInt32    (i:Int32.int) : STRING = internal_fromInt32    i
 fun fromCharCode (i:int      ) : STRING = internal_fromCharCode i
@@ -69,6 +74,8 @@ fun compare      (a:STRING) (b:STRING) : order  = internal_compare      a b
 fun substring    (s:STRING) (m:int) (n:int) : STRING = internal_substring s m n
 
 fun append       (l:STRING list) : STRING = internal_append l
+
+fun sourceFromUstring (s:STRING) : SOURCE = internal_sourceFromUstring s
 
 
 (*
@@ -214,5 +221,7 @@ val construct_               = fromString "construct"
 val true_                    = fromString "true"
 val false_                   = fromString "false"
 val x_                       = fromString "x"
+
+val emptySource              = []
 
 end

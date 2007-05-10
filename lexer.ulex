@@ -71,6 +71,7 @@ val (curr_chars    : UTF8.wchar list ref) = ref []
 
 <INITIAL>"-"               => (Minus);
 <INITIAL>"--"              => (MinusMinus);
+<INITIAL>"-="              => (MinusAssign);
 <INITIAL>"!"               => (Not);
 <INITIAL>"!="              => (NotEquals);
 <INITIAL>"!=="             => (StrictNotEquals);
@@ -119,7 +120,6 @@ val (curr_chars    : UTF8.wchar list ref) = ref []
 <INITIAL>"<<="             => (LeftShiftAssign);
 <INITIAL>"<="              => (LessThanOrEquals);
 <INITIAL>"="               => (Assign);
-<INITIAL>"-="              => (MinusAssign);
 <INITIAL>"=="              => (Equals);
 <INITIAL>"==="             => (StrictEquals);
 <INITIAL>">"               => (GreaterThan);
@@ -160,7 +160,6 @@ val (curr_chars    : UTF8.wchar list ref) = ref []
 <INITIAL>"new"             => (New);
 <INITIAL>"null"            => (Null);
 <INITIAL>"package"         => (Package);
-<INITIAL>"precision"       => (Precision);
 <INITIAL>"private"         => (Private);
 <INITIAL>"protected"       => (Protected);
 <INITIAL>"public"          => (Public);
@@ -191,10 +190,12 @@ val (curr_chars    : UTF8.wchar list ref) = ref []
 <INITIAL>"has"             => (Has);
 <INITIAL>"include"         => (Include);
 <INITIAL>"int"             => (Int);
+<INITIAL>"invoke"          => (Invoke);
 <INITIAL>"namespace"       => (Namespace);
 <INITIAL>"native"          => (Native);
 <INITIAL>"number"          => (Number);
 <INITIAL>"override"        => (Override);
+<INITIAL>"precision"       => (Precision);
 <INITIAL>"prototype"       => (Prototype);
 <INITIAL>"rounding"        => (Rounding);
 <INITIAL>"standard"        => (Standard);

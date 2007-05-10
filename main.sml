@@ -8,7 +8,7 @@ structure Main = struct
 fun findTraceOption (tname:string) 
     : (bool ref) option = 
     case tname of 
-        "lex" => SOME (Lexer.UserDeclarations.doTrace)
+        "lex" => SOME (Lexer.doTrace)
       | "parse" => SOME (Parser.doTrace)
       | "name" => SOME (Multiname.doTrace)
       | "defn" => SOME (Defn.doTrace)
@@ -74,7 +74,7 @@ fun repl doPrompt =
                     if (!doParse)
                     then 
                         let 
-                            val p = Parser.parseLines [line]
+                            val p = Parser.parseLines [Ustring.fromSource line]
                         in
                             if (!doDefn)
                             then 

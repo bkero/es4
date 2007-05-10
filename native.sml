@@ -485,7 +485,7 @@ fun eval (vals:Mach.VAL list)
         else 
             let
                 val s = nthAsUstr vals 0
-                val lines = [Ustring.toSource s] (* FIXME: split lines *)
+                val lines = [Ustring.sourceFromUstring s] (* FIXME: split lines *)
                 (* 
                  * FIXME: catch parse errors and throw a user SyntaxError
                  * exception here once natives grow the ability to throw 

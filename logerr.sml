@@ -1,41 +1,37 @@
 structure LogErr = struct
 
-fun posToString {file, span, sm, post_newline} =
-    let val (pos1, pos2) = span
+fun locToString {file, span, post_newline} =
+    let
+        val ({line=line1, col=col1}, {line=line2, col=col2}) = span
     in
         file ^ ":" ^
-        (Int.toString (StreamPos.lineNo sm pos1)) ^ "." ^ (Int.toString (StreamPos.colNo sm pos1)) ^ "-" ^
-        (Int.toString (StreamPos.lineNo sm pos2)) ^ "." ^ (Int.toString (StreamPos.colNo sm pos2))
+        (Int.toString line1) ^ "." ^ (Int.toString col1) ^ "-" ^
+        (Int.toString line2) ^ "." ^ (Int.toString col2)
     end
 
-val (pos:(Ast.POS option) ref) = ref NONE
-fun setPos (p:Ast.POS option) = pos := p
+val (loc:(Ast.LOC option) ref) = ref NONE
+fun setLoc (p:Ast.LOC option) = loc := p
 
-val (lastReported:(Ast.POS option) ref) = ref NONE
-
-fun pos_equal (NONE, NONE) = true
-  | pos_equal (SOME (p:Ast.POS), SOME (q:Ast.POS)) =
-    ((#file p) = (#file q)) andalso ((#span p) = (#span q))
-  | pos_equal (_, _) = false
+val (lastReported:(Ast.LOC option) ref) = ref NONE
 
 fun log ss = 
     let
-        val pos_changed = not (pos_equal (!lastReported, !pos))
+        val loc_changed = not (!lastReported = !loc)
     in
-        if pos_changed
+        if loc_changed
         then 
-            ((case !pos of 
+            ((case !loc of 
               NONE => ()
-            | SOME p => TextIO.print ("[posn] " ^ (posToString p) ^ "\n"));
-            lastReported := (!pos))
+            | SOME l => TextIO.print ("[locn] " ^ (locToString l) ^ "\n"));
+            lastReported := (!loc))
         else ();
         List.app TextIO.print ss;
         TextIO.print "\n"
     end
 
-fun error ss = case !pos of 
+fun error ss = case !loc of 
 		   NONE => log ("**ERROR** (unknown location)" :: ss)
-		 | SOME p => log ("**ERROR** (near " :: (posToString p) :: ") " :: ss)
+		 | SOME l => log ("**ERROR** (near " :: (locToString l) :: ") " :: ss)
 
 fun namespace (ns:Ast.NAMESPACE) = 
     case ns of 

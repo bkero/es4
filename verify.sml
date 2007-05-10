@@ -663,19 +663,19 @@ and verifyExpr (env:ENV)
                                       actuals = actuals' }, dummyType)
             end
 
-          | Ast.ObjectRef { base, ident, pos } =>
+          | Ast.ObjectRef { base, ident, loc } =>
             let
                 val (base', t) = verifySub base
                 val ident' = ident (* TODO *)
             in
-                return (Ast.ObjectRef { base=base', ident=ident', pos=pos }, dummyType)
+                return (Ast.ObjectRef { base=base', ident=ident', loc=loc }, dummyType)
             end
 
-          | Ast.LexicalRef { ident, pos } =>
+          | Ast.LexicalRef { ident, loc } =>
             let
                 val ident' = ident (* TODO *)
             in
-                return (Ast.LexicalRef { ident=ident', pos=pos }, dummyType)
+                return (Ast.LexicalRef { ident=ident', loc=loc }, dummyType)
             end
 
           | Ast.SetExpr (a, le, re) => 
@@ -871,9 +871,9 @@ and verifyBlock (env:ENV)
     : Ast.BLOCK =
     let
     in case b of
-        Ast.Block { head, body, pos, pragmas=pragmas, defns=defns } =>
+        Ast.Block { head, body, loc, pragmas=pragmas, defns=defns } =>
             let
-                val _ = LogErr.setPos pos
+                val _ = LogErr.setLoc loc
                 val head = Option.map (verifyHead env) head
                 val body = verifyStmts env body
             in
@@ -881,7 +881,7 @@ and verifyBlock (env:ENV)
                             defns = defns,
                             body = body,
                             head = head,
-                            pos = pos }
+                            loc = loc }
             end
     end
 
@@ -939,7 +939,7 @@ and verifyProgram (p:Ast.PROGRAM)
     in case p of
         { packages, fixtures, block } =>
             let
-                val _ = LogErr.setPos NONE
+                val _ = LogErr.setLoc NONE
                 val e = topEnv ()
                 val block = verifyBlock e block
                 val result = { packages = packages,
@@ -1095,7 +1095,7 @@ and verifyExpr (env as {env,this,...}:RIB)
 	     verifyBlock env2 block;
 	     Ast.FunctionType ty
          end
-      | LexicalRef { ident, pos } =>
+      | LexicalRef { ident, loc } =>
 	verifyIdentExpr env ident
       | ListExpr l => List.last (List.map (verifyExpr env) l)
       | LetExpr {defs=_, body, head=SOME (fixtures,inits) } =>  (* FIXME: inits added *)
@@ -1577,7 +1577,7 @@ and verifyDefns env ([]:DEFN list) : (TYPE_ENV * int list) = ([], [])
 
 
 and verifyBlock (env as {env,...}) 
-		(Block {pragmas,defns=_,body,head,pos}) =
+		(Block {pragmas,defns=_,body,head,loc}) =
     let val SOME (fixtures,inits) = head 
 	val extensions = verifyFixtures env fixtures
         val env' = withEnvExtn env extensions

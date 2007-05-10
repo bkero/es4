@@ -146,10 +146,6 @@ datatype TOKEN =
 
     (* literals *)
 
-    | AttributeIdentifier
-    | BlockComment
-    | DocComment
-    | Eol
     | Identifier of Ustring.STRING
 
     (* The interpretation of these 4 literal types can be done during lexing. *)
@@ -165,9 +161,7 @@ datatype TOKEN =
 
     | PackageIdentifier of Ustring.STRING
     | RegexpLiteral of Ustring.STRING
-    | SlashSlashComment
     | StringLiteral of Ustring.STRING
-    | Whitespace
     | XmlLiteral
     | XmlPart
     | XmlMarkup
@@ -177,20 +171,17 @@ datatype TOKEN =
 
     (* meta *)
 
-    | Error
-    | LexBreakDiv of { lex_initial: unit -> ((TOKEN * Ast.POS) list),
-                       lex_regexp: unit -> ((TOKEN * Ast.POS) list) }
-    | LexBreakDivAssign of { lex_initial: unit -> ((TOKEN * Ast.POS) list),
-                             lex_regexp: unit -> ((TOKEN * Ast.POS) list) }
-    | LexBreakLessThan of { lex_initial: unit -> ((TOKEN * Ast.POS) list),
-                            lex_xml: unit -> ((TOKEN * Ast.POS) list) }
+    | LexBreakDiv of { lex_initial: unit -> ((TOKEN * Ast.LOC) list),
+                       lex_regexp: unit -> ((TOKEN * Ast.LOC) list) }
+    | LexBreakLessThan of { lex_initial: unit -> ((TOKEN * Ast.LOC) list),
+                            lex_xml: unit -> ((TOKEN * Ast.LOC) list) }
     | Eof
 
 exception TokenError
 
 fun isreserved (t,_) = 
     case t of
-    ( As
+      ( As
       | Break
       | Case
       | Cast
@@ -386,10 +377,6 @@ fun tokenname (t,_) =
 
       (* literals *)
 
-      | AttributeIdentifier => "@id"
-      | BlockComment => ""
-      | DocComment => ""
-      | Eol => "eol"
       | Identifier x => "identifier("^(Ustring.toAscii x)^")"
 
       | DecimalIntegerLiteral x => x
@@ -403,9 +390,7 @@ fun tokenname (t,_) =
 
       | PackageIdentifier x => "packageidentifier("^(Ustring.toAscii x)^")"
       | RegexpLiteral x => "regexp("^(Ustring.toAscii x)^")"
-      | SlashSlashComment => ""
       | StringLiteral x => "string("^(Ustring.toAscii x)^")"
-      | Whitespace => "<ws>"
       | XmlLiteral => "xmlliteral()"
       | XmlPart => "xmlpart()"
       | XmlMarkup => "xmlmarkup()"
@@ -415,9 +400,7 @@ fun tokenname (t,_) =
 
       (* meta tokens *)
 
-      | Error => "error"
       | LexBreakDiv x => "lexbreak_div"
-      | LexBreakDivAssign x => "lexbreak_divassign"
       | LexBreakLessThan x => "lexbreak_lessthan"
       | Eof => "eof"
 end

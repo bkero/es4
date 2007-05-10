@@ -324,9 +324,9 @@ fun resolveExprToNamespace (env:ENV)
           | Ast.Internal _ => Ast.Internal ident
           | _ => ns
         end
-      | Ast.LexicalRef {ident = Ast.Identifier {ident,...}, pos } => 
+      | Ast.LexicalRef {ident = Ast.Identifier {ident,...}, loc } => 
         let 
-            val _ = LogErr.setPos pos
+            val _ = LogErr.setLoc loc
             val mname = {nss = (#openNamespaces (hd env)), id = ident}
         in
             case resolveMultinameToFixture env mname of 
@@ -1374,7 +1374,7 @@ and defPragmas (env:ENV)
                                                              | _ => LogErr.unimplError ["unhandle fixture type"]
                                         val targetRef = defExpr env (Ast.LexicalRef {ident=Ast.QualifiedIdentifier {
                                                                                     qual=Ast.LiteralExpr (Ast.LiteralNamespace (Ast.Public package)),
-                                                                                    ident=name},pos=NONE})
+                                                                                    ident=name},loc=NONE})
                                         val getterDefn : Ast.FUNC_DEFN = 
                                                  {kind=Ast.Const,
                                                   ns=NONE, (*SOME (!defaultNamespace),*)
@@ -1387,7 +1387,7 @@ and defPragmas (env:ENV)
                                                                         defaults=[],ctorInits=NONE,returnType=Ast.SpecialType Ast.Any,
                                                                         thisType=NONE,hasRest=false},
                                                           isNative=false,
-                                                          block=Ast.Block {pragmas=[],defns=[],head=SOME ([],[]),pos=NONE,
+                                                          block=Ast.Block {pragmas=[],defns=[],head=SOME ([],[]),loc=NONE,
                                                                            body=[Ast.ReturnStmt targetRef]},
                                                           param=([],[]),
                                                           defaults=[],
@@ -1423,8 +1423,8 @@ and defPragmas (env:ENV)
                                                                                          { ident = Ustring.x_,
                                                                                            openNamespaces = [[Ast.Internal
                                                                                                                 Ustring.empty]]},
-                                                                               pos = NONE}))],
-                                                          pos = NONE},
+                                                                               loc = NONE}))],
+                                                          loc = NONE},
                                               param = ([(Ast.TempName 0,
                                                           Ast.ValFixture
                                                             { ty = Ast.SpecialType
@@ -1675,7 +1675,7 @@ and resolvePath (env:ENV) (path:Ast.IDENT list)
                                     {ident=Ast.QualifiedIdentifier 
                                         {qual=Ast.LiteralExpr (Ast.LiteralNamespace (Ast.Public pk)),
                                          ident=id},
-                                     pos=NONE}
+                                     loc=NONE}
                 in
                     resolveObjectPath env ids (SOME expr)
                 end
@@ -1744,13 +1744,13 @@ and resolveObjectPath (env:ENV) (path:Ast.IDENT list) (expr:Ast.EXPR option)
     in case (expr, path) of
         (NONE, ident::identList) => 
             let
-                val base = Ast.LexicalRef {ident=Ast.Identifier {ident=ident,openNamespaces=[]},pos=NONE}
+                val base = Ast.LexicalRef {ident=Ast.Identifier {ident=ident,openNamespaces=[]},loc=NONE}
             in
                 resolveObjectPath env identList (SOME base)
             end
       | (SOME expr, ident::identList) =>
             let
-                val base = Ast.ObjectRef {base=expr, ident=Ast.Identifier {ident=ident,openNamespaces=[]},pos=NONE}
+                val base = Ast.ObjectRef {base=expr, ident=Ast.Identifier {ident=ident,openNamespaces=[]},loc=NONE}
             in
                 resolveObjectPath env identList (SOME base)
             end
@@ -1855,15 +1855,15 @@ and defExpr (env:ENV)
             Ast.NewExpr { obj = sub obj,
                           actuals = map sub actuals }
 
-          | Ast.ObjectRef { base, ident, pos } =>
-            (LogErr.setPos pos;
+          | Ast.ObjectRef { base, ident, loc } =>
+            (LogErr.setLoc loc;
              Ast.ObjectRef { base = sub base,
                              ident = defIdentExpr env ident,
-                             pos = pos })
+                             loc = loc })
 
-          | Ast.LexicalRef { ident, pos } => 
+          | Ast.LexicalRef { ident, loc } => 
             let
-                val _ = LogErr.setPos pos
+                val _ = LogErr.setLoc loc
             in 
                 case ident of
                     Ast.UnresolvedPath (p,i) =>
@@ -1873,23 +1873,23 @@ and defExpr (env:ENV)
                            (Ast.LiteralExpr _,Ast.Identifier {ident=id,...}) => 
                                Ast.LexicalRef {ident=Ast.QualifiedIdentifier {qual=(defExpr env base),
                                                                           ident=id},
-                                           pos=pos}
+                                           loc=loc}
                          | (Ast.LiteralExpr _,Ast.TypeIdentifier {ident=Ast.Identifier {ident=id,...},typeArgs}) => 
                                Ast.LexicalRef {ident=Ast.TypeIdentifier {ident=Ast.QualifiedIdentifier {qual=(defExpr env base),
                                                                                                         ident=id},
                                                                          typeArgs=typeArgs},
-                                               pos=pos}
+                                               loc=loc}
                          | (Ast.LiteralExpr _,_) => 
                                LogErr.defnError ["invalid package qualification"]
                            
                          | (_,_) => 
                                Ast.ObjectRef { base=(defExpr env base), 
                                            ident=(defIdentExpr env i),
-                                           pos=pos}
+                                           loc=loc}
                     end
                   | _ =>
                     Ast.LexicalRef { ident = defIdentExpr env ident,
-                                     pos = pos}
+                                     loc = loc}
             end
 
           | Ast.SetExpr (a, le, re) => 
@@ -2111,7 +2111,7 @@ and defStmt (env:ENV)
         fun reconstructClassBlock {ns, ident:Ast.IDENT, block, name:Ast.NAME option } =
             let
                 val _ = trace2 ("reconstructing class block for ", ident)
-                val Ast.Block { pragmas, defns, head, body, pos } = block
+                val Ast.Block { pragmas, defns, head, body, loc } = block
 
                 (* filter out instance initializers *)
                 val (_,stmts) = List.partition isInstanceInit body
@@ -2125,7 +2125,7 @@ and defStmt (env:ENV)
                                                                defns=defns,
                                                                head=head,
                                                                body=body, 
-                                                               pos=pos})
+                                                               loc=loc})
             in
                 (Ast.ClassBlock { ns = ns,
                                  ident = ident,
@@ -2502,8 +2502,8 @@ and defBlock (env:ENV)
              (b:Ast.BLOCK) 
     : (Ast.BLOCK * Ast.FIXTURES) =
     let 
-        val Ast.Block { pragmas, defns, body, pos, ... } = b
-        val _ = LogErr.setPos pos
+        val Ast.Block { pragmas, defns, body, loc, ... } = b
+        val _ = LogErr.setLoc loc
         val (env,unhoisted_pragma_fxtrs) = defPragmas env pragmas
         val (unhoisted_defn_fxtrs,hoisted_defn_fxtrs,inits) = defDefns env [] [] [] defns
         val env = updateFixtures env (List.foldl mergeFixtures unhoisted_defn_fxtrs hoisted_defn_fxtrs) (* so stmts can see them *)
@@ -2514,23 +2514,23 @@ and defBlock (env:ENV)
                      defns = [],  (* clear definitions, we are done with them *)
                      body = body,
                      head = SOME (List.foldl mergeFixtures unhoisted_defn_fxtrs unhoisted_pragma_fxtrs,inits),
-                     pos = pos},
+                     loc = loc},
          hoisted)
     end
 
 and defRegionalBlock (env:ENV) (blk:Ast.BLOCK)
     : Ast.BLOCK =
         let
-            val Ast.Block {pos, ...} = blk
-            val _ = LogErr.setPos pos
-            val (Ast.Block {defns,body,head=head,pragmas,pos},hoisted) = defBlock env blk
+            val Ast.Block {loc, ...} = blk
+            val _ = LogErr.setLoc loc
+            val (Ast.Block {defns,body,head=head,pragmas,loc},hoisted) = defBlock env blk
             val (fixtures,inits) = valOf head
         in
             Ast.Block {pragmas=pragmas,
                        defns=defns,
                        body=body,
                        head=(SOME ((List.foldl mergeFixtures hoisted fixtures),inits)),
-                       pos=pos}
+                       loc=loc}
         end
 
 
@@ -2586,7 +2586,7 @@ and topEnv _ = [ { fixtures = !topFixtures,
 and defProgram (prog:Ast.PROGRAM) 
     : Ast.PROGRAM = 
     let 
-        val _ = LogErr.setPos NONE
+        val _ = LogErr.setLoc NONE
         val e = topEnv ()
         val (packages, hoisted_pkg) = ListPair.unzip (map (defPackage e) (#packages prog))
         val e = List.foldl addPackageName e packages

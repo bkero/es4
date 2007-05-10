@@ -485,7 +485,7 @@ val (emptyBlock:Ast.BLOCK) =
                 defns = [],
                 body = [],
                 head= NONE,
-                pos=NONE }
+                loc=NONE }
                              
 fun getTemp (temps:TEMPS)
             (n:int)

@@ -3,8 +3,9 @@
 
 structure Ast = struct
 
-type POS = { file: string, span: StreamPos.span, sm: StreamPos.sourcemap, post_newline: bool }
+type SOURCE_POS = { line: int, col: int }
 
+type LOC = { file: string, span: SOURCE_POS * SOURCE_POS, post_newline: bool }
 
 type IDENT = Ustring.STRING
 
@@ -298,8 +299,8 @@ datatype PRAGMA =
        | NewExpr of 
            { obj: EXPR,
              actuals: EXPR list }
-       | ObjectRef of { base: EXPR, ident: IDENT_EXPR, pos: POS option }
-       | LexicalRef of { ident: IDENT_EXPR, pos: POS option }
+       | ObjectRef of { base: EXPR, ident: IDENT_EXPR, loc: LOC option }
+       | LexicalRef of { ident: IDENT_EXPR, loc: LOC option }
        | SetExpr of (ASSIGNOP * EXPR * EXPR)
        | ListExpr of EXPR list
        | InitExpr of (INIT_TARGET * HEAD * INITS)   (* HEAD is for temporaries *)
@@ -494,7 +495,7 @@ withtype
              defns: DEFN list,
              head: HEAD option,
              body: STMT list,
-             pos: POS option }
+             loc: LOC option }
 
      and CASE =
            { label: EXPR option,
