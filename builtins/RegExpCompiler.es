@@ -21,16 +21,16 @@ package RegExpInternals
     {
         /* Invariant for token handling: either idx==source.length or source[idx] is a significant char */
 
-        const source : string;         // expression source, sans leading and trailing /
+        var   source : string;         // expression source, sans leading and trailing /  // FIXME: const
         var   idx : uint;              // current character in the source
         var   largest_backref : uint;  // largest back reference seen
-        const extended : Boolean;      // true iff expression has /x flag
-        const names : [string?] = [];  // capturing names, or null for capturing exprs that are not named
-        const parenIndex : uint = 0;   // number of capturing parens (including those that are named)
-        const parenCount : uint = 0;   // current depth of capture nesting
+        var   extended : boolean;      // true iff expression has /x flag  // FIXME: const
+        var   names : [string?] = [];  // capturing names, or null for capturing exprs that are not named  // FIXME: const
+        var   parenIndex : uint = 0;   // number of capturing parens (including those that are named) // FIXME: const
+        var   parenCount : uint = 0;   // current depth of capture nesting // FIXME: const 
 
-        function RegExpCompiler( source : string, flags : string )
-            : extended = flags.indexOf("x") != -1
+        function RegExpCompiler( source : string, flags  )
+            : extended = flags.x
             , source = source
             , idx = 0              /* FIXME: redundant */
             , largest_backref = 0  /* FIXME: redundant */
@@ -286,11 +286,11 @@ package RegExpInternals
             while (true) {
                 if (eat("\\&")) {
                     let t : Charset = nonemptyClassRanges();
-                    s = CharsetIntersect(s, t);
+                    s = new CharsetIntersect(s, t);
                 }
                 else if (eat("\\-")) {
                     let t : Charset = nonemptyClassRanges();
-                    s = CharsetSubtract(s, t);
+                    s = new CharsetSubtract(s, t);
                 }
                 else
                     break;
@@ -301,31 +301,45 @@ package RegExpInternals
         function nonemptyClassRanges(acc : Charset? = null) : Charset {
 
             function accumulate(acc : Charset?, x : Charset) : Charset {
-                return acc === null ? x : CharsetUnion(acc, x);
+                return acc === null ? x : new CharsetUnion(acc, x);
             }
 
             let a1 : Charset = classAtom();
 
             if (lookingAt("]"))
-                return a1;
+                return accumulate(acc,a1);
 
             if (lookingAt("-")) {
                 consumeChar();
                 if (lookingAt("]"))
-                    return accumulate(acc, CharsetAdhoc("-"));
+                    return accumulate(acc, new CharsetAdhoc("-"));
 
-                let a2 : Charset = classAtom();
-                let a3 : Charset = accumulate(acc, CharsetRange(a1, a2));
-                if (lookingAt("]"))
-                    return a3;
+                if (a1.hasOneCharacter()) {
+                    let a2 : Charset = classAtom();
+                    if (a2.hasOneCharacter()) {
+                        let a3 : Charset = accumulate(acc, 
+                                                      new CharsetRange(a1.singleCharacter(), 
+                                                                       a2.singleCharacter()));
+                        if (lookingAt("]"))
+                            return a3;
 
-                return nonemptyClassRanges(true, a3);
+                        return nonemptyClassRanges(a3);
+                    }
+                    else
+                        return nonemptyClassRanges(accumulate(accumulate(accumulate(acc,a1),
+                                                                         new CharsetAdhoc("-")),
+                                                              a2));
+                }
+                else
+                    return nonemptyClassRanges(accumulate(accumulate(acc,a1),
+                                                          new CharsetAdhoc("-")));
             }
             
-            return nonemptyClassRanges(false, accumulate(acc,a1));
+            return nonemptyClassRanges(accumulate(acc,a1));
         }
 
         function classAtom() : Charset {
+            print("classAtom: " + peekChar());
             if (lookingAt("]") || atEnd())
                 fail( SyntaxError, "Premature end of input" );
 
