@@ -2751,6 +2751,46 @@ and invokeFuncClosure (callerThis:Mach.OBJ)
             end
     end
 
+and className (obj:Mach.OBJ) = 
+    let val Mach.Obj { tag, ... } = obj
+    in
+        case tag of 
+            Mach.ClassTag { id, ... } => Ustring.toAscii id 
+    end
+
+and showObject ptag obj =
+    let val Mach.Obj { ident, tag, props, ... } = obj
+        val classname = className obj
+        fun log ss =
+            ( List.app TextIO.print ss ;
+              TextIO.print "\n" )
+    in
+        if classname = "boolean" orelse
+           classname = "int" orelse
+           classname = "uint" orelse
+           classname = "string" orelse
+           classname = "double" orelse
+           classname = "Namespace" orelse
+           classname = "Object" orelse
+           classname = "Function" then
+            ()
+        else
+            ( log [ ptag, ": ", classname, " ", Int.toString ident ] ;
+              List.app (fn (nm, { state, ... } ) => 
+                           log [ "  ", Ustring.toAscii (#id nm), "  ",
+                                 case state of
+                                     Mach.ValProp v => 
+                                     (case v of
+                                          Mach.Undef => "undefined"
+                                        | Mach.Null => "null"
+                                        | Mach.Object obj => 
+                                          (className obj) ^
+                                          " " ^ 
+                                          (case obj of 
+                                               Mach.Obj { ident, ... } => Int.toString ident))
+                                   | _ => "" ] )
+                       (!props) )
+    end
 
 and evalTryStmt (regs:Mach.REGS) 
                 (block:Ast.BLOCK) 
@@ -3330,6 +3370,7 @@ and constructClassInstance (classObj:Mach.OBJ)
         val {cls = Ast.Cls { name, ...}, ...} = classClosure
         val _ = push ["new ", callApprox (Ustring.toAscii (#id name)) args]
     in
+        
         case constructSpecial ident classObj classClosure args of
             SOME v => (pop (); v)
           | NONE => 
@@ -3338,9 +3379,8 @@ and constructClassInstance (classObj:Mach.OBJ)
             in
                 pop ();
                 Mach.Object obj
-            end                
+            end
     end
-
 
 and newByGlobalName (regs:Mach.REGS) 
                     (n:Ast.NAME) 
