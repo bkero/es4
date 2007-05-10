@@ -48,7 +48,7 @@ fun resolveExprToNamespace (env:ENV)
     : Ast.NAMESPACE = 
     case expr of 
         Ast.LiteralExpr (Ast.LiteralNamespace ns) => ns
-      | Ast.LexicalRef {ident = Ast.Identifier {ident, openNamespaces}, pos } => 
+      | Ast.LexicalRef {ident = Ast.Identifier {ident, openNamespaces}, loc } => 
         (case findFixture (#ribs env) {nss = openNamespaces, id = ident} of 
              Ast.NamespaceFixture ns => ns
            | _ => error ["namespace expression resolved ",
