@@ -16,11 +16,14 @@ fun loadFiles fs =
         fun def (f,p) = 
             (trace ["defining boot file ", f]; 
              (f, Defn.defProgram p))
+        fun ver (f, p) = 
+            (trace ["verifying boot file ", f]; 
+             (f, Verify.verifyProgram p))
         fun eval (f, p) = 
             (trace ["evaluating boot file ", f]; 
              Eval.evalProgram p)
     in
-        map eval (map def (map parse fs))
+        map eval (map ver (map def (map parse fs)))
     end
 
 fun printProp ((n:Ast.NAME), (p:Mach.PROP)) = 
@@ -77,6 +80,7 @@ fun boot _ =
         val globalObj = Mach.newObj (Mach.ClassTag Name.public_Object) Mach.Null NONE
         val _ = trace ["installing global object"];
         val _ = Eval.resetGlobal globalObj
+        val _ = Eval.booting := true
         val globalRegs = Eval.getInitialRegs ()
 
         (* Allocate any standard anonymous user namespaces like magic and meta. *)
@@ -217,7 +221,7 @@ fun boot _ =
         Eval.evalProgram residualObjectProg;
         Eval.evalProgram residualClassProg;
         Eval.evalProgram residualFunctionProg;
-        Eval.bindSpecialIdentities ();
+        Eval.booting := false;
         describeGlobal ()
     end
 end

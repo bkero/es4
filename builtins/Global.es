@@ -10,6 +10,7 @@
 package
 {
     use default namespace public;
+    use namespace intrinsic;
 
     // 15.1.1.1 NaN
     // 15.1.1.2 Infinity

@@ -56,7 +56,7 @@ package
                 usedflags[f] = true;
             }
 
-            matcher = (new RegExpCompiler(src, flags)).compile();
+            matcher = (new RegExpCompiler(src, usedflags)).compile();
 
             multiline = usedflags.m;
             ignoreCase = usedflags.i;
@@ -90,7 +90,7 @@ package
                     lastIndex = 0;
                     return null;
                 }
-                res = matcher.match(s, i);
+                res = matcher.match(s, i, multiline, ignoreCase);
                 if (res !== failure)
                     break;
                 ++i;
@@ -118,11 +118,11 @@ package
             this.test(s);
 
         /* E262-3 15.10.6.4: RegExp.prototype.toString */
-        override intrinsic function toString() : string
+        override intrinsic function toString() : String
             "/" + (source.length == 0 ? "(?:)" : source) + "/" + flags;
 
         prototype function toString()
-            this.toString();
+            this.intrinsic::toString();
 
         /* E262-3 15.10.7: properties of regexp instances */
         /* FIXME: the flags should be 'const', see bug #000C */
@@ -139,7 +139,7 @@ package
            language we should expose it -- it's benign. 
         */
         intrinsic function match(s : string, i : uint) : MatchResult
-            matcher.match(s, i);
+            matcher.match(s, i, multiline, ignoreCase);
 
         /* E262-4 - nCapturingParens used by String.prototype.replace 
          */
@@ -147,7 +147,7 @@ package
             matcher.nCapturingParens;
 
         /* Internal */
-        const matcher : RegExpMatcher;      // The [[Match]] property
+        var matcher : RegExpMatcher;      // The [[Match]] property  // FIXME: should be const
 
         function get flags() : string {
             return (multiline ? "m" : "") +

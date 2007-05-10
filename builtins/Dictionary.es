@@ -6,8 +6,8 @@
  *
  * Dictionaries are hash tables mapping values to values.
  *
- * These are built on top of Object.intrinsic::hashcode() for hashing
- * and the iterator protocol for enumeration.  
+ * These are built on top of K.intrinsic::hashcode() for hashing and
+ * the iterator protocol for enumeration.
  *
  * Misc:
  *
