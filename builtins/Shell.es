@@ -7,6 +7,7 @@ package
     intrinsic native function assert(x);
     intrinsic native function typename(x);
     intrinsic native function inspect(x, depth);
+    intrinsic native function dumpFunc(x:Function);
     intrinsic native function proto(x);
 
     public const print = intrinsic::print;

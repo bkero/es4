@@ -2,12 +2,17 @@
 
 package Unicode
 {
+    use namespace intrinsic;
+
     /* FIXME: Unicode
 
     const spaces = ("\u0020\u00A0\u1680\u180E\u2000\u2001\u2002\u2003\u2004" +
                     "\u2005\u2006\u2007\u2008\u2009\u200A\u2028\u2029\u202F\u205F\u3000");
     */
+    /* FIXME: waiting for the new lexer
     const spaces = ("\u0020");
+    */
+    const spaces = (String.fromCharCode(0x0020));
 
     public function isIdentifierStart(c) { // FIXME -- hairy, but not yet important
         return c >= 'a' && c <= 'z' || c >= 'A' && c <= 'z' || c == '_' || c == '$';
@@ -37,11 +42,19 @@ package Unicode
         return isIdentifierStart(c) || c >= '0' && c <= '9';
     }
 
+    /* FIXME: waiting for the new lexer
     const char_CR : string = "\u000D";
     const char_LF : string = "\u000A";
     const char_LS : string = "\u2028";
     const char_PS : string = "\u2029";
     const char_NEL: string = "\u0085";
+    */
+
+    const char_CR : string = String.fromCharCode(0x000D);
+    const char_LF : string = String.fromCharCode(0x000A);
+    const char_LS : string = String.fromCharCode(0x2028);
+    const char_PS : string = String.fromCharCode(0x2029);
+    const char_NEL: string = String.fromCharCode(0x0085);
 
     public function isTerminator(c : string) : boolean {
         return (c === char_LF || c === char_CR /* || c === char_LS || c === char_PS || c == char_NEL */ );  /* FIXME: Unicode */

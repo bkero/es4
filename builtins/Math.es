@@ -1,17 +1,22 @@
-/* -*- indent-tabs-mode: nil -*- */
+/* -*- mode: java; indent-tabs-mode: nil -*- */
 
 /* FIXME: The name hiding trick with MathInternals will work (provided
  * the visible properties on the Math class are changed to "public")
  * but does not work now due to a bug.  */
 
 //package MathInternals
-//{
+package
+{
     /* Math is a singleton object, not a class, but has the type "Math"
      * which suggests a private Math class that created the singleton.  
      */
 
+use namespace intrinsic;
+
 /*public*/ intrinsic dynamic final class Math
     {
+        use namespace intrinsic;
+
         /* E262-3 15.8.2.1 */
         intrinsic static function abs(x:Numeric = NaN):Numeric {
             if (isNaN(x))
@@ -25,7 +30,7 @@
 
         intrinsic static function max(...args):Numeric
 	{
-	    let x = double.NEGATIVE_INFINITY;
+	    let x = intrinsic::double.NEGATIVE_INFINITY;
 	    for (let i : uint = 0; i < args.length; ++i) {
                 let v = Number(args[i]);  /* FIXME: is this conversion right? */
                 if (isNaN(v))
@@ -38,7 +43,7 @@
 
         intrinsic static function min(...args):Numeric
 	{
-	    let x = double.POSITIVE_INFINITY;
+	    let x = intrinsic::double.POSITIVE_INFINITY;
 	    for (let i : uint = 0; i < args.length; ++i) {
                 let v = Number(args[i]);  /* FIXME: is this conversion right? */
                 if (isNaN(v))
@@ -100,7 +105,7 @@
         // min.length = 2;
 
     }
-//}
+}
 
 /*package 
 {

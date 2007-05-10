@@ -28,6 +28,7 @@ fun repl doPrompt =
         val doParse = ref true
         val doDefn = ref true
         val doEval = ref true
+        val beStrict = ref false
 
         fun toggleRef (n:string) (r:bool ref) = 
             (r := not (!r);
@@ -48,6 +49,7 @@ fun repl doPrompt =
                                         ":reboot        - reload the boot environment\n",
                                         ":parse         - toggle parse stage\n",
                                         ":defn          - toggle defn stage\n",
+                                        ":strict        - toggle strict verification\n",
                                         ":eval          - toggle evaluation stage\n" 
                                        ]; 
                               doLine())
@@ -63,6 +65,7 @@ fun repl doPrompt =
                   | [":parse"] => toggleRef "parse" doParse
                   | [":defn"] => toggleRef "defn" doDefn
                   | [":eval"] => toggleRef "eval" doEval
+                  | [":strict"] => toggleRef "strict" beStrict
                   | [":trace", t] => 
                     ((case findTraceOption t of 
                           NONE => 
@@ -72,19 +75,20 @@ fun repl doPrompt =
                   | [] => doLine ()
                   | _ => 
                     if (!doParse)
-                    then 
-                        let 
+                    then
+                        let
                             val p = Parser.parseLines [Ustring.fromSource line]
                         in
                             if (!doDefn)
-                            then 
+                            then
                                 let
                                     val d = Defn.defProgram p
+                                    val vd = Verify.verifyProgram d
                                 in
                                     if (!doEval)
-                                    then 
+                                    then
                                         let 
-                                            val res = Eval.evalProgram d
+                                            val res = Eval.evalProgram vd
                                         in
                                             if res = Mach.Undef
                                             then ()
@@ -106,7 +110,7 @@ fun repl doPrompt =
               handle 
               (LogErr.LexError | LogErr.ParseError | LogErr.NameError 
             | LogErr.DefnError | LogErr.EvalError | LogErr.MachError 
-            | LogErr.HostError | LogErr.UnimplError) => 
+            | LogErr.VerifyError | LogErr.HostError | LogErr.UnimplError) => 
               Eval.resetStack (); ());
              runUntilQuit ())
     in
@@ -144,7 +148,7 @@ fun testEV argvRest =
         val _ = List.map Verify.verifyProgram dps;
         val _ = TextIO.print "evaluating ... \n";
         val _ = map Eval.evalProgram dps
-        val _ = TextIO.print "evaluated! \n"                
+        val _ = TextIO.print "evaluated! \n"
     in
     ()
     end

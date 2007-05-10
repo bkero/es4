@@ -36,9 +36,6 @@ type NUMERIC_MODE =
              roundingMode: Decimal.ROUNDING_MODE,
              precision: int }
      
-datatype TRIOP =
-         Cond
-
 datatype BINTYPEOP =
          Cast
        | Is
@@ -136,6 +133,7 @@ datatype PRAGMA =
      and CLS =
          Cls of
            { name: NAME,
+             nonnullable: bool,
              extends: NAME option,
              implements: NAME list,
              classFixtures: FIXTURES,
@@ -146,14 +144,14 @@ datatype PRAGMA =
              instanceType: TYPE_EXPR } (* InstanceType *)
 
      and CTOR =
-         Ctor of
-           { settings: HEAD,
+         Ctor of {
+             settings: HEAD,
              superArgs: EXPR list,
              func: FUNC }
 
      and FUNC =
-         Func of 
-           { name: FUNC_NAME,
+         Func of { 
+             name: FUNC_NAME,
              fsig: FUNC_SIG,
              isNative: bool,
              block: BLOCK,
@@ -171,8 +169,8 @@ datatype PRAGMA =
        | TypeDefn of TYPE_DEFN
 
      and FUNC_SIG =
-         FunctionSignature of 
-           { typeParams: IDENT list,
+         FunctionSignature of { 
+             typeParams: IDENT list,
              params: BINDINGS,
              paramTypes: TYPE_EXPR list,
              defaults: EXPR list,
@@ -205,29 +203,28 @@ datatype PRAGMA =
          SpecialType of SPECIAL_TY
        | UnionType of TYPE_EXPR list
        | ArrayType of TYPE_EXPR list
-       | TypeName of IDENT_EXPR
+       | TypeName of IDENT_EXPR (* STATIC_IDENT_EXPR *)
        | ElementTypeRef of (TYPE_EXPR * int)
        | FieldTypeRef of (TYPE_EXPR * IDENT)
        | FunctionType of FUNC_TYPE           
        | ObjectType of FIELD_TYPE list
-       | AppType of 
-           { base: TYPE_EXPR,
+       | AppType of {
+             base: TYPE_EXPR,
              args: TYPE_EXPR list }
-       | NullableType of 
-           { expr:TYPE_EXPR,
+       | NullableType of {
+             expr:TYPE_EXPR,
              nullable:bool }
-       | InstanceType of
-           { name: NAME, 
+       | InstanceType of {
+             name: NAME, 
              typeParams: IDENT list, 
              ty: TYPE_EXPR,
              isDynamic: bool }
-       | NominalType of NAME
 
      and STMT =
          EmptyStmt
        | ExprStmt of EXPR
-       | InitStmt of
-           { kind: VAR_DEFN_TAG,
+       | InitStmt of {
+             kind: VAR_DEFN_TAG,
              ns: EXPR option,
              prototype: bool,
              static: bool,
@@ -249,34 +246,33 @@ datatype PRAGMA =
        | WhileStmt of WHILE_STMT
        | DoWhileStmt of WHILE_STMT
        | ForStmt of FOR_STMT
-       | IfStmt of 
-           { cnd: EXPR,
+       | IfStmt of {
+             cnd: EXPR,
              thn: STMT,
              els: STMT }
-       | WithStmt of 
-           { obj: EXPR,
+       | WithStmt of {
+             obj: EXPR,
              ty: TYPE_EXPR,
              body: STMT }
-       | TryStmt of 
-           { block: BLOCK,
-             catches: CATCH_CLAUSE
-                list,
+       | TryStmt of {
+             block: BLOCK,
+             catches: CATCH_CLAUSE list,
              finally: BLOCK option }
 
-       | SwitchStmt of         (* FIXME: needs HEAD, DEFNS for defns hoisted from body *)
-           { mode: NUMERIC_MODE option,
+       | SwitchStmt of {         (* FIXME: needs HEAD, DEFNS for defns hoisted from body *)
+             mode: NUMERIC_MODE option,
              cond: EXPR,
              labels: IDENT list,
              cases: CASE list }
-       | SwitchTypeStmt of 
-           { cond: EXPR, 
+       | SwitchTypeStmt of {
+             cond: EXPR, 
              ty: TYPE_EXPR,
              cases: TYPE_CASE list }
-       | Dxns of 
-           { expr: EXPR }
+       | DXNStmt of {
+             expr: EXPR }
 
      and EXPR =
-         TernaryExpr of (TRIOP * EXPR * EXPR * EXPR)
+         TernaryExpr of (EXPR * EXPR * EXPR)
        | BinaryExpr of (BINOP * EXPR * EXPR)
        | BinaryTypeExpr of (BINTYPEOP * EXPR * TYPE_EXPR)
        | ExpectedTypeExpr of (TYPE_EXPR * EXPR)
@@ -286,21 +282,26 @@ datatype PRAGMA =
        | YieldExpr of EXPR option
        | SuperExpr of EXPR option
        | LiteralExpr of LITERAL
-       | CallExpr of 
-           { func: EXPR,
+       | CallExpr of {
+             func: EXPR,
              actuals: EXPR list }
-       | ApplyTypeExpr of 
-           { expr: EXPR,  (* apply expr to type list *)
+       | ApplyTypeExpr of {
+             expr: EXPR,  (* apply expr to type list *)
              actuals: TYPE_EXPR list }
-       | LetExpr of 
-           { defs: BINDINGS,                      
+       | LetExpr of {
+             defs: BINDINGS,                      
              body: EXPR,
              head: HEAD option }
-       | NewExpr of 
-           { obj: EXPR,
+       | NewExpr of {
+             obj: EXPR,
              actuals: EXPR list }
-       | ObjectRef of { base: EXPR, ident: IDENT_EXPR, loc: LOC option }
-       | LexicalRef of { ident: IDENT_EXPR, loc: LOC option }
+       | ObjectRef of { 
+             base: EXPR, 
+             ident: IDENT_EXPR, 
+             pos: POS option }
+       | LexicalRef of { 
+             ident: IDENT_EXPR, 
+             pos: POS option }
        | SetExpr of (ASSIGNOP * EXPR * EXPR)
        | ListExpr of EXPR list
        | InitExpr of (INIT_TARGET * HEAD * INITS)   (* HEAD is for temporaries *)
@@ -377,11 +378,11 @@ datatype PRAGMA =
        | TypeVarFixture
        | TypeFixture of TYPE_EXPR
        | MethodFixture of 
-         { func: FUNC,
-           ty: TYPE_EXPR,
-           readOnly: bool,  (* ES3 funcs are r/w methods with ty=Ast.Special Ast.Any *)
-           override: bool,
-           final: bool }
+           { func: FUNC,
+             ty: TYPE_EXPR,
+             readOnly: bool,  (* ES3 funcs are r/w methods with ty=Ast.Special Ast.Any *)
+             override: bool,
+             final: bool }
        | ValFixture of 
            { ty: TYPE_EXPR,
              readOnly: bool }
@@ -404,10 +405,6 @@ withtype
            { name: IDENT,
              ty: TYPE_EXPR }
          
-     and TYPED_IDENT =
-           { name: IDENT,
-             ty: TYPE_EXPR option }
-
      and FUNC_TYPE = 
          { typeParams: IDENT list,
            params: TYPE_EXPR list,
@@ -446,8 +443,8 @@ withtype
              dynamic: bool,
              final: bool,
              params: IDENT list,
-             extends: IDENT_EXPR option,
-             implements: IDENT_EXPR list,
+             extends: IDENT_EXPR option,  (* STATIC_IDENT_EXPR *)
+             implements: IDENT_EXPR list, (* STATIC_IDENT_EXPR list *)
              classDefns: DEFN list,
              instanceDefns: DEFN list,
              instanceStmts: STMT list,
@@ -458,7 +455,7 @@ withtype
              ns: EXPR option,
              nonnullable: bool,
              params: IDENT list,
-             extends: IDENT_EXPR list,
+             extends: IDENT_EXPR list,    (* STATIC_IDENT_EXPR list *)
              block: BLOCK }
          
      and TYPE_DEFN =

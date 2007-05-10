@@ -15,7 +15,7 @@ package
     use namespace intrinsic;
     use strict;
 
-    final class decimal! extends Number
+    intrinsic final class decimal! extends Number
     {       
 	// FIXME
         static const MAX_VALUE         = 1.7976931348623157e+308m;

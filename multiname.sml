@@ -14,7 +14,7 @@ fun fmtMultiname n = if (!doTrace) then LogErr.multiname n else ""
 
 fun resolve (mname:Ast.MULTINAME)
 		    (curr:'a)
-            (matchNamespaces:('a * Ast.IDENT * (Ast.NAMESPACE list)) -> Ast.NAME list)
+            (matchNamespaces:('a -> Ast.IDENT -> (Ast.NAMESPACE list) -> Ast.NAME list))
 		    (getParent:('a -> ('a option)))
     : ('a * Ast.NAME) option =
     let     
@@ -31,7 +31,7 @@ fun resolve (mname:Ast.MULTINAME)
         fun tryMultiname [] = NONE  
           | tryMultiname (x::xs:Ast.NAMESPACE list list) : Ast.NAME option = 
             let 
-                val matches = matchNamespaces (curr, id, x)
+                val matches = matchNamespaces curr id x
             in case matches of
                    n :: [] => (trace ["resolved to specific name: ", fmtName n];
                                SOME n)
@@ -50,5 +50,48 @@ fun resolve (mname:Ast.MULTINAME)
 	           | SOME parent => (trace ["moving to parent"];
                                  resolve mname parent matchNamespaces getParent))
     end
+
+
+fun matchFixtures  (fixtures:Ast.FIXTURES)
+                   (searchId:Ast.IDENT)
+                   (nss:Ast.NAMESPACE list)
+    : Ast.NAME list =
+    let 
+        fun matchFixture (fxn:Ast.FIXTURE_NAME,_) : Ast.NAME option = 
+            case fxn of 
+                Ast.TempName _ => NONE
+              | Ast.PropName n => 
+                let
+                    val {id,ns} = n
+                    fun matchNS candidateNS = 
+                        case candidateNS of
+                            Ast.LimitedNamespace (ident,limNS) =>
+                            if id = ident
+                            then ns = limNS
+                            else false
+                          | _ => ns = candidateNS
+                in
+                    trace ["considering fixture: ", LogErr.fname fxn];
+                    if searchId = id andalso (List.exists matchNS nss)
+                    then SOME n
+                    else NONE
+                end
+    in
+        List.mapPartial matchFixture fixtures
+    end
+
+fun resolveInFixtures (mname:Ast.MULTINAME)
+                      (env:'a)
+                      (getEnvFixtures:('a -> Ast.FIXTURES))
+                      (getEnvParent:('a -> ('a option)))
+    : (Ast.FIXTURES * Ast.NAME) option = 
+    let
+        fun f env ident nss = matchFixtures (getEnvFixtures env) ident nss
+    in
+        case resolve mname env f getEnvParent of
+            SOME (env,n) => SOME (getEnvFixtures env, n)
+          | NONE => NONE
+    end
+
 end
 

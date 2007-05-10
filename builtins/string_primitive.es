@@ -34,20 +34,26 @@ package
     use default namespace public;
     use namespace intrinsic;
     use strict;
+    import Unicode.*
 
-    final class string! extends String
+
+    // FIXME: should be declared down in the function it's used in, but this 
+    // causes it to vanish. Why?
+    type matcher = (string,RegExp!);
+
+    intrinsic final class string! extends String
     {       
         /* E262-3 15.5.1: The String Constructor Called as a Function */
         static meta function invoke(x="")
             x is string ? x : new string(x);
 
         /* 15.5.2 The string Constructor */
-        function string(x="") : super(x) 
+        function string(x="") : super(x)
         {
             // No need to magic::bindString a second time, 
             // since our super(x) call did it for us.
         }
-        
+
         /* E262-3 15.5.3.2: String.fromCharCode
            E262-4 draft proposals:bug_fixes - FUNCTION.LENGTH
         */
@@ -67,7 +73,7 @@ package
 
         /* E262-3 15.5.4.2: String.prototype.toString */
         prototype function toString(this : string)
-            private::toString(this);
+            this.private::toString();
 
         override intrinsic function toString() : string
             private::toString(this);
@@ -174,7 +180,7 @@ package
             ToString(self).lastIndexOf(searchString, position);
 
         override intrinsic function lastIndexOf(searchString: string, position: double) : double {
-            position = isNaN(position) ? Infinity : ToInteger(x);
+            position = isNaN(position) ? Infinity : ToInteger(position);
 
             let slen  : uint = length;
             let m     : uint = Math.min(Math.max(position, 0), slen);
@@ -407,8 +413,6 @@ package
             ToString(self).split(separator, limit);
 
         override intrinsic function split(separator, limit) : Array {
-
-            type matcher = (string,RegExp!);
 
             function splitMatch(R: matcher, S: string, q: uint) : [uint, [string]] {
                 /* FIXME: use "switch type" when it works */

@@ -140,7 +140,7 @@ fun replaceFixture (b:Ast.FIXTURES)
                                           (LogErr.fname n)]
           | search ((k,v0)::bs) = 
             if k = n 
-            then (k,v) :: bs
+            then (k,v)::bs
             else (k,v0) :: (search bs)
     in
         search b
@@ -170,55 +170,30 @@ fun isInstanceInit (s:Ast.STMT)
     name = { ns: NAMESPACE, id: IDENT }
 *)
 
-fun matchFixtures ((env:ENV),
-                   (searchId:Ast.IDENT),
-                   (nss:Ast.NAMESPACE list))
-    : Ast.NAME list =
-    case env of 
-        [] => []
-      | ({fixtures,...}:CONTEXT)::_ => 
-        let 
-            fun matchFixture (fxn:Ast.FIXTURE_NAME,_) : Ast.NAME option = 
-                case fxn of 
-                    Ast.TempName _ => NONE
-                  | Ast.PropName n => 
-                    let
-                        val {id,ns} = n
-                        fun matchNS candidateNS = 
-                            case candidateNS of
-                                Ast.LimitedNamespace (ident,limNS) =>
-                                if id = ident
-                                then ns = limNS
-                                else false
-                              | _ => ns = candidateNS
-                    in
-                        if searchId = id andalso (List.exists matchNS nss)
-                        then SOME n
-                        else NONE
-                    end
-        in
-            List.mapPartial matchFixture fixtures
-        end
 
 fun getEnvParent [] = NONE
   | getEnvParent (x::[]) = NONE
   | getEnvParent (x::xs) = SOME xs
 
+fun getEnvFixtures [] = error ["getEnvFixtures on empty environment"]
+  | getEnvFixtures (({fixtures, ...}:CONTEXT) :: _) = fixtures
+
+fun resolve env mname = 
+    Multiname.resolveInFixtures mname env getEnvFixtures getEnvParent
+
 fun resolveMultinameToFixture (env:ENV) 
                               (mname:Ast.MULTINAME) 
     : Ast.NAME * Ast.FIXTURE =
-    case Multiname.resolve mname env matchFixtures getEnvParent of
+    case resolve env mname of
         NONE => LogErr.defnError ["unresolved fixture ", LogErr.multiname mname]
-      | SOME (({fixtures, ...}::_), n) => (n, getFixture fixtures (Ast.PropName n))
-      | SOME _ => LogErr.defnError ["fixture lookup error ", LogErr.multiname mname]
+      | SOME (fixtures, n) => (n, getFixture fixtures (Ast.PropName n))
 
 fun multinameHasFixture (env:ENV) 
                         (mname:Ast.MULTINAME) 
     : bool =
-    case Multiname.resolve mname env matchFixtures getEnvParent of
+    case resolve env mname of
         NONE => false
-      | SOME (({fixtures, ...}::_), n) => true
-      | _ => LogErr.defnError ["fixture lookup error ", LogErr.multiname mname]
+      | SOME (fixtures, n) => true
 
 (*
     Since we are in the definition phase the open namespaces have not been
@@ -298,12 +273,23 @@ fun eraseFixtures oldFixs ((newName,newFix),newFixs) =
     if hasFixture oldFixs newName
     then 
         case (newFix, getFixture oldFixs newName) of
-            (Ast.VirtualValFixture vnew, Ast.VirtualValFixture vold) => newFixs
+            (Ast.VirtualValFixture vnew,
+             Ast.VirtualValFixture vold) => 
+                replaceFixture newFixs newName 
+                           (Ast.VirtualValFixture 
+                                (mergeVirtuals newName vnew vold))
           | (Ast.ValFixture new, Ast.ValFixture old) =>
-                 if (#ty new) = (#ty old) andalso (#readOnly new) = (#readOnly old)
-                 then (trace ["erasing fixture ",LogErr.name (case newName of Ast.PropName n => n | _ => {ns=Ast.Internal Ustring.empty,id=Ustring.temp_})]; newFixs)
-                 else error ["incompatible redefinition of fixture name: ", LogErr.fname newName]
-          | (Ast.MethodFixture new, Ast.MethodFixture old) => newFixs  (* FIXME: types *)
+                if (#ty new) = (#ty old) andalso (#readOnly new) = (#readOnly old)
+                then (trace ["erasing fixture ",LogErr.name (case newName of Ast.PropName n => n | _ => 
+                                               {ns=Ast.Internal Ustring.empty,id=Ustring.temp_})]; newFixs)
+                else error ["incompatible redefinition of fixture name: ", LogErr.fname newName]
+          | (Ast.MethodFixture new,
+             Ast.MethodFixture old) =>
+                if (#ty new) = (#ty old) andalso (#readOnly new) = (#readOnly old)
+                then if hasFixture newFixs newName
+                     then replaceFixture newFixs newName (Ast.MethodFixture new)
+                     else (newName,newFix)::newFixs
+                else error ["incompatible redefinition of fixture name: ", LogErr.fname newName]
           | _ => error ["eraseFixtures: redefining fixture name: ", LogErr.fname newName]
     else
         (newName,newFix) :: newFixs)
@@ -567,7 +553,6 @@ and defClass (env: ENV)
              (cdef: Ast.CLASS_DEFN)
     : (Ast.FIXTURES * Ast.CLASS_DEFN) =
     let
-        val _ = trace2 ("defining class ",(#ident cdef))
         val class = analyzeClass env cdef
         val class = resolveClass env cdef class
         val Ast.Cls {name,...} = class
@@ -598,7 +583,7 @@ and defInterface (env: ENV)
 
 and resolveClass (env:ENV)
                  ({extends,implements,...}: Ast.CLASS_DEFN)
-                 (Ast.Cls {name,classFixtures,instanceFixtures,instanceInits,
+                 (Ast.Cls {name,nonnullable,classFixtures,instanceFixtures,instanceInits,
                    constructor,classType,instanceType,...}:Ast.CLS)
     : Ast.CLS =
     let
@@ -607,6 +592,7 @@ and resolveClass (env:ENV)
         val (implementsNames, instanceFixtures) = resolveImplements env instanceFixtures implements
     in
         Ast.Cls {name=name, extends=extendsName,
+                 nonnullable=nonnullable,
                  implements=implementsNames,
                  classFixtures=classFixtures,
                  instanceFixtures=instanceFixtures,
@@ -698,7 +684,7 @@ and analyzeClass (env:ENV)
                  (cdef:Ast.CLASS_DEFN)
     : Ast.CLS =
     case cdef of
-        {ns, ident, instanceDefns, instanceStmts, classDefns, ctorDefn, (* block=Ast.Block { pragmas, body, ... },*) ...} =>
+        {ns, ident, instanceDefns, instanceStmts, classDefns, ctorDefn, nonnullable, (* block=Ast.Block { pragmas, body, ... },*) ...} =>
         let
 
             (*
@@ -711,7 +697,9 @@ and analyzeClass (env:ENV)
             val env = clearPackageName env
 
             val (unhoisted,classFixtures,classInits) = defDefns env [] [] [] classDefns
+            val classFixtures = (List.foldl mergeFixtures unhoisted classFixtures)
             val staticEnv = extendEnvironment env classFixtures
+                             (* namespace and type definitions aren't normally hoisted *)
 
             val (unhoisted,instanceFixtures,_) = defDefns staticEnv [] [] [] instanceDefns
             val instanceEnv = extendEnvironment staticEnv instanceFixtures
@@ -739,6 +727,7 @@ and analyzeClass (env:ENV)
 
         in
             Ast.Cls {name=name,
+                     nonnullable=nonnullable,
                      extends = NONE,
                      implements = [],                     
                      classFixtures = classFixtures,
@@ -878,12 +867,20 @@ and inheritFixtures (base:Ast.FIXTURES)
                 (Ast.MethodFixture {final,...}, Ast.MethodFixture {override,...}) => 
                     (not final) andalso override andalso isCompatible
 
-              (* FIXME: what are the rules for getter/setter overriding? *)
+              (* FIXME: what are the rules for getter/setter overriding? 
+                 1/base fixture is not final
+                 2/derived fixture is override
+                 3/getter is compatible
+                 4/setter is compatible
+              *)
               | (Ast.VirtualValFixture vb,
-                 Ast.VirtualValFixture vd) => 
-                (#ty vb) = (#ty vd)
-                
-              | _ => false
+                 Ast.VirtualValFixture vd) =>
+                    let
+                        val _ = trace ["checking override of VirtualValFixture"]
+                    in
+                       true               
+                    end 
+              | _ => LogErr.unimplError ["checkOverride"]
             end
 
     in case base of
@@ -1365,10 +1362,10 @@ and defPragmas (env:ENV)
                                         val (n,targetFixture) = resolveMultinameToFixture env (multinameFromName targetName)
                                         val fixtureType = case targetFixture of 
                                                                Ast.ValFixture {ty,...} => ty 
-                                                             | Ast.NamespaceFixture _ => (Name.typename Name.public_Namespace)
-                                                             | Ast.ClassFixture _ => (Name.typename Name.public_Class)   
+                                                             | Ast.NamespaceFixture _ => (Name.typename Name.intrinsic_Namespace)
+                                                             | Ast.ClassFixture _ => (Name.typename Name.intrinsic_Class)   
                                                                  (* ISSUE: this is the base type of the class object *)
-                                                             | Ast.TypeFixture _ => (Name.typename Name.public_Type)
+                                                             | Ast.TypeFixture _ => (Name.typename Name.intrinsic_Type)
                                                              | Ast.MethodFixture {ty,...} => ty
                                                              | Ast.VirtualValFixture {ty,...} => ty
                                                              | _ => LogErr.unimplError ["unhandle fixture type"]
@@ -1697,17 +1694,15 @@ and matchPackageName (env:ENV)
             fun parentEnv _ = NONE (* just do one scope at a time *)
             val mname = identExprToMultiname env (Ast.Identifier {ident=(hd path),openNamespaces=[]})
         in
-            case Multiname.resolve mname env matchFixtures parentEnv of
-                SOME (({fixtures, ...}::_), n) => 
-                    (NONE,path)   (* head of path matches fixture *)
+            case Multiname.resolveInFixtures mname env getEnvFixtures parentEnv of
+                SOME (fixtures, n) => (NONE,path)   (* head of path matches fixture *)
               | NONE => (* head of path does not match fixture, try finding a package name that matches prefix of path *)
-                    let
-                        val { packageNames, ... } = hd env
-                    in case pathInPackageNames packageNames path of
-                        (NONE,_) => matchPackageName (tl env) path
-                      | (SOME pkg,rest) => (SOME pkg,rest)
-                    end
-              | _ => LogErr.internalError ["matchPackageName with mname=", LogErr.multiname mname]
+                let
+                    val { packageNames, ... } = hd env
+                in case pathInPackageNames packageNames path of
+                       (NONE,_) => matchPackageName (tl env) path
+                     | (SOME pkg,rest) => (SOME pkg,rest)
+                end
         end
     end
 
@@ -1770,8 +1765,8 @@ and defExpr (env:ENV)
         fun sub e = defExpr env e
     in
         case expr of 
-            Ast.TernaryExpr (t, e1, e2, e3) => 
-            Ast.TernaryExpr (t, sub e1, sub e2, sub e3)
+            Ast.TernaryExpr (e1, e2, e3) => 
+            Ast.TernaryExpr (sub e1, sub e2, sub e3)
             
           | Ast.BinaryExpr (b, e1, e2) => 
             let 
@@ -1965,6 +1960,14 @@ and defTyExpr (env:ENV)
         Ast.FunctionType (defFuncTy env t)
       | Ast.TypeName n =>
         Ast.TypeName (defIdentExpr env n)
+      | Ast.UnionType tys => 
+        Ast.UnionType (map (defTyExpr env) tys)
+      | Ast.ArrayType tys => 
+        Ast.ArrayType (map (defTyExpr env) tys)
+      | Ast.NullableType { expr, nullable } => 
+        Ast.NullableType { expr = defTyExpr env expr,
+                           nullable = nullable } 
+        
       (* FIXME *)
       | t => t
 
@@ -2119,7 +2122,7 @@ and defStmt (env:ENV)
                 val namespace = resolveExprOptToNamespace env ns
                 val name = {ns=namespace, id=ident}
 
-                val env = clearPackageName env (* only top level pakcage defns use package specific namespaces *)
+                val env = clearPackageName env (* only top level package defns use package specific namespaces *)
 
                 val (block,hoisted) = defBlock env (Ast.Block {pragmas=pragmas,
                                                                defns=defns,
@@ -2326,8 +2329,8 @@ and defStmt (env:ENV)
                                      cases = cases}, List.concat hoisted)
             end
             
-          | Ast.Dxns { expr } => 
-            (Ast.Dxns { expr = defExpr env expr },[])
+          | Ast.DXNStmt { expr } => 
+            (Ast.DXNStmt { expr = defExpr env expr },[])
     end
 
 and defStmts (env) (stmts:Ast.STMT list)
@@ -2365,7 +2368,7 @@ and defNamespace (env:ENV)
             val qualNs = resolveExprOptToNamespace env ns
             val newNs = case init of 
                             (* FIXME: a nonce perhaps? *)
-                            NONE => Ast.UserNamespace ident 
+                            NONE => Ast.UserNamespace ident
                           | SOME (Ast.LiteralExpr (Ast.LiteralString s)) => 
                             Ast.UserNamespace s
                           | SOME (Ast.LexicalRef lref) => 
@@ -2445,9 +2448,10 @@ and defDefn (env:ENV)
 
       | Ast.TypeDefn td =>
         let
-            val unhoisted = defType env td
+            (* FIXME: this should be unhoisted, but it causes type 'Numeric' to vanish. Why? *)
+            val hoisted = defType env td
         in
-            (unhoisted, [], [])
+            ([], hoisted, [])
         end
 
       | _ => LogErr.unimplError ["defDefn"]
@@ -2470,11 +2474,9 @@ and defDefns (env:ENV)
            [] => (trace(["<< defDefns"]);(unhoisted,hoisted,inits))
          | d::ds =>
            let
-
-
                val (unhoisted',hoisted',inits') = defDefn env d
                val temp = case d of Ast.ClassDefn _ => hoisted' | _ => []
-                val env'  = updateFixtures env (List.foldl mergeFixtures unhoisted' temp) 
+               val env'  = updateFixtures env (List.foldl mergeFixtures unhoisted' temp) 
            (* add the new unhoisted and temporarily, hoisted class fxtrs to the current env *)
            in
                defDefns env' 

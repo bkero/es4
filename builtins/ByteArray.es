@@ -24,8 +24,9 @@
 package {
 
     use default namespace public;
+    use namespace intrinsic;
 
-    final class ByteArray
+    intrinsic final class ByteArray
     {
         use strict;
 

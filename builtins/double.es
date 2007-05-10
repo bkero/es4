@@ -20,7 +20,7 @@ package
     use namespace intrinsic;
     use strict;
 
-    final class double! extends Number
+    intrinsic final class double! extends Number
     {       
         static const MAX_VALUE : double         = 1.7976931348623157e+308;  /* INFORMATIVE */
         static const MIN_VALUE : double         = 5e-324;                   /* INFORMATIVE */
@@ -45,7 +45,7 @@ package
 
 
         /* E262-3 15.7.4.2: double.prototype.toString */
-        prototype function toString(this:double, radix)
+        prototype function toString(radix = 10)
             this.toString(radix);
 
         override intrinsic function toString(radix = 10) : string 

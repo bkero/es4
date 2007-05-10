@@ -10,7 +10,7 @@ package
 {
     use default namespace public;
 
-    class Class
+    intrinsic class Class
     {
         /* Becomes available as Object.prototype, Boolean.prototype,
            and so on */

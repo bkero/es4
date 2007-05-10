@@ -61,16 +61,16 @@ val arguments = internal Ustring.arguments_
  *)
 
 (* From Type.es *)
-val public_Type = public Ustring.Type_
+val intrinsic_Type = intrinsic Ustring.Type_
 
 (* From Interface.es *)
-val public_Interface = public Ustring.Interface_
+val intrinsic_Interface = intrinsic Ustring.Interface_
 
 (* From Class.es *)
-val public_Class = public Ustring.Class_
+val intrinsic_Class = intrinsic Ustring.Class_
 
 (* From Namespace.es *)
-val public_Namespace = public Ustring.Namespace_
+val intrinsic_Namespace = intrinsic Ustring.Namespace_
 
 (* From Object.es *)
 val public_Object = public Ustring.Object_
@@ -93,6 +93,7 @@ val intrinsic_ToDouble = intrinsic Ustring.ToDouble_
 val intrinsic_ToDecimal = intrinsic Ustring.ToDecimal_
 val intrinsic_ToString = intrinsic Ustring.ToString_
 val intrinsic_ToObject = intrinsic Ustring.ToObject_
+val intrinsic_ToNumeric = intrinsic Ustring.ToNumeric_
 
 (* From Global.es *)
 val intrinsic_NaN = intrinsic Ustring.NaN_
@@ -133,37 +134,37 @@ val public_Function = public Ustring.Function_
 val public_Boolean = public Ustring.Boolean_
 
 (* From boolean_primitive.es *) 
-val public_boolean = public Ustring.boolean_
+val intrinsic_boolean = intrinsic Ustring.boolean_
 
 (* From Number.es *)
 val public_Number = public Ustring.Number_
 
 (* From double.es *)
-val public_double = public Ustring.double_
+val intrinsic_double = intrinsic Ustring.double_
 
 (* From int.es *)
-val public_int = public Ustring.int_
+val intrinsic_int = intrinsic Ustring.int_
 
 (* From uint.es *)
-val public_uint = public Ustring.uint_
+val intrinsic_uint = intrinsic Ustring.uint_
 
 (* From decimal.es *)
-val public_decimal = public Ustring.decimal_
+val intrinsic_decimal = intrinsic Ustring.decimal_
 
 (* From Numeric.es *)
-val public_Numeric = public Ustring.Numeric_
+val intrinsic_Numeric = intrinsic Ustring.Numeric_
 
 (* From String.es *)
 val public_String = public Ustring.String_
 
 (* From string_primitive.es *)
-val public_string = public Ustring.string_
+val intrinsic_string = intrinsic Ustring.string_
 
 (* From Array.es *)
 val public_Array = public Ustring.Array_
 
 (* From ByteArray.es *)
-val public_ByteArray = public Ustring.ByteArray_
+val intrinsic_ByteArray = intrinsic Ustring.ByteArray_
 
 (* From Date.es *)
 val public_Date = public Ustring.Date_
@@ -181,6 +182,7 @@ val JSON_parse = { ns = Ast.Public Ustring.JSON_, id = Ustring.parse_ }
  *)
 
 val intrinsic_proto = intrinsic Ustring.proto_
+val intrinsic_dumpFunc = intrinsic Ustring.dumpFunc_
 val intrinsic_inspect = intrinsic Ustring.inspect_
 val intrinsic_tan = intrinsic Ustring.tan_
 val intrinsic_sqrt = intrinsic Ustring.sqrt_

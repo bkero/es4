@@ -9,7 +9,7 @@ package
 {
     use default namespace public;
 
-    class Namespace
+    intrinsic class Namespace
     {
         // FIXME: we might need a static make-a-user-namespace 
         // function here for dynamic namespaces. Not a ctor!

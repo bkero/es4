@@ -702,7 +702,7 @@ fun load (vals:Mach.VAL list)
     let
         val fname = Ustring.toFilename (nthAsUstr vals 0)
     in
-        Eval.evalProgram (Defn.defProgram (Parser.parseFile fname));
+        Eval.evalProgram (Verify.verifyProgram (Defn.defProgram (Parser.parseFile fname)));
         Mach.Undef
     end
     
@@ -734,6 +734,21 @@ fun typename (vals:Mach.VAL list)
            | SOME (Mach.Function _) => Ustring.function_
            | SOME (Mach.Type _) => Ustring.type_
            | SOME (Mach.NativeFunction _) => Ustring.native_function_))
+
+fun dumpFunc (vals:Mach.VAL list)
+    : Mach.VAL = 
+    let
+        val v = rawNth vals 0
+    in
+        if Mach.isFunction v 
+        then 
+            case Mach.needMagic v of 
+                Mach.Function { func, ... } => Pretty.ppFunc func
+              | _ => ()
+        else
+            ();
+        Mach.Undef
+    end
 
 fun inspect (vals:Mach.VAL list)
     : Mach.VAL = 
@@ -924,6 +939,7 @@ fun registerNatives _ =
         addFn 1 Name.intrinsic_load load;
         addFn 1 Name.intrinsic_assert assert;
         addFn 1 Name.intrinsic_typename typename;
+        addFn 1 Name.intrinsic_dumpFunc dumpFunc;
         addFn 1 Name.intrinsic_inspect inspect;
         addFn 1 Name.intrinsic_proto proto
     end
