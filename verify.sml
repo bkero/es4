@@ -275,12 +275,20 @@ fun verifyTypeExpr (env:ENV)
                       (* FIXME: add interfaces here. *)
                       | _ => error ["multiname ", LogErr.multiname {nss=nss, id=id}, 
                                     " resolved to non-type fixture"]
+                val resolved = case ie of 
+                                   Ast.Identifier { ident, openNamespaces } => findType ident openNamespaces
+                                 | Ast.QualifiedIdentifier { qual, ident } => findType ident [[resolveExprToNamespace env qual]]
+                                 | Ast.WildcardIdentifier => Ast.SpecialType Ast.Any
+                                 | _ => error ["unexpected idenfitier form in type name" ]
             in
-                case ie of 
-                    Ast.Identifier { ident, openNamespaces } => findType ident openNamespaces
-                  | Ast.QualifiedIdentifier { qual, ident } => findType ident [[resolveExprToNamespace env qual]]
-                  | Ast.WildcardIdentifier => Ast.SpecialType Ast.Any
-                  | _ => error ["unexpected idenfitier form in type name" ]
+                (* 
+                 * FIXME: this is a bug: we should re-resolve in the environment the type definition was found in,
+                 * not our own environment. Since type definitions are only about lexical scope though, we should
+                 * be in an extensioin of the defining environment, so unless there are shadowing relations we 
+                 * should get a tolerable approximation of correct
+                 * behavior here. Fix later. 
+                 *)
+                verifyTypeExpr env resolved                
             end
 
           | _ => ty
@@ -372,6 +380,11 @@ and isSubtype (t1:TYPE_VALUE)
                 ((Ast.SpecialType Ast.Null), Ast.InstanceType it) => 
                 isClass (#name it) andalso isNullable (#name it)
               | (Ast.SpecialType _, _) => false
+
+	          | (Ast.UnionType types1,_) => 
+	            List.all (fn t => isSubtype t t2) types1
+	          | (_, Ast.UnionType types2) =>
+	            List.exists (fn t => isSubtype t1 t) types2 
 
 (*
               | (Ast.UnionType ts1, Ast.UnionType ts2) =>
@@ -718,6 +731,26 @@ and verifyExpr (env:ENV)
                                     | Ast.LiteralFunction (Ast.Func { fsig, ... }) => funcSigType env fsig
                                     | Ast.LiteralRegExp _ => RegExpType
                                     | _ => internalError ["unprocessed literal returned by Defn"]
+                fun verifyField { kind, name, init } = 
+                    let 
+                        val (init, _) = verifyExpr env init
+                    in
+                        { kind = kind, 
+                          name = name, 
+                          init = init }
+                    end
+
+                val le = case le of 
+                             Ast.LiteralFunction func => 
+                             Ast.LiteralFunction (verifyFunc env func)
+
+                           | Ast.LiteralObject { expr, ty } => 
+                             Ast.LiteralObject { expr = map verifyField expr,
+                                                 ty = case ty of 
+                                                          NONE => NONE
+                                                        | SOME ty' => SOME (verifyTypeExpr env ty') }
+
+                           | x => x
             in
                 return (Ast.LiteralExpr le, resultType)
             end

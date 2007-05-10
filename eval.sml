@@ -9,11 +9,13 @@ val (stack:string list list ref) = ref []
 fun resetStack _ = 
     stack := []
 
+val booting = ref false
 val ObjectClassIdentity = ref (~1)
 val ArrayClassIdentity = ref (~1)
 val FunctionClassIdentity = ref (~1)
 val StringClassIdentity = ref (~1)
 val NumberClassIdentity = ref (~1)
+val BooleanClassIdentity = ref (~1)
 
 val booleanTrue : (Mach.VAL option) ref = ref NONE
 val booleanFalse : (Mach.VAL option) ref = ref NONE
@@ -162,10 +164,10 @@ fun getGlobalScope _
         NONE => error ["missing global scope"]
       | SOME ob => ob
 
-
 fun getInitialRegs _ = 
     { this = getGlobalObject (),
       scope = getGlobalScope () }
+    
 
 (* 
  * A small number of functions do not fully evaluate to Mach.VAL 
@@ -542,10 +544,6 @@ and checkAndConvert (v:Mach.VAL)
           * - find converter
           * - call converter in a way that doesn't loop back on itself
           *)
-                 
-                 
-                 
-      
 
 and setValueOrVirtual (obj:Mach.OBJ) 
                       (name:Ast.NAME) 
@@ -719,7 +717,7 @@ and instantiateGlobalClass (n:Ast.NAME)
       in
           case cls of 
               Mach.Object ob => evalNewExpr ob args
-            | _ => error ["global class name ", fmtName n, 
+            | _ => error ["global class name ", LogErr.name n, 
                           " did not resolve to object"]
       end
 
@@ -779,6 +777,10 @@ and newBuiltin (n:Ast.NAME) (m:Mach.MAGIC option)
     : Mach.VAL =
     instantiateGlobalClass n [Mach.Object (Mach.setMagic (Mach.newObjNoTag()) m)]
 
+and newPublicNumber (n:Real64.real) 
+    : Mach.VAL = 
+    newBuiltin Name.public_Number (SOME (Mach.Double n))
+
 and newDouble (n:Real64.real) 
     : Mach.VAL = 
     newBuiltin Name.intrinsic_double (SOME (Mach.Double n))
@@ -795,6 +797,10 @@ and newUInt (n:Word32.word)
     : Mach.VAL = 
     newBuiltin Name.intrinsic_uint (SOME (Mach.UInt n))
 
+and newPublicString (s:Ustring.STRING) 
+    : Mach.VAL = 
+    newBuiltin Name.public_String (SOME (Mach.String s))
+
 and newString (s:Ustring.STRING) 
     : Mach.VAL = 
     newBuiltin Name.intrinsic_string (SOME (Mach.String s))
@@ -802,6 +808,10 @@ and newString (s:Ustring.STRING)
 and newByteArray (b:Word8Array.array) 
     : Mach.VAL = 
     newBuiltin Name.intrinsic_ByteArray (SOME (Mach.ByteArray b))
+
+and newPublicBoolean (b:bool) 
+    : Mach.VAL = 
+    newBuiltin Name.public_Boolean (SOME (Mach.Boolean b))
 
 and newBoolean (b:bool) 
     : Mach.VAL = 
@@ -1329,6 +1339,21 @@ and toUInt16 (v:Mach.VAL)
             end
     end
 
+and getExpectedType (expr:Ast.EXPR) 
+    : (Ast.TYPE_EXPR * Ast.EXPR) = 
+    case expr of 
+        Ast.ExpectedTypeExpr ete => ete
+      | _ => (Ast.SpecialType Ast.Any, expr)
+
+and checkCompatible (ty:Ast.TYPE_EXPR)
+                    (v:Mach.VAL) = 
+    if isCompatible v ty
+    then v
+         (* FIXME: eventually this should be a hard error.
+          * currently it's so dysfunctional that nothing would 
+          * work if we turned it on. 
+          *)
+    else (trace ["runtime typecheck failed"]; v)
     
 and evalExpr (regs:Mach.REGS) 
              (expr:Ast.EXPR)
@@ -1386,11 +1411,13 @@ and evalExpr (regs:Mach.REGS)
          *)
         let
             val args = map (evalExpr regs) actuals
-        in
-            case func of 
+            val (resultTy, func) = getExpectedType func
+            val result = case func of 
                 Ast.LexicalRef _ => evalCallMethodByExpr regs func args
               | Ast.ObjectRef _ => evalCallMethodByExpr regs func args
               | _ => evalCallExpr (#this regs) (needObj (evalExpr regs func)) args
+        in
+            checkCompatible resultTy result
         end
 
       | Ast.NewExpr { obj, actuals } => 
@@ -1401,8 +1428,7 @@ and evalExpr (regs:Mach.REGS)
         end
 
       | Ast.GetTemp n => 
-        (trace ["getTemp #", Int.toString n];
-         Mach.getTemp (getScopeTemps (#scope regs)) n)
+        Mach.getTemp (getScopeTemps (#scope regs)) n
 
       | Ast.InitExpr (target,temps,inits) =>
         let
@@ -1416,13 +1442,7 @@ and evalExpr (regs:Mach.REGS)
         evalBinaryTypeOp regs typeOp expr tyExpr
 
       | Ast.ExpectedTypeExpr (ty, e) => 
-        let
-            val v = evalExpr regs e
-        in
-            if isCompatible v ty
-            then v
-            else (trace ["runtime typecheck failed"]; v)
-        end
+        checkCompatible ty (evalExpr regs e)
 
       | Ast.GetParam n => 
         LogErr.unimplError ["unhandled GetParam expression"]
@@ -1639,13 +1659,15 @@ and evalCallMethodByExpr (regs:Mach.REGS)
          * call it directly without manufacturing a temporary Function 
          * wrapper object. 
          *)
-        val _ = trace ["evaluating ref expr for call-method"];
+        val _ = trace [">>> evalCallMethodByExpr"]
         val (baseOpt, r) = evalRefExprFull regs func true
         val thisObj = case baseOpt of 
-                       NONE => (#this regs)
-                     | SOME base => base
+                       NONE => (trace ["no base object found, using (#this regs)"]; (#this regs))
+                     | SOME base => (trace ["base object found: #", Int.toString (getObjId base) ]; base)
+        val result = evalCallMethodByRef thisObj r args
     in
-        evalCallMethodByRef thisObj r args
+        trace ["<<< evalCallMethodByExpr"];
+        result
     end
 
 
@@ -1655,13 +1677,15 @@ and evalCallMethodByRef (thisObj:Mach.OBJ)
     : Mach.VAL = 
     let
         val (obj, name) = r
-        val _ = trace [">>> call method: ", fmtName name]
+        val _ = trace [">>> evalCallMethodByRef ", fmtName name]
         val Mach.Obj { props, ... } = obj
         val res = case (#state (Mach.getProp props name)) of
                       Mach.NativeFunctionProp { func, ...} => func args
                     | Mach.MethodProp f => invokeFuncClosure thisObj f args
-                    | _ => evalCallExpr thisObj (needObj (getValue obj name)) args
-        val _ = trace ["<<< call method: ", fmtName name]
+                    | _ => 
+                      (trace ["evalCallMethodByRef: non-method property referenced, getting and calling"];
+                       evalCallExpr thisObj (needObj (getValue obj name)) args)
+        val _ = trace ["<<< evalCallMethodByRef ", fmtName name]
     in
         res
     end
@@ -1674,17 +1698,17 @@ and evalCallExpr (thisObj:Mach.OBJ)
         Mach.Obj { magic, ... } => 
         case !magic of 
             SOME (Mach.NativeFunction { func, ... }) => 
-            (trace ["entering native function"]; 
+            (trace ["evalCallExpr: entering native function"]; 
              func args)
           | SOME (Mach.Function f) => 
-            (trace ["entering standard function"]; 
+            (trace ["evalCallExpr: entering standard function"]; 
              invokeFuncClosure thisObj f args)
           | _ => 
             if hasOwnValue fobj Name.meta_invoke
             then
-                (trace ["redirecting through meta::invoke"];
+                (trace ["evalCallExpr: redirecting through meta::invoke"];
                  evalCallMethodByRef thisObj (fobj, Name.meta_invoke) args)
-            else error ["calling non-callable object"]
+            else error ["evalCallExpr: calling non-callable object"]
 
 
 and evalSetExpr (regs:Mach.REGS) 
@@ -1694,15 +1718,12 @@ and evalSetExpr (regs:Mach.REGS)
     : Mach.VAL = 
     let
         val _ = trace ["evalSetExpr"]
-        (* FIXME: this cripples typechecking on set exprs *)
-        val lhs = case lhs of 
-                      Ast.ExpectedTypeExpr(ty, e) => e
-                    | _ => lhs
+        val (lhsType, lhs) = getExpectedType lhs
         val (obj, name) = evalRefExpr regs lhs false
         val v =
             let 
                 fun modifyWith bop = 
-                    performBinop bop (getValue obj name) v
+                    performBinop bop (checkCompatible lhsType (getValue obj name)) v
             in
                 case aop of 
                     Ast.Assign => v
@@ -1735,12 +1756,9 @@ and evalUnaryOp (regs:Mach.REGS)
         fun crement (mode:Ast.NUMERIC_MODE) decimalOp doubleOp intOp uintOp isPre = 
             let 
                 val _ = trace ["performing crement"]
-                (* FIXME: this cripples typechecking on crement exprs *)
-                val expr = case expr of 
-                              Ast.ExpectedTypeExpr(ty, e) => e
-                            | _ => expr
+                val (exprType, expr) = getExpectedType expr
                 val (obj, name) = evalRefExpr regs expr false
-                val v = getValue obj name
+                val v = checkCompatible exprType (getValue obj name)
 
                 fun asDecimal _ =                         
                     let 
@@ -2670,8 +2688,8 @@ and invokeFuncClosure (callerThis:Mach.OBJ)
         val { func, this, env, allTypesBound } = closure
         val Ast.Func { name, fsig, block, param=(paramFixtures, paramInits), ... } = func
         val this = case this of 
-                       SOME t => t
-                     | NONE => callerThis
+                       SOME t => (trace ["using bound 'this' #", Int.toString (getObjId callerThis)]; t)
+                     | NONE => (trace ["using caller 'this' #", Int.toString (getObjId callerThis)]; callerThis)
         val regs = { this = this, scope = env }
     in
         if not allTypesBound
@@ -3411,6 +3429,19 @@ and evalBlock (regs:Mach.REGS)
     its body.
 *)
 
+and constructSpecialPrototype (id:Mach.OBJ_IDENT)
+    : Mach.VAL option = 
+    if id = !StringClassIdentity
+    then SOME (newPublicString Ustring.empty)
+    else 
+        if id = !NumberClassIdentity
+        then SOME (newPublicNumber 0.0)
+        else 
+            if id = !BooleanClassIdentity
+            then SOME (newPublicBoolean false)
+            else
+                NONE
+
 and initClassPrototype (regs:Mach.REGS)
                        (classObj:Mach.OBJ) 
     : unit =
@@ -3431,9 +3462,11 @@ and initClassPrototype (regs:Mach.REGS)
                       | _ => error ["base class resolved to non-object: ", 
                                     LogErr.name baseClassName]
                 end
-                
         val _ = trace ["constructing prototype"]
-        val newPrototype = Mach.setProto (newObj ()) baseProtoVal
+        val newPrototype = case constructSpecialPrototype ident of
+                               SOME p => needObj p
+                             | NONE => newObj()            
+        val newPrototype = Mach.setProto newPrototype baseProtoVal
     in
         defValue classObj Name.public_prototype (Mach.Object newPrototype);
         trace ["finished initialising class prototype"]
@@ -3443,6 +3476,28 @@ and initClassPrototype (regs:Mach.REGS)
     ClassBlock classBlock
 
 *)
+
+and bindAnySpecialIdentity (name:Ast.NAME) 
+                           (classObj:Mach.OBJ) =
+    if not (!booting)
+    then ()
+    else 
+        let
+            val Mach.Obj { ident, ... } = classObj
+            val bindings = [ 
+                (Name.public_Object, ObjectClassIdentity),
+                (Name.public_Array, ArrayClassIdentity),
+                (Name.public_Function, FunctionClassIdentity),
+                (Name.public_String, StringClassIdentity),
+                (Name.public_Number, NumberClassIdentity),
+                (Name.public_Boolean, BooleanClassIdentity)
+            ]
+            fun f (n,id) = Mach.nameEq name n
+        in
+            case List.find f bindings of
+                NONE => ()
+              | SOME (_,cell) => cell := ident
+        end
 
 and evalClassBlock (regs:Mach.REGS) 
                    (classBlock)
@@ -3457,18 +3512,20 @@ and evalClassBlock (regs:Mach.REGS)
     let 
         val {name, block, ...} = classBlock
         val {scope, ...} = regs
+        val name = valOf name
 
-        val _ = trace ["evaluating class stmt for ", fmtName (valOf name)]
+        val _ = trace ["evaluating class stmt for ", fmtName name]
         
-        val classObj = needObj (findVal scope (multinameOf (valOf name)))
+        val classObj = needObj (findVal scope (multinameOf name))
 
+        val _ = bindAnySpecialIdentity name classObj
         val _ = initClassPrototype regs classObj
 
         (* FIXME: might have 'this' binding wrong in class scope *)
-        val _ = trace ["extending scope for class block of ", fmtName (valOf name)]
+        val _ = trace ["extending scope for class block of ", fmtName name]
         val classRegs = extendScopeReg regs classObj Mach.InstanceScope
     in
-        trace ["evaluating class block of ", fmtName (valOf name)];
+        trace ["evaluating class block of ", fmtName name];
         evalBlock classRegs block
     end
 
@@ -3850,7 +3907,8 @@ and evalProgram (prog:Ast.PROGRAM)
          map (evalPackage regs) (#packages prog);
          evalBlock regs (#block prog))
         handle ThrowException v => 
-               error ["*** UNHANDLED EXCEPTION ***", Ustring.toAscii (toUstring v)]
+               (log ["*** Unhandled Exception ***"];
+                error ["ThrowException(", Ustring.toAscii (toUstring v), ")"])
     end
 
 fun resetGlobal (ob:Mach.OBJ) 
@@ -3861,40 +3919,5 @@ fun resetGlobal (ob:Mach.OBJ)
                                        temps = ref [],
                                        kind = Mach.GlobalScope });
      setValue ob Name.public_global (Mach.Object ob))
-
-
-fun bindSpecialIdentities _ = 
-    let 
-        fun bindIdent (n, r) = 
-            let 
-                val Mach.Obj obj = needObj (getValue (getGlobalObject()) n)
-                val id = (#ident obj)
-            in
-                trace ["noting identity ", Int.toString id, " of class ", LogErr.name n];
-                r := id
-            end
-        fun bindProtoMagic (n, m) = 
-            let 
-                val classObj = needObj (getValue (getGlobalObject()) n)
-                val protoObj = needObj (getValue classObj Name.public_prototype)
-            in
-                trace ["setting magic slot in prototype of ", LogErr.name n];
-                Mach.setMagic protoObj (SOME m);
-                ()
-            end
-    in
-        List.app bindIdent
-                 [ 
-                  (Name.public_Object, ObjectClassIdentity),
-                  (Name.public_Array, ArrayClassIdentity),
-                  (Name.public_Function, FunctionClassIdentity)
-                 ];
-        List.app bindProtoMagic
-                 [ 
-                  (Name.public_String, Mach.String Ustring.empty),
-                  (Name.public_Number, Mach.Double 0.0),
-                  (Name.public_Boolean, Mach.Boolean false)
-                 ]
-    end
 
 end

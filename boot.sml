@@ -80,6 +80,7 @@ fun boot _ =
         val globalObj = Mach.newObj (Mach.ClassTag Name.public_Object) Mach.Null NONE
         val _ = trace ["installing global object"];
         val _ = Eval.resetGlobal globalObj
+        val _ = Eval.booting := true
         val globalRegs = Eval.getInitialRegs ()
 
         (* Allocate any standard anonymous user namespaces like magic and meta. *)
@@ -220,7 +221,7 @@ fun boot _ =
         Eval.evalProgram residualObjectProg;
         Eval.evalProgram residualClassProg;
         Eval.evalProgram residualFunctionProg;
-        Eval.bindSpecialIdentities ();
+        Eval.booting := false;
         describeGlobal ()
     end
 end
