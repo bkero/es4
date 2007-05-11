@@ -40,7 +40,7 @@ package Unicode
     /* Utility functions for Regular Expressions */
 
     public function isIdentifierStart(c) { // FIXME -- hairy, but not yet important
-        return c >= 'a' && c <= 'z' || c >= 'A' && c <= 'z' || c == '_' || c == '$';
+        return c >= 'a' && c <= 'z' || c >= 'A' && c <= 'Z' || c == '_' || c == '$';
     }
 
     public function isIdentifierPart(c) { // FIXME -- hairy, but not yet important
