@@ -468,8 +468,8 @@ package RegExpInternals
                          "\u3000\u000A\u000D\u0085\u2028\u2029");
     const charset_notspace : Charset = new CharsetComplement(charset_space);
 
-    const charset_digits : Charset = new CharsetAdhoc("0123456789");
-    const charset_notdigits : Charset = new CharsetComplement(charset_digits);
+    const charset_digit : Charset = new CharsetAdhoc("0123456789");
+    const charset_notdigit : Charset = new CharsetComplement(charset_digit);
 
     const charset_word : Charset =
         new CharsetAdhoc("abcdefghijklmnopqrstuvwzyzABCDEFGHIJKLMNOPQRSTUVWZYZ0123456789_");
