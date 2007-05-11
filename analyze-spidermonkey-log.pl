@@ -86,15 +86,19 @@ for my $i (sort {$errs->{$b} <=> $errs->{$a}} keys(%$errs)) {
     }
 }
 
+sub max { 
+    return $_[0] > $_[1] ? $_[0] : $_[1];
+}
+
 printf ("---------------------------------------------------\n");
 printf ("%d completions, %d xerrors, %d errors, %d alarms\n", $completions, $xerrors, $errors, $alarms);
 printf ("%d parseErrors, %d defnErrors, %d verifyErrors\n", $parseErrs, $defnErrs, $verifyErrs);
 printf ("%d evalErrors, %d machErrors, %d hostErrors\n", $evalErrs, $machErrs, $hostErrs);
 printf ("%d PASSED, %d FAILED\n", $passes, $fails);
 printf ("---------------------------------------------------\n");
-printf ("%d%% of crashes in top 10\n", ($top10 / $errors) * 100);
-printf ("%d%% of %d runs OK or xerror\n", (($completions + $xerrors) / $runs) * 100, $runs);
-printf ("%d%% of %d executed cases PASSED\n", ($passes / ($passes + $fails)) * 100, $passes + $fails);
+printf ("%d%% of crashes in top 10\n", ($top10 / max($errors,1)) * 100);
+printf ("%d%% of %d runs OK or xerror\n", (($completions + $xerrors) / max(1,$runs)) * 100, $runs);
+printf ("%d%% of %d executed cases PASSED\n", ($passes / max(1,($passes + $fails))) * 100, $passes + $fails);
 printf ("---------------------------------------------------\n");
 
 
