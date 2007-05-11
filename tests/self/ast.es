@@ -40,50 +40,73 @@
 
 package Ast
 {
+    use namespace intrinsic
+
+    // POS
+
+    type POS = 
+       { file: String
+       , span: int //StreamPos.span
+       , sm: int // StreamPos.sourcemap
+       , post_newline: Boolean }
 
     // BASIC TYPES
 
-    type IDENT = string   // unicode string
+    type IDENT = String   // unicode string
 
-    type HEAD = {
-        fixtures : FIXTURES,
-        inits : INITS
-    }
+    type HEAD =
+       { fixtures : FIXTURES
+       , inits : INITS }
 
-    type FIXTURES = [[FIXTURE_NAME,FIXTURE]];
-    type INITS = [[FIXTURE_NAME,EXPR]];
+    type FIXTURE_NAME = 
+       ( TempName
+       , PropName )
+
+    class TempName {}
+    class PropName {}
+
+    type FIXTURES = [[FIXTURE_NAME,FIXTURE]]
+
+    type INITS = [[FIXTURE_NAME,EXPR]]
+	
+    type NAME =
+       { ns: NAMESPACE
+       , id: IDENT }
+	
+    type MULTINAME =
+       { nss: [[NAMESPACE]]
+       , id: IDENT }
 	
     // NAMESPACE
 
-    type NAMESPACE = (
-	    Intrinsic,
-	    OperatorNamespace,
-	    Private,
-	    Protected,
-	    Public,
-	    Internal,
-	    UserNamespace,
-	    AnonUserNamespace,
-	    LimitedNamespace 
-    )
+    type NAMESPACE =
+	   ( IntrinsicNamespace
+	   , OperatorNamespace
+	   , PrivateNamespace
+	   , ProtectedNamespace
+	   , PublicNamespace
+	   , InternalNamespace
+	   , UserNamespace
+	   , AnonymousNamespace
+       , ImportNamespace )
 
-    class Intrinsic {}
+    class IntrinsicNamespace {}
 
     class OperatorNamespace {}
 
-    class Private { 
+    class PrivateNamespace { 
         const name : IDENT
     }
 
-    class Protected { 
+    class ProtectedNamespace { 
         const name : IDENT 
     }
 
-    class Public { 
+    class PublicNamespace { 
         const name : IDENT 
     }
 
-    class Internal { 
+    class InternalNamespace { 
         const name : IDENT
     }
 
@@ -91,327 +114,239 @@ package Ast
         const name : IDENT 
     }
 
-    class AnonUserNamespace { 
+    class AnonymousNamespace { 
         const id : int 
     }
 	
-    class LimitedNamespace { 
+    class ImportNamespace { 
         const ident : IDENT
-        const ns : Public 
-    }
-	
-    // NAME
-
-    type NAME = {
-        ns: NAMESPACE,
-        id: IDENT
-    }
-	
-    class MULTINAME {
-        const nss: [[NAMESPACE]];
-	    const id: IDENT;
+        const ns : PublicNamespace 
     }
 	
     // NUMBERS
 	
+    type NUMERIC_MODE = 
+       { numberType : NUMBER_TYPE
+       , roundingMode: ROUNDING_MODE
+       , precision: int }
+
+    type NUMBER_TYPE =
+       ( DecimalType
+       , DoubleType
+       , IntType
+       , UIntType
+       , NumberType )
+
     class DecimalType {}
     class DoubleType {}
     class IntType {}
     class UIntType {}
     class NumberType {}
 
-    type NUMBER_TYPE = (
-        DecimalType,
-        DoubleType,
-        IntType,
-        UIntType,
-        NumberType
-    )
-                
-    type NUMERIC_MODE = {
-        numberType : int,
-        roundingMode: int,
-        precision: int
-    }
+    type ROUNDING_MODE =
+       ( Ceiling
+       , Floor
+       , Up
+       , Down
+       , HalfUp
+       , HalfDown
+       , HalfEven )
+
+    class Ceiling {}
+    class Floor {}
+    class Up {}
+    class Down {}
+    class HalfUp {}
+    class HalfDown {}
+    class HalfEven {}
 
     // OPERATORS
 
+    /*
+
+    Pattern for using operator expression nodes
+
+    switch type (e:EXPR) 
+    {
+        case (expr:UnaryExpr) {
+            let {op,ex} = expr
+            switch type (op:UNOP) {
+                case (_:Delete) { ...delete... }
+                case (_:Void) { ...void... }
+            }
+        }
+        case (expr:BinaryExpr) {
+            ...binary expr...
+        }
+        case (expr:TernaryExpr) {
+            ...ternary expr...
+        }
+        default {
+            throw "unimplemented expression type"
+        }
+    }
+
+    */
+
     // Binary type operators
 
-    type BINTYPEOP = (
-        Cast,
-        Is,
-        To
-    )
-    
-	class Cast {}
-    
-	class To {}
-    
-	class Is {}
+    type BINTYOP =
+       ( CastOp
+       , IsOp
+       , ToOp )
 
+    class CastOp {}
+    class IsOp {}
+    class ToOp {}
+    
     // Binary operators
 
-    type BINOP = ( 
-        Plus,
-        Minus,
-        Times,
-    	Divide,
-        Remainder,
-        LeftShift,
-        RightShift,
-        RightShiftUnsigned,
-        BitwiseAnd,
-        BitwiseOr,
-        BitwiseXor,
-        LogicalAnd,
-        LogicalOr,
-        InstanceOf,
-        In,
-        Equals,
-        NotEquals,
-        StrictEquals,
-        StrictNotEquals,
-        Less,
-        LessOrEqual,
-        Greater,
-        GreaterOrEqual,
-        Comma
-    )
-    
-    class Plus { 
-        const mode : NUMERIC_MODE;
-        function Plus (mode) : mode = mode {}
-    }
-    
-    class Minus { 
-	    const mode : NUMERIC_MODE
-        function Minus (mode) : mode = mode {}
-    }
-	
-    class Times {
-        const mode : NUMERIC_MODE
-        function Times (mode) : mode = mode {}
-    }
+    type BINOP =
+       ( Plus
+       , Minus
+       , Times
+       , Divide
+       , Remainder
+       , LeftShift
+       , RightShift
+       , RightShiftUnsigned
+       , BitwiseAnd
+       , BitwiseOr
+       , BitwiseXor
+       , LogicalAnd
+       , LogicalOr
+       , InstanceOf
+       , In
+       , Equals
+       , NotEquals
+       , StrictEquals
+       , StrictNotEquals
+       , Less
+       , LessOrEqual
+       , Greater
+       , GreaterOrEqual
+       , Comma )
 
-    class Divide {
-        const mode : NUMERIC_MODE
-        function Divide (mode) : mode = mode {}
-    }
-	
-    class Remainder {
-        const mode : NUMERIC_MODE
-        function Remainder (mode) : mode = mode {}
-    }
-	
+    class Plus {}
+    class Minus {}
+    class Times {}
+    class Divide {}
+    class Remainder {}
     class LeftShift {}
-    
     class RightShift {}
-    
     class RightShiftUnsigned {}
-
     class BitwiseAnd {}
-
     class BitwiseOr {}
-    
     class BitwiseXor {}
-    
     class LogicalAnd {}
-    
     class LogicalOr {}
-    
     class InstanceOf {}
-    
     class In {}
-    
-    class Equals {
-        const mode : NUMERIC_MODE
-    }
-	
-    class NotEquals {
-        const mode : NUMERIC_MODE
-    }
-	
-    class StrictEquals {
-        const mode : NUMERIC_MODE
-    }
-	
-    class StrictNotEquals {
-        const mode : NUMERIC_MODE
-    }
-	
-    class Less {
-        const mode : NUMERIC_MODE
-    }
-	
-    class LessOrEquals {
-        const mode : NUMERIC_MODE
-    }
-	
-    class Greater {
-        const mode : NUMERIC_MODE
-    }
-	
-    class GreaterOrEquals {
-        const mode : NUMERIC_MODE
-    }
-	
+    class Equals {}
+    class NotEquals {}
+    class StrictEquals {}
+    class StrictNotEquals {}
+    class Less {}
+    class LessOrEqual {}
+    class Greater {}
+    class GreaterOrEqual {}
     class Comma {}
 
-    // Assignment operators
-    
-    type ASSIGNOP = (
-        Assign,
-        AssignPlus,
-        AssignMinus,
-        AssignTimes,
-        AssignDivide,
-        AssignRemainder,
-        AssignLeftShift,
-        AssignRightShift,
-        AssignRightShiftUnsigned,
-        AssignBitwiseAnd,
-        AssignBitwiseOr,
-        AssignBitwiseXor,
-        AssignLogicalAnd,
-        AssignLogicalOr
-    )
+    /*
+        ASSIGNOP
+    */
+
+    type ASSIGNOP = 
+       ( Assign
+       , AssignPlus
+       , AssignMinus
+       , AssignTimes
+       , AssignDivide
+       , AssignRemainder
+       , AssignLeftShift
+       , AssignRightShift
+       , AssignRightShiftUnsigned
+       , AssignBitwiseAnd
+       , AssignBitwiseOr
+       , AssignBitwiseXor
+       , AssignLogicalAnd
+       , AssignLogicalOr )
 
     class Assign {}
-    
-    class AssignPlus {
-        const mode : NUMERIC_MODE
-    }
-	
-    class AssignMinus {
-        const mode : NUMERIC_MODE
-    }
-	
-    class AssignTimes {
-        const mode : NUMERIC_MODE
-    }
-	
-    class AssignDivide {
-        const mode : NUMERIC_MODE
-    }
-	
-    class AssignRemainder {
-        const mode : NUMERIC_MODE
-    }
-	
+    class AssignPlus {}
+    class AssignMinus {}
+    class AssignTimes {}
+    class AssignDivide {}
+    class AssignRemainder {}
     class AssignLeftShift {}
-
     class AssignRightShift {}
-
     class AssignRightShiftUnsigned {}
-
     class AssignBitwiseAnd {}
-
     class AssignBitwiseOr {}
-
     class AssignBitwiseXor {}
-
     class AssignLogicalAnd {}
-
     class AssignLogicalOr {}
 
-    // Unary operators
+    // UNOP
 
-    type UNOP = (
-        Delete,
-        Void,
-        Typeof,
-        PreIncrement,
-        PreDecrement,
-        PostIncrement,
-        PostDecrement,
-        UnaryPlus,
-        UnaryMinus,
-        BitwiseNot,
-        LogicalNot,
-        Type
-    )
+    type UNOP = 
+       ( Delete
+       , Void
+       , Typeof
+       , PreIncr
+       , PreDecr
+       , PostIncr
+       , PostDecr
+       , UnaryPlus
+       , UnaryMinus
+       , BitwiseNot
+       , LogicalNot
+       , Type )
 
     class Delete {}
-
     class Void {}
-
     class Typeof {}
-
-    class PreIncrement {
-        const mode : NUMERIC_MODE
-    }
-	
-    class PreDecrement {
-        const mode : NUMERIC_MODE
-    }
-	
-    class PostIncrement {
-        const mode : NUMERIC_MODE
-    }
-	
-    class PostDecrement {
-        const mode : NUMERIC_MODE
-    }
-	
-    class UnaryPlus {
-        const mode : NUMERIC_MODE
-    }
-	
-    class UnaryMinus {
-        const mode : NUMERIC_MODE
-    }
-
+    class PreIncr {}
+    class PreDecr {}
+    class PostIncr {}
+    class PostDecr {}
+    class UnaryPlus{}
+    class UnaryMinus {}
     class BitwiseNot {}
-
     class LogicalNot {}
-
     class Type {}
 
     // EXPR
     
-    type EXPR = (
-        TernaryExpr,
-        BinaryExpr,
-        BinaryTypeExpr,
-        UnaryExpr,
-        TypeExpr,
-        ThisExpr,
-        YieldExpr,
-        SuperExpr,
-        LiteralExpr,
-        CallExpr,
-        ApplyTypeExpr,
-        LetExpr,
-        NewExpr,
-        ObjectRef,
-        LexicalRef,
-        SetExpr,
-        ListExpr,
-        InitExpr,
-        SliceExpr,
-        GetTemp,
-        GetParam
-    )
+    type EXPR = 
+       ( TernaryExpr
+       , BinaryExpr
+       , BinaryTypeExpr
+       , UnaryExpr
+       , TypeExpr
+       , ThisExpr
+       , YieldExpr
+       , SuperExpr
+       , LiteralExpr
+       , CallExpr
+       , ApplyTypeExpr
+       , LetExpr
+       , NewExpr
+       , ObjectRef
+       , LexicalRef
+       , SetExpr
+       , ListExpr
+       , InitExpr
+       , SliceExpr
+       , GetTemp
+       , GetParam )
     
-    type INIT_TARGET = (
-        Hoisted,
-        Local,
-        Prototype
-    )
-
-    type FIXTURE_NAME = (
-        TempName,
-        PropName
-    )
-
 	class TernaryExpr {
-    	const op : TRIOP
         const e1 : EXPR
         const e2 : EXPR
         const e3 : EXPR
-    	function TernaryExpr (op,e1,e2,e3) 
-            : op=op, e1=e1, e2=e2, e3=e3 {}
+    	function TernaryExpr (e1,e2,e3) 
+            : e1=e1, e2=e2, e3=e3 {}
     }
     
     class BinaryExpr {
@@ -421,54 +356,85 @@ package Ast
     	function BinaryExpr (op,e1,e2) 
 	        : op=op, e1=e1, e2=e2 {}
     }
+
+    class BinaryNumberExpr extends BinaryExpr {
+        const mode : NUMERIC_MODE;
+        function BinaryNumberExpr (op,e1,e2,mode)
+            : mode = mode, super (op,e1,e2) {}
+    }
 	
     class BinaryTypeExpr {
         const op : BINTYOP
         const e1 : EXPR
         const e2 : TYPE_EXPR
-	function BinaryTypeExpr (op,e1,e2) 
+	    function BinaryTypeExpr (op,e1,e2) 
 	        : op=op, e1=e1, e2=e2 {}
 	}
 	
     class UnaryExpr {
-        const op : UNOP
-        const ex : EXPR
-	function UnaryExpr (op,ex)
+        const op : UNOP;
+        const ex : EXPR;
+	    function UnaryExpr (op,ex)
             : op=op, ex=ex {}
+    }
+
+    class UnaryNumberExpr extends UnaryExpr {
+        const mode : NUMERIC_MODE;
+        function UnaryNumberExpr (op,ex,mode)
+            : mode = mode, super (op,ex) {}
     }
     
     class TypeExpr {
-	const ex : TYPE_EXPR
+        const ex : TYPE_EXPR;
+        function TypeExpr (ex)
+            : ex=ex {}
     }
     
-    class ThisExpr {}
+    class ThisExpr {
+    }
 	
     class YieldExpr {
-        const ex : EXPR?
+        const ex : EXPR?;
+        function YieldExpr (ex=null)
+            : ex=ex {}
     }
     
     class SuperExpr {
-        const ex : EXPR?
+        const ex : EXPR?;
+        function SuperExpr (ex=null)
+            : ex=ex {}
     }
 
     class LiteralExpr {
-        const literal : LITERAL
+        const literal : LITERAL;
+        function LiteralExpr (literal)
+            : literal = literal {}
     }
 
     class CallExpr {
         const func : EXPR;
         const args : [EXPR];
+        function CallExpr (func,args)
+            : func = func
+            , args = args {}
     }
 
     class ApplyTypeExpr {
         const expr : EXPR;
-        const args : [TYPEEXPR];
+        const args : [TYPE_EXPR];
+        function ApplyTypeExpr (expr,args)
+            : expr = expr
+            , args = args {}
     }
 
     class LetExpr {
-        const binds : DEFNS;
+        const binds : BINDING_INITS;
         const head : HEAD;
         const body : EXPR;
+        function LetExpr (binds,head,body)
+            : binds = binds
+            , head = head
+            , body = body {}
     }
 
     class NewExpr {
@@ -491,11 +457,28 @@ package Ast
         const op : ASSIGNOP;
         const le : EXPR;
         const re : EXPR;
+        function SetExpr (op,le,re) 
+            : op=op, le=le, re=re {}
+    }
+
+    class SetNumberExpr extends SetExpr {
+        const mode : NUMERIC_MODE;
+        function SetNumberExpr (op,le,re,mode) 
+            : mode=mode, super (op,le,re) {}
     }
 
     class ListExpr {
         const exprs : [EXPR];
     }
+
+    type INIT_TARGET =
+       ( Hoisted
+       , Local
+       , Prototype )
+
+    class Hoisted {}
+    class Local {}
+    class Prototype {}
 
 	class InitExpr {
         const target : INIT_TARGET;
@@ -519,51 +502,72 @@ package Ast
 
     // IDENT_EXPR
 
-    type IDENT_EXPR = (
-        Identifier,
-        QualifierExpression,
-        AttributeIdentifier,
-        ExpressionIdentifier,
-        QualifiedIdentifier,
-        TypeIdentifier,
-        UnresolvedPath,
-        WildcardIdentifier 
-    )
+    type IDENT_EXPR =
+       ( Identifier
+       , QualifiedExpression
+       , AttributeIdentifier
+       , ExpressionIdentifier
+       , QualifiedIdentifier
+       , TypeIdentifier
+       , UnresolvedPath
+       , WildcardIdentifier )
 	    
     class Identifier {
         const ident : IDENT;
-        const openNamespaces : [[NAMESPACE]];
-        function Identifier (ident) : ident = ident {}
-        function set opennss (v) { openNamespaces = v }
+        private const nss : [[NAMESPACE]];
+        function Identifier (ident) 
+            : ident = ident {}
+        function set opennss (nss) { 
+            this.nss = nss 
+        }
     }
 	
     class QualifiedExpression {
-        const qual : EXPR
-        const expr : EXPR 
+        const qual : EXPR;
+        const expr : EXPR;
+        function QualifiedExpression (qual,expr)
+            : qual=qual
+            , expr=expr {}
     }
     
     class AttributeIdentifier {
-        const ident : IDENT_EXPR
+        const ident : IDENT_EXPR;
+        function AttributeIdentifier (ident)
+            : ident=ident {}
     }
 	
     class ExpressionIdentifier { 
         const expr: EXPR;
-        const openNamespaces : [[NAMESPACE]];
+        private const nss : [[NAMESPACE]];
+        function ExpressionIdentifier (expr)
+            : expr=expr {}
+        function set opennss (nss) {
+            this.nss = nss;
+        }
     }
 	
     class QualifiedIdentifier { 
         const qual : EXPR;
         const ident : IDENT;
+        function QualifiedIdentifier (qual,ident)
+            : qual=qual
+            , ident=ident {}
     }
     
     class TypeIdentifier { 
-        const ident : IDENT_EXPR
-        const typeArgs : [TYPE_EXPR]
+        const ident : IDENT_EXPR;
+        const typeArgs : [TYPE_EXPR];
+        function TypeIdentifier (ident,typeArgs)
+            : ident=ident
+            , typeArgs=typeArgs {}
     }
     
     class UnresolvedPath {
         const path : [IDENT];
         const ident : IDENT_EXPR;
+        function UnresolvedPath (path,ident)
+            : path=path
+            , ident=ident {}
     }
     
     class WildcardIdentifier {}
@@ -595,19 +599,27 @@ package Ast
     class LiteralUndefined {}
 
     class LiteralContextDecimal {
-        const strValue : string;
+        const strValue : String;
+        function LiteralContextDecimal (strValue)
+            : strValue=strValue {}
     }
 
     class LiteralContextDecimalInteger {
-        const strValue : string;
+        const strValue : String;
+        function LiteralContextDecimalInteger (strValue)
+            : strValue=strValue {}
     }
 	
     class LiteralContextHexInteger {
-        const strValue : string;
+        const strValue : String;
+        function LiteralContextHexInteger (strValue)
+            : strValue=strValue {}
     }
 	
     class LiteralDouble {
         const doubleValue : double;
+        function LiteralDouble (doubleValue)
+            : doubleValue=doubleValue {}
     }
 	
     class LiteralDecimal {
@@ -623,11 +635,11 @@ package Ast
     }
 	
     class LiteralBoolean {
-        const booleanValue : boolean;
+        const booleanValue : Boolean;
     }
 	
     class LiteralString {
-        const strValue : string;
+        const strValue : String;
     }
 	
     class LiteralArray {
@@ -648,15 +660,14 @@ package Ast
         const type : TYPE_EXPR;
     }
 
-    type FIELD = {
-        kind : VAR_DEFN_TAG,
-        name : IDENT_EXPR,
-        init : EXPR
-    }
+    type FIELD =
+       { kind : VAR_DEFN_TAG
+       , name : IDENT_EXPR
+       , init : EXPR }
 
-    type FIELD_TYPE = {
-        name : IDENT,
-        type : TYPE_EXPR
+    type FIELD_TYPE =
+       { name : IDENT
+       , type : TYPE_EXPR
     }
 
     class LiteralFunction {
@@ -664,7 +675,7 @@ package Ast
     }
 
 	class LiteralRegExp {
-        const src : string;
+        const src : String;
     }
 
     // CLS
@@ -673,45 +684,82 @@ package Ast
 
     class Cls {
         const name : NAME;
-        const extnds : NAME?;  // fixme: extends should work
-        const impls : [NAME];  // fixme: implements should work
-        const classFixtures : FIXTURES;
-        const instanceFixutres : FIXTURES;
-        const instanceInits : HEAD;
+        const baseName : NAME?;
+        const interfaceNames : [NAME];
         const constructor : CTOR?;
-        const classType : OBJECT_TYPE;
-        const instanceType : INSTANCE_TYPE;
+        const classFixtures : FIXTURES;
+        const instanceFixtures : FIXTURES;
+        const instanceInits : HEAD;
+        const classType : ObjectType;
+        const instanceType : InstanceType;
+        function Cls (name,baseName,interfaceNames,constructor)
+            : name = name
+            , baseName = baseName
+            , interfaceNames = interfaceNames
+            , constructor = constructor
+            , classFixtures = []
+            , instanceFixtures = []
+            , instanceInits = []
+            , classType = null
+            , instanceType = null {}
     }
 
-    // FUNC
+    // FUNCS
 
     type FUNC = Func;
+
+    type FUNC_NAME =
+       { kind : FUNC_NAME_KIND
+       , ident : IDENT }
+
+    type FUNC_NAME_KIND =
+       ( Ordinary
+       , Operator
+       , Get
+       , Set
+       , Call
+       , Has )
+
+    class Ordinary {}
+    class Operator {}
+    class Get {}
+    class Set {}
+    class Call {}
+    class Has {}
 
     class Func { 
         const name: FUNC_NAME;
         const fsig: FUNC_SIG;
-        const isNative: bool;
+        const isNative: Boolean;
         const block: BLOCK;
-        const param: HEAD;
+        const params: HEAD;
         const defaults: [EXPR];
-        const ty: FUNC_TYPE;
-        function Func () {}
+        const type: FUNC_TYPE;    // FIXME: should be able to use 'type' here
+        function Func (name,fsig,isNative,block,
+                       params,defaults,ty)
+            : name = name
+            , fsig = fsig
+            , isNative = isNative
+            , block = block
+            , params = params
+            , defaults = defaults
+            , type = ty {}
     }
 
     type FUNC_SIG = FunctionSignature;
 
     class FunctionSignature {
         const typeParams : [IDENT];
-        const params : DEFNS;
+        const params : BINDING_INITS;
         const paramTypes : [TYPE_EXPR];
         const defaults : [EXPR];
-        const ctorInits : CTOR_INITS;
+        const ctorInits : [BINDING_INITS,[EXPR]]?;  /* [settings, super args] */
         const returnType : TYPE_EXPR;
         const thisType : TYPE_EXPR?;
-        const hasRest : bool;
+        const hasRest : Boolean;
     }
 
-    // CTOR
+    // CTORS
 
     type CTOR = Ctor;
 
@@ -721,7 +769,7 @@ package Ast
         const func : FUNC;
     }
 
-    // BINDING
+    // BINDINGS
 
     type BINDING_INITS = [[BINDING],[INIT_STEP]];
 
@@ -732,11 +780,10 @@ package Ast
         const type : TYPE_EXPR;
     }
 
-    type BINDING_IDENT = (
-        TempIdent,
-        ParamIdent,
-        PropIdent
-    )
+    type BINDING_IDENT =
+       ( TempIdent
+       , ParamIdent
+       , PropIdent )
 
     class TempIdent {
         const n : int;
@@ -750,10 +797,9 @@ package Ast
         const ident : IDENT;
     }
 
-    type INIT_STEP = (
-        InitStep,
-        AssignStep
-    )
+    type INIT_STEP =
+       ( InitStep
+       , AssignStep )
 
     class InitStep {
         const ident : BINDING_IDENT;
@@ -765,7 +811,7 @@ package Ast
         const re : EXPR;
     }
 
-    // FIXTURE
+    // FIXTURES
 
     type FIXTURE = (
         NamespaceFixture,
@@ -777,6 +823,10 @@ package Ast
         ValFixture,
         VirtualValFixture
     )
+
+    class NamespaceFixture {
+        const ns : NAMESPACE
+    }
 
     class ClassFixture {
         const cls : CLS;
@@ -791,14 +841,14 @@ package Ast
     class MethodFixture {
         const func : FUNC;
         const type : TYPE_EXPR;
-        const isReadOnly : boolean;
-        const isOverride : boolean;
-        const isFinal : boolean;
+        const isReadOnly : Boolean;
+        const isOverride : Boolean;
+        const isFinal : Boolean;
     }
 
     class ValFixture {
         const type : TYPE_EXPR;
-        const isReadOnly : boolean;
+        const isReadOnly : Boolean;
     }
 	
     class VirtualValFixture {
@@ -827,6 +877,17 @@ package Ast
     class SpecialType {
         const kind : SPECIAL_TYPE_KIND;
     }
+
+    type SPECIAL_TYPE_KIND =
+        ( AnyType
+        , NullType
+        , UndefinedType
+        , VoidType )
+
+    class AnyType {}
+    class NullType {}
+    class UndefinedType {}
+    class VoidType {}
 
     class UnionType {
         const types : [TYPE_EXPR];
@@ -859,7 +920,7 @@ package Ast
         params: [TYPE_EXPR],
         result: TYPE_EXPR,
         thisType: TYPE_EXPR?,
-        hasRest: bool,
+        hasRest: Boolean,
         minArgs: int 
     }
 
@@ -874,14 +935,14 @@ package Ast
 
     class NullableType {
         const type : TYPE_EXPR;
-        const isNullable : boolean;
+        const isNullable : Boolean;
     }
 
     class InstanceType {
         const name : NAME;
         const typeParams : [IDENT];
         const type : TYPE_EXPR;
-        const isDynamic : boolean;
+        const isDynamic : Boolean;
     }
 
     class NominalType {
@@ -890,29 +951,28 @@ package Ast
 
     // STMTs
 
-    type STMT = (
-        EmptyStmt,
-        ExprStmt,
-        InitStmt,
-        ClassBlock,
-        ForInStmt,
-        ThrowStmt,
-        ReturnStmt,
-        BreakStmt,
-        ContinueStmt,
-        BlockStmt,
-        LabeledStmt,
-        LetStmt,
-        WhileStmt,
-        DoWhileStmt,
-        ForStmt,
-        IfStmt,
-        WithStmt,
-        TryStmt,
-        SwitchStmt,
-        SwithTypeStmt,
-        DXNStmt
-    )
+    type STMT =
+       ( EmptyStmt
+       , ExprStmt
+       , InitStmt
+       , ClassBlock
+       , ForInStmt
+       , ThrowStmt
+       , ReturnStmt
+       , BreakStmt
+       , ContinueStmt
+       , BlockStmt
+       , LabeledStmt
+       , LetStmt
+       , WhileStmt
+       , DoWhileStmt
+       , ForStmt
+       , IfStmt
+       , WithStmt
+       , TryStmt
+       , SwitchStmt
+       , SwitchTypeStmt
+       , DXNStmt )
 
     class EmptyStmt { }
 
@@ -923,7 +983,7 @@ package Ast
     class InitStmt {
     }
 
-    class ClassStmt {
+    class ClassBlock {
         const ns : EXPR?;
         const ident : IDENT;
         const name : NAME?;
@@ -946,7 +1006,7 @@ package Ast
     }
 
     class ContinueStmt {
-        const ident : IDENt?;
+        const ident : IDENT?;
     }
 
     class BlockStmt {
@@ -979,6 +1039,7 @@ package Ast
     class ForStmt {
     }
 
+
     class IfStmt {
     }
 
@@ -1006,8 +1067,129 @@ package Ast
         ConstructorDefn,
         InterfaceDefn,
         NamespaceDefn,
-        TypeDefn
-    )
+        TypeDefn )
+
+    type CLASS_DEFN =
+        { ident: IDENT
+        , ns: EXPR?
+        , isNonnullable: Boolean
+        , isDynamic: Boolean
+        , isFinal: Boolean
+        , params: [IDENT]
+        , base: [IDENT_EXPR]
+        , implements: [IDENT_EXPR]
+        , classDefns: [DEFN]
+        , instanceDefns: [DEFN]
+        , instanceStmts: [STMT]
+        , ctorDefn: CTOR? }
+
+    class ClassDefn {
+        const ident: IDENT;
+        const ns: EXPR?;
+        const isNonnullable: Boolean;
+        const isDynamic: Boolean;
+        const isFinal: Boolean;
+        const params: [IDENT];
+        const baseIdent: IDENT_EXPR?;  /* STATIC_IDENT_EXPR */
+        const interfaceIdents: [IDENT_EXPR]; /* STATIC_IDENT_EXPR list */
+        const classDefns: [DEFN];
+        const instanceDefns: [DEFN];
+        const instanceStmts: [STMT];
+        const ctorDefn: CTOR?;
+    }
+
+    type VAR_DEFN_TAG =
+        ( Const
+        , Var
+        , LetVar
+        , LetConst )
+
+    class Const {}
+    class Var {}
+    class LetVar {}
+    class LetConst {}
+
+    type VAR_DEFN =
+       { kind : VAR_DEFN_TAG
+       , ns : EXPR?
+       , isStatic : Boolean
+       , isPrototype : Boolean
+       , bindings : BINDING_INITS }
+
+    class VariableDefn {
+        const kind: VAR_DEFN_TAG;
+        const ns: EXPR?;
+        const isStatic: Boolean;
+        const isPrototype: Boolean;
+        const bindings: BINDING_INITS;
+    }
+
+    type FUNC_DEFN = FunctionDefn
+
+    class FunctionDefn {
+    }
+
+    class ConstructorDefn {
+    }
+
+    class InterfaceDefn {
+    }
+
+    class NamespaceDefn {
+    }
+
+    class TypeDefn {
+    }
+
+    /*
+        BLOCK
+    */
+
+    type BLOCK = Block
+
+    class Block {
+        const pragmas: [PRAGMA];
+        const defns: [DEFN];
+        const head: HEAD?;
+        const body: [STMT];
+        const pos: POS?
+    }
+
+    type PRAGMA =
+        ( UseNamespace
+        , UseDefaultNamespace
+        , UseNumber
+        , UseRounding
+        , UsePrecision
+        , UseStrict
+        , UseStandard
+        , Import )
+
+    class UseNamespace {}
+    class UseDefaultNamespace {}
+    class UseNumber {}
+    class UseRounding {}
+    class UsePrecision {}
+    class UseStrict {}
+    class UseStandard {}
+    class Import {}
+
+    /*
+        PACKAGE
+    */
+
+    type PACKAGE =
+       { name: [IDENT]
+       , block: BLOCK }
+
+    /*
+        PROGRAM
+    */
+
+    type PROGRAM =
+        { packages: [PACKAGE]
+       , fixtures: FIXTURES?
+       , block: BLOCK }
 
     public function test () {
         intrinsic::print (new EmptyStmt)
@@ -1015,4 +1197,3 @@ package Ast
 
     test()
 }
-
