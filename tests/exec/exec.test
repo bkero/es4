@@ -31,9 +31,6 @@
 %% [operator in] eval
 @tests/exec/operator-in.es
 
-%% [decimal] eval
-@tests/exec/decimal.es
-
 %% [uint] eval
 @tests/exec/uint.es
 
@@ -51,3 +48,6 @@
 
 %% [scopes] eval
 @tests/exec/scopes.es
+
+%% [regular expressions] eval
+@tests/exec/regexp.es

@@ -42,7 +42,7 @@ package RegExpInternals
             let p : Matcher = pattern();
             if (idx !== source.length)
                 fail( SyntaxError, "Invalid character in input \"" + source + "\", position " + idx );
-            if (largest_backref >= parenIndex && largest_backref > 0)
+            if (largest_backref > parenIndex && largest_backref > 0)
                 fail( SyntaxError, "Reference to undefined capture " + largest_backref );
             return new RegExpMatcher(p, parenIndex, names);
         }
@@ -78,11 +78,11 @@ package RegExpInternals
             if (x !== null)
                 return x;
             let xx : Matcher = atom();
-            let y : [double, double, Boolean]? = quantifier();
+            let y : [double, double, boolean]? = quantifier();
             if (y === null)
                 return xx;
-            let [min, max, greedy] : [double,double,Boolean] = y;
-            return new Quantified(parenIndex, parenCount, min, max, greedy);
+            let [min, max, greedy] : [double,double,boolean] = y;
+            return new Quantified(parenIndex, parenCount, xx, min, max, greedy);
         }
 
         function assertion() : Matcher? {
@@ -93,12 +93,12 @@ package RegExpInternals
             else                 return null;
         }
 
-        function quantifier() : [double,double,Boolean]? {
+        function quantifier() : [double,double,boolean]? {
             let x : [double,double]? = quantifierPrefix();
             if (x == null)
                 return x;
             let [min,max] : [double,double] = x;
-            let greedy : Boolean = eat("?");
+            let greedy : boolean = !eat("?");
             return [min,max,greedy];
         }
 
@@ -108,7 +108,7 @@ package RegExpInternals
             else if (eat("?")) return [0,1];
             else if (eat("{")) {
                 let min : double = decimalDigits();
-                let max : double = n;
+                let max : double = min;
                 if (eat(",")) {
                     if (eat("}"))
                         max = Infinity;
@@ -144,6 +144,7 @@ package RegExpInternals
             if (eat("(?=")) {
                 let d : Matcher = disjunction();
                 match(")");
+                intrinsic::assert(d !== null);
                 return new PositiveLookahead(d);
             }
 
@@ -212,7 +213,8 @@ package RegExpInternals
                 lookingAt("}") ||
                 lookingAt("]") ||
                 lookingAt("|"))
-                fail( SyntaxError, "Illegal character in expression." );
+                return null;
+            //fail( SyntaxError, "Illegal character in expression: " + peekChar() );
 
             return new CharsetMatcher(new CharsetAdhoc(consumeChar()));
         }
@@ -220,8 +222,6 @@ package RegExpInternals
         function atomEscape() : Matcher {
 
             function decimalEscape(t : double) : Matcher {
-                if (t >= nCapturingParens)
-                    fail( SyntaxError, "Illegal backreference " + t );
                 if (t === 0)
                     return new CharsetMatcher(new CharsetAdhoc("\x00"));
                 else {
@@ -243,7 +243,7 @@ package RegExpInternals
 
         function characterClass() : Matcher {
             match("[");
-            let inverted : Boolean = false;
+            let inverted : boolean = false;
             if (eat("^"))
                 inverted = true;
             let ranges : Charset = classRanges();
@@ -339,7 +339,6 @@ package RegExpInternals
         }
 
         function classAtom() : Charset {
-            print("classAtom: " + peekChar());
             if (lookingAt("]") || atEnd())
                 fail( SyntaxError, "Premature end of input" );
 
@@ -360,7 +359,7 @@ package RegExpInternals
         function escape( de : function (double) : (Matcher,Charset),
                          ce : function (Charset) : (Matcher,Charset),
                          ch : function (string) : (Matcher,Charset),
-                         allow_b : Boolean ) : (Matcher,Charset) {
+                         allow_b : boolean ) : (Matcher,Charset) {
             let (t : double? = decimalEscape()) {
                 if (t !== null) 
                     return de(t);
@@ -398,7 +397,7 @@ package RegExpInternals
         */
         function characterClassEscape() : Charset? {
 
-            function unicodeSet(invert : Boolean) : Charset {
+            function unicodeSet(invert : boolean) : Charset {
                 let name : string = identifier();
                 match("}");
                 let (cls : Charset? = unicodeClass(name, invert));
@@ -422,7 +421,7 @@ package RegExpInternals
         /* Returns null if it does not consume anything but fails;
            throws an error if it consumes and then fails. 
         */
-        function characterEscape(allow_b : Boolean) : string? {
+        function characterEscape(allow_b : boolean) : string? {
 
             function hexValue(c) : double {
                 if (c >= "0" && c <= "9")
@@ -495,7 +494,7 @@ package RegExpInternals
                 fail( SyntaxError, "Expected token here: " + c );
         }
 
-        function eat(c : string) : Boolean {
+        function eat(c : string) : boolean {
             if (!lookingAt(c))
                 return false;
             idx += c.length;

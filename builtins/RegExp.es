@@ -97,12 +97,12 @@ package
             }
             if (global)
                 lastIndex = res.endIndex;
-            let a : Array = new Array(res.cap.length+1);
+            let a : Array = new Array(res.cap.length);
             a.index = i;
             a.input = S;
-            a.length = res.cap.length+1;
+            a.length = res.cap.length;
             a[0] = S.substring(i,res.endIndex);
-            for ( var j=1 ; j <= res.cap.length ; j++ )
+            for ( var j=1 ; j < res.cap.length ; j++ )
                 a[j] = res.cap[j];
             return a;
         }

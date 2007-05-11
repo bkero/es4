@@ -33,7 +33,7 @@ package RegExpInternals
         public function match( input : string, endIndex : int, multiline: boolean, ignoreCase: boolean ) : MatchResult {
             return matcher.match(new Context(input, multiline, ignoreCase),
                                  new State(endIndex, makeCapArray(nCapturingParens)), 
-                                 (function (ctx : Context, x : State) : State? { z=x; return x}) );
+                                 (function (ctx : Context, x : State) : State? x) );
         }
 
         var matcher : Matcher;
@@ -86,16 +86,16 @@ package RegExpInternals
        This captures array can be an array that's copied like the
        E262-3 states, or it could be a functional data structure.  
     */
-    public type CapArray = [(string,undefined)]!;
+    public type CapArray = [(string,undefined)];
 
     function makeCapArray(nCapturingParens : uint) : CapArray {
-        var a = [] /* : CapArray */ ;  // FIXME: evaluator barfs on this annotation
+        let a = [] /* : CapArray */ ;  // FIXME: evaluator barfs on this annotation
         for ( let i : uint = 0 ; i < nCapturingParens ; i++ )
             a[i] = undefined;
         return a;
     }
 
-    function copyCapArray(a : CapArray, parenIndex : uint, parenCount : uint) : CapArray {
+    function copyCapArray(a /*: CapArray*/, parenIndex : uint, parenCount : uint) : CapArray {
         let b : CapArray = makeCapArray(a.length);
         for ( let i : uint = 0 ; i < a.length ; i++ )
             b[i] = a[i];
@@ -136,7 +136,7 @@ package RegExpInternals
             return m2.match(ctx, x, c);
         }
 
-        var m1 : Matcher, m2 : Matcher;
+        var m1 : Matcher, m2 : Matcher; // FIXME: const
     }
 
     class Alternative! implements Matcher
@@ -146,7 +146,7 @@ package RegExpInternals
         function match(ctx : Context, x : State, c : Continuation) : MatchResult
             m1.match(ctx, x, (function (ctx : Context, y : State) m2.match(ctx, y, c)) );
 
-        var m1 : Matcher, m2 : Matcher;
+        var m1 : Matcher, m2 : Matcher; // FIXME: const
     }
 
     class Assertion! implements Matcher
@@ -184,14 +184,14 @@ package RegExpInternals
         }
     }
 
-    class AssertWordboundary extends Assertion
+    class AssertWordBoundary extends Assertion
     {
         override function testAssertion(ctx : Context, x : State) : boolean
             let (e : int = x.endIndex)
                 isREWordChar(ctx, e-1) !== isREWordChar(ctx, e);
     }
 
-    class AssertNotWordboundary extends Assertion
+    class AssertNotWordBoundary extends Assertion
     {
         override function testAssertion(ctx : Context, x : State) : boolean 
             let (e : int = x.endIndex)
@@ -209,7 +209,7 @@ package RegExpInternals
     {
         function Quantified(parenIndex:uint, parenCount:uint, m:Matcher, min:double, max:double, 
                             greedy:boolean) 
-          : parenIndex = parenIndex
+            : parenIndex = parenIndex
             , parenCount = parenCount
             , m = m
             , min = min
@@ -221,28 +221,29 @@ package RegExpInternals
         function match(ctx : Context, x : State, c : Continuation) : MatchResult {
 
             function RepeatMatcher(min : double, max : double, x : State) : MatchResult {
-                if (max === 0)
-                    return c(ctx, x);
-
-                let function d(y : State) : MatchResult {
+                function d(ctx: Context, y : State) : MatchResult {
                     if (min === 0 && y.endIndex === x.endIndex)
                         return failure;
                     else
                         return RepeatMatcher(Math.max(0, min-1), max-1, y);
                 }
+
+                if (max === 0)
+                    return c(ctx, x);
+
                 let xr = new State(x.endIndex, copyCapArray(x.cap, parenIndex, parenCount));
 
                 if (min !== 0)
-                    return m.match(xr, d);
+                    return m.match(ctx, xr, d);
 
                 if (!greedy) {
                     let z : MatchResult = c(ctx, x);
                     if (z !== failure)
                         return z;
-                    return m.match(xr, d);
+                    return m.match(ctx, xr, d);
                 }
                 else {
-                    let z : MatchResult = m.match(xr, d);
+                    let z : MatchResult = m.match(ctx, xr, d);
                     if (z !== failure)
                         return z;
                     return c(ctx, x);
@@ -252,7 +253,7 @@ package RegExpInternals
             return RepeatMatcher(min, max, x);
         }
 
-        var parenIndex : uint;
+        var parenIndex : uint;  // FIXME: const (all of these)
         var parenCount : uint;
         var m : Matcher;
         var min : double;
@@ -266,18 +267,18 @@ package RegExpInternals
 
         function match(ctx : Context, x : State, c : Continuation) : MatchResult {
 
-            let function d( y : State ) : MatchResult {
+            let function d( ctx: Context, y : State ) : MatchResult {
                 let cap : CapArray = copyCapArray( y.cap, 0, 0 );
                 let xe : int = x.endIndex;
                 let ye : int = y.endIndex;
-                cap[parenIndex] = ctx.input.substring(xe, ye);
+                cap[parenIndex+1] = ctx.input.substring(xe, ye);
                 return c(ctx, new State(ye, cap));
             }
 
-            return m.match(x, d);
+            return m.match(ctx, x, d);
         }
 
-        var m : Matcher, parenIndex : uint;
+        var m : Matcher, parenIndex : uint; // FIXME: const
     }
 
     class Backref! implements Matcher
@@ -300,27 +301,39 @@ package RegExpInternals
             return c(ctx, new State(f, cap));
         }
 
-        var capno : uint;
+        var capno : uint; // FIXME: const
     }
 
     class PositiveLookahead! implements Matcher
     {
+        // FIXME: weird scoping bugs necessitate calling this property mm
+        // while the parameter is called m.  lth / 2007-05-10
+        function PositiveLookahead(m : Matcher) mm=m {}
+
         function match(ctx : Context, x : State, c : Continuation) : MatchResult {
-            let r : MatchResult = m(ctx, x, (function (ctx, y : State) : MatchResult y) );
+            let r : MatchResult = mm.match(ctx, x, (function (ctx, y : State) : MatchResult y) );
             if (r === failure)
                 return failure;
             return c(ctx, new State(x.endIndex, r.cap));
         }
+
+        var mm: Matcher; // FIXME: const
     }
 
     class NegativeLookahead! implements Matcher
     {
+        // FIXME: weird scoping bugs necessitate calling this property mm
+        // while the parameter is called m.  lth / 2007-05-10
+        function NegativeLookahead(m : Matcher) mm=m {}
+            
         function match(ctx : Context, x : State, c : Continuation) : MatchResult {
-            let r : MatchResult = m(ctx, x, (function (ctx, y : State) : MatchResult y) );
+            let r : MatchResult = mm.match(ctx, x, (function (ctx, y : State) : MatchResult y) );
             if (r !== failure)
                 return failure;
             return c(ctx, x);
         }
+
+        var mm: Matcher; // FIXME: const
     }
 
     class CharsetMatcher! implements Matcher
@@ -371,7 +384,7 @@ package RegExpInternals
         override function match(ctx, c : string) : boolean
             m1.match(ctx, c) || m2.match(ctx, c);
 
-        var m1 : Charset, m2 : Charset;
+        var m1 : Charset, m2 : Charset; // FIXME: const
     }
 
     class CharsetIntersection! extends Charset 
@@ -381,7 +394,7 @@ package RegExpInternals
         override function match(ctx, c : string) : boolean
             m1.match(ctx, c) && m2.match(ctx, c);
 
-        var m1 : Charset, m2 : Charset;
+        var m1 : Charset, m2 : Charset; // FIXME: const 
     }
 
     class CharsetComplement! extends Charset
@@ -391,7 +404,7 @@ package RegExpInternals
         override function match(ctx, c : string) : boolean 
             (!m.match(ctx, c));  /* Yeah, you want the parens... */
 
-        var m : Charset;
+        var m : Charset; // FIXME: const
     }
 
     class CharsetRange! extends Charset 
@@ -399,7 +412,6 @@ package RegExpInternals
         function CharsetRange(lo : string, hi : string) : lo=lo, hi=hi { }
 
         override function match(ctx, c : string) : boolean {
-            print("Range: " + lo + " " + hi);
             let lo_code = lo.charCodeAt(0);
             let hi_code = hi.charCodeAt(0);
             for ( let i=lo_code ; i <= hi_code ; i++ )
@@ -408,7 +420,7 @@ package RegExpInternals
             return false;
         }
 
-        var lo : string, hi : string;
+        var lo : string, hi : string; // FIXME: const
     }
 
     class CharsetAdhoc! extends Charset 
@@ -418,7 +430,6 @@ package RegExpInternals
         }
 
         override function match(ctx, c : string) : boolean {
-            print("Adhoc: " + cs);
             for ( let i=0 ; i < cs.length ; i++ ) {
                 if (Canonicalize(ctx, cs[i]) === c)
                     return true;
@@ -443,27 +454,18 @@ package RegExpInternals
             throw new Error("character set not yet implemented: " + name);
         }
 
-        var name : string;
+        var name : string; // FIXME: const
     }
 
-    /* FIXME - waiting for new lexer
+    // FIXME: merge definitions here and in Unicode.es, when appropriate.
+
     const charset_linebreak : Charset = new CharsetAdhoc("\u000A\u000D\u0085\u2028\u2029");
-    */
-    const charset_linebreak : Charset = new CharsetAdhoc(String.fromCharCode(0x000A, 0x000D, 0x0085, 0x2028, 0x2029));
     const charset_notlinebreak : Charset = new CharsetComplement(charset_linebreak);
 
-    /* FIXME - waiting for new lexer
     const charset_space : Charset =
         new CharsetAdhoc("\u0009\u000B\u000C\u0020\u00A0\u1680\u180E\u2000\u2001\u2002" +
                          "\u203\u2004\u2005\u2006\u2007\u2008\u2009\u200A\u202F\u205F" +
                          "\u3000\u000A\u000D\u0085\u2028\u2029");
-    */
-    const charset_space : Charset =
-        new CharsetAdhoc(String.fromCharCode(0x0009,0x000B,0x000C,0x0020,0x00A0,0x1680,0x180E,
-                                             0x2000,0x2001,0x2002,
-                                             0x203,0x2004,0x2005,0x2006,0x2007,0x2008,0x2009,
-                                             0x200A,0x202F,0x205F,
-                                             0x3000,0x000A,0x000D,0x0085,0x2028,0x2029));
     const charset_notspace : Charset = new CharsetComplement(charset_space);
 
     const charset_digits : Charset = new CharsetAdhoc("0123456789");

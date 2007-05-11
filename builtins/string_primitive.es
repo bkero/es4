@@ -602,9 +602,9 @@ package
             let len  : uint = length;
             let i, j : uint;
 
-            for ( i=0 ; i < len && Unicode.isTrimmableSpace(magic::charCodeAt(this, i)) ; i++ )
+            for ( i=0 ; i < len && Unicode.isTrimmableSpace(charAt(i)) ; i++ )
                 ;
-            for ( j=len-1 ; j >= i && Unicode.isTrimmableSpace(magic::charCodeAt(this, j)) ; j-- )
+            for ( j=len-1 ; j >= i && Unicode.isTrimmableSpace(charAt(j)) ; j-- )
                 ;
             return substring(i,j+1);
         }
