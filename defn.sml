@@ -1964,12 +1964,24 @@ and defTyExpr (env:ENV)
         Ast.UnionType (map (defTyExpr env) tys)
       | Ast.ArrayType tys => 
         Ast.ArrayType (map (defTyExpr env) tys)
+      | Ast.ObjectType tys => 
+        Ast.ObjectType (map (defFieldType env) tys)
       | Ast.NullableType { expr, nullable } => 
         Ast.NullableType { expr = defTyExpr env expr,
                            nullable = nullable } 
         
       (* FIXME *)
       | t => t
+
+and defFieldType (env:ENV)
+              (ty:Ast.FIELD_TYPE)
+    : Ast.FIELD_TYPE = 
+    let
+        val {name,ty} = ty
+        val ty = defTyExpr env ty
+    in
+        {name=name,ty=ty}
+    end
 
 
 (*

@@ -40,10 +40,19 @@
 
 package Ast
 {
+    use namespace intrinsic
+
+    // POS
+
+    type POS = 
+       { file: String
+       , span: int //StreamPos.span
+       , sm: int // StreamPos.sourcemap
+       , post_newline: Boolean }
 
     // BASIC TYPES
 
-    type IDENT = string   // unicode string
+    type IDENT = String   // unicode string
 
     type HEAD =
        { fixtures : FIXTURES
@@ -53,23 +62,25 @@ package Ast
        ( TempName
        , PropName )
 
+    class TempName {}
+    class PropName {}
+
     type FIXTURES = [[FIXTURE_NAME,FIXTURE]]
 
     type INITS = [[FIXTURE_NAME,EXPR]]
 	
-    type NAME = {
+    type NAME =
        { ns: NAMESPACE
        , id: IDENT }
 	
-    type MULTINAME 
+    type MULTINAME =
        { nss: [[NAMESPACE]]
        , id: IDENT }
-    }
 	
     // NAMESPACE
 
     type NAMESPACE =
-	   { IntrinsicNamespace
+	   ( IntrinsicNamespace
 	   , OperatorNamespace
 	   , PrivateNamespace
 	   , ProtectedNamespace
@@ -77,7 +88,7 @@ package Ast
 	   , InternalNamespace
 	   , UserNamespace
 	   , AnonymousNamespace
-	   , ImportNamespace )
+       , ImportNamespace )
 
     class IntrinsicNamespace {}
 
@@ -109,7 +120,7 @@ package Ast
 	
     class ImportNamespace { 
         const ident : IDENT
-        const ns : Public 
+        const ns : PublicNamespace 
     }
 	
     // NUMBERS
@@ -119,7 +130,7 @@ package Ast
        , roundingMode: ROUNDING_MODE
        , precision: int }
 
-    type NUMBER_TYPE 
+    type NUMBER_TYPE =
        ( DecimalType
        , DoubleType
        , IntType
@@ -132,14 +143,14 @@ package Ast
     class UIntType {}
     class NumberType {}
 
-    type ROUNDING_MODE 
-       { Ceiling
+    type ROUNDING_MODE =
+       ( Ceiling
        , Floor
        , Up
        , Down
        , HalfUp
        , HalfDown
-       , HalfEven }
+       , HalfEven )
 
     class Ceiling {}
     class Floor {}
@@ -179,19 +190,19 @@ package Ast
 
     // Binary type operators
 
-    type BINTYPEOP =
+    type BINTYOP =
        ( CastOp
        , IsOp
        , ToOp )
 
-    class Cast {}
-    class Is {}
-    class To {}
+    class CastOp {}
+    class IsOp {}
+    class ToOp {}
     
     // Binary operators
 
     type BINOP =
-       { Plus
+       ( Plus
        , Minus
        , Times
        , Divide
@@ -214,11 +225,11 @@ package Ast
        , LessOrEqual
        , Greater
        , GreaterOrEqual
-       , Comma }
+       , Comma )
 
     class Plus {}
     class Minus {}
-    class times {}
+    class Times {}
     class Divide {}
     class Remainder {}
     class LeftShift {}
@@ -410,14 +421,14 @@ package Ast
 
     class ApplyTypeExpr {
         const expr : EXPR;
-        const args : [TYPEEXPR];
+        const args : [TYPE_EXPR];
         function ApplyTypeExpr (expr,args)
             : expr = expr
             , args = args {}
     }
 
     class LetExpr {
-        const binds : DEFNS;
+        const binds : BINDING_INITS;
         const head : HEAD;
         const body : EXPR;
         function LetExpr (binds,head,body)
@@ -460,10 +471,14 @@ package Ast
         const exprs : [EXPR];
     }
 
-    enum INIT_TARGET 
-       { Hoisted
+    type INIT_TARGET =
+       ( Hoisted
        , Local
-       , Prototype }
+       , Prototype )
+
+    class Hoisted {}
+    class Local {}
+    class Prototype {}
 
 	class InitExpr {
         const target : INIT_TARGET;
@@ -489,7 +504,7 @@ package Ast
 
     type IDENT_EXPR =
        ( Identifier
-       , QualifierExpression
+       , QualifiedExpression
        , AttributeIdentifier
        , ExpressionIdentifier
        , QualifiedIdentifier
@@ -523,7 +538,7 @@ package Ast
 	
     class ExpressionIdentifier { 
         const expr: EXPR;
-        const opennss : [[NAMESPACE]];
+        private const nss : [[NAMESPACE]];
         function ExpressionIdentifier (expr)
             : expr=expr {}
         function set opennss (nss) {
@@ -584,19 +599,19 @@ package Ast
     class LiteralUndefined {}
 
     class LiteralContextDecimal {
-        const strValue : string;
+        const strValue : String;
         function LiteralContextDecimal (strValue)
             : strValue=strValue {}
     }
 
     class LiteralContextDecimalInteger {
-        const strValue : string;
+        const strValue : String;
         function LiteralContextDecimalInteger (strValue)
             : strValue=strValue {}
     }
 	
     class LiteralContextHexInteger {
-        const strValue : string;
+        const strValue : String;
         function LiteralContextHexInteger (strValue)
             : strValue=strValue {}
     }
@@ -620,11 +635,11 @@ package Ast
     }
 	
     class LiteralBoolean {
-        const booleanValue : boolean;
+        const booleanValue : Boolean;
     }
 	
     class LiteralString {
-        const strValue : string;
+        const strValue : String;
     }
 	
     class LiteralArray {
@@ -660,7 +675,7 @@ package Ast
     }
 
 	class LiteralRegExp {
-        const src : string;
+        const src : String;
     }
 
     // CLS
@@ -673,10 +688,10 @@ package Ast
         const interfaceNames : [NAME];
         const constructor : CTOR?;
         const classFixtures : FIXTURES;
-        const instanceFixutres : FIXTURES;
+        const instanceFixtures : FIXTURES;
         const instanceInits : HEAD;
-        const classType : OBJECT_TYPE;
-        const instanceType : INSTANCE_TYPE;
+        const classType : ObjectType;
+        const instanceType : InstanceType;
         function Cls (name,baseName,interfaceNames,constructor)
             : name = name
             , baseName = baseName
@@ -693,35 +708,55 @@ package Ast
 
     type FUNC = Func;
 
+    type FUNC_NAME =
+       { kind : FUNC_NAME_KIND
+       , ident : IDENT }
+
+    type FUNC_NAME_KIND =
+       ( Ordinary
+       , Operator
+       , Get
+       , Set
+       , Call
+       , Has )
+
+    class Ordinary {}
+    class Operator {}
+    class Get {}
+    class Set {}
+    class Call {}
+    class Has {}
+
     class Func { 
         const name: FUNC_NAME;
         const fsig: FUNC_SIG;
-        const isNative: bool;
+        const isNative: Boolean;
         const block: BLOCK;
         const params: HEAD;
         const defaults: [EXPR];
-        const type: FUNC_TYPE;
-        function Func () 
+        const type: FUNC_TYPE;    // FIXME: should be able to use 'type' here
+        function Func (name,fsig,isNative,block,
+                       params,defaults,ty)
             : name = name
             , fsig = fsig
             , isNative = isNative
             , block = block
             , params = params
             , defaults = defaults
-            , type = type {}
+            , type = ty {}
     }
 
     type FUNC_SIG = FunctionSignature;
 
     class FunctionSignature {
         const typeParams : [IDENT];
-        const params : DEFNS;
+        const params : BINDING_INITS;
         const paramTypes : [TYPE_EXPR];
         const defaults : [EXPR];
-        const ctorInits : CTOR_INITS;
+        const ctorInits : [BINDING_INITS,[EXPR]]?;  /* [settings, super args] */
         const returnType : TYPE_EXPR;
         const thisType : TYPE_EXPR?;
-        const hasRest : bool;
+        const hasRest : Boolean;
     }
 
     // CTORS
@@ -789,6 +824,10 @@ package Ast
         VirtualValFixture
     )
 
+    class NamespaceFixture {
+        const ns : NAMESPACE
+    }
+
     class ClassFixture {
         const cls : CLS;
     }
@@ -802,14 +841,14 @@ package Ast
     class MethodFixture {
         const func : FUNC;
         const type : TYPE_EXPR;
-        const isReadOnly : boolean;
-        const isOverride : boolean;
-        const isFinal : boolean;
+        const isReadOnly : Boolean;
+        const isOverride : Boolean;
+        const isFinal : Boolean;
     }
 
     class ValFixture {
         const type : TYPE_EXPR;
-        const isReadOnly : boolean;
+        const isReadOnly : Boolean;
     }
 	
     class VirtualValFixture {
@@ -838,6 +877,17 @@ package Ast
     class SpecialType {
         const kind : SPECIAL_TYPE_KIND;
     }
+
+    type SPECIAL_TYPE_KIND =
+        ( AnyType
+        , NullType
+        , UndefinedType
+        , VoidType )
+
+    class AnyType {}
+    class NullType {}
+    class UndefinedType {}
+    class VoidType {}
 
     class UnionType {
         const types : [TYPE_EXPR];
@@ -870,7 +920,7 @@ package Ast
         params: [TYPE_EXPR],
         result: TYPE_EXPR,
         thisType: TYPE_EXPR?,
-        hasRest: bool,
+        hasRest: Boolean,
         minArgs: int 
     }
 
@@ -885,14 +935,14 @@ package Ast
 
     class NullableType {
         const type : TYPE_EXPR;
-        const isNullable : boolean;
+        const isNullable : Boolean;
     }
 
     class InstanceType {
         const name : NAME;
         const typeParams : [IDENT];
         const type : TYPE_EXPR;
-        const isDynamic : boolean;
+        const isDynamic : Boolean;
     }
 
     class NominalType {
@@ -921,7 +971,7 @@ package Ast
        , WithStmt
        , TryStmt
        , SwitchStmt
-       , SwithTypeStmt
+       , SwitchTypeStmt
        , DXNStmt )
 
     class EmptyStmt { }
@@ -933,7 +983,7 @@ package Ast
     class InitStmt {
     }
 
-    class ClassStmt {
+    class ClassBlock {
         const ns : EXPR?;
         const ident : IDENT;
         const name : NAME?;
@@ -956,7 +1006,7 @@ package Ast
     }
 
     class ContinueStmt {
-        const ident : IDENt?;
+        const ident : IDENT?;
     }
 
     class BlockStmt {
@@ -989,6 +1039,7 @@ package Ast
     class ForStmt {
     }
 
+
     class IfStmt {
     }
 
@@ -1016,54 +1067,64 @@ package Ast
         ConstructorDefn,
         InterfaceDefn,
         NamespaceDefn,
-        TypeDefn
-    )
+        TypeDefn )
 
     type CLASS_DEFN =
         { ident: IDENT
         , ns: EXPR?
-        , isNonnullable: boolean
-        , isDynamic: boolean
-        , isFinal: boolean
+        , isNonnullable: Boolean
+        , isDynamic: Boolean
+        , isFinal: Boolean
         , params: [IDENT]
         , base: [IDENT_EXPR]
         , implements: [IDENT_EXPR]
         , classDefns: [DEFN]
         , instanceDefns: [DEFN]
         , instanceStmts: [STMT]
-        , ctorDefn: CTOR? 
-    }
+        , ctorDefn: CTOR? }
 
     class ClassDefn {
         const ident: IDENT;
         const ns: EXPR?;
-        const isNonnullable: boolean;
-        const isDynamic: boolean;
-        const isFinal: boolean;
+        const isNonnullable: Boolean;
+        const isDynamic: Boolean;
+        const isFinal: Boolean;
         const params: [IDENT];
-        const base: IDENT_EXPR?;  (* STATIC_IDENT_EXPR *)
-        const implements: [IDENT_EXPR]; (* STATIC_IDENT_EXPR list *)
+        const baseIdent: IDENT_EXPR?;  /* STATIC_IDENT_EXPR */
+        const interfaceIdents: [IDENT_EXPR]; /* STATIC_IDENT_EXPR list */
         const classDefns: [DEFN];
         const instanceDefns: [DEFN];
         const instanceStmts: [STMT];
         const ctorDefn: CTOR?;
     }
 
+    type VAR_DEFN_TAG =
+        ( Const
+        , Var
+        , LetVar
+        , LetConst )
+
+    class Const {}
+    class Var {}
+    class LetVar {}
+    class LetConst {}
+
     type VAR_DEFN =
        { kind : VAR_DEFN_TAG
        , ns : EXPR?
-       , isStatic : boolean
-       , isPrototype : boolean
-       , bindings : BINDINGS
-    }
+       , isStatic : Boolean
+       , isPrototype : Boolean
+       , bindings : BINDING_INITS }
 
     class VariableDefn {
         const kind: VAR_DEFN_TAG;
         const ns: EXPR?;
-        const isStatic: boolean;
-        const isPrototype: boolean;
-        const bindings: BINDINGS;
+        const isStatic: Boolean;
+        const isPrototype: Boolean;
+        const bindings: BINDING_INITS;
     }
+
+    type FUNC_DEFN = FunctionDefn
 
     class FunctionDefn {
     }
@@ -1081,6 +1142,39 @@ package Ast
     }
 
     /*
+        BLOCK
+    */
+
+    type BLOCK = Block
+
+    class Block {
+        const pragmas: [PRAGMA];
+        const defns: [DEFN];
+        const head: HEAD?;
+        const body: [STMT];
+        const pos: POS?
+    }
+
+    type PRAGMA =
+        ( UseNamespace
+        , UseDefaultNamespace
+        , UseNumber
+        , UseRounding
+        , UsePrecision
+        , UseStrict
+        , UseStandard
+        , Import )
+
+    class UseNamespace {}
+    class UseDefaultNamespace {}
+    class UseNumber {}
+    class UseRounding {}
+    class UsePrecision {}
+    class UseStrict {}
+    class UseStandard {}
+    class Import {}
+
+    /*
         PACKAGE
     */
 
@@ -1093,10 +1187,9 @@ package Ast
     */
 
     type PROGRAM =
-       { packages: [PACKAGE]
+        { packages: [PACKAGE]
        , fixtures: FIXTURES?
        , block: BLOCK }
-
 
     public function test () {
         intrinsic::print (new EmptyStmt)
@@ -1104,4 +1197,3 @@ package Ast
 
     test()
 }
-
