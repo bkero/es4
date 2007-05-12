@@ -173,7 +173,9 @@ fun makeTokenList (filename : string, reader : unit -> Ustring.SOURCE) : ((TOKEN
                 (2, 0wx27)
               | 0wx5C::0wx5C::_ =>             (* \\ *)
                 (2, 0wx5C)
-              | _ => error ["LexError:  illegal escape sequence"]
+              | 0wx5C::other::_ =>             (* \C for any other C *)
+		(2, other)
+	      | _ => error ["LexError:  illegal escape sequence"]
         in
             advanceIndex adv;
             codepoint

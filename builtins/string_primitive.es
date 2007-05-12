@@ -240,8 +240,8 @@ package
 
             regexp.lastIndex = 0;
             while (true) {
-                let oldLastIndex : double = re.lastIndex;
-                let res : Array = re.exec(this);
+                let oldLastIndex : double = regexp.lastIndex;
+                let res : Array = regexp.exec(this);
 
                 if (res === null) 
                     break;
