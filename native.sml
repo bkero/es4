@@ -833,7 +833,7 @@ fun inspect (vals:Mach.VAL list)
                 p indent ["  ident = ", (id obj)]; nl();
                 p indent ["  proto = "]; subVal indent (!proto);
                 p indent ["  props = ["]; nl();
-                List.app prop (!props);
+                NameMap.appi prop (!props);
                 p indent ["          ] }"]; nl()
             end
 

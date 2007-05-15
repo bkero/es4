@@ -144,7 +144,7 @@ withtype FUN_CLOSURE =
                   state: PROP_STATE,                  
                   attrs: ATTRS }
 
-     and PROP_BINDINGS = ((Ast.NAME * PROP) list) ref
+     and PROP_BINDINGS = (PROP NameMap.map) ref
 
      and REGS = { scope: SCOPE, 
                   this: OBJ }
@@ -299,50 +299,27 @@ fun isDirectInstanceOf (n:Ast.NAME)
 (* Binding operations. *)
 
 fun newPropBindings _ : PROP_BINDINGS = 
-    let 
-        val b:PROP_BINDINGS = ref []
-    in
-        b
-    end
-
+    ref NameMap.empty
 
 fun addProp (b:PROP_BINDINGS) 
             (n:Ast.NAME) 
             (x:PROP) 
     : unit = 
-    b := ((n,x) :: (!b))
-
+    b := NameMap.insert ((!b),n,x)
 
 fun delProp (b:PROP_BINDINGS) 
             (n:Ast.NAME) 
     : unit = 
-    let 
-        fun strip [] = LogErr.hostError ["deleting nonexistent property binding: ", 
-                                         Ustring.toAscii (#id n)]
-          | strip (((k:Ast.NAME),v)::bs) = 
-            if (#ns k) = (#ns n) andalso 
-               (#id k) = (#id n)
-            then bs
-            else (k,v)::(strip bs)
+    let
+        val (newmap, _) = NameMap.remove ((!b),n)
     in
-        b := strip (!b)
-    end    
-
+        b := newmap
+    end
 
 fun findProp (b:PROP_BINDINGS) 
              (n:Ast.NAME) 
     : PROP option = 
-    let 
-        fun search [] = NONE
-          | search (((k:Ast.NAME),v)::bs) = 
-            if (#id k) = (#id n) andalso 
-               (#ns k) = (#ns n)
-            then SOME v
-            else search bs
-    in
-        search (!b)
-    end
-
+    NameMap.find (!b, n)
 
 fun matchProps (fixedProps:bool)
                (b:PROP_BINDINGS)
@@ -350,32 +327,17 @@ fun matchProps (fixedProps:bool)
                (nss:Ast.NAMESPACE list)
     : Ast.NAME list =
     let 
-        fun matchProp (n:Ast.NAME,p:PROP) : Ast.NAME option = 
-            if not (searchId = (#id n))
-            then NONE
-            else 
-                let
-                    fun matchNS candidateNS = 
-                        case candidateNS of
-                            Ast.LimitedNamespace (ident,limNS) =>
-                            if searchId = ident
-                            then (#ns n) = limNS
-                            else false
-                          | _ => (#ns n) = candidateNS
-                in
-                    if ((fixedProps andalso (#isFixed (#attrs p))) orelse
-                        (not fixedProps andalso not (#isFixed (#attrs p))))
-                    then 
-                        if List.exists matchNS nss
-                        then SOME n
-                        else NONE
-                    else
-                        NONE
-                end
+        fun tryNS ns = 
+            let 
+                val name = {id=searchId, ns=ns}
+            in
+                case findProp b name of
+                    NONE => NONE
+                  | SOME _ => SOME name
+            end
     in
-        List.mapPartial matchProp (!b)
-    end
-      
+        List.mapPartial tryNS nss
+    end      
 
 fun getProp (b:PROP_BINDINGS) 
             (n:Ast.NAME) 

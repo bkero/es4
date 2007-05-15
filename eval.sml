@@ -2672,7 +2672,7 @@ and checkAllPropertiesInitialized (obj:Mach.OBJ)
     in
         case obj of 
             Mach.Obj { props, ... } => 
-            List.app checkOne (!props)
+            NameMap.appi checkOne (!props)
     end
 
 
@@ -2772,20 +2772,20 @@ and showObject ptag obj =
             ()
         else
             ( log [ ptag, ": ", classname, " ", Int.toString ident ] ;
-              List.app (fn (nm, { state, ... } ) => 
-                           log [ "  ", Ustring.toAscii (#id nm), "  ",
-                                 case state of
-                                     Mach.ValProp v => 
-                                     (case v of
-                                          Mach.Undef => "undefined"
-                                        | Mach.Null => "null"
-                                        | Mach.Object obj => 
-                                          (className obj) ^
-                                          " " ^ 
-                                          (case obj of 
-                                               Mach.Obj { ident, ... } => Int.toString ident))
-                                   | _ => "" ] )
-                       (!props) )
+              NameMap.appi (fn (nm, { state, ... } ) => 
+                               log [ "  ", Ustring.toAscii (#id nm), "  ",
+                                     case state of
+                                         Mach.ValProp v => 
+                                         (case v of
+                                              Mach.Undef => "undefined"
+                                            | Mach.Null => "null"
+                                            | Mach.Object obj => 
+                                              (className obj) ^
+                                              " " ^ 
+                                              (case obj of 
+                                                   Mach.Obj { ident, ... } => Int.toString ident))
+                                       | _ => "" ] )
+                           (!props) )
     end
 
 and evalTryStmt (regs:Mach.REGS) 
@@ -3072,7 +3072,7 @@ and evalScopeInits (regs:Mach.REGS)
                            Int.toString (getScopeId scope)];
                     case target of
                         Ast.Local => 
-                        if (length (!props)) > 0 orelse parent = NONE
+                        if (NameMap.numItems (!props)) > 0 orelse parent = NONE
                         then object
                         else findTargetObj (valOf parent) 
                       (* if there are no props then it is at temp scope *)
@@ -3738,13 +3738,13 @@ and callIteratorGet (regs:Mach.REGS)
     : Mach.OBJ =
     let
         val Mach.Obj { props, ... } = iterable
-        fun f (name:Ast.NAME, prop:Mach.PROP) = 
+        fun f (name:Ast.NAME, prop:Mach.PROP, (curr:Mach.VAL list)) = 
             case prop of 
                 { state = Mach.ValProp _, 
                   attrs = { dontEnum = false, ... }, 
-                  ... } => SOME (newString (#id name))
-              | _ => NONE
-        val iterator = needObj (newArray (List.mapPartial f (!props)))
+                  ... } => (newString (#id name)) :: curr
+              | _ => curr
+        val iterator = needObj (newArray (NameMap.foldli f [] (!props)))
     in
         setValue iterator Name.public_cursor (newInt 0);
         iterator

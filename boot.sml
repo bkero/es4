@@ -65,7 +65,7 @@ fun describeGlobal _ =
 	 (trace ["global object contents:"];
 	  case Eval.getGlobalObject () of 
 	      Mach.Obj {props, ...} => 
-	      List.app printProp (!props);
+	      NameMap.appi printProp (!props);
 	  trace ["top fixture contents:"];
 	  List.app printFixture (!Defn.topFixtures))    
      else ()

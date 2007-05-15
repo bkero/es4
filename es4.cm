@@ -15,6 +15,8 @@ Library
     structure Boot
     structure Decimal
     structure Name
+    structure NameKey	
+    structure NameMap	
     structure Ustring
 is
     logerr.sml (lambdasplit: infinity)
@@ -35,6 +37,8 @@ is
     boot.sml
     decimal.sml (lambdasplit: infinity)
     name.sml (lambdasplit: infinity)
+    namekey.sml (lambdasplit: infinity)
+    namemap.sml (lambdasplit: infinity)
     ustring.sml
 
     $/basis.cm
