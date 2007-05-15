@@ -148,7 +148,7 @@ fun makeTokenList (filename : string, reader : unit -> Ustring.SOURCE) : ((TOKEN
                     val numDigits = length digits
                 in
                     if (numDigits < 1) orelse (5 < numDigits)
-                    then error ["LexError:  illegal escape sequence"]
+                    then error ["LexError:  illegal size for bracketed escape sequence"]
                     else (0, hexToWord digits)
                 end
               | 0wx5C::0wx78::a::b::_ =>       (* \xFF *)
@@ -173,7 +173,12 @@ fun makeTokenList (filename : string, reader : unit -> Ustring.SOURCE) : ((TOKEN
                 (2, 0wx27)
               | 0wx5C::0wx5C::_ =>             (* \\ *)
                 (2, 0wx5C)
-              | _ => error ["LexError:  illegal escape sequence"]
+              | 0wx5C::
+                (0wx000A | 0wx000D | 0wx2028 | 0wx2029)::_ => (* \<line terminator> *)
+                error ["LexError:  illegal line-terminating escape sequence"]
+              | 0wx5C::c::_ =>                 (* \<whatever> *)
+                (2, c)
+              | _ => error ["LexError:  LEXER BUG -- illegal escape sequence"]  (* should not be possible to get here *)
         in
             advanceIndex adv;
             codepoint

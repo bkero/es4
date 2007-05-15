@@ -1067,7 +1067,7 @@ and verifyFixture (env:ENV)
          (*TODO*)
          let
              val classFixtures = verifyFixtures env classFixtures
-             val instalceFixtures = verifyFixtures env instanceFixtures
+             val instanceFixtures = verifyFixtures env instanceFixtures
              val instanceInits = verifyHead env instanceInits
          (* FIXME: do the ctor as well *)
          in

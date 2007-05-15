@@ -116,6 +116,8 @@ package RegExpInternals
                         max = decimalDigits();
                         match("}");
                     }
+                } else {
+                    match("}");
                 }
                 if (isFinite(max) && max < min)
                     fail( SyntaxError, "max quant must be at least as large as min" );
@@ -375,7 +377,8 @@ package RegExpInternals
                     return ch(t);
             }
 
-            fail( SyntaxError, "Failed to match escape sequence" );
+            eat("\\");
+            fail( SyntaxError, "Failed to match escape sequence " + peekChar() );
         }
 
         /* Returns null if it does not consume anything but fails;
@@ -475,7 +478,7 @@ package RegExpInternals
                 return hexDigits(2);
             if (eat("\\u") || eat("\\U"))
                 return hexDigits(4);
-            if (isIdentifierPart(peekChar()))
+            if (isIdentifierPart(peekChar())) 
                 return null;
             consumeChar("\\");
             if (atEnd())
