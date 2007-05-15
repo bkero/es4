@@ -498,7 +498,7 @@ fun eval (vals:Mach.VAL list)
                  * program constructs (classes?) so possibly sanitize the
                  * result of parsing a bit, strip out some sorts of things...
                  *)
-                Eval.evalProgram (Defn.defProgram prog)
+                Eval.evalProgram (Verify.verifyProgram (Defn.defProgram prog))
             end
     end
     

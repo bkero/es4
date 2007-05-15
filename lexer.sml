@@ -185,17 +185,22 @@ fun makeTokenList (filename : string, reader : unit -> Ustring.SOURCE) : ((TOKEN
         end
         
         fun lexIdentifier id : unit =
-        let
-            val c = hd (!src)
-        in
-            if c = (UTF8.fromAscii #"\\")
-            then if (hd (tl (!src))) = (UTF8.fromAscii #"u")
-                then lexIdentifier ((lexEscapedChar ())::id)
-                else error ["LexError:  illegal escape sequence for identifier"]
-            else if not (isIdentifierChar c)
-            then push 0 (Identifier (Vector.fromList (rev id)))
-            else (advanceIndex 1;  lexIdentifier (c::id))
-        end
+	    case (!src) of 
+		[] => 
+		if id = [] 
+		then ()
+		else push 0 (Identifier (Vector.fromList (rev id)))
+
+	      | 0wx5C::0wx75::a::b::c::d::_ => (* \uFFFF *)
+		lexIdentifier ((lexEscapedChar ())::id)
+
+	      | 0wx5C :: _ =>  
+		error ["LexError:  illegal escape sequence for identifier"]
+
+	      | c :: _ => 
+		if not (isIdentifierChar c)
+		then push 0 (Identifier (Vector.fromList (rev id)))
+		else (advanceIndex 1;  lexIdentifier (c::id))
         
         fun matchOp (x::xs : Ustring.SOURCE) (y::ys : Ustring.SOURCE) : bool =
             (x = y) andalso (matchOp xs ys)

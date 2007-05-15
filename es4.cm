@@ -25,8 +25,8 @@ is
     pretty.sml
     pretty-cvt.sml
     pretty-rep.sml
-    token.sml
-    lexer.sml
+    token.sml (lambdasplit: infinity)
+    lexer.sml (lambdasplit: infinity)
     parser.sml
     multiname.sml (lambdasplit: infinity)
     defn.sml (lambdasplit: infinity)
