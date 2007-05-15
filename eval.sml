@@ -20,14 +20,8 @@ val BooleanClassIdentity = ref (~1)
 val booleanTrue : (Mach.VAL option) ref = ref NONE
 val booleanFalse : (Mach.VAL option) ref = ref NONE
 
-fun join sep ss = 
-    case ss of 
-        [] => ""
-      | [x] => x
-      | x :: xs => x ^ sep ^ (join sep xs)
-
 fun stackString _ =
-    "[" ^ (join " | " (map String.concat (List.rev (!stack)))) ^ "]"
+    "[" ^ (LogErr.join " | " (map String.concat (List.rev (!stack)))) ^ "]"
 
 fun push ss = 
     (stack := (ss) :: (!stack);     
@@ -470,7 +464,13 @@ and getValueOrVirtual (obj:Mach.OBJ)
                       (doVirtual:bool)
     : Mach.VAL = 
     let 
-        val Mach.Obj { props, ... } = obj
+        val Mach.Obj { props, ... } = obj                                      
+        fun upgraded (currProp:Mach.PROP) newVal =
+            (Mach.delProp props name;
+             Mach.addProp props name { state = Mach.ValProp newVal,
+                                       ty = (#ty currProp),
+                                       attrs = (#attrs currProp) };
+             newVal)
     in
         case Mach.findProp props name of 
             SOME prop => 
@@ -491,27 +491,24 @@ and getValueOrVirtual (obj:Mach.OBJ)
                  if doVirtual
                  then 
                      case getter of 
-                         SOME g => 
-                         invokeFuncClosure obj g []
-                       | NONE => 
-                         error ["getValue on a virtual property w/o getter: ",
-                                fmtName name]
+                         SOME g => invokeFuncClosure obj g []
+                       | NONE => Mach.Undef
                  else 
                      (* FIXME: possibly throw here? *)
                      Mach.Undef
                      
                | Mach.NamespaceProp n =>
-                 newNamespace n
+                 upgraded prop (newNamespace n)
                  
                | Mach.NativeFunctionProp nf =>
-                 newNativeFunction nf
+                 upgraded prop (newNativeFunction nf)
                  
                | Mach.MethodProp closure => 
-                 newFunctionFromClosure closure
+                 upgraded prop (newFunctionFromClosure closure)
                  
                | Mach.ValListProp vals =>
                  (* FIXME: The 'arguments' object can't be an array. *)
-                 newArray vals
+                 upgraded prop (newArray vals)
                  
                | Mach.ValProp v => v)
           | NONE => 
@@ -601,8 +598,7 @@ and setValueOrVirtual (obj:Mach.OBJ)
                          
                   | Mach.VirtualValProp { setter = NONE, ... } => 
                     if doVirtual
-                    then error ["setValue on virtual property w/o setter: ", 
-                                fmtName name]
+                    then ()  (* ignore it *)
                     else write ()
                          
                   | Mach.ValProp _ => 
@@ -620,7 +616,7 @@ and setValueOrVirtual (obj:Mach.OBJ)
                                                dontEnum = false,
                                                readOnly = false,
                                                isFixed = false } }
-                    in
+                    in                        
                         Mach.addProp props name prop
                     end                    
                 fun catchAll _ = 
@@ -907,7 +903,7 @@ and callApprox (idStr:string) (args:Mach.VAL list)
                 else 
                     "obj"                
     in
-        idStr ^ "(" ^ (join ", " (map approx args)) ^ ")"
+        idStr ^ "(" ^ (LogErr.join ", " (map approx args)) ^ ")"
     end
 
 (* FIXME: this is not the correct toString *)
@@ -2485,7 +2481,7 @@ and evalRefExprFull (regs:Mach.REGS)
                                        
         (* FIXME: ns might be user settable default *)
         fun makeRefNotFound (b:Mach.VAL option) (mname:Ast.MULTINAME) 
-            : REF = (defaultObj, (Name.internal (#id mname)))
+            : REF = (defaultObj, (Name.public (#id mname)))
 
         val (multiname:Ast.MULTINAME) = evalIdentExpr regs ident
 

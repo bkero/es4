@@ -30,6 +30,46 @@ fun error ss = LogErr.verifyError ss
 fun logType ty = (Pretty.ppType ty; TextIO.print "\n")
 fun traceType ty = if (!doTrace) then logType ty else ()
 
+fun typeToString ty = 
+    let
+        fun nsExprToString e = 
+            case e of 
+                Ast.LiteralExpr (Ast.LiteralNamespace ns) => LogErr.namespace ns
+              | Ast.LexicalRef {ident = Ast.Identifier {ident, ...}, ... } => Ustring.toAscii ident
+              | _ => error ["unexpected expression type in namespace context"]
+        fun nssToString nss = 
+            LogErr.join ", " (map LogErr.namespace nss)
+        fun nsssToString nsss = 
+            LogErr.join ", " (map (fn nss => "(" ^ (nssToString nss) ^ ")") nsss)
+        fun typeList tys = 
+            LogErr.join ", " (map typeToString tys)
+        fun fieldToString {name, ty} = (Ustring.toAscii name) ^ ": " ^ (typeToString ty)
+        fun fieldList fields = 
+            LogErr.join ", " (map fieldToString fields)
+    in
+        case ty of 
+            Ast.SpecialType Ast.Any => "*"
+          | Ast.SpecialType Ast.Null => "null"
+          | Ast.SpecialType Ast.Undefined => "undefined"
+          | Ast.SpecialType Ast.VoidType => "<VoidType>"
+          | Ast.UnionType tys => "(" ^ (typeList tys) ^ ")"
+          | Ast.ArrayType tys => "[" ^ (typeList tys) ^ "]"
+          | Ast.TypeName (Ast.Identifier {ident, openNamespaces}) => "<TypeName: {" ^ (nsssToString openNamespaces) ^ "}::" ^ (Ustring.toAscii ident) ^ ">"
+          | Ast.TypeName (Ast.QualifiedIdentifier { qual, ident }) => "<TypeName: " ^ (nsExprToString qual) ^ "::" ^ (Ustring.toAscii ident) ^ ">"
+          | Ast.TypeName _ => "<TypeName: ...>"
+          | Ast.ElementTypeRef _ => "<ElementTypeRef: ...>"
+          | Ast.FieldTypeRef _ => "<FieldTypeRef: ...>"
+          | Ast.FunctionType {params, result, ...} => "<function (" ^ (typeList params) ^ ") -> " ^ (typeToString result) ^ ">"
+          | Ast.ObjectType fields => "{" ^ fieldList fields ^ "}"
+          | Ast.AppType {base, args} => (typeToString base) ^ ".<" ^ (typeList args) ^ ">"
+          | Ast.NullableType { expr, nullable } => (typeToString expr) ^ (if nullable then "?" else "!")
+          | Ast.InstanceType { name, ... } => LogErr.name name
+    end
+
+fun fmtType ty = if !doTrace
+                 then typeToString ty
+                 else ""
+
 (* Mapping the rib structure to multiname lookup. *)
 fun parentRib [] = NONE
   | parentRib (x::[]) = NONE
@@ -205,8 +245,7 @@ fun verifyTypeExpr (env:ENV)
                    (ty:Ast.TYPE_EXPR)
     : TYPE_VALUE =
     let in
-        trace ["type checking and normalizing a type"];
-        traceType ty;
+        trace ["verifyTypeExpr: ", fmtType ty];
 
 	    case ty of
 	        Ast.SpecialType _ => 
@@ -369,38 +408,38 @@ and isSubtype (t1:TYPE_VALUE)
               (t2:TYPE_VALUE)
     : bool =
     let
+        val _ = trace [">>> isSubtype: ", fmtType t1, " <: ", fmtType t2 ];
+        val res = if t1 = t2 then
+                      true
+                  else
+                      case (t1,t2) of
+                          ((Ast.SpecialType Ast.Null), Ast.InstanceType it) => 
+                          isClass (#name it) andalso isNullable (#name it)
+                        | (Ast.SpecialType _, _) => false
+                                                    
+	                    | (Ast.UnionType types1,_) => 
+	                      List.all (fn t => isSubtype t t2) types1
+	                    | (_, Ast.UnionType types2) =>
+	                      List.exists (fn t => isSubtype t1 t) types2 
+                          
+                        (*
+                        | (Ast.UnionType ts1, Ast.UnionType ts2) =>
+                          unimplError ["isSubtype 1"]
+                        | (Ast.ArrayType ts1, Ast.ArrayType ts2) =>
+                          unimplError ["isSubtype 2"]
+                        | (Ast.FunctionType ft1, Ast.FunctionType ft2) =>
+                          unimplError ["isSubtype 3"]
+                        | (Ast.ObjectType fts1, Ast.ObjectType fts2) =>
+                          unimplError ["isSubtype 4"]
+                         *)
+                        | (Ast.InstanceType it1, Ast.InstanceType it2) => 
+                          isClass (#name it1) 
+                          andalso isClass (#name it2) 
+                          andalso instanceOf (#name it1) (#name it2)
+                        | _ => false
     in
-        trace ["Checking subtyping - First type:"]; traceType t1;
-        trace ["Second type: "]; traceType t2;
-
-        if t1 = t2 then
-            true
-        else
-            case (t1,t2) of
-                ((Ast.SpecialType Ast.Null), Ast.InstanceType it) => 
-                isClass (#name it) andalso isNullable (#name it)
-              | (Ast.SpecialType _, _) => false
-
-	          | (Ast.UnionType types1,_) => 
-	            List.all (fn t => isSubtype t t2) types1
-	          | (_, Ast.UnionType types2) =>
-	            List.exists (fn t => isSubtype t1 t) types2 
-
-(*
-              | (Ast.UnionType ts1, Ast.UnionType ts2) =>
-                unimplError ["isSubtype 1"]
-              | (Ast.ArrayType ts1, Ast.ArrayType ts2) =>
-                unimplError ["isSubtype 2"]
-              | (Ast.FunctionType ft1, Ast.FunctionType ft2) =>
-                unimplError ["isSubtype 3"]
-              | (Ast.ObjectType fts1, Ast.ObjectType fts2) =>
-                unimplError ["isSubtype 4"]
-*)
-              | (Ast.InstanceType it1, Ast.InstanceType it2) => 
-                isClass (#name it1) 
-                andalso isClass (#name it2) 
-                andalso instanceOf (#name it1) (#name it2)
-              | _ => false
+        trace ["<<< isSubtype: ", fmtType t1, " <: ", fmtType t2, " = ", Bool.toString res ];
+        res
     end
 
 fun checkCompatible (t1:TYPE_VALUE) 
@@ -409,9 +448,7 @@ fun checkCompatible (t1:TYPE_VALUE)
     if isCompatible t1 t2
     then ()
     else let in
-	     TextIO.print ("Types are not compatible\n");
-         logType t1;
-         logType t2;
+	     TextIO.print ("checkCompatible failed: " ^ (typeToString t1) ^ " vs. " ^ (typeToString t2) ^ "\n");
 	     verifyError ["Types are not compatible"]
 	 end
 
@@ -419,84 +456,81 @@ and isCompatible (t1:TYPE_VALUE)
 		         (t2:TYPE_VALUE) 
     : bool = 
     let 
-    in
-        trace ["Checking compatible - First type:"];
-        traceType t1;
-	    trace ["Second type: "];
-        traceType t2;
-
-	    (isSubtype t1 t2) orelse
-	    (t1=anyType) orelse
-	    (t2=anyType) orelse
-	    case (t1,t2) of
-	        (Ast.UnionType types1,_) => 
-	        List.all (fn t => isCompatible t t2) types1
-	      | (_, Ast.UnionType types2) =>
-	        (* t1 must exist in types2 *)
-	        List.exists (fn t => isCompatible t1 t) types2 
-	      | (Ast.ArrayType types1, Ast.ArrayType types2) => 
-	        (* arrays are invariant, every entry should be compatible in both directions *)
-	        let fun check (h1::t1) (h2::t2) =
-		            (isCompatible h1 h2)
-		            andalso
-		            (isCompatible h2 h1)
-		            andalso
-		            (case (t1,t2) of
-			             ([],[]) => true
-		               | ([],_::_) => check [h1] t2
-		               | (_::_,[]) => check t1 [h2]
-		               | (_::_,_::_) => check t1 t2)
-	        in
-		        check types1 types2
-	        end
-            
-	      | (Ast.ArrayType _, 
-	         Ast.TypeName (Ast.Identifier {ident=ustr, openNamespaces=[]})) 
-	        => (ustr = Ustring.Array_) orelse (ustr = Ustring.Object_)
-               
-	      | (Ast.FunctionType _, 
-	         Ast.TypeName (Ast.Identifier {ident=ustr, openNamespaces=[]})) 
-	        => (ustr = Ustring.Function_) orelse (ustr = Ustring.Object_)
-               
-	      | (Ast.AppType {base=base1,args=args1}, Ast.AppType {base=base2,args=args2}) => 
-	        (* We keep types normalized wrt beta-reduction, 
-	         * so base1 and base2 must be class or interface types.
-	         * Type arguments are covariant, and so must be intra-compatible - CHECK 
-	         *)
-	        false
-	        
-	      | (Ast.ObjectType fields1, Ast.ObjectType fields2) =>
-	        false
-            
-	      | (Ast.FunctionType 
-		         {typeParams=typeParams1,
-		          params  =params1, 
-		          result  =result1,
-		          thisType=thisType1,
-		          hasRest =hasRest1,
-	              minArgs=minArgs},
-	         Ast.FunctionType 
-		         {typeParams=typeParams2,
-		          params=params2, 
-		          result=result2, 
-		          thisType=thisType2,
-		          hasRest=hasRest2,
-		          minArgs=minArgs2}) =>
-	        let
-	        in
-		        (* TODO: Assume for now that functions are not polymorphic *)
-		        assert (typeParams1 = [] andalso typeParams2=[]) "cannot handle polymorphic fns";
-		        assert (not hasRest1 andalso not hasRest2) "cannot handle rest args";
-                
-		        ListPair.all (fn (t1,t2) => isCompatible t1 t2) (params1,params2)
-		        andalso
-		        isCompatible result1 result2
-	        end
-
-          | _ => false
-
-	      (* catch all *)
-	      (* | _ => unimplError ["isCompatible"] *)
+        val _ = trace [">>> isCompatible: ", fmtType t1, " ~: ", fmtType t2 ];
+        val res = (isSubtype t1 t2) orelse
+	              (t1=anyType) orelse
+	              (t2=anyType) orelse
+	              case (t1,t2) of
+	                  (Ast.UnionType types1,_) => 
+	                  List.all (fn t => isCompatible t t2) types1
+	                | (_, Ast.UnionType types2) =>
+	                  (* t1 must exist in types2 *)
+	                  List.exists (fn t => isCompatible t1 t) types2 
+	                | (Ast.ArrayType types1, Ast.ArrayType types2) => 
+	                  (* arrays are invariant, every entry should be compatible in both directions *)
+	                  let fun check (h1::t1) (h2::t2) =
+		                      (isCompatible h1 h2)
+		                      andalso
+		                      (isCompatible h2 h1)
+		                      andalso
+		                      (case (t1,t2) of
+			                       ([],[]) => true
+		                         | ([],_::_) => check [h1] t2
+		                         | (_::_,[]) => check t1 [h2]
+		                         | (_::_,_::_) => check t1 t2)
+	                  in
+		                  check types1 types2
+	                  end
+                      
+	                | (Ast.ArrayType _, 
+	                   Ast.TypeName (Ast.Identifier {ident=ustr, openNamespaces=[]})) 
+	                  => (ustr = Ustring.Array_) orelse (ustr = Ustring.Object_)
+                                                        
+	                | (Ast.FunctionType _, 
+	                   Ast.TypeName (Ast.Identifier {ident=ustr, openNamespaces=[]})) 
+	                  => (ustr = Ustring.Function_) orelse (ustr = Ustring.Object_)
+                                                           
+	                | (Ast.AppType {base=base1,args=args1}, Ast.AppType {base=base2,args=args2}) => 
+	                  (* We keep types normalized wrt beta-reduction, 
+	                   * so base1 and base2 must be class or interface types.
+	                   * Type arguments are covariant, and so must be intra-compatible - CHECK 
+	                   *)
+	                  false
+	                  
+	                | (Ast.ObjectType fields1, Ast.ObjectType fields2) =>
+	                  false
+                      
+	                | (Ast.FunctionType 
+		                   {typeParams=typeParams1,
+		                    params  =params1, 
+		                    result  =result1,
+		                    thisType=thisType1,
+		                    hasRest =hasRest1,
+	                        minArgs=minArgs},
+	                   Ast.FunctionType 
+		                   {typeParams=typeParams2,
+		                    params=params2, 
+		                    result=result2, 
+		                    thisType=thisType2,
+		                    hasRest=hasRest2,
+		                    minArgs=minArgs2}) =>
+	                  let
+	                  in
+		                  (* TODO: Assume for now that functions are not polymorphic *)
+		                  assert (typeParams1 = [] andalso typeParams2=[]) "cannot handle polymorphic fns";
+		                  assert (not hasRest1 andalso not hasRest2) "cannot handle rest args";
+                          
+		                  ListPair.all (fn (t1,t2) => isCompatible t1 t2) (params1,params2)
+		                  andalso
+		                  isCompatible result1 result2
+	                  end
+                      
+                    | _ => false
+	(* catch all *)
+	(* | _ => unimplError ["isCompatible"] *)
+    in                    
+        trace ["<<< isCompatible: ", fmtType t1, " ~: ", fmtType t2, " = ", Bool.toString res ];
+        res
     end
     
 fun checkBicompatible (ty1:TYPE_VALUE) 
@@ -1079,9 +1113,8 @@ and verifyFixture (env:ENV)
          end
        | Ast.TypeVarFixture =>
          Ast.TypeVarFixture 
-       | Ast.TypeFixture ty =>
-         (trace ["verifying type fixture"];
-          Ast.TypeFixture (verifyTypeExpr env ty))
+       | Ast.TypeFixture ty => 
+         Ast.TypeFixture (verifyTypeExpr env ty)
        | Ast.ValFixture {ty, readOnly} =>
          Ast.ValFixture {ty=verifyTypeExpr env ty, readOnly=readOnly}
        | Ast.MethodFixture { func, ty, readOnly, override, final } =>
