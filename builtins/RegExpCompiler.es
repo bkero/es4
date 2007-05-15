@@ -116,6 +116,8 @@ package RegExpInternals
                         max = decimalDigits();
                         match("}");
                     }
+                } else {
+                    match("}");
                 }
                 if (isFinite(max) && max < min)
                     fail( SyntaxError, "max quant must be at least as large as min" );

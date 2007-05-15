@@ -100,7 +100,7 @@ package RegExpInternals
         for ( let i : uint = 0 ; i < a.length ; i++ )
             b[i] = a[i];
         for ( let k : uint = parenIndex ; k < parenIndex+parenCount ; k++ )
-            b[i] = undefined;
+            b[k] = undefined;
         return b;
     }
 
