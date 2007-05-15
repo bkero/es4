@@ -35,15 +35,15 @@ fun error ss = case !loc of
 
 fun namespace (ns:Ast.NAMESPACE) = 
     case ns of 
-        Ast.Intrinsic=> "[namespace intrinsic]"
-      | Ast.OperatorNamespace=> "[namespace operator]"
-      | Ast.Private i=> "[namespace private " ^ (Ustring.toAscii i) ^ "]"
-      | Ast.Protected i=> "[namespace protected " ^ (Ustring.toAscii i) ^ "]"
-      | Ast.Public i => "[namespace public " ^ (Ustring.toAscii i) ^ "]"
-      | Ast.Internal i => "[namespace internal " ^ (Ustring.toAscii i) ^ "]"
-      | Ast.UserNamespace i => "[namespace user " ^ (Ustring.toAscii i) ^ "]"
-      | Ast.AnonUserNamespace i => "[namespace user anon #" ^ (Int.toString i) ^ "]"
-      | Ast.LimitedNamespace (i,n) => "[namespace limited " ^ (Ustring.toAscii i) ^ " => " ^ (namespace n) ^ "]"
+        Ast.Intrinsic=> "[ns intrinsic]"
+      | Ast.OperatorNamespace=> "[ns operator]"
+      | Ast.Private i=> "[ns private '" ^ (Ustring.toAscii i) ^ "']"
+      | Ast.Protected i=> "[ns protected '" ^ (Ustring.toAscii i) ^ "']"
+      | Ast.Public i => "[ns public '" ^ (Ustring.toAscii i) ^ "']"
+      | Ast.Internal i => "[ns internal '" ^ (Ustring.toAscii i) ^ "']"
+      | Ast.UserNamespace i => "[ns user '" ^ (Ustring.toAscii i) ^ "']"
+      | Ast.AnonUserNamespace i => "[ns user anon #" ^ (Int.toString i) ^ "]"
+      | Ast.LimitedNamespace (i,n) => "[ns limited '" ^ (Ustring.toAscii i) ^ "' => " ^ (namespace n) ^ "]"
 
 fun name ({ns,id}:Ast.NAME) = (namespace ns) ^ "::" ^ (Ustring.toAscii id) ^ " "
 
@@ -60,6 +60,12 @@ fun multiname (mn:Ast.MULTINAME) =
 		  (List.map (List.map (fn ns => name {ns = ns, id = (#id mn)})) (#nss mn)) @
 		  ["}"]))
 	     
+fun join sep ss = 
+    case ss of 
+        [] => ""
+      | [x] => x
+      | x :: xs => x ^ sep ^ (join sep xs)
+
 exception LexError
 exception ParseError
 exception NameError
