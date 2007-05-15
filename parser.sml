@@ -67,6 +67,7 @@ type PATTERN_BINDING_PART =
        static:bool }
 
 val currentClassName : Ast.IDENT ref = ref Ustring.empty
+val currentPackageName : Ast.IDENT ref = ref Ustring.empty
 
 fun newline (ts : (TOKEN * Ast.LOC) list) =
     let
@@ -430,15 +431,15 @@ and reservedNamespace ts =
     let val _ = trace([">> reservedNamespace with next=",tokenname(hd(ts))])
     in case ts of
         (Internal, _) :: tr => 
-            (tr, Ast.Internal Ustring.empty)
+            (tr, Ast.Internal (!currentPackageName))
       | (Intrinsic, _) :: tr => 
             (tr, Ast.Intrinsic)
       | (Private, _) :: tr => 
-            (tr, Ast.Private (Ustring.fromString "class name here"))
+            (tr, Ast.Private (!currentClassName))
       | (Protected, _) :: tr => 
-            (tr, Ast.Protected (Ustring.fromString "class name here"))
+            (tr, Ast.Protected (!currentClassName))
       | (Public, _) :: tr => 
-            (tr, Ast.Public Ustring.empty)
+            (tr, Ast.Public (!currentPackageName))
       | _ => error ["unknown reserved namespace"]
     end
 

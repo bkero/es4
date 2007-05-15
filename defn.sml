@@ -47,7 +47,7 @@ type CONTEXT =
        numericMode: Ast.NUMERIC_MODE,
        labels: LABEL list,
        packageNames: Ast.IDENT list list,
-       className: Ast.NAME option,
+       className: Ast.IDENT,
        packageName: Ast.IDENT list,
        defaultNamespace: Ast.NAMESPACE }
 
@@ -301,13 +301,31 @@ fun resolveExprToNamespace (env:ENV)
     case expr of 
         Ast.LiteralExpr (Ast.LiteralNamespace ns) => 
         let
-            val packageName = (#packageName (hd env))
-            val ident = packageIdentFromPath packageName
-            val _ = trace2 ("packageIdent ",ident)
-            val _ = trace2 ("packageName ",ident)
         in case ns of
-            Ast.Public _ => Ast.Public ident
-          | Ast.Internal _ => Ast.Internal ident
+            Ast.Public _ =>
+                let
+                    val packageName = (#packageName (hd env))
+                    val ident = packageIdentFromPath packageName
+                in
+                    Ast.Public ident
+                end
+          | Ast.Internal _ => 
+                let
+                    val packageName = (#packageName (hd env))
+                    val ident = packageIdentFromPath packageName
+                in
+                    Ast.Internal ident
+                end
+          | Ast.Private _ => 
+                let
+                in
+                    Ast.Private (#className (hd env))
+                end
+          | Ast.Protected _ => 
+                let
+                in
+                    Ast.Protected (#className (hd env))
+                end
           | _ => ns
         end
       | Ast.LexicalRef {ident = Ast.Identifier {ident,...}, loc } => 
@@ -322,6 +340,39 @@ fun resolveExprToNamespace (env:ENV)
         end
       | _ => LogErr.defnError ["unexpected expression type ",
                                "in namespace context"]
+fun defNamespace (env:ENV) 
+                 (ns:Ast.NAMESPACE) 
+    : Ast.NAMESPACE =
+        let
+        in case ns of
+            Ast.Public n =>
+                let
+                    val packageName = (#packageName (hd env))
+                    val ident = packageIdentFromPath packageName
+                in
+                    (if n = Ustring.empty then Ast.Public ident else ns)  
+                        (* if n is not empty, then it is a package qualifier, 
+                           so don't with the current package name *)
+                end
+          | Ast.Internal _ => 
+                let
+                    val packageName = (#packageName (hd env))
+                    val ident = packageIdentFromPath packageName
+                in
+                    Ast.Internal ident
+                end
+          | Ast.Private _ => 
+                let
+                in
+                    Ast.Private (#className (hd env))
+                end
+          | Ast.Protected _ => 
+                let
+                in
+                    Ast.Protected (#className (hd env))  (* [JD] FIXME: not quite right *)
+                end
+          | _ => ns
+        end
 
 and defaultNamespace e = case e of c::_ => (#defaultNamespace c) | _ => LogErr.internalError ["empty environment in defaultNamespace"]
 
@@ -347,7 +398,7 @@ fun extendEnvironment (env:ENV)
                 numericMode = defaultNumericMode,
                 labels = [],
                 packageNames = [],
-                className = NONE,
+                className = Ustring.fromString "",
                 packageName = [],
                 defaultNamespace = Ast.Internal Ustring.empty } :: [])
       | ({ tempOffset, numericMode, openNamespaces, labels, packageNames, className, 
@@ -434,8 +485,27 @@ fun clearPackageName (ctx::ex)
     : ENV =
         LogErr.defnError ["cannot update an empty environment"]
 
+fun enterClass (ctx::ex) (className)
+    : ENV =
+    let
+        val className = Ustring.fromString (LogErr.name className)
+    in
+        { fixtures = (#fixtures ctx),
+          tempOffset = (#tempOffset ctx),
+          openNamespaces = [Ast.Private className]::(#openNamespaces ctx), 
+          numericMode = (#numericMode ctx),
+          labels = (#labels ctx),
+          packageNames = (#packageNames ctx),
+          className = className,
+          packageName = [],
+          defaultNamespace = (#defaultNamespace ctx) } :: ex
+    end
+  | enterClass [] _
+    : ENV =
+        LogErr.defnError ["cannot update an empty environment"]
+
 fun dumpLabels (labels : LABEL list) = trace ["labels ", concat (map (fn (id,_) => (Ustring.toAscii id)^" ") labels)]
-fun dumpPath path = trace ["path ", concat (map (fn (id) => id^" ") path)]
+fun dumpPath path = trace ["path ", concat (map (fn (id) => (Ustring.toAscii id)^" ") path)]
 
 (*
     Add a label to the current environment context. Report an error
@@ -561,7 +631,7 @@ and defClass (env: ENV)
     end
 
 and defInterface (env: ENV) 
-             (idef: Ast.INTERFACE_DEFN)
+                 (idef: Ast.INTERFACE_DEFN)
     : (Ast.FIXTURES * Ast.INTERFACE_DEFN) =
     let
         val _ = trace2 ("defining interface ",(#ident idef))
@@ -694,7 +764,7 @@ and analyzeClass (env:ENV)
 
             val ns = resolveExprOptToNamespace env ns
             val name = {id=ident, ns=ns}
-            val env = clearPackageName env
+            val env = enterClass env name
 
             val (unhoisted,classFixtures,classInits) = defDefns env [] [] [] classDefns
             val classFixtures = (List.foldl mergeFixtures unhoisted classFixtures)
@@ -1644,6 +1714,9 @@ and defLiteral (env:ENV)
                                         NONE => NONE
                                       | SOME t => SOME (defTyExpr env t) }
 
+          | Ast.LiteralNamespace ns => 
+            Ast.LiteralNamespace (defNamespace env ns)
+
           | _ => lit   (* FIXME: other cases to handle here *)
     end
 
@@ -1663,7 +1736,10 @@ and defLiteral (env:ENV)
 and resolvePath (env:ENV) (path:Ast.IDENT list)
     : Ast.EXPR =
     let
+val _ = dumpPath path
+
         val (pkg,pth) = matchPackageName env path
+val _ = trace2 ("resolvePath ",case pkg of NONE => Ustring.fromString "NONE" | _ => valOf pkg)
     in case (pkg,pth) of
              (SOME pk,[]) => Ast.LiteralExpr (Ast.LiteralNamespace (Ast.Public pk))
            | (SOME pk,id::ids) => 
@@ -2134,7 +2210,7 @@ and defStmt (env:ENV)
                 val namespace = resolveExprOptToNamespace env ns
                 val name = {ns=namespace, id=ident}
 
-                val env = clearPackageName env (* only top level package defns use package specific namespaces *)
+                val env = enterClass env name (* only top level package defns use package specific namespaces *)
 
                 val (block,hoisted) = defBlock env (Ast.Block {pragmas=pragmas,
                                                                defns=defns,
@@ -2371,7 +2447,7 @@ and defStmts (env) (stmts:Ast.STMT list)
     namespace.
 *)
 
-and defNamespace (env:ENV) 
+and defNamespaceDefn (env:ENV) 
                  (nd:Ast.NAMESPACE_DEFN)
     : (Ast.FIXTURES * Ast.NAMESPACE_DEFN) = 
     case nd of 
@@ -2440,7 +2516,7 @@ and defDefn (env:ENV)
             end
       | Ast.NamespaceDefn nd => 
             let
-                val (unhoisted,def) = defNamespace env nd
+                val (unhoisted,def) = defNamespaceDefn env nd
             in
                 (unhoisted,[],[])
             end
@@ -2572,7 +2648,7 @@ and defPackage (env:ENV)
                         numericMode = defaultNumericMode, 
                         labels = [],
                         packageNames = [packageName],
-                        className = NONE, 
+                        className = Ustring.fromString "", 
                         packageName = packageName, 
                         defaultNamespace = Ast.Internal packageIdent } :: env
 
@@ -2593,7 +2669,7 @@ and topEnv _ = [ { fixtures = !topFixtures,
                    numericMode = defaultNumericMode, 
                    labels = [],
                    packageNames = !topPackageNames,
-                   className = NONE, 
+                   className = Ustring.fromString "", 
                    packageName = [], 
                    defaultNamespace = Ast.Internal Ustring.empty } ]
 
