@@ -173,8 +173,6 @@ type REF = (Mach.OBJ * Ast.NAME)
 
 (* Fundamental object methods *)
 
-(* FIXME: possibly move this to mach.sml *) 
-
 fun allocFixtures (regs:Mach.REGS) 
                   (obj:Mach.OBJ) 
                   (this:Mach.OBJ option)
@@ -224,11 +222,6 @@ fun allocFixtures (regs:Mach.REGS)
                   | Ast.ArrayType _ => 
                     Mach.ValProp (Mach.Null)
 
-                  | Ast.TypeName ident => 
-                    (* FIXME: resolve nominal type to class or interface, check to see if 
-                     * it is nullable, *then* decide whether to set to null or uninit. *)
-                    Mach.ValProp (Mach.Null)
-
                   | Ast.FunctionType _ => 
                     Mach.UninitProp
 
@@ -244,11 +237,14 @@ fun allocFixtures (regs:Mach.REGS)
                   | Ast.NullableType { expr, nullable=false } => 
                     Mach.UninitProp
 
+                  | Ast.TypeName ident => 
+                    error ["allocating fixture with unresolved type name: ", Verify.typeToString t]
+
                   | Ast.ElementTypeRef _ => 
-                    Mach.ValProp (Mach.Undef)  (* FIXME: should get the type of the element from the array type *)
- 
+                    error ["allocating fixture of unresolved element type reference"]
+                    
                   | Ast.FieldTypeRef _ => (* FIXME: get type from object type *)
-                    Mach.ValProp (Mach.Undef)
+                    error ["allocating fixture of unresolved field type reference"]
 
                   | _ => Mach.ValProp (Mach.Undef)
 
@@ -2302,7 +2298,15 @@ and typeOfVal (v:Mach.VAL)
            | Mach.ObjectTag tys => Ast.ObjectType tys
            | Mach.ArrayTag tys => Ast.ArrayType tys
            | Mach.FunctionTag fsig => Ast.FunctionType (Parser.functionTypeFromSignature fsig)
-           | Mach.NoTag => error ["typeOfVal on NoTag object"])
+           | Mach.NoTag => 
+             (* FIXME: this would be a hard error if we didn't use NoTag values 
+              * as temporaries. Currently we do, so there are contexts where we
+              * want them to have a type in order to pass a runtime type test.
+              * this is of dubious value to me. -graydon.
+              * 
+              * error ["typeOfVal on NoTag object"])
+              *)
+             Ast.SpecialType Ast.Any)
     
 
 and isCompatible (v:Mach.VAL)

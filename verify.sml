@@ -1022,8 +1022,24 @@ and verifyStmt (env:ENV)
                          catches=List.map (verifyCatchClause env) catches, 
                          finally=Option.map (verifyBlock env) finally }
         
-          | Ast.SwitchStmt {cond, cases, mode, labels} => (*TODO*)
-            Ast.SwitchStmt {cond=cond, cases=cases, mode=mode, labels=labels}
+          | Ast.SwitchStmt {cond, cases, mode, labels} =>
+            let
+                fun ve e = 
+                    let 
+                        val (e', _) = verifyExpr env e
+                    in
+                        e
+                    end                    
+                fun verifyCase { label, inits, body } = 
+                    { label = Option.map ve label,
+                      inits = Option.map (verifyInits env) inits,
+                      body = verifyBlock env body }
+            in                
+                Ast.SwitchStmt {cond = ve cond, 
+                                cases = map verifyCase cases, 
+                                mode = mode, 
+                                labels = labels}
+            end
         
           | Ast.SwitchTypeStmt {cond, ty, cases} => (*TODO*)
             Ast.SwitchTypeStmt {cond=cond, ty=ty, cases=cases}
@@ -1098,12 +1114,24 @@ and verifyFixture (env:ENV)
          Ast.NamespaceFixture ns
        | Ast.ClassFixture (Ast.Cls {name, nonnullable, extends, implements, classFixtures, instanceFixtures,
                                     instanceInits, constructor, classType, instanceType }) =>
-         (*TODO*)
          let
+             (* FIXME: Make sure the environment is being extended
+              * properly to reflect the various ctor/init/settings scopes. *)
              val classFixtures = verifyFixtures env classFixtures
              val instanceFixtures = verifyFixtures env instanceFixtures
              val instanceInits = verifyHead env instanceInits
-         (* FIXME: do the ctor as well *)
+             val constructor = case constructor of 
+                                   NONE => NONE
+                                 | SOME (Ast.Ctor {settings, superArgs, func}) => 
+                                   let
+                                       val settings = verifyHead env settings
+                                       val (superArgs, _) = verifyExprs env superArgs
+                                       val func = verifyFunc env func
+                                   in
+                                       SOME (Ast.Ctor { settings = settings,
+                                                        superArgs = superArgs,
+                                                        func = func })
+                                   end
          in
              Ast.ClassFixture (Ast.Cls {name=name, nonnullable=nonnullable, extends=extends, 
                                         implements=implements, classFixtures=classFixtures, 
@@ -1124,6 +1152,24 @@ and verifyFixture (env:ENV)
          in
              Ast.MethodFixture { func=func, ty=ty, readOnly=readOnly, override=override, final=final }
          end
+       | Ast.VirtualValFixture { ty, getter, setter} =>
+         let
+             fun verifyFuncDefnOption NONE = NONE
+               | verifyFuncDefnOption (SOME { kind, ns, final, override, prototype, static, func}) = 
+                 SOME { kind = kind, 
+                        ns = ns, 
+                        final = final, 
+                        override = override, 
+                        prototype = prototype, 
+                        static = static, 
+                        func = verifyFunc env func}
+             val ty = verifyTypeExpr env ty
+             val getter = verifyFuncDefnOption getter
+             val setter = verifyFuncDefnOption setter
+         in             
+             Ast.VirtualValFixture { ty = ty, getter = getter, setter = setter }
+         end
+
        | _ => f
     (* 
        | _ => unimplError ["in verifyFixture"]
