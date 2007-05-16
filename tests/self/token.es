@@ -37,13 +37,12 @@
  * ***** END LICENSE BLOCK ***** */
 
 
-namespace token 
-
+package Token 
 {
-    use default namespace token
+    use namespace intrinsic;
 
     const FirstToken = 0
-    const Eof = FirstToken -1
+    public const Eof:int = FirstToken -1
     const Minus = Eof - 1
     const MinusMinus = Minus - 1
     const Not = MinusMinus - 1
@@ -214,18 +213,11 @@ namespace token
 
     // meta
 
-    const Error = XmlTagStartEnd - 1
-    const Eof = Error - 1
-    const LexBreakDiv = Eof - 1 
+    public const Error = XmlTagStartEnd - 1
+    public const LexBreak = Error - 1 
                             // of { lex_initial: unit -> ((TOKEN * Ast.POS) list),
                             // lex_regexp: unit -> ((TOKEN * Ast.POS) list) }
-    const LexBreakDivAssign  = LexBreakDiv - 1 
-                            // of { lex_initial: unit -> ((TOKEN * Ast.POS) list),
-                            // lex_regexp: unit -> ((TOKEN * Ast.POS) list) }
-    const LexBreakLessThan = LexBreakDivAssign - 1 
-                            // of { lex_initial: unit -> ((TOKEN * Ast.POS) list),
-                            //lex_xml: unit -> ((TOKEN * Ast.POS) list) }
-    const LastToken = LexBreakLessThan
+    const LastToken = LexBreak
 
     const names = [
         "<unused index>", 
@@ -375,7 +367,7 @@ namespace token
         "full_mode"
     ]
     
-    class Token 
+    public class Token 
     {
         var kind
         var utf8id
@@ -386,7 +378,57 @@ namespace token
         }
     }
 
-    function test () 
+    var tokenPool : Array;
+    public function reservedWordOrIdentifier (text:String) : int {
+        if (false) // TODO: check for reserved word 
+        {
+        }
+        else 
+        {
+            let token = new Token (Identifier,text);
+            let tokenId = tokenPool.length;
+            tokenPool.push(token);
+            return tokenId;
+        }
+    }
+
+    public function makeInstance(token_class:int, lexeme:String) : int
+    {
+        tokenStore.push(new Token(token_class, text));
+        return tokenStore.length - 1;
+    }
+
+    public function getTokenClass (token_id : int) : int
+    {
+        // if the token id is negative, it is a token_class
+
+        if (token_id < 0)
+        {
+           return token_id;
+        }
+
+        // otherwise, get instance data from the instance vector.
+
+        var t : Token = tokens[token_id];
+        return t.getTokenClass();
+    }
+    
+    public function getTokenText ( token_id : int ) : String
+    {
+        // if the token id is negative, it is a token_class.
+
+        if (token_id < 0)
+        {
+            return getTokenClassName(token_id);
+        }
+
+        // otherwise, get instance data from the instance vector.
+
+        var t : Token = tokens[token_id];
+        return t.getTokenText();
+    }
+
+    public function test () 
     {
         for( let i = FirstToken; i >= LastToken; --i )
             print(i,": ",names[-i])
@@ -394,4 +436,4 @@ namespace token
 
 }
 
-token::test()
+Token.test()

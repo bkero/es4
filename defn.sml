@@ -350,7 +350,9 @@ fun defNamespace (env:ENV)
                     val packageName = (#packageName (hd env))
                     val ident = packageIdentFromPath packageName
                 in
-                    (if n = Ustring.empty then Ast.Public ident else ns)  
+                    if n = Ustring.empty 
+                    then Ast.Public ident 
+                    else ns
                         (* if n is not empty, then it is a package qualifier, 
                            so don't with the current package name *)
                 end
@@ -1163,7 +1165,7 @@ and defSettings (env:ENV)
 
 and defFuncSig (env:ENV) 
                (fsig:Ast.FUNC_SIG)
-    : (Ast.FIXTURES * Ast.INITS * Ast.EXPR list * Ast.FIXTURES * Ast.INITS * Ast.EXPR list) =
+    : (Ast.FIXTURES * Ast.INITS * Ast.EXPR list * Ast.FIXTURES * Ast.INITS * Ast.EXPR list * Ast.TYPE_EXPR) =
 
     case fsig of
         Ast.FunctionSignature { typeParams, params, paramTypes, defaults, ctorInits,
@@ -1179,15 +1181,15 @@ and defFuncSig (env:ENV)
 
             val typeParamFixtures = map mkTypeVarFixture typeParams
             val typeEnv = extendEnvironment env typeParamFixtures 0
+****)
 
             val thisType = case thisType of NONE => Ast.SpecialType Ast.Any
-                                          | SOME x => x
-            val thisBinding = (Ast.PropName {ns=internalNs, id="this"},
+                                          | SOME x => defTyExpr env x
+            val thisBinding = (Ast.PropName {ns=Ast.Internal (Ustring.fromString ""), id=(Ustring.fromString "this")},
                                Ast.ValFixture
                                    { ty = thisType,
                                      readOnly = true })
 
-****)
 
             fun isTempFixture (n,_) : bool =
                 case n of
@@ -1202,12 +1204,13 @@ and defFuncSig (env:ENV)
                       | NONE => (([],[]),[])
             val settingsFixtures = List.filter isTempFixture settingsFixtures
         in
-            (paramFixtures,
+            (thisBinding::paramFixtures,
              paramInits,
              defaults,
              settingsFixtures,
              settingsInits,
-             superArgs)
+             superArgs,
+             thisType)
         end
 
 (*
@@ -1254,7 +1257,7 @@ and defFunc (env:ENV) (func:Ast.FUNC)
         val Ast.Func {name, fsig, block, ty, isNative, ...} = func
         val paramTypes = (#params ty)
         val env = updateTempOffset env (length paramTypes)
-        val (paramFixtures, paramInits, defaults, settingsFixtures, settingsInits, superArgs) = defFuncSig env fsig
+        val (paramFixtures, paramInits, defaults, settingsFixtures, settingsInits, superArgs, thisType) = defFuncSig env fsig
         val newTy = defFuncTy env ty
         val defaults = defExprs env defaults
         val env = extendEnvironment env paramFixtures
@@ -2017,13 +2020,14 @@ and defFuncTy (env:ENV)
     : Ast.FUNC_TYPE =
         let
             val {typeParams,params,result,thisType,hasRest,minArgs} = ty
-            val params = map (defTyExpr env) params
-            val result = defTyExpr env result
+            val params' = map (defTyExpr env) params
+            val thisType' = case thisType of SOME ty => SOME (defTyExpr env ty) | _ => NONE
+            val result' = defTyExpr env result
         in
             {typeParams=typeParams,
-             params=params,
-             result=result,
-             thisType=thisType,
+             params=params',
+             result=result',
+             thisType=thisType',
              hasRest=hasRest,
              minArgs=minArgs}            
         end

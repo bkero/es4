@@ -839,7 +839,7 @@ and functionSignature (ts) : ((TOKEN * Ast.LOC) list * Ast.FUNC_SIG) =
             in case ts2 of
                 (Comma, _) :: _ =>
                     let
-                           val (ts3,((b,i),e,t),hasRest) = nonemptyParameters (tl ts2) 1 false
+                           val (ts3,((b,i),e,t),hasRest) = nonemptyParameters (tl ts2) 0 false
                        in case ts3 of
                            (RightParen, _) :: _ =>
                                let
@@ -850,7 +850,7 @@ and functionSignature (ts) : ((TOKEN * Ast.LOC) list * Ast.FUNC_SIG) =
                                 (ts4,Ast.FunctionSignature
                                      {typeParams=nd1,
                                       thisType=thisType,
-                                      params=(temp::b,i),
+                                      params=(b,i),
                                       paramTypes=t,
                                       defaults=e,
                                       returnType=nd4,
