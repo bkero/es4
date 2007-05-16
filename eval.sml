@@ -1818,12 +1818,15 @@ and evalUnaryOp (regs:Mach.REGS)
     in
         case unop of 
             Ast.Delete =>             
-            (trace ["performing operator delete"];
-             case evalRefExpr regs expr false of
-                 (Mach.Obj {props, ...}, name) => 
-                 (if (#dontDelete (#attrs (Mach.getProp props name)))
-                  then newBoolean false
-                  else (Mach.delProp props name; newBoolean true)))
+            let
+                val _ = trace ["performing operator delete"]
+                val (_, expr) = getExpectedType expr
+                val (Mach.Obj {props, ...}, name) = evalRefExpr regs expr false
+            in
+                if (#dontDelete (#attrs (Mach.getProp props name)))
+                then newBoolean false
+                else (Mach.delProp props name; newBoolean true)
+            end
 
           | Ast.PreIncrement mode => crement (valOf mode)
                                              (Decimal.add) 
@@ -2408,6 +2411,7 @@ and evalExprToNamespace (regs:Mach.REGS)
         fun evalRefNamespace _ = 
             let 
                 val _ = trace ["evaluating ref to namespace"];
+                val (_, expr) = getExpectedType expr
                 val (obj, name) = evalRefExpr regs expr true
                 val Mach.Obj { props, ... } = obj
             in
@@ -3476,7 +3480,9 @@ and constructSpecialPrototype (id:Mach.OBJ_IDENT)
             if id = !BooleanClassIdentity
             then SOME (newPublicBoolean false)
             else
-                NONE
+                if id = !ArrayClassIdentity
+                then SOME (newArray [])
+                else NONE
 
 and initClassPrototype (regs:Mach.REGS)
                        (classObj:Mach.OBJ) 
