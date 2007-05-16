@@ -1,9 +1,5 @@
-package p { 
-public class A {
-private var x
-public function A () : x=10 {}
-public function m () x
+class A {
+function A(x) { m(this,x) }
+function m(this:A,x) { print(this) }
 }
-}
-//import p.A
-intrinsic::print(new p.A().m())
+new A(10)

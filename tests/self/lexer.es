@@ -38,6 +38,9 @@
 
 package Char
 {
+    use namespace intrinsic;
+
+    public const Eof = 0;
     public const a = "a".charCodeAt(0);
     public const b = "b".charCodeAt(0);
     public const c = "c".charCodeAt(0);
@@ -64,37 +67,123 @@ package Char
     public const x = "x".charCodeAt(0);
     public const y = "y".charCodeAt(0);
     public const z = "z".charCodeAt(0);
+    public const A = "A".charCodeAt(0);
+    public const B = "B".charCodeAt(0);
+    public const C = "C".charCodeAt(0);
+    public const D = "D".charCodeAt(0);
+    public const E = "E".charCodeAt(0);
+    public const F = "F".charCodeAt(0);
+    public const G = "G".charCodeAt(0);
+    public const H = "H".charCodeAt(0);
+    public const I = "I".charCodeAt(0);
+    public const J = "J".charCodeAt(0);
+    public const K = "K".charCodeAt(0);
+    public const L = "L".charCodeAt(0);
+    public const M = "M".charCodeAt(0);
+    public const N = "N".charCodeAt(0);
+    public const O = "O".charCodeAt(0);
+    public const P = "P".charCodeAt(0);
+    public const Q = "Q".charCodeAt(0);
+    public const R = "R".charCodeAt(0);
+    public const S = "S".charCodeAt(0);
+    public const T = "T".charCodeAt(0);
+    public const U = "U".charCodeAt(0);
+    public const V = "V".charCodeAt(0);
+    public const W = "W".charCodeAt(0);
+    public const X = "X".charCodeAt(0);
+    public const Y = "Y".charCodeAt(0);
+    public const Z = "Z".charCodeAt(0);
+    public const At = "@".charCodeAt(0);
+    public const LeftParen = "(".charCodeAt(0);
+    public const RightParen = ")".charCodeAt(0);
+    public const Comma = ",".charCodeAt(0);
+    public const Semicolon = ";".charCodeAt(0);
+    public const Space = " ".charCodeAt(0);
+    public const QuestionMark = "?".charCodeAt(0);
+    public const LeftBracket = "[".charCodeAt(0);
+    public const RightBracket = "]".charCodeAt(0);
+    public const Tilde = "~".charCodeAt(0);
+    public const Newline = "\n".charCodeAt(0);
+    public const SingleQuote = "'".charCodeAt(0);
+    public const DoubleQuote = "\"".charCodeAt(0);
+    public const Dash = "-".charCodeAt(0);
+    public const Bang = "!".charCodeAt(0);
+    public const Percent = "%".charCodeAt(0);
+    public const Ampersand = "&".charCodeAt(0);
+    public const Mult = "*".charCodeAt(0);
+    public const Slash = "/".charCodeAt(0);
+    public const Colon = ":".charCodeAt(0);
+    public const Caret = "^".charCodeAt(0);
+    public const Bar = "|".charCodeAt(0);
+    public const Plus = "+".charCodeAt(0);
+    public const LeftAngle = "<".charCodeAt(0);
+    public const RightAngle = ">".charCodeAt(0);
+    public const LeftCurley = "{".charCodeAt(0);
+    public const RightCurley = "}".charCodeAt(0);
+    public const Equal = "=".charCodeAt(0);
+    public const Zero = "0".charCodeAt(0);
+    public const Nine = "9".charCodeAt(0);
+
+    public function isDigit (ch:int) : Boolean {
+        if( ch >= Zero && ch <= Nine ) return true
+    }
+
+    public function isIdentifierStart (ch:int) : Boolean {
+        if( ch >= a && ch <= z ) return true
+    }
+
+    public function isIdentifierPart (ch:int) : Boolean {
+        if( ch >= a && ch <= z ) return true
+    }
 }
 
 package Lexer 
 {
+    use namespace intrinsic;
+    import Char.*;
+    import Token.*;
+
     public class Scanner 
     {
-        private var tokenStore : Array;
         private var tokenList : Array;
 		private var followsNewline : Boolean;
 
         private var src : String;
+        private var origin : String;
         private var curIndex : int;
+        private var markIndex : int;
 
         public function Scanner (src:String, origin:String)
             : src = src
             , origin = origin
             , tokenStore = new Array
             , tokenList = new Array
-            , curIndex = 0
+            , curIndex = -1
+            , markIndex = 0
         {
 		}
     		
-        public function nextchar() : int 
+        public function nextchar()
         {
+            print("curIndex=",curIndex+1);
+            print("src.length=",src.length)
             // FIXME: translate unicode escapes here
-			return src.charCodeAt (++cur)
+            if (curIndex+1 < src.length)
+            {
+                var ch = src.charCodeAt (++curIndex);
+                print ("ch=",ch);
+            }
+            else
+            {
+                var ch = Char.Eof;
+                print ("ch=",ch);
+            }
+			return ch;
 		}
 		
 		public function lexeme() : String 
         {
-			return input.copy(); // copies text since last mark
+			return src.slice(mark,curIndex); // copies text since last mark
 		}
 
         public function retract() : void
@@ -102,45 +191,33 @@ package Lexer
             curIndex--;
         }
 
-        public function makeInstance(token_class:int, lexeme:String) : int
+        private function mark () : void
         {
-            tokenStore.push(new Token(token_class, lexeme));
-            return tokenStore.length - 1;
+            markIndex = curIndex;
         }
 
-        public function getTokenClass (token_id : int) : int
+        public function makeTokenList ()
         {
-            // if the token id is negative, it is a token_class
-
-            if (token_id < 0)
-            {
-               return token_id;
+            let tokenList = new Array;
+            while (true) {
+                let token = nextToken ();
+                print("token=",token);
+                tokenList.push (token);
+                if (token === Token.LexBreak ||
+                    token === Token.Eof ||
+                    token === Token.Error)
+                {
+                    break;
+                }
             }
-
-            // otherwise, get instance data from the instance vector.
-
-            var t : Token = tokens[token_id];
-            return t.getTokenClass();
-        }
-        
-        public function getTokenText ( token_id : int ) : String
-        {
-            // if the token id is negative, it is a token_class.
-
-            if (token_id < 0)
-            {
-                return Token.getTokenClassName(token_id);
-            }
-
-            // otherwise, get instance data from the instance vector.
-
-            var t : Token = tokens[token_id];
-            return t.getTokenText();
+            print("tokenList.length=",tokenList.length);
+            return tokenList;
         }
 
-        public function nexttoken(resetState:Boolean = false) : int 
+        public function nextToken (resetState:Boolean = false) : int 
         {
-            let result = start()
+            let result = start();
+                print("nexttoken=",result);
             return result;
         }
 
@@ -154,7 +231,7 @@ package Lexer
                 switch (c) 
                 {
                 case 0xffffffef: return utf8sig ();
-                case 0: return Token.Eos;
+                case Char.Eof: print("tk=",Token.Eof); return Token.Eof;
                 case Char.At: return Token.At;
                 case Char.LeftParen: return Token.LeftParen;
                 case Char.RightParen: return Token.RightParen;
@@ -164,8 +241,8 @@ package Lexer
                 case Char.QuestionMark: return Token.QuestionMark;
                 case Char.LeftBracket: return Token.LeftBracket;
                 case Char.RightBracket: return Token.RightBracket;
-                case Char.LeftBrace: return Token.LeftBrace;
-                case Char.RightBrace: return Token.RightBrace;
+                case Char.LeftCurley: return Token.LeftBrace;
+                case Char.RightCurley: return Token.RightBrace;
                 case Char.Tilde: return Token.BitwiseNot;
                 case Char.Newline: return Token.Newline;
                 case Char.SingleQuote: return stringLiteral (c);
@@ -184,7 +261,6 @@ package Lexer
                 case Char.Equal: return equal ();
                 case Char.RightAngle: return greaterthan ();
                 case Char.Zero: return zero ();
-                case Char.a: return a ();
                 case Char.b: return b ();
                 case Char.c: return c ();
                 case Char.d: return d ();
@@ -218,9 +294,10 @@ package Lexer
             }
             Debug.assert(false);
 		}
-        
+
         private function identifier () : int 
         {
+            print(">>identifier");
             let c : int = nextchar ();
             switch (c) 
             {
@@ -236,7 +313,7 @@ package Lexer
                 else
                 {
                     retract ();                    
-                    return Token.maybeReservedIdentifierToken (lexeme ());
+                    return Token.reservedWordOrIdentifier (lexeme ());
                 }
             }
         }
@@ -292,4 +369,13 @@ package Lexer
             }
         }
     }
+
+    public function test () 
+    {
+        var scanner = new Scanner ("a","test1");
+        var tokenList = scanner.makeTokenList ();
+        print (tokenList);
+    }
 }
+
+Lexer.test()
