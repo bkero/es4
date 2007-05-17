@@ -1,13 +1,179 @@
 (* -*- mode: sml; mode: font-lock; tab-width: 4; insert-tabs-mode: nil; indent-tabs-mode: nil -*- *)
 structure Eval = struct 
 
-(* Local tracing machinery *)
-
+(* Local tracing, stack recording and profiling machinery *)
 
 val traceStack = ref false
-val (stack:string list list ref) = ref []
+type frame = { name: string,
+               args: Mach.VAL list }
+val (stack:(frame list ref)) = ref []
+            
+structure StrListKey = struct
+type ord_key = string list
+val compare = List.collate String.compare
+end
+structure StrListMap = SplayMapFn (StrListKey);
+
+val (profileMap:(int StrListMap.map) ref) = ref StrListMap.empty
+val (doProfile:((int option) ref)) = ref NONE
+
+fun resetProfile _ = 
+    profileMap := StrListMap.empty
+
 fun resetStack _ = 
     stack := []
+
+fun log (ss:string list) = LogErr.log ("[eval] " :: ss)
+
+val doTrace = ref false
+fun fmtName n = if (!doTrace) then LogErr.name n else ""
+fun fmtMultiname n = if (!doTrace) then LogErr.multiname n else ""
+
+fun trace (ss:string list) = if (!doTrace) then log ss else ()
+fun error0 (ss:string list) = 
+    (LogErr.log ("[stack] " :: [stackString()]);
+     LogErr.evalError ss)
+
+and error (ss:string list) = 
+    (LogErr.log ("[stack] " :: [stackString()]);
+     LogErr.evalError ss)
+
+and stackString _ =
+    let
+        fun fmtFrame { name, args } = 
+            name ^ "(" ^ (LogErr.join ", " (map approx args)) ^ ")"
+    in
+        "[" ^ (LogErr.join " | " (map fmtFrame (List.rev (!stack)))) ^ "]"
+    end
+
+(* An approximation of an invocation argument list, for debugging. *)
+and approx (arg:Mach.VAL) 
+    : string = 
+    case arg of 
+        Mach.Null => "null"
+      | Mach.Undef => "undefined"
+      | Mach.Object ob => 
+        if Mach.hasMagic ob 
+        then 
+            let
+                val str = Ustring.toAscii (magicToUstring (Mach.needMagic arg))
+            in
+                if Mach.isString arg
+                then "\"" ^ str ^ "\""
+                else str
+            end
+        else 
+            "obj"                
+
+and magicToUstring (magic:Mach.MAGIC) 
+    : Ustring.STRING =
+    case magic of 
+        Mach.Double n => NumberToString n             
+      | Mach.Decimal d => Ustring.fromString (Decimal.toString d)
+      | Mach.Int i => Ustring.fromInt32 i
+      | Mach.UInt u => Ustring.fromString (LargeInt.toString (Word32.toLargeInt u))
+      | Mach.String s => s
+      | Mach.Boolean true => Ustring.true_
+      | Mach.Boolean false => Ustring.false_
+      | Mach.Namespace (Ast.Private _) => Ustring.fromString "[private namespace]"
+      | Mach.Namespace (Ast.Protected _) => Ustring.fromString "[protected namespace]"
+      | Mach.Namespace Ast.Intrinsic => Ustring.fromString "[intrinsic namespace]"
+      | Mach.Namespace Ast.OperatorNamespace => Ustring.fromString "[operator namespace]"
+      | Mach.Namespace (Ast.Public id) => Ustring.append [Ustring.fromString "[public namespace: ", id, Ustring.fromString "]"]
+      | Mach.Namespace (Ast.Internal _) => Ustring.fromString "[internal namespace]"
+      | Mach.Namespace (Ast.UserNamespace id) => Ustring.append [Ustring.fromString "[user-defined namespace ", id, Ustring.fromString "]"]
+      | Mach.Class _ => Ustring.fromString "[class Class]"
+      | Mach.Interface _ => Ustring.fromString "[interface Interface]"
+      | Mach.Function _ => Ustring.fromString "[function Function]"
+      | Mach.Type _ => Ustring.fromString "[type Function]"
+      | Mach.ByteArray _ => Ustring.fromString "[ByteArray]"
+      | Mach.NativeFunction _ => Ustring.fromString "[function Function]"
+      | _ => error0 ["Shouldn't happen: failed to match in Eval.magicToUstring."]
+
+(* 
+ * ES-262-3 9.8.1: ToString applied to the Number (double) type.
+ *)
+and NumberToString (r:Real64.real) 
+    : Ustring.STRING =     
+    if Real64.isNan r
+    then Ustring.NaN_
+    else 
+        if Real64.==(0.0, r) orelse Real64.==(~0.0, r)
+        then Ustring.zero
+        else
+            if Real64.<(r, 0.0)
+            then Ustring.append [Ustring.dash, NumberToString (Real64.~(r))]
+            else 
+                if Real64.==(Real64.posInf, r)
+                then Ustring.Infinity_
+                else 
+                    let
+                        (* 
+                         * Unfortunately SML/NJ has a pretty deficient selection of the numerical 
+                         * primitives; about the best we can get from it is a high-precision SCI
+                         * conversion that we then parse. This is significantly more fun than 
+                         * writing your own dtoa.
+                         *)
+                        val x = Real64.fmt (StringCvt.SCI (SOME 30)) r
+
+                        val (mantissaSS,expSS) = Substring.splitr (fn c => not (c = #"E")) (Substring.full x)
+                        val mantissaSS = Substring.dropr (fn c => (c = #"E") orelse (c = #"0")) mantissaSS
+                        val (preDot,postDot) = Substring.position "." mantissaSS
+                        val postDot = Substring.triml 1 postDot
+
+                        val exp = valOf (Int.fromString (Substring.string expSS))
+                        val digits = (Substring.explode preDot) @ (Substring.explode postDot)
+                        val k = length digits
+                        val n = exp + 1
+
+                        fun zeroes z = List.tabulate (z, (fn _ => #"0"))
+                        fun expstr _ = (#"e" :: 
+                                        (if (n-1) < 0 then #"-" else #"+") :: 
+                                        (String.explode (Int.toString (Int.abs (n-1)))))
+                    in
+                        Ustring.fromString 
+                        (String.implode 
+                         (if k <= n andalso n <= 21
+                          then digits @ (zeroes (n-k))
+                          else 
+                              if 0 < n andalso n <= 21
+                              then (List.take (digits, n)) @ [#"."] @ (List.drop (digits, n))
+                              else
+                                  if ~6 < n andalso n <= 0
+                                  then [#"0", #"."] @ (zeroes (~n)) @ digits
+                                  else 
+                                      if k = 1 
+                                      then digits @ (expstr()) 
+                                      else (hd digits) :: #"." :: ((tl digits) @ expstr())))
+                    end
+
+fun push (name:string) (args:Mach.VAL list) = 
+    let
+        val newStack = { name = name, args = args } :: (!stack)
+    in
+        stack := newStack;
+        if !traceStack
+        then LogErr.log ("[stack] " :: [stackString ()])
+        else ();
+        case !doProfile of 
+            NONE => ()
+          | SOME n => 
+            let 
+                val n = Int.min (n, length newStack)
+                val frameNames = map (#name) (List.take (newStack, n))
+                val count = case StrListMap.find ((!profileMap), frameNames) of
+                                NONE => 1
+                              | SOME k => (k+1)
+            in
+                profileMap := StrListMap.insert ((!profileMap), frameNames, count)
+            end
+    end
+
+fun pop _ = 
+    (stack := tl (!stack);
+     if !traceStack
+     then LogErr.log ("[stack] " :: [stackString()])
+     else ())
 
 val booting = ref false
 val ObjectClassIdentity = ref (~1)
@@ -19,40 +185,6 @@ val BooleanClassIdentity = ref (~1)
 
 val booleanTrue : (Mach.VAL option) ref = ref NONE
 val booleanFalse : (Mach.VAL option) ref = ref NONE
-
-structure StrKey = struct
-type ord_key = string vector
-val compare = Vector.collate String.compare
-end
-structure StrMap = SplayMapFn (StrKey);
-
-val profileMap = StrMap.empty
-
-fun stackString _ =
-    "[" ^ (LogErr.join " | " (map String.concat (List.rev (!stack)))) ^ "]"
-
-fun push ss = 
-    (stack := (ss) :: (!stack);     
-     if !traceStack
-     then LogErr.log ("[stack] " :: [stackString ()])
-     else ())
-
-fun pop _ = 
-    (stack := tl (!stack);
-     if !traceStack
-     then LogErr.log ("[stack] " :: [stackString()])
-     else ())
-
-fun log ss = LogErr.log ("[eval] " :: ss)
-
-val doTrace = ref false
-fun fmtName n = if (!doTrace) then LogErr.name n else ""
-fun fmtMultiname n = if (!doTrace) then LogErr.multiname n else ""
-
-fun trace ss = if (!doTrace) then log ss else ()
-fun error ss = 
-    (LogErr.log ("[stack] " :: [stackString()]);
-     LogErr.evalError ss)
 
 (* Exceptions for object-language control transfer. *)
 exception ContinueException of (Ast.IDENT option)
@@ -888,113 +1020,7 @@ and newFunctionFromFunc (e:Mach.SCOPE)
 
 and newNativeFunction (f:Mach.NATIVE_FUNCTION) = 
     newRootBuiltin Name.public_Function (Mach.NativeFunction f)
-
-
-(* An approximation of an invocation argument list, for debugging. *)
-and callApprox (idStr:string) (args:Mach.VAL list) 
-    : string = 
-    let
-        fun approx arg = 
-            case arg of 
-                Mach.Null => "null"
-              | Mach.Undef => "undefined"
-              | Mach.Object ob => 
-                if Mach.hasMagic ob 
-                then 
-                    if Mach.isString arg
-                    then "\"" ^ (Ustring.toAscii (toUstring arg)) ^ "\""
-                    else Ustring.toAscii (toUstring arg)
-                else 
-                    "obj"                
-    in
-        idStr ^ "(" ^ (LogErr.join ", " (map approx args)) ^ ")"
-    end
-
-(* FIXME: this is not the correct toString *)
-
-(* 
- * ES-262-3 9.8.1: ToString applied to the Number (double) type.
- *)
-and NumberToString (r:Real64.real) 
-    : Ustring.STRING =     
-    if Real64.isNan r
-    then Ustring.NaN_
-    else 
-        if Real64.==(0.0, r) orelse Real64.==(~0.0, r)
-        then Ustring.zero
-        else
-            if Real64.<(r, 0.0)
-            then Ustring.append [Ustring.dash, NumberToString (Real64.~(r))]
-            else 
-                if Real64.==(Real64.posInf, r)
-                then Ustring.Infinity_
-                else 
-                    let
-                        (* 
-                         * Unfortunately SML/NJ has a pretty deficient selection of the numerical 
-                         * primitives; about the best we can get from it is a high-precision SCI
-                         * conversion that we then parse. This is significantly more fun than 
-                         * writing your own dtoa.
-                         *)
-                        val x = Real64.fmt (StringCvt.SCI (SOME 30)) r
-
-                        val (mantissaSS,expSS) = Substring.splitr (fn c => not (c = #"E")) (Substring.full x)
-                        val mantissaSS = Substring.dropr (fn c => (c = #"E") orelse (c = #"0")) mantissaSS
-                        val (preDot,postDot) = Substring.position "." mantissaSS
-                        val postDot = Substring.triml 1 postDot
-
-                        val exp = valOf (Int.fromString (Substring.string expSS))
-                        val digits = (Substring.explode preDot) @ (Substring.explode postDot)
-                        val k = length digits
-                        val n = exp + 1
-
-                        fun zeroes z = List.tabulate (z, (fn _ => #"0"))
-                        fun expstr _ = (#"e" :: 
-                                        (if (n-1) < 0 then #"-" else #"+") :: 
-                                        (String.explode (Int.toString (Int.abs (n-1)))))
-                    in
-                        Ustring.fromString 
-                        (String.implode 
-                         (if k <= n andalso n <= 21
-                          then digits @ (zeroes (n-k))
-                          else 
-                              if 0 < n andalso n <= 21
-                              then (List.take (digits, n)) @ [#"."] @ (List.drop (digits, n))
-                              else
-                                  if ~6 < n andalso n <= 0
-                                  then [#"0", #"."] @ (zeroes (~n)) @ digits
-                                  else 
-                                      if k = 1 
-                                      then digits @ (expstr()) 
-                                      else (hd digits) :: #"." :: ((tl digits) @ expstr())))
-                    end
                     
-
-and magicToUstring (magic:Mach.MAGIC) 
-    : Ustring.STRING =
-    case magic of 
-        Mach.Double n => NumberToString n             
-      | Mach.Decimal d => Ustring.fromString (Decimal.toString d)
-      | Mach.Int i => Ustring.fromInt32 i
-      | Mach.UInt u => Ustring.fromString (LargeInt.toString (Word32.toLargeInt u))
-      | Mach.String s => s
-      | Mach.Boolean true => Ustring.true_
-      | Mach.Boolean false => Ustring.false_
-      | Mach.Namespace (Ast.Private _) => Ustring.fromString "[private namespace]"
-      | Mach.Namespace (Ast.Protected _) => Ustring.fromString "[protected namespace]"
-      | Mach.Namespace Ast.Intrinsic => Ustring.fromString "[intrinsic namespace]"
-      | Mach.Namespace Ast.OperatorNamespace => Ustring.fromString "[operator namespace]"
-      | Mach.Namespace (Ast.Public id) => Ustring.append [Ustring.fromString "[public namespace: ", id, Ustring.fromString "]"]
-      | Mach.Namespace (Ast.Internal _) => Ustring.fromString "[internal namespace]"
-      | Mach.Namespace (Ast.UserNamespace id) => Ustring.append [Ustring.fromString "[user-defined namespace ", id, Ustring.fromString "]"]
-      | Mach.Class _ => Ustring.fromString "[class Class]"
-      | Mach.Interface _ => Ustring.fromString "[interface Interface]"
-      | Mach.Function _ => Ustring.fromString "[function Function]"
-      | Mach.Type _ => Ustring.fromString "[type Function]"
-      | Mach.ByteArray _ => Ustring.fromString "[ByteArray]"
-      | Mach.NativeFunction _ => Ustring.fromString "[function Function]"
-      | _ => error ["Shouldn't happen: failed to match in Eval.magicToUstring."]
-
 (* 
  * ES-262-3 9.8 ToString. 
  *
@@ -2717,7 +2743,7 @@ and invokeFuncClosure (callerThis:Mach.OBJ)
                                 | Ast.Call => "call " ^ idStr
                                 | Ast.Has => "has " ^ idStr
 
-                val _ = push [callApprox strname args]
+                val _ = push strname args 
 
                 val (varObj:Mach.OBJ) = Mach.newObjNoTag ()
                 val (varRegs:Mach.REGS) = extendScopeReg regs varObj Mach.ActivationScope
@@ -3033,7 +3059,7 @@ and evalInitsMaybePrototype (regs:Mach.REGS)
                 val idStr = case n of 
                              Ast.PropName { id, ... } => Ustring.toAscii id
                            | Ast.TempName t => ("#" ^ Int.toString t)
-                val _ = push ["init ", idStr]
+                val _ = push ("init " ^ idStr) []
                 val v = evalExpr regs e
             in
                 case n of 
@@ -3162,7 +3188,7 @@ and initializeAndConstruct (classClosure:Mach.CLS_CLOSURE)
                     NONE => initializeAndConstructSuper []
                   | SOME (Ast.Ctor { settings, superArgs, func }) => 
                     let 
-                        val _ = push ["ctor ", callApprox (Ustring.toAscii (#id name)) args]
+                        val _ = push ("ctor " ^ (Ustring.toAscii (#id name))) args
                         val Ast.Func { block, param=(paramFixtures,paramInits), ... } = func
                         val (varObj:Mach.OBJ) = Mach.newObjNoTag ()
                         val (varRegs:Mach.REGS) = extendScopeReg classRegs
@@ -3380,7 +3406,7 @@ and constructClassInstance (classObj:Mach.OBJ)
     let
         val Mach.Obj { ident, ... } = classObj
         val {cls = Ast.Cls { name, ...}, ...} = classClosure
-        val _ = push ["new ", callApprox (Ustring.toAscii (#id name)) args]
+        val _ = push ("new " ^ (Ustring.toAscii (#id name))) args
     in
         
         case constructSpecial ident classObj classClosure args of
@@ -3955,14 +3981,34 @@ and evalProgram (prog:Ast.PROGRAM)
     : Mach.VAL = 
     let
         val regs = getInitialRegs ()
+        val res = ((LogErr.setLoc NONE;
+                    resetStack ();
+                    resetProfile ();
+                    allocScopeFixtures regs (valOf (#fixtures prog));
+                    map (evalPackage regs) (#packages prog);
+                    evalBlock regs (#block prog))
+                   handle ThrowException v => 
+                          (log ["*** Unhandled Exception ***"];
+                           error ["ThrowException(", Ustring.toAscii (toUstring v), ")"]))
     in
-        (LogErr.setLoc NONE;
-         allocScopeFixtures regs (valOf (#fixtures prog));
-         map (evalPackage regs) (#packages prog);
-         evalBlock regs (#block prog))
-        handle ThrowException v => 
-               (log ["*** Unhandled Exception ***"];
-                error ["ThrowException(", Ustring.toAscii (toUstring v), ")"])
+        case !doProfile of 
+            NONE => res
+          | SOME _ => 
+            let 
+                val items = StrListMap.listItemsi (!profileMap)
+                val itemArr = Array.fromList items
+                fun sort ((a,acount), (b,bcount)) = Int.compare (acount,bcount)
+                fun emitEntry (names, count) = 
+                    let
+                        val n = LogErr.join " | " (List.rev names)
+                    in
+                        LogErr.log ["[prof] ", (Int.toString count), " : ", n]
+                    end
+            in
+                ArrayQSort.sort sort itemArr;
+                Array.app emitEntry itemArr;
+                res
+            end
     end
 
 fun resetGlobal (ob:Mach.OBJ) 

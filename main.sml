@@ -50,7 +50,8 @@ fun repl doPrompt =
                                         ":parse         - toggle parse stage\n",
                                         ":defn          - toggle defn stage\n",
                                         ":strict        - toggle strict verification\n",
-                                        ":eval          - toggle evaluation stage\n" 
+                                        ":eval          - toggle evaluation stage\n",
+                                        ":profile <N>   - toggle profiling at depth <N>\n"
                                        ]; 
                               doLine())
             in
@@ -72,6 +73,14 @@ fun repl doPrompt =
                           (print ("unknown trace option " ^ t ^ "\n"))
                         | SOME r => toggleRef ("trace option " ^ t) r);
                      doLine())
+
+                  | [":profile", n] => 
+                    ((case Int.fromString n of 
+                          NONE => Eval.doProfile := NONE
+                        | SOME 0 => Eval.doProfile := NONE
+                        | SOME n => Eval.doProfile := SOME n);
+                     doLine())
+               
                   | [] => doLine ()
                   | _ => 
                     if (!doParse)
