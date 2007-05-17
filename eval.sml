@@ -8,11 +8,21 @@ type frame = { name: string,
                args: Mach.VAL list }
 val (stack:(frame list ref)) = ref []
             
-structure StrListKey = struct
-type ord_key = string list
-val compare = List.collate String.compare
-end
+structure StrListKey = struct type ord_key = string list val compare = List.collate String.compare end
 structure StrListMap = SplayMapFn (StrListKey);
+
+structure Real64Key = struct type ord_key = Real64.real val compare = Real64.compare end
+structure Real64Map = SplayMapFn (Real64Key);
+
+structure Word32Key = struct type ord_key = Word32.word val compare = Word32.compare end
+structure Word32Map = SplayMapFn (Word32Key);
+
+structure Int32Key = struct type ord_key = Int32.int val compare = Int32.compare end
+structure Int32Map = SplayMapFn (Int32Key);
+
+val (real64Cache:(Mach.VAL Real64Map.map) ref) = ref Real64Map.empty
+val (word32Cache:(Mach.VAL Word32Map.map) ref) = ref Word32Map.empty
+val (int32Cache:(Mach.VAL Int32Map.map) ref) = ref Int32Map.empty
 
 val (profileMap:(int StrListMap.map) ref) = ref StrListMap.empty
 val (doProfile:((int option) ref)) = ref NONE
@@ -185,6 +195,7 @@ val BooleanClassIdentity = ref (~1)
 
 val booleanTrue : (Mach.VAL option) ref = ref NONE
 val booleanFalse : (Mach.VAL option) ref = ref NONE
+val doubleNaN : (Mach.VAL option) ref = ref NONE
 
 (* Exceptions for object-language control transfer. *)
 exception ContinueException of (Ast.IDENT option)
@@ -899,7 +910,6 @@ and newArray (vals:Mach.VAL list)
         a
     end
 
-
 and newRegExp (pattern:Ustring.STRING) 
               (flags:Ustring.STRING)
     : Mach.VAL =
@@ -915,7 +925,33 @@ and newPublicNumber (n:Real64.real)
 
 and newDouble (n:Real64.real) 
     : Mach.VAL = 
-    newBuiltin Name.intrinsic_double (SOME (Mach.Double n))
+    let
+        val c = !real64Cache
+        fun build _ = newBuiltin Name.intrinsic_double (SOME (Mach.Double n))
+    in
+        if Real64.isNan n
+        then 
+            case !doubleNaN of 
+                NONE => 
+                let 
+                    val v = build ()
+                in
+                    doubleNaN := SOME v; 
+                    v
+                end 
+              | SOME v => v
+        else 
+            case Real64Map.find (c, n) of
+                NONE => 
+                let
+                    val v = build ()
+                in
+                    if (Real64Map.numItems c) < 256
+                    then (real64Cache := Real64Map.insert (c, n, v); v)
+                    else v
+                end
+              | SOME v => v
+    end
 
 and newDecimal (n:Decimal.DEC) 
     : Mach.VAL = 
@@ -923,11 +959,37 @@ and newDecimal (n:Decimal.DEC)
 
 and newInt (n:Int32.int) 
     : Mach.VAL = 
-    newBuiltin Name.intrinsic_int (SOME (Mach.Int n))
+    let
+        val c = !int32Cache
+    in
+        case Int32Map.find (c, n) of
+        NONE => 
+        let
+            val v = newBuiltin Name.intrinsic_int (SOME (Mach.Int n))
+        in
+            if (Int32Map.numItems c) < 256
+            then (int32Cache := Int32Map.insert (c, n, v); v)
+            else v
+        end
+      | SOME v => v
+    end
 
 and newUInt (n:Word32.word) 
     : Mach.VAL = 
-    newBuiltin Name.intrinsic_uint (SOME (Mach.UInt n))
+    let
+        val c = !word32Cache
+    in
+        case Word32Map.find (c, n) of
+        NONE => 
+        let
+            val v = newBuiltin Name.intrinsic_uint (SOME (Mach.UInt n))
+        in
+            if (Word32Map.numItems c) < 256
+            then (word32Cache := Word32Map.insert (c, n, v); v)
+            else v
+        end
+      | SOME v => v
+    end
 
 and newPublicString (s:Ustring.STRING) 
     : Mach.VAL = 
