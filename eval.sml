@@ -23,6 +23,7 @@ structure Int32Map = SplayMapFn (Int32Key);
 val (real64Cache:(Mach.VAL Real64Map.map) ref) = ref Real64Map.empty
 val (word32Cache:(Mach.VAL Word32Map.map) ref) = ref Word32Map.empty
 val (int32Cache:(Mach.VAL Int32Map.map) ref) = ref Int32Map.empty
+val cachesz = 256
 
 val (profileMap:(int StrListMap.map) ref) = ref StrListMap.empty
 val (doProfile:((int option) ref)) = ref NONE
@@ -946,7 +947,7 @@ and newDouble (n:Real64.real)
                 let
                     val v = build ()
                 in
-                    if (Real64Map.numItems c) < 256
+                    if (Real64Map.numItems c) < cachesz
                     then (real64Cache := Real64Map.insert (c, n, v); v)
                     else v
                 end
@@ -967,7 +968,7 @@ and newInt (n:Int32.int)
         let
             val v = newBuiltin Name.intrinsic_int (SOME (Mach.Int n))
         in
-            if (Int32Map.numItems c) < 256
+            if (Int32Map.numItems c) < cachesz
             then (int32Cache := Int32Map.insert (c, n, v); v)
             else v
         end
@@ -984,7 +985,7 @@ and newUInt (n:Word32.word)
         let
             val v = newBuiltin Name.intrinsic_uint (SOME (Mach.UInt n))
         in
-            if (Word32Map.numItems c) < 256
+            if (Word32Map.numItems c) < cachesz
             then (word32Cache := Word32Map.insert (c, n, v); v)
             else v
         end
