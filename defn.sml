@@ -2049,7 +2049,13 @@ and defTyExpr (env:ENV)
       | Ast.NullableType { expr, nullable } => 
         Ast.NullableType { expr = defTyExpr env expr,
                            nullable = nullable } 
-        
+
+      | Ast.ElementTypeRef (ty, n) => 
+        Ast.ElementTypeRef (defTyExpr env ty, n)
+
+      | Ast.FieldTypeRef (ty, ident) => 
+        Ast.FieldTypeRef (defTyExpr env ty, ident)
+
       (* FIXME *)
       | t => t
 

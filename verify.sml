@@ -323,12 +323,31 @@ fun verifyTypeExpr (env:ENV)
                 (* 
                  * FIXME: this is a bug: we should re-resolve in the environment the type definition was found in,
                  * not our own environment. Since type definitions are only about lexical scope though, we should
-                 * be in an extensioin of the defining environment, so unless there are shadowing relations we 
+                 * be in an extension of the defining environment, so unless there are shadowing relations we 
                  * should get a tolerable approximation of correct
                  * behavior here. Fix later. 
                  *)
                 verifyTypeExpr env resolved                
             end
+
+          | Ast.ElementTypeRef ((Ast.ArrayType fields), idx) => 
+            verifyTypeExpr env (List.nth (fields, idx))
+
+          | Ast.ElementTypeRef (t, _) => 
+            error ["ElementTypeRef on non-ArrayType: ", typeToString t]
+
+          | Ast.FieldTypeRef ((Ast.ObjectType fields), ident) => 
+            let
+                fun f [] = error ["FieldTypeRef on unknown field: ", Ustring.toAscii ident]
+                  | f ({name,ty}::fields) = if name = ident 
+                                            then verifyTypeExpr env ty
+                                            else f fields
+            in
+                f fields
+            end
+
+          | Ast.FieldTypeRef (t, _) => 
+            error ["FieldTypeRef on non-ObjectType: ", typeToString t]
 
           | _ => ty
                    (*
@@ -849,7 +868,9 @@ and verifyExpr (env:ENV)
 
           | Ast.ObjectRef { base, ident, loc } =>
             let
+                val _ = LogErr.setLoc loc
                 val (base', t) = verifySub base
+                val _ = LogErr.setLoc loc
                 val ident' = ident (* TODO *)
             in
                 return (Ast.ObjectRef { base=base', ident=ident', loc=loc }, dummyType)
@@ -857,7 +878,9 @@ and verifyExpr (env:ENV)
 
           | Ast.LexicalRef { ident, loc } =>
             let
+                val _ = LogErr.setLoc loc
                 val ident' = ident (* TODO *)
+                val _ = LogErr.setLoc loc
             in
                 return (Ast.LexicalRef { ident=ident', loc=loc }, dummyType)
             end
