@@ -26,7 +26,7 @@ package
 
         /* E262-4 draft: The uint Constructor Called as a Function */
         meta static function invoke(x)
-            x is uint ? x : new uint(x);
+            x is uint ? x : magic::newUInt(x);
 
         /* E262-4 draft: The uint constructor */
         function uint(x) : super(x)

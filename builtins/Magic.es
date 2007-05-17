@@ -79,6 +79,15 @@ package
     magic native function bindBoolean(target:Object!, value:*) : void;
     magic native function bindString(target:Object!, value:*) : void;
 
+    /* 
+     * Construction functions that access internal object caches in
+     * the runtime. This is not at all normative, it's just an
+     * important speed optimization.
+     */
+    magic native function newInt(value:*) : void;
+    magic native function newUInt(value:*) : void;
+    magic native function newDouble(value:*) : void;
+
 
     /* ----------------------------------------------------------------
 

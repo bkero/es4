@@ -34,7 +34,7 @@ package
 
         /* E262-3 15.7.1.1: The double Constructor Called as a Function */
         meta static function invoke(x)
-            x is double ? x : new double(x);
+            x is double ? x : magic::newDouble(x); 
 
         /* E262-3 15.7.2.1: The double constructor */
         function double(x) : super(x)

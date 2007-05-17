@@ -206,6 +206,11 @@ fun consumeTraceOption (opt:string) : bool =
         (case findTraceOption (String.implode rest) of 
              SOME r => (r := true; false)
            | NONE => true)
+      | (#"-" :: #"P" :: rest) => 
+        (case Int.fromString (String.implode rest) of 
+            NONE => false
+          | SOME 0 => false
+          | SOME n => (Eval.doProfile := SOME n; false))
       | _ => true
 
 fun main (argv0:string, argvRest:string list) =

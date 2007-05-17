@@ -344,6 +344,19 @@ fun bindString (vals:Mach.VAL list)
     convertAndBindMagic vals Eval.toUstring Mach.String
 
 
+fun newInt (vals:Mach.VAL list) 
+    : Mach.VAL = 
+    Eval.newInt (Eval.toInt32 (rawNth vals 0))
+
+fun newUInt (vals:Mach.VAL list) 
+    : Mach.VAL = 
+    Eval.newUInt (Eval.toUInt32 (rawNth vals 0))
+
+fun newDouble (vals:Mach.VAL list) 
+    : Mach.VAL = 
+    Eval.newDouble (Eval.toDouble (rawNth vals 0))
+
+
 (*
  * Given a function object, a this object, and an array of argument
  * values, call the function with the this object and arguments. 
@@ -883,6 +896,10 @@ fun registerNatives _ =
         addFn 2 Name.magic_bindDecimal bindDecimal;
         addFn 2 Name.magic_bindBoolean bindBoolean;
         addFn 2 Name.magic_bindString bindString;
+
+        addFn 1 Name.magic_newInt newInt;
+        addFn 1 Name.magic_newUInt newUInt;
+        addFn 1 Name.magic_newDouble newDouble;
 
         addFn 3 Name.magic_apply apply;
         addFn 1 Name.magic_fnLength fnLength;
