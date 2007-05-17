@@ -20,6 +20,14 @@ val BooleanClassIdentity = ref (~1)
 val booleanTrue : (Mach.VAL option) ref = ref NONE
 val booleanFalse : (Mach.VAL option) ref = ref NONE
 
+structure StrKey = struct
+type ord_key = string vector
+val compare = Vector.collate String.compare
+end
+structure StrMap = SplayMapFn (StrKey);
+
+val profileMap = StrMap.empty
+
 fun stackString _ =
     "[" ^ (LogErr.join " | " (map String.concat (List.rev (!stack)))) ^ "]"
 
