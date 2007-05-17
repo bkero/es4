@@ -37,10 +37,10 @@
  * ***** END LICENSE BLOCK ***** */
 
 
-namespace token 
+namespace Token = "Token"
 
 {
-    use default namespace token
+    use default namespace Token
 
     const FirstToken = 0
     const Eof = FirstToken -1
@@ -394,4 +394,4 @@ namespace token
 
 }
 
-token::test()
+Token::test()
