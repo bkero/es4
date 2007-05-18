@@ -419,7 +419,7 @@ namespace Token
         }
     }
 
-    var tokenStore : Array;
+    var tokenStore
 
         public function makeInstance(token_class:int, lexeme:String) : int
         {

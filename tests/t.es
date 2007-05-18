@@ -1,5 +1,10 @@
-class A {
-function A(x) { m(this,x) }
-function m(this:A,x) { print(this) }
+use namespace intrinsic
+namespace N
+class A
+{
+  N var x : int = 10
+  function m() {
+    return N::x
+  }
 }
-new A(10)
+print((new A).m())
