@@ -228,13 +228,13 @@ fun boot _ =
                                     "builtins/Array.es",  (* before Date *)
                                     
                                     "builtins/ByteArray.es",
-                                    "builtins/Date.es",
                                     
                                     "builtins/Unicode.es",
                                     "builtins/RegExpCompiler.es",
                                     "builtins/RegExpEvaluator.es",
                                     "builtins/RegExp.es",
                                     
+                                    "builtins/Date.es",
                                     "builtins/JSON.es",
                                     "builtins/Error.es",           
                                     "builtins/Shell.es"

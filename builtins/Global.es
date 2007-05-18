@@ -34,10 +34,7 @@ package
 
     // 15.1.2.4 isNaN (v)
     intrinsic function isNaN(v:*):boolean
-    {
-        let const n = intrinsic::ToDouble(v);
-        return !(n === n);
-    }
+        (!(v === v));
 
     // 15.1.2.5 isFinite (number)
     intrinsic function isFinite(v:*):boolean 

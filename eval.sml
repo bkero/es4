@@ -11,6 +11,12 @@ val (stack:(frame list ref)) = ref []
 structure StrListKey = struct type ord_key = string list val compare = List.collate String.compare end
 structure StrListMap = SplayMapFn (StrListKey);
 
+structure NsKey = struct type ord_key = Ast.NAMESPACE val compare = NameKey.cmpNS end
+structure NsMap = SplayMapFn (NsKey);
+
+structure StrKey = struct type ord_key = Ustring.STRING val compare = NameKey.cmp end
+structure StrMap = SplayMapFn (StrKey);
+
 structure Real64Key = struct type ord_key = Real64.real val compare = Real64.compare end
 structure Real64Map = SplayMapFn (Real64Key);
 
@@ -23,6 +29,8 @@ structure Int32Map = SplayMapFn (Int32Key);
 val (real64Cache:(Mach.VAL Real64Map.map) ref) = ref Real64Map.empty
 val (word32Cache:(Mach.VAL Word32Map.map) ref) = ref Word32Map.empty
 val (int32Cache:(Mach.VAL Int32Map.map) ref) = ref Int32Map.empty
+val (nsCache:(Mach.VAL NsMap.map) ref) = ref NsMap.empty
+val (strCache:(Mach.VAL StrMap.map) ref) = ref StrMap.empty
 val cachesz = 256
 
 val (profileMap:(int StrListMap.map) ref) = ref StrListMap.empty
@@ -1024,7 +1032,20 @@ and newPublicString (s:Ustring.STRING)
 
 and newString (s:Ustring.STRING) 
     : Mach.VAL = 
-    newBuiltin Name.intrinsic_string (SOME (Mach.String s))
+    let
+        val c = !strCache
+    in
+        case StrMap.find (c, s) of
+        NONE => 
+        let
+            val v = newBuiltin Name.intrinsic_string (SOME (Mach.String s))
+        in
+            if (StrMap.numItems c) < cachesz
+            then (strCache := StrMap.insert (c, s, v); v)
+            else v
+        end
+      | SOME v => v
+    end
 
 and newByteArray (b:Word8Array.array) 
     : Mach.VAL = 
@@ -1053,7 +1074,20 @@ and newBoolean (b:bool)
 
 and newNamespace (n:Ast.NAMESPACE) 
     : Mach.VAL =
-    newRootBuiltin Name.intrinsic_Namespace (Mach.Namespace n)
+    let
+        val c = !nsCache
+    in
+        case NsMap.find (c, n) of
+        NONE => 
+        let
+            val v = newRootBuiltin Name.intrinsic_Namespace (Mach.Namespace n)
+        in
+            if (NsMap.numItems c) < cachesz
+            then (nsCache := NsMap.insert (c, n, v); v)
+            else v
+        end
+      | SOME v => v
+    end
 
 and newClsClosure (env:Mach.SCOPE)
                   (cls:Ast.CLS)
@@ -3918,14 +3952,20 @@ and evalForInStmt (regs:Mach.REGS)
                 FIXME: maybe unify 'next' as a new kind of expr. This would
                 trade redundancy for clarity. Not sure it's worth it.
             *)
-
             val (nextTarget, nextHead, nextInits, nextExpr) =
                 case next of
-                    Ast.ExprStmt (Ast.InitExpr (target, head, inits)) =>
-                        (target, head, inits, [])
-                  | Ast.ExprStmt (Ast.LetExpr {defs, body, head = SOME (f, i)}) =>
-                        (Ast.Hoisted, (f, []), i, body::[])
-                  | _ => LogErr.internalError ["evalForInStmt: invalid structure"]
+                    Ast.ExprStmt e => 
+                    let
+                        val (ty, e) = getExpectedType e
+                    in
+                        case e of 
+                            Ast.InitExpr (target, head, inits) =>
+                            (target, head, inits, NONE)
+                          | Ast.LetExpr {defs, body, head = SOME (f, i)} =>
+                            (Ast.Hoisted, (f, []), i, SOME body)
+                          | _ => LogErr.internalError ["evalForInStmt: invalid expr structure"]
+                    end
+                  | _ => LogErr.internalError ["evalForInStmt: invalid stmt structure"]
 
             (*
                 A binding init on the lhs of 'in' will be included in nextHead
@@ -3949,7 +3989,7 @@ and evalForInStmt (regs:Mach.REGS)
                         let
                             val _ = Mach.defTemp temps 0 (valOf v)   (* def the iteration value *)
                             val _ = evalScopeInits tempRegs nextTarget nextInits
-                            val _ = map (evalExpr tempRegs) nextExpr
+                            val _ = Option.map (evalExpr tempRegs) nextExpr
                             val curr = (SOME (evalStmt forInRegs body)
                                         handle ContinueException exnLabel =>
                                                if labelMatch labels exnLabel
