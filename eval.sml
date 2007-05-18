@@ -675,7 +675,17 @@ and getValueOrVirtual (obj:Mach.OBJ)
 and getValue (obj:Mach.OBJ)
              (name:Ast.NAME)
     : Mach.VAL = 
-    getValueOrVirtual obj name true
+    let
+        val Mach.Obj { proto, ... } = obj
+        val v = getValueOrVirtual obj name true
+    in
+        case v of 
+            Mach.Undef => (case !proto of 
+                               Mach.Object ob => getValue ob name
+                             | _ => v)
+          | _ => v
+    end
+                                   
 
 and checkAndConvert (v:Mach.VAL)                    
                     (tyExpr:Ast.TYPE_EXPR)
@@ -1765,10 +1775,7 @@ and evalCallMethodByExpr (regs:Mach.REGS)
          * wrapper object. 
          *)
         val _ = trace [">>> evalCallMethodByExpr"]
-        val (baseOpt, r) = evalRefExprFull regs func true
-        val thisObj = case baseOpt of 
-                       NONE => (trace ["no base object found, using (#this regs)"]; (#this regs))
-                     | SOME base => (trace ["base object found: #", Int.toString (getObjId base) ]; base)
+        val (thisObj, r) = evalRefExprFull regs func true
         val result = evalCallMethodByRef thisObj r args
     in
         trace ["<<< evalCallMethodByExpr"];
@@ -2565,6 +2572,10 @@ and evalIdentExpr (regs:Mach.REGS)
       | _ => LogErr.unimplError ["unimplemented identifier expression form"]
 
 
+(* 
+ * ES-262-3 11.2.1: Resolving member expressions to REFs.
+ *)
+             
 and evalRefExpr (regs:Mach.REGS)
                 (expr:Ast.EXPR)
                 (errIfNotFound:bool)
@@ -2574,54 +2585,53 @@ and evalRefExpr (regs:Mach.REGS)
     in
         r
     end
-
+    
+    
 and evalRefExprFull (regs:Mach.REGS)
                     (expr:Ast.EXPR)
                     (errIfNotFound:bool)
-    : (Mach.OBJ option * REF) =
-    let 
-        val (base,ident) =
-            case expr of         
-                Ast.LexicalRef { ident, loc } => 
-                (LogErr.setLoc loc; 
-                 (NONE,ident))
+    : (Mach.OBJ * REF) =
+    case expr of         
+        Ast.LexicalRef { ident, loc } => 
+        let
+            val _ = LogErr.setLoc loc
+            val multiname = evalIdentExpr regs ident
+            val _ = LogErr.setLoc loc
+            val refOpt = resolveOnScopeChain (#scope regs) multiname
+            val _ = LogErr.setLoc loc
+            val r = case refOpt of 
+                        SOME r => r
+                      | NONE => if errIfNotFound
+                                then throwRefErr ["unresolved lexical reference ", LogErr.multiname multiname]
+                                else (getGlobalObject(), Name.public (#id multiname))
+        in
+            ((#this regs), r)
+        end
+        
+      | Ast.ObjectRef { base, ident, loc } => 
+        let
+            val _ = LogErr.setLoc loc
+            val v = evalExpr regs base
+            val _ = LogErr.setLoc loc
+            val multiname = evalIdentExpr regs ident
+            val _ = LogErr.setLoc loc
+            val ob = case v of 
+                         Mach.Object ob => ob
+                       | _ => getGlobalObject() 
+            val _ = LogErr.setLoc loc
+            val nameOpt = resolveName ob multiname 
+            val _ = LogErr.setLoc loc
+            val r = case nameOpt of 
+                        SOME n => (ob, n)
+                      | NONE => if errIfNotFound
+                                then throwRefErr ["unresolved object reference ", LogErr.multiname multiname]
+                                else (ob, Name.public (#id multiname))
+            val _ = LogErr.setLoc loc
+        in
+            (ob, r)
+        end
 
-              | Ast.ObjectRef { base, ident, loc } => 
-                (LogErr.setLoc loc; 
-                 (SOME (evalExpr regs base), ident))
-
-              | _ => error ["need lexical or object-reference expression"]
-                     
-        val defaultObj = case base of 
-                             SOME (Mach.Object ob) => ob
-                           | _ => getGlobalObject ()
-
-        val baseObj = case base of
-                          SOME (Mach.Object ob) => SOME ob
-                        | _ => NONE
-                                       
-        (* FIXME: ns might be user settable default *)
-        fun makeRefNotFound (b:Mach.VAL option) (mname:Ast.MULTINAME) 
-            : REF = (defaultObj, (Name.public (#id mname)))
-
-        val (multiname:Ast.MULTINAME) = evalIdentExpr regs ident
-
-        val refOpt = 
-            case base of 
-                SOME (Mach.Object ob) => 
-                resolveOnObjAndPrototypes ob multiname
-              | NONE => 
-                resolveOnScopeChain (#scope regs) multiname
-              | SOME Mach.Undef => error ["ref expression on undef value with ",fmtMultiname multiname]
-              | SOME Mach.Null => error ["ref expression on null value with ",fmtMultiname multiname]
-                                                                             
-    in
-        (baseObj, (case refOpt of 
-                       NONE => if errIfNotFound 
-                               then throwRefErr ["unresolved identifier expression ", LogErr.multiname multiname]
-                               else makeRefNotFound base multiname
-                     | SOME r' => r'))
-    end
+      | _ => error ["need lexical or object-reference expression"]
 
 (*
     EXPR = LetExpr
@@ -2635,6 +2645,7 @@ and evalLetExpr (regs:Mach.REGS)
     in
         evalExpr letRegs body
     end
+
 
 and resolveOnScopeChain (scope:Mach.SCOPE) 
                         (mname:Ast.MULTINAME) 
@@ -2664,8 +2675,8 @@ and resolveOnScopeChain (scope:Mach.SCOPE)
              *)
             let
                 fun tryProtoChain (Mach.Scope {object, parent, ...}) = 
-                    case resolveOnObjAndPrototypes object mname of
-                        SOME result => SOME result
+                    case resolveName object mname of
+                        SOME name => SOME (object, name)
                       | NONE => case parent of 
                                     NONE => NONE
                                   | SOME p => tryProtoChain p
@@ -2675,9 +2686,9 @@ and resolveOnScopeChain (scope:Mach.SCOPE)
     end
 
 
-and resolveOnObjAndPrototypes (obj:Mach.OBJ) 
-                              (mname:Ast.MULTINAME) 
-    : REF option = 
+and resolveName (obj:Mach.OBJ) 
+                (mname:Ast.MULTINAME) 
+    : Ast.NAME option = 
     let 
         fun matchFixedBinding (Mach.Obj {props, ...}) n nss
             = Mach.matchProps true props n nss
@@ -2687,11 +2698,14 @@ and resolveOnObjAndPrototypes (obj:Mach.OBJ)
             case (!proto) of 
                 Mach.Object ob => SOME ob
               | _ => NONE
+        val fixedRefOpt:(REF option) = Multiname.resolve mname obj matchFixedBinding getObjProto
+        val finalRefOpt:(REF option) = case fixedRefOpt of                                            
+                                           NONE => Multiname.resolve mname obj matchBinding getObjProto
+                                         | ro => ro                                         
     in
-        trace ["resolveOnObjAndPrototypes: ", fmtMultiname mname];
-        case Multiname.resolve mname obj matchFixedBinding getObjProto of
-            NONE => Multiname.resolve mname obj matchBinding getObjProto
-          | refOpt => refOpt
+        case finalRefOpt of
+            NONE => NONE
+          | SOME (_, name) => SOME name
     end
 
      
