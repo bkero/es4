@@ -151,8 +151,8 @@ val gensymCounter : int ref = ref 0
 fun gensym (s:Ustring.STRING) : Ustring.STRING = 
     let
     in 
-	gensymCounter := 1+(!gensymCounter);
-	Ustring.append [s, Ustring.dollar, Ustring.fromInt (!gensymCounter)]
+	    gensymCounter := 1+(!gensymCounter);
+	    Ustring.append [s, Ustring.dollar, Ustring.fromInt (!gensymCounter)]
     end
 
 (************************* Normalized types *********************************)
@@ -969,8 +969,23 @@ and verifyStmt (env:ENV)
                 Ast.ExprStmt expr
             end
 
-          | Ast.ForInStmt fe => (*TODO*)
-            Ast.ForInStmt fe
+          | Ast.ForInStmt {isEach, defn, obj, fixtures, next, labels, body} => 
+            let
+                val (obj, _) = verifyExpr env obj
+                val fixtures = valOf fixtures
+                val fixtures = verifyFixtures env fixtures
+                val env = withRib env fixtures
+                val next = verifyStmt env next
+                val body = verifyStmt env body
+            in
+                Ast.ForInStmt { isEach = isEach,
+                                defn = defn,
+                                obj = obj,
+                                fixtures = SOME fixtures,
+                                next = next,
+                                labels = labels,
+                                body = body }
+            end
             
           | Ast.ThrowStmt es =>
             let val (es',_) = verifyExpr env es

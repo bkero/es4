@@ -24,7 +24,7 @@ package
     final dynamic class Date
     {       
         /* E262-3 15.9.2: The Date Constructor Called as a Function */
-        static intrinsic function date(...args)   // args are ignored.
+        static meta function invoke(...args)   // args are ignored.
             (new Date()).public::toString();
 
         /* E262-3 15.9.3: The Date Constructor. 
@@ -215,9 +215,8 @@ package
 
         /* Format of string produced by Date.toString, recognized by Date.parse */
         /* e.g., "Fri, 15 Dec 2006 23:45:09 GMT-0800" */
-        const adhocTimestamp 
-            /*
-        const adhocTimestamp : RegExp! = 
+
+        static const adhocTimestamp : RegExp! = 
             /(?: Mon|Tue|Wed|Thu|Fri|Sat|Sun )\s+
              (?P<day> [0-9]+ )\s+
              (?P<month> Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec )\s+
@@ -227,12 +226,11 @@ package
              (?P<second> [0-9]{2} )\s+
              GMT
             (?P<tz> (?: \\+ | - ) [0-9]{4} )?/x;
-            */
+
         /* Format of string produced by Date.toISOString, recognized by Date.parse */
         /* e.g, "2006-12-15T23:45:09.33-08:00" */
-        const isoTimestamp
-            /*
-        const isoTimestamp : RegExp! =
+
+        static const isoTimestamp : RegExp! =
             /^
             # Date, optional
             (?: (?P<year> - [0-9]+ | [0-9]{4} [0-9]* )
@@ -251,7 +249,7 @@ package
                 (?P<tzhr> [0-9]{2} )
                 (?: : (?P<tzmin> [0-9]{2} ) )? ) )?
             $/x;
-            */
+
         /* E262-4 proposals:date_and_time - "ISO Date strings" */
         prototype function toISOString(this:Date)
             this.toISOString();

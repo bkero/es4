@@ -26,11 +26,13 @@ fun decomposeNS ns =
 
 fun cmp (a,b) = Ustring.compare a b
 
+fun cmpNS (a,b) = List.collate cmp ((decomposeNS a), (decomposeNS b))
+
 fun compare (a:ord_key, b:ord_key) 
     : order =
     case Ustring.compare (#id a) (#id b) of
 	LESS => LESS
       | GREATER => GREATER
-      | EQUAL => 
-	List.collate cmp ((decomposeNS (#ns a)), (decomposeNS (#ns b)))
+      | EQUAL => cmpNS ((#ns a), (#ns b))
+		 
 end

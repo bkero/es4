@@ -490,30 +490,33 @@ fun setByteArrayByte (vals:Mach.VAL list)
 
 fun eval (vals:Mach.VAL list) 
     : Mach.VAL =
-    let
-        val x = rawNth vals 0
-    in
-        if not (Mach.isString x)
-        then x
-        else 
-            let
-                val s = nthAsUstr vals 0
-                val lines = [Ustring.sourceFromUstring s] (* FIXME: split lines *)
-                (* 
-                 * FIXME: catch parse errors and throw a user SyntaxError
-                 * exception here once natives grow the ability to throw 
-                 * user exceptions. 
-                 *)                            
-                val prog = Parser.parseLines lines
-            in
-                (* 
-                 * FIXME: maybe don't want to permit the full set of 
-                 * program constructs (classes?) so possibly sanitize the
-                 * result of parsing a bit, strip out some sorts of things...
-                 *)
-                Eval.evalProgram (Verify.verifyProgram (Defn.defProgram prog))
-            end
-    end
+    if length vals = 0 
+    then Mach.Undef 
+    else 
+        let
+            val x = rawNth vals 0
+        in
+            if not (Mach.isString x)
+            then x
+            else 
+                let
+                    val s = nthAsUstr vals 0
+                    val lines = [Ustring.sourceFromUstring s] (* FIXME: split lines *)
+                    (* 
+                     * FIXME: catch parse errors and throw a user SyntaxError
+                     * exception here once natives grow the ability to throw 
+                     * user exceptions. 
+                     *)                            
+                    val prog = Parser.parseLines lines
+                in
+                    (* 
+                     * FIXME: maybe don't want to permit the full set of 
+                     * program constructs (classes?) so possibly sanitize the
+                     * result of parsing a bit, strip out some sorts of things...
+                     *)
+                    Eval.evalProgram (Verify.verifyProgram (Defn.defProgram prog))
+                end
+        end
     
 (* 
  * 15.1.2.2
@@ -654,12 +657,16 @@ fun random (v:Mach.VAL list)
 
 fun unaryDoubleFn (f:(Real64.real -> Real64.real)) : 
     ((Mach.VAL list) -> Mach.VAL) =
- fn vals => Eval.newDouble (f (Eval.toDouble (rawNth vals 0)))
+ fn vals => if length vals = 0 
+            then Eval.newDouble (0.0/0.0)
+            else Eval.newDouble (f (Eval.toDouble (rawNth vals 0)))
          
 fun binaryDoubleFn (f:((Real64.real * Real64.real) -> Real64.real)) : 
     ((Mach.VAL list) -> Mach.VAL) =
- fn vals => Eval.newDouble (f ((Eval.toDouble (rawNth vals 0)),
-                               (Eval.toDouble (rawNth vals 1))))
+ fn vals => if length vals = 0 orelse length vals = 1 
+            then Eval.newDouble (0.0/0.0)
+            else Eval.newDouble (f ((Eval.toDouble (rawNth vals 0)),
+                                    (Eval.toDouble (rawNth vals 1))))
 
 val abs = unaryDoubleFn Real64.abs 
 val ceil = unaryDoubleFn Real64.realCeil

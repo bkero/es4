@@ -521,7 +521,7 @@ package RegExpInternals
                 if (!isIdentifierStart(c))
                     fail( SyntaxError, "Expected identifier" );
                 let name = c;
-                while (idx < source.length && isIdentPart(source[idx]))
+                while (idx < source.length && isIdentifierPart(source[idx]))
                     name += source[idx++];
                 skip();
                 return name;

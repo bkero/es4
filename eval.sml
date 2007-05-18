@@ -11,6 +11,12 @@ val (stack:(frame list ref)) = ref []
 structure StrListKey = struct type ord_key = string list val compare = List.collate String.compare end
 structure StrListMap = SplayMapFn (StrListKey);
 
+structure NsKey = struct type ord_key = Ast.NAMESPACE val compare = NameKey.cmpNS end
+structure NsMap = SplayMapFn (NsKey);
+
+structure StrKey = struct type ord_key = Ustring.STRING val compare = NameKey.cmp end
+structure StrMap = SplayMapFn (StrKey);
+
 structure Real64Key = struct type ord_key = Real64.real val compare = Real64.compare end
 structure Real64Map = SplayMapFn (Real64Key);
 
@@ -23,6 +29,8 @@ structure Int32Map = SplayMapFn (Int32Key);
 val (real64Cache:(Mach.VAL Real64Map.map) ref) = ref Real64Map.empty
 val (word32Cache:(Mach.VAL Word32Map.map) ref) = ref Word32Map.empty
 val (int32Cache:(Mach.VAL Int32Map.map) ref) = ref Int32Map.empty
+val (nsCache:(Mach.VAL NsMap.map) ref) = ref NsMap.empty
+val (strCache:(Mach.VAL StrMap.map) ref) = ref StrMap.empty
 val cachesz = 256
 
 val (profileMap:(int StrListMap.map) ref) = ref StrListMap.empty
@@ -675,7 +683,17 @@ and getValueOrVirtual (obj:Mach.OBJ)
 and getValue (obj:Mach.OBJ)
              (name:Ast.NAME)
     : Mach.VAL = 
-    getValueOrVirtual obj name true
+    let
+        val Mach.Obj { proto, ... } = obj
+        val v = getValueOrVirtual obj name true
+    in
+        case v of 
+            Mach.Undef => (case !proto of 
+                               Mach.Object ob => getValue ob name
+                             | _ => v)
+          | _ => v
+    end
+                                   
 
 and checkAndConvert (v:Mach.VAL)                    
                     (tyExpr:Ast.TYPE_EXPR)
@@ -865,6 +883,22 @@ and instantiateGlobalClass (n:Ast.NAME)
                           " did not resolve to object"]
       end
 
+and throwExn (name:Ast.NAME) (args:string list) 
+    : Mach.VAL = 
+    raise ThrowException (instantiateGlobalClass name [(newString o Ustring.fromString o String.concat) args])
+
+and throwExn0 (name:Ast.NAME) (args:string list) 
+    : REF = 
+    raise ThrowException (instantiateGlobalClass name [(newString o Ustring.fromString o String.concat) args])
+
+and throwTypeErr (args:string list)
+    : Mach.VAL = 
+    throwExn Name.public_TypeError args
+
+and throwRefErr (args:string list)
+    : REF = 
+    throwExn0 Name.public_ReferenceError args
+
 and newObject _ = 
     instantiateGlobalClass Name.public_Object []
 
@@ -998,7 +1032,20 @@ and newPublicString (s:Ustring.STRING)
 
 and newString (s:Ustring.STRING) 
     : Mach.VAL = 
-    newBuiltin Name.intrinsic_string (SOME (Mach.String s))
+    let
+        val c = !strCache
+    in
+        case StrMap.find (c, s) of
+        NONE => 
+        let
+            val v = newBuiltin Name.intrinsic_string (SOME (Mach.String s))
+        in
+            if (StrMap.numItems c) < cachesz
+            then (strCache := StrMap.insert (c, s, v); v)
+            else v
+        end
+      | SOME v => v
+    end
 
 and newByteArray (b:Word8Array.array) 
     : Mach.VAL = 
@@ -1027,7 +1074,20 @@ and newBoolean (b:bool)
 
 and newNamespace (n:Ast.NAMESPACE) 
     : Mach.VAL =
-    newRootBuiltin Name.intrinsic_Namespace (Mach.Namespace n)
+    let
+        val c = !nsCache
+    in
+        case NsMap.find (c, n) of
+        NONE => 
+        let
+            val v = newRootBuiltin Name.intrinsic_Namespace (Mach.Namespace n)
+        in
+            if (NsMap.numItems c) < cachesz
+            then (nsCache := NsMap.insert (c, n, v); v)
+            else v
+        end
+      | SOME v => v
+    end
 
 and newClsClosure (env:Mach.SCOPE)
                   (cls:Ast.CLS)
@@ -1749,10 +1809,7 @@ and evalCallMethodByExpr (regs:Mach.REGS)
          * wrapper object. 
          *)
         val _ = trace [">>> evalCallMethodByExpr"]
-        val (baseOpt, r) = evalRefExprFull regs func true
-        val thisObj = case baseOpt of 
-                       NONE => (trace ["no base object found, using (#this regs)"]; (#this regs))
-                     | SOME base => (trace ["base object found: #", Int.toString (getObjId base) ]; base)
+        val (thisObj, r) = evalRefExprFull regs func true
         val result = evalCallMethodByRef thisObj r args
     in
         trace ["<<< evalCallMethodByExpr"];
@@ -2464,7 +2521,7 @@ and evalBinaryOp (regs:Mach.REGS)
             case b of 
                 Mach.Object (ob) =>
                 newBoolean true (* FIXME: (hasInstance ob b) *)
-              | _ => raise ThrowException (newByGlobalName regs Name.public_TypeError)
+              | _ => throwTypeErr ["operator 'instanceof' applied to non-object"]
         end
 
       | Ast.In =>
@@ -2477,7 +2534,7 @@ and evalBinaryOp (regs:Mach.REGS)
             case b of 
                 Mach.Object obj =>
                 newBoolean (hasValue obj aname)
-              | _ => raise ThrowException (newByGlobalName regs Name.public_TypeError)
+              | _ => throwTypeErr ["operator 'in' applied to non-object"]
                      
         end
         
@@ -2549,6 +2606,10 @@ and evalIdentExpr (regs:Mach.REGS)
       | _ => LogErr.unimplError ["unimplemented identifier expression form"]
 
 
+(* 
+ * ES-262-3 11.2.1: Resolving member expressions to REFs.
+ *)
+             
 and evalRefExpr (regs:Mach.REGS)
                 (expr:Ast.EXPR)
                 (errIfNotFound:bool)
@@ -2558,56 +2619,53 @@ and evalRefExpr (regs:Mach.REGS)
     in
         r
     end
-
+    
+    
 and evalRefExprFull (regs:Mach.REGS)
                     (expr:Ast.EXPR)
                     (errIfNotFound:bool)
-    : (Mach.OBJ option * REF) =
-    let 
-        val (base,ident) =
-            case expr of         
-                Ast.LexicalRef { ident, loc } => 
-                (LogErr.setLoc loc; 
-                 (NONE,ident))
+    : (Mach.OBJ * REF) =
+    case expr of         
+        Ast.LexicalRef { ident, loc } => 
+        let
+            val _ = LogErr.setLoc loc
+            val multiname = evalIdentExpr regs ident
+            val _ = LogErr.setLoc loc
+            val refOpt = resolveOnScopeChain (#scope regs) multiname
+            val _ = LogErr.setLoc loc
+            val r = case refOpt of 
+                        SOME r => r
+                      | NONE => if errIfNotFound
+                                then throwRefErr ["unresolved lexical reference ", LogErr.multiname multiname]
+                                else (getGlobalObject(), Name.public (#id multiname))
+        in
+            ((#this regs), r)
+        end
+        
+      | Ast.ObjectRef { base, ident, loc } => 
+        let
+            val _ = LogErr.setLoc loc
+            val v = evalExpr regs base
+            val _ = LogErr.setLoc loc
+            val multiname = evalIdentExpr regs ident
+            val _ = LogErr.setLoc loc
+            val ob = case v of 
+                         Mach.Object ob => ob
+                       | _ => getGlobalObject() 
+            val _ = LogErr.setLoc loc
+            val nameOpt = resolveName ob multiname 
+            val _ = LogErr.setLoc loc
+            val r = case nameOpt of 
+                        SOME n => (ob, n)
+                      | NONE => if errIfNotFound
+                                then throwRefErr ["unresolved object reference ", LogErr.multiname multiname]
+                                else (ob, Name.public (#id multiname))
+            val _ = LogErr.setLoc loc
+        in
+            (ob, r)
+        end
 
-              | Ast.ObjectRef { base, ident, loc } => 
-                (LogErr.setLoc loc; 
-                 (SOME (evalExpr regs base), ident))
-
-              | _ => error ["need lexical or object-reference expression"]
-                     
-        val defaultObj = case base of 
-                             SOME (Mach.Object ob) => ob
-                           | _ => getGlobalObject ()
-
-        val baseObj = case base of
-                          SOME (Mach.Object ob) => SOME ob
-                        | _ => NONE
-                                       
-        (* FIXME: ns might be user settable default *)
-        fun makeRefNotFound (b:Mach.VAL option) (mname:Ast.MULTINAME) 
-            : REF = (defaultObj, (Name.public (#id mname)))
-
-        val (multiname:Ast.MULTINAME) = evalIdentExpr regs ident
-
-        val refOpt = 
-            case base of 
-                SOME (Mach.Object ob) => 
-                resolveOnObjAndPrototypes ob multiname
-              | NONE => 
-                resolveOnScopeChain (#scope regs) multiname
-              | SOME Mach.Undef => error ["ref expression on undef value with ",fmtMultiname multiname]
-              | SOME Mach.Null => error ["ref expression on null value with ",fmtMultiname multiname]
-                                                                             
-    in
-        (baseObj, (case refOpt of 
-                       NONE => if errIfNotFound 
-                               then ( (* Pretty.ppExpr expr ; *)
-                                      error ["unresolved identifier expression",
-                                             LogErr.multiname multiname] )
-                               else makeRefNotFound base multiname
-                     | SOME r' => r'))
-    end
+      | _ => error ["need lexical or object-reference expression"]
 
 (*
     EXPR = LetExpr
@@ -2621,6 +2679,7 @@ and evalLetExpr (regs:Mach.REGS)
     in
         evalExpr letRegs body
     end
+
 
 and resolveOnScopeChain (scope:Mach.SCOPE) 
                         (mname:Ast.MULTINAME) 
@@ -2650,8 +2709,8 @@ and resolveOnScopeChain (scope:Mach.SCOPE)
              *)
             let
                 fun tryProtoChain (Mach.Scope {object, parent, ...}) = 
-                    case resolveOnObjAndPrototypes object mname of
-                        SOME result => SOME result
+                    case resolveName object mname of
+                        SOME name => SOME (object, name)
                       | NONE => case parent of 
                                     NONE => NONE
                                   | SOME p => tryProtoChain p
@@ -2661,9 +2720,9 @@ and resolveOnScopeChain (scope:Mach.SCOPE)
     end
 
 
-and resolveOnObjAndPrototypes (obj:Mach.OBJ) 
-                              (mname:Ast.MULTINAME) 
-    : REF option = 
+and resolveName (obj:Mach.OBJ) 
+                (mname:Ast.MULTINAME) 
+    : Ast.NAME option = 
     let 
         fun matchFixedBinding (Mach.Obj {props, ...}) n nss
             = Mach.matchProps true props n nss
@@ -2673,11 +2732,14 @@ and resolveOnObjAndPrototypes (obj:Mach.OBJ)
             case (!proto) of 
                 Mach.Object ob => SOME ob
               | _ => NONE
+        val fixedRefOpt:(REF option) = Multiname.resolve mname obj matchFixedBinding getObjProto
+        val finalRefOpt:(REF option) = case fixedRefOpt of                                            
+                                           NONE => Multiname.resolve mname obj matchBinding getObjProto
+                                         | ro => ro                                         
     in
-        trace ["resolveOnObjAndPrototypes: ", fmtMultiname mname];
-        case Multiname.resolve mname obj matchFixedBinding getObjProto of
-            NONE => Multiname.resolve mname obj matchBinding getObjProto
-          | refOpt => refOpt
+        case finalRefOpt of
+            NONE => NONE
+          | SOME (_, name) => SOME name
     end
 
      
@@ -3483,17 +3545,6 @@ and constructClassInstance (classObj:Mach.OBJ)
             end
     end
 
-and newByGlobalName (regs:Mach.REGS) 
-                    (n:Ast.NAME) 
-    : Mach.VAL = 
-    let
-        val (cls:Mach.VAL) = getValue (getGlobalObject ()) n
-    in
-        case cls of 
-            Mach.Object ob => evalNewExpr ob []
-          | _ => error ["trying to 'new' non-object global value"]
-    end
-
 
 (* 
  * ES-262-3 8.6.2.1 [[Get]](P)
@@ -3901,14 +3952,20 @@ and evalForInStmt (regs:Mach.REGS)
                 FIXME: maybe unify 'next' as a new kind of expr. This would
                 trade redundancy for clarity. Not sure it's worth it.
             *)
-
             val (nextTarget, nextHead, nextInits, nextExpr) =
                 case next of
-                    Ast.ExprStmt (Ast.InitExpr (target, head, inits)) =>
-                        (target, head, inits, [])
-                  | Ast.ExprStmt (Ast.LetExpr {defs, body, head = SOME (f, i)}) =>
-                        (Ast.Hoisted, (f, []), i, body::[])
-                  | _ => LogErr.internalError ["evalForInStmt: invalid structure"]
+                    Ast.ExprStmt e => 
+                    let
+                        val (ty, e) = getExpectedType e
+                    in
+                        case e of 
+                            Ast.InitExpr (target, head, inits) =>
+                            (target, head, inits, NONE)
+                          | Ast.LetExpr {defs, body, head = SOME (f, i)} =>
+                            (Ast.Hoisted, (f, []), i, SOME body)
+                          | _ => LogErr.internalError ["evalForInStmt: invalid expr structure"]
+                    end
+                  | _ => LogErr.internalError ["evalForInStmt: invalid stmt structure"]
 
             (*
                 A binding init on the lhs of 'in' will be included in nextHead
@@ -3932,7 +3989,7 @@ and evalForInStmt (regs:Mach.REGS)
                         let
                             val _ = Mach.defTemp temps 0 (valOf v)   (* def the iteration value *)
                             val _ = evalScopeInits tempRegs nextTarget nextInits
-                            val _ = map (evalExpr tempRegs) nextExpr
+                            val _ = Option.map (evalExpr tempRegs) nextExpr
                             val curr = (SOME (evalStmt forInRegs body)
                                         handle ContinueException exnLabel =>
                                                if labelMatch labels exnLabel
@@ -4051,8 +4108,13 @@ and evalProgram (prog:Ast.PROGRAM)
                     map (evalPackage regs) (#packages prog);
                     evalBlock regs (#block prog))
                    handle ThrowException v => 
-                          (log ["*** Unhandled Exception ***"];
-                           error ["ThrowException(", Ustring.toAscii (toUstring v), ")"]))
+                          let
+                              val loc = !LogErr.loc
+                              val exnStr = Ustring.toAscii (toUstring v)
+                          in
+                              LogErr.setLoc loc;
+                              error ["uncaught exception: ", Ustring.toAscii (toUstring v)]
+                          end)
     in
         case !doProfile of 
             NONE => res

@@ -20,12 +20,19 @@
 package
 {
     use namespace intrinsic;
+    use default namespace public;
 
     /* E262-3 15.11 */
     public dynamic class Error 
     {
         static intrinsic function call(... args)
             Error.construct.apply(null, args);
+
+        function Error(msg)
+        {
+            if (msg !== undefined)
+                this.message = ToString(msg);
+        }
 
         /* E262-3 15.11.4.2: "name" property on prototype */
         prototype var name = "Error";
@@ -39,13 +46,19 @@ package
             this.toString();
 
         /* INFORMATIVE */
-        override intrinsic function toString()
-            this.name + ": " + this.message;   /* "this" qualification in case they've been deleted */
+        override intrinsic function toString() {
+            if (this.message)        
+                return this.name + ": " + this.message;   /* "this" qualification in case they've been deleted */
+            else
+                return this.name;
+        }
     }
 
     /* E262-3 15.11.6.1; 15.11.7 */
     public dynamic class EvalError extends Error
     {
+        function EvalError(msg) : super(msg) {}
+
         /* E262-3 15.11.7.9: "name" property on NativeError prototype */
         prototype var name = "EvalError";
 
@@ -57,6 +70,8 @@ package
     /* E262-3 15.11.6.2; 15.11.7 */
     public dynamic class RangeError extends Error
     {
+        function RangeError(msg) : super(msg) {}
+
         /* E262-3 15.11.7.9: "name" property on NativeError prototype */
         prototype var name = "RangeError";
 
@@ -68,6 +83,8 @@ package
     /* E262-3 15.11.6.3; 15.11.7 */
     public dynamic class ReferenceError extends Error
     {
+        function ReferenceError(msg) : super(msg) {}
+
         /* E262-3 15.11.7.9: "name" property on NativeError prototype */
         prototype var name = "ReferenceError";
 
@@ -79,6 +96,8 @@ package
     /* E262-3 15.11.6.4; 15.11.7 */
     public dynamic class SyntaxError extends Error
     {
+        function SyntaxError(msg) : super(msg) {}
+
         /* E262-3 15.11.7.9: "name" property on NativeError prototype */
         prototype var name = "SyntaxError";
 
@@ -90,6 +109,8 @@ package
     /* E262-3 15.11.6.5; 15.11.7 */
     public dynamic class TypeError extends Error
     {
+        function TypeError(msg) : super(msg) {}
+
         /* E262-3 15.11.7.9: "name" property on NativeError prototype */
         prototype var name = "TypeError";
 
@@ -101,6 +122,8 @@ package
     /* E262-3 15.11.6.6; 15.11.7 */
     public dynamic class URIError extends Error
     {
+        function URIError(msg) : super(msg) {}
+
         /* E262-3 15.11.7.9: "name" property on NativeError prototype */
         prototype var name = "URIError";
 
