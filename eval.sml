@@ -865,6 +865,22 @@ and instantiateGlobalClass (n:Ast.NAME)
                           " did not resolve to object"]
       end
 
+and throwExn (name:Ast.NAME) (args:string list) 
+    : Mach.VAL = 
+    raise ThrowException (instantiateGlobalClass name [(newString o Ustring.fromString o String.concat) args])
+
+and throwExn0 (name:Ast.NAME) (args:string list) 
+    : REF = 
+    raise ThrowException (instantiateGlobalClass name [(newString o Ustring.fromString o String.concat) args])
+
+and throwTypeErr (args:string list)
+    : Mach.VAL = 
+    throwExn Name.public_TypeError args
+
+and throwRefErr (args:string list)
+    : REF = 
+    throwExn0 Name.public_ReferenceError args
+
 and newObject _ = 
     instantiateGlobalClass Name.public_Object []
 
@@ -2464,7 +2480,7 @@ and evalBinaryOp (regs:Mach.REGS)
             case b of 
                 Mach.Object (ob) =>
                 newBoolean true (* FIXME: (hasInstance ob b) *)
-              | _ => raise ThrowException (newByGlobalName regs Name.public_TypeError)
+              | _ => throwTypeErr ["operator 'instanceof' applied to non-object"]
         end
 
       | Ast.In =>
@@ -2477,7 +2493,7 @@ and evalBinaryOp (regs:Mach.REGS)
             case b of 
                 Mach.Object obj =>
                 newBoolean (hasValue obj aname)
-              | _ => raise ThrowException (newByGlobalName regs Name.public_TypeError)
+              | _ => throwTypeErr ["operator 'in' applied to non-object"]
                      
         end
         
@@ -2602,9 +2618,7 @@ and evalRefExprFull (regs:Mach.REGS)
     in
         (baseObj, (case refOpt of 
                        NONE => if errIfNotFound 
-                               then ( (* Pretty.ppExpr expr ; *)
-                                      error ["unresolved identifier expression",
-                                             LogErr.multiname multiname] )
+                               then throwRefErr ["unresolved identifier expression ", LogErr.multiname multiname]
                                else makeRefNotFound base multiname
                      | SOME r' => r'))
     end
@@ -3483,17 +3497,6 @@ and constructClassInstance (classObj:Mach.OBJ)
             end
     end
 
-and newByGlobalName (regs:Mach.REGS) 
-                    (n:Ast.NAME) 
-    : Mach.VAL = 
-    let
-        val (cls:Mach.VAL) = getValue (getGlobalObject ()) n
-    in
-        case cls of 
-            Mach.Object ob => evalNewExpr ob []
-          | _ => error ["trying to 'new' non-object global value"]
-    end
-
 
 (* 
  * ES-262-3 8.6.2.1 [[Get]](P)
@@ -4051,8 +4054,13 @@ and evalProgram (prog:Ast.PROGRAM)
                     map (evalPackage regs) (#packages prog);
                     evalBlock regs (#block prog))
                    handle ThrowException v => 
-                          (log ["*** Unhandled Exception ***"];
-                           error ["ThrowException(", Ustring.toAscii (toUstring v), ")"]))
+                          let
+                              val loc = !LogErr.loc
+                              val exnStr = Ustring.toAscii (toUstring v)
+                          in
+                              LogErr.setLoc loc;
+                              error ["uncaught exception: ", Ustring.toAscii (toUstring v)]
+                          end)
     in
         case !doProfile of 
             NONE => res
