@@ -4,13 +4,77 @@ JEFF'S NOTES ON THE REFERENCE IMPLEMENTATION
 
 TO DO
 
-- nested public
 - interface definitions
 
 ISSUES
 
 - implementation of import aliases using fixtures
 - nil qualified names (e.g. local vars), do they exist?
+
+###
+
+MAY-18-2007
+
+NAMES
+
+Names get resolved at various stages of compilation, the definition, 
+verification or evaluation phase. The lexical scope of a name is the
+region of program text in which that name is visible without reference
+to the object it lives in. The lifetime of a names is the period in
+which the name exists and can be reference by any means.
+
+HOISTING
+
+Hoisting is a peculilar feature of ES by which a name might reside in 
+a scope represented by a block outside of the block it is defined in.
+Except names defined by 'let' definitions, are hoisted to the nearest
+enclosing global, class, or function scope. Inside of a class, static
+definitions are hoisted to the class scope, and instance definitions
+are hoisted to the instance scope.
+
+DOMINATION
+
+A name dominates a point in a program if, before hoisting, there is
+no path to that point in the program that does not pass through
+that definition. The principle of domination is used to constrain
+the location of definitions.
+
+  * class and inteface definitions shall dominate the end of the program
+  * configuration names shall dominate the end of the program
+  * namespace definitions shall dominate the end of the region
+  * class and instance definitions shall dominate the end of the class
+  * function definitions shall dominate the end of the region
+  * type and let definitions shall dominate the end of the block
+
+There are no domination constraints on var and const definitions.
+
+DEFINITION PHASE
+
+Names that get resolved during the definition phase are in scope from the 
+point of definition to the end of the scope they reside in. Because of 
+hoisting, the scope a name resides in may be a lexical block outside it
+point of definition. 
+
+References that are resolved during the definition phase are:
+
+  * extends and implements clauses
+  * namespace attributes
+  * type definitions
+  * namespace definitions
+  * pragmas
+  * configuration attributes (proposed)
+
+VERIFICATION AND EVALUATION
+
+Names that are resolved during the verification and evaluation phases 
+are in scope from the beginning of the block they reside in.
+
+References that get resolved during verification are:
+
+  * type annotations
+  * type expressions not in type definitions
+
+All other references are resolved during evaluation.
 
 ###
 
@@ -45,7 +109,6 @@ together with the following exceptions
   execution of the current program. In other words, the global
   object is shadowed by the global fixed properties
 
-SEPARATE GLOBAL OBJECTS
 
 Programs compiled together or separately may share the dyanamic properties
 of a global object, or not. Separately compiled programs in AS3 do not.
