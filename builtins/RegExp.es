@@ -21,7 +21,7 @@ package
     public dynamic class RegExp
     {
         /* E262-3 15.10.3.1: The RegExp constructor called as a function */
-        static intrinsic function invoke( pattern, flags ) {
+        meta static function invoke( pattern, flags ) {
             if (pattern is RegExp && flags === undefined)
                 return pattern;
             else
@@ -71,10 +71,7 @@ package
            callable, and a call to an instance is equivalent to
            calling its exec() method.
         */
-        public function invoke(s) : Array
-            this.exec(s);
-
-        intrinsic function invoke(s : string) : Array
+        meta function invoke(s : string) : Array
             exec(s);
 
         /* E262-3 15.10.6.2: RegExp.prototype.exec */

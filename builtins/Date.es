@@ -24,7 +24,7 @@ package
     final dynamic class Date
     {       
         /* E262-3 15.9.2: The Date Constructor Called as a Function */
-        static meta function invoke(...args)   // args are ignored.
+        meta static function invoke(...args)   // args are ignored.
             (new Date()).public::toString();
 
         /* E262-3 15.9.3: The Date Constructor. 

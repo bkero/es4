@@ -41,7 +41,7 @@ package
     dynamic class String
     {       
         /* E262-3 15.5.1: The String Constructor Called as a Function */
-        static meta function invoke(x="")
+        meta static function invoke(x="")
             ToString(x);
 
         /* 15.5.2 The String Constructor */
