@@ -191,7 +191,7 @@ fun construct (vals:Mach.VAL list)
 fun getClassName (vals:Mach.VAL list) 
     : Mach.VAL = 
     let 
-        val Mach.Obj { magic, ... } = nthAsObj vals 0
+        val Mach.Obj { magic, tag, ... } = nthAsObj vals 0
         (* FIXME: is this right? *)
         val ustr = case !magic of 
                       SOME (Mach.Function _) => Ustring.Function_
@@ -201,11 +201,14 @@ fun getClassName (vals:Mach.VAL list)
                     | SOME (Mach.Int _) => Ustring.Number_
                     | SOME (Mach.UInt _) => Ustring.Number_
                     | SOME (Mach.Double _) => Ustring.Number_
+                    | SOME (Mach.Boolean _) => Ustring.Boolean_
                     | _ => 
-                      (* FIXME: "Array", "RegExp", "String", ...  The object needs
-                       * to carry a reference to its class, but it doesn't.
-                       *)
-                      Ustring.Object_
+                      (case tag of 
+                           Mach.ObjectTag _ => Ustring.Object_
+                         | Mach.ArrayTag _ => Ustring.Array_
+                         | Mach.FunctionTag _ => Ustring.Function_
+                         | Mach.ClassTag {ns, id} => id
+                         | Mach.NoTag => Ustring.Object_)                      
     in
         Eval.newString ustr
     end

@@ -70,7 +70,7 @@ run-dumped:
 	sml @SMLload=run.heap $(TRACE) $(FILE)
 
 # Obsolete now?
-run:
+run: 
 	sml @SMLload=es4.heap $(TRACE) -ev $(FILE)
 
 repl: es4.heap.$(HEAP_SUFFIX)
