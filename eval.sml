@@ -1784,7 +1784,7 @@ and evalNewExpr (obj:Mach.OBJ)
         case (!magic) of 
             SOME (Mach.Class c) => constructClassInstance obj c args
           | SOME (Mach.Function f) => constructObjectViaFunction obj f args
-          | _ => error ["operator 'new' applied to unknown object"]
+          | _ => throwTypeErr ["operator 'new' applied to unknown object"]
 
 
 and callGlobal (n:Ast.NAME) 
@@ -3385,65 +3385,55 @@ and specialFunctionConstructor (classObj:Mach.OBJ)
         val _ = trace ["building new prototype chained to Function.prototype"]
         val newProto = Mach.Object (Mach.setProto (newObj ()) globalFuncProto)
         val _ = trace ["built new prototype chained to Function.prototype"]
+        val _ = setValue instanceObj Name.public_prototype newProto;
+
+        (*
+         * We synthesize a token stream here that feeds back into the parser.
+         *)
+        val args = if args = [] then [newString Ustring.empty] else args
+        val source = toUstring (List.last args)
+        val argArgs = List.take (args, (length args)-1)
+        val argIdents = map (fn x => Token.Identifier (toUstring x)) argArgs
+        val nloc = {file="<no filename>", span=({line=1,col=1},{line=1,col=1}), post_newline=false}
+        val argList = case argIdents of
+                          [] => []
+                        | x::xs => ((x, nloc) :: 
+                                    (List.concat 
+                                         (map (fn i => [(Token.Comma, nloc), (i, nloc)]) xs)))
+        val lines = [Ustring.sourceFromUstring source] (* FIXME: split lines *)
+        val lineTokens = List.filter (fn t => case t of 
+                                                  (Token.Eof, _) => false (* FIXME: this won't work if there's a regexp, because the token list won't be complete *)
+                                                | _ => true)
+                                     (Parser.lexLines lines)
+        val funcTokens = [(Token.Function, nloc), 
+                          (Token.LeftParen, nloc)]
+                         @ argList
+                         @ [(Token.RightParen, nloc)]
+                         @ [(Token.LeftBrace, nloc)]
+                         @ lineTokens
+                         @ [(Token.RightBrace, nloc)]
+                         @ [(Token.Eof, nloc)]
+                         
+        val (_,funcExpr) = Parser.functionExpression (funcTokens, 
+                                                      Parser.NOLIST, 
+                                                      Parser.ALLOWIN)
+                           
+        val funcExpr = Defn.defExpr (Defn.topEnv()) funcExpr
     in
-        setValue instanceObj Name.public_prototype newProto;
-        if args = [] 
-        then 
+        case funcExpr of 
+            Ast.LiteralExpr (Ast.LiteralFunction f) => 
             let 
                 val Mach.Obj { magic, ...} = instanceObj
-                fun empty (vs:Mach.VAL list) : Mach.VAL = Mach.Undef
+                val sname = Name.public_source
+                val sval = newString source
             in
-                magic := SOME (Mach.NativeFunction { func = empty, length = 0 })
+                magic := SOME (Mach.Function { func = f, 
+                                               this = NONE,
+                                               allTypesBound = true,
+                                               env = getGlobalScope() });
+                setValue instanceObj sname sval
             end
-        else 
-            (*
-             * We synthesize a token stream here that feeds back into the parser.
-             *)
-            let 
-                val source = toUstring (List.last args)
-                val argArgs = List.take (args, (length args)-1)
-                val argIdents = map (fn x => Token.Identifier (toUstring x)) argArgs
-                val nloc = {file="<no filename>", span=({line=1,col=1},{line=1,col=1}), post_newline=false}
-                val argList = case argIdents of
-                                  [] => []
-                                | x::xs => ((x, nloc) :: 
-                                            (List.concat 
-                                                 (map (fn i => [(Token.Comma, nloc), (i, nloc)]) xs)))
-                val lines = [Ustring.sourceFromUstring source] (* FIXME: split lines *)
-                val lineTokens = List.filter (fn t => case t of 
-                                                          (Token.Eof, _) => false (* FIXME: this won't work if there's a regexp, because the token list won't be complete *)
-                                                        | _ => true)
-                                             (Parser.lexLines lines)
-                val funcTokens = [(Token.Function, nloc), 
-                                  (Token.LeftParen, nloc)]
-                                 @ argList
-                                 @ [(Token.RightParen, nloc)]
-                                 @ [(Token.LeftBrace, nloc)]
-                                 @ lineTokens
-                                 @ [(Token.RightBrace, nloc)]
-                                 @ [(Token.Eof, nloc)]
-                                 
-                val (_,funcExpr) = Parser.functionExpression (funcTokens, 
-                                                              Parser.NOLIST, 
-                                                              Parser.ALLOWIN)
-                                   
-                val funcExpr = Defn.defExpr (Defn.topEnv()) funcExpr
-            in
-                case funcExpr of 
-                    Ast.LiteralExpr (Ast.LiteralFunction f) => 
-                    let 
-                        val Mach.Obj { magic, ...} = instanceObj
-                        val sname = Name.public_source
-                        val sval = newString source
-                    in
-                        magic := SOME (Mach.Function { func = f, 
-                                                       this = NONE,
-                                                       allTypesBound = true,
-                                                       env = getGlobalScope() });
-                        setValue instanceObj sname sval
-                    end
-                  | _ => error ["function did not parse"]
-            end;
+          | _ => error ["function did not parse"];
         Mach.Object instanceObj
     end
 
