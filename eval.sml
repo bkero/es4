@@ -31,7 +31,7 @@ val (word32Cache:(Mach.VAL Word32Map.map) ref) = ref Word32Map.empty
 val (int32Cache:(Mach.VAL Int32Map.map) ref) = ref Int32Map.empty
 val (nsCache:(Mach.VAL NsMap.map) ref) = ref NsMap.empty
 val (strCache:(Mach.VAL StrMap.map) ref) = ref StrMap.empty
-val cachesz = 256
+val cachesz = 1024
 
 val (profileMap:(int StrListMap.map) ref) = ref StrListMap.empty
 val (doProfile:((int option) ref)) = ref NONE
@@ -2107,6 +2107,7 @@ and evalUnaryOp (regs:Mach.REGS)
                                            then Ustring.string_
                                            else Ustring.object_)))
                         end
+                val (_, expr) = getExpectedType expr
             in
                 newString 
                     (case expr of 

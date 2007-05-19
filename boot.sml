@@ -212,6 +212,8 @@ fun boot _ =
                                     "builtins/String.es",
                                     "builtins/string_primitive.es",
                                     
+                                    "builtins/Error.es",
+                                    
                                     "builtins/Boolean.es",
                                     "builtins/boolean_primitive.es",
                                     
@@ -221,7 +223,7 @@ fun boot _ =
                                     "builtins/uint.es",
                                     "builtins/decimal.es",
                                     "builtins/Numeric.es",
-                                    
+
                                     "builtins/Math.es",
                                     "builtins/Global.es",
                                     
@@ -236,7 +238,6 @@ fun boot _ =
                                     
                                     "builtins/Date.es",
                                     "builtins/JSON.es",
-                                    "builtins/Error.es",           
                                     "builtins/Shell.es"
                                    ]
 

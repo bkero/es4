@@ -11,15 +11,35 @@ package Unicode
     {
         function CharSet(cs) {
             for (let i=0 ; i < buckets.length ; i++ )
-                buckets[i] = "";
-            for (let i=0 ; i < cs.length ; i++ )
-                buckets[cs[i].charCodeAt(0) % buckets.length] += cs[i];
+                buckets[i] = new Array();
+            for (let i=0 ; i < cs.length ; i++ ) {
+                let s : string = cs[i];
+                for (let j=0; j < s.length; j++) {
+                    let cc : uint = s.charCodeAt(j);
+                    buckets[cc % buckets.length].push(cc);
+                }
+            }
         }
 
-        function contains(c)
-            buckets[c.charCodeAt(0) % buckets.length].indexOf(c) != -1;
+        function containsCode(cc) {
+            let bucket : Array = buckets[cc % nbuckets];
+            let lim : uint = bucket.length;
+            for (let i : uint = 0u; i < lim; ++i)
+                if (bucket[i] == cc)
+                    return true;
+            return false;
+        }
+        
+        function contains(str) {
+            let lim = str.length;
+            for (let i : uint = 0u; i < lim; ++i)
+                if (!containsCode(str.charCodeAt(i)))
+                    return false;
+            return true;
+        }
 
-        var buckets = new Array(37);  /* FIXME: private */
+        static const nbuckets : uint = 37u;
+        var buckets = new Array(nbuckets);  /* FIXME: private */
     }
 
     /* These are all the Unicode space characters, less character values below SPACE */
@@ -53,6 +73,9 @@ package Unicode
     public function isTerminator(c : string) : boolean
         terminators.contains(c);
 
+    public function isTerminatorCode(cc : uint) : boolean
+        terminators.containsCode(cc);
+
     const decimal_digits = 
         new CharSet(explodeString("0123456789"));
 
@@ -70,6 +93,9 @@ package Unicode
 
     public function isBlank(c : string) : boolean
         blank_chars.contains(c);
+
+    public function isBlankCode(cc : uint) : boolean
+        blank_chars.containsCode(cc);
 
     const word_chars = 
         new CharSet(explodeString("ABCDEFGHIJKLMNOPQRSTUVWXYZ" +
@@ -91,6 +117,9 @@ package Unicode
 
     public function isFormatControl(c)
         format_control.contains(c);
+
+    public function isFormatControlCode(cc:uint)
+        format_control.containsCode(cc);
 
     public function explodeString(s : string) : [string] {
         let cs : [string] = [] : [string];
