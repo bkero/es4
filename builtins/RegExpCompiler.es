@@ -260,8 +260,8 @@ package RegExpInternals
             case 0x3Fu /* "?" */:
             case 0x7Bu /* "{" */:
             case 0x7Cu /* "|" */:
-            case 0x7Du /* "}" */:
-            case 0x5Du /* "]" */:
+                // case 0x7Du /* "}" */:
+                // case 0x5Du /* "]" */:
                 return null;
                 
             default:                
@@ -473,7 +473,7 @@ package RegExpInternals
             switch (peekCharCode()) {
                 
             case 0x64u /* "d" */: advance(); return charset_digit;
-            case 0x44u /* "D" */: advance(); return charset_nondigit;
+            case 0x44u /* "D" */: advance(); return charset_notdigit;
             case 0x73u /* "s" */: advance(); return charset_space;
             case 0x53u /* "S" */: advance(); return charset_notspace;
             case 0x77u /* "w" */: advance(); return charset_word;

@@ -106,6 +106,6 @@ package
     intrinsic function ToNumeric(x) : Numeric {
         if (x is Numeric)
             return x;
-        ToDouble(x);
+        return ToDouble(x);
     }
 }

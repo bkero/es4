@@ -1163,8 +1163,7 @@ and toUstring (v:Mach.VAL)
         in
             case !(#magic ob) of 
                 SOME magic => magicToUstring magic
-              | NONE => toUstring (callGlobal Name.intrinsic_ToPrimitive 
-                                              [v, newString Ustring.String_])
+              | NONE => toUstring (toPrimitiveWithStringHint v)
         end
         
 (* 
@@ -1193,6 +1192,16 @@ and toBoolean (v:Mach.VAL) : bool =
  * Arithmetic operations.
  *)
 
+and toPrimitiveWithStringHint (v:Mach.VAL)
+    : Mach.VAL = 
+    callGlobal Name.intrinsic_ToPrimitive 
+               [v, newString Ustring.String_]
+
+and toPrimitiveWithNumberHint (v:Mach.VAL)
+    : Mach.VAL = 
+    callGlobal Name.intrinsic_ToPrimitive 
+               [v, newString Ustring.Number_]
+                                              
 and toNumeric (v:Mach.VAL) 
     : Mach.VAL =          
     let 
@@ -2126,15 +2135,15 @@ and evalUnaryOp (regs:Mach.REGS)
 
 
 and performBinop (bop:Ast.BINOP) 
-                 (a:Mach.VAL) 
-                 (b:Mach.VAL) 
+                 (va:Mach.VAL) 
+                 (vb:Mach.VAL) 
     : Mach.VAL = 
 
     let
         fun stringConcat _ = 
-            newString (Ustring.stringAppend (toUstring a) (toUstring b))
+            newString (Ustring.stringAppend (toUstring va) (toUstring vb))
 
-        fun dispatch (mode:Ast.NUMERIC_MODE) decimalOp doubleOp intOp uintOp largeOp =
+        fun dispatch a b (mode:Ast.NUMERIC_MODE) decimalOp doubleOp intOp uintOp largeOp =
             case (#numberType mode) of 
                 Ast.Decimal => decimalOp (toDecimal 
                                               (#precision mode) 
@@ -2201,13 +2210,24 @@ and performBinop (bop:Ast.BINOP)
                     newBoolean (cmp (reorder (Word32.compare (ua, ub))))
                 fun largeOp la lb = 
                     newBoolean (cmp (reorder (LargeInt.compare (la, lb))))
+                val va = toPrimitiveWithNumberHint va
+                val vb = toPrimitiveWithNumberHint vb
             in
-                if Mach.isNumeric a andalso Mach.isNumeric b
-                then (if isNaN a orelse isNaN b
-                      then newBoolean (cmp IEEEReal.UNORDERED)
-                      else dispatch mode decimalOp doubleOp intOp uintOp largeOp)
-                else newBoolean (cmp (reorder (Ustring.compare (toUstring a)
-                                                               (toUstring b))))
+                (* 
+                 * ES-262-3 11.8.5 Abstract Relational Comparison Algorithm
+                 *)
+                if Mach.isString va andalso Mach.isString vb
+                then newBoolean (cmp (reorder (Ustring.compare (toUstring va)
+                                                               (toUstring vb))))
+                else 
+                    let
+                        val va = toNumeric va
+                        val vb = toNumeric vb
+                    in
+                        if isNaN va orelse isNaN vb
+                        then newBoolean false
+                        else dispatch va vb mode decimalOp doubleOp intOp uintOp largeOp
+                    end
             end
             
         fun dispatchNumeric mode decimalFn doubleFn intFn uintFn largeFn =
@@ -2235,7 +2255,7 @@ and performBinop (bop:Ast.BINOP)
                                                    | NONE => error ["arithmetic overflow"])))
                     end                                 
             in
-                dispatch mode decimalOp doubleOp intOp uintOp largeOp
+                dispatch va vb mode decimalOp doubleOp intOp uintOp largeOp
             end            
 
         fun masku5 (x:Word32.word) : Word.word = 
@@ -2248,16 +2268,16 @@ and performBinop (bop:Ast.BINOP)
             Int32.fromLarge (Word32.toLargeInt x)
 
         fun bitwiseWordOp f = 
-            newUInt (f ((toUInt32 a),
-                             (toUInt32 b)))
+            newUInt (f ((toUInt32 va),
+                        (toUInt32 vb)))
 
         fun pickRepByA (x:Word32.word) = 
-            if Mach.isUInt a
+            if Mach.isUInt va
             then newUInt x
             else newInt (u2i x)
 
         fun tripleEquals mode = 
-            case (a, b) of 
+            case (va, vb) of 
                 (Mach.Null, Mach.Null) => newBoolean true
               | (Mach.Undef, Mach.Undef) => newBoolean true
               | (Mach.Object oa, Mach.Object ob) => 
@@ -2300,8 +2320,8 @@ and performBinop (bop:Ast.BINOP)
     in
         case bop of
             Ast.Plus mode => 
-            if Mach.isString a orelse
-               Mach.isString b
+            if Mach.isString va orelse
+               Mach.isString vb
             then stringConcat ()
             else dispatchNumeric ( valOf mode ) 
                                  ( Decimal.add )
@@ -2356,16 +2376,16 @@ and performBinop (bop:Ast.BINOP)
             end
 
           | Ast.LeftShift => 
-            pickRepByA (Word32.<< ((i2u (toInt32 a)),
-                                   (masku5 (toUInt32 b))))
+            pickRepByA (Word32.<< ((i2u (toInt32 va)),
+                                   (masku5 (toUInt32 vb))))
 
           | Ast.RightShift => 
-            pickRepByA (Word32.>> ((i2u (toInt32 a)),
-                                   (masku5 (toUInt32 b))))
+            pickRepByA (Word32.>> ((i2u (toInt32 va)),
+                                   (masku5 (toUInt32 vb))))
 
           | Ast.RightShiftUnsigned => 
-            pickRepByA (Word32.~>> ((toUInt32 a),
-                                    (masku5 (toUInt32 b))))
+            pickRepByA (Word32.~>> ((toUInt32 va),
+                                    (masku5 (toUInt32 vb))))
 
           (* FIXME: should we return int if we do int|int or int&int ? *)
           | Ast.BitwiseAnd => bitwiseWordOp (Word32.andb)
