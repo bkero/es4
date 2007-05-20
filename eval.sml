@@ -189,7 +189,7 @@ fun push (name:string) (args:Mach.VAL list) =
     end
 
 fun pop _ = 
-    (stack := tl (!stack);
+    (stack := tl (!stack); 
      if !traceStack
      then LogErr.log ("[stack] " :: [stackString()])
      else ())
@@ -4213,7 +4213,6 @@ and evalProgram (prog:Ast.PROGRAM)
     let
         val regs = getInitialRegs ()
         val res = ((LogErr.setLoc NONE;
-                    resetStack ();
                     resetProfile ();
                     allocScopeFixtures regs (valOf (#fixtures prog));
                     map (evalPackage regs) (#packages prog);

@@ -14,6 +14,7 @@ my $completions = 0;
 my $errors = 0;
 my $xerrors = 0;
 my $alarms = 0;
+my $crashes = 0;
 
 my $parseErrs = 0;
 my $defnErrs = 0;
@@ -38,8 +39,8 @@ while (<>) {
 	    $should_crash = 1;
 	}
     } elsif ($searching_for_err) {
-	if (/\*\*ERROR\*\* *(?:\([^\)]+\))? *(.*)/) {
-	    my $err = $1;
+	if (/\*\*ERROR\*\* *(?:\([^\)]+\))? *(.*)|(^uncaught exception.*)/) {
+	    my $err = $1 || $2;
 	    if ($should_crash) {
 		$xerrors++;
 	    } else {
@@ -52,6 +53,9 @@ while (<>) {
 		elsif ($err =~ /machError/) { $machErrs++; }
 		elsif ($err =~ /hostError/) { $hostErrs++; }
 	    } 
+	    $searching_for_err = 0;
+	} elsif (/make: \*\*\* \[run-dumped\] Error 1/) {
+	    $crashes++;
 	    $searching_for_err = 0;
 	} elsif (/Alarm clock/) {
 	    $alarms++;
@@ -72,16 +76,17 @@ if ($searching_for_err) {
     $completions++;
 }
 
+my $n = 30;
 printf ("---------------------------------------------------\n");
-printf ("Top 10 crashes:\n");
+printf ("Top $n crashes:\n");
 printf ("---------------------------------------------------\n");
 
 my $j = 1;
-my $top10 = 0;
+my $top = 0;
 for my $i (sort {$errs->{$b} <=> $errs->{$a}} keys(%$errs)) {
     printf ("%2d: %5d %.150s\n", $j, $errs->{$i}, $i);
-    $top10 += $errs->{$i};
-    if ($j++ == 10) {
+    $top += $errs->{$i};
+    if ($j++ == $n) {
 	last;
     }
 }
@@ -91,12 +96,12 @@ sub max {
 }
 
 printf ("---------------------------------------------------\n");
-printf ("%d completions, %d xerrors, %d errors, %d alarms\n", $completions, $xerrors, $errors, $alarms);
+printf ("%d completions, %d xerrors, %d errors, %d alarms, %d unknown crashes\n", $completions, $xerrors, $errors, $alarms, $crashes);
 printf ("%d parseErrors, %d defnErrors, %d verifyErrors\n", $parseErrs, $defnErrs, $verifyErrs);
 printf ("%d evalErrors, %d machErrors, %d hostErrors\n", $evalErrs, $machErrs, $hostErrs);
 printf ("%d PASSED, %d FAILED\n", $passes, $fails);
 printf ("---------------------------------------------------\n");
-printf ("%d%% of crashes in top 10\n", ($top10 / max($errors,1)) * 100);
+printf ("%d%% of crashes in top $n\n", ($top / max($errors,1)) * 100);
 printf ("%d%% of %d runs OK or xerror\n", (($completions + $xerrors) / max(1,$runs)) * 100, $runs);
 printf ("%d%% of %d executed cases PASSED\n", ($passes / max(1,($passes + $fails))) * 100, $passes + $fails);
 printf ("---------------------------------------------------\n");

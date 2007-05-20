@@ -171,21 +171,23 @@ fun testDump dumpfile =
     in
         SMLofNJ.exportFn (dumpfile, 
                           (fn (arg0, argvRest) => 
-                              let 
-                                  val _ = Posix.Process.alarm (Time.fromReal 300.0)
-                                  val _ = TextIO.print "parsing ... \n";
-                                  val asts = List.map Parser.parseFile argvRest
-                                  val _ = TextIO.print "defining ... \n";
-                                  val dps = map Defn.defProgram asts
-	                              val _ = TextIO.print "type checking ... \n";
-                                  val dps = List.map Verify.verifyProgram dps;
-                                  val _ = TextIO.print "evaluating ... \n";
-                                  val _ = map Eval.evalProgram dps
-                                  val _ = TextIO.print "evaluated! \n"                
-                              in
-                                  0
-                              end)) ;
-        ()
+                              BackTrace.monitor 
+                                  (fn () =>                          
+                                      let 
+                                          val _ = Posix.Process.alarm (Time.fromReal 300.0)
+                                          val _ = TextIO.print "parsing ... \n";
+                                          val asts = List.map Parser.parseFile argvRest
+                                          val _ = TextIO.print "defining ... \n";
+                                          val dps = map Defn.defProgram asts
+	                                      val _ = TextIO.print "type checking ... \n";
+                                          val dps = List.map Verify.verifyProgram dps;
+                                          val _ = TextIO.print "evaluating ... \n";
+                                          val _ = map Eval.evalProgram dps
+                                          val _ = TextIO.print "evaluated! \n"                
+                                      in
+                                          0
+                                      end))) ;
+                          ()
     end
 
 fun testDefn argvRest =

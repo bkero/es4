@@ -220,13 +220,18 @@ fun makeTokenList (filename : string, reader : unit -> Ustring.SOURCE) : ((TOKEN
             end
           | lexOp [] =
             error ["LexError:  LEXER BUG in lexOp"]
-        
+
+        fun lookahead n =
+	    case List.drop (!src, n) of 
+		[] => 0wx0
+	      | x::_ => x
+
         fun lexResOrId ((str,tok)::rest : (Ustring.SOURCE * TOKEN) list) : unit =
             let
                 val src_ = tl (!src)  (* we don't get here unless the first char matched already *)
                 val strlen = 1 + (length str)  (* we add one because the first char is not in str *)
             in
-                if (matchOp str src_) andalso (not (isIdentifierChar (List.nth (!src, strlen))))
+                if (matchOp str src_) andalso (not (isIdentifierChar (lookahead strlen)))
                 then push strlen tok
                 else lexResOrId rest
             end
@@ -373,7 +378,7 @@ fun makeTokenList (filename : string, reader : unit -> Ustring.SOURCE) : ((TOKEN
             
             val numberAscii = implode (map UTF8.toAscii (List.take (!src, tokLen)))  (* should be safe, since we just lexed each char as being in the ascii range *)
         in
-            case (tokType, List.nth (!src, tokLen)) of
+            case (tokType, lookahead tokLen) of
                 (HexIntLit, 0wx69 (* i *)) => (case Int32.fromString numberAscii of
                         SOME i => push (tokLen+1) (ExplicitIntLiteral i)
                       | NONE   => error ["LexError:  LEXER BUG in lexing HexIntLit(i)"] (* should not be possible to get here *))
@@ -433,7 +438,7 @@ fun makeTokenList (filename : string, reader : unit -> Ustring.SOURCE) : ((TOKEN
                                                       lexMultiLineComment {newline=true} {asterisk=false})
                   | _             => (advanceIndex 1; lexMultiLineComment {newline=true} {asterisk=false}))
             
-            val nextChar = List.nth (!src, 1)
+            val nextChar = lookahead 1
         in
             case nextChar  of
                 0wx2F (* / *) => (advanceIndex 2; lexSingleLineComment ())
@@ -654,8 +659,8 @@ fun makeTokenList (filename : string, reader : unit -> Ustring.SOURCE) : ((TOKEN
                       | #"8"
                       | #"9") => lexNumber ()
                     (* numbers ... .. .< . *)
-                      | #"." => if (0wx30 <= (List.nth (!src,1)) andalso
-                                             (List.nth (!src,1)) <= 0wx39) (* 0-9 *)
+                      | #"." => if (0wx30 <= (lookahead 1) andalso
+                                             (lookahead 1) <= 0wx39) (* 0-9 *)
                                 then lexNumber ()
                                 else lexOp [(UTF8.explode ".." , TripleDot   ),
                                             (UTF8.explode "."  , DoubleDot   ),

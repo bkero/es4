@@ -264,6 +264,7 @@ fun boot _ =
         Eval.evalProgram residualFunProg;
 
         Eval.booting := false;
+        Eval.resetStack ();
         describeGlobal ()
     end
 end
