@@ -64,6 +64,9 @@ package
        o, it does nothing. */
     magic native function setPropertyIsDontEnum(o : Object!, p : string, f : Boolean) : void;
 
+    magic native function isPrimitive(v:*) : boolean;
+    magic native function toPrimitive(v:*, hint:string) : *;
+    magic native function defaultValue(ob:Object!, hint:string) : *;
 
     /*
      * Given a target object and a value, select a magic

@@ -229,6 +229,9 @@ val magic_newInt = magic Ustring.newInt_
 val magic_newUInt = magic Ustring.newUInt_
 val magic_newDouble = magic Ustring.newDouble_
 
+val magic_toPrimitive = magic Ustring.toPrimitive_
+val magic_isPrimitive = magic Ustring.isPrimitive_
+val magic_defaultValue = magic Ustring.defaultValue_
 val magic_setPropertyIsDontEnum = magic Ustring.setPropertyIsDontEnum_
 val magic_getPropertyIsDontDelete = magic Ustring.getPropertyIsDontDelete_
 val magic_getPropertyIsDontEnum = magic Ustring.getPropertyIsDontEnum_

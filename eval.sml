@@ -279,25 +279,6 @@ fun getScopeTemps (scope:Mach.SCOPE)
     : Mach.TEMPS = 
     case scope of 
         Mach.Scope { temps, ... } => temps
-
-
-fun needNamespace (v:Mach.VAL) 
-    : Ast.NAMESPACE = 
-    case v of 
-        Mach.Object (Mach.Obj ob) => 
-        (case !(#magic ob) of 
-             SOME (Mach.Namespace n) => n
-           | _ => error ["need namespace"])
-      | _ => error ["need namespace"]
-
-
-fun needObj (v:Mach.VAL) 
-    : Mach.OBJ = 
-    case v of 
-        Mach.Object ob => ob
-      | _ => error ["need object"]
-
-
     
 (* 
  * The global object and scope.
@@ -891,13 +872,36 @@ and throwExn0 (name:Ast.NAME) (args:string list)
     : REF = 
     raise ThrowException (instantiateGlobalClass name [(newString o Ustring.fromString o String.concat) args])
 
+and throwExn1 (name:Ast.NAME) (args:string list) 
+    : Mach.OBJ = 
+    raise ThrowException (instantiateGlobalClass name [(newString o Ustring.fromString o String.concat) args])
+
 and throwTypeErr (args:string list)
     : Mach.VAL = 
     throwExn Name.public_TypeError args
 
+and throwTypeErr0 (args:string list)
+    : Mach.OBJ = 
+    throwExn1 Name.public_TypeError args
+
 and throwRefErr (args:string list)
     : REF = 
     throwExn0 Name.public_ReferenceError args
+
+and needNamespace (v:Mach.VAL) 
+    : Ast.NAMESPACE = 
+    case v of 
+        Mach.Object (Mach.Obj ob) => 
+        (case !(#magic ob) of 
+             SOME (Mach.Namespace n) => n
+           | _ => error ["need namespace"])
+      | _ => error ["need namespace"]
+
+and needObj (v:Mach.VAL) 
+    : Mach.OBJ = 
+    case v of 
+        Mach.Object ob => ob
+      | _ => throwTypeErr0 ["need object"]
 
 and newObject _ = 
     instantiateGlobalClass Name.public_Object []
@@ -1189,18 +1193,63 @@ and toBoolean (v:Mach.VAL) : bool =
            | _ => true)
 
 (* 
- * Arithmetic operations.
+ * NB: don't move isPrimitive or defaultValue up to Conversions.es: they
+ * need to use "v === undefined", but the triple-equals operator is 
+ * implemented in *terms* of isPrimitive.
  *)
+
+and defaultValue (obj:Mach.OBJ) 
+                 (preferredType:Ustring.STRING)
+  : Mach.VAL = 
+    let
+        val (na, nb) = if preferredType = Ustring.String_
+                       then (Name.public_toString, Name.public_valueOf)
+                       else (Name.public_valueOf, Name.public_toString)
+        val va = if hasValue obj na 
+                 then evalCallMethodByRef obj (obj, na) []
+                 else Mach.Undef
+        val vb = if Mach.isUndef va andalso hasValue obj nb
+                 then evalCallMethodByRef obj (obj, nb) []
+                 else va
+    in
+        if isPrimitive vb
+        then vb
+        else throwTypeErr ["defaultValue"]
+    end            
+
+and isPrimitive (v:Mach.VAL)
+    : bool = 
+    Mach.isNull v orelse 
+    Mach.isUndef v orelse
+    Mach.isNumeric v orelse
+    Mach.isString v orelse
+    Mach.isBoolean v
+
+(*
+ * ES-262-3 9.1: The ToPrimitive operation 
+ *)
+
+and toPrimitive (v:Mach.VAL) (hint:Ustring.STRING)
+    : Mach.VAL = 
+    if isPrimitive v
+    then v
+    else defaultValue (needObj v) hint
 
 and toPrimitiveWithStringHint (v:Mach.VAL)
     : Mach.VAL = 
-    callGlobal Name.intrinsic_ToPrimitive 
-               [v, newString Ustring.String_]
+    toPrimitive v Ustring.String_
 
 and toPrimitiveWithNumberHint (v:Mach.VAL)
     : Mach.VAL = 
-    callGlobal Name.intrinsic_ToPrimitive 
-               [v, newString Ustring.Number_]
+    toPrimitive v Ustring.Number_
+
+and toPrimitiveWithNoHint (v:Mach.VAL)
+    : Mach.VAL = 
+    toPrimitive v Ustring.empty
+
+(* 
+ * Arithmetic operations.
+ *)
                                               
 and toNumeric (v:Mach.VAL) 
     : Mach.VAL =          
@@ -1564,25 +1613,32 @@ and evalExpr (regs:Mach.REGS)
         evalSetExpr regs aop pat (evalExpr regs expr)
 
       | Ast.CallExpr { func, actuals } => 
-        (* FIXME: order of evaluation: func must be evaluated first.  (Actuals must be
-         * evaluated left-to-right, but map does this so we're fine.)
-         *)
         let
-            val args = map (evalExpr regs) actuals
+            fun args _ = map (evalExpr regs) actuals
             val (resultTy, func) = getExpectedType func
             val result = case func of 
-                Ast.LexicalRef _ => evalCallMethodByExpr regs func args
-              | Ast.ObjectRef _ => evalCallMethodByExpr regs func args
-              | _ => evalCallExpr (#this regs) (needObj (evalExpr regs func)) args
+                Ast.LexicalRef _ => evalCallMethodByExpr regs func (args ())
+              | Ast.ObjectRef _ => evalCallMethodByExpr regs func (args ())
+              | _ => 
+                let
+                    val f = evalExpr regs func
+                in
+                    case f of 
+                        Mach.Object ob => evalCallExpr (#this regs) ob (args ())
+                      | _ => throwTypeErr ["not a function"]
+                end
         in
             checkCompatible resultTy result
         end
 
       | Ast.NewExpr { obj, actuals } => 
         let
-            val args = map (evalExpr regs) actuals
+            fun args _ = map (evalExpr regs) actuals
+            val rhs = evalExpr regs obj
         in
-            evalNewExpr (needObj (evalExpr regs obj)) args
+            case rhs of 
+                Mach.Object ob => evalNewExpr ob (args())
+              | _ => throwTypeErr ["not a constructor"]
         end
 
       | Ast.GetTemp n => 
@@ -2276,20 +2332,63 @@ and performBinop (bop:Ast.BINOP)
             then newUInt x
             else newInt (u2i x)
 
-        fun tripleEquals mode = 
-            case (va, vb) of 
-                (Mach.Null, Mach.Null) => newBoolean true
-              | (Mach.Undef, Mach.Undef) => newBoolean true
-              | (Mach.Object oa, Mach.Object ob) => 
-                if Mach.hasMagic oa andalso 
-                   Mach.hasMagic ob 
-                then                     
-                    dispatchComparison (valOf mode) 
-                                       (fn x => x = IEEEReal.EQUAL)
-                else
-                    newBoolean ((getObjId oa) = (getObjId ob))
-              | (_, _) => newBoolean false
+        (* 
+         * ES-262-3 11.9.6 Strict Equality Comparison Algorithm
+         *)
 
+        fun tripleEquals mode = 
+            if Mach.isSameType va vb
+            then 
+                if Mach.isUndef va orelse Mach.isNull va
+                then newBoolean true
+                else 
+                    if Mach.isNumeric va
+                    then if isNaN va orelse isNaN vb
+                         then newBoolean false
+                         else dispatchComparison (valOf mode) (fn x => x = IEEEReal.EQUAL)
+                    else
+                        if Mach.isString va
+                        then case Ustring.compare (toUstring va) (toUstring vb) of
+                                 EQUAL => newBoolean true
+                               | _ => newBoolean false
+                        else 
+                            if Mach.isBoolean va
+                            then newBoolean (toBoolean va = toBoolean vb)
+                            else newBoolean ((getObjId (needObj va)) = (getObjId (needObj vb)))
+            else
+                newBoolean false
+
+        (* 
+         * ES-262-3 11.9.3 Abstract Equality Comparison Algorithm
+         *)
+                          
+        fun doubleEquals' mode =
+            if Mach.isSameType va vb
+            then tripleEquals mode
+            else
+                if (Mach.isNull va andalso Mach.isUndef vb)
+                   orelse (Mach.isUndef va andalso Mach.isNull vb)
+                then newBoolean true
+                else 
+                    if (Mach.isNumeric va andalso Mach.isString vb)
+                       orelse (Mach.isString va andalso Mach.isNumeric vb)
+                    then 
+                        performBinop (Ast.Equals mode) (toNumeric va) (toNumeric vb)
+                    else
+                        if Mach.isBoolean va
+                        then performBinop (Ast.Equals mode) (toNumeric va) vb
+                        else 
+                            if Mach.isBoolean vb
+                            then performBinop (Ast.Equals mode) va (toNumeric vb)
+                            else 
+                                if (Mach.isString va orelse Mach.isNumeric va) 
+                                   andalso Mach.isObject vb
+                                then performBinop (Ast.Equals mode) va (toPrimitiveWithNoHint vb)
+                                else
+                                    if Mach.isObject va
+                                       andalso (Mach.isString vb orelse Mach.isNumeric vb)
+                                    then performBinop (Ast.Equals mode) (toPrimitiveWithNoHint va) vb
+                                    else newBoolean false
 
         val binOpName = 
             case bop of 
@@ -2317,13 +2416,13 @@ and performBinop (bop:Ast.BINOP)
               | Ast.Greater _ => ">"
               | Ast.GreaterOrEqual _ => ">="
               | Ast.Comma => ","
-    in
-        case bop of
-            Ast.Plus mode => 
-            if Mach.isString va orelse
-               Mach.isString vb
-            then stringConcat ()
-            else dispatchNumeric ( valOf mode ) 
+        val res = 
+            case bop of
+                Ast.Plus mode => 
+                if Mach.isString va orelse
+                   Mach.isString vb
+                then stringConcat ()
+                else dispatchNumeric ( valOf mode ) 
                                  ( Decimal.add )
                                  ( Real64.+ )
                                  ( Int32.+ )
@@ -2392,13 +2491,11 @@ and performBinop (bop:Ast.BINOP)
           | Ast.BitwiseOr => bitwiseWordOp (Word32.orb)
           | Ast.BitwiseXor => bitwiseWordOp (Word32.xorb)
 
-          | Ast.Equals mode => 
-            dispatchComparison (valOf mode) 
-                               (fn x => x = IEEEReal.EQUAL)
+          | Ast.Equals mode =>             
+            doubleEquals' mode
             
           | Ast.NotEquals mode => 
-            dispatchComparison (valOf mode) 
-                               (fn x => not (x = IEEEReal.EQUAL))
+            newBoolean (not (toBoolean (doubleEquals' mode)))
             
           | Ast.StrictEquals mode => 
             tripleEquals mode
@@ -2423,6 +2520,9 @@ and performBinop (bop:Ast.BINOP)
                                (fn x => (x = IEEEReal.GREATER) orelse (x = IEEEReal.EQUAL))
 
           | _ => error ["unexpected binary operator in performBinOp"]
+    in
+        trace ["binop: ", approx va, " ", binOpName, " ", approx vb, " -> ", approx res];
+        res
     end
 
 

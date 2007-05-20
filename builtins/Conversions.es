@@ -11,38 +11,13 @@ package
     use strict;
 
     intrinsic function IsPrimitive(value)
-        (value === undefined || 
-         value === null ||
-         value is String || 
-         value is Boolean || 
-         value is Numeric);
+        magic::isPrimitive(value);
 
-    intrinsic function DefaultValue(obj, preferredType) {
-        var x = undefined;
-        if (preferredType == "String") {
-            if ("toString" in obj)
-                x = obj.public::toString();
-            if (x === undefined && "valueOf" in obj)
-                x = obj.public::valueOf();
-        } else {
-            if ("valueOf" in obj)
-                x = obj.public::valueOf();
-            if (x === undefined && "toString" in obj)
-                x = obj.public::toString();
-        }
+    intrinsic function DefaultValue(obj, preferredType)
+        magic::defaultValue(obj, preferredType);
 
-        if (IsPrimitive(x))
-            return x;
-
-        throw new TypeError();
-    }
-
-    /* ES-262-3 9.1: The ToPrimitive operation */
-    intrinsic function ToPrimitive(value, preferredType) {
-        if (IsPrimitive(value))
-            return value;
-        return DefaultValue(value, preferredType);
-    }
+    intrinsic function ToPrimitive(value, preferredType) 
+        magic::toPrimitive(value, preferredType);
 
     /* ES-262-3 9.4: The ToInteger operation */
     intrinsic function ToInteger(value) : Number {

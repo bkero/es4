@@ -294,6 +294,30 @@ fun setPropertyIsDontEnum (vals:Mach.VAL list)
         Mach.Undef
     end
 
+fun isPrimitive (vals:Mach.VAL list)
+    : Mach.VAL = 
+    Eval.newBoolean (Eval.isPrimitive (rawNth vals 0))
+
+fun toPrimitive (vals:Mach.VAL list)
+    : Mach.VAL = 
+    let
+        val v = rawNth vals 0
+        val hint = rawNth vals 1
+    in
+        if Mach.isString hint
+        then Eval.toPrimitive v (Eval.toUstring hint)
+        else Eval.toPrimitive v Ustring.empty
+    end
+
+fun defaultValue (vals:Mach.VAL list)
+    : Mach.VAL =
+    let
+        val obj = nthAsObj vals 0
+        val hint = nthAsUstr vals 1
+    in
+        Eval.defaultValue obj hint
+    end
+
 fun convertAndBindMagic (vals:Mach.VAL list) 
                         (cvt:(Mach.VAL -> 'a))
                         (mag:('a -> Mach.MAGIC)) 
@@ -899,6 +923,10 @@ fun registerNatives _ =
         addFn 2 Name.magic_getPropertyIsDontEnum getPropertyIsDontEnum;
         addFn 2 Name.magic_getPropertyIsDontDelete getPropertyIsDontDelete;
         addFn 3 Name.magic_setPropertyIsDontEnum setPropertyIsDontEnum;
+
+        addFn 2 Name.magic_toPrimitive toPrimitive;
+        addFn 1 Name.magic_isPrimitive isPrimitive;
+        addFn 2 Name.magic_defaultValue defaultValue;
 
         addFn 2 Name.magic_bindInt bindInt;
         addFn 2 Name.magic_bindUInt bindUInt;

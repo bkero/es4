@@ -284,6 +284,36 @@ fun isNumeric (v:VAL) : bool =
            | _ => false)
       | _ => false
 
+fun isNull (v:VAL) : bool = 
+    case v of 
+        Null => true
+      | _ => false
+
+fun isUndef (v:VAL) : bool = 
+    case v of 
+        Undef => true
+      | _ => false
+             
+(* 
+ * The "machine type" of a value here is an ES3-ism. It exists only for
+ * compatibility, and has nothing to do with the ES4 type system.
+ *
+ * The important part is that in ES3 algorithms, a machine value has 
+ * exactly *one* of these types. No overlap!
+ *)
+
+datatype MACHTY = TYNULL | TYUNDEF | TYNUMBER | TYSTRING | TYBOOLEAN | TYOBJECT
+
+fun es3Type (v:VAL) : MACHTY =
+    if isNull v then TYNULL
+    else if isUndef v then TYUNDEF
+    else if isNumeric v then TYNUMBER
+    else if isString v then TYSTRING
+    else if isBoolean v then TYBOOLEAN
+    else TYOBJECT
+
+fun isSameType (va:VAL) (vb:VAL) : bool =
+    es3Type va = es3Type vb
 
 fun isDirectInstanceOf (n:Ast.NAME) 
                        (v:VAL) 
