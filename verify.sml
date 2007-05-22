@@ -331,7 +331,16 @@ fun verifyTypeExpr (env:ENV)
             end
 
           | Ast.ElementTypeRef ((Ast.ArrayType fields), idx) => 
-            verifyTypeExpr env (List.nth (fields, idx))
+            let
+                val t = if idx < length fields 
+                        then List.nth (fields, idx)
+                        else 
+                            if length fields > 0
+                            then List.last fields
+                            else Ast.SpecialType Ast.Any
+            in
+                verifyTypeExpr env t
+            end
 
           | Ast.ElementTypeRef (t, _) => 
             error ["ElementTypeRef on non-ArrayType: ", typeToString t]

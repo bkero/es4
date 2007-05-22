@@ -1198,6 +1198,10 @@ and toBoolean (v:Mach.VAL) : bool =
  * implemented in *terms* of isPrimitive.
  *)
 
+(*
+ * ES-262-3 8.6.2.6: The [[DefaultValue]] operation 
+ *)
+
 and defaultValue (obj:Mach.OBJ) 
                  (preferredType:Ustring.STRING)
   : Mach.VAL = 
@@ -1208,7 +1212,7 @@ and defaultValue (obj:Mach.OBJ)
         val va = if hasValue obj na 
                  then evalCallMethodByRef obj (obj, na) []
                  else Mach.Undef
-        val vb = if Mach.isUndef va andalso hasValue obj nb
+        val vb = if not (isPrimitive va) andalso hasValue obj nb
                  then evalCallMethodByRef obj (obj, nb) []
                  else va
     in
@@ -2199,7 +2203,9 @@ and performBinop (bop:Ast.BINOP)
         fun stringConcat _ = 
             newString (Ustring.stringAppend (toUstring va) (toUstring vb))
 
-        fun dispatch a b (mode:Ast.NUMERIC_MODE) decimalOp doubleOp intOp uintOp largeOp =
+        fun dispatch a b (mode:Ast.NUMERIC_MODE) 
+                     decimalOp doubleOp intOp uintOp largeOp 
+                     (stayIntegralIfPossible:bool) =
             case (#numberType mode) of 
                 Ast.Decimal => decimalOp (toDecimal 
                                               (#precision mode) 
@@ -2236,7 +2242,9 @@ and performBinop (bop:Ast.BINOP)
                                              then Word32.toLargeInt (toUInt32 x)
                                              else Int32.toLarge (toInt32 x)
                          in
-                             if isIntegral a andalso isIntegral b
+                             if stayIntegralIfPossible 
+                                andalso isIntegral a 
+                                andalso isIntegral b
                              then 
                                  (trace ["dynamic dispatch as large op"];
                                   largeOp (enlarge a) (enlarge b))
@@ -2282,11 +2290,12 @@ and performBinop (bop:Ast.BINOP)
                     in
                         if isNaN va orelse isNaN vb
                         then newBoolean false
-                        else dispatch va vb mode decimalOp doubleOp intOp uintOp largeOp
+                        else dispatch va vb mode decimalOp doubleOp intOp uintOp largeOp true
                     end
             end
             
-        fun dispatchNumeric mode decimalFn doubleFn intFn uintFn largeFn =
+        fun dispatchNumeric mode decimalFn doubleFn intFn uintFn largeFn 
+                            (stayIntegralIfPossible:bool) =
             let
                 fun decimalOp da db =
                     newDecimal (decimalFn (#precision mode) (#roundingMode mode) da db)
@@ -2311,7 +2320,7 @@ and performBinop (bop:Ast.BINOP)
                                                    | NONE => error ["arithmetic overflow"])))
                     end                                 
             in
-                dispatch va vb mode decimalOp doubleOp intOp uintOp largeOp
+                dispatch va vb mode decimalOp doubleOp intOp uintOp largeOp stayIntegralIfPossible
             end            
 
         fun masku5 (x:Word32.word) : Word.word = 
@@ -2428,6 +2437,7 @@ and performBinop (bop:Ast.BINOP)
                                  ( Int32.+ )
                                  ( Word32.+ )
                                  ( LargeInt.+ )
+                                 true
                                               
           | Ast.Minus mode => 
             dispatchNumeric ( valOf mode ) 
@@ -2436,6 +2446,7 @@ and performBinop (bop:Ast.BINOP)
                             ( Int32.- )
                             ( Word32.- )
                             ( LargeInt.- )
+                            true
 
           | Ast.Times mode => 
             dispatchNumeric (valOf mode) 
@@ -2444,6 +2455,7 @@ and performBinop (bop:Ast.BINOP)
                             ( Int32.* )
                             ( Word32.* )
                             ( LargeInt.* )
+                            true
 
           | Ast.Divide mode => 
             dispatchNumeric ( valOf mode ) 
@@ -2452,6 +2464,7 @@ and performBinop (bop:Ast.BINOP)
                             ( Int32.div )
                             ( Word32.div )
                             ( LargeInt.div )
+                            false
 
           | Ast.Remainder mode => 
             let
@@ -2472,6 +2485,7 @@ and performBinop (bop:Ast.BINOP)
                                 ( Int32.mod )
                                 ( Word32.mod )
                                 ( LargeInt.mod )
+                                false
             end
 
           | Ast.LeftShift => 

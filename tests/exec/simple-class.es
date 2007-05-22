@@ -1,3 +1,5 @@
+use namespace intrinsic;
+
 class Cat { 
   var lives : int = 9;
   var name : string;
