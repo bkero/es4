@@ -11,15 +11,22 @@ val magicNS = newAnonNS ()
 val publicNS = Ast.Public (Ustring.empty)
 val internalNS = Ast.Internal (Ustring.empty)
 val intrinsicNS = Ast.Intrinsic
-(* FIXME: private is incomplete. *)
-val privateNS = Ast.Private (Ustring.fromString "class name here")
+
+(* 
+ * FIXME: mangling a name into a string is bad form. We really want to 
+ * have derived namespaces like Private and Protected refer to their
+ * containing namespace-qualified name of their containing class, rather 
+ * than the mangled form of their containing class.
+ *)
+fun mangle (n:Ast.NAME) : Ast.IDENT = 
+    Ustring.fromString (LogErr.name n)
 
 fun meta (id:Ast.IDENT) : Ast.NAME = { id = id, ns = metaNS }
 fun magic (id:Ast.IDENT) : Ast.NAME = { id = id, ns = magicNS }
 fun public (id:Ast.IDENT) : Ast.NAME = { id = id, ns = publicNS }
 fun internal (id:Ast.IDENT) : Ast.NAME= { id = id, ns = internalNS }
 fun intrinsic (id:Ast.IDENT) : Ast.NAME = { id = id, ns = intrinsicNS }
-fun private cls (id:Ast.IDENT) : Ast.NAME = { id = id, ns = privateNS }
+fun private (cls:Ast.NAME) (id:Ast.IDENT) : Ast.NAME = { id = id, ns = Ast.Private (mangle cls) }
 
 (* 
  * To reference a name as a type expression, you need 
@@ -31,29 +38,6 @@ fun typename (n:Ast.NAME) =
 		      { ident = (#id n), 
 			qual = Ast.LiteralExpr 
 				   (Ast.LiteralNamespace (#ns n)) })
-
-
-(* 
- * Property names that have special meanings to the interpreter.
- *)
-
-val public_constructor = public Ustring.constructor_
-val public_length = public Ustring.length_
-val public_cursor = public Ustring.cursor_
-val private_Array__length = private (Ustring.fromString "Array") (Ustring.fromString "_length")
-val public_source = public Ustring.source_
-val public_prototype = public Ustring.prototype_
-val public_toString = public Ustring.toString_
-val public_valueOf = public Ustring.valueOf_
-val public_global = public Ustring.global_
-val meta_invoke = meta Ustring.invoke_
-val meta_get = meta Ustring.get_
-val meta_set = meta Ustring.set_
-val meta_has = meta Ustring.has_
-val meta_call = meta Ustring.call_
-
-val this = internal Ustring.this_
-val arguments = internal Ustring.arguments_
 
 (* 
  * Names that are supposed to be present in the global scope 
@@ -239,5 +223,27 @@ val magic_hasOwnProperty = magic Ustring.hasOwnProperty_
 val magic_getPrototype = magic Ustring.getPrototype_
 val magic_getClassName = magic Ustring.getClassName_
 val magic_construct = magic Ustring.construct_
+
+(* 
+ * Property names that have special meanings to the interpreter.
+ *)
+
+val public_constructor = public Ustring.constructor_
+val public_length = public Ustring.length_
+val public_cursor = public Ustring.cursor_
+val private_Array__length = private public_Array (Ustring.fromString "_length")
+val public_source = public Ustring.source_
+val public_prototype = public Ustring.prototype_
+val public_toString = public Ustring.toString_
+val public_valueOf = public Ustring.valueOf_
+val public_global = public Ustring.global_
+val meta_invoke = meta Ustring.invoke_
+val meta_get = meta Ustring.get_
+val meta_set = meta Ustring.set_
+val meta_has = meta Ustring.has_
+val meta_call = meta Ustring.call_
+
+val this = internal Ustring.this_
+val arguments = internal Ustring.arguments_
 
 end

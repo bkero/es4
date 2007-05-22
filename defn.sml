@@ -490,7 +490,7 @@ fun clearPackageName (ctx::ex)
 fun enterClass (ctx::ex) (className)
     : ENV =
     let
-        val className = Ustring.fromString (LogErr.name className)
+        val className = Name.mangle className
     in
         { fixtures = (#fixtures ctx),
           tempOffset = (#tempOffset ctx),
