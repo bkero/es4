@@ -1208,7 +1208,8 @@ and defaultValue (obj:Mach.OBJ)
         val va = if hasValue obj na 
                  then evalCallMethodByRef obj (obj, na) []
                  else Mach.Undef
-        val vb = if Mach.isUndef va andalso hasValue obj nb
+        val vb = if (Mach.isUndef va orelse not (isPrimitive va)) 
+                    andalso hasValue obj nb
                  then evalCallMethodByRef obj (obj, nb) []
                  else va
     in
