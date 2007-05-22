@@ -37,9 +37,10 @@
  * ***** END LICENSE BLOCK ***** */
 
 
-package Token 
+namespace Token = "Token"
+
 {
-    use namespace intrinsic;
+    use default namespace Token
 
     const FirstToken = 0
     public const Eof:int = FirstToken -1
@@ -436,4 +437,4 @@ package Token
 
 }
 
-Token.test()
+Token::test()
