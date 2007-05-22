@@ -1198,6 +1198,10 @@ and toBoolean (v:Mach.VAL) : bool =
  * implemented in *terms* of isPrimitive.
  *)
 
+(*
+ * ES-262-3 8.6.2.6: The [[DefaultValue]] operation 
+ *)
+
 and defaultValue (obj:Mach.OBJ) 
                  (preferredType:Ustring.STRING)
   : Mach.VAL = 
@@ -1208,8 +1212,7 @@ and defaultValue (obj:Mach.OBJ)
         val va = if hasValue obj na 
                  then evalCallMethodByRef obj (obj, na) []
                  else Mach.Undef
-        val vb = if (Mach.isUndef va orelse not (isPrimitive va)) 
-                    andalso hasValue obj nb
+        val vb = if not (isPrimitive va) andalso hasValue obj nb
                  then evalCallMethodByRef obj (obj, nb) []
                  else va
     in
