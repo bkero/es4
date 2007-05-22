@@ -5,7 +5,7 @@ structure Lexer = struct
 (* Local tracing machinery *)
 
 val doTrace = ref false
-fun trace ss = if (!doTrace) then LogErr.log ("[parse] " :: ss) else ()
+fun trace ss = if (!doTrace) then LogErr.log ("[lex] " :: ss) else ()
 fun error ss = LogErr.lexError ss
 
 open Token
@@ -15,6 +15,7 @@ exception LexChoicePoint of TOKEN
 datatype NumericLiteralGroup = 
     HexIntLit | DecIntLit | DecLit
 
+fun tname t = if !doTrace then tokenname t else ""
 
 fun makeTokenList (filename : string, reader : unit -> Ustring.SOURCE) : ((TOKEN * Ast.LOC) list) =
     let
@@ -107,6 +108,7 @@ fun makeTokenList (filename : string, reader : unit -> Ustring.SOURCE) : ((TOKEN
         in
             justFoundNewline := false;
             LogErr.setLoc (SOME loc);
+	    trace [tname (tok,loc)];
             toks := (tok, loc) :: (!toks)
         end
         
@@ -123,6 +125,15 @@ fun makeTokenList (filename : string, reader : unit -> Ustring.SOURCE) : ((TOKEN
             (justFoundNewline := true;
              advanceIndex adv)
         
+        fun lookahead k = 
+	    let 
+		fun step 0 (x::xs) = x
+		  | step n (x::xs) = step (n-1) xs
+		  | step _ [] = 0wx0
+	    in
+		step k (!src)
+	    end
+
         fun lexEscapedChar () : Word.word =
         let
             fun hexToWord hexDigits =
@@ -140,8 +151,9 @@ fun makeTokenList (filename : string, reader : unit -> Ustring.SOURCE) : ((TOKEN
               | 0wx5C::0wx78::0wx7B::_) => (* \x{ *)
                 let
                     fun getHexDigits digits =
-                       (case hd (!src) of
+                       (case lookahead 0 of
                             0wx7D(* } *) => (advanceIndex 1; rev digits)
+			  | 0wx0         => digits
                           | a            => (advanceIndex 1; getHexDigits (a::digits)))
                     
                     val digits = (advanceIndex 3; getHexDigits [])
@@ -221,11 +233,6 @@ fun makeTokenList (filename : string, reader : unit -> Ustring.SOURCE) : ((TOKEN
           | lexOp [] =
             error ["LexError:  LEXER BUG in lexOp"]
 
-        fun lookahead n =
-	    case List.drop (!src, n) of 
-		[] => 0wx0
-	      | x::_ => x
-
         fun lexResOrId ((str,tok)::rest : (Ustring.SOURCE * TOKEN) list) : unit =
             let
                 val src_ = tl (!src)  (* we don't get here unless the first char matched already *)
@@ -242,10 +249,12 @@ fun makeTokenList (filename : string, reader : unit -> Ustring.SOURCE) : ((TOKEN
         let
             fun lexStr str  =
             let
-                val c = hd (!src)
+                val c = lookahead 0
             in
                 if (c = 0wx000A) orelse (c = 0wx000D) orelse (c = 0wx2028) orelse (c = 0wx2029) (* newlines *)
                 then error ["LexError:  no newlines in string literals"]
+		else if c = 0wx0
+		then error ["LexError:  end of input in string literal"]
                 else if c = 0wx005C (* backslash *)
                 then lexStr ((lexEscapedChar ())::str)
                 else if c = delim
@@ -408,9 +417,9 @@ fun makeTokenList (filename : string, reader : unit -> Ustring.SOURCE) : ((TOKEN
               | (DecLit   , _) => push tokLen (DecimalLiteral        numberAscii)
             ;
             (* next char must NOT be isIdentifierChar *)
-            if isIdentifierChar (hd (!src))
+            if isIdentifierChar (lookahead 0)
             then error ["LexError:  illegal character <",
-                        Ustring.toAscii (Vector.fromList [hd (!src)]),
+                        Ustring.toAscii (Vector.fromList [lookahead 0]),
                         "> after numeric literal <",numberAscii,">"]
             else ()  (* cool *)
         end
@@ -418,24 +427,27 @@ fun makeTokenList (filename : string, reader : unit -> Ustring.SOURCE) : ((TOKEN
         fun lexFromSlash () : unit = (* lexes comments or raises LexChoicePoint of LexBreakDiv *)
         let
             fun lexSingleLineComment () =
-                case hd (!src) of
+                case lookahead 0 of
                     (0wx000A | 0wx000D | 0wx2028 | 0wx2029) (* line terminators *)
                       => pushEolAdv 1
+		  | 0wx0 => ()
                   | _ => (advanceIndex 1; lexSingleLineComment ())
             
             fun lexMultiLineComment {newline=false} {asterisk=asterisk} = (* have not encountered a newline yet *)
-                (case hd (!src) of
+                (case lookahead 0 of
                     (0wx000A | 0wx000D | 0wx2028 | 0wx2029) (* line terminators *)
                                   => (pushEolAdv   1; lexMultiLineComment {newline=true } {asterisk=false})
                   | 0wx2A (* * *) => (advanceIndex 1; lexMultiLineComment {newline=false} {asterisk=true })
                   | 0wx2F (* / *) => (advanceIndex 1; if asterisk then () else
                                                       lexMultiLineComment {newline=false} {asterisk=false})
+                  | 0wx0          => ()
                   | _             => (advanceIndex 1; lexMultiLineComment {newline=false} {asterisk=false}))
               | lexMultiLineComment {newline=true} {asterisk=asterisk} = (* have already encountered a newline *)
-                (case hd (!src) of
+                (case lookahead 0 of
                     0wx2A (* * *) => (advanceIndex 1; lexMultiLineComment {newline=true} {asterisk=true })
                   | 0wx2F (* / *) => (advanceIndex 1; if asterisk then () else
                                                       lexMultiLineComment {newline=true} {asterisk=false})
+                  | 0wx0          => ()
                   | _             => (advanceIndex 1; lexMultiLineComment {newline=true} {asterisk=false}))
             
             val nextChar = lookahead 1
@@ -463,7 +475,7 @@ fun makeTokenList (filename : string, reader : unit -> Ustring.SOURCE) : ((TOKEN
                         
                         fun lexRegexp reSrc {newline=newline} {charset=charset} =
                         let
-                            val c = hd (!src)
+                            val c = lookahead 0
                             val _ = advanceIndex 1
                         in
                             case (charset, c) of
@@ -471,11 +483,13 @@ fun makeTokenList (filename : string, reader : unit -> Ustring.SOURCE) : ((TOKEN
                                                        => lexRegexp (c::reSrc) {newline=true   } {charset=charset}
                               | (false, 0wx5B (* [ *)) => lexRegexp (c::reSrc) {newline=newline} {charset=true   }
                               | (true , 0wx5D (* ] *)) => lexRegexp (c::reSrc) {newline=newline} {charset=false  }
-                              | (  _  , 0wx5C (* \ *)) => (case hd (!src) of
-                                                                (0wx000A | 0wx000D | 0wx2028 | 0wx2029) (* line terminators *)
-                                                                  => (advanceIndex 1; lexRegexp (      reSrc) {newline=newline} {charset=charset})
-                                                              | d => (advanceIndex 1; lexRegexp (d::c::reSrc) {newline=newline} {charset=charset})
-                                                          )
+                              | (  _  , 0wx5C (* \ *)) => 
+				(case lookahead 0 of
+                                     (0wx000A | 0wx000D | 0wx2028 | 0wx2029) (* line terminators *)
+                                     => (advanceIndex 1; lexRegexp (      reSrc) {newline=newline} {charset=charset})
+				   | 0wx0 => error ["LexError: end of input in regexp"]
+                                   | d => (advanceIndex 1; lexRegexp (d::c::reSrc) {newline=newline} {charset=charset})
+                                )
                               | (false, 0wx2F (* / *)) =>
                                 let
                                     val numFlags = countInRanges {min=0} [(UTF8.fromAscii #"a", UTF8.fromAscii #"z"),
