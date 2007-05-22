@@ -2610,7 +2610,7 @@ and defBlock (env:ENV)
         val _ = LogErr.setLoc loc
         val (env,unhoisted_pragma_fxtrs) = defPragmas env pragmas
         val (unhoisted_defn_fxtrs,hoisted_defn_fxtrs,inits) = defDefns env [] [] [] defns
-        val env = updateFixtures env (unhoisted_defn_fxtrs@hoisted_defn_fxtrs) (* so stmts can see them. don't merge to avoid conflicts *)
+        val env = updateFixtures env (List.foldl mergeFixtures unhoisted_defn_fxtrs hoisted_defn_fxtrs)
         val (body,hoisted_body_fxtrs) = defStmts env body
         val hoisted = List.foldl mergeFixtures hoisted_defn_fxtrs hoisted_body_fxtrs
     in
@@ -2681,9 +2681,9 @@ and defProgram (prog:Ast.PROGRAM)
         val (block, hoisted_gbl) = defBlock (updateFixtures e (List.concat hoisted_pkg)) (#block prog)
 
         (* FIXME: erasefixtures seems completely wrong! -graydon *)
-        (* val fixtures = List.foldl (eraseFixtures (!topFixtures)) [] (List.foldl mergeFixtures (List.concat hoisted_pkg) hoisted_gbl)  *)
-        val fixtures = List.foldl mergeFixtures (List.concat hoisted_pkg) hoisted_gbl
-
+        val fixtures = List.foldl (eraseFixtures (!topFixtures)) [] (List.foldl mergeFixtures (List.concat hoisted_pkg) hoisted_gbl)
+(*        val fixtures = List.foldl mergeFixtures (List.concat hoisted_pkg) hoisted_gbl
+*)
         val result = {packages = packages,
                       block = block,
                       fixtures = SOME fixtures }

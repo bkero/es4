@@ -1,10 +1,8 @@
 use namespace intrinsic
-namespace N
-class A
-{
-  N var x : int = 10
-  function m() {
-    return N::x
-  }
+function f() 
+    : [int,int]
+{ 
+    let [x,y]:[int,int] = [10,20]
+    return [x,y]
 }
-print((new A).m())
+print(f())

@@ -1,3 +1,4 @@
+
 /* -*- mode: java; mode: font-lock; tab-width: 4; insert-tabs-mode: nil; indent-tabs-mode: nil -*- */
 /* ***** BEGIN LICENSE BLOCK *****
  * Version: MPL 1.1/GPL 2.0/LGPL 2.1
@@ -36,12 +37,25 @@
  *
  * ***** END LICENSE BLOCK ***** */
 
+/*
+    TODO
+
+    o punctuators
+    o escapes
+    o reserved words
+    o number literals
+    o string literals
+    o regexp literals
+    x lex break
+*/
+
 use namespace intrinsic;
 
 namespace Char
 
 {
-    use default namespace Char
+    use default namespace Char;
+    const EOS = 0;
     const a = "a".charCodeAt(0);
     const b = "b".charCodeAt(0);
     const c = "c".charCodeAt(0);
@@ -68,6 +82,62 @@ namespace Char
     const x = "x".charCodeAt(0);
     const y = "y".charCodeAt(0);
     const z = "z".charCodeAt(0);
+    const A = "A".charCodeAt(0);
+    const B = "B".charCodeAt(0);
+    const C = "C".charCodeAt(0);
+    const D = "D".charCodeAt(0);
+    const E = "E".charCodeAt(0);
+    const F = "F".charCodeAt(0);
+    const G = "G".charCodeAt(0);
+    const H = "H".charCodeAt(0);
+    const I = "I".charCodeAt(0);
+    const J = "J".charCodeAt(0);
+    const K = "K".charCodeAt(0);
+    const L = "L".charCodeAt(0);
+    const M = "M".charCodeAt(0);
+    const N = "N".charCodeAt(0);
+    const O = "O".charCodeAt(0);
+    const P = "P".charCodeAt(0);
+    const Q = "Q".charCodeAt(0);
+    const R = "R".charCodeAt(0);
+    const S = "S".charCodeAt(0);
+    const T = "T".charCodeAt(0);
+    const U = "U".charCodeAt(0);
+    const V = "V".charCodeAt(0);
+    const W = "W".charCodeAt(0);
+    const X = "X".charCodeAt(0);
+    const Y = "Y".charCodeAt(0);
+    const Z = "Z".charCodeAt(0);
+    const Zero = "0".charCodeAt(0);
+    const Period = ".".charCodeAt(0);
+    const Bang = "!".charCodeAt(0);
+    const Equal = "=".charCodeAt(0);
+    const Percent = "%".charCodeAt(0);
+    const Ampersand = "&".charCodeAt(0);
+    const Asterisk = "*".charCodeAt(0);
+    const Plus = "+".charCodeAt(0);
+    const Dash = "-".charCodeAt(0);
+    const Slash = "/".charCodeAt(0);
+    const Comma = ",".charCodeAt(0);
+    const Colon = ":".charCodeAt(0);
+    const Semicolon = ";".charCodeAt(0);
+    const LeftAngle = "<".charCodeAt(0);
+    const RightAngle = ">".charCodeAt(0);
+    const Caret = "^".charCodeAt(0);
+    const Bar = "|".charCodeAt(0);
+    const QuestionMark = "?".charCodeAt(0);
+    const LeftParen = "(".charCodeAt(0);
+    const RightParen = ")".charCodeAt(0);
+    const LeftBrace = "{".charCodeAt(0);
+    const RightBrace = "}".charCodeAt(0);
+    const LeftBracket = "[".charCodeAt(0);
+    const RightBracket = "]".charCodeAt(0);
+    const Tilde = "~".charCodeAt(0);
+    const At = "@".charCodeAt(0);
+    const SingleQuote = "'".charCodeAt(0);
+    const DoubleQuote = "\"".charCodeAt(0);
+    const Space = " ".charCodeAt(0);
+    const Newline = "\n".charCodeAt();
 }
 
 namespace Token
@@ -75,9 +145,8 @@ namespace Token
 {
     use default namespace Token
 
-    const FirstToken = 0
-    const Eof = FirstToken -1
-    const Minus = Eof - 1
+    const firstTokenClass = -1
+    const Minus = firstTokenClass
     const MinusMinus = Minus - 1
     const Not = MinusMinus - 1
     const NotEquals = Not - 1
@@ -151,8 +220,7 @@ namespace Token
     const For = Finally - 1
     const Function = For - 1
     const If = Function - 1
-    const Import = If - 1
-    const In = Import - 1
+    const In = If - 1
     const InstanceOf = In - 1
     const New = InstanceOf - 1
     const Null = New - 1
@@ -169,22 +237,21 @@ namespace Token
     const While = Void - 1
     const With = While - 1
 
-        /* contextually reserved identifiers */
+    /* contextually reserved identifiers */
 
     const Call = With - 1
     const Cast = Call - 1
     const Const = Cast - 1
-    const Debugger = Const - 1
-    const Decimal = Debugger - 1
+    const Decimal = Const - 1
     const Double = Decimal - 1
     const Dynamic = Double - 1
     const Each = Dynamic - 1
     const Final = Each - 1
     const Get = Final - 1
-    const Goto = Get - 1
-    const Has = Goto - 1
+    const Has = Get - 1
     const Implements = Has - 1
-    const Int = Implements - 1
+    const Import = Implements - 1
+    const Int = Import - 1
     const Interface = Int - 1
     const Internal = Interface - 1
     const Intrinsic = Internal - 1
@@ -237,8 +304,8 @@ namespace Token
     const RegexpLiteral = HexIntegerLiteral - 1
     const SlashSlashComment = RegexpLiteral - 1
     const StringLiteral = SlashSlashComment - 1
-    const Whitespace = StringLiteral - 1
-    const XmlLiteral = Whitespace - 1
+    const Space = StringLiteral - 1
+    const XmlLiteral = Space - 1
     const XmlPart = XmlLiteral - 1
     const XmlMarkup = XmlPart - 1
     const XmlText = XmlMarkup - 1
@@ -247,22 +314,13 @@ namespace Token
 
     // meta
 
-    const Error = XmlTagStartEnd - 1
-    const Eof = Error - 1
-    const LexBreakDiv = Eof - 1 
-                            // of { lex_initial: unit -> ((TOKEN * Ast.POS) list),
-                            // lex_regexp: unit -> ((TOKEN * Ast.POS) list) }
-    const LexBreakDivAssign  = LexBreakDiv - 1 
-                            // of { lex_initial: unit -> ((TOKEN * Ast.POS) list),
-                            // lex_regexp: unit -> ((TOKEN * Ast.POS) list) }
-    const LexBreakLessThan = LexBreakDivAssign - 1 
-                            // of { lex_initial: unit -> ((TOKEN * Ast.POS) list),
-                            //lex_xml: unit -> ((TOKEN * Ast.POS) list) }
-    const LastToken = LexBreakLessThan
+    const ERROR = XmlTagStartEnd - 1
+    const EOS = ERROR - 1
+    const BREAK = EOS - 1 
+    const lastTokenClass = BREAK
 
     const names = [
         "<unused index>", 
-        "end of program",
         "minus",
         "minusminus",
         "not",
@@ -293,8 +351,6 @@ namespace Token
         "leftbracket",
         "rightbracket",
         "bitwisexor",
-        "logicalxor",
-        "logicalxorassign",
         "bitwisexorassign",
         "leftbrace",
         "bitwiseor",
@@ -320,37 +376,52 @@ namespace Token
         "rightshiftassign",
         "unsignedrightshift",
         "unsignedrightshiftassign",
-        "as",
         "break",
-        "call",
         "case",
-        "cast",
         "catch",
         "class",
-        "const",
         "continue",
-        "debugger",
         "default",
         "delete",
         "do",
-        "dynamic",
-        "each",
         "else",
         "enum",
         "extends",
         "false",
-        "final",
         "finally",
         "for",
         "function",
-        "get",
-        "goto",
         "if",
+        "in",
+        "instanceof",
+        "new",
+        "null",
+        "return",
+        "super",
+        "switch",
+        "this",
+        "throw",
+        "true",
+        "try",
+        "typeof",
+        "var",
+        "void",
+        "while",
+        "with",
+
+        "call",
+        "cast",
+        "const",
+        "decimal",
+        "double",
+        "dynamic",
+        "each",
+        "final",
+        "get",
+        "has",
         "implements",
         "import",
-        "in",
-        "include",
-        "instanceof",
+        "int",
         "interface",
         "internal",
         "intrinsic",
@@ -358,54 +429,53 @@ namespace Token
         "let",
         "namespace",
         "native",
-        "new",
-        "null",
+        "Number",
         "override",
         "package",
+        "precision",
         "private",
         "protected",
         "prototype",
         "public",
-        "return",
+        "rounding",
+        "standard",
+        "strict",
+        "to",
         "set",
         "static",
-        "super",
-        "switch",
-        "this",
-        "throw",
-        "to",
-        "true",
-        "try",
         "type",
-        "typeof",
+        "uint",
+        "undefined",
         "use",
-        "var",
-        "void",
-        "while",
-        "with",
         "xml",
         "yield",
+
+        "attributeidentifier",
+        "blockcomment",
+        "doccomment",
+        "eol",
         "identifier",
-        "numberliteral",
+        "explicitdecimalliteral",
+        "explicitdoubleliteral",
+        "explicitintliteral",
+        "explicituintliteral",
+        "decimalintegerliteral",
+        "decimalliteral",
+        "hexintegerliteral",
         "regexpliteral",
+        "linecomment",
         "stringliteral",
+        "space",
         "xmlliteral",
         "xmlpart",
         "xmlmarkup",
         "xmltext",
         "xmltagendend",
         "xmltagstartend",
-        "attributeidentifier",
-        "docComment",
-        "blockComment",
-        "slashslashcomment",
-        
-        "<newline>",
-        "<ws>",
-        "<empty>",
-        "<error>",
-        "abbrev_mode",
-        "full_mode"
+
+        "ERROR",
+        "EOS",
+        "BREAK"
     ]
     
     class Token 
@@ -417,49 +487,141 @@ namespace Token
             this.kind = kind
             this.utf8id = utf8id
         }
+
+        function tokenText () : String
+        {
+            return this.utf8id;
+        }
     }
 
-    var tokenStore
+    const tokenStore = new Array;
 
-        public function makeInstance(token_class:int, lexeme:String) : int
+    function maybeReservedIdentifier (lexeme:String) : int
+    {
+        // ("maybeReservedIdentifier lexeme=",lexeme);
+        switch (lexeme) {
+
+        // ContextuallyReservedIdentifiers
+
+        case "break": return Break;
+        case "case": return Case;
+        case "catch": return Catch;
+        case "class": return Class;
+        case "continue": return Continue;
+        case "default": return Default;
+        case "delete": return Delete;
+        case "do": return Do;
+        case "else": return Else;
+        case "enum": return Enum;
+        case "extends": return Extends;
+        case "false": return False;
+        case "finally": return Finally;
+        case "for": return For;
+        case "function": return Function;
+        case "if": return If;
+        case "in": return In;
+        case "instanceof": return InstanceOf;
+        case "new": return New;
+        case "null": return Null;
+        case "return": return Return;
+        case "super": return Super;
+        case "switch": return Switch;
+        case "this": return This;
+        case "throw": return Throw;
+        case "true": return True;
+        case "try": return Try;
+        case "typeof": return TypeOf;
+        case "var": return Var;
+        case "void": return Void;
+        case "while": return While;
+        case "with": return With;
+
+        // ContextuallyReservedIdentifiers
+
+        case "call": return Call;
+        case "cast": return Cast;
+        case "const": return Const;
+        case "decimal": return Decimal;
+        case "double": return Double;
+        case "dynamic": return Dynamic;
+        case "each": return Each;
+        case "eval": return Eval;
+        case "final": return Final;
+        case "get": return Get;
+        case "has": return Has;
+        case "implements": return Implements;
+        case "import": return Import;
+        case "int": return Int;
+        case "interface" : return Interface;
+        case "internal": return Internal;
+        case "intrinsic": return Intrinsic;
+        case "is": return Is;
+        case "let": return Let;
+        case "namespace": return Namespace;
+        case "native": return Native;
+        case "Number": return Number;
+        case "override": return Override;
+        case "package": return Package;
+        case "precision": return Precision;
+        case "private": return Private;
+        case "protected": return Protected;
+        case "prototype": return Prototype;
+        case "public": return Public;
+        case "rounding": return Rounding;
+        case "standard": return Standard;
+        case "strict": return Strict;
+        case "to": return To;
+        case "set": return Set;
+        case "static": return Static;
+        case "to": return To;
+        case "type": return Type;
+        case "uint": return Uint;
+        case "undefined": return Undefined;
+        case "use": return Use;
+        case "xml": return Xml;
+        case "yield": return Yield;
+        default: return makeInstance (Identifier,lexeme);
+        }            
+    }
+
+    function makeInstance(token_class:int, lexeme:String) : int
+    {
+        tokenStore.push(new Token(token_class, lexeme));
+        return tokenStore.length - 1;
+    }
+
+    function getTokenClass (tid : int) : int
+    {
+        // if the token id is negative, it is a token_class
+
+        if (tid < 0)
         {
-            tokenStore.push(new Token(token_class, lexeme));
-            return tokenStore.length - 1;
+           return tid;
         }
 
-        public function getTokenClass (token_id : int) : int
-        {
-            // if the token id is negative, it is a token_class
+        // otherwise, get instance data from the instance vector.
 
-            if (token_id < 0)
-            {
-               return token_id;
-            }
-
-            // otherwise, get instance data from the instance vector.
-
-            var t : Token = tokens[token_id];
-            return t.getTokenClass();
-        }
-        
-        public function getTokenText ( token_id : int ) : String
-        {
+        var t : Token = tokens[tid];
+        return t.getTokenClass();
+    }
+    
+    function tokenText ( tid : int ) : String
+    {
+        if (tid < 0) {
             // if the token id is negative, it is a token_class.
-
-            if (token_id < 0)
-            {
-                return getTokenClassName(token_id);
-            }
-
-            // otherwise, get instance data from the instance vector.
-
-            var t : Token = tokens[token_id];
-            return t.getTokenText();
+            var text = names[-tid];
         }
+        else {
+            // otherwise, get instance data from the instance vector
+            var tok : Token = tokenStore[tid];
+            var text = tok.tokenText();
+        }
+        return text;
+    }
 
     function test () 
     {
-        for( let i = FirstToken; i >= LastToken; --i )
+        for( let i = firstTokenClass; i >= lastTokenClass; --i )
             print(i,": ",names[-i])
     }
 
@@ -486,88 +648,132 @@ namespace Lexer
             : src = src
             , origin = origin
             , tokenList = new Array
-            , curIndex = -1
+            , curIndex = 0
             , markIndex = 0
         {
+            print("scanning: ",src);
         }
 
-        public function nextchar () : int
+        public function next () 
+            : String
         {
-            return src.charCodeAt (++curIndex);
+            if (curIndex == src.length)
+            {
+                curIndex++;
+                return Char::EOS;
+            }
+            else
+            {
+                return src.charCodeAt(curIndex++);
+            }
         }
 	
-        public function lexeme() : String 
+        public function lexeme() 
+            : String 
         {
-            return input.copy(); // copies text since last mark
+            return src.slice (markIndex,curIndex)
         }
 
-        public function retract() : void
+        public function retract() 
+            : void
         {
             curIndex--;
+            print("retract cur=",curIndex);
         }
 
-        private function mark () : void
+        private function mark () 
+            : void
         {
             markIndex = curIndex;
+            print("mark mark=",markIndex);
         }
 
-        public function nexttoken(resetState:Boolean = false) : int 
+        public function tokenList (lexPrefix)
+            : int
         {
             let tokenList = new Array;
-            while (true) {
-                let token = nextToken ();
-                print("token=",token);
+            let token = lexPrefix ();
+            tokenList.push (token);
+            while (token != Token::BREAK &&
+                   token != Token::EOS &&
+                   token != Token::ERROR) 
+            {
+                token = start ();
                 tokenList.push (token);
-                if (token === Token.LexBreak ||
-                    token === Token.Eof ||
-                    token === Token.Error)
-                {
-                    break;
-                }
             }
-            print("tokenList.length=",tokenList.length);
-            return tokenList;
+            return tokenList.reverse();
         }
 
-        public function nextToken (resetState:Boolean = false) : int 
+        public function div () : int
         {
-            let result = start();
-                print("nexttoken=",result);
-            return result;
+            let c : int = next ();
+            switch (c) 
+            {
+                case Char::Equal : return Token::DivAssign;
+                default:
+                    retract ();
+                    return Token::Div;
+            }
         }
 
-        private function start() : int
+        public function regexp ()
+        {
+            let c : int = next ();
+            switch (c)
+            {
+                case Char::Slash :
+                    return regexpFlags ();
+                default:
+                    return regexp ();
+            }
+        }
+
+        public function regexpFlags ()
+        {
+            let c : int = next ();
+            if (Unicode.isIdentifierPart (String.fromCharCode(c))) {
+                return regexpFlags ();
+            }
+            else {
+                retract ();
+                return Token::makeInstance (Token::RegexpLiteral,lexeme());
+            }
+        }
+
+        public function start ()
+            : int
         {
             var c : int;
-            while (true) 
+            while (true)
             {
-                c = nextchar();
                 mark();
-                switch (c) 
+                c = next();
+                //                print("c[",curIndex-1,"]=",String.fromCharCode(c));
+                switch (c)
                 {
                 case 0xffffffef: return utf8sig ();
-                case 0: return Token::Eos;
-                case Char::At: return Token::At;
+                case Char::EOS: print("EOS"); return Token::EOS;
+                case Char::Slash: return Token::BREAK;
+                case Char::Newline: return Token::Newline;
+                case Char::Space: return Token::Space;
                 case Char::LeftParen: return Token::LeftParen;
                 case Char::RightParen: return Token::RightParen;
                 case Char::Comma: return Token::Comma;
                 case Char::Semicolon: return Token::Semicolon;
-                case Char::Space: return Token::Space;
                 case Char::QuestionMark: return Token::QuestionMark;
                 case Char::LeftBracket: return Token::LeftBracket;
                 case Char::RightBracket: return Token::RightBracket;
                 case Char::LeftBrace: return Token::LeftBrace;
-                case Char::OBRightBrace: return Token::RightBrace;
+                case Char::RightBrace: return Token::RightBrace;
                 case Char::Tilde: return Token::BitwiseNot;
-                case Char::Newline: return Token::Newline;
+                case Char::At: return Token::At;
                 case Char::SingleQuote: return stringLiteral (c);
                 case Char::DoubleQuote: return stringLiteral (c);
                 case Char::Dash: return minus ();
                 case Char::Bang: return not ();
                 case Char::Percent: return remainder ();
                 case Char::Ampersand: return and ();
-                case Char::Mult: return mult ();
-                case Char::Slash: return slash ();
+                case Char::Asterisk: return mult ();
                 case Char::Colon: return colon ();
                 case Char::Caret: return caret ();
                 case Char::Bar: return or ();
@@ -576,67 +782,158 @@ namespace Lexer
                 case Char::Equal: return equal ();
                 case Char::RightAngle: return greaterthan ();
                 case Char::Zero: return zero ();
-                case Char::a: return a ();
-                case Char::b: return b ();
-                case Char::c: return c ();
-                case Char::d: return d ();
-                case Char::e: return e ();
-                case Char::f: return f ();
-                case Char::g: return g ();
-                case Char::i: return i ();
-                case Char::n: return n ();
-                case Char::o: return o ();
-                case Char::p: return p ();
-                case Char::r: return r ();
-                case Char::s: return s ();
-                case Char::t: return t ();
-                case Char::u: return u ();
-                case Char::v: return v ();
-                case Char::w: return w ();
+                case Char::b: return b_ ();
+                case Char::c: return c_ ();
+                case Char::d: return d_ ();
+                case Char::e: return e_ ();
+                case Char::f: return f_ ();
+                case Char::g: return g_ ();
+                case Char::i: return i_ ();
+                case Char::n: return n_ ();
+                case Char::o: return o_ ();
+                case Char::p: return p_ ();
+                case Char::r: return r_ ();
+                case Char::s: return s_ ();
+                case Char::t: return t_ ();
+                case Char::u: return u_ ();
+                case Char::v: return v_ ();
+                case Char::w: return w_ ();
                 default:
-                    if (isDigit (c)) 
+                    /*
+                    if (Unicode.isDecimalDigit (c)) 
                     {
                         return digit (c);
                     } 
-                    else if (isIdentifierStart (c)) 
+                    else
+                    */ 
+                    if (Unicode.isIdentifierStart (String.fromCharCode(c)))
                     {
-                        return identifier (c);
+                        return identifier ();
                     } 
-                    else 
+                    else
                     {
-                        return error ();
+                        return intrinsic::print("invalid prefix ", c);
                     }
                 }
             }
             Debug.assert(false);
 		}
 
-        private function identifier () : int 
+        private function identifier () 
+            : int 
         {
-            print(">>identifier");
-            let c : int = nextchar ();
+            let c : int = next ();
+            //            print("c[",curIndex-1,"]=",String.fromCharCode(c))
             switch (c) 
             {
-            case Char::a : identifier ();
-            case Char::b : identifier ();
-            case Char::c : identifier ();
-            case Char::d : identifier ();
+            case Char::a : 
+            case Char::b :
+            case Char::c : 
+            case Char::d : 
+            case Char::e : 
+            case Char::f : 
+            case Char::g : 
+            case Char::h : 
+            case Char::i : 
+            case Char::j : 
+            case Char::k : 
+            case Char::l : 
+            case Char::m : 
+            case Char::n : 
+            case Char::o : 
+            case Char::p : 
+            case Char::q : 
+            case Char::r : 
+            case Char::s : 
+            case Char::t : 
+            case Char::u : 
+            case Char::v : 
+            case Char::w : 
+            case Char::x : 
+            case Char::y : 
+            case Char::z : 
+            case Char::A : 
+            case Char::B :
+            case Char::B :
+            case Char::C :
+            case Char::D :
+            case Char::E :
+            case Char::F :
+            case Char::G :
+            case Char::H :
+            case Char::I :
+            case Char::J :
+            case Char::K :
+            case Char::L :
+            case Char::M :
+            case Char::N :
+            case Char::O :
+            case Char::P :
+            case Char::Q :
+            case Char::R :
+            case Char::S :
+            case Char::T :
+            case Char::U :
+            case Char::V :
+            case Char::W :
+            case Char::X :
+            case Char::Y :
+            case Char::Z : return identifier ();
             default:
-                if (isIdentifierPart (c))
+                if (Unicode.isIdentifierPart (String.fromCharCode(c)) && c != Char::EOS)
                 {
                     return identifier ();
                 }
                 else
                 {
                     retract ();                    
-                    return Token::maybeReservedIdentifierToken (lexeme ());
+                    return Token::maybeReservedIdentifier (lexeme ());
                 }
             }
         }
 
-        private function n_ () : int 
+        private function b_ () : int 
         {
-            let c : int = nextchar();
+            let c : int = next ();
+            switch (c) 
+            {
+                case Char::r : return br_ ();
+                default:
+                    retract ();
+                    return identifier ();
+            }
+        }
+
+        private function br_ () 
+            : int 
+        {
+            let c : int = next ();
+            switch (c) 
+            {
+                case Char::e : return identifier ();
+                default:
+                    retract ();
+                    return identifier ();
+            }
+        }
+
+        private function d_ () 
+            : int 
+        {
+            let c : int = next ();
+            switch (c) 
+            {
+                case Char::e : return identifier ();
+                default:
+                    retract ();
+                    return identifier ();
+            }
+        }
+
+        private function n_ () 
+            : int 
+        {
+            let c : int = next();
             switch (c) 
             {
                 case Char::a : return na_ ();
@@ -648,39 +945,41 @@ namespace Lexer
             }
         }
 
-        private function nu_ () : int 
+        private function nu_ ()
+            : int
         {
-            let c : int = nextchar ();
-            switch (c) 
-            {
-                case Char::l : nul_ ();
-                default:
-                    retract ();
-                    return identifier ();
-            }
-        }
-
-        private function nul_ () : int 
-        {
-            let c : int = nextchar ();
-            switch (c) 
-            {
-            case Char::l : null_ ();
+            let c : int = next ();
+            switch (c) {
+            case Char::l : return nul_ ();
             default:
                 retract ();
                 return identifier ();
             }
         }
 
-        private function null_ () : int 
+        private function nul_ ()
+            : int
         {
-            let c : int = nextchar ();
-            if (isIdentifierPart (c))
+            let c : int = next ();
+            switch (c) {
+            case Char::l : return null_ ();
+            default:
+                retract ();
+                return identifier ();
+            }
+        }
+
+        private function null_ () 
+            : int 
+        {
+            let c : int = next ();
+            if (Unicode.isIdentifierPart (String.fromCharCode(c)))
             {
                 return identifier ();
             }
             else
             {
+                retract();
                 return Token::Null;
             }
         }
@@ -688,9 +987,21 @@ namespace Lexer
 
     function test() 
     {
-        var scan = new Scanner ("a","test");
-        var tok = scan.nexttoken ();
-        print(tok);
+        var scan = new Scanner ("/abc/ null break /def/xyz","test");
+        var list = scan.tokenList (scan.start);
+        let tk = Token::EOS;
+        do {
+            print("tokenList.length=",list.length);
+            while (list.length > 0) {
+                tk=list.pop();
+                print(" ",Token::tokenText(tk));
+                if (tk == Token::BREAK) {
+                    list = scan.tokenList (scan.regexp);
+                    print("tokenList.length=",list.length);
+                }
+            }
+        } while (tk != Token::EOS);
+        print ("scanned!");
     }
 
     test ();
