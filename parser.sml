@@ -3352,7 +3352,9 @@ and nullableTypeExpression (ts) : ((TOKEN * Ast.LOC) list * Ast.TYPE_EXPR) =
 and typeExpression (ts) : ((TOKEN * Ast.LOC) list * Ast.TYPE_EXPR) =
     let val _ = trace([">> typeExpression with next=",tokenname(hd ts)])
     in case ts of
-        (Function, _) :: _ => functionType ts
+        (Null, _) :: _ => (tl ts, Ast.SpecialType Ast.Null)
+      | (Undefined, _) :: _ => (tl ts, Ast.SpecialType Ast.Undefined)
+      | (Function, _) :: _ => functionType ts
       | (LeftParen, _) :: _ => unionType ts
       | (LeftBrace, _) :: _ => objectType ts
       | (LeftBracket, _) :: _ => arrayType ts

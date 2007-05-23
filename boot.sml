@@ -211,6 +211,8 @@ fun boot _ =
                                     "builtins/Conversions.es",
                                     "builtins/String.es",
                                     "builtins/string_primitive.es",
+
+                                    "builtins/Name.es",
                                     
                                     "builtins/Error.es",
                                     
