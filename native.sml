@@ -839,7 +839,7 @@ fun inspect (vals:Mach.VAL list)
               | Mach.NoTag => "<NoTag>"
 
         (* FIXME: elaborate printing of type expressions. *)
-        fun typ t = "<TypeExpr>"
+        fun typ t = Verify.typeToString t
         fun mag m = case m of 
                         Mach.String s => ("\"" ^ (Ustring.toAscii s) ^ "\"")
                       | m => Ustring.toAscii (Eval.magicToUstring m)
@@ -871,7 +871,7 @@ fun inspect (vals:Mach.VAL list)
                               | Mach.NamespaceProp _ => "[namespace]"
                               | Mach.ValListProp _ => "[val list]"
                     in
-                        p indent ["   prop = ", LogErr.name n, att attrs, "= "];
+                        p indent ["   prop = ", LogErr.name n, ": ", typ ty, att attrs,  " = "];
                         (* p indent ["   type = ", typ ty]; nl(); *)
                         case state of 
                             Mach.ValProp v => subVal indent v

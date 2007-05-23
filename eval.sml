@@ -681,13 +681,25 @@ and checkAndConvert (v:Mach.VAL)
     : Mach.VAL = 
     if (isCompatible v tyExpr)
     then v
-    else v
-         (* FIXME: 
-          * 
-          * - find nominal type (assuming typenames are erased by here, which they should be)
-          * - find converter
-          * - call converter in a way that doesn't loop back on itself
-          *)
+    else
+        let 
+            val valTy = typeOfVal v
+            val className = 
+                case Verify.findConversion valTy tyExpr of
+                    NONE => error ["incompatible types w/o converter, val=", approx v, 
+                                   " type=", Verify.typeToString (typeOfVal v), 
+                                   " wanted=", Verify.typeToString tyExpr]
+                  | SOME n => n
+            val class = needObj (getValue (getGlobalObject ()) className)
+            (* FIXME: this will call back on itself! *)
+            val converted = evalCallMethodByRef class (class, Name.meta_convert) [v]
+        in
+            if isCompatible converted tyExpr
+            then converted
+            else error ["converter returned incompatible value, val=", approx converted, 
+                        " type=", Verify.typeToString (typeOfVal converted), 
+                        " wanted=", Verify.typeToString tyExpr]
+        end
 
 and setValueOrVirtual (obj:Mach.OBJ) 
                       (name:Ast.NAME) 
@@ -807,7 +819,8 @@ and defValue (base:Mach.OBJ)
              *)
             let 
                 val existingProp = Mach.getProp props name
-                val newProp = { state = Mach.ValProp v,
+                val ty = (#ty existingProp)
+                val newProp = { state = Mach.ValProp (checkAndConvert v ty),
                                 ty = (#ty existingProp), 
                                 attrs = (#attrs existingProp) }
                 fun writeProp _ = 
@@ -1115,10 +1128,8 @@ and newFunClosure (e:Mach.SCOPE)
                   (this:Mach.OBJ option)
     : Mach.FUN_CLOSURE = 
     let
-        val Ast.Func { fsig, ... } = f
-        val allTypesBound = (case fsig of 
-                                 Ast.FunctionSignature { typeParams, ... } 
-                                 => (length typeParams) = 0)
+        val Ast.Func { ty={typeParams, ...}, ... } = f
+        val allTypesBound = (length typeParams = 0)
     in
         { func = f, 
           this = this,
@@ -1129,15 +1140,16 @@ and newFunClosure (e:Mach.SCOPE)
 and newFunctionFromClosure (closure:Mach.FUN_CLOSURE) = 
     let 
         val { func, ... } = closure
-        val Ast.Func { fsig, ... } = func
-        val tag = Mach.FunctionTag fsig
-        val res = newRootBuiltin Name.public_Function (Mach.Function closure)
+        val Ast.Func { ty, ... } = func
+        val tag = Mach.FunctionTag ty
+        val funClass = needObj (getValue (getGlobalObject ()) Name.public_Function)
+        val Mach.Obj { magic, ... } = funClass
+        val obj = case (!magic) of 
+                      SOME (Mach.Class funClassClosure) => 
+                      constructStandardWithTag funClass funClassClosure [] tag
     in
-        (* 
-         * FIXME: modify the returned object to have the proper tag, a subtype
-         * of Function. 
-         *)
-        res
+        Mach.setMagic obj (SOME (Mach.Function closure));
+        Mach.Object obj
     end
 
 and newFunctionFromFunc (e:Mach.SCOPE) 
@@ -1560,12 +1572,10 @@ and checkCompatible (ty:Ast.TYPE_EXPR)
                     (v:Mach.VAL) = 
     if isCompatible v ty
     then v
-         (* FIXME: eventually this should be a hard error.
-          * currently it's so dysfunctional that nothing would 
-          * work if we turned it on. 
-          *)
-    else (trace ["runtime typecheck failed"]; v)
-    
+    else error ["typecheck failed, val=", approx v, 
+                " type=", Verify.typeToString (typeOfVal v), 
+                " wanted=", Verify.typeToString ty]
+        
 and evalExpr (regs:Mach.REGS) 
              (expr:Ast.EXPR)
     : Mach.VAL =
@@ -1687,16 +1697,12 @@ and evalLiteralArrayExpr (regs:Mach.REGS)
                      * a full TYPE_EXPR in LiteralArray. *)
                     | SOME _ => error ["non-array type on array literal"]
         val tag = Mach.ArrayTag tys
-        fun constructArray _ = 
-            let 
-                val arr = needObj (getValue (getGlobalObject ()) Name.public_Array)
-                val Mach.Obj { magic, ... } = arr
-            in
-                case (!magic) of 
-                    SOME (Mach.Class arrayClass) => needObj (constructClassInstance arr arrayClass [])
-                  | _ => error ["Error in constructing array literal"]
-            end
-        val obj = constructArray ()
+        val arrayClass = needObj (getValue (getGlobalObject ()) Name.public_Array)
+        val Mach.Obj { magic, ... } = arrayClass
+        val obj = case (!magic) of 
+                      SOME (Mach.Class arrayClassClosure) => 
+                      constructStandardWithTag arrayClass arrayClassClosure [] tag
+                    | _ => error ["Error in constructing array literal"]
         val (Mach.Obj {props, ...}) = obj
         fun putVal n [] = n
           | putVal n (v::vs) = 
@@ -1742,8 +1748,12 @@ and evalLiteralObjectExpr (regs:Mach.REGS)
                      * a full TYPE_EXPR in LiteralObject. *)
                     | SOME _ => error ["non-object type on object literal"]
         val tag = Mach.ObjectTag tys
-        (* FIXME: hook up to Object.prototype. *)
-        val obj = newObj ()
+        val objectClass = needObj (getValue (getGlobalObject ()) Name.public_Object)
+        val Mach.Obj { magic, ... } = objectClass
+        val obj = case (!magic) of 
+                      SOME (Mach.Class objectClassClosure) => 
+                      constructStandardWithTag objectClass objectClassClosure [] tag
+                    | _ => error ["Error in constructing array literal"]
         val (Mach.Obj {props, ...}) = obj
         fun processField {kind, name, init} = 
             let 
@@ -2587,7 +2597,7 @@ and typeOfVal (v:Mach.VAL)
              Mach.ClassTag name => Verify.instanceType name
            | Mach.ObjectTag tys => Ast.ObjectType tys
            | Mach.ArrayTag tys => Ast.ArrayType tys
-           | Mach.FunctionTag fsig => Ast.FunctionType (Parser.functionTypeFromSignature fsig)
+           | Mach.FunctionTag fty => Ast.FunctionType fty
            | Mach.NoTag => 
              (* FIXME: this would be a hard error if we didn't use NoTag values 
               * as temporaries. Currently we do, so there are contexts where we
@@ -2985,7 +2995,7 @@ and invokeFuncClosure (callerThis:Mach.OBJ)
     : Mach.VAL =
     let
         val { func, this, env, allTypesBound } = closure
-        val Ast.Func { name, fsig, block, param=(paramFixtures, paramInits), ... } = func
+        val Ast.Func { name, block, param=(paramFixtures, paramInits), ... } = func
         val this = case this of 
                        SOME t => (trace ["using bound 'this' #", Int.toString (getObjId callerThis)]; t)
                      | NONE => (trace ["using caller 'this' #", Int.toString (getObjId callerThis)]; callerThis)
@@ -3217,9 +3227,8 @@ and bindArgs (regs:Mach.REGS)
     : unit =
     let
         val Mach.Scope { object = Mach.Obj { props, ... }, ... } = argScope
-        val Ast.Func { defaults, ty, 
-                       fsig = Ast.FunctionSignature { hasRest, ... }, 
-                       ... } = func
+        val Ast.Func { defaults, ty, ... } = func
+        val hasRest = (#hasRest ty)
             
         (* If we have:
          * 
@@ -3438,8 +3447,8 @@ and initializeAndConstruct (classClosure:Mach.CLS_CLOSURE)
                                 case Mach.getObjMagic superObj of
                                     SOME (Mach.Class cc) => cc
                                   | _ => error ["Superclass object ", 
-                                                           fmtName superName, 
-                                                           "is not a class closure"]
+                                                fmtName superName, 
+                                                "is not a class closure"]
                             val (superEnv:Mach.REGS) = {scope=(#env superClsClosure), 
                                                         this=(#this classRegs)}
                         in
@@ -3486,14 +3495,24 @@ and initializeAndConstruct (classClosure:Mach.CLS_CLOSURE)
                     end
             end
 
-
 and constructStandard (classObj:Mach.OBJ)
-                      (classClosure:Mach.CLS_CLOSURE)
-                      (args:Mach.VAL list) 
-    : Mach.OBJ = 
+                             (classClosure:Mach.CLS_CLOSURE)
+                             (args:Mach.VAL list) 
+    : Mach.OBJ =
     let
         val {cls = Ast.Cls { name, instanceFixtures, ...}, env, ...} = classClosure
         val (tag:Mach.VAL_TAG) = Mach.ClassTag name
+    in
+        constructStandardWithTag classObj classClosure args tag
+    end
+
+and constructStandardWithTag (classObj:Mach.OBJ)
+                             (classClosure:Mach.CLS_CLOSURE)
+                             (args:Mach.VAL list) 
+                             (tag:Mach.VAL_TAG)
+    : Mach.OBJ = 
+    let
+        val {cls = Ast.Cls { name, instanceFixtures, ...}, env, ...} = classClosure
         val (proto:Mach.VAL) = if hasOwnValue classObj Name.public_prototype
                                then getValue classObj Name.public_prototype
                                else Mach.Null

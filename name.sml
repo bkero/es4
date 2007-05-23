@@ -242,6 +242,7 @@ val meta_get = meta Ustring.get_
 val meta_set = meta Ustring.set_
 val meta_has = meta Ustring.has_
 val meta_call = meta Ustring.call_
+val meta_convert = meta Ustring.convert_
 
 val this = internal Ustring.this_
 val arguments = internal Ustring.arguments_
