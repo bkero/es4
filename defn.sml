@@ -268,33 +268,6 @@ fun addNamespace (ns,opennss) =
     else (trace ["adding namespace ", LogErr.namespace ns]; ns :: opennss)
 
 
-fun eraseFixtures oldFixs ((newName,newFix),newFixs) =
-    (trace ["oldFixs"];
-    if hasFixture oldFixs newName
-    then 
-        case (newFix, getFixture oldFixs newName) of
-            (Ast.VirtualValFixture vnew,
-             Ast.VirtualValFixture vold) => 
-                replaceFixture newFixs newName 
-                           (Ast.VirtualValFixture 
-                                (mergeVirtuals newName vnew vold))
-          | (Ast.ValFixture new, Ast.ValFixture old) =>
-                if (#ty new) = (#ty old) andalso (#readOnly new) = (#readOnly old)
-                then (trace ["erasing fixture ",LogErr.name (case newName of Ast.PropName n => n | _ => 
-                                               {ns=Ast.Internal Ustring.empty,id=Ustring.temp_})]; newFixs)
-                else error ["incompatible redefinition of fixture name: ", LogErr.fname newName]
-          | (Ast.MethodFixture new,
-             Ast.MethodFixture old) =>
-                if (#ty new) = (#ty old) andalso (#readOnly new) = (#readOnly old)
-                then if hasFixture newFixs newName
-                     then replaceFixture newFixs newName (Ast.MethodFixture new)
-                     else (newName,newFix)::newFixs
-                else error ["incompatible redefinition of fixture name: ", LogErr.fname newName]
-          | _ => error ["eraseFixtures: redefining fixture name: ", LogErr.fname newName]
-    else
-        (newName,newFix) :: newFixs)
-
-
 fun resolveExprToNamespace (env:ENV) 
                            (expr:Ast.EXPR) 
     : Ast.NAMESPACE = 
@@ -2158,7 +2131,7 @@ and defStmt (env:ENV)
                   (List.foldl mergeFixtures hf hoisted) )
             end
 
-        fun reconstructCatch { bindings, fixtures, block, ty } =
+        fun reconstructCatch { bindings, fixtures, inits, block, ty } =
             let 
                 val (f0,i0) = defBindings env Ast.Var (Ast.Internal Ustring.empty) bindings
                 val env = extendEnvironment env f0
@@ -2167,6 +2140,7 @@ and defStmt (env:ENV)
                 { bindings = bindings,   (* FIXME: what about inits *)
                   block = block,
                   fixtures = SOME f0,
+                  inits = SOME i0,
                   ty=ty }
             end            
 
@@ -2680,10 +2654,7 @@ and defProgram (prog:Ast.PROGRAM)
         val e = List.foldl addPackageName e packages
         val (block, hoisted_gbl) = defBlock (updateFixtures e (List.concat hoisted_pkg)) (#block prog)
 
-        (* FIXME: erasefixtures seems completely wrong! -graydon *)
-        val fixtures = List.foldl (eraseFixtures (!topFixtures)) [] (List.foldl mergeFixtures (List.concat hoisted_pkg) hoisted_gbl)
-(*        val fixtures = List.foldl mergeFixtures (List.concat hoisted_pkg) hoisted_gbl
-*)
+        val fixtures = List.foldl mergeFixtures (List.concat hoisted_pkg) hoisted_gbl
         val result = {packages = packages,
                       block = block,
                       fixtures = SOME fixtures }

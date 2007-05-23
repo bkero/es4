@@ -1,8 +1,8 @@
 use namespace intrinsic
-function f() 
-    : [int,int]
-{ 
-    let [x,y]:[int,int] = [10,20]
-    return [x,y]
+try {
+let e = 10
+throw e
 }
-print(f())
+catch (x) {
+print(x)
+}
