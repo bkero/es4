@@ -1,4 +1,3 @@
-
 #!/bin/bash
 
 NAME=es4-ri
