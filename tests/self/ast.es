@@ -38,9 +38,11 @@
 
 /* ast.es */
 
-package Ast
+namespace Ast
+
 {
-    use namespace intrinsic
+    use default namespace Ast;
+    use namespace intrinsic;
 
     // POS
 

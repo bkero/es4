@@ -1,3 +1,5 @@
+use namespace intrinsic;
+
 function fibo(n:int) : int { 
 	if (n < 2) {
 		return n;

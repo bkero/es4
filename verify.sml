@@ -331,7 +331,16 @@ fun verifyTypeExpr (env:ENV)
             end
 
           | Ast.ElementTypeRef ((Ast.ArrayType fields), idx) => 
-            verifyTypeExpr env (List.nth (fields, idx))
+            let
+                val t = if idx < length fields 
+                        then List.nth (fields, idx)
+                        else 
+                            if length fields > 0
+                            then List.last fields
+                            else Ast.SpecialType Ast.Any
+            in
+                verifyTypeExpr env t
+            end
 
           | Ast.ElementTypeRef (t, _) => 
             error ["ElementTypeRef on non-ArrayType: ", typeToString t]
@@ -595,6 +604,14 @@ and verifyInits (env:ENV) (inits:Ast.INITS)
                      (name, expr')
                  end)
              inits
+
+and verifyInitsOption (env:ENV) 
+		              (inits:Ast.INITS option)  
+    : Ast.INITS = 
+    case inits of
+        SOME inits => verifyInits env inits
+      | _ => internalError ["missing inits"]
+
 
 and verifyHead (env:ENV) ((fixtures, inits):Ast.HEAD)
     : Ast.HEAD =
@@ -1090,14 +1107,15 @@ and verifyStmt (env:ENV)
     end
 
 and verifyCatchClause (env:ENV)
-                      ({bindings, ty, fixtures, block}:Ast.CATCH_CLAUSE)
+                      ({bindings, ty, fixtures, inits, block}:Ast.CATCH_CLAUSE)
     : Ast.CATCH_CLAUSE =
     let val fixtures' = verifyFixturesOption env fixtures
+        val inits' = verifyInitsOption env inits
         val env' = withRib env fixtures'
         val block' = verifyBlock env' block
     in
         {bindings=bindings, ty=ty, 
-         fixtures=SOME fixtures', block=block'}
+         fixtures=SOME fixtures', inits=SOME inits', block=block'}
     end
 
 and verifyStmts (env) (stmts:Ast.STMT list)

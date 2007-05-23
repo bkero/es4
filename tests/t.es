@@ -1,5 +1,8 @@
-class A {
-function A(x) { m(this,x) }
-function m(this:A,x) { print(this) }
+use namespace intrinsic
+try {
+let e = 10
+throw e
 }
-new A(10)
+catch (x) {
+print(x)
+}

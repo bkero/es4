@@ -507,6 +507,7 @@ withtype
          { bindings:BINDINGS,
            ty: TYPE_EXPR, 
            fixtures: FIXTURES option,
+           inits: INITS option,
            block:BLOCK }
 
      and FUNC_NAME =

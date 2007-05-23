@@ -1198,6 +1198,10 @@ and toBoolean (v:Mach.VAL) : bool =
  * implemented in *terms* of isPrimitive.
  *)
 
+(*
+ * ES-262-3 8.6.2.6: The [[DefaultValue]] operation 
+ *)
+
 and defaultValue (obj:Mach.OBJ) 
                  (preferredType:Ustring.STRING)
   : Mach.VAL = 
@@ -1208,7 +1212,7 @@ and defaultValue (obj:Mach.OBJ)
         val va = if hasValue obj na 
                  then evalCallMethodByRef obj (obj, na) []
                  else Mach.Undef
-        val vb = if Mach.isUndef va andalso hasValue obj nb
+        val vb = if not (isPrimitive va) andalso hasValue obj nb
                  then evalCallMethodByRef obj (obj, nb) []
                  else va
     in
@@ -3089,15 +3093,19 @@ and evalTryStmt (regs:Mach.REGS)
             : Mach.VAL option = 
             case clauses of
                 [] => NONE
-              | {ty, fixtures, block, ...}::cs => 
+              | {ty, fixtures, inits, block, ...}::cs => 
                 if typesCompatible ty e
                 then 
                     let 
-                        (* FIXME: doesn't this need inits? *)
                         val head = (valOf fixtures, [])
                         val regs = evalHead regs head
+                        val scope = (#scope regs)
+                        val obj = (#this regs)
+                        val temps = getScopeTemps scope
                     in
-                        SOME (evalBlock regs block)
+                        (Mach.defTemp temps 0 e; 
+                         evalScopeInits regs Ast.Local (valOf inits);
+                         SOME (evalBlock regs block))
                     end
                 else
                     catch e cs
@@ -3705,7 +3713,7 @@ and evalHead (regs:Mach.REGS)
     BLOCK
 *)
 
-and evalBlock (regs:Mach.REGS) 
+and evalBlock (regs:Mach.REGS)
               (block:Ast.BLOCK) 
     : Mach.VAL = 
     let 

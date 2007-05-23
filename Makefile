@@ -34,7 +34,7 @@ MLBUILD := ml-build
 
 .PHONY: check checktc checkev wc clean cleanml profile
 
-es4.heap.$(HEAP_SUFFIX): $(wildcard *.sml) lexer.ulex.sml pretty-cvt.sml
+es4.heap.$(HEAP_SUFFIX): $(wildcard *.sml) pretty-cvt.sml
 	$(MLBUILD) $(MLBUILD_ARGS) es4.cm Main.main es4.heap
 
 pretty-cvt.sml: tools/gen-pretty.heap.$(HEAP_SUFFIX) ast.sml

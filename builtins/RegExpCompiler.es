@@ -630,6 +630,7 @@ package RegExpInternals
 
         function decimalDigits() : double {
             let k : double = 0;
+            var c;
             while (isDecimalDigit(c = peekChar()))
                 k = k*10 + consumeChar(c).charCodeAt(0) - "0".charCodeAt(0);
             skip();

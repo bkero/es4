@@ -268,33 +268,6 @@ fun addNamespace (ns,opennss) =
     else (trace ["adding namespace ", LogErr.namespace ns]; ns :: opennss)
 
 
-fun eraseFixtures oldFixs ((newName,newFix),newFixs) =
-    (trace ["oldFixs"];
-    if hasFixture oldFixs newName
-    then 
-        case (newFix, getFixture oldFixs newName) of
-            (Ast.VirtualValFixture vnew,
-             Ast.VirtualValFixture vold) => 
-                replaceFixture newFixs newName 
-                           (Ast.VirtualValFixture 
-                                (mergeVirtuals newName vnew vold))
-          | (Ast.ValFixture new, Ast.ValFixture old) =>
-                if (#ty new) = (#ty old) andalso (#readOnly new) = (#readOnly old)
-                then (trace ["erasing fixture ",LogErr.name (case newName of Ast.PropName n => n | _ => 
-                                               {ns=Ast.Internal Ustring.empty,id=Ustring.temp_})]; newFixs)
-                else error ["incompatible redefinition of fixture name: ", LogErr.fname newName]
-          | (Ast.MethodFixture new,
-             Ast.MethodFixture old) =>
-                if (#ty new) = (#ty old) andalso (#readOnly new) = (#readOnly old)
-                then if hasFixture newFixs newName
-                     then replaceFixture newFixs newName (Ast.MethodFixture new)
-                     else (newName,newFix)::newFixs
-                else error ["incompatible redefinition of fixture name: ", LogErr.fname newName]
-          | _ => error ["eraseFixtures: redefining fixture name: ", LogErr.fname newName]
-    else
-        (newName,newFix) :: newFixs)
-
-
 fun resolveExprToNamespace (env:ENV) 
                            (expr:Ast.EXPR) 
     : Ast.NAMESPACE = 
@@ -490,7 +463,7 @@ fun clearPackageName (ctx::ex)
 fun enterClass (ctx::ex) (className)
     : ENV =
     let
-        val className = Ustring.fromString (LogErr.name className)
+        val className = Name.mangle className
     in
         { fixtures = (#fixtures ctx),
           tempOffset = (#tempOffset ctx),
@@ -2158,7 +2131,7 @@ and defStmt (env:ENV)
                   (List.foldl mergeFixtures hf hoisted) )
             end
 
-        fun reconstructCatch { bindings, fixtures, block, ty } =
+        fun reconstructCatch { bindings, fixtures, inits, block, ty } =
             let 
                 val (f0,i0) = defBindings env Ast.Var (Ast.Internal Ustring.empty) bindings
                 val env = extendEnvironment env f0
@@ -2167,6 +2140,7 @@ and defStmt (env:ENV)
                 { bindings = bindings,   (* FIXME: what about inits *)
                   block = block,
                   fixtures = SOME f0,
+                  inits = SOME i0,
                   ty=ty }
             end            
 
@@ -2463,6 +2437,7 @@ and defNamespaceDefn (env:ENV)
     case nd of 
         { ident, ns, init } => 
         let
+            val _ = trace [">> defNamespaceDefn"]
             val qualNs = resolveExprOptToNamespace env ns
             val newNs = case init of 
                             (* FIXME: a nonce perhaps? *)
@@ -2510,6 +2485,7 @@ and defDefn (env:ENV)
     case defn of 
         Ast.VariableDefn { kind, ns, static, prototype, bindings } =>
             let
+                val _ = trace ["defVar"]
                 val ns = resolveExprOptToNamespace env ns
                 val (fxtrs,inits) = defBindings env kind ns bindings
             in case kind of
@@ -2526,12 +2502,14 @@ and defDefn (env:ENV)
             end
       | Ast.NamespaceDefn nd => 
             let
-                val (unhoisted,def) = defNamespaceDefn env nd
+                val _ = trace ["defNamespaceDefn"]
+                val (hoisted,def) = defNamespaceDefn env nd
             in
-                (unhoisted,[],[])
+                ([],hoisted,[])
             end
       | Ast.ClassDefn cd =>
             let
+                val _ = trace ["defClass"]
                 val (hoisted,def) = defClass env cd
             in
                 ([],hoisted,[])
@@ -2573,7 +2551,7 @@ and defDefns (env:ENV)
          | d::ds =>
            let
                val (unhoisted',hoisted',inits') = defDefn env d
-               val temp = case d of Ast.ClassDefn _ => hoisted' | _ => []
+               val temp = case d of (Ast.NamespaceDefn _ | Ast.ClassDefn _) => hoisted' | _ => []
                val env'  = updateFixtures env (List.foldl mergeFixtures unhoisted' temp) 
            (* add the new unhoisted and temporarily, hoisted class fxtrs to the current env *)
            in
@@ -2606,7 +2584,7 @@ and defBlock (env:ENV)
         val _ = LogErr.setLoc loc
         val (env,unhoisted_pragma_fxtrs) = defPragmas env pragmas
         val (unhoisted_defn_fxtrs,hoisted_defn_fxtrs,inits) = defDefns env [] [] [] defns
-        val env = updateFixtures env (List.foldl mergeFixtures unhoisted_defn_fxtrs hoisted_defn_fxtrs) (* so stmts can see them *)
+        val env = updateFixtures env (List.foldl mergeFixtures unhoisted_defn_fxtrs hoisted_defn_fxtrs)
         val (body,hoisted_body_fxtrs) = defStmts env body
         val hoisted = List.foldl mergeFixtures hoisted_defn_fxtrs hoisted_body_fxtrs
     in
@@ -2617,22 +2595,6 @@ and defBlock (env:ENV)
                      loc = loc},
          hoisted)
     end
-
-and defRegionalBlock (env:ENV) (blk:Ast.BLOCK)
-    : Ast.BLOCK =
-        let
-            val Ast.Block {loc, ...} = blk
-            val _ = LogErr.setLoc loc
-            val (Ast.Block {defns,body,head=head,pragmas,loc},hoisted) = defBlock env blk
-            val (fixtures,inits) = valOf head
-        in
-            Ast.Block {pragmas=pragmas,
-                       defns=defns,
-                       body=body,
-                       head=(SOME ((List.foldl mergeFixtures hoisted fixtures),inits)),
-                       loc=loc}
-        end
-
 
 (*
     PACKAGE
@@ -2692,10 +2654,7 @@ and defProgram (prog:Ast.PROGRAM)
         val e = List.foldl addPackageName e packages
         val (block, hoisted_gbl) = defBlock (updateFixtures e (List.concat hoisted_pkg)) (#block prog)
 
-        (* FIXME: erasefixtures seems completely wrong! -graydon *)
-        (* val fixtures = List.foldl (eraseFixtures (!topFixtures)) [] (List.foldl mergeFixtures (List.concat hoisted_pkg) hoisted_gbl)  *)
         val fixtures = List.foldl mergeFixtures (List.concat hoisted_pkg) hoisted_gbl
-
         val result = {packages = packages,
                       block = block,
                       fixtures = SOME fixtures }

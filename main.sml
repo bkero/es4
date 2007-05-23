@@ -162,6 +162,20 @@ fun testEV argvRest =
     ()
     end
 
+
+fun consumeTraceOption (opt:string) : bool = 
+    case explode opt of
+        (#"-" :: #"T" :: rest) => 
+        (case findTraceOption (String.implode rest) of 
+             SOME r => (r := true; false)
+           | NONE => true)
+      | (#"-" :: #"P" :: rest) => 
+        (case Int.fromString (String.implode rest) of 
+            NONE => false
+          | SOME 0 => false
+          | SOME n => (Eval.doProfile := SOME n; false))
+      | _ => true
+
 fun testDump dumpfile =
     let 
         (* 10 seconds to run, then we get SIGALRM. *)
@@ -174,7 +188,8 @@ fun testDump dumpfile =
                               BackTrace.monitor 
                                   (fn () =>                          
                                       let 
-                                          val _ = Posix.Process.alarm (Time.fromReal 300.0)
+                                          val argvRest = List.filter consumeTraceOption argvRest
+                                          val _ = Posix.Process.alarm (Time.fromReal 30.0)
                                           val _ = TextIO.print "parsing ... \n";
                                           val asts = List.map Parser.parseFile argvRest
                                           val _ = TextIO.print "defining ... \n";
@@ -201,19 +216,6 @@ fun testDefn argvRest =
     in
     	()
     end
-
-fun consumeTraceOption (opt:string) : bool = 
-    case explode opt of
-        (#"-" :: #"T" :: rest) => 
-        (case findTraceOption (String.implode rest) of 
-             SOME r => (r := true; false)
-           | NONE => true)
-      | (#"-" :: #"P" :: rest) => 
-        (case Int.fromString (String.implode rest) of 
-            NONE => false
-          | SOME 0 => false
-          | SOME n => (Eval.doProfile := SOME n; false))
-      | _ => true
 
 fun main (argv0:string, argvRest:string list) =
     BackTrace.monitor (fn () =>                          

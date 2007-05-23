@@ -102,7 +102,7 @@ esac
 progress '1. Downloading administrative scripts...'
 mkdir -p $TARGET_DIR/admin
 cd $TARGET_DIR/admin
-(svn co svn://smlnj-gforge.cs.uchicago.edu/smlnj/admin >>"$LOG_FILE" 2>&1)
+(echo $PATH && which svn && svn --version&& svn co svn://smlnj-gforge.cs.uchicago.edu/smlnj/admin >>"$LOG_FILE" 2>&1)
 complete
 
 # Checkout the main SML/NJ source code from SVN.
