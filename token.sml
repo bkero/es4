@@ -155,9 +155,10 @@ datatype TOKEN =
     | ExplicitUIntLiteral of Word32.word
 
     (* The interpretation of these 3 literal types is deferred until defn phase. *)
-    | DecimalIntegerLiteral of string 
-    | DecimalLiteral of string 
-    | HexIntegerLiteral of string 
+    | DecimalIntegerLiteral of string
+    | DecimalLiteral of string
+    | HexIntegerLiteral of string
+    | OctIntegerLiteral of string
 
     | PackageIdentifier of Ustring.STRING
     | RegexpLiteral of Ustring.STRING
@@ -380,8 +381,9 @@ fun tokenname (t,_) =
       | Identifier x => "identifier("^(Ustring.toAscii x)^")"
 
       | DecimalIntegerLiteral x => x
-      | DecimalLiteral x => x
-      | HexIntegerLiteral x => x
+      | DecimalLiteral        x => x
+      | HexIntegerLiteral     x => x
+      | OctIntegerLiteral     x => x
 
       | ExplicitDecimalLiteral x => Decimal.toString(x) ^ "m"
       | ExplicitDoubleLiteral x => Real64.toString(x) ^ "d"
