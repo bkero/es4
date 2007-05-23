@@ -252,10 +252,16 @@ fun boot _ =
 
         val (_, _, classClassObj, residualClassProg) = instantiateRootClass Name.intrinsic_Class clsProg
         val (_, _, funClassObj, residualFunProg) = instantiateRootClass Name.public_Function funProg
+
+        val globalRegs = Eval.getInitialRegs ()
     in
         completeClassFixtures Name.public_Object objClassObj;
         completeClassFixtures Name.intrinsic_Class classClassObj;
         completeClassFixtures Name.public_Function funClassObj;
+
+        Eval.initClassPrototype globalRegs objClassObj;
+        Eval.initClassPrototype globalRegs classClassObj;
+        Eval.initClassPrototype globalRegs funClassObj;
 
         evalFiles otherProgs;
 
