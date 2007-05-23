@@ -59,11 +59,13 @@ package Unicode
 
     /* Utility functions for Regular Expressions */
 
-    public function isIdentifierStart(c) { // FIXME -- hairy, but not yet important
+    public function isIdentifierStart(c) {
+        /* FIXME -- hairy, but not yet important.  For now, ASCII. */
         return c >= 'a' && c <= 'z' || c >= 'A' && c <= 'Z' || c == '_' || c == '$';
     }
 
-    public function isIdentifierPart(c) { // FIXME -- hairy, but not yet important
+    public function isIdentifierPart(c) {
+        /* FIXME -- hairy, but not yet important.  For now, ASCII. */
         return isIdentifierStart(c) || c >= '0' && c <= '9';
     }
 
@@ -128,11 +130,21 @@ package Unicode
         return cs;
     }
 
-    /* FIXME: implementme */
-    public function toUpperCaseCharCode(i : uint) : uint 
-        uint(i);
+    public function toUpperCaseCharCode(i : uint) : uint {
+        /* FIXME: hairy but not yet important.  For now, ASCII.  */
+        i = uint(i);  /* FIXME: unnecessary conversion */
+        if (i >= 97 && i <= 122)  // a..z?
+            return uint(i-32);
+        else
+            return i;
+    }
 
-    /* FIXME: implementme */
-    public function toLowerCaseCharCode(i : uint) : uint 
-        uint(i);
+    public function toLowerCaseCharCode(i : uint) : uint {
+        /* FIXME: hairy but not yet important.  For now, ASCII.  */
+        i = uint(i);  /* FIXME: unnecessary conversion */
+        if (i >= 65 && i <= 90)
+            return uint(i+32);
+        else
+            return i;
+    }
 }
