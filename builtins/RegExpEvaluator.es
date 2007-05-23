@@ -32,7 +32,7 @@ package RegExpInternals
         */
         public function match( input : string, endIndex : int, multiline: boolean, ignoreCase: boolean ) : MatchResult {
             return matcher.match(new Context(input, multiline, ignoreCase),
-                                 new State(endIndex, makeCapArray(nCapturingParens)), 
+                                 new State(endIndex, makeCapArray(nCapturingParens+1)), 
                                  (function (ctx : Context, x : State) : State? x) );
         }
 
@@ -88,9 +88,9 @@ package RegExpInternals
     */
     public type CapArray = [(string,undefined)];
 
-    function makeCapArray(nCapturingParens : uint) : CapArray {
+    function makeCapArray(len: uint) : CapArray {
         let a = [] /* : CapArray */ ;  // FIXME: evaluator barfs on this annotation
-        for ( let i : uint = 0 ; i < nCapturingParens ; i++ )
+        for ( let i : uint = 0 ; i < len ; i++ )
             a[i] = undefined;
         return a;
     }

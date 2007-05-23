@@ -84,12 +84,28 @@ package Unicode
     public function isDecimalDigit(c: string) : boolean
         decimal_digits.contains(c);
 
+    public function decimalValue(c: string) : boolean
+        c.charCodeAt(0) - "0".charCodeAt(0);
+        
     const hex_digits = 
         new CharSet(explodeString("0123456789abcdefABCDEF"));
 
     public function isHexDigit(c: string) : boolean
         hex_digits.contains(c);
 
+    public function hexValue(c) : double {
+        if (c >= "0" && c <= "9")
+            return c.charCodeAt(0) - "0".charCodeAt(0);
+        else
+            return c.toUpperCase().charCodeAt(0) - "A".charCodeAt(0) + 10;
+    }
+
+    public function isOctalDigit(c: string) : boolean
+        c >= "0" && c <= "7";
+
+    public function octalValue(c: string) : boolean
+        c.charCodeAt(0) - "0".charCodeAt(0);
+        
     const blank_chars = 
         new CharSet(explodeString("\t\v\f" + spaces));
 
