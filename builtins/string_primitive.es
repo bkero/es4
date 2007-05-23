@@ -302,7 +302,7 @@ package
                 return s;
             }
 
-            function match( i : uint ) : [uint, Array]  {
+            function match( regexp, i : uint ) : [uint, Array]  {
                 while (i < length) {
                     let res : MatchResult = regexp.match(this, i);
                     if (res !== null)
@@ -312,20 +312,20 @@ package
                 return [0, null];
             }
 
-            let replaceString : string? = r instanceof string ? r /* cast string */ : null;  /* FIXME: cast not implemented */
-            let replaceFun    : Function = r instanceof Function ? r /* cast Function */ : null;  /* FIXME: cast not implemented */
+            let replaceString /*: string?*/ = r instanceof string ? r /* cast string */ : null;  /* FIXME: cast not implemented */
+            let replaceFun    /*: Function*/ = r instanceof Function ? r /* cast Function */ : null;  /* FIXME: cast not implemented */
 
             let substitute : function (uint, uint, uint, Array) : string =
                 replaceFun !== null ? substituteFunction : substituteString;
 
             if (s instanceof RegExp) {
                 /* paragraph 2 */
-                let regexp : RegExp = s /* cast RegExp */ ;  /* FIXME: cast not implemented */
+                let regexp /*: RegExp*/ = s /* cast RegExp */ ;  /* FIXME: cast not implemented */
                 let res : Array = null;
                 let m : uint = regexp.nCapturingParens;
 
                 if (!regexp.global) {
-                    let [i, res] : [uint, Array] = match(0);
+                    let [i, res] : [uint, Array] = match(regexp, 0);
 
                     if (res === null)
                         return this;
@@ -337,12 +337,13 @@ package
                     let s : string;
 
                     while (true) {
-                        let oldi : uint = i;
-                        let [i, res] : [uint, [string]] = match(i);
+                        let oldi : uint = uint(i);
+                        let [i, res] : [uint, [string]?] = match(regexp, oldi);
 
                         if (res === null)
                             return s + substring(oldi);
 
+                        // FIXME!
                         //...;
                     }
                 }
@@ -417,7 +418,7 @@ package
             function splitMatch(R: matcher, S: string, q: uint) : [uint, [string]] {
                 /* FIXME: use "switch type" when it works */
                 if (R is string) {
-                    let x : string = R /* cast string */;  /* FIXME: cast not implemented */
+                    let x /* : string */ = R /* cast string */;  /* FIXME: cast not implemented */
                     let r : uint = x.length;
                     if (q + r <= S.length && S.substring(q, q + r) === R)
                         return [q+r, []];
@@ -426,7 +427,7 @@ package
                 }
 
                 if (R is RegExp) {
-                    let x : RegExp! = R /* cast RegExp */;  /* FIXME: cast not implemented */
+                    let x /* : RegExp! */ = R /* cast RegExp */;  /* FIXME: cast not implemented */
                     let mr : MatchResult = x.match(S, q);
                     if (mr === null)
                         return null;
@@ -498,13 +499,13 @@ package
         /* E262-3 15.5.4.15: String.prototype.substring
            E262-4 draft proposals:static_generics
          */
-        prototype function substring(start=0.0, end=undefined)
+        prototype function substring(start=0.0, end=undefined) 
             ToString(this).substring(start, end == undefined ? this.length : end);
 
         static function substring(self, start, end)
             ToString(self).substring(start, end);
 
-        override intrinsic function substring(start: double, end: double) : string {
+        override intrinsic function substring(start: double, end: double=this.length) : string {
             
             let len : double = length;
 
