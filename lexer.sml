@@ -250,7 +250,7 @@ fun makeTokenList (filename : string, reader : unit -> Ustring.SOURCE) : ((TOKEN
         
         fun lexString delim : unit =
         let
-            fun lexStr str  =
+            fun lexStr1 str  = (* For singly quoted strings '...' and "..." *)
             let
                 val c = lookahead 0
             in
@@ -259,14 +259,38 @@ fun makeTokenList (filename : string, reader : unit -> Ustring.SOURCE) : ((TOKEN
 		else if c = 0wx0
 		then error ["LexError:  end of input in string literal"]
                 else if c = 0wx005C (* backslash *)
-                then lexStr ((lexEscapedChar ())::str)
+                then lexStr1 ((lexEscapedChar ())::str)
                 else if c = delim
                 then push 1 (StringLiteral (Vector.fromList (rev str))) (* skips the final quote char *)
-                else (advanceIndex 1;  lexStr (c::str))
+                else (advanceIndex 1;  lexStr1 (c::str))
             end
+            
+            fun lexStr3 str = (* For triply quoted strings '''...''' and """...""" *)
+            let
+                val c  = lookahead 0
+                val c1 = lookahead 1
+                val c2 = lookahead 2
+                val c3 = lookahead 3
+            in
+              (*
+                else if (c = 0wx000A) orelse (c = 0wx000D) orelse (c = 0wx2028) orelse (c = 0wx2029) (* newlines *)
+                then error ["LexError:  no newlines in string literals"]
+              *)
+		if c = 0wx0
+		then error ["LexError:  end of input in string literal"]
+                else if c = 0wx005C (* backslash *)
+                then lexStr3 ((lexEscapedChar ())::str)
+                else if c = delim andalso c1 = delim andalso c2 = delim andalso not (c3 = delim)
+                then push 3 (StringLiteral (Vector.fromList (rev str))) (* skips the final quote chars *)
+                else (advanceIndex 1;  lexStr3 (c::str))
+            end
+            
+            val c1 = lookahead 1
+            val c2 = lookahead 2
         in
-            advanceIndex 1;  (* skip initial quote char *)
-            lexStr []
+            if c1 = delim andalso c2 = delim
+            then (advanceIndex 3;  lexStr3 []) (* skip initial 3 quote chars *)
+            else (advanceIndex 1;  lexStr1 []) (* skip initial quote char *)
         end
         
         fun lexNumber () : unit =
@@ -702,7 +726,6 @@ fun makeTokenList (filename : string, reader : unit -> Ustring.SOURCE) : ((TOKEN
                                             (UTF8.explode "<"  , LeftDotAngle),
                                             (UTF8.explode ""   , Dot         )]
                     (* string literal *)
-                      (* TODO:  triple-quotes (""" and ''') and "backslash-newline" *)
                       |(#"\""
                       | #"'") => lexString c
                     (* whitespace *)
