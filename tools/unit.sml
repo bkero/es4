@@ -277,7 +277,7 @@ fun runTestCase (test : TEST_CASE) : TEST_RESULT =
        | { name, stage=Parse, arg=false, source } =>
          (
              (Defn.defProgram (parse source); (test, false))
-             handle Parser.ParseError => (test, true)
+             handle Parser.ParseError _ => (test, true)
                   | e => (unexpectedExn e; (test, false))
          )
        | { name, stage=Verify, arg=true, source } =>
@@ -288,7 +288,7 @@ fun runTestCase (test : TEST_CASE) : TEST_RESULT =
        | { name, stage=Verify, arg=false, source } =>
          (
              (Verify.verifyProgram (parse source); (test, false))
-             handle LogErr.VerifyError => (test, true)
+             handle LogErr.VerifyError _ => (test, true)
                   | e => (unexpectedExn e; (test, false))
          )
 
