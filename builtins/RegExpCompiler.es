@@ -228,10 +228,9 @@ package RegExpInternals
                         if (eat("=")) {
                             let name : string = identifier();
                             match(")");
-                            for ( let [i,n] : [string,string?] in names ) {
-                                if (n === name)
+                            for ( let i:uint=0 ; i < names.length ; i++ )
+                                if (names[i] === name)
                                     return new Backref(uint(i));
-                            }
                             fail( SyntaxError, "Unknown backref name " + name );
                         }
                         
@@ -617,7 +616,7 @@ package RegExpInternals
             let i : uint;
             for ( i=0 ; i < m ; i++ ) {
                 let (c = peekChar()) {
-                    if (!isHexdigit(c)) 
+                    if (!isHexDigit(c)) 
                         break;
                     k = k*16 + hexValue(consumeChar(c));
                 }
