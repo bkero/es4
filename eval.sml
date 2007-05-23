@@ -3103,15 +3103,19 @@ and evalTryStmt (regs:Mach.REGS)
             : Mach.VAL option = 
             case clauses of
                 [] => NONE
-              | {ty, fixtures, block, ...}::cs => 
+              | {ty, fixtures, inits, block, ...}::cs => 
                 if typesCompatible ty e
                 then 
                     let 
-                        (* FIXME: doesn't this need inits? *)
                         val head = (valOf fixtures, [])
                         val regs = evalHead regs head
+                        val scope = (#scope regs)
+                        val obj = (#this regs)
+                        val temps = getScopeTemps scope
                     in
-                        SOME (evalBlock regs block)
+                        (Mach.defTemp temps 0 e; 
+                         evalScopeInits regs Ast.Local (valOf inits);
+                         SOME (evalBlock regs block))
                     end
                 else
                     catch e cs
@@ -3719,7 +3723,7 @@ and evalHead (regs:Mach.REGS)
     BLOCK
 *)
 
-and evalBlock (regs:Mach.REGS) 
+and evalBlock (regs:Mach.REGS)
               (block:Ast.BLOCK) 
     : Mach.VAL = 
     let 

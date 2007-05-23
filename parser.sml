@@ -4660,7 +4660,7 @@ and tryStatement (ts) : ((TOKEN * Ast.LOC) list * Ast.STMT) =
     end
 
 and catchClauses (ts)
-    : (TOKEN * Ast.LOC) list * {bindings:Ast.BINDINGS, ty:Ast.TYPE_EXPR, fixtures:Ast.FIXTURES option, block:Ast.BLOCK} list=
+    : (TOKEN * Ast.LOC) list * {bindings:Ast.BINDINGS, ty:Ast.TYPE_EXPR, fixtures:Ast.FIXTURES option, inits:Ast.INITS option, block:Ast.BLOCK} list=
     let val _ = trace([">> catchClauses with next=", tokenname(hd ts)])
         val (ts1,nd1) = catchClause ts
     in case ts1 of
@@ -4678,7 +4678,7 @@ and catchClauses (ts)
     end
 
 and catchClause (ts) 
-    : (TOKEN * Ast.LOC) list * {bindings:Ast.BINDINGS, ty:Ast.TYPE_EXPR, fixtures:Ast.FIXTURES option, block:Ast.BLOCK}=
+    : (TOKEN * Ast.LOC) list * {bindings:Ast.BINDINGS, ty:Ast.TYPE_EXPR, fixtures:Ast.FIXTURES option, inits:Ast.INITS option, block:Ast.BLOCK}=
     let val _ = trace([">> catchClause with next=", tokenname(hd ts)])
     in case ts of
         (Catch, _) :: (LeftParen, _) :: _ =>
@@ -4690,7 +4690,7 @@ and catchClause (ts)
                     let
                         val (ts2,nd2) = block (tl ts1,LOCAL)
                     in
-                        (ts2,{bindings=((temp::b),[]),ty=ty,block=nd2,fixtures=NONE})
+                        (ts2,{bindings=((temp::b),i),ty=ty,block=nd2,fixtures=NONE,inits=NONE})
                     end
               | _ => error ["unknown token in catchClause"]
             end
