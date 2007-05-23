@@ -739,7 +739,9 @@ fun makeTokenList (filename : string, reader : unit -> Ustring.SOURCE) : ((TOKEN
                       | 0wx205F
                       | 0wx3000) => advanceIndex 1
                     (* identifier *)
-                      | _        => lexIdentifier []
+                      | _     => if isIdentifierChar c
+                                 then lexIdentifier []
+                                 else error ["LexError:  illegal identifier character"]
                 ;
                 lex ()
             end (* lex *)
