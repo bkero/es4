@@ -22,6 +22,13 @@ function test(re, input, len, val, idx) {
         print("FAILED: wrong index.  Wanted " + idx + ", got " + res.index );
 }
 
+// Missing tests:
+//   - other flags than 'g'
+//   - ES4 facilities: comments, named captures, ...
+//   - \u escapes (old and new kinds)
+//   - most escape sequences
+//   - error detection
+
 // Sequence of single characters, matching the entire input
 test( /abc/g, "abc", 1, "abc", 0 );
 
