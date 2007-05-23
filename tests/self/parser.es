@@ -36,12 +36,14 @@
  *
  * ***** END LICENSE BLOCK ***** */
 
+use namespace intrinsic;
 
 namespace Parser
 
+type TOKENS = [int];
+
 {
     use default namespace Parser;
-    use namespace intrinsic;
     //	use namespace Release
 
     class Parser 
@@ -73,7 +75,6 @@ namespace Parser
         var currentPackageName: string;
         var currentClassName: string;
 
-        /* final */ type TOKENS = [int];
         function head (ts:TOKENS) : TOKENS ts[0];
         function tail (ts:TOKENS) : TOKENS ts.slice (1,ts.length);
 
@@ -669,7 +670,7 @@ namespace Parser
 //        /*
 //
 //        TypeParameters    
-//            «empty»
+//            empty
 //            .<  TypeParameterList  >  
 //
 //        */
@@ -870,7 +871,7 @@ namespace Parser
 //        /*
 //
 //        ResultType    
-//            «empty»
+//            empty
 //            :  void
 //            :  TypeExpression
 //
@@ -1024,7 +1025,7 @@ namespace Parser
 //            [  ElementList  ]
 //    
 //        ElementList    
-//            «empty»
+//            empty
 //            LiteralElement
 //            ,  ElementList
 //            LiteralElement  ,  ElementList
@@ -1285,7 +1286,7 @@ namespace Parser
 //        MemberExpressionPrime :    
 //            [ Expression ] MemberExpressionPrime
 //            . Identifier MemberExpressionPrime
-//            «empty»
+//            empty
 //
 //        */
 //
@@ -1374,7 +1375,7 @@ namespace Parser
 //            Arguments CallExpressionPrime
 //            [ Expression ] CallExpressionPrime
 //            . Identifier CallExpressionPrime
-//            «empty»
+//            empty
 //
 //        */
 //
@@ -1614,7 +1615,7 @@ namespace Parser
 //    
 //        LeftHandSideExpressionPrime    
 //            Arguments CallExpressionPrime
-//            «empty»
+//            empty
 //
 //        */
 //
@@ -2448,7 +2449,7 @@ namespace Parser
 //            let  (  LetBindingList  )  AssignmentExpressionb
 //    
 //        LetBindingList    
-//            «empty»
+//            empty
 //            NonemptyLetBindingList
 //    
 //        NonemptyLetBindingList    
@@ -2620,7 +2621,7 @@ namespace Parser
 //            [  DestructuringElementList  ]
 //    
 //        DestructuringElementList    
-//            «empty»
+//            empty
 //            DestructuringElement
 //            , DestructuringElementList
 //            DestructuringElement , DestructuringElementList
@@ -2665,7 +2666,7 @@ namespace Parser
 //        /*
 //
 //        DestructuringElement    
-//            «empty»
+//            empty
 //            DestructuringPattern
 //            PostfixExpression
 //
@@ -2890,7 +2891,7 @@ namespace Parser
 //            [  ElementTypeList  ]
 //    
 //        ElementTypeList    
-//            «empty»
+//            empty
 //            TypeExpression
 //            ,  ElementTypeList
 //            TypeExpression  ,  ElementTypeList
@@ -3467,7 +3468,7 @@ namespace Parser
 //            DestructuringPattern VariableInitialisationb
 //    
 //        VariableInitialisationb    
-//            «empty»
+//            empty
 //            =  VariableInitialiserb
 //    
 //        VariableInitialiserb    
@@ -4072,7 +4073,7 @@ namespace Parser
 //        /*
 //
 //        Inheritance    
-//            «empty»
+//            empty
 //            extends TypeName
 //            implements TypeNameList
 //            extends TypeName implements TypeNameList
@@ -4160,7 +4161,7 @@ namespace Parser
 //        /*
 //
 //        ExtendsList
-//            «empty»
+//            empty
 //            extends TypeNameList
 //
 //        */
@@ -4267,10 +4268,10 @@ namespace Parser
 //    
 //        PackageAttributes    
 //            private
-//            «empty»
+//            empty
 //    
 //        PackageNameOpt    
-//            «empty»
+//            empty
 //            PackageName
 //    
 //        PackageName [create a lexical PackageIdentifier with the sequence of characters that make a PackageName]    
@@ -4678,11 +4679,11 @@ namespace Parser
 //        /*
 //
 //        Directives    
-//            «empty»
+//            empty
 //            DirectivesPrefix Directiveabbrev
 //    
 //        DirectivesPrefix    
-//            «empty»
+//            empty
 //            Pragmas
 //            DirectivesPrefix Directivefull
 //
@@ -4926,7 +4927,7 @@ namespace Parser
         }
 
         function program (ts: TOKENS)
-            : [TOKENS, Ast::PROGRAM]
+            //            : [TOKENS, Ast::PROGRAM]
         {
             Debug.enter("Parse::program");
 
