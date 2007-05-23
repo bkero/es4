@@ -4157,9 +4157,10 @@ and evalForStmt (regs:Mach.REGS)
 
             fun loop (accum:Mach.VAL option) =
                 let
+                    val (ty, cond) = getExpectedType cond
                     val b = case cond of 
                                 Ast.ListExpr [] => true
-                              | _ => toBoolean (evalExpr forRegs cond)
+                              | _ => toBoolean (checkCompatible ty (evalExpr forRegs cond))
                 in
                     if b
                     then
