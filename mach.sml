@@ -26,7 +26,7 @@ datatype VAL = Object of OBJ
      and VAL_TAG =
          ObjectTag of Ast.FIELD_TYPE list
        | ArrayTag of Ast.TYPE_EXPR list
-       | FunctionTag of Ast.FUNC_SIG
+       | FunctionTag of Ast.FUNC_TYPE
        | ClassTag of Ast.NAME
        | NoTag (* 
                 * NoTag objects are made for scopes and 

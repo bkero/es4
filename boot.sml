@@ -263,6 +263,7 @@ fun boot _ =
         Eval.initClassPrototype globalRegs classClassObj;
         Eval.initClassPrototype globalRegs funClassObj;
 
+        Verify.verifyTopFixtures ();
         evalFiles otherProgs;
 
         Eval.evalProgram residualObjectProg;
