@@ -100,8 +100,12 @@ package RegExpInternals
                 return new AssertEndOfInput;
 
             case 0x5Cu /* "\\" */:
-                if (eat("\\b")) return new AssertWordBoundary;
-                else if (eat("\\B")) return new AssertNotWordBoundary;
+                if (eat("\\b")) 
+                    return new AssertWordBoundary;
+                else if (eat("\\B")) 
+                    return new AssertNotWordBoundary;
+                else
+                    return null;
 
             default: 
                 return null;
@@ -151,9 +155,9 @@ package RegExpInternals
                             max = number();
                             match("}");
                         }
-                    } else {
+                    } 
+                    else
                         match("}");
-                    }
                     if (isFinite(max) && max < min)
                         fail( SyntaxError, "max quant must be at least as large as min" );
                     return [min,max];
@@ -228,10 +232,9 @@ package RegExpInternals
                         if (eat("=")) {
                             let name : string = identifier();
                             match(")");
-                            for ( let [i,n] : [string,string?] in names ) {
-                                if (n === name)
+                            for ( let i:uint=0 ; i < names.length ; i++ )
+                                if (names[i] === name)
                                     return new Backref(uint(i));
-                            }
                             fail( SyntaxError, "Unknown backref name " + name );
                         }
                         
@@ -536,8 +539,8 @@ package RegExpInternals
                     fail( SyntaxError, "Bogus \\c sequence: " + c );
                 }
                 
-            case 0x77u /* "x" */: 
-            case 0x57u /* "X" */: 
+            case 0x78u /* "x" */: 
+            case 0x58u /* "X" */: 
             case 0x75u /* "u" */: 
             case 0x55u /* "U" */:
                 advance();
@@ -584,7 +587,7 @@ package RegExpInternals
             let i : uint = 0;
             let j : uint = idx;
             let ilim = i + c.length;
-            let jlim = j + slen;
+            let jlim = j + c.length;
             for ( ; i < ilim && j < jlim ; i++, j++ )
                 if (c[i] !== source[j])
                     return false;
@@ -617,7 +620,7 @@ package RegExpInternals
             let i : uint;
             for ( i=0 ; i < m ; i++ ) {
                 let (c = peekChar()) {
-                    if (!isHexdigit(c)) 
+                    if (!isHexDigit(c))
                         break;
                     k = k*16 + hexValue(consumeChar(c));
                 }
