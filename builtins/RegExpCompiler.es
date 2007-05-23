@@ -142,13 +142,13 @@ package RegExpInternals
             case 0x7Bu /* "{" */:
                 advance();
                 {
-                    let min : double = decimalDigits();
+                    let min : double = number();
                     let max : double = min;
                     if (eat(",")) {
                         if (eat("}"))
                             max = Infinity;
                         else {
-                            max = decimalDigits();
+                            max = number();
                             match("}");
                         }
                     } else {
@@ -271,24 +271,22 @@ package RegExpInternals
 
         function atomEscape() : Matcher {
 
-            function decimalEscape(t : double) : Matcher {
+            function handleDecimalEscape(t : double) : Matcher {
                 if (t === 0)
-                    return new CharsetMatcher(new CharsetAdhoc("\x00"));
+                    fail( SyntaxError, "Invalid backreference" );
                 else {
                     largest_backref = Math.max(largest_backref, t);  // Will check validity later
                     return new Backref(t);
                 }
             }
 
-            function characterClassEscape(t : Charset) : Matcher {
-                return new CharsetMatcher(t);
-            }
+            function handleCharacterClassEscape(t : Charset) : Matcher
+                new CharsetMatcher(t);
 
-            function characterEscape(t : string) : Matcher {
-                return new CharsetMatcher(new CharsetAdhoc(t));
-            }
+            function handleCharacterEscape(t : string) : Matcher
+                new CharsetMatcher(new CharsetAdhoc(t));
 
-            return escape( decimalEscape, characterClassEscape, characterEscape, false );
+            return escape( handleDecimalEscape, handleCharacterClassEscape, handleCharacterEscape, false );
         }
 
         function characterClass() : Matcher {
@@ -408,27 +406,29 @@ package RegExpInternals
         }
 
         /* Parse an escape sequence. */
-        function escape( de : function (double) : (Matcher,Charset),
-                         ce : function (Charset) : (Matcher,Charset),
-                         ch : function (string) : (Matcher,Charset),
+        function escape( handleDecimalEscape : function (double) : (Matcher,Charset),
+                         handleCharacterClassEscape : function (Charset) : (Matcher,Charset),
+                         handleCharacterEscape : function (string) : (Matcher,Charset),
                          allow_b : boolean ) : (Matcher,Charset) {
+
+            if (!eat("\\"))
+                fail( SyntaxError, "Backslash required here (internal compiler error)" );
 
             let (t : Charset? = characterClassEscape()) {
                 if (t !== null)
-                    return ce(t);
+                    return handleCharacterClassEscape(t);
             }
 
             let (t : string? = characterEscape(allow_b)) {
                 if (t !== null)
-                    return ch(t);
+                    return handleCharacterEscape(t);
             }
 
             let (t : double? = decimalEscape()) {
                 if (t !== null) 
-                    return de(t);
+                    return handleDecimalEscape(t);
             }
 
-            eat("\\");
             fail( SyntaxError, "Failed to match escape sequence " + peekChar() );
         }
 
@@ -436,16 +436,15 @@ package RegExpInternals
            throws an error if it consumes and then fails. 
         */
         function decimalEscape() : double? {
-            if (peekChar() != "\\")
-                return null;
-            let saved : uint = idx;
-            advance();
             let c : uint = peekCharCode();
-            if (c >= 0x30u && c <= 0x39u) {
-                return decimalDigits();
+            if (c == 0x30u) {
+                advance();
+                return 0;
             }
-            idx = saved;
-            return null;
+            else if (c >= 0x31u && c <= 0x39u)
+                return decimalDigits();
+            else
+                return null;
         }
 
         /* Returns null if it does not consume anything but fails;
@@ -462,12 +461,6 @@ package RegExpInternals
                 return cls;
             }
 
-            if (peekCharCode() != 0x5Cu /* "\\" */)
-                return null;
-
-            let saved : uint = idx;
-            advance();
-
             let invert : boolean = true;
 
             switch (peekCharCode()) {
@@ -483,16 +476,14 @@ package RegExpInternals
                 invert = false;
             case 0x50u /* "P" */:
                 {
-                    let saved : uint = idx;
-                    advance();
-                    if (peekChar() == "{") {
+                    if (peekChar2() == "{") {
+                        advance(); 
                         advance();
                         return unicodeSet(invert);
                     }
-                    idx = saved;
                 }
             }
-            idx = saved;
+
             return null;
         }
 
@@ -501,40 +492,28 @@ package RegExpInternals
         */
         function characterEscape(allow_b : boolean) : string? {
 
-            function hexValue(c) : double {
-                if (c >= "0" && c <= "9")
-                    return c.charCodeAt(0) - "0".charCodeAt(0);
-                else
-                    return c.toUpperCase().charCodeAt(0) - "A".charCodeAt(0) + 10;
-            }
-
-            function hexDigits(n : uint? = null) : string {
-                let k : double = 0;
-                let c : string;
-                let m : uint = n === null ? 100000 : n;
-                let i : uint;
-                for ( i=0 ; i < m ; i++ ) {
-                    let (c = peekChar()) {
-                        if (!isHexdigit(c)) 
-                            break;
-                        k = k*16 + hexValue(consumeChar(c));
-                    }
-                }
-                if (n !== null && i < m || i == 0)
-                    fail( SyntaxError, "hex sequence too short" );
-                skip();
-                return string.fromCharCode(k);
-            }
-
             let c : uint = peekCharCode();
 
-            if (c != 0x5Cu /* "\\" */)
+            switch (c) {
+            case 0x30u /* "0" */:
+                let (c : string = peekChar2()) {
+                    if (c <= "0" || c >= "8")
+                        return null;
+                    else
+                        return string.fromCharCode(octalDigits(true));
+                }
+
+            case 0x31u:
+            case 0x32u:
+            case 0x33u:
+            case 0x34u:
+            case 0x35u:
+            case 0x36u:
+            case 0x37u:
+            case 0x38u:
+            case 0x39u:
                 return null;
-            
-            advance();
-            c = peekCharCode();
-            
-            switch (c) {                
+
             case 0x62u /* "b" */:
                 if (allow_b) {
                     advance();
@@ -567,11 +546,11 @@ package RegExpInternals
                     let s : string = hexDigits();
                     match("}");
                     return s;
-                } else if (c == 0x77u /* "x" */ || c == 0x57u /* "X" */) {
+                } 
+                else if (c == 0x77u /* "x" */ || c == 0x57u /* "X" */)
                     return hexDigits(2);
-                } else {
+                else
                     return hexDigits(4);
-                }
             }
             
             if (atEnd())
@@ -628,11 +607,43 @@ package RegExpInternals
                 fail( SyntaxError, "Expected identifier" );
         }
 
+        function number() 
+            peekChar() === "0" ? octalDigits() : decimalDigits();
+
+        function hexDigits(n : uint? = null) : string {
+            let k : double = 0;
+            let c : string;
+            let m : uint = n === null ? 100000 : n;
+            let i : uint;
+            for ( i=0 ; i < m ; i++ ) {
+                let (c = peekChar()) {
+                    if (!isHexdigit(c)) 
+                        break;
+                    k = k*16 + hexValue(consumeChar(c));
+                }
+            }
+            if (n !== null && i < m || i == 0)
+                fail( SyntaxError, "hex sequence too short" );
+            skip();
+            return string.fromCharCode(k);
+        }
+            
         function decimalDigits() : double {
             let k : double = 0;
-            var c;
+            let c : string;
             while (isDecimalDigit(c = peekChar()))
-                k = k*10 + consumeChar(c).charCodeAt(0) - "0".charCodeAt(0);
+                k = k*10 + decimalValue(consumeChar(c));
+            skip();
+            return k;
+        }
+
+        function octalDigits(byte_limit: boolean = false) : string {
+            let k : double = 0;
+            let c : string;
+            while (isOctalDigit(c = peekChar()))
+                k = k*8 + octalValue(consumeChar(c));
+            if (byte_limit && k > 255)
+                fail( SyntaxError, "octal sequence out of range" );
             skip();
             return k;
         }
@@ -640,14 +651,13 @@ package RegExpInternals
         function atEnd()
             idx >= slen;
 
-        function peekChar() {
-            if (idx < slen)
-                return source[idx]
-            else
-                return "*END*";
-        }
+        function peekChar() : string
+            idx < slen ? source[idx] : "*END*";
 
-        function peekCharCode() { 
+        function peekChar2() : string
+            idx+1 < slen ? source[idx+1] : "*END*";
+
+        function peekCharCode() : uint {
             // In a production implementation, this would probably be
             // no faster than peekChar. In our reference
             // implementation, it is substantially faster.
