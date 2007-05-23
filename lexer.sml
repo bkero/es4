@@ -133,7 +133,7 @@ fun makeTokenList (filename : string, reader : unit -> Ustring.SOURCE) : ((TOKEN
 	    in
 		step k (!src)
 	    end
-
+        
         fun lexEscapedChar () : Word.word =
         let
             fun hexToWord hexDigits =
@@ -153,7 +153,7 @@ fun makeTokenList (filename : string, reader : unit -> Ustring.SOURCE) : ((TOKEN
                     fun getHexDigits digits =
                        (case lookahead 0 of
                             0wx7D(* } *) => (advanceIndex 1; rev digits)
-			  | 0wx0         => digits
+			  | 0wx0         => rev digits
                           | a            => (advanceIndex 1; getHexDigits (a::digits)))
                     
                     val digits = (advanceIndex 3; getHexDigits [])
@@ -203,7 +203,10 @@ fun makeTokenList (filename : string, reader : unit -> Ustring.SOURCE) : ((TOKEN
 		then ()
 		else push 0 (Identifier (Vector.fromList (rev id)))
 
-	      | 0wx5C::0wx75::a::b::c::d::_ => (* \uFFFF *)
+	      | 0wx5C::0wx75::_ => (* \uFFFF *)
+		lexIdentifier ((lexEscapedChar ())::id)
+
+	      | 0wx5C::0wx78::_ => (* \xFF *)
 		lexIdentifier ((lexEscapedChar ())::id)
 
 	      | 0wx5C :: _ =>  
@@ -232,7 +235,7 @@ fun makeTokenList (filename : string, reader : unit -> Ustring.SOURCE) : ((TOKEN
             end
           | lexOp [] =
             error ["LexError:  LEXER BUG in lexOp"]
-
+        
         fun lexResOrId ((str,tok)::rest : (Ustring.SOURCE * TOKEN) list) : unit =
             let
                 val src_ = tl (!src)  (* we don't get here unless the first char matched already *)
@@ -298,7 +301,7 @@ fun makeTokenList (filename : string, reader : unit -> Ustring.SOURCE) : ((TOKEN
               
               ExplicitDecimalLiteral
                 {DecimalLiteral       } m
-                {DecimalIntegerLiteral} d
+                {DecimalIntegerLiteral} m
               
             So we search for the first 3, then see at the end if there's a
             trailing [iudm] so we can give an explicit type instead.
@@ -399,7 +402,7 @@ fun makeTokenList (filename : string, reader : unit -> Ustring.SOURCE) : ((TOKEN
                       | NONE   => error ["LexError:  LEXER BUG in lexing DecIntLit(i)"] (* should not be possible to get here *))
               | (DecIntLit, 0wx75 (* u *)) => (case LargeInt.fromString numberAscii of
                         SOME i => push (tokLen+1) (ExplicitUIntLiteral (Word32.fromLargeInt i))
-                      | NONE   => error ["LexError:  LEXER BUG in lexing DecIntLit(i)"] (* should not be possible to get here *))
+                      | NONE   => error ["LexError:  LEXER BUG in lexing DecIntLit(u)"] (* should not be possible to get here *))
               | (DecIntLit, 0wx64 (* d *)) => (case Real64.fromString numberAscii of
                         SOME i => push (tokLen+1) (ExplicitDoubleLiteral i)
                       | NONE   => error ["LexError:  LEXER BUG in lexing DecIntLit(d)"] (* should not be possible to get here *))
@@ -690,9 +693,10 @@ fun makeTokenList (filename : string, reader : unit -> Ustring.SOURCE) : ((TOKEN
                       | #"\f"
                       | #" ") => advanceIndex 1
                     (* identifier *)
-                      | _ => if isIdentifierChar c
-                             then lexIdentifier []
-                             else error ["LexError:  illegal identifier character"]
+                      | #"\\" => lexIdentifier []
+                      | _     => if isIdentifierChar c
+                                 then lexIdentifier []
+                                 else error ["LexError:  illegal identifier character"]
                 else
                     case c of
                     (* line terminators *)
