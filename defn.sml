@@ -5,9 +5,9 @@ structure Defn = struct
 
 val doTrace = ref false
 fun log ss = LogErr.log ("[defn] " :: ss)
-fun trace ss = if (!doTrace) then log ss else ()
-fun trace2 (s, us) = if (!doTrace) then LogErr.log ["[defn] ", s, Ustring.toAscii us] else ()
 fun error ss = LogErr.defnError ss
+fun trace ss = if (!doTrace) then log ss else ()
+fun trace2 (s, us) = if (!doTrace) then log [s, (Ustring.toAscii us)] else ()
 
 (* 
  * The goal of the definition phase is to put together the fixtures

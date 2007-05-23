@@ -29,6 +29,11 @@ fun log ss =
         TextIO.print "\n"
     end
 
+fun locstr ss = 
+    case !loc of 
+	NONE => String.concat ss
+      | SOME l => String.concat (ss @ [" (near ", (locToString l), ")"])
+
 fun error ss = case !loc of 
 		   NONE => log ("**ERROR** (unknown location)" :: ss)
 		 | SOME l => log ("**ERROR** (near " :: (locToString l) :: ") " :: ss)
@@ -66,54 +71,44 @@ fun join sep ss =
       | [x] => x
       | x :: xs => x ^ sep ^ (join sep xs)
 
-exception LexError
-exception ParseError
-exception NameError
-exception DefnError
-exception VerifyError
-exception EvalError
-exception MachError
-exception HostError
-exception UnimplError
+exception LexError of string
+exception ParseError of string
+exception NameError of string
+exception DefnError of string
+exception VerifyError of string
+exception EvalError of string
+exception MachError of string
+exception HostError of string
+exception UnimplError of string
 
 fun lexError ss = 
-    (error ("lexError " :: ss); 
-     raise LexError)
+     raise LexError (locstr ss)
 
 fun parseError ss = 
-    (error ("parseError " :: ss); 
-     raise ParseError)
+     raise ParseError (locstr ss)
 
 fun nameError ss = 
-    (error ("nameError " :: ss); 
-     raise NameError)
+     raise NameError (locstr ss)
 
 fun defnError ss = 
-    (error ("defnError " :: ss); 
-     raise DefnError)
+     raise DefnError (locstr ss)
 
 fun verifyError ss = 
-    (error ("verifyError " :: ss); 
-     raise VerifyError)
+     raise VerifyError (locstr ss)
 
 fun evalError ss = 
-    (error ("evalError " :: ss); 
-     raise EvalError)
+     raise EvalError (locstr ss)
 
 fun machError ss = 
-    (error ("machError " :: ss); 
-     raise MachError)
+     raise MachError (locstr ss)
 
 fun hostError ss = 
-    (error ("hostError " :: ss); 
-     raise HostError)
+     raise HostError (locstr ss)
 
 fun unimplError ss = 
-    (error ("unimplError " :: ss); 
-     raise UnimplError)
+     raise UnimplError (locstr ss)
 
 fun internalError ss = 
-    (error ("internalError " :: ss); 
-     raise UnimplError)
+     raise UnimplError (locstr ss)
 
 end

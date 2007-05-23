@@ -6761,8 +6761,6 @@ fun logged thunk name =
          trace ["parsed ", name, "\n"];
          ast
      end)
-    handle ParseError => error ["parse error"]
-         | LexError   => error ["lex error"]
 
 fun parseFile filename =
     logged (fn _ => parse (lexFile filename)) filename

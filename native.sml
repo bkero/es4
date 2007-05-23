@@ -533,8 +533,11 @@ fun eval (vals:Mach.VAL list)
                      * FIXME: catch parse errors and throw a user SyntaxError
                      * exception here once natives grow the ability to throw 
                      * user exceptions. 
-                     *)                            
-                    val prog = Parser.parseLines lines
+                     *)
+                    fun str s = Eval.newString (Ustring.fromString s)
+                    val prog = Parser.parseLines lines 
+                        handle LogErr.LexError le => raise Eval.ThrowException (str le)
+                             | LogErr.ParseError pe => raise Eval.ThrowException (str pe)
                 in
                     (* 
                      * FIXME: maybe don't want to permit the full set of 
@@ -542,6 +545,10 @@ fun eval (vals:Mach.VAL list)
                      * result of parsing a bit, strip out some sorts of things...
                      *)
                     Eval.evalProgram (Verify.verifyProgram (Defn.defProgram prog))
+                    handle LogErr.DefnError de => raise Eval.ThrowException (str de)
+                         | LogErr.VerifyError ve => raise Eval.ThrowException (str ve)
+                         | LogErr.NameError ne => raise Eval.ThrowException (str ne)
+                         | LogErr.EvalError ee => raise Eval.ThrowException (str ee)
                 end
         end
     
