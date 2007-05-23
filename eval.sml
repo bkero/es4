@@ -3768,33 +3768,36 @@ and constructSpecialPrototype (id:Mach.OBJ_IDENT)
 and initClassPrototype (regs:Mach.REGS)
                        (classObj:Mach.OBJ) 
     : unit =
-    let 
-        val Mach.Obj { ident, props, magic, ... } = classObj
-        val SOME (Mach.Class {cls=Ast.Cls {extends,...},...}) = !magic
-        val baseProtoVal = 
-            case extends of 
-                NONE => Mach.Null
-              | SOME baseClassName => 
-                let
-                in
-                    case findVal (#scope regs) (multinameOf baseClassName) of 
-                        Mach.Object ob => 
-                        if hasOwnValue ob Name.public_prototype
-                        then getValue ob Name.public_prototype
-                        else Mach.Null
-                      | _ => error ["base class resolved to non-object: ", 
-                                    LogErr.name baseClassName]
-                end
-        val _ = trace ["constructing prototype"]
-        val newPrototype = case constructSpecialPrototype ident of
-                               SOME p => needObj p
-                             | NONE => newObj()            
-        val newPrototype = Mach.setProto newPrototype baseProtoVal
-    in
-        defValue classObj Name.public_prototype (Mach.Object newPrototype);
-        trace ["finished initialising class prototype"]
-    end
-
+    case getValue classObj Name.public_prototype of 
+        Mach.Object _ => ()
+      | _ =>         
+        let 
+            val Mach.Obj { ident, props, magic, ... } = classObj
+            val SOME (Mach.Class {cls=Ast.Cls {extends,...},...}) = !magic
+            val baseProtoVal = 
+                case extends of 
+                    NONE => Mach.Null
+                  | SOME baseClassName => 
+                    let
+                    in
+                        case findVal (#scope regs) (multinameOf baseClassName) of 
+                            Mach.Object ob => 
+                            if hasOwnValue ob Name.public_prototype
+                            then getValue ob Name.public_prototype
+                            else Mach.Null
+                          | _ => error ["base class resolved to non-object: ", 
+                                        LogErr.name baseClassName]
+                    end
+            val _ = trace ["constructing prototype"]
+            val newPrototype = case constructSpecialPrototype ident of
+                                   SOME p => needObj p
+                                 | NONE => newObj()            
+            val newPrototype = Mach.setProto newPrototype baseProtoVal
+        in
+            defValue classObj Name.public_prototype (Mach.Object newPrototype);
+            trace ["finished initialising class prototype"]
+        end
+        
 (*
     ClassBlock classBlock
 
