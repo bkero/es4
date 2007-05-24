@@ -246,5 +246,6 @@ val meta_convert = meta Ustring.convert_
 
 val this = internal Ustring.this_
 val arguments = internal Ustring.arguments_
+val empty = internal Ustring.empty
 
 end

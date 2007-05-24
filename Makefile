@@ -59,10 +59,18 @@ checkev: tools/unit.heap.$(HEAP_SUFFIX) es4.heap.$(HEAP_SUFFIX)
 checklth: tools/unit.heap.$(HEAP_SUFFIX) es4.heap.$(HEAP_SUFFIX)
 	sml @SMLload=tools/unit.heap $(TRACE) tests/lth_tests/lth_tests.test
 
-smoketest: es4.heap.$(HEAP_SUFFIX)
-	sml @SMLload=es4.heap $(TRACE) -ev tests/spidermonkey/ecma/shell.js tests/spidermonkey/ecma/Boolean/15.6.1.js
+run.heap.$(HEAP_SUFFIX): es4.heap.$(HEAP_SUFFIX)
+	sml @SMLload=es4.heap $(TRACE) -dump run.heap
 
-dump-heap-for-running: es4.heap.$(HEAP_SUFFIX)
+smoketest: run.heap.$(HEAP_SUFFIX)
+	sml @SMLload=run.heap $(TRACE) tests/spidermonkey/ecma/shell.js tests/spidermonkey/ecma/Array/15.4.2.2-2.js
+	sml @SMLload=run.heap $(TRACE) tests/spidermonkey/ecma/shell.js tests/spidermonkey/ecma/Boolean/15.6.1.js
+	sml @SMLload=run.heap $(TRACE) tests/spidermonkey/ecma/shell.js tests/spidermonkey/ecma/Date/15.9.2.2-6.js
+	sml @SMLload=run.heap $(TRACE) tests/spidermonkey/ecma/shell.js tests/spidermonkey/ecma/LexicalConventions/7.6.js
+	sml @SMLload=run.heap $(TRACE) tests/spidermonkey/ecma/shell.js tests/spidermonkey/ecma/Statements/12.6.3-4.js
+	sml @SMLload=run.heap $(TRACE) tests/spidermonkey/ecma/shell.js tests/spidermonkey/ecma/TypeConversion/9.3.js
+
+dump-heap-for-running: run.heap.$(HEAP_SUFFIX)
 	sml @SMLload=es4.heap $(TRACE) -dump run.heap
 
 # Do *not* give this dependencies to see if the heap is up-to-date.
