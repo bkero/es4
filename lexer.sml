@@ -64,6 +64,9 @@ fun makeTokenList (filename : string, reader : unit -> Ustring.SOURCE) : ((TOKEN
                             (0wxff41            , 0wxff5a            ),
                             (UTF8.fromAscii #"$", UTF8.fromAscii #"$"),
                             (UTF8.fromAscii #"_", UTF8.fromAscii #"_")]
+        val hexDigitRanges=[(UTF8.fromAscii #"a", UTF8.fromAscii #"f"),
+                            (UTF8.fromAscii #"A", UTF8.fromAscii #"F"),
+                            (UTF8.fromAscii #"0", UTF8.fromAscii #"9")]
         
         fun numInRanges n ((lo,hi)::ranges) : bool =
             if (lo <= n) andalso (n <= hi)
@@ -145,6 +148,7 @@ fun makeTokenList (filename : string, reader : unit -> Ustring.SOURCE) : ((TOKEN
         let
             fun hexToWord hexDigits =
             let
+                val numHexDigits = countInRanges {min=length hexDigits} hexDigitRanges hexDigits
                 val hexString = implode (map UTF8.toAscii ((UTF8.fromAscii #"0") :: (UTF8.fromAscii #"x") :: hexDigits))
                 val codePoint = StringCvt.scanString (Int.scan StringCvt.HEX) hexString
             in
@@ -392,9 +396,6 @@ fun makeTokenList (filename : string, reader : unit -> Ustring.SOURCE) : ((TOKEN
               |(0wx30::0wx78::rest  (* 0x | 0X *)
               | 0wx30::0wx58::rest) (*    =>  HexIntegerLiteral { 0 [xX] [0-9a-fA-F]+ } *)
                 =>  let
-                        val hexDigitRanges = [(UTF8.fromAscii #"a", UTF8.fromAscii #"f"),
-                                              (UTF8.fromAscii #"A", UTF8.fromAscii #"F"),
-                                              (UTF8.fromAscii #"0", UTF8.fromAscii #"9")]
                         val numHexDigits = countInRanges {min=1} hexDigitRanges rest
                     in
                         (HexIntLit, 2 + numHexDigits)
