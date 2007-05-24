@@ -1163,8 +1163,10 @@ and verifyStmt (env:ENV)
                                 labels = labels}
             end
         
-          | Ast.SwitchTypeStmt {cond, ty, cases} => (*TODO*)
-            Ast.SwitchTypeStmt {cond=cond, ty=ty, cases=cases}
+          | Ast.SwitchTypeStmt {cond, ty, cases} => 
+            Ast.SwitchTypeStmt {cond = verifyExprOnly env cond, 
+                                ty = verifyTypeExpr env ty, 
+                                cases = List.map (verifyCatchClause env) cases}
             
           | Ast.DXNStmt x => (*TODO*)
             Ast.DXNStmt x
@@ -1176,7 +1178,9 @@ and verifyStmt (env:ENV)
 and verifyCatchClause (env:ENV)
                       ({bindings, ty, fixtures, inits, block}:Ast.CATCH_CLAUSE)
     : Ast.CATCH_CLAUSE =
-    let val fixtures' = verifyFixturesOption env fixtures
+    let 
+        val ty = verifyTypeExpr env ty
+        val fixtures' = verifyFixturesOption env fixtures
         val inits' = verifyInitsOption env inits
         val env' = withRib env fixtures'
         val block' = verifyBlock env' block

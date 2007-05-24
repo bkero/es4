@@ -2147,6 +2147,7 @@ and defStmt (env:ENV)
 
         fun reconstructCatch { bindings, fixtures, inits, block, ty } =
             let 
+                val ty = defTyExpr env ty
                 val (f0,i0) = defBindings env Ast.Var (Ast.Internal Ustring.empty) bindings
                 val env = extendEnvironment env f0
                 val (block,fixtures) = defBlock env block
@@ -2176,17 +2177,6 @@ and defStmt (env:ENV)
                   inits = SOME [],
                   body = body},
                 [])
-            end
-
-        fun reconstructTyCase {ty: Ast.TYPE_EXPR option,
-                               body: Ast.STMT}
-            : Ast.TYPE_CASE * Ast.FIXTURES = 
-            let 
-                val (body,hoisted) = defStmt env [] body
-            in
-                ({ty=ty,
-                  body=body},  (* FIXME: fxtrs are lost, but them in block *)
-                 hoisted)
             end
 
         fun findClass (n:Ast.NAME) =
@@ -2407,13 +2397,9 @@ and defStmt (env:ENV)
             end
         
           | Ast.SwitchTypeStmt { cond, ty, cases } =>
-            let
-                val (cases,hoisted) = ListPair.unzip (map reconstructTyCase cases)
-            in
-                (Ast.SwitchTypeStmt {cond = defExpr env cond,
-                                     ty = defTyExpr env ty,
-                                     cases = cases}, List.concat hoisted)
-            end
+            (Ast.SwitchTypeStmt {cond = defExpr env cond,
+                                 ty = defTyExpr env ty,
+                                 cases = map reconstructCatch cases}, [])
             
           | Ast.DXNStmt { expr } => 
             (Ast.DXNStmt { expr = defExpr env expr },[])

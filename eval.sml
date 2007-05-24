@@ -279,7 +279,11 @@ fun getScopeTemps (scope:Mach.SCOPE)
     : Mach.TEMPS = 
     case scope of 
         Mach.Scope { temps, ... } => temps
-    
+
+fun getTemps (regs:Mach.REGS)
+    : Mach.TEMPS = 
+    getScopeTemps (#scope regs)
+
 (* 
  * The global object and scope.
  *)
@@ -2960,7 +2964,7 @@ and evalStmt (regs:Mach.REGS)
       | Ast.TryStmt { block, catches, finally } => 
         evalTryStmt regs block catches finally
       | Ast.SwitchTypeStmt { cond, ty, cases } => 
-        LogErr.unimplError ["switch-type statements not handled"]
+        evalSwitchTypeStmt regs cond ty cases
       | Ast.ForInStmt w => evalForInStmt regs w
       | _ => error ["Shouldn't happen: failed to match in Eval.evalStmt."]
 
@@ -3104,6 +3108,32 @@ and showObject ptag obj =
                                        | _ => "" ] )
                            (!props) )
     end
+    
+and catch (regs:Mach.REGS)
+          (e:Mach.VAL)           
+          (clauses:Ast.CATCH_CLAUSE list) 
+    : Mach.VAL option = 
+    case clauses of
+        [] => NONE
+      | {ty, fixtures, inits, block, ...}::cs => 
+        if isCompatible e ty
+        then 
+            let 
+                val fixs = valOf fixtures
+                val head = (valOf fixtures, [])
+                val regs = evalHead regs head
+                val scope = (#scope regs)
+                val obj = (#this regs)
+                val temps = getScopeTemps scope
+            in
+                (if fixs = []
+                 then () 
+                 else Mach.defTemp temps 0 e; 
+                 evalScopeInits regs Ast.Local (valOf inits);
+                 SOME (evalBlock regs block))
+            end
+        else
+            catch regs e cs
 
 and evalTryStmt (regs:Mach.REGS) 
                 (block:Ast.BLOCK) 
@@ -3111,30 +3141,6 @@ and evalTryStmt (regs:Mach.REGS)
                 (finally:Ast.BLOCK option) 
     : Mach.VAL = 
     let
-        fun typesCompatible a b = true (* FIXME: do a real type test here! *)
-
-        fun catch (e:Mach.VAL) 
-                  (clauses:Ast.CATCH_CLAUSE list) 
-            : Mach.VAL option = 
-            case clauses of
-                [] => NONE
-              | {ty, fixtures, inits, block, ...}::cs => 
-                if typesCompatible ty e
-                then 
-                    let 
-                        val head = (valOf fixtures, [])
-                        val regs = evalHead regs head
-                        val scope = (#scope regs)
-                        val obj = (#this regs)
-                        val temps = getScopeTemps scope
-                    in
-                        (Mach.defTemp temps 0 e; 
-                         evalScopeInits regs Ast.Local (valOf inits);
-                         SOME (evalBlock regs block))
-                    end
-                else
-                    catch e cs
-
         fun finishWith (v:Mach.VAL) 
             : Mach.VAL = 
             case finally of 
@@ -3148,7 +3154,7 @@ and evalTryStmt (regs:Mach.REGS)
     in
         evalBlock regs block
         handle ThrowException v => 
-               case catch v catches of 
+               case catch regs v catches of 
                    SOME fix => finishWith fix
                  | NONE => (finishWith v; 
                             raise ThrowException v)
@@ -3983,7 +3989,6 @@ and evalWithStmt (regs:Mach.REGS)
         evalStmt regs body
     end
 
-
 and evalSwitchStmt (regs:Mach.REGS)
                    (mode:Ast.NUMERIC_MODE option)
                    (cond:Ast.EXPR)
@@ -4024,6 +4029,19 @@ and evalSwitchStmt (regs:Mach.REGS)
                            else raise BreakException exnLabel
     end
 
+
+and evalSwitchTypeStmt (regs:Mach.REGS) 
+                       (cond:Ast.EXPR)
+                       (ty:Ast.TYPE_EXPR) 
+                       (cases:Ast.CATCH_CLAUSE list)
+    : Mach.VAL =
+    let
+        val v = evalExpr regs cond
+    in
+        case catch regs v cases of 
+            NONE => Mach.Undef
+          | SOME v => v
+    end
 
 (*
     FOR_STMT
