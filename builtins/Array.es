@@ -23,7 +23,7 @@ package
 
     // INFORMATIVE: this is an implementation that meets the spec, but the spec
     // allows for different sort implementations (quicksort is not required)
-    type Comparator = function (*,*):double;
+    type Comparator = (function (*,*):double, undefined);
 
     dynamic class Array
     {

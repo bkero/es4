@@ -40,9 +40,13 @@ package
      */
     dynamic class String
     {       
+        /* E262-4 draft */
+        meta static function convert(x) 
+            string(x);
+
         /* E262-3 15.5.1: The String Constructor Called as a Function */
         meta static function invoke(x="")
-            ToString(x);
+            string(x);
 
         /* 15.5.2 The String Constructor */
         function String(x="")

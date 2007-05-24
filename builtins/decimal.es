@@ -25,15 +25,15 @@ package
         static const POSITIVE_INFINITY = 1.0m / 0.0m;  // ???
 
         /* E262-4 draft */
-        meta static function convert(x : Numeric)
+        meta static function convert(x)
             decimal(x);
 
         /* E262-3 15.7.1.1: The decimal Constructor Called as a Function */
-        meta static function invoke(x)
+        meta static function invoke(x=0m)
             x is decimal ? x : new decimal(x);
 
         /* E262-3 15.7.2.1: The decimal constructor */
-        function decimal(x)
+        function decimal(x=0m)
             magic::bindDecimal(this, x);
 
         /* E262-3 15.7.4.2: decimal.prototype.toString */
