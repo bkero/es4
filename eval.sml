@@ -4054,7 +4054,7 @@ and callIteratorGet (regs:Mach.REGS)
                   attrs = { dontEnum = false, ... }, 
                   ... } => (newString (#id name)) :: curr
               | _ => curr
-        val iterator = needObj (newArray (NameMap.foldli f [] (!props)))
+        val iterator = needObj (newArray (NameMap.foldri f [] (!props)))
     in
         setValue iterator Name.public_cursor (newInt 0);
         iterator
@@ -4152,9 +4152,9 @@ and evalForInStmt (regs:Mach.REGS)
                                              | x => x)
                         in
                             loop nextVal handle BreakException exnLabel =>
-                                          if labelMatch labels exnLabel
-                                          then accum
-                                          else raise BreakException exnLabel
+                                             if labelMatch labels exnLabel
+                                             then accum
+                                             else raise BreakException exnLabel
                         end
                     else
                         accum
