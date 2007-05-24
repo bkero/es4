@@ -121,9 +121,16 @@ fun makeTokenList (filename : string, reader : unit -> Ustring.SOURCE) : ((TOKEN
             advanceIndex adv
         end
         
-        fun pushEolAdv adv =
-            (justFoundNewline := true;
-             advanceIndex adv)
+        fun pushEolAdv () =
+        (justFoundNewline := true;
+         case !src of
+            0wx000D::0wx000A::_ => advanceIndex 2
+          | 0wx000D::_ => advanceIndex 1
+          | 0wx000A::_ => advanceIndex 1
+          | 0wx2028::_ => advanceIndex 1
+          | 0wx2029::_ => advanceIndex 1
+          | _ => error ["LexError:  LEXER BUG! -- not a line terminator"]  (* should not be possible to get here *)
+        )
         
         fun lookahead k = 
 	    let 
@@ -252,12 +259,20 @@ fun makeTokenList (filename : string, reader : unit -> Ustring.SOURCE) : ((TOKEN
         let
             fun lexStr1 str  = (* For singly quoted strings '...' and "..." *)
             let
-                val c = lookahead 0
+                val c  = lookahead 0
+                val c1 = lookahead 1
+                val c2 = lookahead 2
             in
                 if (c = 0wx000A) orelse (c = 0wx000D) orelse (c = 0wx2028) orelse (c = 0wx2029) (* newlines *)
                 then error ["LexError:  no newlines in string literals"]
 		else if c = 0wx0
 		then error ["LexError:  end of input in string literal"]
+                else if c = 0wx005C andalso c1 = 0wx0D andalso c2 = 0wx0A (* backslash-CRLF *)
+                then (advanceIndex 3;  lexStr1 str) (* skip backslash-newline *)
+                else if c = 0wx005C andalso c1 = 0wx0D (* backslash-CR *)
+                then (advanceIndex 2;  lexStr1 str) (* skip backslash-newline *)
+                else if c = 0wx005C andalso c1 = 0wx0A (* backslash-LF *)
+                then (advanceIndex 2;  lexStr1 str) (* skip backslash-newline *)
                 else if c = 0wx005C (* backslash *)
                 then lexStr1 ((lexEscapedChar ())::str)
                 else if c = delim
@@ -272,12 +287,14 @@ fun makeTokenList (filename : string, reader : unit -> Ustring.SOURCE) : ((TOKEN
                 val c2 = lookahead 2
                 val c3 = lookahead 3
             in
-              (*
-                else if (c = 0wx000A) orelse (c = 0wx000D) orelse (c = 0wx2028) orelse (c = 0wx2029) (* newlines *)
-                then error ["LexError:  no newlines in string literals"]
-              *)
 		if c = 0wx0
 		then error ["LexError:  end of input in string literal"]
+                else if c = 0wx005C andalso c1 = 0wx0D andalso c2 = 0wx0A (* backslash-CRLF *)
+                then (advanceIndex 3;  lexStr3 str) (* skip backslash-newline *)
+                else if c = 0wx005C andalso c1 = 0wx0D (* backslash-CR *)
+                then (advanceIndex 2;  lexStr3 str) (* skip backslash-newline *)
+                else if c = 0wx005C andalso c1 = 0wx0A (* backslash-LF *)
+                then (advanceIndex 2;  lexStr3 str) (* skip backslash-newline *)
                 else if c = 0wx005C (* backslash *)
                 then lexStr3 ((lexEscapedChar ())::str)
                 else if c = delim andalso c1 = delim andalso c2 = delim andalso not (c3 = delim)
@@ -474,14 +491,14 @@ fun makeTokenList (filename : string, reader : unit -> Ustring.SOURCE) : ((TOKEN
             fun lexSingleLineComment () =
                 case lookahead 0 of
                     (0wx000A | 0wx000D | 0wx2028 | 0wx2029) (* line terminators *)
-                      => pushEolAdv 1
+                      => pushEolAdv ()
 		  | 0wx0 => ()
                   | _ => (advanceIndex 1; lexSingleLineComment ())
             
             fun lexMultiLineComment {newline=false} {asterisk=asterisk} = (* have not encountered a newline yet *)
                 (case lookahead 0 of
                     (0wx000A | 0wx000D | 0wx2028 | 0wx2029) (* line terminators *)
-                                  => (pushEolAdv   1; lexMultiLineComment {newline=true } {asterisk=false})
+                                  => (pushEolAdv  (); lexMultiLineComment {newline=true } {asterisk=false})
                   | 0wx2A (* * *) => (advanceIndex 1; lexMultiLineComment {newline=false} {asterisk=true })
                   | 0wx2F (* / *) => (advanceIndex 1; if asterisk then () else
                                                       lexMultiLineComment {newline=false} {asterisk=false})
@@ -575,7 +592,7 @@ fun makeTokenList (filename : string, reader : unit -> Ustring.SOURCE) : ((TOKEN
                     case UTF8.toAscii c of
                     (* line terminators *)
                        (#"\n"
-                      | #"\r")=> pushEolAdv 1
+                      | #"\r")=> pushEolAdv ()
                     (* operators *)
                       | #"("  => push 1 LeftParen
                       | #")"  => push 1 RightParen
@@ -742,7 +759,7 @@ fun makeTokenList (filename : string, reader : unit -> Ustring.SOURCE) : ((TOKEN
                     case c of
                     (* line terminators *)
                        (0wx2028
-                      | 0wx2029) => pushEolAdv 1
+                      | 0wx2029) => pushEolAdv ()
                     (* whitespace *)
                       |(0wx00A0
                       | 0wx1680
