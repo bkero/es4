@@ -764,7 +764,12 @@ and verifyExpr (env:ENV)
             end
 
           | Ast.ExpectedTypeExpr (t, e) =>
-            internalError ["Defn produced ExpectedTypeExpr"]
+            (* 
+             * If we got here, we're re-verifying an already-verified expression.
+             * This means we've already put expectations on all subexpressions, and 
+             * we don't want to re-wrap any subexpressions, so we just bottom out here.
+             *)
+            (Ast.ExpectedTypeExpr (t, e), t)
 
           | Ast.BinaryTypeExpr (b, e, te) =>
             let
