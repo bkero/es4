@@ -676,6 +676,14 @@ and getValue (obj:Mach.OBJ)
     end
                                    
 
+and typeOpFailure (prefix:string)
+                  (v:Mach.VAL)
+                  (tyExpr:Ast.TYPE_EXPR)
+    : Mach.VAL =
+    throwTypeErr [prefix, ": val=", approx v, 
+                  " type=", Verify.typeToString (typeOfVal v), 
+                  " wanted=", Verify.typeToString tyExpr]
+
 and checkAndConvert (v:Mach.VAL)                    
                     (tyExpr:Ast.TYPE_EXPR)
     : Mach.VAL = 
@@ -686,9 +694,7 @@ and checkAndConvert (v:Mach.VAL)
             val valTy = typeOfVal v
             val className = 
                 case Verify.findConversion valTy tyExpr of
-                    NONE => error ["incompatible types w/o converter, val=", approx v, 
-                                   " type=", Verify.typeToString (typeOfVal v), 
-                                   " wanted=", Verify.typeToString tyExpr]
+                    NONE => (typeOpFailure "incompatible types w/o converter" v tyExpr; Name.empty)
                   | SOME n => n
             val class = needObj (getValue (getGlobalObject ()) className)
             (* FIXME: this will call back on itself! *)
@@ -696,9 +702,7 @@ and checkAndConvert (v:Mach.VAL)
         in
             if isCompatible converted tyExpr
             then converted
-            else error ["converter returned incompatible value, val=", approx converted, 
-                        " type=", Verify.typeToString (typeOfVal converted), 
-                        " wanted=", Verify.typeToString tyExpr]
+            else typeOpFailure "converter returned incompatible value" converted tyExpr
         end
 
 and setValueOrVirtual (obj:Mach.OBJ) 
@@ -2620,18 +2624,18 @@ and evalBinaryTypeOp (regs:Mach.REGS)
                      (expr:Ast.EXPR)
                      (tyExpr:Ast.TYPE_EXPR) 
     : Mach.VAL = 
-    case bop of 
-        Ast.Cast => error ["unimplemented: operator 'cast'"]
-      | Ast.To => error ["unimplemented: operator 'to'"]
-      | Ast.Is => 
-        let 
-            val v = evalExpr regs expr
-            val _ = trace ["processing 'is' operator"]
-        in
-            newBoolean (Verify.isSubtype (typeOfVal v) tyExpr)
-        end
-        
-
+    let
+        val v = evalExpr regs expr
+    in
+        case bop of 
+            Ast.Cast => 
+            if isCompatible v tyExpr
+            then v
+            else typeOpFailure "cast failed" v tyExpr
+          | Ast.To => checkAndConvert v tyExpr
+          | Ast.Is => newBoolean (Verify.isSubtype (typeOfVal v) tyExpr)
+    end
+                      
 and evalBinaryOp (regs:Mach.REGS) 
                  (bop:Ast.BINOP) 
                  (aexpr:Ast.EXPR) 

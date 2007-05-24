@@ -42,7 +42,11 @@ package
     type matcher = (string,RegExp!);
 
     intrinsic final class string! extends String
-    {       
+    {
+        /* E262-4 draft */
+        meta static function convert(x) 
+            string(x);
+
         /* E262-3 15.5.1: The String Constructor Called as a Function */
         meta static function invoke(x="")
             x is string ? x : new string(x);

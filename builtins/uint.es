@@ -21,15 +21,15 @@ package
         static const MIN_VALUE : uint = 0;
 
         /* E262-4 draft */
-        meta static function convert(x : Numeric)
+        meta static function convert(x)
             uint(x);
 
         /* E262-4 draft: The uint Constructor Called as a Function */
-        meta static function invoke(x)
+        meta static function invoke(x=0u)
             x is uint ? x : magic::newUInt(x);
 
         /* E262-4 draft: The uint constructor */
-        function uint(x) : super(x)
+        function uint(x=0u) : super(x)
             magic::bindUInt(this, x);
 
         /* E262-4 draft: uint.prototype.toString */

@@ -21,15 +21,15 @@ package
         static const MIN_VALUE : int = -0x80000000i;
 
         /* E262-4 draft */
-        meta static function convert(x : Numeric)
+        meta static function convert(x)
             int(x);
 
         /* E262-4 draft: The int Constructor Called as a Function */
-        meta static function invoke(x)
+        meta static function invoke(x=0i)
             x is int ? x : magic::newInt(x);
 
         /* E262-4 draft: The int constructor */
-        function int(x) : super(x)
+        function int(x=0i) : super(x)
             magic::bindInt(this, x);
 
         /* E262-4 draft: int.prototype.toString */
