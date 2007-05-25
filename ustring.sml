@@ -1,8 +1,9 @@
 
 structure Ustring = struct
 
-type STRING = UTF8.wchar vector
-type SOURCE = UTF8.wchar list
+type WCHAR  = Word.word
+type STRING = WCHAR vector
+type SOURCE = WCHAR list
 
 
 (*
@@ -11,17 +12,72 @@ type SOURCE = UTF8.wchar list
  *)
 
 
-fun internal_fromString s = Vector.fromList (UTF8.explode s)
+exception BadUTF8Encoding
 
-fun internal_fromSource s = UTF8.explode s
+(*
+ *  Unicode value             1st byte   2nd byte   3rd byte   4th byte
+ *  -----------------------   --------   --------   --------   --------
+ *  00000 00000000 0xxxxxxx   0xxxxxxx
+ *  00000 00000yyy yyxxxxxx   110yyyyy   10xxxxxx
+ *  00000 zzzzyyyy yyxxxxxx   1110zzzz   10yyyyyy   10xxxxxx
+ *  uuuzz zzzzyyyy yyxxxxxx   11110uuu   10zzzzzz   10yyyyyy   10xxxxxx
+ *)
+fun internal_explode s =
+let
+    fun grabSixBits (w, [   ]) = raise BadUTF8Encoding
+      | grabSixBits (w, c::cs) =
+    let
+        val b = Word.fromInt (Char.ord c)
+    in
+        if   (Word.andb (0wxC0, b) = 0wx80)
+        then (Word.orb (Word.<<(w, 0wx06), Word.andb(0wx3F, b)), cs)
+        else raise BadUTF8Encoding
+    end
+    
+    fun convert ([   ], acc) = acc
+      | convert (c::cs, acc) =
+    let
+        val w = Word.fromInt (Char.ord c)
+        val (w_, cs_) =
+            if   (w < 0wx80)
+            then (w, cs)
+            else if Word.andb (0wxE0, w) = 0wxC0
+            then                           grabSixBits (Word.andb (0wx1F, w), cs)
+            else if Word.andb (0wxF0, w) = 0wxE0
+            then              grabSixBits (grabSixBits (Word.andb (0wx0F, w), cs))
+            else if Word.andb (0wxF8, w) = 0wxF0
+            then grabSixBits (grabSixBits (grabSixBits (Word.andb (0wx07, w), cs)))
+            else raise BadUTF8Encoding
+    in
+        convert (cs_, w_::acc)
+    end
+in
+    rev (convert (explode s, []))
+end
+
+
+fun internal_wcharFromChar c = Word.andb(0wx7f, Word.fromInt(Char.ord c))
+
+fun internal_wcharIsChar c = c < 0wx80
+
+fun internal_wcharToChar c = Char.chr(Word.toInt(Word.andb(0wx7f, c)))
+
+fun internal_fromString s = Vector.fromList (internal_explode s)
+
+fun internal_fromSource s = internal_explode s
+
+fun internal_wcharToString c = if internal_wcharIsChar c
+                               then Char.toCString(internal_wcharToChar c)
+                               else "\\u" ^ (StringCvt.padLeft #"0" 4 (Word.toString c))
+
 
 fun internal_toEscapedAscii us =
     let
 	fun esc (c, ls) = 
-	    if UTF8.isAscii c then
-		(UTF8.toAscii c) :: ls
+	    if internal_wcharIsChar c then
+		(internal_wcharToChar c) :: ls
 	    else
-		(List.rev (explode (UTF8.toString c))) @ ls
+		(List.rev (explode (internal_wcharToString c))) @ ls
     in
 	implode (List.rev (Vector.foldl esc [] us))
     end
@@ -55,6 +111,10 @@ fun internal_sourceFromUstring s = Vector.foldr (op ::) [] s
 (*
  * Public interface
  *)
+
+fun wcharFromChar (c:char ) : WCHAR = internal_wcharFromChar c
+fun wcharIsChar   (c:WCHAR) : bool  = internal_wcharIsChar   c
+fun wcharToChar   (c:WCHAR) : char  = internal_wcharToChar   c
 
 fun toAscii      (s:STRING   ) : string = internal_toEscapedAscii s
 fun toFilename   (s:STRING   ) : string = internal_toEscapedAscii s  (* FIXME: what should I do here? *)
