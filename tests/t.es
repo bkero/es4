@@ -1,8 +1,7 @@
 use namespace intrinsic
-try {
-let e = 10
-throw e
+class A {
+type T = (int,string)
+namespace N
+N var x : T = 10
 }
-catch (x) {
-print(x)
-}
+print(new A().x)

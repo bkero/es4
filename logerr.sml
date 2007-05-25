@@ -80,6 +80,7 @@ exception EvalError of string
 exception MachError of string
 exception HostError of string
 exception UnimplError of string
+exception EofError
 
 fun lexError ss = 
      raise LexError (locstr ss)
