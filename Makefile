@@ -81,7 +81,7 @@ run-dumped:
 run: 
 	sml @SMLload=es4.heap $(TRACE) -e $(FILE)
 
-repl.heap.$(HEAP_SUFFIX): es4.heap.$(HEAP_SUFFIX)
+repl.heap.$(HEAP_SUFFIX): es4.heap.$(HEAP_SUFFIX) builtins/*.es
 	sml @SMLload=es4.heap $(TRACE) -dumpRepl repl.heap
 
 repl: repl.heap.$(HEAP_SUFFIX)
