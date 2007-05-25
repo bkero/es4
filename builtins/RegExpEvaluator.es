@@ -54,7 +54,7 @@ package RegExpInternals
         {
         }
 
-        var input       : string;            // FIXME: const (all four)
+        var input       : string;            // FIXME: const (all four).  Ticket #24.
         var inputLength : int;
         var ignoreCase  : boolean;   // i
         var multiline   : boolean;   // m
@@ -135,7 +135,7 @@ package RegExpInternals
             return m2.match(ctx, x, c);
         }
 
-        var m1 : Matcher, m2 : Matcher; // FIXME: const
+        var m1 : Matcher, m2 : Matcher; // FIXME: const.  Ticket #24.
     }
 
     class Alternative! implements Matcher
@@ -145,7 +145,7 @@ package RegExpInternals
         function match(ctx : Context, x : State, c : Continuation) : MatchResult
             m1.match(ctx, x, (function (ctx : Context, y : State) m2.match(ctx, y, c)) );
 
-        var m1 : Matcher, m2 : Matcher; // FIXME: const
+        var m1 : Matcher, m2 : Matcher; // FIXME: const.  Ticket #24.
     }
 
     class Assertion! implements Matcher
@@ -252,7 +252,7 @@ package RegExpInternals
             return RepeatMatcher(min, max, x);
         }
 
-        var parenIndex : uint;  // FIXME: const (all of these)
+        var parenIndex : uint;  // FIXME: const (all of these).  Ticket #24.
         var parenCount : uint;
         var m : Matcher;
         var min : double;
@@ -277,7 +277,7 @@ package RegExpInternals
             return m.match(ctx, x, d);
         }
 
-        var m : Matcher, parenIndex : uint; // FIXME: const
+        var m : Matcher, parenIndex : uint; // FIXME: const.  Ticket #24.
     }
 
     class Backref! implements Matcher
@@ -300,7 +300,7 @@ package RegExpInternals
             return c(ctx, new State(f, cap));
         }
 
-        var capno : uint; // FIXME: const
+        var capno : uint; // FIXME: const.  Ticket #24.
     }
 
     class PositiveLookahead! implements Matcher
@@ -316,7 +316,7 @@ package RegExpInternals
             return c(ctx, new State(x.endIndex, r.cap));
         }
 
-        var mm: Matcher; // FIXME: const
+        var mm: Matcher; // FIXME: const.  Ticket #24.
     }
 
     class NegativeLookahead! implements Matcher
@@ -332,7 +332,7 @@ package RegExpInternals
             return c(ctx, x);
         }
 
-        var mm: Matcher; // FIXME: const
+        var mm: Matcher; // FIXME: const.  Ticket #24.
     }
 
     class CharsetMatcher! implements Matcher
@@ -383,7 +383,7 @@ package RegExpInternals
         override function match(ctx, c : string) : boolean
             m1.match(ctx, c) || m2.match(ctx, c);
 
-        var m1 : Charset, m2 : Charset; // FIXME: const
+        var m1 : Charset, m2 : Charset; // FIXME: const.  Ticket #24.
     }
 
     class CharsetIntersection! extends Charset 
@@ -393,7 +393,7 @@ package RegExpInternals
         override function match(ctx, c : string) : boolean
             m1.match(ctx, c) && m2.match(ctx, c);
 
-        var m1 : Charset, m2 : Charset; // FIXME: const 
+        var m1 : Charset, m2 : Charset; // FIXME: const.  Ticket #24.
     }
 
     class CharsetComplement! extends Charset
@@ -403,7 +403,7 @@ package RegExpInternals
         override function match(ctx, c : string) : boolean 
             (!m.match(ctx, c));  /* Yeah, you want the parens... */
 
-        var m : Charset; // FIXME: const
+        var m : Charset; // FIXME: const.  Ticket #24.
     }
 
     class CharsetRange! extends Charset 
@@ -419,7 +419,7 @@ package RegExpInternals
             return false;
         }
 
-        var lo : string, hi : string; // FIXME: const
+        var lo : string, hi : string; // FIXME: const.  Ticket #24.
     }
 
     class CharsetAdhoc! extends Charset 
@@ -453,7 +453,7 @@ package RegExpInternals
             throw new Error("character set not yet implemented: " + name);
         }
 
-        var name : string; // FIXME: const
+        var name : string; // FIXME: const.  Ticket #24.
     }
 
     // FIXME: merge definitions here and in Unicode.es, when appropriate.

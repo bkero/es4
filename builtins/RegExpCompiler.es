@@ -21,21 +21,21 @@ package RegExpInternals
     {
         /* Invariant for token handling: either idx==source.length or source[idx] is a significant char */
 
-        var   source : string;         // expression source, sans leading and trailing /  // FIXME: const
+        var   source : string;         // expression source, sans leading and trailing /  // FIXME: const.  Ticket #24.
         var   slen : uint;             // source length, retrieved once
         var   idx : uint;              // current character in the source
         var   largest_backref : uint;  // largest back reference seen
-        var   extended : boolean;      // true iff expression has /x flag  // FIXME: const
-        var   names : [string?] = [];  // capturing names, or null for capturing exprs that are not named  // FIXME: const
-        var   parenIndex : uint = 0;   // number of capturing parens (including those that are named) // FIXME: const
-        var   parenCount : uint = 0;   // current depth of capture nesting // FIXME: const 
+        var   extended : boolean;      // true iff expression has /x flag  // FIXME: const.  Ticket #24.
+        var   names : [string?] = [];  // capturing names, or null for capturing exprs that are not named  // FIXME: const.  Ticket #24.
+        var   parenIndex : uint = 0;   // number of capturing parens (including those that are named) // FIXME: const.  Ticket #24.
+        var   parenCount : uint = 0;   // current depth of capture nesting // FIXME: const.  Ticket #24.
 
         function RegExpCompiler( source : string, flags  )
             : extended = flags.x
             , source = source
             , slen = source.length
-            , idx = 0              /* FIXME: redundant */
-            , largest_backref = 0  /* FIXME: redundant */
+            , idx = 0              /* FIXME: redundant.  Ticket #43. */
+            , largest_backref = 0  /* FIXME: redundant.  Ticket #43. */
         {
             skip();
         }
