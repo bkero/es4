@@ -157,11 +157,11 @@ package
             let sslen : uint = searchString.length;
             let lim   : uint = slen - sslen + 1;
 
-            /* foo */
             outer:
             for ( let k : uint = m ; k < lim ; k++ ) {
                 for ( let w : uint = 0u ; w < sslen ; w++ ) {
-                    if (magic::charCodeAt(this, uint(k+w)) !== magic::charCodeAt(searchString, uint(w)))
+                    /* FIXME (Ticket #51): uint conversions below should not be necessary, but it is */
+                    if (magic::charCodeAt(this, uint(k+w)) !== magic::charCodeAt(searchString, w))
                         continue outer;
                 }
                 return k;
@@ -343,7 +343,7 @@ package
                         if (res === null)
                             return s + substring(oldi);
 
-                        // FIXME!
+                        // FIXME!  Implement replace() with /g regexp
                         //...;
                     }
                 }
