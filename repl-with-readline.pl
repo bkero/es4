@@ -6,10 +6,9 @@ use IPC::Open2;
 my $term = new Term::ReadLine 'ES4 repl';
 my $prompt = ">> ";
 my ($sml_response, $sml_call);
-my $sml_pid = open2($sml_response, $sml_call, 'sml', '@SMLload=es4.heap', '-rq');
+my $sml_pid = open2($sml_response, $sml_call, 'sml', '@SMLload=repl.heap', '-q');
 my $input = "", $response = "";
 
-print("booting...\n");
 while (1) {
     while (1) {
 	$response = <$sml_response>;

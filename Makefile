@@ -60,7 +60,7 @@ checklth: tools/unit.heap.$(HEAP_SUFFIX) es4.heap.$(HEAP_SUFFIX)
 	sml @SMLload=tools/unit.heap $(TRACE) tests/lth_tests/lth_tests.test
 
 run.heap.$(HEAP_SUFFIX): es4.heap.$(HEAP_SUFFIX)
-	sml @SMLload=es4.heap $(TRACE) -dump run.heap
+	sml @SMLload=es4.heap $(TRACE) -dumpEval run.heap
 
 smoketest: run.heap.$(HEAP_SUFFIX)
 	sml @SMLload=run.heap $(TRACE) tests/spidermonkey/ecma/shell.js tests/spidermonkey/ecma/Array/15.4.2.2-2.js
@@ -71,7 +71,7 @@ smoketest: run.heap.$(HEAP_SUFFIX)
 	sml @SMLload=run.heap $(TRACE) tests/spidermonkey/ecma/shell.js tests/spidermonkey/ecma/TypeConversion/9.3.js
 
 dump-heap-for-running: run.heap.$(HEAP_SUFFIX)
-	sml @SMLload=es4.heap $(TRACE) -dump run.heap
+	sml @SMLload=es4.heap $(TRACE) -dumpEval run.heap
 
 # Do *not* give this dependencies to see if the heap is up-to-date.
 run-dumped:
@@ -79,9 +79,12 @@ run-dumped:
 
 # Obsolete now?
 run: 
-	sml @SMLload=es4.heap $(TRACE) -ev $(FILE)
+	sml @SMLload=es4.heap $(TRACE) -e $(FILE)
 
-repl: es4.heap.$(HEAP_SUFFIX)
+repl.heap.$(HEAP_SUFFIX): es4.heap.$(HEAP_SUFFIX)
+	sml @SMLload=es4.heap $(TRACE) -dumpRepl repl.heap
+
+repl: repl.heap.$(HEAP_SUFFIX)
 	perl repl-with-readline.pl
 
 replNoReadline: es4.heap.$(HEAP_SUFFIX)
@@ -102,4 +105,4 @@ exec: dump-heap-for-running
 	mkdir exec 
 	heap2exec run.heap.$(HEAP_SUFFIX) ./exec/es4
 	gzip ./exec/es4
-	
+

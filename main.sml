@@ -5,6 +5,8 @@
 
 structure Main = struct
 
+val quiet = ref false
+
 fun findTraceOption (tname:string) 
     : (bool ref) option = 
     case tname of 
@@ -21,9 +23,36 @@ fun findTraceOption (tname:string)
       | "stack" => SOME (Eval.traceStack)
       | _ => NONE
 
+fun consumeOption (opt:string) : bool = 
+    case explode opt of
+        (#"-" :: #"T" :: rest) => 
+        (case findTraceOption (String.implode rest) of 
+             SOME r => (r := true; false)
+           | NONE => true)
+      | ([#"-", #"q"]) => 
+        (quiet := true; false)
+      | (#"-" :: #"P" :: rest) => 
+        (case Int.fromString (String.implode rest) of 
+            NONE => false
+          | SOME 0 => false
+          | SOME n => (Eval.doProfile := SOME n; false))
+      | _ => true
+
 exception quitException
+
+fun startup doBoot argvRest = 
+    let
+        val argvRest = List.filter consumeOption argvRest
+    in
+        if doBoot then 
+    	    (TextIO.print "booting ... \n";
+             Boot.boot ();
+             argvRest)
+        else
+            argvRest
+    end
     
-fun repl doPrompt = 
+fun repl doBoot argvRest = 
     let
         val doParse = ref true
         val doDefn = ref true
@@ -36,7 +65,7 @@ fun repl doPrompt =
 
         fun doLine _ = 
             let 
-                val _ = if doPrompt then print ">> " else print "<SMLREADY>\n"
+                val _ = if !quiet then print "<SMLREADY>\n" else print ">> " 
                 val line = case TextIO.inputLine TextIO.stdIn of 
                                NONE => ""
                              | SOME s => s
@@ -129,122 +158,82 @@ fun repl doPrompt =
             | LogErr.UnimplError e => (print ("**ERROR** UnimplError: " ^ e ^ "\n"); Eval.resetStack(); ()));
              runUntilQuit ())
     in
-        Boot.boot();
+        startup doBoot argvRest;
         runUntilQuit ()
         handle quitException => print "bye\n"
     end
+
+fun parse doBoot argvRest = 
+    let 
+        val argvRest = startup doBoot argvRest
+    in
+        TextIO.print "parsing ... \n";
+        List.map Parser.parseFile argvRest
+    end
+
+fun define doBoot argvRest =
+    let 
+        val parsed = parse doBoot argvRest
+    in
+        TextIO.print "defining ... \n";
+        map Defn.defProgram parsed
+    end
             
-
-fun testTC argvRest =
+fun verify doBoot argvRest =
     let 
-    	val _ = TextIO.print "booting ... \n";
-        val _ = Boot.boot (); 
-        val asts = List.map Parser.parseFile argvRest
-        val _ = TextIO.print "defining ... \n";
-        val dps = map Defn.defProgram asts
-	    val _ = TextIO.print "type checking ... \n";
-        val _ = List.map Verify.verifyProgram dps;
-	    val _ = TextIO.print "type checked! \n"
+        val defined = define doBoot argvRest
     in
-        ()
-    end
-
-fun testEV argvRest =
-    let 
-        (* 10 seconds to run, then we get SIGALRM. *)
-        val _ = Posix.Process.alarm (Time.fromReal 100.0)
-    	val _ = TextIO.print "booting ... \n";
-        val _ = Boot.boot (); 
-        val _ = TextIO.print "parsing ... \n";
-        val asts = List.map Parser.parseFile argvRest
-        val _ = TextIO.print "defining ... \n";
-        val dps = map Defn.defProgram asts
-	    val _ = TextIO.print "type checking ... \n";
-        val dps = List.map Verify.verifyProgram dps;
-        val _ = TextIO.print "evaluating ... \n";
-        val _ = map Eval.evalProgram dps
-        val _ = TextIO.print "evaluated! \n"
-    in
-    ()
-    end
-
-
-fun consumeTraceOption (opt:string) : bool = 
-    case explode opt of
-        (#"-" :: #"T" :: rest) => 
-        (case findTraceOption (String.implode rest) of 
-             SOME r => (r := true; false)
-           | NONE => true)
-      | (#"-" :: #"P" :: rest) => 
-        (case Int.fromString (String.implode rest) of 
-            NONE => false
-          | SOME 0 => false
-          | SOME n => (Eval.doProfile := SOME n; false))
-      | _ => true
-
-fun testDump dumpfile =
-    let 
-        (* 10 seconds to run, then we get SIGALRM. *)
-        (* val _ = Posix.Process.alarm (Time.fromReal 100.0) *)
-    	val _ = TextIO.print "booting ... \n";
-        val _ = Boot.boot (); 
-    in
-        SMLofNJ.exportFn 
-            (dumpfile, 
-             (fn (arg0, argvRest) => 
-                 BackTrace.monitor 
-                     (fn () =>                          
-                         (let 
-                              val argvRest = List.filter consumeTraceOption argvRest
-                              val _ = Posix.Process.alarm (Time.fromReal 30.0)
-                              val _ = TextIO.print "parsing ... \n";
-                              val asts = List.map Parser.parseFile argvRest
-                              val _ = TextIO.print "defining ... \n";
-                              val dps = map Defn.defProgram asts
-	                          val _ = TextIO.print "type checking ... \n";
-                              val dps = List.map Verify.verifyProgram dps;
-                              val _ = TextIO.print "evaluating ... \n";
-                              val _ = map Eval.evalProgram dps
-                              val _ = TextIO.print "evaluated! \n"                
-                          in
-                              0
-                          end)
-                         handle 
-                         LogErr.LexError e => (print ("**ERROR** LexError: " ^ e ^ "\n"); Eval.resetStack(); 1)
-                       | LogErr.ParseError e => (print ("**ERROR** ParseError: " ^ e ^ "\n"); Eval.resetStack(); 1)
+        TextIO.print "verifying ... \n";
+        List.map Verify.verifyProgram defined
                        | LogErr.EofError => (print ("**ERROR* EofError: Unexpected end of file\n"); Eval.resetStack(); 1)
-                       | LogErr.NameError e => (print ("**ERROR** NameError: " ^ e ^ "\n"); Eval.resetStack(); 1)
-                       | LogErr.DefnError e => (print ("**ERROR** DefnError: " ^ e ^ "\n"); Eval.resetStack(); 1)
-                       | LogErr.EvalError e => (print ("**ERROR** EvalError: " ^ e ^ "\n"); Eval.resetStack(); 1)
-                       | LogErr.MachError e => (print ("**ERROR** MachError: " ^ e ^ "\n"); Eval.resetStack(); 1)
-                       | LogErr.VerifyError e => (print ("**ERROR** VerifyError: " ^ e ^ "\n"); Eval.resetStack(); 1)
-                       | LogErr.HostError e => (print ("**ERROR** HostError: " ^ e ^ "\n"); Eval.resetStack(); 1)
-                       | LogErr.UnimplError e => (print ("**ERROR** UnimplError: " ^ e ^ "\n"); Eval.resetStack(); 1))))
     end
 
-fun testDefn argvRest =
+fun eval doBoot argvRest =
     let 
-    	val _ = TextIO.print "booting ... \n";
-        val _ = Boot.boot (); 
-    	val _ = TextIO.print "parsing ... \n";
-	    val asts = List.map Parser.parseFile argvRest
-    	val _ = TextIO.print "defining ... \n";
-	    val dps = map Defn.defProgram asts
+        val verified = verify doBoot argvRest 
     in
-    	()
+        Posix.Process.alarm (Time.fromReal 100.0);
+	    TextIO.print "evaluating ... \n";
+        (map Eval.evalProgram verified; 0)
+        handle 
+        LogErr.LexError e => (print ("**ERROR** LexError: " ^ e ^ "\n");  1)
+      | LogErr.ParseError e => (print ("**ERROR** ParseError: " ^ e ^ "\n"); 1)
+      | LogErr.NameError e => (print ("**ERROR** NameError: " ^ e ^ "\n"); 1)
+      | LogErr.DefnError e => (print ("**ERROR** DefnError: " ^ e ^ "\n"); 1)
+      | LogErr.EvalError e => (print ("**ERROR** EvalError: " ^ e ^ "\n"); 1)
+      | LogErr.MachError e => (print ("**ERROR** MachError: " ^ e ^ "\n"); 1)
+      | LogErr.VerifyError e => (print ("**ERROR** VerifyError: " ^ e ^ "\n"); 1)
+      | LogErr.HostError e => (print ("**ERROR** HostError: " ^ e ^ "\n"); 1)
+      | LogErr.UnimplError e => (print ("**ERROR** UnimplError: " ^ e ^ "\n"); 1)
     end
+
+
+fun dumpEval dumpfile =
+    (startup true [];
+     SMLofNJ.exportFn 
+         (dumpfile, (fn (arg0, argvRest) => 
+                        BackTrace.monitor
+                            (fn () => eval false argvRest))))
+
+fun dumpRepl dumpfile =
+    (startup true [];
+     SMLofNJ.exportFn 
+         (dumpfile, (fn (arg0, argvRest) => 
+                        BackTrace.monitor 
+                            (fn () => (repl false argvRest; 0)))))
 
 fun main (argv0:string, argvRest:string list) =
     BackTrace.monitor 
         (fn () =>                          
-            ((case List.filter consumeTraceOption argvRest of
-                  ("-r"::argvRest) => repl true 
-                | ("-rq"::argvRest) => repl false 
-                | ("-tc"::argvRest) => testTC argvRest
-	            | ("-ev"::argvRest) => testEV argvRest
-                | ("-dump"::filename::argvRest) => testDump filename
-                | _ => testDefn argvRest);
-             0)
+            (case argvRest of
+                 ("-r"::argvRest) => (repl true argvRest; 0)
+               | ("-p"::argvRest) => (parse true argvRest; 0)
+               | ("-d"::argvRest) => (define true argvRest; 0)
+               | ("-v"::argvRest) => (verify true argvRest; 0)
+	           | ("-e"::argvRest) => eval true argvRest
+               | ("-dumpEval"::filename::argvRest) => (dumpEval filename; 0)
+               | ("-dumpRepl"::filename::argvRest) => (dumpRepl filename; 0)
+               | _ => (define true argvRest; 0))
             handle 
             LogErr.LexError e => (print ("**ERROR** LexError: " ^ e ^ "\n"); 1)
           | LogErr.ParseError e => (print ("**ERROR** ParseError: " ^ e ^ "\n"); 1)
