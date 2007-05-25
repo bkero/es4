@@ -77,7 +77,7 @@ package
             let out:Array = new Array;
             let outlen:uint = 0;
 
-            let function emit(x) {  /* FIXME: should not have to be "let function"?? */
+            let function emit(x) {
                 if (x is Array) {
                     for (let j:uint = 0; j < x.length; j++)
                         out[outlen++] = x[j];

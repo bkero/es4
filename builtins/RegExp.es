@@ -122,7 +122,7 @@ package
             this.intrinsic::toString();
 
         /* E262-3 15.10.7: properties of regexp instances */
-        /* FIXME: the flags should be 'const', see bug #000C */
+        /* FIXME: the flags should be 'const'.  Ticket #24. */
         public var multiline  : boolean;
         public var ignoreCase : boolean;
         public var global     : boolean;
@@ -144,7 +144,7 @@ package
             matcher.nCapturingParens;
 
         /* Internal */
-        var matcher : RegExpMatcher;      // The [[Match]] property  // FIXME: should be const
+        var matcher : RegExpMatcher;      // The [[Match]] property  // FIXME: const.  Ticket #24.
 
         function get flags() : string {
             return (multiline ? "m" : "") +

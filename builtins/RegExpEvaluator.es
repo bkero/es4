@@ -63,7 +63,7 @@ package RegExpInternals
     /* MatchResult and State. 
      */
 
-    // FIXME: should be 'public type', but this causes it to vanish. Why?
+    // FIXME: should be 'public type', but this causes it to vanish. Why?  Ticket #44.
     type MatchResult = State?;
 
     public const failure : State? = null;
@@ -88,13 +88,13 @@ package RegExpInternals
     public type CapArray = [(string,undefined)];
 
     function makeCapArray(len: uint) : CapArray {
-        let a = [] /* : CapArray */ ;  // FIXME: evaluator barfs on this annotation
+        let a = [] : CapArray;
         for ( let i : uint = 0 ; i < len ; i++ )
             a[i] = undefined;
         return a;
     }
 
-    function copyCapArray(a /*: CapArray*/, parenIndex : uint, parenCount : uint) : CapArray {
+    function copyCapArray(a : CapArray, parenIndex : uint, parenCount : uint) : CapArray {
         let b : CapArray = makeCapArray(a.length);
         for ( let i : uint = 0 ; i < a.length ; i++ )
             b[i] = a[i];
@@ -107,13 +107,11 @@ package RegExpInternals
     /* The matcher is a single object that implements the Matcher
        interface.  Normally a Matcher object references other Matcher
        objects.  */
-    // FIXME: interfaces are completely missing.
-    /*
-    interface Matcher!
+    // FIXME: interfaces are completely missing.  Ticket #46.
+    /*public interface Matcher
     {
         function match(ctx : Context, x : State, c : Continuation) : MatchResult;
-    }
-    */
+    }*/
     type Matcher = *;
 
     type Continuation = function(Context, State) : MatchResult;
@@ -305,34 +303,30 @@ package RegExpInternals
 
     class PositiveLookahead! implements Matcher
     {
-        // FIXME: weird scoping bugs necessitate calling this property mm
-        // while the parameter is called m.  lth / 2007-05-10
-        function PositiveLookahead(m : Matcher) mm=m {}
+        function PositiveLookahead(m : Matcher) : m=m {}
 
         function match(ctx : Context, x : State, c : Continuation) : MatchResult {
-            let r : MatchResult = mm.match(ctx, x, (function (ctx, y : State) : MatchResult y) );
+            let r : MatchResult = m.match(ctx, x, (function (ctx, y : State) : MatchResult y) );
             if (r === failure)
                 return failure;
             return c(ctx, new State(x.endIndex, r.cap));
         }
 
-        var mm: Matcher; // FIXME: const.  Ticket #24.
+        var m: Matcher; // FIXME: const.  Ticket #24.
     }
 
     class NegativeLookahead! implements Matcher
     {
-        // FIXME: weird scoping bugs necessitate calling this property mm
-        // while the parameter is called m.  lth / 2007-05-10
-        function NegativeLookahead(m : Matcher) mm=m {}
+        function NegativeLookahead(m : Matcher) : m=m {}
             
         function match(ctx : Context, x : State, c : Continuation) : MatchResult {
-            let r : MatchResult = mm.match(ctx, x, (function (ctx, y : State) : MatchResult y) );
+            let r : MatchResult = m.match(ctx, x, (function (ctx, y : State) : MatchResult y) );
             if (r !== failure)
                 return failure;
             return c(ctx, x);
         }
 
-        var mm: Matcher; // FIXME: const.  Ticket #24.
+        var m: Matcher; // FIXME: const.  Ticket #24.
     }
 
     class CharsetMatcher! implements Matcher
@@ -450,28 +444,23 @@ package RegExpInternals
         function CharsetUnicodeClass(name : string) : name=name {}
 
         override function match(ctx, c : string) : boolean {
+            // FIXME: implement this.  Ticket #45.
             throw new Error("character set not yet implemented: " + name);
         }
 
         var name : string; // FIXME: const.  Ticket #24.
     }
 
-    // FIXME: merge definitions here and in Unicode.es, when appropriate.
-
-    const charset_linebreak : Charset = new CharsetAdhoc("\u000A\u000D\u0085\u2028\u2029");
+    const charset_linebreak : Charset = new CharsetAdhoc(Unicode.linebreaks);
     const charset_notlinebreak : Charset = new CharsetComplement(charset_linebreak);
 
-    const charset_space : Charset =
-        new CharsetAdhoc("\u0009\u000B\u000C\u0020\u00A0\u1680\u180E\u2000\u2001\u2002" +
-                         "\u2003\u2004\u2005\u2006\u2007\u2008\u2009\u200A\u202F\u205F" +
-                         "\u3000\u000A\u000D\u0085\u2028\u2029");
+    const charset_space : Charset = new CharsetAdhoc(Unicode.blanks + Unicode.linebreaks);
     const charset_notspace : Charset = new CharsetComplement(charset_space);
 
-    const charset_digit : Charset = new CharsetAdhoc("0123456789");
+    const charset_digit : Charset = new CharsetAdhoc(Unicode.decimal_digits);
     const charset_notdigit : Charset = new CharsetComplement(charset_digit);
 
-    const charset_word : Charset =
-        new CharsetAdhoc("abcdefghijklmnopqrstuvwzyzABCDEFGHIJKLMNOPQRSTUVWZYZ0123456789_");
+    const charset_word : Charset = new CharsetAdhoc(Unicode.alphanumerics);
     const charset_notword : Charset = new CharsetComplement(charset_word);
 
     const unicode_named_classes = {
