@@ -13,6 +13,89 @@ ISSUES
 
 ###
 
+MAY-24-2007
+
+TYPE SYSTEM OVERVIEW
+(from Dave)
+
+- strict mode is an opt in static checker that does not have any affect
+  on programs that pass the verifier
+- compatibility (~=) the static type check will allow but might fail
+  at runtime
+- strict mode (conceptually) returns a new program with extra conversions
+  inserted. Compatible (but not subtype) assignment means insert a conversion.
+
+  let x : t = v; ... x = u;
+  let x : t; x = v to t;
+  ... x = u to t;
+
+  v to t ~ (v is t) ? v : t.meta::convert (v)
+
+- convert methods are special:
+  + arguments don't go through conversion
+  + constraints result type
+
+  type ToInt = function () : int
+  function callThunk (f:ToInt) : int {
+      f();
+  }
+  
+  the result of the call to 'f' is checked
+
+- what are the compatibility checks
+- compatiblity 
+  + subtypes
+  + from *
+- convertibilty
+  + there exists a conversion
+
+  var x : T = v
+
+- At runtime
+  + if subtype, then no op
+  + else if compatible, then no op
+  + else if conversion exists, then convert
+  + else raise type error
+
+- expected type captures the expected type of a field
+
+  function f(o:{x:int}) : int {
+     o.x = 10     // check 10 is an int
+     ...          // possibly mess with o.x indirectly
+     return o.x   // check o.x is an int
+  }
+
+- cast are guarenteed to do the same thing each time
+- conversions are not guaranteed to do the same thing each time
+
+- not dynamic conversion
+- not allow type annotation
+- don't have tail calls
+- elide them under certain circumstances
+  - conversion is idempotent
+  
+  function f() : *
+      g()
+
+  function g() : int
+      h() 
+
+  function h() : *
+      i()
+
+  function i() : string
+      f()
+
+PROPER TAIL PRAGMA
+
+use proper tail
+
+UNNAMED NAMESPACE
+
+
+
+###
+
 MAY-18-2007
 
 NAMES
@@ -62,7 +145,7 @@ References that are resolved during the definition phase are:
   * type definitions
   * namespace definitions
   * pragmas
-  * configuration attributes (proposed)
+
 
 VERIFICATION AND EVALUATION
 
@@ -191,7 +274,6 @@ expressions.
 package p.q { }
 import p.q.*
 
-###
 
 14-MAR-2007
 

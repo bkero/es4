@@ -9,6 +9,7 @@ fun error ss = LogErr.parseError ss
 
 exception ParseError = LogErr.ParseError
 exception LexError = LogErr.LexError
+exception EofError = LogErr.EofError
 
 open Token
 
@@ -6565,6 +6566,7 @@ and block (ts,t) : ((TOKEN * Ast.LOC) list * Ast.BLOCK) =
                 (RightBrace, _) :: _ => 
                     (trace(["<< block with next=", tokenname(hd (tl ts1))]);
                     (tl ts1,Ast.Block nd1))
+              | (Eof, _) :: _ => raise EofError
               | _ => error ["unknown token in block"]
             end
       | _ => error ["unknown token in block"]
