@@ -24,49 +24,49 @@ fun makeTokenList (filename : string, reader : unit -> Ustring.SOURCE) : ((TOKEN
         val colNum          = ref 1
         val lineNum        = ref 1
         val toks          = ref []
-        val idCharRanges = [(UTF8.fromAscii #"a", UTF8.fromAscii #"z"), (* ranges from http://www.codeproject.com/dotnet/UnicodeCharCatHelper.asp *)
-                            (UTF8.fromAscii #"A", UTF8.fromAscii #"Z"),
-                            (UTF8.fromAscii #"0", UTF8.fromAscii #"9"),
-                            (0wx00aa            , 0wx00aa            ),
-                            (0wx00b5            , 0wx00b5            ),
-                            (0wx00ba            , 0wx00ba            ),
-                            (0wx00c0            , 0wx00d6            ),
-                            (0wx00d8            , 0wx00f6            ),
-                            (0wx00f8            , 0wx01ba            ),
-                            (0wx01bc            , 0wx01bf            ),
-                            (0wx01c4            , 0wx02ad            ),
-                            (0wx0386            , 0wx0386            ),
-                            (0wx0388            , 0wx0481            ),
-                            (0wx048c            , 0wx0556            ),
-                            (0wx0561            , 0wx0587            ),
-                            (0wx10a0            , 0wx10c5            ),
-                            (0wx1e00            , 0wx1fbc            ),
-                            (0wx1fbe            , 0wx1fbe            ),
-                            (0wx1fc2            , 0wx1fcc            ),
-                            (0wx1fd0            , 0wx1fdb            ),
-                            (0wx1fe0            , 0wx1fec            ),
-                            (0wx1ff2            , 0wx1ffc            ),
-                            (0wx207f            , 0wx207f            ),
-                            (0wx2102            , 0wx2102            ),
-                            (0wx2107            , 0wx2107            ),
-                            (0wx210a            , 0wx2113            ),
-                            (0wx2115            , 0wx2115            ),
-                            (0wx2119            , 0wx211d            ),
-                            (0wx2124            , 0wx2124            ),
-                            (0wx2126            , 0wx2126            ),
-                            (0wx2128            , 0wx2128            ),
-                            (0wx212a            , 0wx212d            ),
-                            (0wx212f            , 0wx2131            ),
-                            (0wx2133            , 0wx2134            ),
-                            (0wx2139            , 0wx2139            ),
-                            (0wxfb00            , 0wxfb17            ),
-                            (0wxff21            , 0wxff3a            ),
-                            (0wxff41            , 0wxff5a            ),
-                            (UTF8.fromAscii #"$", UTF8.fromAscii #"$"),
-                            (UTF8.fromAscii #"_", UTF8.fromAscii #"_")]
-        val hexDigitRanges=[(UTF8.fromAscii #"a", UTF8.fromAscii #"f"),
-                            (UTF8.fromAscii #"A", UTF8.fromAscii #"F"),
-                            (UTF8.fromAscii #"0", UTF8.fromAscii #"9")]
+        val idCharRanges = [(Ustring.wcharFromChar #"a", Ustring.wcharFromChar #"z"), (* ranges from http://www.codeproject.com/dotnet/UnicodeCharCatHelper.asp *)
+                            (Ustring.wcharFromChar #"A", Ustring.wcharFromChar #"Z"),
+                            (Ustring.wcharFromChar #"0", Ustring.wcharFromChar #"9"),
+                            (0wx00aa                   , 0wx00aa                   ),
+                            (0wx00b5                   , 0wx00b5                   ),
+                            (0wx00ba                   , 0wx00ba                   ),
+                            (0wx00c0                   , 0wx00d6                   ),
+                            (0wx00d8                   , 0wx00f6                   ),
+                            (0wx00f8                   , 0wx01ba                   ),
+                            (0wx01bc                   , 0wx01bf                   ),
+                            (0wx01c4                   , 0wx02ad                   ),
+                            (0wx0386                   , 0wx0386                   ),
+                            (0wx0388                   , 0wx0481                   ),
+                            (0wx048c                   , 0wx0556                   ),
+                            (0wx0561                   , 0wx0587                   ),
+                            (0wx10a0                   , 0wx10c5                   ),
+                            (0wx1e00                   , 0wx1fbc                   ),
+                            (0wx1fbe                   , 0wx1fbe                   ),
+                            (0wx1fc2                   , 0wx1fcc                   ),
+                            (0wx1fd0                   , 0wx1fdb                   ),
+                            (0wx1fe0                   , 0wx1fec                   ),
+                            (0wx1ff2                   , 0wx1ffc                   ),
+                            (0wx207f                   , 0wx207f                   ),
+                            (0wx2102                   , 0wx2102                   ),
+                            (0wx2107                   , 0wx2107                   ),
+                            (0wx210a                   , 0wx2113                   ),
+                            (0wx2115                   , 0wx2115                   ),
+                            (0wx2119                   , 0wx211d                   ),
+                            (0wx2124                   , 0wx2124                   ),
+                            (0wx2126                   , 0wx2126                   ),
+                            (0wx2128                   , 0wx2128                   ),
+                            (0wx212a                   , 0wx212d                   ),
+                            (0wx212f                   , 0wx2131                   ),
+                            (0wx2133                   , 0wx2134                   ),
+                            (0wx2139                   , 0wx2139                   ),
+                            (0wxfb00                   , 0wxfb17                   ),
+                            (0wxff21                   , 0wxff3a                   ),
+                            (0wxff41                   , 0wxff5a                   ),
+                            (Ustring.wcharFromChar #"$", Ustring.wcharFromChar #"$"),
+                            (Ustring.wcharFromChar #"_", Ustring.wcharFromChar #"_")]
+        val hexDigitRanges=[(Ustring.wcharFromChar #"a", Ustring.wcharFromChar #"f"),
+                            (Ustring.wcharFromChar #"A", Ustring.wcharFromChar #"F"),
+                            (Ustring.wcharFromChar #"0", Ustring.wcharFromChar #"9")]
         
         fun numInRanges n ((lo,hi)::ranges) : bool =
             if (lo <= n) andalso (n <= hi)
@@ -149,7 +149,7 @@ fun makeTokenList (filename : string, reader : unit -> Ustring.SOURCE) : ((TOKEN
             fun hexToWord hexDigits =
             let
                 val numHexDigits = countInRanges {min=length hexDigits} hexDigitRanges hexDigits
-                val hexString = implode (map UTF8.toAscii ((UTF8.fromAscii #"0") :: (UTF8.fromAscii #"x") :: hexDigits))
+                val hexString = implode (map Ustring.wcharToChar ((Ustring.wcharFromChar #"0") :: (Ustring.wcharFromChar #"x") :: hexDigits))
                 val codePoint = StringCvt.scanString (Int.scan StringCvt.HEX) hexString
             in
                 case codePoint of
@@ -362,7 +362,7 @@ fun makeTokenList (filename : string, reader : unit -> Ustring.SOURCE) : ((TOKEN
                                 0 => chars
                               | 1 => tl chars
                               | _ => error ["LexError:  illegal characters in number literal"]
-                val numExpDigits = countInRanges {min=1} [(UTF8.fromAscii #"0", UTF8.fromAscii #"9")] rest
+                val numExpDigits = countInRanges {min=1} [(Ustring.wcharFromChar #"0", Ustring.wcharFromChar #"9")] rest
             in
                 numSignChars + numExpDigits
             end
@@ -370,7 +370,7 @@ fun makeTokenList (filename : string, reader : unit -> Ustring.SOURCE) : ((TOKEN
             val (tokType, tokLen) = case !src of
                 0wx2E::rest        (* .  =>  DecimalLiteral {   . [0-9]+  ( [eE] [+-]? [0-9]+ )? } *)
                 =>  let
-                        val numDigits = countInRanges {min=1} [(UTF8.fromAscii #"0", UTF8.fromAscii #"9")] rest
+                        val numDigits = countInRanges {min=1} [(Ustring.wcharFromChar #"0", Ustring.wcharFromChar #"9")] rest
                         val numExpChars = case List.drop (rest, numDigits) of
                                              (0wx65
                                             | 0wx45)::rest_ (* [eE] *)
@@ -381,7 +381,7 @@ fun makeTokenList (filename : string, reader : unit -> Ustring.SOURCE) : ((TOKEN
                     end
               | 0wx30::0wx2E::rest  (* 0. =>  DecimalLiteral { 0 . [0-9]*  ( [eE] [+-]? [0-9]+ )? } *)
                 =>  let
-                        val numDigits = countInRanges {min=0} [(UTF8.fromAscii #"0", UTF8.fromAscii #"9")] rest
+                        val numDigits = countInRanges {min=0} [(Ustring.wcharFromChar #"0", Ustring.wcharFromChar #"9")] rest
                         val numExpChars = case List.drop (rest, numDigits) of
                                              (0wx65
                                             | 0wx45)::rest_ (* [eE] *)
@@ -409,7 +409,7 @@ fun makeTokenList (filename : string, reader : unit -> Ustring.SOURCE) : ((TOKEN
                       | 0wx36         (*   =>  OctalIntegerLiteral { 0 [0-7]* } *)
                       | 0wx37)::rest
                 => let
-                        val octDigitRanges = [(UTF8.fromAscii #"0", UTF8.fromAscii #"7")]
+                        val octDigitRanges = [(Ustring.wcharFromChar #"0", Ustring.wcharFromChar #"7")]
                         val numOctDigits = countInRanges {min=0} octDigitRanges rest
                     in
                         (OctIntLit, 2 + numOctDigits)
@@ -426,7 +426,7 @@ fun makeTokenList (filename : string, reader : unit -> Ustring.SOURCE) : ((TOKEN
               | 0wx38  (*   |   DecimalLiteral        { [1-9] [0-9]* . [0-9]*  ( [eE] [+-]? [0-9]+ )? } *)
               | 0wx39)::rest
                 =>  let
-                        val numDigits = countInRanges {min=0} [(UTF8.fromAscii #"0", UTF8.fromAscii #"9")] rest
+                        val numDigits = countInRanges {min=0} [(Ustring.wcharFromChar #"0", Ustring.wcharFromChar #"9")] rest
                     in
                         case List.drop (rest, numDigits) of
                            (0wx65
@@ -434,7 +434,7 @@ fun makeTokenList (filename : string, reader : unit -> Ustring.SOURCE) : ((TOKEN
                             => (DecLit, 1 + numDigits + 1 + (countExpChars rest_))
                           | 0wx2E::rest_  (* . *)
                             =>  let
-                                    val numMoreDigits = countInRanges {min=0} [(UTF8.fromAscii #"0", UTF8.fromAscii #"9")] rest_
+                                    val numMoreDigits = countInRanges {min=0} [(Ustring.wcharFromChar #"0", Ustring.wcharFromChar #"9")] rest_
                                     val numExpChars = case List.drop (rest_, numMoreDigits) of
                                                          (0wx65
                                                         | 0wx45)::rest__ (* [eE] *)
@@ -447,7 +447,7 @@ fun makeTokenList (filename : string, reader : unit -> Ustring.SOURCE) : ((TOKEN
                     end
               | _ => error ["LexError:  illegal character in numeric literal (BUG IN LEXER!)"] (* should not be possible to get here *)
             
-            val numberAscii = implode (map UTF8.toAscii (List.take (!src, tokLen)))  (* should be safe, since we just lexed each char as being in the ascii range *)
+            val numberAscii = implode (map Ustring.wcharToChar (List.take (!src, tokLen)))  (* should be safe, since we just lexed each char as being in the ascii range *)
         in
             case (tokType, lookahead tokLen) of
                 (HexIntLit, 0wx69 (* i *)) => (case Int32.fromString numberAscii of
@@ -555,8 +555,8 @@ fun makeTokenList (filename : string, reader : unit -> Ustring.SOURCE) : ((TOKEN
                                 )
                               | (false, 0wx2F (* / *)) =>
                                 let
-                                    val numFlags = countInRanges {min=0} [(UTF8.fromAscii #"a", UTF8.fromAscii #"z"),
-                                                                          (UTF8.fromAscii #"A", UTF8.fromAscii #"Z")] (!src)
+                                    val numFlags = countInRanges {min=0} [(Ustring.wcharFromChar #"a", Ustring.wcharFromChar #"z"),
+                                                                          (Ustring.wcharFromChar #"A", Ustring.wcharFromChar #"Z")] (!src)
                                     val regexpFlags = List.take (!src, numFlags)
                                 in
                                     advanceIndex numFlags;
@@ -589,8 +589,8 @@ fun makeTokenList (filename : string, reader : unit -> Ustring.SOURCE) : ((TOKEN
             else let
                 val c = hd (!src)
             in
-                if UTF8.isAscii c then
-                    case UTF8.toAscii c of
+                if Ustring.wcharIsChar c then
+                    case Ustring.wcharToChar c of
                     (* line terminators *)
                        (#"\n"
                       | #"\r")=> pushEolAdv ()
@@ -606,124 +606,124 @@ fun makeTokenList (filename : string, reader : unit -> Ustring.SOURCE) : ((TOKEN
                       | #"?"  => push 1 QuestionMark
                       | #"@"  => push 1 At
                       | #"~"  => push 1 BitwiseNot
-                      | #"-"  => lexOp [(UTF8.explode "-"  , MinusMinus ),
-                                        (UTF8.explode "="  , MinusAssign),
-                                        (UTF8.explode ""   , Minus      )]
-                      | #"+"  => lexOp [(UTF8.explode "+"  , PlusPlus  ),
-                                        (UTF8.explode "="  , PlusAssign),
-                                        (UTF8.explode ""   , Plus      )]
-                      | #"*"  => lexOp [(UTF8.explode "="  , MultAssign),
-                                        (UTF8.explode ""   , Mult      )]
-                      | #"^"  => lexOp [(UTF8.explode "="  , BitwiseXorAssign),
-                                        (UTF8.explode ""   , BitwiseXor      )]
-                      | #"%"  => lexOp [(UTF8.explode "="  , ModulusAssign),
-                                        (UTF8.explode ""   , Modulus      )]
-                      | #":"  => lexOp [(UTF8.explode ":"  , DoubleColon),
-                                        (UTF8.explode ""   , Colon      )]
-                      | #"!"  => lexOp [(UTF8.explode "==" , StrictNotEquals),
-                                        (UTF8.explode "="  , NotEquals      ),
-                                        (UTF8.explode ""   , Not            )]
-                      | #"&"  => lexOp [(UTF8.explode "&=" , LogicalAndAssign),
-                                        (UTF8.explode "&"  , LogicalAnd      ),
-                                        (UTF8.explode "="  , BitwiseAndAssign),
-                                        (UTF8.explode ""   , BitwiseAnd      )]
-                      | #"|"  => lexOp [(UTF8.explode "|=" , LogicalOrAssign),
-                                        (UTF8.explode "|"  , LogicalOr      ),
-                                        (UTF8.explode "="  , BitwiseOrAssign),
-                                        (UTF8.explode ""   , BitwiseOr      )]
-                      | #"="  => lexOp [(UTF8.explode "==" , StrictEquals),
-                                        (UTF8.explode "="  , Equals      ),
-                                        (UTF8.explode ""   , Assign      )]
-                      | #">"  => lexOp [(UTF8.explode ">>=", UnsignedRightShiftAssign),
-                                        (UTF8.explode ">>" , UnsignedRightShift      ),
-                                        (UTF8.explode ">=" , RightShiftAssign        ),
-                                        (UTF8.explode ">"  , RightShift              ),
-                                        (UTF8.explode "="  , GreaterThanOrEquals     ),
-                                        (UTF8.explode ""   , GreaterThan             )]
-                      | #"<"  => lexOp [(UTF8.explode "<=" , LeftShiftAssign ),
-                                        (UTF8.explode "<"  , LeftShift       ),
-                                        (UTF8.explode "="  , LessThanOrEquals),
-                                        (UTF8.explode ""   , LessThan        )]  (* TODO:  LexBreakLessThan  {lex_initial = fn _ => ???, lex_xml = fn _ => ???} *)
+                      | #"-"  => lexOp [(Ustring.fromSource "-"  , MinusMinus ),
+                                        (Ustring.fromSource "="  , MinusAssign),
+                                        (Ustring.fromSource ""   , Minus      )]
+                      | #"+"  => lexOp [(Ustring.fromSource "+"  , PlusPlus  ),
+                                        (Ustring.fromSource "="  , PlusAssign),
+                                        (Ustring.fromSource ""   , Plus      )]
+                      | #"*"  => lexOp [(Ustring.fromSource "="  , MultAssign),
+                                        (Ustring.fromSource ""   , Mult      )]
+                      | #"^"  => lexOp [(Ustring.fromSource "="  , BitwiseXorAssign),
+                                        (Ustring.fromSource ""   , BitwiseXor      )]
+                      | #"%"  => lexOp [(Ustring.fromSource "="  , ModulusAssign),
+                                        (Ustring.fromSource ""   , Modulus      )]
+                      | #":"  => lexOp [(Ustring.fromSource ":"  , DoubleColon),
+                                        (Ustring.fromSource ""   , Colon      )]
+                      | #"!"  => lexOp [(Ustring.fromSource "==" , StrictNotEquals),
+                                        (Ustring.fromSource "="  , NotEquals      ),
+                                        (Ustring.fromSource ""   , Not            )]
+                      | #"&"  => lexOp [(Ustring.fromSource "&=" , LogicalAndAssign),
+                                        (Ustring.fromSource "&"  , LogicalAnd      ),
+                                        (Ustring.fromSource "="  , BitwiseAndAssign),
+                                        (Ustring.fromSource ""   , BitwiseAnd      )]
+                      | #"|"  => lexOp [(Ustring.fromSource "|=" , LogicalOrAssign),
+                                        (Ustring.fromSource "|"  , LogicalOr      ),
+                                        (Ustring.fromSource "="  , BitwiseOrAssign),
+                                        (Ustring.fromSource ""   , BitwiseOr      )]
+                      | #"="  => lexOp [(Ustring.fromSource "==" , StrictEquals),
+                                        (Ustring.fromSource "="  , Equals      ),
+                                        (Ustring.fromSource ""   , Assign      )]
+                      | #">"  => lexOp [(Ustring.fromSource ">>=", UnsignedRightShiftAssign),
+                                        (Ustring.fromSource ">>" , UnsignedRightShift      ),
+                                        (Ustring.fromSource ">=" , RightShiftAssign        ),
+                                        (Ustring.fromSource ">"  , RightShift              ),
+                                        (Ustring.fromSource "="  , GreaterThanOrEquals     ),
+                                        (Ustring.fromSource ""   , GreaterThan             )]
+                      | #"<"  => lexOp [(Ustring.fromSource "<=" , LeftShiftAssign ),
+                                        (Ustring.fromSource "<"  , LeftShift       ),
+                                        (Ustring.fromSource "="  , LessThanOrEquals),
+                                        (Ustring.fromSource ""   , LessThan        )]  (* TODO:  LexBreakLessThan  {lex_initial = fn _ => ???, lex_xml = fn _ => ???} *)
                     (* slash:  Div, DivAssign, RegexpLiteral, and comments *)
                       | #"/"  => lexFromSlash ()
                     (* reserved words *)
-                      | #"a"  => lexResOrId [(UTF8.explode "s"        , As)]
-                      | #"b"  => lexResOrId [(UTF8.explode "reak"     , Break)]
-                      | #"c"  => lexResOrId [(UTF8.explode "ontinue"  , Continue),
-                                             (UTF8.explode "atch"     , Catch),
-                                             (UTF8.explode "lass"     , Class),
-                                             (UTF8.explode "onst"     , Const),
-                                             (UTF8.explode "ase"      , Case),
-                                             (UTF8.explode "ast"      , Cast),
-                                             (UTF8.explode "all"      , Call)]
-                      | #"d"  => lexResOrId [(UTF8.explode "ebugger"  , Debugger),
-                                             (UTF8.explode "efault"   , Default),
-                                             (UTF8.explode "ecimal"   , Decimal),
-                                             (UTF8.explode "ynamic"   , Dynamic),
-                                             (UTF8.explode "elete"    , Delete),
-                                             (UTF8.explode "ouble"    , Double),
-                                             (UTF8.explode "o"        , Do)]
-                      | #"e"  => lexResOrId [(UTF8.explode "xtends"   , Extends),
-                                             (UTF8.explode "lse"      , Else),
-                                             (UTF8.explode "num"      , Enum),
-                                             (UTF8.explode "ach"      , Each)]
-                      | #"f"  => lexResOrId [(UTF8.explode "unction"  , Function),
-                                             (UTF8.explode "inally"   , Finally),
-                                             (UTF8.explode "alse"     , False),
-                                             (UTF8.explode "inal"     , Final),
-                                             (UTF8.explode "or"       , For)]
-                      | #"g"  => lexResOrId [(UTF8.explode "oto"      , Goto),
-                                             (UTF8.explode "et"       , Get)]
-                      | #"h"  => lexResOrId [(UTF8.explode "as"       , Has)]
-                      | #"i"  => lexResOrId [(UTF8.explode "mplements", Implements),
-                                             (UTF8.explode "nstanceof", InstanceOf),
-                                             (UTF8.explode "nterface" , Interface),
-                                             (UTF8.explode "ntrinsic" , Intrinsic),
-                                             (UTF8.explode "nternal"  , Internal),
-                                             (UTF8.explode "nclude"   , Include),
-                                             (UTF8.explode "mport"    , Import),
-                                             (UTF8.explode "nvoke"    , Invoke),
-                                             (UTF8.explode "nt"       , Int),
-                                             (UTF8.explode "s"        , Is),
-                                             (UTF8.explode "f"        , If),
-                                             (UTF8.explode "n"        , In)]
-                      | #"l"  => lexResOrId [(UTF8.explode "et"       , Let)]
-                      | #"n"  => lexResOrId [(UTF8.explode "amespace" , Namespace),
-                                             (UTF8.explode "ative"    , Native),
-                                             (UTF8.explode "umber"    , Number),
-                                             (UTF8.explode "ull"      , Null),
-                                             (UTF8.explode "ew"       , New)]
-                      | #"o"  => lexResOrId [(UTF8.explode "verride"  , Override)]
-                      | #"p"  => lexResOrId [(UTF8.explode "rotected" , Protected),
-                                             (UTF8.explode "recision" , Precision),
-                                             (UTF8.explode "rototype" , Prototype),
-                                             (UTF8.explode "ackage"   , Package),
-                                             (UTF8.explode "rivate"   , Private),
-                                             (UTF8.explode "ublic"    , Public)]
-                      | #"r"  => lexResOrId [(UTF8.explode "ounding"  , Rounding),
-                                             (UTF8.explode "eturn"    , Return)]
-                      | #"s"  => lexResOrId [(UTF8.explode "tandard"  , Standard),
-                                             (UTF8.explode "witch"    , Switch),
-                                             (UTF8.explode "trict"    , Strict),
-                                             (UTF8.explode "tatic"    , Static),
-                                             (UTF8.explode "uper"     , Super),
-                                             (UTF8.explode "et"       , Set)]
-                      | #"t"  => lexResOrId [(UTF8.explode "ypeof"    , TypeOf),
-                                             (UTF8.explode "hrow"     , Throw),
-                                             (UTF8.explode "his"      , This),
-                                             (UTF8.explode "ype"      , Type),
-                                             (UTF8.explode "rue"      , True),
-                                             (UTF8.explode "ry"       , Try),
-                                             (UTF8.explode "o"        , To)]
-                      | #"u"  => lexResOrId [(UTF8.explode "ndefined" , Undefined),
-                                             (UTF8.explode "int"      , UInt),
-                                             (UTF8.explode "se"       , Use)]
-                      | #"v"  => lexResOrId [(UTF8.explode "oid"      , Void),
-                                             (UTF8.explode "ar"       , Var)]
-                      | #"w"  => lexResOrId [(UTF8.explode "hile"     , While),
-                                             (UTF8.explode "ith"      , With)]
-                      | #"x"  => lexResOrId [(UTF8.explode "ml"       , Token.Xml)]
-                      | #"y"  => lexResOrId [(UTF8.explode "ield"     , Yield)]
+                      | #"a"  => lexResOrId [(Ustring.fromSource "s"        , As)]
+                      | #"b"  => lexResOrId [(Ustring.fromSource "reak"     , Break)]
+                      | #"c"  => lexResOrId [(Ustring.fromSource "ontinue"  , Continue),
+                                             (Ustring.fromSource "atch"     , Catch),
+                                             (Ustring.fromSource "lass"     , Class),
+                                             (Ustring.fromSource "onst"     , Const),
+                                             (Ustring.fromSource "ase"      , Case),
+                                             (Ustring.fromSource "ast"      , Cast),
+                                             (Ustring.fromSource "all"      , Call)]
+                      | #"d"  => lexResOrId [(Ustring.fromSource "ebugger"  , Debugger),
+                                             (Ustring.fromSource "efault"   , Default),
+                                             (Ustring.fromSource "ecimal"   , Decimal),
+                                             (Ustring.fromSource "ynamic"   , Dynamic),
+                                             (Ustring.fromSource "elete"    , Delete),
+                                             (Ustring.fromSource "ouble"    , Double),
+                                             (Ustring.fromSource "o"        , Do)]
+                      | #"e"  => lexResOrId [(Ustring.fromSource "xtends"   , Extends),
+                                             (Ustring.fromSource "lse"      , Else),
+                                             (Ustring.fromSource "num"      , Enum),
+                                             (Ustring.fromSource "ach"      , Each)]
+                      | #"f"  => lexResOrId [(Ustring.fromSource "unction"  , Function),
+                                             (Ustring.fromSource "inally"   , Finally),
+                                             (Ustring.fromSource "alse"     , False),
+                                             (Ustring.fromSource "inal"     , Final),
+                                             (Ustring.fromSource "or"       , For)]
+                      | #"g"  => lexResOrId [(Ustring.fromSource "oto"      , Goto),
+                                             (Ustring.fromSource "et"       , Get)]
+                      | #"h"  => lexResOrId [(Ustring.fromSource "as"       , Has)]
+                      | #"i"  => lexResOrId [(Ustring.fromSource "mplements", Implements),
+                                             (Ustring.fromSource "nstanceof", InstanceOf),
+                                             (Ustring.fromSource "nterface" , Interface),
+                                             (Ustring.fromSource "ntrinsic" , Intrinsic),
+                                             (Ustring.fromSource "nternal"  , Internal),
+                                             (Ustring.fromSource "nclude"   , Include),
+                                             (Ustring.fromSource "mport"    , Import),
+                                             (Ustring.fromSource "nvoke"    , Invoke),
+                                             (Ustring.fromSource "nt"       , Int),
+                                             (Ustring.fromSource "s"        , Is),
+                                             (Ustring.fromSource "f"        , If),
+                                             (Ustring.fromSource "n"        , In)]
+                      | #"l"  => lexResOrId [(Ustring.fromSource "et"       , Let)]
+                      | #"n"  => lexResOrId [(Ustring.fromSource "amespace" , Namespace),
+                                             (Ustring.fromSource "ative"    , Native),
+                                             (Ustring.fromSource "umber"    , Number),
+                                             (Ustring.fromSource "ull"      , Null),
+                                             (Ustring.fromSource "ew"       , New)]
+                      | #"o"  => lexResOrId [(Ustring.fromSource "verride"  , Override)]
+                      | #"p"  => lexResOrId [(Ustring.fromSource "rotected" , Protected),
+                                             (Ustring.fromSource "recision" , Precision),
+                                             (Ustring.fromSource "rototype" , Prototype),
+                                             (Ustring.fromSource "ackage"   , Package),
+                                             (Ustring.fromSource "rivate"   , Private),
+                                             (Ustring.fromSource "ublic"    , Public)]
+                      | #"r"  => lexResOrId [(Ustring.fromSource "ounding"  , Rounding),
+                                             (Ustring.fromSource "eturn"    , Return)]
+                      | #"s"  => lexResOrId [(Ustring.fromSource "tandard"  , Standard),
+                                             (Ustring.fromSource "witch"    , Switch),
+                                             (Ustring.fromSource "trict"    , Strict),
+                                             (Ustring.fromSource "tatic"    , Static),
+                                             (Ustring.fromSource "uper"     , Super),
+                                             (Ustring.fromSource "et"       , Set)]
+                      | #"t"  => lexResOrId [(Ustring.fromSource "ypeof"    , TypeOf),
+                                             (Ustring.fromSource "hrow"     , Throw),
+                                             (Ustring.fromSource "his"      , This),
+                                             (Ustring.fromSource "ype"      , Type),
+                                             (Ustring.fromSource "rue"      , True),
+                                             (Ustring.fromSource "ry"       , Try),
+                                             (Ustring.fromSource "o"        , To)]
+                      | #"u"  => lexResOrId [(Ustring.fromSource "ndefined" , Undefined),
+                                             (Ustring.fromSource "int"      , UInt),
+                                             (Ustring.fromSource "se"       , Use)]
+                      | #"v"  => lexResOrId [(Ustring.fromSource "oid"      , Void),
+                                             (Ustring.fromSource "ar"       , Var)]
+                      | #"w"  => lexResOrId [(Ustring.fromSource "hile"     , While),
+                                             (Ustring.fromSource "ith"      , With)]
+                      | #"x"  => lexResOrId [(Ustring.fromSource "ml"       , Token.Xml)]
+                      | #"y"  => lexResOrId [(Ustring.fromSource "ield"     , Yield)]
                     (* numbers *)
                       |(#"0"
                       | #"1"
@@ -739,10 +739,10 @@ fun makeTokenList (filename : string, reader : unit -> Ustring.SOURCE) : ((TOKEN
                       | #"." => if (0wx30 <= (lookahead 1) andalso
                                              (lookahead 1) <= 0wx39) (* 0-9 *)
                                 then lexNumber ()
-                                else lexOp [(UTF8.explode ".." , TripleDot   ),
-                                            (UTF8.explode "."  , DoubleDot   ),
-                                            (UTF8.explode "<"  , LeftDotAngle),
-                                            (UTF8.explode ""   , Dot         )]
+                                else lexOp [(Ustring.fromSource ".." , TripleDot   ),
+                                            (Ustring.fromSource "."  , DoubleDot   ),
+                                            (Ustring.fromSource "<"  , LeftDotAngle),
+                                            (Ustring.fromSource ""   , Dot         )]
                     (* string literal *)
                       |(#"\""
                       | #"'") => lexString c
