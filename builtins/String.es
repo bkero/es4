@@ -8,12 +8,7 @@
  * E262-4 proposals:bug_fixes
  * E262-4 proposals:static_generics
  *
- * FIXME: add "substr"
- *
- * FIXME: if String is subclassable then what do we say about overriding
- *        methods -- how does that impact other methods?
- *
- * Status: incomplete; not reviewed; not tested.
+ * Status: complete; not reviewed; not tested.
  *
  * Strings are constructed by:
  *    new String + magic::setStringValue
@@ -176,10 +171,10 @@ package
            E262-4 draft proposals:static_generics
          */
         prototype function replace(searchValue, replaceValue)
-            ToString(this).replace(ToString(searchValue), ToString(replaceValue));
+            ToString(this).replace(searchValue, ToString(replaceValue));
 
         static function replace(self, searchValue, replaceValue)
-            ToString(self).replace(ToString(searchValue), ToString(replaceValue));
+            ToString(self).replace(searchValue, ToString(replaceValue));
 
         intrinsic function replace(s, r) : String
             ToString(this).replace(searchValue, replaceValue);
@@ -231,6 +226,18 @@ package
             
         intrinsic function substring(start: double, end: double) : string
             ToString(this).substring(start, end);
+
+        /* E262-3 B.2.3: String.prototype.substr
+           E262-4 draft proposals:static_generics
+         */
+        prototype function substr(start=0.0, length=undefined)
+            ToString(this).substring(ToDouble(start), ToDouble(length == undefined ? this.length : length));
+
+        static function substring(self, start, length) 
+            ToString(self).substring(ToDouble(start), ToDouble(length));
+            
+        intrinsic function substring(start: double, length: double) : string
+            ToString(this).substring(start, length);
 
         /* E262-3 15.5.4.16: String.prototype.toLowerCase 
            E262-4 draft proposals:static_generics

@@ -10,9 +10,6 @@
  *
  * FIXME: add "substr"
  *
- * FIXME: if String is subclassable then what do we say about overriding
- *        methods -- how does that impact other methods?
- *
  * Status: incomplete; not reviewed; not tested.
  *
  * Strings are constructed by:
@@ -34,11 +31,11 @@ package
     use default namespace public;
     use namespace intrinsic;
     use strict;
-    import Unicode.*
+    import Unicode.*;
 
+    /* FIXME (Ticket #50): should be declared down in the function it's 
+       used in, but this causes it to vanish. Why?  */
 
-    // FIXME: should be declared down in the function it's used in, but this 
-    // causes it to vanish. Why?
     type matcher = (string,RegExp!);
 
     intrinsic final class string! extends String
@@ -160,11 +157,11 @@ package
             let sslen : uint = searchString.length;
             let lim   : uint = slen - sslen + 1;
 
+            /* foo */
             outer:
             for ( let k : uint = m ; k < lim ; k++ ) {
                 for ( let w : uint = 0u ; w < sslen ; w++ ) {
-                    /* FIXME: casts redundant */
-                    if (magic::charCodeAt(this, uint(k+w)) !== magic::charCodeAt(searchString, uint(w))) 
+                    if (magic::charCodeAt(this, uint(k+w)) !== magic::charCodeAt(searchString, uint(w)))
                         continue outer;
                 }
                 return k;
@@ -235,7 +232,7 @@ package
             ToString(self).match(regexp);
 
         override intrinsic function match(r) : Array {
-            let regexp : RegExp! = r instanceof RegExp ? r : new RegExp(r);
+            let regexp : RegExp = r is RegExp ? r : new RegExp(r);
 
             if (!regexp.global)
                 return regexp.exec(this);  // ie, intrinsic::exec
@@ -269,7 +266,7 @@ package
         override intrinsic function replace(s, r) : string {
 
             /* paragraph 4 */
-            function substituteFunction(start: uint, end: uint, m: uint, cap: Array) : string {
+            let function substituteFunction(start: uint, end: uint, m: uint, cap: Array) : string {
                 let A : Array = [];
                 A[0] = this.substring(start, end);
                 for ( let i : uint=0 ; i < m ; i++ )
@@ -280,12 +277,10 @@ package
             }
 
             /* paragraph 5 */
-            function substituteString(start: uint, end: uint, m: uint, cap: Array) : string {
+            let function substituteString(start: uint, end: uint, m: uint, cap: Array) : string {
                 let s   : string = "";
                 let i   : uint = 0;
-                /* FIXME: use regex literal here when lexer can handle them */
-                /* let r   : RegExp = /\$(?:(\$)|(\&)|(\`)|(\')|([0-9]{1,2}))/g; */
-                let r   : RegExp = new RegExp("\\$(?:(\\$)|(\\&)|(\\`)|(\\')|([0-9]{1,2}))","g");
+                let r   : RegExp = /\$(?:(\$)|(\&)|(\`)|(\')|([0-9]{1,2}))/g;
                 let res : Array;
 
                 while ((res = r.exec(replaceString)) !== null) {
@@ -306,7 +301,7 @@ package
                 return s;
             }
 
-            function match( regexp, i : uint ) : [uint, Array]  {
+            let function match( regexp, i : uint ) : [uint, Array]  {
                 while (i < length) {
                     let res : MatchResult = regexp.match(this, i);
                     if (res !== null)
@@ -316,15 +311,16 @@ package
                 return [0, null];
             }
 
-            let replaceString /*: string?*/ = r instanceof string ? r /* cast string */ : null;  /* FIXME: cast not implemented */
-            let replaceFun    /*: Function*/ = r instanceof Function ? r /* cast Function */ : null;  /* FIXME: cast not implemented */
+            let replaceString : string? = r is string ? r cast string : null;
+            let replaceFun    : Function = r is Function ? r cast Function : null;
 
             let substitute : function (uint, uint, uint, Array) : string =
                 replaceFun !== null ? substituteFunction : substituteString;
 
-            if (s instanceof RegExp) {
+            if (s is RegExp) {
                 /* paragraph 2 */
-                let regexp /*: RegExp*/ = s /* cast RegExp */ ;  /* FIXME: cast not implemented */
+
+                let regexp : RegExp = s cast RegExp;
                 let res : Array = null;
                 let m : uint = regexp.nCapturingParens;
 
@@ -378,7 +374,7 @@ package
             ToString(self).search(regexp);
 
         override intrinsic function search(r) : double {
-            let regexp : RegExp = r instanceof RegExp ? r : new RegExp(r);
+            let regexp : RegExp = r is RegExp ? r : new RegExp(r);
             let lim    : uint = length;
 
             for ( let i : uint=0 ; i < lim ; i++ )
@@ -420,9 +416,9 @@ package
         override intrinsic function split(separator, limit) : Array {
 
             function splitMatch(R: matcher, S: string, q: uint) : [uint, [string]] {
-                /* FIXME: use "switch type" when it works */
+                /* FIXME (Ticket #19): use "switch type" when it works */
                 if (R is string) {
-                    let x /* : string */ = R /* cast string */;  /* FIXME: cast not implemented */
+                    let x : string = R cast string;
                     let r : uint = x.length;
                     if (q + r <= S.length && S.substring(q, q + r) === R)
                         return [q+r, []];
@@ -431,7 +427,7 @@ package
                 }
 
                 if (R is RegExp) {
-                    let x /* : RegExp! */ = R /* cast RegExp */;  /* FIXME: cast not implemented */
+                    let x : RegExp = R cast RegExp;
                     let mr : MatchResult = x.match(S, q);
                     if (mr === null)
                         return null;
@@ -445,7 +441,7 @@ package
             let lim : uint = limit === undefined ? 0xFFFFFFFFu : ToUint(limit);
             let s   : uint = length;
             let p   : uint = 0;
-            let R   : matcher = separator instanceof RegExp ? separator : ToString(separator);
+            let R   : matcher = separator is RegExp ? separator : ToString(separator);
             
             /* 7 */
             if (lim === 0)
