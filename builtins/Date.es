@@ -32,8 +32,7 @@ package
          * Plus spidermonkey extension: we accept 0 args (interpreted as "now") or 
          * 1 arg (interpreted as a timespec).
          */
-        public function Date(year:double=0, month:double=0, date:double=1, 
-                             hours:double=0, minutes:double=0, seconds:double=0, ms:double=0) {
+        public function Date(year=0, month=0, date=1, hours=0, minutes=0, seconds=0, ms=0) {
 
             setupNanoAge();
 
@@ -61,17 +60,6 @@ package
             case 2:
                 year = ToDouble(year);
                 month = ToDouble(month);
-
-                /*
-                print("Date() :",
-                      " year=", year, 
-                      ", month=", month,
-                      ", date=", date,
-                      ", hours=", hours,
-                      ", minutes=", minutes,
-                      ", seconds=", seconds,
-                      ", ms=", ms);
-                */
 
                 let intYear : int = ToInteger(year);
                 if (!isNaN(year) && 0 <= intYear && intYear <= 99)
