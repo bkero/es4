@@ -32,8 +32,7 @@ package
          * Plus spidermonkey extension: we accept 0 args (interpreted as "now") or 
          * 1 arg (interpreted as a timespec).
          */
-        public function Date(year:double=0, month:double=0, date:double=1, 
-                             hours:double=0, minutes:double=0, seconds:double=0, ms:double=0) {
+        public function Date(year=0, month=0, date=1, hours=0, minutes=0, seconds=0, ms=0) {
 
             setupNanoAge();
 
@@ -61,17 +60,6 @@ package
             case 2:
                 year = ToDouble(year);
                 month = ToDouble(month);
-
-                /*
-                print("Date() :",
-                      " year=", year, 
-                      ", month=", month,
-                      ", date=", date,
-                      ", hours=", hours,
-                      ", minutes=", minutes,
-                      ", seconds=", seconds,
-                      ", ms=", ms);
-                */
 
                 let intYear : int = ToInteger(year);
                 if (!isNaN(year) && 0 <= intYear && intYear <= 99)
@@ -379,6 +367,8 @@ package
 
         public function get time(this:Date) : double                     getTime();
         public function set time(this:Date, t : double) : double         setTime(t);
+        public function get year(this:Date) : double                     getYear();
+        public function set year(this:Date, t: double) : double          setYear(t);
         public function get fullYear(this:Date) : double                 getFullYear();
         public function set fullYear(this:Date, t : double) : double     setFullYear(t);
         public function get UTCFullYear(this:Date) : double              getUTCFullYear();
@@ -422,6 +412,15 @@ package
 
         intrinsic function getTime() : double   
             timeval;
+
+        /* E262-3 B.2.4: Date.prototype.getYear */
+        prototype function getYear(this:Date)
+            this.getYear();
+
+        intrinsic function getYear() : double {
+            let t : double = timeval;
+            return isNaN(t) ? t : YearFromTime(LocalTime(t)) - 1900;
+        }
 
         /* E262-3 15.9.5.10: Date.prototype.getFullYear */
         prototype function getFullYear(this:Date)
@@ -724,6 +723,24 @@ package
                           MakeDate(MakeDay(year, month, date), 
                                    TimeWithinDay(t));
 
+
+        /* E262-3 B.2.5: Date.prototype.setYear */
+        prototype function setYear(this:Date, year)
+            this.setYear(double(year));
+
+        intrinsic function setYear(this:Date, year:double) {
+            let t : double = isNaN(timeval) ? 0.0 : LocalTime(timeval);
+            if (isNaN(year)) {
+                timeval = NaN;
+                return NaN;
+            }
+            let y : double = ToInteger(year);
+            if (y < 0 || y > 99)
+                y += 1900;
+            timeval = TimeClip(UTC(MakeDate(MakeDay(y, MonthFromTime(t), DateFromTime(t)),
+                                            TimeWithinDay(t))));
+            return timeval;
+        }
 
         /* Utilities */
 

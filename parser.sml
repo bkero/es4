@@ -4065,12 +4065,12 @@ and typeCaseBinding (ts) : ((TOKEN * Ast.LOC) list * Ast.BINDINGS) =
 
 and isDefaultTypeCase (x) =
     case x of 
-        NONE => true
+        Ast.SpecialType Ast.Any => true
       | _ => false
 
-and typeCaseElements (ts) : ((TOKEN * Ast.LOC) list * Ast.TYPE_CASE list) =
+and typeCaseElements (ts) : ((TOKEN * Ast.LOC) list * Ast.CATCH_CLAUSE list) =
     let val _ = trace([">> typeCaseElements with next=", tokenname(hd ts)])
-        fun typeCaseElements' (ts,has_default) : ((TOKEN * Ast.LOC) list * Ast.TYPE_CASE list) =
+        fun typeCaseElements' (ts,has_default) : ((TOKEN * Ast.LOC) list * Ast.CATCH_CLAUSE list) =
             let val _ = trace([">> typeCaseElements' with next=", tokenname(hd ts)])
             in case ts of
                 ((Case | Default), _) :: _ => 
@@ -4091,50 +4091,33 @@ and typeCaseElements (ts) : ((TOKEN * Ast.LOC) list * Ast.TYPE_CASE list) =
     end
 
 and typeCaseElement (ts,has_default) 
-    : ((TOKEN * Ast.LOC) list * Ast.TYPE_CASE) =
+    : ((TOKEN * Ast.LOC) list * Ast.CATCH_CLAUSE) =
     let val _ = trace([">> typeCaseElement with next=", tokenname(hd ts)])
     in case (ts,has_default) of
-        ((Case, _) :: (LeftParen, _) :: _,_) =>
-            let
-                val (ts1,(p,t)) = typedPattern(tl (tl ts),NOLIST,NOIN)
-            in case ts1 of
-                (RightParen, _) :: _ =>
-                    let
-                        val (ts2,nd2) = block (tl ts1,LOCAL)
-                        val bindings=desugarPattern (locOf ts) p t (SOME (Ast.GetParam 0)) 0
-                        val defn = Ast.VariableDefn 
-                                      {kind=Ast.LetVar,
-                                       ns=SOME (Ast.LiteralExpr (Ast.LiteralNamespace (Ast.Internal Ustring.empty))),
-                                       static=false,
-                                       prototype=false,
-                                       bindings=bindings}
-
-                        val Ast.Block {pragmas,defns,head,body,loc} = nd2
-                    in
-                        trace(["<< typeCaseElement with next=", tokenname(hd ts2)]);
-                        (ts2, {ty=SOME t, body=Ast.LetStmt (Ast.Block {pragmas=[],
-                                                                       defns=[defn],
-                                                                       body=body,
-                                                                       head=head,
-                                                                       loc=loc})})
-                    end
-              | _ => error ["unknown token in typeCaseElement"]
-            end
-      | ((Default, _) :: _,false) =>
-            let
-                val (ts1,nd1) = block (tl ts,LOCAL)
-                val Ast.Block {pragmas,defns,head,body,loc} = nd1
-            in
-                trace(["<< typeCaseElement with next=", tokenname(hd ts1)]);
-                (ts1, {ty=NONE, body=Ast.LetStmt (Ast.Block {pragmas=[],
-                                                             defns=[],
-                                                             body=body,
-                                                             head=head,
-                                                             loc=loc})})
-            end
-      | ((Default, _) :: _,true) =>
-            (error(["redundant default switch type case"]); error ["unknown token in typeCaseElement"])
-      | _ => error ["unknown token in typeCaseElement"]
+           ((Case, _) :: (LeftParen, _) :: _,_) =>
+           let
+               val (ts1,(temp,{pattern,ty})) = parameter (tl (tl ts)) 0
+               val (b,i) = desugarPattern (locOf ts) pattern ty (SOME (Ast.GetParam 0)) 0
+           in 
+               case ts1 of
+                   (RightParen, _) :: _ =>
+                   let
+                       val (ts2,nd2) = block (tl ts1,LOCAL)
+                   in
+                       (ts2,{bindings=((temp::b),i),ty=ty,block=nd2,fixtures=NONE,inits=NONE})
+                   end                    
+                 | _ => error ["unknown token in typeCaseElement"]
+           end
+         | ((Default, _) :: _,false) =>
+           let
+               val (ts1,nd1) = block (tl ts,LOCAL)
+           in
+               trace(["<< typeCaseElement with next=", tokenname(hd ts1)]);
+               (ts1,{bindings=([],[]),ty=Ast.SpecialType Ast.Any,block=nd1,fixtures=NONE,inits=NONE})
+           end
+         | ((Default, _) :: _,true) =>
+           (error(["redundant default switch type case"]); error ["unknown token in typeCaseElement"])
+         | _ => error ["unknown token in typeCaseElement"]
     end
 (*
     

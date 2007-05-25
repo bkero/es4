@@ -96,3 +96,10 @@ clean:
 profile: 
 	touch multiname.sml mach.sml eval.sml 
 	sml -Ctdp.instrument=true profile.sml 2>&1 | tee profile.txt
+
+exec: dump-heap-for-running
+	rm -rf exec
+	mkdir exec 
+	heap2exec run.heap.$(HEAP_SUFFIX) ./exec/es4
+	gzip ./exec/es4
+	

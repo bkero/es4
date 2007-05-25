@@ -435,29 +435,70 @@ and isNullable (t:Ast.NAME)
         not (#nonnullable cls)
     end
 
-and cleanupSynonyms (t:TYPE_VALUE)
-    : TYPE_VALUE =
-    let
-        fun stripNull (Ast.UnionType ts) = 
-            Ast.UnionType (map stripNull (List.filter (fn t => not (t = Ast.SpecialType Ast.Null)) ts))
-          | stripNull (Ast.SpecialType Ast.Null) = Ast.UnionType [] 
-          | stripNull (Ast.NullableType { expr, ... }) = stripNull expr
-          | stripNull other = other
+fun normalize (t:Ast.TYPE_EXPR) 
+    : Ast.TYPE_EXPR = 
+    let 
+        fun normalize' (t:Ast.TYPE_EXPR) 
+            : (Ast.TYPE_EXPR list * bool) =
+            case t of                 
+                (Ast.UnionType tys) => 
+                let 
+                    val (typelists, nullables) = ListPair.unzip (map normalize' tys)
+                    val types = List.concat typelists
+                    val nullable = List.exists (fn x => x) nullables
+                in
+                    (types, nullable)
+                end
+              | Ast.SpecialType Ast.Null => ([], true)
+              | Ast.ArrayType [] => ([Ast.ArrayType [Ast.SpecialType Ast.Any]], false)
+              | Ast.ArrayType tys => ([Ast.ArrayType (map normalize tys)], false)
+              | Ast.FunctionType { typeParams, params, result, thisType, hasRest, minArgs } =>
+                ([Ast.FunctionType { typeParams = typeParams,
+                                     params = map normalize params,
+                                     result = normalize result,
+                                     thisType = Option.map normalize thisType,
+                                     hasRest = hasRest,
+                                     minArgs = minArgs }], false)
+              | Ast.ObjectType fields => 
+                let
+                    fun normalizeField { name, ty } = 
+                        { name = name,
+                          ty = normalize ty }
+                in
+                    ([Ast.ObjectType (map normalizeField fields)], false)
+                end
+              | Ast.AppType { base, args } => 
+                ([Ast.AppType { base = normalize base,
+                                args = map normalize args }], false)
+              | Ast.NullableType { expr, nullable } => 
+                let
+                    val (types, _) = normalize' expr
+                in
+                    (types, nullable)
+                end
+              | t => ([t], false)
+        val (types, nullable) = normalize' t
+        val null = Ast.SpecialType Ast.Null
     in
-        case t of 
-            Ast.ArrayType [] => Ast.ArrayType [Ast.SpecialType Ast.Any]
-          | Ast.NullableType { nullable=true, expr } => Ast.UnionType [ Ast.SpecialType Ast.Null, expr ]
-          | Ast.NullableType { nullable=false, expr } => stripNull expr
-          | x => x
+        case types of 
+            [] => if nullable 
+                  then null
+                  else Ast.UnionType []
+          | [x] => if nullable
+                   then Ast.UnionType [x, null]
+                   else x
+          | union => if nullable 
+                     then Ast.UnionType (union @ [null])
+                     else Ast.UnionType union
     end
-
+    
 and isSubtype (t1:TYPE_VALUE)
               (t2:TYPE_VALUE)
     : bool =
     let
         val _ = trace [">>> isSubtype: ", fmtType t1, " <: ", fmtType t2 ];
-        val t1 = cleanupSynonyms t1
-        val t2 = cleanupSynonyms t2
+        val t1 = normalize t1
+        val t2 = normalize t2
         val res = if t1 = t2 then
                       true
                   else
@@ -521,8 +562,8 @@ and isCompatible (t1:TYPE_VALUE)
 		         (t2:TYPE_VALUE) 
     : bool = 
     let 
-        val t1 = cleanupSynonyms t1
-        val t2 = cleanupSynonyms t2
+        val t1 = normalize t1
+        val t2 = normalize t2
         val _ = trace [">>> isCompatible: ", fmtType t1, " ~: ", fmtType t2 ];
         val res = (isSubtype t1 t2) orelse
 	              (t1=anyType) orelse
@@ -612,29 +653,41 @@ fun checkBicompatible (ty1:TYPE_VALUE)
 fun findConversion (ty1:TYPE_VALUE)
                    (ty2:TYPE_VALUE) 
     : Ast.NAME option = 
-    (trace ["searching for converter from ", fmtType ty1,
-            " ~~> ", fmtType ty2];
-     case ty2 of 
-         Ast.InstanceType { name, ... } => 
-         let
-             val _ = trace ["target is instance of: ", fmtName name]
-             val Ast.Cls { classFixtures, ... } = getClass name
-             val fname = Ast.PropName Name.meta_convert
-         in
-             if Defn.hasFixture classFixtures fname
-             then 
-                 (trace ["target class has 'meta static convert' fixture "];
-                  case Defn.getFixture classFixtures fname of
-                      Ast.MethodFixture { ty=Ast.FunctionType { params=[pt], ... }, ... } => 
-                      (trace ["fixture has appropriate form, param type is ", fmtType pt];
-                       if isCompatible ty1 pt
-                       then (trace ["fixture has compatible parameter type"]; SOME name)
-                       else NONE)
-                    | _ => NONE)
-             else
-                 NONE
-         end
-       | _ => NONE)
+    let
+        val _ = trace ["searching for converter from ", fmtType ty1,
+                       " ~~> ", fmtType ty2];
+        val ty1 = normalize ty1
+        val ty2 = normalize ty2
+        fun tryToConvertTo (target:Ast.TYPE_EXPR) = 
+            case target of 
+                Ast.InstanceType { name, ... } => 
+                let
+                    val _ = trace ["target is instance of: ", fmtName name]
+                    val Ast.Cls { classFixtures, ... } = getClass name
+                    val fname = Ast.PropName Name.meta_convert
+                in
+                    if Defn.hasFixture classFixtures fname
+                    then 
+                        (trace ["target class has 'meta static convert' fixture "];
+                         case Defn.getFixture classFixtures fname of
+                             Ast.MethodFixture { ty=Ast.FunctionType { params=[pt], ... }, ... } => 
+                             (trace ["fixture has appropriate form, param type is ", fmtType pt];
+                              if isCompatible ty1 pt
+                              then (trace ["fixture has compatible parameter type"]; SOME name)
+                              else NONE)
+                           | _ => NONE)
+                    else
+                        NONE
+                end
+              | Ast.UnionType [] => NONE
+              | (Ast.UnionType (t::ts)) => 
+                (case tryToConvertTo t of
+                     NONE => tryToConvertTo (Ast.UnionType ts)
+                   | found => found)
+              | _ => NONE
+    in
+        tryToConvertTo ty2
+    end
               
 
 fun checkConvertible (ty1:TYPE_VALUE) 
@@ -1163,8 +1216,10 @@ and verifyStmt (env:ENV)
                                 labels = labels}
             end
         
-          | Ast.SwitchTypeStmt {cond, ty, cases} => (*TODO*)
-            Ast.SwitchTypeStmt {cond=cond, ty=ty, cases=cases}
+          | Ast.SwitchTypeStmt {cond, ty, cases} => 
+            Ast.SwitchTypeStmt {cond = verifyExprOnly env cond, 
+                                ty = verifyTypeExpr env ty, 
+                                cases = List.map (verifyCatchClause env) cases}
             
           | Ast.DXNStmt x => (*TODO*)
             Ast.DXNStmt x
@@ -1176,7 +1231,9 @@ and verifyStmt (env:ENV)
 and verifyCatchClause (env:ENV)
                       ({bindings, ty, fixtures, inits, block}:Ast.CATCH_CLAUSE)
     : Ast.CATCH_CLAUSE =
-    let val fixtures' = verifyFixturesOption env fixtures
+    let 
+        val ty = verifyTypeExpr env ty
+        val fixtures' = verifyFixturesOption env fixtures
         val inits' = verifyInitsOption env inits
         val env' = withRib env fixtures'
         val block' = verifyBlock env' block

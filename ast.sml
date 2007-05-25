@@ -267,7 +267,7 @@ datatype PRAGMA =
        | SwitchTypeStmt of {
              cond: EXPR, 
              ty: TYPE_EXPR,
-             cases: TYPE_CASE list }
+             cases: CATCH_CLAUSE list }
        | DXNStmt of {
              expr: EXPR }
 
@@ -499,10 +499,6 @@ withtype
            { label: EXPR option,
              inits: INITS option, 
              body: BLOCK }   (* FIXME: should be STMT list *)
-
-     and TYPE_CASE =
-           { ty : TYPE_EXPR option,
-             body: STMT }  (* LetStmt, actually *)
 
      and CATCH_CLAUSE = 
          { bindings:BINDINGS,

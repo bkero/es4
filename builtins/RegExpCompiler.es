@@ -181,10 +181,10 @@ package RegExpInternals
                 return new CharsetMatcher(charset_notlinebreak);
 
             case 0x28u /* "(" */:
-                advance();
+                consumeChar("(");
                 
                 if (peekCharCode() == 0x3Fu /* "?" */) {
-                    advance();
+                    consumeChar("?");
                     switch (peekChar()) {
                     case ":":
                         advance();
@@ -239,7 +239,7 @@ package RegExpInternals
                         }
                         
                     default:
-                        fail( SyntaxError, "Bogus (? pattern" );
+                        fail( SyntaxError, "Invalid (? pattern: next char=" + peekChar() );
                     }
                 } // peekChar() != "?"
                     
@@ -267,8 +267,11 @@ package RegExpInternals
                 // case 0x5Du /* "]" */:
                 return null;
                 
-            default:                
-                return new CharsetMatcher(new CharsetAdhoc(consumeChar()));
+            default: {
+                let m = new CharsetMatcher(new CharsetAdhoc(consumeChar()));
+                skip();
+                return m;
+            }
             }
         }
 
@@ -683,8 +686,7 @@ package RegExpInternals
             if (idx + 1 > slen)
                 fail( SyntaxError, "advancing beyond end of regexp");
             idx++;
-            if (extended)
-                skip();
+            skip();
         }
 
         function consumeUntil(c : string) : void {
@@ -698,12 +700,12 @@ package RegExpInternals
 
             while (!atEnd()) {
                 let c : uint = peekCharCode();
-                if (c == 0x22u /* '#' */) {                    
+                if (c == 0x23u /* '#' */) {                    
                     ++idx;
-                    while (!atEnd() && !isTerminator(peekCharCode()))
+                    while (!atEnd() && !isTerminatorCode(peekCharCode()))
                         ++idx;
                 }
-                else if (isBlankCode(c) || isTerminatorCode(c) || isFormatControlCode(c)) 
+                else if (isBlankCode(c) || isTerminatorCode(c) || isFormatControlCode(c))
                     ++idx;
                 else
                     return;
