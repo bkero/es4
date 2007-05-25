@@ -100,5 +100,6 @@ profile:
 exec: dump-heap-for-running
 	rm -rf exec
 	mkdir exec 
-	heap2exec run.heap.$(HEAP_SUFFIX) ./exec/es4
-	gzip ./exec/es4
+	heap2exec run.heap.$(HEAP_SUFFIX) ./exec/es4.$(HEAP_SUFFIX)
+	gzip ./exec/es4.$(HEAP_SUFFIX)
+	
