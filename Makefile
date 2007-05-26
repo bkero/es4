@@ -71,7 +71,6 @@ smoketest: run.heap.$(HEAP_SUFFIX)
 	sml @SMLload=run.heap $(TRACE) tests/spidermonkey/ecma/shell.js tests/spidermonkey/ecma/TypeConversion/9.3.js
 
 dump-heap-for-running: run.heap.$(HEAP_SUFFIX)
-	sml @SMLload=es4.heap $(TRACE) -dumpEval run.heap
 
 # Do *not* give this dependencies to see if the heap is up-to-date.
 run-dumped:

@@ -185,7 +185,6 @@ fun verify doBoot argvRest =
     in
         TextIO.print "verifying ... \n";
         List.map Verify.verifyProgram defined
-                       | LogErr.EofError => (print ("**ERROR* EofError: Unexpected end of file\n"); Eval.resetStack(); 1)
     end
 
 fun eval doBoot argvRest =

@@ -316,6 +316,25 @@ fun getInitialRegs _ =
 
 type REF = (Mach.OBJ * Ast.NAME)
 
+(* 
+ * Ident exprs evaluate to either either explicitly qualified names or implicitly qualified
+ * mutinames. We differentiate these cases with a discriminated union.
+ *)
+
+datatype NAME_OR_MULTINAME = 
+         Name of Ast.NAME
+       | Multiname of Ast.MULTINAME
+
+fun fmtNomn (nomn:NAME_OR_MULTINAME) = 
+    case nomn of 
+        Name name => fmtName name
+      | Multiname mname => fmtMultiname mname
+
+fun nomnToStr (nomn:NAME_OR_MULTINAME) = 
+    case nomn of 
+        Name name => LogErr.name name
+      | Multiname mname => LogErr.multiname mname
+
 (* Fundamental object methods *)
 
 fun allocFixtures (regs:Mach.REGS) 
@@ -1150,15 +1169,26 @@ and newFunctionFromClosure (closure:Mach.FUN_CLOSURE) =
         val { func, ... } = closure
         val Ast.Func { ty, ... } = func
         val tag = Mach.FunctionTag ty
-        val funClass = needObj (getValue (getGlobalObject ()) Name.public_Function)
+
+        val _ = trace ["finding Function.prototype"]
+        val funClass = needObj (getValue (getGlobalObject()) Name.public_Function)
+        val funProto = getValue funClass Name.public_prototype
+        val _ = trace ["building new prototype chained to Function.prototype"]
+        val newProto = Mach.Object (Mach.setProto (newObj ()) funProto)
+        val _ = trace ["built new prototype chained to Function.prototype"]
+
         val Mach.Obj { magic, ... } = funClass
         val obj = case (!magic) of 
                       SOME (Mach.Class funClassClosure) => 
                       constructStandardWithTag funClass funClassClosure [] tag
+
+
     in
         Mach.setMagic obj (SOME (Mach.Function closure));
+        setValue obj Name.public_prototype newProto;
         Mach.Object obj
     end
+
 
 and newFunctionFromFunc (e:Mach.SCOPE) 
                         (f:Ast.FUNC) 
@@ -1769,7 +1799,9 @@ and evalLiteralObjectExpr (regs:Mach.REGS)
                                 Ast.Const => true
                               | Ast.LetConst => true
                               | _ => false
-                val n = Name.public (#id (evalIdentExpr regs name))
+                val n = case evalIdentExpr regs name of 
+                            Name n => n
+                          | Multiname n => Name.public (#id n)
                 val v = evalExpr regs init
                 val ty = searchFieldTypes (#id n) tys
                 val prop = { ty = ty,
@@ -2202,9 +2234,9 @@ and evalUnaryOp (regs:Mach.REGS)
                          Ast.LexicalRef { ident, loc } => 
                          let 
                              val _ = LogErr.setLoc loc
-                             val multiname = evalIdentExpr regs ident
+                             val nomn = evalIdentExpr regs ident
                          in
-                             case resolveOnScopeChain (#scope regs) multiname of 
+                             case resolveOnScopeChain (#scope regs) nomn of 
                                  NONE => Ustring.undefined_
                                | SOME (obj, name) => typeOfVal (getValue obj name)
                          end
@@ -2741,21 +2773,21 @@ and evalExprToNamespace (regs:Mach.REGS)
 
 and evalIdentExpr (regs:Mach.REGS) 
                   (r:Ast.IDENT_EXPR) 
-    : Ast.MULTINAME =
+    : NAME_OR_MULTINAME =
     case r of 
         Ast.Identifier { ident:Ast.IDENT, openNamespaces:Ast.NAMESPACE list list } => 
-        { nss=openNamespaces, id=ident }
+        Multiname { nss=openNamespaces, id=ident }
         
       | Ast.QualifiedIdentifier { qual, ident } => 
-        { nss = [[evalExprToNamespace regs qual]], id = ident }
+        Name { ns = (evalExprToNamespace regs qual), id = ident }
         
       | Ast.QualifiedExpression { qual, expr } => 
-        { nss = [[evalExprToNamespace regs qual]], 
-          id = toUstring (evalExpr regs expr) }
+        Name { ns = (evalExprToNamespace regs qual), 
+                       id = toUstring (evalExpr regs expr) }
         
       | Ast.ExpressionIdentifier { expr, openNamespaces } =>
-        { nss = openNamespaces,
-          id = toUstring (evalExpr regs expr) }
+        Multiname { nss = openNamespaces,
+                       id = toUstring (evalExpr regs expr) }
 
       | _ => LogErr.unimplError ["unimplemented identifier expression form"]
 
@@ -2779,47 +2811,54 @@ and evalRefExprFull (regs:Mach.REGS)
                     (expr:Ast.EXPR)
                     (errIfNotFound:bool)
     : (Mach.OBJ * REF) =
-    case expr of         
-        Ast.LexicalRef { ident, loc } => 
-        let
-            val _ = LogErr.setLoc loc
-            val multiname = evalIdentExpr regs ident
-            val _ = LogErr.setLoc loc
-            val refOpt = resolveOnScopeChain (#scope regs) multiname
-            val _ = LogErr.setLoc loc
-            val r = case refOpt of 
-                        SOME r => r
-                      | NONE => if errIfNotFound
-                                then throwRefErr ["unresolved lexical reference ", LogErr.multiname multiname]
-                                else (getGlobalObject(), Name.public (#id multiname))
-        in
-            ((#this regs), r)
-        end
-        
-      | Ast.ObjectRef { base, ident, loc } => 
-        let
-            val _ = LogErr.setLoc loc
-            val v = evalExpr regs base
-            val _ = LogErr.setLoc loc
-            val multiname = evalIdentExpr regs ident
-            val _ = LogErr.setLoc loc
-            val ob = case v of 
-                         Mach.Object ob => ob
-                       | _ => getGlobalObject() 
-            val _ = LogErr.setLoc loc
-            val nameOpt = resolveName ob multiname 
-            val _ = LogErr.setLoc loc
-            val r = case nameOpt of 
-                        SOME n => (ob, n)
-                      | NONE => if errIfNotFound
-                                then throwRefErr ["unresolved object reference ", LogErr.multiname multiname]
-                                else (ob, Name.public (#id multiname))
-            val _ = LogErr.setLoc loc
-        in
-            (ob, r)
-        end
-
-      | _ => error ["need lexical or object-reference expression"]
+    let 
+        fun defaultRef obj nomn = 
+            case nomn of 
+                Multiname mname => (obj, Name.public (#id mname))
+              | Name name => (obj, name)
+    in
+        case expr of         
+            Ast.LexicalRef { ident, loc } => 
+            let
+                val _ = LogErr.setLoc loc
+                val nomn = evalIdentExpr regs ident
+                val _ = LogErr.setLoc loc
+                val refOpt = resolveOnScopeChain (#scope regs) nomn
+                val _ = LogErr.setLoc loc
+                val r = case refOpt of 
+                            SOME r => r
+                          | NONE => if errIfNotFound
+                                    then throwRefErr ["unresolved lexical reference ", nomnToStr nomn]
+                                    else defaultRef (getGlobalObject()) nomn
+            in
+                ((#this regs), r)
+            end
+            
+          | Ast.ObjectRef { base, ident, loc } => 
+            let
+                val _ = LogErr.setLoc loc
+                val v = evalExpr regs base
+                val _ = LogErr.setLoc loc
+                val nomn = evalIdentExpr regs ident
+                val _ = LogErr.setLoc loc
+                val ob = case v of 
+                             Mach.Object ob => ob
+                           | _ => getGlobalObject() 
+                val _ = LogErr.setLoc loc
+                val nameOpt = resolveName ob nomn
+                val _ = LogErr.setLoc loc
+                val r = case nameOpt of 
+                            SOME n => (ob, n)
+                          | NONE => if errIfNotFound
+                                    then throwRefErr ["unresolved object reference ", nomnToStr nomn]
+                                    else defaultRef ob nomn
+                val _ = LogErr.setLoc loc
+            in
+                (ob, r)
+            end
+            
+          | _ => error ["need lexical or object-reference expression"]
+    end
 
 (*
     EXPR = LetExpr
@@ -2836,46 +2875,61 @@ and evalLetExpr (regs:Mach.REGS)
 
 
 and resolveOnScopeChain (scope:Mach.SCOPE) 
-                        (mname:Ast.MULTINAME) 
+                        (nomn:NAME_OR_MULTINAME) 
     : REF option =
     let 
-        val _ = trace ["resolving multiname on scope chain: ", 
-                              fmtMultiname mname]
+        val _ = case nomn of 
+                    Name name => trace ["resolving name on scope chain: ", 
+                                                fmtName name]
+                  | Multiname mname => trace ["resolving multiname on scope chain: ", 
+                                                 fmtMultiname mname]
+                                          
+        fun getScopeProps (Mach.Scope {object=Mach.Obj {props, ...}, ... }) = props
         fun getScopeParent (Mach.Scope { parent, ... }) = parent
-        fun matchFixedScopeBinding (Mach.Scope {object=Mach.Obj {props, ...}, ... }) n nss
-            = Mach.matchProps true props n nss
+        fun matchFixedScopeBinding s n nss
+            = Mach.matchProps true (getScopeProps s) n nss 
+
+        (* 
+         * Primary lookup is for fixed props along the scope chains, *not* involving
+         * prototypes. If that fails, we do a sequence of dynamic-property-permitted
+         * lookups on every scope object (and along its prototype chain)
+         * in the scope chain. 
+         *)
+        fun tryProtoChain (Mach.Scope {object, parent, ...}) = 
+            case resolveName object nomn of
+                SOME name => SOME (object, name)
+              | NONE => case parent of 
+                            NONE => NONE
+                          | SOME p => tryProtoChain p
     in
         (* 
          * First do a fixed-properties-only lookup along the scope chain alone. 
          *)
-        case Multiname.resolve 
-                 mname scope 
-                 matchFixedScopeBinding
-                 getScopeParent
-         of
-            SOME (Mach.Scope {object, ...}, name) => 
-            (trace ["found ",fmtName name]; SOME (object, name))
-          | NONE => 
-            (* 
-             * If that fails, do a sequence of dynamic-property-permitted
-             * lookups on every scope object (and along its prototype chain)
-             * in the scope chain. 
-             *)
-            let
-                fun tryProtoChain (Mach.Scope {object, parent, ...}) = 
-                    case resolveName object mname of
-                        SOME name => SOME (object, name)
-                      | NONE => case parent of 
-                                    NONE => NONE
-                                  | SOME p => tryProtoChain p
+        case nomn of 
+            Name name => 
+            let 
+                val props = getScopeProps scope
             in
-                tryProtoChain scope
+                if Mach.hasProp props name
+                then SOME (getScopeObj scope, name)
+                else case getScopeParent scope of
+                         NONE => tryProtoChain scope
+                       | SOME parent => resolveOnScopeChain parent nomn
             end
+          | Multiname mname => 
+            case Multiname.resolve 
+                     mname scope 
+                     matchFixedScopeBinding
+                     getScopeParent
+             of
+                SOME (Mach.Scope {object, ...}, name) => 
+                (trace ["found ",fmtName name]; SOME (object, name))
+              | NONE => tryProtoChain scope
     end
 
 
 and resolveName (obj:Mach.OBJ) 
-                (mname:Ast.MULTINAME) 
+                (nomn:NAME_OR_MULTINAME) 
     : Ast.NAME option = 
     let 
         fun matchFixedBinding (Mach.Obj {props, ...}) n nss
@@ -2886,14 +2940,23 @@ and resolveName (obj:Mach.OBJ)
             case (!proto) of 
                 Mach.Object ob => SOME ob
               | _ => NONE
-        val fixedRefOpt:(REF option) = Multiname.resolve mname obj matchFixedBinding getObjProto
-        val finalRefOpt:(REF option) = case fixedRefOpt of                                            
-                                           NONE => Multiname.resolve mname obj matchBinding getObjProto
-                                         | ro => ro                                         
     in
-        case finalRefOpt of
-            NONE => NONE
-          | SOME (_, name) => SOME name
+        case nomn of 
+            Name name => 
+            if hasValue obj name
+            then SOME name
+            else NONE
+          | Multiname mname => 
+            let
+                val fixedRefOpt:(REF option) = Multiname.resolve mname obj matchFixedBinding getObjProto
+                val finalRefOpt:(REF option) = case fixedRefOpt of                                            
+                                                   NONE => Multiname.resolve mname obj matchBinding getObjProto
+                                                 | ro => ro                                         
+            in
+                case finalRefOpt of
+                    NONE => NONE
+                  | SOME (_, name) => SOME name
+            end
     end
 
      
@@ -2974,12 +3037,11 @@ and multinameOf (n:Ast.NAME) =
 
 
 and findVal (scope:Mach.SCOPE) 
-            (mn:Ast.MULTINAME) 
+            (name:Ast.NAME) 
     : Mach.VAL = 
-    case resolveOnScopeChain scope mn of 
-        NONE => error ["unable to resolve multiname: ", 
-                       LogErr.multiname mn ]
-      | SOME (obj, name) => getValue obj name 
+    case resolveOnScopeChain scope (Name name) of 
+        NONE => error ["unable to find value: ", LogErr.name name ]
+      | SOME (obj, n) => getValue obj n
 
 
 and checkAllPropertiesInitialized (obj:Mach.OBJ)
@@ -3452,7 +3514,7 @@ and initializeAndConstruct (classClosure:Mach.CLS_CLOSURE)
                       | SOME superName => 
                         let 
                             val _ = trace ["initializing and constructing superclass ", fmtName superName ]
-                            val (superObj:Mach.OBJ) = needObj (findVal env (multinameOf superName))
+                            val (superObj:Mach.OBJ) = needObj (findVal env superName)
                             val (superClsClosure:Mach.CLS_CLOSURE) = 
                                 case Mach.getObjMagic superObj of
                                     SOME (Mach.Class cc) => cc
@@ -3540,21 +3602,9 @@ and constructStandardWithTag (classObj:Mach.OBJ)
         instanceObj
     end
 
-
-and specialFunctionConstructor (classObj:Mach.OBJ)
-                               (classClosure:Mach.CLS_CLOSURE)
-                               (args:Mach.VAL list) 
-    : Mach.VAL = 
+and parseFunctionFromArgs (args:Mach.VAL list) 
+    : (Ustring.STRING * Ast.EXPR) =
     let
-        val instanceObj = constructStandard classObj classClosure args
-        val _ = trace ["finding Function.prototype"]
-        val globalFuncObj = needObj (getValue (getGlobalObject()) Name.public_Function)
-        val globalFuncProto = getValue globalFuncObj Name.public_prototype
-        val _ = trace ["building new prototype chained to Function.prototype"]
-        val newProto = Mach.Object (Mach.setProto (newObj ()) globalFuncProto)
-        val _ = trace ["built new prototype chained to Function.prototype"]
-        val _ = setValue instanceObj Name.public_prototype newProto;
-
         (*
          * We synthesize a token stream here that feeds back into the parser.
          *)
@@ -3563,16 +3613,22 @@ and specialFunctionConstructor (classObj:Mach.OBJ)
         val argArgs = List.take (args, (length args)-1)
         val argIdents = map (fn x => Token.Identifier (toUstring x)) argArgs
         val nloc = {file="<no filename>", span=({line=1,col=1},{line=1,col=1}), post_newline=false}
+        fun commaIdent i = [(Token.Comma, nloc), (i, nloc)]
         val argList = case argIdents of
                           [] => []
-                        | x::xs => ((x, nloc) :: 
-                                    (List.concat 
-                                         (map (fn i => [(Token.Comma, nloc), (i, nloc)]) xs)))
-        val lines = [Ustring.sourceFromUstring source] (* FIXME: split lines *)
-        val lineTokens = List.filter (fn t => case t of 
-                                                  (Token.Eof, _) => false (* FIXME: this won't work if there's a regexp, because the token list won't be complete *)
-                                                | _ => true)
-                                     (Parser.lexLines lines)
+                        | x::xs => 
+                          ((x, nloc) :: (List.concat (map commaIdent xs)))
+                           
+        (* FIXME: split lines *)
+        val lines = [Ustring.sourceFromUstring source] 
+
+        (* 
+         * FIXME: this won't work if there's a regexp, 
+         * because the token list won't be complete 
+         *)
+        fun notEof (Token.Eof, _) = false
+          | notEof _ = true
+        val lineTokens = List.filter notEof (Parser.lexLines lines)
         val funcTokens = [(Token.Function, nloc), 
                           (Token.LeftParen, nloc)]
                          @ argList
@@ -3588,21 +3644,25 @@ and specialFunctionConstructor (classObj:Mach.OBJ)
                            
         val funcExpr = Defn.defExpr (Defn.topEnv()) funcExpr
     in
-        case funcExpr of 
-            Ast.LiteralExpr (Ast.LiteralFunction f) => 
-            let 
-                val Mach.Obj { magic, ...} = instanceObj
-                val sname = Name.public_source
-                val sval = newString source
-            in
-                magic := SOME (Mach.Function { func = f, 
-                                               this = NONE,
-                                               allTypesBound = true,
-                                               env = getGlobalScope() });
-                setValue instanceObj sname sval
-            end
-          | _ => error ["function did not parse"];
-        Mach.Object instanceObj
+        (source, funcExpr)
+    end
+
+
+and specialFunctionConstructor (classObj:Mach.OBJ)
+                               (classClosure:Mach.CLS_CLOSURE)
+                               (args:Mach.VAL list)
+    : Mach.VAL = 
+    let
+        val (source, funcExpr) = parseFunctionFromArgs args
+        val sname = Name.public_source
+        val sval = newString source
+        val fv = case funcExpr of 
+                     Ast.LiteralExpr (Ast.LiteralFunction f) => 
+                     newFunctionFromFunc (getGlobalScope()) f 
+                   | _ => error ["function did not parse"];
+    in
+        setValue (needObj fv) sname sval;
+        fv
     end
 
 
@@ -3810,7 +3870,7 @@ and initClassPrototype (regs:Mach.REGS)
                   | SOME baseClassName => 
                     let
                     in
-                        case findVal (#scope regs) (multinameOf baseClassName) of 
+                        case findVal (#scope regs) baseClassName of 
                             Mach.Object ob => 
                             if hasOwnValue ob Name.public_prototype
                             then getValue ob Name.public_prototype
@@ -3872,7 +3932,7 @@ and evalClassBlock (regs:Mach.REGS)
 
         val _ = trace ["evaluating class stmt for ", fmtName name]
         
-        val classObj = needObj (findVal scope (multinameOf name))
+        val classObj = needObj (findVal scope name)
 
         val _ = bindAnySpecialIdentity name classObj
         val _ = initClassPrototype regs classObj
