@@ -70,7 +70,7 @@ fun completeClassFixtures name classObj =
          *)
         val globalRegs = Eval.getInitialRegs ()
         val classRegs = Eval.extendScopeReg globalRegs classObj Mach.InstanceScope
-        val classClass = Eval.findVal (#scope globalRegs) (Eval.multinameOf Name.intrinsic_Class)
+        val classClass = Eval.findVal (#scope globalRegs) Name.intrinsic_Class
         val Ast.Cls { instanceFixtures, ... } = (#cls (Mach.needClass classClass))
     in
         Eval.allocObjFixtures classRegs classObj (SOME classObj) instanceFixtures
