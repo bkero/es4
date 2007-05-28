@@ -2,6 +2,10 @@ JEFF'S NOTES ON THE REFERENCE IMPLEMENTATION
 
 ###
 
+BUGS
+
+- importing a non-existing package is not an error
+
 TO DO
 
 - interface definitions
@@ -13,6 +17,22 @@ ISSUES
 
 ###
 
+TWO BUGS
+
+1/definer is putting internal names in a named package in the namespace Internal ""
+2/verifier isn't opening import namespaces properly (maybe)
+
+###
+
+MANAGING COMPILATION UNIT
+
+use unit foo "http://myco.com"
+use unit foo {
+    ...
+}
+
+###
+
 MAY-24-2007
 
 TYPE SYSTEM OVERVIEW
@@ -20,12 +40,14 @@ TYPE SYSTEM OVERVIEW
 
 - strict mode is an opt in static checker that does not have any affect
   on programs that pass the verifier
-- compatibility (~=) the static type check will allow but might fail
+- compatibility (~=) -- the static type check will allow but might fail
   at runtime
 - strict mode (conceptually) returns a new program with extra conversions
   inserted. Compatible (but not subtype) assignment means insert a conversion.
 
-  let x : t = v; ... x = u;
+  let x : t = v; 
+  ... x = u;
+
   let x : t; x = v to t;
   ... x = u to t;
 
@@ -33,14 +55,12 @@ TYPE SYSTEM OVERVIEW
 
 - convert methods are special:
   + arguments don't go through conversion
-  + constraints result type
+  + constrains result type
 
   type ToInt = function () : int
   function callThunk (f:ToInt) : int {
       f();
   }
-  
-  the result of the call to 'f' is checked
 
 - what are the compatibility checks
 - compatiblity 
@@ -68,11 +88,12 @@ TYPE SYSTEM OVERVIEW
 - cast are guarenteed to do the same thing each time
 - conversions are not guaranteed to do the same thing each time
 
-- not dynamic conversion
-- not allow type annotation
-- don't have tail calls
-- elide them under certain circumstances
-  - conversion is idempotent
+- Return types and tail calls
+  - not dynamic conversion
+  - not allow type annotation
+  - don't have tail calls
+  - elide them under certain circumstances
+    - conversion is idempotent
   
   function f() : *
       g()
@@ -88,11 +109,26 @@ TYPE SYSTEM OVERVIEW
 
 PROPER TAIL PRAGMA
 
-use proper tail
+An form of retun statment that indicates that guarantees a proper tail
+call is rejected in favor of a pragma such as,
 
-UNNAMED NAMESPACE
+    use check tail
 
+This means check that every return statement of the form
 
+    return f()
+
+is a proper tail call. if not, raise and exception
+
+I'm not sure this proposal is necessary. I think that smart programmers
+will be able to figure it out, by testing or by help from the tool
+chain, and dumb programmers won't care. The whole point of proper tail
+calls is that they guarantee that memory (stack) is managed in a 
+certain way. No where else do we all programmatic control over checking
+of memory.
+
+Perhpas we sholud have other 'use check' pragmas to check for other kinds
+of alternative meanings of a single syntax
 
 ###
 
@@ -165,10 +201,6 @@ All other references are resolved during evaluation.
 
 TOPLEVEL ENVIRONMENT
 
-The toplevel environment gets constructed by the definer. This includes
-the case of multiple compilation units. Every session consists of a
-particular ordering of programs. As each program is defined, duplicate
-fixtures are erased or, in case of incompatibility, result in an error.
 
 Programs can be loaded dynamically, but not unloaded until the session
 is over.

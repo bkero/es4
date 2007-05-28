@@ -31,7 +31,8 @@ package
     use default namespace public;
     use namespace intrinsic;
     use strict;
-    import Unicode.*;
+    import Unicode.*
+    import RegExpInternals.*
 
     /* FIXME (Ticket #50): should be declared down in the function it's 
        used in, but this causes it to vanish. Why?  */

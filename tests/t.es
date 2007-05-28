@@ -1,7 +1,11 @@
+package util {
 use namespace intrinsic
-class A {
-type T = (int,string)
-namespace N
-N var x : T = 10
+public type T = int
 }
-print(new A().x)
+package {
+// import utils.T;  <-- should be an error
+import util.T;
+function f() : T
+   10;
+intrinsic::print(f())
+}

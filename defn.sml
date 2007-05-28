@@ -334,7 +334,8 @@ fun defNamespace (env:ENV)
                     val packageName = (#packageName (hd env))
                     val ident = packageIdentFromPath packageName
                 in
-                    Ast.Internal ident
+(trace2 ("packageName=",ident);
+                    Ast.Internal ident)
                 end
           | Ast.Private _ => 
                 let
@@ -1393,6 +1394,7 @@ and defPragmas (env:ENV)
                                          else Ast.LimitedNamespace (name,Ast.Public id)
                             in
                                 (packageNames := package::(!packageNames);
+trace2 ("openning package ",id);
                                  opennss  := addNamespace (ns, (!opennss)))
                             end
                       | _ => 
@@ -2462,7 +2464,7 @@ and defType (env:ENV)
     let
         val { ident, ns, init } = td 
         val ns = case ns of 
-                     NONE => Ast.Internal Ustring.empty
+                     NONE => defaultNamespace env
                    | SOME e => resolveExprToNamespace env e
         val n = { id=ident, ns=ns }
     in

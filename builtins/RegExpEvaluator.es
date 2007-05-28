@@ -63,9 +63,7 @@ package RegExpInternals
     /* MatchResult and State. 
      */
 
-    // FIXME: should be 'public type', but this causes it to vanish. Why?  Ticket #44.
-    type MatchResult = State?;
-
+    public type MatchResult = State?;
     public const failure : State? = null;
     
     class State!
