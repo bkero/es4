@@ -478,16 +478,21 @@ fun allocFixtures (regs:Mach.REGS)
                             end
 
                           | Ast.ValFixture { ty, readOnly, ... } => 
-                            allocProp "value" 
-                                      { ty = ty,
-                                        state = valAllocState ty,
-                                        attrs = { dontDelete = true,
-                                                  dontEnum = false,
-                                                  readOnly = readOnly,
-                                                  isFixed = true } }
+                            let
+                                val de = (!booting) andalso (getObjId obj) = (getObjId (getGlobalObject()))
+                            in
+                                allocProp "value" 
+                                          { ty = ty,
+                                            state = valAllocState ty,
+                                            attrs = { dontDelete = true,
+                                                      dontEnum = de,
+                                                      readOnly = readOnly,
+                                                      isFixed = true } }
+                            end
                             
                           | Ast.VirtualValFixture { ty, getter, setter, ... } => 
                             let
+                                val de = (!booting) andalso (getObjId obj) = (getObjId (getGlobalObject()))
                                 val getFn = case getter of
                                                 NONE => NONE
                                               | SOME f => SOME (newFunClosure methodScope (#func f) this)
@@ -500,7 +505,7 @@ fun allocFixtures (regs:Mach.REGS)
                                             state = Mach.VirtualValProp { getter = getFn,
                                                                           setter = setFn },
                                             attrs = { dontDelete = true,
-                                                      dontEnum = false,
+                                                      dontEnum = de,
                                                       readOnly = true,
                                                       isFixed = true } }
                             end
@@ -800,10 +805,11 @@ and setValueOrVirtual (obj:Mach.OBJ)
             let
                 fun newProp _ = 
                     let 
+                        val de = (!booting) andalso (getObjId obj) = (getObjId (getGlobalObject()))
                         val prop = { state = Mach.ValProp v,
                                      ty = Ast.SpecialType Ast.Any,
                                      attrs = { dontDelete = false,
-                                               dontEnum = false,
+                                               dontEnum = de,
                                                readOnly = false,
                                                isFixed = false } }
                     in                        
@@ -4380,7 +4386,6 @@ fun resetGlobal (ob:Mach.OBJ)
      globalScope := SOME (Mach.Scope { object = ob,
                                        parent = NONE,
                                        temps = ref [],
-                                       kind = Mach.GlobalScope });
-     setValue ob Name.public_global (Mach.Object ob))
-
+                                       kind = Mach.GlobalScope }))
+    
 end

@@ -37,7 +37,7 @@ fun instantiateRootClass (fullName:Ast.NAME) (prog:Ast.PROGRAM) :
                            { ty = Name.typename Name.intrinsic_Class,
                              state = Mach.ValProp (Mach.Object obj),
                              attrs = { dontDelete = true,
-                                       dontEnum = false,
+                                       dontEnum = true,
                                        readOnly = true,
                                        isFixed = true } }
       (* 
