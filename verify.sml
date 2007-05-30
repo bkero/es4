@@ -1398,8 +1398,9 @@ and verifyProgram (p:Ast.PROGRAM)
                 val fixtures = verifyFixturesOption e fixtures
                 val result = { packages = packages,
                                block = block,
-                               fixtures = SOME fixtures }
+                               fixtures = SOME fixtures }                             
             in
+                verifyTopFixtures ();
                 trace ["verification complete"];
                 (if !doTrace 
                  then Pretty.ppProgram result

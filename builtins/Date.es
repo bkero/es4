@@ -283,6 +283,9 @@ package
 	     twoDigit(seconds) + " GMT" + 
 	     sign(tz) + twoDigit(Math.floor(atz / 60)) + twoDigit(atz % 60));
 
+        prototype function toGMTString(this:Date)
+            this.toUTCString(); 
+
         /* E262-3 15.9.5.42: Date.prototype.toUTCString */
         prototype function toUTCString(this:Date)
             this.toUTCString(); 

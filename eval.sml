@@ -745,8 +745,12 @@ and setValueOrVirtual (obj:Mach.OBJ)
                                   ty = ty, 
                                   attrs = existingAttrs }
                 fun write _ = 
-                    (Mach.delProp props name;
-                     Mach.addProp props name (newProp ()))
+                    let
+                        val np = newProp()
+                    in
+                        Mach.delProp props name;
+                        Mach.addProp props name np
+                    end
             in
                 case (#state existingProp) of 
                     Mach.UninitProp => 
