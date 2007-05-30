@@ -561,21 +561,25 @@ package RegExpInternals
             case 0x74u /* "t" */: advance(); return "\t";
                 
             case 0x63u /* "c" */:
-                advance();
-                let (c : string = consumeChar()) {
-                    if (c >= "A" && c <= "Z")
+                consumeChar();
+                let (c : string = peekChar()) {
+                    if (c >= "A" && c <= "Z") {
+                        eat(c);
                         return string.fromCharCode(c.charCodeAt(0) - "A".charCodeAt(0));
-                    if (c >= "a" && c <= "z")
+                    }
+                    if (c >= "a" && c <= "z") {
+                        eat(c);
                         return string.fromCharCode(c.charCodeAt(0) - "a".charCodeAt(0));
-                    fail( SyntaxError, "Bogus \\c sequence: " + c );
+                    }
+                    else
+                        return "c";
                 }
                 
             case 0x78u /* "x" */: 
             case 0x58u /* "X" */: 
             case 0x75u /* "u" */: 
             case 0x55u /* "U" */: {
-                let saved = idx;
-                advance();
+                consumeChar();
                 if (peekCharCode() == 0x7Bu /* "{" */) {
                     advance();
                     let s = hexDigits();
@@ -585,15 +589,15 @@ package RegExpInternals
                     return s;
                 } 
                 else {
+                    let saved = idx;
                     if (c == 0x78u /* "x" */ || c == 0x58u /* "X" */)
                         res = hexDigits(2);
                     else
                         res = hexDigits(4);
-                    if (res !== null)
-                        return res;
-
-                    idx = saved;
-                    return null;
+                    if (res !== null) {
+                        idx = saved;
+                        return string.fromCharCode(c);
+                    }
                 }
             }
             }
