@@ -538,6 +538,9 @@ and isSubtype (t1:TYPE_VALUE)
                         | (Ast.ObjectType _, Ast.InstanceType it2) => 
                           (#name it2) = Name.public_Object
 
+                        | (Ast.FunctionType _, Ast.InstanceType it2) => 
+                          (#name it2) = Name.public_Function
+
                         | (Ast.InstanceType it1, Ast.InstanceType it2) => 
                           isClass (#name it1) 
                           andalso isClass (#name it2) 
