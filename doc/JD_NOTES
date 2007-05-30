@@ -17,12 +17,51 @@ ISSUES
 
 ###
 
-TWO BUGS
+MAY-27-2007
 
-1/definer is putting internal names in a named package in the namespace Internal ""
-2/verifier isn't opening import namespaces properly (maybe)
+STRUCTURAL TYPE CHECKS
 
-###
+type T = {x: int, y: string}
+var v = {x: 10, y: "hi"}
+var o : T = v
+
+o.x  // int
+o.y  // string
+
+Dave's example
+
+type ToInt = function () : int
+function callThunk (f:ToInt) : int {
+    f();
+}
+
+callThunk (function ():* 10)
+callThunk (function ():* "fish")
+
+Both calls are allowed by the static type checker because functions returning
+* are compatible with functions returning int. But the second call results in
+a runtime error when the result of the call to f is returned
+
+A program the uses a structural type can be written to a equivalent program
+without the use of that structual type
+
+function callThunk (f:*) : int {
+    f() to int
+}
+
+Giving users the ability to express such programs may lead to unnecessary 
+inefficiency, but the trade-off is easy to understand.
+
+o.x => o.x to int
+o.y => o.y to string
+o.x = 46 => o.x = 46 to int
+o.y = "bamboo" => o.x = "bamboo" to string
+
+structural types allow clear expression of type expectations for components
+of an object, not just a single member.
+
+
+
 
 MANAGING COMPILATION UNIT
 
@@ -124,7 +163,7 @@ I'm not sure this proposal is necessary. I think that smart programmers
 will be able to figure it out, by testing or by help from the tool
 chain, and dumb programmers won't care. The whole point of proper tail
 calls is that they guarantee that memory (stack) is managed in a 
-certain way. No where else do we all programmatic control over checking
+certain way. No where else do we allow programmatic control over checking
 of memory.
 
 Perhpas we sholud have other 'use check' pragmas to check for other kinds
