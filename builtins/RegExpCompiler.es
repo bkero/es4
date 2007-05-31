@@ -523,7 +523,7 @@ package RegExpInternals
             case 0x78u /* "x" */: 
             case 0x58u /* "X" */: 
             case 0x75u /* "u" */: 
-            case 0x55u /* "U" */: {
+            case 0x55u /* "U" */:
                 consumeChar();
                 if (peekCharCode() == 0x7Bu /* "{" */) {
                     advance();
@@ -539,14 +539,12 @@ package RegExpInternals
                         res = hexDigits(2);
                     else
                         res = hexDigits(4);
-                    if (res !== null)
-                        return res;
-                    else {
+                    if (res === null) {
                         idx = saved;
                         res = string.fromCharCode(c);
                     }
+                    return res;
                 }
-            }
             }
             
             if (atEnd())
