@@ -76,8 +76,7 @@ package
 
         /* E262-3 15.10.6.2: RegExp.prototype.exec */
         intrinsic function exec(s : string) : Array {
-            let S : string = ToString(s);
-            let length : uint = S.length;
+            let length : uint = s.length;
             let i : double = ToInteger(lastIndex);
             if (!global)
                 i = 0;
@@ -94,25 +93,25 @@ package
             }
             if (global)
                 lastIndex = res.endIndex;
-            let a : Array = new Array(res.cap.length);
+            let a = new Array(res.cap.length);
             a.index = i;
-            a.input = S;
+            a.input = s;
             a.length = res.cap.length;
-            a[0] = S.substring(i,res.endIndex);
-            for ( var j=1 ; j < res.cap.length ; j++ )
+            a[0] = s.substring(i,res.endIndex);
+            for ( let j=1 ; j < res.cap.length ; j++ )
                 a[j] = res.cap[j];
             return a;
         }
 
         prototype function exec(s)
-            this.exec(s);
+            this.exec(ToString(s));
 
         /* E262-3 15.10.6.3: RegExp.prototype.test */
         intrinsic function test(s : string) : boolean
              exec(s) !== null;
 
         prototype function test(s)
-            this.test(s);
+            this.test(ToString(s));
 
         /* E262-3 15.10.6.4: RegExp.prototype.toString */
         override intrinsic function toString() : String
