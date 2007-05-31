@@ -41,12 +41,13 @@
     TODO
 
     x lex break
+    x regexp literals
     x punctuators
     x string literals
+    x comments
     o escapes
     o reserved words
     o number literals
-    o regexp literals
 */
 
 use namespace intrinsic;
@@ -711,6 +712,8 @@ namespace Lexer
             {
                 case Char::Slash :
                     return regexpFlags ();
+	        case Char::EOS :
+		    throw "unexpected end of program in regexp literal";
                 default:
                     return regexp ();
             }
@@ -741,7 +744,7 @@ namespace Lexer
                 {
                 case 0xffffffef: return utf8sig ();
                 case Char::EOS: print("EOS"); return Token::EOS;
-                case Char::Slash: return Token::BREAK;
+                case Char::Slash: return slash ();
                 case Char::Newline: return Token::Newline;
                 case Char::Space: return Token::Space;
                 case Char::LeftParen: return Token::LeftParen;
@@ -806,6 +809,57 @@ namespace Lexer
                 }
             }
             Debug.assert(false);
+	}
+
+	private function slash ()
+	    : int
+	{
+	    let c : int = next ();
+	    switch (c) {
+	    case Char::Slash : lineComment (); return start ();
+	    case Char::Asterisk : blockComment (); return start ();
+	    default : return Token::BREAK;
+	    }
+	}
+
+	private function lineComment ()
+	    : void
+	{
+	    let c : int = next ();
+	    switch (c) {
+	    case Char::Newline : 
+	    case Char::EOS :
+		retract (); 
+		return;
+	    default : 
+		return lineComment ();
+	    }
+	}
+
+	private function blockComment ()
+	    : void
+	{
+	    let c : int = next ();
+	    print ("comment ",String.fromCharCode (c));
+	    switch (c) {
+	    case Char::Asterisk :
+		switch (next()) {
+		case Char::Slash:
+		    print ("block comment found"); 
+		    return;
+		case Char::EOS :
+		    retract (); 
+		    return;
+		default: 
+		    retract (); // in case its a '*'
+		    blockComment ();
+		}
+	    case Char::EOS :
+		retract (); 
+		return;
+	    default : 
+		return blockComment ();
+	    }
 	}
 
 	private function stringLiteral (delimiter, text="")
@@ -1356,6 +1410,7 @@ namespace Lexer
         let testCases = [ ". .< .. ... ! != !== % %= & && &&= * *= + +- ++ - -- -="
 		        , "/ /= /> < <= </ << <<= = == === > >= >> >>= >>> >>>="
 			, "^ ^= | |= || ||= : :: ( ) [ ] { } ~ @ , ; ?"
+			, "/* hello nobody */ hello // goodbye world"
                         , "/abc/ 'hi' \"bye\" null break /def/xyz" ].reverse();
 
 	while (testCases.length > 0) {
