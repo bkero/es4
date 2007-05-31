@@ -96,8 +96,8 @@ package RegExpInternals
         let b : CapArray = makeCapArray(a.length);
         for ( let i : uint = 0 ; i < a.length ; i++ )
             b[i] = a[i];
-        /* E262-3 says k <= parenIndex+parenCount here, but at the moment that appears to be a bug. */
-        for ( let k : uint = parenIndex ; k < parenIndex+parenCount ; k++ )
+        // E262-3 says k >= parenIndex here, but that appears clearly to be wrong.
+        for ( let k : uint = parenIndex+1 ; k <= parenIndex+parenCount ; k++ )
             b[k] = undefined;
         return b;
     }
