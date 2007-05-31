@@ -34,11 +34,6 @@ package
     import Unicode.*
     import RegExpInternals.*
 
-    /* FIXME (Ticket #50): should be declared down in the function it's 
-       used in, but this causes it to vanish. Why?  */
-
-    type matcher = (string,RegExp!);
-
     intrinsic final class string! extends String
     {
         /* E262-4 draft */
@@ -433,6 +428,8 @@ package
             ToString(self).split(separator, limit);
 
         override intrinsic function split(separator, limit) : Array {
+
+            type matcher = (string,RegExp!);
 
             function splitMatch(R: matcher, S: string, q: uint) : [uint, [string]] {
                 /* FIXME (Ticket #19): use "switch type" when it works */

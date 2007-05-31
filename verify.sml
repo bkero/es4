@@ -307,17 +307,26 @@ fun verifyTypeExpr (env:ENV)
           | Ast.TypeName ie => 
             let
                 fun findType id nss = 
-                    case findFixture (#ribs env) {nss=nss, id=id} of 
-                        (* FIXME: re-resolve result ... in which environment? *)
-                        Ast.TypeFixture ty => ty 
-                      (* 
-                       * FIXME: possibly we should use (#instanceType cls), but this appears
-                       * not to be working at the moment. Maybe the definer should fill it in? 
-                       *)
-                      | Ast.ClassFixture (Ast.Cls cls) => instanceType (#name cls)
-                      (* FIXME: add interfaces here. *)
-                      | _ => error ["multiname ", LogErr.multiname {nss=nss, id=id}, 
-                                    " resolved to non-type fixture"]
+                    let 
+                        fun tryRibs ribs = 
+                            
+                            case findFixture ribs {nss=nss, id=id} of 
+                                (* FIXME: re-resolve result ... in which environment? *)
+                                Ast.TypeFixture ty => ty 
+                              (* 
+                               * FIXME: possibly we should use (#instanceType cls), but this appears
+                               * not to be working at the moment. Maybe the definer should fill it in? 
+                               *)
+                              | Ast.ClassFixture (Ast.Cls cls) => instanceType (#name cls)
+                              (* FIXME: add interfaces here. *)
+                              | _ => case (#ribs env) of 
+                                         (r :: rs) => tryRibs rs
+                                       | [] => error ["multiname ", LogErr.multiname {nss=nss, id=id}, 
+                                                      " resolved to non-type fixture"]
+                    in
+                        tryRibs (#ribs env)
+                    end
+
                 val resolved = case ie of 
                                    Ast.Identifier { ident, openNamespaces } => findType ident openNamespaces
                                  | Ast.QualifiedIdentifier { qual, ident } => findType ident [[resolveExprToNamespace env qual]]
@@ -1299,9 +1308,8 @@ and verifyFixture (env:ENV)
        | Ast.ClassFixture (Ast.Cls {name, nonnullable, extends, implements, classFixtures, instanceFixtures,
                                     instanceInits, constructor, classType, instanceType }) =>
          let
-             (* FIXME: Make sure the environment is being extended
-              * properly to reflect the various ctor/init/settings scopes. *)
              val classFixtures = verifyFixtures env classFixtures
+             val env = withRib env classFixtures
              val instanceFixtures = verifyFixtures env instanceFixtures
              val instanceInits = verifyHead env instanceInits
              val constructor = case constructor of 
@@ -1363,7 +1371,14 @@ and verifyFixture (env:ENV)
 and verifyFixtures (env:ENV)
                    (fixtures:Ast.FIXTURES)
     : Ast.FIXTURES = 
-    map (fn (name,fixture) => (trace ["verifying fixture: ", LogErr.fname name]; (name,verifyFixture env fixture))) fixtures
+    let 
+        val env = withRib env fixtures
+        fun doFixture (name, fixture) = 
+            (trace ["verifying fixture: ", LogErr.fname name]; 
+             (name,verifyFixture env fixture))
+    in
+        map doFixture fixtures
+    end
 
 and verifyFixturesOption (env:ENV) 
 		                 (fs:Ast.FIXTURES option)  
