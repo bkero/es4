@@ -60,9 +60,6 @@ o.y = "bamboo" => o.x = "bamboo" to string
 structural types allow clear expression of type expectations for components
 of an object, not just a single member.
 
-
-
-
 MANAGING COMPILATION UNIT
 
 use unit foo "http://myco.com"

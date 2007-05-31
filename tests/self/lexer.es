@@ -45,8 +45,9 @@
     x punctuators
     x string literals
     x comments
+    x reserved words
+
     o escapes
-    o reserved words
     o number literals
 */
 
@@ -247,7 +248,8 @@ namespace Token
     const Double = Decimal - 1
     const Dynamic = Double - 1
     const Each = Dynamic - 1
-    const Final = Each - 1
+    const Eval = Each - 1
+    const Final = Eval - 1
     const Get = Final - 1
     const Has = Get - 1
     const Implements = Has - 1
@@ -417,6 +419,7 @@ namespace Token
         "double",
         "dynamic",
         "each",
+	"eval",
         "final",
         "get",
         "has",
@@ -576,7 +579,7 @@ namespace Token
         case "static": return Static;
         case "to": return To;
         case "type": return Type;
-        case "uint": return Uint;
+        case "uint": return UInt;
         case "undefined": return Undefined;
         case "use": return Use;
         case "xml": return Xml;
@@ -679,14 +682,14 @@ namespace Lexer
             : void
         {
             curIndex--;
-            print("retract cur=",curIndex);
+            // print("retract cur=",curIndex);
         }
 
         private function mark () 
             : void
         {
             markIndex = curIndex;
-            print("mark mark=",markIndex);
+	    // print("mark mark=",markIndex);
         }
 
         public function tokenList (lexPrefix)
@@ -743,10 +746,10 @@ namespace Lexer
                 switch (c)
                 {
                 case 0xffffffef: return utf8sig ();
-                case Char::EOS: print("EOS"); return Token::EOS;
+                case Char::EOS: return Token::EOS;
                 case Char::Slash: return slash ();
                 case Char::Newline: return Token::Newline;
-                case Char::Space: return Token::Space;
+                case Char::Space: return start ();
                 case Char::LeftParen: return Token::LeftParen;
                 case Char::RightParen: return Token::RightParen;
                 case Char::Comma: return Token::Comma;
@@ -775,21 +778,21 @@ namespace Lexer
                 case Char::RightAngle: return rightAngle ();
                 case Char::Zero: return zero ();
                 case Char::b: return b_ ();
-                case Char::c: return c_ ();
+                case Char::c: return identifier ();
                 case Char::d: return d_ ();
-                case Char::e: return e_ ();
-                case Char::f: return f_ ();
-                case Char::g: return g_ ();
-                case Char::i: return i_ ();
+                case Char::e: return identifier ();
+                case Char::f: return identifier ();
+                case Char::g: return identifier ();
+                case Char::i: return identifier ();
                 case Char::n: return n_ ();
-                case Char::o: return o_ ();
-                case Char::p: return p_ ();
-                case Char::r: return r_ ();
-                case Char::s: return s_ ();
-                case Char::t: return t_ ();
-                case Char::u: return u_ ();
-                case Char::v: return v_ ();
-                case Char::w: return w_ ();
+                case Char::o: return identifier ();
+                case Char::p: return identifier ();
+                case Char::r: return identifier ();
+                case Char::s: return identifier ();
+                case Char::t: return identifier ();
+                case Char::u: return identifier ();
+                case Char::v: return identifier ();
+                case Char::w: return identifier ();
                 default:
                     /*
                     if (Unicode.isDecimalDigit (c)) 
@@ -816,9 +819,14 @@ namespace Lexer
 	{
 	    let c : int = next ();
 	    switch (c) {
-	    case Char::Slash : lineComment (); return start ();
-	    case Char::Asterisk : blockComment (); return start ();
-	    default : return Token::BREAK;
+	    case Char::Slash : 
+		lineComment (); 
+		return start ();
+	    case Char::Asterisk : 
+		blockComment (); 
+		return start ();
+	    default : 
+		return Token::BREAK;
 	    }
 	}
 
@@ -827,11 +835,11 @@ namespace Lexer
 	{
 	    let c : int = next ();
 	    switch (c) {
-	    case Char::Newline : 
-	    case Char::EOS :
-		retract (); 
+	    case Char::Newline: 
+	    case Char::EOS:
+		retract (); // leave newline for asi
 		return;
-	    default : 
+	    default:
 		return lineComment ();
 	    }
 	}
@@ -840,18 +848,16 @@ namespace Lexer
 	    : void
 	{
 	    let c : int = next ();
-	    print ("comment ",String.fromCharCode (c));
 	    switch (c) {
 	    case Char::Asterisk :
 		switch (next()) {
 		case Char::Slash:
-		    print ("block comment found"); 
 		    return;
 		case Char::EOS :
 		    retract (); 
 		    return;
 		default: 
-		    retract (); // in case its a '*'
+		    retract (); // leave in case its an asterisk
 		    blockComment ();
 		}
 	    case Char::EOS :
@@ -1356,8 +1362,8 @@ namespace Lexer
             let c : int = next();
             switch (c) 
             {
-                case Char::a : return na_ ();
-                case Char::e : return ne_ ();
+                case Char::a : return identifier ();
+                case Char::e : return identifier ();
                 case Char::u : return nu_ ();
                 default:
                     retract ();
@@ -1407,7 +1413,14 @@ namespace Lexer
 
     function test() 
     {
-        let testCases = [ ". .< .. ... ! != !== % %= & && &&= * *= + +- ++ - -- -="
+        let testCases = [ "break case catch continue default delete do else enum extends"
+			, "false finally for function if in instanceof new null return"
+                        , "super switch this throw true try typeof var void while with"
+			, "call cast const decimal double dynamic each eval final get has"
+			, "implements import int interface internal intrinsic is let namespace"
+			, "native Number override package precision private protected prototype public"
+			, "rounding standard strict static to type uint undefined use xml yield"
+			, ". .< .. ... ! != !== % %= & && &&= * *= + +- ++ - -- -="
 		        , "/ /= /> < <= </ << <<= = == === > >= >> >>= >>> >>>="
 			, "^ ^= | |= || ||= : :: ( ) [ ] { } ~ @ , ; ?"
 			, "/* hello nobody */ hello // goodbye world"
