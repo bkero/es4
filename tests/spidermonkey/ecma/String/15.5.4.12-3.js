@@ -56,6 +56,8 @@
    Date:               12 november 1997
 */
 
+var u;  // Workaround for ES4 reference implementation - lth@acm.org / 2007-05-31
+
 var SECTION = "15.5.4.12-3";
 var VERSION = "ECMA_1";
 startTest();
