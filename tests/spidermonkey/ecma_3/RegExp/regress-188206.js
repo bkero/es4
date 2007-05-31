@@ -96,11 +96,14 @@ testThis(' /a????/ ');
 /*
  * Now do some weird things on the left side of the regexps -
  */
+/* This is broken, "/*" is the beginning of a comment!  lth@acm.org / 2007-05-30
+
 status = inSection(7);
 testThis(' /*a/ ');
 
 status = inSection(8);
 testThis(' /**a/ ');
+*/
 
 status = inSection(9);
 testThis(' /+a/ ');
@@ -131,6 +134,9 @@ testThis(' /??a/ ');
  * Therefore NONE of the following ECMA violations should generate
  * a SyntaxError. Note we use checkThis() instead of testThis().
  */
+
+/* Removed because they are invalid.  lth@acm.org / 2007-05-30
+
 status = inSection(13);
 checkThis(' /a*{/ ');
 
@@ -175,7 +181,7 @@ checkThis(' /x{{0}}/ ');
 
 status = inSection(27);
 checkThis(' /x{{1}}/ ');
-
+*/
 
 /*
  * Misusing the {DecmalDigits} quantifier - according to BOTH ECMA and Perl.
