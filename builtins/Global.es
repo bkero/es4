@@ -143,7 +143,8 @@ package
     var decodeURIComponent = intrinsic::decodeURIComponent;
     var encodeURI = intrinsic::encodeURI;
     var encodeURIComponent = intrinsic::encodeURIComponent;
-    
+    var global = this;
+
     // The non-virtual property get/set helpers.
     intrinsic native function get(obj:Object!, name:string) : *;
     intrinsic native function set(obj:Object!, name:string, val:*) : void;
