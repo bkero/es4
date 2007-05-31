@@ -938,6 +938,10 @@ and throwRefErr (args:string list)
     : REF = 
     throwExn0 Name.public_ReferenceError args
 
+and throwRefErr0 (args:string list)
+    : Mach.OBJ = 
+    throwExn1 Name.public_ReferenceError args
+
 and needNamespace (v:Mach.VAL) 
     : Ast.NAMESPACE = 
     case v of 
@@ -2853,7 +2857,8 @@ and evalRefExprFull (regs:Mach.REGS)
                 val _ = LogErr.setLoc loc
                 val ob = case v of 
                              Mach.Object ob => ob
-                           | _ => getGlobalObject() 
+                           | Mach.Null => throwRefErr0 ["object reference on null value"]
+                           | Mach.Undef => throwRefErr0 ["object reference on undefined value"]
                 val _ = LogErr.setLoc loc
                 val nameOpt = resolveName ob nomn
                 val _ = LogErr.setLoc loc
