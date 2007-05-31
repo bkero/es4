@@ -134,10 +134,10 @@ package
            E262-4 draft proposals:static_generics
            E262-4 draft proposals:bug_fixes - FUNCTION.LENGTH
         */
-        prototype function lastIndexOf(searchString, position = 0.0)
+        prototype function lastIndexOf(searchString, position)
             ToString(this).lastIndexOf(ToString(searchString), ToDouble(position));
 
-        static function lastIndexOf(self, searchString, position = 0.0)
+        static function lastIndexOf(self, searchString, position)
             ToString(self).lastIndexOf(ToString(searchString), ToDouble(position));
 
         intrinsic function lastIndexOf(searchString: String!, position: double) : double 
