@@ -28,7 +28,6 @@ package RegExpInternals
         var   extended : boolean;      // true iff expression has /x flag  // FIXME: const.  Ticket #24.
         var   names : [string?] = [];  // capturing names, or null for capturing exprs that are not named  // FIXME: const.  Ticket #24.
         var   parenIndex : uint = 0;   // number of capturing parens (including those that are named) // FIXME: const.  Ticket #24.
-        var   parenCount : uint = 0;   // current depth of capture nesting // FIXME: const.  Ticket #24.
 
         function RegExpCompiler( source : string, flags  )
             : extended = flags.x
@@ -78,6 +77,7 @@ package RegExpInternals
         }
 
         function term() : Matcher? {
+            let savedParenIndex = parenIndex;
             let x : Matcher? = assertion();
             if (x !== null)
                 return x;
@@ -86,7 +86,7 @@ package RegExpInternals
             if (y === null)
                 return xx;
             let [min, max, greedy] : [double,double,boolean] = y;
-            return new Quantified(parenIndex, parenCount, xx, min, max, greedy);
+            return new Quantified(savedParenIndex, parenIndex - savedParenIndex, xx, min, max, greedy);
         }
 
         function assertion() : Matcher? {
@@ -218,12 +218,10 @@ package RegExpInternals
                             let name : string = identifier();
                             match(">");
                             let capno : uint = parenIndex++;
-                            parenCount++;
                             let d : Matcher = disjunction();
-                            parenCount--;
                             match(")");
-                            for each ( let n : string in names ) {
-                                if (n === name)
+                            for ( let i:uint=0 ; i < names.length ; i++ ) {
+                                if (names[i] === name)
                                     fail( SyntaxError, "Multiply defined capture name: " + name );
                             }
                             names[capno] = name;
@@ -245,9 +243,7 @@ package RegExpInternals
                 } // peekChar() != "?"
                     
                 let capno : uint = parenIndex++;
-                parenCount++;
                 let d : Matcher = disjunction();
-                parenCount--;
                 match(")");
                 return new Capturing(d, capno);
                 
