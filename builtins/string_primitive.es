@@ -171,22 +171,25 @@ package
            E262-4 draft proposals:bug_fixes - FUNCTION.LENGTH
         */
         prototype function lastIndexOf(searchString, position)
-            ToString(this).lastIndexOf(searchString, position);
+            ToString(this).lastIndexOf(ToString(searchString), ToDouble(position));
 
         static function lastIndexOf(self, searchString, position)
-            ToString(self).lastIndexOf(searchString, position);
+            ToString(self).lastIndexOf(ToString(searchString), ToDouble(position));
 
         override intrinsic function lastIndexOf(searchString: string, position: double) : double {
             position = isNaN(position) ? Infinity : ToInteger(position);
 
             let slen  : uint = length;
-            let m     : uint = Math.min(Math.max(position, 0), slen);
             let sslen : uint = searchString.length;
+            let m     : uint = Math.min(Math.max(position, 0), slen);
+
+            if (sslen > slen)
+                return -1;
 
             outer:
-            for ( let k : uint = m ; k >= 0u ; k-- ) {
-                for ( let w : uint = 0u ; w < sslen ; w++ ) {
-                    if (magic::charCodeAt(this, k+w) !== magic::charCodeAt(searchString, w)) 
+            for ( let k = Math.min(m, slen-sslen) ; k >= 0 ; k-- ) {  // Be careful if optimizing with uint here...
+                for ( let w = 0 ; w < sslen ; w++ ) {
+                    if (magic::charCodeAt(this, uint(k+w)) !== magic::charCodeAt(searchString, uint(w))) 
                         continue outer;
                 }
                 return k;
