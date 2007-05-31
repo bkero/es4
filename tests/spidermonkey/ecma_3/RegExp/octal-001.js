@@ -57,12 +57,16 @@ var expectedmatch = '';
 var expectedmatches = new Array();
 
 
+/* There's no support for this in any spec, \240 is an undefined backref.
+   E262-3 15.10.2.9 bullet 7 states unequivocally that this is a SyntaxError.
+   lth@acm.org / 2007-05-31
 status = inSection(1);
 pattern = /\240/;
 string = 'abc';
 actualmatch = string.match(pattern);
 expectedmatch = null;
 addThis();
+*/
 
 /*
  * In the following sections, we test the octal escape sequence '\052'.
