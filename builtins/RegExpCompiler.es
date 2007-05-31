@@ -563,11 +563,11 @@ package RegExpInternals
                 let (c : string = peekChar()) {
                     if (c >= "A" && c <= "Z") {
                         eat(c);
-                        return string.fromCharCode(c.charCodeAt(0) - "A".charCodeAt(0));
+                        return string.fromCharCode(c.charCodeAt(0) - "A".charCodeAt(0) + 1);
                     }
                     if (c >= "a" && c <= "z") {
                         eat(c);
-                        return string.fromCharCode(c.charCodeAt(0) - "a".charCodeAt(0));
+                        return string.fromCharCode(c.charCodeAt(0) - "a".charCodeAt(0) + 1);
                     }
                     else
                         return "c";
