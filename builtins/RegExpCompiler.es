@@ -78,17 +78,18 @@ package RegExpInternals
 
         function term() : Matcher? {
             let savedParenIndex = parenIndex;
-            let x : Matcher? = assertion();
-            if (x !== null)
-                return x;
-            let xx : Matcher = atom();
-            if (xx === null)
-                return xx;
-            let y : [double, double, boolean]? = quantifier();
-            if (y === null)
-                return xx;
-            let [min, max, greedy] : [double,double,boolean] = y;
-            return new Quantified(savedParenIndex, parenIndex - savedParenIndex, xx, min, max, greedy);
+            let (a : Matcher? = assertion()) {
+                if (a !== null)
+                    return a;
+            }
+            let m : Matcher? = atom();
+            if (m === null)
+                return m;
+            let q : [double, double, boolean]? = quantifier();
+            if (q === null)
+                return m;
+            let [min, max, greedy] : [double,double,boolean] = q;
+            return new Quantified(savedParenIndex, parenIndex - savedParenIndex, m, min, max, greedy);
         }
 
         function assertion() : Matcher? {
@@ -105,10 +106,9 @@ package RegExpInternals
             case 0x5Cu /* "\\" */:
                 if (eat("\\b")) 
                     return new AssertWordBoundary;
-                else if (eat("\\B")) 
+                if (eat("\\B")) 
                     return new AssertNotWordBoundary;
-                else
-                    return null;
+                return null;
 
             default: 
                 return null;
@@ -116,10 +116,10 @@ package RegExpInternals
         }
 
         function quantifier() : [double,double,boolean]? {
-            let x : [double,double]? = quantifierPrefix();
-            if (x == null)
-                return x;
-            let [min,max] : [double,double] = x;
+            let qp : [double,double]? = quantifierPrefix();
+            if (qp === null)
+                return qp;
+            let [min,max] : [double,double] = qp;
             let greedy : boolean = true;
             if (peekCharCode() == 0x3Fu /* "?" */) {
                 greedy = false;
@@ -275,33 +275,27 @@ package RegExpInternals
         }
 
         function atomEscape() : Matcher {
+            if (!eat("\\"))
+                fail( SyntaxError, "Backslash required here (internal compiler error)" );
 
-            function handleOctalEscape(t: double) : Matcher {
-                return new CharsetMatcher(new CharsetAdhoc(String.fromCharCode(t)));
+            let (t : Charset? = characterClassEscape()) {
+                if (t !== null)
+                    return new CharsetMatcher(t);
             }
 
-            function handleDecimalEscape(t : double) : Matcher {
-                if (t === 0)
-                    fail( SyntaxError, "Invalid backreference" );
-                else {
+            let (t : string? = characterEscape(false)) {
+                if (t !== null)
+                    return new CharsetMatcher(new CharsetAdhoc(t));
+            }
+
+            let (t : double? = decimalEscape()) {
+                if (t !== null) {
                     largest_backref = Math.max(largest_backref, t);  // Will check validity later
                     return new Backref(t);
                 }
             }
 
-            function handleCharacterClassEscape(t : Charset) : Matcher {
-                return new CharsetMatcher(t);
-            }
-
-            function handleCharacterEscape(t : string) : Matcher {
-                return new CharsetMatcher(new CharsetAdhoc(t));
-            }
-
-            return escape(handleOctalEscape, 
-                          handleDecimalEscape, 
-                          handleCharacterClassEscape, 
-                          handleCharacterEscape, 
-                          false );
+            fail( SyntaxError, "Failed to match escape sequence \\" + peekChar() );
         }
 
         function characterClass() : Matcher {
@@ -414,74 +408,30 @@ package RegExpInternals
         }
 
         function classEscape() : Charset {
-            function makeCharset(t: double): Charset {
-                return new CharsetAdhoc(string.fromCharCode(t));
-            }
-            return escape( makeCharset,
-                           makeCharset,
-                           function(t : Charset) : Charset { return t },
-                           function(t : string) : Charset { return new CharsetAdhoc(t) },
-                           true );
-        }
-
-        /* Parse an escape sequence. */
-        function escape( handleOctalEscape : function (double) : (Matcher,Charset),
-                         handleDecimalEscape : function (double) : (Matcher,Charset),
-                         handleCharacterClassEscape : function (Charset) : (Matcher,Charset),
-                         handleCharacterEscape : function (string) : (Matcher,Charset),
-                         allow_b : boolean ) : (Matcher,Charset) {
-
             if (!eat("\\"))
                 fail( SyntaxError, "Backslash required here (internal compiler error)" );
 
             let (t : Charset? = characterClassEscape()) {
                 if (t !== null)
-                    return handleCharacterClassEscape(t);
+                    return t;
             }
 
-            let (t : string? = characterEscape(allow_b)) {
+            let (t : string? = characterEscape(true)) {
                 if (t !== null)
-                    return handleCharacterEscape(t);
+                    return new CharsetAdhoc(t);
             }
 
             let (t : double? = decimalEscape()) {
                 if (t !== null) 
-                    return handleDecimalEscape(t);
-            }
-
-            let (t : double? = octalEscape()) {
-                if (t !== null)
-                    return handleOctalEscape(t);
+                    return new CharsetAdhoc(string.fromCharCode(t));
             }
 
             fail( SyntaxError, "Failed to match escape sequence " + peekChar() );
         }
 
         /* Returns null if it does not consume anything but fails;
-           throws an error if it consumes and then fails. 
-        */
-        function decimalEscape() : double? {
-            let c : uint = peekCharCode();
-            if (c == 0x30u)
-                return null;
-            if (c >= 0x31u && c <= 0x39u)
-                return decimalDigits();
-            else
-                return null;
-        }
-
-        /* Returns null if it does not consume anything but fails;
-           throws an error if it consumes and then fails. 
-        */
-        function octalEscape() : double? {
-            if (!eat("0"))
-                return null;
-            return octalDigits(true);
-        }
-
-        /* Returns null if it does not consume anything but fails;
-           throws an error if it consumes and then fails.  
-        */
+         * throws an error if it consumes and then fails.  
+         */
         function characterClassEscape() : Charset? {
 
             function unicodeSet(invert : boolean) : Charset {
@@ -520,20 +470,17 @@ package RegExpInternals
         }
 
         /* Returns null if it does not consume anything but fails;
-           throws an error if it consumes and then fails. 
-        */
+         * throws an error if it consumes and then fails. 
+         *
+         * Handles octal and hex escapes.
+         */
         function characterEscape(allow_b : boolean) : string? {
 
             let c : uint = peekCharCode();
 
             switch (c) {
             case 0x30u /* "0" */:
-                let (c : string = peekChar2()) {
-                    if (c <= "0" || c >= "8")
-                        return null;
-                    else
-                        return string.fromCharCode(octalDigits(true));
-                }
+                return string.fromCharCode(octalDigits(true));
 
             case 0x31u:
             case 0x32u:
@@ -592,9 +539,11 @@ package RegExpInternals
                         res = hexDigits(2);
                     else
                         res = hexDigits(4);
-                    if (res !== null) {
+                    if (res !== null)
+                        return res;
+                    else {
                         idx = saved;
-                        return string.fromCharCode(c);
+                        res = string.fromCharCode(c);
                     }
                 }
             }
@@ -604,6 +553,19 @@ package RegExpInternals
                 fail( SyntaxError, "EOF inside escape sequence" );
             
             return consumeChar();
+        }
+
+        /* Returns null if it does not consume anything but fails;
+         * throws an error if it consumes and then fails. 
+         */
+        function decimalEscape() : double? {
+            let c : uint = peekCharCode();
+            if (c == 0x30u)
+                return null;
+            if (c >= 0x31u && c <= 0x39u)
+                return decimalDigits();
+            else
+                return null;
         }
 
         /*** Token handling ***/
