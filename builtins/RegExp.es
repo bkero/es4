@@ -150,10 +150,14 @@ package
         /* Internal */
         private var matcher : RegExpMatcher;      // The [[Match]] property  // FIXME: const.  Ticket #24.
 
+        /* E262-3 15.10.6.4 probably is meant to require the flags to
+         * be returned in lexicographic order for the purposes of
+         * toString().
+         */
         private function get flags() : string {
-            return (multiline ? "m" : "") +
+            return (global ? "g" : "") +
                    (ignoreCase ? "i" : "") +
-                   (global ? "g" : "") +
+                   (multiline ? "m" : "") +
                    (extended ? "x" : "") +
                    (sticky ? "y" : "");
         }
