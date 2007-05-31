@@ -335,6 +335,11 @@ fun nomnToStr (nomn:NAME_OR_MULTINAME) =
         Name name => LogErr.name name
       | Multiname mname => LogErr.multiname mname
 
+fun shouldBeDontEnum (n:Ast.NAME) (obj:Mach.OBJ) : bool = 
+    case (#ns n) of 
+        Ast.Private _ => true
+      | _ => (!booting) andalso (getObjId obj) = (getObjId (getGlobalObject()))
+
 (* Fundamental object methods *)
 
 fun allocFixtures (regs:Mach.REGS) 
@@ -478,21 +483,16 @@ fun allocFixtures (regs:Mach.REGS)
                             end
 
                           | Ast.ValFixture { ty, readOnly, ... } => 
-                            let
-                                val de = (!booting) andalso (getObjId obj) = (getObjId (getGlobalObject()))
-                            in
-                                allocProp "value" 
-                                          { ty = ty,
-                                            state = valAllocState ty,
-                                            attrs = { dontDelete = true,
-                                                      dontEnum = de,
-                                                      readOnly = readOnly,
-                                                      isFixed = true } }
-                            end
+                            allocProp "value" 
+                                      { ty = ty,
+                                        state = valAllocState ty,
+                                        attrs = { dontDelete = true,
+                                                  dontEnum = shouldBeDontEnum pn obj,
+                                                  readOnly = readOnly,
+                                                  isFixed = true } }
                             
                           | Ast.VirtualValFixture { ty, getter, setter, ... } => 
                             let
-                                val de = (!booting) andalso (getObjId obj) = (getObjId (getGlobalObject()))
                                 val getFn = case getter of
                                                 NONE => NONE
                                               | SOME f => SOME (newFunClosure methodScope (#func f) this)
@@ -505,7 +505,7 @@ fun allocFixtures (regs:Mach.REGS)
                                             state = Mach.VirtualValProp { getter = getFn,
                                                                           setter = setFn },
                                             attrs = { dontDelete = true,
-                                                      dontEnum = de,
+                                                      dontEnum = shouldBeDontEnum pn obj,
                                                       readOnly = true,
                                                       isFixed = true } }
                             end
@@ -805,11 +805,10 @@ and setValueOrVirtual (obj:Mach.OBJ)
             let
                 fun newProp _ = 
                     let 
-                        val de = (!booting) andalso (getObjId obj) = (getObjId (getGlobalObject()))
                         val prop = { state = Mach.ValProp v,
                                      ty = Ast.SpecialType Ast.Any,
                                      attrs = { dontDelete = false,
-                                               dontEnum = de,
+                                               dontEnum = shouldBeDontEnum name obj,
                                                readOnly = false,
                                                isFixed = false } }
                     in                        
