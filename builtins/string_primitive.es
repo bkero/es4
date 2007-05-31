@@ -288,7 +288,7 @@ package
                     else if (res[3]) s += substring(0, start);
                     else if (res[4]) s += substring(end);
                     else             
-                        let (c : int = parseInt(res[5])+1) { 
+                        let (c : int = parseInt(res[5])) { 
                             if (c in cap) s += cap[c]; 
                         }
                 }
