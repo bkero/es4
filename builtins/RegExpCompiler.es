@@ -82,6 +82,8 @@ package RegExpInternals
             if (x !== null)
                 return x;
             let xx : Matcher = atom();
+            if (xx === null)
+                return xx;
             let y : [double, double, boolean]? = quantifier();
             if (y === null)
                 return xx;
