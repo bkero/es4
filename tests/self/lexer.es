@@ -40,13 +40,13 @@
 /*
     TODO
 
-    o punctuators
+    x lex break
+    x punctuators
+    x string literals
     o escapes
     o reserved words
     o number literals
-    o string literals
     o regexp literals
-    x lex break
 */
 
 use namespace intrinsic;
@@ -109,7 +109,7 @@ namespace Char
     const Y = "Y".charCodeAt(0);
     const Z = "Z".charCodeAt(0);
     const Zero = "0".charCodeAt(0);
-    const Period = ".".charCodeAt(0);
+    const Dot = ".".charCodeAt(0);
     const Bang = "!".charCodeAt(0);
     const Equal = "=".charCodeAt(0);
     const Percent = "%".charCodeAt(0);
@@ -149,11 +149,11 @@ namespace Token
     const Minus = firstTokenClass
     const MinusMinus = Minus - 1
     const Not = MinusMinus - 1
-    const NotEquals = Not - 1
-    const StrictNotEquals = NotEquals - 1
-    const Modulus = StrictNotEquals - 1
-    const ModulusAssign = Modulus - 1
-    const BitwiseAnd = ModulusAssign - 1
+    const NotEqual = Not - 1
+    const StrictNotEqual = NotEqual - 1
+    const Remainder = StrictNotEqual - 1
+    const RemainderAssign = Remainder - 1
+    const BitwiseAnd = RemainderAssign - 1
     const LogicalAnd = BitwiseAnd - 1
     const LogicalAndAssign = LogicalAnd - 1
     const BitwiseAndAssign = LogicalAndAssign - 1
@@ -190,14 +190,14 @@ namespace Token
     const LessThan = PlusAssign - 1
     const LeftShift = LessThan - 1
     const LeftShiftAssign = LeftShift - 1
-    const LessThanOrEquals = LeftShiftAssign - 1
-    const Assign = LessThanOrEquals - 1
+    const LessThanOrEqual = LeftShiftAssign - 1
+    const Assign = LessThanOrEqual - 1
     const MinusAssign = Assign - 1
-    const Equals = MinusAssign - 1
-    const StrictEquals = Equals - 1
-    const GreaterThan = StrictEquals - 1
-    const GreaterThanOrEquals = GreaterThan - 1
-    const RightShift = GreaterThanOrEquals - 1
+    const Equal = MinusAssign - 1
+    const StrictEqual = Equal - 1
+    const GreaterThan = StrictEqual - 1
+    const GreaterThanOrEqual = GreaterThan - 1
+    const RightShift = GreaterThanOrEqual - 1
     const RightShiftAssign = RightShift - 1
     const UnsignedRightShift = RightShiftAssign - 1
     const UnsignedRightShiftAssign = UnsignedRightShift - 1
@@ -704,18 +704,6 @@ namespace Lexer
             return tokenList.reverse();
         }
 
-        public function div () : int
-        {
-            let c : int = next ();
-            switch (c) 
-            {
-                case Char::Equal : return Token::DivAssign;
-                default:
-                    retract ();
-                    return Token::Div;
-            }
-        }
-
         public function regexp ()
         {
             let c : int = next ();
@@ -759,7 +747,7 @@ namespace Lexer
                 case Char::LeftParen: return Token::LeftParen;
                 case Char::RightParen: return Token::RightParen;
                 case Char::Comma: return Token::Comma;
-                case Char::Semicolon: return Token::Semicolon;
+                case Char::Semicolon: return Token::SemiColon;
                 case Char::QuestionMark: return Token::QuestionMark;
                 case Char::LeftBracket: return Token::LeftBracket;
                 case Char::RightBracket: return Token::RightBracket;
@@ -769,18 +757,19 @@ namespace Lexer
                 case Char::At: return Token::At;
                 case Char::SingleQuote: return stringLiteral (c);
                 case Char::DoubleQuote: return stringLiteral (c);
+		case Char::Dot: return dot ();
                 case Char::Dash: return minus ();
                 case Char::Bang: return not ();
                 case Char::Percent: return remainder ();
                 case Char::Ampersand: return and ();
                 case Char::Asterisk: return mult ();
                 case Char::Colon: return colon ();
-                case Char::Caret: return caret ();
-                case Char::Bar: return or ();
+                case Char::Caret: return bitwiseXor ();
+                case Char::Bar: return bitwiseOr ();
                 case Char::Plus: return plus ();
-                case Char::LeftAngle: return lessthan ();
+                case Char::LeftAngle: return leftAngle ();
                 case Char::Equal: return equal ();
-                case Char::RightAngle: return greaterthan ();
+                case Char::RightAngle: return rightAngle ();
                 case Char::Zero: return zero ();
                 case Char::b: return b_ ();
                 case Char::c: return c_ ();
@@ -817,7 +806,384 @@ namespace Lexer
                 }
             }
             Debug.assert(false);
-		}
+	}
+
+	private function stringLiteral (delimiter, text="")
+	    : int
+	{
+	    let c : int = next ();
+	    switch (c) {
+	    case delimiter : return Token::makeInstance (Token::StringLiteral, String.fromCharCode(delimiter)+text);
+		// encode delimiter in string lexeme by appending to text
+	    default :
+		return stringLiteral (delimiter, text+String.fromCharCode (c))
+	    }
+	}
+
+	/*
+	
+	. .. ... .<
+	
+	*/
+
+	private function dot ()
+	    : int
+	{
+	    let c : int = next ();
+	    switch (c) {
+	    case Char::Dot : return dotdot ();
+	    case Char::LeftAngle : return Token::LeftDotAngle;
+	    default : 
+		retract ();
+		return Token::Dot;
+	    }
+	}
+
+	private function dotdot ()
+	    : int
+	{
+	    let c : int = next ();
+	    switch (c) {
+	    case Char::Dot : return Token::TripleDot;
+	    default :
+		retract ();
+		return Token::DoubleDot;
+	    }
+	}
+
+	/*
+
+	! != !==
+
+	*/
+
+	private function not ()
+	    : int
+	{
+	    let c : int = next ();
+	    switch (c) {
+	    case Char::Equal : return notequal ();
+	    default :
+		retract ();
+		return Token::Not;
+	    }
+	}
+
+	private function notequal ()
+	    : int
+	{
+	    let c : int = next ();
+	    switch (c) {
+	    case Char::Equal : return Token::StrictNotEqual;
+	    default :
+		retract ();
+		return Token::NotEqual;
+	    }
+	}
+
+	/*
+
+	% %=
+
+	*/
+
+	private function remainder ()
+	    : int
+	{
+	    let c : int = next ();
+	    switch (c) {
+	    case Char::Equal : return Token::RemainderAssign;;
+	    default :
+		retract ();
+		return Token::Remainder;
+	    }
+	}
+
+	/*
+
+	& &= && &&=
+
+	*/
+
+	private function and ()
+	    : int
+	{
+	    let c : int = next ();
+	    switch (c) {
+	    case Char::Equal : return Token::BitwiseAndAssign;;
+	    case Char::Ampersand : return logicalAnd ();
+	    default :
+		retract ();
+		return Token::BitwiseAnd;
+	    }
+	}
+
+	private function logicalAnd ()
+	    : int
+	{
+	    let c : int = next ();
+	    switch (c) {
+	    case Char::Equal : return Token::LogicalAndAssign;;
+	    default :
+		retract ();
+		return Token::LogicalAnd;
+	    }
+	}
+
+	/*
+
+	* *=
+
+	*/
+
+	private function mult ()
+	    : int
+	{
+	    let c : int = next ();
+	    switch (c) {
+	    case Char::Equal : return Token::MultAssign;;
+	    default :
+		retract ();
+		return Token::Mult;
+	    }
+	}
+
+	/*
+
+	+ +==
+
+	*/
+
+	private function plus ()
+	    : int
+	{
+	    let c : int = next ();
+	    switch (c) {
+	    case Char::Plus : return Token::PlusPlus;
+	    case Char::Equal : return Token::PlusAssign;
+	    default :
+		retract ();
+		return Token::Plus;
+	    }
+	}
+
+	/*
+	  
+	- -- -=
+
+	*/
+
+	private function minus ()
+	    : int
+	{
+	    let c : int = next ();
+	    switch (c) {
+	    case Char::Dash : return Token::MinusMinus;
+	    case Char::Equal : return Token::MinusAssign;
+	    default :
+		retract ();
+		return Token::Minus;
+	    }
+	}
+
+	/*
+
+	/ /= />
+
+	*/
+
+	public function div ()
+	    : int
+	{
+	    let c : int = next ();
+	    switch (c) {
+	    case Char::Equal : return Token::DivAssign;
+	    case Char::RightAngle : return Token::XmlTagEndEnd;
+	    default :
+		retract ();
+		return Token::Div;
+	    }
+	}
+
+	/*
+
+	< <= </ << <<=
+
+	*/
+
+	private function leftAngle ()
+	    : int
+	{
+	    let c : int = next ();
+	    switch (c) {
+	    case Char::Equal : return Token::LessThanOrEqual;
+	    case Char::LeftAngle : return leftShift ();
+	    case Char::Slash : return Token::XmlTagStartEnd
+	    default :
+		retract ();
+		return Token::LessThan;
+	    }
+	}
+
+	private function leftShift ()
+	    : int
+	{
+	    let c : int = next ();
+	    switch (c) {
+	    case Char::Equal : return Token::LeftShiftAssign;
+	    default :
+		retract ();
+		return Token::LeftShift;
+	    }
+	}
+
+	/*
+
+	= == ===
+
+	*/
+
+	private function equal ()
+	    : int
+	{
+	    let c : int = next ();
+	    switch (c) {
+	    case Char::Equal : return equalEqual ();
+	    default :
+		retract ();
+		return Token::Equal;
+	    }
+	}
+
+	private function equalEqual ()
+	    : int
+	{
+	    let c : int = next ();
+	    switch (c) {
+	    case Char::Equal : return Token::StrictEqual;
+	    default :
+		retract ();
+		return Token::Equal;
+	    }
+	}
+
+
+	/*
+
+	> >= >> >>= >>> >>>=
+
+	*/
+
+	private function rightAngle ()
+	    : int
+	{
+	    let c : int = next ();
+	    switch (c) {
+	    case Char::Equal : return Token::GreaterThanOrEqual;
+	    case Char::RightAngle : return rightShift ();
+	    default :
+		retract ();
+		return Token::GreaterThan;
+	    }
+	}
+
+	private function rightShift ()
+	    : int
+	{
+	    let c : int = next ();
+	    switch (c) {
+	    case Char::Equal : return Token::RightShiftAssign;
+	    case Char::RightAngle : return unsignedRightShift ();
+	    default :
+		retract ();
+		return Token::RightShift;
+	    }
+	}
+
+	private function unsignedRightShift ()
+	    : int
+	{
+	    let c : int = next ();
+	    switch (c) {
+	    case Char::Equal : return Token::UnsignedRightShiftAssign;
+	    default :
+		retract ();
+		return Token::UnsignedRightShift;
+	    }
+	}
+
+	/*
+
+	^ ^=
+
+	*/
+
+	private function bitwiseXor ()
+	    : int
+	{
+	    let c : int = next ();
+	    switch (c) {
+	    case Char::Equal : return Token::BitwiseXorAssign;
+	    default :
+		retract ();
+		return Token::BitwiseXor;
+	    }
+	}
+
+	/*
+
+	| |= || ||=
+
+	*/
+
+	private function bitwiseOr ()
+	    : int
+	{
+	    let c : int = next ();
+	    switch (c) {
+	    case Char::Equal : return Token::BitwiseOrAssign;
+	    case Char::Bar : return logicalOr ();
+	    default :
+		retract ();
+		return Token::BitwiseOr;
+	    }
+	}
+
+	private function logicalOr ()
+	    : int
+	{
+	    let c : int = next ();
+	    switch (c) {
+	    case Char::Equal : return Token::LogicalOrAssign;
+	    default :
+		retract ();
+		return Token::LogicalOr;
+	    }
+	}
+
+	/*
+
+	: ::
+
+	*/
+
+	private function colon ()
+	    : int
+	{
+	    let c : int = next ();
+	    switch (c) {
+	    case Char::Colon : return Token::DoubleColon;
+	    default :
+		retract ();
+		return Token::Colon;
+	    }
+	}
+
+	/*
+
+	identifier
+
+	*/
 
         private function identifier () 
             : int 
@@ -987,21 +1353,33 @@ namespace Lexer
 
     function test() 
     {
-        var scan = new Scanner ("/abc/ null break /def/xyz","test");
-        var list = scan.tokenList (scan.start);
-        let tk = Token::EOS;
-        do {
-            print("tokenList.length=",list.length);
-            while (list.length > 0) {
-                tk=list.pop();
-                print(" ",Token::tokenText(tk));
-                if (tk == Token::BREAK) {
-                    list = scan.tokenList (scan.regexp);
-                    print("tokenList.length=",list.length);
+        let testCases = [ ". .< .. ... ! != !== % %= & && &&= * *= + +- ++ - -- -="
+		        , "/ /= /> < <= </ << <<= = == === > >= >> >>= >>> >>>="
+			, "^ ^= | |= || ||= : :: ( ) [ ] { } ~ @ , ; ?"
+                        , "/abc/ 'hi' \"bye\" null break /def/xyz" ].reverse();
+
+	while (testCases.length > 0) {
+            var scan = new Scanner (testCases.pop());
+            var list = scan.tokenList (scan.start);
+            let tk = Token::EOS;
+            do {
+                print("tokenList.length=",list.length);
+                while (list.length > 0) {
+                    tk=list.pop();
+                    print(" ",Token::tokenText(tk));
+                    if (tk == Token::BREAK) {
+			if (testCases.length == 0) {   // if last test, then scan for regexps
+                            list = scan.tokenList (scan.regexp);
+                        }
+			else {
+			    list = scan.tokenList (scan.div);
+			}
+                        print("tokenList.length=",list.length);
+                    }
                 }
-            }
-        } while (tk != Token::EOS);
-        print ("scanned!");
+            } while (tk != Token::EOS);
+            print ("scanned!");
+	}
     }
 
     test ();
