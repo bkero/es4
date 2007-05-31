@@ -32,7 +32,7 @@ package RegExpInternals
         public function match( input : string, endIndex : int, multiline: boolean, ignoreCase: boolean ) : MatchResult {
             return matcher.match(new Context(input, multiline, ignoreCase),
                                  new State(endIndex, makeCapArray(nCapturingParens+1)), 
-                                 (function (ctx : Context, x : State) : State? x) );
+                                 function (ctx : Context, x : State) : State? { return x } );
         }
 
         public var nCapturingParens : uint;
@@ -96,6 +96,7 @@ package RegExpInternals
         let b : CapArray = makeCapArray(a.length);
         for ( let i : uint = 0 ; i < a.length ; i++ )
             b[i] = a[i];
+        /* E262-3 says k <= parenIndex+parenCount here, but at the moment that appears to be a bug. */
         for ( let k : uint = parenIndex ; k < parenIndex+parenCount ; k++ )
             b[k] = undefined;
         return b;
@@ -116,8 +117,9 @@ package RegExpInternals
 
     class Empty! implements Matcher
     {
-        function match(ctx : Context, x : State, c : Continuation) : MatchResult
-            c(ctx, x);
+        function match(ctx : Context, x : State, c : Continuation) : MatchResult {
+            return c(ctx, x);
+        }
     }
 
     class Disjunct! implements Matcher
@@ -138,8 +140,9 @@ package RegExpInternals
     {
         function Alternative(m1 : Matcher, m2 : Matcher) : m1=m1, m2=m2 {}
 
-        function match(ctx : Context, x : State, c : Continuation) : MatchResult
-            m1.match(ctx, x, (function (ctx : Context, y : State) m2.match(ctx, y, c)) );
+        function match(ctx : Context, x : State, c : Continuation) : MatchResult {
+            return m1.match(ctx, x, function (ctx : Context, y : State) { return m2.match(ctx, y, c) } );
+        }
 
         var m1 : Matcher, m2 : Matcher; // FIXME: const.  Ticket #24.
     }
@@ -174,23 +177,25 @@ package RegExpInternals
             if (e === ctx.inputLength)
                 return true;
             if (ctx.multiline)
-                return isTerminator(ctx.input[e-1]);
+                return isTerminator(ctx.input[e]);
             return false;
         }
     }
 
     class AssertWordBoundary extends Assertion
     {
-        override function testAssertion(ctx : Context, x : State) : boolean
-            let (e : int = x.endIndex)
-                isREWordChar(ctx, e-1) !== isREWordChar(ctx, e);
+        override function testAssertion(ctx : Context, x : State) : boolean {
+            let e : int = x.endIndex;
+            return isREWordChar(ctx, e-1) !== isREWordChar(ctx, e);
+        }
     }
 
     class AssertNotWordBoundary extends Assertion
     {
-        override function testAssertion(ctx : Context, x : State) : boolean 
-            let (e : int = x.endIndex)
-                isREWordChar(ctx, e-1) === isREWordChar(ctx, e);
+        override function testAssertion(ctx : Context, x : State) : boolean {
+            let e : int = x.endIndex;
+            return isREWordChar(ctx, e-1) === isREWordChar(ctx, e);
+        }
     }
 
     function isREWordChar(ctx : Context, e : int) : boolean {
@@ -304,7 +309,7 @@ package RegExpInternals
         function PositiveLookahead(m : Matcher) : m=m {}
 
         function match(ctx : Context, x : State, c : Continuation) : MatchResult {
-            let r : MatchResult = m.match(ctx, x, (function (ctx, y : State) : MatchResult y) );
+            let r : MatchResult = m.match(ctx, x, function (ctx, y : State) : MatchResult { return y } );
             if (r === failure)
                 return failure;
             return c(ctx, new State(x.endIndex, r.cap));
@@ -318,7 +323,7 @@ package RegExpInternals
         function NegativeLookahead(m : Matcher) : m=m {}
             
         function match(ctx : Context, x : State, c : Continuation) : MatchResult {
-            let r : MatchResult = m.match(ctx, x, (function (ctx, y : State) : MatchResult y) );
+            let r : MatchResult = m.match(ctx, x, function (ctx, y : State) : MatchResult { return y } );
             if (r !== failure)
                 return failure;
             return c(ctx, x);
@@ -364,16 +369,24 @@ package RegExpInternals
     class Charset!
     {
         function match(ctx: Context, c : string) : boolean { throw "Abstract"; }
-        function hasOneCharacter() : boolean false;
-        function singleCharacter() : string " ";
+        function hasOneCharacter() : boolean { return false }
+        function singleCharacter() : string { return " " };
+    }
+
+    class CharsetEmpty extends Charset
+    {
+        override function match(ctx: Context, c: string) : boolean {
+            return false;
+        }
     }
 
     class CharsetUnion! extends Charset 
     {
-        function CharsetUnion(m1 : Charset, m2 : Charset) : m1=m1, m2=m2 {}
+        function CharsetUnion(m1: Charset, m2 : Charset) : m1=m1, m2=m2 {}
 
-        override function match(ctx, c : string) : boolean
-            m1.match(ctx, c) || m2.match(ctx, c);
+        override function match(ctx: Context, c : string) : boolean {
+            return m1.match(ctx, c) || m2.match(ctx, c);
+        }
 
         var m1 : Charset, m2 : Charset; // FIXME: const.  Ticket #24.
     }
@@ -382,8 +395,9 @@ package RegExpInternals
     {
         function CharsetIntersection(m1 : Charset, m2 : Charset) : m1=m1, m2=m2 {}
 
-        override function match(ctx, c : string) : boolean
-            m1.match(ctx, c) && m2.match(ctx, c);
+        override function match(ctx: Context, c : string) : boolean {
+            return m1.match(ctx, c) && m2.match(ctx, c);
+        }
 
         var m1 : Charset, m2 : Charset; // FIXME: const.  Ticket #24.
     }
@@ -392,8 +406,9 @@ package RegExpInternals
     {
         function CharsetComplement(m : Charset) : m=m { }
 
-        override function match(ctx, c : string) : boolean 
-            (!m.match(ctx, c));  /* Yeah, you want the parens... */
+        override function match(ctx: Context, c : string) : boolean {
+            return !m.match(ctx, c);
+        }
 
         var m : Charset; // FIXME: const.  Ticket #24.
     }
@@ -402,7 +417,7 @@ package RegExpInternals
     {
         function CharsetRange(lo : string, hi : string) : lo=lo, hi=hi { }
 
-        override function match(ctx, c : string) : boolean {
+        override function match(ctx: Context, c : string) : boolean {
             let lo_code = lo.charCodeAt(0);
             let hi_code = hi.charCodeAt(0);
             for ( let i=lo_code ; i <= hi_code ; i++ )
@@ -420,7 +435,7 @@ package RegExpInternals
             cs = explodeString(s);
         }
 
-        override function match(ctx, c : string) : boolean {
+        override function match(ctx: Context, c : string) : boolean {
             for ( let i=0 ; i < cs.length ; i++ ) {
                 if (Canonicalize(ctx, cs[i]) === c)
                     return true;
@@ -428,11 +443,13 @@ package RegExpInternals
             return false;
         }
 
-        override function hasOneCharacter() : boolean
-            cs.length == 1;
+        override function hasOneCharacter() : boolean {
+            return cs.length == 1;
+        }
 
-        override function singleCharacter() : string
-            cs[0];
+        override function singleCharacter() : string {
+            return cs[0];
+        }
 
         var cs : [string] = [] : [string];
     }
@@ -441,7 +458,7 @@ package RegExpInternals
     {
         function CharsetUnicodeClass(name : string) : name=name {}
 
-        override function match(ctx, c : string) : boolean {
+        override function match(ctx: Context, c : string) : boolean {
             // FIXME: implement this.  Ticket #45.
             throw new Error("character set not yet implemented: " + name);
         }

@@ -335,6 +335,11 @@ fun nomnToStr (nomn:NAME_OR_MULTINAME) =
         Name name => LogErr.name name
       | Multiname mname => LogErr.multiname mname
 
+fun shouldBeDontEnum (n:Ast.NAME) (obj:Mach.OBJ) : bool = 
+    case (#ns n) of 
+        Ast.Private _ => true
+      | _ => (!booting) andalso (getObjId obj) = (getObjId (getGlobalObject()))
+
 (* Fundamental object methods *)
 
 fun allocFixtures (regs:Mach.REGS) 
@@ -482,7 +487,7 @@ fun allocFixtures (regs:Mach.REGS)
                                       { ty = ty,
                                         state = valAllocState ty,
                                         attrs = { dontDelete = true,
-                                                  dontEnum = false,
+                                                  dontEnum = shouldBeDontEnum pn obj,
                                                   readOnly = readOnly,
                                                   isFixed = true } }
                             
@@ -500,7 +505,7 @@ fun allocFixtures (regs:Mach.REGS)
                                             state = Mach.VirtualValProp { getter = getFn,
                                                                           setter = setFn },
                                             attrs = { dontDelete = true,
-                                                      dontEnum = false,
+                                                      dontEnum = shouldBeDontEnum pn obj,
                                                       readOnly = true,
                                                       isFixed = true } }
                             end
@@ -803,7 +808,7 @@ and setValueOrVirtual (obj:Mach.OBJ)
                         val prop = { state = Mach.ValProp v,
                                      ty = Ast.SpecialType Ast.Any,
                                      attrs = { dontDelete = false,
-                                               dontEnum = false,
+                                               dontEnum = shouldBeDontEnum name obj,
                                                readOnly = false,
                                                isFixed = false } }
                     in                        
@@ -931,6 +936,10 @@ and throwTypeErr0 (args:string list)
 and throwRefErr (args:string list)
     : REF = 
     throwExn0 Name.public_ReferenceError args
+
+and throwRefErr0 (args:string list)
+    : Mach.OBJ = 
+    throwExn1 Name.public_ReferenceError args
 
 and needNamespace (v:Mach.VAL) 
     : Ast.NAMESPACE = 
@@ -2847,7 +2856,8 @@ and evalRefExprFull (regs:Mach.REGS)
                 val _ = LogErr.setLoc loc
                 val ob = case v of 
                              Mach.Object ob => ob
-                           | _ => getGlobalObject() 
+                           | Mach.Null => throwRefErr0 ["object reference on null value"]
+                           | Mach.Undef => throwRefErr0 ["object reference on undefined value"]
                 val _ = LogErr.setLoc loc
                 val nameOpt = resolveName ob nomn
                 val _ = LogErr.setLoc loc
@@ -4380,7 +4390,6 @@ fun resetGlobal (ob:Mach.OBJ)
      globalScope := SOME (Mach.Scope { object = ob,
                                        parent = NONE,
                                        temps = ref [],
-                                       kind = Mach.GlobalScope });
-     setValue ob Name.public_global (Mach.Object ob))
-
+                                       kind = Mach.GlobalScope }))
+    
 end

@@ -1,10 +1,15 @@
+/* -*- mode: java; indent-tabs-mode: nil -*- 
+ *
+ * ECMAScript 4 builtins - the "Name" object
+ */
+
 use namespace intrinsic;
 
-// FIXME #39: move these two type definitions into class Name's body (first thing)
-type NS = (Name, Namespace, string);
-type ID = (undefined, string);
-
 final class Name extends String {
+
+    type NS = (Name, Namespace, string);
+    type ID = (undefined, string);
+
     function Name(ns : NS, id : ID = undefined) {
         if (id is undefined) {
             if (ns is Name) {

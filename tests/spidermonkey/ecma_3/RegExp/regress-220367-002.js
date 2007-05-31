@@ -55,6 +55,8 @@ var expectedvalues = [];
 
 var re = /(a)|(b)/;
 
+/* Removed lth@acm.org / 2007-05-30: RegExp does not have $ variables in E262-3 or E262-4.
+
 re.test('a');
   status = inSection(1);
   actual = RegExp.$1;
@@ -77,7 +79,7 @@ re.test('b');
   expect = 'b';
   addThis();
 
-
+*/
 
 //-----------------------------------------------------------------------------
 test();

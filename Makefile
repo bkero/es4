@@ -59,7 +59,7 @@ checkev: tools/unit.heap.$(HEAP_SUFFIX) es4.heap.$(HEAP_SUFFIX)
 checklth: tools/unit.heap.$(HEAP_SUFFIX) es4.heap.$(HEAP_SUFFIX)
 	sml @SMLload=tools/unit.heap $(TRACE) tests/lth_tests/lth_tests.test
 
-run.heap.$(HEAP_SUFFIX): es4.heap.$(HEAP_SUFFIX)
+run.heap.$(HEAP_SUFFIX): es4.heap.$(HEAP_SUFFIX) $(wildcard builtins/*.es)
 	sml @SMLload=es4.heap $(TRACE) -dumpEval run.heap
 
 smoketest: run.heap.$(HEAP_SUFFIX)
@@ -80,7 +80,7 @@ run-dumped:
 run: 
 	sml @SMLload=es4.heap $(TRACE) -e $(FILE)
 
-repl.heap.$(HEAP_SUFFIX): es4.heap.$(HEAP_SUFFIX) builtins/*.es
+repl.heap.$(HEAP_SUFFIX): es4.heap.$(HEAP_SUFFIX) $(wildcard builtins/*.es)
 	sml @SMLload=es4.heap $(TRACE) -dumpRepl repl.heap
 
 repl: repl.heap.$(HEAP_SUFFIX)

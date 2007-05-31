@@ -67,6 +67,7 @@ var e;
 string = 'foo {1} foo {2} foo';
 
 // try an example with the braces escaped
+/* Invalid, and anyway the escaping is pointless here - lth@acm.org / 2007-05-30 
 status = inSection(1);
 try
 {
@@ -79,9 +80,10 @@ catch (e)
     actualmatch = '';
 }
 expectedmatch = Array('{1} foo {2}');
-addThis();
+addThis(); */
 
 // just like Section 1, without the braces being escaped
+/* Invalid - lth@acm.org / 2007-05-30 
 status = inSection(2);
 try
 {
@@ -94,9 +96,10 @@ catch (e)
     actualmatch = '';
 }
 expectedmatch = Array('{1} foo {2}');
-addThis();
+addThis(); */
 
 // try an example with the braces escaped
+/* Invalid, and anyway the escaping is pointless here - lth@acm.org / 2007-05-30 
 status = inSection(3);
 try
 {
@@ -109,9 +112,10 @@ catch (e)
     actualmatch = '';
 }
 expectedmatch = Array('{1}');
-addThis();
+addThis(); */
 
 // just like Section 3, without the braces being escaped
+/* Invalid - lth@acm.org / 2007-05-30 
 status = inSection(4);
 try
 {
@@ -124,7 +128,7 @@ catch (e)
     actualmatch = '';
 }
 expectedmatch = Array('{1}');
-addThis();
+addThis();*/
 
 
 string = 'abccccc{3 }c{ 3}c{3, }c{3 ,}c{3 ,4}c{3, 4}c{3,4 }de';
@@ -145,6 +149,7 @@ expectedmatch = Array('ccc');
 addThis();
 
 // now disrupt the quantifer - the braces should now be interpreted literally
+/* Invalid - lth@acm.org / 2007-05-30 
 status = inSection(6);
 try
 {
@@ -157,8 +162,9 @@ catch (e)
     actualmatch = '';
 }
 expectedmatch = Array('c{3 }');
-addThis();
+addThis();*/
 
+/* Invalid - lth@acm.org / 2007-05-30 
 status = inSection(7);
 try
 {
@@ -171,8 +177,9 @@ catch (e)
     actualmatch = '';
 }
 expectedmatch = Array('c{3 }');
-addThis();
+addThis();*/
 
+/* Invalid - lth@acm.org / 2007-05-30 
 status = inSection(8);
 try
 {
@@ -188,8 +195,9 @@ catch (e)
     actualmatch = '';
 }
 expectedmatch = Array('c{3 }');
-addThis();
+addThis();*/
 
+/* Invalid - lth@acm.org / 2007-05-30 
 status = inSection(9);
 try
 {
@@ -202,8 +210,9 @@ catch (e)
     actualmatch = '';
 }
 expectedmatch = Array('c{3 }');
-addThis();
+addThis();*/
 
+/* Invalid - lth@acm.org / 2007-05-30 
 status = inSection(10);
 try
 {
@@ -216,7 +225,7 @@ catch (e)
     actualmatch = '';
 }
 expectedmatch = Array('c{ 3}');
-addThis();
+addThis();*/
 
 // using braces in a normal quantifier construct again
 status = inSection(11);
@@ -234,6 +243,7 @@ expectedmatch = Array('ccccc');
 addThis();
 
 // now disrupt it - the braces should now be interpreted literally
+/* Invalid - lth@acm.org / 2007-05-30 
 status = inSection(12);
 try
 {
@@ -246,8 +256,9 @@ catch (e)
     actualmatch = '';
 }
 expectedmatch = Array('c{3, }');
-addThis();
+addThis();*/
 
+/* Invalid - lth@acm.org / 2007-05-30 
 status = inSection(13);
 try
 {
@@ -260,7 +271,7 @@ catch (e)
     actualmatch = '';
 }
 expectedmatch = Array('c{3 ,}');
-addThis();
+addThis();*/
 
 // using braces in a normal quantifier construct again
 status = inSection(14);
@@ -278,6 +289,7 @@ expectedmatch = Array('cccc');
 addThis();
 
 // now disrupt it - the braces should now be interpreted literally
+/* Invalid - lth@acm.org / 2007-05-30 
 status = inSection(15);
 try
 {
@@ -290,8 +302,9 @@ catch (e)
     actualmatch = '';
 }
 expectedmatch = Array('c{3 ,4}');
-addThis();
+addThis();*/
 
+/* Invalid - lth@acm.org / 2007-05-30 
 status = inSection(16);
 try
 {
@@ -304,8 +317,9 @@ catch (e)
     actualmatch = '';
 }
 expectedmatch = Array('c{3, 4}');
-addThis();
+addThis();*/
 
+/* Invalid - lth@acm.org / 2007-05-30 
 status = inSection(17);
 try
 {
@@ -318,7 +332,7 @@ catch (e)
     actualmatch = '';
 }
 expectedmatch = Array('c{3,4 }');
-addThis();
+addThis();*/
 
 
 

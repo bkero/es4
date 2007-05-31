@@ -132,24 +132,32 @@ package
         public var lastIndex  : double;
 
         /* E262-4 - [[Match]] may not *have* to be public, but String
-           uses it, and if we want to model the language in the
-           language we should expose it -- it's benign. 
+         * uses it, and if we want to model the language in the
+         * language we should expose it -- it's benign.
+         * 
+         * FIXME: Should it be exposed like this?  Recorded as ticket #56.
         */
         intrinsic function match(s : string, i : uint) : MatchResult
             matcher.match(s, i, multiline, ignoreCase);
 
-        /* E262-4 - nCapturingParens used by String.prototype.replace 
+        /* E262-4 - nCapturingParens used by String.prototype.replace.
+         *
+         * FIXME: Should it be exposed like this?  Recorded as ticket #56.
          */
         intrinsic function get nCapturingParens() : uint
             matcher.nCapturingParens;
 
         /* Internal */
-        var matcher : RegExpMatcher;      // The [[Match]] property  // FIXME: const.  Ticket #24.
+        private var matcher : RegExpMatcher;      // The [[Match]] property  // FIXME: const.  Ticket #24.
 
-        function get flags() : string {
-            return (multiline ? "m" : "") +
+        /* E262-3 15.10.6.4 probably is meant to require the flags to
+         * be returned in lexicographic order for the purposes of
+         * toString().
+         */
+        private function get flags() : string {
+            return (global ? "g" : "") +
                    (ignoreCase ? "i" : "") +
-                   (global ? "g" : "") +
+                   (multiline ? "m" : "") +
                    (extended ? "x" : "") +
                    (sticky ? "y" : "");
         }

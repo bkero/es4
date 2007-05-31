@@ -28,7 +28,6 @@ package RegExpInternals
         var   extended : boolean;      // true iff expression has /x flag  // FIXME: const.  Ticket #24.
         var   names : [string?] = [];  // capturing names, or null for capturing exprs that are not named  // FIXME: const.  Ticket #24.
         var   parenIndex : uint = 0;   // number of capturing parens (including those that are named) // FIXME: const.  Ticket #24.
-        var   parenCount : uint = 0;   // current depth of capture nesting // FIXME: const.  Ticket #24.
 
         function RegExpCompiler( source : string, flags  )
             : extended = flags.x
@@ -55,12 +54,13 @@ package RegExpInternals
 
         function disjunction() : Matcher {
             let alt : Matcher = alternative();
-            if (alt == null)
-                return new Empty;
+            if (alt == null) 
+                alt = new Empty;
             if (peekCharCode() == 0x7Cu /* "|" */) {
                 advance();
                 return new Disjunct(alt, disjunction());
-            } else
+            } 
+            else
                 return alt;
         }
 
@@ -77,15 +77,18 @@ package RegExpInternals
         }
 
         function term() : Matcher? {
+            let savedParenIndex = parenIndex;
             let x : Matcher? = assertion();
             if (x !== null)
                 return x;
             let xx : Matcher = atom();
+            if (xx === null)
+                return xx;
             let y : [double, double, boolean]? = quantifier();
             if (y === null)
                 return xx;
             let [min, max, greedy] : [double,double,boolean] = y;
-            return new Quantified(parenIndex, parenCount, xx, min, max, greedy);
+            return new Quantified(savedParenIndex, parenIndex - savedParenIndex, xx, min, max, greedy);
         }
 
         function assertion() : Matcher? {
@@ -217,12 +220,10 @@ package RegExpInternals
                             let name : string = identifier();
                             match(">");
                             let capno : uint = parenIndex++;
-                            parenCount++;
                             let d : Matcher = disjunction();
-                            parenCount--;
                             match(")");
-                            for each ( let n : string in names ) {
-                                if (n === name)
+                            for ( let i:uint=0 ; i < names.length ; i++ ) {
+                                if (names[i] === name)
                                     fail( SyntaxError, "Multiply defined capture name: " + name );
                             }
                             names[capno] = name;
@@ -244,9 +245,7 @@ package RegExpInternals
                 } // peekChar() != "?"
                     
                 let capno : uint = parenIndex++;
-                parenCount++;
                 let d : Matcher = disjunction();
-                parenCount--;
                 match(")");
                 return new Capturing(d, capno);
                 
@@ -277,6 +276,10 @@ package RegExpInternals
 
         function atomEscape() : Matcher {
 
+            function handleOctalEscape(t: double) : Matcher {
+                return new CharsetMatcher(new CharsetAdhoc(String.fromCharCode(t)));
+            }
+
             function handleDecimalEscape(t : double) : Matcher {
                 if (t === 0)
                     fail( SyntaxError, "Invalid backreference" );
@@ -286,13 +289,19 @@ package RegExpInternals
                 }
             }
 
-            function handleCharacterClassEscape(t : Charset) : Matcher
-                new CharsetMatcher(t);
+            function handleCharacterClassEscape(t : Charset) : Matcher {
+                return new CharsetMatcher(t);
+            }
 
-            function handleCharacterEscape(t : string) : Matcher
-                new CharsetMatcher(new CharsetAdhoc(t));
+            function handleCharacterEscape(t : string) : Matcher {
+                return new CharsetMatcher(new CharsetAdhoc(t));
+            }
 
-            return escape( handleDecimalEscape, handleCharacterClassEscape, handleCharacterEscape, false );
+            return escape(handleOctalEscape, 
+                          handleDecimalEscape, 
+                          handleCharacterClassEscape, 
+                          handleCharacterEscape, 
+                          false );
         }
 
         function characterClass() : Matcher {
@@ -405,14 +414,19 @@ package RegExpInternals
         }
 
         function classEscape() : Charset {
-            return escape( (function(t : double) : Charset new CharsetAdhoc(string.fromCharCode(t))),
-                           (function(t : Charset) : Charset t),
-                           (function(t : string) : Charset new CharsetAdhoc(t)),
+            function makeCharset(t: double): Charset {
+                return new CharsetAdhoc(string.fromCharCode(t));
+            }
+            return escape( makeCharset,
+                           makeCharset,
+                           function(t : Charset) : Charset { return t },
+                           function(t : string) : Charset { return new CharsetAdhoc(t) },
                            true );
         }
 
         /* Parse an escape sequence. */
-        function escape( handleDecimalEscape : function (double) : (Matcher,Charset),
+        function escape( handleOctalEscape : function (double) : (Matcher,Charset),
+                         handleDecimalEscape : function (double) : (Matcher,Charset),
                          handleCharacterClassEscape : function (Charset) : (Matcher,Charset),
                          handleCharacterEscape : function (string) : (Matcher,Charset),
                          allow_b : boolean ) : (Matcher,Charset) {
@@ -435,6 +449,11 @@ package RegExpInternals
                     return handleDecimalEscape(t);
             }
 
+            let (t : double? = octalEscape()) {
+                if (t !== null)
+                    return handleOctalEscape(t);
+            }
+
             fail( SyntaxError, "Failed to match escape sequence " + peekChar() );
         }
 
@@ -443,14 +462,21 @@ package RegExpInternals
         */
         function decimalEscape() : double? {
             let c : uint = peekCharCode();
-            if (c == 0x30u) {
-                advance();
-                return 0;
-            }
-            else if (c >= 0x31u && c <= 0x39u)
+            if (c == 0x30u)
+                return null;
+            if (c >= 0x31u && c <= 0x39u)
                 return decimalDigits();
             else
                 return null;
+        }
+
+        /* Returns null if it does not consume anything but fails;
+           throws an error if it consumes and then fails. 
+        */
+        function octalEscape() : double? {
+            if (!eat("0"))
+                return null;
+            return octalDigits(true);
         }
 
         /* Returns null if it does not consume anything but fails;
@@ -533,30 +559,45 @@ package RegExpInternals
             case 0x74u /* "t" */: advance(); return "\t";
                 
             case 0x63u /* "c" */:
-                advance();
-                let (c : string = consumeChar()) {
-                    if (c >= "A" && c <= "Z")
-                        return string.fromCharCode(c.charCodeAt(0) - "A".charCodeAt(0));
-                    if (c >= "a" && c <= "z")
-                        return string.fromCharCode(c.charCodeAt(0) - "a".charCodeAt(0));
-                    fail( SyntaxError, "Bogus \\c sequence: " + c );
+                consumeChar();
+                let (c : string = peekChar()) {
+                    if (c >= "A" && c <= "Z") {
+                        eat(c);
+                        return string.fromCharCode(c.charCodeAt(0) - "A".charCodeAt(0) + 1);
+                    }
+                    if (c >= "a" && c <= "z") {
+                        eat(c);
+                        return string.fromCharCode(c.charCodeAt(0) - "a".charCodeAt(0) + 1);
+                    }
+                    else
+                        return "c";
                 }
                 
             case 0x78u /* "x" */: 
             case 0x58u /* "X" */: 
             case 0x75u /* "u" */: 
-            case 0x55u /* "U" */:
-                advance();
+            case 0x55u /* "U" */: {
+                consumeChar();
                 if (peekCharCode() == 0x7Bu /* "{" */) {
                     advance();
-                    let s : string = hexDigits();
+                    let s = hexDigits();
+                    if (s == null)
+                        fail( SyntaxError, "Non-empty sequence of hexadecimal digits expected" );
                     match("}");
                     return s;
                 } 
-                else if (c == 0x77u /* "x" */ || c == 0x57u /* "X" */)
-                    return hexDigits(2);
-                else
-                    return hexDigits(4);
+                else {
+                    let saved = idx;
+                    if (c == 0x78u /* "x" */ || c == 0x58u /* "X" */)
+                        res = hexDigits(2);
+                    else
+                        res = hexDigits(4);
+                    if (res !== null) {
+                        idx = saved;
+                        return string.fromCharCode(c);
+                    }
+                }
+            }
             }
             
             if (atEnd())
@@ -629,7 +670,7 @@ package RegExpInternals
                 }
             }
             if (n !== null && i < m || i == 0)
-                fail( SyntaxError, "hex sequence too short" );
+                return null;
             skip();
             return string.fromCharCode(k);
         }

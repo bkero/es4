@@ -37,7 +37,7 @@ fun instantiateRootClass (fullName:Ast.NAME) (prog:Ast.PROGRAM) :
                            { ty = Name.typename Name.intrinsic_Class,
                              state = Mach.ValProp (Mach.Object obj),
                              attrs = { dontDelete = true,
-                                       dontEnum = false,
+                                       dontEnum = true,
                                        readOnly = true,
                                        isFixed = true } }
       (* 
@@ -232,15 +232,17 @@ fun boot _ =
                                     "builtins/Array.es",  (* before Date *)
                                     
                                     "builtins/ByteArray.es",
+
+                                    "builtins/Shell.es",   (* before RegExp, for debugging *)
                                     
+                                    "builtins/UnicodeTbl.es",
                                     "builtins/Unicode.es",
                                     "builtins/RegExpCompiler.es",
                                     "builtins/RegExpEvaluator.es",
                                     "builtins/RegExp.es",
                                     
                                     "builtins/Date.es",
-                                    "builtins/JSON.es",
-                                    "builtins/Shell.es"
+                                    "builtins/JSON.es"
                                    ]
 
         val objProg = Verify.verifyProgram objProg

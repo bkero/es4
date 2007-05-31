@@ -34,11 +34,6 @@ package
     import Unicode.*
     import RegExpInternals.*
 
-    /* FIXME (Ticket #50): should be declared down in the function it's 
-       used in, but this causes it to vanish. Why?  */
-
-    type matcher = (string,RegExp!);
-
     intrinsic final class string! extends String
     {
         /* E262-4 draft */
@@ -238,7 +233,7 @@ package
             if (!regexp.global)
                 return regexp.exec(this);  // ie, intrinsic::exec
 
-            let matches : [string] = [] : [string];
+            let matches = [];
 
             regexp.lastIndex = 0;
             while (true) {
@@ -302,11 +297,13 @@ package
                 return s;
             }
 
-            let function match( regexp, i : uint ) : [uint, Array]  {
-                while (i < length) {
+            let function match( regexp, i : uint ) : [uint, CapArray]  {
+                while (i <= length) {
                     let res : MatchResult = regexp.match(this, i);
-                    if (res !== null)
+                    if (res !== null) {
+                        res.cap[0] = this.substring(i,res.endIndex);
                         return [i, res.cap];
+                    }
                     ++i;
                 }
                 return [0, null];
@@ -322,35 +319,51 @@ package
                 /* paragraph 2 */
 
                 let regexp : RegExp = s cast RegExp;
-                let res : Array = null;
                 let m : uint = regexp.nCapturingParens;
 
                 if (!regexp.global) {
-                    let [i, res] : [uint, Array] = match(regexp, 0);
+                    let [i, res] : [uint, CapArray] = match(regexp, 0);
 
                     if (res === null)
                         return this;
 
                     let end : uint = i + res[0].length;
-                    return substring(0,pos) + substitute(pos, end, m, res) + substring(end);
+                    return substring(0,i) + substitute(i, end, m, res) + substring(end);
                 }
                 else {
-                    let s : string;
+                    /* Note that regexp.lastIndex is visible to the
+                     * user's replace function, if any, and should be
+                     * updated before that function is called and read
+                     * anew on each iteration, in case it was updated.
+                     */
+                    let newstring : string = "";
+                    let prevEnd : uint = 0;
 
+                    regexp.lastIndex = 0;
                     while (true) {
-                        let oldi : uint = uint(i);
-                        let [i, res] : [uint, [string]?] = match(regexp, oldi);
+                        let oldLastIndex : double = regexp.lastIndex;
+                        let [i,res] : [uint, CapArray?] = match(regexp, uint(oldLastIndex));
 
-                        if (res === null)
-                            return s + substring(oldi);
+                        if (res === null) 
+                            break;
 
-                        // FIXME!  Implement replace() with /g regexp
-                        //...;
+                        newstring += this.substring(prevEnd, i);
+
+                        let end : uint = i + res[0].length;
+                        regexp.lastIndex = end;
+                        if (regexp.lastIndex == oldLastIndex)
+                            regexp.lastIndex++;
+                        newstring += substitute(i, end, m, res);
+                        prevEnd = end;
                     }
+                    newstring += this.substring(prevEnd, this.length);
+
+                    return newstring;
                 }
             }
             else {
                 /* paragraph 3 */
+
                 let searchString : string = ToString(s);
                 let pos : double = indexOf(searchString, 0);
 
@@ -415,6 +428,8 @@ package
             ToString(self).split(separator, limit);
 
         override intrinsic function split(separator, limit) : Array {
+
+            type matcher = (string,RegExp!);
 
             function splitMatch(R: matcher, S: string, q: uint) : [uint, [string]] {
                 /* FIXME (Ticket #19): use "switch type" when it works */

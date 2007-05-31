@@ -161,19 +161,19 @@ package Unicode
         return cs;
     }
 
+    // UTR #21 describes an implementation relying solely on the
+    // Unicode database single-character case mappings as "legacy",
+    // and notes that it is "insufficient for languages such as
+    // German". We should expand this to handle the supplemental
+    // special casing properties.
+
     public function toUpperCaseCharCode(i : uint) : uint {
-        /* FIXME: hairy but not yet important.  For now, ASCII.  Ticket #49. */
-        if (i >= 97 && i <= 122)  // a..z?
-            return uint(i-32);
-        else
-            return i;
+        var c = toUpperTbl[i];
+        return c ? c : i;
     }
 
     public function toLowerCaseCharCode(i : uint) : uint {
-        /* FIXME: hairy but not yet important.  For now, ASCII.  Ticket #49. */
-        if (i >= 65 && i <= 90)
-            return uint(i+32);
-        else
-            return i;
+        var c = toLowerTbl[i];
+        return c ? c : i;
     }
 }
