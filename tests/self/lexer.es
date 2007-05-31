@@ -1,4 +1,3 @@
-
 /* -*- mode: java; mode: font-lock; tab-width: 4; insert-tabs-mode: nil; indent-tabs-mode: nil -*- */
 /* ***** BEGIN LICENSE BLOCK *****
  * Version: MPL 1.1/GPL 2.0/LGPL 2.1
@@ -111,6 +110,15 @@ namespace Char
     const Y = "Y".charCodeAt(0);
     const Z = "Z".charCodeAt(0);
     const Zero = "0".charCodeAt(0);
+    const One = "1".charCodeAt(0);
+    const Two = "2".charCodeAt(0);
+    const Three = "3".charCodeAt(0);
+    const Four = "4".charCodeAt(0);
+    const Five = "5".charCodeAt(0);
+    const Six = "6".charCodeAt(0);
+    const Seven = "7".charCodeAt(0);
+    const Eight = "8".charCodeAt(0);
+    const Nine = "9".charCodeAt(0);
     const Dot = ".".charCodeAt(0);
     const Bang = "!".charCodeAt(0);
     const Equal = "=".charCodeAt(0);
@@ -141,6 +149,7 @@ namespace Char
     const Space = " ".charCodeAt(0);
     const Newline = "\n".charCodeAt();
 }
+
 
 namespace Token
 
@@ -634,7 +643,6 @@ namespace Token
 Token::test()
 
 namespace Lexer
-
 {
     use default namespace Lexer;
 
@@ -776,7 +784,6 @@ namespace Lexer
                 case Char::LeftAngle: return leftAngle ();
                 case Char::Equal: return equal ();
                 case Char::RightAngle: return rightAngle ();
-                case Char::Zero: return zero ();
                 case Char::b: return b_ ();
                 case Char::c: return identifier ();
                 case Char::d: return d_ ();
@@ -793,14 +800,18 @@ namespace Lexer
                 case Char::u: return identifier ();
                 case Char::v: return identifier ();
                 case Char::w: return identifier ();
+                case Char::Zero: return zero ();
+		case Char::One:
+		case Char::Two:
+		case Char::Three:
+		case Char::Four:
+		case Char::Five:
+		case Char::Six:
+		case Char::Seven:
+		case Char::Eight:
+		case Char::Nine:
+		    return decimalInteger ();
                 default:
-                    /*
-                    if (Unicode.isDecimalDigit (c)) 
-                    {
-                        return digit (c);
-                    } 
-                    else
-                    */ 
                     if (Unicode.isIdentifierStart (String.fromCharCode(c)))
                     {
                         return identifier ();
@@ -814,18 +825,195 @@ namespace Lexer
             Debug.assert(false);
 	}
 
+	private function zero ()
+	    : int
+	{
+	    let c : int = next ();
+	    switch (c) {
+	    case Char::x:
+	    case Char::X:
+		return hexLiteral ();
+	    case Char::Zero:
+	    case Char::One:
+	    case Char::Two:
+	    case Char::Three:
+	    case Char::Four:
+	    case Char::Five:
+	    case Char::Six:
+	    case Char::Seven:
+		return octalLiteral ();
+	    case Char::Dot:
+		return decimalInteger ();
+	    case Char::Eight:  // what do we do with these?
+	    case Char::Nine:
+	    default :
+		retract ();
+		return numberSuffix ();
+	    }
+	}
+
+	private function hexLiteral ()
+	    : int
+	{
+	    let c : int = next ();
+	    switch (c) {
+	    case Char::Zero:
+	    case Char::One:
+	    case Char::Two:
+	    case Char::Three:
+	    case Char::Four:
+	    case Char::Five:
+	    case Char::Six:
+	    case Char::Seven:
+	    case Char::Eight:
+	    case Char::Nine:
+	    case Char::a: case Char::A:
+	    case Char::b: case Char::B:
+	    case Char::c: case Char::C:
+	    case Char::d: case Char::D:
+	    case Char::e: case Char::E:
+	    case Char::f: case Char::F:
+		return hexLiteral ();
+	    default:
+		retract ();
+		return numberSuffix ();
+	    }
+	}
+
+	private function octalLiteral ()
+	    : int
+	{
+	    let c : int = next ();
+	    switch (c) {
+	    case Char::Zero:
+	    case Char::One:
+	    case Char::Two:
+	    case Char::Three:
+	    case Char::Four:
+	    case Char::Five:
+	    case Char::Six:
+	    case Char::Seven:
+		return octalLiteral ();
+	    case Char::Eight:  // what do we do with these?
+	    case Char::Nine:
+	    default:
+		retract ();
+		return numberSuffix ();
+	    }
+	}
+
+	private function decimalInteger ()
+	    : int
+	{
+	    let c : int = next ();
+	    switch (c) {
+	    case Char::Zero:
+	    case Char::One:
+	    case Char::Two:
+	    case Char::Three:
+	    case Char::Four:
+	    case Char::Five:
+	    case Char::Six:
+	    case Char::Seven:
+	    case Char::Eight:
+	    case Char::Nine:
+		return decimalInteger ();
+	    case Char::Dot:
+		return decimalFraction ();
+	    case Char::e: case Char::E:
+		return decimalExponent ();
+	    default:
+		retract ();
+		return numberSuffix ();
+	    }
+	}
+
+	private function decimalFraction ()
+	    : int
+	{
+	    let c : int = next ();
+	    switch (c) {
+	    case Char::Zero:
+	    case Char::One:
+	    case Char::Two:
+	    case Char::Three:
+	    case Char::Four:
+	    case Char::Five:
+	    case Char::Six:
+	    case Char::Seven:
+	    case Char::Eight:
+	    case Char::Nine:
+		return decimalFraction ();
+	    case Char::e: case Char::E:
+		switch (next()) {
+		case Char::Plus:
+		case Char::Minus:
+		    return decimalExponent ();
+		default:
+		    retract ();
+		    return decimalExponent ();
+		}
+	    default:
+		retract ();
+		return numberSuffix ();
+	    }
+	}
+
+	private function decimalExponent ()
+	    : int
+	{
+	    let c : int = next ();
+	    switch (c) {
+	    case Char::Zero:
+	    case Char::One:
+	    case Char::Two:
+	    case Char::Three:
+	    case Char::Four:
+	    case Char::Five:
+	    case Char::Six:
+	    case Char::Seven:
+	    case Char::Eight:
+	    case Char::Nine:
+		return decimalExponent ();
+	    default:
+		retract ();
+		return numberSuffix ();
+	    }
+	}
+
+	private function numberSuffix ()
+	    : int
+	{
+	    let c : int = next ();
+	    switch (c) {
+	    case Char::i:
+		return Token::makeInstance (Token::ExplicitIntLiteral, lexeme ());
+	    case Char::u:
+		return Token::makeInstance (Token::ExplicitUIntLiteral, lexeme ());
+	    case Char::d:
+		return Token::makeInstance (Token::ExplicitDoubleLiteral, lexeme ());
+	    case Char::m:
+		return Token::makeInstance (Token::ExplicitDecimalLiteral, lexeme ());
+	    default:
+		retract ();
+		return Token::makeInstance (Token::DecimalLiteral, lexeme ());
+	    }
+	}
+
+
 	private function slash ()
 	    : int
 	{
 	    let c : int = next ();
 	    switch (c) {
-	    case Char::Slash : 
-		lineComment (); 
+	    case Char::Slash:
+		lineComment ();
 		return start ();
-	    case Char::Asterisk : 
-		blockComment (); 
+	    case Char::Asterisk:
+		blockComment ();
 		return start ();
-	    default : 
+	    default:
+		retract ();
 		return Token::BREAK;
 	    }
 	}
@@ -893,6 +1081,17 @@ namespace Lexer
 	    switch (c) {
 	    case Char::Dot : return dotdot ();
 	    case Char::LeftAngle : return Token::LeftDotAngle;
+	    case Char::Zero:
+	    case Char::One:
+	    case Char::Two:
+	    case Char::Three:
+	    case Char::Four:
+	    case Char::Five:
+	    case Char::Six:
+	    case Char::Seven:
+	    case Char::Eight:
+	    case Char::Nine:
+		return decimalFraction ();
 	    default : 
 		retract ();
 		return Token::Dot;
@@ -1424,6 +1623,7 @@ namespace Lexer
 		        , "/ /= /> < <= </ << <<= = == === > >= >> >>= >>> >>>="
 			, "^ ^= | |= || ||= : :: ( ) [ ] { } ~ @ , ; ?"
 			, "/* hello nobody */ hello // goodbye world"
+			, "0 0i 00 001u 0123d 045m 0x0 0xCAFEBABE 0x12345678u 1. .0 .2e+3 1.23m"
                         , "/abc/ 'hi' \"bye\" null break /def/xyz" ].reverse();
 
 	while (testCases.length > 0) {
