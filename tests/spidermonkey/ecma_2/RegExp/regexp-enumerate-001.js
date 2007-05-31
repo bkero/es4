@@ -38,7 +38,7 @@ writeHeaderToLog( SECTION + " "+ TITLE);
  *  source, global, ignoreCase, and lastIndex
  *
  *  99.01.25:  now they also have a multiLine instance property.
- *
+ *  ECMAScript4: and "extended" and "sticky" instance properties.
  */
 
 
@@ -48,13 +48,18 @@ var e = new Array();
 
 var t = new TestRegExp();
 
-for ( p in r ) { e[e.length] = { property:p, value:r[p] }; t.addProperty( p, r[p]) };
+for ( p in r ) { 
+  e[e.length] = { property:p, value:r[p] }; 
+  t.addProperty( p, r[p]);
+}
 
+/* This is just plain wrong.
 new TestCase( SECTION,
 	      "r = new RegExp(); e = new Array(); "+
 	      "for ( p in r ) { e[e.length] = { property:p, value:r[p] }; e.length",
 	      0,
 	      e.length );
+*/
 
 test();
 
@@ -64,10 +69,10 @@ function TestRegExp() {
 function addProperty(name, value) {
   var pass = false;
 
-  if ( eval("this."+name) != void 0 ) {
+  if ( this[name] != void 0 ) {
     pass = true;
   } else {
-    eval( "this."+ name+" = "+ false );
+    this[name] = false;
   }
 
   new TestCase( SECTION,
