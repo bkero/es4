@@ -107,10 +107,41 @@ fun internal_append uss = Vector.concat uss
 
 fun internal_sourceFromUstring s = Vector.foldr (op ::) [] s
 
-
 (*
  * Public interface
  *)
+
+fun isWs (0wx0009) (* <TAB> *) = true
+  | isWs (0wx0020) (* <SPACE> *) = true
+  | isWs (0wx00A0) (* <NBSP> *) = true
+  | isWs (0wx000C) (* <FF> *) = true
+  | isWs (0wx000B) (* <VT> *) = true
+  | isWs (0wx000D) (* <CR> *) = true
+  | isWs (0wx000A) (* <LF> *) = true
+  | isWs (0wx2028) (* <LS> *) = true
+  | isWs (0wx2029) (* <PS> *) = true
+				
+  (* <USP> = "all other unicode Zs whitespace chars" *)
+  | isWs (0wx1680) (* <OGHAM SPACE MARK> *) = true
+  | isWs (0wx180E) (* <MONGOLIAN VOWEL SEPARATOR> *) = true
+  | isWs (0wx2000) (* <EN QUAD> *) = true
+  | isWs (0wx2001) (* <EM QUAD> *) = true
+  | isWs (0wx2002) (* <EN SPACE> *) = true
+  | isWs (0wx2003) (* <EM SPACE> *) = true
+  | isWs (0wx2004) (* <THREE-PER-EM SPACE> *) = true
+  | isWs (0wx2005) (* <FOUR-PER-EM SPACE> *) = true
+  | isWs (0wx2006) (* <SIX-PER-EM SPACE> *) = true
+  | isWs (0wx2007) (* <FIGURE SPACE> *) = true
+  | isWs (0wx2008) (* <PUNCTUATION SPACE> *) = true
+  | isWs (0wx2009) (* <THIN SPACE> *) = true
+  | isWs (0wx200A) (* <HAIR SPACE> *) = true
+  | isWs (0wx202F) (* <NARROW NO-BREAK SPACE> *) = true
+  | isWs (0wx205F) (* <MEDIUM MATHEMATICAL SPACE> *) = true
+  | isWs (0wx3000) (* <IDEOGRAPHIC SPACE> *) = true
+
+  | isWs _ = false
+
+fun explode (s:STRING) : WCHAR list = Vector.foldr (List.::) [] s
 
 fun wcharFromChar (c:char ) : WCHAR = internal_wcharFromChar c
 fun wcharIsChar   (c:WCHAR) : bool  = internal_wcharIsChar   c
@@ -129,6 +160,7 @@ fun stringLength (s:STRING   ) : int    = internal_stringLength s
 
 fun stringAppend (a:STRING) (b:STRING) : STRING = internal_stringAppend a b
 fun charCodeAt   (s:STRING) (i:int   ) : int    = internal_charCodeAt   s i
+fun charCodeOf   (c:WCHAR) : int = Word.toInt c
 fun compare      (a:STRING) (b:STRING) : order  = internal_compare      a b
 
 fun substring    (s:STRING) (m:int) (n:int) : STRING = internal_substring s m n

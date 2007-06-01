@@ -93,7 +93,7 @@ package
                 Math.floor(1000 * (parseInt(frac) / Math.pow(10,frac.length)));
             let isoRes : Object = isoTimestamp.exec(s);
             let defaults : Date! = new Date(reference);
-            if (isoRes !== undefined) {
+            if (isoRes) {
                 let year = isoRes.year !== undefined ? parseInt(isoRes.year) : defaults.UTCYear;
                 let month = isoRes.month !== undefined ? parseInt(isoRes.month) : defaults.UTCMonth;
                 let day = isoRes.day !== undefined ? parseInt(isoRes.day) : defaults.UTCDay;
@@ -138,7 +138,7 @@ package
             }
 
             let res = adhocTimestamp.exec(s);
-            if (res === null)
+            if (res === null || res === undefined)
                 return new Date(reference);
             let t = Date.UTC(parseInt(res.year),
                              findMonth(res.month),
@@ -205,7 +205,7 @@ package
         /* e.g., "Fri, 15 Dec 2006 23:45:09 GMT-0800" */
 
         static const adhocTimestamp : RegExp! = 
-            /(?: Mon|Tue|Wed|Thu|Fri|Sat|Sun )\s+
+            /(?: Mon|Tue|Wed|Thu|Fri|Sat|Sun ),?\s+
              (?P<day> [0-9]+ )\s+
              (?P<month> Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec )\s+
              (?P<year> -? [0-9]+ )\s+

@@ -1,4 +1,3 @@
-
 /* -*- mode: java; mode: font-lock; tab-width: 4; insert-tabs-mode: nil; indent-tabs-mode: nil -*- */
 /* ***** BEGIN LICENSE BLOCK *****
  * Version: MPL 1.1/GPL 2.0/LGPL 2.1
@@ -40,13 +39,15 @@
 /*
     TODO
 
-    o punctuators
-    o escapes
-    o reserved words
-    o number literals
-    o string literals
-    o regexp literals
     x lex break
+    x regexp literals
+    x punctuators
+    x string literals
+    x comments
+    x reserved words
+
+    o escapes
+    o number literals
 */
 
 use namespace intrinsic;
@@ -109,7 +110,16 @@ namespace Char
     const Y = "Y".charCodeAt(0);
     const Z = "Z".charCodeAt(0);
     const Zero = "0".charCodeAt(0);
-    const Period = ".".charCodeAt(0);
+    const One = "1".charCodeAt(0);
+    const Two = "2".charCodeAt(0);
+    const Three = "3".charCodeAt(0);
+    const Four = "4".charCodeAt(0);
+    const Five = "5".charCodeAt(0);
+    const Six = "6".charCodeAt(0);
+    const Seven = "7".charCodeAt(0);
+    const Eight = "8".charCodeAt(0);
+    const Nine = "9".charCodeAt(0);
+    const Dot = ".".charCodeAt(0);
     const Bang = "!".charCodeAt(0);
     const Equal = "=".charCodeAt(0);
     const Percent = "%".charCodeAt(0);
@@ -140,6 +150,7 @@ namespace Char
     const Newline = "\n".charCodeAt();
 }
 
+
 namespace Token
 
 {
@@ -149,11 +160,11 @@ namespace Token
     const Minus = firstTokenClass
     const MinusMinus = Minus - 1
     const Not = MinusMinus - 1
-    const NotEquals = Not - 1
-    const StrictNotEquals = NotEquals - 1
-    const Modulus = StrictNotEquals - 1
-    const ModulusAssign = Modulus - 1
-    const BitwiseAnd = ModulusAssign - 1
+    const NotEqual = Not - 1
+    const StrictNotEqual = NotEqual - 1
+    const Remainder = StrictNotEqual - 1
+    const RemainderAssign = Remainder - 1
+    const BitwiseAnd = RemainderAssign - 1
     const LogicalAnd = BitwiseAnd - 1
     const LogicalAndAssign = LogicalAnd - 1
     const BitwiseAndAssign = LogicalAndAssign - 1
@@ -190,14 +201,14 @@ namespace Token
     const LessThan = PlusAssign - 1
     const LeftShift = LessThan - 1
     const LeftShiftAssign = LeftShift - 1
-    const LessThanOrEquals = LeftShiftAssign - 1
-    const Assign = LessThanOrEquals - 1
+    const LessThanOrEqual = LeftShiftAssign - 1
+    const Assign = LessThanOrEqual - 1
     const MinusAssign = Assign - 1
-    const Equals = MinusAssign - 1
-    const StrictEquals = Equals - 1
-    const GreaterThan = StrictEquals - 1
-    const GreaterThanOrEquals = GreaterThan - 1
-    const RightShift = GreaterThanOrEquals - 1
+    const Equal = MinusAssign - 1
+    const StrictEqual = Equal - 1
+    const GreaterThan = StrictEqual - 1
+    const GreaterThanOrEqual = GreaterThan - 1
+    const RightShift = GreaterThanOrEqual - 1
     const RightShiftAssign = RightShift - 1
     const UnsignedRightShift = RightShiftAssign - 1
     const UnsignedRightShiftAssign = UnsignedRightShift - 1
@@ -246,7 +257,8 @@ namespace Token
     const Double = Decimal - 1
     const Dynamic = Double - 1
     const Each = Dynamic - 1
-    const Final = Each - 1
+    const Eval = Each - 1
+    const Final = Eval - 1
     const Get = Final - 1
     const Has = Get - 1
     const Implements = Has - 1
@@ -416,6 +428,7 @@ namespace Token
         "double",
         "dynamic",
         "each",
+	"eval",
         "final",
         "get",
         "has",
@@ -575,7 +588,7 @@ namespace Token
         case "static": return Static;
         case "to": return To;
         case "type": return Type;
-        case "uint": return Uint;
+        case "uint": return UInt;
         case "undefined": return Undefined;
         case "use": return Use;
         case "xml": return Xml;
@@ -630,7 +643,6 @@ namespace Token
 Token::test()
 
 namespace Lexer
-
 {
     use default namespace Lexer;
 
@@ -678,14 +690,14 @@ namespace Lexer
             : void
         {
             curIndex--;
-            print("retract cur=",curIndex);
+            // print("retract cur=",curIndex);
         }
 
         private function mark () 
             : void
         {
             markIndex = curIndex;
-            print("mark mark=",markIndex);
+	    // print("mark mark=",markIndex);
         }
 
         public function tokenList (lexPrefix)
@@ -704,18 +716,6 @@ namespace Lexer
             return tokenList.reverse();
         }
 
-        public function div () : int
-        {
-            let c : int = next ();
-            switch (c) 
-            {
-                case Char::Equal : return Token::DivAssign;
-                default:
-                    retract ();
-                    return Token::Div;
-            }
-        }
-
         public function regexp ()
         {
             let c : int = next ();
@@ -723,6 +723,8 @@ namespace Lexer
             {
                 case Char::Slash :
                     return regexpFlags ();
+	        case Char::EOS :
+		    throw "unexpected end of program in regexp literal";
                 default:
                     return regexp ();
             }
@@ -752,14 +754,14 @@ namespace Lexer
                 switch (c)
                 {
                 case 0xffffffef: return utf8sig ();
-                case Char::EOS: print("EOS"); return Token::EOS;
-                case Char::Slash: return Token::BREAK;
+                case Char::EOS: return Token::EOS;
+                case Char::Slash: return slash ();
                 case Char::Newline: return Token::Newline;
-                case Char::Space: return Token::Space;
+                case Char::Space: return start ();
                 case Char::LeftParen: return Token::LeftParen;
                 case Char::RightParen: return Token::RightParen;
                 case Char::Comma: return Token::Comma;
-                case Char::Semicolon: return Token::Semicolon;
+                case Char::Semicolon: return Token::SemiColon;
                 case Char::QuestionMark: return Token::QuestionMark;
                 case Char::LeftBracket: return Token::LeftBracket;
                 case Char::RightBracket: return Token::RightBracket;
@@ -769,43 +771,47 @@ namespace Lexer
                 case Char::At: return Token::At;
                 case Char::SingleQuote: return stringLiteral (c);
                 case Char::DoubleQuote: return stringLiteral (c);
+		case Char::Dot: return dot ();
                 case Char::Dash: return minus ();
                 case Char::Bang: return not ();
                 case Char::Percent: return remainder ();
                 case Char::Ampersand: return and ();
                 case Char::Asterisk: return mult ();
                 case Char::Colon: return colon ();
-                case Char::Caret: return caret ();
-                case Char::Bar: return or ();
+                case Char::Caret: return bitwiseXor ();
+                case Char::Bar: return bitwiseOr ();
                 case Char::Plus: return plus ();
-                case Char::LeftAngle: return lessthan ();
+                case Char::LeftAngle: return leftAngle ();
                 case Char::Equal: return equal ();
-                case Char::RightAngle: return greaterthan ();
-                case Char::Zero: return zero ();
+                case Char::RightAngle: return rightAngle ();
                 case Char::b: return b_ ();
-                case Char::c: return c_ ();
+                case Char::c: return identifier ();
                 case Char::d: return d_ ();
-                case Char::e: return e_ ();
-                case Char::f: return f_ ();
-                case Char::g: return g_ ();
-                case Char::i: return i_ ();
+                case Char::e: return identifier ();
+                case Char::f: return identifier ();
+                case Char::g: return identifier ();
+                case Char::i: return identifier ();
                 case Char::n: return n_ ();
-                case Char::o: return o_ ();
-                case Char::p: return p_ ();
-                case Char::r: return r_ ();
-                case Char::s: return s_ ();
-                case Char::t: return t_ ();
-                case Char::u: return u_ ();
-                case Char::v: return v_ ();
-                case Char::w: return w_ ();
+                case Char::o: return identifier ();
+                case Char::p: return identifier ();
+                case Char::r: return identifier ();
+                case Char::s: return identifier ();
+                case Char::t: return identifier ();
+                case Char::u: return identifier ();
+                case Char::v: return identifier ();
+                case Char::w: return identifier ();
+                case Char::Zero: return zero ();
+		case Char::One:
+		case Char::Two:
+		case Char::Three:
+		case Char::Four:
+		case Char::Five:
+		case Char::Six:
+		case Char::Seven:
+		case Char::Eight:
+		case Char::Nine:
+		    return decimalInteger ();
                 default:
-                    /*
-                    if (Unicode.isDecimalDigit (c)) 
-                    {
-                        return digit (c);
-                    } 
-                    else
-                    */ 
                     if (Unicode.isIdentifierStart (String.fromCharCode(c)))
                     {
                         return identifier ();
@@ -817,7 +823,626 @@ namespace Lexer
                 }
             }
             Debug.assert(false);
+	}
+
+	private function zero ()
+	    : int
+	{
+	    let c : int = next ();
+	    switch (c) {
+	    case Char::x:
+	    case Char::X:
+		return hexLiteral ();
+	    case Char::Zero:
+	    case Char::One:
+	    case Char::Two:
+	    case Char::Three:
+	    case Char::Four:
+	    case Char::Five:
+	    case Char::Six:
+	    case Char::Seven:
+		return octalLiteral ();
+	    case Char::Dot:
+		return decimalInteger ();
+	    case Char::Eight:  // what do we do with these?
+	    case Char::Nine:
+	    default :
+		retract ();
+		return numberSuffix ();
+	    }
+	}
+
+	private function hexLiteral ()
+	    : int
+	{
+	    let c : int = next ();
+	    switch (c) {
+	    case Char::Zero:
+	    case Char::One:
+	    case Char::Two:
+	    case Char::Three:
+	    case Char::Four:
+	    case Char::Five:
+	    case Char::Six:
+	    case Char::Seven:
+	    case Char::Eight:
+	    case Char::Nine:
+	    case Char::a: case Char::A:
+	    case Char::b: case Char::B:
+	    case Char::c: case Char::C:
+	    case Char::d: case Char::D:
+	    case Char::e: case Char::E:
+	    case Char::f: case Char::F:
+		return hexLiteral ();
+	    default:
+		retract ();
+		return numberSuffix ();
+	    }
+	}
+
+	private function octalLiteral ()
+	    : int
+	{
+	    let c : int = next ();
+	    switch (c) {
+	    case Char::Zero:
+	    case Char::One:
+	    case Char::Two:
+	    case Char::Three:
+	    case Char::Four:
+	    case Char::Five:
+	    case Char::Six:
+	    case Char::Seven:
+		return octalLiteral ();
+	    case Char::Eight:  // what do we do with these?
+	    case Char::Nine:
+	    default:
+		retract ();
+		return numberSuffix ();
+	    }
+	}
+
+	private function decimalInteger ()
+	    : int
+	{
+	    let c : int = next ();
+	    switch (c) {
+	    case Char::Zero:
+	    case Char::One:
+	    case Char::Two:
+	    case Char::Three:
+	    case Char::Four:
+	    case Char::Five:
+	    case Char::Six:
+	    case Char::Seven:
+	    case Char::Eight:
+	    case Char::Nine:
+		return decimalInteger ();
+	    case Char::Dot:
+		return decimalFraction ();
+	    case Char::e: case Char::E:
+		return decimalExponent ();
+	    default:
+		retract ();
+		return numberSuffix ();
+	    }
+	}
+
+	private function decimalFraction ()
+	    : int
+	{
+	    let c : int = next ();
+	    switch (c) {
+	    case Char::Zero:
+	    case Char::One:
+	    case Char::Two:
+	    case Char::Three:
+	    case Char::Four:
+	    case Char::Five:
+	    case Char::Six:
+	    case Char::Seven:
+	    case Char::Eight:
+	    case Char::Nine:
+		return decimalFraction ();
+	    case Char::e: case Char::E:
+		switch (next()) {
+		case Char::Plus:
+		case Char::Minus:
+		    return decimalExponent ();
+		default:
+		    retract ();
+		    return decimalExponent ();
 		}
+	    default:
+		retract ();
+		return numberSuffix ();
+	    }
+	}
+
+	private function decimalExponent ()
+	    : int
+	{
+	    let c : int = next ();
+	    switch (c) {
+	    case Char::Zero:
+	    case Char::One:
+	    case Char::Two:
+	    case Char::Three:
+	    case Char::Four:
+	    case Char::Five:
+	    case Char::Six:
+	    case Char::Seven:
+	    case Char::Eight:
+	    case Char::Nine:
+		return decimalExponent ();
+	    default:
+		retract ();
+		return numberSuffix ();
+	    }
+	}
+
+	private function numberSuffix ()
+	    : int
+	{
+	    let c : int = next ();
+	    switch (c) {
+	    case Char::i:
+		return Token::makeInstance (Token::ExplicitIntLiteral, lexeme ());
+	    case Char::u:
+		return Token::makeInstance (Token::ExplicitUIntLiteral, lexeme ());
+	    case Char::d:
+		return Token::makeInstance (Token::ExplicitDoubleLiteral, lexeme ());
+	    case Char::m:
+		return Token::makeInstance (Token::ExplicitDecimalLiteral, lexeme ());
+	    default:
+		retract ();
+		return Token::makeInstance (Token::DecimalLiteral, lexeme ());
+	    }
+	}
+
+
+	private function slash ()
+	    : int
+	{
+	    let c : int = next ();
+	    switch (c) {
+	    case Char::Slash:
+		lineComment ();
+		return start ();
+	    case Char::Asterisk:
+		blockComment ();
+		return start ();
+	    default:
+		retract ();
+		return Token::BREAK;
+	    }
+	}
+
+	private function lineComment ()
+	    : void
+	{
+	    let c : int = next ();
+	    switch (c) {
+	    case Char::Newline: 
+	    case Char::EOS:
+		retract (); // leave newline for asi
+		return;
+	    default:
+		return lineComment ();
+	    }
+	}
+
+	private function blockComment ()
+	    : void
+	{
+	    let c : int = next ();
+	    switch (c) {
+	    case Char::Asterisk :
+		switch (next()) {
+		case Char::Slash:
+		    return;
+		case Char::EOS :
+		    retract (); 
+		    return;
+		default: 
+		    retract (); // leave in case its an asterisk
+		    blockComment ();
+		}
+	    case Char::EOS :
+		retract (); 
+		return;
+	    default : 
+		return blockComment ();
+	    }
+	}
+
+	private function stringLiteral (delimiter, text="")
+	    : int
+	{
+	    let c : int = next ();
+	    switch (c) {
+	    case delimiter : return Token::makeInstance (Token::StringLiteral, String.fromCharCode(delimiter)+text);
+		// encode delimiter in string lexeme by appending to text
+	    default :
+		return stringLiteral (delimiter, text+String.fromCharCode (c))
+	    }
+	}
+
+	/*
+	
+	. .. ... .<
+	
+	*/
+
+	private function dot ()
+	    : int
+	{
+	    let c : int = next ();
+	    switch (c) {
+	    case Char::Dot : return dotdot ();
+	    case Char::LeftAngle : return Token::LeftDotAngle;
+	    case Char::Zero:
+	    case Char::One:
+	    case Char::Two:
+	    case Char::Three:
+	    case Char::Four:
+	    case Char::Five:
+	    case Char::Six:
+	    case Char::Seven:
+	    case Char::Eight:
+	    case Char::Nine:
+		return decimalFraction ();
+	    default : 
+		retract ();
+		return Token::Dot;
+	    }
+	}
+
+	private function dotdot ()
+	    : int
+	{
+	    let c : int = next ();
+	    switch (c) {
+	    case Char::Dot : return Token::TripleDot;
+	    default :
+		retract ();
+		return Token::DoubleDot;
+	    }
+	}
+
+	/*
+
+	! != !==
+
+	*/
+
+	private function not ()
+	    : int
+	{
+	    let c : int = next ();
+	    switch (c) {
+	    case Char::Equal : return notequal ();
+	    default :
+		retract ();
+		return Token::Not;
+	    }
+	}
+
+	private function notequal ()
+	    : int
+	{
+	    let c : int = next ();
+	    switch (c) {
+	    case Char::Equal : return Token::StrictNotEqual;
+	    default :
+		retract ();
+		return Token::NotEqual;
+	    }
+	}
+
+	/*
+
+	% %=
+
+	*/
+
+	private function remainder ()
+	    : int
+	{
+	    let c : int = next ();
+	    switch (c) {
+	    case Char::Equal : return Token::RemainderAssign;;
+	    default :
+		retract ();
+		return Token::Remainder;
+	    }
+	}
+
+	/*
+
+	& &= && &&=
+
+	*/
+
+	private function and ()
+	    : int
+	{
+	    let c : int = next ();
+	    switch (c) {
+	    case Char::Equal : return Token::BitwiseAndAssign;;
+	    case Char::Ampersand : return logicalAnd ();
+	    default :
+		retract ();
+		return Token::BitwiseAnd;
+	    }
+	}
+
+	private function logicalAnd ()
+	    : int
+	{
+	    let c : int = next ();
+	    switch (c) {
+	    case Char::Equal : return Token::LogicalAndAssign;;
+	    default :
+		retract ();
+		return Token::LogicalAnd;
+	    }
+	}
+
+	/*
+
+	* *=
+
+	*/
+
+	private function mult ()
+	    : int
+	{
+	    let c : int = next ();
+	    switch (c) {
+	    case Char::Equal : return Token::MultAssign;;
+	    default :
+		retract ();
+		return Token::Mult;
+	    }
+	}
+
+	/*
+
+	+ +==
+
+	*/
+
+	private function plus ()
+	    : int
+	{
+	    let c : int = next ();
+	    switch (c) {
+	    case Char::Plus : return Token::PlusPlus;
+	    case Char::Equal : return Token::PlusAssign;
+	    default :
+		retract ();
+		return Token::Plus;
+	    }
+	}
+
+	/*
+	  
+	- -- -=
+
+	*/
+
+	private function minus ()
+	    : int
+	{
+	    let c : int = next ();
+	    switch (c) {
+	    case Char::Dash : return Token::MinusMinus;
+	    case Char::Equal : return Token::MinusAssign;
+	    default :
+		retract ();
+		return Token::Minus;
+	    }
+	}
+
+	/*
+
+	/ /= />
+
+	*/
+
+	public function div ()
+	    : int
+	{
+	    let c : int = next ();
+	    switch (c) {
+	    case Char::Equal : return Token::DivAssign;
+	    case Char::RightAngle : return Token::XmlTagEndEnd;
+	    default :
+		retract ();
+		return Token::Div;
+	    }
+	}
+
+	/*
+
+	< <= </ << <<=
+
+	*/
+
+	private function leftAngle ()
+	    : int
+	{
+	    let c : int = next ();
+	    switch (c) {
+	    case Char::Equal : return Token::LessThanOrEqual;
+	    case Char::LeftAngle : return leftShift ();
+	    case Char::Slash : return Token::XmlTagStartEnd
+	    default :
+		retract ();
+		return Token::LessThan;
+	    }
+	}
+
+	private function leftShift ()
+	    : int
+	{
+	    let c : int = next ();
+	    switch (c) {
+	    case Char::Equal : return Token::LeftShiftAssign;
+	    default :
+		retract ();
+		return Token::LeftShift;
+	    }
+	}
+
+	/*
+
+	= == ===
+
+	*/
+
+	private function equal ()
+	    : int
+	{
+	    let c : int = next ();
+	    switch (c) {
+	    case Char::Equal : return equalEqual ();
+	    default :
+		retract ();
+		return Token::Equal;
+	    }
+	}
+
+	private function equalEqual ()
+	    : int
+	{
+	    let c : int = next ();
+	    switch (c) {
+	    case Char::Equal : return Token::StrictEqual;
+	    default :
+		retract ();
+		return Token::Equal;
+	    }
+	}
+
+
+	/*
+
+	> >= >> >>= >>> >>>=
+
+	*/
+
+	private function rightAngle ()
+	    : int
+	{
+	    let c : int = next ();
+	    switch (c) {
+	    case Char::Equal : return Token::GreaterThanOrEqual;
+	    case Char::RightAngle : return rightShift ();
+	    default :
+		retract ();
+		return Token::GreaterThan;
+	    }
+	}
+
+	private function rightShift ()
+	    : int
+	{
+	    let c : int = next ();
+	    switch (c) {
+	    case Char::Equal : return Token::RightShiftAssign;
+	    case Char::RightAngle : return unsignedRightShift ();
+	    default :
+		retract ();
+		return Token::RightShift;
+	    }
+	}
+
+	private function unsignedRightShift ()
+	    : int
+	{
+	    let c : int = next ();
+	    switch (c) {
+	    case Char::Equal : return Token::UnsignedRightShiftAssign;
+	    default :
+		retract ();
+		return Token::UnsignedRightShift;
+	    }
+	}
+
+	/*
+
+	^ ^=
+
+	*/
+
+	private function bitwiseXor ()
+	    : int
+	{
+	    let c : int = next ();
+	    switch (c) {
+	    case Char::Equal : return Token::BitwiseXorAssign;
+	    default :
+		retract ();
+		return Token::BitwiseXor;
+	    }
+	}
+
+	/*
+
+	| |= || ||=
+
+	*/
+
+	private function bitwiseOr ()
+	    : int
+	{
+	    let c : int = next ();
+	    switch (c) {
+	    case Char::Equal : return Token::BitwiseOrAssign;
+	    case Char::Bar : return logicalOr ();
+	    default :
+		retract ();
+		return Token::BitwiseOr;
+	    }
+	}
+
+	private function logicalOr ()
+	    : int
+	{
+	    let c : int = next ();
+	    switch (c) {
+	    case Char::Equal : return Token::LogicalOrAssign;
+	    default :
+		retract ();
+		return Token::LogicalOr;
+	    }
+	}
+
+	/*
+
+	: ::
+
+	*/
+
+	private function colon ()
+	    : int
+	{
+	    let c : int = next ();
+	    switch (c) {
+	    case Char::Colon : return Token::DoubleColon;
+	    default :
+		retract ();
+		return Token::Colon;
+	    }
+	}
+
+	/*
+
+	identifier
+
+	*/
 
         private function identifier () 
             : int 
@@ -936,8 +1561,8 @@ namespace Lexer
             let c : int = next();
             switch (c) 
             {
-                case Char::a : return na_ ();
-                case Char::e : return ne_ ();
+                case Char::a : return identifier ();
+                case Char::e : return identifier ();
                 case Char::u : return nu_ ();
                 default:
                     retract ();
@@ -987,21 +1612,42 @@ namespace Lexer
 
     function test() 
     {
-        var scan = new Scanner ("/abc/ null break /def/xyz","test");
-        var list = scan.tokenList (scan.start);
-        let tk = Token::EOS;
-        do {
-            print("tokenList.length=",list.length);
-            while (list.length > 0) {
-                tk=list.pop();
-                print(" ",Token::tokenText(tk));
-                if (tk == Token::BREAK) {
-                    list = scan.tokenList (scan.regexp);
-                    print("tokenList.length=",list.length);
+        let testCases = [ "break case catch continue default delete do else enum extends"
+			, "false finally for function if in instanceof new null return"
+                        , "super switch this throw true try typeof var void while with"
+			, "call cast const decimal double dynamic each eval final get has"
+			, "implements import int interface internal intrinsic is let namespace"
+			, "native Number override package precision private protected prototype public"
+			, "rounding standard strict static to type uint undefined use xml yield"
+			, ". .< .. ... ! != !== % %= & && &&= * *= + +- ++ - -- -="
+		        , "/ /= /> < <= </ << <<= = == === > >= >> >>= >>> >>>="
+			, "^ ^= | |= || ||= : :: ( ) [ ] { } ~ @ , ; ?"
+			, "/* hello nobody */ hello // goodbye world"
+			, "0 0i 00 001u 0123d 045m 0x0 0xCAFEBABE 0x12345678u 1. .0 .2e+3 1.23m"
+                        , "/abc/ 'hi' \"bye\" null break /def/xyz" ].reverse();
+
+	while (testCases.length > 0) {
+            var scan = new Scanner (testCases.pop());
+            var list = scan.tokenList (scan.start);
+            let tk = Token::EOS;
+            do {
+                print("tokenList.length=",list.length);
+                while (list.length > 0) {
+                    tk=list.pop();
+                    print(" ",Token::tokenText(tk));
+                    if (tk == Token::BREAK) {
+			if (testCases.length == 0) {   // if last test, then scan for regexps
+                            list = scan.tokenList (scan.regexp);
+                        }
+			else {
+			    list = scan.tokenList (scan.div);
+			}
+                        print("tokenList.length=",list.length);
+                    }
                 }
-            }
-        } while (tk != Token::EOS);
-        print ("scanned!");
+            } while (tk != Token::EOS);
+            print ("scanned!");
+	}
     }
 
     test ();

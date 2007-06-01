@@ -558,7 +558,81 @@ fun eval (vals:Mach.VAL list)
  *)
 fun parseInt (vals:Mach.VAL list) 
     : Mach.VAL =
-    LogErr.unimplError ["intrinsic::parseInt"]
+    let
+        val strVal = rawNth vals 0 
+        val radixVal = rawNth vals 1
+        val str = Eval.toUstring strVal
+        val radix = Int32.toInt (Eval.toInt32 radixVal)
+        val chars = Ustring.explode str
+        fun stripWs c = case c of 
+                            x::xs => if Ustring.isWs x 
+                                     then stripWs xs
+                                     else x::xs
+                          | [] => []
+        val chars = map Ustring.charCodeOf (stripWs chars)
+        val (sign, chars) = case chars of 
+                                (0x2D (* '-' *) :: rest) => (~1.0, rest)
+                              | (0x2B (* '+' *) :: rest) => (1.0, rest)
+                              | _ => (1.0, chars)
+
+        fun nan _ = Eval.newDouble (0.0 / 0.0)
+
+        fun digitVal (charcode:int) 
+            : int option = 
+            if 0x2F < charcode andalso charcode < 0x3A
+            then SOME (charcode - 0x30)
+            else if 0x60 < charcode andalso charcode < 0x7B
+            then SOME (10 + (charcode - 0x61))
+            else if 0x40 < charcode andalso charcode < 0x5B
+            then SOME (10 + (charcode - 0x41))
+            else NONE
+
+        fun finishWith (accum:LargeInt.int option) 
+            : Mach.VAL = 
+            case accum of 
+                NONE => nan()
+              | SOME li => Eval.newDouble (Real64.* (sign, (Real64.fromLargeInt li)))
+
+        fun parseWithRadix (accum:LargeInt.int option) (radix:int) (chars:int list) 
+            : Mach.VAL = 
+            case chars of 
+                [] => finishWith accum
+              | x::xs => case digitVal x of 
+                             NONE => finishWith accum
+                           | SOME v => if v < radix
+                                       then case accum of 
+                                                NONE => parseWithRadix (SOME (Int.toLarge v)) radix xs 
+                                              | SOME acc => parseWithRadix 
+                                                                (SOME (LargeInt.+ 
+                                                                       (LargeInt.* (acc, (LargeInt.fromInt radix)), 
+                                                                        (Int.toLarge v)))) 
+                                                                radix xs
+                                       else finishWith accum
+
+        fun parseWithInferredHex (radix:int) (chars:int list) 
+            : Mach.VAL = 
+            case chars of 
+                [] => nan()
+              (* Handle 0x... and 0X... prefixes *)
+              | 0x30 :: 0x78 :: rest => parseWithRadix NONE 16 rest
+              | 0x30 :: 0x58 :: rest => parseWithRadix NONE 16 rest
+              | _ => parseWithRadix NONE radix chars
+
+        fun parseWithInferredOctalAndHex (radix:int) (chars:int list) 
+            : Mach.VAL = 
+            case chars of 
+                [] => nan()
+              | 0x30 :: _ => parseWithInferredHex 8 chars
+              | _ => parseWithInferredHex radix chars
+    in
+        if radix = 0 
+        then parseWithInferredOctalAndHex 10 chars
+        else if radix < 2 orelse radix > 36
+        then nan()
+        else if radix = 16 
+        then parseWithInferredHex radix chars
+        else parseWithRadix NONE radix chars
+    end
     
 
 (* 
