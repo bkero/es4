@@ -434,33 +434,40 @@ package
 
             type matcher = (string,RegExp!);
 
-            function splitMatch(R: matcher, S: string, q: uint) : [uint, [string]] {
-                /* FIXME (Ticket #19): use "switch type" when it works */
-                if (R is string) {
-                    let x : string = R cast string;
+            function splitMatch(R: matcher, S: string, q: uint) : [uint, [string]]? {
+                /* FIXME (Ticket #70): type annotation on expression in 'switch type'
+                 * should not be necessary.
+                 */
+                switch type (R: *) {
+                case (x: string) {
                     let r : uint = x.length;
                     if (q + r <= S.length && S.substring(q, q + r) === R)
                         return [q+r, []];
                     else
                         return null;
                 }
-
-                if (R is RegExp) {
-                    let x : RegExp = R cast RegExp;
+                case (x: RegExp!) {
                     let mr : MatchResult = x.match(S, q);
                     if (mr === null)
                         return null;
                     else
                         return [mr.endIndex, mr.cap];
                 }
+                }
             }
 
             /* 1-6 */
-            let A   : [string] = [] : [string];
-            let lim : uint = limit === undefined ? 0xFFFFFFFFu : ToUint(limit);
+            let A   = [];
+            let lim : uint = limit === undefined ? uint.MAX_VALUE : ToUint(limit);
             let s   : uint = length;
             let p   : uint = 0;
-            let R   : matcher = separator is RegExp ? separator : ToString(separator);
+            let R   : matcher;
+
+            /* FIXME: Ticket #72 / #73: ought to be enough to use `separator is RegExp!` */
+            if (separator !== null && separator is RegExp)
+                R = separator;
+            else
+                R = ToString(separator);
             
             /* 7 */
             if (lim === 0)
@@ -474,7 +481,7 @@ package
 
             /* 9; 31-34 */
             if (s === 0) {
-                let z : [string]? = splitMatch(R, this, 0);
+                let z = splitMatch(R, this, 0);
                 if (z === null)
                     A[0] = this;
                 return A;
@@ -483,7 +490,7 @@ package
             /* 10-27 */
             for ( let q : uint = p ; q !== s ; ) {
                 /* 12-13; 26-27 */
-                let z : [string]? = splitMatch(R, this, q);
+                let z = splitMatch(R, this, q);
                 if (z === null) {
                     ++q;
                     continue;
@@ -501,13 +508,13 @@ package
                 if (A.length === lim) 
                     return A;
 
-                for ( let i : uint = 0 ; i < cap.length ; i++ ) {
-                    A[A.length] = cap[i+1];
+                p = e;
+
+                for ( let i : uint = 1 ; i < cap.length ; i++ ) {
+                    A[A.length] = cap[i];
                     if (A.length === lim)
                         return A;
                 }
-
-                q = e;
             }
 
             /* 28-30 */

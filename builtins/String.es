@@ -207,10 +207,10 @@ package
            E262-4 draft proposals:static_generics
         */
         prototype function split(separator, limit)
-            ToString(this).split(ToString(separator), ToDouble(limit));
+            ToString(this).split(separator, limit);
 
         static function split(self, separator, limit)
-            ToString(self).split(ToString(separator), ToDouble(limit));
+            ToString(self).split(separator, limit);
 
         intrinsic function split(separator, limit) : Array
             ToString(this).split(separator, limit);
