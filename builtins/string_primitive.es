@@ -400,7 +400,7 @@ package
                 /* paragraph 3 */
 
                 let searchString : string = ToString(s);
-                let pos : double = indexOf(searchString, 0);
+                let pos : double = S.indexOf(searchString, 0);
 
                 /* paragraph 6: the new string is derived from the old string by
                    making replacements for each match.  If there are no matches,
