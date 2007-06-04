@@ -60,16 +60,24 @@ package
         String.prototype.constructor = String;
 
         /* E262-3 15.5.4.2: String.prototype.toString */
-        prototype function toString(this : String)
-            ToString(this);
+        prototype function toString(this : String) {
+            /* FIXME (Ticket #78): redundant check */
+            if (this is String)
+                return ToString(this);
+            throw new Error("Implementation error: the 'this' constraint should have caught this one.");
+        }
 
         override intrinsic function toString() : string
             ToString(this);
         
 
         /* E262-3 15.5.4.3: String.prototype.valueOf */
-        prototype function valueOf(this : String)
-            ToString(this);
+        prototype function valueOf(this : String) {
+            /* FIXME (Ticket #78): redundant check */
+            if (this is String)
+                return ToString(this);
+            throw new Error("Implementation error: the 'this' constraint should have caught this one.");
+        }
         
         override intrinsic function valueOf() : String
             ToString(this);
