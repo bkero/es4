@@ -441,7 +441,7 @@ fun fromCharCode (vals:Mach.VAL list)
     let
         val i = nthAsUInt vals 0
     in
-        Eval.newString (Ustring.fromCharCode (Word32.toInt i))
+        Eval.newString (Ustring.fromCharCode (Word32.toInt (Word32.andb(i, 0wx1FFFFF))))
     end
 
 
