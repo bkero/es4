@@ -440,10 +440,10 @@ package
         prototype function slice(start, end)
             string.slice(this, start, end);
 
-        override intrinsic function slice(s: double, e: double): Array
+        override intrinsic function slice(start: double, end: double): Array
             string.slice(this, start, end);
 
-        static function slice(self, start, end): Array {
+        static function slice(self, s, e): Array {
             let S     : string = ToString(self);
             let len   : double = S.length;
             let start : double = ToInteger(s);
