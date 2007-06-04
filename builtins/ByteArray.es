@@ -98,7 +98,7 @@ package {
             let n : uint = length;
             let s : string = "";
             for ( let i:int = 0; i < n; i++ )
-                s += String.fromCharCode(this[i]);
+                s += string.fromCharCode(this[i]);
             return s;
         }
 
