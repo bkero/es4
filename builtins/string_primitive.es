@@ -317,13 +317,14 @@ package
                     i = r.lastIndex;
 
                     if (res[1])      s += "$";
-                    else if (res[2]) s += substring(start, end);
-                    else if (res[3]) s += substring(0, start);
-                    else if (res[4]) s += substring(end);
-                    else             
-                        let (c : int = parseInt(res[5])) { 
-                            if (c in cap) s += cap[c]; 
-                        }
+                    else if (res[2]) s += S.substring(start, end);
+                    else if (res[3]) s += S.substring(0, start);
+                    else if (res[4]) s += S.substring(end);
+                    else {
+                        let n : int = parseInt(res[5]);
+                        if (n <= m && cap[n] !== undefined) 
+                            s += cap[n]; 
+                    }
                 }
                 s += replaceString.substring(i);
 
@@ -362,7 +363,7 @@ package
                         return S;
 
                     let end : uint = i + res[0].length;
-                    return substring(0,i) + substitute(i, end, m, res) + substring(end);
+                    return S.substring(0,i) + substitute(i, end, m, res) + S.substring(end);
                 }
                 else {
                     /* Note that regexp.lastIndex is visible to the
@@ -408,7 +409,7 @@ package
                     return S;
 
                 let end : uint = pos + searchString.length;
-                return substring(0,pos) + substitute(pos, end, 0, []) + substring(end);
+                return S.substring(0,pos) + substitute(pos, end, 0, []) + S.substring(end);
             }
         }
         
