@@ -128,6 +128,7 @@ namespace Char
     const Plus = "+".charCodeAt(0);
     const Dash = "-".charCodeAt(0);
     const Slash = "/".charCodeAt(0);
+    const BackSlash = "\\".charCodeAt(0);
     const Comma = ",".charCodeAt(0);
     const Colon = ":".charCodeAt(0);
     const Semicolon = ";".charCodeAt(0);
@@ -148,6 +149,18 @@ namespace Char
     const DoubleQuote = "\"".charCodeAt(0);
     const Space = " ".charCodeAt(0);
     const Newline = "\n".charCodeAt();
+
+    function fromOctal (str)
+	: int
+    {
+	return parseInt (str);
+    }
+
+    function fromHex (str)
+	: int
+    {
+	return parseInt (str);
+    }
 }
 
 
@@ -785,21 +798,24 @@ namespace Lexer
                 case Char::Equal: return equal ();
                 case Char::RightAngle: return rightAngle ();
                 case Char::b: return b_ ();
-                case Char::c: return identifier ();
+                case Char::c: return identifier ("c");
                 case Char::d: return d_ ();
-                case Char::e: return identifier ();
-                case Char::f: return identifier ();
-                case Char::g: return identifier ();
-                case Char::i: return identifier ();
+                case Char::e: return identifier ("e");
+                case Char::f: return identifier ("f");
+                case Char::g: return identifier ("g");
+                case Char::i: return identifier ("i");
                 case Char::n: return n_ ();
-                case Char::o: return identifier ();
-                case Char::p: return identifier ();
-                case Char::r: return identifier ();
-                case Char::s: return identifier ();
-                case Char::t: return identifier ();
-                case Char::u: return identifier ();
-                case Char::v: return identifier ();
-                case Char::w: return identifier ();
+                case Char::o: return identifier ("o");
+                case Char::p: return identifier ("p");
+                case Char::r: return identifier ("r");
+                case Char::s: return identifier ("s");
+                case Char::t: return identifier ("t");
+                case Char::u: return identifier ("u");
+                case Char::v: return identifier ("v");
+                case Char::w: return identifier ("w");
+		case Char::BackSlash:
+		    let c = escapeSequence ();
+		    return identifier (String.fromCharCode(c));
                 case Char::Zero: return zero ();
 		case Char::One:
 		case Char::Two:
@@ -814,7 +830,7 @@ namespace Lexer
                 default:
                     if (Unicode.isIdentifierStart (String.fromCharCode(c)))
                     {
-                        return identifier ();
+                        return identifier (String.fromCharCode(c));
                     } 
                     else
                     {
@@ -1000,7 +1016,6 @@ namespace Lexer
 	    }
 	}
 
-
 	private function slash ()
 	    : int
 	{
@@ -1066,6 +1081,234 @@ namespace Lexer
 	    default :
 		return stringLiteral (delimiter, text+String.fromCharCode (c))
 	    }
+	}
+
+	/*
+
+	*/
+
+	private function escapeSequence ()
+	    : int
+	{
+	    let c : int = next ();
+	    switch (c) {
+	    case Char::Zero:
+	    case Char::One:
+	    case Char::Two:
+	    case Char::Three:
+	    case Char::Four:
+	    case Char::Five:
+	    case Char::Six:
+	    case Char::Seven:
+		retract ();
+		return octalOrNulEscape ();
+	    case Char::x:
+		return hexEscape (2);
+	    case Char::u:
+		return hexEscape (4);
+	    case Char::b: 
+		return Char::Backspace;
+	    case Char::f: 
+		return Char::Formfeed;
+	    case Char::n: 
+		return Char::Newline;
+	    case Char::r: 
+		return Char::CarriageReturn;
+	    case Char::t: 
+		return Char::Tab;
+	    case Char::v: 
+		return Char::VerticalTab;
+	    case Char::SingleQuote:
+	    case Char::DoubleQuote:
+	    case Char::BackSlash:
+		return c;
+	    }
+	}
+
+	private function octalOrNulEscape (n:int)
+	    : uint
+	{
+	    let c : int = next ();
+	    switch (c) {
+	    case Char::Zero:
+		switch (next()) {
+		case Char::One:
+		case Char::Two:
+		case Char::Three:
+		case Char::Four:
+		case Char::Five:
+		case Char::Six:
+		case Char::Seven:
+		    retract ();
+		    return octalEscapeFull (n+1);
+		default:
+		    return 0;  // \0
+		}
+	    case Char::One:
+	    case Char::Two:
+	    case Char::Three:
+		return octalEscapeFull (n+1);
+	    case Char::Four:
+	    case Char::Five:
+	    case Char::Six:
+	    case Char::Seven:
+		return octalEscapeShort (n+1);
+	    default:
+		throw "internal error: expecting octal character";
+	    }
+	}
+
+	private function octalEscapeFull (n:int)
+	    : uint
+	{
+	    if (n==3) {
+		for (let i=0; i<n; i++ ) retract ();  // unwind input for rescanning
+		return octalEscape (n);
+	    }
+
+	    let c : int = next ();
+	    switch (c) {
+	    case Char::Zero:
+	    case Char::One:
+	    case Char::Two:
+	    case Char::Three:
+	    case Char::Four:
+	    case Char::Five:
+	    case Char::Six:
+	    case Char::Seven:
+		return octalEscapeFull (n+1);
+	    default:
+		for (let i=0; i<=n; i++ ) retract ();  // unwind input for rescanning
+		return octalEscape (n);
+	    }
+	}
+
+	private function octalEscapeShort (n:int)
+	    : uint
+	{
+	    let c : int = next ();
+	    switch (c) {
+	    case Char::Zero:
+	    case Char::One:
+	    case Char::Two:
+	    case Char::Three:
+	    case Char::Four:
+	    case Char::Five:
+	    case Char::Six:
+	    case Char::Seven:
+		for (let i=0; i<=n; i++ ) retract ();  // unwind input for rescanning
+		return octalEscape (n+1);
+	    default:
+		for (let i=0; i<=n; i++ ) retract ();  // unwind input for rescanning
+		return octalEscape (n);
+	    }
+	}
+
+	private function octalEscape (n:int,v:uint=0)
+	    : uint
+	{
+	    print("n=",n,"v=",v)
+	    if (n==0) {
+		return v;
+	    }
+
+	    let c : int = next ();
+	    var m;
+	    switch (c) {
+	    case Char::Zero:
+		m=0x0;
+		break;
+	    case Char::One:
+		m=0x1;
+		break;
+	    case Char::Two:
+		m=0x2;
+		break;
+	    case Char::Three:
+		m=0x3;
+		break;
+	    case Char::Four:
+		m=0x4;
+		break;
+	    case Char::Five:
+		m=0x5;
+		break;
+	    case Char::Six:
+		m=0x6;
+		break;
+	    case Char::Seven:
+		m=0x7;
+		break;
+	    default:
+		print("error");
+		throw "malformed escape, expecting "+n+" more characters";
+	    }
+	    return octalEscape (n-1, v+m*Math.pow(8,n-1));
+	}
+
+	private function hexEscape (n:int,v:uint=0)
+	    : uint
+	{
+	    if (n==0) {
+		return v;
+	    }
+
+	    let c : int = next ();
+	    var m;
+	    switch (c) {
+	    case Char::Zero:
+		m=0x0;
+		break;
+	    case Char::One:
+		m=0x1;
+		break;
+	    case Char::Two:
+		m=0x2;
+		break;
+	    case Char::Three:
+		m=0x3;
+		break;
+	    case Char::Four:
+		m=0x4;
+		break;
+	    case Char::Five:
+		m=0x5;
+		break;
+	    case Char::Six:
+		m=0x6;
+		break;
+	    case Char::Seven:
+		m=0x7;
+		break;
+	    case Char::Eight:
+		m=0x8;
+		break;
+	    case Char::Nine:
+		m=0x9;
+		break;
+	    case Char::a: case Char::A:
+		m=0xA;
+		break;
+	    case Char::b: case Char::B:
+		m=0xB;
+		break;
+	    case Char::c: case Char::C:
+		m=0xC;
+		break;
+	    case Char::d: case Char::D:
+		m=0xD;
+		break;
+	    case Char::e: case Char::E:
+		m=0xE;
+		break;
+	    case Char::f: case Char::F:
+		m=0xF
+		break;
+	    default:
+		print("error");
+		throw "malformed escape, expecting "+n+" more characters";
+	    }
+	    return hexEscape (n-1, v+m*Math.pow(16,n-1));
 	}
 
 	/*
@@ -1444,7 +1687,7 @@ namespace Lexer
 
 	*/
 
-        private function identifier () 
+        private function identifier (str:string)
             : int 
         {
             let c : int = next ();
@@ -1503,16 +1746,20 @@ namespace Lexer
             case Char::W :
             case Char::X :
             case Char::Y :
-            case Char::Z : return identifier ();
+            case Char::Z : 
+		return identifier (str+String.fromCharCode(c));
+	    case Char::BackSlash:
+		let c = escapeSequence ();
+		return identifier (str+String.fromCharCode(c));
             default:
                 if (Unicode.isIdentifierPart (String.fromCharCode(c)) && c != Char::EOS)
                 {
-                    return identifier ();
+                    return identifier (str+String.fromCharCode(c));
                 }
                 else
                 {
                     retract ();                    
-                    return Token::maybeReservedIdentifier (lexeme ());
+                    return Token::maybeReservedIdentifier (str);
                 }
             }
         }
@@ -1522,10 +1769,11 @@ namespace Lexer
             let c : int = next ();
             switch (c) 
             {
-                case Char::r : return br_ ();
+                case Char::r:
+		    return br_ ();
                 default:
                     retract ();
-                    return identifier ();
+                    return identifier ("b");
             }
         }
 
@@ -1535,10 +1783,11 @@ namespace Lexer
             let c : int = next ();
             switch (c) 
             {
-                case Char::e : return identifier ();
+                case Char::e : 
+		    return identifier ("bre");
                 default:
                     retract ();
-                    return identifier ();
+                    return identifier ("br");
             }
         }
 
@@ -1548,10 +1797,10 @@ namespace Lexer
             let c : int = next ();
             switch (c) 
             {
-                case Char::e : return identifier ();
+                case Char::e : return identifier ("de");
                 default:
                     retract ();
-                    return identifier ();
+                    return identifier ("d");
             }
         }
 
@@ -1561,12 +1810,12 @@ namespace Lexer
             let c : int = next();
             switch (c) 
             {
-                case Char::a : return identifier ();
-                case Char::e : return identifier ();
+                case Char::a : return identifier ("na");
+                case Char::e : return identifier ("ne");
                 case Char::u : return nu_ ();
                 default:
                     retract ();
-                    return identifier ();
+                    return identifier ("n");
             }
         }
 
@@ -1578,7 +1827,7 @@ namespace Lexer
             case Char::l : return nul_ ();
             default:
                 retract ();
-                return identifier ();
+                return identifier ("nu");
             }
         }
 
@@ -1590,7 +1839,7 @@ namespace Lexer
             case Char::l : return null_ ();
             default:
                 retract ();
-                return identifier ();
+                return identifier ("nul");
             }
         }
 
@@ -1600,7 +1849,7 @@ namespace Lexer
             let c : int = next ();
             if (Unicode.isIdentifierPart (String.fromCharCode(c)))
             {
-                return identifier ();
+                return identifier ("null"+String.fromCharCode(c));
             }
             else
             {
@@ -1624,6 +1873,7 @@ namespace Lexer
 			, "^ ^= | |= || ||= : :: ( ) [ ] { } ~ @ , ; ?"
 			, "/* hello nobody */ hello // goodbye world"
 			, "0 0i 00 001u 0123d 045m 0x0 0xCAFEBABE 0x12345678u 1. .0 .2e+3 1.23m"
+			, "\\u0050 \\x50gh \\073 \\73 \\073123 \\7398"
                         , "/abc/ 'hi' \"bye\" null break /def/xyz" ].reverse();
 
 	while (testCases.length > 0) {
