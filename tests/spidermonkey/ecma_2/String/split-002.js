@@ -29,6 +29,9 @@ var SECTION = "ecma_2/String/split-002.js";
 var VERSION = "ECMA_2";
 var TITLE   = "String.prototype.split( regexp, [,limit] )";
 
+var nnn=0;
+
+
 startTest();
 
 // the separator is not supplied
@@ -111,7 +114,7 @@ function CompareSplit( string, separator ) {
     split_1.length : split_2.length;
 
   for ( var split_item = 0; split_item < limit; split_item++ ) {
-    AddTestCase(
+    AddTestCase( (nnn++) + ":  " +
       string + ".split(" + separator + ")["+split_item+"]",
       split_2[split_item],
       split_1[split_item] );
@@ -138,11 +141,13 @@ function CompareSplitWithLimit( string, separator, splitlimit ) {
   }
 }
 
-function string_split ( __this, separator, limit ) {
+function string_split ( __this, separator, limit ) 
+{
   var S = String(__this );					  // 1
 
   var A = new Array();                          // 2
 
+  var lim;
   if ( limit == undefined ) {                   // 3
     lim = Math.pow(2, 31 ) -1;
   } else {
@@ -152,12 +157,14 @@ function string_split ( __this, separator, limit ) {
   var s = S.length;                              // 4
   var p = 0;                                     // 5
 
-  if  ( separator == undefined ) {              // 8
+  if ( separator == undefined ) {              // 8
     A[0] = S;
     return A;
   }
 	
-  if ( separator.constructor == RegExp )         // 6
+  /* Workaround for tickets #76 and #79 in the RI */
+  var R;
+  if ( separator !== null && separator is RegExp )         // 6
     R = separator;
   else
     R = separator.toString();
@@ -170,76 +177,77 @@ function string_split ( __this, separator, limit ) {
   }
 	
   if (s == 0) {		                          // 9
-    z = SplitMatch(R, S, 0);
+    var z = SplitMatch(R, S, 0);
     if (z != false) return A;
     A[0] = S;
     return A;
   }
 
   var q = p;									  // 10
-loop:
+ loop:
   while (true ) { 
 		
     if ( q == s ) break;					  // 11
 	
     z = SplitMatch(R, S, q);                  // 12
 
-//print("Returned ", z);
+    //print("Returned ", z);
 
     if (z != false) {							// 13
-      e = z.endIndex;							// 14
-      cap = z.captures;						// 14
+      var e = z.endIndex;							// 14
+      var cap = z.captures;						// 14
       if (e != p) {							// 15
-//print("S = ", S, ", p = ", p, ", q = ", q);
-	T = S.slice(p, q);					// 16
-//print("T = ", T);
-	A[A.length] = T;					// 17
-	if (A.length == lim) return A;		// 18
-	p = e;								// 19
-	i = 0;								// 20
-	while (true) {						// 25
-	  if (i == cap.length) {              // 21
-	    q = p;                          // 10
-	    continue loop;
-	  }
-	  i = i + 1;							// 22
-	  A[A.length] = cap[i]				// 23
-	    if (A.length == lim) return A;		// 24
-	} 
+        //print("S = ", S, ", p = ", p, ", q = ", q);
+        var T = S.slice(p, q);					// 16
+        //print("T = ", T);
+        A[A.length] = T;					// 17
+        if (A.length == lim) return A;		// 18
+        p = e;								// 19
+        var i = 0;								// 20
+        while (true) {						// 25
+          if (i == cap.length) {              // 21
+            q = p;                          // 10
+            continue loop;
+          }
+          i = i + 1;							// 22
+          A[A.length] = cap[i]				// 23
+            if (A.length == lim) return A;		// 24
+        } 
       }
     }
 
     q = q + 1;                               // 26
   }
 	
-  T = S.slice(p, q);
+  var T = S.slice(p, q);
   A[A.length] = T;
   return A;
 }
 
 function SplitMatch(R, S, q)
 {
-  if (R.constructor == RegExp) {			// 1
+  /* Workaround for tickets #76 and #79 in the RI */
+  if ( R !== null && R is RegExp ) {			// 1
     var reResult = R.match(S, q);		// 8
     if (reResult == undefined)
       return false;
     else {
-      a = new Array(reResult.length - 1);
+      var a = new Array(reResult.length - 1);
       for (var i = 1; i < reResult.length; i++)
-	a[a.length] = reResult[i];
+        a[a.length] = reResult[i];
       return { endIndex : reResult.index + reResult[0].length, captures : cap };
     }
   }
   else {
     var r = R.length;					// 2
-    s = S.length;						// 3
+    var s = S.length;						// 3
     if ((q + r) > s) return false;		// 4
     for (var i = 0; i < r; i++) {
-//print("S.charAt(", q + i, ") = ", S.charAt(q + i), ", R.charAt(", i, ") = ", R.charAt(i));
+      //print("S.charAt(", q + i, ") = ", S.charAt(q + i), ", R.charAt(", i, ") = ", R.charAt(i));
       if (S.charAt(q + i) != R.charAt(i))			// 5
-	return false;
+        return false;
     }
-    cap = new Array();								// 6
+    var cap = new Array();								// 6
     return { endIndex : q + r, captures : cap };	// 7
   }
 }
@@ -253,9 +261,9 @@ function ToUint32( n ) {
        || n != n) {
     return 0;
   }
-  n = sign * Math.floor( Math.abs(n) )
+  n = sign * Math.floor( Math.abs(n) );
 
-    n = n % Math.pow(2,32);
+  n = n % Math.pow(2,32);
 
   if ( n < 0 ){
     n += Math.pow(2,32);
