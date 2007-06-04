@@ -174,13 +174,12 @@ package
             let slen  : uint = S.length;
             let m     : uint = Math.min(Math.max(pos, 0), slen);
             let sslen : uint = SS.length;
-            let lim   : uint = slen - sslen + 1;
+            let lim          = slen - sslen + 1;  /* Beware of uint optimization... */
 
             outer:
-            for ( let k : uint = m ; k < lim ; k++ ) {
-                for ( let w : uint = 0u ; w < sslen ; w++ ) {
-                    /* FIXME (Ticket #51): uint conversion below should not be necessary, but it is */
-                    if (magic::charCodeAt(S, uint(k+w)) !== magic::charCodeAt(SS, w))
+            for ( let k = m ; k < lim ; k++ ) {
+                for ( let w = 0 ; w < sslen ; w++ ) {
+                    if (magic::charCodeAt(S, uint(k+w)) !== magic::charCodeAt(SS, uint(w)))
                         continue outer;
                 }
                 return k;
@@ -211,7 +210,7 @@ package
                 return -1;
 
             outer:
-            for ( let k = Math.min(m, slen-sslen) ; k >= 0 ; k-- ) {  // Be careful if optimizing with uint here...
+            for ( let k = Math.min(m, slen-sslen) ; k >= 0 ; k-- ) {  /* Beware of uint optimization... */
                 for ( let w = 0 ; w < sslen ; w++ ) {
                     if (magic::charCodeAt(S, uint(k+w)) !== magic::charCodeAt(SS, uint(w))) 
                         continue outer;
