@@ -61,6 +61,8 @@ var expectedvalues = [];
 var str = 'uid=31';
 var re = /(uid=)(\d+)/;
 
+/* Not well-defined according to E262-3
+   2007-06-04 / lth@acm.org
 // try the numeric literal 15
 status = inSection(1);
 actual  = str.replace (re, "$1" + 15);
@@ -72,6 +74,7 @@ status = inSection(2);
 actual  = str.replace (re, "$1" + '15');
 expect = 'uid=15';
 addThis();
+*/
 
 // try a letter before the '15'
 status = inSection(3);
