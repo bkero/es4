@@ -42,12 +42,12 @@ startTest();
  * as specified in the following table:
  *
  * $& The matched substring.
- * $‘ The portion of string that precedes the matched substring.
- * $’ The portion of string that follows the matched substring.
+ * $` The portion of string that precedes the matched substring.
+ * $' The portion of string that follows the matched substring.
  * $+ The substring matched by the last parenthesized subexpressions in
  *      the regular expression.
  * $n The corresponding matched parenthesized subexpression n, where n
- * is a single digit 0-9. If there are fewer than n subexpressions, “$n
+ * is a single digit 0-9. If there are fewer than n subexpressions, $n
  * is left unchanged.
  *
  * Note that the replace function is intentionally generic; it does not
