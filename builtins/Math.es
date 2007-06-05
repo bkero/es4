@@ -1,23 +1,19 @@
 /* -*- mode: java; indent-tabs-mode: nil -*- */
 
-/* FIXME: The name hiding trick with MathInternals will work (provided
- * the visible properties on the Math class are changed to "public")
- * but does not work now due to a bug.  */
+/* Math is a singleton object, not a class, but has the type "Math"
+ * which suggests a private Math class that created the singleton.  In
+ * this implementation there is a package MathInternals which exports
+ * the Math class, but MathInternals will not be available to user
+ * programs, so user programs can't create new instances of Math.q
+ */
 
-//package MathInternals
-package
+package MathInternals
 {
-    /* Math is a singleton object, not a class, but has the type "Math"
-     * which suggests a private Math class that created the singleton.  
-     */
+    use namespace intrinsic;
+    use strict;
 
-use namespace intrinsic;
-use default namespace public;
-
-/*public*/ intrinsic dynamic final class Math
+    public dynamic final class Math
     {
-        use namespace intrinsic;
-
         /* E262-3 15.8.2.1 */
         intrinsic static function abs(x:Numeric = NaN):Numeric {
             if (isNaN(x))
@@ -55,6 +51,12 @@ use default namespace public;
 	    return x;
 	}
 
+        /* FIXME: These signatures are dodgy.  
+         * 
+         * Consider Math.floor(1.1m), which we might like to work.  On
+         * the other hand do we really care about calling Math.cos on
+         * decimal numbers?
+         */
 	intrinsic static native function acos(x):Number;
         intrinsic static native function asin(x):Number;
         intrinsic static native function atan(x):Number;
@@ -72,34 +74,34 @@ use default namespace public;
         intrinsic static native function tan(x):Number;
 
         // 15.8.1 Value Properties of the Math Object.
-        const E = 2.7182818284590452354;   /* Approximately */
-        const LN10 = 2.302585092994046;    /* Approximately */
-        const LN2 = 0.6931471805599453;    /* Approximately */
-        const LOG2E = 1.4426950408889634;  /* Approximately */
-        const LOG10E = 0.4342944819032518; /* Approximately */
-        const PI = 3.1415926535897932;     /* Approximately */
-        const SQRT1_2 = 0.7071067811865476;/* Approximately */
-        const SQRT2 = 1.4142135623730951;  /* Approximately */
+        public const E = 2.7182818284590452354;   /* Approximately */
+        public const LN10 = 2.302585092994046;    /* Approximately */
+        public const LN2 = 0.6931471805599453;    /* Approximately */
+        public const LOG2E = 1.4426950408889634;  /* Approximately */
+        public const LOG10E = 0.4342944819032518; /* Approximately */
+        public const PI = 3.1415926535897932;     /* Approximately */
+        public const SQRT1_2 = 0.7071067811865476;/* Approximately */
+        public const SQRT2 = 1.4142135623730951;  /* Approximately */
 
         // 15.8.2 Function Properties of the Math Object
-        var abs = intrinsic::abs;
-        var acos = intrinsic::acos;
-        var asin = intrinsic::asin;
-        var atan = intrinsic::atan;
-        var atan2 = intrinsic::atan2;
-        var ceil = intrinsic::ceil;
-        var cos = intrinsic::cos;
-        var exp = intrinsic::exp;
-        var floor = intrinsic::floor;
-        var log = intrinsic::log;
-        var max = intrinsic::max;
-        var min = intrinsic::min;
-        var pow = intrinsic::pow;
-        var random = intrinsic::random;
-        var round = intrinsic::round;
-        var sin = intrinsic::sin;
-        var sqrt = intrinsic::sqrt;
-        var tan = intrinsic::tan;
+        public var abs = intrinsic::abs;
+        public var acos = intrinsic::acos;
+        public var asin = intrinsic::asin;
+        public var atan = intrinsic::atan;
+        public var atan2 = intrinsic::atan2;
+        public var ceil = intrinsic::ceil;
+        public var cos = intrinsic::cos;
+        public var exp = intrinsic::exp;
+        public var floor = intrinsic::floor;
+        public var log = intrinsic::log;
+        public var max = intrinsic::max;
+        public var min = intrinsic::min;
+        public var pow = intrinsic::pow;
+        public var random = intrinsic::random;
+        public var round = intrinsic::round;
+        public var sin = intrinsic::sin;
+        public var sqrt = intrinsic::sqrt;
+        public var tan = intrinsic::tan;
 
         // E262 specifies that length=2 for these.
         // max.length = 2;  /* FIXME: this will cons a function, set its length and throw it away */
@@ -108,11 +110,10 @@ use default namespace public;
     }
 }
 
-/*package 
-{
+package {
     import MathInternals.*;
 
-    public var Math = new MathInternals.Math;
-}*/
+    intrinsic const Math /* : Math.MathInternals */ = new MathInternals.Math();
 
-    var Math = new intrinsic::Math;
+    public var Math = new MathInternals.Math;
+}
