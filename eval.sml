@@ -1730,22 +1730,27 @@ and evalExpr (regs:Mach.REGS)
       | Ast.CallExpr { func, actuals } => 
         let
             fun args _ = map (evalExpr regs) actuals
-            val (resultTy, func) = getExpectedType func
-            val result = case func of 
-                Ast.LexicalRef _ => evalCallMethodByExpr regs func (args ())
-              | Ast.ObjectRef _ => evalCallMethodByExpr regs func (args ())
-              | _ => 
-                let
-                    val f = evalExpr regs func
-                in
-                    case f of 
-                        Mach.Object ob => evalCallExpr (#this regs) ob (args ())
-                      | _ => throwTypeErr ["not a function"]
-                end
+            val (funcTy, func) = getExpectedType func
+            val resultTy = 
+                case funcTy of 
+                    Ast.FunctionType fty => (#result fty)
+                  | _ => Ast.SpecialType Ast.Any
+            val result = 
+                case func of 
+                    Ast.LexicalRef _ => evalCallMethodByExpr regs func (args ())
+                  | Ast.ObjectRef _ => evalCallMethodByExpr regs func (args ())
+                  | _ => 
+                    let
+                        val f = evalExpr regs func
+                    in
+                        case f of 
+                            Mach.Object ob => evalCallExpr (#this regs) ob (args ())
+                          | _ => throwTypeErr ["not a function"]
+                    end
         in
             checkCompatible resultTy result
         end
-
+        
       | Ast.NewExpr { obj, actuals } => 
         let
             fun args _ = map (evalExpr regs) actuals

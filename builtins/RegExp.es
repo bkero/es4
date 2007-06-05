@@ -15,6 +15,7 @@ package
     import Unicode.*;
     import RegExpInternals.*;
     use namespace intrinsic;
+    use default namespace public;
     use strict;
 
     /* E262-3 15.10: Regular expression object */

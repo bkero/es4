@@ -24,6 +24,7 @@ fun withRib { returnType, strict, ribs} extn =
 (* Local tracing machinery *)
 
 val doTrace = ref false
+val doTraceProg = ref false
 fun trace ss = if (!doTrace) then LogErr.log ("[verify] " :: ss) else ()
 fun error ss = LogErr.verifyError ss
 
@@ -1421,7 +1422,7 @@ and verifyProgram (p:Ast.PROGRAM)
             in
                 verifyTopFixtures ();
                 trace ["verification complete"];
-                (if !doTrace 
+                (if !doTrace orelse !doTraceProg
                  then Pretty.ppProgram result
                  else ());
                 result
