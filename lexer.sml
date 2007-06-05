@@ -613,6 +613,7 @@ fun makeTokenList (filename : string, reader : unit -> Ustring.SOURCE) : ((TOKEN
                                         (Ustring.fromSource "="  , PlusAssign),
                                         (Ustring.fromSource ""   , Plus      )]
                       | #"*"  => lexOp [(Ustring.fromSource "="  , MultAssign),
+
                                         (Ustring.fromSource ""   , Mult      )]
                       | #"^"  => lexOp [(Ustring.fromSource "="  , BitwiseXorAssign),
                                         (Ustring.fromSource ""   , BitwiseXor      )]

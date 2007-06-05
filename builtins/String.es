@@ -61,249 +61,270 @@ package
 
         /* E262-3 15.5.4.2: String.prototype.toString */
         prototype function toString(this : String) {
+            /* FIXME (Ticket #78): redundant check */
             if (this is String)
-                return string(this);
-            throw new TypeError("String.prototype.toString called on incompatible " + typeof(this));
+                return ToString(this);
+            throw new Error("Implementation error: the 'this' constraint should have caught this one.");
         }
 
         override intrinsic function toString() : string
             ToString(this);
         
+
         /* E262-3 15.5.4.3: String.prototype.valueOf */
-        prototype function valueOf(this : String)
-            this;
+        prototype function valueOf(this : String) {
+            /* FIXME (Ticket #78): redundant check */
+            if (this is String)
+                return ToString(this);
+            throw new Error("Implementation error: the 'this' constraint should have caught this one.");
+        }
         
         override intrinsic function valueOf() : String
-            private::valueOf();
+            ToString(this);
 
-        private final function valueOf() : String
-            this;
 
         /* E262-3 15.5.4.4: String.prototype.charAt
            E262-4 draft proposals:static_generics
         */
         prototype function charAt(pos)
-            ToString(this).charAt(ToDouble(pos));
+            string.charAt(this, pos);
 
         static function charAt(self, pos)
-            ToString(self).charAt(ToDouble(pos));
+            string.charAt(self, pos);
             
-        intrinsic function charAt(pos: double = 0) : String
-            ToString(this).charAt(pos);
+        intrinsic function charAt(pos: double = 0) : string
+            string.charAt(this, pos);
 
         /* E262-3 15.5.4.5: String.prototype.charCodeAt
            E262-4 draft proposals:static_generics
         */
         prototype function charCodeAt(pos)
-            ToString(this).charCodeAt(ToDouble(pos));
+            string.charCodeAt(this, pos);
 
         static function charCodeAt(self, pos)
-            ToString(self).charCodeAt(ToDouble(pos));
+            string.charCodeAt(self, pos);
 
         intrinsic function charCodeAt(pos: double = 0) : double
-            ToString(this).charCodeAt(pos);
+            string.charCodeAt(this, pos);
 
         /* E262-3 15.5.4.6: String.prototype.concat.
            E262-4 draft proposals:static_generics
            E262-4 draft proposals:bug_fixes - FUNCTION.LENGTH
          */
         prototype function concat(...args)
-            Function.apply(string.concat, ToString(this), args);
+            string.concatHelper(this, args);
 
-        static function concat(self, ...args)
-            Function.apply(string.concat, ToString(self), args);
+        static function concat(self, ...args) : string
+            string.concatHelper(self, args);
 
-        intrinsic function concat(...args) : String
-            Function.apply(string.concat, ToString(this), args);
+        intrinsic function concat(...args) : string
+            string.concatHelper(this, args);
 
 
         /* E262-3 15.5.4.7: String.prototype.indexOf
            E262-4 draft proposals:static_generics
            E262-4 draft proposals:bug_fixes - FUNCTION.LENGTH
         */
-        prototype function indexOf(searchString, position = 0.0)
-            ToString(this).indexOf(ToString(searchString), ToDouble(position));
+        prototype function indexOf(searchString, position)
+            string.indexOf(this, searchString, position);
 
-        static function indexOf(self, searchString, position = 0.0)
-            ToString(self).indexOf(ToString(searchString), ToDouble(position));
+        static function indexOf(self, searchString, position): double
+            string.indexOf(this, searchString, position);
 
         intrinsic function indexOf(searchString: String!, position: double = 0.0) : double 
-            ToString(this).indexOf(searchString, position);
+            string.indexOf(this, searchString, position);
+
 
         /* E262-3 15.5.4.8: String.prototype.lastIndexOf
            E262-4 draft proposals:static_generics
            E262-4 draft proposals:bug_fixes - FUNCTION.LENGTH
         */
         prototype function lastIndexOf(searchString, position)
-            ToString(this).lastIndexOf(ToString(searchString), ToDouble(position));
+            string.lastIndexOf(this, searchString, position);
 
-        static function lastIndexOf(self, searchString, position)
-            ToString(self).lastIndexOf(ToString(searchString), ToDouble(position));
+        static function lastIndexOf(self, searchString, position) : double
+            string.lastIndexOf(self, searchString, position);
 
         intrinsic function lastIndexOf(searchString: String!, position: double) : double 
-            ToString(this).lastIndexOf(searchString, position);
+            string.lastIndexOf(this, searchString, position);
+
 
         /* E262-3 15.5.4.9: String.prototype.localeCompare 
            E262-4 draft proposals:static_generics
          */
         prototype function localeCompare(that)
-            ToString(this).localeCompare(ToString(that));
+            string.localeCompare(this, that);
 
-        static function localeCompare(self, that)
-            ToString(self).localeCompare(ToString(that));
+        static function localeCompare(self, that) : double
+            string.localeCompare(self, that);
 
-        intrinsic function localeCompare(that : String!) : double
-            ToString(this).localeCompare(that);
+        intrinsic function localeCompare(that: String!) : double
+            string.localeCompare(this, that);
+
 
         /* E262-3 15.5.4.10: String.prototype.match
            E262-4 draft proposals:static_generics
         */
         prototype function match(regexp)
-            ToString(this).match(regexp);
+            string.match(this, regexp);
 
-        static function match(self, regexp)
-            ToString(self).match(regexp);
+        static function match(self, regexp) : Array
+            string.match(self, regexp);
 
-        intrinsic function match(r) : Array 
-            ToString(this).match(r);
+        intrinsic function match(regexp: RegExp!) : Array 
+            string.match(this, regexp);
+
 
         /* E262-3 15.5.4.11: String.prototype.replace 
            E262-4 draft proposals:static_generics
          */
         prototype function replace(searchValue, replaceValue)
-            ToString(this).replace(searchValue, ToString(replaceValue));
+            string.replace(this, searchValue, replaceValue);
 
-        static function replace(self, searchValue, replaceValue)
-            ToString(self).replace(searchValue, ToString(replaceValue));
+        static function replace(self, searchValue, replaceValue) : string
+            string.replace(this, searchValue, replaceValue);
 
-        intrinsic function replace(s, r) : String
-            ToString(this).replace(searchValue, replaceValue);
+        intrinsic function replace(s: (RegExp!,String!), r: (String!,function(...):String!)) : string
+            string.replace(this, searchValue, replaceValue);
         
+
         /* E262-3 15.5.4.12: String.prototype.search 
            E262-4 draft proposals:static_generics
          */
         prototype function search(regexp)
-            ToString(this).search(regexp);
+            string.search(this, regexp);
 
-        static function search(self, regexp)
-            ToString(self).search(regexp);
+        static function search(self, regexp) : double
+            string.search(self, regexp);
 
-        intrinsic function search(r) : double 
-            ToString(this).search(r);
+        intrinsic function search(regexp: RegExp!) : double 
+            string.search(this, r);
+
 
         /* E262-3 15.5.4.13: String.prototype.slice 
            E262-4 draft proposals:static_generics
          */
         prototype function slice(start, end)
-            ToString(this).slice(ToDouble(start), ToDouble(end));
+            string.slice(this, start, end);
 
-        static function slice(self, start, end)
-            ToString(self).slice(ToDouble(start), ToDouble(end));
+        static function slice(self, start, end): string
+            string.slice(self, start, end);
 
-        intrinsic function slice(s, e) : Array
-            ToString(this).slice(s, e);
+        intrinsic function slice(s: double, e: double): string
+            string.slice(this, s, e);
         
+
         /* ES262-3 15.5.4.14: String.prototype.split
            E262-4 draft proposals:static_generics
         */
         prototype function split(separator, limit)
-            ToString(this).split(ToString(separator), ToDouble(limit));
+            string.split(this, separator, limit);
 
-        static function split(self, separator, limit)
-            ToString(self).split(ToString(separator), ToDouble(limit));
+        static function split(self, separator, limit): Array!
+            string.split(self, separator, limit);
 
-        intrinsic function split(separator, limit) : Array
-            ToString(this).split(separator, limit);
+        intrinsic function split(separator:(String!,RegExp!), limit: uint = uint.MAX_VALUE) : Array!
+            string.split(this, separator, limit);
+
 
         /* E262-3 15.5.4.15: String.prototype.substring
            E262-4 draft proposals:static_generics
          */
-        prototype function substring(start=0.0, end=undefined)
-            ToString(this).substring(ToDouble(start), ToDouble(end == undefined ? this.length : end));
-        
-        static function substring(self, start, end) 
-            ToString(self).substring(ToDouble(start), ToDouble(end));
-            
-        intrinsic function substring(start: double, end: double) : string
-            ToString(this).substring(start, end);
+        prototype function substring(start, end)
+            string.substring(this, start, end);
+
+        static function substring(self, start, end): string
+            string.substring(self, start, end);
+
+        intrinsic function substring(start: double, end: double=this.length) : string
+            string.substring(this, start, end);
+
 
         /* E262-3 B.2.3: String.prototype.substr
            E262-4 draft proposals:static_generics
          */
-        prototype function substr(start=0.0, length=undefined)
-            ToString(this).substring(ToDouble(start), ToDouble(length == undefined ? this.length : length));
+        prototype function substr(start, length)
+            string.substr(this, start, length);
 
-        static function substring(self, start, length) 
-            ToString(self).substring(ToDouble(start), ToDouble(length));
+        static function substring(self, start, length): string
+            string.substr(self, start, length);
             
-        intrinsic function substring(start: double, length: double) : string
-            ToString(this).substring(start, length);
+        intrinsic function substring(start: double, length: double): string
+            string.substr(this, start, length);
+
 
         /* E262-3 15.5.4.16: String.prototype.toLowerCase 
            E262-4 draft proposals:static_generics
          */
         prototype function toLowerCase()
-            ToString(this).toLowerCase();
+            string.toLowerCase(this);
 
-        static function toLowerCase(selft)
-            ToString(self).toLowerCase();
+        static function toLowerCase(self): string
+            string.toLowerCase(self);
 
-        intrinsic function toLowerCase() : string
-            ToString(this).toLowerCase();
+        intrinsic function toLowerCase(): string
+            string.toLowerCase(this);
+
 
         /* E262-3 15.5.4.17: String.prototype.toLocaleLowerCase 
            E262-4 draft proposals:static_generics
          */
         prototype function toLocaleLowerCase()
-            ToString(this).toLocaleLowerCase();
+            string.toLocaleLowerCase(this);
 
-        prototype function toLocaleLowerCase(self)
-            ToString(self).toLocaleLowerCase();
+        prototype function toLocaleLowerCase(self): string
+            string.toLocaleLowerCase(self);
 
-        intrinsic function toLocaleLowerCase() : string
-            ToString(this).toLocaleLowerCase();
+        intrinsic function toLocaleLowerCase(): string
+            string.toLocaleLowerCase(this);
+
 
         /* E262-3 15.5.4.18: String.prototype.toUpperCase 
            E262-4 draft proposals:static_generics
          */
         prototype function toUpperCase()
-            ToString(this).toUpperCase();
+            string.toUpperCase(this);
 
-        static function toUpperCase(self)
-            ToString(self).toUpperCase();
+        static function toUpperCase(self): string
+            string.toUpperCase(self);
 
         intrinsic function toUpperCase() : string
-            ToString(this).toUpperCase();
+            string.toUpperCase(this);
+
 
         /* E262-3 15.5.4.19: String.prototype.toLocaleUpperCase 
            E262-4 draft proposals:static_generics
          */
         prototype function toLocaleUpperCase()
-            ToString(this).toLocaleUpperCase();
+            string.toLocaleUpperCase(this);
 
-        static function toLocaleUpperCase(self)
-            ToString(self).toLocaleUpperCase();
+        static function toLocaleUpperCase(self): string
+            string.toLocaleUpperCase(self);
 
         intrinsic function toLocaleUpperCase() : string
-            ToString(this).toLocaleUpperCase();
+            string.toLocaleUpperCase(this);
+
 
         /* E262-4 draft proposals:json_encoding_and_decoding */
-        prototype function parseJSON() 
-            ToString(this).parseJSON();
+        prototype function parseJSON(...args) 
+            string.parseJSONHelper(this, args);
 
         intrinsic function parseJSON(...args)
-            Function.apply(string.parseJSON, ToString(this), args);
+            string.parseJSONHelper(this, args);
+
 
         /* E262-4 draft proposals:string.prototype.trim */
         prototype function trim()
-            ToString(this).trim();
+            string.trim(this);
 
         intrinsic function trim() : string
-            ToString(this).trim();
+            string.trim(this);
+
 
         /* E262-3 15.5.5.1: length. */
         function get length() : uint
             magic::stringLength(this);
+
 
         /* Catchall indexing operation. */
         meta function get(pos) {

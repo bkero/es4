@@ -120,6 +120,9 @@ for ( var i = 0; i < TEST_STRING.length; i++ ) {
 // case where the value of the separator is undefined.  in this case. the value of the separator
 // should be ToString( separator ), or "undefined".
 
+/* This is in direct conflict with E262-3 15.5.4.14 step 8, which states
+   that if the separator is undefined then special action is taken.
+   lth@acm.org / 2007-06-04
 var TEST_STRING = "thisundefinedisundefinedaundefinedstringundefinedobject";
 var EXPECT_STRING = new Array( "this", "is", "a", "string", "object" );
 
@@ -134,6 +137,7 @@ for ( var i = 0; i < EXPECT_STRING.length; i++ ) {
 		  EXPECT_STRING[i],
 		  eval("var s = new String( TEST_STRING ); s.split(void 0)["+i+"]") );
 }
+*/
 
 // case where the value of the separator is null.  in this case the value of the separator is "null".
 TEST_STRING = "thisnullisnullanullstringnullobject";

@@ -14,6 +14,9 @@ structure StrListMap = SplayMapFn (StrListKey);
 structure NsKey = struct type ord_key = Ast.NAMESPACE val compare = NameKey.cmpNS end
 structure NsMap = SplayMapFn (NsKey);
 
+structure NmKey = struct type ord_key = Ast.NAME val compare = NameKey.compare end
+structure NmMap = SplayMapFn (NmKey);
+
 structure StrKey = struct type ord_key = Ustring.STRING val compare = NameKey.cmp end
 structure StrMap = SplayMapFn (StrKey);
 
@@ -30,6 +33,7 @@ val (real64Cache:(Mach.VAL Real64Map.map) ref) = ref Real64Map.empty
 val (word32Cache:(Mach.VAL Word32Map.map) ref) = ref Word32Map.empty
 val (int32Cache:(Mach.VAL Int32Map.map) ref) = ref Int32Map.empty
 val (nsCache:(Mach.VAL NsMap.map) ref) = ref NsMap.empty
+val (nmCache:(Mach.VAL NmMap.map) ref) = ref NmMap.empty
 val (strCache:(Mach.VAL StrMap.map) ref) = ref StrMap.empty
 val cachesz = 1024
 
@@ -950,6 +954,32 @@ and needNamespace (v:Mach.VAL)
            | _ => error ["need namespace"])
       | _ => error ["need namespace"]
 
+and needNamespaceOrNull (v:Mach.VAL) 
+    : Ast.NAMESPACE = 
+    case v of 
+        Mach.Object (Mach.Obj ob) => 
+        (case !(#magic ob) of 
+             SOME (Mach.Namespace n) => n
+           | _ => error ["need namespace"])
+      | Mach.Null => Name.publicNS
+      | _ => error ["need namespace"]
+
+and needNameOrString (v:Mach.VAL)
+    : Ast.NAME =
+    case v of
+        Mach.Object obj =>
+        if Verify.isSubtype (typeOfVal v) Verify.NameType
+        then
+            let
+                val nsval = getValue obj Name.public_qualifier
+                val idval = getValue obj Name.public_identifier
+            in
+                Name.make (toUstring idval) (needNamespace nsval)
+            end
+        else
+            Name.public (toUstring v)
+      | _ => Name.public (toUstring v)
+
 and needObj (v:Mach.VAL) 
     : Mach.OBJ = 
     case v of 
@@ -972,7 +1002,7 @@ and newRootBuiltin (n:Ast.NAME) (m:Mach.MAGIC)
      * builtin ctor and let it modify its own magic slot using magic::setValue.
      * 
      * For these cases (Function, Class, Namespace, Boolean and boolean) we 
-     * cannot rely on  the builtin ctor calling magic::setValue, as they need 
+     * cannot rely on the builtin ctor calling magic::setValue, as they need 
      * to exist in order to *execute* a call to magic::setValue (or execute 
      * the tiny amount of surrounding control flow that is used to bottom our 
      * of the conversion functions in Conversion.es).
@@ -1128,22 +1158,42 @@ and newBoolean (b:bool)
             end
     end
     
-
 and newNamespace (n:Ast.NAMESPACE) 
     : Mach.VAL =
     let
         val c = !nsCache
     in
         case NsMap.find (c, n) of
-        NONE => 
-        let
-            val v = newRootBuiltin Name.intrinsic_Namespace (Mach.Namespace n)
-        in
-            if (NsMap.numItems c) < cachesz
-            then (nsCache := NsMap.insert (c, n, v); v)
-            else v
-        end
-      | SOME v => v
+            NONE => 
+            let
+                val v = newRootBuiltin Name.intrinsic_Namespace (Mach.Namespace n)
+            in
+                if (NsMap.numItems c) < cachesz
+                then (nsCache := NsMap.insert (c, n, v); v)
+                else v
+            end
+          | SOME v => v
+    end
+
+and newName (n:Ast.NAME) 
+    : Mach.VAL =
+    let
+        val c = !nmCache
+    in
+        case NmMap.find (c, n) of
+            NONE => 
+            let
+                val nsmag = Mach.Namespace (#ns n)
+                val idmag = Mach.String (#id n)
+                val nsval = Mach.Object (Mach.setMagic (Mach.newObjNoTag()) (SOME nsmag))
+                val idval = Mach.Object (Mach.setMagic (Mach.newObjNoTag()) (SOME idmag))
+                val v = instantiateGlobalClass Name.intrinsic_Name [nsval, idval]
+            in
+                if (NmMap.numItems c) < cachesz
+                then (nmCache := NmMap.insert (c, n, v); v)
+                else v
+            end
+          | SOME v => v
     end
 
 and newClsClosure (env:Mach.SCOPE)
@@ -2726,15 +2776,13 @@ and evalBinaryOp (regs:Mach.REGS)
       | Ast.In =>
         let 
             val a = evalExpr regs aexpr
-            val astr = toUstring a
-            val aname = Name.nons astr
             val b = evalExpr regs bexpr
+            val aname = needNameOrString a
         in
             case b of 
                 Mach.Object obj =>
                 newBoolean (hasValue obj aname)
               | _ => throwTypeErr ["operator 'in' applied to non-object"]
-                     
         end
         
       | _ => performBinop bop 
@@ -2796,11 +2844,30 @@ and evalIdentExpr (regs:Mach.REGS)
         
       | Ast.QualifiedExpression { qual, expr } => 
         Name { ns = (evalExprToNamespace regs qual), 
-                       id = toUstring (evalExpr regs expr) }
+               id = toUstring (evalExpr regs expr) }
         
       | Ast.ExpressionIdentifier { expr, openNamespaces } =>
-        Multiname { nss = openNamespaces,
-                       id = toUstring (evalExpr regs expr) }
+        let
+            val v = evalExpr regs expr
+        in
+            case v of
+                Mach.Object obj =>
+                if Verify.isSubtype (typeOfVal v) Verify.NameType
+                then
+                    let
+                        val nsval = getValue obj Name.public_qualifier
+                        val idval = getValue obj Name.public_identifier
+                    in
+                        Name { ns = needNamespaceOrNull nsval, 
+                               id = toUstring idval }
+                    end
+                else
+                    Multiname { nss = openNamespaces,
+                                id = toUstring v }
+              | _ =>
+                Multiname { nss = openNamespaces,
+                            id = toUstring v }
+        end
 
       | _ => LogErr.unimplError ["unimplemented identifier expression form"]
 
@@ -4148,7 +4215,15 @@ and callIteratorGet (regs:Mach.REGS)
             case prop of 
                 { state = Mach.ValProp _, 
                   attrs = { dontEnum = false, ... }, 
-                  ... } => (newString (#id name)) :: curr
+                  ... } =>
+                    (case name of
+                         { ns = Ast.Public key, id = ident } =>
+                             if key = Ustring.empty
+                             then
+                                 (newString ident) :: curr
+                             else
+                                 (newName name) :: curr
+                       | _ => (newName name) :: curr)
               | _ => curr
         val iterator = needObj (newArray (NameMap.foldri f [] (!props)))
     in

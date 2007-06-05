@@ -232,11 +232,14 @@ new TestCase( SECTION,
 	      8,
 	      eval("var m = Math; m.indexOf = String.prototype.indexOf; m.indexOf( 'Math' )") );
 
+/* Bogus test, depends on a particular format for the date string.  Good grief!
+   lth@acm.org / 2007-06-04
 // new Date(0) has '31' or '01' at index 8 depending on whether tester is (GMT-) or (GMT+), respectively
 new TestCase( SECTION,
 	      "var d = new Date(0); d.indexOf = String.prototype.indexOf; d.getTimezoneOffset()>0 ? d.indexOf('31') : d.indexOf('01')",
 	      8,
 	      eval("var d = new Date(0); d.indexOf = String.prototype.indexOf; d.getTimezoneOffset()>0 ? d.indexOf('31') : d.indexOf('01')") );
+*/
 
 test();
 
