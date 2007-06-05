@@ -21,6 +21,7 @@ val intrinsicNS = Ast.Intrinsic
 fun mangle (n:Ast.NAME) : Ast.IDENT = 
     Ustring.fromString (LogErr.name n)
 
+fun make (id:Ast.IDENT) (ns:Ast.NAMESPACE) : Ast.NAME = { id = id, ns = ns }
 fun meta (id:Ast.IDENT) : Ast.NAME = { id = id, ns = metaNS }
 fun magic (id:Ast.IDENT) : Ast.NAME = { id = id, ns = magicNS }
 fun public (id:Ast.IDENT) : Ast.NAME = { id = id, ns = publicNS }
@@ -55,6 +56,11 @@ val intrinsic_Class = intrinsic Ustring.Class_
 
 (* From Namespace.es *)
 val intrinsic_Namespace = intrinsic Ustring.Namespace_
+
+(* From Name.es *)
+val intrinsic_Name = intrinsic Ustring.Name_
+val public_qualifier = public Ustring.qualifier_
+val public_identifier = public Ustring.identifier_
 
 (* From Object.es *)
 val public_Object = public Ustring.Object_

@@ -129,6 +129,7 @@ val stringType    = instanceType Name.intrinsic_string
 val RegExpType    = instanceType Name.public_RegExp
 val ErrorType     = instanceType Name.public_Error
 val NamespaceType = instanceType Name.intrinsic_Namespace
+val NameType      = instanceType Name.intrinsic_Name
 val TypeType      = instanceType Name.intrinsic_Type
 
 val undefinedType = Ast.SpecialType Ast.Undefined
