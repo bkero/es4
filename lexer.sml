@@ -510,7 +510,7 @@ fun makeTokenList (filename : string, reader : unit -> Ustring.SOURCE) : ((TOKEN
                     0wx2A (* * *) => (advanceIndex 1; lexMultiLineComment {newline=true} {asterisk=true })
                   | 0wx2F (* / *) => (advanceIndex 1; if asterisk then () else
                                                       lexMultiLineComment {newline=true} {asterisk=false})
-                  | 0wx0          => ()
+                  | 0wx0          => error ["LexError: slash at end of multi-line comment"]
                   | _             => (advanceIndex 1; lexMultiLineComment {newline=true} {asterisk=false}))
             
             val nextChar = lookahead 1
