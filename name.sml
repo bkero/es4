@@ -58,8 +58,8 @@ val intrinsic_Namespace = intrinsic Ustring.Namespace_
 
 (* From Name.es *)
 val intrinsic_Name = intrinsic Ustring.Name_
-val public_qualifier = public Ustring.qualifier_
-val public_identifier = public Ustring.identifier_
+val nons_qualifier = nons Ustring.qualifier_
+val nons_identifier = nons Ustring.identifier_
 
 (* From Object.es *)
 val nons_Object = nons Ustring.Object_

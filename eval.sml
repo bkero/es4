@@ -961,7 +961,7 @@ and needNamespaceOrNull (v:Mach.VAL)
         (case !(#magic ob) of 
              SOME (Mach.Namespace n) => n
            | _ => error ["need namespace"])
-      | Mach.Null => Name.publicNS
+      | Mach.Null => Name.noNS
       | _ => error ["need namespace"]
 
 and needNameOrString (v:Mach.VAL)
@@ -971,14 +971,14 @@ and needNameOrString (v:Mach.VAL)
         if Verify.isSubtype (typeOfVal v) Verify.NameType
         then
             let
-                val nsval = getValue obj Name.public_qualifier
-                val idval = getValue obj Name.public_identifier
+                val nsval = getValue obj Name.nons_qualifier
+                val idval = getValue obj Name.nons_identifier
             in
                 Name.make (toUstring idval) (needNamespace nsval)
             end
         else
-            Name.public (toUstring v)
-      | _ => Name.public (toUstring v)
+            Name.nons (toUstring v)
+      | _ => Name.nons (toUstring v)
 
 and needObj (v:Mach.VAL) 
     : Mach.OBJ = 
@@ -2855,8 +2855,8 @@ and evalIdentExpr (regs:Mach.REGS)
                 if Verify.isSubtype (typeOfVal v) Verify.NameType
                 then
                     let
-                        val nsval = getValue obj Name.public_qualifier
-                        val idval = getValue obj Name.public_identifier
+                        val nsval = getValue obj Name.nons_qualifier
+                        val idval = getValue obj Name.nons_identifier
                     in
                         Name { ns = needNamespaceOrNull nsval, 
                                id = toUstring idval }
