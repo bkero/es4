@@ -518,6 +518,7 @@ fun makeTokenList (filename : string, reader : unit -> Ustring.SOURCE) : ((TOKEN
             case nextChar  of
                 0wx2F (* / *) => (advanceIndex 2; lexSingleLineComment ())
               | 0wx2A (* * *) => (advanceIndex 2; lexMultiLineComment {newline=false} {asterisk=false})
+              | 0wx0 => error ["LexError: slash at end of input"]
               | _ =>  (* LexBreakDiv *)
                 let
                     fun lexDivAndBeyond () : ((TOKEN * Ast.LOC) list) =
@@ -539,7 +540,7 @@ fun makeTokenList (filename : string, reader : unit -> Ustring.SOURCE) : ((TOKEN
                         fun lexRegexp reSrc {newline=newline} {charset=charset} =
                         let
                             val c = lookahead 0
-                            val _ = advanceIndex 1
+                            val _ = if c = 0wx0 then () else advanceIndex 1
                         in
                             case (charset, c) of
                                 (  _  , (0wx000A | 0wx000D | 0wx2028 | 0wx2029) (* line terminators *))
@@ -564,6 +565,7 @@ fun makeTokenList (filename : string, reader : unit -> Ustring.SOURCE) : ((TOKEN
                                     then error ["LexError:  illegal line terminator in regexp literal"]
                                     else List.revAppend (c::reSrc, regexpFlags)
                                 end
+                              | (_, 0wx0) => error ["LexError: end of input in regexp"]
                               | _ => lexRegexp (c::reSrc) {newline=newline} {charset=charset}
                         end
                         
@@ -613,7 +615,6 @@ fun makeTokenList (filename : string, reader : unit -> Ustring.SOURCE) : ((TOKEN
                                         (Ustring.fromSource "="  , PlusAssign),
                                         (Ustring.fromSource ""   , Plus      )]
                       | #"*"  => lexOp [(Ustring.fromSource "="  , MultAssign),
-
                                         (Ustring.fromSource ""   , Mult      )]
                       | #"^"  => lexOp [(Ustring.fromSource "="  , BitwiseXorAssign),
                                         (Ustring.fromSource ""   , BitwiseXor      )]
