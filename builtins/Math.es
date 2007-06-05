@@ -4,7 +4,7 @@
  * which suggests a private Math class that created the singleton.  In
  * this implementation there is a package MathInternals which exports
  * the Math class, but MathInternals will not be available to user
- * programs, so user programs can't create new instances of Math.q
+ * programs, so user programs can't create new instances of Math.
  */
 
 package MathInternals
@@ -110,9 +110,11 @@ package MathInternals
     }
 }
 
-package {
+package 
+{
     import MathInternals.*;
 
+    /* FIXME #82: some imported types can't be used as annotations */
     intrinsic const Math /* : Math.MathInternals */ = new MathInternals.Math();
 
     public var Math = new MathInternals.Math;
