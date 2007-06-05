@@ -12,6 +12,7 @@ package
      */
 
 use namespace intrinsic;
+use default namespace public;
 
 /*public*/ intrinsic dynamic final class Math
     {

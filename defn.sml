@@ -67,8 +67,8 @@ val (topFixtures:Ast.FIXTURES ref) = ref []
 val (topPackageNames:Ast.IDENT list list ref) = ref []
 
 fun resetTopFixtures _ = 
-    topFixtures := [ (Ast.PropName (Name.public Ustring.meta_), Ast.NamespaceFixture Name.metaNS),
-                     (Ast.PropName (Name.public Ustring.magic_), Ast.NamespaceFixture Name.magicNS) ]
+    topFixtures := [ (Ast.PropName Name.meta_, Ast.NamespaceFixture Name.metaNS),
+                     (Ast.PropName Name.magic_, Ast.NamespaceFixture Name.magicNS) ]
 
 fun resetTopPackageNames _ = 
     topPackageNames := []
@@ -250,7 +250,7 @@ fun mergeFixtures ((newName,newFix),oldFixs) =
                                 (mergeVirtuals newName vnew vold))
           | (Ast.ValFixture new, Ast.ValFixture old) =>
                  if (#ty new) = (#ty old) andalso (#readOnly new) = (#readOnly old)
-                 then (trace ["skipping fixture ",LogErr.name (case newName of Ast.PropName n => n | _ => {ns=Ast.Internal Ustring.empty,id=Ustring.temp_})]; oldFixs)
+                 then (trace ["skipping fixture ",LogErr.fname newName]; oldFixs)
                  else error ["incompatible redefinition of fixture name: ", LogErr.fname newName]
           | (Ast.MethodFixture new, Ast.MethodFixture old) => 
             replaceFixture oldFixs newName (Ast.MethodFixture new) (* FIXME: types *)
@@ -370,13 +370,13 @@ fun extendEnvironment (env:ENV)
     case env of 
         [] => (trace ["extending empty environment"];{ fixtures = fixtures,
                 tempOffset = 0,
-                openNamespaces = [[Ast.Internal Ustring.empty]],
+                openNamespaces = [[Name.noNS]],
                 numericMode = defaultNumericMode,
                 labels = [],
                 packageNames = [],
                 className = Ustring.fromString "",
                 packageName = [],
-                defaultNamespace = Ast.Internal Ustring.empty } :: [])
+                defaultNamespace = Name.noNS } :: [])
       | ({ tempOffset, numericMode, openNamespaces, labels, packageNames, className, 
            packageName, defaultNamespace, ... }) :: _ =>
         { fixtures = fixtures,
@@ -617,7 +617,7 @@ and defInterface (env: ENV)
         val Ast.Cls {name,...} = class
 *)
     in
-        ([(Ast.PropName {ns=Ast.Public Ustring.empty,id=(#ident idef)}, Ast.InterfaceFixture)],idef)
+        ([(Ast.PropName (Name.nons (#ident idef)), Ast.InterfaceFixture)],idef)
     end
 
 (*
@@ -1094,7 +1094,7 @@ and defSettings (env:ENV)
     : (Ast.FIXTURES * Ast.INITS) = 
     let
         val _ = trace [">> defSettings"]
-        val fxtrs:Ast.FIXTURES = map (defVar env Ast.Var (Ast.Internal Ustring.empty)) binds
+        val fxtrs:Ast.FIXTURES = map (defVar env Ast.Var Name.noNS) binds
         val inits:Ast.INITS = map (defInitStep env NONE) inits   (* FIXME: lookup ident in open namespaces *)
         val _ = trace ["<< defSettings"]
     in
@@ -1149,8 +1149,7 @@ and defFuncSig (env:ENV)
 (**** FIXME
 
             (* compute typeval fixtures (type parameters) *)
-            val internalNs = Ast.Internal ""
-            fun mkTypeVarFixture x = (Ast.PropName {ns=internalNs, id=x}, 
+            fun mkTypeVarFixture x = (Ast.PropName {ns=Name.internalNS, id=x}, 
                                       Ast.TypeVarFixture)
 
             val typeParamFixtures = map mkTypeVarFixture typeParams
@@ -1159,7 +1158,7 @@ and defFuncSig (env:ENV)
 
             val thisType = case thisType of NONE => Ast.SpecialType Ast.Any
                                           | SOME x => defTyExpr env x
-            val thisBinding = (Ast.PropName {ns=Ast.Internal (Ustring.fromString ""), id=(Ustring.fromString "this")},
+            val thisBinding = (Ast.PropName Name.this,
                                Ast.ValFixture
                                    { ty = thisType,
                                      readOnly = true })
@@ -1171,7 +1170,7 @@ and defFuncSig (env:ENV)
                  | _ => false
 
 
-            val (paramFixtures,paramInits) = defBindings env Ast.Var (Ast.Internal Ustring.empty) params
+            val (paramFixtures,paramInits) = defBindings env Ast.Var (Name.noNS) params
             val ((settingsFixtures,settingsInits),superArgs) =
                     case ctorInits of
                         SOME (settings,args) => (defSettings env settings, defExprs env args)
@@ -1466,8 +1465,7 @@ trace2 ("openning package ",id);
                                                                            Ast.LexicalRef
                                                                              { ident = Ast.Identifier
                                                                                          { ident = Ustring.x_,
-                                                                                           openNamespaces = [[Ast.Internal
-                                                                                                                Ustring.empty]]},
+                                                                                           openNamespaces = [[Name.noNS]]},
                                                                                loc = NONE}))],
                                                           loc = NONE},
                                               param = ([(Ast.TempName 0,
@@ -1476,14 +1474,14 @@ trace2 ("openning package ",id);
                                                                      Ast.Any,
                                                               readOnly = false}),
                                                          (Ast.PropName
-                                                            { ns = Ast.Internal Ustring.empty,
+                                                            { ns = Name.noNS,
                                                               id = Ustring.x_},
                                                            Ast.ValFixture
                                                              { ty = Ast.SpecialType
                                                                       Ast.Any,
                                                                readOnly = false})],
                                                         [(Ast.PropName
-                                                            { ns = Ast.Internal Ustring.empty,
+                                                            { ns = Name.noNS,
                                                               id = Ustring.x_},
                                                            Ast.GetTemp 0)]),
 
@@ -1905,7 +1903,7 @@ and defExpr (env:ENV)
 
           | Ast.LetExpr { defs, body,... } => 
             let
-                val (f,i)   = defBindings env Ast.Var (Ast.Internal Ustring.empty) defs
+                val (f,i)   = defBindings env Ast.Var Name.noNS defs
                 val env     = extendEnvironment env f
                 val newBody = defExpr env body
             in
@@ -2150,7 +2148,7 @@ and defStmt (env:ENV)
         fun reconstructCatch { bindings, fixtures, inits, block, ty } =
             let 
                 val ty = defTyExpr env ty
-                val (f0,i0) = defBindings env Ast.Var (Ast.Internal Ustring.empty) bindings
+                val (f0,i0) = defBindings env Ast.Var Name.noNS bindings
                 val env = extendEnvironment env f0
                 val (block,fixtures) = defBlock env block
             in                     
@@ -2639,13 +2637,13 @@ and defPackage (env:ENV)
 
 and topEnv _ = [ { fixtures = !topFixtures,
                    tempOffset = 0,
-                   openNamespaces = [[Ast.Internal Ustring.empty, Ast.Public Ustring.empty]],
+                   openNamespaces = [[Name.noNS]],
                    numericMode = defaultNumericMode, 
                    labels = [],
                    packageNames = !topPackageNames,
                    className = Ustring.fromString "", 
                    packageName = [], 
-                   defaultNamespace = Ast.Internal Ustring.empty } ]
+                   defaultNamespace = Name.noNS } ]
 
 and defProgram (prog:Ast.PROGRAM) 
     : Ast.PROGRAM = 

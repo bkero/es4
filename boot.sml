@@ -180,7 +180,7 @@ fun boot _ =
         val _ = Defn.resetTopFixtures ()
 
         val _ = trace ["allocating global object"];
-        val globalObj = Mach.newObj (Mach.ClassTag Name.public_Object) Mach.Null NONE
+        val globalObj = Mach.newObj (Mach.ClassTag Name.nons_Object) Mach.Null NONE
         val _ = trace ["installing global object"];
         val _ = Eval.resetGlobal globalObj
         val _ = Eval.booting := true
@@ -251,17 +251,17 @@ fun boot _ =
 
         val otherProgs = verifyFiles otherProgs
 
-        val (objClass, objClassClosure, objClassObj, residualObjectProg) = instantiateRootClass Name.public_Object objProg
+        val (objClass, objClassClosure, objClassObj, residualObjectProg) = instantiateRootClass Name.nons_Object objProg
         val _ = runObjectConstructorOnGlobalObject objClass objClassObj objClassClosure 
 
         val (_, _, classClassObj, residualClassProg) = instantiateRootClass Name.intrinsic_Class clsProg
-        val (_, _, funClassObj, residualFunProg) = instantiateRootClass Name.public_Function funProg
+        val (_, _, funClassObj, residualFunProg) = instantiateRootClass Name.nons_Function funProg
 
         val globalRegs = Eval.getInitialRegs ()
     in
-        completeClassFixtures Name.public_Object objClassObj;
+        completeClassFixtures Name.nons_Object objClassObj;
         completeClassFixtures Name.intrinsic_Class classClassObj;
-        completeClassFixtures Name.public_Function funClassObj;
+        completeClassFixtures Name.nons_Function funClassObj;
 
         Eval.initClassPrototype globalRegs objClassObj;
         Eval.initClassPrototype globalRegs classClassObj;

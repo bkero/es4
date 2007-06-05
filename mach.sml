@@ -519,9 +519,9 @@ fun defTemp (temps:TEMPS)
 fun nominalBaseOfTag (t:VAL_TAG) 
     : Ast.NAME = 
     case t of 
-        ObjectTag _ => Name.public_Object
-      | ArrayTag _ => Name.public_Array
-      | FunctionTag _ => Name.public_Function
+        ObjectTag _ => Name.nons_Object
+      | ArrayTag _ => Name.nons_Array
+      | FunctionTag _ => Name.nons_Function
       | ClassTag c => c
       | ScopeTag => error ["searching for nominal base of scope object"]
 

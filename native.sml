@@ -138,7 +138,7 @@ fun propQuery (vals:Mach.VAL list)
     : Mach.VAL = 
     let 
         val Mach.Obj { props, ...} = nthAsObj vals 0
-        val n = Name.public (nthAsUstr vals 1)
+        val n = Name.nons (nthAsUstr vals 1)
     in
         Eval.newBoolean (f props n)
     end
@@ -148,13 +148,13 @@ fun arrayToList (arr:Mach.OBJ)
     let 
         val len = Word32.toInt 
                       (Eval.toUInt32 
-                           (Eval.getValue arr Name.public_length))
+                           (Eval.getValue arr Name.nons_length))
         fun build i vs = 
             if i < 0
             then vs
             else 
                 let
-                    val n = Name.public (Ustring.fromInt i)
+                    val n = Name.nons (Ustring.fromInt i)
                     val curr = if Eval.hasValue arr n
                                then Eval.getValue arr n
                                else Mach.Undef
@@ -704,7 +704,7 @@ fun get (vals:Mach.VAL list)
     (* FIXME: arg #1 should be a Name, and convert to Ast.Name. *)
     Eval.getValueOrVirtual 
         (nthAsObj vals 0) 
-        {id=(nthAsUstr vals 1), ns=Name.publicNS} 
+        (Name.nons (nthAsUstr vals 1))
         false
 
 (* 
@@ -715,7 +715,7 @@ fun set (vals:Mach.VAL list)
     (* FIXME: arg #1 should be a Name, and convert to Ast.Name. *)
     (Eval.setValueOrVirtual 
          (nthAsObj vals 0) 
-         {id=(nthAsUstr vals 1), ns=Name.publicNS} 
+         (Name.nons (nthAsUstr vals 1))
          (rawNth vals 2) 
          false;
      Mach.Undef)
@@ -1050,8 +1050,8 @@ fun registerNatives _ =
 
         (* FIXME: stubs to get Date loading. Implement. *)
         addFn 0 Name.intrinsic_now now;
-        addFn 0 Name.public_LocalTZA (fn _ => Eval.newDouble 0.0);
-        addFn 0 Name.public_DaylightSavingsTA (fn _ => Eval.newDouble 0.0);
+        addFn 0 Name.nons_LocalTZA (fn _ => Eval.newDouble 0.0);
+        addFn 0 Name.nons_DaylightSavingsTA (fn _ => Eval.newDouble 0.0);
        
         (* Math.es natives *) 
         addFn 1 Name.intrinsic_abs abs;

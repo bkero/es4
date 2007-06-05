@@ -8,8 +8,7 @@ fun newAnonNS _ =
     
 val metaNS = newAnonNS ()
 val magicNS = newAnonNS ()
-val publicNS = Ast.Public (Ustring.empty)
-val internalNS = Ast.Internal (Ustring.empty)
+val noNS = Ast.Public (Ustring.empty)
 val intrinsicNS = Ast.Intrinsic
 
 (* 
@@ -23,9 +22,9 @@ fun mangle (n:Ast.NAME) : Ast.IDENT =
 
 fun meta (id:Ast.IDENT) : Ast.NAME = { id = id, ns = metaNS }
 fun magic (id:Ast.IDENT) : Ast.NAME = { id = id, ns = magicNS }
-fun public (id:Ast.IDENT) : Ast.NAME = { id = id, ns = publicNS }
-fun internal (id:Ast.IDENT) : Ast.NAME= { id = id, ns = internalNS }
 fun intrinsic (id:Ast.IDENT) : Ast.NAME = { id = id, ns = intrinsicNS }
+fun nons (id:Ast.IDENT) : Ast.NAME = { id = id, ns = noNS }
+fun public (cls:Ast.NAME) (id:Ast.IDENT) : Ast.NAME = { id = id, ns = Ast.Public (mangle cls) }
 fun private (cls:Ast.NAME) (id:Ast.IDENT) : Ast.NAME = { id = id, ns = Ast.Private (mangle cls) }
 
 (* 
@@ -57,15 +56,15 @@ val intrinsic_Class = intrinsic Ustring.Class_
 val intrinsic_Namespace = intrinsic Ustring.Namespace_
 
 (* From Object.es *)
-val public_Object = public Ustring.Object_
+val nons_Object = nons Ustring.Object_
 
 (* From Error.es *)
-val public_Error = public Ustring.Error_
-val public_EvalError = public Ustring.EvalError_
-val public_RangeError = public Ustring.RangeError_
-val public_ReferenceError = public Ustring.ReferenceError_
-val public_SyntaxError = public Ustring.SyntaxError_
-val public_TypeError = public Ustring.TypeError_
+val nons_Error = nons Ustring.Error_
+val nons_EvalError = nons Ustring.EvalError_
+val nons_RangeError = nons Ustring.RangeError_
+val nons_ReferenceError = nons Ustring.ReferenceError_
+val nons_SyntaxError = nons Ustring.SyntaxError_
+val nons_TypeError = nons Ustring.TypeError_
 
 (* From Conversions.es *)
 val intrinsic_ToPrimitive = intrinsic Ustring.ToPrimitive_
@@ -93,18 +92,18 @@ val intrinsic_decodeURIComponent = intrinsic Ustring.decodeURIComponent_
 val intrinsic_encodeURI = intrinsic Ustring.encodeURI_
 val intrinsic_encodeURIComponent = intrinsic Ustring.encodeURIComponent_
 
-val public_NaN = public Ustring.NaN_
-val public_Infinity = public Ustring.Infinity_
-val public_undefined = public Ustring.undefined_
-val public_eval = public Ustring.eval_
-val public_parseInt = public Ustring.parseInt_
-val public_parseFloat = public Ustring.parseFloat_
-val public_isNaN = public Ustring.isNaN_
-val public_isFinite = public Ustring.isFinite_
-val public_decodeURI = public Ustring.decodeURI_
-val public_decodeURIComponent = public Ustring.decodeURIComponent_
-val public_encodeURI = public Ustring.encodeURI_
-val public_encodeURIComponent = public Ustring.encodeURIComponent_
+val nons_NaN = nons Ustring.NaN_
+val nons_Infinity = nons Ustring.Infinity_
+val nons_undefined = nons Ustring.undefined_
+val nons_eval = nons Ustring.eval_
+val nons_parseInt = nons Ustring.parseInt_
+val nons_parseFloat = nons Ustring.parseFloat_
+val nons_isNaN = nons Ustring.isNaN_
+val nons_isFinite = nons Ustring.isFinite_
+val nons_decodeURI = nons Ustring.decodeURI_
+val nons_decodeURIComponent = nons Ustring.decodeURIComponent_
+val nons_encodeURI = nons Ustring.encodeURI_
+val nons_encodeURIComponent = nons Ustring.encodeURIComponent_
 
 val intrinsic_print = intrinsic Ustring.print_
 val intrinsic_load = intrinsic Ustring.load_
@@ -112,16 +111,16 @@ val intrinsic_assert = intrinsic Ustring.assert_
 val intrinsic_typename = intrinsic Ustring.typename_
 
 (* From Function.es *)
-val public_Function = public Ustring.Function_
+val nons_Function = nons Ustring.Function_
 
 (* From Boolean.es *)
-val public_Boolean = public Ustring.Boolean_
+val nons_Boolean = nons Ustring.Boolean_
 
 (* From boolean_primitive.es *) 
 val intrinsic_boolean = intrinsic Ustring.boolean_
 
 (* From Number.es *)
-val public_Number = public Ustring.Number_
+val nons_Number = nons Ustring.Number_
 
 (* From double.es *)
 val intrinsic_double = intrinsic Ustring.double_
@@ -139,22 +138,22 @@ val intrinsic_decimal = intrinsic Ustring.decimal_
 val intrinsic_Numeric = intrinsic Ustring.Numeric_
 
 (* From String.es *)
-val public_String = public Ustring.String_
+val nons_String = nons Ustring.String_
 
 (* From string_primitive.es *)
 val intrinsic_string = intrinsic Ustring.string_
 
 (* From Array.es *)
-val public_Array = public Ustring.Array_
+val nons_Array = nons Ustring.Array_
 
 (* From ByteArray.es *)
 val intrinsic_ByteArray = intrinsic Ustring.ByteArray_
 
 (* From Date.es *)
-val public_Date = public Ustring.Date_
+val nons_Date = nons Ustring.Date_
 
 (* From RegExp.es *)
-val public_RegExp = public Ustring.RegExp_
+val nons_RegExp = nons Ustring.RegExp_
 
 (* From JSON.es *)
 val JSON_emit = { ns = Ast.Public Ustring.JSON_, id = Ustring.emit_ }
@@ -191,8 +190,8 @@ val intrinsic_toFixedStep10 = intrinsic Ustring.toFixedStep10_
 val intrinsic_set = intrinsic Ustring.set_
 val intrinsic_get = intrinsic Ustring.get_
 
-val public_DaylightSavingsTA = public Ustring.DaylightSavingsTA_
-val public_LocalTZA = public Ustring.LocalTZA_
+val nons_DaylightSavingsTA = nons Ustring.DaylightSavingsTA_
+val nons_LocalTZA = nons Ustring.LocalTZA_
 
 val magic_setByteArrayByte = magic Ustring.setByteArrayByte_
 val magic_getByteArrayByte = magic Ustring.getByteArrayByte_
@@ -228,15 +227,15 @@ val magic_construct = magic Ustring.construct_
  * Property names that have special meanings to the interpreter.
  *)
 
-val public_constructor = public Ustring.constructor_
-val public_length = public Ustring.length_
-val public_cursor = public Ustring.cursor_
-val private_Array__length = private public_Array (Ustring.fromString "_length")
-val public_source = public Ustring.source_
-val public_prototype = public Ustring.prototype_
-val public_toString = public Ustring.toString_
-val public_valueOf = public Ustring.valueOf_
-val public_global = public Ustring.global_
+val nons_constructor = nons Ustring.constructor_
+val nons_length = nons Ustring.length_
+val nons_cursor = nons Ustring.cursor_
+val private_Array__length = private nons_Array (Ustring.fromString "_length")
+val nons_source = nons Ustring.source_
+val nons_prototype = nons Ustring.prototype_
+val nons_toString = nons Ustring.toString_
+val nons_valueOf = nons Ustring.valueOf_
+val nons_global = nons Ustring.global_
 val meta_invoke = meta Ustring.invoke_
 val meta_get = meta Ustring.get_
 val meta_set = meta Ustring.set_
@@ -244,8 +243,11 @@ val meta_has = meta Ustring.has_
 val meta_call = meta Ustring.call_
 val meta_convert = meta Ustring.convert_
 
-val this = internal Ustring.this_
-val arguments = internal Ustring.arguments_
-val empty = internal Ustring.empty
+val this = nons Ustring.this_
+val arguments = nons Ustring.arguments_
+val empty = nons Ustring.empty
+
+val meta_ = nons Ustring.meta_
+val magic_ = nons Ustring.magic_
 
 end

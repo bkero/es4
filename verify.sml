@@ -113,21 +113,21 @@ fun instanceType (n:Ast.NAME) : Ast.TYPE_EXPR
                        (* FIXME: what is 'isDynamic' here? Should we get it from the classes? *)
                        isDynamic = false }
 
-val BooleanType   = instanceType Name.public_Boolean
+val BooleanType   = instanceType Name.nons_Boolean
 val booleanType   = instanceType Name.intrinsic_boolean
 
-val NumberType    = instanceType Name.public_Number
+val NumberType    = instanceType Name.nons_Number
 val NumericTypeName   = Name.typename Name.intrinsic_Numeric
 val doubleType    = instanceType Name.intrinsic_double
 val decimalType   = instanceType Name.intrinsic_decimal
 val intType       = instanceType Name.intrinsic_int
 val uintType      = instanceType Name.intrinsic_uint
 
-val StringType    = instanceType Name.public_String
+val StringType    = instanceType Name.nons_String
 val stringType    = instanceType Name.intrinsic_string
 
-val RegExpType    = instanceType Name.public_RegExp
-val ErrorType     = instanceType Name.public_Error
+val RegExpType    = instanceType Name.nons_RegExp
+val ErrorType     = instanceType Name.nons_Error
 val NamespaceType = instanceType Name.intrinsic_Namespace
 val TypeType      = instanceType Name.intrinsic_Type
 
@@ -284,7 +284,7 @@ fun verifyTypeExpr (env:ENV)
 	            (* Add the type parameters to the environment. *)
 	            val env' : ENV = 
                     withRib env (List.map 
-                                     (fn id => (Ast.PropName (Name.internal id),
+                                     (fn id => (Ast.PropName (Name.nons id),
                                                 Ast.TypeVarFixture)) 
                                      typeParams)
                 val params' = verifyTypeExprs env' params
@@ -542,13 +542,13 @@ and isSubtype (t1:TYPE_VALUE)
                           unimplError ["isSubtype 4"]
                          *)
                         | (Ast.ArrayType _, Ast.InstanceType it2) => 
-                          (#name it2) = Name.public_Array
+                          (#name it2) = Name.nons_Array
 
                         | (Ast.ObjectType _, Ast.InstanceType it2) => 
-                          (#name it2) = Name.public_Object
+                          (#name it2) = Name.nons_Object
 
                         | (Ast.FunctionType _, Ast.InstanceType it2) => 
-                          (#name it2) = Name.public_Function
+                          (#name it2) = Name.nons_Function
 
                         | (Ast.InstanceType it1, Ast.InstanceType it2) => 
                           isClass (#name it1) 

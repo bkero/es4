@@ -927,19 +927,19 @@ and throwExn1 (name:Ast.NAME) (args:string list)
 
 and throwTypeErr (args:string list)
     : Mach.VAL = 
-    throwExn Name.public_TypeError args
+    throwExn Name.nons_TypeError args
 
 and throwTypeErr0 (args:string list)
     : Mach.OBJ = 
-    throwExn1 Name.public_TypeError args
+    throwExn1 Name.nons_TypeError args
 
 and throwRefErr (args:string list)
     : REF = 
-    throwExn0 Name.public_ReferenceError args
+    throwExn0 Name.nons_ReferenceError args
 
 and throwRefErr0 (args:string list)
     : Mach.OBJ = 
-    throwExn1 Name.public_ReferenceError args
+    throwExn1 Name.nons_ReferenceError args
 
 and needNamespace (v:Mach.VAL) 
     : Ast.NAMESPACE = 
@@ -957,10 +957,10 @@ and needObj (v:Mach.VAL)
       | _ => throwTypeErr0 ["need object"]
 
 and newObject _ = 
-    instantiateGlobalClass Name.public_Object []
+    instantiateGlobalClass Name.nons_Object []
 
 and newObj _ = 
-    needObj (instantiateGlobalClass Name.public_Object [])
+    needObj (instantiateGlobalClass Name.nons_Object [])
 
 and newRootBuiltin (n:Ast.NAME) (m:Mach.MAGIC) 
     : Mach.VAL = 
@@ -992,10 +992,10 @@ and newArray (vals:Mach.VAL list)
      * a number, and sets the array to that length. We want to always return an array from
      * this call containing as many values as we were passed, no more no less.
      *)
-    let val a = instantiateGlobalClass Name.public_Array [newInt (Int32.fromInt (List.length vals))]
+    let val a = instantiateGlobalClass Name.nons_Array [newInt (Int32.fromInt (List.length vals))]
         fun init a _ [] = ()
           | init a k (x::xs) =
-            (setValue a (Name.public (Ustring.fromInt k)) x ;
+            (setValue a (Name.nons (Ustring.fromInt k)) x ;
              init a (k+1) xs)
     in
         init (needObj a) 0 vals;
@@ -1005,7 +1005,7 @@ and newArray (vals:Mach.VAL list)
 and newRegExp (pattern:Ustring.STRING) 
               (flags:Ustring.STRING)
     : Mach.VAL =
-    instantiateGlobalClass Name.public_RegExp [newString pattern, newString flags]
+    instantiateGlobalClass Name.nons_RegExp [newString pattern, newString flags]
 
 and newBuiltin (n:Ast.NAME) (m:Mach.MAGIC option) 
     : Mach.VAL =
@@ -1013,7 +1013,7 @@ and newBuiltin (n:Ast.NAME) (m:Mach.MAGIC option)
 
 and newPublicNumber (n:Real64.real) 
     : Mach.VAL = 
-    newBuiltin Name.public_Number (SOME (Mach.Double n))
+    newBuiltin Name.nons_Number (SOME (Mach.Double n))
 
 and newDouble (n:Real64.real) 
     : Mach.VAL = 
@@ -1085,7 +1085,7 @@ and newUInt (n:Word32.word)
 
 and newPublicString (s:Ustring.STRING) 
     : Mach.VAL = 
-    newBuiltin Name.public_String (SOME (Mach.String s))
+    newBuiltin Name.nons_String (SOME (Mach.String s))
 
 and newString (s:Ustring.STRING) 
     : Mach.VAL = 
@@ -1110,7 +1110,7 @@ and newByteArray (b:Word8Array.array)
 
 and newPublicBoolean (b:bool) 
     : Mach.VAL = 
-    newBuiltin Name.public_Boolean (SOME (Mach.Boolean b))
+    newBuiltin Name.nons_Boolean (SOME (Mach.Boolean b))
 
 and newBoolean (b:bool) 
     : Mach.VAL = 
@@ -1184,8 +1184,8 @@ and newFunctionFromClosure (closure:Mach.FUN_CLOSURE) =
         val tag = Mach.FunctionTag ty
 
         val _ = trace ["finding Function.prototype"]
-        val funClass = needObj (getValue (getGlobalObject()) Name.public_Function)
-        val funProto = getValue funClass Name.public_prototype
+        val funClass = needObj (getValue (getGlobalObject()) Name.nons_Function)
+        val funProto = getValue funClass Name.nons_prototype
         val _ = trace ["building new prototype chained to Function.prototype"]
         val newProto = Mach.Object (Mach.setProto (newObj ()) funProto)
         val _ = trace ["built new prototype chained to Function.prototype"]
@@ -1198,7 +1198,7 @@ and newFunctionFromClosure (closure:Mach.FUN_CLOSURE) =
 
     in
         Mach.setMagic obj (SOME (Mach.Function closure));
-        setValue obj Name.public_prototype newProto;
+        setValue obj Name.nons_prototype newProto;
         Mach.Object obj
     end
 
@@ -1209,7 +1209,7 @@ and newFunctionFromFunc (e:Mach.SCOPE)
     newFunctionFromClosure (newFunClosure e f NONE)
 
 and newNativeFunction (f:Mach.NATIVE_FUNCTION) = 
-    newRootBuiltin Name.public_Function (Mach.NativeFunction f)
+    newRootBuiltin Name.nons_Function (Mach.NativeFunction f)
                     
 (* 
  * ES-262-3 9.8 ToString. 
@@ -1270,8 +1270,8 @@ and defaultValue (obj:Mach.OBJ)
   : Mach.VAL = 
     let
         val (na, nb) = if preferredType = Ustring.String_
-                       then (Name.public_toString, Name.public_valueOf)
-                       else (Name.public_valueOf, Name.public_toString)
+                       then (Name.nons_toString, Name.nons_valueOf)
+                       else (Name.nons_valueOf, Name.nons_toString)
         val va = if hasValue obj na 
                  then evalCallMethodByRef obj (obj, na) []
                  else Mach.Undef
@@ -1748,7 +1748,7 @@ and evalLiteralArrayExpr (regs:Mach.REGS)
                      * a full TYPE_EXPR in LiteralArray. *)
                     | SOME _ => error ["non-array type on array literal"]
         val tag = Mach.ArrayTag tys
-        val arrayClass = needObj (getValue (getGlobalObject ()) Name.public_Array)
+        val arrayClass = needObj (getValue (getGlobalObject ()) Name.nons_Array)
         val Mach.Obj { magic, ... } = arrayClass
         val obj = case (!magic) of 
                       SOME (Mach.Class arrayClassClosure) => 
@@ -1758,7 +1758,7 @@ and evalLiteralArrayExpr (regs:Mach.REGS)
         fun putVal n [] = n
           | putVal n (v::vs) = 
             let 
-                val name = Name.public (Ustring.fromInt n)
+                val name = Name.nons (Ustring.fromInt n)
                 (* FIXME: this is probably incorrect wrt. Array typing rules. *)
                 val ty = if n < (length tys) 
                          then List.nth (tys, n)
@@ -1777,7 +1777,7 @@ and evalLiteralArrayExpr (regs:Mach.REGS)
             end
         val numProps = putVal 0 vals 
     in
-        setValue obj Name.public_length (newUInt (Word32.fromInt numProps)) ;
+        setValue obj Name.nons_length (newUInt (Word32.fromInt numProps)) ;
         Mach.Object obj
     end
 
@@ -1799,7 +1799,7 @@ and evalLiteralObjectExpr (regs:Mach.REGS)
                      * a full TYPE_EXPR in LiteralObject. *)
                     | SOME _ => error ["non-object type on object literal"]
         val tag = Mach.ObjectTag tys
-        val objectClass = needObj (getValue (getGlobalObject ()) Name.public_Object)
+        val objectClass = needObj (getValue (getGlobalObject ()) Name.nons_Object)
         val Mach.Obj { magic, ... } = objectClass
         val obj = case (!magic) of 
                       SOME (Mach.Class objectClassClosure) => 
@@ -1814,7 +1814,7 @@ and evalLiteralObjectExpr (regs:Mach.REGS)
                               | _ => false
                 val n = case evalIdentExpr regs name of 
                             Name n => n
-                          | Multiname n => Name.public (#id n)
+                          | Multiname n => Name.nons (#id n)
                 val v = evalExpr regs init
                 val ty = searchFieldTypes (#id n) tys
                 val prop = { ty = ty,
@@ -1893,13 +1893,13 @@ and constructObjectViaFunction (ctorObj:Mach.OBJ)
             (* FIXME: the default prototype should be the initial Object prototype, 
              * as per ES-262-3 13.2.2, not the current Object prototype. *)
             val (proto:Mach.VAL) = 
-                if Mach.hasProp props Name.public_prototype
-                then getValue ctorObj Name.public_prototype
+                if Mach.hasProp props Name.nons_prototype
+                then getValue ctorObj Name.nons_prototype
                 else 
                     let
-                        val globalObjectObj = needObj (getValue (getGlobalObject()) Name.public_Object)
+                        val globalObjectObj = needObj (getValue (getGlobalObject()) Name.nons_Object)
                     in
-                        getValue globalObjectObj Name.public_prototype
+                        getValue globalObjectObj Name.nons_prototype
                     end
             val (newObj:Mach.OBJ) = Mach.setProto (newObj ()) proto 
         in
@@ -2233,7 +2233,7 @@ and evalUnaryOp (regs:Mach.REGS)
                                 (if n = Name.intrinsic_boolean
                                  then Ustring.boolean_
                                  else 
-                                     (if n = Name.public_Function
+                                     (if n = Name.nons_Function
                                       then Ustring.function_
                                       else 
                                           (if n = Name.intrinsic_string
@@ -2620,10 +2620,10 @@ and hasInstance (ob:OBJ)
         fun functionHasInstance _ = 
             case v of 
                 Object ob => 
-                if hasValue ob Name.public_prototype
+                if hasValue ob Name.nons_prototype
                 else 
                     let 
-                        val proto = getValue ob Name.public_prototype
+                        val proto = getValue ob Name.nons_prototype
                     in
                         if Mach.isObject proto
                         then tripleEquals ...
@@ -2727,7 +2727,7 @@ and evalBinaryOp (regs:Mach.REGS)
         let 
             val a = evalExpr regs aexpr
             val astr = toUstring a
-            val aname = Name.public astr
+            val aname = Name.nons astr
             val b = evalExpr regs bexpr
         in
             case b of 
@@ -2827,7 +2827,7 @@ and evalRefExprFull (regs:Mach.REGS)
     let 
         fun defaultRef obj nomn = 
             case nomn of 
-                Multiname mname => (obj, Name.public (#id mname))
+                Multiname mname => (obj, Name.nons (#id mname))
               | Name name => (obj, name)
     in
         case expr of         
@@ -3106,7 +3106,7 @@ and invokeFuncClosure (callerThis:Mach.OBJ)
                 val (Mach.Obj {props, ...}) = varObj
                                  
                 (* FIXME: self-name binding is surely more complex than this! *)
-                val selfName = Name.internal (#ident name)
+                val selfName = Name.nons (#ident name)
                 fun initSelf _ = Mach.addProp props selfName { ty = Ast.SpecialType Ast.Any,
                                                                state = Mach.MethodProp closure,
                                                                attrs = { dontDelete = true,
@@ -3359,7 +3359,7 @@ and bindArgs (regs:Mach.REGS)
              * of 'arguments'.
              *)
             (Mach.addProp props Name.arguments { state = Mach.ValListProp args,  (* args is a better approximation than finalArgs *)
-                                                 ty = Name.typename Name.public_Object,
+                                                 ty = Name.typename Name.nons_Object,
                                                  attrs = { dontDelete = true,
                                                            dontEnum = true,
                                                            readOnly = false, 
@@ -3488,7 +3488,7 @@ and evalScopeInits (regs:Mach.REGS)
                              
                       | Ast.Prototype => 
                         if kind = Mach.InstanceScope
-                        then (needObj (getValue object Name.public_prototype))
+                        then (needObj (getValue object Name.nons_prototype))
                         else findTargetObj (valOf parent)
                 end 
 
@@ -3599,8 +3599,8 @@ and constructStandardWithTag (classObj:Mach.OBJ)
     : Mach.OBJ = 
     let
         val {cls = Ast.Cls { name, instanceFixtures, ...}, env, ...} = classClosure
-        val (proto:Mach.VAL) = if hasOwnValue classObj Name.public_prototype
-                               then getValue classObj Name.public_prototype
+        val (proto:Mach.VAL) = if hasOwnValue classObj Name.nons_prototype
+                               then getValue classObj Name.nons_prototype
                                else Mach.Null
         val (instanceObj:Mach.OBJ) = Mach.newObj tag proto NONE
         (* FIXME: might have 'this' binding wrong in class scope here. *)
@@ -3668,7 +3668,7 @@ and specialFunctionConstructor (classObj:Mach.OBJ)
     : Mach.VAL = 
     let
         val (source, funcExpr) = parseFunctionFromArgs args
-        val sname = Name.public_source
+        val sname = Name.nons_source
         val sval = newString source
         val fv = case funcExpr of 
                      Ast.LiteralExpr (Ast.LiteralFunction f) => 
@@ -3689,20 +3689,20 @@ and specialArrayConstructor (classObj:Mach.OBJ)
         val Mach.Obj { props, ... } = instanceObj
         fun bindVal _ [] = ()
           | bindVal n (x::xs) = 
-            (setValue instanceObj (Name.public (Ustring.fromInt n)) x;
+            (setValue instanceObj (Name.nons (Ustring.fromInt n)) x;
              bindVal (n+1) xs)
     in
         case args of
-            [] => setValue instanceObj Name.public_length (newUInt 0w0)
+            [] => setValue instanceObj Name.nons_length (newUInt 0w0)
           | [k] => let val idx = asArrayIndex k 
                    in
                        if not (idx = 0wxFFFFFFFF) then
-                           setValue instanceObj Name.public_length k
+                           setValue instanceObj Name.nons_length k
                        else
                            bindVal 0 args
                    end
           | _ => bindVal 0 args;
-        Mach.setPropDontEnum props Name.public_length true;
+        Mach.setPropDontEnum props Name.nons_length true;
         Mach.setPropDontEnum props Name.private_Array__length true;
         Mach.Object instanceObj
     end    
@@ -3872,7 +3872,7 @@ and constructSpecialPrototype (id:Mach.OBJ_IDENT)
 and initClassPrototype (regs:Mach.REGS)
                        (classObj:Mach.OBJ) 
     : unit =
-    case getValue classObj Name.public_prototype of 
+    case getValue classObj Name.nons_prototype of 
         Mach.Object _ => ()
       | _ =>         
         let 
@@ -3886,8 +3886,8 @@ and initClassPrototype (regs:Mach.REGS)
                     in
                         case findVal (#scope regs) baseClassName of 
                             Mach.Object ob => 
-                            if hasOwnValue ob Name.public_prototype
-                            then getValue ob Name.public_prototype
+                            if hasOwnValue ob Name.nons_prototype
+                            then getValue ob Name.nons_prototype
                             else Mach.Null
                           | _ => error ["base class resolved to non-object: ", 
                                         LogErr.name baseClassName]
@@ -3898,7 +3898,7 @@ and initClassPrototype (regs:Mach.REGS)
                                  | NONE => newObj()            
             val newPrototype = Mach.setProto newPrototype baseProtoVal
         in
-            defValue classObj Name.public_prototype (Mach.Object newPrototype);
+            defValue classObj Name.nons_prototype (Mach.Object newPrototype);
             trace ["finished initialising class prototype"]
         end
         
@@ -3915,12 +3915,12 @@ and bindAnySpecialIdentity (name:Ast.NAME)
         let
             val Mach.Obj { ident, ... } = classObj
             val bindings = [ 
-                (Name.public_Object, ObjectClassIdentity),
-                (Name.public_Array, ArrayClassIdentity),
-                (Name.public_Function, FunctionClassIdentity),
-                (Name.public_String, StringClassIdentity),
-                (Name.public_Number, NumberClassIdentity),
-                (Name.public_Boolean, BooleanClassIdentity)
+                (Name.nons_Object, ObjectClassIdentity),
+                (Name.nons_Array, ArrayClassIdentity),
+                (Name.nons_Function, FunctionClassIdentity),
+                (Name.nons_String, StringClassIdentity),
+                (Name.nons_Number, NumberClassIdentity),
+                (Name.nons_Boolean, BooleanClassIdentity)
             ]
             fun f (n,id) = Mach.nameEq name n
         in
@@ -4152,7 +4152,7 @@ and callIteratorGet (regs:Mach.REGS)
               | _ => curr
         val iterator = needObj (newArray (NameMap.foldri f [] (!props)))
     in
-        setValue iterator Name.public_cursor (newInt 0);
+        setValue iterator Name.nons_cursor (newInt 0);
         iterator
     end
 
@@ -4160,18 +4160,18 @@ and callIteratorNext (regs:Mach.REGS)
                      (iterator:Mach.OBJ)
     : Mach.VAL =
     let
-        val lengthValue = getValue iterator Name.public_length
+        val lengthValue = getValue iterator Name.nons_length
         val length      = toInt32 lengthValue
-        val cursorValue = getValue iterator Name.public_cursor
+        val cursorValue = getValue iterator Name.nons_cursor
         val cursor      = toInt32 cursorValue
     in
         if cursor < length
         then
             let
-                val nextName       = Name.public (Ustring.fromInt32 cursor)
+                val nextName       = Name.nons (Ustring.fromInt32 cursor)
                 val newCursorValue = newInt (cursor + 1)
             in
-                setValue iterator Name.public_cursor newCursorValue;
+                setValue iterator Name.nons_cursor newCursorValue;
                 getValue iterator nextName
             end
         else

@@ -4459,7 +4459,7 @@ and letStatement (ts,w) : ((TOKEN * Ast.LOC) list * Ast.STMT) =
             let
                 val (ts1,nd1) = letBindingList (tl (tl ts))
                 val defn = Ast.VariableDefn {kind=Ast.LetVar,
-                                             ns=SOME (Ast.LiteralExpr (Ast.LiteralNamespace (Ast.Internal Ustring.empty))),
+                                             ns=SOME (Ast.LiteralExpr (Ast.LiteralNamespace Name.noNS)),
                                              static=false,
                                              prototype=false,
                                              bindings=nd1}
