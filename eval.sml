@@ -1237,18 +1237,21 @@ and newFunctionFromClosure (closure:Mach.FUN_CLOSURE) =
         val funClass = needObj (getValue (getGlobalObject()) Name.nons_Function)
         val funProto = getValue funClass Name.nons_prototype
         val _ = trace ["building new prototype chained to Function.prototype"]
-        val newProto = Mach.Object (Mach.setProto (newObj ()) funProto)
+        val newProtoObj = Mach.setProto (newObj ()) funProto
+        val newProto = Mach.Object newProtoObj
         val _ = trace ["built new prototype chained to Function.prototype"]
 
         val Mach.Obj { magic, ... } = funClass
         val obj = case (!magic) of 
                       SOME (Mach.Class funClassClosure) => 
                       constructStandardWithTag funClass funClassClosure [] tag
+                    | _ => error ["function class lacks class magic"]
 
 
     in
         Mach.setMagic obj (SOME (Mach.Function closure));
         setValue obj Name.nons_prototype newProto;
+        setValue newProtoObj Name.nons_constructor (Mach.Object obj);
         Mach.Object obj
     end
 
@@ -3977,6 +3980,7 @@ and initClassPrototype (regs:Mach.REGS)
             val newPrototype = Mach.setProto newPrototype baseProtoVal
         in
             defValue classObj Name.nons_prototype (Mach.Object newPrototype);
+            setValue newPrototype Name.nons_constructor (Mach.Object classObj);
             trace ["finished initialising class prototype"]
         end
         
