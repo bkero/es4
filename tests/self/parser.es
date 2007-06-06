@@ -38,9 +38,23 @@
 
 use namespace intrinsic;
 
-namespace Parser
+namespace Debug
+namespace Release
 
-type TOKENS = [int];
+{
+    Debug function enter (s,a) {
+        print (">> ", s, a);
+    }
+
+    Debug function exit (s,a) {
+        print ("<< ", s, a);
+    }
+}
+
+
+namespace Parser;
+
+type TOKENS = Array;  // [int];
 
 {
     use default namespace Parser;
@@ -48,23 +62,18 @@ type TOKENS = [int];
 
     class Parser 
     {
-        const abbrevIfElse_mode         = else_token  // lookahead uses this value. don't change.
-        const abbrevDoWhile_mode        = while_token // ditto.
-        const abbrevFunction_mode       = function_token
-        const abbrev_mode               = last_token-1
-        const full_mode                 = abbrev_mode-1
+        static const AbbrevIfElse = 0;
+        static const AbbrevDoWhile = AbbrevIfElse + 1;
+        static const AbbrevFunction = AbbrevDoWhile + 1;
+        static const Abbrev = AbbrevFunction + 1;
+        static const Full = Abbrev + 1;
 
-        const allowIn_mode              = full_mode-1
-        const noIn_mode                 = allowIn_mode-1
+        static const AllowIn = Full + 1;
+        static const NoIn = AllowIn + 1;
 
-        const catch_parameter_error     = 1
-        const syntax_xml_error          = 2
+        static const Global = 0;
 
-        const syntax_error              = 7
-        const expression_syntax_error   = 8
-        const syntax_eos_error          = 9
-
-        var scan : Scanner
+        var scan : Lexer::Scanner
 
         public function Parser(src)
         {
@@ -75,13 +84,24 @@ type TOKENS = [int];
         var currentPackageName: string;
         var currentClassName: string;
 
-        function head (ts:TOKENS) : TOKENS ts[0];
+        function head (ts) {
+            //             print("head ",ts[0]);
+             return Token::tokenKind (ts[0]);
+        }
+
+        function match (ts,tc) {
+            let hd = head (ts);
+            if (hd === tc) {
+                return tail (ts);
+            }
+            throw "expecting "+Token::tokenText(tc)+" found "+Token::tokenText(hd);
+        }
+
         function tail (ts:TOKENS) : TOKENS ts.slice (1,ts.length);
 
         // Parse rountines
 
         /*
-
         Identifier    
             Identifier
             call
@@ -100,17 +120,18 @@ type TOKENS = [int];
             static
             type
             xml
-
         */
 
         public function identifier (ts: TOKENS)
             : [TOKENS, Ast::IDENT]
         {
-            Debug::enter("Parse::identifier");
+            Debug::enter("Parse::identifier ", ts);
+
+            var str = "";   // fixme: evaluator isn't happy if this is inside of the switch
 
             switch (head(ts)) {
             case Token::Identifier:
-            case Token::Call: 
+            case Token::Call:
             case Token::Cast:
             case Token::Const:
             case Token::Decimal:
@@ -120,7 +141,7 @@ type TOKENS = [int];
             case Token::Eval:
             case Token::Final:
             case Token::Get:
-            case Token::Goto:
+                // case Token::Goto:
             case Token::Has:
             case Token::Implements:
             case Token::Import:
@@ -147,17 +168,17 @@ type TOKENS = [int];
             case Token::Static:
             case Token::To:
             case Token::Type:
-            case Token::Uint:
+            case Token::UInt:
             case Token::Undefined:
             case Token::Use:
             case Token::Xml:
             case Token::Yield:
-                var str = Lexer::tokenText (head(ts));
+                var str = Token::tokenText (head(ts));
                 break;
             default:
-                throw "expecting identifier";
+                throw "expecting identifier, found " + Token::tokenText (head(ts));
             }
-            Debug::exit ("Parse::identifier");
+            Debug::exit ("Parse::identifier ",str);
             return [tail(ts), new Ast::Identifier (str)];
         }
 
@@ -168,18 +189,19 @@ type TOKENS = [int];
                 Identifier
         */
         
-        function qualifier(ts: TOKENS) 
+        function qualifier(ts)
             : [TOKENS, Ast::IDENT]
         {
-            Debug.enter("Parse::qualifier");
+            Debug::enter("Parse::qualifier ",ts);
 
+            var [ts1,nd1] = [null,null];
             switch (head(ts)) {
             case Token::Internal:
             case Token::Intrinsic:
             case Token::Private:
             case Token::Protected:
             case Token::Public:
-                var [ts1,nd1] = reservedNamespace();
+                var [ts1,nd1] = reservedNamespace(ts);
                 break;
             case Token::Mult:
             case Token::Identifier:
@@ -190,7 +212,7 @@ type TOKENS = [int];
                 throw "invalid qualifier";
             }
 
-            Debug.exit("parseQualifier",result);
+            Debug::exit("Parse::qualifier ",nd1);
             return [ts1,nd1];
         }
 
@@ -206,27 +228,28 @@ type TOKENS = [int];
         function reservedNamespace (ts: TOKENS)
 			: [TOKENS, Ast::NAMESPACE]
         {
-            Debug.enter("Parse::reservedNamespace");
+            Debug::enter("Parse::reservedNamespace ", ts);
 
+            var [ts1,nd1] = [null,null];
             switch (head(ts)) {
             case Token::Internal:
-                var [ts1,nd1] = [tail(ts), new Ast::Internal (current_package)];
+                var [ts1,nd1] = [tail(ts), new Ast::InternalNamespace (current_package)];
                 break;
             case Token::Public:
-                var [ts1,nd1] = [tail(ts), new Ast::Public (current_package)];
+                var [ts1,nd1] = [tail(ts), new Ast::PublicNamespace (current_package)];
                 break;
             case Token::Intrinsic:
-                var [ts1,nd1] = [tail(ts), new Ast::Intrinsic];
+                var [ts1,nd1] = [tail(ts), new Ast::IntrinsicNamespace];
                 break;
             case Token::Private:
-                var [ts1,nd1] = [tail(ts), new Ast::Private (current_class)];
+                var [ts1,nd1] = [tail(ts), new Ast::PrivateNamespace (current_class)];
                 break;
             case Token::Protected:
-                var [ts1,nd1] = [tail(ts), new Ast::Protected (current_class)];
+                var [ts1,nd1] = [tail(ts), new Ast::ProtectedNamespace (current_class)];
                 break;
             }
 
-            Debug.exit("Parse::reservedNamespace",nd1);
+            Debug::exit("Parse::reservedNamespace ", nd1);
             return [ts1,nd1];
         }
 
@@ -244,12 +267,24 @@ type TOKENS = [int];
         function simpleQualifiedIdentifier (ts: TOKENS)
             : [TOKENS, Ast::IDENT_EXPR]
         {
-            Debug.enter("Parse::simpleQualifiedIdentifier");
+            Debug::enter("Parse::simpleQualifiedIdentifier ", ts);
 
-            var [ts1,nd1] = parseQualifier();
+            var [ts1,nd1] = qualifier (ts);
+            var [ts4,nd4] = [null, null];
+            var [ts3,nd3] = [null, null];
             switch type (nd1:*) {
-            case (nd1: Ast::ReservedNamspace) 
-            {
+            case (nd1: Ast::RESERVED_NAMESPACE) {
+                let ts2 = match (ts1, Token::DoubleColon);
+                switch (head(ts2)) {
+                case Token::LeftBracket:
+                    var [ts3,nd3] = brackets (ts2);
+                    var [ts4,nd4] = [ts3,new Ast::QualifiedExpression (nd1,nd3)];
+                    break;
+                default:
+                    var [ts3,nd3] = identifier (ts2);  // fixme: qualifiedNameIdentifier
+                    var [ts4,nd4] = [ts3, new Ast::QualifiedIdentifier (new Ast::LiteralExpr (new Ast::LiteralNamespace (nd1)),nd3)];
+                    break;
+                }
                 /*
                 match(doublecolon_token);
                 if( lookahead(leftbracket_token) )  // @ns::[expr]
@@ -291,8 +326,8 @@ type TOKENS = [int];
             }
             }
 
-            Debug.exit("Parse::simpleQualifiedIdentifier",result)
-            return result
+            Debug::exit("Parse::simpleQualifiedIdentifier ", nd4);
+            return [ts4,nd4];
         }
 
 //        /*
@@ -303,7 +338,7 @@ type TOKENS = [int];
 //        
 //        function xpressionQualifiedIdentifier()
 //        {
-//            Debug.enter("parseExpressionQualifiedIdentifier")
+//            Debug::enter("parseExpressionQualifiedIdentifier")
 // 
 //            var first = parseParenListExpression()
 //            match(doublecolon_token)
@@ -318,7 +353,7 @@ type TOKENS = [int];
 //                var result = <QualifiedIdentifier><Qualifier>{first}</Qualifier>{second}</QualifiedIdentifier>
 //            }
 //
-//            Debug.exit("parseExpressionQualifiedIdentifier",result)
+//            Debug::exit("parseExpressionQualifiedIdentifier",result)
 //            return result
 //        }
 //
@@ -330,7 +365,7 @@ type TOKENS = [int];
 //        
 //        function parseNonAttributeQualifiedIdentifier()
 //        {
-//            Debug.enter("parseNonAttributeQualifiedIdentifier")
+//            Debug::enter("parseNonAttributeQualifiedIdentifier")
 //
 //            if( lookahead(leftparen_token) )
 //            {
@@ -341,7 +376,7 @@ type TOKENS = [int];
 //                var result = parseSimpleQualifiedIdentifier();
 //            }
 //
-//            Debug.exit("parseNonAttributeQualifiedIdentifier",result)
+//            Debug::exit("parseNonAttributeQualifiedIdentifier",result)
 //            return result
 //        }
 //
@@ -353,7 +388,7 @@ type TOKENS = [int];
 //        
 //        function parseAttributeIdentifier()
 //        {
-//            Debug.enter("parseAttributeIdentifier")
+//            Debug::enter("parseAttributeIdentifier")
 //
 //            match(at_token)
 //            if( lookahead(leftbracket_token) )
@@ -366,7 +401,7 @@ type TOKENS = [int];
 //            }
 //            result.@is_attr="true"
 //
-//            Debug.exit("parseAttributeIdentifier",result)
+//            Debug::exit("parseAttributeIdentifier",result)
 //            return result
 //        }
 //
@@ -378,7 +413,7 @@ type TOKENS = [int];
 //
 //        function parseQualifiedIdentifier()
 //        {
-//            Debug.enter("parseQualifiedIdentifier")
+//            Debug::enter("parseQualifiedIdentifier")
 //
 //            var is_attr
 //            if( lookahead(at_token) )
@@ -404,7 +439,7 @@ type TOKENS = [int];
 //                var result = parseNonAttributeQualifiedIdentifier()
 //            }
 //
-//            Debug.exit("parseQualifiedIdentifier",result)
+//            Debug::exit("parseQualifiedIdentifier",result)
 //            return result
 //        }
 //
@@ -431,7 +466,7 @@ type TOKENS = [int];
 //        
 //        function parseSimpleTypeIdentifier()
 //        {
-//            Debug.enter("parseSimpleTypeIdentifier")
+//            Debug::enter("parseSimpleTypeIdentifier")
 //
 //            if( lookahead(packageidentifier_token) )
 //            {
@@ -452,7 +487,7 @@ type TOKENS = [int];
 //                var result = parseNonAttributeQualifiedIdentifier()
 //            }
 //
-//            Debug.exit("parseSimpleTypeIdentifier",result)
+//            Debug::exit("parseSimpleTypeIdentifier",result)
 //            return result
 //        }
 //
@@ -461,7 +496,7 @@ type TOKENS = [int];
 //
 //        function parseTypeIdentifier()
 //        {
-//            Debug.enter("parseTypeIdentifier")    
+//            Debug::enter("parseTypeIdentifier")    
 //
 //            var first = parseSimpleTypeIdentifier()
 //            if( lookahead(leftdotangle_token) )
@@ -513,7 +548,7 @@ type TOKENS = [int];
 //                var result = first
 //            }
 //
-//            Debug.exit("parseTypeIdentifier",result)
+//            Debug::exit("parseTypeIdentifier",result)
 //            return result
 //        }
 //
@@ -544,7 +579,7 @@ type TOKENS = [int];
 //                
 //        function parseParenExpression()
 //        {
-//            Debug.enter("parseParenExpression")
+//            Debug::enter("parseParenExpression")
 //
 //            enterSlashContext(regexpliteral_token)
 //            match(leftparen_token);
@@ -552,13 +587,13 @@ type TOKENS = [int];
 //            exitSlashContext(regexpliteral_token)
 //            match(rightparen_token)
 // 
-//            Debug.exit("parseParenExpression",result)
+//            Debug::exit("parseParenExpression",result)
 //            return result
 //        }
 //
 //        function parseParenListExpression()
 //        {
-//            Debug.enter("parseParenListExpression")
+//            Debug::enter("parseParenListExpression")
 //
 //            enterSlashContext(regexpliteral_token)
 //            match( leftparen_token ); 
@@ -566,7 +601,7 @@ type TOKENS = [int];
 //            exitSlashContext(regexpliteral_token)
 //            match( rightparen_token )
 //
-//            Debug.exit("parseParenListExpression",result)
+//            Debug::exit("parseParenListExpression",result)
 //            return result
 //        }
 //
@@ -579,7 +614,7 @@ type TOKENS = [int];
 //        
 //        function parseParenListOrExpressionQualifiedIdentifier()
 //        {
-//            Debug.enter("parseParenListOrExpressionQualifiedIdentifier")
+//            Debug::enter("parseParenListOrExpressionQualifiedIdentifier")
 //
 //            var first = parseParenListExpression()
 //            if( lookahead(doublecolon_token) )
@@ -601,7 +636,7 @@ type TOKENS = [int];
 //                var result = first
 //            }
 //
-//            Debug.exit("parseParenListOrExpressionQualifiedIdentifier",result)
+//            Debug::exit("parseParenListOrExpressionQualifiedIdentifier",result)
 //            return result
 //        }
 //
@@ -616,7 +651,7 @@ type TOKENS = [int];
 //
 //        function parseFunctionCommon(first)
 //        {
-//            Debug.enter("parseFunctionCommon",first)
+//            Debug::enter("parseFunctionCommon",first)
 //            
 //            var prologue = <Prologue/>
 //            var second = parseFunctionSignature(prologue)
@@ -641,7 +676,7 @@ type TOKENS = [int];
 //                node.@factory = "true"
 //            }
 //            
-//            Debug.exit("parseFunctionCommon",node)
+//            Debug::exit("parseFunctionCommon",node)
 //            return node
 //        }
 //
@@ -654,7 +689,7 @@ type TOKENS = [int];
 //
 //        function parseFunctionSignature(prologue)
 //        {
-//            Debug.enter("parseFunctionSignature")
+//            Debug::enter("parseFunctionSignature")
 //
 //            var first = parseTypeParameters()
 //            match(leftparen_token) 
@@ -663,7 +698,7 @@ type TOKENS = [int];
 //            var third = parseResultType()
 //            var result = <Signature>{first}{second}{third}</Signature>
 //
-//            Debug.exit("parseFunctionSignature",result)
+//            Debug::exit("parseFunctionSignature",result)
 //            return result
 //        }
 //
@@ -702,7 +737,7 @@ type TOKENS = [int];
 //
 //        function parseTypeParameterList()
 //        {
-//            Debug.enter("parseTypeParameterList")
+//            Debug::enter("parseTypeParameterList")
 //            
 //            var list = <></>
 //            list += parseIdentifier()
@@ -713,7 +748,7 @@ type TOKENS = [int];
 //            }
 //            var result = list
 //
-//            Debug.exit("parseTypeParameterList",result)
+//            Debug::exit("parseTypeParameterList",result)
 //            return result
 //        }
 //        
@@ -723,7 +758,7 @@ type TOKENS = [int];
 //
 //        function parseParameters(prologue)
 //        {
-//            Debug.enter("parseParameters")
+//            Debug::enter("parseParameters")
 //
 //            if( lookahead(rightparen_token) )
 //            {
@@ -734,7 +769,7 @@ type TOKENS = [int];
 //                var result = parseNonemptyParameters(<></>,prologue)
 //            }
 //
-//            Debug.exit("parseParameters",result)
+//            Debug::exit("parseParameters",result)
 //            return result
 //        }
 //
@@ -760,7 +795,7 @@ type TOKENS = [int];
 //
 //        function parseNonemptyParameters(first,prologue)
 //        {
-//            Debug.enter("parseNonemptyParameters",first)
+//            Debug::enter("parseNonemptyParameters",first)
 //
 //            if( lookahead(tripledot_token) )
 //            {
@@ -785,7 +820,7 @@ type TOKENS = [int];
 //                }
 //            }
 //
-//            Debug.exit("parseNonemptyParameters",result)
+//            Debug::exit("parseNonemptyParameters",result)
 //            return result
 //        }
 //
@@ -799,7 +834,7 @@ type TOKENS = [int];
 //
 //        function parseParameterInit(prologue)
 //        {
-//            Debug.enter("parseParameterInit")
+//            Debug::enter("parseParameterInit")
 //
 //            if( lookahead(const_token) )
 //            {
@@ -823,7 +858,7 @@ type TOKENS = [int];
 //
 //            var temp = makeBinding(<Attributes><parameter/></Attributes>,var_token,typedid,init,prologue)
 //
-//            Debug.exit("parseParameterInit",result)
+//            Debug::exit("parseParameterInit",result)
 //            return result
 //        }
 //
@@ -833,9 +868,9 @@ type TOKENS = [int];
 //
 //        function parseParameter()
 //        {
-//            Debug.enter("parseParameter")
+//            Debug::enter("parseParameter")
 //
-//            Debug.exit("parseParameter",result)
+//            Debug::exit("parseParameter",result)
 //            return result
 //        }
 //
@@ -849,7 +884,7 @@ type TOKENS = [int];
 //
 //        function parseRestParameter()
 //        {
-//            Debug.enter("parseRestParameter")
+//            Debug::enter("parseRestParameter")
 //
 //            match(tripledot_token)
 //            if( lookahead(const_token) )
@@ -864,7 +899,7 @@ type TOKENS = [int];
 //            var second = parseIdentifier()
 //            var result = <RestParameter kind={scan.tokenText(first)}>{second}</RestParameter>
 //
-//            Debug.exit("parseRestParameter",result)
+//            Debug::exit("parseRestParameter",result)
 //            return result
 //        }
 //
@@ -879,7 +914,7 @@ type TOKENS = [int];
 //
 //        function parseResultType()
 //        {
-//            Debug.enter("parseResultType")
+//            Debug::enter("parseResultType")
 //
 //            if( lookahead(colon_token) )
 //            {
@@ -900,7 +935,7 @@ type TOKENS = [int];
 //                var result = <ResultType/>
 //            }
 //
-//            Debug.exit("parseResultType",result)
+//            Debug::exit("parseResultType",result)
 //            return result
 //        }
 //
@@ -910,7 +945,7 @@ type TOKENS = [int];
 //
 //        function parseObjectLiteral()
 //        {
-//            Debug.enter("parseObjectLiteral")
+//            Debug::enter("parseObjectLiteral")
 //
 //            enterSlashContext(regexpliteral_token)
 //            match(leftbrace_token)
@@ -926,7 +961,7 @@ type TOKENS = [int];
 //            match(rightbrace_token)
 //            var result = <LiteralObject>{first}</LiteralObject>
 //
-//            Debug.exit("parseObjectLiteral",result)
+//            Debug::exit("parseObjectLiteral",result)
 //            return result
 //        }
 //
@@ -936,7 +971,7 @@ type TOKENS = [int];
 //
 //        function parseFieldListPrime(first)
 //        {
-//            Debug.enter("parseFieldListPrime",first)
+//            Debug::enter("parseFieldListPrime",first)
 //
 //            if( lookahead(comma_token) )
 //            {
@@ -953,7 +988,7 @@ type TOKENS = [int];
 //                var result = first
 //            }
 //
-//            Debug.exit("parseFieldListPrime",result)
+//            Debug::exit("parseFieldListPrime",result)
 //            return result
 //        }
 //
@@ -966,14 +1001,14 @@ type TOKENS = [int];
 //
 //        function parseLiteralField()
 //        {
-//            Debug.enter("parseLiteralField")
+//            Debug::enter("parseLiteralField")
 //
 //            var first = parseFieldName()
 //            match(colon_token)
 //            var second = parseAssignmentExpression(allowIn_mode)
 //            var result = <LiteralField>{first}{second}</LiteralField>
 //
-//            Debug.exit("parseLiteralField",result)
+//            Debug::exit("parseLiteralField",result)
 //            return result
 //        }
 //
@@ -991,7 +1026,7 @@ type TOKENS = [int];
 //
 //        function parseFieldName()
 //        {
-//            Debug.enter("parseFieldName")
+//            Debug::enter("parseFieldName")
 //        
 //            if( lookahead(stringliteral_token) )
 //            {
@@ -1015,7 +1050,7 @@ type TOKENS = [int];
 //                var result = parseNonAttributeQualifiedIdentifier();
 //            }
 //
-//            Debug.exit("parseFieldName",result)
+//            Debug::exit("parseFieldName",result)
 //            return result
 //        }
 //
@@ -1037,7 +1072,7 @@ type TOKENS = [int];
 //
 //        function parseArrayLiteral()
 //        {
-//            Debug.enter("parseArrayLiteral")
+//            Debug::enter("parseArrayLiteral")
 //
 //            enterSlashContext(regexpliteral_token)
 //            match(leftbracket_token)
@@ -1054,13 +1089,13 @@ type TOKENS = [int];
 //            match(rightbracket_token)
 //            var result = <LiteralArray>{first}</LiteralArray>
 //
-//            Debug.exit("parseArrayLiteral",result)
+//            Debug::exit("parseArrayLiteral",result)
 //            return result
 //        }
 //
 //        function parseElementListPrime(first)        
 //        {
-//            Debug.enter("parseElementListPrime",first)
+//            Debug::enter("parseElementListPrime",first)
 //
 //            while( lookahead(comma_token) )
 //            {
@@ -1081,13 +1116,13 @@ type TOKENS = [int];
 //            }
 //            var result = first
 //
-//            Debug.exit("parseElementListPrime",result)
+//            Debug::exit("parseElementListPrime",result)
 //            return result
 //        }
 //
 //        function parseLiteralElement()
 //        {
-//            Debug.enter("parseLiteralElement")
+//            Debug::enter("parseLiteralElement")
 //
 //            if( lookahead(comma_token) )
 //            {
@@ -1103,13 +1138,13 @@ type TOKENS = [int];
 //                var result = parseAssignmentExpression(allowIn_mode)
 //            }
 //
-//            Debug.exit("parseLiteralElement",result)
+//            Debug::exit("parseLiteralElement",result)
 //            return result
 //        }
 //
 //        function parseCastExpression()
 //        {
-//            Debug.enter("parseCastExpression")
+//            Debug::enter("parseCastExpression")
 //
 //            if( lookahead(cast_token) )
 //            {
@@ -1127,7 +1162,7 @@ type TOKENS = [int];
 //                var result = <to>{first}<Expr>{second}</Expr></to>
 //            }
 //
-//            Debug.exit("parseCastExpression",result)
+//            Debug::exit("parseCastExpression",result)
 //            return result
 //        }
 //
@@ -1154,7 +1189,7 @@ type TOKENS = [int];
 //
 //        function parsePrimaryExpression()
 //        {
-//            Debug.enter("parsePrimaryExpression")
+//            Debug::enter("parsePrimaryExpression")
 //            
 //            if( lookahead(null_token) )
 //            {
@@ -1237,7 +1272,7 @@ type TOKENS = [int];
 //                var result = <Get kind="lexical">{temp}</Get>
 //            }
 //            
-//            Debug.exit("parsePrimaryExpression",result)
+//            Debug::exit("parsePrimaryExpression",result)
 //            return result
 //        }
 //
@@ -1251,7 +1286,7 @@ type TOKENS = [int];
 //
 //        function parseSuperExpression()
 //        {
-//            Debug.enter("parseSuperExpression")
+//            Debug::enter("parseSuperExpression")
 //
 //            match(super_token)
 //            var first = <SuperExpression/>
@@ -1264,7 +1299,7 @@ type TOKENS = [int];
 //                var result = first
 //            }
 //
-//            Debug.exit("parseSuperExpression",result)
+//            Debug::exit("parseSuperExpression",result)
 //            return result
 //        }
 //
@@ -1292,7 +1327,7 @@ type TOKENS = [int];
 //
 //        function parseMemberExpression()
 //        {
-//            Debug.enter("parseMemberExpression")
+//            Debug::enter("parseMemberExpression")
 //            
 //            if( lookahead(new_token) )
 //            {   
@@ -1347,7 +1382,7 @@ type TOKENS = [int];
 //
 //            var result = first
 //            
-//            Debug.exit("parseMemberExpression",result)
+//            Debug::exit("parseMemberExpression",result)
 //            return result
 //        }
 //
@@ -1361,11 +1396,11 @@ type TOKENS = [int];
 //
 //        function parseNewExpression()
 //        {
-//            Debug.enter("parseNewExpression")
+//            Debug::enter("parseNewExpression")
 //            
 //            var result = parseMemberExpression()
 //
-//            Debug.exit("parseNewExpression",result)
+//            Debug::exit("parseNewExpression",result)
 //            return result
 //        }
 //
@@ -1381,7 +1416,7 @@ type TOKENS = [int];
 //
 //        function parseCallExpressionPrime(first)
 //        {
-//            Debug.enter("parseCallExpressionPrime",first)
+//            Debug::enter("parseCallExpressionPrime",first)
 //
 //            if( lookahead(leftparen_token) )
 //            {
@@ -1401,7 +1436,7 @@ type TOKENS = [int];
 //                var result = first
 //            }
 //
-//            Debug.exit("parseCallExpressionPrime",result)
+//            Debug::exit("parseCallExpressionPrime",result)
 //            return result
 //        }
 //
@@ -1419,7 +1454,7 @@ type TOKENS = [int];
 //
 //        function parsePropertyOperator(first)
 //        {
-//            Debug.enter("parsePropertyOperator",first)
+//            Debug::enter("parsePropertyOperator",first)
 //
 //            if( lookahead(dot_token) )
 //            {
@@ -1472,7 +1507,7 @@ type TOKENS = [int];
 //                var result = <Get kind="bracket">{first}{second}</Get>
 //            }
 //
-//            Debug.exit("parsePropertyOperator",result)
+//            Debug::exit("parsePropertyOperator",result)
 //            return result
 //        }
 //
@@ -1489,7 +1524,7 @@ type TOKENS = [int];
 //
 //        function parseBrackets()
 //        {
-//            Debug.enter("parseBrackets")
+//            Debug::enter("parseBrackets")
 //            
 //            match(leftbracket_token)
 //            if( lookahead(rightbracket_token) )
@@ -1526,7 +1561,7 @@ type TOKENS = [int];
 //            match(rightbracket_token);
 //            var result = <Brackets>{first}{second}</Brackets>
 //
-//            Debug.exit("parseBrackets",result)
+//            Debug::exit("parseBrackets",result)
 //            return result
 //        }
 //
@@ -1540,7 +1575,7 @@ type TOKENS = [int];
 //
 //        function parseArguments(first)
 //        {        
-//            Debug.enter("parseArguments",first)
+//            Debug::enter("parseArguments",first)
 //            
 //            enterSlashContext(regexpliteral_token)
 //            match(leftparen_token);
@@ -1567,7 +1602,7 @@ type TOKENS = [int];
 //            }
 //            var result = first
 //
-//            Debug.exit("parseArguments",result)
+//            Debug::exit("parseArguments",result)
 //            return result
 //        }
 //
@@ -1579,7 +1614,7 @@ type TOKENS = [int];
 //
 //        function parseArgumentList()
 //        {
-//            Debug.enter("parseArgumentList")
+//            Debug::enter("parseArgumentList")
 //            
 //            var list = <></>
 //			var first = parseAssignmentExpression(allowIn_mode)
@@ -1595,7 +1630,7 @@ type TOKENS = [int];
 //            }
 //            var node = list
 //
-//            Debug.exit("parseArgumentList",node)
+//            Debug::exit("parseArgumentList",node)
 //            return node
 //        }
 //
@@ -1621,7 +1656,7 @@ type TOKENS = [int];
 //
 //        function parseLeftHandSideExpression()
 //        {
-//            Debug.enter("parseLeftHandSideExpression")
+//            Debug::enter("parseLeftHandSideExpression")
 //            
 //            if( lookahead(new_token) )
 //            {   
@@ -1642,7 +1677,7 @@ type TOKENS = [int];
 //                var result = first
 //            }
 //
-//            Debug.exit("parseLeftHandSideExpression",result)
+//            Debug::exit("parseLeftHandSideExpression",result)
 //            return result
 //        }
 //
@@ -1657,7 +1692,7 @@ type TOKENS = [int];
 //
 //        function parsePostfixExpression()
 //        {
-//            Debug.enter("parsePostfixExpression")
+//            Debug::enter("parsePostfixExpression")
 //
 //            var first = parseLeftHandSideExpression()
 //            if( lookahead(plusplus_token) )
@@ -1676,7 +1711,7 @@ type TOKENS = [int];
 //                var result = first
 //            }            
 //
-//            Debug.exit("parsePostfixExpression",result)
+//            Debug::exit("parsePostfixExpression",result)
 //            return result
 //        }
 //
@@ -1698,7 +1733,7 @@ type TOKENS = [int];
 //
 //        function parseUnaryExpression() : Ast.EXPR
 //        {
-//            Debug.enter("parseUnaryExpression")
+//            Debug::enter("parseUnaryExpression")
 //
 //            if( lookahead(delete_token) )
 //            {
@@ -1796,7 +1831,7 @@ type TOKENS = [int];
 //                var result = parsePostfixExpression()
 //            }
 //
-//            Debug.exit("parseUnaryExpression",result)
+//            Debug::exit("parseUnaryExpression",result)
 //            return result
 //        }
 //
@@ -1810,7 +1845,7 @@ type TOKENS = [int];
 //
 //        function parseYieldExpression()
 //        {
-//            Debug.enter("parseYieldExpression")
+//            Debug::enter("parseYieldExpression")
 //
 //            if( lookahead(yield_token) )
 //            {
@@ -1834,7 +1869,7 @@ type TOKENS = [int];
 //                var result = parseUnaryExpression()
 //            }
 //
-//            Debug.exit("parseYieldExpression",result)
+//            Debug::exit("parseYieldExpression",result)
 //            return result
 //        }
 //
@@ -1850,7 +1885,7 @@ type TOKENS = [int];
 //
 //        function parseMultiplicativeExpression()
 //        {
-//            Debug.enter("parseMultiplicativeExpression")
+//            Debug::enter("parseMultiplicativeExpression")
 //
 //            enterSlashContext(div_token)
 //            var first = parseYieldExpression()
@@ -1890,7 +1925,7 @@ type TOKENS = [int];
 //            }                
 //            var result = first
 //
-//            Debug.exit("parseMultiplicativeExpression",result)
+//            Debug::exit("parseMultiplicativeExpression",result)
 //            return result
 //        }
 //
@@ -1905,7 +1940,7 @@ type TOKENS = [int];
 //
 //        function parseAdditiveExpression()
 //        {
-//            Debug.enter("parseAdditiveExpression")
+//            Debug::enter("parseAdditiveExpression")
 //
 //            var first = parseMultiplicativeExpression()
 //            while( true )
@@ -1931,7 +1966,7 @@ type TOKENS = [int];
 //
 //            var result = first
 //
-//            Debug.exit("parseAdditiveExpression",result)
+//            Debug::exit("parseAdditiveExpression",result)
 //            return result
 //        }
 //
@@ -1948,7 +1983,7 @@ type TOKENS = [int];
 //
 //        function parseShiftExpression()
 //        {
-//            Debug.enter("parseShiftExpression")
+//            Debug::enter("parseShiftExpression")
 //
 //            var first = parseAdditiveExpression()
 //            while( true )
@@ -1980,7 +2015,7 @@ type TOKENS = [int];
 //            }                
 //            var result = first
 //
-//            Debug.exit("parseShiftExpression",result)
+//            Debug::exit("parseShiftExpression",result)
 //            return result
 //        }
 //
@@ -2002,7 +2037,7 @@ type TOKENS = [int];
 //
 //        function parseRelationalExpression(mode)
 //        {
-//            Debug.enter("parseRelationalExpression")
+//            Debug::enter("parseRelationalExpression")
 //
 //            var first = parseShiftExpression()
 //            while( true )
@@ -2076,7 +2111,7 @@ type TOKENS = [int];
 //            }                
 //            var result = first
 //
-//            Debug.exit("parseRelationalExpression",result)
+//            Debug::exit("parseRelationalExpression",result)
 //            return result
 //        }
 //
@@ -2094,7 +2129,7 @@ type TOKENS = [int];
 //
 //        function parseEqualityExpression(mode)
 //        {
-//            Debug.enter("parseEqualityExpression")
+//            Debug::enter("parseEqualityExpression")
 //
 //            var first = parseRelationalExpression(mode)
 //            while( true )
@@ -2133,7 +2168,7 @@ type TOKENS = [int];
 //            }                
 //            var result = first
 //
-//            Debug.exit("parseEqualityExpression",result)
+//            Debug::exit("parseEqualityExpression",result)
 //            return result
 //        }
 //
@@ -2147,7 +2182,7 @@ type TOKENS = [int];
 //
 //        function parseBitwiseAndExpression(mode)
 //        {
-//            Debug.enter("parseBitwiseAndExpression")
+//            Debug::enter("parseBitwiseAndExpression")
 //
 //            var first = parseEqualityExpression(mode)
 //            while( lookahead(bitwiseand_token) )
@@ -2158,7 +2193,7 @@ type TOKENS = [int];
 //            }
 //            var result = first
 //
-//            Debug.exit("parseBitwiseAndExpression",result)
+//            Debug::exit("parseBitwiseAndExpression",result)
 //            return result
 //        }
 //
@@ -2172,7 +2207,7 @@ type TOKENS = [int];
 //
 //        function parseBitwiseXorExpression(mode)
 //        {
-//            Debug.enter("parseBitwiseXorExpression")
+//            Debug::enter("parseBitwiseXorExpression")
 //
 //            var first = parseBitwiseAndExpression(mode)
 //            while( lookahead(bitwisexor_token) )
@@ -2183,7 +2218,7 @@ type TOKENS = [int];
 //            }
 //            var result = first
 //
-//            Debug.exit("parseBitwiseXorExpression",result)
+//            Debug::exit("parseBitwiseXorExpression",result)
 //            return result
 //        }
 //
@@ -2197,7 +2232,7 @@ type TOKENS = [int];
 //
 //        function parseBitwiseOrExpression(mode)
 //        {
-//            Debug.enter("parseBitwiseOrExpression")
+//            Debug::enter("parseBitwiseOrExpression")
 //
 //            var first = parseBitwiseXorExpression(mode)
 //            while( lookahead(bitwiseor_token) )
@@ -2208,7 +2243,7 @@ type TOKENS = [int];
 //            }
 //            var result = first
 //
-//            Debug.exit("parseBitwiseOrExpression",result)
+//            Debug::exit("parseBitwiseOrExpression",result)
 //            return result
 //        }
 //
@@ -2222,7 +2257,7 @@ type TOKENS = [int];
 //
 //        function parseLogicalAndExpression(mode)
 //        {
-//            Debug.enter("parseLogicalAndExpression")
+//            Debug::enter("parseLogicalAndExpression")
 //
 //            var first = parseBitwiseOrExpression(mode)
 //            while( lookahead(logicaland_token) )
@@ -2233,7 +2268,7 @@ type TOKENS = [int];
 //            }
 //            var result = first
 //
-//            Debug.exit("parseLogicalAndExpression",result)
+//            Debug::exit("parseLogicalAndExpression",result)
 //            return result
 //        }
 //
@@ -2247,7 +2282,7 @@ type TOKENS = [int];
 //
 //        function parseLogicalXorExpression(mode)
 //        {
-//            Debug.enter("parseLogicalXorExpression")
+//            Debug::enter("parseLogicalXorExpression")
 //
 //            var first = parseLogicalAndExpression(mode)
 //            while( lookahead(logicalxor_token) )
@@ -2258,7 +2293,7 @@ type TOKENS = [int];
 //            }
 //            var result = first
 //
-//            Debug.exit("parseLogicalXorExpression",result)
+//            Debug::exit("parseLogicalXorExpression",result)
 //            return result
 //        }
 //
@@ -2272,7 +2307,7 @@ type TOKENS = [int];
 //
 //        function parseLogicalOrExpression(mode)
 //        {
-//            Debug.enter("parseLogicalOrExpression")
+//            Debug::enter("parseLogicalOrExpression")
 //
 //            var first = parseLogicalXorExpression(mode)
 //            while( lookahead(logicalor_token) )
@@ -2283,7 +2318,7 @@ type TOKENS = [int];
 //            }
 //            var result = first
 //
-//            Debug.exit("parseLogicalOrExpression",result)
+//            Debug::exit("parseLogicalOrExpression",result)
 //            return result
 //        }
 //
@@ -2295,7 +2330,7 @@ type TOKENS = [int];
 //
 //        function parseConditionalExpression(mode)
 //        {
-//            Debug.enter("parseConditionalExpression",mode)
+//            Debug::enter("parseConditionalExpression",mode)
 //
 //            var result
 //            var first
@@ -2317,7 +2352,7 @@ type TOKENS = [int];
 //                result = first
 //            }
 //
-//            Debug.exit("parseConditionalExpression",result)
+//            Debug::exit("parseConditionalExpression",result)
 //            return result
 //        }
 //
@@ -2329,7 +2364,7 @@ type TOKENS = [int];
 //
 //        function parseNonAssignmentExpression(mode)
 //        {
-//            Debug.enter("parseNonAssignmentExpression",mode)
+//            Debug::enter("parseNonAssignmentExpression",mode)
 //
 //            //var first = parseLogicalOrExpression(mode)
 //            var first = parsePostfixExpression()
@@ -2347,7 +2382,7 @@ type TOKENS = [int];
 //                var result = first
 //            }
 //
-//            Debug.exit("parseNonAssignmentExpression",result)
+//            Debug::exit("parseNonAssignmentExpression",result)
 //            return result
 //        }
 //
@@ -2382,7 +2417,7 @@ type TOKENS = [int];
 //
 //        function parseAssignmentExpression(mode)
 //        {
-//            Debug.enter("parseAssignmentExpression",mode)
+//            Debug::enter("parseAssignmentExpression",mode)
 //            
 //            if( lookahead(let_token) )
 //            {
@@ -2435,7 +2470,7 @@ type TOKENS = [int];
 //                }
 //            }
 //            
-//            Debug.exit("parseAssignmentExpression",result)
+//            Debug::exit("parseAssignmentExpression",result)
 //            return result
 //        }
 //
@@ -2460,7 +2495,7 @@ type TOKENS = [int];
 //
 //        function parseLetExpression(mode)
 //        {
-//            Debug.enter("parseLetExpression")
+//            Debug::enter("parseLetExpression")
 //
 //            var prologue = <Prologue/>
 //            match(let_token)
@@ -2484,7 +2519,7 @@ type TOKENS = [int];
 //            var second = parseAssignmentExpression(mode)
 //            var result = <LetExpression>{prologue}{second}</LetExpression>
 //
-//            Debug.exit("parseLetExpression",result)
+//            Debug::exit("parseLetExpression",result)
 //            return result
 //        }
 //
@@ -2498,9 +2533,9 @@ type TOKENS = [int];
 ///*
 //        function parseYieldExpression(mode)
 //        {
-//            Debug.enter("parseYieldExpression")
+//            Debug::enter("parseYieldExpression")
 //
-//            Debug.exit("parseYieldExpression",result)
+//            Debug::exit("parseYieldExpression",result)
 //            return result
 //        }
 //*/
@@ -2513,14 +2548,14 @@ type TOKENS = [int];
 //
 //        function parseDestructuringAssignmentExpression(mode)
 //        {
-//            Debug.enter("parseDestructuringAssignmentExpression",mode)
+//            Debug::enter("parseDestructuringAssignmentExpression",mode)
 //            
 //            var first = parseDestructuringPattern()
 //            match(assign_token)
 //            var second = parseAssignmentExpression(mode)
 //            var result = <AssignmentExpression>{first}{second}</AssignmentExpression>
 //            
-//            Debug.exit("parseDestructuringAssignmentExpression",result)
+//            Debug::exit("parseDestructuringAssignmentExpression",result)
 //            return result
 //        }
 //
@@ -2534,7 +2569,7 @@ type TOKENS = [int];
 //
 //        function parseDestructuringPattern()
 //        {
-//            Debug.enter("parseDestructuringPattern")
+//            Debug::enter("parseDestructuringPattern")
 //
 //            if( lookahead(leftbrace_token) )
 //            {
@@ -2550,7 +2585,7 @@ type TOKENS = [int];
 //                throw "expecting destrcturing pattern"
 //            }
 //
-//            Debug.exit("parseDestructuringPattern",result)
+//            Debug::exit("parseDestructuringPattern",result)
 //            return result
 //        }
 //
@@ -2567,7 +2602,7 @@ type TOKENS = [int];
 //
 //        function parseDestructuringObjectPattern()
 //        {
-//            Debug.enter("parseDestructuringObjectPattern")
+//            Debug::enter("parseDestructuringObjectPattern")
 //
 //            enterSlashContext(regexpliteral_token)
 //            match(leftbrace_token)
@@ -2582,7 +2617,7 @@ type TOKENS = [int];
 //            exitSlashContext(regexpliteral_token)
 //            var result = <DestructuringObjectPattern>{first}</DestructuringObjectPattern>
 //
-//            Debug.exit("parseDestructuringObjectPattern",result)
+//            Debug::exit("parseDestructuringObjectPattern",result)
 //            return result
 //        }
 //
@@ -2596,7 +2631,7 @@ type TOKENS = [int];
 //
 //        function parseDestructuringField()
 //        {
-//            Debug.enter("parseDestructuringField")
+//            Debug::enter("parseDestructuringField")
 //
 //            var first = parseNonAttributeQualifiedIdentifier()
 //            match(colon_token)
@@ -2611,7 +2646,7 @@ type TOKENS = [int];
 //                var result = <DestructuringField>{first}{second}</DestructuringField>
 //            }
 //
-//            Debug.exit("parseDestructuringField",result)
+//            Debug::exit("parseDestructuringField",result)
 //            return result
 //        }
 //
@@ -2630,7 +2665,7 @@ type TOKENS = [int];
 //
 //        function parseDestructuringArrayPattern()
 //        {
-//            Debug.enter("parseDestructuringArrayPattern")
+//            Debug::enter("parseDestructuringArrayPattern")
 //
 //            enterSlashContext(regexpliteral_token)
 //            match(leftbracket_token)
@@ -2659,7 +2694,7 @@ type TOKENS = [int];
 //            exitSlashContext(regexpliteral_token)
 //            var result = <DestructuringArrayPattern>{first}</DestructuringArrayPattern>
 //
-//            Debug.exit("parseDestructuringArrayPattern",result)
+//            Debug::exit("parseDestructuringArrayPattern",result)
 //            return result
 //        }
 //
@@ -2674,7 +2709,7 @@ type TOKENS = [int];
 //
 //        function parseDestructuringElement()
 //        {
-//            Debug.enter("parseDestructuringElement")
+//            Debug::enter("parseDestructuringElement")
 //
 //            if( lookahead(comma_token) )
 //            {
@@ -2690,7 +2725,7 @@ type TOKENS = [int];
 //                var result = parseAssignmentExpression(allowIn_mode)
 //            }
 //
-//            Debug.exit("parseDestructuringElement",result)
+//            Debug::exit("parseDestructuringElement",result)
 //            return result
 //        }
 //
@@ -2702,7 +2737,7 @@ type TOKENS = [int];
 //
 //        function parseListExpression(mode)
 //        {
-//            Debug.enter("parseListExpression",mode)
+//            Debug::enter("parseListExpression",mode)
 //            
 //            var list = <></>
 //            list += parseAssignmentExpression(mode)
@@ -2713,13 +2748,13 @@ type TOKENS = [int];
 //            }
 //            var node = list
 //
-//            Debug.exit("parseListExpression",node)
+//            Debug::exit("parseListExpression",node)
 //            return node
 //        }
 //
 //        function parseListExpressionPrime(first,mode)
 //        {
-//            Debug.enter("parseListExpressionPrime",mode)
+//            Debug::enter("parseListExpressionPrime",mode)
 //            
 //            var list = <></>
 //            list += first
@@ -2730,7 +2765,7 @@ type TOKENS = [int];
 //            }
 //            var node = list
 //
-//            Debug.exit("parseListExpressionPrime",node)
+//            Debug::exit("parseListExpressionPrime",node)
 //            return node
 //        }
 //
@@ -2749,7 +2784,7 @@ type TOKENS = [int];
 //
 //        function parseTypeExpression()
 //        {
-//            Debug.enter("parseTypeExpression")
+//            Debug::enter("parseTypeExpression")
 //
 //            var prologue = <Prologue/>
 //
@@ -2789,7 +2824,7 @@ type TOKENS = [int];
 //                }
 //            }
 //
-//            Debug.exit("parseTypeExpression",result.toXMLString())
+//            Debug::exit("parseTypeExpression",result.toXMLString())
 //            return result
 //        }
 //
@@ -2802,14 +2837,14 @@ type TOKENS = [int];
 //
 //        function parseUnionType()
 //        {
-//            Debug.enter("parseUnionType")
+//            Debug::enter("parseUnionType")
 //
 //            match(leftparen_token)
 //            var first = parseTypeExpressionList()
 //            var result = <UnionType>{first}</UnionType>
 //            match(rightparen_token)
 //
-//            Debug.exit("parseUnionType",result)
+//            Debug::exit("parseUnionType",result)
 //            return result
 //        }
 //
@@ -2822,7 +2857,7 @@ type TOKENS = [int];
 //
 //        function parseRecordType()
 //        {
-//            Debug.enter("parseRecordType")
+//            Debug::enter("parseRecordType")
 //
 //            match(leftbrace_token)
 //            if( lookahead(rightbrace_token) )
@@ -2836,7 +2871,7 @@ type TOKENS = [int];
 //            var result = <RecordType>{first}</RecordType>
 //            match(rightbrace_token)
 //
-//            Debug.exit("parseRecordType",result)
+//            Debug::exit("parseRecordType",result)
 //            return result
 //        }
 //
@@ -2850,7 +2885,7 @@ type TOKENS = [int];
 //
 //        function parseFieldTypeListPrime(first)
 //        {
-//            Debug.enter("parseNonemptyFieldTypeList",first)
+//            Debug::enter("parseNonemptyFieldTypeList",first)
 //
 //            if( lookahead(comma_token) )
 //            {
@@ -2863,7 +2898,7 @@ type TOKENS = [int];
 //                var result = first
 //            }
 //
-//            Debug.exit("parseFieldListPrime",result)
+//            Debug::exit("parseFieldListPrime",result)
 //            return result
 //        }
 //
@@ -2874,14 +2909,14 @@ type TOKENS = [int];
 //                  
 //        function parseFieldType()
 //        {
-//            Debug.enter("parseFieldType")
+//            Debug::enter("parseFieldType")
 //
 //            var first = parseFieldName()
 //            match(colon_token)
 //            var second = parseTypeExpression()
 //            var result = <FieldType>{first}{second}</FieldType>
 //
-//            Debug.exit("parseFieldType",result)
+//            Debug::exit("parseFieldType",result)
 //            return result
 //        }
 //
@@ -2900,7 +2935,7 @@ type TOKENS = [int];
 //
 //        function parseArrayType()
 //        {
-//            Debug.enter("parseArrayType")
+//            Debug::enter("parseArrayType")
 //
 //            enterSlashContext(regexpliteral_token)
 //            match(leftbracket_token)
@@ -2918,13 +2953,13 @@ type TOKENS = [int];
 //            match(rightbracket_token)
 //            var result = <LiteralType>{first}</LiteralType>
 //
-//            Debug.exit("parseArrayLiteral",result)
+//            Debug::exit("parseArrayLiteral",result)
 //            return result
 //        }
 //
 //        function parseElementTypeListPrime(first)        
 //        {
-//            Debug.enter("parseElementTypeListPrime",first)
+//            Debug::enter("parseElementTypeListPrime",first)
 //
 //            while( lookahead(comma_token) )
 //            {
@@ -2941,13 +2976,13 @@ type TOKENS = [int];
 //            }
 //            var result = first
 //
-//            Debug.exit("parseElementTypeListPrime",result)
+//            Debug::exit("parseElementTypeListPrime",result)
 //            return result
 //        }
 //
 //        function parseElementType()
 //        {
-//            Debug.enter("parseElementType")
+//            Debug::enter("parseElementType")
 //
 //            if( lookahead(comma_token) )
 //            {
@@ -2963,7 +2998,7 @@ type TOKENS = [int];
 //                var result = parseTypeExpression()
 //            }
 //
-//            Debug.exit("parseElementType",result)
+//            Debug::exit("parseElementType",result)
 //            return result
 //        }
 //
@@ -2978,7 +3013,7 @@ type TOKENS = [int];
 //
 //        function parseStatement(mode)
 //        {
-//            Debug.enter("parseStatement",mode)
+//            Debug::enter("parseStatement",mode)
 //
 //            if( lookahead(super_token) )
 //            {
@@ -3068,7 +3103,7 @@ type TOKENS = [int];
 //                matchSemicolon(mode)
 //            }
 //
-//            Debug.exit("parseStatement",node)
+//            Debug::exit("parseStatement",node)
 //            return node
 //        }
 //
@@ -3077,17 +3112,17 @@ type TOKENS = [int];
 //
 //        function parseSubstatement(mode)
 //        {
-//            Debug.enter("parseSubstatement")
+//            Debug::enter("parseSubstatement")
 //
 //            var node = parseStatement(mode)
 //
-//            Debug.exit("parseSubstatement",node)
+//            Debug::exit("parseSubstatement",node)
 //            return node
 //        }
 //
 //        function parseBlockStatement()
 //        {
-//            Debug.enter("parseSubstatement")
+//            Debug::enter("parseSubstatement")
 //
 //            var prologue = <Prologue/>
 //            var stmts = parseBlock(prologue)
@@ -3095,7 +3130,7 @@ type TOKENS = [int];
 //            //delete stmts.Slot
 //            var node = <BlockStatement>{prologue}{stmts}</BlockStatement>
 //
-//            Debug.exit("parseBlockStatement",node)
+//            Debug::exit("parseBlockStatement",node)
 //            return node
 //        }
 //
@@ -3109,7 +3144,7 @@ type TOKENS = [int];
 //
 //        function parseSuperStatement()
 //        {
-//            Debug.enter("parseSuperStatement")
+//            Debug::enter("parseSuperStatement")
 //
 //            match(super_token)
 //            var first = <SuperStatement/>
@@ -3122,13 +3157,13 @@ type TOKENS = [int];
 //                var result = first
 //            }
 //
-//            Debug.exit("parseSuperStatement",result)
+//            Debug::exit("parseSuperStatement",result)
 //            return result
 //        }
 //
 //        function parseLabeledOrExpressionStatement(mode)
 //        {
-//            Debug.enter("parseLabeledOrExpressionStatement",mode)
+//            Debug::enter("parseLabeledOrExpressionStatement",mode)
 //
 //            var first = parseListExpression(allowIn_mode)
 //            if( lookahead(colon_token) )
@@ -3151,19 +3186,19 @@ type TOKENS = [int];
 //                // leave matchSemicolon(mode) for caller
 //            }
 //            
-//            Debug.exit("parseLabeledOrExpressionStatement",result)
+//            Debug::exit("parseLabeledOrExpressionStatement",result)
 //            return result
 //        }
 //
 //        function parseBlock(prologue)
 //        {
-//            Debug.exit("parseBlock")
+//            Debug::exit("parseBlock")
 //
 //            match(leftbrace_token)
 //            var node = parseDirectives(void 0,prologue)
 //            match(rightbrace_token)
 //
-//            Debug.exit("parseBlock",node)
+//            Debug::exit("parseBlock",node)
 //            return node
 //        }
 //
@@ -3209,7 +3244,7 @@ type TOKENS = [int];
 //
 //        function parseLetStatement(mode)
 //        {
-//            Debug.enter("parseLetStatement")
+//            Debug::enter("parseLetStatement")
 //
 //            // already ate 'let'
 //
@@ -3242,7 +3277,7 @@ type TOKENS = [int];
 //
 //            var node = <BlockStatement kind="let">{prologue}{block}</BlockStatement>
 //
-//            Debug.exit("parseLetStatement",node)
+//            Debug::exit("parseLetStatement",node)
 //            return node
 //        }
 //
@@ -3271,7 +3306,7 @@ type TOKENS = [int];
 //
 //        function parseReturnStatement()
 //        {
-//            Debug.enter("parseReturnStatement")
+//            Debug::enter("parseReturnStatement")
 //
 //            match(return_token)
 //
@@ -3287,7 +3322,7 @@ type TOKENS = [int];
 //                node.* = parseListExpression(allowIn_mode)
 //            }
 //
-//            Debug.exit("parseReturnStatement",node)
+//            Debug::exit("parseReturnStatement",node)
 //            return node
 //        }
 //
@@ -3333,7 +3368,7 @@ type TOKENS = [int];
 //
 //        function parseAnnotatableDirective(attrs,mode,prologue)
 //        {
-//            Debug.enter("parseAnnotatableDirective",attrs,mode)
+//            Debug::enter("parseAnnotatableDirective",attrs,mode)
 //
 //            if( lookahead(let_token) )
 //            {
@@ -3390,13 +3425,13 @@ type TOKENS = [int];
 //                throw "not implemented yet"
 //            }
 //
-//            Debug.exit("parseAnnotatableDirective",node)
+//            Debug::exit("parseAnnotatableDirective",node)
 //            return node
 //        }
 //
 //        function parseAnnotatableDirectiveOrLetStatement(attrs,mode,prologue)  // actually only need to handle let bindings and let statements
 //        {
-//            Debug.enter("parseAnnotatableDirectiveOrLetStatement",attrs,mode)
+//            Debug::enter("parseAnnotatableDirectiveOrLetStatement",attrs,mode)
 //
 //            match(let_token)
 //
@@ -3417,7 +3452,7 @@ type TOKENS = [int];
 //                }
 //            }
 //
-//            Debug.exit("parseAnnotatableDirectiveOrLetStatement",node)
+//            Debug::exit("parseAnnotatableDirectiveOrLetStatement",node)
 //            return node
 //        }
 //
@@ -3427,7 +3462,7 @@ type TOKENS = [int];
 //
 //        function parseVariableDefinition(first,mode,prologue)
 //        {
-//            Debug.enter("parseVariableDefinition",first,mode)
+//            Debug::enter("parseVariableDefinition",first,mode)
 //
 //            // already ate 'let' if there was one, so will see 'const' or nothing (which means 'var')
 //            // if there is no 'let' then caller must eat 'var' before calling to avoid 'let var'
@@ -3440,13 +3475,13 @@ type TOKENS = [int];
 //            var first = parseVariableBindingList(first,second,mode,prologue);
 //            var node = first
 //
-//            Debug.exit("parseVariableDefinition",node)
+//            Debug::exit("parseVariableDefinition",node)
 //            return node
 //        }
 //
 //        function parseVariableBindingList(attrs,kind,mode,prologue)
 //        {
-//            Debug.enter("parseVariableBindingList",attrs,kind,mode)
+//            Debug::enter("parseVariableBindingList",attrs,kind,mode)
 //
 //            var node = <></>
 //            node += parseVariableBinding(attrs,kind,mode,prologue)
@@ -3457,7 +3492,7 @@ type TOKENS = [int];
 //                node += parseVariableBinding(attrs,kind,mode,prologue);
 //            }
 //
-//            Debug.exit("parseVariableBindingList",node)
+//            Debug::exit("parseVariableBindingList",node)
 //            return node
 //        }
 //
@@ -3478,20 +3513,20 @@ type TOKENS = [int];
 //
 //        function isNamespaceAttribute(attr)
 //        {
-//            Debug.enter("isNamespaceAttribute",attr.toXMLString())
+//            Debug::enter("isNamespaceAttribute",attr.toXMLString())
 //
 //            var result = 
 //                    ( attr.name()=="Get" &&
 //                      attr.Identifier != undefined ) ? true :
 //                      attr.name()=="Namespace" ? true : false
 //
-//            Debug.exit("isNamespaceAttribute",result)
+//            Debug::exit("isNamespaceAttribute",result)
 //            return result
 //        }
 //
 //        function inFunctionBody(recurse=false)
 //        {
-//            Debug.enter("inFunctionBody")
+//            Debug::enter("inFunctionBody")
 //
 //            if( recurse )
 //            {
@@ -3511,40 +3546,40 @@ type TOKENS = [int];
 //                var result = context=="function"
 //            }
 //            
-//            Debug.exit("inFunctionBody",result)
+//            Debug::exit("inFunctionBody",result)
 //            return result
 //        }
 //
 //        function inClassBody()
 //        {
-//            Debug.enter("inClassBody")
+//            Debug::enter("inClassBody")
 //            var context = slot_context_stack[slot_context_stack.length-1]
 //            var result = context=="class"
-//            Debug.exit("inClassBody",result)
+//            Debug::exit("inClassBody",result)
 //            return result
 //        }
 //
 //        function inInterfaceBody()
 //        {
-//            Debug.enter("inInterfaceBody")
+//            Debug::enter("inInterfaceBody")
 //            var context = slot_context_stack[slot_context_stack.length-1]
 //            var result = context=="interface"
-//            Debug.exit("inInterfaceBody",result)
+//            Debug::exit("inInterfaceBody",result)
 //            return result
 //        }
 //
 //        function inClassOrInterfaceBody()
 //        {
-//            Debug.enter("inClassOrInterfaceBody")
+//            Debug::enter("inClassOrInterfaceBody")
 //            var context = slot_context_stack[slot_context_stack.length-1]
 //            var result = context=="class" || context=="interface"
-//            Debug.exit("inClassOrInterfaceBody",result)
+//            Debug::exit("inClassOrInterfaceBody",result)
 //            return result
 //        }
 //
 //        function parseVariableBinding(attrs,kind,mode,prologue)
 //        {
-//            Debug.enter("parseVariableBinding",attrs,kind,mode)
+//            Debug::enter("parseVariableBinding",attrs,kind,mode)
 //
 //            if( lookahead(leftbrace_token) || lookahead(leftbracket_token) )
 //            {
@@ -3567,7 +3602,7 @@ type TOKENS = [int];
 //                var node = makeBinding(attrs,kind,first,second,prologue)
 //            }
 //
-//            Debug.exit("parseVariableBinding",node)
+//            Debug::exit("parseVariableBinding",node)
 //            return node
 //        }
 //
@@ -3586,7 +3621,7 @@ type TOKENS = [int];
 //
 //        function makeBinding(attrs,kind,typedid,value,prologue)
 //        {
-//            Debug.enter("makeBinding",attrs,kind,typedid,value)
+//            Debug::enter("makeBinding",attrs,kind,typedid,value)
 //                
 //            // See if there is one namespace attribute
 //
@@ -3711,7 +3746,7 @@ type TOKENS = [int];
 //                prologue.* += slot
 //            }
 //
-//            Debug.exit("makeBinding",node,slot,prologue)
+//            Debug::exit("makeBinding",node,slot,prologue)
 //            return node
 //        }
 //
@@ -3719,7 +3754,7 @@ type TOKENS = [int];
 //
 //        function applyAttributesToSlot(attrs,slot)
 //        {
-//            Debug.enter("applyAttributesToSlot",attrs.toXMLString(),slot)
+//            Debug::enter("applyAttributesToSlot",attrs.toXMLString(),slot)
 //
 //            var slot_context = slot_context_stack[slot_context_stack.length-1]
 //            var slot_kind = slot.@kind
@@ -3863,13 +3898,13 @@ type TOKENS = [int];
 //                }
 //            }
 //
-//            Debug.exit("applyAttributesToSlot",slot)
+//            Debug::exit("applyAttributesToSlot",slot)
 //            return
 //        }
 //            
 //        function parseTypedIdentifier(mode)
 //        {
-//            Debug.enter("parseTypedIdentifier",mode)
+//            Debug::enter("parseTypedIdentifier",mode)
 //
 //            var first =    parseIdentifier()
 //            if( lookahead(colon_token) )
@@ -3897,7 +3932,7 @@ type TOKENS = [int];
 //                var result = <TypedIdentifier>{first}<Type><Identifier name="*"/></Type></TypedIdentifier>
 //            }
 //            
-//            Debug.exit("parseTypedIdentifier",result)
+//            Debug::exit("parseTypedIdentifier",result)
 //            return result
 //        }
 //
@@ -3915,7 +3950,7 @@ type TOKENS = [int];
 //            
 //        function parseFunctionDefinition(attrs,prologue)
 //        {
-//            Debug.enter("parseFunctionDefinition",attrs)
+//            Debug::enter("parseFunctionDefinition",attrs)
 //
 //            var kind  = match(function_token)
 //            var name  = parseFunctionName()
@@ -3923,13 +3958,13 @@ type TOKENS = [int];
 //            attrs.* += <{name.@kind}/>  // add functionname kind to attrs
 //            var node = makeBinding(attrs,kind,name,value,prologue)
 //
-//            Debug.exit("parseFunctionDefinition",node)
+//            Debug::exit("parseFunctionDefinition",node)
 //            return node
 //        }
 //
 //        function parseFunctionName()
 //        {
-//            Debug.enter("parseFunctionName")
+//            Debug::enter("parseFunctionName")
 //
 //            if( lookahead(identifier_token) )
 //            {
@@ -3986,7 +4021,7 @@ type TOKENS = [int];
 //    
 //            var node = <FunctionName kind={kind}>{first}</FunctionName>
 //
-//            Debug.exit("parseFunctionName",node)
+//            Debug::exit("parseFunctionName",node)
 //            return node
 //        }
 //
@@ -4014,7 +4049,7 @@ type TOKENS = [int];
 //
 //        function parseClassDefinition(attrs,hoisted)
 //        {
-//            Debug.enter("parseClassDefinition",attrs)
+//            Debug::enter("parseClassDefinition",attrs)
 //            
 //            match(class_token)
 //            var name = parseClassName()
@@ -4039,7 +4074,7 @@ type TOKENS = [int];
 //
 //            var node = makeBinding(attrs,class_token,name,value,hoisted)
 //
-//            Debug.exit("parseClassDefinition",node)
+//            Debug::exit("parseClassDefinition",node)
 //            return node
 //        }
 //
@@ -4082,7 +4117,7 @@ type TOKENS = [int];
 //
 //        function parseInheritance()
 //        {
-//            Debug.enter("parseInheritance")
+//            Debug::enter("parseInheritance")
 //
 //            var node = <Inheritance/>
 //
@@ -4106,7 +4141,7 @@ type TOKENS = [int];
 //                node.Implements.* = second
 //            }
 //    
-//            Debug.exit("parseInheritance",node)
+//            Debug::exit("parseInheritance",node)
 //            return node
 //        }
 //
@@ -4130,7 +4165,7 @@ type TOKENS = [int];
 //
 //        function parseInterfaceDefinition(attrs,hoisted)
 //        {
-//            Debug.enter("parseInterfaceDefinition",attrs)
+//            Debug::enter("parseInterfaceDefinition",attrs)
 //            
 //            match(interface_token)
 //            var name = parseClassName()
@@ -4154,7 +4189,7 @@ type TOKENS = [int];
 //            var value = <Interface>{name}{inherits}{stmt.Prologue}{stmt.Block}</Interface>
 //            var node = makeBinding(attrs,interface_token,name,value,hoisted)
 //
-//            Debug.exit("parseInterfaceDefinition",node)
+//            Debug::exit("parseInterfaceDefinition",node)
 //            return node
 //        }
 //
@@ -4168,7 +4203,7 @@ type TOKENS = [int];
 //
 //        function parseExtendsList()
 //        {
-//            Debug.enter("parseExtendsList")
+//            Debug::enter("parseExtendsList")
 //
 //            var node = <Inheritance/>
 //
@@ -4179,7 +4214,7 @@ type TOKENS = [int];
 //                node.Extends.* = first
 //            }
 //    
-//            Debug.exit("parseExtendsList",node)
+//            Debug::exit("parseExtendsList",node)
 //            return node
 //        }
 //
@@ -4194,7 +4229,7 @@ type TOKENS = [int];
 //        
 //        function parseTypeExpressionList()
 //        {
-//            Debug.enter("parseTypeExpressionList")
+//            Debug::enter("parseTypeExpressionList")
 //            
 //            var list = <></>
 //            list += parseTypeExpression()
@@ -4205,13 +4240,13 @@ type TOKENS = [int];
 //            }
 //            var result = list
 //
-//            Debug.exit("parseTypeExpressionList",result)
+//            Debug::exit("parseTypeExpressionList",result)
 //            return result
 //        }
 //
 //        function parseNamespaceDefinition(attrs,prologue)
 //        {
-//            Debug.enter("parseNamespaceDefinition",attrs)
+//            Debug::enter("parseNamespaceDefinition",attrs)
 //
 //            match(namespace_token)
 //            var first = parseTypedIdentifier(allowIn_mode)
@@ -4239,7 +4274,7 @@ type TOKENS = [int];
 //
 //            var node = makeBinding(attrs,namespace_token,first,second,prologue)
 //
-//            Debug.exit("parseNamespaceDefinition",node)
+//            Debug::exit("parseNamespaceDefinition",node)
 //            return node
 //        }
 //
@@ -4249,7 +4284,7 @@ type TOKENS = [int];
 //
 //        function parseTypeDefinition(attrs,hoisted)
 //        {
-//            Debug.enter("parseTypeDefinition",attrs)
+//            Debug::enter("parseTypeDefinition",attrs)
 //
 //            match(type_token)
 //            var first = parseTypedIdentifier(allowIn_mode)
@@ -4257,7 +4292,7 @@ type TOKENS = [int];
 //            var second = parseTypeExpression()
 //            var node = makeBinding(attrs,type_token,first,second,hoisted)
 //
-//            Debug.exit("parseTypeDefinition",node)
+//            Debug::exit("parseTypeDefinition",node)
 //            return node
 //        }
 //
@@ -4284,7 +4319,7 @@ type TOKENS = [int];
 //
 //        function parsePackageDefinition(attr)
 //        {
-//            Debug.enter("parsePackageDefinition")
+//            Debug::enter("parsePackageDefinition")
 //
 //            enterSlashContext(div_token)
 //            match(package_token)
@@ -4309,13 +4344,13 @@ type TOKENS = [int];
 //                    </OpenNamespaces>
 //
 //
-//            Debug.exit("parsePackageDefinition",node)
+//            Debug::exit("parsePackageDefinition",node)
 //            return node
 //        }
 //
 //        function parsePackageName()
 //        {
-//            Debug.enter("parsePackageName")
+//            Debug::enter("parsePackageName")
 //            
 //            var name = ""
 //            if( lookahead(leftbrace_token) )
@@ -4334,7 +4369,7 @@ type TOKENS = [int];
 //                scan.addPackageName(name)
 //            }
 //
-//            Debug.exit("parsePackageName",name)
+//            Debug::exit("parsePackageName",name)
 //            return name
 //        }
 //
@@ -4359,7 +4394,7 @@ type TOKENS = [int];
 //
 //        function parseAttributes(first)
 //        {
-//            Debug.enter("parseAttributes",first)
+//            Debug::enter("parseAttributes",first)
 //
 //            while( !lookaheadSemicolon(full_mode) &&
 //                   ( lookahead(public_token) || 
@@ -4384,13 +4419,13 @@ type TOKENS = [int];
 //
 //            // todo: check for duplicates
 //
-//            Debug.exit("parseAttributes",node)
+//            Debug::exit("parseAttributes",node)
 //            return node
 //        }
 //
 //        function parseAttribute()
 //        {
-//            Debug.enter("parseAttribute")
+//            Debug::enter("parseAttribute")
 //
 //            var found = lookahead(public_token) ? match(public_token) :
 //                        lookahead(private_token) ? match(private_token) :
@@ -4488,7 +4523,7 @@ type TOKENS = [int];
 //                var node = parseSimpleTypeIdentifier()
 //            }
 //
-//            Debug.exit("parseAttribute",node.toXMLString())
+//            Debug::exit("parseAttribute",node.toXMLString())
 //            return node
 //        }
 //
@@ -4513,7 +4548,7 @@ type TOKENS = [int];
 //
 //        public function parseDirective(attr,mode,prologue)
 //        {
-//            Debug.enter("parseDirective",mode)
+//            Debug::enter("parseDirective",mode)
 //
 //            if( lookahead(semicolon_token) )
 //            {
@@ -4672,7 +4707,7 @@ type TOKENS = [int];
 //                var node = parseStatement(mode)
 //            }
 //
-//            Debug.exit("parseDirective",node)
+//            Debug::exit("parseDirective",node)
 //            return node
 //        }
 //
@@ -4691,7 +4726,7 @@ type TOKENS = [int];
 //    
 //        public function parseDirectives(attr,prologue)
 //        {
-//            Debug.enter("parseDirectives")
+//            Debug::enter("parseDirectives")
 //
 //            // look for pragmas
 //
@@ -4710,13 +4745,13 @@ type TOKENS = [int];
 //                 node.* += parseDirective(attr,full_mode,prologue)
 //            }
 //
-//            Debug.exit("parseDirectives",node)
+//            Debug::exit("parseDirectives",node)
 //            return node
 //        }
 //
 //        public function parsePragmas()
 //        {
-//            Debug.enter("parsePragmas")
+//            Debug::enter("parsePragmas")
 //
 //            var node = <></>
 //
@@ -4726,13 +4761,13 @@ type TOKENS = [int];
 //                node += parsePragma()
 //            }
 //
-//            Debug.exit("parsePragmas",node)
+//            Debug::exit("parsePragmas",node)
 //            return node
 //        }
 //
 //        public function parsePragma()
 //        {
-//            Debug.enter("parsePragma")
+//            Debug::enter("parsePragma")
 //
 //            var node = <></>
 //
@@ -4748,13 +4783,13 @@ type TOKENS = [int];
 //                matchSemicolon(full_mode)
 //            }
 //
-//            Debug.exit("parsePragma",node)
+//            Debug::exit("parsePragma",node)
 //            return node
 //        }
 //
 //        public function parseImportPragma()
 //        {
-//            Debug.enter("parseImportPragma")
+//            Debug::enter("parseImportPragma")
 //
 //            match(import_token)
 //
@@ -4800,7 +4835,7 @@ type TOKENS = [int];
 //                scopes[scopes.length-1].Imports[def_name].*+=node
 //            }
 //
-//            Debug.exit("parseImportPragma",node.toXMLString())
+//            Debug::exit("parseImportPragma",node.toXMLString())
 //            return node
 //        }
 //
@@ -4829,7 +4864,7 @@ type TOKENS = [int];
 //        
 //        function parseImportName()
 //        {
-//            Debug.enter("parseImportName")
+//            Debug::enter("parseImportName")
 //            
 //            var pkg_part = scan.tokenText(match(packageidentifier_token))
 //            match(dot_token)
@@ -4850,13 +4885,13 @@ type TOKENS = [int];
 //
 //            var node = <Import pkg={pkg_part} def={def_part}/>
 //
-//            Debug.exit("parseImportName",node.toXMLString())
+//            Debug::exit("parseImportName",node.toXMLString())
 //            return node
 //        }
 //
 //        public function parseUsePragma()
 //        {
-//            Debug.enter("parseUsePragma")
+//            Debug::enter("parseUsePragma")
 //
 //            match(use_token)
 //            var node = <></>
@@ -4867,13 +4902,13 @@ type TOKENS = [int];
 //                node += parsePragmaItem()
 //            }
 //
-//            Debug.exit("parseUsePragma",node)
+//            Debug::exit("parseUsePragma",node)
 //            return node
 //        }
 //
 //        function parsePragmaItem()
 //        {
-//            Debug.enter("parsePragmaItem")
+//            Debug::enter("parsePragmaItem")
 //
 //            if( lookaheadReservedWord() ||
 //                lookahead(identifier_token) )
@@ -4914,53 +4949,61 @@ type TOKENS = [int];
 //                }
 //            }
 //
-//            Debug.exit("parsePragmaItem",node)
+//            Debug::exit("parsePragmaItem",node)
 //            return node
 //        }
 //
 
-        function directives (ts: TOKENS)
+        function directives (ts: TOKENS, mode: int)
             : [TOKENS, Ast::BLOCK]
         {
-            Debug.enter("Parse::program");
-            Debug.exit("Parse::program");
+            Debug::enter("Parse::directives ", ts);
+
+            let [ts1,nd1] = simpleQualifiedIdentifier (ts);
+
+            Debug::exit("Parse::directives ", nd1);
+            return [ts1, new Ast::ExprStmt (new Ast::LexicalRef (nd1))];
         }
 
-        function program (ts: TOKENS)
-            //            : [TOKENS, Ast::PROGRAM]
+        function program ()
+            : [TOKENS, Ast::PROGRAM]
         {
-            Debug.enter("Parse::program");
+            Debug::enter("Parse::program ","");
+
+            let ts = scan.tokenList (scan.start)
 
             var blocks = [] // : [Ast.BLOCK];
             
-            if (head (ts) == Ast::Internal || 
-                head (ts) == Ast::Package)
+            if (head (ts) == Token::Internal || 
+                head (ts) == Token::Package)
             {
                 var [ts1, nd1] = packages (ts);
             }
-            else 
+            else
             {
                 var [ts1, nd1] = [ts, null];
             }
 
             current_package = "";
-            default_namespace = new Ast::Internal ("");
+            default_namespace = new Ast::PublicNamespace ("");
             current_class = "";
 
-            var [ts2, nd2] = directives (ts1, GLOBAL);
+            var [ts2, nd2] = directives (ts1, Global);
 
-            Debug.exit ("Parse::program")
+            Debug::exit ("Parse::program ", nd2)
             return [ts2, {packages: nd1, stmts: nd2, fixtures: null}];
         }
     }
 
-    function testParser() 
+    function test ()
     {
         var programs = 
         [
             //primary expressions
             
+            "private::x",
             "x",
+            /*
             "q::id",
             "q::[expr]",
             "(expr)::id",
@@ -5014,18 +5057,20 @@ type TOKENS = [int];
             "x.y++",
             "x.y()++",
             "new x.y++",
+            */
         ]
 
         var n = 0
-        for each ( var p in programs )
+            //        for each ( var p in programs )
         {
+            var p = programs[0];
             n++
             try {
                 var parser = new Parser(p)
-                var node = parser.program()
+                var [ts1,nd1] = parser.program()
 
-                print("> "+p)
-                print(node.toXMLString())
+                print("> "+nd1)
+                    //                print(node.toXMLString())
                 //print("---")
             }
             catch(x)
@@ -5035,6 +5080,6 @@ type TOKENS = [int];
         }
     }
 
-//    testParser()
+    test ()
 }
 

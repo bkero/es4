@@ -45,9 +45,8 @@
     x string literals
     x comments
     x reserved words
-
-    o escapes
-    o number literals
+    x escapes
+    x number literals
 */
 
 use namespace intrinsic;
@@ -518,6 +517,11 @@ namespace Token
         {
             return this.utf8id;
         }
+
+        function tokenKind () : int
+        {
+            return this.kind;
+        }
     }
 
     const tokenStore = new Array;
@@ -616,7 +620,7 @@ namespace Token
         return tokenStore.length - 1;
     }
 
-    function getTokenClass (tid : int) : int
+    function tokenKind (tid : int) : int
     {
         // if the token id is negative, it is a token_class
 
@@ -627,8 +631,8 @@ namespace Token
 
         // otherwise, get instance data from the instance vector.
 
-        var t : Token = tokens[tid];
-        return t.getTokenClass();
+        var tok : Token = tokenStore[tid];
+        return tok.kind;
     }
     
     function tokenText ( tid : int ) : String
@@ -726,7 +730,7 @@ namespace Lexer
                 token = start ();
                 tokenList.push (token);
             }
-            return tokenList.reverse();
+            return tokenList;
         }
 
         public function regexp ()
@@ -1078,6 +1082,9 @@ namespace Lexer
 	    switch (c) {
 	    case delimiter : return Token::makeInstance (Token::StringLiteral, String.fromCharCode(delimiter)+text);
 		// encode delimiter in string lexeme by appending to text
+	    case Char::BackSlash:
+		let c = escapeSequence ();
+		return identifier (str+String.fromCharCode(c));
 	    default :
 		return stringLiteral (delimiter, text+String.fromCharCode (c))
 	    }
@@ -1207,7 +1214,6 @@ namespace Lexer
 	private function octalEscape (n:int,v:uint=0)
 	    : uint
 	{
-	    print("n=",n,"v=",v)
 	    if (n==0) {
 		return v;
 	    }
@@ -1900,5 +1906,5 @@ namespace Lexer
 	}
     }
 
-    test ();
+    //    test ();
 }

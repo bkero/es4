@@ -90,7 +90,14 @@ namespace Ast
 	   , InternalNamespace
 	   , UserNamespace
 	   , AnonymousNamespace
-       , ImportNamespace )
+       , ImportNamespace );
+
+    type RESERVED_NAMESPACE = 
+       ( IntrinsicNamespace
+       , PrivateNamespace
+       , ProtectedNamespace
+       , PublicNamespace
+       , InternalNamespace );
 
     class IntrinsicNamespace {}
 
@@ -452,8 +459,12 @@ namespace Ast
 
     class LexicalRef {
         const ident : IDENT_EXPR;
-        const pos : POS;
+        const pos : POS?;
+        function LexicalRef (ident,pos=null) 
+            : ident = ident
+            , pos = pos {}
     }
+    
 
     class SetExpr {
         const op : ASSIGNOP;
@@ -980,6 +991,8 @@ namespace Ast
 
     class ExprStmt {
         const expr : EXPR;
+        function ExprStmt (expr)
+            : expr = expr {}
     }
 
     class InitStmt {
@@ -1111,12 +1124,7 @@ namespace Ast
     class LetVar {}
     class LetConst {}
 
-    type VAR_DEFN =
-       { kind : VAR_DEFN_TAG
-       , ns : EXPR?
-       , isStatic : Boolean
-       , isPrototype : Boolean
-       , bindings : BINDING_INITS }
+    type VAR_DEFN = VariableDefn
 
     class VariableDefn {
         const kind: VAR_DEFN_TAG;
@@ -1180,18 +1188,31 @@ namespace Ast
         PACKAGE
     */
 
-    type PACKAGE =
-       { name: [IDENT]
-       , block: BLOCK }
+    type PACKAGE = Package
+
+    class Package {
+        var name: [IDENT];
+        var block: BLOCK;
+        function Package (name, block)
+            : name = name
+            , block = block {}
+    }
 
     /*
         PROGRAM
     */
 
-    type PROGRAM =
-        { packages: [PACKAGE]
-       , fixtures: FIXTURES?
-       , block: BLOCK }
+    type PROGRAM = Program
+
+    class Program {
+        var packages: [PACKAGE];
+        var fixtures: FIXTURES?;
+        var block: BLOCK;
+        function Program (packages, fixtures, block)
+            : packages = packages
+            , fixtures = fixtures
+            , block = block { }
+    }
 
     public function test () {
         intrinsic::print (new EmptyStmt)
