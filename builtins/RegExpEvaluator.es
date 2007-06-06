@@ -19,10 +19,9 @@ package RegExpInternals
     */
     intrinsic class RegExpMatcher!
     {
-        public function RegExpMatcher(matcher : Matcher, nCapturingParens : uint, names : [string?]!) 
+        public function RegExpMatcher(matcher : Matcher, nCapturingParens : uint) 
             : matcher = matcher
             , nCapturingParens = nCapturingParens
-            , names = names
         {
         }
 
@@ -37,7 +36,6 @@ package RegExpInternals
 
         public var nCapturingParens : uint;
         var matcher : Matcher;
-        var names : [string?]!;
     }
 
     /* The Context contains static data for the matching, we use this

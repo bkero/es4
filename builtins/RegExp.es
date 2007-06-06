@@ -57,8 +57,8 @@ package
                 usedflags[f] = true;
             }
 
-            matcher = (new RegExpCompiler(src, usedflags)).compile();
-
+            [matcher,names] = (new RegExpCompiler(src, usedflags)).compile();
+            
             multiline = usedflags.m;
             ignoreCase = usedflags.i;
             global = usedflags.g;
@@ -101,6 +101,9 @@ package
             a[0] = s.substring(i,res.endIndex);
             for ( let j=1 ; j < res.cap.length ; j++ )
                 a[j] = res.cap[j];
+            for ( let j=1 ; j < names.length ; j++ )
+                if (names[j] !== null)
+                    a[names[j]] = res.cap[j];
             return a;
         }
 
@@ -149,6 +152,7 @@ package
 
         /* Internal */
         private var matcher : RegExpMatcher;      // The [[Match]] property  // FIXME: const.  Ticket #24.
+        private var names : [string?];            // Named submatches  // FIXME: const.  Ticket #24.
 
         /* E262-3 15.10.6.4 probably is meant to require the flags to
          * be returned in lexicographic order for the purposes of

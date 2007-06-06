@@ -44,13 +44,13 @@ package RegExpInternals
             skip();
         }
 
-        public function compile() : RegExpMatcher {
+        public function compile() : [RegExpMatcher, [string?]] {
             let p : Matcher = pattern();
             if (idx !== slen)
                 fail( SyntaxError, "Invalid character in input \"" + source + "\", position " + idx );
             if (largest_backref > parenIndex && largest_backref > 0)
                 fail( SyntaxError, "Reference to undefined capture " + largest_backref );
-            return new RegExpMatcher(p, parenIndex, names);
+            return [new RegExpMatcher(p, parenIndex), names]
         }
 
         function pattern() : Matcher {
@@ -227,18 +227,18 @@ package RegExpInternals
                             let capno : uint = parenIndex++;
                             let d : Matcher = disjunction();
                             match(")");
-                            for ( let i:uint=0 ; i < names.length ; i++ ) {
+                            for ( let i:uint=1 ; i < names.length ; i++ ) {
                                 if (names[i] === name)
                                     fail( SyntaxError, "Multiply defined capture name: " + name );
                             }
-                            names[capno] = name;
+                            names[capno+1] = name;
                             return new Capturing(d, capno);
                         }
                         
                         if (eat("=")) {
                             let name : string = identifier();
                             match(")");
-                            for ( let i:uint=0 ; i < names.length ; i++ )
+                            for ( let i:uint=1 ; i < names.length ; i++ )
                                 if (names[i] === name)
                                     return new Backref(uint(i));
                             fail( SyntaxError, "Unknown backref name " + name );
