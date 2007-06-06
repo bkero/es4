@@ -34,8 +34,8 @@ MLBUILD := ml-build
 
 .PHONY: check checktc checkev wc clean cleanml profile
 
-es4.heap.$(HEAP_SUFFIX): $(wildcard *.sml) pretty-cvt.sml
-	$(MLBUILD) $(MLBUILD_ARGS) es4.cm Main.main es4.heap
+es4-init.heap.$(HEAP_SUFFIX): $(wildcard *.sml) pretty-cvt.sml
+	$(MLBUILD) $(MLBUILD_ARGS) es4.cm Main.main es4-init.heap
 
 pretty-cvt.sml: tools/gen-pretty.heap.$(HEAP_SUFFIX) ast.sml
 	cd tools && sml @SMLload=gen-pretty.heap ../ast.sml ../pretty-cvt.sml
@@ -47,61 +47,57 @@ tools/unit.heap.$(HEAP_SUFFIX): tools/unit.cm tools/unit.sml $(wildcard *.sml) p
 	cd tools && $(MLBUILD) $(MLBUILD_ARGS) unit.cm UnitTests.main unit.heap
 
 # TODO: "check" should do all the *.test files, not just parse tests
-check: tools/unit.heap.$(HEAP_SUFFIX) es4.heap.$(HEAP_SUFFIX)
+check: tools/unit.heap.$(HEAP_SUFFIX) es4-init.heap.$(HEAP_SUFFIX)
 	sml @SMLload=tools/unit.heap $(TRACE) tests/parse.test
 
-checktc: tools/unit.heap.$(HEAP_SUFFIX) es4.heap.$(HEAP_SUFFIX)
+checktc: tools/unit.heap.$(HEAP_SUFFIX) es4-init.heap.$(HEAP_SUFFIX)
 	sml @SMLload=tools/unit.heap $(TRACE) tests/tc.test
 
-checkev: tools/unit.heap.$(HEAP_SUFFIX) es4.heap.$(HEAP_SUFFIX)
+checkev: tools/unit.heap.$(HEAP_SUFFIX) es4-init.heap.$(HEAP_SUFFIX)
 	sml @SMLload=tools/unit.heap $(TRACE) tests/exec/exec.test
 
-checklth: tools/unit.heap.$(HEAP_SUFFIX) es4.heap.$(HEAP_SUFFIX)
+checklth: tools/unit.heap.$(HEAP_SUFFIX) es4-init.heap.$(HEAP_SUFFIX)
 	sml @SMLload=tools/unit.heap $(TRACE) tests/lth_tests/lth_tests.test
 
-run.heap.$(HEAP_SUFFIX): es4.heap.$(HEAP_SUFFIX) $(wildcard builtins/*.es)
-	sml @SMLload=es4.heap $(TRACE) -dumpEval run.heap
+es4-dump.heap.$(HEAP_SUFFIX): es4-init.heap.$(HEAP_SUFFIX) $(wilcard builtins/*.es)
+	sml @SMLload=es4-init.heap -dump es4-dump.heap
 
-smoketest: run.heap.$(HEAP_SUFFIX)
-	sml @SMLload=run.heap $(TRACE) tests/spidermonkey/ecma/shell.js tests/spidermonkey/ecma/Array/15.4.2.2-2.js
-	sml @SMLload=run.heap $(TRACE) tests/spidermonkey/ecma/shell.js tests/spidermonkey/ecma/Boolean/15.6.1.js
-	sml @SMLload=run.heap $(TRACE) tests/spidermonkey/ecma/shell.js tests/spidermonkey/ecma/Date/15.9.2.2-6.js
-	sml @SMLload=run.heap $(TRACE) tests/spidermonkey/ecma/shell.js tests/spidermonkey/ecma/LexicalConventions/7.6.js
-	sml @SMLload=run.heap $(TRACE) tests/spidermonkey/ecma/shell.js tests/spidermonkey/ecma/Statements/12.6.3-4.js
-	sml @SMLload=run.heap $(TRACE) tests/spidermonkey/ecma/shell.js tests/spidermonkey/ecma/TypeConversion/9.3.js
+smoketest: es4-dump.heap.$(HEAP_SUFFIX)
+	sml @SMLload=es4-dump.heap -e $(TRACE) tests/spidermonkey/ecma/shell.js tests/spidermonkey/ecma/Array/15.4.2.2-2.js
+	sml @SMLload=es4-dump.heap -e $(TRACE) tests/spidermonkey/ecma/shell.js tests/spidermonkey/ecma/Boolean/15.6.1.js
+	sml @SMLload=es4-dump.heap -e $(TRACE) tests/spidermonkey/ecma/shell.js tests/spidermonkey/ecma/Date/15.9.2.2-6.js
+	sml @SMLload=es4-dump.heap -e $(TRACE) tests/spidermonkey/ecma/shell.js tests/spidermonkey/ecma/LexicalConventions/7.6.js
+	sml @SMLload=es4-dump.heap -e $(TRACE) tests/spidermonkey/ecma/shell.js tests/spidermonkey/ecma/Statements/12.6.3-4.js
+	sml @SMLload=es4-dump.heap -e $(TRACE) tests/spidermonkey/ecma/shell.js tests/spidermonkey/ecma/TypeConversion/9.3.js
 
-dump-heap-for-running: run.heap.$(HEAP_SUFFIX)
+dump-heap: es4-dump.heap.$(HEAP_SUFFIX)
 
 # Do *not* give this dependencies to see if the heap is up-to-date.
 run-dumped:
-	sml @SMLload=run.heap $(TRACE) $(FILE)
+	sml @SMLload=es4-dump.heap -e $(TRACE) $(FILE)
 
 # Obsolete now?
 run: 
-	sml @SMLload=es4.heap $(TRACE) -e $(FILE)
+	sml @SMLload=es4-init.heap $(TRACE) -e $(FILE)
 
-repl.heap.$(HEAP_SUFFIX): es4.heap.$(HEAP_SUFFIX) $(wildcard builtins/*.es)
-	sml @SMLload=es4.heap $(TRACE) -dumpRepl repl.heap
-
-repl: repl.heap.$(HEAP_SUFFIX)
+repl: es4-dump.heap.$(HEAP_SUFFIX)
 	perl repl-with-readline.pl
 
-replNoReadline: es4.heap.$(HEAP_SUFFIX)
-	sml @SMLload=es4.heap -r
+replNoReadline: es4-init.heap.$(HEAP_SUFFIX)
+	sml @SMLload=es4-init.heap -r
 
 wc:
 	wc ${SOURCES}
 
 clean:
-	rm -rf .cm tools/.cm es4.heap.$(HEAP_SUFFIX) tools/gen-pretty.heap.$(HEAP_SUFFIX)
+	rm -rf .cm tools/.cm es4-init.heap.$(HEAP_SUFFIX) tools/gen-pretty.heap.$(HEAP_SUFFIX)
 
 profile: 
 	touch multiname.sml mach.sml eval.sml 
 	sml -Ctdp.instrument=true profile.sml 2>&1 | tee profile.txt
 
-exec: dump-heap-for-running
+exec: dump-heap
 	rm -rf exec
-	mkdir exec 
-	heap2exec run.heap.$(HEAP_SUFFIX) ./exec/es4
+	mkdir -p exec 
+	heap2exec es4-dump.heap.$(HEAP_SUFFIX) ./exec/es4
 	gzip ./exec/es4
-

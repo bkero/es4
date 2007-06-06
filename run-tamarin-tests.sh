@@ -53,7 +53,7 @@ shift $(($OPTIND -1))
 LIMIT=$1
 
 if [ $NOEXEC = 0 ]; then
-  make dump-heap-for-running 1>&6 2>&6
+  make dump-heap 1>&6 2>&6
 fi
 
 runTest() {
