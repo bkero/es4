@@ -17,6 +17,34 @@ ISSUES
 
 ###
 
+JUN-04-2007
+
+NO NAMESPACE
+
+Proposition: Public "" and no namespace have the same meaning
+
+The following statements all create a property in Public "" if one does not
+already exist
+
+    var x          // outside of a package
+    public var x   // in the unnamed package
+    o.x = 10
+    o.public::x = 10
+    o = {x:10}
+
+The following expressions refer to that property
+
+    o.x
+    o.public::x
+    x
+    public::x
+
+For this to be true, the qualifier 'public' is a set of two namespaces, the
+current package public and Public "". In case of ambiguity, the package Public
+is preferred. This mirrors the behavior open namespaces.
+
+###
+
 MAY-27-2007
 
 STRUCTURAL TYPE CHECKS

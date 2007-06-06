@@ -3503,7 +3503,13 @@ and evalInitsMaybePrototype (regs:Mach.REGS)
                      else
                          () ; *)
                      if isPrototypeInit 
-                     then setValue obj pn v
+                     then 
+                        let
+                           val Mach.Obj { props, ... } = obj
+                        in
+                           setValue obj pn v;
+                           Mach.setPropDontEnum props pn true
+                        end
                      else defValue obj pn v)
                   | Ast.TempName tn => 
                     (trace ["evalInit assigning to temp ", (Int.toString tn),
