@@ -974,7 +974,7 @@ and needNameOrString (v:Mach.VAL)
                 val nsval = getValue obj Name.nons_qualifier
                 val idval = getValue obj Name.nons_identifier
             in
-                Name.make (toUstring idval) (needNamespace nsval)
+                Name.make (toUstring idval) (needNamespaceOrNull nsval)
             end
         else
             Name.nons (toUstring v)

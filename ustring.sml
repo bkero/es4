@@ -30,7 +30,7 @@ let
         val b = Word.fromInt (Char.ord c)
     in
         if   (Word.andb (0wxC0, b) = 0wx80)
-        then (Word.orb (Word.<<(w, 0wx06), Word.andb(0wx3F, b)), cs)
+        then (Word.orb (Word.<< (w, 0wx06), Word.andb (0wx3F, b)), cs)
         else raise BadUTF8Encoding
     end
     
@@ -39,7 +39,7 @@ let
     let
         val w = Word.fromInt (Char.ord c)
         val (w_, cs_) =
-            if   (w < 0wx80)
+            if   w < 0wx80
             then (w, cs)
             else if Word.andb (0wxE0, w) = 0wxC0
             then                           grabSixBits (Word.andb (0wx1F, w), cs)
