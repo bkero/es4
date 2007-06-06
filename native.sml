@@ -64,6 +64,16 @@ fun nthAsUstr (vals:Mach.VAL list)
     end
 
 
+fun nthAsName (vals:Mach.VAL list) 
+              (n:int) 
+    : Ast.NAME = 
+    let 
+        val v = rawNth vals n
+    in
+        Eval.needNameOrString v
+    end
+
+
 fun nthAsFn (vals:Mach.VAL list) 
              (n:int) 
     : Mach.FUN_CLOSURE = 
@@ -138,7 +148,7 @@ fun propQuery (vals:Mach.VAL list)
     : Mach.VAL = 
     let 
         val Mach.Obj { props, ...} = nthAsObj vals 0
-        val n = Name.nons (nthAsUstr vals 1)
+        val n = nthAsName vals 1
     in
         Eval.newBoolean (f props n)
     end
@@ -704,7 +714,7 @@ fun get (vals:Mach.VAL list)
     (* FIXME: arg #1 should be a Name, and convert to Ast.Name. *)
     Eval.getValueOrVirtual 
         (nthAsObj vals 0) 
-        (Name.nons (nthAsUstr vals 1))
+        (nthAsName vals 1)
         false
 
 (* 
@@ -715,7 +725,7 @@ fun set (vals:Mach.VAL list)
     (* FIXME: arg #1 should be a Name, and convert to Ast.Name. *)
     (Eval.setValueOrVirtual 
          (nthAsObj vals 0) 
-         (Name.nons (nthAsUstr vals 1))
+         (nthAsName vals 1)
          (rawNth vals 2) 
          false;
      Mach.Undef)
@@ -935,11 +945,11 @@ fun inspect (vals:Mach.VAL list)
                         val indent = indent + 1
                         val stateStr = 
                             case state of 
-		                        Mach.TypeVarProp => "[typeVar]"
-		                      | Mach.TypeProp => "[type]"
-		                      | Mach.UninitProp => "[uninit]"
-		                      | Mach.ValProp v => "[val]"
-		                      | Mach.VirtualValProp _ => "[virtual val]"
+                                Mach.TypeVarProp => "[typeVar]"
+                              | Mach.TypeProp => "[type]"
+                              | Mach.UninitProp => "[uninit]"
+                              | Mach.ValProp v => "[val]"
+                              | Mach.VirtualValProp _ => "[virtual val]"
                               | Mach.MethodProp _ => "[method]"
                               | Mach.NativeFunctionProp _ => "[native function]"
                               | Mach.NamespaceProp _ => "[namespace]"

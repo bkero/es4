@@ -3,8 +3,8 @@
  * ECMAScript 4 builtins - magic functions
  *
  * Magic functions are implementation traps that express aspects of
- * the language that cannot be expressed without either (a) modelling
- * the language in the language, eg, by modelling objects and their
+ * the language that cannot be expressed without either (a) modeling
+ * the language in the language, eg, by modeling objects and their
  * property lists, or (b) breaking security.
  *
  * A good example is [[Prototype]], which exists on all objects but
@@ -49,20 +49,20 @@ package
     magic native function getPrototype(o : Object!) : Object;
 
     /* Return true iff o has a local property named by p. */
-    magic native function hasOwnProperty(o : Object!, p : string) : Boolean;
+    magic native function hasOwnProperty(o : Object!, p : (Name,string)) : Boolean;
 
     /* Return true if the property p does exists locally on o and its
        DontEnum bit is set */
-    magic native function getPropertyIsDontEnum(o : Object!, p : string) : Boolean;
+    magic native function getPropertyIsDontEnum(o : Object!, p : (Name,string)) : Boolean;
 
     /* Return true if the property p does exists locally on o and its
        DontDelete bit is set */
-    magic native function getPropertyIsDontDelete(o : Object!, p : string) : Boolean;
+    magic native function getPropertyIsDontDelete(o : Object!, p : (Name,string)) : Boolean;
 
     /* Provided that the property p exists locally on o, set its DontEnum
        flag according to f.  If the property p does not exist locally on
        o, it does nothing. */
-    magic native function setPropertyIsDontEnum(o : Object!, p : string, f : Boolean) : void;
+    magic native function setPropertyIsDontEnum(o : Object!, p : (Name,string), f : Boolean) : void;
 
     magic native function isPrimitive(v:*) : boolean;
     magic native function toPrimitive(v:*, hint:string) : *;

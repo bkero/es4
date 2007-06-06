@@ -61,12 +61,12 @@ package
 
         /* E262-3 15.2.4.5:  Object.prototype.hasOwnProperty */
         prototype function hasOwnProperty(V)
-            Object.private::hasOwnProperty(this, String(V));  /* FIXME: "Object." should not be necessary */
+            Object.private::hasOwnProperty(this, V);  // FIXME: "Object." should not be necessary
 
-        intrinsic function hasOwnProperty(V : string) : boolean 
-            Object.private::hasOwnProperty(this, V); /* FIXME: "Object." should not be necessary */
+        intrinsic function hasOwnProperty(V : (Name,string)) : boolean 
+            Object.private::hasOwnProperty(this, V);  // FIXME: "Object." should not be necessary
 
-        private static function hasOwnProperty(obj, V:string) : boolean
+        private static function hasOwnProperty(obj, V : (Name,string)) : boolean
             magic::hasOwnProperty(obj, V);
         
         /* E262-3 15.2.4.6:  Object.prototype.isPrototypeOf */
@@ -94,11 +94,12 @@ package
         prototype function propertyIsEnumerable(prop, e=undefined)
             private::propertyIsEnumerable(this, prop, e);
 
-        intrinsic function propertyIsEnumerable(prop : string, e=undefined) : boolean
+        intrinsic function propertyIsEnumerable(prop : (Name,string), e=undefined) : boolean
             private::propertyIsEnumerable(this, prop, e);
 
         /* E262-4 draft proposals:enumerability */
-        private static function propertyIsEnumerable(obj : Object, prop : string, e=undefined) : boolean {
+        private static function propertyIsEnumerable(obj : Object, prop : (Name,string),
+                                                     e = undefined) : boolean {
             while (obj !== null) {
                 if (obj.hasOwnProperty(prop)) {
                     let old : boolean = !magic::getPropertyIsDontEnum(obj, prop);
