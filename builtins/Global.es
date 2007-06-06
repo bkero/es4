@@ -27,7 +27,13 @@ package
     // 15.1.2.1 eval (x)
     intrinsic native function eval(x);
 
-    // 15.1.2.2 parseInt (string , radix)
+    /* 15.1.2.2 parseInt (string , radix)
+     *
+     * The committee agreed in its 2007-06-05 phone conference
+     * to not allow a leading '0' to force a non-supplied radix
+     * to 8, but instead to default to radix 10 in all cases
+     * except when the string starts with '0x' or '0X'.
+     */
     intrinsic function parseInt(s, radix=undefined) {
 
         function digitValue(c) {
@@ -70,12 +76,10 @@ package
             s = s.substring(1);
 
         let r = int(radix);
-        let maybe_octal = false;
         let maybe_hexadecimal = false;
 
         if (r == 0) {
             r = 10;
-            maybe_octal = true;
             maybe_hexadecimal = true;
         }
         else if (r == 16)
@@ -83,9 +87,7 @@ package
         else if (r < 2 || r > 36)
             return NaN;
 
-        if (maybe_octal && s.length >= 1 && s[0] == '0')
-            r = 8;
-        if (maybe_hexadecimal && s.length >= 2 && s[0] == '0' && (s[1] == 'x' || s[2] == 'X')) {
+        if (maybe_hexadecimal && s.length >= 2 && s[0] == '0' && (s[1] == 'x' || s[1] == 'X')) {
             r = 16;
             s = s.substring(2);
         }
