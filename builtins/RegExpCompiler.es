@@ -9,6 +9,11 @@
  * Regular expression compiler.
  *
  * Status: Complete; Not reviewed; Not tested.
+ *
+ * The committee agreed in its 2007-06-05 phone conference to remove
+ * support for octal literals from the reference implementation.
+ * Following the grammar of E262-3, numbers other than zero may not
+ * start with the digit '0'.
  */
 
 package RegExpInternals
@@ -472,16 +477,14 @@ package RegExpInternals
         /* Returns null if it does not consume anything but fails;
          * throws an error if it consumes and then fails. 
          *
-         * Handles octal and hex escapes.
+         * Handles hex escapes.
          */
         function characterEscape(allow_b : boolean) : string? {
 
             let c : uint = peekCharCode();
 
             switch (c) {
-            case 0x30u /* "0" */:
-                return string.fromCharCode(octalDigits(true));
-
+            case 0x30u:
             case 0x31u:
             case 0x32u:
             case 0x33u:
@@ -614,8 +617,12 @@ package RegExpInternals
                 fail( SyntaxError, "Expected identifier" );
         }
 
-        function number() 
-            peekChar() === "0" ? octalDigits() : decimalDigits();
+        function number() {
+            if (eat("0"))
+                return 0;
+            else
+                return decimalDigits();
+        }
 
         function hexDigits(n : uint? = null) : string {
             let k : double = 0;
@@ -640,17 +647,6 @@ package RegExpInternals
             let c : string;
             while (isDecimalDigit(c = peekChar()))
                 k = k*10 + decimalValue(consumeChar(c));
-            skip();
-            return k;
-        }
-
-        function octalDigits(byte_limit: boolean = false) : string {
-            let k : double = 0;
-            let c : string;
-            while (isOctalDigit(c = peekChar()))
-                k = k*8 + octalValue(consumeChar(c));
-            if (byte_limit && k > 255)
-                fail( SyntaxError, "octal sequence out of range" );
             skip();
             return k;
         }

@@ -125,12 +125,6 @@ package Unicode
             return c.toUpperCase().charCodeAt(0) - "A".charCodeAt(0) + 10;
     }
 
-    public function isOctalDigit(c: string) : boolean
-        c >= "0" && c <= "7";
-
-    public function octalValue(c: string) : boolean
-        c.charCodeAt(0) - "0".charCodeAt(0);
-        
     const blank_chars = 
         new CharSet(explodeString(blanks));
 
