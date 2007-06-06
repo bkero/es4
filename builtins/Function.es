@@ -62,6 +62,7 @@ package
         meta prototype function invoke()
             undefined;
 
+        /* FIXME #64: This is bogus */
         prototype var source : string = "function () { }";
 
         prototype var length : uint = 0;

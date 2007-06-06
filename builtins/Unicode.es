@@ -85,13 +85,13 @@ package Unicode
     /* Utility functions for Regular Expressions */
 
     public function isIdentifierStart(c) {
-        /* FIXME -- hairy, but not yet important.  For now, ASCII.  Ticket #49. */
-        return c >= 'a' && c <= 'z' || c >= 'A' && c <= 'Z' || c == '_' || c == '$';
+        return isUnicodeLetter(c.charCodeAt(0)) || c == '_' || c == '$';
     }
-
+    
     public function isIdentifierPart(c) {
-        /* FIXME -- hairy, but not yet important.  For now, ASCII.  Ticket #49. */
-        return isIdentifierStart(c) || c >= '0' && c <= '9';
+        let cc: uint = c.charCodeAt(0);
+        return isIdentifierStart(c) || 
+            isUnicodeMn(cc) || isUnicodeMc(cc) || isUnicodeNd(cc) || isUnicodePc(cc);
     }
 
     const terminator_chars = 
@@ -155,6 +155,146 @@ package Unicode
         return cs;
     }
 
+    /* Character classification according to the Unicode data table */
+
+    public function isUnicodeLu(cc: uint): boolean 
+        classify(table_Lu, cc);
+
+    public function isUnicodeLl(cc: uint): boolean 
+        classify(table_Ll, cc);
+
+    public function isUnicodeLt(cc: uint): boolean 
+        classify(table_Lt, cc);
+
+    public function isUnicodeLm(cc: uint): boolean 
+        classify(table_Lm, cc);
+
+    public function isUnicodeLo(cc: uint): boolean 
+        classify(table_Lo, cc);
+
+    public function isUnicodeL(cc: uint): boolean 
+        isUnicodeLu(cc) || 
+        isUnicodeLl(cc) || 
+        isUnicodeLt(cc) || 
+        isUnicodeLm(cc) || 
+        isUnicodeLo(cc);
+
+    public function isUnicodeLetter(cc: uint): boolean /* E262-3 7.6 */
+        isUnicodeL(cc) || 
+        isUnicodeNl(cc);
+
+    public function isUnicodeMn(cc: uint): boolean 
+        classify(table_Mn, cc);
+
+    public function isUnicodeMc(cc: uint): boolean 
+        classify(table_Mc, cc);
+
+    public function isUnicodeMe(cc: uint): boolean 
+        classify(table_Me, cc);
+
+    public function isUnicodeM(cc: uint): boolean
+        isUnicodeMn(cc) || 
+        isUnicodeMc(cc) || 
+        isUnicodeMe(cc);
+
+    public function isUnicodeNd(cc: uint): boolean 
+        classify(table_Nd, cc);
+
+    public function isUnicodeNl(cc: uint): boolean 
+        classify(table_Nl, cc);
+
+    public function isUnicodeNo(cc: uint): boolean 
+        classify(table_No, cc);
+
+    public function isUnicodeN(cc: uint): boolean
+        isUnicodeNd(cc) || 
+        isUnicodeNl(cc) || 
+        isUnicodeNo(cc);
+
+    public function isUnicodePc(cc: uint): boolean 
+        classify(table_Pc, cc);
+
+    public function isUnicodePd(cc: uint): boolean 
+        classify(table_Pd, cc);
+
+    public function isUnicodePs(cc: uint): boolean 
+        classify(table_Ps, cc);
+
+    public function isUnicodePe(cc: uint): boolean 
+        classify(table_Pe, cc);
+
+    public function isUnicodePi(cc: uint): boolean 
+        classify(table_Pi, cc);
+
+    public function isUnicodePf(cc: uint): boolean 
+        classify(table_Pf, cc);
+
+    public function isUnicodePo(cc: uint): boolean 
+        classify(table_Po, cc);
+
+    public function isUnicodeP(cc: uint): boolean
+        isUnicodePc(cc) || 
+        isUnicodePd(cc) || 
+        isUnicodePs(cc) || 
+        isUnicodePe(cc) || 
+        isUnicodePi(cc) || 
+        isUnicodePf(cc) || 
+        isUnicodePo(cc);
+
+    public function isUnicodeSm(cc: uint): boolean 
+        classify(table_Sm, cc);
+
+    public function isUnicodeSc(cc: uint): boolean 
+        classify(table_Sc, cc);
+
+    public function isUnicodeSk(cc: uint): boolean 
+        classify(table_Sk, cc);
+
+    public function isUnicodeSo(cc: uint): boolean 
+        classify(table_So, cc);
+
+    public function isUnicodeS(cc: uint): boolean
+        isUnicodeSm(cc) ||
+        isUnicodeSc(cc) ||
+        isUnicodeSk(cc) ||
+        isUnicodeSo(cc);
+
+    public function isUnicodeZs(cc: uint): boolean 
+        classify(table_Zs, cc);
+
+    public function isUnicodeZl(cc: uint): boolean 
+        classify(table_Zl, cc);
+
+    public function isUnicodeZp(cc: uint): boolean 
+        classify(table_Zp, cc);
+
+    public function isUnicodeZ(cc: uint): boolean 
+        isUnicodeZs(cc) ||
+        isUnicodeZl(cc) ||
+        isUnicodeZp(cc);
+
+    public function isUnicodeCc(cc: uint): boolean 
+        classify(table_Cc, cc);
+
+    public function isUnicodeCf(cc: uint): boolean 
+        classify(table_Cf, cc);
+
+    public function isUnicodeCs(cc: uint): boolean 
+        classify(table_Cs, cc);
+
+    public function isUnicodeCo(cc: uint): boolean 
+        classify(table_Co, cc);
+
+    public function isUnicodeCn(cc: uint): boolean 
+        classify(table_Cn, cc);
+
+    public function isUnicodeC(cc: uint): boolean
+        isUnicodeCc(cc) ||
+        isUnicodeCf(cc) ||
+        isUnicodeCs(cc) || 
+        isUnicodeCo(cc) ||
+        isUnicodeCn(cc);
+
     // UTR #21 describes an implementation relying solely on the
     // Unicode database single-character case mappings as "legacy",
     // and notes that it is "insufficient for languages such as
@@ -162,12 +302,12 @@ package Unicode
     // special casing properties.
 
     public function toUpperCaseCharCode(i : uint) : uint {
-        var c = toUpperTbl[i];
+        var c = toUpperTbl(i);
         return c ? c : i;
     }
 
     public function toLowerCaseCharCode(i : uint) : uint {
-        var c = toLowerTbl[i];
+        var c = toLowerTbl(i);
         return c ? c : i;
     }
 }
