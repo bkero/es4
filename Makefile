@@ -32,7 +32,7 @@ MLBUILD := ml-build
 # targets
 # ------------------------------------------------------------
 
-.PHONY: check checktc checkev wc clean cleanml profile
+.PHONY: check checktc checkev wc clean cleanml profile decimal
 
 es4-init.heap.$(HEAP_SUFFIX): $(wildcard *.sml) pretty-cvt.sml
 	$(MLBUILD) $(MLBUILD_ARGS) es4.cm Main.main es4-init.heap
@@ -81,7 +81,7 @@ run:
 	sml @SMLload=es4-init.heap $(TRACE) -e $(FILE)
 
 repl: es4-dump.heap.$(HEAP_SUFFIX)
-	perl repl-with-readline.pl
+	perl bin/repl-with-readline.pl
 
 replNoReadline: es4-init.heap.$(HEAP_SUFFIX)
 	sml @SMLload=es4-init.heap -r
@@ -101,3 +101,6 @@ exec: dump-heap
 	mkdir -p exec 
 	heap2exec es4-dump.heap.$(HEAP_SUFFIX) ./exec/es4
 	gzip ./exec/es4
+
+decimal:
+	cd decimal && make decimal && cp decimal ../bin/
