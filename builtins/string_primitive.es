@@ -607,8 +607,15 @@ package
             let S   : string = ToString(self);
             let s   : string = "";
             let len : uint = S.length;
-            for ( let i : uint = 0u ; i < len ; i++ )
-                s += magic::fromCharCode(Unicode.toLowerCaseCharCode(magic::charCodeAt(S,i)));
+            for ( let i : uint = 0u ; i < len ; i++ ) {
+                let u = Unicode.toLowerCaseCharCode(magic::charCodeAt(S,i));
+                if (u is uint)
+                    s += magic::fromCharCode();
+                else {
+                    for ( let j=0 ; j < u.length ; j++ )
+                        s += magic::fromCharCode(u[j]);
+                }
+            }
             return s;
         }
 
@@ -640,8 +647,15 @@ package
             let S   : string = ToString(self);
             let s   : string = "";
             let len : uint = S.length;
-            for ( let i : uint = 0u ; i < len ; i++ )
-                s += magic::fromCharCode(Unicode.toUpperCaseCharCode(magic::charCodeAt(S,i)));
+            for ( let i : uint = 0u ; i < len ; i++ ) {
+                let u = Unicode.toUpperCaseCharCode(magic::charCodeAt(S,i));
+                if (u is uint)
+                    s += magic::fromCharCode(u);
+                else {
+                    for ( let j=0 ; j < u.length ; j++ )
+                        s += magic::fromCharCode(u[j]);
+                }
+            }                        
             return s;
         }
 

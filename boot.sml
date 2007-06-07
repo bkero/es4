@@ -235,6 +235,8 @@ fun boot _ =
 
                                     "builtins/Shell.es",   (* before RegExp, for debugging *)
                                     
+                                    "builtins/UnicodeClasses.es",
+                                    "builtins/UnicodeCasemapping.es",
                                     "builtins/UnicodeTbl.es",
                                     "builtins/Unicode.es",
                                     "builtins/RegExpCompiler.es",
