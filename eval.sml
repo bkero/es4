@@ -550,7 +550,7 @@ fun allocFixtures (regs:Mach.REGS)
                                                   readOnly = true,
                                                   isFixed = true } }
 
-                          | Ast.InterfaceFixture =>  (* FIXME *)
+                          | Ast.InterfaceFixture _ =>  (* FIXME *)
                             ()
 
                           (* | _ => error ["Shouldn't happen: failed to match in Eval.allocFixtures#allocFixture."] *)

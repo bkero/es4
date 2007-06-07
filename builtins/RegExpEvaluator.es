@@ -105,11 +105,12 @@ package RegExpInternals
        interface.  Normally a Matcher object references other Matcher
        objects.  */
     // FIXME: interfaces are completely missing.  Ticket #46.
-    /*public interface Matcher
+    public interface Matcher
     {
         function match(ctx : Context, x : State, c : Continuation) : MatchResult;
-    }*/
-    type Matcher = *;
+    }
+
+    // type Matcher = *;
 
     type Continuation = function(Context, State) : MatchResult;
 

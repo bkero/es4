@@ -610,179 +610,16 @@ and defInterface (env: ENV)
                  (idef: Ast.INTERFACE_DEFN)
     : (Ast.FIXTURES * Ast.INTERFACE_DEFN) =
     let
-        val _ = trace2 ("defining interface ",(#ident idef))
-(* FIXME
-        val class = analyzeClass env cdef
-        val class = resolveClass env cdef class
-        val Ast.Cls {name,...} = class
-*)
+        val { ident, extends, instanceDefns, ... } = idef
+        val name = Name.nons ident
+        val (superInterfaces, inheritedFixtures) = resolveInterfaces env extends
+        val (unhoisted,instanceFixtures,_) = defDefns env [] [] [] instanceDefns
+        val instanceFixtures = inheritFixtures inheritedFixtures instanceFixtures
+        val iface = Ast.Iface { name=name, extends=superInterfaces, instanceFixtures=instanceFixtures, 
+                                instanceType = Ast.SpecialType Ast.Any }
     in
-        ([(Ast.PropName (Name.nons (#ident idef)), Ast.InterfaceFixture)],idef)
+        ([(Ast.PropName name, Ast.InterfaceFixture iface)],idef)
     end
-
-(*
-    resolveClass
-
-    Inherit instance fixtures from the base class. Check fixtures against
-    interface fixtures
-*)
-
-and resolveClass (env:ENV)
-                 ({extends,implements,...}: Ast.CLASS_DEFN)
-                 (Ast.Cls {name,nonnullable,classFixtures,instanceFixtures,instanceInits,
-                   constructor,classType,instanceType,...}:Ast.CLS)
-    : Ast.CLS =
-    let
-        val _ = trace ["analyzing class block for ", LogErr.name name]
-        val (extendsName, instanceFixtures) = resolveExtends env instanceFixtures extends [name]
-        val (implementsNames, instanceFixtures) = resolveImplements env instanceFixtures implements
-    in
-        Ast.Cls {name=name, extends=extendsName,
-                 nonnullable=nonnullable,
-                 implements=implementsNames,
-                 classFixtures=classFixtures,
-                 instanceFixtures=instanceFixtures,
-                 instanceInits=instanceInits,
-                 constructor=constructor,
-                 classType=classType,
-                 instanceType=instanceType}
-    end
-
-(*
-    Resolve the base class
-
-    Steps
-    - resolve base class reference to a class fixture and its name
-    - inherit fixtures from the base class
-
-    Errors
-    - base class not found
-    - inheritance cycle detected
-
-*)
-
-and resolveExtends (env: ENV)
-                   (currInstanceFixtures: Ast.FIXTURES) 
-                   (extends: Ast.IDENT_EXPR option)
-                   (children:Ast.NAME list)
-    : (Ast.NAME option * Ast.FIXTURES) =
-    let
-        val _ = trace ["first child ", LogErr.name (hd children)]
-        fun seenAsChild (n:Ast.NAME) = List.exists (fn ch => ch = n) children
-        val extends:(Ast.IDENT_EXPR option) = case (extends,hd children) of 
-                            (NONE, {id,...}) => 
-                                if (id=Ustring.Object_) 
-                                    then NONE 
-                                    else SOME (Ast.Identifier {ident=Ustring.Object_,openNamespaces=[]})
-                          | _ => extends 
-    in case extends of
-        SOME baseIdentExpr =>
-            let 
-                val baseClassMultiname = identExprToMultiname env baseIdentExpr
-                val _ = trace ["inheriting from ",LogErr.multiname baseClassMultiname]
-                val (baseClassName,baseClassFixture) = 
-                        if false (* seenAsChild baseName *)
-                        then LogErr.defnError ["cyclical class inheritence detected at ", 
-                                           LogErr.multiname baseClassMultiname]
-                        else (resolveMultinameToFixture env baseClassMultiname)
-            in case baseClassFixture of
-                Ast.ClassFixture (Ast.Cls {instanceFixtures=baseInstanceFixtures,...}) =>
-                    (SOME baseClassName,inheritFixtures baseInstanceFixtures currInstanceFixtures)
-              | _ => LogErr.defnError ["base class not found"]
-            end
-      | NONE => (NONE,currInstanceFixtures)
-    end
-
-(*
-    Resolve each of the expressions in the 'implements' list to an interface
-    fixture. check that each of the methods declared by each interface is
-    implemented by the current set of  instance fixtures.
-
-    Steps
-    - resolve super interface references to interface fixtures
-    - inherit fixtures from the super interfaces
-
-    Errors
-    - super interface fixture not found
-
-*)
-
-and resolveImplements (env: ENV) 
-                      (currInstanceFixtures: Ast.FIXTURES)
-                      (implements: Ast.IDENT_EXPR list)
-    : (Ast.NAME list * Ast.FIXTURES) =
-    let
-        val implements = map (identExprToMultiname env) implements
-    in
-        ([],currInstanceFixtures)
-    end
-
-(*
-    analyzeClass
-
-    The parser has already turned the class body into a block statement with init
-    statements for setting the value of static and prototype fixtures. This class
-    definition has a body whose only interesting statements left are init statements
-    that set the value of instance vars.
-*)
-
-and analyzeClass (env:ENV)
-                 (cdef:Ast.CLASS_DEFN)
-    : Ast.CLS =
-    case cdef of
-        {ns, ident, instanceDefns, instanceStmts, classDefns, ctorDefn, nonnullable, (* block=Ast.Block { pragmas, body, ... },*) ...} =>
-        let
-
-            (*
-                Partition the class definition into a class block
-                and an instance block, and then define both blocks
-            *)
-
-            val ns = resolveExprOptToNamespace env ns
-            val name = {id=ident, ns=ns}
-            val env = enterClass env name
-
-            val (unhoisted,classFixtures,classInits) = defDefns env [] [] [] classDefns
-            val classFixtures = (List.foldl mergeFixtures unhoisted classFixtures)
-            val staticEnv = extendEnvironment env classFixtures
-                             (* namespace and type definitions aren't normally hoisted *)
-
-            val (unhoisted,instanceFixtures,_) = defDefns staticEnv [] [] [] instanceDefns
-            val instanceEnv = extendEnvironment staticEnv instanceFixtures
-
-            val ctor = 
-                case ctorDefn of 
-                    NONE => NONE 
-                  | SOME c => SOME (defCtor instanceEnv c)
-
-            val (instanceStmts,_) = defStmts staticEnv instanceStmts  (* no hoisted fixture produced *)
-            
-            (* 
-                The parser separates variable definitions into defns and stmts. The only stmts
-                in this case will be InitStmts and what we really want is INITs so we translate
-                to to INITs here.
-            *)
-
-            fun initsFromStmt stmt =
-                case stmt of
-                     Ast.ExprStmt (Ast.InitExpr (target,(temp_fxtrs,temp_inits),inits)) => (temp_fxtrs,temp_inits@inits)
-                   | _ => LogErr.unimplError ["Defn.bindingsFromStmt"]
-            
-            val (fxtrs,inits) = ListPair.unzip(map initsFromStmt instanceStmts)
-            val instanceInits = (List.concat fxtrs, List.concat inits)
-
-        in
-            Ast.Cls {name=name,
-                     nonnullable=nonnullable,
-                     extends = NONE,
-                     implements = [],                     
-                     classFixtures = classFixtures,
-                     instanceFixtures = instanceFixtures,
-                     instanceInits = instanceInits,
-                     constructor = ctor,
-                     classType = Ast.SpecialType Ast.Any,
-                     instanceType = Ast.SpecialType Ast.Any }
-        end
 
 (*
     inheritFixtures
@@ -934,15 +771,336 @@ and inheritFixtures (base:Ast.FIXTURES)
       | first::follows => inheritFixtures follows (inheritFixture first)
     end
 
-and inheritFixtureOpts (base:Ast.FIXTURES option) 
-                       (derived:Ast.FIXTURES option) 
-    : Ast.FIXTURES option =
-    case (base,derived) of
-        (NONE, NONE) => NONE
-      | (SOME x, NONE) => SOME x
-      | (SOME x, SOME y) => SOME (inheritFixtures x y)
-      | (NONE, SOME x) => SOME x
+(*
+    implementFixtures
 
+    Steps:
+
+    - 
+
+    Errors:
+
+    - interface fixture not implemented
+    
+    Notes:
+
+    don't check type compatibility yet; we don't know the value of type
+    expressions until verify time. In standard mode we need to do a
+    light weight verification to ensure that overrides are type compatible
+    before a class is loaded.
+*)
+
+and implementFixtures (base:Ast.FIXTURES)
+                      (derived:Ast.FIXTURES)
+    : unit =
+    let
+        (* 
+           Recurse through the fixtures of a base class to see if the
+           given fixture binding is allowed. if so, then add it
+           return the updated fixtures 
+
+           TODO: check for name conflicts:
+
+                Any name can be overridden by any other name with the same 
+                identifier and a namespace that is at least as visible. Visibility
+                is an attribute of the builtin namespaces: private, protected,
+                internal and public. These are related by:
+
+                    private < protected
+                    protected < public
+                    private < internal
+                    internal < public
+
+                where < means less visible
+
+                Note that protected and internal are overlapping namespaces and 
+                therefore it is an error to attempt to override a name in one 
+                with a name in another.
+
+            It is an error for there to be a derived fixture with a name that is:
+
+               - less visible than a base fixture
+               - as visible or more visible than a base fixture but not overriding it 
+                 (this case is caught by the override check below)
+        *)
+
+        fun implementFixture ((n,fb):(Ast.FIXTURE_NAME * Ast.FIXTURE))
+            : Ast.FIXTURES =
+            let
+                fun targetFixture _ = if (hasFixture derived n)
+                                      then SOME (getFixture derived n)
+                                      else NONE
+                val _ = trace ["checking override of ", LogErr.fname n]
+            in 
+                case n of 
+                    (* Private fixtures never "inherit", so it's meaningless to ask. *)
+                    Ast.PropName {ns=Ast.Private _, ...} => derived
+                  | _ => case targetFixture () of
+                             NONE => LogErr.defnError ["unimplemented interface method ", LogErr.fname n]
+                           | SOME fd => 
+                             case (canImplement fb fd) of
+                                 true => derived  (* return current fixtures *)
+                               | _ => LogErr.defnError ["illegal implementation of ", LogErr.fname n]
+            end
+
+        (* 
+           Given two fixtures, one base and other derived, check to see if
+           the derived fixture implements the base fixture. Specifically,
+           check that:
+
+               - they have same number of type parameters and parameters
+               - they both have the return type void or neither has the return type void
+               - what else?
+           
+           Type compatibility of parameter and return types is done by the evaluator
+           (or verifier in strict mode) and not here because type annotations can have
+           forward references
+        *)
+
+        and canImplement (fb:Ast.FIXTURE) (fd:Ast.FIXTURE)
+            : bool = 
+            let
+                fun isVoid ty = case ty of Ast.SpecialType Ast.VoidType => true 
+                                         | _ => false
+                                                
+                val isCompatible = case (fb,fd) of 
+                        (Ast.MethodFixture 
+                             {ty=(Ast.FunctionType 
+                                      {typeParams=tpb,params=pb,result=rtb,minArgs=mb,...}),
+                              func=(Ast.Func {fsig=Ast.FunctionSignature {defaults=db, ...}, ...}),...},
+                         Ast.MethodFixture 
+                             {ty=(Ast.FunctionType 
+                                      {typeParams=tpd,params=pd,result=rtd,minArgs=md,...}),
+                              func=(Ast.Func {fsig=Ast.FunctionSignature {defaults=dd, ...}, ...}),...}) =>
+                            let
+                                val _ = trace ["length tpb ",Int.toString (length tpb),
+                                               " length tpd ",Int.toString (length tpd),"\n"]
+                                val _ = trace ["mb ",Int.toString mb, " md ",Int.toString md,"\n"]
+                                val _ = trace ["length pb ",Int.toString (length pb),
+                                               " length pd ",Int.toString (length pd),"\n"]
+                                val _ = trace ["length db ",Int.toString (length db),
+                                               " length dd ",Int.toString (length dd),"\n"]
+                            in
+                                (length tpb)=(length tpd) 
+                                andalso true (* FIXME: mb=md *)
+                                andalso (((isVoid rtb) andalso (isVoid rtd)) 
+                                         orelse
+                                        ((not (isVoid rtb)) andalso (not (isVoid rtd)))) 
+                                (* FIXME: check compatibility of return types? *)
+                            end
+                        
+                      | _ => false
+                val _ = trace ["isCompatible = ",Bool.toString isCompatible]
+            
+            in case (fb,fd) of
+                (Ast.MethodFixture _, Ast.MethodFixture _) => 
+                    isCompatible
+
+              (* FIXME: what are the rules for getter/setter overriding? 
+                 1/base fixture is not final
+                 2/derived fixture is override
+                 3/getter is compatible
+                 4/setter is compatible
+              *)
+              | (Ast.VirtualValFixture vb,
+                 Ast.VirtualValFixture vd) =>
+                    let
+                        val _ = trace ["checking override of VirtualValFixture"]
+                    in
+                       true               
+                    end 
+              | _ => LogErr.unimplError ["checkOverride"]
+            end
+
+    in case base of
+        [] => () (* done *)
+      | first::follows => implementFixtures follows (implementFixture first)
+    end
+
+(*
+    resolveClass
+
+    Inherit instance fixtures from the base class. Check fixtures against
+    interface fixtures
+*)
+
+and resolveClass (env:ENV)
+                 ({extends,implements,...}: Ast.CLASS_DEFN)
+                 (Ast.Cls {name,nonnullable,classFixtures,instanceFixtures,instanceInits,
+                   constructor,classType,instanceType,...}:Ast.CLS)
+    : Ast.CLS =
+    let
+        val _ = trace ["analyzing class block for ", LogErr.name name]
+        val (extendsName, instanceFixtures) = resolveExtends env instanceFixtures extends [name]
+        val (implementsNames, instanceFixtures) = resolveImplements env instanceFixtures implements
+    in
+        Ast.Cls {name=name, extends=extendsName,
+                 nonnullable=nonnullable,
+                 implements=implementsNames,
+                 classFixtures=classFixtures,
+                 instanceFixtures=instanceFixtures,
+                 instanceInits=instanceInits,
+                 constructor=constructor,
+                 classType=classType,
+                 instanceType=instanceType}
+    end
+
+(*
+    Resolve the base class
+
+    Steps
+    - resolve base class reference to a class fixture and its name
+    - inherit fixtures from the base class
+
+    Errors
+    - base class not found
+    - inheritance cycle detected
+
+*)
+
+and resolveExtends (env: ENV)
+                   (currInstanceFixtures: Ast.FIXTURES) 
+                   (extends: Ast.IDENT_EXPR option)
+                   (children:Ast.NAME list)
+    : (Ast.NAME option * Ast.FIXTURES) =
+    let
+        val _ = trace ["first child ", LogErr.name (hd children)]
+        fun seenAsChild (n:Ast.NAME) = List.exists (fn ch => ch = n) children
+        val extends:(Ast.IDENT_EXPR option) = case (extends,hd children) of 
+                            (NONE, {id,...}) => 
+                                if (id=Ustring.Object_) 
+                                    then NONE 
+                                    else SOME (Ast.Identifier {ident=Ustring.Object_,openNamespaces=[]})
+                          | _ => extends 
+    in case extends of
+        SOME baseIdentExpr =>
+            let 
+                val baseClassMultiname = identExprToMultiname env baseIdentExpr
+                val _ = trace ["inheriting from ",LogErr.multiname baseClassMultiname]
+                val (baseClassName,baseClassFixture) = 
+                        if false (* seenAsChild baseName *)
+                        then LogErr.defnError ["cyclical class inheritence detected at ", 
+                                           LogErr.multiname baseClassMultiname]
+                        else (resolveMultinameToFixture env baseClassMultiname)
+            in case baseClassFixture of
+                Ast.ClassFixture (Ast.Cls {instanceFixtures=baseInstanceFixtures,...}) =>
+                    (SOME baseClassName,inheritFixtures baseInstanceFixtures currInstanceFixtures)
+              | _ => LogErr.defnError ["base class not found"]
+            end
+      | NONE => (NONE,currInstanceFixtures)
+    end
+
+and resolveImplements (env: ENV)
+                      (instanceFixtures: Ast.FIXTURES) 
+                      (implements: Ast.IDENT_EXPR list)
+    : (Ast.NAME list * Ast.FIXTURES) =
+    let
+        val (superInterfaces, inheritedFixtures) = resolveInterfaces env implements
+(*
+        val instanceFixtures = inheritFixtures inheritedFixtures instanceFixtures
+*)
+    in
+        (superInterfaces,instanceFixtures)
+    end
+
+(*
+    Resolve each of the expressions in the 'implements' list to an interface
+    fixture. check that each of the methods declared by each interface is
+    implemented by the current set of  instance fixtures.
+
+    Steps
+    - resolve super interface references to interface fixtures
+    - inherit fixtures from the super interfaces
+
+    Errors
+    - super interface fixture not found
+
+*)
+
+and interfaceMethod (ifxtr)
+    : Ast.FIXTURES = 
+    case ifxtr of
+        Ast.InterfaceFixture (Ast.Iface {instanceFixtures,...}) => instanceFixtures
+      |_ => LogErr.internalError ["instanceFixturesFromInterface"]
+
+and resolveInterfaces (env: ENV)
+                      (implements: Ast.IDENT_EXPR list)
+    : (Ast.NAME list * Ast.FIXTURES) =
+    let
+val _ = LogErr.log ["resolveInterfaces"]
+        val interfaceMnames = map (identExprToMultiname env) implements
+        val (interfaceNames,interfaceFixtures) = ListPair.unzip (map (resolveMultinameToFixture env) interfaceMnames)
+        val methodFixtures = List.concat (map interfaceMethod interfaceFixtures)
+    in
+        (interfaceNames,methodFixtures)
+    end
+
+(*
+    analyzeClass
+
+    The parser has already turned the class body into a block statement with init
+    statements for setting the value of static and prototype fixtures. This class
+    definition has a body whose only interesting statements left are init statements
+    that set the value of instance vars.
+*)
+
+and analyzeClass (env:ENV)
+                 (cdef:Ast.CLASS_DEFN)
+    : Ast.CLS =
+    case cdef of
+        {ns, ident, instanceDefns, instanceStmts, classDefns, ctorDefn, nonnullable, (* block=Ast.Block { pragmas, body, ... },*) ...} =>
+        let
+
+            (*
+                Partition the class definition into a class block
+                and an instance block, and then define both blocks
+            *)
+
+            val ns = resolveExprOptToNamespace env ns
+            val name = {id=ident, ns=ns}
+            val env = enterClass env name
+
+            val (unhoisted,classFixtures,classInits) = defDefns env [] [] [] classDefns
+            val classFixtures = (List.foldl mergeFixtures unhoisted classFixtures)
+            val staticEnv = extendEnvironment env classFixtures
+                             (* namespace and type definitions aren't normally hoisted *)
+
+            val (unhoisted,instanceFixtures,_) = defDefns staticEnv [] [] [] instanceDefns
+            val instanceEnv = extendEnvironment staticEnv instanceFixtures
+
+            val ctor = 
+                case ctorDefn of 
+                    NONE => NONE 
+                  | SOME c => SOME (defCtor instanceEnv c)
+
+            val (instanceStmts,_) = defStmts staticEnv instanceStmts  (* no hoisted fixture produced *)
+            
+            (* 
+                The parser separates variable definitions into defns and stmts. The only stmts
+                in this case will be InitStmts and what we really want is INITs so we translate
+                to to INITs here.
+            *)
+
+            fun initsFromStmt stmt =
+                case stmt of
+                     Ast.ExprStmt (Ast.InitExpr (target,(temp_fxtrs,temp_inits),inits)) => (temp_fxtrs,temp_inits@inits)
+                   | _ => LogErr.unimplError ["Defn.bindingsFromStmt"]
+            
+            val (fxtrs,inits) = ListPair.unzip(map initsFromStmt instanceStmts)
+            val instanceInits = (List.concat fxtrs, List.concat inits)
+
+        in
+            Ast.Cls {name=name,
+                     nonnullable=nonnullable,
+                     extends = NONE,
+                     implements = [],                     
+                     classFixtures = classFixtures,
+                     instanceFixtures = instanceFixtures,
+                     instanceInits = instanceInits,
+                     constructor = ctor,
+                     classType = Ast.SpecialType Ast.Any,
+                     instanceType = Ast.SpecialType Ast.Any }
+        end
 
 (*
     BINDING
@@ -2551,7 +2709,7 @@ and defDefns (env:ENV)
          | d::ds =>
            let
                val (unhoisted',hoisted',inits') = defDefn env d
-               val temp = case d of (Ast.NamespaceDefn _ | Ast.ClassDefn _) => hoisted' | _ => []
+               val temp = case d of (Ast.NamespaceDefn _ | Ast.ClassDefn _ | Ast.InterfaceDefn _) => hoisted' | _ => []
                val env'  = updateFixtures env (List.foldl mergeFixtures unhoisted' temp) 
            (* add the new unhoisted and temporarily, hoisted class fxtrs to the current env *)
            in
