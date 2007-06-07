@@ -1027,7 +1027,6 @@ and resolveInterfaces (env: ENV)
                       (implements: Ast.IDENT_EXPR list)
     : (Ast.NAME list * Ast.FIXTURES) =
     let
-val _ = LogErr.log ["resolveInterfaces"]
         val interfaceMnames = map (identExprToMultiname env) implements
         val (interfaceNames,interfaceFixtures) = ListPair.unzip (map (resolveMultinameToFixture env) interfaceMnames)
         val methodFixtures = List.concat (map interfaceMethod interfaceFixtures)
