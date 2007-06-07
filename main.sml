@@ -207,32 +207,6 @@ fun eval doBoot argvRest =
       | LogErr.UnimplError e => (print ("**ERROR** UnimplError: " ^ e ^ "\n"); 1)
     end
 
-fun dump dumpfile =
-    (startup true [];
-     SMLofNJ.exportFn
-         (dumpfile, (fn (arg0, argvRest) =>
-                        BackTrace.monitor
-                            (fn() =>
-                                  (* TODO: replace this with the single main cmdline parsing *)
-                                  (case argvRest of
-                                       ("-eval"::argvRest) => eval false argvRest
-                                     | ("-repl"::argvRest) => (repl false argvRest; 0)
-                                     | _ => (define false argvRest; 0))))))
-
-fun dumpEval dumpfile =
-    (startup true [];
-     SMLofNJ.exportFn 
-         (dumpfile, (fn (arg0, argvRest) => 
-                        BackTrace.monitor
-                            (fn () => eval false argvRest))))
-
-fun dumpRepl dumpfile =
-    (startup true [];
-     SMLofNJ.exportFn 
-         (dumpfile, (fn (arg0, argvRest) => 
-                        BackTrace.monitor 
-                            (fn () => (repl false argvRest; 0)))))
-
 fun main' (doBoot: bool) (argv0:string, argvRest:string list) =
     BackTrace.monitor
         (fn () =>
@@ -265,38 +239,3 @@ fun main (argv0:string, argvRest:string list) =
                | _ => main' true (argv0, argvRest)))
 
 end
-
-(*
-fun main (argv0:string, argvRest:string list) =
-    BackTrace.monitor 
-        (fn () =>
-            (case argvRest of
-                 ("-dump"::filename::argvRest) => (startup true [];
-                                                   SMLofNJ.exportFn
-                                                       (filename, main'))
-               | _ => main' argvRest))
-
-            (case argvRest of
-                 ("-r"::argvRest) => (repl true argvRest; 0)
-               | ("-p"::argvRest) => (parse true argvRest; 0)
-               | ("-d"::argvRest) => (define true argvRest; 0)
-               | ("-v"::argvRest) => (verify true argvRest; 0)
-	           | ("-e"::argvRest) => eval true argvRest
-               | ("-dump"::filename::argvRest) => (dump filename; 0)
-               | ("-dumpEval"::filename::argvRest) => (dumpEval filename; 0)
-               | ("-dumpRepl"::filename::argvRest) => (dumpRepl filename; 0)
-               | _ => (define true argvRest; 0))
-            handle 
-            LogErr.LexError e => (print ("**ERROR** LexError: " ^ e ^ "\n"); 1)
-          | LogErr.ParseError e => (print ("**ERROR** ParseError: " ^ e ^ "\n"); 1)
-          | LogErr.EofError => (print ("**ERROR* EofError: Unexpected end of file\n"); 1)
-          | LogErr.NameError e => (print ("**ERROR** NameError: " ^ e ^ "\n"); 1)
-          | LogErr.DefnError e => (print ("**ERROR** DefnError: " ^ e ^ "\n"); 1)
-          | LogErr.EvalError e => (print ("**ERROR** EvalError: " ^ e ^ "\n"); 1)
-          | LogErr.MachError e => (print ("**ERROR** MachError: " ^ e ^ "\n"); 1)
-          | LogErr.VerifyError e => (print ("**ERROR** VerifyError: " ^ e ^ "\n"); 1)
-          | LogErr.HostError e => (print ("**ERROR** HostError: " ^ e ^ "\n"); 1)
-          | LogErr.UnimplError e => (print ("**ERROR** UnimplError: " ^ e ^ "\n"); 1))
-
-end
-*)
