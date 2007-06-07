@@ -146,6 +146,7 @@ datatype PRAGMA =
      and IFACE =
          Iface of
            { name: NAME,
+             nonnullable: bool,
              extends: NAME list,
              instanceFixtures: FIXTURES,
              instanceType: TYPE_EXPR } (* InstanceType *)
@@ -222,7 +223,8 @@ datatype PRAGMA =
              expr:TYPE_EXPR,
              nullable:bool }
        | InstanceType of {
-             name: NAME, 
+             name: NAME,
+             nonnullable: bool, 
              typeParams: IDENT list, 
              ty: TYPE_EXPR,
              isDynamic: bool }

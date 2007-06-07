@@ -1,1 +1,3 @@
-print('hi')
+interface I! {}
+class A implements I {}
+var x : I? = null

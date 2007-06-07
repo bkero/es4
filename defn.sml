@@ -610,12 +610,12 @@ and defInterface (env: ENV)
                  (idef: Ast.INTERFACE_DEFN)
     : (Ast.FIXTURES * Ast.INTERFACE_DEFN) =
     let
-        val { ident, extends, instanceDefns, ... } = idef
+        val { ident, extends, instanceDefns, nonnullable, ... } = idef
         val name = Name.nons ident
         val (superInterfaces, inheritedFixtures) = resolveInterfaces env extends
         val (unhoisted,instanceFixtures,_) = defDefns env [] [] [] instanceDefns
         val instanceFixtures = inheritFixtures inheritedFixtures instanceFixtures
-        val iface = Ast.Iface { name=name, extends=superInterfaces, instanceFixtures=instanceFixtures, 
+        val iface = Ast.Iface { name=name, nonnullable=nonnullable, extends=superInterfaces, instanceFixtures=instanceFixtures, 
                                 instanceType = Ast.SpecialType Ast.Any }
     in
         ([(Ast.PropName name, Ast.InterfaceFixture iface)],idef)
