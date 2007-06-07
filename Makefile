@@ -32,7 +32,7 @@ MLBUILD := ml-build
 # targets
 # ------------------------------------------------------------
 
-.PHONY: check checktc checkev wc clean cleanml profile decimal
+.PHONY: check checktc checkev wc clean cleanml profile decimal exec-release heap-release
 
 es4-init.heap.$(HEAP_SUFFIX): $(wildcard *.sml) pretty-cvt.sml
 	$(MLBUILD) $(MLBUILD_ARGS) es4.cm Main.main es4-init.heap
@@ -96,11 +96,26 @@ profile:
 	touch multiname.sml mach.sml eval.sml 
 	sml -Ctdp.instrument=true profile.sml 2>&1 | tee profile.txt
 
-exec: dump-heap
-	rm -rf exec
-	mkdir -p exec 
-	heap2exec es4-dump.heap.$(HEAP_SUFFIX) ./exec/es4
-	gzip ./exec/es4
-
 decimal:
 	cd decimal && make decimal && cp decimal ../bin/
+
+exec-release: exec/es4.tar.gz
+
+exec/es4.tar.gz: dump-heap decimal
+	rm -rf exec/es4
+	mkdir -p exec/es4
+	heap2exec es4-dump.heap.$(HEAP_SUFFIX) exec/es4/es4
+	cp bin/decimal exec/es4/
+	cd exec && tar cf es4.tar es4
+	gzip -v9 exec/es4.tar
+
+heap-release: heap/es4.tar.gz
+
+heap/es4.tar.gz: dump-heap decimal
+	rm -rf heap
+	mkdir -p heap/es4
+	cp bin/run-cygwin.sh heap/es4/es4
+	cp es4-dump.heap.$(HEAP_SUFFIX) heap/es4/es4.heap.$(HEAP_SUFFIX)
+	cp bin/decimal heap/es4/
+	cd heap && tar cf es4.tar es4
+	gzip -v9 heap/es4.tar
