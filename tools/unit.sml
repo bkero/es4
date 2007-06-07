@@ -294,7 +294,7 @@ fun runTestCase (test : TEST_CASE) : TEST_RESULT =
 
        | { name, stage=Eval, arg=true, source } =>
          (
-             (Eval.evalProgram (Verify.verifyProgram (Defn.defProgram (parse source))); (test, true))
+             (Eval.evalTopProgram (Verify.verifyProgram (Defn.defProgram (parse source))); (test, true))
              handle e => (unexpectedExn e; (test, false))
          )
 )
