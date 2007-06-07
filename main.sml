@@ -5,7 +5,7 @@
 
 structure Main = struct
 
-val quiet = ref false
+val interactive = ref true
 
 fun findTraceOption (tname:string) 
     : (bool ref) option = 
@@ -30,8 +30,8 @@ fun consumeOption (opt:string) : bool =
         (case findTraceOption (String.implode rest) of 
              SOME r => (r := true; false)
            | NONE => true)
-      | ([#"-", #"q"]) => 
-        (quiet := true; false)
+      | ([#"-", #"I"]) => 
+        (interactive := false; false)
       | (#"-" :: #"P" :: rest) => 
         (case Int.fromString (String.implode rest) of 
             NONE => false
@@ -66,7 +66,7 @@ fun repl doBoot argvRest =
 
         fun doLine _ = 
             let 
-                val _ = if !quiet then print "<SMLREADY>\n" else print ">> " 
+                val _ = if !interactive then print ">> " else print "<SMLREADY>\n"
                 val line = case TextIO.inputLine TextIO.stdIn of 
                                NONE => ""
                              | SOME s => s
@@ -207,16 +207,46 @@ fun eval doBoot argvRest =
       | LogErr.UnimplError e => (print ("**ERROR** UnimplError: " ^ e ^ "\n"); 1)
     end
 
+fun usage () =
+    (List.app TextIO.print
+              ["usage: es4 [-h|-r|-p file ...|-d file ...|-v file ...|-e file ...] [-Pn] [-Tmod] ...\n",
+               "    -h            display this help message and exit\n",
+               "(*) -r            start the interactive read-eval-print loop\n",
+               "    -p            run given files through parse phase and exit\n",
+               "    -d            run given files through definition phase and exit\n",
+               "    -v            run given files through verification phase and exit\n",
+               "    -e            evaluate given files and exit\n",
+               "\n",
+               "(*) default\n",
+               "\n",
+               "    -Pn           turn on profiling for stack depth {n}\n",
+               "    -Tmod         turn on tracing for module {mod}\n",
+               "\n",
+               "    mod:\n",
+               "        lex       lexing\n",
+               "        parse     parsing\n",
+               "        name      name resolution\n",
+               "        defn      definition phase\n",
+               "        verify    ?\n",
+               "        verified  ?\n",
+               "        eval      evaluator\n",
+               "        mach      abstract machine operations\n",
+               "        decimal   decimal arithmetic\n",
+               "        native    native operations\n",
+               "        boot      standard library boot sequence\n",
+               "        stack     stack operations\n"])
+
 fun main' (argv0:string, argvRest:string list) =
     BackTrace.monitor
         (fn () =>
             (case argvRest of
-                 ("-r"::argvRest) => (repl false argvRest; 0)
+                 ("-h"::argvRest) => (usage (); 0)
+               | ("-r"::argvRest) => (repl false argvRest; 0)
                | ("-p"::argvRest) => (parse false argvRest; 0)
                | ("-d"::argvRest) => (define false argvRest; 0)
                | ("-v"::argvRest) => (verify false argvRest; 0)
 	           | ("-e"::argvRest) => eval false argvRest
-               | _ => (define false argvRest; 0))
+               | _ => (repl false argvRest; 0))
             handle 
             LogErr.LexError e => (print ("**ERROR** LexError: " ^ e ^ "\n"); 1)
           | LogErr.ParseError e => (print ("**ERROR** ParseError: " ^ e ^ "\n"); 1)
