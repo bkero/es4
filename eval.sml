@@ -261,6 +261,15 @@ fun extendScopeReg (r:Mach.REGS)
         {scope=extendScope scope ob kind,
          this=this}
     end
+
+fun withThis (r:Mach.REGS) 
+             (newThis:Mach.OBJ)             
+    : Mach.REGS = 
+    let
+        val {scope,this} = r
+    in
+        {scope=scope, this=newThis}
+    end
          
 
 fun getObjId (obj:Mach.OBJ) 
@@ -684,7 +693,7 @@ and getValueOrVirtual (obj:Mach.OBJ)
             let
                 fun catchAll _ = 
                     (* FIXME: need to use builtin Name.es object here, when that file exists. *)
-                    evalCallMethodByRef obj (obj, Name.meta_get) [newString (#id name)]
+                    evalCallMethodByRef (withThis (getInitialRegs()) obj) (obj, Name.meta_get) [newString (#id name)]
             in
                 case Mach.findProp props Name.meta_get of                    
                     SOME { state = Mach.MethodProp _, ... } => catchAll ()
@@ -730,7 +739,7 @@ and checkAndConvert (v:Mach.VAL)
                   | SOME n => n
             val class = needObj (getValue (getGlobalObject ()) className)
             (* FIXME: this will call back on itself! *)
-            val converted = evalCallMethodByRef class (class, Name.meta_convert) [v]
+            val converted = evalCallMethodByRef (withThis (getInitialRegs()) class) (class, Name.meta_convert) [v]
         in
             if isCompatible converted tyExpr
             then converted
@@ -820,7 +829,7 @@ and setValueOrVirtual (obj:Mach.OBJ)
                     end                    
                 fun catchAll _ = 
                     (* FIXME: need to use builtin Name.es object here, when that file exists. *)
-                    (evalCallMethodByRef obj (obj, Name.meta_set) [newString (#id name), v]; ())
+                    (evalCallMethodByRef (withThis (getInitialRegs()) obj) (obj, Name.meta_set) [newString (#id name), v]; ())
             in
                 if doVirtual
                 then 
@@ -1326,10 +1335,10 @@ and defaultValue (obj:Mach.OBJ)
                        then (Name.nons_toString, Name.nons_valueOf)
                        else (Name.nons_valueOf, Name.nons_toString)
         val va = if hasValue obj na 
-                 then evalCallMethodByRef obj (obj, na) []
+                 then evalCallMethodByRef (withThis (getInitialRegs()) obj) (obj, na) []
                  else Mach.Undef
         val vb = if not (isPrimitive va) andalso hasValue obj nb
-                 then evalCallMethodByRef obj (obj, nb) []
+                 then evalCallMethodByRef (withThis (getInitialRegs()) obj) (obj, nb) []
                  else va
     in
         if isPrimitive vb
@@ -1747,7 +1756,7 @@ and evalExpr (regs:Mach.REGS)
                         val f = evalExpr regs func
                     in
                         case f of 
-                            Mach.Object ob => evalCallExpr (#this regs) ob (args ())
+                            Mach.Object ob => evalCallExpr regs ob (args ())
                           | _ => throwTypeErr ["not a function"]
                     end
         in
@@ -1985,7 +1994,7 @@ and callGlobal (n:Ast.NAME)
         val _ = trace ["evaluator calling up to global function ", fmtName n]
         val global = getGlobalObject()
     in
-        evalCallMethodByRef global (global, n) args
+        evalCallMethodByRef (getInitialRegs()) (global, n) args
     end
 
 
@@ -2001,14 +2010,14 @@ and evalCallMethodByExpr (regs:Mach.REGS)
          *)
         val _ = trace [">>> evalCallMethodByExpr"]
         val (thisObj, r) = evalRefExprFull regs func true
-        val result = evalCallMethodByRef thisObj r args
+        val result = evalCallMethodByRef (withThis regs thisObj) r args
     in
         trace ["<<< evalCallMethodByExpr"];
         result
     end
 
 
-and evalCallMethodByRef (thisObj:Mach.OBJ) 
+and evalCallMethodByRef (regs:Mach.REGS) 
                         (r:REF)
                         (args:Mach.VAL list)
     : Mach.VAL = 
@@ -2017,17 +2026,17 @@ and evalCallMethodByRef (thisObj:Mach.OBJ)
         val _ = trace [">>> evalCallMethodByRef ", fmtName name]
         val Mach.Obj { props, ... } = obj
         val res = case (#state (Mach.getProp props name)) of
-                      Mach.NativeFunctionProp { func, ...} => func args
-                    | Mach.MethodProp f => invokeFuncClosure thisObj f args
+                      Mach.NativeFunctionProp { func, ...} => func regs args
+                    | Mach.MethodProp f => invokeFuncClosure (#this regs) f args
                     | _ => 
                       (trace ["evalCallMethodByRef: non-method property referenced, getting and calling"];
-                       evalCallExpr thisObj (needObj (getValue obj name)) args)
+                       evalCallExpr regs (needObj (getValue obj name)) args)
         val _ = trace ["<<< evalCallMethodByRef ", fmtName name]
     in
         res
     end
                                 
-and evalCallExpr (thisObj:Mach.OBJ) 
+and evalCallExpr (regs:Mach.REGS)
                  (fobj:Mach.OBJ) 
                  (args:Mach.VAL list) 
     : Mach.VAL =
@@ -2036,15 +2045,15 @@ and evalCallExpr (thisObj:Mach.OBJ)
         case !magic of 
             SOME (Mach.NativeFunction { func, ... }) => 
             (trace ["evalCallExpr: entering native function"]; 
-             func args)
+             func regs args)
           | SOME (Mach.Function f) => 
             (trace ["evalCallExpr: entering standard function"]; 
-             invokeFuncClosure thisObj f args)
+             invokeFuncClosure (#this regs) f args)
           | _ => 
             if hasOwnValue fobj Name.meta_invoke
             then
                 (trace ["evalCallExpr: redirecting through meta::invoke"];
-                 evalCallMethodByRef thisObj (fobj, Name.meta_invoke) args)
+                 evalCallMethodByRef regs (fobj, Name.meta_invoke) args)
             else error ["evalCallExpr: calling non-callable object"]
 
 
@@ -3701,45 +3710,32 @@ and parseFunctionFromArgs (args:Mach.VAL list)
     : (Ustring.STRING * Ast.EXPR) =
     let
         (*
-         * We synthesize a token stream here that feeds back into the parser.
+         * We synthesize a full function expression here, then feed it back into the parser.
          *)
         val args = if args = [] then [newString Ustring.empty] else args
-        val source = toUstring (List.last args)
+        val bodyStr = (toUstring (List.last args))
         val argArgs = List.take (args, (length args)-1)
-        val argIdents = map (fn x => Token.Identifier (toUstring x)) argArgs
-        val nloc = {file="<no filename>", span=({line=1,col=1},{line=1,col=1}), post_newline=false}
-        fun commaIdent i = [(Token.Comma, nloc), (i, nloc)]
-        val argList = case argIdents of
-                          [] => []
-                        | x::xs => 
-                          ((x, nloc) :: (List.concat (map commaIdent xs)))
-                           
-        (* FIXME: split lines *)
-        val lines = [Ustring.sourceFromUstring source] 
-
-        (* 
-         * FIXME: this won't work if there's a regexp, 
-         * because the token list won't be complete 
-         *)
-        fun notEof (Token.Eof, _) = false
-          | notEof _ = true
-        val lineTokens = List.filter notEof (Parser.lexLines lines)
-        val funcTokens = [(Token.Function, nloc), 
-                          (Token.LeftParen, nloc)]
-                         @ argList
-                         @ [(Token.RightParen, nloc)]
-                         @ [(Token.LeftBrace, nloc)]
-                         @ lineTokens
-                         @ [(Token.RightBrace, nloc)]
-                         @ [(Token.Eof, nloc)]
-                         
-        val (_,funcExpr) = Parser.functionExpression (funcTokens, 
-                                                      Parser.NOLIST, 
-                                                      Parser.ALLOWIN)
+        fun joinWithComma [] = []
+          | joinWithComma [x] = [x]
+          | joinWithComma (x::xs) = x :: Ustring.comma :: (joinWithComma xs)
+        val argStr = Ustring.append (joinWithComma (map (fn x => (toUstring x)) argArgs))
+        val fullStr = Ustring.append [Ustring.function_, 
+                                      Ustring.lparen, 
+                                      argStr,
+                                      Ustring.rparen, 
+                                      Ustring.lbrace,
+                                      bodyStr,
+                                      Ustring.rbrace]
+                      
+        val (_,funcExpr) = Parser.functionExpression 
+                               (Parser.lexLines 
+                                    [Ustring.sourceFromUstring fullStr], 
+                                Parser.NOLIST, 
+                                Parser.ALLOWIN)
                            
         val funcExpr = Defn.defExpr (Defn.topEnv()) funcExpr
     in
-        (source, funcExpr)
+        (fullStr, funcExpr)
     end
 
 
@@ -4436,23 +4432,37 @@ and evalPackage (regs:Mach.REGS)
     : Mach.VAL = 
     evalBlock regs (#block package)
 
-and evalProgram (prog:Ast.PROGRAM) 
+and evalProgram (regs:Mach.REGS)
+                (prog:Ast.PROGRAM)
+    : Mach.VAL = 
+    let
+        fun findHoistingScopeObj (Mach.Scope { object, temps, kind, parent, ...}) =
+            if kind = Mach.InstanceScope orelse
+               kind = Mach.ActivationScope orelse 
+               parent = NONE
+            then (object, temps)
+            else findHoistingScopeObj (valOf parent)
+        val (obj, temps) = findHoistingScopeObj (#scope regs)
+    in
+        (allocFixtures regs obj NONE temps (valOf (#fixtures prog));
+         map (evalPackage regs) (#packages prog);
+         evalBlock regs (#block prog))
+        handle ThrowException v => 
+               let
+                   val loc = !LogErr.loc
+                   val exnStr = Ustring.toAscii (toUstring v)
+               in
+                   LogErr.setLoc loc;
+                   error ["uncaught exception: ", Ustring.toAscii (toUstring v)]
+               end
+    end
+and evalTopProgram (prog:Ast.PROGRAM) 
     : Mach.VAL = 
     let
         val regs = getInitialRegs ()
-        val res = ((LogErr.setLoc NONE;
-                    resetProfile ();
-                    allocScopeFixtures regs (valOf (#fixtures prog));
-                    map (evalPackage regs) (#packages prog);
-                    evalBlock regs (#block prog))
-                   handle ThrowException v => 
-                          let
-                              val loc = !LogErr.loc
-                              val exnStr = Ustring.toAscii (toUstring v)
-                          in
-                              LogErr.setLoc loc;
-                              error ["uncaught exception: ", Ustring.toAscii (toUstring v)]
-                          end)
+        val _ = LogErr.setLoc NONE
+        val _ = resetProfile ()
+        val res = evalProgram regs prog
     in
         case !doProfile of 
             NONE => res

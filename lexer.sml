@@ -170,7 +170,7 @@ fun makeTokenList (filename : string, reader : unit -> Ustring.SOURCE) : ((TOKEN
                     val digits = (advanceIndex 3; getHexDigits [])
                     val numDigits = length digits
                 in
-                    if (numDigits < 1) orelse (5 < numDigits)
+                    if (numDigits < 1) orelse (6 < numDigits)
                     then error ["LexError:  illegal size for bracketed escape sequence"]
                     else (0, hexToWord digits)
                 end

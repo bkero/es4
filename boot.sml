@@ -123,7 +123,7 @@ fun evalFiles fs =
     let 
         fun eval (f, p) = 
             (trace ["evaluating boot file ", f]; 
-             Eval.evalProgram p)
+             Eval.evalTopProgram p)
     in
         map eval fs
     end
@@ -235,6 +235,8 @@ fun boot _ =
 
                                     "builtins/Shell.es",   (* before RegExp, for debugging *)
                                     
+                                    "builtins/UnicodeClasses.es",
+                                    "builtins/UnicodeCasemapping.es",
                                     "builtins/UnicodeTbl.es",
                                     "builtins/Unicode.es",
                                     "builtins/RegExpCompiler.es",
@@ -269,9 +271,9 @@ fun boot _ =
 
         evalFiles otherProgs;
 
-        Eval.evalProgram residualObjectProg;
-        Eval.evalProgram residualClassProg;
-        Eval.evalProgram residualFunProg;
+        Eval.evalTopProgram residualObjectProg;
+        Eval.evalTopProgram residualClassProg;
+        Eval.evalTopProgram residualFunProg;
 
         Eval.booting := false;
         Eval.resetStack ();

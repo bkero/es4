@@ -455,14 +455,12 @@ package RegExpInternals
 
     class CharsetUnicodeClass! extends Charset
     {
-        function CharsetUnicodeClass(name : string) : name=name {}
+        function CharsetUnicodeClass(tester: function(uint):boolean) : tester=tester {}
 
-        override function match(ctx: Context, c : string) : boolean {
-            // FIXME: implement this.  Ticket #45.
-            throw new Error("character set not yet implemented: " + name);
-        }
+        override function match(ctx: Context, c : string) : boolean
+            tester(c.charCodeAt(0));
 
-        var name : string; // FIXME: const.  Ticket #24.
+        var tester: function(uint):boolean; // FIXME: const.  Ticket #24.
     }
 
     const charset_linebreak : Charset = new CharsetAdhoc(Unicode.linebreaks);
@@ -478,43 +476,43 @@ package RegExpInternals
     const charset_notword : Charset = new CharsetComplement(charset_word);
 
     const unicode_named_classes = {
-        "L":  new CharsetUnicodeClass("Letter"),
-        "Lu": new CharsetUnicodeClass("Letter, Uppercase"),
-        "Ll": new CharsetUnicodeClass("Letter, Lowercase"),
-        "Lt": new CharsetUnicodeClass("Letter, Titlecase"),
-        "Lm": new CharsetUnicodeClass("Letter, Modifier"),
-        "Lo": new CharsetUnicodeClass("Letter, Other"),
-        "M":  new CharsetUnicodeClass("Mark"),
-        "Mn": new CharsetUnicodeClass("Mark, Nonspacing"),
-        "Mc": new CharsetUnicodeClass("Mark, Spacing Combining"),
-        "Me": new CharsetUnicodeClass("Mark, Enclosing"),
-        "N":  new CharsetUnicodeClass("Number"),
-        "Nd": new CharsetUnicodeClass("Number, Decimal Digit"),
-        "Nl": new CharsetUnicodeClass("Number, Letter"),
-        "No": new CharsetUnicodeClass("Number, Other"),
-        "P":  new CharsetUnicodeClass("Punctuation"),
-        "Pc": new CharsetUnicodeClass("Punctuation, Connector"),
-        "Pd": new CharsetUnicodeClass("Punctuation, Dash"),
-        "Ps": new CharsetUnicodeClass("Punctuation, Open"),
-        "Pe": new CharsetUnicodeClass("Punctuation, Close"),
-        "Pi": new CharsetUnicodeClass("Punctuation, Initial quote (may behave like Ps or Pe depending on usage)"),
-        "Pf": new CharsetUnicodeClass("Punctuation, Final quote (may behave like Ps or Pe depending on usage)"),
-        "Po": new CharsetUnicodeClass("Punctuation, Other"),
-        "S":  new CharsetUnicodeClass("Symbol"),
-        "Sm": new CharsetUnicodeClass("Symbol, Math"),
-        "Sc": new CharsetUnicodeClass("Symbol, Currency"),
-        "Sk": new CharsetUnicodeClass("Symbol, Modifier"),
-        "So": new CharsetUnicodeClass("Symbol, Other"),
-        "Z":  new CharsetUnicodeClass("Separator"),
-        "Zs": new CharsetUnicodeClass("Separator, Space"),
-        "Zl": new CharsetUnicodeClass("Separator, Line"),
-        "Zp": new CharsetUnicodeClass("Separator, Paragraph"),
-        "C":  new CharsetUnicodeClass("Other"),
-        "Cc": new CharsetUnicodeClass("Other, Control"),
-        "Cf": new CharsetUnicodeClass("Other, Format"),
-        "Cs": new CharsetUnicodeClass("Other, Surrogate"),
-        "Co": new CharsetUnicodeClass("Other, Use"),
-        "Cn": new CharsetUnicodeClass("Other, Not Assigned (no characters in the file have this property)") 
+        "L":  new CharsetUnicodeClass(Unicode.isUnicodeL),
+        "Lu": new CharsetUnicodeClass(Unicode.isUnicodeLu),
+        "Ll": new CharsetUnicodeClass(Unicode.isUnicodeLl),
+        "Lt": new CharsetUnicodeClass(Unicode.isUnicodeLt),
+        "Lm": new CharsetUnicodeClass(Unicode.isUnicodeLm),
+        "Lo": new CharsetUnicodeClass(Unicode.isUnicodeLo),
+        "M":  new CharsetUnicodeClass(Unicode.isUnicodeM),
+        "Mn": new CharsetUnicodeClass(Unicode.isUnicodeMn),
+        "Mc": new CharsetUnicodeClass(Unicode.isUnicodeMc),
+        "Me": new CharsetUnicodeClass(Unicode.isUnicodeMe),
+        "N":  new CharsetUnicodeClass(Unicode.isUnicodeN),
+        "Nd": new CharsetUnicodeClass(Unicode.isUnicodeNd),
+        "Nl": new CharsetUnicodeClass(Unicode.isUnicodeNl),
+        "No": new CharsetUnicodeClass(Unicode.isUnicodeNo),
+        "P":  new CharsetUnicodeClass(Unicode.isUnicodeP),
+        "Pc": new CharsetUnicodeClass(Unicode.isUnicodePc),
+        "Pd": new CharsetUnicodeClass(Unicode.isUnicodePd),
+        "Ps": new CharsetUnicodeClass(Unicode.isUnicodePs),
+        "Pe": new CharsetUnicodeClass(Unicode.isUnicodePe),
+        "Pi": new CharsetUnicodeClass(Unicode.isUnicodePi),
+        "Pf": new CharsetUnicodeClass(Unicode.isUnicodePf),
+        "Po": new CharsetUnicodeClass(Unicode.isUnicodePo),
+        "S":  new CharsetUnicodeClass(Unicode.isUnicodeS),
+        "Sm": new CharsetUnicodeClass(Unicode.isUnicodeSm),
+        "Sc": new CharsetUnicodeClass(Unicode.isUnicodeSc),
+        "Sk": new CharsetUnicodeClass(Unicode.isUnicodeSk),
+        "So": new CharsetUnicodeClass(Unicode.isUnicodeSo),
+        "Z":  new CharsetUnicodeClass(Unicode.isUnicodeZ),
+        "Zs": new CharsetUnicodeClass(Unicode.isUnicodeZs),
+        "Zl": new CharsetUnicodeClass(Unicode.isUnicodeZl),
+        "Zp": new CharsetUnicodeClass(Unicode.isUnicodeZp),
+        "C":  new CharsetUnicodeClass(Unicode.isUnicodeC),
+        "Cc": new CharsetUnicodeClass(Unicode.isUnicodeCc),
+        "Cf": new CharsetUnicodeClass(Unicode.isUnicodeCf),
+        "Cs": new CharsetUnicodeClass(Unicode.isUnicodeCs),
+        "Co": new CharsetUnicodeClass(Unicode.isUnicodeCo),
+        "Cn": new CharsetUnicodeClass(Unicode.isUnicodeCn) 
     };
 
     function unicodeClass(name : string, complement : boolean) : Charset? {

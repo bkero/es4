@@ -179,7 +179,13 @@ val zero                     = fromString "0"
 val asterisk                 = fromString "*"
 val dollar                   = fromString "$"
 val dot                      = fromString "."
+val comma                    = fromString ","
 val dash                     = fromString "-"
+val lparen                   = fromString "("
+val rparen                   = fromString ")"
+val lbrace                   = fromString "{"
+val rbrace                   = fromString "}"
+
 val undefined_               = fromString "undefined"
 val temp_                    = fromString "temp"
 val Object_                  = fromString "Object"
@@ -327,5 +333,6 @@ val false_                   = fromString "false"
 val x_                       = fromString "x"
 
 val emptySource              = []
+
 
 end
