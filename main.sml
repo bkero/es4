@@ -207,16 +207,16 @@ fun eval doBoot argvRest =
       | LogErr.UnimplError e => (print ("**ERROR** UnimplError: " ^ e ^ "\n"); 1)
     end
 
-fun main' (doBoot: bool) (argv0:string, argvRest:string list) =
+fun main' (argv0:string, argvRest:string list) =
     BackTrace.monitor
         (fn () =>
             (case argvRest of
-                 ("-r"::argvRest) => (repl doBoot argvRest; 0)
-               | ("-p"::argvRest) => (parse doBoot argvRest; 0)
-               | ("-d"::argvRest) => (define doBoot argvRest; 0)
-               | ("-v"::argvRest) => (verify doBoot argvRest; 0)
-	           | ("-e"::argvRest) => eval doBoot argvRest
-               | _ => (define doBoot argvRest; 0))
+                 ("-r"::argvRest) => (repl false argvRest; 0)
+               | ("-p"::argvRest) => (parse false argvRest; 0)
+               | ("-d"::argvRest) => (define false argvRest; 0)
+               | ("-v"::argvRest) => (verify false argvRest; 0)
+	           | ("-e"::argvRest) => eval false argvRest
+               | _ => (define false argvRest; 0))
             handle 
             LogErr.LexError e => (print ("**ERROR** LexError: " ^ e ^ "\n"); 1)
           | LogErr.ParseError e => (print ("**ERROR** ParseError: " ^ e ^ "\n"); 1)
@@ -232,10 +232,9 @@ fun main' (doBoot: bool) (argv0:string, argvRest:string list) =
 fun main (argv0:string, argvRest:string list) =
     BackTrace.monitor 
         (fn () =>
-            (case argvRest of
-                 ("-dump"::filename::argvRest) => (startup true [];
-                                                   SMLofNJ.exportFn (filename, main' false);
-                                                   0)
-               | _ => main' true (argv0, argvRest)))
+            (startup true [];
+             (case argvRest of
+                  ["-dump", filename] => (SMLofNJ.exportFn (filename, main'); 0)
+                | _ => main' (argv0, argvRest))))
 
 end
