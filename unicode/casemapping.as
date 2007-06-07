@@ -81,7 +81,7 @@ package
     print("  var upperTbl = [];");
     print("  var lowerTbl = [];");
 
-    print("  function initUpper() {");
+    print("  function initUpperTbl() {");
     print("    let u : [] = upperTbl;");
     print("    if (u.length > 0) return;");
     for ( i=0 ; i < toupper.length ; i++ ) {
@@ -91,7 +91,7 @@ package
     }
     print("  }");
 
-    print("  function initLower() {");
+    print("  function initLowerTbl() {");
     print("    let l : [] = lowerTbl;");
     print("    if (l.length > 0) return;");
     for ( i=0 ; i < tolower.length ; i++ ) {
