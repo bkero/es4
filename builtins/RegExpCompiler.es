@@ -442,7 +442,7 @@ package RegExpInternals
             function unicodeSet(invert : boolean) : Charset {
                 let name : string = identifier();
                 match("}");
-                let (cls : Charset? = unicodeClass(name, invert));
+                let cls : Charset? = unicodeClass(name, invert);
                 if (cls === null)
                     fail( ReferenceError, "Unsupported unicode character class " + name );
                 return cls;
