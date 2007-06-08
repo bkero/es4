@@ -134,6 +134,7 @@ datatype PRAGMA =
          Cls of
            { name: NAME,
              nonnullable: bool,
+             dynamic: bool,
              extends: NAME option,
              implements: NAME list,
              classFixtures: FIXTURES,
@@ -227,7 +228,7 @@ datatype PRAGMA =
              nonnullable: bool, 
              typeParams: IDENT list, 
              ty: TYPE_EXPR,
-             isDynamic: bool }
+             dynamic: bool }
 
      and STMT =
          EmptyStmt

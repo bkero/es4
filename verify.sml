@@ -104,36 +104,43 @@ fun resolveExprToNamespace (env:ENV)
 
 (****************************** standard types *************************)
 
-(* TODO: what is the proper way to resolve these built-ins? *)
-(* FIXME: change Ast to have a variant of TypeName(?) that should be looked up in the global class table *)
-fun instanceType (n:Ast.NAME) : Ast.TYPE_EXPR
+fun bootInstanceType (n:Ast.NAME) : Ast.TYPE_EXPR
   = Ast.InstanceType { name = n,
                        nonnullable = false,
                        typeParams = [],
                        (* FIXME: what is the 'ty' field here anyways? *)
                        ty = Ast.SpecialType Ast.Any,
                        (* FIXME: what is 'isDynamic' here? Should we get it from the classes? *)
-                       isDynamic = false }
+                       dynamic = false }
 
-val BooleanType   = instanceType Name.nons_Boolean
-val booleanType   = instanceType Name.intrinsic_boolean
+fun instanceType (n:Ast.NAME) : Ast.TYPE_EXPR =
+    bootInstanceType n
+(*
+         case Defn.getFixture (!Defn.topFixtures) (Ast.PropName n) of
+                Ast.ClassFixture (Ast.Cls cls) => (#instanceType cls)
+              | Ast.InterfaceFixture (Ast.Iface iface) => (#instanceType iface)
+              | _ => error ["type not an instance type ", LogErr.name n]
+*)
 
-val NumberType    = instanceType Name.nons_Number
+val BooleanType   = bootInstanceType Name.nons_Boolean
+val booleanType   = bootInstanceType Name.intrinsic_boolean
+
+val NumberType    = bootInstanceType Name.nons_Number
+val doubleType    = bootInstanceType Name.intrinsic_double
+val decimalType   = bootInstanceType Name.intrinsic_decimal
+val intType       = bootInstanceType Name.intrinsic_int
+val uintType      = bootInstanceType Name.intrinsic_uint
+
+val StringType    = bootInstanceType Name.nons_String
+val stringType    = bootInstanceType Name.intrinsic_string
+
+val RegExpType    = bootInstanceType Name.nons_RegExp
+val ErrorType     = bootInstanceType Name.nons_Error
+val NamespaceType = bootInstanceType Name.intrinsic_Namespace
+val NameType      = bootInstanceType Name.intrinsic_Name
+val TypeType      = bootInstanceType Name.intrinsic_Type
+
 val NumericTypeName   = Name.typename Name.intrinsic_Numeric
-val doubleType    = instanceType Name.intrinsic_double
-val decimalType   = instanceType Name.intrinsic_decimal
-val intType       = instanceType Name.intrinsic_int
-val uintType      = instanceType Name.intrinsic_uint
-
-val StringType    = instanceType Name.nons_String
-val stringType    = instanceType Name.intrinsic_string
-
-val RegExpType    = instanceType Name.nons_RegExp
-val ErrorType     = instanceType Name.nons_Error
-val NamespaceType = instanceType Name.intrinsic_Namespace
-val NameType      = instanceType Name.intrinsic_Name
-val TypeType      = instanceType Name.intrinsic_Type
-
 val undefinedType = Ast.SpecialType Ast.Undefined
 val nullType      = Ast.SpecialType Ast.Null
 val anyType       = Ast.SpecialType Ast.Any
@@ -184,7 +191,7 @@ type TYPE_VALUE = Ast.TYPE_EXPR  (* Invariant: normalized *)
            { name: NAME, 
              typeParams: IDENT list, 
              ty: TYPE_EXPR,
-             isDynamic: bool }
+             dynamic: bool }
        | NominalType of NAME
 
 and excludes
@@ -321,7 +328,7 @@ fun verifyTypeExpr (env:ENV)
                                * not to be working at the moment. Maybe the definer should fill it in? 
                                *)
                               | Ast.ClassFixture (Ast.Cls cls) => instanceType (#name cls)
-                              | Ast.InterfaceFixture (Ast.Iface iface) => instanceType (#name iface)
+                              | Ast.InterfaceFixture (Ast.Iface iface) => (#instanceType iface)
                               | _ => case (#ribs env) of 
                                          (r :: rs) => tryRibs rs
                                        | [] => error ["multiname ", LogErr.multiname {nss=nss, id=id}, 
@@ -432,8 +439,8 @@ and getClass (t:Ast.NAME)
         end
       | _ => error ["getClass returned non-class fixture for ", LogErr.name t]
 
-and instanceOf (t0:Ast.NAME) 
-               (t:Ast.NAME) 
+and instanceOf (t0:Ast.NAME) (* derived *)
+               (t:Ast.NAME)  (* base *)
     : bool =
     let
         fun search n = 
@@ -715,7 +722,7 @@ fun findConversion (ty1:TYPE_VALUE)
     in
         tryToConvertTo ty2
     end
-              
+
 
 fun checkConvertible (ty1:TYPE_VALUE) 
                      (ty2:TYPE_VALUE)
@@ -1320,7 +1327,7 @@ and verifyFixture (env:ENV)
         case f of
          Ast.NamespaceFixture ns =>
          Ast.NamespaceFixture ns
-       | Ast.ClassFixture (Ast.Cls {name, nonnullable, extends, implements, classFixtures, instanceFixtures,
+       | Ast.ClassFixture (Ast.Cls {name, nonnullable, dynamic, extends, implements, classFixtures, instanceFixtures,
                                     instanceInits, constructor, classType, instanceType }) =>
          let
              val classFixtures = verifyFixtures env classFixtures
@@ -1340,7 +1347,7 @@ and verifyFixture (env:ENV)
                                                         func = func })
                                    end
          in
-             Ast.ClassFixture (Ast.Cls {name=name, nonnullable=nonnullable, extends=extends, 
+             Ast.ClassFixture (Ast.Cls {name=name, nonnullable=nonnullable, dynamic=dynamic, extends=extends, 
                                         implements=implements, classFixtures=classFixtures, 
                                         instanceFixtures=instanceFixtures,
                                         instanceInits=instanceInits, 
@@ -1507,12 +1514,12 @@ and verifyIdentExpr (env as {env,this,...}:RIB)
 	case ide of
 	    Ast.QualifiedIdentifier { qual, ident } =>
 	    let in
-		checkCompatible (verifyExpr env qual) namespaceType;
+		checkCompatible (verifyExpr env qual) NamespaceType;
 		anyType
 	    end	    
 	  | Ast.QualifiedExpression { qual, expr } =>
 	    let in
-		checkCompatible (verifyExpr env qual) namespaceType;
+		checkCompatible (verifyExpr env qual) NamespaceType;
 		checkCompatible (verifyExpr env qual) stringType;
 		anyType
 	    end
@@ -1536,12 +1543,12 @@ and verifyExpr (env as {env,this,...}:RIB)
 	       (e:EXPR) 
     : Ast.TYPE_EXPR = 
     let
-    in 
+    in
       TextIO.print ("type checking expr: env len " ^ (Int.toString (List.length env)) ^"\n");
       Pretty.ppExpr e;
       TextIO.print "\n";
       case e of
-	LiteralExpr LiteralNull => nullType
+        LiteralExpr LiteralNull => nullType
       | LiteralExpr (LiteralInt _) => intType
       | LiteralExpr (LiteralUInt _) => uintType
       | LiteralExpr (LiteralDecimal _) => decimalType
@@ -1827,7 +1834,7 @@ and verifyBinaryExpr (env:RIB) (bop:BINOP, lhs:EXPR, rhs:EXPR) =
 
 and verifyBinaryTypeExpr (env:RIB) 
 			 (bop:BINTYPEOP, arg:EXPR, t:Ast.TYPE_EXPR) =
-    let val argType = verifyExpr env arg	
+    let val argType = verifyExpr env arg
     in
 	verifyTypeExpr env t;
 	case bop of
@@ -1940,6 +1947,7 @@ and verifyStmt (env as {this,env,lbls:(Ast.IDENT list),retTy}:RIB) (stmt:STMT) =
 		else List.last (List.map (fn e => verifyExpr env' e) exprs)
 	    end
 *)
+
     in
   	verifyStmts env' init;
 	checkCompatible (verifyExpr env' cond) booleanType;
@@ -2065,12 +2073,14 @@ and verifyDefns env ([]:DEFN list) : (TYPE_ENV * int list) = ([], [])
 
 
 and verifyBlock (env as {env,...}) 
-		(Block {pragmas,defns=_,body,head,loc}) =
-    let val SOME (fixtures,inits) = head 
-	val extensions = verifyFixtures env fixtures
+
+                (Block {pragmas,defns=_,body,head,loc}) =
+let
+     val SOME (fixtures,inits) = head 
+        val extensions = verifyFixtures env fixtures
         val env' = withEnvExtn env extensions
     in
-	verifyStmts env' body
+        verifyStmts env' body
     end
 
 fun verifyProgram (prog as { packages, fixtures, block }) =    

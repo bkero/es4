@@ -78,7 +78,7 @@ run-dumped:
 
 # Obsolete now?
 run: 
-	sml @SMLload=es4-init.heap $(TRACE) -e $(FILE)
+	sml @SMLload=es4-init.heap -e $(TRACE) $(FILE)
 
 repl: es4-dump.heap.$(HEAP_SUFFIX)
 	perl bin/repl-with-readline.pl

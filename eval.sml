@@ -1637,7 +1637,7 @@ and toInt32 (v:Mach.VAL)
 
 and toUInt32 (v:Mach.VAL) 
     : Word32.word =
-    let 
+    let
         val v' = toNumeric v
     in
         if (isNaN v' orelse

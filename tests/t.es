@@ -1,3 +1,3 @@
 interface I! {}
 class A implements I {}
-var x : I? = null
+var x : I! = null

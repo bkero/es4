@@ -615,6 +615,11 @@ and defInterface (env: ENV)
         val (superInterfaces, inheritedFixtures) = resolveInterfaces env extends
         val (unhoisted,instanceFixtures,_) = defDefns env [] [] [] instanceDefns
         val instanceFixtures = inheritFixtures inheritedFixtures instanceFixtures
+        val instanceType = Ast.InstanceType {name=name, 
+                                             nonnullable=nonnullable, 
+                                             typeParams=[],
+                                             ty=Ast.SpecialType Ast.Any,
+                                             dynamic=false} (* interfaces are always non-dynamic *)
         val iface = Ast.Iface { name=name, nonnullable=nonnullable, extends=superInterfaces, instanceFixtures=instanceFixtures, 
                                 instanceType = Ast.SpecialType Ast.Any }
     in
@@ -926,7 +931,7 @@ and implementFixtures (base:Ast.FIXTURES)
 
 and resolveClass (env:ENV)
                  ({extends,implements,...}: Ast.CLASS_DEFN)
-                 (Ast.Cls {name,nonnullable,classFixtures,instanceFixtures,instanceInits,
+                 (Ast.Cls {name,nonnullable,dynamic,classFixtures,instanceFixtures,instanceInits,
                    constructor,classType,instanceType,...}:Ast.CLS)
     : Ast.CLS =
     let
@@ -936,6 +941,7 @@ and resolveClass (env:ENV)
     in
         Ast.Cls {name=name, extends=extendsName,
                  nonnullable=nonnullable,
+                 dynamic=dynamic,
                  implements=implementsNames,
                  classFixtures=classFixtures,
                  instanceFixtures=instanceFixtures,
@@ -1047,7 +1053,7 @@ and analyzeClass (env:ENV)
                  (cdef:Ast.CLASS_DEFN)
     : Ast.CLS =
     case cdef of
-        {ns, ident, instanceDefns, instanceStmts, classDefns, ctorDefn, nonnullable, (* block=Ast.Block { pragmas, body, ... },*) ...} =>
+        {ns, ident, instanceDefns, instanceStmts, classDefns, ctorDefn, nonnullable, dynamic, ...} =>
         let
 
             (*
@@ -1088,9 +1094,16 @@ and analyzeClass (env:ENV)
             val (fxtrs,inits) = ListPair.unzip(map initsFromStmt instanceStmts)
             val instanceInits = (List.concat fxtrs, List.concat inits)
 
+            val instanceType = Ast.InstanceType {name=name, 
+                                                 nonnullable=nonnullable, 
+                                                 typeParams=[],
+                                                 ty=Ast.SpecialType Ast.Any,
+                                                 dynamic=dynamic}
+
         in
             Ast.Cls {name=name,
                      nonnullable=nonnullable,
+                     dynamic=dynamic,
                      extends = NONE,
                      implements = [],                     
                      classFixtures = classFixtures,
