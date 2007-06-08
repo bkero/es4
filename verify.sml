@@ -55,6 +55,17 @@ fun withRib { returnType, strict, ribs} extn =
 
 (* Local tracing machinery *)
 
+structure NmKey = struct type ord_key = Ast.NAME val compare = NameKey.compare end
+structure NmMap = SplayMapFn (NmKey);
+
+structure NmVecKey = struct type ord_key = (Ast.NAME vector) val compare = (Vector.collate NameKey.compare) end
+structure NmVecMap = SplayMapFn (NmVecKey);
+
+val (fixtureCache:(Ast.FIXTURE NmMap.map) ref) = ref NmMap.empty
+val (instanceOfCache:(bool NmVecMap.map) ref) = ref NmVecMap.empty
+val cachesz = 1024
+
+
 val doTrace = ref false
 val doTraceProg = ref false
 fun trace ss = if (!doTrace) then LogErr.log ("[verify] " :: ss) else ()
@@ -439,26 +450,44 @@ fun funcSigType (env:ENV)
 
 (************************* Compatibility *********************************)
 
+and getTopFixture (n:Ast.NAME) 
+    : Ast.FIXTURE = 
+    let
+        val c = !fixtureCache
+    in
+        case NmMap.find (c, n) of
+            NONE => 
+            let
+                val v = Defn.getFixture (!Defn.topFixtures) (Ast.PropName n)
+            in
+                if (NmMap.numItems c) < cachesz
+                then (fixtureCache := NmMap.insert (c, n, v); v)
+                else v
+            end
+          | SOME v => v
+    end
+    
+
 and isClass (t:Ast.NAME)
     : bool =
-    case Defn.getFixture (!Defn.topFixtures) (Ast.PropName t) of 
+    case getTopFixture t of 
         Ast.ClassFixture cls => true
       | _ => false
 
 and isInterface (t:Ast.NAME)
     : bool =
-    case Defn.getFixture (!Defn.topFixtures) (Ast.PropName t) of 
+    case getTopFixture t of 
         Ast.InterfaceFixture _ => true
       | _ => false
 
 and getClass (t:Ast.NAME)
     : Ast.CLS =
-    case Defn.getFixture (!Defn.topFixtures) (Ast.PropName t) of 
+    case getTopFixture t of 
         Ast.ClassFixture cls => cls
       | Ast.InterfaceFixture iface =>   (* FIXME: not sure what to do here. getClass gets called when a nominal
                                             type is used in various ways. Just return class Object for now *)
         let
-            val Ast.ClassFixture objCls = Defn.getFixture (!Defn.topFixtures) (Ast.PropName Name.nons_Object)
+            val Ast.ClassFixture objCls = getTopFixture Name.nons_Object
         in
             objCls
         end
@@ -468,6 +497,7 @@ and instanceOf (t0:Ast.NAME)
                (t:Ast.NAME) 
     : bool =
     let
+        val c = !instanceOfCache
         fun search n = 
             if Mach.nameEq n t
             then true
@@ -480,17 +510,20 @@ and instanceOf (t0:Ast.NAME)
                 in
                     List.exists search bases
                 end
+        val k = #[t0,t]
     in
-        search t0
+        case NmVecMap.find (c, k) of
+            NONE => 
+            let
+                val v = search t0
+            in
+                if (NmVecMap.numItems c) < cachesz
+                then (instanceOfCache := NmVecMap.insert (c, k, v); v)
+                else v
+            end
+          | SOME v => v
     end
 
-and isNullable (t:Ast.NAME) 
-    : bool = 
-    let
-        val Ast.Cls cls = getClass t
-    in
-        not (#nonnullable cls)
-    end
 
 fun normalize (t:Ast.TYPE_EXPR) 
     : Ast.TYPE_EXPR = 
