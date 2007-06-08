@@ -557,6 +557,8 @@ package
                     if (A.length === lim)
                         return A;
                 }
+
+                q = p;
             }
 
             /* 28-30 */
