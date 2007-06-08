@@ -1,5 +1,37 @@
 (* -*- mode: sml; mode: font-lock; tab-width: 4; insert-tabs-mode: nil; indent-tabs-mode: nil -*- *)
 structure Eval = struct 
+(*
+ * The following licensing terms and conditions apply and must be
+ * accepted in order to use the Reference Implementation:
+ * 
+ *    1. This Reference Implementation is made available to all
+ * interested persons on the same terms as Ecma makes available its
+ * standards and technical reports, as set forth at
+ * http://www.ecma-international.org/publications/.
+ * 
+ *    2. All liability and responsibility for the implementation or other
+ * use of this Reference Implementation rests with the implementor, and
+ * not with any of the parties who contribute to, or who own or hold any
+ * copyright in, this Reference Implementation.
+ * 
+ *    3. THIS REFERENCE IMPLEMENTATION IS PROVIDED BY THE COPYRIGHT
+ * HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED
+ * WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
+ * MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+ * DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
+ * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+ * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+ * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR
+ * BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+ * WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE
+ * OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
+ * IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ * 
+ * End of Terms and Conditions
+ * 
+ * Copyright (c) 2007 Adobe Systems Inc., The Mozilla Foundation, Opera
+ * Software ASA, and others.
+ *)
 
 (* Local tracing, stack recording and profiling machinery *)
 
@@ -613,6 +645,7 @@ and asArrayIndex (v:Mach.VAL)
            | _ => 0wxFFFFFFFF)
       | _ => 0wxFFFFFFFF
 
+
 and hasOwnValue (obj:Mach.OBJ) 
                 (n:Ast.NAME) 
     : bool = 
@@ -621,18 +654,25 @@ and hasOwnValue (obj:Mach.OBJ)
         Mach.hasProp props n
 
 
-and hasValue (obj:Mach.OBJ) 
-             (n:Ast.NAME) 
-    : bool = 
+and findValue (obj:Mach.OBJ)
+              (n:Ast.NAME)
+    : REF option = 
     if hasOwnValue obj n
-    then true
+    then SOME (obj, n)
     else (case obj of 
               Mach.Obj { proto, ... } => 
               case (!proto) of 
-                  Mach.Object p => hasValue p n
-                | _ => false)
+                  Mach.Object p => findValue p n
+                | _ => NONE)
 
 
+and hasValue (obj:Mach.OBJ) 
+             (n:Ast.NAME) 
+    : bool = 
+    case findValue obj n of
+        NONE => false
+      | _ => true
+             
 (* 
  * *Similar to* ES-262-3 8.7.1 GetValue(V), there's 
  * no Reference type in ES4.
@@ -691,6 +731,7 @@ and getValueOrVirtual (obj:Mach.OBJ)
                | Mach.ValProp v => v)
           | NONE => 
             let
+                val _ = trace ["in getValueOrVirtual, trying catchall meta::get(", fmtName name, ")"]
                 fun catchAll _ = 
                     (* FIXME: need to use builtin Name.es object here, when that file exists. *)
                     evalCallMethodByRef (withThis (getInitialRegs()) obj) (obj, Name.meta_get) [newString (#id name)]
@@ -2943,14 +2984,18 @@ and evalRefExprFull (regs:Mach.REGS)
                            | Mach.Null => throwRefErr0 ["object reference on null value"]
                            | Mach.Undef => throwRefErr0 ["object reference on undefined value"]
                 val _ = LogErr.setLoc loc
-                val nameOpt = resolveName ob nomn
+                val refOpt = resolveName ob nomn
                 val _ = LogErr.setLoc loc
-                val r = case nameOpt of 
-                            SOME n => (ob, n)
+                val r = case refOpt of 
+                            SOME ro => ro
                           | NONE => if errIfNotFound
                                     then throwRefErr ["unresolved object reference ", nomnToStr nomn]
                                     else defaultRef ob nomn
                 val _ = LogErr.setLoc loc
+                val (holder, n) = r
+                val _ = trace ["resolved object ref to ", fmtName n, 
+                               " on object #", Int.toString (getObjId holder), 
+                               " with this=#", Int.toString (getObjId ob)]
             in
                 (ob, r)
             end
@@ -2995,7 +3040,7 @@ and resolveOnScopeChain (scope:Mach.SCOPE)
          *)
         fun tryProtoChain (Mach.Scope {object, parent, ...}) = 
             case resolveName object nomn of
-                SOME name => SOME (object, name)
+                SOME r => SOME r
               | NONE => case parent of 
                             NONE => NONE
                           | SOME p => tryProtoChain p
@@ -3025,10 +3070,13 @@ and resolveOnScopeChain (scope:Mach.SCOPE)
               | NONE => tryProtoChain scope
     end
 
-
+(* 
+ * Scans provided object and prototype chain looking for a slot that
+ * matches name (or multiname). Returns a REF to the exact object found.
+ *)
 and resolveName (obj:Mach.OBJ) 
                 (nomn:NAME_OR_MULTINAME) 
-    : Ast.NAME option = 
+    : REF option = 
     let 
         fun matchFixedBinding (Mach.Obj {props, ...}) n nss
             = Mach.matchProps true props n nss
@@ -3040,20 +3088,14 @@ and resolveName (obj:Mach.OBJ)
               | _ => NONE
     in
         case nomn of 
-            Name name => 
-            if hasValue obj name
-            then SOME name
-            else NONE
+            Name name => findValue obj name
           | Multiname mname => 
             let
                 val fixedRefOpt:(REF option) = Multiname.resolve mname obj matchFixedBinding getObjProto
-                val finalRefOpt:(REF option) = case fixedRefOpt of                                            
-                                                   NONE => Multiname.resolve mname obj matchBinding getObjProto
-                                                 | ro => ro                                         
             in
-                case finalRefOpt of
-                    NONE => NONE
-                  | SOME (_, name) => SOME name
+                case fixedRefOpt of                                            
+                    NONE => Multiname.resolve mname obj matchBinding getObjProto
+                  | ro => ro                                         
             end
     end
 

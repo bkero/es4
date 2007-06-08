@@ -1,4 +1,36 @@
 (* -*- mode: sml; mode: font-lock; tab-width: 4; insert-tabs-mode: nil; indent-tabs-mode: nil -*- *)
+(*
+ * The following licensing terms and conditions apply and must be
+ * accepted in order to use the Reference Implementation:
+ * 
+ *    1. This Reference Implementation is made available to all
+ * interested persons on the same terms as Ecma makes available its
+ * standards and technical reports, as set forth at
+ * http://www.ecma-international.org/publications/.
+ * 
+ *    2. All liability and responsibility for the implementation or other
+ * use of this Reference Implementation rests with the implementor, and
+ * not with any of the parties who contribute to, or who own or hold any
+ * copyright in, this Reference Implementation.
+ * 
+ *    3. THIS REFERENCE IMPLEMENTATION IS PROVIDED BY THE COPYRIGHT
+ * HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED
+ * WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
+ * MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+ * DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
+ * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+ * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+ * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR
+ * BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+ * WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE
+ * OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
+ * IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ * 
+ * End of Terms and Conditions
+ * 
+ * Copyright (c) 2007 Adobe Systems Inc., The Mozilla Foundation, Opera
+ * Software ASA, and others.
+ *)
 structure Verify = struct
 
 open LogErr
@@ -22,6 +54,17 @@ fun withRib { returnType, strict, ribs} extn =
     { returnType=returnType, strict=strict, ribs=extn :: ribs }
 
 (* Local tracing machinery *)
+
+structure NmKey = struct type ord_key = Ast.NAME val compare = NameKey.compare end
+structure NmMap = SplayMapFn (NmKey);
+
+structure NmVecKey = struct type ord_key = (Ast.NAME vector) val compare = (Vector.collate NameKey.compare) end
+structure NmVecMap = SplayMapFn (NmVecKey);
+
+val (fixtureCache:(Ast.FIXTURE NmMap.map) ref) = ref NmMap.empty
+val (instanceOfCache:(bool NmVecMap.map) ref) = ref NmVecMap.empty
+val cachesz = 1024
+
 
 val doTrace = ref false
 val doTraceProg = ref false
@@ -414,26 +457,44 @@ fun funcSigType (env:ENV)
 
 (************************* Compatibility *********************************)
 
+and getTopFixture (n:Ast.NAME) 
+    : Ast.FIXTURE = 
+    let
+        val c = !fixtureCache
+    in
+        case NmMap.find (c, n) of
+            NONE => 
+            let
+                val v = Defn.getFixture (!Defn.topFixtures) (Ast.PropName n)
+            in
+                if (NmMap.numItems c) < cachesz
+                then (fixtureCache := NmMap.insert (c, n, v); v)
+                else v
+            end
+          | SOME v => v
+    end
+    
+
 and isClass (t:Ast.NAME)
     : bool =
-    case Defn.getFixture (!Defn.topFixtures) (Ast.PropName t) of 
+    case getTopFixture t of 
         Ast.ClassFixture cls => true
       | _ => false
 
 and isInterface (t:Ast.NAME)
     : bool =
-    case Defn.getFixture (!Defn.topFixtures) (Ast.PropName t) of 
+    case getTopFixture t of 
         Ast.InterfaceFixture _ => true
       | _ => false
 
 and getClass (t:Ast.NAME)
     : Ast.CLS =
-    case Defn.getFixture (!Defn.topFixtures) (Ast.PropName t) of 
+    case getTopFixture t of 
         Ast.ClassFixture cls => cls
       | Ast.InterfaceFixture iface =>   (* FIXME: not sure what to do here. getClass gets called when a nominal
                                             type is used in various ways. Just return class Object for now *)
         let
-            val Ast.ClassFixture objCls = Defn.getFixture (!Defn.topFixtures) (Ast.PropName Name.nons_Object)
+            val Ast.ClassFixture objCls = getTopFixture Name.nons_Object
         in
             objCls
         end
@@ -443,6 +504,7 @@ and instanceOf (t0:Ast.NAME) (* derived *)
                (t:Ast.NAME)  (* base *)
     : bool =
     let
+        val c = !instanceOfCache
         fun search n = 
             if Mach.nameEq n t
             then true
@@ -455,17 +517,20 @@ and instanceOf (t0:Ast.NAME) (* derived *)
                 in
                     List.exists search bases
                 end
+        val k = #[t0,t]
     in
-        search t0
+        case NmVecMap.find (c, k) of
+            NONE => 
+            let
+                val v = search t0
+            in
+                if (NmVecMap.numItems c) < cachesz
+                then (instanceOfCache := NmVecMap.insert (c, k, v); v)
+                else v
+            end
+          | SOME v => v
     end
 
-and isNullable (t:Ast.NAME) 
-    : bool = 
-    let
-        val Ast.Cls cls = getClass t
-    in
-        not (#nonnullable cls)
-    end
 
 fun normalize (t:Ast.TYPE_EXPR) 
     : Ast.TYPE_EXPR = 
