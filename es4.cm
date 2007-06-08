@@ -36,6 +36,8 @@ is
     native.sml (lambdasplit: infinity)
     boot.sml
     decimal.sml (lambdasplit: infinity)
+    decimal-external.sml (lambdasplit: infinity)
+    decimal-params.sml (lambdasplit: infinity)
     name.sml (lambdasplit: infinity)
     namekey.sml (lambdasplit: infinity)
     namemap.sml (lambdasplit: infinity)
