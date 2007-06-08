@@ -277,7 +277,10 @@ package
                 if (R.lastIndex === oldLastIndex)
                     ++R.lastIndex;
             }
-            return matches;
+            if (matches.length == 0)
+                return null;      /* Cf errata */
+            else
+                return matches;
         }
 
 
