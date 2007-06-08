@@ -613,6 +613,7 @@ and asArrayIndex (v:Mach.VAL)
            | _ => 0wxFFFFFFFF)
       | _ => 0wxFFFFFFFF
 
+
 and hasOwnValue (obj:Mach.OBJ) 
                 (n:Ast.NAME) 
     : bool = 
@@ -621,18 +622,25 @@ and hasOwnValue (obj:Mach.OBJ)
         Mach.hasProp props n
 
 
-and hasValue (obj:Mach.OBJ) 
-             (n:Ast.NAME) 
-    : bool = 
+and findValue (obj:Mach.OBJ)
+              (n:Ast.NAME)
+    : REF option = 
     if hasOwnValue obj n
-    then true
+    then SOME (obj, n)
     else (case obj of 
               Mach.Obj { proto, ... } => 
               case (!proto) of 
-                  Mach.Object p => hasValue p n
-                | _ => false)
+                  Mach.Object p => findValue p n
+                | _ => NONE)
 
 
+and hasValue (obj:Mach.OBJ) 
+             (n:Ast.NAME) 
+    : bool = 
+    case findValue obj n of
+        NONE => false
+      | _ => true
+             
 (* 
  * *Similar to* ES-262-3 8.7.1 GetValue(V), there's 
  * no Reference type in ES4.
@@ -691,6 +699,7 @@ and getValueOrVirtual (obj:Mach.OBJ)
                | Mach.ValProp v => v)
           | NONE => 
             let
+                val _ = trace ["in getValueOrVirtual, trying catchall meta::get(", fmtName name, ")"]
                 fun catchAll _ = 
                     (* FIXME: need to use builtin Name.es object here, when that file exists. *)
                     evalCallMethodByRef (withThis (getInitialRegs()) obj) (obj, Name.meta_get) [newString (#id name)]
@@ -2943,14 +2952,18 @@ and evalRefExprFull (regs:Mach.REGS)
                            | Mach.Null => throwRefErr0 ["object reference on null value"]
                            | Mach.Undef => throwRefErr0 ["object reference on undefined value"]
                 val _ = LogErr.setLoc loc
-                val nameOpt = resolveName ob nomn
+                val refOpt = resolveName ob nomn
                 val _ = LogErr.setLoc loc
-                val r = case nameOpt of 
-                            SOME n => (ob, n)
+                val r = case refOpt of 
+                            SOME ro => ro
                           | NONE => if errIfNotFound
                                     then throwRefErr ["unresolved object reference ", nomnToStr nomn]
                                     else defaultRef ob nomn
                 val _ = LogErr.setLoc loc
+                val (holder, n) = r
+                val _ = trace ["resolved object ref to ", fmtName n, 
+                               " on object #", Int.toString (getObjId holder), 
+                               " with this=#", Int.toString (getObjId ob)]
             in
                 (ob, r)
             end
@@ -2995,7 +3008,7 @@ and resolveOnScopeChain (scope:Mach.SCOPE)
          *)
         fun tryProtoChain (Mach.Scope {object, parent, ...}) = 
             case resolveName object nomn of
-                SOME name => SOME (object, name)
+                SOME r => SOME r
               | NONE => case parent of 
                             NONE => NONE
                           | SOME p => tryProtoChain p
@@ -3025,10 +3038,13 @@ and resolveOnScopeChain (scope:Mach.SCOPE)
               | NONE => tryProtoChain scope
     end
 
-
+(* 
+ * Scans provided object and prototype chain looking for a slot that
+ * matches name (or multiname). Returns a REF to the exact object found.
+ *)
 and resolveName (obj:Mach.OBJ) 
                 (nomn:NAME_OR_MULTINAME) 
-    : Ast.NAME option = 
+    : REF option = 
     let 
         fun matchFixedBinding (Mach.Obj {props, ...}) n nss
             = Mach.matchProps true props n nss
@@ -3040,20 +3056,14 @@ and resolveName (obj:Mach.OBJ)
               | _ => NONE
     in
         case nomn of 
-            Name name => 
-            if hasValue obj name
-            then SOME name
-            else NONE
+            Name name => findValue obj name
           | Multiname mname => 
             let
                 val fixedRefOpt:(REF option) = Multiname.resolve mname obj matchFixedBinding getObjProto
-                val finalRefOpt:(REF option) = case fixedRefOpt of                                            
-                                                   NONE => Multiname.resolve mname obj matchBinding getObjProto
-                                                 | ro => ro                                         
             in
-                case finalRefOpt of
-                    NONE => NONE
-                  | SOME (_, name) => SOME name
+                case fixedRefOpt of                                            
+                    NONE => Multiname.resolve mname obj matchBinding getObjProto
+                  | ro => ro                                         
             end
     end
 

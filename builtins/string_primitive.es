@@ -610,7 +610,7 @@ package
             for ( let i : uint = 0u ; i < len ; i++ ) {
                 let u = Unicode.toLowerCaseCharCode(magic::charCodeAt(S,i));
                 if (u is uint)
-                    s += magic::fromCharCode();
+                    s += magic::fromCharCode(u);
                 else {
                     for ( let j=0 ; j < u.length ; j++ )
                         s += magic::fromCharCode(u[j]);
