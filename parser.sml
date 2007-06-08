@@ -1598,16 +1598,16 @@ and primaryExpression (ts,a,b) =
       | (LeftParen, _) :: _ => 
             parenListExpression ts
       | (LeftBracket, _) :: _ => 
-            let 
+            let
                 val (ts1,nd1) = arrayLiteral ts
-            in 
-                (ts1,Ast.LiteralExpr nd1) 
+            in
+                (ts1,Ast.LiteralExpr nd1)
             end
-      | (LeftBrace, _) :: _ => 
-            let 
-                val (ts1,nd1) = objectLiteral ts 
-            in 
-                (ts1,Ast.LiteralExpr nd1) 
+      | (LeftBrace, _) :: _ =>
+            let
+                val (ts1,nd1) = objectLiteral ts
+            in
+                (ts1,Ast.LiteralExpr nd1)
             end
       | (Function, _) :: _ => functionExpression (ts,a,b)
       | (LexBreakDiv thunks, _) :: _ => 
@@ -6200,6 +6200,7 @@ and interfaceDefinition (ts,attrs:ATTRS) =
                 val (ts1,{ident,params,nonnullable}) = className (tl ts)
                 val (ts2,{extends}) = interfaceInheritance (ts1)
                 val (ts3,nd3) = interfaceBody (ts2)
+                val (Ast.Block {pragmas,body,defns,...}) = nd3
             in
                  (ts3,{pragmas=[],
                        body=[],
@@ -6208,7 +6209,7 @@ and interfaceDefinition (ts,attrs:ATTRS) =
                                                  ns=ns,
                                                  params=params,
                                                  extends=extends,
-                                                 block=nd3}],
+                                                 instanceDefns=defns}],
                        head=NONE,
                        loc=locOf ts})
             end

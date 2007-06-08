@@ -108,6 +108,7 @@ fun resolveExprToNamespace (env:ENV)
 (* FIXME: change Ast to have a variant of TypeName(?) that should be looked up in the global class table *)
 fun instanceType (n:Ast.NAME) : Ast.TYPE_EXPR
   = Ast.InstanceType { name = n,
+                       nonnullable = false,
                        typeParams = [],
                        (* FIXME: what is the 'ty' field here anyways? *)
                        ty = Ast.SpecialType Ast.Any,
@@ -320,7 +321,7 @@ fun verifyTypeExpr (env:ENV)
                                * not to be working at the moment. Maybe the definer should fill it in? 
                                *)
                               | Ast.ClassFixture (Ast.Cls cls) => instanceType (#name cls)
-                              (* FIXME: add interfaces here. *)
+                              | Ast.InterfaceFixture (Ast.Iface iface) => instanceType (#name iface)
                               | _ => case (#ribs env) of 
                                          (r :: rs) => tryRibs rs
                                        | [] => error ["multiname ", LogErr.multiname {nss=nss, id=id}, 
@@ -412,10 +413,23 @@ and isClass (t:Ast.NAME)
         Ast.ClassFixture cls => true
       | _ => false
 
+and isInterface (t:Ast.NAME)
+    : bool =
+    case Defn.getFixture (!Defn.topFixtures) (Ast.PropName t) of 
+        Ast.InterfaceFixture _ => true
+      | _ => false
+
 and getClass (t:Ast.NAME)
     : Ast.CLS =
     case Defn.getFixture (!Defn.topFixtures) (Ast.PropName t) of 
         Ast.ClassFixture cls => cls
+      | Ast.InterfaceFixture iface =>   (* FIXME: not sure what to do here. getClass gets called when a nominal
+                                            type is used in various ways. Just return class Object for now *)
+        let
+            val Ast.ClassFixture objCls = Defn.getFixture (!Defn.topFixtures) (Ast.PropName Name.nons_Object)
+        in
+            objCls
+        end
       | _ => error ["getClass returned non-class fixture for ", LogErr.name t]
 
 and instanceOf (t0:Ast.NAME) 
@@ -522,8 +536,8 @@ and isSubtype (t1:TYPE_VALUE)
                         | (_, Ast.NullableType { nullable=false, expr }) => 
                           isSubtype t1 expr
 
-                        | ((Ast.SpecialType Ast.Null), Ast.InstanceType it) => 
-                          isClass (#name it) andalso isNullable (#name it)
+                        | ((Ast.SpecialType Ast.Null), Ast.InstanceType {nonnullable,...}) =>
+                          not nonnullable
 
                         | (Ast.SpecialType _, _) => false
                                                     
@@ -553,8 +567,7 @@ and isSubtype (t1:TYPE_VALUE)
                           (#name it2) = Name.nons_Function
 
                         | (Ast.InstanceType it1, Ast.InstanceType it2) => 
-                          isClass (#name it1) 
-                          andalso isClass (#name it2) 
+                          isClass (#name it1)
                           andalso instanceOf (#name it1) (#name it2)
                         | _ => false
     in

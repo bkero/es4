@@ -183,7 +183,8 @@ fun arrayToList (arr:Mach.OBJ)
  *
  * magic native function construct(cls:Class!, args:[*]) : Object!;
  *)
-fun construct (vals:Mach.VAL list)
+fun construct (regs:Mach.REGS) 
+              (vals:Mach.VAL list)
     : Mach.VAL = 
     let
         val (obj, cls) = nthAsObjAndCls vals 0
@@ -198,7 +199,8 @@ fun construct (vals:Mach.VAL list)
  * 
  * magic native function getClassName(o : Object!) : string; 
  *)
-fun getClassName (vals:Mach.VAL list) 
+fun getClassName (regs:Mach.REGS) 
+                 (vals:Mach.VAL list) 
     : Mach.VAL = 
     let 
         val Mach.Obj { magic, tag, ... } = nthAsObj vals 0
@@ -229,7 +231,8 @@ fun getClassName (vals:Mach.VAL list)
  * 
  * magic native function getPrototype(o : Object!) : Object;
  *)
-fun getPrototype (vals:Mach.VAL list) 
+fun getPrototype (regs:Mach.REGS) 
+                 (vals:Mach.VAL list) 
     : Mach.VAL = 
     let 
         val Mach.Obj { proto, ... } = nthAsObj vals 0
@@ -243,7 +246,8 @@ fun getPrototype (vals:Mach.VAL list)
  * 
  * magic native function hasOwnProperty(o : Object!, p : string) : Boolean;
  *)
-fun hasOwnProperty (vals:Mach.VAL list) 
+fun hasOwnProperty (regs:Mach.REGS) 
+                   (vals:Mach.VAL list) 
     : Mach.VAL = 
     propQuery vals Mach.hasProp
 
@@ -254,7 +258,8 @@ fun hasOwnProperty (vals:Mach.VAL list)
  * 
  * magic native function getPropertyIsDontEnum(o : Object!, p : string) : Boolean;
  *)
-fun getPropertyIsDontEnum (vals:Mach.VAL list) 
+fun getPropertyIsDontEnum (regs:Mach.REGS) 
+                          (vals:Mach.VAL list) 
     : Mach.VAL = 
     let
         fun f props n = 
@@ -273,7 +278,8 @@ fun getPropertyIsDontEnum (vals:Mach.VAL list)
  * magic native function getPropertyIsDontDelete(o : Object!, p : string) : Boolean;
  *)
 
-fun getPropertyIsDontDelete (vals:Mach.VAL list) 
+fun getPropertyIsDontDelete (regs:Mach.REGS) 
+                            (vals:Mach.VAL list) 
     : Mach.VAL = 
     let
         fun f props n = 
@@ -291,7 +297,8 @@ fun getPropertyIsDontDelete (vals:Mach.VAL list)
  * 
  * magic native function setPropertyIsDontEnum(o : Object!, p : string, f : Boolean) : void;
  *)
-fun setPropertyIsDontEnum (vals:Mach.VAL list) 
+fun setPropertyIsDontEnum (regs:Mach.REGS) 
+                          (vals:Mach.VAL list) 
     : Mach.VAL = 
     let
         val Mach.Obj { props, ...} = nthAsObj vals 0
@@ -304,11 +311,13 @@ fun setPropertyIsDontEnum (vals:Mach.VAL list)
         Mach.Undef
     end
 
-fun isPrimitive (vals:Mach.VAL list)
+fun isPrimitive (regs:Mach.REGS) 
+                (vals:Mach.VAL list)
     : Mach.VAL = 
     Eval.newBoolean (Eval.isPrimitive (rawNth vals 0))
 
-fun toPrimitive (vals:Mach.VAL list)
+fun toPrimitive (regs:Mach.REGS) 
+                (vals:Mach.VAL list)
     : Mach.VAL = 
     let
         val v = rawNth vals 0
@@ -319,7 +328,8 @@ fun toPrimitive (vals:Mach.VAL list)
         else Eval.toPrimitive v Ustring.empty
     end
 
-fun defaultValue (vals:Mach.VAL list)
+fun defaultValue (regs:Mach.REGS) 
+                 (vals:Mach.VAL list)
     : Mach.VAL =
     let
         val obj = nthAsObj vals 0
@@ -354,42 +364,51 @@ fun convertAndBindMagic (vals:Mach.VAL list)
  * magic native function bindDecimal(target : Object!, value : * );
  * magic native function bindString(target : Object!, value : * );
  *)
-fun bindUInt (vals:Mach.VAL list) 
+fun bindUInt (regs:Mach.REGS) 
+             (vals:Mach.VAL list) 
     : Mach.VAL = 
     convertAndBindMagic vals (Eval.toUInt32) (Mach.UInt)
 
-fun bindInt (vals:Mach.VAL list) 
+fun bindInt (regs:Mach.REGS) 
+            (vals:Mach.VAL list) 
     : Mach.VAL = 
     convertAndBindMagic vals (Eval.toInt32) (Mach.Int)
 
-fun bindBoolean (vals:Mach.VAL list) 
+fun bindBoolean (regs:Mach.REGS) 
+                (vals:Mach.VAL list) 
     : Mach.VAL = 
     convertAndBindMagic vals (Eval.toBoolean) (Mach.Boolean)
 
-fun bindDouble (vals:Mach.VAL list) 
+fun bindDouble (regs:Mach.REGS) 
+               (vals:Mach.VAL list) 
     : Mach.VAL = 
     convertAndBindMagic vals (Eval.toDouble) (Mach.Double)
 
-fun bindDecimal (vals:Mach.VAL list) 
+fun bindDecimal (regs:Mach.REGS) 
+                (vals:Mach.VAL list) 
     : Mach.VAL = 
     convertAndBindMagic vals (Eval.toDecimal 
                                   Decimal.defaultPrecision 
                                   Decimal.defaultRoundingMode) (Mach.Decimal)
 
-fun bindString (vals:Mach.VAL list) 
+fun bindString (regs:Mach.REGS) 
+               (vals:Mach.VAL list) 
     : Mach.VAL = 
     convertAndBindMagic vals Eval.toUstring Mach.String
 
 
-fun newInt (vals:Mach.VAL list) 
+fun newInt (regs:Mach.REGS) 
+           (vals:Mach.VAL list) 
     : Mach.VAL = 
     Eval.newInt (Eval.toInt32 (rawNth vals 0))
 
-fun newUInt (vals:Mach.VAL list) 
+fun newUInt (regs:Mach.REGS) 
+            (vals:Mach.VAL list) 
     : Mach.VAL = 
     Eval.newUInt (Eval.toUInt32 (rawNth vals 0))
 
-fun newDouble (vals:Mach.VAL list) 
+fun newDouble (regs:Mach.REGS) 
+              (vals:Mach.VAL list) 
     : Mach.VAL = 
     Eval.newDouble (Eval.toDouble (rawNth vals 0))
 
@@ -400,7 +419,8 @@ fun newDouble (vals:Mach.VAL list)
  *
  * magic native function apply(fn : Function!, t : Object!, args : Array) : *;
  *)
-fun apply (vals:Mach.VAL list) 
+fun apply (regs:Mach.REGS) 
+          (vals:Mach.VAL list) 
     : Mach.VAL = 
     let 
         val fnObj = nthAsObj vals 0
@@ -408,10 +428,11 @@ fun apply (vals:Mach.VAL list)
         val argsObj = nthAsObj vals 2
         val argsList = arrayToList argsObj
     in
-        Eval.evalCallExpr thisObj fnObj argsList
+        Eval.evalCallExpr (Eval.withThis (Eval.getInitialRegs()) thisObj) fnObj argsList
     end
 
-fun fnLength (vals:Mach.VAL list) 
+fun fnLength (regs:Mach.REGS) 
+             (vals:Mach.VAL list) 
     : Mach.VAL = 
     let
         val Mach.Obj { magic, ... } = nthAsObj vals 0
@@ -430,7 +451,8 @@ fun fnLength (vals:Mach.VAL list)
  *
  * magic native function charCodeAt(s : string, pos : uint) : uint;
  *)
-fun charCodeAt (vals:Mach.VAL list) 
+fun charCodeAt (regs:Mach.REGS) 
+               (vals:Mach.VAL list) 
     : Mach.VAL = 
     let
         val s = nthAsUstr vals 0
@@ -446,7 +468,8 @@ fun charCodeAt (vals:Mach.VAL list)
  *
  * magic native function fromCharCode(ch : uint) : string;
  *)
-fun fromCharCode (vals:Mach.VAL list)
+fun fromCharCode (regs:Mach.REGS) 
+                 (vals:Mach.VAL list)
     : Mach.VAL =
     let
         val i = nthAsUInt vals 0
@@ -461,7 +484,8 @@ fun fromCharCode (vals:Mach.VAL list)
  *
  * magic native function stringLength(s : string) : uint;
  *)
-fun stringLength (vals:Mach.VAL list)
+fun stringLength (regs:Mach.REGS) 
+                 (vals:Mach.VAL list)
     : Mach.VAL =
     let
         val s = nthAsUstr vals 0
@@ -477,7 +501,8 @@ fun stringLength (vals:Mach.VAL list)
  * 
  * magic native function stringAppend(a : string, b : string) : string;
  *)
-fun stringAppend (vals:Mach.VAL list)
+fun stringAppend (regs:Mach.REGS) 
+                 (vals:Mach.VAL list)
     : Mach.VAL = 
     let
         val a = nthAsUstr vals 0
@@ -493,7 +518,8 @@ fun stringAppend (vals:Mach.VAL list)
  * 
  * magic native function getByteArrayByte(ba : ByteArray!, idx : uint) : uint;
  *)
-fun getByteArrayByte (vals:Mach.VAL list)
+fun getByteArrayByte (regs:Mach.REGS) 
+                     (vals:Mach.VAL list)
     : Mach.VAL =
     let 
         val b = nthAsByteArray vals 0
@@ -508,7 +534,8 @@ fun getByteArrayByte (vals:Mach.VAL list)
  *
  * magic native function setByteArrayByte(ba : ByteArray!, idx : uint, val : uint) : void;
  *)
-fun setByteArrayByte (vals:Mach.VAL list)
+fun setByteArrayByte (regs:Mach.REGS) 
+                     (vals:Mach.VAL list)
     : Mach.VAL =
     let 
         val b = nthAsByteArray vals 0
@@ -525,7 +552,8 @@ fun setByteArrayByte (vals:Mach.VAL list)
  * intrinsic native function eval(x)
  *)
 
-fun eval (vals:Mach.VAL list) 
+fun eval (regs:Mach.REGS) 
+         (vals:Mach.VAL list) 
     : Mach.VAL =
     if length vals = 0 
     then Mach.Undef 
@@ -554,7 +582,7 @@ fun eval (vals:Mach.VAL list)
                      * program constructs (classes?) so possibly sanitize the
                      * result of parsing a bit, strip out some sorts of things...
                      *)
-                    Eval.evalProgram (Verify.verifyProgram (Defn.defProgram prog))
+                    Eval.evalProgram regs (Verify.verifyProgram (Defn.defProgram prog))
                     handle LogErr.DefnError de => raise Eval.ThrowException (str de)
                          | LogErr.VerifyError ve => raise Eval.ThrowException (str ve)
                          | LogErr.NameError ne => raise Eval.ThrowException (str ne)
@@ -566,7 +594,8 @@ fun eval (vals:Mach.VAL list)
  * 15.1.2.2
  * intrinsic native function parseInt(string:string, radix:int)
  *)
-fun parseInt (vals:Mach.VAL list) 
+fun parseInt (regs:Mach.REGS) 
+             (vals:Mach.VAL list) 
     : Mach.VAL =
     let
         val strVal = rawNth vals 0 
@@ -649,7 +678,8 @@ fun parseInt (vals:Mach.VAL list)
  * 15.1.2.3 
  * intrinsic native function parseFloat(string:string);
  *)
-fun parseFloat (vals:Mach.VAL list) 
+fun parseFloat (regs:Mach.REGS) 
+               (vals:Mach.VAL list) 
     : Mach.VAL =
     LogErr.unimplError ["intrinsic::parseFloat"]
 
@@ -658,7 +688,8 @@ fun parseFloat (vals:Mach.VAL list)
  * 15.1.2.4
  * intrinsic native function isNaN( number:* ):boolean;
  *)
-fun isNaN (vals:Mach.VAL list) 
+fun isNaN (regs:Mach.REGS) 
+          (vals:Mach.VAL list) 
     : Mach.VAL =
     LogErr.unimplError ["intrinsic::isNaN"]
 
@@ -667,7 +698,8 @@ fun isNaN (vals:Mach.VAL list)
  * 15.1.2.5
  * intrinsic native function isFinite( number:* ):boolean;
  *)
-fun isFinite (vals:Mach.VAL list) 
+fun isFinite (regs:Mach.REGS) 
+             (vals:Mach.VAL list) 
     : Mach.VAL =
     LogErr.unimplError ["intrinsic::isFinite"]
 
@@ -676,7 +708,8 @@ fun isFinite (vals:Mach.VAL list)
  * 15.1.3.1
  * intrinsic native function decodeURI(encodedURI);
  *)
-fun decodeURI (vals:Mach.VAL list) 
+fun decodeURI (regs:Mach.REGS) 
+              (vals:Mach.VAL list) 
     : Mach.VAL =
     LogErr.unimplError ["intrinsic::decodeURI"]
 
@@ -685,7 +718,8 @@ fun decodeURI (vals:Mach.VAL list)
  * 15.1.3.2
  * intrinsic native function decodeURIComponent(encodedURIComponent);
  *)
-fun decodeURIComponent (vals:Mach.VAL list) 
+fun decodeURIComponent (regs:Mach.REGS) 
+                       (vals:Mach.VAL list) 
     : Mach.VAL =
     LogErr.unimplError ["intrinsic::decodeURIComponent"]
 
@@ -693,7 +727,8 @@ fun decodeURIComponent (vals:Mach.VAL list)
  * 15.1.3.3
  * intrinsic native function encodeURI(uri);
  *)
-fun encodeURI (vals:Mach.VAL list) 
+fun encodeURI (regs:Mach.REGS) 
+              (vals:Mach.VAL list) 
     : Mach.VAL =
     LogErr.unimplError ["intrinsic::encodeURI"]
 
@@ -702,14 +737,16 @@ fun encodeURI (vals:Mach.VAL list)
  * 15.1.3.4
  * intrinsic native function encodeURIComponent(uriComponent);
  *)
-fun encodeURIComponent (vals:Mach.VAL list) 
+fun encodeURIComponent (regs:Mach.REGS) 
+                       (vals:Mach.VAL list) 
     : Mach.VAL =
     LogErr.unimplError ["intrinsic::encodeURIComponent"]
 
 (* 
  * intrinsic function get (obj: Object!, name: string) : *
  *)
-fun get (vals:Mach.VAL list)
+fun get (regs:Mach.REGS) 
+        (vals:Mach.VAL list)
     : Mach.VAL = 
     (* FIXME: arg #1 should be a Name, and convert to Ast.Name. *)
     Eval.getValueOrVirtual 
@@ -720,7 +757,8 @@ fun get (vals:Mach.VAL list)
 (* 
  * intrinsic function set (obj: Object!, name: string, val: * ) : void
  *)
-fun set (vals:Mach.VAL list)
+fun set (regs:Mach.REGS) 
+        (vals:Mach.VAL list)
     : Mach.VAL = 
     (* FIXME: arg #1 should be a Name, and convert to Ast.Name. *)
     (Eval.setValueOrVirtual 
@@ -736,7 +774,8 @@ fun set (vals:Mach.VAL list)
  * static intrinsic native function now() : double;
  *)
 
-fun now (vals:Mach.VAL list)
+fun now (regs:Mach.REGS) 
+        (vals:Mach.VAL list)
     : Mach.VAL = 
     Eval.newDouble (Real.realFloor ((Time.toReal (Time.now())) * 1000.0))
 
@@ -769,23 +808,26 @@ fun now (vals:Mach.VAL list)
 
 val random_state = Random.rand (37, 79)
 
-fun random (v:Mach.VAL list)
+fun random (regs:Mach.REGS) 
+           (v:Mach.VAL list)
     : Mach.VAL =
     Eval.newDouble (Random.randReal random_state)
 
 fun unaryDoubleFn (f:(Real64.real -> Real64.real)) : 
-    ((Mach.VAL list) -> Mach.VAL) =
- fn vals => if length vals = 0 
-            then Eval.newDouble (0.0/0.0)
-            else Eval.newDouble (f (Eval.toDouble (rawNth vals 0)))
+    (Mach.REGS -> (Mach.VAL list) -> Mach.VAL) =
+    fn regs => 
+    fn vals => if length vals = 0 
+               then Eval.newDouble (0.0/0.0)
+               else Eval.newDouble (f (Eval.toDouble (rawNth vals 0)))
          
 fun binaryDoubleFn (f:((Real64.real * Real64.real) -> Real64.real)) : 
-    ((Mach.VAL list) -> Mach.VAL) =
- fn vals => if length vals = 0 orelse length vals = 1 
-            then Eval.newDouble (0.0/0.0)
-            else Eval.newDouble (f ((Eval.toDouble (rawNth vals 0)),
-                                    (Eval.toDouble (rawNth vals 1))))
-
+    (Mach.REGS -> (Mach.VAL list) -> Mach.VAL) =
+    fn regs => 
+    fn vals => if length vals = 0 orelse length vals = 1 
+               then Eval.newDouble (0.0/0.0)
+               else Eval.newDouble (f ((Eval.toDouble (rawNth vals 0)),
+                                       (Eval.toDouble (rawNth vals 1))))
+                    
 val abs = unaryDoubleFn Real64.abs 
 val ceil = unaryDoubleFn Real64.realCeil
 val floor = unaryDoubleFn Real64.realFloor
@@ -825,7 +867,8 @@ val pow = binaryDoubleFn (fn (a,b) =>
 (* Some helpers not specified in the wiki at the moment. Maybe get rid
  * of them eventually? *)
 
-fun print (vals:Mach.VAL list) 
+fun print (regs:Mach.REGS) 
+          (vals:Mach.VAL list) 
     : Mach.VAL = 
     let
         fun printOne v = TextIO.print (Ustring.toAscii (Eval.toUstring v))
@@ -835,22 +878,26 @@ fun print (vals:Mach.VAL list)
         Mach.Undef
     end
 
-fun load (vals:Mach.VAL list) 
+fun load (regs:Mach.REGS) 
+         (vals:Mach.VAL list) 
     : Mach.VAL = 
     let
         val fname = Ustring.toFilename (nthAsUstr vals 0)
-    in
-        Eval.evalProgram (Verify.verifyProgram (Defn.defProgram (Parser.parseFile fname)));
+    in        
+        Eval.evalProgram regs (Verify.verifyProgram (Defn.defProgram (Parser.parseFile fname)))
+        handle x => raise Eval.ThrowException (Eval.newString (Ustring.fromString "error while loading"));
         Mach.Undef
     end
     
-fun assert (vals:Mach.VAL list) 
+fun assert (regs:Mach.REGS) 
+           (vals:Mach.VAL list) 
     : Mach.VAL = 
     if nthAsBool vals 0
     then Mach.Undef
     else error ["intrinsic::assert() failed"]
 
-fun typename (vals:Mach.VAL list) 
+fun typename (regs:Mach.REGS) 
+             (vals:Mach.VAL list) 
     : Mach.VAL = 
     Eval.newString 
     (case hd vals of 
@@ -873,7 +920,8 @@ fun typename (vals:Mach.VAL list)
            | SOME (Mach.Type _) => Ustring.type_
            | SOME (Mach.NativeFunction _) => Ustring.native_function_))
 
-fun dumpFunc (vals:Mach.VAL list)
+fun dumpFunc (regs:Mach.REGS) 
+             (vals:Mach.VAL list)
     : Mach.VAL = 
     let
         val v = rawNth vals 0
@@ -888,7 +936,8 @@ fun dumpFunc (vals:Mach.VAL list)
         Mach.Undef
     end
 
-fun inspect (vals:Mach.VAL list)
+fun inspect (regs:Mach.REGS) 
+            (vals:Mach.VAL list)
     : Mach.VAL = 
     let 
         val pad = "          "
@@ -982,7 +1031,8 @@ fun inspect (vals:Mach.VAL list)
         Mach.Undef
     end
 
-fun proto (vals:Mach.VAL list) 
+fun proto (regs:Mach.REGS) 
+          (vals:Mach.VAL list) 
     : Mach.VAL = 
     let
         val Mach.Obj { proto, ... } = nthAsObj vals 0
@@ -990,16 +1040,6 @@ fun proto (vals:Mach.VAL list)
         !proto
     end
 
-
-fun converter (convert:Mach.VAL -> 'a) 
-              (construct:'a -> Mach.VAL)
-    : ((Mach.VAL list) -> Mach.VAL) = 
-    let
-        fun cvt [] = Mach.Undef
-          | cvt (x::_) = construct (convert x)
-    in
-        cvt
-    end
 
 (* Register all the native functions in this file. *)
 fun registerNatives _ = 
@@ -1054,14 +1094,14 @@ fun registerNatives _ =
         addFn 3 Name.intrinsic_set set;
 
         (* FIXME: stubs to get double loading. Implement. *)
-        addFn 1 Name.intrinsic_toFixedStep10 (fn _ => Eval.newString Ustring.empty);
-        addFn 1 Name.intrinsic_toExponential (fn _ => Eval.newString Ustring.empty);
-        addFn 1 Name.intrinsic_toPrecision (fn _ => Eval.newString Ustring.empty);
+        addFn 1 Name.intrinsic_toFixedStep10 (fn _ => fn _ => Eval.newString Ustring.empty);
+        addFn 1 Name.intrinsic_toExponential (fn _ => fn _ => Eval.newString Ustring.empty);
+        addFn 1 Name.intrinsic_toPrecision (fn _ => fn _ => Eval.newString Ustring.empty);
 
         (* FIXME: stubs to get Date loading. Implement. *)
         addFn 0 Name.intrinsic_now now;
-        addFn 0 Name.nons_LocalTZA (fn _ => Eval.newDouble 0.0);
-        addFn 0 Name.nons_DaylightSavingsTA (fn _ => Eval.newDouble 0.0);
+        addFn 0 Name.nons_LocalTZA (fn _ => fn _ => Eval.newDouble 0.0);
+        addFn 0 Name.nons_DaylightSavingsTA (fn _ => fn _ => Eval.newDouble 0.0);
        
         (* Math.es natives *) 
         addFn 1 Name.intrinsic_abs abs;

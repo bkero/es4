@@ -127,7 +127,7 @@ fun repl doBoot argvRest =
                                     if (!doEval)
                                     then
                                         let 
-                                            val res = Eval.evalProgram vd
+                                            val res = Eval.evalTopProgram vd
                                         in
                                             if res = Mach.Undef
                                             then ()
@@ -192,9 +192,9 @@ fun eval doBoot argvRest =
     let 
         val verified = verify doBoot argvRest 
     in
-        Posix.Process.alarm (Time.fromReal 100.0);
+        Posix.Process.alarm (Time.fromReal 300.0);
 	    TextIO.print "evaluating ... \n";
-        (map Eval.evalProgram verified; 0)
+        (map Eval.evalTopProgram verified; 0)
         handle 
         LogErr.LexError e => (print ("**ERROR** LexError: " ^ e ^ "\n");  1)
       | LogErr.ParseError e => (print ("**ERROR** ParseError: " ^ e ^ "\n"); 1)

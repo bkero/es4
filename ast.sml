@@ -143,6 +143,14 @@ datatype PRAGMA =
              classType: TYPE_EXPR,  (* ObjectType *)
              instanceType: TYPE_EXPR } (* InstanceType *)
 
+     and IFACE =
+         Iface of
+           { name: NAME,
+             nonnullable: bool,
+             extends: NAME list,
+             instanceFixtures: FIXTURES,
+             instanceType: TYPE_EXPR } (* InstanceType *)
+
      and CTOR =
          Ctor of {
              settings: HEAD,
@@ -215,7 +223,8 @@ datatype PRAGMA =
              expr:TYPE_EXPR,
              nullable:bool }
        | InstanceType of {
-             name: NAME, 
+             name: NAME,
+             nonnullable: bool, 
              typeParams: IDENT list, 
              ty: TYPE_EXPR,
              isDynamic: bool }
@@ -375,7 +384,7 @@ datatype PRAGMA =
      and FIXTURE = 
          NamespaceFixture of NAMESPACE
        | ClassFixture of CLS
-       | InterfaceFixture  (* FIXME *)
+       | InterfaceFixture of IFACE
        | TypeVarFixture
        | TypeFixture of TYPE_EXPR
        | MethodFixture of 
@@ -457,7 +466,7 @@ withtype
              nonnullable: bool,
              params: IDENT list,
              extends: IDENT_EXPR list,    (* STATIC_IDENT_EXPR list *)
-             block: BLOCK }
+             instanceDefns: DEFN list }
          
      and TYPE_DEFN =
            { ident: IDENT,

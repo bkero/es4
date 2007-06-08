@@ -36,12 +36,13 @@
  *
  * ***** END LICENSE BLOCK ***** */
 
-use namespace intrinsic;
-
-namespace Debug
-namespace Release
-
+// module Debug 
 {
+    use namespace intrinsic;
+
+    namespace Debug;
+    namespace Release;
+
     Debug function enter (s,a) {
         print (">> ", s, a);
     }
@@ -49,16 +50,19 @@ namespace Release
     Debug function exit (s,a) {
         print ("<< ", s, a);
     }
+
+    Release function enter (...) { }
+    Release function exit (...) { }
 }
 
-
-namespace Parser;
-
-type TOKENS = Array;  // [int];
+// module Parser 
+{
+    namespace Parser;
+    type TOKENS = Array;  // [int];
 
 {
     use default namespace Parser;
-    //	use namespace Release
+    use namespace Debug;
 
     class Parser 
     {
@@ -84,20 +88,20 @@ type TOKENS = Array;  // [int];
         var currentPackageName: string;
         var currentClassName: string;
 
-        function head (ts) {
-            //             print("head ",ts[0]);
+        function hd (ts) {
+            //             print("hd ",ts[0]);
              return Token::tokenKind (ts[0]);
         }
 
         function match (ts,tc) {
-            let hd = head (ts);
+            let hd = hd (ts);
             if (hd === tc) {
-                return tail (ts);
+                return tl (ts);
             }
             throw "expecting "+Token::tokenText(tc)+" found "+Token::tokenText(hd);
         }
 
-        function tail (ts:TOKENS) : TOKENS ts.slice (1,ts.length);
+        function tl (ts:TOKENS) : TOKENS ts.slice (1,ts.length);
 
         // Parse rountines
 
@@ -125,11 +129,11 @@ type TOKENS = Array;  // [int];
         public function identifier (ts: TOKENS)
             : [TOKENS, Ast::IDENT]
         {
-            Debug::enter("Parse::identifier ", ts);
+            enter("Parse::identifier ", ts);
 
             var str = "";   // fixme: evaluator isn't happy if this is inside of the switch
 
-            switch (head(ts)) {
+            switch (hd (ts)) {
             case Token::Identifier:
             case Token::Call:
             case Token::Cast:
@@ -141,7 +145,6 @@ type TOKENS = Array;  // [int];
             case Token::Eval:
             case Token::Final:
             case Token::Get:
-                // case Token::Goto:
             case Token::Has:
             case Token::Implements:
             case Token::Import:
@@ -173,13 +176,13 @@ type TOKENS = Array;  // [int];
             case Token::Use:
             case Token::Xml:
             case Token::Yield:
-                var str = Token::tokenText (head(ts));
+                var str = Token::tokenText (hd (ts));
                 break;
             default:
-                throw "expecting identifier, found " + Token::tokenText (head(ts));
+                throw "expecting identifier, found " + Token::tokenText (hd (ts));
             }
-            Debug::exit ("Parse::identifier ",str);
-            return [tail(ts), new Ast::Identifier (str)];
+            exit ("Parse::identifier ", str);
+            return [tl (ts), new Ast::Identifier (str)];
         }
 
         /*
@@ -192,10 +195,11 @@ type TOKENS = Array;  // [int];
         function qualifier(ts)
             : [TOKENS, Ast::IDENT]
         {
-            Debug::enter("Parse::qualifier ",ts);
+            enter("Parse::qualifier ",ts);
 
             var [ts1,nd1] = [null,null];
-            switch (head(ts)) {
+
+            switch (hd(ts)) {
             case Token::Internal:
             case Token::Intrinsic:
             case Token::Private:
@@ -205,14 +209,14 @@ type TOKENS = Array;  // [int];
                 break;
             case Token::Mult:
             case Token::Identifier:
-                let str = Lexer::tokenText (head(ts));
-                var [ts1,nd1] = [tail(ts), new Ast::Identifier (str)];
+                let str = Lexer::tokenText (hd(ts));
+                var [ts1,nd1] = [tl (ts), new Ast::Identifier (str)];
                 break;
             default:
                 throw "invalid qualifier";
             }
 
-            Debug::exit("Parse::qualifier ",nd1);
+            exit("Parse::qualifier ",nd1);
             return [ts1,nd1];
         }
 
@@ -228,28 +232,28 @@ type TOKENS = Array;  // [int];
         function reservedNamespace (ts: TOKENS)
 			: [TOKENS, Ast::NAMESPACE]
         {
-            Debug::enter("Parse::reservedNamespace ", ts);
+            enter("Parse::reservedNamespace ", ts);
 
             var [ts1,nd1] = [null,null];
-            switch (head(ts)) {
+            switch (hd (ts)) {
             case Token::Internal:
-                var [ts1,nd1] = [tail(ts), new Ast::InternalNamespace (current_package)];
+                var [ts1,nd1] = [tl (ts), new Ast::InternalNamespace (current_package)];
                 break;
             case Token::Public:
-                var [ts1,nd1] = [tail(ts), new Ast::PublicNamespace (current_package)];
+                var [ts1,nd1] = [tl (ts), new Ast::PublicNamespace (current_package)];
                 break;
             case Token::Intrinsic:
-                var [ts1,nd1] = [tail(ts), new Ast::IntrinsicNamespace];
+                var [ts1,nd1] = [tl (ts), new Ast::IntrinsicNamespace];
                 break;
             case Token::Private:
-                var [ts1,nd1] = [tail(ts), new Ast::PrivateNamespace (current_class)];
+                var [ts1,nd1] = [tl (ts), new Ast::PrivateNamespace (current_class)];
                 break;
             case Token::Protected:
-                var [ts1,nd1] = [tail(ts), new Ast::ProtectedNamespace (current_class)];
+                var [ts1,nd1] = [tl (ts), new Ast::ProtectedNamespace (current_class)];
                 break;
             }
 
-            Debug::exit("Parse::reservedNamespace ", nd1);
+            exit("Parse::reservedNamespace ", nd1);
             return [ts1,nd1];
         }
 
@@ -267,7 +271,7 @@ type TOKENS = Array;  // [int];
         function simpleQualifiedIdentifier (ts: TOKENS)
             : [TOKENS, Ast::IDENT_EXPR]
         {
-            Debug::enter("Parse::simpleQualifiedIdentifier ", ts);
+            enter("Parse::simpleQualifiedIdentifier ", ts);
 
             var [ts1,nd1] = qualifier (ts);
             var [ts4,nd4] = [null, null];
@@ -275,7 +279,7 @@ type TOKENS = Array;  // [int];
             switch type (nd1:*) {
             case (nd1: Ast::RESERVED_NAMESPACE) {
                 let ts2 = match (ts1, Token::DoubleColon);
-                switch (head(ts2)) {
+                switch (hd(ts2)) {
                 case Token::LeftBracket:
                     var [ts3,nd3] = brackets (ts2);
                     var [ts4,nd4] = [ts3,new Ast::QualifiedExpression (nd1,nd3)];
@@ -287,7 +291,7 @@ type TOKENS = Array;  // [int];
                 }
                 /*
                 match(doublecolon_token);
-                if( lookahead(leftbracket_token) )  // @ns::[expr]
+                if( lookahd(leftbracket_token) )  // @ns::[expr]
                 {
                     var second = parseBrackets();
                     var result = <QualifiedExpression><Qualifier>{first}</Qualifier><Expr>{second}</Expr></QualifiedExpression>
@@ -301,7 +305,7 @@ type TOKENS = Array;  // [int];
             }
             default {
                 /*
-                  if( lookahead(doublecolon_token) )
+                  if( lookahd(doublecolon_token) )
                   {
                   match(doublecolon_token);
                 
@@ -326,7 +330,7 @@ type TOKENS = Array;  // [int];
             }
             }
 
-            Debug::exit("Parse::simpleQualifiedIdentifier ", nd4);
+            exit("Parse::simpleQualifiedIdentifier ", nd4);
             return [ts4,nd4];
         }
 
@@ -4974,8 +4978,8 @@ type TOKENS = Array;  // [int];
 
             var blocks = [] // : [Ast.BLOCK];
             
-            if (head (ts) == Token::Internal || 
-                head (ts) == Token::Package)
+            if (hd (ts) == Token::Internal || 
+                hd (ts) == Token::Package)
             {
                 var [ts1, nd1] = packages (ts);
             }

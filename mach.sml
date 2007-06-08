@@ -121,8 +121,11 @@ withtype FUN_CLOSURE =
            allTypesBound: bool,
            env: SCOPE }
 
+     and REGS = { scope: SCOPE, 
+                  this: OBJ }
+
      and NATIVE_FUNCTION = 
-         { func: (VAL list -> VAL),
+         { func: (REGS -> VAL list -> VAL),
            length: int } 
 
      and OBJ_IDENT = 
@@ -146,8 +149,6 @@ withtype FUN_CLOSURE =
 
      and PROP_BINDINGS = (PROP NameMap.map) ref
 
-     and REGS = { scope: SCOPE, 
-                  this: OBJ }
 
 (* Exceptions for control transfer. *)
 

@@ -123,7 +123,7 @@ fun evalFiles fs =
     let 
         fun eval (f, p) = 
             (trace ["evaluating boot file ", f]; 
-             Eval.evalProgram p)
+             Eval.evalTopProgram p)
     in
         map eval fs
     end
@@ -150,7 +150,7 @@ fun printFixture ((n:Ast.FIXTURE_NAME), (f:Ast.FIXTURE)) =
 	val fs = case f of 
 		     Ast.NamespaceFixture _ => "[namespace]"
 		   | Ast.ClassFixture _ => "[class]"
-		   | Ast.InterfaceFixture => "[interface]"
+		   | Ast.InterfaceFixture _ => "[interface]"
 		   | Ast.TypeVarFixture => "[typeVar]"
 		   | Ast.TypeFixture _ => "[type]"
 		   | Ast.MethodFixture _ => "[method]"
@@ -271,9 +271,9 @@ fun boot _ =
 
         evalFiles otherProgs;
 
-        Eval.evalProgram residualObjectProg;
-        Eval.evalProgram residualClassProg;
-        Eval.evalProgram residualFunProg;
+        Eval.evalTopProgram residualObjectProg;
+        Eval.evalTopProgram residualClassProg;
+        Eval.evalTopProgram residualFunProg;
 
         Eval.booting := false;
         Eval.resetStack ();
