@@ -48,7 +48,6 @@ package
     // 15.1.1.1 NaN
     // 15.1.1.2 Infinity
     // 15.1.1.3 undefined
-    // {DE,DD,RO} -- change from ECMA-262, which has them as {DE,DD}
     intrinsic const NaN = 0.0/0.0;
     intrinsic const Infinity = 1.0/0.0;
     intrinsic const undefined = void(0);
@@ -62,7 +61,7 @@ package
     /* 15.1.2.2 parseInt (string , radix)
      *
      * The committee agreed in its 2007-06-05 phone conference
-     * to not allow a leading '0' to force a non-supplied radix
+     * not to allow a leading '0' to force a non-supplied radix
      * to 8, but instead to default to radix 10 in all cases
      * except when the string starts with '0x' or '0X'.
      */
@@ -163,11 +162,16 @@ package
     // 15.1.3.4 encodeURIComponent (uriComponent)
     intrinsic native function encodeURIComponent(uriComponent);
 
-    // Mutable public properties defaulting to their intrinsic namesakes.
-    var NaN = intrinsic::NaN;
-    var Infinity = intrinsic::Infinity;
-    var undefined = intrinsic::undefined;
+    // [proposals:versioning] says that __ECMASCRIPT_VERSION__ is always defined
+    const __ECMASCRIPT_VERSION__ = 4;
+
+    // [proposals:bug fixes] - [IMMUTABLE.GLOBALS] says that these three names
+    // are {DE,DD,RO}, and not just {DE,DD} as in E262-3.
+    const NaN = intrinsic::NaN;
+    const Infinity = intrinsic::Infinity;
+    const undefined = intrinsic::undefined;
     
+    // Mutable public properties defaulting to their intrinsic namesakes.
     var eval = intrinsic::eval;
     var parseInt = intrinsic::parseInt;
     var parseFloat = intrinsic::parseFloat;
