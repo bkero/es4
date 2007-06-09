@@ -532,7 +532,7 @@ fun allocFixtures (regs:Mach.REGS)
                                       { ty = ty,
                                         state = valAllocState ty,
                                         attrs = { dontDelete = true,
-                                                  dontEnum = shouldBeDontEnum pn obj,
+                                                  dontEnum = true, (* ticket #88 *) (* shouldBeDontEnum pn obj, *)
                                                   readOnly = readOnly,
                                                   isFixed = true } }
                             
@@ -550,7 +550,7 @@ fun allocFixtures (regs:Mach.REGS)
                                             state = Mach.VirtualValProp { getter = getFn,
                                                                           setter = setFn },
                                             attrs = { dontDelete = true,
-                                                      dontEnum = shouldBeDontEnum pn obj,
+                                                      dontEnum = true, (* ticket #88 *) (* shouldBeDontEnum pn obj, *)
                                                       readOnly = true,
                                                       isFixed = true } }
                             end
