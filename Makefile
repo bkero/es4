@@ -137,6 +137,7 @@ exec/es4.tar.gz: dump-heap decimal
 	mkdir -p exec/es4
 	heap2exec es4-dump.heap.$(HEAP_SUFFIX) exec/es4/es4
 	cp bin/decimal exec/es4/
+	chmod -R u=rwx,go=rx exec/es4
 	cd exec && tar cf es4.tar es4
 	gzip -v9 exec/es4.tar
 
@@ -148,5 +149,7 @@ heap/es4.tar.gz: dump-heap decimal
 	cp bin/run-cygwin.sh heap/es4/es4
 	cp es4-dump.heap.$(HEAP_SUFFIX) heap/es4/es4.heap.$(HEAP_SUFFIX)
 	cp bin/decimal heap/es4/
+	chmod -R u=rwx,go=rx heap/es4
+	chmod u=rw,go=r heap/es4/es4.heap.$(HEAP_SUFFIX)
 	cd heap && tar cf es4.tar es4
 	gzip -v9 heap/es4.tar
