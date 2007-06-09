@@ -194,7 +194,7 @@ datatype PRAGMA =
          Func of { 
              name: FUNC_NAME,
              fsig: FUNC_SIG,
-             isNative: bool,
+             native: bool,
              block: BLOCK,
              param: HEAD,
              defaults: EXPR list,
@@ -425,7 +425,8 @@ datatype PRAGMA =
              ty: TYPE_EXPR,
              readOnly: bool,  (* ES3 funcs are r/w methods with ty=Ast.Special Ast.Any *)
              override: bool,
-             final: bool }
+             final: bool,
+             abstract: bool }
        | ValFixture of 
            { ty: TYPE_EXPR,
              readOnly: bool }
@@ -463,7 +464,9 @@ withtype
              override: bool,
              prototype: bool,
              static: bool,
+             abstract: bool,
              func : FUNC }
+
 
      and CTOR_DEFN = CTOR
 

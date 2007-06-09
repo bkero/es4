@@ -147,46 +147,16 @@ fun resolveExprToNamespace (env:ENV)
 
 (****************************** standard types *************************)
 
-fun bootInstanceType (n:Ast.NAME) : Ast.TYPE_EXPR
-  = Ast.InstanceType { name = n,
-                       nonnullable = false,
-                       typeParams = [],
-                       (* FIXME: what is the 'ty' field here anyways? *)
-                       ty = Ast.SpecialType Ast.Any,
-                       (* FIXME: what is 'isDynamic' here? Should we get it from the classes? *)
-                       dynamic = false }
-
 fun instanceType (n:Ast.NAME) : Ast.TYPE_EXPR =
-    bootInstanceType n
-(*
-         case Defn.getFixture (!Defn.topFixtures) (Ast.PropName n) of
-                Ast.ClassFixture (Ast.Cls cls) => (#instanceType cls)
-              | Ast.InterfaceFixture (Ast.Iface iface) => (#instanceType iface)
-              | _ => error ["type not an instance type ", LogErr.name n]
-*)
+    case Defn.getFixture (!Defn.topFixtures) (Ast.PropName n) of
+        Ast.ClassFixture (Ast.Cls cls) => (#instanceType cls)
+      | Ast.InterfaceFixture (Ast.Iface iface) => (#instanceType iface)
+      | _ => error ["type not an instance type ", LogErr.name n]
 
-val BooleanType   = bootInstanceType Name.nons_Boolean
-val booleanType   = bootInstanceType Name.intrinsic_boolean
+val undefinedType   = Ast.SpecialType Ast.Undefined
+val nullType        = Ast.SpecialType Ast.Null
+val anyType         = Ast.SpecialType Ast.Any
 
-val NumberType    = bootInstanceType Name.nons_Number
-val doubleType    = bootInstanceType Name.intrinsic_double
-val decimalType   = bootInstanceType Name.intrinsic_decimal
-val intType       = bootInstanceType Name.intrinsic_int
-val uintType      = bootInstanceType Name.intrinsic_uint
-
-val StringType    = bootInstanceType Name.nons_String
-val stringType    = bootInstanceType Name.intrinsic_string
-
-val RegExpType    = bootInstanceType Name.nons_RegExp
-val ErrorType     = bootInstanceType Name.nons_Error
-val NamespaceType = bootInstanceType Name.intrinsic_Namespace
-val NameType      = bootInstanceType Name.intrinsic_Name
-val TypeType      = bootInstanceType Name.intrinsic_Type
-
-val NumericTypeName   = Name.typename Name.intrinsic_Numeric
-val undefinedType = Ast.SpecialType Ast.Undefined
-val nullType      = Ast.SpecialType Ast.Null
-val anyType       = Ast.SpecialType Ast.Any
 
 (****************************** misc auxiliary functions *************************)
 
@@ -366,11 +336,7 @@ fun verifyTypeExpr (env:ENV)
                             case findFixture ribs {nss=nss, id=id} of 
                                 (* FIXME: re-resolve result ... in which environment? *)
                                 Ast.TypeFixture ty => ty 
-                              (* 
-                               * FIXME: possibly we should use (#instanceType cls), but this appears
-                               * not to be working at the moment. Maybe the definer should fill it in? 
-                               *)
-                              | Ast.ClassFixture (Ast.Cls cls) => instanceType (#name cls)
+                              | Ast.ClassFixture (Ast.Cls cls) => (#instanceType cls)
                               | Ast.InterfaceFixture (Ast.Iface iface) => (#instanceType iface)
                               | _ => case (#ribs env) of 
                                          (r :: rs) => tryRibs rs
@@ -858,6 +824,8 @@ and verifyExpr (env:ENV)
             if strict
             then thunk ()
             else ()
+
+        val booleanType = instanceType Name.intrinsic_boolean
     in
         case expr of 
             Ast.TernaryExpr (e1, e2, e3) =>
@@ -875,8 +843,8 @@ and verifyExpr (env:ENV)
             let
                 val (e1', t1) = verifySub e1
                 val (e2', t2) = verifySub e2
-                val NumericType = verifyTypeExpr env NumericTypeName
-                val AdditionType = Ast.UnionType [ NumericType, StringType ]
+                val NumericType = verifyTypeExpr env (Name.typename Name.intrinsic_Numeric)
+                val AdditionType = Ast.UnionType [ NumericType, instanceType Name.nons_String ]
                 (* FIXME: these are way wrong. *)
                 (* FIXME: need to deal with operator overloading *)
                 val (expectedType1, expectedType2, resultType) =
@@ -894,7 +862,7 @@ and verifyExpr (env:ENV)
                        | Ast.BitwiseXor => (NumericType, NumericType, NumericType)
                        | Ast.LogicalAnd => (booleanType, booleanType, booleanType)
                        | Ast.LogicalOr => (booleanType, booleanType, booleanType)
-                       | Ast.InstanceOf => (anyType, TypeType, booleanType)
+                       | Ast.InstanceOf => (anyType, anyType, booleanType)
                        | Ast.In => (anyType, anyType, booleanType)
                        | Ast.Equals mode => (anyType, anyType, booleanType)
                        | Ast.NotEquals mode => (anyType, anyType, booleanType)
@@ -940,12 +908,12 @@ and verifyExpr (env:ENV)
           | Ast.UnaryExpr (u, e) =>
             let
                 val (e', t) = verifySub e
-                val NumericType = verifyTypeExpr env NumericTypeName
+                val NumericType = verifyTypeExpr env (Name.typename Name.intrinsic_Numeric)
                 val resultType = case u of
                                       (* FIXME: these are probably mostly wrong *)
                                       Ast.Delete => booleanType
                                     | Ast.Void => undefinedType
-                                    | Ast.Typeof => stringType
+                                    | Ast.Typeof => instanceType Name.intrinsic_string
                                     | Ast.PreIncrement mode => NumericType
                                     | Ast.PreDecrement mode => NumericType
                                     | Ast.PostIncrement mode => NumericType
@@ -955,7 +923,7 @@ and verifyExpr (env:ENV)
                                     | Ast.BitwiseNot => NumericType
                                     | Ast.LogicalNot => booleanType
                                     (* TODO: isn't this supposed to be the prefix of a type expression? *)
-                                    | Ast.Type => TypeType
+                                    | Ast.Type => instanceType Name.intrinsic_Type
             in
                 whenStrict (fn () =>
                                case u of
@@ -978,7 +946,7 @@ and verifyExpr (env:ENV)
             let
                 val t' = verifyTypeExpr env t
             in
-                return (Ast.TypeExpr t', TypeType)
+                return (Ast.TypeExpr t', instanceType Name.intrinsic_Type)
             end
 
           | Ast.ThisExpr =>
@@ -1006,23 +974,23 @@ and verifyExpr (env:ENV)
                 val resultType = case le of
                                       Ast.LiteralNull => nullType
                                     | Ast.LiteralUndefined => undefinedType
-                                    | Ast.LiteralDouble _ => doubleType
-                                    | Ast.LiteralDecimal _ => decimalType
-                                    | Ast.LiteralInt _ => intType
-                                    | Ast.LiteralUInt _ => uintType
-                                    | Ast.LiteralBoolean _ => booleanType
-                                    | Ast.LiteralString _ => stringType
+                                    | Ast.LiteralDouble _ => instanceType Name.intrinsic_double
+                                    | Ast.LiteralDecimal _ => instanceType Name.intrinsic_decimal
+                                    | Ast.LiteralInt _ => instanceType Name.intrinsic_int
+                                    | Ast.LiteralUInt _ => instanceType Name.intrinsic_uint
+                                    | Ast.LiteralBoolean _ => instanceType Name.intrinsic_boolean
+                                    | Ast.LiteralString _ => instanceType Name.intrinsic_string
                                     | Ast.LiteralArray { ty=SOME ty, ... } => verifyTypeExpr env ty
                                     (* FIXME: how do we want to represent [*] ? *)
                                     | Ast.LiteralArray { ty=NONE, ... } => Ast.ArrayType [Ast.SpecialType Ast.Any]
                                     (* TODO: define this *)
                                     | Ast.LiteralXML _ => anyType
-                                    | Ast.LiteralNamespace _ => NamespaceType
+                                    | Ast.LiteralNamespace _ => instanceType Name.intrinsic_Namespace
                                     | Ast.LiteralObject { ty=SOME ty, ... } => verifyTypeExpr env ty
                                     (* FIXME: how do we want to represent {*} ? *)
                                     | Ast.LiteralObject { ty=NONE, ... } => anyType
                                     | Ast.LiteralFunction (Ast.Func { fsig, ... }) => funcSigType env fsig
-                                    | Ast.LiteralRegExp _ => RegExpType
+                                    | Ast.LiteralRegExp _ => instanceType Name.nons_RegExp
                                     | _ => internalError ["unprocessed literal returned by Defn"]
                 fun verifyField { kind, name, init } = 
                     { kind = kind, 
@@ -1206,6 +1174,7 @@ and verifyStmt (env:ENV)
                (stmt:Ast.STMT) 
     : Ast.STMT = 
     let fun verifySub s = verifyStmt env s
+        val booleanType = instanceType Name.intrinsic_boolean
     in
         case stmt of
             Ast.EmptyStmt => 
@@ -1374,7 +1343,7 @@ and verifyFunc (env:ENV)
                (func:Ast.FUNC)
     : Ast.FUNC =
     let
-        val Ast.Func { name, fsig, isNative, block, param, defaults, ty } = func
+        val Ast.Func { name, fsig, native, block, param, defaults, ty } = func
         val Ast.FunctionType ty = verifyTypeExpr env (Ast.FunctionType ty)
         val param = verifyHead env param
         val (defaults,_) = verifyExprs env defaults
@@ -1382,7 +1351,7 @@ and verifyFunc (env:ENV)
         val env = withRib env paramFixtures
         val block = verifyBlock env block
     in
-        Ast.Func { name=name, fsig=fsig, isNative=isNative, block=block, param=param, defaults=defaults, ty=ty }
+        Ast.Func { name=name, fsig=fsig, native=native, block=block, param=param, defaults=defaults, ty=ty }
     end
 
 and verifyFixture (env:ENV)
@@ -1424,23 +1393,24 @@ and verifyFixture (env:ENV)
          Ast.TypeFixture (verifyTypeExpr env ty)
        | Ast.ValFixture {ty, readOnly} =>
          Ast.ValFixture {ty=verifyTypeExpr env ty, readOnly=readOnly}
-       | Ast.MethodFixture { func, ty, readOnly, override, final } =>
+       | Ast.MethodFixture { func, ty, readOnly, override, final, abstract } =>
          let
              val func = verifyFunc env func
              val ty = verifyTypeExpr env ty
          in
-             Ast.MethodFixture { func=func, ty=ty, readOnly=readOnly, override=override, final=final }
+             Ast.MethodFixture { func=func, ty=ty, readOnly=readOnly, override=override, final=final, abstract=abstract }
          end
        | Ast.VirtualValFixture { ty, getter, setter} =>
          let
              fun verifyFuncDefnOption NONE = NONE
-               | verifyFuncDefnOption (SOME { kind, ns, final, override, prototype, static, func}) = 
+               | verifyFuncDefnOption (SOME { kind, ns, final, override, prototype, static, abstract, func}) = 
                  SOME { kind = kind, 
                         ns = ns, 
                         final = final, 
                         override = override, 
                         prototype = prototype, 
                         static = static, 
+                        abstract = abstract,
                         func = verifyFunc env func}
              val ty = verifyTypeExpr env ty
              val getter = verifyFuncDefnOption getter

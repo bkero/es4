@@ -513,8 +513,8 @@ fun allocFixtures (regs:Mach.REGS)
 
                           | Ast.MethodFixture { func, ty, readOnly, ... } => 
                             let
-                                val Ast.Func { isNative, ... } = func
-                                val p = if isNative
+                                val Ast.Func { native, ... } = func
+                                val p = if native
                                         then Mach.NativeFunctionProp (Mach.getNativeFunction pn)
                                         else Mach.MethodProp (newFunClosure methodScope func this)
                             in
@@ -1018,7 +1018,7 @@ and needNameOrString (v:Mach.VAL)
     : Ast.NAME =
     case v of
         Mach.Object obj =>
-        if Verify.isSubtype (typeOfVal v) Verify.NameType
+        if Verify.isSubtype (typeOfVal v) (Verify.instanceType Name.intrinsic_Name)
         then
             let
                 val nsval = getValue obj Name.nons_qualifier
@@ -2910,7 +2910,7 @@ and evalIdentExpr (regs:Mach.REGS)
         in
             case v of
                 Mach.Object obj =>
-                if Verify.isSubtype (typeOfVal v) Verify.NameType
+                if Verify.isSubtype (typeOfVal v) (Verify.instanceType Name.intrinsic_Name)
                 then
                     let
                         val nsval = getValue obj Name.nons_qualifier

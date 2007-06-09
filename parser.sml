@@ -773,7 +773,7 @@ and functionExpression (ts,a:alpha,b:beta) =
                                               (Ast.Func {name={kind=Ast.Ordinary,ident=Ustring.empty},
                                                          fsig=nd3,
                                                          block=nd4,
-                                                         isNative=false,
+                                                         native=false,
                                                          defaults=[],
                                                          param=([],[]),
                                                          ty=functionTypeFromSignature nd3})))
@@ -791,7 +791,7 @@ and functionExpression (ts,a:alpha,b:beta) =
                                                                           body=[Ast.ReturnStmt nd4],
                                                                           head=NONE,
                                                                           loc=locOf ts3},
-                                                         isNative=false,
+                                                         native=false,
                                                          param=([],[]),
                                                          defaults=[],
                                                          ty=functionTypeFromSignature nd3})))
@@ -813,7 +813,7 @@ and functionExpression (ts,a:alpha,b:beta) =
                                               (Ast.Func {name={kind=Ast.Ordinary,ident=nd2},
                                                          fsig=nd3,
                                                          block=nd4,
-                                                         isNative=false,
+                                                         native=false,
                                                          param=([],[]),
                                                          defaults=[],
                                                          ty=functionTypeFromSignature nd3})))
@@ -833,7 +833,7 @@ and functionExpression (ts,a:alpha,b:beta) =
                                                                body=[Ast.ReturnStmt nd4],
                                                                head=NONE,
                                                                loc=locOf ts3},
-                                                    isNative=false,
+                                                    native=false,
                                                     param=([],[]),
                                                     defaults=[],
                                                     ty=functionTypeFromSignature nd3})))
@@ -1405,7 +1405,7 @@ and literalField (ts) =
                                     (Ast.Func {name={kind=Ast.Get, ident=Ustring.empty},
                                                fsig=fsig,
                                                block=block,
-                                               isNative=false,
+                                               native=false,
                                                param=([],[]),
                                                defaults=[],
                                                ty=functionTypeFromSignature fsig}))})
@@ -1422,7 +1422,7 @@ and literalField (ts) =
                                     (Ast.Func {name={kind=Ast.Get,ident=Ustring.empty},
                                                fsig=fsig,
                                                block=block,
-                                               isNative=false,
+                                               native=false,
                                                param=([],[]),
                                                defaults=[],
                                                ty=functionTypeFromSignature fsig}))})
@@ -5453,18 +5453,19 @@ and functionDeclaration (ts,attrs) =
                 val (ts2,nd2) = functionSignature (ts1)
             in
                 (ts2,{pragmas=[],
-                      defns=[Ast.FunctionDefn {kind=Ast.Var,
+                      defns=[Ast.FunctionDefn {kind=Ast.Const,
                                                ns=ns,
                                                final=final,
                                                override=override,
                                                prototype=prototype,
                                                static=static,
+                                               abstract=true,
                                                func=Ast.Func {name={ident=nd1,kind=Ast.Ordinary},
                                                               fsig=nd2, 
                                                               param=([],[]),
                                                               defaults=[],
                                                               ty=functionTypeFromSignature nd2,
-                                                              isNative=native,
+                                                              native=native,
                                                               block=Ast.Block {pragmas=[],
                                                                                defns=[],
                                                                                body=[],
@@ -5526,7 +5527,7 @@ and functionDefinition (ts,attrs:ATTRS,CLASS) =
                                                                            param=([],[]),
                                                                            defaults=[],
                                                                            ty=functionTypeFromSignature nd3,
-                                                                           isNative=false,
+                                                                           native=false,
                                                                            block=nd4}})],
                               body=[],
                               head=NONE,
@@ -5545,7 +5546,7 @@ and functionDefinition (ts,attrs:ATTRS,CLASS) =
                                                              param=([],[]),
                                                              defaults=[],
                                                              ty=functionTypeFromSignature nd3,
-                                                             isNative=false,
+                                                             native=false,
                                                              block=Ast.Block 
                                                                        {pragmas=[],
                                                                         defns=[],
@@ -5574,7 +5575,7 @@ and functionDefinition (ts,attrs:ATTRS,CLASS) =
                                              param=([],[]),
                                              defaults=[],
                                              ty=functionTypeFromSignature nd3,
-                                             isNative=false,
+                                             native=false,
                                              block=nd4}
                     in
                         (ts4,{pragmas=[],
@@ -5585,6 +5586,7 @@ and functionDefinition (ts,attrs:ATTRS,CLASS) =
                                                        override=override,
                                                        prototype=prototype,
                                                        static=static,
+                                                       abstract=false,
                                                        func=func}],
                               body=[],
                               head=NONE,
@@ -5601,12 +5603,13 @@ and functionDefinition (ts,attrs:ATTRS,CLASS) =
                                                        override=override,
                                                        prototype=prototype,
                                                        static=static,
+                                                       abstract=false,
                                                        func=Ast.Func {name=nd2,
                                                                       fsig=nd3, 
                                                                       param=([],[]),
                                                                       defaults=[],
                                                                       ty=functionTypeFromSignature nd3,
-                                                                      isNative=false,
+                                                                      native=false,
                                                                       block=Ast.Block { pragmas=[],
                                                                                         defns=[],
                                                                                         body=[Ast.ReturnStmt nd4],
@@ -5630,7 +5633,7 @@ and functionDefinition (ts,attrs:ATTRS,CLASS) =
                                              param=([],[]),
                                              defaults=[],
                                              ty=functionTypeFromSignature nd3,
-                                             isNative=false,
+                                             native=false,
                                              block=nd4}
                         val initSteps = [Ast.InitStep (Ast.PropIdent ident, Ast.LiteralExpr (Ast.LiteralFunction func))]
                         val initStmts = [Ast.InitStmt {kind=nd1,
@@ -5656,7 +5659,7 @@ and functionDefinition (ts,attrs:ATTRS,CLASS) =
                                              param=([],[]),
                                              defaults=[],
                                              ty=functionTypeFromSignature nd3,
-                                             isNative=false,
+                                             native=false,
                                              block=Ast.Block {pragmas=[],
                                                               defns=[],
                                                               body=[Ast.ReturnStmt nd4],
@@ -5694,7 +5697,7 @@ and functionDefinition (ts,attrs:ATTRS,CLASS) =
                              param=([],[]),
                              defaults=[],
                              ty=functionTypeFromSignature(nd3),
-                             isNative=false,
+                             native=false,
                              block=nd4}
     in
         (ts4,{pragmas=[],
@@ -5704,6 +5707,7 @@ and functionDefinition (ts,attrs:ATTRS,CLASS) =
                                        override=override,
                                        prototype=prototype,
                                        static=static,
+                                       abstract=false,
                                        func=func}],
               body=[],
 (*

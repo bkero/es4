@@ -8,7 +8,10 @@ BUGS
 
 TO DO
 
-- interface definitions
+- remove redundancy in definer implemenation of inheritance
+- set ty field in InstanceType & use ty to check member access
+- set subtypes in InstanceType & use subtypes to check subtype 
+  relationship between instance types
 
 ISSUES
 
