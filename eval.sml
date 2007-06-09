@@ -4018,6 +4018,7 @@ and initClassPrototype (regs:Mach.REGS)
             val newPrototype = Mach.setProto newPrototype baseProtoVal
         in
             defValue classObj Name.nons_prototype (Mach.Object newPrototype);
+            Mach.setPropDontEnum props Name.nons_prototype true;
             setValue newPrototype Name.nons_constructor (Mach.Object classObj);
             trace ["finished initialising class prototype"]
         end
