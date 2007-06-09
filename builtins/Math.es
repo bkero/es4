@@ -89,7 +89,7 @@ package MathInternals
 	    return x;
 	}
 
-        /* FIXME: These signatures are dodgy.  
+        /* FIXME (ticket #83): These signatures are dodgy.  
          * 
          * Consider Math.floor(1.1m), which we might like to work.  On
          * the other hand do we really care about calling Math.cos on
@@ -112,7 +112,6 @@ package MathInternals
         intrinsic native function tan(x):Number;
 
         // 15.8.1 Value Properties of the Math Object.  These are {DD,DE,RO}.
-        // FIXME: these are currently not DontEnum.  See ticket #88.
         public const E = 2.7182818284590452354;   /* Approximately */
         public const LN10 = 2.302585092994046;    /* Approximately */
         public const LN2 = 0.6931471805599453;    /* Approximately */
