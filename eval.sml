@@ -460,7 +460,10 @@ fun allocFixtures (regs:Mach.REGS)
                   | Ast.FieldTypeRef _ => (* FIXME: get type from object type *)
                     error ["allocating fixture of unresolved field type reference"]
 
-                  | _ => Mach.ValProp (Mach.Undef)
+                  (* Note, the definer must have created inits for nonnullable primitive types 
+                   * where the program does not contain such inits.
+                   *)
+                  | Ast.InstanceType _ => Mach.ValProp (Mach.Null)
 
                   (* FIXME: this error should probably be turned on. *)
                   (* | _ => error ["Shouldn't happen: failed to match in Eval.allocFixtures#valAllocState."] *)
