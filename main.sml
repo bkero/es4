@@ -100,7 +100,7 @@ fun repl doBoot argvRest =
             let 
                 val _ = if !interactive then print ">> " else print "<SMLREADY>\n"
                 val line = case TextIO.inputLine TextIO.stdIn of 
-                               NONE => ""
+                               NONE => raise quitException
                              | SOME s => s
                 val toks = String.tokens Char.isSpace line
                 fun help _ = (List.app print 
