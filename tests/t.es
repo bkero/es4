@@ -11,10 +11,12 @@ class A implements I,J,K {
 function m() { print("A.m") }
 function n() { print("A.n") }
 }
+class B extends A implements I,J,K {}
 
-let i : I = new A
-let j : J = new A
-let k : K = new A
+let i : I = new B
+let j : J = new B
+let k : K = new B
 i.m()
-j.m()
+j.n()
 k.m()
+k.n()

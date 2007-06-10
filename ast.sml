@@ -174,7 +174,7 @@ datatype PRAGMA =
              instanceInits: HEAD,
              constructor: CTOR option,
              classType: TYPE_EXPR,  (* ObjectType *)
-             instanceType: TYPE_EXPR } (* InstanceType *)
+             instanceType: INSTANCE_TYPE }
 
      and IFACE =
          Iface of
@@ -182,7 +182,7 @@ datatype PRAGMA =
              nonnullable: bool,
              extends: NAME list,
              instanceFixtures: FIXTURES,
-             instanceType: TYPE_EXPR } (* InstanceType *)
+             instanceType: INSTANCE_TYPE }
 
      and CTOR =
          Ctor of {
@@ -255,12 +255,7 @@ datatype PRAGMA =
        | NullableType of {
              expr:TYPE_EXPR,
              nullable:bool }
-       | InstanceType of {
-             name: NAME,
-             nonnullable: bool, 
-             typeParams: IDENT list, 
-             ty: TYPE_EXPR,
-             dynamic: bool }
+       | InstanceType of INSTANCE_TYPE 
 
      and STMT =
          EmptyStmt
@@ -439,6 +434,14 @@ withtype
      and FIXTURES = (FIXTURE_NAME * FIXTURE) list
      and INITS = (FIXTURE_NAME * EXPR) list
      and HEAD = (FIXTURES * INITS)
+
+     and INSTANCE_TYPE = 
+          {  name: NAME,
+             nonnullable: bool, 
+             typeParams: IDENT list,
+             superTypes: NAME list,
+             ty: TYPE_EXPR,
+             dynamic: bool }
 
      and FIELD =
            { kind: VAR_DEFN_TAG,

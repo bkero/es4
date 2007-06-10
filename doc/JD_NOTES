@@ -20,6 +20,18 @@ ISSUES
 
 ###
 
+JUN-09-2007
+
+CLASSES AND INTERFACES
+
+- analyze class body -> instance and class definitions
+- resolve extends -> list of base classes, list of inherited fixtures
+- resolve implements -> list of base interfaces, list of inherited fixtures
+- inherit fixtures -> list of instance fixtures
+- implement fixtures -> error nor not
+
+###
+
 JUN-04-2007
 
 NO NAMESPACE

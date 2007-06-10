@@ -147,11 +147,14 @@ fun resolveExprToNamespace (env:ENV)
 
 (****************************** standard types *************************)
 
-fun instanceType (n:Ast.NAME) : Ast.TYPE_EXPR =
+fun instanceType (n:Ast.NAME) : Ast.INSTANCE_TYPE =
     case Defn.getFixture (!Defn.topFixtures) (Ast.PropName n) of
         Ast.ClassFixture (Ast.Cls cls) => (#instanceType cls)
       | Ast.InterfaceFixture (Ast.Iface iface) => (#instanceType iface)
       | _ => error ["type not an instance type ", LogErr.name n]
+
+fun instanceTypeExpr (n:Ast.NAME) : Ast.TYPE_EXPR =
+    Ast.InstanceType (instanceType n)
 
 val undefinedType   = Ast.SpecialType Ast.Undefined
 val nullType        = Ast.SpecialType Ast.Null
@@ -336,8 +339,8 @@ fun verifyTypeExpr (env:ENV)
                             case findFixture ribs {nss=nss, id=id} of 
                                 (* FIXME: re-resolve result ... in which environment? *)
                                 Ast.TypeFixture ty => ty 
-                              | Ast.ClassFixture (Ast.Cls cls) => (#instanceType cls)
-                              | Ast.InterfaceFixture (Ast.Iface iface) => (#instanceType iface)
+                              | Ast.ClassFixture (Ast.Cls cls) => Ast.InstanceType (#instanceType cls)
+                              | Ast.InterfaceFixture (Ast.Iface iface) => Ast.InstanceType (#instanceType iface)
                               | _ => case (#ribs env) of 
                                          (r :: rs) => tryRibs rs
                                        | [] => error ["multiname ", LogErr.multiname {nss=nss, id=id}, 
@@ -447,12 +450,6 @@ and isClass (t:Ast.NAME)
         Ast.ClassFixture cls => true
       | _ => false
 
-and isInterface (t:Ast.NAME)
-    : bool =
-    case getTopFixture t of 
-        Ast.InterfaceFixture _ => true
-      | _ => false
-
 and getClass (t:Ast.NAME)
     : Ast.CLS =
     case getTopFixture t of 
@@ -466,8 +463,11 @@ and getClass (t:Ast.NAME)
         end
       | _ => error ["getClass returned non-class fixture for ", LogErr.name t]
 
-and instanceOf (t0:Ast.NAME) (* derived *)
-               (t:Ast.NAME)  (* base *)
+(*
+FIXME temporarily deoptimized
+
+and instanceOf (t0:Ast.NAME)
+               (t:Ast.NAME)
     : bool =
     let
         val c = !instanceOfCache
@@ -496,7 +496,29 @@ and instanceOf (t0:Ast.NAME) (* derived *)
             end
           | SOME v => v
     end
+*)
 
+(*
+    is actual 't0' in expected's 't' type chain?
+*)
+
+and instanceOf (t0:Ast.NAME)  (* actual *)
+               (t:Ast.NAME)   (* expected *)
+    : bool =
+    let
+        fun search n = 
+            if Mach.nameEq n t
+            then true
+            else 
+                let 
+                    val it = instanceType n
+                    val bases = (#superTypes it)
+                in
+                    List.exists search bases
+                end
+    in
+        search t0
+    end
 
 fun normalize (t:Ast.TYPE_EXPR) 
     : Ast.TYPE_EXPR = 
@@ -555,8 +577,8 @@ fun normalize (t:Ast.TYPE_EXPR)
                      else Ast.UnionType union
     end
     
-and isSubtype (t1:TYPE_VALUE)
-              (t2:TYPE_VALUE)
+and isSubtype (t1:TYPE_VALUE) (* derived *)
+              (t2:TYPE_VALUE) (* base *)
     : bool =
     let
         val _ = trace [">>> isSubtype: ", fmtType t1, " <: ", fmtType t2 ];
@@ -825,7 +847,7 @@ and verifyExpr (env:ENV)
             then thunk ()
             else ()
 
-        val booleanType = instanceType Name.intrinsic_boolean
+        val booleanType = instanceTypeExpr Name.intrinsic_boolean
     in
         case expr of 
             Ast.TernaryExpr (e1, e2, e3) =>
@@ -844,7 +866,7 @@ and verifyExpr (env:ENV)
                 val (e1', t1) = verifySub e1
                 val (e2', t2) = verifySub e2
                 val NumericType = verifyTypeExpr env (Name.typename Name.intrinsic_Numeric)
-                val AdditionType = Ast.UnionType [ NumericType, instanceType Name.nons_String ]
+                val AdditionType = Ast.UnionType [ NumericType, instanceTypeExpr Name.nons_String ]
                 (* FIXME: these are way wrong. *)
                 (* FIXME: need to deal with operator overloading *)
                 val (expectedType1, expectedType2, resultType) =
@@ -913,7 +935,7 @@ and verifyExpr (env:ENV)
                                       (* FIXME: these are probably mostly wrong *)
                                       Ast.Delete => booleanType
                                     | Ast.Void => undefinedType
-                                    | Ast.Typeof => instanceType Name.intrinsic_string
+                                    | Ast.Typeof => instanceTypeExpr Name.intrinsic_string
                                     | Ast.PreIncrement mode => NumericType
                                     | Ast.PreDecrement mode => NumericType
                                     | Ast.PostIncrement mode => NumericType
@@ -923,7 +945,7 @@ and verifyExpr (env:ENV)
                                     | Ast.BitwiseNot => NumericType
                                     | Ast.LogicalNot => booleanType
                                     (* TODO: isn't this supposed to be the prefix of a type expression? *)
-                                    | Ast.Type => instanceType Name.intrinsic_Type
+                                    | Ast.Type => instanceTypeExpr Name.intrinsic_Type
             in
                 whenStrict (fn () =>
                                case u of
@@ -946,7 +968,7 @@ and verifyExpr (env:ENV)
             let
                 val t' = verifyTypeExpr env t
             in
-                return (Ast.TypeExpr t', instanceType Name.intrinsic_Type)
+                return (Ast.TypeExpr t', instanceTypeExpr Name.intrinsic_Type)
             end
 
           | Ast.ThisExpr =>
@@ -974,23 +996,23 @@ and verifyExpr (env:ENV)
                 val resultType = case le of
                                       Ast.LiteralNull => nullType
                                     | Ast.LiteralUndefined => undefinedType
-                                    | Ast.LiteralDouble _ => instanceType Name.intrinsic_double
-                                    | Ast.LiteralDecimal _ => instanceType Name.intrinsic_decimal
-                                    | Ast.LiteralInt _ => instanceType Name.intrinsic_int
-                                    | Ast.LiteralUInt _ => instanceType Name.intrinsic_uint
-                                    | Ast.LiteralBoolean _ => instanceType Name.intrinsic_boolean
-                                    | Ast.LiteralString _ => instanceType Name.intrinsic_string
+                                    | Ast.LiteralDouble _ => instanceTypeExpr Name.intrinsic_double
+                                    | Ast.LiteralDecimal _ => instanceTypeExpr Name.intrinsic_decimal
+                                    | Ast.LiteralInt _ => instanceTypeExpr Name.intrinsic_int
+                                    | Ast.LiteralUInt _ => instanceTypeExpr Name.intrinsic_uint
+                                    | Ast.LiteralBoolean _ => instanceTypeExpr Name.intrinsic_boolean
+                                    | Ast.LiteralString _ => instanceTypeExpr Name.intrinsic_string
                                     | Ast.LiteralArray { ty=SOME ty, ... } => verifyTypeExpr env ty
                                     (* FIXME: how do we want to represent [*] ? *)
                                     | Ast.LiteralArray { ty=NONE, ... } => Ast.ArrayType [Ast.SpecialType Ast.Any]
                                     (* TODO: define this *)
                                     | Ast.LiteralXML _ => anyType
-                                    | Ast.LiteralNamespace _ => instanceType Name.intrinsic_Namespace
+                                    | Ast.LiteralNamespace _ => instanceTypeExpr Name.intrinsic_Namespace
                                     | Ast.LiteralObject { ty=SOME ty, ... } => verifyTypeExpr env ty
                                     (* FIXME: how do we want to represent {*} ? *)
                                     | Ast.LiteralObject { ty=NONE, ... } => anyType
                                     | Ast.LiteralFunction (Ast.Func { fsig, ... }) => funcSigType env fsig
-                                    | Ast.LiteralRegExp _ => instanceType Name.nons_RegExp
+                                    | Ast.LiteralRegExp _ => instanceTypeExpr Name.nons_RegExp
                                     | _ => internalError ["unprocessed literal returned by Defn"]
                 fun verifyField { kind, name, init } = 
                     { kind = kind, 
@@ -1174,7 +1196,7 @@ and verifyStmt (env:ENV)
                (stmt:Ast.STMT) 
     : Ast.STMT = 
     let fun verifySub s = verifyStmt env s
-        val booleanType = instanceType Name.intrinsic_boolean
+        val booleanType = instanceTypeExpr Name.intrinsic_boolean
     in
         case stmt of
             Ast.EmptyStmt => 

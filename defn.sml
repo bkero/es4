@@ -632,8 +632,8 @@ and defClass (env: ENV)
              (cdef: Ast.CLASS_DEFN)
     : (Ast.FIXTURES * Ast.CLASS_DEFN) =
     let
-        val class = analyzeClass env cdef
-        val class = resolveClass env cdef class
+        val class = analyzeClassBody env cdef
+        val class = resolveClassInheritance env cdef class
         val Ast.Cls {name,...} = class
     in
         ([(Ast.PropName name, Ast.ClassFixture class)],cdef)
@@ -658,19 +658,25 @@ and defInterface (env: ENV)
     let
         val { ident, extends, instanceDefns, nonnullable, ... } = idef
 
+        (* Make the interface name *)
         val name = Name.nons ident
 
-        val interfaceMnames = map (identExprToMultiname env) extends
-        val (interfaceNames,interfaceFixtures) = ListPair.unzip (map (resolveMultinameToFixture env) interfaceMnames)
-        val (superInterfaces, inheritedFixtures) = resolveInterfaces env interfaceNames
+        (* Resolve base interface's super interfaces and fixtures *)
+        val (superInterfaces, inheritedFixtures) = resolveInterfaces env extends
 
+        (* Define the current fixtures *)
         val (unhoisted,instanceFixtures,_) = defDefns env [] [] [] instanceDefns
+
+        (* Inherit fixtures and check overrides *)
         val instanceFixtures = inheritFixtures inheritedFixtures instanceFixtures
-        val instanceType = Ast.InstanceType {name=name, 
-                                             nonnullable=nonnullable, 
-                                             typeParams=[],
-                                             ty=Ast.SpecialType Ast.Any,  (* FIXME needs record type *)
-                                             dynamic=false} (* interfaces are never dynamic *)
+
+        (* Make the instance type and interface fixture *)
+        val instanceType = {name=name,
+                            nonnullable=nonnullable,
+                            typeParams=[],
+                            superTypes=superInterfaces,
+                            ty=Ast.SpecialType Ast.Any,  (* FIXME needs record type *)
+                            dynamic=false} (* interfaces are never dynamic *)
         val iface = Ast.Iface { name=name, nonnullable=nonnullable, extends=superInterfaces, instanceFixtures=instanceFixtures, 
                                 instanceType = instanceType }
     in
@@ -697,6 +703,77 @@ and defInterface (env: ENV)
     light weight verification to ensure that overrides are type compatible
     before a class is loaded.
 *)
+
+(* 
+   Given two fixtures, one base and other derived, check to see if
+   the derived fixture can override the base fixture. Specifically,
+   check that:
+
+       - the base fixture is not 'final'
+       - the derived fixture is 'override'
+       - they have same number of type parameters and parameters
+       - they both have the return type void or neither has the return type void
+       - what else?
+   
+   Type compatibility of parameter and return types is done by the evaluator
+   (or verifier in strict mode) and not here because type annotations can have
+   forward references
+*)
+
+and canOverride (fb:Ast.FIXTURE) (fd:Ast.FIXTURE)
+    : bool = 
+    let
+        fun isVoid ty = case ty of Ast.SpecialType Ast.VoidType => true 
+                                 | _ => false
+                                        
+        val isCompatible = case (fb,fd) of 
+                (Ast.MethodFixture 
+                     {ty=(Ast.FunctionType 
+                              {typeParams=tpb,params=pb,result=rtb,minArgs=mb,...}),
+                      func=(Ast.Func {fsig=Ast.FunctionSignature {defaults=db, ...}, ...}),...},
+                 Ast.MethodFixture 
+                     {ty=(Ast.FunctionType 
+                              {typeParams=tpd,params=pd,result=rtd,minArgs=md,...}),
+                      func=(Ast.Func {fsig=Ast.FunctionSignature {defaults=dd, ...}, ...}),...}) =>
+                    let
+                        val _ = trace ["length tpb ",Int.toString (length tpb),
+                                       " length tpd ",Int.toString (length tpd),"\n"]
+                        val _ = trace ["mb ",Int.toString mb, " md ",Int.toString md,"\n"]
+                        val _ = trace ["length pb ",Int.toString (length pb),
+                                       " length pd ",Int.toString (length pd),"\n"]
+                        val _ = trace ["length db ",Int.toString (length db),
+                                       " length dd ",Int.toString (length dd),"\n"]
+                    in
+                        (length tpb)=(length tpd)
+                        andalso (((isVoid rtb) andalso (isVoid rtd))
+                                 orelse
+                                ((not (isVoid rtb)) andalso (not (isVoid rtd))))
+                        (* FIXME: check compatibility of return types? *)
+                    end
+                
+              | _ => false
+        val _ = trace ["isCompatible = ",Bool.toString isCompatible]
+    
+    in case (fb,fd) of
+        (Ast.MethodFixture {final,abstract,...}, Ast.MethodFixture {override,...}) => 
+            (((not final) andalso override) orelse (abstract)) 
+            andalso isCompatible
+
+      (* FIXME: what are the rules for getter/setter overriding? 
+         1/base fixture is not final
+         2/derived fixture is override
+         3/getter is compatible
+         4/setter is compatible
+      *)
+      | (Ast.VirtualValFixture vb,
+         Ast.VirtualValFixture vd) =>
+            let
+                val _ = trace ["checking override of VirtualValFixture"]
+            in
+               true               
+            end 
+      | _ => LogErr.unimplError ["checkOverride"]
+    end
 
 and inheritFixtures (base:Ast.FIXTURES)
                     (derived:Ast.FIXTURES)
@@ -752,77 +829,6 @@ and inheritFixtures (base:Ast.FIXTURES)
                                | _ => LogErr.defnError ["illegal override of ", LogErr.fname n]
             end
 
-        (* 
-           Given two fixtures, one base and other derived, check to see if
-           the derived fixture can override the base fixture. Specifically,
-           check that:
-
-               - the base fixture is not 'final'
-               - the derived fixture is 'override'
-               - they have same number of type parameters and parameters
-               - they both have the return type void or neither has the return type void
-               - what else?
-           
-           Type compatibility of parameter and return types is done by the evaluator
-           (or verifier in strict mode) and not here because type annotations can have
-           forward references
-        *)
-
-        and canOverride (fb:Ast.FIXTURE) (fd:Ast.FIXTURE)
-            : bool = 
-            let
-                fun isVoid ty = case ty of Ast.SpecialType Ast.VoidType => true 
-                                         | _ => false
-                                                
-                val isCompatible = case (fb,fd) of 
-                        (Ast.MethodFixture 
-                             {ty=(Ast.FunctionType 
-                                      {typeParams=tpb,params=pb,result=rtb,minArgs=mb,...}),
-                              func=(Ast.Func {fsig=Ast.FunctionSignature {defaults=db, ...}, ...}),...},
-                         Ast.MethodFixture 
-                             {ty=(Ast.FunctionType 
-                                      {typeParams=tpd,params=pd,result=rtd,minArgs=md,...}),
-                              func=(Ast.Func {fsig=Ast.FunctionSignature {defaults=dd, ...}, ...}),...}) =>
-                            let
-                                val _ = trace ["length tpb ",Int.toString (length tpb),
-                                               " length tpd ",Int.toString (length tpd),"\n"]
-                                val _ = trace ["mb ",Int.toString mb, " md ",Int.toString md,"\n"]
-                                val _ = trace ["length pb ",Int.toString (length pb),
-                                               " length pd ",Int.toString (length pd),"\n"]
-                                val _ = trace ["length db ",Int.toString (length db),
-                                               " length dd ",Int.toString (length dd),"\n"]
-                            in
-                                (length tpb)=(length tpd) 
-                                andalso (((isVoid rtb) andalso (isVoid rtd)) 
-                                         orelse
-                                        ((not (isVoid rtb)) andalso (not (isVoid rtd))))
-                                (* FIXME: check compatibility of return types? *)
-                            end
-                        
-                      | _ => false
-                val _ = trace ["isCompatible = ",Bool.toString isCompatible]
-            
-            in case (fb,fd) of
-                (Ast.MethodFixture {final,abstract,...}, Ast.MethodFixture {override,...}) => 
-                    (((not final) andalso override) orelse (abstract)) 
-                    andalso isCompatible
-
-              (* FIXME: what are the rules for getter/setter overriding? 
-                 1/base fixture is not final
-                 2/derived fixture is override
-                 3/getter is compatible
-                 4/setter is compatible
-              *)
-              | (Ast.VirtualValFixture vb,
-                 Ast.VirtualValFixture vd) =>
-                    let
-                        val _ = trace ["checking override of VirtualValFixture"]
-                    in
-                       true               
-                    end 
-              | _ => LogErr.unimplError ["checkOverride"]
-            end
-
     in case base of
         [] => derived (* done *)
       | first::follows => inheritFixtures follows (inheritFixture first)
@@ -839,12 +845,6 @@ and inheritFixtures (base:Ast.FIXTURES)
 
     - interface fixture not implemented
     
-    Notes:
-
-    don't check type compatibility yet; we don't know the value of type
-    expressions until verify time. In standard mode we need to do a
-    light weight verification to ensure that overrides are type compatible
-    before a class is loaded.
 *)
 
 and implementFixtures (base:Ast.FIXTURES)
@@ -852,33 +852,6 @@ and implementFixtures (base:Ast.FIXTURES)
     : unit =
     let
         (* 
-           Recurse through the fixtures of a base class to see if the
-           given fixture binding is allowed. if so, then add it
-           return the updated fixtures 
-
-           TODO: check for name conflicts:
-
-                Any name can be overridden by any other name with the same 
-                identifier and a namespace that is at least as visible. Visibility
-                is an attribute of the builtin namespaces: private, protected,
-                internal and public. These are related by:
-
-                    private < protected
-                    protected < public
-                    private < internal
-                    internal < public
-
-                where < means less visible
-
-                Note that protected and internal are overlapping namespaces and 
-                therefore it is an error to attempt to override a name in one 
-                with a name in another.
-
-            It is an error for there to be a derived fixture with a name that is:
-
-               - less visible than a base fixture
-               - as visible or more visible than a base fixture but not overriding it 
-                 (this case is caught by the override check below)
         *)
 
         fun implementFixture ((n,fb):(Ast.FIXTURE_NAME * Ast.FIXTURE))
@@ -887,84 +860,14 @@ and implementFixtures (base:Ast.FIXTURES)
                 fun targetFixture _ = if (hasFixture derived n)
                                       then SOME (getFixture derived n)
                                       else LogErr.defnError ["unimplemented interface method ",LogErr.fname n];
-                val _ = trace ["checking override of ", LogErr.fname n]
+                val _ = trace ["checking implementation of ", LogErr.fname n]
             in 
-                case n of 
-                    (* Private fixtures never "inherit", so it's meaningless to ask. *)
-                    Ast.PropName {ns=Ast.Private _, ...} => derived
-                  | _ => case targetFixture () of
-                             NONE => LogErr.defnError ["unimplemented interface method ", LogErr.fname n]
-                           | SOME fd => 
-                             case (canImplement fb fd) of
-                                 true => derived  (* return current fixtures *)
-                               | _ => LogErr.defnError ["illegal implementation of ", LogErr.fname n]
-            end
-
-        (* 
-           Given two fixtures, one base and other derived, check to see if
-           the derived fixture implements the base fixture. Specifically,
-           check that:
-
-               - they have same number of type parameters and parameters
-               - they both have the return type void or neither has the return type void
-               - what else?
-           
-           Type compatibility of parameter and return types is done by the evaluator
-           (or verifier in strict mode) and not here because type annotations can have
-           forward references
-        *)
-
-        and canImplement (fb:Ast.FIXTURE) (fd:Ast.FIXTURE)
-            : bool = 
-            let
-                fun isVoid ty = case ty of Ast.SpecialType Ast.VoidType => true 
-                                         | _ => false
-
-                val isCompatible = case (fb,fd) of 
-                        (Ast.MethodFixture 
-                             {ty=(Ast.FunctionType 
-                                      {typeParams=tpb,params=pb,result=rtb,minArgs=mb,...}),
-                              func=(Ast.Func {fsig=Ast.FunctionSignature {defaults=db, ...}, ...}),...},
-                         Ast.MethodFixture 
-                             {ty=(Ast.FunctionType 
-                                      {typeParams=tpd,params=pd,result=rtd,minArgs=md,...}),
-                              func=(Ast.Func {fsig=Ast.FunctionSignature {defaults=dd, ...}, ...}),...}) =>
-                            let
-                                val _ = trace ["length tpb ",Int.toString (length tpb),
-                                               " length tpd ",Int.toString (length tpd),"\n"]
-                                val _ = trace ["mb ",Int.toString mb, " md ",Int.toString md,"\n"]
-                                val _ = trace ["length pb ",Int.toString (length pb),
-                                               " length pd ",Int.toString (length pd),"\n"]
-                                val _ = trace ["length db ",Int.toString (length db),
-                                               " length dd ",Int.toString (length dd),"\n"]
-                            in
-                                (length tpb)=(length tpd) 
-                                andalso (((isVoid rtb) andalso (isVoid rtd)) 
-                                         orelse
-                                        ((not (isVoid rtb)) andalso (not (isVoid rtd)))) 
-                             end
-                        
-                      | _ => (Pretty.ppFixture fb; Pretty.ppFixture fd; false)
-                val _ = trace ["isCompatible = ",Bool.toString isCompatible]
-            
-            in case (fb,fd) of
-                (Ast.MethodFixture _, Ast.MethodFixture _) => 
-                    isCompatible
-
-              (* FIXME: what are the rules for getter/setter overriding? 
-                 1/base fixture is not final
-                 2/derived fixture is override
-                 3/getter is compatible
-                 4/setter is compatible
-              *)
-              | (Ast.VirtualValFixture vb,
-                 Ast.VirtualValFixture vd) =>
-                    let
-                        val _ = trace ["checking override of VirtualValFixture"]
-                    in
-                       true               
-                    end 
-              | _ => LogErr.unimplError ["checkOverride"]
+                case targetFixture () of
+                    NONE => LogErr.defnError ["unimplemented interface method ", LogErr.fname n]
+                  | SOME fd =>
+                        case (canOverride fb fd) of
+                            true => derived  (* return current fixtures *)
+                          | _ => LogErr.defnError ["illegal implementation of ", LogErr.fname n]
             end
 
     in case base of
@@ -973,23 +876,33 @@ and implementFixtures (base:Ast.FIXTURES)
     end
 
 (*
-    resolveClass
+    resolveClassInheritance
 
     Inherit instance fixtures from the base class. Check fixtures against
     interface fixtures
 *)
 
-and resolveClass (env:ENV)
+and resolveClassInheritance (env:ENV)
                  ({extends,implements,...}: Ast.CLASS_DEFN)
                  (Ast.Cls {name,nonnullable,dynamic,classFixtures,instanceFixtures,instanceInits,
-                   constructor,classType,instanceType,...}:Ast.CLS)
+                           constructor,classType,...}:Ast.CLS)
     : Ast.CLS =
     let
         val _ = trace ["analyzing class block for ", LogErr.name name]
         val (extendsName, instanceFixtures) = resolveExtends env instanceFixtures extends [name]
         val (implementsNames, instanceFixtures) = resolveImplements env instanceFixtures implements
+        val superTypes = case extendsName of NONE => implementsNames | _ => (valOf extendsName) :: implementsNames
+
+        (* Make the instance type *)
+        val instanceType = {name=name,
+                            nonnullable=nonnullable,
+                            typeParams=[],
+                            superTypes=superTypes,
+                            ty=Ast.SpecialType Ast.Any,  (* FIXME needs record type *)
+                            dynamic=dynamic}
     in
-        Ast.Cls {name=name, extends=extendsName,
+        Ast.Cls {name=name,
+                 extends=extendsName,
                  nonnullable=nonnullable,
                  dynamic=dynamic,
                  implements=implementsNames,
@@ -1051,10 +964,8 @@ and resolveImplements (env: ENV)
                       (implements: Ast.IDENT_EXPR list)
     : (Ast.NAME list * Ast.FIXTURES) =
     let
-        val interfaceMnames = map (identExprToMultiname env) implements
-        val (interfaceNames,interfaceFixtures) = ListPair.unzip (map (resolveMultinameToFixture env) interfaceMnames)
-        val (superInterfaces, inheritedFixtures) = resolveInterfaces env interfaceNames
-        val _ = implementFixtures inheritedFixtures instanceFixtures
+        val (superInterfaces, abstractFixtures) = resolveInterfaces env implements
+        val _ = implementFixtures abstractFixtures instanceFixtures
     in
         (superInterfaces,instanceFixtures)
     end
@@ -1086,28 +997,32 @@ and interfaceExtends (ifxtr)
       |_ => LogErr.internalError ["interfaceExtends"]
 
 (*
-    recusively resolve a list of interface names to their super interfaces and
+    resolve a list of interface names to their super interfaces and
     method fixtures
+
+    interface I { function m() }
+    interface J extends I { function n() }  // [I],[m]
+    interface K extends J {}  // [I,J] [m,n]
+
 *)
 
 and resolveInterfaces (env: ENV)
-                      (names: Ast.NAME list)
+                      (exprs: Ast.IDENT_EXPR list)
     : (Ast.NAME list * Ast.FIXTURES) =
-    case names of
+    case exprs of
         [] => ([],[])
       | _ =>
         let
-            val interfaceMnames = map multinameFromName names
-            val (interfaceNames,interfaceFixtures) = ListPair.unzip (map (resolveMultinameToFixture env) interfaceMnames)
+            val mnames = map (identExprToMultiname env) exprs
+            val (interfaceNames,interfaceFixtures) = ListPair.unzip (map (resolveMultinameToFixture env) mnames)
             val methodFixtures = List.concat (map interfaceMethods interfaceFixtures)
             val superInterfaceNames = List.concat (map interfaceExtends interfaceFixtures)
-            val (in2,mf2) = resolveInterfaces env superInterfaceNames
         in
-            (interfaceNames@in2, methodFixtures@mf2)
+            (interfaceNames@superInterfaceNames, methodFixtures)
         end
 
 (*
-    analyzeClass
+    analyzeClassBody
 
     The parser has already turned the class body into a block statement with init
     statements for setting the value of static and prototype fixtures. This class
@@ -1115,8 +1030,8 @@ and resolveInterfaces (env: ENV)
     that set the value of instance vars.
 *)
 
-and analyzeClass (env:ENV)
-                 (cdef:Ast.CLASS_DEFN)
+and analyzeClassBody (env:ENV)
+                     (cdef:Ast.CLASS_DEFN)
     : Ast.CLS =
     case cdef of
         {ns, ident, instanceDefns, instanceStmts, classDefns, ctorDefn, nonnullable, dynamic, ...} =>
@@ -1160,12 +1075,12 @@ and analyzeClass (env:ENV)
             val (fxtrs,inits) = ListPair.unzip(map initsFromStmt instanceStmts)
             val instanceInits = (List.concat fxtrs, List.concat inits)
 
-            val instanceType = Ast.InstanceType {name=name, 
-                                                 nonnullable=nonnullable, 
-                                                 typeParams=[],
-                                                 ty=Ast.ObjectType [],
-                                                 dynamic=dynamic}
-
+            val instanceType = {name=name, 
+                                nonnullable=nonnullable, 
+                                typeParams=[],
+                                superTypes=[], (* FIXME *)
+                                ty=Ast.ObjectType [],
+                                dynamic=dynamic}
         in
             Ast.Cls {name=name,
                      nonnullable=nonnullable,

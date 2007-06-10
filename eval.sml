@@ -1018,7 +1018,7 @@ and needNameOrString (v:Mach.VAL)
     : Ast.NAME =
     case v of
         Mach.Object obj =>
-        if Verify.isSubtype (typeOfVal v) (Verify.instanceType Name.intrinsic_Name)
+        if Verify.isSubtype (typeOfVal v) (Verify.instanceTypeExpr Name.intrinsic_Name)
         then
             let
                 val nsval = getValue obj Name.nons_qualifier
@@ -2755,7 +2755,7 @@ and typeOfVal (v:Mach.VAL)
       | Mach.Null => Ast.SpecialType Ast.Null
       | Mach.Object (Mach.Obj {tag, ...}) => 
         (case tag of
-             Mach.ClassTag name => Verify.instanceType name
+             Mach.ClassTag name => Verify.instanceTypeExpr name
            | Mach.ObjectTag tys => Ast.ObjectType tys
            | Mach.ArrayTag tys => Ast.ArrayType tys
            | Mach.FunctionTag fty => Ast.FunctionType fty
@@ -2910,7 +2910,7 @@ and evalIdentExpr (regs:Mach.REGS)
         in
             case v of
                 Mach.Object obj =>
-                if Verify.isSubtype (typeOfVal v) (Verify.instanceType Name.intrinsic_Name)
+                if Verify.isSubtype (typeOfVal v) (Verify.instanceTypeExpr Name.intrinsic_Name)
                 then
                     let
                         val nsval = getValue obj Name.nons_qualifier
