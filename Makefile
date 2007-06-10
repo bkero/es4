@@ -6,10 +6,10 @@
 # standards and technical reports, as set forth at
 # http://www.ecma-international.org/publications/.
 # 
-#    2. All liability and responsibility for the implementation or other
-# use of this Reference Implementation rests with the implementor, and
-# not with any of the parties who contribute to, or who own or hold any
-# copyright in, this Reference Implementation.
+#    2. All liability and responsibility for any use of this Reference
+# Implementation rests with the user, and not with any of the parties
+# who contribute to, or who own or hold any copyright in, this Reference
+# Implementation.
 # 
 #    3. THIS REFERENCE IMPLEMENTATION IS PROVIDED BY THE COPYRIGHT
 # HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED
@@ -90,7 +90,7 @@ checkev: tools/unit.heap.$(HEAP_SUFFIX) es4-init.heap.$(HEAP_SUFFIX)
 checklth: tools/unit.heap.$(HEAP_SUFFIX) es4-init.heap.$(HEAP_SUFFIX)
 	sml @SMLload=tools/unit.heap $(TRACE) tests/lth_tests/lth_tests.test
 
-es4-dump.heap.$(HEAP_SUFFIX): es4-init.heap.$(HEAP_SUFFIX) $(wilcard builtins/*.es)
+es4-dump.heap.$(HEAP_SUFFIX): es4-init.heap.$(HEAP_SUFFIX) $(wildcard builtins/*.es)
 	sml @SMLload=es4-init.heap -dump es4-dump.heap
 
 smoketest: es4-dump.heap.$(HEAP_SUFFIX)
@@ -137,6 +137,7 @@ exec/es4.tar.gz: dump-heap decimal
 	mkdir -p exec/es4
 	heap2exec es4-dump.heap.$(HEAP_SUFFIX) exec/es4/es4
 	cp bin/decimal exec/es4/
+	chmod -R u=rwx,go=rx exec/es4
 	cd exec && tar cf es4.tar es4
 	gzip -v9 exec/es4.tar
 
@@ -148,5 +149,7 @@ heap/es4.tar.gz: dump-heap decimal
 	cp bin/run-cygwin.sh heap/es4/es4
 	cp es4-dump.heap.$(HEAP_SUFFIX) heap/es4/es4.heap.$(HEAP_SUFFIX)
 	cp bin/decimal heap/es4/
+	chmod -R u=rwx,go=rx heap/es4
+	chmod u=rw,go=r heap/es4/es4.heap.$(HEAP_SUFFIX)
 	cd heap && tar cf es4.tar es4
 	gzip -v9 heap/es4.tar

@@ -9,10 +9,10 @@ structure Eval = struct
  * standards and technical reports, as set forth at
  * http://www.ecma-international.org/publications/.
  * 
- *    2. All liability and responsibility for the implementation or other
- * use of this Reference Implementation rests with the implementor, and
- * not with any of the parties who contribute to, or who own or hold any
- * copyright in, this Reference Implementation.
+ *    2. All liability and responsibility for any use of this Reference
+ * Implementation rests with the user, and not with any of the parties
+ * who contribute to, or who own or hold any copyright in, this Reference
+ * Implementation.
  * 
  *    3. THIS REFERENCE IMPLEMENTATION IS PROVIDED BY THE COPYRIGHT
  * HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED
@@ -460,7 +460,10 @@ fun allocFixtures (regs:Mach.REGS)
                   | Ast.FieldTypeRef _ => (* FIXME: get type from object type *)
                     error ["allocating fixture of unresolved field type reference"]
 
-                  | _ => Mach.ValProp (Mach.Undef)
+                  (* Note, the definer must have created inits for nonnullable primitive types 
+                   * where the program does not contain such inits.
+                   *)
+                  | Ast.InstanceType _ => Mach.ValProp (Mach.Null)
 
                   (* FIXME: this error should probably be turned on. *)
                   (* | _ => error ["Shouldn't happen: failed to match in Eval.allocFixtures#valAllocState."] *)
@@ -532,7 +535,7 @@ fun allocFixtures (regs:Mach.REGS)
                                       { ty = ty,
                                         state = valAllocState ty,
                                         attrs = { dontDelete = true,
-                                                  dontEnum = shouldBeDontEnum pn obj,
+                                                  dontEnum = true, (* ticket #88 *) (* shouldBeDontEnum pn obj, *)
                                                   readOnly = readOnly,
                                                   isFixed = true } }
                             
@@ -550,7 +553,7 @@ fun allocFixtures (regs:Mach.REGS)
                                             state = Mach.VirtualValProp { getter = getFn,
                                                                           setter = setFn },
                                             attrs = { dontDelete = true,
-                                                      dontEnum = shouldBeDontEnum pn obj,
+                                                      dontEnum = true, (* ticket #88 *) (* shouldBeDontEnum pn obj, *)
                                                       readOnly = true,
                                                       isFixed = true } }
                             end
@@ -4018,6 +4021,7 @@ and initClassPrototype (regs:Mach.REGS)
             val newPrototype = Mach.setProto newPrototype baseProtoVal
         in
             defValue classObj Name.nons_prototype (Mach.Object newPrototype);
+            Mach.setPropDontEnum props Name.nons_prototype true;
             setValue newPrototype Name.nons_constructor (Mach.Object classObj);
             trace ["finished initialising class prototype"]
         end

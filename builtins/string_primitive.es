@@ -16,10 +16,10 @@
  * standards and technical reports, as set forth at
  * http://www.ecma-international.org/publications/.
  * 
- *    2. All liability and responsibility for the implementation or other
- * use of this Reference Implementation rests with the implementor, and
- * not with any of the parties who contribute to, or who own or hold any
- * copyright in, this Reference Implementation.
+ *    2. All liability and responsibility for any use of this Reference
+ * Implementation rests with the user, and not with any of the parties
+ * who contribute to, or who own or hold any copyright in, this Reference
+ * Implementation.
  * 
  *    3. THIS REFERENCE IMPLEMENTATION IS PROVIDED BY THE COPYRIGHT
  * HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED
@@ -309,7 +309,10 @@ package
                 if (R.lastIndex === oldLastIndex)
                     ++R.lastIndex;
             }
-            return matches;
+            if (matches.length == 0)
+                return null;      /* Cf errata */
+            else
+                return matches;
         }
 
 
@@ -586,6 +589,8 @@ package
                     if (A.length === lim)
                         return A;
                 }
+
+                q = p;
             }
 
             /* 28-30 */

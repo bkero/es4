@@ -8,10 +8,10 @@
 # standards and technical reports, as set forth at
 # http://www.ecma-international.org/publications/.
 # 
-#    2. All liability and responsibility for the implementation or other
-# use of this Reference Implementation rests with the implementor, and
-# not with any of the parties who contribute to, or who own or hold any
-# copyright in, this Reference Implementation.
+#    2. All liability and responsibility for any use of this Reference
+# Implementation rests with the user, and not with any of the parties
+# who contribute to, or who own or hold any copyright in, this Reference
+# Implementation.
 # 
 #    3. THIS REFERENCE IMPLEMENTATION IS PROVIDED BY THE COPYRIGHT
 # HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED
@@ -32,10 +32,10 @@
 # Software ASA, and others.
 
 NAME=es4-ri
-
+DIR=$(pwd)
 cd ..
-cp -R build $NAME
-tar --create --file="$NAME".tar --exclude=_MTN --exclude *heap* --exclude exec $NAME
+cp -R $DIR $NAME
+tar --create --file="$NAME".tar --exclude=_MTN --exclude *heap* --exclude exec --exclude .cm $NAME
 gzip -f "$NAME".tar
 chmod 666 "$NAME".tar.gz
 rm -r $NAME
