@@ -160,7 +160,6 @@ val undefinedType   = Ast.SpecialType Ast.Undefined
 val nullType        = Ast.SpecialType Ast.Null
 val anyType         = Ast.SpecialType Ast.Any
 
-
 (****************************** misc auxiliary functions *************************)
 
 fun assert b s = if b then () else (raise Fail s)
@@ -463,9 +462,6 @@ and getClass (t:Ast.NAME)
         end
       | _ => error ["getClass returned non-class fixture for ", LogErr.name t]
 
-(*
-FIXME temporarily deoptimized
-
 and instanceOf (t0:Ast.NAME)
                (t:Ast.NAME)
     : bool =
@@ -476,10 +472,8 @@ and instanceOf (t0:Ast.NAME)
             then true
             else 
                 let 
-                    val Ast.Cls cls = getClass n 
-                    val bases = case (#extends cls) of 
-                                    NONE => (#implements cls)
-                                  | SOME b => b :: (#implements cls)
+                    val it = instanceType n
+                    val bases = (#superTypes it)
                 in
                     List.exists search bases
                 end
@@ -495,29 +489,6 @@ and instanceOf (t0:Ast.NAME)
                 else v
             end
           | SOME v => v
-    end
-*)
-
-(*
-    is actual 't0' in expected's 't' type chain?
-*)
-
-and instanceOf (t0:Ast.NAME)  (* actual *)
-               (t:Ast.NAME)   (* expected *)
-    : bool =
-    let
-        fun search n = 
-            if Mach.nameEq n t
-            then true
-            else 
-                let 
-                    val it = instanceType n
-                    val bases = (#superTypes it)
-                in
-                    List.exists search bases
-                end
-    in
-        search t0
     end
 
 fun normalize (t:Ast.TYPE_EXPR) 
