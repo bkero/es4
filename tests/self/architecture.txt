@@ -1,0 +1,25 @@
+Overall description of ESC / architecture notes.
+
+Front end.
+
+TBW.
+
+
+Back end.
+
+The back end has the following levels, top to bottom:
+
+  - AST consumer (emitter.es)
+  - instruction macros, pasteup, constants (assembler.es)
+  - ABC data structure emitters (abcfile.es, constantpool.es)
+  - byte-stream abstraction (bytestream.es)
+
+ABC consumers call the assembler to emit instructions and data
+directives; the assembler interacts with the ABCFile and
+ABCConstantPool abstractions to build in-memory data structures that
+can be serialized; those abstractions use the ABCByteStream to produce
+correct decodings.
+
+The final byte array representing the ABCFile is obtained by calling
+getBytes() on the ABCFile instance; this byte stream is in some
+platform dependent format (currently flash.utils.ByteArray).

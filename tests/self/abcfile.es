@@ -52,7 +52,7 @@ package es4
 
         function getBytes(): * /* same type as ABCByteStream.getBytes() */ {
             function emitArray(a) {
-                bytes.u30(a.length);
+                bytes.uint30(a.length);
                 for ( var i=0 ; i < a.length ; i++ )
                     a[i].serialize(bytes);
             }
@@ -453,5 +453,6 @@ package es4
         mb.setMaxScopeDepth(0);
         mb.setCode([]);
         
+        f.getBytes();
     }
 }

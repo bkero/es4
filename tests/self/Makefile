@@ -14,3 +14,5 @@ test: util.abc bytestream.abc constantpool.abc abcfile.abc assembler.abc
 	$(ASC) $(ASCFLAGS) testdriver.as
 	$(AVM) $^ testdriver.abc
 
+clean:
+	rm -f *~ *.abc testdriver.as
