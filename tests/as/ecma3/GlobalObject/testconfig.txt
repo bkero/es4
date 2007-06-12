@@ -1,0 +1,3 @@
+# comments begin with #
+# format is testname|testcase name|configuration|description
+e15_1_1_1|typeof NaN = undefined FAILED! expected: number|qvm|bug quantum: using qvm version of global.abc typeof (NaN) returns undefined https://bugs.adobe.com/jira/browse/ASC-2783
