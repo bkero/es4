@@ -47,18 +47,18 @@ package es4
     const CONSTANT_UInt               = 0x04;
     const CONSTANT_PrivateNamespace   = 0x05;
     const CONSTANT_Double             = 0x06;
-    const CONSTANT_Qname              = 0x07; // ns::name, const ns, const name
+    const CONSTANT_QName              = 0x07; // ns::name, const ns, const name
     const CONSTANT_Namespace          = 0x08;
     const CONSTANT_Multiname          = 0x09; // [ns...]::name, const [ns...], const name
     const CONSTANT_False              = 0x0A;
     const CONSTANT_True               = 0x0B;
     const CONSTANT_Null               = 0x0C;
-    const CONSTANT_QnameA             = 0x0D; // @ns::name, const ns, const name
+    const CONSTANT_QNameA             = 0x0D; // @ns::name, const ns, const name
     const CONSTANT_MultinameA         = 0x0E; // @[ns...]::name, const [ns...], const name
-    const CONSTANT_RTQname            = 0x0F; // ns::name, var ns, const name
-    const CONSTANT_RTQnameA           = 0x10; // @ns::name, var ns, const name
-    const CONSTANT_RTQnameL           = 0x11; // ns::[name], var ns, var name
-    const CONSTANT_RTQnameLA          = 0x12; // @ns::[name], var ns, var name
+    const CONSTANT_RTQName            = 0x0F; // ns::name, var ns, const name
+    const CONSTANT_RTQNameA           = 0x10; // @ns::name, var ns, const name
+    const CONSTANT_RTQNameL           = 0x11; // ns::[name], var ns, var name
+    const CONSTANT_RTQNameLA          = 0x12; // @ns::[name], var ns, var name
     const CONSTANT_NameL              = 0x13; // o[name], var name
     const CONSTANT_NameLA             = 0x14; // @[name], var name
     const CONSTANT_NamespaceSet       = 0x15;
@@ -69,7 +69,19 @@ package es4
     const CONSTANT_StaticProtectedNS  = 0x1A;
     const CONSTANT_MultinameL         = 0x1B;
     const CONSTANT_MultinameLA        = 0x1C;
-    
+
+    const TRAIT_Slot = 0;
+    const TRAIT_Method = 1;
+    const TRAIT_Getter = 2;
+    const TRAIT_Setter = 3;
+    const TRAIT_Class = 4;
+    const TRAIT_Function = 5;
+    const TRAIT_Const = 6;
+
+    const ATTR_Final = 0x01;
+    const ATTR_Override = 0x02;
+    const ATTR_Metadata = 0x04;
+
     const SLOT_var      = 0;
     const SLOT_method   = 1;
     const SLOT_getter   = 2;
@@ -85,7 +97,12 @@ package es4
     const METHOD_Native        = 0x20;
     const METHOD_Setsdxns      = 0x40;
     const METHOD_HasParamNames = 0x80;
-    
+
+    const CONSTANT_ClassSealed = 0x01;
+    const CONSTANT_ClassFinal  = 0x02;
+    const CONSTANT_ClassInterface = 0x04;
+    const CONSTANT_ClassProtectedNs = 0x08;
+
     const OP_bkpt               = 0x01;
     const OP_nop                = 0x02;
     const OP_throw              = 0x03;

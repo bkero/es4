@@ -47,137 +47,152 @@ package es4
      */
     class ABCConstantPool
     {
-        function int32(n:int):uint {
+        function ABCConstantPool() {
+            // All pools start at 1.
+            int_pool.length = 1;
+            uint_pool.length = 1;
+            double_pool.length = 1;
+            utf8_pool.length = 1;
+            namespace_pool.length = 1;
+            namespaceset_pool.length = 1;
+            multiname_pool.length = 1;
+        }
+
+        private static function findOrAdd(x, pool, cmp, emit) {
             var i;
 
-            for ( i=0 ; i < int_pool.length ; i++ )
-                if (int_pool[i] === n)
+            for ( i=1 ; i < pool.length ; i++ )
+                if (cmp(pool[i], x))
                     return i;
             
-            int_bytes.int32(n);
-            int_pool[i] = n;
+            emit(x);
+            pool[i] = x;
             return i;
+        }
+        
+        private static function cmp(a, b) { return a === b }
+
+        function int32(n:int):uint {
+            return findOrAdd( n, int_pool, cmp, function (x) { int_bytes.int32(x) } );
         }
         
         function uint32(n:uint):uint {
+            return findOrAdd( n, uint_pool, cmp, function (x) { uint_bytes.uint32(x) } );
+        }
+        
+        function float64(n:Number/*FIXME ES4: double*/):uint {
+            return findOrAdd( n, double_pool, cmp, function (x) { double_bytes.float64(x) } );
+        }
+        
+        function stringUtf8(s:String/*FIXME ES4: string*/):uint {
+            return findOrAdd( s, 
+                              utf8_pool, 
+                              cmp,
+                              function (x) { utf8_bytes.uint30(x.length); utf8_bytes.utf8(x) } )
+        }
+
+        private static function cmpname(a, b) {
+            return a.kind == b.kind && a.ns == b.ns && a.name == b.name;
+        }
+
+        function namespace(kind:uint, name:uint) { 
+            return findOrAdd( { "kind": kind, "name": name }, 
+                              namespace_pool, 
+                              cmpname, 
+                              function (x) { 
+                                  namespace_bytes.uint8(x.kind); 
+                                  namespace_bytes.uint30(x.name); } );
+        }
+
+        private static function cmparray(a, b) {
             var i;
+            if (a.length != b.length) 
+                return false;
+            for ( i=0 ; i < a.length ; i++ )
+                if (a[i] != b[i])
+                    return false;
+            return true;
+        }
 
-            for ( i=0 ; i < uint_pool.length ; i++ )
-                if (uint_pool[i] === n)
-                    return i;
+        function namespaceset(namespaces:Array) {
+            return findOrAdd( copyArray(namespaces), 
+                              namespaceset_pool,
+                              cmparray,
+                              (function (x) {
+                                  namespaceset_bytes.uint30(x.length);
+                                  for ( var i=0 ; i < x.length ; i++ ) 
+                                      namespaceset_bytes.uint30(x[i]);
+                              }) );
+        }
+
+        function QName(ns: uint, name: uint, is_attr: Boolean=false /*FIXME ES4: boolean*/) {
+            return findOrAdd( { "kind": is_attr ? CONSTANT_QNameA : CONSTANT_QName, "ns": ns, "name": name },
+                              multiname_pool,
+                              cmpname,
+                              function (x) {
+                                  multiname_bytes.uint8(x.kind);
+                                  multiname_bytes.uint30(x.ns);
+                                  multiname_bytes.uint30(x.name); } );
+        }
+
+        function RTQName(name: uint, is_attr: Boolean=false /*FIXME ES4: boolean*/) {
+            return findOrAdd( { "kind": is_attr ? CONSTANT_RTQNameA : CONSTANT_RTQName, "name": name },
+                              multiname_pool,
+                              cmpname, 
+                              function (x) {
+                                  multiname_bytes.uint8(x.kind);
+                                  multiname_bytes.uint30(x.name); } );
+        }
+
+        function RTQNameL(is_attr: Boolean=false /*FIXME ES4: boolean*/) {
+            return findOrAdd( { "kind": is_attr ? CONSTANT_RTQNameLA : CONSTANT_RTQNameL },
+                              multiname_pool,
+                              cmpname,
+                              function (x) { multiname_bytes.uint8(x.kind) } );
+        }
+
+        function Multiname(nsset: uint, name: uint, is_attr: Boolean=false /*FIXME ES4: boolean*/ ) {
+            return findOrAdd( { "kind": is_attr ? CONSTANT_MultinameA : CONSTANT_Multiname, "name": name, "ns":nsset },
+                              multiname_pool,
+                              cmpname,
+                              function (x) {
+                                  multiname_bytes.uint8(x.kind);
+                                  multiname_bytes.uint30(x.name);
+                                  multiname_bytes.uint30(x.ns); } );
+        }
+
+        function MultinameL(nsset: uint, is_attr: Boolean=false /*FIXME ES4: boolean*/) {
+            return findOrAdd( { "kind": is_attr ? CONSTANT_MultinameLA : CONSTANT_MultinameL, "ns":nsset },
+                              multiname_pool,
+                              cmpname,
+                              function (x) {
+                                  multiname_bytes.uint8(x.kind);
+                                  multiname_bytes.uint30(x.ns); } );
+        }
+
+        function serialize(bs) {
+            bs.uint30(int_pool.length);
+            bs.byteStream(int_bytes);
+
+            bs.uint30(uint_pool.length);
+            bs.byteStream(uint_bytes);
+
+            bs.uint30(double_pool.length);
+            bs.byteStream(double_bytes);
             
-            uint_bytes.int32(n);
-            uint_pool[i] = n;
-            return i;
-        }
-        
-        function float64(n:double):uint {
-            var i;
+            bs.uint30(utf8_pool.length);
+            bs.byteStream(utf8_bytes);
 
-            for ( i=0 ; i < double_pool.length ; i++ )
-                if (double_pool[i] === n)
-                    return i;
+            bs.uint30(namespace_pool.length);
+            bs.byteStream(namespace_bytes);
             
-            double_bytes.float64(n);
-            double_pool[i] = n;
-            return i;
-        }
-        
-        function stringUtf8(s:string):uint {
-            Debug.enter("ConstantUtf8",str.length,str)
-            
-            var bytes = new ByteArray
-            bytes.endian = "littleEndian";
-            makeInt32(bytes,str.length)
-            bytes.writeUTFBytes(str)
-            var index = addBytesToPool(bytes,utf8_pool)
-            
-            Debug.exit("ConstantUtf8",index)
-            Debug.log_mode::log("ConstantUtf8 "+str+" -> "+index,utf8_pool_out)
-            return index
-        }
-        
-        function qName(name_index,ns_index,is_attr) {
-            var bytes = new ByteArray
-            bytes.endian = "littleEndian";
-            makeByte(bytes,is_attr?CONSTANT_QnameA:CONSTANT_Qname)
-            makeInt32(bytes,ns_index)
-            makeInt32(bytes,name_index)
-            var index = addBytesToPool(bytes,multiname_pool)
-            Debug.log_mode::log("ConstantQualifiedName "+name_index+" "+ns_index+" "+is_attr+" -> "+index,multiname_pool_out)
-            return index
-        }
+            bs.uint30(namespaceset_pool.length);
+            bs.byteStream(namespaceset_bytes);
 
-        function ConstantNamespace(uri_index:uint,kind)
-        { 
-            var kind_str = kind==CONSTANT_PackageNamespace ? "public" :         // package public
-                        kind==CONSTANT_PackageInternalNS ? "internal" :             // package internal
-                        kind==CONSTANT_ProtectedNamespace ? "protected" :
-                        kind==CONSTANT_StaticProtectedNS ? "static protected" :
-                        kind==CONSTANT_Namespace ? "user" :
-                        kind==CONSTANT_PrivateNamespace ? "private" : "**error**"
+            bs.uint30(multiname_pool.length);
+            bs.byteStream(multiname_bytes);
 
-
-            Debug.enter("ConstantNamespace",uri_index,kind_str)  
-            var bytes = new ByteArray         
-            bytes.endian = "littleEndian";
-            makeByte(bytes,kind)
-            makeInt32(bytes,uri_index)
-            var index = addBytesToPool(bytes,namespace_pool)
-            Debug.exit("ConstantNamespace",index)  
-            Debug.log_mode::log("ConstantNamespace "+uri_index+" "+kind_str+" -> "+index,namespace_pool_out)
-            return index
-        }
-
-        function ConstantNamespaceSet(namespaces)
-        {            
-            var bytes = new ByteArray         
-            bytes.endian = "littleEndian";
-            var count = namespaces.length
-
-            makeInt32(bytes,count)
-            var nsset_out = " "
-            for( var i = 0; i < count; i++ )
-            {
-                var name = namespaces[i].@name
-                var kind = namespaces[i].@kind=="internal"?CONSTANT_PackageInternalNS:
-                                                "public"?CONSTANT_PackageNamespace:
-                                                    CONSTANT_Namespace
-                var utf8_index = ConstantUtf8(name)
-                var ns_index = ConstantNamespace(utf8_index,kind)
-                nsset_out += ns_index + " "
-                makeInt32(bytes,ns_index)
-            }
-            var index = addBytesToPool(bytes,namespaceset_pool)
-            Debug.log_mode::log("ConstantNamespaceSet ["+nsset_out+"] -> "+index,namespaceset_pool_out)
-            return index
-        }
-
-        function ConstantMultiname(name_index,nsset_index,is_attr)
-        {            
-            var bytes = new ByteArray
-            bytes.endian = "littleEndian";
-            makeByte(bytes,is_attr?CONSTANT_MultinameA:CONSTANT_Multiname)
-            makeInt32(bytes,name_index)
-            makeInt32(bytes,nsset_index)
-            var index = addBytesToPool(bytes,multiname_pool)
-            Debug.log_mode::log("ConstantMultiname "+name_index+" "+nsset_index+" -> "+index,multiname_pool_out)
-            return index
-        }
-
-        function ConstantMultinameL(nsset_index,is_attr)
-        {            
-            var bytes = new ByteArray
-            bytes.endian = "littleEndian";
-            makeByte(bytes,is_attr?CONSTANT_MultinameLA:CONSTANT_MultinameL)
-            makeInt32(bytes,nsset_index)
-            var index = addBytesToPool(bytes,multiname_pool)
-            Debug.log_mode::log("ConstantMultinameL "+nsset_index+" -> "+index, multiname_pool_out)
-            return index
-        }
-
-        function writeToByteStream(bs) {
-            // FIXME: write the fully formatted constant pool to the stream bs
+            return bs;
         }
 
         private const int_pool = new Array;
@@ -197,4 +212,60 @@ package es4
         private const multiname_bytes = new ABCByteStream;
     }
 
+    public function testABCConstantPool() {
+        print("--------------------------------------------");
+        print("Testing ABCConstantPool");
+        print("");
+            
+        var cp = new ABCConstantPool;
+
+        // Sharing working OK?
+        var a = cp.int32(37);
+        var b = cp.int32(37);
+        assert( a == b );
+
+        var a = cp.uint32(37);
+        var b = cp.uint32(37);
+        assert( a == b );
+
+        var a = cp.float64(1.0);
+        var b = cp.float64(1.0);
+        assert( a == b );
+
+        var a = cp.stringUtf8("foo");
+        var b = cp.stringUtf8("foo");
+        var s = a;
+        assert( a == b );
+        var k = cp.stringUtf8("x");
+
+        var a = cp.namespace(CONSTANT_PackageInternalNS, k);
+        var b = cp.namespace(CONSTANT_PackageInternalNS, k);
+        assert( a == b );
+        cp.namespace(CONSTANT_ProtectedNamespace, s);
+        var c = cp.namespace(CONSTANT_ProtectedNamespace, k);
+
+        var nsa = a;
+        var nsc = c;
+
+        var nss = cp.namespaceset([nsa,nsc]);
+
+        cp.QName(nsa, s);
+        cp.QName(nsa, s, true);
+
+        cp.RTQName(s);
+        cp.RTQName(s, true);
+
+        cp.RTQNameL();
+        cp.RTQName(true);
+
+        cp.Multiname(nss, k);
+        cp.Multiname(nss, k, true);
+
+        cp.MultinameL(nss);
+        cp.MultinameL(nss, true);
+
+        var bytes = new ABCByteStream;
+        cp.serialize(bytes);
+        dumpByteStream( bytes );
+    }
 }

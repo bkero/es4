@@ -44,6 +44,8 @@ package es4
      * similar to the ByteArray in ES4.
      */
 
+    import flash.utils.ByteArray;
+
     final class ABCByteStream 
     {
         function ABCByteStream() {
@@ -59,6 +61,12 @@ package es4
             bytes.writeByte(val);
         }
         
+        function uint16(val:uint) {
+            assert(val < 0x10000);
+            bytes.writeByte(val & 0xFF);
+            bytes.writeByte((val >> 8) & 0xFF);
+        }
+
         function int16(val:int) {
             assert(-0x8000 <= val && val < 0x8000);
             bytes.writeByte(val & 0xFF);
@@ -79,6 +87,13 @@ package es4
 
         function int30(val:int) {
             assert(-0x40000000 <= val && val < 0x40000000);
+            if (val < 0)
+                uint32(-val);
+            else
+                uint32(uint(val));
+        }
+
+        function int32(val:int) {
             uint32(uint(val));
         }
 
@@ -109,34 +124,65 @@ package es4
             }
         }
         
-        function float64(val:double) {
+        function float64(val:Number /*FIXME ES4: double*/) {
             bytes.writeDouble(val);
         }
 
-        function byteStream(from:ByteStream) {
-            uint32(from.bytes.length);
+        function utf8(str:String /*FIXME ES4: string*/) {
+            bytes.writeUTFBytes(str);
+        }
+
+        function byteStream(from:ABCByteStream) {
             bytes.writeBytes(from.bytes);
         }
 
         function writeToArray(a) {
             bytes.position = 0;
-            while ( bytes.bytesAvailable > 0 ) 
-                a.push(bytes.readByte());
+            while ( bytes.bytesAvailable > 0 ) {
+                var b = bytes.readByte();
+                if (b < 0)
+                    b += 256;
+                a.push(b);
+            }
             return a;
         }
 
-        private const bytes = new ByteArray();
+        /* Returns *some* concrete ByteArray type, but the concrete
+         * type is not part of the API here.  Clients must be adapted
+         * to particular environments anyway.
+         */
+        function getBytes(): * { 
+            return bytes; 
+        }
+
+        private const bytes = new flash.utils.ByteArray;
     }
 
     public function testABCByteStream() {
+        print("--------------------------------------------");
+        print("Testing ABCByteStream");
+        print("");
+            
         var bytes = new ABCByteStream;
         
-        bytes.uint8(10);
+        bytes.uint8(0x0A);
+        bytes.uint16(0x010B);
+        bytes.int16(-2);
+        bytes.int24(257);
+        bytes.uint30(7);
+        bytes.int30(128);
+        bytes.int30(-128);
         bytes.int32(10);
-        bytes.int32(0x0fffabcd);
-        
-        var a = bytes.writeToArray([]);
-        for ( var i=0 ; i < a.length ; i++ )
-            print(i + ": " + a[i]);
+        bytes.uint32(0x0fffabcd);
+        bytes.float64(1.0);
+        bytes.utf8("foo");
+        var b2 = new ABCByteStream;
+
+        b2.uint8(0x0A);
+        b2.uint8(0xFA);
+        bytes.byteStream(b2);
+
+        var result = "0A 0B 01 FE FF 01 01 00 07 80 01 80 01 0A CD D7 FE 7F 00 00 00 00 00 00 FF 3F 66 6F 6F 0A FA".split(" ");
+        dumpByteStream( bytes, result );
     }
 }
