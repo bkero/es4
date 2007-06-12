@@ -3870,10 +3870,47 @@ and expressionStatement (ts) : ((TOKEN * Ast.LOC) list * Ast.STMT) =
     end
 
 (*
-    SwitchStatement    
-        switch ParenListExpression  {  CaseElements  }
-        switch  type  (  ListExpression(allowList, allowIn)  :  TypeExpression  ) 
-             {  TypeCaseElements  }
+    WithStatement(w)
+        with  TypedExpression  Substatement(w)
+*)
+
+and withStatement (ts,w) : ((TOKEN * Ast.LOC) list * Ast.STMT) =
+    let val _ = trace([">> withStatement with next=", tokenname(hd ts)])
+    in case ts of
+        (With, _) :: (LeftParen, _) :: _ => 
+            let
+                val (ts1,(e1,t1)) = typedExpression (tl ts)
+                val (ts2,nd2) = substatement (ts1,w)
+            in
+                (ts2,Ast.WithStmt {obj=e1,ty=t1,body=nd2})
+            end
+      | _ => error ["unknown token in withStatement"]
+    end
+
+(*
+    TypedExpression 
+        ParenListExpression
+        ParenListExpression  :  NullableTypeExpression
+*)
+
+and typedExpression (ts) : ((TOKEN * Ast.LOC) list * (Ast.EXPR*Ast.TYPE_EXPR)) =
+    let val _ = trace([">> parenListExpression with next=",tokenname(hd(ts))]) 
+        val (ts1,nd1) = parenListExpression (ts)
+    in case ts1 of
+        (Colon, _) :: _ => 
+            let
+                val (ts2,nd2) = nullableTypeExpression (tl ts1)
+            in
+                (ts2,(nd1,nd2))
+            end
+      | _ => (ts1,(nd1,Ast.SpecialType Ast.Any))
+    end
+
+
+(*
+    SwitchStatement 
+        switch  ParenListExpression  {  CaseElements  }
+        switch  type  TypedExpression  {  TypeCaseElements  }
         
     CaseElements    
         empty
@@ -3901,21 +3938,15 @@ and expressionStatement (ts) : ((TOKEN * Ast.LOC) list * Ast.STMT) =
 and switchStatement (ts) : ((TOKEN * Ast.LOC) list * Ast.STMT) =
     let val _ = trace([">> switchStatement with next=", tokenname(hd ts)])
     in case ts of
-        (Switch, _) :: (Type, _) :: (LeftParen, _) :: _ =>
+        (Switch, _) :: (Type, _) :: _ =>
             let
-                val (ts1,nd1) = listExpression (tl (tl (tl ts)),ALLOWIN)
+                val (ts1,(e1,t1)) = typedExpression (tl (tl ts))
             in case ts1 of
-                (Colon, _) :: _ => 
+                (LeftBrace, _) :: _ =>
                     let
-                        val (ts2,nd2) = typeExpression (tl ts1)
+                        val (ts2,nd2) = typeCaseElements (tl ts1)
                     in case ts2 of
-                        (RightParen, _) :: (LeftBrace, _) :: _ =>
-                            let
-                                val (ts3,nd3) = typeCaseElements (tl (tl ts2))
-                            in case ts3 of
-                                (RightBrace, _) :: _ => (tl ts3,Ast.SwitchTypeStmt{cond=nd1,ty=nd2,cases=nd3})
-                              | _ => error ["unknown token in switchStatement"]
-                            end
+                        (RightBrace, _) :: _ => (tl ts2,Ast.SwitchTypeStmt{cond=e1,ty=t1,cases=nd2})
                       | _ => error ["unknown token in switchStatement"]
                     end
               | _ => error ["unknown token in switchStatement"]
@@ -4516,44 +4547,6 @@ and letStatement (ts,w) : ((TOKEN * Ast.LOC) list * Ast.STMT) =
                |    _ => error ["unknown token in letStatement"]
             end
       | _ => error ["unknown token in letStatement"]
-    end
-
-(*
-    WithStatement(w)
-        with  (  ListExpression(allowIn)  )  Substatement(w)
-        with  (  ListExpression(allowIn)  :  TypeExpression  )  Substatement(w)
-*)
-
-and withStatement (ts,w) : ((TOKEN * Ast.LOC) list * Ast.STMT) =
-    let val _ = trace([">> withStatement with next=", tokenname(hd ts)])
-    in case ts of
-        (With, _) :: (LeftParen, _) :: _ => 
-            let
-                val (ts1,nd1) = listExpression (tl (tl ts),ALLOWIN)
-            in case ts1 of
-                (RightParen, _) :: _ =>
-                    let
-                        val (ts2,nd2) = substatement(tl ts1, w)
-                    in
-                        (trace(["<< withStatement with next=",tokenname(hd(ts2))]);
-                        (ts2,Ast.WithStmt {obj=nd1,ty=Ast.SpecialType Ast.Any,body=nd2}))
-                    end
-              | (Colon, _) :: _ =>
-                    let
-                        val (ts2,nd2) = typeExpression (tl ts1)
-                    in case ts2 of
-                        (RightParen, _) :: _ =>
-                            let
-                                val (ts3,nd3) = substatement(tl ts2, w)
-                            in
-                                (trace(["<< withStatement with next=",tokenname(hd(ts3))]);
-                                (ts3,Ast.WithStmt {obj=nd1,ty=nd2,body=nd3}))
-                            end
-                       |    _ => error ["unknown token in withStatement"]
-                    end
-               |    _ => error ["unknown token in withStatement"]
-            end
-      | _ => error ["unknown token in withStatement"]
     end
 
 (*

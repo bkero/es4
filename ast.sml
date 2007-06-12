@@ -470,7 +470,6 @@ withtype
              abstract: bool,
              func : FUNC }
 
-
      and CTOR_DEFN = CTOR
 
      and VAR_DEFN =

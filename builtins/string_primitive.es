@@ -511,7 +511,7 @@ package
                 /* FIXME (Ticket #70): type annotation on expression in 'switch type'
                  * should not be necessary.
                  */
-                switch type (R: *) {
+                switch type (R):* {
                 case (x: string) {
                     let r : uint = x.length;
                     if (q + r <= S.length && S.substring(q, q + r) === R)

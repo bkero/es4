@@ -2,8 +2,50 @@ Overall description of ESC / architecture notes.
 
 Front end.
 
-TBW.
+The front end has the following parts:
 
+  - Lexer takes a stream of characters and produces a stream of tokens
+  - Parser takes a stream of tokens and produces an AST (see ast.es)
+  - Definer takes an AST and produces an AST elaborated with Fixtures
+  _ Verifier takes an AST and, with the help of the backend, produces 
+    an ABC byte stream
+
+   .as
+    |
+    V
+  Lexer --> Parser
+              |
+              V
+	    Definer
+              |
+              V  
+           Verifier --> Emitter
+                           |
+                           V
+                         .abc
+
+Some of the more important functions are each part of the front-end
+include:
+
+Lexer
+  - Translate character escapes
+  - Handle lexing modes (SlashRegExp & SlashDiv)
+
+Parser
+  - Desugar destructuring patterns
+  - Construct initial AST
+
+Definer
+  - Resolve namespace attributes, pragma arguments, configuration
+    expressions, extends and implements references
+  - Construct fixtures for definitions
+
+Verifier
+  - Evaluate type expressions
+  - Check overrides
+  - Fold constants and other lightweight optimizations
+  - Verify static type rules (strict mode)
+  - Drive backend code generation
 
 Back end.
 
