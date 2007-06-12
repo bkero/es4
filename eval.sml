@@ -516,8 +516,8 @@ fun allocFixtures (regs:Mach.REGS)
 
                           | Ast.MethodFixture { func, ty, readOnly, ... } => 
                             let
-                                val Ast.Func { isNative, ... } = func
-                                val p = if isNative
+                                val Ast.Func { native, ... } = func
+                                val p = if native
                                         then Mach.NativeFunctionProp (Mach.getNativeFunction pn)
                                         else Mach.MethodProp (newFunClosure methodScope func this)
                             in
@@ -1021,7 +1021,7 @@ and needNameOrString (v:Mach.VAL)
     : Ast.NAME =
     case v of
         Mach.Object obj =>
-        if Verify.isSubtype (typeOfVal v) Verify.NameType
+        if Verify.isSubtype (typeOfVal v) (Verify.instanceTypeExpr Name.intrinsic_Name)
         then
             let
                 val nsval = getValue obj Name.nons_qualifier
@@ -1681,7 +1681,7 @@ and toInt32 (v:Mach.VAL)
 
 and toUInt32 (v:Mach.VAL) 
     : Word32.word =
-    let 
+    let
         val v' = toNumeric v
     in
         if (isNaN v' orelse
@@ -2758,7 +2758,7 @@ and typeOfVal (v:Mach.VAL)
       | Mach.Null => Ast.SpecialType Ast.Null
       | Mach.Object (Mach.Obj {tag, ...}) => 
         (case tag of
-             Mach.ClassTag name => Verify.instanceType name
+             Mach.ClassTag name => Verify.instanceTypeExpr name
            | Mach.ObjectTag tys => Ast.ObjectType tys
            | Mach.ArrayTag tys => Ast.ArrayType tys
            | Mach.FunctionTag fty => Ast.FunctionType fty
@@ -2913,7 +2913,7 @@ and evalIdentExpr (regs:Mach.REGS)
         in
             case v of
                 Mach.Object obj =>
-                if Verify.isSubtype (typeOfVal v) Verify.NameType
+                if Verify.isSubtype (typeOfVal v) (Verify.instanceTypeExpr Name.intrinsic_Name)
                 then
                     let
                         val nsval = getValue obj Name.nons_qualifier

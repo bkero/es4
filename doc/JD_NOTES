@@ -8,12 +8,27 @@ BUGS
 
 TO DO
 
-- interface definitions
+- remove redundancy in definer implemenation of inheritance
+- set ty field in InstanceType & use ty to check member access
+- set subtypes in InstanceType & use subtypes to check subtype 
+  relationship between instance types
 
 ISSUES
 
 - implementation of import aliases using fixtures
 - nil qualified names (e.g. local vars), do they exist?
+
+###
+
+JUN-09-2007
+
+CLASSES AND INTERFACES
+
+- analyze class body -> instance and class definitions
+- resolve extends -> list of base classes, list of inherited fixtures
+- resolve implements -> list of base interfaces, list of inherited fixtures
+- inherit fixtures -> list of instance fixtures
+- implement fixtures -> error nor not
 
 ###
 

@@ -58,7 +58,7 @@ fun findTraceOption (tname:string)
 
 fun consumeOption (opt:string) : bool = 
     case explode opt of
-        (#"-" :: #"T" :: rest) => 
+        (#"-" :: #"T" :: rest) =>
         (case findTraceOption (String.implode rest) of 
              SOME r => (r := true; false)
            | NONE => true)
@@ -79,7 +79,18 @@ fun startup doBoot argvRest =
     in
         if doBoot then 
     	    (TextIO.print "booting ... \n";
-             Boot.boot ();
+             (Boot.boot ()
+              handle 
+              LogErr.LexError e => (print ("**ERROR** LexError: " ^ e ^ "\n"); Eval.resetStack(); ())
+            | LogErr.ParseError e => (print ("**ERROR** ParseError: " ^ e ^ "\n"); Eval.resetStack(); ())
+            | LogErr.EofError => (print ("**ERROR* EofError: Unexpected end of file\n"); Eval.resetStack(); ())
+            | LogErr.NameError e => (print ("**ERROR** NameError: " ^ e ^ "\n"); Eval.resetStack(); ())
+            | LogErr.DefnError e => (print ("**ERROR** DefnError: " ^ e ^ "\n"); Eval.resetStack(); ())
+            | LogErr.EvalError e => (print ("**ERROR** EvalError: " ^ e ^ "\n"); Eval.resetStack(); ())
+            | LogErr.MachError e => (print ("**ERROR** MachError: " ^ e ^ "\n"); Eval.resetStack(); ())
+            | LogErr.VerifyError e => (print ("**ERROR** VerifyError: " ^ e ^ "\n"); Eval.resetStack(); ())
+            | LogErr.HostError e => (print ("**ERROR** HostError: " ^ e ^ "\n"); Eval.resetStack(); ())
+            | LogErr.UnimplError e => (print ("**ERROR** UnimplError: " ^ e ^ "\n"); Eval.resetStack(); ()));
              argvRest)
         else
             argvRest
@@ -100,7 +111,7 @@ fun repl doBoot argvRest =
             let 
                 val _ = if !interactive then print ">> " else print "<SMLREADY>\n"
                 val line = case TextIO.inputLine TextIO.stdIn of 
-                               NONE => ""
+                               NONE => raise quitException
                              | SOME s => s
                 val toks = String.tokens Char.isSpace line
                 fun help _ = (List.app print 

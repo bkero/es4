@@ -48,8 +48,6 @@ intrinsic final class Name extends String {
                 identifier = n.identifier;
                 qualifier = n.qualifier;
             } else {
-                // FIXME #80: remove this line when qualifier defaults to null not undefined
-                qualifier = null;
                 identifier = ns;
             }
         } else {
