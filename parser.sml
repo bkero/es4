@@ -4499,12 +4499,19 @@ and letStatement (ts,w) : ((TOKEN * Ast.LOC) list * Ast.STMT) =
                                              prototype=false,
                                              bindings=nd1}
             in case ts1 of
-                (RightParen, _) :: _ =>
+                (RightParen, _) :: (LeftBrace,_) :: _ =>
                     let
-                        val (ts2,nd2) = substatement(tl ts1, w)
+                        val (ts2,nd2) = block (tl ts1, LOCAL)
                     in
                         trace(["<< letStatement with next=",tokenname(hd(ts2))]);
-                        (ts2,Ast.LetStmt (Ast.Block {pragmas=[],defns=[defn],head=NONE,body=[nd2],loc=locOf ts1}))
+                        (ts2,Ast.LetStmt (Ast.Block {pragmas=[],defns=[defn],head=NONE,body=[Ast.BlockStmt nd2],loc=locOf ts1}) )
+                    end
+              | (RightParen, _) :: _ => (* oops, actually a LetExpr in statement position *)
+                    let
+                        val (ts2,nd2) = listExpression(tl ts1, ALLOWIN)
+                    in
+                        (trace(["<< letExpression with next=",tokenname(hd(ts2))]);
+                        (ts2,Ast.ExprStmt (Ast.LetExpr {defs=nd1,body=nd2,head=NONE})))
                     end
                |    _ => error ["unknown token in letStatement"]
             end
