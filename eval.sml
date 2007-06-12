@@ -1781,7 +1781,7 @@ and evalExpr (regs:Mach.REGS)
         end
 
       | Ast.SetExpr (aop, pat, expr) => 
-        evalSetExpr regs aop pat (evalExpr regs expr)
+        evalSetExpr regs aop pat expr
 
       | Ast.CallExpr { func, actuals } => 
         let
@@ -2104,8 +2104,8 @@ and evalCallExpr (regs:Mach.REGS)
 and evalSetExpr (regs:Mach.REGS) 
                 (aop:Ast.ASSIGNOP) 
                 (lhs:Ast.EXPR) 
-                (v:Mach.VAL) 
-    : Mach.VAL = 
+                (rhs:Ast.EXPR) 
+    : Mach.VAL =
     let
         val _ = trace ["evalSetExpr"]
         val (lhsType, lhs) = getExpectedType lhs
@@ -2113,10 +2113,12 @@ and evalSetExpr (regs:Mach.REGS)
         val v =
             let 
                 fun modifyWith bop = 
-                    performBinop bop (checkCompatible lhsType (getValue obj name)) v
+                    let val v = evalExpr regs rhs
+                    in performBinop bop (checkCompatible lhsType (getValue obj name)) v
+                    end
             in
                 case aop of 
-                    Ast.Assign => v
+                    Ast.Assign => evalExpr regs rhs
                   | Ast.AssignPlus mode => modifyWith (Ast.Plus mode)
                   | Ast.AssignMinus mode => modifyWith (Ast.Minus mode)
                   | Ast.AssignTimes mode => modifyWith (Ast.Times mode)
@@ -2128,8 +2130,22 @@ and evalSetExpr (regs:Mach.REGS)
                   | Ast.AssignBitwiseAnd => modifyWith Ast.BitwiseAnd
                   | Ast.AssignBitwiseOr => modifyWith Ast.BitwiseOr
                   | Ast.AssignBitwiseXor => modifyWith Ast.BitwiseXor
-                  | Ast.AssignLogicalAnd => modifyWith Ast.LogicalAnd
-                  | Ast.AssignLogicalOr => modifyWith Ast.LogicalOr
+                  | Ast.AssignLogicalAnd =>
+                    let 
+                        val a = checkCompatible lhsType (getValue obj name)
+                    in
+                        if toBoolean a
+                        then evalExpr regs rhs
+                        else a
+                    end        
+                  | Ast.AssignLogicalOr => 
+                    let
+                        val a = checkCompatible lhsType (getValue obj name)
+                    in
+                        if toBoolean a
+                        then a
+                        else evalExpr regs rhs
+                    end
             end
     in
         trace ["setExpr assignment to slot ", fmtName name];

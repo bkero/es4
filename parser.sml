@@ -248,6 +248,9 @@ fun desugarPattern (loc:Ast.LOC option)
             in case expr of
                 SOME e => ([bind],[Ast.InitStep (ident,e)])
               | NONE => ([bind],[])
+(*
+                | NONE => ([bind],[Ast.InitStep (ident,Ast.LiteralExpr Ast.LiteralUndefined)])
+*)
             end
 
         fun desugarSimplePattern (patternExpr:Ast.EXPR)

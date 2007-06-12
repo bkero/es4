@@ -1,4 +1,10 @@
 use namespace intrinsic
+var a = 1
+var b = true
+a ||= b
+print(a)
+/*
+
 interface I {
 function m()
 }
@@ -20,3 +26,5 @@ i.m()
 j.n()
 k.m()
 k.n()
+
+*/
