@@ -463,7 +463,19 @@ fun allocFixtures (regs:Mach.REGS)
                   (* Note, the definer must have created inits for nonnullable primitive types 
                    * where the program does not contain such inits.
                    *)
-                  | Ast.InstanceType _ => Mach.ValProp (Mach.Null)
+                  | Ast.InstanceType n => 
+                    if (#nonnullable n) 
+                    then
+                        (* It is possible that we're booting and the class n doesn't even exist yet. *)
+                        if (not (!booting)) orelse Mach.isClass (getValue (getGlobalObject ()) (#name n))
+                        then 
+                            case Verify.findConversion (Ast.SpecialType Ast.Undefined) t of
+                                SOME _ => Mach.ValProp (checkAndConvert Mach.Undef t)
+                              | NONE => Mach.UninitProp
+                        else
+                            Mach.UninitProp
+                    else 
+                        Mach.ValProp Mach.Null
 
                   (* FIXME: this error should probably be turned on. *)
                   (* | _ => error ["Shouldn't happen: failed to match in Eval.allocFixtures#valAllocState."] *)
@@ -698,15 +710,15 @@ and getValueOrVirtual (obj:Mach.OBJ)
             (case (#state prop) of 
                  Mach.TypeProp => 
                  error ["getValue on a type property: ",
-                        fmtName name]
+                        LogErr.name name]
                  
                | Mach.TypeVarProp => 
                  error ["getValue on a type variable property: ",
-                        fmtName name]
+                        LogErr.name name]
                  
                | Mach.UninitProp => 
                  error ["getValue on an uninitialized property: ",
-                        fmtName name]
+                        LogErr.name name]
                  
                | Mach.VirtualValProp { getter, ... } => 
                  if doVirtual
@@ -817,31 +829,31 @@ and setValueOrVirtual (obj:Mach.OBJ)
                 case (#state existingProp) of 
                     Mach.UninitProp => 
                     error ["setValue on uninitialized property", 
-                           fmtName name]
+                           LogErr.name name]
                     
                   | Mach.TypeVarProp => 
                     error ["setValue on type variable property:", 
-                           fmtName name]
+                           LogErr.name name]
                     
                   | Mach.TypeProp => 
                     error ["setValue on type property: ", 
-                           fmtName name]
+                           LogErr.name name]
 
                   | Mach.NamespaceProp _ => 
                     error ["setValue on namespace property: ", 
-                           fmtName name]
+                           LogErr.name name]
 
                   | Mach.NativeFunctionProp _ => 
                     error ["setValue on native function property: ", 
-                           fmtName name]
+                           LogErr.name name]
 
                   | Mach.MethodProp _ => 
                     error ["setValue on method property: ", 
-                           fmtName name]
+                           LogErr.name name]
 
                   | Mach.ValListProp _ => 
                     error ["setValue on value-list property: ", 
-                           fmtName name]
+                           LogErr.name name]
                     
                   | Mach.VirtualValProp { setter = SOME s, ... } => 
                     if doVirtual
@@ -924,34 +936,34 @@ and defValue (base:Mach.OBJ)
                 case (#state existingProp) of                     
                     Mach.TypeVarProp => 
                     error ["defValue on type variable property: ", 
-                           fmtName name]
+                           LogErr.name name]
                     
                   | Mach.TypeProp => 
                     error ["defValue on type property: ", 
-                           fmtName name]
+                           LogErr.name name]
 
                   | Mach.NamespaceProp _ => 
                     error ["defValue on namespace property: ", 
-                           fmtName name]
+                           LogErr.name name]
                     
                   | Mach.NativeFunctionProp _ => 
                     error ["defValue on native function property: ", 
-                           fmtName name]
+                           LogErr.name name]
 
                   | Mach.MethodProp _ => 
                     error ["defValue on method property: ", 
-                           fmtName name]
+                           LogErr.name name]
 
                   | Mach.ValListProp _ => 
                     error ["defValue on value-list property: ", 
-                           fmtName name]
+                           LogErr.name name]
 
                   | Mach.VirtualValProp { setter = SOME s, ... } => 
                     (invokeFuncClosure base s [v]; ())
                     
                   | Mach.VirtualValProp { setter = NONE, ... } => 
                     error ["defValue on virtual property w/o setter: ", 
-                           fmtName name]
+                           LogErr.name name]
                     
                   | Mach.UninitProp => writeProp ()
                   | Mach.ValProp _ => writeProp ()
@@ -3209,7 +3221,7 @@ and checkAllPropertiesInitialized (obj:Mach.OBJ)
         fun checkOne (n:Ast.NAME, p:Mach.PROP) = 
             case (#state p) of 
                 Mach.UninitProp => error ["uninitialized property: ", 
-                                                     fmtName n]
+                                                     LogErr.name n]
               | _ => ()
     in
         case obj of 
@@ -3684,7 +3696,7 @@ and initializeAndConstruct (classClosure:Mach.CLS_CLOSURE)
                                 case Mach.getObjMagic superObj of
                                     SOME (Mach.Class cc) => cc
                                   | _ => error ["Superclass object ", 
-                                                fmtName superName, 
+                                                LogErr.name superName, 
                                                 "is not a class closure"]
                             val (superEnv:Mach.REGS) = {scope=(#env superClsClosure), 
                                                         this=(#this classRegs)}

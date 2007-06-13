@@ -115,5 +115,10 @@ package
 
         override intrinsic function toPrecision(precision:double) : string
 	    ToDouble(this).toPrecision(precision);
+
+        /* The E262-3 number primitive consumes all additional [[set]] operations. */
+        meta function set(n,v) : void
+        {
+        }
     }
 }

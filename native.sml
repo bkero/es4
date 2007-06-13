@@ -428,6 +428,15 @@ fun bindString (regs:Mach.REGS)
     : Mach.VAL = 
     convertAndBindMagic vals Eval.toUstring Mach.String
 
+fun newBoolean (regs:Mach.REGS) 
+               (vals:Mach.VAL list) 
+    : Mach.VAL = 
+    Eval.newBoolean (Eval.toBoolean (rawNth vals 0))
+
+fun newString (regs:Mach.REGS) 
+              (vals:Mach.VAL list) 
+    : Mach.VAL = 
+    Eval.newString (Eval.toUstring (rawNth vals 0))
 
 fun newInt (regs:Mach.REGS) 
            (vals:Mach.VAL list) 
@@ -1098,6 +1107,8 @@ fun registerNatives _ =
         addFn 2 Name.magic_bindBoolean bindBoolean;
         addFn 2 Name.magic_bindString bindString;
 
+        addFn 1 Name.magic_newBoolean newBoolean;
+        addFn 1 Name.magic_newString newString;
         addFn 1 Name.magic_newInt newInt;
         addFn 1 Name.magic_newUInt newUInt;
         addFn 1 Name.magic_newDouble newDouble;

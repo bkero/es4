@@ -166,7 +166,7 @@ package
         }
 
         /* Source code for decompilation, installed by the constructor */
-        var source : string;
+        var source : string?;
 
         prototype function toSource() 
             this.source;

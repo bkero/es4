@@ -119,9 +119,11 @@ package
      * the runtime. This is not at all normative, it's just an
      * important speed optimization.
      */
-    magic native function newInt(value:*) : void;
-    magic native function newUInt(value:*) : void;
-    magic native function newDouble(value:*) : void;
+    magic native function newString(value:*) : string;
+    magic native function newBoolean(value:*) : boolean;
+    magic native function newInt(value:*) : int;
+    magic native function newUInt(value:*) : uint;
+    magic native function newDouble(value:*) : double;
 
 
     /* ----------------------------------------------------------------

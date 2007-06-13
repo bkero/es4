@@ -70,8 +70,6 @@ package RegExpInternals
             : extended = flags.x
             , source = source
             , slen = source.length
-            , idx = 0              /* FIXME: redundant.  Ticket #43. */
-            , largest_backref = 0  /* FIXME: redundant.  Ticket #43. */
         {
             skip();
         }

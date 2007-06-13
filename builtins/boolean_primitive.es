@@ -55,9 +55,13 @@ package
      */
     intrinsic final class boolean! extends Boolean
     {       
+
+	meta static function convert(x) : boolean
+	    boolean(x);
+
         /* E262-3 15.6.1: The boolean Constructor Called as a Function. */
         meta static function invoke(x=null) : boolean
-            x ? true : false;
+            x is boolean ? x : new boolean(x);
 
 	function boolean(x=null) 
 	    : super(x)
@@ -69,5 +73,10 @@ package
         /* E262-4 draft ch 19 */
         override intrinsic function valueOf() : boolean
             this;
+
+        /* The E262-3 boolean primitive consumes all additional [[set]] operations. */
+        meta function set(n,v) : void
+        {
+        }
     }
 }

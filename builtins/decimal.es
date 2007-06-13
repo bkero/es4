@@ -115,5 +115,10 @@ package
         override intrinsic function toFixed(fractionDigits:double) : string "";
         override intrinsic function toExponential(fractionDigits:double) : string ""; 
         override intrinsic function toPrecision(precision:double) : string "";
+
+        /* The E262-3 number primitive consumes all additional [[set]] operations. */
+        meta function set(n,v) : void
+        {
+        }
     }
 }

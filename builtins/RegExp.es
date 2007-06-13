@@ -183,7 +183,7 @@ package
             matcher.nCapturingParens;
 
         /* Internal */
-        private var matcher : RegExpMatcher;      // The [[Match]] property  // FIXME: const.  Ticket #24.
+        private var matcher : RegExpMatcher?;      // The [[Match]] property  // FIXME: const.  Ticket #24.
         private var names : [string?];            // Named submatches  // FIXME: const.  Ticket #24.
 
         /* E262-3 15.10.6.4 probably is meant to require the flags to

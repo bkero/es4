@@ -62,7 +62,7 @@ package
 
         function Error(msg)
         {
-            if (msg !== undefined)
+            if (msg)
                 this.message = ToString(msg);
         }
 

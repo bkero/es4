@@ -81,7 +81,7 @@ package
 
         /* E262-3 15.5.1: The String Constructor Called as a Function */
         meta static function invoke(x="")
-            x is string ? x : new string(x);
+            x is string ? x : magic::newString(x);
 
         /* 15.5.2 The string Constructor */
         function string(x="") : super(x)
@@ -738,5 +738,10 @@ package
         /* E262-3 15.5.5.1: length. */
         override function get length() : uint
             magic::stringLength(this);
+
+        /* The E262-3 string primitive consumes all additional [[set]] operations. */
+        meta function set(n,v) : void
+        {
+        }
     }
 }

@@ -270,8 +270,8 @@ fun usage () =
                "        parse     parsing\n",
                "        name      name resolution\n",
                "        defn      definition phase\n",
-               "        verify    ?\n",
-               "        verified  ?\n",
+               "        verify    verification phase\n",
+               "        verified  show post-verification AST alone\n",
                "        eval      evaluator\n",
                "        mach      abstract machine operations\n",
                "        decimal   decimal arithmetic\n",
@@ -305,9 +305,8 @@ fun main' (argv0:string, argvRest:string list) =
 fun main (argv0:string, argvRest:string list) =
     BackTrace.monitor 
         (fn () =>
-            (startup true [];
-             (case argvRest of
-                  ["-dump", filename] => (SMLofNJ.exportFn (filename, main'); 0)
-                | _ => main' (argv0, argvRest))))
+            (case startup true argvRest of
+                 ["-dump", filename] => (SMLofNJ.exportFn (filename, main'); 0)
+               | _ => main' (argv0, argvRest)))
 
 end
