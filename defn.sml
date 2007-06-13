@@ -676,6 +676,7 @@ and defInterface (env: ENV)
                             typeParams=[],
                             superTypes=superInterfaces,
                             ty=Ast.SpecialType Ast.Any,  (* FIXME needs record type *)
+                            conversionTy=NONE,
                             dynamic=false} (* interfaces are never dynamic *)
         val iface = Ast.Iface { name=name, nonnullable=nonnullable, extends=superInterfaces, instanceFixtures=instanceFixtures, 
                                 instanceType = instanceType }
@@ -885,7 +886,7 @@ and implementFixtures (base:Ast.FIXTURES)
 and resolveClassInheritance (env:ENV)
                  ({extends,implements,...}: Ast.CLASS_DEFN)
                  (Ast.Cls {name,nonnullable,dynamic,classFixtures,instanceFixtures,instanceInits,
-                           constructor,classType,...}:Ast.CLS)
+                           constructor,classType,instanceType,...}:Ast.CLS)
     : Ast.CLS =
     let
         val _ = trace ["analyzing class block for ", LogErr.name name]
@@ -894,12 +895,18 @@ and resolveClassInheritance (env:ENV)
         val superTypes = case extendsName of NONE => implementsNames | _ => (valOf extendsName) :: implementsNames
 
         (* Make the instance type *)
-        val instanceType = {name=name,
-                            nonnullable=nonnullable,
-                            typeParams=[],
-                            superTypes=superTypes,
-                            ty=Ast.SpecialType Ast.Any,  (* FIXME needs record type *)
-                            dynamic=dynamic}
+        val instanceType = 
+            let 
+                val { name, nonnullable, typeParams, ty, conversionTy, dynamic, ... } = instanceType
+            in
+                { name = name,
+                  nonnullable = nonnullable,
+                  typeParams = typeParams,
+                  superTypes = superTypes,
+                  ty = ty,
+                  conversionTy = conversionTy,
+                  dynamic = dynamic }
+            end
     in
         Ast.Cls {name=name,
                  extends=extendsName,
@@ -1060,6 +1067,19 @@ and analyzeClassBody (env:ENV)
                   | SOME c => SOME (defCtor instanceEnv c)
 
             val (instanceStmts,_) = defStmts staticEnv instanceStmts  (* no hoisted fixture produced *)
+
+            val conversionTy = 
+                let 
+                    val fname = Ast.PropName Name.meta_convert
+                in
+                    if hasFixture classFixtures fname
+                    then 
+                        case getFixture classFixtures fname of
+                            Ast.MethodFixture { ty=Ast.FunctionType { params=[pt], ... }, ... } => 
+                            SOME pt
+                          | _ => NONE
+                    else NONE
+                end
             
             (* 
                 The parser separates variable definitions into defns and stmts. The only stmts
@@ -1077,9 +1097,10 @@ and analyzeClassBody (env:ENV)
 
             val instanceType = {name=name, 
                                 nonnullable=nonnullable, 
-                                typeParams=[],
-                                superTypes=[], (* FIXME *)
-                                ty=Ast.ObjectType [],
+                                typeParams=[], (* FIXME: copy in from CLASS_DEFN *)
+                                superTypes=[], (* set in resolveClassInheritence *)
+                                ty=Ast.ObjectType [], (* FIXME: need a full record type *)
+                                conversionTy=conversionTy,
                                 dynamic=dynamic}
         in
             Ast.Cls {name=name,

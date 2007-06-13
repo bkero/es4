@@ -147,8 +147,25 @@ fun resolveExprToNamespace (env:ENV)
 
 (****************************** standard types *************************)
 
+fun getTopFixture (n:Ast.NAME) 
+    : Ast.FIXTURE = 
+    let
+        val c = !fixtureCache
+    in
+        case NmMap.find (c, n) of
+            NONE => 
+            let
+                val v = Defn.getFixture (!Defn.topFixtures) (Ast.PropName n)
+            in
+                if (NmMap.numItems c) < cachesz
+                then (fixtureCache := NmMap.insert (c, n, v); v)
+                else v
+            end
+          | SOME v => v
+    end
+
 fun instanceType (n:Ast.NAME) : Ast.INSTANCE_TYPE =
-    case Defn.getFixture (!Defn.topFixtures) (Ast.PropName n) of
+    case getTopFixture n of
         Ast.ClassFixture (Ast.Cls cls) => (#instanceType cls)
       | Ast.InterfaceFixture (Ast.Iface iface) => (#instanceType iface)
       | _ => error ["type not an instance type ", LogErr.name n]
@@ -424,23 +441,6 @@ fun funcSigType (env:ENV)
     anyType
 
 (************************* Compatibility *********************************)
-
-and getTopFixture (n:Ast.NAME) 
-    : Ast.FIXTURE = 
-    let
-        val c = !fixtureCache
-    in
-        case NmMap.find (c, n) of
-            NONE => 
-            let
-                val v = Defn.getFixture (!Defn.topFixtures) (Ast.PropName n)
-            in
-                if (NmMap.numItems c) < cachesz
-                then (fixtureCache := NmMap.insert (c, n, v); v)
-                else v
-            end
-          | SOME v => v
-    end
     
 
 and isClass (t:Ast.NAME)
@@ -718,25 +718,10 @@ fun findConversion (ty1:TYPE_VALUE)
         val ty2 = normalize ty2
         fun tryToConvertTo (target:Ast.TYPE_EXPR) = 
             case target of 
-                Ast.InstanceType { name, ... } => 
-                let
-                    val _ = trace ["target is instance of: ", fmtName name]
-                    val Ast.Cls { classFixtures, ... } = getClass name
-                    val fname = Ast.PropName Name.meta_convert
-                in
-                    if Defn.hasFixture classFixtures fname
-                    then 
-                        (trace ["target class has 'meta static convert' fixture "];
-                         case Defn.getFixture classFixtures fname of
-                             Ast.MethodFixture { ty=Ast.FunctionType { params=[pt], ... }, ... } => 
-                             (trace ["fixture has appropriate form, param type is ", fmtType pt];
-                              if isCompatible ty1 pt
-                              then (trace ["fixture has compatible parameter type"]; SOME name)
-                              else NONE)
-                           | _ => NONE)
-                    else
-                        NONE
-                end
+                Ast.InstanceType { name, conversionTy=SOME c, ... } => 
+                if isCompatible ty1 c
+                then SOME name
+                else NONE
               | Ast.UnionType [] => NONE
               | (Ast.UnionType (t::ts)) => 
                 (case tryToConvertTo t of
