@@ -38,6 +38,7 @@ package
 
     intrinsic native function print(x);
     intrinsic native function load(x);
+    intrinsic native function readFile(x);
     intrinsic native function assert(x);
     intrinsic native function typename(x);
     intrinsic native function inspect(x, depth);

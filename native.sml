@@ -930,6 +930,26 @@ fun load (regs:Mach.REGS)
         Mach.Undef
     end
     
+fun readFile (regs:Mach.REGS) 
+             (vals:Mach.VAL list) 
+    : Mach.VAL = 
+    let
+        fun mkReader filename = 
+            let
+                val stream = TextIO.openIn filename
+            in
+                fn _ => case TextIO.inputLine stream of
+                            SOME line => (trace ["read line ", line]; Ustring.fromSource line)
+                          | NONE => (TextIO.closeIn stream; Ustring.emptySource)
+            end
+
+        val fname = Ustring.toFilename (nthAsUstr vals 0)
+        val reader = mkReader fname
+        val str = implode (map (Ustring.wcharToChar) (reader())) (* FIXME: there's got to be an easier way! *)
+    in
+        Eval.newString (Ustring.fromString(str))
+    end
+    
 fun assert (regs:Mach.REGS) 
            (vals:Mach.VAL list) 
     : Mach.VAL = 
@@ -1166,11 +1186,13 @@ fun registerNatives _ =
 
         addFn 1 Name.intrinsic_print print;
         addFn 1 Name.intrinsic_load load;
+        addFn 1 Name.intrinsic_readFile readFile;
         addFn 1 Name.intrinsic_assert assert;
         addFn 1 Name.intrinsic_typename typename;
         addFn 1 Name.intrinsic_dumpFunc dumpFunc;
         addFn 1 Name.intrinsic_inspect inspect;
         addFn 1 Name.intrinsic_proto proto
+
     end
 
 end

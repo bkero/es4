@@ -147,6 +147,7 @@ val intrinsic_print = intrinsic Ustring.print_
 val intrinsic_load = intrinsic Ustring.load_
 val intrinsic_assert = intrinsic Ustring.assert_
 val intrinsic_typename = intrinsic Ustring.typename_
+val intrinsic_readFile = intrinsic Ustring.readFile_
 
 (* From Function.es *)
 val nons_Function = nons Ustring.Function_

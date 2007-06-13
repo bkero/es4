@@ -57,6 +57,7 @@
 
 // module Parser 
 {
+    use namespace intrinsic;
     namespace Parser;
     type TOKENS = Array;  // [int];
 
@@ -94,11 +95,11 @@
         }
 
         function match (ts,tc) {
-            let hd = hd (ts);
-            if (hd === tc) {
+            let tk = hd (ts);
+            if (tk === tc) {
                 return tl (ts);
             }
-            throw "expecting "+Token::tokenText(tc)+" found "+Token::tokenText(hd);
+            throw "expecting "+Token::tokenText(tc)+" found "+Token::tokenText(tk);
         }
 
         function tl (ts:TOKENS) : TOKENS ts.slice (1,ts.length);
@@ -209,7 +210,7 @@
                 break;
             case Token::Mult:
             case Token::Identifier:
-                let str = Lexer::tokenText (hd(ts));
+                let str = Token::tokenText (hd(ts));
                 var [ts1,nd1] = [tl (ts), new Ast::Identifier (str)];
                 break;
             default:
@@ -276,7 +277,7 @@
             var [ts1,nd1] = qualifier (ts);
             var [ts4,nd4] = [null, null];
             var [ts3,nd3] = [null, null];
-            switch type (nd1:*) {
+            switch type (nd1) {
             case (nd1: Ast::RESERVED_NAMESPACE) {
                 let ts2 = match (ts1, Token::DoubleColon);
                 switch (hd(ts2)) {
@@ -5003,12 +5004,10 @@
     {
         var programs = 
         [
-            //primary expressions
-            
-            "private::x",
             "x",
-            /*
             "q::id",
+            readFile ("./tests/self/esc.es"),
+            /*
             "q::[expr]",
             "(expr)::id",
             "(expr)::[expr]",
@@ -5064,16 +5063,16 @@
             */
         ]
 
-        var n = 0
+        var n = 0;
             //        for each ( var p in programs )
+        for (;n<programs.length;n++)
         {
-            var p = programs[0];
-            n++
+            var p = programs[n];
             try {
                 var parser = new Parser(p)
                 var [ts1,nd1] = parser.program()
 
-                print("> "+nd1)
+                print(n,"> "+nd1)
                     //                print(node.toXMLString())
                 //print("---")
             }
@@ -5087,3 +5086,4 @@
     test ()
 }
 
+}
