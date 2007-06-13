@@ -1,4 +1,0 @@
-# comments begin with #
-# format is testname|testcase name|configuration|description
-e13_4_4_4|FAILED! expected: 0, 3 =|qvm|bug in bugbase: quantum: xml .attribute pattern empty on quantum works on tamarin  - http://frpbugapp.macromedia.com/bugapp/detail.asp?ID=203304
-e13_4_4_4|FAILED! expected: 0, 4 =|qvm|bug in bugbase: quantum: xml .attribute pattern empty on quantum works on tamarin  - http://frpbugapp.macromedia.com/bugapp/detail.asp?ID=203304

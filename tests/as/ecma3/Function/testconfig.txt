@@ -1,4 +1,0 @@
-# comments begin with #
-# format is testname|testcase name|configuration|description
-scope_001_rt|all|qvm|reference to this crashes the qvmshell http://frpbugapp.macromedia.com/bugapp/detail.asp?ID=203310
-scope_002|all|qvm|reference to this crashes the qvmshell http://frpbugapp.macromedia.com/bugapp/detail.asp?ID=203310
