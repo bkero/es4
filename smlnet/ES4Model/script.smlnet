@@ -33,15 +33,34 @@
 
 on seqwithtype
 
-structure LogErr=../../logerr.sml
-structure Token=../../token.sml
 structure Ast=../../ast.sml
-structure Lexer=../../lexer.lex.sml
-structure Parser=../../parser.sml
+structure Boot=../../boot.sml
+structure Decimal=../../decimal.sml
+structure DecimalNative=DecimalNative.sml
+structure DecimalParams=../../decimal-params.sml
 structure Defn=../../defn.sml
-structure Mach=../../mach.sml
-structure Verify=../../verify.sml
 structure Eval=../../eval.sml
+structure StrListKey=../../eval.sml, StrListMap=../../eval.sml
+structure NsKey=../../eval.sml, NsMap=../../eval.sml
+structure NmKey=../../eval.sml, NmMap=../../eval.sml
+structure StrKey=../../eval.sml, StrMap=../../eval.sml
+structure Real64Key=../../eval.sml, Real64Map=../../eval.sml
+structure Word32Key=../../eval.sml, Word32Map=../../eval.sml
+structure Int32Key=../../eval.sml, Int32Map=../../eval.sml
+structure Int32=Int32.sml
+structure Lexer=../../lexer.sml
+structure LogErr=../../logerr.sml
+structure Mach=../../mach.sml
+structure Multiname=../../multiname.sml
+structure Name=../../name.sml
+structure NameKey=../../namekey.sml
+structure NameMap=../../namemap.sml
+structure Native=../../native.sml
+structure Parser=../../parser.sml
+structure Pretty=pretty.sml
+structure Token=../../token.sml
+structure Ustring=../../ustring.sml
+structure Verify=../../verify.sml
 
 (* add compiler flags common to all configurations here *)
 export ES4Model

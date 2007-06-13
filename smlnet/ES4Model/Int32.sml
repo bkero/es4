@@ -30,50 +30,5 @@
  * Copyright (c) 2007 Adobe Systems Inc., The Mozilla Foundation, Opera
  * Software ASA, and others.
  *)
-
-structure Pretty =
-struct
-
-open Ast
-
-fun pp s = TextIO.print (s ^ "\n")
-
-(*
-fun ppProgram (p : PROGRAM) = TextIO.print "<program>\n"
-
-fun ppExpr (e : EXPR) = TextIO.print "<expr>\n"
-
-fun ppStmt (s : STMT) = TextIO.print "<stmt>\n"
-
-fun ppDefinition (s : DEFN) = TextIO.print "<defn>\n"
-
-fun ppVarDefn (s : VAR_BINDING) = TextIO.print "<var defn>\n"
-*)
-
-val ppNamespace _ = pp "<namespace>"
-
-val ppProgram _ = pp "<program>"
-
-val ppExpr = pp "<expr>"
-
-val ppStmt = pp "<stmt>"
-
-val ppDefinition = pp "<defn>"
-
-val ppVarDefn = pp "<var defn>"
-
-val ppType = pp "<type>"
-
-val ppBinop = pp "<binop>"
-
-val ppNumericMode = pp "<numeric mode>"
-
-val ppPragma = pp "<pragma>"
-
-val ppFixtures = pp "<fixtures>"
-
-val ppFixture = pp "<fixture>"
-
-val ppFunc = pp "<func>"
-
-end
+ 
+ structure Int32 = Int
