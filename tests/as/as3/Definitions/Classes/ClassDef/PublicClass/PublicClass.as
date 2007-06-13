@@ -143,8 +143,8 @@ package PublicClassPackage {
 		// Internal virtual methods
 		// ************************
 		// TODO: virtual vars are not implemented yet so this is currently using a normal var
-		internal virtual function getInternalVirtualArray() : Array { return internalArray; }
-		internal virtual function setInternalVirtualArray( a:Array ) { internalArray = a; }
+		internal function getInternalVirtualArray() : Array { return internalArray; }
+		internal function setInternalVirtualArray( a:Array ) { internalArray = a; }
 		// wrapper function
 		public function testGetSetInternalVirtualArray(a:Array) : Array {
 			setInternalVirtualArray(a);
@@ -194,8 +194,8 @@ package PublicClassPackage {
 		// Private virtual methods
 		// ***********************
 		// TODO: virtual vars are not implemented yet so this is currently using a normal var
-		private virtual function getPrivVirtualDate() : Date { return privDate; }
-		private virtual function setPrivVirtualDate( d:Date ) { privDate = d; }
+		private function getPrivVirtualDate() : Date { return privDate; }
+		private function setPrivVirtualDate( d:Date ) { privDate = d; }
 		// wrapper function
 		public function testGetSetPrivVirtualDate(d:Date) : Date {
 			setPrivVirtualDate(d);
@@ -239,8 +239,8 @@ package PublicClassPackage {
 		// Public virutal methods
 		// ***********************
 		// TODO: virtual vars are not implemented yet so this is currently using a normal var
-		public virtual function setPubVirtualBoolean( b:Boolean ) { pubBoolean = b; }
-		public virtual function getPubVirtualBoolean() : Boolean { return pubBoolean; }
+		public function setPubVirtualBoolean( b:Boolean ) { pubBoolean = b; }
+		public function getPubVirtualBoolean() : Boolean { return pubBoolean; }
 
 
 		// **************************
