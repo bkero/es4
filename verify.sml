@@ -124,7 +124,9 @@ fun parentRib [] = NONE
   | parentRib (x::xs) = SOME xs
 
 fun resolve (ribs:RIB list) (mname:Ast.MULTINAME) = 
-    Multiname.resolveInFixtures mname ribs List.hd parentRib
+    case ribs of
+        [] => NONE
+      | _ => Multiname.resolveInFixtures mname ribs List.hd parentRib
 
 fun findFixture (ribs:RIB list) (mname:Ast.MULTINAME) = 
     case resolve ribs mname of 
@@ -331,19 +333,23 @@ fun verifyTypeExpr (env:ENV)
 
           | Ast.TypeName ie => 
             let
-                fun findType id nss = 
+                fun findType id nss =
                     let 
                         fun tryRibs ribs = 
-                            
                             case findFixture ribs {nss=nss, id=id} of 
                                 (* FIXME: re-resolve result ... in which environment? *)
                                 Ast.TypeFixture ty => ty 
                               | Ast.ClassFixture (Ast.Cls cls) => Ast.InstanceType (#instanceType cls)
                               | Ast.InterfaceFixture (Ast.Iface iface) => Ast.InstanceType (#instanceType iface)
-                              | _ => case (#ribs env) of 
+                              | _ => error ["multiname ", LogErr.multiname {nss=nss, id=id}, 
+                                                      " resolved to non-type fixture"]
+
+(*
+                              | _ => case ribs of 
                                          (r :: rs) => tryRibs rs
                                        | [] => error ["multiname ", LogErr.multiname {nss=nss, id=id}, 
                                                       " resolved to non-type fixture"]
+*)
                     in
                         tryRibs (#ribs env)
                     end
@@ -619,7 +625,7 @@ fun checkCompatible (t1:TYPE_VALUE)
 and isCompatible (t1:TYPE_VALUE) 
 		         (t2:TYPE_VALUE) 
     : bool = 
-    let 
+    let
         val t1 = normalize t1
         val t2 = normalize t2
         val _ = trace [">>> isCompatible: ", fmtType t1, " ~: ", fmtType t2 ];

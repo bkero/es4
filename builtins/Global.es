@@ -134,7 +134,7 @@ package
     }
 
     // 15.1.2.3 parseFloat (string)
-    intrinsic native function parseFloat(string:string);
+    intrinsic native function parseFloat(str:string);
 
     // 15.1.2.4 isNaN (v)
     intrinsic function isNaN(v:*):boolean

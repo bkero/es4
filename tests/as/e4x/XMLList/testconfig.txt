@@ -1,3 +1,0 @@
-# comments begin with #
-# format is testname|testcase name|configuration|description
-e13_5_4_2|all|qvm|quantum vm: nodeKind attribute causes a TypeError: Error #1010 runtime exception http://frpbugapp.macromedia.com/bugapp/detail.asp?ID=203306
