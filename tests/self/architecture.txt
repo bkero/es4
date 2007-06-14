@@ -47,13 +47,14 @@ Verifier
   - Verify static type rules (strict mode)
   - Drive backend code generation
 
+
 Back end.
 
 The back end has the following levels, top to bottom:
 
   - AST consumer (emitter.es)
-  - instruction macros, pasteup, constants (assembler.es)
-  - ABC data structure emitters (abcfile.es, constantpool.es)
+  - instruction macros, pasteup, temps, ... (assembler.es)
+  - ABC data structure emitters (abcfile.es)
   - byte-stream abstraction (bytestream.es)
 
 ABC consumers call the assembler to emit instructions and data
