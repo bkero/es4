@@ -106,8 +106,8 @@ package DynamicClass {
         return this.finPrivSubGetArray();
     }
     
-    virtual function virSubGetArray() : Array { return this.getFinArray(); }
-    virtual function virSubSetArray(a:Array) { this.setFinArray(a); }
+    function virSubGetArray() : Array { return this.getFinArray(); }
+    function virSubSetArray(a:Array) { this.setFinArray(a); }
 
     // function to test above from test scripts
     public function testVirSubArray(a:Array) : Array {
@@ -168,8 +168,8 @@ package DynamicClass {
     // private virtual method of sub class
     // ***************************************
 
-    public virtual function privVirSubGetDPArray() : Array { return finArray; }
-    public virtual function privVirSubSetDPArray(a:Array) { finArray = a; }
+    public function privVirSubGetDPArray() : Array { return finArray; }
+    public function privVirSubSetDPArray(a:Array) { finArray = a; }
     // function to test above from test scripts
     public function testPrivVirSubGetDPArray(a:Array) : Array {
         this.privVirSubSetDPArray(a);

@@ -68,8 +68,8 @@ package InternalClassPackage {
 		// ************************
 		// Default virtual methods
 		// ************************
-		virtual function getVirtualArray() : Array { return array; }
-		virtual function setVirtualArray( a:Array ) { array = a; }
+		function getVirtualArray() : Array { return array; }
+		function setVirtualArray( a:Array ) { array = a; }
 		
 		
 		// ***********************
@@ -96,8 +96,8 @@ package InternalClassPackage {
 		// *************************
 		// Internal virtual methods
 		// *************************
-		internal virtual function getInternalVirtualArray() : Array { return internalArray; }
-		internal virtual function setInternalVirtualArray( a:Array ) { internalArray = a; }
+		internal function getInternalVirtualArray() : Array { return internalArray; }
+		internal function setInternalVirtualArray( a:Array ) { internalArray = a; }
 		
 		
 		// ***********************
@@ -130,8 +130,8 @@ package InternalClassPackage {
 		// *******************
 		// Private virutal methods
 		// *******************
-		private virtual function getPrivVirtualDate() : Date { return privDate; }
-		private virtual function setPrivVirtualDate( d:Date ) { privDate = d; }
+		private function getPrivVirtualDate() : Date { return privDate; }
+		private function setPrivVirtualDate( d:Date ) { privDate = d; }
 		// wrapper function
 		public function testGetSetPrivVirtualDate(d:Date) : Date {
 			setPrivVirtualDate(d);
@@ -174,8 +174,8 @@ package InternalClassPackage {
 		// *******************
 		// Public virtual methods
 		// *******************
-		public virtual function setPubVirtualBoolean( b:Boolean ) { pubBoolean = b; }
-		public virtual function getPubVirtualBoolean() : Boolean { return pubBoolean; }
+		public function setPubVirtualBoolean( b:Boolean ) { pubBoolean = b; }
+		public function getPubVirtualBoolean() : Boolean { return pubBoolean; }
 
 
 		// **************************

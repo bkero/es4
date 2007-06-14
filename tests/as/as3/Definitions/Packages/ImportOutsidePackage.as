@@ -58,6 +58,7 @@ class C {
 	}
 }
 
+{
 import test.*;
 
 var SECTION = "Definitions";       // provide a document reference (ie, Actionscript section)
@@ -80,3 +81,4 @@ AddTestCase( "import outside of package, inside class", "hello", c.returnB());
 
 test();       // leave this alone.  this executes the test cases and
               // displays results.
+}

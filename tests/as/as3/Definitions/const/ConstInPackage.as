@@ -35,11 +35,15 @@
  *
  * ***** END LICENSE BLOCK ***** */
 
+
 package TestPackage
 {
     public const num1 = 1;
     public const num2 = 2;
 }
+
+{
+import TestPackage.*;
 
 var SECTION = "Definitions\const";       			// provide a document reference (ie, ECMA section)
 var VERSION = "ActionScript 3.0";  			// Version of JavaScript or ECMA
@@ -48,8 +52,7 @@ var BUGNUMBER = "";
 
 startTest();
 
-import TestPackage.*;
-
 AddTestCase("const in package", 3, num1 + num2);
 
 test();
+}

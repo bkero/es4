@@ -49,12 +49,12 @@ package PublicClass {
 		// with a public method
 		// *******************************
 
-		override virtual function getVirtualBoolean(): Boolean {
+		override function getVirtualBoolean(): Boolean {
 			orGet = true;
 			return this.boolean;
 		}
 
-		override virtual function setVirtualBoolean( b:Boolean ) {
+		override function setVirtualBoolean( b:Boolean ) {
 			orSet = true;
 			this.boolean = b;
 		}

@@ -34,6 +34,7 @@
  * the terms of any one of the MPL, the GPL or the LGPL.
  *
  * ***** END LICENSE BLOCK ***** */
+import Lattice.*;
 
 var SECTION = "Definitions";       // provide a document reference (ie, ECMA section)
 var VERSION = "AS3";  // Version of JavaScript or ECMA
@@ -43,8 +44,6 @@ var BUGNUMBER = "";
 startTest();                // leave this alone
 
 //-----------------------------------------------------------------------------
-
-import Lattice.*;
 
 var fg1 = new ImplFG
 AddTestCase("public on unambiguous interface method (f)", "IFuncF::f", fg1.f())

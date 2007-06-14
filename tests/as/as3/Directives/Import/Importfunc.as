@@ -52,6 +52,10 @@ package Importfunc {
 }
 
 
+{
+import Importfunc.array;
+import Importfunc.setPubArray;
+import Importfunc.pubArray;
 
 var SECTION = "Directives";       				// provide a document reference (ie, ECMA section)
 var VERSION = "ActionScript 3.0";  				// Version of JavaScript or ECMA
@@ -63,10 +67,6 @@ startTest();                					// leave this alone
 
 
 var arr = new Array(1, 2, 3);
-
-import Importfunc.array;
-import Importfunc.setPubArray;
-import Importfunc.pubArray;
 
 
 
@@ -85,3 +85,4 @@ try{
 
 test();       // leave this alone.  this executes the test cases and
               // displays results.
+}

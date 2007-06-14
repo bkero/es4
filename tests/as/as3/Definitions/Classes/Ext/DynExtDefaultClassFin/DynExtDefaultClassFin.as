@@ -110,8 +110,8 @@ package DefaultClass {
     // from virtual method of sub class
     // ************************************
     	    
-    virtual function virtSubGetArray() : Array { return this.getFinArray(); }
-    virtual function virtSubSetArray(a:Array) { this.setFinArray(a); }
+    function virtSubGetArray() : Array { return this.getFinArray(); }
+    function virtSubSetArray(a:Array) { this.setFinArray(a); }
     	    
     public function testVirtSubArray(a:Array) : Array {
        	this.virtSubSetArray(a);
@@ -167,8 +167,8 @@ package DefaultClass {
     // virtual method of sub class
     // ***************************************
     	    
-    virtual function virtSubGetDPArray() : Array { return finArray; }
-    virtual function virtSubSetDPArray(a:Array) { finArray = a; }
+    function virtSubGetDPArray() : Array { return finArray; }
+    function virtSubSetDPArray(a:Array) { finArray = a; }
     	    
     public function testVirtSubDPArray(a:Array) : Array {
     	  this.virtSubSetDPArray(a);

@@ -34,6 +34,7 @@
  * the terms of any one of the MPL, the GPL or the LGPL.
  *
  * ***** END LICENSE BLOCK ***** */
+import Example_9_3.*;
 
 var SECTION = "Definitions";       // provide a document reference (ie, ECMA section)
 var VERSION = "AS3";  // Version of JavaScript or ECMA
@@ -43,9 +44,6 @@ var BUGNUMBER = "";
 startTest();                // leave this alone
 
 //-----------------------------------------------------------------------------
-
-import Example_9_3.*;
-
 var eg = new ExampleTest();
 AddTestCase("simple public implements", "a.T::f()", eg.doTestPublic());
 AddTestCase("simple namespace implements", "a.g()", eg.doTestNS1());

@@ -220,16 +220,16 @@ package PublicClass {
 		return finSubGetDPArray();
 	    }
 	    
-	    virtual function virSubGetDPArray() : Array { return this.finArray; }
-	    virtual function virSubSetDPArray(a:Array) { this.finArray = a; }
+	    function virSubGetDPArray() : Array { return this.finArray; }
+	    function virSubSetDPArray(a:Array) { this.finArray = a; }
 	    // public accessor to test asrt
 	    public function testVirSubDPArray(a:Array) : Array {
 		this.virSubSetDPArray(a);
 		return virSubGetDPArray();
 	    }	    
 	    
-	    private virtual function virPrivSubGetDPArray() : Array { return this.finArray; }
-	    private virtual function virPrivSubSetDPArray(a:Array) { this.finArray = a; }
+	    private function virPrivSubGetDPArray() : Array { return this.finArray; }
+	    private function virPrivSubSetDPArray(a:Array) { this.finArray = a; }
 	    // public accessor to test asrt
 	    public function testPrivVirSubDPArray(a:Array) : Array {
 		this.virPrivSubSetDPArray(a);
