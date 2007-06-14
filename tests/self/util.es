@@ -16,7 +16,20 @@ package es4 {
         function f(n, r=16) {
             return (n + 0x100).toString(r).substring(1);
         }
-        var a = bytes.writeToArray([]);
+
+        var a;
+        if (bytes is ABCByteStream)
+            a = bytes.writeToArray([]);
+        else {
+            a = [];
+            bytes.position = 0;
+            for ( var i=0 ; i < bytes.length ; i++ ) {
+                var b = bytes.readByte();
+                if (b < 0)
+                    b += 256;
+                a.push(b);
+            }
+        }
         if (result == null)
             result = [];
         for ( var i=0 ; i < a.length ; i++ )

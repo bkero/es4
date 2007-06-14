@@ -54,8 +54,9 @@ package es4
         const minor_version = 16;
 
         function getBytes(): * /* same type as ABCByteStream.getBytes() */ {
-            function emitArray(a) {
-                bytes.uint30(a.length);
+            function emitArray(a, len=true) {
+                if (len) 
+                    bytes.uint30(a.length);
                 for ( var i=0 ; i < a.length ; i++ )
                     a[i].serialize(bytes);
             }
@@ -66,13 +67,14 @@ package es4
             assert(scripts.length != 0);
             assert(methods.length != 0);
             assert(bodies.length != 0);
+            assert(classes.length == instances.length);
 
             bytes.uint16(minor_version);
             bytes.uint16(major_version);
             constants.serialize(bytes);
             emitArray(methods);
             emitArray(metadatas);
-            emitArray(instances);
+            emitArray(instances, false);
             emitArray(classes);
             emitArray(scripts);
             emitArray(bodies);

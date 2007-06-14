@@ -495,6 +495,15 @@ package es4
             I_kill(t);
         }
 
+        function get length() {
+            print("LENGTH: " + code.length);
+            return code.length;
+        }
+
+        function serialize(bs) {
+            code.serialize(bs);
+        }
+
         private function stack(size:int):void {
             current_stack_depth += size;
             if (current_stack_depth > max_stack_depth)
@@ -511,7 +520,50 @@ package es4
     }
 
     public function testABCAssembler() {
-        testCoverage();
+        //testCoverage();
+        testHello();
+    }
+
+    function testHello() {
+        var cp = new ABCConstantPool();
+
+        var file = new ABCFile();
+        file.addConstants(cp);
+
+        // BUG: passing 0 for the namespace causes the AVM to crash, though
+        // the doc says it's legal.
+        // BUG: passing 0 for the empty string causes the program not to run, though
+        // the doc at least implies it's legal.
+        var print_name = cp.QName(cp.namespace(CONSTANT_PackageNamespace, cp.stringUtf8("")), 
+                                  cp.stringUtf8("print"));
+
+        var asm = new ABCAssembler(cp,0);
+        asm.I_getlocal_0();
+        asm.I_pushscope();
+        asm.I_findpropstrict(print_name, false, false);
+        asm.I_pushstring(cp.stringUtf8("Hello, world!"));
+        asm.I_callpropvoid(print_name, 1, false, false);
+        asm.I_returnvoid();
+
+        var meth = file.addMethod(new ABCMethodInfo(0, [], 0, 0));
+        var script = new ABCScriptInfo;
+        script.setInit(meth);
+        file.addScript(script);
+        var body = new ABCMethodBodyInfo(meth);
+        body.setMaxStack(2);       // FIXME: Should not have to compute this, assembler should provide it
+        body.setLocalCount(1);     // FIXME: compute this?  Must be at least one more than the number of params
+        body.setInitScopeDepth(0); // FIXME: useful default?
+        body.setMaxScopeDepth(1);  // FIXME: should not have to compute this?
+        body.setCode(asm);
+        file.addMethodBody(body);
+
+        // Run it!
+        {
+            import avmplus.Domain;
+            var domain = Domain.currentDomain;
+            domain.loadBytes(file.getBytes());
+            //dumpByteStream(file.getBytes());
+        }
     }
 
     function testCoverage() {
