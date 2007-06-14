@@ -214,54 +214,54 @@ exception TokenError
 
 fun isreserved (t,_) = 
     case t of
-      ( As
-      | Break
-      | Case
-      | Cast
-      | Catch
-      | Class
-      | Const
-      | Continue
-      | Default
-      | Delete
-      | Do
-      | Else
-      | Enum
-      | Extends
-      | False
-      | Finally
-      | For
-      | Function
-      | If
-      | Implements
-      | Import
-      | In
-      | InstanceOf
-      | Interface
-      | Internal
-      | Intrinsic
-      | Is
-      | Let
-      | New
-      | Null
-      | Package
-      | Private
-      | Protected
-      | Public
-      | Return
-      | Super
-      | Switch
-      | This
-      | Throw
-      | To
-      | True
-      | Try
-      | TypeOf
-      | Use
-      | Var
-      | Void
-      | While
-      | With ) => true
+        As => true
+      | Break => true
+      | Case => true
+      | Cast => true
+      | Catch => true
+      | Class => true
+      | Const => true
+      | Continue => true
+      | Default => true
+      | Delete => true
+      | Do => true
+      | Else => true
+      | Enum => true
+      | Extends => true
+      | False => true
+      | Finally => true
+      | For => true
+      | Function => true
+      | If => true
+      | Implements => true
+      | Import => true
+      | In => true
+      | InstanceOf => true
+      | Interface => true
+      | Internal => true
+      | Intrinsic => true
+      | Is => true
+      | Let => true
+      | New => true
+      | Null => true
+      | Package => true
+      | Private => true
+      | Protected => true
+      | Public => true
+      | Return => true
+      | Super => true
+      | Switch => true
+      | This => true
+      | Throw => true
+      | To => true
+      | True => true
+      | Try => true
+      | TypeOf => true
+      | Use => true
+      | Var => true
+      | Void => true
+      | While => true
+      | With => true
       | _ => false
          
 fun tokenname (t,_) =

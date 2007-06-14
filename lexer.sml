@@ -188,9 +188,7 @@ fun makeTokenList (filename : string, reader : unit -> Ustring.SOURCE) : ((TOKEN
                   | NONE    => error ["LexError:  illegal escape sequence"]
             end
             
-            val (adv, codepoint) = case !src of
-               (0wx5C::0wx75::0wx7B::_     (* \u{ *)
-              | 0wx5C::0wx78::0wx7B::_) => (* \x{ *)
+            fun readHexEscape () =
                 let
                     fun getHexDigits digits =
                        (case lookahead 0 of
@@ -205,6 +203,12 @@ fun makeTokenList (filename : string, reader : unit -> Ustring.SOURCE) : ((TOKEN
                     then error ["LexError:  illegal size for bracketed escape sequence"]
                     else (0, hexToWord digits)
                 end
+
+            val (adv, codepoint) = case !src of
+                (0wx5C::0wx75::0wx7B::_) => (* \u{ *)
+                readHexEscape ()
+              | (0wx5C::0wx78::0wx7B::_) => (* \x{ *)
+                readHexEscape ()
               | 0wx5C::0wx78::a::b::_ =>       (* \xFF *)
                 (4, hexToWord [a, b])
               | 0wx5C::0wx75::a::b::c::d::_ => (* \uFFFF *)
@@ -227,8 +231,13 @@ fun makeTokenList (filename : string, reader : unit -> Ustring.SOURCE) : ((TOKEN
                 (2, 0wx27)
               | 0wx5C::0wx5C::_ =>             (* \\ *)
                 (2, 0wx5C)
-              | 0wx5C::
-                (0wx000A | 0wx000D | 0wx2028 | 0wx2029)::_ => (* \<line terminator> *)
+              | 0wx5C::0wx000A::_ =>         (* \<line terminator> *)
+                error ["LexError:  illegal line-terminating escape sequence"]
+              | 0wx5C::0wx000D::_ =>         (* \<line terminator> *)
+                error ["LexError:  illegal line-terminating escape sequence"]
+              | 0wx5C::0wx2028::_ =>         (* \<line terminator> *)
+                error ["LexError:  illegal line-terminating escape sequence"]
+              | 0wx5C::0wx2029::_ =>         (* \<line terminator> *)
                 error ["LexError:  illegal line-terminating escape sequence"]
               | 0wx5C::c::_ =>                 (* \<whatever> *)
                 (2, c)
@@ -398,84 +407,119 @@ fun makeTokenList (filename : string, reader : unit -> Ustring.SOURCE) : ((TOKEN
                 numSignChars + numExpDigits
             end
             
+            fun countOctalDigits rest =
+            let
+                val octDigitRanges = [(Ustring.wcharFromChar #"0", Ustring.wcharFromChar #"7")]
+            in
+                countInRanges {min=0} octDigitRanges rest
+            end
+
+            fun countDecimalDigits rest =
+            let
+                val numDigits = countInRanges {min=0} [(Ustring.wcharFromChar #"0", Ustring.wcharFromChar #"9")] rest
+            in
+                case List.drop (rest, numDigits) of
+                (* [eE] *)
+                    0wx65::rest_
+                    => (numDigits + 1 + (countExpChars rest_))
+                  | 0wx45::rest_
+                    => (numDigits + 1 + (countExpChars rest_))
+                (* . *)
+                  | 0wx2E::rest_
+                    =>  let
+                        val numMoreDigits = countInRanges {min=0} [(Ustring.wcharFromChar #"0", Ustring.wcharFromChar #"9")] rest_
+                        val numExpChars = case List.drop (rest_, numMoreDigits) of
+                                          (* [eE] *)
+                                              0wx65::rest__
+                                              => 1 + (countExpChars rest__)
+                                            | 0wx45::rest__
+                                              => 1 + (countExpChars rest__)
+                                            | _ => 0
+                    in
+                        (numDigits + 1 + numMoreDigits + numExpChars)
+                    end
+                  | _ => numDigits
+            end
+
             val (tokType, tokLen) = case !src of
-                0wx2E::rest        (* .  =>  DecimalLiteral {   . [0-9]+  ( [eE] [+-]? [0-9]+ )? } *)
+            (* .  =>  DecimalLiteral {   . [0-9]+  ( [eE] [+-]? [0-9]+ )? } *)
+                0wx2E::rest
                 =>  let
                         val numDigits = countInRanges {min=1} [(Ustring.wcharFromChar #"0", Ustring.wcharFromChar #"9")] rest
                         val numExpChars = case List.drop (rest, numDigits) of
-                                             (0wx65
-                                            | 0wx45)::rest_ (* [eE] *)
-                                                => 1 + (countExpChars rest_)
+                                              0wx65::rest_ (* e *)
+                                              => 1 + (countExpChars rest_)
+                                            | 0wx45::rest_ (* E *)
+                                              => 1 + (countExpChars rest_)
                                             | _ => 0
                     in
                         (DecLit, 1 + numDigits + numExpChars)
                     end
-              | 0wx30::0wx2E::rest  (* 0. =>  DecimalLiteral { 0 . [0-9]*  ( [eE] [+-]? [0-9]+ )? } *)
+            (* 0. =>  DecimalLiteral { 0 . [0-9]*  ( [eE] [+-]? [0-9]+ )? } *)
+              | 0wx30::0wx2E::rest
                 =>  let
                         val numDigits = countInRanges {min=0} [(Ustring.wcharFromChar #"0", Ustring.wcharFromChar #"9")] rest
                         val numExpChars = case List.drop (rest, numDigits) of
-                                             (0wx65
-                                            | 0wx45)::rest_ (* [eE] *)
-                                                => 1 + (countExpChars rest_)
+                                              0wx65::rest_ (* e *)
+                                              => 1 + (countExpChars rest_)
+                                            | 0wx45::rest_ (* E *)
+                                              => 1 + (countExpChars rest_)
                                             | _ => 0
                     in
                         (DecLit, 2 + numDigits + numExpChars)
                     end
-              |(0wx30::0wx65::rest  (* 0e | 0E *)
-              | 0wx30::0wx45::rest) (*    =>  DecimalLiteral { 0 [eE] [+-]? [0-9]+ } *)
+            (* 0[eE]  =>  DecimalLiteral { 0 [eE] [+-]? [0-9]+ } *)
+              | 0wx30::0wx65::rest
                 => (DecLit, 2 + (countExpChars rest))
-              |(0wx30::0wx78::rest  (* 0x | 0X *)
-              | 0wx30::0wx58::rest) (*    =>  HexIntegerLiteral { 0 [xX] [0-9a-fA-F]+ } *)
-                =>  let
-                        val numHexDigits = countInRanges {min=1} hexDigitRanges rest
-                    in
-                        (HexIntLit, 2 + numHexDigits)
-                    end
-              | 0wx30::(0wx30
-                      | 0wx31
-                      | 0wx32
-                      | 0wx33
-                      | 0wx34
-                      | 0wx35         (* [0-7] *)
-                      | 0wx36         (*   =>  OctalIntegerLiteral { 0 [0-7]* } *)
-                      | 0wx37)::rest
-                => let
-                        val octDigitRanges = [(Ustring.wcharFromChar #"0", Ustring.wcharFromChar #"7")]
-                        val numOctDigits = countInRanges {min=0} octDigitRanges rest
-                    in
-                        (OctIntLit, 2 + numOctDigits)
-                    end
-              | 0wx30::rest           (* 0 => DecimalIntegerLiteral { 0 } *)
+              | 0wx30::0wx45::rest
+                => (DecLit, 2 + (countExpChars rest))
+            (* 0[xX]  =>  HexIntegerLiteral { 0 [xX] [0-9a-fA-F]+ } *)
+              | 0wx30::0wx78::rest
+                => (HexIntLit, 2 + (countInRanges {min=1} hexDigitRanges rest))
+              | 0wx30::0wx58::rest
+                => (HexIntLit, 2 + (countInRanges {min=1} hexDigitRanges rest))
+            (* 0[0-7]  =>  OctalIntegerLiteral { 0 [0-7]* } *)
+              | 0wx30::0wx30::rest
+                => (OctIntLit, 2 + (countOctalDigits rest))
+              | 0wx30::0wx31::rest
+                => (OctIntLit, 2 + (countOctalDigits rest))
+              | 0wx30::0wx32::rest
+                => (OctIntLit, 2 + (countOctalDigits rest))
+              | 0wx30::0wx33::rest
+                => (OctIntLit, 2 + (countOctalDigits rest))
+              | 0wx30::0wx34::rest
+                => (OctIntLit, 2 + (countOctalDigits rest))
+              | 0wx30::0wx35::rest
+                => (OctIntLit, 2 + (countOctalDigits rest))
+              | 0wx30::0wx36::rest
+                => (OctIntLit, 2 + (countOctalDigits rest))
+              | 0wx30::0wx37::rest
+                => (OctIntLit, 2 + (countOctalDigits rest))
+            (* 0   =>  DecimalIntegerLiteral { 0 } *)
+              | 0wx30::rest
                 => (DecIntLit, 1)
-              |(0wx31
-              | 0wx32
-              | 0wx33
-              | 0wx34
-              | 0wx35  (* [1-9] *)
-              | 0wx36  (*   =>  DecimalIntegerLiteral { [1-9] [0-9]*                                  } *)
-              | 0wx37  (*   |   DecimalLiteral        { [1-9] [0-9]*             [eE] [+-]? [0-9]+    } *)
-              | 0wx38  (*   |   DecimalLiteral        { [1-9] [0-9]* . [0-9]*  ( [eE] [+-]? [0-9]+ )? } *)
-              | 0wx39)::rest
-                =>  let
-                        val numDigits = countInRanges {min=0} [(Ustring.wcharFromChar #"0", Ustring.wcharFromChar #"9")] rest
-                    in
-                        case List.drop (rest, numDigits) of
-                           (0wx65
-                          | 0wx45)::rest_ (* [eE] *)
-                            => (DecLit, 1 + numDigits + 1 + (countExpChars rest_))
-                          | 0wx2E::rest_  (* . *)
-                            =>  let
-                                    val numMoreDigits = countInRanges {min=0} [(Ustring.wcharFromChar #"0", Ustring.wcharFromChar #"9")] rest_
-                                    val numExpChars = case List.drop (rest_, numMoreDigits) of
-                                                         (0wx65
-                                                        | 0wx45)::rest__ (* [eE] *)
-                                                            => 1 + (countExpChars rest__)
-                                                        | _ => 0
-                                in
-                                    (DecLit, 1 + numDigits + 1 + numMoreDigits + numExpChars)
-                                end
-                          | _ => (DecIntLit, 1 + numDigits)
-                    end
+            (* [1-9] *)
+            (*   =>  DecimalIntegerLiteral { [1-9] [0-9]*                                  } *)
+            (*   |   DecimalLiteral        { [1-9] [0-9]*             [eE] [+-]? [0-9]+    } *)
+            (*   |   DecimalLiteral        { [1-9] [0-9]* . [0-9]*  ( [eE] [+-]? [0-9]+ )? } *)
+              | 0wx31::rest
+                => (DecIntLit, 1 + (countDecimalDigits rest))
+              | 0wx32::rest
+                => (DecIntLit, 1 + (countDecimalDigits rest))
+              | 0wx33::rest
+                => (DecIntLit, 1 + (countDecimalDigits rest))
+              | 0wx34::rest
+                => (DecIntLit, 1 + (countDecimalDigits rest))
+              | 0wx35::rest
+                => (DecIntLit, 1 + (countDecimalDigits rest))
+              | 0wx36::rest
+                => (DecIntLit, 1 + (countDecimalDigits rest))
+              | 0wx37::rest
+                => (DecIntLit, 1 + (countDecimalDigits rest))
+              | 0wx38::rest
+                => (DecIntLit, 1 + (countDecimalDigits rest))
+              | 0wx39::rest
+                => (DecIntLit, 1 + (countDecimalDigits rest))
               | _ => error ["LexError:  illegal character in numeric literal (BUG IN LEXER!)"] (* should not be possible to get here *)
             
             val numberAscii = implode (map Ustring.wcharToChar (List.take (!src, tokLen)))  (* should be safe, since we just lexed each char as being in the ascii range *)
@@ -522,17 +566,25 @@ fun makeTokenList (filename : string, reader : unit -> Ustring.SOURCE) : ((TOKEN
         let
             fun lexSingleLineComment () =
                 case lookahead 0 of
-                    (0wx000A | 0wx000D | 0wx2028 | 0wx2029) (* line terminators *)
-                      => pushEolAdv ()
+                (* line terminators *)
+                    0wx000A => pushEolAdv ()
+                  | 0wx000D => pushEolAdv ()
+                  | 0wx2028 => pushEolAdv ()
+                  | 0wx2029 => pushEolAdv ()
 		  | 0wx0 => ()
                   | _ => (advanceIndex 1; lexSingleLineComment ())
             
             fun lexMultiLineComment {newline=false} {asterisk=asterisk} = (* have not encountered a newline yet *)
                 (case lookahead 0 of
-                    (0wx000A | 0wx000D | 0wx2028 | 0wx2029) (* line terminators *)
-                                  => (pushEolAdv  (); lexMultiLineComment {newline=true } {asterisk=false})
-                  | 0wx2A (* * *) => (advanceIndex 1; lexMultiLineComment {newline=false} {asterisk=true })
-                  | 0wx2F (* / *) => (advanceIndex 1; if asterisk then () else
+                (* line terminators *)
+                    0wx000A => (pushEolAdv  (); lexMultiLineComment {newline=true } {asterisk=false})
+                  | 0wx000D => (pushEolAdv  (); lexMultiLineComment {newline=true } {asterisk=false})
+                  | 0wx2028 => (pushEolAdv  (); lexMultiLineComment {newline=true } {asterisk=false})
+                  | 0wx2029 => (pushEolAdv  (); lexMultiLineComment {newline=true } {asterisk=false})
+                (* * *)
+                  | 0wx2A => (advanceIndex 1; lexMultiLineComment {newline=false} {asterisk=true })
+                (* / *)
+                  | 0wx2F => (advanceIndex 1; if asterisk then () else
                                                       lexMultiLineComment {newline=false} {asterisk=false})
                   | 0wx0          => ()
                   | _             => (advanceIndex 1; lexMultiLineComment {newline=false} {asterisk=false}))
@@ -574,17 +626,29 @@ fun makeTokenList (filename : string, reader : unit -> Ustring.SOURCE) : ((TOKEN
                             val _ = if c = 0wx0 then () else advanceIndex 1
                         in
                             case (charset, c) of
-                                (  _  , (0wx000A | 0wx000D | 0wx2028 | 0wx2029) (* line terminators *))
-                                                       => lexRegexp (c::reSrc) {newline=true   } {charset=charset}
-                              | (false, 0wx5B (* [ *)) => lexRegexp (c::reSrc) {newline=newline} {charset=true   }
-                              | (true , 0wx5D (* ] *)) => lexRegexp (c::reSrc) {newline=newline} {charset=false  }
-                              | (  _  , 0wx5C (* \ *)) => 
+                            (* line terminators *)
+                                (_, 0wx000A)   => lexRegexp (c::reSrc) {newline=true   } {charset=charset}
+                              | (_, 0wx000D)   => lexRegexp (c::reSrc) {newline=true   } {charset=charset}
+                              | (_, 0wx2028)   => lexRegexp (c::reSrc) {newline=true   } {charset=charset}
+                              | (_, 0wx2029)   => lexRegexp (c::reSrc) {newline=true   } {charset=charset}
+                            (* [ *)
+                              | (false, 0wx5B) => lexRegexp (c::reSrc) {newline=newline} {charset=true   }
+                            (* ] *)
+                              | (true , 0wx5D) => lexRegexp (c::reSrc) {newline=newline} {charset=false  }
+                            (* \ *)
+                              | (_, 0wx5C) => 
 				(case lookahead 0 of
-                                     (0wx000A | 0wx000D | 0wx2028 | 0wx2029) (* line terminators *)
-                                     => (advanceIndex 1; lexRegexp (      reSrc) {newline=newline} {charset=charset})
+                                 (* line terminators *)
+                                     0wx000A
+                                     =>   (advanceIndex 1; lexRegexp (      reSrc) {newline=newline} {charset=charset})
+                                   | 0wx000D
+                                     =>   (advanceIndex 1; lexRegexp (      reSrc) {newline=newline} {charset=charset})
+                                   | 0wx2028
+                                     =>   (advanceIndex 1; lexRegexp (      reSrc) {newline=newline} {charset=charset})
+                                   | 0wx2029
+                                     =>   (advanceIndex 1; lexRegexp (      reSrc) {newline=newline} {charset=charset})
 				   | 0wx0 => error ["LexError: end of input in regexp"]
-                                   | d => (advanceIndex 1; lexRegexp (d::c::reSrc) {newline=newline} {charset=charset})
-                                )
+                                   | d => (advanceIndex 1; lexRegexp (d::c::reSrc) {newline=newline} {charset=charset}))
                               | (false, 0wx2F (* / *)) =>
                                 let
                                     val numFlags = countInRanges {min=0} [(Ustring.wcharFromChar #"a", Ustring.wcharFromChar #"z"),
@@ -625,8 +689,8 @@ fun makeTokenList (filename : string, reader : unit -> Ustring.SOURCE) : ((TOKEN
                 if Ustring.wcharIsChar c then
                     case Ustring.wcharToChar c of
                     (* line terminators *)
-                       (#"\n"
-                      | #"\r")=> pushEolAdv ()
+                        #"\n" => pushEolAdv ()
+                      | #"\r" => pushEolAdv ()
                     (* operators *)
                       | #"("  => push 1 LeftParen
                       | #")"  => push 1 RightParen
@@ -758,16 +822,16 @@ fun makeTokenList (filename : string, reader : unit -> Ustring.SOURCE) : ((TOKEN
                       | #"x"  => lexResOrId [(Ustring.fromSource "ml"       , Token.Xml)]
                       | #"y"  => lexResOrId [(Ustring.fromSource "ield"     , Yield)]
                     (* numbers *)
-                      |(#"0"
-                      | #"1"
-                      | #"2"
-                      | #"3"
-                      | #"4"
-                      | #"5"
-                      | #"6"
-                      | #"7"
-                      | #"8"
-                      | #"9") => lexNumber ()
+                      | #"0" => lexNumber ()
+                      | #"1" => lexNumber ()
+                      | #"2" => lexNumber ()
+                      | #"3" => lexNumber ()
+                      | #"4" => lexNumber ()
+                      | #"5" => lexNumber ()
+                      | #"6" => lexNumber ()
+                      | #"7" => lexNumber ()
+                      | #"8" => lexNumber ()
+                      | #"9" => lexNumber ()
                     (* numbers ... .. .< . *)
                       | #"." => if (0wx30 <= (lookahead 1) andalso
                                              (lookahead 1) <= 0wx39) (* 0-9 *)
@@ -777,13 +841,13 @@ fun makeTokenList (filename : string, reader : unit -> Ustring.SOURCE) : ((TOKEN
                                             (Ustring.fromSource "<"  , LeftDotAngle),
                                             (Ustring.fromSource ""   , Dot         )]
                     (* string literal *)
-                      |(#"\""
-                      | #"'") => lexString c
+                      | #"\"" => lexString c
+                      | #"'"  => lexString c
                     (* whitespace *)
-                      |(#"\t"
-                      | #"\v"
-                      | #"\f"
-                      | #" ") => advanceIndex 1
+                      | #"\t" => advanceIndex 1
+                      | #"\v" => advanceIndex 1
+                      | #"\f" => advanceIndex 1
+                      | #" "  => advanceIndex 1
                     (* identifier *)
                       | #"\\" => lexIdentifier []
                       | _     => if isIdentifierChar c
@@ -792,26 +856,26 @@ fun makeTokenList (filename : string, reader : unit -> Ustring.SOURCE) : ((TOKEN
                 else
                     case c of
                     (* line terminators *)
-                       (0wx2028
-                      | 0wx2029) => pushEolAdv ()
+                        0wx2028 => pushEolAdv ()
+                      | 0wx2029 => pushEolAdv ()
                     (* whitespace *)
-                      |(0wx00A0
-                      | 0wx1680
-                      | 0wx180E
-                      | 0wx2000
-                      | 0wx2001
-                      | 0wx2002
-                      | 0wx2003
-                      | 0wx2004
-                      | 0wx2005
-                      | 0wx2006
-                      | 0wx2007
-                      | 0wx2008
-                      | 0wx2009
-                      | 0wx200A
-                      | 0wx202F
-                      | 0wx205F
-                      | 0wx3000) => advanceIndex 1
+                      | 0wx00A0 => advanceIndex 1
+                      | 0wx1680 => advanceIndex 1
+                      | 0wx180E => advanceIndex 1
+                      | 0wx2000 => advanceIndex 1
+                      | 0wx2001 => advanceIndex 1
+                      | 0wx2002 => advanceIndex 1
+                      | 0wx2003 => advanceIndex 1
+                      | 0wx2004 => advanceIndex 1
+                      | 0wx2005 => advanceIndex 1
+                      | 0wx2006 => advanceIndex 1
+                      | 0wx2007 => advanceIndex 1
+                      | 0wx2008 => advanceIndex 1
+                      | 0wx2009 => advanceIndex 1
+                      | 0wx200A => advanceIndex 1
+                      | 0wx202F => advanceIndex 1
+                      | 0wx205F => advanceIndex 1
+                      | 0wx3000 => advanceIndex 1
                     (* identifier *)
                       | _     => if isIdentifierChar c
                                  then lexIdentifier []
