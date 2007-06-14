@@ -42,6 +42,8 @@ MLBUILD := ml-build
 
 SOURCES := ast.sml boot.sml decimal.sml defn.sml eval.sml logerr.sml mach.sml main.sml multiname.sml name.sml native.sml parser.sml pretty-rep.sml pretty.sml profile.sml token.sml ustring.sml verify.sml
 
+DECIMAL_SOURCES=decimal/decimal-ffi.c decimal/decNumber/decNumber.c decimal/decNumber/decContext.c decimal/decNumber/decimal128.c decimal/decNumber/decimal64.c decimal/decNumber/decimal32.c
+
 EV_TESTS := tests/exec.es
 
 # ------------------------------------------------------------
