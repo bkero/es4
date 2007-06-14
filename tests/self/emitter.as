@@ -37,21 +37,78 @@
 
 package es4 
 {
-    use namespace release;
+    class Script
+    {
+        private var emitter, init_method;
 
-    function compareByteArrays(ba1:ByteArray, ba2:ByteArray) {
-        if( ba1.length !== ba2.length ) 
-            return false;
-        
-        for( var i = ba1.length-1; i >= 0; i-- )
-            if( ba1[i] !== ba2[i] ) 
-                return false;
-    
-        return true;
+        function Script(emitter) {
+            this.emitter = emitter;
+        }
+
+        function get init(): Method {
+            if (init_method == null)
+                init_method = new Method(emitter, []);
+            return init_method;
+        }
+
+        function finalize() {
+            init.finalize();
+            emitter.file.addScript(new ABCScriptInfo(init.methodID));
+        }
     }
+
+    class Method extends ABCAssembler
+    {
+        private var emitter, formals;
+
+        function Method(emitter, formals) {
+            super(emitter.constants, formals.length);
+            this.formals = formals;
+            this.emitter = emitter;
+
+            // Standard prologue
+            I_getlocal_0();
+            I_pushscope();
+        }
+
+
+        function finalize() {
+            // Standard epilogue??
+
+            var body = new ABCMethodBodyInfo(meth);
+            body.setMaxStack(maxStack);
+            body.setLocalCount(maxLocal);
+            body.setMaxScopeDepth(maxScope);
+            body.setCode(this);
+        }
+    }
+
 
     class ABCEmitter
     {
+        var abcfile, constants;
+
+        function ABCEmitter() {
+            abcfile = new ABCFile;
+            constants = new ABCConstantPool;
+            abcfile.addConstants(constants);
+        }
+
+        function get abcfile() {
+        }
+
+        function get packageNamespace() {
+            return constants.namespace(CONSTANT_PackageNamespace, cp.stringUtf8(""));
+        }
+
+        function QName(ns_idx, str) {
+            return constants.namespace(ns_idx, cp.stringUtf8(str));
+        }
+
+        function newScript(): Script {
+            return new Script(this);
+        }
+
         // IF kinds
 
         public static const IF_false = 0;
@@ -71,316 +128,6 @@ package es4
         public static const IF_ngt = IF_nle + 1;
         public static const IF_nge = IF_ngt + 1;
 
-        var if_addrs = new Array;   // used for fixup
-        var else_addrs = new Array;
-        var lblnum = 0;
-
-        // ABC parts
-        
-        var minor_version = 16;
-        var major_version = 46;
-        var int_pool = new Array;
-        var uint_pool = new Array;
-        var double_pool = new Array;
-        var utf8_pool = new Array;
-        var namespace_pool = new Array;
-        var namespaceset_pool = new Array;
-        var multiname_pool = new Array;
-        var method_infos = new Array;
-        var metadata_infos = new Array;
-        var instance_infos = new Array;
-        var class_infos = new Array;
-        var script_infos = new Array;
-        var method_bodys = new Array;
-
-        function methodCount() {
-            return method_infos.length;
-        }
-
-        function ABCEmitter(minor=16,major=46) {
-            if( major != 46 ) 
-                throw "major version " + major + " not supported!";
-
-            minor_version = minor;
-            major_version = major;
-        }
-        
-        function addBytesToPool(bytes,pool) {
-            var count = pool.length;
-            for( var i = 0 ; i < count && !compareByteArrays(bytes, pool[i]) ; ++i )
-                ;
-            pool[i] = bytes;
-            return i+1;
-        }
-        
-        var info_out = ["---------","I N F O S","---------"]
-        var body_out = ["-----------","B O D I E S","-----------"]
-        var code_out = []
-        
-/*
-
-MethodInfo {
-    U30 param_count
-    U30 ret_type                      // CONSTANT_Multiname, 0=Object
-    U30 param_types[param_count]      // CONSTANT_Multiname, 0=Object
-    U30 name_index                    // 0=no name.
-    // 1=need_arguments, 2=need_activation, 4=need_rest 8=has_optional 16=ignore_rest, 32=explicit, 64=setsdxns, 128=has_paramnames
-    U8 flags                          
-    U30 optional_count                // if has_optional
-    ValueKind[optional_count]         // if has_optional
-    U30 param_names[param_count]      // if has_paramnames
-}
-
-*/
-        function MethodInfo(param_count,type,types,name_index,flags,optional_count,optional_kinds)
-        {
-            Debug.enter("MethodInfo",param_count,type,name_index,flags,optional_count,optional_kinds)
-
-            var method_info = method_infos.length //getMethodInfo(name)
-            var bytes = new ByteArray
-            bytes.endian = "littleEndian";
-
-            makeInt32(bytes,param_count);
-            makeInt32(bytes,type);
-            for (var i=0; i < param_count; i++)
-            {
-                makeInt32(bytes,types[i]);
-            }
-            makeInt32(bytes,name_index);
-            makeByte(bytes,flags);
-            if( false /*flags & HAS_OPTIONAL*/ )
-            {
-                makeInt32(bytes,optional_count);
-                for (var i=0; i < optional_count; i++)
-                {
-                    makeInt32(bytes,optional_kinds[i]);
-                }
-            }
-            
-            Debug.log_mode::log("MethodInfo "+param_count+" "+type+" "+types+" name="+name_index+" "+flags+" "+optional_count+" "+optional_kinds+" -> "+method_info,info_out)
-
-            method_infos.push(bytes)
-            Debug.exit("MethodInfo")
-            return method_info
-        }
-
-        function dumpBytes(bytes)
-        {
-            bytes.position = 0;
-            var str = "";
-            while( bytes.bytesAvailable ) { str += " "+bytes.readByte() }
-            print(str);
-        }
-        
-        function MethodBody(info_index,max_stack,max_locals,scope_depth,max_scope,code,exceptions,slot_infos)
-        {
-            Debug.enter("MethodBody",info_index,max_stack,max_locals,scope_depth,max_scope)
-            var bytes = new ByteArray
-            bytes.endian = "littleEndian";
-
-            makeInt32(bytes,info_index)
-            makeInt32(bytes,max_stack)
-            makeInt32(bytes,max_locals)
-            makeInt32(bytes,scope_depth)
-            makeInt32(bytes,max_scope)
-            makeBytes(bytes,code)
-            makeBytes(bytes,exceptions)
-            emitInfos(bytes,slot_infos)
-
-            method_bodys.push(bytes)
-            Debug.log_mode::log("MethodBody "+info_index+" "+max_stack+" "+max_locals+" "+scope_depth+" "+max_scope+" length="+code.length+" slots="+slot_infos.length+" size="+bytes.length,body_out)
-            Debug.exit("MethodBody")
-            return method_bodys.length
-        }
-
-        function ScriptInfo(init_index,slot_infos)
-        {
-            Debug.log_mode::log("ScriptInfo init_index="+init_index+" slots="+slot_infos.length,info_out)
-            var bytes = new ByteArray
-            bytes.endian = "littleEndian";
-
-            makeInt32(bytes,init_index)
-            emitInfos(bytes,slot_infos)
-
-            script_infos.push(bytes)
-            return script_infos.length
-        }
-
-        // Emitter methods
-
-        function emitVersion(bytes,minor,major)
-        {
-            Debug.enter("emitVersion",minor,major)
-            makeInt16(bytes,minor)
-            makeInt16(bytes,major)
-            Debug.exit("emitVersion",bytes.length)
-        }
-        
-        function emitConstantPool(bytes,pool)
-        {
-            Debug.enter("emitConstantPool",bytes.length,pool.length)
-            var count = pool.length
-            makeInt32(bytes,count==0?0:count+1)
-            for( var i = 0; i < count; ++i )
-            {
-                bytes.writeBytes(pool[i])
-            }
-            Debug.exit("emitConstantPool",bytes.length)
-        }
-        
-        function emitInfos(bytes,infos)
-        {
-            Debug.enter("emitInfos",infos.length)
-            var count = infos.length
-            makeInt32(bytes,count)
-            for( var i = 0; i < count; ++i )
-            {
-                bytes.writeBytes(infos[i])
-            }
-            Debug.exit("emitInfos",bytes.length)
-        }
-        
-        function emitClassInfos(bytes,instance_infos,class_infos)
-        {
-            Debug.enter("emitClassInfos")
-            var count = instance_infos.length
-            makeInt32(bytes,count)
-            for( var i = 0; i < count; ++i )
-            {
-                bytes.writeBytes(instance_infos[i])
-            }
-            for( var i = 0; i < count; ++i )
-            {
-                bytes.writeBytes(class_infos[i])
-            }
-            Debug.exit("emitClassInfos",bytes.length)
-        }
-
-/*
- AbcFile {
-   U16 minor_version                  // = 16
-   U16 major_version                  // = 46
-   U30 constant_int_pool_count
-   ConstantInteger[constant_int_pool_count] // Cpool entries for integers
-   U30 constant_uint_pool_count
-   ConstantUInteger[constant_uint_pool_count] // Cpool entries for uints
-   U30 constant_double_pool_count
-   ConstantDouble[constant_double_pool_count] // Cpool entries for doubles
-   U30 constant_string_pool_count
-   ConstantString[constant_string_pool_count] // Cpool entries for strings
-   U30 constant_namespace_pool_count
-   ConstantNamespace[constant_namespace_pool_count] // Cpool entries for namespaces
-   U30 constant_namespace_set_pool_count
-   ConstantNamespaceSet[constant_namespace_set_pool_count] //Cpool entries for namespace sets
-   U30 constant_multiname_pool_count
-   ConstantMultiname[constant_multiname_pool_count] //Cpool entries for Multinames, Qnames, RTQnames, and RTQnamesLate
-   U30 methods_count
-   MethodInfo[methods_count]
-   U30 metadata_count
-   MetadataInfo[metadata_count]
-   U30 class_count
-   InstanceInfo[class_count]
-   ClassInfo[class_count]
-   U30 script_count
-   ScriptInfo[script_count]         // ScriptInfo[script_count-1] is main entry point
-   U30 bodies_count
-   MethodBody[bodies_count]
-}
-*/
-
-        public function emit() {
-            Debug.enter("emit")
-            
-            var bytes = new ByteArray
-            bytes.endian = "littleEndian";
-            
-            emitVersion(bytes,minor_version,major_version)
-            emitConstantPool(bytes,int_pool)
-            emitConstantPool(bytes,uint_pool)
-            emitConstantPool(bytes,double_pool)
-            emitConstantPool(bytes,utf8_pool)
-            emitConstantPool(bytes,namespace_pool)
-            emitConstantPool(bytes,namespaceset_pool)
-            emitConstantPool(bytes,multiname_pool)
-            emitInfos(bytes,method_infos)
-            emitInfos(bytes,metadata_infos)
-            emitClassInfos(bytes,instance_infos,class_infos)
-            emitInfos(bytes,script_infos)
-            emitInfos(bytes,method_bodys)
-
-            Debug.log_mode::dump(int_pool_out)
-            Debug.log_mode::dump(uint_pool_out)
-            Debug.log_mode::dump(double_pool_out)
-            Debug.log_mode::dump(utf8_pool_out)
-            Debug.log_mode::dump(namespace_pool_out)
-            Debug.log_mode::dump(namespaceset_pool_out)
-            Debug.log_mode::dump(multiname_pool_out)
-            Debug.log_mode::dump(info_logs)
-            Debug.log_mode::dump(body_out)
-            Debug.log_mode::dump(code_logs)
-
-            Debug.exit("emit",bytes.length)
-            
-            return bytes
-        }
-        
-        var code
-        var code_blocks = []
-        var code_logs = ["-------","C O D E","-------"]
-        var info_logs = ["---------","I N F O S","---------"]
-        var pending_code_logs = []
-        var pending_info_logs = []
-        var initial_scope_depth_stack = []
-        
-        /* RES Kludge - probably do something more complicated */
-
-        var temp_pool_stack = [];
-        var tempPool;
-
-        function newTempPool( first:int ) {
-            return {max_locals: first, available: new Array()};
-        }
-
-        function getLocalTemp() {
-            if (tempPool.available.length > 0)
-                return tempPool.available.pop();
-            return tempPool.max_locals++;
-        }
-
-        function killLocalTemp(addr) {
-            // put out a Kill instruction?
-            tempPool.available.push(addr);
-            FreeTemp(addr);
-        }
-            
-        var local_count_stack = []
-        
-        var max_method_stack:int;
-        var cur_method_stack:int;
-
-        function stack(size:int):void
-        {
-            cur_method_stack += size;
-            if (cur_method_stack > max_method_stack)
-            {
-                max_method_stack = cur_method_stack;
-            }
-        }
-
-        var stackDepthStack:Array = new Array();
-        var scopeDepthStack:Array = new Array();
-
-        function saveStackDepth():void {
-            stackDepthStack.push(cur_method_stack);
-        }
-
-        function restoreStackDepth():void {
-            cur_method_stack = stackDepthStack.pop();
-        }
-
-        var stackInfoStack:Array = new Array();
-            
-        
         function StartMethod(node, name) 
         {
             Debug.enter("StartMethod")
@@ -518,7 +265,7 @@ MethodInfo {
         {
         }
         
-        function StartProgram() 
+        function startProgram() 
         {
             this.pending_info_logs.push(info_out)   // save current code log
             this.info_out = []                      // and start a new one
@@ -581,34 +328,10 @@ MethodInfo {
             saveStackDepth(); // to be correct at else branch
         }
 
-        public function PatchIf(target:int) {
-            restoreStackDepth();
-            var if_addr = if_addrs.pop();
-            Debug.log_mode::log("  "+code.length+": L" + if_addr.lbl + ":", code_out);
-            var offset:int = target - if_addr.addr + 1 - 4;
-            var savePos = code.position;
-            code.position = if_addr.addr;
-            makeInt24(code, offset);
-            code.position = savePos;
-        }
-
         public function Else() {
             Jump(lblnum);
             else_addrs.push({addr:code.position - 3, lbl:lblnum++});
         }
-
-        public function PatchElse(target:int) {
-            var else_addr = else_addrs.pop();
-            Debug.log_mode::log("  "+code.length+": L" + else_addr.lbl + ":", code_out);
-            var offset:int = target - else_addr.addr + 1 - 4;
-            var savePos = code.position;
-            code.position = else_addr.addr;
-            makeInt24(code, offset);
-            code.position = savePos;
-        }
-            
-
-        // Unconditional jump
 
         function dumpNamespaces(nsset)
         {

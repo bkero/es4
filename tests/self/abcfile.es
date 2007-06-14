@@ -251,6 +251,30 @@ package es4
                                   multiname_bytes.uint30(x.ns); } );
         }
 
+        function hasRTNS(index) {
+            switch (multiname_pool[index].kind) {
+            case CONSTANT_RTQName:
+            case CONSTANT_RTQNameA:
+            case CONSTANT_RTQNameL:
+            case CONSTANT_RTQNameLA:
+                return true;
+            default:
+                return false;
+            }
+        }
+
+        function hasRTName(index) {
+            switch (multiname_pool[index].kind) {
+            case CONSTANT_RTQNameL:
+            case CONSTANT_RTQNameLA:
+            case CONSTANT_MultinameL:
+            case CONSTANT_MultinameLA:
+                return true;
+            default:
+                return false;
+            }
+        }
+
         function serialize(bs) {
             bs.uint30(int_pool.length);
             bs.byteStream(int_bytes);

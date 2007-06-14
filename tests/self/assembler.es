@@ -123,13 +123,8 @@ package es4
      *    a label always, or is ignored for the purposes of computing the stack
      *    depth.
      *  - Ditto for the scope depth, really.
-     *  - The interface for handling run-time multinames is not pleasant, the
-     *    client has to pass two booleans denoting whether zero, one, or two values
-     *    are popped by the instruction as a result of the name having variable
-     *    parts.  It would be better to pass a constant pool reference and ask
-     *    the constant pool about the name.
      */
-    final class ABCAssembler 
+    class ABCAssembler 
     {
         function ABCAssembler(constants, numberOfFormals) {
             this.constants = constants;
@@ -139,7 +134,8 @@ package es4
         function get maxStack() { return max_stack_depth }
         function get maxLocal() { return nextTemp }
         function get maxScope() { return max_scope_depth }
-
+        function get flags() { return (set_dxns ? METHOD_Setsdxns : 0) | (need_activation ? METHOD_Activation : 0) }
+                                   
         private function list0(n) {
             print(n);
         }
@@ -161,7 +157,7 @@ package es4
         function I_getlocal_1() { pushOne("getlocal_1", 0xD1) }
         function I_getlocal_2() { pushOne("getlocal_2", 0xD2) }
         function I_getlocal_3() { pushOne("getlocal_3", 0xD3) }
-        function I_newactivation() { pushOne("newactivation", 0x57) }
+        function I_newactivation() { need_activation=true; pushOne("newactivation", 0x57) }
         function I_pushfalse() { pushOne("pushfalse", 0x27) }
         function I_pushnan() { pushOne("pushnan", 0x28) }
         function I_pushnull() { pushOne("pushnull", 0x20) }
@@ -202,7 +198,7 @@ package es4
         function I_bitor() { dropOne("bitor", 0xA9) }
         function I_bitxor() { dropOne("bitxor", 0xAA) }
         function I_divide() { dropOne("divide", 0xA3) }
-        function I_dxnslate() { dropOne("dxnslate", 0x07) }
+        function I_dxnslate() { set_dxns=true; dropOne("dxnslate", 0x07) }
         function I_equals() { dropOne("Equals", 0xAB) }
         function I_greaterequals() { dropOne("greaterequals", 0xB0) }
         function I_greaterthan() { dropOne("greaterthan", 0xAF) }
@@ -291,7 +287,7 @@ package es4
         function I_debugline(linenum) { dropNoneU30("debugline", 0xF0, linenum) }
         function I_declocal(reg) { dropNoneU30("declocal", 0x94, reg) }
         function I_declocal_i(reg) { dropNoneU30("declocal_i", 0xC3, reg) }
-        function I_dxns(index) { dropNoneU30("dxns", 0x06, index) }
+        function I_dxns(index) { set_dxns=true; dropNoneU30("dxns", 0x06, index) }
         function I_getslot(index) { dropNoneU30("getslot", 0x6C, index) }
         function I_inclocal(reg) { dropNoneU30("inclocal", 0x92, reg) }
         function I_inclocal_i(reg) { dropNoneU30("inclocal_i", 0xC2, reg) }
@@ -466,8 +462,10 @@ package es4
         function I_callmethod(index, nargs) { callIDX("callmethod", 0x43, index, nargs) }
         function I_callstatic(index, nargs) { callIDX("callstatic", 0x44, index, nargs) }
 
-        private function callMN(name, opcode, index, nargs, hasRTNS, hasRTName, isVoid=false) {
+        private function callMN(name, opcode, index, nargs, isVoid=false) {
             /* pop receiver/NS?/Name?/args; push result? */
+            var hasRTNS = constants.hasRTNS(index);
+            var hasRTName = constants.hasRTName(index);
             stack((isVoid ? 0 : 1) - (1 + (hasRTNS ? 1 : 0) + (hasRTName ? 1 : 0) + nargs));
             list(name + (hasRTNS ? "<NS>" : "") + (hasRTName ? "<Name>" : ""), index, nargs);
             code.uint8(opcode);
@@ -475,24 +473,12 @@ package es4
             code.uint30(nargs);
         }
 
-        function I_callsuper(index, nargs, hasRTNS, hasRTName) { 
-            callMN("callsuper", 0x45, index, nargs, hasRTNS, hasRTName);
-        }
-        function I_callproperty(index, nargs, hasRTNS, hasRTName) { 
-            callMN("callproperty", 0x46, index, nargs, hasRTNS, hasRTName);
-        }
-        function I_constructprop(index, nargs, hasRTNS, hasRTName) { 
-            callMN("constructprop", 0x4A, index, nargs, hasRTNS, hasRTName);
-        }
-        function I_callproplex(index, nargs, hasRTNS, hasRTName) { 
-            callMN("callproplex", 0x4C, index, nargs, hasRTNS, hasRTName);
-        }
-        function I_callsupervoid(index, nargs, hasRTNS, hasRTName) { 
-            callMN("callsupervoid", 0x4E, index, nargs, hasRTNS, hasRTName, true);
-        }
-        function I_callpropvoid(index, nargs, hasRTNS, hasRTName) { 
-            callMN("callpropvoid", 0x4F, index, nargs, hasRTNS, hasRTName, true);
-        }
+        function I_callsuper(index, nargs) { callMN("callsuper", 0x45, index, nargs) }
+        function I_callproperty(index, nargs) { callMN("callproperty", 0x46, index, nargs) }
+        function I_constructprop(index, nargs) { callMN("constructprop", 0x4A, index, nargs) }
+        function I_callproplex(index, nargs) { callMN("callproplex", 0x4C, index, nargs) }
+        function I_callsupervoid(index, nargs) { callMN("callsupervoid", 0x4E, index, nargs, true) }
+        function I_callpropvoid(index, nargs) { callMN("callpropvoid", 0x4F, index, nargs, true) }
 
         function I_debug(debug_type, index, reg, extra=0) {
             //stack(0);
@@ -504,59 +490,29 @@ package es4
             code.uint30(extra);
         }
 
-        private function propOpU30(name, opcode, v, hasRTNS, hasRTName) {
-            /* pop object/NS?/Name?; push result */
-            stack(1 - (1 + (hasRTNS ? 1 : 0) + (hasRTName ? 1 : 0)));
-            list(name + (hasRTNS ? "<NS>" : "") + (hasRTName ? "<Name>" : ""), v);
-            code.uint8(opcode);
-            code.uint30(v);
-        }
-
-        function I_deleteproperty(index, hasRTNS, hasRTName) { 
-            propOpU30("deleteproperty", 0x6A, index, hasRTNS, hasRTName);
-        }
-        function I_getdescendants(index, hasRTNS, hasRTName) { 
-            propOpU30("getdescendants", 0x59, index, hasRTNS, hasRTName);
-        }
-        function I_getproperty(index, hasRTNS, hasRTName) { 
-            propOpU30("getproperty", 0x66, index, hasRTNS, hasRTName);
-        }
-        function I_getsuper(index, hasRTNS, hasRTName) { 
-            propOpU30("getsuper", 0x04, index, hasRTNS, hasRTName);
-        }
-
-        function I_findproperty(hasRTNS, hasRTName) { 
-            /* pop NS?/Name?; push result */
-            stack(1 - ((hasRTNS ? 1 : 0) + (hasRTName ? 1 : 0)));
-            list("findproperty" + (hasRTNS ? "<NS>" : "") + (hasRTName ? "<Name>" : ""));
-            code.uint8(0x5E);
-        }
-
-        function I_findpropstrict(index, hasRTNS, hasRTName) { 
-            /* pop NS?/Name?; push result */
-            stack(1 - ((hasRTNS ? 1 : 0) + (hasRTName ? 1 : 0)));
-            list("findpropstrict" + (hasRTNS ? "<NS>" : "") + (hasRTName ? "<Name>" : ""), index);
-            code.uint8(0x5D);
-            code.uint30(index);
-        }
-
-        private function setprop(name, opcode, index, hasRTNS, hasRTName) {
-            /* pop object/NS?/Name?/value */
-            stack(- (2 + (hasRTNS ? 1 : 0) + (hasRTName ? 1 : 0)));
+        /* Generic property operation when there may be a namespace or
+           name on the stack.  The instruction pops and pushes some
+           fixed amount and may pop one or two more items, depending
+           on the kind of name that index references.
+        */
+        private function propU30(name, pops, pushes, opcode, index) {
+            var hasRTNS = constants.hasRTNS(index);
+            var hasRTName = constants.hasRTName(index);
+            stack(pushes - (pops + (hasRTNS ? 1 : 0) + (hasRTName ? 1 : 0)));
             list(name + (hasRTNS ? "<NS>" : "") + (hasRTName ? "<Name>" : ""), index);
             code.uint8(opcode);
             code.uint30(index);
         }
 
-        function I_initproperty(index, hasRTNS, hasRTName) {
-            setprop("initproperty", 0x68, index, hasRTNS, hasRTName);
-        }
-        function I_setproperty(index, hasRTNS, hasRTName) {
-            setprop("setproperty", 0x61, index, hasRTNS, hasRTName);
-        }
-        function I_setsuper(index, hasRTNS, hasRTName) {
-            setprop("setsuper", 0x05, index, hasRTNS, hasRTName);
-        }
+        function I_deleteproperty(index) { propU30("deleteproperty", 1, 1, 0x6A, index) }
+        function I_getdescendants(index) { propU30("getdescendants", 1, 1, 0x59, index) }
+        function I_getproperty(index) { propU30("getproperty", 1, 1, 0x66, index); }
+        function I_getsuper(index) { propU30("getsuper", 1, 1, 0x04, index); }
+        function I_findproperty(index) { propU30("findproperty", 0, 1, 0x5E, index) }
+        function I_findpropstrict(index) { propU30("findpropstict", 0, 1, 0x5D, index) }
+        function I_initproperty(index) { propU30("initproperty", 2, 0, 0x68, index) }
+        function I_setproperty(index) { propU30("setproperty", 2, 0, 0x61, index, hasRTNS, hasRTName) }
+        function I_setsuper(index) { propU30("setsuper", 2, 0, 0x05, index, hasRTNS, hasRTName) }
 
         function I_hasnext2(object_reg, index_reg) {
             stack(1);
@@ -648,6 +604,8 @@ package es4
         private var nextTemp;
         private var freeTemps = [];
         private var constants;
+        private var set_dxns = false;
+        private var need_activation = false;
     }
 
 }

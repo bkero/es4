@@ -63,19 +63,19 @@ package es4
         // First case: all the labels are defined before the lookupswitch
         var Ls = asm.I_jump();
         var L0 = asm.I_label();
-        asm.I_findpropstrict(print_name, false, false);
+        asm.I_findpropstrict(print_name);
         asm.I_pushstring(cp.stringUtf8("zero!"));
-        asm.I_callpropvoid(print_name, 1, false, false);
+        asm.I_callpropvoid(print_name, 1);
         var Lx = asm.I_jump();
         var L1 = asm.I_label();
-        asm.I_findpropstrict(print_name, false, false);
+        asm.I_findpropstrict(print_name);
         asm.I_pushstring(cp.stringUtf8("one!"));
-        asm.I_callpropvoid(print_name, 1, false, false);
+        asm.I_callpropvoid(print_name, 1);
         asm.I_jump(Lx);
         var L2 = asm.I_label();
-        asm.I_findpropstrict(print_name, false, false);
+        asm.I_findpropstrict(print_name);
         asm.I_pushstring(cp.stringUtf8("default!"));
-        asm.I_callpropvoid(print_name, 1, false, false);
+        asm.I_callpropvoid(print_name, 1);
         asm.I_jump(Lx);
         asm.I_label(Ls);
         asm.I_pushbyte(1);
@@ -83,7 +83,7 @@ package es4
         asm.I_label(Lx);
         asm.I_returnvoid();
 
-        var meth = file.addMethod(new ABCMethodInfo(0, [], 0, 0));
+        var meth = file.addMethod(new ABCMethodInfo(0, [], 0, asm.flags));
         var body = new ABCMethodBodyInfo(meth);
         body.setMaxStack(asm.maxStack);
         body.setLocalCount(asm.maxLocal);
@@ -119,23 +119,23 @@ package es4
         var L1 = labels[1];
 
         asm.I_label(L0);
-        asm.I_findpropstrict(print_name, false, false);
+        asm.I_findpropstrict(print_name);
         asm.I_pushstring(cp.stringUtf8("zero!"));
-        asm.I_callpropvoid(print_name, 1, false, false);
+        asm.I_callpropvoid(print_name, 1);
         var Lx = asm.I_jump();
         asm.I_label(L1);
-        asm.I_findpropstrict(print_name, false, false);
+        asm.I_findpropstrict(print_name);
         asm.I_pushstring(cp.stringUtf8("one!"));
-        asm.I_callpropvoid(print_name, 1, false, false);
+        asm.I_callpropvoid(print_name, 1);
         asm.I_jump(Lx);
         asm.I_label(L2);
-        asm.I_findpropstrict(print_name, false, false);
+        asm.I_findpropstrict(print_name);
         asm.I_pushstring(cp.stringUtf8("default!"));
-        asm.I_callpropvoid(print_name, 1, false, false);
+        asm.I_callpropvoid(print_name, 1);
         asm.I_label(Lx);
         asm.I_returnvoid();
 
-        var meth = file.addMethod(new ABCMethodInfo(0, [], 0, 0));
+        var meth = file.addMethod(new ABCMethodInfo(0, [], 0, asm.flags));
         var body = new ABCMethodBodyInfo(meth);
         body.setMaxStack(asm.maxStack);
         body.setLocalCount(asm.maxLocal);
@@ -168,16 +168,16 @@ package es4
         asm.I_getlocal(reg);
         asm.I_pushbyte(0);
         var L1 = asm.I_ifeq();
-        asm.I_findpropstrict(print_name, false, false);
+        asm.I_findpropstrict(print_name);
         asm.I_getlocal(reg);
-        asm.I_callpropvoid(print_name, 1, false, false);
+        asm.I_callpropvoid(print_name, 1);
         asm.I_declocal_i(reg);
         asm.I_jump(L0);
         asm.I_label(L1);
         asm.killTemp(reg);
         asm.I_returnvoid();
 
-        var meth = file.addMethod(new ABCMethodInfo(0, [], 0, 0));
+        var meth = file.addMethod(new ABCMethodInfo(0, [], 0, asm.flags));
         var body = new ABCMethodBodyInfo(meth);
         body.setMaxStack(asm.maxStack);
         body.setLocalCount(asm.maxLocal);
@@ -206,17 +206,16 @@ package es4
         var print_name = cp.QName(cp.namespace(CONSTANT_PackageNamespace, cp.stringUtf8("")), 
                                   cp.stringUtf8("print"));
 
-        var meth = file.addMethod(new ABCMethodInfo(0, [], 0, 0));
-        var body = new ABCMethodBodyInfo(meth);
-
         var asm = new ABCAssembler(cp,0);
         asm.I_getlocal_0();
         asm.I_pushscope();
-        asm.I_findpropstrict(print_name, false, false);
+        asm.I_findpropstrict(print_name);
         asm.I_pushstring(cp.stringUtf8("Hello, world!"));
-        asm.I_callpropvoid(print_name, 1, false, false);
+        asm.I_callpropvoid(print_name, 1);
         asm.I_returnvoid();
 
+        var meth = file.addMethod(new ABCMethodInfo(0, [], 0, asm.flags));
+        var body = new ABCMethodBodyInfo(meth);
         body.setMaxStack(asm.maxStack);
         body.setLocalCount(asm.maxLocal);
         body.setMaxScopeDepth(asm.maxScope);
@@ -353,24 +352,24 @@ package es4
         asm.I_constructsuper(0);
         asm.I_callmethod(0, 0);
         asm.I_callstatic(0, 0);
-        asm.I_callsuper(0, 0, false, false);
-        asm.I_callproperty(0, 0, false, true);
-        asm.I_constructprop(0, 0, true, false);
-        asm.I_callproplex(0, 0, true, true);
-        asm.I_callsupervoid(0, 0, true, false);
-        asm.I_callpropvoid(0, 0, false, true);
+        asm.I_callsuper(0, 0);
+        asm.I_callproperty(0, 0);
+        asm.I_constructprop(0, 0);
+        asm.I_callproplex(0, 0);
+        asm.I_callsupervoid(0, 0);
+        asm.I_callpropvoid(0, 0);
         asm.I_debug(0, 0, 0, 0);
-        asm.I_deleteproperty(0, true, false);
-        asm.I_getdescendants(0, false, true);
-        asm.I_getproperty(0, false, false);
-        asm.I_getsuper(0, true, true);
-        asm.I_findproperty(true, true);
-        asm.I_findpropstrict(0, false, false);
-        asm.I_initproperty(0, true, false);
-        asm.I_setproperty(0, false, true);
-        asm.I_setsuper(0, true, true);
+        asm.I_deleteproperty(0);
+        asm.I_getdescendants(0);
+        asm.I_getproperty(0);
+        asm.I_getsuper(0);
+        asm.I_findproperty(0);
+        asm.I_findpropstrict(0);
+        asm.I_initproperty(0);
+        asm.I_setproperty(0);
+        asm.I_setsuper(0);
         asm.I_hasnext2(0, 0);
-        asm.I_lookupswitch(0, [1,2,3]);
+        asm.I_lookupswitch(undefined, [,,,]);
         asm.I_newarray(0);
         asm.I_newobject(0);
         asm.I_pushbyte(0);
