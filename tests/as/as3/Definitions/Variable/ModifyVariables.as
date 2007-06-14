@@ -34,6 +34,7 @@
  * the terms of any one of the MPL, the GPL or the LGPL.
  *
  * ***** END LICENSE BLOCK ***** */
+import Package1.*;
  
 
 var SECTION = "Definitions";       // provide a document reference (ie, ECMA section)
@@ -45,8 +46,6 @@ startTest();                // leave this alone
 
 
 
-
-import Package1.*;
 
 use namespace ns1;
 

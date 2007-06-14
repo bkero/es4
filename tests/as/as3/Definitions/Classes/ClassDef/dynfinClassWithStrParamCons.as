@@ -38,6 +38,7 @@
  
 
 import testdynfinalClassWithStringParamCons.*;
+import testdynfinalClassWithStringParamCons.publicClassCons;
 
 var SECTION = "Definitions";           // provide a document reference (ie, ECMA section)
 var VERSION = "AS3";                   // Version of JavaScript or ECMA
@@ -67,7 +68,7 @@ var myArray:Array = new Array(4,6,5);
                            
       }
 }*/
-import testdynfinalClassWithStringParamCons.publicClassCons;
+
 var pbClCons:publicClassCons = new publicClassCons();
 
 var MyDefaultClass:DefaultClass;               

@@ -34,6 +34,7 @@
  * the terms of any one of the MPL, the GPL or the LGPL.
  *
  * ***** END LICENSE BLOCK ***** */
+import VarDefEmpty.*;
 
 var SECTION = "Definitions";       // provide a document reference (ie, ECMA section)
 var VERSION = "Clean AS2";  // Version of JavaScript or ECMA
@@ -42,8 +43,6 @@ var BUGNUMBER = "";
 
 startTest();                // leave this alone
 
-
-import VarDefEmpty.*;
 
 var VARDEFEMPTY = new VarDefEmpty();
 AddTestCase( "Variable Definition <empty> defined inside class", 1, 1);

@@ -34,6 +34,7 @@
  * the terms of any one of the MPL, the GPL or the LGPL.
  *
  * ***** END LICENSE BLOCK ***** */
+import functionReturnTypes.*;
 
 var SECTION = "Function";       // provide a document reference (ie, Actionscript section)
 var VERSION = "AS3";        // Version of ECMAScript or ActionScript 
@@ -42,8 +43,6 @@ var BUGNUMBER = "";
 
 startTest();                // leave this alone
 
-//vars, functions and classes to be used by the test
-import functionReturnTypes.*;
 
 var myClassA:TestClassA = new TestClassA();	// class TestClassA {}
 var myClassB:TestClassB = new TestClassB();	// class TestClassB extends TestClassA {}

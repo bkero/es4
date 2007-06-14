@@ -47,12 +47,13 @@ package A
     }
 }
 
+{tests/as/as3/Definitions/Packages/AccessDefaultPackageInterface.as
+import A.*;
 var SECTION = "Definitions\Packages";       			// provide a document reference (ie, ECMA section)
 var VERSION = "ActionScript 3.0";  			// Version of JavaScript or ECMA
 var TITLE   = "access default package interface in other package";       // Provide ECMA section title or a description
 var BUGNUMBER = "";
 
-import A.*;
 
 startTest();
 
@@ -60,3 +61,4 @@ var obj = new D();
 AddTestCase("Using default package interface in other package", true, obj is B);
 
 test();
+}

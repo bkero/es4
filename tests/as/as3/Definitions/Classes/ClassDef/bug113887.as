@@ -34,6 +34,7 @@
  * the terms of any one of the MPL, the GPL or the LGPL.
  *
  * ***** END LICENSE BLOCK ***** */
+import bug113887.*;
 
 var SECTION = "Definitions";       // provide a document reference (ie, ECMA section)
 var VERSION = "AS3";  // Version of JavaScript or ECMA
@@ -44,7 +45,7 @@ startTest();                // leave this alone
 
 //-----------------------------------------------------------------------------
 
-import bug113887.*;
+
 
 var eg = new BugTest();
 AddTestCase("static initialization of class directly", "yes", eg.doBasicTest());

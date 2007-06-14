@@ -46,36 +46,36 @@ package GetSetVirtual {
 		  var _u:uint = 1;
 		  var _s:String = "myString";
 		
-		public virtual function get x():Array {
+		public function get x():Array {
 			return _x;
 		}
-		public virtual function set x( a:Array ) {
+		public function set x( a:Array ) {
 			_x=a;
 		}
-		public virtual function get y():int {
+		public function get y():int {
 			return _y;
 		}
-		public virtual function set y( i:int ) {
+		public function set y( i:int ) {
 			_y=i;
 		}
-		public virtual function get boolean():Boolean { return _b; }
-		public virtual function set boolean(b:Boolean) { _b=b; }
-		public virtual function get u():uint{ return _u; }
-		public virtual function set u(ui:uint) { _u=ui; }
-		public virtual function get string():String{ return _s; }
-		public virtual function set string(s:String) { _s=s; }
-		public virtual function get noType():String{ return _nt; }
-		public virtual function set noType(nt) { _nt=nt; }
+		public function get boolean():Boolean { return _b; }
+		public function set boolean(b:Boolean) { _b=b; }
+		public function get u():uint{ return _u; }
+		public function set u(ui:uint) { _u=ui; }
+		public function get string():String{ return _s; }
+		public function set string(s:String) { _s=s; }
+		public function get noType():String{ return _nt; }
+		public function set noType(nt) { _nt=nt; }
 
 		// call setter from setter
 		  var _sfs1:Number = 99;
 		  var _sfs2:int = 0; 
-		public virtual function get sfs1():Number{ return _sfs1; }
-		public virtual function get sfs2():int{ return _sfs2; }
-		public virtual function set sfs1(n:Number){
+		public function get sfs1():Number{ return _sfs1; }
+		public function get sfs2():int{ return _sfs2; }
+		public function set sfs1(n:Number){
 			_sfs1 = n;
 		}
-		public virtual function set sfs2(i:int){
+		public function set sfs2(i:int){
 			this.sfs1 = i;
 			_sfs2 = i;
 		}
@@ -83,47 +83,47 @@ package GetSetVirtual {
 		// call setter from getter
 		  var _sfg1:String = "FAILED";
 		  var _sfg2:uint = 0; 
-		public virtual function get sfg1():String{ return _sfg1; }
-		public virtual function get sfg2():uint{
+		public function get sfg1():String{ return _sfg1; }
+		public function get sfg2():uint{
 			sfg1 = "PASSED";
 			return _sfg2;
 		}
-		public virtual function set sfg1(s:String){ _sfg1 = s; }
-		public virtual function set sfg2(ui:uint){ _sfg2 = ui; }
+		public function set sfg1(s:String){ _sfg1 = s; }
+		public function set sfg2(ui:uint){ _sfg2 = ui; }
 		
 		// call getter from setter
 		  var _gfs1:String = "FAILED";
 		  var _gfs2:String = "PASSED"; 
-		public virtual function get gfs1():String{
+		public function get gfs1():String{
 			return _gfs1;
 		}
-		public virtual function get gfs2():String{
+		public function get gfs2():String{
 			return _gfs2;
 		}
-		public virtual function set gfs1(s:String){
+		public function set gfs1(s:String){
 			_gfs1=gfs2;
 		}
-		public virtual function set gfs2(s:String){
+		public function set gfs2(s:String){
 			_gfs2=s;
 		}
 
 		// call getter from getter
 		  var _gfg1:String = "PASSED";
 		  var _gfg2:String = "FAILED"; 
-		public virtual function get gfg1():String{
+		public function get gfg1():String{
 			return _gfg1;
 		}
-		public virtual function get gfg2():String{
+		public function get gfg2():String{
 			return gfg1;
 		}
 
 		// define a getter for a property and call the undefined setter
 		  var _nosetter = "FAILED";
-		public virtual function get noSetter(){ return _nosetter; }
+		public function get noSetter(){ return _nosetter; }
 
 		// define a setter for a property and call the undefined getter
 		  var _nogetter = "FAILED";
-		public virtual function set noGetter(s){ _nogetter = s; }
+		public function set noGetter(s){ _nogetter = s; }
 
 	}
 

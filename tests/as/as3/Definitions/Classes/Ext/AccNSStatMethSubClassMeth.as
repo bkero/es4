@@ -35,7 +35,7 @@
  *
  * ***** END LICENSE BLOCK ***** */
 
-
+import StaticPropertyPackage.*;
 var SECTION = "Definitions";       // provide a document reference (ie, ECMA section)
 var VERSION = "AS 3.0";  // Version of JavaScript or ECMA
 var TITLE   = "Access static method in a namespace of base class from subclass";       // Provide ECMA section title or a description
@@ -61,7 +61,7 @@ startTest();                // leave this alone
  *
  */
 
-import StaticPropertyPackage.*;
+
   
 var obj = new AccNSStatPropSubClassMeth();
 

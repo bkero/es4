@@ -42,6 +42,9 @@ public var a:String = "I have a really long name";
 
 }
 
+{
+
+import a0123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345.*;
 var SECTION = "Definitions";       // provide a document reference (ie, Actionscript section)
 var VERSION = "AS 3.0";        // Version of ECMAScript or ActionScript 
 var TITLE   = "PackageDefinition" //Proved ECMA section titile or a description
@@ -51,8 +54,6 @@ startTest();                // leave this alone
 
 
 
-import a0123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345.*;
-
 AddTestCase( "PackageName is 256 characters", 1, 1 );
 
 AddTestCase("Import package with 256 characters", "I have a really long name", a);
@@ -60,3 +61,4 @@ AddTestCase("Import package with 256 characters", "I have a really long name", a
 
 test();       // leave this alone.  this executes the test cases and
               // displays results.
+}

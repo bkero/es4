@@ -34,6 +34,7 @@
  * the terms of any one of the MPL, the GPL or the LGPL.
  *
  * ***** END LICENSE BLOCK ***** */
+import asOper.*;
 
 var SECTION = "Expressions";       // provide a document reference (ie, Actionscript section)
 var VERSION = "AS3";        // Version of ECMAScript or ActionScript 
@@ -44,8 +45,6 @@ startTest();                // leave this alone
 
 //Note that this uses the same value and type arrays as expressions/isOperator/isOper.as
 
-//vars, functions and classes to be used by the test
-import asOper.*;
 
 var myClassA:TestClassA = new TestClassA();	// class TestClassA {}
 var myClassB:TestClassB = new TestClassB();	// class TestClassB extends TestClassA {}

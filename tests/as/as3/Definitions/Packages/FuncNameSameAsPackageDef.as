@@ -34,8 +34,6 @@
  * the terms of any one of the MPL, the GPL or the LGPL.
  *
  * ***** END LICENSE BLOCK ***** */
-
-
 package A {}
 
 
@@ -50,6 +48,10 @@ class B {
 			
 	}
 
+
+{
+import A;
+import B;
 var SECTION = "Definitions";       // provide a document reference (ie, Actionscript section)
 var VERSION = "AS 3.0";        // Version of ECMAScript or ActionScript 
 var TITLE   = "PackageDefinition" //Proved ECMA section titile or a description
@@ -58,8 +60,6 @@ var BUGNUMBER = "";
 startTest();                // leave this alone
 
 
-import A;
-import B;
 
 function A() { return 'A'}
 
@@ -71,3 +71,4 @@ AddTestCase( "Class has same name as package", "class A", b.tada());
 
 test();       // leave this alone.  this executes the test cases and
               // displays results.
+}

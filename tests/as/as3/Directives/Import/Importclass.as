@@ -34,6 +34,7 @@
  * the terms of any one of the MPL, the GPL or the LGPL.
  *
  * ***** END LICENSE BLOCK ***** */
+import Importclass.PublicClass
 package Importclass{
 
 public class PublicClass{
@@ -55,7 +56,6 @@ startTest();                					// leave this alone
 
 
 var arr = new Array(1, 2, 3);
-
 import Importclass.PublicClass
 
 var obj = new PublicClass();

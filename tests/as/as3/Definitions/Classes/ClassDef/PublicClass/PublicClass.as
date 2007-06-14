@@ -93,8 +93,8 @@ package PublicClassPackage {
 		// Default virtual methods
 		// ************************
 		// TODO: virtual vars are not implemented yet so this is currently using a normal var
-		virtual function getVirtualArray() : Array { return array; }
-		virtual function setVirtualArray( a:Array ) { array = a; }
+		function getVirtualArray() : Array { return array; }
+		function setVirtualArray( a:Array ) { array = a; }
 		// wrapper function
 		public function testGetSetVirtualArray(a:Array) : Array {
 			setVirtualArray(a);

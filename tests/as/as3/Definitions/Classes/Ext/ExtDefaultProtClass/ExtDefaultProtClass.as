@@ -125,8 +125,8 @@ package DefaultProtClass {
     // from virtual method of sub class
     // ************************************
 
-    virtual function virtSubGetArray() : Array { return this.getProtArray(); }
-    virtual function virtSubSetArray(a:Array) { this.setProtArray(a); }
+    function virtSubGetArray() : Array { return this.getProtArray(); }
+    function virtSubSetArray(a:Array) { this.setProtArray(a); }
 
 	public function testVirtSubArray(a:Array) : Array {
 		this.virtSubSetArray(a);
@@ -138,16 +138,16 @@ package DefaultProtClass {
     // from public virtual method of sub class
     // ************************************
 
-    virtual public function pubVirtSubGetArray() : Array { return this.getProtArray(); }
-    public virtual function pubVirtSubSetArray(a:Array) { this.setProtArray(a); }
+    public function pubVirtSubGetArray() : Array { return this.getProtArray(); }
+    public function pubVirtSubSetArray(a:Array) { this.setProtArray(a); }
 
     // ************************************
     // access protected method of parent
     // from private virtual method of sub class
     // ************************************
 
-    virtual private function privVirtSubGetArray() : Array { return this.getProtArray(); }
-    private virtual function privVirtSubSetArray(a:Array) { this.setProtArray(a); }
+    private function privVirtSubGetArray() : Array { return this.getProtArray(); }
+    private function privVirtSubSetArray(a:Array) { this.setProtArray(a); }
 
 	public function testPrivVirtSubArray(a:Array) : Array {
 		this.privVirtSubSetArray(a);
@@ -195,8 +195,8 @@ package DefaultProtClass {
     // virtual method of sub class
     // ***************************************
 
-    virtual function virtSubGetDPArray() : Array { return protArray; }
-    virtual function virtSubSetDPArray(a:Array) { protArray = a; }
+    function virtSubGetDPArray() : Array { return protArray; }
+    function virtSubSetDPArray(a:Array) { protArray = a; }
 
 	public function testVirtSubDPArray(a:Array) : Array {
 		this.virtSubSetDPArray(a);
@@ -237,8 +237,8 @@ package DefaultProtClass {
     // public virtual method of sub class
     // ***************************************
 
-    public virtual function pubVirtSubGetDPArray() : Array { return this.protArray; }
-    virtual public function pubVirtSubSetDPArray(a:Array) { this.protArray = a; }
+    public function pubVirtSubGetDPArray() : Array { return this.protArray; }
+    public function pubVirtSubSetDPArray(a:Array) { this.protArray = a; }
 
     // ***************************************
     // access protected property from
@@ -258,8 +258,8 @@ package DefaultProtClass {
     // private virtual method of sub class
     // ***************************************
 
-    private virtual function privVirtSubGetDPArray() : Array { return this.protArray; }
-    virtual private function privVirtSubSetDPArray(a:Array) { this.protArray = a; }
+    private function privVirtSubGetDPArray() : Array { return this.protArray; }
+    private function privVirtSubSetDPArray(a:Array) { this.protArray = a; }
 
 	public function testPrivVirtSubDPArray(a:Array):Array {
 		this.privVirtSubSetDPArray(a);
