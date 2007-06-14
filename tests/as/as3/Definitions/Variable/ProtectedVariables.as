@@ -34,6 +34,7 @@
  * the terms of any one of the MPL, the GPL or the LGPL.
  *
  * ***** END LICENSE BLOCK ***** */
+import Package1.*;
  
 
 var SECTION = "Definitions";       // provide a document reference (ie, ECMA section)
@@ -43,8 +44,6 @@ var BUGNUMBER = "";
 
 startTest();                // leave this alone
 
-
-import Package1.*;
 
 var c1 = new Class1();
 c1.setClassItem1("Modified Class1 classItem1");

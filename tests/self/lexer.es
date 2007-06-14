@@ -440,7 +440,7 @@ namespace Token
         "double",
         "dynamic",
         "each",
-	"eval",
+        "eval",
         "final",
         "get",
         "has",
@@ -660,6 +660,7 @@ namespace Token
 Token::test()
 
 namespace Lexer
+
 {
     use default namespace Lexer;
 
@@ -773,7 +774,7 @@ namespace Lexer
                 case 0xffffffef: return utf8sig ();
                 case Char::EOS: return Token::EOS;
                 case Char::Slash: return slash ();
-                case Char::Newline: return Token::Newline;
+                case Char::Newline: return Token::Eol;
                 case Char::Space: return start ();
                 case Char::LeftParen: return Token::LeftParen;
                 case Char::RightParen: return Token::RightParen;
@@ -788,7 +789,7 @@ namespace Lexer
                 case Char::At: return Token::At;
                 case Char::SingleQuote: return stringLiteral (c);
                 case Char::DoubleQuote: return stringLiteral (c);
-		case Char::Dot: return dot ();
+                case Char::Dot: return dot ();
                 case Char::Dash: return minus ();
                 case Char::Bang: return not ();
                 case Char::Percent: return remainder ();
@@ -817,20 +818,20 @@ namespace Lexer
                 case Char::u: return identifier ("u");
                 case Char::v: return identifier ("v");
                 case Char::w: return identifier ("w");
-		case Char::BackSlash:
-		    let c = escapeSequence ();
-		    return identifier (String.fromCharCode(c));
+                case Char::BackSlash:
+                    let c = escapeSequence ();
+                    return identifier (String.fromCharCode(c));
                 case Char::Zero: return zero ();
-		case Char::One:
-		case Char::Two:
-		case Char::Three:
-		case Char::Four:
-		case Char::Five:
-		case Char::Six:
-		case Char::Seven:
-		case Char::Eight:
-		case Char::Nine:
-		    return decimalInteger ();
+                case Char::One:
+                case Char::Two:
+                case Char::Three:
+                case Char::Four:
+                case Char::Five:
+                case Char::Six:
+                case Char::Seven:
+                case Char::Eight:
+                case Char::Nine:
+                    return decimalInteger ();
                 default:
                     if (Unicode.isIdentifierStart (String.fromCharCode(c)))
                     {

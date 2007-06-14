@@ -34,6 +34,7 @@
  * the terms of any one of the MPL, the GPL or the LGPL.
  *
  * ***** END LICENSE BLOCK ***** */
+import TraitsNotAccessible.*;
 
 var SECTION = "Definitions";       // provide a document reference (ie, ECMA section)
 var VERSION = "AS3";  // Version of JavaScript or ECMA
@@ -43,9 +44,6 @@ var BUGNUMBER = "";
 startTest();                // leave this alone
 
 //-----------------------------------------------------------------------------
-
-import TraitsNotAccessible.*;
-
 var eg = new TraitTest();
 AddTestCase("call implemented method", "x.I::f()", eg.doCall());
 var thisError : String = "no exception thrown";

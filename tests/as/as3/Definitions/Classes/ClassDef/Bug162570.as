@@ -54,13 +54,14 @@ package test {
 	}
 }
 
-
+{
+import same.*;
+import test.*;
 //--------------------------------------------------
 startTest();
 //--------------------------------------------------
 
-import same.*;
-import test.*;
+
 
 // same package and class name
 var s:same = new same();
@@ -90,3 +91,4 @@ AddTestCase("c.b(true)", true, (c.b(true), c.a));
 
 //--------------------------------------------------
 test();
+}

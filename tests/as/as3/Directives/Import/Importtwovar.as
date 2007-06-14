@@ -46,7 +46,10 @@ package Packagvars {
 	public var y = 4
 }
 
+{
+import Importtwovar.x
 
+import Packagvars.y
 var SECTION = "Directives";       				// provide a document reference (ie, ECMA section)
 var VERSION = "ActionScript 3.0";  				// Version of JavaScript or ECMA
 var TITLE   = "Import two variablas from two different packages";       	// Provide ECMA section title or a description
@@ -55,9 +58,6 @@ var BUGNUMBER = "";
 startTest();                					// leave this alone
 
 
-import Importtwovar.x
-
-import Packagvars.y
 AddTestCase("Variable from package one", 3, x);
 AddTestCase("Variable from package two", 4, y);
 
@@ -67,3 +67,4 @@ AddTestCase("Variable from package two", 4, y);
 
 test();       // leave this alone.  this executes the test cases and
               // displays results.
+}

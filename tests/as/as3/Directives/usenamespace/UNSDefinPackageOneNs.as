@@ -35,7 +35,6 @@
  *
  * ***** END LICENSE BLOCK ***** */
 
-
 package P {
  
      public namespace Football
@@ -46,7 +45,8 @@ package P {
      }
  }
 
- 
+{ 
+import P.*;
 var SECTION = "Directives";       // provide a document reference (ie, Actionscript section)
 var VERSION = "AS 3.0";        // Version of ECMAScript or ActionScript 
 var TITLE   = "use namespace";       // Provide ECMA section title or a description
@@ -58,8 +58,6 @@ startTest();                // leave this alone
 
 
 
-import P.*;
-
 var game = new Game();
 
 AddTestCase( "Who is going to play = 'Joe'", "Joe", game.Football::whoplay());
@@ -67,3 +65,4 @@ AddTestCase( "Who is going to play = 'Joe'", "Joe", game.Football::whoplay());
 
 test();       // leave this alone.  this executes the test cases and
               // displays results.
+}

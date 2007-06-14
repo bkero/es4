@@ -445,6 +445,7 @@ withtype
              typeParams: IDENT list,
              superTypes: NAME list,
              ty: TYPE_EXPR,
+             conversionTy: TYPE_EXPR option,             
              dynamic: bool }
 
      and FIELD =

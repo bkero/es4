@@ -34,6 +34,7 @@
  * the terms of any one of the MPL, the GPL or the LGPL.
  *
  * ***** END LICENSE BLOCK ***** */
+import poo.*;
 
 var SECTION = "Expressions";       // provide a document reference (ie, Actionscript section)
 var VERSION = "AS 3.0";        // Version of ECMAScript or ActionScript 
@@ -44,8 +45,6 @@ startTest();                // leave this alone
 
 
 
-
-import poo.*;
 
 var f:foo = new foo();
 AddTestCase( "f.teamName = 'Macromedia'", "Macromedia", f.teamName );

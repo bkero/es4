@@ -180,7 +180,7 @@ namespace Ast
         case (expr:UnaryExpr) {
             let {op,ex} = expr
             switch type (op:UNOP) {
-                case (_:Delete) { ...delete... }
+                case (_:Delete) { delete... }
                 case (_:Void) { ...void... }
             }
         }
@@ -481,7 +481,7 @@ namespace Ast
     }
 
     class ListExpr {
-        const exprs : [EXPR...];
+        const exprs : [EXPR];
     }
 
     type INIT_TARGET =
@@ -527,7 +527,7 @@ namespace Ast
 	    
     class Identifier {
         const ident : IDENT;
-        private const nss : [[NAMESPACE...]...];
+        private const nss : [[NAMESPACE]];
         function Identifier (ident) 
             : ident = ident {}
         function set opennss (nss) { 
@@ -551,7 +551,7 @@ namespace Ast
 	
     class ExpressionIdentifier { 
         const expr: EXPR;
-        private const nss : [[NAMESPACE...]...];
+        private const nss : [[NAMESPACE]];
         function ExpressionIdentifier (expr)
             : expr=expr {}
         function set opennss (nss) {
@@ -569,14 +569,14 @@ namespace Ast
     
     class TypeIdentifier { 
         const ident : IDENT_EXPR;
-        const typeArgs : [TYPE_EXPR...];
+        const typeArgs : [TYPE_EXPR];
         function TypeIdentifier (ident,typeArgs)
             : ident=ident
             , typeArgs=typeArgs {}
     }
     
     class UnresolvedPath {
-        const path : [IDENT...];
+        const path : [IDENT];
         const ident : IDENT_EXPR;
         function UnresolvedPath (path,ident)
             : path=path
@@ -656,12 +656,12 @@ namespace Ast
     }
 	
     class LiteralArray {
-        const exprs : [EXPR...];
+        const exprs : [EXPR];
         const type : TYPE_EXPR;
     }
 
     class LiteralXML {
-        const exprs : [EXPR...];
+        const exprs : [EXPR];
     }
 
     class LiteralNamespace {
@@ -698,7 +698,7 @@ namespace Ast
     class Cls {
         const name : NAME;
         const baseName : NAME?;
-        const interfaceNames : [NAME...];
+        const interfaceNames : [NAME];
         const constructor : CTOR?;
         const classFixtures : FIXTURES;
         const instanceFixtures : FIXTURES;
@@ -746,7 +746,7 @@ namespace Ast
         const isNative: Boolean;
         const block: BLOCK;
         const params: HEAD;
-        const defaults: [EXPR...];
+        const defaults: [EXPR];
         const type: FUNC_TYPE;    // FIXME: should be able to use 'type' here
         function Func (name,fsig,isNative,block,
                        params,defaults,ty)
@@ -762,11 +762,11 @@ namespace Ast
     type FUNC_SIG = FunctionSignature;
 
     class FunctionSignature {
-        const typeParams : [IDENT...];
+        const typeParams : [IDENT];
         const params : BINDING_INITS;
-        const paramTypes : [TYPE_EXPR...];
+        const paramTypes : [TYPE_EXPR];
         const defaults : [EXPR];
-        const ctorInits : [BINDING_INITS,[EXPR...]]?;  /* [settings, super args] */
+        const ctorInits : [BINDING_INITS,[EXPR]]?;  /* [settings, super args] */
         const returnType : TYPE_EXPR;
         const thisType : TYPE_EXPR?;
         const hasRest : Boolean;
@@ -778,13 +778,13 @@ namespace Ast
 
     class Ctor {
         const settings : HEAD;
-        const superArgs : [EXPR...];
+        const superArgs : [EXPR];
         const func : FUNC;
     }
 
     // BINDINGS
 
-    type BINDING_INITS = [[BINDING...],[INIT_STEP...]];
+    type BINDING_INITS = [[BINDING],[INIT_STEP]];
 
     type BINDING = Binding;
 
@@ -903,11 +903,11 @@ namespace Ast
     class VoidType {}
 
     class UnionType {
-        const types : [TYPE_EXPR...];
+        const types : [TYPE_EXPR];
     }
 
     class ArrayType {
-        const types : [TYPE_EXPR...];
+        const types : [TYPE_EXPR];
     }
 
     class TypeName {
@@ -929,8 +929,8 @@ namespace Ast
     }
 
     type FUNC_TYPE = { 
-        typeParams : [IDENT...],
-        params: [TYPE_EXPR...],
+        typeParams : [IDENT],
+        params: [TYPE_EXPR],
         result: TYPE_EXPR,
         thisType: TYPE_EXPR?,
         hasRest: Boolean,
@@ -938,12 +938,12 @@ namespace Ast
     }
 
     class ObjectType {
-        const types : [FIELD_TYPE...];
+        const types : [FIELD_TYPE];
     }
 
     class AppType {
         const base : TYPE_EXPR;
-        const args : [TYPE_EXPR...];
+        const args : [TYPE_EXPR];
     }
 
     class NullableType {
@@ -953,7 +953,7 @@ namespace Ast
 
     class InstanceType {
         const name : NAME;
-        const typeParams : [IDENT...];
+        const typeParams : [IDENT];
         const type : TYPE_EXPR;
         const isDynamic : Boolean;
     }
@@ -1040,14 +1040,14 @@ namespace Ast
     class WhileStmt {
         const expr : EXPR;
         const body : STMT;
-        const labels : [IDENT...];
+        const labels : [IDENT];
         const fixtures : FIXTURES?
     }
     
     class DoWhileStmt {
         const expr : EXPR;
         const body : STMT;
-        const labels : [IDENT...];
+        const labels : [IDENT];
         const fixtures : FIXTURES?
     }
 
@@ -1090,12 +1090,12 @@ namespace Ast
         , isNonnullable: Boolean
         , isDynamic: Boolean
         , isFinal: Boolean
-        , params: [IDENT...]
+        , params: [IDENT]
         , base: IDENT_EXPR
-        , implements: [IDENT_EXPR...]
-        , classDefns: [DEFN...]
-        , instanceDefns: [DEFN...]
-        , instanceStmts: [STMT...]
+        , implements: [IDENT_EXPR]
+        , classDefns: [DEFN]
+        , instanceDefns: [DEFN]
+        , instanceStmts: [STMT]
         , ctorDefn: CTOR? }
 
     class ClassDefn {
@@ -1104,12 +1104,12 @@ namespace Ast
         const isNonnullable: Boolean;
         const isDynamic: Boolean;
         const isFinal: Boolean;
-        const params: [IDENT...];
+        const params: [IDENT];
         const baseIdent: IDENT_EXPR?;  /* STATIC_IDENT_EXPR */
-        const interfaceIdents: [IDENT_EXPR...]; /* STATIC_IDENT_EXPR list */
-        const classDefns: [DEFN...];
-        const instanceDefns: [DEFN...];
-        const instanceStmts: [STMT...];
+        const interfaceIdents: [IDENT_EXPR]; /* STATIC_IDENT_EXPR list */
+        const classDefns: [DEFN];
+        const instanceDefns: [DEFN];
+        const instanceStmts: [STMT];
         const ctorDefn: CTOR?;
     }
 
@@ -1158,10 +1158,10 @@ namespace Ast
     type BLOCK = Block
 
     class Block {
-        const pragmas: [PRAGMA...];
-        const defns: [DEFN...];
+        const pragmas: [PRAGMA];
+        const defns: [DEFN];
         const head: HEAD?;
-        const body: [STMT...];
+        const body: [STMT];
         const pos: POS?
     }
 
@@ -1191,7 +1191,7 @@ namespace Ast
     type PACKAGE = Package
 
     class Package {
-        var name: [IDENT...];
+        var name: [IDENT];
         var block: BLOCK;
         function Package (name, block)
             : name = name
@@ -1205,7 +1205,7 @@ namespace Ast
     type PROGRAM = Program
 
     class Program {
-        var packages: [PACKAG...];
+        var packages: [PACKAGE];
         var fixtures: FIXTURES?;
         var block: BLOCK;
         function Program (packages, fixtures, block)

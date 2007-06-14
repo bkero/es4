@@ -52,7 +52,7 @@ package es4
             bytes.endian = "littleEndian";
         }
 
-        function size() {
+        function get length() {
             return bytes.length;
         }
 
@@ -130,6 +130,10 @@ package es4
 
         function utf8(str:String /*FIXME ES4: string*/) {
             bytes.writeUTFBytes(str);
+        }
+
+        function serialize(to:ABCByteStream) {
+            to.byteStream(this);
         }
 
         function byteStream(from:ABCByteStream) {

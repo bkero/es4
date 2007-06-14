@@ -40,8 +40,7 @@ MLBUILD := ml-build
 # file listings
 # ------------------------------------------------------------
 
-SOURCES := ast.sml main.sml pretty.sml verify.sml eval.sml mach.sml \
-	parser.sml  pretty-rep.sml token.sml defn.sml logerr.sml native.sml 
+SOURCES := ast.sml boot.sml decimal.sml defn.sml eval.sml logerr.sml mach.sml main.sml multiname.sml name.sml native.sml parser.sml pretty-rep.sml pretty.sml profile.sml token.sml ustring.sml verify.sml
 
 EV_TESTS := tests/exec.es
 

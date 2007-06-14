@@ -40,6 +40,8 @@
 #       -p selects a test file prefix (eg 15.10 for regexp tests)
 #       -s selects a section name (eg Array for array tests)
 #       -n dry run
+#	-d test directory to run
+#	-l logfile name
 #
 # Observe that -p and -d are not redundant because test files in some
 # directories do not have predictable prefixes (eg many regexp tests start
@@ -54,25 +56,28 @@ ROOT="tests/as"
 STARTDIR=$ROOT
 LOG="as-test.log"
 EXT="as"
-rm -f $LOG
 
-#Open LOG with file descriptor 6
-exec 6<> $LOG
 
-while getopts "p:s:d:vn" OPTIONS
+
+while getopts "p:s:d:l:vn" OPTIONS
 do
 	case $OPTIONS in
 		p)	PREFIX=$OPTARG ;;
 	        s)      SECNAME=$OPTARG ;;
 		d)	STARTDIR=$OPTARG ;;
+		l)	LOG=$OPTARG ;;
 		v)	exec 6>&1; VERBOSE=1 ;; #redirect fd 6 to stdout instead of logfile
 	        n)      NOEXEC=1 ;;
 	esac
 done
 
 shift $(($OPTIND -1))
-
 LIMIT=$1
+
+rm -f $LOG
+#Open LOG with file descriptor 6
+exec 6<> $LOG
+
 
 if [ $NOEXEC = 0 ]; then
   make dump-heap 1>&6 2>&6

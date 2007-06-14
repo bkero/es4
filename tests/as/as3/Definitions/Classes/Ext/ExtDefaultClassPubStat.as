@@ -34,7 +34,7 @@
  * the terms of any one of the MPL, the GPL or the LGPL.
  *
  * ***** END LICENSE BLOCK ***** */
-
+import DefaultClass.*;
 
 var SECTION = "Definitions";       // provide a document reference (ie, ECMA section)
 var VERSION = "Clean AS2";  // Version of JavaScript or ECMA
@@ -61,7 +61,7 @@ startTest();                // leave this alone
  *
  */
 
-import DefaultClass.*;
+
 
 arr = new Array(1, 2, 3);
 

@@ -34,6 +34,7 @@
  * the terms of any one of the MPL, the GPL or the LGPL.
  *
  * ***** END LICENSE BLOCK ***** */
+import DefaultClass.*;
 
 
 var SECTION = "Definitions";       // provide a document reference (ie, ECMA section)
@@ -60,9 +61,6 @@ startTest();                // leave this alone
  *  helloWorld );                      // actual result
  *
  */
-
-import DefaultClass.*;
-
 arr = new Array(1, 2, 3);
 
 var THISTEST = new PubExtDefaultImplDefDefPubStat();

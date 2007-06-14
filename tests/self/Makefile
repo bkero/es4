@@ -9,8 +9,8 @@ AVM=$(ROOT)/player/FlashPlayer/avmplus/platform/win32/obj_8/shell/Debug_Debugger
 .es.abc:
 	$(ASC) $(ASCFLAGS) $<
 
-test: util.abc bytestream.abc constantpool.abc abcfile.abc assembler.abc
-	echo '{ import es4.*;  testABCByteStream();  testABCConstantPool(); testABCFile(); }' > testdriver.as
+test: util.abc bytestream.abc abcfile.abc assembler.abc
+	echo '{ import es4.*; testABCByteStream(); testABCFile(); }' > testdriver.as
 	$(ASC) $(ASCFLAGS) testdriver.as
 	$(AVM) $^ testdriver.abc
 

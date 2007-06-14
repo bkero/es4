@@ -34,6 +34,7 @@
  * the terms of any one of the MPL, the GPL or the LGPL.
  *
  * ***** END LICENSE BLOCK ***** */
+import ExtendMultipleInterfaces.*;
 
 var SECTION = "Definitions";       // provide a document reference (ie, ECMA section)
 var VERSION = "AS3";  // Version of JavaScript or ECMA
@@ -43,8 +44,6 @@ var BUGNUMBER = "";
 startTest();                // leave this alone
 
 //-----------------------------------------------------------------------------
-
-import ExtendMultipleInterfaces.*;
 
 var eg = new ExtendTest();
 AddTestCase("implements single, extends single", "x1.A::a()", eg.doTestX1());

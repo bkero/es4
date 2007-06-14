@@ -34,6 +34,7 @@
  * the terms of any one of the MPL, the GPL or the LGPL.
  *
  * ***** END LICENSE BLOCK ***** */
+import VarDefPrivateStatic.*;
  
 
 var SECTION = "Definitions";       // provide a document reference (ie, ECMA section)
@@ -43,8 +44,6 @@ var BUGNUMBER = "";
 
 startTest();                // leave this alone
 
-
-import VarDefPrivateStatic.*;
  
 var VARDEFEMPTY = new VarDefPrivateStaticClass();
 AddTestCase( "Private Static Variable Definition defined inside class", 1, 1);
