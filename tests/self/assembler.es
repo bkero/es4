@@ -37,7 +37,6 @@
 
 package es4 
 {
-
     /*******************************************************************
      * ABC constants
      */
@@ -120,8 +119,12 @@ package es4
             this.nextTemp = numberOfFormals;
         }
 
+        private function list0(n) {
+            print(n);
+        }
+
         private function list(name, ...rest) {
-            print(name + " " + rest.join(" "));
+            print("        " + name + " " + rest.join(" "));
         }
 
         // Instructions that push one value, with a single opcode byte
@@ -246,7 +249,6 @@ package es4
         function I_increment() { dropNone("increment", 0x91) }
         function I_increment_i() { dropNone("increment_i", 0xC0) }
         function I_kill() { dropNone("kill", 0x08) }
-        function I_label() { dropNone("label", 0x09) }
         function I_negate() { dropNone("negate", 0x90) }
         function I_negate_i() { dropNone("negate_i", 0xC4) }
         function I_nop() { dropNone("nop", 0x02) }
@@ -278,45 +280,83 @@ package es4
         function I_istype(index) { dropNoneU30("istype", 0xB2, index) }
         function I_newclass(index) { dropNoneU30("newclass", 0x58, index) }
 
-        // Conditional jumps that pop two words
-        private function ifCond2(name, opcode, offset) {
-            stack(-2);
-            list(name, offset);
+        // Local control flow instructions: 
+        //  - If called without an argument return a cookie that can later be 
+        //    passed to I_deflabel to give the label an actual value.  
+        //  - If called with an argument, the argument must have been returned
+        //    from a control flow instruction or from I_label.  It represents
+        //    a transfer target.
+        //
+        // A "label" is a data structure with these fields:
+        //  - Name (uint): a symbolic name for the label, to be used in listings
+        //  - Address (int): either -1 for "unknown" or the address of the label
+
+        private function jmp(stk, name, opcode, L) {
+            if (L === undefined)
+                L = { "name": nextLabel++, "address": -1 };
+
+            stack(stk);
+            list(name, L.name);
             code.uint8(opcode);
-            code.int24(offset);  // FIXME
+
+            var here = code.length;
+            var base = here + 3;
+            if (L.address != -1) {
+                code.int24(L.address - base);
+            }
+            else {
+                backpatches.push({ "loc": here, "base": base, "label": L });
+                code.int24(0);
+            }
+
+            return L;
         }
 
-        function I_ifeq(offset) { ifCond2("ifeq", 0x13, offset) }
-        function I_ifge(offset) { ifCond2("ifge", 0x18, offset) }
-        function I_ifgt(offset) { ifCond2("ifgt", 0x17, offset) }
-        function I_ifle(offset) { ifCond2("ifle", 0x16, offset) }
-        function I_iflt(offset) { ifCond2("iflt", 0x15, offset) }
-        function I_ifne(offset) { ifCond2("ifne", 0x14, offset) }
-        function I_ifnge(offset) { ifCond2("ifnge", 0x0F, offset) }
-        function I_ifngt(offset) { ifCond2("ifngt", 0x0E, offset) }
-        function I_ifnle(offset) { ifCond2("ifnle", 0x0D, offset) }
-        function I_ifnlt(offset) { ifCond2("ifnlt", 0x0C, offset) }
-        function I_ifstricteq(offset) { ifCond2("ifstricteq", 0x19, offset) }
-        function I_ifstrictne(offset) { ifCond2("ifstrictne", 0x1A, offset) }
+        function I_label() { 
+            var L = code.length;
+            var name = nextLabel++;
+            code.uint8(0x09);
+            list0(name + ":");
+            list("label");
+            return { "name": name, "address": L };
+        }
 
-        // Conditional jumps that pop one word
-        private function ifCond1(name, opcode, offset) {
+        function I_deflabel(L) {
+            assert( L.address == -1 );
+            list0(L.name + ":");
+            L.address = code.length;
+        }
+
+        function I_ifeq(L=undefined) { return jmp(-2, "ifeq", 0x13, L) }
+        function I_ifge(L=undefined) { return jmp(-2, "ifge", 0x18, L) }
+        function I_ifgt(L=undefined) { return jmp(-2, "ifgt", 0x17, L) }
+        function I_ifle(L=undefined) { return jmp(-2, "ifle", 0x16, L) }
+        function I_iflt(L=undefined) { return jmp(-2, "iflt", 0x15, L) }
+        function I_ifne(L=undefined) { return jmp(-2, "ifne", 0x14, L) }
+        function I_ifnge(L=undefined) { return jmp(-2, "ifnge", 0x0F, L) }
+        function I_ifngt(L=undefined) { return jmp(-2, "ifngt", 0x0E, L) }
+        function I_ifnle(L=undefined) { return jmp(-2, "ifnle", 0x0D, L) }
+        function I_ifnlt(L=undefined) { return jmp(-2, "ifnlt", 0x0C, L) }
+        function I_ifstricteq(L=undefined) { return jmp(-2, "ifstricteq", 0x19, L) }
+        function I_ifstrictne(L=undefined) { return jmp(-2, "ifstrictne", 0x1A, L) }
+
+        function I_iffalse(L=undefined) { return jmp(-1, "iffalse", 0x12, L) }
+        function I_iftrue(L=undefined) { return jmp(-1, "iftrue", 0x11, L) }
+
+        function I_jump(L=undefined) { return jmp(0, "jump", 0x10, L) }
+
+        function I_lookupswitch(default_label, case_labels) {
+            assert(case_labels.length > 0);
             stack(-1);
-            list(name, offset);
-            code.uint8(opcode);
-            code.int24(offset);  // FIXME
+            list("lookupswitch", default_label, case_labels);
+            code.uint8(0x1B);
+            code.int24(default_label);  // FIXME
+            code.uint30(case_labels.length-1);
+            for ( var i=0 ; i < case_labels.length ; i++ )
+                code.int24(case_labels[i]);
         }
 
-        function I_iffalse(offset) { ifCond1("iffalse", 0x12, offset) }
-        function I_iftrue(offset) { ifCond1("iftrue", 0x11, offset) }
-
-        function I_jump(offset) {
-            //stack(0);
-            list("Jump", offset);
-            code.uint8(0x10);
-            code.int24(offset);  // FIXME
-        }
-
+        // Standard function calls
         private function call(name, opcode, nargs) {
             stack(1-(nargs+2)); /* pop function/receiver/args; push result */
             list(name, nargs);
@@ -444,17 +484,6 @@ package es4
             code.uint30(index_reg);
         }
 
-        function I_lookupswitch(default_offset, cases) {
-            assert(cases.length > 0);
-            stack(-1);
-            list("lookupswitch", default_offset, cases);
-            code.uint8(0x1B);
-            code.int24(default_offset);  // FIXME
-            code.uint30(cases.length-1);
-            for ( var i=0 ; i < cases.length ; i++ )
-                code.int24(cases[i]);
-        }
-
         function I_newarray(nargs) {
             stack(1 - nargs);
             list("newarray", nargs);
@@ -501,7 +530,19 @@ package es4
         }
 
         function serialize(bs) {
+            resolveBackpatches();
             code.serialize(bs);
+        }
+
+        private function resolveBackpatches() {
+            for ( var i=0 ; i < backpatches.length ; i++ ) {
+                var bp = backpatches[i];
+                if (bp.label.address == -1)
+                    throw "Missing definition for label " + bp.label.name;
+                var v = bp.label.address - bp.base;
+                code.setInt24(bp.loc, v);
+            }
+            backpatches.length = 0;
         }
 
         private function stack(size:int):void {
@@ -511,6 +552,8 @@ package es4
         }
 
         private var code = new ABCByteStream;
+        private var nextLabel = 1000;
+        private var backpatches = [];
         private var scope_depth = 1;
         private var current_stack_depth = 0;
         private var max_stack_depth = 0;
@@ -519,199 +562,4 @@ package es4
         private var constants;
     }
 
-    public function testABCAssembler() {
-        //testCoverage();
-        testHello();
-    }
-
-    function testHello() {
-        var cp = new ABCConstantPool();
-
-        var file = new ABCFile();
-        file.addConstants(cp);
-
-        // BUG: passing 0 for the namespace causes the AVM to crash, though
-        // the doc says it's legal.
-        // BUG: passing 0 for the empty string causes the program not to run, though
-        // the doc at least implies it's legal.
-        var print_name = cp.QName(cp.namespace(CONSTANT_PackageNamespace, cp.stringUtf8("")), 
-                                  cp.stringUtf8("print"));
-
-        var asm = new ABCAssembler(cp,0);
-        asm.I_getlocal_0();
-        asm.I_pushscope();
-        asm.I_findpropstrict(print_name, false, false);
-        asm.I_pushstring(cp.stringUtf8("Hello, world!"));
-        asm.I_callpropvoid(print_name, 1, false, false);
-        asm.I_returnvoid();
-
-        var meth = file.addMethod(new ABCMethodInfo(0, [], 0, 0));
-        var script = new ABCScriptInfo;
-        script.setInit(meth);
-        file.addScript(script);
-        var body = new ABCMethodBodyInfo(meth);
-        body.setMaxStack(2);       // FIXME: Should not have to compute this, assembler should provide it
-        body.setLocalCount(1);     // FIXME: compute this?  Must be at least one more than the number of params
-        body.setInitScopeDepth(0); // FIXME: useful default?
-        body.setMaxScopeDepth(1);  // FIXME: should not have to compute this?
-        body.setCode(asm);
-        file.addMethodBody(body);
-
-        // Run it!
-        {
-            import avmplus.Domain;
-            var domain = Domain.currentDomain;
-            domain.loadBytes(file.getBytes());
-            //dumpByteStream(file.getBytes());
-        }
-    }
-
-    function testCoverage() {
-        var cp = new ABCConstantPool();
-        var asm = new ABCAssembler(cp,0);
-
-        asm.I_dup();
-        asm.I_getglobalscope();
-        asm.I_getlocal_0();
-        asm.I_getlocal_1();
-        asm.I_getlocal_2();
-        asm.I_getlocal_3();
-        asm.I_newactivation();
-        asm.I_pushfalse();
-        asm.I_pushnan();
-        asm.I_pushnull();
-        asm.I_pushtrue();
-        asm.I_pushundefined();
-        asm.I_getglobalslot(0);
-        asm.I_getlex(0);
-        asm.I_getlocal(0);
-        asm.I_getscopeobject(0);
-        asm.I_newcatch(0);
-        asm.I_newfunction(0);
-        asm.I_pushdouble(0);
-        asm.I_pushint(0);
-        asm.I_pushnamespace(0);
-        asm.I_pushshort(0);
-        asm.I_pushstring(0);
-        asm.I_pushuint(0);
-        asm.I_add();
-        asm.I_add_i();
-        asm.I_astypelate();
-        asm.I_bitand();
-        asm.I_bitor();
-        asm.I_bitxor();
-        asm.I_divide();
-        asm.I_dxnslate();
-        asm.I_equals();
-        asm.I_greaterequals();
-        asm.I_greaterthan();
-        asm.I_hasnext();
-        asm.I_in();
-        asm.I_instanceof();
-        asm.I_istypelate();
-        asm.I_lessequals();
-        asm.I_lessthan();
-        asm.I_lshift();
-        asm.I_modulo();
-        asm.I_multiply();
-        asm.I_multiply_i();
-        asm.I_nextname();
-        asm.I_nextvalue();
-        asm.I_pop();
-        asm.I_pushscope();
-        asm.I_pushwith();
-        asm.I_returnvalue();
-        asm.I_rshift();
-        asm.I_setlocal_0();
-        asm.I_setlocal_1();
-        asm.I_setlocal_2();
-        asm.I_setlocal_3();
-        asm.I_strictequals();
-        asm.I_subtract();
-        asm.I_subtract_i();
-        asm.I_throw();
-        asm.I_urshift();
-        asm.I_setlocal(0);
-        asm.I_setglobalslot(0);
-        asm.I_bitnot();
-        asm.I_checkfilter();
-        asm.I_coerce_a();
-        asm.I_coerce_s();
-        asm.I_convert_b();
-        asm.I_convert_d();
-        asm.I_convert_i();
-        asm.I_convert_o();
-        asm.I_convert_s();
-        asm.I_convert_u();
-        asm.I_decrement();
-        asm.I_decrement_i();
-        asm.I_esc_xattr();
-        asm.I_esc_xelem();
-        asm.I_increment();
-        asm.I_increment_i();
-        asm.I_kill();
-        asm.I_label();
-        asm.I_negate();
-        asm.I_negate_i();
-        asm.I_nop();
-        asm.I_not();
-        asm.I_popscope();
-        asm.I_returnvoid();
-        asm.I_swap();
-        asm.I_typeof();
-        asm.I_astype(0);
-        asm.I_coerce(0);
-        asm.I_debugfile(0);
-        asm.I_debugline(0);
-        asm.I_declocal(0);
-        asm.I_declocal_i(0);
-        asm.I_dxns(0);
-        asm.I_getslot(0);
-        asm.I_inclocal(0);
-        asm.I_inclocal_i(0);
-        asm.I_istype(0);
-        asm.I_newclass(0);
-        asm.I_ifeq(0);
-        asm.I_ifge(0);
-        asm.I_ifgt(0);
-        asm.I_ifle(0);
-        asm.I_iflt(0);
-        asm.I_ifne(0);
-        asm.I_ifnge(0);
-        asm.I_ifngt(0);
-        asm.I_ifnle(0);
-        asm.I_ifnlt(0);
-        asm.I_ifstricteq(0);
-        asm.I_ifstrictne(0);
-        asm.I_iffalse(0);
-        asm.I_iftrue(0);
-        asm.I_jump(0);
-        asm.I_call(0);
-        asm.I_construct(0);
-        asm.I_constructsuper(0);
-        asm.I_callmethod(0, 0);
-        asm.I_callstatic(0, 0);
-        asm.I_callsuper(0, 0, false, false);
-        asm.I_callproperty(0, 0, false, true);
-        asm.I_constructprop(0, 0, true, false);
-        asm.I_callproplex(0, 0, true, true);
-        asm.I_callsupervoid(0, 0, true, false);
-        asm.I_callpropvoid(0, 0, false, true);
-        asm.I_debug(0, 0, 0, 0);
-        asm.I_deleteproperty(0, true, false);
-        asm.I_getdescendants(0, false, true);
-        asm.I_getproperty(0, false, false);
-        asm.I_getsuper(0, true, true);
-        asm.I_findproperty(true, true);
-        asm.I_findpropstrict(0, false, false);
-        asm.I_initproperty(0, true, false);
-        asm.I_setproperty(0, false, true);
-        asm.I_setsuper(0, true, true);
-        asm.I_hasnext2(0, 0);
-        asm.I_lookupswitch(0, [1,2,3]);
-        asm.I_newarray(0);
-        asm.I_newobject(0);
-        asm.I_pushbyte(0);
-        asm.I_setslot(0);
-    }
 }

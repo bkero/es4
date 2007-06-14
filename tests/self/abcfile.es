@@ -499,6 +499,10 @@ package es4
 
     class ABCScriptInfo
     {
+        function ABCScriptInfo(init=undefined) {
+            this.init = init;
+        }
+
         function setInit(init) {
             this.init = init;
         }

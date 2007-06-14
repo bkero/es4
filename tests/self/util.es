@@ -12,6 +12,12 @@ package es4 {
         return a;
     }
 
+    function loadAndRunABCFile(file) {
+        import avmplus.Domain;
+        var domain = Domain.currentDomain;
+        domain.loadBytes(file.getBytes());
+    }
+
     function dumpByteStream(bytes, result=null) {
         function f(n, r=16) {
             return (n + 0x100).toString(r).substring(1);
@@ -20,7 +26,7 @@ package es4 {
         var a;
         if (bytes is ABCByteStream)
             a = bytes.writeToArray([]);
-        else {
+        else /* flash.util.ByteArray */ {
             a = [];
             bytes.position = 0;
             for ( var i=0 ; i < bytes.length ; i++ ) {

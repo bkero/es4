@@ -132,6 +132,15 @@ package es4
             bytes.writeUTFBytes(str);
         }
 
+        function setInt24(loc, val) {
+            assert(-0x1000000 <= val && val < 0x1000000);
+            bytes.position = loc;
+            bytes.writeByte(val & 0xFF);
+            bytes.writeByte((val >> 8) & 0xFF);
+            bytes.writeByte((val >> 16) & 0xFF);
+            bytes.position = bytes.length;
+        }
+
         function serialize(to:ABCByteStream) {
             to.byteStream(this);
         }
