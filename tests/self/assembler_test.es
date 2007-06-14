@@ -41,8 +41,111 @@ package es4
 {
     public function testABCAssembler() {
         //testCoverage();
-        //testHelloWorld();
+        testHelloWorld();
         testLoop();
+        testSwitch1();
+        testSwitch2();
+    }
+
+    function testSwitch1() {
+        var file = new ABCFile();
+        var cp = new ABCConstantPool();
+
+        file.addConstants(cp);
+        
+        var print_name = cp.QName(cp.namespace(CONSTANT_PackageNamespace, cp.stringUtf8("")), 
+                                  cp.stringUtf8("print"));
+
+        var asm = new ABCAssembler(cp,0);
+        asm.I_getlocal_0();
+        asm.I_pushscope();
+
+        // First case: all the labels are defined before the lookupswitch
+        var Ls = asm.I_jump();
+        var L0 = asm.I_label();
+        asm.I_findpropstrict(print_name, false, false);
+        asm.I_pushstring(cp.stringUtf8("zero!"));
+        asm.I_callpropvoid(print_name, 1, false, false);
+        var Lx = asm.I_jump();
+        var L1 = asm.I_label();
+        asm.I_findpropstrict(print_name, false, false);
+        asm.I_pushstring(cp.stringUtf8("one!"));
+        asm.I_callpropvoid(print_name, 1, false, false);
+        asm.I_jump(Lx);
+        var L2 = asm.I_label();
+        asm.I_findpropstrict(print_name, false, false);
+        asm.I_pushstring(cp.stringUtf8("default!"));
+        asm.I_callpropvoid(print_name, 1, false, false);
+        asm.I_jump(Lx);
+        asm.I_label(Ls);
+        asm.I_pushbyte(1);
+        asm.I_lookupswitch(L2,[L0,L1]);
+        asm.I_label(Lx);
+        asm.I_returnvoid();
+
+        var meth = file.addMethod(new ABCMethodInfo(0, [], 0, 0));
+        var body = new ABCMethodBodyInfo(meth);
+        body.setMaxStack(asm.maxStack);
+        body.setLocalCount(asm.maxLocal);
+        body.setMaxScopeDepth(asm.maxScope);
+        body.setCode(asm);
+        file.addMethodBody(body);
+
+        file.addScript(new ABCScriptInfo(meth));
+
+        loadAndRunABCFile(file);
+    }
+
+    function testSwitch2() {
+        var file = new ABCFile();
+        var cp = new ABCConstantPool();
+
+        file.addConstants(cp);
+        
+        var print_name = cp.QName(cp.namespace(CONSTANT_PackageNamespace, cp.stringUtf8("")), 
+                                  cp.stringUtf8("print"));
+
+        var asm = new ABCAssembler(cp,0);
+        asm.I_getlocal_0();
+        asm.I_pushscope();
+
+        // Second case: the labels are defined after the lookupswitch
+        asm.I_pushbyte(1);
+        var Lx = asm.I_jump();
+        asm.I_label(Lx);
+        var labels = [,,];
+        var L2 = asm.I_lookupswitch(undefined,labels);
+        var L0 = labels[0];
+        var L1 = labels[1];
+
+        asm.I_label(L0);
+        asm.I_findpropstrict(print_name, false, false);
+        asm.I_pushstring(cp.stringUtf8("zero!"));
+        asm.I_callpropvoid(print_name, 1, false, false);
+        var Lx = asm.I_jump();
+        asm.I_label(L1);
+        asm.I_findpropstrict(print_name, false, false);
+        asm.I_pushstring(cp.stringUtf8("one!"));
+        asm.I_callpropvoid(print_name, 1, false, false);
+        asm.I_jump(Lx);
+        asm.I_label(L2);
+        asm.I_findpropstrict(print_name, false, false);
+        asm.I_pushstring(cp.stringUtf8("default!"));
+        asm.I_callpropvoid(print_name, 1, false, false);
+        asm.I_label(Lx);
+        asm.I_returnvoid();
+
+        var meth = file.addMethod(new ABCMethodInfo(0, [], 0, 0));
+        var body = new ABCMethodBodyInfo(meth);
+        body.setMaxStack(asm.maxStack);
+        body.setLocalCount(asm.maxLocal);
+        body.setMaxScopeDepth(asm.maxScope);
+        body.setCode(asm);
+        file.addMethodBody(body);
+
+        file.addScript(new ABCScriptInfo(meth));
+
+        loadAndRunABCFile(file);
     }
 
     function testLoop() {
@@ -58,26 +161,27 @@ package es4
         var asm = new ABCAssembler(cp,0);
         asm.I_getlocal_0();
         asm.I_pushscope();
+        var reg = asm.getTemp();
         asm.I_pushbyte(10);
-        asm.I_setlocal_1();
+        asm.I_setlocal(reg);
         var L0 = asm.I_label();
-        asm.I_getlocal_1();
+        asm.I_getlocal(reg);
         asm.I_pushbyte(0);
         var L1 = asm.I_ifeq();
         asm.I_findpropstrict(print_name, false, false);
-        asm.I_getlocal_1();
+        asm.I_getlocal(reg);
         asm.I_callpropvoid(print_name, 1, false, false);
-        asm.I_declocal_i(1);
+        asm.I_declocal_i(reg);
         asm.I_jump(L0);
-        asm.I_deflabel(L1);
+        asm.I_label(L1);
+        asm.killTemp(reg);
         asm.I_returnvoid();
 
         var meth = file.addMethod(new ABCMethodInfo(0, [], 0, 0));
         var body = new ABCMethodBodyInfo(meth);
-        body.setMaxStack(2);       // FIXME: Should not have to compute this, assembler should provide it
-        body.setLocalCount(2);     // FIXME: compute this?  Must be at least one more than the number of params
-        body.setInitScopeDepth(0); // FIXME: useful default?
-        body.setMaxScopeDepth(1);  // FIXME: should not have to compute this?
+        body.setMaxStack(asm.maxStack);
+        body.setLocalCount(asm.maxLocal);
+        body.setMaxScopeDepth(asm.maxScope);
         body.setCode(asm);
         file.addMethodBody(body);
 
@@ -102,6 +206,9 @@ package es4
         var print_name = cp.QName(cp.namespace(CONSTANT_PackageNamespace, cp.stringUtf8("")), 
                                   cp.stringUtf8("print"));
 
+        var meth = file.addMethod(new ABCMethodInfo(0, [], 0, 0));
+        var body = new ABCMethodBodyInfo(meth);
+
         var asm = new ABCAssembler(cp,0);
         asm.I_getlocal_0();
         asm.I_pushscope();
@@ -110,12 +217,9 @@ package es4
         asm.I_callpropvoid(print_name, 1, false, false);
         asm.I_returnvoid();
 
-        var meth = file.addMethod(new ABCMethodInfo(0, [], 0, 0));
-        var body = new ABCMethodBodyInfo(meth);
-        body.setMaxStack(2);       // FIXME: Should not have to compute this, assembler should provide it
-        body.setLocalCount(1);     // FIXME: compute this?  Must be at least one more than the number of params
-        body.setInitScopeDepth(0); // FIXME: useful default?
-        body.setMaxScopeDepth(1);  // FIXME: should not have to compute this?
+        body.setMaxStack(asm.maxStack);
+        body.setLocalCount(asm.maxLocal);
+        body.setMaxScopeDepth(asm.maxScope);
         body.setCode(asm);
         file.addMethodBody(body);
 

@@ -564,7 +564,8 @@ package es4
                 traits[i].serialize(bs);
         }
 
-        private var method, max_stack, local_count, init_scope_depth, max_scope_depth, code, exceptions = [], traits = [];
+        private var init_scope_depth = 0, exceptions = [], traits = [];
+        private var method, max_stack, local_count, max_scope_depth, code;
     }
 
     class ABCException 

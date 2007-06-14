@@ -69,55 +69,76 @@ package es4
     const CONSTANT_MultinameL         = 0x1B;
     const CONSTANT_MultinameLA        = 0x1C;
 
-    const TRAIT_Slot = 0;
-    const TRAIT_Method = 1;
-    const TRAIT_Getter = 2;
-    const TRAIT_Setter = 3;
-    const TRAIT_Class = 4;
-    const TRAIT_Function = 5;
-    const TRAIT_Const = 6;
+    const CONSTANT_ClassSealed        = 0x01;
+    const CONSTANT_ClassFinal         = 0x02;
+    const CONSTANT_ClassInterface     = 0x04;
+    const CONSTANT_ClassProtectedNs   = 0x08;
 
-    const ATTR_Final = 0x01;
-    const ATTR_Override = 0x02;
-    const ATTR_Metadata = 0x04;
+    const TRAIT_Slot                  = 0;
+    const TRAIT_Method                = 1;
+    const TRAIT_Getter                = 2;
+    const TRAIT_Setter                = 3;
+    const TRAIT_Class                 = 4;
+    const TRAIT_Function              = 5;
+    const TRAIT_Const                 = 6;
 
-    const SLOT_var      = 0;
-    const SLOT_method   = 1;
-    const SLOT_getter   = 2;
-    const SLOT_setter   = 3;
-    const SLOT_class    = 4;
-    const SLOT_function = 6;
+    const ATTR_Final                  = 0x01;
+    const ATTR_Override               = 0x02;
+    const ATTR_Metadata               = 0x04;
+
+    const SLOT_var                    = 0;
+    const SLOT_method                 = 1;
+    const SLOT_getter                 = 2;
+    const SLOT_setter                 = 3;
+    const SLOT_class                  = 4;
+    const SLOT_function               = 6;
     
-    const METHOD_Arguments     = 0x1;
-    const METHOD_Activation    = 0x2;
-    const METHOD_Needrest      = 0x4;
-    const METHOD_HasOptional   = 0x8;
-    const METHOD_IgnoreRest    = 0x10;
-    const METHOD_Native        = 0x20;
-    const METHOD_Setsdxns      = 0x40;
-    const METHOD_HasParamNames = 0x80;
-
-    const CONSTANT_ClassSealed = 0x01;
-    const CONSTANT_ClassFinal  = 0x02;
-    const CONSTANT_ClassInterface = 0x04;
-    const CONSTANT_ClassProtectedNs = 0x08;
+    const METHOD_Arguments            = 0x1;
+    const METHOD_Activation           = 0x2;
+    const METHOD_Needrest             = 0x4;
+    const METHOD_HasOptional          = 0x8;
+    const METHOD_IgnoreRest           = 0x10;
+    const METHOD_Native               = 0x20;
+    const METHOD_Setsdxns             = 0x40;
+    const METHOD_HasParamNames        = 0x80;
 
 
     /*********************************************************************************
      * Assembler for one code block.
      *
      * This is a lightweight class that is used to emit bytes for
-     * instructions and data, and to maintain stack and scope depths,
-     * but which has no code generation logic save for simple
-     * abstractions (eg, GetLocal maps to GetLocalN or to the general
-     * GetLocal instruction, depending on its parameter value).
+     * instructions and data, to maintain stack and scope depths,
+     * count local slots used, and to handle branch targets and
+     * backpatching.  It has no code generation logic save for fairly
+     * simple abstractions (eg, I_getlocal() maps to "getlocal_n" or
+     * to the general "getlocal" instruction, depending on its
+     * parameter value).
+     *
+     * FIXME:
+     *  - There needs to be a way to set the scope stack depth to 0, to be used
+     *    when generating code for exception handling
+     *  - It would be nice if we could check that every join point has the same
+     *    stack depth, this requires that the next linear instruction following
+     *    an unconditional nonreturning control flow (return, throw, jump) is
+     *    a label always, or is ignored for the purposes of computing the stack
+     *    depth.
+     *  - Ditto for the scope depth, really.
+     *  - The interface for handling run-time multinames is not pleasant, the
+     *    client has to pass two booleans denoting whether zero, one, or two values
+     *    are popped by the instruction as a result of the name having variable
+     *    parts.  It would be better to pass a constant pool reference and ask
+     *    the constant pool about the name.
      */
     final class ABCAssembler 
     {
         function ABCAssembler(constants, numberOfFormals) {
             this.constants = constants;
-            this.nextTemp = numberOfFormals;
+            this.nextTemp = numberOfFormals+1; // local 0 is always "this"
         }
+
+        function get maxStack() { return max_stack_depth }
+        function get maxLocal() { return nextTemp }
+        function get maxScope() { return max_scope_depth }
 
         private function list0(n) {
             print(n);
@@ -150,14 +171,13 @@ package es4
         // Instructions that push one value, with an opcode byte followed by a u30 argument
         private function pushOneU30(name, opcode, v) {
             stack(1);
-            list(name);
+            list(name, v);
             code.uint8(opcode);
             code.uint30(v);
         }
 
         function I_getglobalslot(index) { pushOneU30("getglobalslot", 0x6E, index) }
         function I_getlex(index) { pushOneU30("getlex", 0x60, index) }
-        function I_getlocal(index) { pushOneU30("getlocal", 0x62, index) }
         function I_getscopeobject(index) { pushOneU30("getscopeobject", 0x65, index) }
         function I_newcatch(index) { pushOneU30("newcatch", 0x5A, index) }
         function I_newfunction(index) { pushOneU30("newfunction", 0x40, index) }
@@ -199,7 +219,7 @@ package es4
         function I_nextname() { dropOne("nextname", 0x1E) }
         function I_nextvalue() { dropOne("nextvalue", 0x23) }
         function I_pop() { dropOne("pop", 0x29) }
-        function I_pushscope() { dropOne("pushscope", 0x30) }
+        function I_pushscope() { scope(1); dropOne("pushscope", 0x30) }
         function I_pushwith() { dropOne("pushwith", 0x1C) }
         function I_returnvalue() { dropOne("returnvalue", 0x48) }
         function I_rshift() { dropOne("rshift", 0xA6) }
@@ -221,7 +241,6 @@ package es4
             code.uint30(v);
         }
 
-        function I_setlocal(index) { dropOneU30("setlocal", 0x63, index) }
         function I_setglobalslot(index) { dropOneU30("setglobalslot", 0x6F, index) }
 
         // Instructions that do not change the stack height, with a single opcode byte
@@ -248,12 +267,11 @@ package es4
         function I_esc_xelem() { dropNone("esc_xattr", 0x71) }
         function I_increment() { dropNone("increment", 0x91) }
         function I_increment_i() { dropNone("increment_i", 0xC0) }
-        function I_kill() { dropNone("kill", 0x08) }
         function I_negate() { dropNone("negate", 0x90) }
         function I_negate_i() { dropNone("negate_i", 0xC4) }
         function I_nop() { dropNone("nop", 0x02) }
         function I_not() { dropNone("not", 0x96) }
-        function I_popscope() { dropNone("popscope", 0x1D) }
+        function I_popscope() { scope(-1); dropNone("popscope", 0x1D) }
         function I_returnvoid() { dropNone("returnvoid", 0x47) }
         function I_swap() { dropNone("swap", 0x2B) }
         function I_typeof() { dropNone("typeof", 0x95) }
@@ -278,53 +296,89 @@ package es4
         function I_inclocal(reg) { dropNoneU30("inclocal", 0x92, reg) }
         function I_inclocal_i(reg) { dropNoneU30("inclocal_i", 0xC2, reg) }
         function I_istype(index) { dropNoneU30("istype", 0xB2, index) }
+        function I_kill(index) { dropNoneU30("kill", 0x08, index) }
         function I_newclass(index) { dropNoneU30("newclass", 0x58, index) }
 
-        // Local control flow instructions: 
-        //  - If called without an argument return a cookie that can later be 
-        //    passed to I_deflabel to give the label an actual value.  
+        function I_getlocal(index) { 
+            switch (index) {
+            case 0: I_getlocal_0(); break;
+            case 1: I_getlocal_1(); break;
+            case 2: I_getlocal_2(); break;
+            case 3: I_getlocal_3(); break;
+            default: pushOneU30("getlocal", 0x62, index);
+            }
+        }
+
+        function I_setlocal(index) { 
+            switch (index) {
+            case 0: I_setlocal_0(); break;
+            case 1: I_setlocal_1(); break;
+            case 2: I_setlocal_2(); break;
+            case 3: I_setlocal_3(); break;
+            default: dropOneU30("setlocal", 0x63, index);
+            }
+        }
+
+        // Local control flow instructions and I_label(): 
+        //  - If called without an argument return a "label" that can later be 
+        //    passed to I_label() to give the label an actual value.  
         //  - If called with an argument, the argument must have been returned
-        //    from a control flow instruction or from I_label.  It represents
+        //    from a control flow instruction or from I_label().  It represents
         //    a transfer target.
         //
         // A "label" is a data structure with these fields:
-        //  - Name (uint): a symbolic name for the label, to be used in listings
-        //  - Address (int): either -1 for "unknown" or the address of the label
+        //  - name (uint): a symbolic name for the label, to be used in listings
+        //  - address (int): either -1 for "unknown" or the address of the label
+        //  - stack (uint): the stack depth at label creation time; this is the
+        //        stack depth at the target too [except for exception handling]
+        //  - scope (uint): the scope stack depth at label creation time; this is the
+        //        scope stack depth at the target too [except for exception handling]
 
-        private function jmp(stk, name, opcode, L) {
-            if (L === undefined)
-                L = { "name": nextLabel++, "address": -1 };
+        private function newlabel() {
+            return { "name": nextLabel++, "address": -1, "stack": current_stack_depth, "scope": current_scope_depth };
+        }
 
-            stack(stk);
-            list(name, L.name);
-            code.uint8(opcode);
-
-            var here = code.length;
-            var base = here + 3;
-            if (L.address != -1) {
+        private function relativeOffset(base, L) {
+            if (L.address != -1)
                 code.int24(L.address - base);
-            }
             else {
-                backpatches.push({ "loc": here, "base": base, "label": L });
+                backpatches.push({ "loc": code.length, "base": base, "label": L });
                 code.int24(0);
             }
+        }
+
+        private function jmp(stk, name, opcode, L) {
+            stack(stk);
+
+            if (L === undefined)
+                L = newlabel();
+
+            list(name, L.name);
+            code.uint8(opcode);
+            relativeOffset(code.length+3, L);
 
             return L;
         }
 
-        function I_label() { 
-            var L = code.length;
-            var name = nextLabel++;
-            code.uint8(0x09);
-            list0(name + ":");
-            list("label");
-            return { "name": name, "address": L };
-        }
-
-        function I_deflabel(L) {
-            assert( L.address == -1 );
-            list0(L.name + ":");
-            L.address = code.length;
+        function I_label(L = undefined) { 
+            var here = code.length;
+            var define = false;
+            if (L === undefined) {
+                define = true;
+                L = newlabel();
+            }
+            else {
+                assert( L.address == -1 );
+                current_stack_depth = L.stack;
+                current_scope_depth = L.scope;
+            }
+            L.address = here;
+            list0(L.name + ":   -- " + L.stack + "/" + L.scope);
+            if (define) {
+                code.uint8(0x09);
+                list("label");
+            }
+            return L;
         }
 
         function I_ifeq(L=undefined) { return jmp(-2, "ifeq", 0x13, L) }
@@ -345,15 +399,42 @@ package es4
 
         function I_jump(L=undefined) { return jmp(0, "jump", 0x10, L) }
 
+        // Here, case_labels must be an array with a "length" property
+        // that denotes the number of case labels in the array.
+        // length cannot be 0.  
+        //
+        // Either default_label is undefined and all the elements of
+        // case_labels are also undefined, or default_label is a label
+        // structure, and all the elements of case_labels between 0
+        // and length-1 are label structures as well.
+        //
+        // In the former case, labels are created for the
+        // default_label and for all the case_labels; the array is
+        // updated; and the new default_label is returned.
+
         function I_lookupswitch(default_label, case_labels) {
-            assert(case_labels.length > 0);
+            assert( case_labels is Array );
+            assert( case_labels.length > 0 );
+
             stack(-1);
-            list("lookupswitch", default_label, case_labels);
+
+            if (default_label === undefined) {
+                default_label = newlabel();
+                for ( var i=0 ; i < case_labels.length ; i++ ) {
+                    assert( case_labels[i] === undefined );
+                    case_labels[i] = newlabel();
+                }
+            }
+                
+            list("lookupswitch", default_label.name, map(function (L) { return L.name }, case_labels));
+            var base = code.length;
             code.uint8(0x1B);
-            code.int24(default_label);  // FIXME
+            relativeOffset(base, default_label);
             code.uint30(case_labels.length-1);
-            for ( var i=0 ; i < case_labels.length ; i++ )
-                code.int24(case_labels[i]);
+            for ( var i=0 ; i < case_labels.length ; i++ ) 
+                relativeOffset(base, case_labels[i]);
+
+            return default_label;
         }
 
         // Standard function calls
@@ -545,16 +626,23 @@ package es4
             backpatches.length = 0;
         }
 
-        private function stack(size:int):void {
-            current_stack_depth += size;
+        private function stack(n) {
+            current_stack_depth += n;
             if (current_stack_depth > max_stack_depth)
                 max_stack_depth = current_stack_depth;
+        }
+
+        private function scope(n) {
+            current_scope_depth += n;
+            if (current_scope_depth > max_scope_depth)
+                max_scope_depth = current_scope_depth;
         }
 
         private var code = new ABCByteStream;
         private var nextLabel = 1000;
         private var backpatches = [];
-        private var scope_depth = 1;
+        private var current_scope_depth = 0;
+        private var max_scope_depth = 0;
         private var current_stack_depth = 0;
         private var max_stack_depth = 0;
         private var nextTemp;

@@ -5,6 +5,14 @@ package es4 {
             throw "Assertion failed!";
     }
 
+    function map(fn, a) {
+        var b = [];
+        for ( var i=0 ; i < a.length ; i++ )
+            if (i in a)
+                b[i] = fn(a[i]);
+        return b;
+    }
+
     function copyArray(c) {
         var a = new Array;
         for ( var i=0 ; i < c.length ; i++ ) 
