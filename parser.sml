@@ -778,7 +778,7 @@ and functionExpression (ts,a:alpha,b:beta) =
                                                          block=nd4,
                                                          native=false,
                                                          defaults=[],
-                                                         param=([],[]),
+                                                         param=Ast.Head ([],[]),
                                                          ty=functionTypeFromSignature nd3})))
                             end
                       | (_,ALLOWLIST) => 
@@ -795,7 +795,7 @@ and functionExpression (ts,a:alpha,b:beta) =
                                                                           head=NONE,
                                                                           loc=locOf ts3},
                                                          native=false,
-                                                         param=([],[]),
+                                                         param=Ast.Head ([],[]),
                                                          defaults=[],
                                                          ty=functionTypeFromSignature nd3})))
                                 
@@ -817,7 +817,7 @@ and functionExpression (ts,a:alpha,b:beta) =
                                                          fsig=nd3,
                                                          block=nd4,
                                                          native=false,
-                                                         param=([],[]),
+                                                         param=Ast.Head ([],[]),
                                                          defaults=[],
                                                          ty=functionTypeFromSignature nd3})))
                             end
@@ -837,7 +837,7 @@ and functionExpression (ts,a:alpha,b:beta) =
                                                                head=NONE,
                                                                loc=locOf ts3},
                                                     native=false,
-                                                    param=([],[]),
+                                                    param=Ast.Head ([],[]),
                                                     defaults=[],
                                                     ty=functionTypeFromSignature nd3})))
                             end
@@ -1409,7 +1409,7 @@ and literalField (ts) =
                                                fsig=fsig,
                                                block=block,
                                                native=false,
-                                               param=([],[]),
+                                               param=Ast.Head ([],[]),
                                                defaults=[],
                                                ty=functionTypeFromSignature fsig}))})
             end
@@ -1426,7 +1426,7 @@ and literalField (ts) =
                                                fsig=fsig,
                                                block=block,
                                                native=false,
-                                               param=([],[]),
+                                               param=Ast.Head ([],[]),
                                                defaults=[],
                                                ty=functionTypeFromSignature fsig}))})
             end
@@ -5465,7 +5465,7 @@ and functionDeclaration (ts,attrs) =
                                                abstract=true,
                                                func=Ast.Func {name={ident=nd1,kind=Ast.Ordinary},
                                                               fsig=nd2, 
-                                                              param=([],[]),
+                                                              param=Ast.Head ([],[]),
                                                               defaults=[],
                                                               ty=functionTypeFromSignature nd2,
                                                               native=native,
@@ -5524,10 +5524,10 @@ and functionDefinition (ts,attrs:ATTRS,CLASS) =
                         val (ts4,nd4) = functionBody (ts3)
                     in
                         (ts4,{pragmas=[],
-                              defns=[Ast.ConstructorDefn (Ast.Ctor {settings=([],[]), superArgs=[],
+                              defns=[Ast.ConstructorDefn (Ast.Ctor {settings=Ast.Head ([],[]), superArgs=[],
                                                             func=Ast.Func {name=nd2,
                                                                            fsig=nd3,
-                                                                           param=([],[]),
+                                                                           param=Ast.Head ([],[]),
                                                                            defaults=[],
                                                                            ty=functionTypeFromSignature nd3,
                                                                            native=false,
@@ -5542,11 +5542,11 @@ and functionDefinition (ts,attrs:ATTRS,CLASS) =
                     in
                         (ts4,{pragmas=[],
                               defns=[Ast.ConstructorDefn (Ast.Ctor
-                                             {settings=([],[]),
+                                             {settings=Ast.Head ([],[]),
                                               superArgs=[],
                                               func=Ast.Func {name=nd2,
                                                              fsig=nd3,
-                                                             param=([],[]),
+                                                             param=Ast.Head ([],[]),
                                                              defaults=[],
                                                              ty=functionTypeFromSignature nd3,
                                                              native=false,
@@ -5575,7 +5575,7 @@ and functionDefinition (ts,attrs:ATTRS,CLASS) =
                         val ident = (#ident nd2)
                         val func = Ast.Func {name=nd2,
                                              fsig=nd3,
-                                             param=([],[]),
+                                             param=Ast.Head ([],[]),
                                              defaults=[],
                                              ty=functionTypeFromSignature nd3,
                                              native=false,
@@ -5609,7 +5609,7 @@ and functionDefinition (ts,attrs:ATTRS,CLASS) =
                                                        abstract=false,
                                                        func=Ast.Func {name=nd2,
                                                                       fsig=nd3, 
-                                                                      param=([],[]),
+                                                                      param=Ast.Head ([],[]),
                                                                       defaults=[],
                                                                       ty=functionTypeFromSignature nd3,
                                                                       native=false,
@@ -5633,7 +5633,7 @@ and functionDefinition (ts,attrs:ATTRS,CLASS) =
                         val ident = (#ident nd2)
                         val func = Ast.Func {name=nd2,
                                              fsig=nd3,
-                                             param=([],[]),
+                                             param=Ast.Head ([],[]),
                                              defaults=[],
                                              ty=functionTypeFromSignature nd3,
                                              native=false,
@@ -5659,7 +5659,7 @@ and functionDefinition (ts,attrs:ATTRS,CLASS) =
                         val ident = (#ident nd2)
                         val func = Ast.Func {name=nd2,
                                              fsig=nd3,
-                                             param=([],[]),
+                                             param=Ast.Head ([],[]),
                                              defaults=[],
                                              ty=functionTypeFromSignature nd3,
                                              native=false,
@@ -5697,7 +5697,7 @@ and functionDefinition (ts,attrs:ATTRS,CLASS) =
         val ident = (#ident nd2)
         val func = Ast.Func {name=nd2,
                              fsig=nd3,
-                             param=([],[]),
+                             param=Ast.Head ([],[]),
                              defaults=[],
                              ty=functionTypeFromSignature(nd3),
                              native=false,

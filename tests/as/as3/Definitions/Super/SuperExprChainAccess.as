@@ -34,6 +34,7 @@
  * the terms of any one of the MPL, the GPL or the LGPL.
  *
  * ***** END LICENSE BLOCK ***** */
+import SuperExprChainAccess.*
 
 var SECTION = "Definitions";       // provide a document reference (ie, Actionscript section)
 var VERSION = "AS3";        // Version of ECMAScript or ActionScript 
@@ -45,8 +46,6 @@ startTest();                // leave this alone
 
 ///////////////////////////////////////////////////////////////
 // add your tests here
-  
-import SuperExprChainAccess.*
 
 var seca = new SuperExprChainAccess();
 

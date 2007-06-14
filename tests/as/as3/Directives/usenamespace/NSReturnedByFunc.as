@@ -53,7 +53,9 @@ package P {
      
 }
 
- 
+
+{
+import P.*;
 var SECTION = "Directives";       // provide a document reference (ie, Actionscript section)
 var VERSION = "AS 3.0";        // Version of ECMAScript or ActionScript 
 var TITLE   = "use namespace from varying scopes";       // Provide ECMA section title or a description
@@ -64,7 +66,6 @@ startTest();                // leave this alone
 
 
 
-import P.*;
 
 var c = new C();
 AddTestCase("Namespace variable with namespace returned by a function", "Gerbera Daisy", c.getFlower());
@@ -73,3 +74,4 @@ AddTestCase("Namespace variable with namespace returned by a function", "Gerbera
 
 test();       // leave this alone.  this executes the test cases and
               // displays results.
+}

@@ -46,12 +46,13 @@ package
     }
 }
 
+{
+import A.*;
 var SECTION = "Definitions\Packages";       			// provide a document reference (ie, ECMA section)
 var VERSION = "ActionScript 3.0";  			// Version of JavaScript or ECMA
 var TITLE   = "access default package class globally";       // Provide ECMA section title or a description
 var BUGNUMBER = "";
 
-import A.*;
 
 startTest();
 
@@ -60,3 +61,4 @@ var obj = new B();
 AddTestCase("Using default package class globally", 3, obj.C());
 
 test();
+}

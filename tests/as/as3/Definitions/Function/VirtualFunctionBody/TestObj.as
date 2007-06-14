@@ -37,12 +37,12 @@
 package VirtualFunctionBody {
 
 	class TestObjInner{
-		virtual function noReturnNoParamsInner() { return "noReturnNoParams"; }
-		virtual function noReturnParamsInner(s:String, b:Boolean) { return s; }
-		virtual function noReturnCustomParamInner(c:Custom) { return new Custom(); }
-		virtual function returnNoParamsInner():String { return "returnNoParams"; } 
-		virtual function returnParamsInner(s:String, b:Boolean):String { return s; }
-		virtual function returnCustomNoParamsInner():Custom { return new Custom(); }
+		function noReturnNoParamsInner() { return "noReturnNoParams"; }
+		function noReturnParamsInner(s:String, b:Boolean) { return s; }
+		function noReturnCustomParamInner(c:Custom) { return new Custom(); }
+		function returnNoParamsInner():String { return "returnNoParams"; } 
+		function returnParamsInner(s:String, b:Boolean):String { return s; }
+		function returnCustomNoParamsInner():Custom { return new Custom(); }
 	}
 
 	public class TestObj extends TestObjInner {

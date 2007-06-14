@@ -46,7 +46,9 @@ package Packagnamespace {
 
 }
 
-
+{
+import Importtwonamespace.N1
+import Packagnamespace.N2
 var SECTION = "Definitions";       				// provide a document reference (ie, ECMA section)
 var VERSION = "ActionScript 3.0";  				// Version of JavaScript or ECMA
 var TITLE   = "Import two namespaces from two different packages";       	// Provide ECMA section title or a description
@@ -55,8 +57,6 @@ var BUGNUMBER = "";
 startTest();                					// leave this alone
 
 
-import Importtwonamespace.N1
-import Packagnamespace.N2
 
 class PublicClass{
     N1 var x:Number = 4;
@@ -74,3 +74,4 @@ AddTestCase("Namespace imported from package 2", 6, obj.N2::x);
 
 test();       // leave this alone.  this executes the test cases and
               // displays results.
+}

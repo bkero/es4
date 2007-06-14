@@ -483,7 +483,7 @@ and instanceOf (t0:Ast.NAME)
                 in
                     List.exists search bases
                 end
-        val k = #[t0,t]
+        val k = Vector.fromList [t0,t]
     in
         case NmVecMap.find (c, k) of
             NONE => 
@@ -778,10 +778,10 @@ and verifyInitsOption (env:ENV)
       | _ => internalError ["missing inits"]
 
 
-and verifyHead (env:ENV) ((fixtures, inits):Ast.HEAD)
+and verifyHead (env:ENV) ((Ast.Head (fixtures, inits)):Ast.HEAD)
     : Ast.HEAD =
     (trace ["verifying head with ", Int.toString (length fixtures), " fixtures"];
-     (verifyFixtures env fixtures, verifyInits env inits))
+     (Ast.Head (verifyFixtures env fixtures, verifyInits env inits)))
 
 (*
     EXPR
@@ -1306,7 +1306,7 @@ and verifyBlock (env:ENV)
         Ast.Block { head, body, loc, pragmas=pragmas, defns=defns } =>
             let
                 val _ = LogErr.setLoc loc
-                val (fixtures, _) = valOf head
+                val (Ast.Head (fixtures, _)) = valOf head
                 val env = withRib env fixtures
                 val head = Option.map (verifyHead env) head
                 val body = verifyStmts env body
@@ -1331,7 +1331,7 @@ and verifyFunc (env:ENV)
         val Ast.FunctionType ty = verifyTypeExpr env (Ast.FunctionType ty)
         val param = verifyHead env param
         val (defaults,_) = verifyExprs env defaults
-        val (paramFixtures, _) = param
+        val (Ast.Head (paramFixtures, _)) = param
         val env = withRib env paramFixtures
         val block = verifyBlock env block
     in

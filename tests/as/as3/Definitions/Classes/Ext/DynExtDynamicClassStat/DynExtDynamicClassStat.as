@@ -111,8 +111,8 @@ package DynamicClass {
     // from virtual method of sub class
     // ************************************
 
-    virtual function virSubGetArray() : Array { return getStatArray(); }
-    virtual function virSubSetArray(a:Array) { setStatArray(a); }
+    function virSubGetArray() : Array { return getStatArray(); }
+    function virSubSetArray(a:Array) { setStatArray(a); }
 
     // function to test above from test scripts
     public function testVirSubArray(a:Array) : Array {
@@ -250,8 +250,8 @@ package DynamicClass {
     // virtual public method of sub class
     // ***************************************
 
-    public virtual function pubVirSubGetDPArray() : Array { return statArray; }
-    public virtual function pubVirSubSetDPArray(a:Array) { statArray = a; }
+    public function pubVirSubGetDPArray() : Array { return statArray; }
+    public function pubVirSubSetDPArray(a:Array) { statArray = a; }
 
     // public accessor for asrt
     public function testPubVirSubDPArray(a:Array) : Array {

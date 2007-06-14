@@ -50,30 +50,30 @@ fun ppDefinition (s : DEFN) = TextIO.print "<defn>\n"
 fun ppVarDefn (s : VAR_BINDING) = TextIO.print "<var defn>\n"
 *)
 
-val ppNamespace _ = pp "<namespace>"
+fun ppNamespace _ = pp "<namespace>"
 
-val ppProgram _ = pp "<program>"
+fun ppProgram _ = pp "<program>"
 
-val ppExpr = pp "<expr>"
+fun ppExpr _ = pp "<expr>"
 
-val ppStmt = pp "<stmt>"
+fun ppStmt _ = pp "<stmt>"
 
-val ppDefinition = pp "<defn>"
+fun ppDefinition _ = pp "<defn>"
 
-val ppVarDefn = pp "<var defn>"
+fun ppVarDefn _ = pp "<var defn>"
 
-val ppType = pp "<type>"
+fun ppType _ = pp "<type>"
 
-val ppBinop = pp "<binop>"
+fun ppBinop _ = pp "<binop>"
 
-val ppNumericMode = pp "<numeric mode>"
+fun ppNumericMode _ = pp "<numeric mode>"
 
-val ppPragma = pp "<pragma>"
+fun ppPragma _ = pp "<pragma>"
 
-val ppFixtures = pp "<fixtures>"
+fun ppFixtures _ = pp "<fixtures>"
 
-val ppFixture = pp "<fixture>"
+fun ppFixture _ = pp "<fixture>"
 
-val ppFunc = pp "<func>"
+fun ppFunc _ = pp "<func>"
 
 end

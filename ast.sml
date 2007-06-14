@@ -425,15 +425,19 @@ datatype PRAGMA =
        | ValFixture of 
            { ty: TYPE_EXPR,
              readOnly: bool }
-       | VirtualValFixture of 
-         VIRTUAL_VAL_FIXTURE
+       | VirtualValFixture of
+         { ty: TYPE_EXPR, 
+           getter: FUNC_DEFN option,
+           setter: FUNC_DEFN option } (* VIRTUAL_VAL_FIXTURE *)
+
+     and HEAD =
+         Head of FIXTURES * INITS
 
 withtype 
 
          BINDINGS = (BINDING list * INIT_STEP list)
      and FIXTURES = (FIXTURE_NAME * FIXTURE) list
      and INITS = (FIXTURE_NAME * EXPR) list
-     and HEAD = (FIXTURES * INITS)
 
      and INSTANCE_TYPE = 
           {  name: NAME,
@@ -478,7 +482,8 @@ withtype
              ns : EXPR option,
              static : bool,
              prototype : bool,
-             bindings : BINDINGS }
+             bindings : (BINDING list * INIT_STEP list) (* BINDINGS *)
+           }
 
      and NAMESPACE_DEFN = 
            { ident: IDENT,
@@ -514,17 +519,29 @@ withtype
 
      and FOR_ENUM_STMT =
            { isEach: bool,
-             defn: VAR_DEFN option,             
+             (* VAR_DEFN option *)
+             defn: { kind : VAR_DEFN_TAG,
+                     ns : EXPR option,
+                     static : bool,
+                     prototype : bool,
+                     bindings : (BINDING list * INIT_STEP list) (* BINDINGS *)
+                   } option,
              obj: EXPR,
-             fixtures: FIXTURES option,
+             fixtures: ((FIXTURE_NAME * FIXTURE) list) option, (* FIXTURES option *)
              next: STMT,
              labels: IDENT list,
              body: STMT }
 
      and FOR_STMT =
-           { fixtures: FIXTURES option,
-             defn: VAR_DEFN option,    
-             init: STMT list,                  
+           { fixtures: ((FIXTURE_NAME * FIXTURE) list) option, (* FIXTURES option *)
+             (* VAR_DEFN option *)
+             defn: { kind : VAR_DEFN_TAG,
+                     ns : EXPR option,
+                     static : bool,
+                     prototype : bool,
+                     bindings : (BINDING list * INIT_STEP list) (* BINDINGS *)
+                   } option,
+             init: STMT list,
              cond: EXPR,
              update: EXPR,
              labels: IDENT list,
@@ -532,7 +549,7 @@ withtype
 
      and WHILE_STMT =
            { cond: EXPR,
-             fixtures: FIXTURES option,
+             fixtures: ((FIXTURE_NAME * FIXTURE) list) option, (* FIXTURES option *)
              body: STMT,
              labels: IDENT list }
 
@@ -545,21 +562,22 @@ withtype
 
      and CASE =
            { label: EXPR option,
-             inits: INITS option, 
+             inits: ((FIXTURE_NAME * EXPR) list) option, (* INITS option *)
              body: BLOCK }   (* FIXME: should be STMT list *)
 
      and CATCH_CLAUSE = 
-         { bindings:BINDINGS,
+         { bindings:(BINDING list * INIT_STEP list), (* BINDINGS *)
            ty: TYPE_EXPR, 
-           fixtures: FIXTURES option,
-           inits: INITS option,
+           fixtures: ((FIXTURE_NAME * FIXTURE) list) option, (* FIXTURES option *)
+           inits: ((FIXTURE_NAME * EXPR) list) option, (* INITS option *)
            block:BLOCK }
 
      and FUNC_NAME =
            { kind : FUNC_NAME_KIND, 
              ident : IDENT }
 
-     and VIRTUAL_VAL_FIXTURE = 
+type VIRTUAL_VAL_FIXTURE =
+(*     and VIRTUAL_VAL_FIXTURE = *)
          { ty: TYPE_EXPR, 
            getter: FUNC_DEFN option,
            setter: FUNC_DEFN option }

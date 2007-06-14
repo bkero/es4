@@ -34,7 +34,7 @@
  * the terms of any one of the MPL, the GPL or the LGPL.
  *
  * ***** END LICENSE BLOCK ***** */
-
+import Bug118272Package.*;
 var SECTION = "Definitions";       // provide a document reference (ie, ECMA section)
 var VERSION = "AS3";  // Version of JavaScript or ECMA
 var TITLE   = "Class Definition";       // Provide ECMA section title or a description
@@ -44,7 +44,7 @@ startTest();                // leave this alone
 
 //-----------------------------------------------------------------------------
 
-import Bug118272Package.*;
+
 
 
 var eg = new BugTest();

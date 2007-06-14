@@ -67,16 +67,16 @@ namespace Ast
     class TempName {}
     class PropName {}
 
-    type FIXTURES = [[FIXTURE_NAME,FIXTURE]]
+    type FIXTURES = [[FIXTURE_NAME,FIXTURE]...]
 
-    type INITS = [[FIXTURE_NAME,EXPR]]
+    type INITS = [[FIXTURE_NAME,EXPR]...]
 	
     type NAME =
        { ns: NAMESPACE
        , id: IDENT }
 	
     type MULTINAME =
-       { nss: [[NAMESPACE]]
+       { nss: [[NAMESPACE...]...]
        , id: IDENT }
 	
     // NAMESPACE
@@ -422,7 +422,7 @@ namespace Ast
 
     class CallExpr {
         const func : EXPR;
-        const args : [EXPR];
+        const args : [EXPR...];
         function CallExpr (func,args)
             : func = func
             , args = args {}
@@ -430,7 +430,7 @@ namespace Ast
 
     class ApplyTypeExpr {
         const expr : EXPR;
-        const args : [TYPE_EXPR];
+        const args : [TYPE_EXPR...];
         function ApplyTypeExpr (expr,args)
             : expr = expr
             , args = args {}
@@ -448,7 +448,7 @@ namespace Ast
 
     class NewExpr {
         const ctor : EXPR;
-        const args : [EXPR];
+        const args : [EXPR...];
     }
 
     class ObjectRef {

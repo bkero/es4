@@ -155,24 +155,24 @@ package PublicClass {
     // *****************
     // virtual methods
     // *****************
-    virtual function getVirtualArray() : Array { return array; }
-    virtual function getVirtualBoolean() : Boolean { return boolean; }
-    virtual function getVirtualDate() : Date { return date; }
-    virtual function getVirtualFunction() : Function { return myFunction; }
-    virtual function getVirtualMath() : Math { return math; }
-    virtual function getVirtualNumber() : Number { return number; }
-   	virtual function getVirtualObject() : Object { return object; }
-    virtual function getVirtualString() : String { return string; }
-    virtual function setVirtualArray( a:Array ) { array = a; }
-    virtual function setVirtualBoolean( b:Boolean ) { boolean = b; }
-    virtual function setVirtualDate( d:Date ) { date = d; }
-    virtual function setVirtualFunction( f:Function ) { myFunction = f; }
-    virtual function setVirtualMath( m:Math ) { math = m; }
-    virtual function setVirtualNumber( n:Number ) { number = n; }
-    virtual function setVirtualObject( o:Object ) { object = o; }
-    virtual function setVirtualString( s:String ) { string = s; }
+    function getVirtualArray() : Array { return array; }
+    function getVirtualBoolean() : Boolean { return boolean; }
+    function getVirtualDate() : Date { return date; }
+    function getVirtualFunction() : Function { return myFunction; }
+    function getVirtualMath() : Math { return math; }
+    function getVirtualNumber() : Number { return number; }
+   	function getVirtualObject() : Object { return object; }
+    function getVirtualString() : String { return string; }
+    function setVirtualArray( a:Array ) { array = a; }
+    function setVirtualBoolean( b:Boolean ) { boolean = b; }
+    function setVirtualDate( d:Date ) { date = d; }
+    function setVirtualFunction( f:Function ) { myFunction = f; }
+    function setVirtualMath( m:Math ) { math = m; }
+    function setVirtualNumber( n:Number ) { number = n; }
+    function setVirtualObject( o:Object ) { object = o; }
+    function setVirtualString( s:String ) { string = s; }
 
-    virtual function setVirtualAll( a:Array,
+    function setVirtualAll( a:Array,
                      b:Boolean,
                      d:Date,
                      f:Function,

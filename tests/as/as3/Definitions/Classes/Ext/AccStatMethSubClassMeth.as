@@ -34,7 +34,7 @@
  * the terms of any one of the MPL, the GPL or the LGPL.
  *
  * ***** END LICENSE BLOCK ***** */
-
+import StaticPropertyPackage.*;
 
 var SECTION = "Definitions";       // provide a document reference (ie, ECMA section)
 var VERSION = "AS 3.0";  // Version of JavaScript or ECMA
@@ -61,7 +61,7 @@ startTest();                // leave this alone
  *
  */
 
-import StaticPropertyPackage.*;
+
   
 var obj = new AccStatMethSubClassMeth();
 

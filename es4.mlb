@@ -1,0 +1,46 @@
+local
+    $(SML_LIB)/basis/basis.mlb
+    $(SML_LIB)/smlnj-lib/Util/smlnj-lib.mlb
+    $(SML_LIB)/smlnj-lib/PP/pp-lib.mlb
+(*
+    logerr.sml
+    main.sml
+    pretty.sml
+    pretty-cvt.sml
+    pretty-rep.sml
+    token.sml
+    lexer.sml
+    parser.sml
+    multiname.sml
+    defn.sml
+    verify.sml
+    eval.sml
+    mach.sml
+    native.sml
+    boot.sml
+    decimal.sml
+    decimal-external.sml
+    decimal-params.sml
+*)
+    ustring.sml
+    decimal-params.sml
+    ann "allowFFI true" in
+        decimal-mlton.sml
+    end
+    decimal.sml
+    ast.sml
+    logerr.sml
+    name.sml
+    namekey.sml
+    namemap.sml
+    multiname.sml
+    pretty-rep.sml
+    pretty-cvt.sml
+    pretty.sml
+    token.sml
+    lexer.sml
+    (*parser.sml*)
+    tmp.sml
+in
+    (*structure Ast*)
+end

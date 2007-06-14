@@ -40,8 +40,16 @@ package Importinterface  {
               function setPubArray(a:Array);
 	 }
 }
+class PublicClass implements Publicinterface{
+    var array:Array;
+    public var pubArray:Array; 
 
+    public function setPubArray( a:Array ) { pubArray = a;}
+}
 
+{
+import Importinterface.Publicinterface;
+import mypackage.*;
 
 var SECTION = "Directives";       				// provide a document reference (ie, ECMA section)
 var VERSION = "ActionScript 3.0";  				// Version of JavaScript or ECMA
@@ -57,15 +65,6 @@ var arr = new Array(1, 2, 3);
 
 
 
-import Importinterface.Publicinterface;
-class PublicClass implements Publicinterface{
-    var array:Array;
-    public var pubArray:Array; 
-
-    public function setPubArray( a:Array ) { pubArray = a;}
-}
-
-import mypackage.*;
 
 var obj = new PublicClass();
 
@@ -76,3 +75,4 @@ AddTestCase( "Import only a public interface", arr, (obj.setPubArray(arr), obj.p
 
 test();       // leave this alone.  this executes the test cases and
               // displays results.
+}

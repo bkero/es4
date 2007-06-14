@@ -68,6 +68,10 @@
 				>
 			</File>
 			<File
+				RelativePath=".\BinaryMapFn.sml"
+				>
+			</File>
+			<File
 				RelativePath="..\..\boot.sml"
 				>
 			</File>
@@ -96,11 +100,23 @@
 				>
 			</File>
 			<File
-				RelativePath=".\Int32.sml"
+				RelativePath=".\IntInf.sml"
+				>
+			</File>
+			<File
+				RelativePath=".\IntInfSig.sml"
 				>
 			</File>
 			<File
 				RelativePath="..\..\lexer.sml"
+				>
+			</File>
+			<File
+				RelativePath=".\LibBase.sml"
+				>
+			</File>
+			<File
+				RelativePath=".\LibBaseSig.sml"
 				>
 			</File>
 			<File
@@ -129,6 +145,14 @@
 			</File>
 			<File
 				RelativePath="..\..\native.sml"
+				>
+			</File>
+			<File
+				RelativePath=".\OrdKeySig.sml"
+				>
+			</File>
+			<File
+				RelativePath=".\OrdMapSig.sml"
 				>
 			</File>
 			<File

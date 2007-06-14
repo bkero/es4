@@ -34,14 +34,14 @@
  * the terms of any one of the MPL, the GPL or the LGPL.
  *
  * ***** END LICENSE BLOCK ***** */
-
 package foo{
 	public function fletch(){ return 'PASSED'; }
 }
 
-function fletch2(){ return 'PASSED2'; }
 
+{
 import foo.*;
+function fletch2(){ return 'PASSED2'; }
 
 var SECTION = "Definitions";       // provide a document reference (ie, Actionscript section)
 var VERSION = "AS 3.0";        // Version of ECMAScript or ActionScript 
@@ -56,3 +56,4 @@ AddTestCase( "function outside of package", "PASSED2",fletch2() );
 
 test();       // leave this alone.  this executes the test cases and
               // displays results.
+}

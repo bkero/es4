@@ -83,8 +83,8 @@ package DefaultClass {
 
 
 		// access public static method of parent from virtual method of sub class
-		virtual function virSubSetArray( a:Array ) { setPubStatArray( a ); }
-		virtual function virSubGetArray() : Array { return getPubStatArray(); }
+		function virSubSetArray( a:Array ) { setPubStatArray( a ); }
+		function virSubGetArray() : Array { return getPubStatArray(); }
 
 
 		// access public static method of parent from private method of sub class
@@ -116,8 +116,8 @@ package DefaultClass {
 		
 
 		// access public static method of parent from public virtual method of sub class
-		public virtual function pubVirSubSetArray( a:Array ) { setPubStatArray( a ); }
-		virtual public function pubVirSubGetArray() : Array { return getPubStatArray(); }
+		public function pubVirSubSetArray( a:Array ) { setPubStatArray( a ); }
+		public function pubVirSubGetArray() : Array { return getPubStatArray(); }
 
 
 		// access public static method of parent from dynamic static method of sub class
@@ -131,8 +131,8 @@ package DefaultClass {
 		
 
 		// access public static method of parent from dynamic virtual method of sub class
-		virtual function dynVirSubSetArray( a:Array ) { setPubStatArray( a ); }
-		virtual function dynVirSubGetArray() : Array { return getPubStatArray(); }
+		function dynVirSubSetArray( a:Array ) { setPubStatArray( a ); }
+		function dynVirSubGetArray() : Array { return getPubStatArray(); }
 
 
 		// access public static method of parent from dynamic private method of sub class
@@ -155,7 +155,7 @@ package DefaultClass {
 		// This is an invalid case and compiler should report that a function cannot 
 		// be both final and virtual.
 		// This case will be moved to the negative test cases - Error folder.
-		// final virtual function finVirSubSetArray( a:Array ) { setPubStatArray( a ); }
+		// final function finVirSubSetArray( a:Array ) { setPubStatArray( a ); }
 		// virtual final function finVirSubGetArray() : Array { return getPubStatArray(); }
 
 
@@ -182,8 +182,8 @@ package DefaultClass {
 
 
 		// access public static method of parent from private virtual method of sub class
-		private virtual function privVirSubSetArray( a:Array ) { setPubStatArray( a ); }
-		virtual private function privVirSubGetArray() : Array { return getPubStatArray(); }
+		private function privVirSubSetArray( a:Array ) { setPubStatArray( a ); }
+		private function privVirSubGetArray() : Array { return getPubStatArray(); }
 
 		// function to test above from test scripts
 		public function testPrivVirSubArray( a:Array ) : Array {
@@ -197,7 +197,7 @@ package DefaultClass {
 		// This is an invalid case as a function cannot be both virtual and static.
 		// This test case will be moved to the Error folder as a negative test case.
 		// virtual static function virStatSubSetArray( a:Array ) { setPubStatArray( a ); }
-		// static virtual function virStatSubGetArray() : Array { return getPubStatArray(); }
+		// static function virStatSubGetArray() : Array { return getPubStatArray(); }
 
 
 
@@ -239,8 +239,8 @@ package DefaultClass {
 
 
 		// access public static property from virtual method of sub class
-		virtual function virSubSetDPArray( a:Array ) { pubStatArray = a; }
-		virtual function virSubGetDPArray() : Array { return pubStatArray; }
+		function virSubSetDPArray( a:Array ) { pubStatArray = a; }
+		function virSubGetDPArray() : Array { return pubStatArray; }
 
 
 		// access public static property from public static method of sub class
