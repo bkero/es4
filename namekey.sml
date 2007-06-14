@@ -58,7 +58,20 @@ fun decomposeNS ns =
 
 fun cmp (a,b) = Ustring.compare a b
 
-fun cmpNS (a,b) = List.collate cmp ((decomposeNS a), (decomposeNS b))
+(* FIXME: SML.NET doesn't implement List.collate *)
+fun collate (cmp:('a * 'a -> order))
+            ((ls1:'a list), (ls2:'a list))
+    : order =
+    (case (ls1, ls2) of
+     ([], []) => EQUAL
+       | ([], _) => LESS
+       | (_, []) => GREATER
+       | ((x::ls1'), (y::ls2')) =>
+         (case (cmp (x, y)) of
+          EQUAL => collate cmp (ls1', ls2')
+            | ord => ord))
+
+fun cmpNS (a,b) = collate cmp ((decomposeNS a), (decomposeNS b))
 
 fun compare (a:ord_key, b:ord_key) 
     : order =

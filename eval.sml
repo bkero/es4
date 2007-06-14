@@ -3236,7 +3236,7 @@ and invokeFuncClosure (callerThis:Mach.OBJ)
     : Mach.VAL =
     let
         val { func, this, env, allTypesBound } = closure
-        val Ast.Func { name, block, param=(paramFixtures, paramInits), ... } = func
+        val Ast.Func { name, block, param=Ast.Head (paramFixtures, paramInits), ... } = func
         val this = case this of 
                        SOME t => (trace ["using bound 'this' #", Int.toString (getObjId callerThis)]; t)
                      | NONE => (trace ["using caller 'this' #", Int.toString (getObjId callerThis)]; callerThis)
@@ -3353,7 +3353,7 @@ and catch (regs:Mach.REGS)
         then 
             let 
                 val fixs = valOf fixtures
-                val head = (valOf fixtures, [])
+                val head = Ast.Head (valOf fixtures, [])
                 val regs = evalHead regs head
                 val scope = (#scope regs)
                 val obj = (#this regs)
@@ -3615,8 +3615,8 @@ and evalObjInits (regs:Mach.REGS)
                  (head:Ast.HEAD)
     : unit = 
         let
-            val (fixtures,inits) = head
-            val tempRegs = evalHead regs (fixtures,[])
+            val (Ast.Head (fixtures,inits)) = head
+            val tempRegs = evalHead regs (Ast.Head (fixtures,[]))
             val temps = getScopeTemps (#scope regs)
         in
             evalInits tempRegs instanceObj temps inits
@@ -3712,7 +3712,7 @@ and initializeAndConstruct (classClosure:Mach.CLS_CLOSURE)
                   | SOME (Ast.Ctor { settings, superArgs, func }) => 
                     let 
                         val _ = push ("ctor " ^ (Ustring.toAscii (#id name))) args
-                        val Ast.Func { block, param=(paramFixtures,paramInits), ... } = func
+                        val Ast.Func { block, param=Ast.Head (paramFixtures,paramInits), ... } = func
                         val (varObj:Mach.OBJ) = Mach.newObjNoTag ()
                         val (varRegs:Mach.REGS) = extendScopeReg classRegs
                                                                   varObj 
@@ -3960,7 +3960,7 @@ and evalHead (regs:Mach.REGS)
              (head:Ast.HEAD)
     : Mach.REGS =
         let
-            val (fixtures,inits) = head
+            val (Ast.Head (fixtures,inits)) = head
             val obj = Mach.newObjNoTag ()
             val regs = extendScopeReg regs obj Mach.TempScope
             val {scope,...} = regs
@@ -4231,8 +4231,8 @@ and evalSwitchStmt (regs:Mach.REGS)
                 (* FIXME: This will change when switch stmt bodies are
                  * reorganized and get a proper head. *)
                 let
-                    val head = ([], case inits of NONE => [] 
-                                                | SOME i => i)
+                    val head = Ast.Head ([], case inits of NONE => [] 
+                                                         | SOME i => i)
                     val caseRegs = evalHead regs head
                     val first = evalBlock caseRegs body
                     fun evalRest accum [] = accum
@@ -4346,7 +4346,7 @@ and evalForInStmt (regs:Mach.REGS)
         let
             val iterable = evalIterable regs obj
             val iterator = callIteratorGet regs iterable
-            val forInRegs = evalHead regs (valOf fixtures, [])
+            val forInRegs = evalHead regs (Ast.Head (valOf fixtures, []))
 
             (*
                 The following code is ugly but it needs to handle the cases
@@ -4369,8 +4369,8 @@ and evalForInStmt (regs:Mach.REGS)
                         case e of 
                             Ast.InitExpr (target, head, inits) =>
                             (target, head, inits, NONE)
-                          | Ast.LetExpr {defs, body, head = SOME (f, i)} =>
-                            (Ast.Hoisted, (f, []), i, SOME body)
+                          | Ast.LetExpr {defs, body, head = SOME (Ast.Head (f, i))} =>
+                            (Ast.Hoisted, Ast.Head (f, []), i, SOME body)
                           | _ => LogErr.internalError ["evalForInStmt: invalid expr structure"]
                     end
                   | _ => LogErr.internalError ["evalForInStmt: invalid stmt structure"]
@@ -4432,7 +4432,7 @@ and evalForStmt (regs:Mach.REGS)
     case forStmt of
         { fixtures, init, cond, update, labels, body, ... } =>
         let
-            val forRegs = evalHead regs (valOf fixtures, [])
+            val forRegs = evalHead regs (Ast.Head (valOf fixtures, []))
 
             fun loop (accum:Mach.VAL option) =
                 let

@@ -1069,11 +1069,11 @@ and analyzeClassBody (env:ENV)
 
             fun initsFromStmt stmt =
                 case stmt of
-                     Ast.ExprStmt (Ast.InitExpr (target,(temp_fxtrs,temp_inits),inits)) => (temp_fxtrs,temp_inits@inits)
+                     Ast.ExprStmt (Ast.InitExpr (target,Ast.Head (temp_fxtrs,temp_inits),inits)) => (temp_fxtrs,temp_inits@inits)
                    | _ => LogErr.unimplError ["Defn.bindingsFromStmt"]
             
             val (fxtrs,inits) = ListPair.unzip(map initsFromStmt instanceStmts)
-            val instanceInits = (List.concat fxtrs, List.concat inits)
+            val instanceInits = Ast.Head (List.concat fxtrs, List.concat inits)
 
             val instanceType = {name=name, 
                                 nonnullable=nonnullable, 
@@ -1375,7 +1375,7 @@ and defFuncSig (env:ENV)
 *)
 
 and defFunc (env:ENV) (func:Ast.FUNC)
-    : ((Ast.FIXTURES * Ast.INITS) * Ast.EXPR list * Ast.FUNC) =
+    : (Ast.HEAD * Ast.EXPR list * Ast.FUNC) =
     let
         val _ = trace [">> defFunc"]
         val Ast.Func {name, fsig, block, ty, native, ...} = func
@@ -1388,13 +1388,13 @@ and defFunc (env:ENV) (func:Ast.FUNC)
         val (block, hoisted) = defBlock env block
         val _ = trace ["<< defFunc"]
     in 
-        ((settingsFixtures, settingsInits), superArgs, 
+        (Ast.Head (settingsFixtures, settingsInits), superArgs, 
          Ast.Func {name = name,
                    fsig = fsig,
                    block = block,
                    defaults = defaults,
                    ty = newTy,
-                   param = (List.foldl mergeFixtures paramFixtures hoisted, paramInits),
+                   param = Ast.Head (List.foldl mergeFixtures paramFixtures hoisted, paramInits),
                    native=native})
     end
 
@@ -1586,9 +1586,9 @@ trace2 ("openning package ",id);
                                                                         defaults=[],ctorInits=NONE,returnType=Ast.SpecialType Ast.Any,
                                                                         thisType=NONE,hasRest=false},
                                                           native=false,
-                                                          block=Ast.Block {pragmas=[],defns=[],head=SOME ([],[]),loc=NONE,
+                                                          block=Ast.Block {pragmas=[],defns=[],head=SOME (Ast.Head ([],[])),loc=NONE,
                                                                            body=[Ast.ReturnStmt targetRef]},
-                                                          param=([],[]),
+                                                          param=Ast.Head ([],[]),
                                                           defaults=[],
                                                           ty = {typeParams=[],
                                                                 params=[],
@@ -1614,7 +1614,7 @@ trace2 ("openning package ",id);
                                               block = Ast.Block
                                                         { pragmas = [],
                                                           defns = [],
-                                                          head = SOME ([], []),
+                                                          head = SOME (Ast.Head ([], [])),
                                                           body = [Ast.ExprStmt
                                                                       (Ast.SetExpr
                                                                          (Ast.Assign, targetRef,
@@ -1624,7 +1624,8 @@ trace2 ("openning package ",id);
                                                                                            openNamespaces = [[Name.noNS]]},
                                                                                loc = NONE}))],
                                                           loc = NONE},
-                                              param = ([(Ast.TempName 0,
+                                              param = Ast.Head
+                                                      ([(Ast.TempName 0,
                                                           Ast.ValFixture
                                                             { ty = Ast.SpecialType
                                                                      Ast.Any,
@@ -2065,7 +2066,7 @@ and defExpr (env:ENV)
             in
                 Ast.LetExpr { defs = defs,
                               body = newBody,
-                              head = SOME (f,i) }
+                              head = SOME (Ast.Head (f,i)) }
             end
 
           | Ast.NewExpr { obj, actuals } => 
@@ -2432,7 +2433,7 @@ and defStmt (env:ENV)
                                | _ => Ast.Local
                 val temps = defBindings env kind ns0 temps  (* ISSUE: kind and ns are irrelevant *)
             in
-                (Ast.ExprStmt (Ast.InitExpr (target, temps, (map (defInitStep env (SOME ns0)) inits))),[])
+                (Ast.ExprStmt (Ast.InitExpr (target, Ast.Head temps, (map (defInitStep env (SOME ns0)) inits))),[])
             end
 
           | Ast.ForInStmt fe => 
@@ -2747,7 +2748,7 @@ and defBlock (env:ENV)
         (Ast.Block { pragmas = pragmas,
                      defns = [],  (* clear definitions, we are done with them *)
                      body = body,
-                     head = SOME (List.foldl mergeFixtures unhoisted_defn_fxtrs unhoisted_pragma_fxtrs,inits),
+                     head = SOME (Ast.Head (List.foldl mergeFixtures unhoisted_defn_fxtrs unhoisted_pragma_fxtrs,inits)),
                      loc = loc},
          hoisted)
     end

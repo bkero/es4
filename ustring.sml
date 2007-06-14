@@ -123,7 +123,7 @@ fun internal_fromInt n = internal_fromString (fixNegative (Int.toString n))
 
 fun internal_fromInt32 n = internal_fromString (fixNegative (Int32.toString n))
 
-fun internal_fromCharCode n = #[Word.fromInt n]
+fun internal_fromCharCode n = Vector.fromList [Word.fromInt n]
 
 fun internal_stringLength us = Vector.length us
 

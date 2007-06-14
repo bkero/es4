@@ -1,0 +1,22 @@
+structure IntBinarySet=smlnj-lib/Util/int-binary-set.sml, IntBinaryMap=smlnj-lib/Util/int-binary-map.sml,
+  ListMergeSort=smlnj-lib/Util/list-mergesort.sml, LibBase=smlnj-lib/Util/lib-base.sml,
+  HashString=smlnj-lib/Util/hash-string.sml, HashTableRep=smlnj-lib/Util/hash-table-rep.sml,
+  IntRedBlackMap=smlnj-lib/Util/int-redblack-map.sml, IntRedBlackSet=smlnj-lib/Util/int-redblack-set.sml,
+  SplayTree=smlnj-lib/Util/splaytree.sml,Queue=smlnj-lib/Util/queue.sml,Fifo=smlnj-lib/Util/fifo.sml
+
+signature ORD_MAP=smlnj-lib/Util/ord-map-sig.sml, HASH_KEY=smlnj-lib/Util/hash-key-sig.sml, 
+  ORD_SET=smlnj-lib/Util/ord-set-sig.sml, ORD_KEY=smlnj-lib/Util/ord-key-sig.sml, SPLAY_TREE=smlnj-lib/Util/splaytree-sig.sml,
+  LIB_BASE=smlnj-lib/Util/lib-base-sig.sml, LIST_SORT=smlnj-lib/Util/listsort-sig.sml, 
+  MONO_HASH_TABLE=smlnj-lib/Util/mono-hash-table-sig.sml, 
+  MONO_DYNAMIC_ARRAY=smlnj-lib/Util/mono-dynamic-array-sig.sml,
+  QUEUE=smlnj-lib/Util/queue-sig.sml,FIFO=smlnj-lib/Util/fifo-sig.sml,
+  GRAPH_SCC=smlnj-lib/Util/graph-scc-sig.sml
+
+functor SplaySetFn=smlnj-lib/Util/splay-set-fn.sml, SplayMapFn=smlnj-lib/Util/splay-map-fn.sml,
+  HashTableFn=smlnj-lib/Util/hash-table-fn.sml, MonoArrayFn=smlnj-lib/Util/mono-array-fn.sml,
+  DynamicArrayFn=smlnj-lib/Util/dynamic-array-fn.sml, 
+  RedBlackMapFn=smlnj-lib/Util/redblack-map-fn.sml,
+  RedBlackSetFn=smlnj-lib/Util/redblack-set-fn.sml,
+  BinaryMapFn=smlnj-lib/Util/binary-map-fn.sml,
+  GraphSCCFn=smlnj-lib/Util/graph-scc-fn.sml
+
