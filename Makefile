@@ -65,14 +65,11 @@ HEAP_SUFFIX := $(call sml,SMLofNJ.SysInfo.getHeapSuffix())
 #MLBUILD_ARGS=-Ctdp.instrument=true -DBACKTRACE \$$smlnj-tdp/back-trace.cm
 #endif
 
-MLTON=/c/MinGW/bin/mlton
-MLTONCC=-cc-opt -Idecimal/decNumber
-
 # ------------------------------------------------------------
 # targets
 # ------------------------------------------------------------
 
-.PHONY: check checktc checkev wc clean cleanml profile decimal exec-release heap-release mlton
+.PHONY: check checktc checkev wc clean cleanml profile decimal exec-release heap-release
 
 es4-init.heap.$(HEAP_SUFFIX): $(wildcard *.sml) pretty-cvt.sml
 	$(MLBUILD) $(MLBUILD_ARGS) es4.cm Main.main es4-init.heap
@@ -162,7 +159,3 @@ heap/es4.tar.gz: dump-heap decimal
 	chmod u=rw,go=r heap/es4/es4.heap.$(HEAP_SUFFIX)
 	cd heap && tar cf es4.tar es4
 	gzip -v9 heap/es4.tar
-
-# TODO: this is temporary
-mlton:
-	$(MLTON) $(MLTONCC) es4.mlb $(DECIMAL_SOURCES)
