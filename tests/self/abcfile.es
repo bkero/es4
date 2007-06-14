@@ -680,7 +680,7 @@ package es4
         mb.setLocalCount(0);
         mb.setInitScopeDepth(0);
         mb.setMaxScopeDepth(0);
-        mb.setCode([]);
+        mb.setCode({ "serialize": function (bs) {}, "length": 0 });
         
         f.getBytes();
     }

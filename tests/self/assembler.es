@@ -120,40 +120,11 @@ package es4
             this.nextTemp = numberOfFormals;
         }
 
-        // Performance: turn this into list1(), list2(), etc, as many as we need (not many)
         private function list(name, ...rest) {
-            Debug.log_mode::log("  "+code.length+":" + name, code_out);
+            print(name + " " + rest.join(" "));
         }
 
-        private function nullOp(name, opcode) {
-            //stack(0);
-            list(name);
-            code.uint8(opcode);
-        }
-
-        private function constantOp(name, opcode, index) {
-            stack(1);
-            list(name, index);
-            code.uint8(opcode);
-            code.int32(index);
-        }
-
-        function IBkpt() { nullOp("bkpt", OP_bkpt) }
-        function INop() { nullOp("nop", OP_nop) }
-        function IThrow() { nullOp("throw", OP_throw) }
-
-    
-        function IPushString(str) { constantOp("PushString " + str, OP_pushstring, ConstantUtf8(str)) }
-        function IPushNumber(num:Number) { constantOp("PushNumber", OP_pushdouble, ConstantDouble(num)) }
-        function IPushInt(num:int) { constantOp("PushInt", OP_pushint, ConstantInt(num)) }
-        function INewFunction(method_index) { constantOp("NewFunction", OP_newfunction, method_index) }
-
-        private function stackOp(name, opcode, movement) {
-            stack(movement);
-            list(name);
-            code.uint8(opcode);
-        }
-
+        // Instructions that push one value, with a single opcode byte
         private function pushOne(name, opcode) {
             stack(1);
             list(name);
@@ -166,7 +137,14 @@ package es4
         function I_getlocal_1() { pushOne("getlocal_1", 0xD1) }
         function I_getlocal_2() { pushOne("getlocal_2", 0xD2) }
         function I_getlocal_3() { pushOne("getlocal_3", 0xD3) }
+        function I_newactivation() { pushOne("newactivation", 0x57) }
+        function I_pushfalse() { pushOne("pushfalse", 0x27) }
+        function I_pushnan() { pushOne("pushnan", 0x28) }
+        function I_pushnull() { pushOne("pushnull", 0x20) }
+        function I_pushtrue() { pushOne("pushtrue", 0x26) }
+        function I_pushundefined() { pushOne("pushundefined", 0x21) }
 
+        // Instructions that push one value, with an opcode byte followed by a u30 argument
         private function pushOneU30(name, opcode, v) {
             stack(1);
             list(name);
@@ -178,24 +156,16 @@ package es4
         function I_getlex(index) { pushOneU30("getlex", 0x60, index) }
         function I_getlocal(index) { pushOneU30("getlocal", 0x62, index) }
         function I_getscopeobject(index) { pushOneU30("getscopeobject", 0x65, index) }
+        function I_newcatch(index) { pushOneU30("newcatch", 0x5A, index) }
+        function I_newfunction(index) { pushOneU30("newfunction", 0x40, index) }
+        function I_pushdouble(index) { pushOneU30("pushdouble", 0x2F, index) }
+        function I_pushint(index) { pushOneU30("pushint", 0x2D, index) }
+        function I_pushnamespace(index) { pushOneU30("pushnamespace", 0x31, index) }
+        function I_pushshort(v) { pushOneU30("pushshort", 0x25, v) }
+        function I_pushstring(index) { pushOneU30("pushstring", 0x2C, index) }
+        function I_pushuint(index) { pushOneU30("pushuint", 0x2E, index) }
 
-        function ILoadThis() { pushOne("LoadThis", OP_getlocal0) }
-        function IPushNull() { pushOne("PushNull", OP_pushnull) }
-        function IPushTrue() { pushOne("PushTrue", OP_pushtrue) }
-        function IPushFalse() { pushOne("PushFalse", OP_pushfalse) }
-        function IPushUndefined() { pushOne("PushUndefined", OP_pushundefined) }
-
-        function IPop() { stackOp("Pop", OP_pop, -1) }
-        function ISwap() { stackOp("Swap", OP_swap, 0) }
-
-        function I_hasnext2(object_reg, index_reg) {
-            stack(1);
-            code.uint8(0x32);
-            code.uint30(object_reg);  // FIXME: maybe -- spec unclear
-            code.uint30(index_reg);   // FIXME: maybe -- spec unclear
-        }
-
-        /* Opcode without arguments, drop one stack slot */
+        // Instructions that pop one value, with a single opcode byte
         private function dropOne(name, opcode) {
             stack(-1);
             list(name);
@@ -211,23 +181,47 @@ package es4
         function I_divide() { dropOne("divide", 0xA3) }
         function I_dxnslate() { dropOne("dxnslate", 0x07) }
         function I_equals() { dropOne("Equals", 0xAB) }
-        function I_greaterequals() { dropOne("greaterequals", 0xAF) }  // FIXME: wrong for these
-        function I_greaterthan() { dropOne("greaterthan", 0xAF) }      //   to have same opcode!
+        function I_greaterequals() { dropOne("greaterequals", 0xB0) }
+        function I_greaterthan() { dropOne("greaterthan", 0xAF) }
         function I_hasnext() { dropOne("hasnext", 0x1F) }
         function I_in() { dropOne("in", 0xB4) }
         function I_instanceof() { dropOne("instanceof", 0xB1) }
         function I_istypelate() { dropOne("istypelate", 0xB3) }
+        function I_lessequals() { dropOne("lessequals", 0xAE) } 
+        function I_lessthan() { dropOne("lessthan", 0xAD) }
+        function I_lshift() { dropOne("lshift", 0xA5) }
+        function I_modulo() { dropOne("modulo", 0xA4) }
+        function I_multiply() { dropOne("multiply", 0xA2) }
+        function I_multiply_i() { dropOne("multiply_i", 0xC7) }
+        function I_nextname() { dropOne("nextname", 0x1E) }
+        function I_nextvalue() { dropOne("nextvalue", 0x23) }
+        function I_pop() { dropOne("pop", 0x29) }
+        function I_pushscope() { dropOne("pushscope", 0x30) }
+        function I_pushwith() { dropOne("pushwith", 0x1C) }
+        function I_returnvalue() { dropOne("returnvalue", 0x48) }
+        function I_rshift() { dropOne("rshift", 0xA6) }
+        function I_setlocal_0() { dropOne("setlocal_0", 0xD4) }
+        function I_setlocal_1() { dropOne("setlocal_1", 0xD5) }
+        function I_setlocal_2() { dropOne("setlocal_2", 0xD6) }
+        function I_setlocal_3() { dropOne("setlocal_3", 0xD7) }
+        function I_strictequals() { dropOne("strictequals", 0xAC) }
+        function I_subtract() { dropOne("subtract", 0xA1) }
+        function I_subtract_i() { dropOne("subtract_i", 0xC6) }
+        function I_throw() { dropOne("throw", 0x03) }
+        function I_urshift() { dropOne("urshift", 0xA7) }
 
-        function I_subtract()     { dropOne("subtract", OP_subtract) }
-        function IMultiply()      { dropOne("Multiply", OP_multiply) }
-        function IModulo()        { dropOne("Modulo", OP_modulo) }
-        function ILShift()        { dropOne("LShift", OP_lshift) }
-        function IRShift()        { dropOne("RShift", OP_rshift) }
-        function IURShift()       { dropOne("URShift", OP_urshift) }
-        function IStrictEquals()  { dropOne("StrictEquals", OP_strictequals) }
-        function ILessThan()      { dropOne("LessThan", OP_lessthan) }
-        function ILessEquals()    { dropOne("LessEquals", OP_lessequals) }
- 
+        // Instructions that pop one value, with an opcode byte followed by an u30 argument
+        private function dropOneU30(name, opcode, v) {
+            stack(-1);
+            list(name, v);
+            code.uint8(opcode);
+            code.uint30(v);
+        }
+
+        function I_setlocal(index) { dropOneU30("setlocal", 0x63, index) }
+        function I_setglobalslot(index) { dropOneU30("setglobalslot", 0x6F, index) }
+
+        // Instructions that do not change the stack height, with a single opcode byte
         private function dropNone(name, opcode)
         {
             //stack(0);
@@ -251,13 +245,19 @@ package es4
         function I_esc_xelem() { dropNone("esc_xattr", 0x71) }
         function I_increment() { dropNone("increment", 0x91) }
         function I_increment_i() { dropNone("increment_i", 0xC0) }
+        function I_kill() { dropNone("kill", 0x08) }
+        function I_label() { dropNone("label", 0x09) }
+        function I_negate() { dropNone("negate", 0x90) }
+        function I_negate_i() { dropNone("negate_i", 0xC4) }
+        function I_nop() { dropNone("nop", 0x02) }
+        function I_not() { dropNone("not", 0x96) }
+        function I_popscope() { dropNone("popscope", 0x1D) }
+        function I_returnvoid() { dropNone("returnvoid", 0x47) }
+        function I_swap() { dropNone("swap", 0x2B) }
+        function I_typeof() { dropNone("typeof", 0x95) }
 
-        function INot()       { dropNone("Not", OP_not) }
-        function ITypeOf()    { dropNone("TypeOf", OP_typeof) }
-        function INegate()    { dropNone("Negate", OP_negate) }
-        function IConvert_B() { dropNone("Convert_B", OP_convert_b) }
-        function IIncrement() { dropNone("Increment", OP_increment) }
-        
+        // Instructions that do not change the stack height, with an opcode byte 
+        // followed by a u30 argument
         private function dropNoneU30(name, opcode, x) {
             //stack(0)
             list(name, x);
@@ -275,13 +275,15 @@ package es4
         function I_getslot(index) { dropNoneU30("getslot", 0x6C, index) }
         function I_inclocal(reg) { dropNoneU30("inclocal", 0x92, reg) }
         function I_inclocal_i(reg) { dropNoneU30("inclocal_i", 0xC2, reg) }
-        function I_istype(index) { dropNoneU30("istype", 0xB2, reg) }
+        function I_istype(index) { dropNoneU30("istype", 0xB2, index) }
+        function I_newclass(index) { dropNoneU30("newclass", 0x58, index) }
 
+        // Conditional jumps that pop two words
         private function ifCond2(name, opcode, offset) {
             stack(-2);
             list(name, offset);
             code.uint8(opcode);
-            code.int24(offset);
+            code.int24(offset);  // FIXME
         }
 
         function I_ifeq(offset) { ifCond2("ifeq", 0x13, offset) }
@@ -297,47 +299,24 @@ package es4
         function I_ifstricteq(offset) { ifCond2("ifstricteq", 0x19, offset) }
         function I_ifstrictne(offset) { ifCond2("ifstrictne", 0x1A, offset) }
 
+        // Conditional jumps that pop one word
         private function ifCond1(name, opcode, offset) {
             stack(-1);
             list(name, offset);
             code.uint8(opcode);
-            code.int24(offset);
+            code.int24(offset);  // FIXME
         }
 
         function I_iffalse(offset) { ifCond1("iffalse", 0x12, offset) }
         function I_iftrue(offset) { ifCond1("iftrue", 0x11, offset) }
 
-
-        function IJump(lnum) {
-            stack(0);
-            list("Jump", lnum);
-            code.uint8(OP_jump);
-            code.int24(0);
+        function I_jump(offset) {
+            //stack(0);
+            list("Jump", offset);
+            code.uint8(0x10);
+            code.int24(offset);  // FIXME
         }
 
-        function IReturnValue() {
-            stack(-1);
-            list("ReturnValue");
-            code.uint8(OP_returnvalue);
-        }
-        
-        function IReturnVoid() { 
-            nullOp("ReturnVoid", OP_returnvoid);
-        }
-        
-        function INewActivation() {
-            stack(1);
-            list("NewActivation");
-            code.uint8(OP_newactivation);
-        }
-
-        function IGetScopeObject(n) {
-            stack(1);
-            list("GetScopeObject", n);
-            code.uint8(OP_getscopeobject);
-            code.int32(n);
-        }
-    
         private function call(name, opcode, nargs) {
             stack(1-(nargs+2)); /* pop function/receiver/args; push result */
             list(name, nargs);
@@ -369,7 +348,7 @@ package es4
         private function callMN(name, opcode, index, nargs, hasRTNS, hasRTName, isVoid=false) {
             /* pop receiver/NS?/Name?/args; push result? */
             stack((isVoid ? 0 : 1) - (1 + (hasRTNS ? 1 : 0) + (hasRTName ? 1 : 0) + nargs));
-            list(name + (hasRTNS ? "<NS>" : "") + (hasRName ? "<Name>" : ""), index, nargs);
+            list(name + (hasRTNS ? "<NS>" : "") + (hasRTName ? "<Name>" : ""), index, nargs);
             code.uint8(opcode);
             code.uint30(index);
             code.uint30(nargs);
@@ -407,7 +386,7 @@ package es4
         private function propOpU30(name, opcode, v, hasRTNS, hasRTName) {
             /* pop object/NS?/Name?; push result */
             stack(1 - (1 + (hasRTNS ? 1 : 0) + (hasRTName ? 1 : 0)));
-            list(name + (hasRTNS ? "<NS>" : "") + (hasRName ? "<Name>" : ""), v);
+            list(name + (hasRTNS ? "<NS>" : "") + (hasRTName ? "<Name>" : ""), v);
             code.uint8(opcode);
             code.uint30(v);
         }
@@ -428,60 +407,80 @@ package es4
         function I_findproperty(hasRTNS, hasRTName) { 
             /* pop NS?/Name?; push result */
             stack(1 - ((hasRTNS ? 1 : 0) + (hasRTName ? 1 : 0)));
-            list("findproperty" + (hasRTNS ? "<NS>" : "") + (hasRName ? "<Name>" : ""));
+            list("findproperty" + (hasRTNS ? "<NS>" : "") + (hasRTName ? "<Name>" : ""));
             code.uint8(0x5E);
         }
 
         function I_findpropstrict(index, hasRTNS, hasRTName) { 
             /* pop NS?/Name?; push result */
             stack(1 - ((hasRTNS ? 1 : 0) + (hasRTName ? 1 : 0)));
-            list("findpropstrict" + (hasRTNS ? "<NS>" : "") + (hasRName ? "<Name>" : ""), index);
+            list("findpropstrict" + (hasRTNS ? "<NS>" : "") + (hasRTName ? "<Name>" : ""), index);
             code.uint8(0x5D);
             code.uint30(index);
         }
 
-        function I_initproperty(index, hasRTNS, hasRTName) {
+        private function setprop(name, opcode, index, hasRTNS, hasRTName) {
             /* pop object/NS?/Name?/value */
             stack(- (2 + (hasRTNS ? 1 : 0) + (hasRTName ? 1 : 0)));
-            list("initproperty" + (hasRTNS ? "<NS>" : "") + (hasRName ? "<Name>" : ""), index);
-            code.uint8(0x68);
+            list(name + (hasRTNS ? "<NS>" : "") + (hasRTName ? "<Name>" : ""), index);
+            code.uint8(opcode);
             code.uint30(index);
         }
 
-        function IPushWith() {
-            stack(-1);
-            list("PushWith");
-            code.uint8(OP_pushwith);
-            scope_depth++;
+        function I_initproperty(index, hasRTNS, hasRTName) {
+            setprop("initproperty", 0x68, index, hasRTNS, hasRTName);
         }
-        
-        function IPushScope() {
-            stack(-1);
-            Debug.log_mode::log("  "+code.length+":PushScope", code_out)
-            makeByte(code,OP_pushscope)
-            scope_depth++
+        function I_setproperty(index, hasRTNS, hasRTName) {
+            setprop("setproperty", 0x61, index, hasRTNS, hasRTName);
         }
-        
-        function IPopScope() {
-            stack(0);
-            Debug.log_mode::log("  "+code.length+":PopScope", code_out)
-            makeByte(code,OP_popscope)
-            scope_depth--
-        }
-        
-        function INewArray(count) {
-            stack (1-count);
-            Debug.log_mode::log("  "+code.length+":NewArray "+count, code_out);
-            makeByte(code, OP_newarray);
-            makeInt32(code, count);
+        function I_setsuper(index, hasRTNS, hasRTName) {
+            setprop("setsuper", 0x05, index, hasRTNS, hasRTName);
         }
 
-        function IKill(n)
-        {
-            stack(0);
-            Debug.log_mode::log("  "+code.length+":Kill " + n, code_out)
-            makeByte(code,OP_kill)
-            makeInt32(code,n)
+        function I_hasnext2(object_reg, index_reg) {
+            stack(1);
+            code.uint8(0x32);
+            code.uint30(object_reg);
+            code.uint30(index_reg);
+        }
+
+        function I_lookupswitch(default_offset, cases) {
+            assert(cases.length > 0);
+            stack(-1);
+            list("lookupswitch", default_offset, cases);
+            code.uint8(0x1B);
+            code.int24(default_offset);  // FIXME
+            code.uint30(cases.length-1);
+            for ( var i=0 ; i < cases.length ; i++ )
+                code.int24(cases[i]);
+        }
+
+        function I_newarray(nargs) {
+            stack(1 - nargs);
+            list("newarray", nargs);
+            code.uint8(0x56);
+            code.uint30(nargs);
+        }
+
+        function I_newobject(nargs) {
+            stack(1 - (2 * nargs));
+            list("newobject", nargs);
+            code.uint8(0x55);
+            code.uint30(nargs);
+        }
+
+        function I_pushbyte(b) {
+            stack(1);
+            list("pushbyte", b);
+            code.uint8(0x24);
+            code.uint8(b);
+        }
+
+        function I_setslot(index) {
+            stack(-2);
+            list("setslot", index);
+            code.uint8(0x6D);
+            code.uint30(index);
         }
 
         function getTemp() {
@@ -493,7 +492,7 @@ package es4
 
         function killTemp(t) {
             freeTemps.push(t);
-            Kill(t);
+            I_kill(t);
         }
 
         private function stack(size:int):void {
@@ -512,9 +511,155 @@ package es4
     }
 
     public function testABCAssembler() {
-        var cp = new ABCConstantPool();
-        var as = new ABCAssembler(cp,0);
+        testCoverage();
+    }
 
-        as.I_returnvoid();
+    function testCoverage() {
+        var cp = new ABCConstantPool();
+        var asm = new ABCAssembler(cp,0);
+
+        asm.I_dup();
+        asm.I_getglobalscope();
+        asm.I_getlocal_0();
+        asm.I_getlocal_1();
+        asm.I_getlocal_2();
+        asm.I_getlocal_3();
+        asm.I_newactivation();
+        asm.I_pushfalse();
+        asm.I_pushnan();
+        asm.I_pushnull();
+        asm.I_pushtrue();
+        asm.I_pushundefined();
+        asm.I_getglobalslot(0);
+        asm.I_getlex(0);
+        asm.I_getlocal(0);
+        asm.I_getscopeobject(0);
+        asm.I_newcatch(0);
+        asm.I_newfunction(0);
+        asm.I_pushdouble(0);
+        asm.I_pushint(0);
+        asm.I_pushnamespace(0);
+        asm.I_pushshort(0);
+        asm.I_pushstring(0);
+        asm.I_pushuint(0);
+        asm.I_add();
+        asm.I_add_i();
+        asm.I_astypelate();
+        asm.I_bitand();
+        asm.I_bitor();
+        asm.I_bitxor();
+        asm.I_divide();
+        asm.I_dxnslate();
+        asm.I_equals();
+        asm.I_greaterequals();
+        asm.I_greaterthan();
+        asm.I_hasnext();
+        asm.I_in();
+        asm.I_instanceof();
+        asm.I_istypelate();
+        asm.I_lessequals();
+        asm.I_lessthan();
+        asm.I_lshift();
+        asm.I_modulo();
+        asm.I_multiply();
+        asm.I_multiply_i();
+        asm.I_nextname();
+        asm.I_nextvalue();
+        asm.I_pop();
+        asm.I_pushscope();
+        asm.I_pushwith();
+        asm.I_returnvalue();
+        asm.I_rshift();
+        asm.I_setlocal_0();
+        asm.I_setlocal_1();
+        asm.I_setlocal_2();
+        asm.I_setlocal_3();
+        asm.I_strictequals();
+        asm.I_subtract();
+        asm.I_subtract_i();
+        asm.I_throw();
+        asm.I_urshift();
+        asm.I_setlocal(0);
+        asm.I_setglobalslot(0);
+        asm.I_bitnot();
+        asm.I_checkfilter();
+        asm.I_coerce_a();
+        asm.I_coerce_s();
+        asm.I_convert_b();
+        asm.I_convert_d();
+        asm.I_convert_i();
+        asm.I_convert_o();
+        asm.I_convert_s();
+        asm.I_convert_u();
+        asm.I_decrement();
+        asm.I_decrement_i();
+        asm.I_esc_xattr();
+        asm.I_esc_xelem();
+        asm.I_increment();
+        asm.I_increment_i();
+        asm.I_kill();
+        asm.I_label();
+        asm.I_negate();
+        asm.I_negate_i();
+        asm.I_nop();
+        asm.I_not();
+        asm.I_popscope();
+        asm.I_returnvoid();
+        asm.I_swap();
+        asm.I_typeof();
+        asm.I_astype(0);
+        asm.I_coerce(0);
+        asm.I_debugfile(0);
+        asm.I_debugline(0);
+        asm.I_declocal(0);
+        asm.I_declocal_i(0);
+        asm.I_dxns(0);
+        asm.I_getslot(0);
+        asm.I_inclocal(0);
+        asm.I_inclocal_i(0);
+        asm.I_istype(0);
+        asm.I_newclass(0);
+        asm.I_ifeq(0);
+        asm.I_ifge(0);
+        asm.I_ifgt(0);
+        asm.I_ifle(0);
+        asm.I_iflt(0);
+        asm.I_ifne(0);
+        asm.I_ifnge(0);
+        asm.I_ifngt(0);
+        asm.I_ifnle(0);
+        asm.I_ifnlt(0);
+        asm.I_ifstricteq(0);
+        asm.I_ifstrictne(0);
+        asm.I_iffalse(0);
+        asm.I_iftrue(0);
+        asm.I_jump(0);
+        asm.I_call(0);
+        asm.I_construct(0);
+        asm.I_constructsuper(0);
+        asm.I_callmethod(0, 0);
+        asm.I_callstatic(0, 0);
+        asm.I_callsuper(0, 0, false, false);
+        asm.I_callproperty(0, 0, false, true);
+        asm.I_constructprop(0, 0, true, false);
+        asm.I_callproplex(0, 0, true, true);
+        asm.I_callsupervoid(0, 0, true, false);
+        asm.I_callpropvoid(0, 0, false, true);
+        asm.I_debug(0, 0, 0, 0);
+        asm.I_deleteproperty(0, true, false);
+        asm.I_getdescendants(0, false, true);
+        asm.I_getproperty(0, false, false);
+        asm.I_getsuper(0, true, true);
+        asm.I_findproperty(true, true);
+        asm.I_findpropstrict(0, false, false);
+        asm.I_initproperty(0, true, false);
+        asm.I_setproperty(0, false, true);
+        asm.I_setsuper(0, true, true);
+        asm.I_hasnext2(0, 0);
+        asm.I_lookupswitch(0, [1,2,3]);
+        asm.I_newarray(0);
+        asm.I_newobject(0);
+        asm.I_pushbyte(0);
+        asm.I_setslot(0);
     }
 }
