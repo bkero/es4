@@ -87,7 +87,7 @@ fun logTestCase name =
     print "*** TEST CASE";
     (case name of
           NONE => ()
-        | SOME s => print (" [" ^ s ^ "]"));
+        | SOME s => print (" [" ^ s ^ "]..."));
     print "\n****************************************\n\n"
 )
 
@@ -300,7 +300,12 @@ fun parse (source : INPUT_SOURCE) : Ast.PROGRAM =
 fun runTestCase (test : TEST_CASE) : TEST_RESULT =
 (
     logTestCase (#name test);
-    Boot.boot ();
+(*
+	print "booting ...\n";
+	Boot.boot (); 
+	print "booted\n";
+
+*)
     case test of
          { name, stage=Parse, arg=true, source } =>
          (
@@ -315,7 +320,8 @@ fun runTestCase (test : TEST_CASE) : TEST_RESULT =
          )
        | { name, stage=Verify, arg=true, source } =>
          (
-             (Verify.verifyProgram (parse source); (test, true))
+             print "Verify true\n";
+	     (Verify.verifyProgram (parse source); (test, true))
              handle e => (unexpectedExn e; (test, false))
          )
        | { name, stage=Verify, arg=false, source } =>
@@ -333,16 +339,21 @@ fun runTestCase (test : TEST_CASE) : TEST_RESULT =
 )
 
 fun run (filename : string) : TEST_RESULT list =
-    map runTestCase (parseScript filename)
-    handle e as (BadTestParameter (s, lineNum)) =>
-           (error ("bad test parameter (" ^ s ^ ")") filename lineNum;
-            raise e)
-         | e as (MixedContent lineNum) =>
-           (error ("combined external and inline source") filename lineNum;
-            raise e)
-         | e as (ExtraLink lineNum) =>
-           (error ("multiple external sources") filename lineNum;
-            raise e)
+    let in
+	print "booting ...\n";
+	Boot.boot (); 
+	print "booted\n";
+	map runTestCase (parseScript filename)
+	handle e as (BadTestParameter (s, lineNum)) =>
+               (error ("bad test parameter (" ^ s ^ ")") filename lineNum;
+		raise e)
+             | e as (MixedContent lineNum) =>
+               (error ("combined external and inline source") filename lineNum;
+		raise e)
+             | e as (ExtraLink lineNum) =>
+               (error ("multiple external sources") filename lineNum;
+		raise e)
+    end
 
 fun exitCode (b : bool) : int = if b then 0 else 1
 
