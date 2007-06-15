@@ -95,6 +95,7 @@
         }
 
         function eat (ts,tc) {
+            print("eating",Token::tokenText(tc));
             let tk = hd (ts);
             if (tk === tc) {
                 return tl (ts);
@@ -518,8 +519,8 @@
             case Token::Identifier:
                 switch (hd (tl (ts))) {
                 case Token::Dot:
-                    var [ts1,nd1] = path (tl (tl (ts)), nd.push(Token::tokenText(ts[0])));
-                    var [ts2,nd2] = propertyName (eat (ts1,Token::Dot));
+                    var [ts1,nd1] = path (tl (tl (ts)), [Token::tokenText(ts[0])]);
+                    var [ts2,nd2] = propertyName (ts1);
                     nd2 = new Ast::UnresolvedPath (nd1,nd2);
                     break;
                 default:
@@ -542,24 +543,28 @@
                 Path  .  Identifier
         */
 
-        function path (ts: TOKENS, nd: [Ast::IDENT])
+        function path (ts: TOKENS, nd /*: [Ast::IDENT]*/ )  /* FIXME: verifier bug */
             : [TOKENS, [Ast::IDENT]]
         {
             enter("Parser::path ", ts);
 
+            var ts1,nd1;
+            var temp;
+
             switch (hd (ts)) {
             case Token::Identifier:
                 switch (hd (tl (ts))) {
-                case Token::Dot: 
-                    var [ts1,nd1] = path (tl (tl (ts)), nd.push(Token::tokenText(ts[0])));
+                case Token::Dot:
+                    var temp = nd.concat(Token::tokenText(ts[0]));
+                    var [ts1,nd1] = path (tl (tl (ts)), temp);
                     break;
                 default:
-                    var [ts1,nd1] = [ts,nd]
+                    var [ts1,nd1] = [ts,nd];
                     break;
                 }
                 break;
             default:
-                var [ts1,nd1] = [ts,nd]
+                var [ts1,nd1] = [ts,nd];
                 break;
             }
 
@@ -1180,7 +1185,7 @@
         function primaryExpression(ts:TOKENS)
             : [TOKENS,Ast::EXPR]
         {
-            Debug::enter("Parser::primaryExpression");
+            Debug::enter("Parser::primaryExpression ",ts);
 
             var ts1, nd1;
 
@@ -1236,11 +1241,11 @@
 //            }
             default:
                 var [ts1,nd1] = primaryName (ts);
-                nd1 = new Ast::LexicalRef (nd1)
+                nd1 = new Ast::LexicalRef (nd1);
                 break;
             }
 
-            Debug::exit("Parser::primaryExpression",nd1);
+            Debug::exit("Parser::primaryExpression ",ts1);
             return [ts1,nd1];
         }
 
@@ -4930,7 +4935,7 @@
 
             let [ts1,nd1] = primaryExpression (ts);
 
-            Debug::exit("Parse::directives ", nd1);
+            Debug::exit("Parse::directives ", ts1);
             return [ts1, new Ast::ExprStmt (nd1)];
         }
 
@@ -4961,13 +4966,12 @@
 
             switch (hd (ts2)) {
             case Token::EOS:
-                print("found eos")
                 break;
             default:
                 throw "extra tokens after end of program: " + ts2;
             }
 
-            Debug::exit ("Parse::program ", nd2)
+            Debug::exit ("Parse::program ", ts2);
             return [ts2, {packages: nd1, stmts: nd2, fixtures: null}];
         }
     }
