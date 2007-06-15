@@ -20,6 +20,22 @@ ISSUES
 
 ###
 
+JUN-13-2007
+
+SELF HOSTED COMPILER
+
+incrementally expand capabilities of esc until it is compiling
+the whole language
+
+- expressions
+- definitions
+- statements
+- pragmas
+- self
+- full test suite
+
+###
+
 JUN-09-2007
 
 CLASSES AND INTERFACES

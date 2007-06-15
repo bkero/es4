@@ -670,7 +670,7 @@ and propertyIdentifier ts =
             let
                 val (ts2,nd2) = typeExpressionList (tl ts1)
             in case ts2 of
-                (GreaterThan, _) :: _ =>
+                (GreaterThan, _) :: _ =>   (* FIXME: what about >> and >>> *)
                     (trace(["<< propertyIdentifier with next=",tokenname(hd(tl ts2))]); 
                     (tl ts2,Ast.TypeIdentifier {ident=nd1,typeArgs=nd2}))
               | _ => error ["unknown final token of parametric type expression"]

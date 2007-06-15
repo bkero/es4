@@ -939,13 +939,21 @@ fun readFile (regs:Mach.REGS)
                 val stream = TextIO.openIn filename
             in
                 fn _ => case TextIO.inputLine stream of
-                            SOME line => (trace ["read line ", line]; Ustring.fromSource line)
-                          | NONE => (TextIO.closeIn stream; Ustring.emptySource)
+                            SOME line => (trace ["read line ", line]; SOME line)
+                          | NONE => (TextIO.closeIn stream; NONE)
             end
 
         val fname = Ustring.toFilename (nthAsUstr vals 0)
         val reader = mkReader fname
-        val str = implode (map (Ustring.wcharToChar) (reader())) (* FIXME: there's got to be an easier way! *)
+
+        fun readSrc (src: Ustring.SOURCE)
+            : Ustring.SOURCE = 
+            case reader() of
+                NONE => src
+              | SOME newSrc => readSrc (src@(Ustring.fromSource(newSrc)))
+
+        val str = implode (map (Ustring.wcharToChar) (readSrc(Ustring.emptySource)))
+
     in
         Eval.newString (Ustring.fromString(str))
     end

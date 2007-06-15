@@ -94,12 +94,25 @@
              return Token::tokenKind (ts[0]);
         }
 
-        function match (ts,tc) {
+        function eat (ts,tc) {
             let tk = hd (ts);
             if (tk === tc) {
                 return tl (ts);
             }
             throw "expecting "+Token::tokenText(tc)+" found "+Token::tokenText(tk);
+        }
+
+        /*
+          Replace the first token in the stream with another one. Raise an exception
+          if the first token is not of a specified kind.
+        */
+
+        function swap (ts,t0,t1) {
+            let tk = hd (ts);
+            if (tk === t0) {
+                return ts[0] = t1;
+            }
+            throw "expecting "+Token::tokenText(t0)+" found "+Token::tokenText(tk);
         }
 
         function tl (ts:TOKENS) : TOKENS ts.slice (1,ts.length);
@@ -194,7 +207,7 @@
         */
         
         function qualifier(ts)
-            : [TOKENS, Ast::IDENT]
+            : [TOKENS, (Ast::IDENT,Ast::NAMESPACE)]
         {
             enter("Parse::qualifier ",ts);
 
@@ -210,8 +223,8 @@
                 break;
             case Token::Mult:
             case Token::Identifier:
-                let str = Token::tokenText (hd(ts));
-                var [ts1,nd1] = [tl (ts), new Ast::Identifier (str)];
+                let id = Token::tokenText (hd(ts));
+                var [ts1,nd1] = [tl (ts), id];
                 break;
             default:
                 throw "invalid qualifier";
@@ -259,88 +272,89 @@
         }
 
         /*
-            SimpleQualifiedIdentifier
-                *
-                Identifier
-                Qualifier  ::  *
-                Qualifier  ::  Identifier
-                Qualifier  ::  ReservedIdentifier
-                Qualifier  ::  Brackets
-                intrinsic  ::  OverloadedOperator
+          QualifiedNameIdentifier
+              *
+              Identifier
+              ReservedIdentifier
+              String
+              Number
+              Brackets
         */
         
-        function simpleQualifiedIdentifier (ts: TOKENS)
+        function qualifiedNameIdentifier (ts1: TOKENS, nd1: Ast::EXPR)
             : [TOKENS, Ast::IDENT_EXPR]
         {
-            enter("Parse::simpleQualifiedIdentifier ", ts);
+            enter("Parse::qualifiedNameIdentifier ", ts1);
 
-            var [ts1,nd1] = qualifier (ts);
-            var [ts4,nd4] = [null, null];
-            var [ts3,nd3] = [null, null];
-            switch type (nd1) {
-            case (nd1: Ast::RESERVED_NAMESPACE) {
-                let ts2 = match (ts1, Token::DoubleColon);
-                switch (hd(ts2)) {
+            var ts2,nd2;
+            var ts3,nd3;
+
+            switch (hd(ts1)) {
+                case Token::Mult:
+                    var [ts2,nd2] = [tl(ts1), new Ast::Identifier ("*")];
+                    var [ts3,nd3] = [ts1, new Ast::QualifiedIdentifier (nd1,nd2)];
+                    break;
+                case Token::StringLiteral:
+                case Token::DecimalLiteral:
+                    let str = Token::tokenText (hd (ts1));
+                    var [ts2,nd2] = [tl(ts1), new Ast::Identifier (str)];
+                    var [ts3,nd3] = [ts1, new Ast::QualifiedIdentifier (nd1,nd2)];
+                    break;
+                    /*
                 case Token::LeftBracket:
-                    var [ts3,nd3] = brackets (ts2);
-                    var [ts4,nd4] = [ts3,new Ast::QualifiedExpression (nd1,nd3)];
+                    var [ts2,nd2] = brackets (ts1);
+                    var [ts3,nd3] = [ts1, new Ast::QualifiedExpression (nd1,nd2)];
                     break;
+                    */
                 default:
-                    var [ts3,nd3] = identifier (ts2);  // fixme: qualifiedNameIdentifier
-                    var [ts4,nd4] = [ts3, new Ast::QualifiedIdentifier (new Ast::LiteralExpr (new Ast::LiteralNamespace (nd1)),nd3)];
+                    var [ts2,nd2] = identifier (ts1);
+                    var [ts3,nd3] = [ts2, new Ast::QualifiedIdentifier (nd1,nd2)];
                     break;
-                }
-                /*
-                match(doublecolon_token);
-                if( lookahd(leftbracket_token) )  // @ns::[expr]
-                {
-                    var second = parseBrackets();
-                    var result = <QualifiedExpression><Qualifier>{first}</Qualifier><Expr>{second}</Expr></QualifiedExpression>
-                }
-                else
-                {
-                    var second = parsePropertyIdentifier()
-                    var result = <QualifiedIdentifier><Qualifier>{first}</Qualifier>{second}</QualifiedIdentifier>
-                }
-                */
-            }
-            default {
-                /*
-                  if( lookahd(doublecolon_token) )
-                  {
-                  match(doublecolon_token);
-                
-                  first = <Get kind="lexical">{first}</Get>
-
-                  if( lookahead(leftbracket_token) )  // @ns::[expr]
-                  {
-                  var second = parseBrackets();
-                  var result = <QualifiedExpression><Qualifier>{first}</Qualifier><Expr>{second}</Expr></QualifiedExpression>
-                  }
-                  else
-                  {
-                  var second = parsePropertyIdentifier()
-                  var result = <QualifiedIdentifier><Qualifier>{first}</Qualifier>{second}</QualifiedIdentifier>
-                  }
-                  }
-                  else
-                  {
-                  var result = first;
-                  }
-                */
-            }
             }
 
-            exit("Parse::simpleQualifiedIdentifier ", nd4);
-            return [ts4,nd4];
+            exit("Parse::qualifiedNameIdentifier ", nd3);
+            return [ts3,nd3];
         }
 
-//        /*
-//            ExpressionQualifiedIdentifier
-//                ParenListExpression :: PropertyIdentifier
-//                ParenListExpression :: Brackets
-//        */
-//        
+        /*
+          SimpleQualifiedName
+              Identifier
+              Qualifier  ::  QualifiedNameIdentifier
+        */
+        
+        function simpleQualifiedName (ts: TOKENS)
+            : [TOKENS, Ast::IDENT_EXPR]
+        {
+            enter ("Parser::simpleQualifiedName ", ts);
+
+            var [ts1,nd1] = qualifier (ts);
+            var [ts2,nd2] = [null, null];
+            switch (hd (ts1)) {
+            case Token::DoubleColon:
+                switch type (nd1) {
+                case (ns:Ast::NAMESPACE) {
+                    nd1 = new Ast::LiteralExpr (new Ast::LiteralNamespace (nd1));
+                }
+                case (id:Ast::IDENT) {
+                    nd1 = new Ast::LexicalRef (new Ast::Identifier (nd1))
+                }
+                }
+                var [ts2,nd2] = qualifiedNameIdentifier (tl(ts1), nd1);
+                break;
+            default:
+                var [ts2,nd2] = [ts1,new Ast::Identifier (nd1)];
+                break;
+            }
+
+            exit ("Parser::simpleQualifiedName ", ts2);
+            return [ts2,nd2];
+        }
+
+        /*
+            ExpressionQualifiedName
+                ParenListExpression :: QualifiedName
+        */
+        
 //        function xpressionQualifiedIdentifier()
 //        {
 //            Debug::enter("parseExpressionQualifiedIdentifier")
@@ -362,29 +376,30 @@
 //            return result
 //        }
 //
-//        /*
-//            NonAttributeQualifiedIdentifier    
-//                SimpleQualifiedIdentifier
-//                ExpressionQualifiedIdentifier
-//        */
-//        
-//        function parseNonAttributeQualifiedIdentifier()
-//        {
-//            Debug::enter("parseNonAttributeQualifiedIdentifier")
-//
-//            if( lookahead(leftparen_token) )
-//            {
-//                var result = parseExpressionQualifiedIdentifier()
-//            }
-//            else
-//            {
-//                var result = parseSimpleQualifiedIdentifier();
-//            }
-//
-//            Debug::exit("parseNonAttributeQualifiedIdentifier",result)
-//            return result
-//        }
-//
+        /*
+            NonAttributeQualifiedIdentifier    
+                SimpleQualifiedName
+                ExpressionQualifiedName
+        */
+        
+        function nonAttributeQualifiedName (ts: TOKENS)
+            : [TOKENS, Ast::IDENT_EXPR]
+        {
+            enter("Parser::nonAttributeQualifiedName ", ts);
+
+            var ts1,nd1;
+            switch (hd (ts)) {
+            case Token::LeftParen:
+                var [ts1,nd1] = expressionQualifiedIdentifier (ts);
+                break;
+            default:
+                var [ts1,nd1] = simpleQualifiedName (ts);
+            }
+
+            exit ("Parser::nonAttributeQualifiedName ", ts1);
+            return [ts1,nd1];
+        }
+
 //        /*
 //            AttributeQualifiedIdentifier    
 //                @ Brackets
@@ -410,153 +425,148 @@
 //            return result
 //        }
 //
-//        /*
-//            QualifiedIdentifier    
-//                PackageIdentifier . Identifier
-//                NonAttributeQualifiedIdentifier
-//        */
-//
-//        function parseQualifiedIdentifier()
-//        {
-//            Debug::enter("parseQualifiedIdentifier")
-//
-//            var is_attr
-//            if( lookahead(at_token) )
-//            {
-//                var result = parseAttributeIdentifier()
-//            }
-//            else
-//            if( lookahead(packageidentifier_token) )
-//            {
-//                var pkg_name = scan.tokenText(match(packageidentifier_token))
-//                var first  = <PackageIdentifier name={pkg_name}/>
-//                match(dot_token)
-//                var second = parseIdentifier()
-//                var def_name = second.@name
-//                if( !isImported(pkg_name,def_name) )
-//                {
-//                    throw "package qualified reference to unimported name "+pkg_name+"."+def_name
-//                }
-//                var result   = <QualifiedIdentifier><Qualifier>{first}</Qualifier>{second}</QualifiedIdentifier>
-//            }
-//            else
-//            {
-//                var result = parseNonAttributeQualifiedIdentifier()
-//            }
-//
-//            Debug::exit("parseQualifiedIdentifier",result)
-//            return result
-//        }
-//
-//        /*
-//
-//        SimpleTypeIdentifier    
-//            PackageIdentifier  .  Identifier
-//            NonAttributeQualifiedIdentifier
-//
-//        ParameterisedTypeIdentifier    
-//            SimpleTypeIdentifier
-//            SimpleTypeIdentifier  .<  TypeExpressionList  >
-// 
-//        TypeIdentifier
-//            ParameterisedTypeIdentifier
-//            ParameterisedTypeIdentifier  !
-//            ParameterisedTypeIdentifier  ?
-//            
-//        TypeIdentifer may occur wherever a PrimaryExpression may occur. This includes as a base of
-//        a property reference, in a new expression, in a call expression. TypeIdentifiers shall not
-//        be used as the identifier of an object reference (e.g. o.T)
-// 
-//        */
-//        
-//        function parseSimpleTypeIdentifier()
-//        {
-//            Debug::enter("parseSimpleTypeIdentifier")
-//
-//            if( lookahead(packageidentifier_token) )
-//            {
-//                var pkg_name = scan.tokenText(match(packageidentifier_token))
-//                var first  = <PackageIdentifier name={pkg_name}/>
-//                match(dot_token)
-//                var second = parseIdentifier()
-//                var def_name = second.@name
-//
-//                if( !isImported(pkg_name,def_name) )
-//                {
-//                    throw "package qualified reference to unimported name "+pkg_name+"."+def_name
-//                }
-//                var result = <QualifiedIdentifier><Qualifier>{first}</Qualifier>{second}</QualifiedIdentifier>
-//            }
-//            else
-//            {
-//                var result = parseNonAttributeQualifiedIdentifier()
-//            }
-//
-//            Debug::exit("parseSimpleTypeIdentifier",result)
-//            return result
-//        }
-//
-//        private var rightanglesseen : int = 0
-//        private var rightanglesneeded : int = 0
-//
-//        function parseTypeIdentifier()
-//        {
-//            Debug::enter("parseTypeIdentifier")    
-//
-//            var first = parseSimpleTypeIdentifier()
-//            if( lookahead(leftdotangle_token) )
-//            {
-//                match(leftdotangle_token)
-//                rightanglesneeded++
-//
-//                var second = parseTypeExpressionList()
-//                
-//                if( lookahead(unsignedrightshift_token) )
-//                {
-//                    match(unsignedrightshift_token)
-//                    rightanglesseen += 2
-//                }
-//                else 
-//                if( lookahead(rightshift_token) )
-//                {
-//                    match(rightshift_token)
-//                    rightanglesseen += 1
-//                }
-//                else 
-//                if( lookahead(greaterthan_token) )
-//                {
-//                    match(greaterthan_token)
-//                }
-//                else 
-//                if( rightanglesseen <= rightanglesneeded )
-//                {
-//                    rightanglesseen--
-//                }
-//
-//                rightanglesneeded--
-//
-//                if( rightanglesneeded < 0 )
-//                {
-//                    throw "too few right angle braces in type identifier"
-//                }
-//                else
-//                if( rightanglesseen > rightanglesneeded || 
-//                    (rightanglesneeded == 0 && (lookahead(greaterthan_token) || lookahead(rightshift_token) || lookahead(unsignedrightshift_token))) )
-//                {
-//                    throw "too many right angle braces in type identifier"
-//                }
-//
-//                var result = <TypeIdentifier>{first}<TypeArguments>{second}</TypeArguments></TypeIdentifier>
-//            }
-//            else
-//            {
-//                var result = first
-//            }
-//
-//            Debug::exit("parseTypeIdentifier",result)
-//            return result
-//        }
-//
+        /*
+            QualifiedName
+                AttributeName
+                NonAttributeQualifiedName
+        */
+
+        function qualifiedName (ts: TOKENS)
+            : [TOKENS, Ast::IDENT_EXPR]
+        {
+            enter("Parser::qualifiedName ", ts);
+
+            var ts1, nd1;
+            switch (hd (ts)) {
+            case Token::LeftParen:
+                var [ts1,nd1] = expressionQualifiedIdentifier (ts);
+                break;
+            default:
+                var [ts1,nd1] = simpleQualifiedName (ts);
+            }
+
+            exit ("Parser::qualifiedName ", ts1);
+            return [ts1,nd1];
+        }
+
+        /*
+            PropertyName
+                NonAttributeQualifiedName
+                NonAttributeQualifiedName  .<  TypeExpressionList  >
+                (  TypeExpression  )  .<  TypeExpressionList  >
+
+            e.g.
+                A.<B.<C.<t>,D.<u>>>
+        */
+
+        function propertyName (ts: TOKENS)
+            : [TOKENS, Ast::IDENT_EXPR]
+        {
+            enter("Parser::propertyName ", ts);
+
+            var ts1, nd1;
+            switch (hd (ts)) {
+            case Token::LeftParen:
+                var [ts1,nd1] = typeExpression (tl (ts));
+                ts1 = eat (ts1,Token::RightParen);
+                break;
+            default:
+                var [ts1,nd1] = nonAttributeQualifiedName (ts);
+            }
+
+            var ts2, nd2;
+            switch (hd (ts1)) {
+            case Token::LeftDotAngle:
+                var [ts2,nd2] = typeExpressionList (tl (ts1));
+                switch (hd (ts2)) {
+                case Token::UnsignedRightShift:
+                    // downgrade >>> to >> to eat one >
+                    var ts2 = swap (ts2,Token::UnsignedRightShift,Token::RightShift);
+                    break;
+                case Token::RightShift:
+                    // downgrade >> to > to eat one >
+                    var ts2 = swap (ts2,Token::RightShift,Token::GreaterThan);
+                    break;
+                default:
+                    var ts2 = eat (ts2,Token::GreaterThan);
+                    break;
+                }
+                break;
+            default:
+                var [ts2,nd2] = [ts1,nd1];
+                break;
+            }
+
+            exit ("Parser::propertyName ", ts2);
+            return [ts2,nd2];
+        }
+
+        /*
+            PrimaryName
+                Path  .  PropertyName
+                PropertyName
+        */
+
+        function primaryName (ts: TOKENS)
+            : [TOKENS, Ast::IDENT_EXPR]
+        {
+            enter("Parser::primaryName ", ts);
+
+            var ts1,nd1;
+            var ts2,nd2;
+            switch (hd (ts)) {
+            case Token::Identifier:
+                switch (hd (tl (ts))) {
+                case Token::Dot:
+                    var [ts1,nd1] = path (tl (tl (ts)), nd.push(Token::tokenText(ts[0])));
+                    var [ts2,nd2] = propertyName (eat (ts1,Token::Dot));
+                    nd2 = new Ast::UnresolvedPath (nd1,nd2);
+                    break;
+                default:
+                    var [ts2,nd2] = propertyName (ts);
+                    break;
+                }
+                break;
+            default:
+                var [ts2,nd2] = propertyName (ts);
+                break;
+            }
+
+            exit ("Parser::priamryName ", ts2);
+            return [ts2,nd2];
+        }
+
+        /*
+            Path
+                Identifier
+                Path  .  Identifier
+        */
+
+        function path (ts: TOKENS, nd: [Ast::IDENT])
+            : [TOKENS, [Ast::IDENT]]
+        {
+            enter("Parser::path ", ts);
+
+            switch (hd (ts)) {
+            case Token::Identifier:
+                switch (hd (tl (ts))) {
+                case Token::Dot: 
+                    var [ts1,nd1] = path (tl (tl (ts)), nd.push(Token::tokenText(ts[0])));
+                    break;
+                default:
+                    var [ts1,nd1] = [ts,nd]
+                    break;
+                }
+                break;
+            default:
+                var [ts1,nd1] = [ts,nd]
+                break;
+            }
+
+            exit ("Parser::path ", ts1);
+            return [ts1,nd1];
+        }
+
 //        function parseXMLLiteral()
 //        {
 //            throw "XMLLiteral not implemented"
@@ -1147,88 +1157,52 @@
 //            return result
 //        }
 //
-//        function parseCastExpression()
-//        {
-//            Debug::enter("parseCastExpression")
-//
-//            if( lookahead(cast_token) )
-//            {
-//                match(cast_token)
-//                var first = parseTypeExpression()
-//                var second = parseParenListExpression()
-//                var result = <Cast>{first}<Expr>{second}</Expr></Cast>
-//            }
-//            else
-//            if( lookahead(to_token) )
-//            {
-//                match(to_token)
-//                var first = parseTypeExpression()
-//                var second = parseParenListExpression()
-//                var result = <to>{first}<Expr>{second}</Expr></to>
-//            }
-//
-//            Debug::exit("parseCastExpression",result)
-//            return result
-//        }
-//
-//        /*
-//
-//        PrimaryExpression    
-//            null
-//            true
-//            false
-//            Number
-//            String
-//            this
-//            RegularExpression
-//            TypeIdentifier
-//            AttributeQualifiedIdentifier
-//            XMLInitialiser
-//            ParenListExpression
-//            ArrayLiteral
-//            ObjectLiteral
-//            FunctionExpression
-//            cast  TypeExpression  ParenListExpression
-//        
-//        */
-//
-//        function parsePrimaryExpression()
-//        {
-//            Debug::enter("parsePrimaryExpression")
-//            
-//            if( lookahead(null_token) )
-//            {
-//                match(null_token)
-//                var result = <LiteralNull/>
-//            }
-//            else 
-//            if( lookahead(true_token) )
-//            {
-//                match(true_token)
-//                var result = <LiteralBoolean value="true"/>
-//            }
-//            else 
-//            if( lookahead(false_token) )
-//            {
-//                match(false_token)
-//                var result = <LiteralBoolean value="false"/>
-//            }
-//            else 
-//            if( lookahead(numberliteral_token) )
-//            {
-//                var result = <LiteralNumber value={scan.tokenText(match(numberliteral_token))}/>
-//            }
-//            else
-//            if( lookahead(stringliteral_token) )
-//            {
-//                var result = <LiteralString value={scan.tokenText(match(stringliteral_token))}/>
-//            }
-//            else 
-//            if( lookahead(this_token) )
-//            {
-//                match(this_token)
-//                var result = <This/>
-//            }
+
+        /*
+
+        PrimaryExpression    
+            null
+            true
+            false
+            NumberLiteral
+            StringLiteral
+            this
+            RegularExpression
+            XMLInitialiser
+            ParenListExpression
+            ArrayLiteral
+            ObjectLiteral
+            FunctionExpressionb
+            AttributeIdentifier
+            PrimaryIdentifier
+        */
+
+        function primaryExpression(ts:TOKENS)
+            : [TOKENS,Ast::EXPR]
+        {
+            Debug::enter("Parser::primaryExpression");
+
+            var ts1, nd1;
+
+            switch (hd (ts)) {
+            case Token::Null:
+                var [ts1,nd1] = [tl (ts), new LiteralExpr (new LiteralNull ())];
+                break;
+            case Token::True:
+                var [ts1,nd1] = [tl (ts), new LiteralExpr (new LiteralBoolean (true))];
+                break;
+            case Token::False:
+                var [ts1,nd1] = [tl (ts), new LiteralExpr (new LiteralBoolean (false))];
+                break;
+            case Token::DecimalLiteral:
+                var [ts1,nd1] = [tl (ts), new LiteralExpr (new LiteralDecimal (Token::tokenText (hd (ts))))];
+                break;
+            case Token::StringLiteral:
+                var [ts1,nd1] = [tl (ts), new LiteralExpr (new LiteralString (Token::tokenText (hd (ts))))];
+                break;
+            case Token::This:
+                var [ts1,nd1] = [tl (ts), new ThisExpr ()];
+                break;
 //            else
 //            if( lookahead(regexpliteral_token) )
 //            {
@@ -1260,26 +1234,16 @@
 //            {
 //                var result = parseObjectLiteral()
 //            }
-//            else
-//            if( lookahead(cast_token) || lookahead(to_token) )
-//            {
-//                var result = parseCastExpression()
-//            }
-//            else
-//            if( lookahead(at_token) )
-//            {
-//                var temp = parseAttributeIdentifier()
-//                var result = <Get kind="lexical">{temp}</Get>
-//            }
-//            else
-//            {
-//                var temp = parseTypeIdentifier()
-//                var result = <Get kind="lexical">{temp}</Get>
-//            }
-//            
-//            Debug::exit("parsePrimaryExpression",result)
-//            return result
-//        }
+            default:
+                var [ts1,nd1] = primaryName (ts);
+                nd1 = new Ast::LexicalRef (nd1)
+                break;
+            }
+
+            Debug::exit("Parser::primaryExpression",nd1);
+            return [ts1,nd1];
+        }
+
 //
 //        /*
 //
@@ -4964,10 +4928,10 @@
         {
             Debug::enter("Parse::directives ", ts);
 
-            let [ts1,nd1] = simpleQualifiedIdentifier (ts);
+            let [ts1,nd1] = primaryExpression (ts);
 
             Debug::exit("Parse::directives ", nd1);
-            return [ts1, new Ast::ExprStmt (new Ast::LexicalRef (nd1))];
+            return [ts1, new Ast::ExprStmt (nd1)];
         }
 
         function program ()
@@ -4995,6 +4959,14 @@
 
             var [ts2, nd2] = directives (ts1, Global);
 
+            switch (hd (ts2)) {
+            case Token::EOS:
+                print("found eos")
+                break;
+            default:
+                throw "extra tokens after end of program: " + ts2;
+            }
+
             Debug::exit ("Parse::program ", nd2)
             return [ts2, {packages: nd1, stmts: nd2, fixtures: null}];
         }
@@ -5004,10 +4976,11 @@
     {
         var programs = 
         [
-            "x",
-            "q::id",
+         "a.b.c.x",
+            readFile ("./tests/self/hello.es"),
             readFile ("./tests/self/esc.es"),
             /*
+            "a .< t .< u .< v > , w .< x > > > >",
             "q::[expr]",
             "(expr)::id",
             "(expr)::[expr]",

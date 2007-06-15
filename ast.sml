@@ -371,7 +371,7 @@ datatype PRAGMA =
        | TypeIdentifier of (* in a type context, these this will be a AppType *)
            { ident : IDENT_EXPR, 
              typeArgs : TYPE_EXPR list }
-       | UnresolvedPath of (IDENT list * IDENT_EXPR)
+       | UnresolvedPath of (IDENT list * IDENT_EXPR) (* QualifiedIdentifier or ObjectRef *)
        | WildcardIdentifier
 
      and LITERAL =
