@@ -55,6 +55,7 @@ var BUGNUMBER = "";
 
 startTest();                // leave this alone
 
+{
 use namespace testns;
 var TESTOBJ;
 var s:String = new String("this is a test");
@@ -78,7 +79,7 @@ AddTestCase( "TESTOBJ.noReturnCustomParams()", "[object Custom]", String(TESTOBJ
 AddTestCase( "TESTOBJ.returnNoParams()", "returnNoParams", TESTOBJ.returnNoParams() );
 AddTestCase( "TESTOBJ.returnParams(s,b)", "this is a test", TESTOBJ.returnParams(s,b) );
 AddTestCase( "TESTOBJ.returnCustomNoParams()", "[object Custom]", String(TESTOBJ.returnCustomNoParams()) );
-
+}
 
 test();       // leave this alone.  this executes the test cases and
               // displays results.

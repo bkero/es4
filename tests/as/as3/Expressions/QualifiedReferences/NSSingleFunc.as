@@ -52,9 +52,10 @@ AddTestCase( "f.Baseball::getTeam()", "Giants", f.Baseball::getTeam() );
 
 AddTestCase( "f.Hockey::getTeam()", "Sharks", f.Hockey::getTeam() );
 
+{
 use namespace Basketball;
 AddTestCase( "use namespace Basketball, f.getTeam()", "Kings", f.getTeam() );
-
+}
 
 test();       // leave this alone.  this executes the test cases and
               // displays results.

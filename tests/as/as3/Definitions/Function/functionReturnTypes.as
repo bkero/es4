@@ -94,7 +94,7 @@ var resultCounter = 0;
 for (var i=0; i<funcArr.length; i++) {  //loop through each function
     for (var j=0; j<valueArr.length; j++) {	//loop through each type
 	try {
-	    result = funcArr[i](valueArr[j]) is typeArr[i];
+	    result = (funcArr[i](valueArr[j]) is typeArr[i]);
 	} catch (e) {
 	    result = e;
 	} finally {

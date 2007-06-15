@@ -47,7 +47,7 @@ package A
     }
 }
 
-{tests/as/as3/Definitions/Packages/AccessDefaultPackageInterface.as
+{
 import A.*;
 var SECTION = "Definitions\Packages";       			// provide a document reference (ie, ECMA section)
 var VERSION = "ActionScript 3.0";  			// Version of JavaScript or ECMA

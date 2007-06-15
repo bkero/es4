@@ -46,7 +46,7 @@ startTest();                // leave this alone
 
 
 
-
+{
 use namespace ns1;
 
 var item1:String = "item1 set at creation time";
@@ -112,6 +112,8 @@ AddTestCase( "Modify Class2 variable classItem5", -1, c2.classItem5);
 AddTestCase( "Modify Class2 variable classItem6", "Class2 static classItem6 modified", Class2.classItem6);
 AddTestCase( "Modify Class2 variable classItem7", "ns1 Class2 classItem7 modified", c2.classItem7);
 AddTestCase( "Modify Class2 variable classItem8", "ns1 Class2 static classItem8 modified", Class2.classItem8);
+
+}
 
 test();       // leave this alone.  this executes the test cases and
               // displays results.

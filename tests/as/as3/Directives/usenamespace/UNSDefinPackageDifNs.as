@@ -42,14 +42,17 @@ package P {
      public namespace Baseball
 
      public class Game{
-          
-	  use namespace Football;
-          Football function whoplay(){return "Joe"}
-          use namespace Baseball;
-          Baseball function whoplay(){return "Steve"}
+          {
+	    use namespace Football;
+	    Football function whoplay(){return "Joe"}
+          }
+	  {
+	    use namespace Baseball;
+	    Baseball function whoplay(){return "Steve"}
+	  }
      }
  }
-
+import P.*;
  
 var SECTION = "Directives";       // provide a document reference (ie, Actionscript section)
 var VERSION = "AS 3.0";        // Version of ECMAScript or ActionScript 
@@ -62,7 +65,7 @@ startTest();                // leave this alone
 
 
 
-import P.*;
+
 
 var game = new Game();
 

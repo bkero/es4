@@ -58,6 +58,7 @@ package {
 		}
 	}
 	
+	{
 	use namespace Kitty;
 	
 	public class C {
@@ -82,5 +83,6 @@ package {
 		Kitty function kittyFunc(s:String):String {
 			return "You said hi";
 		}
+	}
 	}
 }

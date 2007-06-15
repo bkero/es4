@@ -67,6 +67,7 @@ var BUGNUMBER = "";
 
 startTest();                // leave this alone
 
+{
 use namespace testns;
 var TESTOBJ;
 
@@ -103,7 +104,7 @@ AddTestCase( "inside class outside package function Name cases()", "cases", TEST
 AddTestCase( "inside class outside package function Name Cases()", "Cases", TESTOBJ.Cases() );
 AddTestCase( "inside class outside package function Name all()", "all", TESTOBJ.abcdefghijklmnopqrstuvwxyz0123456789$_() );
 AddTestCase( "inside class outside package function Name constructor different case", "not the constructor", TESTOBJ.namespaceFunctionNameClass() );
-
+}
 
 test();       // leave this alone.  this executes the test cases and
               // displays results.

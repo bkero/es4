@@ -44,7 +44,7 @@ var BUGNUMBER = "";
 
 startTest();                // leave this alone
 
-
+{
 use namespace ns1;
 
 const item1:String = "const item1 set at creation time";
@@ -78,6 +78,8 @@ AddTestCase( "Class2 const variable classItem5", 7, c2.classItem5);
 AddTestCase( "Class2 const variable classItem6", "static const Class2 classItem6 set in function", Class2.classItem6);
 AddTestCase( "Class2 const variable classItem7", "ns1 const Class2 classItem7 set in constructor", c2.classItem7);
 AddTestCase( "Class2 const variable classItem8", "ns1 static const Class2 classItem8 set in function", Class2.classItem8);
+
+}
 
 test();       // leave this alone.  this executes the test cases and
               // displays results.

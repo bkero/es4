@@ -34,7 +34,7 @@
  * the terms of any one of the MPL, the GPL or the LGPL.
  *
  * ***** END LICENSE BLOCK ***** */
-import Importclass.PublicClass
+
 package Importclass{
 
 public class PublicClass{
@@ -45,7 +45,7 @@ public class PublicClass{
 }
 
 }
-
+import Importclass.PublicClass
 var SECTION = "Directives";       				// provide a document reference (ie, ECMA section)
 var VERSION = "ActionScript 3.0";  				// Version of JavaScript or ECMA
 var TITLE   = "Import a public class from a package";       	// Provide ECMA section title or a description
@@ -56,7 +56,6 @@ startTest();                					// leave this alone
 
 
 var arr = new Array(1, 2, 3);
-import Importclass.PublicClass
 
 var obj = new PublicClass();
 

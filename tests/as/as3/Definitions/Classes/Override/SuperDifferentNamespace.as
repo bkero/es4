@@ -49,10 +49,11 @@ startTest();                							// leave this alone
 
 
 var obj = new SuperDifferentNamespace();
+{
 use namespace ns1;
 
 AddTestCase( "obj.echo()", "echo() from BaseClass.ns2 override", obj.echo() );
-
+}
 
 
 

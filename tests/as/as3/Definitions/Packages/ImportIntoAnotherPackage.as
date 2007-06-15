@@ -79,6 +79,8 @@ package ImportIntoAnotherPackage {
 		}
 		
 	}
+
+	{
 	use namespace Kitty;
 		
 	public class newC {
@@ -95,6 +97,7 @@ package ImportIntoAnotherPackage {
 			var k:Array = Kitty::returnArray();
 			return k;
 		}
+	}
 	}
 }
 

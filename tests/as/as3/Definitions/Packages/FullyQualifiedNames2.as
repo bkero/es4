@@ -51,6 +51,7 @@
 	
 	}
 	
+	{
 	use namespace FullyQualifiedNames2.Kitty;
 	
 	public class C {
@@ -67,6 +68,7 @@
 			var k:Array = Kitty::returnArray();
 			return k;
 		}
+	}
 	}
 
 	public class B implements FullyQualifiedNames2.IClickable {

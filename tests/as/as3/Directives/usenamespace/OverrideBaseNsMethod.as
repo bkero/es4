@@ -63,15 +63,16 @@ startTest();                // leave this alone
 
 
 
-
+{
 use namespace n1;
 var c:Child = new Child();
 
 
 
 AddTestCase( "Access child's method overriding parent's method which are in namespace n1" , "child meth", c.meth());
-
+}
 
 test();       // leave this alone.  this executes the test cases and
               // displays results.
+
 }

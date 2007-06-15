@@ -55,7 +55,7 @@ Football var teamName = "Chargers";
 public function a1(){
 return teamName 
 }
-
+{
 use namespace Baseball;
 
 public function getTeam(){
@@ -66,6 +66,8 @@ public function getTeam(){
 public function a2(){
 return teamName 
 }
+}
+
 }
 
 var obj:A = new A(); 

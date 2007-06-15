@@ -106,7 +106,8 @@ var obj:A = new A();
  AddTestCase("N4 = N3; N4::v1", 5, obj.a4());
  
  namespace mx_internal;
- 
+
+{
 use namespace mx_internal;
  
  var c:C = new C();
@@ -128,5 +129,7 @@ use namespace mx_internal;
  AddTestCase("Increment in static setter", "no exception", result);
  
  AddTestCase("N1::v1=5 without declaring N2 var v1", "ReferenceError: Error #1056", referenceError(obj.a5()));
+
+}
 
  test();

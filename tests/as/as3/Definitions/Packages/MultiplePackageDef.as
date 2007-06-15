@@ -75,10 +75,12 @@ package testclassdefinition{
 package testnamespacedefinition{
 	public class myClass {
 		public namespace testnamespace;
+		{
 		use namespace testnamespace;
 		testnamespace var macaroni = "cheese";
 		public function getCheese() {
 			return testnamespace::macaroni;
+		}
 		}
 	}
 }

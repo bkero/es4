@@ -41,9 +41,11 @@ package foo {
 		public namespace fletch;
 
 		fletch var lives = 'PASSED';
+		{
 		use namespace fletch;
 		public function returnLives() {
 			return fletch::lives;
+		}
 		}
 	}
 }

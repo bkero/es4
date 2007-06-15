@@ -53,6 +53,7 @@ namespace HelloKitty;
 Football var teamName = "Chargers";
 Baseball var teamName = "Giants";
 
+{
 use namespace Baseball;
 
 
@@ -110,6 +111,8 @@ AddTestCase( "Make sure outside of function, first ns is used", "Giants", obj.a3
 
 
 AddTestCase("Calling a namespace function from a function", "Hello Odi", obj.a4());
+
+} //ns baseball
 
 
 test();       // leave this alone.  this executes the test cases and

@@ -39,8 +39,9 @@ package P {
     public namespace Baseball;
  
     public class Game{
+	 use namespace Baseball; 
          Baseball var teamName = "Giants";
-         use namespace Baseball; 
+         
      }
   }
 

@@ -51,12 +51,12 @@ class A{
 	namespace Public;
 
 	Football var teamName = "Chargers";
-
+	{
 	use namespace Baseball;
 
 	Baseball var teamColor = "blue";
-    Basketball var teamName = "basketball";
-    Football var teamColor = "yellow";
+	Basketball var teamName = "basketball";
+	Football var teamColor = "yellow";
 
 	Football function getTeam(){
 	    use namespace Football;
@@ -70,6 +70,8 @@ class A{
 	public function a2(){
 		return teamColor ;
 	}
+
+	} //ns baseball
 }
 
 var obj:A = new A()

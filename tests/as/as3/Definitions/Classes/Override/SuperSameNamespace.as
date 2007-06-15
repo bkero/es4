@@ -49,10 +49,11 @@ startTest();                							// leave this alone
 
 
 var obj = new SuperSameNamespace();
+{
 use namespace ns1;
 
 AddTestCase( "obj.echo()", "echo() from BaseClass override", obj.echo() );
-
+}
 
 
 

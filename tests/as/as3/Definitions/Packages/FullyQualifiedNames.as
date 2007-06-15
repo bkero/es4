@@ -55,6 +55,7 @@ package FullyQualifiedNames {
 	
 	}
 	
+	{
 	use namespace OtherPackage.Kitty;
 	
 	public class C {
@@ -71,6 +72,7 @@ package FullyQualifiedNames {
 			var k:Array = Kitty::returnArray();
 			return k;
 		}
+	}
 	}
 
 	public class B implements OtherPackage.IClickable {

@@ -36,7 +36,7 @@
  * ***** END LICENSE BLOCK ***** */
 
 import MCPackage.*;
-
+use namespace ns1;
 
 var SECTION = "Method Closures";       							// provide a document reference (ie, ECMA section)
 var VERSION = "AS 3.0";  								// Version of JavaScript or ECMA
@@ -50,7 +50,7 @@ startTest();                							// leave this alone
 
 var obj:GetMCFromNamespace = new GetMCFromNamespace();
 
-use namespace ns1;
+
 // *****************************
 // Make sure that we can access the method
 // *****************************
