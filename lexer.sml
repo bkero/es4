@@ -402,7 +402,8 @@ fun makeTokenList (filename : string, reader : unit -> Ustring.SOURCE) : ((TOKEN
                                 0 => chars
                               | 1 => tl chars
                               | _ => error ["LexError:  illegal characters in number literal"]
-                val numExpDigits = countInRanges {min=1} [(Ustring.wcharFromChar #"0", Ustring.wcharFromChar #"9")] rest
+                val numExpDigits = countInRanges {min=1} [(Ustring.wcharFromChar #"0", 
+							   Ustring.wcharFromChar #"9")] rest
             in
                 numSignChars + numExpDigits
             end
@@ -414,87 +415,60 @@ fun makeTokenList (filename : string, reader : unit -> Ustring.SOURCE) : ((TOKEN
                 countInRanges {min=0} octDigitRanges rest
             end
 
-            fun countDecimalDigits rest =
-            let
-                val numDigits = countInRanges {min=0} [(Ustring.wcharFromChar #"0", Ustring.wcharFromChar #"9")] rest
-            in
-                case List.drop (rest, numDigits) of
-                (* [eE] *)
-                    0wx65::rest_
-                    => (numDigits + 1 + (countExpChars rest_))
-                  | 0wx45::rest_
-                    => (numDigits + 1 + (countExpChars rest_))
-                (* . *)
-                  | 0wx2E::rest_
-                    =>  let
-                        val numMoreDigits = countInRanges {min=0} [(Ustring.wcharFromChar #"0", Ustring.wcharFromChar #"9")] rest_
-                        val numExpChars = case List.drop (rest_, numMoreDigits) of
+	    fun countPastDecimalPoint rest = 
+		let
+                    val numMoreDigits = countInRanges {min=0} [(Ustring.wcharFromChar #"0", 
+								Ustring.wcharFromChar #"9")] rest
+                    val numExpChars = case List.drop (rest, numMoreDigits) of
                                           (* [eE] *)
-                                              0wx65::rest__
-                                              => 1 + (countExpChars rest__)
-                                            | 0wx45::rest__
-                                              => 1 + (countExpChars rest__)
-                                            | _ => 0
-                    in
-                        (numDigits + 1 + numMoreDigits + numExpChars)
-                    end
-                  | _ => numDigits
+                                          0wx65::rest_
+                                          => 1 + (countExpChars rest_)
+                                        | 0wx45::rest_
+                                          => 1 + (countExpChars rest_)
+                                        | _ => 0
+                in
+                    numMoreDigits + numExpChars
+                end
+            fun lexDecimalPastFirstDigit rest =
+            let
+                val numDigits = countInRanges {min=0} [(Ustring.wcharFromChar #"0", 
+							Ustring.wcharFromChar #"9")] rest
+            in
+                case List.drop (rest, numDigits) of                
+                    0wx65::rest_ (* e *)
+                    => (DecLit, 1 + numDigits + 1 + (countExpChars rest_))                  
+                  | 0wx45::rest_ (* E *)
+                    => (DecLit, 1 + numDigits + 1 + (countExpChars rest_))                       
+                  | 0wx2E::rest_ (* . *)
+                    => (DecLit, 1 + numDigits + 1 + countPastDecimalPoint rest_)
+                  | _ 
+		    => (DecIntLit, 1 + numDigits)
             end
 
             val (tokType, tokLen) = case !src of
-            (* .  =>  DecimalLiteral {   . [0-9]+  ( [eE] [+-]? [0-9]+ )? } *)
+              (* .  =>  DecimalLiteral {   . [0-9]+  ( [eE] [+-]? [0-9]+ )? } *)
                 0wx2E::rest
-                =>  let
-                        val numDigits = countInRanges {min=1} [(Ustring.wcharFromChar #"0", Ustring.wcharFromChar #"9")] rest
-                        val numExpChars = case List.drop (rest, numDigits) of
-                                              0wx65::rest_ (* e *)
-                                              => 1 + (countExpChars rest_)
-                                            | 0wx45::rest_ (* E *)
-                                              => 1 + (countExpChars rest_)
-                                            | _ => 0
-                    in
-                        (DecLit, 1 + numDigits + numExpChars)
-                    end
-            (* 0. =>  DecimalLiteral { 0 . [0-9]*  ( [eE] [+-]? [0-9]+ )? } *)
+                =>  (DecLit, 1 + countPastDecimalPoint rest)
+              (* 0. =>  DecimalLiteral { 0 . [0-9]*  ( [eE] [+-]? [0-9]+ )? } *)
               | 0wx30::0wx2E::rest
-                =>  let
-                        val numDigits = countInRanges {min=0} [(Ustring.wcharFromChar #"0", Ustring.wcharFromChar #"9")] rest
-                        val numExpChars = case List.drop (rest, numDigits) of
-                                              0wx65::rest_ (* e *)
-                                              => 1 + (countExpChars rest_)
-                                            | 0wx45::rest_ (* E *)
-                                              => 1 + (countExpChars rest_)
-                                            | _ => 0
-                    in
-                        (DecLit, 2 + numDigits + numExpChars)
-                    end
+                =>  (DecLit, 2 + countPastDecimalPoint rest)
             (* 0[eE]  =>  DecimalLiteral { 0 [eE] [+-]? [0-9]+ } *)
-              | 0wx30::0wx65::rest
-                => (DecLit, 2 + (countExpChars rest))
-              | 0wx30::0wx45::rest
-                => (DecLit, 2 + (countExpChars rest))
+              | 0wx30::0wx65::rest => (DecLit, 2 + (countExpChars rest))
+              | 0wx30::0wx45::rest => (DecLit, 2 + (countExpChars rest))
             (* 0[xX]  =>  HexIntegerLiteral { 0 [xX] [0-9a-fA-F]+ } *)
               | 0wx30::0wx78::rest
                 => (HexIntLit, 2 + (countInRanges {min=1} hexDigitRanges rest))
               | 0wx30::0wx58::rest
                 => (HexIntLit, 2 + (countInRanges {min=1} hexDigitRanges rest))
             (* 0[0-7]  =>  OctalIntegerLiteral { 0 [0-7]* } *)
-              | 0wx30::0wx30::rest
-                => (OctIntLit, 2 + (countOctalDigits rest))
-              | 0wx30::0wx31::rest
-                => (OctIntLit, 2 + (countOctalDigits rest))
-              | 0wx30::0wx32::rest
-                => (OctIntLit, 2 + (countOctalDigits rest))
-              | 0wx30::0wx33::rest
-                => (OctIntLit, 2 + (countOctalDigits rest))
-              | 0wx30::0wx34::rest
-                => (OctIntLit, 2 + (countOctalDigits rest))
-              | 0wx30::0wx35::rest
-                => (OctIntLit, 2 + (countOctalDigits rest))
-              | 0wx30::0wx36::rest
-                => (OctIntLit, 2 + (countOctalDigits rest))
-              | 0wx30::0wx37::rest
-                => (OctIntLit, 2 + (countOctalDigits rest))
+              | 0wx30::0wx30::rest => (OctIntLit, 2 + (countOctalDigits rest))
+              | 0wx30::0wx31::rest => (OctIntLit, 2 + (countOctalDigits rest))
+              | 0wx30::0wx32::rest => (OctIntLit, 2 + (countOctalDigits rest))
+              | 0wx30::0wx33::rest => (OctIntLit, 2 + (countOctalDigits rest))
+              | 0wx30::0wx34::rest => (OctIntLit, 2 + (countOctalDigits rest))
+              | 0wx30::0wx35::rest => (OctIntLit, 2 + (countOctalDigits rest))
+              | 0wx30::0wx36::rest => (OctIntLit, 2 + (countOctalDigits rest))
+              | 0wx30::0wx37::rest => (OctIntLit, 2 + (countOctalDigits rest))
             (* 0   =>  DecimalIntegerLiteral { 0 } *)
               | 0wx30::rest
                 => (DecIntLit, 1)
@@ -502,24 +476,15 @@ fun makeTokenList (filename : string, reader : unit -> Ustring.SOURCE) : ((TOKEN
             (*   =>  DecimalIntegerLiteral { [1-9] [0-9]*                                  } *)
             (*   |   DecimalLiteral        { [1-9] [0-9]*             [eE] [+-]? [0-9]+    } *)
             (*   |   DecimalLiteral        { [1-9] [0-9]* . [0-9]*  ( [eE] [+-]? [0-9]+ )? } *)
-              | 0wx31::rest
-                => (DecIntLit, 1 + (countDecimalDigits rest))
-              | 0wx32::rest
-                => (DecIntLit, 1 + (countDecimalDigits rest))
-              | 0wx33::rest
-                => (DecIntLit, 1 + (countDecimalDigits rest))
-              | 0wx34::rest
-                => (DecIntLit, 1 + (countDecimalDigits rest))
-              | 0wx35::rest
-                => (DecIntLit, 1 + (countDecimalDigits rest))
-              | 0wx36::rest
-                => (DecIntLit, 1 + (countDecimalDigits rest))
-              | 0wx37::rest
-                => (DecIntLit, 1 + (countDecimalDigits rest))
-              | 0wx38::rest
-                => (DecIntLit, 1 + (countDecimalDigits rest))
-              | 0wx39::rest
-                => (DecIntLit, 1 + (countDecimalDigits rest))
+              | 0wx31::rest => lexDecimalPastFirstDigit rest
+              | 0wx32::rest => lexDecimalPastFirstDigit rest                
+              | 0wx33::rest => lexDecimalPastFirstDigit rest
+              | 0wx34::rest => lexDecimalPastFirstDigit rest
+              | 0wx35::rest => lexDecimalPastFirstDigit rest
+              | 0wx36::rest => lexDecimalPastFirstDigit rest
+              | 0wx37::rest => lexDecimalPastFirstDigit rest
+              | 0wx38::rest => lexDecimalPastFirstDigit rest
+              | 0wx39::rest => lexDecimalPastFirstDigit rest
               | _ => error ["LexError:  illegal character in numeric literal (BUG IN LEXER!)"] (* should not be possible to get here *)
             
             val numberAscii = implode (map Ustring.wcharToChar (List.take (!src, tokLen)))  (* should be safe, since we just lexed each char as being in the ascii range *)
