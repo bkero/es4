@@ -1481,17 +1481,22 @@ and defFuncDefn (env:ENV) (f:Ast.FUNC_DEFN)
                               override = (#override f),
                               abstract = (#abstract f)}
                     end
-                  | (Ast.Call | Ast.Has) =>
-                    let
-                    in
-                        Ast.MethodFixture
-                            { func = newFunc,
-                              ty = Ast.FunctionType ty,
-                              readOnly = true,
-                              final = true,
-                              override = false,
-                              abstract = false}
-                    end
+                  | Ast.Call =>
+                    Ast.MethodFixture
+                        { func = newFunc,
+                          ty = Ast.FunctionType ty,
+                          readOnly = true,
+                          final = true,
+                          override = false,
+                          abstract = false}
+                  | Ast.Has =>
+                    Ast.MethodFixture
+                        { func = newFunc,
+                          ty = Ast.FunctionType ty,
+                          readOnly = true,
+                          final = true,
+                          override = false,
+                          abstract = false}
                   | Ast.Operator =>
                     LogErr.unimplError ["operator function not implemented"]
 
@@ -1549,13 +1554,15 @@ and defPragmas (env:ENV)
                     let
                         val namespace = resolveExprToNamespace env ns
                         val _ = trace ["use default namespace ",LogErr.name {ns=namespace,id=Ustring.empty}]
-                    in case namespace of
-                        (Ast.Public _ | Ast.Protected _ | Ast.Private _ | Ast.Internal _) => 
-                            (* these ones are already open *)
-                            defaultNamespace := namespace
-                      | _ =>
-                            (opennss := (namespace :: !opennss);
-                             defaultNamespace := namespace)
+                    in
+                        (case namespace of
+                             (* these ones are already open *)
+                             (Ast.Public _) => ()
+                           | (Ast.Protected _) => ()
+                           | (Ast.Private _) => ()
+                           | (Ast.Internal _) => ()
+                           | _ => opennss := (namespace :: !opennss));
+                        defaultNamespace := namespace
                     end
               | Ast.Import {package,name,alias} =>  
                     let   
@@ -2667,16 +2674,24 @@ and defDefn (env:ENV)
                 val ns = resolveExprOptToNamespace env ns
                 val (fxtrs,inits) = defBindings env kind ns bindings
             in case kind of
-                (Ast.Var | Ast.Const) => ([],fxtrs,inits)  (* hoisted fxtrs *)
-              | (Ast.LetVar | Ast.LetConst) => (fxtrs,[],inits)  (* unhoisted fxtrs *)
+              (* hoisted fxtrs *)
+                Ast.Var => ([],fxtrs,inits)
+              | Ast.Const => ([],fxtrs,inits)
+              (* unhoisted fxtrs *)
+              | Ast.LetVar => (fxtrs,[],inits)
+              | Ast.LetConst => (fxtrs,[],inits)
             end
       | Ast.FunctionDefn fd => 
             let
                 val {kind,...} = fd
                 val (fxtrs,def) = defFuncDefn env fd
             in case kind of
-                (Ast.Var | Ast.Const) => ([],fxtrs,[])  (* hoisted fxtrs *)
-              | (Ast.LetVar | Ast.LetConst) => (fxtrs,[],[])  (* unhoisted fxtrs *)
+              (* hoisted fxtrs *)
+                Ast.Var => ([],fxtrs,[])
+              | Ast.Const => ([],fxtrs,[])
+              (* unhoisted fxtrs *)
+              | Ast.LetVar => (fxtrs,[],[])
+              | Ast.LetConst => (fxtrs,[],[])
             end
       | Ast.NamespaceDefn nd => 
             let
@@ -2729,7 +2744,11 @@ and defDefns (env:ENV)
          | d::ds =>
            let
                val (unhoisted',hoisted',inits') = defDefn env d
-               val temp = case d of (Ast.NamespaceDefn _ | Ast.ClassDefn _ | Ast.InterfaceDefn _) => hoisted' | _ => []
+               val temp = case d of
+                              Ast.NamespaceDefn _ => hoisted'
+                            | Ast.ClassDefn _     => hoisted'
+                            | Ast.InterfaceDefn _ => hoisted'
+                            | _ => []
                val env'  = updateFixtures env (List.foldl mergeFixtures unhoisted' temp) 
            (* add the new unhoisted and temporarily, hoisted class fxtrs to the current env *)
            in

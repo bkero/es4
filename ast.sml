@@ -577,10 +577,9 @@ withtype
              ident : IDENT }
 
 type VIRTUAL_VAL_FIXTURE =
-(*     and VIRTUAL_VAL_FIXTURE = *)
-         { ty: TYPE_EXPR, 
-           getter: FUNC_DEFN option,
-           setter: FUNC_DEFN option }
+           { ty: TYPE_EXPR, 
+             getter: FUNC_DEFN option,
+             setter: FUNC_DEFN option }
 
 type PACKAGE =
            { name: IDENT list,

@@ -4,7 +4,6 @@ local
     $(SML_LIB)/smlnj-lib/PP/pp-lib.mlb
 (*
     main.sml
-    defn.sml
     verify.sml
     eval.sml
     mach.sml
@@ -29,6 +28,7 @@ local
     token.sml
     lexer.sml
     parser.sml
+    defn.sml
     tmp.sml
 in
     (*structure Ast*)
