@@ -9,10 +9,13 @@ AVM=$(ROOT)/player/FlashPlayer/avmplus/platform/win32/obj_8/shell/Debug_Debugger
 .es.abc:
 	$(ASC) $(ASCFLAGS) $<
 
-test: util.abc bytestream.abc abcfile.abc assembler.abc assembler_test.abc
-	echo '{ import es4.*; testABCByteStream(); testABCFile(); testABCAssembler() }' > testdriver.as
+test: esc.abc assembler_test.abc emitter_test.abc
+	echo '{ import es4.*; /* testABCByteStream(); testABCFile(); */ testABCAssembler(); /* testABCEmitter(); */ }' > testdriver.as
 	$(ASC) $(ASCFLAGS) testdriver.as
 	$(AVM) $^ testdriver.abc
+
+esc.abc: esc.es util.es bytestream.es abcfile.es assembler.es emitter.es
+	$(ASC) $(ASCFLAGS) esc.es
 
 clean:
 	rm -f *~ *.abc testdriver.as

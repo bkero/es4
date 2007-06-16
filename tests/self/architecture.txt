@@ -7,7 +7,7 @@ The front end has the following parts:
   - Lexer takes a stream of characters and produces a stream of tokens
   - Parser takes a stream of tokens and produces an AST (see ast.es)
   - Definer takes an AST and produces an AST elaborated with Fixtures
-  _ Verifier takes an AST and, with the help of the backend, produces 
+  - Verifier takes an AST and, with the help of the backend, produces 
     an ABC byte stream
 
    .as
@@ -57,7 +57,7 @@ The back end has the following levels, top to bottom:
   - ABC data structure emitters (abcfile.es)
   - byte-stream abstraction (bytestream.es)
 
-ABC consumers call the assembler to emit instructions and data
+AST consumers call the assembler to emit instructions and data
 directives; the assembler interacts with the ABCFile and
 ABCConstantPool abstractions to build in-memory data structures that
 can be serialized; those abstractions use the ABCByteStream to produce
