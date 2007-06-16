@@ -300,52 +300,6 @@ fun addNamespace (ns,opennss) =
     then (trace ["skipping namespace ",LogErr.namespace ns]; opennss)   (* FIXME: should be an error to open namspaces redundantly *)
     else (trace ["adding namespace ", LogErr.namespace ns]; ns :: opennss)
 
-
-fun resolveExprToNamespace (env:ENV) 
-                           (expr:Ast.EXPR) 
-    : Ast.NAMESPACE = 
-    case expr of 
-        Ast.LiteralExpr (Ast.LiteralNamespace ns) => 
-        let
-        in case ns of
-            Ast.Public _ =>
-                let
-                    val packageName = (#packageName (hd env))
-                    val ident = packageIdentFromPath packageName
-                in
-                    Ast.Public ident
-                end
-          | Ast.Internal _ => 
-                let
-                    val packageName = (#packageName (hd env))
-                    val ident = packageIdentFromPath packageName
-                in
-                    Ast.Internal ident
-                end
-          | Ast.Private _ => 
-                let
-                in
-                    Ast.Private (#className (hd env))
-                end
-          | Ast.Protected _ => 
-                let
-                in
-                    Ast.Protected (#className (hd env))
-                end
-          | _ => ns
-        end
-      | Ast.LexicalRef {ident = Ast.Identifier {ident,...}, loc } => 
-        let 
-            val _ = LogErr.setLoc loc
-            val mname = {nss = (#openNamespaces (hd env)), id = ident}
-        in
-            case resolveMultinameToFixture env mname of 
-                (_,Ast.NamespaceFixture ns) => ns
-              | _ => LogErr.defnError ["namespace expression resolved ",
-                                       "to non-namespace fixture"]
-        end
-      | _ => LogErr.defnError ["unexpected expression type ",
-                               "in namespace context"]
 fun defNamespace (env:ENV) 
                  (ns:Ast.NAMESPACE) 
     : Ast.NAMESPACE =
@@ -382,6 +336,28 @@ fun defNamespace (env:ENV)
                 end
           | _ => ns
         end
+
+fun resolveExprToNamespace (env:ENV) 
+                           (expr:Ast.EXPR) 
+    : Ast.NAMESPACE =
+    case expr of 
+        Ast.LiteralExpr (Ast.LiteralNamespace ns) => 
+        let
+        in 
+            defNamespace env ns
+        end
+      | Ast.LexicalRef {ident = Ast.Identifier {ident,...}, loc } => 
+        let 
+            val _ = LogErr.setLoc loc
+            val mname = {nss = (#openNamespaces (hd env)), id = ident}
+        in
+            case resolveMultinameToFixture env mname of 
+                (_,Ast.NamespaceFixture ns) => ns
+              | _ => LogErr.defnError ["namespace expression resolved ",
+                                       "to non-namespace fixture"]
+        end
+      | _ => LogErr.defnError ["unexpected expression type ",
+                               "in namespace context"]
 
 and defaultNamespace e = case e of c::_ => (#defaultNamespace c) | _ => LogErr.internalError ["empty environment in defaultNamespace"]
 
@@ -664,6 +640,8 @@ and defInterface (env: ENV)
         (* Resolve base interface's super interfaces and fixtures *)
         val (superInterfaces, inheritedFixtures) = resolveInterfaces env extends
 
+        val env = enterClass env name
+
         (* Define the current fixtures *)
         val (unhoisted,instanceFixtures,_) = defDefns env [] [] [] instanceDefns
 
@@ -860,7 +838,7 @@ and implementFixtures (base:Ast.FIXTURES)
             let
                 fun targetFixture _ = if (hasFixture derived n)
                                       then SOME (getFixture derived n)
-                                      else LogErr.defnError ["unimplemented interface method ",LogErr.fname n];
+                                      else NONE
                 val _ = trace ["checking implementation of ", LogErr.fname n]
             in 
                 case targetFixture () of

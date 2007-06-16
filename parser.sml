@@ -100,7 +100,7 @@ type PATTERN_BINDING_PART =
        static:bool }
 
 val currentClassName : Ast.IDENT ref = ref Ustring.empty
-val currentPackageName : Ast.IDENT ref = ref Ustring.empty
+(* val currentPackageName : Ast.IDENT ref = ref Ustring.empty *)
 
 fun newline (ts : (TOKEN * Ast.LOC) list) =
     let
@@ -472,16 +472,16 @@ and qualifier ts =
 and reservedNamespace ts =
     let val _ = trace([">> reservedNamespace with next=",tokenname(hd(ts))])
     in case ts of
-        (Internal, _) :: tr => 
-            (tr, Ast.Internal (!currentPackageName))
-      | (Intrinsic, _) :: tr => 
+        (Internal, _) :: tr =>
+            (tr, Ast.Internal Ustring.empty)  (* the definer computes the package name *)
+      | (Intrinsic, _) :: tr =>
             (tr, Ast.Intrinsic)
-      | (Private, _) :: tr => 
-            (tr, Ast.Private (!currentClassName))
+      | (Private, _) :: tr =>
+            (tr, Ast.Private Ustring.empty)
       | (Protected, _) :: tr => 
-            (tr, Ast.Protected (!currentClassName))
-      | (Public, _) :: tr => 
-            (tr, Ast.Public (!currentPackageName))
+            (tr, Ast.Protected Ustring.empty)
+      | (Public, _) :: tr =>
+            (tr, Ast.Public Ustring.empty)
       | _ => error ["unknown reserved namespace"]
     end
 
@@ -5068,6 +5068,15 @@ and annotatableDirective (ts, attrs:ATTRS, GLOBAL, w) : ((TOKEN * Ast.LOC) list 
     end
   | annotatableDirective (ts,attrs,INTERFACE,w) : ((TOKEN * Ast.LOC) list * Ast.DIRECTIVES)  =
     let val _ = trace([">> annotatableDirective INTERFACE with next=", tokenname(hd ts)])
+        val attrs : ATTRS = 
+            { ns = SOME (Ast.LiteralExpr (Ast.LiteralNamespace (Ast.Public Ustring.empty)))
+            , override = false
+            , static = false
+            , final = false
+            , dynamic = false
+            , prototype = false
+            , native = false
+            , rest = false }
     in case ts of
         (Function, _) :: _ =>
             let
@@ -6182,9 +6191,9 @@ and classDefinition (ts,attrs:ATTRS) =
                 val {ns,final,dynamic,...} = attrs
                 val (ts1,{ident,params,nonnullable}) = className (tl ts)
                 val (ts2,{extends,implements}) = classInheritance (ts1)
-                val _ = currentClassName := ident;
+                val _ = currentClassName := ident
                 val (ts3,nd3) = classBody (ts2)
-                val _ = currentClassName := Ustring.empty;
+                val _ = currentClassName := Ustring.empty
 
                 fun isLet (d:Ast.DEFN) (* borrowed from defn.sml *)
                     : bool =

@@ -1,10 +1,6 @@
-use namespace intrinsic
-var a = 1
-var b = true
-a ||= b
-print(a)
-/*
 
+package {
+use namespace intrinsic
 interface I {
 function m()
 }
@@ -14,8 +10,8 @@ function n()
 interface K extends I,J {
 }
 class A implements I,J,K {
-function m() { print("A.m") }
-function n() { print("A.n") }
+public function m() { print("A.m") }
+public function n() { print("A.n") }
 }
 class B extends A implements I,J,K {}
 
@@ -26,5 +22,4 @@ i.m()
 j.n()
 k.m()
 k.n()
-
-*/
+}

@@ -567,7 +567,7 @@ namespace Ast
             , ident=ident {}
     }
     
-    class TypeIdentifier { 
+    class TypeIdentifier {
         const ident : IDENT_EXPR;
         const typeArgs : [TYPE_EXPR];
         function TypeIdentifier (ident,typeArgs)
@@ -638,7 +638,7 @@ namespace Ast
     class LiteralDecimal {
         const decimalValue : decimal;
     }
-	
+
     class LiteralInt {
         const intValue : int;
     }
@@ -1162,7 +1162,13 @@ namespace Ast
         const defns: [DEFN];
         const head: HEAD?;
         const body: [STMT];
-        const pos: POS?
+        const pos: POS?;
+        function Block (pragmas,defns,head,body,pos)
+            : pragmas = pragmas
+            , defns = defns
+            , head = head
+            , body = body
+            , pos = pos { }
     }
 
     type PRAGMA =
@@ -1206,12 +1212,12 @@ namespace Ast
 
     class Program {
         var packages: [PACKAGE];
-        var fixtures: FIXTURES?;
         var block: BLOCK;
-        function Program (packages, fixtures, block)
+        var fixtures: FIXTURES?;
+        function Program (packages, block, fixtures)
             : packages = packages
-            , fixtures = fixtures
-            , block = block { }
+            , block = block
+            , fixtures = fixtures {}
     }
 
     public function test () {

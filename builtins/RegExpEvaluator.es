@@ -136,7 +136,6 @@ package RegExpInternals
     /* The matcher is a single object that implements the Matcher
        interface.  Normally a Matcher object references other Matcher
        objects.  */
-    // FIXME: interfaces are completely missing.  Ticket #46.
     public interface Matcher
     {
         function match(ctx : Context, x : State, c : Continuation) : MatchResult;
@@ -148,7 +147,7 @@ package RegExpInternals
 
     class Empty! implements Matcher
     {
-        function match(ctx : Context, x : State, c : Continuation) : MatchResult {
+        public function match(ctx : Context, x : State, c : Continuation) : MatchResult {
             return c(ctx, x);
         }
     }
@@ -157,7 +156,7 @@ package RegExpInternals
     {
         function Disjunct(m1 : Matcher, m2 : Matcher) : m1=m1, m2=m2 {}
 
-        function match(ctx : Context, x : State, c : Continuation) : MatchResult {
+        public function match(ctx : Context, x : State, c : Continuation) : MatchResult {
             let r : MatchResult = m1.match(ctx, x, c);
             if (r !== failure)
                 return r;
@@ -171,7 +170,7 @@ package RegExpInternals
     {
         function Alternative(m1 : Matcher, m2 : Matcher) : m1=m1, m2=m2 {}
 
-        function match(ctx : Context, x : State, c : Continuation) : MatchResult {
+        public function match(ctx : Context, x : State, c : Continuation) : MatchResult {
             return m1.match(ctx, x, function (ctx : Context, y : State) { return m2.match(ctx, y, c) } );
         }
 
@@ -180,7 +179,7 @@ package RegExpInternals
 
     class Assertion! implements Matcher
     {
-        function match(ctx : Context, x : State, c : Continuation) : MatchResult {
+        public function match(ctx : Context, x : State, c : Continuation) : MatchResult {
             if (!testAssertion(ctx, x))
                 return failure;
             return c(ctx, x);
@@ -249,7 +248,7 @@ package RegExpInternals
         {
         }
 
-        function match(ctx : Context, x : State, c : Continuation) : MatchResult {
+        public function match(ctx : Context, x : State, c : Continuation) : MatchResult {
 
             function RepeatMatcher(min : double, max : double, x : State) : MatchResult {
                 function d(ctx: Context, y : State) : MatchResult {
@@ -296,7 +295,7 @@ package RegExpInternals
     {
         function Capturing(m : Matcher, parenIndex : uint) : m=m, parenIndex=parenIndex {}
 
-        function match(ctx : Context, x : State, c : Continuation) : MatchResult {
+        public function match(ctx : Context, x : State, c : Continuation) : MatchResult {
 
             let function d( ctx: Context, y : State ) : MatchResult {
                 let cap : CapArray = copyCapArray( y.cap, 0, 0 );
@@ -316,7 +315,7 @@ package RegExpInternals
     {
         function Backref(capno : uint) : capno=capno {}
 
-        function match(ctx : Context, x : State, c : Continuation) : MatchResult {
+        public function match(ctx : Context, x : State, c : Continuation) : MatchResult {
             let cap = x.cap;
             let s = cap[capno];
             if (s == null)
@@ -339,7 +338,7 @@ package RegExpInternals
     {
         function PositiveLookahead(m : Matcher) : m=m {}
 
-        function match(ctx : Context, x : State, c : Continuation) : MatchResult {
+        public function match(ctx : Context, x : State, c : Continuation) : MatchResult {
             let r : MatchResult = m.match(ctx, x, function (ctx, y : State) : MatchResult { return y } );
             if (r === failure)
                 return failure;
@@ -353,7 +352,7 @@ package RegExpInternals
     {
         function NegativeLookahead(m : Matcher) : m=m {}
             
-        function match(ctx : Context, x : State, c : Continuation) : MatchResult {
+        public function match(ctx : Context, x : State, c : Continuation) : MatchResult {
             let r : MatchResult = m.match(ctx, x, function (ctx, y : State) : MatchResult { return y } );
             if (r !== failure)
                 return failure;
@@ -367,7 +366,7 @@ package RegExpInternals
     {
         function CharsetMatcher(cs : Charset) : cs=cs {}
 
-        function match(ctx : Context, x : State, c : Continuation) /* : MatchResult */ {
+        public function match(ctx : Context, x : State, c : Continuation) /* : MatchResult */ {
             let e = x.endIndex;
             let cap = x.cap;
             if (e === ctx.inputLength)

@@ -1,4 +1,8 @@
 /* -*- mode: java; mode: font-lock; tab-width: 4; insert-tabs-mode: nil; indent-tabs-mode: nil -*- */
+use module ast "";
+use module ast_encoder "";
+use module lexer "";
+module parser {
 /* ***** BEGIN LICENSE BLOCK *****
  * Version: MPL 1.1/GPL 2.0/LGPL 2.1
  *
@@ -1276,29 +1280,29 @@
 //            Debug::exit("parseSuperExpression",result)
 //            return result
 //        }
-//
-//        /*
-//
-//        MemberExpression    
-//            PrimaryExpression
-//            new  MemberExpression  Arguments
-//            SuperExpression  PropertyOperator
-//            MemberExpression  PropertyOperator
-//
-//        Refactored:
-//
-//        MemberExpression :    
-//            PrimaryExpression MemberExpressionPrime
-//            new MemberExpression Arguments MemberExpressionPrime
-//            SuperExpression  PropertyOperator  MemberExpressionPrime
-//    
-//        MemberExpressionPrime :    
-//            [ Expression ] MemberExpressionPrime
-//            . Identifier MemberExpressionPrime
-//            empty
-//
-//        */
-//
+
+        /*
+
+        MemberExpression
+            PrimaryExpression
+            new  MemberExpression  Arguments
+            SuperExpression  PropertyOperator
+            MemberExpression  PropertyOperator
+
+        Refactored:
+
+        MemberExpression :    
+            PrimaryExpression MemberExpressionPrime
+            new MemberExpression Arguments MemberExpressionPrime
+            SuperExpression  PropertyOperator  MemberExpressionPrime
+    
+        MemberExpressionPrime :    
+            [ Expression ] MemberExpressionPrime
+            . Identifier MemberExpressionPrime
+            empty
+
+        */
+
 //        function parseMemberExpression()
 //        {
 //            Debug::enter("parseMemberExpression")
@@ -4936,7 +4940,7 @@
             let [ts1,nd1] = primaryExpression (ts);
 
             Debug::exit("Parse::directives ", ts1);
-            return [ts1, new Ast::ExprStmt (nd1)];
+            return [ts1, new Ast::Block ([],[],null,[new Ast::ExprStmt (nd1)],null)];
         }
 
         function program ()
@@ -4946,8 +4950,6 @@
 
             let ts = scan.tokenList (scan.start)
 
-            var blocks = [] // : [Ast.BLOCK];
-            
             if (hd (ts) == Token::Internal || 
                 hd (ts) == Token::Package)
             {
@@ -4955,7 +4957,7 @@
             }
             else
             {
-                var [ts1, nd1] = [ts, null];
+                var [ts1, nd1] = [ts, []];
             }
 
             current_package = "";
@@ -4972,7 +4974,7 @@
             }
 
             Debug::exit ("Parse::program ", ts2);
-            return [ts2, {packages: nd1, stmts: nd2, fixtures: null}];
+            return [ts2, new Ast::Program (nd1,nd2,null)];
         }
     }
 
@@ -4980,7 +4982,7 @@
     {
         var programs = 
         [
-         "a.b.c.x",
+            "a.b.c.x",
             readFile ("./tests/self/hello.es"),
             readFile ("./tests/self/esc.es"),
             /*
@@ -5046,12 +5048,9 @@
         {
             var p = programs[n];
             try {
-                var parser = new Parser(p)
-                var [ts1,nd1] = parser.program()
-
-                print(n,"> "+nd1)
-                    //                print(node.toXMLString())
-                //print("---")
+                var parser = new Parser(p);
+                var [ts1,nd1] = parser.program();
+                print(n, ">", Ast::encodeProgram (nd1));
             }
             catch(x)
             {
@@ -5064,3 +5063,4 @@
 }
 
 }
+} // end module
