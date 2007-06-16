@@ -848,8 +848,10 @@ and setValueOrVirtual (obj:Mach.OBJ)
                            LogErr.name name]
 
                   | Mach.MethodProp _ => 
-                    error ["setValue on method property: ", 
+                    if (#readOnly existingAttrs)
+                    then error ["setValue on method property: ", 
                            LogErr.name name]
+                    else write ()  (* ES3 style mutable fun props are readOnly *)
 
                   | Mach.ValListProp _ => 
                     error ["setValue on value-list property: ", 

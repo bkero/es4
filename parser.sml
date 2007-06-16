@@ -869,11 +869,14 @@ and functionExpression (ts,a:alpha,b:beta) =
 and needType (nd:Ast.IDENT_EXPR,nullable:bool option) = 
     case nd of
         Ast.Identifier {ident,...} =>
-            if (ident=Ustring.asterisk)
-                then Ast.SpecialType Ast.Any
-                else if( ident=Ustring.Object_ )  (* FIXME: check for *the* object name *)
-                    then Ast.TypeName nd
-                    else Ast.TypeName nd
+                if( ident=Ustring.Object_ )  (* FIXME: check for *the* object name *)
+                then Ast.TypeName nd
+                else Ast.TypeName nd
+(* Don't convert to Ast.Any so we can distinguish from un-anno'd defs
+   for handling compatibility cases, such as writable functions
+        Ast.WildcardIdentifier =>
+                Ast.SpecialType Ast.Any
+*)
       | _ => Ast.TypeName nd
 
 and functionSignature (ts) : ((TOKEN * Ast.LOC) list * Ast.FUNC_SIG) =
@@ -3467,19 +3470,6 @@ and functionType (ts) : ((TOKEN * Ast.LOC) list * Ast.TYPE_EXPR)  =
 
 and functionTypeFromSignature fsig : Ast.FUNC_TYPE = 
     let
-(*
-        fun paramTypes (params:Ast.BINDING list) : (Ast.TYPE_EXPR list) =
-                    case params of
-                        [] => []
-                      | _ =>
-                            let
-                                val (Ast.Binding {ident,ty}) = hd params
-                                val types = paramTypes (tl params)
-                            in case (ident,ty) of
-                                (Ast.PropIdent _,t) => t :: types
-                              | _ => types   (* ignore temps from desugaring *)
-                            end
-*)
     in 
        case fsig of
         Ast.FunctionSignature {typeParams,params,paramTypes,returnType,thisType,hasRest,defaults,...} =>
@@ -5671,7 +5661,7 @@ and functionDefinition (ts,attrs:ATTRS,CLASS) =
         val (ts1,nd1) = functionKind (ts)
         val (ts2,nd2) = functionName (ts1)
     in case (nd1,isCurrentClass(nd2),prototype) of
-        (Ast.Var,true,false) =>
+        (Ast.Const,true,false) =>
             let
                 val (ts3,nd3) = constructorSignature (ts2)
             in case ts3 of
@@ -5718,7 +5708,7 @@ and functionDefinition (ts,attrs:ATTRS,CLASS) =
                     end
             end
 
-      | (Ast.LetVar,true,_) => 
+      | (Ast.LetConst,true,_) => 
         error ["class name not allowed in 'let function'"]
         
       | (_,false,false) =>  (* static or instance method *)
@@ -5851,16 +5841,26 @@ and functionDefinition (ts,attrs:ATTRS,CLASS) =
         val (ts3,nd3) = functionSignature (ts2)
         val (ts4,nd4) = functionBody (ts3)
         val ident = (#ident nd2)
+        val ty = functionTypeFromSignature(nd3)
+        
         val func = Ast.Func {name=nd2,
                              fsig=nd3,
                              param=Ast.Head ([],[]),
                              defaults=[],
-                             ty=functionTypeFromSignature(nd3),
+                             ty=ty,
                              native=false,
                              block=nd4}
+
+        fun hasNonStar (ts) : bool = 
+            case ts of 
+                [] => false
+              | Ast.SpecialType AstAny :: _ => hasNonStar (tl ts)
+              | _ => true
+ 
+        val hasNonStarAnno = hasNonStar (#params ty) orelse hasNonStar [(#result ty)]
     in
         (ts4,{pragmas=[],
-              defns=[Ast.FunctionDefn {kind=nd1, 
+              defns=[Ast.FunctionDefn {kind=if hasNonStarAnno then nd1 else Ast.Var, (* dynamic function are writable *)
                                        ns=ns,
                                        final=final,
                                        override=override,
@@ -5869,15 +5869,6 @@ and functionDefinition (ts,attrs:ATTRS,CLASS) =
                                        abstract=false,
                                        func=func}],
               body=[],
-(*
-              body=[Ast.InitStmt {kind=nd1,
-                                   ns=ns,
-                                   prototype=false,
-                                   static=false,
-                                   temps=([],[]),
-                                   inits=[Ast.InitStep (Ast.PropIdent ident,
-                                                        Ast.LiteralExpr (Ast.LiteralFunction func))]}],
-*)
               head=NONE,
               loc=locOf ts})
     end
@@ -5887,9 +5878,9 @@ and functionKind (ts) =
     in case ts of
         (Function, _) :: _ => 
             (trace(["<< functionKind with next=", tokenname(hd (tl ts))]);
-            (tl ts,Ast.Var))   (* reuse VAR_DEFN_KIND *)
+            (tl ts,Ast.Const))   (* reuse VAR_DEFN_KIND *)
       | (Let, _) :: (Function, _) :: _ => 
-            (tl (tl ts), Ast.LetVar)
+            (tl (tl ts), Ast.LetConst)
       | (Const, _) :: (Function, _) :: _ => 
             (tl (tl ts), Ast.Const)
       | _ => error ["unknown token in functionKind"]
