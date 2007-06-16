@@ -37,29 +37,52 @@
 
 package es4 
 {
+    class ABCEmitter
+    {
+        var abcfile, constants;
+        private var scripts = [];
+
+        function ABCEmitter() {
+            abcfile = new ABCFile;
+            constants = new ABCConstantPool;
+            abcfile.addConstants(constants);
+        }
+
+        function newScript(): Script {
+            var s = new Script(this);
+            scripts.push(s);
+            return s;
+        }
+
+        function finalize() {
+            forEach(function (s) { s.finalize() }, scripts);
+        }
+    }
+
     class Script
     {
-        private var emitter, init_method;
+        var emitter;
+        private var init_method;
 
         function Script(emitter) {
             this.emitter = emitter;
         }
 
         function get init(): Method {
-            if (init_method == null)
+            if (!init_method)
                 init_method = new Method(emitter, []);
             return init_method;
         }
 
         function finalize() {
             init.finalize();
-            emitter.file.addScript(new ABCScriptInfo(init.methodID));
+            emitter.abcfile.addScript(new ABCScriptInfo(init.methodID));
         }
     }
 
     class Method extends ABCAssembler
     {
-        private var emitter, formals;
+        var emitter, formals;
 
         function Method(emitter, formals) {
             super(emitter.constants, formals.length);
@@ -70,7 +93,6 @@ package es4
             I_getlocal_0();
             I_pushscope();
         }
-
 
         function finalize() {
             // Standard epilogue??
@@ -83,32 +105,8 @@ package es4
         }
     }
 
-
-    class ABCEmitter
+    class Junk 
     {
-        var abcfile, constants;
-
-        function ABCEmitter() {
-            abcfile = new ABCFile;
-            constants = new ABCConstantPool;
-            abcfile.addConstants(constants);
-        }
-
-        function get abcfile() {
-        }
-
-        function get packageNamespace() {
-            return constants.namespace(CONSTANT_PackageNamespace, cp.stringUtf8(""));
-        }
-
-        function QName(ns_idx, str) {
-            return constants.namespace(ns_idx, cp.stringUtf8(str));
-        }
-
-        function newScript(): Script {
-            return new Script(this);
-        }
-
         // IF kinds
 
         public static const IF_false = 0;
@@ -660,6 +658,8 @@ package es4
 
         }
     }
+
+
 
     import avmplus.Domain
     

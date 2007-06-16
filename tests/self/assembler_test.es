@@ -40,11 +40,151 @@
 package es4 
 {
     public function testABCAssembler() {
-        //testCoverage();
+        /*
+        testCoverage();
         testHelloWorld();
         testLoop();
         testSwitch1();
         testSwitch2();
+        */
+        testFib();
+    }
+
+    /*
+      class Fib {
+          function Fib(n) {
+             if (n < 2)
+                 val = n;
+             else 
+                 val = (new Fib(n-1)).val + (new Fib(n-2)).val
+          }
+          var val;
+      }
+      print(new Fib(10))
+    */
+    function testFib() {
+        var file = new ABCFile();
+        var cp = new ABCConstantPool();
+
+        file.addConstants(cp);
+        
+        var ns = cp.namespace(CONSTANT_PackageNamespace, cp.stringUtf8(""));
+        var n_name = cp.QName(ns, cp.stringUtf8("n"));
+        var print_name = cp.QName(ns, cp.stringUtf8("print"));
+        var val_name = cp.QName(ns, cp.stringUtf8("val"));
+        var Fib_name = cp.QName(ns, cp.stringUtf8("Fib"));
+        var Object_name = cp.QName(ns, cp.stringUtf8("Object"));
+
+        function mkClassInit() {
+            var formals = [];
+            var asm = new ABCAssembler(cp,formals.length);
+            asm.I_returnvoid();
+
+            var meth = file.addMethod(new ABCMethodInfo(cp.stringUtf8("Fib$cinit"), formals, 0, asm.flags));
+            var body = new ABCMethodBodyInfo(meth);
+            body.setMaxStack(asm.maxStack);
+            body.setLocalCount(asm.maxLocal);
+            body.setMaxScopeDepth(asm.maxScope);
+            body.setCode(asm);
+            file.addMethodBody(body);
+
+            return meth;
+        }
+
+        function mkInstanceInit() {
+            var formals = [0];
+            var asm = new ABCAssembler(cp,formals.length);
+            asm.I_getlocal(0);
+            asm.I_pushscope();
+
+            asm.I_getlocal(0);
+            asm.I_constructsuper(0);
+
+            asm.I_getlocal(1);  // n
+            asm.I_pushbyte(2);
+            var L0 = asm.I_iflt();
+            asm.I_findpropstrict(Fib_name);
+            asm.I_getlocal(1);
+            asm.I_pushbyte(1);
+            asm.I_subtract();
+            asm.I_constructprop(Fib_name, 1);
+            asm.I_getproperty(val_name);
+            asm.I_findpropstrict(Fib_name);
+            asm.I_getlocal(1);
+            asm.I_pushbyte(2);
+            asm.I_subtract();
+            asm.I_constructprop(Fib_name, 1);
+            asm.I_getproperty(val_name);
+            asm.I_add();
+            var L1 = asm.I_jump();
+            asm.I_label(L0);
+            asm.I_getlocal(1);
+            asm.I_label(L1);
+            asm.I_findpropstrict(val_name);
+            asm.I_swap();
+            asm.I_setproperty(val_name);
+            asm.I_returnvoid();
+
+            var meth = file.addMethod(new ABCMethodInfo(cp.stringUtf8("Fib$iinit"), formals, 0, asm.flags));
+            var body = new ABCMethodBodyInfo(meth);
+            body.setMaxStack(asm.maxStack);
+            body.setLocalCount(asm.maxLocal);
+            body.setMaxScopeDepth(asm.maxScope);
+            body.setCode(asm);
+            file.addMethodBody(body);
+
+            return meth;
+        }
+
+        var asm = new ABCAssembler(cp,0);
+        asm.I_getlocal_0();
+        asm.I_pushscope();
+
+        // Create the 'Fib' class
+        var cls = new ABCClassInfo;
+        cls.setCInit(mkClassInit());
+        var clsidx = file.addClass(cls);
+
+        var inst= new ABCInstanceInfo(Fib_name, Object_name, 0, 0, []);
+        inst.setIInit(mkInstanceInit());
+        inst.addTrait(new ABCSlotTrait(val_name, 0));
+        file.addInstance(inst);
+
+        asm.I_findpropstrict(Object_name);
+        asm.I_getproperty(Object_name);
+        asm.I_dup();
+        asm.I_pushscope();
+        asm.I_newclass(clsidx);
+        asm.I_popscope();
+        asm.I_getglobalscope();
+        asm.I_swap();
+        asm.I_initproperty(Fib_name);
+
+        // Main program
+        var reg = asm.getTemp();
+        asm.I_findpropstrict(Fib_name);
+        asm.I_pushbyte(10);
+        asm.I_constructprop(Fib_name, 1);
+        asm.I_getproperty(val_name);
+        asm.I_setlocal(reg);
+        asm.I_findpropstrict(print_name);
+        asm.I_getlocal(reg);
+        asm.I_callpropvoid(print_name, 1);
+        asm.I_returnvoid();
+
+        var meth = file.addMethod(new ABCMethodInfo(cp.stringUtf8("$main"), [], 0, asm.flags));
+        var body = new ABCMethodBodyInfo(meth);
+        body.setMaxStack(asm.maxStack);
+        body.setLocalCount(asm.maxLocal);
+        body.setMaxScopeDepth(asm.maxScope);
+        body.setCode(asm);
+        file.addMethodBody(body);
+
+        var script = new ABCScriptInfo(meth);
+        script.addTrait(new ABCOtherTrait(Fib_name, 0, TRAIT_Class, 0, clsidx));
+        file.addScript(script);
+
+        loadAndRunABCFile(file);
     }
 
     function testSwitch1() {

@@ -13,6 +13,12 @@ package es4 {
         return b;
     }
 
+    function forEach(fn, a) {
+        for ( var i=0 ; i < a.length ; i++ )
+            if (i in a)
+                fn(a[i]);
+    }
+
     function copyArray(c) {
         var a = new Array;
         for ( var i=0 ; i < c.length ; i++ ) 

@@ -74,8 +74,8 @@ package es4
             constants.serialize(bytes);
             emitArray(methods);
             emitArray(metadatas);
-            emitArray(instances, false);
-            emitArray(classes);
+            emitArray(instances);
+            emitArray(classes, false);
             emitArray(scripts);
             emitArray(bodies);
 
@@ -94,6 +94,13 @@ package es4
         function addMetadata(m: ABCMetadataInfo): uint {
             metadatas.push(m);
             return metadatas.length-1;
+        }
+
+        function addClassAndInstance(cls, inst): uint {
+            var x = addClass(cls);
+            var y = addInstance(inst);
+            assert( x == y );
+            return x;
         }
 
         function addInstance(i: ABCInstanceInfo): uint {
@@ -389,7 +396,7 @@ package es4
     {
         function ABCInstanceInfo(name, super_name, flags, protectedNS, interfaces) {
             this.name = name;
-            this.super_name = name;
+            this.super_name = super_name;
             this.flags = flags;
             this.protectedNS = protectedNS;
             this.interfaces = interfaces;
@@ -450,7 +457,7 @@ package es4
                 kind |= ATTR_Metadata;
             bs.uint30(name);
             bs.uint30(kind);
-            this.inner_serialize(bs);
+            inner_serialize(bs);
             if (metadata.length > 0) {
                 bs.uint30(metadata.length);
                 for ( var i=0 ; i < metadata.length ; i++ ) 

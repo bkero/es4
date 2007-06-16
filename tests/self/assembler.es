@@ -126,6 +126,9 @@ package es4
      */
     class ABCAssembler 
     {
+        const listify = true;
+        const indent = "        ";
+
         function ABCAssembler(constants, numberOfFormals) {
             this.constants = constants;
             this.nextTemp = numberOfFormals+1; // local 0 is always "this"
@@ -136,18 +139,36 @@ package es4
         function get maxScope() { return max_scope_depth }
         function get flags() { return (set_dxns ? METHOD_Setsdxns : 0) | (need_activation ? METHOD_Activation : 0) }
                                    
-        private function list0(n) {
-            print(n);
+        private function listL(n) {
+            if (listify)
+                print(n);
         }
 
-        private function list(name, ...rest) {
-            print("        " + name + " " + rest.join(" "));
+        private function list1(name) {
+            if (listify)
+                print(indent + name);
         }
+
+        private function list2(name, v) {
+            if (listify)
+                print(indent + name + " " + v);
+        }
+
+        private function list3(name, v1, v2) {
+            if (listify)
+                print(indent + name + " " + v1 + " " + v2);
+        }
+
+        private function listn(name, ...rest) {
+            if (listify)
+                print(indent + name + " " + rest.join(" "));
+        }
+
 
         // Instructions that push one value, with a single opcode byte
         private function pushOne(name, opcode) {
             stack(1);
-            list(name);
+            list1(name);
             code.uint8(opcode);
         }
 
@@ -167,7 +188,7 @@ package es4
         // Instructions that push one value, with an opcode byte followed by a u30 argument
         private function pushOneU30(name, opcode, v) {
             stack(1);
-            list(name, v);
+            list2(name, v);
             code.uint8(opcode);
             code.uint30(v);
         }
@@ -187,7 +208,7 @@ package es4
         // Instructions that pop one value, with a single opcode byte
         private function dropOne(name, opcode) {
             stack(-1);
-            list(name);
+            list1(name);
             code.uint8(opcode);
         }
 
@@ -232,7 +253,7 @@ package es4
         // Instructions that pop one value, with an opcode byte followed by an u30 argument
         private function dropOneU30(name, opcode, v) {
             stack(-1);
-            list(name, v);
+            list2(name, v);
             code.uint8(opcode);
             code.uint30(v);
         }
@@ -243,7 +264,7 @@ package es4
         private function dropNone(name, opcode)
         {
             //stack(0);
-            list(name);
+            list1(name);
             code.uint8(opcode);
         }
 
@@ -276,7 +297,7 @@ package es4
         // followed by a u30 argument
         private function dropNoneU30(name, opcode, x) {
             //stack(0)
-            list(name, x);
+            list2(name, x);
             code.uint8(opcode);
             code.uint30(x);
         }
@@ -349,7 +370,7 @@ package es4
             if (L === undefined)
                 L = newlabel();
 
-            list(name, L.name);
+            list2(name, L.name);
             code.uint8(opcode);
             relativeOffset(code.length+3, L);
 
@@ -369,10 +390,10 @@ package es4
                 current_scope_depth = L.scope;
             }
             L.address = here;
-            list0(L.name + ":   -- " + L.stack + "/" + L.scope);
+            listL(L.name + ":   -- " + L.stack + "/" + L.scope);
             if (define) {
                 code.uint8(0x09);
-                list("label");
+                list1("label");
             }
             return L;
         }
@@ -422,7 +443,7 @@ package es4
                 }
             }
                 
-            list("lookupswitch", default_label.name, map(function (L) { return L.name }, case_labels));
+            list3("lookupswitch", default_label.name, map(function (L) { return L.name }, case_labels));
             var base = code.length;
             code.uint8(0x1B);
             relativeOffset(base, default_label);
@@ -436,7 +457,7 @@ package es4
         // Standard function calls
         private function call(name, opcode, nargs) {
             stack(1-(nargs+2)); /* pop function/receiver/args; push result */
-            list(name, nargs);
+            list2(name, nargs);
             code.uint8(opcode);
             code.uint30(nargs);
         }
@@ -446,14 +467,14 @@ package es4
 
         function I_constructsuper(nargs) {
             stack(nargs+1); /* pop receiver/args */
-            list("constructsuper", nargs);
+            list2("constructsuper", nargs);
             code.uint8(0x49);
             code.uint30(nargs);
         }
 
         private function callIDX(name, opcode, index, nargs) {
             stack(1-(nargs+1)); /* pop receiver/args; push result */
-            list(name, index, nargs);
+            list3(name, index, nargs);
             code.uint8(opcode);
             code.uint30(index);
             code.uint30(nargs);
@@ -467,7 +488,7 @@ package es4
             var hasRTNS = constants.hasRTNS(index);
             var hasRTName = constants.hasRTName(index);
             stack((isVoid ? 0 : 1) - (1 + (hasRTNS ? 1 : 0) + (hasRTName ? 1 : 0) + nargs));
-            list(name + (hasRTNS ? "<NS>" : "") + (hasRTName ? "<Name>" : ""), index, nargs);
+            list3(name + (hasRTNS ? "<NS>" : "") + (hasRTName ? "<Name>" : ""), index, nargs);
             code.uint8(opcode);
             code.uint30(index);
             code.uint30(nargs);
@@ -482,7 +503,7 @@ package es4
 
         function I_debug(debug_type, index, reg, extra=0) {
             //stack(0);
-            list("debug", debug_type, index, reg, extra);
+            listn("debug", debug_type, index, reg, extra);
             code.uint8(0xEF);
             code.uint8(debug_type);
             code.uint30(index);
@@ -499,7 +520,7 @@ package es4
             var hasRTNS = constants.hasRTNS(index);
             var hasRTName = constants.hasRTName(index);
             stack(pushes - (pops + (hasRTNS ? 1 : 0) + (hasRTName ? 1 : 0)));
-            list(name + (hasRTNS ? "<NS>" : "") + (hasRTName ? "<Name>" : ""), index);
+            list2(name + (hasRTNS ? "<NS>" : "") + (hasRTName ? "<Name>" : ""), index);
             code.uint8(opcode);
             code.uint30(index);
         }
@@ -511,8 +532,8 @@ package es4
         function I_findproperty(index) { propU30("findproperty", 0, 1, 0x5E, index) }
         function I_findpropstrict(index) { propU30("findpropstict", 0, 1, 0x5D, index) }
         function I_initproperty(index) { propU30("initproperty", 2, 0, 0x68, index) }
-        function I_setproperty(index) { propU30("setproperty", 2, 0, 0x61, index, hasRTNS, hasRTName) }
-        function I_setsuper(index) { propU30("setsuper", 2, 0, 0x05, index, hasRTNS, hasRTName) }
+        function I_setproperty(index) { propU30("setproperty", 2, 0, 0x61, index) }
+        function I_setsuper(index) { propU30("setsuper", 2, 0, 0x05, index) }
 
         function I_hasnext2(object_reg, index_reg) {
             stack(1);
@@ -523,28 +544,28 @@ package es4
 
         function I_newarray(nargs) {
             stack(1 - nargs);
-            list("newarray", nargs);
+            list2("newarray", nargs);
             code.uint8(0x56);
             code.uint30(nargs);
         }
 
         function I_newobject(nargs) {
             stack(1 - (2 * nargs));
-            list("newobject", nargs);
+            list2("newobject", nargs);
             code.uint8(0x55);
             code.uint30(nargs);
         }
 
         function I_pushbyte(b) {
             stack(1);
-            list("pushbyte", b);
+            list2("pushbyte", b);
             code.uint8(0x24);
             code.uint8(b);
         }
 
         function I_setslot(index) {
             stack(-2);
-            list("setslot", index);
+            list2("setslot", index);
             code.uint8(0x6D);
             code.uint30(index);
         }
@@ -562,7 +583,6 @@ package es4
         }
 
         function get length() {
-            print("LENGTH: " + code.length);
             return code.length;
         }
 
@@ -607,5 +627,4 @@ package es4
         private var set_dxns = false;
         private var need_activation = false;
     }
-
 }
