@@ -146,7 +146,7 @@ package
         let const n = intrinsic::ToDouble(v)
         return n != Number.NaN && 
                n != Number.NEGATIVE_INFINITY && 
-               n != Number.POSTITVE_INFINITY 
+               n != Number.POSITIVE_INFINITY 
     }
     
     

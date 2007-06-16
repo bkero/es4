@@ -695,6 +695,7 @@ and hasValue (obj:Mach.OBJ)
 and getValueOrVirtual (obj:Mach.OBJ)
                       (name:Ast.NAME) 
                       (doVirtual:bool)
+                      (propNotFound:(Mach.OBJ -> Mach.VAL))
     : Mach.VAL = 
     let 
         val Mach.Obj { props, ... } = obj                                      
@@ -754,24 +755,33 @@ and getValueOrVirtual (obj:Mach.OBJ)
                 case Mach.findProp props Name.meta_get of                    
                     SOME { state = Mach.MethodProp _, ... } => catchAll ()
                   | SOME { state = Mach.NativeFunctionProp _, ... } => catchAll ()
-                  | _ => Mach.Undef
+                  | _ => propNotFound obj 
             end
     end
+
 
 and getValue (obj:Mach.OBJ)
              (name:Ast.NAME)
     : Mach.VAL = 
     let
-        val Mach.Obj { proto, ... } = obj
-        val v = getValueOrVirtual obj name true
+        fun propNotFound (curr:Mach.OBJ) 
+            : Mach.VAL = 
+            let
+                val Mach.Obj { proto, ... } = curr
+            in
+                case !proto of 
+                    Mach.Object ob => getValueOrVirtual ob name true propNotFound
+                  | _ => 
+                    if isDynamic obj
+                    then Mach.Undef
+                    else throwTypeErr ["attempting to get nonexistent property ", 
+                                       LogErr.name name, 
+                                       "from non-dynamic object"] 
+            end
     in
-        case v of 
-            Mach.Undef => (case !proto of 
-                               Mach.Object ob => getValue ob name
-                             | _ => v)
-          | _ => v
+        getValueOrVirtual obj name true propNotFound
     end
-                                   
+
 
 and typeOpFailure (prefix:string)
                   (v:Mach.VAL)
@@ -801,6 +811,25 @@ and checkAndConvert (v:Mach.VAL)
             then converted
             else typeOpFailure "converter returned incompatible value" converted tyExpr
         end
+
+and isDynamic (obj:Mach.OBJ) 
+    : bool = 
+    let 
+        val Mach.Obj { tag, ... } = obj 
+    in
+        case tag of 
+            Mach.ObjectTag _ => true
+          | Mach.ArrayTag _ => true
+          | Mach.FunctionTag _ => true
+          | Mach.NoTag => true
+          | Mach.ClassTag n => 
+            let
+                val cc = Mach.needClass (getValue (getGlobalObject()) n)
+                val Ast.Cls { dynamic, ... } = (#cls cc)
+            in
+                dynamic
+            end
+    end
 
 and setValueOrVirtual (obj:Mach.OBJ) 
                       (name:Ast.NAME) 
@@ -882,8 +911,10 @@ and setValueOrVirtual (obj:Mach.OBJ)
                                                dontEnum = shouldBeDontEnum name obj,
                                                readOnly = false,
                                                isFixed = false } }
-                    in                        
-                        Mach.addProp props name prop
+                    in 
+                        if isDynamic obj
+                        then Mach.addProp props name prop
+                        else throwTypeErr1 ["attempting to add property to non-dynamic object"]
                     end                    
                 fun catchAll _ = 
                     (* FIXME: need to use builtin Name.es object here, when that file exists. *)
@@ -895,7 +926,7 @@ and setValueOrVirtual (obj:Mach.OBJ)
                         SOME { state = Mach.MethodProp _, ... } => catchAll ()
                       | SOME { state = Mach.NativeFunctionProp _, ... } => catchAll ()
                       | _ => newProp ()
-                else
+                else 
                     newProp ()
             end
     end
@@ -921,8 +952,11 @@ and defValue (base:Mach.OBJ)
         then error ["defValue on missing property: ", LogErr.name name]
         else 
             (* 
-             * defProp has relaxed rules: you can write to an 
-             * uninitialized property or a read-only property. 
+             * defProp is similar to setProp, but follows different rules:
+             * 
+             *   - No adding props, only overwriting allocated ones
+             *   - Permitted to write to uninitialized props
+             *   - Permitted to write to read-only (const) props
              *)
             let 
                 val existingProp = Mach.getProp props name
@@ -931,8 +965,7 @@ and defValue (base:Mach.OBJ)
                                 ty = (#ty existingProp), 
                                 attrs = (#attrs existingProp) }
                 fun writeProp _ = 
-                    ((* FIXME: insert typecheck here *)
-                     Mach.delProp props name;
+                    (Mach.delProp props name;
                      Mach.addProp props name newProp)
             in       
                 case (#state existingProp) of                     
@@ -996,6 +1029,10 @@ and throwExn1 (name:Ast.NAME) (args:string list)
     : Mach.OBJ = 
     raise ThrowException (instantiateGlobalClass name [(newString o Ustring.fromString o String.concat) args])
 
+and throwExn2 (name:Ast.NAME) (args:string list) 
+    : unit = 
+    raise ThrowException (instantiateGlobalClass name [(newString o Ustring.fromString o String.concat) args])
+
 and throwTypeErr (args:string list)
     : Mach.VAL = 
     throwExn Name.nons_TypeError args
@@ -1004,6 +1041,10 @@ and throwTypeErr0 (args:string list)
     : Mach.OBJ = 
     throwExn1 Name.nons_TypeError args
 
+and throwTypeErr1 (args:string list)
+    : unit = 
+    throwExn2 Name.nons_TypeError args
+
 and throwRefErr (args:string list)
     : REF = 
     throwExn0 Name.nons_ReferenceError args
@@ -1011,6 +1052,10 @@ and throwRefErr (args:string list)
 and throwRefErr0 (args:string list)
     : Mach.OBJ = 
     throwExn1 Name.nons_ReferenceError args
+
+and throwRefErr1 (args:string list)
+    : Mach.VAL = 
+    throwExn Name.nons_ReferenceError args
 
 and needNamespace (v:Mach.VAL) 
     : Ast.NAMESPACE = 

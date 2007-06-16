@@ -789,11 +789,14 @@ fun encodeURIComponent (regs:Mach.REGS)
 fun get (regs:Mach.REGS) 
         (vals:Mach.VAL list)
     : Mach.VAL = 
-    (* FIXME: arg #1 should be a Name, and convert to Ast.Name. *)
-    Eval.getValueOrVirtual 
-        (nthAsObj vals 0) 
-        (nthAsName vals 1)
-        false
+    let
+        val obj = (nthAsObj vals 0)
+        val name = (nthAsName vals 1)
+        fun propNotFound (curr:Mach.OBJ) : Mach.VAL = 
+            Eval.throwRefErr1 ["getting nonexistent property ", LogErr.name name]
+    in
+        Eval.getValueOrVirtual obj name false propNotFound
+    end
 
 (* 
  * intrinsic function set (obj: Object!, name: string, val: * ) : void
@@ -801,7 +804,6 @@ fun get (regs:Mach.REGS)
 fun set (regs:Mach.REGS) 
         (vals:Mach.VAL list)
     : Mach.VAL = 
-    (* FIXME: arg #1 should be a Name, and convert to Ast.Name. *)
     (Eval.setValueOrVirtual 
          (nthAsObj vals 0) 
          (nthAsName vals 1)
