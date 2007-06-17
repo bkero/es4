@@ -226,15 +226,14 @@ namespace Ast
        , LogicalOr
        , InstanceOf
        , In
-       , Equals
-       , NotEquals
-       , StrictEquals
-       , StrictNotEquals
+       , Equal
+       , NotEqual
+       , StrictEqual
+       , StrictNotEqual
        , Less
        , LessOrEqual
        , Greater
-       , GreaterOrEqual
-       , Comma )
+       , GreaterOrEqual )
 
     class Plus {}
     class Minus {}
@@ -251,15 +250,37 @@ namespace Ast
     class LogicalOr {}
     class InstanceOf {}
     class In {}
-    class Equals {}
-    class NotEquals {}
-    class StrictEquals {}
-    class StrictNotEquals {}
+    class Equal {}
+    class NotEqual {}
+    class StrictEqual {}
+    class StrictNotEqual {}
     class Less {}
     class LessOrEqual {}
     class Greater {}
     class GreaterOrEqual {}
-    class Comma {}
+
+    var plusOp = new Plus;
+    var minusOp = new Minus;
+    var timesOp = new Times;
+    var divideOp = new Divide;
+    var remainderOp = new Remainder;
+    var leftShiftOp = new LeftShift;
+    var rightShiftOp = new RightShift;
+    var rightShiftUnsignedOp = new RightShiftUnsigned;
+    var bitwiseAndOp = new BitwiseAnd;
+    var bitwiseOrOp = new BitwiseOr;
+    var bitwiseXorOp = new BitwiseXor;
+    var logicalAndOp = new LogicalAnd;
+    var logicalOrOp = new LogicalOr;
+    var instanceOfOp = new InstanceOf;
+    var inOp = new In;
+    var equalOp = new Equal;
+    var notEqualOp = new NotEqual;
+    var strictEqualOp = new StrictEqual;
+    var lessOp = new Less;
+    var lessOrEqualOp = new LessOrEqual;
+    var greaterOp = new Greater;
+    var greaterOrEqualOp = new GreaterOrEqual;
 
     /*
         ASSIGNOP
@@ -482,6 +503,8 @@ namespace Ast
 
     class ListExpr {
         const exprs : [EXPR];
+        function ListExpr (exprs)
+            : exprs=exprs {}
     }
 
     type INIT_TARGET =
@@ -1207,6 +1230,13 @@ namespace Ast
     /*
         PROGRAM
     */
+
+    type DIRECTIVES = 
+        { pragmas: [PRAGMA] 
+        , defns: [DEFN] 
+        , head: HEAD?
+        , stmts: [STMT]
+        , pos: POS? }
 
     type PROGRAM = Program
 

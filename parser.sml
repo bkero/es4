@@ -4798,7 +4798,7 @@ and defaultXmlNamespaceStatement (ts) =
         Pragmas DirectivePrefix'(t)
 
     DirectivesPrefix'(t)
-           empty
+        empty
         Directive(t,full) DirectivesPrefix'(t)
 *)
 

@@ -148,7 +148,7 @@
         public function identifier (ts: TOKENS)
             : [TOKENS, Ast::IDENT]
         {
-            enter("Parse::identifier ", ts);
+            enter("Parser::identifier ", ts);
 
             var str = "";   // fixme: evaluator isn't happy if this is inside of the switch
 
@@ -200,7 +200,7 @@
             default:
                 throw "expecting identifier, found " + Token::tokenText (hd (ts));
             }
-            exit ("Parse::identifier ", str);
+            exit ("Parser::identifier ", str);
             return [tl (ts), new Ast::Identifier (str)];
         }
 
@@ -214,7 +214,7 @@
         function qualifier(ts)
             : [TOKENS, (Ast::IDENT,Ast::NAMESPACE)]
         {
-            enter("Parse::qualifier ",ts);
+            enter("Parser::qualifier ",ts);
 
             var [ts1,nd1] = [null,null];
 
@@ -235,7 +235,7 @@
                 throw "invalid qualifier";
             }
 
-            exit("Parse::qualifier ",nd1);
+            exit("Parser::qualifier ",nd1);
             return [ts1,nd1];
         }
 
@@ -251,7 +251,7 @@
         function reservedNamespace (ts: TOKENS)
 			: [TOKENS, Ast::NAMESPACE]
         {
-            enter("Parse::reservedNamespace ", ts);
+            enter("Parser::reservedNamespace ", ts);
 
             var [ts1,nd1] = [null,null];
             switch (hd (ts)) {
@@ -272,7 +272,7 @@
                 break;
             }
 
-            exit("Parse::reservedNamespace ", nd1);
+            exit("Parser::reservedNamespace ", nd1);
             return [ts1,nd1];
         }
 
@@ -289,7 +289,7 @@
         function qualifiedNameIdentifier (ts1: TOKENS, nd1: Ast::EXPR)
             : [TOKENS, Ast::IDENT_EXPR]
         {
-            enter("Parse::qualifiedNameIdentifier ", ts1);
+            enter("Parser::qualifiedNameIdentifier ", ts1);
 
             var ts2,nd2;
             var ts3,nd3;
@@ -317,7 +317,7 @@
                     break;
             }
 
-            exit("Parse::qualifiedNameIdentifier ", nd3);
+            exit("Parser::qualifiedNameIdentifier ", nd3);
             return [ts3,nd3];
         }
 
@@ -1850,461 +1850,433 @@
 //            Debug::exit("parseYieldExpression",result)
 //            return result
 //        }
-//
-//        /*
-//
-//        MultiplicativeExpression    
-//            UnaryExpression
-//            MultiplicativeExpression  *  UnaryExpression
-//            MultiplicativeExpression  /  UnaryExpression
-//            MultiplicativeExpression  %  UnaryExpression
-//
-//        */
-//
-//        function parseMultiplicativeExpression()
-//        {
-//            Debug::enter("parseMultiplicativeExpression")
-//
-//            enterSlashContext(div_token)
-//            var first = parseYieldExpression()
-//            exitSlashContext(div_token)
-//            while( true )
-//            {
-//                if( lookahead(mult_token) )
-//                {
-//                    match(mult_token)
-//                    enterSlashContext(div_token)
-//                    var second = parseYieldExpression()
-//                    exitSlashContext(div_token)
-//                    var first = <Binary kind="multiply">{first}{second}</Binary>
-//                }
-//                else
-//                if( lookahead(div_token) )
-//                {
-//                    match(div_token)
-//                    enterSlashContext(div_token)
-//                    var second = parseYieldExpression()
-//                    exitSlashContext(div_token)
-//                    var first = <Binary kind="divide">{first}{second}</Binary>
-//                }
-//                else
-//                if( lookahead(modulus_token) )
-//                {
-//                    match(modulus_token)
-//                    enterSlashContext(div_token)
-//                    var second = parseYieldExpression()
-//                    exitSlashContext(div_token)
-//                    var first = <Binary kind="modulus">{first}{second}</Binary>
-//                }
-//                else
-//                {
-//                    break  // okay, none found
-//                }
-//            }                
-//            var result = first
-//
-//            Debug::exit("parseMultiplicativeExpression",result)
-//            return result
-//        }
-//
-//        /*
-//
-//        AdditiveExpression    
-//            MultiplicativeExpression
-//            AdditiveExpression + MultiplicativeExpression
-//            AdditiveExpression - MultiplicativeExpression
-//
-//        */
-//
-//        function parseAdditiveExpression()
-//        {
-//            Debug::enter("parseAdditiveExpression")
-//
-//            var first = parseMultiplicativeExpression()
-//            while( true )
-//            {
-//                if( lookahead(plus_token) )
-//                {
-//                    match(plus_token)
-//                    var second = parseMultiplicativeExpression()
-//                    var first = <Binary kind="plus">{first}{second}</Binary>
-//                }
-//                else
-//                if( lookahead(minus_token) )
-//                {
-//                    match(minus_token)
-//                    var second = parseMultiplicativeExpression()
-//                    var first = <Binary kind="minus">{first}{second}</Binary>
-//                }
-//                else
-//                {
-//                    break  // okay, none found
-//                }
-//            }                
-//
-//            var result = first
-//
-//            Debug::exit("parseAdditiveExpression",result)
-//            return result
-//        }
-//
-//        /*
-//
-//        ShiftExpression    
-//            AdditiveExpression
-//            ShiftExpression << AdditiveExpression
-//            ShiftExpression >> AdditiveExpression
-//            ShiftExpression >>> AdditiveExpression
-//
-//
-//        */
-//
-//        function parseShiftExpression()
-//        {
-//            Debug::enter("parseShiftExpression")
-//
-//            var first = parseAdditiveExpression()
-//            while( true )
-//            {
-//                if( lookahead(leftshift_token) )
-//                {
-//                    match(leftshift_token)
-//                    var second = parseAdditiveExpression()
-//                    var first = <Binary kind="leftshift">{first}{second}</Binary>
-//                }
-//                else
-//                if( lookahead(rightshift_token) )
-//                {
-//                    match(rightshift_token)
-//                    var second = parseAdditiveExpression()
-//                    var first = <Binary kind="rightshift">{first}{second}</Binary>
-//                }
-//                else
-//                if( lookahead(unsignedrightshift_token) )
-//                {
-//                    match(unsignedrightshift_token)
-//                    var second = parseAdditiveExpression()
-//                    var first = <Binary kind="unsignedrightshift">{first}{second}</Binary>
-//                }
-//                else
-//                {
-//                    break  // okay, none found
-//                }
-//            }                
-//            var result = first
-//
-//            Debug::exit("parseShiftExpression",result)
-//            return result
-//        }
-//
-//        /*
-//
-//        RelationalExpressionallowIn    
-//            ShiftExpression
-//            RelationalExpressionallowIn < ShiftExpression
-//            RelationalExpressionallowIn > ShiftExpression
-//            RelationalExpressionallowIn <= ShiftExpression
-//            RelationalExpressionallowIn >= ShiftExpression
-//            RelationalExpressionallowIn in ShiftExpression
-//            RelationalExpressionallowIn instanceof ShiftExpression
-//            RelationalExpressionallowIn is ShiftExpression
-//            RelationalExpressionallowIn to ShiftExpression
-//            RelationalExpressionallowIn cast ShiftExpression
-//
-//        */
-//
-//        function parseRelationalExpression(mode)
-//        {
-//            Debug::enter("parseRelationalExpression")
-//
-//            var first = parseShiftExpression()
-//            while( true )
-//            {
-//                if( lookahead(lessthan_token) )
-//                {
-//                    match(lessthan_token)
-//                    var second = parseShiftExpression()
-//                    var first = <Binary kind="lessthan">{first}{second}</Binary>
-//                }
-//                else
-//                if( lookahead(greaterthan_token) )
-//                {
-//                    match(greaterthan_token)
-//                    var second = parseShiftExpression()
-//                    var first = <Binary kind="greaterthan">{first}{second}</Binary>
-//                }
-//                else
-//                if( lookahead(lessthanorequals_token) )
-//                {
-//                    match(lessthanorequals_token)
-//                    var second = parseShiftExpression()
-//                    var first = <Binary kind="lessthanorequals">{first}{second}</Binary>
-//                }
-//                else
-//                if( lookahead(greaterthanorequals_token) )
-//                {
-//                    match(greaterthanorequals_token)
-//                    var second = parseShiftExpression()
-//                    var first = <Binary kind="greaterthanorequals">{first}{second}</Binary>
-//                }
-//                else
-//                if( mode === allowIn_mode && lookahead(in_token) )
-//                {
-//                    match(in_token)
-//                    var second = parseShiftExpression()
-//                    var first = <Binary kind="in">{first}{second}</Binary>
-//                }
-//                else
-//                if( lookahead(instanceof_token) )
-//                {
-//                    match(instanceof_token)
-//                    var second = parseShiftExpression()
-//                    var first = <Binary kind="instanceof">{first}{second}</Binary>
-//                }
-//                else
-//                if( lookahead(is_token) )
-//                {
-//                    match(is_token)
-//                    var second = parseShiftExpression()
-//                    var first = <Binary kind="is">{first}{second}</Binary>
-//                }
-//                else
-//                if( lookahead(to_token) )
-//                {
-//                    match(to_token)
-//                    var second = parseShiftExpression()
-//                    var first = <Binary kind="to">{first}{second}</Binary>
-//                }
-//                else
-//                if( lookahead(cast_token) )
-//                {
-//                    match(cast_token)
-//                    var second = parseShiftExpression()
-//                    var first = <Binary kind="cast">{first}{second}</Binary>
-//                }
-//                else
-//                {
-//                    break  // okay, none found
-//                }
-//            }                
-//            var result = first
-//
-//            Debug::exit("parseRelationalExpression",result)
-//            return result
-//        }
-//
-//        /*
-//
-//        EqualityExpressionb    
-//            RelationalExpressionb
-//            EqualityExpressionb == RelationalExpressionb
-//            EqualityExpressionb != RelationalExpressionb
-//            EqualityExpressionb === RelationalExpressionb
-//            EqualityExpressionb !== RelationalExpressionb
-//
-//
-//        */
-//
-//        function parseEqualityExpression(mode)
-//        {
-//            Debug::enter("parseEqualityExpression")
-//
-//            var first = parseRelationalExpression(mode)
-//            while( true )
-//            {
-//                if( lookahead(equals_token) )
-//                {
-//                    match(equals_token)
-//                    var second = parseRelationalExpression(mode)
-//                    var first = <Binary kind="equals">{first}{second}</Binary>
-//                }
-//                else
-//                if( lookahead(notequals_token) )
-//                {
-//                    match(notequals_token)
-//                    var second = parseRelationalExpression(mode)
-//                    var first = <Binary kind="notequals">{first}{second}</Binary>
-//                }
-//                else
-//                if( lookahead(strictequals_token) )
-//                {
-//                    match(strictequals_token)
-//                    var second = parseRelationalExpression(mode)
-//                    var first = <Binary kind="strictequals">{first}{second}</Binary>
-//                }
-//                else
-//                if( lookahead(strictnotequals_token) )
-//                {
-//                    match(strictnotequals_token)
-//                    var second = parseRelationalExpression(mode)
-//                    var first = <Binary kind="strictnotequals">{first}{second}</Binary>
-//                }
-//                else
-//                {
-//                    break  // okay, none found
-//                }
-//            }                
-//            var result = first
-//
-//            Debug::exit("parseEqualityExpression",result)
-//            return result
-//        }
-//
-//        /*
-//
-//        BitwiseAndExpressionb    
-//            EqualityExpressionb
-//            BitwiseAndExpressionrb & EqualityExpressionb
-//
-//        */
-//
-//        function parseBitwiseAndExpression(mode)
-//        {
-//            Debug::enter("parseBitwiseAndExpression")
-//
-//            var first = parseEqualityExpression(mode)
-//            while( lookahead(bitwiseand_token) )
-//            {
-//                match(bitwiseand_token)
-//                var second = parseEqualityExpression(mode)
-//                var first = <Binary kind="bitwiseand">{first}{second}</Binary>
-//            }
-//            var result = first
-//
-//            Debug::exit("parseBitwiseAndExpression",result)
-//            return result
-//        }
-//
-//        /*
-//
-//        BitwiseXorExpressionb    
-//            BitwiseAndExpressionb
-//            BitwiseXorExpressionb ^ BitwiseAndExpressionb
-//
-//        */
-//
-//        function parseBitwiseXorExpression(mode)
-//        {
-//            Debug::enter("parseBitwiseXorExpression")
-//
-//            var first = parseBitwiseAndExpression(mode)
-//            while( lookahead(bitwisexor_token) )
-//            {
-//                match(bitwisexor_token)
-//                var second = parseBitwiseAndExpression(mode)
-//                var first = <Binary kind="bitwisexor">{first}{second}</Binary>
-//            }
-//            var result = first
-//
-//            Debug::exit("parseBitwiseXorExpression",result)
-//            return result
-//        }
-//
-//        /*
-//
-//        BitwiseOrExpressionb
-//            BitwiseXorExpressionb
-//            BitwiseOrExpressionb | BitwiseXorExpressionb
-//
-//        */
-//
-//        function parseBitwiseOrExpression(mode)
-//        {
-//            Debug::enter("parseBitwiseOrExpression")
-//
-//            var first = parseBitwiseXorExpression(mode)
-//            while( lookahead(bitwiseor_token) )
-//            {
-//                match(bitwiseor_token)
-//                var second = parseBitwiseXorExpression(mode)
-//                var first = <Binary kind="bitwiseor">{first}{second}</Binary>
-//            }
-//            var result = first
-//
-//            Debug::exit("parseBitwiseOrExpression",result)
-//            return result
-//        }
-//
-//        /*
-//
-//        LogicalAndExpressionb    
-//            BitwiseOrExpressionb
-//            LogicalAndExpressionb && BitwiseOrExpressionb
-//
-//        */
-//
-//        function parseLogicalAndExpression(mode)
-//        {
-//            Debug::enter("parseLogicalAndExpression")
-//
-//            var first = parseBitwiseOrExpression(mode)
-//            while( lookahead(logicaland_token) )
-//            {
-//                match(logicaland_token)
-//                var second = parseBitwiseOrExpression(mode)
-//                var first = <Binary kind="bitwiseand">{first}{second}</Binary>
-//            }
-//            var result = first
-//
-//            Debug::exit("parseLogicalAndExpression",result)
-//            return result
-//        }
-//
-//        /*
-//
-//        LogicalXorExpressionb    
-//            LogicalAndExpressionb
-//            LogicalXorExpressionb ^^ LogicalAndExpressionb
-//
-//        */
-//
-//        function parseLogicalXorExpression(mode)
-//        {
-//            Debug::enter("parseLogicalXorExpression")
-//
-//            var first = parseLogicalAndExpression(mode)
-//            while( lookahead(logicalxor_token) )
-//            {
-//                match(logicalxor_token)
-//                var second = parseLogicalAndExpression(mode)
-//                var first = <Binary kind="logicalxor">{first}{second}</Binary>
-//            }
-//            var result = first
-//
-//            Debug::exit("parseLogicalXorExpression",result)
-//            return result
-//        }
-//
-//        /*
-//
-//        LogicalOrExpressionb    
-//            LogicalXorExpressionb
-//            LogicalOrExpressionallowIn || LogicalXorExpressionb
-//
-//        */
-//
-//        function parseLogicalOrExpression(mode)
-//        {
-//            Debug::enter("parseLogicalOrExpression")
-//
-//            var first = parseLogicalXorExpression(mode)
-//            while( lookahead(logicalor_token) )
-//            {
-//                match(logicalor_token)
-//                var second = parsePostfixExpression() //parseLogicalXorExpression(mode)
-//                var first = <Binary kind="logicalor">{first}{second}</Binary>
-//            }
-//            var result = first
-//
-//            Debug::exit("parseLogicalOrExpression",result)
-//            return result
-//        }
-//
-//        /*
-//
-//
-//
-//        */
+
+        /*
+
+        MultiplicativeExpression    
+            UnaryExpression
+            MultiplicativeExpression  *  UnaryExpression
+            MultiplicativeExpression  /  UnaryExpression
+            MultiplicativeExpression  %  UnaryExpression
+
+        */
+
+        function multiplicativeExpression (ts: TOKENS)
+            : [TOKENS, Ast::EXPR]
+        {
+            enter("Parser::multiplicativeExpression ", ts);
+
+            var op;
+            var [ts1, nd1] = primaryExpression (ts);
+            done:
+            while (true) {
+                switch (hd (ts1)) {
+                case Token::Mult:
+                    var op = Ast::multOp;
+                    break;
+                case Token::Div:
+                    var op = Ast::divOp;
+                    break;
+                case Token::Remainder:
+                    var op = Ast::remainderOp;
+                    break;
+                default:
+                    break done;
+                }
+                let [ts2, nd2] = primaryExpression (tl (ts1));
+                var [ts1, nd1] = [ts2, new Ast::BinaryExpr (op, nd1, nd2)];
+            }
+
+            exit ("Parser::multiplicativeExpression ", ts1);
+            return [ts1, nd1];
+        }
+
+        /*
+
+        AdditiveExpression    
+            MultiplicativeExpression
+            AdditiveExpression + MultiplicativeExpression
+            AdditiveExpression - MultiplicativeExpression
+
+        */
+
+        function additiveExpression (ts: TOKENS)
+            : [TOKENS, Ast::EXPR]
+        {
+            enter("Parser::additiveExpression ", ts);
+
+            var op;
+            var [ts1, nd1] = multiplicativeExpression (ts);
+            done:
+            while (true) {
+                switch (hd (ts1)) {
+                case Token::Plus:
+                    var op = Ast::plusOp;
+                    break;
+                case Token::Minus:
+                    var op = Ast::minusOp;
+                    break;
+                default:
+                    break done;
+                }
+                let [ts2, nd2] = multiplicativeExpression (tl (ts1));
+                var [ts1, nd1] = [ts2, new Ast::BinaryExpr (op, nd1, nd2)];
+            }
+
+            exit ("Parser::additiveExpression ", ts1);
+            return [ts1, nd1];
+        }
+
+        /*
+
+        ShiftExpression    
+            AdditiveExpression
+            ShiftExpression << AdditiveExpression
+            ShiftExpression >> AdditiveExpression
+            ShiftExpression >>> AdditiveExpression
+
+        */
+
+        function shiftExpression (ts: TOKENS) 
+            : [TOKENS, Ast::EXPR]
+        {
+            enter("Parser::shiftExpression ", ts);
+
+            var op;
+            var [ts1, nd1] = additiveExpression (ts);
+            done:
+            while (true) {
+                switch (hd (ts1)) {
+                case Token::LeftShift:
+                    var op = Ast::leftShiftOp;
+                    break;
+                case Token::RightShift:
+                    var op = Ast::rightShiftOp;
+                    break;
+                case Token::UnsignedRightShift:
+                    var op = Ast::unsignedRightShiftOp;
+                    break;
+                default:
+                    break done;
+                }
+                let [ts2, nd2] = additiveExpression (tl (ts1));
+                var [ts1, nd1] = [ts2, new Ast::BinaryExpr (op, nd1, nd2)];
+            }
+
+            exit ("Parser::shiftExpression ", ts1);
+            return [ts1, nd1];
+        }
+
+        /*
+
+        RelationalExpression(noIn)
+            ShiftExpression
+            RelationalExpression(noIn) < ShiftExpression
+            RelationalExpression(noIn) > ShiftExpression
+            RelationalExpression(noIn) <= ShiftExpression
+            RelationalExpression(noIn) >= ShiftExpression
+            RelationalExpression(noIn) instanceof ShiftExpression
+            RelationalExpression(noIn) is TypeExpression
+            RelationalExpression(noIn) to TypeExpression
+            RelationalExpression(noIn) cast TypeExpression
+
+        RelationalExpression(allowIn)
+            ShiftExpression
+            RelationalExpression(allowIn) < ShiftExpression
+            RelationalExpression(allowIn) > ShiftExpression
+            RelationalExpression(allowIn) <= ShiftExpression
+            RelationalExpression(allowIn) >= ShiftExpression
+            RelationalExpression(allowIn) in ShiftExpression
+            RelationalExpression(allowIn) instanceof ShiftExpression
+            RelationalExpression(allowIn) is TypeExpression
+            RelationalExpression(allowIn) to TypeExpression
+            RelationalExpression(allowIn) cast TypeExpression
+
+        */
+
+        function relationalExpression (ts: TOKENS, beta) 
+            : [TOKENS, Ast::EXPR]
+        {
+            enter("Parser::relationalExpression ", ts);
+
+            var op,ts2,nd2;
+            var [ts1, nd1] = shiftExpression (ts);
+            done:
+            while (true) {
+                switch (hd (ts1)) {
+                case Token::LessThan:
+                    var op = Ast::lessThanOp;
+                    var [ts2, nd2] = shiftExpression (tl (ts1));
+                    break;
+                case Token::GreaterThan:
+                    var op = Ast::greaterThanOp;
+                    var [ts2, nd2] = shiftExpression (tl (ts1));
+                    break;
+                case Token::LessThanOrEqual:
+                    var op = Ast::lessThanOrEqualOp;
+                    var [ts2, nd2] = shiftExpression (tl (ts1));
+                    break;
+                case Token::GreaterThanOrEqual:
+                    var op = Ast::greaterThanOrEqualOp;
+                    var [ts2, nd2] = shiftExpression (tl (ts1));
+                    break;
+                case Token::In:
+                    if (beta == NoIn) {
+                        break done;
+                    }
+                    var op = Ast::inOp;
+                    var [ts2, nd2] = shiftExpression (tl (ts1));
+                    break;
+                case Token::InstanceOf:
+                    var op = Ast::instanceOfOp;
+                    var [ts2, nd2] = shiftExpression (tl (ts1));
+                    break;
+                case Token::Is:
+                    var op = Ast::isOp;
+                    var [ts2, nd2] = typeExpression (tl (ts1));
+                    break;
+                case Token::To:
+                    var op = Ast::toOp;
+                    var [ts2, nd2] = typeExpression (tl (ts1));
+                    break;
+                case Token::Cast:
+                    var op = Ast::castOp;
+                    var [ts2, nd2] = typeExpression (tl (ts1));
+                    break;
+                default:
+                    break done;
+                }
+                var [ts1, nd1] = [ts2, new Ast::BinaryExpr (op, nd1, nd2)];
+            }
+
+            exit ("Parser::equalityExpression ", ts1);
+            return [ts1, nd1];
+        }
+
+        /*
+
+        EqualityExpression(beta)
+            RelationalExpression(beta)
+            EqualityExpression(beta) == RelationalExpression(beta)
+            EqualityExpression(beta) != RelationalExpression(beta)
+            EqualityExpression(beta) === RelationalExpression(beta)
+            EqualityExpression(beta) !== RelationalExpression(beta)
+
+        */
+
+        function equalityExpression (ts: TOKENS, beta) 
+            : [TOKENS, Ast::EXPR]
+        {
+            enter("Parser::equalityExpression ", ts);
+
+            var op;
+            var [ts1, nd1] = relationalExpression (ts, beta);
+            done:
+            while (true) {
+                switch (hd (ts1)) {
+                case Token::Equal:
+                    var op = Ast::equalOp;
+                    break;
+                case Token::NotEqual:
+                    var op = Ast::notEqualOp;
+                    break;
+                case Token::StrictEqual:
+                    var op = Ast::strictEqualOp;
+                    break;
+                case Token::StrictNotEqual:
+                    var op = Ast::strictNotEqualOp;
+                    break;
+                default:
+                    break done;
+                }
+                let [ts2, nd2] = relationalExpression (tl (ts1), beta);
+                var [ts1, nd1] = [ts2, new Ast::BinaryExpr (op, nd1, nd2)];
+            }
+
+            exit ("Parser::equalityExpression ", ts1);
+            return [ts1, nd1];
+        }
+
+        /*
+
+        BitwiseAndExpression(beta)
+            EqualityExpression(beta)
+            BitwiseAndExpressionr(beta) & EqualityExpression(beta)
+
+        */
+
+        function bitwiseAndExpression (ts: TOKENS, beta) 
+            : [TOKENS, Ast::EXPR]
+        {
+            enter("Parser::bitwiseAndExpression ", ts);
+
+            var [ts1, nd1] = equalityExpression (ts, beta);
+            while (hd (ts1) === Token::BitwiseAnd) {
+                var [ts2, nd2] = equalityExpression (tl (ts1), beta);
+                var [ts1, nd1] = [ts2, new Ast::BinaryExpr (Ast::bitwiseAndOp, nd1, nd2)];
+            }
+
+            exit ("Parser::bitwiseAndExpression ", ts1);
+            return [ts1, nd1];
+        }
+
+        /*
+
+        BitwiseXorExpressionb    
+            BitwiseAndExpressionb
+            BitwiseXorExpressionb ^ BitwiseAndExpressionb
+
+        */
+
+        function bitwiseXorExpression (ts: TOKENS, beta) 
+            : [TOKENS, Ast::EXPR]
+        {
+            enter("Parser::bitwiseXorExpression ", ts);
+
+            var [ts1, nd1] = bitwiseAndExpression (ts, beta);
+            while (hd (ts1) === Token::BitwiseOr) {
+                var [ts2, nd2] = bitwiseAndExpression (tl (ts1), beta);
+                var [ts1, nd1] = [ts2, new Ast::BinaryExpr (Ast::bitwiseXorOp, nd1, nd2)];
+            }
+
+            exit ("Parser::bitwiseXorExpression ", ts1);
+            return [ts1, nd1];
+        }
+
+        /*
+
+        BitwiseOrExpression(beta)
+            BitwiseXorExpression(beta)
+            BitwiseOrExpression(beta) | BitwiseXorExpression(beta)
+
+        */
+
+        function bitwiseOrExpression (ts: TOKENS, beta) 
+            : [TOKENS, Ast::EXPR]
+        {
+            enter("Parser::bitwiseOrExpression ", ts);
+
+            var [ts1, nd1] = bitwiseXorExpression (ts, beta);
+            while (hd (ts1) === Token::BitwiseOr) {
+                var [ts2, nd2] = bitwiseXorExpression (tl (ts1), beta);
+                var [ts1, nd1] = [ts2, new Ast::BinaryExpr (Ast::bitwiseOrOp, nd1, nd2)];
+            }
+
+            exit ("Parser::bitwiseOrExpression ", ts1);
+            return [ts1, nd1];
+        }
+
+        /*
+
+        LogicalAndExpression(beta)    
+            BitwiseOrExpression(beta)
+            LogicalAndExpression(beta) && BitwiseOrExpression(beta)
+
+        */
+
+        function logicalAndExpression (ts: TOKENS, beta) 
+            : [TOKENS, Ast::EXPR]
+        {
+            enter("Parser::logicalAndExpression ", ts);
+
+            var [ts1, nd1] = bitwiseOrExpression (ts, beta);
+            while (hd (ts1) === Token::LogicalAnd) {
+                var [ts2, nd2] = bitwiseOrExpression (tl (ts1), beta);
+                var [ts1, nd1] = [ts2, new Ast::BinaryExpr (Ast::logicalAndOp, nd1, nd2)];
+            }
+
+            exit ("Parser::logicalAndExpression ", ts1);
+            return [ts1, nd1];
+        }
+
+        /*
+
+        LogicalXorExpressionb    
+            LogicalAndExpressionb
+            LogicalXorExpressionb ^^ LogicalAndExpressionb
+
+        */
+
+        function logicalXorExpression (ts: TOKENS, beta) 
+            : [TOKENS, Ast::EXPR]
+        {
+            enter("Parser::logicalXorExpression ", ts);
+
+            var [ts1, nd1] = logicalAndExpression (ts, beta);
+            while (hd (ts1) === Token::LogicalXor) {
+                var [ts2, nd2] = logicalAndExpression (tl (ts1), beta);
+                var [ts1, nd1] = [ts2, new Ast::BinaryExpr (Ast::logicalXor, nd1, nd2)];
+            }
+
+            exit ("Parser::logicalXorExpression ", ts1);
+            return [ts1, nd1];
+        }
+
+        /*
+
+            LogicalOrExpression(beta)
+                LogicalXorExpression(beta)
+                LogicalOrExpression(AllowIn) || LogicalXorExpression(beta)
+
+        */
+
+        function logicalOrExpression (ts: TOKENS, beta) 
+            : [TOKENS, Ast::EXPR]
+        {
+            enter("Parser::assignmentExpression ", ts);
+
+            var [ts1, nd1] = logicalXorExpression (ts, beta);
+            while (hd (ts1) === Token::LogicalOr) {
+                var [ts2, nd2] = logicalXorExpression (tl (ts1), beta);
+                var [ts1, nd1] = [ts2, new Ast::BinaryExpr (Ast::logicalOrOp, nd1, nd2)];
+            }
+
+            exit ("Parser::assignmentExpression ", ts1);
+            return [ts1, nd1];
+        }
+
+        /*
+
+        ConditionalExpression(beta)
+            LetExpression(beta)
+            YieldExpression(beta)
+            LogicalOrExpression(beta)
+            LogicalOrExpression(beta)  ?  AssignmentExpression(beta)  
+                                       :  AssignmentExpression(beta)
+
+        */
+
+        function conditionalExpression (ts: TOKENS, beta) 
+            : [TOKENS, Ast::EXPR]
+        {
+            enter("Parser::assignmnetExpression ", ts);
+
+            var ts1,nd1,ts2,nd2,ts3,nd3;
+            switch (hd (ts)) {
+            case Token::Let:
+                var [ts1,nd1] = letExpression (ts,beta);
+                break;
+            case Token::Yield:
+                var [ts1,nd1] = yieldExpression (ts,beta);
+                break;
+            default:
+                var [ts1,nd1] = logicalOrExpression (ts,beta);
+                switch (hd (ts1)) {
+                case Token::QuestionMark:
+                    var [ts2,nd2] = assignmentExpression (tl (ts1),beta);
+                    match (ts2,Token::Colon);
+                    var [ts3,nd3] = assignmentExpression (tl (ts2),beta);
+                    break;
+                default:
+                    var [ts3,nd3] = [ts1,nd1];
+                    break;
+                }
+            }
+
+            exit ("Parser::assignmnetExpression ", ts1);
+            return [ts1,nd1];
+        }
+
 //
 //        function parseConditionalExpression(mode)
 //        {
@@ -2364,98 +2336,76 @@
 //            return result
 //        }
 //
-//        /*
-//
-//        AssignmentExpressionb    
-//            ConditionalExpressionb
-//            LetExpressionb
-//            YieldExpressionb
-//            PostfixExpression  =  AssignmentExpressionb
-//            PostfixExpression CompoundAssignment AssignmentExpressionb
-//            PostfixExpression LogicalAssignment AssignmentExpressionb
-//
-//            CompoundAssignment    
-//                *=
-//                /=
-//                %=
-//                +=
-//                -=
-//                <<=
-//                >>=
-//                >>>=
-//                &=
-//                ^=
-//                |=
-//    
-//            LogicalAssignment    
-//                &&=
-//                ^^=
-//                ||=
-//        */
-//
-//        function parseAssignmentExpression(mode)
-//        {
-//            Debug::enter("parseAssignmentExpression",mode)
-//            
-//            if( lookahead(let_token) )
-//            {
-//                var result = parseLetExpression(mode)
-//            }
-//            else
-//            {
-//                var first = parseConditionalExpression(mode)
-//                var found = lookahead(assign_token) ? match(assign_token) :
-//                            lookahead(multassign_token) ? match(multassign_token) : 
-//                            lookahead(divassign_token) ? match(divassign_token) : 
-//                            lookahead(modulusassign_token) ? match(modulusassign_token) : 
-//                            lookahead(plusassign_token) ? match(plusassign_token) : 
-//                            lookahead(minusassign_token) ? match(minusassign_token) : 
-//                            lookahead(leftshiftassign_token) ? match(leftshiftassign_token) : 
-//                            lookahead(rightshiftassign_token) ? match(rightshiftassign_token) : 
-//                            lookahead(unsignedrightshiftassign_token) ? match(unsignedrightshiftassign_token) : 
-//                            lookahead(bitwiseandassign_token) ? match(bitwiseandassign_token) : 
-//                            lookahead(bitwisexorassign_token) ? match(bitwisexorassign_token) : 
-//                            lookahead(bitwiseorassign_token) ? match(bitwiseorassign_token) : 
-//                            lookahead(logicalandassign_token) ? match(logicalandassign_token) : 
-//                            lookahead(logicalxorassign_token) ? match(logicalxorassign_token) : 
-//                            lookahead(logicalorassign_token) ? match(logicalorassign_token) : empty_token;
-//
-//                if( found != empty_token )
-//                {
-//                    if( first.name() != "Get" &&
-//                        first.name() != "Call" &&
-//                        first.name() != "Set" )
-//                    {
-//                        throw "invalid expression on left side of assignment"
-//                    }
-//
-//                    var second = parseAssignmentExpression(mode)
-//
-//                    if( first.name() == "Get" )
-//                    {
-//                        first.setLocalName("Set")
-//                        first.value = <To>{second}<SlotTypeRef/></To>
-//                    }
-//                    else
-//                    {
-//                        first = <Set kind="lexical">{first}<To>{second}<SlotTypeRef/></To></Set>
-//                    }
-//                    var result = first
-//                }
-//                else
-//                {
-//                    var result = first
-//                }
-//            }
-//            
-//            Debug::exit("parseAssignmentExpression",result)
-//            return result
-//        }
-//
-//        function parseAssignmentExpressionSuffix(mode, first)
-//        {
-//        }
-//        
+        /*
+
+        AssignmentExpression(beta)
+            ConditionalExpression(beta)
+            Pattern(beta, allowExpr)  =  AssignmentExpression(beta)
+            SimplePattern(beta, allowExpr)  CompoundAssignmentOperator  AssignmentExpression(beta)
+
+        */
+
+        function assignmentExpression (ts: TOKENS, beta) 
+            : [TOKENS, Ast::EXPR]
+        {
+            enter("Parser::assignmnetExpression ", ts);
+
+            var [ts1,nd1] = conditionalExpression (ts, beta);
+
+            exit ("Parser::assignmnetExpression ", ts1);
+            return [ts1,nd1];
+        }
+
+        /*
+
+        ListExpression(b)
+            AssignmentExpression(b)
+            ListExpression(b)  ,  AssignmentExpression(b)
+
+        right recursive:
+
+        ListExpression(b)    
+            AssignmentExpression(b) ListExpressionPrime(b)
+    
+        ListExpressionPrime(b)    
+            empty
+            , AssignmentExpression(b) ListExpressionPrime(b)
+
+        */
+
+        function listExpression (ts: TOKENS, beta ) 
+            : [TOKENS, Ast::EXPR]
+        {
+            enter("Parser::listExpression ", ts);
+
+            function listExpressionPrime (ts: TOKENS )
+                : [TOKENS, Ast::EXPR]
+            {
+                enter("Parser::listExpressionPrime ", ts);
+        
+                var ts1,nd1;
+                var ts2,nd2;
+                switch (hd (ts)) {
+                case Token::Comma:
+                    var [ts1,nd1] = assignmentExpression (tl (ts), beta);
+                    var [ts2,nd2] = listExpressionPrime (ts1);
+                    break;
+                default:
+                    var [ts2,nd2] = [ts,[]];
+                    break;
+                }
+        
+                exit ("Parser::listExpressionPrime ", ts2);
+                return [ts2,nd2];
+            }
+
+            var [ts1,nd1] = assignmentExpression (ts, beta);
+            var [ts2,nd2] = listExpressionPrime (ts1);
+
+            exit ("Parser::listExpression ", ts2);
+            return [ts2,new Ast::ListExpr (nd2)];
+        }
+
 //        /*
 //
 //        LetExpressionb    
@@ -2707,13 +2657,6 @@
 //            return result
 //        }
 //
-//        /*
-//
-//        ListExpression
-//
-//        */
-//
-//        function parseListExpression(mode)
 //        {
 //            Debug::enter("parseListExpression",mode)
 //            
@@ -2981,14 +2924,97 @@
 //        }
 //
 //
-//        // STATEMENTS
-//
-//        /*
-//
-//        Statement
-//
-//        */
-//
+        // STATEMENTS
+
+        /*
+        Statement(tau, omega)
+            BlockStatement(tau)
+            BreakStatement Semicolon(omega)
+            ContinueStatement Semicolon(omega)
+            DefaultXMLNamespaceStatement Semicolon(omega)
+            DoStatement Semicolon(omega)
+            ExpressionStatement Semicolon(omega)
+            ForStatement(omega)
+            IfStatement(omega)
+            LabeledStatement(omega)
+            LetStatement(omega)
+            ReturnStatement Semicolon(omega)
+            SwitchStatement
+            ThrowStatement Semicolon(omega)
+            TryStatement
+            WhileStatement(omega)
+            WithStatement(omega)
+        */
+
+        function statement (ts: TOKENS, tau:int, omega:int)
+            : [TOKENS, Ast::STMT]
+        {
+            Debug::enter("Parser::statement ", ts);
+
+            var ts1,nd1,ts2,nd2;
+            switch (hd(ts)) {
+            default:
+                var [ts1,nd1] = expressionStatement (ts);
+                var [ts2,nd2] = [semicolon (ts1,omega),nd1];
+                break;
+            }
+
+            Debug::exit("Parser::statement ", ts2);
+            return [ts2,nd2];
+        }
+
+        function newline (ts: TOKENS)
+            : boolean
+        {
+            return false; // FIXME
+        }
+
+        function semicolon (ts: TOKENS, omega:int)
+            : [TOKENS]
+        {
+            Debug::enter("Parser::semicolon ", ts);
+
+            var ts1;
+            switch (omega) {
+            case Full:
+                switch (hd (ts)) {
+                case Token::SemiColon:
+                    var ts1 = tl (ts);
+                    break;
+                case Token::EOS:
+                case Token::RightBrace:
+                    var ts1 = ts;
+                    break;
+                default:
+                    if (newline (ts)) { var ts1=ts } // semicolon inserted
+                    else { throw "expecting semicolon" }
+                }
+            default:  // Abbrev, ShortIf
+                switch (hd (ts)) {
+                case Token::SemiColon:
+                    var ts1 = tl (ts);
+                    break;
+                default:
+                    var ts1 = ts;
+                }
+            }
+
+            Debug::exit("Parser::semicolon ", ts1);
+            return ts1;
+        }
+
+        function expressionStatement (ts: TOKENS)
+            : [TOKENS, Ast::STMT]
+        {
+            Debug::enter("Parser::expressionStatement ", ts);
+
+            var [ts1,nd1] = listExpression (ts,AllowIn);
+
+            Debug::exit("Parser::expressionStatement ", ts1);
+            return [ts1, new Ast::ExprStmt (nd1)];
+        }
+
+
 //        function parseStatement(mode)
 //        {
 //            Debug::enter("parseStatement",mode)
@@ -3049,7 +3075,7 @@
 //            else
 //            if( lookahead(break_token) )
 //            {
-//                var node = parseBreakStatement()
+//                Var node = parseBreakStatement()
 //                matchSemicolon(mode)
 //            }
 //            else
@@ -3276,7 +3302,7 @@
 //
 //        /*
 //
-//        ReturnStatement    
+//        Returnstatement    
 //            return
 //            return [no line break] ListExpressionallowIn
 //        
@@ -3499,7 +3525,7 @@
 //                      attr.name()=="Namespace" ? true : false
 //
 //            Debug::exit("isNamespaceAttribute",result)
-//            return result
+//            Return result
 //        }
 //
 //        function inFunctionBody(recurse=false)
@@ -4351,6 +4377,119 @@
 //            return name
 //        }
 //
+        // DIRECTIVES
+
+        /*
+          Directives(tau)
+              empty
+              DirectivesPrefix(tau) Directives(tau,full)
+
+        */
+
+        function directives (ts: TOKENS, tau:int)
+            : [TOKENS, Ast::BLOCK]
+        {
+            Debug::enter("Parser::directives ", ts);
+
+            var ts1,pragmas,defns,head,stmts,pos;
+            switch (hd (ts)) {
+            case Token::RightBrace:
+            case Token::EOS:
+                var [ts1,{pragmas:pragmas, defns:defns, head:head, stmts:stmts, pos:pos}] 
+                         = [ts, {pragmas:[], defns:[], head:null, stmts:[], pos:null}];
+                break;
+            default:
+                var [ts1, {pragmas:pragmas, defns:defns, head:head, stmts:stmts, pos:pos}] 
+                         = directivesPrefix (ts,tau);
+                break;
+            }
+
+            Debug::exit("Parser::directives ", ts1);
+            return [ts1, new Ast::Block (pragmas,defns,head,stmts,pos)];
+        }
+
+        /*
+
+          DirectivesPrefix (tau)
+              empty
+              Pragmas
+              DirectivesPrefix(tau) Directive(tau,full)
+
+          right recursive:
+
+          DirectivesPrefix(tau)   
+              empty
+              Pragmas DirectivePrefix'(tau)
+
+          DirectivesPrefix'(tau)
+              empty
+              Directive(tau,full) DirectivesPrefix'(tau)
+        */
+
+        function directivesPrefix (ts: TOKENS, tau:int)
+            : [TOKENS, Ast::DIRECTIVES]
+        {
+            Debug::enter("Parser::directives ", ts);
+
+            var ts2,nd2;
+            var pragmas,defns,head,stmts,pos;
+            switch (hd (ts)) {
+            case Token::RightBrace:
+            case Token::EOS:
+                var [ts2,{pragmas:pragmas,defns:defns,head:head,stmts:stmts,pos:pos}] 
+                  = [ts, {pragmas:[],     defns:[],   head:null,stmts:[],   pos:null}];
+                break;
+            default:
+                //                var [ts1,nd1] = pragmas (ts);
+                var [ts2,{pragmas:pragmas,defns:defns,head:head,stmts:stmts,pos:pos}] 
+                  = directivesPrefixPrime (ts,tau);
+                break;
+            }
+
+            Debug::exit("Parser::directivesPrefix ", ts2);
+            return [ts2, {pragmas:pragmas,defns:defns,head:head,stmts:stmts,pos:pos}];
+        }
+
+        function directivesPrefixPrime (ts: TOKENS, tau:int)
+            : [TOKENS, Ast::DIRECTIVES]
+        {
+            Debug::enter("Parser::directivesPrefixPrime ", ts);
+
+            var ts2,nd2;
+            var pragmas,defns,head,stmts,pos;
+            switch (hd (ts)) {
+            case Token::RightBrace:
+            case Token::EOS:
+                var [ts2,{pragmas:pragmas,defns:defns,head:head,stmts:stmts,pos:pos}] 
+                         = [ts,{pragmas:[],defns:[],head:null,stmts:[],pos:null}];
+                break;
+            default:
+                let [ts1,nd1] = directive (ts,tau,Full);
+                var [ts2,{pragmas:pragmas,defns:defns,head:head,stmts:stmts,pos:pos}] 
+                         = directivesPrefixPrime (ts1,tau);
+                break;
+            }
+
+            Debug::exit("Parser::directivesPrefixPrime ", ts2);
+            return [ts2, {pragmas:pragmas,defns:defns,head:head,stmts:stmts,pos:pos}];
+        }
+
+        function directive (ts: TOKENS, tau:int, omega:int)
+            : [TOKENS, Ast::DIRECTIVES]
+        {
+            Debug::enter("Parser::directive ", ts);
+
+            var ts1,nd1;
+            switch (hd(ts)) {
+            default:
+                var [ts1,nd1] = statement (ts,omega);
+                break;
+            }
+
+            Debug::exit("Parser::directive ", ts1);
+            return [ts1, {pragmas:[],defns:[],head:null,stmts:[nd1],pos:null}];
+        }
+
 //        /*
 //
 //        Attributes    
@@ -4505,228 +4644,9 @@
 //            return node
 //        }
 //
-//        /*
-//
-//        Directivew    
-//            EmptyStatement
-//            Statementw
-//            AnnotatableDirectivew
-//            Attributes [no line break] AnnotatableDirectivew
-//            IncludeDirective Semicolonw
-//    
-//        AnnotatableDirectivew    
-//            VariableDefinitionallowIn Semicolonw
-//            FunctionDefinition
-//            ClassDefinition
-//            InterfaceDefinition
-//            NamespaceDefinition Semicolonw
-//            TypeDefinition Semicolonw
-//    
-//        */
-//
-//        public function parseDirective(attr,mode,prologue)
-//        {
-//            Debug::enter("parseDirective",mode)
-//
-//            if( lookahead(semicolon_token) )
-//            {
-//                match(semicolon_token)
-//                node = <></>
-//            }
-//            else
-//            if( lookahead(include_token) )
-//            {
-////                var node = parseIncludeDirective()
-//            }
-//            else
-//            if( lookahead(public_token) ||
-//                lookahead(private_token) ||
-//                lookahead(internal_token) ||
-//                lookahead(intrinsic_token) ||
-//                lookahead(protected_token) ||
-//                lookahead(dynamic_token) ||
-//                lookahead(final_token) ||
-//                lookahead(native_token) ||
-//                lookahead(override_token) ||
-//                lookahead(prototype_token) ||
-//                lookahead(static_token) ||
-//                lookahead(leftbracket_token) ||
-//                attr != null )
-//            {
-//                if( attr != null )
-//                {
-//                    var first = attr   // passed in from parseDirectives
-//                }
-//                else
-//                {
-//                    var first = parseAttribute()
-//                }
-//                if( !lookaheadSemicolon(abbrev_mode) )
-//                {
-//
-//                    var first = parseAttributes(<>{first}</>)
-//                }
-//                else
-//                {
-//                    throw "attributes cannot be used at expression statements"
-//                }
-//                if( lookahead(var_token) ||
-//                    lookahead(const_token) ||
-//                    lookahead(let_token) ||
-//                    lookahead(function_token) ||
-//                    lookahead(class_token) ||
-//                    lookahead(interface_token) ||
-//                    lookahead(namespace_token) ||
-//                    lookahead(type_token) )
-//                {
-//                    var node = parseAnnotatableDirective(first,mode,prologue)
-//                }
-//                else
-//                {
-//                    var node = first
-//                }
-//            }
-//            else
-//            if( lookahead(var_token) ||
-//                lookahead(const_token) ||
-//                lookahead(function_token) ||
-//                lookahead(class_token) ||
-//                lookahead(interface_token) ||
-//                lookahead(namespace_token) ||
-//                lookahead(type_token) )
-//            {
-//                var first = <Attributes/>
-//                var node = parseAnnotatableDirective(first,mode,prologue)                
-//            }
-//            else
-//            if( lookahead(let_token) )
-//            {
-//                var first = <Attributes/>
-//                var node = parseAnnotatableDirectiveOrLetStatement(first,mode,prologue)
-//            }
-//            else
-//            if( lookahead(identifier_token) )  // labeled, attribute or expression
-//            {
-//                var first = parseAssignmentExpression(mode)
-//                if( lookaheadSemicolon(abbrev_mode) )
-//                {
-//                    matchSemicolon(abbrev_mode)
-//                    var node = <ExpressionStatement>{first}</ExpressionStatement>
-//                }
-//                else
-//                if( lookahead(colon_token) )  // labeled statement
-//                {
-//                    match(colon_token)
-//                    if( first.name() != "Get" ||
-//                        first.Get.Identifier == undefined )  // don't allow qualified identifiers
-//                    {
-//                        throw "invalid label identifier"
-//                    }
-//                    else
-//                    {
-//                        first = first.Get.Identifier.@name
-//                    }
-//                       var second = parseSubstatement(mode)
-//                    var node = <Label label={first}>{second}</Label>
-//                }
-//                else
-//                if( first.name() == "Get" &&
-//                    ( lookahead(public_token) ||
-//                      lookahead(private_token) ||
-//                      lookahead(internal_token) ||
-//                      lookahead(intrinsic_token) ||
-//                      lookahead(protected_token) ||
-//                      lookahead(dynamic_token) ||
-//                      lookahead(final_token) ||
-//                      lookahead(native_token) ||
-//                      lookahead(override_token) ||
-//                      lookahead(prototype_token) ||
-//                      lookahead(static_token) ||
-//                      lookahead(leftbracket_token) ||
-//                      lookahead(identifier_token) ) )   // attribute list
-//                {
-//                    var first = parseAttributes(first)
-//                    if( lookahead(var_token) ||
-//                        lookahead(const_token) ||
-//                        lookahead(let_token) ||
-//                        lookahead(function_token) ||
-//                        lookahead(class_token) ||
-//                        lookahead(interface_token) ||
-//                        lookahead(namespace_token) ||
-//                        lookahead(type_token) )
-//                    {
-//                        var node = parseAnnotatableDirective(first,mode,prologue)
-//                    }
-//                    else
-//                    {
-//                        throw "looks like an attribute list but there's no definition to go with it"
-//                    }
-//                }
-//                else
-//                if( lookahead(var_token) ||
-//                    lookahead(const_token) ||
-//                    lookahead(let_token) ||
-//                    lookahead(function_token) ||
-//                    lookahead(class_token) ||
-//                    lookahead(interface_token) ||
-//                    lookahead(namespace_token) ||
-//                    lookahead(type_token) )
-//                {
-//                    var first = <Attributes>{first}</Attributes>
-//                    var node = parseAnnotatableDirective(first,mode,prologue)
-//                }
-//                else  // must be a list expression resume parsing as such
-//                {
-//                    var node = <ExpressionStatement>{parseListExpressionPrime(first,mode)}</ExpressionStatement>
-//                }
-//            }
-//            else
-//            {
-//                var node = parseStatement(mode)
-//            }
-//
-//            Debug::exit("parseDirective",node)
-//            return node
-//        }
-//
-//        /*
-//
-//        Directives    
-//            empty
-//            DirectivesPrefix Directiveabbrev
-//    
-//        DirectivesPrefix    
-//            empty
-//            Pragmas
-//            DirectivesPrefix Directivefull
-//
-//        */
-//    
-//        public function parseDirectives(attr,prologue)
-//        {
-//            Debug::enter("parseDirectives")
-//
-//            // look for pragmas
-//
-//            var node = <Block/>
-//
-//            if( !lookahead(eos_token) && 
-//                (lookahead(use_token) || lookahead(import_token)) )
-//            {
-//                prologue.* += parsePragmas()
-//            }
-//
-//            // look for statements and definitions
-//
-//            while( !lookahead(eos_token) && !lookahead(rightbrace_token) )
-//            {
-//                 node.* += parseDirective(attr,full_mode,prologue)
-//            }
-//
-//            Debug::exit("parseDirectives",node)
-//            return node
-//        }
-//
+
+        // PRAGMAS
+
 //        public function parsePragmas()
 //        {
 //            Debug::enter("parsePragmas")
@@ -4932,21 +4852,10 @@
 //        }
 //
 
-        function directives (ts: TOKENS, mode: int)
-            : [TOKENS, Ast::BLOCK]
-        {
-            Debug::enter("Parse::directives ", ts);
-
-            let [ts1,nd1] = primaryExpression (ts);
-
-            Debug::exit("Parse::directives ", ts1);
-            return [ts1, new Ast::Block ([],[],null,[new Ast::ExprStmt (nd1)],null)];
-        }
-
         function program ()
             : [TOKENS, Ast::PROGRAM]
         {
-            Debug::enter("Parse::program ","");
+            Debug::enter("Parser::program ","");
 
             let ts = scan.tokenList (scan.start)
 
@@ -4973,7 +4882,7 @@
                 throw "extra tokens after end of program: " + ts2;
             }
 
-            Debug::exit ("Parse::program ", ts2);
+            Debug::exit ("Parser::program ", ts2);
             return [ts2, new Ast::Program (nd1,nd2,null)];
         }
     }
@@ -4981,11 +4890,20 @@
     function test ()
     {
         var programs = 
-        [
-            "a.b.c.x",
-            readFile ("./tests/self/hello.es"),
-            readFile ("./tests/self/fib.es"),
+            [ "x<y"
+            , "x==y"
+            , "m-n;n+m"
             /*
+            , "new A()"
+            , "o.x"
+            , "(new Fib(n-1)).val + (new Fib(n-2)).val"
+            , "var val = n"
+            , "if (x) y; else z"
+            , "function f() { return 10 }"
+            , "class A { function A() {} }"
+            , "class Fib { function Fib (n) { } }"
+            , readFile ("./tests/self/hello.es")
+            , readFile ("./tests/self/fib.es")
             "a .< t .< u .< v > , w .< x > > > >",
             "q::[expr]",
             "(expr)::id",
@@ -5061,6 +4979,4 @@
 
     test ()
 }
-
-}
-} // end module
+}// end module
