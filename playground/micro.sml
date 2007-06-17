@@ -1,4 +1,5 @@
 (* -*- mode: sml; mode: font-lock; tab-width: 4; insert-tabs-mode: nil; indent-tabs-mode: nil -*- *)
+(* vim: set ts=4 sw=4 et: *)
 
 (* This is an implementation of a toy language to express and clarify
  * a number of issues relating to the ES4 type system in a simpler
@@ -20,37 +21,37 @@ fun extend (env:'a ENV) (x:string) (v:'a) : 'a ENV =
 
 fun lookup (env:'a ENV) (x:string) : 'a =
     case env of
-	[] => raise UnboundVariable x
+        [] => raise UnboundVariable x
       | (y,v)::r => if (x=y) then v else lookup r x
 
 (*********** Types, subtyping, and compatibility ***********)
 
 datatype TYPE =
-	     AnyType  (* the type "*" *)
+         AnyType  (* the type "*" *)
        | IntType
        | FunType of TYPE * TYPE
                     
 fun subtype (t1:TYPE) (t2:TYPE) : bool =
     case (t1,t2) of
-	    (AnyType,AnyType) => true
+        (AnyType,AnyType) => true
       | (IntType,IntType) => true
       | (FunType(s1,t1), FunType(s2,t2)) =>
-	    (subtype s2 s1) andalso (subtype t1 t2)
+        (subtype s2 s1) andalso (subtype t1 t2)
       | _ => false
 
 fun compatible (t1:TYPE) (t2:TYPE) : bool =
     case (t1,t2) of
-	    (_,AnyType) => true
+        (_,AnyType) => true
       | (AnyType,_) => true
       | (IntType,IntType) => true
       | (FunType(s1,t1), FunType(s2,t2)) =>
-	    (compatible s2 s1) andalso (compatible t1 t2)
+        (compatible s2 s1) andalso (compatible t1 t2)
       | _ => false
 
 (*********** The expression language **********)
 
 datatype EXPR =
-	     IntExpr of int
+         IntExpr of int
        | VarExpr of string
        | LetExpr of string * TYPE * EXPR * EXPR
        | FunExpr of string * TYPE * TYPE * EXPR  (* arg and result types *)
@@ -93,7 +94,7 @@ fun check (mode:MODE) (e:EXPR) (s:TYPE) (t:TYPE) : EXPR =
        
 fun verify (mode:MODE) (n:TYPE ENV) (e:EXPR) : (EXPR * TYPE) =
     case e of
-	    IntExpr n => (e,IntType)
+        IntExpr n => (e,IntType)
       | VarExpr x => (e, lookup n x)
       | LetExpr (x,t,e,body) => 
         let val (e',t') = verify mode n e
@@ -129,7 +130,7 @@ fun verify (mode:MODE) (n:TYPE ENV) (e:EXPR) : (EXPR * TYPE) =
                                     e2')),
              AnyType)
           | _ => raise BadFunExpr (e1',ty1)
-	    end
+        end
 
 (*********** Evaluation, run-time values, and conversion ***********)
 
@@ -149,7 +150,7 @@ datatype SAFEBIT =
        | Unsafe
 
 datatype VAL =
-	     IntVal of int
+         IntVal of int
        | ClosureVal of string * TYPE * TYPE * EXPR * VAL ENV * SAFEBIT
 
 exception NotAClosure of string
@@ -166,8 +167,8 @@ fun markUnsafe (v:VAL) : VAL =
       | ClosureVal (x,t1,t2,body,env,_) => ClosureVal(x,t1,t2,body,env,Unsafe)
        
 (* Converts a value "v" to type "t", 
- * raising an error of the type of "v" is not compatible with "t",
- * and setting the unsafe bit of the type of "v" is not a subtype of "t".
+ * raising an error if the type of "v" is not compatible with "t",
+ * and setting the unsafe bit if the type of "v" is not a subtype of "t".
  *)
 
 fun convert (v:VAL) (t:TYPE) : VAL =
@@ -181,24 +182,24 @@ fun convert (v:VAL) (t:TYPE) : VAL =
 
 fun eval (n:VAL ENV) (e:EXPR) : VAL =
     case e of
-	    IntExpr n => IntVal n
+        IntExpr n => IntVal n
       | VarExpr x => lookup n x
       | LetExpr (x,t,e,body) => eval (extend n x (eval n e)) body
       | FunExpr (x,t1,t2,e) => ClosureVal (x,t1,t2,e,n,Safe)
       | CastExpr (ty,e) => convert (eval n e) ty        
       | ExpectedType (retTy, AppExpr (e1,e2)) =>
-	    let in
-	        case (eval n e1) of
-		        ClosureVal (x,argTy,_,body,n2,safebit) =>
+        let in
+            case (eval n e1) of
+                ClosureVal (x,argTy,_,body,n2,safebit) =>
                 let val argVal  = (eval n e2)
-		            val argVal' = case safebit of Safe => argVal | Unsafe => convert argVal argTy
-		            val resVal  = eval (extend n2 x argVal') body
+                    val argVal' = case safebit of Safe => argVal | Unsafe => convert argVal argTy
+                    val resVal  = eval (extend n2 x argVal') body
                     val resVal' = case safebit of Safe => resVal | Unsafe => convert resVal retTy
                 in
                     resVal'
                 end
-	          | _ => raise NotAClosure ""
-	    end
+              | _ => raise NotAClosure ""
+        end
 
 (*********** Tests **********)
 
@@ -227,11 +228,3 @@ val idbad : EXPR = FunExpr("x",AnyType,IntType,VarExpr "x");
                (AppExpr (VarExpr "f", 
                          IntExpr 4 
 )))))
-
-  
-
-
-
-      
-
-
