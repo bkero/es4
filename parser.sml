@@ -1343,40 +1343,33 @@ and objectLiteral ts =
     end
 
 (*
-    FieldList    
+    FieldList
         empty
-        NonemptyFieldList(allowLet)
-
-    NonemptyFieldList(a)
-        LiteralField(a)
-        LiteralField(noLet)  ,  NonemptyFieldList(a)
+        LiteralField
+        LiteralField  ,  FieldList
 *)
 
 and fieldList ts =
     let val _ = trace([">> fieldList with next=",tokenname(hd(ts))]) 
-        fun nonemptyFieldList (ts) =
-            let
-                val (ts1,nd1) = literalField(ts)
-            in case ts1 of
-                (Comma, _) :: ts2 => 
-                    let
-                        val (ts3,nd3) = nonemptyFieldList (ts2)
-                    in
-                        (ts3,nd1::nd3)
-                    end
-              | _ => (ts1,nd1::[])
-            end
     in case ts of
         (RightBrace, _) :: _ => 
             (trace(["<< fieldList with next=",tokenname(hd(ts))]);
             (ts,[]))
-      | _ => 
+      | _ =>
         let
-            val (ts1,nd1) = nonemptyFieldList (ts)
-        in
-            trace(["<< fieldList with next=",tokenname(hd(ts))]);
-            (ts1,nd1)
-         end
+            val (ts1,nd1) = literalField(ts)
+        in case ts1 of
+            (Comma, _) :: _ => 
+                let
+                    val (ts2,nd2) = fieldList (tl ts1)
+                in
+                    trace(["<< fieldList with next=",tokenname(hd(ts2))]);
+                    (ts2,nd1::nd2)
+                end
+          | _ => 
+            (trace(["<< fieldList with next=",tokenname(hd(ts1))]);
+            (ts1,nd1::[]))
+        end
     end
 
 (*

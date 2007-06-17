@@ -4,4 +4,5 @@
 {} : *,
 {},
 { x: 0, y: true, z: "blue" } : { x: int, y: Boolean },
-{ x: 0, y: true, z: "blue" } : { x: int, y: Boolean, z: String })
+{ x: 0, y: true, z: "blue" } : { x: int, y: Boolean, z: String }
+{ x: 0, y: true, z: "blue",})
