@@ -1731,11 +1731,12 @@ and defIdentExpr (env:ENV)
           | Ast.ExpressionIdentifier { expr, ...} => 
             Ast.ExpressionIdentifier { expr = (defExpr env expr),
                                        openNamespaces = openNamespaces }
-          | Ast.UnresolvedPath (p,i) =>
-            LogErr.unimplError ["UnresolvedPath ", Ustring.toAscii (hd p)]
-
           | Ast.WildcardIdentifier =>
             Ast.WildcardIdentifier
+
+          | Ast.UnresolvedPath (p,i) =>
+            LogErr.internalError ["unresolved UnresolvedPath ", Ustring.toAscii (hd p)]
+
 
     end
 
@@ -2189,7 +2190,26 @@ and defTyExpr (env:ENV)
         Ast.FunctionType t => 
         Ast.FunctionType (defFuncTy env t)
       | Ast.TypeName n =>
-        Ast.TypeName (defIdentExpr env n)
+        let 
+        in
+            case n of 
+                Ast.UnresolvedPath (p,i) =>
+                let 
+                    val base = resolvePath env p
+                in case (base,i) of
+                   (Ast.LiteralExpr _,Ast.Identifier {ident=id,...}) => 
+                       Ast.TypeName (Ast.QualifiedIdentifier {qual=(defExpr env base),
+                                                              ident=id})
+                 | (Ast.LiteralExpr _,Ast.TypeIdentifier {ident=Ast.Identifier {ident=id,...},typeArgs}) => 
+                       Ast.TypeName (Ast.TypeIdentifier {ident=Ast.QualifiedIdentifier {qual=(defExpr env base),
+                                                                                                ident=id},
+                                                                 typeArgs=typeArgs})
+                 | (_,_) => 
+                       LogErr.defnError ["invalid type expr"]
+                end
+              | _ => 
+                Ast.TypeName (defIdentExpr env n)
+         end
       | Ast.UnionType tys => 
         Ast.UnionType (map (defTyExpr env) tys)
       | Ast.ArrayType tys => 

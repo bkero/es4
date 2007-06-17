@@ -1,8 +1,4 @@
 /* -*- mode: java; mode: font-lock; tab-width: 4; insert-tabs-mode: nil; indent-tabs-mode: nil -*- */
-use module ast "";
-use module ast_encoder "";
-use module lexer "";
-module parser {
 /* ***** BEGIN LICENSE BLOCK *****
  * Version: MPL 1.1/GPL 2.0/LGPL 2.1
  *
@@ -40,7 +36,11 @@ module parser {
  *
  * ***** END LICENSE BLOCK ***** */
 
-// module Debug 
+//use module ast "tests/self/ast.es";
+//use module ast_encoder "tests/self/ast_encoder.es";
+//use module lexer "tests/self/lexer.es";
+
+//module debug 
 {
     use namespace intrinsic;
 
@@ -57,9 +57,9 @@ module parser {
 
     Release function enter (...) { }
     Release function exit (...) { }
-}
+} // end module debug
 
-// module Parser 
+//module parser
 {
     use namespace intrinsic;
     namespace Parser;
@@ -4984,7 +4984,7 @@ module parser {
         [
             "a.b.c.x",
             readFile ("./tests/self/hello.es"),
-            readFile ("./tests/self/esc.es"),
+            readFile ("./tests/self/fib.es"),
             /*
             "a .< t .< u .< v > , w .< x > > > >",
             "q::[expr]",

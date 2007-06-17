@@ -412,6 +412,9 @@ fun verifyTypeExpr (env:ENV)
                 f fields
             end
 
+          | Ast.FieldTypeRef (Ast.SpecialType Ast.Any, _) =>
+            Ast.SpecialType Ast.Any
+
           | Ast.FieldTypeRef (t, _) => 
             error ["FieldTypeRef on non-ObjectType: ", typeToString t]
 

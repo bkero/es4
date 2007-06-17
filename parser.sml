@@ -3363,7 +3363,7 @@ and typedPattern (ts,a,b)
                         (ts2,(nd1,nd2))
                     end
               | _ =>
-                    (ts1,(nd1,Ast.ObjectType []))
+                    (ts1,(nd1,Ast.SpecialType Ast.Any))  (* FIXME: this could be {*:*} to be more specific *)
             end
       | (LeftBracket, _) :: _ => 
             let

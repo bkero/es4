@@ -244,7 +244,7 @@ datatype PRAGMA =
          SpecialType of SPECIAL_TY
        | UnionType of TYPE_EXPR list
        | ArrayType of TYPE_EXPR list
-       | TypeName of IDENT_EXPR (* STATIC_IDENT_EXPR *)
+       | TypeName of IDENT_EXPR
        | ElementTypeRef of (TYPE_EXPR * int)
        | FieldTypeRef of (TYPE_EXPR * IDENT)
        | FunctionType of FUNC_TYPE           
