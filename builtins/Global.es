@@ -141,15 +141,38 @@ package
         (!(v === v));
 
     // 15.1.2.5 isFinite (number)
-    intrinsic function isFinite(v:*):boolean 
-    {
-        let const n = intrinsic::ToDouble(v)
+    intrinsic function isFinite(v:*):boolean {
+        let const n = intrinsic::ToDouble(v);
         return n != Number.NaN && 
-               n != Number.NEGATIVE_INFINITY && 
-               n != Number.POSITIVE_INFINITY 
+            n != Number.NEGATIVE_INFINITY && 
+            n != Number.POSITIVE_INFINITY;
     }
     
-    
+    // FIXME: not in the spec, do we want that?
+    intrinsic function isIntegral(v:*):boolean {
+        switch type (v) {
+        case (v:int) {
+            return true;
+        }
+        case (v:uint) {
+            return true;
+        }
+        case (v:double) {
+            return v != Number.NaN && 
+                v != Number.NEGATIVE_INFINITY && 
+                v != Number.POSITIVE_INFINITY &&
+                Math.floor(v) == v;
+        }
+        case (v:decimal) {
+            // FIXME
+            return isIntegral(double(v));
+        }
+        case (v:*) {
+            return false;
+        }
+        }
+    }
+        
     // 15.1.3.1 decodeURI (encodedURI)
     intrinsic native function decodeURI(encodedURI);
 
