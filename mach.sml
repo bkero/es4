@@ -44,6 +44,11 @@ fun error ss = LogErr.machError ss
 
 fun nameEq (a:Ast.NAME) (b:Ast.NAME) = ((#id a) = (#id b) andalso (#ns a) = (#ns b))
 
+type ATTRS = { dontDelete: bool,
+               dontEnum: bool,
+               readOnly: bool,
+               isFixed: bool }
+
 datatype VAL = Object of OBJ
              | Null
              | Undef
@@ -157,7 +162,8 @@ withtype FUN_CLOSURE =
                   this: OBJ }
 
      and NATIVE_FUNCTION = 
-         { func: (REGS -> VAL list -> VAL),
+         { func: ({ scope: SCOPE, this: OBJ } (* REGS *)
+                  -> VAL list -> VAL),
            length: int } 
 
      and OBJ_IDENT = 
@@ -168,18 +174,16 @@ withtype FUN_CLOSURE =
  * which phase of name lookup the name is found during.
  *)
 
-     and ATTRS = { dontDelete: bool,
-                   dontEnum: bool,
-                   readOnly: bool,
-                   isFixed: bool }
-
      and TEMPS = (Ast.TYPE_EXPR * TEMP_STATE) list ref
 
      and PROP = { ty: Ast.TYPE_EXPR,
                   state: PROP_STATE,                  
                   attrs: ATTRS }
 
-     and PROP_BINDINGS = (PROP NameMap.map) ref
+     and PROP_BINDINGS = ({ ty: Ast.TYPE_EXPR,
+                            state: PROP_STATE,                  
+                            attrs: ATTRS } (* PROP *)
+                          NameMap.map) ref
 
 
 (* Exceptions for control transfer. *)
