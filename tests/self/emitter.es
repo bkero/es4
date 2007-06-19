@@ -35,76 +35,162 @@
  *
  * ***** END LICENSE BLOCK ***** */
 
-package es4 
+/* Rough sketch:
+
+   The emitter provides abstractions for common code generation
+   patterns, and some arbitrary amount of utilities to help in code
+   generation.  The client starts by creating an emitter, then
+   creating scripts on that emitter and classes and other traits on
+   those scripts, methods on the classes, and so on.  Boilerplate code
+   is inserted for you, so code is generated for class creation when
+   you create a class on a script.
+
+   These sketches are particularly rough right now because the needs
+   of the code generator (verify.es) are not known precisely yet.  But
+   I expect that there will be quite a bit of code in here, and it
+   will encapsulate a lot of useful knowledge about how things are
+   done on the AVM.
+
+   One thing I'm apparently unresolved on here is when to create structures
+   in the ABCFile; right now there's a mix of late and early.  Since the
+   abcfile is not laid out until it is finalized this matters little, except
+   for the sake of clarity.
+
+   Sometimes this OO setup does not seem natural, other times it simplifies...
+*/
+
+package emitter
 {
-    class ABCEmitter
+    import util.*;
+    import abcfile.*;
+    import assembler.*;
+
+    public class ABCEmitter
     {
-        var abcfile, constants;
+        public var file, constants;
         private var scripts = [];
 
         function ABCEmitter() {
-            abcfile = new ABCFile;
+            file = new ABCFile;
             constants = new ABCConstantPool;
-            abcfile.addConstants(constants);
+            file.addConstants(constants);
         }
 
-        function newScript(): Script {
+        public function newScript(): Script {
             var s = new Script(this);
             scripts.push(s);
             return s;
         }
 
-        function finalize() {
+        public function finalize() {
             forEach(function (s) { s.finalize() }, scripts);
-            return abcfile;
+            return file;
         }
     }
 
-    class Script
+    public class Script
     {
-        var emitter;
-        private var init_method;
+        public var e;
+        private var init_method, traits=[];
 
-        function Script(emitter) {
-            this.emitter = emitter;
+        function Script(e:ABCEmitter) {
+            this.e = e;
         }
 
-        function get init(): Method {
+        public function newClass(name, basename) {
+            return new Class(this, name, basename);
+        }
+
+        public function newCInit(): Method {
+            
+        }
+
+        // Here we probably want: newVar, newConst, newFunction...
+        public function addTrait(t) {
+            return traits.push(t);
+        }
+
+        public function get init(): Method {
             if (!init_method)
-                init_method = new Method(emitter, []);
+                init_method = new Method(e, []);
             return init_method;
         }
 
-        function finalize() {
+        public function finalize() {
             var id = init.finalize();
-            emitter.abcfile.addScript(new ABCScriptInfo(id));
+            e.file.addScript(new ABCScriptInfo(id));
         }
     }
 
-    class Method extends ABCAssembler
+    public class Class
     {
-        var emitter, formals;
+        public var s, name, basename;
 
-        function Method(emitter, formals) {
-            super(emitter.constants, formals.length);
+        function Class(script, name, basename) {
+            this.s = script;
+            this.name = name;
+            this.basename = basename;
+
+            var asm = script.init;
+            // Create the class
+            asm.I_findpropstrict(Object_name);
+            asm.I_getproperty(Object_name);
+            asm.I_dup();
+            asm.I_pushscope();
+            asm.I_newclass(clsidx);
+            asm.I_popscope();
+            asm.I_getglobalscope();
+            asm.I_swap();
+            asm.I_initproperty(Fib_name);
+        }
+
+        public function newCInit(name) {
+            return new Method(e, [], name);
+        }
+
+        public function newIInit(formals, name=null) {
+            var iinit = new Method(s.e, formals, name);
+            iinit.I_getlocal(0);
+            iinit.I_constructsuper(0);
+            return iinit;
+        }
+
+        public function addTrait(t) {
+            cls.addTrait(t);
+        }
+
+        function finalize() {
+            clsidx = file.addClass();
+            s.addTrait(new ABCOtherTrait(name, 0, TRAIT_Class, 0, clsidx));
+        }
+    }
+
+    public class Method extends AVM2Assembler
+    {
+        public var e, formals, name;
+
+        function Method(e:ABCEmitter, formals:Array, name=null) {
+            super(e.constants, formals.length);
             this.formals = formals;
-            this.emitter = emitter;
+            this.e = e;
+            this.name = name;
 
-            // Standard prologue?
+            // Standard prologue -- but is this always right?
             I_getlocal_0();
             I_pushscope();
         }
 
-        function finalize() {
-            // Standard epilogue?
+        public function finalize() {
+            // Standard epilogue for lazy clients.
+            I_returnvoid();
 
-            var meth = emitter.abcfile.addMethod(new ABCMethodInfo(0, formals, 0, super.flags));
+            var meth = e.file.addMethod(new ABCMethodInfo(0, formals, 0, super.flags));
             var body = new ABCMethodBodyInfo(meth);
             body.setMaxStack(super.maxStack);
             body.setLocalCount(super.maxLocal);
             body.setMaxScopeDepth(super.maxScope);
             body.setCode(this);
-            emitter.abcfile.addMethodBody(body);
+            e.file.addMethodBody(body);
 
             return meth;
         }

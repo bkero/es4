@@ -35,167 +35,147 @@
  *
  * ***** END LICENSE BLOCK ***** */
 
-package es4 
+package bytestream
 {
-    /************************************************************************
-     * Emitter for various data in ABC-compatible formats, as a byte stream.
+    /* Emitter for various data in ABC-compatible formats, as a byte
+     * stream.  The byte stream is represented as an array of unsigned
+     * integers below 256 here, the purpose is that we will dump its
+     * contents to an external medium and load it into a VM.
      *
-     * FIXME: this uses ActionScript's ByteArray, which is not at all
-     * similar to the ByteArray in ES4.
+     * All data are dumped in litte-endian format.
      */
 
-    import flash.utils.ByteArray;
+    import util.*;
 
-    final class ABCByteStream 
+    public final class ABCByteStream 
     {
-        function ABCByteStream() {
-            bytes.endian = "littleEndian";
-        }
-
-        function get length() {
+        public function get length() {
             return bytes.length;
         }
 
-        function uint8(val:uint) {
-            assert(val < 0x100);
-            bytes.writeByte(val);
+        public function uint8(val/*:uint*/) {
+            assert(val < 256);
+            bytes.push(val);
         }
         
-        function uint16(val:uint) {
-            assert(val < 0x10000);
-            bytes.writeByte(val & 0xFF);
-            bytes.writeByte((val >> 8) & 0xFF);
+        public function uint16(val/*:uint*/) {
+            assert(val < 65536);
+            bytes.push(val & 0xFF,
+                       (val >> 8) & 0xFF);
         }
 
-        function int16(val:int) {
-            assert(-0x8000 <= val && val < 0x8000);
-            bytes.writeByte(val & 0xFF);
-            bytes.writeByte((val >> 8) & 0xFF);
+        public function int16(val/*:int*/) {
+            assert(-32768 <= val && val < 32768);
+            bytes.push(val & 0xFF,
+                       (val >> 8) & 0xFF);
         }
         
-        function int24(val:int) {
-            assert(-0x1000000 <= val && val < 0x1000000);
-            bytes.writeByte(val & 0xFF);
-            bytes.writeByte((val >> 8) & 0xFF);
-            bytes.writeByte((val >> 16) & 0xFF);
+        public function int24(val/*:int*/) {
+            assert(-16777216 <= val && val < 16777216);
+            bytes.push(val & 0xFF, 
+                       (val >> 8) & 0xFF,
+                       (val >> 16) & 0xFF);
         }
         
-        function uint30(val:uint) {
-            assert(val < 0x40000000);
+        public function uint30(val/*:uint*/) {
+            assert(val < 1073741824);
             uint32(val);
         }
 
-        function int30(val:int) {
-            assert(-0x40000000 <= val && val < 0x40000000);
+        public function int30(val/*:int*/) {
+            assert(-1073741824 <= val && val < 1073741824);
             if (val < 0)
                 uint32(-val);
             else
-                uint32(uint(val));
+                uint32(toUint(val));
         }
 
-        function int32(val:int) {
-            uint32(uint(val));
+        public function int32(val/*:int*/) {
+            uint32(toUint(val));
         }
 
-        function uint32(val:uint) {
-            if( val < 0x80 )               // 7 bits
-                bytes.writeByte(val & 0x7F);
-            else if ( val < 0x4000 ) {     // 14 bits
-                bytes.writeByte((val & 0x7F) | 0x80);
-                bytes.writeByte((val >> 7) & 0x7F);
-            }
-            else if ( val < 0x200000 ) {   // 21 bits
-                bytes.writeByte((val & 0x7F) | 0x80);
-                bytes.writeByte(((val >> 7) & 0x7F) | 0x80);
-                bytes.writeByte((val >> 14) & 0x7F);
-            }
-            else if ( val < 0x10000000 ) { // 28 bits
-                bytes.writeByte((val & 0x7F) | 0x80);
-                bytes.writeByte(((val >> 7) & 0x7F) | 0x80);
-                bytes.writeByte(((val >> 14) & 0x7F) | 0x80);
-                bytes.writeByte((val >> 21) & 0x7F);
-            }
-            else {                         // 32 bits
-                bytes.writeByte((val & 0x7F) | 0x80);
-                bytes.writeByte(((val >> 7) & 0x7F) | 0x80);
-                bytes.writeByte(((val >> 14) & 0x7F) | 0x80);
-                bytes.writeByte(((val >> 21) & 0x7F) | 0x80);
-                bytes.writeByte((val >> 28) & 0x7F);
-            }
+        public function uint32(val/*:uint*/) {
+            if( val < 0x80 )              
+                // 7 bits
+                bytes.push(val & 0x7F);
+            else if ( val < 0x4000 )       
+                // 14 bits
+                bytes.push((val & 0x7F) | 0x80,
+                           (val >> 7) & 0x7F);
+            else if ( val < 0x200000 )     
+                // 21 bits
+                bytes.push((val & 0x7F) | 0x80,
+                           ((val >> 7) & 0x7F) | 0x80,
+                           (val >> 14) & 0x7F);
+            else if ( val < 0x10000000 )  
+                // 28 bits
+                bytes.push((val & 0x7F) | 0x80,
+                           ((val >> 7) & 0x7F) | 0x80,
+                           ((val >> 14) & 0x7F) | 0x80,
+                           (val >> 21) & 0x7F);
+            else 
+                // 32 bits
+                bytes.push((val & 0x7F) | 0x80,
+                           ((val >> 7) & 0x7F) | 0x80,
+                           ((val >> 14) & 0x7F) | 0x80,
+                           ((val >> 21) & 0x7F) | 0x80,
+                           (val >> 28) & 0x7F);
         }
         
-        function float64(val:Number /*FIXME ES4: double*/) {
-            bytes.writeDouble(val);
+        public function float64(val /*FIXME ES4: double*/) {
+            var bs = explodeNumber(val);  /*FIXME ES4: destructuring*/
+            bytes.push(bs[0], bs[1], bs[2], bs[3], bs[4], bs[5], bs[6], bs[7]);
         }
 
-        function utf8(str:String /*FIXME ES4: string*/) {
-            bytes.writeUTFBytes(str);
-        }
-
-        function setInt24(loc, val) {
-            assert(-0x1000000 <= val && val < 0x1000000);
-            bytes.position = loc;
-            bytes.writeByte(val & 0xFF);
-            bytes.writeByte((val >> 8) & 0xFF);
-            bytes.writeByte((val >> 16) & 0xFF);
-            bytes.position = bytes.length;
-        }
-
-        function serialize(to:ABCByteStream) {
-            to.byteStream(this);
-        }
-
-        function byteStream(from:ABCByteStream) {
-            bytes.writeBytes(from.bytes);
-        }
-
-        function writeToArray(a) {
-            bytes.position = 0;
-            while ( bytes.bytesAvailable > 0 ) {
-                var b = bytes.readByte();
-                if (b < 0)
-                    b += 256;
-                a.push(b);
+        public function utf8(str /*FIXME ES4: string*/) {
+            for ( var i=0, limit=str.length ; i < limit ; i++ ) {
+                var c = str.charCodeAt(i);
+                if (c <= 0x7F)
+                    bytes.push(c);
+                else if (c <= 0x7FF)
+                    bytes.push(0xC0 | ((c >> 6) & 0x1F),
+                               0x80 | (c & 0x3F));
+                else if (c <= 0xFFFF)
+                    bytes.push(0xD0 | ((c >> 12) & 0x0F),
+                               0x80 | ((c >> 6) & 0x3F),
+                               0x80 | (c & 0x3F));
+                else 
+                    bytes.push(0xF0 | ((c >> 18) & 0x07),
+                               0x80 | ((c >> 12) & 0x3F),
+                               0x80 | ((c >> 6) & 0x3F),
+                               0x80 | (c & 0x3F));
             }
-            return a;
         }
 
-        /* Returns *some* concrete ByteArray type, but the concrete
+        public function setInt24(loc, val) {
+            assert(-16777216 <= val && val < 16777216);
+            bytes[loc] = val & 0xFF;
+            bytes[loc+1] = (val >> 8) & 0xFF;
+            bytes[loc+2] = (val >> 16) & 0xFF;
+        }
+
+        public function serialize(s:ABCByteStream) {
+            s.byteStream(this);
+        }
+
+        public function byteStream(from:ABCByteStream) {
+            var from_bytes = from.bytes;
+            for ( var i=0, limit=from_bytes.length ; i < limit ; i++ )
+                bytes.push(from_bytes[i]);
+        }
+
+        public function writeToArray(a) {
+            return copyArray(bytes);
+        }
+
+        /* Returns *some* concrete byte-array type, but the concrete
          * type is not part of the API here.  Clients must be adapted
          * to particular environments anyway.
          */
-        function getBytes(): * { 
+        public function getBytes(): * { 
             return bytes; 
         }
 
-        private const bytes = new flash.utils.ByteArray;
-    }
-
-    public function testABCByteStream() {
-        print("--------------------------------------------");
-        print("Testing ABCByteStream");
-        print("");
-            
-        var bytes = new ABCByteStream;
-        
-        bytes.uint8(0x0A);
-        bytes.uint16(0x010B);
-        bytes.int16(-2);
-        bytes.int24(257);
-        bytes.uint30(7);
-        bytes.int30(128);
-        bytes.int30(-128);
-        bytes.int32(10);
-        bytes.uint32(0x0fffabcd);
-        bytes.float64(1.0);
-        bytes.utf8("foo");
-        var b2 = new ABCByteStream;
-
-        b2.uint8(0x0A);
-        b2.uint8(0xFA);
-        bytes.byteStream(b2);
-
-        var result = "0A 0B 01 FE FF 01 01 00 07 80 01 80 01 0A CD D7 FE 7F 00 00 00 00 00 00 FF 3F 66 6F 6F 0A FA".split(" ");
-        dumpByteStream( bytes, result );
+        private const bytes = [];
     }
 }

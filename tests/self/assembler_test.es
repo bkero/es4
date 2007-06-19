@@ -37,18 +37,22 @@
 
 /* Unit tests for the assembler (and underlying components) */
 
-package es4 
+package assembler
 {
-    public function testABCAssembler() {
-        /*
+    import util.*;
+    import bytestream.*;
+    import abcfile.*;
+
+    /*
+    public function runTests() {
         testCoverage();
         testHelloWorld();
         testLoop();
         testSwitch1();
         testSwitch2();
-        */
         testFib();
     }
+    */
 
     /*
       class Fib {
@@ -60,9 +64,9 @@ package es4
           }
           var val;
       }
-      print(new Fib(10))
+      print((new Fib(10)).val)
     */
-    function testFib() {
+    public function testFib() {
         var file = new ABCFile();
         var cp = new ABCConstantPool();
 
@@ -77,7 +81,7 @@ package es4
 
         function mkClassInit() {
             var formals = [];
-            var asm = new ABCAssembler(cp,formals.length);
+            var asm = new AVM2Assembler(cp,formals.length);
             asm.I_returnvoid();
 
             var meth = file.addMethod(new ABCMethodInfo(cp.stringUtf8("Fib$cinit"), formals, 0, asm.flags));
@@ -93,7 +97,7 @@ package es4
 
         function mkInstanceInit() {
             var formals = [0];
-            var asm = new ABCAssembler(cp,formals.length);
+            var asm = new AVM2Assembler(cp,formals.length);
             asm.I_getlocal(0);
             asm.I_pushscope();
 
@@ -136,7 +140,7 @@ package es4
             return meth;
         }
 
-        var asm = new ABCAssembler(cp,0);
+        var asm = new AVM2Assembler(cp,0);
         asm.I_getlocal_0();
         asm.I_pushscope();
 
@@ -184,7 +188,7 @@ package es4
         script.addTrait(new ABCOtherTrait(Fib_name, 0, TRAIT_Class, 0, clsidx));
         file.addScript(script);
 
-        loadAndRunABCFile(file);
+        dumpABCFile(file, "fib-test.es");
     }
 
     function testSwitch1() {
@@ -196,7 +200,7 @@ package es4
         var print_name = cp.QName(cp.namespace(CONSTANT_PackageNamespace, cp.stringUtf8("")), 
                                   cp.stringUtf8("print"));
 
-        var asm = new ABCAssembler(cp,0);
+        var asm = new AVM2Assembler(cp,0);
         asm.I_getlocal_0();
         asm.I_pushscope();
 
@@ -245,7 +249,7 @@ package es4
         var print_name = cp.QName(cp.namespace(CONSTANT_PackageNamespace, cp.stringUtf8("")), 
                                   cp.stringUtf8("print"));
 
-        var asm = new ABCAssembler(cp,0);
+        var asm = new AVM2Assembler(cp,0);
         asm.I_getlocal_0();
         asm.I_pushscope();
 
@@ -298,7 +302,7 @@ package es4
                                   cp.stringUtf8("print"));
 
         // Local 1 has a counter
-        var asm = new ABCAssembler(cp,0);
+        var asm = new AVM2Assembler(cp,0);
         asm.I_getlocal_0();
         asm.I_pushscope();
         var reg = asm.getTemp();
@@ -328,10 +332,9 @@ package es4
         file.addScript(new ABCScriptInfo(meth));
 
         loadAndRunABCFile(file);
-
     }
 
-    function testHelloWorld() {
+    public function testHelloWorld() {
         var file = new ABCFile();
         var cp = new ABCConstantPool();
 
@@ -346,7 +349,7 @@ package es4
         var print_name = cp.QName(cp.namespace(CONSTANT_PackageNamespace, cp.stringUtf8("")), 
                                   cp.stringUtf8("print"));
 
-        var asm = new ABCAssembler(cp,0);
+        var asm = new AVM2Assembler(cp,0);
         asm.I_getlocal_0();
         asm.I_pushscope();
         asm.I_findpropstrict(print_name);
@@ -364,12 +367,15 @@ package es4
 
         file.addScript(new ABCScriptInfo(meth));
 
-        loadAndRunABCFile(file);
+        dumpABCFile(file, "hello-test.es");
     }
 
     function testCoverage() {
         var cp = new ABCConstantPool();
-        var asm = new ABCAssembler(cp,0);
+        var asm = new AVM2Assembler(cp,0);
+
+        var print_name = cp.QName(cp.namespace(CONSTANT_PackageNamespace, cp.stringUtf8("")), 
+                                  cp.stringUtf8("print"));
 
         asm.I_dup();
         asm.I_getglobalscope();
@@ -450,7 +456,7 @@ package es4
         asm.I_esc_xelem();
         asm.I_increment();
         asm.I_increment_i();
-        asm.I_kill();
+        asm.I_kill(0);
         asm.I_label();
         asm.I_negate();
         asm.I_negate_i();
@@ -472,42 +478,42 @@ package es4
         asm.I_inclocal_i(0);
         asm.I_istype(0);
         asm.I_newclass(0);
-        asm.I_ifeq(0);
-        asm.I_ifge(0);
-        asm.I_ifgt(0);
-        asm.I_ifle(0);
-        asm.I_iflt(0);
-        asm.I_ifne(0);
-        asm.I_ifnge(0);
-        asm.I_ifngt(0);
-        asm.I_ifnle(0);
-        asm.I_ifnlt(0);
-        asm.I_ifstricteq(0);
-        asm.I_ifstrictne(0);
-        asm.I_iffalse(0);
-        asm.I_iftrue(0);
-        asm.I_jump(0);
+        asm.I_ifeq();
+        asm.I_ifge();
+        asm.I_ifgt();
+        asm.I_ifle();
+        asm.I_iflt();
+        asm.I_ifne();
+        asm.I_ifnge();
+        asm.I_ifngt();
+        asm.I_ifnle();
+        asm.I_ifnlt();
+        asm.I_ifstricteq();
+        asm.I_ifstrictne();
+        asm.I_iffalse();
+        asm.I_iftrue();
+        asm.I_jump();
         asm.I_call(0);
         asm.I_construct(0);
         asm.I_constructsuper(0);
-        asm.I_callmethod(0, 0);
-        asm.I_callstatic(0, 0);
-        asm.I_callsuper(0, 0);
-        asm.I_callproperty(0, 0);
-        asm.I_constructprop(0, 0);
-        asm.I_callproplex(0, 0);
-        asm.I_callsupervoid(0, 0);
-        asm.I_callpropvoid(0, 0);
+        asm.I_callmethod(print_name, 0);
+        asm.I_callstatic(print_name, 0);
+        asm.I_callsuper(print_name, 0);
+        asm.I_callproperty(print_name, 0);
+        asm.I_constructprop(print_name, 0);
+        asm.I_callproplex(print_name, 0);
+        asm.I_callsupervoid(print_name, 0);
+        asm.I_callpropvoid(print_name, 0);
         asm.I_debug(0, 0, 0, 0);
-        asm.I_deleteproperty(0);
-        asm.I_getdescendants(0);
-        asm.I_getproperty(0);
-        asm.I_getsuper(0);
-        asm.I_findproperty(0);
-        asm.I_findpropstrict(0);
-        asm.I_initproperty(0);
-        asm.I_setproperty(0);
-        asm.I_setsuper(0);
+        asm.I_deleteproperty(print_name);
+        asm.I_getdescendants(print_name);
+        asm.I_getproperty(print_name);
+        asm.I_getsuper(print_name);
+        asm.I_findproperty(print_name);
+        asm.I_findpropstrict(print_name);
+        asm.I_initproperty(print_name);
+        asm.I_setproperty(print_name);
+        asm.I_setsuper(print_name);
         asm.I_hasnext2(0, 0);
         asm.I_lookupswitch(undefined, [,,,]);
         asm.I_newarray(0);

@@ -9,13 +9,32 @@ AVM=$(ROOT)/player/FlashPlayer/avmplus/platform/win32/obj_8/shell/Debug_Debugger
 .es.abc:
 	$(ASC) $(ASCFLAGS) $<
 
-test: esc.abc assembler_test.abc emitter_test.abc
-	echo '{ import es4.*; /* testABCByteStream(); testABCFile(); */ testABCAssembler(); /* testABCEmitter(); */ }' > testdriver.as
-	$(ASC) $(ASCFLAGS) testdriver.as
-	$(AVM) $^ testdriver.abc
+test: test_hello test_fib
 
-esc.abc: esc.es util.es bytestream.es abcfile.es assembler.es emitter.es
+test_hello: esc.abc test.abc
+	echo '{ import assembler.*; assembler.testHelloWorld(); }' > testdriver.es
+	$(MAKE) testdriver.abc
+	rm -f hello-test.es
+	$(AVM) $^ testdriver.abc
+	$(MAKE) hello-test.abc
+	$(AVM) hello-test.abc
+
+test_fib: esc.abc test.abc
+	echo '{ import assembler.*; assembler.testFib(); }' > testdriver.es
+	$(MAKE) testdriver.abc
+	rm -f fib-test.es
+	$(AVM) $^ testdriver.abc
+	$(MAKE) fib-test.abc
+	$(AVM) fib-test.abc
+
+esc-ri.es: util-es4ri.es util.es bytestream.es bytestream_test.es abcfile.es abcfile_test.es assembler.es assembler_test.es
+	cat $^ > esc-ri.es
+
+esc.abc: esc.es util-as3.es util.es bytestream.es abcfile.es assembler.es emitter.es
 	$(ASC) $(ASCFLAGS) esc.es
 
+test.abc: test.es bytestream_test.es abcfile_test.es assembler_test.es emitter_test.es
+	$(ASC) $(ASCFLAGS) test.es
+
 clean:
-	rm -f *~ *.abc testdriver.as
+	rm -f *~ *.abc testdriver.* hello-test.es fib-test.es

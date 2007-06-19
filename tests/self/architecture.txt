@@ -1,5 +1,19 @@
 Overall description of ESC / architecture notes.
 
+Language / constraints.
+
+ESC is implemented in a subset of ES4 that will run on the AVM2 as
+shipped with FP9/FP10 and generate code for that same AVM2.  The
+subscript is:
+
+  * Anything that is handled by the parser by rewriting, eg:
+     - destructuring
+     - use default namespace X
+     - toplevel namespaces
+  * Let statement forms (let-as-better-var)
+  * "String", "Number" primitive types (as opposed to "string", "number")
+
+
 Front end.
 
 The front end has the following parts:
@@ -52,7 +66,7 @@ Back end.
 
 The back end has the following levels, top to bottom:
 
-  - AST consumer (emitter.es)
+  - AST consumer (cogen.es, emitter.es)
   - instruction macros, pasteup, temps, ... (assembler.es)
   - ABC data structure emitters (abcfile.es)
   - byte-stream abstraction (bytestream.es)
