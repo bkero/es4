@@ -53,8 +53,8 @@
  * permissive than we wish to be.
  */
 
-package {
-
+package 
+{
     use default namespace public;
     use namespace intrinsic;
 
@@ -66,7 +66,7 @@ package {
             length = n;
         }
 
-        meta function from(a : Array!) : ByteArray! {
+        meta static function convert(a : Array!) : ByteArray! {
             let n  : uint = a.length;
             let ba : ByteArray = new ByteArray(n);
             for ( let i : uint = 0 ; i < n ; i++ )
