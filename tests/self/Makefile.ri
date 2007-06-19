@@ -1,0 +1,36 @@
+# Drivers for ESC running on the ES4 reference implementation
+
+WINROOT=/src/adobe_flashfarm/main
+ROOT=/cygdrive/c/$(WINROOT)
+ASC=asc
+ASCFLAGS=-d -import $(WINROOT)/player/FlashPlayer/avmglue/global.abc -import $(WINROOT)/player/FlashPlayer/avmglue/playerglobal.abc
+AVM=$(ROOT)/player/FlashPlayer/avmplus/platform/win32/obj_8/shell/Debug_Debugger/avmplus_sd.exe
+
+.SUFFIXES: .abc .es
+
+.es.abc:
+	$(ASC) $(ASCFLAGS) $<
+
+test: test_hello test_fib
+
+# Clumsy, slow, but works
+
+test_hello: esc-ri.es
+	rm -f hello-test.es
+	echo '{ import assembler.*; intrinsic::load("tests/self/esc-ri.es"); assembler.testHelloWorld(); }' | ( cd ../.. ; make; sml @SMLload=es4-init.heap -r ) 
+	mv ../../hello-test.es .
+	$(MAKE) hello-test.abc
+	$(AVM) hello-test.abc
+
+test_fib: esc-ri.es
+	rm -f fib-test.es
+	echo '{ import assembler.*; intrinsic::load("tests/self/esc-ri.es"); assembler.testFib(); }' | ( cd ../.. ; make; sml @SMLload=es4-init.heap -r ) 
+	mv ../../fib-test.es .
+	$(MAKE) fib-test.abc
+	$(AVM) fib-test.abc
+
+esc-ri.es: util-es4ri.es util.es bytestream.es bytestream_test.es abcfile.es abcfile_test.es assembler.es assembler_test.es
+	cat $^ > esc-ri.es
+
+clean:
+	make clean

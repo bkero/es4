@@ -27,9 +27,6 @@ test_fib: esc.abc test.abc
 	$(MAKE) fib-test.abc
 	$(AVM) fib-test.abc
 
-esc-ri.es: util-es4ri.es util.es bytestream.es bytestream_test.es abcfile.es abcfile_test.es assembler.es assembler_test.es
-	cat $^ > esc-ri.es
-
 esc.abc: esc.es util-as3.es util.es bytestream.es abcfile.es assembler.es emitter.es
 	$(ASC) $(ASCFLAGS) esc.es
 
@@ -37,4 +34,5 @@ test.abc: test.es bytestream_test.es abcfile_test.es assembler_test.es emitter_t
 	$(ASC) $(ASCFLAGS) test.es
 
 clean:
-	rm -f *~ *.abc testdriver.* hello-test.es fib-test.es
+	rm -f *~ *.abc testdriver.* hello-test.es fib-test.es esc-ri.es
+

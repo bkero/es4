@@ -2,19 +2,24 @@
 
 package util
 {
-    /*
-    intrinsic native function explodeDouble(d:double);
+    use namespace intrinsic;
 
-    public function explodeDouble(d) // : [uint,uint,uint,uint,uint,uint,uint,uint,*]
-        intrinsic::explodeDouble(double(d));
-    */
+    intrinsic native function explodeDouble(d:double, idx:uint);
 
-    public function explodeNumber(d)
-        [0,0,0,0,0,0,0,0];
+    public function explodeNumber(d) {
+        d = double(d);
+        let hi = explodeDouble(d, 0u);
+        let lo = explodeDouble(d, 1u);
+        return [lo & 255, (lo >> 8) & 255, (lo >> 16) & 255, (lo >> 24) & 255,
+                hi & 255, (hi >> 8) & 255, (hi >> 16) & 255, (hi >> 24) & 255];
+    }
 
-    public function writeStringToFile(s, filename)
-        print(s);
+    intrinsic native function writeFile(s:string, filename:string);
+
+    public function writeStringToFile(s, filename) {
+        writeFile(string(s), string(filename));
+    }
 
     public function toUint(x)
-        intrinsic::uint(x)
+        uint(x);
 }
