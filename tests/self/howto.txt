@@ -1,0 +1,7 @@
+Running the test cases.
+
+Using ASC:
+  make test
+
+Using the ES4 reference implementation:
+  make -f Makefile.ri test

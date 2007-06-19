@@ -1,17 +1,25 @@
 Overall description of ESC / architecture notes.
 
-Language / constraints.
 
-ESC is implemented in a subset of ES4 that will run on the AVM2 as
-shipped with FP9/FP10 and generate code for that same AVM2.  The
-subscript is:
+Language and other constraints.
 
-  * Anything that is handled by the parser by rewriting, eg:
+ESC is implemented in a subset of ES4 that will run on the AVM2 (as
+shipped with FP9), and it will generate code for that same AVM2 --
+thus it can self-compile.
+
+The ES4 subset is as follows (note, this list also serves as a spec
+for ASC updates, so it needs to be complete):
+
+  * Anything that is handled by the parser by rewriting:
      - destructuring
      - use default namespace X
      - toplevel namespaces
+     - switch type
   * Let statement forms (let-as-better-var)
-  * "String", "Number" primitive types (as opposed to "string", "number")
+  * Let-block (rewrites as let-as-better-var
+  * "String", "Number" primitive types (as opposed to "string", "number"),
+    though in general try to avoid using primitive type names whenever
+    possible.
 
 
 Front end.
