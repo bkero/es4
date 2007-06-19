@@ -73,9 +73,24 @@ package
                 return ToString(this);
             else if (typeof radix === "number" && 
 		     radix >= 2 && 
-		     radix <= 36 && isIntegral(radix))
-                // FIXME
-                throw new Error("Unimplemented: non-decimal radix");
+		     radix <= 36 && isIntegral(radix)) {
+                /* INFORMATIVE */
+                radix = int(radix);
+                let v = this;
+                let s = "";
+                var q = "";
+                if (v < 0) {
+                    s = "-";
+                    v = -v;
+                }
+                while (v != 0) {
+                    q = "0123456789abcdefABCDEFGHIJKLMNOPQRSTUVWXYZ"[v % radix] + q;
+                    v = (v - (v % radix)) / radix;
+                }                
+                if (q == "")
+                    q = "0";
+                return s + q;
+            }
             else
                 throw new TypeError("Invalid radix argument to int.toString");
         }
