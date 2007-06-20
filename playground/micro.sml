@@ -30,13 +30,17 @@ datatype TYPE =
          AnyType  (* the type "*" *)
        | IntType
        | FunType of TYPE * TYPE
-                    
+       | RefType of TYPE
+
+(* Q: Is AnyType the top type? *)
+
 fun subtype (t1:TYPE) (t2:TYPE) : bool =
     case (t1,t2) of
         (AnyType,AnyType) => true
       | (IntType,IntType) => true
       | (FunType(s1,t1), FunType(s2,t2)) =>
-        (subtype s2 s1) andalso (subtype t1 t2)
+	    (subtype s2 s1) andalso (subtype t1 t2)
+      | (RefType s, RefType t) => (subtype s t) andalso (subtype t s)
       | _ => false
 
 fun compatible (t1:TYPE) (t2:TYPE) : bool =
@@ -45,7 +49,9 @@ fun compatible (t1:TYPE) (t2:TYPE) : bool =
       | (AnyType,_) => true
       | (IntType,IntType) => true
       | (FunType(s1,t1), FunType(s2,t2)) =>
-        (compatible s2 s1) andalso (compatible t1 t2)
+	    (compatible s2 s1) andalso (compatible t1 t2)
+      | (RefType s, RefType t) =>
+        (compatible s t) andalso (compatible t s)
       | _ => false
 
 (*********** The expression language **********)
@@ -57,6 +63,9 @@ datatype EXPR =
        | FunExpr of string * TYPE * TYPE * EXPR  (* arg and result types *)
        | CastExpr of TYPE * EXPR
        | AppExpr of EXPR * EXPR
+       | RefExpr of TYPE * EXPR     (* allocate, dereference, and update ref cells *)
+       | GetExpr of EXPR
+       | SetExpr of EXPR * EXPR
        | ExpectedType of TYPE * EXPR
 
 (*********** Verify routines ***********)
@@ -64,6 +73,7 @@ datatype EXPR =
 (* some type errors *)
 
 exception BadFunExpr of EXPR * TYPE
+exception BadRefExpr of EXPR * TYPE
 exception StaticTypeError of (EXPR * TYPE * TYPE)
 
 datatype MODE =
@@ -97,18 +107,16 @@ fun verify (mode:MODE) (n:TYPE ENV) (e:EXPR) : (EXPR * TYPE) =
         IntExpr n => (e,IntType)
       | VarExpr x => (e, lookup n x)
       | LetExpr (x,t,e,body) => 
-        let val (e',t') = verify mode n e
-            val e'' = check mode e' t' t
+        let val e' = verifyAndCheck mode n e t
             val n' = extend n x t
             val (body',bodyTy) = verify mode n' body
         in
-            (LetExpr (x, t, e'', body'), bodyTy)
+            (LetExpr (x, t, e', body'), bodyTy)
         end
       | FunExpr (x,t1,t2,e) => 
-        let val (e',ty) = verify mode (extend n x t1) e 
-            val e'' = check mode e' ty t2 
+        let val e' = verifyAndCheck mode (extend n x t1) e t2
         in
-            (FunExpr(x,t1,t2,e''), FunType(t1,t2))
+            (FunExpr(x,t1,t2,e'), FunType(t1,t2))
         end
       | CastExpr (ty,e) =>
         let val (e',ty) = verify mode n e 
@@ -117,20 +125,46 @@ fun verify (mode:MODE) (n:TYPE ENV) (e:EXPR) : (EXPR * TYPE) =
         end
       | AppExpr (e1,e2) =>
         let val (e1',ty1) = verify mode n e1
-            val (e2',ty2) = verify mode n e2
         in
         case ty1 of
             FunType (argty,resty) =>
             (ExpectedType (resty, 
-                           AppExpr(e1', check mode e2' ty2 argty)), 
+                           AppExpr(e1', 
+                                   verifyAndCheck mode n e2 argty)), 
              resty)
           | AnyType =>
             (ExpectedType (AnyType, 
                            AppExpr( CastExpr( FunType(AnyType,AnyType), e1'),
-                                    e2')),
+                                    verifyAndCheck mode n e2 AnyType)),
              AnyType)
           | _ => raise BadFunExpr (e1',ty1)
+	    end
+      | RefExpr (t,e) =>
+        (RefExpr (t, verifyAndCheck mode n e t), RefType t)
+      | GetExpr e =>
+        let val (e',t) = verify mode n e in
+            (ExpectedType (t, GetExpr e'), t)
         end
+      | SetExpr (e1, e2) =>
+        let val (e1',t1) = verify mode n e1
+        in
+            case t1 of
+                RefType s =>
+                (SetExpr (e1', 
+                          verifyAndCheck mode n e2 s),
+                 s)
+              | AnyType =>
+                (SetExpr (CastExpr(RefType AnyType, e1'), 
+                          verifyAndCheck mode n e2 AnyType),
+                 AnyType)
+              | _ => raise BadRefExpr (e1',t1)
+        end
+
+and verifyAndCheck (mode:MODE) (n:TYPE ENV) (e:EXPR) (t:TYPE) =
+    let val (e',t') = verify mode n e in
+        check mode e' t' t
+    end
+
 
 (*********** Evaluation, run-time values, and conversion ***********)
 
@@ -152,20 +186,24 @@ datatype SAFEBIT =
 datatype VAL =
          IntVal of int
        | ClosureVal of string * TYPE * TYPE * EXPR * VAL ENV * SAFEBIT
+       | RefVal of TYPE * VAL ref * SAFEBIT
 
-exception NotAClosure of string
+exception NotAClosure of VAL
+exception NotARef of VAL
 exception ConversionError of (VAL * TYPE)
 
 fun typeOfVal (v:VAL) : TYPE =
     case v of
         IntVal _ => IntType
       | ClosureVal (_,t1,t2,_,_,_) => FunType (t1,t2)      
-                             
+      | RefVal (t,_,_) => RefType t
+
 fun markUnsafe (v:VAL) : VAL =
     case v of
         IntVal _ => v
       | ClosureVal (x,t1,t2,body,env,_) => ClosureVal(x,t1,t2,body,env,Unsafe)
-       
+      | RefVal (t,v,_) => RefVal(t,v,Unsafe)
+
 (* Converts a value "v" to type "t", 
  * raising an error if the type of "v" is not compatible with "t",
  * and setting the unsafe bit if the type of "v" is not a subtype of "t".
@@ -198,9 +236,28 @@ fun eval (n:VAL ENV) (e:EXPR) : VAL =
                 in
                     resVal'
                 end
-              | _ => raise NotAClosure ""
+	          | v => raise NotAClosure v
+	    end
+      | RefExpr (t,e) => RefVal(t, ref (eval n e), Safe)
+      | ExpectedType (t, GetExpr e) =>
+        let in
+            case eval n e of
+                RefVal (_,r,Safe) => !r
+              | RefVal (s,r,Unsafe) => convert (!r) t
         end
-
+      | SetExpr (e1,e2) =>
+        let in
+            case eval n e1 of
+                RefVal (t,r,safebit) =>
+                let val v = eval n e2 in
+                    case safebit of 
+                        Safe => r := v 
+                      | Unsafe => r := convert v t;
+                    v
+                end
+              | v => raise NotARef v
+        end
+        
 (*********** Tests **********)
 
 fun go (mode:MODE) (e:EXPR) : (EXPR*VAL) =
