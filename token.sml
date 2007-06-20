@@ -95,14 +95,12 @@ datatype TOKEN =
 
     (* reserved identifiers *)
 
-    | As
     | Break
     | Case
-    | Cast
     | Catch
     | Class
-    | Const
     | Continue
+    | Debugger
     | Default
     | Delete
     | Do
@@ -113,32 +111,20 @@ datatype TOKEN =
     | Finally
     | For
     | Function
+    | Goto
     | If
-    | Implements
-    | Import
     | In
     | InstanceOf
-    | Interface
-    | Internal
-    | Intrinsic
-    | Is
-    | Let
     | New
     | Null
-    | Package
-    | Private
-    | Protected
-    | Public
     | Return
     | Super
     | Switch
     | This
     | Throw
-    | To
     | True
     | Try
     | TypeOf
-    | Use
     | Var
     | Void
     | While
@@ -147,32 +133,44 @@ datatype TOKEN =
     (* contextually reserved identifiers *)
 
     | Call
-    | Debugger
+    | Cast
+    | Const
     | Decimal
     | Double
     | Dynamic
     | Each
+    | Eval
     | Final
     | Get
-    | Goto
     | Has
-    | Include
+    | Implements
+    | Import
     | Int
-    | Invoke
+    | Interface
+    | Internal
+    | Intrinsic
+    | Is
+    | Let
     | Namespace
     | Native
     | Number
     | Override
+    | Package
     | Precision
+    | Private
+    | Protected
     | Prototype
+    | Public
     | Rounding
-    | Standard
-    | Strict
-    | UInt
     | Set
+    | Standard
     | Static
+    | Strict
+    | To
     | Type
+    | UInt
     | Undefined
+    | Use
     | Xml
     | Yield
 
@@ -214,14 +212,12 @@ exception TokenError
 
 fun isreserved (t,_) = 
     case t of
-        As => true
-      | Break => true
+        Break => true
       | Case => true
-      | Cast => true
       | Catch => true
       | Class => true
-      | Const => true
       | Continue => true
+      | Debugger => true
       | Default => true
       | Delete => true
       | Do => true
@@ -233,31 +229,18 @@ fun isreserved (t,_) =
       | For => true
       | Function => true
       | If => true
-      | Implements => true
-      | Import => true
       | In => true
       | InstanceOf => true
-      | Interface => true
-      | Internal => true
-      | Intrinsic => true
-      | Is => true
-      | Let => true
       | New => true
       | Null => true
-      | Package => true
-      | Private => true
-      | Protected => true
-      | Public => true
       | Return => true
       | Super => true
       | Switch => true
       | This => true
       | Throw => true
-      | To => true
       | True => true
       | Try => true
       | TypeOf => true
-      | Use => true
       | Var => true
       | Void => true
       | While => true
@@ -327,14 +310,12 @@ fun tokenname (t,_) =
 
       (* reserved identifiers *)
 
-      | As => "as"
       | Break => "break"
       | Case => "case"
-      | Cast => "cast"
       | Catch => "catch"
       | Class => "class"
-      | Const => "const"
       | Continue => "continue"
+      | Debugger => "debugger"
       | Default => "default"
       | Delete => "delete"
       | Do => "do"
@@ -345,69 +326,69 @@ fun tokenname (t,_) =
       | Finally => "finally"
       | For => "for"
       | Function => "function"
+      | Goto => "goto"
       | If => "if"
-      | Implements => "implements"
-      | Import => "import"
       | In => "in"
       | InstanceOf => "instanceof"
-      | Interface => "interface"
-      | Internal => "internal"
-      | Intrinsic => "intrinsic"
-      | Is => "is"
-      | Let => "let"
       | New => "new"
       | Null => "null"
-      | Package => "package"
-      | Private => "private"
-      | Protected => "protected"
-      | Public => "public"
       | Return => "return"
       | Super => "super"
       | Switch => "switch"
       | This => "this"
       | Throw => "throw"
-      | To => "to"
       | True => "true"
       | Try => "try"
       | TypeOf => "typeof"
-      | Use => "use"
       | Var => "var"
       | Void => "void"
       | While => "while"
       | With => "with"
-
+    
       (* contextually reserved identifiers *)
-
+    
       | Call => "call"
-      | Debugger => "debugger"
+      | Cast => "cast"
+      | Const => "const"
       | Decimal => "decimal"
       | Double => "double"
       | Dynamic => "dynamic"
       | Each => "each"
+      | Eval => "eval"
       | Final => "final"
       | Get => "get"
-      | Goto => "goto"
       | Has => "has"
-      | Include => "include"
+      | Implements => "implements"
+      | Import => "import"
       | Int => "int"
-      | Invoke => "invoke"
+      | Interface => "interface"
+      | Internal => "internal"
+      | Intrinsic => "intrinsic"
+      | Is => "is"
+      | Let => "let"
       | Namespace => "namespace"
       | Native => "native"
-      | Number => "number"
+      | Number => "Number"
       | Override => "override"
+      | Package => "package"
       | Precision => "precision"
+      | Private => "private"
+      | Protected => "protected"
       | Prototype => "prototype"
+      | Public => "public"
       | Rounding => "rounding"
-      | Standard => "standard"
-      | Strict => "strict"
       | Set => "set"
+      | Standard => "standard"
       | Static => "static"
+      | Strict => "strict"
+      | To => "to"
       | Type => "type"
       | UInt => "uint"
       | Undefined => "undefined"
+      | Use => "use"
       | Xml => "xml"
       | Yield => "yield"
-
+  
       (* literals *)
 
       | Identifier x => "identifier("^(Ustring.toAscii x)^")"

@@ -2832,7 +2832,7 @@ and defPackage (env:ENV)
 
 and topEnv _ = [ { fixtures = !topFixtures,
                    tempOffset = 0,
-                   openNamespaces = [[Name.noNS,Ast.Internal Ustring.empty]],
+                   openNamespaces = [[Name.noNS,Ast.Internal Ustring.empty], [Ast.Intrinsic]],
                    numericMode = defaultNumericMode, 
                    labels = [],
                    packageNames = !topPackageNames,

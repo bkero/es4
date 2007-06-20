@@ -709,7 +709,6 @@ fun makeTokenList (filename : string, reader : unit -> Ustring.SOURCE) : ((TOKEN
                     (* slash:  Div, DivAssign, RegexpLiteral, and comments *)
                       | #"/"  => lexFromSlash ()
                     (* reserved words *)
-                      | #"a"  => lexResOrId [(Ustring.fromSource "s"        , As)]
                       | #"b"  => lexResOrId [(Ustring.fromSource "reak"     , Break)]
                       | #"c"  => lexResOrId [(Ustring.fromSource "ontinue"  , Continue),
                                              (Ustring.fromSource "atch"     , Catch),
@@ -742,9 +741,7 @@ fun makeTokenList (filename : string, reader : unit -> Ustring.SOURCE) : ((TOKEN
                                              (Ustring.fromSource "nterface" , Interface),
                                              (Ustring.fromSource "ntrinsic" , Intrinsic),
                                              (Ustring.fromSource "nternal"  , Internal),
-                                             (Ustring.fromSource "nclude"   , Include),
                                              (Ustring.fromSource "mport"    , Import),
-                                             (Ustring.fromSource "nvoke"    , Invoke),
                                              (Ustring.fromSource "nt"       , Int),
                                              (Ustring.fromSource "s"        , Is),
                                              (Ustring.fromSource "f"        , If),

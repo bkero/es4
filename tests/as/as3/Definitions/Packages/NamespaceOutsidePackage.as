@@ -53,11 +53,12 @@ package foo {
 class goo {
 	public namespace fletch;
 	fletch var lives = 'ns variable outside package';
-
+{
 	use namespace fletch;
 	public function returnLives() {
 		return fletch::lives;
 	}
+}
 }
 
 var SECTION = "Definitions";       // provide a document reference (ie, Actionscript section)
