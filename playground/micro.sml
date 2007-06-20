@@ -39,7 +39,7 @@ fun subtype (t1:TYPE) (t2:TYPE) : bool =
         (AnyType,AnyType) => true
       | (IntType,IntType) => true
       | (FunType(s1,t1), FunType(s2,t2)) =>
-	    (subtype s2 s1) andalso (subtype t1 t2)
+        (subtype s2 s1) andalso (subtype t1 t2)
       | (RefType s, RefType t) => (subtype s t) andalso (subtype t s)
       | _ => false
 
@@ -49,7 +49,7 @@ fun compatible (t1:TYPE) (t2:TYPE) : bool =
       | (AnyType,_) => true
       | (IntType,IntType) => true
       | (FunType(s1,t1), FunType(s2,t2)) =>
-	    (compatible s2 s1) andalso (compatible t1 t2)
+        (compatible s2 s1) andalso (compatible t1 t2)
       | (RefType s, RefType t) =>
         (compatible s t) andalso (compatible t s)
       | _ => false
@@ -138,7 +138,7 @@ fun verify (mode:MODE) (n:TYPE ENV) (e:EXPR) : (EXPR * TYPE) =
                                     verifyAndCheck mode n e2 AnyType)),
              AnyType)
           | _ => raise BadFunExpr (e1',ty1)
-	    end
+        end
       | RefExpr (t,e) =>
         (RefExpr (t, verifyAndCheck mode n e t), RefType t)
       | GetExpr e =>
@@ -236,8 +236,8 @@ fun eval (n:VAL ENV) (e:EXPR) : VAL =
                 in
                     resVal'
                 end
-	          | v => raise NotAClosure v
-	    end
+              | v => raise NotAClosure v
+        end
       | RefExpr (t,e) => RefVal(t, ref (eval n e), Safe)
       | ExpectedType (t, GetExpr e) =>
         let in
