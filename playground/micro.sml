@@ -1,4 +1,4 @@
-(* -*- mode: sml; mode: font-lock; tab-width: 4; insert-tabs-mode: nil; indent-tabs-mode: nil -*- *)
+(* -*- mode: sml; mode: font-lock; tab-width: 60; insert-tabs-mode: nil; indent-tabs-mode: nil -*- *)
 (* vim: set ts=4 sw=4 et: *)
 
 (* This is an implementation of a toy language to express and clarify
