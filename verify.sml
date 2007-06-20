@@ -55,17 +55,6 @@ fun withRib { returnType, strict, ribs} extn =
 
 (* Local tracing machinery *)
 
-structure NmKey = struct type ord_key = Ast.NAME val compare = NameKey.compare end
-structure NmMap = SplayMapFn (NmKey);
-
-structure NmVecKey = struct type ord_key = (Ast.NAME vector) val compare = (Vector.collate NameKey.compare) end
-structure NmVecMap = SplayMapFn (NmVecKey);
-
-val (fixtureCache:(Ast.FIXTURE NmMap.map) ref) = ref NmMap.empty
-val (instanceOfCache:(bool NmVecMap.map) ref) = ref NmVecMap.empty
-val cachesz = 1024
-
-
 val doTrace = ref false
 val doTraceProg = ref false
 fun trace ss = if (!doTrace) then LogErr.log ("[verify] " :: ss) else ()
@@ -74,48 +63,16 @@ fun error ss = LogErr.verifyError ss
 fun logType ty = (Pretty.ppType ty; TextIO.print "\n")
 fun traceType ty = if (!doTrace) then logType ty else ()
 
-fun typeToString ty = 
-    let
-        fun nsExprToString e = 
-            case e of 
-                Ast.LiteralExpr (Ast.LiteralNamespace ns) => LogErr.namespace ns
-              | Ast.LexicalRef {ident = Ast.Identifier {ident, ...}, ... } => Ustring.toAscii ident
-              | _ => error ["unexpected expression type in namespace context"]
-        fun nssToString nss = 
-            LogErr.join ", " (map LogErr.namespace nss)
-        fun nsssToString nsss = 
-            LogErr.join ", " (map (fn nss => "(" ^ (nssToString nss) ^ ")") nsss)
-        fun typeList tys = 
-            LogErr.join ", " (map typeToString tys)
-        fun fieldToString {name, ty} = (Ustring.toAscii name) ^ ": " ^ (typeToString ty)
-        fun fieldList fields = 
-            LogErr.join ", " (map fieldToString fields)
-    in
-        case ty of 
-            Ast.SpecialType Ast.Any => "*"
-          | Ast.SpecialType Ast.Null => "null"
-          | Ast.SpecialType Ast.Undefined => "undefined"
-          | Ast.SpecialType Ast.VoidType => "<VoidType>"
-          | Ast.UnionType tys => "(" ^ (typeList tys) ^ ")"
-          | Ast.ArrayType tys => "[" ^ (typeList tys) ^ "]"
-          | Ast.TypeName (Ast.Identifier {ident, openNamespaces}) => "<TypeName: {" ^ (nsssToString openNamespaces) ^ "}::" ^ (Ustring.toAscii ident) ^ ">"
-          | Ast.TypeName (Ast.QualifiedIdentifier { qual, ident }) => "<TypeName: " ^ (nsExprToString qual) ^ "::" ^ (Ustring.toAscii ident) ^ ">"
-          | Ast.TypeName _ => "<TypeName: ...>"
-          | Ast.ElementTypeRef _ => "<ElementTypeRef: ...>"
-          | Ast.FieldTypeRef _ => "<FieldTypeRef: ...>"
-          | Ast.FunctionType {params, result, ...} => "<function (" ^ (typeList params) ^ ") -> " ^ (typeToString result) ^ ">"
-          | Ast.ObjectType fields => "{" ^ fieldList fields ^ "}"
-          | Ast.AppType {base, args} => (typeToString base) ^ ".<" ^ (typeList args) ^ ">"
-          | Ast.NullableType { expr, nullable } => (typeToString expr) ^ (if nullable then "?" else "!")
-          | Ast.InstanceType { name, ... } => LogErr.name name
-    end
+(*
+fun typeToString ty = ...
+*)
 
 fun fmtName n = if !doTrace
                 then LogErr.name n
                 else ""
 
 fun fmtType ty = if !doTrace
-                 then typeToString ty
+                 then Type.toString ty
                  else ""
 
 (* Mapping the rib structure to multiname lookup. *)
@@ -131,7 +88,7 @@ fun resolve (ribs:RIB list) (mname:Ast.MULTINAME) =
 fun findFixture (ribs:RIB list) (mname:Ast.MULTINAME) = 
     case resolve ribs mname of 
         NONE => error ["unable to resolve fixture for multiname: ", LogErr.multiname mname]
-      | SOME (fixs, n) => Defn.getFixture fixs (Ast.PropName n)
+      | SOME (fixs, n) => Fixture.getFixture fixs (Ast.PropName n)
 
 fun resolveExprToNamespace (env:ENV) 
                            (expr:Ast.EXPR) 
@@ -149,31 +106,8 @@ fun resolveExprToNamespace (env:ENV)
 
 (****************************** standard types *************************)
 
-fun getTopFixture (n:Ast.NAME) 
-    : Ast.FIXTURE = 
-    let
-        val c = !fixtureCache
-    in
-        case NmMap.find (c, n) of
-            NONE => 
-            let
-                val v = Defn.getFixture (!Defn.topFixtures) (Ast.PropName n)
-            in
-                if (NmMap.numItems c) < cachesz
-                then (fixtureCache := NmMap.insert (c, n, v); v)
-                else v
-            end
-          | SOME v => v
-    end
-
-fun instanceType (n:Ast.NAME) : Ast.INSTANCE_TYPE =
-    case getTopFixture n of
-        Ast.ClassFixture (Ast.Cls cls) => (#instanceType cls)
-      | Ast.InterfaceFixture (Ast.Iface iface) => (#instanceType iface)
-      | _ => error ["type not an instance type ", LogErr.name n]
-
 fun instanceTypeExpr (n:Ast.NAME) : Ast.TYPE_EXPR =
-    Ast.InstanceType (instanceType n)
+    Ast.InstanceType (Fixture.instanceType (!Defn.topFixtures) n)
 
 val undefinedType   = Ast.SpecialType Ast.Undefined
 val nullType        = Ast.SpecialType Ast.Null
@@ -203,42 +137,13 @@ fun gensym (s:Ustring.STRING) : Ustring.STRING =
 	    Ustring.append [s, Ustring.dollar, Ustring.fromInt (!gensymCounter)]
     end
 
-(************************* Normalized types *********************************)
-
-type TYPE_VALUE = Ast.TYPE_EXPR  (* Invariant: normalized *)
-
-(*  A normalized type is one of
-
- and TYPE_EXPR =
-         SpecialType of SPECIAL_TY
-       | UnionType of TYPE_EXPR list
-       | ArrayType of TYPE_EXPR list
-       | FunctionType of FUNC_TYPE           
-       | ObjectType of FIELD_TYPE list
-       | AppType of 
-           { base: TYPE_EXPR,  -- not a function type
-             args: TYPE_EXPR list }
-       | NullableType of 
-           { expr:TYPE_EXPR,
-             nullable:bool }
-       | InstanceType of
-           { name: NAME, 
-             typeParams: IDENT list, 
-             ty: TYPE_EXPR,
-             dynamic: bool }
-       | NominalType of NAME
-
-and excludes
-       | TypeName of IDENT_EXPR
-       | ElementTypeRef of (TYPE_EXPR * int)
-       | FieldTypeRef of (TYPE_EXPR * IDENT)
-*)
-
 (************************* Substitution on Types *********************************)
 
 (* TODO: normalized types?? *)
 
-fun substTypeExpr (s:(Ast.IDENT*TYPE_VALUE) list) (t:TYPE_VALUE):Ast.TYPE_EXPR = 
+fun substTypeExpr (s:(Ast.IDENT*Type.TYPE_VALUE) list)
+                  (t:Type.TYPE_VALUE)
+    : Ast.TYPE_EXPR =
     let in
 	case t of
 	    Ast.UnionType ts => 
@@ -291,7 +196,7 @@ fun substTypeExpr (s:(Ast.IDENT*TYPE_VALUE) list) (t:TYPE_VALUE):Ast.TYPE_EXPR =
 
 fun verifyTypeExpr (env:ENV)
                    (ty:Ast.TYPE_EXPR)
-    : TYPE_VALUE =
+    : Type.TYPE_VALUE =
     let in
         trace ["verifyTypeExpr: ", fmtType ty];
 
@@ -400,7 +305,7 @@ fun verifyTypeExpr (env:ENV)
             end
 
           | Ast.ElementTypeRef (t, _) => 
-            error ["ElementTypeRef on non-ArrayType: ", typeToString t]
+            error ["ElementTypeRef on non-ArrayType: ", Type.toString t]
 
           | Ast.FieldTypeRef ((Ast.ObjectType fields), ident) => 
             let
@@ -416,7 +321,7 @@ fun verifyTypeExpr (env:ENV)
             Ast.SpecialType Ast.Any
 
           | Ast.FieldTypeRef (t, _) => 
-            error ["FieldTypeRef on non-ObjectType: ", typeToString t]
+            error ["FieldTypeRef on non-ObjectType: ", Type.toString t]
 
           | _ => ty
                    (*
@@ -430,7 +335,7 @@ fun verifyTypeExpr (env:ENV)
     
 and verifyTypeExprs  (env:ENV) 
 		             (tys:Ast.TYPE_EXPR list) 
-    : TYPE_VALUE list = 
+    : Type.TYPE_VALUE list = 
     (List.map (verifyTypeExpr env) tys)
 
 (*
@@ -445,317 +350,54 @@ fun mergeTypes t1 t2 =
 
 fun funcSigType (env:ENV)
                 (fsig:Ast.FUNC_SIG)
-    : TYPE_VALUE =
+    : Type.TYPE_VALUE =
     (* TODO: implement this *)
     anyType
 
-(************************* Compatibility *********************************)
-    
+(******************* Subtyping and Compatibility *************************)
 
-and isClass (t:Ast.NAME)
-    : bool =
-    case getTopFixture t of 
-        Ast.ClassFixture cls => true
-      | _ => false
+infix 4 <:;
 
-and getClass (t:Ast.NAME)
-    : Ast.CLS =
-    case getTopFixture t of 
-        Ast.ClassFixture cls => cls
-      | Ast.InterfaceFixture iface =>   (* FIXME: not sure what to do here. getClass gets called when a nominal
-                                            type is used in various ways. Just return class Object for now *)
-        let
-            val Ast.ClassFixture objCls = getTopFixture Name.nons_Object
-        in
-            objCls
-        end
-      | _ => error ["getClass returned non-class fixture for ", LogErr.name t]
+fun (tsub <: tsup) =
+    Type.isSubtype (!Defn.topFixtures) tsub tsup
 
-and instanceOf (t0:Ast.NAME)
-               (t:Ast.NAME)
-    : bool =
-    let
-        val c = !instanceOfCache
-        fun search n = 
-            if Mach.nameEq n t
-            then true
-            else 
-                let 
-                    val it = instanceType n
-                    val bases = (#superTypes it)
-                in
-                    List.exists search bases
-                end
-        val k = Vector.fromList [t0,t]
-    in
-        case NmVecMap.find (c, k) of
-            NONE => 
-            let
-                val v = search t0
-            in
-                if (NmVecMap.numItems c) < cachesz
-                then (instanceOfCache := NmVecMap.insert (c, k, v); v)
-                else v
-            end
-          | SOME v => v
-    end
+infix 4 ~:;
 
-fun normalize (t:Ast.TYPE_EXPR) 
-    : Ast.TYPE_EXPR = 
-    let 
-        fun normalize' (t:Ast.TYPE_EXPR) 
-            : (Ast.TYPE_EXPR list * bool) =
-            case t of                 
-                (Ast.UnionType tys) => 
-                let 
-                    val (typelists, nullables) = ListPair.unzip (map normalize' tys)
-                    val types = List.concat typelists
-                    val nullable = List.exists (fn x => x) nullables
-                in
-                    (types, nullable)
-                end
-              | Ast.SpecialType Ast.Null => ([], true)
-              | Ast.ArrayType [] => ([Ast.ArrayType [Ast.SpecialType Ast.Any]], false)
-              | Ast.ArrayType tys => ([Ast.ArrayType (map normalize tys)], false)
-              | Ast.FunctionType { typeParams, params, result, thisType, hasRest, minArgs } =>
-                ([Ast.FunctionType { typeParams = typeParams,
-                                     params = map normalize params,
-                                     result = normalize result,
-                                     thisType = Option.map normalize thisType,
-                                     hasRest = hasRest,
-                                     minArgs = minArgs }], false)
-              | Ast.ObjectType fields => 
-                let
-                    fun normalizeField { name, ty } = 
-                        { name = name,
-                          ty = normalize ty }
-                in
-                    ([Ast.ObjectType (map normalizeField fields)], false)
-                end
-              | Ast.AppType { base, args } => 
-                ([Ast.AppType { base = normalize base,
-                                args = map normalize args }], false)
-              | Ast.NullableType { expr, nullable } => 
-                let
-                    val (types, _) = normalize' expr
-                in
-                    (types, nullable)
-                end
-              | t => ([t], false)
-        val (types, nullable) = normalize' t
-        val null = Ast.SpecialType Ast.Null
-    in
-        case types of 
-            [] => if nullable 
-                  then null
-                  else Ast.UnionType []
-          | [x] => if nullable
-                   then Ast.UnionType [x, null]
-                   else x
-          | union => if nullable 
-                     then Ast.UnionType (union @ [null])
-                     else Ast.UnionType union
-    end
-    
-and isSubtype (t1:TYPE_VALUE) (* derived *)
-              (t2:TYPE_VALUE) (* base *)
-    : bool =
-    let
-        val _ = trace [">>> isSubtype: ", fmtType t1, " <: ", fmtType t2 ];
-        val t1 = normalize t1
-        val t2 = normalize t2
-        val res = if t1 = t2 then
-                      true
-                  else
-                      case (t1,t2) of
-                          (* FIXME: nullability is a bit of a mess. *)
+fun (tleft ~: tright) =
+    Type.isCompatible (!Defn.topFixtures) tleft tright
 
-                          ((Ast.SpecialType Ast.Null), Ast.NullableType { nullable, ... }) => 
-                          nullable
-
-                        | (_, Ast.NullableType { nullable=false, expr }) => 
-                          isSubtype t1 expr
-
-                        | ((Ast.SpecialType Ast.Null), Ast.InstanceType {nonnullable,...}) =>
-                          not nonnullable
-
-                        | (Ast.SpecialType _, _) => false
-                                                    
-	                    | (Ast.UnionType types1,_) => 
-	                      List.all (fn t => isSubtype t t2) types1
-
-	                    | (_, Ast.UnionType types2) =>
-	                      List.exists (fn t => isSubtype t1 t) types2 
-                          
-                        (*
-                        | (Ast.UnionType ts1, Ast.UnionType ts2) =>
-                          unimplError ["isSubtype 1"]
-                        | (Ast.ArrayType ts1, Ast.ArrayType ts2) =>
-                          unimplError ["isSubtype 2"]
-                        | (Ast.FunctionType ft1, Ast.FunctionType ft2) =>
-                          unimplError ["isSubtype 3"]
-                        | (Ast.ObjectType fts1, Ast.ObjectType fts2) =>
-                          unimplError ["isSubtype 4"]
-                         *)
-                        | (Ast.ArrayType _, Ast.InstanceType it2) => 
-                          (#name it2) = Name.nons_Array
-
-                        | (Ast.ObjectType _, Ast.InstanceType it2) => 
-                          (#name it2) = Name.nons_Object
-
-                        | (Ast.FunctionType _, Ast.InstanceType it2) => 
-                          (#name it2) = Name.nons_Function
-
-                        | (Ast.InstanceType it1, Ast.InstanceType it2) => 
-                          isClass (#name it1)
-                          andalso instanceOf (#name it1) (#name it2)
-                        | _ => false
-    in
-        trace ["<<< isSubtype: ", fmtType t1, " <: ", fmtType t2, " = ", Bool.toString res ];
-        res
-    end
-
-fun checkCompatible (t1:TYPE_VALUE) 
-		            (t2:TYPE_VALUE) 
+fun checkCompatible (t1:Type.TYPE_VALUE) 
+		            (t2:Type.TYPE_VALUE) 
     : unit = 
-    if isCompatible t1 t2
+    if t1 ~: t2
     then ()
     else let in
-	     TextIO.print ("checkCompatible failed: " ^ (typeToString t1) ^ " vs. " ^ (typeToString t2) ^ "\n");
+	     TextIO.print ("checkCompatible failed: " ^ (Type.toString t1) ^ " vs. " ^ (Type.toString t2) ^ "\n");
 	     verifyError ["Types are not compatible"]
 	 end
 
-and isCompatible (t1:TYPE_VALUE) 
-		         (t2:TYPE_VALUE) 
-    : bool = 
-    let
-        val t1 = normalize t1
-        val t2 = normalize t2
-        val _ = trace [">>> isCompatible: ", fmtType t1, " ~: ", fmtType t2 ];
-        val res = (isSubtype t1 t2) orelse
-	              (t1=anyType) orelse
-	              (t2=anyType) orelse
-	              case (t1,t2) of
-	                  (Ast.UnionType types1,_) => 
-	                  List.all (fn t => isCompatible t t2) types1
-	                | (_, Ast.UnionType types2) =>
-	                  (* t1 must exist in types2 *)
-	                  List.exists (fn t => isCompatible t1 t) types2 
-	                | (Ast.ArrayType types1, Ast.ArrayType types2) => 
-	                  (* arrays are invariant, every entry should be compatible in both directions *)
-	                  let fun check (h1::t1) (h2::t2) =
-		                      (isCompatible h1 h2)
-		                      andalso
-		                      (isCompatible h2 h1)
-		                      andalso
-		                      (case (t1,t2) of
-			                       ([],[]) => true
-		                         | ([],_::_) => check [h1] t2
-		                         | (_::_,[]) => check t1 [h2]
-		                         | (_::_,_::_) => check t1 t2)
-                            | check _ _ =
-                              error ["unexpected array types: ", 
-                                     typeToString t1, " vs. ", typeToString t2]
-	                  in
-		                  check types1 types2
-	                  end
-                                                           
-	                | (Ast.AppType {base=base1,args=args1}, Ast.AppType {base=base2,args=args2}) => 
-	                  (* We keep types normalized wrt beta-reduction, 
-	                   * so base1 and base2 must be class or interface types.
-	                   * Type arguments are covariant, and so must be intra-compatible - CHECK 
-	                   *)
-	                  false
-	                  
-	                | (Ast.ObjectType fields1, Ast.ObjectType fields2) =>
-	                  false
-                      
-	                | (Ast.FunctionType 
-		                   {typeParams=typeParams1,
-		                    params  =params1, 
-		                    result  =result1,
-		                    thisType=thisType1,
-		                    hasRest =hasRest1,
-	                        minArgs=minArgs},
-	                   Ast.FunctionType 
-		                   {typeParams=typeParams2,
-		                    params=params2, 
-		                    result=result2, 
-		                    thisType=thisType2,
-		                    hasRest=hasRest2,
-		                    minArgs=minArgs2}) =>
-	                  let
-	                  in
-		                  (* TODO: Assume for now that functions are not polymorphic *)
-		                  assert (typeParams1 = [] andalso typeParams2=[]) "cannot handle polymorphic fns";
-		                  assert (not hasRest1 andalso not hasRest2) "cannot handle rest args";
-                          
-		                  ListPair.all (fn (t1,t2) => isCompatible t1 t2) (params1,params2)
-		                  andalso
-		                  isCompatible result1 result2
-	                  end
-                      
-                    | _ => false
-	(* catch all *)
-	(* | _ => unimplError ["isCompatible"] *)
-    in                    
-        trace ["<<< isCompatible: ", fmtType t1, " ~: ", fmtType t2, " = ", Bool.toString res ];
-        res
-    end
-    
-fun checkBicompatible (ty1:TYPE_VALUE) 
-		              (ty2:TYPE_VALUE)
+fun checkBicompatible (ty1:Type.TYPE_VALUE) 
+		              (ty2:Type.TYPE_VALUE)
     : unit = 
     let in
 	    checkCompatible ty1 ty2;
 	    checkCompatible ty2 ty1
     end
 
-(* 
- * When investigating ty1 ~~> ty2, call this.
- * It returns the name of the class of ty2 containing 
- * meta static function convert(x:pt) where ty1 ~: pt,
- * or NONE if there is no such converter.
- *)
-fun findConversion (ty1:TYPE_VALUE)
-                   (ty2:TYPE_VALUE) 
-    : Ast.NAME option = 
-    let
-        val _ = trace ["searching for converter from ", fmtType ty1,
-                       " ~~> ", fmtType ty2];
-        val ty1 = normalize ty1
-        val ty2 = normalize ty2
-        fun tryToConvertTo (target:Ast.TYPE_EXPR) = 
-            case target of 
-                Ast.InstanceType { name, conversionTy=SOME c, ... } => 
-                if isCompatible ty1 c
-                then SOME name
-                else NONE
-              | Ast.UnionType [] => NONE
-              | (Ast.UnionType (t::ts)) => 
-                (case tryToConvertTo t of
-                     NONE => tryToConvertTo (Ast.UnionType ts)
-                   | found => found)
-              | _ => NONE
-    in
-        tryToConvertTo ty2
-    end
-
-
-fun checkConvertible (ty1:TYPE_VALUE) 
-                     (ty2:TYPE_VALUE)
+fun checkConvertible (ty1:Type.TYPE_VALUE) 
+                     (ty2:Type.TYPE_VALUE)
     : unit =
     (* TODO: int to float, etc, and to() methods *)
     checkCompatible ty1 ty2
     
-fun leastUpperBound (t1:TYPE_VALUE)
-                    (t2:TYPE_VALUE)
-    : TYPE_VALUE =
+fun leastUpperBound (t1:Type.TYPE_VALUE)
+                    (t2:Type.TYPE_VALUE)
+    : Type.TYPE_VALUE =
     let
     in
-        if (isSubtype t1 t2) then
+        if t1 <: t2 then
             t2
-        else if (isSubtype t2 t1) then
+        else if t2 <: t1 then
             t1
         else
             Ast.UnionType [t1, t2]
@@ -792,7 +434,7 @@ and verifyHead (env:ENV) ((Ast.Head (fixtures, inits)):Ast.HEAD)
 
 and verifyExpr (env:ENV) 
                (expr:Ast.EXPR) 
-    : (Ast.EXPR * TYPE_VALUE) = 
+    : (Ast.EXPR * Type.TYPE_VALUE) = 
     let
         fun verifySub e = verifyExpr env e
         fun verifySubList es = verifyExprs env es
@@ -916,14 +558,14 @@ and verifyExpr (env:ENV)
                                case u of
                                     (* FIXME: these are probably wrong *)
                                     Ast.Delete => ()
-                                  | ( Ast.PreIncrement mode | Ast.PreDecrement mode
-                                    | Ast.PostIncrement mode | Ast.PostDecrement mode
-                                    | Ast.UnaryPlus mode | Ast.UnaryMinus mode ) =>
-                                    checkCompatible t NumericType
-                                  | Ast.BitwiseNot =>
-                                    checkCompatible t NumericType
-                                  | Ast.LogicalNot =>
-                                    checkConvertible t booleanType
+                                  | Ast.PreIncrement mode => checkCompatible t NumericType
+                                  | Ast.PostIncrement mode => checkCompatible t NumericType
+                                  | Ast.PreDecrement mode => checkCompatible t NumericType
+                                  | Ast.PostDecrement mode => checkCompatible t NumericType
+                                  | Ast.UnaryPlus mode => checkCompatible t NumericType
+                                  | Ast.UnaryMinus mode => checkCompatible t NumericType
+                                  | Ast.BitwiseNot => checkCompatible t NumericType
+                                  | Ast.LogicalNot => checkConvertible t booleanType
                                   (* TODO: Ast.Type? *)
                                   | _ => ());
                 return (Ast.UnaryExpr (u, e'), resultType)
@@ -1143,7 +785,7 @@ and verifyExprs (env:ENV)
 
 and verifyExprAndCheck (env:ENV)
                        (expr:Ast.EXPR)
-                       (expectedType:TYPE_VALUE)
+                       (expectedType:Type.TYPE_VALUE)
     : Ast.EXPR =
     let val (expr',ty') = verifyExpr env expr
         val _ = if #strict env
@@ -1435,7 +1077,7 @@ and verifyFixturesOption (env:ENV)
     PROGRAM
 *)
 
-and topEnv () = { ribs = [!Defn.topFixtures],
+and topEnv () = { ribs = [Fixture.getTopFixtures (!Defn.topFixtures)],
                   strict = false,
                   returnType = NONE }
 
@@ -1445,7 +1087,8 @@ and verifyPackage (env:ENV) (p:Ast.PACKAGE)
       block = verifyBlock env (#block p) }
 
 and verifyTopFixtures _ = 
-    Defn.topFixtures := verifyFixtures (topEnv()) (!Defn.topFixtures)
+    (* FIXME: too much unwrapping/rewrapping going on here *)
+    Defn.topFixtures := Fixture.mkTopFixtures (verifyFixtures (topEnv()) (Fixture.getTopFixtures (!Defn.topFixtures)))
 
 and verifyProgram (p:Ast.PROGRAM) 
     : Ast.PROGRAM =

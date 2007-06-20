@@ -40,7 +40,7 @@ MLBUILD := ml-build
 # file listings
 # ------------------------------------------------------------
 
-SOURCES := ast.sml boot.sml decimal.sml defn.sml eval.sml logerr.sml mach.sml main.sml multiname.sml name.sml native.sml parser.sml pretty-rep.sml pretty.sml profile.sml token.sml ustring.sml verify.sml
+SOURCES := ast.sml boot.sml decimal-params.sml decimal.sml defn.sml eval.sml logerr.sml mach.sml main.sml multiname.sml name.sml native.sml lexer.sml parser.sml pretty-rep.sml pretty.sml profile.sml token.sml ustring.sml verify.sml type.sml fixture.sml fixture.sig smlnj.sml decimal-external.sml
 
 DECIMAL_SOURCES=decimal/decimal-ffi.c decimal/decNumber/decNumber.c decimal/decNumber/decContext.c decimal/decNumber/decimal128.c decimal/decNumber/decimal64.c decimal/decNumber/decimal32.c
 
@@ -69,10 +69,12 @@ HEAP_SUFFIX := $(call sml,SMLofNJ.SysInfo.getHeapSuffix())
 # targets
 # ------------------------------------------------------------
 
-.PHONY: check checktc checkev wc clean cleanml profile decimal exec-release heap-release
+.PHONY: compile check checktc checkev wc clean cleanml profile decimal exec-release heap-release
+
+compile: es4-init.heap.$(HEAP_SUFFIX)
 
 es4-init.heap.$(HEAP_SUFFIX): $(wildcard *.sml) pretty-cvt.sml
-	$(MLBUILD) $(MLBUILD_ARGS) es4.cm Main.main es4-init.heap
+	$(MLBUILD) $(MLBUILD_ARGS) es4.cm SMLofNJEntry.main es4-init.heap
 
 pretty-cvt.sml: tools/gen-pretty.heap.$(HEAP_SUFFIX) ast.sml
 	cd tools && $(SML) @SMLload=gen-pretty.heap ../ast.sml ../pretty-cvt.sml

@@ -251,6 +251,11 @@ exception ReturnException of Mach.VAL
 
 exception InternalError
 
+infix 4 <:;
+
+fun (tsub <: tsup) =
+    Type.isSubtype (!Defn.topFixtures) tsub tsup
+
 fun mathOp (v:Mach.VAL) 
            (decimalFn:(Decimal.DEC -> 'a) option)
            (doubleFn:(Real64.real -> 'a) option)
@@ -387,6 +392,11 @@ fun shouldBeDontEnum (n:Ast.NAME) (obj:Mach.OBJ) : bool =
 
 (* Fundamental object methods *)
 
+fun findConversion (ty1:Type.TYPE_VALUE)
+                   (ty2:Type.TYPE_VALUE)
+    : Ast.NAME option =
+    Type.findConversion (!Defn.topFixtures) ty1 ty2
+
 fun allocFixtures (regs:Mach.REGS) 
                   (obj:Mach.OBJ) 
                   (this:Mach.OBJ option)
@@ -452,7 +462,7 @@ fun allocFixtures (regs:Mach.REGS)
                     Mach.UninitProp
 
                   | Ast.TypeName ident => 
-                    error ["allocating fixture with unresolved type name: ", Verify.typeToString t]
+                    error ["allocating fixture with unresolved type name: ", Type.toString t]
 
                   | Ast.ElementTypeRef _ => 
                     error ["allocating fixture of unresolved element type reference"]
@@ -469,7 +479,7 @@ fun allocFixtures (regs:Mach.REGS)
                         (* It is possible that we're booting and the class n doesn't even exist yet. *)
                         if (not (!booting)) orelse Mach.isClass (getValue (getGlobalObject ()) (#name n))
                         then 
-                            case Verify.findConversion (Ast.SpecialType Ast.Undefined) t of
+                            case findConversion (Ast.SpecialType Ast.Undefined) t of
                                 SOME _ => Mach.ValProp (checkAndConvert Mach.Undef t)
                               | NONE => Mach.UninitProp
                         else
@@ -788,8 +798,8 @@ and typeOpFailure (prefix:string)
                   (tyExpr:Ast.TYPE_EXPR)
     : Mach.VAL =
     throwTypeErr [prefix, ": val=", approx v, 
-                  " type=", Verify.typeToString (typeOfVal v), 
-                  " wanted=", Verify.typeToString tyExpr]
+                  " type=", Type.toString (typeOfVal v), 
+                  " wanted=", Type.toString tyExpr]
 
 and checkAndConvert (v:Mach.VAL)                    
                     (tyExpr:Ast.TYPE_EXPR)
@@ -800,7 +810,7 @@ and checkAndConvert (v:Mach.VAL)
         let 
             val valTy = typeOfVal v
             val className = 
-                case Verify.findConversion valTy tyExpr of
+                case findConversion valTy tyExpr of
                     NONE => (typeOpFailure "incompatible types w/o converter" v tyExpr; Name.empty)
                   | SOME n => n
             val class = needObj (getValue (getGlobalObject ()) className)
@@ -1080,7 +1090,8 @@ and needNameOrString (v:Mach.VAL)
     : Ast.NAME =
     case v of
         Mach.Object obj =>
-        if Verify.isSubtype (typeOfVal v) (Verify.instanceTypeExpr Name.intrinsic_Name)
+        if (typeOfVal v) <: (Verify.instanceTypeExpr Name.intrinsic_Name)
+(*           Verify.isSubtype (typeOfVal v) (Verify.instanceTypeExpr Name.intrinsic_Name)*)
         then
             let
                 val nsval = getValue obj Name.nons_qualifier
@@ -1789,8 +1800,8 @@ and checkCompatible (ty:Ast.TYPE_EXPR)
     if isCompatible v ty
     then v
     else error ["typecheck failed, val=", approx v, 
-                " type=", Verify.typeToString (typeOfVal v), 
-                " wanted=", Verify.typeToString ty]
+                " type=", Type.toString (typeOfVal v), 
+                " wanted=", Type.toString ty]
         
 and evalExpr (regs:Mach.REGS) 
              (expr:Ast.EXPR)
@@ -2851,7 +2862,7 @@ and typeOfVal (v:Mach.VAL)
 and isCompatible (v:Mach.VAL)
                  (tyExpr:Ast.TYPE_EXPR)
     : bool = 
-    Verify.isCompatible (typeOfVal v) tyExpr
+    Type.isCompatible (!Defn.topFixtures) (typeOfVal v) tyExpr
 
 
 and evalBinaryTypeOp (regs:Mach.REGS)
@@ -2868,7 +2879,7 @@ and evalBinaryTypeOp (regs:Mach.REGS)
             then v
             else typeOpFailure "cast failed" v tyExpr
           | Ast.To => checkAndConvert v tyExpr
-          | Ast.Is => newBoolean (Verify.isSubtype (typeOfVal v) tyExpr)
+          | Ast.Is => newBoolean ((typeOfVal v) <: tyExpr)
     end
                       
 and evalBinaryOp (regs:Mach.REGS) 
@@ -2988,7 +2999,7 @@ and evalIdentExpr (regs:Mach.REGS)
         in
             case v of
                 Mach.Object obj =>
-                if Verify.isSubtype (typeOfVal v) (Verify.instanceTypeExpr Name.intrinsic_Name)
+                if (typeOfVal v) <: (Verify.instanceTypeExpr Name.intrinsic_Name)
                 then
                     let
                         val nsval = getValue obj Name.nons_qualifier
@@ -3406,7 +3417,7 @@ and catch (regs:Mach.REGS)
                 val obj = (#this regs)
                 val temps = getScopeTemps scope
             in
-                (if fixs = []
+                (if List.null fixs
                  then () 
                  else Mach.defTemp temps 0 e; 
                  evalScopeInits regs Ast.Local (valOf inits);
@@ -3684,7 +3695,7 @@ and evalScopeInits (regs:Mach.REGS)
                            Int.toString (getScopeId scope)];
                     case target of
                         Ast.Local => 
-                        if (NameMap.numItems (!props)) > 0 orelse parent = NONE
+                        if (NameMap.numItems (!props)) > 0 orelse not (Option.isSome parent)
                         then object
                         else findTargetObj (valOf parent) 
                       (* if there are no props then it is at temp scope *)
@@ -3692,7 +3703,7 @@ and evalScopeInits (regs:Mach.REGS)
                       | Ast.Hoisted => 
                         if kind = Mach.InstanceScope orelse
                            kind = Mach.ActivationScope orelse 
-                           parent = NONE
+                           not (Option.isSome parent)
                         then object
                         else findTargetObj (valOf parent)
                              
@@ -3832,7 +3843,7 @@ and parseFunctionFromArgs (args:Mach.VAL list)
         (*
          * We synthesize a full function expression here, then feed it back into the parser.
          *)
-        val args = if args = [] then [newString Ustring.empty] else args
+        val args = if List.null args then [newString Ustring.empty] else args
         val bodyStr = (toUstring (List.last args))
         val argArgs = List.take (args, (length args)-1)
         fun joinWithComma [] = []
@@ -4335,7 +4346,8 @@ and evalIterable (regs:Mach.REGS)
          *)
         case v of
             Mach.Object ob => ob
-          | (Mach.Undef | Mach.Null) => newObj ()
+          | Mach.Undef => newObj ()
+          | Mach.Null => newObj ()
     end
 
 and callIteratorGet (regs:Mach.REGS)
@@ -4560,7 +4572,7 @@ and evalProgram (regs:Mach.REGS)
         fun findHoistingScopeObj (Mach.Scope { object, temps, kind, parent, ...}) =
             if kind = Mach.InstanceScope orelse
                kind = Mach.ActivationScope orelse 
-               parent = NONE
+               not (Option.isSome parent)
             then (object, temps)
             else findHoistingScopeObj (valOf parent)
         val (obj, temps) = findHoistingScopeObj (#scope regs)
