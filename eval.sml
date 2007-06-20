@@ -1322,10 +1322,14 @@ and newName (n:Ast.NAME)
 and newClsClosure (env:Mach.SCOPE)
                   (cls:Ast.CLS)
     : Mach.CLS_CLOSURE =
-    { cls = cls,
-      (* FIXME: are all types bound? *)
-      allTypesBound = true,
-      env = env }
+    let
+        val Ast.Cls {instanceType={typeParams, ...}, ...} = cls
+        val allTypesBound = (length typeParams = 0)
+    in
+        { cls = cls,
+          allTypesBound = allTypesBound,
+          env = env }
+    end
     
 and newClass (e:Mach.SCOPE) 
              (cls:Ast.CLS) 
@@ -1339,10 +1343,14 @@ and newClass (e:Mach.SCOPE)
 and newIfaceClosure (env:Mach.SCOPE)
                     (iface:Ast.IFACE)
     : Mach.IFACE_CLOSURE =
-    { iface = iface,
-      (* FIXME: are all types bound? *)
-      allTypesBound = true,
-      env = env }
+    let
+        val Ast.Iface {instanceType={typeParams, ...}, ...} = iface
+        val allTypesBound = (length typeParams = 0)
+    in
+        { iface = iface,
+          allTypesBound = allTypesBound,
+          env = env }
+    end
     
 and newInterface (e:Mach.SCOPE) 
                  (iface:Ast.IFACE) 
