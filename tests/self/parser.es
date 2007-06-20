@@ -563,8 +563,8 @@
             case Token::Identifier:
                 switch (hd (tl (ts))) {
                 case Token::Dot:
-                    var temp = nd.concat(Token::tokenText(ts[0]));
-                    var [ts1,nd1] = path (tl (tl (ts)), temp);
+                    nd.push(Token::tokenText(ts[0]));
+                    var [ts1,nd1] = path (tl (tl (ts)), nd);
                     break;
                 default:
                     var [ts1,nd1] = [ts,nd];
@@ -4922,8 +4922,8 @@
             , "x==y"
             , "m-n;n+m"
             , "10"
-            , "p.q.r.x"
            /*
+            , "p.q.r.x"
             , "new A()"
             , "(new Fib(n-1)).val + (new Fib(n-2)).val"
             , "var val = n"
