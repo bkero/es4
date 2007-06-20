@@ -457,7 +457,7 @@ fun allocFixtures (regs:Mach.REGS)
                   | Ast.ElementTypeRef _ => 
                     error ["allocating fixture of unresolved element type reference"]
                     
-                  | Ast.FieldTypeRef _ => (* FIXME: get type from object type *)
+                  | Ast.FieldTypeRef _ =>
                     error ["allocating fixture of unresolved field type reference"]
 
                   (* Note, the definer must have created inits for nonnullable primitive types 
@@ -606,8 +606,19 @@ fun allocFixtures (regs:Mach.REGS)
                                                   readOnly = true,
                                                   isFixed = true } }
 
-                          | Ast.InterfaceFixture _ =>  (* FIXME *)
-                            ()
+                          | Ast.InterfaceFixture iface =>  (* FIXME *)
+                            let
+                                val _ = trace ["allocating interface object for interface ", fmtName pn]
+                                val ifaceObj = needObj (newInterface scope iface)
+                            in
+                                allocProp "interface"
+                                          { ty = (Name.typename Name.intrinsic_Interface),
+                                            state = Mach.ValProp (Mach.Object ifaceObj),
+                                            attrs = { dontDelete = true,
+                                                      dontEnum = true,
+                                                      readOnly = true,
+                                                      isFixed = true } }
+                            end
 
                           (* | _ => error ["Shouldn't happen: failed to match in Eval.allocFixtures#allocFixture."] *)
 
@@ -1323,6 +1334,23 @@ and newClass (e:Mach.SCOPE)
         val closure = newClsClosure e cls 
     in
         newRootBuiltin Name.intrinsic_Class (Mach.Class closure)
+    end
+
+and newIfaceClosure (env:Mach.SCOPE)
+                    (iface:Ast.IFACE)
+    : Mach.IFACE_CLOSURE =
+    { iface = iface,
+      (* FIXME: are all types bound? *)
+      allTypesBound = true,
+      env = env }
+    
+and newInterface (e:Mach.SCOPE) 
+                 (iface:Ast.IFACE) 
+    : Mach.VAL =
+    let
+        val closure = newIfaceClosure e iface 
+    in
+        newRootBuiltin Name.intrinsic_Interface (Mach.Interface closure)
     end
 
 and newFunClosure (e:Mach.SCOPE)
