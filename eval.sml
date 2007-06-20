@@ -1935,10 +1935,63 @@ and evalExpr (regs:Mach.REGS)
       | Ast.SliceExpr _ => 
         LogErr.unimplError ["unhandled Slice expression"]
 
-      | Ast.ApplyTypeExpr _ => 
-        LogErr.unimplError ["unhandled ApplyType expression"]
+      | Ast.ApplyTypeExpr { expr, actuals } => 
+        evalApplyTypeExpr regs expr actuals
 
       | _ => LogErr.unimplError ["unhandled expression type"]
+
+and evalApplyTypeExpr (regs:Mach.REGS) 
+                      (expr:Ast.EXPR)
+                      (actuals:Ast.TYPE_EXPR list)
+    : Mach.VAL =
+    let
+        val v = evalExpr regs expr
+        fun checkTypes allTypesBound params = 
+            if allTypesBound
+            then throwTypeErr1 ["applying types to non-type-parametric value"]
+            else if (length params) = (length actuals)
+            then ()
+            else throwTypeErr1 ["mismatched type application: expecting ", 
+                                (Int.toString (length params)), " types, got ",
+                                (Int.toString (length actuals))]
+    in
+        if Mach.isObject v andalso Mach.hasMagic (needObj v)
+        then case Mach.needMagic v of 
+                 Mach.Class cc => 
+                 let 
+                     val {allTypesBound, 
+                          cls=Ast.Cls {
+                              instanceType={typeParams, ...}, ...}, 
+                          env} = cc
+                 in
+                     checkTypes allTypesBound typeParams;
+                     throwTypeErr ["incomplete: apply type expr"]
+                 end
+               | Mach.Interface ic => 
+                 let 
+                     val {allTypesBound, 
+                          iface=Ast.Iface {
+                                instanceType={typeParams, ...}, ...}, 
+                          env} = ic
+                 in
+                     checkTypes allTypesBound typeParams;
+                     throwTypeErr ["incomplete: apply type expr"]
+                 end
+               | Mach.Function fc =>
+                 let 
+                     val {allTypesBound, 
+                          func=Ast.Func {
+                               ty={typeParams, ...}, ...}, 
+                          env, 
+                          this} = fc
+                 in
+                     checkTypes allTypesBound typeParams;
+                     throwTypeErr ["incomplete: apply type expr"]
+                 end
+               | _ => Mach.Undef
+        else 
+            throwTypeErr ["applying types to value without magic"]
+    end
 
 
 and evalLiteralArrayExpr (regs:Mach.REGS)
