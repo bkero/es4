@@ -131,3 +131,5 @@ then
 fi
 
 perl analyze-spidermonkey-log.pl $LOG
+grep -c '**ERRORS**' $LOG
+grep -c 'SMLload' $LOG

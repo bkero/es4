@@ -107,7 +107,7 @@ fun typeToString ty =
           | Ast.ObjectType fields => "{" ^ fieldList fields ^ "}"
           | Ast.AppType {base, args} => (typeToString base) ^ ".<" ^ (typeList args) ^ ">"
           | Ast.NullableType { expr, nullable } => (typeToString expr) ^ (if nullable then "?" else "!")
-          | Ast.InstanceType { name, ... } => LogErr.name name
+          | Ast.InstanceType { name, ... } => "InstanceType "^LogErr.name name
     end
 
 fun fmtName n = if !doTrace
@@ -296,6 +296,9 @@ fun verifyTypeExpr (env:ENV)
         trace ["verifyTypeExpr: ", fmtType ty];
 
 	    case ty of
+            (*
+Ast.TypeName 
+*)            
 	        Ast.SpecialType _ => 
             ty
 	      | Ast.UnionType tys => 
@@ -660,6 +663,13 @@ and isCompatible (t1:TYPE_VALUE)
 		                  check types1 types2
 	                  end
                                                            
+                    | (Ast.InstanceType {name=name, ...},
+                       Ast.ArrayType _)
+                      => 
+                      let in
+                          name = Name.nons_Array (* Array is compatible with all structural arrays *)
+                      end
+                      
 	                | (Ast.AppType {base=base1,args=args1}, Ast.AppType {base=base2,args=args2}) => 
 	                  (* We keep types normalized wrt beta-reduction, 
 	                   * so base1 and base2 must be class or interface types.
@@ -694,7 +704,7 @@ and isCompatible (t1:TYPE_VALUE)
 		                  andalso
 		                  isCompatible result1 result2
 	                  end
-                      
+
                     | _ => false
 	(* catch all *)
 	(* | _ => unimplError ["isCompatible"] *)

@@ -68,8 +68,7 @@ package
         prototype function toString(this:uint, radix)
             this.toString(radix);
 
-        override intrinsic function toString() {
-            var radix = 10  /* FIXME */
+        override intrinsic function toString(radix=10) {
             if (radix === 10 || radix === undefined)
                 return ToString(this);
             else if (typeof radix === "number" && radix >= 2 && radix <= 36 && isIntegral(radix)) {

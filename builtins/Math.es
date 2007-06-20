@@ -162,7 +162,8 @@ package
     import MathInternals.*;
 
     /* FIXME #82: some imported types can't be used as annotations */
-    intrinsic const Math /* : MathInternals.Math */ = new MathInternals.Math();
 
-    public var Math = intrinsic::Math;
+    //    intrinsic const math /* : MathInternals.Math */ = new MathInternals.Math();
+
+    public var Math = new MathInternals.Math();
 }

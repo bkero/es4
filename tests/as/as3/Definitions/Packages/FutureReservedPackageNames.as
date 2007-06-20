@@ -37,7 +37,7 @@
 // Future Reserved Words as Package names
 package abstract {}
 package debugger {}
-package enum {}
+//package enum {} - this is a reserved word in ES4
 package goto {}
 //package interface {} - this is a reserved word in AS3 - moved to Errors/ReservedPackageNames.as
 package native {}
