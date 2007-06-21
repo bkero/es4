@@ -158,14 +158,16 @@ package
             return true;
         }
         case (v:double) {
-            return v != Number.NaN && 
-                v != Number.NEGATIVE_INFINITY && 
-                v != Number.POSITIVE_INFINITY &&
+            return v != double.NaN && 
+                v != double.NEGATIVE_INFINITY && 
+                v != double.POSITIVE_INFINITY &&
                 Math.floor(v) == v;
         }
         case (v:decimal) {
-            // FIXME
-            return isIntegral(double(v));
+            return v != decimal.NaN && 
+                v != decimal.NEGATIVE_INFINITY && 
+                v != decimal.POSITIVE_INFINITY &&
+                Math.floor(v) == v;
         }
         case (v:*) {
             return false;
