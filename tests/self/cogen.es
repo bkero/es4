@@ -40,13 +40,15 @@ package cogen
     import assembler.*;
     import emitter.*;
 
-    /* Returns an array of bytes as delivered by ABCByteStream.getBytes. */
+    use namespace Ast;
+
+    /* Returns an ABCFile structure */
     public function cg(tree) {
         var e = new ABCEmitter;
         var s = e.newScript();
         CTX.prototype = { "emitter": e, "script":s, "cp": e.constants };
         cgProgram(new CTX(s.init.asm), tree);
-        return e.finalize().getBytes();
+        return e.finalize();
     }
 
     /* A context is a structure with the fields
@@ -65,8 +67,17 @@ package cogen
     }
 
     function cgProgram(ctx, prog) {
-        // FIXME - fixtures
-        cgStmt(ctx, p.block);
+        cgBlock(ctx, prog.block);
+    }
+
+    function cgBlock(ctx, b) {
+        // FIXME -- more here:
+        // If it has local bindings, establish a local rib
+        // Inits
+        // etc
+        let stmts = b.stmts;
+        for ( let i=0 ; i < stmts.length ; i++ )
+            cgStmt(ctx, stmts[i]);
     }
 
     /*

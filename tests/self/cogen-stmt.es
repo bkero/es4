@@ -113,13 +113,7 @@ package cogen
     }
 
     function cgBlockStmt(ctx, s) {
-        // FIXME -- more here:
-        // If it has local bindings, establish a local rib
-        // Inits
-        // etc
-        let stmts = s.stmts;
-        for ( let i=0 ; i < stmts.length ; i++ )
-            cgStmt(ctx, stmts[i]);
+        cgBlock(ctx, s.block);
     }
 
     function cgLabeledStmt(ctx, {label: label, stmt: stmt}) {
