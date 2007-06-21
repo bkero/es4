@@ -197,7 +197,7 @@ fun instanceOf (tf:TOP_FIXTURES)
                (t:Ast.NAME)
     : bool =
     let
-        val { instanceOfCache, cacheSize, all, ... } = tf
+        val { instanceOfCache, cacheSize, ... } = tf
         val c = !instanceOfCache
         fun search n = 
             if Mach.nameEq n t
