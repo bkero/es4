@@ -330,7 +330,7 @@ package abcfile
          * \param options      [{val:uint, kind:uint}], if present.
          * \param param_names  array of param_info structures, if present.
          */
-        function ABCMethodInfo(name/*:uint*/, param_types:Array, return_type/*:uint*/, flags/*:uint*/, 
+        function ABCMethodInfo(name/*:uint*/, param_types:Array, return_type/*:uint*/, flags/*:uint*/=0, 
                                options:Array=null, param_names:Array=null) {
             this.name = name;
             this.param_types = param_types;
@@ -338,6 +338,10 @@ package abcfile
             this.flags = flags;
             this.options = options;
             this.param_names = param_names;
+        }
+
+        public function setFlags(flags) {
+            this.flags = flags;
         }
 
         public function serialize(bs) {

@@ -34,5 +34,5 @@ test.abc: test.es bytestream_test.es abcfile_test.es assembler_test.es emitter_t
 	$(ASC) $(ASCFLAGS) test.es
 
 clean:
-	rm -f *~ *.abc testdriver.* hello-test.es fib-test.es esc-ri.es
+	rm -f *~ *.abc testdriver.* hello-test.es fib-test.es
 
