@@ -4879,6 +4879,7 @@
     {
         var programs = 
             [ "'hi','bye'"
+              /*
             , "print('hello, world!')"
             , "x<y"
             , "x==y"
@@ -4888,8 +4889,9 @@
             , "f() ()"
             , "new A()"
             , "(new Fib(n-1)).val + (new Fib(n-2)).val"
-              /*
+              */
             , "var val = n"
+              /*
             , "if (x) y; else z"
             , "function f() { return 10 }"
             , "class A { function A() {} }"
