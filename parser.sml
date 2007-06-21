@@ -564,13 +564,13 @@ and simpleQualifiedIdentifier ts =
     end
 
 and expressionQualifiedIdentifier (ts) =
-    let 
+    let
         val (ts1,nd1) = parenListExpression(ts)
     in case ts1 of
-        (DoubleColon, _) :: _ => 
+        (DoubleColon, _) :: _ =>
             let
-                val (ts2,nd2) = qualifiedIdentifier'(tl ts1,nd1) 
-(* todo: make qualifier be an EXPR list *) 
+                val (ts2,nd2) = qualifiedIdentifier'(tl ts1,nd1)
+(* todo: make qualifier be an EXPR list *)
             in
                 (ts2,nd2)
             end
@@ -5044,7 +5044,7 @@ and annotatableDirective (ts, attrs:ATTRS, GLOBAL, w) : ((TOKEN * Ast.LOC) list 
       | (Var,   _) :: _ => declaration ()
       | (Cinst, _) :: _ => declaration ()
       | _ => 
-            error ["unknown token in annotatableDirective"]
+            error ["unknown token in annotatableDirective GLOBAL"]
     end
   | annotatableDirective (ts,attrs,INTERFACE,w) : ((TOKEN * Ast.LOC) list * Ast.DIRECTIVES)  =
     let val _ = trace([">> annotatableDirective INTERFACE with next=", tokenname(hd ts)])
@@ -5073,7 +5073,7 @@ and annotatableDirective (ts, attrs:ATTRS, GLOBAL, w) : ((TOKEN * Ast.LOC) list 
                 (ts2,nd2)
             end
       | _ => 
-            error ["unknown token in annotatableDirective"]
+            error ["unknown token in annotatableDirective INTERFACE"]
     end
   | annotatableDirective (ts,attrs,t,w) : ((TOKEN * Ast.LOC) list * Ast.DIRECTIVES)  =
     let val _ = trace([">> annotatableDirective omega with next=", tokenname(hd ts)])
@@ -5108,7 +5108,7 @@ and annotatableDirective (ts, attrs:ATTRS, GLOBAL, w) : ((TOKEN * Ast.LOC) list 
       | (Var,   _) :: _ => declaration ()
       | (Const, _) :: _ => declaration ()
       | _ => 
-            error ["unknown token in annotatableDirective"]
+            error ["unknown token in annotatableDirective other"]
     end
 
 (*

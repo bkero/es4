@@ -501,11 +501,10 @@ namespace Ast
     class LexicalRef {
         const ident : IDENT_EXPR;
         const pos : POS?;
-        function LexicalRef (ident,pos=null) 
+        function LexicalRef (ident,pos=null)
             : ident = ident
-            , pos = pos {}
+            , pos = pos { }
     }
-    
 
     class SetExpr {
         const op : ASSIGNOP;
@@ -829,7 +828,7 @@ namespace Ast
         const func : FUNC;
     }
 
-    // BINDINGS
+    // BINDING_INITS
 
     type BINDING_INITS = [[BINDING],[INIT_STEP]];
 
@@ -1174,11 +1173,17 @@ namespace Ast
     type VAR_DEFN = VariableDefn
 
     class VariableDefn {
-        const kind: VAR_DEFN_TAG;
         const ns: EXPR?;
         const isStatic: Boolean;
         const isPrototype: Boolean;
+        const kind: VAR_DEFN_TAG;
         const bindings: BINDING_INITS;
+        function VariableDefn (ns,isStatic,isPrototype,kind,bindings)
+            : ns = ns
+            , isStatic = isStatic
+            , isPrototype = isPrototype
+            , kind = kind
+            , bindings = bindings {}
     }
 
     type FUNC_DEFN = FunctionDefn

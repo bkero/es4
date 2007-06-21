@@ -50,6 +50,26 @@
     use default namespace Parser;
     use namespace Release;
 
+    type BETA = int;  // NoIn, AllowIn
+    type TAU = int;   // NoExpr, AllowExpr
+    type OMEGA = int; // Abbrev, Full
+
+    type PATTERN = 
+          ( ObjectPattern
+          , ArrayPattern
+          , SimplePattern
+          , IdentifierPattern );
+
+    class ObjectPattern { }
+    class ArrayPattern { }
+    class SimplePattern { }
+    class IdentifierPattern 
+    {
+        const ident;
+        function IdentifierPattern (ident)
+            : ident = ident { }
+    }
+
     class Parser 
     {
         static const AbbrevIfElse = 0;
@@ -60,6 +80,9 @@
 
         static const AllowIn = Full + 1;
         static const NoIn = AllowIn + 1;
+
+        static const NoExpr : int = 0;
+        static const AllowExpr : int = 1;
 
         static const Global = 0;
 
@@ -105,9 +128,6 @@
 
         // Parse rountines
 
-        type BETA = int;  // NoIn, AllowIn
-        type TAU = int;   // NoExpr, AllowExpr
-        type OMEGA = int; // Abbrev, Full
 
         /*
         Identifier    
@@ -2147,6 +2167,81 @@
 //            return result
 //        }
 //*/
+
+        // PATTERNS
+
+        /*
+
+          Pattern(beta,tau)
+              SimplePattern(beta,tau)
+              ObjectPattern(tau)
+              ArrayPattern(tau)
+          
+          SimplePattern(beta, noExpr)
+              Identifier
+          
+          SimplePattern(beta, allowExpr)
+              LeftHandSideExpression(beta)
+        
+          */          
+
+        function simplePattern (ts: TOKENS, beta: BETA, tau: TAU)
+            //            : [TOKENS, PATTERN]
+        {
+            enter("Parser::simplePattern", ts);
+
+            var tsx,ndx;
+            switch (tau) {
+            case NoExpr:
+                let [ts1,nd1] = identifier (ts);
+                var [tsx,ndx] = [ts1, new SimplePattern (nd1)];
+                break;
+            case AllowExpr:
+                let [ts1,nd1] = leftHandSideExpression (ts,beta);
+                var [tsx,ndx] = [ts1, new IdentifierPattern (nd1)];
+                break;
+            }
+
+            exit("Parser::simplePattern", tsx);
+            return [tsx,ndx];
+        }
+
+        /*
+
+          TypedIdentifier(beta)
+              SimplePattern(beta, noExpr)
+              SimplePattern(beta, noExpr)  :  NullableTypeExpression
+              
+          TypedPattern(beta)
+              SimplePattern(beta, noExpr)
+              SimplePattern(beta, noExpr)  :  NullableTypeExpression
+              ObjectPattern(noExpr)
+              ObjectPattern(noExpr)  :  TypeExpression
+              ArrayPattern(noExpr)
+              ArrayPattern(noExpr)  :  TypeExpression
+
+        */
+
+        function typedPattern (ts: TOKENS, beta: BETA)
+            //            : [TOKENS, [PATTERN,Ast.TYPE_EXPR]]
+        {
+            enter("Parser::simplePattern", ts);
+
+            var [ts1,nd1] = simplePattern (ts,beta,NoExpr);
+            var ts2,nd2;
+            switch (hd (ts1)) {
+            case Token::Colon:
+                var [ts2,nd2] = typeExpression (tl (ts1));
+                break;
+            default:
+                var [ts2,nd2] = [ts1,[null,null]];
+                break;
+            }
+
+            exit("Parser::simplePattern", ts2);
+            return [ts2,[nd1,nd2]];
+        }
+
 //        /*
 //        
 //        DestructuringAssignmentExpression
@@ -2285,7 +2380,7 @@
 //            {
 //                var first = <></>
 //                first += parseDestructuringElement()
-//                while( lookahead(comma_token) )
+//                
 //                {
 //                    match(comma_token)
 //                    if( lookahead(rightbracket_token) )
@@ -2457,7 +2552,31 @@
 //        */
 //
 //        function parseRecordType()
-//        {
+//        
+
+        /*
+
+        DestructuringElement(gamma)
+            , DestructuringElementList(gamma)
+            DestructuringElementg  ,  DestructuringElementListg
+        
+        DestructuringElementg
+            Patterng
+        
+        TypedIdentifier
+            SimplePattern(noIn)
+            SimplePattern(beta)  :  NullableTypeExpression
+        
+        TypedPattern(beta)
+            SimplePattern(beta)
+            SimplePattern(beta)  :  NullableTypeExpression
+            ObjectPattern
+            ObjectPattern  :  TypeExpression
+            ArrayPatternn
+            ArrayPatternn  :  TypeExpression
+
+        */
+
 //            enter("parseRecordType")
 //
 //            match(leftbrace_token)
@@ -3144,25 +3263,173 @@
 //        {
 //        }
 //
-//        function parseVariableDefinition(first,mode,prologue)
-//        {
-//            enter("parseVariableDefinition",first,mode)
-//
-//            // already ate 'let' if there was one, so will see 'const' or nothing (which means 'var')
-//            // if there is no 'let' then caller must eat 'var' before calling to avoid 'let var'
-//
-//            var second = lookahead(const_token) ? match(const_token) : var_token 
-//            if( inInterfaceBody() )
-//            {
-//                throw "variable definition is not allowed in an interface"
-//            }
-//            var first = parseVariableBindingList(first,second,mode,prologue);
-//            var node = first
-//
-//            exit("parseVariableDefinition",node)
-//            return node
-//        }
-//
+        /*
+
+        VariableDefinition(beta)
+            VariableDefinitionKind  VariableBindingList(beta)
+            
+        */
+
+        function variableDefinition (ts: TOKENS, beta: BETA, ns, isPrototype, isStatic)
+            : [TOKENS, Ast::DIRECTIVES]
+        {
+            enter("Parser::variableDefinition ", ts);
+
+            let [ts1,nd1] = variableDefinitionKind (ts);
+            let [ts2,nd2] = variableBindingList (ts1, beta);
+            let ndx = new Ast::VariableDefn (ns,isPrototype,isStatic,nd1,nd2);
+
+            exit("Parser::variableDefinition ", ts1);
+            return [ts1, {pragmas:[],defns:[],head:null,stmts:[nd1],pos:null}];
+        }
+
+        /*
+
+        VariableDefinitionKind
+            const
+            let
+            let const
+            var
+
+        */
+
+        function variableDefinitionKind (ts: TOKENS)
+            : [TOKENS, Ast::VAR_DEFN_TAG]
+        {
+            enter("Parser::variableDefinitionKind ", ts);
+
+            var tsx,ndx;
+            switch (hd (ts)) {
+            case Token::Const:
+                var [tsx,ndx] = [tl (ts), Ast::Const];
+                break;
+            case Token::Var:
+                var [tsx,ndx] = [tl (ts), Ast::Const];
+                break;
+            case Token::Let:
+                switch (hd (ts)) {
+                case Token::Const:
+                    var [tsx,ndx] = [tl (ts), Ast::LetConst];
+                    break;
+                case Token::Function:
+                    throw "internal error: variableDefinitionKind after let";
+                    break;
+                default:
+                    var [tsx,ndx] = [tl (ts), Ast::Let];
+                    break;
+                }
+            default:
+                throw "internal error: variableDefinitionKind";
+                break;
+            }
+
+            exit("Parser::variableDefinitionKind ", tsx);
+            return [tsx,ndx];
+        }
+
+        /*
+
+        VariableBindingList(beta)
+            VariableBinding(beta)
+            VariableBindingList(beta)  ,  VariableBinding(beta)
+            
+        VariableBinding(beta)
+            TypedIdentifier
+            TypedPattern(noIn)  VariableInitialisation(beta)
+
+        VariableInitialisation(beta)
+            =  AssignmentExpression(beta)
+
+        */
+
+        function variableBindingList (ts: TOKENS, beta: BETA )
+            : [TOKENS, Ast::BINDING_INITS]
+        {
+            enter("Parser::variableBindingList ", ts);
+
+            function variableBindingListPrime (ts: TOKENS )
+                : [TOKENS, Ast::BINDING_INITS]
+            {
+                enter("Parser::variableBindingListPrime ", ts);
+        
+                var ts1,nd1;
+                var ts2,nd2;
+
+                switch (hd (ts)) {
+                case Token::Comma:
+                    var [ts1,[b1,i1]] = variableBinding (tl (ts), beta);
+                    var [ts2,[b2,i2]] = variableBindingListPrime (ts1);
+
+                    for (var n in b2) b1.push (b2[n]);  // FIXME: use concat when it works in the RI
+                    for (var n in i2) i1.push (i2[n]);
+
+                    break;
+                default:
+                    var [ts2,[b2,i2]] = [ts,[[],[]]];
+                    break;
+                }
+
+                exit ("Parser::variableBindingListPrime ", ts2);
+                return [ts2,[b2,i2]];
+            }
+
+            var [ts1,nd1] = variableBinding (ts, beta);
+            var [ts2,nd2] = variableBindingListPrime (ts1, beta);
+
+            var [b1,i1] = nd1;  // FIXME: fold into patterns above when it works in the RI
+            var [b2,i2] = nd2;            
+
+            for (var n in b2) b1.push (b2[n]);  // FIXME: use concat when it works in the RI
+            for (var n in i2) i1.push (i2[n]);
+
+            exit ("Parser::variableBindingList ", ts2);
+            return [ts2,[b2,i2]];
+        }
+
+        function variableBinding (ts: TOKENS, beta: BETA, ns, isPrototype, isStatic)
+            : [TOKENS, Ast::BINDING_INITS]
+        {
+            enter("Parser::variableBinding ", ts);
+
+            var b, i;
+            let [ts1,nd1] = typedPattern (ts);
+            let [p,t] = nd1;
+            switch (hd (ts1)) {
+            case Token::Assign:
+                let [ts2,nd2] = assignmentExpression (tl (ts1), beta);
+                switch (hd (ts2)) {
+                case Token::In:
+                    if (beta === NoIn) {
+                        // in a binding form
+                        break;
+                    } // else fall through
+                default:
+                    var [b,i] = desugarPattern (p, t, nd2, 0);
+                    break;
+                }
+            default:
+                switch (hd (ts2)) {
+                case Token::In:
+                    if (beta === NoIn) {
+                        // in a binding form
+                        break;
+                    } // else fall through
+                default:
+                    switch type (p) {
+                    case (ip: IdentifierPattern) {
+                        var [b,i] = desugarPattern (p, t, null, 0);
+                    }
+                    case (x : *) {
+                        throw "destructuring pattern without initializer";
+                    }
+                    }
+                break;
+                }
+            }
+            exit("Parser::variableBinding ", ts2);
+            return [ts2, [b,i]];
+        }
+
 //        function parseVariableBindingList(attrs,kind,mode,prologue)
 //        {
 //            enter("parseVariableBindingList",attrs,kind,mode)
@@ -4469,6 +4736,10 @@
 
             var ts1,nd1;
             switch (hd(ts)) {
+            case Token::Var:
+            case Token::Let:
+                let [ts1,nd1] = variableDefinition (ts);
+                break;
             default:
                 var [ts1,nd1] = statement (ts,omega);
                 break;
