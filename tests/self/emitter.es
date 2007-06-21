@@ -90,30 +90,20 @@ package emitter
 
     public class Script
     {
-        public var e;
-        private var init_method, traits=[];
+        public var e, init, traits=[];
 
         function Script(e:ABCEmitter) {
             this.e = e;
+            this.init = new Method(e,[]);
         }
 
         public function newClass(name, basename) {
             return new Class(this, name, basename);
         }
 
-        public function newCInit(): Method {
-            
-        }
-
         // Here we probably want: newVar, newConst, newFunction...
         public function addTrait(t) {
             return traits.push(t);
-        }
-
-        public function get init(): Method {
-            if (!init_method)
-                init_method = new Method(e, []);
-            return init_method;
         }
 
         public function finalize() {
@@ -122,6 +112,7 @@ package emitter
         }
     }
 
+    /*
     public class Class
     {
         public var s, name, basename;
@@ -164,32 +155,34 @@ package emitter
             s.addTrait(new ABCOtherTrait(name, 0, TRAIT_Class, 0, clsidx));
         }
     }
+    */
 
-    public class Method extends AVM2Assembler
+    public class Method // extends AVM2Assembler
     {
-        public var e, formals, name;
+        public var e, formals, name, asm;
 
         function Method(e:ABCEmitter, formals:Array, name=null) {
-            super(e.constants, formals.length);
+            asm = new AVM2Assembler(e.constants, formals);
+            //super(e.constants, formals.length);
             this.formals = formals;
             this.e = e;
             this.name = name;
 
             // Standard prologue -- but is this always right?
-            I_getlocal_0();
-            I_pushscope();
+            asm.I_getlocal_0();
+            asm.I_pushscope();
         }
 
         public function finalize() {
             // Standard epilogue for lazy clients.
-            I_returnvoid();
+            asm.I_returnvoid();
 
-            var meth = e.file.addMethod(new ABCMethodInfo(0, formals, 0, super.flags));
+            var meth = e.file.addMethod(new ABCMethodInfo(0, formals, 0, asm.flags));
             var body = new ABCMethodBodyInfo(meth);
-            body.setMaxStack(super.maxStack);
-            body.setLocalCount(super.maxLocal);
-            body.setMaxScopeDepth(super.maxScope);
-            body.setCode(this);
+            body.setMaxStack(asm.maxStack);
+            body.setLocalCount(asm.maxLocal);
+            body.setMaxScopeDepth(asm.maxScope);
+            body.setCode(asm);
             e.file.addMethodBody(body);
 
             return meth;
