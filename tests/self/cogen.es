@@ -118,30 +118,9 @@ package cogen
 
     */
 
-    public function genMultinameL({cp:cp})
-        cp.MultinameL(cp.namespaceset([cp.namespace(CONSTANT_PackageNamespace, cp.stringUtf8(""))]));
-
-    public function nameFromIdent(ctx, id) {
-        let cp = ctx.cp;
-        return cp.QName(cp.namespace(CONSTANT_PackageNamespace, cp.stringUtf8("")), 
-                        cp.stringUtf8(id));
-    }
-
-    public function nameFromIdentExpr(ctx, e) {
-        use namespace Ast;
-        switch type (e) {
-        case (id:Identifier) { return nameFromIdent(ctx, id.ident) }
-        case (x:*) { throw "Unimplemented: nameFromIdentExpr" }
-        }
-    }
-
     // Handles scopes and finally handlers and returns a label, if appropriate, to
     // branch to.  "what" is one of "return", "break", "continue", ...
     public function nonlocalControlFlow(ctx, what, ...rest) {
         // FIXME 
     }
-
-    const Object_name = nameFromIdent("Object");
-    const Array_name = nameFromIdent("Array");
-    const RegExp_name = nameFromIdent("RegExp");
 }

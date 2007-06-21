@@ -161,13 +161,13 @@ package cogen
             // If the type expression object has a property meta::convert then invoke that
             // method and return its result.  Otherwise, behave as cast.
             asm.I_dup();
-            asm.I_getproperty(meta_convert_name);
+            asm.I_getproperty(ctx.emitter.meta_convert_name);
             asm.I_pushundefined();
             asm.I_strictequals();
             var L1 = asm.I_iftrue();
             // not undefined
             asm.I_swap();
-            asm.I_callproperty(meta_convert_name, 1);
+            asm.I_callproperty(ctx.emitter.meta_convert_name, 1);
             var L2 = asm.I_jump();
             asm.I_label(L1);
             // undefined
@@ -182,12 +182,12 @@ package cogen
         cgTypeExprHelper(ctx, e.ex);
     }
 
-    function cgTypeExprHelper(ctx, ty) {
+    function cgTypeExprHelper({asm:asm, emitter:emitter}, ty) {
         switch type (ty) {
         case (ty:TypeName) {
-            let name = nameFromIdentExpr(ctx, ty.ident);
-            ctx.asm.I_findpropstrict(name);
-            ctx.asm.I_getproperty(name);
+            let name = emitter.nameFromIdentExpr(ty.ident);
+            asm.I_findpropstrict(name);
+            asm.I_getproperty(name);
         }
         case (ty:*) { 
             /* FIXME */
@@ -197,17 +197,17 @@ package cogen
     }
 
     function cgUnaryexpr(ctx, e) {
-        let asm = ctx.asm;
+        let {asm:asm, emitter:emitter} = ctx;
 
         let function incdec(pre, inc) {
             let name;
             switch type (e.ex) {
             case (lr:LexicalRef) {
-                name = nameFromIdentExpr(ctx, lr.ident);
+                name = emitter.nameFromIdentExpr(lr.ident);
                 asm.I_findpropstrict(name);
             }
             case (or:ObjectRef) {
-                name = nameFromIdentExpr(ctx, or.ident);
+                name = nameFromIdentExpr(or.ident);
                 cgExpr(ctx, or.base);
             }
             case (x:*) { throw "Internal error: invalid lvalue" }
@@ -236,12 +236,12 @@ package cogen
         case (op:Delete) {
             switch type (e.ex) {
             case (lr:LexicalRef) {
-                let name = nameFromIdentExpr(ctx, lr.ident);
+                let name = emitter.nameFromIdentExpr(lr.ident);
                 asm.I_findproperty(name);
                 asm.I_deleteproperty(name);
             }
             case (or:ObjectRef) {
-                let name = nameFromIdentExpr(ctx, or.ident);
+                let name = emitter.nameFromIdentExpr(or.ident);
                 cgExpr(ctx, or.base);
                 asm.I_deleteproperty(name);
             }
@@ -249,6 +249,7 @@ package cogen
                 cgExpr(ctx, ex);
                 asm.I_pop();
                 asm.I_pushtrue();
+            }
             }
         }
         case (op:Void) {
@@ -258,7 +259,7 @@ package cogen
         }
         case (op:Typeof) {
             if (e.ex is LexicalRef) {
-                let name = nameFromIdentExpr(ctx, e.ex.ident);
+                let name = emitter.nameFromIdentExpr(e.ex.ident);
                 ctx.asm.I_findproperty(name);
                 ctx.asm.I_getproperty(name);
             }
@@ -297,6 +298,7 @@ package cogen
             asm.I_not();
         }
         case (op:*) { throw "Internal error: Unimplemented unary operation" }
+        }
     }
 
     function cgThisExpr(ctx, e) {
@@ -309,24 +311,29 @@ package cogen
     }
 
     function cgCallExpr(ctx, e) {
-        let asm = ctx.asm;
+        let {asm:asm, emitter:emitter} = ctx;
         let name = null;
         switch type (e.func) {
         case (or:ObjectRef) {
-            name = nameFromIdentExpr(or.ident);
+            name = emitter.nameFromIdentExpr(or.ident);
             cgExpr(ctx, or.base);
         }
         case (lr:LexicalRef) {
-            // FIXME: not right, could be bound by "with" rib, and 
-            // if so then that rib should be the receiver.  No way to
-            // do that on Tamarin without global conventions / parallel
-            // with stacks, I think.
-            asm.I_findpropstrict(lnameFromIdentExpr(lr.ident));
+            /* FIXME: not quite right, the function could be bound by
+             * a "with" rib, and if so then that rib should be the
+             * receiver here, not null.  There's no way to do that on
+             * Tamarin without global conventions / parallel with
+             * stacks, I think.
+             */
+            let n = emitter.nameFromIdentExpr(lr.ident);
+            asm.I_findpropstrict(n);
+            asm.I_getproperty(n);
             asm.I_pushnull();
         }
         case (x:*) {
             cgExpr(ctx, e.func);
             asm.I_pushnull();
+        }
         }
         let nargs = e.args.length;
         for ( let i=0 ; i < nargs ; i++ )
@@ -356,27 +363,27 @@ package cogen
 
     function cgObjectRef(ctx, e) {
         cgExpr(ctx, e.base);
-        ctx.asm.I_findproperty(nameFromIdentExpr(e.ident));
+        ctx.asm.I_findproperty(ctx.emitter.nameFromIdentExpr(e.ident));
     }
 
-    function cgLexicalRef(ctx, e) {
-        let name = nameFromIdentExpr(ctx, e.ident);
-        ctx.asm.I_findpropstrict(name);
-        ctx.asm.I_getproperty(name);
+    function cgLexicalRef({asm:asm, emitter:emitter}, e) {
+        let name = emitter.nameFromIdentExpr(e.ident);
+        asm.I_findpropstrict(name);
+        asm.I_getproperty(name);
     }
 
     function cgSetExpr(ctx, e) {
-        let asm = ctx.asm;
+        let {asm:asm, emitter:emitter} = ctx;
         let name = null;
 
         // The switch leaves an object on the stack and sets "name"
         switch type (e.le) {
         case (lhs:ObjectRef) {
             cgExpr(ctx, lhs.base);
-            name = nameFromIdent(ctx, lhs.ident);
+            name = emitter.nameFromIdent(lhs.ident);
         }
         case (lhs:LexicalRef) {
-            name = nameFromIdentExpr(lhs);
+            name = emitter.nameFromIdentExpr(lhs);
             if (e.op is Assign)
                 asm.I_findproperty(name);
             else
@@ -442,7 +449,7 @@ package cogen
         for ( let i=0, limit=e.exprs.length ; i < limit ; i++ ) {
             if (i != 0)
                 asm.I_pop();
-            cgexpr(ctx, e.exprs[i]);
+            cgExpr(ctx, e.exprs[i]);
         }
     }
 
@@ -456,7 +463,7 @@ package cogen
         function cgArrayInitializer(ctx, {exprs:exprs}) {
             let asm = ctx.asm;
             asm.I_getglobalscope();
-            asm.I_getproperty(Array_name);
+            asm.I_getproperty(ctx.emitter.Array_name);
             asm.I_construct(0);
             asm.I_dup();
             let t = asm.getTemp();
@@ -474,9 +481,9 @@ package cogen
         }
 
         function cgObjectInitializer(ctx, {fields:fields}) {
-            let asm = ctx.asm;
+            let {asm:asm, emitter:emitter} = ctx;
             asm.I_getglobalscope();
-            asm.I_getproperty(Object_name);
+            asm.I_getproperty(ctx.emitter.Object_name);
             asm.I_construct(0);
             asm.I_dup();
             let t = asm.getTemp();
@@ -485,7 +492,7 @@ package cogen
                 let f = fields[i];
                 asm.I_getlocal(t);
                 cgExpr(ctx, f.init);
-                asm.I_setproperty(nameFromIdentExpr(f.name));
+                asm.I_setproperty(emitter.nameFromIdentExpr(f.name));
             }
             asm.I_getlocal(t);
             asm.killTemp(t);
@@ -496,7 +503,7 @@ package cogen
             // Slow...
             let p = src.lastIndexOf('/');
             asm.I_getglobalscope();
-            asm.I_getproperty(RegExp_name);
+            asm.I_getproperty(ctx.emitter.RegExp_name);
             asm.I_pushstring(cp.stringUtf8(src.substring(1,p)));
             asm.I_pushstring(cp.stringUtf8(src.substring(p+1)));
             asm.I_construct(2);
@@ -509,6 +516,7 @@ package cogen
         case (e:LiteralInt) { asm.I_pushint(ctx.cp.int32(e.intValue)) }
         case (e:LiteralUInt) { asm.I_pushuint(ctx.cp.uint32(e.uintValue)) }
         case (e:LiteralDouble) { asm.I_pushdouble(ctx.cp.float64(e.doubleValue)) }
+        case (e:LiteralDecimal) { asm.I_pushdouble(ctx.cp.float64(Number(e.decimalValue))) } // FIXME
         case (e: LiteralString) { asm.I_pushstring(ctx.cp.stringUtf8(e.strValue)) }
         case (e:LiteralBoolean) {
             if (e.booleanValue) 

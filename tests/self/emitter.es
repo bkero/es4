@@ -74,6 +74,9 @@ package emitter
             file = new ABCFile;
             constants = new ABCConstantPool;
             file.addConstants(constants);
+            Object_name = nameFromIdent("Object");
+            Array_name = nameFromIdent("Array");
+            RegExp_name = nameFromIdent("RegExp");
         }
 
         public function newScript(): Script {
@@ -85,6 +88,29 @@ package emitter
         public function finalize() {
             forEach(function (s) { s.finalize() }, scripts);
             return file;
+        }
+
+        public var Object_name;
+        public var Array_name;
+        public var RegExp_name;
+        public var meta_construct_name;
+
+        public function nameFromIdent(id) {
+            return constants.QName(constants.namespace(CONSTANT_PackageNamespace, constants.stringUtf8("")), 
+                                   constants.stringUtf8(id));
+        }
+
+        public function genMultinameL({cp:cp}) {
+            return constants.MultinameL(constants.namespaceset([constants.namespace(CONSTANT_PackageNamespace, 
+                                                                                    constants.stringUtf8(""))]));
+        }
+
+        public function nameFromIdentExpr(e) {
+            use namespace Ast;
+            switch type (e) {
+            case (id:Identifier) { return nameFromIdent(id.ident) }
+            case (x:*) { throw "Unimplemented: nameFromIdentExpr" }
+            }
         }
     }
 

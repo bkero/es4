@@ -74,7 +74,7 @@ test_let: esc-ri.es
 
 # Poor man's "include" facility
 
-esc-ri.es: util-es4ri.es util.es bytestream.es bytestream_test.es abcfile.es abcfile_test.es assembler.es assembler_test.es # emitter.es cogen-expr.es cogen-stmt.es cogen.es cogen_test.es
+esc-ri.es: util-es4ri.es util.es bytestream.es bytestream_test.es abcfile.es abcfile_test.es assembler.es assembler_test.es emitter.es cogen-expr.es cogen-stmt.es cogen.es cogen_test.es
 	cat $^ > esc-ri.es
 
 clean:

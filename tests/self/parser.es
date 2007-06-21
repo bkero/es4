@@ -5161,7 +5161,7 @@
             , "new A()"
             , "(new Fib(n-1)).val + (new Fib(n-2)).val"
               */
-            , "var val = n"
+              //, "var val = n"
               /*
             , "if (x) y; else z"
             , "function f() { return 10 }"

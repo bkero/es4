@@ -44,7 +44,7 @@ package cogen
     public function testHelloWorld() {
         var e = new ABCEmitter();
 
-        cgStmt({ "asm": e.newScript().init.asm, "cp": e.constants },
+        cgStmt({ "asm": e.newScript().init.asm, "emitter": e, "cp": e.constants },
                new ExprStmt(new CallExpr(new LexicalRef(new Identifier("print")),
                                          [new LiteralExpr(new LiteralString("Hello, world!"))])));
 
