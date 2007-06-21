@@ -1813,16 +1813,6 @@ and memberExpressionPrime (ts,nd,a,b) =
         empty
 *)
 
-and callExpression (ts,a,b) =
-    let val _ = trace([">> callExpression with next=",tokenname(hd(ts))]) 
-        val (ts1,nd1) = memberExpression(ts,a,b)
-        val (ts2,nd2) = arguments(ts1)
-        val (ts3,nd3) = callExpressionPrime(ts2,Ast.CallExpr({func=nd1,actuals=nd2}),a,b)
-    in 
-        trace(["<< callExpression with next=",tokenname(hd(ts2))]);
-        (ts3,nd3)
-    end
-
 and callExpressionPrime (ts,nd,a,b) =
     let val _ = trace([">> callExpressionPrime with next=",tokenname(hd(ts))])
         fun withPropertyOperator () =

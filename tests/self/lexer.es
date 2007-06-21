@@ -648,7 +648,7 @@ namespace Token
             var tok : Token = tokenStore[tid];
             var text = tok.tokenText();
         }
-        print("tokenText: ",tid,", ",text);
+        // print("tokenText: ",tid,", ",text);
         return text;
     }
 

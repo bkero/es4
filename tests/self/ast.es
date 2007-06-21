@@ -481,14 +481,21 @@ namespace Ast
     }
 
     class NewExpr {
-        const ctor : EXPR;
+        const func : EXPR;
         const args : [EXPR];
+        function NewExpr (func,args)
+            : func = func
+            , args = args {}
     }
 
     class ObjectRef {
         const base : EXPR;
         const ident : IDENT_EXPR;
-        const pos : POS;
+        const pos : POS?;
+        function ObjectRef (base,ident,pos=null)
+            : base = base
+            , ident = ident
+            , pos = pos { }
     }
 
     class LexicalRef {
@@ -515,7 +522,7 @@ namespace Ast
     }
 
     class ListExpr {
-        const exprs //: [EXPR];
+        const exprs : [EXPR];
         function ListExpr (exprs)
             : exprs=exprs {}
     }
