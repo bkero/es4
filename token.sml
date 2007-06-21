@@ -188,7 +188,6 @@ datatype TOKEN =
     | DecimalIntegerLiteral of string
     | DecimalLiteral of string
     | HexIntegerLiteral of string
-    | OctIntegerLiteral of string
 
     | PackageIdentifier of Ustring.STRING
     | RegexpLiteral of Ustring.STRING
@@ -396,7 +395,6 @@ fun tokenname (t,_) =
       | DecimalIntegerLiteral x => x
       | DecimalLiteral        x => x
       | HexIntegerLiteral     x => x
-      | OctIntegerLiteral     x => x
 
       | ExplicitDecimalLiteral x => Decimal.toString(x) ^ "m"
       | ExplicitDoubleLiteral x => Real64.toString(x) ^ "d"
