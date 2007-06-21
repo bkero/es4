@@ -133,3 +133,45 @@ L0
 where x is the address of some innocuous instruction, I like to use
 the getlocal_0 that starts every method and is therefore at offset 0
 (easy to cope with).
+
+The same mechanism must be used for let-as-a-better-var and let
+blocks; we bind a single name at a time using newcatch+pushscope, so
+
+  let a=10, b=20;
+
+becomes
+
+  newcatch <x,x,L0,0,"a">
+  pushscope
+  findpropstrict "a"
+  pushbyte 10
+  setproperty "a"
+  newcatch <x,x,L0,0,"b">
+  pushscope
+  findpropstrict "b"
+  pushbyte 10
+  setproperty "b"
+
+Obviously, in the longer term it will be important to perform analysis
+and renaming to avoid this kind of cost.
+
+
+Code generation strategies.
+
+For a first cut, we allocate ribs in all functions, we do not keep any
+variables in local registers.  Registers are used for
+backend-generated temps only.  Front-end generated temps must be
+allocated to the ribs like variables.
+
+Use getslot/setslot to access properties in ribs.  Note that
+method-body traits must be allocated for all names stored in a rib:
+they will be "var" type traits.
+
+With ribs in place everywhere, no analysis is needed to determine
+whether a function uses with, try/catch, let, or indeed eval.
+
+A rib is allocated for the function; its parameters and local 'var',
+'const', and 'function' fixtures are stored in this rib.
+
+Blocks that contain let fixtures need to allocate new ribs for those
+fixtures, for the scope of the block.

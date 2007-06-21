@@ -100,7 +100,26 @@ package cogen
         // ...
         cgStmt(newctx, p.body);
     }
+
+    function cgFunctionBody(ctx, f:FUNC) {
+        // FIXME
+        // allocate a rib
+        // store params in that rib
+        //
+        // there must be a slot-trait for each param and local
+        // variable (bound by 'var', 'const', 'function', though not
+        // by 'let') in the methodbody so that the rib can be created
+        // correctly by the AVM
+        asm.I_newactivation();
+        asm.I_pushscope();
+        // for p in formals, add a slot-trait for p
+        let newctx = pushFunction(ctx, <some ABCMethodBody structure>);
+    }
+
     */
+
+    public function genMultinameL({cp:cp})
+        cp.MultinameL(cp.namespaceset([cp.namespace(CONSTANT_PackageNamespace, cp.stringUtf8(""))]));
 
     public function nameFromIdent(ctx, id) {
         let cp = ctx.cp;
@@ -121,4 +140,8 @@ package cogen
     public function nonlocalControlFlow(ctx, what, ...rest) {
         // FIXME 
     }
+
+    const Object_name = nameFromIdent("Object");
+    const Array_name = nameFromIdent("Array");
+    const RegExp_name = nameFromIdent("RegExp");
 }

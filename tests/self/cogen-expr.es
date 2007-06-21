@@ -35,6 +35,26 @@
  *
  * ***** END LICENSE BLOCK ***** */
 
+/* FIXME: handling 'super'.
+ *
+ * super.m(...)
+ *   calls the super class's "m" with "this" as the receiver:
+ *   'callsuper' instruction
+ *
+ * super(...)
+ *   calls the super class's constructor on the arguments:
+ *   'constructsuper' instruction
+ *   only legal in a constructor, the parser annotates the Ctor structure with the args,
+ *   don't need to handle this as an expression
+ *
+ * super.x
+ *   picks up the 'x' member from the super class:
+ *   'getsuper' instruction
+ *
+ * super(o).m()
+ *   calls the super class's "m" with "o" as the receiver (o must be of a reasonable type):
+ *   'callsuper' instruction
+ */
 package cogen
 {
     import util.*;
@@ -53,7 +73,7 @@ package cogen
         case (e:TypeExpr) { cgTypeExpr(ctx, e) }
         case (e:ThisExpr) { cgThisExpr(ctx, e) }
         case (e:YieldExpr) { cgYieldExpr(ctx, e) }
-        case (e:SuperExpr) { cgSuperExpr(ctx, e) }
+        case (e:SuperExpr) { throw "Internal error: SuperExpr can't appear here" }
         case (e:LiteralExpr) { cgLiteralExpr(ctx, e) }
         case (e:CallExpr) { cgCallExpr(ctx, e) }
         case (e:ApplyTypeExpr) { cgApplyTypeExpr(ctx, e) }
@@ -129,18 +149,101 @@ package cogen
             }
         }
     }
+    
+    function cgBinaryTypeExpr(ctx, e) {
+        let asm = ctx.asm;
+        cgExpr(ctx, e.e1);
+        cgTypeExprHelper(ctx, e.e2);
+        switch type (e.op) {
+        case (op:CastOp) { asm.I_coerce() }
+        case (op:IsOp) { asm.I_istypelate() }
+        case (op:ToOp) { 
+            // If the type expression object has a property meta::convert then invoke that
+            // method and return its result.  Otherwise, behave as cast.
+            asm.I_dup();
+            asm.I_getproperty(meta_convert_name);
+            asm.I_pushundefined();
+            asm.I_strictequals();
+            var L1 = asm.I_iftrue();
+            // not undefined
+            asm.I_swap();
+            asm.I_callproperty(meta_convert_name, 1);
+            var L2 = asm.I_jump();
+            asm.I_label(L1);
+            // undefined
+            asm.I_coerce();
+            asm.I_label(L2);
+        }
+        case (op:*) { throw "Internal error: Unimplemented binary type operator" }
+        }
+    }
+
+    function cgTypeExpr(ctx, e) {
+        cgTypeExprHelper(ctx, e.ex);
+    }
+
+    function cgTypeExprHelper(ctx, ty) {
+        switch type (ty) {
+        case (ty:TypeName) {
+            let name = nameFromIdentExpr(ctx, ty.ident);
+            ctx.asm.I_findpropstrict(name);
+            ctx.asm.I_getproperty(name);
+        }
+        case (ty:*) { 
+            /* FIXME */
+            throw "Unimplemented: type expression type";
+        }
+        }
+    }
 
     function cgUnaryexpr(ctx, e) {
-        let { asm: asm, emitter: emitter } = ctx;
+        let asm = ctx.asm;
+
+        let function incdec(pre, inc) {
+            let name;
+            switch type (e.ex) {
+            case (lr:LexicalRef) {
+                name = nameFromIdentExpr(ctx, lr.ident);
+                asm.I_findpropstrict(name);
+            }
+            case (or:ObjectRef) {
+                name = nameFromIdentExpr(ctx, or.ident);
+                cgExpr(ctx, or.base);
+            }
+            case (x:*) { throw "Internal error: invalid lvalue" }
+            }
+            asm.I_dup();
+            asm.I_getproperty(name);
+            let t = asm.getTemp();
+            if (!pre) {
+                asm.I_dup();
+                asm.I_setlocal(t);
+            }
+            if (inc)
+                asm.I_increment();
+            else
+                asm.I_decrement();
+            if (pre) {
+                asm.I_dup();
+                asm.I_setlocal(t);
+            }
+            asm.I_setproperty(name);
+            asm.I_getlocal(t);
+            asm.killTemp(t);
+        }
+
         switch type (e.op) {
         case (op:Delete) {
             switch type (e.ex) {
-            case (ex:LexicalRef) {
-                let name = nameFromIdentExpr(ctx, e.ex.ident);
-                ctx.asm.I_findproperty(name);
-                ctx.asm.I_deleteproperty(name);
+            case (lr:LexicalRef) {
+                let name = nameFromIdentExpr(ctx, lr.ident);
+                asm.I_findproperty(name);
+                asm.I_deleteproperty(name);
             }
-            case (ex:ObjectRef) {
+            case (or:ObjectRef) {
+                let name = nameFromIdentExpr(ctx, or.ident);
+                cgExpr(ctx, or.base);
+                asm.I_deleteproperty(name);
             }
             case (ex:*) {
                 cgExpr(ctx, ex);
@@ -160,17 +263,23 @@ package cogen
                 ctx.asm.I_getproperty(name);
             }
             else {
-                // FIXME: What should be the behavior of typeOf on
-                // existing but inaccessible properties on objects?
                 cgExpr(ctx, e.ex);
-                // FIXME: I_typeof is not compatible with ES4
+                // I_typeof is not compatible with ES4, so do something elaborate to work around that.
+                asm.I_dup();
+                asm.I_pushnull();
+                asm.I_strictequals();
+                let L0 = asm.I_iffalse();
+                asm.I_pushstring(ctx.cp.stringUtf8("null"));
+                let L1 = asm.I_jump();
+                asm.I_label(L0);
                 asm.I_typeof();
+                asm.I_label(L1);
             }
         }
-        case (op:PreIncr) {}
-        case (op:PreDecr) {}
-        case (op:PostIncr) {}
-        case (op:PostDecr) {}
+        case (op:PreIncr) { incDec(true, true) }
+        case (op:PreDecr) { incDec(true, false) }
+        case (op:PostIncr) { incDec(false, true) }
+        case (op:PostDecr) { incDec(false, false) }
         case (op:UnaryPlus) {
             cgExpr(ctx, e.ex);
             asm.I_convert_d();
@@ -187,8 +296,6 @@ package cogen
             cgExpr(ctx, e.ex);
             asm.I_not();
         }
-        case (op:Type) {
-        }
         case (op:*) { throw "Internal error: Unimplemented unary operation" }
     }
 
@@ -196,13 +303,48 @@ package cogen
         ctx.asm.I_getlocal(0);
     }
 
+    function cgYieldExpr(ctx, e) {
+        // FIXME
+        throw "Unimplemented 'yield' expression";
+    }
+
     function cgCallExpr(ctx, e) {
-        cgExpr(ctx, e.func);
-        ctx.asm.I_pushnull();  // receiver -- FIXME!  Just a placeholder.
+        let asm = ctx.asm;
+        let name = null;
+        switch type (e.func) {
+        case (or:ObjectRef) {
+            name = nameFromIdentExpr(or.ident);
+            cgExpr(ctx, or.base);
+        }
+        case (lr:LexicalRef) {
+            // FIXME: not right, could be bound by "with" rib, and 
+            // if so then that rib should be the receiver.  No way to
+            // do that on Tamarin without global conventions / parallel
+            // with stacks, I think.
+            asm.I_findpropstrict(lnameFromIdentExpr(lr.ident));
+            asm.I_pushnull();
+        }
+        case (x:*) {
+            cgExpr(ctx, e.func);
+            asm.I_pushnull();
+        }
         let nargs = e.args.length;
         for ( let i=0 ; i < nargs ; i++ )
             cgExpr(ctx, e.args[i]);
-        ctx.asm.I_call(nargs);
+        if (name != null)
+            asm.I_callproperty(name);
+        else
+            asm.I_call(nargs);
+    }
+
+    function cgApplyTypeExpr(ctx, e) {
+        // FIXME
+        throw "Unimplemented type application expression";
+    }
+
+    function cgLetExpr(ctx, e) {
+        // FIXME
+        throw "Unimplemented let expression";
     }
 
     function cgNewExpr(ctx, e) {
@@ -210,6 +352,11 @@ package cogen
         for ( let i=0 ; i < e.args.length ; i++ )
             cgExpr(ctx, e.args[i]);
         ctx.asm.I_construct(args.length);
+    }
+
+    function cgObjectRef(ctx, e) {
+        cgExpr(ctx, e.base);
+        ctx.asm.I_findproperty(nameFromIdentExpr(e.ident));
     }
 
     function cgLexicalRef(ctx, e) {
@@ -290,35 +437,105 @@ package cogen
         }
     }
 
-    function cgLiteralExpr(ctx, e) {
-        let asm = ctx.asm;
-        switch type (e.literal) {
-        case (e:LiteralNull) { ctx.asm.I_pushnull() }
-        case (e:LiteralUndefined) { ctx.asm.I_pushundefined() }
-        case (e:LiteralInt) { ctx.asm.I_pushint(ctx.cp.int32(e.intValue)) }
-        case (e:LiteralUInt) { ctx.asm.I_pushuint(ctx.cp.uint32(e.uintValue)) }
-        case (e:LiteralDouble) { ctx.asm.I_pushdouble(ctx.cp.float64(e.doubleValue)) }
-        case (e: LiteralString) { ctx.asm.I_pushstring(ctx.cp.stringUtf8(e.strValue)) }
-        case (e:LiteralBoolean) {
-            if (e.booleanValue)
-                ctx.asm.I_pushtrue();
-            else
-                ctx.asm.I_pushfalse();
-        }
-        case (e:LiteralArray) { cgArrayInitializer(ctx, e) }
-        case (e:LiteralObject) { cgObjectInitializer(ctx, e) }
-        case (e:LiteralFunction) { cgLambda(ctx, e) }
-        case (e:LiteralRegExp) { cgRegExp(ctx, e) }
-        case (e:*) { throw "Unimplemented LiteralExpr" }
-        }
-    }
-
-    function ctListExpr(ctx, e) {
+    function cgListExpr(ctx, e) {
         let asm = ctx.asm;
         for ( let i=0, limit=e.exprs.length ; i < limit ; i++ ) {
             if (i != 0)
                 asm.I_pop();
             cgexpr(ctx, e.exprs[i]);
         }
+    }
+
+    function cgInitExpr(ctx, e) {
+        // FIXME
+        throw "Unimplemented init expr";
+    }
+
+    function cgLiteralExpr(ctx, e) {
+
+        function cgArrayInitializer(ctx, {exprs:exprs}) {
+            let asm = ctx.asm;
+            asm.I_getglobalscope();
+            asm.I_getproperty(Array_name);
+            asm.I_construct(0);
+            asm.I_dup();
+            let t = asm.getTemp();
+            asm.I_setlocal(t);
+            for ( let i=0 ; i < exprs.length ; i++ ) {
+                if (exprs[i] !== undefined) {
+                    asm.I_getlocal(t);
+                    asm.I_pushuint(cg.uint32(i));
+                    cgExpr(ctx, exprs[i]);
+                    asm.I_setproperty(genMultinameL());
+                }
+            }
+            asm.I_getlocal(t);
+            asm.killTemp(t);
+        }
+
+        function cgObjectInitializer(ctx, {fields:fields}) {
+            let asm = ctx.asm;
+            asm.I_getglobalscope();
+            asm.I_getproperty(Object_name);
+            asm.I_construct(0);
+            asm.I_dup();
+            let t = asm.getTemp();
+            asm.I_setlocal(t);
+            for ( let i=0 ; i < fields.length ; i++ ) {
+                let f = fields[i];
+                asm.I_getlocal(t);
+                cgExpr(ctx, f.init);
+                asm.I_setproperty(nameFromIdentExpr(f.name));
+            }
+            asm.I_getlocal(t);
+            asm.killTemp(t);
+        }
+
+        function cgRegExpLiteral({asm:asm, cp:cp}, {src:src}) {
+            // src is "/.../flags"
+            // Slow...
+            let p = src.lastIndexOf('/');
+            asm.I_getglobalscope();
+            asm.I_getproperty(RegExp_name);
+            asm.I_pushstring(cp.stringUtf8(src.substring(1,p)));
+            asm.I_pushstring(cp.stringUtf8(src.substring(p+1)));
+            asm.I_construct(2);
+        }
+
+        let asm = ctx.asm;
+        switch type (e.literal) {
+        case (e:LiteralNull) { asm.I_pushnull() }
+        case (e:LiteralUndefined) { asm.I_pushundefined() }
+        case (e:LiteralInt) { asm.I_pushint(ctx.cp.int32(e.intValue)) }
+        case (e:LiteralUInt) { asm.I_pushuint(ctx.cp.uint32(e.uintValue)) }
+        case (e:LiteralDouble) { asm.I_pushdouble(ctx.cp.float64(e.doubleValue)) }
+        case (e: LiteralString) { asm.I_pushstring(ctx.cp.stringUtf8(e.strValue)) }
+        case (e:LiteralBoolean) {
+            if (e.booleanValue) 
+                asm.I_pushtrue(); 
+            else 
+                asm.I_pushfalse();
+        }
+        case (e:LiteralFunction) { asm.I_newfunction(cgFunctionDefinition(ctx, e.func)) }
+        case (e:LiteralArray) { cgArrayInitializer(ctx, e) }
+        case (e:LiteralObject) { cgObjectInitializer(ctx, e) }
+        case (e:LiteralRegExp) { cgRegExpLiteral(ctx, e) }
+        case (e:*) { throw "Unimplemented LiteralExpr" }
+        }
+    }
+
+    function cgSliceExpr(ctx, e) {
+        // FIXME
+        throw "Unimplemented slice expression";
+    }
+
+    function cgGetTempExpr(ctx, e) {
+        // FIXME
+        throw "Unimplemented getTemp expression";
+    }
+
+    function cgGetParamExpr(ctx, e) {
+        // FIXME
+        throw "Unimplemented getParam expression";
     }
 }
