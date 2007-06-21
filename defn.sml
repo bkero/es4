@@ -1744,7 +1744,6 @@ and defContextualNumberLiteral (env:ENV)
                                (n:string) 
                                (isIntegral:bool)
                                (isHex:bool)
-                               (isOct:bool)
     : Ast.LITERAL =
     let 
         val {numberType, roundingMode, precision} = (#numericMode (hd env))
@@ -1770,12 +1769,6 @@ and defContextualNumberLiteral (env:ENV)
                                       NONE => error ["failure converting '", n, 
                                                      "' to uint literal "]
                                     | SOME x => x)
-                             else if isOct
-                             then 
-                                 (case StringCvt.scanString (Word32.scan StringCvt.OCT) n of 
-                                      NONE => error ["failure converting '", n, 
-                                                     "' to uint literal "]
-                                    | SOME x => x)
                              else
                                  (case LargeInt.fromString n of
                                       NONE => error ["failure converting '", n, 
@@ -1784,10 +1777,6 @@ and defContextualNumberLiteral (env:ENV)
     in
         if isHex andalso (not isIntegral)
         then error ["non-integral hex literal"]
-        else if isOct andalso (not isIntegral)
-        then error ["non-integral oct literal"]
-        else if isOct andalso isHex
-        then error ["literal cannot be both hex and oct"]
         else
             case numberType of 
                 Ast.Decimal => asDecimal ()
@@ -1811,7 +1800,7 @@ and defContextualNumberLiteral (env:ENV)
                     let 
                         fun v _ = valOf (LargeInt.fromString n)
                     in
-                        if isHex orelse isOct
+                        if isHex
                         then asUInt ()
                         else 
                             (if Mach.fitsInInt (v())
@@ -1840,16 +1829,13 @@ and defLiteral (env:ENV)
                 Ast.LiteralFunction func
             end
           | Ast.LiteralContextualDecimalInteger n => 
-            defContextualNumberLiteral env n true false false
+            defContextualNumberLiteral env n true false
 
           | Ast.LiteralContextualDecimal n => 
-            defContextualNumberLiteral env n false false false
+            defContextualNumberLiteral env n false false
 
           | Ast.LiteralContextualHexInteger n => 
-            defContextualNumberLiteral env n true true false
-
-          | Ast.LiteralContextualOctInteger n => 
-            defContextualNumberLiteral env n true false true
+            defContextualNumberLiteral env n true true
 
           | Ast.LiteralArray {exprs, ty} => 
             Ast.LiteralArray {exprs = defExprs env exprs,

@@ -1493,9 +1493,6 @@ and fieldName (ts) : (TOKEN * Ast.LOC) list * Ast.IDENT_EXPR =
       | (HexIntegerLiteral n, _) :: ts1 => 
         (ts1, Ast.ExpressionIdentifier { expr = (Ast.LiteralExpr(Ast.LiteralContextualHexInteger n)),
                                          openNamespaces = []})
-      | (OctIntegerLiteral n, _) :: ts1 => 
-        (ts1, Ast.ExpressionIdentifier { expr = (Ast.LiteralExpr(Ast.LiteralContextualOctInteger n)),
-                                         openNamespaces = []})
       | _ => 
             let
                 val (ts1,nd1) = reservedOrOrdinaryIdentifier (ts)
@@ -1647,7 +1644,6 @@ and primaryExpression (ts,a,b) =
       | (DecimalLiteral n, _) :: ts1 => (ts1, Ast.LiteralExpr(Ast.LiteralContextualDecimal n))
       | (DecimalIntegerLiteral n, _) :: ts1 => (ts1, Ast.LiteralExpr(Ast.LiteralContextualDecimalInteger n))
       | (HexIntegerLiteral n, _) :: ts1 => (ts1, Ast.LiteralExpr(Ast.LiteralContextualHexInteger n))
-      | (OctIntegerLiteral n, _) :: ts1 => (ts1, Ast.LiteralExpr(Ast.LiteralContextualOctInteger n))
 
       | (ExplicitDecimalLiteral n, _) :: ts1 => (ts1, Ast.LiteralExpr(Ast.LiteralDecimal n))
       | (ExplicitDoubleLiteral n, _) :: ts1 => (ts1, Ast.LiteralExpr(Ast.LiteralDouble n))

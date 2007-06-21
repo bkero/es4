@@ -2127,7 +2127,6 @@ and evalLiteralExpr (regs:Mach.REGS)
       | Ast.LiteralContextualDecimal _ => error ["contextual decimal literal at runtime"]
       | Ast.LiteralContextualDecimalInteger _ => error ["contextual decimal integer literal at runtime"]
       | Ast.LiteralContextualHexInteger _ => error ["contextual hex integer literal at runtime"]
-      | Ast.LiteralContextualOctInteger _ => error ["contextual oct integer literal at runtime"]
 
       | Ast.LiteralXML _ => LogErr.unimplError ["unhandled literal XML"]
       | Ast.LiteralRegExp re => evalLiteralRegExp (#str re)

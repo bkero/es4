@@ -44,7 +44,7 @@ open Token
 exception LexChoicePoint of TOKEN
 
 datatype NumericLiteralGroup = 
-    HexIntLit | DecIntLit | DecLit | OctIntLit
+    HexIntLit | DecIntLit | DecLit
 
 fun tname t = if !doTrace then tokenname t else ""
 
@@ -361,9 +361,6 @@ fun makeTokenList (filename : string, reader : unit -> Ustring.SOURCE) : ((TOKEN
               HexIntegerLiteral
                 0 [xX] [0-9a-fA-F]+
               
-              OctIntegerLiteral
-                0 [0-7]+
-              
               DecimalIntegerLiteral
                 0
                 [1-9] [0-9]*
@@ -460,15 +457,6 @@ fun makeTokenList (filename : string, reader : unit -> Ustring.SOURCE) : ((TOKEN
                 => (HexIntLit, 2 + (countInRanges {min=1} hexDigitRanges rest))
               | 0wx30::0wx58::rest
                 => (HexIntLit, 2 + (countInRanges {min=1} hexDigitRanges rest))
-            (* 0[0-7]  =>  OctalIntegerLiteral { 0 [0-7]* } *)
-              | 0wx30::0wx30::rest => (OctIntLit, 2 + (countOctalDigits rest))
-              | 0wx30::0wx31::rest => (OctIntLit, 2 + (countOctalDigits rest))
-              | 0wx30::0wx32::rest => (OctIntLit, 2 + (countOctalDigits rest))
-              | 0wx30::0wx33::rest => (OctIntLit, 2 + (countOctalDigits rest))
-              | 0wx30::0wx34::rest => (OctIntLit, 2 + (countOctalDigits rest))
-              | 0wx30::0wx35::rest => (OctIntLit, 2 + (countOctalDigits rest))
-              | 0wx30::0wx36::rest => (OctIntLit, 2 + (countOctalDigits rest))
-              | 0wx30::0wx37::rest => (OctIntLit, 2 + (countOctalDigits rest))
             (* 0   =>  DecimalIntegerLiteral { 0 } *)
               | 0wx30::rest
                 => (DecIntLit, 1)
@@ -515,7 +503,6 @@ fun makeTokenList (filename : string, reader : unit -> Ustring.SOURCE) : ((TOKEN
                         SOME i => push (tokLen+1) (ExplicitDecimalLiteral i)
                       | NONE   => error ["LexError:  LEXER BUG in lexing DecLit(m)"   ] (* should not be possible to get here *))
               | (HexIntLit, _) => push tokLen (HexIntegerLiteral     numberAscii)
-              | (OctIntLit, _) => push tokLen (OctIntegerLiteral     numberAscii)
               | (DecIntLit, _) => push tokLen (DecimalIntegerLiteral numberAscii)
               | (DecLit   , _) => push tokLen (DecimalLiteral        numberAscii)
             ;
