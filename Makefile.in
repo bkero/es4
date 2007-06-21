@@ -34,6 +34,7 @@
 # ------------------------------------------------------------------------------
 
 DIALECT:=@DIALECT@
+DEBUG:=@DEBUG@
 
 # Location of SML/NJ tools (even if we're building with MLton)
 SMLNJ:=@SMLNJ@
@@ -41,8 +42,11 @@ MLBUILD:=@MLBUILD@
 HEAP2EXEC:=@HEAP2EXEC@
 HEAP_SUFFIX:=@HEAP_SUFFIX@
 SMLNJ_TDP:=@SMLNJ_TDP@
+# Unfortunately the TDP traces slow down the code significantly.
+ifneq ($(DEBUG),no)
 ifneq ($(SMLNJ_TDP),)
 MLBUILD_ARGS:=-Ctdp.instrument=true -DBACKTRACE \$$smlnj-tdp/back-trace.cm
+endif
 endif
 
 # Standard ML of New Jersey
@@ -54,7 +58,9 @@ RUN_DUMPED:=$(SMLNJ) @SMLload=$(DUMP)
 # MLton
 else
 MLTON:=@MLTON@
+ifneq ($(DEBUG),no)
 MLTONOPTS:=-const 'Exn.keepHistory true'
+endif
 MLTONCC:=-cc-opt -Idecimal/decNumber
 EXE:=es4
 DUMP:=es4.world

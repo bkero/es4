@@ -33,20 +33,31 @@ AC_DEFUN([GET_SMLNJ_CM_ANCHOR_HOME],
          [EVAL_SMLNJ_STRING($1, [valOf(case (CM.Anchor.anchor "$2") of { get, ... } => get ())])])
 
 DIALECT=smlnj
+SMLNJ="<<search>>"
+MLTON="<<search>>"
+DEBUG=no
+
 AC_ARG_WITH([smlnj],
-            [[  --with-smlnj=FULLPATH        set full path to SML/NJ executable]],
+            AC_HELP_STRING([--with-smlnj=FULLPATH],
+                           [set full path to SML/NJ executable]),
             [SMLNJ="$withval"])
 AC_ARG_WITH([mlton],
-            [[  --with-mlton=FULLPATH        set full path to MLton compiler]],
+            AC_HELP_STRING([--with-mlton=FULLPATH],
+                           [set full path to MLton compiler]),
             [MLTON="$withval"])
 AC_ARG_WITH([dialect],
-            [[  --with-dialect=(smlnj|mlton) choose dialect of Standard ML (default smlnj)]],
+            AC_HELP_STRING([--with-dialect=(smlnj|mlton)],
+                           [choose dialect of Standard ML (default smlnj)]),
             [DIALECT="$withval"])
+AC_ARG_ENABLE([debug],
+              AC_HELP_STRING([--enable-debug],
+                             [compile SML with debugging information (default no)]),
+              [DEBUG="$enableval"])
 
 AC_MSG_NOTICE([using $DIALECT dialect for building releases])
 
 # 1. Find SML/NJ installation information.
-if test "$SMLNJ" = "yes" -o -z "$SMLNJ"; then
+if test "$SMLNJ" = "yes" -o "$SMLNJ" = "<<search>>"; then
     AC_PATH_PROGS([SMLNJ], [sml])
 fi
 
@@ -91,7 +102,7 @@ if test "$DIALECT" = "smlnj"; then
 
     AC_MSG_CHECKING([availability of smlnj-tdp tools])
     GET_SMLNJ_CM_ANCHOR_HOME([SMLNJ_TDP], [smlnj-tdp])
-    if test "$SMLNJ_TDP" = ""; then
+    if test -z "$SMLNJ_TDP"; then
         AC_MSG_RESULT([no])
     else
         AC_MSG_RESULT([$SMLNJ_TDP])
@@ -101,7 +112,7 @@ fi
 # 3. MLton dialect
 
 if test "$DIALECT" = "mlton"; then
-    if test "$MLTON" = "yes" -o -z "$MLTON"; then
+    if test "$MLTON" = "yes" -o "$MLTON" = "<<search>>"; then
         AC_PATH_PROGS([MLTON], [mlton])
         if test -z "$MLTON"; then
             AC_MSG_ERROR([cannot find installation of MLton])
@@ -116,6 +127,7 @@ dnl COMMON_SOURCES=`ls -1 *.sml | grep -v mlton | grep -v smlnj | grep -v decima
 dnl AC_SUBST([COMMON_SOURCES])
 
 AC_SUBST([DIALECT])
+AC_SUBST([DEBUG])
 AC_SUBST([HEAP_SUFFIX])
 AC_SUBST([SMLNJ_TDP])
 AC_SUBST([SMLNJ])
