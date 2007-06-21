@@ -572,36 +572,43 @@ fun makeTokenList (filename : string, reader : unit -> Ustring.SOURCE) : ((TOKEN
                         val startLine = !lineNum
                         val startCol  = !colNum
                         
-                        fun lexRegexp reSrc {newline=newline} {charset=charset} =
+                        fun lexRegexp reSrc {newline=newline} {depth=depth} =
                         let
                             val c = lookahead 0
                             val _ = if c = 0wx0 then () else advanceIndex 1
                         in
-                            case (charset, c) of
+                            case (depth, c) of
                             (* line terminators *)
-                                (_, 0wx000A)   => lexRegexp (c::reSrc) {newline=true   } {charset=charset}
-                              | (_, 0wx000D)   => lexRegexp (c::reSrc) {newline=true   } {charset=charset}
-                              | (_, 0wx2028)   => lexRegexp (c::reSrc) {newline=true   } {charset=charset}
-                              | (_, 0wx2029)   => lexRegexp (c::reSrc) {newline=true   } {charset=charset}
+                                (_, 0wx000A)   => lexRegexp (c::reSrc) {newline=true   } {depth=depth}
+                              | (_, 0wx000D)   => lexRegexp (c::reSrc) {newline=true   } {depth=depth}
+                              | (_, 0wx2028)   => lexRegexp (c::reSrc) {newline=true   } {depth=depth}
+                              | (_, 0wx2029)   => lexRegexp (c::reSrc) {newline=true   } {depth=depth}
                             (* [ *)
-                              | (false, 0wx5B) => lexRegexp (c::reSrc) {newline=newline} {charset=true   }
+                              | (0, 0wx5B) => lexRegexp (c::reSrc) {newline=newline} {depth=1}
                             (* ] *)
-                              | (true , 0wx5D) => lexRegexp (c::reSrc) {newline=newline} {charset=false  }
+                              | (0, 0wx5D) => lexRegexp (c::reSrc) {newline=newline} {depth=0}
+                              | (_, 0wx5D) => lexRegexp (c::reSrc) {newline=newline} {depth=depth-1}
+                            (* & *)
+                              | (0, 0wx26) => lexRegexp (c::reSrc) {newline=newline} {depth=depth}
+                              | (_, 0wx26) =>
+                                (case (lookahead 0, lookahead 1) of
+                                    (0wx26, 0wx5B) => (advanceIndex 2; lexRegexp (0wx5B::0wx26::c::reSrc) {newline=newline} {depth=depth+1})
+                                  | (_,_) => lexRegexp (c::reSrc) {newline=newline} {depth=depth})
                             (* \ *)
                               | (_, 0wx5C) => 
 				(case lookahead 0 of
                                  (* line terminators *)
                                      0wx000A
-                                     =>   (advanceIndex 1; lexRegexp (      reSrc) {newline=newline} {charset=charset})
+                                     =>   (advanceIndex 1; lexRegexp (      reSrc) {newline=newline} {depth=depth})
                                    | 0wx000D
-                                     =>   (advanceIndex 1; lexRegexp (      reSrc) {newline=newline} {charset=charset})
+                                     =>   (advanceIndex 1; lexRegexp (      reSrc) {newline=newline} {depth=depth})
                                    | 0wx2028
-                                     =>   (advanceIndex 1; lexRegexp (      reSrc) {newline=newline} {charset=charset})
+                                     =>   (advanceIndex 1; lexRegexp (      reSrc) {newline=newline} {depth=depth})
                                    | 0wx2029
-                                     =>   (advanceIndex 1; lexRegexp (      reSrc) {newline=newline} {charset=charset})
+                                     =>   (advanceIndex 1; lexRegexp (      reSrc) {newline=newline} {depth=depth})
 				   | 0wx0 => error ["LexError: end of input in regexp"]
-                                   | d => (advanceIndex 1; lexRegexp (d::c::reSrc) {newline=newline} {charset=charset}))
-                              | (false, 0wx2F (* / *)) =>
+                                   | d => (advanceIndex 1; lexRegexp (d::c::reSrc) {newline=newline} {depth=depth}))
+                              | (0, 0wx2F (* / *)) =>
                                 let
                                     val numFlags = countInRanges {min=0} [(Ustring.wcharFromChar #"a", Ustring.wcharFromChar #"z"),
                                                                           (Ustring.wcharFromChar #"A", Ustring.wcharFromChar #"Z")] (!src)
@@ -613,11 +620,11 @@ fun makeTokenList (filename : string, reader : unit -> Ustring.SOURCE) : ((TOKEN
                                     else List.revAppend (c::reSrc, regexpFlags)
                                 end
                               | (_, 0wx0) => error ["LexError: end of input in regexp"]
-                              | _ => lexRegexp (c::reSrc) {newline=newline} {charset=charset}
+                              | _ => lexRegexp (c::reSrc) {newline=newline} {depth=depth}
                         end
                         
                         val _ = advanceIndex 1 (* to move past the initial slash *)
-                        val regexpStr = Vector.fromList (lexRegexp [0wx2F (* / *)] {newline=false} {charset=false})
+                        val regexpStr = Vector.fromList (lexRegexp [0wx2F (* / *)] {newline=false} {depth=0})
                         val tokSpan = ({line = startLine, col = startCol   },
                                        {line = !lineNum , col = !colNum - 1})
                     in
