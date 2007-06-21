@@ -117,13 +117,15 @@ package cogen
         // If it has local bindings, establish a local rib
         // Inits
         // etc
-        let body = s.body;
-        for ( let i=0 ; i < body.length ; i++ )
-            cgStmt(ctx, body[i]);
+        let stmts = s.stmts;
+        for ( let i=0 ; i < stmts.length ; i++ )
+            cgStmt(ctx, stmts[i]);
     }
 
     function cgLabeledStmt(ctx, {label: label, stmt: stmt}) {
-        cgStmt(pushBreak(ctx, label), stmt);
+        let L0 = asm.newLabel();
+        cgStmt(pushBreak(ctx, [label], L0), stmt);
+        asm.I_label(L0);
     }
 
     function cgWhileStmt(ctx, {body: body, labels: labels, expr: expr}) {
@@ -132,11 +134,14 @@ package cogen
         var L2 = asm.newLabel();
         var L0 = asm.I_jump();
         var L1 = asm.I_label();
-        cgStmt(pushBreak(pushContinue(ctx, labels, L1), labels, L2), body);
+        cgStmt(pushBreak(pushContinue(ctx, labels, L0), labels, L2), body);
         asm.I_label(L0);
         cgExpr(ctx, expr);
         asm.I_iftrue(L1);
         asm.I_label(L2);
+    }
+
+    function cgForStmt(ctx, s) {
     }
 
     function cgIfStmt(ctx, s) {

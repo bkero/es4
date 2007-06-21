@@ -319,11 +319,11 @@ package cogen
             cgExpr(ctx, or.base);
         }
         case (lr:LexicalRef) {
-            /* FIXME: not quite right, the function could be bound by
-             * a "with" rib, and if so then that rib should be the
-             * receiver here, not null.  There's no way to do that on
-             * Tamarin without global conventions / parallel with
-             * stacks, I think.
+            /* FIXME (obscure): not quite right, the function could be
+             * bound by a "with" rib, and if so then that rib should
+             * be the receiver here, not null.  There's no way to do
+             * that on Tamarin without global conventions / parallel
+             * with stacks, I think.
              */
             let n = emitter.nameFromIdentExpr(lr.ident);
             asm.I_findpropstrict(n);
@@ -516,8 +516,8 @@ package cogen
         case (e:LiteralInt) { asm.I_pushint(ctx.cp.int32(e.intValue)) }
         case (e:LiteralUInt) { asm.I_pushuint(ctx.cp.uint32(e.uintValue)) }
         case (e:LiteralDouble) { asm.I_pushdouble(ctx.cp.float64(e.doubleValue)) }
-        case (e:LiteralDecimal) { asm.I_pushdouble(ctx.cp.float64(Number(e.decimalValue))) } // FIXME
-        case (e: LiteralString) { asm.I_pushstring(ctx.cp.stringUtf8(e.strValue)) }
+        case (e:LiteralDecimal) { asm.I_pushdouble(ctx.cp.float64(Number(e.decimalValue))) } // FIXME - the AVM2 can't handle decimal yet
+        case (e:LiteralString) { asm.I_pushstring(ctx.cp.stringUtf8(e.strValue)) }
         case (e:LiteralBoolean) {
             if (e.booleanValue) 
                 asm.I_pushtrue(); 

@@ -35,72 +35,41 @@
  *
  * ***** END LICENSE BLOCK ***** */
 
-/* The structure ctx has the following fields:
-
-      asm: emitter.Method
-      lexical: Object 
-      ...
-
-   Think of it as a "multi-stack": it's a data structure that
-   encapsulates several stacks, and the data structure is handled by
-   extension, not update.
-
-   But it uses the prototype chain extensively, so there is no
-   structural type to describe it.
-
-   It will tend to be shallow.
-
-   In *practice* it may be faster to have instances with all the
-   fields and copy the fields in when a new structure is
-   created... depends on how big the structure becomes.
-*/
-
 package cogen
 {
     import assembler.*;
     import emitter.*;
 
-    /* Returns an array of bytes as delivered by ABCByteStream.getBytes,
-     * or throws an exception (maybe).
-     */
-    public function generateCode(tree) {
+    /* Returns an array of bytes as delivered by ABCByteStream.getBytes. */
+    public function cg(tree) {
         var e = new ABCEmitter;
-        //var c = new Cogen(e, tree);
-        c.gen(tree);
+        var s = e.newScript();
+        CTX.prototype = { "emitter": e, "script":s, "cp": e.constants };
+        cgProgram(new CTX(s.init.asm), tree);
         return e.finalize().getBytes();
     }
 
+    /* A context is a structure with the fields
+     * 
+     *    emitter
+     *    script
+     *    asm
+     *    cp
+     *
+     * All of these are invariant and kept in the prototype except for
+     * 'asm', and some fields to come.
+    */
+
+    function CTX(asm) {
+        this.asm = asm;
+    }
+
+    function cgProgram(ctx, prog) {
+        // FIXME - fixtures
+        cgStmt(ctx, p.block);
+    }
+
     /*
-    function CTX() {}
-
-    function bindAsm(ctx, asm) {
-        CTX.prototype = ctx;
-        var v = new CTX();
-        v.asm = asm;
-        return v;
-    }
-
-    function bindWith(ctx, c) { ... }
-    function bindBreak(ctx, c) { ... }
-    function bindContinue(ctx, c) { ... }
-    function bindCatch(ctx, c) { ... }
-
-    var baseCTX = {
-        bindAsm: bindAsm,
-        bindWith: bindWith,
-        bindBreak: bindBreak,
-        bindContinue: bindContinue,
-        bindCatch: bindCatch
-    };
-
-    function cgProgram(e, p) {
-        var program = e.newScript();
-        var newctx = ctx.bindAsm(baseCTX, ctx.program.getInit());
-        // for each fixture, define it in newctx
-        // ...
-        cgStmt(newctx, p.body);
-    }
-
     function cgFunctionBody(ctx, f:FUNC) {
         // FIXME
         // allocate a rib
@@ -115,12 +84,39 @@ package cogen
         // for p in formals, add a slot-trait for p
         let newctx = pushFunction(ctx, <some ABCMethodBody structure>);
     }
-
     */
 
     // Handles scopes and finally handlers and returns a label, if appropriate, to
-    // branch to.  "what" is one of "return", "break", "continue", ...
-    public function nonlocalControlFlow(ctx, what, ...rest) {
+    // branch to.  "what" is one of "function", "break", "continue"
+    function nonlocalControlFlow(ctx, what, ...rest) {
         // FIXME 
+    }
+
+    // The following return extended contexts
+    function pushBreak(ctx, labels, target) {
+        // FIXME
+    }
+
+    function pushContinue(ctx, labels, target) {
+        // FIXME
+    }
+
+    function pushFunction(ctx /*more*/) {
+        // FIXME
+    }
+
+    function pushWith(ctx /*more*/) {
+        // FIXME
+    }
+
+    function pushLet(ctx /*more*/) {
+    }
+
+    function pushCatch(ctx /*more*/) {
+        // FIXME
+    }
+
+    function pushFinally(ctx /*more*/) {
+        // FIXME
     }
 }

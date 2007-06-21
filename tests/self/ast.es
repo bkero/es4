@@ -1098,10 +1098,18 @@ namespace Ast
     }
 
     class ForStmt {
+        const e1 : EXPR?;
+        const e2 : EXPR?;
+        const e3 : EXPR?;
+        const body : STMT;
+        const labels : [IDENT];
+        const fixtures : FIXTURES?
     }
 
-
     class IfStmt {
+        const test : EXPR;
+        const consequent : STMT;
+        const alternate : STMT?;
     }
 
     class WithStmt {
