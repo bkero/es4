@@ -35,8 +35,10 @@
  *
  * ***** END LICENSE BLOCK ***** */
 
-include "util.es"
-include "bytestream.es"
-include "abcfile.es"
-include "assembler.es"
-include "emitter.es"
+// ActionScript
+include "util-as3.es";
+include "util.es";
+include "bytestream.es";
+include "abcfile.es";
+include "assembler.es";
+//include "emitter.es";

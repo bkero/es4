@@ -201,6 +201,9 @@ fun verifyTypeExpr (env:ENV)
         trace ["verifyTypeExpr: ", fmtType ty];
 
 	    case ty of
+            (*
+Ast.TypeName 
+*)            
 	        Ast.SpecialType _ => 
             ty
 	      | Ast.UnionType tys => 

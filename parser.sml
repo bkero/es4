@@ -403,32 +403,44 @@ and identifier [] = error ["expecting 'identifier', but ran out of tokens"]
         val ustr = case t of
         Identifier(us) => us
       | Call => tn ()
-      | Debugger => tn ()
+      | Cast => tn ()
+      | Const => tn ()
       | Decimal => tn ()
       | Double => tn ()
       | Dynamic => tn ()
       | Each => tn ()
+      | Eval => tn ()
       | Final => tn ()
       | Get => tn ()
-      | Goto => tn ()
       | Has => tn ()
-      | Include => tn ()
+      | Implements => tn ()
+      | Import => tn ()
       | Int => tn ()
-      | Invoke => tn ()
+      | Interface => tn ()
+      | Internal => tn ()
+      | Intrinsic => tn ()
+      | Is => tn ()
+      | Let => tn ()
       | Namespace => tn ()
       | Native => tn ()
       | Number => tn ()
       | Override => tn ()
+      | Package => tn ()
       | Precision => tn ()
+      | Private => tn ()
+      | Protected => tn ()
       | Prototype => tn ()
+      | Public => tn ()
       | Rounding => tn ()
-      | Standard => tn ()
-      | Strict => tn ()
-      | UInt => tn ()
       | Set => tn ()
+      | Standard => tn ()
       | Static => tn ()
+      | Strict => tn ()
+      | To => tn ()
       | Type => tn ()
+      | UInt => tn ()
       | Undefined => tn ()
+      | Use => tn ()
       | Xml => tn ()
       | Yield => tn ()
       | _ => error ["expecting 'identifier' before '",tokenname (t,()),"'"]
@@ -1481,9 +1493,6 @@ and fieldName (ts) : (TOKEN * Ast.LOC) list * Ast.IDENT_EXPR =
       | (HexIntegerLiteral n, _) :: ts1 => 
         (ts1, Ast.ExpressionIdentifier { expr = (Ast.LiteralExpr(Ast.LiteralContextualHexInteger n)),
                                          openNamespaces = []})
-      | (OctIntegerLiteral n, _) :: ts1 => 
-        (ts1, Ast.ExpressionIdentifier { expr = (Ast.LiteralExpr(Ast.LiteralContextualOctInteger n)),
-                                         openNamespaces = []})
       | _ => 
             let
                 val (ts1,nd1) = reservedOrOrdinaryIdentifier (ts)
@@ -1635,7 +1644,6 @@ and primaryExpression (ts,a,b) =
       | (DecimalLiteral n, _) :: ts1 => (ts1, Ast.LiteralExpr(Ast.LiteralContextualDecimal n))
       | (DecimalIntegerLiteral n, _) :: ts1 => (ts1, Ast.LiteralExpr(Ast.LiteralContextualDecimalInteger n))
       | (HexIntegerLiteral n, _) :: ts1 => (ts1, Ast.LiteralExpr(Ast.LiteralContextualHexInteger n))
-      | (OctIntegerLiteral n, _) :: ts1 => (ts1, Ast.LiteralExpr(Ast.LiteralContextualOctInteger n))
 
       | (ExplicitDecimalLiteral n, _) :: ts1 => (ts1, Ast.LiteralExpr(Ast.LiteralDecimal n))
       | (ExplicitDoubleLiteral n, _) :: ts1 => (ts1, Ast.LiteralExpr(Ast.LiteralDouble n))
@@ -1800,16 +1808,6 @@ and memberExpressionPrime (ts,nd,a,b) =
         PropertyOperator CallExpressionPrime
         empty
 *)
-
-and callExpression (ts,a,b) =
-    let val _ = trace([">> callExpression with next=",tokenname(hd(ts))]) 
-        val (ts1,nd1) = memberExpression(ts,a,b)
-        val (ts2,nd2) = arguments(ts1)
-        val (ts3,nd3) = callExpressionPrime(ts2,Ast.CallExpr({func=nd1,actuals=nd2}),a,b)
-    in 
-        trace(["<< callExpression with next=",tokenname(hd(ts2))]);
-        (ts3,nd3)
-    end
 
 and callExpressionPrime (ts,nd,a,b) =
     let val _ = trace([">> callExpressionPrime with next=",tokenname(hd(ts))])
@@ -3691,7 +3689,6 @@ and semicolon (ts,FULL) : ((TOKEN * Ast.LOC) list) =
           (trace(["<< semicolon(ABBREV | NOSHORTIF) with next=", tokenname(hd ts)]);
           (ts))
     end
-
 and statement (ts,t,w) : ((TOKEN * Ast.LOC) list * Ast.STMT) =
     let 
         val _ = setLoc ts
@@ -5591,7 +5588,7 @@ and functionDeclaration (ts,attrs) =
     in case ts of
         (Function, _) :: _ =>
             let
-                val (ts1,nd1) = identifier (tl ts)
+                val (ts1,nd1) = functionName (tl ts)
                 val (ts2,nd2) = functionSignature (ts1)
             in
                 (ts2,{pragmas=[],
@@ -5602,7 +5599,7 @@ and functionDeclaration (ts,attrs) =
                                                prototype=prototype,
                                                static=static,
                                                abstract=true,
-                                               func=Ast.Func {name={ident=nd1,kind=Ast.Ordinary},
+                                               func=Ast.Func {name=nd1,
                                                               fsig=nd2, 
                                                               param=Ast.Head ([],[]),
                                                               defaults=[],

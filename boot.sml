@@ -249,6 +249,8 @@ fun boot _ =
 
                                     "builtins/Name.es",
                                     
+                                    "builtins/Interface.es",
+
                                     "builtins/Error.es",
                                     
                                     "builtins/Boolean.es",

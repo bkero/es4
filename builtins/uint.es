@@ -68,13 +68,20 @@ package
         prototype function toString(this:uint, radix)
             this.toString(radix);
 
-        override intrinsic function toString() {
-            var radix = 10  /* FIXME */
+        override intrinsic function toString(radix=10) {
             if (radix === 10 || radix === undefined)
                 return ToString(this);
             else if (typeof radix === "number" && radix >= 2 && radix <= 36 && isIntegral(radix)) {
-                // FIXME
-                throw new Error("Unimplemented: non-decimal radix");
+                radix = int(radix);
+                let v = this;
+                var q = "";
+                while (v != 0) {
+                    q = "0123456789abcdefABCDEFGHIJKLMNOPQRSTUVWXYZ"[v % radix] + q;
+                    v = (v - (v % radix)) / radix;
+                }                
+                if (q == "")
+                    q = "0";
+                return q;
             }
             else
                 throw new TypeError("Invalid radix argument to uint.toString");

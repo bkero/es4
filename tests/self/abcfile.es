@@ -35,8 +35,12 @@
  *
  * ***** END LICENSE BLOCK ***** */
 
-package es4 
+package abcfile
 {
+    import util.*;
+    import assembler.*;
+    import bytestream.*;
+
     /* ABCFile container & helper class.
      *
      * Every argument to an addWhatever() method is retained by
@@ -48,12 +52,12 @@ package es4
      * Performance ought to be good; nothing is serialized more than
      * once and no data are copied except during serialization.
      */
-    class ABCFile 
+    public class ABCFile 
     {
-        const major_version = 46;
-        const minor_version = 16;
-
-        function getBytes(): * /* same type as ABCByteStream.getBytes() */ {
+        public const major_version = 46;
+        public const minor_version = 16;
+        
+        public function getBytes(): * /* same type as ABCByteStream.getBytes() */ {
             function emitArray(a, len=true) {
                 if (len) 
                     bytes.uint30(a.length);
@@ -78,49 +82,42 @@ package es4
             emitArray(classes, false);
             emitArray(scripts);
             emitArray(bodies);
-
             return bytes.getBytes();
         }
 
-        function addConstants(cpool: ABCConstantPool): void {
+        public function addConstants(cpool: ABCConstantPool): void {
             constants = cpool;
         }
 
-        function addMethod(m: ABCMethodInfo): uint {
-            methods.push(m);
-            return methods.length-1;
+        public function addMethod(m: ABCMethodInfo)/*: uint*/ {
+            return methods.push(m)-1;
         }
 
-        function addMetadata(m: ABCMetadataInfo): uint {
-            metadatas.push(m);
-            return metadatas.length-1;
+        public function addMetadata(m: ABCMetadataInfo)/*: uint*/ {
+            return metadatas.push(m)-1;
         }
 
-        function addClassAndInstance(cls, inst): uint {
+        public function addClassAndInstance(cls, inst)/*: uint*/ {
             var x = addClass(cls);
             var y = addInstance(inst);
             assert( x == y );
             return x;
         }
 
-        function addInstance(i: ABCInstanceInfo): uint {
-            instances.push(i);
-            return instances.length-1;
+        public function addInstance(i: ABCInstanceInfo)/*: uint*/ {
+            return instances.push(i)-1;
         }
 
-        function addClass(c: ABCClassInfo): uint {
-            classes.push(c);
-            return classes.length-1;
+        public function addClass(c: ABCClassInfo)/*: uint*/ {
+            return classes.push(c)-1;
         }
 
-        function addScript(s: ABCScriptInfo): uint {
-            scripts.push(s);
-            return scripts.length-1;
+        public function addScript(s: ABCScriptInfo)/*: uint*/ {
+            return scripts.push(s)-1;
         }
 
-        function addMethodBody(b: ABCMethodBodyInfo): uint {
-            bodies.push(b);
-            return bodies.length-1;
+        public function addMethodBody(b: ABCMethodBodyInfo)/*: uint*/ {
+            return bodies.push(b)-1;
         }
 
         private const methods = [];
@@ -129,11 +126,11 @@ package es4
         private const classes = [];
         private const scripts = [];
         private const bodies = [];
-        private var   constants;
+        private var constants;
     }
 
     /* FIXME: we should be using hash tables here, not linear searching. */
-    class ABCConstantPool
+    public class ABCConstantPool
     {
         function ABCConstantPool() {
             // All pools start at 1.
@@ -160,19 +157,19 @@ package es4
         
         private static function cmp(a, b) { return a === b }
 
-        function int32(n:int):uint {
+        public function int32(n/*:int*/)/*:uint*/ {
             return findOrAdd( n, int_pool, cmp, function (x) { int_bytes.int32(x) } );
         }
         
-        function uint32(n:uint):uint {
+        public function uint32(n/*:uint*/)/*:uint*/ {
             return findOrAdd( n, uint_pool, cmp, function (x) { uint_bytes.uint32(x) } );
         }
         
-        function float64(n:Number/*FIXME ES4: double*/):uint {
+        public function float64(n/*FIXME ES4: double*/)/*:uint*/ {
             return findOrAdd( n, double_pool, cmp, function (x) { double_bytes.float64(x) } );
         }
         
-        function stringUtf8(s:String/*FIXME ES4: string*/):uint {
+        public function stringUtf8(s/*FIXME ES4: string*/)/*:uint*/ {
             return findOrAdd( s, 
                               utf8_pool, 
                               cmp,
@@ -183,7 +180,7 @@ package es4
             return a.kind == b.kind && a.ns == b.ns && a.name == b.name;
         }
 
-        function namespace(kind:uint, name:uint) { 
+        public function namespace(kind/*:uint*/, name/*:uint*/) { 
             return findOrAdd( { "kind": kind, "name": name }, 
                               namespace_pool, 
                               cmpname, 
@@ -202,7 +199,7 @@ package es4
             return true;
         }
 
-        function namespaceset(namespaces:Array) {
+        public function namespaceset(namespaces:Array) {
             return findOrAdd( copyArray(namespaces), 
                               namespaceset_pool,
                               cmparray,
@@ -213,7 +210,7 @@ package es4
                               }) );
         }
 
-        function QName(ns: uint, name: uint, is_attr: Boolean=false /*FIXME ES4: boolean*/) {
+        public function QName(ns/*: uint*/, name/*: uint*/, is_attr: Boolean=false /*FIXME ES4: boolean*/) {
             return findOrAdd( { "kind": is_attr ? CONSTANT_QNameA : CONSTANT_QName, "ns": ns, "name": name },
                               multiname_pool,
                               cmpname,
@@ -223,7 +220,7 @@ package es4
                                   multiname_bytes.uint30(x.name); } );
         }
 
-        function RTQName(name: uint, is_attr: Boolean=false /*FIXME ES4: boolean*/) {
+        public function RTQName(name/*: uint*/, is_attr: Boolean=false /*FIXME ES4: boolean*/) {
             return findOrAdd( { "kind": is_attr ? CONSTANT_RTQNameA : CONSTANT_RTQName, "name": name },
                               multiname_pool,
                               cmpname, 
@@ -232,14 +229,14 @@ package es4
                                   multiname_bytes.uint30(x.name); } );
         }
 
-        function RTQNameL(is_attr: Boolean=false /*FIXME ES4: boolean*/) {
+        public function RTQNameL(is_attr: Boolean=false /*FIXME ES4: boolean*/) {
             return findOrAdd( { "kind": is_attr ? CONSTANT_RTQNameLA : CONSTANT_RTQNameL },
                               multiname_pool,
                               cmpname,
                               function (x) { multiname_bytes.uint8(x.kind) } );
         }
 
-        function Multiname(nsset: uint, name: uint, is_attr: Boolean=false /*FIXME ES4: boolean*/ ) {
+        public function Multiname(nsset/*: uint*/, name/*: uint*/, is_attr: Boolean=false /*FIXME ES4: boolean*/ ) {
             return findOrAdd( { "kind": is_attr ? CONSTANT_MultinameA : CONSTANT_Multiname, "name": name, "ns":nsset },
                               multiname_pool,
                               cmpname,
@@ -249,7 +246,7 @@ package es4
                                   multiname_bytes.uint30(x.ns); } );
         }
 
-        function MultinameL(nsset: uint, is_attr: Boolean=false /*FIXME ES4: boolean*/) {
+        public function MultinameL(nsset/*: uint*/, is_attr: Boolean=false /*FIXME ES4: boolean*/) {
             return findOrAdd( { "kind": is_attr ? CONSTANT_MultinameLA : CONSTANT_MultinameL, "ns":nsset },
                               multiname_pool,
                               cmpname,
@@ -258,7 +255,7 @@ package es4
                                   multiname_bytes.uint30(x.ns); } );
         }
 
-        function hasRTNS(index) {
+        public function hasRTNS(index) {
             switch (multiname_pool[index].kind) {
             case CONSTANT_RTQName:
             case CONSTANT_RTQNameA:
@@ -270,7 +267,7 @@ package es4
             }
         }
 
-        function hasRTName(index) {
+        public function hasRTName(index) {
             switch (multiname_pool[index].kind) {
             case CONSTANT_RTQNameL:
             case CONSTANT_RTQNameLA:
@@ -282,7 +279,7 @@ package es4
             }
         }
 
-        function serialize(bs) {
+        public function serialize(bs) {
             bs.uint30(int_pool.length);
             bs.byteStream(int_bytes);
 
@@ -324,7 +321,7 @@ package es4
         private const multiname_bytes = new ABCByteStream;
     }
 
-    class ABCMethodInfo 
+    public class ABCMethodInfo 
     {
         /* \param name         string index
          * \param param_types  array of multiname indices.  May not be null.
@@ -333,7 +330,7 @@ package es4
          * \param options      [{val:uint, kind:uint}], if present.
          * \param param_names  array of param_info structures, if present.
          */
-        function ABCMethodInfo(name:uint, param_types:Array, return_type:uint, flags:uint, 
+        function ABCMethodInfo(name/*:uint*/, param_types:Array, return_type/*:uint*/, flags/*:uint*/=0, 
                                options:Array=null, param_names:Array=null) {
             this.name = name;
             this.param_types = param_types;
@@ -343,7 +340,11 @@ package es4
             this.param_names = param_names;
         }
 
-        function serialize(bs) {
+        public function setFlags(flags) {
+            this.flags = flags;
+        }
+
+        public function serialize(bs) {
             var i;
             bs.uint30(param_types.length);
             bs.uint30(return_type);
@@ -372,27 +373,27 @@ package es4
         private var name, param_types, return_type, flags, options, param_names;
     }
 
-    class ABCMetadataInfo 
+    public class ABCMetadataInfo 
     {
-        function ABCMetadataInfo( name: uint, items: Array ) {
+        function ABCMetadataInfo( name/*: uint*/, items: Array ) {
             assert( name != 0 );
             this.name = name;
             this.items = items;
         }
 
-        function serialize(bs) {
+        public function serialize(bs) {
             bs.uint30(name);
             bs.uint30(items.length);
             for ( var i=0 ; i < items.length ; i++ ) {
-                bs.uint30(items.key);
-                bs.uint30(items.value);
+                bs.uint30(items[i].key);
+                bs.uint30(items[i].value);
             }
         }
 
         private var name, items;
     }
 
-    class ABCInstanceInfo
+    public class ABCInstanceInfo
     {
         function ABCInstanceInfo(name, super_name, flags, protectedNS, interfaces) {
             this.name = name;
@@ -403,16 +404,15 @@ package es4
             this.traits = [];
         }
 
-        function setIInit(x) {
+        public function setIInit(x) {
             iinit = x;
         }
 
-        function addTrait(t) {
-            traits.push(t);
-            return traits.length-1;
+        public function addTrait(t) {
+            return traits.push(t)-1;
         }
 
-        function serialize(bs) {
+        public function serialize(bs) {
             var i;
 
             assert( iinit != undefined );
@@ -436,23 +436,26 @@ package es4
         private var name, super_name, flags, protectedNS, interfaces, iinit, traits;
     }
 
-    class ABCTrait 
+    public class ABCTrait 
     {
+        /* FIXME #101: super not implemented; subclasses must do implementation themselves; 
+           the constructor must not be defined here (for the sake of AS3).  */
+        /*
         function ABCTrait(name, kind) {
             this.name = name;
             this.kind = kind;
         }
+        */
 
-        function addMetadata(n) {
-            metadata.push(n);
-            return metadata.length-1;
+        public function addMetadata(n) {
+            return metadata.push(n)-1;
         }
 
-        function inner_serialize(bs) {
+        public function inner_serialize(bs) {
             throw "ABSTRACT";
         }
 
-        function serialize(bs) {
+        public function serialize(bs) {
             if (metadata.length > 0)
                 kind |= ATTR_Metadata;
             bs.uint30(name);
@@ -465,20 +468,30 @@ package es4
             }
         }
 
-        private var name, kind, metadata = [];
+        /*FIXME #101: super not implemented, so subclasses must initialize
+          these directly.  They should be private, and there should be
+          an initializer for metadata initializing it to an empty array. */
+        /*FIXME #102: They should be protected for the workaround, but
+          protected is not implemented either. */
+        public var name, kind, metadata;
     }
 
-    class ABCSlotTrait extends ABCTrait
+    public class ABCSlotTrait extends ABCTrait
     {
         function ABCSlotTrait(name, attrs, slot_id=0, type_name=0, vindex=0, vkind=0) {
-            super(name, (attrs << 4) | TRAIT_Slot);
+            /*FIXME #101: super not implemented*/
+            //super(name, (attrs << 4) | TRAIT_Slot);
+            this.name = name;
+            this.kind = (attrs << 4) | TRAIT_Slot;
+            this.metadata = [];
+            //End of fixme
             this.slot_id = slot_id;
             this.type_name = type_name;
             this.vindex = vindex;
             this.vkind = vkind;
         }
 
-        override function inner_serialize(bs) {
+        override public function inner_serialize(bs) {
             bs.uint30(slot_id);
             bs.uint30(type_name);
             bs.uint30(vindex);
@@ -489,16 +502,21 @@ package es4
         private var slot_id, type_name, vindex, vkind;
     }
 
-    class ABCOtherTrait extends ABCTrait
+    public class ABCOtherTrait extends ABCTrait
     {
         /* TAG is one of the TRAIT_* values, except TRAIT_Slot */
         function ABCOtherTrait(name, attrs, tag, id, val) {
-            super(name, (attrs << 4) | tag);
+            /*FIXME #101: super not implemented*/
+            //super(name, (attrs << 4) | tag);
+            this.name = name;
+            this.kind = (attrs << 4) | tag;
+            this.metadata = [];
+            //End of fixme
             this.id = id;
             this.val = val;
         }
 
-        override function inner_serialize(bs) {
+        override public function inner_serialize(bs) {
             bs.uint30(id);
             bs.uint30(val);
         }
@@ -506,18 +524,17 @@ package es4
         private var id, val;
     }
 
-    class ABCClassInfo
+    public class ABCClassInfo
     {
-        function setCInit(cinit) {
+        public function setCInit(cinit) {
             this.cinit = cinit;
         }
 
-        function addTrait(t) {
-            traits.push(t);
-            return traits.length-1;
+        public function addTrait(t) {
+            return traits.push(t)-1;
         }
 
-        function serialize(bs) {
+        public function serialize(bs) {
             assert( cinit != undefined );
             bs.uint30(cinit);
             bs.uint30(traits.length);
@@ -528,22 +545,21 @@ package es4
         private var cinit, traits = [];
     }
 
-    class ABCScriptInfo
+    public class ABCScriptInfo
     {
         function ABCScriptInfo(init=undefined) {
             this.init = init;
         }
 
-        function setInit(init) {
+        public function setInit(init) {
             this.init = init;
         }
 
-        function addTrait(t) {
-            traits.push(t);
-            return traits.length-1;
+        public function addTrait(t) {
+            return traits.push(t)-1;
         }
 
-        function serialize(bs) {
+        public function serialize(bs) {
             assert( init != undefined );
             bs.uint30(init);
             bs.uint30(traits.length);
@@ -554,28 +570,26 @@ package es4
         private var init, traits = [];
     }
 
-    class ABCMethodBodyInfo
+    public class ABCMethodBodyInfo
     {
         function ABCMethodBodyInfo(method) {
             this.method = method;
         }
-        function setMaxStack(ms) { max_stack = ms }
-        function setLocalCount(lc) { local_count = lc }
-        function setInitScopeDepth(sd) { init_scope_depth = sd }
-        function setMaxScopeDepth(msd) { max_scope_depth = msd }
-        function setCode(insns) { code = insns }
+        public function setMaxStack(ms) { max_stack = ms }
+        public function setLocalCount(lc) { local_count = lc }
+        public function setInitScopeDepth(sd) { init_scope_depth = sd }
+        public function setMaxScopeDepth(msd) { max_scope_depth = msd }
+        public function setCode(insns) { code = insns }
 
-        function addException(exn) {
-            exceptions.push(exn);
-            return exceptions.length-1;
+        public function addException(exn) {
+            return exceptions.push(exn)-1;
         }
 
-        function addTrait(t) {
-            traits.push(t);
-            return traits.length-1;
+        public function addTrait(t) {
+            return traits.push(t)-1;
         }
 
-        function serialize(bs) {
+        public function serialize(bs) {
             assert( max_stack != undefined && local_count != undefined );
             assert( init_scope_depth != undefined && max_scope_depth != undefined );
             assert( code != undefined );
@@ -599,7 +613,7 @@ package es4
         private var method, max_stack, local_count, max_scope_depth, code;
     }
 
-    class ABCException 
+    public class ABCException 
     {
         function ABCException(first_pc, last_pc, target_pc, exc_type=0, var_name=0) {
             this.first_pc = first_pc;
@@ -609,7 +623,7 @@ package es4
             this.var_name = var_name;
         }
 
-        function serialize(bs) {
+        public function serialize(bs) {
             bs.uint30(first_pc);
             bs.uint30(last_pc);
             bs.uint30(target_pc);
@@ -618,108 +632,5 @@ package es4
         }
 
         private var first_pc, last_pc, target_pc, exc_type, var_name;
-    }
-
-    function testABCConstantPool() {
-        print("--------------------------------------------");
-        print("Testing ABCConstantPool");
-        print("");
-            
-        var cp = new ABCConstantPool;
-
-        // Sharing working OK?
-        var a = cp.int32(37);
-        var b = cp.int32(37);
-        assert( a == b );
-
-        var a = cp.uint32(37);
-        var b = cp.uint32(37);
-        assert( a == b );
-
-        var a = cp.float64(1.0);
-        var b = cp.float64(1.0);
-        assert( a == b );
-
-        var a = cp.stringUtf8("foo");
-        var b = cp.stringUtf8("foo");
-        var s = a;
-        assert( a == b );
-        var k = cp.stringUtf8("x");
-
-        var a = cp.namespace(CONSTANT_PackageInternalNS, k);
-        var b = cp.namespace(CONSTANT_PackageInternalNS, k);
-        assert( a == b );
-        cp.namespace(CONSTANT_ProtectedNamespace, s);
-        var c = cp.namespace(CONSTANT_ProtectedNamespace, k);
-
-        var nsa = a;
-        var nsc = c;
-
-        var nss = cp.namespaceset([nsa,nsc]);
-
-        cp.QName(nsa, s);
-        cp.QName(nsa, s, true);
-
-        cp.RTQName(s);
-        cp.RTQName(s, true);
-
-        cp.RTQNameL();
-        cp.RTQName(true);
-
-        cp.Multiname(nss, k);
-        cp.Multiname(nss, k, true);
-
-        cp.MultinameL(nss);
-        cp.MultinameL(nss, true);
-
-        var bytes = new ABCByteStream;
-        cp.serialize(bytes);
-        dumpByteStream( bytes );
-    }
-
-    public function testABCFile() {
-        testABCConstantPool();
-
-        var f = new ABCFile;
-        var cp = new ABCConstantPool;
-        f.addConstants(cp);
-        var m = f.addMethod(new ABCMethodInfo(cp.stringUtf8("foo"), 
-                                               [cp.Multiname(cp.namespaceset([cp.namespace(CONSTANT_ProtectedNamespace, 
-                                                                                            cp.stringUtf8("bar"))]),
-                                                             cp.stringUtf8("baz"))],
-                                               0,
-                                               0,
-                                               [],
-                                               [cp.stringUtf8("x")]));
-
-        f.addMetadata(new ABCMetadataInfo(cp.stringUtf8("meta"), 
-                                          [{key: cp.stringUtf8("fnord"), value: cp.stringUtf8("foo")}]));
-        var cl = new ABCClassInfo();
-        var cli = f.addClass(cl);
-        cl.setCInit(0);
-
-        var ii = new ABCInstanceInfo(cp.stringUtf8("foo"),
-                                     0,
-                                     0,
-                                     0,
-                                     []);
-        f.addInstance(ii);
-        ii.setIInit(0);
-        ii.addTrait(new ABCSlotTrait(cp.stringUtf8("x"), 0));
-        ii.addTrait(new ABCOtherTrait(cp.stringUtf8("y"), 0, TRAIT_Class, 0, cli));
-
-        var sc = new ABCScriptInfo;
-        f.addScript(sc);
-        sc.setInit(0);
-
-        var mb = new ABCMethodBodyInfo(0);
-        f.addMethodBody(mb);
-        mb.setMaxStack(0);
-        mb.setLocalCount(0);
-        mb.setInitScopeDepth(0);
-        mb.setMaxScopeDepth(0);
-        mb.setCode({ "serialize": function (bs) {}, "length": 0 });
-        
-        f.getBytes();
     }
 }

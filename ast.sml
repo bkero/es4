@@ -380,7 +380,6 @@ datatype PRAGMA =
        | LiteralContextualDecimal of string        (* Should be erased after defn time. *)
        | LiteralContextualDecimalInteger of string (* Should be erased after defn time. *)
        | LiteralContextualHexInteger of string     (* Should be erased after defn time. *)
-       | LiteralContextualOctInteger of string     (* Should be erased after defn time. *)
        | LiteralDouble of Real64.real
        | LiteralDecimal of Decimal.DEC
        | LiteralInt of Int32.int

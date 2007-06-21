@@ -907,6 +907,47 @@ val pow = binaryDoubleFn (fn (a,b) =>
                              else
                                  Math.pow (a,b))
 
+
+(* Takes a double and 0u or 1u and returns the high part
+ * (sign+expt+high bits of significand) or low part (low 32 bits of
+ * significand), respectively, as an unsigned integer.
+ *
+ * Uses LargeInt, among other things.  There is an optional library
+ * in SML for unpacking doubles (PackReal), but it's not supported 
+ * by SML/NJ from what I can tell.
+ *
+ * This function is here to support ESC, but it is generally useful
+ * and it should probably be added to the standard set of builtins.
+ *)
+fun explodeDouble (regs:Mach.REGS)
+                  (vals:Mach.VAL list)
+    : Mach.VAL =
+    let val p1 = nthAsDouble vals 0
+        val p2 = nthAsUInt vals 1
+        val r  = Real64.toManExp p1
+        val k  = Real64.toLargeInt IEEEReal.TO_ZERO ((#man r) * 9007199254740992.0)
+        fun assemble hi lo =
+            Word32.orb(Word32.<<(Word32.fromLargeInt hi, 0w16), Word32.fromLargeInt lo)
+
+    in
+        Eval.newUInt(if p2 = 0w0 then
+                         let val hi_lo    = IntInf.andb(IntInf.~>>(k, 0w32), IntInf.fromInt 65535)
+                             val sign_exp = IntInf.orb(IntInf.fromInt(if p1 < 0.0 then 2048 else 0),
+                                                       IntInf.fromInt((#exp r) + 1022))
+                             val hi_hi    = IntInf.orb(IntInf.<<(sign_exp, 0w4),
+                                                       IntInf.andb(IntInf.~>>(k, 0w48), IntInf.fromInt 63))
+                         in
+                             assemble hi_hi hi_lo
+                         end
+                     else
+                         let val lo_lo = IntInf.andb(k, IntInf.fromInt 65535)
+                             val lo_hi = IntInf.andb(IntInf.~>>(k, 0w16), IntInf.fromInt 65535)
+                         in
+                             assemble lo_hi lo_lo
+                         end)
+    end
+
+
 (* Some helpers not specified in the wiki at the moment. Maybe get rid
  * of them eventually? *)
 
@@ -959,7 +1000,19 @@ fun readFile (regs:Mach.REGS)
     in
         Eval.newString (Ustring.fromString(str))
     end
-    
+
+fun writeFile (regs:Mach.REGS)
+              (vals:Mach.VAL list)
+    : Mach.VAL =
+    let val s        = Ustring.toAscii (nthAsUstr vals 0)
+        val filename = Ustring.toFilename (nthAsUstr vals 1)
+        val out      = TextIO.openOut filename
+    in
+        TextIO.output(out, s);
+        TextIO.closeOut out;
+        Mach.Undef
+    end
+
 fun assert (regs:Mach.REGS) 
            (vals:Mach.VAL list) 
     : Mach.VAL = 
@@ -1197,6 +1250,8 @@ fun registerNatives _ =
         addFn 1 Name.intrinsic_print print;
         addFn 1 Name.intrinsic_load load;
         addFn 1 Name.intrinsic_readFile readFile;
+        addFn 2 Name.intrinsic_writeFile writeFile;
+        addFn 1 Name.intrinsic_explodeDouble explodeDouble;
         addFn 1 Name.intrinsic_assert assert;
         addFn 1 Name.intrinsic_typename typename;
         addFn 1 Name.intrinsic_dumpFunc dumpFunc;

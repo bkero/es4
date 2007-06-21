@@ -346,6 +346,19 @@ namespace Ast
     class LogicalNot {}
     class Type {}
 
+    var deleteOp = new Delete;
+    var voidOp = new Void;
+    var typeOfOp = new Typeof;
+    var preIncrOp = new PreIncr;
+    var preDecrOp = new PreDecr;
+    var postIncrOp = new PostIncr;
+    var postDecrOp = new PostDecr;
+    var unaryPlusOp = new UnaryPlus;
+    var unaryMinusOp = new UnaryMinus;
+    var bitwiseNotOp = new BitwiseNot;
+    var logicalNotOp = new LogicalNot;
+    var typeOp = new Type;
+
     // EXPR
     
     type EXPR = 
@@ -468,14 +481,21 @@ namespace Ast
     }
 
     class NewExpr {
-        const ctor : EXPR;
+        const func : EXPR;
         const args : [EXPR];
+        function NewExpr (func,args)
+            : func = func
+            , args = args {}
     }
 
     class ObjectRef {
         const base : EXPR;
         const ident : IDENT_EXPR;
-        const pos : POS;
+        const pos : POS?;
+        function ObjectRef (base,ident,pos=null)
+            : base = base
+            , ident = ident
+            , pos = pos { }
     }
 
     class LexicalRef {
@@ -655,11 +675,13 @@ namespace Ast
     class LiteralDouble {
         const doubleValue : double;
         function LiteralDouble (doubleValue)
-            : doubleValue=doubleValue {}
+            : doubleValue=doubleValue { }
     }
 	
     class LiteralDecimal {
-        const decimalValue : decimal;
+        const decimalValue : string;
+        function LiteralDecimal (str : string)
+            : decimalValue = str { }  // FIXME: convert from string to decimal
     }
 
     class LiteralInt {
@@ -676,6 +698,8 @@ namespace Ast
 	
     class LiteralString {
         const strValue : String;
+        function LiteralString (strValue) 
+            : strValue = strValue {}
     }
 	
     class LiteralArray {
@@ -1184,13 +1208,13 @@ namespace Ast
         const pragmas: [PRAGMA];
         const defns: [DEFN];
         const head: HEAD?;
-        const body: [STMT];
+        const stmts: [STMT];
         const pos: POS?;
-        function Block (pragmas,defns,head,body,pos)
+        function Block (pragmas,defns,head,stmts,pos)
             : pragmas = pragmas
             , defns = defns
             , head = head
-            , body = body
+            , stmts = stmts
             , pos = pos { }
     }
 

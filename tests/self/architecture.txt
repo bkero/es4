@@ -1,5 +1,27 @@
 Overall description of ESC / architecture notes.
 
+
+Language and other constraints.
+
+ESC is implemented in a subset of ES4 that will run on the AVM2 (as
+shipped with FP9), and it will generate code for that same AVM2 --
+thus it can self-compile.
+
+The ES4 subset is as follows (note, this list also serves as a spec
+for ASC updates, so it needs to be complete):
+
+  * Anything that is handled by the parser by rewriting:
+     - destructuring
+     - use default namespace X
+     - toplevel namespaces
+     - switch type
+  * Let statement forms (let-as-better-var)
+  * Let-block (rewrites as let-as-better-var)
+  * "String", "Number" primitive types (as opposed to "string", "number"),
+    though in general try to avoid using primitive type names whenever
+    possible.
+
+
 Front end.
 
 The front end has the following parts:
@@ -52,7 +74,7 @@ Back end.
 
 The back end has the following levels, top to bottom:
 
-  - AST consumer (emitter.es)
+  - AST consumer (cogen.es, emitter.es)
   - instruction macros, pasteup, temps, ... (assembler.es)
   - ABC data structure emitters (abcfile.es)
   - byte-stream abstraction (bytestream.es)
@@ -66,3 +88,48 @@ correct decodings.
 The final byte array representing the ABCFile is obtained by calling
 getBytes() on the ABCFile instance; this byte stream is in some
 platform dependent format (currently flash.utils.ByteArray).
+
+
+Supporting ES4 phrases on the AVM2.
+
+Some ES4 phrases do not have a natural mapping to the AVM2 but are
+used extensively in the RI.  Here's a short list of how some of these
+might be managed.
+
+* "let"
+
+Many uses of "let" can be handled by alpha-converting the program and
+turning "let" bindings into "var" bindings.  However, if closures are
+created within the scope of a "let", or there is a "with" statement or
+a use of "eval", renaming won't work.  Closure creation require the
+creation of a fresh variable every time the let scope is entered, and
+"with" defies any renaming.
+
+For these cases we observe that exception handlers already behave in a
+let-like way and that the "newcatch" instruction in the AVM2 can be
+used to create and push a scope containing a single fresh binding.  We
+require that there be an exception_info structure containing the name
+of that variable and that this exception_info should probably
+reference some instruction that won't be executed so that there's no
+chance of it being used.
+
+For example:
+
+  let (a = 1) a+1
+
+becomes
+
+  newcatch <x,x,L0,0,"a">
+  pushscope
+  findpropstrict "a"
+  getproperty "a"
+  pushbyte 1
+  add
+  popscope
+  ...
+L0
+  returnvoid
+
+where x is the address of some innocuous instruction, I like to use
+the getlocal_0 that starts every method and is therefore at offset 0
+(easy to cope with).

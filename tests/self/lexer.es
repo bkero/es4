@@ -507,12 +507,12 @@ namespace Token
     
     class Token 
     {
-        var kind
-        var utf8id
+        var kind;
+        var utf8id;
         function Token(kind,utf8id)
+            : kind = kind
+            , utf8id = utf8id
         {
-            this.kind = kind
-            this.utf8id = utf8id
         }
 
         function tokenText () : String
@@ -648,6 +648,7 @@ namespace Token
             var tok : Token = tokenStore[tid];
             var text = tok.tokenText();
         }
+        // print("tokenText: ",tid,", ",text);
         return text;
     }
 
@@ -1893,7 +1894,6 @@ namespace Lexer
                 print("tokenList.length=",list.length);
                 while (list.length > 0) {
                     tk=list.pop();
-                    print(" ",Token::tokenText(tk));
                     if (tk == Token::BREAK) {
 			if (testCases.length == 0) {   // if last test, then scan for regexps
                             list = scan.tokenList (scan.regexp);

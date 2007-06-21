@@ -40,25 +40,6 @@
 //use module ast_encoder "tests/self/ast_encoder.es";
 //use module lexer "tests/self/lexer.es";
 
-//module debug 
-{
-    use namespace intrinsic;
-
-    namespace Debug;
-    namespace Release;
-
-    Debug function enter (s,a) {
-        print (">> ", s, a);
-    }
-
-    Debug function exit (s,a) {
-        print ("<< ", s, a);
-    }
-
-    Release function enter (...) { }
-    Release function exit (...) { }
-} // end module debug
-
 //module parser
 {
     use namespace intrinsic;
@@ -67,7 +48,7 @@
 
 {
     use default namespace Parser;
-    use namespace Debug;
+    use namespace Release;
 
     class Parser 
     {
@@ -99,7 +80,7 @@
         }
 
         function eat (ts,tc) {
-            print("eating",Token::tokenText(tc));
+            // print("eating",Token::tokenText(tc));
             let tk = hd (ts);
             if (tk === tc) {
                 return tl (ts);
@@ -123,6 +104,10 @@
         function tl (ts:TOKENS) : TOKENS ts.slice (1,ts.length);
 
         // Parse rountines
+
+        type BETA = int;  // NoIn, AllowIn
+        type TAU = int;   // NoExpr, AllowExpr
+        type OMEGA = int; // Abbrev, Full
 
         /*
         Identifier    
@@ -195,10 +180,10 @@
             case Token::Use:
             case Token::Xml:
             case Token::Yield:
-                var str = Token::tokenText (hd (ts));
+                var str = Token::tokenText (ts[0]);
                 break;
             default:
-                throw "expecting identifier, found " + Token::tokenText (hd (ts));
+                throw "expecting identifier, found " + Token::tokenText (ts[0]);
             }
             exit ("Parser::identifier ", str);
             return [tl (ts), new Ast::Identifier (str)];
@@ -228,11 +213,11 @@
                 break;
             case Token::Mult:
             case Token::Identifier:
-                let id = Token::tokenText (hd(ts));
+                let id = Token::tokenText (ts[0]);
                 var [ts1,nd1] = [tl (ts), id];
                 break;
             default:
-                throw "invalid qualifier";
+                throw "invalid qualifier ";
             }
 
             exit("Parser::qualifier ",nd1);
@@ -301,7 +286,7 @@
                     break;
                 case Token::StringLiteral:
                 case Token::DecimalLiteral:
-                    let str = Token::tokenText (hd (ts1));
+                    let str = Token::tokenText (ts1[0]);
                     var [ts2,nd2] = [tl(ts1), new Ast::Identifier (str)];
                     var [ts3,nd3] = [ts1, new Ast::QualifiedIdentifier (nd1,nd2)];
                     break;
@@ -360,9 +345,9 @@
                 ParenListExpression :: QualifiedName
         */
         
-//        function xpressionQualifiedIdentifier()
+//        function expressionQualifiedIdentifier()
 //        {
-//            Debug::enter("parseExpressionQualifiedIdentifier")
+//            enter("parseExpressionQualifiedIdentifier")
 // 
 //            var first = parseParenListExpression()
 //            match(doublecolon_token)
@@ -377,7 +362,7 @@
 //                var result = <QualifiedIdentifier><Qualifier>{first}</Qualifier>{second}</QualifiedIdentifier>
 //            }
 //
-//            Debug::exit("parseExpressionQualifiedIdentifier",result)
+//            exit("parseExpressionQualifiedIdentifier",result)
 //            return result
 //        }
 //
@@ -413,7 +398,7 @@
 //        
 //        function parseAttributeIdentifier()
 //        {
-//            Debug::enter("parseAttributeIdentifier")
+//            enter("parseAttributeIdentifier")
 //
 //            match(at_token)
 //            if( lookahead(leftbracket_token) )
@@ -426,7 +411,7 @@
 //            }
 //            result.@is_attr="true"
 //
-//            Debug::exit("parseAttributeIdentifier",result)
+//            exit("parseAttributeIdentifier",result)
 //            return result
 //        }
 //
@@ -471,10 +456,12 @@
 
             var ts1, nd1;
             switch (hd (ts)) {
+/*  FIXME: this is a grammar bug
             case Token::LeftParen:
                 var [ts1,nd1] = typeExpression (tl (ts));
                 ts1 = eat (ts1,Token::RightParen);
                 break;
+*/
             default:
                 var [ts1,nd1] = nonAttributeQualifiedName (ts);
             }
@@ -559,8 +546,8 @@
             case Token::Identifier:
                 switch (hd (tl (ts))) {
                 case Token::Dot:
-                    var temp = nd.concat(Token::tokenText(ts[0]));
-                    var [ts1,nd1] = path (tl (tl (ts)), temp);
+                    nd.push(Token::tokenText(ts[0]));
+                    var [ts1,nd1] = path (tl (tl (ts)), nd);
                     break;
                 default:
                     var [ts1,nd1] = [ts,nd];
@@ -601,9 +588,22 @@
 //        {
 //        }
 //                
+        function parenExpression (ts: TOKENS)
+            : [TOKENS, Ast::EXPR]
+        {
+            enter("Parser::parenExpression ", ts);
+
+            var ts1 = eat (ts,Token::LeftParen);
+            var [ts2,ndx] = assignmentExpression (ts1, AllowIn);
+            var tsx = eat (ts2,Token::RightParen);
+
+            exit ("Parser::parenExpression ", tsx);
+            return [tsx, ndx];
+        }
+
 //        function parseParenExpression()
 //        {
-//            Debug::enter("parseParenExpression")
+//            enter("parseParenExpression")
 //
 //            enterSlashContext(regexpliteral_token)
 //            match(leftparen_token);
@@ -611,13 +611,26 @@
 //            exitSlashContext(regexpliteral_token)
 //            match(rightparen_token)
 // 
-//            Debug::exit("parseParenExpression",result)
+//            exit("parseParenExpression",result)
 //            return result
 //        }
 //
+        function parenListExpression (ts: TOKENS)
+            : [TOKENS, [Ast::EXPR]]
+        {
+            enter("Parser::parenListExpression ", ts);
+
+            var ts1 = eat (ts,Token::LeftParen);
+            var [ts2,ndx] = listExpression (ts1, AllowIn);
+            var tsx = eat (ts2,Token::RightParen);
+
+            exit ("Parser::parenListExpression ", tsx);
+            return [tsx, ndx];
+        }
+
 //        function parseParenListExpression()
 //        {
-//            Debug::enter("parseParenListExpression")
+//            enter("parseParenListExpression")
 //
 //            enterSlashContext(regexpliteral_token)
 //            match( leftparen_token ); 
@@ -625,7 +638,7 @@
 //            exitSlashContext(regexpliteral_token)
 //            match( rightparen_token )
 //
-//            Debug::exit("parseParenListExpression",result)
+//            exit("parseParenListExpression",result)
 //            return result
 //        }
 //
@@ -638,7 +651,7 @@
 //        
 //        function parseParenListOrExpressionQualifiedIdentifier()
 //        {
-//            Debug::enter("parseParenListOrExpressionQualifiedIdentifier")
+//            enter("parseParenListOrExpressionQualifiedIdentifier")
 //
 //            var first = parseParenListExpression()
 //            if( lookahead(doublecolon_token) )
@@ -660,316 +673,16 @@
 //                var result = first
 //            }
 //
-//            Debug::exit("parseParenListOrExpressionQualifiedIdentifier",result)
+//            exit("parseParenListOrExpressionQualifiedIdentifier",result)
 //            return result
 //        }
 //
-//
-//        /*
-//        
-//        FunctionCommon    
-//            FunctionSignature
-//            FunctionSignature Block
-//        
-//        */
-//
-//        function parseFunctionCommon(first)
-//        {
-//            Debug::enter("parseFunctionCommon",first)
-//            
-//            var prologue = <Prologue/>
-//            var second = parseFunctionSignature(prologue)
-//
-//            if( !inInterfaceBody() )
-//            {
-//                slot_context_stack.push("function")            
-//                var third = parseBlockStatement();
-//                slot_context_stack.pop()
-//                prologue.* += third.Prologue.*          
-//                var block = third.Block
-//            }
-//            else
-//            {
-//                var block = <></>
-//            }
-//
-//            var node = <Function>{first}{second}{prologue}{block}</Function>
-//
-//            if( !inClassBody() )
-//            {
-//                node.@factory = "true"
-//            }
-//            
-//            Debug::exit("parseFunctionCommon",node)
-//            return node
-//        }
-//
-//        /*
-//    
-//        FunctionSignature    
-//            TypeParameters  (  Parameters  )  Result
-//    
-//        */
-//
-//        function parseFunctionSignature(prologue)
-//        {
-//            Debug::enter("parseFunctionSignature")
-//
-//            var first = parseTypeParameters()
-//            match(leftparen_token) 
-//            var second = parseParameters(prologue)
-//            match(rightparen_token)
-//            var third = parseResultType()
-//            var result = <Signature>{first}{second}{third}</Signature>
-//
-//            Debug::exit("parseFunctionSignature",result)
-//            return result
-//        }
-//
-//        /*
-//
-//        TypeParameters    
-//            empty
-//            .<  TypeParameterList  >  
-//
-//        */
-//
-//        function parseTypeParameters()
-//        {
-//            if( lookahead(leftdotangle_token) )
-//            {
-//                match(leftdotangle_token)
-//                var first = parseTypeParameterList()
-//                var result = <TypeParameters>{first}</TypeParameters>
-//                match(greaterthan_token)
-//            }
-//            else
-//            {
-//                var result = <TypeParameters/>
-//            }
-//
-//            return result
-//        }
-//
-//        /*
-//
-//        TypeParameterList
-//            Identifier
-//            Identifier  ,  TypeParameterList
-//
-//        */
-//
-//        function parseTypeParameterList()
-//        {
-//            Debug::enter("parseTypeParameterList")
-//            
-//            var list = <></>
-//            list += parseIdentifier()
-//            while( lookahead(comma_token) )
-//            {
-//                match(comma_token)
-//                list += parseIdentifier()
-//            }
-//            var result = list
-//
-//            Debug::exit("parseTypeParameterList",result)
-//            return result
-//        }
-//        
-//        /*
-//
-//        */
-//
-//        function parseParameters(prologue)
-//        {
-//            Debug::enter("parseParameters")
-//
-//            if( lookahead(rightparen_token) )
-//            {
-//                var result = <Parameters/>
-//            }
-//            else
-//            {
-//                var result = parseNonemptyParameters(<></>,prologue)
-//            }
-//
-//            Debug::exit("parseParameters",result)
-//            return result
-//        }
-//
-//        /*
-//
-//        NonemptyParameters    
-//            ParameterInit
-//            ParameterInit  ,  NonemptyParameters
-//            RestParameters
-//        
-//        */
-//
-//		function isLet(node)
-//		{
-//			if( node.localName() == "LetExpression" ||
-//				node.localName() == "YieldExpression" && node.*.length() > 0 ||
-//				node.localName() == "ConditionalExpression" && isLet(node.*[2]) )
-//			{
-//				return true
-//			}
-//			return false
-//		}
-//
-//        function parseNonemptyParameters(first,prologue)
-//        {
-//            Debug::enter("parseNonemptyParameters",first)
-//
-//            if( lookahead(tripledot_token) )
-//            {
-//                first += parseRestParameter()
-//                var result = first
-//            }
-//            else 
-//            {
-//                first += parseParameterInit(prologue)
-//                if( lookahead(comma_token) )
-//                {
-//					if( isLet(first) )
-//					{
-//						throw "ambiguous syntax, use parens to associate"
-//					}
-//                    match(comma_token)
-//                    var result = parseNonemptyParameters(first,prologue)
-//                }
-//                else
-//                {
-//                    var result = first
-//                }
-//            }
-//
-//            Debug::exit("parseNonemptyParameters",result)
-//            return result
-//        }
-//
-//        /*
-//
-//        ParameterInit    
-//            Parameter
-//            Parameter  =  NonAssignmentExpressionallowIn
-//
-//        */
-//
-//        function parseParameterInit(prologue)
-//        {
-//            Debug::enter("parseParameterInit")
-//
-//            if( lookahead(const_token) )
-//            {
-//                var kind = match(const_token);
-//            }
-//            else
-//            {
-//                var kind = var_token;
-//            }
-//
-//            var typedid = parseTypedIdentifier(allowIn_mode)
-//
-//            var result = <Parameter kind={scan.tokenText(kind)}>{typedid}</Parameter>
-//
-//            if( lookahead(assign_token) )
-//            {
-//                match(assign_token);
-//                var init = parseNonAssignmentExpression(allowIn_mode);
-//                result.Init = init
-//            }
-//
-//            var temp = makeBinding(<Attributes><parameter/></Attributes>,var_token,typedid,init,prologue)
-//
-//            Debug::exit("parseParameterInit",result)
-//            return result
-//        }
-//
-//        /*
-//
-//        */
-//
-//        function parseParameter()
-//        {
-//            Debug::enter("parseParameter")
-//
-//            Debug::exit("parseParameter",result)
-//            return result
-//        }
-//
-//        /*
-//
-//        RestParameter    
-//            ...
-//            ...  ParameterAttributes Identifier
-//
-//        */
-//
-//        function parseRestParameter()
-//        {
-//            Debug::enter("parseRestParameter")
-//
-//            match(tripledot_token)
-//            if( lookahead(const_token) )
-//            {
-//                var first = match(const_token);
-//            }
-//            else
-//            {
-//                var first = var_token;
-//            }
-//
-//            var second = parseIdentifier()
-//            var result = <RestParameter kind={scan.tokenText(first)}>{second}</RestParameter>
-//
-//            Debug::exit("parseRestParameter",result)
-//            return result
-//        }
-//
-//        /*
-//
-//        ResultType    
-//            empty
-//            :  void
-//            :  TypeExpression
-//
-//        */
-//
-//        function parseResultType()
-//        {
-//            Debug::enter("parseResultType")
-//
-//            if( lookahead(colon_token) )
-//            {
-//                match(colon_token)
-//                if( lookahead(void_token) )
-//                {
-//                    match(void_token)
-//                    var first = <Void/>
-//                }
-//                else
-//                {
-//                    var first = parseTypeExpression()
-//                }
-//                var result = <ResultType>{first}</ResultType>
-//            }
-//            else
-//            {
-//                var result = <ResultType/>
-//            }
-//
-//            Debug::exit("parseResultType",result)
-//            return result
-//        }
-//
-//        /*
 //
 //        */
 //
 //        function parseObjectLiteral()
 //        {
-//            Debug::enter("parseObjectLiteral")
+//            enter("parseObjectLiteral")
 //
 //            enterSlashContext(regexpliteral_token)
 //            match(leftbrace_token)
@@ -985,7 +698,7 @@
 //            match(rightbrace_token)
 //            var result = <LiteralObject>{first}</LiteralObject>
 //
-//            Debug::exit("parseObjectLiteral",result)
+//            exit("parseObjectLiteral",result)
 //            return result
 //        }
 //
@@ -995,7 +708,7 @@
 //
 //        function parseFieldListPrime(first)
 //        {
-//            Debug::enter("parseFieldListPrime",first)
+//            enter("parseFieldListPrime",first)
 //
 //            if( lookahead(comma_token) )
 //            {
@@ -1012,7 +725,7 @@
 //                var result = first
 //            }
 //
-//            Debug::exit("parseFieldListPrime",result)
+//            exit("parseFieldListPrime",result)
 //            return result
 //        }
 //
@@ -1025,14 +738,14 @@
 //
 //        function parseLiteralField()
 //        {
-//            Debug::enter("parseLiteralField")
+//            enter("parseLiteralField")
 //
 //            var first = parseFieldName()
 //            match(colon_token)
 //            var second = parseAssignmentExpression(allowIn_mode)
 //            var result = <LiteralField>{first}{second}</LiteralField>
 //
-//            Debug::exit("parseLiteralField",result)
+//            exit("parseLiteralField",result)
 //            return result
 //        }
 //
@@ -1050,7 +763,7 @@
 //
 //        function parseFieldName()
 //        {
-//            Debug::enter("parseFieldName")
+//            enter("parseFieldName")
 //        
 //            if( lookahead(stringliteral_token) )
 //            {
@@ -1074,7 +787,7 @@
 //                var result = parseNonAttributeQualifiedIdentifier();
 //            }
 //
-//            Debug::exit("parseFieldName",result)
+//            exit("parseFieldName",result)
 //            return result
 //        }
 //
@@ -1096,7 +809,7 @@
 //
 //        function parseArrayLiteral()
 //        {
-//            Debug::enter("parseArrayLiteral")
+//            enter("parseArrayLiteral")
 //
 //            enterSlashContext(regexpliteral_token)
 //            match(leftbracket_token)
@@ -1113,13 +826,13 @@
 //            match(rightbracket_token)
 //            var result = <LiteralArray>{first}</LiteralArray>
 //
-//            Debug::exit("parseArrayLiteral",result)
+//            exit("parseArrayLiteral",result)
 //            return result
 //        }
 //
 //        function parseElementListPrime(first)        
 //        {
-//            Debug::enter("parseElementListPrime",first)
+//            enter("parseElementListPrime",first)
 //
 //            while( lookahead(comma_token) )
 //            {
@@ -1140,13 +853,13 @@
 //            }
 //            var result = first
 //
-//            Debug::exit("parseElementListPrime",result)
+//            exit("parseElementListPrime",result)
 //            return result
 //        }
 //
 //        function parseLiteralElement()
 //        {
-//            Debug::enter("parseLiteralElement")
+//            enter("parseLiteralElement")
 //
 //            if( lookahead(comma_token) )
 //            {
@@ -1162,7 +875,7 @@
 //                var result = parseAssignmentExpression(allowIn_mode)
 //            }
 //
-//            Debug::exit("parseLiteralElement",result)
+//            exit("parseLiteralElement",result)
 //            return result
 //        }
 //
@@ -1189,28 +902,28 @@
         function primaryExpression(ts:TOKENS)
             : [TOKENS,Ast::EXPR]
         {
-            Debug::enter("Parser::primaryExpression ",ts);
+            enter("Parser::primaryExpression ",ts);
 
             var ts1, nd1;
 
             switch (hd (ts)) {
             case Token::Null:
-                var [ts1,nd1] = [tl (ts), new LiteralExpr (new LiteralNull ())];
+                var [ts1,nd1] = [tl (ts), new Ast::LiteralExpr (new Ast::LiteralNull ())];
                 break;
             case Token::True:
-                var [ts1,nd1] = [tl (ts), new LiteralExpr (new LiteralBoolean (true))];
+                var [ts1,nd1] = [tl (ts), new Ast::LiteralExpr (new Ast::LiteralBoolean (true))];
                 break;
             case Token::False:
-                var [ts1,nd1] = [tl (ts), new LiteralExpr (new LiteralBoolean (false))];
+                var [ts1,nd1] = [tl (ts), new Ast::LiteralExpr (new Ast::LiteralBoolean (false))];
                 break;
             case Token::DecimalLiteral:
-                var [ts1,nd1] = [tl (ts), new LiteralExpr (new LiteralDecimal (Token::tokenText (hd (ts))))];
+                var [ts1,nd1] = [tl (ts), new Ast::LiteralExpr (new Ast::LiteralDecimal (Token::tokenText (ts[0])))];
                 break;
             case Token::StringLiteral:
-                var [ts1,nd1] = [tl (ts), new LiteralExpr (new LiteralString (Token::tokenText (hd (ts))))];
+                var [ts1,nd1] = [tl (ts), new Ast::LiteralExpr (new Ast::LiteralString (Token::tokenText (ts[0])))];
                 break;
             case Token::This:
-                var [ts1,nd1] = [tl (ts), new ThisExpr ()];
+                var [ts1,nd1] = [tl (ts), new Ast::ThisExpr ()];
                 break;
 //            else
 //            if( lookahead(regexpliteral_token) )
@@ -1228,11 +941,9 @@
 //                }
 //                var result = parseFunctionCommon(first);
 //            }
-//            else
-//            if( lookahead(leftparen_token) )
-//            {
-//                var result = parseParenListOrExpressionQualifiedIdentifier()
-//            }
+            case Token::LeftParen:
+                var [ts1,nd1] = parenListExpression(ts);
+                break;
 //            else
 //            if( lookahead(leftbracket_token) )
 //            {
@@ -1249,7 +960,7 @@
                 break;
             }
 
-            Debug::exit("Parser::primaryExpression ",ts1);
+            exit("Parser::primaryExpression ",ts1);
             return [ts1,nd1];
         }
 
@@ -1264,7 +975,7 @@
 //
 //        function parseSuperExpression()
 //        {
-//            Debug::enter("parseSuperExpression")
+//            enter("parseSuperExpression")
 //
 //            match(super_token)
 //            var first = <SuperExpression/>
@@ -1277,162 +988,62 @@
 //                var result = first
 //            }
 //
-//            Debug::exit("parseSuperExpression",result)
+//            exit("parseSuperExpression",result)
 //            return result
 //        }
 
         /*
 
-        MemberExpression
-            PrimaryExpression
-            new  MemberExpression  Arguments
-            SuperExpression  PropertyOperator
-            MemberExpression  PropertyOperator
-
-        Refactored:
-
-        MemberExpression :    
-            PrimaryExpression MemberExpressionPrime
-            new MemberExpression Arguments MemberExpressionPrime
-            SuperExpression  PropertyOperator  MemberExpressionPrime
-    
-        MemberExpressionPrime :    
-            [ Expression ] MemberExpressionPrime
-            . Identifier MemberExpressionPrime
-            empty
+        PropertyOperator
+            .  ReservedIdentifier
+            .  PropertyName
+            .  AttributeName
+            ..  QualifiedName
+            .  ParenListExpression
+            .  ParenListExpression  ::  QualifiedNameIdentifier
+            Brackets
 
         */
 
-//        function parseMemberExpression()
-//        {
-//            Debug::enter("parseMemberExpression")
-//            
-//            if( lookahead(new_token) )
-//            {   
-//                match(new_token)
-//                var first = parseMemberExpression()
-//                if( lookahead(leftparen_token) )
-//                {
-//                    var first = parseArguments(first)
-//                    if( first.name() == "Call" )
-//                    {
-//                        first.@is_new = true
-//                    }
-//                    else
-//                    {
-//                        first.Call.@is_new = true
-//                    }
-//                    var is_shortnew = false
-//                }
-//                else
-//                {
-//                    if( first.name() == "Get" )
-//                    {
-//                        first.setLocalName("Call")
-//                        first.args = <Args/>
-//                        first.@is_new = true
-//                    }
-//                    else
-//                    {
-//                        first = <Call is_new="true">{first}<Args/></Call>
-//                    }
-//                    var is_shortnew = true
-//                }
-//            }
-//            else
-//            if( lookahead(super_token) )
-//            {
-//                var first = parseSuperExpression()
-//                var first = parsePropertyOperator(first)
-//            }
-//            else
-//            {
-//                var first = parsePrimaryExpression()
-//            }
-//
-//            if( !is_shortnew )
-//            while( lookahead(leftbracket_token) || 
-//                   lookahead(dot_token) || 
-//                   lookahead(doubledot_token) )
-//            {
-//                var first = parsePropertyOperator(first)
-//            }
-//
-//            var result = first
-//            
-//            Debug::exit("parseMemberExpression",result)
-//            return result
-//        }
-//
-//        /*
-//
-//        NewExpression    
-//            MemberExpression
-//            new  NewExpression
-//
-//        */
-//
-//        function parseNewExpression()
-//        {
-//            Debug::enter("parseNewExpression")
-//            
-//            var result = parseMemberExpression()
-//
-//            Debug::exit("parseNewExpression",result)
-//            return result
-//        }
-//
-//        /*
-//
-//        CallExpressionPrime :    
-//            Arguments CallExpressionPrime
-//            [ Expression ] CallExpressionPrime
-//            . Identifier CallExpressionPrime
-//            empty
-//
-//        */
-//
-//        function parseCallExpressionPrime(first)
-//        {
-//            Debug::enter("parseCallExpressionPrime",first)
-//
-//            if( lookahead(leftparen_token) )
-//            {
-//                var second = parseArguments(first)
-//                var result = parseCallExpressionPrime(second)
-//            }
-//            else
-//            if( lookahead(leftbracket_token) || 
-//                lookahead(dot_token) || 
-//                lookahead(doubledot_token) )
-//            {
-//                var second = parsePropertyOperator(first)
-//                var result = parseCallExpressionPrime(second)
-//            }
-//            else
-//            {
-//                var result = first
-//            }
-//
-//            Debug::exit("parseCallExpressionPrime",result)
-//            return result
-//        }
-//
-//        /*
-//
-//        PropertyOperator    
-//            .  QualifiedIdentifier
-//            ..  QualifiedIdentifier
-//            .  ParenListExpression
-//            .  ParenListExpression  ::  PropertyIdentifier
-//            .  ParenListExpression  ::  Brackets
-//            Brackets
-//
-//        */
-//
+        function propertyOperator (ts: TOKENS, nd: Ast::EXPR)
+            : [TOKENS, [Ast::EXPR]]
+        {
+            enter("Parser::propertyOperator ", ts);
+
+            var tsx,ndx;
+            switch (hd (ts)) {
+            case Token::Dot:
+                switch (hd (tl (ts))) {
+                case Token::LeftParen:
+                    throw "filter operator not implemented";
+                    break;
+                default:
+                    //                    if (isReservedIdentifier (hd (ts))) {
+                    //                    }
+                    let [ts1,nd1] = propertyName (tl (ts));
+                    var [tsx,ndx] = [ts1, new Ast::ObjectRef (nd,nd1)];
+                    break;
+                }
+                break;
+            case Token::LeftBracket:
+                let [ts1,nd1] = brackets (ts);
+                var [tsx,ndx] = [ts1, new Ast::ObjectRef (nd,new Ast::ExpressionIdentifier (nd1))];
+                break;
+            case Token::DoubleDot:
+                throw "descendents operator not implemented";
+                break;
+            default:
+                throw "internal error: propertyOperator";
+                break;
+            }
+
+            exit ("Parser::propertyOperator ", tsx);
+            return [tsx, ndx];
+        }
+
 //        function parsePropertyOperator(first)
 //        {
-//            Debug::enter("parsePropertyOperator",first)
+//            enter("parsePropertyOperator",first)
 //
 //            if( lookahead(dot_token) )
 //            {
@@ -1485,7 +1096,7 @@
 //                var result = <Get kind="bracket">{first}{second}</Get>
 //            }
 //
-//            Debug::exit("parsePropertyOperator",result)
+//            exit("parsePropertyOperator",result)
 //            return result
 //        }
 //
@@ -1502,7 +1113,7 @@
 //
 //        function parseBrackets()
 //        {
-//            Debug::enter("parseBrackets")
+//            enter("parseBrackets")
 //            
 //            match(leftbracket_token)
 //            if( lookahead(rightbracket_token) )
@@ -1539,317 +1150,343 @@
 //            match(rightbracket_token);
 //            var result = <Brackets>{first}{second}</Brackets>
 //
-//            Debug::exit("parseBrackets",result)
+//            exit("parseBrackets",result)
 //            return result
 //        }
 //
-//        /*
-//
-//        Arguments    
-//            (  )
-//            (  ListExpressionALLOWIN  )
-//
-//        */
-//
-//        function parseArguments(first)
-//        {        
-//            Debug::enter("parseArguments",first)
-//            
-//            enterSlashContext(regexpliteral_token)
-//            match(leftparen_token);
-//
-//            if( lookahead(rightparen_token) )
-//            {
-//                var second = <></>
-//            }
-//            else
-//            {
-//                var second = parseArgumentList()
-//            }
-//
-//            exitSlashContext(regexpliteral_token)
-//            match(rightparen_token);
-//            if( first.name() == "Get" )
-//            {
-//                first.setLocalName("Call")
-//                first.args = <Args>{second}</Args>
-//            }
-//            else
-//            {
-//                first = <Call>{first}<Args>{second}</Args></Call>
-//            }
-//            var result = first
-//
-//            Debug::exit("parseArguments",result)
-//            return result
-//        }
-//
-//        /*
-//
-//        ArgumentList
-//
-//        */
-//
-//        function parseArgumentList()
-//        {
-//            Debug::enter("parseArgumentList")
-//            
-//            var list = <></>
-//			var first = parseAssignmentExpression(allowIn_mode)
-//            list += <To>{first}<SlotTypeRef/></To>
-//            while( lookahead( comma_token ) )
-//            {
-//				if( isLet(first) )
-//				{
-//					throw "ambiguous syntax, use parens to clarify list association"
-//				}
-//                match( comma_token );
-//                list += <To>{parseAssignmentExpression(allowIn_mode)}<SlotTypeRef/></To>
-//            }
-//            var node = list
-//
-//            Debug::exit("parseArgumentList",node)
-//            return node
-//        }
-//
-//
-//
-//        /*
-//
-//        LeftHandSideExpression    
-//            NewExpression
-//            CallExpression
-//
-//        Refactored:
-//
-//        LeftHandSideExpression    
-//            MemberExpression LeftHandSideExpressionPrime
-//            new NewExpression
-//    
-//        LeftHandSideExpressionPrime    
-//            Arguments CallExpressionPrime
-//            empty
-//
-//        */
-//
-//        function parseLeftHandSideExpression()
-//        {
-//            Debug::enter("parseLeftHandSideExpression")
-//            
-//            if( lookahead(new_token) )
-//            {   
-//                var first = parseNewExpression()
-//            }
-//            else
-//            {
-//                var first = parseMemberExpression()
-//            }
-//
-//            if( lookahead(leftparen_token) )
-//            {   
-//                var first = parseArguments(first)
-//                var result = parseCallExpressionPrime(first)
-//            }
-//            else
-//            {
-//                var result = first
-//            }
-//
-//            Debug::exit("parseLeftHandSideExpression",result)
-//            return result
-//        }
-//
-//        /*
-//
-//        PostfixExpression    
-//            LeftHandSideExpression
-//            LeftHandSideExpression  [no line break]  ++
-//            LeftHandSideExpression  [no line break]  --
-//
-//        */
-//
-//        function parsePostfixExpression()
-//        {
-//            Debug::enter("parsePostfixExpression")
-//
-//            var first = parseLeftHandSideExpression()
-//            if( lookahead(plusplus_token) )
-//            {
-//                match(plusplus_token)
-//                var result = <Postfix kind="increment">{first}</Postfix>
-//            }
-//            else
-//            if( lookahead(minusminus_token) )
-//            {
-//                match(minusminus_token)
-//                var result = <Postfix kind="decrement">{first}</Postfix>
-//            }
-//            else
-//            {
-//                var result = first
-//            }            
-//
-//            Debug::exit("parsePostfixExpression",result)
-//            return result
-//        }
-//
-//        /*
-//
-//        UnaryExpression    
-//            PostfixExpression
-//            delete  PostfixExpression
-//            void  UnaryExpression
-//            typeof  UnaryExpression
-//            ++   PostfixExpression
-//            --  PostfixExpression
-//            +  UnaryExpression
-//            -  UnaryExpression
-//            ~  UnaryExpression
-//            !  UnaryExpression
-//
-//        */
-//
-//        function parseUnaryExpression() : Ast.EXPR
-//        {
-//            Debug::enter("parseUnaryExpression")
-//
-//            if( lookahead(delete_token) )
-//            {
-//                enterSlashContext(regexpliteral_token)
-//                match(delete_token)
-//
-//                var first = parsePostfixExpression()
-//                if( first.name() == "Get" )
-//                {
-//                    first.setLocalName("Delete")
-//                }
-//                else
-//                {
-//                    first = <Delete>{first}</Delete>
-//                }
-//
-//                var result = first
-//
-//                exitSlashContext(regexpliteral_token)
-//            }
-//            else
-//            if( lookahead(void_token) )
-//            {
-//                enterSlashContext(regexpliteral_token)
-//                match(void_token)
-//                var first = parsePostfixExpression()
-//                exitSlashContext(regexpliteral_token)
-//                var result = <Unary kind={scan.tokenText(void_token)}>{first}</Unary>
-//            }
-//            else
-//            if( lookahead(typeof_token) )
-//            {
-//                enterSlashContext(regexpliteral_token)
-//                match(typeof_token)
-//                var first = parsePostfixExpression()
-//                exitSlashContext(regexpliteral_token)
-//                var result = <Unary kind={scan.tokenText(typeof_token)}>{first}</Unary>
-//            }
-//            else
-//            if( lookahead(plusplus_token) )
-//            {
-//                enterSlashContext(regexpliteral_token)
-//                match(plusplus_token)
-//                var first = parsePostfixExpression()
-//                exitSlashContext(regexpliteral_token)
-//                var result = <Unary kind={scan.tokenText(plusplus_token)}>{first}</Unary>
-//            }
-//            else
-//            if( lookahead(minusminus_token) )
-//            {
-//                enterSlashContext(regexpliteral_token)
-//                match(minusminus_token)
-//                var first = parsePostfixExpression()
-//                exitSlashContext(regexpliteral_token)
-//                var result = <Unary kind={scan.tokenText(minusminus_token)}>{first}</Unary>
-//            }
-//            else
-//            if( lookahead(plus_token) )
-//            {
-//                enterSlashContext(regexpliteral_token)
-//                match(plus_token)
-//                var first = parsePostfixExpression()
-//                exitSlashContext(regexpliteral_token)
-//                var result = <Unary kind={scan.tokenText(plus_token)}>{first}</Unary>
-//            }
-//            else
-//            if( lookahead(minus_token) )
-//            {
-//                enterSlashContext(regexpliteral_token)
-//                match(minus_token)
-//                var first = parsePostfixExpression()
-//                exitSlashContext(regexpliteral_token)
-//                var result = <Unary kind={scan.tokenText(minus_token)}>{first}</Unary>
-//            }
-//            else
-//            if( lookahead(bitwisenot_token) )
-//            {
-//                enterSlashContext(regexpliteral_token)
-//                match(bitwisenot_token)
-//                var first = parsePostfixExpression()
-//                exitSlashContext(regexpliteral_token)
-//                var result = <Unary kind={scan.tokenText(bitwisenot_token)}>{first}</Unary>
-//            }
-//            else
-//            if( lookahead(not_token) )
-//            {
-//                enterSlashContext(regexpliteral_token)
-//                match(not_token)
-//                var first = parsePostfixExpression()
-//                exitSlashContext(regexpliteral_token)
-//                var result = <Unary kind={scan.tokenText(not_token)}>{first}</Unary>
-//            }
-//            else
-//            {
-//                var result = parsePostfixExpression()
-//            }
-//
-//            Debug::exit("parseUnaryExpression",result)
-//            return result
-//        }
-//
-//        /*
-//
-//        YieldExpression    
-//            UnaryExpression
-//            yield  UnaryExpression
-//
-//        */
-//
-//        function parseYieldExpression()
-//        {
-//            Debug::enter("parseYieldExpression")
-//
-//            if( lookahead(yield_token) )
-//            {
-//                enterSlashContext(regexpliteral_token)
-//
-//	            match(yield_token)
-//    	        if( !(lookaheadSemicolon(full_mode) || lookahead(rightparen_token) || lookahead(rightbrace_token) || lookahead(comma_token)) )
-//        	    {
-//	            	var first = parseUnaryExpression()
-//	    	        var result = <YieldExpression>{first}</YieldExpression>
-//    	        }
-//				else
-//				{
-//					var result = <YieldExpression/>
-//				}
-//
-//                exitSlashContext(regexpliteral_token)
-//            }
-//            else
-//            {
-//                var result = parseUnaryExpression()
-//            }
-//
-//            Debug::exit("parseYieldExpression",result)
-//            return result
-//        }
+        /*
+
+        Arguments
+            (  )
+            (  ArgumentList  )
+
+        ArgumentList
+            AssignmentExpression(allowIn)
+            ArgumentList  ,  AssignmentExpression(allowIn)
+
+        */
+
+        function arguments (ts: TOKENS)
+            : [TOKENS, * /*[Ast::EXPR]*/]
+        {
+            enter("Parser::arguments ", ts);
+
+            var tsx,ndx;
+            var ts1 = eat (ts,Token::LeftParen);
+            switch (hd (ts1)) {
+            case Token::RightParen:
+                var tsx = eat (ts1,Token::RightParen);
+                var ndx = [];
+                break;
+            default:
+                let [ts2,nd2] = listExpression (ts1, AllowIn);
+                var tsx = eat (ts2,Token::RightParen);
+                var ndx = nd2.Ast::exprs;
+                break;
+            }
+            exit ("Parser::arguments ", tsx);
+            return [tsx, ndx];
+        }
+
+        /*
+
+        MemberExpression(beta)
+            PrimaryExpression(beta)
+            new  MemberExpression(beta)  Arguments
+            SuperExpression  PropertyOperator
+            MemberExpression(beta)  PropertyOperator
+
+        Refactored:
+
+        MemberExpression(beta)    
+            PrimaryExpression(beta) MemberExpressionPrime(beta)
+            new MemberExpression(beta) Arguments MemberExpressionPrime(beta)
+            SuperExpression  PropertyOperator  MemberExpressionPrime(beta)
+    
+        MemberExpressionPrime(beta)
+            PropertyOperator MemberExpressionPrime(beta)
+            empty
+
+        */
+
+        function memberExpression (ts: TOKENS, beta:BETA)
+            : [TOKENS, Ast::EXPR]
+        {
+            enter("Parser::memberExpression ", ts);
+
+            var tsx,ndx;
+            switch (hd (ts)) {
+            case Token::New:
+                let [ts1,nd1] = memberExpression (tl (ts), beta);
+                let [ts2,nd2] = this.arguments (ts1);
+                var [tsx,ndx] = memberExpressionPrime (ts2, beta, new Ast::NewExpr (nd1,nd2));
+                break;
+            case Token::Super:
+                let [ts1,nd1] = superExpression (ts);
+                let [ts2,nd2] = propertyOperator (ts1,nd1);
+                var [tsx,ndx] = memberExpressionPrime (ts2, beta, nd2);
+            default:
+                let [ts1,nd1] = primaryExpression (ts,beta);
+                var [tsx,ndx] = memberExpressionPrime (ts1, beta, nd1);
+                break;
+            }
+
+            exit ("Parser::memberExpression ", tsx);
+            return [tsx, ndx];
+        }
+
+        function memberExpressionPrime (ts: TOKENS, beta:BETA, nd: Ast::EXPR)
+            : [TOKENS, Ast::EXPR]
+        {
+            enter("Parser::memberExpressionPrime ", ts);
+
+            var tsx,ndx;
+            switch (hd (ts)) {
+            case Token::LeftBracket:
+            case Token::Dot:
+            case Token::DoubleDot:
+                let [ts1,nd1] = propertyOperator (ts,nd);
+                var [tsx,ndx] = memberExpressionPrime (ts1, beta, nd1);
+                break;
+            default:
+                var [tsx,ndx] = [ts,nd]
+                break;
+            }
+
+            exit ("Parser::memberExpressionPrime ", tsx);
+            return [tsx, ndx];
+        }
+
+        /*
+
+        CallExpressionPrime(beta)
+            Arguments CallExpressionPrime(beta)
+            [ Expression ] CallExpressionPrime(beta)
+            . Identifier CallExpressionPrime(beta)
+            empty
+
+        */
+
+        function callExpressionPrime (ts: TOKENS, beta:BETA, nd: Ast::EXPR)
+            : [TOKENS, Ast::EXPR]
+        {
+            enter("Parser::callExpressionPrime ", ts);
+
+            var tsx,ndx;
+            switch (hd (ts)) {
+            case Token::LeftParen:
+                let [ts1,nd1] = this.arguments (ts);
+                var [tsx,ndx] = callExpressionPrime (ts1, beta, new Ast::CallExpr (nd,nd1));
+                break;
+            case Token::LeftBracket:
+            case Token::Dot:
+            case Token::DoubleDot:
+                let [ts1,nd1] = propertyOperator (ts,nd);
+                var [tsx,ndx] = callExpressionPrime (ts1, beta, nd1);
+                break;
+            default:
+                var [tsx,ndx] = [ts,nd]
+                break;
+            }
+
+            exit ("Parser::callExpressionPrime ", tsx);
+            return [tsx, ndx];
+        }
+
+        // new X; new X (); new X () (); X (); X
+
+        /*
+
+        NewExpression    
+            MemberExpression
+            new  NewExpression
+
+        */
+
+        function newExpression (ts: TOKENS, beta:BETA)
+            : [TOKENS, Ast::EXPR]
+        {
+            enter("Parser::newExpression ", ts);
+
+            var tsx,ndx;
+            switch (hd (ts)) {
+            case Token::New:
+                switch (hd (tl (ts))) {
+                case Token::New:
+                    let [ts1,nd1] = newExpression (tl (ts), beta);
+                    var [tsx,ndx] = [tsx, new Ast::NewExpr (nd1,[])];
+                    break;
+                default:
+                    var [tsx,ndx] = memberExpression (ts, beta);
+                    break;
+                }
+                break;
+            default:
+                let [ts1,nd1] = memberExpression (ts,beta);
+                switch (hd (ts1)) {
+                case Token::LeftParen:
+                    val [tsx,ndx] = callExpressionPrime (ts1,nd1,beta);
+                    break;
+                default:
+                    var [tsx,ndx] = [ts1,ndx];
+                    break;
+                }
+                break;
+            }
+
+            exit ("Parser::newExpression ", tsx);
+            return [tsx, ndx];
+        }
+
+        /*
+
+        LeftHandSideExpression    
+            NewExpression
+            CallExpression
+
+        Refactored:
+
+        LeftHandSideExpression    
+            MemberExpression LeftHandSideExpressionPrime
+            new NewExpression
+    
+        LeftHandSideExpressionPrime    
+            Arguments CallExpressionPrime
+            empty
+
+        */
+
+        function leftHandSideExpression (ts: TOKENS, beta:BETA)
+            : [TOKENS, Ast::EXPR]
+        {
+            enter("Parser::leftHandSideExpression ", ts);
+
+            var tsx,ndx;
+            switch (hd (ts)) {
+            case Token::New:
+                var [tsx,ndx] = newExpression (ts,beta);
+                break;
+            default:
+                let [ts1,nd1] = memberExpression (ts,beta);
+                switch (hd (ts1)) {
+                case Token::LeftParen:
+                    let [ts2,nd2] = this.arguments (ts1); // refer to parser method
+                    var [tsx,ndx] = callExpressionPrime (ts2, beta, new Ast::CallExpr (nd1,nd2));
+                    break;
+                default:
+                    var [tsx,ndx] = [ts1,nd1];
+                    break;
+                }
+            }
+
+            exit ("Parser::leftHandSideExpression ", tsx);
+            return [tsx, ndx];
+        }
+
+        /*
+
+        PostfixExpression(beta)
+            LeftHandSideExpression(beta)
+            LeftHandSideExpression(beta)  [no line break]  ++
+            LeftHandSideExpression(beta)  [no line break]  --
+
+        */
+
+        function postfixExpression (ts: TOKENS, beta:BETA)
+            : [TOKENS, Ast::EXPR]
+        {
+            enter("Parser::postfixExpression ", ts);
+
+            var tsx,ndx;
+            let [ts1, nd1] = leftHandSideExpression (ts, beta);
+            switch (hd (ts1)) {
+            case Token::PlusPlus:
+                var [tsx,ndx] = [tl (ts1), new Ast::UnaryExpr (Ast::preIncrOp,nd1)];
+                break;
+            case Token::MinusMinus:
+                var [tsx,ndx] = [tl (ts1), new Ast::UnaryExpr (Ast::preDecrOp,nd1)];
+                break;
+            default:
+                var [tsx,ndx] = [ts1,nd1];
+                break;
+            }
+
+            exit ("Parser::postfixExpression ", tsx);
+            return [tsx, ndx];
+        }
+
+        /*
+
+        UnaryExpression(beta)
+            PostfixExpression(beta)
+            delete  PostfixExpression(beta)
+            void  UnaryExpression(beta)
+            typeof  UnaryExpression(beta)
+            ++   PostfixExpression(beta)
+            --  PostfixExpression(beta)
+            +  UnaryExpression(beta)
+            -  UnaryExpression(beta)
+            ~  UnaryExpression(beta)
+            !  UnaryExpression(beta)
+            type  NullableTypeExpression
+
+        */
+
+        function unaryExpression (ts: TOKENS, beta: BETA) 
+            : [TOKENS, Ast::EXPR]
+        {
+            enter("Parser::unaryExpression ", ts);
+
+            var tsx,ndx;
+            switch (hd (ts)) {
+            case Token::Delete:
+                let [ts1,nd1] = postfixExpression (ts,beta);
+                var [tsx,ndx] = [tsx,new Ast::UnaryExpr (Ast::deleteOp,ndx)];
+                break;
+            case Token::Void:
+                let [ts1,nd1] = unaryExpression (ts,beta);
+                var [tsx,ndx] = [tsx,new Ast::UnaryExpr (Ast::voidOp,ndx)];
+                break;
+            case Token::TypeOf:
+                let [ts1,nd1] = unaryExpression (ts,beta);
+                var [tsx,ndx] = [tsx,new Ast::UnaryExpr (Ast::typeOfOp,ndx)];
+                break;
+            case Token::PlusPlus:
+                let [ts1,nd1] = postfixExpression (ts,beta);
+                var [tsx,ndx] = [tsx,new Ast::UnaryExpr (Ast::preIncrOp,ndx)];
+                break;
+            case Token::MinusMinus:
+                let [ts1,nd1] = postfixExpression (ts,beta);
+                var [tsx,ndx] = [tsx,new Ast::UnaryExpr (Ast::preDecrOp,ndx)];
+                break;
+            case Token::Plus:
+                let [ts1,nd1] = unaryExpression (ts,beta);
+                var [tsx,ndx] = [tsx,new Ast::UnaryExpr (Ast::unaryPlusOp,ndx)];
+                break;
+            case Token::Minus:
+                let [ts1,nd1] = unaryExpression (ts,beta);
+                var [tsx,ndx] = [tsx,new Ast::UnaryExpr (Ast::unaryMinusOp,ndx)];
+                break;
+            case Token::BitwiseNot:
+                let [ts1,nd1] = unaryExpression (ts,beta);
+                var [tsx,ndx] = [tsx,new Ast::UnaryExpr (Ast::bitwiseNotOp,ndx)];
+                break;
+            case Token::Not:
+                let [ts1,nd1] = unaryExpression (ts,beta);
+                var [tsx,ndx] = [tsx,new Ast::UnaryExpr (Ast::logicalNotOp,ndx)];
+                break;
+            case Token::Type:
+                let [ts1,nd1] = nullableTypeExpression (ts,beta);
+                var [tsx,ndx] = [tsx,new Ast::TypeExpr (ndx)];
+                break;
+            default:
+                var [tsx,ndx] = postfixExpression (ts,beta);
+                break;
+            }
+
+            exit ("Parser::unaryExpression ", tsx);
+            return [tsx,ndx];
+        }
 
         /*
 
@@ -1861,13 +1498,14 @@
 
         */
 
-        function multiplicativeExpression (ts: TOKENS)
+        function multiplicativeExpression (ts: TOKENS, beta:BETA)
             : [TOKENS, Ast::EXPR]
         {
             enter("Parser::multiplicativeExpression ", ts);
 
             var op;
-            var [ts1, nd1] = primaryExpression (ts);
+            var [ts1,nd1] = unaryExpression (ts, beta);
+
             done:
             while (true) {
                 switch (hd (ts1)) {
@@ -1883,7 +1521,7 @@
                 default:
                     break done;
                 }
-                let [ts2, nd2] = primaryExpression (tl (ts1));
+                let [ts2, nd2] = unaryExpression (tl (ts1), beta);
                 var [ts1, nd1] = [ts2, new Ast::BinaryExpr (op, nd1, nd2)];
             }
 
@@ -1900,13 +1538,13 @@
 
         */
 
-        function additiveExpression (ts: TOKENS)
+        function additiveExpression (ts: TOKENS, beta: BETA)
             : [TOKENS, Ast::EXPR]
         {
             enter("Parser::additiveExpression ", ts);
 
             var op;
-            var [ts1, nd1] = multiplicativeExpression (ts);
+            var [ts1, nd1] = multiplicativeExpression (ts, beta);
             done:
             while (true) {
                 switch (hd (ts1)) {
@@ -1919,7 +1557,7 @@
                 default:
                     break done;
                 }
-                let [ts2, nd2] = multiplicativeExpression (tl (ts1));
+                let [ts2, nd2] = multiplicativeExpression (tl (ts1), beta);
                 var [ts1, nd1] = [ts2, new Ast::BinaryExpr (op, nd1, nd2)];
             }
 
@@ -1937,13 +1575,13 @@
 
         */
 
-        function shiftExpression (ts: TOKENS) 
+        function shiftExpression (ts: TOKENS, beta: BETA)
             : [TOKENS, Ast::EXPR]
         {
             enter("Parser::shiftExpression ", ts);
 
             var op;
-            var [ts1, nd1] = additiveExpression (ts);
+            var [ts1, nd1] = additiveExpression (ts, beta);
             done:
             while (true) {
                 switch (hd (ts1)) {
@@ -1959,7 +1597,7 @@
                 default:
                     break done;
                 }
-                let [ts2, nd2] = additiveExpression (tl (ts1));
+                let [ts2, nd2] = additiveExpression (tl (ts1), beta);
                 var [ts1, nd1] = [ts2, new Ast::BinaryExpr (op, nd1, nd2)];
             }
 
@@ -1970,78 +1608,78 @@
         /*
 
         RelationalExpression(noIn)
-            ShiftExpression
-            RelationalExpression(noIn) < ShiftExpression
-            RelationalExpression(noIn) > ShiftExpression
-            RelationalExpression(noIn) <= ShiftExpression
-            RelationalExpression(noIn) >= ShiftExpression
-            RelationalExpression(noIn) instanceof ShiftExpression
+            ShiftExpression(noIn)
+            RelationalExpression(noIn) < ShiftExpression(noIn)
+            RelationalExpression(noIn) > ShiftExpression(noIn)
+            RelationalExpression(noIn) <= ShiftExpression(noIn)
+            RelationalExpression(noIn) >= ShiftExpression(noIn)
+            RelationalExpression(noIn) instanceof ShiftExpression(noIn)
             RelationalExpression(noIn) is TypeExpression
             RelationalExpression(noIn) to TypeExpression
             RelationalExpression(noIn) cast TypeExpression
 
         RelationalExpression(allowIn)
-            ShiftExpression
-            RelationalExpression(allowIn) < ShiftExpression
-            RelationalExpression(allowIn) > ShiftExpression
-            RelationalExpression(allowIn) <= ShiftExpression
-            RelationalExpression(allowIn) >= ShiftExpression
-            RelationalExpression(allowIn) in ShiftExpression
-            RelationalExpression(allowIn) instanceof ShiftExpression
+            ShiftExpression(allowIn)
+            RelationalExpression(allowIn) < ShiftExpression(allowIn)
+            RelationalExpression(allowIn) > ShiftExpression(allowIn)
+            RelationalExpression(allowIn) <= ShiftExpression(allowIn)
+            RelationalExpression(allowIn) >= ShiftExpression(allowIn)
+            RelationalExpression(allowIn) in ShiftExpression(allowIn)
+            RelationalExpression(allowIn) instanceof ShiftExpression(allowIn)
             RelationalExpression(allowIn) is TypeExpression
             RelationalExpression(allowIn) to TypeExpression
             RelationalExpression(allowIn) cast TypeExpression
 
         */
 
-        function relationalExpression (ts: TOKENS, beta) 
+        function relationalExpression (ts: TOKENS, beta: BETA) 
             : [TOKENS, Ast::EXPR]
         {
             enter("Parser::relationalExpression ", ts);
 
             var op,ts2,nd2;
-            var [ts1, nd1] = shiftExpression (ts);
+            var [ts1, nd1] = shiftExpression (ts, beta);
             done:
             while (true) {
                 switch (hd (ts1)) {
                 case Token::LessThan:
-                    var op = Ast::lessThanOp;
-                    var [ts2, nd2] = shiftExpression (tl (ts1));
+                    var op = Ast::lessOp;
+                    var [ts2, nd2] = shiftExpression (tl (ts1), beta);
                     break;
                 case Token::GreaterThan:
-                    var op = Ast::greaterThanOp;
-                    var [ts2, nd2] = shiftExpression (tl (ts1));
+                    var op = Ast::greaterOp;
+                    var [ts2, nd2] = shiftExpression (tl (ts1), beta);
                     break;
                 case Token::LessThanOrEqual:
-                    var op = Ast::lessThanOrEqualOp;
-                    var [ts2, nd2] = shiftExpression (tl (ts1));
+                    var op = Ast::lessOrEqualOp;
+                    var [ts2, nd2] = shiftExpression (tl (ts1), beta);
                     break;
                 case Token::GreaterThanOrEqual:
-                    var op = Ast::greaterThanOrEqualOp;
-                    var [ts2, nd2] = shiftExpression (tl (ts1));
+                    var op = Ast::greaterOrEqualOp;
+                    var [ts2, nd2] = shiftExpression (tl (ts1), beta);
                     break;
                 case Token::In:
                     if (beta == NoIn) {
                         break done;
                     }
                     var op = Ast::inOp;
-                    var [ts2, nd2] = shiftExpression (tl (ts1));
+                    var [ts2, nd2] = shiftExpression (tl (ts1), beta);
                     break;
                 case Token::InstanceOf:
                     var op = Ast::instanceOfOp;
-                    var [ts2, nd2] = shiftExpression (tl (ts1));
+                    var [ts2, nd2] = shiftExpression (tl (ts1), beta);
                     break;
                 case Token::Is:
                     var op = Ast::isOp;
-                    var [ts2, nd2] = typeExpression (tl (ts1));
+                    var [ts2, nd2] = typeExpression (tl (ts1), beta);
                     break;
                 case Token::To:
                     var op = Ast::toOp;
-                    var [ts2, nd2] = typeExpression (tl (ts1));
+                    var [ts2, nd2] = typeExpression (tl (ts1), beta);
                     break;
                 case Token::Cast:
                     var op = Ast::castOp;
-                    var [ts2, nd2] = typeExpression (tl (ts1));
+                    var [ts2, nd2] = typeExpression (tl (ts1), beta);
                     break;
                 default:
                     break done;
@@ -2064,7 +1702,7 @@
 
         */
 
-        function equalityExpression (ts: TOKENS, beta) 
+        function equalityExpression (ts: TOKENS, beta: BETA) 
             : [TOKENS, Ast::EXPR]
         {
             enter("Parser::equalityExpression ", ts);
@@ -2105,7 +1743,7 @@
 
         */
 
-        function bitwiseAndExpression (ts: TOKENS, beta) 
+        function bitwiseAndExpression (ts: TOKENS, beta: BETA) 
             : [TOKENS, Ast::EXPR]
         {
             enter("Parser::bitwiseAndExpression ", ts);
@@ -2128,7 +1766,7 @@
 
         */
 
-        function bitwiseXorExpression (ts: TOKENS, beta) 
+        function bitwiseXorExpression (ts: TOKENS, beta: BETA) 
             : [TOKENS, Ast::EXPR]
         {
             enter("Parser::bitwiseXorExpression ", ts);
@@ -2151,7 +1789,7 @@
 
         */
 
-        function bitwiseOrExpression (ts: TOKENS, beta) 
+        function bitwiseOrExpression (ts: TOKENS, beta: BETA) 
             : [TOKENS, Ast::EXPR]
         {
             enter("Parser::bitwiseOrExpression ", ts);
@@ -2174,7 +1812,7 @@
 
         */
 
-        function logicalAndExpression (ts: TOKENS, beta) 
+        function logicalAndExpression (ts: TOKENS, beta: BETA) 
             : [TOKENS, Ast::EXPR]
         {
             enter("Parser::logicalAndExpression ", ts);
@@ -2197,7 +1835,7 @@
 
         */
 
-        function logicalXorExpression (ts: TOKENS, beta) 
+        function logicalXorExpression (ts: TOKENS, beta: BETA) 
             : [TOKENS, Ast::EXPR]
         {
             enter("Parser::logicalXorExpression ", ts);
@@ -2220,7 +1858,7 @@
 
         */
 
-        function logicalOrExpression (ts: TOKENS, beta) 
+        function logicalOrExpression (ts: TOKENS, beta: BETA) 
             : [TOKENS, Ast::EXPR]
         {
             enter("Parser::assignmentExpression ", ts);
@@ -2235,6 +1873,44 @@
             return [ts1, nd1];
         }
 
+//        /*
+//
+//        YieldExpression    
+//            UnaryExpression
+//            yield  UnaryExpression
+//
+//        */
+//
+//        function parseYieldExpression()
+//        {
+//            enter("parseYieldExpression")
+//
+//            if( lookahead(yield_token) )
+//            {
+//                enterSlashContext(regexpliteral_token)
+//
+//	            match(yield_token)
+//    	        if( !(lookaheadSemicolon(full_mode) || lookahead(rightparen_token) || lookahead(rightbrace_token) || lookahead(comma_token)) )
+//        	    {
+//	            	var first = parseUnaryExpression()
+//	    	        var result = <YieldExpression>{first}</YieldExpression>
+//    	        }
+//				else
+//				{
+//					var result = <YieldExpression/>
+//				}
+//
+//                exitSlashContext(regexpliteral_token)
+//            }
+//            else
+//            {
+//                var result = parseUnaryExpression()
+//            }
+//
+//            exit("parseYieldExpression",result)
+//            return result
+//        }
+
         /*
 
         ConditionalExpression(beta)
@@ -2246,7 +1922,7 @@
 
         */
 
-        function conditionalExpression (ts: TOKENS, beta) 
+        function conditionalExpression (ts: TOKENS, beta: BETA) 
             : [TOKENS, Ast::EXPR]
         {
             enter("Parser::assignmnetExpression ", ts);
@@ -2280,7 +1956,7 @@
 //
 //        function parseConditionalExpression(mode)
 //        {
-//            Debug::enter("parseConditionalExpression",mode)
+//            enter("parseConditionalExpression",mode)
 //
 //            var result
 //            var first
@@ -2302,7 +1978,7 @@
 //                result = first
 //            }
 //
-//            Debug::exit("parseConditionalExpression",result)
+//            exit("parseConditionalExpression",result)
 //            return result
 //        }
 //
@@ -2314,7 +1990,7 @@
 //
 //        function parseNonAssignmentExpression(mode)
 //        {
-//            Debug::enter("parseNonAssignmentExpression",mode)
+//            enter("parseNonAssignmentExpression",mode)
 //
 //            //var first = parseLogicalOrExpression(mode)
 //            var first = parsePostfixExpression()
@@ -2332,7 +2008,7 @@
 //                var result = first
 //            }
 //
-//            Debug::exit("parseNonAssignmentExpression",result)
+//            exit("parseNonAssignmentExpression",result)
 //            return result
 //        }
 //
@@ -2345,7 +2021,7 @@
 
         */
 
-        function assignmentExpression (ts: TOKENS, beta) 
+        function assignmentExpression (ts: TOKENS, beta: BETA) 
             : [TOKENS, Ast::EXPR]
         {
             enter("Parser::assignmnetExpression ", ts);
@@ -2389,18 +2065,22 @@
                 case Token::Comma:
                     var [ts1,nd1] = assignmentExpression (tl (ts), beta);
                     var [ts2,nd2] = listExpressionPrime (ts1);
+                    nd2.unshift (nd1);
                     break;
                 default:
                     var [ts2,nd2] = [ts,[]];
                     break;
                 }
-        
+
                 exit ("Parser::listExpressionPrime ", ts2);
                 return [ts2,nd2];
             }
 
             var [ts1,nd1] = assignmentExpression (ts, beta);
             var [ts2,nd2] = listExpressionPrime (ts1);
+            // print("nd2.length=",nd2.length);
+            nd2.unshift (nd1);
+            // print("nd2.length=",nd2.length);
 
             exit ("Parser::listExpression ", ts2);
             return [ts2,new Ast::ListExpr (nd2)];
@@ -2423,7 +2103,7 @@
 //
 //        function parseLetExpression(mode)
 //        {
-//            Debug::enter("parseLetExpression")
+//            enter("parseLetExpression")
 //
 //            var prologue = <Prologue/>
 //            match(let_token)
@@ -2447,7 +2127,7 @@
 //            var second = parseAssignmentExpression(mode)
 //            var result = <LetExpression>{prologue}{second}</LetExpression>
 //
-//            Debug::exit("parseLetExpression",result)
+//            exit("parseLetExpression",result)
 //            return result
 //        }
 //
@@ -2461,9 +2141,9 @@
 ///*
 //        function parseYieldExpression(mode)
 //        {
-//            Debug::enter("parseYieldExpression")
+//            enter("parseYieldExpression")
 //
-//            Debug::exit("parseYieldExpression",result)
+//            exit("parseYieldExpression",result)
 //            return result
 //        }
 //*/
@@ -2476,14 +2156,14 @@
 //
 //        function parseDestructuringAssignmentExpression(mode)
 //        {
-//            Debug::enter("parseDestructuringAssignmentExpression",mode)
+//            enter("parseDestructuringAssignmentExpression",mode)
 //            
 //            var first = parseDestructuringPattern()
 //            match(assign_token)
 //            var second = parseAssignmentExpression(mode)
 //            var result = <AssignmentExpression>{first}{second}</AssignmentExpression>
 //            
-//            Debug::exit("parseDestructuringAssignmentExpression",result)
+//            exit("parseDestructuringAssignmentExpression",result)
 //            return result
 //        }
 //
@@ -2497,7 +2177,7 @@
 //
 //        function parseDestructuringPattern()
 //        {
-//            Debug::enter("parseDestructuringPattern")
+//            enter("parseDestructuringPattern")
 //
 //            if( lookahead(leftbrace_token) )
 //            {
@@ -2513,7 +2193,7 @@
 //                throw "expecting destrcturing pattern"
 //            }
 //
-//            Debug::exit("parseDestructuringPattern",result)
+//            exit("parseDestructuringPattern",result)
 //            return result
 //        }
 //
@@ -2530,7 +2210,7 @@
 //
 //        function parseDestructuringObjectPattern()
 //        {
-//            Debug::enter("parseDestructuringObjectPattern")
+//            enter("parseDestructuringObjectPattern")
 //
 //            enterSlashContext(regexpliteral_token)
 //            match(leftbrace_token)
@@ -2545,7 +2225,7 @@
 //            exitSlashContext(regexpliteral_token)
 //            var result = <DestructuringObjectPattern>{first}</DestructuringObjectPattern>
 //
-//            Debug::exit("parseDestructuringObjectPattern",result)
+//            exit("parseDestructuringObjectPattern",result)
 //            return result
 //        }
 //
@@ -2559,7 +2239,7 @@
 //
 //        function parseDestructuringField()
 //        {
-//            Debug::enter("parseDestructuringField")
+//            enter("parseDestructuringField")
 //
 //            var first = parseNonAttributeQualifiedIdentifier()
 //            match(colon_token)
@@ -2574,7 +2254,7 @@
 //                var result = <DestructuringField>{first}{second}</DestructuringField>
 //            }
 //
-//            Debug::exit("parseDestructuringField",result)
+//            exit("parseDestructuringField",result)
 //            return result
 //        }
 //
@@ -2593,7 +2273,7 @@
 //
 //        function parseDestructuringArrayPattern()
 //        {
-//            Debug::enter("parseDestructuringArrayPattern")
+//            enter("parseDestructuringArrayPattern")
 //
 //            enterSlashContext(regexpliteral_token)
 //            match(leftbracket_token)
@@ -2622,7 +2302,7 @@
 //            exitSlashContext(regexpliteral_token)
 //            var result = <DestructuringArrayPattern>{first}</DestructuringArrayPattern>
 //
-//            Debug::exit("parseDestructuringArrayPattern",result)
+//            exit("parseDestructuringArrayPattern",result)
 //            return result
 //        }
 //
@@ -2637,7 +2317,7 @@
 //
 //        function parseDestructuringElement()
 //        {
-//            Debug::enter("parseDestructuringElement")
+//            enter("parseDestructuringElement")
 //
 //            if( lookahead(comma_token) )
 //            {
@@ -2653,12 +2333,12 @@
 //                var result = parseAssignmentExpression(allowIn_mode)
 //            }
 //
-//            Debug::exit("parseDestructuringElement",result)
+//            exit("parseDestructuringElement",result)
 //            return result
 //        }
 //
 //        {
-//            Debug::enter("parseListExpression",mode)
+//            enter("parseListExpression",mode)
 //            
 //            var list = <></>
 //            list += parseAssignmentExpression(mode)
@@ -2669,13 +2349,13 @@
 //            }
 //            var node = list
 //
-//            Debug::exit("parseListExpression",node)
+//            exit("parseListExpression",node)
 //            return node
 //        }
 //
 //        function parseListExpressionPrime(first,mode)
 //        {
-//            Debug::enter("parseListExpressionPrime",mode)
+//            enter("parseListExpressionPrime",mode)
 //            
 //            var list = <></>
 //            list += first
@@ -2686,7 +2366,7 @@
 //            }
 //            var node = list
 //
-//            Debug::exit("parseListExpressionPrime",node)
+//            exit("parseListExpressionPrime",node)
 //            return node
 //        }
 //
@@ -2705,7 +2385,7 @@
 //
 //        function parseTypeExpression()
 //        {
-//            Debug::enter("parseTypeExpression")
+//            enter("parseTypeExpression")
 //
 //            var prologue = <Prologue/>
 //
@@ -2745,7 +2425,7 @@
 //                }
 //            }
 //
-//            Debug::exit("parseTypeExpression",result.toXMLString())
+//            exit("parseTypeExpression",result.toXMLString())
 //            return result
 //        }
 //
@@ -2758,14 +2438,14 @@
 //
 //        function parseUnionType()
 //        {
-//            Debug::enter("parseUnionType")
+//            enter("parseUnionType")
 //
 //            match(leftparen_token)
 //            var first = parseTypeExpressionList()
 //            var result = <UnionType>{first}</UnionType>
 //            match(rightparen_token)
 //
-//            Debug::exit("parseUnionType",result)
+//            exit("parseUnionType",result)
 //            return result
 //        }
 //
@@ -2778,7 +2458,7 @@
 //
 //        function parseRecordType()
 //        {
-//            Debug::enter("parseRecordType")
+//            enter("parseRecordType")
 //
 //            match(leftbrace_token)
 //            if( lookahead(rightbrace_token) )
@@ -2792,7 +2472,7 @@
 //            var result = <RecordType>{first}</RecordType>
 //            match(rightbrace_token)
 //
-//            Debug::exit("parseRecordType",result)
+//            exit("parseRecordType",result)
 //            return result
 //        }
 //
@@ -2806,7 +2486,7 @@
 //
 //        function parseFieldTypeListPrime(first)
 //        {
-//            Debug::enter("parseNonemptyFieldTypeList",first)
+//            enter("parseNonemptyFieldTypeList",first)
 //
 //            if( lookahead(comma_token) )
 //            {
@@ -2819,7 +2499,7 @@
 //                var result = first
 //            }
 //
-//            Debug::exit("parseFieldListPrime",result)
+//            exit("parseFieldListPrime",result)
 //            return result
 //        }
 //
@@ -2830,14 +2510,14 @@
 //                  
 //        function parseFieldType()
 //        {
-//            Debug::enter("parseFieldType")
+//            enter("parseFieldType")
 //
 //            var first = parseFieldName()
 //            match(colon_token)
 //            var second = parseTypeExpression()
 //            var result = <FieldType>{first}{second}</FieldType>
 //
-//            Debug::exit("parseFieldType",result)
+//            exit("parseFieldType",result)
 //            return result
 //        }
 //
@@ -2856,7 +2536,7 @@
 //
 //        function parseArrayType()
 //        {
-//            Debug::enter("parseArrayType")
+//            enter("parseArrayType")
 //
 //            enterSlashContext(regexpliteral_token)
 //            match(leftbracket_token)
@@ -2874,13 +2554,13 @@
 //            match(rightbracket_token)
 //            var result = <LiteralType>{first}</LiteralType>
 //
-//            Debug::exit("parseArrayLiteral",result)
+//            exit("parseArrayLiteral",result)
 //            return result
 //        }
 //
 //        function parseElementTypeListPrime(first)        
 //        {
-//            Debug::enter("parseElementTypeListPrime",first)
+//            enter("parseElementTypeListPrime",first)
 //
 //            while( lookahead(comma_token) )
 //            {
@@ -2897,13 +2577,13 @@
 //            }
 //            var result = first
 //
-//            Debug::exit("parseElementTypeListPrime",result)
+//            exit("parseElementTypeListPrime",result)
 //            return result
 //        }
 //
 //        function parseElementType()
 //        {
-//            Debug::enter("parseElementType")
+//            enter("parseElementType")
 //
 //            if( lookahead(comma_token) )
 //            {
@@ -2919,7 +2599,7 @@
 //                var result = parseTypeExpression()
 //            }
 //
-//            Debug::exit("parseElementType",result)
+//            exit("parseElementType",result)
 //            return result
 //        }
 //
@@ -2946,10 +2626,10 @@
             WithStatement(omega)
         */
 
-        function statement (ts: TOKENS, tau:int, omega:int)
+        function statement (ts: TOKENS, tau: TAU, omega: OMEGA)
             : [TOKENS, Ast::STMT]
         {
-            Debug::enter("Parser::statement ", ts);
+            enter("Parser::statement ", ts);
 
             var ts1,nd1,ts2,nd2;
             switch (hd(ts)) {
@@ -2959,7 +2639,7 @@
                 break;
             }
 
-            Debug::exit("Parser::statement ", ts2);
+            exit("Parser::statement ", ts2);
             return [ts2,nd2];
         }
 
@@ -2969,10 +2649,10 @@
             return false; // FIXME
         }
 
-        function semicolon (ts: TOKENS, omega:int)
+        function semicolon (ts: TOKENS, omega: OMEGA)
             : [TOKENS]
         {
-            Debug::enter("Parser::semicolon ", ts);
+            enter("Parser::semicolon ", ts);
 
             var ts1;
             switch (omega) {
@@ -2999,25 +2679,25 @@
                 }
             }
 
-            Debug::exit("Parser::semicolon ", ts1);
+            exit("Parser::semicolon ", ts1);
             return ts1;
         }
 
         function expressionStatement (ts: TOKENS)
             : [TOKENS, Ast::STMT]
         {
-            Debug::enter("Parser::expressionStatement ", ts);
+            enter("Parser::expressionStatement ", ts);
 
             var [ts1,nd1] = listExpression (ts,AllowIn);
 
-            Debug::exit("Parser::expressionStatement ", ts1);
+            exit("Parser::expressionStatement ", ts1);
             return [ts1, new Ast::ExprStmt (nd1)];
         }
 
 
 //        function parseStatement(mode)
 //        {
-//            Debug::enter("parseStatement",mode)
+//            enter("parseStatement",mode)
 //
 //            if( lookahead(super_token) )
 //            {
@@ -3107,7 +2787,7 @@
 //                matchSemicolon(mode)
 //            }
 //
-//            Debug::exit("parseStatement",node)
+//            exit("parseStatement",node)
 //            return node
 //        }
 //
@@ -3116,17 +2796,17 @@
 //
 //        function parseSubstatement(mode)
 //        {
-//            Debug::enter("parseSubstatement")
+//            enter("parseSubstatement")
 //
 //            var node = parseStatement(mode)
 //
-//            Debug::exit("parseSubstatement",node)
+//            exit("parseSubstatement",node)
 //            return node
 //        }
 //
 //        function parseBlockStatement()
 //        {
-//            Debug::enter("parseSubstatement")
+//            enter("parseSubstatement")
 //
 //            var prologue = <Prologue/>
 //            var stmts = parseBlock(prologue)
@@ -3134,7 +2814,7 @@
 //            //delete stmts.Slot
 //            var node = <BlockStatement>{prologue}{stmts}</BlockStatement>
 //
-//            Debug::exit("parseBlockStatement",node)
+//            exit("parseBlockStatement",node)
 //            return node
 //        }
 //
@@ -3148,7 +2828,7 @@
 //
 //        function parseSuperStatement()
 //        {
-//            Debug::enter("parseSuperStatement")
+//            enter("parseSuperStatement")
 //
 //            match(super_token)
 //            var first = <SuperStatement/>
@@ -3161,13 +2841,13 @@
 //                var result = first
 //            }
 //
-//            Debug::exit("parseSuperStatement",result)
+//            exit("parseSuperStatement",result)
 //            return result
 //        }
 //
 //        function parseLabeledOrExpressionStatement(mode)
 //        {
-//            Debug::enter("parseLabeledOrExpressionStatement",mode)
+//            enter("parseLabeledOrExpressionStatement",mode)
 //
 //            var first = parseListExpression(allowIn_mode)
 //            if( lookahead(colon_token) )
@@ -3190,19 +2870,19 @@
 //                // leave matchSemicolon(mode) for caller
 //            }
 //            
-//            Debug::exit("parseLabeledOrExpressionStatement",result)
+//            exit("parseLabeledOrExpressionStatement",result)
 //            return result
 //        }
 //
 //        function parseBlock(prologue)
 //        {
-//            Debug::exit("parseBlock")
+//            exit("parseBlock")
 //
 //            match(leftbrace_token)
 //            var node = parseDirectives(void 0,prologue)
 //            match(rightbrace_token)
 //
-//            Debug::exit("parseBlock",node)
+//            exit("parseBlock",node)
 //            return node
 //        }
 //
@@ -3248,7 +2928,7 @@
 //
 //        function parseLetStatement(mode)
 //        {
-//            Debug::enter("parseLetStatement")
+//            enter("parseLetStatement")
 //
 //            // already ate 'let'
 //
@@ -3281,7 +2961,7 @@
 //
 //            var node = <BlockStatement kind="let">{prologue}{block}</BlockStatement>
 //
-//            Debug::exit("parseLetStatement",node)
+//            exit("parseLetStatement",node)
 //            return node
 //        }
 //
@@ -3310,7 +2990,7 @@
 //
 //        function parseReturnStatement()
 //        {
-//            Debug::enter("parseReturnStatement")
+//            enter("parseReturnStatement")
 //
 //            match(return_token)
 //
@@ -3326,7 +3006,7 @@
 //                node.* = parseListExpression(allowIn_mode)
 //            }
 //
-//            Debug::exit("parseReturnStatement",node)
+//            exit("parseReturnStatement",node)
 //            return node
 //        }
 //
@@ -3372,7 +3052,7 @@
 //
 //        function parseAnnotatableDirective(attrs,mode,prologue)
 //        {
-//            Debug::enter("parseAnnotatableDirective",attrs,mode)
+//            enter("parseAnnotatableDirective",attrs,mode)
 //
 //            if( lookahead(let_token) )
 //            {
@@ -3429,13 +3109,13 @@
 //                throw "not implemented yet"
 //            }
 //
-//            Debug::exit("parseAnnotatableDirective",node)
+//            exit("parseAnnotatableDirective",node)
 //            return node
 //        }
 //
 //        function parseAnnotatableDirectiveOrLetStatement(attrs,mode,prologue)  // actually only need to handle let bindings and let statements
 //        {
-//            Debug::enter("parseAnnotatableDirectiveOrLetStatement",attrs,mode)
+//            enter("parseAnnotatableDirectiveOrLetStatement",attrs,mode)
 //
 //            match(let_token)
 //
@@ -3456,7 +3136,7 @@
 //                }
 //            }
 //
-//            Debug::exit("parseAnnotatableDirectiveOrLetStatement",node)
+//            exit("parseAnnotatableDirectiveOrLetStatement",node)
 //            return node
 //        }
 //
@@ -3466,7 +3146,7 @@
 //
 //        function parseVariableDefinition(first,mode,prologue)
 //        {
-//            Debug::enter("parseVariableDefinition",first,mode)
+//            enter("parseVariableDefinition",first,mode)
 //
 //            // already ate 'let' if there was one, so will see 'const' or nothing (which means 'var')
 //            // if there is no 'let' then caller must eat 'var' before calling to avoid 'let var'
@@ -3479,13 +3159,13 @@
 //            var first = parseVariableBindingList(first,second,mode,prologue);
 //            var node = first
 //
-//            Debug::exit("parseVariableDefinition",node)
+//            exit("parseVariableDefinition",node)
 //            return node
 //        }
 //
 //        function parseVariableBindingList(attrs,kind,mode,prologue)
 //        {
-//            Debug::enter("parseVariableBindingList",attrs,kind,mode)
+//            enter("parseVariableBindingList",attrs,kind,mode)
 //
 //            var node = <></>
 //            node += parseVariableBinding(attrs,kind,mode,prologue)
@@ -3496,7 +3176,7 @@
 //                node += parseVariableBinding(attrs,kind,mode,prologue);
 //            }
 //
-//            Debug::exit("parseVariableBindingList",node)
+//            exit("parseVariableBindingList",node)
 //            return node
 //        }
 //
@@ -3517,20 +3197,20 @@
 //
 //        function isNamespaceAttribute(attr)
 //        {
-//            Debug::enter("isNamespaceAttribute",attr.toXMLString())
+//            enter("isNamespaceAttribute",attr.toXMLString())
 //
 //            var result = 
 //                    ( attr.name()=="Get" &&
 //                      attr.Identifier != undefined ) ? true :
 //                      attr.name()=="Namespace" ? true : false
 //
-//            Debug::exit("isNamespaceAttribute",result)
+//            exit("isNamespaceAttribute",result)
 //            Return result
 //        }
 //
 //        function inFunctionBody(recurse=false)
 //        {
-//            Debug::enter("inFunctionBody")
+//            enter("inFunctionBody")
 //
 //            if( recurse )
 //            {
@@ -3550,40 +3230,40 @@
 //                var result = context=="function"
 //            }
 //            
-//            Debug::exit("inFunctionBody",result)
+//            exit("inFunctionBody",result)
 //            return result
 //        }
 //
 //        function inClassBody()
 //        {
-//            Debug::enter("inClassBody")
+//            enter("inClassBody")
 //            var context = slot_context_stack[slot_context_stack.length-1]
 //            var result = context=="class"
-//            Debug::exit("inClassBody",result)
+//            exit("inClassBody",result)
 //            return result
 //        }
 //
 //        function inInterfaceBody()
 //        {
-//            Debug::enter("inInterfaceBody")
+//            enter("inInterfaceBody")
 //            var context = slot_context_stack[slot_context_stack.length-1]
 //            var result = context=="interface"
-//            Debug::exit("inInterfaceBody",result)
+//            exit("inInterfaceBody",result)
 //            return result
 //        }
 //
 //        function inClassOrInterfaceBody()
 //        {
-//            Debug::enter("inClassOrInterfaceBody")
+//            enter("inClassOrInterfaceBody")
 //            var context = slot_context_stack[slot_context_stack.length-1]
 //            var result = context=="class" || context=="interface"
-//            Debug::exit("inClassOrInterfaceBody",result)
+//            exit("inClassOrInterfaceBody",result)
 //            return result
 //        }
 //
 //        function parseVariableBinding(attrs,kind,mode,prologue)
 //        {
-//            Debug::enter("parseVariableBinding",attrs,kind,mode)
+//            enter("parseVariableBinding",attrs,kind,mode)
 //
 //            if( lookahead(leftbrace_token) || lookahead(leftbracket_token) )
 //            {
@@ -3606,7 +3286,7 @@
 //                var node = makeBinding(attrs,kind,first,second,prologue)
 //            }
 //
-//            Debug::exit("parseVariableBinding",node)
+//            exit("parseVariableBinding",node)
 //            return node
 //        }
 //
@@ -3625,7 +3305,7 @@
 //
 //        function makeBinding(attrs,kind,typedid,value,prologue)
 //        {
-//            Debug::enter("makeBinding",attrs,kind,typedid,value)
+//            enter("makeBinding",attrs,kind,typedid,value)
 //                
 //            // See if there is one namespace attribute
 //
@@ -3750,7 +3430,7 @@
 //                prologue.* += slot
 //            }
 //
-//            Debug::exit("makeBinding",node,slot,prologue)
+//            exit("makeBinding",node,slot,prologue)
 //            return node
 //        }
 //
@@ -3758,7 +3438,7 @@
 //
 //        function applyAttributesToSlot(attrs,slot)
 //        {
-//            Debug::enter("applyAttributesToSlot",attrs.toXMLString(),slot)
+//            enter("applyAttributesToSlot",attrs.toXMLString(),slot)
 //
 //            var slot_context = slot_context_stack[slot_context_stack.length-1]
 //            var slot_kind = slot.@kind
@@ -3902,13 +3582,13 @@
 //                }
 //            }
 //
-//            Debug::exit("applyAttributesToSlot",slot)
+//            exit("applyAttributesToSlot",slot)
 //            return
 //        }
 //            
 //        function parseTypedIdentifier(mode)
 //        {
-//            Debug::enter("parseTypedIdentifier",mode)
+//            enter("parseTypedIdentifier",mode)
 //
 //            var first =    parseIdentifier()
 //            if( lookahead(colon_token) )
@@ -3936,7 +3616,7 @@
 //                var result = <TypedIdentifier>{first}<Type><Identifier name="*"/></Type></TypedIdentifier>
 //            }
 //            
-//            Debug::exit("parseTypedIdentifier",result)
+//            exit("parseTypedIdentifier",result)
 //            return result
 //        }
 //
@@ -3954,7 +3634,7 @@
 //            
 //        function parseFunctionDefinition(attrs,prologue)
 //        {
-//            Debug::enter("parseFunctionDefinition",attrs)
+//            enter("parseFunctionDefinition",attrs)
 //
 //            var kind  = match(function_token)
 //            var name  = parseFunctionName()
@@ -3962,13 +3642,13 @@
 //            attrs.* += <{name.@kind}/>  // add functionname kind to attrs
 //            var node = makeBinding(attrs,kind,name,value,prologue)
 //
-//            Debug::exit("parseFunctionDefinition",node)
+//            exit("parseFunctionDefinition",node)
 //            return node
 //        }
 //
 //        function parseFunctionName()
 //        {
-//            Debug::enter("parseFunctionName")
+//            enter("parseFunctionName")
 //
 //            if( lookahead(identifier_token) )
 //            {
@@ -4025,9 +3705,309 @@
 //    
 //            var node = <FunctionName kind={kind}>{first}</FunctionName>
 //
-//            Debug::exit("parseFunctionName",node)
+//            exit("parseFunctionName",node)
 //            return node
 //        }
+//
+//        /*
+//        
+//        FunctionCommon    
+//            FunctionSignature
+//            FunctionSignature Block
+//        
+//        */
+//
+//        function parseFunctionCommon(first)
+//        {
+//            enter("parseFunctionCommon",first)
+//            
+//            var prologue = <Prologue/>
+//            var second = parseFunctionSignature(prologue)
+//
+//            if( !inInterfaceBody() )
+//            {
+//                slot_context_stack.push("function")            
+//                var third = parseBlockStatement();
+//                slot_context_stack.pop()
+//                prologue.* += third.Prologue.*          
+//                var block = third.Block
+//            }
+//            else
+//            {
+//                var block = <></>
+//            }
+//
+//            var node = <Function>{first}{second}{prologue}{block}</Function>
+//
+//            if( !inClassBody() )
+//            {
+//                node.@factory = "true"
+//            }
+//            
+//            exit("parseFunctionCommon",node)
+//            return node
+//        }
+//
+//        /*
+//    
+//        FunctionSignature    
+//            TypeParameters  (  Parameters  )  Result
+//    
+//        */
+//
+//        function parseFunctionSignature(prologue)
+//        {
+//            enter("parseFunctionSignature")
+//
+//            var first = parseTypeParameters()
+//            match(leftparen_token) 
+//            var second = parseParameters(prologue)
+//            match(rightparen_token)
+//            var third = parseResultType()
+//            var result = <Signature>{first}{second}{third}</Signature>
+//
+//            exit("parseFunctionSignature",result)
+//            return result
+//        }
+//
+//        /*
+//
+//        TypeParameters    
+//            empty
+//            .<  TypeParameterList  >  
+//
+//        */
+//
+//        function parseTypeParameters()
+//        {
+//            if( lookahead(leftdotangle_token) )
+//            {
+//                match(leftdotangle_token)
+//                var first = parseTypeParameterList()
+//                var result = <TypeParameters>{first}</TypeParameters>
+//                match(greaterthan_token)
+//            }
+//            else
+//            {
+//                var result = <TypeParameters/>
+//            }
+//
+//            return result
+//        }
+//
+//        /*
+//
+//        TypeParameterList
+//            Identifier
+//            Identifier  ,  TypeParameterList
+//
+//        */
+//
+//        function parseTypeParameterList()
+//        {
+//            enter("parseTypeParameterList")
+//            
+//            var list = <></>
+//            list += parseIdentifier()
+//            while( lookahead(comma_token) )
+//            {
+//                match(comma_token)
+//                list += parseIdentifier()
+//            }
+//            var result = list
+//
+//            exit("parseTypeParameterList",result)
+//            return result
+//        }
+//        
+//        /*
+//
+//        */
+//
+//        function parseParameters(prologue)
+//        {
+//            enter("parseParameters")
+//
+//            if( lookahead(rightparen_token) )
+//            {
+//                var result = <Parameters/>
+//            }
+//            else
+//            {
+//                var result = parseNonemptyParameters(<></>,prologue)
+//            }
+//
+//            exit("parseParameters",result)
+//            return result
+//        }
+//
+//        /*
+//
+//        NonemptyParameters    
+//            ParameterInit
+//            ParameterInit  ,  NonemptyParameters
+//            RestParameters
+//        
+//        */
+//
+//		function isLet(node)
+//		{
+//			if( node.localName() == "LetExpression" ||
+//				node.localName() == "YieldExpression" && node.*.length() > 0 ||
+//				node.localName() == "ConditionalExpression" && isLet(node.*[2]) )
+//			{
+//				return true
+//			}
+//			return false
+//		}
+//
+//        function parseNonemptyParameters(first,prologue)
+//        {
+//            enter("parseNonemptyParameters",first)
+//
+//            if( lookahead(tripledot_token) )
+//            {
+//                first += parseRestParameter()
+//                var result = first
+//            }
+//            else 
+//            {
+//                first += parseParameterInit(prologue)
+//                if( lookahead(comma_token) )
+//                {
+//					if( isLet(first) )
+//					{
+//						throw "ambiguous syntax, use parens to associate"
+//					}
+//                    match(comma_token)
+//                    var result = parseNonemptyParameters(first,prologue)
+//                }
+//                else
+//                {
+//                    var result = first
+//                }
+//            }
+//
+//            exit("parseNonemptyParameters",result)
+//            return result
+//        }
+//
+//        /*
+//
+//        ParameterInit    
+//            Parameter
+//            Parameter  =  NonAssignmentExpressionallowIn
+//
+//        */
+//
+//        function parseParameterInit(prologue)
+//        {
+//            enter("parseParameterInit")
+//
+//            if( lookahead(const_token) )
+//            {
+//                var kind = match(const_token);
+//            }
+//            else
+//            {
+//                var kind = var_token;
+//            }
+//
+//            var typedid = parseTypedIdentifier(allowIn_mode)
+//
+//            var result = <Parameter kind={scan.tokenText(kind)}>{typedid}</Parameter>
+//
+//            if( lookahead(assign_token) )
+//            {
+//                match(assign_token);
+//                var init = parseNonAssignmentExpression(allowIn_mode);
+//                result.Init = init
+//            }
+//
+//            var temp = makeBinding(<Attributes><parameter/></Attributes>,var_token,typedid,init,prologue)
+//
+//            exit("parseParameterInit",result)
+//            return result
+//        }
+//
+//        /*
+//
+//        */
+//
+//        function parseParameter()
+//        {
+//            enter("parseParameter")
+//
+//            exit("parseParameter",result)
+//            return result
+//        }
+//
+//        /*
+//
+//        RestParameter    
+//            ...
+//            ...  ParameterAttributes Identifier
+//
+//        */
+//
+//        function parseRestParameter()
+//        {
+//            enter("parseRestParameter")
+//
+//            match(tripledot_token)
+//            if( lookahead(const_token) )
+//            {
+//                var first = match(const_token);
+//            }
+//            else
+//            {
+//                var first = var_token;
+//            }
+//
+//            var second = parseIdentifier()
+//            var result = <RestParameter kind={scan.tokenText(first)}>{second}</RestParameter>
+//
+//            exit("parseRestParameter",result)
+//            return result
+//        }
+//
+//        /*
+//
+//        ResultType    
+//            empty
+//            :  void
+//            :  TypeExpression
+//
+//        */
+//
+//        function parseResultType()
+//        {
+//            enter("parseResultType")
+//
+//            if( lookahead(colon_token) )
+//            {
+//                match(colon_token)
+//                if( lookahead(void_token) )
+//                {
+//                    match(void_token)
+//                    var first = <Void/>
+//                }
+//                else
+//                {
+//                    var first = parseTypeExpression()
+//                }
+//                var result = <ResultType>{first}</ResultType>
+//            }
+//            else
+//            {
+//                var result = <ResultType/>
+//            }
+//
+//            exit("parseResultType",result)
+//            return result
+//        }
+//
+//        /*
 //
 //        var current_class = null
 //
@@ -4053,7 +4033,7 @@
 //
 //        function parseClassDefinition(attrs,hoisted)
 //        {
-//            Debug::enter("parseClassDefinition",attrs)
+//            enter("parseClassDefinition",attrs)
 //            
 //            match(class_token)
 //            var name = parseClassName()
@@ -4078,7 +4058,7 @@
 //
 //            var node = makeBinding(attrs,class_token,name,value,hoisted)
 //
-//            Debug::exit("parseClassDefinition",node)
+//            exit("parseClassDefinition",node)
 //            return node
 //        }
 //
@@ -4121,7 +4101,7 @@
 //
 //        function parseInheritance()
 //        {
-//            Debug::enter("parseInheritance")
+//            enter("parseInheritance")
 //
 //            var node = <Inheritance/>
 //
@@ -4145,7 +4125,7 @@
 //                node.Implements.* = second
 //            }
 //    
-//            Debug::exit("parseInheritance",node)
+//            exit("parseInheritance",node)
 //            return node
 //        }
 //
@@ -4169,7 +4149,7 @@
 //
 //        function parseInterfaceDefinition(attrs,hoisted)
 //        {
-//            Debug::enter("parseInterfaceDefinition",attrs)
+//            enter("parseInterfaceDefinition",attrs)
 //            
 //            match(interface_token)
 //            var name = parseClassName()
@@ -4193,7 +4173,7 @@
 //            var value = <Interface>{name}{inherits}{stmt.Prologue}{stmt.Block}</Interface>
 //            var node = makeBinding(attrs,interface_token,name,value,hoisted)
 //
-//            Debug::exit("parseInterfaceDefinition",node)
+//            exit("parseInterfaceDefinition",node)
 //            return node
 //        }
 //
@@ -4207,7 +4187,7 @@
 //
 //        function parseExtendsList()
 //        {
-//            Debug::enter("parseExtendsList")
+//            enter("parseExtendsList")
 //
 //            var node = <Inheritance/>
 //
@@ -4218,7 +4198,7 @@
 //                node.Extends.* = first
 //            }
 //    
-//            Debug::exit("parseExtendsList",node)
+//            exit("parseExtendsList",node)
 //            return node
 //        }
 //
@@ -4233,7 +4213,7 @@
 //        
 //        function parseTypeExpressionList()
 //        {
-//            Debug::enter("parseTypeExpressionList")
+//            enter("parseTypeExpressionList")
 //            
 //            var list = <></>
 //            list += parseTypeExpression()
@@ -4244,13 +4224,13 @@
 //            }
 //            var result = list
 //
-//            Debug::exit("parseTypeExpressionList",result)
+//            exit("parseTypeExpressionList",result)
 //            return result
 //        }
 //
 //        function parseNamespaceDefinition(attrs,prologue)
 //        {
-//            Debug::enter("parseNamespaceDefinition",attrs)
+//            enter("parseNamespaceDefinition",attrs)
 //
 //            match(namespace_token)
 //            var first = parseTypedIdentifier(allowIn_mode)
@@ -4278,7 +4258,7 @@
 //
 //            var node = makeBinding(attrs,namespace_token,first,second,prologue)
 //
-//            Debug::exit("parseNamespaceDefinition",node)
+//            exit("parseNamespaceDefinition",node)
 //            return node
 //        }
 //
@@ -4288,7 +4268,7 @@
 //
 //        function parseTypeDefinition(attrs,hoisted)
 //        {
-//            Debug::enter("parseTypeDefinition",attrs)
+//            enter("parseTypeDefinition",attrs)
 //
 //            match(type_token)
 //            var first = parseTypedIdentifier(allowIn_mode)
@@ -4296,7 +4276,7 @@
 //            var second = parseTypeExpression()
 //            var node = makeBinding(attrs,type_token,first,second,hoisted)
 //
-//            Debug::exit("parseTypeDefinition",node)
+//            exit("parseTypeDefinition",node)
 //            return node
 //        }
 //
@@ -4323,7 +4303,7 @@
 //
 //        function parsePackageDefinition(attr)
 //        {
-//            Debug::enter("parsePackageDefinition")
+//            enter("parsePackageDefinition")
 //
 //            enterSlashContext(div_token)
 //            match(package_token)
@@ -4348,13 +4328,13 @@
 //                    </OpenNamespaces>
 //
 //
-//            Debug::exit("parsePackageDefinition",node)
+//            exit("parsePackageDefinition",node)
 //            return node
 //        }
 //
 //        function parsePackageName()
 //        {
-//            Debug::enter("parsePackageName")
+//            enter("parsePackageName")
 //            
 //            var name = ""
 //            if( lookahead(leftbrace_token) )
@@ -4373,7 +4353,7 @@
 //                scan.addPackageName(name)
 //            }
 //
-//            Debug::exit("parsePackageName",name)
+//            exit("parsePackageName",name)
 //            return name
 //        }
 //
@@ -4386,10 +4366,10 @@
 
         */
 
-        function directives (ts: TOKENS, tau:int)
+        function directives (ts: TOKENS, tau: TAU)
             : [TOKENS, Ast::BLOCK]
         {
-            Debug::enter("Parser::directives ", ts);
+            enter("Parser::directives ", ts);
 
             var ts1,pragmas,defns,head,stmts,pos;
             switch (hd (ts)) {
@@ -4404,7 +4384,7 @@
                 break;
             }
 
-            Debug::exit("Parser::directives ", ts1);
+            exit("Parser::directives ", ts1);
             return [ts1, new Ast::Block (pragmas,defns,head,stmts,pos)];
         }
 
@@ -4426,10 +4406,10 @@
               Directive(tau,full) DirectivesPrefix'(tau)
         */
 
-        function directivesPrefix (ts: TOKENS, tau:int)
+        function directivesPrefix (ts: TOKENS, tau: TAU)
             : [TOKENS, Ast::DIRECTIVES]
         {
-            Debug::enter("Parser::directives ", ts);
+            enter("Parser::directives ", ts);
 
             var ts2,nd2;
             var pragmas,defns,head,stmts,pos;
@@ -4446,38 +4426,46 @@
                 break;
             }
 
-            Debug::exit("Parser::directivesPrefix ", ts2);
+            exit("Parser::directivesPrefix ", ts2);
             return [ts2, {pragmas:pragmas,defns:defns,head:head,stmts:stmts,pos:pos}];
         }
 
-        function directivesPrefixPrime (ts: TOKENS, tau:int)
-            : [TOKENS, Ast::DIRECTIVES]
+        function directivesPrefixPrime (ts: TOKENS, tau: TAU)
+            //    : [TOKENS, Ast::DIRECTIVES]
         {
-            Debug::enter("Parser::directivesPrefixPrime ", ts);
+            enter("Parser::directivesPrefixPrime ", ts);
 
-            var ts2,nd2;
-            var pragmas,defns,head,stmts,pos;
+            var ts1,ts2;
+            var pragmas1,defns1,head1,stmts1,pos1;
+            var pragmas2,defns2,head2,stmts2,pos2;
             switch (hd (ts)) {
             case Token::RightBrace:
             case Token::EOS:
-                var [ts2,{pragmas:pragmas,defns:defns,head:head,stmts:stmts,pos:pos}] 
+                var [ts1,{pragmas:pragmas1,defns:defns1,head:head1,stmts:stmts1,pos:pos1}] 
                          = [ts,{pragmas:[],defns:[],head:null,stmts:[],pos:null}];
                 break;
             default:
-                let [ts1,nd1] = directive (ts,tau,Full);
-                var [ts2,{pragmas:pragmas,defns:defns,head:head,stmts:stmts,pos:pos}] 
+                // FIXME: make these let's and you get a verify error
+                var [ts1,{pragmas:pragmas1,defns:defns1,head:head1,stmts:stmts1,pos:pos1}] = directive (ts,tau,Full);
+                var [ts2,{pragmas:pragmas2,defns:defns2,head:head2,stmts:stmts2,pos:pos2}]
                          = directivesPrefixPrime (ts1,tau);
+
+                // FIXME: poor man's array append
+                for (p in pragmas2) pragmas1.push(pragmas2[p]);
+                for (p in defns2) defns1.push(defns2[p]);
+                for (p in stmts2) stmts1.push(stmts2[p]);
+                ts1 = ts2;
                 break;
             }
 
-            Debug::exit("Parser::directivesPrefixPrime ", ts2);
-            return [ts2, {pragmas:pragmas,defns:defns,head:head,stmts:stmts,pos:pos}];
+            exit("Parser::directivesPrefixPrime ", ts1);
+            return [ts1, {pragmas:pragmas1,defns:defns1,head:head1,stmts:stmts1,pos:pos1}];
         }
 
-        function directive (ts: TOKENS, tau:int, omega:int)
-            : [TOKENS, Ast::DIRECTIVES]
+        function directive (ts: TOKENS, tau: TAU, omega: OMEGA)
+            // : [TOKENS, Ast::DIRECTIVES]
         {
-            Debug::enter("Parser::directive ", ts);
+            enter("Parser::directive ", ts);
 
             var ts1,nd1;
             switch (hd(ts)) {
@@ -4486,7 +4474,7 @@
                 break;
             }
 
-            Debug::exit("Parser::directive ", ts1);
+            exit("Parser::directive ", ts1);
             return [ts1, {pragmas:[],defns:[],head:null,stmts:[nd1],pos:null}];
         }
 
@@ -4511,7 +4499,7 @@
 //
 //        function parseAttributes(first)
 //        {
-//            Debug::enter("parseAttributes",first)
+//            enter("parseAttributes",first)
 //
 //            while( !lookaheadSemicolon(full_mode) &&
 //                   ( lookahead(public_token) || 
@@ -4536,13 +4524,13 @@
 //
 //            // todo: check for duplicates
 //
-//            Debug::exit("parseAttributes",node)
+//            exit("parseAttributes",node)
 //            return node
 //        }
 //
 //        function parseAttribute()
 //        {
-//            Debug::enter("parseAttribute")
+//            enter("parseAttribute")
 //
 //            var found = lookahead(public_token) ? match(public_token) :
 //                        lookahead(private_token) ? match(private_token) :
@@ -4640,7 +4628,7 @@
 //                var node = parseSimpleTypeIdentifier()
 //            }
 //
-//            Debug::exit("parseAttribute",node.toXMLString())
+//            exit("parseAttribute",node.toXMLString())
 //            return node
 //        }
 //
@@ -4649,7 +4637,7 @@
 
 //        public function parsePragmas()
 //        {
-//            Debug::enter("parsePragmas")
+//            enter("parsePragmas")
 //
 //            var node = <></>
 //
@@ -4659,13 +4647,13 @@
 //                node += parsePragma()
 //            }
 //
-//            Debug::exit("parsePragmas",node)
+//            exit("parsePragmas",node)
 //            return node
 //        }
 //
 //        public function parsePragma()
 //        {
-//            Debug::enter("parsePragma")
+//            enter("parsePragma")
 //
 //            var node = <></>
 //
@@ -4681,13 +4669,13 @@
 //                matchSemicolon(full_mode)
 //            }
 //
-//            Debug::exit("parsePragma",node)
+//            exit("parsePragma",node)
 //            return node
 //        }
 //
 //        public function parseImportPragma()
 //        {
-//            Debug::enter("parseImportPragma")
+//            enter("parseImportPragma")
 //
 //            match(import_token)
 //
@@ -4733,7 +4721,7 @@
 //                scopes[scopes.length-1].Imports[def_name].*+=node
 //            }
 //
-//            Debug::exit("parseImportPragma",node.toXMLString())
+//            exit("parseImportPragma",node.toXMLString())
 //            return node
 //        }
 //
@@ -4762,7 +4750,7 @@
 //        
 //        function parseImportName()
 //        {
-//            Debug::enter("parseImportName")
+//            enter("parseImportName")
 //            
 //            var pkg_part = scan.tokenText(match(packageidentifier_token))
 //            match(dot_token)
@@ -4783,13 +4771,13 @@
 //
 //            var node = <Import pkg={pkg_part} def={def_part}/>
 //
-//            Debug::exit("parseImportName",node.toXMLString())
+//            exit("parseImportName",node.toXMLString())
 //            return node
 //        }
 //
 //        public function parseUsePragma()
 //        {
-//            Debug::enter("parseUsePragma")
+//            enter("parseUsePragma")
 //
 //            match(use_token)
 //            var node = <></>
@@ -4800,13 +4788,13 @@
 //                node += parsePragmaItem()
 //            }
 //
-//            Debug::exit("parseUsePragma",node)
+//            exit("parseUsePragma",node)
 //            return node
 //        }
 //
 //        function parsePragmaItem()
 //        {
-//            Debug::enter("parsePragmaItem")
+//            enter("parsePragmaItem")
 //
 //            if( lookaheadReservedWord() ||
 //                lookahead(identifier_token) )
@@ -4847,7 +4835,7 @@
 //                }
 //            }
 //
-//            Debug::exit("parsePragmaItem",node)
+//            exit("parsePragmaItem",node)
 //            return node
 //        }
 //
@@ -4855,7 +4843,7 @@
         function program ()
             : [TOKENS, Ast::PROGRAM]
         {
-            Debug::enter("Parser::program ","");
+            enter("Parser::program ","");
 
             let ts = scan.tokenList (scan.start)
 
@@ -4882,7 +4870,7 @@
                 throw "extra tokens after end of program: " + ts2;
             }
 
-            Debug::exit ("Parser::program ", ts2);
+            exit ("Parser::program ", ts2);
             return [ts2, new Ast::Program (nd1,nd2,null)];
         }
     }
@@ -4890,14 +4878,20 @@
     function test ()
     {
         var programs = 
-            [ "x<y"
+            [ "'hi','bye'"
+              /*
+            , "print('hello, world!')"
+            , "x<y"
             , "x==y"
             , "m-n;n+m"
-            /*
+            , "10"
+            , "p.q.r.x"
+            , "f() ()"
             , "new A()"
-            , "o.x"
             , "(new Fib(n-1)).val + (new Fib(n-2)).val"
+              */
             , "var val = n"
+              /*
             , "if (x) y; else z"
             , "function f() { return 10 }"
             , "class A { function A() {} }"
@@ -4968,7 +4962,7 @@
             try {
                 var parser = new Parser(p);
                 var [ts1,nd1] = parser.program();
-                print(n, ">", Ast::encodeProgram (nd1));
+                print(n, "> ", p, Ast::encodeProgram (nd1));
             }
             catch(x)
             {

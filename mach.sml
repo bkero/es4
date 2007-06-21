@@ -90,12 +90,6 @@ datatype VAL = Object of OBJ
        | Function of FUN_CLOSURE
        | Type of Ast.TYPE_EXPR
        | NativeFunction of NATIVE_FUNCTION
-                    
-     and IFACE = 
-         Iface of { ty: Ast.TYPE_EXPR,
-                    bases: IFACE list,
-                    definition: Ast.INTERFACE_DEFN,                        
-                    isInitialized: bool ref }
 
      and SCOPE =          
          Scope of { object: OBJ,
@@ -154,7 +148,7 @@ withtype FUN_CLOSURE =
            env: SCOPE }
          
      and IFACE_CLOSURE = 
-         { iface: IFACE, 
+         { iface: Ast.IFACE, 
            allTypesBound: bool,
            env: SCOPE }
 
