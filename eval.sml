@@ -457,7 +457,7 @@ fun allocFixtures (regs:Mach.REGS)
                   | Ast.ElementTypeRef _ => 
                     error ["allocating fixture of unresolved element type reference"]
                     
-                  | Ast.FieldTypeRef _ => (* FIXME: get type from object type *)
+                  | Ast.FieldTypeRef _ =>
                     error ["allocating fixture of unresolved field type reference"]
 
                   (* Note, the definer must have created inits for nonnullable primitive types 
@@ -606,8 +606,19 @@ fun allocFixtures (regs:Mach.REGS)
                                                   readOnly = true,
                                                   isFixed = true } }
 
-                          | Ast.InterfaceFixture _ =>  (* FIXME *)
-                            ()
+                          | Ast.InterfaceFixture iface =>  (* FIXME *)
+                            let
+                                val _ = trace ["allocating interface object for interface ", fmtName pn]
+                                val ifaceObj = needObj (newInterface scope iface)
+                            in
+                                allocProp "interface"
+                                          { ty = (Name.typename Name.intrinsic_Interface),
+                                            state = Mach.ValProp (Mach.Object ifaceObj),
+                                            attrs = { dontDelete = true,
+                                                      dontEnum = true,
+                                                      readOnly = true,
+                                                      isFixed = true } }
+                            end
 
                           (* | _ => error ["Shouldn't happen: failed to match in Eval.allocFixtures#allocFixture."] *)
 
@@ -1311,10 +1322,14 @@ and newName (n:Ast.NAME)
 and newClsClosure (env:Mach.SCOPE)
                   (cls:Ast.CLS)
     : Mach.CLS_CLOSURE =
-    { cls = cls,
-      (* FIXME: are all types bound? *)
-      allTypesBound = true,
-      env = env }
+    let
+        val Ast.Cls {instanceType={typeParams, ...}, ...} = cls
+        val allTypesBound = (length typeParams = 0)
+    in
+        { cls = cls,
+          allTypesBound = allTypesBound,
+          env = env }
+    end
     
 and newClass (e:Mach.SCOPE) 
              (cls:Ast.CLS) 
@@ -1323,6 +1338,27 @@ and newClass (e:Mach.SCOPE)
         val closure = newClsClosure e cls 
     in
         newRootBuiltin Name.intrinsic_Class (Mach.Class closure)
+    end
+
+and newIfaceClosure (env:Mach.SCOPE)
+                    (iface:Ast.IFACE)
+    : Mach.IFACE_CLOSURE =
+    let
+        val Ast.Iface {instanceType={typeParams, ...}, ...} = iface
+        val allTypesBound = (length typeParams = 0)
+    in
+        { iface = iface,
+          allTypesBound = allTypesBound,
+          env = env }
+    end
+    
+and newInterface (e:Mach.SCOPE) 
+                 (iface:Ast.IFACE) 
+    : Mach.VAL =
+    let
+        val closure = newIfaceClosure e iface 
+    in
+        newRootBuiltin Name.intrinsic_Interface (Mach.Interface closure)
     end
 
 and newFunClosure (e:Mach.SCOPE)
@@ -1899,10 +1935,63 @@ and evalExpr (regs:Mach.REGS)
       | Ast.SliceExpr _ => 
         LogErr.unimplError ["unhandled Slice expression"]
 
-      | Ast.ApplyTypeExpr _ => 
-        LogErr.unimplError ["unhandled ApplyType expression"]
+      | Ast.ApplyTypeExpr { expr, actuals } => 
+        evalApplyTypeExpr regs expr actuals
 
       | _ => LogErr.unimplError ["unhandled expression type"]
+
+and evalApplyTypeExpr (regs:Mach.REGS) 
+                      (expr:Ast.EXPR)
+                      (actuals:Ast.TYPE_EXPR list)
+    : Mach.VAL =
+    let
+        val v = evalExpr regs expr
+        fun checkTypes allTypesBound params = 
+            if allTypesBound
+            then throwTypeErr1 ["applying types to non-type-parametric value"]
+            else if (length params) = (length actuals)
+            then ()
+            else throwTypeErr1 ["mismatched type application: expecting ", 
+                                (Int.toString (length params)), " types, got ",
+                                (Int.toString (length actuals))]
+    in
+        if Mach.isObject v andalso Mach.hasMagic (needObj v)
+        then case Mach.needMagic v of 
+                 Mach.Class cc => 
+                 let 
+                     val {allTypesBound, 
+                          cls=Ast.Cls {
+                              instanceType={typeParams, ...}, ...}, 
+                          env} = cc
+                 in
+                     checkTypes allTypesBound typeParams;
+                     throwTypeErr ["incomplete: apply type expr"]
+                 end
+               | Mach.Interface ic => 
+                 let 
+                     val {allTypesBound, 
+                          iface=Ast.Iface {
+                                instanceType={typeParams, ...}, ...}, 
+                          env} = ic
+                 in
+                     checkTypes allTypesBound typeParams;
+                     throwTypeErr ["incomplete: apply type expr"]
+                 end
+               | Mach.Function fc =>
+                 let 
+                     val {allTypesBound, 
+                          func=Ast.Func {
+                               ty={typeParams, ...}, ...}, 
+                          env, 
+                          this} = fc
+                 in
+                     checkTypes allTypesBound typeParams;
+                     throwTypeErr ["incomplete: apply type expr"]
+                 end
+               | _ => Mach.Undef
+        else 
+            throwTypeErr ["applying types to value without magic"]
+    end
 
 
 and evalLiteralArrayExpr (regs:Mach.REGS)
