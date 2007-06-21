@@ -935,7 +935,7 @@ fun explodeDouble (regs:Mach.REGS)
                              val sign_exp = IntInf.orb(IntInf.fromInt(if p1 < 0.0 then 2048 else 0),
                                                        IntInf.fromInt((#exp r) + 1022))
                              val hi_hi    = IntInf.orb(IntInf.<<(sign_exp, 0w4),
-                                                       IntInf.andb(IntInf.~>>(k, 0w48), IntInf.fromInt 63))
+                                                       IntInf.andb(IntInf.~>>(k, 0w48), IntInf.fromInt 15))
                          in
                              assemble hi_hi hi_lo
                          end
