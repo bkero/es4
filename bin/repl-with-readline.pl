@@ -38,8 +38,9 @@ while (1) {
     $input = $term->readline($prompt);
     if ((not defined($input)) || $input =~ /^:q/) {
 	print $sml_call ":q\n";
+	while ($response = <$sml_response>) { print($response); }
 	exit(0);
     }
-    
+
     print $sml_call $input, "\n";
 }
