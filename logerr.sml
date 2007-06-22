@@ -108,6 +108,8 @@ exception LexError of string
 exception ParseError of string
 exception NameError of string
 exception DefnError of string
+exception FixtureError of string
+exception TypeError of string
 exception VerifyError of string
 exception EvalError of string
 exception MachError of string
@@ -126,6 +128,12 @@ fun nameError ss =
 
 fun defnError ss = 
      raise DefnError (locstr ss)
+
+fun fixtureError ss =
+     raise FixtureError (locstr ss)
+
+fun typeError ss =
+     raise TypeError (locstr ss)
 
 fun verifyError ss = 
      raise VerifyError (locstr ss)
