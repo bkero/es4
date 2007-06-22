@@ -86,7 +86,7 @@ if test "$DIALECT" = "smlnj"; then
     AC_MSG_CHECKING([usability of heap2exec on this platform])
     if test -x "$HEAP2EXEC"; then
         EXEC_SMLNJ([SMLofNJ.exportFn("autoconf-test.heap",(fn _ => OS.Process.success))])
-        "$HEAP2EXEC" autoconf-test.heap autoconf-test >/dev/null 2>&1
+        "$HEAP2EXEC" autoconf-test.heap.${HEAP_SUFFIX} autoconf-test >/dev/null 2>&1
         if test "$?" = "0"; then
             AC_MSG_RESULT([yes])
         else
