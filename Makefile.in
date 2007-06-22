@@ -116,8 +116,6 @@ checkev: tools/unit.heap.$(HEAP_SUFFIX) es4-init.heap.$(HEAP_SUFFIX)
 checklth: tools/unit.heap.$(HEAP_SUFFIX) es4-init.heap.$(HEAP_SUFFIX)
 	$(SMLNJ) @SMLload=tools/unit.heap $(TRACE) tests/lth_tests/lth_tests.test
 
-dump: $(DUMP)
-
 repl: $(DUMP)
 	perl bin/repl-with-readline.pl
 
@@ -131,14 +129,13 @@ profile:
 decimal:
 	cd decimal && $(MAKE) decimal && cp decimal ../bin/
 
-dist: dist/es4.tar.gz
-
 es4-init.heap.$(HEAP_SUFFIX): $(wildcard *.sml) pretty-cvt.sml
 	$(MLBUILD) $(MLBUILD_ARGS) es4.cm SMLofNJEntry.main es4-init.heap
 
 $(DUMP): es4-init.heap.$(HEAP_SUFFIX) $(wildcard builtins/*.es)
 	$(SMLNJ) @SMLload=es4-init.heap -dump es4-dump.heap
 
+# TODO: abstract out the common parts into clean-dist and dist-tarball
 dist/es4.tar.gz: dump decimal
 	rm -rf dist/es4
 	mkdir -p dist/es4
@@ -159,15 +156,23 @@ endif
 
 else
 
+compile: $(EXE)
+
 $(EXE): es4.mlb $(SOURCES) $(DECIMAL_SOURCES)
 	$(MLTON) $(MLTONOPTS) $(MLTONCC) es4.mlb $(DECIMAL_SOURCES)
 
 $(DUMP): $(EXE)
 	./$(EXE) -dump $(DUMP)
 
-dump: $(DUMP)
-
-# TODO: dist
+# TODO: abstract out the common parts into clean-dist and dist-tarball
+dist/es4.tar.gz: dump
+	rm -rf dist/es4
+	mkdir -p dist/es4
+	cp $(EXE) dist/es4/
+	cp $(DUMP) dist/es4/
+	chmod -R u=rwx,go=rx dist/es4
+	cd dist && tar cf es4.tar es4
+	gzip -v9 dist/es4.tar
 
 endif
 
@@ -196,6 +201,10 @@ wc:
 
 clean:
 	rm -rf .cm tools/.cm es4-init.heap.$(HEAP_SUFFIX) tools/gen-pretty.heap.$(HEAP_SUFFIX) $(EXE) $(DUMP)
+
+dump: $(DUMP)
+
+dist: dist/es4.tar.gz
 
 pretty-cvt.sml: tools/gen-pretty.heap.$(HEAP_SUFFIX) ast.sml
 	cd tools && $(SMLNJ) @SMLload=gen-pretty.heap ../ast.sml ../pretty-cvt.sml
