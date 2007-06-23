@@ -2426,7 +2426,7 @@ and evalUnaryOp (regs:Mach.REGS)
 
           | Ast.BitwiseNot => 
             newInt (Int32.fromLarge 
-                         (Word32.toLargeInt 
+                         (Word32.toLargeIntX 
                               (Word32.notb 
                                    (toUInt32 
                                         (evalExpr regs expr)))))
