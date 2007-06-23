@@ -4,7 +4,7 @@
 {
     use default namespace Ast;
     use namespace intrinsic;
-    use namespace Release;
+    use namespace Debug;
 
     function indent (n:int)
         : string {
@@ -17,7 +17,7 @@
 
     function encodeProgram (nd : PROGRAM, nesting : int = 0)
         : string {
-        enter ("encodeProgram");
+        enter ("encodeProgram", nesting);
         var str = "";
         switch type (nd): PROGRAM {
         case (p: Program) {
@@ -50,14 +50,14 @@
 
     function encodeBlock (nd: BLOCK, nesting: int = 0)
         : string {
-        enter ("encodeBlock");
+        enter ("encodeBlock",nesting);
         var str;
         switch type (nd) : BLOCK {
         case (b:Block) {
             var str =
                   "{ 'ast::class': 'Block'"
                 + indent(nesting) + ", 'pragmas': " + "[]" //encodePragmas (b.pragmas)
-                + indent(nesting) + ", 'defns': " + "[]" //encodeDefns (b.defns)
+                + indent(nesting) + ", 'defns': [ " + encodeDefns (b.defns,nesting+", 'defns': [ ".length)
                 + indent(nesting) + ", 'head': " + "[]" //encodeHead (b.head) 
                 + indent(nesting) + ", 'stmts': [ " + encodeStmts (b.stmts,nesting+", 'stmts': [ ".length) +" ]";
                 + indent(nesting) + ", 'pos': " + "null" //encodePos (b.pos)
@@ -71,7 +71,7 @@
         return str;
     }
 
-    function encodeStmts (nd /*: [STMT]*/, nesting: int = 0)
+    function encodeStmts (nd : [STMT], nesting: int = 0)
         : string {
         enter ("encodeStmts nd.length=",nd.length);
         var str;
@@ -94,6 +94,11 @@
         : string {
         var str = "";
         enter ("encodeStmt");
+
+        if (nd == null) {
+            var str = "null";
+        }
+        else {
         switch type (nd): STMT {
         case (es: ExprStmt) {
             var str =
@@ -107,6 +112,7 @@
             throw "internalError: encodeStmt";
         }
         }
+        }
         exit ("encodeStmt");
         return str;
     }
@@ -116,6 +122,10 @@
         enter ("encodeExprs nd.length=",nd.length);
 
         var str;
+        if (nd == null) {
+            var str = "null";
+        }
+        else
         if (nd.length == 0) {
             var str = "";
         }
@@ -254,27 +264,56 @@
         enter ("encodeLiteral")
         var str = "";
         switch type (nd): LITERAL {
-        case (ls: LiteralString) {
+        case (nd: LiteralString) {
             var str =
                 "{ 'ast::class': 'LiteralString'"
               + indent(nesting) 
               + ", 'strValue': " 
-              + ls.strValue
+              + nd.strValue
               + " }";
         }
-        case (ls: LiteralDecimal) {
+        case (nd: LiteralDecimal) {
             var str =
                 "{ 'ast::class': 'LiteralDecimal'"
               + indent(nesting) 
               + ", 'decimalValue': " 
-              + ls.decimalValue
+              + nd.decimalValue
+              + " }";
+        }
+        case (nd: LiteralNamespace) {
+            var str =
+                "{ 'ast::class': 'LiteralNamespace'"
+              + indent(nesting) 
+              + ", 'namespaceValue': " 
+              + encodeNamespace (nd.namespaceValue,nesting+", 'namespaceValue': ".length)
               + " }";
         }
         case (x: *) {
-            throw "internalError: encodeLiteral";
+            throw "internalError: encodeLiteral "+nd;
         }
         }
         exit ("encodeLiteral ",str);
+        return str;
+    }
+
+    function encodeNamespace (nd : NAMESPACE, nesting: int = 0)
+        : string {
+        enter ("encodeNamespace ",nesting)
+        var str = "";
+        switch type (nd): NAMESPACE {
+        case (nd: PublicNamespace) {
+            var str =
+                "{ 'ast::class': 'PublicNamespace'"
+              + indent(nesting) 
+              + ", 'name': '" 
+              + nd.name
+              + "' }";
+        }
+        case (x: *) {
+            throw "internalError: encodeNamespace "+nd;
+        }
+        }
+        exit ("encodeNamespace ",str);
         return str;
     }
 
@@ -381,5 +420,132 @@
         return str;
     }
 
+    function encodeDefns (nd : [STMT], nesting: int = 0)
+        : string {
+        enter ("encodeDefns nd.length=",nd.length);
+        var str;
+        if (nd.length == 0) {
+            var str = "";
+        }
+        else
+        {
+            var str =
+                  encodeDefn (nd[0], nesting)
+                + indent(nesting-2) 
+                + ", " 
+                + encodeDefns (nd.slice (1,nd.length), nesting);
+        }
+        exit ("encodeDefns ",str);
+        return str;
+    }
+
+    function encodeDefn (nd : DEFN, nesting: int = 0)
+        : string {
+        var str = "";
+        enter ("encodeDefn");
+        switch type (nd): DEFN {
+        case (nd: VariableDefn) {
+            var str =
+                "{ 'ast::class': 'VariableDefn'"
+              + indent(nesting) 
+              + ", 'ns': "
+              + encodeExpr (nd.ns, nesting+", 'ns': ".length)
+              + indent(nesting)
+              + ", 'bindings': [ [ "
+              + encodeBindings (nd.bindings[0], nesting+", 'bindings': [ [ ".length)
+              + " ]"
+                /*
+              + indent(nesting)
+              + ", [ "
+              + encodeInitSteps (nd.bindings[0], nesting+", 'bindings': [".length)
+            */
+              + " ] ] }";
+        }
+        case (x: *) {
+            throw "internalError: encodeDefn";
+        }
+        }
+        exit ("encodeStmt");
+        return str;
+    }
+
+    function encodeBindings (nd: [BINDING], nesting: int = 0)
+        : string {
+        enter ("encodeBindings nd.length=",nd.length);
+
+        var str;
+        if (nd == null) {
+            var str = "null";
+        }
+        else
+        if (nd.length == 0) {
+            var str = "";
+        }
+        else
+        {
+            var str =
+                  encodeBinding (nd[0],nesting)
+                + indent(nesting-2)
+                + ", "
+                + encodeBindings (nd.slice (1,nd.length), nesting);
+        }
+        exit ("encodeBindings ",str);
+        return str;
+    }
+
+    function encodeBinding (nd : BINDING, nesting: int = 0)
+        : string {
+        enter ("encodeBinding");
+
+        var str =
+            "{ 'ast::class': 'Binding'"
+          + indent(nesting) 
+          + ", 'ident': "
+          + encodeBindingIdent (nd.ident,nesting+", 'ident': ".length)
+            /*
+          + indent(nesting) 
+          + ", 'type': "
+          + encodeTypeExpr (nd.type,nesting+", 'ident': ".length)
+            */
+          + " }";
+
+        exit ("encodeBinding ",str);
+        return str;
+    }
+
+    function encodeBindingIdent (nd : BINDING_IDENT, nesting: int = 0)
+        : string {
+        enter ("encodeBindingIdent");
+
+        var str = "";
+
+        switch type (nd) {
+        case (nd:TempIdent) {
+            str = "{ 'ast::class': 'TempIdent'"
+                + indent(nesting)
+                + ", 'n': "
+                + nd.n
+                + " }";
+        }
+        case (nd:ParamIdent) {
+            str = "{ 'ast::class': 'ParamIdent'"
+                + indent(nesting) 
+                + ", 'n': "
+                + nd.n
+                + " }";
+        }
+        case (nd:PropIdent) {
+            str = "{ 'ast::class': 'PropIdent'"
+                + indent(nesting) 
+                + ", 'ident': '"
+                + nd.ident
+                + "' }";
+        }
+        }
+
+
+        exit ("encodeBinding ",str);
+        return str;
+    }
 }
 // } // end module
