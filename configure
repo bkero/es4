@@ -1784,7 +1784,7 @@ fi
 echo $ECHO_N "checking usability of heap2exec on this platform... $ECHO_C" >&6; }
     if test -x "$HEAP2EXEC"; then
         echo -e 'SMLofNJ.exportFn("autoconf-test.heap",(fn _ => OS.Process.success));' | (sml >/dev/null) 2>&1
-        "$HEAP2EXEC" autoconf-test.heap autoconf-test >/dev/null 2>&1
+        "$HEAP2EXEC" autoconf-test.heap.${HEAP_SUFFIX} autoconf-test >/dev/null 2>&1
         if test "$?" = "0"; then
             { echo "$as_me:$LINENO: result: yes" >&5
 echo "${ECHO_T}yes" >&6; }
