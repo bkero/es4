@@ -129,17 +129,23 @@
         function desugarPattern (p: PATTERN, t: Ast::TYPE_EXPR, e: Ast::EXPR) 
             : [[Ast::BINDING],[Ast::INIT_STEP]]
         {
-            var i, b;
+            var bs, ss;
             switch type (p) : PATTERN {
             case (p:IdentifierPattern) {
-                var i = new Ast::PropIdent (p.ident);
-                var b = new Ast::Binding (i,t);
+                let i = new Ast::PropIdent (p.ident);
+                var bs = [new Ast::Binding (i,t)];
+                if (e !== null) {
+                    var ss = [new Ast::InitStep (i,e)];
+                }
+                else {
+                    var ss = [];
+                }
             }
             case (x: *) {
                 throw "internal error: desugarPattern " + p;
             }
             }
-            return [[b],[]];  // FIXME: RI allows [b,[]], which should be an error
+            return [bs,ss];  // FIXME: RI allows [b,[]], which should be an error
         }
 
         // Parse rountines
@@ -2772,6 +2778,9 @@
 
             var ts1,nd1,ts2,nd2;
             switch (hd(ts)) {
+            case Token::If:
+                var [ts2,nd2] = ifStatement (ts,omega);
+                break;
             default:
                 var [ts1,nd1] = expressionStatement (ts);
                 var [ts2,nd2] = [semicolon (ts1,omega),nd1];
@@ -2831,6 +2840,28 @@
 
             exit("Parser::expressionStatement ", ts1);
             return [ts1, new Ast::ExprStmt (nd1)];
+        }
+
+        function ifStatement (ts: TOKENS, omega)
+            : [TOKENS, Ast::STMT]
+        {
+            enter("Parser::ifStatement ", ts);
+
+            ts = eat (ts,Token::If);
+            var [ts1,nd1] = parenListExpression (ts);
+            var [ts2,nd2] = statement (ts1, omega); // FIXME: should be subStatement to include empty stmt
+            var ts3,nd3;
+            switch (hd (ts2)) {
+            case Token::Else:
+                var [ts3,nd3] = statement (tl (ts2), omega);
+                break;
+            default:
+                var [ts3,nd3] = [ts2,null];
+                break;
+            }
+
+            exit("Parser::ifStatement ", ts3);
+            return [ts3, new Ast::IfStmt (nd1,nd2,nd3)];
         }
 
 
@@ -5194,9 +5225,9 @@
             , "(new Fib(n-1)).val + (new Fib(n-2)).val"
               */
             , "var x = 10, y = 20"
-              /*
             , "var x = 10; var y"
             , "if (x) y; else z"
+              /*
             , "function f() { return 10 }"
             , "class A { function A() {} }"
             , "class Fib { function Fib (n) { } }"

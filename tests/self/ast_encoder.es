@@ -100,12 +100,26 @@
         }
         else {
         switch type (nd): STMT {
-        case (es: ExprStmt) {
+        case (nd: ExprStmt) {
             var str =
                 "{ 'ast::class': 'ExprStmt'"
               + indent(nesting) 
               + ", 'expr': "
-              + encodeExpr (es.expr,nesting+", 'expr': ".length)
+              + encodeExpr (nd.expr,nesting+", 'expr': ".length)
+              + " }";
+        }
+        case (nd: IfStmt) {
+            var str =
+                "{ 'ast::class': 'IfStmt'"
+              + indent(nesting) 
+              + ", 'cnd': "
+              + encodeExpr (nd.cnd,nesting+", 'cnd': ".length)
+              + indent(nesting) 
+              + ", 'thn': "
+              + encodeStmt (nd.thn,nesting+", 'thn': ".length)
+              + indent(nesting) 
+              + ", 'els': "
+              + encodeStmt (nd.els,nesting+", 'els': ".length)
               + " }";
         }
         case (x: *) {
@@ -117,7 +131,7 @@
         return str;
     }
 
-    function encodeExprs (nd /*: [EXPR]*/, nesting: int = 0)
+    function encodeExprs (nd : [EXPR], nesting: int = 0)
         : string {
         enter ("encodeExprs nd.length=",nd.length);
 
@@ -138,6 +152,20 @@
                 + encodeExprs (nd.slice (1,nd.length), nesting);
         }
         exit ("encodeExprs ",str);
+        return str;
+    }
+
+    function encodeExprOption (nd : EXPR?, nesting: int = 0)
+        : string {
+        enter ("encodeExprOption");
+        var str = "";
+        if( nd === null ) {
+            var str = "'null'";
+        }
+        else {
+            var str = encodeExpr (nd,nesting);
+        }
+        exit ("encodeExprOption ",str);
         return str;
     }
 
@@ -454,18 +482,16 @@
               + ", 'bindings': [ [ "
               + encodeBindings (nd.bindings[0], nesting+", 'bindings': [ [ ".length)
               + " ]"
-                /*
-              + indent(nesting)
+              + indent(nesting+", 'bindings': ".length)
               + ", [ "
-              + encodeInitSteps (nd.bindings[0], nesting+", 'bindings': [".length)
-            */
+              + encodeInitSteps (nd.bindings[1], nesting+", 'bindings': [ [ ".length)
               + " ] ] }";
         }
         case (x: *) {
             throw "internalError: encodeDefn";
         }
         }
-        exit ("encodeStmt");
+        exit ("encodeDefn");
         return str;
     }
 
@@ -547,5 +573,56 @@
         exit ("encodeBinding ",str);
         return str;
     }
+
+    function encodeInitSteps (nd: [INIT_STEP], nesting: int = 0)
+        : string {
+        enter ("encodeInitSteps nd.length=",nd.length);
+
+        var str;
+        if (nd == null) {
+            var str = "null";
+        }
+        else
+        if (nd.length == 0) {
+            var str = "";
+        }
+        else
+        {
+            var str =
+                  encodeInitStep (nd[0],nesting)
+                + indent(nesting-2)
+                + ", "
+                + encodeInitSteps (nd.slice (1,nd.length), nesting);
+        }
+        exit ("encodeBindings ",str);
+        return str;
+    }
+
+    function encodeInitStep (nd : INIT_STEP, nesting: int = 0)
+        : string {
+        enter ("encodeInitStep");
+
+        var str;
+        switch type (nd) {
+        case (nd:InitStep) {
+        var str =
+            "{ 'ast::class': 'InitStep'"
+          + indent(nesting) 
+          + ", 'ident': "
+          + encodeBindingIdent (nd.ident,nesting+", 'ident': ".length)
+          + indent(nesting)
+          + ", 'expr': "
+          + encodeExpr (nd.expr,nesting+", 'expr': ".length)
+          + " }";
+        }
+        case (nd:*) {
+            throw "internal error: encodeInitStep";
+        }
+        }
+
+        exit ("encodeInitStep ",str);
+        return str;
+    }
+
 }
 // } // end module

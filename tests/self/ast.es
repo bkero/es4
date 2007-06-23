@@ -872,6 +872,9 @@ namespace Ast
     class InitStep {
         const ident : BINDING_IDENT;
         const expr : EXPR;
+        function InitStep (ident,expr)
+            : ident = ident
+            , expr = expr { }
     }
 
     class AssignStep {
@@ -1116,9 +1119,13 @@ namespace Ast
     }
 
     class IfStmt {
-        const test : EXPR;
-        const consequent : STMT;
-        const alternate : STMT?;
+        const cnd : EXPR;
+        const thn : STMT;
+        const els : STMT?;
+        function IfStmt (cnd,thn,els)
+            : cnd = cnd
+            , thn = thn
+            , els = els { }
     }
 
     class WithStmt {
