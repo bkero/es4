@@ -366,7 +366,7 @@ package
                 return s;
             }
 
-            let function match( regexp, i : uint ) : [uint, CapArray]  {
+            let function match( regexp, i : uint ) : [uint,CapArray?,*]  {
                 while (i <= S.length) {
                     let res : MatchResult = regexp.match(S, i);
                     if (res !== null) {
@@ -392,7 +392,7 @@ package
                 let m : uint = regexp.nCapturingParens;
 
                 if (!regexp.global) {
-                    let [i, res] : [uint, CapArray] = match(regexp, 0);
+                    let [i, res] : [uint,CapArray?] = match(regexp, 0);
 
                     if (res === null)
                         return S;
@@ -507,7 +507,7 @@ package
 
             type matcher = (string,RegExp!);
 
-            function splitMatch(R: matcher, S: string, q: uint) : [uint, [string]]? {
+            function splitMatch(R: matcher, S: string, q: uint) : [uint, [string], *]? {
                 /* FIXME (Ticket #70): type annotation on expression in 'switch type'
                  * should not be necessary.
                  */

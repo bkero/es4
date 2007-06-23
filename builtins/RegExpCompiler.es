@@ -74,7 +74,7 @@ package RegExpInternals
             skip();
         }
 
-        public function compile() : [RegExpMatcher, [string?]] {
+        public function compile() : [RegExpMatcher, [string?], *] {
             let p : Matcher = pattern();
             if (idx !== slen)
                 fail( SyntaxError, "Invalid character in input \"" + source + "\", position " + idx );
@@ -120,10 +120,10 @@ package RegExpInternals
             let m : Matcher? = atom();
             if (m === null)
                 return m;
-            let q : [double, double, boolean]? = quantifier();
+            let q : [double,double,boolean,*]? = quantifier();
             if (q === null)
                 return m;
-            let [min, max, greedy] : [double,double,boolean] = q;
+            let [min, max, greedy] : [double,double,boolean,*] = q;
             return new Quantified(savedParenIndex, parenIndex - savedParenIndex, m, min, max, greedy);
         }
 
@@ -150,24 +150,24 @@ package RegExpInternals
             }
         }
 
-        function quantifier() : [double,double,boolean]? {
+        function quantifier() : [double,double,boolean,*]? {
             let qp : [double,double]? = quantifierPrefix();
             if (qp === null)
                 return qp;
-            let [min,max] : [double,double] = qp;
+            let [min,max,*] : [double,double,*] = qp;
             let greedy : boolean = true;
             if (peekCharCode() == 0x3Fu /* "?" */) {
                 greedy = false;
                 advance();
             }
-            return [min,max,greedy];
+            return [min,max,greedy,*];
         }
 
         static const star = [0,Infinity];
         static const plus = [1,Infinity];
         static const ques = [0,1];
 
-        function quantifierPrefix() : [double, double]? {
+        function quantifierPrefix() : [double,double,*]? {
             switch (peekCharCode()) {
             case 0x2Au /* "*" */:
                 advance();
