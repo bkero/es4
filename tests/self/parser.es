@@ -48,7 +48,7 @@
 
 {
     use default namespace Parser;
-    use namespace Release;
+    use namespace Debug;
 
     type BETA = int;  // NoIn, AllowIn
     type TAU = int;   // NoExpr, AllowExpr
@@ -65,7 +65,7 @@
     class SimplePattern { }
     class IdentifierPattern 
     {
-        const ident;
+        const ident : Ast::IDENT;
         function IdentifierPattern (ident)
             : ident = ident { }
     }
@@ -125,6 +125,22 @@
         }
 
         function tl (ts:TOKENS) : TOKENS ts.slice (1,ts.length);
+
+        function desugarPattern (p: PATTERN, t: Ast::TYPE_EXPR, e: Ast::EXPR) 
+            : [[Ast::BINDING],[Ast::INIT_STEP]]
+        {
+            var i, b;
+            switch type (p) : PATTERN {
+            case (p:IdentifierPattern) {
+                var i = new Ast::PropIdent (p.ident);
+                var b = new Ast::Binding (i,t);
+            }
+            case (x: *) {
+                throw "internal error: desugarPattern " + p;
+            }
+            }
+            return [[b],[]];  // FIXME: RI allows [b,[]], which should be an error
+        }
 
         // Parse rountines
 
@@ -1881,7 +1897,7 @@
         function logicalOrExpression (ts: TOKENS, beta: BETA) 
             : [TOKENS, Ast::EXPR]
         {
-            enter("Parser::assignmentExpression ", ts);
+            enter("Parser::logicalOrExpression ", ts);
 
             var [ts1, nd1] = logicalXorExpression (ts, beta);
             while (hd (ts1) === Token::LogicalOr) {
@@ -1889,7 +1905,7 @@
                 var [ts1, nd1] = [ts2, new Ast::BinaryExpr (Ast::logicalOrOp, nd1, nd2)];
             }
 
-            exit ("Parser::assignmentExpression ", ts1);
+            exit ("Parser::logicalOrExpression ", ts1);
             return [ts1, nd1];
         }
 
@@ -1945,7 +1961,7 @@
         function conditionalExpression (ts: TOKENS, beta: BETA) 
             : [TOKENS, Ast::EXPR]
         {
-            enter("Parser::assignmnetExpression ", ts);
+            enter("Parser::conditionalExpression ", ts);
 
             var ts1,nd1,ts2,nd2,ts3,nd3;
             switch (hd (ts)) {
@@ -1969,7 +1985,7 @@
                 }
             }
 
-            exit ("Parser::assignmnetExpression ", ts1);
+            exit ("Parser::conditionalExpression ", ts1);
             return [ts1,nd1];
         }
 
@@ -2044,11 +2060,11 @@
         function assignmentExpression (ts: TOKENS, beta: BETA) 
             : [TOKENS, Ast::EXPR]
         {
-            enter("Parser::assignmnetExpression ", ts);
+            enter("Parser::assignmentExpression ", ts);
 
             var [ts1,nd1] = conditionalExpression (ts, beta);
 
-            exit ("Parser::assignmnetExpression ", ts1);
+            exit ("Parser::assignmentExpression ", ts1);
             return [ts1,nd1];
         }
 
@@ -2194,11 +2210,11 @@
             switch (tau) {
             case NoExpr:
                 let [ts1,nd1] = identifier (ts);
-                var [tsx,ndx] = [ts1, new SimplePattern (nd1)];
+                var [tsx,ndx] = [ts1, new IdentifierPattern (nd1.Ast::ident)];
                 break;
             case AllowExpr:
                 let [ts1,nd1] = leftHandSideExpression (ts,beta);
-                var [tsx,ndx] = [ts1, new IdentifierPattern (nd1)];
+                var [tsx,ndx] = [ts1, new SimplePattern (nd1)];
                 break;
             }
 
@@ -2225,21 +2241,25 @@
         function typedPattern (ts: TOKENS, beta: BETA)
             //            : [TOKENS, [PATTERN,Ast.TYPE_EXPR]]
         {
-            enter("Parser::simplePattern", ts);
+            enter("Parser::typedPattern ", ts);
 
             var [ts1,nd1] = simplePattern (ts,beta,NoExpr);
             var ts2,nd2;
+            var tsx,ndx;
             switch (hd (ts1)) {
             case Token::Colon:
                 var [ts2,nd2] = typeExpression (tl (ts1));
+                var tsx = ts2;
+                var ndx = [nd1,nd2];
                 break;
             default:
-                var [ts2,nd2] = [ts1,[null,null]];
+                var tsx = ts1;
+                var ndx = [nd1,null];
                 break;
             }
 
-            exit("Parser::simplePattern", ts2);
-            return [ts2,[nd1,nd2]];
+            exit("Parser::typedPattern ", tsx);
+            return [tsx,ndx];
         }
 
 //        /*
@@ -3277,10 +3297,15 @@
 
             let [ts1,nd1] = variableDefinitionKind (ts);
             let [ts2,nd2] = variableBindingList (ts1, beta);
-            let ndx = new Ast::VariableDefn (ns,isPrototype,isStatic,nd1,nd2);
 
-            exit("Parser::variableDefinition ", ts1);
-            return [ts1, {pragmas:[],defns:[],head:null,stmts:[nd1],pos:null}];
+            print("nd2[0].length=",nd2[0].length);
+            exit("Parser::variableDefinition ", ts2);
+            return [ ts2
+                   , { pragmas: []
+                     , defns: [new Ast::VariableDefn (ns,isStatic,isPrototype,nd1,nd2)]
+                     , head: null
+                     , stmts: []
+                     , pos: null } ];
         }
 
         /*
@@ -3301,21 +3326,21 @@
             var tsx,ndx;
             switch (hd (ts)) {
             case Token::Const:
-                var [tsx,ndx] = [tl (ts), Ast::Const];
+                var [tsx,ndx] = [tl (ts), Ast::constTag];
                 break;
             case Token::Var:
-                var [tsx,ndx] = [tl (ts), Ast::Const];
+                var [tsx,ndx] = [tl (ts), Ast::varTag];
                 break;
             case Token::Let:
                 switch (hd (ts)) {
                 case Token::Const:
-                    var [tsx,ndx] = [tl (ts), Ast::LetConst];
+                    var [tsx,ndx] = [tl (ts), Ast::letConstTag];
                     break;
                 case Token::Function:
                     throw "internal error: variableDefinitionKind after let";
                     break;
                 default:
-                    var [tsx,ndx] = [tl (ts), Ast::Let];
+                    var [tsx,ndx] = [tl (ts), Ast::letTag];
                     break;
                 }
             default:
@@ -3354,7 +3379,7 @@
         
                 var ts1,nd1;
                 var ts2,nd2;
-
+                var b1,i1,b2,i2;
                 switch (hd (ts)) {
                 case Token::Comma:
                     var [ts1,[b1,i1]] = variableBinding (tl (ts), beta);
@@ -3365,12 +3390,12 @@
 
                     break;
                 default:
-                    var [ts2,[b2,i2]] = [ts,[[],[]]];
+                    var [ts2,[b1,i1]] = [ts,[[],[]]];
                     break;
                 }
 
                 exit ("Parser::variableBindingListPrime ", ts2);
-                return [ts2,[b2,i2]];
+                return [ts2,[b1,i1]];
             }
 
             var [ts1,nd1] = variableBinding (ts, beta);
@@ -3382,8 +3407,9 @@
             for (var n in b2) b1.push (b2[n]);  // FIXME: use concat when it works in the RI
             for (var n in i2) i1.push (i2[n]);
 
+            print("b1.length=",b1.length);
             exit ("Parser::variableBindingList ", ts2);
-            return [ts2,[b2,i2]];
+            return [ts2,[b1,i1]];
         }
 
         function variableBinding (ts: TOKENS, beta: BETA, ns, isPrototype, isStatic)
@@ -3391,7 +3417,7 @@
         {
             enter("Parser::variableBinding ", ts);
 
-            var b, i;
+            var tsx,ndx;
             let [ts1,nd1] = typedPattern (ts);
             let [p,t] = nd1;
             switch (hd (ts1)) {
@@ -3404,11 +3430,13 @@
                         break;
                     } // else fall through
                 default:
-                    var [b,i] = desugarPattern (p, t, nd2, 0);
+                    var [tsx,ndx] = [ts2,desugarPattern (p, t, nd2, 0)];
                     break;
                 }
+                break;
             default:
-                switch (hd (ts2)) {
+                print('point a');
+                switch (hd (ts1)) {
                 case Token::In:
                     if (beta === NoIn) {
                         // in a binding form
@@ -3416,8 +3444,8 @@
                     } // else fall through
                 default:
                     switch type (p) {
-                    case (ip: IdentifierPattern) {
-                        var [b,i] = desugarPattern (p, t, null, 0);
+                    case (p: IdentifierPattern) {
+                        var [tsx,ndx] = [ts1,desugarPattern (p, t, null, 0)];
                     }
                     case (x : *) {
                         throw "destructuring pattern without initializer";
@@ -3426,8 +3454,8 @@
                 break;
                 }
             }
-            exit("Parser::variableBinding ", ts2);
-            return [ts2, [b,i]];
+            exit("Parser::variableBinding ", tsx);
+            return [tsx,ndx];
         }
 
 //        function parseVariableBindingList(attrs,kind,mode,prologue)
@@ -4730,23 +4758,27 @@
         }
 
         function directive (ts: TOKENS, tau: TAU, omega: OMEGA)
-            // : [TOKENS, Ast::DIRECTIVES]
+            : [TOKENS, Ast::DIRECTIVES]
         {
             enter("Parser::directive ", ts);
 
-            var ts1,nd1;
+            var ts1,ts2,nd2,defnsx,stmtsx,tsx;
             switch (hd(ts)) {
             case Token::Var:
             case Token::Let:
-                let [ts1,nd1] = variableDefinition (ts);
+                var [ts1,{defns:defnsx,stmts:stmtsx}] = variableDefinition (ts,AllowIn,new Ast::LiteralExpr (new Ast::LiteralNamespace (new Ast::PublicNamespace (""))), false, false);
+                var tsx = semicolon (ts1,omega);
                 break;
             default:
-                var [ts1,nd1] = statement (ts,omega);
+                var [ts2,nd2] = statement (ts,omega);
+                var stmtsx = [nd2];
+                var defnsx = [];
+                var tsx = ts2;
                 break;
             }
 
             exit("Parser::directive ", ts1);
-            return [ts1, {pragmas:[],defns:[],head:null,stmts:[nd1],pos:null}];
+            return [tsx, {pragmas:[],defns:defnsx,head:null,stmts:stmtsx,pos:null}];
         }
 
 //        /*
@@ -5149,7 +5181,7 @@
     function test ()
     {
         var programs = 
-            [ "'hi','bye'"
+            [ "print('hi')"
               /*
             , "print('hello, world!')"
             , "x<y"
@@ -5161,8 +5193,9 @@
             , "new A()"
             , "(new Fib(n-1)).val + (new Fib(n-2)).val"
               */
-              //, "var val = n"
+            , "var x = 10, y = 20"
               /*
+            , "var x = 10; var y"
             , "if (x) y; else z"
             , "function f() { return 10 }"
             , "class A { function A() {} }"
