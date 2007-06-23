@@ -53,8 +53,8 @@ fun fromString (prec:int)
     in
         if List.all safeChar (String.explode s)
         then (SOME (runOp prec mode Normalize (Dec s) NONE)
-              handle DecimalException e => NONE)
-        else NONE
+              handle DecimalException e => (TextIO.print ("*** DECIMAL ERROR: \"" ^ e ^ "\"\n"); NONE))
+        else (TextIO.print ("\"" ^ s ^ "\" is not safe\n"); NONE)
     end
 				 
 fun fromStringDefault (s:string)

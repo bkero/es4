@@ -129,6 +129,14 @@ fun internal_stringLength us = Vector.length us
 
 fun internal_stringAppend a b = Vector.concat [a, b]
 
+fun internal_stringEquals a b =
+    let
+        val ls1 = Vector.foldr (op ::) [] a
+        val ls2 = Vector.foldr (op ::) [] b
+    in
+        List.all (op =) (ListPair.zip (ls1, ls2))
+    end
+
 fun internal_charCodeAt us n = Word.toInt (Vector.sub (us, n))
 
 fun internal_compare a b = Vector.collate Word.compare (a,b)
@@ -191,6 +199,7 @@ fun fromCharCode (i:int      ) : STRING = internal_fromCharCode i
 fun stringLength (s:STRING   ) : int    = internal_stringLength s
 
 fun stringAppend (a:STRING) (b:STRING) : STRING = internal_stringAppend a b
+fun stringEquals (a:STRING) (b:STRING) : bool   = internal_stringEquals a b
 fun charCodeAt   (s:STRING) (i:int   ) : int    = internal_charCodeAt   s i
 fun charCodeOf   (c:WCHAR) : int = Word.toInt c
 fun compare      (a:STRING) (b:STRING) : order  = internal_compare      a b
