@@ -35,7 +35,7 @@ NAME=es4-ri
 DIR=$(pwd)
 cd ..
 cp -R $DIR $NAME
-tar --create --file="$NAME".tar --exclude=_MTN --exclude *heap* --exclude exec --exclude .cm $NAME
+tar --create --file="$NAME".tar --exclude=_MTN --exclude *heap* --exclude dist --exclude .cm $NAME
 gzip -f "$NAME".tar
 chmod 666 "$NAME".tar.gz
 rm -r $NAME
