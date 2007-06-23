@@ -5,11 +5,11 @@
     namespace Debug;
     namespace Release;
 
-    Debug function enter (s,a) {
+    Debug function enter (s,a="") {
         print (">> ", s, a);
     }
 
-    Debug function exit (s,a) {
+    Debug function exit (s,a="") {
         print ("<< ", s, a);
     }
 
