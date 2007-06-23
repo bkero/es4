@@ -140,7 +140,7 @@ dist/es4.tar.gz: dump decimal
 	rm -rf dist/es4
 	mkdir -p dist/es4
 	cp bin/decimal dist/es4/
-ifeq ($(HEAP2EXEC),/dev/null)
+ifeq ($(HEAP2EXEC),false)
 	cp bin/run-cygwin.sh dist/es4/es4
 	cp $(DUMP) dist/es4/es4.heap.$(HEAP_SUFFIX)
 else
