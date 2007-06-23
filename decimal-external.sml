@@ -36,12 +36,6 @@
 structure DecimalNative = struct
 open DecimalParams
 
-fun log ss = (List.app (fn x => (TextIO.print x; TextIO.print " ")) ss; 
-	      TextIO.print "\n")
-
-val doTrace = ref false
-fun trace ss = if (!doTrace) then log ("[decimal]" :: ss) else ()
-
 fun runOp (precision:int)
 	  (mode:ROUNDING_MODE)
 	  (operator:DECIMAL_OPERATOR)

@@ -1096,7 +1096,7 @@ fun inspect (regs:Mach.REGS)
               | Mach.NoTag => "<NoTag>"
 
         (* FIXME: elaborate printing of type expressions. *)
-        fun typ t = Verify.typeToString t
+        fun typ t = Type.toString t
         fun mag m = case m of 
                         Mach.String s => ("\"" ^ (Ustring.toAscii s) ^ "\"")
                       | m => Ustring.toAscii (Eval.magicToUstring m)
