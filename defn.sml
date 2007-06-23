@@ -96,28 +96,17 @@ val defaultNumericMode : Ast.NUMERIC_MODE =
       roundingMode = Decimal.defaultRoundingMode,
       precision = Decimal.defaultPrecision }
 
-val (topFixtures:Ast.FIXTURES ref) = ref []
+val (initFixtures:Ast.FIXTURES) = [ (Ast.PropName Name.meta_, Ast.NamespaceFixture Name.metaNS),
+                                    (Ast.PropName Name.magic_, Ast.NamespaceFixture Name.magicNS) ]
+
+val (topFixtures:Fixture.TOP_FIXTURES ref) = ref (Fixture.mkTopFixtures [])
 val (topPackageNames:Ast.IDENT list list ref) = ref []
 
 fun resetTopFixtures _ = 
-    topFixtures := [ (Ast.PropName Name.meta_, Ast.NamespaceFixture Name.metaNS),
-                     (Ast.PropName Name.magic_, Ast.NamespaceFixture Name.magicNS) ]
+    topFixtures := Fixture.mkTopFixtures initFixtures
 
 fun resetTopPackageNames _ = 
     topPackageNames := []
-
-fun hasFixture (b:Ast.FIXTURES) 
-               (n:Ast.FIXTURE_NAME) 
-    : bool = 
-    let 
-        fun search [] = false
-          | search ((k,v)::bs) = 
-            if k = n 
-            then true
-            else search bs
-    in
-        search b    
-    end
 
 fun hasNamespace (nl:Ast.NAMESPACE list) 
                  (n:Ast.NAMESPACE) 
@@ -148,36 +137,6 @@ fun getFieldType (name : Ast.IDENT) (field_types: Ast.FIELD_TYPE list)
                 end
             end
 *)
-
-fun getFixture (b:Ast.FIXTURES) 
-               (n:Ast.FIXTURE_NAME) 
-    : Ast.FIXTURE = 
-    let 
-        fun search [] = LogErr.hostError ["fixture binding not found: ", 
-                                          (LogErr.fname n)]
-          | search ((k,v)::bs) = 
-            if k = n 
-            then v
-            else search bs
-    in
-        search b
-    end
-
-
-fun replaceFixture (b:Ast.FIXTURES) 
-                   (n:Ast.FIXTURE_NAME) 
-                   (v:Ast.FIXTURE)
-    : Ast.FIXTURES = 
-    let 
-        fun search [] = LogErr.hostError ["fixture binding not found: ", 
-                                          (LogErr.fname n)]
-          | search ((k,v0)::bs) = 
-            if k = n 
-            then (k,v)::bs
-            else (k,v0) :: (search bs)
-    in
-        search b
-    end
 
 fun inl f (a, b) = (f a, b)
 fun inr f (a, b) = (a, f b)
@@ -219,7 +178,7 @@ fun resolveMultinameToFixture (env:ENV)
     : Ast.NAME * Ast.FIXTURE =
     case resolve env mname of
         NONE => LogErr.defnError ["unresolved fixture ", LogErr.multiname mname]
-      | SOME (fixtures, n) => (n, getFixture fixtures (Ast.PropName n))
+      | SOME (fixtures, n) => (n, Fixture.getFixture fixtures (Ast.PropName n))
 
 fun multinameHasFixture (env:ENV) 
                         (mname:Ast.MULTINAME) 
@@ -251,11 +210,11 @@ fun mergeVirtuals (fName:Ast.FIXTURE_NAME)
                   (vnew:Ast.VIRTUAL_VAL_FIXTURE)
                   (vold:Ast.VIRTUAL_VAL_FIXTURE) = 
     let 
-        val ty = if (#ty vnew) = (#ty vold)
+        val ty = if Type.equals (#ty vnew) (#ty vold)
                  then (#ty vnew)
-                 else (if (#ty vnew) = Ast.SpecialType Ast.Any
+                 else (if Type.equals (#ty vnew) (Ast.SpecialType Ast.Any)
                        then (#ty vold)
-                       else (if (#ty vold) = Ast.SpecialType Ast.Any
+                       else (if Type.equals (#ty vold) (Ast.SpecialType Ast.Any)
                              then (#ty vnew)
                              else error ["mismatched get/set types on fixture ", 
                                          LogErr.fname fName]))
@@ -273,24 +232,24 @@ fun mergeVirtuals (fName:Ast.FIXTURE_NAME)
     end
 
 fun mergeFixtures ((newName,newFix),oldFixs) =
-    if hasFixture oldFixs newName
+    if Fixture.hasFixture oldFixs newName
     then 
-        case (newFix, getFixture oldFixs newName) of
+        case (newFix, Fixture.getFixture oldFixs newName) of
             (Ast.VirtualValFixture vnew,
              Ast.VirtualValFixture vold) => 
-            replaceFixture oldFixs newName 
-                           (Ast.VirtualValFixture 
-                                (mergeVirtuals newName vnew vold))
+            Fixture.replaceFixture oldFixs newName 
+                                   (Ast.VirtualValFixture 
+                                        (mergeVirtuals newName vnew vold))
           | (Ast.ValFixture new, Ast.ValFixture old) =>
-                 if (#ty new) = (#ty old) andalso (#readOnly new) = (#readOnly old)
+                 if (Type.equals (#ty new) (#ty old)) andalso (#readOnly new) = (#readOnly old)
                  then (trace ["skipping fixture ",LogErr.fname newName]; oldFixs)
                  else error ["incompatible redefinition of fixture name: ", LogErr.fname newName]
           | (Ast.MethodFixture new, Ast.MethodFixture old) => 
-            replaceFixture oldFixs newName (Ast.MethodFixture new) (* FIXME: types *)
+            Fixture.replaceFixture oldFixs newName (Ast.MethodFixture new) (* FIXME: types *)
           | (Ast.MethodFixture new, Ast.ValFixture old) => 
-            replaceFixture oldFixs newName (Ast.MethodFixture new) (* FIXME: types *)
+            Fixture.replaceFixture oldFixs newName (Ast.MethodFixture new) (* FIXME: types *)
           | (Ast.ValFixture new, Ast.MethodFixture old) => 
-            replaceFixture oldFixs newName (Ast.ValFixture new) (* FIXME: types *)
+            Fixture.replaceFixture oldFixs newName (Ast.ValFixture new) (* FIXME: types *)
           | _ => error ["mergeFixtures: redefining fixture name: ", LogErr.fname newName]
     else
         (newName,newFix) :: oldFixs
@@ -792,8 +751,8 @@ and inheritFixtures (base:Ast.FIXTURES)
         fun inheritFixture ((n,fb):(Ast.FIXTURE_NAME * Ast.FIXTURE))
             : Ast.FIXTURES =
             let
-                fun targetFixture _ = if (hasFixture derived n)
-                                      then SOME (getFixture derived n)
+                fun targetFixture _ = if (Fixture.hasFixture derived n)
+                                      then SOME (Fixture.getFixture derived n)
                                       else NONE
                 val _ = trace ["checking override of ", LogErr.fname n]
             in 
@@ -836,8 +795,8 @@ and implementFixtures (base:Ast.FIXTURES)
         fun implementFixture ((n,fb):(Ast.FIXTURE_NAME * Ast.FIXTURE))
             : Ast.FIXTURES =
             let
-                fun targetFixture _ = if (hasFixture derived n)
-                                      then SOME (getFixture derived n)
+                fun targetFixture _ = if (Fixture.hasFixture derived n)
+                                      then SOME (Fixture.getFixture derived n)
                                       else NONE
                 val _ = trace ["checking implementation of ", LogErr.fname n]
             in 
@@ -1050,9 +1009,9 @@ and analyzeClassBody (env:ENV)
                 let 
                     val fname = Ast.PropName Name.meta_convert
                 in
-                    if hasFixture classFixtures fname
+                    if Fixture.hasFixture classFixtures fname
                     then 
-                        case getFixture classFixtures fname of
+                        case Fixture.getFixture classFixtures fname of
                             Ast.MethodFixture { ty=Ast.FunctionType { params=[pt], ... }, ... } => 
                             SOME pt
                           | _ => NONE
@@ -2816,7 +2775,7 @@ and defPackage (env:ENV)
     PROGRAM
 *)
 
-and topEnv _ = [ { fixtures = !topFixtures,
+and topEnv _ = [ { fixtures = Fixture.getTopFixtures (!topFixtures),
                    tempOffset = 0,
                    openNamespaces = [[Name.noNS,Ast.Internal Ustring.empty], [Ast.Intrinsic]],
                    numericMode = defaultNumericMode, 
@@ -2844,7 +2803,11 @@ and defProgram (prog:Ast.PROGRAM)
         (if !doTrace 
          then Pretty.ppProgram result
          else ());
-        topFixtures := (List.foldl mergeFixtures fixtures (!topFixtures));
+        let
+            val currentTopFixtures = Fixture.getTopFixtures (!topFixtures)
+        in
+            topFixtures := Fixture.mkTopFixtures (List.foldl mergeFixtures fixtures currentTopFixtures)
+        end;
         topPackageNames := (#packageNames (hd e));
         result
     end
