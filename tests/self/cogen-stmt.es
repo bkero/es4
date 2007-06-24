@@ -94,7 +94,10 @@ package cogen
             t = asm.getTemp();
             asm.I_setlocal(t);
         }
-        nonlocalControlFlow(ctx, "function");
+        nonlocalControlFlow(ctx, 
+                            (function (node) node.tag == "function"),
+                            false,
+                            "Internal error: definer should have checked that top-level code does not return");
         if (s.expr == null)
             asm.I_returnvoid();
         else {
@@ -104,12 +107,18 @@ package cogen
         }
     }
 
-    function cgBreakStmt({asm:asm}, {label: label}) {
-        asm.I_jump(nonlocalControlFlow(ctx, "break", label));
+    function cgBreakStmt(ctx, {label: label}) {
+        nonlocalControlFlow(ctx, 
+                            (function (node) node.tag == "break" && (label == null || memberOf(label, stk.labels))),
+                            true,
+                            "Internal error: definer should have checked that all referenced labels are defined");
     }
 
-    function cgContinueStmt({asm:asm}, {label: label}) {
-        asm.I_jump(nonlocalControlFlow(ctx, "continue", label));
+    function cgContinueStmt(ctx, {label: label}) {
+        nonlocalControlFlow(ctx, 
+                            (function (node) node.tag == "continue" && (label == null || memberOf(label, stk.labels))),
+                            true,
+                            "Internal error: definer should have checked that all referenced labels are defined");
     }
 
     function cgBlockStmt(ctx, s) {
@@ -124,18 +133,19 @@ package cogen
 
     function cgWhileStmt(ctx, {body: body, labels: labels, expr: expr}) {
         // FIXME: fixtures
-        var asm = ctx.asm;
-        var L2 = asm.newLabel();
-        var L0 = asm.I_jump();
-        var L1 = asm.I_label();
-        cgStmt(pushBreak(pushContinue(ctx, labels, L0), labels, L2), body);
-        asm.I_label(L0);
+        var asm    = ctx.asm;
+        var Lbreak = asm.newLabel();
+        var Lcont  = asm.I_jump();
+        var Ltop   = asm.I_label();
+        cgStmt(pushBreak(pushContinue(ctx, labels, Lcont), labels, Lbreak), body);
+        asm.I_label(Lcont);
         cgExpr(ctx, expr);
-        asm.I_iftrue(L1);
-        asm.I_label(L2);
+        asm.I_iftrue(Ltop);
+        asm.I_label(Lbreak);
     }
 
     function cgForStmt(ctx, s) {
+        
     }
 
     function cgIfStmt(ctx, s) {

@@ -65,7 +65,10 @@ namespace Ast
        , PropName )
 
     class TempName {}
-    class PropName {}
+    class PropName {
+        const name : PropIdent;  // lth: assuming some things here
+        function PropName(name) : name=name {}
+    }
 
     type FIXTURES = [[FIXTURE_NAME,FIXTURE]]
 
@@ -685,6 +688,7 @@ namespace Ast
 
     class LiteralInt {
         const intValue : int;
+        function LiteralInt(intValue) : intValue=intValue {}
     }
 	
     class LiteralUInt {
@@ -787,13 +791,13 @@ namespace Ast
     class Has {}
 
     class Func { 
-        const name: FUNC_NAME;
+        const name /*: FUNC_NAME*/;
         const fsig: FUNC_SIG;
         const isNative: Boolean;
         const block: BLOCK;
-        const params: HEAD;
+        const params /*: HEAD*/;
         const defaults: [EXPR];
-        const type: FUNC_TYPE;    // FIXME: should be able to use 'type' here
+        const type /*: FUNC_TYPE*/;    // FIXME: should be able to use 'type' here
         function Func (name,fsig,isNative,block,
                        params,defaults,ty)
             : name = name
@@ -854,6 +858,7 @@ namespace Ast
 
     class PropIdent {
         const ident : IDENT;
+        function PropIdent(ident) : ident=ident {}
     }
 
     type INIT_STEP =
@@ -908,6 +913,7 @@ namespace Ast
     class ValFixture {
         const type : TYPE_EXPR;
         const isReadOnly : Boolean;
+        function ValFixture(ty, isReadOnly=false) : type=ty, isReadOnly=isReadOnly {}
     }
 	
     class VirtualValFixture {
@@ -935,6 +941,7 @@ namespace Ast
 
     class SpecialType {
         const kind : SPECIAL_TYPE_KIND;
+        function SpecialType(kind) : kind=kind {}
     }
 
     type SPECIAL_TYPE_KIND =
@@ -1060,6 +1067,7 @@ namespace Ast
 
     class ReturnStmt {
         const expr : EXPR?;
+        function ReturnStmt(expr) : expr=expr {}
     }
 
     class BreakStmt {
@@ -1197,6 +1205,8 @@ namespace Ast
     type FUNC_DEFN = FunctionDefn
 
     class FunctionDefn {
+        const func : FUNC;
+        function FunctionDefn(func) : func=func {}
     }
 
     class ConstructorDefn {

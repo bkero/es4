@@ -65,6 +65,8 @@ package emitter
     import abcfile.*;
     import assembler.*;
 
+    use namespace Ast;
+
     public class ABCEmitter
     {
         public var file, constants;
@@ -112,6 +114,20 @@ package emitter
             case (x:*) { throw "Unimplemented: nameFromIdentExpr" }
             }
         }
+
+        public function fixtureNameToName(fn) {
+            switch type (fn) {
+            case (pn:PropName) {
+                return nameFromIdent(pn.name.ident);
+            }
+            case (tn:TempName) {
+                // FIXME: updates "name"
+                throw "Internal error: what is the internal structure of a TempName?";
+            }
+            case (x:*) { throw "Internal error: not a valid fixture name" }
+            }
+        }
+
     }
 
     public class Script
@@ -127,7 +143,13 @@ package emitter
             return new Class(this, name, basename);
         }
 
-        // Here we probably want: newVar, newConst, newFunction...
+        /* All functions are in some sense global because the
+           methodinfo and methodbody are both global. */
+        public function newFunction(formals) {
+            return new Method(e, formals);
+        }
+
+        // Here we probably want: newVar, newConst, ... instead?
         public function addTrait(t) {
             return traits.push(t);
         }
@@ -185,10 +207,10 @@ package emitter
 
     public class Method // extends AVM2Assembler
     {
-        public var e, formals, name, asm;
+        public var e, formals, name, asm, traits = [], finalized=false;
 
         function Method(e:ABCEmitter, formals:Array, name=null) {
-            asm = new AVM2Assembler(e.constants, formals);
+            asm = new AVM2Assembler(e.constants, formals.length);
             //super(e.constants, formals.length);
             this.formals = formals;
             this.e = e;
@@ -199,7 +221,15 @@ package emitter
             asm.I_pushscope();
         }
 
+        public function addTrait(t) {
+            return traits.push(t);
+        }
+
         public function finalize() {
+            if (finalized)
+                return;
+            finalized = true;
+
             // Standard epilogue for lazy clients.
             asm.I_returnvoid();
 

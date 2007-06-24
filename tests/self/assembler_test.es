@@ -415,6 +415,100 @@ package assembler
         dumpABCFile(file, "fib-test.es");
     }
 
+    /* function f(n, m) { return n+m }
+       print(f(3,4));
+    */
+    public function testFn() {
+        var file = new ABCFile();
+        var cp = new ABCConstantPool();
+
+        file.addConstants(cp);
+        
+        var ns = cp.namespace(CONSTANT_PackageNamespace, cp.stringUtf8(""));
+        var n_name = cp.QName(ns, cp.stringUtf8("n"));
+        var m_name = cp.QName(ns, cp.stringUtf8("m"));
+        var print_name = cp.QName(ns, cp.stringUtf8("print"));
+        var f_name = cp.QName(ns, cp.stringUtf8("f"));
+
+        function mkFunction() {
+            var formals = [0, 0];
+            var asm = new AVM2Assembler(cp,formals.length);
+            asm.I_getlocal(0);
+            asm.I_pushscope();
+
+            // Create and populate rib
+            asm.I_newactivation();
+            asm.I_dup();
+            asm.I_pushscope();
+            asm.I_dup();
+            asm.I_getlocal(1);
+            asm.I_setproperty(m_name);
+            asm.I_getlocal(2);
+            asm.I_setproperty(n_name);
+
+            asm.I_findpropstrict(n_name);
+            asm.I_getproperty(n_name);
+            asm.I_findpropstrict(m_name);
+            asm.I_getproperty(m_name);
+            asm.I_add();
+            asm.I_returnvalue();
+
+            var meth = file.addMethod(new ABCMethodInfo(f_name, formals, 0, asm.flags));
+            var body = new ABCMethodBodyInfo(meth);
+            body.setMaxStack(asm.maxStack);
+            body.setLocalCount(asm.maxLocal);
+            body.setMaxScopeDepth(asm.maxScope);
+            body.setCode(asm);
+            print("There");
+            body.addTrait(new ABCSlotTrait(m_name, 0));
+            body.addTrait(new ABCSlotTrait(n_name, 0));
+            print("Here");
+            file.addMethodBody(body);
+
+            return meth;
+        }
+
+        var asm = new AVM2Assembler(cp,0);
+        asm.I_getlocal_0();
+        asm.I_pushscope();
+
+        var fn = mkFunction();
+        asm.I_findproperty(f_name); // arguably getglobalscope?
+        asm.I_newfunction(fn);
+        asm.I_initproperty(f_name);
+
+        // Main program
+        var reg = asm.getTemp();
+        asm.I_findpropstrict(print_name);
+        asm.I_getproperty(print_name);
+        asm.I_pushnull();
+        asm.I_findpropstrict(f_name);
+        asm.I_getproperty(f_name);
+        asm.I_pushnull();
+        asm.I_pushbyte(3);
+        asm.I_pushbyte(4);
+        asm.I_call(2);
+        asm.I_call(1);
+        asm.I_pop();
+        asm.I_returnvoid();
+
+        var meth = file.addMethod(new ABCMethodInfo(cp.stringUtf8("$main"), [], 0, asm.flags));
+        var body = new ABCMethodBodyInfo(meth);
+        body.setMaxStack(asm.maxStack);
+        body.setLocalCount(asm.maxLocal);
+        body.setMaxScopeDepth(asm.maxScope);
+        body.setCode(asm);
+        file.addMethodBody(body);
+
+        var script = new ABCScriptInfo(meth);
+        // AVM BUG: the AVM barfs on this, reports "unsupported traits kind"
+        // Doesn't look necessary anyway.
+        //        script.addTrait(new ABCOtherTrait(f_name, 0, TRAIT_Function, 0, fn));
+        file.addScript(script);
+
+        dumpABCFile(file, "fn-test.es");
+    }
+
     public function testSwitch1() {
         var file = new ABCFile();
         var cp = new ABCConstantPool();
