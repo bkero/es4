@@ -102,8 +102,8 @@ package Unicode
             return true;
         }
 
-        static const nbuckets : uint = 37u;
-        var buckets = new Array(nbuckets);  /* FIXME: private */
+        private static const nbuckets : uint = 37u;
+        private var buckets = new Array(nbuckets);
     }
 
     /* Utility functions for String */

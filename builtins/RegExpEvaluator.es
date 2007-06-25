@@ -84,10 +84,10 @@ package RegExpInternals
         {
         }
 
-        var input       : string;            // FIXME: const (all four).  Ticket #24.
-        var inputLength : int;
-        var ignoreCase  : boolean;   // i
-        var multiline   : boolean;   // m
+        const input       : string;
+        const inputLength : int;
+        const ignoreCase  : boolean;   // i
+        const multiline   : boolean;   // m
     }
 
     /* MatchResult and State. 
@@ -163,7 +163,7 @@ package RegExpInternals
             return m2.match(ctx, x, c);
         }
 
-        var m1 : Matcher, m2 : Matcher; // FIXME: const.  Ticket #24.
+        const m1 : Matcher, m2 : Matcher;
     }
 
     class Alternative! implements Matcher
@@ -174,7 +174,7 @@ package RegExpInternals
             return m1.match(ctx, x, function (ctx : Context, y : State) { return m2.match(ctx, y, c) } );
         }
 
-        var m1 : Matcher, m2 : Matcher; // FIXME: const.  Ticket #24.
+        const m1 : Matcher, m2 : Matcher;
     }
 
     class Assertion! implements Matcher
@@ -283,12 +283,12 @@ package RegExpInternals
             return RepeatMatcher(min, max, x);
         }
 
-        var parenIndex : uint;  // FIXME: const (all of these).  Ticket #24.
-        var parenCount : uint;
-        var m : Matcher;
-        var min : double;
-        var max : double;
-        var greedy : boolean;
+        const parenIndex : uint;
+        const parenCount : uint;
+        const m : Matcher;
+        const min : double;
+        const max : double;
+        const greedy : boolean;
     }
 
     class Capturing! implements Matcher
@@ -308,7 +308,7 @@ package RegExpInternals
             return m.match(ctx, x, d);
         }
 
-        var m : Matcher, parenIndex : uint; // FIXME: const.  Ticket #24.
+        const m : Matcher, parenIndex : uint;
     }
 
     class Backref! implements Matcher
@@ -331,7 +331,7 @@ package RegExpInternals
             return c(ctx, new State(f, cap));
         }
 
-        var capno : uint; // FIXME: const.  Ticket #24.
+        const capno : uint;
     }
 
     class PositiveLookahead! implements Matcher
@@ -345,7 +345,7 @@ package RegExpInternals
             return c(ctx, new State(x.endIndex, r.cap));
         }
 
-        var m: Matcher; // FIXME: const.  Ticket #24.
+        const m: Matcher;
     }
 
     class NegativeLookahead! implements Matcher
@@ -359,7 +359,7 @@ package RegExpInternals
             return c(ctx, x);
         }
 
-        var m: Matcher; // FIXME: const.  Ticket #24.
+        const m: Matcher;
     }
 
     class CharsetMatcher! implements Matcher
@@ -379,7 +379,7 @@ package RegExpInternals
             return c(ctx, new State(e+1, cap));
         }
 
-        var cs : Charset;
+        const cs : Charset;
     }
 
     function Canonicalize(ctx, ch) {
@@ -418,7 +418,7 @@ package RegExpInternals
             return m1.match(ctx, c) || m2.match(ctx, c);
         }
 
-        var m1 : Charset, m2 : Charset; // FIXME: const.  Ticket #24.
+        const m1 : Charset, m2 : Charset;
     }
 
     class CharsetIntersection! extends Charset 
@@ -429,7 +429,7 @@ package RegExpInternals
             return m1.match(ctx, c) && m2.match(ctx, c);
         }
 
-        var m1 : Charset, m2 : Charset; // FIXME: const.  Ticket #24.
+        const m1 : Charset, m2 : Charset;
     }
 
     class CharsetComplement! extends Charset
@@ -440,7 +440,7 @@ package RegExpInternals
             return !m.match(ctx, c);
         }
 
-        var m : Charset; // FIXME: const.  Ticket #24.
+        const m : Charset;
     }
 
     class CharsetRange! extends Charset 
@@ -456,7 +456,7 @@ package RegExpInternals
             return false;
         }
 
-        var lo : string, hi : string; // FIXME: const.  Ticket #24.
+        const lo : string, hi : string;
     }
 
     class CharsetAdhoc! extends Charset 
@@ -481,17 +481,17 @@ package RegExpInternals
             return cs[0];
         }
 
-        var cs : [string] = [] : [string];
+        var cs : [string] = [] : [string]; // FIXME: const.  Ticket #24.
     }
 
     class CharsetUnicodeClass! extends Charset
     {
-        function CharsetUnicodeClass(tester: function(uint):boolean) : tester=tester {}
+        function CharsetUnicodeClass(tester: function(uint): boolean) : tester=tester {}
 
         override function match(ctx: Context, c : string) : boolean
             tester(c.charCodeAt(0));
 
-        var tester: function(uint):boolean; // FIXME: const.  Ticket #24.
+        const tester: function(uint): boolean;
     }
 
     const charset_linebreak : Charset = new CharsetAdhoc(Unicode.linebreaks);
