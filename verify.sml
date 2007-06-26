@@ -37,6 +37,10 @@ open LogErr
 
 type RIB = Ast.FIXTURES
 
+(* ENV contains all type checking context, including ribs (variable-type bindings), 
+ * strict vs standard mode, and the expected return type, if any. 
+ *)
+
 type ENV = { returnType: Ast.TYPE_EXPR option,
              strict: bool,
              ribs: RIB list }
@@ -52,6 +56,16 @@ fun withStrict { returnType, strict=_, ribs } strict =
 
 fun withRib { returnType, strict, ribs} extn =
     { returnType=returnType, strict=strict, ribs=extn :: ribs }
+
+structure NmKey = struct type ord_key = Ast.NAME val compare = NameKey.compare end
+structure NmMap = SplayMapFn (NmKey);
+
+structure NmVecKey = struct type ord_key = (Ast.NAME vector) val compare = (Vector.collate NameKey.compare) end
+structure NmVecMap = SplayMapFn (NmVecKey);
+
+val (fixtureCache:(Ast.FIXTURE NmMap.map) ref) = ref NmMap.empty
+val (instanceOfCache:(bool NmVecMap.map) ref) = ref NmVecMap.empty
+val cachesz = 1024
 
 (* Local tracing machinery *)
 
