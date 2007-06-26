@@ -57,7 +57,7 @@ my $hostErrs = 0;
 
 while (<>) {
     s/\(near [^\)]*\)//go;
-    if (/^sml \@SMLload.*tests\/spidermonkey\/(\w+)\/(\w+)\/(.+)\.js$/) {
+    if (/sml \@SMLload.*tests\/spidermonkey\/(\w+)\/(\w+)\/(.+)\.js$/) {
 	$runs++;
 	if ($searching_for_err) {
 	    $completions++;
