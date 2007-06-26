@@ -37,80 +37,167 @@
 
 package cogen
 {
+    import util.*;
+    import abcfile.*;
     import assembler.*;
     import emitter.*;
 
     use namespace Ast;
 
     /* Returns an ABCFile structure */
-    public function cg(tree) {
+    public function cg(tree: PROGRAM) {
         var e = new ABCEmitter;
         var s = e.newScript();
-        CTX.prototype = { "emitter": e, "script":s, "cp": e.constants };
-        cgProgram(new CTX(s.init.asm), tree);
+        CTX.prototype = { "emitter": e, "script": s, "cp": e.constants };
+        cgProgram(new CTX(s.init.asm, null, s), tree);
         return e.finalize();
     }
 
     /* A context is a structure with the fields
      * 
-     *    emitter
-     *    script
-     *    asm
-     *    cp
+     *    emitter  -- the unique emitter
+     *    script   -- the only script we care about in that emitter
+     *    cp       -- the emitter's constant pool
+     *    asm      -- the current function's assembler
+     *    stk      -- the current function's binding stack (labels, ribs)
+     *    target   -- the current trait target
      *
      * All of these are invariant and kept in the prototype except for
-     * 'asm', and some fields to come.
-    */
+     * 'asm', 'stk', and some fields to come.
+     *
+     * FIXME, there are probably at least two targets: one for LET, another
+     * for VAR/CONST/FUNCTION.
+     */
 
-    function CTX(asm) {
+    function CTX(asm, stk, target) {
         this.asm = asm;
+        this.stk = stk;
+        this.target = target;
+    }
+
+    function push(ctx, node) {
+        node.link = ctx.stk;
+        return new CTX(ctx.asm, node, ctx.target);
     }
 
     function cgProgram(ctx, prog) {
+        if (prog.fixtures != null)
+            cgFixtures(ctx, prog.fixtures);
         cgBlock(ctx, prog.block);
     }
 
+    function cgFixtures(ctx, fixtures) {
+        let { target:target, asm:asm, emitter:emitter } = ctx;
+        for ( let i=0 ; i < fixtures.length ; i++ ) {
+            let [fxname, fx] = fixtures[i];
+            let name = emitter.fixtureNameToName(fxname);
+
+            switch type (fx) {
+            case (vf:ValFixture) {
+                target.addTrait(new ABCSlotTrait(name, 0));
+            }
+            case (x:*) { throw "Internal error: unhandled fixture type" }
+            }
+        }
+    }
+
     function cgBlock(ctx, b) {
-        // FIXME -- more here:
-        // If it has local bindings, establish a local rib
-        // Inits
-        // etc
+        // FIXME -- more here
+        let defns = b.defns;
+        for ( let i=0 ; i < defns.length ; i++ )
+            cgDefn(ctx, defns[i]);
+
         let stmts = b.stmts;
         for ( let i=0 ; i < stmts.length ; i++ )
             cgStmt(ctx, stmts[i]);
     }
-
-    /*
-    function cgFunctionBody(ctx, f:FUNC) {
-        // FIXME
-        // allocate a rib
-        // store params in that rib
-        //
-        // there must be a slot-trait for each param and local
-        // variable (bound by 'var', 'const', 'function', though not
-        // by 'let') in the methodbody so that the rib can be created
-        // correctly by the AVM
-        asm.I_newactivation();
-        asm.I_pushscope();
-        // for p in formals, add a slot-trait for p
-        let newctx = pushFunction(ctx, <some ABCMethodBody structure>);
+    
+    function cgDefn(ctx, d) {
+        let { asm:asm, emitter:emitter } = ctx;
+        switch type (d) {
+        case (fd:FunctionDefn) {
+            assert( fd.func.name.kind is Ordinary );
+            let name = emitter.nameFromIdent(fd.func.name.ident);
+            asm.I_findpropstrict(name); // name is fixture, thus always defined
+            asm.I_newfunction(cgFunc(ctx, fd.func));
+            asm.I_initproperty(name);
+        }
+        case (x:*) { throw "Internal error: unimplemented defn" }
+        }
     }
-    */
+
+    /* Create a method trait in the ABCFile
+     * Generate code for the function
+     * Return the function index
+     */
+    function cgFunc({emitter:emitter, script:script}, f:FUNC) {
+        function extractName([name,fixture])
+            emitter.fixtureNameToName(name);
+
+        let formals = map(extractName, f.params.fixtures);
+        let method = script.newFunction(formals);
+        let asm = method.asm;
+
+        /* Create a new rib and populate it with the values of all the
+         * formals.  Add slot traits for all the formals so that the
+         * rib have all the necessary names.  Later code generation
+         * will add properties for all local (hoisted) VAR, CONST, and
+         * FUNCTION bindings, and they will be added to the rib too,
+         * but not initialized here.  (That may have to change, for
+         * FUNCTION bindings at least.)
+         *
+         * FIXME: if a local VAR shadows a formal, there's more
+         * elaborate behavior here, and the compiler must perform some
+         * analysis and avoid the shadowed formal here.
+         *
+         * God only knows about the arguments object...
+         */
+        asm.I_newactivation();
+        if (formals.length > 0)
+            asm.I_dup();
+        asm.I_pushscope();
+        for ( let i=0 ; i < formals.length ; i++ ) {
+            if (i < formals.length-1)
+                asm.I_dup();
+            asm.I_getlocal(i+1);
+            asm.I_setproperty(formals[i]);
+            method.addTrait(new ABCSlotTrait(formals[i], 0));
+        }
+
+        /* Generate code for the body.  If there is no return statement in the
+         * code then the default behavior of the emitter is to add a returnvoid
+         * at the end, so there's nothing to worry about here.
+         */
+        cgBlock(new CTX(asm, {tag: "function"}, method), f.block);
+        return method.finalize();
+    }
 
     // Handles scopes and finally handlers and returns a label, if appropriate, to
-    // branch to.  "what" is one of "function", "break", "continue"
-    function nonlocalControlFlow(ctx, what, ...rest) {
-        // FIXME 
+    // branch to.  "tag" is one of "function", "break", "continue"
+
+    function unstructuredControlFlow({stk:stk, asm:asm}, hit, jump, msg) {
+        while (stk != null) {
+            if (hit(stk)) {
+                if (jump)
+                    asm.I_jump(stk.target);
+                return;
+            }
+            else {
+                // FIXME
+                // if there's a FINALLY, visit it here
+            }
+            stk = stk.link;
+        }
+        throw msg;
     }
+
 
     // The following return extended contexts
-    function pushBreak(ctx, labels, target) {
-        // FIXME
-    }
+    function pushBreak(ctx, labels, target)
+        push(ctx, { tag:"break", labels:labels, target:target });
 
-    function pushContinue(ctx, labels, target) {
-        // FIXME
-    }
+    function pushContinue(ctx, labels, target)
+        push(ctx, { tag:"continue", labels:labels, target:target });
 
     function pushFunction(ctx /*more*/) {
         // FIXME

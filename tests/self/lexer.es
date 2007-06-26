@@ -1563,7 +1563,7 @@ namespace Lexer
 	    case Char::Equal : return equalEqual ();
 	    default :
 		retract ();
-		return Token::Equal;
+		return Token::Assign;
 	    }
 	}
 

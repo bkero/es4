@@ -283,7 +283,7 @@ Ast.TypeName
                                    Ast.Identifier { ident, openNamespaces } => findType ident openNamespaces
                                  | Ast.QualifiedIdentifier { qual, ident } => findType ident [[resolveExprToNamespace env qual]]
                                  | Ast.WildcardIdentifier => Ast.SpecialType Ast.Any
-                                 | _ => error ["unexpected idenfitier form in type name" ]
+                                 | _ => error ["unexpected identifier form in type name" ]
             in
                 (* 
                  * FIXME: this is a bug: we should re-resolve in the environment the type definition was found in,

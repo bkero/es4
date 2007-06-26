@@ -60,6 +60,7 @@ package cogen
     import util.*;
     import abcfile.*;
     import assembler.*;
+    import emitter.*;
 
     use namespace Ast;
     use default namespace public;
@@ -524,7 +525,7 @@ package cogen
             else 
                 asm.I_pushfalse();
         }
-        case (e:LiteralFunction) { asm.I_newfunction(cgFunctionDefinition(ctx, e.func)) }
+        case (e:LiteralFunction) { asm.I_newfunction(cgFunc(ctx, e.func)) }
         case (e:LiteralArray) { cgArrayInitializer(ctx, e) }
         case (e:LiteralObject) { cgObjectInitializer(ctx, e) }
         case (e:LiteralRegExp) { cgRegExpLiteral(ctx, e) }

@@ -65,7 +65,10 @@ namespace Ast
        , PropName )
 
     class TempName {}
-    class PropName {}
+    class PropName {
+        const name : PropIdent;  // lth: assuming some things here
+        function PropName(name) : name=name {}
+    }
 
     type FIXTURES = [[FIXTURE_NAME,FIXTURE]]
 
@@ -112,7 +115,9 @@ namespace Ast
     }
 
     class PublicNamespace { 
-        const name : IDENT 
+        const name : IDENT;
+        function PublicNamespace (name)
+            : name = name { } 
     }
 
     class InternalNamespace { 
@@ -685,6 +690,7 @@ namespace Ast
 
     class LiteralInt {
         const intValue : int;
+        function LiteralInt(intValue) : intValue=intValue {}
     }
 	
     class LiteralUInt {
@@ -712,6 +718,8 @@ namespace Ast
 
     class LiteralNamespace {
         const namespaceValue : NAMESPACE;
+        function LiteralNamespace (namespaceValue)
+            : namespaceValue = namespaceValue { }
     }
 
     class LiteralObject {
@@ -787,13 +795,13 @@ namespace Ast
     class Has {}
 
     class Func { 
-        const name: FUNC_NAME;
+        const name /*: FUNC_NAME*/;
         const fsig: FUNC_SIG;
         const isNative: Boolean;
         const block: BLOCK;
-        const params: HEAD;
+        const params /*: HEAD*/;
         const defaults: [EXPR];
-        const type: FUNC_TYPE;    // FIXME: should be able to use 'type' here
+        const type /*: FUNC_TYPE*/;    // FIXME: should be able to use 'type' here
         function Func (name,fsig,isNative,block,
                        params,defaults,ty)
             : name = name
@@ -836,7 +844,10 @@ namespace Ast
 
     class Binding {
         const ident : BINDING_IDENT;
-        const type : TYPE_EXPR;
+        const type : TYPE_EXPR?;
+        function Binding (ident,ty)  // FIXME 'type' not allowed as param name in the RI
+            : ident = ident
+            , type = ty { }
     }
 
     type BINDING_IDENT =
@@ -854,6 +865,8 @@ namespace Ast
 
     class PropIdent {
         const ident : IDENT;
+        function PropIdent (ident)
+            : ident = ident { }
     }
 
     type INIT_STEP =
@@ -863,6 +876,9 @@ namespace Ast
     class InitStep {
         const ident : BINDING_IDENT;
         const expr : EXPR;
+        function InitStep (ident,expr)
+            : ident = ident
+            , expr = expr { }
     }
 
     class AssignStep {
@@ -908,6 +924,7 @@ namespace Ast
     class ValFixture {
         const type : TYPE_EXPR;
         const isReadOnly : Boolean;
+        function ValFixture(ty, isReadOnly=false) : type=ty, isReadOnly=isReadOnly {}
     }
 	
     class VirtualValFixture {
@@ -935,6 +952,7 @@ namespace Ast
 
     class SpecialType {
         const kind : SPECIAL_TYPE_KIND;
+        function SpecialType(kind) : kind=kind {}
     }
 
     type SPECIAL_TYPE_KIND =
@@ -1060,6 +1078,7 @@ namespace Ast
 
     class ReturnStmt {
         const expr : EXPR?;
+        function ReturnStmt(expr) : expr=expr {}
     }
 
     class BreakStmt {
@@ -1087,14 +1106,14 @@ namespace Ast
         const expr : EXPR;
         const body : STMT;
         const labels : [IDENT];
-        const fixtures : FIXTURES?
+        const fixtures : FIXTURES?  // What are these for?
     }
     
     class DoWhileStmt {
         const expr : EXPR;
         const body : STMT;
         const labels : [IDENT];
-        const fixtures : FIXTURES?
+        const fixtures : FIXTURES?  // What are these for?
     }
 
     class ForStmt {
@@ -1107,18 +1126,33 @@ namespace Ast
     }
 
     class IfStmt {
-        const test : EXPR;
-        const consequent : STMT;
-        const alternate : STMT?;
+        const cnd : EXPR;
+        const thn : STMT;
+        const els : STMT?;
+        function IfStmt (cnd,thn,els)
+            : cnd = cnd
+            , thn = thn
+            , els = els { }
     }
 
     class WithStmt {
+        const expr : EXPR;
+        const body : STMT;
     }
 
     class TryStmt {
     }
 
+    type CASE = Case;
+
+    class Case {
+        const guard : EXPR?;  // null for default
+        const body : [STMT];
+    }
+
     class SwitchStmt {
+        const expr : EXPR;
+        const cases : [CASE]; // order matters
     }
 
     class SwitchTypeStmt {
@@ -1178,6 +1212,11 @@ namespace Ast
     class LetVar {}
     class LetConst {}
 
+    const constTag = new Const;
+    const varTag = new Var;
+    const letVarTag = new LetVar;
+    const letConstTag = new LetConst;
+
     type VAR_DEFN = VariableDefn
 
     class VariableDefn {
@@ -1197,6 +1236,8 @@ namespace Ast
     type FUNC_DEFN = FunctionDefn
 
     class FunctionDefn {
+        const func : FUNC;
+        function FunctionDefn(func) : func=func {}
     }
 
     class ConstructorDefn {
@@ -1219,7 +1260,7 @@ namespace Ast
 
     class Block {
         const pragmas: [PRAGMA];
-        const defns: [DEFN];
+        const defns: * // [DEFN];
         const head: HEAD?;
         const stmts: [STMT];
         const pos: POS?;

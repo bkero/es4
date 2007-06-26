@@ -33,15 +33,15 @@
 # SML dialect
 # ------------------------------------------------------------------------------
 
-DIALECT:=@DIALECT@
-DEBUG:=@DEBUG@
+DIALECT:=@ES4_SML_DIALECT@
+DEBUG:=@ES4_DEBUG@
 
 # Location of SML/NJ tools (even if we're building with MLton)
-SMLNJ:=@SMLNJ@
-MLBUILD:=@MLBUILD@
-HEAP2EXEC:=@HEAP2EXEC@
-HEAP_SUFFIX:=@HEAP_SUFFIX@
-SMLNJ_TDP:=@SMLNJ_TDP@
+SMLNJ:=@ES4_SMLNJ@
+MLBUILD:=@ES4_MLBUILD@
+HEAP2EXEC:=@ES4_HEAP2EXEC@
+HEAP_SUFFIX:=@ES4_HEAP_SUFFIX@
+SMLNJ_TDP:=@ES4_SMLNJ_TDP@
 # Unfortunately the TDP traces slow down the code significantly.
 ifneq ($(DEBUG),no)
 ifneq ($(SMLNJ_TDP),)
@@ -57,7 +57,7 @@ RUN_DUMPED:=$(SMLNJ) @SMLload=$(DUMP)
 
 # MLton
 else
-MLTON:=@MLTON@
+MLTON:=@ES4_MLTON@
 ifneq ($(DEBUG),no)
 MLTONOPTS:=-const 'Exn.keepHistory true'
 endif

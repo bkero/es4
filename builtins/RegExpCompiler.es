@@ -334,6 +334,10 @@ package RegExpInternals
         }
 
         function characterClass() : Matcher {
+            return new CharsetMatcher(characterClassHelper());
+        }
+
+        function characterClassHelper() : Charset {
             match("[");
             let inverted : boolean = false;
             if (peekChar() == "^") {
@@ -342,7 +346,7 @@ package RegExpInternals
             }
             let ranges : Charset = classRanges();
             match("]");
-            return new CharsetMatcher(inverted ? new CharsetComplement(ranges) : ranges);
+            return inverted ? new CharsetComplement(ranges) : ranges;
         }
 
         /* The grammar for class ranges looks hairy.  The trick is to
@@ -356,19 +360,13 @@ package RegExpInternals
                                    | ClassAtom "-" ClassAtom
                                    | ClassAtom "-" ClassAtom NonemptyClassRanges
                                    | ClassAtom [lookahead != "-"] NonemptyClassRanges ;
-
+                                   
              ClassAtom ::= "-" | ClassAtomNoDash ;
                            
           To this we add the intersection and subtraction operations.
-          I'm guessing left associative is right, but we need to check
-          this:
 
-             ClassRanges ::= [empty] 
-                           | ClassRanges2
-
-             ClassRanges2 ::= NonemptyClassRanges[true]
-                            | ClassRanges2 "\-" NonemptyClassRanges[true]
-                            | ClassRanges2 "\&" NonemptyClassRanges[true] ;
+             NonemptyClassRanges ::= "&&[" CharacterClass "]"
+                                   | "&&[" CharacterClass "]" NonemptyClassRanges
 
         */
 
@@ -376,37 +374,37 @@ package RegExpInternals
             if (lookingAt("]"))
                 return new CharsetEmpty;
 
-            let s : Charset = nonemptyClassRanges();
-            while (true) {
-                if (eat("\\&")) {
-                    let t : Charset = nonemptyClassRanges();
-                    s = new CharsetIntersect(s, t);
-                }
-                else if (eat("\\-")) {
-                    let t : Charset = nonemptyClassRanges();
-                    s = new CharsetSubtract(s, t);
-                }
-                else
-                    break;
-            }
-            return s;
+            return nonemptyClassRanges();
         }
 
-        function nonemptyClassRanges(acc : Charset? = null) : Charset {
+        function nonemptyClassRanges(acc: Charset? = null, also: Charset? = null) : Charset {
 
             function accumulate(acc : Charset?, x : Charset) : Charset {
                 return acc === null ? x : new CharsetUnion(acc, x);
             }
 
+            function intersect(cs: Charset?, x: Charset) : Charset {
+                return cs === null ? x : new CharsetIntersection(cs, x);
+            }
+
+            if (lookingAt("&&[")) {
+                eat("&&");
+                let s = characterClassHelper();
+                if (lookingAt("]"))
+                    return new intersect(acc, intersect(also,s));
+                else
+                    return nonemptyClassRanges(acc, intersect(also,s));
+            }
+
             let a1 : Charset = classAtom();
 
             if (lookingAt("]"))
-                return accumulate(acc,a1);
+                return intersect(also,accumulate(acc,a1));
 
             if (lookingAt("-")) {
                 consumeChar();
                 if (lookingAt("]"))
-                    return accumulate(acc, new CharsetAdhoc("-"));
+                    return intersect(also,accumulate(acc, new CharsetAdhoc("-")));
 
                 if (a1.hasOneCharacter()) {
                     let a2 : Charset = classAtom();
@@ -415,21 +413,23 @@ package RegExpInternals
                                                       new CharsetRange(a1.singleCharacter(), 
                                                                        a2.singleCharacter()));
                         if (lookingAt("]"))
-                            return a3;
+                            return intersect(also,a3);
 
-                        return nonemptyClassRanges(a3);
+                        return nonemptyClassRanges(a3, also);
                     }
                     else
                         return nonemptyClassRanges(accumulate(accumulate(accumulate(acc,a1),
                                                                          new CharsetAdhoc("-")),
-                                                              a2));
+                                                              a2),
+                                                   also);
                 }
                 else
                     return nonemptyClassRanges(accumulate(accumulate(acc,a1),
-                                                          new CharsetAdhoc("-")));
+                                                          new CharsetAdhoc("-")),
+                                               also);
             }
             
-            return nonemptyClassRanges(accumulate(acc,a1));
+            return nonemptyClassRanges(accumulate(acc,a1), also);
         }
 
         function classAtom() : Charset {
