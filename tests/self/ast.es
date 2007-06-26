@@ -1095,14 +1095,14 @@ namespace Ast
         const expr : EXPR;
         const body : STMT;
         const labels : [IDENT];
-        const fixtures : FIXTURES?
+        const fixtures : FIXTURES?  // What are these for?
     }
     
     class DoWhileStmt {
         const expr : EXPR;
         const body : STMT;
         const labels : [IDENT];
-        const fixtures : FIXTURES?
+        const fixtures : FIXTURES?  // What are these for?
     }
 
     class ForStmt {
@@ -1121,12 +1121,23 @@ namespace Ast
     }
 
     class WithStmt {
+        const expr : EXPR;
+        const body : STMT;
     }
 
     class TryStmt {
     }
 
+    type CASE = Case;
+
+    class Case {
+        const guard : EXPR?;  // null for default
+        const body : [STMT];
+    }
+
     class SwitchStmt {
+        const expr : EXPR;
+        const cases : [CASE]; // order matters
     }
 
     class SwitchTypeStmt {

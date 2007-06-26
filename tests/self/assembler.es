@@ -354,8 +354,14 @@ package assembler
         //        stack depth at the target too [except for exception handling]
         //  - scope (uint): the scope stack depth at label creation time; this is the
         //        scope stack depth at the target too [except for exception handling]
+        //
+        // The method newLabel() can be called to return a label that
+        // will later be defined by I_label and referenced by control
+        // flow instructions, without creating a jump instruction at
+        // the point where the label is created.  Typically this is
+        // used to create branch targets for "break" and "continue".
 
-        private function newlabel() {
+        public function newLabel() {
             return { "name": nextLabel++, "address": -1, "stack": current_stack_depth, "scope": current_scope_depth };
         }
 
@@ -372,7 +378,7 @@ package assembler
             stack(stk);
 
             if (L === undefined)
-                L = newlabel();
+                L = newLabel();
 
             list2(name, L.name);
             code.uint8(opcode);
@@ -386,7 +392,7 @@ package assembler
             var define = false;
             if (L === undefined) {
                 define = true;
-                L = newlabel();
+                L = newLabel();
             }
             else {
                 assert( L.address == -1 );
@@ -440,10 +446,10 @@ package assembler
             stack(-1);
 
             if (default_label === undefined) {
-                default_label = newlabel();
+                default_label = newLabel();
                 for ( var i=0 ; i < case_labels.length ; i++ ) {
                     assert( case_labels[i] === undefined );
-                    case_labels[i] = newlabel();
+                    case_labels[i] = newLabel();
                 }
             }
                 

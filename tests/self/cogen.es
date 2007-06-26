@@ -175,7 +175,7 @@ package cogen
     // Handles scopes and finally handlers and returns a label, if appropriate, to
     // branch to.  "tag" is one of "function", "break", "continue"
 
-    function nonlocalControlFlow({stk:stk, asm:asm}, hit, jump, msg) {
+    function unstructuredControlFlow({stk:stk, asm:asm}, hit, jump, msg) {
         while (stk != null) {
             if (hit(stk)) {
                 if (jump)
