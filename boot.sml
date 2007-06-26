@@ -49,7 +49,7 @@ fun instantiateRootClass (fullName:Ast.NAME) (prog:Ast.PROGRAM) :
       val globalRegs = Eval.getInitialRegs ()
 
       val _ = trace ["fetching ", LogErr.name fullName, " class definition"];
-      val fix = Defn.getFixture (valOf (#fixtures prog)) (Ast.PropName fullName)
+      val fix = Fixture.getFixture (valOf (#fixtures prog)) (Ast.PropName fullName)
       val cls = case fix of 
                     Ast.ClassFixture cls => cls
                   | _ => error [LogErr.name fullName, " did not resolve to a class fixture"]
@@ -177,6 +177,7 @@ fun printProp ((n:Ast.NAME), (p:Mach.PROP)) =
 	trace [LogErr.name n, " -> ", ps]
     end
 	
+(*
 fun printFixture ((n:Ast.FIXTURE_NAME), (f:Ast.FIXTURE)) = 
     let
 	val fs = case f of 
@@ -193,6 +194,7 @@ fun printFixture ((n:Ast.FIXTURE_NAME), (f:Ast.FIXTURE)) =
 	    Ast.TempName n => trace ["temp #", Int.toString n, " -> ", fs]
       | Ast.PropName n => trace [LogErr.name n, " -> ", fs]
     end
+*)
 
 fun describeGlobal _ = 
      if !doTrace
@@ -202,7 +204,8 @@ fun describeGlobal _ =
 	      Mach.Obj {props, ...} => 
 	      NameMap.appi printProp (!props);
 	  trace ["top fixture contents:"];
-	  List.app printFixture (!Defn.topFixtures))    
+	  Fixture.printTopFixtures (!Defn.topFixtures))
+(*	  List.app printFixture (!Defn.topFixtures))    *)
      else ()
           
     
@@ -218,7 +221,7 @@ fun boot _ =
         val _ = Eval.booting := true
 
         (* Allocate any standard anonymous user namespaces like magic and meta. *)
-        val _ = Eval.allocScopeFixtures (Eval.getInitialRegs()) (!Defn.topFixtures)
+        val _ = Eval.allocScopeFixtures (Eval.getInitialRegs()) (Fixture.getTopFixtures (!Defn.topFixtures))
 
         (* 
          * We have to do a small bit of delicate work here because the global object

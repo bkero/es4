@@ -31,8 +31,11 @@
  * Copyright (c) 2007 Adobe Systems Inc., The Mozilla Foundation, Opera
  * Software ASA, and others.
  *)
+
 (* 
- * This is the main entry point for the ES4 reference evaluator.
+ * This is the basic entry point for the ES4 reference evaluator.
+ * Platform-specific wrappers for different SML implementations
+ * may explicitly call the main function from custom entry points.
  *)
 
 structure Main = struct
@@ -50,10 +53,11 @@ fun findTraceOption (tname:string)
       | "verified" => SOME (Verify.doTraceProg)
       | "eval" => SOME (Eval.doTrace)
       | "mach" => SOME (Mach.doTrace)
-      | "decimal" => SOME (Decimal.doTrace)
+      | "decimal" => SOME (DecimalParams.doTrace)
       | "native" => SOME (Native.doTrace)
       | "boot" => SOME (Boot.doTrace)
       | "stack" => SOME (Eval.traceStack)
+      (* FIXME: add "fixture" and "type" *)
       | _ => NONE
 
 fun consumeOption (opt:string) : bool = 
@@ -73,30 +77,39 @@ fun consumeOption (opt:string) : bool =
 
 exception quitException
 
+(* FIXME: should use more portable OS.Process.exit *)
+fun withEofHandler thunk =
+    (thunk (); 0)
+    handle LogErr.EofError => (print ("**ERROR* EofError: Unexpected end of file\n"); Eval.resetStack(); 1)
+
+fun withHandlers thunk =
+    (thunk (); 0)
+    handle
+    LogErr.LexError e => (print ("**ERROR** LexError: " ^ e ^ "\n"); Eval.resetStack(); 1)
+  | LogErr.ParseError e => (print ("**ERROR** ParseError: " ^ e ^ "\n"); Eval.resetStack(); 1)
+  | LogErr.NameError e => (print ("**ERROR** NameError: " ^ e ^ "\n"); Eval.resetStack(); 1)
+  | LogErr.TypeError e => (print ("**ERROR** TypeError: " ^ e ^ "\n"); Eval.resetStack(); 1)
+  | LogErr.FixtureError e => (print ("**ERROR** FixtureError: " ^ e ^ "\n"); Eval.resetStack(); 1)
+  | LogErr.DefnError e => (print ("**ERROR** DefnError: " ^ e ^ "\n"); Eval.resetStack(); 1)
+  | LogErr.EvalError e => (print ("**ERROR** EvalError: " ^ e ^ "\n"); Eval.resetStack(); 1)
+  | LogErr.MachError e => (print ("**ERROR** MachError: " ^ e ^ "\n"); Eval.resetStack(); 1)
+  | LogErr.VerifyError e => (print ("**ERROR** VerifyError: " ^ e ^ "\n"); Eval.resetStack(); 1)
+  | LogErr.HostError e => (print ("**ERROR** HostError: " ^ e ^ "\n"); Eval.resetStack(); 1)
+  | LogErr.UnimplError e => (print ("**ERROR** UnimplError: " ^ e ^ "\n"); Eval.resetStack(); 1)
+
 fun startup doBoot argvRest = 
     let
         val argvRest = List.filter consumeOption argvRest
     in
         if doBoot then 
     	    (TextIO.print "booting ... \n";
-             (Boot.boot ()
-              handle 
-              LogErr.LexError e => (print ("**ERROR** LexError: " ^ e ^ "\n"); Eval.resetStack(); ())
-            | LogErr.ParseError e => (print ("**ERROR** ParseError: " ^ e ^ "\n"); Eval.resetStack(); ())
-            | LogErr.EofError => (print ("**ERROR* EofError: Unexpected end of file\n"); Eval.resetStack(); ())
-            | LogErr.NameError e => (print ("**ERROR** NameError: " ^ e ^ "\n"); Eval.resetStack(); ())
-            | LogErr.DefnError e => (print ("**ERROR** DefnError: " ^ e ^ "\n"); Eval.resetStack(); ())
-            | LogErr.EvalError e => (print ("**ERROR** EvalError: " ^ e ^ "\n"); Eval.resetStack(); ())
-            | LogErr.MachError e => (print ("**ERROR** MachError: " ^ e ^ "\n"); Eval.resetStack(); ())
-            | LogErr.VerifyError e => (print ("**ERROR** VerifyError: " ^ e ^ "\n"); Eval.resetStack(); ())
-            | LogErr.HostError e => (print ("**ERROR** HostError: " ^ e ^ "\n"); Eval.resetStack(); ())
-            | LogErr.UnimplError e => (print ("**ERROR** UnimplError: " ^ e ^ "\n"); Eval.resetStack(); ()));
+             withEofHandler (fn () => withHandlers Boot.boot);
              argvRest)
         else
             argvRest
     end
     
-fun repl doBoot argvRest = 
+fun repl argvRest = 
     let
         val doParse = ref true
         val doDefn = ref true
@@ -172,9 +185,9 @@ fun repl doBoot argvRest =
                                         let 
                                             val res = Eval.evalTopProgram vd
                                         in
-                                            if res = Mach.Undef
-                                            then ()
-                                            else print (Ustring.toAscii (Eval.toUstring res) ^ "\n");
+                                            (case res of
+                                                 Mach.Undef => ()
+                                               | _ => print (Ustring.toAscii (Eval.toUstring res) ^ "\n"));
                                             doLine ()
                                         end
                                     else 
@@ -188,66 +201,45 @@ fun repl doBoot argvRest =
             end
 
         fun runUntilQuit _ = 
-            ((doLine () 
-              handle 
-              LogErr.LexError e => (print ("**ERROR** LexError: " ^ e ^ "\n"); Eval.resetStack(); ())
-            | LogErr.ParseError e => (print ("**ERROR** ParseError: " ^ e ^ "\n"); Eval.resetStack(); ())
-            | LogErr.EofError => (print ("**ERROR* EofError: Unexpected end of file\n"); Eval.resetStack(); ())
-            | LogErr.NameError e => (print ("**ERROR** NameError: " ^ e ^ "\n"); Eval.resetStack(); ())
-            | LogErr.DefnError e => (print ("**ERROR** DefnError: " ^ e ^ "\n"); Eval.resetStack(); ())
-            | LogErr.EvalError e => (print ("**ERROR** EvalError: " ^ e ^ "\n"); Eval.resetStack(); ())
-            | LogErr.MachError e => (print ("**ERROR** MachError: " ^ e ^ "\n"); Eval.resetStack(); ())
-            | LogErr.VerifyError e => (print ("**ERROR** VerifyError: " ^ e ^ "\n"); Eval.resetStack(); ())
-            | LogErr.HostError e => (print ("**ERROR** HostError: " ^ e ^ "\n"); Eval.resetStack(); ())
-            | LogErr.UnimplError e => (print ("**ERROR** UnimplError: " ^ e ^ "\n"); Eval.resetStack(); ()));
+            (withEofHandler (fn () => withHandlers doLine);
              runUntilQuit ())
     in
-        startup doBoot argvRest;
+        startup false argvRest;
         runUntilQuit ()
         handle quitException => print "bye\n"
     end
 
-fun parse doBoot argvRest = 
+fun parse argvRest = 
     let 
-        val argvRest = startup doBoot argvRest
+        val argvRest = startup false argvRest
     in
         TextIO.print "parsing ... \n";
         List.map Parser.parseFile argvRest
     end
 
-fun define doBoot argvRest =
+fun define argvRest =
     let 
-        val parsed = parse doBoot argvRest
+        val parsed = parse argvRest
     in
         TextIO.print "defining ... \n";
         map Defn.defProgram parsed
     end
             
-fun verify doBoot argvRest =
+fun verify argvRest =
     let 
-        val defined = define doBoot argvRest
+        val defined = define argvRest
     in
         TextIO.print "verifying ... \n";
         List.map Verify.verifyProgram defined
     end
 
-fun eval doBoot argvRest =
+fun eval argvRest =
     let 
-        val verified = verify doBoot argvRest 
+        val verified = verify argvRest 
     in
         Posix.Process.alarm (Time.fromReal 300.0);
 	    TextIO.print "evaluating ... \n";
-        (map Eval.evalTopProgram verified; 0)
-        handle 
-        LogErr.LexError e => (print ("**ERROR** LexError: " ^ e ^ "\n");  1)
-      | LogErr.ParseError e => (print ("**ERROR** ParseError: " ^ e ^ "\n"); 1)
-      | LogErr.NameError e => (print ("**ERROR** NameError: " ^ e ^ "\n"); 1)
-      | LogErr.DefnError e => (print ("**ERROR** DefnError: " ^ e ^ "\n"); 1)
-      | LogErr.EvalError e => (print ("**ERROR** EvalError: " ^ e ^ "\n"); 1)
-      | LogErr.MachError e => (print ("**ERROR** MachError: " ^ e ^ "\n"); 1)
-      | LogErr.VerifyError e => (print ("**ERROR** VerifyError: " ^ e ^ "\n"); 1)
-      | LogErr.HostError e => (print ("**ERROR** HostError: " ^ e ^ "\n"); 1)
-      | LogErr.UnimplError e => (print ("**ERROR** UnimplError: " ^ e ^ "\n"); 1)
+        withHandlers (fn () => map Eval.evalTopProgram verified)
     end
 
 fun usage () =
@@ -279,34 +271,18 @@ fun usage () =
                "        boot      standard library boot sequence\n",
                "        stack     stack operations\n"])
 
-fun main' (argv0:string, argvRest:string list) =
-    BackTrace.monitor
-        (fn () =>
-            (case argvRest of
-                 ("-h"::argvRest) => (usage (); 0)
-               | ("-r"::argvRest) => (repl false argvRest; 0)
-               | ("-p"::argvRest) => (parse false argvRest; 0)
-               | ("-d"::argvRest) => (define false argvRest; 0)
-               | ("-v"::argvRest) => (verify false argvRest; 0)
-	           | ("-e"::argvRest) => eval false argvRest
-               | _ => (repl false argvRest; 0))
-            handle 
-            LogErr.LexError e => (print ("**ERROR** LexError: " ^ e ^ "\n"); 1)
-          | LogErr.ParseError e => (print ("**ERROR** ParseError: " ^ e ^ "\n"); 1)
-          | LogErr.EofError => (print ("**ERROR* EofError: Unexpected end of file\n"); 1)
-          | LogErr.NameError e => (print ("**ERROR** NameError: " ^ e ^ "\n"); 1)
-          | LogErr.DefnError e => (print ("**ERROR** DefnError: " ^ e ^ "\n"); 1)
-          | LogErr.EvalError e => (print ("**ERROR** EvalError: " ^ e ^ "\n"); 1)
-          | LogErr.MachError e => (print ("**ERROR** MachError: " ^ e ^ "\n"); 1)
-          | LogErr.VerifyError e => (print ("**ERROR** VerifyError: " ^ e ^ "\n"); 1)
-          | LogErr.HostError e => (print ("**ERROR** HostError: " ^ e ^ "\n"); 1)
-          | LogErr.UnimplError e => (print ("**ERROR** UnimplError: " ^ e ^ "\n"); 1))
-
 fun main (argv0:string, argvRest:string list) =
-    BackTrace.monitor 
+    withEofHandler
         (fn () =>
-            (case startup true argvRest of
-                 ["-dump", filename] => (SMLofNJ.exportFn (filename, main'); 0)
-               | _ => main' (argv0, argvRest)))
+            withHandlers
+                (fn () =>
+                    (case argvRest of
+                         ("-h"::argvRest) => (usage (); 0)
+                       | ("-r"::argvRest) => (repl argvRest; 0)
+                       | ("-p"::argvRest) => (parse argvRest; 0)
+                       | ("-d"::argvRest) => (define argvRest; 0)
+                       | ("-v"::argvRest) => (verify argvRest; 0)
+                       | ("-e"::argvRest) => (eval argvRest)
+                       | _ => (repl argvRest; 0))))
 
 end

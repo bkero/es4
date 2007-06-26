@@ -41,6 +41,9 @@ Library
     structure Parser
     structure Multiname
     structure Defn
+    signature FIXTURE
+    structure Fixture
+    structure Type
     structure Verify 
     structure Eval
     structure Mach 	
@@ -51,6 +54,7 @@ Library
     structure NameKey	
     structure NameMap	
     structure Ustring
+    structure SMLofNJEntry
 is
     logerr.sml (lambdasplit: infinity)
     main.sml
@@ -63,6 +67,9 @@ is
     parser.sml
     multiname.sml (lambdasplit: infinity)
     defn.sml (lambdasplit: infinity)
+    fixture.sig
+    fixture.sml (lambdasplit: infinity)
+    type.sml (lambdasplit: infinity)
     verify.sml (lambdasplit: infinity)
     eval.sml (lambdasplit: infinity)
     mach.sml (lambdasplit: infinity)
@@ -75,6 +82,7 @@ is
     namekey.sml (lambdasplit: infinity)
     namemap.sml (lambdasplit: infinity)
     ustring.sml
+    smlnj.sml (lambdasplit: infinity)
 
     $/basis.cm
     $/smlnj-lib.cm

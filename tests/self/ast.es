@@ -115,7 +115,9 @@ namespace Ast
     }
 
     class PublicNamespace { 
-        const name : IDENT 
+        const name : IDENT;
+        function PublicNamespace (name)
+            : name = name { } 
     }
 
     class InternalNamespace { 
@@ -716,6 +718,8 @@ namespace Ast
 
     class LiteralNamespace {
         const namespaceValue : NAMESPACE;
+        function LiteralNamespace (namespaceValue)
+            : namespaceValue = namespaceValue { }
     }
 
     class LiteralObject {
@@ -840,7 +844,10 @@ namespace Ast
 
     class Binding {
         const ident : BINDING_IDENT;
-        const type : TYPE_EXPR;
+        const type : TYPE_EXPR?;
+        function Binding (ident,ty)  // FIXME 'type' not allowed as param name in the RI
+            : ident = ident
+            , type = ty { }
     }
 
     type BINDING_IDENT =
@@ -858,7 +865,8 @@ namespace Ast
 
     class PropIdent {
         const ident : IDENT;
-        function PropIdent(ident) : ident=ident {}
+        function PropIdent (ident)
+            : ident = ident { }
     }
 
     type INIT_STEP =
@@ -868,6 +876,9 @@ namespace Ast
     class InitStep {
         const ident : BINDING_IDENT;
         const expr : EXPR;
+        function InitStep (ident,expr)
+            : ident = ident
+            , expr = expr { }
     }
 
     class AssignStep {
@@ -1115,9 +1126,13 @@ namespace Ast
     }
 
     class IfStmt {
-        const test : EXPR;
-        const consequent : STMT;
-        const alternate : STMT?;
+        const cnd : EXPR;
+        const thn : STMT;
+        const els : STMT?;
+        function IfStmt (cnd,thn,els)
+            : cnd = cnd
+            , thn = thn
+            , els = els { }
     }
 
     class WithStmt {
@@ -1197,6 +1212,11 @@ namespace Ast
     class LetVar {}
     class LetConst {}
 
+    const constTag = new Const;
+    const varTag = new Var;
+    const letVarTag = new LetVar;
+    const letConstTag = new LetConst;
+
     type VAR_DEFN = VariableDefn
 
     class VariableDefn {
@@ -1240,7 +1260,7 @@ namespace Ast
 
     class Block {
         const pragmas: [PRAGMA];
-        const defns: [DEFN];
+        const defns: * // [DEFN];
         const head: HEAD?;
         const stmts: [STMT];
         const pos: POS?;

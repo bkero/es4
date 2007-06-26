@@ -2,14 +2,8 @@ local
     $(SML_LIB)/basis/basis.mlb
     $(SML_LIB)/smlnj-lib/Util/smlnj-lib.mlb
     $(SML_LIB)/smlnj-lib/PP/pp-lib.mlb
-(*
-    main.sml
-    verify.sml
-    eval.sml
-    mach.sml
-    native.sml
-    boot.sml
-*)
+    $(SML_LIB)/basis/mlton.mlb
+
     ustring.sml
     decimal-params.sml
     ann "allowFFI true" in
@@ -28,8 +22,17 @@ local
     token.sml
     lexer.sml
     parser.sml
+    mach.sml
+    fixture.sig
+    fixture.sml
+    type.sml
     defn.sml
-    tmp.sml
+    verify.sml
+    eval.sml
+    native.sml
+    boot.sml
+    main.sml
+    mlton.sml
 in
     (*structure Ast*)
 end
