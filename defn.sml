@@ -1336,7 +1336,7 @@ and defFunc (env:ENV) (func:Ast.FUNC)
     : (Ast.HEAD * Ast.EXPR list * Ast.FUNC) =
     let
         val _ = trace [">> defFunc"]
-        val Ast.Func {name, fsig, block, ty, native, ...} = func
+        val Ast.Func {name, fsig, block, ty, native, loc, ...} = func
         val paramTypes = (#params ty)
         val env = updateTempOffset env (length paramTypes)
         val (paramFixtures, paramInits, defaults, settingsFixtures, settingsInits, superArgs, thisType) = defFuncSig env fsig
@@ -1353,7 +1353,8 @@ and defFunc (env:ENV) (func:Ast.FUNC)
                    defaults = defaults,
                    ty = newTy,
                    param = Ast.Head (List.foldl mergeFixtures paramFixtures hoisted, paramInits),
-                   native=native})
+                   native=native,
+                   loc=loc})
     end
 
 (*
@@ -1560,7 +1561,8 @@ trace2 ("openning package ",id);
                                                                 result=fixtureType,
                                                                 thisType=NONE,
                                                                 hasRest=false,
-                                                                minArgs=0}}}
+                                                                minArgs=0},
+                                                          loc=NONE}}
 
 
                                         val setterDefn : Ast.FUNC_DEFN = 
@@ -1613,7 +1615,8 @@ trace2 ("openning package ",id);
                                                                 result=Ast.SpecialType Ast.VoidType,
                                                                 thisType=NONE,
                                                                 hasRest=false,
-                                                                minArgs=1}}}
+                                                                minArgs=1},
+                                                          loc=NONE}}
                                     in
                                         Ast.VirtualValFixture {ty=fixtureType,
                                                                getter=SOME getterDefn,

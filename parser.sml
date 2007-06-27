@@ -119,6 +119,23 @@ fun locOf (ts:TOKENS) =
 fun setLoc (ts:TOKENS) = 
     LogErr.setLoc (locOf ts)
 
+fun unionLoc (SOME { file=file0, span=(lower, _), post_newline=postNewline } : Ast.LOC option)
+             (SOME { file=file1, span=(_, upper), post_newline=_           } : Ast.LOC option) =
+    if file0 = file1
+    then SOME { file=file0, span=(lower, upper), post_newline=postNewline }
+    else error ["Cannot union locations from different files"]
+  | unionLoc _ _ =
+    NONE
+
+fun unionLocExcludingLast(SOME { file=file0, span=(lower, _), post_newline=postNewline    } : Ast.LOC option)
+                         (SOME { file=file1, span=({line=line,col=col}, _), post_newline=_} : Ast.LOC option) =
+    if file0 = file1
+    then SOME { file=file0, span=(lower, {line=line, col=col-1}), post_newline=postNewline }
+    else error ["Cannot union locations from different files"]
+  | unionLocExcludingLast _ _ =
+    NONE
+
+
 val defaultAttrs : ATTRS = 
     {
         ns = NONE,
@@ -757,7 +774,7 @@ and parenListExpression (ts:TOKENS) : (TOKENS * Ast.EXPR) =
     in case ts of
         (LeftParen, _) :: _ => 
             let
-                val (ts1,nd1) = listExpression (tl ts,AllowIn)
+                val (ts1,nd1,_) = listExpression (tl ts,AllowIn)
                 val nd1 = case nd1 of 
                               Ast.ListExpr [x] => x
                             | x => x
@@ -786,7 +803,7 @@ and functionExpression (ts:TOKENS, a:ALPHA, b:BETA)
     : (TOKENS * Ast.EXPR) =
     let val _ = trace([">> functionExpression with next=",tokenname(hd(ts))]) 
     in case ts of
-        (Function, _) :: ts1 => 
+        (Function, funcStartLoc) :: ts1 => 
             let
                 fun anonymousFunctionSignature () =
                     let
@@ -795,6 +812,7 @@ and functionExpression (ts:TOKENS, a:ALPHA, b:BETA)
                         ((LeftBrace, _) :: _,_) => 
                             let
                                 val (ts4,nd4) = block (ts3,LocalScope)
+                                val Ast.Block {loc=blockLoc, ...} = nd4
                             in
                                 (ts4,Ast.LiteralExpr 
                                          (Ast.LiteralFunction 
@@ -804,11 +822,12 @@ and functionExpression (ts:TOKENS, a:ALPHA, b:BETA)
                                                          native=false,
                                                          defaults=[],
                                                          param=Ast.Head ([],[]),
-                                                         ty=functionTypeFromSignature nd3})))
+                                                         ty=functionTypeFromSignature nd3,
+                                                         loc=unionLoc (SOME funcStartLoc) blockLoc})))
                             end
                       | (_,AllowList) => 
                             let
-                                val (ts4,nd4) = listExpression (ts3,b)
+                                val (ts4,nd4,listLoc) = listExpression (ts3,b)
                             in
                                 (ts4,Ast.LiteralExpr 
                                          (Ast.LiteralFunction 
@@ -822,7 +841,8 @@ and functionExpression (ts:TOKENS, a:ALPHA, b:BETA)
                                                          native=false,
                                                          param=Ast.Head ([],[]),
                                                          defaults=[],
-                                                         ty=functionTypeFromSignature nd3})))
+                                                         ty=functionTypeFromSignature nd3,
+                                                         loc=unionLoc (SOME funcStartLoc) listLoc})))
                                 
                             end
                       | _ => error ["unknown body form in anonymous function expression"]
@@ -838,6 +858,7 @@ and functionExpression (ts:TOKENS, a:ALPHA, b:BETA)
                         ((LeftBrace, _) :: _,_) => 
                             let
                                 val (ts4,nd4) = block (ts3,LocalScope)
+                                val Ast.Block {loc=blockLoc, ...} = nd4
                             in
                                 (ts4,Ast.LiteralExpr 
                                          (Ast.LiteralFunction 
@@ -847,11 +868,12 @@ and functionExpression (ts:TOKENS, a:ALPHA, b:BETA)
                                                          native=false,
                                                          param=Ast.Head ([],[]),
                                                          defaults=[],
-                                                         ty=functionTypeFromSignature nd3})))
+                                                         ty=functionTypeFromSignature nd3,
+                                                         loc=unionLoc (SOME funcStartLoc) blockLoc})))
                             end
                       | (_,AllowList) => 
                             let
-                                val (ts4,nd4) = listExpression (ts3,b)
+                                val (ts4,nd4,listLoc) = listExpression (ts3,b)
                             in
                                 (ts4,Ast.LiteralExpr 
                                          (Ast.LiteralFunction 
@@ -867,7 +889,8 @@ and functionExpression (ts:TOKENS, a:ALPHA, b:BETA)
                                                     native=false,
                                                     param=Ast.Head ([],[]),
                                                     defaults=[],
-                                                    ty=functionTypeFromSignature nd3})))
+                                                    ty=functionTypeFromSignature nd3,
+                                                    loc=unionLoc (SOME funcStartLoc) listLoc})))
                             end
                       | _ => error ["unknown body form in named function expression"]
                     end
@@ -1429,10 +1452,11 @@ and literalField (ts:TOKENS)
         (* special case for fields with name 'get' or 'set' *)
         (Get, _) :: (Colon,_) :: _ => getterSetter ()
       | (Set, _) :: (Colon,_) :: _ => getterSetter ()
-      | (Get, _) :: _ =>
+      | (Get, funcStartLoc) :: _ =>
             let
                 val (ts1,nd1) = fieldName (tl ts)
                 val (ts2,{fsig,block}) = functionCommon (ts1)
+                val Ast.Block {loc=blockLoc, ...} = block
             in
                 (ts2,{kind=Ast.Var,
                       name=nd1,
@@ -1444,12 +1468,14 @@ and literalField (ts:TOKENS)
                                                native=false,
                                                param=Ast.Head ([],[]),
                                                defaults=[],
-                                               ty=functionTypeFromSignature fsig}))})
+                                               ty=functionTypeFromSignature fsig,
+                                               loc=unionLoc (SOME funcStartLoc) blockLoc}))})
             end
-      | (Set, _) :: _ =>
+      | (Set, funcStartLoc) :: _ =>
             let
                 val (ts1,nd1) = fieldName (tl ts)
                 val (ts2,{fsig,block}) = functionCommon (ts1)
+                val Ast.Block {loc=blockLoc, ...} = block
             in
                 (ts2,{kind=Ast.Var,
                       name=nd1,
@@ -1461,7 +1487,8 @@ and literalField (ts:TOKENS)
                                                native=false,
                                                param=Ast.Head ([],[]),
                                                defaults=[],
-                                               ty=functionTypeFromSignature fsig}))})
+                                               ty=functionTypeFromSignature fsig,
+                                               loc=unionLoc (SOME funcStartLoc) blockLoc}))})
             end
       | _ => 
             let
@@ -2069,11 +2096,11 @@ and brackets (ts:TOKENS)
     in case ts of
         (LeftBracket, _) :: ts' =>
             let
-                val (ts1,nd1) = listExpression (ts',AllowIn)
+                val (ts1,nd1,_) = listExpression (ts',AllowIn)
             in case ts1 of
                 (Colon, _) :: ts'' => 
                     let
-                        val (ts2,nd2) = listExpression (ts'',AllowIn)
+                        val (ts2,nd2,_) = listExpression (ts'',AllowIn)
                     in case ts2 of
                         (RightBracket, _) :: ts'' => (ts'',Ast.SliceExpr (nd1,nd2,Ast.ListExpr [])) 
                       | _ => error ["unknown token in brackets"]
@@ -2822,7 +2849,7 @@ and letExpression (ts:TOKENS, b:BETA)
             case ts2 of
                 (RightParen, _) :: ts3 =>
                     let
-                        val (ts4,nd4) = listExpression(ts3,b)
+                        val (ts4,nd4,_) = listExpression(ts3,b)
                     in
                         (trace(["<< letExpression with next=",tokenname(hd(ts4))]);
                         (ts4,Ast.LetExpr{defs=nd2,body=nd4,head=NONE}))
@@ -2890,7 +2917,7 @@ and yieldExpression (ts:TOKENS, b:BETA)
               | (RightParen, _) :: _ => (ts1,Ast.YieldExpr NONE)
               | _ => 
                     let
-                        val (ts2,nd2) = listExpression(ts1,b)
+                        val (ts2,nd2,_) = listExpression(ts1,b)
                     in
                         (ts2,Ast.YieldExpr(SOME nd2))
                     end
@@ -3048,7 +3075,7 @@ and assignmentExpression (ts:TOKENS, a:ALPHA, b:BETA)
 *)
 
 and listExpression (ts:TOKENS, b:BETA) 
-    : (TOKENS * Ast.EXPR) = 
+    : (TOKENS * Ast.EXPR * (Ast.LOC option)) = 
     let
         val _ =    trace([">> listExpression with next=",tokenname(hd ts)])
         fun listExpression' (ts,b) : (TOKENS * Ast.EXPR list) =
@@ -3069,9 +3096,12 @@ and listExpression (ts:TOKENS, b:BETA)
             end
         val (ts1,nd1) = assignmentExpression(ts,AllowList,b)
         val (ts2,nd2) = listExpression'(ts1,b)
+        val startLoc  = #2 (hd ts )
+        val endLoc    = #2 (hd ts2)
+        val listLoc   = unionLocExcludingLast (SOME startLoc) (SOME endLoc)
     in
         trace(["<< listExpression with next=",tokenname(hd(ts2))]);
-        (ts2, Ast.ListExpr (nd1 :: nd2))
+        (ts2, Ast.ListExpr (nd1 :: nd2), listLoc)
     end
 
 (*
@@ -3969,7 +3999,7 @@ ExpressionStatement
 and expressionStatement (ts:TOKENS) 
     : (TOKENS * Ast.STMT) =
     let val _ = trace([">> expressionStatement with next=", tokenname(hd ts)])
-        val (ts1,nd1) = listExpression(ts,AllowIn)
+        val (ts1,nd1,_) = listExpression(ts,AllowIn)
     in
         trace(["<< expressionStatement with next=", tokenname(hd ts1)]);
         (ts1,Ast.ExprStmt(nd1))
@@ -4170,7 +4200,7 @@ and caseLabel (ts:TOKENS, has_default:bool)
     in case (ts,has_default) of
         ((Case, _) :: _,_) =>
             let
-                val (ts1,nd1) = listExpression (tl ts,AllowIn)
+                val (ts1,nd1,_) = listExpression (tl ts,AllowIn)
             in case ts1 of
                 (Colon, _) :: _ => (tl ts1,SOME nd1)
               | _ => error ["unknown token in caseLabel"]
@@ -4527,7 +4557,7 @@ and forStatement (ts:TOKENS, w:OMEGA)
                                 Ast.InitStmt i :: [] => 
                                 Ast.InitStmt i (* already desugared *)
                               | _ => LogErr.internalError ["invalid forIn inits 2"]
-                val (ts2,nd2) = listExpression (tl ts1,AllowIn)
+                val (ts2,nd2,_) = listExpression (tl ts1,AllowIn)
             in case ts2 of
                 (RightParen, _) :: _ =>
                     let
@@ -4578,7 +4608,7 @@ and forInitialiser (ts:TOKENS)
             end
       | _ =>
             let
-                val (ts1,nd1) = listExpression (ts,NoIn)
+                val (ts1,nd1,_) = listExpression (ts,NoIn)
             in
                 trace ["<< forInitialiser with next=", tokenname(hd ts1)];
                 (ts1,NONE,[Ast.ExprStmt nd1])           
@@ -4601,7 +4631,7 @@ and optionalExpression (ts:TOKENS)
             end
       | _ => 
             let
-                val (ts1,nd1) = listExpression (ts,NoIn)
+                val (ts1,nd1,_) = listExpression (ts,NoIn)
             in case ts1 of
                 (SemiColon, _) :: _ =>
                     let
@@ -4671,7 +4701,7 @@ and letStatement (ts:TOKENS, w:OMEGA)
                     end
               | (RightParen, _) :: _ => (* oops, actually a LetExpr in statement position *)
                     let
-                        val (ts2,nd2) = listExpression(tl ts1, AllowIn)
+                        val (ts2,nd2,_) = listExpression(tl ts1, AllowIn)
                     in
                         (trace(["<< letExpression with next=",tokenname(hd(ts2))]);
                         (ts2,Ast.ExprStmt (Ast.LetExpr {defs=nd1,body=nd2,head=NONE})))
@@ -4747,7 +4777,7 @@ and returnStatement (ts:TOKENS)
                 (tl ts,Ast.ReturnStmt (Ast.ListExpr []))
             else 
                 let
-                    val (ts1,nd1) = listExpression(tl ts, AllowIn)
+                    val (ts1,nd1,_) = listExpression(tl ts, AllowIn)
                 in
                     (ts1,Ast.ReturnStmt nd1)
                 end
@@ -4765,7 +4795,7 @@ and throwStatement (ts:TOKENS)
     in case ts of
         (Throw, _) :: _ =>
             let
-                val (ts1,nd1) = listExpression(tl ts, AllowIn)
+                val (ts1,nd1,_) = listExpression(tl ts, AllowIn)
             in
                 (ts1,Ast.ThrowStmt nd1)
             end
@@ -5710,7 +5740,7 @@ and functionDeclaration (ts:TOKENS, attrs:ATTRS)
     let val _ = trace([">> functionDeclaration with next=", tokenname(hd ts)])
         val {ns,final,native,override,prototype,static,...} = attrs
     in case ts of
-        (Function, _) :: _ =>
+        (Function, funcStartLoc) :: _ =>
             let
                 val (ts1,nd1) = functionName (tl ts)
                 val (ts2,nd2) = functionSignature (ts1)
@@ -5733,7 +5763,8 @@ and functionDeclaration (ts:TOKENS, attrs:ATTRS)
                                                                                defns=[],
                                                                                body=[],
                                                                                head=NONE,
-                                                                               loc=locOf ts}}}],
+                                                                               loc=locOf ts},
+                                                              loc=unionLoc (SOME funcStartLoc) (locOf ts)}}],
                       body=[],
                       head=NONE,
                       loc=locOf ts})
@@ -5783,6 +5814,7 @@ and functionDefinition (ts:TOKENS, attrs:ATTRS, ClassScope)
                 (LeftBrace, _) :: _ =>
                     let
                         val (ts4,nd4) = functionBody (ts3)
+                        val Ast.Block {loc=blockLoc, ...} = nd4
                     in
                         (ts4,{pragmas=[],
                               defns=[Ast.ConstructorDefn (Ast.Ctor {settings=Ast.Head ([],[]), superArgs=[],
@@ -5792,6 +5824,7 @@ and functionDefinition (ts:TOKENS, attrs:ATTRS, ClassScope)
                                                                            defaults=[],
                                                                            ty=functionTypeFromSignature nd3,
                                                                            native=false,
+                                                                           loc=unionLoc (locOf ts) blockLoc,
                                                                            block=nd4}})],
                               body=[],
                               head=NONE,
@@ -5799,7 +5832,7 @@ and functionDefinition (ts:TOKENS, attrs:ATTRS, ClassScope)
                     end
               | _ => 
                     let
-                        val (ts4,nd4) = listExpression (ts3,AllowIn)
+                        val (ts4,nd4,listLoc) = listExpression (ts3,AllowIn)
                     in
                         (ts4,{pragmas=[],
                               defns=[Ast.ConstructorDefn (Ast.Ctor
@@ -5811,12 +5844,13 @@ and functionDefinition (ts:TOKENS, attrs:ATTRS, ClassScope)
                                                              defaults=[],
                                                              ty=functionTypeFromSignature nd3,
                                                              native=false,
+                                                             loc=unionLoc (locOf ts) listLoc,
                                                              block=Ast.Block 
                                                                        {pragmas=[],
                                                                         defns=[],
                                                                         body=[Ast.ReturnStmt nd4],
                                                                         head=NONE,
-                                                                        loc=locOf ts3}}})],
+                                                                        loc=listLoc}}})],
                               body=[],
                               head=NONE,
                               loc=locOf ts})
@@ -5833,6 +5867,7 @@ and functionDefinition (ts:TOKENS, attrs:ATTRS, ClassScope)
                 (LeftBrace, _) :: _ =>
                     let
                         val (ts4,nd4) = functionBody (ts3)
+                        val Ast.Block {loc=blockLoc, ...} = nd4
                         val ident = (#ident nd2)
                         val func = Ast.Func {name=nd2,
                                              fsig=nd3,
@@ -5840,6 +5875,7 @@ and functionDefinition (ts:TOKENS, attrs:ATTRS, ClassScope)
                                              defaults=[],
                                              ty=functionTypeFromSignature nd3,
                                              native=false,
+                                             loc=unionLoc (locOf ts) blockLoc,
                                              block=nd4}
                     in
                         (ts4,{pragmas=[],
@@ -5858,7 +5894,7 @@ and functionDefinition (ts:TOKENS, attrs:ATTRS, ClassScope)
                     end
               | _ => 
                     let
-                        val (ts4,nd4) = listExpression (ts3,AllowIn)
+                        val (ts4,nd4,listLoc) = listExpression (ts3,AllowIn)
                     in
                         (ts4,{pragmas=[],
                               defns=[Ast.FunctionDefn {kind=if (nd1=Ast.Var) then Ast.Const else nd1,
@@ -5874,11 +5910,12 @@ and functionDefinition (ts:TOKENS, attrs:ATTRS, ClassScope)
                                                                       defaults=[],
                                                                       ty=functionTypeFromSignature nd3,
                                                                       native=false,
+                                                                      loc=unionLoc (locOf ts) listLoc,
                                                                       block=Ast.Block { pragmas=[],
                                                                                         defns=[],
                                                                                         body=[Ast.ReturnStmt nd4],
                                                                                         head=NONE,
-                                                                                        loc=locOf ts3}}}],
+                                                                                        loc=listLoc}}}],
                               body=[],
                               head=NONE,
                               loc=locOf ts})
@@ -5891,12 +5928,14 @@ and functionDefinition (ts:TOKENS, attrs:ATTRS, ClassScope)
                 (LeftBrace, _) :: _ =>
                     let
                         val (ts4,nd4) = functionBody (ts3)
+                        val Ast.Block {loc=blockLoc, ...} = nd4
                         val ident = (#ident nd2)
                         val func = Ast.Func {name=nd2,
                                              fsig=nd3,
                                              param=Ast.Head ([],[]),
                                              defaults=[],
                                              ty=functionTypeFromSignature nd3,
+                                             loc=unionLoc (locOf ts) blockLoc,
                                              native=false,
                                              block=nd4}
                         val initSteps = [Ast.InitStep (Ast.PropIdent ident, Ast.LiteralExpr (Ast.LiteralFunction func))]
@@ -5916,19 +5955,20 @@ and functionDefinition (ts:TOKENS, attrs:ATTRS, ClassScope)
                     end
               | _ => 
                     let
-                        val (ts4,nd4) = listExpression (ts3,AllowIn)
+                        val (ts4,nd4,listLoc) = listExpression (ts3,AllowIn)
                         val ident = (#ident nd2)
                         val func = Ast.Func {name=nd2,
                                              fsig=nd3,
                                              param=Ast.Head ([],[]),
                                              defaults=[],
                                              ty=functionTypeFromSignature nd3,
+                                             loc=unionLoc (locOf ts) listLoc,
                                              native=false,
                                              block=Ast.Block {pragmas=[],
                                                               defns=[],
                                                               body=[Ast.ReturnStmt nd4],
                                                               head=NONE,
-                                                              loc=locOf ts3}}
+                                                              loc=listLoc}}
                         val initSteps = [Ast.InitStep (Ast.PropIdent ident, 
                                                        Ast.LiteralExpr (Ast.LiteralFunction func))]
                         val initStmts = [Ast.InitStmt {kind=nd1,
@@ -5955,6 +5995,7 @@ and functionDefinition (ts:TOKENS, attrs:ATTRS, ClassScope)
         val (ts2,nd2) = functionName (ts1)
         val (ts3,nd3) = functionSignature (ts2)
         val (ts4,nd4) = functionBody (ts3)
+        val Ast.Block {loc=blockLoc, ...} = nd4
         val ident = (#ident nd2)
         val ty = functionTypeFromSignature(nd3)
         
@@ -5963,6 +6004,7 @@ and functionDefinition (ts:TOKENS, attrs:ATTRS, ClassScope)
                              param=Ast.Head ([],[]),
                              defaults=[],
                              ty=ty,
+                             loc=unionLoc (locOf ts) blockLoc,
                              native=false,
                              block=nd4}
 
@@ -6269,13 +6311,13 @@ and functionBody (ts:TOKENS)
             end
       | _ =>
             let
-                val (ts1,nd1) = listExpression (ts,AllowIn)
+                val (ts1,nd1,listLoc) = listExpression (ts,AllowIn)
             in
                 (ts1,Ast.Block {pragmas=[],
                                 defns=[],
                                 body=[Ast.ReturnStmt nd1],
                                 head=NONE,
-                                loc=locOf ts})
+                                loc=listLoc})
             end
     end
         
@@ -6914,16 +6956,24 @@ and block (ts:TOKENS, t:TAU)
         val _ = setLoc ts
         val _ = trace([">> block with next=", tokenname(hd ts)])
     in case ts of
-        (LeftBrace, _) :: (RightBrace, _) :: _ => 
+        (LeftBrace, locL) :: (RightBrace, locR) :: _ => 
             ((trace(["<< block with next=", tokenname(hd (tl (tl ts)))]);
-            (tl (tl ts),Ast.Block {pragmas=[],defns=[],body=[],head=NONE,loc=locOf ts})))
-      | (LeftBrace, _) :: _ =>
+            (tl (tl ts),Ast.Block {pragmas=[],defns=[],body=[],head=NONE,loc=unionLoc (SOME locL) (SOME locR)})))
+      | (LeftBrace, locL) :: _ =>
             let
-                val (ts1,nd1) = directives (tl ts,t)
+                val (ts1,{pragmas=pragmas,
+                          defns=defns,
+                          head=head,
+                          body=body,
+                          loc=_}) = directives (tl ts,t)
             in case ts1 of
-                (RightBrace, _) :: _ => 
+                (RightBrace, locR) :: _ => 
                     (trace(["<< block with next=", tokenname(hd (tl ts1))]);
-                    (tl ts1,Ast.Block nd1))
+                    (tl ts1,Ast.Block{pragmas=pragmas,
+                                      defns=defns,
+                                      head=head,
+                                      body=body,
+                                      loc=unionLoc (SOME locL) (SOME locR)}))
               | (Eof, _) :: _ => raise EofError
               | _ => error ["unknown token in block"]
             end

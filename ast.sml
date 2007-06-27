@@ -198,7 +198,8 @@ datatype PRAGMA =
              block: BLOCK,
              param: HEAD,
              defaults: EXPR list,
-             ty: FUNC_TYPE }
+             ty: FUNC_TYPE,
+             loc: LOC option }
 
      and DEFN =
          ClassDefn of CLASS_DEFN

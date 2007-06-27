@@ -989,7 +989,7 @@ and verifyFunc (env:ENV)
                (func:Ast.FUNC)
     : Ast.FUNC =
     let
-        val Ast.Func { name, fsig, native, block, param, defaults, ty } = func
+        val Ast.Func { name, fsig, native, block, param, defaults, ty, loc } = func
         val Ast.FunctionType ty = verifyTypeExpr env (Ast.FunctionType ty)
         val param = verifyHead env param
         val (defaults,_) = verifyExprs env defaults
@@ -997,7 +997,7 @@ and verifyFunc (env:ENV)
         val env = withRib env paramFixtures
         val block = verifyBlock env block
     in
-        Ast.Func { name=name, fsig=fsig, native=native, block=block, param=param, defaults=defaults, ty=ty }
+        Ast.Func { name=name, fsig=fsig, native=native, block=block, param=param, defaults=defaults, ty=ty, loc=loc }
     end
 
 and verifyFixture (env:ENV)
