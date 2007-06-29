@@ -56,6 +56,7 @@ my $machErrs = 0;
 my $hostErrs = 0;
 
 while (<>) {
+    #remove all (near ...) text in the errors so all errors can be compared
     s/\(near [^\)]*\)//go;
     if (/sml \@SMLload.*tests\/spidermonkey\/(\w+)\/(\w+)\/(.+)\.js$/) {
 	$runs++;
@@ -70,6 +71,15 @@ while (<>) {
 	if ($test =~ /-n$/) {
 	    $should_crash = 1;
 	}
+    # as3 test log
+    } elsif (/sml \@SMLload.*tests\/as\/.*\/(.+)\.as$/) {
+	$runs++;
+	if ($searching_for_err) {
+	    $completions++;
+	}
+	$searching_for_err = 1;
+	$test = $1;
+	$should_crash = 0;
     } elsif ($searching_for_err) {
 	if (/\*\*ERROR\*\* *(?:\([^\)]+\))? *(.*)|(^uncaught exception.*)/) {
 	    my $err = $1 || $2;
@@ -78,12 +88,12 @@ while (<>) {
 	    } else {
 		$errs->{$err}++;
 		$errors++;
-		if ($err =~ /parseError/) { $parseErrs++; }
-		elsif ($err =~ /defnError/) { $defnErrs++; }
-		elsif ($err =~ /verifyError/) { $verifyErrs++; }
-		elsif ($err =~ /evalError/) { $evalErrs++; }
-		elsif ($err =~ /machError/) { $machErrs++; }
-		elsif ($err =~ /hostError/) { $hostErrs++; }
+		if ($err =~ /ParseError/) { $parseErrs++; }
+		elsif ($err =~ /DefnError/) { $defnErrs++; }
+		elsif ($err =~ /VerifyError/) { $verifyErrs++; }
+		elsif ($err =~ /EvalError/) { $evalErrs++; }
+		elsif ($err =~ /MachError/) { $machErrs++; }
+		elsif ($err =~ /HostError/) { $hostErrs++; }
 	    } 
 	    $searching_for_err = 0;
 	} elsif (/make: \*\*\* \[run-dumped\] Error 1/) {
@@ -129,8 +139,8 @@ sub max {
 
 printf ("---------------------------------------------------\n");
 printf ("%d completions, %d xerrors, %d errors, %d alarms, %d unknown crashes\n", $completions, $xerrors, $errors, $alarms, $crashes);
-printf ("%d parseErrors, %d defnErrors, %d verifyErrors\n", $parseErrs, $defnErrs, $verifyErrs);
-printf ("%d evalErrors, %d machErrors, %d hostErrors\n", $evalErrs, $machErrs, $hostErrs);
+printf ("%d ParseErrors, %d DefnErrors, %d VerifyErrors\n", $parseErrs, $defnErrs, $verifyErrs);
+printf ("%d EvalErrors, %d MachErrors, %d HostErrors\n", $evalErrs, $machErrs, $hostErrs);
 printf ("%d PASSED, %d FAILED\n", $passes, $fails);
 printf ("---------------------------------------------------\n");
 printf ("%d%% of crashes in top $n\n", ($top / max($errors,1)) * 100);
