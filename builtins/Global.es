@@ -1,4 +1,4 @@
-/* -*- mode: java; indent-tabs-mode: nil -*- 
+/* -*- mode: java; indent-tabs-mode: nil -*-
  *
  * ECMAScript 4 builtins - the "Global" object
  * ES-262-3 15.1
@@ -6,17 +6,17 @@
  *
  * The following licensing terms and conditions apply and must be
  * accepted in order to use the Reference Implementation:
- * 
+ *
  *    1. This Reference Implementation is made available to all
  * interested persons on the same terms as Ecma makes available its
  * standards and technical reports, as set forth at
  * http://www.ecma-international.org/publications/.
- * 
+ *
  *    2. All liability and responsibility for any use of this Reference
  * Implementation rests with the user, and not with any of the parties
  * who contribute to, or who own or hold any copyright in, this Reference
  * Implementation.
- * 
+ *
  *    3. THIS REFERENCE IMPLEMENTATION IS PROVIDED BY THE COPYRIGHT
  * HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED
  * WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
@@ -29,9 +29,9 @@
  * WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE
  * OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
  * IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- * 
+ *
  * End of Terms and Conditions
- * 
+ *
  * Copyright (c) 2007 Adobe Systems Inc., The Mozilla Foundation, Opera
  * Software ASA, and others.
  *
@@ -51,9 +51,9 @@ package
     intrinsic const NaN = 0.0/0.0;
     intrinsic const Infinity = 1.0/0.0;
     intrinsic const undefined = void(0);
-    
+
     // @todo: "dynamic function" is probably redundant at the top level, but is useful for clarity
-    
+
 
     // 15.1.2.1 eval (x)
     intrinsic native function eval(x);
@@ -143,11 +143,11 @@ package
     // 15.1.2.5 isFinite (number)
     intrinsic function isFinite(v:*):boolean {
         let const n = intrinsic::ToDouble(v);
-        return n != Number.NaN && 
-            n != Number.NEGATIVE_INFINITY && 
+        return n != Number.NaN &&
+            n != Number.NEGATIVE_INFINITY &&
             n != Number.POSITIVE_INFINITY;
     }
-    
+
     // FIXME: not in the spec, do we want that?
     intrinsic function isIntegral(v:*):boolean {
         switch type (v) {
@@ -158,14 +158,14 @@ package
             return true;
         }
         case (v:double) {
-            return v != double.NaN && 
-                v != double.NEGATIVE_INFINITY && 
+            return v != double.NaN &&
+                v != double.NEGATIVE_INFINITY &&
                 v != double.POSITIVE_INFINITY &&
                 Math.floor(v) == v;
         }
         case (v:decimal) {
-            return v != decimal.NaN && 
-                v != decimal.NEGATIVE_INFINITY && 
+            return v != decimal.NaN &&
+                v != decimal.NEGATIVE_INFINITY &&
                 v != decimal.POSITIVE_INFINITY &&
                 Math.floor(v) == v;
         }
@@ -174,16 +174,16 @@ package
         }
         }
     }
-        
+
     // 15.1.3.1 decodeURI (encodedURI)
     intrinsic native function decodeURI(encodedURI);
 
     // 15.1.3.2 decodeURIComponent (encodedURIComponent)
     intrinsic native function decodeURIComponent(encodedURIComponent);
-    
+
     // 15.1.3.3 encodeURI (uri)
     intrinsic native function encodeURI(uri);
-    
+
     // 15.1.3.4 encodeURIComponent (uriComponent)
     intrinsic native function encodeURIComponent(uriComponent);
 
@@ -195,7 +195,7 @@ package
     const NaN = intrinsic::NaN;
     const Infinity = intrinsic::Infinity;
     const undefined = intrinsic::undefined;
-    
+
     // Mutable public properties defaulting to their intrinsic namesakes.
     var eval = intrinsic::eval;
     var parseInt = intrinsic::parseInt;

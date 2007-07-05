@@ -1,12 +1,12 @@
 x = 10;
 
-switch (x) 
+switch (x)
 {
 
 	case 5:
 		intrinsic::assert(false);
 
-	case (3 * 3 + 1): 
+	case (3 * 3 + 1):
 		intrinsic::assert(true);
 }
 
@@ -27,4 +27,4 @@ switch (5)
 	default:
 		intrinsic::assert(true);
 }
-		
+

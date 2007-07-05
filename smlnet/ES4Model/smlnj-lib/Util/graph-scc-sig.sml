@@ -6,7 +6,7 @@
  *   The graph can have nodes with self-loops.
  *
  * author: Matthias Blume
- *) 
+ *)
 
 signature GRAPH_SCC =
   sig

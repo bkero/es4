@@ -66,19 +66,19 @@ signature ORD_SET =
 	(* Create a new set by applying a map function to the elements
 	 * of the set.
          *)
-     
+
     val app : (item -> unit) -> set -> unit
-	(* Apply a function to the entries of the set 
+	(* Apply a function to the entries of the set
          * in increasing order
          *)
 
     val foldl : (item * 'b -> 'b) -> 'b -> set -> 'b
-	(* Apply a folding function to the entries of the set 
+	(* Apply a folding function to the entries of the set
          * in increasing order
          *)
 
     val foldr : (item * 'b -> 'b) -> 'b -> set -> 'b
-	(* Apply a folding function to the entries of the set 
+	(* Apply a folding function to the entries of the set
          * in decreasing order
          *)
 

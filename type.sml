@@ -2,17 +2,17 @@
 (*
  * The following licensing terms and conditions apply and must be
  * accepted in order to use the Reference Implementation:
- * 
+ *
  *    1. This Reference Implementation is made available to all
  * interested persons on the same terms as Ecma makes available its
  * standards and technical reports, as set forth at
  * http://www.ecma-international.org/publications/.
- * 
+ *
  *    2. All liability and responsibility for any use of this Reference
  * Implementation rests with the user, and not with any of the parties
  * who contribute to, or who own or hold any copyright in, this Reference
  * Implementation.
- * 
+ *
  *    3. THIS REFERENCE IMPLEMENTATION IS PROVIDED BY THE COPYRIGHT
  * HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED
  * WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
@@ -25,9 +25,9 @@
  * WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE
  * OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
  * IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- * 
+ *
  * End of Terms and Conditions
- * 
+ *
  * Copyright (c) 2007 Adobe Systems Inc., The Mozilla Foundation, Opera
  * Software ASA, and others.
  *)
@@ -46,24 +46,24 @@ val anyType         = Ast.SpecialType Ast.Any
 
 fun assert b s = if b then () else (raise Fail s)
 
-fun toString ty = 
+fun toString ty =
     let
-        fun nsExprToString e = 
-            case e of 
+        fun nsExprToString e =
+            case e of
                 Ast.LiteralExpr (Ast.LiteralNamespace ns) => LogErr.namespace ns
               | Ast.LexicalRef {ident = Ast.Identifier {ident, ...}, ... } => Ustring.toAscii ident
               | _ => error ["unexpected expression type in namespace context"]
-        fun nssToString nss = 
+        fun nssToString nss =
             LogErr.join ", " (map LogErr.namespace nss)
-        fun nsssToString nsss = 
+        fun nsssToString nsss =
             LogErr.join ", " (map (fn nss => "(" ^ (nssToString nss) ^ ")") nsss)
-        fun typeList tys = 
+        fun typeList tys =
             LogErr.join ", " (map toString tys)
         fun fieldToString {name, ty} = (Ustring.toAscii name) ^ ": " ^ (toString ty)
-        fun fieldList fields = 
+        fun fieldList fields =
             LogErr.join ", " (map fieldToString fields)
     in
-        case ty of 
+        case ty of
             Ast.SpecialType Ast.Any => "*"
           | Ast.SpecialType Ast.Null => "null"
           | Ast.SpecialType Ast.Undefined => "undefined"
@@ -102,17 +102,17 @@ type TYPE_EXPR =
          SpecialType of SPECIAL_TY
        | UnionType of TYPE_EXPR list
        | ArrayType of TYPE_EXPR list
-       | FunctionType of FUNC_TYPE           
+       | FunctionType of FUNC_TYPE
        | ObjectType of FIELD_TYPE list
-       | AppType of 
+       | AppType of
            { base: TYPE_EXPR,  -- not a function type
              args: TYPE_EXPR list }
-       | NullableType of 
+       | NullableType of
            { expr:TYPE_EXPR,
              nullable:bool }
        | InstanceType of
-           { name: NAME, 
-             typeParams: IDENT list, 
+           { name: NAME,
+             typeParams: IDENT list,
              ty: TYPE_EXPR,
              dynamic: bool }
        | NominalType of NAME
@@ -123,14 +123,14 @@ and excludes
        | FieldTypeRef of (TYPE_EXPR * IDENT)
 *)
 
-fun normalize (t:Ast.TYPE_EXPR) 
-    : Ast.TYPE_EXPR = 
-    let 
-        fun normalize' (t:Ast.TYPE_EXPR) 
+fun normalize (t:Ast.TYPE_EXPR)
+    : Ast.TYPE_EXPR =
+    let
+        fun normalize' (t:Ast.TYPE_EXPR)
             : (Ast.TYPE_EXPR list * bool) =
-            case t of                 
-                (Ast.UnionType tys) => 
-                let 
+            case t of
+                (Ast.UnionType tys) =>
+                let
                     val (typelists, nullables) = ListPair.unzip (map normalize' tys)
                     val types = List.concat typelists
                     val nullable = List.exists (fn x => x) nullables
@@ -147,18 +147,18 @@ fun normalize (t:Ast.TYPE_EXPR)
                                      thisType = Option.map normalize thisType,
                                      hasRest = hasRest,
                                      minArgs = minArgs }], false)
-              | Ast.ObjectType fields => 
+              | Ast.ObjectType fields =>
                 let
-                    fun normalizeField { name, ty } = 
+                    fun normalizeField { name, ty } =
                         { name = name,
                           ty = normalize ty }
                 in
                     ([Ast.ObjectType (map normalizeField fields)], false)
                 end
-              | Ast.AppType { base, args } => 
+              | Ast.AppType { base, args } =>
                 ([Ast.AppType { base = normalize base,
                                 args = map normalize args }], false)
-              | Ast.NullableType { expr, nullable } => 
+              | Ast.NullableType { expr, nullable } =>
                 let
                     val (types, _) = normalize' expr
                 in
@@ -168,14 +168,14 @@ fun normalize (t:Ast.TYPE_EXPR)
         val (types, nullable) = normalize' t
         val null = Ast.SpecialType Ast.Null
     in
-        case types of 
-            [] => if nullable 
+        case types of
+            [] => if nullable
                   then null
                   else Ast.UnionType []
           | [x] => if nullable
                    then Ast.UnionType [x, null]
                    else x
-          | union => if nullable 
+          | union => if nullable
                      then Ast.UnionType (union @ [null])
                      else Ast.UnionType union
     end
@@ -251,10 +251,10 @@ fun equals (t1:TYPE_VALUE)
           | (Ast.ObjectType fts1, Ast.ObjectType fts2)
             => fieldTypesEqual fts1 fts2
 (*
-       | AppType of 
+       | AppType of
            { base: TYPE_EXPR,  -- not a function type
              args: TYPE_EXPR list }
-       | NullableType of 
+       | NullableType of
            { expr:TYPE_EXPR,
              nullable:bool }
 *)
@@ -302,23 +302,23 @@ fun isSubtype (tf:Fixture.TOP_FIXTURES)
                       case (t1,t2) of
                           (* FIXME: nullability is a bit of a mess. *)
 
-                          ((Ast.SpecialType Ast.Null), Ast.NullableType { nullable, ... }) => 
+                          ((Ast.SpecialType Ast.Null), Ast.NullableType { nullable, ... }) =>
                           nullable
 
-                        | (_, Ast.NullableType { nullable=false, expr }) => 
+                        | (_, Ast.NullableType { nullable=false, expr }) =>
                           isSubtype tf t1 expr
 
                         | ((Ast.SpecialType Ast.Null), Ast.InstanceType {nonnullable,...}) =>
                           not nonnullable
 
                         | (Ast.SpecialType _, _) => false
-                                                    
-	                    | (Ast.UnionType types1,_) => 
+
+	                    | (Ast.UnionType types1,_) =>
 	                      List.all (fn t => isSubtype tf t t2) types1
 
 	                    | (_, Ast.UnionType types2) =>
-	                      List.exists (fn t => isSubtype tf t1 t) types2 
-                          
+	                      List.exists (fn t => isSubtype tf t1 t) types2
+
                         (*
                         | (Ast.UnionType ts1, Ast.UnionType ts2) =>
                           unimplError ["isSubtype 1"]
@@ -329,16 +329,16 @@ fun isSubtype (tf:Fixture.TOP_FIXTURES)
                         | (Ast.ObjectType fts1, Ast.ObjectType fts2) =>
                           unimplError ["isSubtype 4"]
                          *)
-                        | (Ast.ArrayType _, Ast.InstanceType it2) => 
+                        | (Ast.ArrayType _, Ast.InstanceType it2) =>
                           (#name it2) = Name.nons_Array
 
-                        | (Ast.ObjectType _, Ast.InstanceType it2) => 
+                        | (Ast.ObjectType _, Ast.InstanceType it2) =>
                           (#name it2) = Name.nons_Object
 
-                        | (Ast.FunctionType _, Ast.InstanceType it2) => 
+                        | (Ast.FunctionType _, Ast.InstanceType it2) =>
                           (#name it2) = Name.nons_Function
 
-                        | (Ast.InstanceType it1, Ast.InstanceType it2) => 
+                        | (Ast.InstanceType it1, Ast.InstanceType it2) =>
                           Fixture.isClass tf (#name it1)
                           andalso Fixture.instanceOf tf (#name it1) (#name it2)
                         | _ => false
@@ -353,8 +353,8 @@ fun isSubtype (tf:Fixture.TOP_FIXTURES)
 
 and isCompatible (tf:Fixture.TOP_FIXTURES)
                  (t1:TYPE_VALUE)
-                 (t2:TYPE_VALUE) 
-    : bool = 
+                 (t2:TYPE_VALUE)
+    : bool =
     let
         val t1 = normalize t1
         val t2 = normalize t2
@@ -363,12 +363,12 @@ and isCompatible (tf:Fixture.TOP_FIXTURES)
 	              (equals t1 anyType) orelse
 	              (equals t2 anyType) orelse
 	              case (t1,t2) of
-	                  (Ast.UnionType types1,_) => 
+	                  (Ast.UnionType types1,_) =>
 	                  List.all (fn t => isCompatible tf t t2) types1
 	                | (_, Ast.UnionType types2) =>
 	                  (* t1 must exist in types2 *)
-	                  List.exists (fn t => isCompatible tf t1 t) types2 
-	                | (Ast.ArrayType types1, Ast.ArrayType types2) => 
+	                  List.exists (fn t => isCompatible tf t1 t) types2
+	                | (Ast.ArrayType types1, Ast.ArrayType types2) =>
 	                  (* arrays are invariant, every entry should be compatible in both directions *)
 	                  let fun check (h1::t1) (h2::t2) =
 		                      (isCompatible tf h1 h2)
@@ -381,33 +381,33 @@ and isCompatible (tf:Fixture.TOP_FIXTURES)
 		                         | (_::_,[]) => check t1 [h2]
 		                         | (_::_,_::_) => check t1 t2)
                             | check _ _ =
-                              error ["unexpected array types: ", 
+                              error ["unexpected array types: ",
                                      toString t1, " vs. ", toString t2]
 	                  in
 		                  check types1 types2
 	                  end
-                                                           
-	                | (Ast.AppType {base=base1,args=args1}, Ast.AppType {base=base2,args=args2}) => 
-	                  (* We keep types normalized wrt beta-reduction, 
+
+	                | (Ast.AppType {base=base1,args=args1}, Ast.AppType {base=base2,args=args2}) =>
+	                  (* We keep types normalized wrt beta-reduction,
 	                   * so base1 and base2 must be class or interface types.
-	                   * Type arguments are covariant, and so must be intra-compatible - CHECK 
+	                   * Type arguments are covariant, and so must be intra-compatible - CHECK
 	                   *)
 	                  false
-	                  
+
 	                | (Ast.ObjectType fields1, Ast.ObjectType fields2) =>
 	                  false
-                      
-	                | (Ast.FunctionType 
+
+	                | (Ast.FunctionType
 		                   {typeParams=typeParams1,
-		                    params  =params1, 
+		                    params  =params1,
 		                    result  =result1,
 		                    thisType=thisType1,
 		                    hasRest =hasRest1,
 	                        minArgs=minArgs},
-	                   Ast.FunctionType 
+	                   Ast.FunctionType
 		                   {typeParams=typeParams2,
-		                    params=params2, 
-		                    result=result2, 
+		                    params=params2,
+		                    result=result2,
 		                    thisType=thisType2,
 		                    hasRest=hasRest2,
 		                    minArgs=minArgs2}) =>
@@ -416,16 +416,16 @@ and isCompatible (tf:Fixture.TOP_FIXTURES)
 		                  (* TODO: Assume for now that functions are not polymorphic *)
 		                  assert (typeParams1 = [] andalso typeParams2=[]) "cannot handle polymorphic fns";
 		                  assert (not hasRest1 andalso not hasRest2) "cannot handle rest args";
-                          
+
 		                  ListPair.all (fn (t1,t2) => isCompatible tf t1 t2) (params1,params2)
 		                  andalso
 		                  isCompatible tf result1 result2
 	                  end
-                      
+
                     | _ => false
 	(* catch all *)
 	(* | _ => unimplError ["isCompatible"] *)
-    in                    
+    in
         trace ["<<< isCompatible: ", fmtType t1, " ~: ", fmtType t2, " = ", Bool.toString res ];
         res
     end
@@ -434,29 +434,29 @@ and isCompatible (tf:Fixture.TOP_FIXTURES)
  * Convertibility
  * ----------------------------------------------------------------------------- *)
 
-(* 
+(*
  * When investigating ty1 ~~> ty2, call this.
- * It returns the name of the class of ty2 containing 
+ * It returns the name of the class of ty2 containing
  * meta static function convert(x:pt) where ty1 ~: pt,
  * or NONE if there is no such converter.
  *)
 fun findConversion (tf:Fixture.TOP_FIXTURES)
                    (ty1:TYPE_VALUE)
-                   (ty2:TYPE_VALUE) 
-    : Ast.NAME option = 
+                   (ty2:TYPE_VALUE)
+    : Ast.NAME option =
     let
         val _ = trace ["searching for converter from ", fmtType ty1,
                        " ~~> ", fmtType ty2];
         val ty1 = normalize ty1
         val ty2 = normalize ty2
-        fun tryToConvertTo (target:Ast.TYPE_EXPR) = 
-            case target of 
-                Ast.InstanceType { name, conversionTy=SOME c, ... } => 
+        fun tryToConvertTo (target:Ast.TYPE_EXPR) =
+            case target of
+                Ast.InstanceType { name, conversionTy=SOME c, ... } =>
                 if isCompatible tf ty1 c
                 then SOME name
                 else NONE
               | Ast.UnionType [] => NONE
-              | (Ast.UnionType (t::ts)) => 
+              | (Ast.UnionType (t::ts)) =>
                 (case tryToConvertTo t of
                      NONE => tryToConvertTo (Ast.UnionType ts)
                    | found => found)

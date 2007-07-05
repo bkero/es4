@@ -1,4 +1,4 @@
-/* -*- mode: java; indent-tabs-mode: nil -*- 
+/* -*- mode: java; indent-tabs-mode: nil -*-
  *
  * ECMAScript 4 builtins - the "Object" object
  *
@@ -8,17 +8,17 @@
  *
  * The following licensing terms and conditions apply and must be
  * accepted in order to use the Reference Implementation:
- * 
+ *
  *    1. This Reference Implementation is made available to all
  * interested persons on the same terms as Ecma makes available its
  * standards and technical reports, as set forth at
  * http://www.ecma-international.org/publications/.
- * 
+ *
  *    2. All liability and responsibility for any use of this Reference
  * Implementation rests with the user, and not with any of the parties
  * who contribute to, or who own or hold any copyright in, this Reference
  * Implementation.
- * 
+ *
  *    3. THIS REFERENCE IMPLEMENTATION IS PROVIDED BY THE COPYRIGHT
  * HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED
  * WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
@@ -31,9 +31,9 @@
  * WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE
  * OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
  * IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- * 
+ *
  * End of Terms and Conditions
- * 
+ *
  * Copyright (c) 2007 Adobe Systems Inc., The Mozilla Foundation, Opera
  * Software ASA, and others.
  *
@@ -48,8 +48,8 @@ package
     // There is a bug in the definer.
     use namespace intrinsic;
 
-    dynamic class Object 
-    {       
+    dynamic class Object
+    {
         use namespace intrinsic;
         use strict;
 
@@ -95,16 +95,16 @@ package
         prototype function hasOwnProperty(V)
             Object.private::hasOwnProperty(this, V);  // FIXME: "Object." should not be necessary
 
-        intrinsic function hasOwnProperty(V : (Name,string)) : boolean 
+        intrinsic function hasOwnProperty(V : (Name,string)) : boolean
             Object.private::hasOwnProperty(this, V);  // FIXME: "Object." should not be necessary
 
         private static function hasOwnProperty(obj, V : (Name,string)) : boolean
             magic::hasOwnProperty(obj, V);
-        
+
         /* E262-3 15.2.4.6:  Object.prototype.isPrototypeOf */
         prototype function isPrototypeOf(V)
             private::isPrototypeOf(this, V);
-        
+
         intrinsic function isPrototypeOf(V)
             private::isPrototypeOf(this, V);
 
@@ -145,7 +145,7 @@ package
         }
 
         /* E262-4 draft proposals:json_encoding_and_decoding */
-        prototype function toJSONString() 
+        prototype function toJSONString()
             private::toJSONString(this);
 
         intrinsic function toJSONString(...args) : string

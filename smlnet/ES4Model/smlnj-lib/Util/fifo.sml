@@ -48,7 +48,7 @@ structure Fifo : FIFO =
     fun contents (Q {rear, front}) = (front @ (rev rear))
 
     fun app f (Q{front,rear}) = (List.app f front; List.app f (List.rev rear))
-    fun map f (Q{front,rear}) = 
+    fun map f (Q{front,rear}) =
           Q{front = List.map f front, rear = rev(List.map f(rev rear))}
     fun foldl f b (Q{front,rear}) = List.foldr f (List.foldl f b front) rear
     fun foldr f b (Q{front,rear}) = List.foldr f (List.foldl f b rear) front

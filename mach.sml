@@ -2,17 +2,17 @@
 (*
  * The following licensing terms and conditions apply and must be
  * accepted in order to use the Reference Implementation:
- * 
+ *
  *    1. This Reference Implementation is made available to all
  * interested persons on the same terms as Ecma makes available its
  * standards and technical reports, as set forth at
  * http://www.ecma-international.org/publications/.
- * 
+ *
  *    2. All liability and responsibility for any use of this Reference
  * Implementation rests with the user, and not with any of the parties
  * who contribute to, or who own or hold any copyright in, this Reference
  * Implementation.
- * 
+ *
  *    3. THIS REFERENCE IMPLEMENTATION IS PROVIDED BY THE COPYRIGHT
  * HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED
  * WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
@@ -25,20 +25,20 @@
  * WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE
  * OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
  * IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- * 
+ *
  * End of Terms and Conditions
- * 
+ *
  * Copyright (c) 2007 Adobe Systems Inc., The Mozilla Foundation, Opera
  * Software ASA, and others.
  *)
 (* "Virtual machine" for executing ES4 code. *)
 
-structure Mach = struct 
+structure Mach = struct
 
 (* Local tracing machinery *)
 
 val doTrace = ref false
-fun log ss = LogErr.log ("[mach] " :: ss) 
+fun log ss = LogErr.log ("[mach] " :: ss)
 fun trace ss = if (!doTrace) then log ss else ()
 fun error ss = LogErr.machError ss
 
@@ -53,9 +53,9 @@ datatype VAL = Object of OBJ
              | Null
              | Undef
 
-     and OBJ = 
+     and OBJ =
          Obj of { ident: OBJ_IDENT,
-                  tag: VAL_TAG,                           
+                  tag: VAL_TAG,
                   props: PROP_BINDINGS,
                   proto: VAL ref,
                   magic: (MAGIC option) ref }
@@ -65,18 +65,18 @@ datatype VAL = Object of OBJ
        | ArrayTag of Ast.TYPE_EXPR list
        | FunctionTag of Ast.FUNC_TYPE
        | ClassTag of Ast.NAME
-       | NoTag (* 
-                * NoTag objects are made for scopes and 
-                * temporaries passed as arguments during 
-                * builtin construction. 
+       | NoTag (*
+                * NoTag objects are made for scopes and
+                * temporaries passed as arguments during
+                * builtin construction.
                 *)
 
-(* 
- * Magic is visible only to the interpreter; 
+(*
+ * Magic is visible only to the interpreter;
  * it is not visible to users.
  *)
-               
-     and MAGIC = 
+
+     and MAGIC =
          UInt of Word32.word
        | Int of Int32.int
        | Double of Real64.real
@@ -91,13 +91,13 @@ datatype VAL = Object of OBJ
        | Type of Ast.TYPE_EXPR
        | NativeFunction of NATIVE_FUNCTION
 
-     and SCOPE =          
+     and SCOPE =
          Scope of { object: OBJ,
                     parent: SCOPE option,
                     temps: TEMPS,
                     kind: SCOPE_KIND }
-                  
-     and SCOPE_KIND = 
+
+     and SCOPE_KIND =
          WithScope
        | GlobalScope
        | InstanceScope
@@ -106,23 +106,23 @@ datatype VAL = Object of OBJ
 
      and TEMP_STATE = UninitTemp
                     | ValTemp of VAL
-                        
+
      and PROP_STATE = TypeVarProp
                     | TypeProp
                     | UninitProp
                     | ValProp of VAL
 
-                    (* One might imagine that namespaces, methods and 
+                    (* One might imagine that namespaces, methods and
                      * the 'arguments' object in a function can all be stored
-                     * as instances of the classes Namespace, Function and 
+                     * as instances of the classes Namespace, Function and
                      * Array, respectively. This works in some contexts, but leads
                      * to feedback loops when constructing the classes Function,
                      * Namespace and Array themselves. So instead of eagerly instantiating
-                     * such values, we allocate them as the following 3 "lazy" 
+                     * such values, we allocate them as the following 3 "lazy"
                      * property states. If anyone performs a "get" on these property
-                     * states, a Namespace, Function or Array object (respectively) is 
+                     * states, a Namespace, Function or Array object (respectively) is
                      * constructed. We then ensure that the Namespace, Function and Array
-                     * constructors, settings and initializers (in the builtins) 
+                     * constructors, settings and initializers (in the builtins)
                      * do *not* cause any "get" operations on properties in these states.
                      *
                      * FIXME: The 'arguments' object can't be an array.
@@ -132,50 +132,50 @@ datatype VAL = Object of OBJ
                     | ValListProp of VAL list
 
                     | NativeFunctionProp of NATIVE_FUNCTION
-                    | VirtualValProp of 
+                    | VirtualValProp of
                       { getter: FUN_CLOSURE option,
                         setter: FUN_CLOSURE option }
-                
-withtype FUN_CLOSURE = 
+
+withtype FUN_CLOSURE =
          { func: Ast.FUNC,
            this: OBJ option,
            allTypesBound: bool,
            env: SCOPE }
 
-     and CLS_CLOSURE = 
-         { cls: Ast.CLS, 
-           allTypesBound: bool,
-           env: SCOPE }
-         
-     and IFACE_CLOSURE = 
-         { iface: Ast.IFACE, 
+     and CLS_CLOSURE =
+         { cls: Ast.CLS,
            allTypesBound: bool,
            env: SCOPE }
 
-     and REGS = { scope: SCOPE, 
+     and IFACE_CLOSURE =
+         { iface: Ast.IFACE,
+           allTypesBound: bool,
+           env: SCOPE }
+
+     and REGS = { scope: SCOPE,
                   this: OBJ }
 
-     and NATIVE_FUNCTION = 
+     and NATIVE_FUNCTION =
          { func: ({ scope: SCOPE, this: OBJ } (* REGS *)
                   -> VAL list -> VAL),
-           length: int } 
+           length: int }
 
-     and OBJ_IDENT = 
+     and OBJ_IDENT =
          int
 
-(* Important to model "fixedness" separately from 
- * "dontDelete-ness" because fixedness affects 
+(* Important to model "fixedness" separately from
+ * "dontDelete-ness" because fixedness affects
  * which phase of name lookup the name is found during.
  *)
 
      and TEMPS = (Ast.TYPE_EXPR * TEMP_STATE) list ref
 
      and PROP = { ty: Ast.TYPE_EXPR,
-                  state: PROP_STATE,                  
+                  state: PROP_STATE,
                   attrs: ATTRS }
 
      and PROP_BINDINGS = ({ ty: Ast.TYPE_EXPR,
-                            state: PROP_STATE,                  
+                            state: PROP_STATE,
                             attrs: ATTRS } (* PROP *)
                           NameMap.map) ref
 
@@ -189,125 +189,125 @@ exception ThrowException of VAL
 exception ReturnException of VAL
 exception StopIterationException
 
-fun isObject (v:VAL) : bool = 
-    case v of 
+fun isObject (v:VAL) : bool =
+    case v of
         Object _ => true
       | _ => false
 
 
-fun isUInt (v:VAL) : bool = 
-    case v of 
-        Object (Obj ob) => 
-        (case !(#magic ob) of 
+fun isUInt (v:VAL) : bool =
+    case v of
+        Object (Obj ob) =>
+        (case !(#magic ob) of
              SOME (UInt _) => true
            | _ => false)
       | _ => false
 
 
-fun isInt (v:VAL) : bool = 
-    case v of 
-        Object (Obj ob) => 
-        (case !(#magic ob) of 
+fun isInt (v:VAL) : bool =
+    case v of
+        Object (Obj ob) =>
+        (case !(#magic ob) of
              SOME (Int _) => true
            | _ => false)
       | _ => false
 
 
-fun isDouble (v:VAL) : bool = 
-    case v of 
-        Object (Obj ob) => 
-        (case !(#magic ob) of 
+fun isDouble (v:VAL) : bool =
+    case v of
+        Object (Obj ob) =>
+        (case !(#magic ob) of
              SOME (Double _) => true
            | _ => false)
       | _ => false
 
 
-fun isDecimal (v:VAL) : bool = 
-    case v of 
-        Object (Obj ob) => 
-        (case !(#magic ob) of 
+fun isDecimal (v:VAL) : bool =
+    case v of
+        Object (Obj ob) =>
+        (case !(#magic ob) of
              SOME (Decimal _) => true
            | _ => false)
       | _ => false
 
 
-fun isString (v:VAL) 
-    : bool = 
-    case v of 
-        Object (Obj ob) => 
-        (case !(#magic ob) of 
+fun isString (v:VAL)
+    : bool =
+    case v of
+        Object (Obj ob) =>
+        (case !(#magic ob) of
              SOME (String _) => true
            | _ => false)
       | _ => false
 
 
-fun isBoolean (v:VAL) : bool = 
-    case v of 
-        Object (Obj ob) => 
-        (case !(#magic ob) of 
+fun isBoolean (v:VAL) : bool =
+    case v of
+        Object (Obj ob) =>
+        (case !(#magic ob) of
              SOME (Boolean _) => true
            | _ => false)
       | _ => false
 
 
-fun isNamespace (v:VAL) : bool = 
-    case v of 
-        Object (Obj ob) => 
-        (case !(#magic ob) of 
+fun isNamespace (v:VAL) : bool =
+    case v of
+        Object (Obj ob) =>
+        (case !(#magic ob) of
              SOME (Namespace _) => true
            | _ => false)
       | _ => false
 
 
-fun isClass (v:VAL) : bool = 
-    case v of 
-        Object (Obj ob) => 
-        (case !(#magic ob) of 
+fun isClass (v:VAL) : bool =
+    case v of
+        Object (Obj ob) =>
+        (case !(#magic ob) of
              SOME (Class _) => true
            | _ => false)
       | _ => false
 
 
-fun isInterface (v:VAL) : bool = 
-    case v of 
-        Object (Obj ob) => 
-        (case !(#magic ob) of 
+fun isInterface (v:VAL) : bool =
+    case v of
+        Object (Obj ob) =>
+        (case !(#magic ob) of
              SOME (Interface _) => true
            | _ => false)
       | _ => false
 
 
-fun isFunction (v:VAL) : bool = 
-    case v of 
-        Object (Obj ob) => 
-        (case !(#magic ob) of 
+fun isFunction (v:VAL) : bool =
+    case v of
+        Object (Obj ob) =>
+        (case !(#magic ob) of
              SOME (Function _) => true
            | _ => false)
       | _ => false
 
 
-fun isType (v:VAL) : bool = 
-    case v of 
-        Object (Obj ob) => 
-        (case !(#magic ob) of 
+fun isType (v:VAL) : bool =
+    case v of
+        Object (Obj ob) =>
+        (case !(#magic ob) of
              SOME (Type _) => true
            | _ => false)
       | _ => false
 
 
-fun isNativeFunction (v:VAL) : bool = 
-    case v of 
-        Object (Obj ob) => 
-        (case !(#magic ob) of 
+fun isNativeFunction (v:VAL) : bool =
+    case v of
+        Object (Obj ob) =>
+        (case !(#magic ob) of
              SOME (NativeFunction _) => true
            | _ => false)
       | _ => false
 
 
-fun isNumeric (v:VAL) : bool = 
-    case v of 
-        Object (Obj ob) => 
-        (case !(#magic ob) of 
+fun isNumeric (v:VAL) : bool =
+    case v of
+        Object (Obj ob) =>
+        (case !(#magic ob) of
              SOME (Double _) => true
            | SOME (Decimal _) => true
            | SOME (Int _) => true
@@ -315,21 +315,21 @@ fun isNumeric (v:VAL) : bool =
            | _ => false)
       | _ => false
 
-fun isNull (v:VAL) : bool = 
-    case v of 
+fun isNull (v:VAL) : bool =
+    case v of
         Null => true
       | _ => false
 
-fun isUndef (v:VAL) : bool = 
-    case v of 
+fun isUndef (v:VAL) : bool =
+    case v of
         Undef => true
       | _ => false
-             
-(* 
+
+(*
  * The "machine type" of a value here is an ES3-ism. It exists only for
  * compatibility, and has nothing to do with the ES4 type system.
  *
- * The important part is that in ES3 algorithms, a machine value has 
+ * The important part is that in ES3 algorithms, a machine value has
  * exactly *one* of these types. No overlap!
  *)
 
@@ -346,12 +346,12 @@ fun es3Type (v:VAL) : MACHTY =
 fun isSameType (va:VAL) (vb:VAL) : bool =
     es3Type va = es3Type vb
 
-fun isDirectInstanceOf (n:Ast.NAME) 
-                       (v:VAL) 
-    : bool = 
-    case v of 
-        Object (Obj { tag, ... }) => 
-        (case tag of 
+fun isDirectInstanceOf (n:Ast.NAME)
+                       (v:VAL)
+    : bool =
+    case v of
+        Object (Obj { tag, ... }) =>
+        (case tag of
              ClassTag cn => nameEq cn n
            | _ => false)
       | _ => false
@@ -359,27 +359,27 @@ fun isDirectInstanceOf (n:Ast.NAME)
 
 (* Binding operations. *)
 
-fun newPropBindings _ : PROP_BINDINGS = 
+fun newPropBindings _ : PROP_BINDINGS =
     ref NameMap.empty
 
-fun addProp (b:PROP_BINDINGS) 
-            (n:Ast.NAME) 
-            (x:PROP) 
-    : unit = 
+fun addProp (b:PROP_BINDINGS)
+            (n:Ast.NAME)
+            (x:PROP)
+    : unit =
     b := NameMap.insert ((!b),n,x)
 
-fun delProp (b:PROP_BINDINGS) 
-            (n:Ast.NAME) 
-    : unit = 
+fun delProp (b:PROP_BINDINGS)
+            (n:Ast.NAME)
+    : unit =
     let
         val (newmap, _) = NameMap.remove ((!b),n)
     in
         b := newmap
     end
 
-fun findProp (b:PROP_BINDINGS) 
-             (n:Ast.NAME) 
-    : PROP option = 
+fun findProp (b:PROP_BINDINGS)
+             (n:Ast.NAME)
+    : PROP option =
     NameMap.find (!b, n)
 
 fun matchProps (fixedProps:bool)
@@ -387,9 +387,9 @@ fun matchProps (fixedProps:bool)
                (searchId:Ast.IDENT)
                (nss:Ast.NAMESPACE list)
     : Ast.NAME list =
-    let 
-        fun tryNS ns = 
-            let 
+    let
+        fun tryNS ns =
+            let
                 val name = {id=searchId, ns=ns}
             in
                 case findProp b name of
@@ -398,14 +398,14 @@ fun matchProps (fixedProps:bool)
             end
     in
         List.mapPartial tryNS nss
-    end      
+    end
 
-fun getProp (b:PROP_BINDINGS) 
-            (n:Ast.NAME) 
-    : PROP = 
+fun getProp (b:PROP_BINDINGS)
+            (n:Ast.NAME)
+    : PROP =
     case findProp b n of
         SOME p => p
-      | NONE => 
+      | NONE =>
         (*
          * If not found, then cons up a temporary property
          * with value undefined. Any property not found
@@ -419,28 +419,28 @@ fun getProp (b:PROP_BINDINGS)
                 isFixed=false}}
 
 
-fun hasProp (b:PROP_BINDINGS) 
-            (n:Ast.NAME) 
-    : bool = 
-    case findProp b n of 
+fun hasProp (b:PROP_BINDINGS)
+            (n:Ast.NAME)
+    : bool =
+    case findProp b n of
         NONE => false
       | SOME _ => true
 
 
-fun hasMagic (ob:OBJ) = 
-    case ob of 
-        Obj { magic, ... } => 
-        case !magic of 
+fun hasMagic (ob:OBJ) =
+    case ob of
+        Obj { magic, ... } =>
+        case !magic of
             SOME _ => true
           | NONE => false
 
 fun setPropDontEnum (props:PROP_BINDINGS)
                     (n:Ast.NAME)
-                    (dontEnum:bool) 
-    : unit = 
+                    (dontEnum:bool)
+    : unit =
     case findProp props n of
-        SOME prop => 
-        let 
+        SOME prop =>
+        let
             val attrs = (#attrs prop)
             val newProp = { ty = (#ty prop),
                             state = (#state prop),
@@ -453,7 +453,7 @@ fun setPropDontEnum (props:PROP_BINDINGS)
             addProp props n newProp
         end
       | NONE => ()
-    
+
 
 (* Safe: will overflow when it runs out of identities. *)
 val currIdent = ref 0
@@ -461,55 +461,55 @@ fun nextIdent _ =
     (currIdent := (!currIdent) + 1;
      !currIdent)
 
-fun newObj (t:VAL_TAG) 
-           (p:VAL) 
-           (m:MAGIC option) 
-    : OBJ = 
-    Obj { ident = nextIdent (), 
+fun newObj (t:VAL_TAG)
+           (p:VAL)
+           (m:MAGIC option)
+    : OBJ =
+    Obj { ident = nextIdent (),
           tag = t,
           props = newPropBindings (),
           proto = ref p,
           magic = ref m }
 
-fun newObjNoTag _ 
-    : OBJ = 
+fun newObjNoTag _
+    : OBJ =
     newObj NoTag Null NONE
 
-fun setProto (ob:OBJ) (p:VAL) 
+fun setProto (ob:OBJ) (p:VAL)
     : OBJ =
-    let 
+    let
          val Obj {proto, ...} = ob
     in
         proto := p;
         ob
     end
 
-fun setMagic (ob:OBJ) (m:MAGIC option) 
+fun setMagic (ob:OBJ) (m:MAGIC option)
     : OBJ =
-    let 
+    let
          val Obj {magic, ...} = ob
     in
         magic := m;
         ob
     end
 
-fun newObject (t:VAL_TAG) 
-              (p:VAL) 
-              (m:MAGIC option) 
-    : VAL = 
+fun newObject (t:VAL_TAG)
+              (p:VAL)
+              (m:MAGIC option)
+    : VAL =
     Object (newObj t p m)
 
-    
-val (objectType:Ast.TYPE_EXPR) = 
+
+val (objectType:Ast.TYPE_EXPR) =
     Ast.ObjectType []
 
-val (emptyBlock:Ast.BLOCK) = 
+val (emptyBlock:Ast.BLOCK) =
     Ast.Block { pragmas = [],
                 defns = [],
                 body = [],
                 head= NONE,
                 loc=NONE }
-                             
+
 fun getTemp (temps:TEMPS)
             (n:int)
     : VAL =
@@ -519,18 +519,18 @@ fun getTemp (temps:TEMPS)
 
 fun defTemp (temps:TEMPS)
             (n:int)
-            (v:VAL) 
-    : unit = 
+            (v:VAL)
+    : unit =
     let
         val _ = trace ["defTemp ",Int.toString n]
         fun replaceNth k [] = LogErr.machError ["temporary-definition error"]
           | replaceNth k (x::xs) =
-            if k = 0 
-            then (case x of 
-                      (t, UninitTemp) => 
+            if k = 0
+            then (case x of
+                      (t, UninitTemp) =>
                       ((* FIXME: put typecheck here *)
                        (t, ValTemp v) :: xs)
-                    | (t, _) => 
+                    | (t, _) =>
                        (t, ValTemp v) :: xs)
                 (* ISSUE: we allow redef of temps: LogErr.machError ["re-defining temporary"]) *)
             else x :: (replaceNth (k-1) xs)
@@ -539,7 +539,7 @@ fun defTemp (temps:TEMPS)
         then LogErr.machError ["defining out-of-bounds temporary"]
         else temps := replaceNth n (!temps)
     end
-             
+
 (*
  * To get from any object to its CLS, you work out the
  * "nominal base" of the object's tag. You can then find
@@ -547,40 +547,40 @@ fun defTemp (temps:TEMPS)
  * magic value pointing to the CLS.
  *)
 
-fun nominalBaseOfTag (t:VAL_TAG) 
-    : Ast.NAME = 
-    case t of 
+fun nominalBaseOfTag (t:VAL_TAG)
+    : Ast.NAME =
+    case t of
         ObjectTag _ => Name.nons_Object
       | ArrayTag _ => Name.nons_Array
       | FunctionTag _ => Name.nons_Function
       | ClassTag c => c
       | ScopeTag => error ["searching for nominal base of scope object"]
 
-fun getObjMagic (ob:OBJ) 
-    : (MAGIC option) = 
-    case ob of 
+fun getObjMagic (ob:OBJ)
+    : (MAGIC option) =
+    case ob of
         Obj ob' => !(#magic ob')
-                   
-fun getMagic (v:VAL) 
-    : (MAGIC option) = 
-    case v of 
+
+fun getMagic (v:VAL)
+    : (MAGIC option) =
+    case v of
         Object (Obj ob) => !(#magic ob)
       | _ => NONE
 
-fun needMagic (v:VAL) 
-    : (MAGIC) = 
-    case v of 
+fun needMagic (v:VAL)
+    : (MAGIC) =
+    case v of
         Object (Obj ob) => valOf (!(#magic ob))
       | _ => error ["require object with magic"]
 
-fun needClass (v:VAL) 
-    : (CLS_CLOSURE) = 
-    case needMagic v of 
+fun needClass (v:VAL)
+    : (CLS_CLOSURE) =
+    case needMagic v of
         Class cls => cls
       | _ => error ["require class object"]
 
-fun fitsInUInt (x:LargeInt.int) 
-    : bool = 
+fun fitsInUInt (x:LargeInt.int)
+    : bool =
     let
         val uintMax = IntInf.pow(2, 32) - 1
         val uintMin = IntInf.fromInt 0
@@ -589,8 +589,8 @@ fun fitsInUInt (x:LargeInt.int)
     end
 
 
-fun fitsInInt (x:LargeInt.int) 
-    : bool = 
+fun fitsInInt (x:LargeInt.int)
+    : bool =
     let
         val intMax = IntInf.pow(2, 31) - 1
         val intMin = ~ (IntInf.pow(2, 31))
@@ -599,22 +599,22 @@ fun fitsInInt (x:LargeInt.int)
     end
 
 
-val nativeFunctions:(Ast.NAME * NATIVE_FUNCTION) list ref = ref [] 
+val nativeFunctions:(Ast.NAME * NATIVE_FUNCTION) list ref = ref []
 
-                                                            
+
 fun registerNativeFunction (name:Ast.NAME)
                            (func:NATIVE_FUNCTION)
     : unit =
     (trace ["registering native function: ", LogErr.name name];
      nativeFunctions := (name, func) :: (!nativeFunctions))
 
-    
-fun getNativeFunction (name:Ast.NAME) 
-    : NATIVE_FUNCTION = 
-    let 
+
+fun getNativeFunction (name:Ast.NAME)
+    : NATIVE_FUNCTION =
+    let
         fun search [] = LogErr.hostError ["native function not found: ",
 					                      LogErr.name name]
-          | search ((n,f)::bs) = 
+          | search ((n,f)::bs) =
             if n = name
             then f
             else search bs

@@ -54,7 +54,7 @@
     type TAU = int;   // NoExpr, AllowExpr
     type OMEGA = int; // Abbrev, Full
 
-    type PATTERN = 
+    type PATTERN =
           ( ObjectPattern
           , ArrayPattern
           , SimplePattern
@@ -63,14 +63,14 @@
     class ObjectPattern { }
     class ArrayPattern { }
     class SimplePattern { }
-    class IdentifierPattern 
+    class IdentifierPattern
     {
         const ident : Ast::IDENT;
         function IdentifierPattern (ident)
             : ident = ident { }
     }
 
-    class Parser 
+    class Parser
     {
         static const AbbrevIfElse = 0;
         static const AbbrevDoWhile = AbbrevIfElse + 1;
@@ -92,7 +92,7 @@
         {
             this.scan = new Lexer::Scanner(src)
         }
-        
+
         var defaultNamespace: Ast::NAMESPACE;
         var currentPackageName: string;
         var currentClassName: string;
@@ -126,7 +126,7 @@
 
         function tl (ts:TOKENS) : TOKENS ts.slice (1,ts.length);
 
-        function desugarPattern (p: PATTERN, t: Ast::TYPE_EXPR, e: Ast::EXPR) 
+        function desugarPattern (p: PATTERN, t: Ast::TYPE_EXPR, e: Ast::EXPR)
             : [[Ast::BINDING],[Ast::INIT_STEP]]
         {
             var bs, ss;
@@ -152,7 +152,7 @@
 
 
         /*
-        Identifier    
+        Identifier
             Identifier
             call
             debugger
@@ -233,11 +233,11 @@
 
         /*
             Qualifier
-                *    
+                *
                 ReservedNamespace
                 Identifier
         */
-        
+
         function qualifier(ts)
             : [TOKENS, (Ast::IDENT,Ast::NAMESPACE)]
         {
@@ -267,14 +267,14 @@
         }
 
         /*
-            ReservedNamespace    
+            ReservedNamespace
                 internal
                 intrinsic
                 private
                 protected
                 public
         */
-        
+
         function reservedNamespace (ts: TOKENS)
 			: [TOKENS, Ast::NAMESPACE]
         {
@@ -312,7 +312,7 @@
               Number
               Brackets
         */
-        
+
         function qualifiedNameIdentifier (ts1: TOKENS, nd1: Ast::EXPR)
             : [TOKENS, Ast::IDENT_EXPR]
         {
@@ -353,7 +353,7 @@
               Identifier
               Qualifier  ::  QualifiedNameIdentifier
         */
-        
+
         function simpleQualifiedName (ts: TOKENS)
             : [TOKENS, Ast::IDENT_EXPR]
         {
@@ -386,11 +386,11 @@
             ExpressionQualifiedName
                 ParenListExpression :: QualifiedName
         */
-        
+
 //        function expressionQualifiedIdentifier()
 //        {
 //            enter("parseExpressionQualifiedIdentifier")
-// 
+//
 //            var first = parseParenListExpression()
 //            match(doublecolon_token)
 //            if( lookahead(leftbracket_token) )
@@ -409,11 +409,11 @@
 //        }
 //
         /*
-            NonAttributeQualifiedIdentifier    
+            NonAttributeQualifiedIdentifier
                 SimpleQualifiedName
                 ExpressionQualifiedName
         */
-        
+
         function nonAttributeQualifiedName (ts: TOKENS)
             : [TOKENS, Ast::IDENT_EXPR]
         {
@@ -433,11 +433,11 @@
         }
 
 //        /*
-//            AttributeQualifiedIdentifier    
+//            AttributeQualifiedIdentifier
 //                @ Brackets
 //                @ NonAttributeQualifiedIdentifier
 //        */
-//        
+//
 //        function parseAttributeIdentifier()
 //        {
 //            enter("parseAttributeIdentifier")
@@ -613,23 +613,23 @@
 //        function parseXMLElement()
 //        {
 //        }
-//        
+//
 //        function parseXMLName(first)
 //        {
 //        }
-//                
+//
 //        function parseXMLAttributes(first)
 //        {
 //        }
-//                
+//
 //        function parseXMLAttribute(first)
 //        {
 //        }
-//                
+//
 //        function parseXMLElementContent(first)
 //        {
 //        }
-//                
+//
         function parenExpression (ts: TOKENS)
             : [TOKENS, Ast::EXPR]
         {
@@ -652,7 +652,7 @@
 //            var result = parseAssignmentExpression(allowIn_mode)
 //            exitSlashContext(regexpliteral_token)
 //            match(rightparen_token)
-// 
+//
 //            exit("parseParenExpression",result)
 //            return result
 //        }
@@ -675,7 +675,7 @@
 //            enter("parseParenListExpression")
 //
 //            enterSlashContext(regexpliteral_token)
-//            match( leftparen_token ); 
+//            match( leftparen_token );
 //            var result = <ParenList>{parseListExpression(allowIn_mode)}</ParenList>
 //            exitSlashContext(regexpliteral_token)
 //            match( rightparen_token )
@@ -685,12 +685,12 @@
 //        }
 //
 //        /*
-//            ParenListOrExpressionQualifiedIdentifier    
+//            ParenListOrExpressionQualifiedIdentifier
 //                ParenListExpression
 //                ParenListExpression :: PropertyIdentifier
 //                ParenListExpression :: Brackets
 //        */
-//        
+//
 //        function parseParenListOrExpressionQualifiedIdentifier()
 //        {
 //            enter("parseParenListOrExpressionQualifiedIdentifier")
@@ -773,7 +773,7 @@
 //
 //        /*
 //
-//        LiteralField    
+//        LiteralField
 //            FieldName  :  AssignmentExpressionallowIn
 //
 //        */
@@ -793,7 +793,7 @@
 //
 //        /*
 //
-//        FieldName    
+//        FieldName
 //            NonAttributeQualifiedIdentifier
 //            String
 //            Number
@@ -806,7 +806,7 @@
 //        function parseFieldName()
 //        {
 //            enter("parseFieldName")
-//        
+//
 //            if( lookahead(stringliteral_token) )
 //            {
 //                result = <LiteralString value={scan.tokenText(match(stringliteral_token))}/>
@@ -835,16 +835,16 @@
 //
 //        /*
 //
-//        ArrayLiteral    
+//        ArrayLiteral
 //            [  ElementList  ]
-//    
-//        ElementList    
+//
+//        ElementList
 //            empty
 //            LiteralElement
 //            ,  ElementList
 //            LiteralElement  ,  ElementList
-//    
-//        LiteralElement    
+//
+//        LiteralElement
 //            AssignmentExpressionallowIn
 //
 //        */
@@ -872,7 +872,7 @@
 //            return result
 //        }
 //
-//        function parseElementListPrime(first)        
+//        function parseElementListPrime(first)
 //        {
 //            enter("parseElementListPrime",first)
 //
@@ -924,7 +924,7 @@
 
         /*
 
-        PrimaryExpression    
+        PrimaryExpression
             null
             true
             false
@@ -972,7 +972,7 @@
 //            {
 //                var result = <LiteralRegExp value={scan.tokenText(match(regexpliteral_token))}/>
 //            }
-//            else 
+//            else
 //            if( lookahead(function_token) )
 //            {
 //                match(function_token);
@@ -1009,7 +1009,7 @@
 //
 //        /*
 //
-//        SuperExpression    
+//        SuperExpression
 //            super
 //            super  Arguments
 //
@@ -1144,7 +1144,7 @@
 //
 //        /*
 //
-//        Brackets    
+//        Brackets
 //            [  ]
 //            [  ListExpressionallowIn  ]
 //            [  ListExpressionallowIn  :  ]
@@ -1156,7 +1156,7 @@
 //        function parseBrackets()
 //        {
 //            enter("parseBrackets")
-//            
+//
 //            match(leftbracket_token)
 //            if( lookahead(rightbracket_token) )
 //            {
@@ -1240,11 +1240,11 @@
 
         Refactored:
 
-        MemberExpression(beta)    
+        MemberExpression(beta)
             PrimaryExpression(beta) MemberExpressionPrime(beta)
             new MemberExpression(beta) Arguments MemberExpressionPrime(beta)
             SuperExpression  PropertyOperator  MemberExpressionPrime(beta)
-    
+
         MemberExpressionPrime(beta)
             PropertyOperator MemberExpressionPrime(beta)
             empty
@@ -1339,7 +1339,7 @@
 
         /*
 
-        NewExpression    
+        NewExpression
             MemberExpression
             new  NewExpression
 
@@ -1382,17 +1382,17 @@
 
         /*
 
-        LeftHandSideExpression    
+        LeftHandSideExpression
             NewExpression
             CallExpression
 
         Refactored:
 
-        LeftHandSideExpression    
+        LeftHandSideExpression
             MemberExpression LeftHandSideExpressionPrime
             new NewExpression
-    
-        LeftHandSideExpressionPrime    
+
+        LeftHandSideExpressionPrime
             Arguments CallExpressionPrime
             empty
 
@@ -1474,7 +1474,7 @@
 
         */
 
-        function unaryExpression (ts: TOKENS, beta: BETA) 
+        function unaryExpression (ts: TOKENS, beta: BETA)
             : [TOKENS, Ast::EXPR]
         {
             enter("Parser::unaryExpression ", ts);
@@ -1532,7 +1532,7 @@
 
         /*
 
-        MultiplicativeExpression    
+        MultiplicativeExpression
             UnaryExpression
             MultiplicativeExpression  *  UnaryExpression
             MultiplicativeExpression  /  UnaryExpression
@@ -1573,7 +1573,7 @@
 
         /*
 
-        AdditiveExpression    
+        AdditiveExpression
             MultiplicativeExpression
             AdditiveExpression + MultiplicativeExpression
             AdditiveExpression - MultiplicativeExpression
@@ -1609,7 +1609,7 @@
 
         /*
 
-        ShiftExpression    
+        ShiftExpression
             AdditiveExpression
             ShiftExpression << AdditiveExpression
             ShiftExpression >> AdditiveExpression
@@ -1674,7 +1674,7 @@
 
         */
 
-        function relationalExpression (ts: TOKENS, beta: BETA) 
+        function relationalExpression (ts: TOKENS, beta: BETA)
             : [TOKENS, Ast::EXPR]
         {
             enter("Parser::relationalExpression ", ts);
@@ -1744,7 +1744,7 @@
 
         */
 
-        function equalityExpression (ts: TOKENS, beta: BETA) 
+        function equalityExpression (ts: TOKENS, beta: BETA)
             : [TOKENS, Ast::EXPR]
         {
             enter("Parser::equalityExpression ", ts);
@@ -1785,7 +1785,7 @@
 
         */
 
-        function bitwiseAndExpression (ts: TOKENS, beta: BETA) 
+        function bitwiseAndExpression (ts: TOKENS, beta: BETA)
             : [TOKENS, Ast::EXPR]
         {
             enter("Parser::bitwiseAndExpression ", ts);
@@ -1802,13 +1802,13 @@
 
         /*
 
-        BitwiseXorExpressionb    
+        BitwiseXorExpressionb
             BitwiseAndExpressionb
             BitwiseXorExpressionb ^ BitwiseAndExpressionb
 
         */
 
-        function bitwiseXorExpression (ts: TOKENS, beta: BETA) 
+        function bitwiseXorExpression (ts: TOKENS, beta: BETA)
             : [TOKENS, Ast::EXPR]
         {
             enter("Parser::bitwiseXorExpression ", ts);
@@ -1831,7 +1831,7 @@
 
         */
 
-        function bitwiseOrExpression (ts: TOKENS, beta: BETA) 
+        function bitwiseOrExpression (ts: TOKENS, beta: BETA)
             : [TOKENS, Ast::EXPR]
         {
             enter("Parser::bitwiseOrExpression ", ts);
@@ -1848,13 +1848,13 @@
 
         /*
 
-        LogicalAndExpression(beta)    
+        LogicalAndExpression(beta)
             BitwiseOrExpression(beta)
             LogicalAndExpression(beta) && BitwiseOrExpression(beta)
 
         */
 
-        function logicalAndExpression (ts: TOKENS, beta: BETA) 
+        function logicalAndExpression (ts: TOKENS, beta: BETA)
             : [TOKENS, Ast::EXPR]
         {
             enter("Parser::logicalAndExpression ", ts);
@@ -1871,13 +1871,13 @@
 
         /*
 
-        LogicalXorExpressionb    
+        LogicalXorExpressionb
             LogicalAndExpressionb
             LogicalXorExpressionb ^^ LogicalAndExpressionb
 
         */
 
-        function logicalXorExpression (ts: TOKENS, beta: BETA) 
+        function logicalXorExpression (ts: TOKENS, beta: BETA)
             : [TOKENS, Ast::EXPR]
         {
             enter("Parser::logicalXorExpression ", ts);
@@ -1900,7 +1900,7 @@
 
         */
 
-        function logicalOrExpression (ts: TOKENS, beta: BETA) 
+        function logicalOrExpression (ts: TOKENS, beta: BETA)
             : [TOKENS, Ast::EXPR]
         {
             enter("Parser::logicalOrExpression ", ts);
@@ -1917,7 +1917,7 @@
 
 //        /*
 //
-//        YieldExpression    
+//        YieldExpression
 //            UnaryExpression
 //            yield  UnaryExpression
 //
@@ -1959,12 +1959,12 @@
             LetExpression(beta)
             YieldExpression(beta)
             LogicalOrExpression(beta)
-            LogicalOrExpression(beta)  ?  AssignmentExpression(beta)  
+            LogicalOrExpression(beta)  ?  AssignmentExpression(beta)
                                        :  AssignmentExpression(beta)
 
         */
 
-        function conditionalExpression (ts: TOKENS, beta: BETA) 
+        function conditionalExpression (ts: TOKENS, beta: BETA)
             : [TOKENS, Ast::EXPR]
         {
             enter("Parser::conditionalExpression ", ts);
@@ -2063,7 +2063,7 @@
 
         */
 
-        function assignmentExpression (ts: TOKENS, beta: BETA) 
+        function assignmentExpression (ts: TOKENS, beta: BETA)
             : [TOKENS, Ast::EXPR]
         {
             enter("Parser::assignmentExpression ", ts);
@@ -2082,16 +2082,16 @@
 
         right recursive:
 
-        ListExpression(b)    
+        ListExpression(b)
             AssignmentExpression(b) ListExpressionPrime(b)
-    
-        ListExpressionPrime(b)    
+
+        ListExpressionPrime(b)
             empty
             , AssignmentExpression(b) ListExpressionPrime(b)
 
         */
 
-        function listExpression (ts: TOKENS, beta ) 
+        function listExpression (ts: TOKENS, beta )
             : [TOKENS, Ast::EXPR]
         {
             enter("Parser::listExpression ", ts);
@@ -2100,7 +2100,7 @@
                 : [TOKENS, Ast::EXPR]
             {
                 enter("Parser::listExpressionPrime ", ts);
-        
+
                 var ts1,nd1;
                 var ts2,nd2;
                 switch (hd (ts)) {
@@ -2130,14 +2130,14 @@
 
 //        /*
 //
-//        LetExpressionb    
+//        LetExpressionb
 //            let  (  LetBindingList  )  AssignmentExpressionb
-//    
-//        LetBindingList    
+//
+//        LetBindingList
 //            empty
 //            NonemptyLetBindingList
-//    
-//        NonemptyLetBindingList    
+//
+//        NonemptyLetBindingList
 //            VariableBinding
 //            VariableBinding , NonemptyLetBindingList
 //
@@ -2177,7 +2177,7 @@
 //
 //        YieldExpressionb
 //            yield  AssignmentExpressionb
-//    
+//
 //        */
 //
 ///*
@@ -2198,14 +2198,14 @@
               SimplePattern(beta,tau)
               ObjectPattern(tau)
               ArrayPattern(tau)
-          
+
           SimplePattern(beta, noExpr)
               Identifier
-          
+
           SimplePattern(beta, allowExpr)
               LeftHandSideExpression(beta)
-        
-          */          
+
+          */
 
         function simplePattern (ts: TOKENS, beta: BETA, tau: TAU)
             //            : [TOKENS, PATTERN]
@@ -2233,7 +2233,7 @@
           TypedIdentifier(beta)
               SimplePattern(beta, noExpr)
               SimplePattern(beta, noExpr)  :  NullableTypeExpression
-              
+
           TypedPattern(beta)
               SimplePattern(beta, noExpr)
               SimplePattern(beta, noExpr)  :  NullableTypeExpression
@@ -2269,7 +2269,7 @@
         }
 
 //        /*
-//        
+//
 //        DestructuringAssignmentExpression
 //            DestructuringPattern  =  AssignmentExpressionb
 //
@@ -2278,19 +2278,19 @@
 //        function parseDestructuringAssignmentExpression(mode)
 //        {
 //            enter("parseDestructuringAssignmentExpression",mode)
-//            
+//
 //            var first = parseDestructuringPattern()
 //            match(assign_token)
 //            var second = parseAssignmentExpression(mode)
 //            var result = <AssignmentExpression>{first}{second}</AssignmentExpression>
-//            
+//
 //            exit("parseDestructuringAssignmentExpression",result)
 //            return result
 //        }
 //
 //        /*
 //
-//        DestructuringPattern    
+//        DestructuringPattern
 //            DestructuringObjectPattern
 //            DestructuringArrayPattern
 //
@@ -2305,7 +2305,7 @@
 //                var result = parseDestructuringObjectPattern()
 //            }
 //            else
-//            if( lookahead(leftbracket_token ) ) 
+//            if( lookahead(leftbracket_token ) )
 //            {
 //                var result = parseDestructuringArrayPattern()
 //            }
@@ -2320,13 +2320,13 @@
 //
 //        /*
 //
-//        DestructuringObjectPattern    
+//        DestructuringObjectPattern
 //            {  DestructuringFieldList  }
 //
-//        DestructuringFieldList    
+//        DestructuringFieldList
 //            DestructuringField
 //            DestructuringFieldList  ,  DestructuringField
-//    
+//
 //        */
 //
 //        function parseDestructuringObjectPattern()
@@ -2352,7 +2352,7 @@
 //
 //        /*
 //
-//        DestructuringField    
+//        DestructuringField
 //            NonAttributeQualifiedIdentifier  :  DestructuringPattern
 //            NonAttributeQualifiedIdentifier  :  PostfixExpression
 //
@@ -2381,15 +2381,15 @@
 //
 //        /*
 //
-//        DestructuringArrayPattern    
+//        DestructuringArrayPattern
 //            [  DestructuringElementList  ]
-//    
-//        DestructuringElementList    
+//
+//        DestructuringElementList
 //            empty
 //            DestructuringElement
 //            , DestructuringElementList
 //            DestructuringElement , DestructuringElementList
-//    
+//
 //        */
 //
 //        function parseDestructuringArrayPattern()
@@ -2406,7 +2406,7 @@
 //            {
 //                var first = <></>
 //                first += parseDestructuringElement()
-//                
+//
 //                {
 //                    match(comma_token)
 //                    if( lookahead(rightbracket_token) )
@@ -2429,7 +2429,7 @@
 //
 //        /*
 //
-//        DestructuringElement    
+//        DestructuringElement
 //            empty
 //            DestructuringPattern
 //            PostfixExpression
@@ -2460,7 +2460,7 @@
 //
 //        {
 //            enter("parseListExpression",mode)
-//            
+//
 //            var list = <></>
 //            list += parseAssignmentExpression(mode)
 //            while( lookahead( comma_token ) )
@@ -2477,7 +2477,7 @@
 //        function parseListExpressionPrime(first,mode)
 //        {
 //            enter("parseListExpressionPrime",mode)
-//            
+//
 //            var list = <></>
 //            list += first
 //            while( lookahead( comma_token ) )
@@ -2495,7 +2495,7 @@
 //
 //        /*
 //
-//        TypeExpression    
+//        TypeExpression
 //            TypeIdentifier
 //            function  FunctionSignature
 //            (  TypeExpressionList  )
@@ -2552,7 +2552,7 @@
 //
 //        /*
 //
-//        UnionType    
+//        UnionType
 //            (  TypeExpressionList  )
 //
 //        */
@@ -2578,21 +2578,21 @@
 //        */
 //
 //        function parseRecordType()
-//        
+//
 
         /*
 
         DestructuringElement(gamma)
             , DestructuringElementList(gamma)
             DestructuringElementg  ,  DestructuringElementListg
-        
+
         DestructuringElementg
             Patterng
-        
+
         TypedIdentifier
             SimplePattern(noIn)
             SimplePattern(beta)  :  NullableTypeExpression
-        
+
         TypedPattern(beta)
             SimplePattern(beta)
             SimplePattern(beta)  :  NullableTypeExpression
@@ -2623,7 +2623,7 @@
 //
 //        /*
 //
-//        NonemptyFieldTypeList    
+//        NonemptyFieldTypeList
 //            FieldType
 //            FieldType  ,  NonemptyFieldTypeList
 //
@@ -2649,10 +2649,10 @@
 //        }
 //
 //        /*
-//            FieldType    
+//            FieldType
 //                FieldName  :  TypeExpression
 //        */
-//                  
+//
 //        function parseFieldType()
 //        {
 //            enter("parseFieldType")
@@ -2667,16 +2667,16 @@
 //        }
 //
 //        /*
-//        
-//        ArrayType    
+//
+//        ArrayType
 //            [  ElementTypeList  ]
-//    
-//        ElementTypeList    
+//
+//        ElementTypeList
 //            empty
 //            TypeExpression
 //            ,  ElementTypeList
 //            TypeExpression  ,  ElementTypeList
-//        
+//
 //        */
 //
 //        function parseArrayType()
@@ -2703,7 +2703,7 @@
 //            return result
 //        }
 //
-//        function parseElementTypeListPrime(first)        
+//        function parseElementTypeListPrime(first)
 //        {
 //            enter("parseElementTypeListPrime",first)
 //
@@ -2990,7 +2990,7 @@
 //
 //        /*
 //
-//        SuperExpression    
+//        SuperExpression
 //            super
 //            super  Arguments
 //
@@ -3039,7 +3039,7 @@
 //                var result = <ExpressionStatement>{first}</ExpressionStatement>
 //                // leave matchSemicolon(mode) for caller
 //            }
-//            
+//
 //            exit("parseLabeledOrExpressionStatement",result)
 //            return result
 //        }
@@ -3122,11 +3122,11 @@
 //            if( second.name() == "BlockStatement" )
 //            {
 //                prologue.* += second.Prologue.*
-//                block.* += second.Block.* 
+//                block.* += second.Block.*
 //            }
 //            else
 //            {
-//                block.* += second 
+//                block.* += second
 //            }
 //
 //            var node = <BlockStatement kind="let">{prologue}{block}</BlockStatement>
@@ -3152,10 +3152,10 @@
 //
 //        /*
 //
-//        Returnstatement    
+//        Returnstatement
 //            return
 //            return [no line break] ListExpressionallowIn
-//        
+//
 //        */
 //
 //        function parseReturnStatement()
@@ -3318,7 +3318,7 @@
 
         VariableDefinition(beta)
             VariableDefinitionKind  VariableBindingList(beta)
-            
+
         */
 
         function variableDefinition (ts: TOKENS, beta: BETA, ns, isPrototype, isStatic)
@@ -3388,7 +3388,7 @@
         VariableBindingList(beta)
             VariableBinding(beta)
             VariableBindingList(beta)  ,  VariableBinding(beta)
-            
+
         VariableBinding(beta)
             TypedIdentifier
             TypedPattern(noIn)  VariableInitialisation(beta)
@@ -3407,7 +3407,7 @@
                 : [TOKENS, Ast::BINDING_INITS]
             {
                 enter("Parser::variableBindingListPrime ", ts);
-        
+
                 var ts1,nd1;
                 var ts2,nd2;
                 var b1,i1,b2,i2;
@@ -3433,7 +3433,7 @@
             var [ts2,nd2] = variableBindingListPrime (ts1, beta);
 
             var [b1,i1] = nd1;  // FIXME: fold into patterns above when it works in the RI
-            var [b2,i2] = nd2;            
+            var [b2,i2] = nd2;
 
             for (var n in b2) b1.push (b2[n]);  // FIXME: use concat when it works in the RI
             for (var n in i2) i1.push (i2[n]);
@@ -3508,15 +3508,15 @@
 //
 //        /*
 //
-//        VariableBindingb    
+//        VariableBindingb
 //            TypedIdentifierb VariableInitialisationb
 //            DestructuringPattern VariableInitialisationb
-//    
-//        VariableInitialisationb    
+//
+//        VariableInitialisationb
 //            empty
 //            =  VariableInitialiserb
-//    
-//        VariableInitialiserb    
+//
+//        VariableInitialiserb
 //            AssignmentExpressionb
 //
 //        */
@@ -3525,7 +3525,7 @@
 //        {
 //            enter("isNamespaceAttribute",attr.toXMLString())
 //
-//            var result = 
+//            var result =
 //                    ( attr.name()=="Get" &&
 //                      attr.Identifier != undefined ) ? true :
 //                      attr.name()=="Namespace" ? true : false
@@ -3543,8 +3543,8 @@
 //                var result = false
 //                for each( var item in slot_context_stack )
 //                {
-//                    if( item=="function" ) 
-//                    { 
+//                    if( item=="function" )
+//                    {
 //                        result = true
 //                        break
 //                    }
@@ -3555,7 +3555,7 @@
 //                var context = slot_context_stack[slot_context_stack.length-1]
 //                var result = context=="function"
 //            }
-//            
+//
 //            exit("inFunctionBody",result)
 //            return result
 //        }
@@ -3622,9 +3622,9 @@
 //
 //        For some kinds of bindings we hoist the intialiser to the prologue along with
 //        the slot (instance slots, function slots). The value of a function slot
-//        initialiser is moved by the Definer to derive an ExpressionStatement inserted 
+//        initialiser is moved by the Definer to derive an ExpressionStatement inserted
 //        at the beginning of the corresponding Block. The Definer also hoists some
-//        slots (var,const,function) to the inner most enclosing variable object 
+//        slots (var,const,function) to the inner most enclosing variable object
 //        (global,class,function)
 //
 //        */
@@ -3632,7 +3632,7 @@
 //        function makeBinding(attrs,kind,typedid,value,prologue)
 //        {
 //            enter("makeBinding",attrs,kind,typedid,value)
-//                
+//
 //            // See if there is one namespace attribute
 //
 //            var ns = null
@@ -3655,7 +3655,7 @@
 //
 //            if( ns != null )
 //            {
-//                var name = 
+//                var name =
 //                    <QualifiedIdentifier>
 //                        <Qualifier>{ns}</Qualifier>
 //                        {typedid.Identifier}
@@ -3663,7 +3663,7 @@
 //            }
 //            else   // use the default namespace
 //            {
-//                var name = 
+//                var name =
 //                    <QualifiedIdentifier>
 //                        <Qualifier>
 //                            {default_namespace}
@@ -3691,9 +3691,9 @@
 //
 //            // Make the slot and initialiser
 //
-//            if( kind == class_token || 
-//                kind == interface_token || 
-//                kind == function_token || 
+//            if( kind == class_token ||
+//                kind == interface_token ||
+//                kind == function_token ||
 //                kind == namespace_token ||
 //                kind == type_token ||
 //                inClassBody() && attrs.Let == void 0 && attrs.Static == void 0 )
@@ -3786,7 +3786,7 @@
 //            }
 //            if( attrs.Final != void 0 )
 //            {
-//                if( slot_kind == "class" || 
+//                if( slot_kind == "class" ||
 //                    (slot_context == "class" && slot_kind == "function" && attrs.Static == void 0 ) )
 //                {
 //                    slot.@final = true
@@ -3911,7 +3911,7 @@
 //            exit("applyAttributesToSlot",slot)
 //            return
 //        }
-//            
+//
 //        function parseTypedIdentifier(mode)
 //        {
 //            enter("parseTypedIdentifier",mode)
@@ -3941,7 +3941,7 @@
 //            {
 //                var result = <TypedIdentifier>{first}<Type><Identifier name="*"/></Type></TypedIdentifier>
 //            }
-//            
+//
 //            exit("parseTypedIdentifier",result)
 //            return result
 //        }
@@ -3957,7 +3957,7 @@
 //        function parseUntypedVariableBinding()
 //        {
 //        }
-//            
+//
 //        function parseFunctionDefinition(attrs,prologue)
 //        {
 //            enter("parseFunctionDefinition",attrs)
@@ -3985,7 +3985,7 @@
 //            if( lookahead(to_token) )
 //            {
 //                var kind = scan.tokenText(match(to_token))
-//                var first = parseIdentifier()                
+//                var first = parseIdentifier()
 //            }
 //            else
 //            if( lookahead(get_token) )
@@ -3997,29 +3997,29 @@
 //            if( lookahead(set_token) )
 //            {
 //                var kind = scan.tokenText(match(set_token))
-//                var first = parsePropertyIdentifier()                
+//                var first = parsePropertyIdentifier()
 //            }
 //            else
 //            if( lookahead(call_token) )
 //            {
 //                var kind = scan.tokenText(match(call_token))
-//                var first = parsePropertyIdentifier()                
+//                var first = parsePropertyIdentifier()
 //            }
 //            else
 //            {
-//                var found = lookahead(mult_token) ? match(mult_token) : 
-//                            lookahead(div_token) ? match(div_token) : 
-//                            lookahead(modulus_token) ? match(modulus_token) : 
-//                            lookahead(plus_token) ? match(plus_token) : 
-//                            lookahead(minus_token) ? match(minus_token) : 
-//                            lookahead(leftshift_token) ? match(leftshift_token) : 
-//                            lookahead(rightshift_token) ? match(rightshift_token) : 
-//                            lookahead(unsignedrightshift_token) ? match(unsignedrightshift_token) : 
-//                            lookahead(bitwiseand_token) ? match(bitwiseand_token) : 
-//                            lookahead(bitwisexor_token) ? match(bitwisexor_token) : 
-//                            lookahead(bitwiseor_token) ? match(bitwiseor_token) : 
+//                var found = lookahead(mult_token) ? match(mult_token) :
+//                            lookahead(div_token) ? match(div_token) :
+//                            lookahead(modulus_token) ? match(modulus_token) :
+//                            lookahead(plus_token) ? match(plus_token) :
+//                            lookahead(minus_token) ? match(minus_token) :
+//                            lookahead(leftshift_token) ? match(leftshift_token) :
+//                            lookahead(rightshift_token) ? match(rightshift_token) :
+//                            lookahead(unsignedrightshift_token) ? match(unsignedrightshift_token) :
+//                            lookahead(bitwiseand_token) ? match(bitwiseand_token) :
+//                            lookahead(bitwisexor_token) ? match(bitwisexor_token) :
+//                            lookahead(bitwiseor_token) ? match(bitwiseor_token) :
 //                            lookahead(strictequals_token) ? match(strictequals_token) :
-//                            lookahead(notequals_token) ? match(notequals_token) : 
+//                            lookahead(notequals_token) ? match(notequals_token) :
 //                            lookahead(strictnotequals_token) ? match(strictnotequals_token) : empty_token
 //
 //                if( found != empty_token )
@@ -4028,7 +4028,7 @@
 //                    var first = <Identifier name={scan.tokenText(found)}/>
 //                }
 //            }
-//    
+//
 //            var node = <FunctionName kind={kind}>{first}</FunctionName>
 //
 //            exit("parseFunctionName",node)
@@ -4036,26 +4036,26 @@
 //        }
 //
 //        /*
-//        
-//        FunctionCommon    
+//
+//        FunctionCommon
 //            FunctionSignature
 //            FunctionSignature Block
-//        
+//
 //        */
 //
 //        function parseFunctionCommon(first)
 //        {
 //            enter("parseFunctionCommon",first)
-//            
+//
 //            var prologue = <Prologue/>
 //            var second = parseFunctionSignature(prologue)
 //
 //            if( !inInterfaceBody() )
 //            {
-//                slot_context_stack.push("function")            
+//                slot_context_stack.push("function")
 //                var third = parseBlockStatement();
 //                slot_context_stack.pop()
-//                prologue.* += third.Prologue.*          
+//                prologue.* += third.Prologue.*
 //                var block = third.Block
 //            }
 //            else
@@ -4069,16 +4069,16 @@
 //            {
 //                node.@factory = "true"
 //            }
-//            
+//
 //            exit("parseFunctionCommon",node)
 //            return node
 //        }
 //
 //        /*
-//    
-//        FunctionSignature    
+//
+//        FunctionSignature
 //            TypeParameters  (  Parameters  )  Result
-//    
+//
 //        */
 //
 //        function parseFunctionSignature(prologue)
@@ -4086,7 +4086,7 @@
 //            enter("parseFunctionSignature")
 //
 //            var first = parseTypeParameters()
-//            match(leftparen_token) 
+//            match(leftparen_token)
 //            var second = parseParameters(prologue)
 //            match(rightparen_token)
 //            var third = parseResultType()
@@ -4098,9 +4098,9 @@
 //
 //        /*
 //
-//        TypeParameters    
+//        TypeParameters
 //            empty
-//            .<  TypeParameterList  >  
+//            .<  TypeParameterList  >
 //
 //        */
 //
@@ -4132,7 +4132,7 @@
 //        function parseTypeParameterList()
 //        {
 //            enter("parseTypeParameterList")
-//            
+//
 //            var list = <></>
 //            list += parseIdentifier()
 //            while( lookahead(comma_token) )
@@ -4145,7 +4145,7 @@
 //            exit("parseTypeParameterList",result)
 //            return result
 //        }
-//        
+//
 //        /*
 //
 //        */
@@ -4169,11 +4169,11 @@
 //
 //        /*
 //
-//        NonemptyParameters    
+//        NonemptyParameters
 //            ParameterInit
 //            ParameterInit  ,  NonemptyParameters
 //            RestParameters
-//        
+//
 //        */
 //
 //		function isLet(node)
@@ -4196,7 +4196,7 @@
 //                first += parseRestParameter()
 //                var result = first
 //            }
-//            else 
+//            else
 //            {
 //                first += parseParameterInit(prologue)
 //                if( lookahead(comma_token) )
@@ -4220,7 +4220,7 @@
 //
 //        /*
 //
-//        ParameterInit    
+//        ParameterInit
 //            Parameter
 //            Parameter  =  NonAssignmentExpressionallowIn
 //
@@ -4270,7 +4270,7 @@
 //
 //        /*
 //
-//        RestParameter    
+//        RestParameter
 //            ...
 //            ...  ParameterAttributes Identifier
 //
@@ -4299,7 +4299,7 @@
 //
 //        /*
 //
-//        ResultType    
+//        ResultType
 //            empty
 //            :  void
 //            :  TypeExpression
@@ -4360,7 +4360,7 @@
 //        function parseClassDefinition(attrs,hoisted)
 //        {
 //            enter("parseClassDefinition",attrs)
-//            
+//
 //            match(class_token)
 //            var name = parseClassName()
 //
@@ -4417,7 +4417,7 @@
 //
 //        /*
 //
-//        Inheritance    
+//        Inheritance
 //            empty
 //            extends TypeName
 //            implements TypeNameList
@@ -4450,7 +4450,7 @@
 //                var second = parseTypeNameList()
 //                node.Implements.* = second
 //            }
-//    
+//
 //            exit("parseInheritance",node)
 //            return node
 //        }
@@ -4467,7 +4467,7 @@
 //            while( lookahead(comma_token) )
 //            {
 //                match(comma_token)
-//                node += parseTypeIdentifier()                
+//                node += parseTypeIdentifier()
 //            }
 //            return node
 //        }
@@ -4476,7 +4476,7 @@
 //        function parseInterfaceDefinition(attrs,hoisted)
 //        {
 //            enter("parseInterfaceDefinition",attrs)
-//            
+//
 //            match(interface_token)
 //            var name = parseClassName()
 //
@@ -4523,7 +4523,7 @@
 //                var first = parseTypeNameList()
 //                node.Extends.* = first
 //            }
-//    
+//
 //            exit("parseExtendsList",node)
 //            return node
 //        }
@@ -4531,16 +4531,16 @@
 //
 //        /*
 //
-//        TypeExpressionList    
+//        TypeExpressionList
 //            TypeExpression
 //            TypeExpressionList  ,  TypeExpression
-//        
+//
 //        */
-//        
+//
 //        function parseTypeExpressionList()
 //        {
 //            enter("parseTypeExpressionList")
-//            
+//
 //            var list = <></>
 //            list += parseTypeExpression()
 //            while( lookahead( comma_token ) )
@@ -4608,18 +4608,18 @@
 //
 //        /*
 //
-//        PackageDefinition    
+//        PackageDefinition
 //            PackageAttributes package PackageNameOpt Block
-//    
-//        PackageAttributes    
+//
+//        PackageAttributes
 //            private
 //            empty
-//    
-//        PackageNameOpt    
+//
+//        PackageNameOpt
 //            empty
 //            PackageName
-//    
-//        PackageName [create a lexical PackageIdentifier with the sequence of characters that make a PackageName]    
+//
+//        PackageName [create a lexical PackageIdentifier with the sequence of characters that make a PackageName]
 //            Identifier
 //            PackageName  .  Identifier
 //
@@ -4646,8 +4646,8 @@
 //            stmt.@kind="package"
 //            var node = stmt
 //
-////            prologue.insertChildBefore(prologue.*[0], 
-//            stmt.Prologue.* +=  
+////            prologue.insertChildBefore(prologue.*[0],
+//            stmt.Prologue.* +=
 //                    <OpenNamespaces ident="*">
 //                        <Namespace kind="public" name={name}/>
 //                        <Namespace kind="internal" name={name}/>
@@ -4661,7 +4661,7 @@
 //        function parsePackageName()
 //        {
 //            enter("parsePackageName")
-//            
+//
 //            var name = ""
 //            if( lookahead(leftbrace_token) )
 //            {
@@ -4701,11 +4701,11 @@
             switch (hd (ts)) {
             case Token::RightBrace:
             case Token::EOS:
-                var [ts1,{pragmas:pragmas, defns:defns, head:head, stmts:stmts, pos:pos}] 
+                var [ts1,{pragmas:pragmas, defns:defns, head:head, stmts:stmts, pos:pos}]
                          = [ts, {pragmas:[], defns:[], head:null, stmts:[], pos:null}];
                 break;
             default:
-                var [ts1, {pragmas:pragmas, defns:defns, head:head, stmts:stmts, pos:pos}] 
+                var [ts1, {pragmas:pragmas, defns:defns, head:head, stmts:stmts, pos:pos}]
                          = directivesPrefix (ts,tau);
                 break;
             }
@@ -4723,7 +4723,7 @@
 
           right recursive:
 
-          DirectivesPrefix(tau)   
+          DirectivesPrefix(tau)
               empty
               Pragmas DirectivePrefix'(tau)
 
@@ -4742,12 +4742,12 @@
             switch (hd (ts)) {
             case Token::RightBrace:
             case Token::EOS:
-                var [ts2,{pragmas:pragmas,defns:defns,head:head,stmts:stmts,pos:pos}] 
+                var [ts2,{pragmas:pragmas,defns:defns,head:head,stmts:stmts,pos:pos}]
                   = [ts, {pragmas:[],     defns:[],   head:null,stmts:[],   pos:null}];
                 break;
             default:
                 //                var [ts1,nd1] = pragmas (ts);
-                var [ts2,{pragmas:pragmas,defns:defns,head:head,stmts:stmts,pos:pos}] 
+                var [ts2,{pragmas:pragmas,defns:defns,head:head,stmts:stmts,pos:pos}]
                   = directivesPrefixPrime (ts,tau);
                 break;
             }
@@ -4767,7 +4767,7 @@
             switch (hd (ts)) {
             case Token::RightBrace:
             case Token::EOS:
-                var [ts1,{pragmas:pragmas1,defns:defns1,head:head1,stmts:stmts1,pos:pos1}] 
+                var [ts1,{pragmas:pragmas1,defns:defns1,head:head1,stmts:stmts1,pos:pos1}]
                          = [ts,{pragmas:[],defns:[],head:null,stmts:[],pos:null}];
                 break;
             default:
@@ -4814,10 +4814,10 @@
 
 //        /*
 //
-//        Attributes    
+//        Attributes
 //            Attribute
 //            Attribute [no line break] Attributes
-//    
+//
 //        Attribute
 //            SimpleTypeIdentifier
 //            ReservedNamespace
@@ -4836,17 +4836,17 @@
 //            enter("parseAttributes",first)
 //
 //            while( !lookaheadSemicolon(full_mode) &&
-//                   ( lookahead(public_token) || 
+//                   ( lookahead(public_token) ||
 //                   lookahead(private_token) ||
-//                   lookahead(internal_token)  || 
+//                   lookahead(internal_token)  ||
 //                   lookahead(intrinsic_token) ||
-//                   lookahead(protected_token) || 
+//                   lookahead(protected_token) ||
 //                   lookahead(dynamic_token) ||
-//                   lookahead(final_token) || 
+//                   lookahead(final_token) ||
 //                   lookahead(native_token) ||
-//                   lookahead(override_token) || 
+//                   lookahead(override_token) ||
 //                   lookahead(prototype_token) ||
-//                   lookahead(static_token) || 
+//                   lookahead(static_token) ||
 //                   lookahead(leftbracket_token) ||
 //                   lookahead(packageidentifier_token) ||
 //                   lookahead(identifier_token) ) )
@@ -4975,7 +4975,7 @@
 //
 //            var node = <></>
 //
-//            while( !lookahead(eos_token) && 
+//            while( !lookahead(eos_token) &&
 //                (lookahead(use_token) || lookahead(import_token)) )
 //            {
 //                node += parsePragma()
@@ -5081,11 +5081,11 @@
 //            }
 //            return false
 //        }
-//        
+//
 //        function parseImportName()
 //        {
 //            enter("parseImportName")
-//            
+//
 //            var pkg_part = scan.tokenText(match(packageidentifier_token))
 //            match(dot_token)
 //            if( lookahead(mult_token) )
@@ -5181,7 +5181,7 @@
 
             let ts = scan.tokenList (scan.start)
 
-            if (hd (ts) == Token::Internal || 
+            if (hd (ts) == Token::Internal ||
                 hd (ts) == Token::Package)
             {
                 var [ts1, nd1] = packages (ts);
@@ -5211,7 +5211,7 @@
 
     function test ()
     {
-        var programs = 
+        var programs =
             [ "print('hi')"
               /*
             , "print('hello, world!')"
@@ -5256,11 +5256,11 @@
             "[a,b,c]",
             "{(x):y}",
             "(function(){})",
-            "(function f(a:A,b:B){})",            
+            "(function f(a:A,b:B){})",
             "(function f.<T,U,V>(a:T,b:U,c:V){})",
-            
+
             // type expressions
-            
+
             "T",
             "?T",
             "T!",
@@ -5275,7 +5275,7 @@
             "?T.<U>",
 
             // Postfix expressions
-            
+
             "x.y",
             "new x",
             "new x()",

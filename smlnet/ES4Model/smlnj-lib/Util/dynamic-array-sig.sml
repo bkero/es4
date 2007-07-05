@@ -30,7 +30,7 @@ signature DYNAMIC_ARRAY =
        *)
 
     val tabulate: (int * (int -> 'a) * 'a) -> 'a array
-      (* tabulate (sz,fill,dflt) acts like Array.tabulate, plus 
+      (* tabulate (sz,fill,dflt) acts like Array.tabulate, plus
        * stores default value dflt.  Raises Size if sz < 0.
        *)
 
@@ -44,7 +44,7 @@ signature DYNAMIC_ARRAY =
        *)
 
     val update : ('a array * int * 'a) -> unit
-      (* update (a,idx,v) sets the value at index idx of the array to v. 
+      (* update (a,idx,v) sets the value at index idx of the array to v.
        * Raises Subscript if idx < 0
        *)
 

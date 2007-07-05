@@ -98,12 +98,12 @@ package emitter
         public var meta_construct_name;
 
         public function nameFromIdent(id) {
-            return constants.QName(constants.namespace(CONSTANT_PackageNamespace, constants.stringUtf8("")), 
+            return constants.QName(constants.namespace(CONSTANT_PackageNamespace, constants.stringUtf8("")),
                                    constants.stringUtf8(id));
         }
 
         public function genMultinameL({cp:cp}) {
-            return constants.MultinameL(constants.namespaceset([constants.namespace(CONSTANT_PackageNamespace, 
+            return constants.MultinameL(constants.namespaceset([constants.namespace(CONSTANT_PackageNamespace,
                                                                                     constants.stringUtf8(""))]));
         }
 

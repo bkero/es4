@@ -2,17 +2,17 @@
 (*
  * The following licensing terms and conditions apply and must be
  * accepted in order to use the Reference Implementation:
- * 
+ *
  *    1. This Reference Implementation is made available to all
  * interested persons on the same terms as Ecma makes available its
  * standards and technical reports, as set forth at
  * http://www.ecma-international.org/publications/.
- * 
+ *
  *    2. All liability and responsibility for any use of this Reference
  * Implementation rests with the user, and not with any of the parties
  * who contribute to, or who own or hold any copyright in, this Reference
  * Implementation.
- * 
+ *
  *    3. THIS REFERENCE IMPLEMENTATION IS PROVIDED BY THE COPYRIGHT
  * HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED
  * WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
@@ -25,9 +25,9 @@
  * WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE
  * OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
  * IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- * 
+ *
  * End of Terms and Conditions
- * 
+ *
  * Copyright (c) 2007 Adobe Systems Inc., The Mozilla Foundation, Opera
  * Software ASA, and others.
  *)
@@ -48,9 +48,9 @@ structure NmVecMap = SplayMapFn (NmVecKey);
  * Operations on FIXTURE
  * ----------------------------------------------------------------------------- *)
 
-fun printFixture ((n:Ast.FIXTURE_NAME), (f:Ast.FIXTURE)) = 
+fun printFixture ((n:Ast.FIXTURE_NAME), (f:Ast.FIXTURE)) =
     let
-	val fs = case f of 
+	val fs = case f of
 		     Ast.NamespaceFixture _ => "[namespace]"
 		   | Ast.ClassFixture _ => "[class]"
 		   | Ast.InterfaceFixture _ => "[interface]"
@@ -69,42 +69,42 @@ fun printFixture ((n:Ast.FIXTURE_NAME), (f:Ast.FIXTURE)) =
  * Operations on FIXTURES
  * ----------------------------------------------------------------------------- *)
 
-fun getFixture (b:Ast.FIXTURES) 
-               (n:Ast.FIXTURE_NAME) 
-    : Ast.FIXTURE = 
-    let 
-        fun search [] = LogErr.hostError ["fixture binding not found: ", 
+fun getFixture (b:Ast.FIXTURES)
+               (n:Ast.FIXTURE_NAME)
+    : Ast.FIXTURE =
+    let
+        fun search [] = LogErr.hostError ["fixture binding not found: ",
                                           (LogErr.fname n)]
-          | search ((k,v)::bs) = 
-            if k = n 
+          | search ((k,v)::bs) =
+            if k = n
             then v
             else search bs
     in
         search b
     end
 
-fun hasFixture (b:Ast.FIXTURES) 
-               (n:Ast.FIXTURE_NAME) 
-    : bool = 
-    let 
+fun hasFixture (b:Ast.FIXTURES)
+               (n:Ast.FIXTURE_NAME)
+    : bool =
+    let
         fun search [] = false
-          | search ((k,v)::bs) = 
-            if k = n 
+          | search ((k,v)::bs) =
+            if k = n
             then true
             else search bs
     in
-        search b    
+        search b
     end
 
-fun replaceFixture (b:Ast.FIXTURES) 
-                   (n:Ast.FIXTURE_NAME) 
+fun replaceFixture (b:Ast.FIXTURES)
+                   (n:Ast.FIXTURE_NAME)
                    (v:Ast.FIXTURE)
-    : Ast.FIXTURES = 
-    let 
-        fun search [] = LogErr.hostError ["fixture binding not found: ", 
+    : Ast.FIXTURES =
+    let
+        fun search [] = LogErr.hostError ["fixture binding not found: ",
                                           (LogErr.fname n)]
-          | search ((k,v0)::bs) = 
-            if k = n 
+          | search ((k,v0)::bs) =
+            if k = n
             then (k,v)::bs
             else (k,v0) :: (search bs)
     in
@@ -138,7 +138,7 @@ fun getTopFixture (tf:TOP_FIXTURES)
         val c = !fixtureCache
     in
         case NmMap.find (c, n) of
-            NONE => 
+            NONE =>
             let
                 val v = getFixture all (Ast.PropName n)
             in
@@ -173,14 +173,14 @@ fun instanceType (tf:TOP_FIXTURES)
 fun isClass (tf:TOP_FIXTURES)
             (t:Ast.NAME)
     : bool =
-    case getTopFixture tf t of 
+    case getTopFixture tf t of
         Ast.ClassFixture cls => true
       | _ => false
 
 fun getClass (tf:TOP_FIXTURES)
              (t:Ast.NAME)
     : Ast.CLS =
-    case getTopFixture tf t of 
+    case getTopFixture tf t of
         Ast.ClassFixture cls => cls
       | Ast.InterfaceFixture iface =>   (* FIXME: not sure what to do here. getClass gets called when a nominal
                                             type is used in various ways. Just return class Object for now *)
@@ -199,11 +199,11 @@ fun instanceOf (tf:TOP_FIXTURES)
     let
         val { instanceOfCache, cacheSize, ... } = tf
         val c = !instanceOfCache
-        fun search n = 
+        fun search n =
             if Mach.nameEq n t
             then true
-            else 
-                let 
+            else
+                let
                     val it = instanceType tf n
                     val bases = (#superTypes it)
                 in
@@ -212,7 +212,7 @@ fun instanceOf (tf:TOP_FIXTURES)
         val k = Vector.fromList [t0,t]
     in
         case NmVecMap.find (c, k) of
-            NONE => 
+            NONE =>
             let
                 val v = search t0
             in

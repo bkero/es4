@@ -12,7 +12,7 @@ structure DynamicArray :> DYNAMIC_ARRAY =
     structure A = Array
 
     datatype 'a array = BLOCK of ('a A.array ref * 'a * int ref)
- 
+
     exception Subscript = General.Subscript
     exception Size = General.Size
 
@@ -32,7 +32,7 @@ structure DynamicArray :> DYNAMIC_ARRAY =
 	    BLOCK(ref arr, dflt, ref (len-1))
 	  end
 
-  (* tabulate (sz,fill,dflt) acts like Array.tabulate, plus 
+  (* tabulate (sz,fill,dflt) acts like Array.tabulate, plus
    * stores default value dflt.  Raises Size if sz < 0.
    *)
     fun tabulate (sz, fillFn, dflt) =
@@ -45,7 +45,7 @@ structure DynamicArray :> DYNAMIC_ARRAY =
           in
             if hi <= bnd
               then BLOCK(ref(A.tabulate(hi-lo,copy)), dflt, ref (hi-lo))
-            else if lo <= bnd 
+            else if lo <= bnd
               then BLOCK(ref(A.tabulate(bnd-lo,copy)),dflt,ref(bnd-lo))
             else
               array(0,dflt)
@@ -53,7 +53,7 @@ structure DynamicArray :> DYNAMIC_ARRAY =
 
     fun default (BLOCK(_,dflt,_)) = dflt
 
-    fun sub (BLOCK(arr,dflt,_),idx) = (A.sub(!arr,idx)) 
+    fun sub (BLOCK(arr,dflt,_),idx) = (A.sub(!arr,idx))
           handle Subscript => if idx < 0 then raise Subscript else dflt
 
     fun bound (BLOCK(_,_,bnd)) = (!bnd)
@@ -64,11 +64,11 @@ structure DynamicArray :> DYNAMIC_ARRAY =
             A.tabulate(newlen, fillfn)
           end
 
-    fun update (BLOCK(arr,dflt,bnd),idx,v) = let 
+    fun update (BLOCK(arr,dflt,bnd),idx,v) = let
           val len = A.length (!arr)
           in
-            if idx >= len 
-              then arr := expand(!arr,len, Int.max(len+len,idx+1),dflt) 
+            if idx >= len
+              then arr := expand(!arr,len, Int.max(len+len,idx+1),dflt)
               else ();
             A.update(!arr,idx,v);
             if idx > !bnd then bnd := idx else ()

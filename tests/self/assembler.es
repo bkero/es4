@@ -66,18 +66,18 @@ package assembler
     public const CONSTANT_NameLA             = 0x14; // @[name], var name
     public const CONSTANT_NamespaceSet       = 0x15;
     public const CONSTANT_PackageNamespace   = 0x16; // namespace for a package
-    public const CONSTANT_PackageInternalNS  = 0x17; 
-    public const CONSTANT_ProtectedNamespace = 0x18; 
+    public const CONSTANT_PackageInternalNS  = 0x17;
+    public const CONSTANT_ProtectedNamespace = 0x18;
     public const CONSTANT_ExplicitNamespace  = 0x19;
     public const CONSTANT_StaticProtectedNS  = 0x1A;
     public const CONSTANT_MultinameL         = 0x1B;
     public const CONSTANT_MultinameLA        = 0x1C;
-    
+
     public const CONSTANT_ClassSealed        = 0x01;
     public const CONSTANT_ClassFinal         = 0x02;
     public const CONSTANT_ClassInterface     = 0x04;
     public const CONSTANT_ClassProtectedNs   = 0x08;
-    
+
     public const TRAIT_Slot                  = 0;
     public const TRAIT_Method                = 1;
     public const TRAIT_Getter                = 2;
@@ -85,18 +85,18 @@ package assembler
     public const TRAIT_Class                 = 4;
     public const TRAIT_Function              = 5;
     public const TRAIT_Const                 = 6;
-    
+
     public const ATTR_Final                  = 0x01;
     public const ATTR_Override               = 0x02;
     public const ATTR_Metadata               = 0x04;
-    
+
     public const SLOT_var                    = 0;
     public const SLOT_method                 = 1;
     public const SLOT_getter                 = 2;
     public const SLOT_setter                 = 3;
     public const SLOT_class                  = 4;
     public const SLOT_function               = 6;
-    
+
     public const METHOD_Arguments            = 0x1;
     public const METHOD_Activation           = 0x2;
     public const METHOD_Needrest             = 0x4;
@@ -105,7 +105,7 @@ package assembler
     public const METHOD_Native               = 0x20;
     public const METHOD_Setsdxns             = 0x40;
     public const METHOD_HasParamNames        = 0x80;
-    
+
 
     /*********************************************************************************
      * AVM2 assembler for one code block.
@@ -128,7 +128,7 @@ package assembler
      *    depth.
      *  - Ditto for the scope depth, really.
      */
-    public class AVM2Assembler 
+    public class AVM2Assembler
     {
         const listify = true;
         const indent = "        ";
@@ -142,7 +142,7 @@ package assembler
         public function get maxLocal() { return nextTemp }
         public function get maxScope() { return max_scope_depth }
         public function get flags() { return (set_dxns ? METHOD_Setsdxns : 0) | (need_activation ? METHOD_Activation : 0) }
-        
+
         private function listL(n) {
             if (listify)
                 print(n);
@@ -188,7 +188,7 @@ package assembler
         public function I_pushnull() { pushOne("pushnull", 0x20) }
         public function I_pushtrue() { pushOne("pushtrue", 0x26) }
         public function I_pushundefined() { pushOne("pushundefined", 0x21) }
-        
+
         // Instructions that push one value, with an opcode byte followed by a u30 argument
         private function pushOneU30(name, opcode, v) {
             stack(1);
@@ -208,7 +208,7 @@ package assembler
         public function I_pushshort(v) { pushOneU30("pushshort", 0x25, v) }
         public function I_pushstring(index) { pushOneU30("pushstring", 0x2C, index) }
         public function I_pushuint(index) { pushOneU30("pushuint", 0x2E, index) }
-        
+
         // Instructions that pop one value, with a single opcode byte
         private function dropOne(name, opcode) {
             stack(-1);
@@ -231,7 +231,7 @@ package assembler
         public function I_in() { dropOne("in", 0xB4) }
         public function I_instanceof() { dropOne("instanceof", 0xB1) }
         public function I_istypelate() { dropOne("istypelate", 0xB3) }
-        public function I_lessequals() { dropOne("lessequals", 0xAE) } 
+        public function I_lessequals() { dropOne("lessequals", 0xAE) }
         public function I_lessthan() { dropOne("lessthan", 0xAD) }
         public function I_lshift() { dropOne("lshift", 0xA5) }
         public function I_modulo() { dropOne("modulo", 0xA4) }
@@ -253,7 +253,7 @@ package assembler
         public function I_subtract_i() { dropOne("subtract_i", 0xC6) }
         public function I_throw() { dropOne("throw", 0x03) }
         public function I_urshift() { dropOne("urshift", 0xA7) }
-        
+
         // Instructions that pop one value, with an opcode byte followed by an u30 argument
         private function dropOneU30(name, opcode, v) {
             stack(-1);
@@ -263,7 +263,7 @@ package assembler
         }
 
         public function I_setglobalslot(index) { dropOneU30("setglobalslot", 0x6F, index) }
-        
+
         // Instructions that do not change the stack height, with a single opcode byte
         private function dropNone(name, opcode)
         {
@@ -296,8 +296,8 @@ package assembler
         public function I_returnvoid() { dropNone("returnvoid", 0x47) }
         public function I_swap() { dropNone("swap", 0x2B) }
         public function I_typeof() { dropNone("typeof", 0x95) }
-        
-        // Instructions that do not change the stack height, with an opcode byte 
+
+        // Instructions that do not change the stack height, with an opcode byte
         // followed by a u30 argument
         private function dropNoneU30(name, opcode, x) {
             //stack(0)
@@ -319,8 +319,8 @@ package assembler
         public function I_istype(index) { dropNoneU30("istype", 0xB2, index) }
         public function I_kill(index) { dropNoneU30("kill", 0x08, index) }
         public function I_newclass(index) { dropNoneU30("newclass", 0x58, index) }
-        
-        public function I_getlocal(index) { 
+
+        public function I_getlocal(index) {
             switch (index) {
             case 0: I_getlocal_0(); break;
             case 1: I_getlocal_1(); break;
@@ -330,7 +330,7 @@ package assembler
             }
         }
 
-        public function I_setlocal(index) { 
+        public function I_setlocal(index) {
             switch (index) {
             case 0: I_setlocal_0(); break;
             case 1: I_setlocal_1(); break;
@@ -340,9 +340,9 @@ package assembler
             }
         }
 
-        // Local control flow instructions and I_label(): 
-        //  - If called without an argument return a "label" that can later be 
-        //    passed to I_label() to give the label an actual value.  
+        // Local control flow instructions and I_label():
+        //  - If called without an argument return a "label" that can later be
+        //    passed to I_label() to give the label an actual value.
         //  - If called with an argument, the argument must have been returned
         //    from a control flow instruction or from I_label().  It represents
         //    a transfer target.
@@ -387,7 +387,7 @@ package assembler
             return L;
         }
 
-        public function I_label(L = undefined) { 
+        public function I_label(L = undefined) {
             var here = code.length;
             var define = false;
             if (L === undefined) {
@@ -420,15 +420,15 @@ package assembler
         public function I_ifnlt(L=undefined) { return jmp(-2, "ifnlt", 0x0C, L) }
         public function I_ifstricteq(L=undefined) { return jmp(-2, "ifstricteq", 0x19, L) }
         public function I_ifstrictne(L=undefined) { return jmp(-2, "ifstrictne", 0x1A, L) }
-        
+
         public function I_iffalse(L=undefined) { return jmp(-1, "iffalse", 0x12, L) }
         public function I_iftrue(L=undefined) { return jmp(-1, "iftrue", 0x11, L) }
-        
+
         public function I_jump(L=undefined) { return jmp(0, "jump", 0x10, L) }
-        
+
         // Here, case_labels must be an array with a "length" property
         // that denotes the number of case labels in the array.
-        // length cannot be 0.  
+        // length cannot be 0.
         //
         // Either default_label is undefined and all the elements of
         // case_labels are also undefined, or default_label is a label
@@ -452,13 +452,13 @@ package assembler
                     case_labels[i] = newLabel();
                 }
             }
-                
+
             list3("lookupswitch", default_label.name, map(function (L) { return L.name }, case_labels));
             var base = code.length;
             code.uint8(0x1B);
             relativeOffset(base, default_label);
             code.uint30(case_labels.length-1);
-            for ( var i=0 ; i < case_labels.length ; i++ ) 
+            for ( var i=0 ; i < case_labels.length ; i++ )
                 relativeOffset(base, case_labels[i]);
 
             return default_label;
@@ -492,7 +492,7 @@ package assembler
 
         public function I_callmethod(index, nargs) { callIDX("callmethod", 0x43, index, nargs) }
         public function I_callstatic(index, nargs) { callIDX("callstatic", 0x44, index, nargs) }
-        
+
         private function callMN(name, opcode, index, nargs, isVoid=false) {
             /* pop receiver/NS?/Name?/args; push result? */
             var hasRTNS = constants.hasRTNS(index);
@@ -510,7 +510,7 @@ package assembler
         public function I_callproplex(index, nargs) { callMN("callproplex", 0x4C, index, nargs) }
         public function I_callsupervoid(index, nargs) { callMN("callsupervoid", 0x4E, index, nargs, true) }
         public function I_callpropvoid(index, nargs) { callMN("callpropvoid", 0x4F, index, nargs, true) }
-        
+
         public function I_debug(debug_type, index, reg, extra=0) {
             //stack(0);
             listn("debug", debug_type, index, reg, extra);
@@ -544,7 +544,7 @@ package assembler
         public function I_initproperty(index) { propU30("initproperty", 2, 0, 0x68, index) }
         public function I_setproperty(index) { propU30("setproperty", 2, 0, 0x61, index) }
         public function I_setsuper(index) { propU30("setsuper", 2, 0, 0x05, index) }
-        
+
         public function I_hasnext2(object_reg, index_reg) {
             stack(1);
             code.uint8(0x32);

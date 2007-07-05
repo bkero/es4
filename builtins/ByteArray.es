@@ -1,20 +1,20 @@
 /* -*- mode: java; indent-tabs-mode: nil -*-
- * 
- * E262-4 draft proposals:bytearray 
+ *
+ * E262-4 draft proposals:bytearray
  *
  * The following licensing terms and conditions apply and must be
  * accepted in order to use the Reference Implementation:
- * 
+ *
  *    1. This Reference Implementation is made available to all
  * interested persons on the same terms as Ecma makes available its
  * standards and technical reports, as set forth at
  * http://www.ecma-international.org/publications/.
- * 
+ *
  *    2. All liability and responsibility for any use of this Reference
  * Implementation rests with the user, and not with any of the parties
  * who contribute to, or who own or hold any copyright in, this Reference
  * Implementation.
- * 
+ *
  *    3. THIS REFERENCE IMPLEMENTATION IS PROVIDED BY THE COPYRIGHT
  * HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED
  * WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
@@ -27,9 +27,9 @@
  * WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE
  * OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
  * IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- * 
+ *
  * End of Terms and Conditions
- * 
+ *
  * Copyright (c) 2007 Adobe Systems Inc., The Mozilla Foundation, Opera
  * Software ASA, and others.
  *
@@ -53,7 +53,7 @@
  * permissive than we wish to be.
  */
 
-package 
+package
 {
     use default namespace public;
     use namespace intrinsic;
@@ -77,7 +77,7 @@ package
         static function fromString(s : string) : ByteArray! {
             let n  : uint = s.length;
             let ba : ByteArray! = new ByteArray(n);
-            
+
             for ( let i : uint = 0; i < n; i++ )
                 ba[i] = s.charCodeAt(i);
             return a;
@@ -97,7 +97,7 @@ package
 
         meta function get(k) {
             if (k is Numeric && intrinsic::isIntegral(k) && k >= 0 && k <= 0xFFFFFFFE) {
-                let (k : uint = k) 
+                let (k : uint = k)
                     {
                         if (k < length)
                             return magic::getByteArrayByte(this, k);
@@ -123,7 +123,7 @@ package
                 intrinsic::set(this, k, v);
         }
 
-        prototype function toString(this: ByteArray) 
+        prototype function toString(this: ByteArray)
             this.intrinsic::toString();
 
         override intrinsic function toString() : string {

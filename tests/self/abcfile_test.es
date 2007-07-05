@@ -13,7 +13,7 @@ package abcfile
         print("--------------------------------------------");
         print("Testing ABCConstantPool");
         print("");
-            
+
         var cp = new ABCConstantPool;
 
         // Sharing working OK?
@@ -70,8 +70,8 @@ package abcfile
         var f = new ABCFile;
         var cp = new ABCConstantPool;
         f.addConstants(cp);
-        var m = f.addMethod(new ABCMethodInfo(cp.stringUtf8("foo"), 
-                                               [cp.Multiname(cp.namespaceset([cp.namespace(CONSTANT_ProtectedNamespace, 
+        var m = f.addMethod(new ABCMethodInfo(cp.stringUtf8("foo"),
+                                               [cp.Multiname(cp.namespaceset([cp.namespace(CONSTANT_ProtectedNamespace,
                                                                                             cp.stringUtf8("bar"))]),
                                                              cp.stringUtf8("baz"))],
                                                0,
@@ -79,7 +79,7 @@ package abcfile
                                                [],
                                                [cp.stringUtf8("x")]));
 
-        f.addMetadata(new ABCMetadataInfo(cp.stringUtf8("meta"), 
+        f.addMetadata(new ABCMetadataInfo(cp.stringUtf8("meta"),
                                           [{key: cp.stringUtf8("fnord"), value: cp.stringUtf8("foo")}]));
         var cl = new ABCClassInfo();
         var cli = f.addClass(cl);
@@ -106,7 +106,7 @@ package abcfile
         mb.setInitScopeDepth(0);
         mb.setMaxScopeDepth(0);
         mb.setCode({ "serialize": function (bs) {}, "length": 0 });
-        
+
         f.getBytes();
     }
 }

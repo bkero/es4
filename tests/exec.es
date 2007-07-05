@@ -114,7 +114,7 @@ class bar {
 
 namespace magic;
 
-class foo extends bar {	
+class foo extends bar {
 	prototype var k = 22;
 	function foo(x) : p = x { magic::q = p; }
 	magic var q;

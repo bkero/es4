@@ -204,7 +204,7 @@ namespace Token
     const LogicalOr = LeftBrace - 1
     const LogicalOrAssign = LogicalOr - 1
     const BitwiseOr = LogicalOrAssign - 1
-    const BitwiseOrAssign = BitwiseOr - 1 
+    const BitwiseOrAssign = BitwiseOr - 1
     const BitwiseXor = LogicalOrAssign - 1
     const BitwiseXorAssign = BitwiseXor - 1
     const RightBrace = BitwiseXorAssign - 1
@@ -342,11 +342,11 @@ namespace Token
 
     const ERROR = XmlTagStartEnd - 1
     const EOS = ERROR - 1
-    const BREAK = EOS - 1 
+    const BREAK = EOS - 1
     const lastTokenClass = BREAK
 
     const names = [
-        "<unused index>", 
+        "<unused index>",
         "minus",
         "minusminus",
         "not",
@@ -504,8 +504,8 @@ namespace Token
         "EOS",
         "BREAK"
     ]
-    
-    class Token 
+
+    class Token
     {
         var kind;
         var utf8id;
@@ -613,7 +613,7 @@ namespace Token
         case "xml": return Xml;
         case "yield": return Yield;
         default: return makeInstance (Identifier,lexeme);
-        }            
+        }
     }
 
     function makeInstance(token_class:int, lexeme:String) : int
@@ -636,7 +636,7 @@ namespace Token
         var tok : Token = tokenStore[tid];
         return tok.kind;
     }
-    
+
     function tokenText ( tid : int ) : String
     {
         if (tid < 0) {
@@ -652,7 +652,7 @@ namespace Token
         return text;
     }
 
-    function test () 
+    function test ()
     {
         for( let i = firstTokenClass; i >= lastTokenClass; --i )
             print(i,": ",names[-i])
@@ -667,7 +667,7 @@ namespace Lexer
 {
     use default namespace Lexer;
 
-    class Scanner 
+    class Scanner
     {
         private var tokenList : Array;
         private var followsNewline : Boolean;
@@ -687,7 +687,7 @@ namespace Lexer
             print("scanning: ",src);
         }
 
-        public function next () 
+        public function next ()
             : String
         {
             if (curIndex == src.length)
@@ -700,21 +700,21 @@ namespace Lexer
                 return src.charCodeAt(curIndex++);
             }
         }
-	
-        public function lexeme() 
-            : String 
+
+        public function lexeme()
+            : String
         {
             return src.slice (markIndex,curIndex)
         }
 
-        public function retract() 
+        public function retract()
             : void
         {
             curIndex--;
             // print("retract cur=",curIndex);
         }
 
-        private function mark () 
+        private function mark ()
             : void
         {
             markIndex = curIndex;
@@ -729,7 +729,7 @@ namespace Lexer
             tokenList.push (token);
             while (token != Token::BREAK &&
                    token != Token::EOS &&
-                   token != Token::ERROR) 
+                   token != Token::ERROR)
             {
                 token = start ();
                 tokenList.push (token);
@@ -839,7 +839,7 @@ namespace Lexer
                     if (Unicode.isIdentifierStart (String.fromCharCode(c)))
                     {
                         return identifier (String.fromCharCode(c));
-                    } 
+                    }
                     else
                     {
                         return intrinsic::print("invalid prefix ", c);
@@ -1046,7 +1046,7 @@ namespace Lexer
 	{
 	    let c : int = next ();
 	    switch (c) {
-	    case Char::Newline: 
+	    case Char::Newline:
 	    case Char::EOS:
 		retract (); // leave newline for asi
 		return;
@@ -1065,16 +1065,16 @@ namespace Lexer
 		case Char::Slash:
 		    return;
 		case Char::EOS :
-		    retract (); 
+		    retract ();
 		    return;
-		default: 
+		default:
 		    retract (); // leave in case its an asterisk
 		    blockComment ();
 		}
 	    case Char::EOS :
-		retract (); 
+		retract ();
 		return;
-	    default : 
+	    default :
 		return blockComment ();
 	    }
 	}
@@ -1117,17 +1117,17 @@ namespace Lexer
 		return hexEscape (2);
 	    case Char::u:
 		return hexEscape (4);
-	    case Char::b: 
+	    case Char::b:
 		return Char::Backspace;
-	    case Char::f: 
+	    case Char::f:
 		return Char::Formfeed;
-	    case Char::n: 
+	    case Char::n:
 		return Char::Newline;
-	    case Char::r: 
+	    case Char::r:
 		return Char::CarriageReturn;
-	    case Char::t: 
+	    case Char::t:
 		return Char::Tab;
-	    case Char::v: 
+	    case Char::v:
 		return Char::VerticalTab;
 	    case Char::SingleQuote:
 	    case Char::DoubleQuote:
@@ -1322,9 +1322,9 @@ namespace Lexer
 	}
 
 	/*
-	
+
 	. .. ... .<
-	
+
 	*/
 
 	private function dot ()
@@ -1345,7 +1345,7 @@ namespace Lexer
 	    case Char::Eight:
 	    case Char::Nine:
 		return decimalFraction ();
-	    default : 
+	    default :
 		retract ();
 		return Token::Dot;
 	    }
@@ -1480,7 +1480,7 @@ namespace Lexer
 	}
 
 	/*
-	  
+
 	- -- -=
 
 	*/
@@ -1698,39 +1698,39 @@ namespace Lexer
 	*/
 
         private function identifier (str:string)
-            : int 
+            : int
         {
             let c : int = next ();
             //            print("c[",curIndex-1,"]=",String.fromCharCode(c))
-            switch (c) 
+            switch (c)
             {
-            case Char::a : 
+            case Char::a :
             case Char::b :
-            case Char::c : 
-            case Char::d : 
-            case Char::e : 
-            case Char::f : 
-            case Char::g : 
-            case Char::h : 
-            case Char::i : 
-            case Char::j : 
-            case Char::k : 
-            case Char::l : 
-            case Char::m : 
-            case Char::n : 
-            case Char::o : 
-            case Char::p : 
-            case Char::q : 
-            case Char::r : 
-            case Char::s : 
-            case Char::t : 
-            case Char::u : 
-            case Char::v : 
-            case Char::w : 
-            case Char::x : 
-            case Char::y : 
-            case Char::z : 
-            case Char::A : 
+            case Char::c :
+            case Char::d :
+            case Char::e :
+            case Char::f :
+            case Char::g :
+            case Char::h :
+            case Char::i :
+            case Char::j :
+            case Char::k :
+            case Char::l :
+            case Char::m :
+            case Char::n :
+            case Char::o :
+            case Char::p :
+            case Char::q :
+            case Char::r :
+            case Char::s :
+            case Char::t :
+            case Char::u :
+            case Char::v :
+            case Char::w :
+            case Char::x :
+            case Char::y :
+            case Char::z :
+            case Char::A :
             case Char::B :
             case Char::B :
             case Char::C :
@@ -1756,7 +1756,7 @@ namespace Lexer
             case Char::W :
             case Char::X :
             case Char::Y :
-            case Char::Z : 
+            case Char::Z :
 		return identifier (str+String.fromCharCode(c));
 	    case Char::BackSlash:
 		let c = escapeSequence ();
@@ -1768,16 +1768,16 @@ namespace Lexer
                 }
                 else
                 {
-                    retract ();                    
+                    retract ();
                     return Token::maybeReservedIdentifier (str);
                 }
             }
         }
 
-        private function b_ () : int 
+        private function b_ () : int
         {
             let c : int = next ();
-            switch (c) 
+            switch (c)
             {
                 case Char::r:
 		    return br_ ();
@@ -1787,13 +1787,13 @@ namespace Lexer
             }
         }
 
-        private function br_ () 
-            : int 
+        private function br_ ()
+            : int
         {
             let c : int = next ();
-            switch (c) 
+            switch (c)
             {
-                case Char::e : 
+                case Char::e :
 		    return identifier ("bre");
                 default:
                     retract ();
@@ -1801,11 +1801,11 @@ namespace Lexer
             }
         }
 
-        private function d_ () 
-            : int 
+        private function d_ ()
+            : int
         {
             let c : int = next ();
-            switch (c) 
+            switch (c)
             {
                 case Char::e : return identifier ("de");
                 default:
@@ -1814,11 +1814,11 @@ namespace Lexer
             }
         }
 
-        private function n_ () 
-            : int 
+        private function n_ ()
+            : int
         {
             let c : int = next();
-            switch (c) 
+            switch (c)
             {
                 case Char::a : return identifier ("na");
                 case Char::e : return identifier ("ne");
@@ -1853,8 +1853,8 @@ namespace Lexer
             }
         }
 
-        private function null_ () 
-            : int 
+        private function null_ ()
+            : int
         {
             let c : int = next ();
             if (Unicode.isIdentifierPart (String.fromCharCode(c)))
@@ -1869,7 +1869,7 @@ namespace Lexer
         }
     }
 
-    function test() 
+    function test()
     {
         let testCases = [ "break case catch continue default delete do else enum extends"
 			, "false finally for function if in instanceof new null return"

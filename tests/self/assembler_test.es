@@ -51,7 +51,7 @@ package assembler
         var cp = new ABCConstantPool();
         var asm = new AVM2Assembler(cp,0);
 
-        var print_name = cp.QName(cp.namespace(CONSTANT_PackageNamespace, cp.stringUtf8("")), 
+        var print_name = cp.QName(cp.namespace(CONSTANT_PackageNamespace, cp.stringUtf8("")),
                                   cp.stringUtf8("print"));
 
         asm.I_dup();
@@ -283,7 +283,7 @@ package assembler
           function Fib(n) {
              if (n < 2)
                  val = n;
-             else 
+             else
                  val = (new Fib(n-1)).val + (new Fib(n-2)).val
           }
           var val;
@@ -295,7 +295,7 @@ package assembler
         var cp = new ABCConstantPool();
 
         file.addConstants(cp);
-        
+
         var ns = cp.namespace(CONSTANT_PackageNamespace, cp.stringUtf8(""));
         var n_name = cp.QName(ns, cp.stringUtf8("n"));
         var print_name = cp.QName(ns, cp.stringUtf8("print"));
@@ -423,7 +423,7 @@ package assembler
         var cp = new ABCConstantPool();
 
         file.addConstants(cp);
-        
+
         var ns = cp.namespace(CONSTANT_PackageNamespace, cp.stringUtf8(""));
         var n_name = cp.QName(ns, cp.stringUtf8("n"));
         var m_name = cp.QName(ns, cp.stringUtf8("m"));
@@ -514,8 +514,8 @@ package assembler
         var cp = new ABCConstantPool();
 
         file.addConstants(cp);
-        
-        var print_name = cp.QName(cp.namespace(CONSTANT_PackageNamespace, cp.stringUtf8("")), 
+
+        var print_name = cp.QName(cp.namespace(CONSTANT_PackageNamespace, cp.stringUtf8("")),
                                   cp.stringUtf8("print"));
 
         var asm = new AVM2Assembler(cp,0);
@@ -563,8 +563,8 @@ package assembler
         var cp = new ABCConstantPool();
 
         file.addConstants(cp);
-        
-        var print_name = cp.QName(cp.namespace(CONSTANT_PackageNamespace, cp.stringUtf8("")), 
+
+        var print_name = cp.QName(cp.namespace(CONSTANT_PackageNamespace, cp.stringUtf8("")),
                                   cp.stringUtf8("print"));
 
         var asm = new AVM2Assembler(cp,0);
@@ -615,8 +615,8 @@ package assembler
         var cp = new ABCConstantPool();
 
         file.addConstants(cp);
-        
-        var print_name = cp.QName(cp.namespace(CONSTANT_PackageNamespace, cp.stringUtf8("")), 
+
+        var print_name = cp.QName(cp.namespace(CONSTANT_PackageNamespace, cp.stringUtf8("")),
                                   cp.stringUtf8("print"));
 
         // Local 1 has a counter
@@ -664,7 +664,7 @@ package assembler
         // AVM BUG? passing 0 for the empty string causes the program
         // to fail, though the doc at least implies it's legal.
 
-        var print_name = cp.QName(cp.namespace(CONSTANT_PackageNamespace, cp.stringUtf8("")), 
+        var print_name = cp.QName(cp.namespace(CONSTANT_PackageNamespace, cp.stringUtf8("")),
                                   cp.stringUtf8("print"));
 
         var asm = new AVM2Assembler(cp,0);

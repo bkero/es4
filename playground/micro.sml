@@ -1,7 +1,7 @@
 (* -*- mode: sml; mode: font-lock; tab-width: 60; insert-tabs-mode: nil; indent-tabs-mode: nil -*- *)
 (* vim: set ts=4 sw=4 et: *)
 
-(* 
+(*
 
 This is an implementation of a toy language to express and clarify a
 number of issues relating to the ES4 type system in a simpler context,
@@ -13,7 +13,7 @@ High-level lessons:
  - In strict mode, programs without '*'
    give no run-time casts, and safety bit never gets set.
 
- - In standard mode, programs without '*' which would compile in strict mode, 
+ - In standard mode, programs without '*' which would compile in strict mode,
    also give no run-time casts, and safety bit never gets set.
 
  - we can *clear* the safe bit, if a subtype check holds!
@@ -22,10 +22,10 @@ High-level lessons:
 
  - Type closures are quite tricky, since the evaluator works via environments
    whereas the verifier works via substitution (much easier),
-   and so subtyping etc needs to support both. 
+   and so subtyping etc needs to support both.
 
  - type X = ... etc all seem fine.
- 
+
  *)
 
 Control.Print.printDepth := 100;
@@ -52,16 +52,16 @@ fun checkUnbound (env:'a ENV) (x:string) : unit =
     case env of
         [] => ()
       | (y,_)::r =>
-        if (x=y) 
+        if (x=y)
         then raise AlreadyBound x
         else checkUnbound r x
 
 (********** Gensym, for alpha renaming **********)
 
 val gensymCounter : int ref = ref 0
-fun gensym (s:string) : string = 
+fun gensym (s:string) : string =
     let
-    in 
+    in
         gensymCounter := 1+(!gensymCounter);
         s ^ "$" ^  (Int.toString (!gensymCounter))
     end
@@ -82,7 +82,7 @@ fun typeToString (t:TYPE) : string =
     case t of
         AnyType => "*"
       | IntType => "int"
-      | FunType (t1,t2) => "function(" ^ (typeToString t1) ^ "):" ^ (typeToString t2) 
+      | FunType (t1,t2) => "function(" ^ (typeToString t1) ^ "):" ^ (typeToString t2)
       | RefType t1 => "ref" ^ (typeToString t1)
       | VarType y => y
       | GenericType (y,t1) => "(function.<" ^ y ^ "> " ^ (typeToString t1)^")"
@@ -96,7 +96,7 @@ fun substType (t:TYPE) (x:string) (s:TYPE) =
         AnyType => t
       | IntType => t
       | TypeType => t
-      | FunType (t1,t2) => 
+      | FunType (t1,t2) =>
         FunType (substType t1 x s, substType t2 x s)
       | RefType t1 => RefType (substType t1 x s)
       | VarType y =>
@@ -104,15 +104,15 @@ fun substType (t:TYPE) (x:string) (s:TYPE) =
         then s
         else t
       | GenericType (y,t1) =>
-        let val y' = gensym y 
-            val t1' = substType t1 y (VarType y') 
+        let val y' = gensym y
+            val t1' = substType t1 y (VarType y')
             val t1'' = substType t1' x s
         in
             GenericType (y',t1'')
         end
-      | AppType (t1,t2) => 
+      | AppType (t1,t2) =>
         AppType (substType t1 x s, substType t2 x s)
-        
+
 (********** Type normalization **********)
 
 exception BadType of TYPE
@@ -129,7 +129,7 @@ withtype
      and SUBST_TYPE = SUBST * TYPE;
 
 fun normalizeType ((n,t):SUBST_TYPE) : SUBST_TYPE =
-    let 
+    let
         val _ = print ("normalizing: "^(typeToString t)^"\n")
         val (m,r) =
                           case t of
@@ -152,7 +152,7 @@ fun normalizeType ((n,t):SUBST_TYPE) : SUBST_TYPE =
             (* cannot reduce *)
             (n,t)
         val _ = print ("normalized: "^(typeToString t)^" to "^(typeToString r)^"\n")
-    in 
+    in
         (m,r)
     end
 
@@ -169,12 +169,12 @@ fun subType (tyClosure1:SUBST_TYPE) (tyClosure2:SUBST_TYPE) : bool =
           | (TypeType,TypeType) => true
           | (FunType(s1,t1), FunType(s2,t2)) =>
             (subType (n2,s2) (n1,s1)) andalso (subType (n1,t1) (n2,t2))
-          | (RefType t1, RefType t2) => 
-            equalType (n1,t1) (n2,t2) 
+          | (RefType t1, RefType t2) =>
+            equalType (n1,t1) (n2,t2)
           | (VarType x, VarType y) =>
             (* neither is bound in its environment, due to normalization *)
             x=y
-          | (GenericType (x1,s1), GenericType (x2,s2)) => 
+          | (GenericType (x1,s1), GenericType (x2,s2)) =>
             subType (fn y => if x1=y then NONER else n1 y, s1)
                     (fn y => if x2=y then SOMER (fn y => NONER, VarType x1) else n2 y, s2)
           | _ => false
@@ -197,11 +197,11 @@ fun compatibleType (tyClosure1:SUBST_TYPE) (tyClosure2:SUBST_TYPE) : bool =
           | (FunType(s1,t1), FunType(s2,t2)) =>
             (compatibleType (n2,s2) (n1,s1)) andalso (compatibleType (n1,t1) (n2,t2))
           | (RefType t1, RefType t2) =>
-            bicompatibleType (n1,t1) (n2,t2) 
+            bicompatibleType (n1,t1) (n2,t2)
           | (VarType x, VarType y) =>
             (* neither is bound in its environment, due to normalization *)
             x=y
-          | (GenericType (x1,s1), GenericType (x2,s2)) => 
+          | (GenericType (x1,s1), GenericType (x2,s2)) =>
             compatibleType (fn y => if x1=y then NONER else n1 y, s1)
                     (fn y => if x2=y then SOMER (fn y => NONER, VarType x1) else n2 y, s2)
           | _ => false
@@ -237,7 +237,7 @@ fun exprToString (e:EXPR) : string =
         IntExpr n => (Int.toString n)
       | VarExpr x => x
       | LetExpr (x,t,e,body) => "let "^x^":"^(typeToString t)^"="^(exprToString e)^" in "^(exprToString body)^" end"
-      | FunExpr (x,t1,t2,e) => 
+      | FunExpr (x,t1,t2,e) =>
         "function("^x^":"^(typeToString t1)^"):"^(typeToString t2)^" { "^(exprToString e)^" }"
       | CastExpr (ty,e) =>
         "("^(exprToString e)^" cast "^(typeToString ty)^")"
@@ -247,7 +247,7 @@ fun exprToString (e:EXPR) : string =
       | GetExpr e => "!"^(exprToString e)
       | SetExpr (e1, e2) =>
         (exprToString e1)^":="^(exprToString e2)
-      | TypeExpr t =>  
+      | TypeExpr t =>
         "type("^(typeToString t)^")"
       | GenericExpr (x,e) => "function.<"^x^">{"^(exprToString e) ^"}"
       | AppTypeExpr (e,t) => (exprToString e)^".<"^(typeToString t)^">"
@@ -278,8 +278,8 @@ fun bindEnvToSubst (n:BIND ENV) : SUBST =
         fn x =>
            case n of
                [] => raise UnboundVariable x
-         | (y,v)::r => 
-           if (x=y) 
+         | (y,v)::r =>
+           if (x=y)
            then case v of
                     KnownTypeVar t => SOMER (bindEnvToSubst r, t)
                   | _ => NONER
@@ -309,13 +309,13 @@ fun applySubstToType (n:SUBST) (t:TYPE) : TYPE =
 val emptySubst : SUBST =
     fn x => NONER
 
-(* Verified types are always (and deeply) normalized wrt beta reduction and 
+(* Verified types are always (and deeply) normalized wrt beta reduction and
  * type variable bindings.
  * Types are verified and normalized during verification type.
  *)
 
 fun verifyType (n:BIND ENV) (t:TYPE) : TYPE =
-    let 
+    let
     in
         case t of
             AnyType => t
@@ -363,7 +363,7 @@ fun check (mode:MODE) (n:BIND ENV) (e:EXPR) (s:TYPE) (t:TYPE) : EXPR =
     else typeError ("Expression "^(exprToString e)^" of type "^(typeToString s)^" is not compatible with type "^(typeToString t))
 
 (* Type checks expression "e" in type environment "n" and mode "mode",
- * and returns a pair of 
+ * and returns a pair of
  * an expression (which is "e" with extra casts where necessary)
  * and the inferred type of "e".
  *
@@ -372,17 +372,17 @@ fun check (mode:MODE) (n:BIND ENV) (e:EXPR) (s:TYPE) (t:TYPE) : EXPR =
  * is ensured via dynamic casts if necessary, both in Strict and Standard mode.
  *
  * The env "n" needs to be applied to the resulting type.
- *  
+ *
  * No duplicate variables allowed in BIND ENV, ever!
  *)
 
 fun verifyExpr (mode:MODE) (n:BIND ENV) (e:EXPR) : (EXPR * TYPE) =
-    let fun expected ((e,t):(EXPR * TYPE)) : (EXPR * TYPE) = (ExpectedTypeExpr (t,e), t) 
-        val _ = print ("verifying  "^(exprToString e)^"\n") 
+    let fun expected ((e,t):(EXPR * TYPE)) : (EXPR * TYPE) = (ExpectedTypeExpr (t,e), t)
+        val _ = print ("verifying  "^(exprToString e)^"\n")
     in
     case e of
         IntExpr n => (e,IntType)
-      | VarExpr x => 
+      | VarExpr x =>
         let val ty =
                 case lookup n x of
                     (* Don't allow type variables in expressions *)
@@ -390,15 +390,15 @@ fun verifyExpr (mode:MODE) (n:BIND ENV) (e:EXPR) : (EXPR * TYPE) =
                   | _ => typeError ("Unbound variable "^x)
         in (e,ty)
         end
-      | LetTypeExpr (x,t,body) => 
-        let val t = verifyType n t 
+      | LetTypeExpr (x,t,body) =>
+        let val t = verifyType n t
             val _ = checkUnbound n x
             val n' = extend n x (KnownTypeVar t)
             val (body',bodyTy) = verifyExpr mode n' body
         in
             (LetTypeExpr (x, t, body'), substType bodyTy x t)
         end
-      | LetExpr (x,t,e,body) => 
+      | LetExpr (x,t,e,body) =>
         let val t = verifyType n t
             val e' = verifyAndCheck mode n e t
             val n' = extend n x (ProgVar t)
@@ -406,7 +406,7 @@ fun verifyExpr (mode:MODE) (n:BIND ENV) (e:EXPR) : (EXPR * TYPE) =
         in
             (LetExpr (x, t, e', body'), bodyTy)
         end
-      | FunExpr (x,t1,t2,e) => 
+      | FunExpr (x,t1,t2,e) =>
         let val t1 = verifyType n t1
             val t2 = verifyType n t2
             val e' = verifyAndCheck mode (extend n x (ProgVar t1)) e t2
@@ -415,7 +415,7 @@ fun verifyExpr (mode:MODE) (n:BIND ENV) (e:EXPR) : (EXPR * TYPE) =
         end
       | CastExpr (ty,e) =>
         let val ty = verifyType n ty
-            val (e',ty') = verifyExpr mode n e 
+            val (e',ty') = verifyExpr mode n e
         in
             (CastExpr(ty,e'), ty)
         end
@@ -438,7 +438,7 @@ fun verifyExpr (mode:MODE) (n:BIND ENV) (e:EXPR) : (EXPR * TYPE) =
             (RefExpr (t, verifyAndCheck mode n e t), RefType t)
         end
       | GetExpr e =>
-        let val (e',t) = verifyExpr mode n e 
+        let val (e',t) = verifyExpr mode n e
         in
             case t of
                 RefType s =>
@@ -453,11 +453,11 @@ fun verifyExpr (mode:MODE) (n:BIND ENV) (e:EXPR) : (EXPR * TYPE) =
         in
             case t1 of
                 RefType s =>
-                (SetExpr (e1', 
+                (SetExpr (e1',
                           verifyAndCheck mode n e2 s),
                  s)
               | AnyType =>
-                (SetExpr (CastExpr(RefType AnyType, e1'), 
+                (SetExpr (CastExpr(RefType AnyType, e1'),
                           verifyAndCheck mode n e2 AnyType),
                  AnyType)
               | _ => typeError ("Bad ref expr "^(typeToString t1))
@@ -494,11 +494,11 @@ and verifyAndCheck (mode:MODE) (n:BIND ENV) (e:EXPR) (t:TYPE) =
 
 (*********** Run-time values ***********)
 
-(* Every closure has a "safe" bit. 
+(* Every closure has a "safe" bit.
  * This Safe bit, together with the Strict/Standard mode, constrain the relationship between
  * the dynamic type of the closure  and the static type of the reference to the closure,
  * as follows:
- * 
+ *
  * SAFEBIT     MODE                    typing relation
  * Safe        Strict or Standard      subtyping
  * Unsafe      Strict                  compatibility
@@ -512,7 +512,7 @@ datatype SAFEBIT =
 datatype VAL =
          IntVal of int
        | FunVal of string * TYPE * TYPE * EXPR * VAL ENV * SAFEBIT
-       | GenericVal of string * EXPR * VAL ENV 
+       | GenericVal of string * EXPR * VAL ENV
        | RefVal of VAL ENV * TYPE * VAL ref * SAFEBIT (* close over env for type *)
        | TypeVal of TYPE_CLOSURE (* for an expression variable bound to a type *)
        | TypeVar of TYPE_CLOSURE (* for a type variable bound to a type *)
@@ -529,7 +529,7 @@ exception ConversionError of (VAL * TYPE_CLOSURE)
 fun typeOfVal (v:VAL) : TYPE_CLOSURE =
     case v of
         IntVal _ => (emptyEnv,IntType)
-      | FunVal (_,t1,t2,_,n,_) => (n, FunType (t1,t2))      
+      | FunVal (_,t1,t2,_,n,_) => (n, FunType (t1,t2))
       | RefVal (n,t,_,_) => (n,RefType t)
       | TypeVal _ => ([], TypeType)
       | _ => raise InternalError "Unexpected VAL in typeOfVal"
@@ -542,7 +542,7 @@ fun markSafeBit (v:VAL) (s:SAFEBIT): VAL =
       | TypeVal _ => v
       | _ => raise InternalError "Unexpected VAL in markSafeBit"
 
-(* Converts a value "v" to type "t", 
+(* Converts a value "v" to type "t",
  * raising an error if the type of "v" is not compatibleTypeClosure with "t",
  * and setting the unsafe bit if the type of "v" is not a subTypeClosure of "t".
  *)
@@ -561,7 +561,7 @@ fun convert (v:VAL) ((n,t):TYPE_CLOSURE) : VAL =
         then markSafeBit v Safe  (* want to mark safe *)
         else if compatibleType  (valEnvToSubst m,s) (valEnvToSubst n,t)
         then markSafeBit v Unsafe
-        else 
+        else
             let val _ = print ("ConversionError from "^(typeToString s)^" to "^(typeToString t)^"\n")
             in
                 raise ConversionError (v,(n,t))
@@ -578,13 +578,13 @@ fun eval (n:VAL ENV) (e:EXPR) : VAL =
       | TypeExpr t => TypeVal (n,t)
       | FunExpr (x,t1,t2,e) => FunVal (x,t1,t2,e,n,Safe)
       | GenericExpr (x,e) => GenericVal (x,e,n)
-      | CastExpr (ty,e) => convert (eval n e) (n,ty)        
+      | CastExpr (ty,e) => convert (eval n e) (n,ty)
       | ExpectedTypeExpr (retTy, AppExpr (e1,e2)) =>
         let in
             case (eval n e1) of
                 FunVal (x,argTy,_,body,n2,safebit) =>
                 let val argVal  = (eval n e2)
-                    val argVal' = case safebit of Safe => argVal 
+                    val argVal' = case safebit of Safe => argVal
                                                 | Unsafe => convert argVal (n2,argTy)
                     val resVal  = eval (extend n2 x argVal') body
                     (* tail call issues here *)
@@ -604,11 +604,11 @@ fun eval (n:VAL ENV) (e:EXPR) : VAL =
               | Unsafe => convert (!r) (n,t)
         end
       | SetExpr (e1,e2) =>
-        let val RefVal (n2,t,r,safebit) = eval n e1 
-            val v = eval n e2 
+        let val RefVal (n2,t,r,safebit) = eval n e1
+            val v = eval n e2
         in
-            case safebit of 
-                Safe => r := v 
+            case safebit of
+                Safe => r := v
               | Unsafe => r := convert v (n2,t);
             v
         end
@@ -621,11 +621,11 @@ fun eval (n:VAL ENV) (e:EXPR) : VAL =
 
 fun go (mode:MODE) (e:EXPR) : (EXPR*VAL) =
     let val _ = print ("Verifying  : "^(exprToString e)^"\n")
-        val (e',ty) = verifyExpr mode [] e 
+        val (e',ty) = verifyExpr mode [] e
         val _ = print ("compiles to: "^(exprToString e')^"\n")
         val _ = print ("with type  : "^(typeToString ty)^"\n")
         val v = eval [] e'
-    in 
+    in
         (e',v)
     end
 
@@ -645,8 +645,8 @@ val idbad2 : EXPR = FunExpr("x",IntType,AnyType,VarExpr "x");
 
 (go2
      (LetExpr ("f" ,AnyType, idint,
-               (AppExpr (VarExpr "f", 
-                         IntExpr 4 
+               (AppExpr (VarExpr "f",
+                         IntExpr 4
 )))));
 
 (go2
@@ -655,10 +655,10 @@ val idbad2 : EXPR = FunExpr("x",IntType,AnyType,VarExpr "x");
                            AnyType,
                            FunExpr ("x", VarType "X", IntType,
                                     VarExpr "x"),
-                           AppExpr (VarExpr "f", 
+                           AppExpr (VarExpr "f",
                                     IntExpr 4)))));
 
-               
+
 
 (go2
      (LetExpr ("polyId" ,
@@ -682,7 +682,7 @@ val idbad2 : EXPR = FunExpr("x",IntType,AnyType,VarExpr "x");
                         VarType "POLYID",
                         GenericExpr ("Y",
                                      FunExpr ("y", VarType "Y", VarType "Y", VarExpr "y")),
-                        LetTypeExpr ("INT", 
+                        LetTypeExpr ("INT",
                                      IntType,
                                      LetExpr ("f",
                                               AppType (VarType "POLYID", VarType "INT"),
@@ -691,5 +691,5 @@ val idbad2 : EXPR = FunExpr("x",IntType,AnyType,VarExpr "x");
                                                        IntExpr 4)))))));
 
 
-               
+
 (print "Done\n\n\n");

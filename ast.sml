@@ -2,17 +2,17 @@
 (*
  * The following licensing terms and conditions apply and must be
  * accepted in order to use the Reference Implementation:
- * 
+ *
  *    1. This Reference Implementation is made available to all
  * interested persons on the same terms as Ecma makes available its
  * standards and technical reports, as set forth at
  * http://www.ecma-international.org/publications/.
- * 
+ *
  *    2. All liability and responsibility for any use of this Reference
  * Implementation rests with the user, and not with any of the parties
  * who contribute to, or who own or hold any copyright in, this Reference
  * Implementation.
- * 
+ *
  *    3. THIS REFERENCE IMPLEMENTATION IS PROVIDED BY THE COPYRIGHT
  * HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED
  * WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
@@ -25,9 +25,9 @@
  * WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE
  * OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
  * IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- * 
+ *
  * End of Terms and Conditions
- * 
+ *
  * Copyright (c) 2007 Adobe Systems Inc., The Mozilla Foundation, Opera
  * Software ASA, and others.
  *)
@@ -63,11 +63,11 @@ datatype NUMBER_TYPE =
        | UInt
        | Number
 
-type NUMERIC_MODE = 
+type NUMERIC_MODE =
            { numberType: NUMBER_TYPE,
              roundingMode: Decimal.ROUNDING_MODE,
              precision: int }
-     
+
 datatype BINTYPEOP =
          Cast
        | Is
@@ -149,7 +149,7 @@ datatype PRAGMA =
        | UsePrecision of int
        | UseStrict
        | UseStandard
-       | Import of 
+       | Import of
            { package: IDENT list,
              name: IDENT,
              alias: IDENT option }
@@ -191,7 +191,7 @@ datatype PRAGMA =
              func: FUNC }
 
      and FUNC =
-         Func of { 
+         Func of {
              name: FUNC_NAME,
              fsig: FUNC_SIG,
              native: bool,
@@ -207,11 +207,11 @@ datatype PRAGMA =
        | FunctionDefn of FUNC_DEFN
        | ConstructorDefn of CTOR_DEFN
        | InterfaceDefn of INTERFACE_DEFN
-       | NamespaceDefn of NAMESPACE_DEFN 
+       | NamespaceDefn of NAMESPACE_DEFN
        | TypeDefn of TYPE_DEFN
 
      and FUNC_SIG =
-         FunctionSignature of { 
+         FunctionSignature of {
              typeParams: IDENT list,
              params: BINDINGS,
              paramTypes: TYPE_EXPR list,
@@ -222,11 +222,11 @@ datatype PRAGMA =
              hasRest: bool }
 
      and BINDING =
-         Binding of 
+         Binding of
            { ident: BINDING_IDENT,    (* FIXME: use tuple *)
              ty: TYPE_EXPR }
 
-     and BINDING_IDENT = 
+     and BINDING_IDENT =
          TempIdent of int
        | ParamIdent of int
        | PropIdent of IDENT
@@ -235,9 +235,9 @@ datatype PRAGMA =
          InitStep of (BINDING_IDENT * EXPR)
        | AssignStep of (EXPR * EXPR)
 
-     (* 
+     (*
       * Note: no type parameters allowed on general typedefs,
-      * only the implicit paramters in Function, Class and 
+      * only the implicit paramters in Function, Class and
       * Interface types.
       *)
 
@@ -248,7 +248,7 @@ datatype PRAGMA =
        | TypeName of IDENT_EXPR
        | ElementTypeRef of (TYPE_EXPR * int)
        | FieldTypeRef of (TYPE_EXPR * IDENT)
-       | FunctionType of FUNC_TYPE           
+       | FunctionType of FUNC_TYPE
        | ObjectType of FIELD_TYPE list
        | AppType of {
              base: TYPE_EXPR,
@@ -256,7 +256,7 @@ datatype PRAGMA =
        | NullableType of {
              expr:TYPE_EXPR,
              nullable:bool }
-       | InstanceType of INSTANCE_TYPE 
+       | InstanceType of INSTANCE_TYPE
 
      and STMT =
          EmptyStmt
@@ -268,7 +268,7 @@ datatype PRAGMA =
              static: bool,
              temps: BINDINGS,
              inits: INIT_STEP list }
-       | ClassBlock of 
+       | ClassBlock of
            { ns: EXPR option,
              ident: IDENT,
              name: NAME option,
@@ -303,7 +303,7 @@ datatype PRAGMA =
              labels: IDENT list,
              cases: CASE list }
        | SwitchTypeStmt of {
-             cond: EXPR, 
+             cond: EXPR,
              ty: TYPE_EXPR,
              cases: CATCH_CLAUSE list }
        | DXNStmt of {
@@ -327,18 +327,18 @@ datatype PRAGMA =
              expr: EXPR,  (* apply expr to type list *)
              actuals: TYPE_EXPR list }
        | LetExpr of {
-             defs: BINDINGS,                      
+             defs: BINDINGS,
              body: EXPR,
              head: HEAD option }
        | NewExpr of {
              obj: EXPR,
              actuals: EXPR list }
-       | ObjectRef of { 
-             base: EXPR, 
-             ident: IDENT_EXPR, 
+       | ObjectRef of {
+             base: EXPR,
+             ident: IDENT_EXPR,
              loc: LOC option }
-       | LexicalRef of { 
-             ident: IDENT_EXPR, 
+       | LexicalRef of {
+             ident: IDENT_EXPR,
              loc: LOC option }
        | SetExpr of (ASSIGNOP * EXPR * EXPR)
        | ListExpr of EXPR list
@@ -355,22 +355,22 @@ datatype PRAGMA =
                       | PropName of NAME
 
      and IDENT_EXPR =
-         Identifier of 
+         Identifier of
            { ident : IDENT,
              openNamespaces : NAMESPACE list list }
        | QualifiedExpression of  (* type * *)
            { qual : EXPR,
              expr : EXPR }
-       | AttributeIdentifier of IDENT_EXPR       
+       | AttributeIdentifier of IDENT_EXPR
        (* for bracket exprs: o[x] and @[x] *)
-       | ExpressionIdentifier of 
+       | ExpressionIdentifier of
          { expr: EXPR,
            openNamespaces : NAMESPACE list list }
-       | QualifiedIdentifier of 
+       | QualifiedIdentifier of
            { qual : EXPR,
              ident : Ustring.STRING }
        | TypeIdentifier of (* in a type context, these this will be a AppType *)
-           { ident : IDENT_EXPR, 
+           { ident : IDENT_EXPR,
              typeArgs : TYPE_EXPR list }
        | UnresolvedPath of (IDENT list * IDENT_EXPR) (* QualifiedIdentifier or ObjectRef *)
        | WildcardIdentifier
@@ -388,7 +388,7 @@ datatype PRAGMA =
        | LiteralBoolean of bool
        | LiteralString of Ustring.STRING
        | LiteralArray of
-           { exprs:EXPR list, 
+           { exprs:EXPR list,
              ty:TYPE_EXPR option }
        | LiteralXML of EXPR list
        | LiteralNamespace of NAMESPACE
@@ -402,50 +402,50 @@ datatype PRAGMA =
      and BLOCK = Block of DIRECTIVES
 
 
-     (* FIXTURES are built by the definition phase, not the parser; but they 
+     (* FIXTURES are built by the definition phase, not the parser; but they
       * are patched back into the AST in class-definition and block
       * nodes, so we must define them here. *)
 
 (* ClassFixture only at package level,
  * VirtualValFixture only in classes,
  *)
-     and FIXTURE = 
+     and FIXTURE =
          NamespaceFixture of NAMESPACE
        | ClassFixture of CLS
        | InterfaceFixture of IFACE
        | TypeVarFixture
        | TypeFixture of TYPE_EXPR
-       | MethodFixture of 
+       | MethodFixture of
            { func: FUNC,
              ty: TYPE_EXPR,
              readOnly: bool,  (* ES3 funcs are r/w methods with ty=Ast.Special Ast.Any *)
              override: bool,
              final: bool,
              abstract: bool }
-       | ValFixture of 
+       | ValFixture of
            { ty: TYPE_EXPR,
              readOnly: bool }
        | VirtualValFixture of
-         { ty: TYPE_EXPR, 
+         { ty: TYPE_EXPR,
            getter: FUNC_DEFN option,
            setter: FUNC_DEFN option } (* VIRTUAL_VAL_FIXTURE *)
 
      and HEAD =
          Head of FIXTURES * INITS
 
-withtype 
+withtype
 
          BINDINGS = (BINDING list * INIT_STEP list)
      and FIXTURES = (FIXTURE_NAME * FIXTURE) list
      and INITS = (FIXTURE_NAME * EXPR) list
 
-     and INSTANCE_TYPE = 
+     and INSTANCE_TYPE =
           {  name: NAME,
-             nonnullable: bool, 
+             nonnullable: bool,
              typeParams: IDENT list,
              superTypes: NAME list,
              ty: TYPE_EXPR,
-             conversionTy: TYPE_EXPR option,             
+             conversionTy: TYPE_EXPR option,
              dynamic: bool }
 
      and FIELD =
@@ -456,8 +456,8 @@ withtype
      and FIELD_TYPE =
            { name: IDENT,
              ty: TYPE_EXPR }
-         
-     and FUNC_TYPE = 
+
+     and FUNC_TYPE =
          { typeParams: IDENT list,
            params: TYPE_EXPR list,
            result: TYPE_EXPR,
@@ -465,7 +465,7 @@ withtype
            hasRest: bool,
            minArgs: int }
 
-     and FUNC_DEFN = 
+     and FUNC_DEFN =
            { kind : VAR_DEFN_TAG,
              ns:  EXPR option,
              final: bool,
@@ -485,13 +485,13 @@ withtype
              bindings : (BINDING list * INIT_STEP list) (* BINDINGS *)
            }
 
-     and NAMESPACE_DEFN = 
+     and NAMESPACE_DEFN =
            { ident: IDENT,
              ns: EXPR option,
              init: EXPR option }
 
      and CLASS_DEFN =
-           { ident: IDENT, 
+           { ident: IDENT,
              ns: EXPR option,
              nonnullable: bool,
              dynamic: bool,
@@ -511,7 +511,7 @@ withtype
              params: IDENT list,
              extends: IDENT_EXPR list,    (* STATIC_IDENT_EXPR list *)
              instanceDefns: DEFN list }
-         
+
      and TYPE_DEFN =
            { ident: IDENT,
              ns: EXPR option,
@@ -553,7 +553,7 @@ withtype
              body: STMT,
              labels: IDENT list }
 
-     and DIRECTIVES = 
+     and DIRECTIVES =
            { pragmas: PRAGMA list,
              defns: DEFN list,
              head: HEAD option,
@@ -565,19 +565,19 @@ withtype
              inits: ((FIXTURE_NAME * EXPR) list) option, (* INITS option *)
              body: BLOCK }   (* FIXME: should be STMT list *)
 
-     and CATCH_CLAUSE = 
+     and CATCH_CLAUSE =
          { bindings:(BINDING list * INIT_STEP list), (* BINDINGS *)
-           ty: TYPE_EXPR, 
+           ty: TYPE_EXPR,
            fixtures: ((FIXTURE_NAME * FIXTURE) list) option, (* FIXTURES option *)
            inits: ((FIXTURE_NAME * EXPR) list) option, (* INITS option *)
            block:BLOCK }
 
      and FUNC_NAME =
-           { kind : FUNC_NAME_KIND, 
+           { kind : FUNC_NAME_KIND,
              ident : IDENT }
 
 type VIRTUAL_VAL_FIXTURE =
-           { ty: TYPE_EXPR, 
+           { ty: TYPE_EXPR,
              getter: FUNC_DEFN option,
              setter: FUNC_DEFN option }
 

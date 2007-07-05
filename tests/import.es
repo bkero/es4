@@ -1,4 +1,4 @@
-package p 
+package p
 {
 	use namespace intrinsic
     public var x = 10

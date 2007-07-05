@@ -142,7 +142,7 @@ structure Format : FORMAT =
 		fun hexidecimal i = let
 		      val (sign, i) = doSign i
 		      val sign = if (#base flags) then sign^"0x" else sign
-		      val s = intToHex i 
+		      val s = intToHex i
 		      in
 		        if (#zero_pad flags)
 			  then sign ^ zeroPadFn(sign, s)
@@ -151,7 +151,7 @@ structure Format : FORMAT =
 	        fun capHexidecimal i = let
 		      val (sign, i) = doSign i
 		      val sign = if (#base flags) then sign^"0X" else sign
-		      val s = intToHeX i 
+		      val s = intToHeX i
 		      in
 		        if (#zero_pad flags)
 			  then sign ^ zeroPadFn(sign, s)
@@ -183,7 +183,7 @@ structure Format : FORMAT =
 		fun hexidecimalW i = let
 		      val sign = doWordSign ()
 		      val sign = if (#base flags) then sign^"0x" else sign
-		      val s = wordToHex i 
+		      val s = wordToHex i
 		      in
 		        if (#zero_pad flags)
 			  then sign ^ zeroPadFn(sign, s)
@@ -192,7 +192,7 @@ structure Format : FORMAT =
 	        fun capHexidecimalW i = let
 		      val sign = doWordSign ()
 		      val sign = if (#base flags) then sign^"0X" else sign
-		      val s = wordToHeX i 
+		      val s = wordToHeX i
 		      in
 		        if (#zero_pad flags)
 			  then sign ^ zeroPadFn(sign, s)

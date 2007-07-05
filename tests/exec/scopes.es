@@ -1,26 +1,26 @@
 
 var c;
 
-function foo() 
+function foo()
 {
 	intrinsic::assert(false);
 }
 
-class C 
+class C
 {
     var x
     function C(x) : x=x {
         intrinsic::assert(this.x == x)
     }
 
-	function foo() 
+	function foo()
 	{
 		intrinsic::assert(this === c);
 		intrinsic::assert(this !== global);
 	}
 
 	function bar()
-	{	
+	{
 		intrinsic::assert(this === c);
 		intrinsic::assert(this !== global);
 		foo();

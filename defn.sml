@@ -2,17 +2,17 @@
 (*
  * The following licensing terms and conditions apply and must be
  * accepted in order to use the Reference Implementation:
- * 
+ *
  *    1. This Reference Implementation is made available to all
  * interested persons on the same terms as Ecma makes available its
  * standards and technical reports, as set forth at
  * http://www.ecma-international.org/publications/.
- * 
+ *
  *    2. All liability and responsibility for any use of this Reference
  * Implementation rests with the user, and not with any of the parties
  * who contribute to, or who own or hold any copyright in, this Reference
  * Implementation.
- * 
+ *
  *    3. THIS REFERENCE IMPLEMENTATION IS PROVIDED BY THE COPYRIGHT
  * HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED
  * WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
@@ -25,9 +25,9 @@
  * WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE
  * OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
  * IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- * 
+ *
  * End of Terms and Conditions
- * 
+ *
  * Copyright (c) 2007 Adobe Systems Inc., The Mozilla Foundation, Opera
  * Software ASA, and others.
  *)
@@ -42,7 +42,7 @@ fun error ss = LogErr.defnError ss
 fun trace ss = if (!doTrace) then log ss else ()
 fun trace2 (s, us) = if (!doTrace) then log [s, (Ustring.toAscii us)] else ()
 
-(* 
+(*
  * The goal of the definition phase is to put together the fixtures
  * of the program, as well as insert class, function and interface
  * objects into the global object.
@@ -65,7 +65,7 @@ fun trace2 (s, us) = if (!doTrace) then log [s, (Ustring.toAscii us)] else ()
  *)
 
 
-                   
+
 datatype LABEL_KIND =
           IterationLabel
         | SwitchLabel
@@ -73,10 +73,10 @@ datatype LABEL_KIND =
 
 type LABEL = (Ast.IDENT * LABEL_KIND)
 
-type CONTEXT = 
+type CONTEXT =
      { fixtures: Ast.FIXTURES,
        tempOffset: int,
-       openNamespaces: Ast.NAMESPACE list list, 
+       openNamespaces: Ast.NAMESPACE list list,
        numericMode: Ast.NUMERIC_MODE,
        labels: LABEL list,
        packageNames: Ast.IDENT list list,
@@ -102,22 +102,22 @@ val (initFixtures:Ast.FIXTURES) = [ (Ast.PropName Name.meta_, Ast.NamespaceFixtu
 val (topFixtures:Fixture.TOP_FIXTURES ref) = ref (Fixture.mkTopFixtures [])
 val (topPackageNames:Ast.IDENT list list ref) = ref []
 
-fun resetTopFixtures _ = 
+fun resetTopFixtures _ =
     topFixtures := Fixture.mkTopFixtures initFixtures
 
-fun resetTopPackageNames _ = 
+fun resetTopPackageNames _ =
     topPackageNames := []
 
-fun hasNamespace (nl:Ast.NAMESPACE list) 
-                 (n:Ast.NAMESPACE) 
-    : bool = 
+fun hasNamespace (nl:Ast.NAMESPACE list)
+                 (n:Ast.NAMESPACE)
+    : bool =
     List.exists (fn x => n = x) nl
 
 (*
     FIXME: Move this to Mach or Eval. Something like this is used to eval Ast.FieldTypeRef
            and ElementTypeRef
 
-    Get the type of a field in a field pattern - lookup in a list of field types a field type 
+    Get the type of a field in a field pattern - lookup in a list of field types a field type
     with associated a name. if the list is empty then return type '*'. if the list is not
     empty and the sought name is not found, then report a syntax error.
 *)
@@ -131,7 +131,7 @@ fun getFieldType (name : Ast.IDENT) (field_types: Ast.FIELD_TYPE list)
                 let
                     val {name=field_type_name,ty} = field_type
                 in
-                    if field_type_name = name 
+                    if field_type_name = name
                         then ty
                         else getFieldType name field_type_list
                 end
@@ -148,14 +148,14 @@ fun isInstanceInit (s:Ast.STMT)
            Ast.InitStmt {kind,static,prototype,...} =>
            not ((kind=Ast.LetVar) orelse (kind=Ast.LetConst) orelse
                 prototype orelse static)
-         | _ => false                    
+         | _ => false
     end
 
 (*
     resolve a multiname to a name and then get the corresponding fixture
 
     for each nested context in the environment, look for a fixture that matches
-    a multiname. see if a particular scope has a fixture with one of a list of 
+    a multiname. see if a particular scope has a fixture with one of a list of
     multinames
 
     multiname = { nss : NAMESPACE list list, id: IDENT }
@@ -170,7 +170,7 @@ fun getEnvParent [] = NONE
 fun getEnvFixtures [] = error ["getEnvFixtures on empty environment"]
   | getEnvFixtures (({fixtures, ...}:CONTEXT) :: _) = fixtures
 
-fun resolve env mname = 
+fun resolve env mname =
     Multiname.resolveInFixtures mname env getEnvFixtures getEnvParent
 
 fun resolveMultinameToFixture (env:ENV)
@@ -180,8 +180,8 @@ fun resolveMultinameToFixture (env:ENV)
         NONE => LogErr.defnError ["unresolved fixture ", LogErr.multiname mname]
       | SOME (fixtures, n) => (n, Fixture.getFixture fixtures (Ast.PropName n))
 
-fun multinameHasFixture (env:ENV) 
-                        (mname:Ast.MULTINAME) 
+fun multinameHasFixture (env:ENV)
+                        (mname:Ast.MULTINAME)
     : bool =
     case resolve env mname of
         NONE => false
@@ -208,22 +208,22 @@ fun packageIdentFromPath origPath
 
 fun mergeVirtuals (fName:Ast.FIXTURE_NAME)
                   (vnew:Ast.VIRTUAL_VAL_FIXTURE)
-                  (vold:Ast.VIRTUAL_VAL_FIXTURE) = 
-    let 
+                  (vold:Ast.VIRTUAL_VAL_FIXTURE) =
+    let
         val ty = if Type.equals (#ty vnew) (#ty vold)
                  then (#ty vnew)
                  else (if Type.equals (#ty vnew) (Ast.SpecialType Ast.Any)
                        then (#ty vold)
                        else (if Type.equals (#ty vold) (Ast.SpecialType Ast.Any)
                              then (#ty vnew)
-                             else error ["mismatched get/set types on fixture ", 
+                             else error ["mismatched get/set types on fixture ",
                                          LogErr.fname fName]))
-        fun either a b = 
-            case (a,b) of 
+        fun either a b =
+            case (a,b) of
                 (SOME x, NONE) => SOME x
               | (NONE, SOME x) => SOME x
               | (NONE, NONE) => NONE
-              | _ => error ["multiply defined get/set functions on fixture ", 
+              | _ => error ["multiply defined get/set functions on fixture ",
                             LogErr.fname fName]
     in
         { ty = ty,
@@ -233,22 +233,22 @@ fun mergeVirtuals (fName:Ast.FIXTURE_NAME)
 
 fun mergeFixtures ((newName,newFix),oldFixs) =
     if Fixture.hasFixture oldFixs newName
-    then 
+    then
         case (newFix, Fixture.getFixture oldFixs newName) of
             (Ast.VirtualValFixture vnew,
-             Ast.VirtualValFixture vold) => 
-            Fixture.replaceFixture oldFixs newName 
-                                   (Ast.VirtualValFixture 
+             Ast.VirtualValFixture vold) =>
+            Fixture.replaceFixture oldFixs newName
+                                   (Ast.VirtualValFixture
                                         (mergeVirtuals newName vnew vold))
           | (Ast.ValFixture new, Ast.ValFixture old) =>
                  if (Type.equals (#ty new) (#ty old)) andalso (#readOnly new) = (#readOnly old)
                  then (trace ["skipping fixture ",LogErr.fname newName]; oldFixs)
                  else error ["incompatible redefinition of fixture name: ", LogErr.fname newName]
-          | (Ast.MethodFixture new, Ast.MethodFixture old) => 
+          | (Ast.MethodFixture new, Ast.MethodFixture old) =>
             Fixture.replaceFixture oldFixs newName (Ast.MethodFixture new) (* FIXME: types *)
-          | (Ast.MethodFixture new, Ast.ValFixture old) => 
+          | (Ast.MethodFixture new, Ast.ValFixture old) =>
             Fixture.replaceFixture oldFixs newName (Ast.MethodFixture new) (* FIXME: types *)
-          | (Ast.ValFixture new, Ast.MethodFixture old) => 
+          | (Ast.ValFixture new, Ast.MethodFixture old) =>
             Fixture.replaceFixture oldFixs newName (Ast.ValFixture new) (* FIXME: types *)
           | _ => error ["mergeFixtures: redefining fixture name: ", LogErr.fname newName]
     else
@@ -259,8 +259,8 @@ fun addNamespace (ns,opennss) =
     then (trace ["skipping namespace ",LogErr.namespace ns]; opennss)   (* FIXME: should be an error to open namspaces redundantly *)
     else (trace ["adding namespace ", LogErr.namespace ns]; ns :: opennss)
 
-fun defNamespace (env:ENV) 
-                 (ns:Ast.NAMESPACE) 
+fun defNamespace (env:ENV)
+                 (ns:Ast.NAMESPACE)
     : Ast.NAMESPACE =
         let
         in case ns of
@@ -269,13 +269,13 @@ fun defNamespace (env:ENV)
                     val packageName = (#packageName (hd env))
                     val ident = packageIdentFromPath packageName
                 in
-                    if n = Ustring.empty 
-                    then Ast.Public ident 
+                    if n = Ustring.empty
+                    then Ast.Public ident
                     else ns
-                        (* if n is not empty, then it is a package qualifier, 
+                        (* if n is not empty, then it is a package qualifier,
                            so don't with the current package name *)
                 end
-          | Ast.Internal _ => 
+          | Ast.Internal _ =>
                 let
                     val packageName = (#packageName (hd env))
                     val ident = packageIdentFromPath packageName
@@ -283,12 +283,12 @@ fun defNamespace (env:ENV)
 (trace2 ("packageName=",ident);
                     Ast.Internal ident)
                 end
-          | Ast.Private _ => 
+          | Ast.Private _ =>
                 let
                 in
                     Ast.Private (#className (hd env))
                 end
-          | Ast.Protected _ => 
+          | Ast.Protected _ =>
                 let
                 in
                     Ast.Protected (#className (hd env))  (* [JD] FIXME: not quite right *)
@@ -296,21 +296,21 @@ fun defNamespace (env:ENV)
           | _ => ns
         end
 
-fun resolveExprToNamespace (env:ENV) 
-                           (expr:Ast.EXPR) 
+fun resolveExprToNamespace (env:ENV)
+                           (expr:Ast.EXPR)
     : Ast.NAMESPACE =
-    case expr of 
-        Ast.LiteralExpr (Ast.LiteralNamespace ns) => 
+    case expr of
+        Ast.LiteralExpr (Ast.LiteralNamespace ns) =>
         let
-        in 
+        in
             defNamespace env ns
         end
-      | Ast.LexicalRef {ident = Ast.Identifier {ident,...}, loc } => 
-        let 
+      | Ast.LexicalRef {ident = Ast.Identifier {ident,...}, loc } =>
+        let
             val _ = LogErr.setLoc loc
             val mname = {nss = (#openNamespaces (hd env)), id = ident}
         in
-            case resolveMultinameToFixture env mname of 
+            case resolveMultinameToFixture env mname of
                 (_,Ast.NamespaceFixture ns) => ns
               | _ => LogErr.defnError ["namespace expression resolved ",
                                        "to non-namespace fixture"]
@@ -331,11 +331,11 @@ and resolveExprOptToNamespace (env: ENV)
     Create a new context initialised with the provided fixtures and
     inherited environment
 *)
-             
-fun extendEnvironment (env:ENV) 
+
+fun extendEnvironment (env:ENV)
                       (fixtures:Ast.FIXTURES)
-    : ENV = 
-    case env of 
+    : ENV =
+    case env of
         [] => (trace ["extending empty environment"];{ fixtures = fixtures,
                 tempOffset = 0,
                 openNamespaces = [[Name.noNS]],
@@ -345,11 +345,11 @@ fun extendEnvironment (env:ENV)
                 className = Ustring.fromString "",
                 packageName = [],
                 defaultNamespace = Name.noNS } :: [])
-      | ({ tempOffset, numericMode, openNamespaces, labels, packageNames, className, 
+      | ({ tempOffset, numericMode, openNamespaces, labels, packageNames, className,
            packageName, defaultNamespace, ... }) :: _ =>
         { fixtures = fixtures,
           tempOffset = tempOffset,
-          openNamespaces = openNamespaces, 
+          openNamespaces = openNamespaces,
           numericMode = numericMode,
           labels = labels,
           packageNames = [],
@@ -363,7 +363,7 @@ fun updateFixtures (ctx::ex) (fxtrs:Ast.FIXTURES)
     in
         { fixtures = List.foldl mergeFixtures fxtrs (#fixtures ctx),
           tempOffset = (#tempOffset ctx),
-          openNamespaces = (#openNamespaces ctx), 
+          openNamespaces = (#openNamespaces ctx),
           numericMode = (#numericMode ctx),
           labels = (#labels ctx),
           packageNames = (#packageNames ctx),
@@ -371,7 +371,7 @@ fun updateFixtures (ctx::ex) (fxtrs:Ast.FIXTURES)
           packageName = (#packageName ctx),
           defaultNamespace = (#defaultNamespace ctx) } :: ex
     end
-  | updateFixtures ([]) (fxtrs:Ast.FIXTURES) 
+  | updateFixtures ([]) (fxtrs:Ast.FIXTURES)
     : ENV =
         LogErr.defnError ["cannot update an empty environment"]
 
@@ -381,7 +381,7 @@ fun addPackageName ({name,...}:Ast.PACKAGE,(ctx::ex))
     in
         { fixtures = (#fixtures ctx),
           tempOffset = (#tempOffset ctx),
-          openNamespaces = (#openNamespaces ctx), 
+          openNamespaces = (#openNamespaces ctx),
           numericMode = (#numericMode ctx),
           labels = (#labels ctx),
           packageNames = name::(#packageNames ctx),
@@ -399,7 +399,7 @@ fun updateTempOffset (ctx::ex) (tempOffset:int)
     in
         { fixtures = (#fixtures ctx),
           tempOffset = tempOffset,
-          openNamespaces = (#openNamespaces ctx), 
+          openNamespaces = (#openNamespaces ctx),
           numericMode = (#numericMode ctx),
           labels = (#labels ctx),
           packageNames = (#packageNames ctx),
@@ -417,7 +417,7 @@ fun clearPackageName (ctx::ex)
     in
         { fixtures = (#fixtures ctx),
           tempOffset = (#tempOffset ctx),
-          openNamespaces = (#openNamespaces ctx), 
+          openNamespaces = (#openNamespaces ctx),
           numericMode = (#numericMode ctx),
           labels = (#labels ctx),
           packageNames = (#packageNames ctx),
@@ -436,7 +436,7 @@ fun enterClass (ctx::ex) (className)
     in
         { fixtures = (#fixtures ctx),
           tempOffset = (#tempOffset ctx),
-          openNamespaces = [Ast.Private className]::(#openNamespaces ctx), 
+          openNamespaces = [Ast.Private className]::(#openNamespaces ctx),
           numericMode = (#numericMode ctx),
           labels = (#labels ctx),
           packageNames = (#packageNames ctx),
@@ -463,13 +463,13 @@ fun dumpPath path = trace ["path ", concat (map (fn (id) => (Ustring.toAscii id)
 
 fun addLabel (env:ENV) (label:LABEL)
     : ENV =
-        let 
+        let
             fun checkLabel (env:ENV) ((labelId,labelKnd):LABEL) =
                 case env of
                 {labels:LABEL list,...}::_ =>
                     (dumpLabels labels;
-                    if List.exists (fn ((id,knd):LABEL) => 
-                            not (id = Ustring.empty) andalso  (* ignore empty labels *) 
+                    if List.exists (fn ((id,knd):LABEL) =>
+                            not (id = Ustring.empty) andalso  (* ignore empty labels *)
                             id = labelId andalso              (* compare ids *)
                             knd = labelKnd) labels            (* and kinds *)
                     then LogErr.defnError ["duplicate label ", Ustring.toAscii labelId]
@@ -477,7 +477,7 @@ fun addLabel (env:ENV) (label:LABEL)
                   | [] => LogErr.internalError ["empty environment in addLabel"]
         in
             checkLabel env label;
-            case env of 
+            case env of
                 ({fixtures,tempOffset,labels,packageNames,openNamespaces,numericMode,className,
                   packageName,defaultNamespace}::e) =>
                        { fixtures=fixtures,
@@ -505,27 +505,27 @@ fun addLabels (env:ENV) (labels:LABEL list)
         end
     end
 
-fun multinameFromName (n:Ast.NAME) = 
+fun multinameFromName (n:Ast.NAME) =
     { nss = [[(#ns n)]], id = (#id n) }
 
 (*
     Resolve an IDENT_EXPR to a multiname
 
-    A qualified name with a literal namespace qualifier (including package qualified) 
+    A qualified name with a literal namespace qualifier (including package qualified)
     gets resolved to a multiname with a single namespace
 *)
 
 fun identExprToMultiname (env:ENV) (ie:Ast.IDENT_EXPR)
-    : Ast.MULTINAME = 
+    : Ast.MULTINAME =
     let
         val ie' = defIdentExpr env ie
     in case ie' of
-        Ast.Identifier {ident, ...} => 
+        Ast.Identifier {ident, ...} =>
             let
             in
                 {nss = (#openNamespaces (hd env)), id = ident}
             end
-      | Ast.QualifiedIdentifier {ident, qual,...} => 
+      | Ast.QualifiedIdentifier {ident, qual,...} =>
             let
                 val ns = resolveExprToNamespace env qual
             in
@@ -550,7 +550,7 @@ fun identExprToMultiname (env:ENV) (ie:Ast.IDENT_EXPR)
         extends = ...
         implements = ...
         cblk = {
-            fxtrs = ...  (* static fixtures *) 
+            fxtrs = ...  (* static fixtures *)
             inits = ...  (* static inits,  empty? static props are inited by statements *)
             body = ...   (* static initialiser *)
         }
@@ -563,7 +563,7 @@ fun identExprToMultiname (env:ENV) (ie:Ast.IDENT_EXPR)
     - return a fixture binding for the class
 *)
 
-and defClass (env: ENV) 
+and defClass (env: ENV)
              (cdef: Ast.CLASS_DEFN)
     : (Ast.FIXTURES * Ast.CLASS_DEFN) =
     let
@@ -587,7 +587,7 @@ and defClass (env: ENV)
     - return interface fixture
 *)
 
-and defInterface (env: ENV) 
+and defInterface (env: ENV)
                  (idef: Ast.INTERFACE_DEFN)
     : (Ast.FIXTURES * Ast.INTERFACE_DEFN) =
     let
@@ -615,7 +615,7 @@ and defInterface (env: ENV)
                             ty=Ast.SpecialType Ast.Any,  (* FIXME needs record type *)
                             conversionTy=NONE,
                             dynamic=false} (* interfaces are never dynamic *)
-        val iface = Ast.Iface { name=name, nonnullable=nonnullable, extends=superInterfaces, instanceFixtures=instanceFixtures, 
+        val iface = Ast.Iface { name=name, nonnullable=nonnullable, extends=superInterfaces, instanceFixtures=instanceFixtures,
                                 instanceType = instanceType }
     in
         ([(Ast.PropName name, Ast.InterfaceFixture iface)],idef)
@@ -626,14 +626,14 @@ and defInterface (env: ENV)
 
     Steps:
 
-    - 
+    -
 
     Errors:
 
     - override by non-override fixture
     - override of final fixture
     - interface fixture not implemented
-    
+
     Notes:
 
     don't check type compatibility yet; we don't know the value of type
@@ -642,7 +642,7 @@ and defInterface (env: ENV)
     before a class is loaded.
 *)
 
-(* 
+(*
    Given two fixtures, one base and other derived, check to see if
    the derived fixture can override the base fixture. Specifically,
    check that:
@@ -652,25 +652,25 @@ and defInterface (env: ENV)
        - they have same number of type parameters and parameters
        - they both have the return type void or neither has the return type void
        - what else?
-   
+
    Type compatibility of parameter and return types is done by the evaluator
    (or verifier in strict mode) and not here because type annotations can have
    forward references
 *)
 
 and canOverride (fb:Ast.FIXTURE) (fd:Ast.FIXTURE)
-    : bool = 
+    : bool =
     let
-        fun isVoid ty = case ty of Ast.SpecialType Ast.VoidType => true 
+        fun isVoid ty = case ty of Ast.SpecialType Ast.VoidType => true
                                  | _ => false
-                                        
-        val isCompatible = case (fb,fd) of 
-                (Ast.MethodFixture 
-                     {ty=(Ast.FunctionType 
+
+        val isCompatible = case (fb,fd) of
+                (Ast.MethodFixture
+                     {ty=(Ast.FunctionType
                               {typeParams=tpb,params=pb,result=rtb,minArgs=mb,...}),
                       func=(Ast.Func {fsig=Ast.FunctionSignature {defaults=db, ...}, ...}),...},
-                 Ast.MethodFixture 
-                     {ty=(Ast.FunctionType 
+                 Ast.MethodFixture
+                     {ty=(Ast.FunctionType
                               {typeParams=tpd,params=pd,result=rtd,minArgs=md,...}),
                       func=(Ast.Func {fsig=Ast.FunctionSignature {defaults=dd, ...}, ...}),...}) =>
                     let
@@ -688,16 +688,16 @@ and canOverride (fb:Ast.FIXTURE) (fd:Ast.FIXTURE)
                                 ((not (isVoid rtb)) andalso (not (isVoid rtd))))
                         (* FIXME: check compatibility of return types? *)
                     end
-                
+
               | _ => false
         val _ = trace ["isCompatible = ",Bool.toString isCompatible]
-    
+
     in case (fb,fd) of
-        (Ast.MethodFixture {final,abstract,...}, Ast.MethodFixture {override,...}) => 
-            (((not final) andalso override) orelse (abstract)) 
+        (Ast.MethodFixture {final,abstract,...}, Ast.MethodFixture {override,...}) =>
+            (((not final) andalso override) orelse (abstract))
             andalso isCompatible
 
-      (* FIXME: what are the rules for getter/setter overriding? 
+      (* FIXME: what are the rules for getter/setter overriding?
          1/base fixture is not final
          2/derived fixture is override
          3/getter is compatible
@@ -708,8 +708,8 @@ and canOverride (fb:Ast.FIXTURE) (fd:Ast.FIXTURE)
             let
                 val _ = trace ["checking override of VirtualValFixture"]
             in
-               true               
-            end 
+               true
+            end
       | _ => LogErr.unimplError ["checkOverride"]
     end
 
@@ -718,14 +718,14 @@ and inheritFixtures (base:Ast.FIXTURES)
     : Ast.FIXTURES =
     let
 
-        (* 
+        (*
            Recurse through the fixtures of a base class to see if the
            given fixture binding is allowed. if so, then add it
-           return the updated fixtures 
+           return the updated fixtures
 
            TODO: check for name conflicts:
 
-                Any name can be overridden by any other name with the same 
+                Any name can be overridden by any other name with the same
                 identifier and a namespace that is at least as visible. Visibility
                 is an attribute of the builtin namespaces: private, protected,
                 internal and public. These are related by:
@@ -737,14 +737,14 @@ and inheritFixtures (base:Ast.FIXTURES)
 
                 where < means less visible
 
-                Note that protected and internal are overlapping namespaces and 
-                therefore it is an error to attempt to override a name in one 
+                Note that protected and internal are overlapping namespaces and
+                therefore it is an error to attempt to override a name in one
                 with a name in another.
 
             It is an error for there to be a derived fixture with a name that is:
 
                - less visible than a base fixture
-               - as visible or more visible than a base fixture but not overriding it 
+               - as visible or more visible than a base fixture but not overriding it
                  (this case is caught by the override check below)
         *)
 
@@ -755,13 +755,13 @@ and inheritFixtures (base:Ast.FIXTURES)
                                       then SOME (Fixture.getFixture derived n)
                                       else NONE
                 val _ = trace ["checking override of ", LogErr.fname n]
-            in 
-                case n of 
+            in
+                case n of
                     (* Private fixtures never "inherit", so it's meaningless to ask. *)
                     Ast.PropName {ns=Ast.Private _, ...} => derived
                   | _ => case targetFixture () of
                              NONE => (n,fb)::derived    (* not in the derived class, so inherit it *)
-                           | SOME fd => 
+                           | SOME fd =>
                              case (canOverride fb fd) of
                                  true => derived  (* return current fixtures *)
                                | _ => LogErr.defnError ["illegal override of ", LogErr.fname n]
@@ -777,19 +777,19 @@ and inheritFixtures (base:Ast.FIXTURES)
 
     Steps:
 
-    - 
+    -
 
     Errors:
 
     - interface fixture not implemented
-    
+
 *)
 
 and implementFixtures (base:Ast.FIXTURES)
                       (derived:Ast.FIXTURES)
     : unit =
     let
-        (* 
+        (*
         *)
 
         fun implementFixture ((n,fb):(Ast.FIXTURE_NAME * Ast.FIXTURE))
@@ -799,7 +799,7 @@ and implementFixtures (base:Ast.FIXTURES)
                                       then SOME (Fixture.getFixture derived n)
                                       else NONE
                 val _ = trace ["checking implementation of ", LogErr.fname n]
-            in 
+            in
                 case targetFixture () of
                     NONE => LogErr.defnError ["unimplemented interface method ", LogErr.fname n]
                   | SOME fd =>
@@ -832,8 +832,8 @@ and resolveClassInheritance (env:ENV)
         val superTypes = case extendsName of NONE => implementsNames | _ => (valOf extendsName) :: implementsNames
 
         (* Make the instance type *)
-        val instanceType = 
-            let 
+        val instanceType =
+            let
                 val { name, nonnullable, typeParams, ty, conversionTy, dynamic, ... } = instanceType
             in
                 { name = name,
@@ -872,27 +872,27 @@ and resolveClassInheritance (env:ENV)
 *)
 
 and resolveExtends (env: ENV)
-                   (currInstanceFixtures: Ast.FIXTURES) 
+                   (currInstanceFixtures: Ast.FIXTURES)
                    (extends: Ast.IDENT_EXPR option)
                    (children:Ast.NAME list)
     : (Ast.NAME option * Ast.FIXTURES) =
     let
         val _ = trace ["first child ", LogErr.name (hd children)]
         fun seenAsChild (n:Ast.NAME) = List.exists (fn ch => ch = n) children
-        val extends:(Ast.IDENT_EXPR option) = case (extends,hd children) of 
-                            (NONE, {id,...}) => 
-                                if (id=Ustring.Object_) 
-                                    then NONE 
+        val extends:(Ast.IDENT_EXPR option) = case (extends,hd children) of
+                            (NONE, {id,...}) =>
+                                if (id=Ustring.Object_)
+                                    then NONE
                                     else SOME (Ast.Identifier {ident=Ustring.Object_,openNamespaces=[]})
-                          | _ => extends 
+                          | _ => extends
     in case extends of
         SOME baseIdentExpr =>
-            let 
+            let
                 val baseClassMultiname = identExprToMultiname env baseIdentExpr
                 val _ = trace ["inheriting from ",LogErr.multiname baseClassMultiname]
-                val (baseClassName,baseClassFixture) = 
+                val (baseClassName,baseClassFixture) =
                         if false (* seenAsChild baseName *)
-                        then LogErr.defnError ["cyclical class inheritence detected at ", 
+                        then LogErr.defnError ["cyclical class inheritence detected at ",
                                            LogErr.multiname baseClassMultiname]
                         else (resolveMultinameToFixture env baseClassMultiname)
             in case baseClassFixture of
@@ -904,7 +904,7 @@ and resolveExtends (env: ENV)
     end
 
 and resolveImplements (env: ENV)
-                      (instanceFixtures: Ast.FIXTURES) 
+                      (instanceFixtures: Ast.FIXTURES)
                       (implements: Ast.IDENT_EXPR list)
     : (Ast.NAME list * Ast.FIXTURES) =
     let
@@ -929,7 +929,7 @@ and resolveImplements (env: ENV)
 *)
 
 and interfaceMethods (ifxtr)
-    : Ast.FIXTURES = 
+    : Ast.FIXTURES =
     case ifxtr of
         Ast.InterfaceFixture (Ast.Iface {instanceFixtures,...}) => instanceFixtures
       |_ => LogErr.internalError ["interfaceMethods"]
@@ -998,27 +998,27 @@ and analyzeClassBody (env:ENV)
             val (unhoisted,instanceFixtures,_) = defDefns staticEnv [] [] [] instanceDefns
             val instanceEnv = extendEnvironment staticEnv instanceFixtures
 
-            val ctor = 
-                case ctorDefn of 
-                    NONE => NONE 
+            val ctor =
+                case ctorDefn of
+                    NONE => NONE
                   | SOME c => SOME (defCtor instanceEnv c)
 
             val (instanceStmts,_) = defStmts staticEnv instanceStmts  (* no hoisted fixture produced *)
 
-            val conversionTy = 
-                let 
+            val conversionTy =
+                let
                     val fname = Ast.PropName Name.meta_convert
                 in
                     if Fixture.hasFixture classFixtures fname
-                    then 
+                    then
                         case Fixture.getFixture classFixtures fname of
-                            Ast.MethodFixture { ty=Ast.FunctionType { params=[pt], ... }, ... } => 
+                            Ast.MethodFixture { ty=Ast.FunctionType { params=[pt], ... }, ... } =>
                             SOME pt
                           | _ => NONE
                     else NONE
                 end
-            
-            (* 
+
+            (*
                 The parser separates variable definitions into defns and stmts. The only stmts
                 in this case will be InitStmts and what we really want is INITs so we translate
                 to to INITs here.
@@ -1028,12 +1028,12 @@ and analyzeClassBody (env:ENV)
                 case stmt of
                      Ast.ExprStmt (Ast.InitExpr (target,Ast.Head (temp_fxtrs,temp_inits),inits)) => (temp_fxtrs,temp_inits@inits)
                    | _ => LogErr.unimplError ["Defn.bindingsFromStmt"]
-            
+
             val (fxtrs,inits) = ListPair.unzip(map initsFromStmt instanceStmts)
             val instanceInits = Ast.Head (List.concat fxtrs, List.concat inits)
 
-            val instanceType = {name=name, 
-                                nonnullable=nonnullable, 
+            val instanceType = {name=name,
+                                nonnullable=nonnullable,
                                 typeParams=[], (* FIXME: copy in from CLASS_DEFN *)
                                 superTypes=[], (* set in resolveClassInheritence *)
                                 ty=Ast.ObjectType [], (* FIXME: need a full record type *)
@@ -1044,7 +1044,7 @@ and analyzeClassBody (env:ENV)
                      nonnullable=nonnullable,
                      dynamic=dynamic,
                      extends = NONE,
-                     implements = [],                     
+                     implements = [],
                      classFixtures = classFixtures,
                      instanceFixtures = instanceFixtures,
                      instanceInits = instanceInits,
@@ -1057,7 +1057,7 @@ and analyzeClassBody (env:ENV)
     BINDING
 
     During parsing, variable definitions are split into a var binding
-    and optional init stmt. During the definition phase, the var binding 
+    and optional init stmt. During the definition phase, the var binding
     is translated into a fixture and optional initialiser. The init stmt
     initalises the property value and its type
 
@@ -1067,7 +1067,7 @@ and analyzeClassBody (env:ENV)
     before the fixture is used to create a property. Light weight
     implementations may evaluate type annotations when instantiating
     a block scope for the first time. This lazy evaluation of type
-    annotations means that unresolved reference errors shall not 
+    annotations means that unresolved reference errors shall not
     be reported until runtime in standard mode.
 
     The definition above translates into the following psuedo
@@ -1081,43 +1081,43 @@ and analyzeClassBody (env:ENV)
 
     The fxtrs and inits of a var definition might be hoisted
     out of their defining block. It is a definition error for
-    a type annotation to resolve to a local, non-type fixture. 
-    This is to avoid changing the meaning of type annotations 
+    a type annotation to resolve to a local, non-type fixture.
+    This is to avoid changing the meaning of type annotations
     by hoisting
 
     Here's a problem case:
 
-    function f() 
+    function f()
     {
         type t = {i:I,s:S}
 
-        { 
+        {
             type t = {i:int,s:string}
             var v : t = {i:10,s:"hi"}
             function g() : t {} {}
         }
     }
 
-    Without a definition error, the meaning of 't' changes 
+    Without a definition error, the meaning of 't' changes
     after hoisting of 'v' and 'g'
 
 *)
 
-and defVar (env:ENV) 
+and defVar (env:ENV)
            (kind:Ast.VAR_DEFN_TAG)
            (ns:Ast.NAMESPACE)
-           (var:Ast.BINDING) 
-    : (Ast.FIXTURE_NAME*Ast.FIXTURE) = 
+           (var:Ast.BINDING)
+    : (Ast.FIXTURE_NAME*Ast.FIXTURE) =
 
-    case var of 
-        Ast.Binding { ident, ty } => 
+    case var of
+        Ast.Binding { ident, ty } =>
         let
             val ty' = defTyExpr env ty
-            val readOnly' = case kind of 
+            val readOnly' = case kind of
                                  Ast.Const => true
                                | Ast.LetConst => true
-                               | _ => false           
-            val offset = (#tempOffset (hd env))     
+                               | _ => false
+            val offset = (#tempOffset (hd env))
             val name' = fixtureNameFromPropIdent env (SOME ns) ident offset
         in
             (name', Ast.ValFixture {ty=ty',readOnly=readOnly'})
@@ -1130,7 +1130,7 @@ and defVar (env:ENV)
          InitStep of (BINDING_IDENT * EXPR)
        | AssignStep of (EXPR * EXPR)
 
-     and BINDING_IDENT = 
+     and BINDING_IDENT =
          TempIdent of int
        | PropIdent of IDENT
 
@@ -1141,14 +1141,14 @@ and defVar (env:ENV)
      and FIXTURE_NAME = TempName of int
                       | PropName of NAME
 
-*)    
+*)
 
 and fixtureNameFromPropIdent (env:ENV) (ns:Ast.NAMESPACE option) (ident:Ast.BINDING_IDENT) (tempOffset:int)
     : Ast.FIXTURE_NAME =
     case ident of
         Ast.TempIdent n =>  Ast.TempName (n+tempOffset)
       | Ast.ParamIdent n => Ast.TempName n
-      | Ast.PropIdent id => 
+      | Ast.PropIdent id =>
         let
         in case ns of
             SOME ns => Ast.PropName {ns=ns,id=id}
@@ -1164,7 +1164,7 @@ and fixtureNameFromPropIdent (env:ENV) (ns:Ast.NAMESPACE option) (ident:Ast.BIND
 and defInitStep (env:ENV)
                 (ns:Ast.NAMESPACE option)
                 (step:Ast.INIT_STEP)
-    : (Ast.FIXTURE_NAME * Ast.EXPR) = 
+    : (Ast.FIXTURE_NAME * Ast.EXPR) =
     let
     in case step of
         Ast.InitStep (ident,expr) =>
@@ -1172,12 +1172,12 @@ and defInitStep (env:ENV)
                 val tempOffset = (#tempOffset (hd env))
                 val name = fixtureNameFromPropIdent env ns ident tempOffset
                 val expr = defExpr env expr
-            in 
+            in
                 (name,expr)
             end
       | Ast.AssignStep (left,right) => (* resolve lhs to fixture name, and rhs to expr *)
             let
-                val ie = case left of Ast.LexicalRef {ident,...} => ident 
+                val ie = case left of Ast.LexicalRef {ident,...} => ident
                                     | _ => error ["invalid lhs in InitStep"]
                 val mname = identExprToMultiname env ie
                 val ({ns,id},f) = resolveMultinameToFixture env mname
@@ -1189,8 +1189,8 @@ and defInitStep (env:ENV)
 and defBindings (env:ENV)
                 (kind:Ast.VAR_DEFN_TAG)
                 (ns:Ast.NAMESPACE)
-                ((binds,inits):Ast.BINDINGS) 
-    : (Ast.FIXTURES * Ast.INITS) = 
+                ((binds,inits):Ast.BINDINGS)
+    : (Ast.FIXTURES * Ast.INITS) =
     let
         val fxtrs:Ast.FIXTURES = map (defVar env kind ns) binds
         val inits:Ast.INITS = map (defInitStep env (SOME ns)) inits
@@ -1199,8 +1199,8 @@ and defBindings (env:ENV)
     end
 
 and defSettings (env:ENV)
-                ((binds,inits):Ast.BINDINGS) 
-    : (Ast.FIXTURES * Ast.INITS) = 
+                ((binds,inits):Ast.BINDINGS)
+    : (Ast.FIXTURES * Ast.INITS) =
     let
         val _ = trace [">> defSettings"]
         val fxtrs:Ast.FIXTURES = map (defVar env Ast.Var Name.noNS) binds
@@ -1222,7 +1222,7 @@ and defSettings (env:ENV)
     Function = {
         fsig = ...  (* structural type *)
         fixtures
-        inits 
+        inits
         block = {
             fxtrs = [ 't' -> TypeVal,
                       'call' -> Block {
@@ -1246,7 +1246,7 @@ and defSettings (env:ENV)
     body
 *)
 
-and defFuncSig (env:ENV) 
+and defFuncSig (env:ENV)
                (fsig:Ast.FUNC_SIG)
     : (Ast.FIXTURES * Ast.INITS * Ast.EXPR list * Ast.FIXTURES * Ast.INITS * Ast.EXPR list * Ast.TYPE_EXPR) =
 
@@ -1258,7 +1258,7 @@ and defFuncSig (env:ENV)
 (**** FIXME
 
             (* compute typeval fixtures (type parameters) *)
-            fun mkTypeVarFixture x = (Ast.PropName {ns=Name.internalNS, id=x}, 
+            fun mkTypeVarFixture x = (Ast.PropName {ns=Name.internalNS, id=x},
                                       Ast.TypeVarFixture)
 
             val typeParamFixtures = map mkTypeVarFixture typeParams
@@ -1311,12 +1311,12 @@ and defFuncSig (env:ENV)
         body : BLOCK = {
             fxtrs
             inits
-            stmts = 
+            stmts =
                 [BlkStmt {
                     fxtrs
                     inits
                     stmts }
-           ] 
+           ]
         }
     }
 
@@ -1345,8 +1345,8 @@ and defFunc (env:ENV) (func:Ast.FUNC)
         val env = extendEnvironment env paramFixtures
         val (block, hoisted) = defBlock env block
         val _ = trace ["<< defFunc"]
-    in 
-        (Ast.Head (settingsFixtures, settingsInits), superArgs, 
+    in
+        (Ast.Head (settingsFixtures, settingsInits), superArgs,
          Ast.Func {name = name,
                    fsig = fsig,
                    block = block,
@@ -1365,13 +1365,13 @@ and defFunc (env:ENV) (func:Ast.FUNC)
     the function's name, type, and implementation
 
     Edition 3 style functions are unbound, writable, and have an unconstratined
-    'this'. The fixture that holds one is of type *, and it is initialized by 
+    'this'. The fixture that holds one is of type *, and it is initialized by
     an assignment expression in the preamble of the defining block.
 
 *)
 
-and defFuncDefn (env:ENV) (f:Ast.FUNC_DEFN) 
-    : (Ast.FIXTURES * Ast.FUNC_DEFN) = 
+and defFuncDefn (env:ENV) (f:Ast.FUNC_DEFN)
+    : (Ast.FIXTURES * Ast.FUNC_DEFN) =
     case (#func f) of
         Ast.Func { name, fsig, block, ty, native, ... } =>
         let
@@ -1389,25 +1389,25 @@ and defFuncDefn (env:ENV) (f:Ast.FUNC_DEFN)
                             abstract = (#abstract f),
                             func = newFunc }
 
-            val fixture = 
-                case (#kind name) of 
-                    Ast.Get => 
-                    Ast.VirtualValFixture 
-                        { ty = (#result ty), 
+            val fixture =
+                case (#kind name) of
+                    Ast.Get =>
+                    Ast.VirtualValFixture
+                        { ty = (#result ty),
                           getter = SOME newDefn,
                           setter = NONE }
-                  | Ast.Set => 
-                    Ast.VirtualValFixture 
-                        { ty = (case (#params ty) of 
+                  | Ast.Set =>
+                    Ast.VirtualValFixture
+                        { ty = (case (#params ty) of
                                     [t] => t
-                                  | _ => error ["expected one parameter in setter for ", 
-                                                LogErr.fname newName]), 
+                                  | _ => error ["expected one parameter in setter for ",
+                                                LogErr.fname newName]),
                           getter = NONE,
                           setter = SOME newDefn }
                   | Ast.Ordinary =>
-                    let 
-                        val (ftype, isReadOnly) = 
-                            if (#kind f) = Ast.Var 
+                    let
+                        val (ftype, isReadOnly) =
+                            if (#kind f) = Ast.Var
                             then (Ast.SpecialType Ast.Any,false)      (* e3 style writeable function *)
                             else ((Ast.FunctionType ty),true)         (* read only, method *)
                     in
@@ -1450,7 +1450,7 @@ and defCtor (env:ENV) (ctor:Ast.CTOR)
         val Ast.Ctor {func,...} = ctor
         val (settings,superArgs,newFunc) = defFunc env func
     in
-        Ast.Ctor {settings=settings, superArgs=superArgs, func=newFunc} 
+        Ast.Ctor {settings=settings, superArgs=superArgs, func=newFunc}
     end
 
 
@@ -1465,7 +1465,7 @@ and defCtor (env:ENV) (ctor:Ast.CTOR)
 and defPragmas (env:ENV)
                (pragmas:Ast.PRAGMA list)
     : (ENV * Ast.FIXTURES) =
-    let 
+    let
         val ctx : CONTEXT  = hd env
         val mode      = #numericMode ctx
         val numType   = ref (#numberType mode)
@@ -1478,7 +1478,7 @@ and defPragmas (env:ENV)
         val tempOffset = #tempOffset ctx
 
         fun defPragma x =
-            case x of 
+            case x of
                 Ast.UseNumber n => numType := n
               | Ast.UseRounding m => rounding := m
               | Ast.UsePrecision p => precision := p
@@ -1502,8 +1502,8 @@ and defPragmas (env:ENV)
                            | _ => opennss := (namespace :: !opennss));
                         defaultNamespace := namespace
                     end
-              | Ast.Import {package,name,alias} =>  
-                    let   
+              | Ast.Import {package,name,alias} =>
+                    let
                     in case alias of
                         NONE =>
                             let
@@ -1516,21 +1516,21 @@ and defPragmas (env:ENV)
 trace2 ("openning package ",id);
                                  opennss  := addNamespace (ns, (!opennss)))
                             end
-                      | _ => 
+                      | _ =>
                             let
 
                                 (* FIXME: replace this boilerplate getter/setter code with a new kind of fixture for import aliasing?
-                                   In the cases of ClassFixture and TypeFixture, the verifier has to evaluate the getter to see the 
+                                   In the cases of ClassFixture and TypeFixture, the verifier has to evaluate the getter to see the
                                    concrete type of the alias *)
 
                                 fun makeAliasFixture env alias package ident =
                                     let
                                         val targetName = {ns=Ast.Public package,id=ident}
                                         val (n,targetFixture) = resolveMultinameToFixture env (multinameFromName targetName)
-                                        val fixtureType = case targetFixture of 
-                                                               Ast.ValFixture {ty,...} => ty 
+                                        val fixtureType = case targetFixture of
+                                                               Ast.ValFixture {ty,...} => ty
                                                              | Ast.NamespaceFixture _ => (Name.typename Name.intrinsic_Namespace)
-                                                             | Ast.ClassFixture _ => (Name.typename Name.intrinsic_Class)   
+                                                             | Ast.ClassFixture _ => (Name.typename Name.intrinsic_Class)
                                                                  (* ISSUE: this is the base type of the class object *)
                                                              | Ast.TypeFixture _ => (Name.typename Name.intrinsic_Type)
                                                              | Ast.MethodFixture {ty,...} => ty
@@ -1539,7 +1539,7 @@ trace2 ("openning package ",id);
                                         val targetRef = defExpr env (Ast.LexicalRef {ident=Ast.QualifiedIdentifier {
                                                                                     qual=Ast.LiteralExpr (Ast.LiteralNamespace (Ast.Public package)),
                                                                                     ident=name},loc=NONE})
-                                        val getterDefn : Ast.FUNC_DEFN = 
+                                        val getterDefn : Ast.FUNC_DEFN =
                                                  {kind=Ast.Const,
                                                   ns=NONE, (*SOME (!defaultNamespace),*)
                                                   final=false,
@@ -1565,7 +1565,7 @@ trace2 ("openning package ",id);
                                                           loc=NONE}}
 
 
-                                        val setterDefn : Ast.FUNC_DEFN = 
+                                        val setterDefn : Ast.FUNC_DEFN =
                                                  {kind=Ast.Const,
                                                   ns=NONE, (*SOME (!defaultNamespace),*)
                                                   final=false,
@@ -1643,10 +1643,10 @@ trace2 ("openning package ",id);
             tempOffset = tempOffset,
             labels = (#labels ctx),
             packageNames = !packageNames,
-            openNamespaces = (case !opennss of 
+            openNamespaces = (case !opennss of
                                  [] => (#openNamespaces ctx)   (* if opennss is empty, don't concat *)
                                | _  => !opennss :: (#openNamespaces ctx)),
-            numericMode = { numberType = !numType, 
+            numericMode = { numberType = !numType,
                             roundingMode = !rounding,
                             precision = !precision },
             className = (#className ctx),
@@ -1659,38 +1659,38 @@ trace2 ("openning package ",id);
     IDENT_EXPR
 *)
 
-and defIdentExpr (env:ENV) 
-                 (ie:Ast.IDENT_EXPR) 
-    : Ast.IDENT_EXPR = 
-    let 
+and defIdentExpr (env:ENV)
+                 (ie:Ast.IDENT_EXPR)
+    : Ast.IDENT_EXPR =
+    let
         val _ = trace [">> defIdentExpr"]
-        val openNamespaces = 
-            case env of 
+        val openNamespaces =
+            case env of
                 [] => []
-              | ({ openNamespaces, ... }) :: _ => 
+              | ({ openNamespaces, ... }) :: _ =>
                 openNamespaces
         val _ = trace ["<< defIdentExpr"]
     in
-        case ie of 
-            Ast.Identifier { ident, ... } => 
-            Ast.Identifier { ident=ident, 
-                             openNamespaces=openNamespaces } 
-            
-          | Ast.AttributeIdentifier ai => 
+        case ie of
+            Ast.Identifier { ident, ... } =>
+            Ast.Identifier { ident=ident,
+                             openNamespaces=openNamespaces }
+
+          | Ast.AttributeIdentifier ai =>
             Ast.AttributeIdentifier (defIdentExpr env ai)
 
-          | Ast.TypeIdentifier { ident, typeArgs } => 
-            Ast.TypeIdentifier { ident=(defIdentExpr env ident), 
+          | Ast.TypeIdentifier { ident, typeArgs } =>
+            Ast.TypeIdentifier { ident=(defIdentExpr env ident),
                                  typeArgs=typeArgs }
 
-          | Ast.QualifiedIdentifier { qual, ident } => 
-            Ast.QualifiedIdentifier { qual = defExpr env qual, 
+          | Ast.QualifiedIdentifier { qual, ident } =>
+            Ast.QualifiedIdentifier { qual = defExpr env qual,
                                       ident = ident }
 
-          | Ast.QualifiedExpression { qual, expr } => 
-            Ast.QualifiedExpression { qual = defExpr env qual, 
+          | Ast.QualifiedExpression { qual, expr } =>
+            Ast.QualifiedExpression { qual = defExpr env qual,
                                       expr = defExpr env expr }
-          | Ast.ExpressionIdentifier { expr, ...} => 
+          | Ast.ExpressionIdentifier { expr, ...} =>
             Ast.ExpressionIdentifier { expr = (defExpr env expr),
                                        openNamespaces = openNamespaces }
           | Ast.WildcardIdentifier =>
@@ -1702,72 +1702,72 @@ and defIdentExpr (env:ENV)
 
     end
 
-and defContextualNumberLiteral (env:ENV) 
-                               (n:string) 
+and defContextualNumberLiteral (env:ENV)
+                               (n:string)
                                (isIntegral:bool)
                                (isHex:bool)
     : Ast.LITERAL =
-    let 
+    let
         val {numberType, roundingMode, precision} = (#numericMode (hd env))
-        fun asDecimal _ = 
+        fun asDecimal _ =
             Ast.LiteralDecimal (case Decimal.fromString precision roundingMode n of
-                                    NONE => error ["failure converting '", n, 
+                                    NONE => error ["failure converting '", n,
                                                    "' to decimal literal "]
                                   | SOME d => d)
-        fun asDouble _ = 
+        fun asDouble _ =
             Ast.LiteralDouble (case Real64.fromString n of
-                                   NONE => error ["failure converting '", n, 
+                                   NONE => error ["failure converting '", n,
                                                   "' to double literal "]
                                  | SOME d => d)
-        fun asInt _ = 
+        fun asInt _ =
             Ast.LiteralInt (case Int32.fromString n of
-                                NONE => error ["failure converting '", n, 
+                                NONE => error ["failure converting '", n,
                                                "' to int literal "]
                               | SOME d => d)
-        fun asUInt _ = 
+        fun asUInt _ =
             Ast.LiteralUInt (if isHex
-                             then 
-                                 (case Word32.fromString n of 
-                                      NONE => error ["failure converting '", n, 
+                             then
+                                 (case Word32.fromString n of
+                                      NONE => error ["failure converting '", n,
                                                      "' to uint literal "]
                                     | SOME x => x)
                              else
                                  (case LargeInt.fromString n of
-                                      NONE => error ["failure converting '", n, 
+                                      NONE => error ["failure converting '", n,
                                                      "' to uint literal "]
                                     | SOME d => Word32.fromLargeInt d))
     in
         if isHex andalso (not isIntegral)
         then error ["non-integral hex literal"]
         else
-            case numberType of 
+            case numberType of
                 Ast.Decimal => asDecimal ()
               | Ast.Double => asDouble ()
 
-              (* 
+              (*
                * FIXME: The language in the draft spec describes
-               * what happens to "integer literals" in the 
-               * "use int" or "use uint" context. It says nothing 
+               * what happens to "integer literals" in the
+               * "use int" or "use uint" context. It says nothing
                * about non-integral literals. What should we do
                * in those cases?
                *)
 
               | Ast.Int => asInt ()
-              | Ast.UInt => asUInt ()                  
+              | Ast.UInt => asUInt ()
 
               (* This part is for ES3 backward-compatibility. *)
-              | Ast.Number => 
+              | Ast.Number =>
                 if isIntegral
-                then 
-                    let 
+                then
+                    let
                         fun v _ = valOf (LargeInt.fromString n)
                     in
                         if isHex
                         then asUInt ()
-                        else 
+                        else
                             (if Mach.fitsInInt (v())
                              then asInt ()
-                             else 
+                             else
                                  (if Mach.fitsInUInt (v())
                                   then asUInt ()
                                   else asDouble ()))
@@ -1777,12 +1777,12 @@ and defContextualNumberLiteral (env:ENV)
     end
 
 
-and defLiteral (env:ENV) 
-               (lit:Ast.LITERAL) 
-    : Ast.LITERAL = 
-    let 
+and defLiteral (env:ENV)
+               (lit:Ast.LITERAL)
+    : Ast.LITERAL =
+    let
         val _ = trace [">> defLiteral"]
-    in 
+    in
         case lit of
             Ast.LiteralFunction func =>
             let
@@ -1790,33 +1790,33 @@ and defLiteral (env:ENV)
             in
                 Ast.LiteralFunction func
             end
-          | Ast.LiteralContextualDecimalInteger n => 
+          | Ast.LiteralContextualDecimalInteger n =>
             defContextualNumberLiteral env n true false
 
-          | Ast.LiteralContextualDecimal n => 
+          | Ast.LiteralContextualDecimal n =>
             defContextualNumberLiteral env n false false
 
-          | Ast.LiteralContextualHexInteger n => 
+          | Ast.LiteralContextualHexInteger n =>
             defContextualNumberLiteral env n true true
 
-          | Ast.LiteralArray {exprs, ty} => 
+          | Ast.LiteralArray {exprs, ty} =>
             Ast.LiteralArray {exprs = defExprs env exprs,
-                              ty = case ty of 
+                              ty = case ty of
                                        NONE => NONE
                                      | SOME t => SOME (defTyExpr env t) }
-          | Ast.LiteralXML exprs => 
+          | Ast.LiteralXML exprs =>
             Ast.LiteralXML (defExprs env exprs)
 
-          | Ast.LiteralObject {expr, ty} => 
-            Ast.LiteralObject {expr = List.map (fn { kind, name, init } => 
+          | Ast.LiteralObject {expr, ty} =>
+            Ast.LiteralObject {expr = List.map (fn { kind, name, init } =>
                                                    { kind = kind,
-                                                     name = defIdentExpr env name, 
+                                                     name = defIdentExpr env name,
                                                      init = defExpr env init }) expr,
-                               ty = case ty of 
+                               ty = case ty of
                                         NONE => NONE
                                       | SOME t => SOME (defTyExpr env t) }
 
-          | Ast.LiteralNamespace ns => 
+          | Ast.LiteralNamespace ns =>
             Ast.LiteralNamespace (defNamespace env ns)
 
           | _ => lit   (* FIXME: other cases to handle here *)
@@ -1844,10 +1844,10 @@ val _ = dumpPath path
 val _ = trace2 ("resolvePath ",case pkg of NONE => Ustring.fromString "NONE" | _ => valOf pkg)
     in case (pkg,pth) of
              (SOME pk,[]) => Ast.LiteralExpr (Ast.LiteralNamespace (Ast.Public pk))
-           | (SOME pk,id::ids) => 
+           | (SOME pk,id::ids) =>
                 let
-                    val expr = Ast.LexicalRef 
-                                    {ident=Ast.QualifiedIdentifier 
+                    val expr = Ast.LexicalRef
+                                    {ident=Ast.QualifiedIdentifier
                                         {qual=Ast.LiteralExpr (Ast.LiteralNamespace (Ast.Public pk)),
                                          ident=id},
                                      loc=NONE}
@@ -1890,19 +1890,19 @@ and pathInPackageNames (packageNames: Ast.IDENT list list) (path:Ast.IDENT list)
         fun matchPackage (package:Ast.IDENT list) (path:Ast.IDENT list) (prefix:Ast.IDENT list)
             : Ast.IDENT option * Ast.IDENT list =
             case (package,path,prefix) of
-                ([],_,[]) => 
+                ([],_,[]) =>
                     (NONE,path)
-              | ([],_,_) => 
+              | ([],_,_) =>
                     (SOME (packageIdentFromPath (List.rev prefix)),path)
-              | (pkgid::pkg,pthid::pth,_) => 
-                    if pkgid = pthid 
+              | (pkgid::pkg,pthid::pth,_) =>
+                    if pkgid = pthid
                     then matchPackage pkg pth (pkgid::prefix)
                     else (NONE,path)
           | (_,[],_) => error ["resolving package portion of empty path"];
 
     in case packageNames of
         [] => (NONE,path)  (* no match *)
-      | pkg::pkgs => 
+      | pkg::pkgs =>
         let
             val (ident,path) = matchPackage pkg path []
         in case ident of
@@ -1915,7 +1915,7 @@ and resolveObjectPath (env:ENV) (path:Ast.IDENT list) (expr:Ast.EXPR option)
     : Ast.EXPR =
     let
     in case (expr, path) of
-        (NONE, ident::identList) => 
+        (NONE, ident::identList) =>
             let
                 val base = Ast.LexicalRef {ident=Ast.Identifier {ident=ident,openNamespaces=[]},loc=NONE}
             in
@@ -1936,18 +1936,18 @@ and resolveObjectPath (env:ENV) (path:Ast.IDENT list) (expr:Ast.EXPR option)
     end
 
 
-and defExpr (env:ENV) 
-            (expr:Ast.EXPR) 
-    : Ast.EXPR = 
-    let 
+and defExpr (env:ENV)
+            (expr:Ast.EXPR)
+    : Ast.EXPR =
+    let
         fun sub e = defExpr env e
     in
-        case expr of 
-            Ast.TernaryExpr (e1, e2, e3) => 
+        case expr of
+            Ast.TernaryExpr (e1, e2, e3) =>
             Ast.TernaryExpr (sub e1, sub e2, sub e3)
-            
-          | Ast.BinaryExpr (b, e1, e2) => 
-            let 
+
+          | Ast.BinaryExpr (b, e1, e2) =>
+            let
                 val m = (SOME (#numericMode (hd env)))
                 val b' = (case b of
                                Ast.Plus _ => Ast.Plus m
@@ -1967,12 +1967,12 @@ and defExpr (env:ENV)
             in
                 Ast.BinaryExpr (b', sub e1, sub e2)
             end
-            
-          | Ast.BinaryTypeExpr (b, e, te) => 
+
+          | Ast.BinaryTypeExpr (b, e, te) =>
             Ast.BinaryTypeExpr (b, sub e, defTyExpr env te)
 
-          | Ast.UnaryExpr (u, e) => 
-            let 
+          | Ast.UnaryExpr (u, e) =>
+            let
                 val m = (SOME (#numericMode (hd env)))
                 val u' = (case u of
                                Ast.PreIncrement _ => Ast.PreIncrement m
@@ -1985,27 +1985,27 @@ and defExpr (env:ENV)
             in
                 Ast.UnaryExpr (u', sub e)
             end
-                         
-          | Ast.TypeExpr t => 
+
+          | Ast.TypeExpr t =>
             Ast.TypeExpr (defTyExpr env t)
 
-          | Ast.ThisExpr => 
+          | Ast.ThisExpr =>
             Ast.ThisExpr
 
-          | Ast.YieldExpr eo => 
-            (case eo of 
+          | Ast.YieldExpr eo =>
+            (case eo of
                       NONE => Ast.YieldExpr NONE
                     | SOME e => Ast.YieldExpr (SOME (sub e)))
 
-          | Ast.SuperExpr eo => 
+          | Ast.SuperExpr eo =>
             (case eo of
                       NONE => Ast.SuperExpr NONE
                     | SOME e => Ast.SuperExpr (SOME (sub e)))
-            
-          | Ast.LiteralExpr le => 
+
+          | Ast.LiteralExpr le =>
             Ast.LiteralExpr (defLiteral env le)
-            
-          | Ast.CallExpr {func, actuals} => 
+
+          | Ast.CallExpr {func, actuals} =>
             Ast.CallExpr {func = sub func,
                           actuals = map sub actuals }
 
@@ -2013,7 +2013,7 @@ and defExpr (env:ENV)
             Ast.ApplyTypeExpr { expr = sub expr,
                                 actuals = map (defTyExpr env) actuals }
 
-          | Ast.LetExpr { defs, body,... } => 
+          | Ast.LetExpr { defs, body,... } =>
             let
                 val (f,i)   = defBindings env Ast.Var Name.noNS defs
                 val env     = extendEnvironment env f
@@ -2024,7 +2024,7 @@ and defExpr (env:ENV)
                               head = SOME (Ast.Head (f,i)) }
             end
 
-          | Ast.NewExpr { obj, actuals } => 
+          | Ast.NewExpr { obj, actuals } =>
             Ast.NewExpr { obj = sub obj,
                           actuals = map sub actuals }
 
@@ -2034,29 +2034,29 @@ and defExpr (env:ENV)
                              ident = defIdentExpr env ident,
                              loc = loc })
 
-          | Ast.LexicalRef { ident, loc } => 
+          | Ast.LexicalRef { ident, loc } =>
             let
                 val _ = LogErr.setLoc loc
-            in 
+            in
                 case ident of
                     Ast.UnresolvedPath (p,i) =>
                     let
                         val base = resolvePath env p
                     in case (base,i) of
-                           (Ast.LiteralExpr _,Ast.Identifier {ident=id,...}) => 
+                           (Ast.LiteralExpr _,Ast.Identifier {ident=id,...}) =>
                                Ast.LexicalRef {ident=Ast.QualifiedIdentifier {qual=(defExpr env base),
                                                                           ident=id},
                                            loc=loc}
-                         | (Ast.LiteralExpr _,Ast.TypeIdentifier {ident=Ast.Identifier {ident=id,...},typeArgs}) => 
+                         | (Ast.LiteralExpr _,Ast.TypeIdentifier {ident=Ast.Identifier {ident=id,...},typeArgs}) =>
                                Ast.LexicalRef {ident=Ast.TypeIdentifier {ident=Ast.QualifiedIdentifier {qual=(defExpr env base),
                                                                                                         ident=id},
                                                                          typeArgs=typeArgs},
                                                loc=loc}
-                         | (Ast.LiteralExpr _,_) => 
+                         | (Ast.LiteralExpr _,_) =>
                                LogErr.defnError ["invalid package qualification"]
-                           
-                         | (_,_) => 
-                               Ast.ObjectRef { base=(defExpr env base), 
+
+                         | (_,_) =>
+                               Ast.ObjectRef { base=(defExpr env base),
                                            ident=(defIdentExpr env i),
                                            loc=loc}
                     end
@@ -2065,7 +2065,7 @@ and defExpr (env:ENV)
                                      loc = loc}
             end
 
-          | Ast.SetExpr (a, le, re) => 
+          | Ast.SetExpr (a, le, re) =>
             let
                 val def = (SOME (#numericMode (hd env)))
                 val a' = case a of
@@ -2079,30 +2079,30 @@ and defExpr (env:ENV)
                 Ast.SetExpr (a', (sub le), (sub re))
             end
 
-          | Ast.GetTemp n => 
+          | Ast.GetTemp n =>
             let
                 val tempOffset = (#tempOffset (hd env))
             in
                 Ast.GetTemp (n+tempOffset)
             end
 
-          | Ast.GetParam n => 
+          | Ast.GetParam n =>
             Ast.GetTemp n
 
-          | Ast.ListExpr es => 
+          | Ast.ListExpr es =>
             Ast.ListExpr (map sub es)
 
-          | Ast.SliceExpr (a, b, c) => 
+          | Ast.SliceExpr (a, b, c) =>
             Ast.SliceExpr (sub a, sub b, sub c)
 
           | Ast.InitExpr ie =>
             Ast.InitExpr ie
     end
-    
-    
-and defExprs (env:ENV) 
-             (exprs:Ast.EXPR list) 
-    : Ast.EXPR list = 
+
+
+and defExprs (env:ENV)
+             (exprs:Ast.EXPR list)
+    : Ast.EXPR list =
     let
         val es = map (defExpr env) exprs
     in
@@ -2128,50 +2128,50 @@ and defFuncTy (env:ENV)
              result=result',
              thisType=thisType',
              hasRest=hasRest,
-             minArgs=minArgs}            
+             minArgs=minArgs}
         end
 
 and defTyExpr (env:ENV)
               (ty:Ast.TYPE_EXPR)
-    : Ast.TYPE_EXPR = 
-    case ty of 
-        Ast.FunctionType t => 
+    : Ast.TYPE_EXPR =
+    case ty of
+        Ast.FunctionType t =>
         Ast.FunctionType (defFuncTy env t)
       | Ast.TypeName n =>
-        let 
+        let
         in
-            case n of 
+            case n of
                 Ast.UnresolvedPath (p,i) =>
-                let 
+                let
                     val base = resolvePath env p
                 in case (base,i) of
-                   (Ast.LiteralExpr _,Ast.Identifier {ident=id,...}) => 
+                   (Ast.LiteralExpr _,Ast.Identifier {ident=id,...}) =>
                        Ast.TypeName (Ast.QualifiedIdentifier {qual=(defExpr env base),
                                                               ident=id})
-                 | (Ast.LiteralExpr _,Ast.TypeIdentifier {ident=Ast.Identifier {ident=id,...},typeArgs}) => 
+                 | (Ast.LiteralExpr _,Ast.TypeIdentifier {ident=Ast.Identifier {ident=id,...},typeArgs}) =>
                        Ast.TypeName (Ast.TypeIdentifier {ident=Ast.QualifiedIdentifier {qual=(defExpr env base),
                                                                                                 ident=id},
                                                                  typeArgs=typeArgs})
-                 | (_,_) => 
+                 | (_,_) =>
                        LogErr.defnError ["invalid type expr"]
                 end
-              | _ => 
+              | _ =>
                 Ast.TypeName (defIdentExpr env n)
          end
-      | Ast.UnionType tys => 
+      | Ast.UnionType tys =>
         Ast.UnionType (map (defTyExpr env) tys)
-      | Ast.ArrayType tys => 
+      | Ast.ArrayType tys =>
         Ast.ArrayType (map (defTyExpr env) tys)
-      | Ast.ObjectType tys => 
+      | Ast.ObjectType tys =>
         Ast.ObjectType (map (defFieldType env) tys)
-      | Ast.NullableType { expr, nullable } => 
+      | Ast.NullableType { expr, nullable } =>
         Ast.NullableType { expr = defTyExpr env expr,
-                           nullable = nullable } 
+                           nullable = nullable }
 
-      | Ast.ElementTypeRef (ty, n) => 
+      | Ast.ElementTypeRef (ty, n) =>
         Ast.ElementTypeRef (defTyExpr env ty, n)
 
-      | Ast.FieldTypeRef (ty, ident) => 
+      | Ast.FieldTypeRef (ty, ident) =>
         Ast.FieldTypeRef (defTyExpr env ty, ident)
 
       (* FIXME *)
@@ -2179,7 +2179,7 @@ and defTyExpr (env:ENV)
 
 and defFieldType (env:ENV)
               (ty:Ast.FIELD_TYPE)
-    : Ast.FIELD_TYPE = 
+    : Ast.FIELD_TYPE =
     let
         val {name,ty} = ty
         val ty = defTyExpr env ty
@@ -2195,22 +2195,22 @@ and defFieldType (env:ENV)
     of hoisted fixtures.
 *)
 
-and defStmt (env:ENV) 
+and defStmt (env:ENV)
             (labelIds:Ast.IDENT list)
-            (stmt:Ast.STMT) 
-    : (Ast.STMT * Ast.FIXTURES) = 
+            (stmt:Ast.STMT)
+    : (Ast.STMT * Ast.FIXTURES) =
     let
         val ctx = case env of ctx::_ => ctx | _ => LogErr.internalError ["empty evironment in defStmt"]
 
-        fun defForEnumStmt env (fe:Ast.FOR_ENUM_STMT) = 
+        fun defForEnumStmt env (fe:Ast.FOR_ENUM_STMT) =
             let
                 fun defVarDefnOpt vd =
                     case vd of
                         SOME vd => defDefn env (Ast.VariableDefn vd)
                       | NONE => ([],[],[])
             in
-            case fe of 
-                { isEach, obj, defn, labels, body, next, ... } => 
+            case fe of
+                { isEach, obj, defn, labels, body, next, ... } =>
                 let
                     val newObj =  defExpr env obj
                     val (uf1,hf1,i1) = defVarDefnOpt defn
@@ -2219,11 +2219,11 @@ and defStmt (env:ENV)
                     val tempEnv = updateTempOffset env 1   (* alloc temp for iteration value *)
                     val (newNext,_) = defStmt tempEnv [] next
                 in
-                    (Ast.ForInStmt { isEach=isEach, 
+                    (Ast.ForInStmt { isEach=isEach,
                                      obj = newObj,
                                      defn = defn,
                                      labels = Ustring.empty::labelIds,
-                                     body = newBody, 
+                                     body = newBody,
                                      fixtures = SOME uf1,
                                      next = newNext },
                      List.foldl mergeFixtures hf1 hoisted)
@@ -2234,16 +2234,16 @@ and defStmt (env:ENV)
         fun makeStatementLabel id = (id,StatementLabel)
         fun makeSwitchLabel id = (id,SwitchLabel)
 
-        fun defWhileStmt (env) (w:Ast.WHILE_STMT) = 
-            case w of 
+        fun defWhileStmt (env) (w:Ast.WHILE_STMT) =
+            case w of
                 { cond, body, labels, fixtures } => (* FIXME: inits needed *)
-                let 
+                let
                     val newCond = defExpr env cond
                     val (newBody, hoisted) = defStmt env [] body
                 in
-                    ({ cond=newCond, 
+                    ({ cond=newCond,
                        fixtures=NONE,
-                       body=newBody, 
+                       body=newBody,
                        labels=Ustring.empty::labelIds}, hoisted)
                 end
 
@@ -2277,30 +2277,30 @@ and defStmt (env:ENV)
             end
 
         fun reconstructCatch { bindings, fixtures, inits, block, ty } =
-            let 
+            let
                 val ty = defTyExpr env ty
                 val (f0,i0) = defBindings env Ast.Var Name.noNS bindings
                 val env = extendEnvironment env f0
                 val (block,fixtures) = defBlock env block
-            in                     
+            in
                 { bindings = bindings,   (* FIXME: what about inits *)
                   block = block,
                   fixtures = SOME f0,
                   inits = SOME i0,
                   ty=ty }
-            end            
+            end
 
-        fun defCase env { label, body, inits } 
+        fun defCase env { label, body, inits }
             : Ast.CASE * Ast.FIXTURES =
             let
                 val (body,hoisted) = defBlock env body
-                val label = 
-                    case label of 
+                val label =
+                    case label of
                         NONE => NONE
-                      | SOME e => 
-                        let 
+                      | SOME e =>
+                        let
                             val e' = defExpr env e
-                        in 
+                        in
                             SOME e'
                         end
             in
@@ -2334,7 +2334,7 @@ and defStmt (env:ENV)
                 val (block,hoisted) = defBlock env (Ast.Block {pragmas=pragmas,
                                                                defns=defns,
                                                                head=head,
-                                                               body=body, 
+                                                               body=body,
                                                                loc=loc})
             in
                 (Ast.ClassBlock { ns = ns,
@@ -2351,7 +2351,7 @@ and defStmt (env:ENV)
             in case env of
                 {labels,...}::_ =>
                     (dumpLabels labels;
-                    if List.exists (fn (id,knd) => 
+                    if List.exists (fn (id,knd) =>
                         id = labelId andalso    (* compare ids *)
                         knd = labelKnd) labels  (* and kinds *)
                     then true
@@ -2360,7 +2360,7 @@ and defStmt (env:ENV)
             end
 
         fun checkBreakLabel (id:Ast.IDENT option) =
-            (* 
+            (*
                 A break with an empty label shall only occur in an iteration
                 statement or switch statement. A break with a non-empty label
                 shall only occur in a statement with that label as a member of
@@ -2386,16 +2386,16 @@ and defStmt (env:ENV)
 
     in
         case stmt of
-            Ast.EmptyStmt => 
+            Ast.EmptyStmt =>
             (Ast.EmptyStmt,[])
-         
-          | Ast.ExprStmt es => 
+
+          | Ast.ExprStmt es =>
             let
             in
                 (Ast.ExprStmt (defExpr env es),[])
             end
 
-          | Ast.InitStmt {ns, temps, inits, prototype, static, kind} => 
+          | Ast.InitStmt {ns, temps, inits, prototype, static, kind} =>
             let
                 val ns0 = resolveExprOptToNamespace env ns
 
@@ -2410,21 +2410,21 @@ and defStmt (env:ENV)
                 (Ast.ExprStmt (Ast.InitExpr (target, Ast.Head temps, (map (defInitStep env (SOME ns0)) inits))),[])
             end
 
-          | Ast.ForInStmt fe => 
+          | Ast.ForInStmt fe =>
             let
                 val env' = addLabels env (map makeIterationLabel labelIds)
                 val env'' = addLabel env' (makeIterationLabel Ustring.empty)
             in
                 defForEnumStmt env'' fe
             end
-            
-          | Ast.ThrowStmt es => 
+
+          | Ast.ThrowStmt es =>
             (Ast.ThrowStmt (defExpr env es), [])
-            
-          | Ast.ReturnStmt es => 
+
+          | Ast.ReturnStmt es =>
             (Ast.ReturnStmt (defExpr env es), [])
-            
-          | Ast.BreakStmt i => 
+
+          | Ast.BreakStmt i =>
             let
             in
                 checkBreakLabel i;
@@ -2440,46 +2440,46 @@ and defStmt (env:ENV)
 
           | Ast.BlockStmt b =>
             inl (Ast.BlockStmt) (defBlock env b)
-            
+
           | Ast.ClassBlock cb =>
             reconstructClassBlock cb
-            
+
           | Ast.LabeledStmt (id, s) =>
-            let 
+            let
                 val env' = addLabel env (makeStatementLabel id)
                 val (s',f') = defStmt env' (id::labelIds) s
             in
                 (Ast.LabeledStmt (id,s'),f')
             end
-            
+
           | Ast.LetStmt b =>
             inl (Ast.LetStmt) (defBlock env b)
-            
-          | Ast.WhileStmt w => 
+
+          | Ast.WhileStmt w =>
             let
                 val env' = addLabels env (map makeIterationLabel labelIds)
                 val env'' = addLabel env' (makeIterationLabel Ustring.empty)
             in
                 inl (Ast.WhileStmt) (defWhileStmt env'' w)
             end
-            
-          | Ast.DoWhileStmt w => 
+
+          | Ast.DoWhileStmt w =>
             let
                 val env' = addLabels env (map makeIterationLabel labelIds);
                 val env'' = addLabel env' (makeIterationLabel Ustring.empty)
             in
                 inl (Ast.DoWhileStmt) (defWhileStmt env'' w)
             end
-            
-          | Ast.ForStmt f => 
+
+          | Ast.ForStmt f =>
             let
                 val env' = addLabels env (map makeIterationLabel labelIds);
                 val env'' = addLabel env' (makeIterationLabel Ustring.empty)
             in
                 defForStmt env'' f
             end
-            
-          | Ast.IfStmt { cnd, thn, els } => 
+
+          | Ast.IfStmt { cnd, thn, els } =>
             let
                 val cnd = defExpr env cnd
                 val (thn,thn_hoisted) = defStmt env [] thn
@@ -2488,34 +2488,34 @@ and defStmt (env:ENV)
 
                 (Ast.IfStmt { cnd = cnd,
                               thn = thn,
-                              els = els }, 
+                              els = els },
                  (List.foldl mergeFixtures thn_hoisted els_hoisted))
             end
-            
+
           | Ast.WithStmt { obj, ty, body } =>
             let
                 val (body,hoisted) = defStmt env [] body
-            in 
+            in
                 (Ast.WithStmt { obj = (defExpr env obj),
                            ty = (defTyExpr env ty),
                            body = body }, hoisted)
             end
-        
-          | Ast.TryStmt { block, catches, finally } => 
+
+          | Ast.TryStmt { block, catches, finally } =>
             let
                 val (block,hoisted) = defBlock env block
             in
                 (Ast.TryStmt {block = block,
                               catches = map reconstructCatch catches,
-                              finally = case finally of 
-                                        NONE => 
+                              finally = case finally of
+                                        NONE =>
                                         NONE
                                       | SOME b =>
                                         let val (block,hoisted) = defBlock env b
                                         in SOME block end }, hoisted)
             end
-        
-          | Ast.SwitchStmt { cond, cases, ... } => 
+
+          | Ast.SwitchStmt { cond, cases, ... } =>
             let
                 val env' = addLabels env (map makeSwitchLabel labelIds);
                 val env'' = addLabel env' (makeSwitchLabel Ustring.empty)
@@ -2526,21 +2526,21 @@ and defStmt (env:ENV)
                                   cases = cases,
                                   labels=Ustring.empty::labelIds}, List.concat hoisted)
             end
-        
+
           | Ast.SwitchTypeStmt { cond, ty, cases } =>
             (Ast.SwitchTypeStmt {cond = defExpr env cond,
                                  ty = defTyExpr env ty,
                                  cases = map reconstructCatch cases}, [])
-            
-          | Ast.DXNStmt { expr } => 
+
+          | Ast.DXNStmt { expr } =>
             (Ast.DXNStmt { expr = defExpr env expr },[])
     end
 
 and defStmts (env) (stmts:Ast.STMT list)
-    : (Ast.STMT list * Ast.FIXTURES) = 
+    : (Ast.STMT list * Ast.FIXTURES) =
     case stmts of
         (stmt::stmts) =>
-            let 
+            let
                 val (s1,f1):(Ast.STMT*Ast.FIXTURES) = defStmt env [] stmt
 
                 (* Class definitions are embedded in the ClassBlock so we
@@ -2556,29 +2556,29 @@ and defStmts (env) (stmts:Ast.STMT list)
 (*
     NAMESPACE_DEFN
 
-    Translate a namespace definition into a namespace fixture. Namespaces 
-    are not hoisted. The initialiser is resolved at this time and so must 
-    be either a literal string or a reference to a previously defined 
+    Translate a namespace definition into a namespace fixture. Namespaces
+    are not hoisted. The initialiser is resolved at this time and so must
+    be either a literal string or a reference to a previously defined
     namespace.
 *)
 
-and defNamespaceDefn (env:ENV) 
+and defNamespaceDefn (env:ENV)
                  (nd:Ast.NAMESPACE_DEFN)
-    : (Ast.FIXTURES * Ast.NAMESPACE_DEFN) = 
-    case nd of 
-        { ident, ns, init } => 
+    : (Ast.FIXTURES * Ast.NAMESPACE_DEFN) =
+    case nd of
+        { ident, ns, init } =>
         let
             val _ = trace [">> defNamespaceDefn"]
             val qualNs = resolveExprOptToNamespace env ns
-            val newNs = case init of 
+            val newNs = case init of
                             (* FIXME: a nonce perhaps? *)
                             NONE => Ast.UserNamespace ident
-                          | SOME (Ast.LiteralExpr (Ast.LiteralString s)) => 
+                          | SOME (Ast.LiteralExpr (Ast.LiteralString s)) =>
                             Ast.UserNamespace s
-                          | SOME (Ast.LexicalRef lref) => 
+                          | SOME (Ast.LexicalRef lref) =>
                             resolveExprToNamespace env (Ast.LexicalRef lref)
                           | _ => LogErr.evalError ["illegal form of namespace initializer"]
-            val fixtureName = Ast.PropName { ns = qualNs, id = ident } 
+            val fixtureName = Ast.PropName { ns = qualNs, id = ident }
             val newNd = { ident = ident,
                           ns = ns,
                           init = init }
@@ -2589,15 +2589,15 @@ and defNamespaceDefn (env:ENV)
 
 and defType (env:ENV)
             (td:Ast.TYPE_DEFN)
-    : Ast.FIXTURES = 
+    : Ast.FIXTURES =
     let
-        val { ident, ns, init } = td 
-        val ns = case ns of 
+        val { ident, ns, init } = td
+        val ns = case ns of
                      NONE => defaultNamespace env
                    | SOME e => resolveExprToNamespace env e
         val n = { id=ident, ns=ns }
     in
-        [(Ast.PropName n, 
+        [(Ast.PropName n,
           Ast.TypeFixture (defTyExpr env init))]
     end
 
@@ -2610,10 +2610,10 @@ and defType (env:ENV)
 *)
 
 
-and defDefn (env:ENV) 
-            (defn:Ast.DEFN) 
+and defDefn (env:ENV)
+            (defn:Ast.DEFN)
     : (Ast.FIXTURES * Ast.FIXTURES * Ast.INITS) = (* unhoisted, hoisted, inits *)
-    case defn of 
+    case defn of
         Ast.VariableDefn { kind, ns, static, prototype, bindings } =>
             let
                 val _ = trace ["defVar"]
@@ -2627,7 +2627,7 @@ and defDefn (env:ENV)
               | Ast.LetVar => (fxtrs,[],inits)
               | Ast.LetConst => (fxtrs,[],inits)
             end
-      | Ast.FunctionDefn fd => 
+      | Ast.FunctionDefn fd =>
             let
                 val {kind,...} = fd
                 val (fxtrs,def) = defFuncDefn env fd
@@ -2639,7 +2639,7 @@ and defDefn (env:ENV)
               | Ast.LetVar => (fxtrs,[],[])
               | Ast.LetConst => (fxtrs,[],[])
             end
-      | Ast.NamespaceDefn nd => 
+      | Ast.NamespaceDefn nd =>
             let
                 val _ = trace ["defNamespaceDefn"]
                 val (hoisted,def) = defNamespaceDefn env nd
@@ -2652,14 +2652,14 @@ and defDefn (env:ENV)
                 val (hoisted,def) = defClass env cd
             in
                 ([],hoisted,[])
-            end  
+            end
 
       | Ast.InterfaceDefn cd =>
             let
                 val (hoisted,def) = defInterface env cd
             in
                 ([],hoisted,[])
-            end  
+            end
 
       | Ast.TypeDefn td =>
         let
@@ -2674,16 +2674,16 @@ and defDefn (env:ENV)
 (*
     DEFN list
 
-    Process each definition. 
+    Process each definition.
 *)
 
-and defDefns (env:ENV) 
+and defDefns (env:ENV)
              (unhoisted:Ast.FIXTURES)
              (hoisted:Ast.FIXTURES)
              (inits:Ast.INITS)
              (defns:Ast.DEFN list)
     : (Ast.FIXTURES * Ast.FIXTURES * Ast.INITS) = (* unhoisted, hoisted, inits *)
-    let 
+    let
         val _ = trace([">> defDefns"])
     in case defns of
            [] => (trace(["<< defDefns"]);(unhoisted,hoisted,inits))
@@ -2695,12 +2695,12 @@ and defDefns (env:ENV)
                             | Ast.ClassDefn _     => hoisted'
                             | Ast.InterfaceDefn _ => hoisted'
                             | _ => []
-               val env'  = updateFixtures env (List.foldl mergeFixtures unhoisted' temp) 
+               val env'  = updateFixtures env (List.foldl mergeFixtures unhoisted' temp)
            (* add the new unhoisted and temporarily, hoisted class fxtrs to the current env *)
            in
-               defDefns env' 
-                        (List.foldl mergeFixtures unhoisted unhoisted') 
-                        (List.foldl mergeFixtures hoisted hoisted') 
+               defDefns env'
+                        (List.foldl mergeFixtures unhoisted unhoisted')
+                        (List.foldl mergeFixtures hoisted hoisted')
                         (inits@inits') ds
            end
     end
@@ -2710,19 +2710,19 @@ and defDefns (env:ENV)
 
     Initialise a Block's fixtures and initialisers fields. Pragmas and
     definitions are not used after this definition phase. Traverse the
-    statements so that embedded blocks (e.g. block statements, let 
+    statements so that embedded blocks (e.g. block statements, let
     expressions) are initialised.
 
-    Class blocks have an outer scope that contain the class (static) 
+    Class blocks have an outer scope that contain the class (static)
     fixtures. When entering a class block, extend the environment with
     the class object and its base objects, in reverse order
 
 *)
 
-and defBlock (env:ENV) 
-             (b:Ast.BLOCK) 
+and defBlock (env:ENV)
+             (b:Ast.BLOCK)
     : (Ast.BLOCK * Ast.FIXTURES) =
-    let 
+    let
         val Ast.Block { pragmas, defns, body, loc, ... } = b
         val _ = LogErr.setLoc loc
         val (env,unhoisted_pragma_fxtrs) = defPragmas env pragmas
@@ -2750,8 +2750,8 @@ and defBlock (env:ENV)
     public package namespace 'p.q.r'
 *)
 
-and defPackage (env:ENV) 
-               (package:Ast.PACKAGE) 
+and defPackage (env:ENV)
+               (package:Ast.PACKAGE)
     : (Ast.PACKAGE * Ast.FIXTURES) =
         let
             val packageName : Ast.IDENT list = (#name package)
@@ -2760,11 +2760,11 @@ and defPackage (env:ENV)
             val env' = {fixtures = [],
                         tempOffset = 0,
                         openNamespaces = [[Ast.Internal packageIdent, Ast.Public packageIdent]]@(#openNamespaces (hd env)),
-                        numericMode = defaultNumericMode, 
+                        numericMode = defaultNumericMode,
                         labels = [],
                         packageNames = [packageName],
-                        className = Ustring.fromString "", 
-                        packageName = packageName, 
+                        className = Ustring.fromString "",
+                        packageName = packageName,
                         defaultNamespace = Ast.Internal packageIdent } :: env
 
             val (block,hoisted) = defBlock env' (#block package)
@@ -2781,16 +2781,16 @@ and defPackage (env:ENV)
 and topEnv _ = [ { fixtures = Fixture.getTopFixtures (!topFixtures),
                    tempOffset = 0,
                    openNamespaces = [[Name.noNS,Ast.Internal Ustring.empty], [Ast.Intrinsic]],
-                   numericMode = defaultNumericMode, 
+                   numericMode = defaultNumericMode,
                    labels = [],
                    packageNames = !topPackageNames,
-                   className = Ustring.fromString "", 
-                   packageName = [], 
+                   className = Ustring.fromString "",
+                   packageName = [],
                    defaultNamespace = Name.noNS } ]
 
-and defProgram (prog:Ast.PROGRAM) 
-    : Ast.PROGRAM = 
-    let 
+and defProgram (prog:Ast.PROGRAM)
+    : Ast.PROGRAM =
+    let
         val _ = LogErr.setLoc NONE
         val e = topEnv ()
         val (packages, hoisted_pkg) = ListPair.unzip (map (defPackage e) (#packages prog))
@@ -2803,7 +2803,7 @@ and defProgram (prog:Ast.PROGRAM)
                       fixtures = SOME fixtures }
     in
         trace ["definition complete"];
-        (if !doTrace 
+        (if !doTrace
          then Pretty.ppProgram result
          else ());
         let

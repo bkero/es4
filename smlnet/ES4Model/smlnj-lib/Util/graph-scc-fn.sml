@@ -6,7 +6,7 @@
  *   The graph can have nodes with self-loops.
  *
  * author: Matthias Blume
- *) 
+ *)
 
 functor GraphSCCFn (Nd: ORD_KEY) :> GRAPH_SCC where Nd = Nd =
   struct
@@ -75,7 +75,7 @@ functor GraphSCCFn (Nd: ORD_KEY) :> GRAPH_SCC where Nd = Nd =
 			    val tn_pre = npre
 			    val tn_low = ref npre
 			    val npre = npre + 1
-			    val theMap = 
+			    val theMap =
 				Map.insert (theMap, tn,
 					    { pre = tn_pre, low = tn_low })
 			    val nodemap = (npre, theMap)

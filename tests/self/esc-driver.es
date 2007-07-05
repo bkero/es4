@@ -1,4 +1,4 @@
-{ 
+{
     import util.*;
     import cogen.*;
 
@@ -10,12 +10,12 @@
     var [ts1,nd1] = parser.program();
     print(Ast::encodeProgram (nd1));
 */
-/*  
+/*
     {
         import emitter.*;
         var e = new ABCEmitter();
 
-        cogen.cgStmt({ "emitter": e, "asm": e.newScript().init.asm, "cp": e.constants }, 
+        cogen.cgStmt({ "emitter": e, "asm": e.newScript().init.asm, "cp": e.constants },
                      nd1.block.stmts[0]);
 
         dumpABCFile(e.finalize(), "hello-test.es");
@@ -34,16 +34,16 @@
                                                   ], // stmts
                                                  null // pos
                                                  ), // block
-                                       { fixtures: [[new PropName(new PropIdent("m")), 
+                                       { fixtures: [[new PropName(new PropIdent("m")),
                                                      new ValFixture(new SpecialType(new AnyType()))],
-                                                    [new PropName(new PropIdent("n")), 
+                                                    [new PropName(new PropIdent("n")),
                                                      new ValFixture(new SpecialType(new AnyType()))]],
                                          inits: []
                                        }, // params
                                        [], // defaults
                                        null // ty
                                        ));
-                                                
+
     let main = new ExprStmt(new CallExpr(new LexicalRef(new Identifier("print")),
                                          [new CallExpr(new LexicalRef(new Identifier("fn")),
                                                        [new LiteralExpr(new LiteralInt(3)),
@@ -51,7 +51,7 @@
 
     dumpABCFile(cogen.cg(new Program([],
                                      new Block([], [fn], null, [main], null),
-                                     [[new PropName(new PropIdent("fn")), 
+                                     [[new PropName(new PropIdent("fn")),
                                        new ValFixture(new SpecialType(new AnyType()))]] // fixtures
                                      )),
                 "fn-test.es");

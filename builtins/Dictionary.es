@@ -4,17 +4,17 @@
  *
  * The following licensing terms and conditions apply and must be
  * accepted in order to use the Reference Implementation:
- * 
+ *
  *    1. This Reference Implementation is made available to all
  * interested persons on the same terms as Ecma makes available its
  * standards and technical reports, as set forth at
  * http://www.ecma-international.org/publications/.
- * 
+ *
  *    2. All liability and responsibility for any use of this Reference
  * Implementation rests with the user, and not with any of the parties
  * who contribute to, or who own or hold any copyright in, this Reference
  * Implementation.
- * 
+ *
  *    3. THIS REFERENCE IMPLEMENTATION IS PROVIDED BY THE COPYRIGHT
  * HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED
  * WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
@@ -27,9 +27,9 @@
  * WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE
  * OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
  * IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- * 
+ *
  * End of Terms and Conditions
- * 
+ *
  * Copyright (c) 2007 Adobe Systems Inc., The Mozilla Foundation, Opera
  * Software ASA, and others.
  *
@@ -63,14 +63,14 @@ namespace Library
 {
     use namespace intrinsic;
 
-    public class Dictionary.<K,V> 
+    public class Dictionary.<K,V>
     {
         /* Hashfn is a function used to hash the keys.  The hash
          * function must always return the same value given the same
          * object.
          */
-        public function Dictionary(hashfn : function(*):uint = standardHash) 
-            : hashfn=hashfn 
+        public function Dictionary(hashfn : function(*):uint = standardHash)
+            : hashfn=hashfn
         {
         }
 
@@ -170,10 +170,10 @@ namespace Library
             return false;
         }
 
-        iterator function get(deep: boolean = false) : iterator::IteratorType.<K> 
+        iterator function get(deep: boolean = false) : iterator::IteratorType.<K>
             getKeys(deep);
 
-        iterator function getKeys(deep: boolean = false) : iterator::IteratorType.<K> 
+        iterator function getKeys(deep: boolean = false) : iterator::IteratorType.<K>
             iterate.<K>(function (a,k,v) { a.push(k) });
 
         iterator function getValues(deep: boolean = false) : iterator::IteratorType.<V>
@@ -186,7 +186,7 @@ namespace Library
             let a = [] : [T];
             allElements( tbl, limit, function (k,v) { f(a,k,v) } );
             let i = 0;
-            return { 
+            return {
                 next: function () : T {
                     if (i === a.length)
                         throw StopIteration;

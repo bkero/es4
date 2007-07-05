@@ -1,4 +1,4 @@
-//module debug 
+//module debug
 {
     use namespace intrinsic;
 

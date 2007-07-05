@@ -54,7 +54,7 @@ package cogen
     }
 
     /* A context is a structure with the fields
-     * 
+     *
      *    emitter  -- the unique emitter
      *    script   -- the only script we care about in that emitter
      *    cp       -- the emitter's constant pool
@@ -111,7 +111,7 @@ package cogen
         for ( let i=0 ; i < stmts.length ; i++ )
             cgStmt(ctx, stmts[i]);
     }
-    
+
     function cgDefn(ctx, d) {
         let { asm:asm, emitter:emitter } = ctx;
         switch type (d) {

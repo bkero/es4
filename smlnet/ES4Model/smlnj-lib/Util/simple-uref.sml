@@ -31,7 +31,7 @@ structure SimpleURef : UREF =
 	   of ECR x => x
 	    | _ => raise Match
 	  (* end case *))
-      
+
     fun equal (p, p') = (find p = find p')
 
     fun update (p, x) = let val p' = find p
@@ -45,7 +45,7 @@ structure SimpleURef : UREF =
 	  in
 	    if p' = q' then false else (p' := PTR q'; true)
 	  end
- 
+
     val union = link
 
     fun unify f (p, q) = let

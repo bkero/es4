@@ -6,9 +6,9 @@
  *
  *)
 
-signature SPLAY_TREE = 
+signature SPLAY_TREE =
   sig
-    datatype 'a splay = 
+    datatype 'a splay =
       SplayObj of {
         value : 'a,
         right : 'a splay,
@@ -18,7 +18,7 @@ signature SPLAY_TREE =
 
 
     val splay : (('a -> order) * 'a splay) -> (order * 'a splay)
-      (* (r,tree') = splay (cmp,tree) 
+      (* (r,tree') = splay (cmp,tree)
        * where tree' is tree adjusted using the comparison function cmp
        * and, if tree' = SplayObj{value,...}, r = cmp value.
        * tree' = SplayNil iff tree = SplayNil, in which case r is undefined.

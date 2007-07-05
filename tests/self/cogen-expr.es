@@ -150,7 +150,7 @@ package cogen
             }
         }
     }
-    
+
     function cgBinaryTypeExpr(ctx, e) {
         let asm = ctx.asm;
         cgExpr(ctx, e.e1);
@@ -158,7 +158,7 @@ package cogen
         switch type (e.op) {
         case (op:CastOp) { asm.I_coerce() }
         case (op:IsOp) { asm.I_istypelate() }
-        case (op:ToOp) { 
+        case (op:ToOp) {
             // If the type expression object has a property meta::convert then invoke that
             // method and return its result.  Otherwise, behave as cast.
             asm.I_dup();
@@ -190,7 +190,7 @@ package cogen
             asm.I_findpropstrict(name);
             asm.I_getproperty(name);
         }
-        case (ty:*) { 
+        case (ty:*) {
             /* FIXME */
             throw "Unimplemented: type expression type";
         }
@@ -520,9 +520,9 @@ package cogen
         case (e:LiteralDecimal) { asm.I_pushdouble(ctx.cp.float64(Number(e.decimalValue))) } // FIXME - the AVM2 can't handle decimal yet
         case (e:LiteralString) { asm.I_pushstring(ctx.cp.stringUtf8(e.strValue)) }
         case (e:LiteralBoolean) {
-            if (e.booleanValue) 
-                asm.I_pushtrue(); 
-            else 
+            if (e.booleanValue)
+                asm.I_pushtrue();
+            else
                 asm.I_pushfalse();
         }
         case (e:LiteralFunction) { asm.I_newfunction(cgFunc(ctx, e.func)) }

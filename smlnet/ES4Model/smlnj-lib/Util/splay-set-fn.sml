@@ -12,8 +12,8 @@ functor SplaySetFn (K : ORD_KEY) : ORD_SET =
     open SplayTree
 
     type item = K.ord_key
-  
-    datatype set = 
+
+    datatype set =
         EMPTY
       | SET of {
         root : item splay ref,
@@ -25,20 +25,20 @@ functor SplaySetFn (K : ORD_KEY) : ORD_SET =
     val empty = EMPTY
 
     fun singleton v = SET{root = ref(SplayObj{value=v,left=SplayNil,right=SplayNil}),nobj=1}
-    
+
 	(* Primitive insertion.
 	 *)
     fun insert (v,(nobj,root)) =
           case splay (cmpf v, root) of
-            (EQUAL,SplayObj{value,left,right}) => 
+            (EQUAL,SplayObj{value,left,right}) =>
               (nobj,SplayObj{value=v,left=left,right=right})
-          | (LESS,SplayObj{value,left,right}) => 
+          | (LESS,SplayObj{value,left,right}) =>
               (nobj+1,
                SplayObj{
                  value=v,
                  left=SplayObj{value=value,left=left,right=SplayNil},
                  right=right})
-          | (GREATER,SplayObj{value,left,right}) => 
+          | (GREATER,SplayObj{value,left,right}) =>
               (nobj+1,
                SplayObj{
                   value=v,
@@ -46,7 +46,7 @@ functor SplaySetFn (K : ORD_KEY) : ORD_SET =
                   right=SplayObj{value=value,left=SplayNil,right=right}})
           | (_,SplayNil) => (1,SplayObj{value=v,left=SplayNil,right=SplayNil})
 
-	(* Add an item.  
+	(* Add an item.
 	 *)
     fun add (EMPTY,v) = singleton v
       | add (SET{root,nobj},v) = let
@@ -60,7 +60,7 @@ functor SplaySetFn (K : ORD_KEY) : ORD_SET =
 	 *)
     fun addList (set,[]) = set
       | addList (set,l) = let
-          val arg = case set of EMPTY => (0,SplayNil) 
+          val arg = case set of EMPTY => (0,SplayNil)
                               | SET{root,nobj} => (nobj,!root)
           val (cnt,t) = List.foldl insert arg l
           in
@@ -75,7 +75,7 @@ functor SplaySetFn (K : ORD_KEY) : ORD_SET =
     fun delete (EMPTY,_) = raise LibBase.NotFound
       | delete (SET{root,nobj},key) =
           case splay (cmpf key, !root) of
-            (EQUAL,SplayObj{value,left,right}) => 
+            (EQUAL,SplayObj{value,left,right}) =>
               if nobj = 1 then EMPTY
               else SET{root=ref(join(left,right)),nobj=nobj-1}
           | (_,r) => (root := r; raise LibBase.NotFound)
@@ -256,7 +256,7 @@ functor SplaySetFn (K : ORD_KEY) : ORD_SET =
 (*
     fun revapp af (SET{root,...}) =
           let fun apply SplayNil = ()
-                | apply (SplayObj{value,left,right}) = 
+                | apply (SplayObj{value,left,right}) =
                     (apply right; af value; apply left)
           in apply (!root) end
 *)
@@ -318,7 +318,7 @@ functor SplaySetFn (K : ORD_KEY) : ORD_SET =
                 if p v then true
                 else case ex l of
                        false => ex r
-                     | _ => true 
+                     | _ => true
           in
             ex (!root)
           end
@@ -330,7 +330,7 @@ functor SplaySetFn (K : ORD_KEY) : ORD_SET =
                 if p v then SOME v
                 else case ex l of
                        NONE => ex r
-                     | a => a 
+                     | a => a
           in
             ex (!root)
           end

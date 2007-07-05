@@ -57,9 +57,9 @@
  *
  *  format (glue string "glue vs. " o string o glue int 42 o sp 5 o int)
  *         "ordinary text " 17
- *                                      ==> "glue vs. ordinary text 42     17" 
+ *                                      ==> "glue vs. ordinary text 42     17"
  *
- * Fragments can be padded, trimmed, or fitted to generate text pieces of 
+ * Fragments can be padded, trimmed, or fitted to generate text pieces of
  * specified sizes.  Padding/trimming/fitting may be nested.
  * The operations are parameterized by a place (left, center, right) and
  * a width. Padding never shrinks strings, trimming never extends

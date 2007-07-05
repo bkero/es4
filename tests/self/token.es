@@ -215,13 +215,13 @@ namespace Token = "Token"
     // meta
 
     public const Error = XmlTagStartEnd - 1
-    public const LexBreak = Error - 1 
+    public const LexBreak = Error - 1
                             // of { lex_initial: unit -> ((TOKEN * Ast.POS) list),
                             // lex_regexp: unit -> ((TOKEN * Ast.POS) list) }
     const LastToken = LexBreak
 
     const names = [
-        "<unused index>", 
+        "<unused index>",
         "end of program",
         "minus",
         "minusminus",
@@ -359,7 +359,7 @@ namespace Token = "Token"
         "docComment",
         "blockComment",
         "slashslashcomment",
-        
+
         "<newline>",
         "<ws>",
         "<empty>",
@@ -367,8 +367,8 @@ namespace Token = "Token"
         "abbrev_mode",
         "full_mode"
     ]
-    
-    public class Token 
+
+    public class Token
     {
         var kind
         var utf8id
@@ -381,10 +381,10 @@ namespace Token = "Token"
 
     var tokenPool : Array;
     public function reservedWordOrIdentifier (text:String) : int {
-        if (false) // TODO: check for reserved word 
+        if (false) // TODO: check for reserved word
         {
         }
-        else 
+        else
         {
             let token = new Token (Identifier,text);
             let tokenId = tokenPool.length;
@@ -413,7 +413,7 @@ namespace Token = "Token"
         var t : Token = tokens[token_id];
         return t.getTokenClass();
     }
-    
+
     public function getTokenText ( token_id : int ) : String
     {
         // if the token id is negative, it is a token_class.
@@ -429,7 +429,7 @@ namespace Token = "Token"
         return t.getTokenText();
     }
 
-    public function test () 
+    public function test ()
     {
         for( let i = FirstToken; i >= LastToken; --i )
             print(i,": ",names[-i])

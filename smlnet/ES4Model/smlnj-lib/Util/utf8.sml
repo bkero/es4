@@ -7,7 +7,7 @@
  *
  *	Unicode value		1st byte    2nd byte    3rd byte    4th byte
  *	-----------------	--------    --------    --------    --------
- *	00000000 0xxxxxxx	0xxxxxxx	
+ *	00000000 0xxxxxxx	0xxxxxxx
  *	00000yyy yyxxxxxx	110yyyyy    10xxxxxx
  *	zzzzyyyy yyxxxxxx	1110zzzz    10yyyyyy	10xxxxxx
  *	110110ww wwzzzzyy+

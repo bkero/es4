@@ -1,14 +1,14 @@
 use namespace intrinsic;
 
-class Cat { 
+class Cat {
   var lives : int = 9;
   var name : string;
-  
-  function Cat(name : string = "mao", lives : int = 9) : 
-    name = name, lives = lives 
+
+  function Cat(name : string = "mao", lives : int = 9) :
+    name = name, lives = lives
   {}
 
-  function die(n : int = 1) : int { 
+  function die(n : int = 1) : int {
     lives -= n;
     if (lives <= 0) {
       intrinsic::print(name + "'s last life expired!");

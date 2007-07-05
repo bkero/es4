@@ -2,17 +2,17 @@
 (*
  * The following licensing terms and conditions apply and must be
  * accepted in order to use the Reference Implementation:
- * 
+ *
  *    1. This Reference Implementation is made available to all
  * interested persons on the same terms as Ecma makes available its
  * standards and technical reports, as set forth at
  * http://www.ecma-international.org/publications/.
- * 
+ *
  *    2. All liability and responsibility for any use of this Reference
  * Implementation rests with the user, and not with any of the parties
  * who contribute to, or who own or hold any copyright in, this Reference
  * Implementation.
- * 
+ *
  *    3. THIS REFERENCE IMPLEMENTATION IS PROVIDED BY THE COPYRIGHT
  * HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED
  * WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
@@ -25,14 +25,14 @@
  * WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE
  * OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
  * IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- * 
+ *
  * End of Terms and Conditions
- * 
+ *
  * Copyright (c) 2007 Adobe Systems Inc., The Mozilla Foundation, Opera
  * Software ASA, and others.
  *)
 (* The ES4 "boot environment". *)
-structure Boot = struct 
+structure Boot = struct
 
 (* Local tracing machinery *)
 
@@ -41,28 +41,28 @@ fun trace ss = if (!doTrace) then LogErr.log ("[boot] " :: ss) else ()
 fun error ss = LogErr.hostError ss
 
 
-fun instantiateRootClass (fullName:Ast.NAME) (prog:Ast.PROGRAM) : 
+fun instantiateRootClass (fullName:Ast.NAME) (prog:Ast.PROGRAM) :
     (Ast.CLS * Mach.CLS_CLOSURE * Mach.OBJ * Ast.PROGRAM)
   =
-  let 
+  let
       val globalObj = Eval.getGlobalObject ()
       val globalRegs = Eval.getInitialRegs ()
 
       val _ = trace ["fetching ", LogErr.name fullName, " class definition"];
       val fix = Fixture.getFixture (valOf (#fixtures prog)) (Ast.PropName fullName)
-      val cls = case fix of 
+      val cls = case fix of
                     Ast.ClassFixture cls => cls
                   | _ => error [LogErr.name fullName, " did not resolve to a class fixture"]
-                         
+
       val _ = trace ["allocating class ", LogErr.name fullName];
       val closure = Eval.newClsClosure (#scope globalRegs) cls
       val obj = Mach.newObj (Mach.ClassTag Name.intrinsic_Class) Mach.Null (SOME (Mach.Class closure))
       val classRegs = Eval.extendScopeReg globalRegs obj Mach.InstanceScope
-                      
+
       val _ = trace ["allocating class fixtures for ", LogErr.name fullName];
       val Ast.Cls { classFixtures, ... } = cls
       val _ = Eval.allocObjFixtures classRegs obj NONE classFixtures
-              
+
       val _ = trace ["binding class ", LogErr.name fullName];
       val Mach.Obj { props, ... } = globalObj
       val _ = Mach.addProp props fullName
@@ -72,22 +72,22 @@ fun instantiateRootClass (fullName:Ast.NAME) (prog:Ast.PROGRAM) :
                                        dontEnum = true,
                                        readOnly = true,
                                        isFixed = true } }
-      (* 
-       * We return a "residual" program for each root class, to evaluate after 
-       * all other classes load, typically because the packages & block of the 
-       * root prog involves init statements that hit classes like "string" 
-       * or "boolean" that are not yet defined. 
+      (*
+       * We return a "residual" program for each root class, to evaluate after
+       * all other classes load, typically because the packages & block of the
+       * root prog involves init statements that hit classes like "string"
+       * or "boolean" that are not yet defined.
        *)
       val residualProg = { packages = (#packages prog),
                            fixtures = SOME [],
                            block = (#block prog) }
   in
       (cls, closure, obj, residualProg)
-  end           
+  end
 
-fun completeClassFixtures name classObj = 
-    let 
-        (* 
+fun completeClassFixtures name classObj =
+    let
+        (*
          * Now the weird / feedbacky part: we go find the class "Class" and allocate
          * its instance fixtures on the object we just built. For non-root classes
          * this happens automatically because they're *instances* of class "Class",
@@ -95,9 +95,9 @@ fun completeClassFixtures name classObj =
          * hasn't actually run through any sort of normal construction protocol for
          * class "Class".
          *
-         * Note that we do this *after* we bound the object to a position in the 
+         * Note that we do this *after* we bound the object to a position in the
          * global object, because we want this tying-the-knot trick to work when
-         * we're defining class "Class" itself, and we won't be able to find it 
+         * we're defining class "Class" itself, and we won't be able to find it
          * by name until just now.
          *)
         val globalRegs = Eval.getInitialRegs ()
@@ -108,7 +108,7 @@ fun completeClassFixtures name classObj =
         Eval.allocObjFixtures classRegs classObj (SOME classObj) instanceFixtures
     end
 
-fun runObjectConstructorOnGlobalObject objClass objClassObj objClassClosure = 
+fun runObjectConstructorOnGlobalObject objClass objClassObj objClassClosure =
     let
         val _ = trace ["running Object constructor on global object"];
         val globalObj = Eval.getGlobalObject ()
@@ -120,7 +120,7 @@ fun runObjectConstructorOnGlobalObject objClass objClassObj objClassClosure =
         Eval.initializeAndConstruct objClassClosure objClassObj objClassRegs [] globalObj
     end
 
-fun loadFile f = 
+fun loadFile f =
     let
         val _ = trace ["parsing boot file ", f]
         val p = Parser.parseFile f
@@ -129,41 +129,41 @@ fun loadFile f =
         Defn.defProgram p
     end
 
-fun loadFiles fs = 
+fun loadFiles fs =
     let
-        fun parse f = 
-            (trace ["parsing boot file ", f]; 
+        fun parse f =
+            (trace ["parsing boot file ", f];
              (f, Parser.parseFile f))
-        fun def (f,p) = 
-            (trace ["defining boot file ", f]; 
+        fun def (f,p) =
+            (trace ["defining boot file ", f];
              (f, Defn.defProgram p))
     in
         map def (map parse fs)
     end
 
-fun verifyFiles fs = 
-    let 
-        fun ver (f, p) = 
-            (trace ["verifying boot file ", f]; 
+fun verifyFiles fs =
+    let
+        fun ver (f, p) =
+            (trace ["verifying boot file ", f];
              (f, Verify.verifyProgram p))
     in
         map ver fs
     end
 
 
-fun evalFiles fs = 
-    let 
-        fun eval (f, p) = 
-            (trace ["evaluating boot file ", f]; 
+fun evalFiles fs =
+    let
+        fun eval (f, p) =
+            (trace ["evaluating boot file ", f];
              Eval.evalTopProgram p)
     in
         map eval fs
     end
 
 
-fun printProp ((n:Ast.NAME), (p:Mach.PROP)) = 
-    let 
-	val ps = case (#state p) of 
+fun printProp ((n:Ast.NAME), (p:Mach.PROP)) =
+    let
+	val ps = case (#state p) of
 		     Mach.TypeVarProp => "[typeVar]"
 		   | Mach.TypeProp => "[type]"
 		   | Mach.UninitProp => "[uninit]"
@@ -176,11 +176,11 @@ fun printProp ((n:Ast.NAME), (p:Mach.PROP)) =
     in
 	trace [LogErr.name n, " -> ", ps]
     end
-	
+
 (*
-fun printFixture ((n:Ast.FIXTURE_NAME), (f:Ast.FIXTURE)) = 
+fun printFixture ((n:Ast.FIXTURE_NAME), (f:Ast.FIXTURE)) =
     let
-	val fs = case f of 
+	val fs = case f of
 		     Ast.NamespaceFixture _ => "[namespace]"
 		   | Ast.ClassFixture _ => "[class]"
 		   | Ast.InterfaceFixture _ => "[interface]"
@@ -196,20 +196,20 @@ fun printFixture ((n:Ast.FIXTURE_NAME), (f:Ast.FIXTURE)) =
     end
 *)
 
-fun describeGlobal _ = 
+fun describeGlobal _ =
      if !doTrace
-     then 
+     then
 	 (trace ["global object contents:"];
-	  case Eval.getGlobalObject () of 
-	      Mach.Obj {props, ...} => 
+	  case Eval.getGlobalObject () of
+	      Mach.Obj {props, ...} =>
 	      NameMap.appi printProp (!props);
 	  trace ["top fixture contents:"];
 	  Fixture.printTopFixtures (!Defn.topFixtures))
 (*	  List.app printFixture (!Defn.topFixtures))    *)
      else ()
-          
-    
-fun boot _ = 
+
+
+fun boot _ =
     let
         val _ = trace ["resetting top fixtures"];
         val _ = Defn.resetTopFixtures ()
@@ -223,14 +223,14 @@ fun boot _ =
         (* Allocate any standard anonymous user namespaces like magic and meta. *)
         val _ = Eval.allocScopeFixtures (Eval.getInitialRegs()) (Fixture.getTopFixtures (!Defn.topFixtures))
 
-        (* 
+        (*
          * We have to do a small bit of delicate work here because the global object
          * needs to get installed as the root scope *inbetween* the moment of its
-         * allocation and the execution of its (class Object) constructor body. 
-         * 
-         * There is no provision for this in the standard object-construction 
-         * protocol Eval.constructClassInstance, so we inline it here. 
-         * 
+         * allocation and the execution of its (class Object) constructor body.
+         *
+         * There is no provision for this in the standard object-construction
+         * protocol Eval.constructClassInstance, so we inline it here.
+         *
          * There are also other 3 "root" classes that require special processing
          * during startup to avoid feedback loops in their definition.
          *)
@@ -248,14 +248,14 @@ fun boot _ =
                                     "builtins/string_primitive.es",
 
                                     "builtins/Name.es",
-                                    
+
                                     "builtins/Interface.es",
 
                                     "builtins/Error.es",
-                                    
+
                                     "builtins/Boolean.es",
                                     "builtins/boolean_primitive.es",
-                                    
+
                                     "builtins/Number.es",
                                     "builtins/double.es",
                                     "builtins/int.es",
@@ -265,13 +265,13 @@ fun boot _ =
 
                                     "builtins/Math.es",
                                     "builtins/Global.es",
-                                    
+
                                     "builtins/Array.es",  (* before Date *)
-                                    
+
                                     "builtins/ByteArray.es",
 
                                     "builtins/Shell.es",   (* before RegExp, for debugging *)
-                                    
+
                                     "builtins/UnicodeClasses.es",
                                     "builtins/UnicodeCasemapping.es",
                                     "builtins/UnicodeTbl.es",
@@ -279,7 +279,7 @@ fun boot _ =
                                     "builtins/RegExpCompiler.es",
                                     "builtins/RegExpEvaluator.es",
                                     "builtins/RegExp.es",
-                                    
+
                                     "builtins/Date.es",
                                     "builtins/JSON.es"
                                    ]
@@ -291,7 +291,7 @@ fun boot _ =
         val otherProgs = verifyFiles otherProgs
 
         val (objClass, objClassClosure, objClassObj, residualObjectProg) = instantiateRootClass Name.nons_Object objProg
-        val _ = runObjectConstructorOnGlobalObject objClass objClassObj objClassClosure 
+        val _ = runObjectConstructorOnGlobalObject objClass objClassObj objClassClosure
 
         val (_, _, classClassObj, residualClassProg) = instantiateRootClass Name.intrinsic_Class clsProg
         val (_, _, funClassObj, residualFunProg) = instantiateRootClass Name.nons_Function funProg

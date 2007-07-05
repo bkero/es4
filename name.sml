@@ -1,17 +1,17 @@
 (*
  * The following licensing terms and conditions apply and must be
  * accepted in order to use the Reference Implementation:
- * 
+ *
  *    1. This Reference Implementation is made available to all
  * interested persons on the same terms as Ecma makes available its
  * standards and technical reports, as set forth at
  * http://www.ecma-international.org/publications/.
- * 
+ *
  *    2. All liability and responsibility for any use of this Reference
  * Implementation rests with the user, and not with any of the parties
  * who contribute to, or who own or hold any copyright in, this Reference
  * Implementation.
- * 
+ *
  *    3. THIS REFERENCE IMPLEMENTATION IS PROVIDED BY THE COPYRIGHT
  * HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED
  * WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
@@ -24,32 +24,32 @@
  * WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE
  * OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
  * IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- * 
+ *
  * End of Terms and Conditions
- * 
+ *
  * Copyright (c) 2007 Adobe Systems Inc., The Mozilla Foundation, Opera
  * Software ASA, and others.
  *)
 structure Name = struct
 
 val (anonNsCounter:int ref) = ref 0
-fun newAnonNS _ = 
+fun newAnonNS _ =
     (* safe: will raise Overflow when we run out of namespaces. *)
     (anonNsCounter := (!anonNsCounter) + 1;
      (Ast.AnonUserNamespace (!anonNsCounter)))
-    
+
 val metaNS = newAnonNS ()
 val magicNS = newAnonNS ()
 val noNS = Ast.Public (Ustring.empty)
 val intrinsicNS = Ast.Intrinsic
 
-(* 
- * FIXME: mangling a name into a string is bad form. We really want to 
+(*
+ * FIXME: mangling a name into a string is bad form. We really want to
  * have derived namespaces like Private and Protected refer to their
- * containing namespace-qualified name of their containing class, rather 
+ * containing namespace-qualified name of their containing class, rather
  * than the mangled form of their containing class.
  *)
-fun mangle (n:Ast.NAME) : Ast.IDENT = 
+fun mangle (n:Ast.NAME) : Ast.IDENT =
     Ustring.fromString (LogErr.name n)
 
 fun make (id:Ast.IDENT) (ns:Ast.NAMESPACE) : Ast.NAME = { id = id, ns = ns }
@@ -60,19 +60,19 @@ fun nons (id:Ast.IDENT) : Ast.NAME = { id = id, ns = noNS }
 fun public (cls:Ast.NAME) (id:Ast.IDENT) : Ast.NAME = { id = id, ns = Ast.Public (mangle cls) }
 fun private (cls:Ast.NAME) (id:Ast.IDENT) : Ast.NAME = { id = id, ns = Ast.Private (mangle cls) }
 
-(* 
- * To reference a name as a type expression, you need 
- * a complicated structure. 
+(*
+ * To reference a name as a type expression, you need
+ * a complicated structure.
  *)
- 
+
 fun typename (n:Ast.NAME) =
-    Ast.TypeName (Ast.QualifiedIdentifier 
-		      { ident = (#id n), 
-			qual = Ast.LiteralExpr 
+    Ast.TypeName (Ast.QualifiedIdentifier
+		      { ident = (#id n),
+			qual = Ast.LiteralExpr
 				   (Ast.LiteralNamespace (#ns n)) })
 
-(* 
- * Names that are supposed to be present in the global scope 
+(*
+ * Names that are supposed to be present in the global scope
  * once we finish booting.
  *)
 
@@ -157,7 +157,7 @@ val nons_Function = nons Ustring.Function_
 (* From Boolean.es *)
 val nons_Boolean = nons Ustring.Boolean_
 
-(* From boolean_primitive.es *) 
+(* From boolean_primitive.es *)
 val intrinsic_boolean = intrinsic Ustring.boolean_
 
 (* From Number.es *)
@@ -266,7 +266,7 @@ val magic_getPrototype = magic Ustring.getPrototype_
 val magic_getClassName = magic Ustring.getClassName_
 val magic_construct = magic Ustring.construct_
 
-(* 
+(*
  * Property names that have special meanings to the interpreter.
  *)
 

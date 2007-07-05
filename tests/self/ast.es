@@ -46,7 +46,7 @@ namespace Ast
 
     // POS
 
-    type POS = 
+    type POS =
        { file: String
        , span: int //StreamPos.span
        , sm: int // StreamPos.sourcemap
@@ -60,7 +60,7 @@ namespace Ast
        { fixtures : FIXTURES
        , inits : INITS }
 
-    type FIXTURE_NAME = 
+    type FIXTURE_NAME =
        ( TempName
        , PropName )
 
@@ -73,15 +73,15 @@ namespace Ast
     type FIXTURES = [[FIXTURE_NAME,FIXTURE]]
 
     type INITS = [[FIXTURE_NAME,EXPR]]
-	
+
     type NAME =
        { ns: NAMESPACE
        , id: IDENT }
-	
+
     type MULTINAME =
        { nss: [[NAMESPACE]]
        , id: IDENT }
-	
+
     // NAMESPACE
 
     type NAMESPACE =
@@ -95,7 +95,7 @@ namespace Ast
 	   , AnonymousNamespace
        , ImportNamespace );
 
-    type RESERVED_NAMESPACE = 
+    type RESERVED_NAMESPACE =
        ( IntrinsicNamespace
        , PrivateNamespace
        , ProtectedNamespace
@@ -106,40 +106,40 @@ namespace Ast
 
     class OperatorNamespace {}
 
-    class PrivateNamespace { 
+    class PrivateNamespace {
         const name : IDENT
     }
 
-    class ProtectedNamespace { 
-        const name : IDENT 
+    class ProtectedNamespace {
+        const name : IDENT
     }
 
-    class PublicNamespace { 
+    class PublicNamespace {
         const name : IDENT;
         function PublicNamespace (name)
-            : name = name { } 
+            : name = name { }
     }
 
-    class InternalNamespace { 
+    class InternalNamespace {
         const name : IDENT
     }
 
-    class UserNamespace { 
-        const name : IDENT 
+    class UserNamespace {
+        const name : IDENT
     }
 
-    class AnonymousNamespace { 
-        const id : int 
+    class AnonymousNamespace {
+        const id : int
     }
-	
-    class ImportNamespace { 
+
+    class ImportNamespace {
         const ident : IDENT
-        const ns : PublicNamespace 
+        const ns : PublicNamespace
     }
-	
+
     // NUMBERS
-	
-    type NUMERIC_MODE = 
+
+    type NUMERIC_MODE =
        { numberType : NUMBER_TYPE
        , roundingMode: ROUNDING_MODE
        , precision: int }
@@ -180,7 +180,7 @@ namespace Ast
 
     Pattern for using operator expression nodes
 
-    switch type (e:EXPR) 
+    switch type (e:EXPR)
     {
         case (expr:UnaryExpr) {
             let {op,ex} = expr
@@ -212,7 +212,7 @@ namespace Ast
     class CastOp {}
     class IsOp {}
     class ToOp {}
-    
+
     // Binary operators
 
     type BINOP =
@@ -291,7 +291,7 @@ namespace Ast
         ASSIGNOP
     */
 
-    type ASSIGNOP = 
+    type ASSIGNOP =
        ( Assign
        , AssignPlus
        , AssignMinus
@@ -324,7 +324,7 @@ namespace Ast
 
     // UNOP
 
-    type UNOP = 
+    type UNOP =
        ( Delete
        , Void
        , Typeof
@@ -365,8 +365,8 @@ namespace Ast
     var typeOp = new Type;
 
     // EXPR
-    
-    type EXPR = 
+
+    type EXPR =
        ( TernaryExpr
        , BinaryExpr
        , BinaryTypeExpr
@@ -388,20 +388,20 @@ namespace Ast
        , SliceExpr
        , GetTemp
        , GetParam )
-    
+
 	class TernaryExpr {
         const e1 : EXPR
         const e2 : EXPR
         const e3 : EXPR
-    	function TernaryExpr (e1,e2,e3) 
+    	function TernaryExpr (e1,e2,e3)
             : e1=e1, e2=e2, e3=e3 {}
     }
-    
+
     class BinaryExpr {
         const op : BINOP
         const e1 : EXPR
         const e2 : EXPR
-    	function BinaryExpr (op,e1,e2) 
+    	function BinaryExpr (op,e1,e2)
 	        : op=op, e1=e1, e2=e2 {}
     }
 
@@ -410,15 +410,15 @@ namespace Ast
         function BinaryNumberExpr (op,e1,e2,mode)
             : mode = mode, super (op,e1,e2) {}
     }
-	
+
     class BinaryTypeExpr {
         const op : BINTYOP
         const e1 : EXPR
         const e2 : TYPE_EXPR
-	    function BinaryTypeExpr (op,e1,e2) 
+	    function BinaryTypeExpr (op,e1,e2)
 	        : op=op, e1=e1, e2=e2 {}
 	}
-	
+
     class UnaryExpr {
         const op : UNOP;
         const ex : EXPR;
@@ -431,22 +431,22 @@ namespace Ast
         function UnaryNumberExpr (op,ex,mode)
             : mode = mode, super (op,ex) {}
     }
-    
+
     class TypeExpr {
         const ex : TYPE_EXPR;
         function TypeExpr (ex)
             : ex=ex {}
     }
-    
+
     class ThisExpr {
     }
-	
+
     class YieldExpr {
         const ex : EXPR?;
         function YieldExpr (ex=null)
             : ex=ex {}
     }
-    
+
     class SuperExpr {
         const ex : EXPR?;
         function SuperExpr (ex=null)
@@ -515,13 +515,13 @@ namespace Ast
         const op : ASSIGNOP;
         const le : EXPR;
         const re : EXPR;
-        function SetExpr (op,le,re) 
+        function SetExpr (op,le,re)
             : op=op, le=le, re=re {}
     }
 
     class SetNumberExpr extends SetExpr {
         const mode : NUMERIC_MODE;
-        function SetNumberExpr (op,le,re,mode) 
+        function SetNumberExpr (op,le,re,mode)
             : mode=mode, super (op,le,re) {}
     }
 
@@ -571,17 +571,17 @@ namespace Ast
        , TypeIdentifier
        , UnresolvedPath
        , WildcardIdentifier )
-	    
+
     class Identifier {
         const ident : IDENT;
         private const nss : [[NAMESPACE]];
-        function Identifier (ident) 
+        function Identifier (ident)
             : ident = ident {}
-        function set opennss (nss) { 
-            this.nss = nss 
+        function set opennss (nss) {
+            this.nss = nss
         }
     }
-	
+
     class QualifiedExpression {
         const qual : EXPR;
         const expr : EXPR;
@@ -589,14 +589,14 @@ namespace Ast
             : qual=qual
             , expr=expr {}
     }
-    
+
     class AttributeIdentifier {
         const ident : IDENT_EXPR;
         function AttributeIdentifier (ident)
             : ident=ident {}
     }
-	
-    class ExpressionIdentifier { 
+
+    class ExpressionIdentifier {
         const expr: EXPR;
         private const nss : [[NAMESPACE]];
         function ExpressionIdentifier (expr)
@@ -605,15 +605,15 @@ namespace Ast
             this.nss = nss;
         }
     }
-	
-    class QualifiedIdentifier { 
+
+    class QualifiedIdentifier {
         const qual : EXPR;
         const ident : IDENT;
         function QualifiedIdentifier (qual,ident)
             : qual=qual
             , ident=ident {}
     }
-    
+
     class TypeIdentifier {
         const ident : IDENT_EXPR;
         const typeArgs : [TYPE_EXPR];
@@ -621,7 +621,7 @@ namespace Ast
             : ident=ident
             , typeArgs=typeArgs {}
     }
-    
+
     class UnresolvedPath {
         const path /*: [IDENT] */;
         const ident : IDENT_EXPR;
@@ -629,9 +629,9 @@ namespace Ast
             : path=path
             , ident=ident {}
     }
-    
+
     class WildcardIdentifier {}
-    
+
     // LITERAL
 
     type LITERAL = (
@@ -669,19 +669,19 @@ namespace Ast
         function LiteralContextDecimalInteger (strValue)
             : strValue=strValue {}
     }
-	
+
     class LiteralContextHexInteger {
         const strValue : String;
         function LiteralContextHexInteger (strValue)
             : strValue=strValue {}
     }
-	
+
     class LiteralDouble {
         const doubleValue : double;
         function LiteralDouble (doubleValue)
             : doubleValue=doubleValue { }
     }
-	
+
     class LiteralDecimal {
         const decimalValue : string;
         function LiteralDecimal (str : string)
@@ -692,21 +692,21 @@ namespace Ast
         const intValue : int;
         function LiteralInt(intValue) : intValue=intValue {}
     }
-	
+
     class LiteralUInt {
         const uintValue : uint;
     }
-	
+
     class LiteralBoolean {
         const booleanValue : Boolean;
     }
-	
+
     class LiteralString {
         const strValue : String;
-        function LiteralString (strValue) 
+        function LiteralString (strValue)
             : strValue = strValue {}
     }
-	
+
     class LiteralArray {
         const exprs : [EXPR];
         const type : TYPE_EXPR;
@@ -794,7 +794,7 @@ namespace Ast
     class Call {}
     class Has {}
 
-    class Func { 
+    class Func {
         const name /*: FUNC_NAME*/;
         const fsig: FUNC_SIG;
         const isNative: Boolean;
@@ -926,7 +926,7 @@ namespace Ast
         const isReadOnly : Boolean;
         function ValFixture(ty, isReadOnly=false) : type=ty, isReadOnly=isReadOnly {}
     }
-	
+
     class VirtualValFixture {
         const type : TYPE_EXPR;
         const getter : FUNC_DEFN?;
@@ -992,13 +992,13 @@ namespace Ast
         const ftype : FUNC_TYPE;
     }
 
-    type FUNC_TYPE = { 
+    type FUNC_TYPE = {
         typeParams : [IDENT],
         params: [TYPE_EXPR],
         result: TYPE_EXPR,
         thisType: TYPE_EXPR?,
         hasRest: Boolean,
-        minArgs: int 
+        minArgs: int
     }
 
     class ObjectType {
@@ -1108,7 +1108,7 @@ namespace Ast
         const labels : [IDENT];
         const fixtures : FIXTURES?  // What are these for?
     }
-    
+
     class DoWhileStmt {
         const expr : EXPR;
         const body : STMT;
@@ -1309,9 +1309,9 @@ namespace Ast
         PROGRAM
     */
 
-    type DIRECTIVES = 
-        { pragmas: [PRAGMA] 
-        , defns: [DEFN] 
+    type DIRECTIVES =
+        { pragmas: [PRAGMA]
+        , defns: [DEFN]
         , head: HEAD?
         , stmts: [STMT]
         , pos: POS? }

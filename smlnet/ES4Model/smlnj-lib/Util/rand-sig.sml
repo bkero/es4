@@ -30,7 +30,7 @@ signature RAND =
     val norm : rand -> real
       (* Map values in the range [randMin,randMax] to (0.0,1.0) *)
 
-    val range : (int * int) -> rand -> int 
+    val range : (int * int) -> rand -> int
       (* Map v, randMin <= v <= randMax, to integer range [i,j]
        * Exception -
        *   Fail if j < i

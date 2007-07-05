@@ -162,7 +162,7 @@ structure FmtFields : sig
 				zero_pad = #zero_pad flags, base = #base flags,
 				ljust = #ljust flags, large = #large flags
 			      })
-			| (SOME(#"-", ss'), _) => 
+			| (SOME(#"-", ss'), _) =>
 			    doFlags (ss', {
 				sign = #sign flags, neg_char = MinusSign,
 				zero_pad = #zero_pad flags, base = #base flags,

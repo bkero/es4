@@ -32,43 +32,43 @@ function test(re, input, len, val, idx) {
 // Sequence of single characters, matching the entire input
 test( /abc/g, "abc", 1, "abc", 0 );
 
-// Sequence of more complex terms, but same meaning 
+// Sequence of more complex terms, but same meaning
 test( /(?:a)(?:b)(?:c)/g, "abc", 1, "abc", 0 );
 
-// Sequence of single characters, matching in the middle 
+// Sequence of single characters, matching in the middle
 test( /abc/g, "1abc2", 1, "abc", 1 );
 
-// Sequence of single characters, anchored at the beginning (a bit trivial) 
+// Sequence of single characters, anchored at the beginning (a bit trivial)
 test( /^abc/g, "abcdefg", 1, "abc", 0 );
 
-// Sequence of single characters, anchored at the end 
+// Sequence of single characters, anchored at the end
 test( /abc$/g, "abcabc", 1, "abc", 3 );
 
-// Matching with word boundaries 
+// Matching with word boundaries
 test( /.\b./g, "abc-+", 1, "c-", 2 );
 
-// Matching with word boundaries 
+// Matching with word boundaries
 test( /.\B./g, "a*c*ab+", 1, "ab", 4 );
 
-// Simple disjunction, matching the second disjunct 
+// Simple disjunction, matching the second disjunct
 test( /abc|cde/g, "abbcdef", 1, "cde", 3 );
 
-// Character sets and the . wildcard (itself a charset) 
+// Character sets and the . wildcard (itself a charset)
 test( /[a-zA-Z0-9][abc][^f]./g, "+-*GafGa88", 1, "Ga88", 6 );
 
-// Simple atom escape (really a charset) 
+// Simple atom escape (really a charset)
 test( /\s/g, "ab cd", 1, " ", 2 );
 
-// Matching with positive lookahead 
+// Matching with positive lookahead
 test( /a(?=bcd)b/g, "xabcde", 1, "ab", 1 );
 
-// Matching with negative lookahead 
+// Matching with negative lookahead
 test( /a(?!bcd)b/g, "xabce", 1, "ab", 1 );
 
-// Quantified matching: optional char, #1 
+// Quantified matching: optional char, #1
 test( /ab?/g, "xac", 1, "a", 1 );
 
-// Quantified matching: optional char, #2 
+// Quantified matching: optional char, #2
 test( /ab?/g, "xabc", 1, "ab", 1 );
 
 // Quantified matching: some optional chars #1

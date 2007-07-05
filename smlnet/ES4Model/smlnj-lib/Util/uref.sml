@@ -29,7 +29,7 @@ structure URef : UREF =
 	   of ECR (x, _) => x
 	    | _ => raise Match
 	  (* end case *))
-      
+
     fun equal (p, p') = (find p = find p')
 
     fun update (p, x) = (case find p

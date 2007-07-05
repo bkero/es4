@@ -52,21 +52,21 @@ package abcfile
      * Performance ought to be good; nothing is serialized more than
      * once and no data are copied except during serialization.
      */
-    public class ABCFile 
+    public class ABCFile
     {
         public const major_version = 46;
         public const minor_version = 16;
-        
+
         public function getBytes(): * /* same type as ABCByteStream.getBytes() */ {
             function emitArray(a, len=true) {
-                if (len) 
+                if (len)
                     bytes.uint30(a.length);
                 for ( var i=0 ; i < a.length ; i++ )
                     a[i].serialize(bytes);
             }
 
             var bytes = new ABCByteStream;
-            
+
             assert(constants);
             assert(scripts.length != 0);
             assert(methods.length != 0);
@@ -149,29 +149,29 @@ package abcfile
             for ( i=1 ; i < pool.length ; i++ )
                 if (cmp(pool[i], x))
                     return i;
-            
+
             emit(x);
             pool[i] = x;
             return i;
         }
-        
+
         private static function cmp(a, b) { return a === b }
 
         public function int32(n/*:int*/)/*:uint*/ {
             return findOrAdd( n, int_pool, cmp, function (x) { int_bytes.int32(x) } );
         }
-        
+
         public function uint32(n/*:uint*/)/*:uint*/ {
             return findOrAdd( n, uint_pool, cmp, function (x) { uint_bytes.uint32(x) } );
         }
-        
+
         public function float64(n/*FIXME ES4: double*/)/*:uint*/ {
             return findOrAdd( n, double_pool, cmp, function (x) { double_bytes.float64(x) } );
         }
-        
+
         public function stringUtf8(s/*FIXME ES4: string*/)/*:uint*/ {
-            return findOrAdd( s, 
-                              utf8_pool, 
+            return findOrAdd( s,
+                              utf8_pool,
                               cmp,
                               function (x) { utf8_bytes.uint30(x.length); utf8_bytes.utf8(x) } )
         }
@@ -180,18 +180,18 @@ package abcfile
             return a.kind == b.kind && a.ns == b.ns && a.name == b.name;
         }
 
-        public function namespace(kind/*:uint*/, name/*:uint*/) { 
-            return findOrAdd( { "kind": kind, "name": name }, 
-                              namespace_pool, 
-                              cmpname, 
-                              function (x) { 
-                                  namespace_bytes.uint8(x.kind); 
+        public function namespace(kind/*:uint*/, name/*:uint*/) {
+            return findOrAdd( { "kind": kind, "name": name },
+                              namespace_pool,
+                              cmpname,
+                              function (x) {
+                                  namespace_bytes.uint8(x.kind);
                                   namespace_bytes.uint30(x.name); } );
         }
 
         private static function cmparray(a, b) {
             var i;
-            if (a.length != b.length) 
+            if (a.length != b.length)
                 return false;
             for ( i=0 ; i < a.length ; i++ )
                 if (a[i] != b[i])
@@ -200,12 +200,12 @@ package abcfile
         }
 
         public function namespaceset(namespaces:Array) {
-            return findOrAdd( copyArray(namespaces), 
+            return findOrAdd( copyArray(namespaces),
                               namespaceset_pool,
                               cmparray,
                               (function (x) {
                                   namespaceset_bytes.uint30(x.length);
-                                  for ( var i=0 ; i < x.length ; i++ ) 
+                                  for ( var i=0 ; i < x.length ; i++ )
                                       namespaceset_bytes.uint30(x[i]);
                               }) );
         }
@@ -223,7 +223,7 @@ package abcfile
         public function RTQName(name/*: uint*/, is_attr: Boolean=false /*FIXME ES4: boolean*/) {
             return findOrAdd( { "kind": is_attr ? CONSTANT_RTQNameA : CONSTANT_RTQName, "name": name },
                               multiname_pool,
-                              cmpname, 
+                              cmpname,
                               function (x) {
                                   multiname_bytes.uint8(x.kind);
                                   multiname_bytes.uint30(x.name); } );
@@ -288,13 +288,13 @@ package abcfile
 
             bs.uint30(double_pool.length);
             bs.byteStream(double_bytes);
-            
+
             bs.uint30(utf8_pool.length);
             bs.byteStream(utf8_bytes);
 
             bs.uint30(namespace_pool.length);
             bs.byteStream(namespace_bytes);
-            
+
             bs.uint30(namespaceset_pool.length);
             bs.byteStream(namespaceset_bytes);
 
@@ -321,7 +321,7 @@ package abcfile
         private const multiname_bytes = new ABCByteStream;
     }
 
-    public class ABCMethodInfo 
+    public class ABCMethodInfo
     {
         /* \param name         string index
          * \param param_types  array of multiname indices.  May not be null.
@@ -330,7 +330,7 @@ package abcfile
          * \param options      [{val:uint, kind:uint}], if present.
          * \param param_names  array of param_info structures, if present.
          */
-        function ABCMethodInfo(name/*:uint*/, param_types:Array, return_type/*:uint*/, flags/*:uint*/=0, 
+        function ABCMethodInfo(name/*:uint*/, param_types:Array, return_type/*:uint*/, flags/*:uint*/=0,
                                options:Array=null, param_names:Array=null) {
             this.name = name;
             this.param_types = param_types;
@@ -373,7 +373,7 @@ package abcfile
         private var name, param_types, return_type, flags, options, param_names;
     }
 
-    public class ABCMetadataInfo 
+    public class ABCMetadataInfo
     {
         function ABCMetadataInfo( name/*: uint*/, items: Array ) {
             assert( name != 0 );
@@ -436,9 +436,9 @@ package abcfile
         private var name, super_name, flags, protectedNS, interfaces, iinit, traits;
     }
 
-    public class ABCTrait 
+    public class ABCTrait
     {
-        /* FIXME #101: super not implemented; subclasses must do implementation themselves; 
+        /* FIXME #101: super not implemented; subclasses must do implementation themselves;
            the constructor must not be defined here (for the sake of AS3).  */
         /*
         function ABCTrait(name, kind) {
@@ -463,7 +463,7 @@ package abcfile
             inner_serialize(bs);
             if (metadata.length > 0) {
                 bs.uint30(metadata.length);
-                for ( var i=0 ; i < metadata.length ; i++ ) 
+                for ( var i=0 ; i < metadata.length ; i++ )
                     bs.uint30(metadata[i]);
             }
         }
@@ -538,7 +538,7 @@ package abcfile
             assert( cinit != undefined );
             bs.uint30(cinit);
             bs.uint30(traits.length);
-            for ( var i=0 ; i < traits.length ; i++ ) 
+            for ( var i=0 ; i < traits.length ; i++ )
                 traits[i].serialize(bs);
         }
 
@@ -563,7 +563,7 @@ package abcfile
             assert( init != undefined );
             bs.uint30(init);
             bs.uint30(traits.length);
-            for ( var i=0 ; i < traits.length ; i++ ) 
+            for ( var i=0 ; i < traits.length ; i++ )
                 traits[i].serialize(bs);
         }
 
@@ -613,7 +613,7 @@ package abcfile
         private var method, max_stack, local_count, max_scope_depth, code;
     }
 
-    public class ABCException 
+    public class ABCException
     {
         function ABCException(first_pc, last_pc, target_pc, exc_type=0, var_name=0) {
             this.first_pc = first_pc;

@@ -1,4 +1,4 @@
-/* -*- mode: java; indent-tabs-mode: nil -*- 
+/* -*- mode: java; indent-tabs-mode: nil -*-
  *
  * ECMAScript 4 builtins - the "date" object
  *
@@ -7,17 +7,17 @@
  *
  * The following licensing terms and conditions apply and must be
  * accepted in order to use the Reference Implementation:
- * 
+ *
  *    1. This Reference Implementation is made available to all
  * interested persons on the same terms as Ecma makes available its
  * standards and technical reports, as set forth at
  * http://www.ecma-international.org/publications/.
- * 
+ *
  *    2. All liability and responsibility for any use of this Reference
  * Implementation rests with the user, and not with any of the parties
  * who contribute to, or who own or hold any copyright in, this Reference
  * Implementation.
- * 
+ *
  *    3. THIS REFERENCE IMPLEMENTATION IS PROVIDED BY THE COPYRIGHT
  * HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED
  * WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
@@ -30,9 +30,9 @@
  * WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE
  * OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
  * IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- * 
+ *
  * End of Terms and Conditions
- * 
+ *
  * Copyright (c) 2007 Adobe Systems Inc., The Mozilla Foundation, Opera
  * Software ASA, and others.
  *
@@ -54,14 +54,14 @@ package
        inlined.  */
 
     final dynamic class Date
-    {       
+    {
         /* E262-3 15.9.2: The Date Constructor Called as a Function */
         meta static function invoke(...args)   // args are ignored.
             (new Date()).public::toString();
 
-        /* E262-3 15.9.3: The Date Constructor. 
+        /* E262-3 15.9.3: The Date Constructor.
          *
-         * Plus spidermonkey extension: we accept 0 args (interpreted as "now") or 
+         * Plus spidermonkey extension: we accept 0 args (interpreted as "now") or
          * 1 arg (interpreted as a timespec).
          */
         public function Date(year=0, month=0, date=1, hours=0, minutes=0, seconds=0, ms=0) {
@@ -96,7 +96,7 @@ package
                 let intYear : int = ToInteger(year);
                 if (!isNaN(year) && 0 <= intYear && intYear <= 99)
                     intYear += 1900;
-                timeval = TimeClip(UTCTime(MakeDate(MakeDay(intYear, month, date), 
+                timeval = TimeClip(UTCTime(MakeDate(MakeDay(intYear, month, date),
                                                     MakeTime(hours, minutes, seconds, ms))));
             }
         }
@@ -115,7 +115,7 @@ package
         */
         public static var parse = function parse(string, reference:double=0.0) {
             if (arguments.length > 2)
-                throw new TypeError("Too many arguments to Date.parse"); 
+                throw new TypeError("Too many arguments to Date.parse");
             return Date.parse(ToString(string), reference);
         }
 
@@ -132,8 +132,8 @@ package
                 let hour = isoRes.hour !== undefined ? parseInt(isoRes.hour) : defaults.UTCHour;
                 let mins = isoRes.mins !== undefined ? parseInt(isoRes.mins) : defaults.UTCMinutes;
                 let secs = isoRes.secs !== undefined ? parseInt(isoRes.secs) : defaults.UTCSeconds;
-                let millisecs = isoRes.fraction !== undefined ? 
-                    fractionToMillisecons(isoRes.fraction) : 
+                let millisecs = isoRes.fraction !== undefined ?
+                    fractionToMillisecons(isoRes.fraction) :
                     defaults.UTCMilliseconds;
                 let tzo = defaults.timezoneOffset;
                 if (isoRes.zulu !== undefined)
@@ -150,8 +150,8 @@ package
             else
                 return fromDateString(s, reference);
         }
-        
-        /* INFORMATIVE.  
+
+        /* INFORMATIVE.
 
            Most practical implementations have many heuristics for
            parsing date formats, which are as numerous as the sands of
@@ -183,7 +183,7 @@ package
                 let min  = parseInt(res.tz[3:5]);
                 if (res.tz[0] == '+')
                     t -= (hour*60 + min)*60*1000;
-                else 
+                else
                     t += (hour*60 + min)*60*1000;
             }
             return new Date(t);
@@ -208,35 +208,35 @@ package
             this.birthtime = Date.now();
 
         /* E262-3 15.9.4.3: Date.UTC */
-        public static var UTC = 
+        public static var UTC =
             function UTC(year, month, date, hours, minutes, seconds, ms)
             let (argc:uint = arguments.length)
-                Date.UTC(ToDouble(year), 
-                         ToDouble(month), 
+                Date.UTC(ToDouble(year),
+                         ToDouble(month),
                          argc >= 3 ? ToDouble(date) : 1,
                          argc >= 4 ? ToDouble(hours) : 0,
                          argc >= 5 ? ToDouble(minutes) : 0,
                          argc >= 6 ? ToDouble(seconds) : 0,
                          argc >= 7 ? ToDouble(ms) : 0);
 
-        static intrinsic function UTC(year : double, month : double, 
+        static intrinsic function UTC(year : double, month : double,
 				      date : double=1, hours : double?=0, minutes : double?=0,
 				      seconds : double=0, ms : double?=0) : double {
             let intYear:double = ToInteger(year);
             if (!isNaN(year) && 0 <= intYear && intYear <= 99)
                 intYear += 1900;
-            return TimeClip(MakeDate(MakeDay(intYear, month, date), 
+            return TimeClip(MakeDate(MakeDay(intYear, month, date),
                                      MakeTime(hours, minutes, seconds, ms)));
         }
 
         static const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-        static const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", 
+        static const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun",
                                    "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
         /* Format of string produced by Date.toString, recognized by Date.parse */
         /* e.g., "Fri, 15 Dec 2006 23:45:09 GMT-0800" */
 
-        static const adhocTimestamp : RegExp! = 
+        static const adhocTimestamp : RegExp! =
             /(?: Mon|Tue|Wed|Thu|Fri|Sat|Sun ),?\s+
              (?P<day> [0-9]+ )\s+
              (?P<month> Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec )\s+
@@ -264,7 +264,7 @@ package
                (?: \. (?P<fraction> [0-9]+ ) )? )? )? )?
             # Timezone, optional
             (?: (?P<zulu> Z )
-             | (?P<offs> 
+             | (?P<offs>
                 (?P<tzdir> \\+ | - )
                 (?P<tzhr> [0-9]{2} )
                 (?: : (?P<tzmin> [0-9]{2} ) )? ) )?
@@ -299,55 +299,55 @@ package
 
         /* E262-3 15.9.5.2: Date.prototype.toString */
         prototype function toString(this:Date)
-            this.toString(); 
+            this.toString();
 
         /* INFORMATIVE */
         override intrinsic function toString() : string
             /* "Fri, 15 Dec 2006 23:45:09 GMT-0800" */
             let (tz:double = timezoneOffset)
 	    let (atz:double = Math.abs(tz))
-	    (dayNames[day] + ", " + 
-	     twoDigit(date) + " " + 
-	     monthNames[month] + " " + 
-	     fullYear + " " + 
-	     twoDigit(hours) + ":" + 
-	     twoDigit(minutes) + ":" + 
-	     twoDigit(seconds) + " GMT" + 
+	    (dayNames[day] + ", " +
+	     twoDigit(date) + " " +
+	     monthNames[month] + " " +
+	     fullYear + " " +
+	     twoDigit(hours) + ":" +
+	     twoDigit(minutes) + ":" +
+	     twoDigit(seconds) + " GMT" +
 	     sign(tz) + twoDigit(Math.floor(atz / 60)) + twoDigit(atz % 60));
 
         prototype function toGMTString(this:Date)
-            this.toUTCString(); 
+            this.toUTCString();
 
         /* E262-3 15.9.5.42: Date.prototype.toUTCString */
         prototype function toUTCString(this:Date)
-            this.toUTCString(); 
+            this.toUTCString();
 
         /* INFORMATIVE */
         intrinsic function toUTCString() : string
             /* "Sat, 16 Dec 2006 08:06:21 GMT" */
-            dayNames[UTCDay] + ", " + 
-            twoDigit(UTCDate) + " " + 
+            dayNames[UTCDay] + ", " +
+            twoDigit(UTCDate) + " " +
             monthNames[UTCMonth] + " " +
-            UTCFullYear + " " + 
-            twoDigit(UTCHours) + ":" + 
-            twoDigit(UTCMinutes) + ":" + 
+            UTCFullYear + " " +
+            twoDigit(UTCHours) + ":" +
+            twoDigit(UTCMinutes) + ":" +
             twoDigit(UTCSeconds) + " GMT";
 
         /* E262-3 15.9.5.3: Date.prototype.toDateString */
         prototype function toDateString(this:Date)
-            this.toDateString(); 
+            this.toDateString();
 
         /* INFORMATIVE */
         intrinsic function toDateString() : string
             /* "Sat, 16 Dec 2006" */
-            dayNames[day] + ", " + 
-	    twoDigit(date) + " " + 
-	    monthNames[month] + " " + 
+            dayNames[day] + ", " +
+	    twoDigit(date) + " " +
+	    monthNames[month] + " " +
 	    fullYear;
 
         /* E262-3 15.9.5.4: Date.prototype.toTimeString */
         prototype function toTimeString(this:Date)
-            this.toTimeString(); 
+            this.toTimeString();
 
         /* INFORMATIVE */
         intrinsic function toTimeString():string
@@ -359,7 +359,7 @@ package
 
         /* E262-3 15.9.5.5: Date.prototype.toLocaleString */
         prototype function toLocaleString(this:Date)
-            this.toLocaleString(); 
+            this.toLocaleString();
 
         /* INFORMATIVE */
         override intrinsic function toLocaleString() : string
@@ -367,7 +367,7 @@ package
 
         /* E262-3 15.9.5.6: Date.prototype.toLocaleDateString */
         prototype function toLocaleDateString(this:Date)
-            this.toLocaleDateString(); 
+            this.toLocaleDateString();
 
         /* INFORMATIVE */
         intrinsic function toLocaleDateString() : string
@@ -375,7 +375,7 @@ package
 
         /* E262-3 15.9.5.7: Date.prototype.toLocaleTimeString */
         prototype function toLocaleTimeString(this:Date)
-            this.toLocaleTimeString(); 
+            this.toLocaleTimeString();
 
         /* INFORMATIVE */
         intrinsic function toLocaleTimeString() : string
@@ -383,7 +383,7 @@ package
 
         /* E262-3 15.9.5.8: Date.prototype.valueOf */
         prototype function valueOf(this:Date)
-            this.valueOf(); 
+            this.valueOf();
 
         override intrinsic function valueOf() : Object
             getTime();
@@ -442,10 +442,10 @@ package
         /* Mandated aliases for the canonical getters and setters */
 
         /* E262-3 15.9.5.9: Date.prototype.getTime */
-        prototype function getTime(this:Date)   
+        prototype function getTime(this:Date)
             this.getTime();
 
-        intrinsic function getTime() : double   
+        intrinsic function getTime() : double
             timeval;
 
         /* E262-3 B.2.4: Date.prototype.getYear */
@@ -462,7 +462,7 @@ package
             this.getFullYear();
 
         intrinsic function getFullYear() : double
-            let (t : double = timeval) 
+            let (t : double = timeval)
                 isNaN(t) ? t : YearFromTime(LocalTime(t));
 
         /* E262-3 15.9.5.11: Date.prototype.getUTCFullYear */
@@ -470,7 +470,7 @@ package
             this.getUTCFullYear();
 
         intrinsic function getUTCFullYear() : double
-            let (t : double = timeval) 
+            let (t : double = timeval)
                 isNaN(t) ? t : YearFromTime(t);
 
         /* E262-3 15.9.5.12: Date.prototype.getMonth */
@@ -480,7 +480,7 @@ package
         intrinsic function getMonth() : double
             let (t : double = timeval)
                 isNaN(t) ? t : MonthFromTime(LocalTime(t));
-        
+
         /* E262-3 15.9.5.13: Date.prototype.getUTCMonth */
         prototype function getUTCMonth(this:Date)
             this.getUTCMonth();
@@ -544,7 +544,7 @@ package
         intrinsic function getMinutes() : double
             let (t : double = timeval)
                 isNaN(t) ? t : MinFromTime(LocalTime(t));
-        
+
         /* E262-3 15.9.5.21: Date.prototype.getUTCMinutes */
         prototype function getUTCMinutes(this:Date)
             this.getUTCMinutes();
@@ -576,7 +576,7 @@ package
         intrinsic function getMilliseconds() : double
             let (t : double = timeval)
                 isNaN(t) ? t : msFromTime(LocalTime(t));
-        
+
         /* E262-3 15.9.5.25: Date.prototype.getUTCMilliseconds */
         prototype function getUTCMilliseconds(this:Date)
             this.getUTCMilliseconds();
@@ -584,13 +584,13 @@ package
         intrinsic function getUTCMilliseconds() : double
             let (t : double = timeval)
                 isNaN(t) ? t : msFromTime(t);
-        
+
         /* E262-3 15.9.5.26: Date.prototype.getTimezoneOffset */
         prototype function getTimezoneOffset(this:Date)
             this.getTimezoneOffset();
 
         intrinsic function getTimezoneOffset() : double
-            let (t : double = timeval) 
+            let (t : double = timeval)
                 isNaN(t) ? t : (t - LocalTime(t)) / msPerMinute;
 
         /* E262-3 15.9.5.27: Date.prototype.setTime */
@@ -606,9 +606,9 @@ package
 
         intrinsic function setMilliseconds(ms:double) : double
             timeval = let (t : double = LocalTime(timeval))
-                          UTCTime(MakeDate(Day(t), MakeTime(HourFromTime(t), 
-                                                            MinFromTime(t), 
-                                                            SecFromTime(t), 
+                          UTCTime(MakeDate(Day(t), MakeTime(HourFromTime(t),
+                                                            MinFromTime(t),
+                                                            SecFromTime(t),
                                                             ms)));
 
         // 15.9.5.29 Date.prototype.setUTCMilliseconds (ms)
@@ -617,145 +617,145 @@ package
 
         intrinsic function setUTCMilliseconds(ms:double) : double
             timeval = let (t : double = timeval)
-                          MakeDate(Day(t), MakeTime(HourFromTime(t), 
-                                                    MinFromTime(t), 
-                                                    SecFromTime(t), 
+                          MakeDate(Day(t), MakeTime(HourFromTime(t),
+                                                    MinFromTime(t),
+                                                    SecFromTime(t),
                                                     ms));
 
         // 15.9.5.30 Date.prototype.setSeconds (sec [, ms ] )
         prototype function setSeconds(this:Date, sec, ms)
-            this.setSeconds(double(sec), double(ms)); 
+            this.setSeconds(double(sec), double(ms));
 
         intrinsic function setSeconds(sec:double, ms:double = milliseconds) : double
             timeval = let (t : double = LocalTime(timeval))
-                          UTCTime(MakeDate(Day(t), MakeTime(HourFromTime(t), 
-                                                            MinFromTime(t), 
-                                                            sec, 
+                          UTCTime(MakeDate(Day(t), MakeTime(HourFromTime(t),
+                                                            MinFromTime(t),
+                                                            sec,
                                                             ms)));
 
         // 15.9.5.31 Date.prototype.setUTCSeconds (sec [, ms ] )
-        prototype function setUTCSeconds(this:Date, sec, ms) 
-            this.setUTCSeconds(double(sec), double(ms)); 
+        prototype function setUTCSeconds(this:Date, sec, ms)
+            this.setUTCSeconds(double(sec), double(ms));
 
         intrinsic function setUTCSeconds(sec:double, ms:double = milliseconds) : double
             timeval = let (t : double = timeval)
-                          MakeDate(Day(t), MakeTime(HourFromTime(t), 
-                                                    MinFromTime(t), 
-                                                    sec, 
+                          MakeDate(Day(t), MakeTime(HourFromTime(t),
+                                                    MinFromTime(t),
+                                                    sec,
                                                     ms));
 
         // 15.9.5.33 Date.prototype.setMinutes (min [, sec [, ms ] ] )
         prototype function setMinutes(this:Date, min, sec, ms)
-            this.setMinutes(double(min), double(sec), double(ms)); 
+            this.setMinutes(double(min), double(sec), double(ms));
 
-        intrinsic function setMinutes(min:double, 
-                                      sec:double = seconds, 
-                                      ms:double = milliseconds) : double 
+        intrinsic function setMinutes(min:double,
+                                      sec:double = seconds,
+                                      ms:double = milliseconds) : double
             timeval = let (t : double = LocalTime(timeval))
-                          UTCTime(MakeDate(Day(t), MakeTime(HourFromTime(t), 
-                                                            min, 
-                                                            sec, 
+                          UTCTime(MakeDate(Day(t), MakeTime(HourFromTime(t),
+                                                            min,
+                                                            sec,
                                                             ms)));
 
         // 15.9.5.34 Date.prototype.setUTCMinutes (min [, sec [, ms ] ] )
         prototype function setUTCMinutes(this:Date, min, sec, ms)
-            this.setUTCMinutes(double(min), double(sec), double(ms)); 
+            this.setUTCMinutes(double(min), double(sec), double(ms));
 
-        intrinsic function setUTCMinutes(min:double, 
+        intrinsic function setUTCMinutes(min:double,
                                          sec:double = seconds,
-                                         ms:double = milliseconds) : double 
+                                         ms:double = milliseconds) : double
             timeval = let (t : double = timeval)
-                          MakeDate(Day(t), MakeTime(HourFromTime(t), 
-                                                    min, 
-                                                    sec, 
+                          MakeDate(Day(t), MakeTime(HourFromTime(t),
+                                                    min,
+                                                    sec,
                                                     ms));
 
         // 15.9.5.35 Date.prototype.setHours (hour [, min [, sec [, ms ] ] ] )
         prototype function setHours(this:Date, hour, min, sec, ms)
             this.setHours(double(hour), double(min), double(sec), double(ms));
 
-        intrinsic function setHours(hour:double, 
+        intrinsic function setHours(hour:double,
                                     min:double = minutes,
                                     sec:double = seconds,
-                                    ms:double = milliseconds) : double 
+                                    ms:double = milliseconds) : double
             timeval = let (t : double = LocalTime(timeval))
-                          UTCTime(MakeDate(Day(t), MakeTime(hour, 
-                                                            min, 
-                                                            sec, 
+                          UTCTime(MakeDate(Day(t), MakeTime(hour,
+                                                            min,
+                                                            sec,
                                                             ms)));
 
         // 15.9.5.36 Date.prototype.setUTCHours (hour [, min [, sec [, ms ] ] ] )
         prototype function setUTCHours(this:Date, hour, min, sec, ms)
             this.setUTCHours(double(hour), double(min), double(sec), double(ms));
 
-        intrinsic function setUTCHours(hour:double, 
+        intrinsic function setUTCHours(hour:double,
                                        min:double = minutes,
                                        sec:double = seconds,
-                                       ms:double = milliseconds) : double 
+                                       ms:double = milliseconds) : double
             timeval = let (t : double = timeval)
-                          MakeDate(Day(t), MakeTime(hour, 
-                                                    min, 
-                                                    sec, 
+                          MakeDate(Day(t), MakeTime(hour,
+                                                    min,
+                                                    sec,
                                                     ms));
 
         // 15.9.5.36 Date.prototype.setDate (date)
         prototype function setDate(this:Date, date)
-            this.setDate(double(date)); 
+            this.setDate(double(date));
 
         intrinsic function setDate(date:double):double
             timeval = let (t : double = LocalTime(timeval))
-                          UTCTime(MakeDate(MakeDay(YearFromTime(t), MonthFromTime(t), date), 
+                          UTCTime(MakeDate(MakeDay(YearFromTime(t), MonthFromTime(t), date),
                                            TimeWithinDay(t)));
-            
+
 
         // 15.9.5.37 Date.prototype.setUTCDate (date)
         prototype function setUTCDate(this:Date, date)
-            this.setUTCDate(double(date)); 
+            this.setUTCDate(double(date));
 
-        intrinsic function setUTCDate(date:double):double 
+        intrinsic function setUTCDate(date:double):double
             timeval = let (t : double = timeval)
-                          MakeDate(MakeDay(YearFromTime(t), MonthFromTime(t), date), 
+                          MakeDate(MakeDay(YearFromTime(t), MonthFromTime(t), date),
                                    TimeWithinDay(t));
 
 
         // 15.9.5.38 Date.prototype.setMonth (month [, date ] )
         prototype function setMonth(this:Date, month, date)
-            this.setMonth(double(month), double(date)); 
+            this.setMonth(double(month), double(date));
 
         intrinsic function setMonth(month:double, date:double = date):double
             timeval = let (t : double = LocalTime(timeval))
-                          UTCTime(MakeDate(MakeDay(YearFromTime(t), month, date), 
+                          UTCTime(MakeDate(MakeDay(YearFromTime(t), month, date),
                                            TimeWithinDay(t)));
 
         /* E262-3 15.9.5.39: Date.prototype.setUTCMonth */
         prototype function setUTCMonth(this:Date, month, date)
-            this.setUTCMonth(double(month), double(date)); 
+            this.setUTCMonth(double(month), double(date));
 
         intrinsic function setUTCMonth(month:double, date:double = date):double
             timeval = let (t : double = timeval)
-                          MakeDate(MakeDay(YearFromTime(t), month, date), 
+                          MakeDate(MakeDay(YearFromTime(t), month, date),
                                    TimeWithinDay(t));
 
         /* E262-3 15.9.5.40: Date.prototype.setFullYear */
         prototype function setFullYear(this:Date, year, month, date)
-            this.setFullYear(double(year), double(month), double(date)); 
+            this.setFullYear(double(year), double(month), double(date));
 
-        intrinsic function setFullYear(year:double, 
-                                       month:double = month, 
-                                       date:double = date) : double 
+        intrinsic function setFullYear(year:double,
+                                       month:double = month,
+                                       date:double = date) : double
             timeval = let (t : double = LocalTime(timeval))
-                          UTCTime(MakeDate(MakeDay(year, month, date), 
+                          UTCTime(MakeDate(MakeDay(year, month, date),
                                            TimeWithinDay(t)));
 
         /* E262-3 15.9.5.41: Date.prototype.setUTCFullYear */
         prototype function setUTCFullYear(this:Date, year, month, date)
-            this.setUTCFullYear(double(year), double(month), double(date)); 
+            this.setUTCFullYear(double(year), double(month), double(date));
 
-        intrinsic function setUTCFullYear(year:double, 
-                                          month:double = month, 
-                                          date:double = date) : double 
+        intrinsic function setUTCFullYear(year:double,
+                                          month:double = month,
+                                          date:double = date) : double
             timeval = let (t : double = timeval)
-                          MakeDate(MakeDay(year, month, date), 
+                          MakeDate(MakeDay(year, month, date),
                                    TimeWithinDay(t));
 
 
@@ -801,7 +801,7 @@ package
         static const msPerDay : double = msPerHour * hoursPerDay;
         static const msPerYear : double = msPerDay * daysPerYear;
 
-        static const monthOffsets : [double] 
+        static const monthOffsets : [double]
             = [0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334] : [double];
 
         function MakeTime(hour:double, min:double, sec:double, ms:double ):double {
@@ -859,14 +859,14 @@ package
                   ", time=", time,
                   ", result=", res);
             */
-            
+
             return res;
         }
 
         function Day(t : double) : double
             Math.floor(t / msPerDay);
 
-        function TimeWithinDay(t : double) : double 
+        function TimeWithinDay(t : double) : double
             t % msPerDay;
 
         function HourFromTime(t : double) : double {
@@ -874,23 +874,23 @@ package
             if (v < 0)
                 return v + hoursPerDay;
             return v;
-        }        
+        }
 
         function MinFromTime(t : double) : double {
             let v : double = Math.floor(t / msPerMinute) % minutesPerHour;
             if (v < 0)
                 return v + minutesPerHour;
             return v;
-        }        
+        }
 
         function SecFromTime(t : double) : double {
             let v : double = Math.floor(t / msPerSecond) % secondsPerMinute;
             if (v < 0)
                 return v + secondsPerMinute;
             return v;
-        }        
+        }
 
-        
+
         function DaysInYear(y : double) : double {
             if (y % 4 !== 0) return 365;
             if (y % 100 !== 0) return 366;
@@ -898,7 +898,7 @@ package
             return 366;
         }
 
-        function DayFromYear(y : double) : double 
+        function DayFromYear(y : double) : double
             365 * (y-1970) + Math.floor((y-1969)/4) - Math.floor((y-1901)/100) + Math.floor((y-1601)/400);
 
         function TimeFromYear(y : double) : double
@@ -911,7 +911,7 @@ package
             let dwy : double = DayWithinYear(t),
                 ily : double = InLeapYear(t);
             for ( let i : int=monthOffsets.length-1; i >= 0; i-- ) {
-                let monthBegin = monthOffsets[i];                
+                let monthBegin = monthOffsets[i];
                 if (i >= 2)
                     monthBegin += ily;
                 if (dwy >= monthBegin)
@@ -923,7 +923,7 @@ package
         function DayWithinYear(t : double) : double
             Day(t) - DayFromYear(YearFromTime(t));
 
-        function DayFromMonth(m : double, leap : boolean) : double 
+        function DayFromMonth(m : double, leap : boolean) : double
             monthOffsets[m] + (leap && m >= 2 ? 1 : 0);
 
         function DateFromTime(t : double) : double
@@ -947,7 +947,7 @@ package
         function UTCTime(t : double) : double
             t - LocalTZA() - DaylightSavingsTA(t - LocalTZA());
 
-        function TimeClip(t : double) : double 
+        function TimeClip(t : double) : double
             (!isFinite(t) || Math.abs(t) > 8.64e15) ? NaN : ToInteger(t);
 
         /* INFORMATIVE */

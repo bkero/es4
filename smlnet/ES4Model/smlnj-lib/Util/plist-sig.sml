@@ -5,11 +5,11 @@
  * Property lists using Stephen Weeks's implementation.
  *)
 
-signature PROP_LIST = 
-  sig 
-    type holder 
+signature PROP_LIST =
+  sig
+    type holder
 
-    val newHolder : unit -> holder 
+    val newHolder : unit -> holder
 
     val hasProps : holder -> bool
 	(* return true if the holder has any properties. *)

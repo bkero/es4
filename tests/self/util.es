@@ -23,14 +23,14 @@ package util
 
     public function memberOf(x, ys) {
         for ( var i=0 ; i < ys.length ; i++ )
-            if (ys[i] === x) 
+            if (ys[i] === x)
                 return true;
         return false;
     }
 
     public function copyArray(c) {
         var a = new Array;
-        for ( var i=0 ; i < c.length ; i++ ) 
+        for ( var i=0 ; i < c.length ; i++ )
             a[i] = c[i];
         return a;
     }
@@ -51,9 +51,9 @@ package util
         if (result == null)
             result = [];
         for ( var i=0 ; i < a.length ; i++ )
-            print((i+100).toString(10).substring(1) + ": " + 
-                  (i in result ? " " + result[i] : (result.length == 0 ? "   " : " **")) + " " + 
-                  f(a[i]) + " " + 
+            print((i+100).toString(10).substring(1) + ": " +
+                  (i in result ? " " + result[i] : (result.length == 0 ? "   " : " **")) + " " +
+                  f(a[i]) + " " +
                   f(a[i],2) + " " +
                   (a[i] >= 32 && a[i] <= 126 ? "'" + String.fromCharCode(a[i]) + "'" : "") );
     }

@@ -6,9 +6,9 @@
  *)
 
 structure PropList :> PROP_LIST =
-  struct 
+  struct
 
-    type holder = exn list ref 
+    type holder = exn list ref
 
     fun newHolder() : holder = ref []
 
@@ -20,8 +20,8 @@ structure PropList :> PROP_LIST =
     fun sameHolder (r1 : holder, r2) = (r1 = r2)
 
     fun mkProp () = let
-	  exception E of 'a 
-	  fun cons (a, l) = E a :: l 
+	  exception E of 'a
+	  fun cons (a, l) = E a :: l
 	  fun peek [] = NONE
 	    | peek (E a :: _) = SOME a
 	    | peek (_ :: l) = peek l
@@ -49,7 +49,7 @@ structure PropList :> PROP_LIST =
 	  end
 
     fun newProp (selHolder : 'a -> holder, init : 'a -> 'b) = let
-	  val {peek, cons, delete} = mkProp() 
+	  val {peek, cons, delete} = mkProp()
 	  fun peekFn a = peek(!(selHolder a))
 	  fun getF a = let
 		val h = selHolder a
@@ -74,7 +74,7 @@ structure PropList :> PROP_LIST =
 	  end
 
     fun newFlag (selHolder : 'a -> holder) = let
-	  val {peek, set} = mkFlag() 
+	  val {peek, set} = mkFlag()
 	  fun getF a = peek(!(selHolder a))
 	  fun setF (a, flg) = let
 		val h = selHolder a
@@ -85,5 +85,5 @@ structure PropList :> PROP_LIST =
 	    {getFn = getF, setFn = setF}
 	  end
 
-  end 
+  end
 

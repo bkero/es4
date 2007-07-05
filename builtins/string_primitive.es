@@ -10,17 +10,17 @@
  *
  * The following licensing terms and conditions apply and must be
  * accepted in order to use the Reference Implementation:
- * 
+ *
  *    1. This Reference Implementation is made available to all
  * interested persons on the same terms as Ecma makes available its
  * standards and technical reports, as set forth at
  * http://www.ecma-international.org/publications/.
- * 
+ *
  *    2. All liability and responsibility for any use of this Reference
  * Implementation rests with the user, and not with any of the parties
  * who contribute to, or who own or hold any copyright in, this Reference
  * Implementation.
- * 
+ *
  *    3. THIS REFERENCE IMPLEMENTATION IS PROVIDED BY THE COPYRIGHT
  * HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED
  * WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
@@ -33,9 +33,9 @@
  * WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE
  * OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
  * IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- * 
+ *
  * End of Terms and Conditions
- * 
+ *
  * Copyright (c) 2007 Adobe Systems Inc., The Mozilla Foundation, Opera
  * Software ASA, and others.
  *
@@ -76,7 +76,7 @@ package
     intrinsic final class string! extends String
     {
         /* E262-4 draft */
-        meta static function convert(x) 
+        meta static function convert(x)
             string(x);
 
         /* E262-3 15.5.1: The String Constructor Called as a Function */
@@ -86,7 +86,7 @@ package
         /* 15.5.2 The string Constructor */
         function string(x="") : super(x)
         {
-            // No need to magic::bindString a second time, 
+            // No need to magic::bindString a second time,
             // since our super(x) call did it for us.
         }
 
@@ -101,7 +101,7 @@ package
             fromCharCodeHelper(args);
 
         /* IMPLEMENTATION DEVICE.  This method is not private,
-         * it is called from methods in 'String'. 
+         * it is called from methods in 'String'.
          */
         static function fromCharCodeHelper(codes : Array) : double {
             let s : string = "";
@@ -140,12 +140,12 @@ package
         static function charAt(self, pos) : string {
             let S    : string = ToString(self);
             let ipos : double = ToInteger(pos);
-            if (ipos < 0 || ipos >= S.length) 
+            if (ipos < 0 || ipos >= S.length)
                 return "";
             return magic::fromCharCode(magic::charCodeAt(S, ToUint(ipos)));
         }
 
-            
+
         /* E262-3 15.5.4.5: String.prototype.charCodeAt
            E262-4 draft proposals:static_generics
         */
@@ -158,7 +158,7 @@ package
         static function charCodeAt(self, pos) : double {
             let S : string = ToString(self);
             let ipos: double = ToInteger(pos);
-            if (ipos < 0 || ipos >= S.length) 
+            if (ipos < 0 || ipos >= S.length)
                 return NaN;
             return magic::charCodeAt(S, ToUint(ipos));
         }
@@ -178,7 +178,7 @@ package
             string.concatHelper(self, args);
 
         /* IMPLEMENTATION DEVICE.  This method is not private,
-         * it is called from methods in 'String'. 
+         * it is called from methods in 'String'.
          */
         static function concatHelper(self, strings) : string {
             let S : string = ToString(self);
@@ -196,7 +196,7 @@ package
         prototype function indexOf(searchString, position)
             string.indexOf(this, searchString, position);
 
-        override intrinsic function indexOf(searchString: string, position: double = 0.0) : double 
+        override intrinsic function indexOf(searchString: string, position: double = 0.0) : double
             string.indexOf(this, searchString, position);
 
         static function indexOf(self, searchString, position) : double {
@@ -227,7 +227,7 @@ package
         prototype function lastIndexOf(searchString, position)
             string.lastIndexOf(this, searchString, position);
 
-        override intrinsic function lastIndexOf(searchString: string, position: double) : double 
+        override intrinsic function lastIndexOf(searchString: string, position: double) : double
             string.lastIndexOf(self, searchString, position);
 
         static function lastIndexOf(self, searchString, position) : double {
@@ -244,7 +244,7 @@ package
             outer:
             for ( let k = Math.min(m, slen-sslen) ; k >= 0 ; k-- ) {  /* Beware of uint optimization... */
                 for ( let w = 0 ; w < sslen ; w++ ) {
-                    if (magic::charCodeAt(S, uint(k+w)) !== magic::charCodeAt(SS, uint(w))) 
+                    if (magic::charCodeAt(S, uint(k+w)) !== magic::charCodeAt(SS, uint(w)))
                         continue outer;
                 }
                 return k;
@@ -252,7 +252,7 @@ package
             return -1;
         }
 
-        /* E262-3 15.5.4.9: String.prototype.localeCompare 
+        /* E262-3 15.5.4.9: String.prototype.localeCompare
            E262-4 draft proposals:static_generics
          */
         prototype function localeCompare(that)
@@ -270,7 +270,7 @@ package
             let l  : uint = la < lb ? la : lb;
 
             for ( let i=0 ; i < l ; i++ ) {
-                let a = A.charCodeAt(i), 
+                let a = A.charCodeAt(i),
                     b = B.charCodeAt(i);
                 if (a !== b)
                     return a - b;
@@ -302,7 +302,7 @@ package
                 let oldLastIndex : double = R.lastIndex;
                 let res : Array = R.exec(S);
 
-                if (res === null) 
+                if (res === null)
                     break;
 
                 matches.push(res[0]);
@@ -316,14 +316,14 @@ package
         }
 
 
-        /* E262-3 15.5.4.11: String.prototype.replace 
+        /* E262-3 15.5.4.11: String.prototype.replace
            E262-4 draft proposals:static_generics
          */
         prototype function replace(searchValue, replaceValue)
             string.replace(this, searchValue, replaceValue);
 
-        override 
-        intrinsic function replace(searchValue: (RegExp!,String!), 
+        override
+        intrinsic function replace(searchValue: (RegExp!,String!),
                                    replaceValue: (String!,function(...):String!)) : string
             string.replace(this, searchValue, replaceValue);
 
@@ -357,8 +357,8 @@ package
                     else if (res[4]) s += S.substring(end);
                     else {
                         let n : int = parseInt(res[5]);
-                        if (n <= m && cap[n] !== undefined) 
-                            s += cap[n]; 
+                        if (n <= m && cap[n] !== undefined)
+                            s += cap[n];
                     }
                 }
                 s += replaceString.substring(i);
@@ -414,7 +414,7 @@ package
                         let oldLastIndex : double = regexp.lastIndex;
                         let [i,res] : [uint, CapArray?] = match(regexp, uint(oldLastIndex));
 
-                        if (res === null) 
+                        if (res === null)
                             break;
 
                         newstring += S.substring(prevEnd, i);
@@ -447,9 +447,9 @@ package
                 return S.substring(0,pos) + substitute(pos, end, 0, []) + S.substring(end);
             }
         }
-        
 
-        /* E262-3 15.5.4.12: String.prototype.search 
+
+        /* E262-3 15.5.4.12: String.prototype.search
            E262-4 draft proposals:static_generics
          */
         prototype function search(regexp)
@@ -470,7 +470,7 @@ package
         }
 
 
-        /* E262-3 15.5.4.13: String.prototype.slice 
+        /* E262-3 15.5.4.13: String.prototype.slice
            E262-4 draft proposals:static_generics
          */
         prototype function slice(start, end)
@@ -492,7 +492,7 @@ package
             return S.substring(startpos, startpos+n);
         }
 
-        
+
         /* ES262-3 15.5.4.14: String.prototype.split
            E262-4 draft proposals:static_generics
         */
@@ -542,7 +542,7 @@ package
                 R = separator;
             else
                 R = ToString(separator);
-            
+
             /* 7 */
             if (lim === 0)
                 return A;
@@ -579,7 +579,7 @@ package
 
                 /* 16-25 */
                 A[A.length] = S.substring(p, q);
-                if (A.length === lim) 
+                if (A.length === lim)
                     return A;
 
                 p = e;
@@ -601,10 +601,10 @@ package
         /* E262-3 15.5.4.15: String.prototype.substring
            E262-4 draft proposals:static_generics
          */
-        prototype function substring(start, end) 
+        prototype function substring(start, end)
             string.substring(this, start, end);
 
-        override intrinsic function substring(start: double, end: double=this.length) : string 
+        override intrinsic function substring(start: double, end: double=this.length) : string
             string.substring(this, start, end);
 
         static function substring(self, start, end) : string {
@@ -617,7 +617,7 @@ package
             start = Math.min(Math.max(start, 0), len);
             end = Math.min(Math.max(end, 0), len);
 
-            if (start > end) 
+            if (start > end)
                 [start, end] = [end, start];
 
             let s : string = "";
@@ -631,7 +631,7 @@ package
         }
 
 
-        /* E262-3 15.5.4.16: String.prototype.toLowerCase 
+        /* E262-3 15.5.4.16: String.prototype.toLowerCase
            E262-4 draft proposals:static_generics
          */
         prototype function toLowerCase()
@@ -657,7 +657,7 @@ package
         }
 
 
-        /* E262-3 15.5.4.17: String.prototype.toLocaleLowerCase 
+        /* E262-3 15.5.4.17: String.prototype.toLocaleLowerCase
            E262-4 draft proposals:static_generics
          */
         prototype function toLocaleLowerCase()
@@ -671,7 +671,7 @@ package
             string.toLowerCase();
 
 
-        /* E262-3 15.5.4.18: String.prototype.toUpperCase 
+        /* E262-3 15.5.4.18: String.prototype.toUpperCase
            E262-4 draft proposals:static_generics
          */
         prototype function toUpperCase()
@@ -692,12 +692,12 @@ package
                     for ( let j=0 ; j < u.length ; j++ )
                         s += magic::fromCharCode(u[j]);
                 }
-            }                        
+            }
             return s;
         }
 
 
-        /* E262-3 15.5.4.19: String.prototype.toLocaleUpperCase 
+        /* E262-3 15.5.4.19: String.prototype.toLocaleUpperCase
            E262-4 draft proposals:static_generics
          */
         prototype function toLocaleUpperCase()
@@ -712,7 +712,7 @@ package
 
 
         /* E262-4 draft proposals:json_encoding_and_decoding */
-        prototype function parseJSON() 
+        prototype function parseJSON()
             this.parseJSON();
 
         override intrinsic function parseJSON(...args)

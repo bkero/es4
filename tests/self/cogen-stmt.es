@@ -139,7 +139,7 @@ package cogen
         // FIXME: code shape?
         let Lbreak = asm.newLabel();
         let Lcont = asm.newLabel();
-        if (e1 != null) 
+        if (e1 != null)
             cgExpr(ctx, e1);
         let Ltop = asm.I_label();
         if (e2 != null) {
@@ -155,14 +155,14 @@ package cogen
     }
 
     function cgBreakStmt(ctx, {label: label}) {
-        unstructuredControlFlow(ctx, 
+        unstructuredControlFlow(ctx,
                                 (function (node) node.tag == "break" && (label == null || memberOf(label, stk.labels))),
                                 true,
                                 "Internal error: definer should have checked that all referenced labels are defined");
     }
 
     function cgContinueStmt(ctx, {label: label}) {
-        unstructuredControlFlow(ctx, 
+        unstructuredControlFlow(ctx,
                                 (function (node) node.tag == "continue" && (label == null || memberOf(label, stk.labels))),
                                 true,
                                 "Internal error: definer should have checked that all referenced labels are defined");
@@ -181,7 +181,7 @@ package cogen
             t = asm.getTemp();
             asm.I_setlocal(t);
         }
-        unstructuredControlFlow(ctx, 
+        unstructuredControlFlow(ctx,
                                 (function (node) node.tag == "function"),
                                 false,
                                 "Internal error: definer should have checked that top-level code does not return");
@@ -213,7 +213,7 @@ package cogen
                 Ldefault = asm.I_label();
             else {
                 cgExpr(nctx, c.guard);
-                asm.I_getlocal(t); 
+                asm.I_getlocal(t);
                 asm.I_strictequals();
                 Lnext = asm.I_iffalse();
             }

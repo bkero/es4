@@ -9,7 +9,7 @@ package util
         ba.endian = "littleEndian";
         ba.writeDouble(d);
         ba.position = 0;
-        return [ba.readByte(), ba.readByte(), ba.readByte(), ba.readByte(), 
+        return [ba.readByte(), ba.readByte(), ba.readByte(), ba.readByte(),
                 ba.readByte(), ba.readByte(), ba.readByte(), ba.readByte()];
     }
 

@@ -6,9 +6,9 @@ package bytestream
         print("--------------------------------------------");
         print("Testing ABCByteStream");
         print("");
-            
+
         var bytes = new ABCByteStream;
-        
+
         bytes.uint8(0x0A);
         bytes.uint16(0x010B);
         bytes.int16(-2);

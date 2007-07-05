@@ -2,17 +2,17 @@
  *
  * The following licensing terms and conditions apply and must be
  * accepted in order to use the Reference Implementation:
- * 
+ *
  *    1. This Reference Implementation is made available to all
  * interested persons on the same terms as Ecma makes available its
  * standards and technical reports, as set forth at
  * http://www.ecma-international.org/publications/.
- * 
+ *
  *    2. All liability and responsibility for any use of this Reference
  * Implementation rests with the user, and not with any of the parties
  * who contribute to, or who own or hold any copyright in, this Reference
  * Implementation.
- * 
+ *
  *    3. THIS REFERENCE IMPLEMENTATION IS PROVIDED BY THE COPYRIGHT
  * HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED
  * WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
@@ -25,9 +25,9 @@
  * WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE
  * OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
  * IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- * 
+ *
  * End of Terms and Conditions
- * 
+ *
  * Copyright (c) 2007 Adobe Systems Inc., The Mozilla Foundation, Opera
  * Software ASA, and others.
  *
@@ -49,7 +49,7 @@ package
     intrinsic function DefaultValue(obj, preferredType)
         magic::defaultValue(obj, preferredType);
 
-    intrinsic function ToPrimitive(value, preferredType) 
+    intrinsic function ToPrimitive(value, preferredType)
         magic::toPrimitive(value, preferredType);
 
     /* ES-262-3 9.4: The ToInteger operation */
@@ -63,9 +63,9 @@ package
         return sign * Math.floor(Math.abs(value));
     }
 
-    /* 
+    /*
      * ES-262-3 9.9: ToObject.
-     * 
+     *
      * ES-262-4 draft: All values except undefined and null are
      * already objects, no conversion is necessary.
     */
@@ -76,7 +76,7 @@ package
         return new Object(value);
     }
 
-    /* 
+    /*
      * The remaining ES-262-3 9.x primitive conversions are formulated
      * in terms of calling the class meta::invoke of the associated
      * primitive, which generally calls the primitive constructor and
@@ -99,7 +99,7 @@ package
     intrinsic function ToInt(v) : int
         int(value)
 
-    intrinsic function ToUint(x) : uint 
+    intrinsic function ToUint(x) : uint
         uint(x);
 
     intrinsic function ToDouble(x) : double

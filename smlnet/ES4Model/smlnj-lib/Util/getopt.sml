@@ -1,17 +1,17 @@
 (* getopt.sml
  *
  * COPYRIGHT (c) 1998 Bell Labs, Lucent Technologies.
- * 
+ *
  * See comments in getopt-sig.sml
- * 
+ *
  *)
 
 
-structure GetOpt :> GET_OPT = 
+structure GetOpt :> GET_OPT =
   struct
 
     datatype 'a arg_order
-      = RequireOrder		
+      = RequireOrder
       | Permute
       | ReturnInOrder of string -> 'a
 
@@ -21,13 +21,13 @@ structure GetOpt :> GET_OPT =
       | OptArg of (string option -> 'a) * string
 
     type 'a opt_descr = {
-        short : string,		
-        long : string list,	
-        desc : 'a arg_descr,	
-        help : string		
+        short : string,
+        long : string list,
+        desc : 'a arg_descr,
+        help : string
       }
 
-    datatype 'a opt_kind 
+    datatype 'a opt_kind
       = Opt of 'a
       | NonOpt
 
@@ -64,7 +64,7 @@ structure GetOpt :> GET_OPT =
           val fmtOptions = map fmtOpt options
           val (ms1, ms2) = foldl
 		(fn ((e1,e2,_), (m1,m2)) => (
-		    Int.max (size e1, m1), 
+		    Int.max (size e1, m1),
                     Int.max (size e2, m2)
 		  )) (0,0) fmtOptions
 	  val pad = StringCvt.padRight #" "
@@ -81,7 +81,7 @@ structure GetOpt :> GET_OPT =
 
     (* entry point of the library
      *)
- 
+
     fun getOpt {argOrder, options : 'a opt_descr list, errFn} = let
        (* Some error handling functions *)
 	  fun errAmbig optStr = errFn(usageInfo{
@@ -111,25 +111,25 @@ structure GetOpt :> GET_OPT =
         	val optStr = "--"^opt'
         	fun long (_::(_::_), _, rest') = (
 		      errAmbig optStr; (NonOpt, rest'))
-        	  | long ([NoArg a], x, rest') = 
+        	  | long ([NoArg a], x, rest') =
                       if (SS.isEmpty x)
                 	then (Opt(a()),rest')
-                      else if (SS.isPrefix "=" x) 
+                      else if (SS.isPrefix "=" x)
                 	then (errNoArg optStr; (NonOpt, rest'))
                 	else raise Fail "long: impossible"
-        	  | long ([ReqArg(f,d)], x, []) = 
+        	  | long ([ReqArg(f,d)], x, []) =
                       if (SS.isEmpty x)
                 	then (errReq(d, optStr); (NonOpt, []))
                       else if (SS.isPrefix "=" x)
                 	then (Opt(f (SS.string (SS.triml 1 x))), [])
                 	else raise Fail "long: impossible"
-        	  | long ([ReqArg(f,d)], x, rest' as (r::rs)) = 
+        	  | long ([ReqArg(f,d)], x, rest' as (r::rs)) =
                       if (SS.isEmpty x)
                 	then (Opt(f r), rs)
                       else if (SS.isPrefix "=" x)
                 	then (Opt(f (SS.string (SS.triml 1 x))), rest')
                 	else raise Fail "long: impossible"
-        	  | long ([OptArg(f,_)], x, rest') = 
+        	  | long ([OptArg(f,_)], x, rest') =
                       if (SS.isEmpty x)
                 	then (Opt(f NONE), rest')
                       else if (SS.isPrefix "=" x)
@@ -144,7 +144,7 @@ structure GetOpt :> GET_OPT =
 	 * rest of the option string, rest is the rest of the command-line
 	 * options.
 	 *)
-	  fun shortOpt (x, subs, rest) = let 
+	  fun shortOpt (x, subs, rest) = let
         	val options =
 		      List.filter (fn {short,...} => Char.contains short x) options
         	val ads = map #desc options
@@ -156,15 +156,15 @@ structure GetOpt :> GET_OPT =
                 	if (SS.isEmpty subs)
                 	  then (Opt(a()), rest')
                 	  else (Opt(a()), ("-"^(SS.string subs))::rest')
-        	    | ((ReqArg(f,d))::_, []) => 
-                	if (SS.isEmpty subs) 
+        	    | ((ReqArg(f,d))::_, []) =>
+                	if (SS.isEmpty subs)
                 	  then (errReq(d, optStr); (NonOpt, []))
                 	  else (Opt(f (SS.string subs)), [])
-        	    | ((ReqArg(f,_))::_, rest' as (r::rs)) => 
+        	    | ((ReqArg(f,_))::_, rest' as (r::rs)) =>
                 	if (SS.isEmpty subs)
                 	  then (Opt(f r), rs)
                 	  else (Opt(f (SS.string subs)), rest')
-        	    | ((OptArg(f,_))::_, rest') => 
+        	    | ((OptArg(f,_))::_, rest') =>
                 	if (SS.isEmpty subs)
                 	  then (Opt(f NONE), rest')
                 	  else (Opt(f (SOME(SS.string subs))), rest')

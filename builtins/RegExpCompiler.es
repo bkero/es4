@@ -1,4 +1,4 @@
-/* -*- mode: java; indent-tabs-mode: nil -*- 
+/* -*- mode: java; indent-tabs-mode: nil -*-
  *
  * ECMAScript 4 builtins - the "RegExp" object
  *
@@ -8,17 +8,17 @@
  *
  * The following licensing terms and conditions apply and must be
  * accepted in order to use the Reference Implementation:
- * 
+ *
  *    1. This Reference Implementation is made available to all
  * interested persons on the same terms as Ecma makes available its
  * standards and technical reports, as set forth at
  * http://www.ecma-international.org/publications/.
- * 
+ *
  *    2. All liability and responsibility for any use of this Reference
  * Implementation rests with the user, and not with any of the parties
  * who contribute to, or who own or hold any copyright in, this Reference
  * Implementation.
- * 
+ *
  *    3. THIS REFERENCE IMPLEMENTATION IS PROVIDED BY THE COPYRIGHT
  * HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED
  * WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
@@ -31,9 +31,9 @@
  * WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE
  * OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
  * IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- * 
+ *
  * End of Terms and Conditions
- * 
+ *
  * Copyright (c) 2007 Adobe Systems Inc., The Mozilla Foundation, Opera
  * Software ASA, and others.
  *
@@ -89,12 +89,12 @@ package RegExpInternals
 
         function disjunction() : Matcher {
             let alt : Matcher = alternative();
-            if (alt == null) 
+            if (alt == null)
                 alt = new Empty;
             if (peekCharCode() == 0x7Cu /* "|" */) {
                 advance();
                 return new Disjunct(alt, disjunction());
-            } 
+            }
             else
                 return alt;
         }
@@ -128,24 +128,24 @@ package RegExpInternals
         }
 
         function assertion() : Matcher? {
-            switch (peekCharCode()) { 
+            switch (peekCharCode()) {
 
             case 0x5Eu /* "^" */ :
                 advance();
                 return new AssertStartOfInput;
-                
+
             case 0x24u /* "$" */ :
                 advance();
                 return new AssertEndOfInput;
 
             case 0x5Cu /* "\\" */:
-                if (eat("\\b")) 
+                if (eat("\\b"))
                     return new AssertWordBoundary;
-                if (eat("\\B")) 
+                if (eat("\\B"))
                     return new AssertNotWordBoundary;
                 return null;
 
-            default: 
+            default:
                 return null;
             }
         }
@@ -193,7 +193,7 @@ package RegExpInternals
                             max = number();
                             match("}");
                         }
-                    } 
+                    }
                     else
                         match("}");
                     if (isFinite(max) && max < min)
@@ -220,7 +220,7 @@ package RegExpInternals
 
             case 0x28u /* "(" */:
                 consumeChar("(");
-                
+
                 if (peekCharCode() == 0x3Fu /* "?" */) {
                     consumeChar("?");
                     switch (peekChar()) {
@@ -229,26 +229,26 @@ package RegExpInternals
                         let d : Matcher = disjunction();
                         match(")");
                         return d;
-                        
+
                     case "=":
                         advance();
                         let d : Matcher = disjunction();
                         match(")");
                         intrinsic::assert(d !== null);
                         return new PositiveLookahead(d);
-                        
+
                     case "!":
                         advance();
                         let d : Matcher = disjunction();
                         match(")");
                         return new NegativeLookahead(d);
-                        
+
                     case "#":
                         advance();
                         consumeUntil(")");
                         match(")");
                         return new Empty;
-                        
+
                     case "P":
                         advance();
                         if (eat("<")) {
@@ -264,7 +264,7 @@ package RegExpInternals
                             names[capno+1] = name;
                             return new Capturing(d, capno);
                         }
-                        
+
                         if (eat("=")) {
                             let name : string = identifier();
                             match(")");
@@ -273,17 +273,17 @@ package RegExpInternals
                                     return new Backref(uint(i));
                             fail( SyntaxError, "Unknown backref name " + name );
                         }
-                        
+
                     default:
                         fail( SyntaxError, "Invalid (? pattern: next char=" + peekChar() );
                     }
                 } // peekChar() != "?"
-                    
+
                 let capno : uint = parenIndex++;
                 let d : Matcher = disjunction();
                 match(")");
                 return new Capturing(d, capno);
-                
+
             case 0x5Bu /* "[" */:
                 return characterClass();
 
@@ -300,7 +300,7 @@ package RegExpInternals
                 // case 0x7Du /* "}" */:
                 // case 0x5Du /* "]" */:
                 return null;
-                
+
             default: {
                 let m = new CharsetMatcher(new CharsetAdhoc(consumeChar()));
                 skip();
@@ -356,13 +356,13 @@ package RegExpInternals
              ClassRanges ::= [empty] | NonemptyClassRanges ;
 
              NonemptyClassRanges ::= ClassAtom
-                                   | ClassAtom "-" 
+                                   | ClassAtom "-"
                                    | ClassAtom "-" ClassAtom
                                    | ClassAtom "-" ClassAtom NonemptyClassRanges
                                    | ClassAtom [lookahead != "-"] NonemptyClassRanges ;
-                                   
+
              ClassAtom ::= "-" | ClassAtomNoDash ;
-                           
+
           To this we add the intersection and subtraction operations.
 
              NonemptyClassRanges ::= "&&[" CharacterClass "]"
@@ -409,8 +409,8 @@ package RegExpInternals
                 if (a1.hasOneCharacter()) {
                     let a2 : Charset = classAtom();
                     if (a2.hasOneCharacter()) {
-                        let a3 : Charset = accumulate(acc, 
-                                                      new CharsetRange(a1.singleCharacter(), 
+                        let a3 : Charset = accumulate(acc,
+                                                      new CharsetRange(a1.singleCharacter(),
                                                                        a2.singleCharacter()));
                         if (lookingAt("]"))
                             return intersect(also,a3);
@@ -428,7 +428,7 @@ package RegExpInternals
                                                           new CharsetAdhoc("-")),
                                                also);
             }
-            
+
             return nonemptyClassRanges(accumulate(acc,a1), also);
         }
 
@@ -457,7 +457,7 @@ package RegExpInternals
             }
 
             let (t : double? = decimalEscape()) {
-                if (t !== null) 
+                if (t !== null)
                     return new CharsetAdhoc(string.fromCharCode(t));
             }
 
@@ -465,7 +465,7 @@ package RegExpInternals
         }
 
         /* Returns null if it does not consume anything but fails;
-         * throws an error if it consumes and then fails.  
+         * throws an error if it consumes and then fails.
          */
         function characterClassEscape() : Charset? {
 
@@ -481,7 +481,7 @@ package RegExpInternals
             let invert : boolean = true;
 
             switch (peekCharCode()) {
-                
+
             case 0x64u /* "d" */: advance(); return charset_digit;
             case 0x44u /* "D" */: advance(); return charset_notdigit;
             case 0x73u /* "s" */: advance(); return charset_space;
@@ -494,7 +494,7 @@ package RegExpInternals
             case 0x50u /* "P" */:
                 {
                     if (peekChar2() == "{") {
-                        advance(); 
+                        advance();
                         advance();
                         return unicodeSet(invert);
                     }
@@ -505,7 +505,7 @@ package RegExpInternals
         }
 
         /* Returns null if it does not consume anything but fails;
-         * throws an error if it consumes and then fails. 
+         * throws an error if it consumes and then fails.
          *
          * Handles hex escapes.
          */
@@ -532,12 +532,12 @@ package RegExpInternals
                     return "\\b";
                 }
                 break;
-                
+
             case 0x66u /* "f" */: advance(); return "\f";
             case 0x6Eu /* "n" */: advance(); return "\n";
             case 0x72u /* "r" */: advance(); return "\r";
             case 0x74u /* "t" */: advance(); return "\t";
-                
+
             case 0x63u /* "c" */:
                 consumeChar();
                 let (c : string = peekChar()) {
@@ -552,10 +552,10 @@ package RegExpInternals
                     else
                         return "c";
                 }
-                
-            case 0x78u /* "x" */: 
-            case 0x58u /* "X" */: 
-            case 0x75u /* "u" */: 
+
+            case 0x78u /* "x" */:
+            case 0x58u /* "X" */:
+            case 0x75u /* "u" */:
             case 0x55u /* "U" */:
                 consumeChar();
                 if (peekCharCode() == 0x7Bu /* "{" */) {
@@ -565,7 +565,7 @@ package RegExpInternals
                         fail( SyntaxError, "Non-empty sequence of hexadecimal digits expected" );
                     match("}");
                     return s;
-                } 
+                }
                 else {
                     let saved = idx;
                     if (c == 0x78u /* "x" */ || c == 0x58u /* "X" */)
@@ -579,15 +579,15 @@ package RegExpInternals
                     return res;
                 }
             }
-            
+
             if (atEnd())
                 fail( SyntaxError, "EOF inside escape sequence" );
-            
+
             return consumeChar();
         }
 
         /* Returns null if it does not consume anything but fails;
-         * throws an error if it consumes and then fails. 
+         * throws an error if it consumes and then fails.
          */
         function decimalEscape() : double? {
             let c : uint = peekCharCode();
@@ -671,7 +671,7 @@ package RegExpInternals
             skip();
             return string.fromCharCode(k);
         }
-            
+
         function decimalDigits() : double {
             let k : double = 0;
             let c : string;
@@ -701,7 +701,7 @@ package RegExpInternals
         }
 
         function consumeChar(c : string? = null) : string {
-            if (!atEnd() && (c === null || source[idx] == c)) 
+            if (!atEnd() && (c === null || source[idx] == c))
                 return source[idx++];
             if (c !== null)
                 fail( SyntaxError, "Expected character " + c );
@@ -727,7 +727,7 @@ package RegExpInternals
 
             while (!atEnd()) {
                 let c : uint = peekCharCode();
-                if (c == 0x23u /* '#' */) {                    
+                if (c == 0x23u /* '#' */) {
                     ++idx;
                     while (!atEnd() && !isTerminatorCode(peekCharCode()))
                         ++idx;

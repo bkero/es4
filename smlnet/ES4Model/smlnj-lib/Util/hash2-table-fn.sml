@@ -1,4 +1,4 @@
-(* mono-hash2-table-fn.sml 
+(* mono-hash2-table-fn.sml
  *
  * COPYRIGHT (c) 1996 by AT&T Research.
  *
@@ -145,7 +145,7 @@ functor Hash2TableFn (
 	  val hash = hashVal key
 	  val indx = index (hash, Array.length arr)
 	  fun look HTRep.NIL = false
-	    | look (HTRep.B(h, k, v, r)) = 
+	    | look (HTRep.B(h, k, v, r)) =
 		((hash = h) andalso sameKey(key, k)) orelse look r
 	  in
 	    look (Array.sub (arr, indx))

@@ -1,21 +1,21 @@
-/* -*- mode: java; indent-tabs-mode: nil -*- 
+/* -*- mode: java; indent-tabs-mode: nil -*-
  *
  * ECMAScript 4 builtins - the "RegExp" object
  * E262-3 15.10
  *
  * The following licensing terms and conditions apply and must be
  * accepted in order to use the Reference Implementation:
- * 
+ *
  *    1. This Reference Implementation is made available to all
  * interested persons on the same terms as Ecma makes available its
  * standards and technical reports, as set forth at
  * http://www.ecma-international.org/publications/.
- * 
+ *
  *    2. All liability and responsibility for any use of this Reference
  * Implementation rests with the user, and not with any of the parties
  * who contribute to, or who own or hold any copyright in, this Reference
  * Implementation.
- * 
+ *
  *    3. THIS REFERENCE IMPLEMENTATION IS PROVIDED BY THE COPYRIGHT
  * HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED
  * WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
@@ -28,9 +28,9 @@
  * WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE
  * OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
  * IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- * 
+ *
  * End of Terms and Conditions
- * 
+ *
  * Copyright (c) 2007 Adobe Systems Inc., The Mozilla Foundation, Opera
  * Software ASA, and others.
  *
@@ -47,22 +47,22 @@ package RegExpInternals
     use strict;
 
     /* Encapsulation of compiled regular expression as returned by the
-       compiler.  
+       compiler.
     */
     intrinsic class RegExpMatcher!
     {
-        public function RegExpMatcher(matcher : Matcher, nCapturingParens : uint) 
+        public function RegExpMatcher(matcher : Matcher, nCapturingParens : uint)
             : matcher = matcher
             , nCapturingParens = nCapturingParens
         {
         }
 
         /* Returns an array of matches, with additional named properties
-           on the array for named submatches 
+           on the array for named submatches
         */
         public function match( input : string, endIndex : int, multiline: boolean, ignoreCase: boolean ) : MatchResult {
             return matcher.match(new Context(input, multiline, ignoreCase),
-                                 new State(endIndex, makeCapArray(nCapturingParens+1)), 
+                                 new State(endIndex, makeCapArray(nCapturingParens+1)),
                                  function (ctx : Context, x : State) : State? { return x } );
         }
 
@@ -76,7 +76,7 @@ package RegExpInternals
     */
     class Context!
     {
-        function Context(input : string, multiline: boolean, ignoreCase: boolean) 
+        function Context(input : string, multiline: boolean, ignoreCase: boolean)
             : input = input
             , inputLength = input.length
             , ignoreCase = ignoreCase
@@ -90,15 +90,15 @@ package RegExpInternals
         const multiline   : boolean;   // m
     }
 
-    /* MatchResult and State. 
+    /* MatchResult and State.
      */
 
     public type MatchResult = State?;
     public const failure : State? = null;
-    
+
     class State!
     {
-        function State(endIndex : int, cap : CapArray) 
+        function State(endIndex : int, cap : CapArray)
             : endIndex = endIndex
             , cap = cap
         {
@@ -111,7 +111,7 @@ package RegExpInternals
     /* Captures array.
 
        This captures array can be an array that's copied like the
-       E262-3 states, or it could be a functional data structure.  
+       E262-3 states, or it could be a functional data structure.
     */
     public type CapArray = [(string,undefined)];
 
@@ -237,8 +237,8 @@ package RegExpInternals
 
     class Quantified! implements Matcher
     {
-        function Quantified(parenIndex:uint, parenCount:uint, m:Matcher, min:double, max:double, 
-                            greedy:boolean) 
+        function Quantified(parenIndex:uint, parenCount:uint, m:Matcher, min:double, max:double,
+                            greedy:boolean)
             : parenIndex = parenIndex
             , parenCount = parenCount
             , m = m
@@ -351,7 +351,7 @@ package RegExpInternals
     class NegativeLookahead! implements Matcher
     {
         function NegativeLookahead(m : Matcher) : m=m {}
-            
+
         public function match(ctx : Context, x : State, c : Continuation) : MatchResult {
             let r : MatchResult = m.match(ctx, x, function (ctx, y : State) : MatchResult { return y } );
             if (r !== failure)
@@ -410,7 +410,7 @@ package RegExpInternals
         }
     }
 
-    class CharsetUnion! extends Charset 
+    class CharsetUnion! extends Charset
     {
         function CharsetUnion(m1: Charset, m2 : Charset) : m1=m1, m2=m2 {}
 
@@ -421,7 +421,7 @@ package RegExpInternals
         const m1 : Charset, m2 : Charset;
     }
 
-    class CharsetIntersection! extends Charset 
+    class CharsetIntersection! extends Charset
     {
         function CharsetIntersection(m1 : Charset, m2 : Charset) : m1=m1, m2=m2 {}
 
@@ -443,7 +443,7 @@ package RegExpInternals
         const m : Charset;
     }
 
-    class CharsetRange! extends Charset 
+    class CharsetRange! extends Charset
     {
         function CharsetRange(lo : string, hi : string) : lo=lo, hi=hi { }
 
@@ -459,7 +459,7 @@ package RegExpInternals
         const lo : string, hi : string;
     }
 
-    class CharsetAdhoc! extends Charset 
+    class CharsetAdhoc! extends Charset
     {
         function CharsetAdhoc(s : string) {
             cs = explodeString(s);
@@ -543,7 +543,7 @@ package RegExpInternals
         "Cf": new CharsetUnicodeClass(Unicode.isUnicodeCf),
         "Cs": new CharsetUnicodeClass(Unicode.isUnicodeCs),
         "Co": new CharsetUnicodeClass(Unicode.isUnicodeCo),
-        "Cn": new CharsetUnicodeClass(Unicode.isUnicodeCn) 
+        "Cn": new CharsetUnicodeClass(Unicode.isUnicodeCn)
     };
 
     function unicodeClass(name : string, complement : boolean) : Charset? {

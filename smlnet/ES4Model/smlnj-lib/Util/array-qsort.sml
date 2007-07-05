@@ -3,7 +3,7 @@
  * COPYRIGHT (c) 1993 by AT&T Bell Laboratories.  See COPYRIGHT file for details.
  *
  * Structure for in-place sorting of polymorphic arrays.
- * Uses an engineered version of quicksort due to 
+ * Uses an engineered version of quicksort due to
  * Bentley and McIlroy.
  *
  *)
@@ -20,7 +20,7 @@ structure ArrayQSort : ARRAY_SORT =
 
     fun isort (array, start, n, cmp) = let
           fun item i = sub(array,i)
-          fun swap (i,j) = let 
+          fun swap (i,j) = let
                 val tmp = sub(array,i)
                 in update(array,i,sub(array,j)); update(array,j,tmp) end
           fun vecswap (i,j,0) = ()
@@ -47,7 +47,7 @@ structure ArrayQSort : ARRAY_SORT =
 
     fun sortRange (array, start, n, cmp) = let
           fun item i = sub(array,i)
-          fun swap (i,j) = let 
+          fun swap (i,j) = let
                 val tmp = sub(array,i)
                 in update(array,i,sub(array,j)); update(array,j,tmp) end
           fun vecswap (i,j,0) = ()
@@ -83,7 +83,7 @@ structure ArrayQSort : ARRAY_SORT =
 		  (* end case *)
 		end
 
-          fun getPivot (a,n) = 
+          fun getPivot (a,n) =
                 if n <= 7 then a + n div 2
                 else let
                   val p1 = a
@@ -100,7 +100,7 @@ structure ArrayQSort : ARRAY_SORT =
                         med3(p1,pm,pn)
                       end
                   end
-          
+
           fun quickSort (arg as (a, n)) = let
                 fun bottom limit = let
                       fun loop (arg as (pa,pb)) =
@@ -110,7 +110,7 @@ structure ArrayQSort : ARRAY_SORT =
                             | LESS => loop (pa,pb+1)
                             | _ => (swap arg; loop (pa+1,pb+1))
                       in loop end
-      
+
                 fun top limit = let
                       fun loop (arg as (pc,pd)) =
                             if limit > pc then arg
@@ -144,7 +144,7 @@ structure ArrayQSort : ARRAY_SORT =
                 val _ = if n' > 1 then sort(pn-n',n') else ()
                 in () end
 
-          and sort (arg as (_, n)) = if n < 7 then insertSort arg 
+          and sort (arg as (_, n)) = if n < 7 then insertSort arg
                                      else quickSort arg
           in sort (start,n) end
 

@@ -21,7 +21,7 @@ functor SplayMapFn (K : ORD_KEY) : ORD_MAP =
     fun cmpf k (k', _) = K.compare(k',k)
 
     val empty = EMPTY
- 
+
     fun isEmpty EMPTY = true
       | isEmpty _ = false
 
@@ -53,14 +53,14 @@ functor SplayMapFn (K : ORD_KEY) : ORD_MAP =
           MAP{nobj=1,root=ref(SplayObj{value=(key,v),left=SplayNil,right=SplayNil})}
       | insert (MAP{root,nobj},key,v) =
           case splay (cmpf key, !root) of
-            (EQUAL,SplayObj{value,left,right}) => 
+            (EQUAL,SplayObj{value,left,right}) =>
               MAP{nobj=nobj,root=ref(SplayObj{value=(key,v),left=left,right=right})}
-          | (LESS,SplayObj{value,left,right}) => 
+          | (LESS,SplayObj{value,left,right}) =>
               MAP{
                 nobj=nobj+1,
                 root=ref(SplayObj{value=(key,v),left=SplayObj{value=value,left=left,right=SplayNil},right=right})
               }
-          | (GREATER,SplayObj{value,left,right}) => 
+          | (GREATER,SplayObj{value,left,right}) =>
               MAP{
                 nobj=nobj+1,
                 root=ref(SplayObj{
@@ -97,7 +97,7 @@ functor SplayMapFn (K : ORD_KEY) : ORD_MAP =
 	 *)
     fun remove (EMPTY, _) = raise LibBase.NotFound
       | remove (MAP{root,nobj}, key) = (case (splay (cmpf key, !root))
-	 of (EQUAL, SplayObj{value, left, right}) => 
+	 of (EQUAL, SplayObj{value, left, right}) =>
 	      if nobj = 1
 		then (EMPTY, #2 value)
 		else (MAP{root=ref(join(left,right)),nobj=nobj-1}, #2 value)
@@ -169,7 +169,7 @@ functor SplayMapFn (K : ORD_KEY) : ORD_MAP =
     fun appi af EMPTY = ()
       | appi af (MAP{root,...}) =
           let fun apply SplayNil = ()
-                | apply (SplayObj{value,left,right}) = 
+                | apply (SplayObj{value,left,right}) =
                     (apply left; af value; apply right)
         in
           apply (!root)
@@ -178,7 +178,7 @@ functor SplayMapFn (K : ORD_KEY) : ORD_MAP =
     fun app af EMPTY = ()
       | app af (MAP{root,...}) =
           let fun apply SplayNil = ()
-                | apply (SplayObj{value=(_,value),left,right}) = 
+                | apply (SplayObj{value=(_,value),left,right}) =
                     (apply left; af value; apply right)
         in
           apply (!root)
@@ -186,7 +186,7 @@ functor SplayMapFn (K : ORD_KEY) : ORD_MAP =
 (*
     fun revapp af (MAP{root,...}) =
           let fun apply SplayNil = ()
-                | apply (SplayObj{value,left,right}) = 
+                | apply (SplayObj{value,left,right}) =
                     (apply right; af value; apply left)
         in
           apply (!root)

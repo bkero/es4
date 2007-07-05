@@ -1,4 +1,4 @@
-/* -*- mode: java -*- 
+/* -*- mode: java -*-
  *
  * ECMAScript 4 builtins - the "boolean" object
  *
@@ -8,17 +8,17 @@
  *
  * The following licensing terms and conditions apply and must be
  * accepted in order to use the Reference Implementation:
- * 
+ *
  *    1. This Reference Implementation is made available to all
  * interested persons on the same terms as Ecma makes available its
  * standards and technical reports, as set forth at
  * http://www.ecma-international.org/publications/.
- * 
+ *
  *    2. All liability and responsibility for any use of this Reference
  * Implementation rests with the user, and not with any of the parties
  * who contribute to, or who own or hold any copyright in, this Reference
  * Implementation.
- * 
+ *
  *    3. THIS REFERENCE IMPLEMENTATION IS PROVIDED BY THE COPYRIGHT
  * HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED
  * WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
@@ -31,9 +31,9 @@
  * WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE
  * OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
  * IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- * 
+ *
  * End of Terms and Conditions
- * 
+ *
  * Copyright (c) 2007 Adobe Systems Inc., The Mozilla Foundation, Opera
  * Software ASA, and others.
  *
@@ -44,17 +44,17 @@ package
     use default namespace public;
     use namespace intrinsic;
 
-    /* 
+    /*
      * The boolean class is final and non-dynamic because most
      * implementations will in fact represent boolean objects not
      * using objects, but using some magic tagged value, of which
      * there will be only two, one for "true" and the other for
      * "false".
-     * 
+     *
      * The literals true and false denote instances of this class.
      */
     intrinsic final class boolean! extends Boolean
-    {       
+    {
 
 	meta static function convert(x) : boolean
 	    boolean(x);
@@ -63,10 +63,10 @@ package
         meta static function invoke(x=null) : boolean
             x is boolean ? x : new boolean(x);
 
-	function boolean(x=null) 
+	function boolean(x=null)
 	    : super(x)
 	{
-            // No need to magic::bindBoolean a second time, 
+            // No need to magic::bindBoolean a second time,
             // since our super(x) call did it for us.
 	}
 

@@ -1,17 +1,17 @@
 (*
  * The following licensing terms and conditions apply and must be
  * accepted in order to use the Reference Implementation:
- * 
+ *
  *    1. This Reference Implementation is made available to all
  * interested persons on the same terms as Ecma makes available its
  * standards and technical reports, as set forth at
  * http://www.ecma-international.org/publications/.
- * 
+ *
  *    2. All liability and responsibility for any use of this Reference
  * Implementation rests with the user, and not with any of the parties
  * who contribute to, or who own or hold any copyright in, this Reference
  * Implementation.
- * 
+ *
  *    3. THIS REFERENCE IMPLEMENTATION IS PROVIDED BY THE COPYRIGHT
  * HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED
  * WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
@@ -24,9 +24,9 @@
  * WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE
  * OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
  * IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- * 
+ *
  * End of Terms and Conditions
- * 
+ *
  * Copyright (c) 2007 Adobe Systems Inc., The Mozilla Foundation, Opera
  * Software ASA, and others.
  *)
@@ -65,7 +65,7 @@ let
         then (Word.orb (Word.<< (w, 0wx06), Word.andb (0wx3F, b)), cs)
         else raise BadUTF8Encoding
     end
-    
+
     fun convert ([   ], acc) = acc
       | convert (c::cs, acc) =
     let
@@ -105,7 +105,7 @@ fun internal_wcharToString c = if internal_wcharIsChar c
 
 fun internal_toEscapedAscii us =
     let
-	fun esc (c, ls) = 
+	fun esc (c, ls) =
 	    if internal_wcharIsChar c then
 		(internal_wcharToChar c) :: ls
 	    else
@@ -114,7 +114,7 @@ fun internal_toEscapedAscii us =
 	implode (List.rev (Vector.foldl esc [] us))
     end
 
-fun fixNegative s = 
+fun fixNegative s =
     if String.sub (s, 0) = #"~"
     then "-" ^ String.extract (s, 1, NONE)
     else s
@@ -160,7 +160,7 @@ fun isWs (0wx0009) (* <TAB> *) = true
   | isWs (0wx000A) (* <LF> *) = true
   | isWs (0wx2028) (* <LS> *) = true
   | isWs (0wx2029) (* <PS> *) = true
-				
+
   (* <USP> = "all other unicode Zs whitespace chars" *)
   | isWs (0wx1680) (* <OGHAM SPACE MARK> *) = true
   | isWs (0wx180E) (* <MONGOLIAN VOWEL SEPARATOR> *) = true

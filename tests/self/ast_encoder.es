@@ -36,13 +36,13 @@
         return str;
     }
 
-    function encodePackages (packages: [PACKAGE], nesting: int = 0) 
+    function encodePackages (packages: [PACKAGE], nesting: int = 0)
         : string {
         var str : string = "[]";
         return str;
     }
 
-    function encodeFixtures (fixtures: FIXTURES?, nesting: int = 0) 
+    function encodeFixtures (fixtures: FIXTURES?, nesting: int = 0)
         : string {
         var str : string = "null";
         return str;
@@ -58,7 +58,7 @@
                   "{ 'ast::class': 'Block'"
                 + indent(nesting) + ", 'pragmas': " + "[]" //encodePragmas (b.pragmas)
                 + indent(nesting) + ", 'defns': [ " + encodeDefns (b.defns,nesting+", 'defns': [ ".length)
-                + indent(nesting) + ", 'head': " + "[]" //encodeHead (b.head) 
+                + indent(nesting) + ", 'head': " + "[]" //encodeHead (b.head)
                 + indent(nesting) + ", 'stmts': [ " + encodeStmts (b.stmts,nesting+", 'stmts': [ ".length) +" ]";
                 + indent(nesting) + ", 'pos': " + "null" //encodePos (b.pos)
                 + " }";
@@ -82,8 +82,8 @@
         {
             var str =
                   encodeStmt (nd[0], nesting)
-                + indent(nesting-2) 
-                + ", " 
+                + indent(nesting-2)
+                + ", "
                 + encodeStmts (nd.slice (1,nd.length), nesting);
         }
         exit ("encodeStmts ",str);
@@ -103,7 +103,7 @@
         case (nd: ExprStmt) {
             var str =
                 "{ 'ast::class': 'ExprStmt'"
-              + indent(nesting) 
+              + indent(nesting)
               + ", 'expr': "
               + encodeExpr (nd.expr,nesting+", 'expr': ".length)
               + " }";
@@ -111,13 +111,13 @@
         case (nd: IfStmt) {
             var str =
                 "{ 'ast::class': 'IfStmt'"
-              + indent(nesting) 
+              + indent(nesting)
               + ", 'cnd': "
               + encodeExpr (nd.cnd,nesting+", 'cnd': ".length)
-              + indent(nesting) 
+              + indent(nesting)
               + ", 'thn': "
               + encodeStmt (nd.thn,nesting+", 'thn': ".length)
-              + indent(nesting) 
+              + indent(nesting)
               + ", 'els': "
               + encodeStmt (nd.els,nesting+", 'els': ".length)
               + " }";
@@ -177,7 +177,7 @@
         case (le: LiteralExpr) {
             var str =
                 "{ 'ast::class': 'LiteralExpr'"
-              + indent(nesting) 
+              + indent(nesting)
               + ", 'literal': "
               + encodeLiteral (le.literal,nesting+", 'literal': ".length)
               + " }";
@@ -185,18 +185,18 @@
         case (ex: ListExpr) {
             var str =
                 "{ 'ast::class': 'ListExpr'"
-              + indent(nesting) 
-              + ", 'exprs': [ " 
+              + indent(nesting)
+              + ", 'exprs': [ "
               + encodeExprs (ex.exprs,nesting+", 'exprs': [ ".length)
               + " ] }";
         }
         case (ex: CallExpr) {
             var str =
                 "{ 'ast::class': 'CallExpr'"
-              + indent(nesting) 
+              + indent(nesting)
               + ", 'func': "
               + encodeExpr (ex.func,nesting+", 'func': ".length)
-              + indent(nesting) 
+              + indent(nesting)
               + ", 'args': [ "
               + encodeExprs (ex.args,nesting+", 'args': [ ".length)
               + " ] }";
@@ -205,10 +205,10 @@
             enter ("newexpr");
             var str =
                 "{ 'ast::class': 'NewExpr'"
-              + indent(nesting) 
+              + indent(nesting)
               + ", 'func': "
               + encodeExpr (ex.func,nesting+", 'func': ".length)
-              + indent(nesting) 
+              + indent(nesting)
               + ", 'args': [ "
               + encodeExprs (ex.args,nesting+", 'args': [ ".length)
               + " ] }";
@@ -217,7 +217,7 @@
         case (ex: LexicalRef) {
             var str =
                 "{ 'ast::class': 'LexicalRef'"
-              + indent(nesting) 
+              + indent(nesting)
               + ", 'ident': "
               + encodeIdentExpr (ex.ident,nesting+", 'ident': ".length)
               + " }";
@@ -235,13 +235,13 @@
         case (ex: BinaryExpr) {
             var str =
                 "{ 'ast::class': 'BinaryExpr'"
-              + indent(nesting) 
+              + indent(nesting)
               + ", 'op': "
               + encodeBinOp (ex.op,nesting,", 'op': ".length)
-              + indent(nesting) 
+              + indent(nesting)
               + ", 'e1': "
               + encodeExpr (ex.e1,nesting+", 'e1': ".length)
-              + indent(nesting) 
+              + indent(nesting)
               + ", 'e2': "
               + encodeExpr (ex.e2,nesting+", 'e2': ".length)
               + " }";
@@ -262,20 +262,20 @@
         case (ie: Identifier) {
             var str =
                 "{ 'ast::class': 'Identifier'"
-              + indent(nesting) 
-              + ", 'ident': " 
+              + indent(nesting)
+              + ", 'ident': "
               + ie.ident
               + " }";
         }
         case (ie: UnresolvedPath) {
             var str =
                 "{ 'ast::class': 'UnresolvedPath'"
-              + indent(nesting) 
+              + indent(nesting)
               + ", 'path': [ "
               + encodePath (ie.path,nesting+", 'path': [ ".length)
               + " ]"
-              + indent(nesting) 
-              + ", 'ident': " 
+              + indent(nesting)
+              + ", 'ident': "
               + encodeIdentExpr (ie.ident,nesting+", 'ident': ".length)
               + " }";
         }
@@ -295,24 +295,24 @@
         case (nd: LiteralString) {
             var str =
                 "{ 'ast::class': 'LiteralString'"
-              + indent(nesting) 
-              + ", 'strValue': " 
+              + indent(nesting)
+              + ", 'strValue': "
               + nd.strValue
               + " }";
         }
         case (nd: LiteralDecimal) {
             var str =
                 "{ 'ast::class': 'LiteralDecimal'"
-              + indent(nesting) 
-              + ", 'decimalValue': " 
+              + indent(nesting)
+              + ", 'decimalValue': "
               + nd.decimalValue
               + " }";
         }
         case (nd: LiteralNamespace) {
             var str =
                 "{ 'ast::class': 'LiteralNamespace'"
-              + indent(nesting) 
-              + ", 'namespaceValue': " 
+              + indent(nesting)
+              + ", 'namespaceValue': "
               + encodeNamespace (nd.namespaceValue,nesting+", 'namespaceValue': ".length)
               + " }";
         }
@@ -332,8 +332,8 @@
         case (nd: PublicNamespace) {
             var str =
                 "{ 'ast::class': 'PublicNamespace'"
-              + indent(nesting) 
-              + ", 'name': '" 
+              + indent(nesting)
+              + ", 'name': '"
               + nd.name
               + "' }";
         }
@@ -427,7 +427,7 @@
         exit ("encodeLiteral ",str);
         return str;
     }
-    
+
     function encodePath (nd /*: [IDENT]*/, nesting: int = 0)
         : string {
         enter ("encodePath nd.length=",nd.length);
@@ -440,8 +440,8 @@
         {
             var str =
                   nd[0]
-                + indent(nesting-2) 
-                + ", " 
+                + indent(nesting-2)
+                + ", "
                 + encodePath (nd.slice (1,nd.length), nesting);
         }
         exit ("encodePath ",str);
@@ -459,8 +459,8 @@
         {
             var str =
                   encodeDefn (nd[0], nesting)
-                + indent(nesting-2) 
-                + ", " 
+                + indent(nesting-2)
+                + ", "
                 + encodeDefns (nd.slice (1,nd.length), nesting);
         }
         exit ("encodeDefns ",str);
@@ -475,7 +475,7 @@
         case (nd: VariableDefn) {
             var str =
                 "{ 'ast::class': 'VariableDefn'"
-              + indent(nesting) 
+              + indent(nesting)
               + ", 'ns': "
               + encodeExpr (nd.ns, nesting+", 'ns': ".length)
               + indent(nesting)
@@ -525,11 +525,11 @@
 
         var str =
             "{ 'ast::class': 'Binding'"
-          + indent(nesting) 
+          + indent(nesting)
           + ", 'ident': "
           + encodeBindingIdent (nd.ident,nesting+", 'ident': ".length)
             /*
-          + indent(nesting) 
+          + indent(nesting)
           + ", 'type': "
           + encodeTypeExpr (nd.type,nesting+", 'ident': ".length)
             */
@@ -555,14 +555,14 @@
         }
         case (nd:ParamIdent) {
             str = "{ 'ast::class': 'ParamIdent'"
-                + indent(nesting) 
+                + indent(nesting)
                 + ", 'n': "
                 + nd.n
                 + " }";
         }
         case (nd:PropIdent) {
             str = "{ 'ast::class': 'PropIdent'"
-                + indent(nesting) 
+                + indent(nesting)
                 + ", 'ident': '"
                 + nd.ident
                 + "' }";
@@ -607,7 +607,7 @@
         case (nd:InitStep) {
         var str =
             "{ 'ast::class': 'InitStep'"
-          + indent(nesting) 
+          + indent(nesting)
           + ", 'ident': "
           + encodeBindingIdent (nd.ident,nesting+", 'ident': ".length)
           + indent(nesting)

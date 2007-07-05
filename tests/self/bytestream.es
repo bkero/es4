@@ -47,7 +47,7 @@ package bytestream
 
     import util.*;
 
-    public final class ABCByteStream 
+    public final class ABCByteStream
     {
         public function get length() {
             return bytes.length;
@@ -57,7 +57,7 @@ package bytestream
             assert(val < 256);
             bytes.push(val);
         }
-        
+
         public function uint16(val/*:uint*/) {
             assert(val < 65536);
             bytes.push(val & 0xFF,
@@ -69,14 +69,14 @@ package bytestream
             bytes.push(val & 0xFF,
                        (val >> 8) & 0xFF);
         }
-        
+
         public function int24(val/*:int*/) {
             assert(-16777216 <= val && val < 16777216);
-            bytes.push(val & 0xFF, 
+            bytes.push(val & 0xFF,
                        (val >> 8) & 0xFF,
                        (val >> 16) & 0xFF);
         }
-        
+
         public function uint30(val/*:uint*/) {
             assert(val < 1073741824);
             uint32(val);
@@ -95,25 +95,25 @@ package bytestream
         }
 
         public function uint32(val/*:uint*/) {
-            if( val < 0x80 )              
+            if( val < 0x80 )
                 // 7 bits
                 bytes.push(val & 0x7F);
-            else if ( val < 0x4000 )       
+            else if ( val < 0x4000 )
                 // 14 bits
                 bytes.push((val & 0x7F) | 0x80,
                            (val >> 7) & 0x7F);
-            else if ( val < 0x200000 )     
+            else if ( val < 0x200000 )
                 // 21 bits
                 bytes.push((val & 0x7F) | 0x80,
                            ((val >> 7) & 0x7F) | 0x80,
                            (val >> 14) & 0x7F);
-            else if ( val < 0x10000000 )  
+            else if ( val < 0x10000000 )
                 // 28 bits
                 bytes.push((val & 0x7F) | 0x80,
                            ((val >> 7) & 0x7F) | 0x80,
                            ((val >> 14) & 0x7F) | 0x80,
                            (val >> 21) & 0x7F);
-            else 
+            else
                 // 32 bits
                 bytes.push((val & 0x7F) | 0x80,
                            ((val >> 7) & 0x7F) | 0x80,
@@ -121,7 +121,7 @@ package bytestream
                            ((val >> 21) & 0x7F) | 0x80,
                            (val >> 28) & 0x7F);
         }
-        
+
         public function float64(val /*FIXME ES4: double*/) {
             var bs = explodeNumber(val);  /*FIXME ES4: destructuring*/
             bytes.push(bs[0], bs[1], bs[2], bs[3], bs[4], bs[5], bs[6], bs[7]);
@@ -139,7 +139,7 @@ package bytestream
                     bytes.push(0xD0 | ((c >> 12) & 0x0F),
                                0x80 | ((c >> 6) & 0x3F),
                                0x80 | (c & 0x3F));
-                else 
+                else
                     bytes.push(0xF0 | ((c >> 18) & 0x07),
                                0x80 | ((c >> 12) & 0x3F),
                                0x80 | ((c >> 6) & 0x3F),
@@ -172,8 +172,8 @@ package bytestream
          * type is not part of the API here.  Clients must be adapted
          * to particular environments anyway.
          */
-        public function getBytes(): * { 
-            return bytes; 
+        public function getBytes(): * {
+            return bytes;
         }
 
         private const bytes = [];

@@ -10,17 +10,17 @@
  *
  * The following licensing terms and conditions apply and must be
  * accepted in order to use the Reference Implementation:
- * 
+ *
  *    1. This Reference Implementation is made available to all
  * interested persons on the same terms as Ecma makes available its
  * standards and technical reports, as set forth at
  * http://www.ecma-international.org/publications/.
- * 
+ *
  *    2. All liability and responsibility for any use of this Reference
  * Implementation rests with the user, and not with any of the parties
  * who contribute to, or who own or hold any copyright in, this Reference
  * Implementation.
- * 
+ *
  *    3. THIS REFERENCE IMPLEMENTATION IS PROVIDED BY THE COPYRIGHT
  * HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED
  * WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
@@ -33,9 +33,9 @@
  * WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE
  * OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
  * IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- * 
+ *
  * End of Terms and Conditions
- * 
+ *
  * Copyright (c) 2007 Adobe Systems Inc., The Mozilla Foundation, Opera
  * Software ASA, and others.
  *
@@ -60,14 +60,14 @@ package
     use default namespace public;
     use namespace intrinsic;
     use strict;
-    
+
     /* The January 2007 meeting resolved that String is open and
      * dynamic
      */
     dynamic class String
-    {       
+    {
         /* E262-4 draft */
-        meta static function convert(x) 
+        meta static function convert(x)
             string(x);
 
         /* E262-3 15.5.1: The String Constructor Called as a Function */
@@ -97,7 +97,7 @@ package
 
         override intrinsic function toString() : string
             ToString(this);
-        
+
 
         /* E262-3 15.5.4.3: String.prototype.valueOf */
         prototype function valueOf(this : String) {
@@ -106,7 +106,7 @@ package
                 return ToString(this);
             throw new Error("Implementation error: the 'this' constraint should have caught this one.");
         }
-        
+
         override intrinsic function valueOf() : String
             ToString(this);
 
@@ -119,7 +119,7 @@ package
 
         static function charAt(self, pos)
             string.charAt(self, pos);
-            
+
         intrinsic function charAt(pos: double = 0) : string
             string.charAt(this, pos);
 
@@ -159,7 +159,7 @@ package
         static function indexOf(self, searchString, position): double
             string.indexOf(this, searchString, position);
 
-        intrinsic function indexOf(searchString: String!, position: double = 0.0) : double 
+        intrinsic function indexOf(searchString: String!, position: double = 0.0) : double
             string.indexOf(this, searchString, position);
 
 
@@ -173,11 +173,11 @@ package
         static function lastIndexOf(self, searchString, position) : double
             string.lastIndexOf(self, searchString, position);
 
-        intrinsic function lastIndexOf(searchString: String!, position: double) : double 
+        intrinsic function lastIndexOf(searchString: String!, position: double) : double
             string.lastIndexOf(this, searchString, position);
 
 
-        /* E262-3 15.5.4.9: String.prototype.localeCompare 
+        /* E262-3 15.5.4.9: String.prototype.localeCompare
            E262-4 draft proposals:static_generics
          */
         prototype function localeCompare(that)
@@ -199,11 +199,11 @@ package
         static function match(self, regexp) : Array
             string.match(self, regexp);
 
-        intrinsic function match(regexp: RegExp!) : Array 
+        intrinsic function match(regexp: RegExp!) : Array
             string.match(this, regexp);
 
 
-        /* E262-3 15.5.4.11: String.prototype.replace 
+        /* E262-3 15.5.4.11: String.prototype.replace
            E262-4 draft proposals:static_generics
          */
         prototype function replace(searchValue, replaceValue)
@@ -214,9 +214,9 @@ package
 
         intrinsic function replace(s: (RegExp!,String!), r: (String!,function(...):String!)) : string
             string.replace(this, searchValue, replaceValue);
-        
 
-        /* E262-3 15.5.4.12: String.prototype.search 
+
+        /* E262-3 15.5.4.12: String.prototype.search
            E262-4 draft proposals:static_generics
          */
         prototype function search(regexp)
@@ -225,11 +225,11 @@ package
         static function search(self, regexp) : double
             string.search(self, regexp);
 
-        intrinsic function search(regexp: RegExp!) : double 
+        intrinsic function search(regexp: RegExp!) : double
             string.search(this, r);
 
 
-        /* E262-3 15.5.4.13: String.prototype.slice 
+        /* E262-3 15.5.4.13: String.prototype.slice
            E262-4 draft proposals:static_generics
          */
         prototype function slice(start, end)
@@ -240,7 +240,7 @@ package
 
         intrinsic function slice(s: double, e: double): string
             string.slice(this, s, e);
-        
+
 
         /* ES262-3 15.5.4.14: String.prototype.split
            E262-4 draft proposals:static_generics
@@ -276,12 +276,12 @@ package
 
         static function substring(self, start, length): string
             string.substr(self, start, length);
-            
+
         intrinsic function substring(start: double, length: double): string
             string.substr(this, start, length);
 
 
-        /* E262-3 15.5.4.16: String.prototype.toLowerCase 
+        /* E262-3 15.5.4.16: String.prototype.toLowerCase
            E262-4 draft proposals:static_generics
          */
         prototype function toLowerCase()
@@ -294,7 +294,7 @@ package
             string.toLowerCase(this);
 
 
-        /* E262-3 15.5.4.17: String.prototype.toLocaleLowerCase 
+        /* E262-3 15.5.4.17: String.prototype.toLocaleLowerCase
            E262-4 draft proposals:static_generics
          */
         prototype function toLocaleLowerCase()
@@ -307,7 +307,7 @@ package
             string.toLocaleLowerCase(this);
 
 
-        /* E262-3 15.5.4.18: String.prototype.toUpperCase 
+        /* E262-3 15.5.4.18: String.prototype.toUpperCase
            E262-4 draft proposals:static_generics
          */
         prototype function toUpperCase()
@@ -320,7 +320,7 @@ package
             string.toUpperCase(this);
 
 
-        /* E262-3 15.5.4.19: String.prototype.toLocaleUpperCase 
+        /* E262-3 15.5.4.19: String.prototype.toLocaleUpperCase
            E262-4 draft proposals:static_generics
          */
         prototype function toLocaleUpperCase()
@@ -334,7 +334,7 @@ package
 
 
         /* E262-4 draft proposals:json_encoding_and_decoding */
-        prototype function parseJSON(...args) 
+        prototype function parseJSON(...args)
             string.parseJSONHelper(this, args);
 
         intrinsic function parseJSON(...args)

@@ -1,4 +1,4 @@
-/* -*- mode: java; indent-tabs-mode: nil -*- 
+/* -*- mode: java; indent-tabs-mode: nil -*-
  *
  * ECMAScript 4 builtins - the "Function" object
  * E262-3 15.3
@@ -6,17 +6,17 @@
  *
  * The following licensing terms and conditions apply and must be
  * accepted in order to use the Reference Implementation:
- * 
+ *
  *    1. This Reference Implementation is made available to all
  * interested persons on the same terms as Ecma makes available its
  * standards and technical reports, as set forth at
  * http://www.ecma-international.org/publications/.
- * 
+ *
  *    2. All liability and responsibility for any use of this Reference
  * Implementation rests with the user, and not with any of the parties
  * who contribute to, or who own or hold any copyright in, this Reference
  * Implementation.
- * 
+ *
  *    3. THIS REFERENCE IMPLEMENTATION IS PROVIDED BY THE COPYRIGHT
  * HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED
  * WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
@@ -29,9 +29,9 @@
  * WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE
  * OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
  * IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- * 
+ *
  * End of Terms and Conditions
- * 
+ *
  * Copyright (c) 2007 Adobe Systems Inc., The Mozilla Foundation, Opera
  * Software ASA, and others.
  *
@@ -57,7 +57,7 @@ package
         use strict;
 
         /* E262-3 15.3.1: The Function Constructor Called as a Function */
-        meta static function invoke(...args) 
+        meta static function invoke(...args)
             magic::construct(Function, args);
 
         // FIXME: there seems to be little possibility of writing the
@@ -65,7 +65,7 @@ package
         // magic-setting variant in a very early bootstrap environment
         // that has no ints, arrays, strings, or other amusements to
         // supply a sensible definition with. So for the time being we
-        // will special-case anyone calling "new Function(...)" in 
+        // will special-case anyone calling "new Function(...)" in
         // the runtime.
 
 
@@ -79,8 +79,8 @@ package
 
            Other parts of the class hierarchy may however create
            meta::invoke methods that will be considered by the
-           function calling machinery. 
-        */        
+           function calling machinery.
+        */
         meta final function invoke(...args) {
             throw new Error("Implementation error");
         }
@@ -105,7 +105,7 @@ package
 
         override intrinsic function toString() : string
             source;
-        
+
         /* E262-3 15.3.4.3: Function.prototype.apply */
         prototype function apply(thisArg, argArray)
             Function.apply(this, thisArg, argArray);
@@ -134,7 +134,7 @@ package
 
            Assuming a rest argument does not contribute to the
            "length" of the function, so the length of
-           Function.prototype.call is 1, which is what we want. 
+           Function.prototype.call is 1, which is what we want.
         */
         prototype function call(thisObj, ...args)
             Function.apply(this, thisObj, args);
@@ -146,7 +146,7 @@ package
            Function object. */
         static function call(thisObj, ...args:Array):*
             Function.apply(this, thisObj, args);
-        
+
         /* E262-3 15.3.5.3: [[HasInstance]] */
         intrinsic function HasInstance(V) {
             if (!(V is Object))
@@ -168,12 +168,12 @@ package
         /* Source code for decompilation, installed by the constructor */
         var source : string?;
 
-        prototype function toSource() 
+        prototype function toSource()
             this.source;
 
         // This is a getter because 'uint' is not defined by the time we
         // start constructing Functions.
-        function get length() 
+        function get length()
             magic::fnLength(this);
 
         // 'length' is logically a read-only property, so setting it should fail silently

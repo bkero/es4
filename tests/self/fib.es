@@ -4,7 +4,7 @@ class Fib {
     function Fib(n) {
        if (n < 2)
            val = n;
-       else 
+       else
            val = (new Fib(n-1)).val + (new Fib(n-2)).val
     }
     var val;
