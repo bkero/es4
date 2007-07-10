@@ -145,7 +145,7 @@ AddTestCase( "Obj.setPubVirtualBoolean(false), Obj.getPubVirtualBoolean()", fals
 // Access Public Static method
 // ********************************************
 AddTestCase( "*** Access public static method of a class ***", 1, 1 );
-AddTestCase( "Obj..setPubStatObject(ob), Obj.getPubStatObject()", ob, (Obj.setPubStatObject(ob), Obj.getPubStatObject()) );
+AddTestCase( "Obj.setPubStatObject(ob), Obj.getPubStatObject()", ob, (Obj.setPubStatObject(ob), Obj.getPubStatObject()) );
 
 // ********************************************
 // Access Public Final method
