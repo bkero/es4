@@ -8,7 +8,7 @@ number of issues relating to the ES4 type system in a simpler context,
 and may also help to shake out bugs in the type system earlier.
 
 High-level lessons:
- - AnyType is really a top type - FIXME - maybe not
+ - AnyType is NOT a top type 
 
  - In strict mode, programs without '*' give no run-time casts, and
    safety bit never gets set.
@@ -28,7 +28,7 @@ High-level lessons:
    The resulting type closures may contain free variables, for type
    references that are not known at verify-time.
 
- - type X = ... etc all seem fine, and can fairly easily be removed by
+ - type X = ... etc all seem fine, and can be removed by
    the verifier.
 
  *)
@@ -78,13 +78,14 @@ fun gensym (s:string) : string =
     end
 
 (*********** Types ***********)
+type label = string;
 
 datatype TYPE =
          AnyType                         (* the type "*" *)
        | IntType
        | TypeType                        (* the type of types *)
        | FunType of TYPE * TYPE          (* function(T1):T2   *)
-       | RefType of TYPE                 (* {l:T} - a ref is a single-element object *)
+       | ObjType of (label * TYPE) list  (* {l:T,...}  *)
        | VarType of string               (* a reference to a type variable "X" *)
        | GenericType of string * TYPE    (* forall X. T, or from "type T.<X> = ..." *)
        | AppType of TYPE * TYPE          (* T1.<T2>     *)
@@ -94,7 +95,10 @@ fun typeToString (t:TYPE) : string =
         AnyType => "*"
       | IntType => "int"
       | FunType (t1,t2) => "function(" ^ (typeToString t1) ^ "):" ^ (typeToString t2)
-      | RefType t1 => "ref" ^ (typeToString t1)
+      | ObjType tyfields => 
+        "{" ^ 
+        (List.foldl (fn ((l,t),r) => (l^":"^(typeToString t)^", "^r)) "" tyfields)
+        ^"}"
       | VarType y => y
       | GenericType (y,t1) => "(function.<" ^ y ^ "> " ^ (typeToString t1)^")"
       | AppType (t1,t2) => (typeToString t1)^".<"^(typeToString t2)^">"
@@ -109,9 +113,9 @@ datatype EXPR =
        | FunExpr of string * TYPE * TYPE * EXPR (* arg and result types on fns, like in ES4 *)
        | CastExpr of TYPE * EXPR                
        | AppExpr of EXPR * EXPR                 (* application  e1(e2) *)
-       | RefExpr of TYPE * EXPR                 (* allocate, dereference, and update ref cells *)
-       | GetExpr of EXPR
-       | SetExpr of EXPR * EXPR
+       | ObjExpr of (label*EXPR) list * TYPE    (* {l:e,...}:T *)
+       | GetExpr of EXPR * label                (* e.l *)
+       | SetExpr of EXPR * label * EXPR         (* e.l = e' *)
        | ExpectedTypeExpr of TYPE * EXPR        (* not in source, inserted by verifier *)
        | TypeExpr of TYPE                       (* like  "type(...)" in ES4 *)
        | LetTypeExpr of string * TYPE * EXPR    (* like "type X = ..." in ES4 *)
@@ -129,13 +133,16 @@ fun exprToString (e:EXPR) : string =
       | FunExpr (x,t1,t2,e) =>
         "function("^x^":"^(typeToString t1)^"):"^(typeToString t2)^" { "^(exprToString e)^" }"
       | CastExpr (ty,e) =>
-        "("^(exprToString e)^" cast "^(typeToString ty)^")"
+        "("^(exprToString e)^" to "^(typeToString ty)^")"
       | AppExpr (e1,e2) =>
         (exprToString e1)^"("^(exprToString e2)^")"
-      | RefExpr (t,e) => "ref "^(exprToString e)^":"^(typeToString t)
-      | GetExpr e => "!"^(exprToString e)
-      | SetExpr (e1, e2) =>
-        (exprToString e1)^":="^(exprToString e2)
+      | ObjExpr (efields,t) => 
+        "{" ^ 
+        (List.foldl (fn ((l,e),r) => l^":"^(exprToString e)^", "^r) "" efields)
+        ^"}:"^(typeToString t)
+      | GetExpr (e,l) => (exprToString e)^"."^l
+      | SetExpr (e1, l, e2) =>
+        (exprToString e1)^"."^l^"="^(exprToString e2)
       | TypeExpr t =>
         "type("^(typeToString t)^")"
       | GenericExpr (x,e) => "function.<"^x^">{"^(exprToString e) ^"}"
@@ -152,9 +159,9 @@ fun substType (t:TYPE) (x:string) (s:TYPE) =
       | TypeType => t
       | FunType (t1,t2) =>
         FunType (substType t1 x s, substType t2 x s)
-      | RefType t1 => RefType (substType t1 x s)
+      | ObjType tyfields => ObjType (List.map (fn (l,t1) => (l,substType t1 x s)) tyfields)
       | VarType y =>
-        if x=y
+        if x=y 
         then s
         else t
       | GenericType (y,t1) =>
@@ -188,7 +195,7 @@ datatype VAL =
          IntVal of int
        | FunVal of string * TYPE * TYPE * EXPR * VAL ENV * SAFEBIT
        | GenericVal of string * EXPR * VAL ENV
-       | RefVal of VAL ENV * TYPE * VAL ref * SAFEBIT (* close over env for type *)
+       | ObjVal of VAL ENV * TYPE * (label * VAL ref) list * SAFEBIT (* close over env for type *)
        | TypeVal of TYPE_CLOSURE (* for an expression variable bound to a type *)
        | TypeVar of TYPE_CLOSURE (* for a type variable bound to a type *)
       withtype
@@ -238,13 +245,19 @@ fun subType (tyClosure1:TYPE_CLOSURE) (tyClosure2:TYPE_CLOSURE) : bool =
         (* val _ = print ("Subtype?: "^(typeToString t1)^" <: "^(typeToString t2)^"\n") *)
     in
         case (t1,t2) of
-            (_,AnyType) => true
+            (AnyType,AnyType) => true
           | (IntType,IntType) => true
           | (TypeType,TypeType) => true
           | (FunType(s1,t1), FunType(s2,t2)) =>
             (subType (n2,s2) (n1,s1)) andalso (subType (n1,t1) (n2,t2))
-          | (RefType t1, RefType t2) =>
-            equalType (n1,t1) (n2,t2)
+          | (ObjType tyfields1, ObjType tyfields2) =>
+            List.all
+                (fn (l1,t1) =>
+                    (List.exists
+                         (fn (l2,t2) =>
+                             (l1=l2) andalso (equalType (n1,t1) (n2,t2)))
+                     tyfields2))
+            tyfields1
           | (VarType x, VarType y) =>
             (* neither is bound in its environment, due to normalization *)
             x=y
@@ -272,8 +285,14 @@ fun compatibleType (tyClosure1:TYPE_CLOSURE) (tyClosure2:TYPE_CLOSURE) : bool =
           | (IntType,IntType) => true
           | (FunType(s1,t1), FunType(s2,t2)) =>
             (compatibleType (n2,s2) (n1,s1)) andalso (compatibleType (n1,t1) (n2,t2))
-          | (RefType t1, RefType t2) =>
-            bicompatibleType (n1,t1) (n2,t2)
+          | (ObjType fields1, ObjType fields2) =>
+            List.all
+                (fn (l1,t1) =>
+                    (List.exists
+                         (fn (l2,t2) =>
+                             (l1=l2) andalso (bicompatibleType (n1,t1) (n2,t2)))
+                     fields2))
+            fields1
           | (VarType x, VarType y) =>
             (* neither is bound in its environment, due to normalization *)
             x=y
@@ -325,7 +344,15 @@ fun verifyType (n:BIND ENV) (t:TYPE) : TYPE =
           | FunType (s,t) =>
             FunType (verifyType n s,
                      verifyType n t)
-          | RefType t => RefType (verifyType n t)
+          | ObjType tyfields => 
+            let 
+                (* should check for duplicate labels *)
+                val tyfields' = (List.map
+                                     (fn (l,t) => (l, verifyType n t))
+                                     tyfields)
+            in
+                ObjType tyfields'
+            end
           | VarType x =>
             let in
                 case lookup n x of
@@ -431,40 +458,56 @@ fun verifyExpr (mode:MODE) (n:BIND ENV) (e:EXPR) : (EXPR * TYPE) =
             expected (AppExpr(e1', verifyAndCheck mode n e2 argty),
                       resty)
           | AnyType =>
-            expected (AppExpr( CastExpr( FunType(AnyType,AnyType), e1'),
+            (* eval will cast e1' to (*->*) because of the safety bit *)
+            expected (AppExpr( e1',
                                verifyAndCheck mode n e2 AnyType),
                       AnyType)
           | _ => typeError ("Bad function type "^(typeToString ty1))
         end
-      | RefExpr (t,e) =>
-        let val t = verifyType n t
+      | ObjExpr (efields,ty) =>
+        let val ty' = verifyType n ty
+            val ObjType tfields = ty'
+            val efields' =
+                List.map
+                    (fn (l,e) =>
+                        case lookup2 tfields l of
+                            NONE =>
+                            (* l not in type, no type constraints *)
+                            let val (e',t') = verifyExpr mode n e
+                            in (l,e')
+                            end
+                          | SOME t =>
+                            (l, verifyAndCheck mode n e t))
+                    efields
         in
-            (RefExpr (t, verifyAndCheck mode n e t), RefType t)
+            (ObjExpr (efields',ty'), ty')
         end
-      | GetExpr e =>
+      | GetExpr (e,l) =>
         let val (e',t) = verifyExpr mode n e
         in
             case t of
-                RefType s =>
-                expected (GetExpr e', s)
+                ObjType tyfields =>
+                expected (GetExpr (e',l), lookup tyfields l)
               | AnyType =>
-                expected (GetExpr (CastExpr (RefType AnyType, e')),
+                expected (GetExpr (CastExpr (ObjType [(l,AnyType)], e'), l),
                           AnyType)
-              | _ => typeError ("Bad ref expr "^(typeToString t))
+              | _ => typeError ("Bad get expr "^(typeToString t))
         end
-      | SetExpr (e1, e2) =>
+      | SetExpr (e1, l, e2) =>
         let val (e1',t1) = verifyExpr mode n e1
         in
             case t1 of
-                RefType s =>
-                (SetExpr (e1',
-                          verifyAndCheck mode n e2 s),
-                 s)
+                ObjType tyfields =>
+                let val s = lookup tyfields l in
+                    (SetExpr (e1', l,
+                              verifyAndCheck mode n e2 s),
+                     s)
+                end
               | AnyType =>
-                (SetExpr (CastExpr(RefType AnyType, e1'),
+                (SetExpr (CastExpr(ObjType [(l,AnyType)], e1'), l,
                           verifyAndCheck mode n e2 AnyType),
                  AnyType)
-              | _ => typeError ("Bad ref expr "^(typeToString t1))
+              | _ => typeError ("Bad set expr "^(typeToString t1))
         end
       | TypeExpr t =>   (* like  "type(...)" in ES4 *)
         let val t = verifyType n t in
@@ -506,7 +549,7 @@ fun typeOfVal (v:VAL) : TYPE_CLOSURE =
     case v of
         IntVal _ => (emptyEnv,IntType)
       | FunVal (_,t1,t2,_,n,_) => (n, FunType (t1,t2))
-      | RefVal (n,t,_,_) => (n,RefType t)
+      | ObjVal (n,t,_,_) => (n,t)
       | TypeVal _ => ([], TypeType)
       | _ => raise InternalError "Unexpected VAL in typeOfVal"
 
@@ -514,7 +557,7 @@ fun markSafeBit (v:VAL) (s:SAFEBIT): VAL =
     case v of
         IntVal _ => v
       | FunVal (x,t1,t2,body,env,_) => FunVal(x,t1,t2,body,env,s)
-      | RefVal (n,t,v,_) => RefVal(n,t,v,s)
+      | ObjVal (n,t,f,_) => ObjVal(n,t,f,s)
       | TypeVal _ => v
       | _ => raise InternalError "Unexpected VAL in markSafeBit"
 
@@ -563,23 +606,29 @@ fun eval (n:VAL ENV) (e:EXPR) : VAL =
                 in
                     resVal'
                 end
-              | v => raise NotAClosure v
+              | v => raise NotAClosure v  (* Can happen if e1 has static type "*" *)
         end
-      | RefExpr (t,e) => RefVal(n, t, ref (eval n e), Safe)
-      | ExpectedTypeExpr (t, GetExpr e) =>
-        let val RefVal (_,_,r,safebit) = eval n e
+      | ObjExpr (efields,t) => 
+        let val vfields = List.map (fn (l,e) => (l, ref (eval n e))) efields
+        in
+            ObjVal (n, t, vfields, Safe)
+        end
+      | ExpectedTypeExpr (t, GetExpr (e,l)) =>
+        let val ObjVal (_,_,vfields,safebit) = eval n e
+            val valref = lookup vfields l
         in
             case safebit of
-                Safe => !r
-              | Unsafe => convert (!r) (n,t)
+                Safe => !valref
+              | Unsafe => convert (!valref) (n,t)
         end
-      | SetExpr (e1,e2) =>
-        let val RefVal (n2,t,r,safebit) = eval n e1
+      | SetExpr (e1,l,e2) =>
+        let val ObjVal (n2,t,vfields,safebit) = eval n e1
+            val valref = lookup vfields l
             val v = eval n e2
         in
             case safebit of
-                Safe => r := v
-              | Unsafe => r := convert v (n2,t);
+                Safe => valref := v
+              | Unsafe => valref := convert v (n2,t);
             v
         end
       | AppTypeExpr (e,t) =>
@@ -642,8 +691,8 @@ val idbad2 : EXPR = FunExpr("x",IntType,AnyType,VarExpr "x");
 (go2
  (LetExpr ("r",
            AnyType,
-           RefExpr (IntType, IntExpr 0),
-           GetExpr (VarExpr "r"))));
+           ObjExpr ([("l",IntExpr 0)], ObjType [("l", IntType)]),
+           GetExpr (VarExpr "r", "l"))));
 
 (go2
  (LetTypeExpr ("POLYID",
