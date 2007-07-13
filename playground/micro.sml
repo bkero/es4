@@ -28,11 +28,13 @@ High-level lessons:
    The resulting type closures may contain free variables, for type
    references that are not known at verify-time.
 
- - type X = ... etc all seem fine.
+ - type X = ... etc all seem fine, and can fairly easily be removed by
+   the verifier.
 
  *)
 
 Control.Print.printDepth := 100;
+fun debug s = ();
 
 (*********** environments ***********)
 (* variable names are just strings. *)
@@ -202,7 +204,7 @@ exception BadType of TYPE
 
 fun normalizeType ((n,t):TYPE_CLOSURE) : TYPE_CLOSURE =
     let
-        val _ = print ("normalizing: "^(typeToString t)^"\n")
+        val _ = debug ("normalizing: "^(typeToString t)^"\n")
         val (m,r) =
             case t of
                 VarType x =>
@@ -223,7 +225,7 @@ fun normalizeType ((n,t):TYPE_CLOSURE) : TYPE_CLOSURE =
               | _ =>
                 (* cannot reduce *)
                 (n,t)
-        val _ = print ("normalized: "^(typeToString t)^" to "^(typeToString r)^"\n")
+         val _ = debug ("normalized: "^(typeToString t)^" to "^(typeToString r)^"\n")
     in
         (m,r)
     end
@@ -376,7 +378,7 @@ fun check (mode:MODE)  (e:EXPR) (s:TYPE) (t:TYPE) : EXPR =
 
 fun verifyExpr (mode:MODE) (n:BIND ENV) (e:EXPR) : (EXPR * TYPE) =
     let fun expected ((e,t):(EXPR * TYPE)) : (EXPR * TYPE) = (ExpectedTypeExpr (t,e), t)
-        val _ = print ("verifying  "^(exprToString e)^"\n")
+        val _ = debug ("verifying  "^(exprToString e)^"\n")
     in
     case e of
         IntExpr n => (e,IntType)
@@ -394,7 +396,11 @@ fun verifyExpr (mode:MODE) (n:BIND ENV) (e:EXPR) : (EXPR * TYPE) =
             val n' = extend n x (KnownTypeVar t)
             val (body',bodyTy) = verifyExpr mode n' body
         in
-            (LetTypeExpr (x, t, body'), substType bodyTy x t)
+            (body', bodyTy)
+    (* 
+     the LetTypeExpr goes away here, and "x" is already not free in bodyTy.
+     was: (LetTypeExpr (x, t, body'), substType bodyTy x t)
+     *)
         end
       | LetExpr (x,t,e,body) =>
         let val t = verifyType n t
@@ -536,7 +542,9 @@ fun eval (n:VAL ENV) (e:EXPR) : VAL =
         IntExpr n => IntVal n
       | VarExpr x => lookup n x
       | LetExpr (x,t,e,body) => eval (extend n x (eval n e)) body
+      (* following no longer needed, removed by verifier
       | LetTypeExpr (x,t,body) => eval (extend n x (TypeVar (n,t))) body
+      *)
       | TypeExpr t => TypeVal (n,t)
       | FunExpr (x,t1,t2,e) => FunVal (x,t1,t2,e,n,Safe)
       | GenericExpr (x,e) => GenericVal (x,e,n)
@@ -581,14 +589,14 @@ fun eval (n:VAL ENV) (e:EXPR) : VAL =
 
 (*********** Tests **********)
 
-fun go (mode:MODE) (e:EXPR) : (EXPR*VAL) =
+fun go (mode:MODE) (e:EXPR) =
     let val _ = print ("Verifying  : "^(exprToString e)^"\n")
         val (e',ty) = verifyExpr mode [] e
         val _ = print ("compiles to: "^(exprToString e')^"\n")
         val _ = print ("with type  : "^(typeToString ty)^"\n")
         val v = eval [] e'
     in
-        (e',v)
+        v
     end
 
 fun go2 (e:EXPR) =
