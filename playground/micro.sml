@@ -8,21 +8,25 @@ number of issues relating to the ES4 type system in a simpler context,
 and may also help to shake out bugs in the type system earlier.
 
 High-level lessons:
- - AnyType is really a top type
+ - AnyType is really a top type - FIXME - maybe not
 
- - In strict mode, programs without '*'
-   give no run-time casts, and safety bit never gets set.
+ - In strict mode, programs without '*' give no run-time casts, and
+   safety bit never gets set.
 
- - In standard mode, programs without '*' which would compile in strict mode,
-   also give no run-time casts, and safety bit never gets set.
+ - In standard mode, programs without '*' which would compile in
+   strict mode, also give no run-time casts, and safety bit never gets
+   set.
 
  - we can *clear* the safe bit, if a subtype check holds!
 
  - Generics are a little tricky but they work out
 
- - Type closures are quite tricky, since the evaluator works via environments
-   whereas the verifier works via substitution (much easier),
-   and so subtyping etc needs to support both.
+ - Type closures are quite tricky, since the evaluator works via
+   environments whereas the verifier works via substitution (much
+   easier). This works by having subtyping and compatibility use
+   environments, and the verifier simply passes the empty environment.
+   The resulting type closures may contain free variables, for type
+   references that are not known at verify-time.
 
  - type X = ... etc all seem fine.
 
@@ -48,6 +52,11 @@ fun lookup (env:'a ENV) (x:string) : 'a =
         [] => raise UnboundVariable x
       | (y,v)::r => if (x=y) then v else lookup r x
 
+fun lookup2 (env:'a ENV) (x:string) : 'a option =
+    case env of
+        [] => NONE
+      | (y,v)::r => if (x=y) then SOME v else lookup2 r x
+
 fun checkUnbound (env:'a ENV) (x:string) : unit =
     case env of
         [] => ()
@@ -69,14 +78,14 @@ fun gensym (s:string) : string =
 (*********** Types ***********)
 
 datatype TYPE =
-         AnyType  (* the type "*" *)
+         AnyType                         (* the type "*" *)
        | IntType
-       | TypeType (* the type of types *)
-       | FunType of TYPE * TYPE
-       | RefType of TYPE
-       | VarType of string
-       | GenericType of string * TYPE        (* forall X. T *)
-       | AppType of TYPE * TYPE              (* T1.<T2>     *)
+       | TypeType                        (* the type of types *)
+       | FunType of TYPE * TYPE          (* function(T1):T2   *)
+       | RefType of TYPE                 (* {l:T} - a ref is a single-element object *)
+       | VarType of string               (* a reference to a type variable "X" *)
+       | GenericType of string * TYPE    (* forall X. T, or from "type T.<X> = ..." *)
+       | AppType of TYPE * TYPE          (* T1.<T2>     *)
 
 fun typeToString (t:TYPE) : string =
     case t of
@@ -88,6 +97,49 @@ fun typeToString (t:TYPE) : string =
       | GenericType (y,t1) => "(function.<" ^ y ^ "> " ^ (typeToString t1)^")"
       | AppType (t1,t2) => (typeToString t1)^".<"^(typeToString t2)^">"
       | TypeType => "type"
+
+(*********** Expressions ***********)
+
+datatype EXPR =
+         IntExpr of int
+       | VarExpr of string                      (* variable reference *)
+       | LetExpr of string * TYPE * EXPR * EXPR (* let x:T = e1 in e2 *)
+       | FunExpr of string * TYPE * TYPE * EXPR (* arg and result types on fns, like in ES4 *)
+       | CastExpr of TYPE * EXPR                
+       | AppExpr of EXPR * EXPR                 (* application  e1(e2) *)
+       | RefExpr of TYPE * EXPR                 (* allocate, dereference, and update ref cells *)
+       | GetExpr of EXPR
+       | SetExpr of EXPR * EXPR
+       | ExpectedTypeExpr of TYPE * EXPR        (* not in source, inserted by verifier *)
+       | TypeExpr of TYPE                       (* like  "type(...)" in ES4 *)
+       | LetTypeExpr of string * TYPE * EXPR    (* like "type X = ..." in ES4 *)
+       | GenericExpr of string * EXPR           (* like function.<X>() {e} in ES4 *)
+       | AppTypeExpr of EXPR * TYPE             (* like  e.<T>  in ES4, e[T] in TAPL *)
+
+(*********** String conversion ************)
+
+fun exprToString (e:EXPR) : string =
+    case e of
+        IntExpr n => (Int.toString n)
+      | VarExpr x => x
+      | LetExpr (x,t,e,body) => 
+        "let "^x^":"^(typeToString t)^"="^(exprToString e)^" in "^(exprToString body)^" end"
+      | FunExpr (x,t1,t2,e) =>
+        "function("^x^":"^(typeToString t1)^"):"^(typeToString t2)^" { "^(exprToString e)^" }"
+      | CastExpr (ty,e) =>
+        "("^(exprToString e)^" cast "^(typeToString ty)^")"
+      | AppExpr (e1,e2) =>
+        (exprToString e1)^"("^(exprToString e2)^")"
+      | RefExpr (t,e) => "ref "^(exprToString e)^":"^(typeToString t)
+      | GetExpr e => "!"^(exprToString e)
+      | SetExpr (e1, e2) =>
+        (exprToString e1)^":="^(exprToString e2)
+      | TypeExpr t =>
+        "type("^(typeToString t)^")"
+      | GenericExpr (x,e) => "function.<"^x^">{"^(exprToString e) ^"}"
+      | AppTypeExpr (e,t) => (exprToString e)^".<"^(typeToString t)^">"
+      | ExpectedTypeExpr (t,e) => "("^(exprToString e)^"):"^(typeToString t)
+      | LetTypeExpr (x,t,body) => "type "^x^"="^(typeToString t)^" in "^(exprToString body)^" end"
 
 (*********** Substitution on types ***********)
 
@@ -113,6 +165,33 @@ fun substType (t:TYPE) (x:string) (s:TYPE) =
       | AppType (t1,t2) =>
         AppType (substType t1 x s, substType t2 x s)
 
+(*********** Run-time values ***********)
+
+(* Every closure has a "safe" bit.
+ * This Safe bit, together with the Strict/Standard mode, constrain the relationship between
+ * the dynamic type of the closure  and the static type of the reference to the closure,
+ * as follows:
+ *
+ * SAFEBIT     MODE                    typing relation
+ * Safe        Strict or Standard      subtyping
+ * Unsafe      Strict                  compatibility
+ * Unsafe      Standard                no constraint
+ *)
+
+datatype SAFEBIT =
+         Safe
+       | Unsafe
+
+datatype VAL =
+         IntVal of int
+       | FunVal of string * TYPE * TYPE * EXPR * VAL ENV * SAFEBIT
+       | GenericVal of string * EXPR * VAL ENV
+       | RefVal of VAL ENV * TYPE * VAL ref * SAFEBIT (* close over env for type *)
+       | TypeVal of TYPE_CLOSURE (* for an expression variable bound to a type *)
+       | TypeVar of TYPE_CLOSURE (* for a type variable bound to a type *)
+      withtype
+         TYPE_CLOSURE = VAL ENV * TYPE
+
 (********** Type normalization **********)
 
 exception BadType of TYPE
@@ -121,44 +200,37 @@ exception BadType of TYPE
  * at the top level. Nested types may not be normalized.
  *)
 
-datatype SUBST_RESULT =
-         SOMER of SUBST_TYPE
-       | NONER
-withtype
-         SUBST = string -> SUBST_RESULT
-     and SUBST_TYPE = SUBST * TYPE;
-
-fun normalizeType ((n,t):SUBST_TYPE) : SUBST_TYPE =
+fun normalizeType ((n,t):TYPE_CLOSURE) : TYPE_CLOSURE =
     let
         val _ = print ("normalizing: "^(typeToString t)^"\n")
         val (m,r) =
-                          case t of
-            VarType x =>
-            let in
-                case n(x) of
-                    SOMER ty => normalizeType ty
-                  | NONER => (n,t)
-            end
-          | AppType (t1,t2) =>
-            let val (n1,t1') = normalizeType (n,t1) in
-                case t1' of
-                    GenericType (x,body) =>
-                    normalizeType
-                        (fn y => if x=y then SOMER (n,t2) else n x,
-                         body)
-                  | _ => raise BadType t
-            end
-          | _ =>
-            (* cannot reduce *)
-            (n,t)
+            case t of
+                VarType x =>
+                let in
+                    case lookup2 n x of
+                        SOME (TypeVar tycl) => normalizeType tycl
+                      | NONE => (n,t)
+                end
+              | AppType (t1,t2) =>
+                let val (n1,t1') = normalizeType (n,t1) in
+                    case t1' of
+                        GenericType (x,body) =>
+                        normalizeType
+                            (extend n x (TypeVar (n,t2)),
+                             body)
+                      | _ => raise BadType t
+                end
+              | _ =>
+                (* cannot reduce *)
+                (n,t)
         val _ = print ("normalized: "^(typeToString t)^" to "^(typeToString r)^"\n")
     in
         (m,r)
     end
-
+    
 (********** Subtyping, compatibility **********)
 
-fun subType (tyClosure1:SUBST_TYPE) (tyClosure2:SUBST_TYPE) : bool =
+fun subType (tyClosure1:TYPE_CLOSURE) (tyClosure2:TYPE_CLOSURE) : bool =
     let val (n1,t1) = normalizeType tyClosure1
         val (n2,t2) = normalizeType tyClosure2
         (* val _ = print ("Subtype?: "^(typeToString t1)^" <: "^(typeToString t2)^"\n") *)
@@ -175,17 +247,19 @@ fun subType (tyClosure1:SUBST_TYPE) (tyClosure2:SUBST_TYPE) : bool =
             (* neither is bound in its environment, due to normalization *)
             x=y
           | (GenericType (x1,s1), GenericType (x2,s2)) =>
-            subType (fn y => if x1=y then NONER else n1 y, s1)
-                    (fn y => if x2=y then SOMER (fn y => NONER, VarType x1) else n2 y, s2)
+            let val x = TypeVar (emptyEnv, VarType (gensym "X")) in
+                subType (extend n1 x1 x, s1)
+                        (extend n2 x2 x, s2)
+            end
           | _ => false
     end
 
-and equalType (tyClosure1:SUBST_TYPE) (tyClosure2:SUBST_TYPE) : bool =
+and equalType (tyClosure1:TYPE_CLOSURE) (tyClosure2:TYPE_CLOSURE) : bool =
     subType tyClosure1 tyClosure2
     andalso
     subType tyClosure2 tyClosure1
 
-fun compatibleType (tyClosure1:SUBST_TYPE) (tyClosure2:SUBST_TYPE) : bool =
+fun compatibleType (tyClosure1:TYPE_CLOSURE) (tyClosure2:TYPE_CLOSURE) : bool =
     let val (n1,t1) = normalizeType tyClosure1
         val (n2,t2) = normalizeType tyClosure2
     in
@@ -202,57 +276,18 @@ fun compatibleType (tyClosure1:SUBST_TYPE) (tyClosure2:SUBST_TYPE) : bool =
             (* neither is bound in its environment, due to normalization *)
             x=y
           | (GenericType (x1,s1), GenericType (x2,s2)) =>
-            compatibleType (fn y => if x1=y then NONER else n1 y, s1)
-                    (fn y => if x2=y then SOMER (fn y => NONER, VarType x1) else n2 y, s2)
+            let val x = TypeVar (emptyEnv, VarType (gensym "X")) in
+                compatibleType
+                    (extend n1 x1 x, s1)
+                    (extend n2 x2 x, s2)
+            end
           | _ => false
     end
 
-and bicompatibleType (tyClosure1:SUBST_TYPE) (tyClosure2:SUBST_TYPE) : bool =
+and bicompatibleType (tyClosure1:TYPE_CLOSURE) (tyClosure2:TYPE_CLOSURE) : bool =
     compatibleType tyClosure1 tyClosure2
     andalso
     compatibleType tyClosure2 tyClosure1
-
-(*********** Expressions ***********)
-
-datatype EXPR =
-         IntExpr of int
-       | VarExpr of string
-       | LetExpr of string * TYPE * EXPR * EXPR
-       | FunExpr of string * TYPE * TYPE * EXPR  (* arg and result types on fns, like in ES4 *)
-       | CastExpr of TYPE * EXPR
-       | AppExpr of EXPR * EXPR
-       | RefExpr of TYPE * EXPR                (* allocate, dereference, and update ref cells *)
-       | GetExpr of EXPR
-       | SetExpr of EXPR * EXPR
-       | ExpectedTypeExpr of TYPE * EXPR       (* not in source, inserted by verifier *)
-       | TypeExpr of TYPE                      (* like  "type(...)" in ES4 *)
-       | LetTypeExpr of string * TYPE * EXPR   (* like "type X = ..." in ES4 *)
-       | GenericExpr of string * EXPR          (* like function.<X>() {e} in ES4 *)
-       | AppTypeExpr of EXPR * TYPE            (* like  e.<T>  in ES4, e[T] in TAPL *)
-
-(*********** String conversion ************)
-
-fun exprToString (e:EXPR) : string =
-    case e of
-        IntExpr n => (Int.toString n)
-      | VarExpr x => x
-      | LetExpr (x,t,e,body) => "let "^x^":"^(typeToString t)^"="^(exprToString e)^" in "^(exprToString body)^" end"
-      | FunExpr (x,t1,t2,e) =>
-        "function("^x^":"^(typeToString t1)^"):"^(typeToString t2)^" { "^(exprToString e)^" }"
-      | CastExpr (ty,e) =>
-        "("^(exprToString e)^" cast "^(typeToString ty)^")"
-      | AppExpr (e1,e2) =>
-        (exprToString e1)^"("^(exprToString e2)^")"
-      | RefExpr (t,e) => "ref "^(exprToString e)^":"^(typeToString t)
-      | GetExpr e => "!"^(exprToString e)
-      | SetExpr (e1, e2) =>
-        (exprToString e1)^":="^(exprToString e2)
-      | TypeExpr t =>
-        "type("^(typeToString t)^")"
-      | GenericExpr (x,e) => "function.<"^x^">{"^(exprToString e) ^"}"
-      | AppTypeExpr (e,t) => (exprToString e)^".<"^(typeToString t)^">"
-      | ExpectedTypeExpr (t,e) => "("^(exprToString e)^"):"^(typeToString t)
-      | LetTypeExpr (x,t,body) => "type "^x^"="^(typeToString t)^" in "^(exprToString body)^" end"
 
 (*********** Verify routines ***********)
 
@@ -273,45 +308,9 @@ datatype BIND =
        | UnknownTypeVar
        | KnownTypeVar of TYPE
 
-fun bindEnvToSubst (n:BIND ENV) : SUBST =
-    let in
-        fn x =>
-           case n of
-               [] => raise UnboundVariable x
-         | (y,v)::r =>
-           if (x=y)
-           then case v of
-                    KnownTypeVar t => SOMER (bindEnvToSubst r, t)
-                  | _ => NONER
-           else bindEnvToSubst r x
-    end
-
-fun applySubstToType (n:SUBST) (t:TYPE) : TYPE =
-        case t of
-            AnyType => t
-          | IntType => t
-          | TypeType => t
-          | FunType (s,t) => FunType (applySubstToType n s, applySubstToType n t)
-          | AppType (s,t) => AppType (applySubstToType n s, applySubstToType n t)
-          | RefType t => RefType (applySubstToType n t)
-          | VarType x =>
-            let in
-                case n x of
-                    SOMER (m,s) => applySubstToType m s
-                  | NONER => t
-            end
-          | GenericType (x,t) =>
-            let val m = (fn y => if x=y then NONER else n y)
-            in
-                GenericType (x,applySubstToType m t)
-            end
-
-val emptySubst : SUBST =
-    fn x => NONER
-
-(* Verified types are always (and deeply) normalized wrt beta reduction and
- * type variable bindings.
- * Types are verified and normalized during verification type.
+(* As soon as types are encountered in the AST, they are (deeply)
+normalized wrt beta reduction and * type variable bindings, during
+verify-time.
  *)
 
 fun verifyType (n:BIND ENV) (t:TYPE) : TYPE =
@@ -350,13 +349,12 @@ fun verifyType (n:BIND ENV) (t:TYPE) : TYPE =
 (* The expression "e" of type "s" is being converted to type "t" in mode "mode".
  * This function either returns "e" itself, raises a type error,
  * or wraps "e" in a cast to "t", as appropriate.
- * The types are already verified, hence "n" is irrelevant.
  *)
 
-fun check (mode:MODE) (n:BIND ENV) (e:EXPR) (s:TYPE) (t:TYPE) : EXPR =
-    if (subType (emptySubst,s) (bindEnvToSubst n,t))
+fun check (mode:MODE)  (e:EXPR) (s:TYPE) (t:TYPE) : EXPR =
+    if (subType (emptyEnv,s) (emptyEnv,t))
     then e
-    else if (compatibleType (emptySubst,s) (emptySubst,t)) orelse mode=Standard
+    else if (compatibleType (emptyEnv,s) (emptyEnv,t)) orelse mode=Standard
     then
         (* t may have free type vars bound in n, but they will be bound at run-time as well *)
         CastExpr (t,e)
@@ -371,7 +369,7 @@ fun check (mode:MODE) (n:BIND ENV) (e:EXPR) (s:TYPE) (t:TYPE) : EXPR =
  * is bound to a variable of type "t", then "s" is a subTyp  of "t" - this invariant
  * is ensured via dynamic casts if necessary, both in Strict and Standard mode.
  *
- * The env "n" needs to be applied to the resulting type.
+ * The env "n" has already been applied to the resulting type.
  *
  * No duplicate variables allowed in BIND ENV, ever!
  *)
@@ -488,36 +486,8 @@ fun verifyExpr (mode:MODE) (n:BIND ENV) (e:EXPR) : (EXPR * TYPE) =
 and verifyAndCheck (mode:MODE) (n:BIND ENV) (e:EXPR) (t:TYPE) =
     let val _ = verifyType n t
         val (e',t') = verifyExpr mode n e in
-        check mode n e' t' t
+        check mode e' t' t
     end
-
-
-(*********** Run-time values ***********)
-
-(* Every closure has a "safe" bit.
- * This Safe bit, together with the Strict/Standard mode, constrain the relationship between
- * the dynamic type of the closure  and the static type of the reference to the closure,
- * as follows:
- *
- * SAFEBIT     MODE                    typing relation
- * Safe        Strict or Standard      subtyping
- * Unsafe      Strict                  compatibility
- * Unsafe      Standard                no constraint
- *)
-
-datatype SAFEBIT =
-         Safe
-       | Unsafe
-
-datatype VAL =
-         IntVal of int
-       | FunVal of string * TYPE * TYPE * EXPR * VAL ENV * SAFEBIT
-       | GenericVal of string * EXPR * VAL ENV
-       | RefVal of VAL ENV * TYPE * VAL ref * SAFEBIT (* close over env for type *)
-       | TypeVal of TYPE_CLOSURE (* for an expression variable bound to a type *)
-       | TypeVar of TYPE_CLOSURE (* for a type variable bound to a type *)
-withtype
-         TYPE_CLOSURE = VAL ENV * TYPE
 
 (********** Evaluation **********)
 
@@ -547,19 +517,11 @@ fun markSafeBit (v:VAL) (s:SAFEBIT): VAL =
  * and setting the unsafe bit if the type of "v" is not a subTypeClosure of "t".
  *)
 
-fun valEnvToSubst (n:VAL ENV) : SUBST =
-    let in
-        fn x =>
-           case lookup n x of
-               TypeVar (n,t) => SOMER (valEnvToSubst n,t)
-             | _ => NONER
-    end
-
 fun convert (v:VAL) ((n,t):TYPE_CLOSURE) : VAL =
     let val (m,s) = typeOfVal v in
-        if subType (valEnvToSubst m,s) (valEnvToSubst n,t)
+        if subType (m,s) (n,t)
         then markSafeBit v Safe  (* want to mark safe *)
-        else if compatibleType  (valEnvToSubst m,s) (valEnvToSubst n,t)
+        else if compatibleType  (m,s) (n,t)
         then markSafeBit v Unsafe
         else
             let val _ = print ("ConversionError from "^(typeToString s)^" to "^(typeToString t)^"\n")
