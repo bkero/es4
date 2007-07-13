@@ -241,7 +241,8 @@ fun mergeFixtures ((newName,newFix),oldFixs) =
                                    (Ast.VirtualValFixture
                                         (mergeVirtuals newName vnew vold))
           | (Ast.ValFixture new, Ast.ValFixture old) =>
-                 if (Type.equals (#ty new) (#ty old)) andalso (#readOnly new) = (#readOnly old)
+                 if (#ty new) = (#ty old)
+                 (* if (Type.equals (#ty new) (#ty old)) andalso (#readOnly new) = (#readOnly old) *)
                  then (trace ["skipping fixture ",LogErr.fname newName]; oldFixs)
                  else error ["incompatible redefinition of fixture name: ", LogErr.fname newName]
           | (Ast.MethodFixture new, Ast.MethodFixture old) =>
@@ -2283,11 +2284,11 @@ and defStmt (env:ENV)
                 val env = extendEnvironment env f0
                 val (block,fixtures) = defBlock env block
             in
-                { bindings = bindings,   (* FIXME: what about inits *)
+                ({ bindings = bindings,   (* FIXME: what about inits *)
                   block = block,
                   fixtures = SOME f0,
                   inits = SOME i0,
-                  ty=ty }
+                  ty=ty }, fixtures)
             end
 
         fun defCase env { label, body, inits }
@@ -2307,7 +2308,7 @@ and defStmt (env:ENV)
                 ({label = label,
                   inits = SOME [],
                   body = body},
-                [])
+                hoisted)
             end
 
         fun findClass (n:Ast.NAME) =
@@ -2503,16 +2504,18 @@ and defStmt (env:ENV)
 
           | Ast.TryStmt { block, catches, finally } =>
             let
-                val (block,hoisted) = defBlock env block
+                val (block,thoisted) = defBlock env block
+                val (catches,choisted) = ListPair.unzip (map reconstructCatch catches)
+                val (finally,fhoisted) = case finally of
+                                   NONE =>
+                                   (NONE,[])
+                                 | SOME b =>
+                                   let val (block,hoisted) = defBlock env b
+                                   in (SOME block,hoisted) end
             in
                 (Ast.TryStmt {block = block,
-                              catches = map reconstructCatch catches,
-                              finally = case finally of
-                                        NONE =>
-                                        NONE
-                                      | SOME b =>
-                                        let val (block,hoisted) = defBlock env b
-                                        in SOME block end }, hoisted)
+                              catches = catches,
+                              finally = finally}, thoisted@(List.concat choisted)@fhoisted)
             end
 
           | Ast.SwitchStmt { cond, cases, ... } =>
@@ -2528,10 +2531,13 @@ and defStmt (env:ENV)
             end
 
           | Ast.SwitchTypeStmt { cond, ty, cases } =>
-            (Ast.SwitchTypeStmt {cond = defExpr env cond,
+            let
+                val (cases,hoisted) = ListPair.unzip (map reconstructCatch cases)
+            in
+                (Ast.SwitchTypeStmt {cond = defExpr env cond,
                                  ty = defTyExpr env ty,
-                                 cases = map reconstructCatch cases}, [])
-
+                                 cases = cases}, List.concat hoisted)
+            end
           | Ast.DXNStmt { expr } =>
             (Ast.DXNStmt { expr = defExpr env expr },[])
     end
