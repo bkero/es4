@@ -112,6 +112,17 @@ fun matchFixtures  (fixtures:Ast.FIXTURES)
         List.mapPartial matchFixture fixtures
     end
 
+fun resolveInRibs (mname:Ast.MULTINAME)
+                  (env:Ast.RIBS)
+    : (Ast.RIBS * Ast.NAME) option =
+    let
+        fun f env ident nss = matchFixtures (List.hd env) ident nss
+    in
+        case resolve mname env f List.tl of
+            SOME (env,n) => SOME (List.hd env, n)
+          | NONE => NONE
+    end
+
 fun resolveInFixtures (mname:Ast.MULTINAME)
                       (env:'a)
                       (getEnvFixtures:('a -> Ast.FIXTURES))

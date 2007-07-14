@@ -58,7 +58,7 @@ fun ppRep rep =
 
 val ppNamespace = ppRep o cvtNAMESPACE
 
-val ppProgram = ppRep o cvtPROGRAM
+val ppFragment = ppRep o cvtFRAGMENT
 
 val ppExpr = ppRep o cvtEXPR
 
@@ -76,7 +76,7 @@ val ppNumericMode = ppRep o cvtNUMERIC_MODE
 
 val ppPragma = ppRep o cvtPRAGMA
 
-val ppFixtures = ppRep o cvtFIXTURES
+val ppRib = ppRep o cvtRIB
 
 val ppFixture = ppRep o cvtFIXTURE
 

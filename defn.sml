@@ -231,29 +231,6 @@ fun mergeVirtuals (fName:Ast.FIXTURE_NAME)
           setter = either (#setter vold) (#setter vnew) }
     end
 
-fun mergeFixtures ((newName,newFix),oldFixs) =
-    if Fixture.hasFixture oldFixs newName
-    then
-        case (newFix, Fixture.getFixture oldFixs newName) of
-            (Ast.VirtualValFixture vnew,
-             Ast.VirtualValFixture vold) =>
-            Fixture.replaceFixture oldFixs newName
-                                   (Ast.VirtualValFixture
-                                        (mergeVirtuals newName vnew vold))
-          | (Ast.ValFixture new, Ast.ValFixture old) =>
-                 if (Type.equals (#ty new) (#ty old)) andalso (#readOnly new) = (#readOnly old)
-                 then (trace ["skipping fixture ",LogErr.fname newName]; oldFixs)
-                 else error ["incompatible redefinition of fixture name: ", LogErr.fname newName]
-          | (Ast.MethodFixture new, Ast.MethodFixture old) =>
-            Fixture.replaceFixture oldFixs newName (Ast.MethodFixture new) (* FIXME: types *)
-          | (Ast.MethodFixture new, Ast.ValFixture old) =>
-            Fixture.replaceFixture oldFixs newName (Ast.MethodFixture new) (* FIXME: types *)
-          | (Ast.ValFixture new, Ast.MethodFixture old) =>
-            Fixture.replaceFixture oldFixs newName (Ast.ValFixture new) (* FIXME: types *)
-          | _ => error ["mergeFixtures: redefining fixture name: ", LogErr.fname newName]
-    else
-        (newName,newFix) :: oldFixs
-
 fun addNamespace (ns,opennss) =
     if hasNamespace opennss ns
     then (trace ["skipping namespace ",LogErr.namespace ns]; opennss)   (* FIXME: should be an error to open namspaces redundantly *)

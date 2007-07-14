@@ -2,17 +2,17 @@
 (*
  * The following licensing terms and conditions apply and must be
  * accepted in order to use the Reference Implementation:
- *
+ * 
  *    1. This Reference Implementation is made available to all
  * interested persons on the same terms as Ecma makes available its
  * standards and technical reports, as set forth at
  * http://www.ecma-international.org/publications/.
- *
+ * 
  *    2. All liability and responsibility for any use of this Reference
  * Implementation rests with the user, and not with any of the parties
  * who contribute to, or who own or hold any copyright in, this Reference
  * Implementation.
- *
+ * 
  *    3. THIS REFERENCE IMPLEMENTATION IS PROVIDED BY THE COPYRIGHT
  * HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED
  * WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
@@ -25,9 +25,9 @@
  * WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE
  * OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
  * IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- *
+ * 
  * End of Terms and Conditions
- *
+ * 
  * Copyright (c) 2007 Adobe Systems Inc., The Mozilla Foundation, Opera
  * Software ASA, and others.
  *)
@@ -44,13 +44,16 @@ structure NmMap = SplayMapFn (NmKey);
 structure NmVecKey = struct type ord_key = (Ast.NAME vector) val compare = (Vector.collate NameKey.compare) end
 structure NmVecMap = SplayMapFn (NmVecKey);
 
+structure StrVecKey = struct type ord_key = (Ustring.STRING vector) val compare = (Vector.collate Ustring.compare) end
+structure StrVecMap = SplayMapFn (StrVecKey);
+
 (* -----------------------------------------------------------------------------
  * Operations on FIXTURE
  * ----------------------------------------------------------------------------- *)
 
-fun printFixture ((n:Ast.FIXTURE_NAME), (f:Ast.FIXTURE)) =
+fun printFixture ((n:Ast.FIXTURE_NAME), (f:Ast.FIXTURE)) = 
     let
-	val fs = case f of
+	val fs = case f of 
 		     Ast.NamespaceFixture _ => "[namespace]"
 		   | Ast.ClassFixture _ => "[class]"
 		   | Ast.InterfaceFixture _ => "[interface]"
@@ -69,42 +72,42 @@ fun printFixture ((n:Ast.FIXTURE_NAME), (f:Ast.FIXTURE)) =
  * Operations on FIXTURES
  * ----------------------------------------------------------------------------- *)
 
-fun getFixture (b:Ast.FIXTURES)
-               (n:Ast.FIXTURE_NAME)
-    : Ast.FIXTURE =
-    let
-        fun search [] = LogErr.hostError ["fixture binding not found: ",
+fun getFixture (b:Ast.RIB) 
+               (n:Ast.FIXTURE_NAME) 
+    : Ast.FIXTURE = 
+    let 
+        fun search [] = LogErr.hostError ["fixture binding not found: ", 
                                           (LogErr.fname n)]
-          | search ((k,v)::bs) =
-            if k = n
+          | search ((k,v)::bs) = 
+            if k = n 
             then v
             else search bs
     in
         search b
     end
 
-fun hasFixture (b:Ast.FIXTURES)
-               (n:Ast.FIXTURE_NAME)
-    : bool =
-    let
+fun hasFixture (b:Ast.RIB) 
+               (n:Ast.FIXTURE_NAME) 
+    : bool = 
+    let 
         fun search [] = false
-          | search ((k,v)::bs) =
-            if k = n
+          | search ((k,v)::bs) = 
+            if k = n 
             then true
             else search bs
     in
-        search b
+        search b    
     end
 
-fun replaceFixture (b:Ast.FIXTURES)
-                   (n:Ast.FIXTURE_NAME)
+fun replaceFixture (b:Ast.RIB) 
+                   (n:Ast.FIXTURE_NAME) 
                    (v:Ast.FIXTURE)
-    : Ast.FIXTURES =
-    let
-        fun search [] = LogErr.hostError ["fixture binding not found: ",
+    : Ast.RIB = 
+    let 
+        fun search [] = LogErr.hostError ["fixture binding not found: ", 
                                           (LogErr.fname n)]
-          | search ((k,v0)::bs) =
-            if k = n
+          | search ((k,v0)::bs) = 
+            if k = n 
             then (k,v)::bs
             else (k,v0) :: (search bs)
     in
@@ -115,32 +118,114 @@ fun printFixtures fs =
     List.app printFixture fs
 
 (* -----------------------------------------------------------------------------
- * Operations on TOP_FIXTURES
+ * Operations on PROGRAM
  * ----------------------------------------------------------------------------- *)
 
-type TOP_FIXTURES = { fixtureCache: (Ast.FIXTURE NmMap.map) ref,
-                      instanceOfCache: (bool NmVecMap.map) ref,
-                      cacheSize: int,
-                      all: Ast.FIXTURES };
+type PROGRAM = { fixtureCache: (Ast.FIXTURE NmMap.map) ref, (* mirrors the top rib *)
+                 instanceOfCache: (bool StrVecMap.map) ref,
+                 cacheSize: int,
+                 topRib: Ast.RIB,
+                 topBlocks: Ast.BLOCK list,
+                 unitRibs: (Ast.RIB NmVecMap.map) ref }
 
-fun mkTopFixtures (all:Ast.FIXTURES)
-    : TOP_FIXTURES =
+fun mkProgram (all:Ast.RIB)
+    : PROGRAM =
     { fixtureCache = ref NmMap.empty,
-      instanceOfCache = ref NmVecMap.empty,
+      instanceOfCache = ref StrVecMap.empty,
       cacheSize = 1024,
-      all = all }
+      topRib = topRib,
+      topBlocks = [],
+      unitRibs = ref NmVecMap.empty }
 
-fun getTopFixture (tf:TOP_FIXTURES)
+fun mergeVirtuals (fName:Ast.FIXTURE_NAME)
+                  (vnew:Ast.VIRTUAL_VAL_FIXTURE)
+                  (vold:Ast.VIRTUAL_VAL_FIXTURE) =
+    let
+        val ty = if Type.equals (#ty vnew) (#ty vold)
+                 then (#ty vnew)
+                 else (if Type.equals (#ty vnew) (Ast.SpecialType Ast.Any)
+                       then (#ty vold)
+                       else (if Type.equals (#ty vold) (Ast.SpecialType Ast.Any)
+                             then (#ty vnew)
+                             else error ["mismatched get/set types on fixture ",
+                                         LogErr.fname fName]))
+        fun either a b =
+            case (a,b) of
+                (SOME x, NONE) => SOME x
+              | (NONE, SOME x) => SOME x
+              | (NONE, NONE) => NONE
+              | _ => error ["multiply defined get/set functions on fixture ",
+                            LogErr.fname fName]
+    in
+        { ty = ty,
+          getter = either (#getter vold) (#getter vnew),
+          setter = either (#setter vold) (#setter vnew) }
+    end
+
+fun mergeFixtures ((newName:Ast.FIXTURE_NAME, newFix:Ast.FIXTURE),oldRib:Ast.RIB)
+    : Ast.RIB =
+    if hasFixture oldRib newName
+    then
+        case (newFix, getFixture oldRib newName) of
+            (Ast.VirtualValFixture vnew,
+             Ast.VirtualValFixture vold) =>
+            replaceFixture oldRib newName
+                           (Ast.VirtualValFixture
+                                (mergeVirtuals newName vnew vold))
+          | (Ast.ValFixture new, Ast.ValFixture old) =>
+            if (Type.equals (#ty new) (#ty old)) 
+               andalso (#readOnly new) = (#readOnly old)
+            then (trace ["skipping fixture ",LogErr.fname newName]; oldRib)
+            else error ["incompatible redefinition of fixture name: ", LogErr.fname newName]
+          | (Ast.MethodFixture new, Ast.MethodFixture old) =>
+            replaceFixture oldRib newName (Ast.MethodFixture new) (* FIXME: types *)
+          | (Ast.MethodFixture new, Ast.ValFixture old) =>
+            replaceFixture oldRib newName (Ast.MethodFixture new) (* FIXME: types *)
+          | (Ast.ValFixture new, Ast.MethodFixture old) =>
+            replaceFixture oldRib newName (Ast.ValFixture new) (* FIXME: types *)
+          | _ => error ["mergeFixtures: redefining fixture name: ", LogErr.fname newName]
+    else
+        (newName,newFix) :: oldRib
+
+fun addTopFragment (prog:PROGRAM)
+                   (frag:Ast.FRAGMENT, newRib:Ast.RIB)
+    : PROGRAM = 
+    let
+        val { fixtureCache, instanceOfCache, cacheSize, 
+              topRib, topBlocks, unitRibs } = prog
+        val newTop = List.foldl mergeFixtures topRib newRib
+        val newUnitRibs = 
+            case frag of 
+                Ast.Unit { name, ... } => 
+                NmVecMap.insert (unitRibs, (Vector.fromList name), newTop)
+              | _ => 
+                unitRibs
+        fun fragBlocks (Ast.Unit {name, fragments}) = 
+            List.concat (map fragBlocks fragments)
+          | fragBlocks (Ast.Package {name, fragments}) = 
+            List.concat (map fragBlocks fragments)
+          | FragBlocks (Ast.Anon block) = [block]
+    in
+        { fixtureCache = fixtureCache,
+          instanceOfCache = instanceOfCache,
+          cacheSize = cacheSize, 
+          topRib = topRib,
+          topBlocks = topBlocks @ (fragBlocks frag),
+          unitRibs = newUnitRibs }
+    end
+
+
+fun getTopFixture (prog:PROGRAM)
                   (n:Ast.NAME)
     : Ast.FIXTURE =
     let
-        val { fixtureCache, cacheSize, all, ... } = tf
+        val { fixtureCache, cacheSize, topRib, ... } = PROGRAM
         val c = !fixtureCache
     in
         case NmMap.find (c, n) of
-            NONE =>
+            NONE => 
             let
-                val v = getFixture all (Ast.PropName n)
+                val v = getFixture topRib (Ast.PropName n)
             in
                 if (NmMap.numItems c) < cacheSize
                 then (fixtureCache := NmMap.insert (c, n, v); v)
@@ -149,72 +234,85 @@ fun getTopFixture (tf:TOP_FIXTURES)
           | SOME v => v
     end
 
-val (getTopFixtures:TOP_FIXTURES -> Ast.FIXTURES) = #all
+val (getTopRib:PROGRAM -> Ast.RIB) = #topRib
 
-fun printTopFixtures (tf:TOP_FIXTURES) =
-    printFixtures (getTopFixtures tf)
+fun getTopRibForUnit (prog:PROGRAM)
+                     (unit:Ast.UNIT_NAME)
+    : Ast.RIB option = 
+    NmMap.find ((#unitRibs prog), unit)
+
+val (getTopBlocks:PROGRAM -> Ast.BLOCK list) = #topBlocks
+
+fun printTopRib (prog:PROGRAM) =
+    printFixtures (getTopFixtures prog)
 
 (* -----------------------------------------------------------------------------
- * Class operations on TOP_FIXTURES
+ * Class operations on PROGRAMs
  * ----------------------------------------------------------------------------- *)
 
 (* FIXME: these really belong in type.sml but then I can't keep the
- *        instanceOfCache in TOP_FIXTURES if it's an abstract type
+ *        instanceOfCache in PROGRAM if it's an abstract type
  *)
 
-fun instanceType (tf:TOP_FIXTURES)
+fun instanceType (prog:PROGRAM)
                  (n:Ast.NAME)
-    : Ast.INSTANCE_TYPE =
-    case getTopFixture tf n of
+    : Ast.TY =
+    case getTopFixture prog n of
         Ast.ClassFixture (Ast.Cls cls) => (#instanceType cls)
       | Ast.InterfaceFixture (Ast.Iface iface) => (#instanceType iface)
       | _ => error ["type not an instance type ", LogErr.name n]
 
-fun isClass (tf:TOP_FIXTURES)
+fun isClass (prog:PROGRAM)
             (t:Ast.NAME)
     : bool =
-    case getTopFixture tf t of
+    case getTopFixture prog t of 
         Ast.ClassFixture cls => true
       | _ => false
 
-fun getClass (tf:TOP_FIXTURES)
+fun getClass (prog:PROGRAM)
              (t:Ast.NAME)
     : Ast.CLS =
-    case getTopFixture tf t of
+    case getTopFixture prog t of 
         Ast.ClassFixture cls => cls
       | Ast.InterfaceFixture iface =>   (* FIXME: not sure what to do here. getClass gets called when a nominal
                                             type is used in various ways. Just return class Object for now *)
         let
-            val Ast.ClassFixture objCls = getTopFixture tf Name.nons_Object
+            val Ast.ClassFixture objCls = getTopFixture prog Name.nons_Object
         in
             objCls
         end
       | _ => error ["getClass returned non-class fixture for ", LogErr.name t]
 
+
+
 (* FIXME: this is a bad name. subclassOf isn't quite right either. isDerivedType? inheritsFrom? *)
-fun instanceOf (tf:TOP_FIXTURES)
-               (t0:Ast.NAME)
-               (t:Ast.NAME)
+fun instanceOf (prog:PROGRAM)
+               (t0:Ast.TY)
+               (t:Ast.TY)
+               (serialize:Ast.TY -> Ustring.STRING list)
+               (sep:Ustring.STRING)
     : bool =
     let
-        val { instanceOfCache, cacheSize, ... } = tf
+        val { instanceOfCache, cacheSize, ... } = prog
         val c = !instanceOfCache
-        fun search n =
-            if Mach.nameEq n t
+        val init = Vector.fromList (serialize t0)
+        val targ = Vector.fromList (serialize t)
+        fun searchFrom (curr:Ast.TY) = 
+            if length curr = length targ
+               andalso List.all (fn (x,y) => Ustring.stringEquals x y) 
+                                (ListPair.zip curr targ)
             then true
-            else
-                let
-                    val it = instanceType tf n
-                    val bases = (#superTypes it)
-                in
-                    List.exists search bases
-                end
-        val k = Vector.fromList [t0,t]
+            else 
+                case curr of 
+                    Ast.InstanceType {superTypes, ...} => 
+                    List.exists searchFrom superTypes
+                  | _ => false
+        val k = Vector.fromList (init @ [sep] @ targ)
     in
         case NmVecMap.find (c, k) of
-            NONE =>
+            NONE => 
             let
-                val v = search t0
+                val v = searchFrom init
             in
                 if (NmVecMap.numItems c) < cacheSize
                 then (instanceOfCache := NmVecMap.insert (c, k, v); v)
