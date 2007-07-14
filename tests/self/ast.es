@@ -66,8 +66,9 @@ namespace Ast
 
     class TempName {}
     class PropName {
-        const name : PropIdent;  // lth: assuming some things here
-        function PropName(name) : name=name {}
+        const name : NAME;
+        function PropName(name) 
+            : name=name {}
     }
 
     type FIXTURES = [[FIXTURE_NAME,FIXTURE]]
@@ -783,29 +784,23 @@ namespace Ast
        ( Ordinary
        , Operator
        , Get
-       , Set
-       , Call
-       , Has )
+       , Set )
 
     class Ordinary {}
     class Operator {}
     class Get {}
     class Set {}
-    class Call {}
-    class Has {}
 
     class Func {
-        const name /*: FUNC_NAME*/;
-        const fsig: FUNC_SIG;
+        const name //: FUNC_NAME;
         const isNative: Boolean;
         const block: BLOCK;
         const params /*: HEAD*/;
         const defaults: [EXPR];
         const type /*: FUNC_TYPE*/;    // FIXME: should be able to use 'type' here
-        function Func (name,fsig,isNative,block,
+        function Func (name,isNative,block,
                        params,defaults,ty)
             : name = name
-            , fsig = fsig
             , isNative = isNative
             , block = block
             , params = params
@@ -813,18 +808,15 @@ namespace Ast
             , type = ty {}
     }
 
-    type FUNC_SIG = FunctionSignature;
-
-    class FunctionSignature {
-        const typeParams : [IDENT];
-        const params : BINDING_INITS;
-        const paramTypes : [TYPE_EXPR];
-        const defaults : [EXPR];
-        const ctorInits : [BINDING_INITS,[EXPR]]?;  /* [settings, super args] */
-        const returnType : TYPE_EXPR;
-        const thisType : TYPE_EXPR?;
-        const hasRest : Boolean;
-    }
+    type FUNC_SIG = 
+       { typeParams : [IDENT]
+       , params : HEAD  //BINDING_INITS
+       , paramTypes : [TYPE_EXPR]
+       , defaults : [EXPR]
+       , ctorInits : [BINDING_INITS,[EXPR]]?  /* [settings, super args] */
+       , returnType : TYPE_EXPR
+       , thisType : TYPE_EXPR?
+       , hasRest : Boolean }
 
     // CTORS
 
@@ -1078,7 +1070,8 @@ namespace Ast
 
     class ReturnStmt {
         const expr : EXPR?;
-        function ReturnStmt(expr) : expr=expr {}
+        function ReturnStmt(expr) 
+            : expr = expr {}
     }
 
     class BreakStmt {
@@ -1217,8 +1210,6 @@ namespace Ast
     const letVarTag = new LetVar;
     const letConstTag = new LetConst;
 
-    type VAR_DEFN = VariableDefn
-
     class VariableDefn {
         const ns: EXPR?;
         const isStatic: Boolean;
@@ -1233,11 +1224,27 @@ namespace Ast
             , bindings = bindings {}
     }
 
-    type FUNC_DEFN = FunctionDefn
+    type FUNC_DEFN = FunctionDefn;
 
     class FunctionDefn {
+        const kind: VAR_DEFN_TAG;
+        const ns: EXPR?;
+        const final: Boolean;
+        const override: Boolean;
+        const prototype: Boolean;
+        const static: Boolean;
+        const abstract: Boolean;
         const func : FUNC;
-        function FunctionDefn(func) : func=func {}
+        function FunctionDefn(kind,ns,final,override,prototype,
+                              static,abstract,func) 
+            : kind = kind
+            , ns = ns
+            , final = final
+            , override = override
+            , prototype = prototype
+            , static = static
+            , abstract = abstract
+            , func = func {}
     }
 
     class ConstructorDefn {
@@ -1256,13 +1263,13 @@ namespace Ast
         BLOCK
     */
 
-    type BLOCK = Block
+    type BLOCK = Block;
 
     class Block {
-        const pragmas: [PRAGMA];
-        const defns: * // [DEFN];
+        const pragmas : [PRAGMA];
+        const defns: [DEFN];
         const head: HEAD?;
-        const stmts: [STMT];
+        const stmts : [STMT];
         const pos: POS?;
         function Block (pragmas,defns,head,stmts,pos)
             : pragmas = pragmas
@@ -1319,7 +1326,7 @@ namespace Ast
     type PROGRAM = Program
 
     class Program {
-        var packages: [PACKAGE];
+        var packages //: [PACKAGE];
         var block: BLOCK;
         var fixtures: FIXTURES?;
         function Program (packages, block, fixtures)
