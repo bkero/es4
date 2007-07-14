@@ -321,6 +321,12 @@ Ast.TypeName
                 verifyTypeExpr env t
             end
 
+          | Ast.ElementTypeRef (Ast.SpecialType Ast.Any, _) =>
+            Ast.SpecialType Ast.Any
+
+          | Ast.ElementTypeRef (Ast.ElementTypeRef _, _) =>
+            Ast.SpecialType Ast.Any    (* FIXME may be able to get a more specific type *)
+
           | Ast.ElementTypeRef (t, _) =>
             error ["ElementTypeRef on non-ArrayType: ", Type.toString t]
 
@@ -337,8 +343,8 @@ Ast.TypeName
           | Ast.FieldTypeRef (Ast.SpecialType Ast.Any, _) =>
             Ast.SpecialType Ast.Any
 
-          | Ast.FieldTypeRef (t, _) =>
-            error ["FieldTypeRef on non-ObjectType: ", Type.toString t]
+          | Ast.FieldTypeRef (t, ident) =>
+            error ["FieldTypeRef to ", Ustring.toAscii ident, " on non-ObjectType: ", Type.toString t]
 
           | _ => ty
                    (*

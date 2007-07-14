@@ -38,13 +38,13 @@ The front end has the following parts:
   Lexer --> Parser
               |
               V
-	    Definer
-              |
-              V  
-           Verifier --> Emitter
-                           |
-                           V
-                         .abc
+           Verifier --> Generator
+                            |
+                            V
+                         Emitter
+                            |
+                            V
+                          .abc
 
 Some of the more important functions are each part of the front-end
 include:
@@ -56,8 +56,6 @@ Lexer
 Parser
   - Desugar destructuring patterns
   - Construct initial AST
-
-Definer
   - Resolve namespace attributes, pragma arguments, configuration
     expressions, extends and implements references
   - Construct fixtures for definitions
