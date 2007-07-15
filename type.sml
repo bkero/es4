@@ -123,12 +123,13 @@ and excludes
        | FieldTypeRef of (TYPE_EXPR * IDENT)
 *)
 
-fun findNamespace (env:RIBS)
+fun findNamespace (env:Ast.RIBS)
                   (expr:Ast.EXPR)
     : Ast.NAMESPACE option =
     let
-        fun withMname mname = 
-            case Multiname.resolveInRibs env mname of 
+        fun withMname (mname:Ast.MULTINAME) 
+            : Ast.NAMESPACE option = 
+            case Multiname.resolveInRibs mname env of 
                 NONE => NONE
               | SOME (ribs, n) => 
                 (case Fixture.getFixture (List.hd ribs) (Ast.PropName n) of
@@ -138,15 +139,19 @@ fun findNamespace (env:RIBS)
     in    
         case expr of
             Ast.LiteralExpr (Ast.LiteralNamespace ns) => SOME ns
+
           | Ast.LexicalRef {ident = Ast.Identifier {ident, openNamespaces}, loc } =>
             (LogErr.setLoc loc;
-             withMname {nss = openNamespaces, id = ident})
+             withMname {id = ident, nss = openNamespaces})
+
           | Ast.LexicalRef {ident = Ast.QualifiedIdentifier {qual, ident}, loc } =>
             (LogErr.setLoc loc;
              case findNamespace env qual of
                  NONE => NONE
-               | SOME ns => withMname { nss = [ns], ident = ident })
+               | SOME ns => withMname {id = ident, nss = [[ns]]})
+
           | Ast.LexicalRef _ => error ["dynamic name in namespace"]
+
           | _ => error ["dynamic expr in namespace"]
     end
 
@@ -207,9 +212,26 @@ fun isGroundType (t:Ast.TYPE_EXPR)
             isGroundType result andalso
             isGroundOption thisType
     end
-    
+
+fun envOf (ty:Ast.TY) : Ast.RIBS = 
+    let
+        val Ast.Ty { env, ... } = ty
+    in
+        env
+    end
+
+fun exprOf (ty:Ast.TY) : Ast.TYPE_EXPR = 
+    let
+        val Ast.Ty { expr, ... } = ty
+    in
+        expr
+    end
+
+
 fun isGroundTy (ty:Ast.TY) 
-    : bool = isGroundType (#expr ty)
+    : bool =
+    isGroundType (exprOf ty)
+
              
 (* 
  * During normalization we work with a "slighly unpacked" form of type
@@ -222,22 +244,27 @@ fun isGroundTy (ty:Ast.TY)
 
 type TY_NORM = { exprs: Ast.TYPE_EXPR list,
                  nullable: bool,
-                 env: RIBS,
-                 unit: UNIT_NAME option }
+                 env: Ast.RIBS,
+                 unit: Ast.UNIT_NAME option }
 
 fun normalize (t:Ast.TY) 
     : Ast.TY = (norm2ty (ty2norm t))
 
 and repackage (t:Ast.TY) 
-    : TY_NORM = { exprs = [(#expr t)],
-                  nullable = false,
-                  env = (#env t),
-                  unit = (#unit t) }
+    : TY_NORM = 
+    let
+        val Ast.Ty { expr, env, unit, ... } = t
+    in
+        { exprs = [expr],
+          nullable = false,
+          env = env,
+          unit = unit }
+    end
                 
 and maybeNamed (originalt:Ast.TY) 
                (mname:Ast.MULTINAME) 
-    : Ast.TY_NORM =
-    case Multiname.resolveInRibs (#env originalt) mname of 
+    : TY_NORM =
+    case Multiname.resolveInRibs mname (envOf originalt) of 
         NONE => repackage originalt
       | SOME (ribs, n) => 
         let 
@@ -256,29 +283,41 @@ and norm2ty (norm:TY_NORM)
     let
         val { exprs, nullable, env, unit } = norm 
         val null = Ast.SpecialType Ast.Null
+        val expr = case exprs of 
+                       [] => if nullable
+                             then null
+                             else Ast.UnionType []
+                     | [x] => if nullable
+                              then Ast.UnionType [x, null]
+                              else x
+                     | union => if nullable
+                                then Ast.UnionType (union @ [null])
+                                else Ast.UnionType union
     in
-        case exprs of 
-            [] => if nullable
-                  then null
-                  else Ast.UnionType []
-          | [x] => if nullable
-                   then Ast.UnionType [x, null]
-                   else x
-          | union => if nullable
-                     then Ast.UnionType (union @ [null])
-                     else Ast.UnionType union
+        Ast.Ty { expr = expr,
+                 unit = unit,
+                 env = env }
     end
 
 and ty2norm (ty:Ast.TY) 
     : TY_NORM =
     let
+        val Ast.Ty { env, unit, expr } = ty
+
+        (* Package up a 1-term type in the current TY environment. *)
+        fun simple (e:Ast.TYPE_EXPR)
+                   (nullable:bool)
+            : TY_NORM = 
+            if isGroundType e 
+            then { exprs = [e], nullable = nullable, env = env, unit = unit }
+            else error ["internal error: non-ground term is not simple"]
+                 
+
         (* Use 'subTerm2Norm' to evaluate a TYPE_EXPR in the same environment
          * as the current TY, and get back a new TY_NORM. *)
         fun subTerm2Norm (e:Ast.TYPE_EXPR) 
             : TY_NORM = 
-            ty2norm { expr = e,
-                      env = (#env ty),
-                      unit = (#unit ty) }
+            ty2norm (Ast.Ty { expr = e, env = env, unit = unit })
 
         (* 
          * Use 'subTerm' to evaluate a TYPE_EXPR in the same environment
@@ -287,11 +326,11 @@ and ty2norm (ty:Ast.TY)
          *)
         fun subTerm (e:Ast.TYPE_EXPR) 
             : Ast.TYPE_EXPR option = 
-            let
-                val n = subTerm2Norm e
+            let 
+                val t = norm2ty (subTerm2Norm e)
             in
-                if isGroundType (#expr n)
-                then SOME (#expr n)
+                if isGroundType (exprOf t)
+                then SOME (exprOf t)
                 else NONE
             end
 
@@ -304,70 +343,60 @@ and ty2norm (ty:Ast.TY)
          * inner option is structural. 
          *)
         fun subTermOption (e:Ast.TYPE_EXPR option)
-            : (Ast.TYPE_EXPR option) option = 
+            : (Ast.TYPE_EXPR option) option =             
             case e of 
                 NONE => SOME (NONE)
               | SOME te => 
                 let
-                    val ns = subTerm2Norm e
+                    val t = norm2ty (subTerm2Norm te)
                 in
-                    if isGroundType (#expr n)
-                    then SOME (SOME (#expr n))
+                    if isGroundType (exprOf t)
+                    then SOME (SOME (exprOf t))
                     else NONE
                 end
-
-        (* Package up a 1-term type in the current TY environment. *)
-        fun simple (e:Ast.TYPE_EXPR)
-                   (nullable:bool)
-            : TY_NORM = 
-            { exprs = [e],
-              nullable=nullable,
-              env = (#env ty),
-              unit = (#unit ty) }
     in
-        case (#expr ty) of              
+        case expr of              
             Ast.TypeName (Ast.Identifier { ident, openNamespaces }) => 
             maybeNamed ty { id = ident, nss = openNamespaces }
             
           | Ast.TypeName (Ast.QualifiedIdentifier { qual, ident }) =>
-            (case findNamespace (#env ty) qual of
-                 SOME ns => maybeNamed ty { nss = [ns], id = ident }
+            (case findNamespace (envOf ty) qual of
+                 SOME ns => maybeNamed ty { nss = [[ns]], id = ident }
                | NONE => repackage ty)
             
           | Ast.TypeName _ => error ["dynamic name in type expression"]
                               
           | Ast.InstanceType it => 
             let
-                val { itName, superTypes, ty, conversionTy, 
-                      nonnullable, dynamic } = it
-                fun subItName {name, typeParams} = 
-                    case subTerms typeParams of 
-                        NONE => NONE
-                      | SOME typeParams' => SOME {name=name, typeParams=typeParams'}
-                val itName' = subItName itName
-                val superTypes' = liftOption subItName superTypes
+                val t0 = ty
+                val { name, typeArgs, superTypes, ty, 
+                      conversionTy, nonnullable, dynamic } = it
+                val typeArgs' = subTerms typeArgs
+                val superTypes' = subTerms superTypes
                 val ty' = subTerm ty
                 val conversionTy' = subTermOption conversionTy
             in
-                case (itName', superTypes', ty', conversionTy') of
-                    (SOME i, SOME s, SOME t, SOME c) => 
-                    { name = i,
-                      superTypes = s,
-                      ty = t,
-                      conversionTy = c,
-                      nonnullable = nonnullable,
-                      dynamic = dynamic }
-                  | _ => repackage ty
+                case (typeArgs', superTypes', ty', conversionTy') of
+                    (SOME ta, SOME st, SOME t, SOME c) => 
+                    simple (Ast.InstanceType 
+                                { name = name,
+                                  typeArgs = ta,
+                                  superTypes = st,
+                                  ty = t,
+                                  conversionTy = c,
+                                  nonnullable = nonnullable,
+                                  dynamic = dynamic }) (not nonnullable)
+                  | _ => repackage t0
             end
                                    
           | Ast.AppType { base, args } => 
             let
-                val sub = norm2Ty o subTerm2Norm
+                val sub = norm2ty o subTerm2Norm
                 val (base':Ast.TY) = sub base
                 val (args':Ast.TY list) = map sub args
             in
                 case base' of 
-                    {expr=Ast.LamType {params, body}, env=env', unit=unit'} => 
+                    Ast.Ty {expr=Ast.LamType {params, body}, env=env', unit=unit'} => 
                     let
                         val _ = if length params = length args'
                                 then ()
@@ -382,28 +411,28 @@ and ty2norm (ty:Ast.TY)
                         val rib = List.foldl bind [] bindings
                         val env'' = rib :: env'
                     in
-                        ty2norm { expr=base, env=env'', unit=unit' }
+                        ty2norm (Ast.Ty { expr=base, env=env'', unit=unit' })
                     end                
+                  | Ast.Ty {expr=Ast.TypeName _, ...} => repackage ty
                   | _ => error ["applying bad type"]
             end
             
           | (Ast.UnionType tys) => 
             let 
-                fun extract {exprs, nullable, ...} = (exprs, nullable) 
+                fun extract {exprs, nullable, unit, env} = (exprs, nullable) 
                 val sub = extract o subTerm2Norm
                 val (listOfLists, listOfNulls) = ListPair.unzip (map sub tys)
                 val exprs' = List.concat listOfLists
                 val nullable = List.exists (fn x => x) listOfNulls
             in
-                {exprs=exprs', nullable=nullable, env=(#env ty), unit=(#unit ty)}
+                {exprs=exprs', nullable=nullable, env=env, unit=unit}
             end
             
           | (Ast.SpecialType Ast.Null) => 
-            {exprs=[], nullable=true, env=(#env ty), unit=(#unit ty)}
+            {exprs=[], nullable=true, env=env, unit=unit}
             
           | (Ast.ArrayType []) => 
-            { exprs = [Ast.ArrayType [Ast.SpecialType Ast.Any]],
-              nullable = true, env=(#env ty), unit=(#unit ty) }
+            simple (Ast.ArrayType [Ast.SpecialType Ast.Any]) true
             
           | (Ast.ArrayType tys) => 
             (case subTerms tys of
@@ -413,7 +442,7 @@ and ty2norm (ty:Ast.TY)
           | (Ast.FunctionType { params, result, 
                                 thisType, hasRest, minArgs }) =>
             let
-                val params' = subTerms params'
+                val params' = subTerms params
                 val result' = subTerm result
                 val this' = subTermOption thisType
             in
@@ -431,7 +460,7 @@ and ty2norm (ty:Ast.TY)
             let
                 fun unpack { name, ty } = (name, ty)
                 fun pack (name, ty) = { name=name, ty=ty }
-                fun (names, tys) = ListPair.unzip (map unpack fields)
+                val (names, tys) = ListPair.unzip (map unpack fields)
             in
                 case subTerms tys of
                     NONE => repackage ty
@@ -443,9 +472,9 @@ and ty2norm (ty:Ast.TY)
             
           | Ast.NullableType { expr, nullable } => 
             let
-                val {exprs, env, unit, ...} = subTerm2Norm expr
+                val {exprs, env=env', unit=unit', ...} = subTerm2Norm expr
             in
-                { exprs=exprs, env=env, unit=unit, nullable=nullable }
+                { exprs=exprs, env=env', unit=unit', nullable=nullable }
             end
             
           | Ast.ElementTypeRef ((Ast.ArrayType fields), idx) => 
@@ -475,7 +504,7 @@ and ty2norm (ty:Ast.TY)
             end
             
           | Ast.FieldTypeRef (Ast.SpecialType Ast.Any, _) =>
-            Ast.SpecialType Ast.Any
+            simple (Ast.SpecialType Ast.Any) false
             
           | Ast.FieldTypeRef (t, _) => 
             error ["FieldTypeRef on non-ObjectType: ", toString t]
@@ -483,7 +512,7 @@ and ty2norm (ty:Ast.TY)
           | _ => repackage ty
     end
                  
-fun serializeGroundType (a:Ast.TY) 
+fun serializeGroundType (a:Ast.TYPE_EXPR) 
     : Ustring.STRING list =
     let 
         val fromBool = Ustring.fromString o Bool.toString
@@ -493,7 +522,7 @@ fun serializeGroundType (a:Ast.TY)
             (Ustring.fromInt (length ls)) ::
             (Ustring.fromString ":") :: ls
         fun serializeGroundTypeList tys = 
-            prefixList (List.concat (map serializeGroundType tys))            
+            prefixList (List.concat (map serializeGroundType tys))
         fun serializeGroundTypeOption tyo = 
             case tyo of
                 NONE => [cc 2]
@@ -533,10 +562,10 @@ fun serializeGroundType (a:Ast.TY)
             (cc 18) :: (fromBool nullable) ::
             (cc 19) :: (serializeGroundType expr)
             
-          | Ast.InstanceType { itName = {name, typeParams}, ... } => 
+          | Ast.InstanceType { name, typeArgs, ... } => 
             (cc 22) :: (#id name) :: 
-            (cc 23) :: ((NameKey.decomposeNs (#ns name)) @
-                        [cc 24] @ (serializeGroundTypeList typeParams))
+            (cc 23) :: ((NameKey.decomposeNS (#ns name)) @
+                        [cc 24] @ (serializeGroundTypeList typeArgs))
 
           | _ => error ["serializing non-ground type"]
     end

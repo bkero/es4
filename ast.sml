@@ -441,14 +441,11 @@ withtype
      and RIBS = RIB list
      and INITS = (FIXTURE_NAME * EXPR) list
 
-     and INSTANCE_TYPE_NAME = 
-         { name: NAME,
-           typeParams: TYPE_EXPR list }
-
      and INSTANCE_TYPE =
-          {  itName: INSTANCE_TYPE_NAME,
+          {  name: NAME,
+             typeArgs: TYPE_EXPR list,
              nonnullable: bool,
-             superTypes: INSTANCE_TYPE_NAME list,
+             superTypes: TYPE_EXPR list,
              ty: TYPE_EXPR,
              conversionTy: TYPE_EXPR option,
              dynamic: bool }

@@ -38,7 +38,7 @@ signature FIXTURE = sig
     val getFixture : Ast.RIB -> Ast.FIXTURE_NAME -> Ast.FIXTURE
     val hasFixture : Ast.RIB -> Ast.FIXTURE_NAME -> bool
     val replaceFixture : Ast.RIB -> Ast.FIXTURE_NAME -> Ast.FIXTURE -> Ast.RIB
-    val printFixtures : Ast.RIB -> unit
+    val printRib : Ast.RIB -> unit
 
 (* 
  * An ES4 program is an endless sequence of fragments. Fragments come in 3 flavours:
@@ -102,16 +102,22 @@ signature FIXTURE = sig
 
     type PROGRAM
     val mkProgram : Ast.RIB -> PROGRAM
-    val addTopFragment : PROGRAM -> (Ast.FRAGMENT * Ast.RIB) -> PROGRAM
+    val addTopFragment : PROGRAM -> (Ast.FRAGMENT * Ast.RIB) -> (Ast.TY -> Ast.TY -> bool) -> PROGRAM
     val getTopFixture : PROGRAM -> Ast.NAME -> Ast.FIXTURE 
     val getTopRib : PROGRAM -> Ast.RIB
     val getTopRibForUnit : PROGRAM -> Ast.UNIT_NAME -> Ast.RIB option
-    val getTopBlock : PROGRAM -> Ast.BLOCK
+    val getTopBlocks : PROGRAM -> Ast.BLOCK list
 
-    (* FIXME: these probably belong in type.sml *)
+    (* FIXME: the coupling between type.sml and fixture.sml suggests re-merging them *)
     val instanceType : PROGRAM -> Ast.NAME -> Ast.TY
     val isClass : PROGRAM -> Ast.NAME -> bool
     val getClass : PROGRAM -> Ast.NAME -> Ast.CLS
-    val instanceOf : PROGRAM -> Ast.NAME -> Ast.NAME -> bool
+    val instanceOf : PROGRAM -> 
+                     Ast.TYPE_EXPR -> 
+                     Ast.TYPE_EXPR -> 
+                     (Ast.TYPE_EXPR -> Ast.TYPE_EXPR -> bool) -> 
+                     (Ast.TYPE_EXPR -> Ustring.STRING list) -> 
+                     (Ustring.STRING) -> 
+                     bool
 
 end

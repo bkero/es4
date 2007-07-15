@@ -84,7 +84,7 @@ fun resolve (mname:Ast.MULTINAME)
     end
 
 
-fun matchFixtures  (fixtures:Ast.FIXTURES)
+fun matchFixtures  (rib:Ast.RIB)
                    (searchId:Ast.IDENT)
                    (nss:Ast.NAMESPACE list)
     : Ast.NAME list =
@@ -109,7 +109,7 @@ fun matchFixtures  (fixtures:Ast.FIXTURES)
                     else NONE
                 end
     in
-        List.mapPartial matchFixture fixtures
+        List.mapPartial matchFixture rib
     end
 
 fun resolveInRibs (mname:Ast.MULTINAME)
@@ -117,22 +117,22 @@ fun resolveInRibs (mname:Ast.MULTINAME)
     : (Ast.RIBS * Ast.NAME) option =
     let
         fun f env ident nss = matchFixtures (List.hd env) ident nss
+        fun tl [] = NONE
+          | tl (x::xs) = SOME xs
     in
-        case resolve mname env f List.tl of
-            SOME (env,n) => SOME (List.hd env, n)
-          | NONE => NONE
+        resolve mname env f tl
     end
 
 fun resolveInFixtures (mname:Ast.MULTINAME)
                       (env:'a)
-                      (getEnvFixtures:('a -> Ast.FIXTURES))
+                      (getEnvRib:('a -> Ast.RIB))
                       (getEnvParent:('a -> ('a option)))
-    : (Ast.FIXTURES * Ast.NAME) option =
+    : (Ast.RIB * Ast.NAME) option =
     let
-        fun f env ident nss = matchFixtures (getEnvFixtures env) ident nss
+        fun f env ident nss = matchFixtures (getEnvRib env) ident nss
     in
         case resolve mname env f getEnvParent of
-            SOME (env,n) => SOME (getEnvFixtures env, n)
+            SOME (env,n) => SOME (getEnvRib env, n)
           | NONE => NONE
     end
 

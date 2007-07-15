@@ -41,10 +41,7 @@ fun trace ss = if (!doTrace) then log ss else ()
 structure NmKey = struct type ord_key = Ast.NAME val compare = NameKey.compare end
 structure NmMap = SplayMapFn (NmKey);
 
-structure NmVecKey = struct type ord_key = (Ast.NAME vector) val compare = (Vector.collate NameKey.compare) end
-structure NmVecMap = SplayMapFn (NmVecKey);
-
-structure StrVecKey = struct type ord_key = (Ustring.STRING vector) val compare = (Vector.collate Ustring.compare) end
+structure StrVecKey = struct type ord_key = (Ustring.STRING vector) val compare = (Vector.collate (fn (a,b) => Ustring.compare a b)) end
 structure StrVecMap = SplayMapFn (StrVecKey);
 
 (* -----------------------------------------------------------------------------
@@ -114,8 +111,8 @@ fun replaceFixture (b:Ast.RIB)
         search b
     end
 
-fun printFixtures fs =
-    List.app printFixture fs
+fun printRib (rib:Ast.RIB) =
+    List.app printFixture rib
 
 (* -----------------------------------------------------------------------------
  * Operations on PROGRAM
@@ -126,29 +123,29 @@ type PROGRAM = { fixtureCache: (Ast.FIXTURE NmMap.map) ref, (* mirrors the top r
                  cacheSize: int,
                  topRib: Ast.RIB,
                  topBlocks: Ast.BLOCK list,
-                 unitRibs: (Ast.RIB NmVecMap.map) ref }
+                 unitRibs: (Ast.RIB StrVecMap.map) }
 
-fun mkProgram (all:Ast.RIB)
+fun mkProgram (topRib:Ast.RIB)
     : PROGRAM =
     { fixtureCache = ref NmMap.empty,
       instanceOfCache = ref StrVecMap.empty,
       cacheSize = 1024,
       topRib = topRib,
       topBlocks = [],
-      unitRibs = ref NmVecMap.empty }
+      unitRibs = StrVecMap.empty }
 
-fun mergeVirtuals (fName:Ast.FIXTURE_NAME)
+fun mergeVirtuals (tyeq:Ast.TY -> Ast.TY -> bool)
+                  (fName:Ast.FIXTURE_NAME)
                   (vnew:Ast.VIRTUAL_VAL_FIXTURE)
                   (vold:Ast.VIRTUAL_VAL_FIXTURE) =
     let
-        val ty = if Type.equals (#ty vnew) (#ty vold)
-                 then (#ty vnew)
-                 else (if Type.equals (#ty vnew) (Ast.SpecialType Ast.Any)
-                       then (#ty vold)
-                       else (if Type.equals (#ty vold) (Ast.SpecialType Ast.Any)
-                             then (#ty vnew)
-                             else error ["mismatched get/set types on fixture ",
-                                         LogErr.fname fName]))
+        val ty = case ((#ty vold), (#ty vnew)) of
+                     (Ast.Ty {expr=Ast.SpecialType Ast.Any, ...}, tnew) => tnew
+                   | (told, Ast.Ty {expr=Ast.SpecialType Ast.Any, ...}) => told
+                   | (t1, t2) => if tyeq t1 t2
+                                 then t1
+                                 else error ["mismatched get/set types on fixture ",
+                                         LogErr.fname fName]
         fun either a b =
             case (a,b) of
                 (SOME x, NONE) => SOME x
@@ -162,7 +159,8 @@ fun mergeVirtuals (fName:Ast.FIXTURE_NAME)
           setter = either (#setter vold) (#setter vnew) }
     end
 
-fun mergeFixtures ((newName:Ast.FIXTURE_NAME, newFix:Ast.FIXTURE),oldRib:Ast.RIB)
+fun mergeFixtures (tyeq:Ast.TY -> Ast.TY -> bool)
+                  ((newName:Ast.FIXTURE_NAME, newFix:Ast.FIXTURE),oldRib:Ast.RIB)
     : Ast.RIB =
     if hasFixture oldRib newName
     then
@@ -171,9 +169,9 @@ fun mergeFixtures ((newName:Ast.FIXTURE_NAME, newFix:Ast.FIXTURE),oldRib:Ast.RIB
              Ast.VirtualValFixture vold) =>
             replaceFixture oldRib newName
                            (Ast.VirtualValFixture
-                                (mergeVirtuals newName vnew vold))
+                                (mergeVirtuals tyeq newName vnew vold))
           | (Ast.ValFixture new, Ast.ValFixture old) =>
-            if (Type.equals (#ty new) (#ty old)) 
+            if (tyeq (#ty new) (#ty old)) 
                andalso (#readOnly new) = (#readOnly old)
             then (trace ["skipping fixture ",LogErr.fname newName]; oldRib)
             else error ["incompatible redefinition of fixture name: ", LogErr.fname newName]
@@ -189,27 +187,31 @@ fun mergeFixtures ((newName:Ast.FIXTURE_NAME, newFix:Ast.FIXTURE),oldRib:Ast.RIB
 
 fun addTopFragment (prog:PROGRAM)
                    (frag:Ast.FRAGMENT, newRib:Ast.RIB)
+                   (tyeq:Ast.TY -> Ast.TY -> bool)
     : PROGRAM = 
     let
         val { fixtureCache, instanceOfCache, cacheSize, 
               topRib, topBlocks, unitRibs } = prog
-        val newTop = List.foldl mergeFixtures topRib newRib
+        val newTopRib = List.foldl (mergeFixtures tyeq) topRib newRib
         val newUnitRibs = 
             case frag of 
-                Ast.Unit { name, ... } => 
-                NmVecMap.insert (unitRibs, (Vector.fromList name), newTop)
+                Ast.Unit { name=SOME nm, ... } => 
+                StrVecMap.insert (unitRibs, (Vector.fromList nm), newTopRib)
               | _ => 
                 unitRibs
         fun fragBlocks (Ast.Unit {name, fragments}) = 
             List.concat (map fragBlocks fragments)
           | fragBlocks (Ast.Package {name, fragments}) = 
             List.concat (map fragBlocks fragments)
-          | FragBlocks (Ast.Anon block) = [block]
+          | fragBlocks (Ast.Anon block) = [block]
     in
-        { fixtureCache = fixtureCache,
-          instanceOfCache = instanceOfCache,
-          cacheSize = cacheSize, 
-          topRib = topRib,
+        
+        { cacheSize = cacheSize, 
+          (* flush caches *)
+          fixtureCache = ref NmMap.empty,
+          instanceOfCache = ref StrVecMap.empty,
+          (* replace updated immutable parts *)
+          topRib = newTopRib,
           topBlocks = topBlocks @ (fragBlocks frag),
           unitRibs = newUnitRibs }
     end
@@ -219,7 +221,7 @@ fun getTopFixture (prog:PROGRAM)
                   (n:Ast.NAME)
     : Ast.FIXTURE =
     let
-        val { fixtureCache, cacheSize, topRib, ... } = PROGRAM
+        val { fixtureCache, cacheSize, topRib, ... } = prog
         val c = !fixtureCache
     in
         case NmMap.find (c, n) of
@@ -239,12 +241,12 @@ val (getTopRib:PROGRAM -> Ast.RIB) = #topRib
 fun getTopRibForUnit (prog:PROGRAM)
                      (unit:Ast.UNIT_NAME)
     : Ast.RIB option = 
-    NmMap.find ((#unitRibs prog), unit)
+    StrVecMap.find ((#unitRibs prog), Vector.fromList unit)
 
 val (getTopBlocks:PROGRAM -> Ast.BLOCK list) = #topBlocks
 
 fun printTopRib (prog:PROGRAM) =
-    printFixtures (getTopFixtures prog)
+    printRib (getTopRib prog)
 
 (* -----------------------------------------------------------------------------
  * Class operations on PROGRAMs
@@ -287,35 +289,35 @@ fun getClass (prog:PROGRAM)
 
 (* FIXME: this is a bad name. subclassOf isn't quite right either. isDerivedType? inheritsFrom? *)
 fun instanceOf (prog:PROGRAM)
-               (t0:Ast.TY)
-               (t:Ast.TY)
-               (serialize:Ast.TY -> Ustring.STRING list)
+               (t0:Ast.TYPE_EXPR)
+               (t:Ast.TYPE_EXPR)
+               (tyexpreq:Ast.TYPE_EXPR -> Ast.TYPE_EXPR -> bool)
+               (serialize:Ast.TYPE_EXPR -> Ustring.STRING list)
                (sep:Ustring.STRING)
     : bool =
     let
-        val { instanceOfCache, cacheSize, ... } = prog
-        val c = !instanceOfCache
-        val init = Vector.fromList (serialize t0)
-        val targ = Vector.fromList (serialize t)
-        fun searchFrom (curr:Ast.TY) = 
-            if length curr = length targ
-               andalso List.all (fn (x,y) => Ustring.stringEquals x y) 
-                                (ListPair.zip curr targ)
+        fun searchFrom (curr:Ast.TYPE_EXPR) = 
+            if tyexpreq curr t
             then true
             else 
                 case curr of 
                     Ast.InstanceType {superTypes, ...} => 
                     List.exists searchFrom superTypes
                   | _ => false
+
+        val { instanceOfCache, cacheSize, ... } = prog
+        val c = !instanceOfCache
+        val init = serialize t0
+        val targ = serialize t
         val k = Vector.fromList (init @ [sep] @ targ)
     in
-        case NmVecMap.find (c, k) of
+        case StrVecMap.find (c, k) of
             NONE => 
             let
-                val v = searchFrom init
+                val v = searchFrom t0
             in
-                if (NmVecMap.numItems c) < cacheSize
-                then (instanceOfCache := NmVecMap.insert (c, k, v); v)
+                if (StrVecMap.numItems c) < cacheSize
+                then (instanceOfCache := StrVecMap.insert (c, k, v); v)
                 else v
             end
           | SOME v => v
