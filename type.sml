@@ -247,8 +247,9 @@ type TY_NORM = { exprs: Ast.TYPE_EXPR list,
                  env: Ast.RIBS,
                  unit: Ast.UNIT_NAME option }
 
-fun normalize (t:Ast.TY) 
-    : Ast.TY = (norm2ty (ty2norm t))
+fun normalize (prog:Fixture.PROGRAM) 
+              (t:Ast.TY) 
+    : Ast.TY = (norm2ty (ty2norm prog t))
 
 and repackage (t:Ast.TY) 
     : TY_NORM = 
@@ -261,22 +262,37 @@ and repackage (t:Ast.TY)
           unit = unit }
     end
                 
-and maybeNamed (originalt:Ast.TY) 
+and maybeNamed (prog:Fixture.PROGRAM)
+               (originalt:Ast.TY) 
                (mname:Ast.MULTINAME) 
     : TY_NORM =
-    case Multiname.resolveInRibs mname (envOf originalt) of 
-        NONE => repackage originalt
-      | SOME (ribs, n) => 
-        let 
-            val (defn:Ast.TY) = 
-                case Fixture.getFixture (List.hd ribs) (Ast.PropName n) of
-                    Ast.TypeFixture ty => ty
-                  | Ast.ClassFixture (Ast.Cls cls) => (#instanceType cls)
-                  | Ast.InterfaceFixture (Ast.Iface iface) => (#instanceType iface)
-                  | _ => error ["expected type fixture for: ", LogErr.name n]
-        in
-            ty2norm defn
-        end
+    let
+        val Ast.Ty { env, unit, ... } = originalt
+        val (topRib, closed) = 
+            case unit of 
+                NONE => (Fixture.getTopRib prog, false)
+              | SOME u => (case Fixture.getTopRibForUnit prog u of
+                               NONE => (Fixture.getTopRib prog, false)
+                             | SOME closedRib => (closedRib, true))
+        val ribs = env @ [topRib]
+    in
+        case Multiname.resolveInRibs mname ribs of 
+            NONE => if closed 
+                    then error ["type multiname ", LogErr.multiname mname, 
+                                " failed to resolve in closed unit "]
+                    else repackage originalt
+          | SOME (ribs, n) => 
+            let 
+                val (defn:Ast.TY) = 
+                    case Fixture.getFixture (List.hd ribs) (Ast.PropName n) of
+                        Ast.TypeFixture ty => ty
+                      | Ast.ClassFixture (Ast.Cls cls) => (#instanceType cls)
+                      | Ast.InterfaceFixture (Ast.Iface iface) => (#instanceType iface)
+                      | _ => error ["expected type fixture for: ", LogErr.name n]
+            in
+                ty2norm prog defn
+            end
+    end
 
 and norm2ty (norm:TY_NORM) 
     : Ast.TY = 
@@ -299,7 +315,8 @@ and norm2ty (norm:TY_NORM)
                  env = env }
     end
 
-and ty2norm (ty:Ast.TY) 
+and ty2norm (prog:Fixture.PROGRAM) 
+            (ty:Ast.TY) 
     : TY_NORM =
     let
         val Ast.Ty { env, unit, expr } = ty
@@ -317,7 +334,7 @@ and ty2norm (ty:Ast.TY)
          * as the current TY, and get back a new TY_NORM. *)
         fun subTerm2Norm (e:Ast.TYPE_EXPR) 
             : TY_NORM = 
-            ty2norm (Ast.Ty { expr = e, env = env, unit = unit })
+            ty2norm prog (Ast.Ty { expr = e, env = env, unit = unit })
 
         (* 
          * Use 'subTerm' to evaluate a TYPE_EXPR in the same environment
@@ -357,11 +374,11 @@ and ty2norm (ty:Ast.TY)
     in
         case expr of              
             Ast.TypeName (Ast.Identifier { ident, openNamespaces }) => 
-            maybeNamed ty { id = ident, nss = openNamespaces }
+            maybeNamed prog ty { id = ident, nss = openNamespaces }
             
           | Ast.TypeName (Ast.QualifiedIdentifier { qual, ident }) =>
             (case findNamespace (envOf ty) qual of
-                 SOME ns => maybeNamed ty { nss = [[ns]], id = ident }
+                 SOME ns => maybeNamed prog ty { nss = [[ns]], id = ident }
                | NONE => repackage ty)
             
           | Ast.TypeName _ => error ["dynamic name in type expression"]
@@ -411,7 +428,7 @@ and ty2norm (ty:Ast.TY)
                         val rib = List.foldl bind [] bindings
                         val env'' = rib :: env'
                     in
-                        ty2norm (Ast.Ty { expr=base, env=env'', unit=unit' })
+                        ty2norm prog (Ast.Ty { expr=base, env=env'', unit=unit' })
                     end                
                   | Ast.Ty {expr=Ast.TypeName _, ...} => repackage ty
                   | _ => error ["applying bad type"]
