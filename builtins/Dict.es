@@ -119,7 +119,7 @@ package Library
          * the key type 'K' must be 'string' for this to work.
          */
         meta static function convert(x : Object!) {
-            let d = new Dict.<string,*>;
+            let d = new Dict.<(string,uint),*>;
             for ( let n in x )
                 if (!(n is Name))
                     if (x.hasOwnProperty(n))
