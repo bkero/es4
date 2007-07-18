@@ -114,11 +114,15 @@ package
            Take your pick.
         */
         public static var parse = function parse(string, reference:double=0.0) {
+            // FIXME #135: this check should probably be removed
             if (arguments.length > 2)
                 throw new TypeError("Too many arguments to Date.parse");
             return Date.parse(ToString(string), reference);
         }
 
+        // FIXME #133: the return type is incompatible
+        // FIXME #136: currently required to throw a syntax error if the date is "invalid",
+        //             I've not implemented that
         static intrinsic function parse(s:string, reference:double=0.0) : Date! {
 
             function fractionToMilliseconds(frac : string) : double
@@ -274,6 +278,8 @@ package
         prototype function toISOString(this:Date)
             this.toISOString();
 
+        // FIXME #130: it's illegal for this to produce a "Z" suffix, but that
+        //             is probably a spec bug
         intrinsic function toISOString() : string {
 
             function years(n : double) : String {
