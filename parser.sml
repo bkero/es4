@@ -3520,9 +3520,7 @@ and typeExpression (ts:TOKENS)
     : (TOKENS * Ast.TYPE_EXPR) =
     let val _ = trace([">> typeExpression with next=",tokenname(hd ts)])
     in case ts of
-        (Null, _) :: _ => (tl ts, Ast.SpecialType Ast.Null)
-      | (Undefined, _) :: _ => (tl ts, Ast.SpecialType Ast.Undefined)
-      | (Function, _) :: _ => functionType ts
+        (Function, _) :: _ => functionType ts
       | (LeftParen, _) :: _ => unionType ts
       | (LeftBrace, _) :: _ => objectType ts
       | (LeftBracket, _) :: _ => arrayType ts

@@ -849,10 +849,14 @@ namespace Ast
 
     class TempIdent {
         const n : int;
+        function TempIdent (n)
+            : n = n {}
     }
 
     class ParamIdent {
         const n : int;
+        function ParamIdent (n)
+            : n = n {}
     }
 
     class PropIdent {
@@ -968,6 +972,8 @@ namespace Ast
 
     class TypeName {
         const ident : IDENT_EXPR;
+        function TypeName (ident)
+            : ident = ident {}
     }
 
     class ElementTypeRef {
