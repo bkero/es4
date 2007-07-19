@@ -173,6 +173,7 @@ datatype PRAGMA =
      and CLS =
          Cls of
            { name: NAME,
+             typeParams: IDENT list,
              nonnullable: bool,
              dynamic: bool,
              extends: NAME option,
@@ -187,6 +188,7 @@ datatype PRAGMA =
      and IFACE =
          Iface of
            { name: NAME,
+             typeParams: IDENT list,
              nonnullable: bool,
              extends: NAME list,
              instanceRib: RIB,
@@ -201,6 +203,7 @@ datatype PRAGMA =
      and FUNC =
          Func of {
              name: FUNC_NAME,
+             typeParams: IDENT list,
              fsig: FUNC_SIG,
              native: bool,
              block: BLOCK,

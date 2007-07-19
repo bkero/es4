@@ -46,6 +46,8 @@ val anyType         = Ast.SpecialType Ast.Any
 
 fun assert b s = if b then () else (raise Fail s)
 
+type HELPER = Subst.HELPER
+
 fun toString ty =
     let
         fun nsExprToString e =
