@@ -178,7 +178,7 @@ package
                              parseInt(res.second));
             if (res.tz !== undefined) {
                 let hour = parseInt(res.tz.substring(1,3)); // FIXME #132: should be [1:3]
-                let min  = parseInt(res.tz.substring(3,5)); // FIXME #132: should be [3,5]
+                let min  = parseInt(res.tz.substring(3,5)); // FIXME #132: should be [3:5]
                 if (res.tz[0] == '+')
                     t -= (hour*60 + min)*60*1000;
                 else
@@ -287,7 +287,7 @@ package
                 return n.toString();
             }
 
-            return "" + years(UTCfullYear) + "-" + twoDigit(UTCMonth+1) + "-" + twoDigit(UTCDate) +
+            return "" + years(UTCFullYear) + "-" + twoDigit(UTCMonth+1) + "-" + twoDigit(UTCDate) +
                 "T" + twoDigit(UTCHours) + ":" + twoDigit(UTCMinutes) + ":" + twoDigit(UTCSeconds) +
                 "." + fraction(int(UTCMilliseconds)) + 
                 "Z";
@@ -298,18 +298,19 @@ package
             this.toString();
 
         /* INFORMATIVE */
-        override intrinsic function toString() : string
+        override intrinsic function toString() : string {
             /* "Fri, 15 Dec 2006 23:45:09 GMT-0800" */
-            let (tz:double = timezoneOffset)
-	    let (atz:double = Math.abs(tz))
-	    (dayNames[day] + ", " +
-	     twoDigit(date) + " " +
-	     monthNames[month] + " " +
-	     fullYear + " " +
-	     twoDigit(hours) + ":" +
-	     twoDigit(minutes) + ":" +
-	     twoDigit(seconds) + " GMT" +
-	     sign(tz) + twoDigit(Math.floor(atz / 60)) + twoDigit(atz % 60));
+            let tz:double = timezoneOffset;
+	    let atz:double = Math.abs(tz);
+	    return (dayNames[day] + ", " +
+                    twoDigit(date) + " " +
+                    monthNames[month] + " " +
+                    fullYear + " " +
+                    twoDigit(hours) + ":" +
+                    twoDigit(minutes) + ":" +
+                    twoDigit(seconds) + " GMT" +
+                    sign(tz) + twoDigit(Math.floor(atz / 60)) + twoDigit(atz % 60));
+        }
 
         prototype function toGMTString(this:Date)
             this.toUTCString();
@@ -319,27 +320,29 @@ package
             this.toUTCString();
 
         /* INFORMATIVE */
-        intrinsic function toUTCString() : string
+        intrinsic function toUTCString() : string {
             /* "Sat, 16 Dec 2006 08:06:21 GMT" */
-            dayNames[UTCDay] + ", " +
-            twoDigit(UTCDate) + " " +
-            monthNames[UTCMonth] + " " +
-            UTCFullYear + " " +
-            twoDigit(UTCHours) + ":" +
-            twoDigit(UTCMinutes) + ":" +
-            twoDigit(UTCSeconds) + " GMT";
+            return (dayNames[UTCDay] + ", " +
+                    twoDigit(UTCDate) + " " +
+                    monthNames[UTCMonth] + " " +
+                    UTCFullYear + " " +
+                    twoDigit(UTCHours) + ":" +
+                    twoDigit(UTCMinutes) + ":" +
+                    twoDigit(UTCSeconds) + " GMT");
+        }
 
         /* E262-3 15.9.5.3: Date.prototype.toDateString */
         prototype function toDateString(this:Date)
             this.toDateString();
 
         /* INFORMATIVE */
-        intrinsic function toDateString() : string
+        intrinsic function toDateString() : string {
             /* "Sat, 16 Dec 2006" */
-            dayNames[day] + ", " +
-	    twoDigit(date) + " " +
-	    monthNames[month] + " " +
-	    fullYear;
+            return (dayNames[day] + ", " +
+                    twoDigit(date) + " " +
+                    monthNames[month] + " " +
+                    fullYear);
+        }
 
         /* E262-3 15.9.5.4: Date.prototype.toTimeString */
         prototype function toTimeString(this:Date)
