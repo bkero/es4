@@ -114,16 +114,10 @@ package
            Take your pick.
         */
         public static var parse = function parse(string, reference:double=0.0) {
-            // FIXME #135: this check should probably be removed
-            if (arguments.length > 2)
-                throw new TypeError("Too many arguments to Date.parse");
             return Date.parse(ToString(string), reference);
         }
 
-        // FIXME #133: the return type is incompatible
-        // FIXME #136: currently required to throw a syntax error if the date is "invalid",
-        //             I've not implemented that
-        static intrinsic function parse(s:string, reference:double=0.0) : Date! {
+        static intrinsic function parse(s:string, reference:double=0.0) : double {
 
             function fractionToMilliseconds(frac : string) : double
                 Math.floor(1000 * (parseInt(frac) / Math.pow(10,frac.length)));
@@ -149,7 +143,7 @@ package
                     if (isoRes.tzdir === "-")
                         tzo = -tzo;
                 }
-                return new Date(Date.UTC(year, month, day, hour, mins, secs, millisecs) - tzo);
+                return new Date.UTC(year, month, day, hour, mins, secs, millisecs) - tzo;
             }
             else
                 return fromDateString(s, reference);
@@ -164,7 +158,7 @@ package
            the minimum required by the Standard and we handle that
            here along with the output of Date.prototype.toUTCString.
         */
-        static function fromDateString(s : string, reference : double) : Date {
+        static function fromDateString(s : string, reference : double) : double {
 
             function findMonth(name) {
                 for ( let i:int=0 ; i < monthNames.length ; i++ )
@@ -175,7 +169,7 @@ package
 
             let res = adhocTimestamp.exec(s);
             if (res === null || res === undefined)
-                return new Date(reference);
+                return reference;
             let t = Date.UTC(parseInt(res.year),
                              findMonth(res.month),
                              parseInt(res.day),
@@ -190,7 +184,7 @@ package
                 else
                     t += (hour*60 + min)*60*1000;
             }
-            return new Date(t);
+            return t;
         }
 
         /* E262-4 proposals:date_and_time - "Current and elapsed times" */
@@ -278,11 +272,9 @@ package
         prototype function toISOString(this:Date)
             this.toISOString();
 
-        // FIXME #130: it's illegal for this to produce a "Z" suffix, but that
-        //             is probably a spec bug
         intrinsic function toISOString() : string {
 
-            function years(n : double) : String {
+            function years(n : double) : string {
                 if (n >= 0 && n <= 9999)
                     return (n+10000).toString().substring(1);
                 else
@@ -295,14 +287,10 @@ package
                 return n.toString();
             }
 
-            let tz:double = timezoneOffset;
-            let atz:double = Math.abs(tz);
-            return "" + years(fullYear) + "-" + twoDigit(month+1) + "-" + twoDigit(date) +
-                "T" + twoDigit(hours) + ":" + twoDigit(minutes) + ":" + twoDigit(seconds) +
-                "." + fraction(int(milliseconds)) + 
-                (tz === 0 ? 
-                 "Z" : 
-                 sign(tz) + twoDigit(Math.floor(atz / 60)) + ":" + twoDigit(atz % 60));
+            return "" + years(UTCfullYear) + "-" + twoDigit(UTCMonth+1) + "-" + twoDigit(UTCDate) +
+                "T" + twoDigit(UTCHours) + ":" + twoDigit(UTCMinutes) + ":" + twoDigit(UTCSeconds) +
+                "." + fraction(int(UTCMilliseconds)) + 
+                "Z";
         }
 
         /* E262-3 15.9.5.2: Date.prototype.toString */
