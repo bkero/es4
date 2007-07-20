@@ -74,8 +74,8 @@ package
                     throw new TypeError("Illegal construction of regular expression");
             }
             else {
-                src = pattern === undefined ? "" : String(pattern);
-                flags = flags === undefined ? "" : String(flags);
+                src = pattern === undefined ? "" : string(pattern);
+                flags = flags === undefined ? "" : string(flags);
             }
 
             let usedflags : Object! = { m: false, i: false, g: false, x: false, y: false };
@@ -150,7 +150,7 @@ package
             this.test(ToString(s));
 
         /* E262-3 15.10.6.4: RegExp.prototype.toString */
-        override intrinsic function toString() : String
+        override intrinsic function toString() : string
             "/" + (source.length == 0 ? "(?:)" : source) + "/" + flags;
 
         prototype function toString()
