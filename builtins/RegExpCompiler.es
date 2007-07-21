@@ -583,7 +583,10 @@ package RegExpInternals
             if (atEnd())
                 fail( SyntaxError, "EOF inside escape sequence" );
 
-            return consumeChar();
+            let (c = consumeChar()) {
+                advance();
+                return c;
+            }
         }
 
         /* Returns null if it does not consume anything but fails;

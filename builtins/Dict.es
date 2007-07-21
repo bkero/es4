@@ -32,14 +32,24 @@
  *
  * Copyright (c) 2007 Adobe Systems Inc., The Mozilla Foundation, Opera
  * Software ASA, and others.
+ */
+
+/* Status: proposal, not discussed.
  *
+ * Dicts are hash tables mapping keys to values.  Keys can be arbitrary
+ * values and are not converted in any way.
  *
- * Status: proposal, not discussed.
+ * The name "Dict" was chosen for its succinctness (and pressure from
+ * Brendan :)
  *
- * Dictionaries are hash tables mapping values to values.
+ * Key hashing and equality testing are user-selectable.  The default
+ * values for hashing and equality use intrinsic::hashcode and
+ * intrinsic::=== unless the key objects implement the HashProtocol
+ * type, providing their own equals() and hash() functions.
  *
- * These are built on top of intrinsic::hashcode() for hashing and the
- * iterator protocol for enumeration.
+ * The use of HashProtocol is brittle, since users may inadvertently
+ * create functions with the right signatures yet not actually intend
+ * for them to be used by the Dict.
  *
  * This implementation is not testable until we have parameterized
  * types and a bunch of bug fixes.
@@ -59,19 +69,49 @@
  * to create it.
  */
 
-namespace Library
+package Library
 {
     use namespace intrinsic;
 
-    public class Dictionary.<K,V>
+    function protocolHash.<K>(key: K): uint {
+        return key.hashcode();
+    }
+
+    function protocolEq.<K>(k1:K, k2:K): boolean {
+        return k1.equals(k2);
+    }
+
+    public class Dict.<K,V>
     {
-        /* Hashfn is a function used to hash the keys.  The hash
-         * function must always return the same value given the same
-         * object.
+        /* If ops.useProtocol is true then keys will respond to
+         * key1.equals(key2) and key.hashcode(), and those methods
+         * will be called unless overrides are provided in
+         * ops.hashcode and ops.equals.
+         * 
+         * ops.hashcode, if defined, is a function used to hash the
+         * keys.
+         *
+         * ops.equals, if defined, is a function used to compare keys.
+         *
+         * ops.hashcode and ops.equals must be synchronized: if two
+         * objects compare as equal using ops.equals(), then
+         * ops.hashcode() must return the same hash value for the two.
          */
-        public function Dictionary(hashfn : function(*):uint = standardHash)
-            : hashfn=hashfn
+        public function Dict(ops = { useProtocol: false, hashcode: false, equals: false })
         {
+            if (ops.hashcode)
+                this.hashcode = ops.hashcode;
+            else if (ops.useProtocol)
+                this.hashcode = protocolHash.<K>;
+            else
+                this.hashcode = intrinsic::hashcode;
+            
+            if (ops.equals)
+                equals = ops.equals;
+            else if (ops.useProtocol)
+                equals = protocolEq.<K>;
+            else
+                equals = intrinsic::===;
         }
 
         /* This is a little weird.  We assume we only want to capture
@@ -79,47 +119,12 @@ namespace Library
          * the key type 'K' must be 'string' for this to work.
          */
         meta static function convert(x : Object!) {
-            let d = new Dictionary.<string,V>;
+            let d = new Dict.<(string,uint),*>;
             for ( let n in x )
                 if (!(n is Name))
                     if (x.hasOwnProperty(n))
                         d.put(n, x[n]);
             return d;
-        }
-
-        /* "Standard" hash function:
-         *  - subclasses of String hash by name
-         *  - empty string hashes as 0
-         *  - true hashes as 1, false as 0
-         *  - undefined and null hash as 0
-         *  - numbers hash by conversion to uint
-         *  - everything else hashes by intrinsic::hashcode()
-         *
-         * The function is public so that other hash users can pick it up
-         * and use it.
-         *
-         * FIXME: Issue: should string hashing be moved to "String"?
-         * If so, should it be static or a method that can be
-         * overridden?
-         */
-        public static function standardHash(key: *): uint {
-            if (key is String) {
-                let h = 0;
-                for ( let i = 0, limit = key.length ; i < limit ; i++ )
-                    h = h << 4 | key.charCodeAt(i);
-                return h;
-            }
-
-            if (key is Numeric)
-                return uint(key);
-
-            if (key === false || key === undefined || key === null)
-                return 0;
-
-            if (key === true)
-                return 1;
-
-            return intrinsic::hashcode(key);
         }
 
         /* Return the number of mappings in the dictionary */
@@ -196,10 +201,13 @@ namespace Library
         }
 
         private function find(key:K): [box,box] {
-            let h = hashfn(key) % limit;
+            let h = this.hashcode(key) % limit;
             let l = tbl[h];
             let p = null;
-            while (l && l.key !== key) {
+            // Documented behavior: the key in the table is the left
+            // operand, while the key we're looking for is the right
+            // operand.
+            while (l && !this.equals(l.key,key)) {
                 p = l;
                 l = l.link;
             }
@@ -207,7 +215,7 @@ namespace Library
         }
 
         private function insert(key:K, value:V) : void {
-            let hash = hashfn(key);
+            let hash = this.hashcode(key);
             if (population > limit*REHASH_UP)
                 rehash(true);
             let h = hash % limit;
@@ -241,14 +249,15 @@ namespace Library
 
         /* We need to have REHASH_UP > REHASH_DOWN*2 for things to work */
 
-        private const REHASH_UP = 1;           /* rehash if population > REHASH_UP*limit */
-        private const REHASH_DOWN = 1/3;       /* rehash if population < REHASH_DOWN*limit */
+        private const REHASH_UP = 1;                  /* rehash if population > REHASH_UP*limit */
+        private const REHASH_DOWN = 1/3;              /* rehash if population < REHASH_DOWN*limit */
 
         private type box = {key:K, value:V, link:* /*box*/};
 
-        private var hashfn : function(*):uint; /* hash function (should be const?) */
-        private var population: uint = 0;      /* number of elements in the table */
-        private var limit: uint = 10;          /* number of buckets in the table */
-        private var tbl: [box] = newTbl(limit);/* hash table */
+        private var hashcode : function(K):uint;        /* key hash function (should be const?) */
+        private var equals : function (K,K):boolean;   /* key equality tester (should be const?) */
+        private var population: uint = 0;             /* number of elements in the table */
+        private var limit: uint = 10;                 /* number of buckets in the table */
+        private var tbl: [box] = newTbl(limit);       /* hash table */
     }
 }
