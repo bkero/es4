@@ -65,6 +65,13 @@ fun withRib (rib:Ast.RIB)
 		 visitIdent = visitIdent }
     end
 
+fun withRibOpt (rib:Ast.RIB option)
+	       (helper:'a HELPER)
+    : 'a HELPER =
+    case rib of 
+	NONE => helper
+      | SOME r => withRib r helper
+
 fun withHeadRib (head:Ast.HEAD)
 		(helper:'a HELPER)
     : 'a HELPER =
@@ -286,18 +293,16 @@ and substStmt (helper:'a HELPER)
 	    Ast.ClassBlock { ns = Option.map (substExpr helper) ns,
 			     ident = visitIdent ident,
 			     name = Option.map (substName helper) name,
-			     block = substBlock helper }
+			     block = substBlock helper block }
 
 	  | Ast.ForInStmt { isEach, defn, obj, rib, next, labels, body } => 
 	    let
 		(* FIXME: shouldn't 'labels' go in the rib somehow? *)
 		val labels = map visitIdent labels
 		val rib = Option.map (substRib helper) rib
-		val helper' = case rib of
-				  NONE => helper
-				| SOME r => withRib r helper
+		val helper' = withRibOpt rib helper
 	    in
-		Ast.ForInStmt { isEeach = isEach,
+		Ast.ForInStmt { isEach = isEach,
 				defn = defn,
 				obj = substExpr helper obj,
 				rib = rib,
@@ -332,31 +337,31 @@ and substStmt (helper:'a HELPER)
 
 	  | Ast.WhileStmt {cond, rib, body, labels} => 
 	    let
-		val rib = substRib helper rib
+		val rib = Option.map (substRib helper) rib
 		val labels = map visitIdent labels
 	    in
 		Ast.WhileStmt { cond = substExpr helper cond,
 				rib = rib,
-				body = substStmt (withRib rib helper) body,
+				body = substStmt (withRibOpt rib helper) body,
 				labels = labels }
 	    end
 	    
 	  | Ast.DoWhileStmt {cond, rib, body, labels} => 
 	    let
-		val labels = map (visitIdent helper) labels
-		val rib = substRib helper rib
+		val labels = map visitIdent labels
+		val rib = Option.map (substRib helper) rib
 	    in
 		Ast.DoWhileStmt { cond = substExpr helper cond,
 				  rib = rib,
-				  body = substStmt (withRib rib helper) body,
+				  body = substStmt (withRibOpt rib helper) body,
 				  labels = labels }
 	    end
 
 	  | Ast.ForStmt { rib, defn, init, cond, update, labels, body } =>
 	    let
-		val labels = map (visitIdent helper) labels
-		val rib = substRib helper rib
-		val helper' = withRib rib helper
+		val labels = map visitIdent labels
+		val rib = Option.map (substRib helper) rib
+		val helper' = withRibOpt rib helper
 	    in
 		Ast.ForStmt { rib = rib,
 			      defn = defn,
@@ -384,7 +389,7 @@ and substStmt (helper:'a HELPER)
 
        | Ast.SwitchStmt { mode, cond, labels, cases } => 
 	 let
-	     val labels = map (visitIdent helper) labels
+	     val labels = map visitIdent labels
 	 in
 	     Ast.SwitchStmt { mode = mode,
 			      cond = substExpr helper cond,
@@ -395,7 +400,7 @@ and substStmt (helper:'a HELPER)
        | Ast.SwitchTypeStmt { cond, ty, cases } => 
 	 Ast.SwitchTypeStmt { cond = substExpr helper cond,
 			      ty = substTy helper ty,
-			      cases = map (substCase helper) cases }
+			      cases = map (substCatchClause helper) cases }
 
        | Ast.DXNStmt {expr} => 
 	 Ast.DXNStmt {expr = substExpr helper expr }
@@ -406,13 +411,17 @@ and substCatchClause (helper:'a HELPER)
     : (Ast.CATCH_CLAUSE) = 
     let
 	val { bindings, ty, rib, inits, block } = cc
+	val rib = case rib of NONE => []
+			    | SOME r => r
+	val inits = case inits of NONE => []
+				| SOME i => i
 	val synthHead (* huh? *) = Ast.Head (rib, inits)
 	val Ast.Head (rib, inits) = substHead helper synthHead
     in
 	{ bindings = bindings, 
 	  ty = substTy helper ty,
-	  rib = rib,
-	  inits = inits,
+	  rib = SOME rib,
+	  inits = SOME inits,
 	  block = substBlock (withRib rib helper) block }
     end
 
@@ -462,21 +471,21 @@ and substFixture (helper:'a HELPER)
 			   Ast.NamespaceFixture ns => 
 			   Ast.NamespaceFixture (substNamespace helper ns)
 			 | Ast.TypeFixture ty => 
-			   Ast.TypeFixture (substType helper ty)
+			   Ast.TypeFixture (substTy helper ty)
 			 | Ast.MethodFixture { func, ty, readOnly, 
 					       override, final, abstract } => 
 			   Ast.MethodFixture { func = substFunc helper func,
-					       ty = substType helper ty,
+					       ty = substTy helper ty,
 					       readOnly = readOnly,
 					       override = override,
 					       final = final,
 					       abstract = abstract }
 			 | Ast.ValFixture { ty, readOnly } => 
-			   Ast.ValFixture { ty = substType helper ty,
+			   Ast.ValFixture { ty = substTy helper ty,
 					    readOnly = readOnly }
 
 			 | Ast.VirtualValFixture { ty, getter, setter } => 
-			   Ast.VirtualValFixture { ty = substType helper ty,
+			   Ast.VirtualValFixture { ty = substTy helper ty,
 						   getter = Option.map (substFuncDefn helper) getter,
 						   setter = Option.map (substFuncDefn helper) setter }
     in
@@ -494,8 +503,8 @@ and substHead (helper:'a HELPER)
     let
 	val Ast.Head (rib, inits) = head
     in
-	(substRib helper rib, 
-	 substInits helper inits)
+	Ast.Head (substRib helper rib, 
+		  substInits helper inits)
     end
 
 and substIdentExpr (helper:'a HELPER) 
@@ -525,7 +534,7 @@ and substIdentExpr (helper:'a HELPER)
 				      ident = visitIdent ident }
 	    
 	  | Ast.UnresolvedPath ( idents, ident ) => 
-	    Ast.UnresolvedPath ( idents, visitIdent ident )
+	    Ast.UnresolvedPath ( idents, substIdentExpr helper ident )
 	    
 	  | Ast.WildcardIdentifier => 
 	    Ast.WildcardIdentifier
@@ -613,7 +622,7 @@ and substLit (helper:'a HELPER)
 
        | Ast.LiteralArray { exprs, ty } =>
 	 Ast.LiteralArray { exprs = substExprs helper exprs,
-			    ty = Option.map (substType helper) ty }
+			    ty = Option.map (substTy helper) ty }
 
        | Ast.LiteralXML exprs => 
 	 Ast.LiteralXML (substExprs helper exprs)
@@ -623,7 +632,7 @@ and substLit (helper:'a HELPER)
 
        | Ast.LiteralObject { expr, ty } => 
 	 Ast.LiteralObject { expr = map (substField helper) expr,
-			     ty = Option.map (substType helper) ty }
+			     ty = Option.map (substTy helper) ty }
 
        | Ast.LiteralFunction func => 
 	 Ast.LiteralFunction (substFunc helper func)
@@ -648,6 +657,7 @@ and substFunc (helper:'a HELPER)
 	val param = substHead (withRib rib helper) param
     in
 	Ast.Func { name = {kind = kind, ident = ident},
+		   typeParams = typeParams,
 		   (* fsig should be reduced to param and defaults by the time we're called *)
 		   fsig = fsig, 
 		   native = native,
@@ -719,7 +729,7 @@ and substPragma (helper:'a HELPER)
 	    Ast.UseNumber nt
 	    
 	  | Ast.UseRounding dm =>
-	    Ast.UseRounding
+	    Ast.UseRounding dm
 	    
 	  | Ast.UsePrecision i => 
 	    Ast.UsePrecision i
@@ -730,8 +740,8 @@ and substPragma (helper:'a HELPER)
 			       
 	  | Ast.Import {package, name, alias} => 
 	    Ast.Import { package = map visitIdent package,
-			 name = visitIdent,
-			 alias = Option.map visitIdent package }
+			 name = visitIdent name,
+			 alias = Option.map visitIdent alias }
     end
 
 
@@ -740,12 +750,15 @@ and substBlock (helper:'a HELPER)
     : Ast.BLOCK =
     let
 	val Ast.Block {pragmas, defns, head, body, loc} = block
-	val head = substHead helper head
+	val head = Option.map (substHead helper) head
+	val helper = case head of 
+			 NONE => helper
+		       | SOME h => withHeadRib h helper
     in
 	Ast.Block { pragmas = map (substPragma helper) pragmas,
 		    defns = defns, 
 		    head = head,
-		    body = map (substStmt (withHeadRib head helper)) body,
+		    body = map (substStmt helper) body,
 		    loc = loc }
     end
 

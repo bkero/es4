@@ -433,6 +433,10 @@ datatype PRAGMA =
          { ty: TY, 
            getter: FUNC_DEFN option,
            setter: FUNC_DEFN option } (* VIRTUAL_VAL_FIXTURE *)
+       | InheritedFixture of 
+         { baseName: NAME, 
+           baseTypeArgRib: RIB,
+           fixture: FIXTURE }
 
      and HEAD =
          Head of RIB * INITS

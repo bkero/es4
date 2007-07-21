@@ -55,7 +55,7 @@ Library
     structure NameMap	
     structure Ustring
     structure SMLofNJEntry
-    structure Subst
+ (* structure Subst *)
 is
     logerr.sml (lambdasplit: infinity)
     main.sml
@@ -84,7 +84,7 @@ is
     namemap.sml (lambdasplit: infinity)
     ustring.sml
     smlnj.sml (lambdasplit: infinity)
-    subst.sml (lambdasplit: infinity)
+(*  subst.sml (lambdasplit: infinity) *)
 
     $/basis.cm
     $/smlnj-lib.cm

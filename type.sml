@@ -46,8 +46,6 @@ val anyType         = Ast.SpecialType Ast.Any
 
 fun assert b s = if b then () else (raise Fail s)
 
-type HELPER = Subst.HELPER
-
 fun toString ty =
     let
         fun nsExprToString e =
@@ -581,9 +579,11 @@ fun serializeGroundType (a:Ast.TYPE_EXPR)
  * Equality
  * ----------------------------------------------------------------------------- *)
 
-fun equals (t1:TYPE_VALUE)
-           (t2:TYPE_VALUE)
+fun equals (t1:Ast.TY)
+           (t2:Ast.TY)
     : bool =
+true
+(*
     let
         fun pairEqual (t1, t2) = equals t1 t2
         fun allEqual ts1 ts2 = List.all pairEqual (ListPair.zip (ts1, ts2))
@@ -680,15 +680,18 @@ fun equals (t1:TYPE_VALUE)
             => identExprEquals ie1 ie2
           | _ => false
     end
+*)
 
 (* -----------------------------------------------------------------------------
  * Subtyping
  * ----------------------------------------------------------------------------- *)
 
-fun isSubtype (tf:Fixture.TOP_FIXTURES)
-              (t1:TYPE_VALUE) (* derived *)
-              (t2:TYPE_VALUE) (* base *)
+fun isSubtype (prog:Fixture.PROGRAM)
+              (t1:Ast.TY) (* derived *)
+              (t2:Ast.TY) (* base *)
     : bool =
+    true
+(*
     let
         val _ = trace [">>> isSubtype: ", fmtType t1, " <: ", fmtType t2 ];
         val t1 = normalize t1
@@ -743,15 +746,18 @@ fun isSubtype (tf:Fixture.TOP_FIXTURES)
         trace ["<<< isSubtype: ", fmtType t1, " <: ", fmtType t2, " = ", Bool.toString res ];
         res
     end
+*)
 
 (* -----------------------------------------------------------------------------
  * Compatibility
  * ----------------------------------------------------------------------------- *)
 
-and isCompatible (tf:Fixture.TOP_FIXTURES)
-                 (t1:TYPE_VALUE)
-                 (t2:TYPE_VALUE)
+and isCompatible (prog:Fixture.PROGRAM)
+                 (t1:Ast.TY)
+                 (t2:Ast.TY)
     : bool =
+true
+(*
     let
         val t1 = normalize t1
         val t2 = normalize t2
@@ -826,6 +832,7 @@ and isCompatible (tf:Fixture.TOP_FIXTURES)
         trace ["<<< isCompatible: ", fmtType t1, " ~: ", fmtType t2, " = ", Bool.toString res ];
         res
     end
+*)
 
 (* -----------------------------------------------------------------------------
  * Convertibility
@@ -837,10 +844,13 @@ and isCompatible (tf:Fixture.TOP_FIXTURES)
  * meta static function convert(x:pt) where ty1 ~: pt,
  * or NONE if there is no such converter.
  *)
-fun findConversion (tf:Fixture.TOP_FIXTURES)
-                   (ty1:TYPE_VALUE)
-                   (ty2:TYPE_VALUE)
+
+fun findConversion (prog:Fixture.PROGRAM)
+                   (ty1:Ast.TY)
+                   (ty2:Ast.TY)
     : Ast.NAME option =
+    NONE
+(*
     let
         val _ = trace ["searching for converter from ", fmtType ty1,
                        " ~~> ", fmtType ty2];
@@ -861,5 +871,5 @@ fun findConversion (tf:Fixture.TOP_FIXTURES)
     in
         tryToConvertTo ty2
     end
-
+*)
 end
