@@ -435,8 +435,7 @@ datatype PRAGMA =
            setter: FUNC_DEFN option } (* VIRTUAL_VAL_FIXTURE *)
        | InheritedFixture of 
          { baseName: NAME, 
-           baseTypeArgs: TY list,
-           baseFixture: FIXTURE }
+           baseTypeArgs: TY list }
 
      and HEAD =
          Head of RIB * INITS
