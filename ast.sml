@@ -421,7 +421,7 @@ datatype PRAGMA =
        | TypeFixture of TY
        | MethodFixture of
            { func: FUNC,
-             ty: TY,
+             ty: TY,             
              readOnly: bool,  (* ES3 funcs are r/w methods with ty=Ast.Special Ast.Any *)
              override: bool,
              final: bool,
@@ -435,8 +435,8 @@ datatype PRAGMA =
            setter: FUNC_DEFN option } (* VIRTUAL_VAL_FIXTURE *)
        | InheritedFixture of 
          { baseName: NAME, 
-           baseTypeArgRib: RIB,
-           fixture: FIXTURE }
+           baseTypeArgs: TY list,
+           baseFixture: FIXTURE }
 
      and HEAD =
          Head of RIB * INITS
