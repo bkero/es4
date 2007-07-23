@@ -38,12 +38,12 @@ package JSON
     use default namespace public;
 
     // API not yet determined
-    function emit(o : Object, ...args) : String! {
+    function emit(o : Object, ...args) : string {
         return "";
     }
 
     // API not yet determined
-    function parse(s : String, ...args) : Object! {
+    function parse(s : string, ...args) : Object! {
         return {};
     }
 }

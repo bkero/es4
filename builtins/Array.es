@@ -84,7 +84,7 @@ package
         prototype function toString(this:Array)
             this.join();
 
-        override intrinsic function toString():String
+        override intrinsic function toString():string
             join();
 
         // 15.4.4.3 Array.prototype.toLocaleString ( )
@@ -92,7 +92,7 @@ package
             this.toLocaleString();
 
         override intrinsic function toLocaleString():string {
-            let out:String = "";
+            let out:string = "";
             for (let i:uint = 0, n:uint = this.length; i < n; i++) {
                 if (i != 0)
                     out += ",";
@@ -135,15 +135,15 @@ package
 
         // 15.4.4.5 Array.prototype.join (separator)
         public static function join(self, sep = undefined) {
-            let s:String = (sep === undefined) ? "," : String(sep);
-            let out:String = "";
+            let s:string = (sep === undefined) ? "," : string(sep);
+            let out:string = "";
             let len:uint = self.length;
             for (let i:uint = 0; i < len; i++) {
                 if (i != 0)
                     out += s;
                 let x = self[i];
                 if (x !== undefined && x !== null)
-                    out += String(x);
+                    out += string(x);
             }
             return out;
         }
@@ -151,7 +151,7 @@ package
         prototype function join(sep = undefined)
             Array.join(this, sep);  /* FIXME: "Array." should not be necessary */
 
-        intrinsic function join(sep = undefined):String
+        intrinsic function join(sep = undefined):string
             Array.join(this, sep);  /* FIXME: "Array." should not be necessary */
 
         // 15.4.4.6 Array.prototype.pop ( )

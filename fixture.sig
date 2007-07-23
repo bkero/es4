@@ -107,8 +107,12 @@ signature FIXTURE = sig
     val getTopRib : PROGRAM -> Ast.RIB
     val getTopRibForUnit : PROGRAM -> Ast.UNIT_NAME -> Ast.RIB option
     val getTopBlocks : PROGRAM -> Ast.BLOCK list
+    val getPackageNames : PROGRAM -> Ast.IDENT list list
 
     (* FIXME: the coupling between type.sml and fixture.sml suggests re-merging them *)
+    val mergeFixtures : (Ast.TY -> Ast.TY -> bool) -> 
+                        ((Ast.FIXTURE_NAME * Ast.FIXTURE) * Ast.RIB) -> 
+                        Ast.RIB
     val instanceType : PROGRAM -> Ast.NAME -> Ast.TY
     val isClass : PROGRAM -> Ast.NAME -> bool
     val getClass : PROGRAM -> Ast.NAME -> Ast.CLS

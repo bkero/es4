@@ -322,8 +322,15 @@ package
         prototype function replace(searchValue, replaceValue)
             string.replace(this, searchValue, replaceValue);
 
+        /* FIXME: it's an open question if the interface here should use (String!,RegExp!)
+           or (string,RegExp!), and whether the replace function should return "string" or
+           "String!".  This has implications for strict mode only.
+           
+           Note that the superclass uses String!, and will need to be involved in the fix
+           somehow.
+        */
         override
-        intrinsic function replace(searchValue: (RegExp!,String!),
+        intrinsic function replace(searchValue: (String!,RegExp!),
                                    replaceValue: (String!,function(...):String!)) : string
             string.replace(this, searchValue, replaceValue);
 
@@ -499,6 +506,11 @@ package
         prototype function split(separator, limit)
             string.split(this, separator, limit);
 
+        /* FIXME: it's an open question if the interface here should use (String!,RegExp!) or
+           (string,RegExp!).  
+
+           Note that the superclass uses String! and that that has an impact here.
+        */
         override
         intrinsic function split(separator:(String!,RegExp!), limit: uint = uint.MAX_VALUE): Array!
             string.split(this, separator, limit)

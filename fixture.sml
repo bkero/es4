@@ -123,6 +123,7 @@ type PROGRAM = { fixtureCache: (Ast.FIXTURE NmMap.map) ref, (* mirrors the top r
                  cacheSize: int,
                  topRib: Ast.RIB,
                  topBlocks: Ast.BLOCK list,
+                 packageNames: (Ast.IDENT list) list,
                  unitRibs: (Ast.RIB StrVecMap.map) }
 
 fun mkProgram (topRib:Ast.RIB)
@@ -132,6 +133,7 @@ fun mkProgram (topRib:Ast.RIB)
       cacheSize = 1024,
       topRib = topRib,
       topBlocks = [],
+      packageNames = [],
       unitRibs = StrVecMap.empty }
 
 fun mergeVirtuals (tyeq:Ast.TY -> Ast.TY -> bool)
@@ -191,7 +193,7 @@ fun addTopFragment (prog:PROGRAM)
     : PROGRAM = 
     let
         val { fixtureCache, instanceOfCache, cacheSize, 
-              topRib, topBlocks, unitRibs } = prog
+              topRib, topBlocks, packageNames, unitRibs } = prog
         val newTopRib = List.foldl (mergeFixtures tyeq) topRib newRib
         val newUnitRibs = 
             case frag of 
@@ -204,6 +206,12 @@ fun addTopFragment (prog:PROGRAM)
           | fragBlocks (Ast.Package {name, fragments}) = 
             List.concat (map fragBlocks fragments)
           | fragBlocks (Ast.Anon block) = [block]
+
+        fun fragPackages (Ast.Unit {name, fragments}) = 
+            List.concat (map fragPackages fragments)
+          | fragPackages (Ast.Package {name, fragments}) = 
+            name :: (List.concat (map fragPackages fragments))
+          | fragPackages (Ast.Anon block) = []                                          
     in
         
         { cacheSize = cacheSize, 
@@ -213,6 +221,7 @@ fun addTopFragment (prog:PROGRAM)
           (* replace updated immutable parts *)
           topRib = newTopRib,
           topBlocks = topBlocks @ (fragBlocks frag),
+          packageNames = packageNames @ (fragPackages frag),
           unitRibs = newUnitRibs }
     end
 
@@ -237,6 +246,7 @@ fun getTopFixture (prog:PROGRAM)
     end
 
 val (getTopRib:PROGRAM -> Ast.RIB) = #topRib
+val (getPackageNames:PROGRAM -> Ast.IDENT list list) = #packageNames
 
 fun getTopRibForUnit (prog:PROGRAM)
                      (unit:Ast.UNIT_NAME)
