@@ -114,12 +114,10 @@ package
            Take your pick.
         */
         public static var parse = function parse(string, reference:double=0.0) {
-            if (arguments.length > 2)
-                throw new TypeError("Too many arguments to Date.parse");
             return Date.parse(ToString(string), reference);
         }
 
-        static intrinsic function parse(s:string, reference:double=0.0) : Date! {
+        static intrinsic function parse(s:string, reference:double=0.0) : double {
 
             function fractionToMilliseconds(frac : string) : double
                 Math.floor(1000 * (parseInt(frac) / Math.pow(10,frac.length)));
@@ -127,13 +125,13 @@ package
             let defaults : Date! = new Date(reference);
             if (isoRes) {
                 let year = isoRes.year !== undefined ? parseInt(isoRes.year) : defaults.UTCYear;
-                let month = isoRes.month !== undefined ? parseInt(isoRes.month) : defaults.UTCMonth;
+                let month = isoRes.month !== undefined ? parseInt(isoRes.month)-1 : defaults.UTCMonth;
                 let day = isoRes.day !== undefined ? parseInt(isoRes.day) : defaults.UTCDay;
                 let hour = isoRes.hour !== undefined ? parseInt(isoRes.hour) : defaults.UTCHour;
-                let mins = isoRes.mins !== undefined ? parseInt(isoRes.mins) : defaults.UTCMinutes;
-                let secs = isoRes.secs !== undefined ? parseInt(isoRes.secs) : defaults.UTCSeconds;
+                let mins = isoRes.minutes !== undefined ? parseInt(isoRes.minutes) : defaults.UTCMinutes;
+                let secs = isoRes.seconds !== undefined ? parseInt(isoRes.seconds) : defaults.UTCSeconds;
                 let millisecs = isoRes.fraction !== undefined ?
-                    fractionToMillisecons(isoRes.fraction) :
+                    fractionToMilliseconds(isoRes.fraction) :
                     defaults.UTCMilliseconds;
                 let tzo = defaults.timezoneOffset;
                 if (isoRes.zulu !== undefined)
@@ -145,7 +143,7 @@ package
                     if (isoRes.tzdir === "-")
                         tzo = -tzo;
                 }
-                return new Date(Date.UTC(year, month, day, hour, mins, secs, millisecs).time - tzo);
+                return new Date.UTC(year, month, day, hour, mins, secs, millisecs) - tzo;
             }
             else
                 return fromDateString(s, reference);
@@ -160,7 +158,7 @@ package
            the minimum required by the Standard and we handle that
            here along with the output of Date.prototype.toUTCString.
         */
-        static function fromDateString(s : string, reference : double) : Date {
+        static function fromDateString(s : string, reference : double) : double {
 
             function findMonth(name) {
                 for ( let i:int=0 ; i < monthNames.length ; i++ )
@@ -171,7 +169,7 @@ package
 
             let res = adhocTimestamp.exec(s);
             if (res === null || res === undefined)
-                return new Date(reference);
+                return reference;
             let t = Date.UTC(parseInt(res.year),
                              findMonth(res.month),
                              parseInt(res.day),
@@ -179,14 +177,14 @@ package
                              parseInt(res.minute),
                              parseInt(res.second));
             if (res.tz !== undefined) {
-                let hour = parseInt(res.tz[1:3]);
-                let min  = parseInt(res.tz[3:5]);
+                let hour = parseInt(res.tz.substring(1,3)); // FIXME #132: should be [1:3]
+                let min  = parseInt(res.tz.substring(3,5)); // FIXME #132: should be [3:5]
                 if (res.tz[0] == '+')
                     t -= (hour*60 + min)*60*1000;
                 else
                     t += (hour*60 + min)*60*1000;
             }
-            return new Date(t);
+            return t;
         }
 
         /* E262-4 proposals:date_and_time - "Current and elapsed times" */
@@ -245,7 +243,7 @@ package
              (?P<minute> [0-9]{2} ):
              (?P<second> [0-9]{2} )\s+
              GMT
-            (?P<tz> (?: \\+ | - ) [0-9]{4} )?/x;
+            (?P<tz> (?: \+ | - ) [0-9]{4} )?/x;
 
         /* Format of string produced by Date.toISOString, recognized by Date.parse */
         /* e.g, "2006-12-15T23:45:09.33-08:00" */
@@ -265,7 +263,7 @@ package
             # Timezone, optional
             (?: (?P<zulu> Z )
              | (?P<offs>
-                (?P<tzdir> \\+ | - )
+                (?P<tzdir> \+ | - )
                 (?P<tzhr> [0-9]{2} )
                 (?: : (?P<tzmin> [0-9]{2} ) )? ) )?
             $/x;
@@ -276,7 +274,7 @@ package
 
         intrinsic function toISOString() : string {
 
-            function years(n : double) : String {
+            function years(n : double) : string {
                 if (n >= 0 && n <= 9999)
                     return (n+10000).toString().substring(1);
                 else
@@ -289,12 +287,10 @@ package
                 return n.toString();
             }
 
-            let tz:double = timezoneOffset;
-            let atz:double = Math.abs(tz);
-            return "" + years(fullYear) + "-" + twoDigit(month) + "-" + twoDigit(day) +
-                "T" + twoDigit(hours) + ":" + twoDigit(minutes) + ":" + twoDigit(seconds) +
-                "." + fraction(int(milliseconds)) + sign(tz) +
-                twoDigit(Math.floor(atz / 60)) + ":" + twoDigit(atz % 60);
+            return "" + years(UTCFullYear) + "-" + twoDigit(UTCMonth+1) + "-" + twoDigit(UTCDate) +
+                "T" + twoDigit(UTCHours) + ":" + twoDigit(UTCMinutes) + ":" + twoDigit(UTCSeconds) +
+                "." + fraction(int(UTCMilliseconds)) + 
+                "Z";
         }
 
         /* E262-3 15.9.5.2: Date.prototype.toString */
@@ -302,18 +298,19 @@ package
             this.toString();
 
         /* INFORMATIVE */
-        override intrinsic function toString() : string
+        override intrinsic function toString() : string {
             /* "Fri, 15 Dec 2006 23:45:09 GMT-0800" */
-            let (tz:double = timezoneOffset)
-	    let (atz:double = Math.abs(tz))
-	    (dayNames[day] + ", " +
-	     twoDigit(date) + " " +
-	     monthNames[month] + " " +
-	     fullYear + " " +
-	     twoDigit(hours) + ":" +
-	     twoDigit(minutes) + ":" +
-	     twoDigit(seconds) + " GMT" +
-	     sign(tz) + twoDigit(Math.floor(atz / 60)) + twoDigit(atz % 60));
+            let tz:double = timezoneOffset;
+	    let atz:double = Math.abs(tz);
+	    return (dayNames[day] + ", " +
+                    twoDigit(date) + " " +
+                    monthNames[month] + " " +
+                    fullYear + " " +
+                    twoDigit(hours) + ":" +
+                    twoDigit(minutes) + ":" +
+                    twoDigit(seconds) + " GMT" +
+                    sign(tz) + twoDigit(Math.floor(atz / 60)) + twoDigit(atz % 60));
+        }
 
         prototype function toGMTString(this:Date)
             this.toUTCString();
@@ -323,27 +320,29 @@ package
             this.toUTCString();
 
         /* INFORMATIVE */
-        intrinsic function toUTCString() : string
+        intrinsic function toUTCString() : string {
             /* "Sat, 16 Dec 2006 08:06:21 GMT" */
-            dayNames[UTCDay] + ", " +
-            twoDigit(UTCDate) + " " +
-            monthNames[UTCMonth] + " " +
-            UTCFullYear + " " +
-            twoDigit(UTCHours) + ":" +
-            twoDigit(UTCMinutes) + ":" +
-            twoDigit(UTCSeconds) + " GMT";
+            return (dayNames[UTCDay] + ", " +
+                    twoDigit(UTCDate) + " " +
+                    monthNames[UTCMonth] + " " +
+                    UTCFullYear + " " +
+                    twoDigit(UTCHours) + ":" +
+                    twoDigit(UTCMinutes) + ":" +
+                    twoDigit(UTCSeconds) + " GMT");
+        }
 
         /* E262-3 15.9.5.3: Date.prototype.toDateString */
         prototype function toDateString(this:Date)
             this.toDateString();
 
         /* INFORMATIVE */
-        intrinsic function toDateString() : string
+        intrinsic function toDateString() : string {
             /* "Sat, 16 Dec 2006" */
-            dayNames[day] + ", " +
-	    twoDigit(date) + " " +
-	    monthNames[month] + " " +
-	    fullYear;
+            return (dayNames[day] + ", " +
+                    twoDigit(date) + " " +
+                    monthNames[month] + " " +
+                    fullYear);
+        }
 
         /* E262-3 15.9.5.4: Date.prototype.toTimeString */
         prototype function toTimeString(this:Date)
@@ -804,7 +803,7 @@ package
         static const monthOffsets : [double]
             = [0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334] : [double];
 
-        function MakeTime(hour:double, min:double, sec:double, ms:double ):double {
+        static function MakeTime(hour:double, min:double, sec:double, ms:double ):double {
             if (!isFinite(hour) || !isFinite(min) || !isFinite(sec) || !isFinite(ms))
                 return NaN;
 
@@ -814,7 +813,7 @@ package
                 ToInteger(ms);
         }
 
-        function MakeDay(year : double, month : double, date : double) : double {
+        static function MakeDay(year : double, month : double, date : double) : double {
             if (!isFinite(year) || !isFinite(month) || !isFinite(date))
                 return NaN;
 
@@ -834,80 +833,63 @@ package
             let yearday = Math.floor(TimeFromYear(year) / msPerDay);
             let monthday = DayFromMonth(month, leap);
 
-            /*
-            print("MakeDay() : ",
-                  "year=", year,
-                  ", month=", month,
-                  ", date=", date,
-                  ", yearday=", yearday,
-                  ", monthday=", monthday,
-                  ", leap=", leap);
-            */
-
             return yearday + monthday + date - 1;
         }
 
-        function MakeDate(day : double, time : double) : double {
+        static function MakeDate(day : double, time : double) : double {
             if (!isFinite(day) || !isFinite(time))
                 return NaN;
 
-            let res = day * msPerDay + time;
-
-            /*
-            print("MakeDate() : ",
-                  "day=", day,
-                  ", time=", time,
-                  ", result=", res);
-            */
-
-            return res;
+            return day * msPerDay + time;
         }
 
-        function Day(t : double) : double
+        static function Day(t : double) : double
             Math.floor(t / msPerDay);
 
-        function TimeWithinDay(t : double) : double
+        static function TimeWithinDay(t : double) : double
             t % msPerDay;
 
-        function HourFromTime(t : double) : double {
+        static function HourFromTime(t : double) : double {
             let v : double = Math.floor(t / msPerHour) % hoursPerDay;
             if (v < 0)
                 return v + hoursPerDay;
             return v;
         }
 
-        function MinFromTime(t : double) : double {
+        static function MinFromTime(t : double) : double {
             let v : double = Math.floor(t / msPerMinute) % minutesPerHour;
             if (v < 0)
                 return v + minutesPerHour;
             return v;
         }
 
-        function SecFromTime(t : double) : double {
+        static function SecFromTime(t : double) : double {
             let v : double = Math.floor(t / msPerSecond) % secondsPerMinute;
             if (v < 0)
                 return v + secondsPerMinute;
             return v;
         }
 
-
-        function DaysInYear(y : double) : double {
+        static function msFromTime(t : double) : double
+            t % msPerSecond;
+            
+        static function DaysInYear(y : double) : double {
             if (y % 4 !== 0) return 365;
             if (y % 100 !== 0) return 366;
             if (y % 400 !== 0) return 365;
             return 366;
         }
 
-        function DayFromYear(y : double) : double
+        static function DayFromYear(y : double) : double
             365 * (y-1970) + Math.floor((y-1969)/4) - Math.floor((y-1901)/100) + Math.floor((y-1601)/400);
 
-        function TimeFromYear(y : double) : double
+        static function TimeFromYear(y : double) : double
             msPerDay * DayFromYear(y);
 
-        function InLeapYear(t : double) : double
+        static function InLeapYear(t : double) : double
             (DaysInYear(YearFromTime(t)) == 365) ? 0 : 1;
 
-        function MonthFromTime(t : double) : double {
+        static function MonthFromTime(t : double) : double {
             let dwy : double = DayWithinYear(t),
                 ily : double = InLeapYear(t);
             for ( let i : int=monthOffsets.length-1; i >= 0; i-- ) {
@@ -920,50 +902,51 @@ package
             /*NOTREACHED*/
         }
 
-        function DayWithinYear(t : double) : double
+        static function DayWithinYear(t : double) : double
             Day(t) - DayFromYear(YearFromTime(t));
 
-        function DayFromMonth(m : double, leap : boolean) : double
+        static function DayFromMonth(m : double, leap : boolean) : double
             monthOffsets[m] + (leap && m >= 2 ? 1 : 0);
 
-        function DateFromTime(t : double) : double
+        static function DateFromTime(t : double) : double {
             // Days-within-year are 0-based. Dates-within-months
             // are 1-based. Hence the dwy+1 below: day 0 == Jan 1.
-            let (dwy : double = DayWithinYear(t),
-                 mft : double = MonthFromTime(t),
-                 ily : double = InLeapYear(t))
-                (dwy+1) - (monthOffsets[mft]) - (mft >= 2 ? ily : 0);
+            let dwy : double = DayWithinYear(t),
+                mft : double = MonthFromTime(t),
+                ily : double = InLeapYear(t);
+            return (dwy+1) - (monthOffsets[mft]) - (mft >= 2 ? ily : 0);
+        }
 
-        function WeekDay(t : double) : double {
+        static function WeekDay(t : double) : double {
             let v : double = (Day(t) + 4) % 7;
             if (v < 0)
                 return v + 7;
             return v;
         }
 
-        function LocalTime(t : double) : double
+        static function LocalTime(t : double) : double
             t + LocalTZA() + DaylightSavingsTA(t);
 
-        function UTCTime(t : double) : double
+        static function UTCTime(t : double) : double
             t - LocalTZA() - DaylightSavingsTA(t - LocalTZA());
 
-        function TimeClip(t : double) : double
+        static function TimeClip(t : double) : double
             (!isFinite(t) || Math.abs(t) > 8.64e15) ? NaN : ToInteger(t);
 
         /* INFORMATIVE */
-        function YearFromTime(t : double) : double {
+        static function YearFromTime(t : double) : double {
             let y : double = Math.floor(t / msPerYear) + 1970;
             let t2 : double = TimeFromYear(y);
-            if (t2 > t) {
+            if (t2 > t)
                 y--;
-            } else {
+            else {
                 if (t2 + msPerDay * DaysInYear(y) <= t)
                     y++;
             }
             return y;
         }
 
-        native function LocalTZA() : double;
-        native function DaylightSavingsTA(t : double) : double;
+        static native function LocalTZA() : double;
+        static native function DaylightSavingsTA(t : double) : double;
     }
 }
