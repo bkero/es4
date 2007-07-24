@@ -73,8 +73,8 @@ datatype LABEL_KIND =
 
 type LABEL = (Ast.IDENT * LABEL_KIND)
 
-type CONTEXT =
-     { fixtures: Ast.FIXTURES,
+type ENV =
+     { ribs: Ast.RIBS,
        tempOffset: int,
        openNamespaces: Ast.NAMESPACE list list,
        numericMode: Ast.NUMERIC_MODE,
@@ -82,31 +82,21 @@ type CONTEXT =
        packageNames: Ast.IDENT list list,
        className: Ast.IDENT,
        packageName: Ast.IDENT list,
+       topUnitName: Ast.IDENT list option,
        defaultNamespace: Ast.NAMESPACE }
 
-type ENV = CONTEXT list
-
 fun dumpEnv (e:ENV) : unit =
-    case e of
-        {fixtures,...}::p => if (!doTrace) then (Pretty.ppFixtures fixtures; dumpEnv p) else ()
-      | _ => ()
+    if (!doTrace) 
+    then List.app Fixture.printRib (#ribs e) 
+    else ()
 
 val defaultNumericMode : Ast.NUMERIC_MODE =
     { numberType = Ast.Number,
       roundingMode = Decimal.defaultRoundingMode,
       precision = Decimal.defaultPrecision }
 
-val (initFixtures:Ast.FIXTURES) = [ (Ast.PropName Name.meta_, Ast.NamespaceFixture Name.metaNS),
-                                    (Ast.PropName Name.magic_, Ast.NamespaceFixture Name.magicNS) ]
-
-val (topFixtures:Fixture.TOP_FIXTURES ref) = ref (Fixture.mkTopFixtures [])
-val (topPackageNames:Ast.IDENT list list ref) = ref []
-
-fun resetTopFixtures _ =
-    topFixtures := Fixture.mkTopFixtures initFixtures
-
-fun resetTopPackageNames _ =
-    topPackageNames := []
+val (initRib:Ast.RIB) = [ (Ast.PropName Name.meta_, Ast.NamespaceFixture Name.metaNS),
+                          (Ast.PropName Name.magic_, Ast.NamespaceFixture Name.magicNS) ]
 
 fun hasNamespace (nl:Ast.NAMESPACE list)
                  (n:Ast.NAMESPACE)
@@ -139,7 +129,6 @@ fun getFieldType (name : Ast.IDENT) (field_types: Ast.FIELD_TYPE list)
 *)
 
 fun inl f (a, b) = (f a, b)
-fun inr f (a, b) = (a, f b)
 
 fun isInstanceInit (s:Ast.STMT)
     : bool =
@@ -167,25 +156,22 @@ fun getEnvParent [] = NONE
   | getEnvParent (x::[]) = NONE
   | getEnvParent (x::xs) = SOME xs
 
-fun getEnvFixtures [] = error ["getEnvFixtures on empty environment"]
-  | getEnvFixtures (({fixtures, ...}:CONTEXT) :: _) = fixtures
-
-fun resolve env mname =
-    Multiname.resolveInFixtures mname env getEnvFixtures getEnvParent
+fun resolve (env:ENV) (mname:Ast.MULTINAME) =
+    Multiname.resolveInRibs mname (#ribs env)
 
 fun resolveMultinameToFixture (env:ENV)
                               (mname:Ast.MULTINAME)
     : Ast.NAME * Ast.FIXTURE =
     case resolve env mname of
         NONE => LogErr.defnError ["unresolved fixture ", LogErr.multiname mname]
-      | SOME (fixtures, n) => (n, Fixture.getFixture fixtures (Ast.PropName n))
+      | SOME (rib::_, n) => (n, Fixture.getFixture rib (Ast.PropName n))
 
 fun multinameHasFixture (env:ENV)
                         (mname:Ast.MULTINAME)
     : bool =
     case resolve env mname of
         NONE => false
-      | SOME (fixtures, n) => true
+      | SOME _ => true
 
 (*
     Since we are in the definition phase the open namespaces have not been
@@ -206,54 +192,6 @@ fun packageIdentFromPath origPath
         packageIdentFromPath_ origPath Ustring.empty
     end
 
-fun mergeVirtuals (fName:Ast.FIXTURE_NAME)
-                  (vnew:Ast.VIRTUAL_VAL_FIXTURE)
-                  (vold:Ast.VIRTUAL_VAL_FIXTURE) =
-    let
-        val ty = if Type.equals (#ty vnew) (#ty vold)
-                 then (#ty vnew)
-                 else (if Type.equals (#ty vnew) (Ast.SpecialType Ast.Any)
-                       then (#ty vold)
-                       else (if Type.equals (#ty vold) (Ast.SpecialType Ast.Any)
-                             then (#ty vnew)
-                             else error ["mismatched get/set types on fixture ",
-                                         LogErr.fname fName]))
-        fun either a b =
-            case (a,b) of
-                (SOME x, NONE) => SOME x
-              | (NONE, SOME x) => SOME x
-              | (NONE, NONE) => NONE
-              | _ => error ["multiply defined get/set functions on fixture ",
-                            LogErr.fname fName]
-    in
-        { ty = ty,
-          getter = either (#getter vold) (#getter vnew),
-          setter = either (#setter vold) (#setter vnew) }
-    end
-
-fun mergeFixtures ((newName,newFix),oldFixs) =
-    if Fixture.hasFixture oldFixs newName
-    then
-        case (newFix, Fixture.getFixture oldFixs newName) of
-            (Ast.VirtualValFixture vnew,
-             Ast.VirtualValFixture vold) =>
-            Fixture.replaceFixture oldFixs newName
-                                   (Ast.VirtualValFixture
-                                        (mergeVirtuals newName vnew vold))
-          | (Ast.ValFixture new, Ast.ValFixture old) =>
-                 if (#ty new) = (#ty old)
-                 (* if (Type.equals (#ty new) (#ty old)) andalso (#readOnly new) = (#readOnly old) *)
-                 then (trace ["skipping fixture ",LogErr.fname newName]; oldFixs)
-                 else error ["incompatible redefinition of fixture name: ", LogErr.fname newName]
-          | (Ast.MethodFixture new, Ast.MethodFixture old) =>
-            Fixture.replaceFixture oldFixs newName (Ast.MethodFixture new) (* FIXME: types *)
-          | (Ast.MethodFixture new, Ast.ValFixture old) =>
-            Fixture.replaceFixture oldFixs newName (Ast.MethodFixture new) (* FIXME: types *)
-          | (Ast.ValFixture new, Ast.MethodFixture old) =>
-            Fixture.replaceFixture oldFixs newName (Ast.ValFixture new) (* FIXME: types *)
-          | _ => error ["mergeFixtures: redefining fixture name: ", LogErr.fname newName]
-    else
-        (newName,newFix) :: oldFixs
 
 fun addNamespace (ns,opennss) =
     if hasNamespace opennss ns
@@ -267,7 +205,7 @@ fun defNamespace (env:ENV)
         in case ns of
             Ast.Public n =>
                 let
-                    val packageName = (#packageName (hd env))
+                    val packageName = (#packageName env)
                     val ident = packageIdentFromPath packageName
                 in
                     if n = Ustring.empty
@@ -278,7 +216,7 @@ fun defNamespace (env:ENV)
                 end
           | Ast.Internal _ =>
                 let
-                    val packageName = (#packageName (hd env))
+                    val packageName = (#packageName env)
                     val ident = packageIdentFromPath packageName
                 in
 (trace2 ("packageName=",ident);
@@ -287,12 +225,12 @@ fun defNamespace (env:ENV)
           | Ast.Private _ =>
                 let
                 in
-                    Ast.Private (#className (hd env))
+                    Ast.Private (#className env)
                 end
           | Ast.Protected _ =>
                 let
                 in
-                    Ast.Protected (#className (hd env))  (* [JD] FIXME: not quite right *)
+                    Ast.Protected (#className env)  (* [JD] FIXME: not quite right *)
                 end
           | _ => ns
         end
@@ -309,7 +247,7 @@ fun resolveExprToNamespace (env:ENV)
       | Ast.LexicalRef {ident = Ast.Identifier {ident,...}, loc } =>
         let
             val _ = LogErr.setLoc loc
-            val mname = {nss = (#openNamespaces (hd env)), id = ident}
+            val mname = {nss = (#openNamespaces env), id = ident}
         in
             case resolveMultinameToFixture env mname of
                 (_,Ast.NamespaceFixture ns) => ns
@@ -319,13 +257,11 @@ fun resolveExprToNamespace (env:ENV)
       | _ => LogErr.defnError ["unexpected expression type ",
                                "in namespace context"]
 
-and defaultNamespace e = case e of c::_ => (#defaultNamespace c) | _ => LogErr.internalError ["empty environment in defaultNamespace"]
-
 and resolveExprOptToNamespace (env: ENV)
                               (ns : Ast.EXPR option)
     : Ast.NAMESPACE =
        case ns of
-           NONE => defaultNamespace env
+           NONE => (#defaultNamespace env)
          | SOME n => resolveExprToNamespace env n
 
 (*
@@ -334,123 +270,132 @@ and resolveExprOptToNamespace (env: ENV)
 *)
 
 fun extendEnvironment (env:ENV)
-                      (fixtures:Ast.FIXTURES)
+                      (rib:Ast.RIB)
     : ENV =
-    case env of
-        [] => (trace ["extending empty environment"];{ fixtures = fixtures,
-                tempOffset = 0,
-                openNamespaces = [[Name.noNS]],
-                numericMode = defaultNumericMode,
-                labels = [],
-                packageNames = [],
-                className = Ustring.fromString "",
-                packageName = [],
-                defaultNamespace = Name.noNS } :: [])
-      | ({ tempOffset, numericMode, openNamespaces, labels, packageNames, className,
-           packageName, defaultNamespace, ... }) :: _ =>
-        { fixtures = fixtures,
+    let
+        val { ribs, tempOffset, numericMode, openNamespaces, 
+              labels, packageNames, className,
+              packageName, defaultNamespace, topUnitName } = env
+    in
+        { ribs = rib :: ribs,
           tempOffset = tempOffset,
           openNamespaces = openNamespaces,
           numericMode = numericMode,
           labels = labels,
-          packageNames = [],
+          packageNames = packageNames,
           className = className,
           packageName = packageName,
-          defaultNamespace = defaultNamespace } :: env
-
-fun updateFixtures (ctx::ex) (fxtrs:Ast.FIXTURES)
-    : ENV =
-    let
-    in
-        { fixtures = List.foldl mergeFixtures fxtrs (#fixtures ctx),
-          tempOffset = (#tempOffset ctx),
-          openNamespaces = (#openNamespaces ctx),
-          numericMode = (#numericMode ctx),
-          labels = (#labels ctx),
-          packageNames = (#packageNames ctx),
-          className = (#className ctx),
-          packageName = (#packageName ctx),
-          defaultNamespace = (#defaultNamespace ctx) } :: ex
+          defaultNamespace = defaultNamespace,
+          topUnitName = topUnitName }
     end
-  | updateFixtures ([]) (fxtrs:Ast.FIXTURES)
-    : ENV =
-        LogErr.defnError ["cannot update an empty environment"]
 
-fun addPackageName ({name,...}:Ast.PACKAGE,(ctx::ex))
+fun mergeRibs (oldRib:Ast.RIB) 
+              (newRib:Ast.RIB) = 
+    List.foldl (Fixture.mergeFixtures Type.equals) oldRib newRib
+
+fun updateFixtures (env:ENV) (rib:Ast.RIB)
     : ENV =
     let
+        val { ribs, tempOffset, numericMode, openNamespaces, 
+              labels, packageNames, className,
+              packageName, defaultNamespace, topUnitName } = env
+        val rib = mergeRibs (hd ribs) rib
     in
-        { fixtures = (#fixtures ctx),
-          tempOffset = (#tempOffset ctx),
-          openNamespaces = (#openNamespaces ctx),
-          numericMode = (#numericMode ctx),
-          labels = (#labels ctx),
-          packageNames = name::(#packageNames ctx),
-          className = (#className ctx),
-          packageName = (#packageName ctx),
-          defaultNamespace = (#defaultNamespace ctx) } :: ex
-    end
-  | addPackageName (_,[])
-    : ENV =
-        LogErr.defnError ["cannot add package name to an empty environment"]
-
-fun updateTempOffset (ctx::ex) (tempOffset:int)
-    : ENV =
-    let
-    in
-        { fixtures = (#fixtures ctx),
+        { ribs = rib :: ribs,
           tempOffset = tempOffset,
-          openNamespaces = (#openNamespaces ctx),
-          numericMode = (#numericMode ctx),
-          labels = (#labels ctx),
-          packageNames = (#packageNames ctx),
-          className = (#className ctx),
-          packageName = (#packageName ctx),
-          defaultNamespace = (#defaultNamespace ctx) } :: ex
+          openNamespaces = openNamespaces,
+          numericMode = numericMode,
+          labels = labels,
+          packageNames = packageNames,
+          className = className,
+          packageName = packageName,
+          defaultNamespace = defaultNamespace,
+          topUnitName = topUnitName }
     end
-  | updateTempOffset ([]) (tempOffset:int)
-    : ENV =
-        LogErr.defnError ["cannot update an empty environment"]
 
-fun clearPackageName (ctx::ex)
+fun addPackageName ((newPkgName:Ast.IDENT list),(env:ENV))
     : ENV =
     let
+        val { ribs, tempOffset, numericMode, openNamespaces, 
+              labels, packageNames, className,
+              packageName, defaultNamespace, topUnitName } = env
     in
-        { fixtures = (#fixtures ctx),
-          tempOffset = (#tempOffset ctx),
-          openNamespaces = (#openNamespaces ctx),
-          numericMode = (#numericMode ctx),
-          labels = (#labels ctx),
-          packageNames = (#packageNames ctx),
-          className = (#className ctx),
-          packageName = [],
-          defaultNamespace = (#defaultNamespace ctx) } :: ex
+        { ribs = ribs,
+          tempOffset = tempOffset,
+          openNamespaces = openNamespaces,
+          numericMode = numericMode,
+          labels = labels,
+          packageNames = newPkgName::packageNames,
+          className = className,
+          packageName = packageName,
+          defaultNamespace = defaultNamespace,
+          topUnitName = topUnitName }
     end
-  | clearPackageName ([])
-    : ENV =
-        LogErr.defnError ["cannot update an empty environment"]
 
-fun enterClass (ctx::ex) (className)
+fun updateTempOffset (env:ENV) (tempOffset:int)
     : ENV =
     let
-        val className = Name.mangle className
+        val { ribs, numericMode, openNamespaces, 
+              labels, packageNames, className,
+              packageName, defaultNamespace, topUnitName, 
+              ... } = env
     in
-        { fixtures = (#fixtures ctx),
-          tempOffset = (#tempOffset ctx),
-          openNamespaces = [Ast.Private className]::(#openNamespaces ctx),
-          numericMode = (#numericMode ctx),
-          labels = (#labels ctx),
-          packageNames = (#packageNames ctx),
+        { ribs = ribs,
+          tempOffset = tempOffset,
+          openNamespaces = openNamespaces,
+          numericMode = numericMode,
+          labels = labels,
+          packageNames = packageNames,
+          className = className,
+          packageName = packageName,
+          defaultNamespace = defaultNamespace,
+          topUnitName = topUnitName }
+    end
+
+fun clearPackageName (env:ENV)
+    : ENV =
+    let
+        val { ribs, tempOffset, numericMode, openNamespaces, 
+              labels, packageNames, className,
+              packageName, defaultNamespace, topUnitName } = env
+    in
+        { ribs = ribs,
+          tempOffset = tempOffset,
+          openNamespaces = openNamespaces,
+          numericMode = numericMode,
+          labels = labels,
+          packageNames = packageNames,
           className = className,
           packageName = [],
-          defaultNamespace = (#defaultNamespace ctx) } :: ex
+          defaultNamespace = defaultNamespace,
+          topUnitName = topUnitName }
     end
-  | enterClass [] _
-    : ENV =
-        LogErr.defnError ["cannot update an empty environment"]
 
-fun dumpLabels (labels : LABEL list) = trace ["labels ", concat (map (fn (id,_) => (Ustring.toAscii id)^" ") labels)]
-fun dumpPath path = trace ["path ", concat (map (fn (id) => (Ustring.toAscii id)^" ") path)]
+fun enterClass (env:ENV) (className)
+    : ENV =
+    let
+        val { ribs, tempOffset, numericMode, openNamespaces, 
+              labels, packageNames, 
+              packageName, defaultNamespace, topUnitName, 
+              ... } = env
+        val className = Name.mangle className
+    in
+        { ribs = ribs,
+          tempOffset = tempOffset,
+          openNamespaces = [Ast.Private className]::openNamespaces,
+          numericMode = numericMode,
+          labels = labels,
+          packageNames = packageNames,
+          className = className,
+          packageName = packageName,
+          defaultNamespace = defaultNamespace,
+          topUnitName = topUnitName }
+    end
+
+fun dumpLabels (labels : LABEL list) = 
+    trace ["labels ", concat (map (fn (id,_) => (Ustring.toAscii id)^" ") labels)]
+fun dumpPath 
+        path = trace ["path ", concat (map (fn (id) => (Ustring.toAscii id)^" ") path)]
 
 (*
     Add a label to the current environment context. Report an error
@@ -462,49 +407,36 @@ fun dumpPath path = trace ["path ", concat (map (fn (id) => (Ustring.toAscii id)
     labels and iteration and switch labels to validate continue statements.
 *)
 
-fun addLabel (env:ENV) (label:LABEL)
+fun addLabel ((label:LABEL),(env:ENV))
     : ENV =
         let
-            fun checkLabel (env:ENV) ((labelId,labelKnd):LABEL) =
-                case env of
-                {labels:LABEL list,...}::_ =>
-                    (dumpLabels labels;
-                    if List.exists (fn ((id,knd):LABEL) =>
-                            not (id = Ustring.empty) andalso  (* ignore empty labels *)
-                            id = labelId andalso              (* compare ids *)
-                            knd = labelKnd) labels            (* and kinds *)
-                    then LogErr.defnError ["duplicate label ", Ustring.toAscii labelId]
-                    else ())
-                  | [] => LogErr.internalError ["empty environment in addLabel"]
+            val { ribs, tempOffset, numericMode, openNamespaces, 
+                  labels, packageNames, className,
+                  packageName, defaultNamespace, topUnitName } = env
+            val (labelId,labelKnd) = label
         in
-            checkLabel env label;
-            case env of
-                ({fixtures,tempOffset,labels,packageNames,openNamespaces,numericMode,className,
-                  packageName,defaultNamespace}::e) =>
-                       { fixtures=fixtures,
-                         tempOffset=tempOffset,
-                         labels=label::labels,
-                         packageNames=packageNames,
-                         openNamespaces=openNamespaces,
-                         numericMode=numericMode,
-                         className = className,
-                         packageName = packageName,
-                         defaultNamespace = defaultNamespace } :: e
-              | [] => LogErr.internalError ["addLabels: cannot update an empty environment"]
+            dumpLabels labels;
+            if List.exists (fn ((id,knd):LABEL) =>
+                               not (id = Ustring.empty) andalso  (* ignore empty labels *)
+                               id = labelId andalso              (* compare ids *)
+                               knd = labelKnd) labels            (* and kinds *)
+            then LogErr.defnError ["duplicate label ", Ustring.toAscii labelId]
+            else ();
+            { ribs = ribs,
+              tempOffset = tempOffset,
+              openNamespaces = openNamespaces,
+              numericMode = numericMode,
+              labels = label::labels,
+              packageNames = packageNames,
+              className = className,
+              packageName = packageName,
+              defaultNamespace = defaultNamespace,
+              topUnitName = topUnitName }
         end
 
 fun addLabels (env:ENV) (labels:LABEL list)
     : ENV =
-    let
-    in case labels of
-        [] => env
-      | _ =>
-        let
-            val env' = addLabel env (hd labels)
-        in
-            addLabels env' (tl labels)
-        end
-    end
+    List.foldl addLabel env labels 
 
 fun multinameFromName (n:Ast.NAME) =
     { nss = [[(#ns n)]], id = (#id n) }
@@ -566,7 +498,7 @@ fun identExprToMultiname (env:ENV) (ie:Ast.IDENT_EXPR)
 
 and defClass (env: ENV)
              (cdef: Ast.CLASS_DEFN)
-    : (Ast.FIXTURES * Ast.CLASS_DEFN) =
+    : (Ast.RIB * Ast.CLASS_DEFN) =
     let
         val class = analyzeClassBody env cdef
         val class = resolveClassInheritance env cdef class
@@ -590,7 +522,7 @@ and defClass (env: ENV)
 
 and defInterface (env: ENV)
                  (idef: Ast.INTERFACE_DEFN)
-    : (Ast.FIXTURES * Ast.INTERFACE_DEFN) =
+    : (Ast.RIB * Ast.INTERFACE_DEFN) =
     let
         val { ident, extends, instanceDefns, nonnullable, ... } = idef
 
@@ -714,9 +646,9 @@ and canOverride (fb:Ast.FIXTURE) (fd:Ast.FIXTURE)
       | _ => LogErr.unimplError ["checkOverride"]
     end
 
-and inheritFixtures (base:Ast.FIXTURES)
-                    (derived:Ast.FIXTURES)
-    : Ast.FIXTURES =
+and inheritFixtures (base:Ast.RIB)
+                    (derived:Ast.RIB)
+    : Ast.RIB =
     let
 
         (*
@@ -750,7 +682,7 @@ and inheritFixtures (base:Ast.FIXTURES)
         *)
 
         fun inheritFixture ((n,fb):(Ast.FIXTURE_NAME * Ast.FIXTURE))
-            : Ast.FIXTURES =
+            : Ast.RIB =
             let
                 fun targetFixture _ = if (Fixture.hasFixture derived n)
                                       then SOME (Fixture.getFixture derived n)
@@ -786,15 +718,15 @@ and inheritFixtures (base:Ast.FIXTURES)
 
 *)
 
-and implementFixtures (base:Ast.FIXTURES)
-                      (derived:Ast.FIXTURES)
+and implementFixtures (base:Ast.RIB)
+                      (derived:Ast.RIB)
     : unit =
     let
         (*
         *)
 
         fun implementFixture ((n,fb):(Ast.FIXTURE_NAME * Ast.FIXTURE))
-            : Ast.FIXTURES =
+            : Ast.RIB =
             let
                 fun targetFixture _ = if (Fixture.hasFixture derived n)
                                       then SOME (Fixture.getFixture derived n)
@@ -873,10 +805,10 @@ and resolveClassInheritance (env:ENV)
 *)
 
 and resolveExtends (env: ENV)
-                   (currInstanceFixtures: Ast.FIXTURES)
+                   (currInstanceFixtures: Ast.RIB)
                    (extends: Ast.IDENT_EXPR option)
                    (children:Ast.NAME list)
-    : (Ast.NAME option * Ast.FIXTURES) =
+    : (Ast.NAME option * Ast.RIB) =
     let
         val _ = trace ["first child ", LogErr.name (hd children)]
         fun seenAsChild (n:Ast.NAME) = List.exists (fn ch => ch = n) children
@@ -905,9 +837,9 @@ and resolveExtends (env: ENV)
     end
 
 and resolveImplements (env: ENV)
-                      (instanceFixtures: Ast.FIXTURES)
+                      (instanceFixtures: Ast.RIB)
                       (implements: Ast.IDENT_EXPR list)
-    : (Ast.NAME list * Ast.FIXTURES) =
+    : (Ast.NAME list * Ast.RIB) =
     let
         val (superInterfaces, abstractFixtures) = resolveInterfaces env implements
         val _ = implementFixtures abstractFixtures instanceFixtures
@@ -930,7 +862,7 @@ and resolveImplements (env: ENV)
 *)
 
 and interfaceMethods (ifxtr)
-    : Ast.FIXTURES =
+    : Ast.RIB =
     case ifxtr of
         Ast.InterfaceFixture (Ast.Iface {instanceFixtures,...}) => instanceFixtures
       |_ => LogErr.internalError ["interfaceMethods"]
@@ -953,7 +885,7 @@ and interfaceExtends (ifxtr)
 
 and resolveInterfaces (env: ENV)
                       (exprs: Ast.IDENT_EXPR list)
-    : (Ast.NAME list * Ast.FIXTURES) =
+    : (Ast.NAME list * Ast.RIB) =
     case exprs of
         [] => ([],[])
       | _ =>
@@ -992,7 +924,7 @@ and analyzeClassBody (env:ENV)
             val env = enterClass env name
 
             val (unhoisted,classFixtures,classInits) = defDefns env [] [] [] classDefns
-            val classFixtures = (List.foldl mergeFixtures unhoisted classFixtures)
+            val classFixtures = (mergeRibs unhoisted classFixtures)
             val staticEnv = extendEnvironment env classFixtures
                              (* namespace and type definitions aren't normally hoisted *)
 
@@ -1113,7 +1045,7 @@ and defVar (env:ENV)
     case var of
         Ast.Binding { ident, ty } =>
         let
-            val ty' = defTyExpr env ty
+            val ty' = defTy env ty
             val readOnly' = case kind of
                                  Ast.Const => true
                                | Ast.LetConst => true
@@ -1125,7 +1057,7 @@ and defVar (env:ENV)
         end
 
 (*
-    (BINDING list * INIT_STEP list) -> (FIXTURES * INITS)
+    (BINDING list * INIT_STEP list) -> (RIB * INITS)
 
      and INIT_STEP =   (* used to encode init of bindings *)
          InitStep of (BINDING_IDENT * EXPR)
@@ -1191,9 +1123,9 @@ and defBindings (env:ENV)
                 (kind:Ast.VAR_DEFN_TAG)
                 (ns:Ast.NAMESPACE)
                 ((binds,inits):Ast.BINDINGS)
-    : (Ast.FIXTURES * Ast.INITS) =
+    : (Ast.RIB * Ast.INITS) =
     let
-        val fxtrs:Ast.FIXTURES = map (defVar env kind ns) binds
+        val fxtrs:Ast.RIB = map (defVar env kind ns) binds
         val inits:Ast.INITS = map (defInitStep env (SOME ns)) inits
     in
         (fxtrs,inits)
@@ -1201,10 +1133,10 @@ and defBindings (env:ENV)
 
 and defSettings (env:ENV)
                 ((binds,inits):Ast.BINDINGS)
-    : (Ast.FIXTURES * Ast.INITS) =
+    : (Ast.RIB * Ast.INITS) =
     let
         val _ = trace [">> defSettings"]
-        val fxtrs:Ast.FIXTURES = map (defVar env Ast.Var Name.noNS) binds
+        val fxtrs:Ast.RIB = map (defVar env Ast.Var Name.noNS) binds
         val inits:Ast.INITS = map (defInitStep env NONE) inits   (* FIXME: lookup ident in open namespaces *)
         val _ = trace ["<< defSettings"]
     in
@@ -1249,7 +1181,7 @@ and defSettings (env:ENV)
 
 and defFuncSig (env:ENV)
                (fsig:Ast.FUNC_SIG)
-    : (Ast.FIXTURES * Ast.INITS * Ast.EXPR list * Ast.FIXTURES * Ast.INITS * Ast.EXPR list * Ast.TYPE_EXPR) =
+    : (Ast.RIB * Ast.INITS * Ast.EXPR list * Ast.RIB * Ast.INITS * Ast.EXPR list * Ast.TYPE_EXPR) =
 
     case fsig of
         Ast.FunctionSignature { typeParams, params, paramTypes, defaults, ctorInits,
@@ -1267,7 +1199,7 @@ and defFuncSig (env:ENV)
 ****)
 
             val thisType = case thisType of NONE => Ast.SpecialType Ast.Any
-                                          | SOME x => defTyExpr env x
+                                          | SOME x => defTy env x
             val thisBinding = (Ast.PropName Name.this,
                                Ast.ValFixture
                                    { ty = thisType,
@@ -1353,7 +1285,7 @@ and defFunc (env:ENV) (func:Ast.FUNC)
                    block = block,
                    defaults = defaults,
                    ty = newTy,
-                   param = Ast.Head (List.foldl mergeFixtures paramFixtures hoisted, paramInits),
+                   param = Ast.Head (mergeRibs paramFixtures hoisted, paramInits),
                    native=native,
                    loc=loc})
     end
@@ -1372,7 +1304,7 @@ and defFunc (env:ENV) (func:Ast.FUNC)
 *)
 
 and defFuncDefn (env:ENV) (f:Ast.FUNC_DEFN)
-    : (Ast.FIXTURES * Ast.FUNC_DEFN) =
+    : (Ast.RIB * Ast.FUNC_DEFN) =
     case (#func f) of
         Ast.Func { name, fsig, block, ty, native, ... } =>
         let
@@ -1465,7 +1397,7 @@ and defCtor (env:ENV) (ctor:Ast.CTOR)
 
 and defPragmas (env:ENV)
                (pragmas:Ast.PRAGMA list)
-    : (ENV * Ast.FIXTURES) =
+    : (ENV * Ast.RIB) =
     let
         val ctx : CONTEXT  = hd env
         val mode      = #numericMode ctx
@@ -1804,7 +1736,7 @@ and defLiteral (env:ENV)
             Ast.LiteralArray {exprs = defExprs env exprs,
                               ty = case ty of
                                        NONE => NONE
-                                     | SOME t => SOME (defTyExpr env t) }
+                                     | SOME t => SOME (defTy env t) }
           | Ast.LiteralXML exprs =>
             Ast.LiteralXML (defExprs env exprs)
 
@@ -1815,7 +1747,7 @@ and defLiteral (env:ENV)
                                                      init = defExpr env init }) expr,
                                ty = case ty of
                                         NONE => NONE
-                                      | SOME t => SOME (defTyExpr env t) }
+                                      | SOME t => SOME (defTy env t) }
 
           | Ast.LiteralNamespace ns =>
             Ast.LiteralNamespace (defNamespace env ns)
@@ -1866,23 +1798,23 @@ and matchPackageName (env:ENV)
                      (path:Ast.IDENT list)
     : Ast.IDENT option * Ast.IDENT list =
     let
-    in case env of
-        [] => (NONE,path)
-      | _ =>
-        let
-            fun parentEnv _ = NONE (* just do one scope at a time *)
-            val mname = identExprToMultiname env (Ast.Identifier {ident=(hd path),openNamespaces=[]})
-        in
-            case Multiname.resolveInFixtures mname env getEnvFixtures parentEnv of
-                SOME (fixtures, n) => (NONE,path)   (* head of path matches fixture *)
-              | NONE => (* head of path does not match fixture, try finding a package name that matches prefix of path *)
-                let
-                    val { packageNames, ... } = hd env
-                in case pathInPackageNames packageNames path of
-                       (NONE,_) => matchPackageName (tl env) path
-                     | (SOME pkg,rest) => (SOME pkg,rest)
-                end
-        end
+        val mname = 
+            identExprToMultiname 
+                env 
+                (Ast.Identifier {ident=(hd path),openNamespaces=[]})
+    in
+        case Multiname.resolveInRibs mname (#ribs env) of
+            SOME (_, n) => (NONE,path) (* head of path matches fixture *)
+          | NONE => 
+            (* head of path does not match fixture, *)
+            (* try finding a package name that matches prefix of path *)
+            let
+                val { packageNames, ... } = env
+            in 
+                case pathInPackageNames packageNames path of
+                    (NONE,_) => (NONE, path)
+                  | (SOME pkg, rest) => (SOME pkg, rest)
+            end
     end
 
 and pathInPackageNames (packageNames: Ast.IDENT list list) (path:Ast.IDENT list)
@@ -1970,7 +1902,7 @@ and defExpr (env:ENV)
             end
 
           | Ast.BinaryTypeExpr (b, e, te) =>
-            Ast.BinaryTypeExpr (b, sub e, defTyExpr env te)
+            Ast.BinaryTypeExpr (b, sub e, defTy env te)
 
           | Ast.UnaryExpr (u, e) =>
             let
@@ -1988,7 +1920,7 @@ and defExpr (env:ENV)
             end
 
           | Ast.TypeExpr t =>
-            Ast.TypeExpr (defTyExpr env t)
+            Ast.TypeExpr (defTy env t)
 
           | Ast.ThisExpr =>
             Ast.ThisExpr
@@ -2012,7 +1944,7 @@ and defExpr (env:ENV)
 
           | Ast.ApplyTypeExpr { expr, actuals } =>
             Ast.ApplyTypeExpr { expr = sub expr,
-                                actuals = map (defTyExpr env) actuals }
+                                actuals = map (defTy env) actuals }
 
           | Ast.LetExpr { defs, body,... } =>
             let
@@ -2120,9 +2052,9 @@ and defFuncTy (env:ENV)
     : Ast.FUNC_TYPE =
         let
             val {typeParams,params,result,thisType,hasRest,minArgs} = ty
-            val params' = map (defTyExpr env) params
-            val thisType' = case thisType of SOME ty => SOME (defTyExpr env ty) | _ => NONE
-            val result' = defTyExpr env result
+            val params' = map (defTy env) params
+            val thisType' = case thisType of SOME ty => SOME (defTy env ty) | _ => NONE
+            val result' = defTy env result
         in
             {typeParams=typeParams,
              params=params',
@@ -2132,7 +2064,7 @@ and defFuncTy (env:ENV)
              minArgs=minArgs}
         end
 
-and defTyExpr (env:ENV)
+and defTy (env:ENV)
               (ty:Ast.TYPE_EXPR)
     : Ast.TYPE_EXPR =
     case ty of
@@ -2160,20 +2092,20 @@ and defTyExpr (env:ENV)
                 Ast.TypeName (defIdentExpr env n)
          end
       | Ast.UnionType tys =>
-        Ast.UnionType (map (defTyExpr env) tys)
+        Ast.UnionType (map (defTy env) tys)
       | Ast.ArrayType tys =>
-        Ast.ArrayType (map (defTyExpr env) tys)
+        Ast.ArrayType (map (defTy env) tys)
       | Ast.ObjectType tys =>
         Ast.ObjectType (map (defFieldType env) tys)
       | Ast.NullableType { expr, nullable } =>
-        Ast.NullableType { expr = defTyExpr env expr,
+        Ast.NullableType { expr = defTy env expr,
                            nullable = nullable }
 
       | Ast.ElementTypeRef (ty, n) =>
-        Ast.ElementTypeRef (defTyExpr env ty, n)
+        Ast.ElementTypeRef (defTy env ty, n)
 
       | Ast.FieldTypeRef (ty, ident) =>
-        Ast.FieldTypeRef (defTyExpr env ty, ident)
+        Ast.FieldTypeRef (defTy env ty, ident)
 
       (* FIXME *)
       | t => t
@@ -2183,7 +2115,7 @@ and defFieldType (env:ENV)
     : Ast.FIELD_TYPE =
     let
         val {name,ty} = ty
-        val ty = defTyExpr env ty
+        val ty = defTy env ty
     in
         {name=name,ty=ty}
     end
@@ -2199,7 +2131,7 @@ and defFieldType (env:ENV)
 and defStmt (env:ENV)
             (labelIds:Ast.IDENT list)
             (stmt:Ast.STMT)
-    : (Ast.STMT * Ast.FIXTURES) =
+    : (Ast.STMT * Ast.RIB) =
     let
         val ctx = case env of ctx::_ => ctx | _ => LogErr.internalError ["empty evironment in defStmt"]
 
@@ -2227,7 +2159,7 @@ and defStmt (env:ENV)
                                      body = newBody,
                                      fixtures = SOME uf1,
                                      next = newNext },
-                     List.foldl mergeFixtures hf1 hoisted)
+                     mergeRibs hf1 hoisted)
                 end
             end
 
@@ -2260,7 +2192,7 @@ and defStmt (env:ENV)
                         SOME vd => defDefn env (Ast.VariableDefn vd)
                       | NONE => ([],[],[])
                 val (uf,hf,_) = defVarDefnOpt defn
-                val env' = updateFixtures env (List.foldl mergeFixtures uf hf)
+                val env' = updateFixtures env (mergeRibs uf hf)
                 val (newInit,_) = defStmts env' init
                 val newCond = defExpr env' cond
                 val newUpdate = defExpr env' update
@@ -2274,12 +2206,12 @@ and defStmt (env:ENV)
                                 labels = Ustring.empty::labelIds,
                                 body = newBody,
                                 fixtures = SOME (uf) },
-                  (List.foldl mergeFixtures hf hoisted) )
+                  (mergeRibs hf hoisted) )
             end
 
         fun reconstructCatch { bindings, fixtures, inits, block, ty } =
             let
-                val ty = defTyExpr env ty
+                val ty = defTy env ty
                 val (f0,i0) = defBindings env Ast.Var Name.noNS bindings
                 val env = extendEnvironment env f0
                 val (block,fixtures) = defBlock env block
@@ -2292,7 +2224,7 @@ and defStmt (env:ENV)
             end
 
         fun defCase env { label, body, inits }
-            : Ast.CASE * Ast.FIXTURES =
+            : Ast.CASE * Ast.RIB =
             let
                 val (body,hoisted) = defBlock env body
                 val label =
@@ -2490,7 +2422,7 @@ and defStmt (env:ENV)
                 (Ast.IfStmt { cnd = cnd,
                               thn = thn,
                               els = els },
-                 (List.foldl mergeFixtures thn_hoisted els_hoisted))
+                 mergeRibs thn_hoisted els_hoisted)
             end
 
           | Ast.WithStmt { obj, ty, body } =>
@@ -2498,7 +2430,7 @@ and defStmt (env:ENV)
                 val (body,hoisted) = defStmt env [] body
             in
                 (Ast.WithStmt { obj = (defExpr env obj),
-                           ty = (defTyExpr env ty),
+                           ty = (defTy env ty),
                            body = body }, hoisted)
             end
 
@@ -2535,7 +2467,7 @@ and defStmt (env:ENV)
                 val (cases,hoisted) = ListPair.unzip (map reconstructCatch cases)
             in
                 (Ast.SwitchTypeStmt {cond = defExpr env cond,
-                                 ty = defTyExpr env ty,
+                                 ty = defTy env ty,
                                  cases = cases}, List.concat hoisted)
             end
           | Ast.DXNStmt { expr } =>
@@ -2543,11 +2475,11 @@ and defStmt (env:ENV)
     end
 
 and defStmts (env) (stmts:Ast.STMT list)
-    : (Ast.STMT list * Ast.FIXTURES) =
+    : (Ast.STMT list * Ast.RIB) =
     case stmts of
         (stmt::stmts) =>
             let
-                val (s1,f1):(Ast.STMT*Ast.FIXTURES) = defStmt env [] stmt
+                val (s1,f1):(Ast.STMT*Ast.RIB) = defStmt env [] stmt
 
                 (* Class definitions are embedded in the ClassBlock so we
                    need to update the environment in that case *)
@@ -2555,7 +2487,7 @@ and defStmts (env) (stmts:Ast.STMT list)
                 val env' = updateFixtures env f1
                 val (s2,f2) = defStmts env' stmts
             in
-                (s1::s2,(List.foldl mergeFixtures f1 f2))
+                (s1::s2,(mergeRibs f1 f2))
             end
       | [] => ([],[])
 
@@ -2570,7 +2502,7 @@ and defStmts (env) (stmts:Ast.STMT list)
 
 and defNamespaceDefn (env:ENV)
                  (nd:Ast.NAMESPACE_DEFN)
-    : (Ast.FIXTURES * Ast.NAMESPACE_DEFN) =
+    : (Ast.RIB * Ast.NAMESPACE_DEFN) =
     case nd of
         { ident, ns, init } =>
         let
@@ -2595,16 +2527,16 @@ and defNamespaceDefn (env:ENV)
 
 and defType (env:ENV)
             (td:Ast.TYPE_DEFN)
-    : Ast.FIXTURES =
+    : Ast.RIB =
     let
         val { ident, ns, init } = td
         val ns = case ns of
-                     NONE => defaultNamespace env
+                     NONE => (#defaultNamespace env)
                    | SOME e => resolveExprToNamespace env e
         val n = { id=ident, ns=ns }
     in
         [(Ast.PropName n,
-          Ast.TypeFixture (defTyExpr env init))]
+          Ast.TypeFixture (defTy env init))]
     end
 
 
@@ -2618,7 +2550,7 @@ and defType (env:ENV)
 
 and defDefn (env:ENV)
             (defn:Ast.DEFN)
-    : (Ast.FIXTURES * Ast.FIXTURES * Ast.INITS) = (* unhoisted, hoisted, inits *)
+    : (Ast.RIB * Ast.RIB * Ast.INITS) = (* unhoisted, hoisted, inits *)
     case defn of
         Ast.VariableDefn { kind, ns, static, prototype, bindings } =>
             let
@@ -2684,11 +2616,11 @@ and defDefn (env:ENV)
 *)
 
 and defDefns (env:ENV)
-             (unhoisted:Ast.FIXTURES)
-             (hoisted:Ast.FIXTURES)
+             (unhoisted:Ast.RIB)
+             (hoisted:Ast.RIB)
              (inits:Ast.INITS)
              (defns:Ast.DEFN list)
-    : (Ast.FIXTURES * Ast.FIXTURES * Ast.INITS) = (* unhoisted, hoisted, inits *)
+    : (Ast.RIB * Ast.RIB * Ast.INITS) = (* unhoisted, hoisted, inits *)
     let
         val _ = trace([">> defDefns"])
     in case defns of
@@ -2701,12 +2633,12 @@ and defDefns (env:ENV)
                             | Ast.ClassDefn _     => hoisted'
                             | Ast.InterfaceDefn _ => hoisted'
                             | _ => []
-               val env'  = updateFixtures env (List.foldl mergeFixtures unhoisted' temp)
+               val env'  = updateFixtures env (mergeRibs unhoisted' temp)
            (* add the new unhoisted and temporarily, hoisted class fxtrs to the current env *)
            in
                defDefns env'
-                        (List.foldl mergeFixtures unhoisted unhoisted')
-                        (List.foldl mergeFixtures hoisted hoisted')
+                        (mergeRibs unhoisted unhoisted')
+                        (mergeRibs hoisted hoisted')
                         (inits@inits') ds
            end
     end
@@ -2727,97 +2659,126 @@ and defDefns (env:ENV)
 
 and defBlock (env:ENV)
              (b:Ast.BLOCK)
-    : (Ast.BLOCK * Ast.FIXTURES) =
+    : (Ast.BLOCK * Ast.RIB) =
     let
         val Ast.Block { pragmas, defns, body, loc, ... } = b
         val _ = LogErr.setLoc loc
         val (env,unhoisted_pragma_fxtrs) = defPragmas env pragmas
         val (unhoisted_defn_fxtrs,hoisted_defn_fxtrs,inits) = defDefns env [] [] [] defns
-        val env = updateFixtures env (List.foldl mergeFixtures unhoisted_defn_fxtrs hoisted_defn_fxtrs)
+        val env = updateFixtures env (mergeRibs unhoisted_defn_fxtrs hoisted_defn_fxtrs)
         val (body,hoisted_body_fxtrs) = defStmts env body
-        val hoisted = List.foldl mergeFixtures hoisted_defn_fxtrs hoisted_body_fxtrs
+        val hoisted = mergeRibs hoisted_defn_fxtrs hoisted_body_fxtrs
     in
         (Ast.Block { pragmas = pragmas,
                      defns = [],  (* clear definitions, we are done with them *)
                      body = body,
-                     head = SOME (Ast.Head (List.foldl mergeFixtures unhoisted_defn_fxtrs unhoisted_pragma_fxtrs,inits)),
+                     head = SOME (Ast.Head (mergeRibs unhoisted_defn_fxtrs unhoisted_pragma_fxtrs,inits)),
                      loc = loc},
          hoisted)
     end
 
 (*
-    PACKAGE
-
-    Translate a package definition into a block with two implicit
-    namespaces: one for 'public' and another for 'internal'. Both
-    namespaces are open inside of the package block. The 'public'
-    namespace is open outside of the package if the package is
-    named in an import statement (e.g. import p.q.r.* opens the
-    public package namespace 'p.q.r'
+  FRAGMENT
 *)
 
-and defPackage (env:ENV)
-               (package:Ast.PACKAGE)
-    : (Ast.PACKAGE * Ast.FIXTURES) =
-        let
-            val packageName : Ast.IDENT list = (#name package)
-            val packageIdent = packageIdentFromPath packageName
-            val _ = trace2 ("packageIdent ",packageIdent)
-            val env' = {fixtures = [],
-                        tempOffset = 0,
-                        openNamespaces = [[Ast.Internal packageIdent, Ast.Public packageIdent]]@(#openNamespaces (hd env)),
-                        numericMode = defaultNumericMode,
-                        labels = [],
-                        packageNames = [packageName],
-                        className = Ustring.fromString "",
-                        packageName = packageName,
-                        defaultNamespace = Ast.Internal packageIdent } :: env
-
-            val (block,hoisted) = defBlock env' (#block package)
-        in
-            ({ name = packageName,
-              block = block }, hoisted)
-        end
-
-
-(*
-    PROGRAM
-*)
-
-and topEnv _ = [ { fixtures = Fixture.getTopFixtures (!topFixtures),
-                   tempOffset = 0,
-                   openNamespaces = [[Name.noNS,Ast.Internal Ustring.empty], [Ast.Intrinsic]],
-                   numericMode = defaultNumericMode,
-                   labels = [],
-                   packageNames = !topPackageNames,
-                   className = Ustring.fromString "",
-                   packageName = [],
-                   defaultNamespace = Name.noNS } ]
-
-and defProgram (prog:Ast.PROGRAM)
-    : Ast.PROGRAM =
+and defFragment (env:ENV) 
+                (frag:Ast.FRAGMENT)
+    : (Ast.FRAGMENT * Ast.RIBS) =     
     let
-        val _ = LogErr.setLoc NONE
-        val e = topEnv ()
-        val (packages, hoisted_pkg) = ListPair.unzip (map (defPackage e) (#packages prog))
-        val e = List.foldl addPackageName e packages
-        val (block, hoisted_gbl) = defBlock (updateFixtures e (List.concat hoisted_pkg)) (#block prog)
-
-        val fixtures = List.foldl mergeFixtures (List.concat hoisted_pkg) hoisted_gbl
-        val result = {packages = packages,
-                      block = block,
-                      fixtures = SOME fixtures }
+        val { ribs, tempOffset, numericMode, openNamespaces, 
+              labels, packageNames, className,
+              packageName, defaultNamespace, topUnitName } = env
+        fun subFragments e fragments = 
+            let
+                val (fragments, hoistedRibs) = 
+                    ListPair.unzip (map (defFragment e) fragments)
+            in
+                (fragments,
+                 List.foldl (fn (a,b) => mergeRibs a b) hoistedRibs [])
+            end
     in
-        trace ["definition complete"];
-        (if !doTrace
-         then Pretty.ppProgram result
-         else ());
-        let
-            val currentTopFixtures = Fixture.getTopFixtures (!topFixtures)
-        in
-            topFixtures := Fixture.mkTopFixtures (List.foldl mergeFixtures fixtures currentTopFixtures)
-        end;
-        topPackageNames := (#packageNames (hd e));
-        result
+        case frag of 
+            Ast.Unit { name, fragments } => 
+            let                
+                val newTopUnitName = 
+                    case (#topUnitName env) of 
+                        NONE => SOME name
+                      | SOME n => SOME n
+                val env = { ribs = ribs,
+                            tempOffset = tempOffset,
+                            openNamespaces = openNamespaces,
+                            numericMode = numericMode,
+                            labels = labels,
+                            packageNames = packageNames,
+                            className = className,
+                            packageName = packageName,
+                            defaultNamespace = defaultNamespace,
+                            topUnitName = newTopUnitName }
+                val (fragments, hoisted) = subFragments env fragments
+            in
+                (Ast.Unit { name=name, fragments=fragments }, hoisted)
+            end
+
+          | Ast.Package { name, fragments } => 
+            (*
+             * PACKAGE
+             *   
+             * Translate a package definition into a block with two implicit
+             * namespaces: one for 'public' and another for 'internal'. Both
+             * namespaces are open inside of the package block. The 'public'
+             * namespace is open outside of the package if the package is
+             * named in an import statement (e.g. import p.q.r.* opens the
+             * public package namespace 'p.q.r'
+             *)
+            let
+                val packageIdent = packageIdentFromPath name
+                val env = { ribs = ribs,
+                            tempOffset = tempOffset,
+                            openNamespaces = [[Ast.Internal packageIdent, 
+                                               Ast.Public packageIdent]] 
+                                             @ openNamespaces,
+                            numericMode = numericMode,
+                            labels = labels,
+                            packageNames = name :: packageNames,
+                            className = className,
+                            packageName = name,
+                            defaultNamespace = Ast.Internal packageIdent,
+                            topUnitName = topUnitName }
+                val (fragments, hoisted) = subFragments env fragments              
+            in
+                (Ast.Package { name=name, fragments=fragments }, hoisted)
+            end
+
+          | Ast.Anon block => 
+            let
+                val (block, hoisted) = defBlock env block
+            in
+                (Ast.Anon (block), hoisted)
+            end
     end
+
+and defTopFragment (prog:Fixture.PROGRAM)
+                   (frag:Ast.FRAGMENT)
+    : (Fixture.PROGRAM * Ast.FRAGMENT) =
+    let
+        val topEnv = [ { ribs = Fixture.getTopRib prog,
+                         tempOffset = 0,
+                         openNamespaces = [[Name.noNS, Ast.Internal Ustring.empty], [Ast.Intrinsic]],
+                         numericMode = defaultNumericMode,
+                         labels = [],
+                         packageNames = Fixture.getPackageNames prog,
+                         className = Ustring.fromString "",
+                         packageName = [],
+                         defaultNamespace = Name.noNS,
+                         topUnitName = NONE } ]
+        val (frag, rib) = defFragment topEnv frag
+        val prog = Fixture.addTopFragment prog frag Type.equals               
+    in
+        trace ["fragment definition complete"];
+        (if !doTrace
+         then Pretty.ppFragment frag
+         else ());
+        (prog, frag)
+    end
+
 end

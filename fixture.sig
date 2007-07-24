@@ -35,22 +35,93 @@
 signature FIXTURE = sig
 
     val printFixture : Ast.FIXTURE_NAME * Ast.FIXTURE -> unit
-    val getFixture : Ast.FIXTURES -> Ast.FIXTURE_NAME -> Ast.FIXTURE
-    val hasFixture : Ast.FIXTURES -> Ast.FIXTURE_NAME -> bool
-    val replaceFixture : Ast.FIXTURES -> Ast.FIXTURE_NAME -> Ast.FIXTURE -> Ast.FIXTURES
-    val printFixtures : Ast.FIXTURES -> unit
+    val getFixture : Ast.RIB -> Ast.FIXTURE_NAME -> Ast.FIXTURE
+    val hasFixture : Ast.RIB -> Ast.FIXTURE_NAME -> bool
+    val replaceFixture : Ast.RIB -> Ast.FIXTURE_NAME -> Ast.FIXTURE -> Ast.RIB
+    val printRib : Ast.RIB -> unit
 
-    type TOP_FIXTURES
+(* 
+ * An ES4 program is an endless sequence of fragments. Fragments come in 3 flavours:
+ *
+ *  - Anonymous fragments, that are just free-form declarations and statements.
+ *  - Package fragments, that enter a package namespace during their body but
+ *    can revisit the same package name many times.
+ *  - Unit fragments, that enter and then leave a unit name (which may have an 
+ *    associated namespace) but *never re-enter* the unit name once they leave. 
+ *    This is important: it means that a unit of a given name has a place where
+ *    it "ends", inside a program.
+ *
+ * Units nest. Conceptually, the program can be considered "a unit that never closes". 
+ * Or "the level 0" unit. Just beneath the program, there are special "top level" (level 1) 
+ * units, that do close.
+ * 
+ * Top level units are important because they are what the verifier acts on. When a top
+ * level unit closes, the verifier may check that unit. The verifier will try to resolve
+ * type names in the unit. Any undefined type name in a top level unit (covering the
+ * rib that hoists from the unit, and all its sub-units, and the rib that was present
+ * in the program before the top level unit opened) is a strict-mode error. So top level units
+ * represent the granularity of circular references the verifier will tolerate in strict mode.
+ *
+ * The parser reads a single top fragment. Any nested units in the fragment resolve as it goes.
+ *
+ * Once a top fragment is parsed, it is defined. Some implementations may define while 
+ * parsing: it can be done in 1 pass. In this implementation they're separate passes.
+ *
+ * When defined, a fragment produces a hoisted rib.
+ *
+ * The fragment and rib are added to the program. Adding a fragment and its rib causes
+ * the fragment's rib to merge into the top rib, and the fragment's blocks to be appended
+ * to the top block list.
+ *
+ * If the added fragment is a unit and the interpreter is running in strict mode,
+ * it may run the verifier. It should only verify the new fixtures in the fragment's
+ * rib (to avoid redundant verification), and it should verify them as a group, and it
+ * should verify them in an environment under the (merged) top rib, including all 
+ * fixtures from units that came before the fragment.
+ *
+ * Ast.TY values close over an environment. That environment contains ribs but it
+ * also implicitly contains a link to the extensible "outer" environment: the top
+ * rib, that may be extended with new types at any time, as new fragments arrive. 
+ * 
+ * One might think this means that "failure to resolve a type name" can never be 
+ * seen as a hard error, but this is not true. When we form an Ast.TY closure inside
+ * a unit, we record the top unit name in the Ast.TY. When performing a type judgment,
+ * we look at the TY:
+ * 
+ *  - *IF* the TY has an associated top-level unit name (#unit of Ast.TY)
+ *  - *AND* the PROGRAM has a top rib associated with that unit name, meaning that
+ *          the unit has closed and we have a definite maximum amount of knowledge
+ *          to use for judging type expressions in one of its sub-units.
+ *  - *THEN* failure to resolve type names in the TY, under that top rib, is an error
+ *  - *ELSE* failure to resolve type names in the TY represents a possibly-transient
+ *           error, and we need to back off and wait unless we're at the last possible
+ *           moment (eg. trying to find a class for a 'new' expression or something).
+ *
+ * 
+ *)
 
-    val mkTopFixtures : Ast.FIXTURES -> TOP_FIXTURES
-    val getTopFixture : TOP_FIXTURES -> Ast.NAME -> Ast.FIXTURE
-    val getTopFixtures : TOP_FIXTURES -> Ast.FIXTURES
-    val printTopFixtures : TOP_FIXTURES -> unit
+    type PROGRAM
+    val mkProgram : Ast.RIB -> PROGRAM
+    val addTopFragment : PROGRAM -> (Ast.FRAGMENT * Ast.RIB) -> (Ast.TY -> Ast.TY -> bool) -> PROGRAM
+    val getTopFixture : PROGRAM -> Ast.NAME -> Ast.FIXTURE 
+    val getTopRib : PROGRAM -> Ast.RIB
+    val getTopRibForUnit : PROGRAM -> Ast.UNIT_NAME -> Ast.RIB option
+    val getTopBlocks : PROGRAM -> Ast.BLOCK list
+    val getPackageNames : PROGRAM -> Ast.IDENT list list
 
-    (* FIXME: these probably belong in type.sml *)
-    val instanceType : TOP_FIXTURES -> Ast.NAME -> Ast.INSTANCE_TYPE
-    val isClass : TOP_FIXTURES -> Ast.NAME -> bool
-    val getClass : TOP_FIXTURES -> Ast.NAME -> Ast.CLS
-    val instanceOf : TOP_FIXTURES -> Ast.NAME -> Ast.NAME -> bool
+    (* FIXME: the coupling between type.sml and fixture.sml suggests re-merging them *)
+    val mergeFixtures : (Ast.TY -> Ast.TY -> bool) -> 
+                        ((Ast.FIXTURE_NAME * Ast.FIXTURE) * Ast.RIB) -> 
+                        Ast.RIB
+    val instanceType : PROGRAM -> Ast.NAME -> Ast.TY
+    val isClass : PROGRAM -> Ast.NAME -> bool
+    val getClass : PROGRAM -> Ast.NAME -> Ast.CLS
+    val instanceOf : PROGRAM -> 
+                     Ast.TYPE_EXPR -> 
+                     Ast.TYPE_EXPR -> 
+                     (Ast.TYPE_EXPR -> Ast.TYPE_EXPR -> bool) -> 
+                     (Ast.TYPE_EXPR -> Ustring.STRING list) -> 
+                     (Ustring.STRING) -> 
+                     bool
 
 end
