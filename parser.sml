@@ -3524,6 +3524,8 @@ and typeExpression (ts:TOKENS)
       | (LeftParen, _) :: _ => unionType ts
       | (LeftBrace, _) :: _ => objectType ts
       | (LeftBracket, _) :: _ => arrayType ts
+      | (Null, _) :: _ => (tl ts, Ast.SpecialType Ast.Null)
+      | (Undefined, _) :: _ => (tl ts, Ast.SpecialType Ast.Undefined)
       | _ =>
             let
                 val (ts1,nd1) = primaryIdentifier ts
@@ -5831,6 +5833,7 @@ and functionDefinition (ts:TOKENS, attrs:ATTRS, ClassScope)
               | _ =>
                     let
                         val (ts4,nd4,listLoc) = listExpression (ts3,AllowIn)
+                        val (ts4,nd4) = (semicolon (ts4,Full),nd4)
                     in
                         (ts4,{pragmas=[],
                               defns=[Ast.ConstructorDefn (Ast.Ctor
@@ -5893,6 +5896,7 @@ and functionDefinition (ts:TOKENS, attrs:ATTRS, ClassScope)
               | _ =>
                     let
                         val (ts4,nd4,listLoc) = listExpression (ts3,AllowIn)
+                        val (ts4,nd4) = (semicolon (ts4,Full),nd4)
                     in
                         (ts4,{pragmas=[],
                               defns=[Ast.FunctionDefn {kind=if (nd1=Ast.Var) then Ast.Const else nd1,
@@ -5954,6 +5958,7 @@ and functionDefinition (ts:TOKENS, attrs:ATTRS, ClassScope)
               | _ =>
                     let
                         val (ts4,nd4,listLoc) = listExpression (ts3,AllowIn)
+                        val (ts4,nd4) = (semicolon (ts4,Full),nd4)
                         val ident = (#ident nd2)
                         val func = Ast.Func {name=nd2,
                                              fsig=nd3,
@@ -6310,6 +6315,7 @@ and functionBody (ts:TOKENS)
       | _ =>
             let
                 val (ts1,nd1,listLoc) = listExpression (ts,AllowIn)
+                val (ts1,nd1) = (semicolon (ts1,Full),nd1)
             in
                 (ts1,Ast.Block {pragmas=[],
                                 defns=[],

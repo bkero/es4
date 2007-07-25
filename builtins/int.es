@@ -58,7 +58,7 @@ package
 
         /* E262-4 draft: The int Constructor Called as a Function */
         meta static function invoke(x=0i)
-            x is int ? x : magic::newInt(x);
+            (x is int) ? x : magic::newInt(x);
 
         /* E262-4 draft: The int constructor */
         function int(x=0i) : super(x)

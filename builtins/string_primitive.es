@@ -81,7 +81,7 @@ package
 
         /* E262-3 15.5.1: The String Constructor Called as a Function */
         meta static function invoke(x="")
-            x is string ? x : magic::newString(x);
+            (x is string) ? x : magic::newString(x);
 
         /* 15.5.2 The string Constructor */
         function string(x="") : super(x)
@@ -290,7 +290,7 @@ package
 
         static function match(self, regexp): Array {
             let S : string = ToString(self);
-            let R : RegExp = regexp is RegExp ? regexp : new RegExp(regexp);
+            let R : RegExp = (regexp is RegExp) ? regexp : new RegExp(regexp);
 
             if (!R.global)
                 return R.exec(S);  // ie, intrinsic::exec
@@ -386,8 +386,8 @@ package
             }
 
             let S             : string = ToString(self);
-            let replaceString : string? = r is string ? r cast string : null;
-            let replaceFun    : Function = r is Function ? r cast Function : null;
+            let replaceString : string? = (r is string) ? r cast string : null;
+            let replaceFun    : Function = (r is Function) ? r cast Function : null;
 
             let substitute : function (uint, uint, uint, Array) : string =
                 replaceFun !== null ? substituteFunction : substituteString;
@@ -467,7 +467,7 @@ package
 
         static function search(self, regexp): double {
             let S   : string = ToString(self);
-            let R   : RegExp = regexp is RegExp ? regexp : new RegExp(regexp);
+            let R   : RegExp = (regexp is RegExp) ? regexp : new RegExp(regexp);
             let lim : uint = S.length;
 
             for ( let i : uint=0 ; i < lim ; i++ )
