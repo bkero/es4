@@ -145,7 +145,6 @@ package abcfile
 
         private static function findOrAdd(x, pool, cmp, emit) {
             var i;
-
             for ( i=1 ; i < pool.length ; i++ )
                 if (cmp(pool[i], x))
                     return i;

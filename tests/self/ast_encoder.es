@@ -50,17 +50,17 @@
 
     function encodeBlock (nd: BLOCK, nesting: int = 0)
         : string {
-        enter ("encodeBlock",nesting);
+        enter ("encodeBlock ",nesting);
         var str;
         switch type (nd) : BLOCK {
-        case (b:Block) {
+        case (nd:Block) {
             var str =
                   "{ 'ast::class': 'Block'"
-                + indent(nesting) + ", 'pragmas': " + "[]" //encodePragmas (b.pragmas)
-                + indent(nesting) + ", 'defns': [ " + encodeDefns (b.defns,nesting+", 'defns': [ ".length)
-                + indent(nesting) + ", 'head': " + "[]" //encodeHead (b.head)
-                + indent(nesting) + ", 'stmts': [ " + encodeStmts (b.stmts,nesting+", 'stmts': [ ".length) +" ]";
-                + indent(nesting) + ", 'pos': " + "null" //encodePos (b.pos)
+                + indent(nesting) + ", 'pragmas': " + "[]" //encodePragmas (nd.pragmas)
+                + indent(nesting) + ", 'defns': [ " + encodeDefns (nd.Ast::defns,nesting+", 'defns': [ ".length)
+                + indent(nesting) + ", 'head': " + "[]" //encodeHead (nd.head)
+                + indent(nesting) + ", 'stmts': [ " + encodeStmts (nd.Ast::stmts,nesting+", 'stmts': [ ".length) +" ]";
+                + indent(nesting) + ", 'pos': " + "null" //encodePos (nd.pos)
                 + " }";
         }
         case (x: *) {
@@ -71,7 +71,7 @@
         return str;
     }
 
-    function encodeStmts (nd : [STMT], nesting: int = 0)
+    function encodeStmts (nd /*: [STMT]*/, nesting: int = 0)
         : string {
         enter ("encodeStmts nd.length=",nd.length);
         var str;
@@ -108,6 +108,14 @@
               + encodeExpr (nd.expr,nesting+", 'expr': ".length)
               + " }";
         }
+        case (nd: ReturnStmt) {
+            var str =
+                "{ 'ast::class': 'ReturnStmt'"
+              + indent(nesting)
+              + ", 'expr': "
+              + encodeExpr (nd.expr,nesting+", 'expr': ".length)
+              + " }";
+        }
         case (nd: IfStmt) {
             var str =
                 "{ 'ast::class': 'IfStmt'"
@@ -131,7 +139,7 @@
         return str;
     }
 
-    function encodeExprs (nd : [EXPR], nesting: int = 0)
+    function encodeExprs (nd /*: [EXPR]*/, nesting: int = 0)
         : string {
         enter ("encodeExprs nd.length=",nd.length);
 
@@ -151,6 +159,7 @@
                 + ", "
                 + encodeExprs (nd.slice (1,nd.length), nesting);
         }
+
         exit ("encodeExprs ",str);
         return str;
     }
@@ -448,7 +457,7 @@
         return str;
     }
 
-    function encodeDefns (nd : [STMT], nesting: int = 0)
+    function encodeDefns (nd /*: [DEFN]*/, nesting: int = 0)
         : string {
         enter ("encodeDefns nd.length=",nd.length);
         var str;
@@ -487,6 +496,22 @@
               + encodeInitSteps (nd.bindings[1], nesting+", 'bindings': [ [ ".length)
               + " ] ] }";
         }
+        case (nd: FunctionDefn) {
+            var str =
+                "{ 'ast::class': 'FunctionDefn'"
+              + indent(nesting)
+              + ", 'ns': "
+              + encodeExpr (nd.ns, nesting+", 'ns': ".length)
+              + indent(nesting)
+              + ", 'func': "
+              + encodeFunc (nd.func, nesting+", 'func': ".length)
+                /*
+              + indent(nesting+", 'bindings': ".length)
+              + ", [ "
+              + encodeInitSteps (nd.bindings[1], nesting+", 'bindings': [ [ ".length)
+                */
+              + " }";
+        }
         case (x: *) {
             throw "internalError: encodeDefn";
         }
@@ -495,7 +520,71 @@
         return str;
     }
 
-    function encodeBindings (nd: [BINDING], nesting: int = 0)
+    function encodeFunc (nd : FUNC, nesting: int = 0)
+        : string {
+        enter ("encodeFunc");
+
+        var str =
+            "{ 'ast::class': 'Func'"
+          + indent(nesting)
+          + ", 'name': "
+          + encodeFuncName (nd.name,nesting+", 'name': ".length)
+          + indent(nesting)
+          + ", 'isNative': " + nd.isNative
+          + indent(nesting)
+          + ", 'block': "
+          + encodeBlock (nd.block,nesting+", 'block': ".length)
+            /*
+          + indent(nesting)
+          + ", 'type': "
+          + encodeTypeExpr (nd.type,nesting+", 'ident': ".length)
+            */
+          + " }";
+
+        exit ("encodeBinding ",str);
+        return str;
+    }
+
+    function encodeFuncName (nd /*: FUNC_NAME*/, nesting: int = 0)
+        : string {
+        enter ("encodeFuncName");
+
+        var str =
+            "{ "
+          + indent(nesting)
+          + ", 'kind': "
+          + encodeFuncNameKind (nd.kind,nesting+", 'kind': ".length)
+          + indent(nesting)
+          + ", 'ident': " + nd.ident
+            /*
+          + indent(nesting)
+          + ", 'type': "
+          + encodeTypeExpr (nd.type,nesting+", 'ident': ".length)
+            */
+          + " }";
+
+        exit ("encodeFuncName ",str);
+        return str;
+    }
+
+    function encodeFuncNameKind (nd /*: FUNC_NAME_KIND*/, nesting: int = 0)
+        : string {
+        enter ("encodeFuncNameKind");
+
+        switch type (nd) {
+        case (nd:Ordinary) {
+            var str = "Ordinary";
+        }
+        case (nd: *) {
+            throw "internal error: encodeFuncNameKind " + nd;
+        }
+        }
+
+        exit ("encodeFuncNameKind ",str);
+        return str;
+    }
+
+    function encodeBindings (nd /*: [BINDING]*/, nesting: int = 0)
         : string {
         enter ("encodeBindings nd.length=",nd.length);
 
@@ -570,11 +659,11 @@
         }
 
 
-        exit ("encodeBinding ",str);
+        exit ("encodeBindingIdent ",str);
         return str;
     }
 
-    function encodeInitSteps (nd: [INIT_STEP], nesting: int = 0)
+    function encodeInitSteps (nd /*: [INIT_STEP]*/, nesting: int = 0)
         : string {
         enter ("encodeInitSteps nd.length=",nd.length);
 
