@@ -1,0 +1,145 @@
+<!-- The "Object" object
+
+     Copyright (C) 2007 ECMA International
+     Based on older content.
+
+     This is just an experiment; I'm playing around.
+
+     Shorthands that reduce visual and contextual clutter:
+
+        ''..''    means "<code>..</code>"
+        [[..]]    means "<code>[[..]]</code>"
+
+        <h1>      means "<hn>" where n is computed from the context
+        <h2>      means "<hn>" where n is computed from the context
+        and so on
+
+        = ... =   means "<h1> ... </h1>"
+        == ... == means "<h2> ... </h2>"
+        and so on
+
+     Magic tags that the preprocessor removes:
+
+        <INCLUDE file="..." name="..."> is replaced by the function,
+                         inside a PRE tag.
+
+        <XREF target="..."> resolves to the section number of "tag", where "tag" is some ID
+                         on a header element somewhere (could be in a different file)
+
+     These tags must be upper case, note no "/>" termination
+-->
+
+= ''Object'' Objects =
+
+== The ''Object'' Constructor Called as a Function ==
+
+<p>When ''Object'' is called as a function rather than as a
+constructor, it performs a type conversion.
+
+=== ''Object ( [ value ] )'' ===
+
+<p>When the ''Object'' function is called with no arguments or with one
+argument value, the following steps are taken:
+
+<INCLUDE file="Object.es" name="meta static function invoke">
+
+=== The Object Constructor ===
+
+<p>When ''Object'' is called as part of a new expression, it is a
+constructor that may create an object.
+
+=== ''new Object ( [ value ] )'' ===
+
+<p>When the Object constructor is called with no arguments or with one
+argument value, the following steps are taken:
+
+<INCLUDE file="eval.sml" name="specialObjectConstructor">
+
+
+== Properties of the ''Object'' Constructor ==
+
+<p> The value of the internal [[Prototype]] property of the Object
+constructor is the Function prototype object.
+
+<p>Besides the internal properties and the ''length'' property (whose
+value is 1), the Object constructor has the following properties:
+
+=== ''Object.prototype'' ===
+
+<p>The initial value of Object.prototype is the Object prototype object (<XREF target="obj-proto-props">).
+
+<p>This property has the attributes { DontEnum, DontDelete, ReadOnly }.
+
+
+<h2 id="obj-proto-props">Properties of the Object Prototype Object</h2>
+
+<p>The value of the internal [[Prototype]] property of the Object prototype object is null and the value of
+the internal [[Class]] property is "Object".
+
+
+=== ''Object.prototype.constructor'' ===
+
+<p>The initial value of ''Object.prototype.constructor'' is the built-in ''Object'' constructor.
+
+
+=== ''Object.prototype.toString ( )'' ===
+
+<p>When the ''toString'' method is called, the following steps are taken:
+
+<INCLUDE file="Object.es" name="private static function toString">
+
+
+=== ''Object.prototype.toLocaleString ( )'' ===
+
+<p>This function returns the result of calling ''toString()''.
+
+<p class="note">NOTE 1<br>
+This function is provided to give all Objects a generic toLocaleString interface, even though not
+all may use it. Currently, Array, Number, and Date provide their own locale-sensitive
+toLocaleString methods.
+
+<p class="note">NOTE 2<br>
+The first parameter to this function is likely to be used in a future version of this standard; it is
+recommended that implementations do not use this parameter position for anything else.
+
+
+=== ''Object.prototype.valueOf ( )'' ===
+
+<p>The valueOf method returns its this value. If the object is the result of calling the Object
+constructor with a host object (<XREF target="host-object-defn">), it is implementation-defined whether valueOf returns its
+this value or another value such as the host object originally passed to the constructor.
+
+
+=== ''Object.prototype.hasOwnProperty (V)'' ===
+
+<p>When the hasOwnProperty method is called with argument V, the following steps are taken:
+
+<INCLUDE file="Object.es" name="prototype function hasOwnProperty">
+
+<p class="note">NOTE<br>
+Unlike [[HasProperty]] (<XREF target="HasProperty-defn">), this method does not consider objects in the prototype chain.
+
+
+=== ''Object.prototype.isPrototypeOf (V)'' ===
+
+<p>When the isPrototypeOf method is called with argument V, the following steps are taken:
+
+<INCLUDE file="Object.es" name="prototype function isPrototypeOf">
+
+
+=== ''Object.prototype.propertyIsEnumerable (V)'' ===
+
+<p>When the propertyIsEnumerable method is called with argument V, the following steps are
+taken:
+
+<INCLUDE file="Object.es" name="prototype function propertyIsEnumerable">
+
+<p class="note">NOTE<br>
+This method does not consider objects in the prototype chain.
+
+
+== Properties of Object Instances ==
+
+<p>Object instances have no special properties beyond those inherited from the Object prototype object.
+
+<!-- End of Object.html -->

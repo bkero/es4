@@ -1,0 +1,110 @@
+Spec production schedule.
+
+All ES4 and spec deadlines are relative to the TG1 meeting same month,
+unless noted otherwise.
+
+
+2007  Aug  TG1 mtg San Francisco (Adobe)
+           Spec deadlines
+            - overview:  Rough outline -- maybe!
+            - language:  Rough outline based on AS3/wiki/... (fcheng/lth)
+                         Wiki "spec:" extracts (whatever's clean) (fcheng)
+                         No code inclusion from RI
+            - libraries: Rough draft (incomplete) (lth)
+                         Code inclusion from builtins (lth)
+
+      Sep  TG1 mtg Mountain View (Mozilla)
+           ES4 deadlines
+             - hard deadline for *all* major features
+               - type system
+               - vectors
+               - stack marks
+               - (the list goes on)
+           Spec deadlines
+            - overview:  Reasonable outline plus maybe some meat on the 
+                           bones taken from E262-3/AS3 (fcheng)
+            - language:  Reasonable outline of everything (fcheng/lth)
+                         No code inclusion from RI
+            - libraries: less rough draft (lth)
+                         Code inclusion from builtins
+
+      Oct  ECMA
+             - TC39 Business mtg
+           Publications
+             - Selected spec parts to be published informally as 
+                 "incomplete working draft" if clean enough
+
+      Nov
+
+      Dec  ECMA
+             - GA mtg
+           ES4 deadlines
+             - RI code complete
+           Spec deadlines
+             - overview:  Rough and probably incomplete draft
+             - language:  Rough and incomplete draft
+                          Limited code inclusion from RI -- refactoring not yet done
+             - library:   Clean, complete draft
+           Publications
+             - Spec "pre-alpha" published
+
+2008  Jan
+
+      Feb  Spec deadlines
+             - Complete draft of the entire spec, rough in parts
+           Publications
+             - Spec "alpha" published
+
+      Mar
+
+      Apr  ECMA
+             - TC39 Business mtg
+           ES4 deadlines
+             - RI technical report possible
+             - RI refactoring effectively complete
+           Spec deadlines
+             - Spec approaching beta
+             - Clean enough for commercial implementaters to start using it
+           Publications
+             - RI technical report?
+             - Spec "beta"
+           Review
+             - First round of semi-formal review starts following beta publication
+
+      May  Review
+             - First round in progress
+
+      Jun  ECMA
+             - GA mtg
+           Review
+             - First round ends before "beta 2"; second round starts after "beta 2"
+           Publications
+             - Spec "beta 2"
+
+      Jul  Review
+             - Second round in progress
+
+      Aug  Review
+             - Second round ends before "beta 3"; last round starts after "beta 3"
+           Publications
+            - Spec "beta 3"
+
+      Sep  Review
+             - Last round of semi-formal review ends
+             - Minor fixes to RC accepted on mailing list after publication
+           Publications
+            - Spec "release candidate"
+
+      Oct  ECMA
+            - TC39 Business mtg
+               - E262-4 TC approval
+
+      Nov  Publications
+            - Spec "release candidate 2"
+
+      Dec  ECMA
+            - GA mgt
+               - E262-4 final approval
+           Publications
+            - Final E262-4
+

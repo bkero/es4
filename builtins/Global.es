@@ -175,6 +175,63 @@ package
         }
     }
 
+    // FIXME: these internal properties are not in fact hidden!
+
+    internal function stringHash(s: string): uint {
+        // Return a hash code for the string.
+        //
+        // INFORMATIVE: this particular algorithm is not mandated and
+        // may or may not be suitable.
+        let h = 0;
+        for ( let i=0 ; i < s.length ; i++ )
+            h = (h << 4) + (let (c = s.charCodeAt(i)) c*3);
+        return h;
+    }
+
+    internal var objectIdentities = null;
+    internal var nextHash: uint = 0;
+
+    internal function objectHash(x): uint {
+        // Return a hash code for the object.
+        //
+        // INFORMATIVE: this particular algorithm is not mandated, and
+        // is in fact in some sense incorrect because it prevents the
+        // object from being garbage collected if it is referenced
+        // from this table.  (On the other hand, garbage collection is
+        // not mandated by the spec.)  This algorithm is also slow;
+        // computing the hashcode should be a constant-time algorithm
+        // with a low constant.
+
+        // Late initialization because Arrays have not been loaded when the
+        // global level is initialized.
+        if (objectIdentities == null)
+            objectIdentities = [];
+
+        for ( let i=0 ; i < objectIdentities.length ; i++ ) {
+            let probe = objectIdentities[i];
+            if (probe.object === x)
+                return probe.hashcode;
+        }
+        let h = nextHash;
+        nextHash = (nextHash + 1) & 0xFFFFFFFF;
+        objectIdentities.push({object: x, hashcode: h});
+        return h;
+    }
+
+    internal function primitiveHashcode(o): uint {
+        switch type (o) {
+        case (x:null) { return 0u }
+        case (x:undefined) { return 0u }
+        case (x:boolean) { return uint(x) }
+        case (x:int) { return x < 0 ? -x : x }
+        case (x:uint) { return x }
+        case (x:double) { return isNaN(x) ? 0u : uint(x) }
+        case (x:decimal) { return isNaN(x) ? 0u : uint(x) }
+        case (x:String) { return stringHash(string(x)) }
+        case (x:*) { return objectHash(x) }
+        }
+    }
+
     // 15.1.3.1 decodeURI (encodedURI)
     intrinsic native function decodeURI(encodedURI);
 
@@ -195,6 +252,9 @@ package
     const NaN = intrinsic::NaN;
     const Infinity = intrinsic::Infinity;
     const undefined = intrinsic::undefined;
+
+    // Spec says this is const
+    intrinsic const hashcode = primitiveHashcode;
 
     // Mutable public properties defaulting to their intrinsic namesakes.
     var eval = intrinsic::eval;

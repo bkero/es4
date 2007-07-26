@@ -1,0 +1,56 @@
+Use wiki simplifications where convenient (it's less noisy):
+
+* Headers:
+    = ... =
+    == ... ==
+
+* In-line code:
+    ''...'', eg ''String.prototype.toString()''
+    [[...]], eg [[HasProperty]]
+
+  Wiki simplifications and normal markup can be mixed; it doesn't
+  matter if you write <H1>...</H1> or = ... =, it all works out.
+
+
+Header numbering:
+
+  Start headers in every file with a <H1> tag, the stitcher figures it
+  out and renumbers headers as necessary.
+
+
+CSS:
+
+  Don't know yet what we can get away with.  Document it here.
+
+  What appears to work:
+    font-style: italic
+    separate STYLE elements and the use of element classes
+
+
+Custom tags:
+
+  Fragment and file inclusion: These are resolved by the stitcher.
+
+    <INCLUDE file="filename.html">
+    <INCLUDE file="filename.css">
+    <INCLUDE file="filename.es" name="static function toString">
+    <INCLUDE file="filename.sml" name="specialObjectConstructor">
+
+  All .es files must be in the builtins directory.  All sml files must
+  be in the top-level directory.  The .css and .html files are
+  relative to the including file.
+
+  Cross-references: These are resolved by the stitcher.
+
+    <XREF target="something">
+    ...
+    <Hn id="something">...</Hn>
+
+  The idea here is that the XREF link is replaced by the section
+  number of the target section.  Does not yet work, subject to
+  revision.
+
+
+Type faces etc.
+
+  TBD.

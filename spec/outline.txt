@@ -1,0 +1,103 @@
+This file is the master for the outline of the spec, please keep up-to-date.
+
+
+Style requirements for each section are in a file "style.txt" in the section.
+Any common style requirements are in the file "style.txt" in this directory.
+
+
+The spec is divided into six parts,
+
+    - Front matter
+    I Overview and tutorial
+   II The language
+  III The libraries
+   IV Informative appendices
+    - Indices
+
+
+= Front matter =
+
+TBD.
+
+
+= I.  Overview and tutorial =
+
+    * Subsections:
+       - program organization
+       - computation
+       - strict, static, types
+       - definitions, hoisting, scope
+    * We should not avoid redundancy here, it needs to set things up well
+
+= II.  The language =
+
+    * Essentially chapters 6-17 in the wiki outline
+    * Multilevel description
+      - mach, other infrastructure: publish here or elsewhere?
+      - rely on the RI, extract code from the RI
+    II.a  Source syntax
+          AST definition
+          Source -> AST translation
+          - desugaring
+          - temps
+          - definitions
+          - hoisting
+          - ......
+    II.b  The type system
+    II.c  Scopes and names
+    II.d  Verification
+    II.e  Loading
+    II.f  Computation
+
+
+= III.  The built-in libraries =
+
+== Subsections so far ==
+
+  - Intro / overview
+  - The global object
+  - "Object"
+  - "Function"
+  - "Array", "vector" (if we have it)
+  - "String", "string"
+  - "Boolean", "boolean"
+  - "Number", "int", "uint", "double", "decimal", "Numeric" (if we have it)
+  - "Math"
+  - "Date"
+  - "RegExp"
+  - "Error"
+  - "Class", "Interface", and other type objects
+  - "ByteArray"
+  - "Dict"
+  - "Name"
+  - "Namespace"
+  - meta-object proposal
+  - stack-mark proposal
+
+
+= Appendices =
+
+TBD.
+
+
+= Indices =
+
+It would be good to do something useful here.  The lack of an index in
+E262-3 is at times really annoying.
+
+What's the purpose of an index?
+
+ - To make it simple to look up a keyword and find page numbers where
+   it's most relevant that help will be found
+
+
+What kinds of indices are there?
+
+ - Concept index (eg, "conversions", ...)
+ - Function index (definition + all uses of ToString, say)
+
+
+Should look to other language standards before deciding on anything
+else.
+
+
