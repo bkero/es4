@@ -3500,20 +3500,14 @@ and typedPattern (ts:TOKENS, a:ALPHA, b:BETA)
 and nullableTypeExpression (ts:TOKENS)
     : (TOKENS * Ast.TYPE_EXPR) =
     let val _ = trace([">> nullableTypeExpression with next=",tokenname(hd ts)])
-    in case ts of
-        (Null, _) :: _ => (tl ts, Ast.SpecialType Ast.Null)
-      | (Undefined, _) :: _ => (tl ts, Ast.SpecialType Ast.Undefined)
+        val (ts1,nd1) = typeExpression ts
+    in case ts1 of
+        (Not, _) :: _ =>
+            (tl ts1,Ast.NullableType {expr=nd1,nullable=false})
+      | (QuestionMark, _) :: _ =>
+            (tl ts1,Ast.NullableType {expr=nd1,nullable=true})
       | _ =>
-            let
-                val (ts1,nd1) = typeExpression ts
-            in case ts1 of
-                (Not, _) :: _ =>
-                    (tl ts1,Ast.NullableType {expr=nd1,nullable=false})
-              | (QuestionMark, _) :: _ =>
-                    (tl ts1,Ast.NullableType {expr=nd1,nullable=true})
-              | _ =>
-                    (ts1,nd1)
-            end
+            (ts1,nd1)
     end
 
 and typeExpression (ts:TOKENS)
