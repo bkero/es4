@@ -1,0 +1,1 @@
+Use <h2> as the top-level tag.

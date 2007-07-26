@@ -1,0 +1,72 @@
+<p>There are certain built-in objects available whenever an ECMAScript
+program begins execution. One, the global object, is in the scope
+chain of the executing program. Others are accessible as initial
+properties of the global object.
+
+<p>Unless specified otherwise, the [[Class]] property of a built-in
+object is ''"Function"'' if that built-in object has a [[Call]]
+property, or ''"Object"'' if that built-in object does not have a
+[[Call]] property.
+
+<p>Many built-in objects are functions: they can be invoked with
+arguments. Some of them furthermore are constructors: they are
+functions intended for use with the ''new'' operator. For each
+built-in function, this specification describes the arguments required
+by that function and properties of the Function object. For each
+built-in constructor, this specification furthermore describes
+properties of the prototype object of that constructor and properties
+of specific object instances returned by a ''new'' expression that
+invokes that constructor.
+
+<p>Unless otherwise specified in the description of a particular
+function, if a function or constructor described in this section is
+given fewer arguments than the function is specified to require, the
+function or constructor shall behave exactly as if it had been given
+sufficient additional arguments, each such argument being the
+''undefined'' value.
+
+<p>Unless otherwise specified in the description of a particular
+function, if a function or constructor described in this section is
+given more arguments than the function is specified to allow, the
+behaviour of the function or constructor is undefined. In particular,
+an implementation is permitted (but not required) to throw a
+''TypeError'' exception in this case.
+
+<p class="NOTE">NOTE<br> Implementations that add additional
+capabilities to the set of built-in functions are encouraged to do so
+by adding new functions rather than adding new parameters to existing
+functions.
+
+<p>Every built-in function and every built-in constructor has the
+Function prototype object, which is the initial value of the
+expression ''Function.prototype'' (<XREF target="Function.prototype">),
+as the value of its internal [[Prototype]] property.
+
+<p>Every built-in prototype object has the Object prototype object,
+which is the initial value of the expression ''Object.prototype''
+(<XREF target="Object.prototype">), as the value of its internal
+[[Prototype]] property, except the Object prototype object itself.
+
+<p>None of the built-in functions described in this section shall
+implement the internal [[Construct]] method unless otherwise specified
+in the description of a particular function. None of the built-in
+functions described in this section shall initially have a
+''prototype'' property unless otherwise specified in the description
+of a particular function. Every built-in Function object described in
+this section--whether as a constructor, an ordinary function, or
+both--has a ''length'' property whose value is an integer. Unless
+otherwise specified, this value is equal to the largest number of
+named arguments shown in the section headings for the function
+description, including optional parameters.
+
+<p class="NOTE">NOTE<br> For example, the Function object that is the
+initial value of the slice property of the String prototype object is
+described under the section heading ''String.prototype.slice (start ,
+end)'' which shows the two named arguments start and end; therefore
+the value of the length property of that Function object is 2.
+
+<p> In every case, the ''length'' property of a built-in Function
+object described in this section has the attributes { ReadOnly,
+DontDelete, DontEnum } (and no others). Every other property described
+in this section has the attribute { DontEnum } (and no others) unless
+otherwise specified.

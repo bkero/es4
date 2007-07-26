@@ -1,0 +1,85 @@
+Some issues / thoughts around the technology required for spec
+production.
+
+
+= Markup = 
+
+It is the Right Thing to separate markup and formatting.  It is a Good
+Thing to have text that can be diffed.  Thus latex, XML, or similar is
+to be preferred for the source of the spec.  Word, Wiki, etc are
+clearly inferior.
+
+However, ECMA probably wants a Word doc, publication wants a PDF, and
+the world wants HTML+CSS, so we must be able to produce those formats.
+Can we?
+
+If we choose XML+CSS:
+
+  - We can produce PDF from XML+CSS using PrinceXML
+  - XML+CSS is itself enough to format the doc for the web
+
+  - But can we produce Word from either XML+CSS (or in the worst case
+    from PDF)?
+
+
+If we choose latex:
+
+  - Can we produce Word from latex?
+  - Can we produce PDF from latex?  (We can probably
+    go latex -> dvi -> postscript -> pdf in the worst case.)
+
+
+How bad is Word if we choose to just use that?
+
+  - Some people can't read it (though OpenOffice is available); all
+    drafts will be distributed as PDF
+
+  - Diffs are probably not the easiest thing, don't know how we'd do
+    versioning
+
+  - Less easy to merge changes from multiple sources, probably.
+
+
+= Code extraction =
+
+- What has been done? (sync w/ Francis)
+
+- What's it been done for (libraries or SML)?
+
+- Library: probably enough to tag the source code with some bracketing, 
+    //+tag
+    ...
+    //-tag
+  and then reference "tag" from the text; some merge tool will do the
+  rest.  (Inverted literate programming!)  Needs to undent, not hard.
+
+  Tags should be unique in the file.
+
+
+
+-----
+
+Facts about MS Word:
+
+ - Template formatting (eg for NOTE sections, headers that are
+   signatures): can MS Word read and process CSS reasonably?  
+
+   It appears that it does process STYLE and applies some of it; I
+   managed to apply a font-style on a <P> with a special class name.
+
+
+
+-----
+
+HTML issues that are unresolved:
+
+ - symbolic cross referencing: HTML has no facilities for this short
+   of hyperlinks, which I guess translates to both Word and PDF but
+   are no good for print documents.  No prepass can fix this; word
+   needs to handle it somehow _after_ sections are numbered.  But how?
+   The only thing I can think of is a fancier tool that does the
+   numbering, so that word won't.
+
+   Can CSS do that?  And if it can, what does word do?
+
+   What does word do with "#name" links?

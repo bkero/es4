@@ -1,0 +1,46 @@
+Rough schedule for spec completion.
+
+All ES4 deadlines are relative to the TG1 meeting same month, unless
+noted otherwise.
+
+
+2007  Aug  TG1 mtg San Francisco (Adobe)
+      Sep  TG1 mtg Mountain View (Mozilla)
+           ES4 deadlines
+             - hard deadline for *all* major features
+               - type system
+               - vectors
+               - stack marks
+               - (the list goes on)
+      Oct  ECMA
+             - TC39 Business mtg
+      Nov
+      Dec  ECMA
+             - GA mtg
+           ES4 deadlines
+             - RI code complete
+             - Very rough spec -- enough meat on the bones to start using it as primary document
+2008  Jan
+      Feb
+      Mar
+      Apr  ECMA
+             - TC39 Business mtg
+           ES4 deadlines
+             - RI technical report possible
+             - Spec approaching beta
+               - public review cycles start
+               - commercial implementation work cycles start
+      May
+      Jun  ECMA
+            - GA mtg
+      Jul
+      Aug
+      Sep
+      Oct  ECMA
+            - TC39 Business mtg
+               - E262-4 TC approval
+      Nov
+      Dec  ECMA
+            - GA mgt
+               - E262-4 final approval
+
