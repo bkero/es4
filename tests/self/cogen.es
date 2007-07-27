@@ -96,6 +96,9 @@ package cogen
             case (vf:ValFixture) {
                 target.addTrait(new ABCSlotTrait(name, 0));
             }
+            case (mf:MethodFixture) {
+                target.addTrait(new ABCOtherTrait(name, 0, TRAIT_Method, 0, cgFunc(ctx, mf.func)));
+            }
             case (x:*) { throw "Internal error: unhandled fixture type" }
             }
         }
@@ -118,9 +121,9 @@ package cogen
         case (fd:FunctionDefn) {
             assert( fd.func.name.kind is Ordinary );
             let name = emitter.nameFromIdent(fd.func.name.ident);
-            asm.I_findpropstrict(name); // name is fixture, thus always defined
-            asm.I_newfunction(cgFunc(ctx, fd.func));
-            asm.I_initproperty(name);
+            //asm.I_findpropstrict(name); // name is fixture, thus always defined
+            //asm.I_newfunction(cgFunc(ctx, fd.func));
+            //asm.I_initproperty(name);
         }
         case (x:*) { throw "Internal error: unimplemented defn" }
         }

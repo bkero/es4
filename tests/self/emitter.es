@@ -118,7 +118,7 @@ package emitter
         public function fixtureNameToName(fn) {
             switch type (fn) {
             case (pn:PropName) {
-                return nameFromIdent(pn.name.ident);
+                return nameFromIdent(pn.name.id);
             }
             case (tn:TempName) {
                 // FIXME: updates "name"
@@ -156,7 +156,10 @@ package emitter
 
         public function finalize() {
             var id = init.finalize();
-            e.file.addScript(new ABCScriptInfo(id));
+            var si = new ABCScriptInfo(id);
+            for ( var i=0 ; i < traits.length ; i++ )
+                si.addTrait(traits[i]);
+            e.file.addScript(si);
         }
     }
 

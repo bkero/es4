@@ -42,17 +42,13 @@
 
 //module parser
 {
-    use namespace intrinsic;
-    namespace Parser;
-    type TOKENS = Array;  // [int];
+use namespace intrinsic;
+namespace Parser;
+type TOKENS = Array;  // [int];
 
 {
     use default namespace Parser;
     use namespace Debug;
-
-    type BETA = int;  // NoIn, AllowIn
-    type TAU = int;   // NoExpr, AllowExpr
-    type OMEGA = int; // Abbrev, Full
 
     type PATTERN =
           ( ObjectPattern
@@ -78,13 +74,21 @@
         static const Abbrev = AbbrevFunction + 1;
         static const Full = Abbrev + 1;
 
-        static const AllowIn = Full + 1;
-        static const NoIn = AllowIn + 1;
+        type BETA = int;  // NoIn, AllowIn
+        type TAU = int;   // Global, Class, Interface, Local
+        type OMEGA = int; // Abbrev, Full
+        type GAMMA = int; // NoExpr, AllowExpr
 
-        static const NoExpr : int = 0;
-        static const AllowExpr : int = 1;
+        static const NoIn = 0;
+        static const AllowIn = 1;
+
+        static const NoExpr = 0;
+        static const AllowExpr = 1;
 
         static const Global = 0;
+        static const Class = 1;
+        static const Interface = 2;
+        static const Local = 3;
 
         var scan : Lexer::Scanner
 
@@ -109,6 +113,15 @@
                 return tl (ts);
             }
             throw "expecting "+Token::tokenText(tc)+" found "+Token::tokenText(tk);
+        }
+
+        function match (ts,tc) : void {
+            // print("matching",Token::tokenText(tc));
+            let tk = hd (ts);
+            if (tk !== tc) {
+                throw "expecting "+Token::tokenText(tc)+" found "+Token::tokenText(tk);
+            }
+            return;
         }
 
         /*
@@ -228,7 +241,7 @@
                 throw "expecting identifier, found " + Token::tokenText (ts[0]);
             }
             exit ("Parser::identifier ", str);
-            return [tl (ts), new Ast::Identifier (str)];
+            return [tl (ts), str];
         }
 
         /*
@@ -242,8 +255,6 @@
             : [TOKENS, (Ast::IDENT,Ast::NAMESPACE)]
         {
             enter("Parser::qualifier ",ts);
-
-            var [ts1,nd1] = [null,null];
 
             switch (hd(ts)) {
             case Token::Internal:
@@ -280,7 +291,6 @@
         {
             enter("Parser::reservedNamespace ", ts);
 
-            var [ts1,nd1] = [null,null];
             switch (hd (ts)) {
             case Token::Internal:
                 var [ts1,nd1] = [tl (ts), new Ast::InternalNamespace (current_package)];
@@ -317,9 +327,6 @@
             : [TOKENS, Ast::IDENT_EXPR]
         {
             enter("Parser::qualifiedNameIdentifier ", ts1);
-
-            var ts2,nd2;
-            var ts3,nd3;
 
             switch (hd(ts1)) {
                 case Token::Mult:
@@ -360,7 +367,6 @@
             enter ("Parser::simpleQualifiedName ", ts);
 
             var [ts1,nd1] = qualifier (ts);
-            var [ts2,nd2] = [null, null];
             switch (hd (ts1)) {
             case Token::DoubleColon:
                 switch type (nd1) {
@@ -419,7 +425,6 @@
         {
             enter("Parser::nonAttributeQualifiedName ", ts);
 
-            var ts1,nd1;
             switch (hd (ts)) {
             case Token::LeftParen:
                 var [ts1,nd1] = expressionQualifiedIdentifier (ts);
@@ -468,7 +473,6 @@
         {
             enter("Parser::qualifiedName ", ts);
 
-            var ts1, nd1;
             switch (hd (ts)) {
             case Token::LeftParen:
                 var [ts1,nd1] = expressionQualifiedIdentifier (ts);
@@ -496,7 +500,6 @@
         {
             enter("Parser::propertyName ", ts);
 
-            var ts1, nd1;
             switch (hd (ts)) {
 /*  FIXME: this is a grammar bug
             case Token::LeftParen:
@@ -508,21 +511,20 @@
                 var [ts1,nd1] = nonAttributeQualifiedName (ts);
             }
 
-            var ts2, nd2;
             switch (hd (ts1)) {
             case Token::LeftDotAngle:
                 var [ts2,nd2] = typeExpressionList (tl (ts1));
                 switch (hd (ts2)) {
                 case Token::UnsignedRightShift:
                     // downgrade >>> to >> to eat one >
-                    var ts2 = swap (ts2,Token::UnsignedRightShift,Token::RightShift);
+                    ts2 = swap (ts2,Token::UnsignedRightShift,Token::RightShift);
                     break;
                 case Token::RightShift:
                     // downgrade >> to > to eat one >
-                    var ts2 = swap (ts2,Token::RightShift,Token::GreaterThan);
+                    ts2 = swap (ts2,Token::RightShift,Token::GreaterThan);
                     break;
                 default:
-                    var ts2 = eat (ts2,Token::GreaterThan);
+                    ts2 = eat (ts2,Token::GreaterThan);
                     break;
                 }
                 break;
@@ -546,8 +548,6 @@
         {
             enter("Parser::primaryName ", ts);
 
-            var ts1,nd1;
-            var ts2,nd2;
             switch (hd (ts)) {
             case Token::Identifier:
                 switch (hd (tl (ts))) {
@@ -580,9 +580,6 @@
             : [TOKENS, [Ast::IDENT]]
         {
             enter("Parser::path ", ts);
-
-            var ts1,nd1;
-            var temp;
 
             switch (hd (ts)) {
             case Token::Identifier:
@@ -946,8 +943,6 @@
         {
             enter("Parser::primaryExpression ",ts);
 
-            var ts1, nd1;
-
             switch (hd (ts)) {
             case Token::Null:
                 var [ts1,nd1] = [tl (ts), new Ast::LiteralExpr (new Ast::LiteralNull ())];
@@ -1052,7 +1047,6 @@
         {
             enter("Parser::propertyOperator ", ts);
 
-            var tsx,ndx;
             switch (hd (ts)) {
             case Token::Dot:
                 switch (hd (tl (ts))) {
@@ -1213,7 +1207,6 @@
         {
             enter("Parser::arguments ", ts);
 
-            var tsx,ndx;
             var ts1 = eat (ts,Token::LeftParen);
             switch (hd (ts1)) {
             case Token::RightParen:
@@ -1256,7 +1249,6 @@
         {
             enter("Parser::memberExpression ", ts);
 
-            var tsx,ndx;
             switch (hd (ts)) {
             case Token::New:
                 let [ts1,nd1] = memberExpression (tl (ts), beta);
@@ -1282,7 +1274,6 @@
         {
             enter("Parser::memberExpressionPrime ", ts);
 
-            var tsx,ndx;
             switch (hd (ts)) {
             case Token::LeftBracket:
             case Token::Dot:
@@ -1314,7 +1305,6 @@
         {
             enter("Parser::callExpressionPrime ", ts);
 
-            var tsx,ndx;
             switch (hd (ts)) {
             case Token::LeftParen:
                 let [ts1,nd1] = this.arguments (ts);
@@ -1350,7 +1340,6 @@
         {
             enter("Parser::newExpression ", ts);
 
-            var tsx,ndx;
             switch (hd (ts)) {
             case Token::New:
                 switch (hd (tl (ts))) {
@@ -1403,7 +1392,6 @@
         {
             enter("Parser::leftHandSideExpression ", ts);
 
-            var tsx,ndx;
             switch (hd (ts)) {
             case Token::New:
                 var [tsx,ndx] = newExpression (ts,beta);
@@ -1439,7 +1427,6 @@
         {
             enter("Parser::postfixExpression ", ts);
 
-            var tsx,ndx;
             let [ts1, nd1] = leftHandSideExpression (ts, beta);
             switch (hd (ts1)) {
             case Token::PlusPlus:
@@ -1479,7 +1466,6 @@
         {
             enter("Parser::unaryExpression ", ts);
 
-            var tsx,ndx;
             switch (hd (ts)) {
             case Token::Delete:
                 let [ts1,nd1] = postfixExpression (ts,beta);
@@ -1545,8 +1531,7 @@
         {
             enter("Parser::multiplicativeExpression ", ts);
 
-            var op;
-            var [ts1,nd1] = unaryExpression (ts, beta);
+            [ts1,nd1] = unaryExpression (ts, beta);
 
             done:
             while (true) {
@@ -1564,7 +1549,8 @@
                     break done;
                 }
                 let [ts2, nd2] = unaryExpression (tl (ts1), beta);
-                var [ts1, nd1] = [ts2, new Ast::BinaryExpr (op, nd1, nd2)];
+                ts1 = ts2;
+                nd1 = new Ast::BinaryExpr (op, nd1, nd2);
             }
 
             exit ("Parser::multiplicativeExpression ", ts1);
@@ -1585,7 +1571,6 @@
         {
             enter("Parser::additiveExpression ", ts);
 
-            var op;
             var [ts1, nd1] = multiplicativeExpression (ts, beta);
             done:
             while (true) {
@@ -1600,7 +1585,7 @@
                     break done;
                 }
                 let [ts2, nd2] = multiplicativeExpression (tl (ts1), beta);
-                var [ts1, nd1] = [ts2, new Ast::BinaryExpr (op, nd1, nd2)];
+                [ts1, nd1] = [ts2, new Ast::BinaryExpr (op, nd1, nd2)];
             }
 
             exit ("Parser::additiveExpression ", ts1);
@@ -1622,7 +1607,6 @@
         {
             enter("Parser::shiftExpression ", ts);
 
-            var op;
             var [ts1, nd1] = additiveExpression (ts, beta);
             done:
             while (true) {
@@ -1679,7 +1663,6 @@
         {
             enter("Parser::relationalExpression ", ts);
 
-            var op,ts2,nd2;
             var [ts1, nd1] = shiftExpression (ts, beta);
             done:
             while (true) {
@@ -1749,7 +1732,6 @@
         {
             enter("Parser::equalityExpression ", ts);
 
-            var op;
             var [ts1, nd1] = relationalExpression (ts, beta);
             done:
             while (true) {
@@ -1969,7 +1951,6 @@
         {
             enter("Parser::conditionalExpression ", ts);
 
-            var ts1,nd1,ts2,nd2,ts3,nd3;
             switch (hd (ts)) {
             case Token::Let:
                 var [ts1,nd1] = letExpression (ts,beta);
@@ -2100,9 +2081,7 @@
                 : [TOKENS, Ast::EXPR]
             {
                 enter("Parser::listExpressionPrime ", ts);
-
-                var ts1,nd1;
-                var ts2,nd2;
+        
                 switch (hd (ts)) {
                 case Token::Comma:
                     var [ts1,nd1] = assignmentExpression (tl (ts), beta);
@@ -2194,10 +2173,35 @@
 
         /*
 
-          Pattern(beta,tau)
-              SimplePattern(beta,tau)
-              ObjectPattern(tau)
-              ArrayPattern(tau)
+          Pattern(beta,gamma)
+              SimplePattern(beta,gamma)
+              ObjectPattern(gamma)
+              ArrayPattern(gamma)
+
+        */
+
+        function pattern (ts: TOKENS, beta: BETA, gamma: GAMMA)
+            : [TOKENS, PATTERN]
+        {
+            enter("Parser::pattern", ts);
+
+            switch (hd (ts)) {
+            case Token::LeftBrace:
+                var [ts1,nd1] = objectPattern (tl (ts), gamma);
+                break;
+            case Token::LeftBracket:
+                var [ts1,nd1] = arrayPattern (tl (ts), gamma);
+                break;
+            default:
+                var [ts1,nd1] = simplePattern (ts, beta, gamma);
+                break;
+            }
+
+            exit("Parser::pattern", ts1);
+            return [ts1,nd1];
+        }
+
+        /*
 
           SimplePattern(beta, noExpr)
               Identifier
@@ -2207,13 +2211,12 @@
 
           */
 
-        function simplePattern (ts: TOKENS, beta: BETA, tau: TAU)
-            //            : [TOKENS, PATTERN]
+        function simplePattern (ts: TOKENS, beta: BETA, gamma: GAMMA)
+            : [TOKENS, PATTERN]
         {
             enter("Parser::simplePattern", ts);
 
-            var tsx,ndx;
-            switch (tau) {
+            switch (gamma) {
             case NoExpr:
                 let [ts1,nd1] = identifier (ts);
                 var [tsx,ndx] = [ts1, new IdentifierPattern (nd1.Ast::ident)];
@@ -2235,321 +2238,114 @@
               SimplePattern(beta, noExpr)  :  NullableTypeExpression
 
           TypedPattern(beta)
-              SimplePattern(beta, noExpr)
-              SimplePattern(beta, noExpr)  :  NullableTypeExpression
-              ObjectPattern(noExpr)
-              ObjectPattern(noExpr)  :  TypeExpression
-              ArrayPattern(noExpr)
-              ArrayPattern(noExpr)  :  TypeExpression
+              Pattern(beta, noExpr)
+              Pattern(beta, noExpr)  :  NullableTypeExpression
 
         */
 
         function typedPattern (ts: TOKENS, beta: BETA)
-            //            : [TOKENS, [PATTERN,Ast.TYPE_EXPR]]
+            : [TOKENS, [PATTERN,Ast::TYPE_EXPR]]
         {
             enter("Parser::typedPattern ", ts);
 
-            var [ts1,nd1] = simplePattern (ts,beta,NoExpr);
-            var ts2,nd2;
-            var tsx,ndx;
+            var [ts1,nd1] = pattern (ts,beta,NoExpr);
             switch (hd (ts1)) {
             case Token::Colon:
                 var [ts2,nd2] = typeExpression (tl (ts1));
-                var tsx = ts2;
-                var ndx = [nd1,nd2];
                 break;
             default:
-                var tsx = ts1;
-                var ndx = [nd1,null];
+                var [ts2,nd2] = [ts1,new Ast::SpecialType (new Ast::AnyType)];
                 break;
             }
 
-            exit("Parser::typedPattern ", tsx);
-            return [tsx,ndx];
+            exit("Parser::typedPattern ", ts2);
+            return [ts2,[nd1,nd2]];
         }
 
-//        /*
-//
-//        DestructuringAssignmentExpression
-//            DestructuringPattern  =  AssignmentExpressionb
-//
-//        */
-//
-//        function parseDestructuringAssignmentExpression(mode)
-//        {
-//            enter("parseDestructuringAssignmentExpression",mode)
-//
-//            var first = parseDestructuringPattern()
-//            match(assign_token)
-//            var second = parseAssignmentExpression(mode)
-//            var result = <AssignmentExpression>{first}{second}</AssignmentExpression>
-//
-//            exit("parseDestructuringAssignmentExpression",result)
-//            return result
-//        }
-//
-//        /*
-//
-//        DestructuringPattern
-//            DestructuringObjectPattern
-//            DestructuringArrayPattern
-//
-//        */
-//
-//        function parseDestructuringPattern()
-//        {
-//            enter("parseDestructuringPattern")
-//
-//            if( lookahead(leftbrace_token) )
-//            {
-//                var result = parseDestructuringObjectPattern()
-//            }
-//            else
-//            if( lookahead(leftbracket_token ) )
-//            {
-//                var result = parseDestructuringArrayPattern()
-//            }
-//            else
-//            {
-//                throw "expecting destrcturing pattern"
-//            }
-//
-//            exit("parseDestructuringPattern",result)
-//            return result
-//        }
-//
-//        /*
-//
-//        DestructuringObjectPattern
-//            {  DestructuringFieldList  }
-//
-//        DestructuringFieldList
-//            DestructuringField
-//            DestructuringFieldList  ,  DestructuringField
-//
-//        */
-//
-//        function parseDestructuringObjectPattern()
-//        {
-//            enter("parseDestructuringObjectPattern")
-//
-//            enterSlashContext(regexpliteral_token)
-//            match(leftbrace_token)
-//            var first = <></>
-//            first += parseDestructuringField()
-//            while( lookahead(comma_token) )
-//            {
-//                match(comma_token)
-//                first += parseDestructuringField()
-//            }
-//            match(rightbrace_token)
-//            exitSlashContext(regexpliteral_token)
-//            var result = <DestructuringObjectPattern>{first}</DestructuringObjectPattern>
-//
-//            exit("parseDestructuringObjectPattern",result)
-//            return result
-//        }
-//
-//        /*
-//
-//        DestructuringField
-//            NonAttributeQualifiedIdentifier  :  DestructuringPattern
-//            NonAttributeQualifiedIdentifier  :  PostfixExpression
-//
-//        */
-//
-//        function parseDestructuringField()
-//        {
-//            enter("parseDestructuringField")
-//
-//            var first = parseNonAttributeQualifiedIdentifier()
-//            match(colon_token)
-//            if( lookahead(leftbrace_token) || lookahead(leftbracket_token) )
-//            {
-//                var second = parseDestructuringPattern()
-//                var result = <DestructuringField>{first}{second}</DestructuringField>
-//            }
-//            else
-//            {
-//                var second = parsePostfixExpression()
-//                var result = <DestructuringField>{first}{second}</DestructuringField>
-//            }
-//
-//            exit("parseDestructuringField",result)
-//            return result
-//        }
-//
-//        /*
-//
-//        DestructuringArrayPattern
-//            [  DestructuringElementList  ]
-//
-//        DestructuringElementList
-//            empty
-//            DestructuringElement
-//            , DestructuringElementList
-//            DestructuringElement , DestructuringElementList
-//
-//        */
-//
-//        function parseDestructuringArrayPattern()
-//        {
-//            enter("parseDestructuringArrayPattern")
-//
-//            enterSlashContext(regexpliteral_token)
-//            match(leftbracket_token)
-//            if( lookahead(rightbracket_token) )
-//            {
-//                var first = <></>
-//            }
-//            else
-//            {
-//                var first = <></>
-//                first += parseDestructuringElement()
-//
-//                {
-//                    match(comma_token)
-//                    if( lookahead(rightbracket_token) )
-//                    {
-//                        // do nothing, we're done
-//                    }
-//                    else
-//                    {
-//                        first += parseDestructuringElement()
-//                    }
-//                }
-//            }
-//            match(rightbracket_token)
-//            exitSlashContext(regexpliteral_token)
-//            var result = <DestructuringArrayPattern>{first}</DestructuringArrayPattern>
-//
-//            exit("parseDestructuringArrayPattern",result)
-//            return result
-//        }
-//
-//        /*
-//
-//        DestructuringElement
-//            empty
-//            DestructuringPattern
-//            PostfixExpression
-//
-//        */
-//
-//        function parseDestructuringElement()
-//        {
-//            enter("parseDestructuringElement")
-//
-//            if( lookahead(comma_token) )
-//            {
-//                var result = <EmptyElement/>
-//            }
-//            else
-//            if( lookahead(leftbrace_token) || lookahead(leftbracket_token) )
-//            {
-//                var result = parseDestructuringPattern()
-//            }
-//            else
-//            {
-//                var result = parseAssignmentExpression(allowIn_mode)
-//            }
-//
-//            exit("parseDestructuringElement",result)
-//            return result
-//        }
-//
-//        {
-//            enter("parseListExpression",mode)
-//
-//            var list = <></>
-//            list += parseAssignmentExpression(mode)
-//            while( lookahead( comma_token ) )
-//            {
-//                match( comma_token );
-//                list += parseAssignmentExpression(mode)
-//            }
-//            var node = list
-//
-//            exit("parseListExpression",node)
-//            return node
-//        }
-//
-//        function parseListExpressionPrime(first,mode)
-//        {
-//            enter("parseListExpressionPrime",mode)
-//
-//            var list = <></>
-//            list += first
-//            while( lookahead( comma_token ) )
-//            {
-//                match( comma_token );
-//                list += parseAssignmentExpression(mode)
-//            }
-//            var node = list
-//
-//            exit("parseListExpressionPrime",node)
-//            return node
-//        }
-//
-//         // TYPE EXPRESSIONS
-//
-//        /*
-//
-//        TypeExpression
-//            TypeIdentifier
-//            function  FunctionSignature
-//            (  TypeExpressionList  )
-//            {  FieldTypeList  }
-//            [  ElementTypeList  ]
-//
-//        */
-//
-//        function parseTypeExpression()
-//        {
-//            enter("parseTypeExpression")
-//
-//            var prologue = <Prologue/>
-//
-//            if( lookahead(function_token) )
-//            {
-//                match(function_token)
-//                var result = parseFunctionSignature(prologue)
-//            }
-//            else
-//            if( lookahead(leftparen_token) )
-//            {
-//                var result = parseUnionType()
-//            }
-//            else
-//            if( lookahead(leftbrace_token) )
-//            {
-//                var result = parseRecordType()
-//            }
-//            else
-//            if( lookahead(leftbracket_token) )
-//            {
-//                var result = parseArrayType()
-//            }
-//            else
-//            {
-//                var result = parseTypeIdentifier()
-//                if( lookahead(not_token) )
-//                {
-//                    match(not_token)
-//                    result.@nullable="false"
-//                }
-//                else
-//                if( lookahead(questionmark_token) )
-//                {
-//                    match(questionmark_token)
-//                    result.@nullable="true"
-//                }
-//            }
-//
-//            exit("parseTypeExpression",result.toXMLString())
-//            return result
-//        }
-//
+        // TYPE EXPRESSIONS
+
+        /*
+
+        NullableTypeExpression
+            null
+            undefined
+            TypeExpression
+            TypeExpression  ?
+            TypeExpression  !
+
+        */
+
+        function nullableTypeExpression (ts: TOKENS)
+            : [TOKENS, Ast::TYPE_EXPR]
+        {
+            enter("Parser::nullableTypeExpression ", ts);
+
+            switch (hd (ts1)) {
+            case Token::Null:
+                var [ts1,nd1] = [tl (ts), new Ast::SpecialType (new Ast::NullType)];
+                break;
+            case Token::Undefined:
+                var [ts1,nd1] = [tl (ts), new Ast::SpecialType (new Ast::UndefinedType)];
+                break;
+            default:
+                var [ts1,nd1] = typeExpression (ts);
+                switch (hd (ts1)) {
+                case Token::QuestionMark:
+                    var [ts1,nd1] = [tl (ts1), new Ast::NullableType (nd1,true)];
+                    break;
+                case Token::Not:
+                    var [ts1,nd1] = [tl (ts1), new Ast::NullableType (nd1,false)];
+                    break;
+                default:
+                    // do nothing
+                    break;
+                }
+                break;
+            }
+
+            exit("Parser::nullableTypeExpression ", ts1);
+            return [ts1,nd1];
+        }
+
+        /*
+
+        TypeExpression
+            FunctionType
+            UnionType
+            RecordType
+            ArrayType
+            PrimaryIdentifier
+
+        */
+
+        function typeExpression (ts: TOKENS)
+            : [TOKENS, Ast::TYPE_EXPR]
+        {
+            enter("Parser::typeExpression ", ts);
+
+            switch (hd (ts1)) {
+            case Token::Function:
+                var [ts1,nd1] = functionType (ts);
+                break;
+            case Token::LeftParen:
+                var [ts1,nd1] = unionType (ts);
+                break;
+            case Token::LeftBrace:
+                var [ts1,nd1] = objectType (ts);
+                break;
+            case Token::LeftBracket:
+                var [ts1,nd1] = arrayType (ts);
+                break;
+            default:
+                var [ts1,nd1] = primaryIdentifier (ts);
+                nd1 = new Ast::TypeName (nd1);  // need type expr
+                break;
+            }
+
+            exit("Parser::typeExpression ", ts1);
+            return [ts1,nd1];
+        }
+
 //        /*
 //
 //        UnionType
@@ -2776,13 +2572,16 @@
         {
             enter("Parser::statement ", ts);
 
-            var ts1,nd1,ts2,nd2;
             switch (hd(ts)) {
             case Token::If:
                 var [ts2,nd2] = ifStatement (ts,omega);
                 break;
+            case Token::Return:
+                var [ts1,nd1] = returnStatement (ts,omega);
+                var [ts2,nd2] = [semicolon (ts1,omega),nd1];
+                break;
             default:
-                var [ts1,nd1] = expressionStatement (ts);
+                let [ts1,nd1] = expressionStatement (ts);
                 var [ts2,nd2] = [semicolon (ts1,omega),nd1];
                 break;
             }
@@ -2802,7 +2601,6 @@
         {
             enter("Parser::semicolon ", ts);
 
-            var ts1;
             switch (omega) {
             case Full:
                 switch (hd (ts)) {
@@ -2842,6 +2640,19 @@
             return [ts1, new Ast::ExprStmt (nd1)];
         }
 
+        function returnStatement (ts: TOKENS)
+            : [TOKENS, Ast::STMT]
+        {
+            enter("Parser::returnStatement ", ts);
+
+            ts = eat (ts, Token::Return);
+
+            var [ts1,nd1] = listExpression (ts,AllowIn);
+
+            exit("Parser::returnStatement ", ts1);
+            return [ts1, new Ast::ReturnStmt (nd1)];
+        }
+
         function ifStatement (ts: TOKENS, omega)
             : [TOKENS, Ast::STMT]
         {
@@ -2850,7 +2661,6 @@
             ts = eat (ts,Token::If);
             var [ts1,nd1] = parenListExpression (ts);
             var [ts2,nd2] = statement (ts1, omega); // FIXME: should be subStatement to include empty stmt
-            var ts3,nd3;
             switch (hd (ts2)) {
             case Token::Else:
                 var [ts3,nd3] = statement (tl (ts2), omega);
@@ -3354,7 +3164,6 @@
         {
             enter("Parser::variableDefinitionKind ", ts);
 
-            var tsx,ndx;
             switch (hd (ts)) {
             case Token::Const:
                 var [tsx,ndx] = [tl (ts), Ast::constTag];
@@ -3407,21 +3216,22 @@
                 : [TOKENS, Ast::BINDING_INITS]
             {
                 enter("Parser::variableBindingListPrime ", ts);
-
-                var ts1,nd1;
-                var ts2,nd2;
-                var b1,i1,b2,i2;
+        
                 switch (hd (ts)) {
                 case Token::Comma:
-                    var [ts1,[b1,i1]] = variableBinding (tl (ts), beta);
-                    var [ts2,[b2,i2]] = variableBindingListPrime (ts1);
+                    var [ts1,nd1] = variableBinding (tl (ts), beta);
+                    var [ts2,nd2] = variableBindingListPrime (ts1);
+
+                    var [b1,i1] = nd1;  // FIXME: fold into patterns above when it works in the RI
+                    var [b2,i2] = nd2;
 
                     for (var n in b2) b1.push (b2[n]);  // FIXME: use concat when it works in the RI
                     for (var n in i2) i1.push (i2[n]);
 
                     break;
                 default:
-                    var [ts2,[b1,i1]] = [ts,[[],[]]];
+                    var [ts2,nd2] = [ts,[[],[]]];
+                    var [b2,i2] = nd2;
                     break;
                 }
 
@@ -3448,8 +3258,7 @@
         {
             enter("Parser::variableBinding ", ts);
 
-            var tsx,ndx;
-            let [ts1,nd1] = typedPattern (ts);
+            let [ts1,nd1] = typedPattern (ts,beta);
             let [p,t] = nd1;
             switch (hd (ts1)) {
             case Token::Assign:
@@ -3958,381 +3767,454 @@
 //        {
 //        }
 //
-//        function parseFunctionDefinition(attrs,prologue)
-//        {
-//            enter("parseFunctionDefinition",attrs)
-//
-//            var kind  = match(function_token)
-//            var name  = parseFunctionName()
-//            var value = parseFunctionCommon(<></>)
-//            attrs.* += <{name.@kind}/>  // add functionname kind to attrs
-//            var node = makeBinding(attrs,kind,name,value,prologue)
-//
-//            exit("parseFunctionDefinition",node)
-//            return node
-//        }
-//
-//        function parseFunctionName()
-//        {
-//            enter("parseFunctionName")
-//
-//            if( lookahead(identifier_token) )
-//            {
-//                var kind = "empty"
-//                var first = parseIdentifier()
-//            }
-//            else
-//            if( lookahead(to_token) )
-//            {
-//                var kind = scan.tokenText(match(to_token))
-//                var first = parseIdentifier()
-//            }
-//            else
-//            if( lookahead(get_token) )
-//            {
-//                var kind = scan.tokenText(match(get_token))
-//                var first = parsePropertyIdentifier()
-//            }
-//            else
-//            if( lookahead(set_token) )
-//            {
-//                var kind = scan.tokenText(match(set_token))
-//                var first = parsePropertyIdentifier()
-//            }
-//            else
-//            if( lookahead(call_token) )
-//            {
-//                var kind = scan.tokenText(match(call_token))
-//                var first = parsePropertyIdentifier()
-//            }
-//            else
-//            {
-//                var found = lookahead(mult_token) ? match(mult_token) :
-//                            lookahead(div_token) ? match(div_token) :
-//                            lookahead(modulus_token) ? match(modulus_token) :
-//                            lookahead(plus_token) ? match(plus_token) :
-//                            lookahead(minus_token) ? match(minus_token) :
-//                            lookahead(leftshift_token) ? match(leftshift_token) :
-//                            lookahead(rightshift_token) ? match(rightshift_token) :
-//                            lookahead(unsignedrightshift_token) ? match(unsignedrightshift_token) :
-//                            lookahead(bitwiseand_token) ? match(bitwiseand_token) :
-//                            lookahead(bitwisexor_token) ? match(bitwisexor_token) :
-//                            lookahead(bitwiseor_token) ? match(bitwiseor_token) :
-//                            lookahead(strictequals_token) ? match(strictequals_token) :
-//                            lookahead(notequals_token) ? match(notequals_token) :
-//                            lookahead(strictnotequals_token) ? match(strictnotequals_token) : empty_token
-//
-//                if( found != empty_token )
-//                {
-//                    var kind = "operator"
-//                    var first = <Identifier name={scan.tokenText(found)}/>
-//                }
-//            }
-//
-//            var node = <FunctionName kind={kind}>{first}</FunctionName>
-//
-//            exit("parseFunctionName",node)
-//            return node
-//        }
-//
-//        /*
-//
-//        FunctionCommon
-//            FunctionSignature
-//            FunctionSignature Block
-//
-//        */
-//
-//        function parseFunctionCommon(first)
-//        {
-//            enter("parseFunctionCommon",first)
-//
-//            var prologue = <Prologue/>
-//            var second = parseFunctionSignature(prologue)
-//
-//            if( !inInterfaceBody() )
-//            {
-//                slot_context_stack.push("function")
-//                var third = parseBlockStatement();
-//                slot_context_stack.pop()
-//                prologue.* += third.Prologue.*
-//                var block = third.Block
-//            }
-//            else
-//            {
-//                var block = <></>
-//            }
-//
-//            var node = <Function>{first}{second}{prologue}{block}</Function>
-//
-//            if( !inClassBody() )
-//            {
-//                node.@factory = "true"
-//            }
-//
-//            exit("parseFunctionCommon",node)
-//            return node
-//        }
-//
-//        /*
-//
-//        FunctionSignature
-//            TypeParameters  (  Parameters  )  Result
-//
-//        */
-//
-//        function parseFunctionSignature(prologue)
-//        {
-//            enter("parseFunctionSignature")
-//
-//            var first = parseTypeParameters()
-//            match(leftparen_token)
-//            var second = parseParameters(prologue)
-//            match(rightparen_token)
-//            var third = parseResultType()
-//            var result = <Signature>{first}{second}{third}</Signature>
-//
-//            exit("parseFunctionSignature",result)
-//            return result
-//        }
-//
-//        /*
-//
-//        TypeParameters
-//            empty
-//            .<  TypeParameterList  >
-//
-//        */
-//
-//        function parseTypeParameters()
-//        {
-//            if( lookahead(leftdotangle_token) )
-//            {
-//                match(leftdotangle_token)
-//                var first = parseTypeParameterList()
-//                var result = <TypeParameters>{first}</TypeParameters>
-//                match(greaterthan_token)
-//            }
-//            else
-//            {
-//                var result = <TypeParameters/>
-//            }
-//
-//            return result
-//        }
-//
-//        /*
-//
-//        TypeParameterList
-//            Identifier
-//            Identifier  ,  TypeParameterList
-//
-//        */
-//
-//        function parseTypeParameterList()
-//        {
-//            enter("parseTypeParameterList")
-//
-//            var list = <></>
-//            list += parseIdentifier()
-//            while( lookahead(comma_token) )
-//            {
-//                match(comma_token)
-//                list += parseIdentifier()
-//            }
-//            var result = list
-//
-//            exit("parseTypeParameterList",result)
-//            return result
-//        }
-//
-//        /*
-//
-//        */
-//
-//        function parseParameters(prologue)
-//        {
-//            enter("parseParameters")
-//
-//            if( lookahead(rightparen_token) )
-//            {
-//                var result = <Parameters/>
-//            }
-//            else
-//            {
-//                var result = parseNonemptyParameters(<></>,prologue)
-//            }
-//
-//            exit("parseParameters",result)
-//            return result
-//        }
-//
-//        /*
-//
-//        NonemptyParameters
-//            ParameterInit
-//            ParameterInit  ,  NonemptyParameters
-//            RestParameters
-//
-//        */
-//
-//		function isLet(node)
-//		{
-//			if( node.localName() == "LetExpression" ||
-//				node.localName() == "YieldExpression" && node.*.length() > 0 ||
-//				node.localName() == "ConditionalExpression" && isLet(node.*[2]) )
-//			{
-//				return true
-//			}
-//			return false
-//		}
-//
-//        function parseNonemptyParameters(first,prologue)
-//        {
-//            enter("parseNonemptyParameters",first)
-//
-//            if( lookahead(tripledot_token) )
-//            {
-//                first += parseRestParameter()
-//                var result = first
-//            }
-//            else
-//            {
-//                first += parseParameterInit(prologue)
-//                if( lookahead(comma_token) )
-//                {
-//					if( isLet(first) )
-//					{
-//						throw "ambiguous syntax, use parens to associate"
-//					}
-//                    match(comma_token)
-//                    var result = parseNonemptyParameters(first,prologue)
-//                }
-//                else
-//                {
-//                    var result = first
-//                }
-//            }
-//
-//            exit("parseNonemptyParameters",result)
-//            return result
-//        }
-//
-//        /*
-//
-//        ParameterInit
-//            Parameter
-//            Parameter  =  NonAssignmentExpressionallowIn
-//
-//        */
-//
-//        function parseParameterInit(prologue)
-//        {
-//            enter("parseParameterInit")
-//
-//            if( lookahead(const_token) )
-//            {
-//                var kind = match(const_token);
-//            }
-//            else
-//            {
-//                var kind = var_token;
-//            }
-//
-//            var typedid = parseTypedIdentifier(allowIn_mode)
-//
-//            var result = <Parameter kind={scan.tokenText(kind)}>{typedid}</Parameter>
-//
-//            if( lookahead(assign_token) )
-//            {
-//                match(assign_token);
-//                var init = parseNonAssignmentExpression(allowIn_mode);
-//                result.Init = init
-//            }
-//
-//            var temp = makeBinding(<Attributes><parameter/></Attributes>,var_token,typedid,init,prologue)
-//
-//            exit("parseParameterInit",result)
-//            return result
-//        }
-//
-//        /*
-//
-//        */
-//
-//        function parseParameter()
-//        {
-//            enter("parseParameter")
-//
-//            exit("parseParameter",result)
-//            return result
-//        }
-//
-//        /*
-//
-//        RestParameter
-//            ...
-//            ...  ParameterAttributes Identifier
-//
-//        */
-//
-//        function parseRestParameter()
-//        {
-//            enter("parseRestParameter")
-//
-//            match(tripledot_token)
-//            if( lookahead(const_token) )
-//            {
-//                var first = match(const_token);
-//            }
-//            else
-//            {
-//                var first = var_token;
-//            }
-//
-//            var second = parseIdentifier()
-//            var result = <RestParameter kind={scan.tokenText(first)}>{second}</RestParameter>
-//
-//            exit("parseRestParameter",result)
-//            return result
-//        }
-//
-//        /*
-//
-//        ResultType
-//            empty
-//            :  void
-//            :  TypeExpression
-//
-//        */
-//
-//        function parseResultType()
-//        {
-//            enter("parseResultType")
-//
-//            if( lookahead(colon_token) )
-//            {
-//                match(colon_token)
-//                if( lookahead(void_token) )
-//                {
-//                    match(void_token)
-//                    var first = <Void/>
-//                }
-//                else
-//                {
-//                    var first = parseTypeExpression()
-//                }
-//                var result = <ResultType>{first}</ResultType>
-//            }
-//            else
-//            {
-//                var result = <ResultType/>
-//            }
-//
-//            exit("parseResultType",result)
-//            return result
-//        }
-//
+
+        /*
+
+        FunctionDefinition(class)
+            function  ClassName  ConstructorSignature  FunctionBody(allowIn)
+            function  FunctionName  FunctionSignature  FunctionBody(allowIn)
+            
+        FunctionDefinition(tau)
+            function  FunctionName  FunctionSignature  FunctionBody(allowIn)
+            let  function  FunctionName  FunctionSignature  FunctionBody(allowIn)
+            const  function  FunctionName  FunctionSignature  FunctionBody(allowIn)
+
+        */
+
+        function functionDefinition (ts: TOKENS, tau: TAU, kind, ns, isFinal, isOverride, isPrototype, isStatic, isAbstract)
+            : [TOKENS, Ast::DIRECTIVES]
+        {
+            enter("Parser::functionDefinition ", ts);
+
+            ts = eat (ts, Token::Function);
+
+            var [ts1,nd1] = functionName (ts);
+            var [ts2,nd2] = functionSignature (ts1);
+            var [ts3,nd3] = functionBody (ts2, AllowIn);
+
+            var {params:params,defaults:defaults,resultType:resultType,thisType:thisType,hasRest:hasRest} = nd2;
+            var func = new Ast::Func (nd1,false,nd3,params,defaults,resultType);
+            var defn = new Ast::FunctionDefn (kind,ns,isFinal,isOverride,isPrototype,isStatic,isAbstract,func);
+
+            exit("Parser::functionDefinition ", ts3);
+
+            return [ts3, { pragmas: []
+                         , defns: [defn]
+                         , head: null
+                         , stmts: []
+                         , pos: null }];
+        }
+
+
+        /*
+
+        FunctionName
+            Identifier
+            OverloadedOperator
+            get  Identifier
+            set  Identifier
+
+        */
+
+        function functionName (ts: TOKENS)
+            : [TOKENS, Ast::FUNC_NAME]
+        {
+            enter("Parser::functionName ", ts);
+
+            switch (hd (ts)) {
+            case Token::Get:
+                var [ts1,nd1] = identifier (tl (ts));
+                var tsx = ts1;
+                var ndx = {kind: new Ast::Get, ident: nd1};
+                break;
+            case Token::Set:
+                var [ts1,nd1] = identifier (tl (ts));
+                var tsx = ts1;
+                var ndx = {kind: new Ast::Set, ident: nd1};
+                break;
+            case Token::Plus:
+            case Token::Minus:
+                // FIXME add other operators here
+                break;
+            default:
+                var [ts1,nd1] = identifier (ts);
+                var tsx = ts1;
+                var ndx = {kind: new Ast::Ordinary, ident: nd1};
+                break;
+            }
+
+            exit("Parser::functionName ", ts1);
+
+            return [tsx,ndx]
+        }
+
+        /*
+
+        FunctionSignature
+            TypeParameters  (  Parameters  )  ResultType
+            TypeParameters  (  this  :  PrimaryIdentifier  )  ResultType
+            TypeParameters  (  this  :  PrimaryIdentifier  ,  NonemptyParameters  )  ResultType
+
+        */
+
+        function functionSignature (ts: TOKENS)
+            : [TOKENS, Ast::FUNC_SIG]
+        {
+            enter("Parser::functionSignature ", ts);
+
+            function headFromBindingInits ([bindings,steps] /*: Ast::BINDING_INITS*/, ns )
+                : Ast::HEAD {
+                function fixturesFromBindings (bs: [Ast::BINDING])
+                    : Ast::FIXTURES {
+                    if(bs.length === 0) {
+                        return [];
+                    }
+                    var b0 = bs[0];
+                    var n0 = new Ast::PropName ({ns:ns,ident:ident});
+                    var f0 = new Ast::ValFixture (null,false);
+                    var fs = fixturesFromBindings (bs.slice(1,bs.length));
+                    fs.unshift ([n0,f0]);
+                    return fs;
+                }
+
+                function initsFromInitSteps (is: [Ast::INIT_STEP])
+                    : Ast::INITS {
+                    // FIXME
+                    return [];
+                }
+
+                var fixtures = fixturesFromBindings (bindings);
+                var inits = initsFromInitSteps (steps);
+                return {fixtures:fixtures, inits:inits}
+            }
+
+            var [ts1,nd1] = typeParameters (ts);
+            ts1 = eat (ts1, Token::LeftParen);
+            switch (hd (ts1)) {
+            case Token::This:
+                // FIXME
+                break;
+            default:
+                var [ts2,nd2,hasRest] = parameters (ts1);
+                break;
+            }
+            ts2 = eat (ts2, Token::RightParen);
+            var [ts3,nd3] = resultType (ts2);
+
+            // Translate bindings and init steps into fixtures and inits (HEAD)
+            let [[b,i],e,t] = nd2;
+            let p = headFromBindingInits ([b,i]);
+
+            var ndx = { typeParams: []
+                      , params: p
+                      , paramTypes: t
+                      , defaults: e
+                      , ctorInits: null
+                      , returnType: nd3
+                      , thisType: null
+                      , hasRest: hasRest };
+
+            exit("Parser::functionSignature ", ts3);
+
+            return [ts3,ndx]
+        }
+
+        /*
+
+        TypeParameters
+            empty
+            .<  TypeParameterList  >
+
+        */
+
+        function typeParameters (ts: TOKENS)
+            : [TOKENS, [Ast::IDENT]]
+        {
+            enter("Parser::typeParameters ", ts);
+
+            switch (hd (ts)) {
+            case Token::LeftDotAngle:
+                ts = eat (ts, Token::LeftDotAngle);
+                var [ts1,nd1] = typeParameterList (ts);
+                ts1 = eat (ts1, Token::GreaterThan);
+                break;
+            default:
+                var [ts1,nd1] = [ts,[]];
+                break;
+            }
+
+            exit("Parser::typeParameters ", ts1);
+            return [ts1,nd1];
+        }
+
+        /*
+
+        TypeParameterList
+            Identifier
+            Identifier  ,  TypeParameterList
+
+        */
+
+        function typeParameterList (ts: TOKENS)
+            : [TOKENS, [Ast::IDENT]]
+        {
+            enter("Parser::typeParameterList ", ts);
+
+            function typeParameterListPrime (ts)
+                : [TOKENS, [Ast::IDENT]] {
+
+                switch (hd (ts)) {
+                case Token::Comma:
+                    ts = eat (ts, Token::Comma);
+                    var [ts1,nd1] = identifier (ts);
+                    var [ts2,nd2] = typeParameterListPrime (ts1);
+                    break;
+                default:
+                    var [ts2,nd2] = [ts,[]];
+                    break;
+                }
+            }
+
+            var [ts1,nd1] = identifier (ts);
+            var [ts2,nd2] = typeParameterListPrime (ts1);
+
+            nd2.unshift (nd1);
+
+            exit("Parser::typeParameterList ", ts2);
+            return [ts2,nd2];
+        }
+
+        /*
+
+        Parameters
+            empty
+            NonemptyParameters
+
+        */
+
+        function parameters (ts: TOKENS)
+            : [TOKENS, [Ast::BINDING_INITS, [Ast::EXPR], [Ast::TYPE_EXPR]], boolean]
+        {
+            enter("Parser::parameters ", ts);
+
+            switch (hd (ts)) {
+            case Token::RightParen:
+                let b1 = [];
+                let i1 = [];
+                let e1 = [];
+                let t1 = [];
+                var [ts1,nd1,hasRest] = [ts,[[b1,i1],e1,t1],false];
+                break;
+            default:
+                var [ts1,nd1,hasRest] = nonemptyParameters (ts);
+                break;
+            }
+
+            exit("Parser::parameters ", ts1);
+            return [ts1,nd1,hasRest];
+        }
+
+        /*
+
+        NonemptyParameters
+            ParameterInit
+            ParameterInit  ,  NonemptyParameters
+            RestParameter
+
+        */
+
+        function nonemptyParameters (ts: TOKENS, n, initRequired)
+            : [TOKENS, [Ast::BINDING_INITS, [Ast::EXPR], [Ast::TYPE_EXPR]], boolean]
+        {
+            enter("Parser::nonemptyParameters ", ts);
+
+            switch (hd (ts)) {
+            case Token::TripleDot:
+                var [ts1,nd1] = restParameter (ts,n);
+                /* var */ hasRest = true;
+                break;
+            default:
+                var [ts1,nd1] = parameterInit (ts,n,initRequired);
+                switch (hd (ts1)) {
+                case Token::Comma:
+                    ts1 = eat (ts1, Token::Comma);
+                    print("0");
+                    let [k1,[b1,i1],e1,t1] = nd1;
+                    print("1");
+                    var [ts2,nd2,hasRest] = nonemptyParameters (ts1, n+1, e1!=null);
+                    print("2");
+                    let [[b2,i2],e2,t2] = nd2;
+                    print("3");
+                    // FIXME when Array.concat works
+                    for (let p in b2) b1.push(b2[p]);
+                    for (let p in i2) i1.push(i2[p]);
+                    for (let p in e2) e1.push(e2[p]);
+                    print("4");
+                    for (let p in t2) t1.push(t2[p]);
+                    print("5");
+                    var [ts1,nd1,hasRest] = [ts2,[[b1,i1],e1,t1],hasRest];
+                    break;
+                case Token::RightParen:
+                    /* var */ hasRest = false;
+                    break;
+                default:
+                    throw "unexpected token in nonemptyParameters";
+                }
+                break;
+            }
+
+            exit("Parser::nonemptyParameters ", ts1);
+            return [ts1,nd1,hasRest];
+        }
+
+        /*
+
+        ParameterInit
+            Parameter
+            Parameter = NonAssignmentExpression(AllowIn)
+
+        */
+
+        function parameterInit (ts: TOKENS, n, initRequired)
+            : [TOKENS, [Ast::BINDING_INITS, Ast::EXPR, Ast::TYPE_EXPR]]
+        {
+            enter("Parser::parameterInit ", ts);
+
+            var [ts1,nd1] = parameter (ts,n);
+            switch (hd (ts)) {
+            case Token::Assign:
+                ts = eat (ts, Token::Assign);
+                var [ts2,nd2] = nonAssignmentExpression(AllowIn);
+                break;
+            default:
+                if (initRequired) {
+                    throw "expecting default value expression";
+                }
+                var [ts2,nd2] = [ts1,null];
+                break;
+            }
+
+            var [k,[p,t]] = nd1;
+            var [b,i] = desugarPattern (p, t, new Ast::GetParam (n), 0);
+
+            b.push (new Ast::Binding (new Ast::ParamIdent (n), t)); // temp for desugaring
+
+            exit("Parser::parameterInit ", ts1);
+            return [ts2,[[b,i],nd2,t]];
+        }
+
+        /*
+
+        Parameter
+            ParameterKind  TypedIdentifier(AllowIn)
+            ParameterKind  TypedPattern
+
+        */
+
+        function parameter (ts: TOKENS, n)
+            : [TOKENS, [Ast::VAR_DEFN_TAG, [PATTERN, Ast::TYPE_EXPR]]]
+        {
+            enter("Parser::parameter ", ts);
+
+            var [ts1,nd1] = parameterKind (ts);
+            var [ts2,nd2] = typedPattern (ts1,AllowIn);
+
+            exit("Parser::parameter ", ts2);
+            return [ts2,[nd1,nd2]];
+        }
+
+        /*
+
+        ParameterKind
+            empty
+            const
+
+        */
+
+        function parameterKind (ts: TOKENS)
+            : [TOKENS, Ast::VAR_DEFN_TAG]
+        {
+            enter("Parser::parameterKind ", ts);
+
+            switch (hd (ts)) {
+            case Ast::Const:
+                ts = eat (ts, Ast::Const);
+                var [ts1,nd1] = [ts, new Ast::Const];
+                break;
+            default:
+                var [ts1,nd1] = [ts, new Ast::Var];
+                break;
+            }
+
+            exit("Parser::parameterKind ", ts1);
+            return [ts1,nd1];
+        }
+
+        /*
+
+        ResultType
+            empty
+            :  void
+            :  NullableTypeExpression
+
+        */
+
+        function resultType (ts: TOKENS)
+            : [TOKENS, [Ast::IDENT]]
+        {
+            enter("Parser::resultType ", ts);
+
+            switch (hd (ts)) {
+            case Token::Colon:
+                ts = eat (ts, Token::Colon);
+                switch (hd (ts)) {
+                case Token::Void:
+                    ts = eat (ts, Token::Void);
+                    var [ts1,nd1] = [ts,new Ast::SpecialType (new Ast::VoidType)];
+                    break;
+                default:
+                    var [ts1,nd1] = nullableTypeExpression (ts1);
+                    break;
+                }
+                break;
+            default:
+                var [ts1,nd1] = [ts,new Ast::SpecialType (new Ast::AnyType)];
+                break;
+            }
+
+            exit("Parser::resultType ", ts1);
+            return [ts1,nd1];
+        }
+
+        /*
+
+            FunctionBody(beta)
+                Block(local)
+                AssignmentExpression(beta)
+
+        */
+
+        function functionBody (ts: TOKENS, beta: BETA)
+            : [TOKENS, Ast::BLOCK]
+        {
+            enter("Parser::functionBody ", ts);
+
+            switch (hd (ts)) {
+            case Token::LeftBrace:
+                var [ts1,nd1] = block (ts,Local);
+                var ndx = nd1;
+                break;
+            default:
+                var [ts1,nd1] = assignmentExpression (ts,beta);
+                var ndx = new Ast::Block ([],[],null,[new ReturnStmt (nd1)],null);
+                break;
+            }
+
+            exit("Parser::functionBody ", ts1);
+
+            return [ts1,ndx]
+        }
+
 //        /*
 //
 //        var current_class = null
@@ -4697,16 +4579,16 @@
         {
             enter("Parser::directives ", ts);
 
-            var ts1,pragmas,defns,head,stmts,pos;
             switch (hd (ts)) {
             case Token::RightBrace:
             case Token::EOS:
-                var [ts1,{pragmas:pragmas, defns:defns, head:head, stmts:stmts, pos:pos}]
-                         = [ts, {pragmas:[], defns:[], head:null, stmts:[], pos:null}];
+                var {pragmas:pragmas, defns:defns, head:head, stmts:stmts, pos:pos} 
+                  = {pragmas:[], defns:[], head:null, stmts:[], pos:null};
+                var [ts1] = ts;
                 break;
             default:
-                var [ts1, {pragmas:pragmas, defns:defns, head:head, stmts:stmts, pos:pos}]
-                         = directivesPrefix (ts,tau);
+                var [ts1,nd1] = directivesPrefix (ts,tau);
+                var {pragmas:pragmas, defns:defns, head:head, stmts:stmts, pos:pos} = nd1
                 break;
             }
 
@@ -4737,55 +4619,52 @@
         {
             enter("Parser::directives ", ts);
 
-            var ts2,nd2;
-            var pragmas,defns,head,stmts,pos;
             switch (hd (ts)) {
             case Token::RightBrace:
             case Token::EOS:
-                var [ts2,{pragmas:pragmas,defns:defns,head:head,stmts:stmts,pos:pos}]
-                  = [ts, {pragmas:[],     defns:[],   head:null,stmts:[],   pos:null}];
+                var [ts2,nd2] = [ts, {pragmas:[], defns:[], head:null, stmts:[], pos:null}];
                 break;
             default:
                 //                var [ts1,nd1] = pragmas (ts);
-                var [ts2,{pragmas:pragmas,defns:defns,head:head,stmts:stmts,pos:pos}]
-                  = directivesPrefixPrime (ts,tau);
+                var [ts2,nd2] = directivesPrefixPrime (ts,tau);
                 break;
             }
 
             exit("Parser::directivesPrefix ", ts2);
-            return [ts2, {pragmas:pragmas,defns:defns,head:head,stmts:stmts,pos:pos}];
+            return [ts2, nd2];
         }
 
         function directivesPrefixPrime (ts: TOKENS, tau: TAU)
-            //    : [TOKENS, Ast::DIRECTIVES]
+            : [TOKENS, Ast::DIRECTIVES]
         {
             enter("Parser::directivesPrefixPrime ", ts);
 
-            var ts1,ts2;
-            var pragmas1,defns1,head1,stmts1,pos1;
-            var pragmas2,defns2,head2,stmts2,pos2;
+            var ts1,nd1;
+
             switch (hd (ts)) {
             case Token::RightBrace:
             case Token::EOS:
-                var [ts1,{pragmas:pragmas1,defns:defns1,head:head1,stmts:stmts1,pos:pos1}]
-                         = [ts,{pragmas:[],defns:[],head:null,stmts:[],pos:null}];
+                ts1 = ts;
+                nd1 = {pragmas:[],defns:[],head:null,stmts:[],pos:null};
                 break;
             default:
-                // FIXME: make these let's and you get a verify error
-                var [ts1,{pragmas:pragmas1,defns:defns1,head:head1,stmts:stmts1,pos:pos1}] = directive (ts,tau,Full);
-                var [ts2,{pragmas:pragmas2,defns:defns2,head:head2,stmts:stmts2,pos:pos2}]
-                         = directivesPrefixPrime (ts1,tau);
+                [ts1,nd1] = directive (ts,tau,Full);
+                var [ts2,nd2] = directivesPrefixPrime (ts1,tau);
+
+                let {pragmas:pragmas1,defns:defns1,head:head1,stmts:stmts1,pos:pos1} = nd1;
+                let {pragmas:pragmas2,defns:defns2,head:head2,stmts:stmts2,pos:pos2} = nd2;
 
                 // FIXME: poor man's array append
                 for (p in pragmas2) pragmas1.push(pragmas2[p]);
                 for (p in defns2) defns1.push(defns2[p]);
                 for (p in stmts2) stmts1.push(stmts2[p]);
                 ts1 = ts2;
+                nd1 = {pragmas:pragmas1,defns:defns1,head:head1,stmts:stmts1,pos:pos1};
                 break;
             }
 
             exit("Parser::directivesPrefixPrime ", ts1);
-            return [ts1, {pragmas:pragmas1,defns:defns1,head:head1,stmts:stmts1,pos:pos1}];
+            return [ts1,nd1];
         }
 
         function directive (ts: TOKENS, tau: TAU, omega: OMEGA)
@@ -4793,11 +4672,25 @@
         {
             enter("Parser::directive ", ts);
 
-            var ts1,ts2,nd2,defnsx,stmtsx,tsx;
             switch (hd(ts)) {
             case Token::Var:
             case Token::Let:
-                var [ts1,{defns:defnsx,stmts:stmtsx}] = variableDefinition (ts,AllowIn,new Ast::LiteralExpr (new Ast::LiteralNamespace (new Ast::PublicNamespace (""))), false, false);
+                let [ts1,nd1]
+                    = variableDefinition (ts, AllowIn
+                                  , new Ast::LiteralExpr (new Ast::LiteralNamespace (new Ast::PublicNamespace ("")))
+                                  , false, false);
+
+                print("nd1: ",nd1);
+                var stmtsx = nd1.stmts;
+                var defnsx = nd1.defns;
+                var tsx = semicolon (ts1,omega);
+                break;
+            case Token::Function:
+                let [ts1,nd1] = functionDefinition (ts, tau, new Ast::Var
+                                  , new Ast::LiteralExpr (new Ast::LiteralNamespace (new Ast::PublicNamespace ("")))
+                                  , false, false, false, false, false);
+                var stmtsx = nd1.stmts;
+                var defnsx = nd1.defns;
                 var tsx = semicolon (ts1,omega);
                 break;
             default:
@@ -4808,8 +4701,12 @@
                 break;
             }
 
-            exit("Parser::directive ", ts1);
-            return [tsx, {pragmas:[],defns:defnsx,head:null,stmts:stmtsx,pos:null}];
+            print ("defnsx: ", defnsx);
+
+            var ndx = {pragmas:[],defns:defnsx,head:null,stmts:stmtsx,pos:null};
+
+            exit("Parser::directive ", tsx);
+            return [tsx, ndx];
         }
 
 //        /*
@@ -5174,14 +5071,29 @@
 //        }
 //
 
+        // BLOCKS and PROGRAMS
+
+        function block (ts:TOKENS, tau: TAU)
+            : [TOKENS, Ast::BLOCK]
+        {
+            enter("Parser::block ",ts);
+
+            ts = eat (ts, Token::LeftBrace);
+            var [ts1,nd1] = directives (ts, tau);
+            var tsx = eat (ts1, Token::RightBrace);
+            var ndx = nd1;
+
+            exit ("Parser::block ", tsx);
+            return [tsx, ndx];
+        }
+
         function program ()
             : [TOKENS, Ast::PROGRAM]
         {
             enter("Parser::program ","");
 
             let ts = scan.tokenList (scan.start)
-
-            if (hd (ts) == Token::Internal ||
+            if (hd (ts) == Token::Internal || 
                 hd (ts) == Token::Package)
             {
                 var [ts1, nd1] = packages (ts);
@@ -5223,12 +5135,12 @@
             , "f() ()"
             , "new A()"
             , "(new Fib(n-1)).val + (new Fib(n-2)).val"
-              */
             , "var x = 10, y = 20"
             , "var x = 10; var y"
             , "if (x) y; else z"
+              */
+            , "function f(x,y,z) { return 10 }"
               /*
-            , "function f() { return 10 }"
             , "class A { function A() {} }"
             , "class Fib { function Fib (n) { } }"
             , readFile ("./tests/self/hello.es")
@@ -5297,6 +5209,9 @@
             try {
                 var parser = new Parser(p);
                 var [ts1,nd1] = parser.program();
+
+                //                dumpABCFile(cogen.cg(nd1), "hello-test.es");
+
                 print(n, "> ", p, Ast::encodeProgram (nd1));
             }
             catch(x)
