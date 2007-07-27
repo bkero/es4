@@ -42,7 +42,7 @@ intrinsic final class Name extends String {
     type ID = (undefined, string);
 
     function Name(ns : NS, id : ID = undefined) {
-        if (id is undefined) {
+        if (id == undefined) {
             if (ns is Name) {
                 let n : Name = ns;
                 identifier = n.identifier;

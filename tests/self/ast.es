@@ -66,7 +66,7 @@ namespace Ast
 
     class TempName {}
     class PropName {
-        const name : NAME;
+        const name /*: NAME*/;
         function PropName(name) 
             : name=name {}
     }
@@ -86,14 +86,14 @@ namespace Ast
     // NAMESPACE
 
     type NAMESPACE =
-	   ( IntrinsicNamespace
-	   , OperatorNamespace
-	   , PrivateNamespace
-	   , ProtectedNamespace
-	   , PublicNamespace
-	   , InternalNamespace
-	   , UserNamespace
-	   , AnonymousNamespace
+       ( IntrinsicNamespace
+       , OperatorNamespace
+       , PrivateNamespace
+       , ProtectedNamespace
+       , PublicNamespace
+       , InternalNamespace
+       , UserNamespace
+       , AnonymousNamespace
        , ImportNamespace );
 
     type RESERVED_NAMESPACE =
@@ -915,6 +915,14 @@ namespace Ast
         const isReadOnly : Boolean;
         const isOverride : Boolean;
         const isFinal : Boolean;
+        function MethodFixture(func, type, isReadOnly, isOverride, isFinal) :
+            func = func,
+            type = type,
+            isReadOnly = isReadOnly,
+            isOverride = isOverride,
+            isFinal = isFinal
+        {
+        }
     }
 
     class ValFixture {
