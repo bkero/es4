@@ -145,6 +145,7 @@ type TOKENS = Array;  // [int];
             var bs, ss;
             switch type (p) : PATTERN {
             case (p:IdentifierPattern) {
+                print("p.ident=",p.ident);
                 let i = new Ast::PropIdent (p.ident);
                 var bs = [new Ast::Binding (i,t)];
                 if (e !== null) {
@@ -2219,7 +2220,7 @@ type TOKENS = Array;  // [int];
             switch (gamma) {
             case NoExpr:
                 let [ts1,nd1] = identifier (ts);
-                var [tsx,ndx] = [ts1, new IdentifierPattern (nd1.Ast::ident)];
+                var [tsx,ndx] = [ts1, new IdentifierPattern (nd1)];
                 break;
             case AllowExpr:
                 let [ts1,nd1] = leftHandSideExpression (ts,beta);
@@ -3792,9 +3793,13 @@ type TOKENS = Array;  // [int];
             var [ts2,nd2] = functionSignature (ts1);
             var [ts3,nd3] = functionBody (ts2, AllowIn);
 
+            print("0");
             var {params:params,defaults:defaults,resultType:resultType,thisType:thisType,hasRest:hasRest} = nd2;
+            print("1");
             var func = new Ast::Func (nd1,false,nd3,params,defaults,resultType);
+            print("2");
             var defn = new Ast::FunctionDefn (kind,ns,isFinal,isOverride,isPrototype,isStatic,isAbstract,func);
+            print("3");
 
             exit("Parser::functionDefinition ", ts3);
 
@@ -3863,22 +3868,34 @@ type TOKENS = Array;  // [int];
             enter("Parser::functionSignature ", ts);
 
             function headFromBindingInits ([bindings,steps] /*: Ast::BINDING_INITS*/, ns )
-                : Ast::HEAD {
-                function fixturesFromBindings (bs: [Ast::BINDING])
+                /* : Ast::HEAD */  {
+                function fixturesFromBindings (bs /*: [Ast::BINDING]*/) // FIXME: RI bug
                     : Ast::FIXTURES {
                     if(bs.length === 0) {
                         return [];
                     }
                     var b0 = bs[0];
-                    var n0 = new Ast::PropName ({ns:ns,ident:ident});
+                    print("0");
+                    switch type (b0.Ast::ident) {
+                    case (pi:Ast::PropIdent) {
+                        var n0 = new Ast::PropName ({ns:new Ast::PublicNamespace (""),id:pi.Ast::ident});
+                    }
+                    case (pi:Ast::ParamIdent) {
+                        var n0 = new Ast::TempName (pi.Ast::index);
+                    }
+                    case (pi:Ast::TempIdent) {
+                        var n0 = new Ast::TempName (pi.Ast::index);
+                    }
+                    }
+                    print("1");
                     var f0 = new Ast::ValFixture (null,false);
                     var fs = fixturesFromBindings (bs.slice(1,bs.length));
                     fs.unshift ([n0,f0]);
                     return fs;
                 }
 
-                function initsFromInitSteps (is: [Ast::INIT_STEP])
-                    : Ast::INITS {
+                function initsFromInitSteps (is /*: [Ast::INIT_STEP]*/ )
+                    /* : Ast::INITS */ {
                     // FIXME
                     return [];
                 }
@@ -4006,7 +4023,7 @@ type TOKENS = Array;  // [int];
                 var [ts1,nd1,hasRest] = [ts,[[b1,i1],e1,t1],false];
                 break;
             default:
-                var [ts1,nd1,hasRest] = nonemptyParameters (ts);
+                var [ts1,nd1,hasRest] = nonemptyParameters (ts,0,false);
                 break;
             }
 
@@ -4038,20 +4055,14 @@ type TOKENS = Array;  // [int];
                 switch (hd (ts1)) {
                 case Token::Comma:
                     ts1 = eat (ts1, Token::Comma);
-                    print("0");
-                    let [k1,[b1,i1],e1,t1] = nd1;
-                    print("1");
-                    var [ts2,nd2,hasRest] = nonemptyParameters (ts1, n+1, e1!=null);
-                    print("2");
+                    let [[b1,i1],e1,t1] = nd1;
+                    var [ts2,nd2,hasRest] = nonemptyParameters (ts1, n+1, e1.length!=0);
                     let [[b2,i2],e2,t2] = nd2;
-                    print("3");
                     // FIXME when Array.concat works
                     for (let p in b2) b1.push(b2[p]);
                     for (let p in i2) i1.push(i2[p]);
                     for (let p in e2) e1.push(e2[p]);
-                    print("4");
                     for (let p in t2) t1.push(t2[p]);
-                    print("5");
                     var [ts1,nd1,hasRest] = [ts2,[[b1,i1],e1,t1],hasRest];
                     break;
                 case Token::RightParen:
@@ -4081,7 +4092,7 @@ type TOKENS = Array;  // [int];
             enter("Parser::parameterInit ", ts);
 
             var [ts1,nd1] = parameter (ts,n);
-            switch (hd (ts)) {
+            switch (hd (ts1)) {
             case Token::Assign:
                 ts = eat (ts, Token::Assign);
                 var [ts2,nd2] = nonAssignmentExpression(AllowIn);
@@ -4090,16 +4101,17 @@ type TOKENS = Array;  // [int];
                 if (initRequired) {
                     throw "expecting default value expression";
                 }
-                var [ts2,nd2] = [ts1,null];
+                var [ts2,nd2] = [ts1,[]];
                 break;
             }
 
             var [k,[p,t]] = nd1;
             var [b,i] = desugarPattern (p, t, new Ast::GetParam (n), 0);
 
+
             b.push (new Ast::Binding (new Ast::ParamIdent (n), t)); // temp for desugaring
 
-            exit("Parser::parameterInit ", ts1);
+            exit("Parser::parameterInit ", ts2);
             return [ts2,[[b,i],nd2,t]];
         }
 
@@ -5117,7 +5129,7 @@ type TOKENS = Array;  // [int];
             }
 
             exit ("Parser::program ", ts2);
-            return [ts2, new Ast::Program (nd1,nd2,null)];
+            return [ts2, new Ast::Program (nd1,nd2,[])];
         }
     }
 

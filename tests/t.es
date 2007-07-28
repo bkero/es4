@@ -1,2 +1,3 @@
-var x = x is t ? 
-        y : z
+type T = [int]
+function f (x : T) { return x }
+f(new Array(1,2,3))

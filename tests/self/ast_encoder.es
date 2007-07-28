@@ -17,7 +17,7 @@
 
     function encodeProgram (nd : PROGRAM, nesting : int = 0)
         : string {
-        enter ("encodeProgram", nesting);
+        enter ("encodeProgram ", nesting);
         var str = "";
         switch type (nd): PROGRAM {
         case (p: Program) {
@@ -42,9 +42,97 @@
         return str;
     }
 
-    function encodeFixtures (fixtures: FIXTURES?, nesting: int = 0)
+    function encodeFixtures (nd /*: FIXTURES*/, nesting: int = 0)
         : string {
-        var str : string = "null";
+        enter ("encodeFixtures nd.length=",nd.length);
+        var str;
+
+        if (nd.length == 0) {
+            var str = "";
+        }
+        else
+        {
+            var str =
+                  encodeFixtureBinding (nd[0], nesting)
+                + indent(nesting-2)
+                + ", "
+                + encodeFixtures (nd.slice (1,nd.length), nesting);
+        }
+        exit ("encodeFixtures ",str);
+        return str;
+    }
+
+    function encodeFixtureBinding (nd /*: FIXTURE_BINDING*/, nesting: int = 0)
+        : string {
+        enter ("encodeFixtureBinding ",nesting);
+
+            var str =
+                "[ " + encodeFixtureName (nd[0],nesting+"[ ".length)
+              + indent(nesting) + ", " + encodeFixture (nd[1],nesting+", ".length)
+              + " ]";
+
+        exit ("encodeFixtureBinding ",str);
+        return str;
+    }
+
+    function encodeFixtureName (nd /*: FIXTURE_NAME*/, nesting: int = 0)
+        : string {
+        enter ("encodeFixtureName ",nesting);
+
+        var str = "";
+        switch type (nd): FIXTURE_NAME {
+        case (nd:Ast::PropName) {
+            var str =
+                "{ 'ast::class': 'PropName'"
+              + indent(nesting) + ", 'name': " + encodeName (nd.name,nesting+", 'name': ".length+1)
+              + " }";
+        }
+        case (nd:Ast::TempName) {
+            var str =
+                "{ 'ast::class': 'TempName'"
+              + indent(nesting) + ", 'index': " + nd.index
+              + " }";
+        }
+        case (nd: *) {
+            var str = "**encodeFixtureName, unhandled ast: " + nd + "]]";
+        }
+        }
+
+        exit ("encodeFixtureName ",str);
+        return str;
+    }
+
+    function encodeFixture (nd /*: FIXTURE*/, nesting: int = 0)
+        : string {
+        enter ("encodeFixture ",nesting);
+
+        var str = "";
+
+        switch type (nd): FIXTURE {
+        case (nd:Ast::ValFixture) {
+            var str =
+                "{ 'ast::class': 'ValFixture'"
+                + indent(nesting) + ", 'type': " /*+ encodeTypeExpr (nd.type,nesting+", 'type': ".length+1) */
+              + indent(nesting) + ", 'isReadOnly': " + nd.isReadOnly
+              + " }";
+        }
+        case (nd: *) {
+            var str = "[[encodeFixture, unhandled ast: " + nd + "]]";
+        }
+        }
+
+        exit ("encodeFixture ",str);
+        return str;
+    }
+
+    function encodeHead (nd /*: HEAD*/, nesting: int = 0)
+        : string {
+        enter ("encodeHead ",nesting);
+        var str =
+              "{ 'fixtures': [ " + encodeFixtures (nd.fixtures,nesting+"{ 'fixtures': [ ".length)
+            + indent(nesting) + ", 'inits': [ " /*+ encodeInits (nd.inits,nesting+", 'inits': [ ".length) */
+            + " ] ] }";
+        exit ("encodeHead");
         return str;
     }
 
@@ -256,7 +344,7 @@
               + " }";
         }
         case (x: *) {
-            throw "internalError: encodeExpr: "+nd;
+            var str = "[[unknown EXPR value "+nd+"]]";
         }
         }
         exit ("encodeExpr ",str);
@@ -349,9 +437,7 @@
         case (nd: PublicNamespace) {
             var str =
                 "{ 'ast::class': 'PublicNamespace'"
-              + indent(nesting)
-              + ", 'name': '"
-              + nd.name
+              + indent(nesting-1) + ", 'name': '" + nd.name
               + "' }";
         }
         case (x: *) {
@@ -359,6 +445,17 @@
         }
         }
         exit ("encodeNamespace ",str);
+        return str;
+    }
+
+    function encodeName (nd /*: NAME*/, nesting: int = 0)
+        : string {
+        enter ("encodeName ",nesting)
+        var str =
+                "{ 'ns': '"+encodeNamespace (nd.ns,nesting+"{ 'ns': '".length)
+              + indent(nesting-1) + ", 'id': '"+ nd.id+"' }";
+
+        exit ("encodeName ",str);
         return str;
     }
 
@@ -542,6 +639,12 @@
           + indent(nesting)
           + ", 'block': "
           + encodeBlock (nd.block,nesting+", 'block': ".length)
+          + indent(nesting)
+          + ", 'params': "
+          + encodeHead (nd.params,nesting+", 'params': ".length)
+          + indent(nesting)
+          + ", 'defaults': "
+          + encodeExprs (nd.defaults,nesting+", 'defaults': ".length)
             /*
           + indent(nesting)
           + ", 'type': "
@@ -558,17 +661,10 @@
         enter ("encodeFuncName");
 
         var str =
-            "{ "
-          + indent(nesting)
-          + ", 'kind': "
-          + encodeFuncNameKind (nd.kind,nesting+", 'kind': ".length)
+            "{ 'kind': "
+          + encodeFuncNameKind (nd.kind,nesting+"{ 'kind': ".length)
           + indent(nesting)
           + ", 'ident': " + nd.ident
-            /*
-          + indent(nesting)
-          + ", 'type': "
-          + encodeTypeExpr (nd.type,nesting+", 'ident': ".length)
-            */
           + " }";
 
         exit ("encodeFuncName ",str);

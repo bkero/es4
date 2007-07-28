@@ -64,14 +64,21 @@ namespace Ast
        ( TempName
        , PropName )
 
-    class TempName {}
+    class TempName {
+        const index : int;
+        function TempName (index)
+            : index = index {}
+    }
+
     class PropName {
         const name /*: NAME*/;
         function PropName(name) 
             : name=name {}
     }
 
-    type FIXTURES = [[FIXTURE_NAME,FIXTURE]]
+    type FIXTURE_BINDING = [FIXTURE_NAME,FIXTURE]
+
+    type FIXTURES = [FIXTURE_BINDING]
 
     type INITS = [[FIXTURE_NAME,EXPR]]
 
@@ -849,15 +856,15 @@ namespace Ast
        , PropIdent )
 
     class TempIdent {
-        const n : int;
-        function TempIdent (n)
-            : n = n {}
+        const index : int;
+        function TempIdent (index)
+            : index = index {}
     }
 
     class ParamIdent {
-        const n : int;
-        function ParamIdent (n)
-            : n = n {}
+        const index : int;
+        function ParamIdent (index)
+            : index = index {}
     }
 
     class PropIdent {
@@ -1343,7 +1350,7 @@ namespace Ast
     class Program {
         var packages //: [PACKAGE];
         var block: BLOCK;
-        var fixtures: FIXTURES?;
+        var fixtures: FIXTURES;
         function Program (packages, block, fixtures)
             : packages = packages
             , block = block
