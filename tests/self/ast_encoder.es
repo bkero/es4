@@ -325,6 +325,14 @@
               + encodeNamespace (nd.namespaceValue,nesting+", 'namespaceValue': ".length)
               + " }";
         }
+        case (nd: LiteralBoolean) {
+            var str =
+                "{ 'ast::class': 'LiteralBoolean'"
+              + indent(nesting)
+              + ", 'booleanValue': "
+              + nd.booleanValue
+              + " }";
+        }
         case (x: *) {
             throw "internalError: encodeLiteral "+nd;
         }

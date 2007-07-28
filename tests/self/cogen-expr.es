@@ -126,7 +126,7 @@ package cogen
             cgExpr(ctx, e.e2);
             switch type (e.op) {
             case (e:Plus) { asm.I_add() }
-            case (e:Minus) { asm.I_minus() }
+            case (e:Minus) { asm.I_subtract() }
             case (e:Times) { asm.I_times() }
             case (e:Divide) { asm.I_divide() }
             case (e:Remainder) { asm.I_modulo() }
@@ -356,10 +356,10 @@ package cogen
     }
 
     function cgNewExpr(ctx, e) {
-        cgExpr(ctx, e.ctor);
+        cgExpr(ctx, e.func);
         for ( let i=0 ; i < e.args.length ; i++ )
             cgExpr(ctx, e.args[i]);
-        ctx.asm.I_construct(args.length);
+        ctx.asm.I_construct(e.args.length);
     }
 
     function cgObjectRef(ctx, e) {

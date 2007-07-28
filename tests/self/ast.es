@@ -700,6 +700,7 @@ namespace Ast
 
     class LiteralBoolean {
         const booleanValue : Boolean;
+        function LiteralBoolean(booleanValue) : booleanValue=booleanValue {}
     }
 
     class LiteralString {
