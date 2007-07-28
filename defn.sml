@@ -241,7 +241,9 @@ fun mergeFixtures ((newName,newFix),oldFixs) =
                                    (Ast.VirtualValFixture
                                         (mergeVirtuals newName vnew vold))
           | (Ast.ValFixture new, Ast.ValFixture old) =>
-                 if (#ty new) = (#ty old)
+                 if (#ty new) = Ast.SpecialType Ast.Any (* FIXME not sure we can do this check before verify time *)
+                    orelse (#ty old) = Ast.SpecialType Ast.Any
+                    orelse (#ty new) = (#ty old)
                  (* if (Type.equals (#ty new) (#ty old)) andalso (#readOnly new) = (#readOnly old) *)
                  then (trace ["skipping fixture ",LogErr.fname newName]; oldFixs)
                  else error ["incompatible redefinition of fixture name: ", LogErr.fname newName]

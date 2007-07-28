@@ -3783,7 +3783,7 @@ type TOKENS = Array;  // [int];
         */
 
         function functionDefinition (ts: TOKENS, tau: TAU, kind, ns, isFinal, isOverride, isPrototype, isStatic, isAbstract)
-            : [TOKENS, Ast::DIRECTIVES]
+            : [TOKENS, Ast::DIRECTIVES, Ast::FIXTURES]
         {
             enter("Parser::functionDefinition ", ts);
 
@@ -3793,21 +3793,22 @@ type TOKENS = Array;  // [int];
             var [ts2,nd2] = functionSignature (ts1);
             var [ts3,nd3] = functionBody (ts2, AllowIn);
 
-            print("0");
             var {params:params,defaults:defaults,resultType:resultType,thisType:thisType,hasRest:hasRest} = nd2;
-            print("1");
             var func = new Ast::Func (nd1,false,nd3,params,defaults,resultType);
-            print("2");
-            var defn = new Ast::FunctionDefn (kind,ns,isFinal,isOverride,isPrototype,isStatic,isAbstract,func);
-            print("3");
+            //            var defn = new Ast::FunctionDefn (kind,ns,isFinal,isOverride,isPrototype,isStatic,isAbstract,func);
+
+            var fxtr = new Ast::MethodFixture (func,new Ast::SpecialType (new Ast::AnyType),true,isOverride,isFinal);
+            var name = new Ast::PropName ({ns:ns,id:nd1.ident});
+            var fx3 = [[name,fxtr]];
 
             exit("Parser::functionDefinition ", ts3);
 
             return [ts3, { pragmas: []
-                         , defns: [defn]
+                         , defns: []
                          , head: null
                          , stmts: []
-                         , pos: null }];
+                         , pos: null }
+                       , fx3];
         }
 
 
@@ -4587,7 +4588,7 @@ type TOKENS = Array;  // [int];
         */
 
         function directives (ts: TOKENS, tau: TAU)
-            : [TOKENS, Ast::BLOCK]
+            : [TOKENS, Ast::BLOCK, Ast::FIXTURES]
         {
             enter("Parser::directives ", ts);
 
@@ -4596,16 +4597,17 @@ type TOKENS = Array;  // [int];
             case Token::EOS:
                 var {pragmas:pragmas, defns:defns, head:head, stmts:stmts, pos:pos} 
                   = {pragmas:[], defns:[], head:null, stmts:[], pos:null};
-                var [ts1] = ts;
+                var [ts1] = [ts];
+                var fx1 = [];
                 break;
             default:
-                var [ts1,nd1] = directivesPrefix (ts,tau);
+                var [ts1,nd1,fx1] = directivesPrefix (ts,tau);
                 var {pragmas:pragmas, defns:defns, head:head, stmts:stmts, pos:pos} = nd1
                 break;
             }
 
             exit("Parser::directives ", ts1);
-            return [ts1, new Ast::Block (pragmas,defns,head,stmts,pos)];
+            return [ts1, new Ast::Block (pragmas,defns,head,stmts,pos), fx1];
         }
 
         /*
@@ -4627,7 +4629,7 @@ type TOKENS = Array;  // [int];
         */
 
         function directivesPrefix (ts: TOKENS, tau: TAU)
-            : [TOKENS, Ast::DIRECTIVES]
+            : [TOKENS, Ast::DIRECTIVES, Ast::FIXTURES]
         {
             enter("Parser::directives ", ts);
 
@@ -4635,19 +4637,20 @@ type TOKENS = Array;  // [int];
             case Token::RightBrace:
             case Token::EOS:
                 var [ts2,nd2] = [ts, {pragmas:[], defns:[], head:null, stmts:[], pos:null}];
+                var fx2 = [];
                 break;
             default:
                 //                var [ts1,nd1] = pragmas (ts);
-                var [ts2,nd2] = directivesPrefixPrime (ts,tau);
+                var [ts2,nd2,fx2] = directivesPrefixPrime (ts,tau);
                 break;
             }
 
             exit("Parser::directivesPrefix ", ts2);
-            return [ts2, nd2];
+            return [ts2, nd2, fx2];
         }
 
         function directivesPrefixPrime (ts: TOKENS, tau: TAU)
-            : [TOKENS, Ast::DIRECTIVES]
+            : [TOKENS, Ast::DIRECTIVES, Ast::FIXTURES]
         {
             enter("Parser::directivesPrefixPrime ", ts);
 
@@ -4658,10 +4661,11 @@ type TOKENS = Array;  // [int];
             case Token::EOS:
                 ts1 = ts;
                 nd1 = {pragmas:[],defns:[],head:null,stmts:[],pos:null};
+                var fxtrs1 = [];
                 break;
             default:
-                [ts1,nd1] = directive (ts,tau,Full);
-                var [ts2,nd2] = directivesPrefixPrime (ts1,tau);
+                [ts1,nd1,fxtrs1] = directive (ts,tau,Full);
+                var [ts2,nd2,fxtrs2] = directivesPrefixPrime (ts1,tau);
 
                 let {pragmas:pragmas1,defns:defns1,head:head1,stmts:stmts1,pos:pos1} = nd1;
                 let {pragmas:pragmas2,defns:defns2,head:head2,stmts:stmts2,pos:pos2} = nd2;
@@ -4670,36 +4674,39 @@ type TOKENS = Array;  // [int];
                 for (p in pragmas2) pragmas1.push(pragmas2[p]);
                 for (p in defns2) defns1.push(defns2[p]);
                 for (p in stmts2) stmts1.push(stmts2[p]);
+                for (p in fxtrs2) fxtrs1.push(fxtrs2[p]);
                 ts1 = ts2;
                 nd1 = {pragmas:pragmas1,defns:defns1,head:head1,stmts:stmts1,pos:pos1};
                 break;
             }
 
             exit("Parser::directivesPrefixPrime ", ts1);
-            return [ts1,nd1];
+            return [ts1,nd1,fxtrs1];
         }
 
         function directive (ts: TOKENS, tau: TAU, omega: OMEGA)
-            : [TOKENS, Ast::DIRECTIVES]
+            : [TOKENS, Ast::DIRECTIVES, Ast::FIXTURES]
         {
             enter("Parser::directive ", ts);
 
+            var hoisted = [];
             switch (hd(ts)) {
             case Token::Var:
             case Token::Let:
-                let [ts1,nd1]
+                var [ts1,nd1]
                     = variableDefinition (ts, AllowIn
-                                  , new Ast::LiteralExpr (new Ast::LiteralNamespace (new Ast::PublicNamespace ("")))
+                                  , new Ast::PublicNamespace ("")
                                   , false, false);
 
                 print("nd1: ",nd1);
                 var stmtsx = nd1.stmts;
                 var defnsx = nd1.defns;
                 var tsx = semicolon (ts1,omega);
+                var fx1 = [];
                 break;
             case Token::Function:
-                let [ts1,nd1] = functionDefinition (ts, tau, new Ast::Var
-                                  , new Ast::LiteralExpr (new Ast::LiteralNamespace (new Ast::PublicNamespace ("")))
+                var [ts1,nd1,fx1] = functionDefinition (ts, tau, new Ast::Var
+                                  , new Ast::PublicNamespace ("")
                                   , false, false, false, false, false);
                 var stmtsx = nd1.stmts;
                 var defnsx = nd1.defns;
@@ -4710,6 +4717,7 @@ type TOKENS = Array;  // [int];
                 var stmtsx = [nd2];
                 var defnsx = [];
                 var tsx = ts2;
+                var fx1 = [];
                 break;
             }
 
@@ -4718,7 +4726,7 @@ type TOKENS = Array;  // [int];
             var ndx = {pragmas:[],defns:defnsx,head:null,stmts:stmtsx,pos:null};
 
             exit("Parser::directive ", tsx);
-            return [tsx, ndx];
+            return [tsx, ndx, fx1];
         }
 
 //        /*
@@ -5091,12 +5099,12 @@ type TOKENS = Array;  // [int];
             enter("Parser::block ",ts);
 
             ts = eat (ts, Token::LeftBrace);
-            var [ts1,nd1] = directives (ts, tau);
+            var [ts1,nd1,fx1] = directives (ts, tau);
             var tsx = eat (ts1, Token::RightBrace);
             var ndx = nd1;
 
             exit ("Parser::block ", tsx);
-            return [tsx, ndx];
+            return [tsx, ndx, fx1];
         }
 
         function program ()
@@ -5119,7 +5127,7 @@ type TOKENS = Array;  // [int];
             default_namespace = new Ast::PublicNamespace ("");
             current_class = "";
 
-            var [ts2, nd2] = directives (ts1, Global);
+            var [ts2, nd2, fx2] = directives (ts1, Global);
 
             switch (hd (ts2)) {
             case Token::EOS:
@@ -5129,7 +5137,7 @@ type TOKENS = Array;  // [int];
             }
 
             exit ("Parser::program ", ts2);
-            return [ts2, new Ast::Program (nd1,nd2,[])];
+            return [ts2, new Ast::Program (nd1,nd2,fx2)];
         }
     }
 

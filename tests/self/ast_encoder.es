@@ -112,8 +112,17 @@
         case (nd:Ast::ValFixture) {
             var str =
                 "{ 'ast::class': 'ValFixture'"
-                + indent(nesting) + ", 'type': " /*+ encodeTypeExpr (nd.type,nesting+", 'type': ".length+1) */
+              + indent(nesting) + ", 'type': " /*+ encodeTypeExpr (nd.type,nesting+", 'type': ".length+1) */
               + indent(nesting) + ", 'isReadOnly': " + nd.isReadOnly
+              + " }";
+        }
+        case (nd:Ast::MethodFixture) {
+            var str =
+                "{ 'ast::class': 'MethodFixture'"
+              + indent(nesting) + ", 'func': " + encodeFunc (nd.func,nesting+", 'func': ".length+1)
+              + indent(nesting) + ", 'isReadOnly': " + nd.isReadOnly
+              + indent(nesting) + ", 'isOverride': " + nd.isOverride
+              + indent(nesting) + ", 'isFinal': " + nd.isFinal
               + " }";
         }
         case (nd: *) {
