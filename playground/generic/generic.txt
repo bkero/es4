@@ -59,7 +59,7 @@ Types default to ''*''.
 Optional arguments are not allowed in generic function definitions,
 but may be present in method definitions.
 
-Rest argument may be present in generic function definitions.
+Rest arguments may be present in generic function definitions.
 
   generic function g(a, b, ...xs);
 
@@ -245,6 +245,17 @@ passed to ''nextMethod''.)
 arguments will be passed to the next method.  Normal type checking
 applies on entry to the next method in this case.
 
+The invocation of ''nextMethod'' causes control to exit from the
+current method, so any finally handlers wrapping the call to
+''nextMethod'' will be executed, and no exception handlers wrapping
+the call to ''nextMethod'' will handle an exception thrown by any
+subsequent method.
+
+In fact, it may be better to think of (or even specify) ''nextMethod''
+as syntax: ''throw nextMethod'' is not obviously worse, since it
+clearly shows what's going on.  But it may leave a good implementation
+less room to play in.
+
 
 === Types ===
 
@@ -326,6 +337,11 @@ FIXME: elaborate this fully.
 
 In practice, the signatures are defined so that eg for ''+'', the
 system can take a fast path if it sees a built-in number type.
+
+
+== Open issues ==
+
+How do we do Function.toString() on these things?
 
 
 == Non-features ==

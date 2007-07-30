@@ -1,0 +1,445 @@
+= Implementing generic functions =
+
+== Mapping to the existing language ==
+
+Consider a class:
+
+  class C {
+    generic function f(x, y);
+
+    generic function f(x:int, y) { }
+
+    generic function f(x, y:string) { }
+  }
+
+This becomes rewritten as
+
+  class C 
+  {
+    private function __meth1_f(nextMethod, x:int, y) { }
+    private function __meth2_f(nextMethod, x, y:string) { }
+
+    private var __generic_f = {
+      2: [ { signature: [int, Any],    method: __meth1_f },
+           { signature: [Any, string], method: __meth2_f } ] };
+
+    function f(...args) {
+      GenericFunction.dispatch(__generic_f, args);
+    }
+  }
+
+with
+
+  package GenericFunction 
+  {
+    public function nextMethod(...args) { 
+      if (args.length == 0)
+        throw SingletonNextMethodExn
+      else
+        throw new NextMethodWithArgsExn(args);
+    }
+
+    public class NextMethodExn { }
+    public class NextMethodWithArgsExn { }
+
+    // obviously we can specialize this as dispatch1, dispatch2, etc,
+    // to avoid consing in the caller and using apply here.
+
+    public function dispatch(g, args) {
+      import GenericFunction.*;
+      var as = selectAndSortMethods(g, args);
+      for ( let acount=0; acount < as.length ; acount++ ) {
+        try {
+          return as[acount].apply(nextMethod, args);
+        }
+        catch (e : NextMethodExn) {
+	  if (acount == as.length)
+	    throw new NoApplicableMethodError;
+        }
+        catch (e : NextMethodWithArgsExn) {
+          if (args.length != e.args.length)
+            throw new ArgumentCounteExn;
+          for ( let i=0 ; i < args.length ; i++ )
+            args[i] = e.args[i];
+        }
+      }
+      throw new NoApplicableMethodError;
+    }
+
+    public function selectAndSortMethods(g, args) {      
+      // Select applicable methods.
+      // FIXME: what about methods with defaults?
+
+      var ms = g[args.length];
+      var as = [];
+    outer:
+      for ( let i=0 ; i < ms.length ; i++ ) {
+        let m = ms[i];
+        let s = m.signature;
+	for ( let j=0 ; j < args.length ; j++ ) {
+          if (!typeOf(args[j]).subtypeOf(s[j]))
+            continue outer;
+        }
+        as.push(m);
+      }
+
+    }
+
+    const SingletonNextMethodExn = new NextMethodExn
+  }
+
+
+=== Top level ===
+
+On the top level it is possible to have generic function definitions
+scattered across an unbounded set of files, so
+
+  generic function f(a, b);
+
+translates as
+
+  var f;
+  if (!(f is GenericFunction))
+      f = new GenericFunction();
+  f.defineSignature(function f(a,b) { throw "No method defined" })
+
+And
+
+  generic function f(x:int, y:boolean): string {
+      if (y)
+          return string(x);
+      else
+          return "37";
+  }
+
+translates as
+
+  assert( f is GenericFunction );
+  f.defineMethod(function f(x:int, y:boolean): string { ... })
+
+The class GenericFunction is:
+
+  class GenericFunction {
+      public meta function invoke(...xs) {
+          if (xs.length in dispatchers)
+              dispatchers[xs.length].apply(xs);
+          else
+              throw new InvocationError("Wrong number of arguments to generic function")
+      }
+
+      public function defineSignature(f) {
+      }
+
+      public function defineMethod(f) {
+      }
+
+      var dispatchers = [];
+  }
+
+
+=== Class/function/block level ===
+
+The compiler can do better in this case: it can generate a subclass of
+GenericFunction that has an invoke method that's adapted to the number
+of arguments passed, so that less consing need take place.
+
+Let's pretend it doesn't do this optimization.
+
+
+
+On the 
+
+
+On every level except the top level the compiler can see all method
+definitions, so a set of generic function definitions can always be
+rewritten as a simple function with a signature corresponding to the
+longest
+
+------------------
+
+
+  var f;
+  if (typeof f.__generic__ === undefined) {
+    let cookie = {};
+    f.__generic__ = new GenericFunction;
+    f.__generic__.dispatch2 = eval("function (a,b=cookie) { ... }");
+    f = function(a, b) { this.__generic__.dispatch2(a,b) }
+  }
+  else 
+    f = f.__generic__.combine(...);
+
+
+
+function f(a,b=cookie,...rest) {
+  if (b===cookie) 
+    dispatch1(...)
+  else if (rest.length == 0)
+    dispatch2(...)
+  else
+    ...
+}
+
+
+----------------------------
+
+Compelling use case?
+
+
+generic function +(a, b);
+
+generic function +(x:*, y:*):Real
+  Number(x) + Number(y)
+
+generic function +(x:Real, y:Real):Real
+  intrinsic::+(x, y);
+
+generic function +(x:String, y:*):String
+  intrinsic::stringAppend(string(x), string(y))
+
+generic function +(x:*, y:String):String
+  intrinsic::stringAppend(string(x), string(y))
+
+// The user defines bignums.  What breaks?  For sure the Number() protocol used
+// in the catchall is iffy, because that invokes ToNumber which knows nothing about
+// bignums.  So does that mean that ToNumber is generic also?
+
+generic function +(x:Real, y:Bignum):Real {
+  if (isIntegral(x))
+    return real2bignum(x) + y;
+  else
+    return x + bignum2real(y);
+}
+
+generic function +(x:Bignum, y:Real):Real {
+  if (isIntegral(y))
+    return x + real2bignum(y);
+  else
+    return bignum2real(x) + y;
+}
+
+generic function +(x:Bignum, y:Bignum):Bignum
+  bignumAdd(x, y)
+
+
+This ought to translate into something like this:
+
+class Generic {
+  function dispatch(n) {
+    let probe = dispatches[n];
+    if (!probe) {
+      probe = newDispatch(2);
+      dispatches[n] = probe;
+    }
+    return probe;
+  }
+
+  function newDispatch(n) {
+    ...
+  }
+
+  var dispatches = []; // array of functions
+  var signatures = []; // array of arrays of same length; inner arrays have type lists and 
+}
+
+var generic::+ = function generic::+(a, b)
+  return generic::"+".__generic__.dispatch[2](a, b);
+}
+
+t = new Generic;
+(generic::+).__generic__ = t;
+
+
+For + we want the dispatch decision tree to look something like this,
+note that Bignum is a Real (it implements the Real interface) and the
+system can know this.
+
+  body1 = function (x:Bignum, y:Bignum): Bignum { return bignumAdd(x, y) }
+  body2 = function (x:Bignum, y:Real):Real {
+    if (isIntegral(y))
+      return x + real2bignum(y);
+    else
+      return bignum2real(x) + y;
+  }
+  body3 = function (x:*, y:String):String { return intrinsic::stringAppend(string(x), string(y)) }
+  body4 = function (x:*, y:*):Real { return intrinsic::+(Number(x), Number(y)) }
+
+  function (x, y) {
+    if (x is Bignum) {
+      if (y is Bignum) {
+        return body1(x, y);
+      }
+      if (y is Real) {
+        return body2(x, y);
+      }
+      if (y is String) {
+        return body3(x, y);
+      }
+      return body4(x, y);
+    }
+    if (x is Real) {
+      if (y is Real) {
+        return intrinsic::+(x,y)
+      }
+      if (y is String) {
+      }
+    }
+    ...
+  }
+
+
+
+Why generic functions?
+
+- Decouples method dispatch from the object; allows the user to add methods.
+- Subsumes ad-hoc function overloading
+- Subsumes operator overloading
+
+
+
+
+
+generic function ToNumber(x);
+
+generic function ToNumber(x:int)       x;
+generic function ToNumber(x:uint)      x;
+generic function ToNumber(x:double)    x;
+generic function ToNumber(x:decimal)   x;
+generic function ToNumber(x:String)    parseFloat(string(x))
+generic function ToNumber(x:null)      0;
+generic function ToNumber(x:undefined) NaN;
+generic function ToNumber(x:*)         ToNumber(ToPrimitive(x,"Number"));
+
+
+Should become:
+
+  function ToNumber(p1) {
+    switch type (p1) {
+      case (p1:int) { return __generic__.body1(p1) }
+      case (p1:uint) { return __generic__.body2(p1) }
+      case (p1:double) { return __generic__.body3(p1) }
+      ....
+    }
+  }
+
+So: define the semantics in terms of "switch type", let the
+implementation worry about optimization.  Use "new Function" or "eval"
+liberally.
+
+However: worry about capture of type names!  "switch type" requires
+constant type names, not variables.  Ditto for "is".
+
+Each type name is resolved in some originating scope... these may
+differ for different methods... no amount of renaming will really
+help...
+
+And: are the type objects we get from introspection (meta-objects
+proposal) really the type objects we want, anyway?  Do we have to use
+meta-object operations for type tests?
+
+  function ToNumber(p1) {
+    if (__generic__.t1.compatibleWith(p1))
+        return __generic__.body1(p1);
+    ...
+    switch type (p1) {
+      case (p1:int) { return __generic__.body1(p1) }
+      case (p1:uint) { return __generic__.body2(p1) }
+      case (p1:double) { return __generic__.body3(p1) }
+      ....
+    }
+  }
+
+In principle the type names can be captured in their originating context using "eval" and
+functions:
+
+  eval("function ($p) $p is int")
+
+provided the generic function framework expands code in-line:
+
+  generic function f(x:int) { ... }
+
+becomes a pair of functions, a type-test predicate as above and the
+body.  No need to use the meta-objects.  eval is probably not
+necessary either.  This gives us the following abomination for
+ToNumber, where __generic__ is lexically scoped:
+
+  function ToNumber(p1) {
+    let g = (this function).__generic__;
+    if (g.test1(p1))
+      return g.body1(p1);
+    if (g.test2(p1))
+      return g.body2(p1);
+    ...
+  }
+
+This _works_, but is slowish (though overhead is manageable, and it
+may be possible to optimize some to save space).  Run-time inlining
+helps, probably significantly, provided it's smart enough to recognize
+that g is always the same.
+
+Obviously a compiler can do a better job than macro expansion...
+
+
+----------------------
+
+In other words: a generic function is a function with a field
+__generic__ that contains an instance of the dynamic(?) class
+GenericInfo, which contains information about types, methods, etc;
+when a method is added, the function is regenerated using "new
+Function", the GenericInfo is updated and placed as a field on the new
+function.  This is easier / more reasonable than using invoke(), since
+invoke() will have to be ... always.  With Function, we pay the cost
+of recompilation; with a class, we pay a cost at every call.
+
+
+Example:
+
+   generic function ToNumber(x);
+
+=> var ToNumber;  // does nothing if ToNumber is already defined in this scope
+   if (!(ToNumber is Function && ToNumber.hasOwnProperty("__generic__"))) {
+       ToNumber = function (x) { throw "No methods on generic function" };
+       ToNumber.__generic__ = new GenericFunction("ToNumber", "x");
+   }
+
+and then
+
+   generic function ToNumber(x:int) x;
+
+=> ToNumber = ToNumber.__generic__.addMethod((function (x:int) x), [ int, (function ($p) { $p is int }) ])
+
+and so on.  (The predicate does not need to be expanded if "is" can
+take a general expression, then we just need the type object.)
+
+
+Essentially, for m methods we get approx O(m^2) code, with this
+strategy, though again a compiler can do much better by just
+generating code for the final body in a particular scope.
+
+----------------------
+
+The PROBLEM is that arithmetic (all the operators in general), if
+generic, provide for an extensible system, not just ad-hoc operator
+overloading a la C++.  The consequence of that is that all the
+operations that arithmetic use must be available for extension too,
+and their interactions must be well-defined: we end up with a MOP.
+
+So one tack is to provide generic functions now but make it clear that
+they aren't sufficient to integrate eg new number types into the
+system without other changes that we will not be making now.
+
+Another is to bite the bullet and make ToNumber etc generic, as they
+really ought to be anyway, but we risk the Dylan disease - not
+shipping before it's too late.  That would be bad.  The problem is
+really understanding the consequences of making everything generic,
+and getting the protocols right.
+
+
+=> Are there really other use cases for integration-into-the-system
+   than numbers?  ES is not like CLOS where object layouts can be
+   specialized and all that.  Some things are unquestionably simpler.
+   We're not opening up for specializing property access, say.
+
+   A list:
+    - most operators (unary, binary)
+    - all conversions, definitely
+    - 
