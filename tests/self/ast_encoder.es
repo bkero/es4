@@ -334,6 +334,7 @@
               + indent(nesting)
               + ", 'base': "
               + encodeExpr (ex.base,nesting+", 'base': ".length)
+              + indent(nesting)
               + ", 'ident': "
               + encodeIdentExpr (ex.ident,nesting+", 'ident': ".length)
               + " }";

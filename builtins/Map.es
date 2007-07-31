@@ -36,10 +36,10 @@
 
 /* Status: proposal, not discussed.
  *
- * Dicts are hash tables mapping keys to values.  Keys can be arbitrary
+ * Maps are hash tables mapping keys to values.  Keys can be arbitrary
  * values and are not converted in any way.
  *
- * The name "Dict" was chosen for its succinctness (and pressure from
+ * The name "Map" was chosen for its succinctness (and pressure from
  * Brendan :)
  *
  * Key hashing and equality testing are user-selectable.  The default
@@ -49,7 +49,7 @@
  *
  * The use of HashProtocol is brittle, since users may inadvertently
  * create functions with the right signatures yet not actually intend
- * for them to be used by the Dict.
+ * for them to be used by the Map.
  *
  * This implementation is not testable until we have parameterized
  * types and a bunch of bug fixes.
@@ -73,68 +73,37 @@ package Library
 {
     use namespace intrinsic;
 
-    function protocolHash.<K>(key: K): uint {
-        return key.hashcode();
-    }
-
-    function protocolEq.<K>(k1:K, k2:K): boolean {
-        return k1.equals(k2);
-    }
-
-    public class Dict.<K,V>
+    public class Map.<K,V>
     {
-        /* If ops.useProtocol is true then keys will respond to
-         * key1.equals(key2) and key.hashcode(), and those methods
-         * will be called unless overrides are provided in
-         * ops.hashcode and ops.equals.
-         * 
-         * ops.hashcode, if defined, is a function used to hash the
-         * keys.
-         *
-         * ops.equals, if defined, is a function used to compare keys.
-         *
-         * ops.hashcode and ops.equals must be synchronized: if two
-         * objects compare as equal using ops.equals(), then
-         * ops.hashcode() must return the same hash value for the two.
+        use default namespace public;
+
+        /* Create the map.  Note that the equality and hashcode
+         * predicates must always agree: if two objects are equal,
+         * they must hash to the same value.
          */
-        public function Dict(ops = { useProtocol: false, hashcode: false, equals: false })
+        function Map(equals=intrinsic::===, hashcode=intrinsic::hashcode) 
+            : equals(equals)
+            , hashcode(hashcode)
         {
-            if (ops.hashcode)
-                this.hashcode = ops.hashcode;
-            else if (ops.useProtocol)
-                this.hashcode = protocolHash.<K>;
-            else
-                this.hashcode = intrinsic::hashcode;
-            
-            if (ops.equals)
-                equals = ops.equals;
-            else if (ops.useProtocol)
-                equals = protocolEq.<K>;
-            else
-                equals = intrinsic::===;
         }
 
-        /* This is a little weird.  We assume we only want to capture
-         * names that have no namespace, and ignore the others.  Also,
-         * the key type 'K' must be 'string' for this to work.
-         */
+        /* Create a Map from an Object */
         meta static function convert(x : Object!) {
-            let d = new Dict.<(string,uint),*>;
+            let d = new Map.<EnumerableId,V>;
             for ( let n in x )
-                if (!(n is Name))
-                    if (x.hasOwnProperty(n))
-                        d.put(n, x[n]);
+                if (x.hasOwnProperty(n))
+                    d.put(n, x[n]);
             return d;
         }
 
         /* Return the number of mappings in the dictionary */
-        public function size() : uint
+        function size() : uint
             population;
 
         /* Return the value associated with 'key', or null if 'key' does
          * not exist in the dictionary
          */
-        public function get(key: K) : V? {
+        function get(key: K) : V? {
             let [l] = find(key);
             return l ? l.value : null;
         }
@@ -142,7 +111,7 @@ package Library
         /* Associate 'value' with 'key', overwriting any previous
          * association for 'key'
          */
-        public function put(key:K, value:V) : void {
+        function put(key:K, value:V) : void {
             let [l] = find(key);
             if (l)
                 l.value = value;
@@ -152,7 +121,7 @@ package Library
 
         /* Return true iff the dictionary has an association for 'key'
          */
-        public function has(key:K) : boolean {
+        function has(key:K) : boolean {
             let [l] = find(key);
             return l to boolean;
         }
@@ -160,7 +129,7 @@ package Library
         /* Remove any association for 'key' in the dictionary.  Returns
          * true if an association was in fact removed
          */
-        public function remove(key:K) : boolean {
+        function remove(key:K) : boolean {
             let [l,p] = find(key);
             if (l) {
                 if (p)
@@ -259,5 +228,30 @@ package Library
         private var population: uint = 0;             /* number of elements in the table */
         private var limit: uint = 10;                 /* number of buckets in the table */
         private var tbl: [box] = newTbl(limit);       /* hash table */
+    }
+
+    /* FIXME: I don't like the name "Hashcode" but it captures the intent, sort of. */
+    /* FIXME: Do we really want this to be parameterized? */
+    public interface Hashcode.<T>
+    {
+        function equals(that: Hashcode.<T>): boolean;
+        function hashcode(): uint;
+    }
+
+    public class ObjectMap.<K /* implements Hashcode.<K> */, V> extends Map.<K,V> {
+        function ObjectMap() 
+            : super(function (x: Hashcode.<K>, y: Hashcode.<K>): boolean { return x.equals(y) },
+                    function (x: Hashcode.<K>): uint { return x.hashcode() })
+        {
+        }
+
+        /* Create an ObjectMap from an Object */
+        meta static function convert(x : Object!) {
+            let d = new ObjectMap.<EnumerableId,V>;
+            for ( let n in x )
+                if (x.hasOwnProperty(n))
+                    d.put(n, x[n]);
+            return d;
+        }
     }
 }
