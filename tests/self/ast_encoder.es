@@ -374,6 +374,13 @@
               + ie.ident
               + " }";
         }
+        case (ie: QualifiedIdentifier) {
+            var str =
+                "{ 'ast::class': 'QualifiedIdentifier'"
+              + indent(nesting) + ", 'qual': " + encodeExpr (nd.qual,nesting+", 'qual':".length)
+              + indent(nesting) + ", 'ident': " + ie.ident
+              + " }";
+        }
         case (ie: UnresolvedPath) {
             var str =
                 "{ 'ast::class': 'UnresolvedPath'"

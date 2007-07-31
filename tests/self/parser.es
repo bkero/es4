@@ -340,12 +340,10 @@ type TOKENS = Array;  // [int];
                     var [ts2,nd2] = [tl(ts1), new Ast::Identifier (str)];
                     var [ts3,nd3] = [ts1, new Ast::QualifiedIdentifier (nd1,nd2)];
                     break;
-                    /*
                 case Token::LeftBracket:
                     var [ts2,nd2] = brackets (ts1);
                     var [ts3,nd3] = [ts1, new Ast::QualifiedExpression (nd1,nd2)];
                     break;
-                    */
                 default:
                     var [ts2,nd2] = identifier (ts1);
                     var [ts3,nd3] = [ts2, new Ast::QualifiedIdentifier (nd1,nd2)];
@@ -2326,26 +2324,16 @@ type TOKENS = Array;  // [int];
         {
             enter("Parser::nullableTypeExpression ", ts);
 
+            var [ts1,nd1] = typeExpression (ts);
             switch (hd (ts1)) {
-            case Token::Null:
-                var [ts1,nd1] = [tl (ts), new Ast::SpecialType (new Ast::NullType)];
+            case Token::QuestionMark:
+                var [ts1,nd1] = [tl (ts1), new Ast::NullableType (nd1,true)];
                 break;
-            case Token::Undefined:
-                var [ts1,nd1] = [tl (ts), new Ast::SpecialType (new Ast::UndefinedType)];
+            case Token::Not:
+                var [ts1,nd1] = [tl (ts1), new Ast::NullableType (nd1,false)];
                 break;
             default:
-                var [ts1,nd1] = typeExpression (ts);
-                switch (hd (ts1)) {
-                case Token::QuestionMark:
-                    var [ts1,nd1] = [tl (ts1), new Ast::NullableType (nd1,true)];
-                    break;
-                case Token::Not:
-                    var [ts1,nd1] = [tl (ts1), new Ast::NullableType (nd1,false)];
-                    break;
-                default:
-                    // do nothing
-                    break;
-                }
+                // do nothing
                 break;
             }
 
@@ -2370,6 +2358,12 @@ type TOKENS = Array;  // [int];
             enter("Parser::typeExpression ", ts);
 
             switch (hd (ts1)) {
+            case Token::Null:
+                var [ts1,nd1] = [tl (ts), new Ast::SpecialType (new Ast::NullType)];
+                break;
+            case Token::Undefined:
+                var [ts1,nd1] = [tl (ts), new Ast::SpecialType (new Ast::UndefinedType)];
+                break;
             case Token::Function:
                 var [ts1,nd1] = functionType (ts);
                 break;
@@ -5191,12 +5185,14 @@ type TOKENS = Array;  // [int];
         var programs =
             [ "print('hi')"
               /*
-            , "print('hello, world!')"
             , "x<y"
             , "x==y"
             , "m-n;n+m"
             , "10"
+              */
             , "p.q.r.x"
+            , "q::id"
+              /*
             , "f() ()"
             , "new A()"
             , "(new Fib(n-1)).val + (new Fib(n-2)).val"
@@ -5204,8 +5200,8 @@ type TOKENS = Array;  // [int];
             , "var x = 10; var y"
             , "if (x) y; else z"
             , "function f(x,y,z) { return 10 }"
+            , "new new x (1) (2) . x"
               */
-              , "new new x (1) (2) . x"
             /*
               , "new new y"
               , "z (1) (2)"
