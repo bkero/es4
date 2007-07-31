@@ -1,0 +1,5 @@
+{
+    import cogen.*;
+
+    cogen.testHelloWorldArgs();
+}

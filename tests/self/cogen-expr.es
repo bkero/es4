@@ -384,7 +384,7 @@ package cogen
             name = emitter.nameFromIdent(lhs.ident);
         }
         case (lhs:LexicalRef) {
-            name = emitter.nameFromIdentExpr(lhs);
+            name = emitter.nameFromIdentExpr(lhs.ident);
             if (e.op is Assign)
                 asm.I_findproperty(name);
             else

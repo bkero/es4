@@ -94,7 +94,7 @@ package cogen
 
             switch type (fx) {
             case (vf:ValFixture) {
-                target.addTrait(new ABCSlotTrait(name, 0));
+                target.addTrait(new ABCSlotTrait(name, 0, 0, emitter.fixtureTypeToType(vf)));
             }
             case (mf:MethodFixture) {
                 target.addTrait(new ABCOtherTrait(name, 0, TRAIT_Method, 0, cgFunc(ctx, mf.func)));
@@ -125,6 +125,9 @@ package cogen
             //asm.I_newfunction(cgFunc(ctx, fd.func));
             //asm.I_initproperty(name);
         }
+        case (vd: VariableDefn) {
+            // nothing to do, right?
+        }
         case (x:*) { throw "Internal error: unimplemented defn" }
         }
     }
@@ -136,9 +139,13 @@ package cogen
     function cgFunc({emitter:emitter, script:script}, f:FUNC) {
         function extractName([name,fixture])
             emitter.fixtureNameToName(name);
-
+        
+        function extractType([name,fixture])
+            emitter.fixtureTypeToType(fixture);
+        
         let formals = map(extractName, f.params.fixtures);
-        let method = script.newFunction(formals);
+        let formals_type = map(extractType, f.params.fixtures);
+        let method = script.newFunction(formals_type);
         let asm = method.asm;
 
         /* Create a new rib and populate it with the values of all the
@@ -164,7 +171,7 @@ package cogen
                 asm.I_dup();
             asm.I_getlocal(i+1);
             asm.I_setproperty(formals[i]);
-            method.addTrait(new ABCSlotTrait(formals[i], 0));
+            method.addTrait(new ABCSlotTrait(formals[i], 0, 0, formals_type[i]));
         }
 
         /* Generate code for the body.  If there is no return statement in the

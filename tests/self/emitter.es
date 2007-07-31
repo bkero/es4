@@ -111,7 +111,15 @@ package emitter
             use namespace Ast;
             switch type (e) {
             case (id:Identifier) { return nameFromIdent(id.ident) }
-            case (x:*) { throw "Unimplemented: nameFromIdentExpr" }
+            case (x:*) { throw ("Unimplemented: nameFromIdentExpr " + e) }
+            }
+        }
+
+        public function typeFromTypeExpr(t) {
+            use namespace Ast;
+            switch type (t) {
+            case (tn:TypeName) { return nameFromIdentExpr(tn.ident) }
+            case (x:*) { throw ("Unimplemented: typeFromTypeExpr " + t) }
             }
         }
 
@@ -125,6 +133,18 @@ package emitter
                 throw "Internal error: what is the internal structure of a TempName?";
             }
             case (x:*) { throw "Internal error: not a valid fixture name" }
+            }
+        }
+        
+        public function fixtureTypeToType(fix) {
+            switch type (fix) {
+                case (vf:ValFixture) {
+                    return typeFromTypeExpr(vf.type);
+                }
+                case (mf:MethodFixture) {
+                    return 0;
+                }
+                case(x:*) { throw "Unimplemented: fixtureTypeToType " + x }
             }
         }
 
@@ -242,6 +262,9 @@ package emitter
             body.setLocalCount(asm.maxLocal);
             body.setMaxScopeDepth(asm.maxScope);
             body.setCode(asm);
+            for ( var i=0 ; i < traits.length ; i++ )
+                body.addTrait(traits[i]);
+            
             e.file.addMethodBody(body);
 
             return meth;
