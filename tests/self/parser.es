@@ -1243,6 +1243,9 @@ type TOKENS = Array;  // [int];
             PropertyOperator MemberExpressionPrime(beta)
             empty
 
+        Note: member expressions always have balanced new and (). The LHS parser is
+        responsible for dispatching extra 'new' or '()' to 
+
         */
 
         function memberExpression (ts: TOKENS, beta:BETA)
@@ -1293,6 +1296,9 @@ type TOKENS = Array;  // [int];
 
         /*
 
+        CallExpression(beta)
+            MemberExpression(beta) Arguments CallExpressionPrime(beta) 
+
         CallExpressionPrime(beta)
             Arguments CallExpressionPrime(beta)
             [ Expression ] CallExpressionPrime(beta)
@@ -1300,6 +1306,19 @@ type TOKENS = Array;  // [int];
             empty
 
         */
+
+        function callExpression (ts: TOKENS, beta:BETA)
+            : [TOKENS, Ast::EXPR]
+        {
+            enter("Parser::callExpression ", ts);
+
+            var [ts1,nd1] = memberExpression (ts,beta);
+            var [ts2,nd2] = this.arguments (ts);
+            var [tsx,ndx] = callExpressionPrime (ts2, beta, new Ast::CallExpr (nd1,nd2));
+
+            exit ("Parser::callExpressionPrime ", ndx);
+            return [tsx, ndx];
+        }
 
         function callExpressionPrime (ts: TOKENS, beta:BETA, nd: Ast::EXPR)
             : [TOKENS, Ast::EXPR]
@@ -1322,11 +1341,9 @@ type TOKENS = Array;  // [int];
                 break;
             }
 
-            exit ("Parser::callExpressionPrime ", tsx);
+            exit ("Parser::callExpressionPrime ", ndx);
             return [tsx, ndx];
         }
-
-        // new X; new X (); new X () (); X (); X
 
         /*
 
@@ -1336,20 +1353,35 @@ type TOKENS = Array;  // [int];
 
         */
 
-        function newExpression (ts: TOKENS, beta:BETA)
+        function newExpression (ts: TOKENS, beta:BETA, new_count=0)
             : [TOKENS, Ast::EXPR]
         {
             enter("Parser::newExpression ", ts);
 
             switch (hd (ts)) {
             case Token::New:
-                switch (hd (tl (ts))) {
-                case Token::New:
-                    let [ts1,nd1] = newExpression (tl (ts), beta);
-                    var [tsx,ndx] = [tsx, new Ast::NewExpr (nd1,[])];
+                let [ts1,nd1] = newExpression (tl (ts), beta, new_count+1);
+                switch (hd (ts1)) {
+                case Token::LeftParen:  // no more new exprs so this paren must start a call expr
+                    let [ts2,nd2] = this.arguments (ts1); // refer to parser method
+                    if (new_count == 0) 
+                    {
+                        var [tsx,ndx] = callExpressionPrime (ts2,beta,new Ast::CallExpr (nd1,nd2));
+                    }
+                    else 
+                    {
+                        var [tsx,ndx] = [ts2,new Ast::NewExpr (nd1,nd2)];
+                    }
                     break;
                 default:
-                    var [tsx,ndx] = memberExpression (ts, beta);
+                    if (new_count == 0) 
+                    {
+                        var [tsx,ndx] = memberExpressionPrime (ts1,beta,nd1);
+                    }
+                    else 
+                    {
+                        var [tsx,ndx] = [ts1,nd1];
+                    }
                     break;
                 }
                 break;
@@ -1357,16 +1389,31 @@ type TOKENS = Array;  // [int];
                 let [ts1,nd1] = memberExpression (ts,beta);
                 switch (hd (ts1)) {
                 case Token::LeftParen:
-                    val [tsx,ndx] = callExpressionPrime (ts1,nd1,beta);
+                    let [ts2,nd2] = this.arguments (ts1); // refer to parser method
+                    if( new_count == 0 )
+                    {
+                        var [tsx,ndx] = callExpressionPrime (ts2,beta,new Ast::CallExpr (nd1,nd2));
+                    }
+                    else
+                    {
+                        var [tsx,ndx] = [ts2,new Ast::NewExpr (nd1,nd2)];
+                    }
                     break;
                 default:
-                    var [tsx,ndx] = [ts1,ndx];
+                    if( new_count == 0 ) 
+                    {
+                        var [tsx,ndx] = [ts1,nd1];
+                    }
+                    else 
+                    {
+                        var [tsx,ndx] = [ts1,nd1];
+                    }
                     break;
                 }
                 break;
             }
 
-            exit ("Parser::newExpression ", tsx);
+            exit ("Parser::newExpression ", ndx);
             return [tsx, ndx];
         }
 
@@ -1379,12 +1426,9 @@ type TOKENS = Array;  // [int];
         Refactored:
 
         LeftHandSideExpression
-            MemberExpression LeftHandSideExpressionPrime
-            new NewExpression
-
-        LeftHandSideExpressionPrime
-            Arguments CallExpressionPrime
-            empty
+            NewExpression
+            MemberExpression Arguments CallExpressionPrime
+            MemberExpression
 
         */
 
@@ -1395,7 +1439,7 @@ type TOKENS = Array;  // [int];
 
             switch (hd (ts)) {
             case Token::New:
-                var [tsx,ndx] = newExpression (ts,beta);
+                var [tsx,ndx] = newExpression (ts,beta,0);
                 break;
             default:
                 let [ts1,nd1] = memberExpression (ts,beta);
@@ -1408,9 +1452,10 @@ type TOKENS = Array;  // [int];
                     var [tsx,ndx] = [ts1,nd1];
                     break;
                 }
+                break;
             }
 
-            exit ("Parser::leftHandSideExpression ", tsx);
+            exit ("Parser::leftHandSideExpression ", ndx);
             return [tsx, ndx];
         }
 
@@ -5158,9 +5203,14 @@ type TOKENS = Array;  // [int];
             , "var x = 10, y = 20"
             , "var x = 10; var y"
             , "if (x) y; else z"
-              */
             , "function f(x,y,z) { return 10 }"
-              /*
+              */
+              , "new new x (1) (2) . x"
+            /*
+              , "new new y"
+              , "z (1) (2)"
+              , "new new x (1) (2)"
+              , "new new x (1) (2) . x"
             , "class A { function A() {} }"
             , "class Fib { function Fib (n) { } }"
             , readFile ("./tests/self/hello.es")
