@@ -54,3 +54,9 @@ Custom tags:
 Type faces etc.
 
   TBD.
+
+
+Other rules.
+
+  "Guides to implementors" where appropriate.  Eg, for Date.prototype.now()
+  one wants to make the intent (high resolution, fast call) clear.

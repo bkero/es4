@@ -16,5 +16,10 @@
 * In fact, should there not be one common "Library" or
   "LibraryInternals" package that private stuff can go into?
 
+* It would be incredibly useful for Array.prototype.some to return the
+  value that matches... even if it means that "false" can't be found
+  and that clients have to be careful around zero, null, and
+  undefined.
 
-  
+  Alternatively, impement an interface Array.prototype.find() that
+  returns an index if it finds the element or -1 if not.
