@@ -197,10 +197,10 @@ package cogen
         }
     }
 
-    function cgUnaryexpr(ctx, e) {
+    function cgUnaryExpr(ctx, e) {
         let {asm:asm, emitter:emitter} = ctx;
 
-        let function incdec(pre, inc) {
+        let incdec = function incdec(pre, inc) {
             let name;
             switch type (e.ex) {
             case (lr:LexicalRef) {
@@ -278,10 +278,10 @@ package cogen
                 asm.I_label(L1);
             }
         }
-        case (op:PreIncr) { incDec(true, true) }
-        case (op:PreDecr) { incDec(true, false) }
-        case (op:PostIncr) { incDec(false, true) }
-        case (op:PostDecr) { incDec(false, false) }
+        case (op:PreIncr) { incdec(true, true) }
+        case (op:PreDecr) { incdec(true, false) }
+        case (op:PostIncr) { incdec(false, true) }
+        case (op:PostDecr) { incdec(false, false) }
         case (op:UnaryPlus) {
             cgExpr(ctx, e.ex);
             asm.I_convert_d();
