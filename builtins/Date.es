@@ -45,6 +45,8 @@
 
 package
 {
+    import ECMAScript4_Internal.*;
+
     use default namespace public;
     use namespace intrinsic;  // Override with "public::" when necessary
 
@@ -197,8 +199,11 @@ package
         prototype function nanoAge() : double
             this.nanoAge();
 
-        /* INFORMATIVE */
         intrinsic function nanoAge() : double
+            informative::nanoAge();
+
+        /* INFORMATIVE */
+        informative function nanoAge() : double
             (Date.now() - birthtime) * 1000000;
 
         /* INFORMATIVE */

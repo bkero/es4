@@ -1,5 +1,5 @@
 {
     import cogen.*;
 
-    cogen.testHelloWorldArgs();
+    cogen.testHelloWorldLoop();
 }

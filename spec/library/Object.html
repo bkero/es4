@@ -1,54 +1,62 @@
-<!-- The "Object" object
+<!-- Object.html
+
+     The "Object" object
 
      Copyright (C) 2007 ECMA International
-     Based on older content.
+     Contains material from older specs.
 
-     This is just an experiment; I'm playing around.
-
-     Shorthands that reduce visual and contextual clutter:
-
-        ''..''    means "<code>..</code>"
-        [[..]]    means "<code>[[..]]</code>"
-
-        <h1>      means "<hn>" where n is computed from the context
-        <h2>      means "<hn>" where n is computed from the context
-        and so on
-
-        = ... =   means "<h1> ... </h1>"
-        == ... == means "<h2> ... </h2>"
-        and so on
-
-     Magic tags that the preprocessor removes:
-
-        <INCLUDE file="..." name="..."> is replaced by the function,
-                         inside a PRE tag.
-
-        <XREF target="..."> resolves to the section number of "tag", where "tag" is some ID
-                         on a header element somewhere (could be in a different file)
-
-     These tags must be upper case, note no "/>" termination
+     Owner : lth
+     Status: incomplete
+     Review: not reviewed
 -->
 
 = ''Object'' Objects =
+
+<p>All values in ECMAScript except **undefined** and **null** are
+instances of the class ''Object'' or one of its subclasses.
+
+<p>The class ''Object'' has the following interface:
+
+{{{
+dynamic class Object
+{
+    function Object(value=undefined) ...
+
+    meta static function invoke(value=undefined) ...
+
+    static const length: uint = 1
+    static const prototype: Object = ...
+
+    intrinsic function toString(): string ...
+    intrinsic function toLocaleString(): string ...
+    intrinsic function toJSONString(...args): string ...
+    intrinsic function valueOf(): Object! ...
+    intrinsic function hasOwnProperty(V : EnumerableId): boolean ...
+    intrinsic function isPrototypeOf(V): boolean
+    intrinsic function propertyIsenumerable(prop: EnumerableId, e=undefined): boolean ...
+}
+}}}
+
 
 == The ''Object'' Constructor Called as a Function ==
 
 <p>When ''Object'' is called as a function rather than as a
 constructor, it performs a type conversion.
 
-=== ''Object ( [ value ] )'' ===
+=== ''Object ( value = undefined )'' ===
 
 <p>When the ''Object'' function is called with no arguments or with one
 argument value, the following steps are taken:
 
 <INCLUDE file="Object.es" name="meta static function invoke">
 
-=== The Object Constructor ===
+
+== The Object Constructor ==
 
 <p>When ''Object'' is called as part of a new expression, it is a
 constructor that may create an object.
 
-=== ''new Object ( [ value ] )'' ===
+=== ''new Object ( value = undefined )'' ===
 
 <p>When the Object constructor is called with no arguments or with one
 argument value, the following steps are taken:
@@ -71,30 +79,23 @@ value is 1), the Object constructor has the following properties:
 <p>This property has the attributes { DontEnum, DontDelete, ReadOnly }.
 
 
-<h2 id="obj-proto-props">Properties of the Object Prototype Object</h2>
+== Methods on Object instances ==
 
-<p>The value of the internal [[Prototype]] property of the Object prototype object is null and the value of
-the internal [[Class]] property is "Object".
-
-
-=== ''Object.prototype.constructor'' ===
-
-<p>The initial value of ''Object.prototype.constructor'' is the built-in ''Object'' constructor.
-
-
-=== ''Object.prototype.toString ( )'' ===
+=== ''toString ( )'' ===
 
 <p>When the ''toString'' method is called, the following steps are taken:
 
-<INCLUDE file="Object.es" name="private static function toString">
+<INCLUDE file="Object.es" name="intrinsic function toString">
 
 
-=== ''Object.prototype.toLocaleString ( )'' ===
+=== ''toLocaleString ( )'' ===
 
 <p>This function returns the result of calling ''toString()''.
 
+<INCLUDE file="Object.es" name="intrinsic function toLocaleString">
+
 <p class="note">NOTE 1<br>
-This function is provided to give all Objects a generic toLocaleString interface, even though not
+This function is provided to give all Objects a generic ''toLocaleString'' interface, even though not
 all may use it. Currently, Array, Number, and Date provide their own locale-sensitive
 toLocaleString methods.
 
@@ -103,39 +104,73 @@ The first parameter to this function is likely to be used in a future version of
 recommended that implementations do not use this parameter position for anything else.
 
 
-=== ''Object.prototype.valueOf ( )'' ===
+=== ''toJSONString ( )'' ===
 
-<p>The valueOf method returns its this value. If the object is the result of calling the Object
-constructor with a host object (<XREF target="host-object-defn">), it is implementation-defined whether valueOf returns its
-this value or another value such as the host object originally passed to the constructor.
+<p>This function returns the result of calling ''toJSONString()''.
+
+<INCLUDE file="Object.es" name="intrinsic function toJSONString">
 
 
-=== ''Object.prototype.hasOwnProperty (V)'' ===
+=== ''valueOf ( )'' ===
 
-<p>When the hasOwnProperty method is called with argument V, the following steps are taken:
+<p>The ''valueOf'' method returns its this value. If the object is the
+result of calling the Object constructor with a host object (<XREF
+target="host-object-defn">), it is implementation-defined whether
+''valueOf'' returns its this value or another value such as the host
+object originally passed to the constructor.
 
-<INCLUDE file="Object.es" name="prototype function hasOwnProperty">
+
+=== ''hasOwnProperty (V)'' ===
+
+<p>When the ''hasOwnProperty'' method is called with argument ''V'', the following steps are taken:
+
+<INCLUDE file="Object.es" name="intrinsic function hasOwnProperty">
 
 <p class="note">NOTE<br>
 Unlike [[HasProperty]] (<XREF target="HasProperty-defn">), this method does not consider objects in the prototype chain.
 
 
-=== ''Object.prototype.isPrototypeOf (V)'' ===
+=== ''isPrototypeOf (V)'' ===
 
-<p>When the isPrototypeOf method is called with argument V, the following steps are taken:
+<p>When the ''isPrototypeOf'' method is called with argument ''V'', the following steps are taken:
 
-<INCLUDE file="Object.es" name="prototype function isPrototypeOf">
+<INCLUDE file="Object.es" name="intrinsic function isPrototypeOf">
 
 
-=== ''Object.prototype.propertyIsEnumerable (V)'' ===
+=== ''propertyIsEnumerable (V)'' ===
 
-<p>When the propertyIsEnumerable method is called with argument V, the following steps are
-taken:
+<p>When the ''propertyIsEnumerable'' method is called with argument
+''V'', the following steps are taken:
 
-<INCLUDE file="Object.es" name="prototype function propertyIsEnumerable">
+<INCLUDE file="Object.es" name="intrinsic function propertyIsEnumerable">
 
 <p class="note">NOTE<br>
 This method does not consider objects in the prototype chain.
+
+
+<h2 id="obj-proto-props">Properties of the Object Prototype Object</h2>
+
+<p>The value of the internal [[Prototype]] property of the Object prototype object is null and the value of
+the internal [[Class]] property is "Object".
+
+
+=== Methods on the Object prototype object ===
+
+<p>The methods on the object prototype object all call the
+corresponding intrinsic methods of the Object class, as follows.
+
+<INCLUDE file="Object.es" name="prototype function toString">
+<INCLUDE file="Object.es" name="prototype function toLocaleString">
+<INCLUDE file="Object.es" name="prototype function toJSONString">
+<INCLUDE file="Object.es" name="prototype function valueOf">
+<INCLUDE file="Object.es" name="prototype function hasOwnProperty">
+<INCLUDE file="Object.es" name="prototype function isPrototypeOf">
+<INCLUDE file="Object.es" name="prototype function propertyIsEnumerable">
+
+
+=== ''Object.prototype.constructor'' ===
+
+<p>The initial value of ''Object.prototype.constructor'' is the built-in ''Object'' constructor.
 
 
 == Properties of Object Instances ==

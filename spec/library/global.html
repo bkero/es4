@@ -1,0 +1,387 @@
+= The Global Object =
+
+<p>The global object does not have a [[Construct]] property; it is not possible to use the global object as a constructor
+with the new operator.
+
+<p>The global object does not have a [[Call]] property; it is not possible to invoke the global object as a function.
+The values of the [[Prototype]] and [[Class]] properties of the global object are implementation-dependent.
+
+<p>The global object contains the following properties, functions, and
+class definitions.  The classes are defined in the following sections.
+
+{{{
+const NaN: double = ...
+const Infinity: double = ...
+const undefined: undefined = ...
+const __ECMASCRIPT_VERSION__ = ...
+
+const Math: Object = ...
+const global: Object = ...
+
+intrinsic function eval(s: string) ...
+intrinsic function parseInt(s: string, r: (int,undefined)=undefined): Numeric ...
+intrinsic function parseFloat(s: string): Numeric ...
+intrinsic function isNaN(n: Numeric): boolean ...
+intrinsic function isFinite(n: Numeric): boolean ...
+intrinsic function decodeURI(s: string): string ...
+intrinsic function decodeURIComponent(s: string): string ...
+intrinsic function encodeURI(s: string): string ...
+intrinsic function encodeURIComponent(s: string): string ...
+intrinsic function hashcode(x): uint ...
+
+function eval(x) ...
+function parseInt(s, r=undefined) ...
+function parseFloat(s) ...
+function isNaN(x) ...
+function isFinite(x) ...
+function decodeURI(x) ...
+function decodeURIComponent(x) ...
+function encodeURI(x) ...
+function encodeURIComponent(x) ...
+
+class Object ...
+class Function ...
+class Array ...
+class String ...
+class string ...
+class Boolean ...
+class boolean
+class Number ...
+class int ...
+class uint ...
+class double ...
+class decimal ...
+class Date ...
+class RegExp ...
+class Error ...
+class EvalError ...
+class RangeError ...
+class ReferenceError ...
+class SyntaxError ...
+class TypeError ...
+class URIError ...
+}}}
+
+
+== Value Properties of the Global Object ==
+
+=== ''NaN'' ===
+
+The value of ''NaN'' is **NaN** (section 8.5).
+
+<p class="note">NOTE<br>
+This property was not marked ReadOnly in 3rd Edition.
+
+=== ''Infinity'' ===
+
+The value of ''Infinity'' is +<INFINITY> (section 8.5).
+
+<p class="note">NOTE<br>
+This property was not marked ReadOnly in 3rd Edition.
+
+=== ''undefined'' ===
+
+The value of undefined is **undefined** (section 8.1).
+
+<p class="note">NOTE<br>
+This property was not marked ReadOnly in 3rd Edition.
+
+=== ''__ECMASCRIPT_VERSION__'' ===
+
+The value of ''__ECMASCRIPT_VERSION__'' is the version of this
+Standard to which the implementation conforms.  For this 4th Edition
+of the Standard, the value of ''__ECMASCRIPT_VERSION__'' is 4.
+
+<p class="note">NOTE<br>
+This property is new in the 4th Edition.
+
+
+== Function Properties of the Global Object ==
+
+=== ''eval (s)'' ===
+
+<p> When the intrinsic ''eval'' function is called with a string
+argument ''s'', the following steps are taken:
+
+<INCLUDE file="Global.es" name="intrinsic native function eval">
+
+<p> When the non-intrinsic ''eval'' function is called with a value
+''x'', the following steps are taken:
+
+<INCLUDE file="Global.es" name="function eval">
+
+
+=== ''parseInt (string , radix)'' ===
+
+<p>The intrinsic function ''parseInt'' produces an integer value dictated by
+interpretation of the contents of the ''string'' argument according to
+the specified ''radix''.  Leading whitespace in the ''string'' is
+ignored. If ''radix'' is undefined or 0, it is assumed to be 10 except
+when the number begins with the character pairs 0x or 0X, in which
+case a radix of 16 is assumed. Any radix-16 number may also optionally
+begin with the character pairs 0x or 0X.
+
+<p>When the ''parseInt'' function is called, the following steps are
+taken:
+
+<INCLUDE file="Global.es" name="intrinsic function parseInt">
+
+where ''helper::isDigitForRadix(c,r)'' computes whether ''c'' is a valid
+digit for the radix ''r'':
+
+<INCLUDE file="Global.es" name="helper function isDigitForRadix">
+
+<p>The function ''informative::numericValue(s, r)'' computes the
+numeric value of a radix-''r'' string ''s''.  If ''r'' is 10 and ''s''
+contains more than 20 significant digits, every significant digit
+after the 20th may be replaced by a 0 digit, at the option of the
+implementation; and if ''r'' is not 2, 4, 8, 10, 16, or 32, then the
+returned alue may be an implementation-dependent approximation to the
+mathematical integer value that is represented by ''s'' in radix-''r''
+notation.
+
+<p>The non-intrinsic function ''parseInt'' converts its first argument
+to string and its second argument to int, and then calls the intrinsic
+''parseInt'' function:
+
+<INCLUDE file="Global.es" name="function parseInt">
+
+<p class="note">NOTE 1<br>
+In the 3rd Edition of this Standard, the ''parseInt'' function was
+allowed to, though not encouraged to, interpret a string with a
+leading ''0'' but no leading ''0x'' or ''0X'' as a base-8 number if
+the radix was not supplied in the call or was supplied as zero.  This
+is no longer allowed; the function must interpret such a number as a
+base-10 number.
+
+<p class="note">NOTE 2<br>
+''parseInt'' may interpret only a leading portion of the string as an
+integer value; it ignores any characters that cannot be interpreted as
+part of the notation of an integer, and no indication is given that
+any such characters were ignored.
+
+=== ''parseFloat (string)'' ===
+
+<p>The ''parseFloat'' function produces a number value dictated by
+interpretation of the contents of the string argument as a decimal
+literal.
+
+<p>When the intrinsic ''parseFloat'' function is called, the following
+steps are taken:
+
+<INCLUDE file="Global.es" name="intrinsic function parseFloat">
+
+<p>When the non-intrinsic ''parseFloat'' function is called, the
+following steps are taken:
+
+<INCLUDE file="Global.es" name="function parseFloat">
+
+<p class="note">NOTE<br>
+''parseFloat'' may interpret only a leading portion of the string as a
+number value; it ignores any characters that cannot be interpreted as
+part of the notation of an decimal literal, and no indication is given
+that any such characters were ignored.
+
+=== ''isNaN (number)'' ===
+
+<p>The intrinsic function ''isNaN'' takes a numeric value and returns
+true if it is **NaN**, and otherwise returns false.
+
+<INCLUDE file="Global.es" name="intrinsic function isNaN">
+
+<p>The non-intrinsic function ''isNaN'' converts its argument to a
+number, then calls the intrinsic ''isNaN''.
+
+<INCLUDE file="Global.es" name="function isNaN">
+
+
+=== ''isFinite (number)'' ===
+
+<p>When the intrinsic function ''isFinite'' is called on a number, the
+following steps are taken:
+
+<INCLUDE file="Global.es" name="intrinsic function isFinite">
+
+<p>When the non-intrinsic function ''isFinite'' is called on a value,
+the following steps are taken:
+
+<INCLUDE file="Global.es" name="function isFinite">
+
+
+=== URI Handling Function Properties ===
+
+<p>Uniform Resource Identifiers, or URIs, are strings that identify
+resources (e.g. web pages or files) and transport protocols by which
+to access them (e.g. HTTP or FTP) on the Internet. The ECMAScript
+language itself does not provide any support for using URIs except for
+functions that encode and decode URIs as described in sections
+15.1.3.1, 15.1.3.2, 15.1.3.3 and 15.1.3.4.
+
+<p class="NOTE">NOTE<br>
+Many implementations of ECMAScript provide additional functions and
+methods that manipulate web pages; these functions are beyond the
+scope of this standard.
+
+<p>A URI is composed of a sequence of components separated by component separators. The general form is:
+<div class="indented">
+//Scheme '':'' First ''/'' Second '';'' Third ''?'' Fourth//
+</div>
+
+<p>where the italicised names represent components and the ":", "/",
+";" and "?" are reserved characters used as separators.  The
+''encodeURI'' and ''decodeURI'' functions are intended to work with
+complete URIs; they assume that any reserved characters in the URI are
+intended to have special meaning and so are not encoded.  The
+''encodeURIComponent'' and ''decodeURIComponent'' functions are
+intended to work with the individual component parts of a URI; they
+assume that any reserved characters represent text and so must be
+encoded so that they are not interpreted as reserved characters when
+the component is part of a complete URI.  The following lexical
+grammar specifies the form of encoded URIs.
+
+<div class="grammar">
+<div class="nonterm">uri :::</div>
+<div class="indented">uriCharacters<sub>opt</sub></div>
+
+<div class="nonterm">uriCharacters :::</div>
+<div class="indented">uriCharacter uriCharacters<sub>opt</sub></div>
+
+<div class="nonterm">uriCharacter :::</div>
+<div class="indented">uriReserved<br>
+uriUnescaped<br>
+uriEscaped</div>
+
+<div class="nonterm">uriReserved ::: **one of**</div>
+<div class="indented">''; / ? : @ & = + $ ,''</div>
+
+<div class="nonterm">uriUnescaped :::</div>
+<div class="indented">uriAlpha<br>
+DecimalDigit<br>
+uriMark</div>
+
+<div class="nonterm">uriEscaped :::</div>
+<div class="indented">% HexDigit HexDigit</div>
+
+<div class="nonterm">uriAlpha ::: **one of**</div>
+<div class="indented">''a b c d e f g h i j k l m n o p q r s t u v w x y z''<br>
+''A B C D E F G H I J K L M N O P Q R S T U V W X Y Z''</div>
+
+<div class="nonterm">uriMark ::: **one of**</div>
+<div class="indented">''- _ . ! ~ * ' ( )''</div>
+</div>
+
+<p>When a character to be included in a URI is not listed above or is not intended to have the special meaning
+sometimes given to the reserved characters, that character must be encoded. The character is first transformed into
+a sequence of octets using the UTF-8 transformation, with surrogate pairs first transformed from their UCS-2 to
+UCS-4 encodings. (Note that for code points in the range [0,127] this results in a single octet with the same value.)
+The resulting sequence of octets is then transformed into a string with each octet represented by an escape
+sequence of the form "%xx".
+
+<p>The encoding and escaping process is described by the hidden function Encode taking two string arguments string
+and unescapedSet. This function is defined for expository purpose only.
+
+
+<p>The unescaping and decoding process is described by the hidden function Decode taking two string arguments
+string and reservedSet. This function is defined for expository purpose only.
+
+
+<p class="note">NOTE<br>
+The syntax of Uniform Resource Identifiers is given in RFC2396.
+
+<p class="note">NOTE<br>
+A formal description and implementation of UTF-8 is given in the Unicode Standard, Version 2.0, Appendix A.
+In UTF-8, characters are encoded using sequences of 1 to 6 octets. The only octet of a "sequence" of one has the higher-order
+bit set to 0, the remaining 7 bits being used to encode the character value. In a sequence of n octets, n>1, the initial octet has
+the n higher-order bits set to 1, followed by a bit set to 0. The remaining bits of that octet contain bits from the value of the
+character to be encoded. The following octets all have the higher-order bit set to 1 and the following bit set to 0, leaving 6 bits in
+each to contain bits from the character to be encoded. The possible UTF-8 encodings of ECMAScript characters are:
+
+<div class="indented">FIXME - table</div>
+
+<!-- FIXME
+Code Point Value Representation 1st Octet 2nd Octet 3rd Octet 4th Octet
+0x0000 - 0x007F 00000000 0zzzzzzz 0zzzzzzz
+0x0080 - 0x07FF 00000yyy yyzzzzzz 110yyyyy 10zzzzzz
+0x0800 - 0xD7FF xxxxyyyy yyzzzzzz 1110xxxx 10yyyyyy 10zzzzzz
+0xD800 - 0xDBFF
+followed by
+0xDC00 – 0xDFFF
+110110vv vvwwwwxx
+followed by
+110111yy yyzzzzzz
+11110uuu 10uuwwww 10xxyyyy 10zzzzzz
+0xD800 - 0xDBFF
+not followed by
+0xDC00 – 0xDFFF
+causes URIError
+0xDC00 – 0xDFFF causes URIError
+0xE000 - 0xFFFF xxxxyyyy yyzzzzzz 1110xxxx 10yyyyyy 10zzzzzz
+-->
+
+<p>Where
+<div class="indented">uuuuu = vvvv + 1</div>
+<p>to account for the addition of 0x10000 as in section 3.7,
+Surrogates of the Unicode Standard version 2.0.
+
+<p>The range of code point values 0xD800-0xDFFF is used to encode
+surrogate pairs; the above transformation combines a UCS-2 surrogate
+pair into a UCS-4 representation and encodes the resulting 21-bit
+value in UTF-8. Decoding reconstructs the surrogate pair.
+
+==== decodeURI (encodedURI) ====
+
+The decodeURI function computes a new version of a URI in which each escape sequence and UTF-8 encoding of
+the sort that might be introduced by the encodeURI function is replaced with the character that it represents.
+Escape sequences that could not have been introduced by encodeURI are not replaced.
+
+<p>When the decodeURI function is called with one argument encodedURI, the following steps are taken:
+
+<p>FIXME
+
+<p class="note">NOTE<br>
+The character "#" is not decoded from escape sequences even though it is not a reserved URI character.
+
+
+==== decodeURIComponent (encodedURIComponent) ====
+
+The decodeURIComponent function computes a new version of a URI in which each escape sequence and UTF-8
+encoding of the sort that might be introduced by the encodeURIComponent function is replaced with the character
+that it represents.
+
+<p>When the decodeURIComponent function is called with one argument encodedURIComponent, the following
+steps are taken:
+
+<p>FIXME
+
+==== encodeURI (uri) ====
+
+The encodeURI function computes a new version of a URI in which each instance of certain characters is replaced
+by one, two or three escape sequences representing the UTF-8 encoding of the character.
+
+<p>When the encodeURI function is called with one argument uri, the following steps are taken:
+
+<p>FIXME
+
+<p class="note">NOTE<br>
+The character "#" is not encoded to an escape sequence even though it is not a reserved or unescaped URI character.
+
+==== encodeURIComponent (uriComponent) ====
+
+The encodeURIComponent function computes a new version of a URI in which each instance of certain
+characters is replaced by one, two or three escape sequences representing the UTF-8 encoding of the character.
+
+<p>When the encodeURIComponent function is called with one argument uriComponent, the following steps are
+taken:
+
+<p> FIXME
+
+=== Other Properties of the Global Object ===
+
+==== Math ====
+
+See section 15.8.
+
+==== global ====
+
+...
+
