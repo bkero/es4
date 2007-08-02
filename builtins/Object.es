@@ -40,6 +40,7 @@
  *
  * Status: Complete; Not reviewed against spec.
  */
+
 package
 {
     use default namespace public;
@@ -47,6 +48,8 @@ package
     // FIXME: this needs to be here to open the intrinsic namespace in the class.
     // There is a bug in the definer.
     use namespace intrinsic;
+
+    type EnumerableId = (int, uint, string /*, Name*/);  // FIXME: circularity
 
     dynamic class Object
     {
@@ -65,94 +68,82 @@ package
 
         /* E262-3 15.2.4.2: Object.prototype.toString */
         prototype function toString()
-            Object.toString(this);
+            this.intrinsic::toString();
 
         intrinsic function toString() : string
-            Object.toString(this);
-
-        private static function toString(obj) : string
             "[object " + magic::getClassName(obj) + "]";
+
 
         /* E262-3 15.2.4.3: Object.prototype.toLocaleString */
         prototype function toLocaleString()
-            Object.toLocaleString(this);
+            this.intrinsic::toLocaleString();
 
         intrinsic function toLocaleString() : string
-            Object.toLocaleString(this);
+            this.toString();
 
-        private static function toLocaleString(obj)
-            "[object " + magic::getClassName(obj) + "]";
 
         /* E262-3 15.2.4.4:  Object.prototype.valueOf */
         prototype function valueOf()
-            this.valueOf();
+            this.intrinsic::valueOf();
 
         intrinsic function valueOf() : Object!
             this;
 
+
         /* E262-3 15.2.4.5:  Object.prototype.hasOwnProperty */
         prototype function hasOwnProperty(V)
-            Object.hasOwnProperty(this, V);
+            this.intrinsic::hasOwnProperty(V is EnumerableId ? V : string(V));
 
-        intrinsic function hasOwnProperty(V : (Name,string)) : boolean
-            Object.hasOwnProperty(this, V);
+        intrinsic function hasOwnProperty(V: EnumerableId): boolean
+            magic::hasOwnProperty(this, V);
 
-        private static function hasOwnProperty(obj, V : (Name,string)) : boolean
-            magic::hasOwnProperty(obj, V);
 
         /* E262-3 15.2.4.6:  Object.prototype.isPrototypeOf */
         prototype function isPrototypeOf(V)
-            Object.isPrototypeOf(this, V);
+            this.intrinsic::isPrototypeOf(V);
 
-        intrinsic function isPrototypeOf(V)
-            Object.isPrototypeOf(this, V);
-
-        private static function isPrototypeOf(target, v) : boolean {
-            if (!(v is Object))
+        intrinsic function isPrototypeOf(V): boolean {
+            if (!(V is Object))
                 return false;
 
-            let vo : Object = v to Object;
             while (true) {
-                vo = magic::getPrototype(VO);
-                if (vo === null || vo === undefined)
+                V = magic::getPrototype(V);
+                if (V === null || V === undefined)
                     return false;
-                if (vo === target)
+                if (V === this)
                     return true;
             }
         }
 
+
         /* E262-3 15.2.4.7: Object.prototype.propertyIsEnumerable (V) */
-        prototype function propertyIsEnumerable(prop, e=undefined)
-            Object.propertyIsEnumerable(this, prop, e);
-
-        intrinsic function propertyIsEnumerable(prop: (Name,string), e=undefined) : boolean
-            Object.propertyIsEnumerable(this, prop, e);
-
         /* E262-4 draft proposals:enumerability */
-        private static function propertyIsEnumerable(obj: Object, 
-                                                     prop: (Name,string),
-                                                     e = undefined) : boolean 
+        prototype function propertyIsEnumerable(prop, e=undefined)
+            this.intrinsic::propertyIsEnumerable(prop, e);
+
+        intrinsic function propertyIsEnumerable(prop: EnumerableId,
+                                                e:(boolean,undefined) = undefined): boolean
         {
+            let obj = this;
             while (obj !== null) {
                 if (obj.hasOwnProperty(prop)) {
-                    let old : boolean = !magic::getPropertyIsDontEnum(obj, prop);
+                    let oldval = !magic::getPropertyIsDontEnum(obj, prop);
                     if (!magic::getPropertyIsDontDelete(obj, prop))
-                        if (e is Boolean)
+                        if (e is boolean)
                             magic::setPropertyIsDontEnum(obj, prop, !e);
-                    return old;
+                    return oldval;
                 }
                 obj = magic::getPrototype(obj);
             }
         }
 
+
         /* E262-4 draft proposals:json_encoding_and_decoding */
         prototype function toJSONString()
-            Object.toJSONString(this);
+            this.intrinsic::toJSONString();
 
-        intrinsic function toJSONString(...args) : string
-            Object.toJSONString(obj, args);
-
-        private static function toJSONString(obj, args) : string
-            JSON.emit.apply(null, args.unshift(obj));
+        intrinsic function toJSONString() : string {
+            // FIXME
+        }
     }
 }

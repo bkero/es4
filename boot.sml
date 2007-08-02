@@ -243,6 +243,7 @@ fun boot _ =
 
         val otherProgs = loadFiles ["builtins/Namespace.es",
                                     "builtins/Magic.es",
+                                    "builtins/Internal.es",
                                     "builtins/Conversions.es",
                                     "builtins/String.es",
                                     "builtins/string_primitive.es",
