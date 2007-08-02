@@ -4,7 +4,7 @@
 {
     use default namespace Ast;
     use namespace intrinsic;
-    use namespace Debug;
+    use namespace Release;
 
     function indent (n:int)
         : string {
@@ -400,6 +400,22 @@
               + ", 'inits': [ "
               + encodeInits (nd.inits,nesting+", 'inits': [ ".length)
               + " ] }";
+        }
+        case (nd: GetTemp) {
+            var str =
+                "{ 'ast::class': 'GetTemp'"
+              + indent(nesting)
+              + ", 'n': "
+              + nd.n
+              + " }";
+        }
+        case (nd: GetParam) {
+            var str =
+                "{ 'ast::class': 'GetParam'"
+              + indent(nesting)
+              + ", 'n': "
+              + nd.n
+              + " }";
         }
         case (x: *) {
             var str = "**unknown node in encodeExpr "+nd+"**";

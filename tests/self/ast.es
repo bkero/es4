@@ -75,11 +75,11 @@ namespace Ast
             : name=name {}
     }
 
-    type FIXTURE_BINDING = [FIXTURE_NAME,FIXTURE]
+    type FIXTURE_BINDING = [FIXTURE_NAME,FIXTURE];
+    type FIXTURES = [FIXTURE_BINDING];
 
-    type FIXTURES = [FIXTURE_BINDING]
-
-    type INITS = [[FIXTURE_NAME,EXPR]]
+    type INIT_BINDING = [FIXTURE_NAME,EXPR]
+    type INITS = [INIT_BINDING];
 
     type NAME =
        { ns: NAMESPACE
@@ -565,10 +565,14 @@ namespace Ast
 
     class GetTemp {
         const n : int;
+        function GetTemp (n)
+            : n = n {}
     }
 
     class GetParam {
         const n : int;
+        function GetParam (n) 
+            : n = n {}
     }
 
     // IDENT_EXPR
@@ -976,10 +980,10 @@ namespace Ast
         , UndefinedType
         , VoidType )
 
-    class AnyType {}
-    class NullType {}
-    class UndefinedType {}
-    class VoidType {}
+    class AnyType { public function toString() "Any" }
+    class NullType { public function toString() "Null" }
+    class UndefinedType { public function toString() "Undefined" }
+    class VoidType { public function toString() "Void" }
 
     class UnionType {
         const types : [TYPE_EXPR];
@@ -1044,6 +1048,8 @@ namespace Ast
     }
 
     // STMTs
+
+    type STMTS = [STMT];
 
     type STMT =
        ( EmptyStmt
@@ -1291,16 +1297,16 @@ namespace Ast
     type BLOCK = Block;
 
     class Block {
-        const pragmas : [PRAGMA];
+        const pragmas : PRAGMAS;
         const head /*: HEAD?*/;
-        const stmts : [STMT];
-        const pos: POS?;
-        function Block (pragmas,head,stmts,pos)
+        const stmts : STMTS;
+        function Block (pragmas,head,stmts)
             : pragmas = pragmas
             , head = head
-            , stmts = stmts
-            , pos = pos { }
+            , stmts = stmts { }
     }
+
+    type PRAGMAS = [PRAGMA];
 
     type PRAGMA =
         ( UseNamespace
@@ -1341,9 +1347,7 @@ namespace Ast
 
     type DIRECTIVES =
         { pragmas: [PRAGMA]
-        , head: HEAD?
-        , stmts: [STMT]
-        , pos: POS? }
+        , stmts: STMTS }
 
     type PROGRAM = Program
 
