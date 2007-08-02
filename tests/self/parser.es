@@ -48,7 +48,7 @@ type TOKENS = Array;  // [int];
 
 {
     use default namespace Parser;
-    use namespace Debug;
+    use namespace Release;
 
     type PATTERN =
           ( ObjectPattern
@@ -101,9 +101,10 @@ type TOKENS = Array;  // [int];
         var currentPackageName: string;
         var currentClassName: string;
 
-        function hd (ts) {
-            //             print("hd ",ts[0]);
-             return Token::tokenKind (ts[0]);
+        function hd (ts) 
+        {
+            var tk = Token::tokenKind (ts[0]);
+            return tk;
         }
 
         function eat (ts,tc) {
@@ -139,33 +140,46 @@ type TOKENS = Array;  // [int];
 
         function tl (ts:TOKENS) : TOKENS ts.slice (1,ts.length);
 
+        /*
+
+        desugaring can result in bindings and inits for temporaries,
+        bindings for the declared names, and inits for the declared names.
+
+        the temp bindings and inits from destructuring end up in the head of an 
+        InitExpr, the property init, if any, ends up in the InitExpr inits, and 
+        the property bindings get hoisted into the appropriate block head
+
+        */
+
         function desugarPattern (p: PATTERN, t: Ast::TYPE_EXPR, e: Ast::EXPR)
-            : [[Ast::BINDING],[Ast::INIT_STEP]]
+            : [[Ast::BINDING], [Ast::INIT_STEP], Ast::HEAD]
         {
             var bs, ss;
             switch type (p) : PATTERN {
             case (p:IdentifierPattern) {
-                print("p.ident=",p.ident);
                 let i = new Ast::PropIdent (p.ident);
-                var bs = [new Ast::Binding (i,t)];
+                var binds = [new Ast::Binding (i,t)];
                 if (e !== null) {
-                    var ss = [new Ast::InitStep (i,e)];
+                    var inits = [new Ast::InitStep (i,e)];
+                    var temps = {fixtures:[],inits:[]};
                 }
                 else {
-                    var ss = [];
+                    var inits = [];
+                    var temps = {fixtures:[],inits:[]};
                 }
             }
             case (x: *) {
                 throw "internal error: desugarPattern " + p;
             }
             }
-            return [bs,ss];  // FIXME: RI allows [b,[]], which should be an error
+            return [binds,inits,temps];  // FIXME: RI allows [b,[]], which should be an error
         }
 
         // Parse rountines
 
 
         /*
+
         Identifier
             Identifier
             call
@@ -184,6 +198,7 @@ type TOKENS = Array;  // [int];
             static
             type
             xml
+
         */
 
         public function identifier (ts: TOKENS)
@@ -266,12 +281,12 @@ type TOKENS = Array;  // [int];
                 var [ts1,nd1] = reservedNamespace(ts);
                 break;
             case Token::Mult:
-            case Token::Identifier:
                 let id = Token::tokenText (ts[0]);
                 var [ts1,nd1] = [tl (ts), id];
                 break;
             default:
-                throw "invalid qualifier ";
+                var [ts1,nd1] = identifier (ts);
+                break;
             }
 
             exit("Parser::qualifier ",nd1);
@@ -340,12 +355,10 @@ type TOKENS = Array;  // [int];
                     var [ts2,nd2] = [tl(ts1), new Ast::Identifier (str)];
                     var [ts3,nd3] = [ts1, new Ast::QualifiedIdentifier (nd1,nd2)];
                     break;
-                    /*
                 case Token::LeftBracket:
                     var [ts2,nd2] = brackets (ts1);
                     var [ts3,nd3] = [ts1, new Ast::QualifiedExpression (nd1,nd2)];
                     break;
-                    */
                 default:
                     var [ts2,nd2] = identifier (ts1);
                     var [ts3,nd3] = [ts2, new Ast::QualifiedIdentifier (nd1,nd2)];
@@ -2313,8 +2326,6 @@ type TOKENS = Array;  // [int];
         /*
 
         NullableTypeExpression
-            null
-            undefined
             TypeExpression
             TypeExpression  ?
             TypeExpression  !
@@ -2326,26 +2337,16 @@ type TOKENS = Array;  // [int];
         {
             enter("Parser::nullableTypeExpression ", ts);
 
+            var [ts1,nd1] = typeExpression (ts);
             switch (hd (ts1)) {
-            case Token::Null:
-                var [ts1,nd1] = [tl (ts), new Ast::SpecialType (new Ast::NullType)];
+            case Token::QuestionMark:
+                var [ts1,nd1] = [tl (ts1), new Ast::NullableType (nd1,true)];
                 break;
-            case Token::Undefined:
-                var [ts1,nd1] = [tl (ts), new Ast::SpecialType (new Ast::UndefinedType)];
+            case Token::Not:
+                var [ts1,nd1] = [tl (ts1), new Ast::NullableType (nd1,false)];
                 break;
             default:
-                var [ts1,nd1] = typeExpression (ts);
-                switch (hd (ts1)) {
-                case Token::QuestionMark:
-                    var [ts1,nd1] = [tl (ts1), new Ast::NullableType (nd1,true)];
-                    break;
-                case Token::Not:
-                    var [ts1,nd1] = [tl (ts1), new Ast::NullableType (nd1,false)];
-                    break;
-                default:
-                    // do nothing
-                    break;
-                }
+                // do nothing
                 break;
             }
 
@@ -2356,11 +2357,13 @@ type TOKENS = Array;  // [int];
         /*
 
         TypeExpression
+            null
+            undefined
             FunctionType
             UnionType
             RecordType
             ArrayType
-            PrimaryIdentifier
+            PrimaryName
 
         */
 
@@ -2369,7 +2372,13 @@ type TOKENS = Array;  // [int];
         {
             enter("Parser::typeExpression ", ts);
 
-            switch (hd (ts1)) {
+            switch (hd (ts)) {
+            case Token::Null:
+                var [ts1,nd1] = [tl (ts), new Ast::SpecialType (new Ast::NullType)];
+                break;
+            case Token::Undefined:
+                var [ts1,nd1] = [tl (ts), new Ast::SpecialType (new Ast::UndefinedType)];
+                break;
             case Token::Function:
                 var [ts1,nd1] = functionType (ts);
                 break;
@@ -2383,8 +2392,8 @@ type TOKENS = Array;  // [int];
                 var [ts1,nd1] = arrayType (ts);
                 break;
             default:
-                var [ts1,nd1] = primaryIdentifier (ts);
-                nd1 = new Ast::TypeName (nd1);  // need type expr
+                var [ts1,nd1] = primaryName (ts);
+                nd1 = new Ast::TypeName (nd1);
                 break;
             }
 
@@ -3178,21 +3187,24 @@ type TOKENS = Array;  // [int];
         */
 
         function variableDefinition (ts: TOKENS, beta: BETA, ns, isPrototype, isStatic)
-            : [TOKENS, Ast::DIRECTIVES]
+            : [TOKENS, [[Ast::STMT], Ast::FIXTURES]]
         {
             enter("Parser::variableDefinition ", ts);
 
             let [ts1,nd1] = variableDefinitionKind (ts);
             let [ts2,nd2] = variableBindingList (ts1, beta);
 
-            print("nd2[0].length=",nd2[0].length);
+            let [b,i,h] = nd2;
+
+            // i => initexprs
+            // b => fixtures
+
+            var fx = fixturesFromBindings (ns, b);
+            var st = new Ast::ExprStmt (new Ast::InitExpr (new Ast::Hoisted, h, initsFromInitSteps (ns, i)));
+
             exit("Parser::variableDefinition ", ts2);
-            return [ ts2
-                   , { pragmas: []
-                     , defns: [new Ast::VariableDefn (ns,isStatic,isPrototype,nd1,nd2)]
-                     , head: null
-                     , stmts: []
-                     , pos: null } ];
+
+            return [ts2,[[st],fx]];
         }
 
         /*
@@ -3254,12 +3266,12 @@ type TOKENS = Array;  // [int];
         */
 
         function variableBindingList (ts: TOKENS, beta: BETA )
-            : [TOKENS, Ast::BINDING_INITS]
+            : [TOKENS, [[Ast::BINDING], [Ast::INIT_STEP], Ast::HEAD]]
         {
             enter("Parser::variableBindingList ", ts);
 
             function variableBindingListPrime (ts: TOKENS )
-                : [TOKENS, Ast::BINDING_INITS]
+                : [TOKENS,[[Ast::BINDING], [Ast::INIT_STEP], Ast::HEAD]]
             {
                 enter("Parser::variableBindingListPrime ", ts);
         
@@ -3268,39 +3280,42 @@ type TOKENS = Array;  // [int];
                     var [ts1,nd1] = variableBinding (tl (ts), beta);
                     var [ts2,nd2] = variableBindingListPrime (ts1);
 
-                    var [b1,i1] = nd1;  // FIXME: fold into patterns above when it works in the RI
-                    var [b2,i2] = nd2;
+                    var [b1,i1,h1] = nd1;  // FIXME: fold into patterns above when it works in the RI
+                    var [b2,i2,h2] = nd2;
 
                     for (var n in b2) b1.push (b2[n]);  // FIXME: use concat when it works in the RI
                     for (var n in i2) i1.push (i2[n]);
+                    for (var n in h2.fixtures) h1.fixtures.push (h2.fixtures[n]);
+                    for (var n in h2.inits) h1.inits.push (h2.inits[n]);
 
                     break;
                 default:
-                    var [ts2,nd2] = [ts,[[],[]]];
-                    var [b2,i2] = nd2;
+                    var [ts2,nd2] = [ts,[[],[],{fixtures:[],inits:[]}]];
+                    var [b1,i1,h1] = nd2;
                     break;
                 }
 
                 exit ("Parser::variableBindingListPrime ", ts2);
-                return [ts2,[b1,i1]];
+                return [ts2,[b1,i1,h1]];
             }
 
             var [ts1,nd1] = variableBinding (ts, beta);
             var [ts2,nd2] = variableBindingListPrime (ts1, beta);
 
-            var [b1,i1] = nd1;  // FIXME: fold into patterns above when it works in the RI
-            var [b2,i2] = nd2;
+            var [b1,i1,h1] = nd1;  // FIXME: fold into patterns above when it works in the RI
+            var [b2,i2,h2] = nd2;
 
             for (var n in b2) b1.push (b2[n]);  // FIXME: use concat when it works in the RI
             for (var n in i2) i1.push (i2[n]);
+            for (var n in h2.fixtures) h1.fixtures.push (h2.fixtures[n]);
+            for (var n in h2.inits) h1.inits.push (h2.inits[n]);
 
-            print("b1.length=",b1.length);
             exit ("Parser::variableBindingList ", ts2);
-            return [ts2,[b1,i1]];
+            return [ts2,[b1,i1,h1]];
         }
 
         function variableBinding (ts: TOKENS, beta: BETA, ns, isPrototype, isStatic)
-            : [TOKENS, Ast::BINDING_INITS]
+            : [TOKENS, [[Ast::BINDING], [Ast::INIT_STEP], Ast::HEAD]]
         {
             enter("Parser::variableBinding ", ts);
 
@@ -3321,7 +3336,6 @@ type TOKENS = Array;  // [int];
                 }
                 break;
             default:
-                print('point a');
                 switch (hd (ts1)) {
                 case Token::In:
                     if (beta === NoIn) {
@@ -3828,7 +3842,7 @@ type TOKENS = Array;  // [int];
         */
 
         function functionDefinition (ts: TOKENS, tau: TAU, kind, ns, isFinal, isOverride, isPrototype, isStatic, isAbstract)
-            : [TOKENS, Ast::DIRECTIVES, Ast::FIXTURES]
+            : [TOKENS, [[Ast::STMT], Ast::FIXTURES]]
         {
             enter("Parser::functionDefinition ", ts);
 
@@ -3848,12 +3862,7 @@ type TOKENS = Array;  // [int];
 
             exit("Parser::functionDefinition ", ts3);
 
-            return [ts3, { pragmas: []
-                         , defns: []
-                         , head: null
-                         , stmts: []
-                         , pos: null }
-                       , fx3];
+            return [ts3, [[], fx3]];
         }
 
 
@@ -3906,50 +3915,71 @@ type TOKENS = Array;  // [int];
             TypeParameters  (  this  :  PrimaryIdentifier  )  ResultType
             TypeParameters  (  this  :  PrimaryIdentifier  ,  NonemptyParameters  )  ResultType
 
+        there are two differences between a BINDING_IDENT and a FIXTURE_NAME: the namespace on
+        properties, and the offset on parameter indicies.
+
         */
+
+        function fixtureNameFromBindingIdent (ns,bi: Ast::BINDING_IDENT)
+            : Ast::FIXTURE_NAME 
+        {
+            switch type (bi) {
+            case (bi:Ast::PropIdent) {
+                var fn = new Ast::PropName ({ns:ns,id:bi.Ast::ident});
+            }
+            case (bi:Ast::ParamIdent) {
+                var fn = new Ast::TempName (bi.Ast::index);
+            }
+            case (bi:Ast::TempIdent) {
+                var fn = new Ast::TempName (bi.Ast::index);
+            }
+            }
+            return fn;
+        }
+
+        function fixturesFromBindings (ns,bs /*: [Ast::BINDING]*/) // FIXME: RI bug
+            : Ast::FIXTURES {
+            if(bs.length === 0) {
+                return [];
+            }
+            var b0 = bs[0];
+
+            var n0 = fixtureNameFromBindingIdent (ns,b0.Ast::ident);
+            var f0 = new Ast::ValFixture (b0.Ast::type,false);
+            var fs = fixturesFromBindings (ns,bs.slice(1,bs.length));
+            fs.unshift ([n0,f0]);
+            return fs;
+        }
+
+        function initsFromInitSteps (ns,ss /*: [Ast::INIT_STEP]*/ )
+            /* : Ast::INITS */ 
+        {
+
+            if(ss.length === 0) {
+                return [];
+            }
+            var s0 = ss[0];
+
+            var n0 = fixtureNameFromBindingIdent (ns,s0.Ast::ident);
+            var i0 = [n0,s0.Ast::expr];
+            var is = initsFromInitSteps (ns,ss.slice(1,ss.length));
+            is.unshift (i0);
+
+            return is;
+        }
+
+        function headFromBindingInits ([bindings,steps] /*: Ast::BINDING_INITS*/, ns )
+            // : Ast::HEAD  
+        {
+            var fixtures = fixturesFromBindings (new Ast::PublicNamespace (""),bindings);
+            var inits = initsFromInitSteps (new Ast::PublicNamespace (""), steps);
+            return {fixtures:fixtures, inits:inits}
+        }
 
         function functionSignature (ts: TOKENS)
             : [TOKENS, Ast::FUNC_SIG]
         {
             enter("Parser::functionSignature ", ts);
-
-            function headFromBindingInits ([bindings,steps] /*: Ast::BINDING_INITS*/, ns )
-                /* : Ast::HEAD */  {
-                function fixturesFromBindings (bs /*: [Ast::BINDING]*/) // FIXME: RI bug
-                    : Ast::FIXTURES {
-                    if(bs.length === 0) {
-                        return [];
-                    }
-                    var b0 = bs[0];
-                    print("0");
-                    switch type (b0.Ast::ident) {
-                    case (pi:Ast::PropIdent) {
-                        var n0 = new Ast::PropName ({ns:new Ast::PublicNamespace (""),id:pi.Ast::ident});
-                    }
-                    case (pi:Ast::ParamIdent) {
-                        var n0 = new Ast::TempName (pi.Ast::index);
-                    }
-                    case (pi:Ast::TempIdent) {
-                        var n0 = new Ast::TempName (pi.Ast::index);
-                    }
-                    }
-                    print("1");
-                    var f0 = new Ast::ValFixture (null,false);
-                    var fs = fixturesFromBindings (bs.slice(1,bs.length));
-                    fs.unshift ([n0,f0]);
-                    return fs;
-                }
-
-                function initsFromInitSteps (is /*: [Ast::INIT_STEP]*/ )
-                    /* : Ast::INITS */ {
-                    // FIXME
-                    return [];
-                }
-
-                var fixtures = fixturesFromBindings (bindings);
-                var inits = initsFromInitSteps (steps);
-                return {fixtures:fixtures, inits:inits}
-            }
 
             var [ts1,nd1] = typeParameters (ts);
             ts1 = eat (ts1, Token::LeftParen);
@@ -3973,7 +4003,7 @@ type TOKENS = Array;  // [int];
                       , paramTypes: t
                       , defaults: e
                       , ctorInits: null
-                      , returnType: nd3
+                      , resultType: nd3
                       , thisType: null
                       , hasRest: hasRest };
 
@@ -4138,9 +4168,10 @@ type TOKENS = Array;  // [int];
             enter("Parser::parameterInit ", ts);
 
             var [ts1,nd1] = parameter (ts,n);
+
             switch (hd (ts1)) {
             case Token::Assign:
-                ts = eat (ts, Token::Assign);
+                ts1 = eat (ts1, Token::Assign);
                 var [ts2,nd2] = nonAssignmentExpression(AllowIn);
                 break;
             default:
@@ -4152,11 +4183,9 @@ type TOKENS = Array;  // [int];
             }
 
             var [k,[p,t]] = nd1;
-            var [b,i] = desugarPattern (p, t, new Ast::GetParam (n), 0);
-
-
+            var [b,i,temps] = desugarPattern (p, t, new Ast::GetParam (n), 0);
+            // FIXME: what do we do with 'temps'
             b.push (new Ast::Binding (new Ast::ParamIdent (n), t)); // temp for desugaring
-
             exit("Parser::parameterInit ", ts2);
             return [ts2,[[b,i],nd2,t]];
         }
@@ -4264,7 +4293,7 @@ type TOKENS = Array;  // [int];
                 break;
             default:
                 var [ts1,nd1] = assignmentExpression (ts,beta);
-                var ndx = new Ast::Block ([],[],null,[new ReturnStmt (nd1)],null);
+                var ndx = new Ast::Block ([],[],[new ReturnStmt (nd1)],null);
                 break;
             }
 
@@ -4640,19 +4669,15 @@ type TOKENS = Array;  // [int];
             switch (hd (ts)) {
             case Token::RightBrace:
             case Token::EOS:
-                var {pragmas:pragmas, defns:defns, head:head, stmts:stmts, pos:pos} 
-                  = {pragmas:[], defns:[], head:null, stmts:[], pos:null};
-                var [ts1] = [ts];
-                var fx1 = [];
+                var [ts1, pragmas1, stmts1, fxtrs1] = [ts,[],[],[]];
                 break;
             default:
-                var [ts1,nd1,fx1] = directivesPrefix (ts,tau);
-                var {pragmas:pragmas, defns:defns, head:head, stmts:stmts, pos:pos} = nd1
+                var [ts1, pragmas1, stmts1, fxtrs1] = directivesPrefix (ts,tau);
                 break;
             }
 
             exit("Parser::directives ", ts1);
-            return [ts1, new Ast::Block (pragmas,defns,head,stmts,pos), fx1];
+            return [ts1, new Ast::Block (pragmas1, {fixtures:[], inits:[]}, stmts1), fxtrs1];
         }
 
         /*
@@ -4674,28 +4699,28 @@ type TOKENS = Array;  // [int];
         */
 
         function directivesPrefix (ts: TOKENS, tau: TAU)
-            : [TOKENS, Ast::DIRECTIVES, Ast::FIXTURES]
+            : [TOKENS, Ast::PRAGMAS, Ast::STMTS, Ast::FIXTURES]
         {
             enter("Parser::directives ", ts);
 
             switch (hd (ts)) {
             case Token::RightBrace:
             case Token::EOS:
-                var [ts2,nd2] = [ts, {pragmas:[], defns:[], head:null, stmts:[], pos:null}];
-                var fx2 = [];
+                var [ts1,nd1] = [ts,[]];
+                var [ts2,stmts2,fxtrs2] = [ts1,[],[]]
                 break;
             default:
-                //                var [ts1,nd1] = pragmas (ts);
-                var [ts2,nd2,fx2] = directivesPrefixPrime (ts,tau);
+                var [ts1,nd1] = [ts,[]]; //pragmas (ts);
+                var [ts2,stmts2,fxtrs2] = directivesPrefixPrime (ts,tau);
                 break;
             }
 
             exit("Parser::directivesPrefix ", ts2);
-            return [ts2, nd2, fx2];
+            return [ts2,nd1,stmts2,fxtrs2];
         }
 
         function directivesPrefixPrime (ts: TOKENS, tau: TAU)
-            : [TOKENS, Ast::DIRECTIVES, Ast::FIXTURES]
+            : [TOKENS, Ast::STMTS, Ast::FIXTURES]
         {
             enter("Parser::directivesPrefixPrime ", ts);
 
@@ -4705,32 +4730,26 @@ type TOKENS = Array;  // [int];
             case Token::RightBrace:
             case Token::EOS:
                 ts1 = ts;
-                nd1 = {pragmas:[],defns:[],head:null,stmts:[],pos:null};
+                var stmts1 = [];
                 var fxtrs1 = [];
                 break;
             default:
-                [ts1,nd1,fxtrs1] = directive (ts,tau,Full);
-                var [ts2,nd2,fxtrs2] = directivesPrefixPrime (ts1,tau);
-
-                let {pragmas:pragmas1,defns:defns1,head:head1,stmts:stmts1,pos:pos1} = nd1;
-                let {pragmas:pragmas2,defns:defns2,head:head2,stmts:stmts2,pos:pos2} = nd2;
+                [ts1,stmts1,fxtrs1] = directive (ts,tau,Full);
+                var [ts2,stmts2,fxtrs2] = directivesPrefixPrime (ts1,tau);
 
                 // FIXME: poor man's array append
-                for (p in pragmas2) pragmas1.push(pragmas2[p]);
-                for (p in defns2) defns1.push(defns2[p]);
                 for (p in stmts2) stmts1.push(stmts2[p]);
                 for (p in fxtrs2) fxtrs1.push(fxtrs2[p]);
                 ts1 = ts2;
-                nd1 = {pragmas:pragmas1,defns:defns1,head:head1,stmts:stmts1,pos:pos1};
                 break;
             }
 
             exit("Parser::directivesPrefixPrime ", ts1);
-            return [ts1,nd1,fxtrs1];
+            return [ts1,stmts1,fxtrs1];
         }
 
         function directive (ts: TOKENS, tau: TAU, omega: OMEGA)
-            : [TOKENS, Ast::DIRECTIVES, Ast::FIXTURES]
+            : [TOKENS, Ast::STMTS, Ast::FIXTURES]
         {
             enter("Parser::directive ", ts);
 
@@ -4743,35 +4762,26 @@ type TOKENS = Array;  // [int];
                                   , new Ast::PublicNamespace ("")
                                   , false, false);
 
-                print("nd1: ",nd1);
-                var stmtsx = nd1.stmts;
-                var defnsx = nd1.defns;
+                var [ss1,fx1] = nd1;
                 var tsx = semicolon (ts1,omega);
-                var fx1 = [];
                 break;
             case Token::Function:
-                var [ts1,nd1,fx1] = functionDefinition (ts, tau, new Ast::Var
+                var [ts1,nd1] = functionDefinition (ts, tau, new Ast::Var
                                   , new Ast::PublicNamespace ("")
                                   , false, false, false, false, false);
-                var stmtsx = nd1.stmts;
-                var defnsx = nd1.defns;
+                var [ss1,fx1] = nd1;
                 var tsx = semicolon (ts1,omega);
                 break;
             default:
                 var [ts2,nd2] = statement (ts,omega);
-                var stmtsx = [nd2];
-                var defnsx = [];
+                var ss1 = [nd2];
                 var tsx = ts2;
                 var fx1 = [];
                 break;
             }
 
-            print ("defnsx: ", defnsx);
-
-            var ndx = {pragmas:[],defns:defnsx,head:null,stmts:stmtsx,pos:null};
-
             exit("Parser::directive ", tsx);
-            return [tsx, ndx, fx1];
+            return [tsx, ss1, fx1];
         }
 
 //        /*
@@ -5190,27 +5200,26 @@ type TOKENS = Array;  // [int];
     {
         var programs =
             [ "print('hi')"
-              /*
-            , "print('hello, world!')"
             , "x<y"
             , "x==y"
             , "m-n;n+m"
             , "10"
             , "p.q.r.x"
+            , "q::id"
             , "f() ()"
             , "new A()"
             , "(new Fib(n-1)).val + (new Fib(n-2)).val"
             , "var x = 10, y = 20"
             , "var x = 10; var y"
             , "if (x) y; else z"
+            , "new new x (1) (2) . x"
+            , "var x : int = 10; var y: string = 'hi'"
             , "function f(x,y,z) { return 10 }"
-              */
-              , "new new x (1) (2) . x"
-            /*
-              , "new new y"
-              , "z (1) (2)"
-              , "new new x (1) (2)"
-              , "new new x (1) (2) . x"
+            , "new new y"
+            , "z (1) (2)"
+            , "new new x (1) (2)"
+            , "new new x (1) (2) . x"
+              /*
             , "class A { function A() {} }"
             , "class Fib { function Fib (n) { } }"
             , readFile ("./tests/self/hello.es")

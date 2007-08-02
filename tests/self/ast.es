@@ -54,11 +54,10 @@ namespace Ast
 
     // BASIC TYPES
 
-    type IDENT = String   // unicode string
+    type IDENT = String;   // unicode string
 
-    type HEAD =
-       { fixtures : FIXTURES
-       , inits : INITS }
+    type HEAD = { fixtures: FIXTURES
+                , inits: INITS };
 
     type FIXTURE_NAME =
        ( TempName
@@ -76,11 +75,11 @@ namespace Ast
             : name=name {}
     }
 
-    type FIXTURE_BINDING = [FIXTURE_NAME,FIXTURE]
+    type FIXTURE_BINDING = [FIXTURE_NAME,FIXTURE];
+    type FIXTURES = [FIXTURE_BINDING];
 
-    type FIXTURES = [FIXTURE_BINDING]
-
-    type INITS = [[FIXTURE_NAME,EXPR]]
+    type INIT_BINDING = [FIXTURE_NAME,EXPR]
+    type INITS = [INIT_BINDING];
 
     type NAME =
        { ns: NAMESPACE
@@ -550,8 +549,12 @@ namespace Ast
 
 	class InitExpr {
         const target : INIT_TARGET;
-        const head   : HEAD;               // for desugaring temporaries
-        const inits  : INITS;
+        const head   //: HEAD;               // for desugaring temporaries
+        const inits  //: INITS;
+        function InitExpr (target, head, inits)
+            : target = target
+            , head = head
+            , inits = inits {}
     }
 
     class SliceExpr {
@@ -562,10 +565,14 @@ namespace Ast
 
     class GetTemp {
         const n : int;
+        function GetTemp (n)
+            : n = n {}
     }
 
     class GetParam {
         const n : int;
+        function GetParam (n) 
+            : n = n {}
     }
 
     // IDENT_EXPR
@@ -973,10 +980,10 @@ namespace Ast
         , UndefinedType
         , VoidType )
 
-    class AnyType {}
-    class NullType {}
-    class UndefinedType {}
-    class VoidType {}
+    class AnyType { public function toString() "Any" }
+    class NullType { public function toString() "Null" }
+    class UndefinedType { public function toString() "Undefined" }
+    class VoidType { public function toString() "Void" }
 
     class UnionType {
         const types : [TYPE_EXPR];
@@ -1041,6 +1048,8 @@ namespace Ast
     }
 
     // STMTs
+
+    type STMTS = [STMT];
 
     type STMT =
        ( EmptyStmt
@@ -1240,7 +1249,7 @@ namespace Ast
     const letConstTag = new LetConst;
 
     class VariableDefn {
-        const ns: EXPR?;
+        const ns: NAMESPACE;
         const isStatic: Boolean;
         const isPrototype: Boolean;
         const kind: VAR_DEFN_TAG;
@@ -1295,18 +1304,16 @@ namespace Ast
     type BLOCK = Block;
 
     class Block {
-        const pragmas : [PRAGMA];
-        const defns: [DEFN];
-        const head: HEAD?;
-        const stmts : [STMT];
-        const pos: POS?;
-        function Block (pragmas,defns,head,stmts,pos)
+        const pragmas : PRAGMAS;
+        const head /*: HEAD?*/;
+        const stmts : STMTS;
+        function Block (pragmas,head,stmts)
             : pragmas = pragmas
-            , defns = defns
             , head = head
-            , stmts = stmts
-            , pos = pos { }
+            , stmts = stmts { }
     }
+
+    type PRAGMAS = [PRAGMA];
 
     type PRAGMA =
         ( UseNamespace
@@ -1347,10 +1354,7 @@ namespace Ast
 
     type DIRECTIVES =
         { pragmas: [PRAGMA]
-        , defns: [DEFN]
-        , head: HEAD?
-        , stmts: [STMT]
-        , pos: POS? }
+        , stmts: STMTS }
 
     type PROGRAM = Program
 
