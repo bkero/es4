@@ -1,1 +1,33 @@
-.note { font-style: italic }
+.note { font-style: italic; padding-left: 2em }
+.part { font-size: 24pt }
+.grammar { font-style: italic }
+.indented { padding-left: 3em }
+.nonterm { padding-top: 1em }
+
+pre { font-weight: bold; padding-left: 2em }
+
+body { counter-reset: chapter section subsection subsubsection;
+       font-family: sans-serif; font-size: 10pt }
+
+H1:before {
+    padding-right: 1em;
+    content: counter(chapter) "  ";
+    counter-reset: section;
+    counter-increment: chapter }
+
+H2:before {
+    padding-right: 1em;
+    content: counter(chapter) "." counter(section) "  ";
+    counter-reset: subsection;
+    counter-increment: section }
+
+H3:before {
+    padding-right: 1em;
+    content: counter(chapter) "." counter(section) "." counter(subsection) "  ";
+    counter-reset: subsubsection;
+    counter-increment: subsection }
+
+H4:before {
+    padding-right: 1em;
+    content: counter(chapter) "." counter(section) "." counter(subsection) "." counter(subsubsection) "  ";
+    counter-increment: subsubsection }
