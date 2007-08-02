@@ -54,11 +54,10 @@ namespace Ast
 
     // BASIC TYPES
 
-    type IDENT = String   // unicode string
+    type IDENT = String;   // unicode string
 
-    type HEAD =
-       { fixtures : FIXTURES
-       , inits : INITS }
+    type HEAD = { fixtures: FIXTURES
+                , inits: INITS };
 
     type FIXTURE_NAME =
        ( TempName
@@ -550,8 +549,12 @@ namespace Ast
 
 	class InitExpr {
         const target : INIT_TARGET;
-        const head   : HEAD;               // for desugaring temporaries
-        const inits  : INITS;
+        const head   //: HEAD;               // for desugaring temporaries
+        const inits  //: INITS;
+        function InitExpr (target, head, inits)
+            : target = target
+            , head = head
+            , inits = inits {}
     }
 
     class SliceExpr {
@@ -1233,7 +1236,7 @@ namespace Ast
     const letConstTag = new LetConst;
 
     class VariableDefn {
-        const ns: EXPR?;
+        const ns: NAMESPACE;
         const isStatic: Boolean;
         const isPrototype: Boolean;
         const kind: VAR_DEFN_TAG;
@@ -1289,13 +1292,11 @@ namespace Ast
 
     class Block {
         const pragmas : [PRAGMA];
-        const defns: [DEFN];
-        const head: HEAD?;
+        const head /*: HEAD?*/;
         const stmts : [STMT];
         const pos: POS?;
-        function Block (pragmas,defns,head,stmts,pos)
+        function Block (pragmas,head,stmts,pos)
             : pragmas = pragmas
-            , defns = defns
             , head = head
             , stmts = stmts
             , pos = pos { }
@@ -1340,7 +1341,6 @@ namespace Ast
 
     type DIRECTIVES =
         { pragmas: [PRAGMA]
-        , defns: [DEFN]
         , head: HEAD?
         , stmts: [STMT]
         , pos: POS? }
