@@ -76,9 +76,13 @@ wikiformatItalic = re.compile(r"//(.*?)//")
 wikiformatLiteral = re.compile(r"(?!%%--[0-9]+--%%)%%(.*?)%%")
 wikiformatLiteralRecover = re.compile(r"%%--([0-9]+)--%%")
 wikiformatCodeblock = re.compile(r"^\{\{\{((?:.|[\n\r])*?)^\}\}\}", re.M)
-entitytag = re.compile(r"<(INFINITY)>")
+entitytag = re.compile(r"<(INFINITY|NOTE|FIXME|COMP|IMPLNOTE)>")
 
-entities = { "INFINITY": "x221E" }
+entities = { "INFINITY": "&#x221E;",
+	     "NOTE": "<p class=\"note\"><b>NOTE</b>&nbsp;&nbsp; ",
+	     "COMP": "<p class=\"note\"><b>COMPATIBILITY NOTE</b>&nbsp;&nbsp; ",
+	     "IMPLNOTE": "<p class=\"note\"><b>IMPLEMENTATION NOTE</b>&nbsp;&nbsp; ",
+	     "FIXME": "<p class=\"fixme\"><b>FIXME</b>&nbsp;&nbsp; " }
 
 currentlevel = 0
 
@@ -99,10 +103,18 @@ sml_dir = os.path.abspath("..")
 # processes each file once, extracting all functions and storing them
 # in some easier format (maybe).
 
+def isIdent(c):
+    return c >= "A" and c <= "Z" or c >= "a" and c <= "z" or c >= "0" and c <= "9" or c == "_"
+
 def extractES(fn, name):
     f = open(os.path.normpath(es_dir + "/" + fn), 'r')
     outside = True
-    starting = re.compile("^( *)" + reEscape(name))
+    # Avoid matching prefixes of names
+    lastIsIdent = isIdent(name[len(name)-1])
+    name = reEscape(name)
+    if lastIsIdent:
+	name = name + r"(?![a-zA-Z0-9_])"
+    starting = re.compile("^( *)" + name)
     for line in f:
 	if outside:
 	    m = starting.search(line)
@@ -132,7 +144,7 @@ def extractES(fn, name):
 		res = res + [line]
 	    else:
 		for i in range(blanks):
-		    res = res + ""
+		    res = res + [""]
 		blanks = 0
 		res = res + [line]
     f.close()
@@ -185,7 +197,7 @@ def replaceInclude(m, hdrlvl, fn):
 
 def replaceEntity(m):
     global entities
-    return "&#" + entities[m.group(1)] + ";"
+    return entities[m.group(1)]
 
 literals = []
 

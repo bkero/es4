@@ -57,7 +57,7 @@ package
         use strict;
 
         /* E262-3 15.2.1.1: The Object constructor called as a function */
-        meta static function invoke(value) {
+        meta static function invoke(value=undefined) {
             if (value === null || value === undefined)
                 return new Object();
             return ToObject(value);
@@ -118,23 +118,21 @@ package
 
         /* E262-3 15.2.4.7: Object.prototype.propertyIsEnumerable (V) */
         /* E262-4 draft proposals:enumerability */
-        prototype function propertyIsEnumerable(prop, e=undefined)
-            this.intrinsic::propertyIsEnumerable(prop, e);
+        prototype function propertyIsEnumerable(prop, e)
+            this.intrinsic::propertyIsEnumerable(prop is EnumerableId ? prop : string(prop),
+                                                 e is (boolean,undefined) ? e : boolean(e));
 
         intrinsic function propertyIsEnumerable(prop: EnumerableId,
                                                 e:(boolean,undefined) = undefined): boolean
         {
-            let obj = this;
-            while (obj !== null) {
-                if (obj.hasOwnProperty(prop)) {
-                    let oldval = !magic::getPropertyIsDontEnum(obj, prop);
-                    if (!magic::getPropertyIsDontDelete(obj, prop))
-                        if (e is boolean)
-                            magic::setPropertyIsDontEnum(obj, prop, !e);
-                    return oldval;
-                }
-                obj = magic::getPrototype(obj);
-            }
+            if (!magic::hasOwnProperty(this,prop))
+                return false;
+
+            let oldval = !magic::getPropertyIsDontEnum(this, prop);
+            if (!magic::getPropertyIsDontDelete(this, prop))
+                if (e is boolean)
+                    magic::setPropertyIsDontEnum(this, prop, !e);
+            return oldval;
         }
 
 
