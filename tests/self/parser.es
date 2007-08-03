@@ -48,7 +48,7 @@ type TOKENS = Array;  // [int];
 
 {
     use default namespace Parser;
-    use namespace Release;
+    use namespace Debug;
 
     type PATTERN =
           ( ObjectPattern
@@ -66,17 +66,24 @@ type TOKENS = Array;  // [int];
             : ident = ident { }
     }
 
+    class Full {}
+    class Abbrev {}
+    type OMEGA = (Full, Abbrev);
+    const full = new Full;
+    const abbrev = new Abbrev;
+
     class Parser
     {
+        /*
         static const AbbrevIfElse = 0;
         static const AbbrevDoWhile = AbbrevIfElse + 1;
         static const AbbrevFunction = AbbrevDoWhile + 1;
         static const Abbrev = AbbrevFunction + 1;
         static const Full = Abbrev + 1;
+        */
 
         type BETA = int;  // NoIn, AllowIn
         type TAU = int;   // Global, Class, Interface, Local
-        type OMEGA = int; // Abbrev, Full
         type GAMMA = int; // NoExpr, AllowExpr
 
         static const NoIn = 0;
@@ -580,7 +587,7 @@ type TOKENS = Array;  // [int];
                 break;
             }
 
-            exit ("Parser::priamryName ", ts2);
+            exit ("Parser::primaryName ", ts2);
             return [ts2,nd2];
         }
 
@@ -1007,13 +1014,46 @@ type TOKENS = Array;  // [int];
 //            }
             default:
                 var [ts1,nd1] = primaryName (ts);
-                nd1 = new Ast::LexicalRef (nd1);
+                switch type (nd1) {
+                case (nd: Ast::UnresolvedPath) {
+                    base = resolvePath (nd.Ast::path,null);
+                    nd1 = new Ast::ObjectRef (base,nd.Ast::ident);  // FIXME: not good for package qualified refs
+                }
+                case (nd:*) {
+                    nd1 = new Ast::LexicalRef (nd1);
+                }
+                }
                 break;
             }
 
             exit("Parser::primaryExpression ",ts1);
             return [ts1,nd1];
         }
+
+        function resolvePath (path/*: [Ast::IDENT]*/, expr: Ast::EXPR)
+        {
+            return resolveObjectPath (path,expr);
+        }
+
+        function resolveObjectPath (path /*: [Ast::IDENT]*/, expr: Ast::EXPR)
+            : Ast::EXPR
+        {
+            if (path.length === 0) {
+                return expr;
+            }
+            else
+            if (expr === null) 
+            {
+                var base = new Ast::LexicalRef (new Ast::Identifier (path[0]));
+                return resolveObjectPath (path.slice (1,path.length), base);
+            }
+            else 
+            {
+                var base = new Ast::ObjectRef (expr, new Ast::Identifier (path[0]));
+                return resolveObjectPath (path.slice (1,path.length), base);
+            }
+        }
+
 
 //
 //        /*
@@ -1377,23 +1417,23 @@ type TOKENS = Array;  // [int];
                 switch (hd (ts1)) {
                 case Token::LeftParen:  // no more new exprs so this paren must start a call expr
                     let [ts2,nd2] = this.arguments (ts1); // refer to parser method
-                    if (new_count == 0) 
+                    if (new_count == 0)
                     {
                         var [tsx,ndx] = callExpressionPrime (ts2,beta,new Ast::CallExpr (nd1,nd2));
                     }
-                    else 
+                    else
                     {
                         var [tsx,ndx] = [ts2,new Ast::NewExpr (nd1,nd2)];
                     }
                     break;
                 default:
-                    if (new_count == 0) 
+                    if (new_count == 0)
                     {
                         var [tsx,ndx] = memberExpressionPrime (ts1,beta,nd1);
                     }
-                    else 
+                    else
                     {
-                        var [tsx,ndx] = [ts1,nd1];
+                        var [tsx,ndx] = [ts1,new Ast::NewExpr (nd1,[])];
                     }
                     break;
                 }
@@ -1405,7 +1445,7 @@ type TOKENS = Array;  // [int];
                     let [ts2,nd2] = this.arguments (ts1); // refer to parser method
                     if( new_count == 0 )
                     {
-                        var [tsx,ndx] = callExpressionPrime (ts2,beta,new Ast::CallExpr (nd1,nd2));
+                       var [tsx,ndx] = callExpressionPrime (ts2,beta,new Ast::CallExpr (nd1,nd2));
                     }
                     else
                     {
@@ -1419,7 +1459,7 @@ type TOKENS = Array;  // [int];
                     }
                     else 
                     {
-                        var [tsx,ndx] = [ts1,nd1];
+                        var [tsx,ndx] = [ts1,new Ast::NewExpr (nd1,[])];
                     }
                     break;
                 }
@@ -1489,10 +1529,10 @@ type TOKENS = Array;  // [int];
             let [ts1, nd1] = leftHandSideExpression (ts, beta);
             switch (hd (ts1)) {
             case Token::PlusPlus:
-                var [tsx,ndx] = [tl (ts1), new Ast::UnaryExpr (Ast::preIncrOp,nd1)];
+                var [tsx,ndx] = [tl (ts1), new Ast::UnaryExpr (Ast::postIncrOp,nd1)];
                 break;
             case Token::MinusMinus:
-                var [tsx,ndx] = [tl (ts1), new Ast::UnaryExpr (Ast::preDecrOp,nd1)];
+                var [tsx,ndx] = [tl (ts1), new Ast::UnaryExpr (Ast::postDecrOp,nd1)];
                 break;
             default:
                 var [tsx,ndx] = [ts1,nd1];
@@ -2631,18 +2671,43 @@ type TOKENS = Array;  // [int];
             case Token::If:
                 var [ts2,nd2] = ifStatement (ts,omega);
                 break;
+            case Token::While:
+                var [ts2,nd2] = whileStatement (ts,omega);
+                break;
             case Token::Return:
                 var [ts1,nd1] = returnStatement (ts,omega);
                 var [ts2,nd2] = [semicolon (ts1,omega),nd1];
                 break;
+            case Token::LeftBrace:
+                var [ts1,nd1] = block (ts, tau);
+                var [ts2,nd2] = [ts1,new Ast::BlockStmt (nd1)];
+                break;
             default:
                 let [ts1,nd1] = expressionStatement (ts);
-                var [ts2,nd2] = [semicolon (ts1,omega),nd1];
+                var [ts2,nd2] = [semicolon (ts1,omega), nd1];
                 break;
             }
 
             exit("Parser::statement ", ts2);
             return [ts2,nd2];
+        }
+
+        function substatement (ts: TOKENS, omega: OMEGA)
+            : [TOKENS, Ast::STMT]
+        {
+            enter("Parser::substatement ", ts);
+
+            switch (hd(ts)) {
+            case Token::SemiColon:
+                var [ts1,nd1] = [tl (ts), new Ast::EmptyStmt];
+                break;
+            default:
+                var [ts1,nd1] = statement (ts,Local,omega);
+                break;
+            }
+
+            exit("Parser::substatement ", ts1);
+            return [ts1,nd1];
         }
 
         function newline (ts: TOKENS)
@@ -2657,7 +2722,7 @@ type TOKENS = Array;  // [int];
             enter("Parser::semicolon ", ts);
 
             switch (omega) {
-            case Full:
+            case full:
                 switch (hd (ts)) {
                 case Token::SemiColon:
                     var ts1 = tl (ts);
@@ -2668,16 +2733,23 @@ type TOKENS = Array;  // [int];
                     break;
                 default:
                     if (newline (ts)) { var ts1=ts } // semicolon inserted
-                    else { throw "expecting semicolon" }
+                    else { throw "** error: expecting semicolon" }
+                    break;
                 }
-            default:  // Abbrev, ShortIf
+                break;
+            case abbrev:  // Abbrev, ShortIf
+                print("abbrev");
                 switch (hd (ts)) {
                 case Token::SemiColon:
                     var ts1 = tl (ts);
                     break;
                 default:
                     var ts1 = ts;
+                    break;
                 }
+                break;
+            default:
+                throw "unhandled statement mode";
             }
 
             exit("Parser::semicolon ", ts1);
@@ -2715,10 +2787,10 @@ type TOKENS = Array;  // [int];
 
             ts = eat (ts,Token::If);
             var [ts1,nd1] = parenListExpression (ts);
-            var [ts2,nd2] = statement (ts1, omega); // FIXME: should be subStatement to include empty stmt
+            var [ts2,nd2] = substatement (ts1, omega);
             switch (hd (ts2)) {
             case Token::Else:
-                var [ts3,nd3] = statement (tl (ts2), omega);
+                var [ts3,nd3] = substatement (tl (ts2), omega);
                 break;
             default:
                 var [ts3,nd3] = [ts2,null];
@@ -2727,6 +2799,26 @@ type TOKENS = Array;  // [int];
 
             exit("Parser::ifStatement ", ts3);
             return [ts3, new Ast::IfStmt (nd1,nd2,nd3)];
+        }
+
+        /*
+
+        WhileStatement(omega)
+            while ParenListExpression Substatement(omega)
+
+        */
+
+        function whileStatement (ts: TOKENS, omega)
+            : [TOKENS, Ast::STMT]
+        {
+            enter("Parser::whileStatement ", ts);
+
+            ts = eat (ts,Token::While);
+            var [ts1,nd1] = parenListExpression (ts);
+            var [ts2,nd2] = substatement (ts1, omega); 
+ 
+            exit("Parser::whileStatement ", ts2);
+            return [ts2, new Ast::WhileStmt (nd1,nd2)];
         }
 
 
@@ -3230,17 +3322,18 @@ type TOKENS = Array;  // [int];
                 var [tsx,ndx] = [tl (ts), Ast::varTag];
                 break;
             case Token::Let:
-                switch (hd (ts)) {
+                switch (hd (tl (ts))) {
                 case Token::Const:
-                    var [tsx,ndx] = [tl (ts), Ast::letConstTag];
+                    var [tsx,ndx] = [tl (tl (ts)), Ast::letConstTag];
                     break;
                 case Token::Function:
                     throw "internal error: variableDefinitionKind after let";
                     break;
                 default:
-                    var [tsx,ndx] = [tl (ts), Ast::letTag];
+                    var [tsx,ndx] = [tl (ts), Ast::letVarTag];
                     break;
                 }
+                break;
             default:
                 throw "internal error: variableDefinitionKind";
                 break;
@@ -4734,7 +4827,7 @@ type TOKENS = Array;  // [int];
                 var fxtrs1 = [];
                 break;
             default:
-                [ts1,stmts1,fxtrs1] = directive (ts,tau,Full);
+                [ts1,stmts1,fxtrs1] = directive (ts,tau,full);
                 var [ts2,stmts2,fxtrs2] = directivesPrefixPrime (ts1,tau);
 
                 // FIXME: poor man's array append
@@ -4757,6 +4850,7 @@ type TOKENS = Array;  // [int];
             switch (hd(ts)) {
             case Token::Var:
             case Token::Let:
+            case Token::Const:
                 var [ts1,nd1]
                     = variableDefinition (ts, AllowIn
                                   , new Ast::PublicNamespace ("")
@@ -4773,7 +4867,7 @@ type TOKENS = Array;  // [int];
                 var tsx = semicolon (ts1,omega);
                 break;
             default:
-                var [ts2,nd2] = statement (ts,omega);
+                var [ts2,nd2] = statement (ts,tau,omega);
                 var ss1 = [nd2];
                 var tsx = ts2;
                 var fx1 = [];
@@ -5200,6 +5294,7 @@ type TOKENS = Array;  // [int];
     {
         var programs =
             [ "print('hi')"
+              /*
             , "x<y"
             , "x==y"
             , "m-n;n+m"
@@ -5219,6 +5314,13 @@ type TOKENS = Array;  // [int];
             , "z (1) (2)"
             , "new new x (1) (2)"
             , "new new x (1) (2) . x"
+            , "let x = 10"
+            , "let const x"
+            , "const x"
+            , "x.y.z"
+              */
+            , "while (x) { print(x); x-- }"
+
               /*
             , "class A { function A() {} }"
             , "class Fib { function Fib (n) { } }"

@@ -1115,8 +1115,8 @@ namespace Ast
 
     class BlockStmt {
         const block : BLOCK;
-        function BlockStmt(block) :
-            block = block { }
+        function BlockStmt (block)
+            : block = block {}
     }
 
     class LabeledStmt {
@@ -1133,11 +1133,9 @@ namespace Ast
         const body : STMT;
         const labels : [IDENT];
         const fixtures : FIXTURES?;  // What are these for?
-        function WhileStmt(expr, body, labels, fixtures) : 
-            expr=expr,
-            body=body,
-            labels=labels,
-            fixtures=fixtures {}
+        function WhileStmt (expr,body)
+            : expr = expr
+            , body = body {}
     }
 
     class DoWhileStmt {
