@@ -106,10 +106,11 @@ package cogen
 
     function cgBlock(ctx, b) {
         // FIXME -- more here
+/*
         let defns = b.defns;
         for ( let i=0 ; i < defns.length ; i++ )
             cgDefn(ctx, defns[i]);
-
+*/
         let stmts = b.stmts;
         for ( let i=0 ; i < stmts.length ; i++ )
             cgStmt(ctx, stmts[i]);
