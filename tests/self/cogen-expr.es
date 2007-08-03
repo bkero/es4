@@ -455,8 +455,8 @@ package cogen
     }
 
     function cgInitExpr(ctx, e) {
-        // FIXME
-        throw "Unimplemented init expr";
+        cgHead(ctx, e.head);
+        cgInits(ctx, e.inits, true);
     }
 
     function cgLiteralExpr(ctx, e) {

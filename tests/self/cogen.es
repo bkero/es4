@@ -210,8 +210,10 @@ package cogen
         
     }
     
-    function cgInits(ctx, inits){
+    function cgInits(ctx, inits, isExpr=false){
         let {asm:asm, emitter:emitter} = ctx;
+
+        let t = -1;
         
         for( let i=0; i < inits.length; ++i ) {
             let [name, init] = inits[i];
@@ -220,7 +222,21 @@ package cogen
 
             asm.I_findproperty(name_index);
             cgExpr(ctx, init);
+            
+            if( isExpr && i == inits.length-1 )
+            {
+                t = asm.getTemp();
+                asm.I_dup();
+                asm.I_setlocal(t);
+            }
+            
             asm.I_setproperty(name_index);
+        }
+
+        if( t != -1 )
+        {
+            asm.I_getlocal(t);
+            asm.killTemp(t);
         }
     }
     
