@@ -544,7 +544,7 @@ package cogen
     }
 
     function cgGetParamExpr(ctx, e) {
-        // FIXME
-        throw "Unimplemented getParam expression";
+        let asm = ctx.asm;
+        asm.I_getlocal(e.n + 1);  //account for 'this'
     }
 }

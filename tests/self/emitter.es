@@ -119,6 +119,13 @@ package emitter
             use namespace Ast;
             switch type (t) {
             case (tn:TypeName) { return nameFromIdentExpr(tn.ident) }
+            case (st:SpecialType) { 
+                switch type(st.kind) {
+                    case (a:AnyType) {
+                        return 0;
+                    }
+                }
+            }
             case (x:*) { throw ("Unimplemented: typeFromTypeExpr " + t) }
             }
         }
@@ -139,7 +146,7 @@ package emitter
         public function fixtureTypeToType(fix) {
             switch type (fix) {
                 case (vf:ValFixture) {
-                    return typeFromTypeExpr(vf.type);
+                    return vf.type != null ? typeFromTypeExpr(vf.type) : 0 ;
                 }
                 case (mf:MethodFixture) {
                     return 0;
