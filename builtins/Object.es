@@ -71,7 +71,7 @@ package
             this.intrinsic::toString();
 
         intrinsic function toString() : string
-            "[object " + magic::getClassName(obj) + "]";
+            "[object " + magic::getClassName(this) + "]";
 
 
         /* E262-3 15.2.4.3: Object.prototype.toLocaleString */
