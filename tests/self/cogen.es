@@ -154,11 +154,21 @@ package cogen
         function extractType([name,fixture])
             emitter.fixtureTypeToType(fixture);
         
+        function extractDefaults(expr)
+            emitter.defaultExpr(expr);
+            
         let named_fixtures = extractNamedFixtures(f.params.fixtures);
         
         let formals_type = map(extractType, named_fixtures);
         let method = script.newFunction(formals_type);
         let asm = method.asm;
+        
+        let defaults = map(extractDefaults, f.defaults);
+        
+        if( defaults.length > 0 )
+        {
+            method.setDefaults(defaults);
+        }
 
         /* Create a new rib and populate it with the values of all the
          * formals.  Add slot traits for all the formals so that the
