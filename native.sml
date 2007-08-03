@@ -631,89 +631,6 @@ fun eval (regs:Mach.REGS)
                 end
         end
 
-(*
- * 15.1.2.2
- * intrinsic native function parseInt(string:string, radix:int)
- *)
-fun parseInt (regs:Mach.REGS)
-             (vals:Mach.VAL list)
-    : Mach.VAL =
-    let
-        val strVal = rawNth vals 0
-        val radixVal = rawNth vals 1
-        val str = Eval.toUstring strVal
-        val radix = Int32.toInt (Eval.toInt32 radixVal)
-        val chars = Ustring.explode str
-        fun stripWs c = case c of
-                            x::xs => if Ustring.isWs x
-                                     then stripWs xs
-                                     else x::xs
-                          | [] => []
-        val chars = map Ustring.charCodeOf (stripWs chars)
-        val (sign, chars) = case chars of
-                                (0x2D (* '-' *) :: rest) => (~1.0, rest)
-                              | (0x2B (* '+' *) :: rest) => (1.0, rest)
-                              | _ => (1.0, chars)
-
-        fun nan _ = Eval.newDouble (0.0 / 0.0)
-
-        fun digitVal (charcode:int)
-            : int option =
-            if 0x2F < charcode andalso charcode < 0x3A
-            then SOME (charcode - 0x30)
-            else if 0x60 < charcode andalso charcode < 0x7B
-            then SOME (10 + (charcode - 0x61))
-            else if 0x40 < charcode andalso charcode < 0x5B
-            then SOME (10 + (charcode - 0x41))
-            else NONE
-
-        fun finishWith (accum:LargeInt.int option)
-            : Mach.VAL =
-            case accum of
-                NONE => nan()
-              | SOME li => Eval.newDouble (Real64.* (sign, (Real64.fromLargeInt li)))
-
-        fun parseWithRadix (accum:LargeInt.int option) (radix:int) (chars:int list)
-            : Mach.VAL =
-            case chars of
-                [] => finishWith accum
-              | x::xs => case digitVal x of
-                             NONE => finishWith accum
-                           | SOME v => if v < radix
-                                       then case accum of
-                                                NONE => parseWithRadix (SOME (Int.toLarge v)) radix xs
-                                              | SOME acc => parseWithRadix
-                                                                (SOME (LargeInt.+
-                                                                       (LargeInt.* (acc, (LargeInt.fromInt radix)),
-                                                                        (Int.toLarge v))))
-                                                                radix xs
-                                       else finishWith accum
-
-        fun parseWithInferredHex (radix:int) (chars:int list)
-            : Mach.VAL =
-            case chars of
-                [] => nan()
-              (* Handle 0x... and 0X... prefixes *)
-              | 0x30 :: 0x78 :: rest => parseWithRadix NONE 16 rest
-              | 0x30 :: 0x58 :: rest => parseWithRadix NONE 16 rest
-              | _ => parseWithRadix NONE radix chars
-
-        fun parseWithInferredOctalAndHex (radix:int) (chars:int list)
-            : Mach.VAL =
-            case chars of
-                [] => nan()
-              | 0x30 :: _ => parseWithInferredHex 8 chars
-              | _ => parseWithInferredHex radix chars
-    in
-        if radix = 0
-        then parseWithInferredOctalAndHex 10 chars
-        else if radix < 2 orelse radix > 36
-        then nan()
-        else if radix = 16
-        then parseWithInferredHex radix chars
-        else parseWithRadix NONE radix chars
-    end
-
 
 (*
  * 15.1.2.3
@@ -724,64 +641,6 @@ fun parseFloat (regs:Mach.REGS)
     : Mach.VAL =
     LogErr.unimplError ["intrinsic::parseFloat"]
 
-
-(*
- * 15.1.2.4
- * intrinsic native function isNaN( number:* ):boolean;
- *)
-fun isNaN (regs:Mach.REGS)
-          (vals:Mach.VAL list)
-    : Mach.VAL =
-    LogErr.unimplError ["intrinsic::isNaN"]
-
-
-(*
- * 15.1.2.5
- * intrinsic native function isFinite( number:* ):boolean;
- *)
-fun isFinite (regs:Mach.REGS)
-             (vals:Mach.VAL list)
-    : Mach.VAL =
-    LogErr.unimplError ["intrinsic::isFinite"]
-
-
-(*
- * 15.1.3.1
- * intrinsic native function decodeURI(encodedURI);
- *)
-fun decodeURI (regs:Mach.REGS)
-              (vals:Mach.VAL list)
-    : Mach.VAL =
-    LogErr.unimplError ["intrinsic::decodeURI"]
-
-
-(*
- * 15.1.3.2
- * intrinsic native function decodeURIComponent(encodedURIComponent);
- *)
-fun decodeURIComponent (regs:Mach.REGS)
-                       (vals:Mach.VAL list)
-    : Mach.VAL =
-    LogErr.unimplError ["intrinsic::decodeURIComponent"]
-
-(*
- * 15.1.3.3
- * intrinsic native function encodeURI(uri);
- *)
-fun encodeURI (regs:Mach.REGS)
-              (vals:Mach.VAL list)
-    : Mach.VAL =
-    LogErr.unimplError ["intrinsic::encodeURI"]
-
-
-(*
- * 15.1.3.4
- * intrinsic native function encodeURIComponent(uriComponent);
- *)
-fun encodeURIComponent (regs:Mach.REGS)
-                       (vals:Mach.VAL list)
-    : Mach.VAL =
-    LogErr.unimplError ["intrinsic::encodeURIComponent"]
 
 (*
  * intrinsic function get (obj: Object!, name: string) : *
@@ -1207,14 +1066,7 @@ fun registerNatives _ =
         addFn 3 Name.magic_setByteArrayByte setByteArrayByte;
 
         addFn 1 Name.intrinsic_eval eval;
-        addFn 2 Name.intrinsic_parseInt parseInt;
         addFn 1 Name.intrinsic_parseFloat parseFloat;
-        addFn 1 Name.intrinsic_isNaN isNaN;
-        addFn 1 Name.intrinsic_isFinite isFinite;
-        addFn 1 Name.intrinsic_decodeURI decodeURI;
-        addFn 1 Name.intrinsic_decodeURIComponent decodeURIComponent;
-        addFn 1 Name.intrinsic_encodeURI encodeURI;
-        addFn 1 Name.intrinsic_encodeURIComponent encodeURIComponent;
 
         addFn 2 Name.intrinsic_get get;
         addFn 3 Name.intrinsic_set set;

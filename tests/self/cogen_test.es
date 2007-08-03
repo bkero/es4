@@ -274,6 +274,93 @@ package cogen
                           
         dumpABCFile(prog, "hello-test.es");
     }
+
+    /*
+     * This generates code equivalent to source like:
+     *
+     * var x = 0;
+     * function f() { while(x<5) { print('hi'); ++x} };
+     * f();
+     *
+     */
+    public function testHelloWorldLoop() {
+        
+        var w : WhileStmt = new WhileStmt( new BinaryExpr( new Less(), new LexicalRef(new Identifier("x")), new LiteralExpr(new LiteralInt(5))) 
+                                         , new BlockStmt( new Block( [] // pragmas
+                                                                   , [] // defns 
+                                                                   , null// head
+                                                                   // stmts:
+                                                                   , [ new ExprStmt(new ListExpr([new CallExpr(new LexicalRef(new Identifier("print")),
+                                                                                       [new LiteralExpr(new LiteralString("Hello, world!"))])]))
+                                                                       , new ExprStmt(new ListExpr([new UnaryExpr(new PreIncr(), new LexicalRef(new Identifier("x")))]))]
+                                                                   , null // pos 
+                                                                   )
+                                                        ) 
+                                         , []
+                                         , null );
+        // Function Body 
+        var f_func : FUNC = new Func({kind:new Ordinary(), ident:"f"}, //name
+                                    false, //isNative
+                                    //block:
+                                    new Block( [] // pragmas
+                                      , [] // defns 
+                                      , null// head
+                                        // stmts:
+                                      , [ w ]
+                                      , null // pos 
+                                    ),
+                                    // params:
+                                    {fixtures:[]
+                                     , inits:[]},
+                                    // defaults:
+                                    [],
+                                    // type:
+                                    {typeParams:[], params:[], result:new ObjectType(), thisType:null, hasRest:false, minArgs:0}
+                                    );
+
+
+
+        // Program
+        var prog = cg( new Program([],
+                        new Block([], //pragmas
+                                  //defns
+                                  [new VariableDefn(null, false, false, new Var(), [ [new Binding(new PropIdent("x"), null)], [] ] )
+                                   , new FunctionDefn(new Const(), 
+                                                    new LiteralExpr(new LiteralNamespace(new PublicNamespace("") ) ),
+                                                    false, // final
+                                                    false, // override
+                                                    false, // prototype
+                                                    false, // static
+                                                    false, // abstract
+                                                    f_func
+                                                    ) 
+                                   ],
+                                  //heads
+                                  null,
+                                  //stmts
+                                  [ new ExprStmt(new ListExpr([new SetExpr(new Assign(), new LexicalRef(new Identifier("x")), new LiteralExpr(new LiteralInt(0)))]) )
+                                  , new ExprStmt(new ListExpr([new CallExpr(new LexicalRef(new Identifier("f")),[] ) ] ) ) ], 
+                                  //pos
+                                  null
+                                ), 
+                        [[ new PropName({ns: new PublicNamespace("") , id:"x"}), 
+                           new ValFixture(new TypeName(new Identifier("int")), //Type
+                                          false //isReadOnly
+                                          )]
+                        , [new PropName({ns: new PublicNamespace("") , id:"f"}), 
+                           new MethodFixture( f_func  // FUNC
+                                             , new ObjectType() // type - shouldn't this be function?
+                                             , true  // isReadOnly
+                                             , false // isOverride
+                                             , false // isFinal
+                                           )]
+                        ]
+                        )
+        );
+                          
+        dumpABCFile(prog, "hello-test.es");
+    }
+
     /*
     public function testFib() {
         dumpABCFile(new Program([],

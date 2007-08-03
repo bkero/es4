@@ -18,7 +18,11 @@
 #  - = ... = for H1, == ... == for H2, etc
 #  - ''...'' for <code>...</code>
 #  - [[...]] for <code>[[...]]</code>
-
+#  - **...** for <b>...</b>
+#  - //...// for <i>...</i>
+#  - %%...%% for ..., unprocessed
+#  - {{{ ... }}} for <pre>...</pre>, blank lines removed at the beginning and end,
+#    contents unprocessed.  The triple braces must be at the start of a line.
 
 # Rules for processing in general:
 #  - Read the entire file
@@ -29,7 +33,8 @@
 #    - replace /(\=)+\s+([...]+)\s+\1/ with the appropriate header tag 
 #    - replace /<h([1-5]) (...)>(...)</h\1>/ with appropriate tags and the
 #      content from the tag and text
-#    - replace <XREF ...> with nothing, for now
+#    - replace <XREF ...>
+#    - replace tags like <INFINITY> with correct character codes
 #  - Pass 3:
 #    - process INCLUDE files:
 #      - for HTML files, process them separately using the same process, 
@@ -50,22 +55,34 @@
 
 
 # FIXME: get the header computation logic right and document it.
+# FIXME: how to do cross references properly?
 # FIXME: include SML source code
-# FIXME: undent source code
 
 import re, sys, os, os.path
 
 htmlcomment = re.compile(r"<!--(?:.|\s)*?-->")
 wikiheader = re.compile(r"^(\=+)\s+(.*?)\s+\1", re.M)
 htmlheader = re.compile(r"<h([1-6])((?:\".*?\"|[^\"])*?)>(.*?)</h\1>")
-xreftag = re.compile(r"<XREF(?:\".*?\"|[^\"])*?>")
+xreftag = re.compile(r"<XREF\s+target=\"(.*?)\"\s*>")
 includetag = re.compile(r"<h[1-6]|<INCLUDE(?:\".*?\"|[^\"])*?>")
 htmlInclude = re.compile(r"<INCLUDE\s*file=\"(.*?\.(?:html|css))\">")
 smlInclude = re.compile(r"<INCLUDE\s+file=\"(.*?\.sml)\"\s+name=\"(.*?)\">")
 esInclude = re.compile(r"<INCLUDE\s+file=\"(.*?\.es)\"\s+name=\"(.*?)\">")
 hdrprefix = re.compile(r"<h([1-6])")
-wikiformatCode = re.compile(r"''(.*?)''");
-wikiformatSpecial = re.compile(r"(\[\[(.*?)\]\])");
+wikiformatCode = re.compile(r"''(.*?)''")
+wikiformatSpecial = re.compile(r"(\[\[(.*?)\]\])")
+wikiformatBold = re.compile(r"\*\*(.*?)\*\*")
+wikiformatItalic = re.compile(r"//(.*?)//")
+wikiformatLiteral = re.compile(r"(?!%%--[0-9]+--%%)%%(.*?)%%")
+wikiformatLiteralRecover = re.compile(r"%%--([0-9]+)--%%")
+wikiformatCodeblock = re.compile(r"^\{\{\{((?:.|[\n\r])*?)^\}\}\}", re.M)
+entitytag = re.compile(r"<(INFINITY|NOTE|FIXME|COMP|IMPLNOTE)>")
+
+entities = { "INFINITY": "&#x221E;",
+	     "NOTE": "<p class=\"note\"><b>NOTE</b>&nbsp;&nbsp; ",
+	     "COMP": "<p class=\"note\"><b>COMPATIBILITY NOTE</b>&nbsp;&nbsp; ",
+	     "IMPLNOTE": "<p class=\"note\"><b>IMPLEMENTATION NOTE</b>&nbsp;&nbsp; ",
+	     "FIXME": "<p class=\"fixme\"><b>FIXME</b>&nbsp;&nbsp; " }
 
 currentlevel = 0
 
@@ -86,10 +103,17 @@ sml_dir = os.path.abspath("..")
 # processes each file once, extracting all functions and storing them
 # in some easier format (maybe).
 
+def isIdent(c):
+    return c >= "A" and c <= "Z" or c >= "a" and c <= "z" or c >= "0" and c <= "9" or c == "_"
+
 def extractES(fn, name):
     f = open(os.path.normpath(es_dir + "/" + fn), 'r')
     outside = True
-    # FIXME: escape punctuation in name before using it
+    # Avoid matching prefixes of names
+    lastIsIdent = isIdent(name[len(name)-1])
+    name = reEscape(name)
+    if lastIsIdent:
+	name = name + r"(?![a-zA-Z0-9_])"
     starting = re.compile("^( *)" + name)
     for line in f:
 	if outside:
@@ -115,19 +139,26 @@ def extractES(fn, name):
 		break
 	    if line == "":
 		blanks = blanks+1
+	    elif res == []:
+		# Skip blanks at the beginning
+		res = res + [line]
 	    else:
 		for i in range(blanks):
-		    res = res + ""
+		    res = res + [""]
 		blanks = 0
 		res = res + [line]
     f.close()
     if outside:
 	print fn + ": Could not find definition for " + name
 	sys.exit(1)
+    undent = len(re.search(r"^(\s*)", res[0]).group(1))
     ss = "\n"
     for s in res:
-	ss = ss + s + "\n"
+	ss = ss + s[undent:] + "\n"
     return ss
+
+def extractSML(fn, name):
+    return "fun " + name + "(...) =\n    MISSING SML CODE"
 
 def replaceWiki(m):
     return "<h" + str(len(m.group(1))) + ">" + m.group(2) + "</h" + str(len(m.group(1))) + ">"
@@ -135,6 +166,9 @@ def replaceWiki(m):
 def replaceHTML(m, hdrlvl):
     k = str(int(m.group(1)) + hdrlvl - 1)
     return "<h" + k + m.group(2) + ">" + m.group(3) + "</h" + k + ">"
+
+def replaceXREF(m):
+    return "XREF(" + m.group(1) + ")"
 
 def replaceInclude(m, hdrlvl, fn):
     global currentlevel
@@ -154,14 +188,43 @@ def replaceInclude(m, hdrlvl, fn):
 	return r
     ms = smlInclude.match(m.group(0))
     if ms:
-	return ""
+	return "<pre>" + extractSML(ms.group(1), ms.group(2)) + "</pre>"
     ms = esInclude.match(m.group(0))
     if ms:
-	return "<pre><code>" + extractES(ms.group(1), ms.group(2)) + "</code></pre>"
+	return "<pre>" + extractES(ms.group(1), ms.group(2)) + "</pre>"
     print fn + ": Invalid INCLUDE directive: " + m.group(0)
     sys.exit(1)
 
+def replaceEntity(m):
+    global entities
+    return entities[m.group(1)]
+
+literals = []
+
+def htmlEscape(s):
+    return re.sub("<", "&#60;", s)
+
+def reEscape(s):
+    return re.sub(r"([\(\)\[\]\.\*\+\?\{\}\^\$])", r"\\\1", s)
+
+def hideLiteral(m):
+    global literals
+    k = len(literals)
+    literals = literals + [htmlEscape(m.group(1))]
+    return "%%--" + str(k) + "--%%"
+
+def hideCodeblock(m):
+    global literals
+    k = len(literals)
+    literals = literals + ["<pre>" + htmlEscape(m.group(1)) + "</pre>"]
+    return "%%--" + str(k) + "--%%"
+
+def revealLiteral(m):
+    global literals
+    return literals[int(m.group(1))]
+
 def process(fn, hdrlvl):
+    global literals
     input = open(fn, 'r')
     text = input.read()
     text = re.sub(htmlcomment, "", text)
@@ -170,11 +233,18 @@ def process(fn, hdrlvl):
 	if cc > 127 or cc < 32 and cc != 10 and cc != 13:
 	    print fn + ": Non-ASCII character in at location " + str(i) + ": " + str(cc)
 	    sys.exit(1)
+    literals = []
+    text = re.sub(wikiformatCodeblock, hideCodeblock, text) 
+    text = re.sub(wikiformatLiteral, hideLiteral, text)
     text = re.sub(wikiheader, replaceWiki, text)
     text = re.sub(htmlheader, lambda m: replaceHTML(m, hdrlvl), text)
-    text = re.sub(xreftag, "", text)
+    text = re.sub(xreftag, replaceXREF, text)
     text = re.sub(wikiformatCode, r"<code>\1</code>", text)
     text = re.sub(wikiformatSpecial, r"<code>\1</code>", text)
+    text = re.sub(wikiformatBold, r"<b>\1</b>", text)
+    text = re.sub(wikiformatItalic, r"<i>\1</i>", text)
+    text = re.sub(entitytag, replaceEntity, text)
+    text = re.sub(wikiformatLiteralRecover, revealLiteral, text)
     text = re.sub(includetag, lambda m: replaceInclude(m, hdrlvl, fn), text)
     return text
 
