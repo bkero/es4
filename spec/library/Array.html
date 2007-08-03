@@ -1,0 +1,528 @@
+= Array Objects =
+
+<p>Array objects give special treatment to a certain class of property names. A property name P (in the form of a string
+value) is an array index if and only if ToString(ToUint32(P)) is equal to P and ToUint32(P) is not equal to 2<sup>32</sup>-1.
+Every Array object has a length property whose value is always a nonnegative integer less than 2<sup>32</sup>. The value of
+the length property is numerically greater than the name of every property whose name is an array index;
+whenever a property of an Array object is created or changed, other properties are adjusted as necessary to
+maintain this invariant. Specifically, whenever a property is added whose name is an array index, the length
+property is changed, if necessary, to be one more than the numeric value of that array index; and whenever the
+length property is changed, every property whose name is an array index whose value is not smaller than the new
+length is automatically deleted. This constraint applies only to properties of the Array object itself and is unaffected
+by length or array index properties that may be inherited from its prototype.
+
+{{{
+dynamic class Array
+{
+   <LDOTS>
+}
+}}}
+
+== The Array Constructor Called as a Function ==
+
+When Array is called as a function rather than as a constructor, it creates and initialises a new Array object. Thus
+the function call Array(<LDOTS>) is equivalent to the object creation expression new Array(<LDOTS>) with the same
+arguments.
+
+=== Array ( [ item1 [ , item2 [ , <LDOTS> ] ] ] ) ===
+
+When the Array function is called the following steps are taken:
+
+<FIXME>Code here
+<!-- 1. Create and return a new Array object exactly as if the array constructor had been called with the same
+arguments (section 15.4.2). -->
+
+== The Array Constructor ==
+
+When Array is called as part of a new expression, it is a constructor: it initialises the newly created object.
+
+=== new Array ( [ item0 [ , item1 [ , <LDOTS> ] ] ] ) ===
+
+This description applies if and only if the Array constructor is given no arguments or at least two arguments.
+
+<p>The [[Prototype]] property of the newly constructed object is set to the original Array prototype object, the one that is
+the initial value of Array.prototype (section 15.4.3.1).
+
+<p>The [[Class]] property of the newly constructed object is set to "Array".
+
+<p>The ''length'' property of the newly constructed object is set to the number of arguments.
+
+<p>The 0 property of the newly constructed object is set to item0 (if supplied); the 1 property of the newly constructed
+object is set to item1 (if supplied); and, in general, for as many arguments as there are, the k property of the newly
+constructed object is set to argument k, where the first argument is considered to be argument number 0.
+
+=== new Array (len) ===
+
+<p>The [[Prototype]] property of the newly constructed object is set to the original Array prototype object, the one that is
+the initial value of Array.prototype (section 15.4.3.1). The [[Class]] property of the newly constructed object is
+set to "Array".
+
+<p>If the argument len is a Number and ToUint32(len) is equal to len, then the length property of the newly
+constructed object is set to ToUint32(len). If the argument len is a Number and ToUint32(len) is not equal to len, a
+RangeError exception is thrown.
+
+<p>If the argument len is not a Number, then the length property of the newly constructed object is set to 1 and the 0
+property of the newly constructed object is set to len.
+
+== Properties of the Array Constructor ==
+
+<NOTE>The lengths of some of the methods are buggy, see proposal for
+updates: mostly, get rid of special cases.
+
+<p>The value of the internal [[Prototype]] property of the Array constructor is the Function prototype object (section
+15.3.4).
+
+<p>Besides the internal properties and the length property (whose value is 1), the Array constructor has the following
+properties:
+
+=== Array.prototype ===
+
+The initial value of Array.prototype is the Array prototype object (section 15.4.4).
+
+=== Array.concat ( object, [ item1 [ , item2 [ , <LDOTS> ] ] ] ) ===
+
+<P>When the static ''concat'' method is called with an object and zero
+or more additional arguments //item1//, //item2//, etc., it returns an
+array containing the array elements of the object followed by the
+array elements of each additional argument in order.
+
+<INCLUDE file="Array.es" name="static function concat">
+<INCLUDE file="Array.es" name="helper static function concat">
+
+<P>The helper ''concat'' method is also used by the intrinsic and
+prototype variants of ''concat''.
+
+<NOTE>The ''concat'' method is intentionally generic; it does not
+require that its this value be an Array object.  Therefore it can be
+transferred to other kinds of objects for use as a method.  Whether
+the ''concat'' function can be applied successfully to a host object
+is implementation-dependent.
+
+<COMP>The static ''concat'' method is new in 4th Edition.
+
+=== Array.join ( object, separator ) ===
+
+<P>The array elements of the object are converted to strings, and these
+strings are then concatenated, separated by occurrences of the
+separator. If no separator is provided, a single comma is used as the
+separator.
+
+<INCLUDE file="Array.es" name="static function join">
+
+<COMP>The static ''join'' method is new in 4th Edition.
+
+<NOTE>The ''join'' method is intentionally generic; it does not
+require that its this value be an Array object.  Therefore, it can be
+transferred to other kinds of objects for use as a method.  Whether
+the ''join'' method can be applied successfully to a host object is
+implementation-dependent.
+
+
+=== Array.pop ( self ) ===
+
+<P>The last array element of the object is removed from the object and returned.
+
+<INCLUDE file="Array.es" name="static function pop">
+
+<COMP>The static ''pop'' method is new in 4th Edition.
+
+<NOTE>The ''pop'' function is intentionally generic; it does not
+require that its this value be an Array object.  Therefore it can be
+transferred to other kinds of objects for use as a method.  Whether
+the ''pop'' function can be applied successfully to a host object is
+implementation-dependent.
+
+
+=== Array.push ( object, [ item1 [ , item2 [ , <LDOTS> ] ] ] ) ===
+
+The arguments //item1//, //item2//, etc are appended to the end of the
+array elements of //object//, in the order in which they appear.  The
+new ''length'' propety of the object is returned as the result of the
+call.
+
+<p>When the push method is called with an //object// and zero or more
+arguments //item1//, //item2//, etc., the following steps are taken:
+
+<INCLUDE file="Array.es" name="static function push">
+<INCLUDE file="Array.es" name="helper static function push">
+
+<P>The helper ''push'' method is also used by the intrinsic and
+prototype variants of ''push''.
+
+<COMP>The static ''push'' method is new in 4th Edition.
+
+<NOTE>The push function is intentionally generic; it does not require
+that its this value be an Array object. Therefore it can be
+transferred to other kinds of objects for use as a method. Whether the
+push function can be applied successfully to a host object is
+implementation-dependent.
+
+
+=== Array.reverse ( object ) ===
+
+<P>The array elements of the //object// are rearranged so as to reverse their
+order.  The object is returned as the result of the call.
+
+<INCLUDE file="Array.es" name="static function reverse">
+
+<COMP>The static ''reverse'' method is new in 4th Edition.
+
+<NOTE>The ''reverse'' function is intentionally generic; it does not
+require that its this value be an Array object.  Therefore, it can be
+transferred to other kinds of objects for use as a method. Whether the
+''reverse'' function can be applied successfully to a host object is
+implementation-dependent.
+
+
+=== Array.shift ( object ) ===
+
+<P>The first array element of the object is removed from the object and returned.
+
+<INCLUDE file="Array.es" name="static function shift">
+
+<COMP>The static ''shift'' method is new in 4th Edition.
+
+<NOTE>The ''shift'' function is intentionally generic; it does not
+require that its this value be an Array object. Therefore it can be
+transferred to other kinds of objects for use as a method.  Whether
+the ''shift'' function can be applied successfully to a host object is
+implementation-dependent.
+
+
+=== Array.slice ( object, start, end ) ===
+
+<P>The static ''slice'' method takes three arguments, an //object//,
+//start//, and //end//, and returns an array containing the array
+elements of the //object// from element //start// up to, but not
+including, element //end// (or through the end of the array elements
+if //end// is undefined).  If //start// is negative, it is treated as
+//(length+start)// where //length// is the ''length'' property of the
+//object//. If //end// is negative, it is treated as //(length+end)//
+where //length// is the ''length'' property of the object. The
+following steps are taken:
+
+<INCLUDE file="Array.es" name="static function slice">
+
+<COMP>The static ''slice'' method is new in 4th Edition.
+
+<NOTE> The static ''slice'' method is intentionally generic; it does
+not require that its this value be an Array object.  Therefore it can
+be transferred to other kinds of objects for use as a method.  Whether
+the ''slice'' method can be applied successfully to a host object is
+implementation-dependent.
+
+
+=== Array.sort (object, comparefn) ===
+
+<P>The array elements of //object// are sorted.  The sort is not
+necessarily stable (that is, elements that compare equal do not
+necessarily remain in their original order). If //comparefn// is not
+**undefined**, it should be a function that accepts two arguments
+//x// and //y// and returns a negative value if //x < y//, zero if //x
+= y//, or a positive value if //x > y//.
+
+<p>If //comparefn// is not **undefined** and is not a consistent
+comparison function for the array elements of //object// (see below),
+the behaviour of ''sort'' is implementation-defined.  Let //len// be
+''ToUint32(object.length)''.  If there exist integers //i// and //j//
+and an object //P// such that all of the conditions below are
+satisfied then the behaviour of ''sort'' is implementation-defined:
+
+<ul>
+<li> //0 <LEQ> i < len//
+<li> //0 <LEQ> j < len//
+<li> //object// does not have a property with name ''ToString(//i//)''
+<li> //P// is obtained by following one or more [[Prototype]] properties starting at this
+<li> //P// has a property with name ''ToString(//j//)''
+</ul>
+
+<p>Otherwise the following steps are taken.
+
+<OL>
+<LI> Let //M// be the result of calling the [[Get]] method of //object// with argument ''"length"''.
+<LI> Let //L// be the result of ''ToUint32(//M//)''.
+<LI> Perform an implementation-dependent sequence of calls to the [[Get]] , [[Put]], and [[Delete]] methods of 
+//object// and to //SortCompare// (described below), where the first argument for each call to [[Get]], [[Put]], or
+[[Delete]] is a nonnegative integer less than //L// and where the arguments for calls to //SortCompare// are
+results of previous calls to the [[Get]] method.
+<LI> Return //object//.
+</OL>
+
+<P>The returned object must have the following two properties.
+
+<ul> <li> There must be some mathematical permutation <PI> of the
+nonnegative integers less than //L//, such that for every nonnegative
+integer //j// less than //L//, if property //old[j]// existed, then
+//new[<PI>(j)]// is exactly the same value as //old[j]//, but if
+property //old[j]// did not exist, then //new[<PI>(j)]// does not
+exist.  <li> Then for all nonnegative integers //j// and //k//, each
+less than //L//, if //SortCompare(j,k) < 0// (see //SortCompare//
+below), then //<PI>(j) < <PI>(k)//.  </ul>
+
+<P>Here the notation //old[j]// is used to refer to the hypothetical
+result of calling the [[Get]] method of this object with argument
+//j// before this function is executed, and the notation //new[j]// to
+refer to the hypothetical result of calling the [[Get]] method of this
+object with argument //j// after this function has been executed.
+
+<P>A function //comparefn// is a consistent comparison function for a set of values //S// if all of the requirements below are
+met for all values //a//, //b//, and //c// (possibly the same value) in the set //S//: The notation //a &lt;CF b// means
+//comparefn(a,b) &lt; 0//; //a =CF b// means //comparefn(a,b) = 0// (of either sign); and //a >CF b// means //comparefn(a,b) > 0//.
+
+<UL>
+<LI> Calling //comparefn(a,b)// always returns the same value //v// when given a specific pair of values //a// and //b// as its
+two arguments. Furthermore, //v// has type //Number//, and //v// is not **NaN**. Note that this implies that exactly one of
+//a &lt;CF b//, //a =CF b//, and //a >CF b// will be true for a given pair of //a// and //b//.
+<LI> //a =CF a// (reflexivity)
+<LI> If //a =CF b//, then //b =CF a// (symmetry)
+<LI> If //a =CF b// and //b =CF c//, then //a =CF c// (transitivity of //=CF//)
+<LI> If //a &lt;CF b// and //b &lt;CF c//, then //a &lt;CF c// (transitivity of //&lt;CF//)
+<LI> If //a >CF b// and //b >CF c//, then //a >CF c// (transitivity of //>CF//)
+</UL>
+
+<NOTE> The above conditions are necessary and sufficient to ensure that //comparefn// divides the set //S// into equivalence classes
+and that these equivalence classes are totally ordered.
+
+<P>When the //SortCompare// operator is called with two arguments //j// and //k//, the following steps are taken:
+
+<FIXME>Code here
+
+<NOTE> Because non-existent property values always compare greater
+than undefined property values, and undefined always compares greater
+than any other value, undefined property values always sort to the end
+of the result, followed by non-existent property values.
+
+<COMP>The static ''sort'' method is new in 4th Edition.
+
+<NOTE> The static ''sort'' method is intentionally generic; it does
+not require that its this //object// be an Array object.  Therefore,
+it can be transferred to other kinds of objects for use as a method.
+Whether the ''sort'' method can be applied successfully to a host
+object is implementation-dependent.
+
+
+=== Array.splice ( object, start, deleteCount [ , item1 [ , item2 [ , <LDOTS> ] ] ] ) ===
+
+<P>When the static ''splice'' method is called with three or more
+arguments //object//, //start//, //deleteCount// and (optionally)
+//item1//, //item2//, etc., the //deleteCount// array elements of the
+object starting at array index //start// are replaced by the arguments
+//item1//, //item2//, etc.  The following steps are taken:
+
+<INCLUDE file="Array.es" name="static function splice">
+
+<COMP>The static ''splice'' method is new in 4th Edition.
+
+<NOTE> The ''splice'' method is intentionally generic; it does not
+require that its this value be an Array object. Therefore it can be
+transferred to other kinds of objects for use as a method.  Whether
+the ''splice'' method can be applied successfully to a host object is
+implementation-dependent.
+
+=== Array.unshift ( object, [ item1 [ , item2 [ , <LDOTS> ] ] ] ) ===
+
+<P>The arguments are prepended as new array elements to the start of
+the //object//, such that their order within the array elements of
+//object// is the same as the order in which they appear in the
+argument list.
+
+<P>When the unshift method is called with an object and zero or more
+arguments item1, item2, etc., the following steps are taken:
+
+<INCLUDE file="Array.es" name="static function unshift">
+
+<P>The length property of the unshift method is 2.
+
+<COMP>The static ''splice'' method is new in 4th Edition.
+
+<NOTE> The static ''unshift'' method is intentionally generic; it does
+not require that its this value be an Array object.  Therefore it can
+be transferred to other kinds of objects for use as a method.  Whether
+the ''unshift'' method can be applied successfully to a host object is
+implementation-dependent.
+
+=== Also ===
+
+<ul>
+  <li> map
+  <li> filter
+  <li> every
+  <li> some
+  <li> forEach
+  <li> indexOf
+  <li> lastIndexOf
+  <li> reduce
+  <li> reduceRight
+  <li> setSlice
+</ul>
+
+== Methods on Array Instances ==
+
+<P>The intrinsic methods on Array instances delegate to their static
+counterparts.  Unlike their static and prototype counterparts, these
+methods are bound by their instance and they are not generic.
+
+<INCLUDE file="Array.es" name="intrinsic function concat">
+<INCLUDE file="Array.es" name="intrinsic function join">
+<INCLUDE file="Array.es" name="prototype function pop">
+<INCLUDE file="Array.es" name="prototype function push">
+<INCLUDE file="Array.es" name="prototype function reverse">
+<INCLUDE file="Array.es" name="prototype function shift">
+<INCLUDE file="Array.es" name="prototype function slice">
+<INCLUDE file="Array.es" name="prototype function sort">
+<INCLUDE file="Array.es" name="prototype function splice">
+<INCLUDE file="Array.es" name="prototype function unshift">
+
+Also:
+<ul>
+  <li> map
+  <li> filter
+  <li> every
+  <li> some
+  <li> forEach
+  <li> indexOf
+  <li> lastIndexOf
+  <li> reduce
+  <li> reduceRight
+  <li> setSlice
+</ul>
+
+== Properties of the Array Prototype Object ==
+
+The value of the internal [[Prototype]] property of the Array prototype object is the Object prototype object (section
+15.2.3.1).
+
+<p>The Array prototype object is itself an array; its [[Class]] is "Array", and it has a length property (whose initial
+value is +0) and the special internal [[Put]] method described in section 15.4.5.1.
+
+<p>In following descriptions of functions that are properties of the Array prototype object, the phrase "this object" refers
+to the object that is the this value for the invocation of the function. It is permitted for the this to be an object for
+which the value of the internal [[Class]] property is not "Array".
+
+<NOTE>The Array prototype object does not have a valueOf property of its own; however, it inherits the valueOf property from
+the Object prototype Object.
+
+=== Array.prototype.constructor ===
+
+The initial value of Array.prototype.constructor is the built-in Array constructor.
+
+=== Array.prototype.toString ( ) ===
+
+The result of calling this function is the same as if the built-in join method were invoked for this object with no
+argument.
+
+The toString function is not generic; it throws a TypeError exception if its this value is not an Array object.
+Therefore, it cannot be transferred to other kinds of objects for use as a method.
+
+=== Array.prototype.toLocaleString ( ) ===
+
+The elements of the array are converted to strings using their toLocaleString methods, and these strings are
+then concatenated, separated by occurrences of a separator string that has been derived in an implementationdefined
+locale-specific way. The result of calling this function is intended to be analogous to the result of
+toString, except that the result of this function is intended to be locale-specific.
+
+<p>The result is calculated as follows:
+
+<FIXME>Code here
+
+<p>The toLocaleString function is not generic; it throws a TypeError exception if its this value is not an Array
+object. Therefore, it cannot be transferred to other kinds of objects for use as a method.
+
+<NOTE>The first parameter to this function is likely to be used in a future version of this standard; it is recommended that
+implementations do not use this parameter position for anything else.
+
+=== Methods on the Array Prototype Object ===
+
+<P>These methods delegate to their static counterparts, and like their
+counterparts, they are generic: they can be transferred to other
+objects for use as methods.  Whether these methods can be applied
+successfully to a host object is implementation-dependent.
+
+<NOTE>The lengths here are buggy, see proposal for updates (and note change
+in common COMP note at end, when changing them).
+
+<INCLUDE file="Array.es" name="prototype function concat">
+
+<p>The ''length'' property of the concat method is 1.
+
+<INCLUDE file="Array.es" name="prototype function join">
+
+<p>The ''length'' property of the join method is 1.
+
+<INCLUDE file="Array.es" name="prototype function pop">
+
+<INCLUDE file="Array.es" name="prototype function push">
+
+<p>The ''length'' property of the push method is 1.
+
+<INCLUDE file="Array.es" name="prototype function reverse">
+
+<INCLUDE file="Array.es" name="prototype function shift">
+
+<INCLUDE file="Array.es" name="prototype function slice">
+
+<p>The ''length'' property of the slice method is 2.
+
+<INCLUDE file="Array.es" name="prototype function sort">
+
+<INCLUDE file="Array.es" name="prototype function splice">
+
+<P>The ''length'' property of the splice method is 2.
+
+<INCLUDE file="Array.es" name="prototype function unshift">
+
+<P>The ''length'' property of the unshift method is 1.
+
+Also:
+<ul>
+  <li> map
+  <li> filter
+  <li> every
+  <li> some
+  <li> forEach
+  <li> indexOf
+  <li> lastIndexOf
+  <li> reduce
+  <li> reduceRight
+  <li> setSlice
+</ul>
+
+
+== Properties of Array Instances ==
+
+Array instances inherit properties from the Array prototype object and also have the following properties.
+
+=== %%[[Put]]%% (P, V) ===
+
+Array objects use a variation of the [[Put]] method used for other native ECMAScript objects (section 8.6.2.2).
+
+<P>Assume A is an Array object and P is a string.
+
+<P>When the [[Put]] method of A is called with property P and value V, the following steps are taken:
+
+{{{
+1. Call the [[CanPut]] method of A with name P.
+2. If Result(1) is false, return.
+3. If A doesn't have a property with name P, go to step 7.
+4. If P is "length", go to step 12.
+5. Set the value of property P of A to V.
+6. Go to step 8.
+7. Create a property with name P, set its value to V and give it empty attributes.
+8. If P is not an array index, return.
+9. If ToUint32(P) is less than the value of the length property of A, then return.
+10. Change (or set) the value of the length property of A to ToUint32(P)+1.
+11. Return.
+12. Compute ToUint32(V).
+13. If Result(12) is not equal to ToNumber(V), throw a RangeError exception.
+14. For every integer k that is less than the value of the length property of A but not less than Result(12), if A
+itself has a property (not an inherited property) named ToString(k), then delete that property.
+15. Set the value of property P of A to Result(12).
+16. Return.
+}}}
+
+=== length ===
+
+The length property of this Array object is always numerically greater than the name of every property whose
+name is an array index.
+
+<P>The length property has the attributes { DontEnum, DontDelete }.
