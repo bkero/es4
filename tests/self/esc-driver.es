@@ -6,7 +6,7 @@
     use namespace Parser;
 
 
-    var parser = new Parser("function f(x) { print(x) }; function g() { print('goodbye') }; f('hi'); g()");
+    var parser = new Parser("var x = 10; print(x);");
     var [ts1,nd1] = parser.program();
     print(Ast::encodeProgram (nd1));
 

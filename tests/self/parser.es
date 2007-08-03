@@ -2034,7 +2034,50 @@ type TOKENS = Array;  // [int];
 //            return result
 //        }
 
+
         /*
+
+        NonAssignmentExpressiona, b
+            LetExpressiona, b
+            YieldExpressiona, b
+            LogicalOrExpressiona, b
+            LogicalOrExpressiona, b  ?  NonAssignmentExpressiona, b  
+                                                    :  NonAssignmentExpressiona, b
+
+        */
+
+        function nonAssignmentExpression (ts: TOKENS, beta: BETA)
+            : [TOKENS, Ast::EXPR]
+        {
+            enter("Parser::nonAssignmentExpression ", ts);
+
+            switch (hd (ts)) {
+            case Token::Let:
+                var [ts1,nd1] = letExpression (ts,beta);
+                break;
+            case Token::Yield:
+                var [ts1,nd1] = yieldExpression (ts,beta);
+                break;
+            default:
+                var [ts1,nd1] = logicalOrExpression (ts,beta);
+                switch (hd (ts1)) {
+                case Token::QuestionMark:
+                    var [ts2,nd2] = nonAssignmentExpression (tl (ts1),beta);
+                    match (ts2,Token::Colon);
+                    var [ts3,nd3] = nonAssignmentExpression (tl (ts2),beta);
+                    break;
+                default:
+                    var [ts3,nd3] = [ts1,nd1];
+                    break;
+                }
+            }
+
+            exit ("Parser::nonAssignmentExpression ", ts1);
+            return [ts1,nd1];
+        }
+
+
+/*
 
         ConditionalExpression(beta)
             LetExpression(beta)
@@ -4265,7 +4308,8 @@ type TOKENS = Array;  // [int];
             switch (hd (ts1)) {
             case Token::Assign:
                 ts1 = eat (ts1, Token::Assign);
-                var [ts2,nd2] = nonAssignmentExpression(AllowIn);
+                var [ts2,nd2] = nonAssignmentExpression(ts1,AllowIn);
+                nd2 = [nd2];
                 break;
             default:
                 if (initRequired) {
@@ -5320,6 +5364,8 @@ type TOKENS = Array;  // [int];
             , "x.y.z"
               */
             , "while (x) { print(x); x-- }"
+            , "function f (x=10) { return x }"
+            , "function f (x) { return x }"
 
               /*
             , "class A { function A() {} }"
