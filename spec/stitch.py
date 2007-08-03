@@ -23,6 +23,7 @@
 #  - %%...%% for ..., unprocessed
 #  - {{{ ... }}} for <pre>...</pre>, blank lines removed at the beginning and end,
 #    contents unprocessed.  The triple braces must be at the start of a line.
+#  - <entity> for some simple replacements, see full list in the code below
 
 # Rules for processing in general:
 #  - Read the entire file
@@ -76,13 +77,14 @@ wikiformatItalic = re.compile(r"//(.*?)//")
 wikiformatLiteral = re.compile(r"(?!%%--[0-9]+--%%)%%(.*?)%%")
 wikiformatLiteralRecover = re.compile(r"%%--([0-9]+)--%%")
 wikiformatCodeblock = re.compile(r"^\{\{\{((?:.|[\n\r])*?)^\}\}\}", re.M)
-entitytag = re.compile(r"<(INFINITY|NOTE|FIXME|COMP|IMPLNOTE)>")
+entitytag = re.compile(r"<(INFINITY|NOTE|FIXME|COMP|IMPLNOTE|LDOTS)>")
 
 entities = { "INFINITY": "&#x221E;",
 	     "NOTE": "<p class=\"note\"><b>NOTE</b>&nbsp;&nbsp; ",
 	     "COMP": "<p class=\"note\"><b>COMPATIBILITY NOTE</b>&nbsp;&nbsp; ",
 	     "IMPLNOTE": "<p class=\"note\"><b>IMPLEMENTATION NOTE</b>&nbsp;&nbsp; ",
-	     "FIXME": "<p class=\"fixme\"><b>FIXME</b>&nbsp;&nbsp; " }
+	     "FIXME": "<p class=\"fixme\"><b>FIXME</b>&nbsp;&nbsp; ",
+	     "LDOTS": "&#x0085;" }
 
 currentlevel = 0
 
@@ -115,6 +117,7 @@ def extractES(fn, name):
     if lastIsIdent:
 	name = name + r"(?![a-zA-Z0-9_])"
     starting = re.compile("^( *)" + name)
+    blanks = 0
     for line in f:
 	if outside:
 	    m = starting.search(line)
@@ -127,7 +130,6 @@ def extractES(fn, name):
 		continue
 	else:
 	    line = line.rstrip()
-	    blanks = 0
 	    if ending.search(line):
 		# Special case for common pattern: open brace indented like the name
 		if openbrace.search(line):
@@ -234,6 +236,8 @@ def process(fn, hdrlvl):
 	    print fn + ": Non-ASCII character in at location " + str(i) + ": " + str(cc)
 	    sys.exit(1)
     literals = []
+    # entities are replaced even in <PRE> blocks, so do that first.
+    text = re.sub(entitytag, replaceEntity, text)
     text = re.sub(wikiformatCodeblock, hideCodeblock, text) 
     text = re.sub(wikiformatLiteral, hideLiteral, text)
     text = re.sub(wikiheader, replaceWiki, text)
@@ -243,7 +247,6 @@ def process(fn, hdrlvl):
     text = re.sub(wikiformatSpecial, r"<code>\1</code>", text)
     text = re.sub(wikiformatBold, r"<b>\1</b>", text)
     text = re.sub(wikiformatItalic, r"<i>\1</i>", text)
-    text = re.sub(entitytag, replaceEntity, text)
     text = re.sub(wikiformatLiteralRecover, revealLiteral, text)
     text = re.sub(includetag, lambda m: replaceInclude(m, hdrlvl, fn), text)
     return text

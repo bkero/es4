@@ -20,26 +20,26 @@ instances of the class ''Object'' or one of its subclasses.
 {{{
 dynamic class Object
 {
-    function Object(value=undefined) ...
+    function Object(value=undefined) <LDOTS>
 
-    meta static function invoke(value=undefined) ...
+    meta static function invoke(value=undefined) <LDOTS>
 
     static const length: uint = 1
-    static const prototype: Object = ...
+    static const prototype: Object = <LDOTS>
 
-    intrinsic function toString(): string ...
-    intrinsic function toLocaleString(): string ...
-    intrinsic function toJSONString(...args): string ...
-    intrinsic function valueOf(): Object! ...
-    intrinsic function hasOwnProperty(V : EnumerableId): boolean ...
+    intrinsic function toString(): string <LDOTS>
+    intrinsic function toLocaleString(): string <LDOTS>
+    intrinsic function toJSONString(...args): string <LDOTS>
+    intrinsic function valueOf(): Object! <LDOTS>
+    intrinsic function hasOwnProperty(V : EnumerableId): boolean <LDOTS>
     intrinsic function isPrototypeOf(V): boolean
     intrinsic function propertyIsenumerable(prop: EnumerableId,
-                                            e: (undefined,boolean)=undefined): boolean ...
+                                            e: (undefined,boolean)=undefined): boolean <LDOTS>
 }
 }}}
 
 
-== The Object Constructor Called as a Function ==
+== The Object Class Called as a Function ==
 
 <p>When ''Object'' is called as a function it performs a type conversion.
 

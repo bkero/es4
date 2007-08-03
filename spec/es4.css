@@ -5,12 +5,12 @@
 .indented { padding-left: 3em }
 .nonterm { padding-top: 1em }
 
-code { font-style: normal, font-weight: normal }
+code { font-size: 10pt; font-style: normal; font-weight: normal }
 
-pre { padding-left: 2em }
+pre { padding-left: 2em; font-size: 10pt }
 
 body { counter-reset: chapter section subsection subsubsection;
-       font-size: 10pt }
+       font-size: 11pt }
 
 table { font-size: inherit }
 
@@ -36,3 +36,7 @@ H4:before {
     padding-right: 1em;
     content: counter(chapter) "." counter(section) "." counter(subsection) "." counter(subsubsection) "  ";
     counter-increment: subsubsection }
+
+@media print {
+    H1 { page-break-before: always }
+}

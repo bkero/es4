@@ -68,6 +68,21 @@ package
         // will special-case anyone calling "new Function(...)" in
         // the runtime.
 
+        /* The following is for the benefit of the specification, don't remove it.
+
+        function Function(...args) {
+            let parameters = "";
+            let body = "";
+            if (args.length > 0) {
+                body = args[args.length-1];
+                args.length = args.length-1;
+                parameters = args.join(",");
+            }
+            body = string(body);
+            magic::initializeFunction(this, intrinsic::global, parameters, body);
+        }
+
+        */
 
         /* E262-3 10.X / 13.X: function invocation.
 
@@ -91,7 +106,7 @@ package
            some things in the prototype that ensures that the object
            behaves like a function in some trivial ways.
          */
-        meta prototype function invoke()
+        meta prototype function invoke(...args)
             undefined;
 
         /* FIXME #64: This is bogus */
@@ -110,7 +125,7 @@ package
         prototype function apply(thisArg, argArray)
             Function.apply(this, thisArg, argArray);
 
-        intrinsic function apply(thisArg, argArray) : *
+        intrinsic function apply(thisArg, argArray)
             Function.apply(this, thisArg, argArray);
 
         /* E262-4 draft: "apply" and "call" are static methods on the
@@ -139,7 +154,7 @@ package
         prototype function call(thisObj, ...args)
             Function.apply(this, thisObj, args);
 
-        intrinsic function call(thisObj, ...args:Array):*
+        intrinsic function call(thisObj, ...args)
             Function.apply(this, thisObj, args);
 
         /* E262-4 draft: "apply" and "call" are static methods on the

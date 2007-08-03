@@ -43,6 +43,7 @@ package
     use default namespace public;
     use namespace intrinsic;
     use strict;
+    import ECMAScript4_Internal.*;
 
     // Array "extras" from JS1.6 (@todo: and JS1.8 -- reduce/reduceRight)
     // See http://developer.mozilla.org/en/docs/New_in_JavaScript_1.6#Array_extras
@@ -104,64 +105,66 @@ package
         }
 
         // 15.4.4.4 Array.prototype.concat ( [ item1 [ , item2 [ , ... ] ] ] )
-        private static function concatHelper(self, args) {
-            let out:Array = new Array;
-            let outlen:uint = 0;
+        helper static function concat(object, args) {
+            let out = new Array;
+            let outlen = 0;
 
             let function emit(x) {
                 if (x is Array) {
-                    for (let j:uint = 0; j < x.length; j++)
+                    for (let j = 0; j < x.length; j++)
                         out[outlen++] = x[j];
                 }
                 else
                     out[outlen++] = x;
             }
 
-            emit( self );
-            for (let i:uint = 0; i < args.length; i++)
+            emit( object );
+            for (let i = 0; i < args.length; i++)
                 emit( args[i] );
 
             return out;
         }
 
-        public static function concat(self, ...args)
-            private::concatHelper(self, args);        /* FIXME: "private::" should not be necessary */
+        static function concat(object, ...args)
+            helper::concat(object, args);
 
         prototype function concat(...args)
-            Array.private::concatHelper(this, args);  /* FIXME: "Array." should not be necessary, nor "private::" */
+            Array.helper::concat(this, args);
 
         intrinsic function concat(...args):Array
-            Array.private::concatHelper(this, args);  /* FIXME: "Array." should not be necessary, nor "private::" */
+            Array.helper::concat(this, args);
 
         // 15.4.4.5 Array.prototype.join (separator)
-        public static function join(self, sep = undefined) {
-            let s:string = (sep === undefined) ? "," : string(sep);
-            let out:string = "";
-            let len:uint = self.length;
-            for (let i:uint = 0; i < len; i++) {
+        static function join(object, sep = undefined) {
+            let s   = (sep === undefined) ? "," : string(sep);
+            let out = "";
+            let len = object.length;
+
+            for (let i = 0; i < len; i++) {
                 if (i != 0)
                     out += s;
-                let x = self[i];
+                let x = object[i];
                 if (x !== undefined && x !== null)
                     out += string(x);
             }
+
             return out;
         }
 
         prototype function join(sep = undefined)
-            Array.join(this, sep);  /* FIXME: "Array." should not be necessary */
+            Array.join(this, sep);
 
         intrinsic function join(sep = undefined):string
-            Array.join(this, sep);  /* FIXME: "Array." should not be necessary */
+            Array.join(this, sep);
 
         // 15.4.4.6 Array.prototype.pop ( )
-        public static function pop(self) {
-            let len:uint = self.length;
+        static function pop(object) {
+            let len = object.length;
 
             if (len != 0) {
-                let x = self[--len];
-                delete self[len];
-                self.length = len;
+                let x = object[--len];
+                delete object[len];
+                object.length = len;
                 return x;
             }
             return undefined;
@@ -170,42 +173,42 @@ package
         prototype function pop()
             Array.pop(this);
 
-        intrinsic function pop():*
+        intrinsic function pop()
             Array.pop(this);
 
         // 15.4.4.7 Array.prototype.push ( [ item1 [ , item2 [ , … ] ] ] )
-        public static function pushHelper(self, args) {
-            let len:uint = self.length;
-            let argslen:uint = args.length;
+        helper static function push(object, args) {
+            let len = object.length;
+            let argslen = args.length;
 
-            for (let i:uint = 0; i < argslen; i++)
-                self[len++] = args[i];
+            for (let i = 0; i < argslen; i++)
+                object[len++] = args[i];
 
-            self.length = len;
+            object.length = len;
             return len;
         }
 
-        public static function push(self, ...args)
-            pushHelper(this, args);
+        static function push(object, ...args)
+            Array.helper::push(object, args);
 
         prototype function push(...args)
-            pushHelper(this, args);  /* Static method should be in scope, and instance methods do not hide it */
+            Array.helper::push(this, args);
 
         intrinsic function push(...args:Array):uint
-            pushHelper(this, args);
+            Array.helper::push(this, args);
 
         // 15.4.4.8 Array.prototype.reverse ( )
-        public static function reverse(self) {
-            let i:uint = 0;
-            let j:uint = self.length;
-            let h:uint = j >>> 1;
+        static function reverse(object) {
+            let i = 0;
+            let j = object.length;
+            let h = j >>> 1;
 
             while (i < h) {
                 --j;
-                [self[i], self[j]] = [self[j], self[i]];
+                [object[i], object[j]] = [object[j], object[i]];
                 i++;
             }
-            return self;
+            return object;
         }
 
         prototype function reverse()
@@ -215,21 +218,21 @@ package
             Array.reverse(this);
 
         // 15.4.4.9 Array.prototype.shift ( )
-        public static function shift(self) {
-            let len:uint = self.length;
+        static function shift(object) {
+            let len = object.length;
             if (len == 0) {
-                self.length = 0;        // ECMA-262 requires explicit set here
+                object.length = 0;        // ECMA-262 requires explicit set here
                 return undefined;
             }
 
             // Get the 0th element to return
-            let x = self[0];
+            let x = object[0];
 
             // Move all of the elements down
-            for (let i:uint = 1; i < len; i++)
-                self[i-1] = self[i];
-            delete self[len - 1];
-            self.length = len - 1;
+            for (let i = 1; i < len; i++)
+                object[i-1] = object[i];
+            delete object[len - 1];
+            object.length = len - 1;
             return x;
         }
 
@@ -240,24 +243,24 @@ package
             Array.shift(this);
 
         // 15.4.4.10 Array.prototype.slice (start, end)
-        public static function slice(self, start, end) {
+        static function slice(object, start, end) {
             if (start === undefined)
                 start = 0;
             if (end === undefined)
                 end = Infinity;
 
-            let len:uint = uint(self.length);
+            let len = uint(object.length);
 
             // If a param is passed then the first one is start.
             // If no params are passed then start = 0.
-            let a:uint = private::clamp(start, len);  /* FIXME: private should not be necessary */
-            let b:uint = private::clamp(end, len);    /* FIXME: private should not be necessary */
+            let a = helper::clamp(start, len);
+            let b = helper::clamp(end, len);
             if (b < a)
                 b = a;
 
-            let out:Array = new Array;
-            for (let i:uint = a; i < b; i++)
-                out.push(self[i]);
+            let out = new Array;
+            for (let i = a; i < b; i++)
+                out.push(object[i]);
 
             return out;
         }
@@ -268,7 +271,7 @@ package
         intrinsic function slice(start:double = 0, end:double = Infinity):Array
             Array.slice(this, start, end);
 
-        public static function sort(self, comparefn) {
+        static function sort(self, comparefn) {
             let len:uint = self.length;
 
             if (len > 1)
@@ -285,7 +288,7 @@ package
             Array.sort(this, comparefn);
 
         // 15.4.4.12 Array.prototype.splice (start, deleteCount [ , item1 [ , item2 [ , ... ] ] ] )
-        public static function splice(self, start, deleteCount, ...args) {
+        static function splice(self, start, deleteCount, ...args) {
             let out:Array = new Array();
 
             let argslen:uint = uint(args.length);
@@ -293,7 +296,7 @@ package
                 return undefined;
 
             let len:uint = self.length;
-            let start:uint = private::clamp(double(args[0]), len);  /* FIXME: "private::" should not be necessary */
+            let start:uint = helper::clamp(double(args[0]), len);
             let d_deleteCount:double = argslen > 1 ? double(args[1]) : (len - start);
             let deleteCount:uint = (d_deleteCount < 0) ? 0 : uint(d_deleteCount);
             if (deleteCount > len - start)
@@ -346,7 +349,7 @@ package
         intrinsic function splice(...args:Array):Array
             Array.splice(this, arguments);
 
-        private static function unshift(A:Array, args:Array) : uint {
+        static function unshift(A:Array, args:Array) : uint {
             let len:uint = A.length;
             let argslen:uint = uint(args.length);
             let k:uint = len;
@@ -370,10 +373,10 @@ package
 
         // 15.4.4.13 Array.prototype.unshift ( [ item1 [ , item2 [ , … ] ] ] )
         prototype function unshift(...args)
-            Array.private::unshift(this, args);   /* FIXME: "Array." should not be necessary; "private::" neither */
+            Array.unshift(this, args);
 
         intrinsic function unshift(...args:Array):uint
-            Array.private::unshift(this, args);   /* FIXME: "Array." should not be necessary; "private::" neither */
+            Array.unshift(this, args);
 
         // 15.4.5.1 [[Put]] (P, V)
         // @todo: ensure that catchall-set for undeclared properties runs on every set
@@ -388,12 +391,12 @@ package
 
         // 15.4.5.2 length
         private var _length:uint = 0;
-        public function get length():uint
+        function get length():uint
             this.private::_length;
 
         // ECMA-262 requires a RangeError if non-ints are passed in,
         // so we must not type it as uint in the setter's signature
-        public function set length(newLength):void {
+        function set length(newLength):void {
             let oldLength:uint = this.private::_length;
             let newLengthAsDouble:double = double(newLength);
             let newLengthAsUint:uint = uint(newLengthAsDouble);
@@ -409,7 +412,7 @@ package
         // --------------------------------------------------
         // private utility methods
         // --------------------------------------------------
-        private static function clamp(intValue:double, len:uint):uint
+        helper static function clamp(intValue:double, len:uint):uint
         {
             return (intValue < 0.0)
                  ? (intValue + len < 0.0) ? 0 : uint(intValue + len)
@@ -470,28 +473,36 @@ package
                 qsort(i, hi, comparefn);
         }
 
-        prototype function map(mapper, thisObj)
-            this.map(mapper, thisObj);
-
-        intrinsic function map(mapper:Mapper, thisObj:Object):Array {
-            let result:Array = [];
-            for (let i:uint = 0; i < this.length; i++)
-                result[i] = mapper.call(thisObj, this[i], i, this);
+        static function map(object, mapper:Mapper, thisObj:Object):Array {
+            let result = [];
+            for (let i = 0; i < object.length; i++)
+                result[i] = mapper.call(thisObj, object[i], i, object);
             return result;
         }
 
-        prototype function filter(checker, thisObj)
-            this.filter(checker, thisObj);
+        prototype function map(mapper, thisObj)
+            Array.map(this, mapper, thisObj);
 
-        intrinsic function filter(checker:Checker, thisObj:Object):Array {
-            let result:Array = [];
-            for (let i:uint = 0; i < this.length; i++) {
-                let item = this[i];
-                if (checker.call(thisObj, item, i, this))
+        intrinsic function map(mapper:Mapper, thisObj:Object):Array
+            Array.map(this, mapper, thisObj);
+
+
+        static function filter(object, checker:Checker, thisObj:Object):Array {
+            let result = [];
+            for (let i = 0; i < object.length; i++) {
+                let item = object[i];
+                if (checker.call(thisObj, item, i, object))
                     result[result.length] = item;
             }
             return result;
         }
+
+        prototype function filter(checker, thisObj)
+            Array.filter(this, checker, thisObj);
+
+        intrinsic function filter(checker:Checker, thisObj:Object):Array
+            Array.filter(this, checker, thisObj);
+
 
         prototype function every(checker, thisObj)
             this.every(checker, thisObj);

@@ -13,81 +13,105 @@ implementation-dependent.
 types, and class definitions.
 
 {{{
-class Object ...
-class Function ...
-class Array ...
-class String ...
-class Boolean ...
-class Number ...
-class Date ...
-class RegExp ...
-class Error ...
-class EvalError ...
-class RangeError ...
-class ReferenceError ...
-class SyntaxError ...
-class TypeError ...
-class URIError ...
+namespace __ES4__
 
-types class string ...
-types class boolean
-types class int ...
-types class uint ...
-types class double ...
-types class decimal ...
+class Object <LDOTS>
+class Function <LDOTS>
+class Array <LDOTS>
+class String <LDOTS>
+class Boolean <LDOTS>
+class Number <LDOTS>
+class Date <LDOTS>
+class RegExp <LDOTS>
+class Error <LDOTS>
+class EvalError <LDOTS>
+class RangeError <LDOTS>
+class ReferenceError <LDOTS>
+class SyntaxError <LDOTS>
+class TypeError <LDOTS>
+class URIError <LDOTS>
 
-types type EnumerableId = ...
-types type Numeric = ...
+__ES4__ class string <LDOTS>
+__ES4__ class boolean
+__ES4__ class int <LDOTS>
+__ES4__ class uint <LDOTS>
+__ES4__ class double <LDOTS>
+__ES4__ class decimal <LDOTS>
+__ES4__ class Name <LDOTS>
+__ES4__ class Namespace <LDOTS>
+__ES4__ class ByteArray <LDOTS>
+__ES4__ class Map <LDOTS>
 
-const NaN: double = ...
-const Infinity: double = ...
-const undefined: undefined = ...
-const __ECMASCRIPT_VERSION__ = ...
-const Math: Object = ...
+__ES4__ type EnumerableId = <LDOTS>
+__ES4__ type Numeric = <LDOTS>
 
-intrinsic const global: Object = ...
+intrinsic interface Field <LDOTS>
+intrinsic interface FieldValue <LDOTS>
+intrinsic interface Type <LDOTS>
+intrinsic interface NominalType <LDOTS>
+intrinsic interface InterfaceType <LDOTS>
+intrinsic interface ClassType <LDOTS>
+intrinsic interface UnionType <LDOTS>
+intrinsic interface RecordType <LDOTS>
+intrinsic interface FunctionType <LDOTS>
+intrinsic interface ArrayType <LDOTS>
 
-intrinsic function eval(s: string) ...
-intrinsic function parseInt(s: string, r: (int,undefined)=undefined): Numeric ...
-intrinsic function parseFloat(s: string): Numeric ...
-intrinsic function isNaN(n: Numeric): boolean ...
-intrinsic function isFinite(n: Numeric): boolean ...
-intrinsic function decodeURI(s: string): string ...
-intrinsic function decodeURIComponent(s: string): string ...
-intrinsic function encodeURI(s: string): string ...
-intrinsic function encodeURIComponent(s: string): string ...
-intrinsic function hashcode(x): uint ...
+intrinsic type FieldIterator = <LDOTS>
+intrinsic type FieldValueIterator = <LDOTS>
+intrinsic type TypeIterator = <LDOTS>
+intrinsic type InterfaceIterator = <LDOTS>
 
-intrinsic function +(a,b) ...
-intrinsic function -(a,b) ...
-intrinsic function *(a,b) ...
-intrinsic function /(a,b) ...
-intrinsic function %(a,b) ...
-intrinsic function ^(a,b) ...
-intrinsic function &(a,b) ...
-intrinsic function |(a,b) ...
-intrinsic function <<(a,b) ...
-intrinsic function >>(a,b) ...
-intrinsic function >>>(a,b) ...
-intrinsic function ===(a,b) ...
-intrinsic function !==(a,b) ...
-intrinsic function ==(a,b) ...
-intrinsic function !=(a,b) ...
-intrinsic function <(a,b) ...
-intrinsic function <=(a,b) ...
-intrinsic function >(a,b) ...
-intrinsic function >=(a,b) ...
-intrinsic function ~(a) ...
+const NaN: double = <LDOTS>
+const Infinity: double = <LDOTS>
+const undefined: undefined = <LDOTS>
+const __ECMASCRIPT_VERSION__ = <LDOTS>
+const Math: Object = <LDOTS>
 
-function eval(x) ...
-function parseInt(s, r=undefined) ...
-function parseFloat(s) ...
-function isNaN(x) ...
-function isFinite(x) ...
-function decodeURI(x) ...
-function decodeURIComponent(x) ...
-function encodeURI(x) ...
-function encodeURIComponent(x) ...
+__ES4__ const global: Object = <LDOTS>
+
+intrinsic function eval(s: string) <LDOTS>
+intrinsic function parseInt(s: string, r: (int,undefined)=undefined): Numeric <LDOTS>
+intrinsic function parseFloat(s: string): Numeric <LDOTS>
+intrinsic function isNaN(n: Numeric): boolean <LDOTS>
+intrinsic function isFinite(n: Numeric): boolean <LDOTS>
+intrinsic function decodeURI(s: string): string <LDOTS>
+intrinsic function decodeURIComponent(s: string): string <LDOTS>
+intrinsic function encodeURI(s: string): string <LDOTS>
+intrinsic function encodeURIComponent(s: string): string <LDOTS>
+intrinsic function hashcode(x): uint <LDOTS>
+
+intrinsic function +(a,b) <LDOTS>
+intrinsic function -(a,b) <LDOTS>
+intrinsic function *(a,b) <LDOTS>
+intrinsic function /(a,b) <LDOTS>
+intrinsic function %(a,b) <LDOTS>
+intrinsic function ^(a,b) <LDOTS>
+intrinsic function &(a,b) <LDOTS>
+intrinsic function |(a,b) <LDOTS>
+intrinsic function <<(a,b) <LDOTS>
+intrinsic function >>(a,b) <LDOTS>
+intrinsic function >>>(a,b) <LDOTS>
+intrinsic function ===(a,b) <LDOTS>
+intrinsic function !==(a,b) <LDOTS>
+intrinsic function ==(a,b) <LDOTS>
+intrinsic function !=(a,b) <LDOTS>
+intrinsic function <(a,b) <LDOTS>
+intrinsic function <=(a,b) <LDOTS>
+intrinsic function >(a,b) <LDOTS>
+intrinsic function >=(a,b) <LDOTS>
+intrinsic function ~(a) <LDOTS>
+
+function eval(x) <LDOTS>
+function parseInt(s, r=undefined) <LDOTS>
+function parseFloat(s) <LDOTS>
+function isNaN(x) <LDOTS>
+function isFinite(x) <LDOTS>
+function decodeURI(x) <LDOTS>
+function decodeURIComponent(x) <LDOTS>
+function encodeURI(x) <LDOTS>
+function encodeURIComponent(x) <LDOTS>
+
+__ES4__ function hashcode(x) <LDOTS>
 }}}
 
 == Namespace for types ==
@@ -565,20 +589,25 @@ of each operator, bypassing any user overloading.  They can be
 referenced by prefixing them with a namespace, eg ''intrinsic::===''.
 
 
-== Class Properties of the Global Object ==
+== Class and Interface Properties of the Global Object ==
 
 <p>The class properties of the global object are defined in later sections of this Standard:
 <ul>
   <li> The ''Object'' class is defined in section <XREF target="object-object">
   <li> The ''Function'' class is defined in section <XREF target="function-object">
+  <li> The ''Name'' class is defined in section <XREF target="name-object">
+  <li> The ''Namespace'' class is defined in section <XREF target="namespace-object">
   <li> The ''Array'' class is defined in section <XREF target="array-object">
+  <li> The ''ByteArray'' class is defined in section <XREF target="bytearray-object">
   <li> The ''String'' and ''string'' classes are defined in section <XREF target="string-object">
   <li> The ''Boolean'' and ''boolean'' classes are defined in section <XREF target="boolean-object">
   <li> The ''Number'', ''int'', ''uint'', ''double'', and ''decimal'' classes are defined in section <XREF target="number-object">
   <li> The ''Date'' class is defined in section <XREF target="date-object">
   <li> The ''RegExp'' class is defined in section <XREF target="regexp-object">
+  <li> The ''Map'' class is defined in section <XREF target="map-object">
   <li> The ''Error'' class and its subclasses ''EvalError'', ''RangeError'', ''ReferenceError'', ''SyntaxError'', ''TypeError'', and ''URIError'' are defined in section <XREF target="error-object">
 </ul>
+
 
 
 == Type Properties on the Global Object ==
@@ -590,7 +619,7 @@ types that are treated as property names by the iteration protocol and the
 built-in objects:
 
 {{{
-types type EnumerableId = (int,uint,Name,string);
+__ES4__ type EnumerableId = (int,uint,Name,string);
 }}}
 
 === Numeric ===
@@ -599,8 +628,18 @@ types type EnumerableId = (int,uint,Name,string);
 types that are treated as numbers by the implementation:
 
 {{{
-types type Numeric = (int,uint,double,decimal,Number);
+__ES4__ type Numeric = (int,uint,double,decimal,Number);
 }}}
+
+
+== Meta-Object Interface and Type Properties of the Global Object ==
+
+The interface types ''Field'', ''FieldValue'', ''Type'',
+''NominalType'', ''InterfaceType'', ''ClassType'', ''UnionType'',
+''RecordType'', ''FunctionType'', and ''ArrayType'', as well as the
+structural types ''FieldIterator'', ''FieldValueIterator'',
+''TypeIterator'', and ''InterfaceIterator'', are defined in section
+<XREF target="meta-objects">.
 
 
 == Other Properties of the Global Object ==
