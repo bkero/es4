@@ -49,7 +49,7 @@ package
     // See http://developer.mozilla.org/en/docs/New_in_JavaScript_1.6#Array_extras
     // The callback function typically takes (item, i, list) parameters
     type Mapper  = function (*, uint, Object):*;
-    type Eacher  = function (*, uint, Object):void;
+    type Eacher  = function (*, uint, Object):void;    // FIXME: 'void' seems too strict
     type Checker = function (*, uint, Object):Boolean;
     type Reducer = function (*, *, uint, Object):*;
 
@@ -378,6 +378,190 @@ package
         intrinsic function unshift(...args:Array):uint
             Array.unshift(this, args);
 
+
+        // JS1.6 -- http://developer.mozilla.org/en/docs/Core_JavaScript_1.5_Reference:Objects:Array:map
+        // ES4 draft -- static generics
+
+        // FIXME #153: we want a generic "function" shortand to
+        // signify "any function" here, but it should signify
+        // "callable", not "subtype of Function"
+
+        static function map(object:Object!, mapper/*:function*/, thisObj:Object=null): Array {
+            // FIXME #153: this type test goes away if the type annotation
+            // above can be used.
+            if (typeof mapper != "function")
+                throw new TypeError("Function object required to 'map'");
+
+            let result = [];
+            for (let i = 0, limit = object.length; i < limit ; i++)
+                if (i in object)
+                    result[i] = mapper.call(thisObj, object[i], i, object);
+            return result;
+        }
+
+        prototype function map(mapper, thisObj=null)
+            Array.map(this, mapper, thisObj);
+
+        intrinsic function map(mapper:Mapper, thisObj:Object=null): Array
+            Array.map(this, mapper, thisObj);
+
+
+        // JS1.6 -- http://developer.mozilla.org/en/docs/Core_JavaScript_1.5_Reference:Objects:Array:forEach
+        // ES4 draft
+
+        static function forEach(object:Object!, eacher/*function*/, thisObj:Object=null): void {
+            // FIXME #153: this type test goes away if the type annotation
+            // above can be used.
+            if (typeof eacher != "function")
+                throw new TypeError("Function object required to 'forEach'");
+
+            for (let i = 0, limit = object.length ; i < limit ; i++)
+                if (i in object)
+                    eacher.call(thisObj, object[i], i, object);
+        }
+
+        prototype function forEach(eacher, thisObj=null) {
+            Array.forEach(this, eacher, thisObj);
+        }
+
+        intrinsic function forEach(eacher:Eacher, thisObj:Object=null): void {
+            Array.forEach(this, eacher, thisObj);
+        }
+
+
+        // JS1.6 -- http://developer.mozilla.org/en/docs/Core_JavaScript_1.5_Reference:Objects:Array:filter
+        // ES4 draft
+
+        static function filter(object:Object!, checker/*function*/, thisObj:Object=null): Array {
+            // FIXME #153: this type test goes away if the type annotation
+            // above can be used.
+            if (typeof checker != "function")
+                throw new TypeError("Function object required to 'filter'");
+
+            let result = [];
+            for (let i = 0, limit=object.length ; i < limit ; i++) {
+                if (i in object) {
+                    let item = object[i];
+                    if (checker.call(thisObj, item, i, object))
+                        result[result.length] = item;
+                }
+            }
+            return result;
+        }
+
+        prototype function filter(checker, thisObj=null)
+            Array.filter(this, checker, thisObj);
+
+        intrinsic function filter(checker:Checker, thisObj:Object=null): Array
+            Array.filter(this, checker, thisObj);
+
+
+        // JS1.6 -- http://developer.mozilla.org/en/docs/Core_JavaScript_1.5_Reference:Objects:Array:every
+        // ES4 draft
+
+        static function every(object:Object!, checker/*:function*/, thisObj:Object): boolean {
+            // FIXME #153: this type test goes away if the type annotation
+            // above can be used.
+            if (typeof checker != "function")
+                throw new TypeError("Function object required to 'every'");
+
+            for (let i = 0, limit = object.length ; i < limit ; i++) {
+                if (i in object)
+                    if (!checker.call(thisObj, object[i], i, object))
+                        return false;
+            }
+            return true;
+        }
+
+        prototype function every(checker, thisObj=null)
+            Array.every(this, checker, thisObj);
+
+        intrinsic function every(checker:Checker, thisObj:Object=null): boolean 
+            Array.every(this, checker, thisObj);
+
+
+        // JS1.6 -- http://developer.mozilla.org/en/docs/Core_JavaScript_1.5_Reference:Objects:Array:some
+        // ES4 draft
+
+        static function some(object:Object!, checker/*:function*/, thisObj:Object=null): boolean {
+            // FIXME #153: this type test goes away if the type annotation
+            // above can be used.
+            if (typeof checker != "function")
+                throw new TypeError("Function object required to 'some'");
+
+            for (let i=0, limit=object.length; i < limit ; i++) {
+                if (i in object)
+                    if (checker.call(thisObj, object[i], i, object))
+                        return true;
+            }
+            return false;
+        }
+
+        prototype function some(checker, thisObj=null)
+            Array.some(this, checker, thisObj);
+
+        intrinsic function some(checker:Checker, thisObj:Object=null): boolean
+            Array.some(this, checker, thisObj);
+
+
+        // JS1.6 -- http://developer.mozilla.org/en/docs/Core_JavaScript_1.5_Reference:Objects:Array:indexOf
+        // ES4 draft: static intrinsics
+
+        static function indexOf(object:Object!, elt, from:Numeric=0): Numeric {
+            let len = object.length;
+
+            from = from < 0 ? Math.ceil(from) : Math.floor(from);
+            if (from < 0)
+                from = from + len;
+            
+            while (from < len) {
+                if (from in object)
+                    if (object[from] === elt)
+                        return from;
+                from = from + 1;
+            }
+            return -1;
+        }
+
+        prototype function indexOf(elt, from=0)
+            Array.indexOf(this, elt, ToNumeric(from));
+
+        intrinsic function indexOf(elt, from:Numeric=0): Numeric
+            Array.indexOf(this, elt, from);
+
+
+        // JS1.6 -- http://developer.mozilla.org/en/docs/Core_JavaScript_1.5_Reference:Objects:Array:lastIndexOf
+        // ES4 draft: static intrinsics
+
+        static function lastIndexOf(object:Object!, elt, from:Numeric=NaN): Numeric {
+            let len = object.length;
+
+            if (isNaN(from))
+                from = len - 1;
+            else {
+                from = from < 0 ? Math.ceil(from) : Math.floor(from);
+                if (from < 0)
+                    from = from + len;
+                else if (from >= len)
+                    from = len - 1;
+            }
+
+            while (from > -1) {
+                if (from in object)
+                    if (object[from] === elt)
+                        return from;
+                from = from - 1;
+            }
+            return -1;
+        }
+
+        prototype function lastIndexOf(elt, from=NaN)
+            Array.lastIndexOf(this, elt, ToNumeric(from));
+
+        intrinsic function lastIndexOf(elt, from:Numeric=NaN): Numeric
+            Array.lastIndexOf(this, elt, from);
+
+
         // 15.4.5.1 [[Put]] (P, V)
         // @todo: ensure that catchall-set for undeclared properties runs on every set
         meta function set(id, value):void {
@@ -471,59 +655,6 @@ package
                 qsort(lo, j, comparefn);
             if (i < hi)
                 qsort(i, hi, comparefn);
-        }
-
-        static function map(object, mapper:Mapper, thisObj:Object):Array {
-            let result = [];
-            for (let i = 0; i < object.length; i++)
-                result[i] = mapper.call(thisObj, object[i], i, object);
-            return result;
-        }
-
-        prototype function map(mapper, thisObj)
-            Array.map(this, mapper, thisObj);
-
-        intrinsic function map(mapper:Mapper, thisObj:Object):Array
-            Array.map(this, mapper, thisObj);
-
-
-        static function filter(object, checker:Checker, thisObj:Object):Array {
-            let result = [];
-            for (let i = 0; i < object.length; i++) {
-                let item = object[i];
-                if (checker.call(thisObj, item, i, object))
-                    result[result.length] = item;
-            }
-            return result;
-        }
-
-        prototype function filter(checker, thisObj)
-            Array.filter(this, checker, thisObj);
-
-        intrinsic function filter(checker:Checker, thisObj:Object):Array
-            Array.filter(this, checker, thisObj);
-
-
-        prototype function every(checker, thisObj)
-            this.every(checker, thisObj);
-
-        intrinsic function every(checker:Checker, thisObj:Object):Boolean {
-            for (let i:uint = 0; i < this.length; i++) {
-                if (!checker.call(thisObj, this[i], i, this))
-                    return false;
-            }
-            return true;
-        }
-
-        prototype function some(checker, thisObj)
-            this.some(checker, thisObj);
-
-        intrinsic function some(checker:Checker, thisObj:Object):Boolean {
-            for (let i:uint = 0; i < this.length; i++) {
-                if (checker.call(thisObj, this[i], i, this))
-                    return true;
-            }
-            return false;
         }
     }
 }
