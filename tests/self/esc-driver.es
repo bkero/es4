@@ -6,7 +6,8 @@
     use namespace Parser;
 
 
-    var parser = new Parser("var x = 0; x = 10; print(x)");
+    var str = readFile ("./tests/self/prime.es");
+    var parser = new Parser(str);
     var [ts1,nd1] = parser.program();
     print(Ast::encodeProgram (nd1));
 

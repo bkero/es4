@@ -114,6 +114,8 @@ type TOKENS = Array;  // [int];
         var currentPackageName: string;
         var currentClassName: string;
 
+        private var coordList;
+
         function hd (ts) 
         {
             var tk = Token::tokenKind (ts[0]);
@@ -1590,44 +1592,44 @@ type TOKENS = Array;  // [int];
 
             switch (hd (ts)) {
             case Token::Delete:
-                let [ts1,nd1] = postfixExpression (ts,beta);
-                var [tsx,ndx] = [tsx,new Ast::UnaryExpr (Ast::deleteOp,ndx)];
+                let [ts1,nd1] = postfixExpression (tl (ts),beta);
+                var [tsx,ndx] = [ts1,new Ast::UnaryExpr (Ast::deleteOp,nd1)];
                 break;
             case Token::Void:
-                let [ts1,nd1] = unaryExpression (ts,beta);
-                var [tsx,ndx] = [tsx,new Ast::UnaryExpr (Ast::voidOp,ndx)];
+                let [ts1,nd1] = unaryExpression (tl (ts),beta);
+                var [tsx,ndx] = [ts1,new Ast::UnaryExpr (Ast::voidOp,nd1)];
                 break;
             case Token::TypeOf:
-                let [ts1,nd1] = unaryExpression (ts,beta);
-                var [tsx,ndx] = [tsx,new Ast::UnaryExpr (Ast::typeOfOp,ndx)];
+                let [ts1,nd1] = unaryExpression (tl (ts),beta);
+                var [tsx,ndx] = [ts1,new Ast::UnaryExpr (Ast::typeOfOp,nd1)];
                 break;
             case Token::PlusPlus:
-                let [ts1,nd1] = postfixExpression (ts,beta);
-                var [tsx,ndx] = [tsx,new Ast::UnaryExpr (Ast::preIncrOp,ndx)];
+                let [ts1,nd1] = postfixExpression (tl (ts),beta);
+                var [tsx,ndx] = [ts1,new Ast::UnaryExpr (Ast::preIncrOp,nd1)];
                 break;
             case Token::MinusMinus:
-                let [ts1,nd1] = postfixExpression (ts,beta);
-                var [tsx,ndx] = [tsx,new Ast::UnaryExpr (Ast::preDecrOp,ndx)];
+                let [ts1,nd1] = postfixExpression (tl (ts),beta);
+                var [tsx,ndx] = [ts1,new Ast::UnaryExpr (Ast::preDecrOp,nd1)];
                 break;
             case Token::Plus:
-                let [ts1,nd1] = unaryExpression (ts,beta);
-                var [tsx,ndx] = [tsx,new Ast::UnaryExpr (Ast::unaryPlusOp,ndx)];
+                let [ts1,nd1] = unaryExpression (tl (ts),beta);
+                var [tsx,ndx] = [ts1,new Ast::UnaryExpr (Ast::unaryPlusOp,nd1)];
                 break;
             case Token::Minus:
-                let [ts1,nd1] = unaryExpression (ts,beta);
-                var [tsx,ndx] = [tsx,new Ast::UnaryExpr (Ast::unaryMinusOp,ndx)];
+                let [ts1,nd1] = unaryExpression (tl (ts),beta);
+                var [tsx,ndx] = [ts1,new Ast::UnaryExpr (Ast::unaryMinusOp,nd1)];
                 break;
             case Token::BitwiseNot:
-                let [ts1,nd1] = unaryExpression (ts,beta);
-                var [tsx,ndx] = [tsx,new Ast::UnaryExpr (Ast::bitwiseNotOp,ndx)];
+                let [ts1,nd1] = unaryExpression (tl (ts),beta);
+                var [tsx,ndx] = [ts1,new Ast::UnaryExpr (Ast::bitwiseNotOp,nd1)];
                 break;
             case Token::Not:
-                let [ts1,nd1] = unaryExpression (ts,beta);
-                var [tsx,ndx] = [tsx,new Ast::UnaryExpr (Ast::logicalNotOp,ndx)];
+                let [ts1,nd1] = unaryExpression (tl (ts),beta);
+                var [tsx,ndx] = [ts1,new Ast::UnaryExpr (Ast::logicalNotOp,nd1)];
                 break;
             case Token::Type:
-                let [ts1,nd1] = nullableTypeExpression (ts,beta);
-                var [tsx,ndx] = [tsx,new Ast::TypeExpr (ndx)];
+                let [ts1,nd1] = nullableTypeExpression (tl (ts),beta);
+                var [tsx,ndx] = [ts1,new Ast::TypeExpr (nd1)];
                 break;
             default:
                 var [tsx,ndx] = postfixExpression (ts,beta);
@@ -1653,16 +1655,21 @@ type TOKENS = Array;  // [int];
         {
             enter("Parser::multiplicativeExpression ", ts);
 
-            [ts1,nd1] = unaryExpression (ts, beta);
+            var [ts1,nd1] = unaryExpression (ts, beta);
 
             done:
             while (true) {
+
+                if (hd (ts1) === Token::BREAK) {
+                    [ts1,this.coordList] = scan.tokenList (scan.div);
+                }
+
                 switch (hd (ts1)) {
                 case Token::Mult:
                     var op = Ast::multOp;
                     break;
                 case Token::Div:
-                    var op = Ast::divOp;
+                    var op = Ast::divideOp;
                     break;
                 case Token::Remainder:
                     var op = Ast::remainderOp;
@@ -2801,7 +2808,20 @@ type TOKENS = Array;  // [int];
         function newline (ts: TOKENS)
             : boolean
         {
-            return false; // FIXME
+            let offset = ts.length;
+
+            if (offset == coordList.length)
+                return true;  // first token, so follows newline, but whose asking?
+
+            let coord = coordList[coordList.length-offset];
+            let prevCoord = coordList[coordList.length-offset-1];
+            print("coord=",coord);
+            print("prevCoord=",prevCoord);
+
+            if(coord[0] != prevCoord[0]) // do line coords match?
+                return true;
+            else 
+                return false;
         }
 
         function semicolon (ts: TOKENS, omega: OMEGA)
@@ -5350,7 +5370,9 @@ type TOKENS = Array;  // [int];
         {
             enter("Parser::program ","");
 
-            let ts = scan.tokenList (scan.start)
+            let [ts,cs] = scan.tokenList (scan.start);
+            this.coordList = cs;
+
             if (hd (ts) == Token::Internal || 
                 hd (ts) == Token::Package)
             {
@@ -5410,15 +5432,13 @@ type TOKENS = Array;  // [int];
             , "while (x) { print(x); x-- }"
             , "function f (x=10) { return x }"
             , "function f (x) { return x }"
-              */
               , "x = y"
-
-
+            , readFile ("./tests/self/prime.es")
+              */
               /*
             , "class A { function A() {} }"
             , "class Fib { function Fib (n) { } }"
             , readFile ("./tests/self/hello.es")
-            , readFile ("./tests/self/fib.es")
             "a .< t .< u .< v > , w .< x > > > >",
             "q::[expr]",
             "(expr)::id",
