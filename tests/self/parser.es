@@ -58,7 +58,13 @@ type TOKENS = Array;  // [int];
 
     class ObjectPattern { }
     class ArrayPattern { }
-    class SimplePattern { }
+    class SimplePattern
+    {
+        const expr : Ast::EXPR;
+        function SimplePattern (expr)
+            : expr = expr { }
+    }
+
     class IdentifierPattern
     {
         const ident : Ast::IDENT;
@@ -156,11 +162,16 @@ type TOKENS = Array;  // [int];
         InitExpr, the property init, if any, ends up in the InitExpr inits, and 
         the property bindings get hoisted into the appropriate block head
 
+        desugaring results in either a letexpr or a set of bindings and an initexpr, 
+        depending on whether or not the leaf nodes are IdentifierPatterns or 
+        SimplePatterns
+
         */
 
         function desugarPattern (p: PATTERN, t: Ast::TYPE_EXPR, e: Ast::EXPR)
             : [[Ast::BINDING], [Ast::INIT_STEP], Ast::HEAD]
         {
+            enter ("desugarPattern");
             var bs, ss;
             switch type (p) : PATTERN {
             case (p:IdentifierPattern) {
@@ -168,18 +179,30 @@ type TOKENS = Array;  // [int];
                 var binds = [new Ast::Binding (i,t)];
                 if (e !== null) {
                     var inits = [new Ast::InitStep (i,e)];
-                    var temps = {fixtures:[],inits:[]};
+                    var head = {fixtures:[],inits:[]};
                 }
                 else {
                     var inits = [];
-                    var temps = {fixtures:[],inits:[]};
+                    var head = {fixtures:[],inits:[]};
+                }
+            }
+            case (p:SimplePattern) {
+                if (e !== null) {
+                    var binds = [];
+                    var inits = [new Ast::AssignStep (p.expr,e)];
+                    var head = {fixtures:[],inits:[]};
+                }
+                else {
+                    throw "simple pattern without initializer";
                 }
             }
             case (x: *) {
                 throw "internal error: desugarPattern " + p;
             }
             }
-            return [binds,inits,temps];  // FIXME: RI allows [b,[]], which should be an error
+            exit ("desugarPattern");
+
+            return [binds,inits,head];  // FIXME: RI allows [b,[]], which should be an error
         }
 
         // Parse rountines
@@ -2191,10 +2214,32 @@ type TOKENS = Array;  // [int];
         {
             enter("Parser::assignmentExpression ", ts);
 
+            function exprFromAssignStep (as /*: Ast::AssignStep*/) {
+                return new Ast::SetExpr (new Ast::Assign,as.Ast::le,as.Ast::re);
+            }
+
+            function patternFromExpr (e: Ast::EXPR) {
+                return new SimplePattern (e);  // FIXME: handle destructuring patterns
+            }
+
             var [ts1,nd1] = conditionalExpression (ts, beta);
+            switch (hd (ts1)) {
+            case Token::Assign:
+                var [ts1,nd1] = [tl (ts1), patternFromExpr (nd1)];
+                var [ts2,nd2] = assignmentExpression (ts1,beta);
+                var [binds,inits,head] = desugarPattern (nd1,Ast::anyType,nd2,0);
+                //var expr = new Ast::LetExpr (head, new Ast::ListExpr ([exprFromAssignStep (inits[0])]));  
+                var expr = exprFromAssignStep (inits[0]);
+                            // FIXME: map exprFromAssignStep over all elements
+                            // assert binds is empty
+                break;
+            default:
+                var [ts2,expr] = [ts1,nd1];
+                break;
+            }
 
             exit ("Parser::assignmentExpression ", ts1);
-            return [ts1,nd1];
+            return [ts2,expr];
         }
 
         /*
@@ -3450,7 +3495,7 @@ type TOKENS = Array;  // [int];
             return [ts2,[b1,i1,h1]];
         }
 
-        function variableBinding (ts: TOKENS, beta: BETA, ns, isPrototype, isStatic)
+        function variableBinding (ts: TOKENS, beta: BETA)
             : [TOKENS, [[Ast::BINDING], [Ast::INIT_STEP], Ast::HEAD]]
         {
             enter("Parser::variableBinding ", ts);
@@ -5362,11 +5407,12 @@ type TOKENS = Array;  // [int];
             , "let const x"
             , "const x"
             , "x.y.z"
-              */
-
             , "while (x) { print(x); x-- }"
             , "function f (x=10) { return x }"
             , "function f (x) { return x }"
+              */
+              , "x = y"
+
 
               /*
             , "class A { function A() {} }"
