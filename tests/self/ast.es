@@ -483,13 +483,11 @@ namespace Ast
     }
 
     class LetExpr {
-        const binds : BINDING_INITS;
-        const head : HEAD;
-        const body : EXPR;
-        function LetExpr (binds,head,body)
-            : binds = binds
-            , head = head
-            , body = body {}
+        const head //: HEAD;
+        const expr : EXPR;
+        function LetExpr (head,expr)
+            : head = head
+            , expr = expr {}
     }
 
     class NewExpr {
@@ -895,6 +893,9 @@ namespace Ast
     class AssignStep {
         const le : EXPR;
         const re : EXPR;
+        function AssignStep (le,re)
+            : le = le
+            , re = re {}
     }
 
     // FIXTURES
@@ -984,6 +985,11 @@ namespace Ast
     class NullType { public function toString() "Null" }
     class UndefinedType { public function toString() "Undefined" }
     class VoidType { public function toString() "Void" }
+
+    const anyType = new SpecialType (new AnyType);
+    const nullType = new SpecialType (new NullType);
+    const undefinedType = new SpecialType (new UndefinedType);
+    const voidType = new SpecialType (new VoidType);
 
     class UnionType {
         const types : [TYPE_EXPR];

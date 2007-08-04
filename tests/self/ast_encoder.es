@@ -392,6 +392,20 @@
               + encodeIdentExpr (ex.ident,nesting+", 'ident': ".length)
               + " }";
         }
+        case (ex: SetExpr) {
+            var str =
+                "{ 'ast::class': 'SetExpr'"
+              + indent(nesting)
+              + ", 'op': "
+              + encodeAssignOp (ex.op,nesting,", 'op': ".length)
+              + indent(nesting)
+              + ", 'le': "
+              + encodeExpr (ex.le,nesting+", 'le': ".length)
+              + indent(nesting)
+              + ", 're': "
+              + encodeExpr (ex.re,nesting+", 're': ".length)
+              + " }";
+        }
         case (ex: BinaryExpr) {
             var str =
                 "{ 'ast::class': 'BinaryExpr'"
@@ -430,6 +444,17 @@
               + ", 'inits': [ "
               + encodeInits (nd.inits,nesting+", 'inits': [ ".length)
               + " ] }";
+        }
+        case (nd: LetExpr) {
+            var str =
+                "{ 'ast::class': 'LetExpr'"
+              + indent(nesting)
+              + ", 'head': "
+              + encodeHead (nd.head,nesting+", 'head': ".length)
+              + indent(nesting)
+              + ", 'expr': "
+              + encodeExpr (nd.expr,nesting+", 'expr': ".length)
+              + " }";
         }
         case (nd: GetTemp) {
             var str =
@@ -600,9 +625,65 @@
         return str;
     }
 
+    function encodeAssignOp (nd : ASSIGNOP, nesting: int = 0)
+        : string {
+        enter ("encodeAssignOp")
+        var str = "";
+        switch type (nd): ASSIGNOP {
+        case (op: Assign) {
+            var str = "Assign";
+        }
+        case (op: AssignPlus) {
+            var str = "AssignPlus";
+        }
+        case (op: AssignMinus) {
+            var str = "AssignMinus";
+        }
+        case (op: AssignTimes) {
+            var str = "AssignTimes";
+        }
+        case (op: AssignDivide) {
+            var str = "AssignDivide";
+        }
+        case (op: AssignRemainder) {
+            var str = "AssignRemainder";
+        }
+        case (op: AssignLeftShift) {
+            var str = "AssignLeftShift";
+        }
+        case (op: AssignRightShift) {
+            var str = "AssignRightShift";
+        }
+        case (op: AssignRightShiftUnsigned) {
+            var str = "AssignRightShiftUnsigned";
+        }
+        case (op: AssignBitwiseAnd) {
+            var str = "AssignBitwiseAnd";
+        }
+        case (op: AssignBitwiseOr) {
+            var str = "AssignBitwiseOr";
+        }
+        case (op: AssignBitwiseXor) {
+            var str = "AssignBitwiseXor";
+        }
+        case (op: AssignLogicalAnd) {
+            var str = "AssignLogicalAnd";
+        }
+        case (op: AssignLogicalOr) {
+            var str = "AssignLogicalOr";
+        }
+        case (x: *) {
+            throw "internalError: encodeLiteral";
+        }
+        }
+        var str = "{ 'ast::class': '" + str + "' }"
+        exit ("encodeAssignOp ",str);
+        return str;
+    }
+
     function encodeBinOp (nd : BINOP, nesting: int = 0)
         : string {
-        enter ("encodeLiteral")
+        enter ("encodeBinOp")
         var str = "";
         switch type (nd): BINOP {
         case (op: Plus) {
@@ -679,7 +760,7 @@
         }
         }
         var str = "{ 'ast::class': '" + str + "' }"
-        exit ("encodeLiteral ",str);
+        exit ("encodeBinOp ",str);
         return str;
     }
 
