@@ -54,6 +54,8 @@ package
     intrinsic const Infinity = 1.0/0.0;
     intrinsic const undefined = void(0);
 
+    intrinsic const global = this;
+
     // 15.1.2.1 eval (x)
     intrinsic native function eval(s: string);
 

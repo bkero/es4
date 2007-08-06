@@ -1,40 +1,50 @@
-.fixme { color: red }
-.note { }
+/* -*- indent-tabs-mode: nil -*- */
+.fixme { font-size: smaller; padding-left: 1em; color: red }
+.note { font-size: smaller; padding-left: 1em }
 .part { font-size: 24pt }
 .grammar { font-style: italic }
 .indented { padding-left: 3em }
 .nonterm { padding-top: 1em }
+.xref { border: thin solid red; }
 
 code { font-size: 10pt; font-style: normal; font-weight: normal }
 
-pre { padding-left: 2em; font-size: 10pt }
+pre { font-size: 8pt }
 
 body { counter-reset: chapter section subsection subsubsection;
-       font-size: 11pt }
+       font-size: 11pt; 
+       margin: 1in }
 
 table { font-size: inherit }
+
+.pcounter {
+    position: absolute; left: 0.5in;
+    content: counter(para); 
+    counter-increment: para
+}
 
 H1:before {
     padding-right: 1em;
     content: counter(chapter) "  ";
-    counter-reset: section;
+    counter-reset: section para;
     counter-increment: chapter }
 
 H2:before {
     padding-right: 1em;
     content: counter(chapter) "." counter(section) "  ";
-    counter-reset: subsection;
+    counter-reset: subsection para;
     counter-increment: section }
 
 H3:before {
     padding-right: 1em;
     content: counter(chapter) "." counter(section) "." counter(subsection) "  ";
-    counter-reset: subsubsection;
+    counter-reset: subsubsection para;
     counter-increment: subsection }
 
 H4:before {
     padding-right: 1em;
     content: counter(chapter) "." counter(section) "." counter(subsection) "." counter(subsubsection) "  ";
+    counter-reset: para;
     counter-increment: subsubsection }
 
 @media print {

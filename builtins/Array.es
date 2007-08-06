@@ -55,16 +55,16 @@ package
 
     // INFORMATIVE: this is an implementation that meets the spec, but the spec
     // allows for different sort implementations (quicksort is not required)
-    type Comparator = (function (*,*):double, undefined);
+    type Comparator = (function (*,*):Numeric, undefined);
 
     dynamic class Array
     {
         // 15.4.1 The Array Constructor Called as a Function
-        meta static function invoke(...args) {
-            if (args.length == 1)
-                return new Array(args[0]);
+        meta static function invoke(...items) {
+            if (items.length == 1)
+                return new Array(items[0]);
             else
-                return args; /* Already an array */
+                return items;
         }
 
         // 15.4.2 The Array Constructor
@@ -75,6 +75,30 @@ package
         // because the implementation here would rely on rest args,
         // and we use Array to *implement* those.
 
+        /* For the benefit of the spec, please do not remove this:
+
+        function Array(...items) {
+            if (items.length === 1) {
+                let item = items[0];
+                if (item is Numeric) {
+                    if (uint(item) === item)
+                        this.length = uint(item);
+                    else
+                        throw new RangeError("Invalid array length");
+                }
+                else {
+                    this.length = 1;
+                    this[0] = item;
+                }
+            }
+            else {
+                this.length = items.length;
+                for ( let i=0, limit=items.length ; i < limit ; i++ )
+                    this[i] = items[i];
+            }
+        }
+
+        */
 
         // 15.4.4 Properties of the Array Prototype Object
         // prototype.[[Prototype]] = prototype;
@@ -93,56 +117,57 @@ package
             this.toLocaleString();
 
         override intrinsic function toLocaleString():string {
-            let out:string = "";
-            for (let i:uint = 0, n:uint = this.length; i < n; i++) {
-                if (i != 0)
+            let out = "";
+            for (let i = 0, limit = this.length; i < limit ; i++) {
+                if (i > 0)
                     out += ",";
                 let x = this[i];
-                if (x != null)
+                if (x !== null && x !== undefined)
                     out += x.toLocaleString();
             }
             return out;
         }
 
         // 15.4.4.4 Array.prototype.concat ( [ item1 [ , item2 [ , ... ] ] ] )
-        helper static function concat(object, args) {
+
+        // FIXME #155: type system bug
+        helper static function concat(object/*: Object!*/, items: Array): Array {
             let out = new Array;
-            let outlen = 0;
 
             let function emit(x) {
                 if (x is Array) {
-                    for (let j = 0; j < x.length; j++)
-                        out[outlen++] = x[j];
+                    for (let i=0, limit=x.length ; i < limit ; i++)
+                        out[out.length] = x[i];
                 }
                 else
-                    out[outlen++] = x;
+                    out[out.length] = x;
             }
 
             emit( object );
-            for (let i = 0; i < args.length; i++)
-                emit( args[i] );
+            for (let i=0, limit=items.length ; i < limit ; i++)
+                emit( items[i] );
 
             return out;
         }
 
-        static function concat(object, ...args)
-            helper::concat(object, args);
+        // FIXME #155: type system bug
+        static function concat(object/*: Object!*/, ...items): Array
+            helper::concat(object, items);
 
-        prototype function concat(...args)
-            Array.helper::concat(this, args);
+        prototype function concat(...items)
+            Array.helper::concat(this, items);
 
-        intrinsic function concat(...args):Array
-            Array.helper::concat(this, args);
+        intrinsic function concat(...items): Array
+            Array.helper::concat(this, items);
 
         // 15.4.4.5 Array.prototype.join (separator)
-        static function join(object, sep = undefined) {
-            let s   = (sep === undefined) ? "," : string(sep);
+        // FIXME #155: type system bug
+        static function join(object/*: Object!*/, separator: string=","): string {
             let out = "";
-            let len = object.length;
 
-            for (let i = 0; i < len; i++) {
-                if (i != 0)
-                    out += s;
+            for (let i=0, limit=uint(object.length) ; i < limit ; i++) {
+                if (i > 0)
+                    out += separator;
                 let x = object[i];
                 if (x !== undefined && x !== null)
                     out += string(x);
@@ -151,23 +176,28 @@ package
             return out;
         }
 
-        prototype function join(sep = undefined)
-            Array.join(this, sep);
+        prototype function join(separator=undefined)
+            Array.join(this, separator === undefined ? "," : string(separator));
 
-        intrinsic function join(sep = undefined):string
-            Array.join(this, sep);
+        intrinsic function join(separator: string=","): string
+            Array.join(this, separator);
 
         // 15.4.4.6 Array.prototype.pop ( )
-        static function pop(object) {
-            let len = object.length;
+        // FIXME #155: type system bug
+        static function pop(object/*:Object!*/) {
+            let len = uint(object.length);
 
             if (len != 0) {
-                let x = object[--len];
-                delete object[len];
+                len = len - 1;
+                let x = object[len];
+                delete object[len]
                 object.length = len;
                 return x;
             }
-            return undefined;
+            else {
+                object.length = len;
+                return undefined;
+            }
         }
 
         prototype function pop()
@@ -177,49 +207,68 @@ package
             Array.pop(this);
 
         // 15.4.4.7 Array.prototype.push ( [ item1 [ , item2 [ , … ] ] ] )
-        helper static function push(object, args) {
-            let len = object.length;
-            let argslen = args.length;
+        // FIXME #155: type system bug
+        helper static function push(object/*:Object!*/, args: Array): uint {
+            let len = uint(object.length);
 
-            for (let i = 0; i < argslen; i++)
+            for (let i=0, limit=args.length ; i < limit ; i++)
                 object[len++] = args[i];
 
             object.length = len;
             return len;
         }
 
-        static function push(object, ...args)
+        static function push(object/*: Object!*/, ...args): uint
             Array.helper::push(object, args);
 
         prototype function push(...args)
             Array.helper::push(this, args);
 
-        intrinsic function push(...args:Array):uint
+        intrinsic function push(...args): uint
             Array.helper::push(this, args);
 
         // 15.4.4.8 Array.prototype.reverse ( )
-        static function reverse(object) {
-            let i = 0;
-            let j = object.length;
-            let h = j >>> 1;
+        // FIXME #155: type system bug
+        static function reverse(object/*: Object!*/)/*: Object!*/ {
+            let len = uint(object.length);
+            let middle = Math.floor(len / 2);
 
-            while (i < h) {
-                --j;
-                [object[i], object[j]] = [object[j], object[i]];
-                i++;
+            for ( let k=0 ; k < middle ; ++k ) {
+                let j = len - k - 1;
+                if (j in object) {
+                    if (k in object)
+                        [object[k], object[j]] = [object[j], object[k]];
+                    else {
+                        object[k] = object[j];
+                        delete object[j];
+                    }
+                }
+                else if (k in object) {
+                    object[j] = object[k];
+                    delete object[k];
+                }
+                else {
+                    // FIXME #157: this seems redundant, they are both absent already.
+                    // Is this ever observable (in ES3)?
+                    delete object[j];
+                    delete object[k];
+                }
             }
+
             return object;
         }
 
         prototype function reverse()
             Array.reverse(this);
 
-        intrinsic function reverse():Array
+        // FIXME #155: type system bug
+        intrinsic function reverse()/*: Object!*/
             Array.reverse(this);
 
         // 15.4.4.9 Array.prototype.shift ( )
-        static function shift(object) {
-            let len = object.length;
+        // FIXME #155: type system bug
+        static function shift(/*object: Object!*/) {
+            let len = uint(object.length);
             if (len == 0) {
                 object.length = 0;        // ECMA-262 requires explicit set here
                 return undefined;
@@ -243,12 +292,8 @@ package
             Array.shift(this);
 
         // 15.4.4.10 Array.prototype.slice (start, end)
-        static function slice(object, start, end) {
-            if (start === undefined)
-                start = 0;
-            if (end === undefined)
-                end = Infinity;
-
+        // FIXME #155: type system bug
+        static function slice(object/*: Object!*/, start: Numeric=0, end: Numeric=Infinity) {
             let len = uint(object.length);
 
             // If a param is passed then the first one is start.
@@ -266,18 +311,21 @@ package
         }
 
         prototype function slice(start, end)
+            Array.slice(this, 
+                        start === undefined ? 0 : ToNumeric(start), 
+                        end === undefined ? Infinity : ToNumeric(end));
+
+        intrinsic function slice(start: Numeric=0, end: Numeric=Infinity): Array
             Array.slice(this, start, end);
 
-        intrinsic function slice(start:double = 0, end:double = Infinity):Array
-            Array.slice(this, start, end);
-
-        static function sort(self, comparefn) {
-            let len:uint = self.length;
+        // FIXME #155: type system bug
+        static function sort(object/*: Object!*/, comparefn) {
+            let len:uint = object.length;
 
             if (len > 1)
-                self.private::qsort(0, len-1, comparefn);  /* FIXME: "private::" should not be necessary */
+                object.private::qsort(0, len-1, comparefn);  // FIXME: "private::" should not be necessary
 
-            return self;
+            return object;
         }
 
         prototype function sort(comparefn)
@@ -288,95 +336,103 @@ package
             Array.sort(this, comparefn);
 
         // 15.4.4.12 Array.prototype.splice (start, deleteCount [ , item1 [ , item2 [ , ... ] ] ] )
-        static function splice(self, start, deleteCount, ...args) {
-            let out:Array = new Array();
+        // FIXME #155: type system bug
+        helper static function splice(object/*: Object!*/, start: Numeric, deleteCount: Numeric, items: Array) {
+            let out = new Array();
 
-            let argslen:uint = uint(args.length);
-            if (argslen == 0)
+            let numitems = uint(items.length);
+            if (numitems == 0)
                 return undefined;
 
-            let len:uint = self.length;
-            let start:uint = helper::clamp(double(args[0]), len);
-            let d_deleteCount:double = argslen > 1 ? double(args[1]) : (len - start);
-            let deleteCount:uint = (d_deleteCount < 0) ? 0 : uint(d_deleteCount);
+            let len = object.length;
+            let start = helper::clamp(double(items[0]), len);
+            let d_deleteCount = numitems > 1 ? double(items[1]) : (len - start);
+            let deleteCount = (d_deleteCount < 0) ? 0 : uint(d_deleteCount);
             if (deleteCount > len - start)
                 deleteCount = len - start;
 
-            let end:uint = start + deleteCount;
+            let end = start + deleteCount;
 
             // Copy out the elements we are going to remove
             for (let i:uint = 0; i < deleteCount; i++)
-                out.push(self[i + start]);
+                out.push(object[i + start]);
 
-            let insertCount:uint = (argslen > 2) ? (argslen - 2) : 0;
-            let l_shiftAmount:double = insertCount - deleteCount;
-            let shiftAmount:uint;
+            let insertCount = (numitems > 2) ? (numitems - 2) : 0;
+            let l_shiftAmount = insertCount - deleteCount;
+            let shiftAmount;
 
             // delete items by shifting elements past end (of delete) by l_shiftAmount
             if (l_shiftAmount < 0) {
                 // Shift the remaining elements down
                 shiftAmount = uint(-l_shiftAmount);
 
-                for (let i:uint = end; i < len; i++)
-                    self[i - shiftAmount] = self[i];
+                for (let i = end; i < len; i++)
+                    object[i - shiftAmount] = object[i];
 
                 // delete top elements here to match ECMAscript spec (generic object support)
-                for (let i:uint = len - shiftAmount; i < len; i++)
-                    delete self[i];
+                for (let i = len - shiftAmount; i < len; i++)
+                    delete object[i];
             }
             else {
                 // Shift the remaining elements up.
                 shiftAmount = uint(l_shiftAmount);
 
-                for (let i:uint = len; i > end; ) {
+                for (let i = len; i > end; ) {
                     --i;
-                    self[i + shiftAmount] = self[i];
+                    object[i + shiftAmount] = object[i];
                 }
             }
 
             // Add the items to insert
             for (let i:uint = 0; i < insertCount; i++)
-                self[start+i] = args[i + 2];
+                object[start+i] = items[i + 2];
 
             // shrink array if shiftAmount is negative
-            self.length = len + l_shiftAmount;
+            object.length = len + l_shiftAmount;
             return out;
         }
 
-        prototype function splice(start, deleteCount)
-            Array.splice(this, arguments);
+        // FIXME #155: type system bug
+        static function splice(object/*: Object!*/, start: Numeric, deleteCount: Numeric, ...items): Array
+            Array.helper::splice(object, start, deleteCount, items);
 
-        intrinsic function splice(...args:Array):Array
-            Array.splice(this, arguments);
+        prototype function splice(start, deleteCount, ...items)
+            Array.helper::splice(this, ToNumeric(start), ToNumeric(deleteCount), items);
 
-        static function unshift(A:Array, args:Array) : uint {
-            let len:uint = A.length;
-            let argslen:uint = uint(args.length);
-            let k:uint = len;
+        intrinsic function splice(start: Numeric, deleteCount: Numeric, ...items): Array
+            Array.helper::splice(this, start, deleteCount, items);
 
-            while (k != 0) {
-                k--;
-                let d:uint = k + argslen;
-                if (k in A)
-                    A[d] = A[k];
+        // FIXME #155: type system bug
+        helper static function unshift(object/*: Object!*/, items: Array) : uint {
+            let len = uint(object.length);
+            let numitems = items.length;
+
+            for ( let k=len-1 ; k >= 0 ; --k ) {
+                let d = k + numitems;
+                if (k in object)
+                    object[d] = object[k];
                 else
-                    delete A[d];
+                    delete object[d];
             }
 
-            for (let i:uint = 0; i < argslen; i++)
-                A[i] = args[i];
+            for (let i=0; i < numitems; i++)
+                object[i] = items[i];
 
-            A.length = len+argslen;   /* Required by E262-3; observable by means of a setter method on A */
+            object.length = len+numitems;   // Required by E262-3; observable by means of a setter method on A
 
-            return len+argslen;
+            return len+numitems;
         }
 
         // 15.4.4.13 Array.prototype.unshift ( [ item1 [ , item2 [ , … ] ] ] )
-        prototype function unshift(...args)
-            Array.unshift(this, args);
+        // FIXME #155: type system bug
+        static function unshift(object/*: Object!*/, ...items) : uint
+            Array.helper::unshift(this, object, items);
 
-        intrinsic function unshift(...args:Array):uint
-            Array.unshift(this, args);
+        prototype function unshift(...items)
+            Array.helper::unshift(this, items);
+
+        intrinsic function unshift(...items): uint
+            Array.helper::unshift(this, items);
 
 
         // JS1.6 -- http://developer.mozilla.org/en/docs/Core_JavaScript_1.5_Reference:Objects:Array:map
@@ -386,7 +442,8 @@ package
         // signify "any function" here, but it should signify
         // "callable", not "subtype of Function"
 
-        static function map(object:Object!, mapper/*:function*/, thisObj:Object=null): Array {
+        // FIXME #155: type system bug
+        static function map(object/*:Object!*/, mapper/*:function*/, thisObj:Object=null): Array {
             // FIXME #153: this type test goes away if the type annotation
             // above can be used.
             if (typeof mapper != "function")
@@ -409,13 +466,14 @@ package
         // JS1.6 -- http://developer.mozilla.org/en/docs/Core_JavaScript_1.5_Reference:Objects:Array:forEach
         // ES4 draft
 
-        static function forEach(object:Object!, eacher/*function*/, thisObj:Object=null): void {
+        // FIXME #155: type system bug
+        static function forEach(object/*:Object!*/, eacher/*function*/, thisObj:Object=null): void {
             // FIXME #153: this type test goes away if the type annotation
             // above can be used.
             if (typeof eacher != "function")
                 throw new TypeError("Function object required to 'forEach'");
 
-            for (let i = 0, limit = object.length ; i < limit ; i++)
+            for (let i=0, limit = object.length ; i < limit ; i++)
                 if (i in object)
                     eacher.call(thisObj, object[i], i, object);
         }
@@ -432,7 +490,8 @@ package
         // JS1.6 -- http://developer.mozilla.org/en/docs/Core_JavaScript_1.5_Reference:Objects:Array:filter
         // ES4 draft
 
-        static function filter(object:Object!, checker/*function*/, thisObj:Object=null): Array {
+        // FIXME #155: type system bug
+        static function filter(object/*:Object!*/, checker/*function*/, thisObj:Object=null): Array {
             // FIXME #153: this type test goes away if the type annotation
             // above can be used.
             if (typeof checker != "function")
@@ -459,13 +518,14 @@ package
         // JS1.6 -- http://developer.mozilla.org/en/docs/Core_JavaScript_1.5_Reference:Objects:Array:every
         // ES4 draft
 
-        static function every(object:Object!, checker/*:function*/, thisObj:Object): boolean {
+        // FIXME #155: type system bug
+        static function every(object/*:Object!*/, checker/*:function*/, thisObj:Object=null): boolean {
             // FIXME #153: this type test goes away if the type annotation
             // above can be used.
             if (typeof checker != "function")
                 throw new TypeError("Function object required to 'every'");
 
-            for (let i = 0, limit = object.length ; i < limit ; i++) {
+            for (let i=0, limit=object.length ; i < limit ; i++) {
                 if (i in object)
                     if (!checker.call(thisObj, object[i], i, object))
                         return false;
@@ -483,7 +543,8 @@ package
         // JS1.6 -- http://developer.mozilla.org/en/docs/Core_JavaScript_1.5_Reference:Objects:Array:some
         // ES4 draft
 
-        static function some(object:Object!, checker/*:function*/, thisObj:Object=null): boolean {
+        // FIXME #155: type system bug
+        static function some(object/*:Object!*/, checker/*:function*/, thisObj:Object=null): boolean {
             // FIXME #153: this type test goes away if the type annotation
             // above can be used.
             if (typeof checker != "function")
@@ -507,7 +568,7 @@ package
         // JS1.6 -- http://developer.mozilla.org/en/docs/Core_JavaScript_1.5_Reference:Objects:Array:indexOf
         // ES4 draft: static intrinsics
 
-        static function indexOf(object:Object!, elt, from:Numeric=0): Numeric {
+        static function indexOf(object/*:Object!*/, value, from:Numeric=0): Numeric {
             let len = object.length;
 
             from = from < 0 ? Math.ceil(from) : Math.floor(from);
@@ -516,24 +577,24 @@ package
             
             while (from < len) {
                 if (from in object)
-                    if (object[from] === elt)
+                    if (value === object[from])
                         return from;
                 from = from + 1;
             }
             return -1;
         }
 
-        prototype function indexOf(elt, from=0)
-            Array.indexOf(this, elt, ToNumeric(from));
+        prototype function indexOf(value, from=0)
+            Array.indexOf(this, value, ToNumeric(from));
 
-        intrinsic function indexOf(elt, from:Numeric=0): Numeric
-            Array.indexOf(this, elt, from);
+        intrinsic function indexOf(value, from:Numeric=0): Numeric
+            Array.indexOf(this, value, from);
 
 
         // JS1.6 -- http://developer.mozilla.org/en/docs/Core_JavaScript_1.5_Reference:Objects:Array:lastIndexOf
         // ES4 draft: static intrinsics
 
-        static function lastIndexOf(object:Object!, elt, from:Numeric=NaN): Numeric {
+        static function lastIndexOf(object/*:Object!*/, value, from:Numeric=NaN): Numeric {
             let len = object.length;
 
             if (isNaN(from))
@@ -548,18 +609,18 @@ package
 
             while (from > -1) {
                 if (from in object)
-                    if (object[from] === elt)
+                    if (value === object[from])
                         return from;
                 from = from - 1;
             }
             return -1;
         }
 
-        prototype function lastIndexOf(elt, from=NaN)
-            Array.lastIndexOf(this, elt, ToNumeric(from));
+        prototype function lastIndexOf(value, from=NaN)
+            Array.lastIndexOf(this, value, ToNumeric(from));
 
-        intrinsic function lastIndexOf(elt, from:Numeric=NaN): Numeric
-            Array.lastIndexOf(this, elt, from);
+        intrinsic function lastIndexOf(value, from:Numeric=NaN): Numeric
+            Array.lastIndexOf(this, value, from);
 
 
         // 15.4.5.1 [[Put]] (P, V)
@@ -603,16 +664,24 @@ package
                  : (intValue > len) ? len : uint(intValue);
         }
 
-        private function compare(j:uint, k:uint, comparefn:Comparator):double {
+        helper function sortCompare(j:uint, k:uint, comparefn:Comparator): Numeric {
+            if (!(x in this) && !(y in this))
+                return 0;
+            if (!(x in this))
+                return 1;
+            if (!(y in this))
+                return -1;
+
             let x = this[j];
             let y = this[k];
-            if (x === undefined) {
-                if (y === undefined)
-                    return 0;
+
+            if (x === undefined && y === undefined)
+                return 0;
+            if (x === undefined)
                 return 1;
-            }
             if (y === undefined)
                 return -1;
+
             if (comparefn === undefined) {
                 x = x.toString();
                 y = y.toString();
@@ -638,9 +707,9 @@ package
             let i:uint = lo;
             let j:uint = hi;
             while (i <= j) {
-                while (private::compare(i, pivot, comparefn) < 0)  /* FIXME: "private::" should not be necessary */
+                while (helper::sortCompare(i, pivot, comparefn) < 0)
                     ++i;
-                while (private::compare(j, pivot, comparefn) > 0)  /* FIXME: "private::" should not be necessary */
+                while (helper::sortCompare(j, pivot, comparefn) > 0)
                     --j;
                 if (i <= j) {
                     let temp = this[i];

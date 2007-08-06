@@ -52,14 +52,14 @@ behavior.
 
 == The Function Class Called as a Function ==
 
-When the ''Function'' class is called as a function it creates and
+<P>When the ''Function'' class is called as a function it creates and
 initialises a new ''Function'' object. Thus the function call
 ''Function(<LDOTS>)'' is equivalent to the object creation expression
 ''new Function(<LDOTS>)'' with the same arguments.
 
 === Function (p1, p2, <LDOTS> , pn, body) ===
 
-When the ''Function'' class is called with some arguments //p1//,
+<P>When the ''Function'' class is called with some arguments //p1//,
 //p2//, <LDOTS> , //pn//, //body// (where //n// might be 0, that is, there
 are no "//p//" arguments, and where //body// might also not be
 provided), the following steps are taken:
@@ -70,7 +70,7 @@ Function">).
 
 == The Function Constructor ==
 
-When ''Function'' is called as part of a ''new'' expression, it is a
+<P>When ''Function'' is called as part of a ''new'' expression, it is a
 constructor: it initialises the newly created object.
 
 === new Function (p1, p2, <LDOTS> , pn, body) ===
@@ -125,7 +125,7 @@ prototype object (section <XREF target="Function.prototype">).
 
 === Function.apply ===
 
-The static ''apply'' method takes two arguments, //thisArg// and
+<P>The static ''apply'' method takes two arguments, //thisArg// and
 //argArray//, and performs a function call using the [[Call]] property
 of the object.  If the object does not have a [[Call]] property, a
 **TypeError** exception is thrown.
@@ -138,7 +138,7 @@ of the object.  If the object does not have a [[Call]] property, a
 
 === Function.call ===
 
-The static ''call'' method takes one or more arguments, //thisArg// and
+<P> The static ''call'' method takes one or more arguments, //thisArg// and
 (optionally) //arg1//, //arg2// etc, and performs a function call using the
 [[Call]] property of the object. If the object does not have a
 [[Call]] property, a TypeError exception is thrown.  The called
@@ -247,7 +247,7 @@ on a number of arguments other than the number specified by its
 
 === prototype ===
 
-The value of the ''prototype'' property is used to initialise the internal
+<P> The value of the ''prototype'' property is used to initialise the internal
 [[Prototype]] property of a newly created object before the ''Function''
 object is invoked as a constructor for that newly created object.
 
