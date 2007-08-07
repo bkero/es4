@@ -244,7 +244,7 @@ def replaceInclude(m, hdrlvl, fn):
 	if isSignature:
 	    return extractES(ms.group(1), ms.group(2), True)
 	else:
-	    return "<PRE>" + extractES(ms.group(1), ms.group(2), False) + "\n</PRE>"
+	    return "<PRE>" + extractES(ms.group(1), ms.group(2), False) + "</PRE>"
     print fn + ": Invalid INCLUDE directive: " + m.group(0)
     sys.exit(1)
 

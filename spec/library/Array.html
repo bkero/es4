@@ -327,18 +327,18 @@ the behaviour of ''sort'' is implementation-defined.  Let //len// be
 and an object //P// such that all of the conditions below are
 satisfied then the behaviour of ''sort'' is implementation-defined:
 
-<FIXME>Probably use ''uint(x)'' rather than ''ToUint32(x)'' throughout.
-
-<FIXME>The use of ''ToString'' is not suitable for ES4 (though it is
-correct).  See comments at the top of the Array section.
-
-<ul>
+<ol>
 <li> //0 <LEQ> i <LT> len//
 <li> //0 <LEQ> j <LT> len//
 <li> //object// does not have a property with name ''ToString(//i//)''
 <li> //P// is obtained by following one or more [[Prototype]] properties starting at this
 <li> //P// has a property with name ''ToString(//j//)''
-</ul>
+</ol>
+
+<FIXME>Probably use ''uint(x)'' rather than ''ToUint32(x)'' throughout.
+
+<FIXME>The use of ''ToString'' is not suitable for ES4 (though it is
+correct).  See comments at the top of the Array section.
 
 <p>Otherwise the following steps are taken.
 
@@ -354,14 +354,18 @@ results of previous calls to the [[Get]] method.
 
 <P>The returned object must have the following two properties.
 
-<ul> <li> There must be some mathematical permutation <PI> of the
+<ol>
+  <li> There must be some mathematical permutation <PI> of the
 nonnegative integers less than //L//, such that for every nonnegative
 integer //j// less than //L//, if property //old[j]// existed, then
 //new[<PI>(j)]// is exactly the same value as //old[j]//, but if
 property //old[j]// did not exist, then //new[<PI>(j)]// does not
-exist.  <li> Then for all nonnegative integers //j// and //k//, each
+exist.
+
+  <li> Then for all nonnegative integers //j// and //k//, each
 less than //L//, if //SortCompare(j,k) < 0// (see //SortCompare//
-below), then //<PI>(j) < <PI>(k)//.  </ul>
+below), then //<PI>(j) < <PI>(k)//.
+</ol>
 
 <P>Here the notation //old[j]// is used to refer to the hypothetical
 result of calling the [[Get]] method of this object with argument
@@ -373,7 +377,7 @@ object with argument //j// after this function has been executed.
 met for all values //a//, //b//, and //c// (possibly the same value) in the set //S//: The notation //a &lt;CF b// means
 //comparefn(a,b) <LT> 0//; //a =CF b// means //comparefn(a,b) = 0// (of either sign); and //a >CF b// means //comparefn(a,b) > 0//.
 
-<UL>
+<OL>
 <LI> Calling //comparefn(a,b)// always returns the same value //v// when given a specific pair of values //a// and //b// as its
 two arguments. Furthermore, //v// has type //Number//, and //v// is not **NaN**. Note that this implies that exactly one of
 //a &lt;CF b//, //a =CF b//, and //a >CF b// will be true for a given pair of //a// and //b//.
@@ -382,7 +386,7 @@ two arguments. Furthermore, //v// has type //Number//, and //v// is not **NaN**.
 <LI> If //a =CF b// and //b =CF c//, then //a =CF c// (transitivity of //=CF//)
 <LI> If //a &lt;CF b// and //b &lt;CF c//, then //a &lt;CF c// (transitivity of //&lt;CF//)
 <LI> If //a >CF b// and //b >CF c//, then //a >CF c// (transitivity of //>CF//)
-</UL>
+</OL>
 
 <NOTE> The above conditions are necessary and sufficient to ensure that //comparefn// divides the set //S// into equivalence classes
 and that these equivalence classes are totally ordered.

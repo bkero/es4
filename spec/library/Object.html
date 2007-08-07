@@ -165,11 +165,11 @@ chain is not considered).  See <XREF target="magic:hasOwnProperty">.
 from the object.  See <XREF target="magic:getPrototype">.
 
 
-=== propertyIsEnumerable (V) ===
+=== propertyIsEnumerable (V, e) ===
 
 <p> When the intrinsic ''propertyIsEnumerable'' method is called on an
-object ''V'' with an optional second argument ''e', the following
-steps are taken:
+object with a property name //V// and an optional second argument
+//e//, the following steps are taken:
 
 <INCLUDE file="Object.es" name="intrinsic function propertyIsEnumerable">
 
@@ -193,7 +193,7 @@ flag of the property.  See <XREF target="magic:setPropertyIsDontEnum">.
 
 <p>The value of the internal [[Prototype]] property of the Object
 prototype object is null and the value of the internal [[Class]]
-property is "Object".
+property is ''"Object"''.
 
 
 === Methods on the Object prototype object ===
