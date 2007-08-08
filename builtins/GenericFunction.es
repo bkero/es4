@@ -1,21 +1,41 @@
+/* Simple generic functions.
+
+   The GenericFunction constructor takes the number of required
+   arguments and a flag stating whether the function can also take
+   optional or rest arguments.
+
+   The addMethod method adds a method
+*/
 package
 {
     type Set.<T> = Map.<T,boolean>;
 
     public class GenericFunction extends Object
     {
+        function GenericFunction(required: uint, more: boolean) 
+            : required = required
+            , more = more
+        {
+        }
+
+        // Type names used by the translator
+
+        public static const t_null = { "null": true };
+        public static const t_undefined = { "undefined": true };
+        public static const t_any = { "any": true };
+    
         meta final function invoke(...args) {
             // Select applicable methods.
 
             var ms = methods[args.length];
-            var ts = args.map(typeOf(a));  // fixme
+            var ts = args.map(typeOf(a));
             var as = [];
         outer:
             for ( let i=0 ; i < ms.length ; i++ ) {
                 let m = ms[i];
                 let s = m.signature;
                 for ( let j=0 ; j < args.length ; j++ ) {
-                    if (!isSubtype(ts[j], s[j]))  // fixme
+                    if (!isSubtype(ts[j], s[j]))
                         continue outer;
                 }
                 as.push(m);
@@ -57,12 +77,10 @@ package
             throw new NoApplicableMethodError;
         }
 
-        public function addShape(fixed: uint, optional: uint=0, rest: boolean=false) {
-            ...
-        }
-
         public function addMethod(fixedTypes: Array, body: function()) {
-            ...
+            if (fixedTypes.length != required)
+                throw "Generic function requires exactly " + required + " discriminators";
+            methods.push({discriminators: fixedTypes, body: body});
         }
 
         /* For each method we want to know if one precedes the other for
@@ -114,6 +132,8 @@ package
             return cmp;
         }
 
+        var required;
+        var more;
         const methods = [];
     }
 
@@ -138,25 +158,46 @@ package
     const SingletonNextMethodExn = new NextMethodExn;
 
 
-    // Sketches
+    /**********************************************************************
+     *
+     * Type systems support -- a (working) sketch.
+     */
+
+    // Since the ES4 meta objects systems is not yet mature, we
+    // represent the type of undefined as undefined, the type of null
+    // as null, and the source-level translation must cooperate in
+    // this, ie,
+    //
+    //  generic function f( x: null ) { ... }
+    //
+    // turns into
+    //
+    //  f.addMethod( [null], function (nextMethod, x: null) { ... }
+    //
+    // In practice this does not matter much.
+    //
+    // We can't handle union types here yet.
 
     function typeOf(v) {
         switch type (v) {
-        case (v:undefined) { return type undefined }
-        case (v:null) { return type null }
-        case (v:*) { return classOf(v) }
+        case (v:undefined) { return GenericFunction.t_undefined };
+        case (v:null) { return GenericFunction.t_null; }
+        case (v:*) { return magic::classOf(v) }
         }
     }
 
+    // Subtype relation, simplified.  Must be compatible with the
+    // subtype relation in the language, but is simplified for generic
+    // functions.
+    //
+    // t1 is "type undefined", "type null", or a class type
+    // t2 can be any of those, an interface type, or a union type
+    //
+    // We can't handle union types here yet.
+     
     function isSubtype(t1, t2) {
-        // t1 is "type undefined", "type null", or a class type
-        // t2 can be any of those, an interface type, or a union type
         if (t1 === t2)
             return true;
-
-        if (t2 is UnionType) {
-            return some(componentTypes(t2), function(x)isSubtype(t1, x));
-        }
 
         let cpl = classPrecedenceList(t1);
         for ( let i=0, limit=cpl.length ; i < limit ; i++ )

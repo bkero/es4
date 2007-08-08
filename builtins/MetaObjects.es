@@ -1,39 +1,12 @@
 package
 {
-    import ECMAScript4_Internal.*;
+    use default namespace intrinsic;
 
-    //    use default namespace intrinsic;
+    class Type {}
 
-    /* This must return an array of the direct superclass followed by
-     * the direct superinterfaces, in declaration order.  Right now we
-     * depend on undocumented behavior of the RI: the interfaces are
-     * actually in order in the internal data structures.
-     */
-    informative function directSuperClassAndInterfaces(clsOrInterface: (Class,Interface)) {
-        let supers = [];
-        switch type (clsOrInterface) {
-        case (cls:Class) {
-            let probe = magic::getSuperClass(cls);
-            if (probe !== null)
-                supers.push(probe);
-            for ( let i=0 ; ; i++ ) {
-                let probe = magic::getImplementedInterface(cls, uint(i));
-                if (probe === null)
-                    break;
-                supers.push(probe);
-            }
-        }
-        case (iface:Interface) {
-            for ( let i=0 ; ; i++ ) {
-                let probe = magic::getSuperInterface(iface, uint(i));
-                if (probe === null)
-                    break;
-                supers.push(probe);
-            }
-        }
-        }
-        return supers;
-    }
+    class UndefinedType extends Type {}
+    class NullType extends Type {}
+    class AnyType extends Type { }
 
     /*
     interface Type 
@@ -42,7 +15,6 @@ package
         //function isSubtypeOf(t: Type): boolean;
     }
 
-    interface AnyType extends Type { }
 
     interface NullType extends Type { }
 
