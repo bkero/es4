@@ -537,13 +537,15 @@ namespace Ast
     }
 
     type INIT_TARGET =
-       ( Hoisted
-       , Local
-       , Prototype )
+       ( HoistedInit
+       , LocalInit
+       , PrototypeInit
+       , InstanceInit )
 
-    class Hoisted {}
-    class Local {}
-    class Prototype {}
+    class HoistedInit {}
+    class LocalInit {}
+    class PrototypeInit {}
+    class InstanceInit {}
 
 	class InitExpr {
         const target : INIT_TARGET;
@@ -590,9 +592,6 @@ namespace Ast
         private const nss : [[NAMESPACE]];
         function Identifier (ident)
             : ident = ident {}
-        function set opennss (nss) {
-            this.nss = nss
-        }
     }
 
     class QualifiedExpression {
@@ -764,25 +763,26 @@ namespace Ast
     type CLS = Cls;
 
     class Cls {
-        const name : NAME;
-        const baseName : NAME?;
-        const interfaceNames : [NAME];
-        const constructor : CTOR?;
+        const name //: NAME;
+        const baseName //: NAME?;
+        const interfaceNames //: [NAME];
+        const constructor : CTOR;
         const classFixtures : FIXTURES;
-        const instanceFixtures : FIXTURES;
-        const instanceInits : HEAD;
-        const classType : ObjectType;
-        const instanceType : InstanceType;
-        function Cls (name,baseName,interfaceNames,constructor)
+        const instanceFixtures //: FIXTURES;
+        const instanceInits //: HEAD;
+            const classType //: ObjectType;
+            const instanceType //: InstanceType;
+        function Cls (name,baseName,interfaceNames,constructor,classFixtures,instanceFixtures
+                     ,instanceInits,classType,instanceType)
             : name = name
             , baseName = baseName
             , interfaceNames = interfaceNames
             , constructor = constructor
-            , classFixtures = []
-            , instanceFixtures = []
-            , instanceInits = []
-            , classType = null
-            , instanceType = null {}
+            , classFixtures = classFixtures
+            , instanceFixtures = instanceFixtures
+            , instanceInits = instanceInits
+            , classType = classType
+            , instanceType = instanceType{}
     }
 
     // FUNCS
@@ -821,24 +821,18 @@ namespace Ast
             , type = ty {}
     }
 
-    type FUNC_SIG = 
-       { typeParams : [IDENT]
-       , params : HEAD  //BINDING_INITS
-       , paramTypes : [TYPE_EXPR]
-       , defaults : [EXPR]
-       , ctorInits : [BINDING_INITS,[EXPR]]?  /* [settings, super args] */
-       , returnType : TYPE_EXPR
-       , thisType : TYPE_EXPR?
-       , hasRest : Boolean }
-
     // CTORS
 
     type CTOR = Ctor;
 
     class Ctor {
-        const settings : HEAD;
+        const settings : [EXPR];
         const superArgs : [EXPR];
         const func : FUNC;
+        function Ctor (settings,superArgs,func)
+            : settings = settings
+            , superArgs = superArgs
+            , func = func {}
     }
 
     // BINDING_INITS
@@ -907,6 +901,7 @@ namespace Ast
         TypeVarFixture,
         TypeFixture,
         MethodFixture,
+        CtorFixture,
         ValFixture,
         VirtualValFixture
     )
@@ -917,6 +912,8 @@ namespace Ast
 
     class ClassFixture {
         const cls : CLS;
+        function ClassFixture (cls)
+            : cls = cls {}
     }
 
     class InterfaceFixture { }
@@ -939,6 +936,14 @@ namespace Ast
             isFinal = isFinal
         {
         }
+    }
+
+    class CtorFixture {
+        const ctor: CTOR;
+        const type : TYPE_EXPR;
+        function CtorFixture(ctor, ty) 
+            : ctor = ctor
+            , type = ty {}
     }
 
     class ValFixture {
@@ -1060,7 +1065,6 @@ namespace Ast
     type STMT =
        ( EmptyStmt
        , ExprStmt
-       , InitStmt
        , ClassBlock
        , ForInStmt
        , ThrowStmt
@@ -1088,14 +1092,12 @@ namespace Ast
             : expr = expr {}
     }
 
-    class InitStmt {
-    }
-
     class ClassBlock {
-        const ns : EXPR?;
-        const ident : IDENT;
-        const name : NAME?;
+        const name //: NAME;
         const block : BLOCK;
+        function ClassBlock (name,block)
+            : name = name
+            , block = block {}
     }
 
     class ForInStmt {

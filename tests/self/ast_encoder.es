@@ -24,7 +24,7 @@
             var str =
                 indent(nesting) + "{ 'ast::class': 'Program'"
               + indent(nesting) + ", 'packages': " + encodePackages (p.packages,nesting+", 'packages': ".length)
-              + indent(nesting) + ", 'fixtures': " + encodeFixtures (p.fixtures,nesting+", 'fixtures': ".length)
+              + indent(nesting) + ", 'fixtures': [ " + encodeFixtures (p.fixtures,nesting+", 'fixtures': [ ".length) + " ]"
               + indent(nesting) + ", 'block': " + encodeBlock (p.block,nesting+", 'block': ".length)
               + " }";
         }
@@ -44,7 +44,7 @@
 
     function encodeFixtures (nd /*: FIXTURES*/, nesting: int = 0)
         : string {
-        enter ("encodeFixtures nd.length=",nd);
+        enter ("encodeFixtures nd=",nd);
         var str;
 
         if (nd.length == 0) {
@@ -54,9 +54,9 @@
         {
             var str =
                   encodeFixtureBinding (nd[0], nesting)
-                + indent(nesting-2)
+                + indent(nesting)
                 + ", "
-                + encodeFixtures (nd.slice (1,nd.length), nesting);
+                + encodeFixtures (nd.slice (1,nd.length), nesting+", ".length);
         }
         exit ("encodeFixtures ",str);
         return str;
@@ -127,8 +127,21 @@
               + indent(nesting) + ", 'isFinal': " + nd.isFinal
               + " }";
         }
+        case (nd:Ast::ClassFixture) {
+            var str =
+                "{ 'ast::class': 'ClassFixture'"
+              + indent(nesting) + ", 'cls': " + encodeCls (nd.cls,nesting+", 'cls': ".length)
+              + " }";
+        }
+        case (nd:Ast::CtorFixture) {
+            var str =
+                "{ 'ast::class': 'CtorFixture'"
+              + indent(nesting) + ", 'ctor': " + encodeCtor (nd.ctor,nesting+", 'ctor': ".length)
+              + indent(nesting) + ", 'type': " + encodeTypeExpr (nd.type,nesting+", 'type': ".length)
+              + " }";
+        }
         case (nd: *) {
-            var str = "[[encodeFixture, unhandled ast: " + nd + "]]";
+            var str = "**encodeFixture, unhandled ast: " + nd + "**";
         }
         }
 
@@ -278,6 +291,13 @@
               + indent(nesting)
               + ", 'block': "
               + encodeBlock (nd.block,nesting+", 'block': ".length)
+              + " }";
+        }
+        case (nd: ClassBlock) {
+            var str =
+                "{ 'ast::class': 'ClassBlock'"
+              + indent(nesting) + ", 'name': " + encodeName (nd.name,nesting+", 'name': ".length)
+              + indent(nesting) + ", 'block': " + encodeBlock (nd.block,nesting+", 'block': ".length)
               + " }";
         }
         case (x: *) {
@@ -618,7 +638,7 @@
         enter ("encodeName ",nesting)
 
         var str =
-                "{ 'ns': '"+encodeNamespace (nd.ns,nesting+"{ 'ns': '".length)
+                "{ 'ns': "+encodeNamespace (nd.ns,nesting+"{ 'ns': ".length)
               + indent(nesting) + ", 'id': '"+ nd.id+"' }";
 
         exit ("encodeName ",str);
@@ -909,14 +929,57 @@
           + ", 'params': "
           + encodeHead (nd.params,nesting+", 'params': ".length)
           + indent(nesting)
-          + ", 'defaults': "
-          + encodeExprs (nd.defaults,nesting+", 'defaults': ".length)
+          + ", 'defaults': [" + encodeExprs (nd.defaults,nesting+", 'defaults': ".length) + " ]"
           + indent(nesting)
           + ", 'type': "
           + encodeTypeExpr (nd.type,nesting+", 'ident': ".length)
           + " }";
 
-        exit ("encodeBinding ",str);
+        exit ("encodeFunc ",str);
+        return str;
+    }
+
+    function encodeCls (nd : CLS, nesting: int = 0)
+        : string {
+
+        enter ("encodeCls ",nd);
+
+        print("name=",nd.name);
+        print("baseName=",nd.baseName);
+        print("constructor=",nd.constructor);
+
+
+        var str =
+            "{ 'ast::class': 'Cls'"
+          + indent(nesting) + ", 'name': " + encodeName (nd.name,nesting+", 'name': ".length)
+          + indent(nesting) + ", 'baseName': " + encodeName (nd.baseName,nesting+", 'baseName': ".length)
+            /*
+          + indent(nesting) + ", 'interfaceNames': " + encodeNames (nd.interfaceNames,nesting+", 'interfaceNames': ".length)
+            */
+          + indent(nesting) + ", 'constructor': " + encodeCtor (nd.constructor,nesting+", 'constructor': ".length)
+          + indent(nesting) + ", 'classFixtures': [ " + encodeFixtures (nd.classFixtures,nesting+", 'classFixtures': [ ".length) + " ]"
+          + indent(nesting) + ", 'instanceFixtures': [ " + encodeFixtures (nd.instanceFixtures,nesting+", 'instanceFixtures': [ ".length) + " ]"
+          + indent(nesting) + ", 'instanceInits': " + encodeHead (nd.instanceInits,nesting+", 'instanceInits': ".length)
+          + indent(nesting) + ", 'classType': " + encodeTypeExpr (nd.classType,nesting+", 'classType': ".length)
+          + indent(nesting) + ", 'instanceType': " + encodeTypeExpr (nd.instanceType,nesting+", 'instanceType': ".length)
+          + " }";
+
+        exit ("encodeCls ",str);
+        return str;
+    }
+
+    function encodeCtor (nd : CTOR, nesting: int = 0)
+        : string {
+        enter ("encodeCtor");
+
+        var str =
+            "{ 'ast::class': 'Ctor'"
+          + indent(nesting) + ", 'settings': [ " + encodeExprs (nd.settings,nesting+", 'settings': [ ".length) + "]"
+          + indent(nesting) + ", 'superArgs': [ " + encodeExprs (nd.superArgs,nesting+", 'superArgs': ".length) + " ]" 
+          + indent(nesting) + ", 'func': " + encodeFunc (nd.func,nesting+", 'func': ".length)
+          + " }";
+
+        exit ("encodeCtor ",str);
         return str;
     }
 
