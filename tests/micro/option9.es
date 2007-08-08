@@ -60,25 +60,6 @@ type Label = String;
         }
     }
 
-    function toStringFields(a:[[Label,*]]) : String {
-        let s = "{";
-        let prefix = "";
-        for(i in a) {
-            s = s + prefix + a[i][0] + ":" + a[i][1];
-            prefix = ",";
-        }
-        return s+"}";
-    }
-
-    function findInFields( a:[[Label,*]], f : Label ) : * {
-        for(let i in a) {
-            if( a[i][0] == f ) {
-                return a[i][1];
-            }
-        }
-        throw "Field "+f+" not found.";
-    }
-
     /** following are unused */
     class TypeType {}     /* the type of types */
     class VarType {       /* a reference to a type variable "X" */
@@ -94,17 +75,47 @@ type Label = String;
     }
 }
 
+/*** Helper functions for fields ***/
+
+function toStringFields(a:[[Label,*]]) : String {
+    let s = "{";
+    let prefix = "";
+    for(i in a) {
+        s = s + prefix + a[i][0] + ":" + a[i][1];
+        prefix = ",";
+    }
+    return s+"}";
+}
+
+function findInFields( a:[[Label,*]], f : Label ) : * {
+    for(let i in a) {
+        if( a[i][0] == f ) {
+            return a[i][1];
+        }
+    }
+    throw "Field "+f+" not found.";
+}
+
+function setInFields( a:[[Label,*]], f : Label, to:* ) {
+    for(let i in a) {
+        if( a[i][0] == f ) {
+            a[i][1] = to;
+            return;
+        }
+    }
+    throw "Field "+f+" not found.";
+}
+
 /*** Expressions ***/
 {
     type Expr =
         ( int, 
           Ident,
-          FunExpr,
-          AppExpr,
-          LetExpr,
-          ObjExpr );
+          ExprC );
 
-    class FunExpr {
+    class ExprC {}
+
+    class FunExpr extends ExprC {
         const x : Ident;
         const argt : Type;
         const rest : Type;
@@ -117,14 +128,14 @@ type Label = String;
         }
     }
 
-    class AppExpr {
+    class AppExpr extends ExprC {
         const fn : Expr;
         const arg : Expr;
         function AppExpr(fn, arg) : fn = fn, arg = arg {} 
         function toString() { return ""+(fn)+"("+arg+")"; }
     }
 
-    class LetExpr {
+    class LetExpr extends ExprC {
         const x : String;
         const t : Type;
         const e : Expr;
@@ -133,35 +144,35 @@ type Label = String;
         function toString() { return "let "+x+":"+t+"="+e+" in "+body; }
     }
 
-    class LikeExpr {
+    class LikeExpr extends ExprC {
         const arg : Expr;
         const ty : Type;
         function LikeExpr(arg, ty) : arg = arg, ty = ty {} 
         function toString() { return ""+arg+" like "+ty; }
     }
 
-    class WrapExpr {
+    class WrapExpr extends ExprC {
         const arg : Expr;
         const ty : Type;
         function WrapExpr(arg, ty) : arg = arg, ty = ty {} 
         function toString() { return ""+arg+" wrap "+ty; }
     }
 
-    class ObjExpr { // {l:e, ...}:T
+    class ObjExpr extends ExprC { // {l:e, ...}:T
         const efields : [[Label,Expr]];
         const ty : Type;
         function ObjExpr(efields,ty) : efields = efields, ty = ty {}
         function toString() { return toStringFields(efields)+":"+ty; }
     }
 
-    class GetExpr { // e.l
+    class GetExpr extends ExprC { // e.l
         const e : Expr;
         const l : Label;
         function GetExpr(e,l) : e=e, l=l {}
         function toString() { return ""+e+"."+l; }
     }
 
-    class SetExpr { // e1.l = e2;
+    class SetExpr extends ExprC { // e1.l = e2;
         const e1,e2 : Expr;
         const l : Label;
         function SetExpr(e1,l,e2) : e1=e1, l=l, e2=e2 {}
@@ -226,6 +237,7 @@ type Label = String;
 /********** Subtyping, compatibility **********/
 
 function compatibleType (t1:Type, t2:Type) : Boolean {
+    print ("compatibleType "+t1+" and "+t2);
     
     if ( t1==t2 || t1==anyType || t2==anyType) { return true; }
 
@@ -326,18 +338,13 @@ function subType (t1:Type, t2:Type) : Boolean {
 
 /*********** Run-time values ***********/
 
-type Val =
-    ( WrapableVal,
-      Wrapper );
-
-type WrapableVal = // something that could be wrapped
+type Val = 
     ( int,
-      Closure,
-      ObjVal
+      ClosureVal,
+      ObjVal,
+      WrapVal
       );
 
-type Closure = [FunExpr, Env];
-type Wrapper = [WrapableVal, Type];
 type ValEnv = Env;
 
 class ObjVal {
@@ -349,6 +356,20 @@ class ObjVal {
     }
 }
 
+class WrapVal {   // typeof(v) compatible with ty but not a subtype
+    const v : Val;
+    const ty : Type;
+    function WrapVal(v,ty) : v=v, ty=ty {}
+    function toString() { return "("+v+" wrap "+ty+")"; }
+}
+
+class ClosureVal {   // typeof(v) compatible with ty but not a subtype
+    const fn : FunExpr;
+    const env : ValEnv;
+    function ClosureVal(fn,env) : fn=fn, env=env {}
+    function toString() { return "("+fn+" env "+env+")"; }
+}
+
 /** Linking Values and their Types **/
 
 function typeOfVal (v:Val) : Type {
@@ -356,12 +377,11 @@ function typeOfVal (v:Val) : Type {
         case (v: int) {
             return intType;
         }
-        case ([fn, n]: [FunExpr, Env]) {
-            // let [fn, n] = v;
-            return new FunType(fn.argt, fn.rest);
+        case (v: ClosureVal) {
+            return new FunType(v.fn.argt, v.fn.rest);
         }
-        case ([cl, t]: [WrapableVal, Type]) {
-            return t;
+        case (v: WrapVal) {
+            return v.ty;
         }
         case (v:ObjVal) {
             return v.ty;
@@ -373,13 +393,18 @@ function compatibleValue( v:Val, t:Type ) : Boolean {
     let tv = typeOfVal(v);
     print ("compatibleValue "+v+" of type "+tv+" to type "+t);
     if (subType( tv, t )) return true;
-    if (!compatibleType( tv, t )) return false;
+    if (!compatibleType( tv, t )) {
+        print ("compatibleValue "+v+" of type "+tv+" to type "+t+" incompatible types");
+        return false;
+    }
+        print ("compatibleValue "+v+" of type "+tv+" to type "+t+" compatible types");
 
     // compatible but not subtype
     // do deep check ...
 
     switch type (v) {
         case (v:ObjVal) {
+            print ("ObjVal");
             switch type (t) {
                 case (t:ObjType) {
                     for(let i in t.tfields) {
@@ -392,12 +417,13 @@ function compatibleValue( v:Val, t:Type ) : Boolean {
                 }
                 }
         }
-        case (v:Wrapper) {
-            let [v,vt] = v;
-            return compatibleValue( v. t );
+        case (v:WrapVal) {
+            print ("WrapVal "+v);
+            return compatibleValue( v.v. t );
         }
         }
-    
+    print ("compatibleValue "+v+" of type "+tv+" to type "+t+" compatible ");
+
     return true;
 }        
 
@@ -408,6 +434,7 @@ function convert (v:Val, t:Type) : Val {
     switch type(t) {
         case (t:LikeType) {
             if (compatibleValue(v, t.arg)) {
+                print ("Converting value "+v+" of type "+tv+" to type "+t+" succeeds w/o change");
                 return v;
             } else {
                 throw "Cannot convert1 value "+v+" to type "+t;
@@ -415,18 +442,10 @@ function convert (v:Val, t:Type) : Val {
         }
         case (t:WrapType) {
             if (subType(tv, t.arg)) {
+                print ("Converting value "+v+" of type "+tv+" to type "+t+" succeeds w/o change");
                 return v;
-            }  if (compatibleValue(v, t.arg)) {
-                // remove old wrapper, if any, and re-wrap
-                switch type (v) {
-                    case (v:Wrapper) {
-                        let [w,tw] = v;
-                        return [w, t.arg];
-                    }
-                    case (v:Val) {
-                        return [v, t.arg];
-                    }
-                    }
+            } else if (compatibleValue(v, t.arg)) {
+                return new WrapVal( v, t.arg ); 
             } else {
                 throw "Cannot convert2 value "+v+" to type "+t;
             }
@@ -461,7 +480,7 @@ function eval2 (n:ValEnv, e:Expr) : Val {
             return n.lookup(e);
         }
         case (e:FunExpr) {
-            return [e,n];
+            return new ClosureVal(e,n);
         }
         case (e:LikeExpr) {
             let v = eval( n, e.arg );
@@ -477,17 +496,23 @@ function eval2 (n:ValEnv, e:Expr) : Val {
         }
                     
         case (e:AppExpr) {
-            switch type (eval(n, e.fn)) {
-                case (closure: [FunExpr, Env]) {
-                    let [fn,n2] = closure;
-                    let argval = eval( n, e.arg );
-                    let argval2 = convert( argval, fn.argt );
-                    let n3 = n2.extend(fn.x, argval2 );
-                    let resval = eval( n3, fn.body );
-                    let resval2 = convert( resval, fn.rest );
-                    return resval2;
-                }
-                }
+            function apply( fn:Val, arg:Val ) : Val {
+                switch type (fn) {
+                    case (closure: ClosureVal) {
+                        let { fn:fn, env:env } = closure;
+                        let bodyEnv = env.extend( fn.x, convert( arg, fn.argt ) );
+                        let res = eval( bodyEnv, fn.body );
+                        return convert( res, fn.rest );
+                    }
+                    case (wrap: WrapVal) {
+                        return convert( apply( wrap.v, 
+                                               convert( arg, wrap.ty.arg )),
+                                        wrap.ty.res );
+                    }
+                    }
+            }
+            return apply( eval( n, e.fn ),
+                          eval( n, e.arg ));
         }
         case (e:LetExpr) {
             let {x:x, t:t, e:e2, body:body} = e;
@@ -497,13 +522,49 @@ function eval2 (n:ValEnv, e:Expr) : Val {
             let resval = eval( n2, body );
             return resval;
         }
-        case (e:ObjExpr) {
+        case ( e : ObjExpr) {
+            let {efields:efields, ty:ty} = e;
             let vfields = [];
             for(i in e.efields) {
-                vfields[i] = [ e.efields[i][0],
-                               eval( n, e.efields[i][1]) ];
+                vfields[i] = [ efields[i][0],
+                               eval( n, efields[i][1]) ];
             }
-            return new ObjVal(vfields, e.ty);
+            return new ObjVal(vfields, ty);
+        }
+        case (e : GetExpr) {
+            function get( o:Val, l:Label ) : Val {
+                switch type (o) {
+                    case (o: ObjVal) {
+                        // no read barrier
+                        return findInFields( o.vfields, l );
+                    }
+                    case (o: WrapVal) {
+                        let {v:obj, ty:ObjTy} = o;
+                        return convert( get(obj, l),
+                                        findInFields( objTy.tfields, l ));
+                    }
+                    }
+            }
+            return get( eval( n, e.e ), e.l );
+        }
+        case (e : SetExpr) {
+            function set( o:Val, l:Label, to:Val ) : Val {
+                switch type (o) {
+                    case (o: ObjVal) {
+                        // write barrier
+                        setInFields( o.vfields, l, to );
+                        return v;
+                    }
+                    case (o: WrapVal) {
+                        let {v:obj, ty:objTy} = o;
+                        return set( obj, l,
+                                    convert( to, findInFields( objTy.tfields, l )));
+                    }
+                    }
+            }
+            return set( eval( n, e.e1 ), 
+                        l, 
+                        eval( n, e.e2 ));
         }
         }   
 }
@@ -526,39 +587,7 @@ let idbad2: Expr = new FunExpr("x", intType, anyType, "x");
 let intintfn : Type = new FunType( intType, intType );
 let anyanyfn : Type = new FunType( anyType, anyType );
 
-/*
-(go
- (new LetExpr ("f" ,anyType, idint,
-               (new AppExpr ("f",4 )))));
 
-(go
- (new LetExpr ("f" , new LikeType(intintfn), idany,
-               (new AppExpr ("f",4 )))));
-
-*/
-
-/* Error:
-(go
- (new LetExpr ("f" , anyanyfn, idint,
-               (new AppExpr ("f",4 )))));
-
-(go
-    (new LetExpr("x",
-                 fint,
-                 new ObjExpr([["f", 4]], dynObjType),
-                 "x")));
-
-*/
-
-let fint : Type = new ObjType([["f",intType]]);
-
-(go
-    (new LetExpr("x",
-                 new LikeType(fint),
-                 new ObjExpr([["f", 4]], dynObjType),
-                 "x")));
-
-/*
 go (3);
 go (idint);
 go (new AppExpr(idint,3));
@@ -567,8 +596,72 @@ go (idany);
 go (idbad);
 go (idbad2);
 
+function testCall( fn, fnty ) {
+    go(new LetExpr("f", fnty, fn, new AppExpr ("f",4 )));
+}
 
+testCall( idint, intintfn );
+testCall( idint, anyType  );
 
+/* Following errors are correctly detected:
+testCall( idany, intintfn );
+*/
+testCall( idint, anyanyfn ); // should this work???
+
+testCall( idint, new LikeType(intintfn));
+testCall( idany, new LikeType(intintfn));
+testCall( idany, new LikeType(anyanyfn));
+testCall( idint, new LikeType(anyanyfn));
+
+testCall( idint, new WrapType(intintfn));
+testCall( idany, new WrapType(intintfn));
+testCall( idany, new WrapType(anyanyfn));
+testCall( idint, new WrapType(anyanyfn));
+
+/*
+(go
+    (new LetExpr("x",
+                 fint,
+                 new ObjExpr([["f", 4]], dynObjType),
+                 "x")));
+*/
+
+let fint : Type = new ObjType([["f",intType]]);
+
+function testGet( tyo, tyv ) {
+    go(new LetExpr("x",
+                   tyv,
+                   new ObjExpr([["f", 4]], tyo),
+                   new GetExpr("x", "f")
+                   ));
+}
+
+testGet( dynObjType, dynObjType );
+testGet( fint,       fint );
+testGet( fint,       dynObjType );
+/*
+testGet( dynObjType, fint );
+*/
+/*
+go(new LetExpr("x",
+               dynObjType,
+               new ObjExpr([["f", 4]], fint),
+               new GetExpr("x", "f")
+               ));
+
+go(new LetExpr("x",
+               dynObjType,
+               new ObjExpr([["f", 4]], dynObjType),
+               new GetExpr("x", "f")
+               ));
+
+go(new LetExpr("x",
+               new LikeType(fint),
+               new ObjExpr([["f", 4]], dynObjType),
+               new GetExpr("x", "f")
+               ));
+
+/*
   (go
   (LetTypeExpr ("X", intType,
   LetExpr ("f" ,
