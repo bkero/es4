@@ -77,6 +77,15 @@ package
     /* Retrieve the [[Class]] property of o */
     magic native function getClassName(o : Object!) : string;
 
+    /* Retrieve the base class of cls, or null. */
+    magic native function getSuperClass(cls : Class!) : Class;
+
+    /* Retrieve the kth implemented interface of cls, or null. */
+    magic native function getImplementedInterface(cls: Class!, k: uint) : Interface;
+
+    /* Retrieve the kth superinterface of cls, or null. */
+    magic native function getSuperInterface(iface: Interface!, k: uint) : Interface;
+
     /* Retrieve the possibly null [[Prototype]] property of o */
     magic native function getPrototype(o : Object!) : Object;
 

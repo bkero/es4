@@ -579,6 +579,12 @@ fun needClass (v:VAL)
         Class cls => cls
       | _ => error ["require class object"]
 
+fun needInterface (v:VAL)
+    : (IFACE_CLOSURE) =
+    case needMagic v of
+        Interface iface => iface
+      | _ => error ["require interface object"]
+
 fun fitsInUInt (x:LargeInt.int)
     : bool =
     let

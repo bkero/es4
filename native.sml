@@ -259,6 +259,67 @@ fun getClassName (regs:Mach.REGS)
 
 
 (*
+ * Meta-object interface:
+ * Retrieve the possibly null base class of cls.
+ *
+ * magic native function getSuperClass(cls : Class!) : Class;
+ *)
+fun getSuperClass (regs:Mach.REGS)
+                  (vals:Mach.VAL list)
+    : Mach.VAL =
+    let
+        val { cls, env, ... } = Mach.needClass (rawNth vals 0)
+        val Ast.Cls { extends, ... } = cls
+    in
+        (case extends of 
+             SOME name => Eval.findVal env name
+           | _ => Mach.Null)
+    end
+
+
+(*
+ * Meta-object interface:
+ * Retrieve the possibly null kth implemented interface of cls.
+ *
+ * magic native function getClassExtends(cls : Class!, k: uint) : Class;
+ *)
+fun getImplementedInterface (regs:Mach.REGS)
+                            (vals:Mach.VAL list)
+    : Mach.VAL =
+    let
+        val { cls, env, ... } = Mach.needClass (rawNth vals 0)
+        val k = Word32.toInt(nthAsUInt vals 1)
+        val Ast.Cls { implements, ... } = cls
+    in
+        if k >= (List.length implements) then
+            Mach.Null
+        else
+            Eval.findVal env (List.nth(implements, k))
+    end
+
+
+(* 
+ * Meta-object interface:
+ * Retrieve the possibly null kth base interface of iface.
+ *
+ * magic native function getSuperInterface(iface: Interface!, k: uint): Interface;
+ *)
+fun getSuperInterface (regs:Mach.REGS)
+                      (vals:Mach.VAL list)
+    : Mach.VAL =
+    let
+        val { iface, env, ... } = Mach.needInterface (rawNth vals 0)
+        val k = Word32.toInt(nthAsUInt vals 1)
+        val Ast.Iface { extends, ... } = iface
+    in
+        if k >= (List.length extends) then
+            Mach.Null
+        else
+            Eval.findVal env (List.nth(extends, k))
+    end
+
+
+(*
  * Retrieve the possibly null [[Prototype]] property of o
  *
  * magic native function getPrototype(o : Object!) : Object;
@@ -1032,6 +1093,9 @@ fun registerNatives _ =
     in
         addFn 2 Name.magic_construct construct;
         addFn 1 Name.magic_getClassName getClassName;
+        addFn 1 Name.magic_getSuperClass getSuperClass;
+        addFn 2 Name.magic_getImplementedInterface getImplementedInterface;
+        addFn 2 Name.magic_getSuperInterface getSuperInterface;
         addFn 1 Name.magic_getPrototype getPrototype;
         addFn 2 Name.magic_hasOwnProperty hasOwnProperty;
         addFn 2 Name.magic_getPropertyIsDontEnum getPropertyIsDontEnum;

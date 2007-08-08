@@ -97,13 +97,12 @@ package
 
         meta function get(k) {
             if (k is Numeric && intrinsic::isIntegral(k) && k >= 0 && k <= 0xFFFFFFFE) {
-                let (k : uint = k)
-                    {
-                        if (k < length)
-                            return magic::getByteArrayByte(this, k);
-                        else
-                            return 0;
-                    }
+                let (k : uint = k) {
+                    if (k < length)
+                        return magic::getByteArrayByte(this, k);
+                    else
+                        return 0;
+                }
             }
             else
                 return intrinsic::get(this, k);
@@ -111,13 +110,11 @@ package
 
         meta function set(k, v) : void {
             if (k is Numeric && intrinsic::isIntegral(k) && k >= 0 && k <= 0xFFFFFFFE) {
-                let (k : uint = k,
-                     v : uint = v)
-                    {
-                        if (k >= length)
-                            length = k+1;
-                        magic::setByteArrayByte(this, k, v);
-                    }
+                let (k : uint = k, v : uint = v) {
+                    if (k >= length)
+                        length = k+1;
+                    magic::setByteArrayByte(this, k, v);
+                }
             }
             else
                 intrinsic::set(this, k, v);

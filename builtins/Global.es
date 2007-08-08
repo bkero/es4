@@ -56,6 +56,28 @@ package
 
     intrinsic const global = this;
 
+    namespace iterator;
+
+    /*
+    type IterableType.<T> = {
+        iterator::get: function (boolean=) : iterator::IteratorType.<T>
+    };
+      
+    type IteratorType.<T> = {
+        next: function () : T
+    };
+    */
+
+    iterator class StopIterationClass {
+        function toString() : string 
+            "[object StopIteration]";
+    }
+
+    iterator const StopIteration: iterator::StopIterationClass = new iterator::StopIterationClass;
+
+    // FIXME: probably wants to be not iterator-specific; generally useful.
+    iterator type EnumerableId = (int, uint, string, Name);
+
     // 15.1.2.1 eval (x)
     intrinsic native function eval(s: string);
 
