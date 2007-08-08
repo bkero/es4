@@ -4,11 +4,23 @@
 /*
   For option 9 - 3aug07 - Cormac.
 
-  This is an implementation of a toy language to express and clarify a
-  number of issues relating to the ES4 type system in a simpler context,
+  This is a small language implementation to explore the like and wrap types in a simple context,
   and may also help to shake out bugs in the type system earlier.
-
   Now re-implemented in ES4 to gain experience with ES4.
+
+  Conclusions:
+  
+  - It appears that function(int):int <: function(*):*
+    in analogy to {f:int} <: {*}
+
+  - Wrap types are recursive
+
+  - No unwrap option (yet)
+
+  - No strict mode (yet)
+
+  - All checks done dynamically, no optimizations explored.
+   
 */
 
 type Ident = String;
@@ -58,20 +70,6 @@ type Label = String;
         function toString() {
             return toStringFields(this.tfields);
         }
-    }
-
-    /** following are unused */
-    class TypeType {}     /* the type of types */
-    class VarType {       /* a reference to a type variable "X" */
-        const x : Ident;
-    }
-    class GenericType {   /* forall X. T, or from "type T.<X> = ..." */
-        const x : Ident;
-        const body : Type;
-    }
-    class AppType {       /* T1.<T2>     */
-        const T1 : Type;
-        const T2 : Type;
     }
 }
 
@@ -178,13 +176,6 @@ function setInFields( a:[[Label,*]], f : Label, to:* ) {
         function SetExpr(e1,l,e2) : e1=e1, l=l, e2=e2 {}
         function toString() { return ""+e1+"."+l+"="+e2; }
     }
-
-    /*
-       | TypeExpr of TYPE                       (* like  "type(...)" in ES4 *)
-       | LetTypeExpr of string * TYPE * EXPR    (* like "type X = ..." in ES4 *)
-       | GenericExpr of string * EXPR * TYPE    (* like function.<X>():T {e} in ES4 *)
-       | AppTypeExpr of EXPR * TYPE             (* like  e.<T>  in ES4, e[T] in TAPL *)
-    */
 }
 
 /*** Environments ***/
@@ -295,6 +286,7 @@ function bicompatibleType (t1:Type, t2:Type) : Boolean {
 }
 
 function subType (t1:Type, t2:Type) : Boolean {
+    print ("subtype "+t1+" and "+t2+" "+(t1==anyType));
     
     if (t1==t2 || t2==anyType) { return true; }
     
@@ -308,7 +300,7 @@ function subType (t1:Type, t2:Type) : Boolean {
                 case (t1: FunType) {
                     switch type(t2) {
                         case (t2: FunType) {
-                            return subType( t2.arg, t1.arg ) &&
+                            return (t2.arg==anyType || subType( t2.arg, t1.arg )) &&
                                    subType( t1.res, t2.res );
                         }
                         }
@@ -334,6 +326,11 @@ function subType (t1:Type, t2:Type) : Boolean {
         }
         }
     return false;
+}
+
+function equalType (t1:Type, t2:Type) : Boolean {
+    return subType( t1, t2 ) &&
+           subType( t2, t1 );
 }
 
 /*********** Run-time values ***********/
@@ -462,12 +459,17 @@ function convert (v:Val, t:Type) : Val {
         }
 }
 
+var indent = "  ";
+
 function eval (n:ValEnv, e:Expr) : Val {
     //print ("  Eval'ing: ");
     //print ("  Eval'ing: "+(e));
-    print ("  Eval'ing: "+(e)+" ENV "+n);
+    print (indent+"Eval'ing: "+(e)+" ENV "+n);
+    let oldIndent = indent;
+    indent = indent + "    ";
     let r = eval2(n,e);
-    print ("    Result: "+(r));
+    indent = oldIndent;
+    print (indent+"Result  : "+(r));
     return r;
 }
 
@@ -539,7 +541,7 @@ function eval2 (n:ValEnv, e:Expr) : Val {
                         return findInFields( o.vfields, l );
                     }
                     case (o: WrapVal) {
-                        let {v:obj, ty:ObjTy} = o;
+                        let {v:obj, ty:objTy} = o;
                         return convert( get(obj, l),
                                         findInFields( objTy.tfields, l ));
                     }
@@ -553,7 +555,7 @@ function eval2 (n:ValEnv, e:Expr) : Val {
                     case (o: ObjVal) {
                         // write barrier
                         setInFields( o.vfields, l, to );
-                        return v;
+                        return to;
                     }
                     case (o: WrapVal) {
                         let {v:obj, ty:objTy} = o;
@@ -563,7 +565,7 @@ function eval2 (n:ValEnv, e:Expr) : Val {
                     }
             }
             return set( eval( n, e.e1 ), 
-                        l, 
+                        e.l, 
                         eval( n, e.e2 ));
         }
         }   
@@ -627,39 +629,38 @@ testCall( idint, new WrapType(anyanyfn));
 */
 
 let fint : Type = new ObjType([["f",intType]]);
+let feint : Type = new ObjType([["f",intType],["extra",intType]]);
 
 function testGet( tyo, tyv ) {
     go(new LetExpr("x",
                    tyv,
-                   new ObjExpr([["f", 4]], tyo),
-                   new GetExpr("x", "f")
-                   ));
+                   new ObjExpr([["f", 4], ["extra", 20]], tyo),
+                   new LetExpr("dummy", 
+                               intType,
+                               new SetExpr("x", "f", 5),
+                               new GetExpr("x", "f") )));
 }
 
 testGet( dynObjType, dynObjType );
 testGet( fint,       fint );
+testGet( feint,       fint );
+testGet( feint,       feint );
+// error: testGet( fint,       feint );
 testGet( fint,       dynObjType );
-/*
+
+/* Following error correctly detected:
 testGet( dynObjType, fint );
 */
-/*
-go(new LetExpr("x",
-               dynObjType,
-               new ObjExpr([["f", 4]], fint),
-               new GetExpr("x", "f")
-               ));
 
-go(new LetExpr("x",
-               dynObjType,
-               new ObjExpr([["f", 4]], dynObjType),
-               new GetExpr("x", "f")
-               ));
+testGet( dynObjType, new LikeType(dynObjType));
+testGet( fint,       new LikeType(fint));
+testGet( fint,       new LikeType(dynObjType));
+testGet( dynObjType, new LikeType(fint));
 
-go(new LetExpr("x",
-               new LikeType(fint),
-               new ObjExpr([["f", 4]], dynObjType),
-               new GetExpr("x", "f")
-               ));
+testGet( dynObjType, new WrapType(dynObjType));
+testGet( fint,       new WrapType(fint));
+testGet( fint,       new WrapType(dynObjType));
+testGet( dynObjType, new WrapType(fint));
 
 /*
   (go
@@ -670,8 +671,6 @@ go(new LetExpr("x",
   VarExpr "x"),
   AppExpr (VarExpr "f",
   IntExpr 4)))));
-
-
 
   (go
   (LetExpr ("polyId" ,
