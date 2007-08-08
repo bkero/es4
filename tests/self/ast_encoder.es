@@ -69,7 +69,7 @@
             var str =
                 "[ " + encodeFixtureName (nd[0],nesting+"[ ".length)
               + indent(nesting) + ", " + encodeFixture (nd[1],nesting+", ".length)
-              + " ]";
+                + " ]";
 
         exit ("encodeFixtureBinding ",str);
         return str;
