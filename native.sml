@@ -260,6 +260,38 @@ fun getClassName (regs:Mach.REGS)
 
 (*
  * Meta-object interface:
+ * Retrieve the class of an object instance.
+ *
+ * magic native function getClassOfObject(o: Object!) : Class;
+ *)
+fun getClassOfObject (regs:Mach.REGS)
+                     (vals:Mach.VAL list)
+    : Mach.VAL =
+    let
+        val Mach.Obj { magic, tag, ... } = nthAsObj vals 0
+        val globalScope = Eval.getGlobalScope ()
+    in
+        case !magic of
+            SOME (Mach.Function _) => Eval.findVal globalScope Name.nons_Function
+          | SOME (Mach.NativeFunction _) => Eval.findVal globalScope Name.nons_Function
+          | SOME (Mach.String _) => Eval.findVal globalScope Name.intrinsic_string
+          | SOME (Mach.Decimal _) => Eval.findVal globalScope Name.intrinsic_decimal
+          | SOME (Mach.Int _) => Eval.findVal globalScope Name.intrinsic_int
+          | SOME (Mach.UInt _) => Eval.findVal globalScope Name.intrinsic_uint
+          | SOME (Mach.Double _) => Eval.findVal globalScope Name.intrinsic_double
+          | SOME (Mach.Boolean _) => Eval.findVal globalScope Name.intrinsic_boolean
+          | _ =>
+            (case tag of
+                 Mach.ObjectTag _ => Eval.findVal globalScope Name.nons_Object
+               | Mach.ArrayTag _ => Eval.findVal globalScope Name.nons_Array
+               | Mach.FunctionTag _ => Eval.findVal globalScope Name.nons_Function
+               | Mach.ClassTag name => Eval.findVal globalScope name
+               | Mach.NoTag => Eval.findVal globalScope Name.nons_Object)
+    end
+
+
+(*
+ * Meta-object interface:
  * Retrieve the possibly null base class of cls.
  *
  * magic native function getSuperClass(cls : Class!) : Class;
@@ -1093,6 +1125,7 @@ fun registerNatives _ =
     in
         addFn 2 Name.magic_construct construct;
         addFn 1 Name.magic_getClassName getClassName;
+        addFn 1 Name.magic_getClassOfObject getClassOfObject;
         addFn 1 Name.magic_getSuperClass getSuperClass;
         addFn 2 Name.magic_getImplementedInterface getImplementedInterface;
         addFn 2 Name.magic_getSuperInterface getSuperInterface;

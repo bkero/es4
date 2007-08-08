@@ -267,7 +267,7 @@ package
 
         // 15.4.4.9 Array.prototype.shift ( )
         // FIXME #155: type system bug
-        static function shift(/*object: Object!*/) {
+        static function shift(object/*: Object!*/) {
             let len = uint(object.length);
             if (len == 0) {
                 object.length = 0;        // ECMA-262 requires explicit set here
@@ -665,11 +665,11 @@ package
         }
 
         helper function sortCompare(j:uint, k:uint, comparefn:Comparator): Numeric {
-            if (!(x in this) && !(y in this))
+            if (!(j in this) && !(k in this))
                 return 0;
-            if (!(x in this))
+            if (!(j in this))
                 return 1;
-            if (!(y in this))
+            if (!(k in this))
                 return -1;
 
             let x = this[j];

@@ -77,6 +77,9 @@ package
     /* Retrieve the [[Class]] property of o */
     magic native function getClassName(o : Object!) : string;
 
+    /* Retrieve the class object of o */
+    magic native function getClassOfObject(o : Object!) : Class;
+
     /* Retrieve the base class of cls, or null. */
     magic native function getSuperClass(cls : Class!) : Class;
 

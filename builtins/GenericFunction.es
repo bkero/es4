@@ -1,15 +1,138 @@
-/* Simple generic functions.
+/* -*- mode: java; indent-tabs-mode: nil -*-
+ *
+ * ECMAScript 4 builtins - Generic functions
+ *
+ * The following licensing terms and conditions apply and must be
+ * accepted in order to use the Reference Implementation:
+ *
+ *    1. This Reference Implementation is made available to all
+ * interested persons on the same terms as Ecma makes available its
+ * standards and technical reports, as set forth at
+ * http://www.ecma-international.org/publications/.
+ *
+ *    2. All liability and responsibility for any use of this Reference
+ * Implementation rests with the user, and not with any of the parties
+ * who contribute to, or who own or hold any copyright in, this Reference
+ * Implementation.
+ *
+ *    3. THIS REFERENCE IMPLEMENTATION IS PROVIDED BY THE COPYRIGHT
+ * HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED
+ * WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
+ * MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+ * DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
+ * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+ * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+ * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR
+ * BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+ * WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE
+ * OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
+ * IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ *
+ * End of Terms and Conditions
+ *
+ * Copyright (c) 2007 Adobe Systems Inc., The Mozilla Foundation, Opera
+ * Software ASA, and others.
+ */
+
+/* Very simple generic functions -- demo code.
 
    The GenericFunction constructor takes the number of required
    arguments and a flag stating whether the function can also take
    optional or rest arguments.
 
-   The addMethod method adds a method
+   The addMethod method adds a method to the function by providing a
+   list of specializers and a closure.  The list of specializers must
+   be as long as the number of required arguments.  Each specializer
+   is a type object.  The first argument to the closure must always be
+   "nextMethod" and its type, if any, should be "function()".
+
+   The type objects in the specializer list can be class objects,
+   interface objects, or the three objects exported from this file,
+   NullType, UndefinedType, and AnyType.  These objects will be replaced
+   by something from the meta-objects system eventually.
+
+   There is no way to do union types at this point, the meta-objects
+   system must be working.
+
+   A function will be passed through the "nextMethod" argument.  This
+   function takes no arguments; it calls the next applicable method
+   and returns the result of that call.
+
+   --------------
+
+   Typical usage in the translator.
+
+   The translator will see a generic function definition like this:
+
+       generic function f(a, b, ...rest);
+
+   and will turn it into something like this:
+
+       var f = new GenericFunction(2, true);
+
+   Then methods scattered throughout the program, like these:
+
+       generic function f(a: int, b: boolean, ...rest) {
+           return a+b
+       }
+
+   are turned into calls to addMethod:
+
+       f.addMethod([int, boolean], function (nextMethod, a:int, b:boolean, ...rest) { return a+b })
+
+   Generally very few errors are signalled when a method is added,
+   most of the interesting work happens when f is called.
+
+   Note that the translator must translate the annotations '*' into
+   AnyType, 'null' into NullType, and 'undefined' into UndefinedType.
+   Missing annotations must become AnyType.
+
+   --------------
+
+   Implementation.
+
+   Several points to be made here.
+
+   (1) The RI is still pretty weak--no parameterized types for one
+       thing--so this implementation has its own Map class and its own
+       Set class.  No big deal, just extra code.
+
+   (2) The RI has no real meta-object functionality at this point, so
+       this code uses some primitives that have been hacked into the
+       system as magic hooks.  These hooks will eventually be useful
+       for the meta-objects system anyhow.
+
+   (3) Using arrays like I do here is nuts, we should switch to
+       lisp-like lists.  (Why? because when you use an array to
+       simulate a list, what's a functional operation--like cdr--in a
+       reasonable language is a destructive operation--like
+       shift--here.  So you end up copying arrays when you shouldn't
+       have to.)  An argument could be made that lisp-like lists
+       deserve a standard library of their own, one is sketched below,
+       I have not converted the code.
+
+   (4) Few interesting optimizations are implemented; many are possible
+       and desirable.
+
+   (5) The class linearization algorithm is out of the Dylan reference
+       manual.  There is a more recent version of that algorithm that
+       should be used instead -- this will happen eventually.
+
+   (6) The set of "direct superclasses" is taken to be the base class,
+       if any, followed by the list of implemented interfaces in order,
+       if any.  This seems reasonable but there may or may not be a
+       more reasonable approach for ECMAScript, as that is modelled on
+       a multiple-inheritance language.
 */
+
 package
 {
-    type Set.<T> = Map.<T,boolean>;
+    const DEBUG = false;
 
+    public const NullType = { "null": true };
+    public const UndefinedType = { "undefined": true };
+    public const AnyType = { "any": true };
+    
     public class GenericFunction extends Object
     {
         function GenericFunction(required: uint, more: boolean) 
@@ -18,69 +141,80 @@ package
         {
         }
 
-        // Type names used by the translator
-
-        public static const t_null = { "null": true };
-        public static const t_undefined = { "undefined": true };
-        public static const t_any = { "any": true };
-    
-        meta final function invoke(...args) {
-            // Select applicable methods.
-
-            var ms = methods[args.length];
-            var ts = args.map(typeOf(a));
-            var as = [];
-        outer:
-            for ( let i=0 ; i < ms.length ; i++ ) {
-                let m = ms[i];
-                let s = m.signature;
-                for ( let j=0 ; j < args.length ; j++ ) {
-                    if (!isSubtype(ts[j], s[j]))
-                        continue outer;
-                }
-                as.push(m);
-            }
-
-            // Sort the methods and split the set at the first uncomparable method.
-
-            let uncomparable = new Set.<*>();
-            as.sort(methodComparator(ts, uncomparable));
-            for ( let i=0 ; i < as.length ; i++ ) {
-                if (uncomparable.has(as[i])) {
-                    as.length = i;
-                    break;
-                }
-            }
-
-            // Put nextMethod() in as the first argument, then call the
-            // methods in order.  nextMethod() throws private exceptions
-            // when it's called, and we retry.
-
-            args.unshift(nextMethod);
-            for ( let acount=0; acount < as.length ; acount++ ) {
-                try {
-                    return as[acount].apply(null, args);
-                }
-                catch (e : NextMethodExn) {
-                    if (acount == as.length)
-                        throw new NoApplicableMethodError;
-                }
-                catch (e : NextMethodWithArgsExn) {
-                    if (acount == as.length)
-                        throw new NoApplicableMethodError;
-                    if (args.length-1 != e.args.length)
-                        throw new ArgumentCounteExn;
-                    for ( let i=1 ; i < args.length ; i++ )
-                        args[i] = e.args[i-1];
-                }
-            }
-            throw new NoApplicableMethodError;
+        public function addMethod(specializers: Array, body: function()) {
+            if (specializers.length != required)
+                throw "Generic function requires exactly " + required + " specializers";
+            methods.push({specializers: specializers, body: body});
         }
 
-        public function addMethod(fixedTypes: Array, body: function()) {
-            if (fixedTypes.length != required)
-                throw "Generic function requires exactly " + required + " discriminators";
-            methods.push({discriminators: fixedTypes, body: body});
+        meta final function invoke(...args) {
+            checkCongruence(args.length);
+            
+            let types = computeManifestTypes(args);
+            let [applicable, uncomparable] = sortMethods(selectApplicableMethods(methods, types), types);
+
+            return callMethodsInOrder(applicable, args);
+        }
+
+        function checkCongruence(nactuals) {
+            if (nactuals < required)
+                throw new TypeError("Not enough arguments to generic function");
+            if (nactuals > required && !more)
+                throw new TypeError("Too many arguments to generic function");
+        }
+
+        function computeManifestTypes(args) {
+            let types = [];
+            for ( let i=0 ; i < required ; i++ )
+                types[i] = typeOf(args[i]);
+            return types;
+        }
+
+        function selectApplicableMethods(methods, types) {
+            let applicable = [];
+        outer:
+            for ( let i=0, limit=methods.length ; i < limit ; i++ ) {
+                let s = methods[i].specializers;
+                for ( let j=0, limit=types.length ; j < limit ; j++ ) {
+                    if (!isSubtype(types[j], s[j]))
+                        continue outer;
+                }
+                applicable.push(methods[i]);
+            }
+            if (applicable.length == 0)
+                throw new TypeError("No applicable methods");
+            return applicable;
+        }
+
+        function sortMethods(applicable, types) {
+            let uncomparable = new Set();
+            applicable.sort(methodComparator(types, uncomparable));
+
+            for ( let i=0, limit=applicable.length ; i < limit ; i++ ) {
+                if (uncomparable.has(applicable[i])) {
+                    let rest = applicable.slice(i);
+                    applicable.length = i;
+                    if (applicable.length == 0)
+                        throw new TypeError("No applicable methods");
+                    return [applicable, rest];
+                }
+            }
+
+            return [applicable, []];
+        }
+
+        function callMethodsInOrder(applicable, args) {
+            if (DEBUG)
+                printApplicableMethods(applicable);
+
+            let applicable_index = 0;
+            args.unshift(function () { 
+                             if (applicable_index == applicable.length)
+                                 throw new TypeError("No next method");
+                             else
+                                 return applicable[applicable_index++].body.apply(null, args);
+                         });
+            return applicable[applicable_index++].body.apply(null, args);
         }
 
         /* For each method we want to know if one precedes the other for
@@ -91,7 +225,7 @@ package
          * The function returns 0 if they are not comparable but notes
          * this fact in a separate table.
          */
-        static function methodComparator(ts, uncomparable) {
+        static function methodComparator(types, uncomparable) {
             function cplPrecedes(t, t1, t2) {
                 var cpl = classPrecedenceList(t);
                 for ( let i=0, limit=cpl.length ; i < limit ; i++ ) {
@@ -106,16 +240,16 @@ package
             function cmp(x, y) {
                 var precedes=false, 
                     succeeds=false;
-                for ( let i=0, limit=ts.length ; i < limit ; i++ ) {
-                    if (x.signature[i] == y.signature[i])
+                for ( let i=0, limit=types.length ; i < limit ; i++ ) {
+                    if (x.specializers[i] == y.specializers[i])
                         ;
-                    else if (isSubtype(x.signature[i], y.signature[i]))
+                    else if (isSubtype(x.specializers[i], y.specializers[i]))
                         precedes = true;
-                    else if (isSubtype(y.signature[i], x.signature[i]))
+                    else if (isSubtype(y.specializers[i], x.specializers[i]))
                         succeeds = true;
-                    else if (cplPrecedes(ts[i], x.signature[i], y.signature[i]))
+                    else if (cplPrecedes(types[i], x.specializers[i], y.specializers[i]))
                         precedes = true;
-                    else if (cplPrecedes(ts[i], y.signature[i], x.signature[i]))
+                    else if (cplPrecedes(types[i], y.specializers[i], x.specializers[i]))
                         succeeds = true;
                 }
                 if (precedes && !succeeds)
@@ -134,76 +268,7 @@ package
 
         var required;
         var more;
-        const methods = [];
-    }
-
-    function nextMethod(...args) { 
-        if (args.length == 0)
-            throw SingletonNextMethodExn;
-        else
-            throw new NextMethodWithArgsExn(args);
-    }
-
-    class NextMethodExn 
-    {
-        // Nothing to see, move along
-    }
-
-    class NextMethodWithArgsExn 
-    {
-        function NextMethodWithArgsExn(args) : args=args {}
-            var args;
-    }
-
-    const SingletonNextMethodExn = new NextMethodExn;
-
-
-    /**********************************************************************
-     *
-     * Type systems support -- a (working) sketch.
-     */
-
-    // Since the ES4 meta objects systems is not yet mature, we
-    // represent the type of undefined as undefined, the type of null
-    // as null, and the source-level translation must cooperate in
-    // this, ie,
-    //
-    //  generic function f( x: null ) { ... }
-    //
-    // turns into
-    //
-    //  f.addMethod( [null], function (nextMethod, x: null) { ... }
-    //
-    // In practice this does not matter much.
-    //
-    // We can't handle union types here yet.
-
-    function typeOf(v) {
-        switch type (v) {
-        case (v:undefined) { return GenericFunction.t_undefined };
-        case (v:null) { return GenericFunction.t_null; }
-        case (v:*) { return magic::classOf(v) }
-        }
-    }
-
-    // Subtype relation, simplified.  Must be compatible with the
-    // subtype relation in the language, but is simplified for generic
-    // functions.
-    //
-    // t1 is "type undefined", "type null", or a class type
-    // t2 can be any of those, an interface type, or a union type
-    //
-    // We can't handle union types here yet.
-     
-    function isSubtype(t1, t2) {
-        if (t1 === t2)
-            return true;
-
-        let cpl = classPrecedenceList(t1);
-        for ( let i=0, limit=cpl.length ; i < limit ; i++ )
-            if (t2 === cpl[i])
-                return true;
-        return false;
+        const methods = new Array;
     }
 
     /******************************************************************
@@ -215,7 +280,7 @@ package
      * This does not need to be fast, it's only done once per type.
      */
 
-    var class_precedences = new Map.<*,Array>();   // Cached result
+    var class_precedences = new Map();   // Cached result
 
     function classPrecedenceList(t) {
         if (!class_precedences.has(t)) {
@@ -224,46 +289,43 @@ package
             else
                 class_precedences.put(t, [t]);
         }
-        return class_precedences.get(t);
+        return copyArray(class_precedences.get(t));
     }
 
     /* Translated from the Dylan Reference Manual */
     function computeClassPrecedences(t) {
 
-        let function merge(acc, inputs) {
+        function merge(acc, inputs) {
 
             // Returns c if it can go in the acc now, otherwise false
-            let function candidate(c) {
+            function candidate(c) {
 
-                let function headp(l)
-                    l.length > 0 && c == l[0];
+                function headp(l)
+                    c === l[0];
 
-                let function tailp(l) {
-                    for ( let i=1 ; i < l.length ; i++ )
-                        if (c == l[i])
-                            return true;
-                    return false;
-                }
+                function tailp(l) 
+                    Array.indexOf(l, c, 1) != -1;
 
                 return (any(inputs, headp) && !any(inputs, tailp)) ? c : false;
             }
 
-            let function candidateDirectSuperclass(c) 
-                any(directSuperclasses(c), candidate);
+            function candidateDirectSuperclass(c)
+                any(directSuperClasses(c), candidate);
 
-            let function emptyp(l)
-                l.length == 0;
+            function emptyp(l)
+                l.length === 0;
 
             if (Array.every(inputs, emptyp))
                 return acc;
 
             let (next = any(acc, candidateDirectSuperclass)) {
                 if (next) {
-                    let function removeNext(l) {
-                        if (head(l) == next) 
-                            l.shift();
-                        return l;
-                    }
+                    let removeNext = 
+                        function (l) {
+                            if (l[0] === next)
+                                l.shift();
+                            return l;
+                        }
                     acc.push(next);
                     return merge(acc, Array.map(inputs, removeNext));
                 }
@@ -273,13 +335,22 @@ package
         }
 
         let (dsc = directSuperClasses(t)) {
-            return merge([c], Array.map(dsc, classPrecedenceList).unshift(dsc));
+            return merge([t], prepend(dsc, Array.map(dsc, classPrecedenceList)));
         }
     }
 
     function any(a, p) {
-        let probe = Array.indexOf(a, p);
-        return (probe == -1) ? false : a[probe];
+        for ( let i=0, limit=a.length ; i < limit ; i++ ) {
+            let x = p(a[i]);
+            if (x)
+                return x;
+        }
+        return false;
+    }
+
+    function prepend(x, a) {
+        a.unshift(x);
+        return a;
     }
 
     /* Returns list of any base class plus interfaces, in order.
@@ -290,26 +361,72 @@ package
      * but this will do.
      */
 
-    var direct_superclasses = new Map.<*,Array>();  // Cached result
+    var direct_superclasses = new Map();  // Cached result
 
     function directSuperClasses(cls) {
-        if (!direct_superclasses.has(cls)) {
-            let dsci = getDirectSuperClassAndInterfaces(cls);
-            direct_superclasses.put(cls, dsci);
-        }
-        return direct_superclasses.get(cls);
+        if (!direct_superclasses.has(cls))
+            direct_superclasses.put(cls, getDirectSuperClassAndInterfaces(cls));
+        return copyArray(direct_superclasses.get(cls));
     }
 
-    /* System hook: get the base class and the implemented interfaces.
+    function copyArray(x) {
+        let result = [];
+        for ( let i=0, limit=x.length ; i < limit ; i++ )
+            if (i in x)
+                result[i] = x[i];
+        return result;
+    }
+
+
+    /**********************************************************************
+     *
+     * System hooks -- a sketch for meta-objects functionality.
+     */
+
+    function typeOf(v) {
+        switch type (v) {
+        case (v:undefined) { return UndefinedType }
+        case (v:null) { return NullType }
+        case (v:*) { return magic::getClassOfObject(v) }
+        }
+    }
+
+    // Subtype relation, simplified.  Must be compatible with the
+    // subtype relation in the language, but is simplified for generic
+    // functions.
+    //
+    // t1 is "type undefined", "type null", or a class type
+    // t2 can be any of those, an interface type, a union type, or "*"
+    //
+    // We can't handle union types here yet.
+     
+    function isSubtype(t1, t2) {
+        if (t2 === AnyType)
+            return true;
+
+        if (t1 === t2)
+            return true;
+
+        if (t1 === UndefinedType || t1 === NullType)
+            return t1 === t2;
+
+        if (t2 === UndefinedType || t2 === NullType)
+            return false;
+
+        let cpl = classPrecedenceList(t1);
+        for ( let i=0, limit=cpl.length ; i < limit ; i++ )
+            if (t2 === cpl[i])
+                return true;
+        return false;
+    }
+
+
+    /* Get the base class and the implemented interfaces.
      *
      * This must return an array of the direct superclass followed by
      * the direct superinterfaces, in declaration order.  Right now we
      * depend on undocumented behavior of the RI: the interfaces are
      * actually in order in the internal data structures.
-     *
-     * This should be replaced by an appropriate use of the
-     * meta-objects functionality, eventually; the hooks used here are
-     * those that would be used by that layer.
      */
 
     function getDirectSuperClassAndInterfaces(clsOrInterface: (Class,Interface)) {
@@ -337,4 +454,114 @@ package
         }
         return supers;
     }
+
+
+    /**********************************************************************
+     *
+     * Debugging functionality 
+     */
+
+    function printApplicableMethods(applicable) {
+        print(applicable.length + " applicable functions");
+        for ( let i=0 ; i < applicable.length ; i++ ) { 
+            let s = applicable[i].specializers;
+            let n = "  ";
+            for ( let j=0 ; j < s.length ; j++ )
+                n = n + nameThatType(s[j]) + " ";
+            print(n);
+        }
+    }
+
+    /* lame-o */
+    function nameThatType(x) {
+        if (x == Object) return "Object";
+        if (x == String) return "String";
+        if (x == string) return "string";
+        if (x == int) return "int";
+        if (x == double) return "double";
+        if (x == AnyType) return "*";
+        return "???";
+    }
+
+
+    /**********************************************************************
+     *
+     * Data structures that go away later 
+     */
+
+    class Set {
+        function put(X) {
+            if (Array.indexOf(contents, X) == -1)
+                contents.push(X);
+        }
+
+        function has(X)
+            Array.indexOf(contents, X) != -1;
+
+        var contents = [];
+    }
+
+    class Map {
+        function get(X) {
+            let probe = Array.indexOf(keys, X);
+            if (probe == -1)
+                return null;
+            return values[probe];
+        }
+
+        function put(X, Y) {
+            let probe = Array.indexOf(keys, X);
+            if (probe == -1) {
+                keys.push(X);
+                values.push(Y);
+            }
+            else
+                values[probe] = X;
+        }
+
+        function has(X)
+            Array.indexOf(keys, X) != -1;
+
+        var keys = new Array;
+        var values = new Array;
+    }
 }
+
+
+/* List library sketch:
+
+    function cons(x,l) ({hd:x, tl:l});
+
+    function head(l) l.hd;
+
+    function tail(l) l.tl;
+
+    function length(l) {
+        let len=0;
+        while (l != null) {
+            len++;
+            l = l.tl;
+        }
+        return len;
+    }
+
+    function reverse(l) {
+        let r = null;
+        while (l != null) {
+            r = cons(l.hd, r);
+            l = l.tl;
+        }
+        return r;
+    }
+
+    function append(l1, l2) {
+        let l1 = reverse(l1);
+        while (l1 != null) {
+            l2 = cons(l1.hd, l2);
+            l1 = l1.tl;
+        }
+        return l2;
+    }
+
+... and then map(), every(), any(), sort()
+*/
