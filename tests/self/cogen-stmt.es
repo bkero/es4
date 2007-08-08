@@ -48,7 +48,6 @@ package cogen
         switch type (s) {
         case (s:EmptyStmt) { }
         case (s:ExprStmt) { cgExprStmt(ctx, s) }
-        case (s:InitStmt) { cgInitStmt(ctx, s) }
         case (s:ClassBlock) { cgClassBlock(ctx, s) }
         case (s:ForInStmt) { cgForInStmt(ctx, s) }
         case (s:ThrowStmt) { cgThrowStmt(ctx, s) }
@@ -73,9 +72,6 @@ package cogen
     function cgExprStmt(ctx, s) {
         cgExpr(ctx, s.expr);
         ctx.asm.I_pop();
-    }
-
-    function cgInitStmt(ctx, s) {
     }
 
     function cgClassBlock(ctx, s) {
