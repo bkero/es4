@@ -119,6 +119,13 @@ package emitter
             use namespace Ast;
             switch type (t) {
             case (tn:TypeName) { return nameFromIdentExpr(tn.ident) }
+            case (st:SpecialType) { 
+                switch type(st.kind) {
+                    case (a:AnyType) {
+                        return 0;
+                    }
+                }
+            }
             case (x:*) { throw ("Unimplemented: typeFromTypeExpr " + t) }
             }
         }
@@ -139,7 +146,7 @@ package emitter
         public function fixtureTypeToType(fix) {
             switch type (fix) {
                 case (vf:ValFixture) {
-                    return typeFromTypeExpr(vf.type);
+                    return vf.type != null ? typeFromTypeExpr(vf.type) : 0 ;
                 }
                 case (mf:MethodFixture) {
                     return 0;
@@ -147,7 +154,57 @@ package emitter
                 case(x:*) { throw "Unimplemented: fixtureTypeToType " + x }
             }
         }
-
+        
+        public function defaultLiteralExpr(lit)
+        {
+            switch type (lit) {
+                case(ln:LiteralNull) {
+                    return {val:CONSTANT_Null, kind:CONSTANT_Null}
+                }
+                case(lu:LiteralUndefined) {
+                    return {val:0, kind:0}
+                }
+                case(ld:LiteralDouble) {
+                    let val = constants.float64(ld.doubleValue);
+                    return {val:val, kind:CONSTANT_Double};
+                }
+                case(ld:LiteralDecimal) {
+                    let val = constants.float64(ld.decimalValue);
+                    return {val:val, kind:CONSTANT_Double};
+                }
+                case(li:LiteralInt) {
+                    let val = constants.int32(li.intValue);
+                    return {val:val, kind:CONSTANT_Integer};
+                }
+                case(lu:LiteralUInt) {
+                    let val = constants.uint32(lu.uintValue);
+                    return {val:val, kind:CONSTANT_UInteger};
+                }
+                case(lb:LiteralBoolean) {
+                    let val = (lb.booleanValue ? CONSTANT_True : CONSTANT_False);
+                    return {val:val, kind:val};
+                }
+                case(ls:LiteralString) {
+                    let val = constants.stringUtf8(ls.strValue);
+                    return {val:val, kind:CONSTANT_Utf8};
+                }
+                case(ln:LiteralNamespace) {
+                    let val = constants.namespace(ln.namespaceValue);
+                    return  {val:val, kind:CONSTANT_Namespace};
+                }
+                case(x:*) {
+                    throw ("le Default expression must be a constant value" + le.literal)
+                }
+            }
+        }
+        public function defaultExpr(expr) {
+            switch type (expr) {
+                case(le:LiteralExpr) {
+                    return defaultLiteralExpr(le.literal);
+                }
+                case(x:*) { throw ("Default expression must be a constant value" + le)}
+            }
+        }
     }
 
     public class Script
@@ -230,7 +287,7 @@ package emitter
 
     public class Method // extends AVM2Assembler
     {
-        public var e, formals, name, asm, traits = [], finalized=false;
+        public var e, formals, name, asm, traits = [], finalized=false, defaults = null;
 
         function Method(e:ABCEmitter, formals:Array, name=null) {
             asm = new AVM2Assembler(e.constants, formals.length);
@@ -248,6 +305,10 @@ package emitter
             return traits.push(t);
         }
 
+        public function setDefaults(d) {
+            defaults = d;
+        }
+        
         public function finalize() {
             if (finalized)
                 return;
@@ -256,7 +317,7 @@ package emitter
             // Standard epilogue for lazy clients.
             asm.I_returnvoid();
 
-            var meth = e.file.addMethod(new ABCMethodInfo(0, formals, 0, asm.flags));
+            var meth = e.file.addMethod(new ABCMethodInfo(0, formals, 0, asm.flags, defaults));
             var body = new ABCMethodBodyInfo(meth);
             body.setMaxStack(asm.maxStack);
             body.setLocalCount(asm.maxLocal);

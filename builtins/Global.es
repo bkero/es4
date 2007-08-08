@@ -54,6 +54,30 @@ package
     intrinsic const Infinity = 1.0/0.0;
     intrinsic const undefined = void(0);
 
+    intrinsic const global = this;
+
+    namespace iterator;
+
+    /*
+    type IterableType.<T> = {
+        iterator::get: function (boolean=) : iterator::IteratorType.<T>
+    };
+      
+    type IteratorType.<T> = {
+        next: function () : T
+    };
+    */
+
+    iterator class StopIterationClass {
+        function toString() : string 
+            "[object StopIteration]";
+    }
+
+    iterator const StopIteration: iterator::StopIterationClass = new iterator::StopIterationClass;
+
+    // FIXME: probably wants to be not iterator-specific; generally useful.
+    iterator type EnumerableId = (int, uint, string, Name);
+
     // 15.1.2.1 eval (x)
     intrinsic native function eval(s: string);
 
@@ -141,6 +165,7 @@ package
     function parseInt(s, r=0)
         intrinsic::parseInt(string(s), int(r));
 
+
     // 15.1.2.3 parseFloat (string)
     intrinsic native function parseFloat(s: string);
 
@@ -153,6 +178,7 @@ package
     function parseFloat(s)
         intrinsic::parseFloat(string(s));
 
+
     // 15.1.2.4 isNaN (v)
     intrinsic function isNaN(n: Numeric): boolean
         (!(n === n));
@@ -160,12 +186,10 @@ package
     function isNaN(number)
         intrinsic::isNaN(ToNumeric(number));
 
+
     // 15.1.2.5 isFinite (number)
-    intrinsic function isFinite(n: Numeric): boolean {
-        return (!isNaN(n) &&
-                n != Number.NEGATIVE_INFINITY &&
-                n != Number.POSITIVE_INFINITY);
-    }
+    intrinsic function isFinite(n: Numeric): boolean
+        !isNaN(n) && n != -Infinity && n != Infinity;
 
     function isFinite(x)
         intrinsic::isFinite(ToNumeric(x));
@@ -253,42 +277,192 @@ package
         }
     }
 
-    // 15.1.3.1 decodeURI (encodedURI)
-    intrinsic native function decodeURI(encodedURI: string);
+
+    /* URI encoding and decoding. */
+
+    helper function toUTF8(v: uint) {
+        if (v <= 0x7F)
+            return [v];
+        if (v <= 0x7FF)
+            return [0xC0 | ((v >> 6) & 0x3F), 
+                    0x80 | (v & 0x3F)];
+        if (v <= 0xD7FF | v >= 0xE000 && v <= 0xFFFF)
+            return [0xE0 | ((v >> 12) & 0x0F),
+                    0x80 | ((v >> 6) & 0x3F),
+                    0x80 | (v & 0x3F)];
+        if (v >= 0x10000)
+            return [0xF0 | ((v >> 18) & 0x07),
+                    0x80 | ((v >> 12) & 0x3F),
+                    0x80 | ((v >> 6) & 0x3F),
+                    0x80 | (v & 0x3F)];
+        throw URIError("Unconvertable code");
+    }
+
+    helper function fromUTF8(octets) {
+        let B = octets[0];
+        let V;
+        if ((B & 0x80) == 0)
+            V = B;
+        else if ((B & 0xE0) == 0xC0)
+            V = B & 0x1F;
+        else if ((B & 0xF0) == 0xE0)
+            V = B & 0x0F;
+        else if ((B & 0xF8) == 0xF0)
+            V = B & 0x07;
+        for ( let j=1 ; j < octets.length ; j++ )
+            V = (V << 6) | (octets[j] & 0x3F);
+        return V;
+    }
+
+    helper function encode(s: string, unescapedSet: string): string {
+        let R = "";
+        let k = 0;
+
+        while (k != s.length) {
+            let C = s[k];
+
+            if (unescapedSet.indexOf(C) != 1) {
+                R = R + C;
+                k = k + 1;
+                continue;
+            }
+
+            let V = C.charCodeAt(0);
+            if (V >= 0xDC00 && V <= 0xDFFF)
+                throw new URIError("Invalid code");
+            if (V >= 0xD800 && V <= 0xDBFF) {
+                k = k + 1;
+                if (k == s.length)
+                    throw new URIError("Truncated code");
+                let V2 = s[k].charCodeAt(0);
+                V = (V - 0xD800) * 0x400 + (V2 - 0xDC00) + 0x10000;
+            }
+
+            let octets = helper::toUTF8(V);
+            for ( let j=0 ; j < octets.length ; j++ )
+                R = R + "%" + helper::twoHexDigits(octets[j]);
+            k = k + 1;
+        }
+        return R;
+    }
+
+    helper function twoHexDigits(B) {
+        let s = "0123456789ABCDEF";
+        return s[B >> 4] + s[B & 15];
+    }
+
+    helper function decodeHexEscape(s, k) {
+        if (k + 2 >= s.length || 
+            s[k] != "%" ||
+            !helper::isDigitForRadix(s[k+1], 16) && !helper::isDigitForRadix(s[k+1], 16))
+            throw new URIError("Invalid escape sequence");
+        return parseInt(s.substring(k+1, k+3), 16);
+    }
+
+    helper function decode(s: string, reservedSet: string): string {
+        let R = "";
+        let k = 0;
+        while (k != s.length) {
+            if (s[k] != "%") {
+                R = R + s[k];
+                k = k + 1;
+                continue;
+            }
+
+            let start = k;
+            let B = helper::decodeHexEscape(s, k);
+            k = k + 3;
+
+            if ((B & 0x80) == 0) {
+                let C = string.fromCharCode(B);
+                if (reservedSet.indexOf(C) != -1)
+                    R = R + s.substring(start, k);
+                else
+                    R = R + C;
+                continue;
+            }
+
+            let n = 1;
+            while (((B << n) & 0x80) == 1)
+                ++n;
+            if (n == 1 || n > 4)
+                throw new URIError("Invalid encoded character");
+
+            let octets = [B];
+            for ( let j=1 ; j < n ; ++j ) {
+                let B = helper::decodeHexEscape(s, k);
+                if ((B & 0xC0) != 0x80)
+                    throw new URIError("Invalid encoded character");
+                k = k + 3;
+                octets.push(B);
+            }
+            let V = helper::fromUTF8(octets);
+            if (V > 0x10FFFF)
+                throw new URIError("Invalid Unicode code point");
+            if (V > 0xFFFF) {
+                L = ((V - 0x10000) & 0x3FF) + 0xD800;
+                H = (((V - 0x10000) >> 10) & 0x3FF) + 0xD800;
+                R = R + string.fromCharCode(H, L);
+            }
+            else {
+                let C = string.fromCharCode(V);
+                if (reservedSet.indexOf(C))
+                    R = R + s.substring(start, k);
+                else
+                    R = R + C;
+            }
+        }
+        return R;
+    }
+
+    helper const uriReserved = ";/?:@&=+$,";
+    helper const uriAlpha = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
+    helper const uriDigit = "0123456789";
+    helper const uriMark = "-_.!~*'()";
+    helper const uriUnescaped = helper::uriAlpha + helper::uriDigit + helper::uriMark;
+
+
+    /* E262-3 15.1.3.1 decodeURI (encodedURI) */
+    intrinsic function decodeURI(encodedURI: string)
+        helper::decode(encodedURI, helper::uriReserved + "#");
 
     function decodeURI(encodedURI)
         intrinsic::decodeURI(string(encodedURI));
 
-    // 15.1.3.2 decodeURIComponent (encodedURIComponent)
-    intrinsic native function decodeURIComponent(encodedURIComponent);
+
+    /* E262-3 15.1.3.2 decodeURIComponent (encodedURIComponent) */
+    intrinsic function decodeURIComponent(encodedURIComponent)
+        helper::decode(encodedURIComponent, "");
 
     function decodeURIComponent(encodedURIComponent)
         intrinsic::decodeURIComponent(string(encodedURIComponent));
 
-    // 15.1.3.3 encodeURI (uri)
-    intrinsic native function encodeURI(uri);
+
+    /* E262-3 15.1.3.3 encodeURI (uri) */
+    intrinsic function encodeURI(uri: string): string
+        helper::encode(uri, helper::uriReserved + helper::uriUnescaped + "#")
 
     function encodeURI(uri)
         intrinsic::encodeURI(string(uri));
 
-    // 15.1.3.4 encodeURIComponent (uriComponent)
-    intrinsic native function encodeURIComponent(uriComponent);
+
+    /* E262-3 15.1.3.4 encodeURIComponent (uriComponent) */
+    intrinsic function encodeURIComponent(uriComponent: string): string
+        helper::encode(uri, helper::uriReserved);
 
     function encodeURIComponent(uriComponent)
         intrinsic::encodeURIComponent(string(uriComponent));
 
-    // [proposals:versioning] says that __ECMASCRIPT_VERSION__ is always defined
+
+    /* E262-4 [proposals:versioning] says that __ECMASCRIPT_VERSION__ is always defined */
     const __ECMASCRIPT_VERSION__ = 4;
+
 
     // [proposals:bug fixes] - [IMMUTABLE.GLOBALS] says that these three names
     // are {DE,DD,RO}, and not just {DE,DD} as in E262-3.
     const NaN = intrinsic::NaN;
     const Infinity = intrinsic::Infinity;
     const undefined = intrinsic::undefined;
-
-    // FIXME: is this a credible definition in a multi-global setting?
-    // FIXME: var or const?
-    var global = this;
 
     // The non-virtual property get/set helpers.
     intrinsic native function get(obj:Object!, name:string) : *;

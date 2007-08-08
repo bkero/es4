@@ -106,10 +106,6 @@ package cogen
 
     function cgBlock(ctx, b) {
         // FIXME -- more here
-        let defns = b.defns;
-        for ( let i=0 ; i < defns.length ; i++ )
-            cgDefn(ctx, defns[i]);
-
         let stmts = b.stmts;
         for ( let i=0 ; i < stmts.length ; i++ )
             cgStmt(ctx, stmts[i]);
@@ -132,21 +128,47 @@ package cogen
         }
     }
 
+    function extractNamedFixtures(fixtures)
+    {
+        let named = [];
+        for(let i = 0; i < fixtures.length; ++i)
+        {
+            let [name,fixture] = fixtures[i];
+            switch type (name) {
+                case (pn:PropName) {
+                    named.push([name,fixture]);
+                }
+                case (tn:TempName) {
+                    // do nothing
+                }
+            }
+        }
+        return named;
+    }
+    
     /* Create a method trait in the ABCFile
      * Generate code for the function
      * Return the function index
      */
     function cgFunc({emitter:emitter, script:script}, f:FUNC) {
-        function extractName([name,fixture])
-            emitter.fixtureNameToName(name);
-        
         function extractType([name,fixture])
             emitter.fixtureTypeToType(fixture);
         
-        let formals = map(extractName, f.params.fixtures);
-        let formals_type = map(extractType, f.params.fixtures);
+        function extractDefaults(expr)
+            emitter.defaultExpr(expr);
+            
+        let named_fixtures = extractNamedFixtures(f.params.fixtures);
+        
+        let formals_type = map(extractType, named_fixtures);
         let method = script.newFunction(formals_type);
         let asm = method.asm;
+        
+        let defaults = map(extractDefaults, f.defaults);
+        
+        if( defaults.length > 0 )
+        {
+            method.setDefaults(defaults);
+        }
 
         /* Create a new rib and populate it with the values of all the
          * formals.  Add slot traits for all the formals so that the
@@ -163,24 +185,71 @@ package cogen
          * God only knows about the arguments object...
          */
         asm.I_newactivation();
-        if (formals.length > 0)
-            asm.I_dup();
         asm.I_pushscope();
-        for ( let i=0 ; i < formals.length ; i++ ) {
-            if (i < formals.length-1)
-                asm.I_dup();
-            asm.I_getlocal(i+1);
-            asm.I_setproperty(formals[i]);
-            method.addTrait(new ABCSlotTrait(formals[i], 0, 0, formals_type[i]));
-        }
+        
+        let ctx = new CTX(asm, {tag: "function"}, method);
 
+        cgHead(ctx, f.params);
         /* Generate code for the body.  If there is no return statement in the
          * code then the default behavior of the emitter is to add a returnvoid
          * at the end, so there's nothing to worry about here.
          */
-        cgBlock(new CTX(asm, {tag: "function"}, method), f.block);
+        cgBlock(ctx, f.block);
         return method.finalize();
     }
+    
+    function cgHead(ctx, head) {
+        let {asm:asm, emitter:emitter, target:target} = ctx;
+        
+        function extractName([name,fixture])
+            ctx.emitter.fixtureNameToName(name); //FIXME: shouldn't need ctx.
+        
+        function extractType([name,fixture])
+            ctx.emitter.fixtureTypeToType(fixture); //FIXME: shouldn't need ctx.
+        
+        let named_fixtures = extractNamedFixtures(head.fixtures);
+
+        let formals = map(extractName, named_fixtures);
+        let formals_type = map(extractType, named_fixtures);
+        for ( let i=0 ; i < formals.length ; i++ ) {
+            target.addTrait(new ABCSlotTrait(formals[i], 0, 0, formals_type[i]));
+        }
+
+        // do inits
+        cgInits(ctx, head.inits);    
+        
+    }
+    
+    function cgInits(ctx, inits, isExpr=false){
+        let {asm:asm, emitter:emitter} = ctx;
+
+        let t = -1;
+        
+        for( let i=0; i < inits.length; ++i ) {
+            let [name, init] = inits[i];
+
+            let name_index = emitter.fixtureNameToName(name);
+
+            asm.I_findproperty(name_index);
+            cgExpr(ctx, init);
+            
+            if( isExpr && i == inits.length-1 )
+            {
+                t = asm.getTemp();
+                asm.I_dup();
+                asm.I_setlocal(t);
+            }
+            
+            asm.I_setproperty(name_index);
+        }
+
+        if( t != -1 )
+        {
+            asm.I_getlocal(t);
+            asm.killTemp(t);
+        }
+    }
+    
 
     // Handles scopes and finally handlers and returns a label, if appropriate, to
     // branch to.  "tag" is one of "function", "break", "continue"

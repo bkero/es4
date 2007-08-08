@@ -42,7 +42,9 @@ package
 {
     use default namespace public;
 
-    intrinsic class Class
+    interface ClassType {}
+
+    intrinsic class Class implements ClassType
     {
         /* Becomes available as Object.prototype, Boolean.prototype,
            and so on */
@@ -54,5 +56,27 @@ package
         private var classname : String;
 
         intrinsic function getClass() : String! { return classname; }
+
+        intrinsic function isSubtypeOf(t/*: Type*/) /* : boolean */ {
+            for ( let s in superTypes() )
+                if (s === t)
+                    return true;
+            return false;
+        }
+
+        intrinsic function superTypes() {
+            // FIXME #158: don't use "let" here, "let function" is broken.
+            var supers = []; // magic::superTypes(this);
+            var i = 0;
+            // Clunky
+            function next() {
+                if (i == supers.length) 
+                    throw iterator::StopIteration; 
+                return supers[i++];
+            }
+            var it = {}
+            it./*iterator::*/next = next;
+            return it;
+        }
     }
 }

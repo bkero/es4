@@ -75,11 +75,11 @@ namespace Ast
             : name=name {}
     }
 
-    type FIXTURE_BINDING = [FIXTURE_NAME,FIXTURE]
+    type FIXTURE_BINDING = [FIXTURE_NAME,FIXTURE];
+    type FIXTURES = [FIXTURE_BINDING];
 
-    type FIXTURES = [FIXTURE_BINDING]
-
-    type INITS = [[FIXTURE_NAME,EXPR]]
+    type INIT_BINDING = [FIXTURE_NAME,EXPR]
+    type INITS = [INIT_BINDING];
 
     type NAME =
        { ns: NAMESPACE
@@ -483,13 +483,11 @@ namespace Ast
     }
 
     class LetExpr {
-        const binds : BINDING_INITS;
-        const head : HEAD;
-        const body : EXPR;
-        function LetExpr (binds,head,body)
-            : binds = binds
-            , head = head
-            , body = body {}
+        const head //: HEAD;
+        const expr : EXPR;
+        function LetExpr (head,expr)
+            : head = head
+            , expr = expr {}
     }
 
     class NewExpr {
@@ -565,10 +563,14 @@ namespace Ast
 
     class GetTemp {
         const n : int;
+        function GetTemp (n)
+            : n = n {}
     }
 
     class GetParam {
         const n : int;
+        function GetParam (n) 
+            : n = n {}
     }
 
     // IDENT_EXPR
@@ -891,6 +893,9 @@ namespace Ast
     class AssignStep {
         const le : EXPR;
         const re : EXPR;
+        function AssignStep (le,re)
+            : le = le
+            , re = re {}
     }
 
     // FIXTURES
@@ -976,10 +981,15 @@ namespace Ast
         , UndefinedType
         , VoidType )
 
-    class AnyType {}
-    class NullType {}
-    class UndefinedType {}
-    class VoidType {}
+    class AnyType { public function toString() "Any" }
+    class NullType { public function toString() "Null" }
+    class UndefinedType { public function toString() "Undefined" }
+    class VoidType { public function toString() "Void" }
+
+    const anyType = new SpecialType (new AnyType);
+    const nullType = new SpecialType (new NullType);
+    const undefinedType = new SpecialType (new UndefinedType);
+    const voidType = new SpecialType (new VoidType);
 
     class UnionType {
         const types : [TYPE_EXPR];
@@ -1045,6 +1055,8 @@ namespace Ast
 
     // STMTs
 
+    type STMTS = [STMT];
+
     type STMT =
        ( EmptyStmt
        , ExprStmt
@@ -1109,8 +1121,8 @@ namespace Ast
 
     class BlockStmt {
         const block : BLOCK;
-        function BlockStmt(block) :
-            block = block { }
+        function BlockStmt (block)
+            : block = block {}
     }
 
     class LabeledStmt {
@@ -1127,11 +1139,9 @@ namespace Ast
         const body : STMT;
         const labels : [IDENT];
         const fixtures : FIXTURES?;  // What are these for?
-        function WhileStmt(expr, body, labels, fixtures) : 
-            expr=expr,
-            body=body,
-            labels=labels,
-            fixtures=fixtures {}
+        function WhileStmt (expr,body)
+            : expr = expr
+            , body = body {}
     }
 
     class DoWhileStmt {
@@ -1298,16 +1308,16 @@ namespace Ast
     type BLOCK = Block;
 
     class Block {
-        const pragmas : [PRAGMA];
+        const pragmas : PRAGMAS;
         const head /*: HEAD?*/;
-        const stmts : [STMT];
-        const pos: POS?;
-        function Block (pragmas,head,stmts,pos)
+        const stmts : STMTS;
+        function Block (pragmas,head,stmts)
             : pragmas = pragmas
             , head = head
-            , stmts = stmts
-            , pos = pos { }
+            , stmts = stmts { }
     }
+
+    type PRAGMAS = [PRAGMA];
 
     type PRAGMA =
         ( UseNamespace
@@ -1348,9 +1358,7 @@ namespace Ast
 
     type DIRECTIVES =
         { pragmas: [PRAGMA]
-        , head: HEAD?
-        , stmts: [STMT]
-        , pos: POS? }
+        , stmts: STMTS }
 
     type PROGRAM = Program
 

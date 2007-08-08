@@ -455,8 +455,8 @@ package cogen
     }
 
     function cgInitExpr(ctx, e) {
-        // FIXME
-        throw "Unimplemented init expr";
+        cgHead(ctx, e.head);
+        cgInits(ctx, e.inits, true);
     }
 
     function cgLiteralExpr(ctx, e) {
@@ -544,7 +544,7 @@ package cogen
     }
 
     function cgGetParamExpr(ctx, e) {
-        // FIXME
-        throw "Unimplemented getParam expression";
+        let asm = ctx.asm;
+        asm.I_getlocal(e.n + 1);  //account for 'this'
     }
 }

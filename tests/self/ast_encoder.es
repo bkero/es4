@@ -4,7 +4,7 @@
 {
     use default namespace Ast;
     use namespace intrinsic;
-    use namespace Debug;
+    use namespace Release;
 
     function indent (n:int)
         : string {
@@ -261,6 +261,25 @@
               + encodeStmt (nd.els,nesting+", 'els': ".length)
               + " }";
         }
+        case (nd: WhileStmt) {
+            var str =
+                "{ 'ast::class': 'WhileStmt'"
+              + indent(nesting)
+              + ", 'expr': "
+              + encodeExpr (nd.expr,nesting+", 'expr': ".length)
+              + indent(nesting)
+              + ", 'body': "
+              + encodeStmt (nd.body,nesting+", 'body': ".length)
+              + " }";
+        }
+        case (nd: BlockStmt) {
+            var str =
+                "{ 'ast::class': 'BlockStmt'"
+              + indent(nesting)
+              + ", 'block': "
+              + encodeBlock (nd.block,nesting+", 'block': ".length)
+              + " }";
+        }
         case (x: *) {
             throw "internalError: encodeStmt";
         }
@@ -311,7 +330,7 @@
 
     function encodeExpr (nd : EXPR, nesting: int = 0)
         : string {
-        enter ("encodeExpr");
+        enter ("encodeExpr ",nd);
         var str = "";
         switch type (nd): EXPR {
         case (le: LiteralExpr) {
@@ -373,6 +392,20 @@
               + encodeIdentExpr (ex.ident,nesting+", 'ident': ".length)
               + " }";
         }
+        case (ex: SetExpr) {
+            var str =
+                "{ 'ast::class': 'SetExpr'"
+              + indent(nesting)
+              + ", 'op': "
+              + encodeAssignOp (ex.op,nesting,", 'op': ".length)
+              + indent(nesting)
+              + ", 'le': "
+              + encodeExpr (ex.le,nesting+", 'le': ".length)
+              + indent(nesting)
+              + ", 're': "
+              + encodeExpr (ex.re,nesting+", 're': ".length)
+              + " }";
+        }
         case (ex: BinaryExpr) {
             var str =
                 "{ 'ast::class': 'BinaryExpr'"
@@ -385,6 +418,17 @@
               + indent(nesting)
               + ", 'e2': "
               + encodeExpr (ex.e2,nesting+", 'e2': ".length)
+              + " }";
+        }
+        case (ex: UnaryExpr) {
+            var str =
+                "{ 'ast::class': 'UnaryExpr'"
+              + indent(nesting)
+              + ", 'op': "
+              + encodeUnOp (ex.op,nesting,", 'op': ".length)
+              + indent(nesting)
+              + ", 'ex': "
+              + encodeExpr (ex.ex,nesting+", 'ex': ".length)
               + " }";
         }
         case (nd: InitExpr) {
@@ -400,6 +444,33 @@
               + ", 'inits': [ "
               + encodeInits (nd.inits,nesting+", 'inits': [ ".length)
               + " ] }";
+        }
+        case (nd: LetExpr) {
+            var str =
+                "{ 'ast::class': 'LetExpr'"
+              + indent(nesting)
+              + ", 'head': "
+              + encodeHead (nd.head,nesting+", 'head': ".length)
+              + indent(nesting)
+              + ", 'expr': "
+              + encodeExpr (nd.expr,nesting+", 'expr': ".length)
+              + " }";
+        }
+        case (nd: GetTemp) {
+            var str =
+                "{ 'ast::class': 'GetTemp'"
+              + indent(nesting)
+              + ", 'n': "
+              + nd.n
+              + " }";
+        }
+        case (nd: GetParam) {
+            var str =
+                "{ 'ast::class': 'GetParam'"
+              + indent(nesting)
+              + ", 'n': "
+              + nd.n
+              + " }";
         }
         case (x: *) {
             var str = "**unknown node in encodeExpr "+nd+"**";
@@ -554,9 +625,65 @@
         return str;
     }
 
+    function encodeAssignOp (nd : ASSIGNOP, nesting: int = 0)
+        : string {
+        enter ("encodeAssignOp")
+        var str = "";
+        switch type (nd): ASSIGNOP {
+        case (op: Assign) {
+            var str = "Assign";
+        }
+        case (op: AssignPlus) {
+            var str = "AssignPlus";
+        }
+        case (op: AssignMinus) {
+            var str = "AssignMinus";
+        }
+        case (op: AssignTimes) {
+            var str = "AssignTimes";
+        }
+        case (op: AssignDivide) {
+            var str = "AssignDivide";
+        }
+        case (op: AssignRemainder) {
+            var str = "AssignRemainder";
+        }
+        case (op: AssignLeftShift) {
+            var str = "AssignLeftShift";
+        }
+        case (op: AssignRightShift) {
+            var str = "AssignRightShift";
+        }
+        case (op: AssignRightShiftUnsigned) {
+            var str = "AssignRightShiftUnsigned";
+        }
+        case (op: AssignBitwiseAnd) {
+            var str = "AssignBitwiseAnd";
+        }
+        case (op: AssignBitwiseOr) {
+            var str = "AssignBitwiseOr";
+        }
+        case (op: AssignBitwiseXor) {
+            var str = "AssignBitwiseXor";
+        }
+        case (op: AssignLogicalAnd) {
+            var str = "AssignLogicalAnd";
+        }
+        case (op: AssignLogicalOr) {
+            var str = "AssignLogicalOr";
+        }
+        case (x: *) {
+            throw "internalError: encodeLiteral";
+        }
+        }
+        var str = "{ 'ast::class': '" + str + "' }"
+        exit ("encodeAssignOp ",str);
+        return str;
+    }
+
     function encodeBinOp (nd : BINOP, nesting: int = 0)
         : string {
-        enter ("encodeLiteral")
+        enter ("encodeBinOp")
         var str = "";
         switch type (nd): BINOP {
         case (op: Plus) {
@@ -633,7 +760,57 @@
         }
         }
         var str = "{ 'ast::class': '" + str + "' }"
-        exit ("encodeLiteral ",str);
+        exit ("encodeBinOp ",str);
+        return str;
+    }
+
+    function encodeUnOp (nd : UNOP, nesting: int = 0)
+        : string {
+        enter ("encodeUnOp")
+        var str = "";
+        switch type (nd): UNOP {
+        case (op: Delete) {
+            var str = "Delete";
+        }
+        case (op: Void) {
+            var str = "Void";
+        }
+        case (op: Typeof) {
+            var str = "Typeof";
+        }
+        case (op: PreIncr) {
+            var str = "PreIncr";
+        }
+        case (op: PreDecr) {
+            var str = "PreDecr";
+        }
+        case (op: PostIncr) {
+            var str = "PostIncr";
+        }
+        case (op: PostDecr) {
+            var str = "PostDecr";
+        }
+        case (op: UnaryPlus) {
+            var str = "UnaryPlus";
+        }
+        case (op: UnaryMinus) {
+            var str = "UnaryMinus";
+        }
+        case (op: BitwiseNot) {
+            var str = "BitwiseNot";
+        }
+        case (op: LogicalNot) {
+            var str = "LogicalNot";
+        }
+        case (op: Type) {
+            var str = "Type";
+        }
+        case (x: *) {
+            throw "internalError: encodeUnOp";
+        }
+        }
+        var str = "{ 'ast::class': '" + str + "' }"
+        exit ("encodeUnOp ",str);
         return str;
     }
 
