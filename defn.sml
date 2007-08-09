@@ -456,18 +456,13 @@ fun identExprToMultiname (env:ENV) (ie:Ast.IDENT_EXPR)
         Ast.Identifier {ident, ...} =>
             let
             in
-                {nss = (#openNamespaces (hd env)), id = ident}
+                {nss = (#openNamespaces env), id = ident}
             end
       | Ast.QualifiedIdentifier {ident, qual,...} =>
             let
                 val ns = resolveExprToNamespace env qual
             in
                 {nss = [[ns]], id = ident}
-            end
-      | Ast.TypeIdentifier {ident,typeArgs} =>
-            let
-            in
-                identExprToMultiname env ident
             end
       | _ => LogErr.defnError ["unhandled form of identifier expression in defIdentExpr"]
     end
@@ -1392,23 +1387,23 @@ and defCtor (env:ENV) (ctor:Ast.CTOR)
 
     Numeric mode flags and open namespaces are propagated to
     the expressions they modify via a Context value. Interpret
-    each pragma and initialise a new context using the results
+    each pragma and initialise a new env using the results
 *)
 
 and defPragmas (env:ENV)
                (pragmas:Ast.PRAGMA list)
     : (ENV * Ast.RIB) =
     let
-        val ctx : CONTEXT  = hd env
-        val mode      = #numericMode ctx
+        val ribs      = #ribs env
+        val mode      = #numericMode env
         val numType   = ref (#numberType mode)
         val rounding  = ref (#roundingMode mode)
         val precision = ref (#precision mode)
-        val defaultNamespace = ref (#defaultNamespace ctx)
+        val defaultNamespace = ref (#defaultNamespace env)
         val opennss   = ref []
-        val packageNames  = ref (#packageNames ctx)
-        val fixtures = ref []
-        val tempOffset = #tempOffset ctx
+        val packageNames  = ref (#packageNames env)
+        val rib = ref []
+        val tempOffset = #tempOffset env
 
         fun defPragma x =
             case x of
@@ -1446,7 +1441,7 @@ and defPragmas (env:ENV)
                                          else Ast.LimitedNamespace (name,Ast.Public id)
                             in
                                 (packageNames := package::(!packageNames);
-trace2 ("openning package ",id);
+                                 trace2 ("openning package ",id);
                                  opennss  := addNamespace (ns, (!opennss)))
                             end
                       | _ =>
@@ -1562,7 +1557,7 @@ trace2 ("openning package ",id);
                                 val ns = if name=Ustring.asterisk then Ast.Public id
                                                                       else Ast.LimitedNamespace (name,Ast.Public id)
                             in
-                                (fixtures := (Ast.PropName aliasName,aliasFixture)::(!fixtures);
+                                (rib := (Ast.PropName aliasName,aliasFixture)::(!rib);
                                  packageNames := package::(!packageNames);
                                  opennss  := addNamespace (ns, (!opennss)))
                             end
@@ -1572,20 +1567,20 @@ trace2 ("openning package ",id);
     in
         List.app defPragma pragmas;
 
-          ({ fixtures = !fixtures,
-            tempOffset = tempOffset,
-            labels = (#labels ctx),
-            packageNames = !packageNames,
-            openNamespaces = (case !opennss of
-                                 [] => (#openNamespaces ctx)   (* if opennss is empty, don't concat *)
-                               | _  => !opennss :: (#openNamespaces ctx)),
-            numericMode = { numberType = !numType,
-                            roundingMode = !rounding,
-                            precision = !precision },
-            className = (#className ctx),
-            packageName = (#packageName ctx),
-            defaultNamespace = !defaultNamespace } :: env,
-        !fixtures)
+          ({ ribs = !rib :: ribs,
+             tempOffset = tempOffset,
+             labels = (#labels env),
+             packageNames = !packageNames,
+             openNamespaces = (case !opennss of
+                                   [] => (#openNamespaces env)   (* if opennss is empty, don't concat *)
+                                 | _  => !opennss :: (#openNamespaces env)),
+             numericMode = { numberType = !numType,
+                             roundingMode = !rounding,
+                             precision = !precision },
+             className = (#className env),
+             packageName = (#packageName env),
+             defaultNamespace = !defaultNamespace },
+           !rib)
     end
 
 (*
@@ -1611,10 +1606,6 @@ and defIdentExpr (env:ENV)
 
           | Ast.AttributeIdentifier ai =>
             Ast.AttributeIdentifier (defIdentExpr env ai)
-
-          | Ast.TypeIdentifier { ident, typeArgs } =>
-            Ast.TypeIdentifier { ident=(defIdentExpr env ident),
-                                 typeArgs=typeArgs }
 
           | Ast.QualifiedIdentifier { qual, ident } =>
             Ast.QualifiedIdentifier { qual = defExpr env qual,
@@ -1980,11 +1971,6 @@ and defExpr (env:ENV)
                                Ast.LexicalRef {ident=Ast.QualifiedIdentifier {qual=(defExpr env base),
                                                                           ident=id},
                                            loc=loc}
-                         | (Ast.LiteralExpr _,Ast.TypeIdentifier {ident=Ast.Identifier {ident=id,...},typeArgs}) =>
-                               Ast.LexicalRef {ident=Ast.TypeIdentifier {ident=Ast.QualifiedIdentifier {qual=(defExpr env base),
-                                                                                                        ident=id},
-                                                                         typeArgs=typeArgs},
-                                               loc=loc}
                          | (Ast.LiteralExpr _,_) =>
                                LogErr.defnError ["invalid package qualification"]
 
@@ -2081,10 +2067,6 @@ and defTy (env:ENV)
                    (Ast.LiteralExpr _,Ast.Identifier {ident=id,...}) =>
                        Ast.TypeName (Ast.QualifiedIdentifier {qual=(defExpr env base),
                                                               ident=id})
-                 | (Ast.LiteralExpr _,Ast.TypeIdentifier {ident=Ast.Identifier {ident=id,...},typeArgs}) =>
-                       Ast.TypeName (Ast.TypeIdentifier {ident=Ast.QualifiedIdentifier {qual=(defExpr env base),
-                                                                                                ident=id},
-                                                                 typeArgs=typeArgs})
                  | (_,_) =>
                        LogErr.defnError ["invalid type expr"]
                 end

@@ -82,6 +82,6 @@ val ppFixture = ppRep o cvtFIXTURE
 
 val ppFunc = ppRep o cvtFUNC
 
-val ppFragment = ppRep o cvtFUNCTION
+val ppFragment = ppRep o cvtFRAGMENT
 
 end
