@@ -98,6 +98,13 @@ val defaultNumericMode : Ast.NUMERIC_MODE =
 val (initRib:Ast.RIB) = [ (Ast.PropName Name.meta_, Ast.NamespaceFixture Name.metaNS),
                           (Ast.PropName Name.magic_, Ast.NamespaceFixture Name.magicNS) ]
 
+fun makeTy (env:ENV) 
+           (tyExpr:Ast.TYPE_EXPR) 
+    : Ast.TY = 
+    Ast.Ty { env = (#ribs env),
+             unit = (#topUnitName env),
+             expr = tyExpr }
+
 fun hasNamespace (nl:Ast.NAMESPACE list)
                  (n:Ast.NAMESPACE)
     : bool =
@@ -519,10 +526,10 @@ and defInterface (env: ENV)
                  (idef: Ast.INTERFACE_DEFN)
     : (Ast.RIB * Ast.INTERFACE_DEFN) =
     let
-        val { ident, extends, instanceDefns, nonnullable, ... } = idef
+        val { ident, ns, nonnullable, params, extends, instanceDefns } = idef
 
         (* Make the interface name *)
-        val name = Name.nons ident
+        val name = {id = ident, ns = resolveExprOptToNamespace env ns} 
 
         (* Resolve base interface's super interfaces and fixtures *)
         val (superInterfaces, inheritedFixtures) = resolveInterfaces env extends
@@ -530,27 +537,33 @@ and defInterface (env: ENV)
         val env = enterClass env name
 
         (* Define the current fixtures *)
-        val (unhoisted,instanceFixtures,_) = defDefns env [] [] [] instanceDefns
+        val (unhoisted,instanceRib,_) = defDefns env [] [] [] instanceDefns
 
         (* Inherit fixtures and check overrides *)
-        val instanceFixtures = inheritFixtures inheritedFixtures instanceFixtures
+        val instanceRib = inheritRib inheritedFixtures instanceRib
 
         (* Make the instance type and interface fixture *)
-        val instanceType = {name=name,
-                            nonnullable=nonnullable,
-                            typeParams=[],
-                            superTypes=superInterfaces,
-                            ty=Ast.SpecialType Ast.Any,  (* FIXME needs record type *)
-                            conversionTy=NONE,
-                            dynamic=false} (* interfaces are never dynamic *)
-        val iface = Ast.Iface { name=name, nonnullable=nonnullable, extends=superInterfaces, instanceFixtures=instanceFixtures,
-                                instanceType = instanceType }
+        val instanceType = 
+            makeTy env (Ast.InstanceType 
+                            { name=name,
+                              nonnullable=nonnullable,
+                              typeArgs=[],
+                              superTypes=superInterfaces,
+                              ty=Ast.SpecialType Ast.Any,  (* FIXME needs record type *)
+                              conversionTy=NONE,
+                              dynamic=false}) (* interfaces are never dynamic *)
+                        
+        val iface = Ast.Iface { name=name, 
+                                nonnullable=nonnullable, 
+                                extends=superInterfaces, 
+                                instanceRib=instanceRib,
+                                instanceType=instanceType }
     in
         ([(Ast.PropName name, Ast.InterfaceFixture iface)],idef)
     end
 
 (*
-    inheritFixtures
+    inheritRib
 
     Steps:
 
@@ -577,9 +590,13 @@ and defInterface (env: ENV)
 
        - the base fixture is not 'final'
        - the derived fixture is 'override'
-       - they have same number of type parameters and parameters
+       - they have same number of parameters
        - they both have the return type void or neither has the return type void
        - what else?
+
+       - FIXME: perhaps we ought to permit overriding fixtures with
+         parametric types; we used to but the problem is more complex with general 
+         lambda types. Currently disabled.
 
    Type compatibility of parameter and return types is done by the evaluator
    (or verifier in strict mode) and not here because type annotations can have
@@ -595,28 +612,25 @@ and canOverride (fb:Ast.FIXTURE) (fd:Ast.FIXTURE)
         val isCompatible = case (fb,fd) of
                 (Ast.MethodFixture
                      {ty=(Ast.FunctionType
-                              {typeParams=tpb,params=pb,result=rtb,minArgs=mb,...}),
+                              {params=pb, result=rtb, minArgs=mb,...}),
                       func=(Ast.Func {fsig=Ast.FunctionSignature {defaults=db, ...}, ...}),...},
                  Ast.MethodFixture
                      {ty=(Ast.FunctionType
-                              {typeParams=tpd,params=pd,result=rtd,minArgs=md,...}),
+                              {params=pd, result=rtd, minArgs=md,...}),
                       func=(Ast.Func {fsig=Ast.FunctionSignature {defaults=dd, ...}, ...}),...}) =>
                     let
-                        val _ = trace ["length tpb ",Int.toString (length tpb),
-                                       " length tpd ",Int.toString (length tpd),"\n"]
                         val _ = trace ["mb ",Int.toString mb, " md ",Int.toString md,"\n"]
                         val _ = trace ["length pb ",Int.toString (length pb),
                                        " length pd ",Int.toString (length pd),"\n"]
                         val _ = trace ["length db ",Int.toString (length db),
                                        " length dd ",Int.toString (length dd),"\n"]
                     in
-                        (length tpb)=(length tpd)
-                        andalso (((isVoid rtb) andalso (isVoid rtd))
-                                 orelse
-                                ((not (isVoid rtb)) andalso (not (isVoid rtd))))
-                        (* FIXME: check compatibility of return types? *)
+                        ((isVoid rtb) andalso (isVoid rtd))
+                        orelse
+                        ((not (isVoid rtb)) andalso (not (isVoid rtd)))
+                    (* FIXME: check compatibility of return types? *)
                     end
-
+                    
               | _ => false
         val _ = trace ["isCompatible = ",Bool.toString isCompatible]
 
@@ -641,7 +655,7 @@ and canOverride (fb:Ast.FIXTURE) (fd:Ast.FIXTURE)
       | _ => LogErr.unimplError ["checkOverride"]
     end
 
-and inheritFixtures (base:Ast.RIB)
+and inheritRib (base:Ast.RIB)
                     (derived:Ast.RIB)
     : Ast.RIB =
     let
@@ -697,7 +711,7 @@ and inheritFixtures (base:Ast.RIB)
 
     in case base of
         [] => derived (* done *)
-      | first::follows => inheritFixtures follows (inheritFixture first)
+      | first::follows => inheritRib follows (inheritFixture first)
     end
 
 (*
@@ -750,13 +764,13 @@ and implementFixtures (base:Ast.RIB)
 
 and resolveClassInheritance (env:ENV)
                  ({extends,implements,...}: Ast.CLASS_DEFN)
-                 (Ast.Cls {name,nonnullable,dynamic,classFixtures,instanceFixtures,instanceInits,
+                 (Ast.Cls {name,nonnullable,dynamic,classFixtures,instanceRib,instanceInits,
                            constructor,classType,instanceType,...}:Ast.CLS)
     : Ast.CLS =
     let
         val _ = trace ["analyzing class block for ", LogErr.name name]
-        val (extendsName, instanceFixtures) = resolveExtends env instanceFixtures extends [name]
-        val (implementsNames, instanceFixtures) = resolveImplements env instanceFixtures implements
+        val (extendsName, instanceRib) = resolveExtends env instanceRib extends [name]
+        val (implementsNames, instanceRib) = resolveImplements env instanceRib implements
         val superTypes = case extendsName of NONE => implementsNames | _ => (valOf extendsName) :: implementsNames
 
         (* Make the instance type *)
@@ -779,7 +793,7 @@ and resolveClassInheritance (env:ENV)
                  dynamic=dynamic,
                  implements=implementsNames,
                  classFixtures=classFixtures,
-                 instanceFixtures=instanceFixtures,
+                 instanceRib=instanceRib,
                  instanceInits=instanceInits,
                  constructor=constructor,
                  classType=classType,
@@ -800,7 +814,7 @@ and resolveClassInheritance (env:ENV)
 *)
 
 and resolveExtends (env: ENV)
-                   (currInstanceFixtures: Ast.RIB)
+                   (currInstanceRib: Ast.RIB)
                    (extends: Ast.IDENT_EXPR option)
                    (children:Ast.NAME list)
     : (Ast.NAME option * Ast.RIB) =
@@ -824,22 +838,22 @@ and resolveExtends (env: ENV)
                                            LogErr.multiname baseClassMultiname]
                         else (resolveMultinameToFixture env baseClassMultiname)
             in case baseClassFixture of
-                Ast.ClassFixture (Ast.Cls {instanceFixtures=baseInstanceFixtures,...}) =>
-                    (SOME baseClassName,inheritFixtures baseInstanceFixtures currInstanceFixtures)
+                Ast.ClassFixture (Ast.Cls {instanceRib=baseInstanceRib,...}) =>
+                    (SOME baseClassName,inheritRib baseInstanceRib currInstanceRib)
               | _ => LogErr.defnError ["base class not found"]
             end
-      | NONE => (NONE,currInstanceFixtures)
+      | NONE => (NONE,currInstanceRib)
     end
 
 and resolveImplements (env: ENV)
-                      (instanceFixtures: Ast.RIB)
+                      (instanceRib: Ast.RIB)
                       (implements: Ast.IDENT_EXPR list)
     : (Ast.NAME list * Ast.RIB) =
     let
         val (superInterfaces, abstractFixtures) = resolveInterfaces env implements
-        val _ = implementFixtures abstractFixtures instanceFixtures
+        val _ = implementFixtures abstractFixtures instanceRib
     in
-        (superInterfaces,instanceFixtures)
+        (superInterfaces,instanceRib)
     end
 
 (*
@@ -859,7 +873,7 @@ and resolveImplements (env: ENV)
 and interfaceMethods (ifxtr)
     : Ast.RIB =
     case ifxtr of
-        Ast.InterfaceFixture (Ast.Iface {instanceFixtures,...}) => instanceFixtures
+        Ast.InterfaceFixture (Ast.Iface {instanceRib,...}) => instanceRib
       |_ => LogErr.internalError ["interfaceMethods"]
 
 and interfaceExtends (ifxtr)
@@ -923,8 +937,8 @@ and analyzeClassBody (env:ENV)
             val staticEnv = extendEnvironment env classFixtures
                              (* namespace and type definitions aren't normally hoisted *)
 
-            val (unhoisted,instanceFixtures,_) = defDefns staticEnv [] [] [] instanceDefns
-            val instanceEnv = extendEnvironment staticEnv instanceFixtures
+            val (unhoisted,instanceRib,_) = defDefns staticEnv [] [] [] instanceDefns
+            val instanceEnv = extendEnvironment staticEnv instanceRib
 
             val ctor =
                 case ctorDefn of
@@ -974,7 +988,7 @@ and analyzeClassBody (env:ENV)
                      extends = NONE,
                      implements = [],
                      classFixtures = classFixtures,
-                     instanceFixtures = instanceFixtures,
+                     instanceRib = instanceRib,
                      instanceInits = instanceInits,
                      constructor = ctor,
                      classType = Ast.ObjectType [],
