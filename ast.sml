@@ -176,8 +176,8 @@ datatype PRAGMA =
              typeParams: IDENT list,
              nonnullable: bool,
              dynamic: bool,
-             extends: NAME option,
-             implements: NAME list,
+             extends: TY option,
+             implements: TY list,
              classRib: RIB,
              instanceRib: RIB,
              instanceInits: HEAD,
@@ -190,7 +190,7 @@ datatype PRAGMA =
            { name: NAME,
              typeParams: IDENT list,
              nonnullable: bool,
-             extends: NAME list,
+             extends: TY list,
              instanceRib: RIB,
              instanceType: TY }
 
@@ -504,8 +504,8 @@ withtype
              dynamic: bool,
              final: bool,
              params: IDENT list,
-             extends: IDENT_EXPR option,  (* STATIC_IDENT_EXPR *)
-             implements: IDENT_EXPR list, (* STATIC_IDENT_EXPR list *)
+             extends: TYPE_EXPR option, 
+             implements: TYPE_EXPR list,
              classDefns: DEFN list,
              instanceDefns: DEFN list,
              instanceStmts: STMT list,
@@ -516,7 +516,7 @@ withtype
              ns: EXPR option,
              nonnullable: bool,
              params: IDENT list,
-             extends: IDENT_EXPR list,    (* STATIC_IDENT_EXPR list *)
+             extends: TYPE_EXPR list,
              instanceDefns: DEFN list }
 
      and TYPE_DEFN =

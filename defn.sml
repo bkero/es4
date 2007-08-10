@@ -548,7 +548,7 @@ and defInterface (env: ENV)
                             { name=name,
                               nonnullable=nonnullable,
                               typeArgs=[],
-                              superTypes=superInterfaces,
+                              superTypes=(map (makeTy env) superInterfaces),
                               ty=Ast.SpecialType Ast.Any,  (* FIXME needs record type *)
                               conversionTy=NONE,
                               dynamic=false}) (* interfaces are never dynamic *)
@@ -893,18 +893,23 @@ and interfaceExtends (ifxtr)
 *)
 
 and resolveInterfaces (env: ENV)
-                      (exprs: Ast.IDENT_EXPR list)
-    : (Ast.NAME list * Ast.RIB) =
-    case exprs of
+                      (exprs: Ast.TYPE_EXPR list)
+    : (Ast.TY list * Ast.RIB) =
+    case exprs of        
         [] => ([],[])
       | _ =>
         let
-            val mnames = map (identExprToMultiname env) exprs
-            val (interfaceNames,interfaceFixtures) = ListPair.unzip (map (resolveMultinameToFixture env) mnames)
+            (* FIXME: for the time being we're only going to handle inheriting from TYPE_EXPRs of a simple
+             * form: those which name a 0-parameter interface. Generalize later. *)
+            fun extractIdentExprFromTypeName (Ast.TypeName ie) = ie
+              | extractIdentExprFromTypeName _ = error ["can only presently handle inheriting from simple named interfaces"]
+
+            val mnames = map (identExprToMultiname env) (map extractIdentExprFromTypeName exprs)
+            val (interfaceNames, interfaceFixtures) = ListPair.unzip (map (resolveMultinameToFixture env) mnames)
             val methodFixtures = List.concat (map interfaceMethods interfaceFixtures)
-            val superInterfaceNames = List.concat (map interfaceExtends interfaceFixtures)
+            val superInterfaces = List.concat (map interfaceExtends interfaceFixtures)
         in
-            (interfaceNames@superInterfaceNames, methodFixtures)
+            (interfaceNames @ superInterfaces, methodFixtures)
         end
 
 (*

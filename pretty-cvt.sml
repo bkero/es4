@@ -244,8 +244,8 @@ structure PrettyCvt = struct
           
        (case opt360 of
          NONE => PrettyRep.Ctor ("NONE", NONE)
-       | SOME x359 => PrettyRep.Ctor ("SOME", SOME (cvtNAME x359))
-       )), ("implements", PrettyRep.List (List.map (fn x364 => cvtNAME x364
+       | SOME x359 => PrettyRep.Ctor ("SOME", SOME (cvtTY x359))
+       )), ("implements", PrettyRep.List (List.map (fn x364 => cvtTY x364
                                                    ) ls365)), ("classRib", 
           cvtRIB x369), ("instanceRib", cvtRIB x370), ("instanceInits", cvtHEAD x371), 
           ("constructor", 
@@ -259,7 +259,7 @@ structure PrettyCvt = struct
                                                                                                       cvtIDENT x407
                                                                                                ) ls408)), 
           ("nonnullable", PrettyRep.Bool b412), ("extends", PrettyRep.List (List.map (fn x413 => 
-                                                                                            cvtNAME x413
+                                                                                            cvtTY x413
                                                                                      ) ls414)), 
           ("instanceRib", cvtRIB x418), ("instanceType", cvtTY x419)]))
    and cvtCTOR (Ctor{settings=x435, superArgs=ls437, func=x441}) = PrettyRep.Ctor ("Ctor", 
@@ -675,8 +675,8 @@ structure PrettyCvt = struct
           ("extends", 
        (case opt1460 of
          NONE => PrettyRep.Ctor ("NONE", NONE)
-       | SOME x1459 => PrettyRep.Ctor ("SOME", SOME (cvtIDENT_EXPR x1459))
-       )), ("implements", PrettyRep.List (List.map (fn x1464 => cvtIDENT_EXPR x1464
+       | SOME x1459 => PrettyRep.Ctor ("SOME", SOME (cvtTYPE_EXPR x1459))
+       )), ("implements", PrettyRep.List (List.map (fn x1464 => cvtTYPE_EXPR x1464
                                                    ) ls1465)), ("classDefns", 
           PrettyRep.List (List.map (fn x1469 => cvtDEFN x1469
                                    ) ls1470)), ("instanceDefns", PrettyRep.List (List.map (fn x1474 => 
@@ -698,7 +698,7 @@ structure PrettyCvt = struct
        )), ("nonnullable", PrettyRep.Bool b1520), ("params", PrettyRep.List (List.map (fn x1521 => 
                                                                                              cvtIDENT x1521
                                                                                       ) ls1522)), 
-          ("extends", PrettyRep.List (List.map (fn x1526 => cvtIDENT_EXPR x1526
+          ("extends", PrettyRep.List (List.map (fn x1526 => cvtTYPE_EXPR x1526
                                                ) ls1527)), ("instanceDefns", 
           PrettyRep.List (List.map (fn x1531 => cvtDEFN x1531
                                    ) ls1532))]
