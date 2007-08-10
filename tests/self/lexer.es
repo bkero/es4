@@ -518,6 +518,9 @@ namespace Token
 
         function tokenText () : String
         {
+            if (kind===StringLiteral) {
+                return this.utf8id.slice(1,this.utf8id.length);
+            }
             return this.utf8id;
         }
 
