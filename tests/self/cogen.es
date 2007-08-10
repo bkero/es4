@@ -99,6 +99,10 @@ package cogen
             case (mf:MethodFixture) {
                 target.addTrait(new ABCOtherTrait(name, 0, TRAIT_Method, 0, cgFunc(ctx, mf.func)));
             }
+            case (cf:ClassFixture) {
+                let clsidx = cgClass(ctx, cf.cls);
+                target.addTrait(new ABCOtherTrait(name, 0, TRAIT_Class, 0, clsidx));
+            }
             case (x:*) { throw "Internal error: unhandled fixture type" }
             }
         }
@@ -131,7 +135,8 @@ package cogen
     function extractNamedFixtures(fixtures)
     {
         let named = [];
-        for(let i = 0; i < fixtures.length; ++i)
+        let fix_length = fixtures ? fixtures.length : 0;
+        for(let i = 0; i < fix_length; ++i)
         {
             let [name,fixture] = fixtures[i];
             switch type (name) {
@@ -146,30 +151,120 @@ package cogen
         return named;
     }
     
+    function cgClass(ctx, c) {
+        
+        let {asm:asm, emitter:emitter, script:script} = ctx;
+        
+        let classname = emitter.nameFromNAME(c.name);
+        let basename = c.baseName != null ? emitter.nameFromNAME(c.baseName) : 0;
+        
+        let cls = script.newClass(classname, basename);
+/*        
+        let c_ctx = new CTX(asm, {tag:"class"}, cls);
+        cgFixtures(c_ctx, c.classFixtures);
+*/      
+        let inst = cls.getInstance();
+        
+        // Context for the instance
+        let i_ctx = new CTX(asm, {tag:"instance"}, inst);
+        
+        // do instance slots
+        cgFixtures(i_ctx, c.instanceFixtures);
+        
+        inst.setIInit(cgCtor(i_ctx, c.constructor, c.instanceInits));
+        
+        var clsidx = cls.finalize();
+        var Object_name = emitter.nameFromNAME({ns:new PublicNamespace(""), id:"Object"});
+
+        asm.I_findpropstrict(Object_name);
+        asm.I_getproperty(Object_name);
+        asm.I_dup();
+        asm.I_pushscope();
+        asm.I_newclass(clsidx);
+        asm.I_popscope();
+        asm.I_getglobalscope();
+        asm.I_swap();
+        asm.I_initproperty(classname);
+
+        return clsidx;
+    }
+    
+    /*  
+     *  Generate code for a ctor.
+     */
+    function cgCtor(ctx, c, instanceInits) {
+        let formals_type = extractFormalTypes(ctx, c.func);
+        let method = new Method(ctx.script.e, formals_type, "$construct", false);
+        let asm = method.asm;
+
+        let defaults = extractDefaultValues(ctx, c.func);
+        if( defaults.length > 0 )
+        {
+            method.setDefaults(defaults);
+        }
+        
+        let ctor_ctx = new CTX(asm, {tag:"function"}, method);
+       
+        asm.I_getlocal(0);
+        // Should this be instanceInits.inits only?
+        cgHead(ctor_ctx, instanceInits, true);
+        //cgHead(ctor_ctx, instanceInits.inits, true);
+
+        // Push 'this' onto scope stack
+        asm.I_getlocal(0);
+        asm.I_pushscope();
+        // Create the activation object, and initialize params
+        asm.I_newactivation();
+        asm.I_dup();
+        asm.I_pushscope();
+        cgHead(ctor_ctx, c.func.params, true);
+
+        for ( let i=0 ; i < c.settings.length ; i++ )
+            cgExpr(ctor_ctx, c.settings[i]);
+
+        // Eval super args, and call super ctor
+        asm.I_getlocal(0);
+        let nargs = c.superArgs.length;
+        for ( let i=0 ; i < nargs ; i++ )
+            cgExpr(ctx, e.args[i]);
+        asm.I_constructsuper(nargs);
+
+        cgBlock(ctx, c.func.block);
+        
+        return method.finalize();
+    }
+
+    function extractFormalTypes({emitter:emitter, script:script}, f:Func) {
+        function extractType([name,fixture])
+            emitter.fixtureTypeToType(fixture);
+        
+        let named_fixtures = extractNamedFixtures(f.params.fixtures);
+        
+        return map(extractType, named_fixtures);
+    }
+        
+    function extractDefaultValues({emitter:emitter, script:script}, f:Func) {
+        function extractDefaults(expr)
+            emitter.defaultExpr(expr);
+
+        return map(extractDefaultValues, f.defaults);
+    }
+    
     /* Create a method trait in the ABCFile
      * Generate code for the function
      * Return the function index
      */
     function cgFunc({emitter:emitter, script:script}, f:FUNC) {
-        function extractType([name,fixture])
-            emitter.fixtureTypeToType(fixture);
-        
-        function extractDefaults(expr)
-            emitter.defaultExpr(expr);
-            
-        let named_fixtures = extractNamedFixtures(f.params.fixtures);
-        
-        let formals_type = map(extractType, named_fixtures);
+        let formal_type = extractFormalTypes({emitter:emitter, script:script}, f);
         let method = script.newFunction(formals_type);
         let asm = method.asm;
-        
-        let defaults = map(extractDefaults, f.defaults);
-        
+
+        let defaults = extractDefaultValues({emitter:emitter, script:script}, f);
         if( defaults.length > 0 )
         {
             method.setDefaults(defaults);
         }
-
+        
         /* Create a new rib and populate it with the values of all the
          * formals.  Add slot traits for all the formals so that the
          * rib have all the necessary names.  Later code generation
@@ -185,11 +280,14 @@ package cogen
          * God only knows about the arguments object...
          */
         asm.I_newactivation();
+        asm.I_dup(); // Put activation object on stack for property inits
         asm.I_pushscope();
         
         let ctx = new CTX(asm, {tag: "function"}, method);
 
-        cgHead(ctx, f.params);
+        cgHead(ctx, f.params, true);
+        
+        asm.I_pop();
         /* Generate code for the body.  If there is no return statement in the
          * code then the default behavior of the emitter is to add a returnvoid
          * at the end, so there's nothing to worry about here.
@@ -198,7 +296,7 @@ package cogen
         return method.finalize();
     }
     
-    function cgHead(ctx, head) {
+    function cgHead(ctx, head, baseOnStk=false) {
         let {asm:asm, emitter:emitter, target:target} = ctx;
         
         function extractName([name,fixture])
@@ -216,21 +314,27 @@ package cogen
         }
 
         // do inits
-        cgInits(ctx, head.inits);    
+        cgInits(ctx, head.inits, baseOnStk);    
         
     }
     
-    function cgInits(ctx, inits, isExpr=false){
+    function cgInits(ctx, inits, baseOnStk=false, isExpr=false){
         let {asm:asm, emitter:emitter} = ctx;
 
         let t = -1;
-        
-        for( let i=0; i < inits.length; ++i ) {
+        let inits_length = inits?inits.length:0;
+        for( let i=0; i < inits_length; ++i ) {
             let [name, init] = inits[i];
 
             let name_index = emitter.fixtureNameToName(name);
 
-            asm.I_findproperty(name_index);
+            if( baseOnStk ) {
+                if(i < inits_length-1)
+                    asm.I_dup();
+            }
+            else
+                asm.I_findproperty(name_index);
+            
             cgExpr(ctx, init);
             
             if( isExpr && i == inits.length-1 )
@@ -241,6 +345,10 @@ package cogen
             }
             
             asm.I_setproperty(name_index);
+        }
+        if( inits_length == 0 && baseOnStk )
+        {
+            asm.I_pop();
         }
 
         if( t != -1 )

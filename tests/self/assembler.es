@@ -475,7 +475,7 @@ package assembler
         public function I_call(nargs) { call("call", 0x41, nargs) }
         public function I_construct(nargs) { call("construct", 0x42, nargs) }
 
-        function I_constructsuper(nargs) {
+        public function I_constructsuper(nargs) {
             stack(nargs+1); /* pop receiver/args */
             list2("constructsuper", nargs);
             code.uint8(0x49);
