@@ -115,10 +115,14 @@ namespace Ast
 
     class PrivateNamespace {
         const name : IDENT
+        function PrivateNamespace (name)
+            : name = name { }
     }
 
     class ProtectedNamespace {
         const name : IDENT
+        function ProtectedNamespace (name)
+            : name = name { }
     }
 
     class PublicNamespace {
@@ -128,15 +132,21 @@ namespace Ast
     }
 
     class InternalNamespace {
-        const name : IDENT
+        const name : IDENT;
+        function InternalNamespace (name)
+            : name = name { }
     }
 
     class UserNamespace {
-        const name : IDENT
+        const name : IDENT;
+        function UserNamespace (name)
+            : name = name { }
     }
 
     class AnonymousNamespace {
-        const id : int
+        const name : IDENT;
+        function AnonymousNamespace (name)
+            : name = name { }
     }
 
     class ImportNamespace {
@@ -901,13 +911,14 @@ namespace Ast
         TypeVarFixture,
         TypeFixture,
         MethodFixture,
-        CtorFixture,
         ValFixture,
         VirtualValFixture
     )
 
     class NamespaceFixture {
-        const ns : NAMESPACE
+        const ns : NAMESPACE;
+        function NamespaceFixture (ns)
+            : ns = ns {}
     }
 
     class ClassFixture {
@@ -936,14 +947,6 @@ namespace Ast
             isFinal = isFinal
         {
         }
-    }
-
-    class CtorFixture {
-        const ctor: CTOR;
-        const type : TYPE_EXPR;
-        function CtorFixture(ctor, ty) 
-            : ctor = ctor
-            , type = ty {}
     }
 
     class ValFixture {

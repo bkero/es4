@@ -48,7 +48,7 @@ type TOKENS = Array;  // [int];
 
 {
     use default namespace Parser;
-    use namespace Release;
+    use namespace Debug;
 
     type PATTERN =
           ( ObjectPattern
@@ -3568,6 +3568,76 @@ type TOKENS = Array;  // [int];
             return [ts1,blck];
         }
 
+        /*
+
+        NamespaceDefinition(omega)
+            namespace  Identifier  NamespaceInitialisation  Semicolon(omega)
+
+        NamespaceInitialisation
+            empty
+            =  StringLiteral
+            =  PrimaryName
+
+        */
+
+        function namespaceDefinition (ts: TOKENS, omega)
+            : [TOKENS, Ast::STMTS]
+        {
+            enter("Parser::namespaceDefinition ", ts);
+
+            function getAnonymousName (seedStr) {
+                return seedStr;  // FIXME
+            }
+
+            ts = eat (ts,Token::Namespace);
+            var [ts1,nd1] = identifier (ts);
+            var [ts2,nd2] = namespaceInitialisation (ts1);
+
+            if (nd2 === null) 
+            {
+                var ns = new Ast::AnonymousNamespace (getAnonymousName(nd1));
+            }
+            else 
+            {
+                var ns = new Ast::UserNamespace (nd2);
+            }
+
+            var name = new Ast::PropName ({ns:new Ast::PublicNamespace (""), id:nd1});
+            var fxtr = new Ast::NamespaceFixture (ns);
+            cx.addVarFixtures ([[name,fxtr]]);
+
+            exit("Parser::namespaceDefinition ", ts2);
+            return [ts2,[]];
+        }
+
+        function namespaceInitialisation (ts: TOKENS)
+            : [TOKENS, Ast::IDENT]
+        {
+            enter("Parser::namespaceInitialisation ", ts);
+
+            switch (hd (ts)) {
+            case Token::Assign:
+                switch (hd (tl (ts))) {
+                case Token::StringLiteral:
+                    var [ts1,nd1] = [tl (tl (ts)), tokenText (tl (ts)[0])];
+                    break;
+                default:
+                    var [ts1,nd1] = primaryName (tl (ts));
+                    nd1 = cx.resolveNamespaceFromIdentExpr (nd1);  // FIXME not implemented
+                    break;
+                }
+                break;
+            default:
+                var [ts1,nd1] = [ts,null];
+                break;
+            }
+
+            exit("Parser::namespaceInitialisation ", ts1);
+            return [ts1,nd1];
+        }
+
+
+
         // DIRECTIVES
 
         /*
@@ -3717,6 +3787,14 @@ type TOKENS = Array;  // [int];
                 break;
             case Token::Class:
                 var [ts1,stmts1] = classDefinition (ts, new Ast::PublicNamespace (""), false);
+                var tsx = ts1;
+                break;
+            case Token::Namespace:
+                var [ts1,stmts1] = namespaceDefinition (ts, new Ast::PublicNamespace (""), false);
+                var tsx = ts1;
+                break;
+            case Token::Type:
+                var [ts1,stmts1] = typeDefinition (ts, new Ast::PublicNamespace (""), false);
                 var tsx = ts1;
                 break;
             default:
@@ -4157,8 +4235,8 @@ type TOKENS = Array;  // [int];
     {
         var programs =
             [ "print('hi')"
-              /*
             , readFile ("./tests/self/t.es")
+              /*
             , "x<y"
             , "x==y"
             , "m-n;n+m"

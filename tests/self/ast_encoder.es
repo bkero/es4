@@ -4,7 +4,7 @@
 {
     use default namespace Ast;
     use namespace intrinsic;
-    use namespace Release;
+    use namespace Debug;
 
     function indent (n:int)
         : string {
@@ -133,11 +133,10 @@
               + indent(nesting) + ", 'cls': " + encodeCls (nd.cls,nesting+", 'cls': ".length)
               + " }";
         }
-        case (nd:Ast::CtorFixture) {
+        case (nd:Ast::NamespaceFixture) {
             var str =
-                "{ 'ast::class': 'CtorFixture'"
-              + indent(nesting) + ", 'ctor': " + encodeCtor (nd.ctor,nesting+", 'ctor': ".length)
-              + indent(nesting) + ", 'type': " + encodeTypeExpr (nd.type,nesting+", 'type': ".length)
+                "{ 'ast::class': 'NamespaceFixture'"
+              + indent(nesting) + ", 'ns': " + encodeNamespace (nd.ns,nesting+", 'ns': ".length)
               + " }";
         }
         case (nd: *) {
@@ -622,6 +621,30 @@
         case (nd: PublicNamespace) {
             var str =
                 "{ 'ast::class': 'PublicNamespace'"
+              + indent(nesting) + ", 'name': '" + nd.name
+              + "' }";
+        }
+        case (nd: PrivateNamespace) {
+            var str =
+                "{ 'ast::class': 'PrivateNamespace'"
+              + indent(nesting) + ", 'name': '" + nd.name
+              + "' }";
+        }
+        case (nd: ProtectedNamespace) {
+            var str =
+                "{ 'ast::class': 'ProtectedNamespace'"
+              + indent(nesting) + ", 'name': '" + nd.name
+              + "' }";
+        }
+        case (nd: InternalNamespace) {
+            var str =
+                "{ 'ast::class': 'InternalNamespace'"
+              + indent(nesting) + ", 'name': '" + nd.name
+              + "' }";
+        }
+        case (nd: AnonymousNamespace) {
+            var str =
+                "{ 'ast::class': 'AnonymousNamespace'"
               + indent(nesting) + ", 'name': '" + nd.name
               + "' }";
         }
