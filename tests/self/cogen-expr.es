@@ -465,7 +465,7 @@ package cogen
                 baseOnStk = true;
             }
         }
-        cgInits(ctx, e.inits, baseOnStk, true);
+        cgInits(ctx, e.inits, baseOnStk);
     }
 
     function cgLiteralExpr(ctx, e) {

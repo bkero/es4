@@ -211,12 +211,13 @@ package cogen
         //cgHead(ctor_ctx, instanceInits.inits, true);
 
         // Push 'this' onto scope stack
-        asm.I_getlocal(0);
-        asm.I_pushscope();
+        //asm.I_getlocal(0);
+        //asm.I_pushscope();
         // Create the activation object, and initialize params
         asm.I_newactivation();
         asm.I_dup();
-        asm.I_pushscope();
+        asm.I_dup();
+        asm.I_pushwith();
         cgHead(ctor_ctx, c.func.params, true);
 
         for ( let i=0 ; i < c.settings.length ; i++ )
@@ -228,8 +229,14 @@ package cogen
         for ( let i=0 ; i < nargs ; i++ )
             cgExpr(ctx, e.args[i]);
         asm.I_constructsuper(nargs);
+        
+        asm.I_popscope();
+        asm.I_getlocal(0);
+        asm.I_pushscope();  //'this'
+        asm.I_pushscope();  //'activation'
+        
 
-        cgBlock(ctx, c.func.block);
+        cgBlock(ctor_ctx, c.func.block);
         
         return method.finalize();
     }
@@ -318,7 +325,7 @@ package cogen
         
     }
     
-    function cgInits(ctx, inits, baseOnStk=false, isExpr=false){
+    function cgInits(ctx, inits, baseOnStk=false){
         let {asm:asm, emitter:emitter} = ctx;
 
         let t = -1;
@@ -336,27 +343,13 @@ package cogen
                 asm.I_findproperty(name_index);
             
             cgExpr(ctx, init);
-            
-            if( isExpr && i == inits.length-1 )
-            {
-                t = asm.getTemp();
-                asm.I_dup();
-                asm.I_setlocal(t);
-            }
-            
             asm.I_setproperty(name_index);
         }
         if( inits_length == 0 && baseOnStk )
         {
             asm.I_pop();
         }
-
-        if( t != -1 )
-        {
-            asm.I_getlocal(t);
-            asm.killTemp(t);
-        }
-    }
+  }
     
 
     // Handles scopes and finally handlers and returns a label, if appropriate, to
