@@ -48,7 +48,7 @@ type TOKENS = Array;  // [int];
 
 {
     use default namespace Parser;
-    use namespace Release;
+    use namespace Debug;
 
     type PATTERN =
           ( ObjectPattern
@@ -77,6 +77,85 @@ type TOKENS = Array;  // [int];
     type OMEGA = (Full, Abbrev);
     const full = new Full;
     const abbrev = new Abbrev;
+
+    type ENV = [Ast::FIXTURES];
+
+    class Context
+    { 
+        var env: ENV;
+        var opennss  //: [[Ast::NAMESPACE]];
+        var varHeads  //: [Ast::HEAD];
+        var letHeads  //: [Ast::HEAD];
+        var ctor: Ast::CTOR;
+
+        function Context ()
+            : env = []
+            , opennss = [[]]
+            , varHeads = []
+            , letHeads = [] 
+            , ctor = null
+        {
+        }
+
+        function enterVarBlock () 
+        {
+            enter ("enterVarBlock");
+            let varHead = {fixtures:[],inits:[]};
+            this.varHeads.push(varHead);
+            this.env.push (varHead.fixtures);
+            exit ("enterVarBlock");
+        }
+
+        function exitVarBlock () 
+        {
+            let varHead = this.varHeads.pop ();
+            this.env.pop ();
+            return varHead;
+        }
+
+        function addVarFixtures (fxtrs) 
+        {
+            let varHead = this.varHeads[this.varHeads.length-1];
+            for (let n = 0, len = fxtrs.length; n < len; ++n)  // until array conact works
+                varHead.fixtures.push (fxtrs[n]);
+        }
+
+        function addVarInits (inits) 
+        {
+            let varHead = this.varHeads[this.varHeads.length-1];
+            for (let n = 0, len = inits.length; n < len; ++n)  // until array conact works
+                varHead.inits.push (inits[n]);
+        }
+
+        function enterLetBlock () 
+        {
+            let letHead = {fixtures:[],inits:[]};
+            this.letHeads.push(letHead);
+            this.env.push (letHead.fixtures);
+        }
+
+        function exitLetBlock () 
+        {
+            let letHead = this.letHeads.pop ();
+            this.env.pop ();
+            return letHead;
+        }
+
+        function addLetFixtures (fxtrs) 
+        {
+            let letHead = this.letHeads[this.letHeads.length-1];
+            for (let n = 0, len = fxtrs.length; n < len; ++n)  // until array conact works
+                letHead.fixtures.push (fxtrs[n]);
+        }
+
+        function addLetInits (inits) 
+        {
+            let letHead = this.letHeads[this.letHeads.length-1];
+            for (let n = 0, len = inits.length; n < len; ++n)  // until array conact works
+                letHead.inits.push (inits[n]);
+        }
+
+    };
 
     class Parser
     {
@@ -205,6 +284,7 @@ type TOKENS = Array;  // [int];
 
         // Parse rountines
 
+        public var cx = new Context;
 
         /*
 
@@ -2257,15 +2337,15 @@ type TOKENS = Array;  // [int];
                 break;
             case Token::Return:
                 var [ts1,nd1] = returnStatement (ts,omega);
-                var [ts2,nd2] = [semicolon (ts1,omega),nd1];
+                var [ts2,nd2] = [semicolon (ts1,omega),stmt1,head1];
                 break;
             case Token::LeftBrace:
                 var [ts1,nd1] = block (ts, tau);
-                var [ts2,nd2] = [ts1,new Ast::BlockStmt (nd1)];
+                var [ts2,nd2] = [ts1,new Ast::BlockStmt (nd1),head1];
                 break;
             default:
                 let [ts1,nd1] = expressionStatement (ts);
-                var [ts2,nd2] = [semicolon (ts1,omega), nd1];
+                var [ts2,nd2] = [semicolon (ts1,omega),stmt1,head1];
                 break;
             }
 
@@ -2428,8 +2508,8 @@ type TOKENS = Array;  // [int];
 
         */
 
-        function variableDefinition (ts: TOKENS, beta: BETA, ns, isPrototype, isStatic)
-            : [TOKENS, [Ast::STMT], Ast::FIXTURES]
+        function variableDefinition (ts: TOKENS, beta: BETA, tau: TAU, ns, isPrototype, isStatic)
+            : [TOKENS, Ast::STMTS]
         {
             enter("Parser::variableDefinition ", ts);
 
@@ -2441,12 +2521,31 @@ type TOKENS = Array;  // [int];
             // i => initexprs
             // b => fixtures
 
-            var fx = fixturesFromBindings (ns, b);
-            var st = new Ast::ExprStmt (new Ast::InitExpr (new Ast::HoistedInit, h, initsFromInitSteps (ns, i)));
+            var fxtrs = fixturesFromBindings (ns, b);
+            var inits = initsFromInitSteps (ns, i);
+
+            switch (nd1) {
+            case Ast::letConstTag:
+            case Ast::letVarTag:
+                cx.addLetFixtures (fxtrs);
+                var stmts = [new Ast::ExprStmt (new Ast::InitExpr (new Ast::HoistedInit, h,inits))];
+                break;
+            default:
+                switch (tau) {
+                case Class:
+                    cx.addVarFixtures (fxtrs);
+                    cx.addVarInits (inits);
+                    var stmts = [];
+                    break;
+                default:
+                    cx.addVarFixtures (fxtrs);
+                    var stmts = [new Ast::ExprStmt (new Ast::InitExpr (new Ast::HoistedInit, h,inits))];
+                    break;
+                }
+            }
 
             exit("Parser::variableDefinition ", ts2);
-
-            return [ts2,[st],fx];
+            return [ts2,stmts];
         }
 
         /*
@@ -2615,7 +2714,7 @@ type TOKENS = Array;  // [int];
         */
 
         function functionDefinition (ts: TOKENS, tau: TAU, kind, ns, isFinal, isOverride, isPrototype, isStatic, isAbstract)
-            : [TOKENS, Ast::STMTS, Ast::FIXTURES]
+            : [TOKENS, Ast::STMTS]
         {
             enter("Parser::functionDefinition ", ts);
 
@@ -2623,17 +2722,20 @@ type TOKENS = Array;  // [int];
 
             var [ts1,nd1] = functionName (ts);
             var [ts2,nd2] = functionSignature (ts1);
+
+            cx.enterVarBlock ();
             var [ts3,nd3] = functionBody (ts2, AllowIn);
+            var vars = cx.exitVarBlock ();
 
             var {params:params,defaults:defaults,resultType:resultType,thisType:thisType,hasRest:hasRest} = nd2;
-            var func = new Ast::Func (nd1,false,nd3,params,defaults,resultType);
-            var fxtr = new Ast::MethodFixture (func,new Ast::SpecialType (new Ast::AnyType),true,isOverride,isFinal);
+            var func = new Ast::Func (nd1,false,nd3,params,vars,defaults,resultType);
+
             var name = new Ast::PropName ({ns:ns,id:nd1.ident});
-            var fx3 = [[name,fxtr]];
+            var fxtr = new Ast::MethodFixture (func,new Ast::SpecialType (new Ast::AnyType),true,isOverride,isFinal);
+            cx.addVarFixtures ([[name,fxtr]]);
 
             exit("Parser::functionDefinition ", ts3);
-
-            return [ts3, [], fx3];
+            return [ts3, []];
         }
 
         /*
@@ -2644,7 +2746,7 @@ type TOKENS = Array;  // [int];
         */
 
         function constructorDefinition (ts: TOKENS, ns)
-            : [TOKENS, Ast::FIXTURE_BINDING]
+            : [TOKENS, Ast::STMTS]
         {
             enter("Parser::constructorDefinition ", ts);
 
@@ -2652,19 +2754,25 @@ type TOKENS = Array;  // [int];
 
             var [ts1,nd1] = identifier (ts);
             var [ts2,nd2] = constructorSignature (ts1);
+
+            cx.enterVarBlock ();
             var [ts3,nd3] = functionBody (ts2, AllowIn);
+            var vars = cx.exitVarBlock ();
 
             var {params:params,defaults:defaults,hasRest:hasRest,settings:settings,superArgs:superArgs} = nd2;
 
-            var func = new Ast::Func ({kind:new Ast::Ordinary,ident:nd1},false,nd3,params,defaults,Ast::voidType);
+            var func = new Ast::Func ({kind:new Ast::Ordinary,ident:nd1},false,nd3,params,vars,defaults,Ast::voidType);
             var ctor = new Ast::Ctor (settings,superArgs,func);
-            var fxtr = new Ast::CtorFixture (ctor,new Ast::SpecialType (new Ast::AnyType));
-            var name = new Ast::PropName ({ns:ns,id:nd1});
-            var fx3 = [[name,fxtr]];
+
+            if (cx.ctor !== null) {
+                throw "constructor already defined";
+            }
+
+            cx.ctor = ctor;
 
             exit("Parser::constructorDefinition ", ts3);
 
-            return [ts3, [], fx3];
+            return [ts3, []];
         }
 
         /*
@@ -3317,24 +3425,21 @@ type TOKENS = Array;  // [int];
             enter("Parser::functionBody ", ts);
 
             switch (hd (ts)) {
-
             case Token::LeftBrace:
-                var [ts1,blck,fxtrs] = block (ts,Local);
-                var ndx = nd1;
+                var [ts1,nd1] = block (ts,Local);
                 break;
             default:
                 var [ts1,nd1] = assignmentExpression (ts,beta);
-                var blck = new Ast::Block ([],{fixtures:[],inits:[]},[new ReturnStmt (nd1)],null);
-                var fxtrs = [];
+                var nd1 = new Ast::Block ([],{fixtures:[],inits:[]},[new ReturnStmt (nd1)],null);
                 break;
             }
 
             exit("Parser::functionBody ", ts1);
-            return [ts1,blck,fxtrs];
+            return [ts1,nd1];
         }
 
         function classDefinition (ts: TOKENS, ns: Ast::NAMESPACE, isDynamic)
-            : [TOKENS, Ast::STMTS, Ast::FIXTURES]
+            : [TOKENS, Ast::STMTS]
         {
             enter("Parser::classDefinition ", ts);
 
@@ -3345,50 +3450,49 @@ type TOKENS = Array;  // [int];
             var [ts3,nd3] = classInheritance (ts2);
 
             currentClassName = nd1;
-            var [ts4,blck,fxtrs] = classBody (ts3);
+            cx.enterVarBlock ();
+            var [ts4,blck] = classBody (ts3);
+            var ihead = cx.exitVarBlock ();
             currentClassName = "";
 
-            function getCtorFixture (fs) 
-            {
-                enter ("getCtorFixture ",fs.length);
-
-                if (fs.length === 0)
-                {
-                    throw "constructor not found";
-                }
-
-                for (var i = 0; i < fs.length; i++)
-                if (fs[i][1] is Ast::CtorFixture) 
-                {
-                    exit ("getCtorFixture ",fs[i]);
-                    let a = fs.slice (0,i);
-                    let b = fs.slice (i+1,fs.length);
-                    for (n in b) a.push(b[n]);
-                    return [fs[i][1],a];
-                }
-
-                exit ("getCtorFixture ",fs[0]);
-                return getCtorFixture (fs.slice(1,fs.length));
-            }
-
-            var [ctorFxtr,ifxtrs] = getCtorFixture (fxtrs);
-
             var name = {ns:ns,id:nd1};
+
+            var ctor = cx.ctor;
+            if (ctor===null)
+            {
+                let isNative = false;
+                let blck = new Ast::Block ([],{fixtures:[],inits:[]},[]);
+                let params = {fixtures:[],inits:[]};
+                let vars = {fixtures:[],inits:[]};
+                let defaults = [];
+                let type = Ast::anyType;
+                let func = new Ast::Func ({kind:new Ast::Ordinary,ident:nd1},isNative,blck,params,vars,defaults,type);
+                var ctor = new Ast::Ctor ([],[],func);
+            }
+            
+            // var [i,j] = o
+            // var $t = o
+            // var i = $t[0]
+            // var j = $t[1]
+
+            // let ($t=o) init
+
             var baseName = {ns: new Ast::PublicNamespace (""), id: "Object"}
             var interfaceNames = [];
-            var ctor = ctorFxtr.Ast::ctor;
-            var cfxtrs = [];
-            var iinits = {fixtures:[],inits:[]};
+            var chead = {fixtures:[],inits:[]};
             var ctype = Ast::anyType;
             var itype = Ast::anyType;
-            var cls = new Ast::Cls (name,baseName,interfaceNames,ctor,cfxtrs,ifxtrs,iinits,ctype,itype);
+            var cls = new Ast::Cls (name,baseName,interfaceNames,ctor,chead,ihead,ctype,itype);
+
+            var fxtrs = [[new Ast::PropName(name),new Ast::ClassFixture (cls)]];
+            cx.addVarFixtures (fxtrs);
+            cx.ctor = null;
 
             var ss4 = [new Ast::ClassBlock (name,blck)];
-            var fx4 = [[new Ast::PropName(name),new Ast::ClassFixture (cls)]];
 
             exit("Parser::classDefinition ", ts4);
 
-            return [ts4, ss4, fx4];
+            return [ts4, ss4];
         }
 
         /*
@@ -3453,15 +3557,15 @@ type TOKENS = Array;  // [int];
         }
 
         function classBody (ts: TOKENS)
-            : [TOKENS, Ast::BLOCK, Ast::FIXTURES]
+            : [TOKENS, Ast::BLOCK]
         {
             enter("Parser::classBody ", ts);
 
-            var [ts1,blck,fxtrs] = block (ts,Class);
+            var [ts1,blck] = block (ts,Class);
 
             exit("Parser::classBody ", ts1);
 
-            return [ts1,blck,fxtrs];
+            return [ts1,blck];
         }
 
         // DIRECTIVES
@@ -3474,22 +3578,22 @@ type TOKENS = Array;  // [int];
         */
 
         function directives (ts: TOKENS, tau: TAU)
-            : [TOKENS, Ast::PRAGMAS, Ast::STMTS, Ast::FIXTURES, Ast::FIXTURES]
+            : [TOKENS, Ast::PRAGMAS, Ast::STMTS]
         {
             enter("Parser::directives ", ts);
 
             switch (hd (ts)) {
             case Token::RightBrace:
             case Token::EOS:
-                var [ts1, pragmas1, stmts1, bfxtrs1, vfxtrs1] = [ts,[],[],[],[]];
+                var [ts1, pragmas1, stmts1] = [ts,[],[]];
                 break;
             default:
-                var [ts1, pragmas1, stmts1, bfxtrs1, vfxtrs1] = directivesPrefix (ts,tau);
+                var [ts1, pragmas1, stmts1] = directivesPrefix (ts,tau);
                 break;
             }
 
             exit("Parser::directives ", ts1);
-            return [ts1,pragmas1,stmts1,bfxtrs1,vfxtrs1];
+            return [ts1,pragmas1,stmts1];
         }
 
         /*
@@ -3508,60 +3612,65 @@ type TOKENS = Array;  // [int];
           DirectivesPrefix'(tau)
               empty
               Directive(tau,full) DirectivesPrefix'(tau)
+
+          add var fixtures to the vhead and let fixtures to the bhead. the
+          context provides a reference to the current vhead and bhead, as
+          well as the whole environment, for convenient name addition and
+          lookup.
+
+
         */
 
         function directivesPrefix (ts: TOKENS, tau: TAU)
-            : [TOKENS, Ast::PRAGMAS, Ast::STMTS, Ast::FIXTURES, Ast::FIXTURES]
+            : [TOKENS, Ast::PRAGMAS, Ast::STMTS]
         {
-            enter("Parser::directives ", ts);
+            enter("Parser::directivesPrefix ", ts);
 
+            var pragmas = [];
             switch (hd (ts)) {
             case Token::RightBrace:
             case Token::EOS:
-                var [ts1,nd1] = [ts,[]];
-                var [ts2,stmts2,bfxtrs2,vfxtrs2] = [ts1,[],[],[]];
+                var [ts2,stmts2] = [ts,[]];
                 break;
             default:
-                var [ts1,nd1] = [ts,[]]; //pragmas (ts);
-                var [ts2,stmts2,bfxtrs2,vfxtrs2] = directivesPrefixPrime (ts,tau);
+                var [ts2,stmts2] = directivesPrefixPrime (ts,tau);
                 break;
             }
 
             exit("Parser::directivesPrefix ", ts2);
-            return [ts2,nd1,stmts2,bfxtrs2,vfxtrs2];
+            return [ts2,pragmas,stmts2];
+        }
+
+        function mergeStmts (s1,s2) {
+            enter ("mergeStmts");
+            for (p in s2) s1.push(s2[p]);
+            exit ("mergeStmts");
+            return s1;
         }
 
         function directivesPrefixPrime (ts: TOKENS, tau: TAU)
-            : [TOKENS, Ast::STMTS, Ast::FIXTURES, Ast::FIXTURES]
+            : [TOKENS, Ast::STMTS]
         {
             enter("Parser::directivesPrefixPrime ", ts);
-
-            var ts1,nd1;
 
             switch (hd (ts)) {
             case Token::RightBrace:
             case Token::EOS:
-                ts1 = ts;
-                var stmts1 = [];
-                var bfxtrs1 = [];
-                var vfxtrs1 = [];
+                var [ts1,stmts1] = [ts,[]];
                 break;
             default:
-                [ts1,stmts1,bfxtrs1,vfxtrs1] = directive (ts,tau,full);
-                var [ts2,stmts2,bfxtrs2,vfxtrs2] = directivesPrefixPrime (ts1,tau);
-                // FIXME: poor man's array append
-                print(stmts1);
-                print(bfxtrs1);
-                print(vfxtrs1);
-                for (p in stmts2) stmts1.push(stmts2[p]);
-                for (p in bfxtrs2) bfxtrs1.push(bfxtrs2[p]);
-                for (p in vfxtrs2) vfxtrs1.push(vfxtrs2[p]);
+                [ts1,stmts1] = directive (ts,tau,full);
+
+                // TODO add bhead1 and vhead1 to the env
+
+                var [ts2,stmts2] = directivesPrefixPrime (ts1,tau);
+                stmts1 = mergeStmts (stmts1,stmts2);
                 ts1 = ts2;
                 break;
             }
 
             exit("Parser::directivesPrefixPrime ", ts1);
-            return [ts1,stmts1,bfxtrs1,vfxtrs1];
+            return [ts1,stmts1];
         }
 
         function isCurrentClassName (ts: TOKENS) 
@@ -3578,23 +3687,16 @@ type TOKENS = Array;  // [int];
         }
 
         function directive (ts: TOKENS, tau: TAU, omega: OMEGA)
-            : [TOKENS, Ast::STMTS, Ast::FIXTURES]
+            : [TOKENS, Ast::STMTS]
         {
             enter("Parser::directive ", ts);
 
-            var bfxtrs1 = [];  // block
-            var vfxtrs1 = [];  // var
-            var cfxtrs1 = [];  // class
-
             switch (hd(ts)) {
-            case Token::Let:
-                // could be const or function
-                throw "let not implemented yet";
-                break;
+            case Token::Let: // FIXME might be function
             case Token::Var:
             case Token::Const:
-                var [ts1,stmts1,vfxtrs1]
-                    = variableDefinition (ts, AllowIn
+                var [ts1,stmts1]
+                    = variableDefinition (ts, AllowIn, tau
                                   , new Ast::PublicNamespace ("")
                                   , false, false);
 
@@ -3603,34 +3705,29 @@ type TOKENS = Array;  // [int];
             case Token::Function:
                 if (isCurrentClassName (tl (ts))) 
                 {
-                    var [ts1,stmts1,vfxtrs1] = constructorDefinition (ts, new Ast::PublicNamespace (""));
+                    var [ts1,stmts1] = constructorDefinition (ts, new Ast::PublicNamespace (""));
                 }
                 else 
                 {
-                    var [ts1,stmts1,vfxtrs1] = functionDefinition (ts, tau, new Ast::Var
+                    var [ts1,stmts1] = functionDefinition (ts, tau, new Ast::Var
                                   , new Ast::PublicNamespace ("")
                                   , false, false, false, false, false);
                 }
-
                 var tsx = semicolon (ts1,omega);
-
                 break;
             case Token::Class:
-                var [ts1,stmts1,vfxtrs1] = classDefinition (ts, new Ast::PublicNamespace (""), false);
-                var bfxtrs1 = [];
+                var [ts1,stmts1] = classDefinition (ts, new Ast::PublicNamespace (""), false);
                 var tsx = ts1;
                 break;
             default:
                 var [ts2,nd2] = statement (ts,tau,omega);
-                var stmts1 = [nd2];
                 var tsx = ts2;
-                var bfxtrs1 = [];
-                var vfxtrs1 = [];
+                var stmts1 = [nd2];
                 break;
             }
 
             exit("Parser::directive ", tsx);
-            return [tsx, stmts1, bfxtrs1, vfxtrs1];
+            return [tsx, stmts1];
         }
 
 //        /*
@@ -3998,16 +4095,18 @@ type TOKENS = Array;  // [int];
         // BLOCKS and PROGRAMS
 
         function block (ts:TOKENS, tau: TAU)
-            : [TOKENS, Ast::BLOCK, Ast::FIXTURES]
+            : [TOKENS, Ast::BLOCK]
         {
             enter("Parser::block ",ts);
 
             ts = eat (ts, Token::LeftBrace);
-            var [ts1,pragmas,stmts,bfxtrs,vfxtrs] = directives (ts, tau);
+            cx.enterLetBlock ();
+            var [ts1,pragmas,stmts] = directives (ts, tau);
+            let head = cx.exitLetBlock ();
             ts1 = eat (ts1, Token::RightBrace);
 
             exit ("Parser::block ", ts1);
-            return [ts1, new Ast::Block (pragmas,{fixtures:bfxtrs,inits:[]},stmts),vfxtrs];
+            return [ts1, new Ast::Block (pragmas,head,stmts)];
         }
 
         function program ()
@@ -4017,6 +4116,8 @@ type TOKENS = Array;  // [int];
 
             let [ts,cs] = scan.tokenList (scan.start);
             this.coordList = cs;
+
+            cx.enterVarBlock ();
 
             if (hd (ts) == Token::Internal || 
                 hd (ts) == Token::Package)
@@ -4032,7 +4133,11 @@ type TOKENS = Array;  // [int];
             default_namespace = new Ast::PublicNamespace ("");
             current_class = "";
 
-            var [ts2, pragmas, stmts, bfxtrs, vfxtrs] = directives (ts1, Global);
+            cx.enterLetBlock ();
+            var [ts2, pragmas, stmts, bhead, vhead] = directives (ts1, Global);
+            var bhead = cx.exitLetBlock ();
+
+            var vhead = cx.exitVarBlock ();
 
             switch (hd (ts2)) {
             case Token::EOS:
@@ -4041,8 +4146,10 @@ type TOKENS = Array;  // [int];
                 throw "extra tokens after end of program: " + ts2;
             }
 
+            print("bhead=",bhead);
+            print("vhead=",vhead);
             exit ("Parser::program ", ts2);
-            return [ts2, new Ast::Program (nd1,new Ast::Block (pragmas,{fixtures:bfxtrs,inits:[]},stmts),vfxtrs)];
+            return [ts2, new Ast::Program (nd1,new Ast::Block (pragmas,bhead,stmts),vhead)];
         }
     }
 
