@@ -94,7 +94,7 @@ package cogen
 
             switch type (fx) {
             case (vf:ValFixture) {
-                target.addTrait(new ABCSlotTrait(name, 0, 0, emitter.fixtureTypeToType(vf)));
+                target.addTrait(new ABCSlotTrait(name, 0, false, 0, emitter.fixtureTypeToType(vf)));
             }
             case (mf:MethodFixture) {
                 target.addTrait(new ABCOtherTrait(name, 0, TRAIT_Method, 0, cgFunc(ctx, mf.func)));
@@ -102,6 +102,9 @@ package cogen
             case (cf:ClassFixture) {
                 let clsidx = cgClass(ctx, cf.cls);
                 target.addTrait(new ABCOtherTrait(name, 0, TRAIT_Class, 0, clsidx));
+            }
+            case (nf:NamespaceFixture) {
+                target.addTrait(new ABCSlotTrait(name, 0, true, 0, 0, emitter.namespace(nf.ns), CONSTANT_Namespace));
             }
             case (x:*) { throw "Internal error: unhandled fixture type" }
             }
@@ -319,7 +322,7 @@ package cogen
         let formals = map(extractName, named_fixtures);
         let formals_type = map(extractType, named_fixtures);
         for ( let i=0 ; i < formals.length ; i++ ) {
-            target.addTrait(new ABCSlotTrait(formals[i], 0, 0, formals_type[i]));
+            target.addTrait(new ABCSlotTrait(formals[i], 0, false, 0, formals_type[i]));
         }
 
         // do inits

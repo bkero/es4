@@ -99,8 +99,32 @@ package emitter
 
         public function namespace( ns:NAMESPACE ) {
             switch type ( ns ) {
+                case (int_ns:IntrinsicNamespace) {
+                    throw ("Unimplemented namespace IntrinsicNamespace");
+                }
+                case (on:OperatorNamespace) {
+                    throw ("Unimplemented namespace OperatorNamespace");
+                }
+                case (pn:PrivateNamespace) {
+                    return constants.namespace(CONSTANT_PrivateNamespace, constants.stringUtf8(pn.name));
+                }
+                case (pn:ProtectedNamespace) {
+                    return constants.namespace(CONSTANT_ProtectedNamespace, constants.stringUtf8(pn.name));
+                }
                 case (pn:PublicNamespace) {
                     return constants.namespace(CONSTANT_Namespace, constants.stringUtf8(pn.name));
+                }
+                case (int_ns:InternalNamespace) {
+                    return constants.namespace(CONSTANT_PackageInternalNS, constants.stringUtf8(pn.name));
+                }
+                case (un:UserNamespace) {
+                    return constants.namespace(CONSTANT_ExplicitNamespace, constants.stringUtf8(pn.name));
+                }
+                case (an:AnonymousNamespace) {
+                    return constants.namespace(CONSTANT_PackageInternalNS, constants.stringUtf8(an.name));
+                }
+                case (imp_ns:ImportNamespace) {
+                    throw ("Unimplemented namespace ImportNamespace");
                 }
                 case (x:*) {
                     throw ("Unimplemented namespace " + ns);
@@ -108,7 +132,10 @@ package emitter
             }
         }
         
-        public function nameFromNAME({ns:ns, id:id}) {
+        public function nameFromMulitname({ nss:nss, id:id }) {
+            return constants.Multiname(namespaceset(nss), constants.stringUtf8(id));
+        }
+        public function nameFromNAME({ns:ns, id:id} : {ns:NAMESPACE, id:IDENT} ) {
             return constants.QName(namespace(ns), constants.stringUtf8(id));
         }
         public function nameFromIdent(id) {
