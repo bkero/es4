@@ -64,24 +64,25 @@
 
    The translator will see a generic function definition like this:
 
-       generic function f(a, b, ...rest);
+       generic function f(a:int, b, c=10, ...rest);
 
    and will turn it into something like this:
 
-       var f = new GenericFunction(2, true);
+       var f = new GenericFunction([int,AnyType,AnyType], [,,10], true);
 
    Then methods scattered throughout the program, like these:
 
-       generic function f(a: int, b: boolean, ...rest) {
+       generic function f(a: int, b: boolean, c: Numeric, ...rest) {
            return a+b
        }
 
    are turned into calls to addMethod:
 
-       f.addMethod([int, boolean], function (nextMethod, a:int, b:boolean, ...rest) { return a+b })
+       f.addMethod([int, boolean, Numeric], 
+                   function (nextMethod, a:int, b:boolean, c:Numeric, ...rest) { return a+b })
 
-   Generally very few errors are signalled when a method is added,
-   most of the interesting work happens when f is called.
+   Generally few errors are signalled when a method is added, most of
+   the interesting work happens when f is called.
 
    Note that the translator must translate the annotations '*' into
    AnyType, 'null' into NullType, and 'undefined' into UndefinedType.
@@ -122,7 +123,12 @@
        if any, followed by the list of implemented interfaces in order,
        if any.  This seems reasonable but there may or may not be a
        more reasonable approach for ECMAScript, as that is modelled on
-       a multiple-inheritance language.
+       a multiple-inheritance language.  MultiJava may offer insight.
+
+   (7) GenericFunction subclasses Object instead of Function because the
+       meta invoke() method of the latter is final.  I don't know why
+       it should be, really; it would be reasonable for GenericFunction
+       to subclass Function.
 */
 
 package
@@ -135,8 +141,10 @@ package
     
     public class GenericFunction extends Object
     {
-        function GenericFunction(required: uint, more: boolean) 
-            : required = required
+        function GenericFunction(constraints:Array, defaults:Array, more: boolean) 
+            : required = constraints.length
+            , constraints = constraints
+            , defaults = defaults
             , more = more
         {
         }
@@ -144,11 +152,26 @@ package
         public function addMethod(specializers: Array, body: function()) {
             if (specializers.length != required)
                 throw "Generic function requires exactly " + required + " specializers";
+
+            for ( let i=0, limit=specializers.length ; i < limit ; i++ )
+                if (!isSubtype(specializers[i], constraints[i]))
+                    throw "Specializer fails subtype check";
+
+            for ( let i=0, limit=methods.length ; i < limit ; i++ ) {
+                let thesame = true;
+                let m_specializers = methods[i].specializers;
+                for ( let j=0, limit=specializers.length ; thesame && j < limit ; j++ )
+                    if (specializers[j] !== m_specializers[j])
+                        thesame = false;
+                if (thesame)
+                    throw "Generic method redefinition is not allowed.";
+            }
+
             methods.push({specializers: specializers, body: body});
         }
 
         meta final function invoke(...args) {
-            checkCongruence(args.length);
+            checkCongruence(args);
             
             let types = computeManifestTypes(args);
             let [applicable, uncomparable] = sortMethods(selectApplicableMethods(methods, types), types);
@@ -156,11 +179,16 @@ package
             return callMethodsInOrder(applicable, args);
         }
 
-        function checkCongruence(nactuals) {
-            if (nactuals < required)
-                throw new TypeError("Not enough arguments to generic function");
+        function checkCongruence(args) {
+            let nactuals = args.length;
             if (nactuals > required && !more)
                 throw new TypeError("Too many arguments to generic function");
+            if (nactuals < required) {
+                if (defaults == null || !defaults.hasOwnProperty(nactuals))
+                    throw new TypeError("Not enough arguments to generic function");
+                for ( let i=nactuals ; i < required ; i++ )
+                    args[i] = defaults[i];
+            }
         }
 
         function computeManifestTypes(args) {
@@ -267,6 +295,8 @@ package
         }
 
         var required;
+        var defaults;
+        var constraints;
         var more;
         const methods = new Array;
     }
@@ -383,7 +413,7 @@ package
      * System hooks -- a sketch for meta-objects functionality.
      */
 
-    function typeOf(v) {
+    public function typeOf(v) {
         switch type (v) {
         case (v:undefined) { return UndefinedType }
         case (v:null) { return NullType }
@@ -480,6 +510,7 @@ package
         if (x == int) return "int";
         if (x == double) return "double";
         if (x == AnyType) return "*";
+        if (x == Number) return "Number";
         return "???";
     }
 

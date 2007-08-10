@@ -271,6 +271,8 @@ fun getClassOfObject (regs:Mach.REGS)
         val Mach.Obj { magic, tag, ... } = nthAsObj vals 0
         val globalScope = Eval.getGlobalScope ()
     in
+(*  This is wrong, because eg "Number" is classified as "Double" because it
+ *  stores a double value magically.
         case !magic of
             SOME (Mach.Function _) => Eval.findVal globalScope Name.nons_Function
           | SOME (Mach.NativeFunction _) => Eval.findVal globalScope Name.nons_Function
@@ -287,6 +289,13 @@ fun getClassOfObject (regs:Mach.REGS)
                | Mach.FunctionTag _ => Eval.findVal globalScope Name.nons_Function
                | Mach.ClassTag name => Eval.findVal globalScope name
                | Mach.NoTag => Eval.findVal globalScope Name.nons_Object)
+*)
+        case tag of
+            Mach.ObjectTag _ => Eval.findVal globalScope Name.nons_Object
+          | Mach.ArrayTag _ => Eval.findVal globalScope Name.nons_Array
+          | Mach.FunctionTag _ => Eval.findVal globalScope Name.nons_Function
+          | Mach.ClassTag name => Eval.findVal globalScope name
+          | Mach.NoTag => Eval.findVal globalScope Name.nons_Object
     end
 
 
