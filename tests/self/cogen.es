@@ -81,8 +81,8 @@ package cogen
     }
 
     function cgProgram(ctx, prog) {
-        if (prog.fixtures != null)
-            cgFixtures(ctx, prog.fixtures);
+        if (prog.head.fixtures != null)
+            cgFixtures(ctx, prog.head.fixtures);
         cgBlock(ctx, prog.block);
     }
 
