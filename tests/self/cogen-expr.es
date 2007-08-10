@@ -351,8 +351,8 @@ package cogen
     }
 
     function cgLetExpr(ctx, e) {
-        // FIXME
-        throw "Unimplemented let expression";
+        cgHead(ctx, e.head);
+        cgExpr(ctx, e.expr);
     }
 
     function cgNewExpr(ctx, e) {
@@ -364,7 +364,7 @@ package cogen
 
     function cgObjectRef(ctx, e) {
         cgExpr(ctx, e.base);
-        ctx.asm.I_findproperty(ctx.emitter.nameFromIdentExpr(e.ident));
+        ctx.asm.I_getproperty(ctx.emitter.nameFromIdentExpr(e.ident));
     }
 
     function cgLexicalRef({asm:asm, emitter:emitter}, e) {
@@ -455,8 +455,17 @@ package cogen
     }
 
     function cgInitExpr(ctx, e) {
+        let asm = ctx.asm;
+        let baseOnStk = false;
         cgHead(ctx, e.head);
-        cgInits(ctx, e.inits, true);
+        switch type (e.target) {
+            case (i:InstanceInit ) {
+                // Load this on the stack
+                asm.I_getlocal(0);
+                baseOnStk = true;
+            }
+        }
+        cgInits(ctx, e.inits, baseOnStk, true);
     }
 
     function cgLiteralExpr(ctx, e) {

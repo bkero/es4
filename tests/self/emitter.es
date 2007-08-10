@@ -97,6 +97,20 @@ package emitter
         public var RegExp_name;
         public var meta_construct_name;
 
+        public function namespace( ns:NAMESPACE ) {
+            switch type ( ns ) {
+                case (pn:PublicNamespace) {
+                    return constants.namespace(CONSTANT_Namespace, constants.stringUtf8(pn.name));
+                }
+                case (x:*) {
+                    throw ("Unimplemented namespace " + ns);
+                }
+            }
+        }
+        
+        public function nameFromNAME({ns:ns, id:id}) {
+            return constants.QName(namespace(ns), constants.stringUtf8(id));
+        }
         public function nameFromIdent(id) {
             return constants.QName(constants.namespace(CONSTANT_PackageNamespace, constants.stringUtf8("")),
                                    constants.stringUtf8(id));
@@ -133,7 +147,7 @@ package emitter
         public function fixtureNameToName(fn) {
             switch type (fn) {
             case (pn:PropName) {
-                return nameFromIdent(pn.name.id);
+                return nameFromNAME(pn.name);
             }
             case (tn:TempName) {
                 // FIXME: updates "name"
@@ -240,10 +254,10 @@ package emitter
         }
     }
 
-    /*
+    
     public class Class
     {
-        public var s, name, basename;
+        public var s, name, basename, traits=[], instance=null, cinit;
 
         function Class(script, name, basename) {
             this.s = script;
@@ -252,7 +266,7 @@ package emitter
 
             var asm = script.init;
             // Create the class
-            asm.I_findpropstrict(Object_name);
+ /*           asm.I_findpropstrict(Object_name);
             asm.I_getproperty(Object_name);
             asm.I_dup();
             asm.I_pushscope();
@@ -261,35 +275,87 @@ package emitter
             asm.I_getglobalscope();
             asm.I_swap();
             asm.I_initproperty(Fib_name);
+*/
         }
 
-        public function newCInit(name) {
-            return new Method(e, [], name);
+        public function getCInit() {
+            if(cinit == null )
+                cinit = new Method(s.e, [], "$cinit");
+            return cinit;
         }
-
+/*
         public function newIInit(formals, name=null) {
             var iinit = new Method(s.e, formals, name);
             iinit.I_getlocal(0);
             iinit.I_constructsuper(0);
             return iinit;
         }
-
+*/
+        public function getInstance() {
+            if( this.instance == null )
+                this.instance = new Instance(s, name, basename);
+            
+            return this.instance;
+        }
+        
         public function addTrait(t) {
-            cls.addTrait(t);
+            traits.push(t);
         }
 
-        function finalize() {
-            clsidx = file.addClass();
-            s.addTrait(new ABCOtherTrait(name, 0, TRAIT_Class, 0, clsidx));
+        public function finalize() {
+            var instidx = instance.finalize();
+            
+            var clsinfo = new ABCClassInfo();
+            clsinfo.setCInit(getCInit().finalize());
+            for(let i = 0; i < traits.length; ++i)
+                clsinfo.addTrait(traits[i]);
+            
+            var clsidx = s.e.file.addClass(clsinfo);
+            
+            assert(clsidx == instidx);
+
+            //s.addTrait(new ABCOtherTrait(name, 0, TRAIT_Class, 0, clsidx));
+            return clsidx;
         }
     }
-    */
+    
+    
+    public class Instance {
+        // FIXME: interfaces
+        
+        public var s, name, basename, traits = [], iinit;
+        
+        function Instance(s:Script, name, basename)  : 
+            s=s, 
+            name=name, 
+            basename=basename {
+            
+        }
+        
+        public function setIInit(method) {
+            iinit = method
+        }
+        public function addTrait(t) {
+            traits.push(t);
+        }
+        
+        public function finalize() {
+            var instinfo = new ABCInstanceInfo(name, basename, 0, 0, []);
+            
+            instinfo.setIInit(iinit);
+            
+            for(let i = 0; i < traits.length; i++)
+                instinfo.addTrait(traits[i]);
+            
+            return s.e.file.addInstance(instinfo);
+        }
+    }
 
     public class Method // extends AVM2Assembler
     {
         public var e, formals, name, asm, traits = [], finalized=false, defaults = null;
 
-        function Method(e:ABCEmitter, formals:Array, name=null) {
+        function Method(e:ABCEmitter, formals:Array, name=null, standardPrologue=true) {
             asm = new AVM2Assembler(e.constants, formals.length);
             //super(e.constants, formals.length);
             this.formals = formals;
@@ -297,8 +363,12 @@ package emitter
             this.name = name;
 
             // Standard prologue -- but is this always right?
-            asm.I_getlocal_0();
-            asm.I_pushscope();
+            // ctors don't need this - have a more complicated prologue
+            if(standardPrologue)
+            {
+                asm.I_getlocal_0();
+                asm.I_pushscope();
+            }
         }
 
         public function addTrait(t) {
