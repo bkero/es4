@@ -4,7 +4,7 @@
 {
     use default namespace Ast;
     use namespace intrinsic;
-    use namespace Release;
+    use namespace Debug;
 
     function indent (n:int)
         : string {
@@ -24,7 +24,7 @@
             var str =
                 indent(nesting) + "{ 'ast::class': 'Program'"
               + indent(nesting) + ", 'packages': " + encodePackages (p.packages,nesting+", 'packages': ".length)
-              + indent(nesting) + ", 'fixtures': [ " + encodeFixtures (p.fixtures,nesting+", 'fixtures': [ ".length) + " ]"
+              + indent(nesting) + ", 'head': [ " + encodeHead (p.head,nesting+", 'head': [ ".length) + " ]"
               + indent(nesting) + ", 'block': " + encodeBlock (p.block,nesting+", 'block': ".length)
               + " }";
         }
@@ -929,6 +929,9 @@
           + ", 'params': "
           + encodeHead (nd.params,nesting+", 'params': ".length)
           + indent(nesting)
+          + ", 'vars': "
+          + encodeHead (nd.vars,nesting+", 'vars': ".length)
+          + indent(nesting)
           + ", 'defaults': [" + encodeExprs (nd.defaults,nesting+", 'defaults': ".length) + " ]"
           + indent(nesting)
           + ", 'type': "
@@ -944,11 +947,6 @@
 
         enter ("encodeCls ",nd);
 
-        print("name=",nd.name);
-        print("baseName=",nd.baseName);
-        print("constructor=",nd.constructor);
-
-
         var str =
             "{ 'ast::class': 'Cls'"
           + indent(nesting) + ", 'name': " + encodeName (nd.name,nesting+", 'name': ".length)
@@ -957,9 +955,8 @@
           + indent(nesting) + ", 'interfaceNames': " + encodeNames (nd.interfaceNames,nesting+", 'interfaceNames': ".length)
             */
           + indent(nesting) + ", 'constructor': " + encodeCtor (nd.constructor,nesting+", 'constructor': ".length)
-          + indent(nesting) + ", 'classFixtures': [ " + encodeFixtures (nd.classFixtures,nesting+", 'classFixtures': [ ".length) + " ]"
-          + indent(nesting) + ", 'instanceFixtures': [ " + encodeFixtures (nd.instanceFixtures,nesting+", 'instanceFixtures': [ ".length) + " ]"
-          + indent(nesting) + ", 'instanceInits': " + encodeHead (nd.instanceInits,nesting+", 'instanceInits': ".length)
+          + indent(nesting) + ", 'classHead': [ " + encodeHead (nd.classHead,nesting+", 'classHead': [ ".length) + " ]"
+          + indent(nesting) + ", 'instanceHead': [ " + encodeHead (nd.instanceHead,nesting+", 'instanceHead': [ ".length) + " ]"
           + indent(nesting) + ", 'classType': " + encodeTypeExpr (nd.classType,nesting+", 'classType': ".length)
           + indent(nesting) + ", 'instanceType': " + encodeTypeExpr (nd.instanceType,nesting+", 'instanceType': ".length)
           + " }";

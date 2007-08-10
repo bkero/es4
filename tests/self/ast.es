@@ -72,7 +72,7 @@ namespace Ast
     class PropName {
         const name /*: NAME*/;
         function PropName(name) 
-            : name=name {}
+            : name=name { }
     }
 
     type FIXTURE_BINDING = [FIXTURE_NAME,FIXTURE];
@@ -767,20 +767,18 @@ namespace Ast
         const baseName //: NAME?;
         const interfaceNames //: [NAME];
         const constructor : CTOR;
-        const classFixtures : FIXTURES;
-        const instanceFixtures //: FIXTURES;
-        const instanceInits //: HEAD;
-            const classType //: ObjectType;
-            const instanceType //: InstanceType;
-        function Cls (name,baseName,interfaceNames,constructor,classFixtures,instanceFixtures
-                     ,instanceInits,classType,instanceType)
+        const classHead //: HEAD;
+        const instanceHead //: HEAD;
+        const classType //: ObjectType;
+        const instanceType //: InstanceType;
+        function Cls (name,baseName,interfaceNames,constructor,classHead,instanceHead
+                     ,classType,instanceType)
             : name = name
             , baseName = baseName
             , interfaceNames = interfaceNames
             , constructor = constructor
-            , classFixtures = classFixtures
-            , instanceFixtures = instanceFixtures
-            , instanceInits = instanceInits
+            , classHead = classHead
+            , instanceHead = instanceHead
             , classType = classType
             , instanceType = instanceType{}
     }
@@ -809,14 +807,16 @@ namespace Ast
         const isNative: Boolean;
         const block: BLOCK;
         const params /*: HEAD*/;
+        const vars /* : HEAD */;
         const defaults: [EXPR];
         const type /*: FUNC_TYPE*/;    // FIXME: should be able to use 'type' here
         function Func (name,isNative,block,
-                       params,defaults,ty)
+                       params,vars,defaults,ty)
             : name = name
             , isNative = isNative
             , block = block
             , params = params
+            , vars = vars
             , defaults = defaults
             , type = ty {}
     }
@@ -1367,11 +1367,11 @@ namespace Ast
     class Program {
         var packages //: [PACKAGE];
         var block: BLOCK;
-        var fixtures: FIXTURES;
-        function Program (packages, block, fixtures)
+        var head //: HEAD;
+        function Program (packages, block, head)
             : packages = packages
             , block = block
-            , fixtures = fixtures {}
+            , head = head {}
     }
 
     public function test () {
