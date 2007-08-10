@@ -161,7 +161,7 @@ package cogen
         let cls = script.newClass(classname, basename);
 /*        
         let c_ctx = new CTX(asm, {tag:"class"}, cls);
-        cgFixtures(c_ctx, c.classFixtures);
+        cgHead(c_ctx, c.classHead);
 */      
         let inst = cls.getInstance();
         
@@ -169,9 +169,9 @@ package cogen
         let i_ctx = new CTX(asm, {tag:"instance"}, inst);
         
         // do instance slots
-        cgFixtures(i_ctx, c.instanceFixtures);
+        cgFixtures(i_ctx, c.instanceHead.fixtures);  // FIXME instanceHead and instanceInits should be unified
         
-        inst.setIInit(cgCtor(i_ctx, c.constructor, c.instanceInits));
+        inst.setIInit(cgCtor(i_ctx, c.constructor, {fixtures:[],inits:c.instanceHead.inits}));
         
         var clsidx = cls.finalize();
         var Object_name = emitter.nameFromNAME({ns:new PublicNamespace(""), id:"Object"});
@@ -219,6 +219,7 @@ package cogen
         asm.I_dup();
         asm.I_pushwith();
         cgHead(ctor_ctx, c.func.params, true);
+        //cgHead(ctor_ctx, c.func.vars, true);
 
         for ( let i=0 ; i < c.settings.length ; i++ )
             cgExpr(ctor_ctx, c.settings[i]);
@@ -262,7 +263,7 @@ package cogen
      * Return the function index
      */
     function cgFunc({emitter:emitter, script:script}, f:FUNC) {
-        let formal_type = extractFormalTypes({emitter:emitter, script:script}, f);
+        let formals_type = extractFormalTypes({emitter:emitter, script:script}, f);
         let method = script.newFunction(formals_type);
         let asm = method.asm;
 
@@ -293,6 +294,7 @@ package cogen
         let ctx = new CTX(asm, {tag: "function"}, method);
 
         cgHead(ctx, f.params, true);
+        //cgHead(ctx, f.vars, true);
         
         asm.I_pop();
         /* Generate code for the body.  If there is no return statement in the

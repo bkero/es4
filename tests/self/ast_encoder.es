@@ -4,7 +4,7 @@
 {
     use default namespace Ast;
     use namespace intrinsic;
-    use namespace Debug;
+    use namespace Release;
 
     function indent (n:int)
         : string {

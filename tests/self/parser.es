@@ -48,7 +48,7 @@ type TOKENS = Array;  // [int];
 
 {
     use default namespace Parser;
-    use namespace Debug;
+    use namespace Release;
 
     type PATTERN =
           ( ObjectPattern
@@ -2337,15 +2337,15 @@ type TOKENS = Array;  // [int];
                 break;
             case Token::Return:
                 var [ts1,nd1] = returnStatement (ts,omega);
-                var [ts2,nd2] = [semicolon (ts1,omega),stmt1,head1];
+                var [ts2,nd2] = [semicolon (ts1,omega),nd1];
                 break;
             case Token::LeftBrace:
                 var [ts1,nd1] = block (ts, tau);
-                var [ts2,nd2] = [ts1,new Ast::BlockStmt (nd1),head1];
+                var [ts2,nd2] = [ts1,new Ast::BlockStmt (nd1)];
                 break;
             default:
                 let [ts1,nd1] = expressionStatement (ts);
-                var [ts2,nd2] = [semicolon (ts1,omega),stmt1,head1];
+                var [ts2,nd2] = [semicolon (ts1,omega),nd1];
                 break;
             }
 
@@ -4157,8 +4157,8 @@ type TOKENS = Array;  // [int];
     {
         var programs =
             [ "print('hi')"
-            , readFile ("./tests/self/t.es")
               /*
+            , readFile ("./tests/self/t.es")
             , "x<y"
             , "x==y"
             , "m-n;n+m"
