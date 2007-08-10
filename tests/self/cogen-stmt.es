@@ -71,10 +71,12 @@ package cogen
 
     function cgExprStmt(ctx, s) {
         cgExpr(ctx, s.expr);
-        ctx.asm.I_pop();
+        if(!(s.expr is InitExpr))
+            ctx.asm.I_pop();
     }
 
     function cgClassBlock(ctx, s) {
+        cgBlock(ctx, s.block);
     }
 
     function cgBlockStmt(ctx, s) {
