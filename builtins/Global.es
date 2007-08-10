@@ -194,8 +194,7 @@ package
     function isFinite(x)
         intrinsic::isFinite(ToNumeric(x));
 
-    // FIXME: not in the spec, do we want that?
-    intrinsic function isIntegral(v:*):boolean {
+    helper function isIntegral(v:*):boolean {
         switch type (v) {
         case (v:int) { return true; }
         case (v:uint) { return true; }
@@ -212,7 +211,7 @@ package
                     Math.floor(v) == v);
         }
         case (v:Number) {
-            return isIntegral(double(v));
+            return helper::isIntegral(double(v));
         }
         case (v:*) {
             return false;
@@ -220,6 +219,11 @@ package
         }
     }
 
+    helper function isIndex(k): boolean
+        (k is int && k >= 0) ||
+        (k is uint && k <= 0xFFFFFFFE) ||
+        (k is (double,decimal) && helper::isIntegral(k) && k >= 0 && k <= 0xFFFFFFFE);
+    
     // Return a hash code for the string.
     //
     // INFORMATIVE: this particular algorithm is not mandated and

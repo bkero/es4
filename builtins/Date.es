@@ -50,12 +50,7 @@ package
     use default namespace public;
     use namespace intrinsic;  // Override with "public::" when necessary
 
-    /* The Date class is "final dynamic" in ActionScript 3.0, though
-       the motivation for that is unclear.  The consequence is anyway
-       that the getters for the components of a Date can be
-       inlined.  */
-
-    final dynamic class Date
+    dynamic class Date
     {
         /* E262-3 15.9.2: The Date Constructor Called as a Function */
         meta static function invoke(...args)   // args are ignored.

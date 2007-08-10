@@ -66,55 +66,49 @@ package
             length = n;
         }
 
-        meta static function convert(a : Array!) : ByteArray! {
-            let n  : uint = a.length;
-            let ba : ByteArray = new ByteArray(n);
-            for ( let i : uint = 0 ; i < n ; i++ )
-                ba[i] = a[i];
-            return ba;
+        meta static function invoke(...as) : ByteArray! {
+            let ba = new ByteArray();
+            for ( let k=0, limit=as.length ; k < limit ; k++ ) {
+                let a = as[k];
+                for ( let i=0, n=uint(a.length) ; i < n ; i++ ) {
+                    switch type (a[i]) {
+                    case (s:String) { ba[i] = s.intrinsic::charCodeAt(0) }
+                    case (n:Numeric) { ba[i] = uint(n) }
+                    case (x:*) { throw new TypeError() }
+                    }
+                }
+                return ba;
+            }
         }
-
-        static function fromString(s : string) : ByteArray! {
-            let n  : uint = s.length;
-            let ba : ByteArray! = new ByteArray(n);
-
-            for ( let i : uint = 0; i < n; i++ )
-                ba[i] = s.charCodeAt(i);
-            return a;
-        }
-
-        static function fromArray(a:Array) : ByteArray!
-            a to ByteArray;
 
         function get length() : uint
             _length;
 
         function set length(n : uint) : void {
-            for ( let i : uint = length ; i < n ; i++ )
+            for ( let i=length ; i < n ; i++ )
                 magic::setByteArrayByte(this, n, 0);
             _length = n;
         }
 
         meta function get(k) {
-            if (k is Numeric && intrinsic::isIntegral(k) && k >= 0 && k <= 0xFFFFFFFE) {
-                let (k : uint = k) {
-                    if (k < length)
-                        return magic::getByteArrayByte(this, k);
-                    else
-                        return 0;
-                }
+            if (helper::isIndex(k)) {
+                k = uint(k);
+                if (k < length)
+                    return magic::getByteArrayByte(this, k);
+                else
+                    return 0;
             }
             else
                 return intrinsic::get(this, k);
         }
 
         meta function set(k, v) : void {
-            if (k is Numeric && intrinsic::isIntegral(k) && k >= 0 && k <= 0xFFFFFFFE) {
-                let (k : uint = k, v : uint = v) {
-                    if (k >= length)
-                        length = k+1;
-                    magic::setByteArrayByte(this, k, v);
-                }
+            if (helper::isIndex(k)) {
+                k = uint(k);
+                v = uint(v);
+                if (k >= length)
+                    length = k+1;
+                magic::setByteArrayByte(this, k, v);
             }
             else
                 intrinsic::set(this, k, v);
@@ -124,9 +118,8 @@ package
             this.intrinsic::toString();
 
         override intrinsic function toString() : string {
-            let n : uint = length;
-            let s : string = "";
-            for ( let i:int = 0; i < n; i++ )
+            let s = "";
+            for ( let i=0, limit=length ; i < limit ; i++ )
                 s += string.fromCharCode(this[i]);
             return s;
         }
