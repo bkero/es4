@@ -299,7 +299,6 @@ package cogen
         cgHead(ctx, f.params, true);
         //cgHead(ctx, f.vars, true);
         
-        asm.I_pop();
         /* Generate code for the body.  If there is no return statement in the
          * code then the default behavior of the emitter is to add a returnvoid
          * at the end, so there's nothing to worry about here.
