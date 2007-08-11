@@ -40,6 +40,7 @@
  *
  * Status: Complete; Not reviewed against spec.
  */
+
 package
 {
     use default namespace public;
@@ -48,110 +49,99 @@ package
     // There is a bug in the definer.
     use namespace intrinsic;
 
+    type EnumerableId = (int, uint, string /*, Name*/);  // FIXME: circularity
+
     dynamic class Object
     {
         use namespace intrinsic;
         use strict;
 
         /* E262-3 15.2.1.1: The Object constructor called as a function */
-        meta static function invoke(value) {
-            if (value === null ||
-                value === undefined)
+        meta static function invoke(value=undefined) {
+            if (value === null || value === undefined)
                 return new Object();
             return ToObject(value);
         }
 
         /* E262-3 15.2.2.1: The Object constructor. */
-        function Object() {}
+        /* The run-time system provides the constructor for Object */
 
         /* E262-3 15.2.4.2: Object.prototype.toString */
         prototype function toString()
-            Object.private::toString(this);
+            this.intrinsic::toString();
 
         intrinsic function toString() : string
-            Object.private::toString(this);
+            "[object " + magic::getClassName(this) + "]";
 
-        private static function toString(obj) : string
-            "[object " + magic::getClassName(obj) + "]";
 
         /* E262-3 15.2.4.3: Object.prototype.toLocaleString */
         prototype function toLocaleString()
-            private::toLocaleString(this);
+            this.intrinsic::toLocaleString();
 
         intrinsic function toLocaleString() : string
-            private::toLocaleString(this);
+            this.toString();
 
-        private static function toLocaleString(obj)
-            "[object " + magic::getClassName(obj) + "]";
 
         /* E262-3 15.2.4.4:  Object.prototype.valueOf */
         prototype function valueOf()
-            this.valueOf();
+            this.intrinsic::valueOf();
 
         intrinsic function valueOf() : Object!
             this;
 
+
         /* E262-3 15.2.4.5:  Object.prototype.hasOwnProperty */
         prototype function hasOwnProperty(V)
-            Object.private::hasOwnProperty(this, V);  // FIXME: "Object." should not be necessary
+            this.intrinsic::hasOwnProperty(V is EnumerableId ? V : string(V));
 
-        intrinsic function hasOwnProperty(V : (Name,string)) : boolean
-            Object.private::hasOwnProperty(this, V);  // FIXME: "Object." should not be necessary
+        intrinsic function hasOwnProperty(V: EnumerableId): boolean
+            magic::hasOwnProperty(this, V);
 
-        private static function hasOwnProperty(obj, V : (Name,string)) : boolean
-            magic::hasOwnProperty(obj, V);
 
         /* E262-3 15.2.4.6:  Object.prototype.isPrototypeOf */
         prototype function isPrototypeOf(V)
-            private::isPrototypeOf(this, V);
+            this.intrinsic::isPrototypeOf(V);
 
-        intrinsic function isPrototypeOf(V)
-            private::isPrototypeOf(this, V);
-
-        private static function isPrototypeOf(target, v) : boolean {
-            if (!(v is Object))
+        intrinsic function isPrototypeOf(V): boolean {
+            if (!(V is Object))
                 return false;
 
-            let vo : Object = v to Object;
             while (true) {
-                vo = magic::getPrototype(VO);
-                if (vo === null || vo === undefined)
+                V = magic::getPrototype(V);
+                if (V === null || V === undefined)
                     return false;
-                if (vo === target)
+                if (V === this)
                     return true;
             }
         }
 
+
         /* E262-3 15.2.4.7: Object.prototype.propertyIsEnumerable (V) */
-        prototype function propertyIsEnumerable(prop, e=undefined)
-            private::propertyIsEnumerable(this, prop, e);
-
-        intrinsic function propertyIsEnumerable(prop : (Name,string), e=undefined) : boolean
-            private::propertyIsEnumerable(this, prop, e);
-
         /* E262-4 draft proposals:enumerability */
-        private static function propertyIsEnumerable(obj : Object, prop : (Name,string),
-                                                     e = undefined) : boolean {
-            while (obj !== null) {
-                if (obj.hasOwnProperty(prop)) {
-                    let old : boolean = !magic::getPropertyIsDontEnum(obj, prop);
-                    if (!magic::getPropertyIsDontDelete(obj, prop))
-                        if (e is Boolean)
-                            magic::setPropertyIsDontEnum(obj, prop, !e);
-                    return old;
-                }
-                obj = magic::getPrototype(obj);
-            }
+        prototype function propertyIsEnumerable(prop, e)
+            this.intrinsic::propertyIsEnumerable(prop is EnumerableId ? prop : string(prop),
+                                                 e is (boolean,undefined) ? e : boolean(e));
+
+        intrinsic function propertyIsEnumerable(prop: EnumerableId,
+                                                e:(boolean,undefined) = undefined): boolean
+        {
+            if (!magic::hasOwnProperty(this,prop))
+                return false;
+
+            let oldval = !magic::getPropertyIsDontEnum(this, prop);
+            if (!magic::getPropertyIsDontDelete(this, prop))
+                if (e is boolean)
+                    magic::setPropertyIsDontEnum(this, prop, !e);
+            return oldval;
         }
+
 
         /* E262-4 draft proposals:json_encoding_and_decoding */
         prototype function toJSONString()
-            private::toJSONString(this);
+            this.intrinsic::toJSONString();
 
-        intrinsic function toJSONString(...args) : string
-            private::toJSONString.apply(obj, args);
-
-        private static function toJSONString(obj, args) : string
-            JSON.emit.apply(null, args.unshift(obj));
+        intrinsic function toJSONString() : string {
+            // FIXME
+        }
     }
 }

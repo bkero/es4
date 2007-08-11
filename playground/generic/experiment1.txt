@@ -1,0 +1,117 @@
+Experiment 1: generic instancde functions, no rest args, no optional
+args, a single shape only.  nextMethod is provided.
+
+If the shape of the function is constrained, the compiler can check
+that the constraints are valid during translation, it doesn't show up
+here.
+
+Consider a class:
+
+  class C {
+    generic function f(x, y);
+
+    generic function f(x:int, y) { 
+    }
+    generic function f(x, y:string) { 
+    }
+  }
+
+This becomes rewritten as follows.  Notice that the individual methods
+are turned into real methods, this is to get the scoping right.  The
+data structure maps lists of argument type objects to methods.  The
+structure has one entry for each arity.
+
+(Unfortunately instance creation becomes a little expensive here
+because closures are extracted for the methods with bound "this".  A
+more practical system can optimize this by passing the "this" object
+and method pointers separately, or by some other trampoline.  Another
+cost is the consing of argument lists etc, these are often liftable,
+though not if types internal to the class are used.)
+
+(The use of ...args is not required, it just simplifies.  A faster
+system would have dispatch1(), dispatch2(), ... up to a reasonable
+number of fixed arguments.)
+
+  class C 
+  {
+    private function __meth1_f(nextMethod, x:int, y) { }
+    private function __meth2_f(nextMethod, x, y:string) { }
+
+    private var __generic_f = {
+      2: [ { signature: [int, type *],    method: __meth1_f },
+           { signature: [type *, string], method: __meth2_f } ] };
+
+    function f(...args) {
+      GenericFunction.dispatch(__generic_f, args);
+    }
+  }
+
+The package GenericFunction contains the following.
+
+  package GenericFunction 
+  {
+    public function dispatch(g, args) {
+      // Select applicable methods.
+
+      var ms = g[args.length];
+      var as = [];
+    outer:
+      for ( let i=0 ; i < ms.length ; i++ ) {
+        let m = ms[i];
+        let s = m.signature;
+	for ( let j=0 ; j < args.length ; j++ ) {
+          if (!typeOf(args[j]).subtypeOf(s[j]))
+            continue outer;
+        }
+        as.push(m);
+      }
+
+      // Sort methods
+      // FIXME
+
+      // Put nextMethod() in as the first argument
+      args.unshift(nextMethod);
+
+      // Call the methods in order.  nextMethod() throws private
+      // exceptions when it's called, and we retry.
+      for ( let acount=0; acount < as.length ; acount++ ) {
+        try {
+          return as[acount].apply(null, args);
+        }
+        catch (e : NextMethodExn) {
+	  if (acount == as.length)
+	    throw new NoApplicableMethodError;
+        }
+        catch (e : NextMethodWithArgsExn) {
+	  if (acount == as.length)
+	    throw new NoApplicableMethodError;
+          if (args.length-1 != e.args.length)
+            throw new ArgumentCounteExn;
+          for ( let i=1 ; i < args.length ; i++ )
+            args[i] = e.args[i-1];
+        }
+      }
+      throw new NoApplicableMethodError;
+    }
+
+    function nextMethod(...args) { 
+      if (args.length == 0)
+        throw SingletonNextMethodExn
+      else
+        throw new NextMethodWithArgsExn(args);
+    }
+
+    class NextMethodExn 
+    {
+    }
+
+    class NextMethodWithArgsExn 
+    {
+      function NextMethodWithArgsExn(args) : args=args {}
+      var args;
+    }
+
+    const SingletonNextMethodExn = new NextMethodExn
+  }
+
+

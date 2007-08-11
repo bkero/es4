@@ -48,7 +48,6 @@ package cogen
         switch type (s) {
         case (s:EmptyStmt) { }
         case (s:ExprStmt) { cgExprStmt(ctx, s) }
-        case (s:InitStmt) { cgInitStmt(ctx, s) }
         case (s:ClassBlock) { cgClassBlock(ctx, s) }
         case (s:ForInStmt) { cgForInStmt(ctx, s) }
         case (s:ThrowStmt) { cgThrowStmt(ctx, s) }
@@ -72,13 +71,12 @@ package cogen
 
     function cgExprStmt(ctx, s) {
         cgExpr(ctx, s.expr);
-        ctx.asm.I_pop();
-    }
-
-    function cgInitStmt(ctx, s) {
+        if(!(s.expr is InitExpr))
+            ctx.asm.I_pop();
     }
 
     function cgClassBlock(ctx, s) {
+        cgBlock(ctx, s.block);
     }
 
     function cgBlockStmt(ctx, s) {
@@ -91,7 +89,7 @@ package cogen
         asm.I_label(L0);
     }
 
-    function cgIfStmt(ctx, {test:test, consequent:consequent, alternate:alternate}) {
+    function cgIfStmt(ctx, {cnd:test, thn:consequent, els:alternate}) {
         let asm = ctx.asm;
         cgExpr(ctx, test);
         let L0 = asm.I_iffalse();

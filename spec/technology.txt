@@ -1,0 +1,40 @@
+General information about how the spec is produced.
+
+
+The spec is written as chunks of HTML4 (for the moment) with some
+light CSS usage.  These chunks are processed by a script (stitch.py)
+that stitches everything together to produce a single file.  See the
+Makefile and comments in stitch.py for more information on the
+technical side of things.
+
+The HTML source files use some custom tags (INCLUDE, XREF) for
+including other files as well as program fragments from the RI.  See
+style.txt.  This is still pretty primitive, though it works.  More
+will happen with custom tags.
+
+The HTML source files can also use light wiki markup to reduce clutter,
+see style.txt.
+
+The complete file will then be read into MS Word, after which ECMA or
+ISO templates will be applied and the desired Word document produced.
+
+The Word document will also be printed to PDF for distribution.
+
+All scripts and text are under source control in the monotone
+repository.
+
+
+-----
+
+HTML issues that are unresolved:
+
+ - symbolic cross referencing: HTML has no facilities for this short
+   of hyperlinks, which I guess translates to both Word and PDF but
+   are no good for print documents.  No prepass can fix this; word
+   needs to handle it somehow _after_ sections are numbered.  But how?
+   The only thing I can think of is a fancier tool that does the
+   numbering, so that word won't.
+
+   Can CSS do that?  And if it can, what does word do?
+
+   What does word do with "#name" links?

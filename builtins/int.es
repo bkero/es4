@@ -46,6 +46,7 @@ package
     use default namespace public;
     use namespace intrinsic;
     use strict;
+    import ECMAScript4_Internal.*;
 
     intrinsic final class int! extends Number
     {
@@ -73,7 +74,7 @@ package
                 return ToString(this);
             else if (typeof radix === "number" &&
 		     radix >= 2 &&
-		     radix <= 36 && isIntegral(radix)) {
+		     radix <= 36 && helper::isIntegral(radix)) {
                 /* INFORMATIVE */
                 radix = int(radix);
                 let v = this;

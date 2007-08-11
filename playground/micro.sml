@@ -513,23 +513,23 @@ fun verifyExpr (mode:MODE) (n:BIND ENV) (e:EXPR) : (EXPR * TYPE) =
         let val t = verifyType n t in
             (TypeExpr t, TypeType)
         end
-       | GenericExpr (x,e) =>
-         let val _ = checkUnbound n x
-             val n' = extend n x UnknownTypeVar
-             val (e',s) = verifyExpr mode n' e
-         in
-             (GenericExpr (x,e), GenericType (x,s))
-         end
-       | AppTypeExpr (e,t) =>
-         let val (e',s) = verifyExpr mode n e
-             val t = verifyType n t
-         in
-             case s of
-                 GenericType (x,s'') =>
-                 (AppTypeExpr (e',t), substType s'' x t)
-               | _ => typeError ("Not a generic function: "^(exprToString e))
-         end
-       | ExpectedTypeExpr _ => typeError "ExpectedTypeExpr in source"
+      | GenericExpr (x,e) =>
+        let val _ = checkUnbound n x
+            val n' = extend n x UnknownTypeVar
+            val (e',s) = verifyExpr mode n' e
+        in
+            (GenericExpr (x,e), GenericType (x,s))
+        end
+      | AppTypeExpr (e,t) =>
+        let val (e',s) = verifyExpr mode n e
+            val t = verifyType n t
+        in
+            case s of
+                GenericType (x,s'') =>
+                (AppTypeExpr (e',t), substType s'' x t)
+              | _ => typeError ("Not a generic function: "^(exprToString e))
+        end
+      | ExpectedTypeExpr _ => typeError "ExpectedTypeExpr in source"
     end
 
 and verifyAndCheck (mode:MODE) (n:BIND ENV) (e:EXPR) (t:TYPE) =
@@ -633,7 +633,7 @@ fun eval (n:VAL ENV) (e:EXPR) : VAL =
         end
       | AppTypeExpr (e,t) =>
         let val GenericVal(x,body,n2) = eval n e in
-            eval (extend n2 x (TypeVal (n,t))) body
+            eval (extend n2 x (TypeVar (n,t))) body
         end
 
 (*********** Tests **********)

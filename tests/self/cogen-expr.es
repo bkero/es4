@@ -126,7 +126,7 @@ package cogen
             cgExpr(ctx, e.e2);
             switch type (e.op) {
             case (e:Plus) { asm.I_add() }
-            case (e:Minus) { asm.I_minus() }
+            case (e:Minus) { asm.I_subtract() }
             case (e:Times) { asm.I_times() }
             case (e:Divide) { asm.I_divide() }
             case (e:Remainder) { asm.I_modulo() }
@@ -197,10 +197,10 @@ package cogen
         }
     }
 
-    function cgUnaryexpr(ctx, e) {
+    function cgUnaryExpr(ctx, e) {
         let {asm:asm, emitter:emitter} = ctx;
 
-        let function incdec(pre, inc) {
+        let incdec = function incdec(pre, inc) {
             let name;
             switch type (e.ex) {
             case (lr:LexicalRef) {
@@ -278,10 +278,10 @@ package cogen
                 asm.I_label(L1);
             }
         }
-        case (op:PreIncr) { incDec(true, true) }
-        case (op:PreDecr) { incDec(true, false) }
-        case (op:PostIncr) { incDec(false, true) }
-        case (op:PostDecr) { incDec(false, false) }
+        case (op:PreIncr) { incdec(true, true) }
+        case (op:PreDecr) { incdec(true, false) }
+        case (op:PostIncr) { incdec(false, true) }
+        case (op:PostDecr) { incdec(false, false) }
         case (op:UnaryPlus) {
             cgExpr(ctx, e.ex);
             asm.I_convert_d();
@@ -351,20 +351,20 @@ package cogen
     }
 
     function cgLetExpr(ctx, e) {
-        // FIXME
-        throw "Unimplemented let expression";
+        cgHead(ctx, e.head);
+        cgExpr(ctx, e.expr);
     }
 
     function cgNewExpr(ctx, e) {
-        cgExpr(ctx, e.ctor);
+        cgExpr(ctx, e.func);
         for ( let i=0 ; i < e.args.length ; i++ )
             cgExpr(ctx, e.args[i]);
-        ctx.asm.I_construct(args.length);
+        ctx.asm.I_construct(e.args.length);
     }
 
     function cgObjectRef(ctx, e) {
         cgExpr(ctx, e.base);
-        ctx.asm.I_findproperty(ctx.emitter.nameFromIdentExpr(e.ident));
+        ctx.asm.I_getproperty(ctx.emitter.nameFromIdentExpr(e.ident));
     }
 
     function cgLexicalRef({asm:asm, emitter:emitter}, e) {
@@ -384,7 +384,7 @@ package cogen
             name = emitter.nameFromIdent(lhs.ident);
         }
         case (lhs:LexicalRef) {
-            name = emitter.nameFromIdentExpr(lhs);
+            name = emitter.nameFromIdentExpr(lhs.ident);
             if (e.op is Assign)
                 asm.I_findproperty(name);
             else
@@ -455,8 +455,17 @@ package cogen
     }
 
     function cgInitExpr(ctx, e) {
-        // FIXME
-        throw "Unimplemented init expr";
+        let asm = ctx.asm;
+        let baseOnStk = false;
+        cgHead(ctx, e.head);
+        switch type (e.target) {
+            case (i:InstanceInit ) {
+                // Load this on the stack
+                asm.I_getlocal(0);
+                baseOnStk = true;
+            }
+        }
+        cgInits(ctx, e.inits, baseOnStk);
     }
 
     function cgLiteralExpr(ctx, e) {
@@ -544,7 +553,7 @@ package cogen
     }
 
     function cgGetParamExpr(ctx, e) {
-        // FIXME
-        throw "Unimplemented getParam expression";
+        let asm = ctx.asm;
+        asm.I_getlocal(e.n + 1);  //account for 'this'
     }
 }

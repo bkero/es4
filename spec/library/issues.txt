@@ -1,0 +1,33 @@
+// Interesting open questions (bugs to be filed in the Trac)
+
+* What does ToInteger do if its argument is decimal?  Currently we
+  assume it returns double... but for decimals, one would hope it
+  would return a decimal.  And ToInteger is really generic, if we add
+  bignums or complexes or rationals it may need to adapt.
+
+* There's some functionality that has to be present that's currently
+  only available in regexes, as character classification; this could
+  be exposed as some function "classify" on a Unicode class or
+  package.  But it could also be added to "String", say.
+
+* JSON functions might be available as static functions, by analogy
+  with what we do with static functions in Array and String.
+
+* In fact, should there not be one common "Library" or
+  "LibraryInternals" package that private stuff can go into?
+
+* It would be incredibly useful for Array.prototype.some to return the
+  value that matches... even if it means that "false" can't be found
+  and that clients have to be careful around zero, null, and
+  undefined.
+
+  Alternatively, impement an interface Array.prototype.find() that
+  returns an index if it finds the element or -1 if not.
+
+* Is the interface to the static Array methods typed or untyped?  The
+  interface to the prototype methods must be untyped for backwards
+  compatibility, and the interface to the intrinsic methods must be
+  typed because that's the "right thing"; the statics occupy a middle
+  ground -- they are in FF (and are untyped there) but are not
+  implemented elsewhere, yet in some sense it's "right" for them to be
+  typed.

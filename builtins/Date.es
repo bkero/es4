@@ -45,15 +45,12 @@
 
 package
 {
+    import ECMAScript4_Internal.*;
+
     use default namespace public;
     use namespace intrinsic;  // Override with "public::" when necessary
 
-    /* The Date class is "final dynamic" in ActionScript 3.0, though
-       the motivation for that is unclear.  The consequence is anyway
-       that the getters for the components of a Date can be
-       inlined.  */
-
-    final dynamic class Date
+    dynamic class Date
     {
         /* E262-3 15.9.2: The Date Constructor Called as a Function */
         meta static function invoke(...args)   // args are ignored.
@@ -197,8 +194,11 @@ package
         prototype function nanoAge() : double
             this.nanoAge();
 
-        /* INFORMATIVE */
         intrinsic function nanoAge() : double
+            informative::nanoAge();
+
+        /* INFORMATIVE */
+        informative function nanoAge() : double
             (Date.now() - birthtime) * 1000000;
 
         /* INFORMATIVE */
@@ -207,15 +207,16 @@ package
 
         /* E262-3 15.9.4.3: Date.UTC */
         public static var UTC =
-            function UTC(year, month, date, hours, minutes, seconds, ms)
-            let (argc:uint = arguments.length)
-                Date.UTC(ToDouble(year),
-                         ToDouble(month),
-                         argc >= 3 ? ToDouble(date) : 1,
-                         argc >= 4 ? ToDouble(hours) : 0,
-                         argc >= 5 ? ToDouble(minutes) : 0,
-                         argc >= 6 ? ToDouble(seconds) : 0,
-                         argc >= 7 ? ToDouble(ms) : 0);
+            function UTC(year, month, date, hours, minutes, seconds, ms) {
+                let argc:uint = arguments.length;
+                return (Date.UTC(ToDouble(year),
+                                 ToDouble(month),
+                                 argc >= 3 ? ToDouble(date) : 1,
+                                 argc >= 4 ? ToDouble(hours) : 0,
+                                 argc >= 5 ? ToDouble(minutes) : 0,
+                                 argc >= 6 ? ToDouble(seconds) : 0,
+                                 argc >= 7 ? ToDouble(ms) : 0));
+            };
 
         static intrinsic function UTC(year : double, month : double,
 				      date : double=1, hours : double?=0, minutes : double?=0,
@@ -287,10 +288,10 @@ package
                 return n.toString();
             }
 
-            return "" + years(UTCFullYear) + "-" + twoDigit(UTCMonth+1) + "-" + twoDigit(UTCDate) +
-                "T" + twoDigit(UTCHours) + ":" + twoDigit(UTCMinutes) + ":" + twoDigit(UTCSeconds) +
-                "." + fraction(int(UTCMilliseconds)) + 
-                "Z";
+            return ("" + years(UTCFullYear) + "-" + twoDigit(UTCMonth+1) + "-" + twoDigit(UTCDate) +
+                    "T" + twoDigit(UTCHours) + ":" + twoDigit(UTCMinutes) + ":" + twoDigit(UTCSeconds) +
+                    "." + fraction(int(UTCMilliseconds)) + 
+                    "Z");
         }
 
         /* E262-3 15.9.5.2: Date.prototype.toString */
@@ -298,7 +299,8 @@ package
             this.toString();
 
         /* INFORMATIVE */
-        override intrinsic function toString() : string {
+        override
+        intrinsic function toString() : string {
             /* "Fri, 15 Dec 2006 23:45:09 GMT-0800" */
             let tz:double = timezoneOffset;
 	    let atz:double = Math.abs(tz);
