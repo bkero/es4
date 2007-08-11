@@ -131,9 +131,18 @@ package emitter
                 }
             }
         }
-        
-        public function nameFromMulitname({ nss:nss, id:id }) {
-            return constants.Multiname(namespaceset(nss), constants.stringUtf8(id));
+        function flattenNamespaceSet(nss:[[NAMESPACE]]) {
+            var new_nss = [];
+            for( let i = 0; i <nss.length; i++ ) {
+                let temp = nss[i];
+                for( let q = 0; q < temp.length; q++) {
+                    new_nss.push(namespace(temp[q]));
+                } 
+            } 
+            return new_nss;
+        }
+        public function nameFromMultiname({ nss:nss, id:id }) {
+            return constants.Multiname(constants.namespaceset(flattenNamespaceSet(nss)), constants.stringUtf8(id));
         }
         public function nameFromNAME({ns:ns, id:id} : {ns:NAMESPACE, id:IDENT} ) {
             return constants.QName(namespace(ns), constants.stringUtf8(id));
@@ -151,7 +160,7 @@ package emitter
         public function nameFromIdentExpr(e) {
             use namespace Ast;
             switch type (e) {
-            case (id:Identifier) { return nameFromIdent(id.ident) }
+            case (id:Identifier) { return nameFromMultiname({nss:id.nss, id:id.ident}) }
             case (x:*) { throw ("Unimplemented: nameFromIdentExpr " + e) }
             }
         }
