@@ -9,7 +9,7 @@ def find_tests():
   if len(sys.argv)>1:
     tests=sys.argv[1:]
   else:
-    ignore_list=['abcfile.es','abcfile_test.es','assembler.es','assembler_test.es','ast.es','ast_encoder.es','bytestream.es','bytestream_test.es','cogen-driver.es','cogen-expr.es','cogen-stmt.es','cogen.es','cogen_test.es','datatypes.es','debug.es','emitter.es','emitter_test.es','esc-driver.es','esc-testdriver.es','esc.es','fib.es','lexer.es','parser.es','test.es','t.es','token.es','util-as3.es','util-es4ri.es','util.es','var.es']
+    ignore_list=['abcfile.es','abcfile_test.es','assembler.es','assembler_test.es','ast.es','ast_encoder.es','bytestream.es','bytestream_test.es','cogen-driver.es','cogen-expr.es','cogen-stmt.es','cogen.es','cogen_test.es','datatypes.es','debug.es','emitter.es','emitter_test.es','esc-driver.es','esc-testdriver.es','esc.es','lexer.es','parser.es','test.es','t.es','token.es','util-as3.es','util-es4ri.es','util.es','var.es']
     tests=listdir('tests/self')
     re1=re.compile('.*\.es$')
     i=0
@@ -82,6 +82,8 @@ def test_output(test,actual):
     fd=open(testbase+'.expected')
     expected=fd.read()
     fd.close()
+    actual=actual.strip()
+    expected=expected.strip()
     if actual!=expected:
       fd2=open(testbase+'.actual','w')
       fd2.write(actual)
@@ -100,7 +102,8 @@ def test_output(test,actual):
 
 def failed(test,msg):
   print('%s FAILED %s' % (test,msg))
-  globs['output']+='%s FAILED %s\n' % (test,msg)
+  tm=clock()-globs['testtime']
+  globs['output']+='%s FAILED (time %.2fs)\n' % (test,tm)
   globs['fails']+=1
   return
 
