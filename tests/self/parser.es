@@ -80,20 +80,47 @@ type TOKENS = Array;  // [int];
 
     type ENV = [Ast::FIXTURES];
 
+    type PRAGMAS = Pragmas;
+    class Pragmas 
+    {
+        var openNamespaces: [[Ast::NAMESPACE]];
+        var defaultNamespace: Ast::NAMESPACE;
+        function Pragmas (pragmas) 
+        {
+            enter ("Pragma ",pragmas);
+            if (pragmas===null)
+            {
+                this.openNamespaces = [];
+                this.defaultNamespace = new Ast::InternalNamespace ("");
+            }
+            else
+            {
+                this.openNamespaces = pragmas.openNamespaces;
+                this.defaultNamespace = pragmas.defaultNamespace;
+            }
+            this.openNamespaces.push ([]);
+            exit ("Pragma");
+        }
+    }
+
+    type PRAGMA_ENV = [Ast::PRAGMAS];
+
     class Context
-    { 
+    {
         var env: ENV;
-        var opennss  //: [[Ast::NAMESPACE]];
         var varHeads  //: [Ast::HEAD];
         var letHeads  //: [Ast::HEAD];
         var ctor: Ast::CTOR;
+        var pragmas: PRAGMAS;
+        var pragmaEnv: PRAGMA_ENV; // push one PRAGMAS for each scope
 
         function Context ()
             : env = []
-            , opennss = [[]]
             , varHeads = []
             , letHeads = [] 
             , ctor = null
+            , pragmas = null
+            , pragmaEnv = []
         {
         }
 
@@ -103,13 +130,24 @@ type TOKENS = Array;  // [int];
             let varHead = {fixtures:[],inits:[]};
             this.varHeads.push(varHead);
             this.env.push (varHead.fixtures);
-            exit ("enterVarBlock");
+            this.pragmas = new Pragmas (this.pragmas);
+            this.pragmaEnv.push (this.pragmas);
+            exit ("exitVarBlock");
         }
 
         function exitVarBlock () 
         {
+            enter ("exitVarBlock");
             let varHead = this.varHeads.pop ();
             this.env.pop ();
+            this.pragmaEnv.pop ();
+            if (this.pragmaEnv.length === 0) {
+                this.pragmas = null;
+            }
+            else {
+                this.pragmas = this.pragmaEnv[this.pragmaEnv.length-1];
+            }
+            exit ("exitVarBlock");
             return varHead;
         }
 
@@ -129,15 +167,23 @@ type TOKENS = Array;  // [int];
 
         function enterLetBlock () 
         {
+            enter ("enterLetBlock");
             let letHead = {fixtures:[],inits:[]};
             this.letHeads.push(letHead);
             this.env.push (letHead.fixtures);
+            this.pragmas = new Pragmas (this.pragmas);
+            this.pragmaEnv.push (this.pragmas);
+            exit ("enterLetBlock");
         }
 
         function exitLetBlock () 
         {
+            enter ("exitLetBlock");
             let letHead = this.letHeads.pop ();
             this.env.pop ();
+            this.pragmaEnv.pop ();
+            this.pragmas = this.pragmaEnv[this.pragmaEnv.length-1];
+            exit ("exitLetBlock");
             return letHead;
         }
 
@@ -155,6 +201,155 @@ type TOKENS = Array;  // [int];
                 letHead.inits.push (inits[n]);
         }
 
+        function openNamespace (nd: Ast::IDENT_EXPR) {
+            enter ("openNamespace");
+            let ns = evalIdentExpr (nd);
+            print("this.pragmas=",this.pragmas);
+            let opennss = this.pragmas.openNamespaces;
+            print ("opennss=",opennss);
+            print ("opennss.length=",opennss.length);
+            print ("adding ns ",ns);
+            opennss[opennss.length-1].push (ns);
+            exit ("openNamespace");
+        }
+
+        function defaultNamespace (nd: Ast::IDENT_EXPR) {
+            enter ("defaultNamespace");
+            let ns = evalIdentExpr (nd);
+            this.pragmas.defaultNamespace = ns;
+            exit ("defaultNamespace");
+        }
+
+        function hasName (fxtrs,id,ns) 
+        {
+            enter ("hasName ",id);
+            if (fxtrs.length===0) 
+            {
+                exit ("hasName false");
+                return false;
+            }
+
+            let pn = fxtrs[0][0];
+            print ("pn..id=",pn.Ast::name.id," id=",id);
+            print ("pn..ns=",pn.Ast::name.ns," ns=",ns);
+            if (pn.Ast::name.id==id && pn.Ast::name.ns.toString()==ns.toString())  // FIXME hack! 
+            {
+                exit ("hasName true");
+                return true;
+            }
+            else 
+            {
+                exit ("hasName looking");
+                return hasName (fxtrs.slice (1,fxtrs.length),id,ns);
+            }
+        }
+
+        function getFixture (fxtrs,id,ns) 
+        {
+            enter ("getFixture ");
+            if (fxtrs.length===0) 
+            {
+                throw "name not found " + ns + "::" + id;
+            }
+
+            let pn = fxtrs[0][0];
+            if (pn.Ast::name.id==id && pn.Ast::name.ns.toString()==ns.toString()) 
+            {
+                exit ("getFixture");
+                return fxtrs[0][1];
+            }
+            else 
+            {
+                exit ("getFixture");
+                return getFixture (fxtrs.slice (1,fxtrs.length),id,ns);
+            }
+        }
+
+        /*
+
+        two dimensional search
+
+        repeat for each shadowed name
+            each name in each head
+                dup is error
+
+        for each namespace set
+            find all names in the inner most head
+
+        */
+
+        function findFixtureWithNames (id,nss) {
+            enter ("findFixtureWithNames");
+            // for each name in each head
+            let env = this.env;
+            let ns = null;
+            print ("env.length=",env.length);
+            for (var i=env.length-1; i>=0; --i)   // for each head
+            {
+                let fxtrs = env[i];
+                print ("nss.length=",nss.length);
+                for (var j=nss.length-1; j>=0; --j)   // for each name
+                {
+                    if (hasName (fxtrs,id,nss[i])) 
+                    {
+                        if (ns !== null) {
+                            throw "ambiguous reference to " + id;
+                        }
+                        ns = nss[i];
+                    }
+                }
+                if (ns!==null) {
+                    exit ("findFixtureWithNames");
+                    return getFixture (fxtrs,id,ns);
+                }
+            }
+            exit ("findFixtureWithNames");
+            return null;
+        }
+
+        function findFixtureWithIdentifier (id: Ast::IDENT)
+        {
+            enter ("findFixtureWithIdentifier ", id);
+            print ("this.pragmas=",this.pragmas);
+            let nsss = this.pragmas.openNamespaces;
+            print ("nsss.length=",nsss.length);
+            for (var i=nsss.length-1; i>=0; --i) 
+            {
+                let fx = findFixtureWithNames (id,nsss[i]);
+                if (fx !== null) 
+                {
+                    exit ("findFixtureWithIdentifier");
+                    return fx;
+                }
+            }
+            throw "fixture not found";
+        }
+
+        function evalIdentExpr (nd: Ast::IDENT_EXPR) 
+        {
+            enter ("evalIdentExpr");
+            switch type (nd) {
+            case (nd: Ast::Identifier) {
+                let fxtr = findFixtureWithIdentifier (nd.Ast::ident);
+                switch type (fxtr) {
+                case (fxtr:Ast::NamespaceFixture) {
+                    var val = fxtr.Ast::ns;
+                }
+                case (fxtr:*) {
+                    throw "fixture with unknown value " + fxtr;
+                }
+                }
+            }
+            case (nd: Ast::ReservedNamespace) {
+                var val = nd.Ast::ns;
+            }
+            case (nd: Ast::QualifiedIdentifier) {
+                throw "evalIdentExpr: case not implemented " + nd;
+            }
+            }
+            exit ("evalIdentExpr ", val);
+            return val;
+        }
     };
 
     class Parser
@@ -197,7 +392,9 @@ type TOKENS = Array;  // [int];
 
         function hd (ts) 
         {
+            enter ("hd ",ts[0]);
             var tk = Token::tokenKind (ts[0]);
+            exit ("hd ",tk);
             return tk;
         }
 
@@ -210,6 +407,7 @@ type TOKENS = Array;  // [int];
             throw "expecting "+Token::tokenText(tc)+" found "+Token::tokenText(tk);
         }
 
+        /*
         function match (ts,tc) : void {
             // print("matching",Token::tokenText(tc));
             let tk = hd (ts);
@@ -218,6 +416,7 @@ type TOKENS = Array;  // [int];
             }
             return;
         }
+        */
 
         /*
           Replace the first token in the stream with another one. Raise an exception
@@ -454,13 +653,13 @@ type TOKENS = Array;  // [int];
 
             switch (hd(ts1)) {
                 case Token::Mult:
-                    var [ts2,nd2] = [tl(ts1), new Ast::Identifier ("*")];
+                    var [ts2,nd2] = [tl(ts1), "*"];
                     var [ts3,nd3] = [ts1, new Ast::QualifiedIdentifier (nd1,nd2)];
                     break;
                 case Token::StringLiteral:
                 case Token::DecimalLiteral:
                     let str = Token::tokenText (ts1[0]);
-                    var [ts2,nd2] = [tl(ts1), new Ast::Identifier (str)];
+                    var [ts2,nd2] = [tl(ts1), str];
                     var [ts3,nd3] = [ts1, new Ast::QualifiedIdentifier (nd1,nd2)];
                     break;
                 case Token::LeftBracket:
@@ -496,13 +695,20 @@ type TOKENS = Array;  // [int];
                     nd1 = new Ast::LiteralExpr (new Ast::LiteralNamespace (nd1));
                 }
                 case (id:Ast::IDENT) {
-                    nd1 = new Ast::LexicalRef (new Ast::Identifier (nd1))
+                    nd1 = new Ast::LexicalRef (new Ast::Identifier (nd1,cx.pragmas.openNamespaces))
                 }
                 }
                 var [ts2,nd2] = qualifiedNameIdentifier (tl(ts1), nd1);
                 break;
             default:
-                var [ts2,nd2] = [ts1,new Ast::Identifier (nd1)];
+                switch type (nd1) {
+                case (ns:Ast::NAMESPACE) {
+                    var [ts2,nd2] = [ts1,new Ast::ReservedNamespace (nd1)];
+                }
+                case (id:Ast::IDENT) {
+                    var [ts2,nd2] = [ts1,new Ast::Identifier (nd1,cx.pragmas.openNamespaces)];
+                }
+                }
                 break;
             }
 
@@ -854,12 +1060,12 @@ type TOKENS = Array;  // [int];
             else
             if (expr === null) 
             {
-                var base = new Ast::LexicalRef (new Ast::Identifier (path[0]));
+                var base = new Ast::LexicalRef (new Ast::Identifier (path[0],cx.pragmas.openNamespaces));
                 return resolveObjectPath (path.slice (1,path.length), base);
             }
             else 
             {
-                var base = new Ast::ObjectRef (expr, new Ast::Identifier (path[0]));
+                var base = new Ast::ObjectRef (expr, new Ast::Identifier (path[0],cx.pragmas.openNamespaces));
                 return resolveObjectPath (path.slice (1,path.length), base);
             }
         }
@@ -2954,24 +3160,19 @@ type TOKENS = Array;  // [int];
 
         */
 
-        function namespaceFromExpr (qual : Ast::EXPR) 
-            : Ast::NAMESPACE {
-            return new Ast::PublicNamespace ("");
-        }
-
         function initFromAssignStep (as : Ast::AssignStep) {
             enter ("initFromAssignStep");
 
             switch type ((as.Ast::le).Ast::ident) {
             case (ident: Ast::Identifier) {
-                var ns = new Ast::PublicNamespace ("");
+                var ns = cx.pragmas.defaultNamespace;
                 var name = new Ast::PropName ({ns:ns,id:ident.Ast::ident});
                 var init = new Ast::InitExpr (new Ast::InstanceInit,{fixtures:[],inits:[]},[[name,as.Ast::re]]);
             }
             case (le: Ast::QualifiedIdentifier) {
                 var qual = le.Ast::qual;
                 var ident = le.Ast::ident;
-                var ns = namespaceFromExpr (qual);  // user namespace require lookup
+                var ns = cx.pragmas.defaultNamespace; //cx.evalIdentExpr (qual);
                 var name = new Ast::PropName ({ns:ns,id:ident});
                 var init = new Ast::InitExpr (new Ast::InstanceInit,[[],[]],[[name,as.Ast::re]]);
             }
@@ -3108,8 +3309,8 @@ type TOKENS = Array;  // [int];
         function headFromBindingInits ([bindings,steps] /*: Ast::BINDING_INITS*/, ns )
             // : Ast::HEAD  
         {
-            var fixtures = fixturesFromBindings (new Ast::PublicNamespace (""),bindings);
-            var inits = initsFromInitSteps (new Ast::PublicNamespace (""), steps);
+            var fixtures = fixturesFromBindings (cx.pragmas.defaultNamespace,bindings);
+            var inits = initsFromInitSteps (cx.pragmas.defaultNamespace, steps);
             return {fixtures:fixtures, inits:inits}
         }
 
@@ -3602,7 +3803,7 @@ type TOKENS = Array;  // [int];
                 var ns = new Ast::UserNamespace (nd2);
             }
 
-            var name = new Ast::PropName ({ns:new Ast::PublicNamespace (""), id:nd1});
+            var name = new Ast::PropName ({ns:cx.pragmas.defaultNamespace, id:nd1});
             var fxtr = new Ast::NamespaceFixture (ns);
             cx.addVarFixtures ([[name,fxtr]]);
 
@@ -3655,15 +3856,15 @@ type TOKENS = Array;  // [int];
             switch (hd (ts)) {
             case Token::RightBrace:
             case Token::EOS:
-                var [ts1, pragmas1, stmts1] = [ts,[],[]];
+                var [ts1,nd1] = [ts,[],[]];
                 break;
             default:
-                var [ts1, pragmas1, stmts1] = directivesPrefix (ts,tau);
+                var [ts1,nd1] = directivesPrefix (ts,tau);
                 break;
             }
 
             exit("Parser::directives ", ts1);
-            return [ts1,pragmas1,stmts1];
+            return [ts1,nd1];
         }
 
         /*
@@ -3696,19 +3897,19 @@ type TOKENS = Array;  // [int];
         {
             enter("Parser::directivesPrefix ", ts);
 
-            var pragmas = [];
             switch (hd (ts)) {
-            case Token::RightBrace:
-            case Token::EOS:
-                var [ts2,stmts2] = [ts,[]];
+            case Token::Use:
+            case Token::Import:
+                var [ts1] = pragmas (ts); 
+                var [ts2,nd2] = directivesPrefixPrime (ts1,tau);
                 break;
             default:
-                var [ts2,stmts2] = directivesPrefixPrime (ts,tau);
+                var [ts2,nd2] = directivesPrefixPrime (ts,tau);
                 break;
             }
 
             exit("Parser::directivesPrefix ", ts2);
-            return [ts2,pragmas,stmts2];
+            return [ts2,nd2];
         }
 
         function mergeStmts (s1,s2) {
@@ -3726,21 +3927,18 @@ type TOKENS = Array;  // [int];
             switch (hd (ts)) {
             case Token::RightBrace:
             case Token::EOS:
-                var [ts1,stmts1] = [ts,[]];
+                var [ts1,nd1] = [ts,[]];
                 break;
             default:
-                [ts1,stmts1] = directive (ts,tau,full);
-
-                // TODO add bhead1 and vhead1 to the env
-
-                var [ts2,stmts2] = directivesPrefixPrime (ts1,tau);
-                stmts1 = mergeStmts (stmts1,stmts2);
+                [ts1,nd1] = directive (ts,tau,full);
+                var [ts2,nd2] = directivesPrefixPrime (ts1,tau);
+                nd1 = mergeStmts (nd1,nd2);
                 ts1 = ts2;
                 break;
             }
 
             exit("Parser::directivesPrefixPrime ", ts1);
-            return [ts1,stmts1];
+            return [ts1,nd1];
         }
 
         function isCurrentClassName (ts: TOKENS) 
@@ -3767,7 +3965,7 @@ type TOKENS = Array;  // [int];
             case Token::Const:
                 var [ts1,stmts1]
                     = variableDefinition (ts, AllowIn, tau
-                                  , new Ast::PublicNamespace ("")
+                                  , cx.pragmas.defaultNamespace
                                   , false, false);
 
                 var tsx = semicolon (ts1,omega);
@@ -3775,26 +3973,26 @@ type TOKENS = Array;  // [int];
             case Token::Function:
                 if (isCurrentClassName (tl (ts))) 
                 {
-                    var [ts1,stmts1] = constructorDefinition (ts, new Ast::PublicNamespace (""));
+                    var [ts1,stmts1] = constructorDefinition (ts, cx.pragmas.defaultNamespace);
                 }
                 else 
                 {
                     var [ts1,stmts1] = functionDefinition (ts, tau, new Ast::Var
-                                  , new Ast::PublicNamespace ("")
+                                  , cx.pragmas.defaultNamespace
                                   , false, false, false, false, false);
                 }
                 var tsx = semicolon (ts1,omega);
                 break;
             case Token::Class:
-                var [ts1,stmts1] = classDefinition (ts, new Ast::PublicNamespace (""), false);
+                var [ts1,stmts1] = classDefinition (ts, cx.pragmas.defaultNamespace, false);
                 var tsx = ts1;
                 break;
             case Token::Namespace:
-                var [ts1,stmts1] = namespaceDefinition (ts, new Ast::PublicNamespace (""), false);
+                var [ts1,stmts1] = namespaceDefinition (ts, cx.pragmas.defaultNamespace, false);
                 var tsx = ts1;
                 break;
             case Token::Type:
-                var [ts1,stmts1] = typeDefinition (ts, new Ast::PublicNamespace (""), false);
+                var [ts1,stmts1] = typeDefinition (ts, cx.pragmas.defaultNamespace, false);
                 var tsx = ts1;
                 break;
             default:
@@ -3964,6 +4162,156 @@ type TOKENS = Array;  // [int];
 //
 
         // PRAGMAS
+
+        function pragmas (ts: TOKENS)
+            : [TOKENS]
+        {
+            enter("Parser::pragmas ", ts);
+
+            while (hd (ts)===Token::Use) {
+                [ts] = pragma (ts);
+            }
+
+            var ts1 = ts;
+
+            exit("Parser::pragmas ", ts1);
+            return [ts1];
+        }
+
+        function pragma (ts: TOKENS)
+            : [TOKENS]
+        {
+            enter("Parser::pragma ", ts);
+
+            switch (hd (ts)) {
+            case Token::Use:
+                var [ts1] = pragmaItems (tl (ts));
+                break;
+            case Token::Import:
+                var [ts1] = importName (tl (ts));
+                break;
+            }
+
+            exit("Parser::pragma ", ts1);
+            return [ts1];
+        }
+
+        /* This cause a weird behavior in the RI
+        function pragmaItems (ts: TOKENS)
+            : [TOKENS]
+        {
+            enter("Parser::pragmaItems ", ts);
+
+            switch (hd (ts)) {
+            case Token::Decimal:
+                break;
+            case Token::Namespace:
+                var [ts1,nd1] = primaryName (tl (ts));
+                cx.openNamespace (nd1);
+                break;
+            case Token::Double:
+                break;
+            case Token::Int:
+                break;
+            case Token::Default:
+                switch (hd (tl (ts))) {
+                case Token::Namespace:
+                    var [ts1,nd1] = primaryName (tl (ts));
+                    cx.defaultNamespace (nd1);
+                    break;
+                default:
+                    throw "unexpected token after 'use default'";
+                }
+                break;
+                //            case Token::Number
+                //                break;
+            case Token::Precision:
+                break;
+            case Token::Rounding:
+                break;
+            case Token::Standard:
+                break;
+            case Token::Strict:
+                break;
+            case Token::UInt:
+                break;
+            case Token::Unit:
+                break;
+            default:
+                throw "unknown token in PragmaItem";
+            }
+
+            switch (hd (ts1)) {
+            case Token::Comma:
+                return pragmaItems (tl (ts1));
+                break;
+            default:
+                break;
+            }
+
+            exit("Parser::pragmaItems ", ts1);
+            return [ts1];
+        }
+        */
+
+        function pragmaItems (ts: TOKENS)
+            : [TOKENS]
+        {
+            enter("Parser::pragmaItems ", ts);
+
+            var ts1 = ts;
+
+            while (true) {
+            switch (hd (ts1)) {
+            case Token::Decimal:
+                break;
+            case Token::Namespace:
+                var [ts1,nd1] = primaryName (tl (ts1));
+                cx.openNamespace (nd1);
+                break;
+            case Token::Double:
+                break;
+            case Token::Int:
+                break;
+            case Token::Default:
+                switch (hd (tl (ts1))) {
+                case Token::Namespace:
+                    var [ts1,nd1] = primaryName (tl (tl (ts1)));
+                    cx.defaultNamespace (nd1);
+                    cx.openNamespace (nd1);
+                    break;
+                default:
+                    throw "unexpected token after 'use default'";
+                }
+                break;
+                //            case Token::Number
+                //                break;
+            case Token::Precision:
+                break;
+            case Token::Rounding:
+                break;
+            case Token::Standard:
+                break;
+            case Token::Strict:
+                break;
+            case Token::UInt:
+                break;
+            case Token::Unit:
+                break;
+            default:
+                throw "unknown token in PragmaItem";
+            }
+
+            if (hd (ts1) !== Token::Comma) {
+                break;
+            }
+
+            ts1 = eat (ts1,Token::Comma);
+            }
+
+            exit("Parser::pragmaItems ", ts1);
+            return [ts1];
+        }
 
 //        public function parsePragmas()
 //        {
@@ -4179,12 +4527,13 @@ type TOKENS = Array;  // [int];
 
             ts = eat (ts, Token::LeftBrace);
             cx.enterLetBlock ();
-            var [ts1,pragmas,stmts] = directives (ts, tau);
+            var [ts1,nd1] = directives (ts, tau);
+            let pragmas = cx.pragmas;
             let head = cx.exitLetBlock ();
             ts1 = eat (ts1, Token::RightBrace);
 
             exit ("Parser::block ", ts1);
-            return [ts1, new Ast::Block (pragmas,head,stmts)];
+            return [ts1, new Ast::Block (pragmas,head,nd1)];
         }
 
         function program ()
@@ -4196,6 +4545,9 @@ type TOKENS = Array;  // [int];
             this.coordList = cs;
 
             cx.enterVarBlock ();
+            var publicNamespace = new Ast::ReservedNamespace (new Ast::PublicNamespace (""));
+            cx.openNamespace (publicNamespace);
+            cx.defaultNamespace (publicNamespace);
 
             if (hd (ts) == Token::Internal || 
                 hd (ts) == Token::Package)
@@ -4208,13 +4560,12 @@ type TOKENS = Array;  // [int];
             }
 
             current_package = "";
-            default_namespace = new Ast::PublicNamespace ("");
             current_class = "";
 
             cx.enterLetBlock ();
-            var [ts2, pragmas, stmts, bhead, vhead] = directives (ts1, Global);
+            var [ts2,nd2] = directives (ts1, Global);
+            var pragmas = cx.pragmas;
             var bhead = cx.exitLetBlock ();
-
             var vhead = cx.exitVarBlock ();
 
             switch (hd (ts2)) {
@@ -4224,10 +4575,8 @@ type TOKENS = Array;  // [int];
                 throw "extra tokens after end of program: " + ts2;
             }
 
-            print("bhead=",bhead);
-            print("vhead=",vhead);
             exit ("Parser::program ", ts2);
-            return [ts2, new Ast::Program (nd1,new Ast::Block (pragmas,bhead,stmts),vhead)];
+            return [ts2, new Ast::Program (nd1,new Ast::Block (pragmas,bhead,nd2),vhead)];
         }
     }
 

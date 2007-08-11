@@ -595,13 +595,15 @@ namespace Ast
        , QualifiedIdentifier
        , TypeIdentifier
        , UnresolvedPath
-       , WildcardIdentifier )
+       , WildcardIdentifier
+       , ReservedNamespace )
 
     class Identifier {
         const ident : IDENT;
-        private const nss : [[NAMESPACE]];
-        function Identifier (ident)
-            : ident = ident {}
+        const nss : [[NAMESPACE]];
+        function Identifier (ident,nss)
+            : ident = ident
+            , nss = nss {}
     }
 
     class QualifiedExpression {
@@ -616,6 +618,12 @@ namespace Ast
         const ident : IDENT_EXPR;
         function AttributeIdentifier (ident)
             : ident=ident {}
+    }
+
+    class ReservedNamespace {
+        const ns: NAMESPACE;
+        function ReservedNamespace (ns)
+            : ns=ns {}
     }
 
     class ExpressionIdentifier {
@@ -1313,7 +1321,7 @@ namespace Ast
     type BLOCK = Block;
 
     class Block {
-        const pragmas : PRAGMAS;
+        const pragmas;
         const head /*: HEAD?*/;
         const stmts : STMTS;
         function Block (pragmas,head,stmts)
