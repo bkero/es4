@@ -630,6 +630,7 @@ namespace Token
     {
         // if the token id is negative, it is a token_class
 
+        //print("tid=",tid);
         if (tid < 0)
         {
            return tid;

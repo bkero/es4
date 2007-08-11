@@ -510,7 +510,10 @@
               + indent(nesting)
               + ", 'ident': "
               + ie.ident
-              + " }";
+              + indent(nesting)
+              + ", 'nss': [ "
+              + encodeNamespacesList (ie.nss,nesting+", 'nss': [ ".length)
+              + " ] }";
         }
         case (ie: QualifiedIdentifier) {
             var str =
@@ -610,6 +613,57 @@
         }
         }
         exit ("encodeLiteral ",str);
+        return str;
+    }
+
+    function encodeNamespacesList (nd /*: [[NAMESPACE]]*/, nesting: int = 0)
+        : string {
+        enter ("encodeNamespacesList nd.length=",nd.length);
+
+        var str;
+        if (nd == null) {
+            var str = "null";
+        }
+        else
+        if (nd.length == 0) {
+            var str = "";
+        }
+        else
+        {
+            var str = " [ "
+                + encodeNamespaces (nd[0],nesting+" [ ".length)
+                + " ]"
+                + indent(nesting-2)
+                + ", "
+                + encodeNamespacesList (nd.slice (1,nd.length), nesting);
+        }
+
+        exit ("encodeNamespacesList ",str);
+        return str;
+    }
+
+    function encodeNamespaces (nd /*: [NAMESPACE]*/, nesting: int = 0)
+        : string {
+        enter ("encodeNamespaces nd.length=",nd.length);
+
+        var str;
+        if (nd == null) {
+            var str = "null";
+        }
+        else
+        if (nd.length == 0) {
+            var str = "";
+        }
+        else
+        {
+            var str =
+                  encodeNamespace (nd[0],nesting)
+                + indent(nesting-2)
+                + ", "
+                + encodeNamespaces (nd.slice (1,nd.length), nesting);
+        }
+
+        exit ("encodeNamespaces ",str);
         return str;
     }
 
