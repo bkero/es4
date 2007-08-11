@@ -38,14 +38,6 @@ type Label = String;
         function toString() { return "int"; }
     }
 
-    class DynObjType extends Type {   /* {*} */
-        function toString() { return "{*}"; }
-    }
-
-    var anyType    : AnyType    = new AnyType();
-    var intType    : IntType    = new IntType();
-    var dynObjType : DynObjType = new DynObjType();
-
     class FunType extends Type {       /* function(arg):res   */
         const arg, res : Type;
         function FunType (arg, res) : arg = arg, res = res {} 
@@ -71,6 +63,10 @@ type Label = String;
             return toStringFields(this.tfields);
         }
     }
+
+    var anyType    : AnyType    = new AnyType();
+    var intType    : IntType    = new IntType();
+    var mtObjType  : ObjType    = new ObjType([]);
 }
 
 /*** Helper functions for fields ***/
@@ -85,13 +81,22 @@ function toStringFields(a:[[Label,*]]) : String {
     return s+"}";
 }
 
+function isInFields( a:[[Label,*]], f : Label ) : Boolean {
+    for(let i in a) {
+        if( a[i][0] == f ) {
+            return true;
+        }
+    }
+    return false;
+}
+
 function findInFields( a:[[Label,*]], f : Label ) : * {
     for(let i in a) {
         if( a[i][0] == f ) {
             return a[i][1];
         }
     }
-    throw "Field "+f+" not found.";
+    throw "Field "+f+" not found in ["+a+"]";
 }
 
 function setInFields( a:[[Label,*]], f : Label, to:* ) {
@@ -149,16 +154,9 @@ function setInFields( a:[[Label,*]], f : Label, to:* ) {
         function toString() { return ""+arg+" like "+ty; }
     }
 
-    class WrapExpr extends ExprC {
-        const arg : Expr;
-        const ty : Type;
-        function WrapExpr(arg, ty) : arg = arg, ty = ty {} 
-        function toString() { return ""+arg+" wrap "+ty; }
-    }
-
     class ObjExpr extends ExprC { // {l:e, ...}:T
         const efields : [[Label,Expr]];
-        const ty : Type;
+        const ty : ObjType;
         function ObjExpr(efields,ty) : efields = efields, ty = ty {}
         function toString() { return toStringFields(efields)+":"+ty; }
     }
@@ -174,7 +172,7 @@ function setInFields( a:[[Label,*]], f : Label, to:* ) {
         const e1,e2 : Expr;
         const l : Label;
         function SetExpr(e1,l,e2) : e1=e1, l=l, e2=e2 {}
-        function toString() { return ""+e1+"."+l+"="+e2; }
+        function toString() { return ""+e1+"."+l+":="+e2; }
     }
 }
 
@@ -227,6 +225,7 @@ function setInFields( a:[[Label,*]], f : Label, to:* ) {
 
 /********** Subtyping, compatibility **********/
 
+// FIXME: not complete yet!
 function compatibleType (t1:Type, t2:Type) : Boolean {
     print ("compatibleType "+t1+" and "+t2);
     
@@ -252,9 +251,6 @@ function compatibleType (t1:Type, t2:Type) : Boolean {
                 }
                 case (t1: ObjType) {
                     switch type (t2) {
-                        case (t2:DynObjType) {
-                            return true;
-                        }
                         case (t2: ObjType) {
                             for(let i in t2.tfields) {
                                 let [f,tf] = t2.tfields[i];
@@ -263,13 +259,6 @@ function compatibleType (t1:Type, t2:Type) : Boolean {
                                     return false;
                                 }
                             }
-                            return true;
-                        }
-                        }
-                }
-                case (t1: DynObjType) {
-                    switch type (t2) {
-                        case (t2: ObjType) {
                             return true;
                         }
                         }
@@ -285,8 +274,9 @@ function bicompatibleType (t1:Type, t2:Type) : Boolean {
            compatibleType( t2, t1 );
 }
 
+// FIXME: not complete yet
 function subType (t1:Type, t2:Type) : Boolean {
-    print ("subtype "+t1+" and "+t2+" "+(t1==anyType));
+    print ("subtype "+t1+" and "+t2+"    t1=anytype is "+(t1==anyType));
     
     if (t1==t2 || t2==anyType) { return true; }
     
@@ -307,12 +297,10 @@ function subType (t1:Type, t2:Type) : Boolean {
                 }
                 case (t1: ObjType) {
                     switch type (t2) {
-                        case (t2: DynObjType) {
-                            return true;
-                        }
                         case (t2: ObjType) {
                             for(let i in t2.tfields) {
                                 let [f,tf] = t2.tfields[i];
+                                if (!isInFields( t1.tfields, f)) return false;
                                 if (!equalType( tf,  
                                                 findInFields( t1.tfields, f))) {
                                     return false;
@@ -346,7 +334,7 @@ type ValEnv = Env;
 
 class ObjVal {
     const vfields : [[Label, Val]];
-    const ty : Type;
+    const ty : ObjType;
     function ObjVal(vfields, ty) : vfields = vfields, ty = ty {}
     function toString() {
         return toStringFields(vfields) + ":"+ty;
@@ -389,15 +377,11 @@ function typeOfVal (v:Val) : Type {
 function compatibleValue( v:Val, t:Type ) : Boolean {
     let tv = typeOfVal(v);
     print ("compatibleValue "+v+" of type "+tv+" to type "+t);
-    if (subType( tv, t )) return true;
-    if (!compatibleType( tv, t )) {
-        print ("compatibleValue "+v+" of type "+tv+" to type "+t+" incompatible types");
-        return false;
+    if (subType( tv, t )) {
+        print (""+tv+" is a subtype of "+t);
+        return true;
     }
-        print ("compatibleValue "+v+" of type "+tv+" to type "+t+" compatible types");
-
-    // compatible but not subtype
-    // do deep check ...
+    print("Not subtype");
 
     switch type (v) {
         case (v:ObjVal) {
@@ -414,12 +398,15 @@ function compatibleValue( v:Val, t:Type ) : Boolean {
                 }
                 }
         }
-        case (v:WrapVal) {
-            print ("WrapVal "+v);
-            return compatibleValue( v.v. t );
+        case (v:Type) {
+            if (!compatibleType( tv, t )) {
+                print ("compatibleValue "+v+" of type "+tv+" to type "+t+" incompatible types");
+                return false;
+            }
+            print ("compatibleValue "+v+" of type "+tv+" to type "+t+" compatible types");
+            return true;
         }
         }
-    print ("compatibleValue "+v+" of type "+tv+" to type "+t+" compatible ");
 
     return true;
 }        
@@ -492,11 +479,6 @@ function eval2 (n:ValEnv, e:Expr) : Val {
                 return 0;
             }
         }
-        case (e:WrapExpr) {
-            let v = eval( n, e.arg );
-            return convertValue( v, new WrapType(e.ty) );
-        }
-                    
         case (e:AppExpr) {
             function apply( fn:Val, arg:Val ) : Val {
                 switch type (fn) {
@@ -528,8 +510,18 @@ function eval2 (n:ValEnv, e:Expr) : Val {
             let {efields:efields, ty:ty} = e;
             let vfields = [];
             for(i in e.efields) {
-                vfields[i] = [ efields[i][0],
-                               eval( n, efields[i][1]) ];
+                let l:Label = efields[i][0];
+                let tyl : Type = anyType;
+                if (isInFields(ty.tfields,l)) {
+                    tyl = findInFields( ty.tfields, l );
+                }
+                vfields[i] = [ l,
+                               convert( eval( n, efields[i][1] ),
+                                        tyl )];
+            }
+            // make sure all fields in type defined
+            for(i in ty.tfields) {
+                findInFields( efields, ty.tfields[i][0] );
             }
             return new ObjVal(vfields, ty);
         }
@@ -554,8 +546,12 @@ function eval2 (n:ValEnv, e:Expr) : Val {
                 switch type (o) {
                     case (o: ObjVal) {
                         // write barrier
-                        setInFields( o.vfields, l, to );
-                        return to;
+                        if (isInFields( o.ty.tfields, l )) {
+                            let tyf = findInFields( o.ty.tfields, l );
+                            to = convert( to, tyf );
+                        }
+                        setInFields( o.vfields, l, to);
+                        return to; // FIXME: which return type:
                     }
                     case (o: WrapVal) {
                         let {v:obj, ty:objTy} = o;
@@ -624,7 +620,7 @@ testCall( idint, new WrapType(anyanyfn));
 (go
     (new LetExpr("x",
                  fint,
-                 new ObjExpr([["f", 4]], dynObjType),
+                 new ObjExpr([["f", 4]], mtObjType),
                  "x")));
 */
 
@@ -641,26 +637,26 @@ function testGet( tyo, tyv ) {
                                new GetExpr("x", "f") )));
 }
 
-testGet( dynObjType, dynObjType );
-testGet( fint,       fint );
-testGet( feint,       fint );
-testGet( feint,       feint );
+testGet( mtObjType, mtObjType );
+testGet( fint,      fint );
+testGet( feint,     fint );
+testGet( feint,     feint );
 // error: testGet( fint,       feint );
-testGet( fint,       dynObjType );
+testGet( fint,       anyType );
 
 /* Following error correctly detected:
-testGet( dynObjType, fint );
+testGet( mtObjType, fint );
 */
 
-testGet( dynObjType, new LikeType(dynObjType));
-testGet( fint,       new LikeType(fint));
-testGet( fint,       new LikeType(dynObjType));
-testGet( dynObjType, new LikeType(fint));
+testGet( mtObjType, new LikeType(mtObjType));
+testGet( fint,      new LikeType(fint));
+testGet( fint,      new LikeType(mtObjType));
+testGet( mtObjType, new LikeType(fint));
 
-testGet( dynObjType, new WrapType(dynObjType));
-testGet( fint,       new WrapType(fint));
-testGet( fint,       new WrapType(dynObjType));
-testGet( dynObjType, new WrapType(fint));
+testGet( mtObjType, new WrapType(mtObjType));
+testGet( fint,      new WrapType(fint));
+testGet( fint,      new WrapType(mtObjType));
+testGet( mtObjType, new WrapType(fint));
 
 /*
   (go
