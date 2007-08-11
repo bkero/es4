@@ -48,7 +48,7 @@ type TOKENS = Array;  // [int];
 
 {
     use default namespace Parser;
-    use namespace Debug;
+    use namespace Release;
 
     type PATTERN =
           ( ObjectPattern
@@ -204,11 +204,11 @@ type TOKENS = Array;  // [int];
         function openNamespace (nd: Ast::IDENT_EXPR) {
             enter ("openNamespace");
             let ns = evalIdentExpr (nd);
-            print("this.pragmas=",this.pragmas);
+            //print("this.pragmas=",this.pragmas);
             let opennss = this.pragmas.openNamespaces;
-            print ("opennss=",opennss);
-            print ("opennss.length=",opennss.length);
-            print ("adding ns ",ns);
+            //print ("opennss=",opennss);
+            //print ("opennss.length=",opennss.length);
+            //print ("adding ns ",ns);
             opennss[opennss.length-1].push (ns);
             exit ("openNamespace");
         }
@@ -230,8 +230,8 @@ type TOKENS = Array;  // [int];
             }
 
             let pn = fxtrs[0][0];
-            print ("pn..id=",pn.Ast::name.id," id=",id);
-            print ("pn..ns=",pn.Ast::name.ns," ns=",ns);
+            //print ("pn..id=",pn.Ast::name.id," id=",id);
+            //print ("pn..ns=",pn.Ast::name.ns," ns=",ns);
             if (pn.Ast::name.id==id && pn.Ast::name.ns.toString()==ns.toString())  // FIXME hack! 
             {
                 exit ("hasName true");
@@ -283,11 +283,11 @@ type TOKENS = Array;  // [int];
             // for each name in each head
             let env = this.env;
             let ns = null;
-            print ("env.length=",env.length);
+            //print ("env.length=",env.length);
             for (var i=env.length-1; i>=0; --i)   // for each head
             {
                 let fxtrs = env[i];
-                print ("nss.length=",nss.length);
+                //print ("nss.length=",nss.length);
                 for (var j=nss.length-1; j>=0; --j)   // for each name
                 {
                     if (hasName (fxtrs,id,nss[i])) 
@@ -310,9 +310,9 @@ type TOKENS = Array;  // [int];
         function findFixtureWithIdentifier (id: Ast::IDENT)
         {
             enter ("findFixtureWithIdentifier ", id);
-            print ("this.pragmas=",this.pragmas);
+            //print ("this.pragmas=",this.pragmas);
             let nsss = this.pragmas.openNamespaces;
-            print ("nsss.length=",nsss.length);
+            //print ("nsss.length=",nsss.length);
             for (var i=nsss.length-1; i>=0; --i) 
             {
                 let fx = findFixtureWithNames (id,nsss[i]);
@@ -2587,8 +2587,8 @@ type TOKENS = Array;  // [int];
 
             let coord = coordList[coordList.length-offset];
             let prevCoord = coordList[coordList.length-offset-1];
-            print("coord=",coord);
-            print("prevCoord=",prevCoord);
+            //print("coord=",coord);
+            //print("prevCoord=",prevCoord);
 
             if(coord[0] != prevCoord[0]) // do line coords match?
                 return true;
@@ -2618,7 +2618,7 @@ type TOKENS = Array;  // [int];
                 }
                 break;
             case abbrev:  // Abbrev, ShortIf
-                print("abbrev");
+                //print("abbrev");
                 switch (hd (ts)) {
                 case Token::SemiColon:
                     var ts1 = tl (ts);
