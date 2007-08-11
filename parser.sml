@@ -818,7 +818,7 @@ and functionExpression (ts:TOKENS, a:ALPHA, b:BETA)
                                          (Ast.LiteralFunction
                                               (Ast.Func {name={kind=Ast.Ordinary,ident=Ustring.empty},
                                                          fsig=nd3,
-                                                         block=nd4,
+                                                         block=SOME nd4,
                                                          native=false,
                                                          defaults=[],
                                                          param=Ast.Head ([],[]),
@@ -833,11 +833,11 @@ and functionExpression (ts:TOKENS, a:ALPHA, b:BETA)
                                          (Ast.LiteralFunction
                                               (Ast.Func {name={kind=Ast.Ordinary,ident=Ustring.empty},
                                                          fsig=nd3,
-                                                         block=Ast.Block {pragmas=[],
-                                                                          defns=[],
-                                                                          body=[Ast.ReturnStmt nd4],
-                                                                          head=NONE,
-                                                                          loc=locOf ts3},
+                                                         block=SOME (Ast.Block {pragmas=[],
+                                                                                defns=[],
+                                                                                body=[Ast.ReturnStmt nd4],
+                                                                                head=NONE,
+                                                                                loc=locOf ts3}),
                                                          native=false,
                                                          param=Ast.Head ([],[]),
                                                          defaults=[],
@@ -864,7 +864,7 @@ and functionExpression (ts:TOKENS, a:ALPHA, b:BETA)
                                          (Ast.LiteralFunction
                                               (Ast.Func {name={kind=Ast.Ordinary,ident=nd2},
                                                          fsig=nd3,
-                                                         block=nd4,
+                                                         block=SOME nd4,
                                                          native=false,
                                                          param=Ast.Head ([],[]),
                                                          defaults=[],
@@ -1464,7 +1464,7 @@ and literalField (ts:TOKENS)
                                (Ast.LiteralFunction
                                     (Ast.Func {name={kind=Ast.Get, ident=Ustring.empty},
                                                fsig=fsig,
-                                               block=block,
+                                               block=SOME block,
                                                native=false,
                                                param=Ast.Head ([],[]),
                                                defaults=[],
@@ -1483,7 +1483,7 @@ and literalField (ts:TOKENS)
                                (Ast.LiteralFunction
                                     (Ast.Func {name={kind=Ast.Get,ident=Ustring.empty},
                                                fsig=fsig,
-                                               block=block,
+                                               block=SOME block,
                                                native=false,
                                                param=Ast.Head ([],[]),
                                                defaults=[],
@@ -5747,18 +5747,13 @@ and functionDeclaration (ts:TOKENS, attrs:ATTRS)
                                                override=override,
                                                prototype=prototype,
                                                static=static,
-                                               abstract=true,
                                                func=Ast.Func {name=nd1,
                                                               fsig=nd2,
                                                               param=Ast.Head ([],[]),
                                                               defaults=[],
                                                               ty=functionTypeFromSignature nd2,
                                                               native=native,
-                                                              block=Ast.Block {pragmas=[],
-                                                                               defns=[],
-                                                                               body=[],
-                                                                               head=NONE,
-                                                                               loc=locOf ts},
+                                                              block=NONE,
                                                               loc=unionLoc (SOME funcStartLoc) (locOf ts)}}],
                       body=[],
                       head=NONE,
@@ -5820,7 +5815,7 @@ and functionDefinition (ts:TOKENS, attrs:ATTRS, ClassScope)
                                                                            ty=functionTypeFromSignature nd3,
                                                                            native=false,
                                                                            loc=unionLoc (locOf ts) blockLoc,
-                                                                           block=nd4}})],
+                                                                           block=SOME nd4}})],
                               body=[],
                               head=NONE,
                               loc=locOf ts})
@@ -5841,12 +5836,12 @@ and functionDefinition (ts:TOKENS, attrs:ATTRS, ClassScope)
                                                              ty=functionTypeFromSignature nd3,
                                                              native=false,
                                                              loc=unionLoc (locOf ts) listLoc,
-                                                             block=Ast.Block
-                                                                       {pragmas=[],
-                                                                        defns=[],
-                                                                        body=[Ast.ReturnStmt nd4],
-                                                                        head=NONE,
-                                                                        loc=listLoc}}})],
+                                                             block=SOME (Ast.Block
+                                                                             {pragmas=[],
+                                                                              defns=[],
+                                                                              body=[Ast.ReturnStmt nd4],
+                                                                              head=NONE,
+                                                                              loc=listLoc})}})],
                               body=[],
                               head=NONE,
                               loc=locOf ts})
@@ -5872,7 +5867,7 @@ and functionDefinition (ts:TOKENS, attrs:ATTRS, ClassScope)
                                              ty=functionTypeFromSignature nd3,
                                              native=false,
                                              loc=unionLoc (locOf ts) blockLoc,
-                                             block=nd4}
+                                             block=SOME nd4}
                     in
                         (ts4,{pragmas=[],
                               defns=[Ast.FunctionDefn {kind=if (nd1=Ast.Var) then Ast.Const else nd1,
@@ -5882,7 +5877,6 @@ and functionDefinition (ts:TOKENS, attrs:ATTRS, ClassScope)
                                                        override=override,
                                                        prototype=prototype,
                                                        static=static,
-                                                       abstract=false,
                                                        func=func}],
                               body=[],
                               head=NONE,
@@ -5900,7 +5894,6 @@ and functionDefinition (ts:TOKENS, attrs:ATTRS, ClassScope)
                                                        override=override,
                                                        prototype=prototype,
                                                        static=static,
-                                                       abstract=false,
                                                        func=Ast.Func {name=nd2,
                                                                       fsig=nd3,
                                                                       param=Ast.Head ([],[]),
@@ -5908,11 +5901,11 @@ and functionDefinition (ts:TOKENS, attrs:ATTRS, ClassScope)
                                                                       ty=functionTypeFromSignature nd3,
                                                                       native=false,
                                                                       loc=unionLoc (locOf ts) listLoc,
-                                                                      block=Ast.Block { pragmas=[],
-                                                                                        defns=[],
-                                                                                        body=[Ast.ReturnStmt nd4],
-                                                                                        head=NONE,
-                                                                                        loc=listLoc}}}],
+                                                                      block=SOME (Ast.Block { pragmas=[],
+                                                                                              defns=[],
+                                                                                              body=[Ast.ReturnStmt nd4],
+                                                                                              head=NONE,
+                                                                                              loc=listLoc})}}],
                               body=[],
                               head=NONE,
                               loc=locOf ts})
@@ -5934,7 +5927,7 @@ and functionDefinition (ts:TOKENS, attrs:ATTRS, ClassScope)
                                              ty=functionTypeFromSignature nd3,
                                              loc=unionLoc (locOf ts) blockLoc,
                                              native=false,
-                                             block=nd4}
+                                             block=SOME nd4}
                         val initSteps = [Ast.InitStep (Ast.PropIdent ident, Ast.LiteralExpr (Ast.LiteralFunction func))]
                         val initStmts = [Ast.InitStmt {kind=nd1,
                                                        ns=ns,
@@ -5962,11 +5955,11 @@ and functionDefinition (ts:TOKENS, attrs:ATTRS, ClassScope)
                                              ty=functionTypeFromSignature nd3,
                                              loc=unionLoc (locOf ts) listLoc,
                                              native=false,
-                                             block=Ast.Block {pragmas=[],
-                                                              defns=[],
-                                                              body=[Ast.ReturnStmt nd4],
-                                                              head=NONE,
-                                                              loc=listLoc}}
+                                             block=SOME (Ast.Block {pragmas=[],
+                                                                    defns=[],
+                                                                    body=[Ast.ReturnStmt nd4],
+                                                                    head=NONE,
+                                                                    loc=listLoc})}
                         val initSteps = [Ast.InitStep (Ast.PropIdent ident,
                                                        Ast.LiteralExpr (Ast.LiteralFunction func))]
                         val initStmts = [Ast.InitStmt {kind=nd1,
@@ -6004,7 +5997,7 @@ and functionDefinition (ts:TOKENS, attrs:ATTRS, ClassScope)
                              ty=ty,
                              loc=unionLoc (locOf ts) blockLoc,
                              native=false,
-                             block=nd4}
+                             block=SOME nd4}
 
         fun hasNonStar (ts) : bool =
             case ts of
@@ -6021,7 +6014,6 @@ and functionDefinition (ts:TOKENS, attrs:ATTRS, ClassScope)
                                        override=override,
                                        prototype=prototype,
                                        static=static,
-                                       abstract=false,
                                        func=func}],
               body=[],
               head=NONE,

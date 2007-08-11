@@ -213,13 +213,6 @@ fun isGroundType (t:Ast.TYPE_EXPR)
             isGroundOption thisType
     end
 
-fun envOf (ty:Ast.TY) : Ast.RIBS = 
-    let
-        val Ast.Ty { env, ... } = ty
-    in
-        env
-    end
-
 fun exprOf (ty:Ast.TY) : Ast.TYPE_EXPR = 
     let
         val Ast.Ty { expr, ... } = ty
@@ -231,7 +224,6 @@ fun exprOf (ty:Ast.TY) : Ast.TYPE_EXPR =
 fun isGroundTy (ty:Ast.TY) 
     : bool =
     isGroundType (exprOf ty)
-
              
 (* 
  * During normalization we work with a "slighly unpacked" form of type
@@ -244,8 +236,8 @@ fun isGroundTy (ty:Ast.TY)
 
 type TY_NORM = { exprs: Ast.TYPE_EXPR list,
                  nullable: bool,
-                 env: Ast.RIBS,
-                 unit: Ast.UNIT_NAME option }
+                 nonTopRibs: Ast.RIBS,
+                 topUnit: Ast.UNIT_NAME option }
 
 fun normalize (prog:Fixture.PROGRAM) 
               (t:Ast.TY) 
@@ -254,12 +246,12 @@ fun normalize (prog:Fixture.PROGRAM)
 and repackage (t:Ast.TY) 
     : TY_NORM = 
     let
-        val Ast.Ty { expr, env, unit, ... } = t
+        val Ast.Ty { expr, nonTopRibs, topUnit, ... } = t
     in
         { exprs = [expr],
           nullable = false,
-          env = env,
-          unit = unit }
+          nonTopRibs = nonTopRibs,
+          topUnit = topUnit }
     end
                 
 and maybeNamed (prog:Fixture.PROGRAM)
@@ -267,16 +259,9 @@ and maybeNamed (prog:Fixture.PROGRAM)
                (mname:Ast.MULTINAME) 
     : TY_NORM =
     let
-        val Ast.Ty { env, unit, ... } = originalt
-        val (topRib, closed) = 
-            case unit of 
-                NONE => (Fixture.getTopRib prog, false)
-              | SOME u => (case Fixture.getTopRibForUnit prog u of
-                               NONE => (Fixture.getTopRib prog, false)
-                             | SOME closedRib => (closedRib, true))
-        val ribs = env @ [topRib]
+        val (fullRibs, closed) = Fixture.getFullRibsForTy prog originalt 
     in
-        case Multiname.resolveInRibs mname ribs of 
+        case Multiname.resolveInRibs mname fullRibs of 
             NONE => if closed 
                     then error ["type multiname ", LogErr.multiname mname, 
                                 " failed to resolve in closed unit "]
@@ -297,7 +282,7 @@ and maybeNamed (prog:Fixture.PROGRAM)
 and norm2ty (norm:TY_NORM) 
     : Ast.TY = 
     let
-        val { exprs, nullable, env, unit } = norm 
+        val { exprs, nullable, nonTopRibs, topUnit } = norm 
         val null = Ast.SpecialType Ast.Null
         val expr = case exprs of 
                        [] => if nullable
@@ -311,22 +296,22 @@ and norm2ty (norm:TY_NORM)
                                 else Ast.UnionType union
     in
         Ast.Ty { expr = expr,
-                 unit = unit,
-                 env = env }
+                 topUnit = topUnit,
+                 nonTopRibs = nonTopRibs }
     end
 
 and ty2norm (prog:Fixture.PROGRAM) 
             (ty:Ast.TY) 
     : TY_NORM =
     let
-        val Ast.Ty { env, unit, expr } = ty
+        val Ast.Ty { nonTopRibs, topUnit, expr } = ty
 
         (* Package up a 1-term type in the current TY environment. *)
         fun simple (e:Ast.TYPE_EXPR)
                    (nullable:bool)
             : TY_NORM = 
             if isGroundType e 
-            then { exprs = [e], nullable = nullable, env = env, unit = unit }
+            then { exprs = [e], nullable = nullable, nonTopRibs = nonTopRibs, topUnit = topUnit }
             else error ["internal error: non-ground term is not simple"]
                  
 
@@ -334,7 +319,7 @@ and ty2norm (prog:Fixture.PROGRAM)
          * as the current TY, and get back a new TY_NORM. *)
         fun subTerm2Norm (e:Ast.TYPE_EXPR) 
             : TY_NORM = 
-            ty2norm prog (Ast.Ty { expr = e, env = env, unit = unit })
+            ty2norm prog (Ast.Ty { expr = e, nonTopRibs = nonTopRibs, topUnit = topUnit })
 
         (* 
          * Use 'subTerm' to evaluate a TYPE_EXPR in the same environment
@@ -377,9 +362,13 @@ and ty2norm (prog:Fixture.PROGRAM)
             maybeNamed prog ty { id = ident, nss = openNamespaces }
             
           | Ast.TypeName (Ast.QualifiedIdentifier { qual, ident }) =>
-            (case findNamespace (envOf ty) qual of
-                 SOME ns => maybeNamed prog ty { nss = [[ns]], id = ident }
-               | NONE => repackage ty)
+            let 
+                val (fullRibs, closed) = Fixture.getFullRibsForTy prog ty
+            in
+                case findNamespace fullRibs qual of
+                    SOME ns => maybeNamed prog ty { nss = [[ns]], id = ident }
+                  | NONE => repackage ty
+            end
             
           | Ast.TypeName _ => error ["dynamic name in type expression"]
                               
@@ -413,7 +402,7 @@ and ty2norm (prog:Fixture.PROGRAM)
                 val (args':Ast.TY list) = map sub args
             in
                 case base' of 
-                    Ast.Ty {expr=Ast.LamType {params, body}, env=env', unit=unit'} => 
+                    Ast.Ty {expr=Ast.LamType {params, body}, nonTopRibs=nonTopRibs', topUnit=topUnit'} => 
                     let
                         val _ = if length params = length args'
                                 then ()
@@ -426,9 +415,9 @@ and ty2norm (prog:Fixture.PROGRAM)
                         val bindings = ListPair.zip (names, args')
                         fun bind ((n,t),rib) = (Ast.PropName n, Ast.TypeFixture t)::rib
                         val rib = List.foldl bind [] bindings
-                        val env'' = rib :: env'
+                        val nonTopRibs'' = rib :: nonTopRibs'
                     in
-                        ty2norm prog (Ast.Ty { expr=base, env=env'', unit=unit' })
+                        ty2norm prog (Ast.Ty { expr=body, nonTopRibs=nonTopRibs'', topUnit=topUnit' })
                     end                
                   | Ast.Ty {expr=Ast.TypeName _, ...} => repackage ty
                   | _ => error ["applying bad type"]
@@ -436,17 +425,17 @@ and ty2norm (prog:Fixture.PROGRAM)
             
           | (Ast.UnionType tys) => 
             let 
-                fun extract {exprs, nullable, unit, env} = (exprs, nullable) 
+                fun extract {exprs, nullable, topUnit, nonTopRibs} = (exprs, nullable) 
                 val sub = extract o subTerm2Norm
                 val (listOfLists, listOfNulls) = ListPair.unzip (map sub tys)
                 val exprs' = List.concat listOfLists
                 val nullable = List.exists (fn x => x) listOfNulls
             in
-                {exprs=exprs', nullable=nullable, env=env, unit=unit}
+                {exprs=exprs', nullable=nullable, nonTopRibs=nonTopRibs, topUnit=topUnit}
             end
             
           | (Ast.SpecialType Ast.Null) => 
-            {exprs=[], nullable=true, env=env, unit=unit}
+            {exprs=[], nullable=true, nonTopRibs=nonTopRibs, topUnit=topUnit}
             
           | (Ast.ArrayType []) => 
             simple (Ast.ArrayType [Ast.SpecialType Ast.Any]) true
@@ -489,9 +478,9 @@ and ty2norm (prog:Fixture.PROGRAM)
             
           | Ast.NullableType { expr, nullable } => 
             let
-                val {exprs, env=env', unit=unit', ...} = subTerm2Norm expr
+                val {exprs, nonTopRibs=nonTopRibs', topUnit=topUnit', ...} = subTerm2Norm expr
             in
-                { exprs=exprs, env=env', unit=unit', nullable=nullable }
+                { exprs=exprs, nonTopRibs=nonTopRibs', topUnit=topUnit', nullable=nullable }
             end
             
           | Ast.ElementTypeRef ((Ast.ArrayType fields), idx) => 

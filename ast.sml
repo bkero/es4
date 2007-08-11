@@ -167,8 +167,8 @@ datatype PRAGMA =
      and TY = 
          Ty of 
          { expr: TYPE_EXPR,
-           env: RIBS,
-           unit: UNIT_NAME option }
+           nonTopRibs: RIBS,
+           topUnit: UNIT_NAME option }
          
      and CLS =
          Cls of
@@ -206,7 +206,7 @@ datatype PRAGMA =
              typeParams: IDENT list,
              fsig: FUNC_SIG,
              native: bool,
-             block: BLOCK,
+             block: BLOCK option, (* NONE => abstract *)
              param: HEAD,
              defaults: EXPR list,
              ty: TY,
@@ -421,11 +421,10 @@ datatype PRAGMA =
        | TypeFixture of TY
        | MethodFixture of
            { func: FUNC,
-             ty: TY,             
+             ty: TY,
              readOnly: bool,  (* ES3 funcs are r/w methods with ty=Ast.Special Ast.Any *)
              override: bool,
-             final: bool,
-             abstract: bool }
+             final: bool }
        | ValFixture of
            { ty: TY,
              readOnly: bool }
@@ -479,7 +478,6 @@ withtype
              override: bool,
              prototype: bool,
              static: bool,
-             abstract: bool,
              func : FUNC }
 
      and CTOR_DEFN = CTOR

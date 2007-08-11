@@ -100,19 +100,24 @@ signature FIXTURE = sig
  * 
  *)
 
+    (* FIXME: the coupling between type.sml and fixture.sml suggests re-merging them *)
+    type TYEQ = (Ast.TY -> Ast.TY -> bool)
+    val mergeFixtures : TYEQ -> 
+                        ((Ast.FIXTURE_NAME * Ast.FIXTURE) * Ast.RIB) -> 
+                        Ast.RIB
+
     type PROGRAM
     val mkProgram : Ast.RIB -> PROGRAM
-    val addTopFragment : PROGRAM -> (Ast.FRAGMENT * Ast.RIB) -> (Ast.TY -> Ast.TY -> bool) -> PROGRAM
+    val closeTopFragment : PROGRAM -> Ast.FRAGMENT -> TYEQ -> PROGRAM
     val getTopFixture : PROGRAM -> Ast.NAME -> Ast.FIXTURE 
     val getTopRib : PROGRAM -> Ast.RIB
+    val extendTopRib : PROGRAM -> Ast.RIB -> TYEQ -> PROGRAM
     val getTopRibForUnit : PROGRAM -> Ast.UNIT_NAME -> Ast.RIB option
     val getTopBlocks : PROGRAM -> Ast.BLOCK list
     val getPackageNames : PROGRAM -> Ast.IDENT list list
+    val getCurrFullRibs : PROGRAM -> Ast.RIBS -> Ast.RIBS
+    val getFullRibsForTy : PROGRAM -> Ast.TY -> (Ast.RIBS * bool)
 
-    (* FIXME: the coupling between type.sml and fixture.sml suggests re-merging them *)
-    val mergeFixtures : (Ast.TY -> Ast.TY -> bool) -> 
-                        ((Ast.FIXTURE_NAME * Ast.FIXTURE) * Ast.RIB) -> 
-                        Ast.RIB
     val instanceType : PROGRAM -> Ast.NAME -> Ast.TY
     val isClass : PROGRAM -> Ast.NAME -> bool
     val getClass : PROGRAM -> Ast.NAME -> Ast.CLS

@@ -38,15 +38,23 @@ fun log ss = LogErr.log ("[fixture] " :: ss)
 fun error ss = LogErr.fixtureError ss
 fun trace ss = if (!doTrace) then log ss else ()
 
-structure NmKey = struct type ord_key = Ast.NAME val compare = NameKey.compare end
+structure NmKey = struct 
+type ord_key = Ast.NAME 
+val compare = NameKey.compare 
+end
 structure NmMap = SplayMapFn (NmKey);
 
-structure StrVecKey = struct type ord_key = (Ustring.STRING vector) val compare = (Vector.collate (fn (a,b) => Ustring.compare a b)) end
+structure StrVecKey = struct 
+type ord_key = (Ustring.STRING vector) 
+val compare = (Vector.collate (fn (a,b) => Ustring.compare a b)) 
+end
 structure StrVecMap = SplayMapFn (StrVecKey);
 
 (* -----------------------------------------------------------------------------
  * Operations on FIXTURE
  * ----------------------------------------------------------------------------- *)
+
+type TYEQ = (Ast.TY -> Ast.TY -> bool)
 
 fun printFixture ((n:Ast.FIXTURE_NAME), (f:Ast.FIXTURE)) = 
     let
@@ -117,7 +125,7 @@ fun printRib (rib:Ast.RIB) =
 (* -----------------------------------------------------------------------------
  * Operations on PROGRAM
  * ----------------------------------------------------------------------------- *)
-
+                
 type PROGRAM = { fixtureCache: (Ast.FIXTURE NmMap.map) ref, (* mirrors the top rib *)
                  instanceOfCache: (bool StrVecMap.map) ref,
                  cacheSize: int,
@@ -187,18 +195,37 @@ fun mergeFixtures (tyeq:Ast.TY -> Ast.TY -> bool)
     else
         (newName,newFix) :: oldRib
 
-fun addTopFragment (prog:PROGRAM)
-                   (frag:Ast.FRAGMENT, newRib:Ast.RIB)
-                   (tyeq:Ast.TY -> Ast.TY -> bool)
+fun extendTopRib (prog:PROGRAM) 
+                 (additions:Ast.RIB) 
+                 (tyeq:TYEQ) 
     : PROGRAM = 
     let
         val { fixtureCache, instanceOfCache, cacheSize, 
               topRib, topBlocks, packageNames, unitRibs } = prog
-        val newTopRib = List.foldl (mergeFixtures tyeq) topRib newRib
+        val newTopRib = List.foldl (mergeFixtures tyeq) topRib additions
+    in
+        { cacheSize = cacheSize, 
+          (* flush caches *)
+          fixtureCache = ref NmMap.empty,
+          instanceOfCache = ref StrVecMap.empty,
+          (* replace updated immutable parts *)
+          topRib = newTopRib,
+          topBlocks = topBlocks,
+          packageNames = packageNames,
+          unitRibs = unitRibs }
+    end
+
+fun closeTopFragment (prog:PROGRAM)
+                     (frag:Ast.FRAGMENT)
+                     (tyeq:TYEQ)
+    : PROGRAM = 
+    let
+        val { fixtureCache, instanceOfCache, cacheSize, 
+              topRib, topBlocks, packageNames, unitRibs } = prog
         val newUnitRibs = 
             case frag of 
                 Ast.Unit { name=SOME nm, ... } => 
-                StrVecMap.insert (unitRibs, (Vector.fromList nm), newTopRib)
+                StrVecMap.insert (unitRibs, (Vector.fromList nm), topRib)
               | _ => 
                 unitRibs
         fun fragBlocks (Ast.Unit {name, fragments}) = 
@@ -211,15 +238,14 @@ fun addTopFragment (prog:PROGRAM)
             List.concat (map fragPackages fragments)
           | fragPackages (Ast.Package {name, fragments}) = 
             name :: (List.concat (map fragPackages fragments))
-          | fragPackages (Ast.Anon block) = []                                          
-    in
-        
+          | fragPackages (Ast.Anon block) = []               
+    in        
         { cacheSize = cacheSize, 
           (* flush caches *)
           fixtureCache = ref NmMap.empty,
           instanceOfCache = ref StrVecMap.empty,
           (* replace updated immutable parts *)
-          topRib = newTopRib,
+          topRib = topRib,
           topBlocks = topBlocks @ (fragBlocks frag),
           packageNames = packageNames @ (fragPackages frag),
           unitRibs = newUnitRibs }
@@ -246,7 +272,6 @@ fun getTopFixture (prog:PROGRAM)
     end
 
 val (getTopRib:PROGRAM -> Ast.RIB) = #topRib
-val (getPackageNames:PROGRAM -> Ast.IDENT list list) = #packageNames
 
 fun getTopRibForUnit (prog:PROGRAM)
                      (unit:Ast.UNIT_NAME)
@@ -255,8 +280,34 @@ fun getTopRibForUnit (prog:PROGRAM)
 
 val (getTopBlocks:PROGRAM -> Ast.BLOCK list) = #topBlocks
 
-fun printTopRib (prog:PROGRAM) =
-    printRib (getTopRib prog)
+val (getPackageNames:PROGRAM -> Ast.IDENT list list) = #packageNames
+
+fun getCurrFullRibs (prog:PROGRAM)
+                    (nonTopRibs:Ast.RIBS)
+    : Ast.RIBS = 
+    nonTopRibs @ [getTopRib prog]
+
+fun getFullRibsForTy (prog:PROGRAM) 
+                     (ty:Ast.TY)                
+    : (Ast.RIBS * bool) = 
+    (* 
+     * Returns the full ribs of TY, plus a flag indicating whether the
+     * full ribs are the result of prepending a closed unit -- which, if 
+     * true, makes name-lookup failures a hard error in the resulting
+     * full ribs. 
+     *)
+    let       
+        val Ast.Ty { nonTopRibs, topUnit, ... } = ty
+        val (topRib, closed) = 
+            case topUnit of 
+                NONE => (getTopRib prog, false)
+              | SOME u => (case getTopRibForUnit prog u of
+                               NONE => (getTopRib prog, false)
+                             | SOME closedRib => (closedRib, true))
+        val fullRibs = nonTopRibs @ [topRib]
+    in
+        (fullRibs, closed)
+    end
 
 (* -----------------------------------------------------------------------------
  * Class operations on PROGRAMs

@@ -254,7 +254,7 @@ exception InternalError
 infix 4 <:;
 
 fun (tsub <: tsup) =
-    Type.isSubtype (!Defn.topFixtures) tsub tsup
+    Type.isSubtype (!Defn.topRib) tsub tsup
 
 fun mathOp (v:Mach.VAL)
            (decimalFn:(Decimal.DEC -> 'a) option)
@@ -395,18 +395,18 @@ fun shouldBeDontEnum (n:Ast.NAME) (obj:Mach.OBJ) : bool =
 fun findConversion (ty1:Type.TYPE_VALUE)
                    (ty2:Type.TYPE_VALUE)
     : Ast.NAME option =
-    Type.findConversion (!Defn.topFixtures) ty1 ty2
+    Type.findConversion (!Defn.topRib) ty1 ty2
 
-fun allocFixtures (regs:Mach.REGS)
-                  (obj:Mach.OBJ)
-                  (this:Mach.OBJ option)
-                  (temps:Mach.TEMPS)
-                  (f:Ast.FIXTURES)
+fun allocRib (regs:Mach.REGS)
+             (obj:Mach.OBJ)
+             (this:Mach.OBJ option)
+             (temps:Mach.TEMPS)
+             (f:Ast.RIB)
     : unit =
     case obj of
         Mach.Obj { props, ident, ... } =>
         let
-            val _ = trace ["allocating fixtures on object id #", Int.toString ident]
+            val _ = trace ["allocating rib on object id #", Int.toString ident]
             val {scope, ...} = regs
             val methodScope = extendScope scope obj Mach.ActivationScope
             fun valAllocState (t:Ast.TYPE_EXPR)
@@ -488,7 +488,7 @@ fun allocFixtures (regs:Mach.REGS)
                         Mach.ValProp Mach.Null
 
                   (* FIXME: this error should probably be turned on. *)
-                  (* | _ => error ["Shouldn't happen: failed to match in Eval.allocFixtures#valAllocState."] *)
+                  (* | _ => error ["Shouldn't happen: failed to match in Eval.allocRib#valAllocState."] *)
 
             fun tempPadding n =
                 if n = 0
@@ -506,7 +506,7 @@ fun allocFixtures (regs:Mach.REGS)
                           else if t < (List.length (!temps))
                                 then (trace ["ignoring fixture, already allocated ", Int.toString t];
                                       temps := (List.take (!temps,((length (!temps))-t-1)))@((ty, Mach.UninitTemp)::(List.drop (!temps,(length (!temps)-t)))))
-                          else (trace ["allocating fixtures for temporaries ", Int.toString (length (!temps)), " to ", Int.toString t];
+                          else (trace ["allocating rib for temporaries ", Int.toString (length (!temps)), " to ", Int.toString t];
                                 temps := (Ast.SpecialType Ast.Any, Mach.UninitTemp)
                                             ::(((tempPadding (t-(length (!temps))))@(!temps)))))
                        | _ => error ["allocating non-value temporary"])
@@ -582,12 +582,12 @@ fun allocFixtures (regs:Mach.REGS)
 
                           | Ast.ClassFixture cls =>
                             let
-                                val Ast.Cls {classFixtures, ...} = cls
+                                val Ast.Cls {classRib, ...} = cls
                                 val _ = trace ["allocating class object for class ", fmtName pn]
                                 val classObj = needObj (newClass scope cls)
-                                val _ = trace ["allocating class fixtures on class ", fmtName pn]
+                                val _ = trace ["allocating class rib on class ", fmtName pn]
                                 (* FIXME: 'this' binding in class objects might be wrong here. *)
-                                val _ = allocObjFixtures regs classObj NONE classFixtures
+                                val _ = allocObjRib regs classObj NONE classRib
                             in
                                 allocProp "class"
                                           { ty = (Name.typename Name.intrinsic_Class),
@@ -630,7 +630,7 @@ fun allocFixtures (regs:Mach.REGS)
                                                       isFixed = true } }
                             end
 
-                          (* | _ => error ["Shouldn't happen: failed to match in Eval.allocFixtures#allocFixture."] *)
+                          (* | _ => error ["Shouldn't happen: failed to match in Eval.allocRib#allocFixture."] *)
 
                     end
         in
@@ -638,26 +638,26 @@ fun allocFixtures (regs:Mach.REGS)
         end
 
 
-and allocObjFixtures (regs:Mach.REGS)
+and allocObjRib (regs:Mach.REGS)
                      (obj:Mach.OBJ)
                      (this:Mach.OBJ option)
-                     (f:Ast.FIXTURES)
+                     (f:Ast.RIB)
     : unit =
     let
         val (temps:Mach.TEMPS) = ref []
     in
-        allocFixtures regs obj this temps f;
+        allocRib regs obj this temps f;
         if not ((length (!temps)) = 0)
         then error ["allocated temporaries in non-scope object"]
         else ()
     end
 
-and allocScopeFixtures (regs:Mach.REGS)
-                       (f:Ast.FIXTURES)
+and allocScopeRib (regs:Mach.REGS)
+                       (f:Ast.RIB)
     : unit =
     case (#scope regs) of
         Mach.Scope { object, temps, ... } =>
-        allocFixtures regs object NONE temps f
+        allocRib regs object NONE temps f
 
 
 and asArrayIndex (v:Mach.VAL)
@@ -2965,7 +2965,7 @@ and typeOfVal (v:Mach.VAL)
 and isCompatible (v:Mach.VAL)
                  (tyExpr:Ast.TYPE_EXPR)
     : bool =
-    Type.isCompatible (!Defn.topFixtures) (typeOfVal v) tyExpr
+    Type.isCompatible (!Defn.topRib) (typeOfVal v) tyExpr
 
 
 and evalBinaryTypeOp (regs:Mach.REGS)
@@ -3397,7 +3397,7 @@ and invokeFuncClosure (callerThis:Mach.OBJ)
     : Mach.VAL =
     let
         val { func, this, env, allTypesBound } = closure
-        val Ast.Func { name, block, param=Ast.Head (paramFixtures, paramInits), ... } = func
+        val Ast.Func { name, block, param=Ast.Head (paramRib, paramInits), ... } = func
         val this = case this of
                        SOME t => (trace ["using bound 'this' #", Int.toString (getObjId callerThis)]; t)
                      | NONE => (trace ["using caller 'this' #", Int.toString (getObjId callerThis)]; callerThis)
@@ -3432,8 +3432,8 @@ and invokeFuncClosure (callerThis:Mach.OBJ)
                                                                          readOnly = true,
                                                                          isFixed = true } }
             in
-                trace ["invokeFuncClosure: allocating scope fixtures"];
-                allocScopeFixtures varRegs paramFixtures;
+                trace ["invokeFuncClosure: allocating scope rib"];
+                allocScopeRib varRegs paramRib;
                 trace ["invokeFuncClosure: binding args"];
                 bindArgs regs varScope func args;
                 trace ["invokeFuncClosure: evaluating scope inits on scope obj #",
@@ -3509,12 +3509,12 @@ and catch (regs:Mach.REGS)
     : Mach.VAL option =
     case clauses of
         [] => NONE
-      | {ty, fixtures, inits, block, ...}::cs =>
+      | {ty, rib, inits, block, ...}::cs =>
         if isCompatible e ty
         then
             let
-                val fixs = valOf fixtures
-                val head = Ast.Head (valOf fixtures, [])
+                val fixs = valOf rib
+                val head = Ast.Head (valOf rib, [])
                 val regs = evalHead regs head
                 val scope = (#scope regs)
                 val obj = (#this regs)
@@ -3562,8 +3562,8 @@ and evalTryStmt (regs:Mach.REGS)
          Cls of
            { extends: NAME option,
              implements: NAME list,
-             classFixtures: FIXTURES,
-             instanceFixtures: FIXTURES,
+             classRib: RIB,
+             instanceRib: RIB,
              instanceInits: INITS,
              constructor: CTOR option,
              classType: TYPE_EXPR,
@@ -3578,7 +3578,7 @@ and evalTryStmt (regs:Mach.REGS)
          Func of
            { name: FUNC_NAME,
              fsig: FUNC_SIG,
-             fixtures: FIXTURES option,
+             rib: RIB option,
              inits: STMT list,
              body: BLOCK }
 
@@ -3586,12 +3586,12 @@ and evalTryStmt (regs:Mach.REGS)
 
     val scope = [globalObj,classObj]
     val thisObj = newObj
-    evalFixtures scope thisObj instanceFixtures
+    evalRib scope thisObj instanceRib
     evalInits scope thisObj instanceInits (* step 4 *)
 
     val paramsObj = newObj
-    val paramsFixtures = (#fixtures (#func (#constructor cls)))
-	evalFixtures scope paramsObj paramsFixtures
+    val paramsRib = (#rib (#func (#constructor cls)))
+	evalRib scope paramsObj paramsRib
     val paramsInits = (#inits (#func (#constructor class)))
     evalInits scope paramsObj paramsInits
 
@@ -3612,14 +3612,14 @@ On the whiteboard today (feb 22):
 
   - get class closure for RHS of operator "new"
   - make an object
-  - allocate instance fixtures
+  - allocate instance rib
   CTOR(x) - eval inits in class scope [..., class]
           - allocate param obj
-          - allocate param fixtures
+          - allocate param rib
           - eval param inits in class scope [..., class]
           - eval instance settings [...,class,params]
           - call CTOR(parent), via super() call at end of settings
-          - check all allocated fixtures are initialized
+          - check all allocated rib are initialized
           - execute ctor body (if native, run native fn) [..,class,instance,params]
 
 *)
@@ -3776,8 +3776,8 @@ and evalObjInits (regs:Mach.REGS)
                  (head:Ast.HEAD)
     : unit =
         let
-            val (Ast.Head (fixtures,inits)) = head
-            val tempRegs = evalHead regs (Ast.Head (fixtures,[]))
+            val (Ast.Head (rib,inits)) = head
+            val tempRegs = evalHead regs (Ast.Head (rib,[]))
             val temps = getScopeTemps (#scope regs)
         in
             evalInits tempRegs instanceObj temps inits
@@ -3873,7 +3873,7 @@ and initializeAndConstruct (classClosure:Mach.CLS_CLOSURE)
                   | SOME (Ast.Ctor { settings, superArgs, func }) =>
                     let
                         val _ = push ("ctor " ^ (Ustring.toAscii (#id name))) args
-                        val Ast.Func { block, param=Ast.Head (paramFixtures,paramInits), ... } = func
+                        val Ast.Func { block, param=Ast.Head (paramRib,paramInits), ... } = func
                         val (varObj:Mach.OBJ) = Mach.newObjNoTag ()
                         val (varRegs:Mach.REGS) = extendScopeReg classRegs
                                                                   varObj
@@ -3886,8 +3886,8 @@ and initializeAndConstruct (classClosure:Mach.CLS_CLOSURE)
                                                                   varObj
                                                                   Mach.ActivationScope
                     in
-                        trace ["allocating scope fixtures for constructor of ", fmtName name];
-                        allocScopeFixtures varRegs paramFixtures;
+                        trace ["allocating scope rib for constructor of ", fmtName name];
+                        allocScopeRib varRegs paramRib;
                         trace ["binding constructor args of ", fmtName name];
                         bindArgs classRegs varScope func args;
                         trace ["evaluating inits of ", fmtName name,
@@ -3910,7 +3910,7 @@ and constructStandard (classObj:Mach.OBJ)
                              (args:Mach.VAL list)
     : Mach.OBJ =
     let
-        val {cls = Ast.Cls { name, instanceFixtures, ...}, env, ...} = classClosure
+        val {cls = Ast.Cls { name, instanceRib, ...}, env, ...} = classClosure
         val (tag:Mach.VAL_TAG) = Mach.ClassTag name
     in
         constructStandardWithTag classObj classClosure args tag
@@ -3922,7 +3922,7 @@ and constructStandardWithTag (classObj:Mach.OBJ)
                              (tag:Mach.VAL_TAG)
     : Mach.OBJ =
     let
-        val {cls = Ast.Cls { name, instanceFixtures, ...}, env, ...} = classClosure
+        val {cls = Ast.Cls { name, instanceRib, ...}, env, ...} = classClosure
         val (proto:Mach.VAL) = if hasOwnValue classObj Name.nons_prototype
                                then getValue classObj Name.nons_prototype
                                else Mach.Null
@@ -3931,9 +3931,9 @@ and constructStandardWithTag (classObj:Mach.OBJ)
         val (classScope:Mach.SCOPE) = extendScope env classObj Mach.InstanceScope
         val classRegs = { scope = classScope, this = instanceObj }
     in
-        trace ["allocating ", Int.toString (length instanceFixtures),
-               " instance fixtures for new ", fmtName name];
-        allocObjFixtures classRegs instanceObj (SOME instanceObj) instanceFixtures;
+        trace ["allocating ", Int.toString (length instanceRib),
+               " instance rib for new ", fmtName name];
+        allocObjRib classRegs instanceObj (SOME instanceObj) instanceRib;
         trace ["entering most derived constructor for ", fmtName name];
         initializeAndConstruct classClosure classObj classRegs args instanceObj;
         trace ["finished constructing new ", fmtName name];
@@ -4121,7 +4121,7 @@ and evalHead (regs:Mach.REGS)
              (head:Ast.HEAD)
     : Mach.REGS =
         let
-            val (Ast.Head (fixtures,inits)) = head
+            val (Ast.Head (rib,inits)) = head
             val obj = Mach.newObjNoTag ()
             val regs = extendScopeReg regs obj Mach.TempScope
             val {scope,...} = regs
@@ -4129,7 +4129,7 @@ and evalHead (regs:Mach.REGS)
                            Int.toString (getScopeId (#scope regs)),
                            " for head"]
         in
-            allocScopeFixtures regs fixtures;
+            allocScopeRib regs rib;
             evalInits regs obj (getScopeTemps scope) inits;
             regs
         end
@@ -4248,7 +4248,7 @@ and evalClassBlock (regs:Mach.REGS)
 
     (*
         The property that holds the class object was allocated when the
-        fixtures of the outer scope were allocated. Still to do is
+        rib of the outer scope were allocated. Still to do is
         initialising the class object, including creating its prototype
     *)
 
@@ -4306,7 +4306,7 @@ and evalWhileStmt (regs:Mach.REGS)
                   (whileStmt:Ast.WHILE_STMT)
     : Mach.VAL =
     case whileStmt of
-        { cond, body, fixtures, labels } =>
+        { cond, body, rib, labels } =>
         let
             val accum = ref Mach.Undef
             fun loop _ =
@@ -4335,7 +4335,7 @@ and evalDoWhileStmt (regs:Mach.REGS)
                     (whileStmt:Ast.WHILE_STMT)
     : Mach.VAL =
     case whileStmt of
-        { cond, body, fixtures, labels } =>
+        { cond, body, rib, labels } =>
         let
             val accum = ref Mach.Undef
             fun loop _ =
@@ -4504,11 +4504,11 @@ and evalForInStmt (regs:Mach.REGS)
                   (forInStmt:Ast.FOR_ENUM_STMT)
     : Mach.VAL =
     case forInStmt of
-        { isEach, defn, obj, fixtures, next, labels, body, ... } =>
+        { isEach, defn, obj, rib, next, labels, body, ... } =>
         let
             val iterable = evalIterable regs obj
             val iterator = callIteratorGet regs iterable
-            val forInRegs = evalHead regs (Ast.Head (valOf fixtures, []))
+            val forInRegs = evalHead regs (Ast.Head (valOf rib, []))
 
             (*
                 The following code is ugly but it needs to handle the cases
@@ -4592,9 +4592,9 @@ and evalForStmt (regs:Mach.REGS)
                 (forStmt:Ast.FOR_STMT)
     : Mach.VAL =
     case forStmt of
-        { fixtures, init, cond, update, labels, body, ... } =>
+        { rib, init, cond, update, labels, body, ... } =>
         let
-            val forRegs = evalHead regs (Ast.Head (valOf fixtures, []))
+            val forRegs = evalHead regs (Ast.Head (valOf rib, []))
 
             fun loop (accum:Mach.VAL option) =
                 let
@@ -4680,7 +4680,7 @@ and evalProgram (regs:Mach.REGS)
             else findHoistingScopeObj (valOf parent)
         val (obj, temps) = findHoistingScopeObj (#scope regs)
     in
-        (allocFixtures regs obj NONE temps (valOf (#fixtures prog));
+        (allocRib regs obj NONE temps (valOf (#rib prog));
          map (evalPackage regs) (#packages prog);
          evalBlock regs (#block prog))
         handle ThrowException v =>
