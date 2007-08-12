@@ -600,7 +600,7 @@ namespace Ast
 
     class Identifier {
         const ident : IDENT;
-        const nss : [[NAMESPACE]];
+        const nss //: [[NAMESPACE]];
         function Identifier (ident,nss)
             : ident = ident
             , nss = nss {}
@@ -763,10 +763,7 @@ namespace Ast
        , name : IDENT_EXPR
        , init : EXPR }
 
-    type FIELD_TYPE =
-       { name : IDENT
-       , type : TYPE_EXPR
-    }
+    type FIELD_TYPE = FieldType;
 
     class LiteralFunction {
         const func : FUNC;
@@ -939,7 +936,11 @@ namespace Ast
 
     class TypeVarFixture {}
 
-    class TypeFixture {}
+    class TypeFixture {
+        const expr: TYPE_EXPR;
+        function TypeFixture (expr)
+            : expr = expr {}
+    }
 
     class MethodFixture {
         const func : FUNC;
@@ -1009,10 +1010,14 @@ namespace Ast
 
     class UnionType {
         const types : [TYPE_EXPR];
+        function UnionType (types)
+            : types = types { }
     }
 
     class ArrayType {
         const types : [TYPE_EXPR];
+        function ArrayType (types)
+            : types = types { }
     }
 
     class TypeName {
@@ -1045,7 +1050,17 @@ namespace Ast
     }
 
     class ObjectType {
-        const types : [FIELD_TYPE];
+        const fields : [FIELD_TYPE];
+        function ObjectType (fields)
+            : fields = fields { }
+    }
+
+    class FieldType {
+        const name: IDENT;
+        const type: TYPE_EXPR;
+        function FieldType (name,ty)
+            : name = name
+            , type = ty {}
     }
 
     class AppType {

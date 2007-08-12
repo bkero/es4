@@ -3651,6 +3651,7 @@ and fieldTypeList (ts:TOKENS)
 and fieldType (ts:TOKENS)
     : (TOKENS * Ast.FIELD_TYPE) =
     let val _ = trace([">> fieldType with next=",tokenname(hd(ts))])
+
         val (ts1,nd1) = fieldName ts
         val ident = case nd1 of
                         Ast.Identifier{ident,...} => ident

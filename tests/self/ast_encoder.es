@@ -4,7 +4,7 @@
 {
     use default namespace Ast;
     use namespace intrinsic;
-    use namespace Release;
+    use namespace Debug;
 
     function indent (n:int)
         : string {
@@ -102,7 +102,7 @@
         return str;
     }
 
-    function encodeFixture (nd /*: FIXTURE*/, nesting: int = 0)
+    function encodeFixture (nd: FIXTURE, nesting: int = 0)
         : string {
         enter ("encodeFixture ",nesting);
 
@@ -137,6 +137,12 @@
             var str =
                 "{ 'ast::class': 'NamespaceFixture'"
               + indent(nesting) + ", 'ns': " + encodeNamespace (nd.ns,nesting+", 'ns': ".length)
+              + " }";
+        }
+        case (nd:Ast::TypeFixture) {
+            var str =
+                "{ 'ast::class': 'TypeFixture'"
+              + indent(nesting) + ", 'expr': " + encodeTypeExpr (nd.expr,nesting+", 'expr': ".length)
               + " }";
         }
         case (nd: *) {
@@ -542,6 +548,31 @@
         return str;
     }
 
+    function encodeTypeExprs (nd /*: [TYPE_EXPR]*/, nesting: int = 0)
+        : string {
+        enter ("encodeTypeExprs nd.length=",nd.length);
+
+        var str;
+        if (nd == null) {
+            var str = "null";
+        }
+        else
+        if (nd.length == 0) {
+            var str = "";
+        }
+        else
+        {
+            var str =
+                  encodeTypeExpr (nd[0],nesting)
+                + indent(nesting-2)
+                + ", "
+                + encodeTypeExprs (nd.slice (1,nd.length), nesting);
+        }
+
+        exit ("encodeTypeExprs ",str);
+        return str;
+    }
+
     function encodeTypeExpr (nd : TYPE_EXPR, nesting: int = 0)
         : string {
         enter ("encodeTypeExpr ",nd);
@@ -563,11 +594,75 @@
               + nd.kind
               + " }";
         }
+        case (nd: UnionType) {
+            var str =
+                "{ 'ast::class': 'UnionType'"
+              + indent(nesting)
+              + ", 'types': [ "
+              + encodeTypeExprs (nd.types,nesting+", 'types': [ ".length)
+              + " ] }";
+        }
+        case (nd: ObjectType) {
+            var str =
+                "{ 'ast::class': 'ObjectType'"
+              + indent(nesting)
+              + ", 'fields': [ "
+              + encodeFieldTypes (nd.fields,nesting+", 'fields': [ ".length)
+              + " ] }";
+        }
+        case (nd: ArrayType) {
+            var str =
+                "{ 'ast::class': 'ArrayType'"
+              + indent(nesting)
+              + ", 'types': [ "
+              + encodeTypeExprs (nd.types,nesting+", 'types': [ ".length)
+              + " ] }";
+        }
         case (nd: *) {
             var str = "** unknown type in encodeTypeExpr: " + nd;
         }
         }
-        exit ("encodeIdentExpr ",str);
+        exit ("encodeTypeExpr ",str);
+        return str;
+    }
+
+    function encodeFieldTypes (nd /*: [FIELD_TYPE]*/, nesting: int = 0)
+        : string {
+        enter ("encodeFieldTypes nd.length=",nd.length);
+
+        var str;
+        if (nd == null) {
+            var str = "null";
+        }
+        else
+        if (nd.length == 0) {
+            var str = "";
+        }
+        else
+        {
+            var str =
+                  encodeFieldType (nd[0],nesting)
+                + indent(nesting-2)
+                + ", "
+                + encodeFieldTypes (nd.slice (1,nd.length), nesting);
+        }
+
+        exit ("encodeFieldTypes ",str);
+        return str;
+    }
+
+    function encodeFieldType (nd : FIELD_TYPE, nesting: int = 0)
+    {
+        enter ("encode FieldType");
+
+        var str = "";
+            var str =
+                "{ 'ast::class': 'FieldType'"
+              + indent(nesting) + ", 'name': " + nd.name
+              + indent(nesting) + ", 'type': " + encodeTypeExpr (nd.type,nesting+", 'type': ".length)
+                + " }";
+
+        exit ("encodeFieldType");
         return str;
     }
 
