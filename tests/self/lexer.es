@@ -744,6 +744,8 @@ namespace Lexer
                     tokenList.push (token);
                     lastMarkIndex = markIndex;
                 }
+
+                print ("token=",token)
             }
 
             var tokenList = new Array;
@@ -799,7 +801,7 @@ namespace Lexer
             {
                 mark();
                 c = next();
-                //                print("c[",curIndex-1,"]=",String.fromCharCode(c));
+                // print("c[",curIndex-1,"]=",String.fromCharCode(c));
                 switch (c)
                 {
                 case 0xffffffef: return utf8sig ();
@@ -1090,21 +1092,23 @@ namespace Lexer
 	    let c : int = next ();
 	    switch (c) {
 	    case Char::Asterisk :
-		switch (next()) {
-		case Char::Slash:
-		    return;
-		case Char::EOS :
-		    retract ();
-		    return;
-		default:
-		    retract (); // leave in case its an asterisk
-		    blockComment ();
-		}
+            switch (next()) {
+            case Char::Slash:
+                return;
+            case Char::EOS :
+                retract ();
+                return;
+            case Char::Asterisk:
+                retract (); // leave in case next char is a slash
+                return blockComment ();
+            default:
+                return blockComment ();
+            }
 	    case Char::EOS :
-		retract ();
-		return;
+            retract ();
+            return;
 	    default :
-		return blockComment ();
+            return blockComment ();
 	    }
 	}
 

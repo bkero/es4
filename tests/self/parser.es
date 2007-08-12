@@ -83,7 +83,7 @@ type TOKENS = Array;  // [int];
     type PRAGMAS = Pragmas;
     class Pragmas 
     {
-        var openNamespaces: [[Ast::NAMESPACE]];
+        var openNamespaces //: [[Ast::NAMESPACE]];
         var defaultNamespace: Ast::NAMESPACE;
         function Pragmas (pragmas) 
         {
@@ -95,7 +95,7 @@ type TOKENS = Array;  // [int];
             }
             else
             {
-                this.openNamespaces = pragmas.openNamespaces;
+                this.openNamespaces = util.copyArray (pragmas.openNamespaces);
                 this.defaultNamespace = pragmas.defaultNamespace;
             }
             this.openNamespaces.push ([]);
@@ -392,9 +392,9 @@ type TOKENS = Array;  // [int];
 
         function hd (ts) 
         {
-            enter ("hd ",ts[0]);
+            // enter ("hd ",ts[0]);
             var tk = Token::tokenKind (ts[0]);
-            exit ("hd ",tk);
+            // exit ("hd ",tk);
             return tk;
         }
 
@@ -565,6 +565,35 @@ type TOKENS = Array;  // [int];
             }
             exit ("Parser::identifier ", str);
             return [tl (ts), str];
+        }
+
+        function isReserved (tk: int) {
+            switch (tk) {
+            case Token::Break:
+                break;
+            // FIXME more of these
+            default:
+                return false;
+                break;
+            }
+        }
+
+        function reservedOrOrdinaryIdentifier (ts: TOKENS)
+            : [TOKENS, Ast::IDENT]
+        {
+            enter ("Parser::reservedOrOrdinaryIdentifer");
+
+            if (isReserved (hd (ts))) 
+            {
+                var [ts1,nd1] = tokenText (hd (ts));
+            }
+            else 
+            {
+                var [ts1,nd1] = identifier (ts);
+            }
+
+            exit ("Parser::reservedOrOrdinaryIdentifier");
+            return [ts1,nd1];
         }
 
         /*
@@ -2306,26 +2335,210 @@ type TOKENS = Array;  // [int];
             return [ts1,nd1];
         }
 
-//        /*
-//
-//        UnionType
-//            (  TypeExpressionList  )
-//
-//        */
-//
-//        function parseUnionType()
-//        {
-//            enter("parseUnionType")
-//
-//            match(leftparen_token)
-//            var first = parseTypeExpressionList()
-//            var result = <UnionType>{first}</UnionType>
-//            match(rightparen_token)
-//
-//            exit("parseUnionType",result)
-//            return result
-//        }
-//
+        /*
+
+        UnionType
+            (  TypeExpressionList  )
+
+        */
+
+        function unionType (ts: TOKENS)
+            : [TOKENS, Ast::TYPE_EXPR]
+        {
+            enter("Parser::unionType ", ts);
+
+            ts = eat (ts,Token::LeftParen);
+            var [ts1,nd1] = typeExpressionList (ts);
+            ts1 = eat (ts1,Token::RightParen);
+
+            exit("Parser::unionType ", ts1);
+            return [ts1,new Ast::UnionType (nd1)];
+        }
+
+        /*
+
+        ObjectType
+            {  FieldTypeTypeList  }
+
+        */
+
+        function objectType (ts: TOKENS)
+            : [TOKENS, Ast::TYPE_EXPR]
+        {
+            enter("Parser::objectType ", ts);
+
+            ts = eat (ts,Token::LeftBrace);
+            var [ts1,nd1] = fieldTypeList (ts);
+            ts1 = eat (ts1,Token::RightBrace);
+
+            exit("Parser::objectType ", ts1);
+            return [ts1,new Ast::ObjectType (nd1)];
+        }
+
+        /*
+
+        FieldTypeList
+            empty
+            NonemptyFieldTypeList
+
+        NonemptyFieldTypeList
+            FieldType
+            FieldType  ,  NonemptyFieldTypeList
+
+        */
+
+        function fieldTypeList (ts: TOKENS)
+            //            : [TOKENS, [Ast::FIELD_TYPE]]
+        {
+            enter("Parser::fieldTypeList ", ts);
+
+            var nd1 = [];
+
+            if (hd (ts) !== Token::RightBrace) 
+            {
+                var [ts1,ndx] = fieldType (ts);
+                nd1.push (ndx);
+                while (hd (ts1) === Token::Comma) {
+                    var [ts1,ndx] = fieldType (tl (ts1));
+                    nd1.push (ndx);
+                }
+            }
+
+            exit ("Parser::fieldTypeList ", ts1);
+            return [ts1,nd1];
+        }
+
+        function fieldType (ts: TOKENS)
+            : [TOKENS, Ast::FIELD_TYPE]
+        {
+            enter ("Parser::fieldType");
+
+            var [ts1,nd1] = fieldName (ts);
+            ts1 = eat (ts1,Token::Colon);
+            var [ts2,nd2] = nullableTypeExpression (ts1);
+
+            exit ("Parser::fieldType");
+            return [ts2, new Ast::FieldType (nd1,nd2)];
+        }
+
+        function fieldName (ts: TOKENS)
+            : [TOKENS, Ast::IDENT_EXPR]
+        {
+            enter ("Parser::fieldName");
+
+            switch (hd (ts)) {
+            case Token::StringLiteral:
+            case Token::DecimalLiteral:
+            case Token::DecimalIntegerLiteral:
+            case Token::HexIntegerLiteral:
+                throw "fieldName: unsupported name " + hd(ts);
+                break;
+            default:
+                var [ts1,nd1] = reservedOrOrdinaryIdentifier (ts);
+                break;
+            }
+
+            exit ("Parser::fieldName");
+            return [ts1,nd1];
+        }
+
+        /*
+
+        ArrayType
+            [  ElementTypeList  ]
+
+        ElementTypeList
+            empty
+            NullableTypeExpression
+            ,  ElementTypeList
+            NullableTypeExpression  ,  ElementTypeList
+
+        */
+
+        function arrayType (ts: TOKENS)
+            : [TOKENS, Ast::TYPE_EXPR]
+        {
+            enter("Parser::arrayType ", ts);
+
+            ts = eat (ts,Token::LeftBracket);
+            var [ts1,nd1] = elementTypeList (ts);
+            ts1 = eat (ts1,Token::RightBracket);
+
+            exit("Parser::arrayType ", ts1);
+            return [ts1,new Ast::ArrayType (nd1)];
+        }
+
+        function elementTypeList (ts: TOKENS)
+            //            : [TOKENS, [Ast::ELEMENT_TYPE]]
+        {
+            enter("Parser::elementTypeList ", ts);
+
+            var nd1 = [];
+
+            if (hd (ts) !== Token::RightBracket) 
+            {
+                switch (hd (ts)) {
+                case Token::Comma:
+                    var [ts1,ndx] = [tl (ts),new Ast::LiteralExpr (new Ast::LiteralUndefined)];
+                    break;
+                default:
+                    var [ts1,ndx] = nullableTypeExpression (ts);
+                    break;
+                }
+                nd1.push (ndx);
+                while (hd (ts1) === Token::Comma) {
+                    ts1 = eat (ts1,Token::Comma);
+                    switch (hd (ts1)) {
+                    case Token::Comma:
+                        var [ts1,ndx] = [ts1,new Ast::LiteralExpr (new Ast::LiteralUndefined)];
+                        break;
+                    default:
+                        var [ts1,ndx] = nullableTypeExpression (ts1);
+                        break;
+                    }
+                    nd1.push (ndx);
+                }
+            }
+
+            exit ("Parser::elementTypeList ", ts1);
+            return [ts1,nd1];
+        }
+
+        /*
+
+        TypeExpressionList
+            NullableTypeExpression
+            TypeExpressionList  ,  NullableTypeExpression
+
+        refactored
+
+        TypeExpressionList
+            NullableTypeExpression  TypeExpressionListPrime
+
+        TypeExpressionListPrime
+            empty
+            ,  NullableTypeExpression  TypeExpressionListPrime
+
+        */
+
+        function typeExpressionList (ts: TOKENS)
+            //            : [TOKENS, [Ast::TYPE_EXPR]]
+        {
+            enter("Parser::typeExpressionList ", ts);
+
+            var nd1 = [];
+            var [ts1,ndx] = nullableTypeExpression (ts);
+            nd1.push (ndx);
+            while (hd (ts1) === Token::Comma) {
+                var [ts1,ndx] = nullableTypeExpression (tl (ts1));
+                nd1.push (ndx);
+            }
+
+            exit ("Parser::typeExpressionList ", ts1);
+            return [ts1,nd1];
+        }
+
+
 //        /*
 //
 //        RecordType
@@ -2605,6 +2818,7 @@ type TOKENS = Array;  // [int];
             case full:
                 switch (hd (ts)) {
                 case Token::SemiColon:
+                    print ("semicolon found");
                     var ts1 = tl (ts);
                     break;
                 case Token::EOS:
@@ -2612,7 +2826,7 @@ type TOKENS = Array;  // [int];
                     var ts1 = ts;
                     break;
                 default:
-                    if (newline (ts)) { var ts1=ts; trace("inserting semicolon") }
+                    if (newline (ts)) { var ts1=ts; print ("inserting semicolon") }
                     else { throw "** error: expecting semicolon" }
                     break;
                 }
@@ -2967,6 +3181,8 @@ type TOKENS = Array;  // [int];
 
             var {params:params,defaults:defaults,hasRest:hasRest,settings:settings,superArgs:superArgs} = nd2;
 
+            print ("superArgs=",superArgs);
+            print ("settings=",settings);
             var func = new Ast::Func ({kind:new Ast::Ordinary,ident:nd1},false,nd3,params,vars,defaults,Ast::voidType);
             var ctor = new Ast::Ctor (settings,superArgs,func);
 
@@ -3063,13 +3279,13 @@ type TOKENS = Array;  // [int];
                 switch (hd (tl (ts))) {
                 case Token::Super:
                     var [ts1,nd1] = [tl (tl (ts)),[]]; // no settings
-                    var [ts2,nd2] = arguments (ts1);
+                    var [ts2,nd2] = this.arguments (ts1);
                     break;
                 default:
                     var [ts1,nd1] = settingList (tl (ts));
                     switch (hd (ts1)) {
                     case Token::Super:
-                        var [ts2,nd2] = arguments (tl (ts1));
+                        var [ts2,nd2] = this.arguments (tl (ts1));
                         break;
                     default:
                         var [ts2,nd2] = [ts1,[]];
@@ -3281,7 +3497,6 @@ type TOKENS = Array;  // [int];
                 return [];
             }
             var b0 = bs[0];
-
             var n0 = fixtureNameFromBindingIdent (ns,b0.Ast::ident);
             var f0 = new Ast::ValFixture (b0.Ast::type,false);
             var fs = fixturesFromBindings (ns,bs.slice(1,bs.length));
@@ -3781,7 +3996,7 @@ type TOKENS = Array;  // [int];
 
         */
 
-        function namespaceDefinition (ts: TOKENS, omega)
+        function namespaceDefinition (ts: TOKENS, ns: Ast::NAMESPACE, omega: OMEGA)
             : [TOKENS, Ast::STMTS]
         {
             enter("Parser::namespaceDefinition ", ts);
@@ -3793,18 +4008,19 @@ type TOKENS = Array;  // [int];
             ts = eat (ts,Token::Namespace);
             var [ts1,nd1] = identifier (ts);
             var [ts2,nd2] = namespaceInitialisation (ts1);
+            ts2 = semicolon (ts2,omega);
 
             if (nd2 === null) 
             {
-                var ns = new Ast::AnonymousNamespace (getAnonymousName(nd1));
+                var nsVal = new Ast::AnonymousNamespace (getAnonymousName(nd1));
             }
             else 
             {
-                var ns = new Ast::UserNamespace (nd2);
+                var nsVal = new Ast::UserNamespace (nd2);
             }
 
-            var name = new Ast::PropName ({ns:cx.pragmas.defaultNamespace, id:nd1});
-            var fxtr = new Ast::NamespaceFixture (ns);
+            var name = new Ast::PropName ({ns:ns, id:nd1});
+            var fxtr = new Ast::NamespaceFixture (nsVal);
             cx.addVarFixtures ([[name,fxtr]]);
 
             exit("Parser::namespaceDefinition ", ts2);
@@ -3838,6 +4054,34 @@ type TOKENS = Array;  // [int];
         }
 
 
+        /*
+
+        TypeDefinition(omega)
+            type  Identifier  TypeInitialisation  Semicolon(omega)
+
+        TypeInitialisation
+            =  NullableTypeExpression
+
+        */
+
+        function typeDefinition (ts: TOKENS, ns: Ast::NAMESPACE, omega: OMEGA)
+            : [TOKENS, Ast::STMTS]
+        {
+            enter("Parser::typeDefinition ", ts);
+
+            ts = eat (ts,Token::Type);
+            var [ts1,nd1] = identifier (ts);
+            ts1 = eat (ts1,Token::Assign);
+            var [ts2,nd2] = nullableTypeExpression (ts1);
+            ts2 = semicolon (ts2, omega);
+
+            var name = new Ast::PropName ({ns:ns, id:nd1});
+            var fxtr = new Ast::TypeFixture (nd2);
+            cx.addVarFixtures ([[name,fxtr]]);
+
+            exit("Parser::typeDefinition ", ts2);
+            return [ts2,[]];
+        }
 
         // DIRECTIVES
 
@@ -3984,15 +4228,16 @@ type TOKENS = Array;  // [int];
                 var tsx = semicolon (ts1,omega);
                 break;
             case Token::Class:
-                var [ts1,stmts1] = classDefinition (ts, cx.pragmas.defaultNamespace, false);
+                var isDynamic = false;
+                var [ts1,stmts1] = classDefinition (ts, cx.pragmas.defaultNamespace, isDynamic);
                 var tsx = ts1;
                 break;
             case Token::Namespace:
-                var [ts1,stmts1] = namespaceDefinition (ts, cx.pragmas.defaultNamespace, false);
+                var [ts1,stmts1] = namespaceDefinition (ts, cx.pragmas.defaultNamespace, omega);
                 var tsx = ts1;
                 break;
             case Token::Type:
-                var [ts1,stmts1] = typeDefinition (ts, cx.pragmas.defaultNamespace, false);
+                var [ts1,stmts1] = typeDefinition (ts, cx.pragmas.defaultNamespace, omega);
                 var tsx = ts1;
                 break;
             default:
@@ -4170,6 +4415,7 @@ type TOKENS = Array;  // [int];
 
             while (hd (ts)===Token::Use) {
                 [ts] = pragma (ts);
+                ts = semicolon (ts,full);
             }
 
             var ts1 = ts;
