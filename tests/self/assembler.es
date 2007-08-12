@@ -241,7 +241,7 @@ package assembler
         public function I_nextvalue() { dropOne("nextvalue", 0x23) }
         public function I_pop() { dropOne("pop", 0x29) }
         public function I_pushscope() { scope(1); dropOne("pushscope", 0x30) }
-        public function I_pushwith() { dropOne("pushwith", 0x1C) }
+        public function I_pushwith() { scope(1); dropOne("pushwith", 0x1C) }
         public function I_returnvalue() { dropOne("returnvalue", 0x48) }
         public function I_rshift() { dropOne("rshift", 0xA6) }
         public function I_setlocal_0() { dropOne("setlocal_0", 0xD4) }
@@ -475,7 +475,7 @@ package assembler
         public function I_call(nargs) { call("call", 0x41, nargs) }
         public function I_construct(nargs) { call("construct", 0x42, nargs) }
 
-        function I_constructsuper(nargs) {
+        public function I_constructsuper(nargs) {
             stack(nargs+1); /* pop receiver/args */
             list2("constructsuper", nargs);
             code.uint8(0x49);

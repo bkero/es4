@@ -46,6 +46,7 @@ package
     use default namespace public;
     use namespace intrinsic;
     use strict;
+    import ECMAScript4_Internal.*;
 
     intrinsic final class decimal! extends Number
     {
@@ -75,7 +76,7 @@ package
         override intrinsic function toString(radix = 10) : string {
             if (radix === 10 || radix === undefined)
                 return ToString(this);
-            else if (typeof radix === "number" && radix >= 2 && radix <= 36 && isIntegral(radix)) {
+            else if (typeof radix === "number" && radix >= 2 && radix <= 36 && helper::isIntegral(radix)) {
                 // FIXME
                 throw new Error("Unimplemented: non-decimal radix");
             }

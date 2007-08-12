@@ -147,6 +147,7 @@ namespace Char
     const SingleQuote = "'".charCodeAt(0);
     const DoubleQuote = "\"".charCodeAt(0);
     const Space = " ".charCodeAt(0);
+    const Tab = "\t".charCodeAt(0);
     const Newline = "\n".charCodeAt();
 
     function fromOctal (str)
@@ -517,6 +518,9 @@ namespace Token
 
         function tokenText () : String
         {
+            if (kind===StringLiteral) {
+                return this.utf8id.slice(1,this.utf8id.length);
+            }
             return this.utf8id;
         }
 
@@ -626,6 +630,7 @@ namespace Token
     {
         // if the token id is negative, it is a token_class
 
+        //print("tid=",tid);
         if (tid < 0)
         {
            return tid;
@@ -669,20 +674,22 @@ namespace Lexer
 
     class Scanner
     {
-        private var tokenList : Array;
-        private var followsNewline : Boolean;
-
         private var src : String;
         private var origin : String;
         private var curIndex : int;
         private var markIndex : int;
+        private var lastMarkIndex : int;
+        private var colCoord : int;
+        private var lnCoord : int;
 
         public function Scanner (src:String, origin:String)
             : src = src
             , origin = origin
-            , tokenList = new Array
             , curIndex = 0
             , markIndex = 0
+            , lastMarkIndex = 0
+            , colCoord = 0
+            , lnCoord = 0
         {
             print("scanning: ",src);
         }
@@ -722,19 +729,42 @@ namespace Lexer
         }
 
         public function tokenList (lexPrefix)
-            : int
+            //            : [[int],[[int,int]]]
         {
-            let tokenList = new Array;
+
+            function pushToken (token)
+            {
+                if (token == Token::Eol) {
+                    lnCoord++;
+                    colCoord = 0;
+                }
+                else {
+                    colCoord += markIndex - lastMarkIndex;
+                    coordList.push ([lnCoord,colCoord]);
+                    tokenList.push (token);
+                    lastMarkIndex = markIndex;
+                }
+
+                print ("token=",token)
+            }
+
+            var tokenList = new Array;
+            var coordList = new Array;
+
             let token = lexPrefix ();
-            tokenList.push (token);
+            pushToken (token);
+
             while (token != Token::BREAK &&
                    token != Token::EOS &&
                    token != Token::ERROR)
             {
                 token = start ();
-                tokenList.push (token);
+                pushToken (token);
             }
-            return tokenList;
+
+            print("tokenList = ",tokenList);
+            print("coordList = ",coordList);
+            return [tokenList,coordList];
         }
 
         public function regexp ()
@@ -771,7 +801,7 @@ namespace Lexer
             {
                 mark();
                 c = next();
-                //                print("c[",curIndex-1,"]=",String.fromCharCode(c));
+                // print("c[",curIndex-1,"]=",String.fromCharCode(c));
                 switch (c)
                 {
                 case 0xffffffef: return utf8sig ();
@@ -779,6 +809,7 @@ namespace Lexer
                 case Char::Slash: return slash ();
                 case Char::Newline: return Token::Eol;
                 case Char::Space: return start ();
+                case Char::Tab: return start ();
                 case Char::LeftParen: return Token::LeftParen;
                 case Char::RightParen: return Token::RightParen;
                 case Char::Comma: return Token::Comma;
@@ -1061,21 +1092,23 @@ namespace Lexer
 	    let c : int = next ();
 	    switch (c) {
 	    case Char::Asterisk :
-		switch (next()) {
-		case Char::Slash:
-		    return;
-		case Char::EOS :
-		    retract ();
-		    return;
-		default:
-		    retract (); // leave in case its an asterisk
-		    blockComment ();
-		}
+            switch (next()) {
+            case Char::Slash:
+                return;
+            case Char::EOS :
+                retract ();
+                return;
+            case Char::Asterisk:
+                retract (); // leave in case next char is a slash
+                return blockComment ();
+            default:
+                return blockComment ();
+            }
 	    case Char::EOS :
-		retract ();
-		return;
+            retract ();
+            return;
 	    default :
-		return blockComment ();
+            return blockComment ();
 	    }
 	}
 

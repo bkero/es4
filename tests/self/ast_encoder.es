@@ -24,7 +24,7 @@
             var str =
                 indent(nesting) + "{ 'ast::class': 'Program'"
               + indent(nesting) + ", 'packages': " + encodePackages (p.packages,nesting+", 'packages': ".length)
-              + indent(nesting) + ", 'fixtures': " + encodeFixtures (p.fixtures,nesting+", 'fixtures': ".length)
+              + indent(nesting) + ", 'head': [ " + encodeHead (p.head,nesting+", 'head': [ ".length) + " ]"
               + indent(nesting) + ", 'block': " + encodeBlock (p.block,nesting+", 'block': ".length)
               + " }";
         }
@@ -44,7 +44,7 @@
 
     function encodeFixtures (nd /*: FIXTURES*/, nesting: int = 0)
         : string {
-        enter ("encodeFixtures nd.length=",nd);
+        enter ("encodeFixtures nd=",nd);
         var str;
 
         if (nd.length == 0) {
@@ -54,9 +54,9 @@
         {
             var str =
                   encodeFixtureBinding (nd[0], nesting)
-                + indent(nesting-2)
+                + indent(nesting)
                 + ", "
-                + encodeFixtures (nd.slice (1,nd.length), nesting);
+                + encodeFixtures (nd.slice (1,nd.length), nesting+", ".length);
         }
         exit ("encodeFixtures ",str);
         return str;
@@ -102,7 +102,7 @@
         return str;
     }
 
-    function encodeFixture (nd /*: FIXTURE*/, nesting: int = 0)
+    function encodeFixture (nd: FIXTURE, nesting: int = 0)
         : string {
         enter ("encodeFixture ",nesting);
 
@@ -127,8 +127,26 @@
               + indent(nesting) + ", 'isFinal': " + nd.isFinal
               + " }";
         }
+        case (nd:Ast::ClassFixture) {
+            var str =
+                "{ 'ast::class': 'ClassFixture'"
+              + indent(nesting) + ", 'cls': " + encodeCls (nd.cls,nesting+", 'cls': ".length)
+              + " }";
+        }
+        case (nd:Ast::NamespaceFixture) {
+            var str =
+                "{ 'ast::class': 'NamespaceFixture'"
+              + indent(nesting) + ", 'ns': " + encodeNamespace (nd.ns,nesting+", 'ns': ".length)
+              + " }";
+        }
+        case (nd:Ast::TypeFixture) {
+            var str =
+                "{ 'ast::class': 'TypeFixture'"
+              + indent(nesting) + ", 'expr': " + encodeTypeExpr (nd.expr,nesting+", 'expr': ".length)
+              + " }";
+        }
         case (nd: *) {
-            var str = "[[encodeFixture, unhandled ast: " + nd + "]]";
+            var str = "**encodeFixture, unhandled ast: " + nd + "**";
         }
         }
 
@@ -261,6 +279,32 @@
               + encodeStmt (nd.els,nesting+", 'els': ".length)
               + " }";
         }
+        case (nd: WhileStmt) {
+            var str =
+                "{ 'ast::class': 'WhileStmt'"
+              + indent(nesting)
+              + ", 'expr': "
+              + encodeExpr (nd.expr,nesting+", 'expr': ".length)
+              + indent(nesting)
+              + ", 'body': "
+              + encodeStmt (nd.body,nesting+", 'body': ".length)
+              + " }";
+        }
+        case (nd: BlockStmt) {
+            var str =
+                "{ 'ast::class': 'BlockStmt'"
+              + indent(nesting)
+              + ", 'block': "
+              + encodeBlock (nd.block,nesting+", 'block': ".length)
+              + " }";
+        }
+        case (nd: ClassBlock) {
+            var str =
+                "{ 'ast::class': 'ClassBlock'"
+              + indent(nesting) + ", 'name': " + encodeName (nd.name,nesting+", 'name': ".length)
+              + indent(nesting) + ", 'block': " + encodeBlock (nd.block,nesting+", 'block': ".length)
+              + " }";
+        }
         case (x: *) {
             throw "internalError: encodeStmt";
         }
@@ -311,7 +355,7 @@
 
     function encodeExpr (nd : EXPR, nesting: int = 0)
         : string {
-        enter ("encodeExpr");
+        enter ("encodeExpr ",nd);
         var str = "";
         switch type (nd): EXPR {
         case (le: LiteralExpr) {
@@ -373,6 +417,20 @@
               + encodeIdentExpr (ex.ident,nesting+", 'ident': ".length)
               + " }";
         }
+        case (ex: SetExpr) {
+            var str =
+                "{ 'ast::class': 'SetExpr'"
+              + indent(nesting)
+              + ", 'op': "
+              + encodeAssignOp (ex.op,nesting,", 'op': ".length)
+              + indent(nesting)
+              + ", 'le': "
+              + encodeExpr (ex.le,nesting+", 'le': ".length)
+              + indent(nesting)
+              + ", 're': "
+              + encodeExpr (ex.re,nesting+", 're': ".length)
+              + " }";
+        }
         case (ex: BinaryExpr) {
             var str =
                 "{ 'ast::class': 'BinaryExpr'"
@@ -385,6 +443,17 @@
               + indent(nesting)
               + ", 'e2': "
               + encodeExpr (ex.e2,nesting+", 'e2': ".length)
+              + " }";
+        }
+        case (ex: UnaryExpr) {
+            var str =
+                "{ 'ast::class': 'UnaryExpr'"
+              + indent(nesting)
+              + ", 'op': "
+              + encodeUnOp (ex.op,nesting,", 'op': ".length)
+              + indent(nesting)
+              + ", 'ex': "
+              + encodeExpr (ex.ex,nesting+", 'ex': ".length)
               + " }";
         }
         case (nd: InitExpr) {
@@ -400,6 +469,33 @@
               + ", 'inits': [ "
               + encodeInits (nd.inits,nesting+", 'inits': [ ".length)
               + " ] }";
+        }
+        case (nd: LetExpr) {
+            var str =
+                "{ 'ast::class': 'LetExpr'"
+              + indent(nesting)
+              + ", 'head': "
+              + encodeHead (nd.head,nesting+", 'head': ".length)
+              + indent(nesting)
+              + ", 'expr': "
+              + encodeExpr (nd.expr,nesting+", 'expr': ".length)
+              + " }";
+        }
+        case (nd: GetTemp) {
+            var str =
+                "{ 'ast::class': 'GetTemp'"
+              + indent(nesting)
+              + ", 'n': "
+              + nd.n
+              + " }";
+        }
+        case (nd: GetParam) {
+            var str =
+                "{ 'ast::class': 'GetParam'"
+              + indent(nesting)
+              + ", 'n': "
+              + nd.n
+              + " }";
         }
         case (x: *) {
             var str = "**unknown node in encodeExpr "+nd+"**";
@@ -420,7 +516,10 @@
               + indent(nesting)
               + ", 'ident': "
               + ie.ident
-              + " }";
+              + indent(nesting)
+              + ", 'nss': [ "
+              + encodeNamespacesList (ie.nss,nesting+", 'nss': [ ".length)
+              + " ] }";
         }
         case (ie: QualifiedIdentifier) {
             var str =
@@ -449,6 +548,31 @@
         return str;
     }
 
+    function encodeTypeExprs (nd /*: [TYPE_EXPR]*/, nesting: int = 0)
+        : string {
+        enter ("encodeTypeExprs nd.length=",nd.length);
+
+        var str;
+        if (nd == null) {
+            var str = "null";
+        }
+        else
+        if (nd.length == 0) {
+            var str = "";
+        }
+        else
+        {
+            var str =
+                  encodeTypeExpr (nd[0],nesting)
+                + indent(nesting-2)
+                + ", "
+                + encodeTypeExprs (nd.slice (1,nd.length), nesting);
+        }
+
+        exit ("encodeTypeExprs ",str);
+        return str;
+    }
+
     function encodeTypeExpr (nd : TYPE_EXPR, nesting: int = 0)
         : string {
         enter ("encodeTypeExpr ",nd);
@@ -470,11 +594,75 @@
               + nd.kind
               + " }";
         }
+        case (nd: UnionType) {
+            var str =
+                "{ 'ast::class': 'UnionType'"
+              + indent(nesting)
+              + ", 'types': [ "
+              + encodeTypeExprs (nd.types,nesting+", 'types': [ ".length)
+              + " ] }";
+        }
+        case (nd: ObjectType) {
+            var str =
+                "{ 'ast::class': 'ObjectType'"
+              + indent(nesting)
+              + ", 'fields': [ "
+              + encodeFieldTypes (nd.fields,nesting+", 'fields': [ ".length)
+              + " ] }";
+        }
+        case (nd: ArrayType) {
+            var str =
+                "{ 'ast::class': 'ArrayType'"
+              + indent(nesting)
+              + ", 'types': [ "
+              + encodeTypeExprs (nd.types,nesting+", 'types': [ ".length)
+              + " ] }";
+        }
         case (nd: *) {
             var str = "** unknown type in encodeTypeExpr: " + nd;
         }
         }
-        exit ("encodeIdentExpr ",str);
+        exit ("encodeTypeExpr ",str);
+        return str;
+    }
+
+    function encodeFieldTypes (nd /*: [FIELD_TYPE]*/, nesting: int = 0)
+        : string {
+        enter ("encodeFieldTypes nd.length=",nd.length);
+
+        var str;
+        if (nd == null) {
+            var str = "null";
+        }
+        else
+        if (nd.length == 0) {
+            var str = "";
+        }
+        else
+        {
+            var str =
+                  encodeFieldType (nd[0],nesting)
+                + indent(nesting-2)
+                + ", "
+                + encodeFieldTypes (nd.slice (1,nd.length), nesting);
+        }
+
+        exit ("encodeFieldTypes ",str);
+        return str;
+    }
+
+    function encodeFieldType (nd : FIELD_TYPE, nesting: int = 0)
+    {
+        enter ("encode FieldType");
+
+        var str = "";
+            var str =
+                "{ 'ast::class': 'FieldType'"
+              + indent(nesting) + ", 'name': " + nd.name
+              + indent(nesting) + ", 'type': " + encodeTypeExpr (nd.type,nesting+", 'type': ".length)
+                + " }";
+
+        exit ("encodeFieldType");
         return str;
     }
 
@@ -523,6 +711,57 @@
         return str;
     }
 
+    function encodeNamespacesList (nd /*: [[NAMESPACE]]*/, nesting: int = 0)
+        : string {
+        enter ("encodeNamespacesList nd.length=",nd.length);
+
+        var str;
+        if (nd == null) {
+            var str = "null";
+        }
+        else
+        if (nd.length == 0) {
+            var str = "";
+        }
+        else
+        {
+            var str = " [ "
+                + encodeNamespaces (nd[0],nesting+" [ ".length)
+                + " ]"
+                + indent(nesting-2)
+                + ", "
+                + encodeNamespacesList (nd.slice (1,nd.length), nesting);
+        }
+
+        exit ("encodeNamespacesList ",str);
+        return str;
+    }
+
+    function encodeNamespaces (nd /*: [NAMESPACE]*/, nesting: int = 0)
+        : string {
+        enter ("encodeNamespaces nd.length=",nd.length);
+
+        var str;
+        if (nd == null) {
+            var str = "null";
+        }
+        else
+        if (nd.length == 0) {
+            var str = "";
+        }
+        else
+        {
+            var str =
+                  encodeNamespace (nd[0],nesting)
+                + indent(nesting-2)
+                + ", "
+                + encodeNamespaces (nd.slice (1,nd.length), nesting);
+        }
+
+        exit ("encodeNamespaces ",str);
+        return str;
+    }
+
     function encodeNamespace (nd : NAMESPACE, nesting: int = 0)
         : string {
         enter ("encodeNamespace ",nesting)
@@ -531,6 +770,30 @@
         case (nd: PublicNamespace) {
             var str =
                 "{ 'ast::class': 'PublicNamespace'"
+              + indent(nesting) + ", 'name': '" + nd.name
+              + "' }";
+        }
+        case (nd: PrivateNamespace) {
+            var str =
+                "{ 'ast::class': 'PrivateNamespace'"
+              + indent(nesting) + ", 'name': '" + nd.name
+              + "' }";
+        }
+        case (nd: ProtectedNamespace) {
+            var str =
+                "{ 'ast::class': 'ProtectedNamespace'"
+              + indent(nesting) + ", 'name': '" + nd.name
+              + "' }";
+        }
+        case (nd: InternalNamespace) {
+            var str =
+                "{ 'ast::class': 'InternalNamespace'"
+              + indent(nesting) + ", 'name': '" + nd.name
+              + "' }";
+        }
+        case (nd: AnonymousNamespace) {
+            var str =
+                "{ 'ast::class': 'AnonymousNamespace'"
               + indent(nesting) + ", 'name': '" + nd.name
               + "' }";
         }
@@ -547,16 +810,72 @@
         enter ("encodeName ",nesting)
 
         var str =
-                "{ 'ns': '"+encodeNamespace (nd.ns,nesting+"{ 'ns': '".length)
+                "{ 'ns': "+encodeNamespace (nd.ns,nesting+"{ 'ns': ".length)
               + indent(nesting) + ", 'id': '"+ nd.id+"' }";
 
         exit ("encodeName ",str);
         return str;
     }
 
+    function encodeAssignOp (nd : ASSIGNOP, nesting: int = 0)
+        : string {
+        enter ("encodeAssignOp")
+        var str = "";
+        switch type (nd): ASSIGNOP {
+        case (op: Assign) {
+            var str = "Assign";
+        }
+        case (op: AssignPlus) {
+            var str = "AssignPlus";
+        }
+        case (op: AssignMinus) {
+            var str = "AssignMinus";
+        }
+        case (op: AssignTimes) {
+            var str = "AssignTimes";
+        }
+        case (op: AssignDivide) {
+            var str = "AssignDivide";
+        }
+        case (op: AssignRemainder) {
+            var str = "AssignRemainder";
+        }
+        case (op: AssignLeftShift) {
+            var str = "AssignLeftShift";
+        }
+        case (op: AssignRightShift) {
+            var str = "AssignRightShift";
+        }
+        case (op: AssignRightShiftUnsigned) {
+            var str = "AssignRightShiftUnsigned";
+        }
+        case (op: AssignBitwiseAnd) {
+            var str = "AssignBitwiseAnd";
+        }
+        case (op: AssignBitwiseOr) {
+            var str = "AssignBitwiseOr";
+        }
+        case (op: AssignBitwiseXor) {
+            var str = "AssignBitwiseXor";
+        }
+        case (op: AssignLogicalAnd) {
+            var str = "AssignLogicalAnd";
+        }
+        case (op: AssignLogicalOr) {
+            var str = "AssignLogicalOr";
+        }
+        case (x: *) {
+            throw "internalError: encodeLiteral";
+        }
+        }
+        var str = "{ 'ast::class': '" + str + "' }"
+        exit ("encodeAssignOp ",str);
+        return str;
+    }
+
     function encodeBinOp (nd : BINOP, nesting: int = 0)
         : string {
-        enter ("encodeLiteral")
+        enter ("encodeBinOp")
         var str = "";
         switch type (nd): BINOP {
         case (op: Plus) {
@@ -633,7 +952,57 @@
         }
         }
         var str = "{ 'ast::class': '" + str + "' }"
-        exit ("encodeLiteral ",str);
+        exit ("encodeBinOp ",str);
+        return str;
+    }
+
+    function encodeUnOp (nd : UNOP, nesting: int = 0)
+        : string {
+        enter ("encodeUnOp")
+        var str = "";
+        switch type (nd): UNOP {
+        case (op: Delete) {
+            var str = "Delete";
+        }
+        case (op: Void) {
+            var str = "Void";
+        }
+        case (op: Typeof) {
+            var str = "Typeof";
+        }
+        case (op: PreIncr) {
+            var str = "PreIncr";
+        }
+        case (op: PreDecr) {
+            var str = "PreDecr";
+        }
+        case (op: PostIncr) {
+            var str = "PostIncr";
+        }
+        case (op: PostDecr) {
+            var str = "PostDecr";
+        }
+        case (op: UnaryPlus) {
+            var str = "UnaryPlus";
+        }
+        case (op: UnaryMinus) {
+            var str = "UnaryMinus";
+        }
+        case (op: BitwiseNot) {
+            var str = "BitwiseNot";
+        }
+        case (op: LogicalNot) {
+            var str = "LogicalNot";
+        }
+        case (op: Type) {
+            var str = "Type";
+        }
+        case (x: *) {
+            throw "internalError: encodeUnOp";
+        }
+        }
+        var str = "{ 'ast::class': '" + str + "' }"
+        exit ("encodeUnOp ",str);
         return str;
     }
 
@@ -732,14 +1101,54 @@
           + ", 'params': "
           + encodeHead (nd.params,nesting+", 'params': ".length)
           + indent(nesting)
-          + ", 'defaults': "
-          + encodeExprs (nd.defaults,nesting+", 'defaults': ".length)
+          + ", 'vars': "
+          + encodeHead (nd.vars,nesting+", 'vars': ".length)
+          + indent(nesting)
+          + ", 'defaults': [" + encodeExprs (nd.defaults,nesting+", 'defaults': ".length) + " ]"
           + indent(nesting)
           + ", 'type': "
           + encodeTypeExpr (nd.type,nesting+", 'ident': ".length)
           + " }";
 
-        exit ("encodeBinding ",str);
+        exit ("encodeFunc ",str);
+        return str;
+    }
+
+    function encodeCls (nd : CLS, nesting: int = 0)
+        : string {
+
+        enter ("encodeCls ",nd);
+
+        var str =
+            "{ 'ast::class': 'Cls'"
+          + indent(nesting) + ", 'name': " + encodeName (nd.name,nesting+", 'name': ".length)
+          + indent(nesting) + ", 'baseName': " + encodeName (nd.baseName,nesting+", 'baseName': ".length)
+            /*
+          + indent(nesting) + ", 'interfaceNames': " + encodeNames (nd.interfaceNames,nesting+", 'interfaceNames': ".length)
+            */
+          + indent(nesting) + ", 'constructor': " + encodeCtor (nd.constructor,nesting+", 'constructor': ".length)
+          + indent(nesting) + ", 'classHead': [ " + encodeHead (nd.classHead,nesting+", 'classHead': [ ".length) + " ]"
+          + indent(nesting) + ", 'instanceHead': [ " + encodeHead (nd.instanceHead,nesting+", 'instanceHead': [ ".length) + " ]"
+          + indent(nesting) + ", 'classType': " + encodeTypeExpr (nd.classType,nesting+", 'classType': ".length)
+          + indent(nesting) + ", 'instanceType': " + encodeTypeExpr (nd.instanceType,nesting+", 'instanceType': ".length)
+          + " }";
+
+        exit ("encodeCls ",str);
+        return str;
+    }
+
+    function encodeCtor (nd : CTOR, nesting: int = 0)
+        : string {
+        enter ("encodeCtor");
+
+        var str =
+            "{ 'ast::class': 'Ctor'"
+          + indent(nesting) + ", 'settings': [ " + encodeExprs (nd.settings,nesting+", 'settings': [ ".length) + "]"
+          + indent(nesting) + ", 'superArgs': [ " + encodeExprs (nd.superArgs,nesting+", 'superArgs': ".length) + " ]" 
+          + indent(nesting) + ", 'func': " + encodeFunc (nd.func,nesting+", 'func': ".length)
+          + " }";
+
+        exit ("encodeCtor ",str);
         return str;
     }
 

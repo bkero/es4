@@ -263,6 +263,10 @@ val magic_getPropertyIsDontDelete = magic Ustring.getPropertyIsDontDelete_
 val magic_getPropertyIsDontEnum = magic Ustring.getPropertyIsDontEnum_
 val magic_hasOwnProperty = magic Ustring.hasOwnProperty_
 val magic_getPrototype = magic Ustring.getPrototype_
+val magic_getSuperClass = magic Ustring.getSuperClass_
+val magic_getSuperInterface = magic Ustring.getSuperInterface_
+val magic_getImplementedInterface = magic Ustring.getImplementedInterface_
+val magic_getClassOfObject = magic Ustring.getClassOfObject_
 val magic_getClassName = magic Ustring.getClassName_
 val magic_construct = magic Ustring.construct_
 

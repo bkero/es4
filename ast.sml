@@ -186,7 +186,7 @@ datatype PRAGMA =
 
      and CTOR =
          Ctor of {
-             settings: HEAD,
+             settings: HEAD, (* FIXME should be a EXPR list of LetExpr of InitExpr *)
              superArgs: EXPR list,
              func: FUNC }
 
