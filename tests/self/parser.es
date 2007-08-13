@@ -2244,7 +2244,7 @@ type TOKENS = Array;  // [int];
             var [ts1,nd1] = pattern (ts,beta,NoExpr);
             switch (hd (ts1)) {
             case Token::Colon:
-                var [ts2,nd2] = typeExpression (tl (ts1));
+                var [ts2,nd2] = nullableTypeExpression (tl (ts1));
                 break;
             default:
                 var [ts2,nd2] = [ts1,new Ast::SpecialType (new Ast::AnyType)];
@@ -2790,6 +2790,13 @@ type TOKENS = Array;  // [int];
             return [ts1,nd1];
         }
 
+        function printLn (ts) {
+            let offset = ts.length;
+            let coord = coordList[coordList.length-offset];
+            print ("line ",coord[0]);
+        }
+
+
         function newline (ts: TOKENS)
             : boolean
         {
@@ -3133,7 +3140,7 @@ type TOKENS = Array;  // [int];
 
         */
 
-        function functionDefinition (ts: TOKENS, tau: TAU, kind, ns, isFinal, isOverride, isPrototype, isStatic, isAbstract)
+        function functionDefinition (ts: TOKENS, tau: TAU, omega: OMEGA, kind, ns, isFinal, isOverride, isPrototype, isStatic, isAbstract)
             : [TOKENS, Ast::STMTS]
         {
             enter("Parser::functionDefinition ", ts);
@@ -3144,7 +3151,7 @@ type TOKENS = Array;  // [int];
             var [ts2,nd2] = functionSignature (ts1);
 
             cx.enterVarBlock ();
-            var [ts3,nd3] = functionBody (ts2, AllowIn);
+            var [ts3,nd3] = functionBody (ts2, AllowIn, omega);
             var vars = cx.exitVarBlock ();
 
             var {params:params,defaults:defaults,resultType:resultType,thisType:thisType,hasRest:hasRest} = nd2;
@@ -3165,7 +3172,7 @@ type TOKENS = Array;  // [int];
 
         */
 
-        function constructorDefinition (ts: TOKENS, ns)
+        function constructorDefinition (ts: TOKENS, omega, ns)
             : [TOKENS, Ast::STMTS]
         {
             enter("Parser::constructorDefinition ", ts);
@@ -3176,13 +3183,13 @@ type TOKENS = Array;  // [int];
             var [ts2,nd2] = constructorSignature (ts1);
 
             cx.enterVarBlock ();
-            var [ts3,nd3] = functionBody (ts2, AllowIn);
+            var [ts3,nd3] = functionBody (ts2, AllowIn, omega);
             var vars = cx.exitVarBlock ();
 
             var {params:params,defaults:defaults,hasRest:hasRest,settings:settings,superArgs:superArgs} = nd2;
 
-            print ("superArgs=",superArgs);
-            print ("settings=",settings);
+            // print ("superArgs=",superArgs);
+            // print ("settings=",settings);
             var func = new Ast::Func ({kind:new Ast::Ordinary,ident:nd1},false,nd3,params,vars,defaults,Ast::voidType);
             var ctor = new Ast::Ctor (settings,superArgs,func);
 
@@ -3835,7 +3842,7 @@ type TOKENS = Array;  // [int];
 
         */
 
-        function functionBody (ts: TOKENS, beta: BETA)
+        function functionBody (ts: TOKENS, beta: BETA, omega)
             : [TOKENS, Ast::BLOCK]
         {
             enter("Parser::functionBody ", ts);
@@ -3846,7 +3853,8 @@ type TOKENS = Array;  // [int];
                 break;
             default:
                 var [ts1,nd1] = assignmentExpression (ts,beta);
-                var nd1 = new Ast::Block ([],{fixtures:[],inits:[]},[new ReturnStmt (nd1)],null);
+                ts1 = semicolon (ts1,omega);
+                var nd1 = new Ast::Block ({fixtures:[],inits:[]},[new Ast::ReturnStmt (nd1)],null);
                 break;
             }
 
@@ -3862,9 +3870,9 @@ type TOKENS = Array;  // [int];
             ts = eat (ts, Token::Class);
 
             var [ts1,nd1] = identifier (ts);
+            // print ("class ",nd1);
             var [ts2,nd2] = typeSignature (ts1);
             var [ts3,nd3] = classInheritance (ts2);
-
             currentClassName = nd1;
             cx.enterVarBlock ();
             var [ts4,blck] = classBody (ts3);
@@ -3877,7 +3885,7 @@ type TOKENS = Array;  // [int];
             if (ctor===null)
             {
                 let isNative = false;
-                let blck = new Ast::Block ([],{fixtures:[],inits:[]},[]);
+                let blck = new Ast::Block ({fixtures:[],inits:[]},[]);
                 let params = {fixtures:[],inits:[]};
                 let vars = {fixtures:[],inits:[]};
                 let defaults = [];
@@ -4071,6 +4079,8 @@ type TOKENS = Array;  // [int];
 
             ts = eat (ts,Token::Type);
             var [ts1,nd1] = identifier (ts);
+            // print ("type ",nd1);
+
             ts1 = eat (ts1,Token::Assign);
             var [ts2,nd2] = nullableTypeExpression (ts1);
             ts2 = semicolon (ts2, omega);
@@ -4203,6 +4213,7 @@ type TOKENS = Array;  // [int];
         {
             enter("Parser::directive ", ts);
 
+            // printLn(ts);
             switch (hd(ts)) {
             case Token::Let: // FIXME might be function
             case Token::Var:
@@ -4217,11 +4228,11 @@ type TOKENS = Array;  // [int];
             case Token::Function:
                 if (isCurrentClassName (tl (ts))) 
                 {
-                    var [ts1,stmts1] = constructorDefinition (ts, cx.pragmas.defaultNamespace);
+                    var [ts1,stmts1] = constructorDefinition (ts, omega, cx.pragmas.defaultNamespace);
                 }
                 else 
                 {
-                    var [ts1,stmts1] = functionDefinition (ts, tau, new Ast::Var
+                    var [ts1,stmts1] = functionDefinition (ts, tau, omega, new Ast::Var
                                   , cx.pragmas.defaultNamespace
                                   , false, false, false, false, false);
                 }
@@ -4774,12 +4785,11 @@ type TOKENS = Array;  // [int];
             ts = eat (ts, Token::LeftBrace);
             cx.enterLetBlock ();
             var [ts1,nd1] = directives (ts, tau);
-            let pragmas = cx.pragmas;
             let head = cx.exitLetBlock ();
             ts1 = eat (ts1, Token::RightBrace);
 
             exit ("Parser::block ", ts1);
-            return [ts1, new Ast::Block (pragmas,head,nd1)];
+            return [ts1, new Ast::Block (head,nd1)];
         }
 
         function program ()
@@ -4810,7 +4820,6 @@ type TOKENS = Array;  // [int];
 
             cx.enterLetBlock ();
             var [ts2,nd2] = directives (ts1, Global);
-            var pragmas = cx.pragmas;
             var bhead = cx.exitLetBlock ();
             var vhead = cx.exitVarBlock ();
 
@@ -4822,7 +4831,7 @@ type TOKENS = Array;  // [int];
             }
 
             exit ("Parser::program ", ts2);
-            return [ts2, new Ast::Program (nd1,new Ast::Block (pragmas,bhead,nd2),vhead)];
+            return [ts2, new Ast::Program (nd1,new Ast::Block (bhead,nd2),vhead)];
         }
     }
 

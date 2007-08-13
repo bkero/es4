@@ -4,7 +4,7 @@
 {
     use default namespace Ast;
     use namespace intrinsic;
-    use namespace Debug;
+    use namespace Release;
 
     function indent (n:int)
         : string {
@@ -206,10 +206,8 @@
         case (nd:Block) {
             var str =
                   "{ 'ast::class': 'Block'"
-                + indent(nesting) + ", 'pragmas': " + "[]" //encodePragmas (nd.pragmas)
                 + indent(nesting) + ", 'head': " + encodeHead (nd.head,nesting+", 'head': ".length)
                 + indent(nesting) + ", 'stmts': [ " + encodeStmts (nd.Ast::stmts,nesting+", 'stmts': [ ".length) +" ]";
-                + indent(nesting) + ", 'pos': " + "null" //encodePos (nd.pos)
                 + " }";
         }
         case (x: *) {
@@ -703,6 +701,16 @@
               + nd.booleanValue
               + " }";
         }
+        case (nd: LiteralNull) {
+            var str =
+                "{ 'ast::class': 'LiteralNull'"
+              + " }";
+        }
+        case (nd: LiteralUndefined) {
+            var str =
+                "{ 'ast::class': 'LiteralUndefined'"
+              + " }";
+        }
         case (x: *) {
             throw "internalError: encodeLiteral "+nd;
         }
@@ -796,6 +804,11 @@
                 "{ 'ast::class': 'AnonymousNamespace'"
               + indent(nesting) + ", 'name': '" + nd.name
               + "' }";
+        }
+        case (nd: IntrinsicNamespace) {
+            var str =
+                "{ 'ast::class': 'IntrinsicNamespace'"
+              + " }";
         }
         case (x: *) {
             throw "internalError: encodeNamespace "+nd;
@@ -1176,7 +1189,7 @@
             var str = "Ordinary";
         }
         case (nd: *) {
-            throw "internal error: encodeFuncNameKind " + nd;
+            var str = "** encodeFuncNameKind " + nd + "**";
         }
         }
 

@@ -731,7 +731,6 @@ namespace Lexer
         public function tokenList (lexPrefix)
             //            : [[int],[[int,int]]]
         {
-
             function pushToken (token)
             {
                 if (token == Token::Eol) {
@@ -744,8 +743,6 @@ namespace Lexer
                     tokenList.push (token);
                     lastMarkIndex = markIndex;
                 }
-
-                print ("token=",token)
             }
 
             var tokenList = new Array;
@@ -762,8 +759,8 @@ namespace Lexer
                 pushToken (token);
             }
 
-            print("tokenList = ",tokenList);
-            print("coordList = ",coordList);
+            // print("tokenList = ",tokenList);
+            // print("coordList = ",coordList);
             return [tokenList,coordList];
         }
 

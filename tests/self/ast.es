@@ -628,12 +628,9 @@ namespace Ast
 
     class ExpressionIdentifier {
         const expr: EXPR;
-        private const nss : [[NAMESPACE]];
+        const nss : [[NAMESPACE]];
         function ExpressionIdentifier (expr)
             : expr=expr {}
-        function set opennss (nss) {
-            this.nss = nss;
-        }
     }
 
     class QualifiedIdentifier {
@@ -948,9 +945,9 @@ namespace Ast
         const isReadOnly : Boolean;
         const isOverride : Boolean;
         const isFinal : Boolean;
-        function MethodFixture(func, type, isReadOnly, isOverride, isFinal) :
+        function MethodFixture(func, ty, isReadOnly, isOverride, isFinal) :
             func = func,
-            type = type,
+            type = ty,
             isReadOnly = isReadOnly,
             isOverride = isOverride,
             isFinal = isFinal
@@ -998,10 +995,10 @@ namespace Ast
         , UndefinedType
         , VoidType )
 
-    class AnyType { public function toString() "Any" }
-    class NullType { public function toString() "Null" }
-    class UndefinedType { public function toString() "Undefined" }
-    class VoidType { public function toString() "Void" }
+    class AnyType { function toString() "Any" }
+    class NullType { function toString() "Null" }
+    class UndefinedType { function toString() "Undefined" }
+    class VoidType { function toString() "Void" }
 
     const anyType = new SpecialType (new AnyType);
     const nullType = new SpecialType (new NullType);
@@ -1336,12 +1333,10 @@ namespace Ast
     type BLOCK = Block;
 
     class Block {
-        const pragmas;
         const head /*: HEAD?*/;
         const stmts : STMTS;
-        function Block (pragmas,head,stmts)
-            : pragmas = pragmas
-            , head = head
+        function Block (head,stmts)
+            : head = head
             , stmts = stmts { }
     }
 
@@ -1400,8 +1395,8 @@ namespace Ast
             , head = head {}
     }
 
-    public function test () {
-        intrinsic::print (new EmptyStmt)
+    function test () {
+        print (new EmptyStmt)
     }
 
     test()
