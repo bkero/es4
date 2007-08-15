@@ -224,6 +224,12 @@ fun exprOf (ty:Ast.TY) : Ast.TYPE_EXPR =
 fun isGroundTy (ty:Ast.TY) 
     : bool =
     isGroundType (exprOf ty)
+
+fun groundExpr (ty:Ast.TY) 
+    : Ast.TYPE_EXPR = 
+    if isGroundTy ty
+    then exprOf ty
+    else error ["extracting ground type expr from non-ground ty"]
              
 (* 
  * During normalization we work with a "slighly unpacked" form of type

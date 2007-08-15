@@ -359,7 +359,7 @@ fun mergeRibs (oldRib:Ast.RIB)
               (newRib:Ast.RIB) = 
     List.foldl (Fixture.mergeFixtures Type.equals) oldRib newRib
 
-fun updateFixtures (env:ENV) (rib:Ast.RIB)
+fun updateRib (env:ENV) (rib:Ast.RIB)
     : ENV =
     let
         val { nonTopRibs, tempOffset, numericMode, openNamespaces, 
@@ -595,7 +595,11 @@ and defInterface (env: ENV)
         val name = {id = ident, ns = resolveExprOptToNamespace env ns} 
 
         (* Resolve base interface's super interfaces and fixtures *)
-        val (superInterfaces, inheritedFixtures) = resolveInterfaces env extends
+        val (superInterfaces:Ast.TY list, inheritedRib:Ast.RIB) = resolveInterfaces env extends
+
+        val prog = (#program env)
+
+        val groundSuperInterfaceExprs = map (Type.groundExpr o (Type.normalize prog)) superInterfaces
 
         val env = enterClass env name
 
@@ -603,7 +607,7 @@ and defInterface (env: ENV)
         val (unhoisted,instanceRib,_) = defNonTopDefns env instanceDefns
 
         (* Inherit fixtures and check overrides *)
-        val instanceRib = inheritRib inheritedFixtures instanceRib
+        val instanceRib = inheritRib inheritedRib instanceRib
 
         (* Make the instance type and interface fixture *)
         val instanceType = 
@@ -611,8 +615,8 @@ and defInterface (env: ENV)
                             { name=name,
                               nonnullable=nonnullable,
                               typeArgs=[],
-                              superTypes=(map (makeTy env) superInterfaces),
-                              ty=Ast.SpecialType Ast.Any,  (* FIXME needs record type *)
+                              superTypes=groundSuperInterfaceExprs,
+                              ty=Ast.SpecialType Ast.Any,  (* FIXME needs synthetic record type *)
                               conversionTy=NONE,
                               dynamic=false}) (* interfaces are never dynamic *)
                         
@@ -2211,7 +2215,7 @@ and defStmt (env:ENV)
                 let
                     val newObj =  defExpr env obj
                     val (uf1,hf1,i1) = defVarDefnOpt defn
-                    val env = updateFixtures env uf1
+                    val env = updateRib env uf1
                     val (newBody,hoisted) = defStmt env [] body
                     val tempEnv = updateTempOffset env 1   (* alloc temp for iteration value *)
                     val (newNext,_) = defStmt tempEnv [] next
@@ -2256,7 +2260,7 @@ and defStmt (env:ENV)
                         SOME vd => defDefn false env (Ast.VariableDefn vd)
                       | NONE => ([],[],[])
                 val (uf,hf,_) = defVarDefnOpt defn
-                val env' = updateFixtures env (mergeRibs uf hf)
+                val env' = updateRib env (mergeRibs uf hf)
                 val (newInit,_) = defStmts env' init
                 val newCond = defExpr env' cond
                 val newUpdate = defExpr env' update
@@ -2548,7 +2552,7 @@ and defStmts (env) (stmts:Ast.STMT list)
                 (* Class definitions are embedded in the ClassBlock so we
                    need to update the environment in that case *)
 
-                val env' = updateFixtures env f1
+                val env' = updateRib env f1
                 val (s2,f2) = defStmts env' stmts
             in
                 (s1::s2,(mergeRibs f1 f2))
@@ -2703,11 +2707,11 @@ and defTopDefns (env:ENV)
             let
                 val (unhoisted', hoisted', inits') = defDefn true env d
                 val env = extendProgramTopRib env hoisted'
-                val env = updateEnvironment env unhoisted'
+                val env = updateRib env unhoisted'
            in
-                defDefns env ds
-                         (mergeRibs unhoisted unhoisted')
-                         (inits@inits') 
+                defTopDefns env ds
+                            (mergeRibs unhoisted unhoisted')
+                            (inits@inits') 
            end
     end
 
@@ -2733,7 +2737,7 @@ and defBlock (env:ENV)
         val _ = LogErr.setLoc loc
         val (env,unhoisted_pragma_fxtrs) = defPragmas env pragmas
         val (unhoisted_defn_fxtrs,hoisted_defn_fxtrs,inits) = defNonTopDefns env defns
-        val env = updateFixtures env (mergeRibs unhoisted_defn_fxtrs hoisted_defn_fxtrs)
+        val env = updateRib env (mergeRibs unhoisted_defn_fxtrs hoisted_defn_fxtrs)
         val (body,hoisted_body_fxtrs) = defStmts env body
         val hoisted = mergeRibs hoisted_defn_fxtrs hoisted_body_fxtrs
     in
