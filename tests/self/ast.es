@@ -81,6 +81,7 @@ namespace Ast
     type INIT_BINDING = [FIXTURE_NAME,EXPR]
     type INITS = [INIT_BINDING];
 
+    type NAMES = [NAME];
     type NAME =
        { ns: NAMESPACE
        , id: IDENT }
@@ -91,9 +92,10 @@ namespace Ast
 
     // NAMESPACE
 
+    type NAMESPACES = [NAMESPACE];
+
     type NAMESPACE =
        ( IntrinsicNamespace
-       , OperatorNamespace
        , PrivateNamespace
        , ProtectedNamespace
        , PublicNamespace
@@ -192,32 +194,6 @@ namespace Ast
     class HalfEven {}
 
     // OPERATORS
-
-    /*
-
-    Pattern for using operator expression nodes
-
-    switch type (e:EXPR)
-    {
-        case (expr:UnaryExpr) {
-            let {op,ex} = expr
-            switch type (op:UNOP) {
-                case (_:Delete) { delete... }
-                case (_:Void) { ...void... }
-            }
-        }
-        case (expr:BinaryExpr) {
-            ...binary expr...
-        }
-        case (expr:TernaryExpr) {
-            ...ternary expr...
-        }
-        default {
-            throw "unimplemented expression type"
-        }
-    }
-
-    */
 
     // Binary type operators
 
@@ -383,6 +359,8 @@ namespace Ast
 
     // EXPR
 
+    type EXPRS = [EXPR];
+
     type EXPR =
        ( TernaryExpr
        , BinaryExpr
@@ -438,9 +416,9 @@ namespace Ast
 
     class UnaryExpr {
         const op : UNOP;
-        const ex : EXPR;
-	    function UnaryExpr (op,ex)
-            : op=op, ex=ex {}
+        const e1 : EXPR;
+	    function UnaryExpr (op,e1)
+            : op=op, e1=e1 {}
     }
 
     class UnaryNumberExpr extends UnaryExpr {
@@ -541,7 +519,7 @@ namespace Ast
     }
 
     class ListExpr {
-        const exprs : [EXPR];
+        const exprs : EXPRS;
         function ListExpr (exprs)
             : exprs=exprs {}
     }
@@ -770,6 +748,36 @@ namespace Ast
         const src : String;
     }
 
+    type VAR_DEFN_TAG =
+        ( Const
+        , Var
+        , LetVar
+        , LetConst )
+
+    class Const {}
+    class Var {}
+    class LetVar {}
+    class LetConst {}
+
+    const constTag = new Const;
+    const varTag = new Var;
+    const letVarTag = new LetVar;
+    const letConstTag = new LetConst;
+
+    class VariableDefn {
+        const ns: NAMESPACE;
+        const isStatic: Boolean;
+        const isPrototype: Boolean;
+        const kind: VAR_DEFN_TAG;
+        const bindings: BINDING_INITS;
+        function VariableDefn (ns,isStatic,isPrototype,kind,bindings)
+            : ns = ns
+            , isStatic = isStatic
+            , isPrototype = isPrototype
+            , kind = kind
+            , bindings = bindings {}
+    }
+
     // CLS
 
     type CLS = Cls;
@@ -934,9 +942,9 @@ namespace Ast
     class TypeVarFixture {}
 
     class TypeFixture {
-        const expr: TYPE_EXPR;
-        function TypeFixture (expr)
-            : expr = expr {}
+        const type: TYPE_EXPR;
+        function TypeFixture (ty)
+            : type = ty {}
     }
 
     class MethodFixture {
@@ -963,8 +971,8 @@ namespace Ast
 
     class VirtualValFixture {
         const type : TYPE_EXPR;
-        const getter : FUNC_DEFN?;
-        const setter : FUNC_DEFN?;
+        const getter : FUNC?;
+        const setter : FUNC?;
     }
 
     // TYPES
@@ -1128,20 +1136,26 @@ namespace Ast
 
     class ThrowStmt {
         const expr : EXPR;
+        function ThrowStmt (expr)
+            : expr = expr { }
     }
 
     class ReturnStmt {
         const expr : EXPR?;
         function ReturnStmt(expr) 
-            : expr = expr {}
+            : expr = expr { }
     }
 
     class BreakStmt {
         const ident : IDENT?;
+        function BreakStmt (ident)
+            : ident = ident { }
     }
 
     class ContinueStmt {
         const ident : IDENT?;
+        function ContinueStmt (ident)
+            : ident = ident { }
     }
 
     class BlockStmt {
@@ -1157,173 +1171,113 @@ namespace Ast
 
     class LetStmt {
         const block : BLOCK;
+        function LetStmt (block)
+            : block = block {}
     }
 
     class WhileStmt {
         const expr : EXPR;
-        const body : STMT;
+        const stmt : STMT;
         const labels : [IDENT];
-        const fixtures : FIXTURES?;  // What are these for?
-        function WhileStmt (expr,body)
+        function WhileStmt (expr,stmt,labels)
             : expr = expr
-            , body = body {}
+            , stmt = stmt
+            , labels = labels {}
     }
 
     class DoWhileStmt {
         const expr : EXPR;
-        const body : STMT;
+        const stmt : STMT;
         const labels : [IDENT];
-        const fixtures : FIXTURES?  // What are these for?
+        function DoWhileStmt (expr,stmt,labels)
+            : expr = expr
+            , stmt = stmt
+            , labels = labels {}
     }
 
     class ForStmt {
         const e1 : EXPR?;
         const e2 : EXPR?;
         const e3 : EXPR?;
-        const body : STMT;
+        const stmt : STMT;
         const labels : [IDENT];
-        const fixtures : FIXTURES?
+        function ForStmt (e1,e2,e3,stmt,labels)
+            : e1 = e1
+            , e2 = e2
+            , e3 = e3
+            , stmt = stmt
+            , labels = labels {}
     }
 
     class IfStmt {
-        const cnd : EXPR;
-        const thn : STMT;
-        const els : STMT?;
-        function IfStmt (cnd,thn,els)
-            : cnd = cnd
-            , thn = thn
-            , els = els { }
-    }
-
-    class WithStmt {
         const expr : EXPR;
-        const body : STMT;
-    }
-
-    class TryStmt {
-    }
-
-    type CASE = Case;
-
-    class Case {
-        const guard : EXPR?;  // null for default
-        const body : [STMT];
+        const then : STMT;
+        const elseOpt : STMT?;
+        function IfStmt (expr,then,elseOpt)
+            : expr = expr
+            , then = then
+            , elseOpt = elseOpt { }
     }
 
     class SwitchStmt {
         const expr : EXPR;
-        const cases : [CASE]; // order matters
+        const cases : CASES; // order matters
+        function SwitchStmt (expr, cases) 
+            : expr = expr
+            , cases = cases { }
+    }
+
+    type CASE = Case;
+    type CASES = [CASE];
+
+    class Case {
+        const expr : EXPR?;  // null for default
+        const stmts : STMTS;
+        function Case (expr,stmts)
+            : expr = expr
+            , stmts = stmts { }
+    }
+
+    class WithStmt {
+        const expr : EXPR;
+        const stmt : STMT;
+        function WithStmt (expr,stmt)
+            : expr = expr
+            , stmt = stmt { }
+    }
+
+    class TryStmt {
+        const block : BLOCK;
+        const catches: CATCHES;
+        const finallyBlock: BLOCK?;
+        function TryStmt (block,catches,finallyBlock)
+            : block = block
+            , catches = catches
+            , finallyBlock = finallyBlock { }
     }
 
     class SwitchTypeStmt {
+        const expr: EXPR;
+        const type: TYPE_EXPR;
+        const catches: CATCHES;
+        function SwitchTypeStmt (expr,ty,catches)
+            : expr = expr
+            , type = ty
+            , catches = catches { }
+    }
+
+    type CATCH = Catch;
+    type CATCHES = [CATCH];
+
+    class Catch {
+        const param: HEAD;
+        const block: BLOCK;
+        function Catch (param,block)
+            : param = param
+            , block = block { }
     }
 
     class DXNStmt {
-    }
-
-    // DEFN
-
-    type DEFN = (
-        ClassDefn,
-        VariableDefn,
-        FunctionDefn,
-        ConstructorDefn,
-        InterfaceDefn,
-        NamespaceDefn,
-        TypeDefn )
-
-    type CLASS_DEFN =
-        { ident: IDENT
-        , ns: EXPR?
-        , isNonnullable: Boolean
-        , isDynamic: Boolean
-        , isFinal: Boolean
-        , params: [IDENT]
-        , base: IDENT_EXPR
-        , implements: [IDENT_EXPR]
-        , classDefns: [DEFN]
-        , instanceDefns: [DEFN]
-        , instanceStmts: [STMT]
-        , ctorDefn: CTOR? }
-
-    class ClassDefn {
-        const ident: IDENT;
-        const ns: EXPR?;
-        const isNonnullable: Boolean;
-        const isDynamic: Boolean;
-        const isFinal: Boolean;
-        const params: [IDENT];
-        const baseIdent: IDENT_EXPR?;  /* STATIC_IDENT_EXPR */
-        const interfaceIdents: [IDENT_EXPR]; /* STATIC_IDENT_EXPR list */
-        const classDefns: [DEFN];
-        const instanceDefns: [DEFN];
-        const instanceStmts: [STMT];
-        const ctorDefn: CTOR?;
-    }
-
-    type VAR_DEFN_TAG =
-        ( Const
-        , Var
-        , LetVar
-        , LetConst )
-
-    class Const {}
-    class Var {}
-    class LetVar {}
-    class LetConst {}
-
-    const constTag = new Const;
-    const varTag = new Var;
-    const letVarTag = new LetVar;
-    const letConstTag = new LetConst;
-
-    class VariableDefn {
-        const ns: NAMESPACE;
-        const isStatic: Boolean;
-        const isPrototype: Boolean;
-        const kind: VAR_DEFN_TAG;
-        const bindings: BINDING_INITS;
-        function VariableDefn (ns,isStatic,isPrototype,kind,bindings)
-            : ns = ns
-            , isStatic = isStatic
-            , isPrototype = isPrototype
-            , kind = kind
-            , bindings = bindings {}
-    }
-
-    type FUNC_DEFN = FunctionDefn;
-
-    class FunctionDefn {
-        const kind: VAR_DEFN_TAG;
-        const ns: EXPR?;
-        const final: Boolean;
-        const override: Boolean;
-        const prototype: Boolean;
-        const static: Boolean;
-        const abstract: Boolean;
-        const func : FUNC;
-        function FunctionDefn(kind,ns,final,override,prototype,
-                              static,abstract,func) 
-            : kind = kind
-            , ns = ns
-            , final = final
-            , override = override
-            , prototype = prototype
-            , static = static
-            , abstract = abstract
-            , func = func {}
-    }
-
-    class ConstructorDefn {
-    }
-
-    class InterfaceDefn {
-    }
-
-    class NamespaceDefn {
-    }
-
-    class TypeDefn {
     }
 
     /*
@@ -1365,7 +1319,9 @@ namespace Ast
         PACKAGE
     */
 
-    type PACKAGE = Package
+
+    type PACKAGE = Package;
+    type PACKAGES = [PACKAGE];
 
     class Package {
         var name: [IDENT];
@@ -1386,7 +1342,7 @@ namespace Ast
     type PROGRAM = Program
 
     class Program {
-        var packages //: [PACKAGE];
+        var packages //: PACKAGES;
         var block: BLOCK;
         var head //: HEAD;
         function Program (packages, block, head)

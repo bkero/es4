@@ -4213,7 +4213,7 @@ type TOKENS = Array;  // [int];
         {
             enter("Parser::directive ", ts);
 
-            // printLn(ts);
+            printLn(ts);
             switch (hd(ts)) {
             case Token::Let: // FIXME might be function
             case Token::Var:
@@ -4839,8 +4839,8 @@ type TOKENS = Array;  // [int];
     {
         var programs =
             [ "print('hi')"
-            , readFile ("./tests/self/t.es")
               /*
+            , readFile ("./tests/self/fib.es")
             , "x<y"
             , "x==y"
             , "m-n;n+m"
@@ -4941,7 +4941,18 @@ type TOKENS = Array;  // [int];
 
                 //                dumpABCFile(cogen.cg(nd1), "hello-test.es");
 
-                print(n, "> ", p, Ast::encodeProgram (nd1));
+                var tx1 = Encode::program (nd1);
+                print(n, "-1> ", p, tx1);
+                var nd2 = Decode::program (eval("("+tx1+")"));
+                var tx2 = Encode::program (nd2);
+                print(n, "-2> ", p, tx2);
+
+                print("tx1.length=",tx1.length);
+                print("tx2.length=",tx2.length);
+                for (var i = 0; i < tx1.length; ++i) {
+                    if (tx1[i] != tx2[i]) throw "error at pos "+i+" "+tx1[i]+ " != "+tx2[i]+" prefix: "+tx1.slice(i,tx1.length);
+                }
+                print("txt==tx2");
             }
             catch(x)
             {

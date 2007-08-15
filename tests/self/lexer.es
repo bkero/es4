@@ -759,8 +759,8 @@ namespace Lexer
                 pushToken (token);
             }
 
-            // print("tokenList = ",tokenList);
-            // print("coordList = ",coordList);
+            print("tokenList = ",tokenList);
+            print("coordList = ",coordList);
             return [tokenList,coordList];
         }
 
@@ -1098,12 +1098,17 @@ namespace Lexer
             case Char::Asterisk:
                 retract (); // leave in case next char is a slash
                 return blockComment ();
+            case Char::Newline:
+                colCoord = 0;
+                lnCoord++; // count ln and fall through
             default:
                 return blockComment ();
             }
 	    case Char::EOS :
             retract ();
             return;
+        case Char::Newline:
+            lnCoord++; // fall through
 	    default :
             return blockComment ();
 	    }
