@@ -314,7 +314,7 @@ package cogen
     function cgCallExpr(ctx, e) {
         let {asm:asm, emitter:emitter} = ctx;
         let name = null;
-        switch type (e.func) {
+        switch type (e.expr) {
         case (or:ObjectRef) {
             name = emitter.nameFromIdentExpr(or.ident);
             cgExpr(ctx, or.base);
@@ -332,7 +332,7 @@ package cogen
             asm.I_pushnull();
         }
         case (x:*) {
-            cgExpr(ctx, e.func);
+            cgExpr(ctx, e.expr);
             asm.I_pushnull();
         }
         }
@@ -356,7 +356,7 @@ package cogen
     }
 
     function cgNewExpr(ctx, e) {
-        cgExpr(ctx, e.func);
+        cgExpr(ctx, e.expr);
         for ( let i=0 ; i < e.args.length ; i++ )
             cgExpr(ctx, e.args[i]);
         ctx.asm.I_construct(e.args.length);

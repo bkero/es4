@@ -50,19 +50,17 @@ namespace Encode;
     function encodeFixtures (nd /*: FIXTURES*/, nesting: int = 0)
         : string {
         enter ("encodeFixtures nd=",nd);
-        var str;
 
-        if (nd.length == 0) {
-            var str = "";
-        }
-        else
+        var str = "";
+        var len = nd.length;
+        for (var i = 0; i < len; ++i) 
         {
-            var str =
-                  encodeFixtureBinding (nd[0], nesting)
-                + indent(nesting-2)
-                + ", "
-                + encodeFixtures (nd.slice (1,nd.length), nesting);
+            str = str 
+                + encodeFixtureBinding (nd[i], nesting)
+                + indent (nesting-2)
+                + ", ";
         }
+
         exit ("encodeFixtures ",str);
         return str;
     }
@@ -88,7 +86,7 @@ namespace Encode;
         switch type (nd): FIXTURE_NAME {
         case (nd:Ast::PropName) {
 
-            print ("prop name ",nd.name.id);
+            print ("prop ",nd.name.id);
 
             var str =
                 "{ 'ast_class': 'PropName'"
@@ -150,7 +148,7 @@ namespace Encode;
         case (nd:Ast::TypeFixture) {
             var str =
                 "{ 'ast_class': 'TypeFixture'"
-              + indent(nesting) + ", 'expr': " + encodeTypeExpr (nd.expr,nesting+", 'expr': ".length)
+              + indent(nesting) + ", 'type': " + encodeTypeExpr (nd.type,nesting+", 'type': ".length)
               + " }";
         }
         case (nd: *) {
@@ -165,19 +163,17 @@ namespace Encode;
     function encodeInits (nd /*: INITS*/, nesting: int = 0)
         : string {
         enter ("encodeInits nd.length=",nd.length);
-        var str;
 
-        if (nd.length == 0) {
-            var str = "";
-        }
-        else
+        var str = "";
+        var len = nd.length;
+        for (var i = 0; i < len; ++i) 
         {
-            var str =
-                  encodeInitBinding (nd[0], nesting)
-                + indent(nesting-2)
-                + ", "
-                + encodeInits (nd.slice (1,nd.length), nesting);
+            str = str 
+                + encodeInitBinding (nd[i], nesting)
+                + indent (nesting-2)
+                + ", ";
         }
+
         exit ("encodeInits ",str);
         return str;
     }
@@ -235,7 +231,7 @@ namespace Encode;
         for (var i = 0; i < len; ++i) 
         {
             str = str 
-                + encodeStmt (nd[i])
+                + encodeStmt (nd[i], nesting)
                 + indent (nesting-2)
                 + ", ";
         }
@@ -319,28 +315,21 @@ namespace Encode;
         return str;
     }
 
-    function encodeExprs (nd /*: [EXPR]*/, nesting: int = 0)
+    function exprs (nd /*: [EXPR]*/, nesting: int = 0)
         : string {
-        enter ("encodeExprs nd.length=",nd.length);
+        enter ("Encode::exprs nd.length=",nd.length);
 
-        var str;
-        if (nd == null) {
-            var str = "null";
-        }
-        else
-        if (nd.length == 0) {
-            var str = "";
-        }
-        else
+        var str = "";
+        var len = nd.length;
+        for (var i = 0; i < len; ++i) 
         {
-            var str =
-                  encodeExpr (nd[0],nesting)
-                + indent(nesting-2)
-                + ", "
-                + encodeExprs (nd.slice (1,nd.length), nesting);
+            str = str
+                + encodeExpr (nd[i], nesting)
+                + indent (nesting-2)
+                + ", ";
         }
 
-        exit ("encodeExprs ",str);
+        exit ("Encode::exprs ",str);
         return str;
     }
 
@@ -376,18 +365,18 @@ namespace Encode;
                 "{ 'ast_class': 'ListExpr'"
               + indent(nesting)
               + ", 'exprs': [ "
-              + encodeExprs (ex.exprs,nesting+", 'exprs': [ ".length)
+              + exprs (ex.exprs,nesting+", 'exprs': [ ".length)
               + " ] }";
         }
         case (ex: CallExpr) {
             var str =
                 "{ 'ast_class': 'CallExpr'"
               + indent(nesting)
-              + ", 'func': "
-              + encodeExpr (ex.func,nesting+", 'func': ".length)
+              + ", 'expr': "
+              + encodeExpr (ex.expr,nesting+", 'expr': ".length)
               + indent(nesting)
               + ", 'args': [ "
-              + encodeExprs (ex.args,nesting+", 'args': [ ".length)
+              + exprs (ex.args,nesting+", 'args': [ ".length)
               + " ] }";
         }
         case (ex: NewExpr) {
@@ -395,11 +384,11 @@ namespace Encode;
             var str =
                 "{ 'ast_class': 'NewExpr'"
               + indent(nesting)
-              + ", 'func': "
-              + encodeExpr (ex.func,nesting+", 'func': ".length)
+              + ", 'expr': "
+              + encodeExpr (ex.expr,nesting+", 'expr': ".length)
               + indent(nesting)
               + ", 'args': [ "
-              + encodeExprs (ex.args,nesting+", 'args': [ ".length)
+              + exprs (ex.args,nesting+", 'args': [ ".length)
               + " ] }";
             exit ("newexpr");
         }
@@ -557,21 +546,14 @@ namespace Encode;
         : string {
         enter ("encodeTypeExprs nd.length=",nd.length);
 
-        var str;
-        if (nd == null) {
-            var str = "null";
-        }
-        else
-        if (nd.length == 0) {
-            var str = "";
-        }
-        else
+        var str = "";
+        var len = nd.length;
+        for (var i = 0; i < len; ++i) 
         {
-            var str =
-                  encodeTypeExpr (nd[0],nesting)
-                + indent(nesting-2)
-                + ", "
-                + encodeTypeExprs (nd.slice (1,nd.length), nesting);
+            str = str 
+                + encodeTypeExpr (nd[i], nesting)
+                + indent (nesting-2)
+                + ", ";
         }
 
         exit ("encodeTypeExprs ",str);
@@ -661,21 +643,14 @@ namespace Encode;
         : string {
         enter ("encodeFieldTypes nd.length=",nd.length);
 
-        var str;
-        if (nd == null) {
-            var str = "null";
-        }
-        else
-        if (nd.length == 0) {
-            var str = "";
-        }
-        else
+        var str = "";
+        var len = nd.length;
+        for (var i = 0; i < len; ++i) 
         {
-            var str =
-                  encodeFieldType (nd[0],nesting)
-                + indent(nesting-2)
-                + ", "
-                + encodeFieldTypes (nd.slice (1,nd.length), nesting);
+            str = str
+                + encodeFieldType (nd[i], nesting)
+                + indent (nesting-2)
+                + ", ";
         }
 
         exit ("encodeFieldTypes ",str);
@@ -689,7 +664,7 @@ namespace Encode;
         var str = "";
             var str =
                 "{ 'ast_class': 'FieldType'"
-              + indent(nesting) + ", 'name': '" + nd.name + "'"
+              + indent(nesting) + ", 'ident': '" + nd.ident + "'"
               + indent(nesting) + ", 'type': " + encodeTypeExpr (nd.type,nesting+", 'type': ".length)
                 + " }";
 
@@ -782,21 +757,14 @@ namespace Encode;
         : string {
         enter ("encodeNamespaces nd.length=",nd.length);
 
-        var str;
-        if (nd == null) {
-            var str = "null";
-        }
-        else
-        if (nd.length == 0) {
-            var str = "";
-        }
-        else
+        var str = "";
+        var len = nd.length;
+        for (var i = 0; i < len; ++i) 
         {
-            var str =
-                  encodeNamespace (nd[0],nesting)
-                + indent(nesting-2)
-                + ", "
-                + encodeNamespaces (nd.slice (1,nd.length), nesting);
+            str = str
+                + encodeNamespace (nd[i], nesting)
+                + indent (nesting-2)
+                + ", ";
         }
 
         exit ("encodeNamespaces ",str);
@@ -1083,7 +1051,7 @@ namespace Encode;
           + indent(nesting) + ", 'block': " + encodeBlock (nd.block,nesting+", 'block': ".length)
           + indent(nesting) + ", 'params': " + encodeHead (nd.params,nesting+", 'params': ".length)
           + indent(nesting) + ", 'vars': " + encodeHead (nd.vars,nesting+", 'vars': ".length)
-          + indent(nesting) + ", 'defaults': [" + encodeExprs (nd.defaults,nesting+", 'defaults': ".length) + " ]"
+          + indent(nesting) + ", 'defaults': [" + exprs (nd.defaults,nesting+", 'defaults': ".length) + " ]"
           + indent(nesting) + ", 'type': " + encodeTypeExpr (nd.type,nesting+", 'type': ".length)
           + " }";
 
@@ -1118,8 +1086,8 @@ namespace Encode;
 
         var str =
             "{ 'ast_class': 'Ctor'"
-          + indent(nesting) + ", 'settings': [ " + encodeExprs (nd.settings,nesting+", 'settings': [ ".length) + "]"
-          + indent(nesting) + ", 'superArgs': [ " + encodeExprs (nd.superArgs,nesting+", 'superArgs': ".length) + " ]" 
+          + indent(nesting) + ", 'settings': [ " + exprs (nd.settings,nesting+", 'settings': [ ".length) + "]"
+          + indent(nesting) + ", 'superArgs': [ " + exprs (nd.superArgs,nesting+", 'superArgs': ".length) + " ]" 
           + indent(nesting) + ", 'func': " + encodeFunc (nd.func,nesting+", 'func': ".length)
           + " }";
 
@@ -1164,22 +1132,16 @@ namespace Encode;
         : string {
         enter ("encodeBindings nd.length=",nd.length);
 
-        var str;
-        if (nd == null) {
-            var str = "null";
-        }
-        else
-        if (nd.length == 0) {
-            var str = "";
-        }
-        else
+        var str = "";
+        var len = nd.length;
+        for (var i = 0; i < len; ++i) 
         {
-            var str =
-                  encodeBinding (nd[0],nesting)
-                + indent(nesting-2)
-                + ", "
-                + encodeBindings (nd.slice (1,nd.length), nesting);
+            str = str
+                + encodeBinding (nd[i], nesting)
+                + indent (nesting-2)
+                + ", ";
         }
+
         exit ("encodeBindings ",str);
         return str;
     }
@@ -1241,23 +1203,17 @@ namespace Encode;
         : string {
         enter ("encodeInitSteps nd.length=",nd.length);
 
-        var str;
-        if (nd == null) {
-            var str = "null";
-        }
-        else
-        if (nd.length == 0) {
-            var str = "";
-        }
-        else
+        var str = "";
+        var len = nd.length;
+        for (var i = 0; i < len; ++i) 
         {
-            var str =
-                  encodeInitStep (nd[0],nesting)
-                + indent(nesting-2)
-                + ", "
-                + encodeInitSteps (nd.slice (1,nd.length), nesting);
+            str = str 
+                + encodeInitStep (nd[i], nesting)
+                + indent (nesting-2)
+                + ", ";
         }
-        exit ("encodeBindings ",str);
+
+        exit ("encodeInitSteps ",str);
         return str;
     }
 

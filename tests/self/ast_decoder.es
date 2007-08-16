@@ -507,12 +507,12 @@ namespace Decode;
             var ndx = new ListExpr (nd1);
             break;
         case 'CallExpr':
-            var nd1 = expr (ob.func);
+            var nd1 = expr (ob.expr);
             var nd2 = exprs (ob.args);
             var ndx = new CallExpr (nd1,nd2);
             break;
         case 'NewExpr':
-            var nd1 = expr (ob.func);
+            var nd1 = expr (ob.expr);
             var nd2 = exprs (ob.args);
             var ndx = new NewExpr (nd1,nd2);
             break;
@@ -811,7 +811,20 @@ namespace Decode;
         return ndx;
     }
 
+    function typeExprs (ob) 
+        : TYPE_EXPRS
+    {
+        enter ("Decode::typeExprs ", ob.length);
 
+        var nd1 = [];
+        for (var i = 0; i < ob.length; ++i) {
+            var nd = typeExpr (ob[i]);
+            nd1.push (nd);
+        }
+
+        exit ("Decode::typeExprs");
+        return nd1;
+    }
 
     function typeExpr (ob) 
         : TYPE_EXPR
@@ -823,11 +836,65 @@ namespace Decode;
             var nd1 = specialTypeKind (ob.kind);
             var ndx = new SpecialType (nd1);
             break;
+        case 'UnionType':
+            var nd1 = typeExprs (ob.types);
+            var ndx = new UnionType (nd1);
+            break;
+        case 'ArrayType':
+            var nd1 = typeExprs (ob.types);
+            var ndx = new UnionType (nd1);
+            break;
+        case 'ObjectType':
+            var nd1 = fieldTypes (ob.fields);
+            var ndx = new ObjectType (nd1);
+            break;
+        case 'AppType':
+            var nd1 = typeExpr (ob.type);
+            var nd2 = typeExprs (ob.args);
+            var ndx = new AppType (nd1,nd2);
+            break;
+        case 'NullableType':
+            var nd1 = typeExpr (ob.type);
+            var nd2 = ob.isNullable;
+            var ndx = new NullableType (nd1,nd2);
+            break;
+        case 'TypeName':
+            var nd1 = identExpr (ob.ident);
+            var ndx = new TypeName (nd1);
+            break;
         default:
             throw "error Decode::typeExpr " + ob.ast_class;
         }
 
         exit ("Decode::typeExpr");
+        return ndx;
+    }
+
+    function fieldTypes (ob) 
+        : FIELD_TYPES
+    {
+        enter ("Decode::fieldTypes ", ob.length);
+
+        var nd1 = [];
+        for (var i = 0; i < ob.length; ++i) {
+            var nd = fieldType (ob[i]);
+            nd1.push (nd);
+        }
+
+        exit ("Decode::fieldTypes");
+        return nd1;
+    }
+
+    function fieldType (ob) 
+        : FIELD_TYPE
+    {
+        enter ("Decode::fieldType ", ob.ast_class);
+
+        let nd1 = ob.ident;
+        let nd2 = typeExpr (ob.type);
+        var ndx = new FieldType (nd1,nd2);
+
+        exit ("Decode::fieldType");
         return ndx;
     }
 

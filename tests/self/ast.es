@@ -455,10 +455,10 @@ namespace Ast
     }
 
     class CallExpr {
-        const func : EXPR;
-        const args : [EXPR];
-        function CallExpr (func,args)
-            : func = func
+        const expr : EXPR;
+        const args : EXPRS;
+        function CallExpr (expr,args)
+            : expr = expr
             , args = args {}
     }
 
@@ -479,10 +479,10 @@ namespace Ast
     }
 
     class NewExpr {
-        const func : EXPR;
-        const args : [EXPR];
-        function NewExpr (func,args)
-            : func = func
+        const expr : EXPR;
+        const args : EXPRS;
+        function NewExpr (expr,args)
+            : expr = expr
             , args = args {}
     }
 
@@ -739,6 +739,7 @@ namespace Ast
        , init : EXPR }
 
     type FIELD_TYPE = FieldType;
+    type FIELD_TYPES = [FIELD_TYPE];
 
     class LiteralFunction {
         const func : FUNC;
@@ -977,6 +978,7 @@ namespace Ast
 
     // TYPES
 
+    type TYPE_EXPRS = [TYPE_EXPR];
     type TYPE_EXPR = (
         SpecialType,
         UnionType,
@@ -1020,7 +1022,7 @@ namespace Ast
     }
 
     class ArrayType {
-        const types : [TYPE_EXPR];
+        const types : TYPE_EXPRS;
         function ArrayType (types)
             : types = types { }
     }
@@ -1061,10 +1063,10 @@ namespace Ast
     }
 
     class FieldType {
-        const name: IDENT;
+        const ident: IDENT;
         const type: TYPE_EXPR;
-        function FieldType (name,ty)
-            : name = name
+        function FieldType (ident,ty)
+            : ident = ident
             , type = ty {}
     }
 

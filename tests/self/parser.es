@@ -44,7 +44,6 @@
 {
 use namespace intrinsic;
 namespace Parser;
-type TOKENS = Array;  // [int];
 
 {
     use default namespace Parser;
@@ -352,6 +351,25 @@ type TOKENS = Array;  // [int];
         }
     };
 
+    type TOKENS = TokenStream;  // [int];
+    class TokenStream {
+        var ts: Array;
+        var n: int;
+        function TokenStream (ts,n)
+            : ts = ts
+            , n = n { }
+        
+        function head () : int{
+            return ts[n];
+        }
+        
+        function next () : void {
+            ++n;
+        }
+
+        public function toString () { print (this.n) }
+    }
+
     class Parser
     {
         /*
@@ -390,15 +408,15 @@ type TOKENS = Array;  // [int];
 
         private var coordList;
 
-        function hd (ts) 
+        function hd (ts:TokenStream) 
         {
-            // enter ("hd ",ts[0]);
-            var tk = Token::tokenKind (ts[0]);
-            // exit ("hd ",tk);
+            //enter ("hd ",ts.head());
+            var tk = Token::tokenKind (ts.head());
+            //exit ("hd ",tk);
             return tk;
         }
 
-        function eat (ts,tc) {
+        function eat (ts:TokenStream,tc) {
             // print("eating",Token::tokenText(tc));
             let tk = hd (ts);
             if (tk === tc) {
@@ -426,12 +444,14 @@ type TOKENS = Array;  // [int];
         function swap (ts,t0,t1) {
             let tk = hd (ts);
             if (tk === t0) {
-                return ts[0] = t1;
+                return ts.ts[ts.n] = t1;
             }
             throw "expecting "+Token::tokenText(t0)+" found "+Token::tokenText(tk);
         }
 
-        function tl (ts:TOKENS) : TOKENS ts.slice (1,ts.length);
+        function tl (ts:TOKENS) : TOKENS {
+            return new TokenStream (ts.ts,ts.n+1);
+        }  //ts.slice (1,ts.length);
 
         /*
 
@@ -558,10 +578,10 @@ type TOKENS = Array;  // [int];
             case Token::Use:
             case Token::Xml:
             case Token::Yield:
-                var str = Token::tokenText (ts[0]);
+                var str = Token::tokenText (ts.head());
                 break;
             default:
-                throw "expecting identifier, found " + Token::tokenText (ts[0]);
+                throw "expecting identifier, found " + Token::tokenText (ts.head());
             }
             exit ("Parser::identifier ", str);
             return [tl (ts), str];
@@ -617,7 +637,7 @@ type TOKENS = Array;  // [int];
                 var [ts1,nd1] = reservedNamespace(ts);
                 break;
             case Token::Mult:
-                let id = Token::tokenText (ts[0]);
+                let id = Token::tokenText (ts.head());
                 var [ts1,nd1] = [tl (ts), id];
                 break;
             default:
@@ -909,7 +929,7 @@ type TOKENS = Array;  // [int];
             case Token::Identifier:
                 switch (hd (tl (ts))) {
                 case Token::Dot:
-                    var [ts1,nd1] = path (tl (tl (ts)), [Token::tokenText(ts[0])]);
+                    var [ts1,nd1] = path (tl (tl (ts)), [Token::tokenText(ts.head())]);
                     var [ts2,nd2] = propertyName (ts1);
                     nd2 = new Ast::UnresolvedPath (nd1,nd2);
                     break;
@@ -942,7 +962,7 @@ type TOKENS = Array;  // [int];
             case Token::Identifier:
                 switch (hd (tl (ts))) {
                 case Token::Dot:
-                    nd.push(Token::tokenText(ts[0]));
+                    nd.push(Token::tokenText(ts.head()));
                     var [ts1,nd1] = path (tl (tl (ts)), nd);
                     break;
                 default:
@@ -1020,10 +1040,10 @@ type TOKENS = Array;  // [int];
                 var [ts1,nd1] = [tl (ts), new Ast::LiteralExpr (new Ast::LiteralBoolean (false))];
                 break;
             case Token::DecimalLiteral:
-                var [ts1,nd1] = [tl (ts), new Ast::LiteralExpr (new Ast::LiteralDecimal (Token::tokenText (ts[0])))];
+                var [ts1,nd1] = [tl (ts), new Ast::LiteralExpr (new Ast::LiteralDecimal (Token::tokenText (ts.head())))];
                 break;
             case Token::StringLiteral:
-                var [ts1,nd1] = [tl (ts), new Ast::LiteralExpr (new Ast::LiteralString (Token::tokenText (ts[0])))];
+                var [ts1,nd1] = [tl (ts), new Ast::LiteralExpr (new Ast::LiteralString (Token::tokenText (ts.head())))];
                 break;
             case Token::This:
                 var [ts1,nd1] = [tl (ts), new Ast::ThisExpr ()];
@@ -1550,7 +1570,8 @@ type TOKENS = Array;  // [int];
             while (true) {
 
                 if (hd (ts1) === Token::BREAK) {
-                    [ts1,this.coordList] = scan.tokenList (scan.div);
+                    [ts,this.coordList] = scan.tokenList (scan.div);
+                    ts1 = new TokenStream (ts,0)
                 }
 
                 switch (hd (ts1)) {
@@ -2790,23 +2811,28 @@ type TOKENS = Array;  // [int];
             return [ts1,nd1];
         }
 
-        function printLn (ts) {
-            let offset = ts.length;
-            let coord = coordList[coordList.length-offset];
-            print ("line ",coord[0]);
+        function printLn (ts:TokenStream) {
+            enter ("printLn ",ts.n);
+            if (coordList.length <= ts.n)
+                print("line eos");
+            else {
+                let coord = coordList[ts.n];
+                print ("line ",coord[0]);
+            }
+            exit ("printLn");
         }
 
 
         function newline (ts: TOKENS)
             : boolean
         {
-            let offset = ts.length;
+            let offset = ts.n;
 
-            if (offset == coordList.length)
+            if (offset == 0)
                 return true;  // first token, so follows newline, but whose asking?
 
-            let coord = coordList[coordList.length-offset];
-            let prevCoord = coordList[coordList.length-offset-1];
+            let coord = coordList[offset];
+            let prevCoord = coordList[offset-1];
             //print("coord=",coord);
             //print("prevCoord=",prevCoord);
 
@@ -4197,7 +4223,7 @@ type TOKENS = Array;  // [int];
 
         function isCurrentClassName (ts: TOKENS) 
             : boolean {
-            let text = Token::tokenText (ts[0]);
+            let text = Token::tokenText (ts.head());
             if (text === currentClassName) 
             {
                 return true;
@@ -4214,6 +4240,7 @@ type TOKENS = Array;  // [int];
             enter("Parser::directive ", ts);
 
             printLn(ts);
+
             switch (hd(ts)) {
             case Token::Let: // FIXME might be function
             case Token::Var:
@@ -4799,6 +4826,7 @@ type TOKENS = Array;  // [int];
 
             let [ts,cs] = scan.tokenList (scan.start);
             this.coordList = cs;
+            ts = new TokenStream (ts,0);
 
             cx.enterVarBlock ();
             var publicNamespace = new Ast::ReservedNamespace (new Ast::PublicNamespace (""));
@@ -4839,8 +4867,8 @@ type TOKENS = Array;  // [int];
     {
         var programs =
             [ "print('hi')"
+              // , readFile ("./tests/self/t.es")
               /*
-            , readFile ("./tests/self/fib.es")
             , "x<y"
             , "x==y"
             , "m-n;n+m"
