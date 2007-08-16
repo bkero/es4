@@ -94,7 +94,8 @@ package cogen
 
             switch type (fx) {
             case (vf:ValFixture) {
-                target.addTrait(new ABCSlotTrait(name, 0, false, 0, emitter.fixtureTypeToType(vf)));
+                target.addTrait(new ABCSlotTrait(name, 0, false, 0, 0 /*emitter.fixtureTypeToType(vf)*/)); 
+					// FIXME when we have more general support for type annos
             }
             case (mf:MethodFixture) {
                 target.addTrait(new ABCOtherTrait(name, 0, TRAIT_Method, 0, cgFunc(ctx, mf.func)));
@@ -105,6 +106,9 @@ package cogen
             }
             case (nf:NamespaceFixture) {
                 target.addTrait(new ABCSlotTrait(name, 0, true, 0, 0, emitter.namespace(nf.ns), CONSTANT_Namespace));
+            }
+            case (tf:TypeFixture) {
+		print ("warning: ignoring type fixture");
             }
             case (x:*) { throw "Internal error: unhandled fixture type" }
             }
@@ -118,6 +122,7 @@ package cogen
             cgStmt(ctx, stmts[i]);
     }
 
+/*
     function cgDefn(ctx, d) {
         let { asm:asm, emitter:emitter } = ctx;
         switch type (d) {
@@ -134,6 +139,7 @@ package cogen
         case (x:*) { throw "Internal error: unimplemented defn" }
         }
     }
+*/
 
     function extractNamedFixtures(fixtures)
     {

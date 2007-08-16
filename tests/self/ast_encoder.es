@@ -1,9 +1,14 @@
 /* -*- mode: java; mode: font-lock; tab-width: 4; insert-tabs-mode: nil; indent-tabs-mode: nil -*- */
 // use module ast "tests/self/ast.es";
 // module ast_encoder {
+
+namespace Encode;
+
 {
-    use default namespace Ast;
+    use default namespace Encode;
     use namespace intrinsic;
+    use namespace Ast;
+
     use namespace Release;
 
     function indent (n:int)
@@ -15,24 +20,24 @@
         return str;
     }
 
-    function encodeProgram (nd : PROGRAM, nesting : int = 0)
+    function program (nd : PROGRAM, nesting : int = 0)
         : string {
-        enter ("encodeProgram ", nesting);
+        enter ("Encode::program ", nesting);
         var str = "";
         switch type (nd): PROGRAM {
-        case (p: Program) {
+        case (nd: Program) {
             var str =
-                indent(nesting) + "{ 'ast::class': 'Program'"
-              + indent(nesting) + ", 'packages': " + encodePackages (p.packages,nesting+", 'packages': ".length)
-              + indent(nesting) + ", 'head': [ " + encodeHead (p.head,nesting+", 'head': [ ".length) + " ]"
-              + indent(nesting) + ", 'block': " + encodeBlock (p.block,nesting+", 'block': ".length)
+                indent(nesting) + "{ 'ast_class': 'Program'"
+              + indent(nesting) + ", 'packages': " + encodePackages (nd.packages,nesting+", 'packages': ".length)
+              + indent(nesting) + ", 'head': " + encodeHead (nd.head,nesting+", 'head': ".length)
+              + indent(nesting) + ", 'block': " + encodeBlock (nd.block,nesting+", 'block': ".length)
               + " }";
         }
-        case (x: *) {
-            throw "internalError: encodeProgram";
+        case (nd: *) {
+            throw "error Encode::program " + nd;
         }
         }
-        exit ("encodeProgram");
+        exit ("Encode::program");
         return str;
     }
 
@@ -45,19 +50,17 @@
     function encodeFixtures (nd /*: FIXTURES*/, nesting: int = 0)
         : string {
         enter ("encodeFixtures nd=",nd);
-        var str;
 
-        if (nd.length == 0) {
-            var str = "";
-        }
-        else
+        var str = "";
+        var len = nd.length;
+        for (var i = 0; i < len; ++i) 
         {
-            var str =
-                  encodeFixtureBinding (nd[0], nesting)
-                + indent(nesting)
-                + ", "
-                + encodeFixtures (nd.slice (1,nd.length), nesting+", ".length);
+            str = str 
+                + encodeFixtureBinding (nd[i], nesting)
+                + indent (nesting-2)
+                + ", ";
         }
+
         exit ("encodeFixtures ",str);
         return str;
     }
@@ -82,14 +85,17 @@
         var str = "";
         switch type (nd): FIXTURE_NAME {
         case (nd:Ast::PropName) {
+
+            print ("prop ",nd.name.id);
+
             var str =
-                "{ 'ast::class': 'PropName'"
+                "{ 'ast_class': 'PropName'"
               + indent(nesting) + ", 'name': " + encodeName (nd.name,nesting+", 'name': ".length)
               + " }";
         }
         case (nd:Ast::TempName) {
             var str =
-                "{ 'ast::class': 'TempName'"
+                "{ 'ast_class': 'TempName'"
               + indent(nesting) + ", 'index': " + nd.index
               + " }";
         }
@@ -102,7 +108,7 @@
         return str;
     }
 
-    function encodeFixture (nd /*: FIXTURE*/, nesting: int = 0)
+    function encodeFixture (nd: FIXTURE, nesting: int = 0)
         : string {
         enter ("encodeFixture ",nesting);
 
@@ -111,7 +117,7 @@
         switch type (nd): FIXTURE {
         case (nd:Ast::ValFixture) {
             var str =
-                "{ 'ast::class': 'ValFixture'"
+                "{ 'ast_class': 'ValFixture'"
               + indent(nesting) 
               + ", 'type': " 
               + encodeTypeExpr (nd.type,nesting+", 'type': ".length)
@@ -120,7 +126,7 @@
         }
         case (nd:Ast::MethodFixture) {
             var str =
-                "{ 'ast::class': 'MethodFixture'"
+                "{ 'ast_class': 'MethodFixture'"
               + indent(nesting) + ", 'func': " + encodeFunc (nd.func,nesting+", 'func': ".length)
               + indent(nesting) + ", 'isReadOnly': " + nd.isReadOnly
               + indent(nesting) + ", 'isOverride': " + nd.isOverride
@@ -129,14 +135,20 @@
         }
         case (nd:Ast::ClassFixture) {
             var str =
-                "{ 'ast::class': 'ClassFixture'"
+                "{ 'ast_class': 'ClassFixture'"
               + indent(nesting) + ", 'cls': " + encodeCls (nd.cls,nesting+", 'cls': ".length)
               + " }";
         }
         case (nd:Ast::NamespaceFixture) {
             var str =
-                "{ 'ast::class': 'NamespaceFixture'"
+                "{ 'ast_class': 'NamespaceFixture'"
               + indent(nesting) + ", 'ns': " + encodeNamespace (nd.ns,nesting+", 'ns': ".length)
+              + " }";
+        }
+        case (nd:Ast::TypeFixture) {
+            var str =
+                "{ 'ast_class': 'TypeFixture'"
+              + indent(nesting) + ", 'type': " + encodeTypeExpr (nd.type,nesting+", 'type': ".length)
               + " }";
         }
         case (nd: *) {
@@ -151,19 +163,17 @@
     function encodeInits (nd /*: INITS*/, nesting: int = 0)
         : string {
         enter ("encodeInits nd.length=",nd.length);
-        var str;
 
-        if (nd.length == 0) {
-            var str = "";
-        }
-        else
+        var str = "";
+        var len = nd.length;
+        for (var i = 0; i < len; ++i) 
         {
-            var str =
-                  encodeInitBinding (nd[0], nesting)
-                + indent(nesting-2)
-                + ", "
-                + encodeInits (nd.slice (1,nd.length), nesting);
+            str = str 
+                + encodeInitBinding (nd[i], nesting)
+                + indent (nesting-2)
+                + ", ";
         }
+
         exit ("encodeInits ",str);
         return str;
     }
@@ -199,12 +209,10 @@
         switch type (nd) : BLOCK {
         case (nd:Block) {
             var str =
-                  "{ 'ast::class': 'Block'"
-                + indent(nesting) + ", 'pragmas': " + "[]" //encodePragmas (nd.pragmas)
+                  "{ 'ast_class': 'Block'"
                 + indent(nesting) + ", 'head': " + encodeHead (nd.head,nesting+", 'head': ".length)
-                + indent(nesting) + ", 'stmts': [ " + encodeStmts (nd.Ast::stmts,nesting+", 'stmts': [ ".length) +" ]";
-                + indent(nesting) + ", 'pos': " + "null" //encodePos (nd.pos)
-                + " }";
+                + indent(nesting) + ", 'stmts': [ " + stmts (nd.Ast::stmts,nesting+", 'stmts': [ ".length)
+                + " ] }";
         }
         case (x: *) {
             throw "internalError: encodeBlock";
@@ -214,22 +222,21 @@
         return str;
     }
 
-    function encodeStmts (nd /*: [STMT]*/, nesting: int = 0)
+    function stmts (nd /*: [STMT]*/, nesting: int = 0)
         : string {
-        enter ("encodeStmts nd.length=",nd.length);
-        var str;
-        if (nd.length == 0) {
-            var str = "";
-        }
-        else
+        enter ("Encode::stmts ", nd.length);
+
+        var str = "";
+        var len = nd.length;
+        for (var i = 0; i < len; ++i) 
         {
-            var str =
-                  encodeStmt (nd[0], nesting)
-                + indent(nesting-2)
-                + ", "
-                + encodeStmts (nd.slice (1,nd.length), nesting);
+            str = str 
+                + encodeStmt (nd[i], nesting)
+                + indent (nesting-2)
+                + ", ";
         }
-        exit ("encodeStmts ",str);
+
+        exit ("Encode::stmts ",str);
         return str;
     }
 
@@ -245,7 +252,7 @@
         switch type (nd): STMT {
         case (nd: ExprStmt) {
             var str =
-                "{ 'ast::class': 'ExprStmt'"
+                "{ 'ast_class': 'ExprStmt'"
               + indent(nesting)
               + ", 'expr': "
               + encodeExpr (nd.expr,nesting+", 'expr': ".length)
@@ -253,7 +260,7 @@
         }
         case (nd: ReturnStmt) {
             var str =
-                "{ 'ast::class': 'ReturnStmt'"
+                "{ 'ast_class': 'ReturnStmt'"
               + indent(nesting)
               + ", 'expr': "
               + encodeExpr (nd.expr,nesting+", 'expr': ".length)
@@ -261,32 +268,32 @@
         }
         case (nd: IfStmt) {
             var str =
-                "{ 'ast::class': 'IfStmt'"
-              + indent(nesting)
-              + ", 'cnd': "
-              + encodeExpr (nd.cnd,nesting+", 'cnd': ".length)
-              + indent(nesting)
-              + ", 'thn': "
-              + encodeStmt (nd.thn,nesting+", 'thn': ".length)
-              + indent(nesting)
-              + ", 'els': "
-              + encodeStmt (nd.els,nesting+", 'els': ".length)
-              + " }";
-        }
-        case (nd: WhileStmt) {
-            var str =
-                "{ 'ast::class': 'WhileStmt'"
+                "{ 'ast_class': 'IfStmt'"
               + indent(nesting)
               + ", 'expr': "
               + encodeExpr (nd.expr,nesting+", 'expr': ".length)
               + indent(nesting)
-              + ", 'body': "
-              + encodeStmt (nd.body,nesting+", 'body': ".length)
+              + ", 'then': "
+              + encodeStmt (nd.then,nesting+", 'then': ".length)
+              + indent(nesting)
+              + ", 'elseOpt': "
+              + encodeStmt (nd.elseOpt,nesting+", 'elseOpt': ".length)
+              + " }";
+        }
+        case (nd: WhileStmt) {
+            var str =
+                "{ 'ast_class': 'WhileStmt'"
+              + indent(nesting)
+              + ", 'expr': "
+              + encodeExpr (nd.expr,nesting+", 'expr': ".length)
+              + indent(nesting)
+              + ", 'stmt': "
+              + encodeStmt (nd.body,nesting+", 'stmt': ".length)
               + " }";
         }
         case (nd: BlockStmt) {
             var str =
-                "{ 'ast::class': 'BlockStmt'"
+                "{ 'ast_class': 'BlockStmt'"
               + indent(nesting)
               + ", 'block': "
               + encodeBlock (nd.block,nesting+", 'block': ".length)
@@ -294,7 +301,7 @@
         }
         case (nd: ClassBlock) {
             var str =
-                "{ 'ast::class': 'ClassBlock'"
+                "{ 'ast_class': 'ClassBlock'"
               + indent(nesting) + ", 'name': " + encodeName (nd.name,nesting+", 'name': ".length)
               + indent(nesting) + ", 'block': " + encodeBlock (nd.block,nesting+", 'block': ".length)
               + " }";
@@ -308,28 +315,21 @@
         return str;
     }
 
-    function encodeExprs (nd /*: [EXPR]*/, nesting: int = 0)
+    function exprs (nd /*: [EXPR]*/, nesting: int = 0)
         : string {
-        enter ("encodeExprs nd.length=",nd.length);
+        enter ("Encode::exprs nd.length=",nd.length);
 
-        var str;
-        if (nd == null) {
-            var str = "null";
-        }
-        else
-        if (nd.length == 0) {
-            var str = "";
-        }
-        else
+        var str = "";
+        var len = nd.length;
+        for (var i = 0; i < len; ++i) 
         {
-            var str =
-                  encodeExpr (nd[0],nesting)
-                + indent(nesting-2)
-                + ", "
-                + encodeExprs (nd.slice (1,nd.length), nesting);
+            str = str
+                + encodeExpr (nd[i], nesting)
+                + indent (nesting-2)
+                + ", ";
         }
 
-        exit ("encodeExprs ",str);
+        exit ("Encode::exprs ",str);
         return str;
     }
 
@@ -354,7 +354,7 @@
         switch type (nd): EXPR {
         case (le: LiteralExpr) {
             var str =
-                "{ 'ast::class': 'LiteralExpr'"
+                "{ 'ast_class': 'LiteralExpr'"
               + indent(nesting)
               + ", 'literal': "
               + encodeLiteral (le.literal,nesting+", 'literal': ".length)
@@ -362,39 +362,39 @@
         }
         case (ex: ListExpr) {
             var str =
-                "{ 'ast::class': 'ListExpr'"
+                "{ 'ast_class': 'ListExpr'"
               + indent(nesting)
               + ", 'exprs': [ "
-              + encodeExprs (ex.exprs,nesting+", 'exprs': [ ".length)
+              + exprs (ex.exprs,nesting+", 'exprs': [ ".length)
               + " ] }";
         }
         case (ex: CallExpr) {
             var str =
-                "{ 'ast::class': 'CallExpr'"
+                "{ 'ast_class': 'CallExpr'"
               + indent(nesting)
-              + ", 'func': "
-              + encodeExpr (ex.func,nesting+", 'func': ".length)
+              + ", 'expr': "
+              + encodeExpr (ex.expr,nesting+", 'expr': ".length)
               + indent(nesting)
               + ", 'args': [ "
-              + encodeExprs (ex.args,nesting+", 'args': [ ".length)
+              + exprs (ex.args,nesting+", 'args': [ ".length)
               + " ] }";
         }
         case (ex: NewExpr) {
             enter ("newexpr");
             var str =
-                "{ 'ast::class': 'NewExpr'"
+                "{ 'ast_class': 'NewExpr'"
               + indent(nesting)
-              + ", 'func': "
-              + encodeExpr (ex.func,nesting+", 'func': ".length)
+              + ", 'expr': "
+              + encodeExpr (ex.expr,nesting+", 'expr': ".length)
               + indent(nesting)
               + ", 'args': [ "
-              + encodeExprs (ex.args,nesting+", 'args': [ ".length)
+              + exprs (ex.args,nesting+", 'args': [ ".length)
               + " ] }";
             exit ("newexpr");
         }
         case (ex: LexicalRef) {
             var str =
-                "{ 'ast::class': 'LexicalRef'"
+                "{ 'ast_class': 'LexicalRef'"
               + indent(nesting)
               + ", 'ident': "
               + encodeIdentExpr (ex.ident,nesting+", 'ident': ".length)
@@ -402,7 +402,7 @@
         }
         case (ex: ObjectRef) {
             var str =
-                "{ 'ast::class': 'ObjectRef'"
+                "{ 'ast_class': 'ObjectRef'"
               + indent(nesting)
               + ", 'base': "
               + encodeExpr (ex.base,nesting+", 'base': ".length)
@@ -413,7 +413,7 @@
         }
         case (ex: SetExpr) {
             var str =
-                "{ 'ast::class': 'SetExpr'"
+                "{ 'ast_class': 'SetExpr'"
               + indent(nesting)
               + ", 'op': "
               + encodeAssignOp (ex.op,nesting,", 'op': ".length)
@@ -427,7 +427,7 @@
         }
         case (ex: BinaryExpr) {
             var str =
-                "{ 'ast::class': 'BinaryExpr'"
+                "{ 'ast_class': 'BinaryExpr'"
               + indent(nesting)
               + ", 'op': "
               + encodeBinOp (ex.op,nesting,", 'op': ".length)
@@ -441,7 +441,7 @@
         }
         case (ex: UnaryExpr) {
             var str =
-                "{ 'ast::class': 'UnaryExpr'"
+                "{ 'ast_class': 'UnaryExpr'"
               + indent(nesting)
               + ", 'op': "
               + encodeUnOp (ex.op,nesting,", 'op': ".length)
@@ -452,10 +452,10 @@
         }
         case (nd: InitExpr) {
             var str =
-                "{ 'ast::class': 'InitExpr'"
+                "{ 'ast_class': 'InitExpr'"
               + indent(nesting)
               + ", 'target': "
-              + nd.target
+              + encodeInitTarget (nd.target,nesting+", 'target': ".length)
               + indent(nesting)
               + ", 'head': "
               + encodeHead (nd.head,nesting+", 'head': ".length)
@@ -466,7 +466,7 @@
         }
         case (nd: LetExpr) {
             var str =
-                "{ 'ast::class': 'LetExpr'"
+                "{ 'ast_class': 'LetExpr'"
               + indent(nesting)
               + ", 'head': "
               + encodeHead (nd.head,nesting+", 'head': ".length)
@@ -477,7 +477,7 @@
         }
         case (nd: GetTemp) {
             var str =
-                "{ 'ast::class': 'GetTemp'"
+                "{ 'ast_class': 'GetTemp'"
               + indent(nesting)
               + ", 'n': "
               + nd.n
@@ -485,7 +485,7 @@
         }
         case (nd: GetParam) {
             var str =
-                "{ 'ast::class': 'GetParam'"
+                "{ 'ast_class': 'GetParam'"
               + indent(nesting)
               + ", 'n': "
               + nd.n
@@ -506,10 +506,10 @@
         switch type (nd): EXPR {
         case (ie: Identifier) {
             var str =
-                "{ 'ast::class': 'Identifier'"
+                "{ 'ast_class': 'Identifier'"
               + indent(nesting)
               + ", 'ident': "
-              + ie.ident
+              + "'" + ie.ident + "'"
               + indent(nesting)
               + ", 'nss': [ "
               + encodeNamespacesList (ie.nss,nesting+", 'nss': [ ".length)
@@ -517,14 +517,14 @@
         }
         case (ie: QualifiedIdentifier) {
             var str =
-                "{ 'ast::class': 'QualifiedIdentifier'"
+                "{ 'ast_class': 'QualifiedIdentifier'"
               + indent(nesting) + ", 'qual': " + encodeExpr (nd.qual,nesting+", 'qual':".length)
-              + indent(nesting) + ", 'ident': " + ie.ident
+              + indent(nesting) + ", 'ident': '" + ie.ident + "'"
               + " }";
         }
         case (ie: UnresolvedPath) {
             var str =
-                "{ 'ast::class': 'UnresolvedPath'"
+                "{ 'ast_class': 'UnresolvedPath'"
               + indent(nesting)
               + ", 'path': [ "
               + encodePath (ie.path,nesting+", 'path': [ ".length)
@@ -542,6 +542,24 @@
         return str;
     }
 
+    function encodeTypeExprs (nd /*: [TYPE_EXPR]*/, nesting: int = 0)
+        : string {
+        enter ("encodeTypeExprs nd.length=",nd.length);
+
+        var str = "";
+        var len = nd.length;
+        for (var i = 0; i < len; ++i) 
+        {
+            str = str 
+                + encodeTypeExpr (nd[i], nesting)
+                + indent (nesting-2)
+                + ", ";
+        }
+
+        exit ("encodeTypeExprs ",str);
+        return str;
+    }
+
     function encodeTypeExpr (nd : TYPE_EXPR, nesting: int = 0)
         : string {
         enter ("encodeTypeExpr ",nd);
@@ -549,7 +567,7 @@
         switch type (nd): TYPE_EXPR {
         case (nd: TypeName) {
             var str =
-                "{ 'ast::class': 'TypeName'"
+                "{ 'ast_class': 'TypeName'"
               + indent(nesting)
               + ", 'ident': "
               + encodeIdentExpr (nd.ident,nesting+", 'ident': ".length)
@@ -557,17 +575,100 @@
         }
         case (nd: SpecialType) {
             var str =
-                "{ 'ast::class': 'SpecialType'"
+                "{ 'ast_class': 'SpecialType'"
               + indent(nesting)
               + ", 'kind': "
-              + nd.kind
+                + encodeSpecialTypeKind (nd.kind,nesting+", 'kind': ".length)
               + " }";
+        }
+        case (nd: UnionType) {
+            var str =
+                "{ 'ast_class': 'UnionType'"
+              + indent(nesting)
+              + ", 'types': [ "
+              + encodeTypeExprs (nd.types,nesting+", 'types': [ ".length)
+              + " ] }";
+        }
+        case (nd: ObjectType) {
+            var str =
+                "{ 'ast_class': 'ObjectType'"
+              + indent(nesting)
+              + ", 'fields': [ "
+              + encodeFieldTypes (nd.fields,nesting+", 'fields': [ ".length)
+              + " ] }";
+        }
+        case (nd: ArrayType) {
+            var str =
+                "{ 'ast_class': 'ArrayType'"
+              + indent(nesting)
+              + ", 'types': [ "
+              + encodeTypeExprs (nd.types,nesting+", 'types': [ ".length)
+              + " ] }";
         }
         case (nd: *) {
             var str = "** unknown type in encodeTypeExpr: " + nd;
         }
         }
-        exit ("encodeIdentExpr ",str);
+        exit ("encodeTypeExpr ",str);
+        return str;
+    }
+
+    function encodeSpecialTypeKind (nd : SPECIAL_TYPE_KIND, nesting: int = 0)
+        : string {
+        enter ("encodeSpecialTypeKind")
+        var str = "";
+        switch type (nd) {
+        case (op: AnyType) {
+            var str = "AnyType";
+        }
+        case (op: NullType) {
+            var str = "NullType";
+        }
+        case (op: UndefinedType) {
+            var str = "UndefinedType";
+        }
+        case (op: VoidType) {
+            var str = "VoidType";
+        }
+        case (x: *) {
+            throw "internalError: encodeLiteral";
+        }
+        }
+        var str = "{ 'ast_class': '" + str + "' }"
+        exit ("encodeSpecialTypeKind ",str);
+        return str;
+    }
+
+    function encodeFieldTypes (nd /*: [FIELD_TYPE]*/, nesting: int = 0)
+        : string {
+        enter ("encodeFieldTypes nd.length=",nd.length);
+
+        var str = "";
+        var len = nd.length;
+        for (var i = 0; i < len; ++i) 
+        {
+            str = str
+                + encodeFieldType (nd[i], nesting)
+                + indent (nesting-2)
+                + ", ";
+        }
+
+        exit ("encodeFieldTypes ",str);
+        return str;
+    }
+
+    function encodeFieldType (nd : FIELD_TYPE, nesting: int = 0)
+    {
+        enter ("encode FieldType");
+
+        var str = "";
+            var str =
+                "{ 'ast_class': 'FieldType'"
+              + indent(nesting) + ", 'ident': '" + nd.ident + "'"
+              + indent(nesting) + ", 'type': " + encodeTypeExpr (nd.type,nesting+", 'type': ".length)
+                + " }";
+
+        exit ("encodeFieldType");
         return str;
     }
 
@@ -578,23 +679,23 @@
         switch type (nd): LITERAL {
         case (nd: LiteralString) {
             var str =
-                "{ 'ast::class': 'LiteralString'"
+                "{ 'ast_class': 'LiteralString'"
               + indent(nesting)
-              + ", 'strValue': "
+              + ", 'strValue': '"
               + nd.strValue
-              + " }";
+              + "' }";
         }
         case (nd: LiteralDecimal) {
             var str =
-                "{ 'ast::class': 'LiteralDecimal'"
+                "{ 'ast_class': 'LiteralDecimal'"
               + indent(nesting)
-              + ", 'decimalValue': "
+              + ", 'decimalValue': '"
               + nd.decimalValue
-              + " }";
+              + "' }";
         }
         case (nd: LiteralNamespace) {
             var str =
-                "{ 'ast::class': 'LiteralNamespace'"
+                "{ 'ast_class': 'LiteralNamespace'"
               + indent(nesting)
               + ", 'namespaceValue': "
               + encodeNamespace (nd.namespaceValue,nesting+", 'namespaceValue': ".length)
@@ -602,10 +703,20 @@
         }
         case (nd: LiteralBoolean) {
             var str =
-                "{ 'ast::class': 'LiteralBoolean'"
+                "{ 'ast_class': 'LiteralBoolean'"
               + indent(nesting)
               + ", 'booleanValue': "
               + nd.booleanValue
+              + " }";
+        }
+        case (nd: LiteralNull) {
+            var str =
+                "{ 'ast_class': 'LiteralNull'"
+              + " }";
+        }
+        case (nd: LiteralUndefined) {
+            var str =
+                "{ 'ast_class': 'LiteralUndefined'"
               + " }";
         }
         case (x: *) {
@@ -646,21 +757,14 @@
         : string {
         enter ("encodeNamespaces nd.length=",nd.length);
 
-        var str;
-        if (nd == null) {
-            var str = "null";
-        }
-        else
-        if (nd.length == 0) {
-            var str = "";
-        }
-        else
+        var str = "";
+        var len = nd.length;
+        for (var i = 0; i < len; ++i) 
         {
-            var str =
-                  encodeNamespace (nd[0],nesting)
-                + indent(nesting-2)
-                + ", "
-                + encodeNamespaces (nd.slice (1,nd.length), nesting);
+            str = str
+                + encodeNamespace (nd[i], nesting)
+                + indent (nesting-2)
+                + ", ";
         }
 
         exit ("encodeNamespaces ",str);
@@ -674,33 +778,38 @@
         switch type (nd): NAMESPACE {
         case (nd: PublicNamespace) {
             var str =
-                "{ 'ast::class': 'PublicNamespace'"
+                "{ 'ast_class': 'PublicNamespace'"
               + indent(nesting) + ", 'name': '" + nd.name
               + "' }";
         }
         case (nd: PrivateNamespace) {
             var str =
-                "{ 'ast::class': 'PrivateNamespace'"
+                "{ 'ast_class': 'PrivateNamespace'"
               + indent(nesting) + ", 'name': '" + nd.name
               + "' }";
         }
         case (nd: ProtectedNamespace) {
             var str =
-                "{ 'ast::class': 'ProtectedNamespace'"
+                "{ 'ast_class': 'ProtectedNamespace'"
               + indent(nesting) + ", 'name': '" + nd.name
               + "' }";
         }
         case (nd: InternalNamespace) {
             var str =
-                "{ 'ast::class': 'InternalNamespace'"
+                "{ 'ast_class': 'InternalNamespace'"
               + indent(nesting) + ", 'name': '" + nd.name
               + "' }";
         }
         case (nd: AnonymousNamespace) {
             var str =
-                "{ 'ast::class': 'AnonymousNamespace'"
+                "{ 'ast_class': 'AnonymousNamespace'"
               + indent(nesting) + ", 'name': '" + nd.name
               + "' }";
+        }
+        case (nd: IntrinsicNamespace) {
+            var str =
+                "{ 'ast_class': 'IntrinsicNamespace'"
+              + " }";
         }
         case (x: *) {
             throw "internalError: encodeNamespace "+nd;
@@ -773,7 +882,7 @@
             throw "internalError: encodeLiteral";
         }
         }
-        var str = "{ 'ast::class': '" + str + "' }"
+        var str = "{ 'ast_class': '" + str + "' }"
         exit ("encodeAssignOp ",str);
         return str;
     }
@@ -856,7 +965,7 @@
             throw "internalError: encodeLiteral";
         }
         }
-        var str = "{ 'ast::class': '" + str + "' }"
+        var str = "{ 'ast_class': '" + str + "' }"
         exit ("encodeBinOp ",str);
         return str;
     }
@@ -906,7 +1015,7 @@
             throw "internalError: encodeUnOp";
         }
         }
-        var str = "{ 'ast::class': '" + str + "' }"
+        var str = "{ 'ast_class': '" + str + "' }"
         exit ("encodeUnOp ",str);
         return str;
     }
@@ -931,88 +1040,19 @@
         return str;
     }
 
-    function encodeDefns (nd /*: [DEFN]*/, nesting: int = 0)
-        : string {
-        enter ("encodeDefns nd.length=",nd.length);
-        var str;
-        if (nd.length == 0) {
-            var str = "";
-        }
-        else
-        {
-            var str =
-                  encodeDefn (nd[0], nesting)
-                + indent(nesting-2)
-                + ", "
-                + encodeDefns (nd.slice (1,nd.length), nesting);
-        }
-        exit ("encodeDefns ",str);
-        return str;
-    }
-
-    function encodeDefn (nd : DEFN, nesting: int = 0)
-        : string {
-        var str = "";
-        enter ("encodeDefn");
-        switch type (nd): DEFN {
-        case (nd: VariableDefn) {
-            var str =
-                "{ 'ast::class': 'VariableDefn'"
-              + indent(nesting) + ", 'ns': " + encodeNamespace (nd.ns, nesting+", 'ns': ".length)
-              + indent(nesting) + ", 'bindings': [ [ " + encodeBindings (nd.bindings[0], nesting+", 'bindings': [ [ ".length) 
-              + " ]"
-              + indent(nesting + ", 'bindings': ".length) + ", [ " + encodeInitSteps (nd.bindings[1], nesting+", 'bindings': [ [ ".length)
-              + " ] ] }";
-        }
-        case (nd: FunctionDefn) {
-            var str =
-                "{ 'ast::class': 'FunctionDefn'"
-              + indent(nesting)
-              + ", 'ns': "
-              + encodeExpr (nd.ns, nesting+", 'ns': ".length)
-              + indent(nesting)
-              + ", 'func': "
-              + encodeFunc (nd.func, nesting+", 'func': ".length)
-                /*
-              + indent(nesting+", 'bindings': ".length)
-              + ", [ "
-              + encodeInitSteps (nd.bindings[1], nesting+", 'bindings': [ [ ".length)
-                */
-              + " }";
-        }
-        case (x: *) {
-            throw "internalError: encodeDefn";
-        }
-        }
-        exit ("encodeDefn");
-        return str;
-    }
-
     function encodeFunc (nd : FUNC, nesting: int = 0)
         : string {
         enter ("encodeFunc");
 
         var str =
-            "{ 'ast::class': 'Func'"
-          + indent(nesting)
-          + ", 'name': "
-          + encodeFuncName (nd.name,nesting+", 'name': ".length)
-          + indent(nesting)
-          + ", 'isNative': " + nd.isNative
-          + indent(nesting)
-          + ", 'block': "
-          + encodeBlock (nd.block,nesting+", 'block': ".length)
-          + indent(nesting)
-          + ", 'params': "
-          + encodeHead (nd.params,nesting+", 'params': ".length)
-          + indent(nesting)
-          + ", 'vars': "
-          + encodeHead (nd.vars,nesting+", 'vars': ".length)
-          + indent(nesting)
-          + ", 'defaults': [" + encodeExprs (nd.defaults,nesting+", 'defaults': ".length) + " ]"
-          + indent(nesting)
-          + ", 'type': "
-          + encodeTypeExpr (nd.type,nesting+", 'ident': ".length)
+            "{ 'ast_class': 'Func'"
+          + indent(nesting) + ", 'name': " + encodeFuncName (nd.name,nesting+", 'name': ".length)
+          + indent(nesting) + ", 'isNative': " + nd.isNative
+          + indent(nesting) + ", 'block': " + encodeBlock (nd.block,nesting+", 'block': ".length)
+          + indent(nesting) + ", 'params': " + encodeHead (nd.params,nesting+", 'params': ".length)
+          + indent(nesting) + ", 'vars': " + encodeHead (nd.vars,nesting+", 'vars': ".length)
+          + indent(nesting) + ", 'defaults': [" + exprs (nd.defaults,nesting+", 'defaults': ".length) + " ]"
+          + indent(nesting) + ", 'type': " + encodeTypeExpr (nd.type,nesting+", 'type': ".length)
           + " }";
 
         exit ("encodeFunc ",str);
@@ -1025,15 +1065,13 @@
         enter ("encodeCls ",nd);
 
         var str =
-            "{ 'ast::class': 'Cls'"
+            "{ 'ast_class': 'Cls'"
           + indent(nesting) + ", 'name': " + encodeName (nd.name,nesting+", 'name': ".length)
           + indent(nesting) + ", 'baseName': " + encodeName (nd.baseName,nesting+", 'baseName': ".length)
-            /*
-          + indent(nesting) + ", 'interfaceNames': " + encodeNames (nd.interfaceNames,nesting+", 'interfaceNames': ".length)
-            */
+          + indent(nesting) + ", 'interfaceNames': " + "[]" //encodeNames (nd.interfaceNames,nesting+", 'interfaceNames': ".length)
           + indent(nesting) + ", 'constructor': " + encodeCtor (nd.constructor,nesting+", 'constructor': ".length)
-          + indent(nesting) + ", 'classHead': [ " + encodeHead (nd.classHead,nesting+", 'classHead': [ ".length) + " ]"
-          + indent(nesting) + ", 'instanceHead': [ " + encodeHead (nd.instanceHead,nesting+", 'instanceHead': [ ".length) + " ]"
+          + indent(nesting) + ", 'classHead': " + encodeHead (nd.classHead,nesting+", 'classHead': ".length)
+          + indent(nesting) + ", 'instanceHead': " + encodeHead (nd.instanceHead,nesting+", 'instanceHead': ".length)
           + indent(nesting) + ", 'classType': " + encodeTypeExpr (nd.classType,nesting+", 'classType': ".length)
           + indent(nesting) + ", 'instanceType': " + encodeTypeExpr (nd.instanceType,nesting+", 'instanceType': ".length)
           + " }";
@@ -1047,9 +1085,9 @@
         enter ("encodeCtor");
 
         var str =
-            "{ 'ast::class': 'Ctor'"
-          + indent(nesting) + ", 'settings': [ " + encodeExprs (nd.settings,nesting+", 'settings': [ ".length) + "]"
-          + indent(nesting) + ", 'superArgs': [ " + encodeExprs (nd.superArgs,nesting+", 'superArgs': ".length) + " ]" 
+            "{ 'ast_class': 'Ctor'"
+          + indent(nesting) + ", 'settings': [ " + exprs (nd.settings,nesting+", 'settings': [ ".length) + "]"
+          + indent(nesting) + ", 'superArgs': [ " + exprs (nd.superArgs,nesting+", 'superArgs': ".length) + " ]" 
           + indent(nesting) + ", 'func': " + encodeFunc (nd.func,nesting+", 'func': ".length)
           + " }";
 
@@ -1065,7 +1103,7 @@
             "{ 'kind': "
           + encodeFuncNameKind (nd.kind,nesting+"{ 'kind': ".length)
           + indent(nesting)
-          + ", 'ident': " + nd.ident
+          + ", 'ident': '" + nd.ident + "'"
           + " }";
 
         exit ("encodeFuncName ",str);
@@ -1081,10 +1119,11 @@
             var str = "Ordinary";
         }
         case (nd: *) {
-            throw "internal error: encodeFuncNameKind " + nd;
+            var str = "** encodeFuncNameKind " + nd + "**";
         }
         }
 
+        var str = "{ 'ast_class': '" + str + "' }"
         exit ("encodeFuncNameKind ",str);
         return str;
     }
@@ -1093,22 +1132,16 @@
         : string {
         enter ("encodeBindings nd.length=",nd.length);
 
-        var str;
-        if (nd == null) {
-            var str = "null";
-        }
-        else
-        if (nd.length == 0) {
-            var str = "";
-        }
-        else
+        var str = "";
+        var len = nd.length;
+        for (var i = 0; i < len; ++i) 
         {
-            var str =
-                  encodeBinding (nd[0],nesting)
-                + indent(nesting-2)
-                + ", "
-                + encodeBindings (nd.slice (1,nd.length), nesting);
+            str = str
+                + encodeBinding (nd[i], nesting)
+                + indent (nesting-2)
+                + ", ";
         }
+
         exit ("encodeBindings ",str);
         return str;
     }
@@ -1118,7 +1151,7 @@
         enter ("encodeBinding");
 
         var str =
-            "{ 'ast::class': 'Binding'"
+            "{ 'ast_class': 'Binding'"
           + indent(nesting)
           + ", 'ident': "
           + encodeBindingIdent (nd.ident,nesting+", 'ident': ".length)
@@ -1139,21 +1172,21 @@
 
         switch type (nd) {
         case (nd:TempIdent) {
-            str = "{ 'ast::class': 'TempIdent'"
+            str = "{ 'ast_class': 'TempIdent'"
                 + indent(nesting)
                 + ", 'n': "
                 + nd.n
                 + " }";
         }
         case (nd:ParamIdent) {
-            str = "{ 'ast::class': 'ParamIdent'"
+            str = "{ 'ast_class': 'ParamIdent'"
                 + indent(nesting)
                 + ", 'n': "
                 + nd.n
                 + " }";
         }
         case (nd:PropIdent) {
-            str = "{ 'ast::class': 'PropIdent'"
+            str = "{ 'ast_class': 'PropIdent'"
                 + indent(nesting)
                 + ", 'ident': '"
                 + nd.ident
@@ -1170,23 +1203,17 @@
         : string {
         enter ("encodeInitSteps nd.length=",nd.length);
 
-        var str;
-        if (nd == null) {
-            var str = "null";
-        }
-        else
-        if (nd.length == 0) {
-            var str = "";
-        }
-        else
+        var str = "";
+        var len = nd.length;
+        for (var i = 0; i < len; ++i) 
         {
-            var str =
-                  encodeInitStep (nd[0],nesting)
-                + indent(nesting-2)
-                + ", "
-                + encodeInitSteps (nd.slice (1,nd.length), nesting);
+            str = str 
+                + encodeInitStep (nd[i], nesting)
+                + indent (nesting-2)
+                + ", ";
         }
-        exit ("encodeBindings ",str);
+
+        exit ("encodeInitSteps ",str);
         return str;
     }
 
@@ -1198,7 +1225,7 @@
         switch type (nd) {
         case (nd:InitStep) {
         var str =
-            "{ 'ast::class': 'InitStep'"
+            "{ 'ast_class': 'InitStep'"
           + indent(nesting)
           + ", 'ident': "
           + encodeBindingIdent (nd.ident,nesting+", 'ident': ".length)
@@ -1213,6 +1240,32 @@
         }
 
         exit ("encodeInitStep ",str);
+        return str;
+    }
+
+    function encodeInitTarget (nd : INIT_TARGET, nesting: int = 0)
+        : string {
+        enter ("encodeInitTarget")
+        var str = "";
+        switch type (nd) {
+        case (op: HoistedInit) {
+            var str = "HoistedInit";
+        }
+        case (op: LocalInit) {
+            var str = "LocalInit";
+        }
+        case (op: PrototypeInit) {
+            var str = "PrototypeInit";
+        }
+        case (op: InstanceInit) {
+            var str = "InstanceInit";
+        }
+        case (x: *) {
+            throw "internalError: encodeLiteral";
+        }
+        }
+        var str = "{ 'ast_class': '" + str + "' }"
+        exit ("encodeInitTarget ",str);
         return str;
     }
 

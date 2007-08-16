@@ -1,0 +1,344 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+<title>Untitled Document</title>
+</head>
+
+<body>
+
+<h1>Lexical structure</h1>
+<p>
+This chapter specifies the lexical structure of the ECMAScript language. ECMAScript&rsquo;s lexical structure describes the initial stage of program compilation, in which source text is converted into a sequence of input elements.
+</p>
+<p>
+ECMAScript source text, which must be written in Unicode, is converted into input elements by the application of the lexical grammar. This initial conversion results in four types of input elements: white space, line terminators, comments and tokens. The tokens produced by the lexical grammar are used in a subsequent stage of program compilation, in which the syntactic grammar is applied to the tokens to ensure that the sequence of tokens represents a syntactically correct ECMAScript program.
+</p>
+<h3>Unicode</h3>
+<p>
+ ECMAScript programs must be written in Unicode. ECMAScript implementations must interpret characters in conformance with the UTF-16 encoding form of the Unicode Standard for all code points within the Basic Multilingual Plane (BMP). ECMAScript implementations may provide support for supplementary characters. Supplementary characters have code points outside the BMP and are represented in UTF-16 by surrogate pairs.
+</p>
+<h4>Source Text</h4>
+<p>
+ ECMAScript source text is represented as a sequence of characters in the Unicode character encoding, version x.x or later, using the UTF-16 transformation format. The text is expected to have been normalised to Unicode Normalised Form C (canonical composition), as described in Unicode Technical Report #15. Conforming ECMAScript implementations are not required to perform any normalisation of text, or behave as though they were performing normalisation of text, themselves.
+</p>
+<pre class="code">SourceCharacter ::
+     any Unicode character</pre>
+<p>
+ECMAScript source text can contain any of the Unicode characters. All Unicode white space characters are treated as white space, and all Unicode line/paragraph separators are treated as line separators. Non-Latin Unicode characters are allowed in identifiers, string literals, regular expression literals and comments.
+</p>
+<h4>Unicode Escapes</h4>
+<p>
+ In string literals, regular expression literals and identifiers, any character may also be expressed as a Unicode escape sequence, which can take any of the following forms (where H represents a hexadecimal digit):
+</p>
+<ul>
+<li class="level1"><div class="li"> \uHHHH</div>
+</li>
+<li class="level1"><div class="li"> \u{HHHH} or \u{HHHHH} or \u{HHHHHH}</div>
+</li>
+<li class="level1"><div class="li"> \x{HHHH} or \x{HHHHH} or \x{HHHHHH}</div>
+</li>
+</ul>
+<p>
+Within a comment, such an escape sequence is effectively ignored as part of the comment. Within a string literal or regular expression literal, the Unicode escape sequence contributes one character to the value of the literal. Within an identifier, the escape sequence contributes one character to the identifier.
+</p>
+<p>
+<strong>NOTE:</strong> ECMAScript differs from the Java programming language in the behaviour of Unicode escape sequences. In a Java program, if the Unicode escape sequence \u000A, for example, occurs within a single-line comment, it is interpreted as a line terminator (Unicode character 000A is line feed) and therefore the next character is not part of the comment. Similarly, if the Unicode escape sequence \u000A occurs within a string literal in a Java program, it is likewise interpreted as a line terminator, which is not allowed within a string literal&#8212;one must write \n instead of \u000A to cause a line feed to be part of the string value of a string literal. In an ECMAScript program, a Unicode escape sequence occurring within a comment is never interpreted and therefore cannot contribute to termination of the comment. Similarly, a Unicode escape sequence occurring within a string literal in an ECMAScript program always contributes a character to the string value of the literal and is never interpreted as a line terminator or as a quote mark that might terminate the string literal.
+</p>
+<h4>Unicode Format Control Characters</h4>
+<p>
+ The Unicode format-control characters (i.e., the characters in category &#8220;Cf&#8221; in the Unicode Character Database such as LEFT-TO-RIGHT MARK or RIGHT-TO-LEFT MARK) are control codes used to control the formatting of a range of text in the absence of higher-level protocols for this (such as mark-up languages). It is useful to allow these in source text to facilitate editing and display.
+</p>
+<p>
+The format control characters can occur anywhere in the source text of an ECMAScript program except as part of an identifier. An ECMAScript implementation must not remove format control characters from the source text.
+</p>
+<h3>Grammars</h3>
+<h4>Lexical Grammar</h4>
+<p>
+ There are two goal symbols for the lexical grammar. The <em>InputElementDiv</em> symbol is used in those syntactic grammar contexts where a division (/) or division-assignment (/=) operator is permitted. The <em>InputElementRegExp</em> symbol is used in other syntactic grammar contexts.
+</p>
+<p>
+Note that contexts exist in the syntactic grammar where both a division and a <em>RegularExpressionLiteral</em> are permitted by the syntactic grammar; however, since the lexical grammar uses the <em>InputElementDiv</em> goal symbol in such cases, the opening slash is not recognised as starting a regular expression literal in such a context. As a workaround, one may enclose the regular expression literal in parentheses.
+</p>
+<p>
+<strong>Syntax</strong>
+</p>
+<pre class="code">InputElementDiv ::
+  WhiteSpace
+  LineTerminator
+  Comment
+  Token
+  DivPunctuator
+
+InputElementRegExp ::
+  WhiteSpace
+  LineTerminator
+  Comment
+  Token
+  RegularExpressionLiteral
+</pre>
+<h4>Syntactic Grammar</h4>
+<p>
+The <em>syntactic grammar</em> for ECMAScript is given in sections 9 through 16. This grammar has ECMAScript tokens defined by the lexical grammar as its terminal symbols. It defines a set of productions, starting from the goal symbol Program, that describe how sequences of tokens can form syntactically correct ECMAScript programs.
+</p>
+<p>
+When a stream of Unicode characters is to be parsed as an ECMAScript program, it is first converted to a stream of input elements by repeated application of the lexical grammar; this stream of input elements is then parsed by a single application of the syntactic grammar. The program is syntactically in error if the tokens in the stream of input elements cannot be parsed as a single instance of the goal nonterminal <em>Program</em>, with no tokens left over.
+</p>
+<h3>Input Elements</h3>
+<h4>White Space</h4>
+<p>
+ White space characters are used to improve source text readability and to separate tokens (indivisible lexical units) from each other, but are otherwise insignificant. White space may occur between any two tokens, and may occur within strings (where they are considered significant characters forming part of the literal string value), but cannot appear within any other kind of token.
+</p>
+<p>
+The following characters are considered to be white space:
+</p>
+<table border="1" cellspacing="0" cellpadding="3" class="inline">
+	<tr>
+		<th> Code Point </th><th> Value Name </th><th> Formal Name </th>
+	</tr>
+	<tr>
+		<td>\u0009 </td><td> Tab </td><td> &lt;TAB&gt; </td>
+	</tr>
+	<tr>
+		<td>\u000B </td><td> Vertical Tab </td><td> &lt;VT&gt; </td>
+	</tr>
+	<tr>
+		<td>\u000C </td><td> Form Feed </td><td> &lt;FF&gt; </td>
+	</tr>
+	<tr>
+		<td>\u0020 </td><td> Space </td><td> &lt;SP&gt; </td>
+	</tr>
+	<tr>
+		<td>\u00A0 </td><td> No-break space </td><td> &lt;NBSP&gt; </td>
+	</tr>
+	<tr>
+		<td>Other category &#8220;Zs&#8221; </td><td> Any other Unicode &#8220;space separator&#8221; </td><td> &lt;USP&gt; </td>
+	</tr>
+</table>
+<br />
+<p>
+<strong>Syntax</strong>
+</p>
+<pre class="code">
+WhiteSpace ::
+  &lt;TAB&gt;
+  &lt;VT&gt;
+  &lt;FF&gt;
+  &lt;SP&gt;
+  &lt;NBSP&gt;
+  &lt;USP&gt;
+</pre>
+<h4>Line Terminators</h4>
+<p>
+ Like white space characters, line terminator characters are used to improve source text readability and to separate tokens (indivisible lexical units) from each other. However, unlike white space characters, line terminators have some influence over the behaviour of the syntactic grammar. In general, line terminators may occur between any two tokens, but there are a few places where they are forbidden by the syntactic grammar. A line terminator cannot occur within any token, not even a string. Line terminators also affect the process of automatic semicolon insertion.
+</p>
+<p>
+The following characters are considered to be line terminators:
+</p>
+<table border="1" cellspacing="0" cellpadding="3" class="inline">
+	<tr>
+		<th> Code Point </th><th> Value Name </th><th> Formal Name </th>
+	</tr>
+	<tr>
+		<td>\u000A </td><td> Line Feed </td><td> &lt;LF&gt; </td>
+	</tr>
+	<tr>
+		<td>\u000D </td><td> Carriage Return </td><td> &lt;CR&gt; </td>
+	</tr>
+	<tr>
+		<td>\u2028 </td><td> Line separator </td><td> &lt;LS&gt; </td>
+	</tr>
+	<tr>
+		<td>\u2029 </td><td> Paragraph separator </td><td> &lt;PS&gt; </td>
+	</tr>
+</table>
+<br />
+<p>
+ <strong>Syntax</strong>
+</p>
+<pre class="code">
+LineTerminator ::
+  &lt;LF&gt;
+  &lt;CR&gt;
+  &lt;LS&gt;
+  &lt;PS&gt;
+</pre>
+<h4>Comments</h4>
+<p>
+ Comments can be either single or multi-line. Multi-line comments cannot nest.
+</p>
+<p>
+A single-line comment consists of all characters from the // marker to the end of the line because a token is always as long as possible and a single-line comment can contain any character except a LineTerminator character. However, the LineTerminator at the end of the line is not considered to be part of the single-line comment; it is recognised separately by the lexical grammar and becomes part of the stream of input elements for the syntactic grammar. This point is very important because it implies that the presence or absence of single-line comments does not affect the process of automatic semicolon insertion.
+</p>
+<p>
+Comments, like white space, are discarded. The only exception is a multi-line comment that contains a LineTerminator character; in such cases the entire comment is considered to be a LineTerminator for purposes of parsing by the syntactic grammar.</p>
+<p>
+ <strong>Syntax</strong>
+</p>
+<pre class="code">
+Comment ::
+    MultiLineComment
+    SingleLineComment
+
+MultiLineComment ::
+    /* MultiLineCommentCharsopt */
+
+MultiLineCommentChars ::
+    MultiLineNotAsteriskChar MultiLineCommentCharsopt
+    * PostAsteriskCommentCharsopt
+
+PostAsteriskCommentChars ::
+    MultiLineNotForwardSlashOrAsteriskChar MultiLineCommentCharsopt
+    * PostAsteriskCommentCharsopt
+
+MultiLineNotAsteriskChar ::
+    SourceCharacter but not asterisk *
+
+MultiLineNotForwardSlashOrAsteriskChar ::
+    SourceCharacter but not forward-slash / or asterisk *
+
+SingleLineComment ::
+    // SingleLineCommentCharsopt
+
+SingleLineCommentChars ::
+    SingleLineCommentChar SingleLineCommentCharsopt
+
+SingleLineCommentChar ::
+    SourceCharacter but not LineTerminator
+</pre>
+<h4>Tokens</h4>
+<p>
+ <strong>Syntax</strong>
+</p>
+<pre class="code">
+Token ::
+    ReservedWord
+    Identifier
+    Punctuator
+    NumericLiteral
+    StringLiteral
+</pre>
+<h5>Reserved Words</h5>
+<p>
+ <strong>Syntax</strong>
+</p>
+<pre class="code">
+ReservedWord ::
+    ReservedIdentifier
+    ContextuallyReservedIdentifier
+    NullLiteral
+    BooleanLiteral
+</pre>
+<pre class="code">
+ReservedIdentifier [one of]
+	break case catch class continue default delete do else enum extends false
+	finally for function if in instanceof new null return super switch this throw
+	true try typeof var void while with
+</pre>
+<pre class="code">
+ContextuallyReservedIdentifier [one of]
+	call cast const debugger decimal double dynamic each eval final get goto has
+	implements import include int interface internal intrinsic is let namespace
+	native Number override package precision private protected prototype public
+	rounding standard strict to set static type uint undefined use xml yield
+</pre>
+<p>
+ Future reserved words are abolished. Words designated as future reserved words by previous editions of this specification  are now either reserved identifiers, contextually reserved identifiers, or are not reserved.
+</p>
+<p>
+The following words are now reserved identifiers:
+</p>
+<pre class="code">
+class enum extends super
+</pre>
+<p>
+The following words are now contextually reserved identifiers:
+</p>
+<pre class="code">
+const debugger double final implements import int interface
+native package private protected public static
+</pre>
+<p>
+ The following words are no longer reserved:
+</p>
+<pre class="code">
+abstract boolean byte char export float goto long short
+synchronized throws transient volatile
+</pre>
+<h5>Identifiers</h5>
+<p>
+ Identifiers are interpreted according to the grammar given in Section 5.15 of version TBD of the Unicode standard, with some small modifications. This grammar is based on both normative and informative character categories specified by the Unicode standard. The characters in the specified categories in version TBD of the Unicode standard must be treated as in those categories by all conforming ECMAScript implementations; however, conforming ECMAScript implementations may allow additional legal identifier characters based on the category assignment from later versions of Unicode.
+</p>
+<p>
+This standard specifies one departure from the grammar given in the Unicode standard: The dollar sign ($) and the underscore (_) are permitted anywhere in an identifier. The dollar sign is intended for use only in mechanically generated code.
+</p>
+<p>
+Unicode escape sequences are also permitted in identifiers, where they contribute a single character to the identifier, as computed by the CV of the <em>UnicodeEscapeSequence</em> (see section TBD). The \ preceding the <em>UnicodeEscapeSequence</em> does not contribute a character to the identifier. A UnicodeEscapeSequence cannot be used to put a character into an identifier that would otherwise be illegal. In other words, if a \ <em>UnicodeEscapeSequence</em> sequence were replaced by its <em>UnicodeEscapeSequence</em>&lsquo;s CV, the result must still be a valid Identifier that has the exact same sequence of characters as the original Identifier.
+</p>
+<p>
+Two identifiers that are canonically equivalent according to the Unicode standard are not equal unless they are represented by the exact same sequence of code points (in other words, conforming ECMAScript implementations are only required to do bitwise comparison on identifiers). The intent is that the incoming source text has been converted to normalised form C before it reaches the compiler.
+</p>
+<p>
+ <strong>Syntax</strong>
+</p>
+<pre class="code">
+Identifier ::
+    IdentifierName but not ReservedWord
+
+IdentifierName ::
+    IdentifierStart
+    IdentifierName IdentifierPart
+
+IdentifierStart ::
+    UnicodeLetter
+    $
+    _
+    \ UnicodeEscapeSequence
+
+IdentifierPart ::
+    IdentifierStart
+    UnicodeCombiningMark
+    UnicodeDigit
+    UnicodeConnectorPunctuation
+    \ UnicodeEscapeSequence
+
+UnicodeLetter
+    any character in the Unicode categories &quot;Uppercase letter (Lu)&quot;, &quot;Lowercase letter (Ll)&quot;, &quot;Titlecase letter (Lt)&quot;,
+    &quot;Modifier letter (Lm)&quot;, &quot;Other letter (Lo)&quot;, or &quot;Letter number (Nl)&quot;.
+
+UnicodeCombiningMark
+    any character in the Unicode categories &quot;Non-spacing mark (Mn)&quot; or &quot;Combining spacing mark (Mc)&quot;
+
+UnicodeDigit
+    any character in the Unicode category &quot;Decimal number (Nd)&quot;
+
+UnicodeConnectorPunctuation
+    any character in the Unicode category &quot;Connector punctuation (Pc)&quot;
+
+UnicodeEscapeSequence
+    see section TBD (String Literals).
+
+HexDigit :: one of
+    0 1 2 3 4 5 6 7 8 9 a b c d e f A B C D E F
+
+</pre>
+<h5>Punctuators</h5>
+<p>
+ <strong>Syntax</strong>
+</p>
+<pre class="code">
+Punctuator :: one of
+
+.   .&lt;   ..   …   !   !=   !==   %   %=   &amp;   &amp;=   &amp;&amp;   &amp;&amp;=   *   *=   +   +=   ++   -   --   -=
+/   /=   /&gt; &lt;   &lt;=   &lt;/   &lt;&lt;   &lt;&lt;=   =   ==   ===   &gt;   &gt;=   &gt;&gt;   &gt;&gt;=   &gt;&gt;&gt;   &gt;&gt;&gt;=
+^   ^=   |   |=   ||   ||=   :   ::   (   )   [   ]   {   }   ~   @   ,   ;   ? **
+
+</pre>
+<h5>Literals</h5>
+<h3>Automatic Semicolon Insertion</h3>
+
+
+
+
+</body>
+</html>

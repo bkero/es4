@@ -1,0 +1,82 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+<title>Untitled Document</title>
+</head>
+
+<body>
+
+
+<h1>Errors</h1>
+<h2>Class errors</h2>
+<p>
+ The following errors may occur while parsing or verifying a class definition: 
+</p>
+<ul>
+<li class="level1"><div class="li"> Defining a class with the name of another definition in the same scope</div>
+</li>
+<li class="level1"><div class="li"> Defining a class that extends itself directly or indirectly</div>
+</li>
+<li class="level1"><div class="li"> Defining a constructor with a namespace attribute that is different than the namespace attribute of its class</div>
+</li>
+<li class="level1"><div class="li"> Defining a constructor with a result type</div>
+</li>
+<li class="level1"><div class="li"> Defining a constructor that calls its super constructor more than once</div>
+</li>
+<li class="level1"><div class="li"> Defining a constructor that calls its super constructor accessing a non-local property</div>
+</li>
+<li class="level1"><div class="li"> Introducing a method or variable with the same name as an inherited method or variable</div>
+</li>
+<li class="level1"><div class="li"> Overriding a variable</div>
+</li>
+<li class="level1"><div class="li"> Overriding a final method</div>
+</li>
+<li class="level1"><div class="li"> Overriding a method that is not defined in a base class</div>
+</li>
+<li class="level1"><div class="li"> Overriding a method with a method that has a different number, types of parameters, or result type</div>
+</li>
+</ul>
+<h2>Interface errors</h2>
+<p>
+ The following errors may occur while parsing or verifying an interface definition: 
+</p>
+<ul>
+<li class="level1"><div class="li"> Defining an interface with the name of another definition in the same scope</div>
+</li>
+<li class="level1"><div class="li"> Defining an interface that extends itself directly or indirectly</div>
+</li>
+<li class="level1"><div class="li"> Defining an interface with a body that contain a definition or statement other than a function definition with no block</div>
+</li>
+<li class="level1"><div class="li"> Defining an interface method with the same identifier as an inherited interface method</div>
+</li>
+<li class="level1"><div class="li"> Defining an interface method with a attribute</div>
+</li>
+</ul>
+<h2>Package errors</h2>
+<ul>
+<li class="level1"><div class="li"> It is a parser error to define a package inside a package</div>
+</li>
+<li class="level1"><div class="li"> It is a parser error to use attributes on a package definition</div>
+</li>
+<li class="level1"><div class="li"> It is a parser error to import a packages names into itself</div>
+</li>
+<li class="level1"><div class="li"> It is a strict error to import the same name more than once into the same package</div>
+</li>
+<li class="level1"><div class="li"> It is a strict error to import a package that cannot be found</div>
+</li>
+<li class="level1"><div class="li"> It is a strict error to reference a package property that cannot be found in an imported package</div>
+</li>
+</ul>
+<h2>Namespace errors</h2>
+<ul>
+<li class="level1"><div class="li"> It is a verifier error to use an expression that does not have a compile-time constant namespace value in a use namespace directive</div>
+</li>
+<li class="level1"><div class="li"> It is a verifier error to use an attribute expression that is not a compile-time constant namespace value as an definition attribute </div>
+</li>
+<li class="level1"><div class="li"> It is a verifier error to use a user defined namespace as an attribute except to define a class or instance property</div>
+</li>
+</ul>
+
+</body>
+</html>

@@ -731,9 +731,9 @@ namespace Lexer
         public function tokenList (lexPrefix)
             //            : [[int],[[int,int]]]
         {
-
             function pushToken (token)
             {
+                // print (token);
                 if (token == Token::Eol) {
                     lnCoord++;
                     colCoord = 0;
@@ -760,8 +760,8 @@ namespace Lexer
                 pushToken (token);
             }
 
-            print("tokenList = ",tokenList);
-            print("coordList = ",coordList);
+            //print("tokenList = ",tokenList);
+            //print("coordList = ",coordList);
             return [tokenList,coordList];
         }
 
@@ -799,7 +799,7 @@ namespace Lexer
             {
                 mark();
                 c = next();
-                //                print("c[",curIndex-1,"]=",String.fromCharCode(c));
+                // print("c[",curIndex-1,"]=",String.fromCharCode(c));
                 switch (c)
                 {
                 case 0xffffffef: return utf8sig ();
@@ -1090,21 +1090,28 @@ namespace Lexer
 	    let c : int = next ();
 	    switch (c) {
 	    case Char::Asterisk :
-		switch (next()) {
-		case Char::Slash:
-		    return;
-		case Char::EOS :
-		    retract ();
-		    return;
-		default:
-		    retract (); // leave in case its an asterisk
-		    blockComment ();
-		}
+            switch (next()) {
+            case Char::Slash:
+                return;
+            case Char::EOS :
+                retract ();
+                return;
+            case Char::Asterisk:
+                retract (); // leave in case next char is a slash
+                return blockComment ();
+            case Char::Newline:
+                colCoord = 0;
+                lnCoord++; // count ln and fall through
+            default:
+                return blockComment ();
+            }
 	    case Char::EOS :
-		retract ();
-		return;
+            retract ();
+            return;
+        case Char::Newline:
+            lnCoord++; // fall through
 	    default :
-		return blockComment ();
+            return blockComment ();
 	    }
 	}
 
@@ -1915,6 +1922,7 @@ namespace Lexer
 			, "\\u0050 \\x50gh \\073 \\73 \\073123 \\7398"
                         , "/abc/ 'hi' \"bye\" null break /def/xyz" ].reverse();
 
+        /*
 	while (testCases.length > 0) {
             var scan = new Scanner (testCases.pop());
             var list = scan.tokenList (scan.start);
@@ -1936,7 +1944,7 @@ namespace Lexer
             } while (tk != Token::EOS);
             print ("scanned!");
 	}
+        */
     }
-
     //    test ();
 }

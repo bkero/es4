@@ -1379,9 +1379,9 @@ and objectLiteral (ts:TOKENS)
                     end
               | (RightBrace, _) :: _ =>
                     (tl ts1,Ast.LiteralObject {expr=nd1,ty=NONE})
-              | _ => error ["unknown token in objectLiteral"]
+              | _ => error ["unknown token in objectLiteral ",tokenname (hd ts1)]
             end
-      | _ => error ["unknown token in objectLiteral"]
+      | _ => error ["unknown token in objectLiteral ",tokenname (hd ts)]
     end
 
 (*
@@ -1575,9 +1575,9 @@ and arrayLiteral (ts:TOKENS)
                     end
               | (RightBracket, _) :: _ =>
                     (tl ts1,Ast.LiteralArray {exprs=nd1,ty=NONE})
-              | _ => error ["unknown token in arrayLiteral"]
+              | _ => error ["unknown token in arrayLiteral ",tokenname (hd ts)]
             end
-      | _ => error ["unknown token in arrayLiteral"]
+      | _ => error ["unknown token in arrayLiteral ",tokenname (hd ts)]
     end
 
 (*
@@ -3651,6 +3651,7 @@ and fieldTypeList (ts:TOKENS)
 and fieldType (ts:TOKENS)
     : (TOKENS * Ast.FIELD_TYPE) =
     let val _ = trace([">> fieldType with next=",tokenname(hd(ts))])
+
         val (ts1,nd1) = fieldName ts
         val ident = case nd1 of
                         Ast.Identifier{ident,...} => ident

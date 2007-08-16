@@ -2274,7 +2274,7 @@ and defTypeExpr (env:ENV)
                        Ast.TypeName (Ast.QualifiedIdentifier {qual=(defExpr env base),
                                                               ident=id})
                  | (_,_) =>
-                       LogErr.defnError ["invalid type expr"]
+                       LogErr.defnError ["invalid type expr ", Ustring.toAscii (hd p)]
                 end
               | _ =>
                 Ast.TypeName (defIdentExpr env n)
