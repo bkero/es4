@@ -3363,11 +3363,6 @@ and evalStmt (regs:Mach.REGS)
       | Ast.ForInStmt w => evalForInStmt regs w
       | _ => error ["Shouldn't happen: failed to match in Eval.evalStmt."]
 
-
-and multinameOf (n:Ast.NAME) =
-    { nss = [[(#ns n)]], id = (#id n) }
-
-
 and findVal (scope:Mach.SCOPE)
             (name:Ast.NAME)
     : Mach.VAL =

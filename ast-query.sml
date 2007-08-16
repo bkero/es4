@@ -41,7 +41,7 @@
 
 structure AstQuery = struct
 
-fun funcTy (func:ast.FUNC)
+fun funcTy (func:Ast.FUNC)
     : Ast.TY = 
     let
 	val Ast.Func { ty, ... } = func
