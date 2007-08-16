@@ -1570,8 +1570,9 @@ namespace Parser;
             while (true) {
 
                 if (hd (ts1) === Token::BREAK) {
-                    [ts,this.coordList] = scan.tokenList (scan.div);
-                    ts1 = new TokenStream (ts,0)
+                    let tsx;
+                    [tsx,this.coordList] = scan.tokenList (scan.div);
+                    ts1 = new TokenStream (tsx,0);
                 }
 
                 switch (hd (ts1)) {
@@ -2817,11 +2818,10 @@ namespace Parser;
                 print("line eos");
             else {
                 let coord = coordList[ts.n];
-                print ("line ",coord[0]);
+                print ("line ",coord[0]+1);
             }
             exit ("printLn");
         }
-
 
         function newline (ts: TOKENS)
             : boolean
@@ -2851,7 +2851,7 @@ namespace Parser;
             case full:
                 switch (hd (ts)) {
                 case Token::SemiColon:
-                    print ("semicolon found");
+                    // print ("semicolon found");
                     var ts1 = tl (ts);
                     break;
                 case Token::EOS:
@@ -2859,8 +2859,13 @@ namespace Parser;
                     var ts1 = ts;
                     break;
                 default:
-                    if (newline (ts)) { var ts1=ts; print ("inserting semicolon") }
-                    else { throw "** error: expecting semicolon" }
+                    if (newline (ts)) { 
+                        var ts1=ts; 
+                        //print ("inserting semicolon") 
+                    }
+                    else { 
+                        throw "** error: expecting semicolon" 
+                    }
                     break;
                 }
                 break;
@@ -2943,9 +2948,10 @@ namespace Parser;
             ts = eat (ts,Token::While);
             var [ts1,nd1] = parenListExpression (ts);
             var [ts2,nd2] = substatement (ts1, omega); 
+            var labels = [];
  
             exit("Parser::whileStatement ", ts2);
-            return [ts2, new Ast::WhileStmt (nd1,nd2)];
+            return [ts2, new Ast::WhileStmt (nd1,nd2,labels)];
         }
 
 
@@ -4192,29 +4198,19 @@ namespace Parser;
             return [ts2,nd2];
         }
 
-        function mergeStmts (s1,s2) {
-            enter ("mergeStmts");
-            for (p in s2) s1.push(s2[p]);
-            exit ("mergeStmts");
-            return s1;
-        }
-
         function directivesPrefixPrime (ts: TOKENS, tau: TAU)
             : [TOKENS, Ast::STMTS]
         {
             enter("Parser::directivesPrefixPrime ", ts);
 
-            switch (hd (ts)) {
-            case Token::RightBrace:
-            case Token::EOS:
-                var [ts1,nd1] = [ts,[]];
-                break;
-            default:
-                [ts1,nd1] = directive (ts,tau,full);
-                var [ts2,nd2] = directivesPrefixPrime (ts1,tau);
-                nd1 = mergeStmts (nd1,nd2);
-                ts1 = ts2;
-                break;
+            var nd1 = [];
+            var ts1 = ts;
+
+            while (hd (ts1) !== Token::RightBrace &&
+                   hd (ts1) !== Token::EOS ) 
+            {
+                var [ts1,ndx] = directive (ts1,tau,full);
+                for (var i=0; i<ndx.length; ++i) nd1.push (ndx[i]);
             }
 
             exit("Parser::directivesPrefixPrime ", ts1);
@@ -4989,6 +4985,6 @@ namespace Parser;
         }
     }
 
-    test ()
+    //    test ()
 }
 }// end module

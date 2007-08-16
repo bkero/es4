@@ -106,12 +106,12 @@ package cogen
 
     // Probable AST bug: should be no fixtures here, you can't define
     // vars in the WHILE head.
-    function cgWhileStmt(ctx, {body: body, labels: labels, expr: expr}) {
+    function cgWhileStmt(ctx, {stmt: stmt, labels: labels, expr: expr}) {
         let asm    = ctx.asm;
         let Lbreak = asm.newLabel();
         let Lcont  = asm.I_jump();
         let Ltop   = asm.I_label();
-        cgStmt(pushBreak(pushContinue(ctx, labels, Lcont), labels, Lbreak), body);
+        cgStmt(pushBreak(pushContinue(ctx, labels, Lcont), labels, Lbreak), stmt);
         asm.I_label(Lcont);
         cgExpr(ctx, expr);
         asm.I_iftrue(Ltop);
@@ -120,12 +120,12 @@ package cogen
 
     // Probable AST bug: should be no fixtures here, you can't define
     // vars in the DO-WHILE head.
-    function cgDoWhileStmt(ctx, {body: body, labels: labels, expr: expr}) {
+    function cgDoWhileStmt(ctx, {stmt: stmt, labels: labels, expr: expr}) {
         let asm    = ctx.asm;
         let Lbreak = asm.newLabel();
         let Lcont  = asm.newLabel();
         let Ltop   = asm.I_label();
-        cgStmt(pushBreak(pushContinue(ctx, labels, Lcont), labels, Lbreak), body);
+        cgStmt(pushBreak(pushContinue(ctx, labels, Lcont), labels, Lbreak), stmt);
         asm.I_label(Lcont);
         cgExpr(ctx, expr);
         asm.I_iftrue(Ltop);

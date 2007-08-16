@@ -42,7 +42,7 @@ namespace Ast
 
 {
     use default namespace Ast;
-    use namespace intrinsic;
+    //    use namespace intrinsic;
 
     // POS
 
@@ -55,6 +55,7 @@ namespace Ast
     // BASIC TYPES
 
     type IDENT = String;   // unicode string
+    type IDENTS = [IDENT];
 
     type HEAD = { fixtures: FIXTURES
                 , inits: INITS };
@@ -764,6 +765,7 @@ namespace Ast
     const varTag = new Var;
     const letVarTag = new LetVar;
     const letConstTag = new LetConst;
+
 
     class VariableDefn {
         const ns: NAMESPACE;

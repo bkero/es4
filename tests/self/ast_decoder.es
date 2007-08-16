@@ -139,8 +139,9 @@ namespace Decode;
             let nd1 = func (ob.func);
             let nd2 = typeExpr (ob.type);
             let nd3 = ob.isReadOnly;
-            let nd4 = ob.isFinal;
-            var ndx = new MethodFixture (nd1,nd2,nd3,nd4);
+            let nd4 = ob.isOverride;
+            let nd5 = ob.isFinal;
+            var ndx = new MethodFixture (nd1,nd2,nd3,nd4,nd5);
             break;
         case 'ValFixture':
             let nd1 = typeExpr (ob.type);
@@ -315,6 +316,22 @@ namespace Decode;
         return nd1;
     }
 
+    function stmtOpt (ob) 
+        : STMT
+    {
+        enter ("Decode::stmtOpt ", ob);
+
+        if (ob !== null) {
+            var nd1 = stmt (ob);
+        }
+        else {
+            var nd1 = null;
+        }
+
+        exit ("Decode::stmtOpt ");
+        return nd1;
+    }
+
     function stmt (ob) 
         : STMT
     {
@@ -382,7 +399,7 @@ namespace Decode;
         case 'IfStmt':
             let nd1 = expr (ob.expr);
             let nd2 = stmt (ob.then);
-            let nd3 = stmt (ob.elseOpt);
+            let nd3 = stmtOpt (ob.elseOpt);
             var ndx = new IfStmt (nd1,nd2,nd3);
             break;
         case 'WithStmt':
@@ -469,6 +486,21 @@ namespace Decode;
 
         exit ("Decode::catchClause");
         return ndx;
+    }
+
+    function idents (ob) 
+        : IDENTS
+    {
+        enter ("Decode::idents ", ob.length);
+
+        var nd1 = [];
+        for (var i = 0; i < ob.length; ++i) {
+            var nd = ob[i];
+            nd1.push (nd);
+        }
+
+        exit ("Decode::idents");
+        return nd1;
     }
 
     function exprs (ob) 
@@ -804,10 +836,10 @@ namespace Decode;
             var ndx = new Type;
             break;
         default:
-            throw "error Decode::binOp " + ob.ast_class;
+            throw "error Decode::unOp " + ob.ast_class;
         }
 
-        exit ("Decode::binOp");
+        exit ("Decode::unOp");
         return ndx;
     }
 
@@ -1006,6 +1038,9 @@ namespace Decode;
             break;
         case 'LiteralDecimal':
             var ndx = new LiteralDecimal (ob.decimalValue);
+            break;
+        case 'LiteralBoolean':
+            var ndx = new LiteralBoolean (ob.booleanValue);
             break;
         default:
             throw "error Decode::literal " + ob.ast_class;
