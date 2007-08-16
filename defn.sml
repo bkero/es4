@@ -675,9 +675,11 @@ and defInterface (env: ENV)
 and canOverride (fb:Ast.FIXTURE) (fd:Ast.FIXTURE)
     : bool =
     let
-        fun isVoid ty = case ty of Ast.SpecialType Ast.VoidType => true
-                                 | _ => false
-
+        fun isVoid ty = 
+            case ty of 
+                Ast.SpecialType Ast.VoidType => true
+              | _ => false
+                     
         val isCompatible = case (fb,fd) of
                 (Ast.MethodFixture
                      {ty=Ast.Ty 
@@ -854,50 +856,39 @@ and implementFixtures (base:Ast.RIB)
 
 and resolveClassInheritance (env:ENV)
                  ({extends,implements,...}: Ast.CLASS_DEFN)
-                 (Ast.Cls {name,nonnullable,dynamic,classRib,instanceRib,instanceInits,
+                 (Ast.Cls {name,typeParams,nonnullable,dynamic,classRib,instanceRib,instanceInits,
                            constructor,classType,instanceType,...}:Ast.CLS)
     : Ast.CLS =
     let
         val _ = trace ["analyzing class block for ", LogErr.name name]
 
+        val _ = if Type.isGroundTy classType
+                then ()
+                else error ["resolveClassInheritance: non-ground class type"]
+
+        val _ = if Type.isGroundTy instanceType
+                then ()
+                else error ["resolveClassInheritance: non-ground instance type"]
+
         val (extendsTy:Ast.TY option, 
-             instanceRib:Ast.RIB) = resolveExtends env instanceRib extends name
+             instanceRib0:Ast.RIB) = resolveExtends env instanceRib extends name
 
         val (implementsTys:Ast.TY list, 
-             instanceRib:Ast.RIB) = resolveImplements env instanceRib implements
+             instanceRib1:Ast.RIB) = resolveImplements env instanceRib0 implements
 
         val superTypes:Ast.TY list = 
             case extendsTy of 
                 NONE => implementsTys
               | SOME ty => ty :: implementsTys
-
-        (* Make the instance type *)
-        val instanceType =
-            let
-                val Ast.Ty {expr={ name, 
-                                   nonnullable, 
-                                   typeParams, 
-                                   ty, 
-                                   conversionTy, 
-                                   dynamic, ... }, 
-                            ...} = instanceType
-            in
-                { name = name,
-                  nonnullable = nonnullable,
-                  typeParams = typeParams,
-                  superTypes = superTypes,
-                  ty = ty,
-                  conversionTy = conversionTy,
-                  dynamic = dynamic }
-            end
     in
         Ast.Cls {name=name,
-                 extends=extendsName,
+                 typeParams=typeParams,
                  nonnullable=nonnullable,
                  dynamic=dynamic,
-                 implements=implementsNames,
+                 extends=extendsTy,
+                 implements=implementsTys,
                  classRib=classRib,
-                 instanceRib=instanceRib,
+                 instanceRib=instanceRib1,
                  instanceInits=instanceInits,
                  constructor=constructor,
                  classType=classType,
@@ -928,10 +919,10 @@ and resolveExtends (env:ENV)
     let
         val baseClassMultiname:Ast.MULTINAME option = 
             case extends of 
-                NONE => if name = Name.nons_Object
+                NONE => if currName = Name.nons_Object
                         then NONE
-                        else SOME multinameOf Name.nons_Object
-              | SOME te => identExprToMultiname (extractIdentExprFromTypeName te)
+                        else SOME (multinameOf Name.nons_Object)
+              | SOME te => SOME (identExprToMultiname env (extractIdentExprFromTypeName te))
 
             
     in
@@ -950,7 +941,7 @@ and resolveExtends (env:ENV)
 
 and resolveImplements (env: ENV)
                       (instanceRib: Ast.RIB)
-                      (implements: Ast.IDENT_EXPR list)
+                      (implements: Ast.TYPE_EXPR list)
     : (Ast.TY list * Ast.RIB) =
     let
         val (superInterfaces, abstractFixtures) = resolveInterfaces env implements
@@ -984,6 +975,12 @@ and interfaceExtends (ifxtr:Ast.FIXTURE)
     case ifxtr of
         Ast.InterfaceFixture (Ast.Iface {extends,...}) => extends
       |_ => LogErr.internalError ["interfaceExtends"]
+
+and interfaceInstanceType (ifxtr:Ast.FIXTURE)
+    : Ast.TY =
+    case ifxtr of
+        Ast.InterfaceFixture (Ast.Iface {instanceType,...}) => instanceType
+      |_ => LogErr.internalError ["interfaceInstanceType"]
 
 and classInstanceRib (cfxtr:Ast.FIXTURE)
     : Ast.RIB =
@@ -1024,10 +1021,11 @@ and resolveInterfaces (env: ENV)
         let
             val mnames:Ast.MULTINAME list = map ((identExprToMultiname env) o extractIdentExprFromTypeName) exprs
             val (_, ifaces) = ListPair.unzip (map (resolveMultinameToFixture env) mnames)
+            val ifaceInstanceTypes:Ast.TY list = map interfaceInstanceType ifaces
+            val superIfaceTypes:Ast.TY list = List.concat (map interfaceExtends ifaces)
             val methodRib:Ast.RIB = List.concat (map interfaceMethods ifaces)
-            val superIfaces:Ast.TY list = List.concat (map interfaceExtends ifaces)
         in
-            (ifaces @ superIfaces, methodRib)
+            (ifaceInstanceTypes @ superIfaceTypes, methodRib)
         end
 
 (*
@@ -1042,81 +1040,96 @@ and resolveInterfaces (env: ENV)
 and analyzeClassBody (env:ENV)
                      (cdef:Ast.CLASS_DEFN)
     : Ast.CLS =
-    case cdef of
-        {ns, ident, instanceDefns, instanceStmts, classDefns, ctorDefn, nonnullable, dynamic, ...} =>
-        let
+    let
 
-            (*
-                Partition the class definition into a class block
-                and an instance block, and then define both blocks
-            *)
+        val {ns, ident, nonnullable, dynamic, params,                  
+             classDefns, 
+             instanceDefns, instanceStmts, 
+             ctorDefn,  ...} = cdef
+                               
+        (*
+         * Partition the class definition into a class block
+         * and an instance block, and then define both blocks.
+         *)
 
-            val ns = resolveExprOptToNamespace env ns
-            val name = {id=ident, ns=ns}
-            val env = enterClass env name
+        val ns = resolveExprOptToNamespace env ns
+        val name = {id=ident, ns=ns}
+        val env = enterClass env name
 
-            val (unhoisted,classRib,classInits) = defNonTopDefns env classDefns
-            val classRib = (mergeRibs unhoisted classRib)
-            val staticEnv = extendEnvironment env classRib
-                             (* namespace and type definitions aren't normally hoisted *)
+        val (unhoisted,classRib,classInits) = defNonTopDefns env classDefns
+        val classRib = (mergeRibs unhoisted classRib)
+        val staticEnv = extendEnvironment env classRib
 
-            val (unhoisted,instanceRib,_) = defNonTopDefns staticEnv instanceDefns
-            val instanceEnv = extendEnvironment staticEnv instanceRib
+        (* namespace and type definitions aren't normally hoisted *)
 
-            val ctor =
-                case ctorDefn of
-                    NONE => NONE
-                  | SOME c => SOME (defCtor instanceEnv c)
+        val (unhoisted,instanceRib,_) = defNonTopDefns staticEnv instanceDefns
+        val instanceEnv = extendEnvironment staticEnv instanceRib
 
-            val (instanceStmts,_) = defStmts staticEnv instanceStmts  (* no hoisted fixture produced *)
+        val ctor:Ast.CTOR option =
+            case ctorDefn of
+                NONE => NONE
+              | SOME c => SOME (defCtor instanceEnv c)
 
-            val conversionTy =
-                let
-                    val fname = Ast.PropName Name.meta_convert
-                in
-                    if Fixture.hasFixture classRib fname
-                    then
-                        case Fixture.getFixture classRib fname of
-                            Ast.MethodFixture { ty=Ast.FunctionType { params=[pt], ... }, ... } =>
-                            SOME pt
-                          | _ => NONE
-                    else NONE
-                end
+        val (instanceStmts,_) = defStmts staticEnv instanceStmts  (* no hoisted fixture produced *)
 
-            (*
-                The parser separates variable definitions into defns and stmts. The only stmts
-                in this case will be InitStmts and what we really want is INITs so we translate
-                to to INITs here.
-            *)
+        val conversionTy:Ast.TYPE_EXPR option =
+            let
+                val fname = Ast.PropName Name.meta_convert
+            in
+                if Fixture.hasFixture classRib fname
+                then
+                    case Fixture.getFixture classRib fname of
+                        Ast.MethodFixture { ty, ... } =>
+                        let
+                            val funcTyExpr:Ast.TYPE_EXPR = 
+                                Type.groundExpr (Type.normalize (#program env) ty)
+                        in
+                            case funcTyExpr of 
+                                Ast.FunctionType { params=[pt], ... } => SOME pt
+                              | _ => error ["conversion function has non-function type"]
+                        end
+                      | _ => NONE
+                else NONE
+            end
+            
+        (*
+         * The parser separates variable definitions into defns and stmts. The only stmts
+         * in this case will be InitStmts and what we really want is INITs so we translate
+         * to to INITs here.
+         *)
 
-            fun initsFromStmt stmt =
-                case stmt of
-                     Ast.ExprStmt (Ast.InitExpr (target,Ast.Head (temp_fxtrs,temp_inits),inits)) => (temp_fxtrs,temp_inits@inits)
-                   | _ => LogErr.unimplError ["Defn.bindingsFromStmt"]
+        fun initsFromStmt stmt =
+            case stmt of
+                Ast.ExprStmt (Ast.InitExpr (target,Ast.Head (temp_fxtrs,temp_inits),inits)) 
+                => (temp_fxtrs,temp_inits@inits)
+              | _ => LogErr.unimplError ["Defn.bindingsFromStmt"]
 
-            val (fxtrs,inits) = ListPair.unzip(map initsFromStmt instanceStmts)
-            val instanceInits = Ast.Head (List.concat fxtrs, List.concat inits)
+        val (fxtrs,inits) = ListPair.unzip(map initsFromStmt instanceStmts)
+        val instanceInits = Ast.Head (List.concat fxtrs, List.concat inits)
 
-            val instanceType = {name=name,
-                                nonnullable=nonnullable,
-                                typeParams=[], (* FIXME: copy in from CLASS_DEFN *)
-                                superTypes=[], (* set in resolveClassInheritence *)
-                                ty=Ast.ObjectType [], (* FIXME: need a full record type *)
-                                conversionTy=conversionTy,
-                                dynamic=dynamic}
-        in
-            Ast.Cls {name=name,
-                     nonnullable=nonnullable,
-                     dynamic=dynamic,
-                     extends = NONE,
-                     implements = [],
-                     classRib = classRib,
-                     instanceRib = instanceRib,
-                     instanceInits = instanceInits,
-                     constructor = ctor,
-                     classType = Ast.ObjectType [],
-                     instanceType = instanceType }
-        end
+        val instanceType = 
+            makeTy env (Ast.InstanceType 
+                            { name = name,
+                              nonnullable = nonnullable,
+                              typeArgs = [],
+                              superTypes = [], (* set in resolveClassInheritence *)
+                              ty = Ast.SpecialType Ast.Any,  (* FIXME needs synthetic record type *)
+                              conversionTy = conversionTy,
+                              dynamic = dynamic})
+    in
+        Ast.Cls { name=name,
+                  typeParams = params,
+                  nonnullable = nonnullable,
+                  dynamic = dynamic,
+                  extends = NONE,
+                  implements = [],
+                  classRib = classRib,
+                  instanceRib = instanceRib,
+                  instanceInits = instanceInits,
+                  constructor = ctor,
+                  classType = makeTy env (Ast.ObjectType []),
+                  instanceType = instanceType }
+    end
 
 (*
     BINDING
@@ -1182,7 +1195,7 @@ and defVar (env:ENV)
                                  Ast.Const => true
                                | Ast.LetConst => true
                                | _ => false
-            val offset = (#tempOffset (hd env))
+            val offset = (#tempOffset env)
             val name' = fixtureNameFromPropIdent env (SOME ns) ident offset
         in
             (name', Ast.ValFixture {ty=ty',readOnly=readOnly'})
@@ -1234,7 +1247,7 @@ and defInitStep (env:ENV)
     in case step of
         Ast.InitStep (ident,expr) =>
             let
-                val tempOffset = (#tempOffset (hd env))
+                val tempOffset = (#tempOffset env)
                 val name = fixtureNameFromPropIdent env ns ident tempOffset
                 val expr = defExpr env expr
             in
@@ -1330,8 +1343,11 @@ and defFuncSig (env:ENV)
             val typeEnv = extendEnvironment env typeParamFixtures 0
 ****)
 
-            val thisType = case thisType of NONE => Ast.SpecialType Ast.Any
-                                          | SOME x => defTy env x
+            val thisType = 
+                case thisType of 
+                    NONE => Ast.SpecialType Ast.Any
+                  | SOME x => defTy env x
+
             val thisBinding = (Ast.PropName Name.this,
                                Ast.ValFixture
                                    { ty = thisType,

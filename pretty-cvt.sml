@@ -664,18 +664,17 @@ structure PrettyCvt = struct
          NONE => PrettyRep.Ctor ("NONE", NONE)
        | SOME x1431 => PrettyRep.Ctor ("SOME", SOME (cvtEXPR x1431))
        ))]
-   and cvtCLASS_DEFN {ident=x1443, ns=opt1445, nonnullable=b1449, dynamic=b1450, 
+   and cvtCLASS_DEFN {ns=opt1444, ident=x1448, nonnullable=b1449, dynamic=b1450, 
           final=b1451, params=ls1453, extends=opt1458, implements=ls1463, classDefns=ls1468, 
-          instanceDefns=ls1473, instanceStmts=ls1478, ctorDefn=opt1483} = PrettyRep.Rec [("ident", 
-          cvtIDENT x1443), ("ns", 
-       (case opt1445 of
+          instanceDefns=ls1473, instanceStmts=ls1478, ctorDefn=opt1483} = PrettyRep.Rec [("ns", 
+          
+       (case opt1444 of
          NONE => PrettyRep.Ctor ("NONE", NONE)
-       | SOME x1444 => PrettyRep.Ctor ("SOME", SOME (cvtEXPR x1444))
-       )), ("nonnullable", PrettyRep.Bool b1449), ("dynamic", PrettyRep.Bool b1450), 
-          ("final", PrettyRep.Bool b1451), ("params", PrettyRep.List (List.map (fn x1452 => 
-                                                                                      cvtIDENT x1452
-                                                                               ) ls1453)), 
-          ("extends", 
+       | SOME x1443 => PrettyRep.Ctor ("SOME", SOME (cvtEXPR x1443))
+       )), ("ident", cvtIDENT x1448), ("nonnullable", PrettyRep.Bool b1449), 
+          ("dynamic", PrettyRep.Bool b1450), ("final", PrettyRep.Bool b1451), 
+          ("params", PrettyRep.List (List.map (fn x1452 => cvtIDENT x1452
+                                              ) ls1453)), ("extends", 
        (case opt1458 of
          NONE => PrettyRep.Ctor ("NONE", NONE)
        | SOME x1457 => PrettyRep.Ctor ("SOME", SOME (cvtTYPE_EXPR x1457))

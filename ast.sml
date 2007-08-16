@@ -496,8 +496,8 @@ withtype
              init: EXPR option }
 
      and CLASS_DEFN =
-           { ident: IDENT,
-             ns: EXPR option,
+           { ns: EXPR option,
+             ident: IDENT,             
              nonnullable: bool,
              dynamic: bool,
              final: bool,
