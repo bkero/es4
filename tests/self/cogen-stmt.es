@@ -89,7 +89,7 @@ package cogen
         asm.I_label(L0);
     }
 
-    function cgIfStmt(ctx, {cnd:test, thn:consequent, els:alternate}) {
+    function cgIfStmt(ctx, {expr:test, then:consequent, elseOpt:alternate}) {
         let asm = ctx.asm;
         cgExpr(ctx, test);
         let L0 = asm.I_iffalse();

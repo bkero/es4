@@ -733,6 +733,7 @@ namespace Lexer
         {
             function pushToken (token)
             {
+                // print (token);
                 if (token == Token::Eol) {
                     lnCoord++;
                     colCoord = 0;
@@ -759,8 +760,8 @@ namespace Lexer
                 pushToken (token);
             }
 
-            // print("tokenList = ",tokenList);
-            // print("coordList = ",coordList);
+            //print("tokenList = ",tokenList);
+            //print("coordList = ",coordList);
             return [tokenList,coordList];
         }
 
@@ -1098,12 +1099,17 @@ namespace Lexer
             case Char::Asterisk:
                 retract (); // leave in case next char is a slash
                 return blockComment ();
+            case Char::Newline:
+                colCoord = 0;
+                lnCoord++; // count ln and fall through
             default:
                 return blockComment ();
             }
 	    case Char::EOS :
             retract ();
             return;
+        case Char::Newline:
+            lnCoord++; // fall through
 	    default :
             return blockComment ();
 	    }
@@ -1916,6 +1922,7 @@ namespace Lexer
 			, "\\u0050 \\x50gh \\073 \\73 \\073123 \\7398"
                         , "/abc/ 'hi' \"bye\" null break /def/xyz" ].reverse();
 
+        /*
 	while (testCases.length > 0) {
             var scan = new Scanner (testCases.pop());
             var list = scan.tokenList (scan.start);
@@ -1937,7 +1944,7 @@ namespace Lexer
             } while (tk != Token::EOS);
             print ("scanned!");
 	}
+        */
     }
-
     //    test ();
 }

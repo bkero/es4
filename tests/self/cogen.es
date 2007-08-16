@@ -122,6 +122,7 @@ package cogen
             cgStmt(ctx, stmts[i]);
     }
 
+/*
     function cgDefn(ctx, d) {
         let { asm:asm, emitter:emitter } = ctx;
         switch type (d) {
@@ -138,6 +139,7 @@ package cogen
         case (x:*) { throw "Internal error: unimplemented defn" }
         }
     }
+*/
 
     function extractNamedFixtures(fixtures)
     {

@@ -2156,7 +2156,7 @@ and defTyExpr (env:ENV)
                                                                                                 ident=id},
                                                                  typeArgs=typeArgs})
                  | (_,_) =>
-                       LogErr.defnError ["invalid type expr"]
+                       LogErr.defnError ["invalid type expr ", Ustring.toAscii (hd p)]
                 end
               | _ =>
                 Ast.TypeName (defIdentExpr env n)

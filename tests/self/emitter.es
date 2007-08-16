@@ -289,7 +289,6 @@ package emitter
             e.file.addScript(si);
         }
     }
-
     
     public class Class
     {
