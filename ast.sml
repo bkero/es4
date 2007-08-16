@@ -195,23 +195,23 @@ datatype PRAGMA =
              instanceType: TY }
 
      and CTOR =
-         Ctor of {
-             settings: HEAD, (* FIXME should be a EXPR list of LetExpr of InitExpr *)
-             superArgs: EXPR list,
-             func: FUNC }
+         Ctor of 
+         { settings: HEAD, (* FIXME should be a EXPR list of LetExpr of InitExpr *)
+           superArgs: EXPR list,
+           func: FUNC }
 
      and FUNC =
-         Func of {
-             name: FUNC_NAME,
-             typeParams: IDENT list,
-             fsig: FUNC_SIG,
-             native: bool,
-             block: BLOCK option, (* NONE => abstract *)
-             param: HEAD,
-             defaults: EXPR list,
-             ty: TY,
-             loc: LOC option }
-
+         Func of 
+         { name: FUNC_NAME,
+           typeParams: IDENT list,
+           fsig: FUNC_SIG,
+           native: bool,
+           block: BLOCK option, (* NONE => abstract *)
+           param: HEAD,
+           defaults: EXPR list,
+           ty: TY,
+           loc: LOC option }
+         
      and DEFN =
          ClassDefn of CLASS_DEFN
        | VariableDefn of VAR_DEFN

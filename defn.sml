@@ -1465,6 +1465,29 @@ and defFunc (env:ENV)
 
 *)
 
+and resultTyOfFuncTy (ty:Ast.TY) 
+    : Ast.TY = 
+    let
+        val (funcTy, nonTopRibs, topUnit) = extractFuncType ty                                            
+    in 
+        Ast.Ty { expr=(#result funcTy),
+                 nonTopRibs = nonTopRibs,
+                 topUnit=topUnit }
+    end
+
+and singleParamTyOfFuncTy (ty:Ast.TY) 
+    : Ast.TY = 
+    let
+        val (funcTy, nonTopRibs, topUnit) = extractFuncType ty                                            
+    in 
+        case (#params funcTy) of
+            [t] => Ast.Ty { expr=t,
+                            nonTopRibs = nonTopRibs,
+                            topUnit=topUnit }
+          | _ => error ["singleParamTyOfFuncTy: non-unique parameter"]
+    end    
+    
+
 and defFuncDefn (env:ENV) 
                 (f:Ast.FUNC_DEFN)
     : Ast.RIB =
@@ -1476,29 +1499,17 @@ and defFuncDefn (env:ENV)
             val env = clearPackageName env
             val (_, _, newFunc) = defFunc env (#func f)
             val Ast.Func { ty, ... } = newFunc
-            val (funcTy, nonTopRibs, topUnit) = extractFuncType ty
-
-            fun rebuildTy te = Ast.Ty { expr=te,
-                                        nonTopRibs = nonTopRibs,
-                                        topUnit=topUnit }
-                               
-            val resultTy = rebuildTy (#result funcTy)                           
-            fun paramTy _ = 
-                case (#params funcTy) of
-                    [t] => rebuildTy t
-                  | _ => error ["expected single parameter in ",
-                                LogErr.fname newName]                                     
 
             val fixture =
                 case (#kind name) of
                     Ast.Get =>
                     Ast.VirtualValFixture
-                        { ty = resultTy,
+                        { ty = resultTyOfFuncTy ty,
                           getter = SOME newFunc,
                           setter = NONE }
                   | Ast.Set =>
                     Ast.VirtualValFixture
-                        { ty = paramTy (),
+                        { ty = singleParamTyOfFuncTy ty,
                           getter = NONE,
                           setter = SOME newFunc }
                   | Ast.Ordinary =>
@@ -1547,6 +1558,139 @@ and defCtor (env:ENV) (ctor:Ast.CTOR)
         val (settings,superArgs,newFunc) = defFunc env func
     in
         Ast.Ctor {settings=settings, superArgs=superArgs, func=newFunc}
+    end
+
+
+
+(* 
+ * FIXME: replace this boilerplate getter/setter code with a new 
+ * kind of fixture for import aliasing? In the cases of ClassFixture 
+ * and TypeFixture, the verifier has to evaluate the getter to 
+ * see the concrete type of the alias 
+ *)    
+
+and makeAliasFixture (env:ENV) 
+                     (alias:Ast.IDENT option) 
+                     (package:Ast.IDENT) 
+                     (ident:Ast.IDENT) =
+    let
+        val targetName = {ns=Ast.Public package,id=ident}
+        val (n,targetFixture) = resolveMultinameToFixture env (multinameFromName targetName)
+        val fixtureType:Ast.TY = 
+            case targetFixture of
+                Ast.ValFixture {ty,...} => ty
+              | Ast.NamespaceFixture _ => 
+                makeTy env (Name.typename Name.intrinsic_Namespace)
+              | Ast.ClassFixture _ => 
+                makeTy env (Name.typename Name.intrinsic_Class)
+              (* ISSUE: this is the base type of the class object *)
+              | Ast.TypeFixture _ => 
+                makeTy env (Name.typename Name.intrinsic_Type)
+              | Ast.MethodFixture {ty,...} => ty
+              | Ast.VirtualValFixture {ty,...} => ty
+              | _ => LogErr.unimplError ["unhandle fixture type"]
+        val targetRef = 
+            defExpr env 
+                    (Ast.LexicalRef 
+                         {ident=Ast.QualifiedIdentifier 
+                                    {qual=Ast.LiteralExpr 
+                                              (Ast.LiteralNamespace 
+                                                   (Ast.Public package)),
+                                     ident=ident},
+                          loc=NONE})
+            
+        val (getterTy, setterTy) = 
+            let 
+                val Ast.Ty { expr, nonTopRibs, topUnit } = fixtureType 
+                val getterFuncType = {params=[],
+                                      result=expr,
+                                      thisType=NONE,
+                                      hasRest=false,
+                                      minArgs=0}
+
+                val setterFuncType = {params=[expr],
+                                      result=Ast.SpecialType Ast.VoidType,
+                                      thisType=NONE,
+                                      hasRest=false,
+                                      minArgs=1}
+            in
+                (Ast.Ty { expr=(Ast.FunctionType getterFuncType), 
+                          nonTopRibs=nonTopRibs, topUnit=topUnit },
+                 Ast.Ty { expr=(Ast.FunctionType setterFuncType), 
+                          nonTopRibs=nonTopRibs, topUnit=topUnit })
+            end
+
+        val getterFunc : Ast.FUNC = 
+            Ast.Func 
+                { name={ kind=Ast.Get,
+                         ident=Ustring.empty},
+                  typeParams=[],
+                  fsig=Ast.FunctionSignature 
+                           {typeParams=[],params=([],[]),paramTypes=[],
+                            defaults=[],ctorInits=NONE,
+                            returnType=Ast.SpecialType Ast.Any,
+                            thisType=NONE,hasRest=false},
+                  native=false,
+                  block=SOME (Ast.Block 
+                                  {pragmas=[],defns=[],
+                                   head=SOME (Ast.Head ([],[])),
+                                   loc=NONE,
+                                   body=[Ast.ReturnStmt targetRef]}),
+                  param=Ast.Head ([],[]),
+                  defaults=[],
+                  ty = getterTy,
+                  loc=NONE}
+                            
+
+        val setterFunc : Ast.FUNC =
+            Ast.Func 
+                { name={kind=Ast.Set,
+                        ident=Ustring.empty},
+                  typeParams=[],
+                  fsig=Ast.FunctionSignature 
+                           {typeParams=[],params=([],[]),paramTypes=[],
+                            defaults=[],ctorInits=NONE,
+                            returnType=Ast.SpecialType Ast.Any,
+                            thisType=NONE,hasRest=false},
+                  native=false,
+                  block = SOME 
+                              (Ast.Block
+                                   { pragmas = [],
+                                     defns = [],
+                                     head = SOME (Ast.Head ([], [])),
+                                     body = 
+                                     [Ast.ExprStmt
+                                          (Ast.SetExpr
+                                               (Ast.Assign, targetRef,
+                                                Ast.LexicalRef
+                                                    { ident = Ast.Identifier
+                                                                  { ident = Ustring.x_,
+                                                                    openNamespaces = [[Name.noNS]]},
+                                                      loc = NONE}))],
+                                     loc = NONE}),
+                  param = Ast.Head
+                              ([(Ast.TempName 0,
+                                 Ast.ValFixture
+                                     { ty = makeTy env (Ast.SpecialType Ast.Any),
+                                       readOnly = false}),
+                                (Ast.PropName
+                                     { ns = Name.noNS,
+                                       id = Ustring.x_},
+                                 Ast.ValFixture
+                                     { ty = makeTy env (Ast.SpecialType Ast.Any),
+                                       readOnly = false})],
+                               [(Ast.PropName
+                                     { ns = Name.noNS,
+                                       id = Ustring.x_},
+                                 Ast.GetTemp 0)]),
+                  
+                  defaults=[],
+                  ty = setterTy,
+                  loc=NONE}
+    in
+        Ast.VirtualValFixture {ty=fixtureType,
+                               getter=SOME getterFunc,
+                               setter=SOME setterFunc}
     end
 
 
@@ -1614,116 +1758,13 @@ and defPragmas (env:ENV)
                             end
                       | _ =>
                             let
-
-                                (* FIXME: replace this boilerplate getter/setter code with a new kind of fixture for import aliasing?
-                                   In the cases of ClassFixture and TypeFixture, the verifier has to evaluate the getter to see the
-                                   concrete type of the alias *)
-
-                                fun makeAliasFixture env alias package ident =
-                                    let
-                                        val targetName = {ns=Ast.Public package,id=ident}
-                                        val (n,targetFixture) = resolveMultinameToFixture env (multinameFromName targetName)
-                                        val fixtureType = case targetFixture of
-                                                               Ast.ValFixture {ty,...} => ty
-                                                             | Ast.NamespaceFixture _ => (Name.typename Name.intrinsic_Namespace)
-                                                             | Ast.ClassFixture _ => (Name.typename Name.intrinsic_Class)
-                                                                 (* ISSUE: this is the base type of the class object *)
-                                                             | Ast.TypeFixture _ => (Name.typename Name.intrinsic_Type)
-                                                             | Ast.MethodFixture {ty,...} => ty
-                                                             | Ast.VirtualValFixture {ty,...} => ty
-                                                             | _ => LogErr.unimplError ["unhandle fixture type"]
-                                        val targetRef = defExpr env (Ast.LexicalRef {ident=Ast.QualifiedIdentifier {
-                                                                                    qual=Ast.LiteralExpr (Ast.LiteralNamespace (Ast.Public package)),
-                                                                                    ident=name},loc=NONE})
-                                        val getterDefn : Ast.FUNC_DEFN =
-                                                 {kind=Ast.Const,
-                                                  ns=NONE, (*SOME (!defaultNamespace),*)
-                                                  final=false,
-                                                  override=false,
-                                                  prototype=false,
-                                                  static=false,
-                                                  abstract=false,
-                                                  func = Ast.Func {name={kind=Ast.Get,ident=Ustring.empty},
-                                                          fsig=Ast.FunctionSignature {typeParams=[],params=([],[]),paramTypes=[],
-                                                                        defaults=[],ctorInits=NONE,returnType=Ast.SpecialType Ast.Any,
-                                                                        thisType=NONE,hasRest=false},
-                                                          native=false,
-                                                          block=Ast.Block {pragmas=[],defns=[],head=SOME (Ast.Head ([],[])),loc=NONE,
-                                                                           body=[Ast.ReturnStmt targetRef]},
-                                                          param=Ast.Head ([],[]),
-                                                          defaults=[],
-                                                          ty = {typeParams=[],
-                                                                params=[],
-                                                                result=fixtureType,
-                                                                thisType=NONE,
-                                                                hasRest=false,
-                                                                minArgs=0},
-                                                          loc=NONE}}
-
-
-                                        val setterDefn : Ast.FUNC_DEFN =
-                                                 {kind=Ast.Const,
-                                                  ns=NONE, (*SOME (!defaultNamespace),*)
-                                                  final=false,
-                                                  override=false,
-                                                  prototype=false,
-                                                  static=false,
-                                                  abstract=false,
-                                                  func = Ast.Func {name={kind=Ast.Set,ident=Ustring.empty},
-                                                          fsig=Ast.FunctionSignature {typeParams=[],params=([],[]),paramTypes=[],
-                                                                        defaults=[],ctorInits=NONE,returnType=Ast.SpecialType Ast.Any,
-                                                                        thisType=NONE,hasRest=false},
-                                                          native=false,
-                                              block = Ast.Block
-                                                        { pragmas = [],
-                                                          defns = [],
-                                                          head = SOME (Ast.Head ([], [])),
-                                                          body = [Ast.ExprStmt
-                                                                      (Ast.SetExpr
-                                                                         (Ast.Assign, targetRef,
-                                                                           Ast.LexicalRef
-                                                                             { ident = Ast.Identifier
-                                                                                         { ident = Ustring.x_,
-                                                                                           openNamespaces = [[Name.noNS]]},
-                                                                               loc = NONE}))],
-                                                          loc = NONE},
-                                              param = Ast.Head
-                                                      ([(Ast.TempName 0,
-                                                          Ast.ValFixture
-                                                            { ty = Ast.SpecialType
-                                                                     Ast.Any,
-                                                              readOnly = false}),
-                                                         (Ast.PropName
-                                                            { ns = Name.noNS,
-                                                              id = Ustring.x_},
-                                                           Ast.ValFixture
-                                                             { ty = Ast.SpecialType
-                                                                      Ast.Any,
-                                                               readOnly = false})],
-                                                        [(Ast.PropName
-                                                            { ns = Name.noNS,
-                                                              id = Ustring.x_},
-                                                           Ast.GetTemp 0)]),
-
-                                                          defaults=[],
-                                                          ty = {typeParams=[],
-                                                                params=[fixtureType],
-                                                                result=Ast.SpecialType Ast.VoidType,
-                                                                thisType=NONE,
-                                                                hasRest=false,
-                                                                minArgs=1},
-                                                          loc=NONE}}
-                                    in
-                                        Ast.VirtualValFixture {ty=fixtureType,
-                                                               getter=SOME getterDefn,
-                                                               setter=SOME setterDefn}
-                                    end
                                 val aliasFixture = makeAliasFixture env alias (packageIdentFromPath package) name
                                 val aliasName = {ns=(!defaultNamespace),id=valOf alias}
                                 val _ = trace ["aliasName ",LogErr.name aliasName]
                                 val id = packageIdentFromPath package
-                                val ns = if name=Ustring.asterisk then Ast.Public id
-                                                                      else Ast.LimitedNamespace (name,Ast.Public id)
+                                val ns = if name=Ustring.asterisk 
+                                         then Ast.Public id
+                                         else Ast.LimitedNamespace (name,Ast.Public id)
                             in
                                 (rib := (Ast.PropName aliasName,aliasFixture)::(!rib);
                                  packageNames := package::(!packageNames);
@@ -1737,17 +1778,19 @@ and defPragmas (env:ENV)
 
           ({ nonTopRibs = !rib :: nonTopRibs,
              tempOffset = tempOffset,
-             labels = (#labels env),
-             packageNames = !packageNames,
              openNamespaces = (case !opennss of
                                    [] => (#openNamespaces env)   (* if opennss is empty, don't concat *)
                                  | _  => !opennss :: (#openNamespaces env)),
              numericMode = { numberType = !numType,
                              roundingMode = !rounding,
                              precision = !precision },
+             labels = (#labels env),
+             packageNames = !packageNames,
              className = (#className env),
              packageName = (#packageName env),
-             defaultNamespace = !defaultNamespace },
+             topUnitName = (#topUnitName env),
+             defaultNamespace = !defaultNamespace,
+             program = (#program env)},
            !rib)
     end
 
@@ -1759,13 +1802,7 @@ and defIdentExpr (env:ENV)
                  (ie:Ast.IDENT_EXPR)
     : Ast.IDENT_EXPR =
     let
-        val _ = trace [">> defIdentExpr"]
-        val openNamespaces =
-            case env of
-                [] => []
-              | ({ openNamespaces, ... }) :: _ =>
-                openNamespaces
-        val _ = trace ["<< defIdentExpr"]
+        val openNamespaces = (#openNamespaces env)
     in
         case ie of
             Ast.Identifier { ident, ... } =>
@@ -1800,7 +1837,7 @@ and defContextualNumberLiteral (env:ENV)
                                (isHex:bool)
     : Ast.LITERAL =
     let
-        val {numberType, roundingMode, precision} = (#numericMode (hd env))
+        val {numberType, roundingMode, precision} = (#numericMode env)
         fun asDecimal _ =
             Ast.LiteralDecimal (case Decimal.fromString precision roundingMode n of
                                     NONE => error ["failure converting '", n,
@@ -1895,7 +1932,7 @@ and defLiteral (env:ENV)
             Ast.LiteralArray {exprs = defExprs env exprs,
                               ty = case ty of
                                        NONE => NONE
-                                     | SOME t => SOME (defTypeExpr env t) }
+                                     | SOME t => SOME (defTyFromTy env t) }
           | Ast.LiteralXML exprs =>
             Ast.LiteralXML (defExprs env exprs)
 
@@ -1906,7 +1943,7 @@ and defLiteral (env:ENV)
                                                      init = defExpr env init }) expr,
                                ty = case ty of
                                         NONE => NONE
-                                      | SOME t => SOME (defTypeExpr env t) }
+                                      | SOME t => SOME (defTyFromTy env t) }
 
           | Ast.LiteralNamespace ns =>
             Ast.LiteralNamespace (defNamespace env ns)
@@ -2040,7 +2077,7 @@ and defExpr (env:ENV)
 
           | Ast.BinaryExpr (b, e1, e2) =>
             let
-                val m = (SOME (#numericMode (hd env)))
+                val m = (SOME (#numericMode env))
                 val b' = (case b of
                                Ast.Plus _ => Ast.Plus m
                              | Ast.Minus _ => Ast.Minus m
@@ -2060,12 +2097,12 @@ and defExpr (env:ENV)
                 Ast.BinaryExpr (b', sub e1, sub e2)
             end
 
-          | Ast.BinaryTypeExpr (b, e, te) =>
-            Ast.BinaryTypeExpr (b, sub e, defTypeExpr env te)
+          | Ast.BinaryTypeExpr (b, e, ty) =>
+            Ast.BinaryTypeExpr (b, sub e, defTyFromTy env ty)
 
           | Ast.UnaryExpr (u, e) =>
             let
-                val m = (SOME (#numericMode (hd env)))
+                val m = (SOME (#numericMode env))
                 val u' = (case u of
                                Ast.PreIncrement _ => Ast.PreIncrement m
                              | Ast.PreDecrement _ => Ast.PreDecrement m
@@ -2079,7 +2116,7 @@ and defExpr (env:ENV)
             end
 
           | Ast.TypeExpr t =>
-            Ast.TypeExpr (defTypeExpr env t)
+            Ast.TypeExpr (defTyFromTy env t)
 
           | Ast.ThisExpr =>
             Ast.ThisExpr
@@ -2103,7 +2140,7 @@ and defExpr (env:ENV)
 
           | Ast.ApplyTypeExpr { expr, actuals } =>
             Ast.ApplyTypeExpr { expr = sub expr,
-                                actuals = map (defTypeExpr env) actuals }
+                                actuals = map (defTyFromTy env) actuals }
 
           | Ast.LetExpr { defs, body,... } =>
             let
@@ -2154,7 +2191,7 @@ and defExpr (env:ENV)
 
           | Ast.SetExpr (a, le, re) =>
             let
-                val def = (SOME (#numericMode (hd env)))
+                val def = (SOME (#numericMode env))
                 val a' = case a of
                              Ast.AssignPlus _ => Ast.AssignPlus def
                            | Ast.AssignMinus _ => Ast.AssignMinus def
@@ -2168,7 +2205,7 @@ and defExpr (env:ENV)
 
           | Ast.GetTemp n =>
             let
-                val tempOffset = (#tempOffset (hd env))
+                val tempOffset = (#tempOffset env)
             in
                 Ast.GetTemp (n+tempOffset)
             end
@@ -2266,6 +2303,15 @@ and defTy (env:ENV)
     : Ast.TY = 
     makeTy env (defTypeExpr env typeExpr)
 
+and defTyFromTy (env:ENV)
+                (ty:Ast.TY)
+    : Ast.TY =
+    let
+        val Ast.Ty { expr, ... } = ty
+    in
+        defTy env expr
+    end
+
 and defFieldType (env:ENV)
               (ty:Ast.FIELD_TYPE)
     : Ast.FIELD_TYPE =
@@ -2289,8 +2335,6 @@ and defStmt (env:ENV)
             (stmt:Ast.STMT)
     : (Ast.STMT * Ast.RIB) =
     let
-        val ctx = case env of ctx::_ => ctx | _ => LogErr.internalError ["empty evironment in defStmt"]
-
         fun defForEnumStmt env (fe:Ast.FOR_ENUM_STMT) =
             let
                 fun defVarDefnOpt vd =
@@ -2612,7 +2656,7 @@ and defStmt (env:ENV)
                 val env'' = addLabel env' (makeSwitchLabel Ustring.empty)
                 val (cases,hoisted) = ListPair.unzip (map (defCase env'') cases)
             in
-                (Ast.SwitchStmt { mode = SOME (#numericMode ctx),
+                (Ast.SwitchStmt { mode = SOME (#numericMode env),
                                   cond = defExpr env cond,
                                   cases = cases,
                                   labels=Ustring.empty::labelIds}, List.concat hoisted)
