@@ -1,0 +1,227 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+<title>Untitled Document</title>
+</head>
+
+<body>
+
+
+<h1>Packages</h1>
+<p>
+ A package definition introduces a top-level namespace, suitable for organizing collections of type definitions into APIs.
+</p>
+<p>
+Unlike ordinary namespaces (hereafter referred to simply as namespaces), a package is a pure compile-time construct. A package directive qualifies the names of properties defined inside of it at compile-time; references to a package&#8217;s member definitions are given fully qualified names at compile-time.
+</p>
+<pre class="code javascript"><span class="kw2">package</span> mx.<span class="me1">core</span> 
+<span class="br0">&#123;</span>
+    <span class="kw2">class</span> UIObject <span class="kw2">extends</span> ...
+    <span class="br0">&#123;</span>
+    <span class="br0">&#125;</span>
+&nbsp;
+    .
+    .
+    .
+<span class="br0">&#125;</span></pre>
+<p>
+In this example, the fully qualified name for UIObject is mx.core.UIObject. An unqualified reference to UIObject will be fully-qualified as mx.core.UIObject by the compiler.
+</p>
+<p>
+Package definitions may be discontinuous; the definition of a package may be spread over multiple package definitions, possibly in multiple source files.
+</p>
+<p>
+The semantics of loading packages is outside of the language definition. The compiler and virtual machine will have access to the package definitions in files that have been loaded by the embedding tool or runtime.
+</p>
+<p>
+<em> Compatibility note: In the Netscape proposal, packages are sealed
+values that could contain types and values, and could be dynamically
+loaded. This is problematic for large libraries because the author has
+no way to incrementally load a library. The current design does not have
+this restriction. </em>
+</p>
+<h2>Package namespace</h2>
+<p>
+ The namespace name (the string used for equality comparision) of a package is the sequence of characters of its name. For example, the package in:
+</p>
+<pre class="code javascript"><span class="kw2">package</span> mx.<span class="me1">core</span> <span class="br0">&#123;</span>
+    .
+    .
+    .
+<span class="br0">&#125;</span></pre>
+<p>
+is given the namespace name &#8220;mx.core&#8221;.
+</p>
+<p>
+A package name is used to: 
+</p>
+<ul>
+<li class="level1"><div class="li"> qualify the names of top-level definitions in a package</div>
+</li>
+<li class="level1"><div class="li"> qualify the names of references to those definitions</div>
+</li>
+<li class="level1"><div class="li"> import names into other packages.</div>
+</li>
+</ul>
+<pre class="code javascript"><span class="kw2">package</span> acme.<span class="me1">core</span> 
+<span class="br0">&#123;</span>
+    <span class="kw2">public</span> <span class="kw2">class</span> Widget <span class="br0">&#123;</span> <span class="br0">&#125;</span>    <span class="co1">// qualifies Widget</span>
+<span class="br0">&#125;</span>
+&nbsp;
+<span class="kw2">import</span> acme.<span class="me1">core</span>.*             <span class="co1">// make visible all names in acme.core</span>
+<span class="kw2">var</span> widget : acme.<span class="me1">core</span>.<span class="me1">Widget</span>  <span class="co1">// distinguishes a reference to Widget</span></pre>
+<p>
+Packages exist only at compile-time. The static existence of packages allows us to give them certain properties that would not be possible if they could be manipulated at runtime. In particular, 
+</p>
+<ul>
+<li class="level1"><div class="li"> package names may have embedded dots</div>
+</li>
+<li class="level1"><div class="li"> fully qualified package references may and must be expressed using the dot operator rather than the usual :: syntax for qualified names</div>
+</li>
+</ul>
+<p>
+ But because there is no runtime value for a package name, packages cannot be aliased or otherwise used in an expression that uses a runtime value. 
+</p>
+<p>
+When encountered in a valid context by the compiler, the meaning of a package name becomes fixed; any interpretation at runtime is no longer possible.
+</p>
+<p>
+For this reason, a package name always shadows locally defined names, independent of the scope chain, when that package name is used on the left hand side of a dot operator.
+</p>
+<pre class="code javascript"><span class="kw2">package</span> p 
+<span class="br0">&#123;</span>
+    <span class="kw2">public</span> <span class="kw2">var</span> x = <span class="nu0">10</span>
+<span class="br0">&#125;</span>
+<span class="kw2">import</span> p.<span class="me1">x</span>
+<span class="kw2">function</span> f<span class="br0">&#40;</span><span class="br0">&#41;</span>
+<span class="br0">&#123;</span>
+    <span class="kw2">var</span> p = <span class="br0">&#123;</span> x : <span class="nu0">20</span> <span class="br0">&#125;</span>
+    <span class="kw3">print</span><span class="br0">&#40;</span>p.<span class="me1">x</span><span class="br0">&#41;</span>   <span class="co1">// traces 10</span>
+<span class="br0">&#125;</span>
+f<span class="br0">&#40;</span><span class="br0">&#41;</span></pre>
+<p>
+<em> Rationale: the alternative is to avoid such conflict by making it
+an error to define any name that has an identifier that matches the
+identifier of the lhs of the left most dot of a package name. </em>
+</p>
+<p>
+Errors: 
+</p>
+<ul>
+<li class="level1"><div class="li"> it is a strict error to import a package that cannot be found</div>
+</li>
+<li class="level1"><div class="li"> it is a strict error to reference a package property that cannot be found in an imported package</div>
+</li>
+</ul>
+<h2>Package members</h2>
+<p>
+ Definitions with the public attribute inside of a package definition are implicitly qualified by the package namespace. Every kind of definition except for package definitions may appear directly inside a package definition, including variable, function, namespace, class, and interface definitions.
+</p>
+<h3>Package property attributes</h3>
+<p>
+ The visibility of a name defined inside of a package is controlled by the attributes that appear in that definition. Allowed attributes include, 
+</p>
+<table border="1" cellspacing="0" cellpadding="3" class="inline">
+	<tr>
+		<td class="leftalign"><code>public</code>   </td><td>Qualified by the package namespace</td>
+	</tr>
+	<tr>
+		<td><code>internal</code></td><td>Qualified by the internal namespace for the current package [default]</td>
+	</tr>
+</table>
+<br />
+<p>
+ It is a syntax error for more than one of these attributes to appear in a definition.
+</p>
+<h2>Package import</h2>
+<p>
+ The names of package members are made visible inside an external scope with an import directive. For example,
+</p>
+<pre class="code javascript"><span class="kw2">import</span> mx.<span class="me1">core</span>.*</pre>
+<p>
+makes all public names defined in the package mx.core visible inside any scope that contains this directive. Individual names can be imported using an import directive with the fully qualified name to be imported. For example,
+</p>
+<pre class="code javascript"><span class="kw2">import</span> mx.<span class="me1">core</span>.<span class="me1">Image</span></pre>
+<p>
+has the effect of making the class mx.core.Image, but no other names defined inside package mx.core, visible to an unqualified reference.
+</p>
+<p>
+References to package members are fully qualified using the dot operator. When the meaning of a simple name is ambiguous, a fully qualified name can be used to indicate the intended binding. For example,
+</p>
+<pre class="code javascript"><span class="kw2">import</span> mx.<span class="me1">core</span>.*
+<span class="kw2">import</span> player.<span class="me1">core</span>.*
+&nbsp;
+<span class="kw2">new</span> Image    <span class="co1">// error, mx.core.Image or player.core.Image?</span>
+<span class="kw2">new</span> player.<span class="me1">core</span>.<span class="me1">Image</span>   <span class="co1">// okay</span></pre>
+<p>
+Pratap notes that it is not clear if nominally nested package names can be used with out an imported prefix.  &mdash; <em><a href="mailto:%26%23x6a%3B%26%23x6f%3B%26%23x64%3B%26%23x79%3B%26%23x65%3B%26%23x72%3B%26%23x40%3B%26%23x61%3B%26%23x64%3B%26%23x6f%3B%26%23x62%3B%26%23x65%3B%26%23x2e%3B%26%23x63%3B%26%23x6f%3B%26%23x6d%3B" class="mail" title="&#x6a;&#x6f;&#x64;&#x79;&#x65;&#x72;&#x40;&#x61;&#x64;&#x6f;&#x62;&#x65;&#x2e;&#x63;&#x6f;&#x6d;">Jeff Dyer</a> 2006/05/15 14:03</em> 
+</p>
+<h3>Java compatibility note</h3>
+<p>
+ Unlike in Java, an import directive is required to introduce a package name to a program even when fully qualified names are used. This is to decouple the language semantics of dot expressions from the host dependent behavior of introducing package names to a program. E.g.
+</p>
+<pre class="code javascript"><span class="kw3">print</span><span class="br0">&#40;</span>x.<span class="me1">y</span>.<span class="me1">z</span><span class="br0">&#41;</span></pre>
+<p>
+Here, is x.y a package name or a reference to y inside of an object referred to by x?
+</p>
+<p>
+Given the dynamic nature of the language and the diversity of host environments, we chose to require the programmer to specify through an import statement which packages he intends to use.
+</p>
+<h3>Visibility</h3>
+<p>
+ Visibility of package members outside of a package is controlled by access control namespaces. The default namespace of a package member is package internal. For example,
+</p>
+<pre class="code javascript"><span class="kw2">package</span> acme.<span class="me1">core</span> 
+<span class="br0">&#123;</span>
+    <span class="kw2">public</span> <span class="kw2">class</span> Widget <span class="br0">&#123;</span> <span class="br0">&#125;</span>
+    <span class="kw2">class</span> WidgetImpl <span class="br0">&#123;</span><span class="br0">&#125;</span>    <span class="co1">// default namespace is internal</span>
+<span class="br0">&#125;</span>
+&nbsp;
+<span class="kw2">import</span> acme.<span class="me1">core</span>.*
+<span class="kw2">new</span> WidgetImpl   <span class="co1">// error, cannot find WidgetImpl</span>
+<span class="kw2">new</span> Widget       <span class="co1">// okay, pubic names are always visible</span></pre>
+<p>
+In this example, class WidgetImpl is in the internal package namespace for package acme.core. This namespace is always open inside of any definition of package acme.core, and never open or accessible outside of a definition of acme.core.
+</p>
+<h3>Single name aliases</h3>
+<p>
+ A name alias can be provided for single name import directive to avoid ambiguity of unqualified references. E.g.  
+</p>
+<pre class="code javascript"><span class="kw2">package</span> acme.<span class="me1">core</span> 
+<span class="br0">&#123;</span>
+    <span class="kw2">public</span> <span class="kw2">class</span> Widget <span class="br0">&#123;</span> <span class="br0">&#125;</span>
+<span class="br0">&#125;</span>
+&nbsp;
+<span class="kw2">package</span> mx.<span class="me1">core</span> 
+<span class="br0">&#123;</span>
+    <span class="kw2">public</span> <span class="kw2">class</span> Widget <span class="br0">&#123;</span> <span class="br0">&#125;</span>
+<span class="br0">&#125;</span>
+&nbsp;
+<span class="kw2">import</span> AcmeWidget = acme.<span class="me1">core</span>.<span class="me1">Widget</span>
+<span class="kw2">import</span> MxWidget = mx.<span class="me1">core</span>.<span class="me1">Widget</span>
+<span class="kw2">new</span> AcmeWidget
+<span class="kw2">new</span> MxWidget</pre>
+<p>
+When an alias is specified, the original fully qualified name can be used to refer to the imported definition. It is also possible to use the original unqualified name as long as the resulting reference is not ambiguous.
+</p>
+<h2>Unnamed package</h2>
+<p>
+ The unnamed package is defined by a package definition with no name specified. E.g.
+</p>
+<pre class="code javascript"><span class="kw2">package</span> 
+<span class="br0">&#123;</span>
+<span class="br0">&#125;</span></pre>
+<p>
+The unnamed package is implicitly imported by all other packages and global code outside of any package. This makes it convenient for casual sharing of definitions between programs by making public definitions in the unnamed package always visible.
+</p>
+<h2>Local packages</h2>
+<p>
+ <strong>PROPOSAL</strong> &mdash; Please see the <a href="/ECMA/wiki/doku.php?id=proposals:local_packages" class="wikilink1" title="proposals:local_packages" onclick="return svchk()" onkeypress="return svchk()">local packages proposal page</a> for more information.
+</p>
+<p>
+A mechanism is proposed that allows packages to be declared local to a program fragment (typically a single file). 
+</p>
+
+</body>
+</html>

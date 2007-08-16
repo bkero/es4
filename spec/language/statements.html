@@ -1,0 +1,751 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+<title>Untitled Document</title>
+</head>
+
+<body>
+
+
+<h1>Statements</h1>
+<p>
+(Technically an opinion about spec formalism, maybe.)  The use of the annotation &ldquo;omega&rdquo; on the statement productions appears to be merely for the benefit of handling the &ldquo;dangling else&rdquo; problem and the insertion of semicolons.  But what is the net benefit?  The &ldquo;if&rdquo; productions dispatch on the value of this parameter, but from the grammar it appears to require backtracking or unbounded lookahead, since different values are passed on to the substatements depending on whether an &ldquo;else&rdquo; is there or not.  It is unclear that this mechanism adds much clarity in practice.
+</p>
+<h3>Syntax</h3>
+<p>
+ &#969; =  {abbrev, noShortIf, full}
+</p>
+<pre class="code grammar">Statement&lt;sup&gt;&#969;&lt;/sup&gt;</pre><pre class="code grammar">Substatement&lt;sup&gt;&#969;&lt;/sup&gt;</pre><pre class="code grammar">Semicolon&lt;sup&gt;abbrev&lt;/sup&gt;</pre><pre class="code grammar">Semicolon&lt;sup&gt;noShortIf&lt;/sup&gt;</pre><pre class="code grammar">Semicolon&lt;sup&gt;full&lt;/sup&gt;</pre>
+<h2>Empty statement</h2>
+<h3>Syntax</h3>
+<pre class="code grammar">EmptyStatement</pre>
+<h3>Verification</h3>
+<pre class="code">
+EmptyStatment : ;
+</pre>
+<ol>
+<li class="level1"><div class="li"> Do nothing</div>
+</li>
+</ol>
+<h3>Evaluation</h3>
+<ol>
+<li class="level1"><div class="li"> Return the value of named argument cv</div>
+</li>
+</ol>
+<h2>Expression statement</h2>
+<h3>Syntax</h3>
+<pre class="code grammar">ExpressionStatement</pre>
+<h3>Verification</h3>
+<pre class="code">
+ExpressionStatement : ListExpression
+</pre>
+<ol>
+<li class="level1"><div class="li"> Verify ListExpression</div>
+</li>
+</ol>
+<h3>Evaluation</h3>
+<pre class="code">
+ExpressionStatement : ListExpression
+</pre>
+<ol>
+<li class="level1"><div class="li"> Let ref be the result of evaluating ListExpression</div>
+</li>
+<li class="level1"><div class="li"> Return the result of readReference(ref)</div>
+</li>
+</ol>
+<h2>Super statement</h2>
+<p>
+A SuperStatement causes the constructor of the immediate base class to be called. If no SuperStatement is specified, the default constructor of the base class is called. Unlike in Java, a SuperStatement may be used anywhere in the body of the constructor before an instance property is accessed. It is a compile error to use more than one SuperStatement in a constructor.
+</p>
+<h3>Syntax</h3>
+<pre class="code grammar">SuperStatement</pre>
+<p>
+A SuperStatement may only be used inside a constructor. It is a syntax error to use a SuperStatement anywhere else in a program.
+</p>
+<pre class="code">
+class B extends A {
+    function B(x,y,z) {
+        super(x,y)
+        // other constructor code here
+    }
+}
+</pre>
+<h3>Semantics</h3>
+<p>
+Static:
+</p>
+<ul>
+<li class="level1"><div class="li"> &ldquo;may only be used in an instance constructor&rdquo;</div>
+</li>
+<li class="level1"><div class="li"> &ldquo;may only appear once statically in the function&rdquo;</div>
+</li>
+</ul>
+<p>
+ Dynamic??:
+</p>
+<ul>
+<li class="level1"><div class="li"> &ldquo;may be called from anywhere in the function before an  instance property is accessed&rdquo;.  Presumably some sort of flow analysis (defined in terms of attribute grammars?) could do this statically</div>
+</li>
+</ul>
+<p>
+ Note, it has been discussed (March f2f) to restrict the <code>super</code> statement to the top of the function.
+</p>
+<p>
+Useful semantics of the &lsquo;super&rsquo; statement are missing from the spec. 
+</p>
+<h3>Compatibility</h3>
+<p>
+ In Ecmascript 4 a SuperStatement may be used only in an instance constructor. All other uses will result in a syntax error. Also, if the number and types of Arguments is not compatible with Parameters of the super constructor, the result is a runtime error.
+</p>
+<h2>Block statement</h2>
+<h3>Syntax</h3>
+<pre class="code grammar">BlockStatement</pre>
+<h2>Labeled statement</h2>
+<h3>Syntax</h3>
+<pre class="code grammar">LabeledStatement&lt;sup&gt;&#969;&lt;/sup&gt;</pre>
+<h3>Verification</h3>
+<pre class="code">
+LabeledStatement : Substatement
+</pre>
+<ol>
+<li class="level1"><div class="li"> Let breakTargets be the current set of possible targets of BreakStatements</div>
+</li>
+<li class="level1"><div class="li"> Let target be the sequence of characters of Identifier</div>
+</li>
+<li class="level1"><div class="li"> If target is a member of breakTargets, throw a SyntaxError</div>
+</li>
+<li class="level1"><div class="li"> Add target to breakTargets by calling breakTargets.push(target)</div>
+</li>
+<li class="level1"><div class="li"> Verify Substatement</div>
+</li>
+</ol>
+<h3>Evaluation</h3>
+<pre class="code">
+LabeledStatement : Substatement
+</pre>
+<ol>
+<li class="level1"><div class="li"> Try</div>
+<ol>
+<li class="level2"><div class="li"> Return the result of evaluating Substatement</div>
+</li>
+</ol>
+</li>
+<li class="level1"><div class="li"> Catch exception x if x is of type Break</div>
+<ol>
+<li class="level2"><div class="li"> Let label be a string value consisting of the same sequence of characters as Identifier</div>
+</li>
+<li class="level2"><div class="li"> If x.target equals label, then return x.value</div>
+</li>
+<li class="level2"><div class="li"> Throw x</div>
+</li>
+</ol>
+</li>
+</ol>
+<p>
+Should cv be passed to Substatement?
+</p>
+<h3>Compatibility</h3>
+<p>
+ ActionScript 2.0 does not allow LabeledStatements. This is a compatible change to the language.
+</p>
+<h2>Conditional statements</h2>
+<h3>If statement</h3>
+<h3>Syntax</h3>
+<pre class="code grammar">IfStatement&lt;sup&gt;abbrev&lt;/sup&gt;</pre><pre class="code grammar">IfStatement&lt;sup&gt;full&lt;/sup&gt;</pre><pre class="code grammar">IfStatement&lt;sup&gt;noShortIf&lt;/sup&gt;</pre>
+<h3>Verification</h3>
+<pre class="code">
+IfStatement : if ParenListExpression Substatement
+IfStatement : if ParenListExpression Substatement else Substatement
+</pre>
+<ol>
+<li class="level1"><div class="li"> Verify the non-terminal symbols other right side of the production</div>
+</li>
+</ol>
+<h3>Evaluation</h3>
+<pre class="code">
+IfStatement : if ParenListExpression Substatement
+</pre>
+<ol>
+<li class="level1"><div class="li"> Let cv be a named argument passed to this evaluator</div>
+</li>
+<li class="level1"><div class="li"> Let ref be the result of evaluating ParenListExpression</div>
+</li>
+<li class="level1"><div class="li"> Let obj be the result of readReference(ref)</div>
+</li>
+<li class="level1"><div class="li"> If toBoolean(obj) has the value true</div>
+<ol>
+<li class="level2"><div class="li"> Return the result of evaluating Substatement</div>
+</li>
+</ol>
+</li>
+<li class="level1"><div class="li"> Return cv</div>
+</li>
+<li class="level1"><div class="li"> </div>
+</li>
+</ol>
+<p>
+Should cv be passed to Substatement?
+</p>
+<pre class="code">
+IfStatement : if ParenListExpression Substatement1 else Substatement2
+</pre>
+<ol>
+<li class="level1"><div class="li"> Let cv be a named argument passed to this evaluator</div>
+</li>
+<li class="level1"><div class="li"> Let ref be the result of evaluating ParenListExpression</div>
+</li>
+<li class="level1"><div class="li"> Let obj be the result of readReference(ref)</div>
+</li>
+<li class="level1"><div class="li"> If toBoolean(obj) has the value true</div>
+<ol>
+<li class="level2"><div class="li"> Return the result of evaluating Substatement1 passing the argument cv</div>
+</li>
+</ol>
+</li>
+<li class="level1"><div class="li"> Return the result of evaluating Substatement2 passing the argument cv</div>
+</li>
+</ol>
+<h3>Switch statement</h3>
+<h3>Syntax</h3>
+<pre class="code grammar">SwitchStatement</pre><pre class="code grammar">CaseElements</pre><pre class="code grammar">CaseElementsPrefix</pre><pre class="code grammar">CaseLabel</pre><pre class="code grammar">TypeCaseElements</pre><pre class="code grammar">TypeCaseElement</pre>
+<p>
+The production for CaseElements is hard to understand, it is probably that way because the syntactic structure is meant to capture the fall-through control flow structure.  It seems credible that a better spec could be written if these concerns were separated, ie, this is an argument in favor of defining the semantics on ASTs and describing syntax in terms that result in an AST.
+</p>
+<p>
+It&rsquo;s unlikely that &ldquo;Directive&rdquo; is correct in the production for &ldquo;CaseElement&rdquo;.
+</p>
+<h3>Semantics</h3>
+<p>
+ Switch statements have the same syntax and semantics as defined in Ecma-262 edition 3.
+</p>
+<p>
+proper semantics must be provided.
+</p>
+<h2>Iteration statements</h2>
+<h3>Do-while statement</h3>
+<h3>Syntax</h3>
+<pre class="code grammar">DoStatement</pre>
+<h3>Verification</h3>
+<pre class="code">
+DoStatement : do Substatement while ParenListExpression
+</pre>
+<ol>
+<li class="level1"><div class="li"> Let continueTargets be the current set of possible targets of continue targets</div>
+</li>
+<li class="level1"><div class="li"> Let breakTargets be the current set of possible targets of break targets</div>
+</li>
+<li class="level1"><div class="li"> Add the label default to continueTargets by calling continueTargets.push(default)</div>
+</li>
+<li class="level1"><div class="li"> Add the label default to breakTargets by calling breakTargets.push(default)</div>
+</li>
+<li class="level1"><div class="li"> Verify Substatement</div>
+</li>
+<li class="level1"><div class="li"> Verify ParenListExpression</div>
+</li>
+</ol>
+<h3>Evaluation</h3>
+<pre class="code">
+DoStatement : do Substatement while ParenListExpression
+</pre>
+<ol>
+<li class="level1"><div class="li"> Let cv be a named argument passed to this evaluator</div>
+</li>
+<li class="level1"><div class="li"> Try</div>
+</li>
+<li class="level1"><div class="li"> Loop</div>
+<ol>
+<li class="level2"><div class="li"> Try</div>
+<ol>
+<li class="level3"><div class="li"> Let cv be the result of evaluating Substatement with argument cv</div>
+</li>
+</ol>
+</li>
+<li class="level2"><div class="li"> Catch if exception x is of type Continue</div>
+<ol>
+<li class="level3"><div class="li"> If x.label is a member of the current loop&#8217;s continueTargets, then cv = x.value</div>
+</li>
+<li class="level3"><div class="li"> Throw x</div>
+</li>
+</ol>
+</li>
+<li class="level2"><div class="li"> Let ref be the result of evaluating ParenListExpression</div>
+</li>
+<li class="level2"><div class="li"> Let obj be the result of readReference(ref)</div>
+</li>
+<li class="level2"><div class="li"> If toBoolean(obj) is not true, then return cv</div>
+</li>
+</ol>
+</li>
+<li class="level1"><div class="li"> Catch if exception x is of type Break</div>
+<ol>
+<li class="level2"><div class="li"> If x.label equals default then return x.value</div>
+</li>
+<li class="level2"><div class="li"> Throw x</div>
+</li>
+</ol>
+</li>
+</ol>
+<h3>While statement</h3>
+<h3>Syntax</h3>
+<pre class="code grammar">WhileStatement&lt;sup&gt;&#969;&lt;/sup&gt;</pre>
+<h3>Verification</h3>
+<pre class="code">
+WhileStatement : while ParenLIstExpression Substatement
+</pre>
+<ol>
+<li class="level1"><div class="li"> Let continueTargets be the current set of possible targets of continue targets</div>
+</li>
+<li class="level1"><div class="li"> Let breakTargets be the current set of possible targets of break targets</div>
+</li>
+<li class="level1"><div class="li"> Add the label default to continueTargets by calling continueTargets.push(default)</div>
+</li>
+<li class="level1"><div class="li"> Add the label default to breakTargets by calling breakTargets.push(default)</div>
+</li>
+<li class="level1"><div class="li"> Verify ParenListExpression</div>
+</li>
+<li class="level1"><div class="li"> Verify Substatement</div>
+</li>
+</ol>
+<h3>Evaluation</h3>
+<pre class="code">
+DoStatement : do Substatement while ParenListExpression
+</pre>
+<ol>
+<li class="level1"><div class="li"> Let cv be a named argument passed to this evaluator</div>
+</li>
+<li class="level1"><div class="li"> Try</div>
+</li>
+<li class="level1"><div class="li"> Loop</div>
+<ol>
+<li class="level2"><div class="li"> Let ref be the result of evaluating ParenListExpression</div>
+</li>
+<li class="level2"><div class="li"> Let obj be the result of readReference(ref)</div>
+</li>
+<li class="level2"><div class="li"> If toBoolean(obj) is not true, then return cv</div>
+</li>
+<li class="level2"><div class="li"> Try</div>
+<ol>
+<li class="level3"><div class="li"> Let cv be the result of evaluating Substatement with argument cv</div>
+</li>
+</ol>
+</li>
+<li class="level2"><div class="li"> Catch if exception x is of type Continue</div>
+<ol>
+<li class="level3"><div class="li"> If x.label is a member of the current loop&#8217;s continueTargets, then cv = x.value</div>
+</li>
+<li class="level3"><div class="li"> Throw x</div>
+</li>
+</ol>
+</li>
+</ol>
+</li>
+<li class="level1"><div class="li"> Catch if exception x is of type Break</div>
+<ol>
+<li class="level2"><div class="li"> If x.label equals default then return x.value</div>
+</li>
+<li class="level2"><div class="li"> Throw x</div>
+</li>
+</ol>
+</li>
+</ol>
+<h3>For statements</h3>
+<h3>Syntax</h3>
+<pre class="code grammar">ForStatement&lt;sup&gt;&#969;&lt;/sup&gt;</pre><pre class="code grammar">ForInitializer</pre><pre class="code grammar">ForInBinding</pre><pre class="code grammar">OptionalExpression</pre>
+<h3>Semantics</h3>
+<p>
+ For statements in edition 4 have the same syntax and semantics as defined in edition 3 and E4X
+</p>
+<p>
+full semantics must be given here
+</p>
+<h2>Continue statement</h2>
+<h3>Syntax</h3>
+<pre class="code grammar">ContinueStatement</pre>
+<h3>Verification</h3>
+<pre class="code">
+ContinueStatement : continue
+</pre>
+<ol>
+<li class="level1"><div class="li"> Let continueTargets be the current set of possible continue targets</div>
+</li>
+<li class="level1"><div class="li"> If default is not a member of continueTargets, throw a SyntaxError</div>
+</li>
+</ol>
+<pre class="code">
+ContinueStatement : continue Identifier
+</pre>
+<ol>
+<li class="level1"><div class="li"> Let continueTargets be the current set of possible continue targets</div>
+</li>
+<li class="level1"><div class="li"> Let label be the sequence of characters of Identifier</div>
+</li>
+<li class="level1"><div class="li"> If label is not a member of continueTargets, throw a SyntaxError</div>
+</li>
+</ol>
+<h3>Evaluation</h3>
+<pre class="code">
+ContinueStatement : continue
+</pre>
+<ol>
+<li class="level1"><div class="li"> Let cv be a named argument passed to this evaluator</div>
+</li>
+<li class="level1"><div class="li"> Throw the exception Continue(cv,default)</div>
+</li>
+</ol>
+<pre class="code">
+ContinueStatement : continue Identifier
+</pre>
+<ol>
+<li class="level1"><div class="li"> Let cv be a named argument passed to this evaluator</div>
+</li>
+<li class="level1"><div class="li"> Let label be the sequence of characters of Identifier</div>
+</li>
+<li class="level1"><div class="li"> Throw the exception Continue(cv,label)</div>
+</li>
+</ol>
+<h3>Compatibility</h3>
+<p>
+ ActionScript 2.0 does not allow the second form of ContinueStatement. This is a compatible change. 
+</p>
+<h2>Break statement</h2>
+<h3>Syntax</h3>
+<pre class="code grammar">BreakStatement</pre>
+<h3>Verification</h3>
+<pre class="code">
+BreakStatement : break
+</pre>
+<ol>
+<li class="level1"><div class="li"> Let breakTargets be the current set of possible break targets</div>
+</li>
+<li class="level1"><div class="li"> If default is not a member of breakTargets, throw a SyntaxError</div>
+</li>
+</ol>
+<pre class="code">
+BreakStatement: break Identifier
+</pre>
+<ol>
+<li class="level1"><div class="li"> Let breakTargets be the current set of possible continue targets</div>
+</li>
+<li class="level1"><div class="li"> Let label be the sequence of characters of Identifier</div>
+</li>
+<li class="level1"><div class="li"> If label is not a member of breakTargets, throw a SyntaxError</div>
+</li>
+</ol>
+<h3>Evaluation</h3>
+<pre class="code">
+BreakStatement: break
+</pre>
+<ol>
+<li class="level1"><div class="li"> Let cv be a named argument passed to this evaluator</div>
+</li>
+<li class="level1"><div class="li"> Throw the exception Break(cv,default)</div>
+</li>
+</ol>
+<pre class="code">
+BreakStatement: break Identifier
+</pre>
+<ol>
+<li class="level1"><div class="li"> Let cv be a named argument passed to this evaluator</div>
+</li>
+<li class="level1"><div class="li"> Let label be the sequence of characters of Identifier</div>
+</li>
+<li class="level1"><div class="li"> Throw the exception Break(cv,label)</div>
+</li>
+</ol>
+<h3>Compatibility</h3>
+<p>
+ ActionScript 2.0 does not allow the second form of BreakStatement. This is a compatible change. 
+</p>
+<h2>Let statement</h2>
+<h3>Syntax</h3>
+<pre class="code grammar">LetStatement&lt;sup&gt;&#969;&lt;/sup&gt;</pre>
+<h2>With statement</h2>
+<p>
+ <strong>PROPOSAL</strong> &mdash; Please see the <a href="/ECMA/wiki/doku.php?id=proposals:reformed_with" class="wikilink1" title="proposals:reformed_with" onclick="return svchk()" onkeypress="return svchk()">Reformed with statement proposal page</a> for more information.
+</p>
+<h3>Syntax</h3>
+<pre class="code grammar">WithStatement&lt;sup&gt;&#969;&lt;/sup&gt;</pre>
+<h3>Semantics</h3>
+<p>
+ With statements have the same syntax and semantics as defined in Ecma-262 edition 3.
+</p>
+<p>
+Proper semantics must be provided
+</p>
+<h2>Return statement</h2>
+<h3>Syntax</h3>
+<pre class="code grammar">ReturnStatement</pre>
+<h3>Verification</h3>
+<pre class="code">
+ReturnStatement : return
+</pre>
+<ol>
+<li class="level1"><div class="li"> Let env be the lexical environment</div>
+</li>
+<li class="level1"><div class="li"> If env does not contain a parameter frame</div>
+<ol>
+<li class="level2"><div class="li"> Throw a SyntaxError exception</div>
+</li>
+</ol>
+</li>
+</ol>
+<pre class="code">
+ReturnStatement : return ListExpression
+</pre>
+<ol>
+<li class="level1"><div class="li"> Let env be the lexical environment</div>
+</li>
+<li class="level1"><div class="li"> If env does not contain a parameter frame</div>
+<ol>
+<li class="level2"><div class="li"> Throw a SyntaxError exception</div>
+</li>
+</ol>
+</li>
+<li class="level1"><div class="li"> Let frame be the enclosing parameter frame</div>
+</li>
+<li class="level1"><div class="li"> If frame does not allow a return value</div>
+<ol>
+<li class="level2"><div class="li"> Throw a SyntaxError exception</div>
+</li>
+</ol>
+</li>
+<li class="level1"><div class="li"> Verify ListExpression</div>
+</li>
+</ol>
+<h3>Evaluation</h3>
+<pre class="code">
+BreakStatement: return
+</pre>
+<ol>
+<li class="level1"><div class="li"> Throw the exception Return(undefined)</div>
+</li>
+</ol>
+<pre class="code">
+BreakStatement: return ListExpression
+</pre>
+<ol>
+<li class="level1"><div class="li"> Let ref be the result of evaluating ListExpression</div>
+</li>
+<li class="level1"><div class="li"> Let obj be the result of readReference(ref)</div>
+</li>
+<li class="level1"><div class="li"> Throw the exception Return(obj)</div>
+</li>
+</ol>
+<h2>Throw statement</h2>
+<h3>Syntax</h3>
+<pre class="code grammar">ThrowStatement</pre>
+<h3>Verification</h3>
+<pre class="code">
+ThrowStatement : throw ListExpression
+</pre>
+<ol>
+<li class="level1"><div class="li"> Verify ListExpression</div>
+</li>
+</ol>
+<h3>Evaluation</h3>
+<pre class="code">
+ThrowStatement : throw ListExpression
+</pre>
+<ol>
+<li class="level1"><div class="li"> Let ref be the result of evaluating ListExpression</div>
+</li>
+<li class="level1"><div class="li"> Let obj be the result of readReference(ref)</div>
+</li>
+<li class="level1"><div class="li"> Throw the value obj</div>
+</li>
+</ol>
+<h2>Try statement</h2>
+<h3>Syntax</h3>
+<pre class="code grammar">TryStatement</pre><pre class="code grammar">CatchClausesOpt</pre><pre class="code grammar">CatchClauses</pre><pre class="code grammar">CatchClause</pre>
+<h3>Verification</h3>
+<pre class="code">
+TryStatement : try Block CatchClauses
+TryStatement : try Block1 CatchClausesOpt finally Block2
+CatchClausesOpt : CatchClauses
+CatchClauses : CatchClause
+CatchClauses : CatchClauses CatchClause
+</pre>
+<ol>
+<li class="level1"><div class="li"> Verify each of the non-terminal symbols on the right side of the production</div>
+</li>
+</ol>
+<pre class="code">
+CatchClause : catch ( Parameter ) Block
+</pre>
+<ol>
+<li class="level1"><div class="li"> Let frame be an empty activation frame</div>
+</li>
+<li class="level1"><div class="li"> Let env be a copy of the current environment with frame added</div>
+</li>
+<li class="level1"><div class="li"> Verify Parameter with the arguments env and frame</div>
+</li>
+<li class="level1"><div class="li"> Verify Block with the argument env</div>
+</li>
+</ol>
+<h3>Evaluation</h3>
+<pre class="code">
+TryStatement : try Block CatchClauses
+</pre>
+<ol>
+<li class="level1"><div class="li"> Let cv be a named argument passed to this evaluator</div>
+</li>
+<li class="level1"><div class="li"> Try</div>
+<ol>
+<li class="level2"><div class="li"> Let cv be the result of evaluating Block with argument cv</div>
+</li>
+</ol>
+</li>
+<li class="level1"><div class="li"> Catch if exception x is of type Object  (note: excludes Return, Break and Continue exceptions)</div>
+<ol>
+<li class="level2"><div class="li"> Let val be the result evaluating CatchClauses</div>
+</li>
+<li class="level2"><div class="li"> If val is not none, then return val</div>
+</li>
+<li class="level2"><div class="li"> Throw x</div>
+</li>
+</ol>
+</li>
+</ol>
+<pre class="code">
+TryStatement : try Block1 CatchClausesOpt finally Block2
+</pre>
+<ol>
+<li class="level1"><div class="li"> Let cv be a named argument passed to this evaluator</div>
+</li>
+<li class="level1"><div class="li"> Try</div>
+<ol>
+<li class="level2"><div class="li"> Let cv be the result of evaluating Block1 with argument cv</div>
+</li>
+</ol>
+</li>
+<li class="level1"><div class="li"> Catch if exception x is of type Object  (note: excludes Return, Break and Continue exceptions)</div>
+<ol>
+<li class="level2"><div class="li"> Try</div>
+<ol>
+<li class="level3"><div class="li"> Let val be the result evaluating CatchClauses</div>
+</li>
+<li class="level3"><div class="li"> If val is not none, then let e be have the value of x</div>
+</li>
+<li class="level3"><div class="li"> Else let e be none</div>
+</li>
+</ol>
+</li>
+<li class="level2"><div class="li"> Catch if exception x</div>
+<ol>
+<li class="level3"><div class="li"> Let e have the value of x</div>
+</li>
+</ol>
+</li>
+</ol>
+</li>
+<li class="level1"><div class="li"> Evaluate Block2</div>
+</li>
+<li class="level1"><div class="li"> If e is not equal to none, then throw e, else return val</div>
+</li>
+</ol>
+<pre class="code">
+CatchClausesOpt : empty
+</pre>
+<ol>
+<li class="level1"><div class="li"> Return none</div>
+</li>
+</ol>
+<pre class="code">
+CatchClausesOpt : CatchClauses
+</pre>
+<ol>
+<li class="level1"><div class="li"> Return the result of evaluating CatchClauses</div>
+</li>
+<li class="level1"><div class="li"> </div>
+</li>
+</ol>
+<pre class="code">
+CatchClauses : CatchClause
+</pre>
+<ol>
+<li class="level1"><div class="li"> Return the result of evaluating CatchClause</div>
+</li>
+<li class="level1"><div class="li"> </div>
+</li>
+</ol>
+<pre class="code">
+CatchClauses : CatchClauses CatchClause
+</pre>
+<ol>
+<li class="level1"><div class="li"> Let val be the result of evaluating CatchClauses</div>
+</li>
+<li class="level1"><div class="li"> If val is not equal to none, then return val</div>
+</li>
+<li class="level1"><div class="li"> Return the result of evaluating CatchClause</div>
+</li>
+<li class="level1"><div class="li"> </div>
+</li>
+</ol>
+<pre class="code">
+CatchClause : catch ( Parameter ) Block
+</pre>
+<ol>
+<li class="level1"><div class="li"> Let env be a copy of the current lexical environment</div>
+</li>
+<li class="level1"><div class="li"> Let x be the named argument of this evaluator</div>
+</li>
+<li class="level1"><div class="li"> Let T be the type of Parameter</div>
+</li>
+<li class="level1"><div class="li"> Let name be the name of Parameter</div>
+</li>
+<li class="level1"><div class="li"> If x is of type T</div>
+<ol>
+<li class="level2"><div class="li"> Let scope be instance of the activation frame of CatchClause</div>
+</li>
+<li class="level2"><div class="li"> Add scope to the lexical environment env</div>
+</li>
+<li class="level2"><div class="li"> Call writeProperty(scope,name,x)</div>
+</li>
+<li class="level2"><div class="li"> Return the result of evaluating Block</div>
+</li>
+</ol>
+</li>
+<li class="level1"><div class="li"> Return none</div>
+</li>
+</ol>
+<p>
+&mdash;-
+</p>
+<p>
+Adding this note here (to close the loop on the email discussion). The following works in FireFox and I believe was introduced as part of Javascript1.5.
+</p>
+<pre class="code">
+&lt;script&gt;
+function foo(x)
+{
+    if (x == 1) throw &quot;E1&quot;;
+    if (x == 2) throw &quot;E2&quot;;
+}
+
+function bar(y)
+{
+    try {
+        foo(y);
+    }
+    catch (e if e == &quot;E1&quot;) { alert(&quot;caught E1&quot;); }
+    catch (e if e == &quot;E2&quot;) { alert(&quot;caught E2&quot;); }
+}
+
+bar(1);
+bar(2);
+&lt;/script&gt;
+</pre>
+<p>
+I don&rsquo;t think we should include this in the standard - it can remain as an extension available through JS1.5 from FireFox. We should avoid having to do such expression evaluation during exception handling. This should be a syntax error.  &mdash; <em><a href="mailto:%26%23x70%3B%26%23x72%3B%26%23x61%3B%26%23x74%3B%26%23x61%3B%26%23x70%3B%26%23x6c%3B%26%23x40%3B%26%23x6d%3B%26%23x69%3B%26%23x63%3B%26%23x72%3B%26%23x6f%3B%26%23x73%3B%26%23x6f%3B%26%23x66%3B%26%23x74%3B%26%23x2e%3B%26%23x63%3B%26%23x6f%3B%26%23x6d%3B" class="mail" title="&#x70;&#x72;&#x61;&#x74;&#x61;&#x70;&#x6c;&#x40;&#x6d;&#x69;&#x63;&#x72;&#x6f;&#x73;&#x6f;&#x66;&#x74;&#x2e;&#x63;&#x6f;&#x6d;">Pratap Lakshman</a> 2007/01/13 11:53</em>
+</p>
+<h2>Default XML namespace statement</h2>
+<h3>Syntax</h3>
+<pre class="code grammar">DefaultXMLNamespaceStatement</pre>
+<h3>Semantics</h3>
+<p>
+ DefaultXMLNamespaceStatement sets the internal DefaultXMLNamespace property to the value of NonAssignmentExpression. If a DefaultXMLNamespaceStatement appears in a function definition, the default xml namespace associated with the corresponding function object is initially set to the unnamed namespace. 
+</p>
+
+</body>
+</html>

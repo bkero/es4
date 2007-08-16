@@ -1,0 +1,519 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+<title>Untitled Document</title>
+</head>
+
+<body>
+
+
+<h1>Classes</h1>
+<p>
+ A class is a type, a constructor of objects of that type, and a singleton object for sharing state and behavior. It is used as a constructor to create like instances. It is used as a type to constrain the value of properties. It is used as a singleton object to contain shared properties.
+</p>
+<p>
+Classes are introduced with class definitions. A class definition can directly extend one other class definition and implement multiple interface definitions. The language does not support the concept of abstract classes and so a class must implement every interface method it inherits. 
+</p>
+<h2>Class modifiers</h2>
+<p>
+ Class definitions may be modified by these attributes 
+</p>
+<table border="1" cellspacing="0" cellpadding="3" class="inline">
+	<tr>
+		<td class="leftalign"><code>dynamic</code>  </td><td>Allow properties to be added to instances at runtime</td>
+	</tr>
+	<tr>
+		<td class="leftalign"><code>final</code>    </td><td>Must not be extended by another class</td>
+	</tr>
+	<tr>
+		<td><code>internal</code></td><td>Visible to references inside the current package (default)</td>
+	</tr>
+	<tr>
+		<td class="leftalign"><code>public</code>   </td><td>Visible to references everywhere</td>
+	</tr>
+</table>
+<br />
+<p>
+ The default modifiers for a class definition are internal, non-dynamic, and non-final. 
+</p>
+<h2>Class objects</h2>
+<p>
+ Class objects have the basic structure shown in the following drawing, which illustrates the shape of the class object that results from this simple class definition:
+</p>
+<pre class="code javascript"><span class="kw2">class</span> A <span class="br0">&#123;</span><span class="br0">&#125;</span></pre>
+
+<h3>Prototypes</h3>
+<p>
+ Every object has a prototype object that it is used to match references at runtime. This prototype is called the delegate of the object. Delegation is a simple way to add shared properties to a group of related objects at runtime. 
+</p>
+<p>
+Prototype objects are always instances of the dynamic class Object and therefore can always be extended by the addition of dynamic properties. Unlike with function objects which have a prototype property that is a variable and can be reset to another object, classes have a prototype that is read-only and so always points to the same object. 
+</p>
+<h3>Traits</h3>
+<p>
+ Properties of a class definition are represented as traits of the class object and its instances. Think of a trait as a fixed property that is shared by all instances of a type. Class objects (CA) are special in that they are a single instance with an internal type with a corresponding set of traits (TCA). The internal type of a class object describes the static properties of the class definition. The instance traits (TA) are shared by all instances created by the class object. They correspond to the instance properties of the class definition.
+</p>
+<pre class="code javascript"><span class="kw2">class</span> A 
+<span class="br0">&#123;</span>
+    static <span class="kw2">var</span> x
+    <span class="kw2">var</span> y
+<span class="br0">&#125;</span></pre>
+<p>
+In this example, the definition for x contributes a trait to the class traits (TCA), and the definition of y contributes a trait to the instance traits (TA).
+</p>
+<h3>Methods</h3>
+<p>
+ Each function definition inside of a class definition results in a method inside the resulting class object or its instances. There are two special methods that are implicitly defined for each class: a class initialiser; and an instance initialiser. Code outside of a function definition gets placed in the class initialiser, which is called when the class object is created. Instance variable initialisers are placed in the instance initialiser method, which is called when an instance of the class is created and before the user defined constructor is executed.
+</p>
+<p>
+On calling the class initialiser when the class object is created: While such a semantic provides repeateable behaviour, it seems a little strict, considering that the static initialiser does not impact the &ldquo;shape&rdquo; of any particular instance of the class.
+</p>
+<p>
+Such strict semantics could impose an performance cost in a JIT-compiled implementation. In the case where we do method level JITing, at each such method we would need to make a check to see if the static initialiser was indeed already called, and call it (if it had not been called).
+</p>
+<p>
+Can&rsquo;t we have a more relaxed semantic? For e.g.
+</p>
+<p>
+If there is no code outside of a function definition that is being placed inside a static initialiser, we should permit the static initialiser to be called at, or sometime before, first access to any static field defined on the type.
+</p>
+<p>
+If there is code outside of a function that is placed inside the static initialiser, then the static initialiser must be called at first access to any static or instance field defined on the type, or, at first invocation of any static or instance  method of that type.
+</p>
+<p>
+ &mdash; <em><a href="mailto:%26%23x70%3B%26%23x72%3B%26%23x61%3B%26%23x74%3B%26%23x61%3B%26%23x70%3B%26%23x6c%3B%26%23x40%3B%26%23x6d%3B%26%23x69%3B%26%23x63%3B%26%23x72%3B%26%23x6f%3B%26%23x73%3B%26%23x6f%3B%26%23x66%3B%26%23x74%3B%26%23x2e%3B%26%23x63%3B%26%23x6f%3B%26%23x6d%3B" class="mail" title="&#x70;&#x72;&#x61;&#x74;&#x61;&#x70;&#x6c;&#x40;&#x6d;&#x69;&#x63;&#x72;&#x6f;&#x73;&#x6f;&#x66;&#x74;&#x2e;&#x63;&#x6f;&#x6d;">Pratap Lakshman</a> 2006/11/08 09:18</em>
+</p>
+<h3>Slots</h3>
+<p>
+ Traits introduced by variable definitions describe a property that holds a value unique to each instance. Therefore, each object has a fixed array of slots that store those values, one for each variable trait. This is true of class objects as well as instance objects.
+</p>
+<h3>Instances</h3>
+<p>
+ All instances (OA) created by a class object (CA) will be given a traits (TA) and delegate (PA) object, as represented in this drawing
+</p>
+<h3>Inheritance</h3>
+<p>
+ Each class inherits the instance traits of its base class. These traits are effectively copied down to the instance traits of the derived class. Classes that don&#8217;t declare an explicit base class inherit the built-in Object class.
+</p>
+<p>
+A class may also inherit the instance traits of one or more interfaces. Interface traits are abstract and so must be implemented by any class that inherits them.
+</p>
+<p>
+Unlike in some other object oriented languages (e.g. Java), static properties of the base class are not inherited, but they are in scope in the static and instance methods of the derived class.
+</p>
+<h3>Scopes</h3>
+<p>
+ Static properties are in scope of bodies of static and instance methods of the same class. Instance properties are in scope of the bodies of the instance methods. Instance properties shadow static properties with the same name. Static properties of base classes are in scope of static and instance methods of a class.
+</p>
+<pre class="code javascript"><span class="kw2">class</span> A 
+<span class="br0">&#123;</span> 
+    static <span class="kw2">var</span> ax
+<span class="br0">&#125;</span>
+<span class="kw2">class</span> B <span class="kw2">extends</span> A 
+<span class="br0">&#123;</span> 
+    static <span class="kw2">var</span> bx 
+<span class="br0">&#125;</span>
+<span class="kw2">class</span> C <span class="kw2">extends</span> B 
+<span class="br0">&#123;</span>
+    static <span class="kw2">var</span> cx  
+    <span class="kw2">var</span> ix  
+    <span class="kw2">function</span> m<span class="br0">&#40;</span><span class="br0">&#41;</span> 
+    <span class="br0">&#123;</span>
+        <span class="kw2">var</span> mx
+        gx = <span class="nu0">10</span>
+        ax = <span class="nu0">20</span>
+        bx = <span class="nu0">30</span>
+        cx = <span class="nu0">40</span>
+        mx = <span class="nu0">50</span>
+    <span class="br0">&#125;</span>
+<span class="br0">&#125;</span>
+<span class="kw2">var</span> gx
+o = <span class="kw2">new</span> C
+o.<span class="me1">m</span><span class="br0">&#40;</span><span class="br0">&#41;</span></pre>
+<p>
+Scopes: 
+</p>
+<ul>
+<li class="level1"><div class="li"> { mx } - activation scope</div>
+</li>
+<li class="level1"><div class="li"> { ix } - instance scope</div>
+</li>
+<li class="level1"><div class="li"> { cx } - static scope C</div>
+</li>
+<li class="level1"><div class="li"> { bx } - static scope B</div>
+</li>
+<li class="level1"><div class="li"> { ax } - static scope A</div>
+</li>
+<li class="level1"><div class="li"> { gx } - global scope</div>
+</li>
+</ul>
+<h2>Class property attributes</h2>
+<p>
+Class properties may be modified by the following attributes 
+</p>
+<table border="1" cellspacing="0" cellpadding="3" class="inline">
+	<tr>
+		<td class="leftalign"><code>static</code>              </td><td>Defines a property of the class object</td>
+	</tr>
+	<tr>
+		<td class="leftalign"><code>prototype</code>           </td><td>Defines a property of the prototype object</td>
+	</tr>
+	<tr>
+		<td class="leftalign"><code>private</code>             </td><td>Visible to references inside the current class</td>
+	</tr>
+	<tr>
+		<td class="leftalign"><code>internal</code> (default)  </td><td>Visible to references inside the current package</td>
+	</tr>
+	<tr>
+		<td class="leftalign"><code>protected</code>           </td><td>Visible to references inside instances of the current class and derived classes</td>
+	</tr>
+	<tr>
+		<td class="leftalign"><code>public</code>              </td><td>Visible to references everywhere</td>
+	</tr>
+	<tr>
+		<td><em>AttributeExpression</em></td><td>Namespace value is the qualifier for the name of the definition</td>
+	</tr>
+</table>
+<br />
+<p>
+ It is a syntax error to use any other attribute on a class property, unless otherwise specified in the section describing the specific type of property.
+</p>
+<h3>Static attribute</h3>
+<p>
+ The static attribute means the current definition defines a property of the class object.
+</p>
+<h3>Prototype attribute</h3>
+<p>
+ The prototype attribute enables the addition of a property to the prototype object. It can be used on variable, constant, or method definitions. Prototype properties are accessible through the prototype object or through instances that delegate to that prototype. As in Ecmascript 3, assigning to a prototype property of an instance will set a property of the same name in the instance. Prototype properties must not be declared with a namespace like other class properties. 
+</p>
+<p>
+A prototype variable can be created using the prototype attribute:
+</p>
+<pre class="code javascript"><span class="kw2">class</span> A 
+<span class="br0">&#123;</span>
+    prototype <span class="kw2">var</span> x : int = <span class="nu0">10</span>
+<span class="br0">&#125;</span></pre>
+<p>
+Internally, the prototype variable x would be implemented as follows:
+</p>
+<pre class="code javascript"><span class="kw2">class</span> A <span class="br0">&#123;</span>
+    prototype.<span class="me1">x</span> = <span class="nu0">10</span>
+<span class="br0">&#125;</span></pre>
+<p>
+The following example illustrates the behavior of the prototype variable x.
+</p>
+<pre class="code javascript"><span class="kw2">var</span> a1 = <span class="kw2">new</span> A
+<span class="kw2">var</span> a2 = <span class="kw2">new</span> A
+<span class="kw3">print</span><span class="br0">&#40;</span>a1.<span class="me1">x</span><span class="br0">&#41;</span>   <span class="co1">// traces 10, shared initial value</span>
+<span class="kw3">print</span><span class="br0">&#40;</span>a2.<span class="me1">x</span><span class="br0">&#41;</span>   <span class="co1">// traces 10, shared initial value</span>
+A.<span class="me1">prototype</span>.<span class="me1">x</span> = <span class="nu0">20</span>
+<span class="kw3">print</span><span class="br0">&#40;</span>a1.<span class="me1">x</span><span class="br0">&#41;</span>   <span class="co1">// traces 20, shared assigned value</span>
+<span class="kw3">print</span><span class="br0">&#40;</span>a2.<span class="me1">x</span><span class="br0">&#41;</span>   <span class="co1">// traces 20, shared assigned value</span>
+a2.<span class="me1">x</span> = <span class="nu0">30</span>
+<span class="kw3">print</span><span class="br0">&#40;</span>a1.<span class="me1">x</span><span class="br0">&#41;</span>   <span class="co1">// traces 20, shared assigned value</span>
+<span class="kw3">print</span><span class="br0">&#40;</span>a2.<span class="me1">x</span><span class="br0">&#41;</span>   <span class="co1">// traces 30, individual assigned value</span></pre>
+<p>
+To create a prototype function, you can use either a function expression or a function statement: 
+</p>
+<pre class="code javascript"><span class="kw2">class</span> A 
+<span class="br0">&#123;</span>
+    prototype <span class="kw2">var</span> f = <span class="kw2">function</span><span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span> <span class="kw3">print</span><span class="br0">&#40;</span>"A.<span class="me1">f</span>"<span class="br0">&#41;</span> <span class="br0">&#125;</span> <span class="co1">// function expression</span>
+    prototype <span class="kw2">function</span> g<span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span> <span class="kw3">print</span><span class="br0">&#40;</span>"A.<span class="me1">g</span>"<span class="br0">&#41;</span> <span class="br0">&#125;</span>       <span class="co1">// function statement</span>
+<span class="br0">&#125;</span></pre>
+<p>
+A prototype function has on its scope chain the class object of its class, but no instance. Think of prototype functions as function closures on the class prototype. In other words, prototype functions are not bound methods. Internally, the prototype functions <code>f</code> and <code>g</code> would be implemented as follows:
+</p>
+<pre class="code javascript"><span class="kw2">class</span> A 
+<span class="br0">&#123;</span>
+    prototype.<span class="me1">f</span> = <span class="kw2">function</span><span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span> <span class="kw1">return</span> <span class="st0">"A.f"</span> <span class="br0">&#125;</span>
+    prototype.<span class="me1">g</span> = <span class="kw2">function</span><span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span> <span class="kw1">return</span> <span class="st0">"A.g"</span> <span class="br0">&#125;</span>
+<span class="br0">&#125;</span></pre>
+<h3>Access control namespace attributes</h3>
+<p>
+ Each access control attribute (private, internal, protected, and public) refers to a namespace value with a unique, private namespace name. Access control is provided by the fact that code outside of the attribute&rsquo;s access domain has no way to refer to that namespace value.
+</p>
+<h3>User defined namespace attributes</h3>
+<p>
+ The value of an attribute expression that evaluates to a compile-time constant namespace is used as the qualifier of the definition&rsquo;s name.
+</p>
+<pre class="code javascript"><span class="kw2">namespace</span> ns
+<span class="kw2">class</span> A 
+<span class="br0">&#123;</span>
+    ns <span class="kw2">var</span> x
+<span class="br0">&#125;</span></pre>
+<p>
+In this example the name of the definition of x is qualified by the namespace ns
+</p>
+<p>
+only one namespace attribute may be used per definition namespace attributes may not be used with an access control attribute
+</p>
+<h2>Class body</h2>
+<p>
+ A class body may contain variable definitions, namespace definitions, function definitions, and statements.
+</p>
+<pre class="code javascript"><span class="kw2">class</span> A
+<span class="br0">&#123;</span>
+    static <span class="kw2">var</span> x
+    static <span class="kw2">function</span> f<span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span><span class="br0">&#125;</span>
+    <span class="kw2">var</span> y
+    <span class="kw2">function</span> g<span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span><span class="br0">&#125;</span>
+    <span class="kw3">print</span><span class="br0">&#40;</span>"<span class="kw2">class</span> loaded"<span class="br0">&#41;</span>
+<span class="br0">&#125;</span></pre>
+<p>
+Definitions result in class or instance traits depending on whether the static attribute occurs in their definition
+</p>
+<p>
+Statements and initialisers of static variables are added to the static initialiser method of the class. The static initialiser is called once, when the class is defined at runtime. The static initialiser can be used to initialise variables of the class object and to invoke methods that are external to the current class
+</p>
+<p>
+Initialisers of instance variables are added to the instance initialiser method
+</p>
+<p>
+The scope chain of methods contained by the class body includes the class object, the base class objects (from most derived the least derived), and the global object.
+</p>
+<p>
+Note: it is not an error to define a class and instance property with the same name.  e.g. 
+</p>
+<pre class="code javascript"><span class="kw2">class</span> A <span class="br0">&#123;</span>
+    static <span class="kw2">var</span> x
+    <span class="kw2">var</span> x
+<span class="br0">&#125;</span></pre>
+<p>
+It is not an error to define a class property with the same name as a visible class property in a base class. e.g. 
+</p>
+<pre class="code javascript"><span class="kw2">class</span> A <span class="br0">&#123;</span>
+    static <span class="kw2">var</span> x
+<span class="br0">&#125;</span>
+<span class="kw2">class</span> B <span class="kw2">extends</span> A <span class="br0">&#123;</span>
+    static <span class="kw2">var</span> x
+<span class="br0">&#125;</span></pre>
+<h2>Class variables</h2>
+<p>
+ Class variables are defined using the var or const keywords.
+</p>
+<pre class="code">
+class A
+{
+    var x
+    const k = 10
+}
+</pre>
+<p>
+The meaning of var, const follow from the general meaning described elsewhere in this specification. 
+</p>
+<table border="1" cellspacing="0" cellpadding="3" class="inline">
+	<tr>
+		<td class="leftalign"><code>var</code>    </td><td>May be written to multiple times</td>
+	</tr>
+	<tr>
+		<td class="leftalign"><code>const</code>  </td><td>May be written to only once</td>
+	</tr>
+</table>
+<br />
+<p>
+ const variable properties can be written to only once. The compiler uses a specific data flow analysis to determine if a const variable has been written to at the point of an assignment to that variable. Informally the effect of this algorithm can be seen in the following error cases
+</p>
+<p>
+It is an error to assign to a const instance or static variable in a statement that is outside of the instance or static initialiser, respectively
+</p>
+<p>
+It is an error to assign to a const variable more than once in a sequence of statements with no control flow branches
+</p>
+<p>
+It is an error to assign to a const variable in more than one parallel control flow branch if the branch conditions are not compile-time constant expressions, or if the value of those branch conditions allow for one or more of those branches to be executed more than once.
+</p>
+<p>
+The default value of a class or instance variable is the value of undefined coerced to the type of the variable.
+</p>
+<h3>Static variables</h3>
+<p>
+ Variables declared with the static attribute add a slot trait to the class traits and a slot to the class object. Because there is only one class object per class, there is also only one slot per static variable. Static variables, like static methods, are not inherited, but are accessible from within the body of the class definition and through an explicit reference to the defining class&#8217;s name. Static variables are in scope for all static and instance methods of the defining class and classes that inherit the defining class.
+</p>
+<p>
+Static const variables must either have an initialiser or be definitely unassigned before being set in the static initialiser method.
+</p>
+<p>
+Note: unlike in Java and C#, static variables are not inherited by derived classes and so can not be referenced through derived class objects.
+</p>
+<h3>Instance variables</h3>
+<p>
+ Variables declared without the static attribute add a slot trait to the instance traits of the class and a slot to each instance of the class. Instance variables are always final and must not be overridden or hidden by a derived class. 
+</p>
+<p>
+As with all class properties, the default qualifier for the variable is the internal namespace. Other qualifiers can be specified by other namespace attributes. Both instance and class variables are implicitly final. Any attempt to hide or override one in a derived class will result in a verification error.
+</p>
+<h2>Class methods</h2>
+<p>
+ A method is a function associated with a specific object. Unlike a function closure, a method is not a value and cannot be used apart from the instance to which it is bound. The value of this inside a method is always the base object used to refer to the method, and always has the type of the class that implements the method, or subclasses of that class. 
+</p>
+<h3>Constructor methods</h3>
+<p>
+ A function declared with the same identifier as the class it is defined in adds a constructor method to the class object. The constructor is called when a new instance of that class is created. A constructor may refer to the instance variables of the class that defines it. 
+</p>
+<pre class="code javascript"><span class="kw2">class</span> A 
+<span class="br0">&#123;</span>
+    <span class="kw2">function</span> A<span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span><span class="br0">&#125;</span>
+<span class="br0">&#125;</span></pre>
+<p>
+A constructor is public by default and may be defined with the public namespace or with no namespace attribute. If no constructor is defined by a class definition, a default constructor is defined implicitly. No more than one constructor can be defined for a class.
+</p>
+<p>
+<em> Rationale: making a constructor always public reinforces the user model
+of classes, like functions, as constructors. While other languages allow
+constructors methods to be made inaccessible to keep outside code from
+creating instances, this use case was not deemed important enough to
+complicate the language design. It is a compatible change to allow
+explicit access control namespace attributes in a later edition. </em>
+</p>
+<p>
+If the body of a constructor contains a SuperStatement, that statement must occur before the first reference to this or super, and before any return or throw statement. If a call to the super constructor is not explicit, one will be inserted before the first statement in the constructor body. 
+</p>
+<ul>
+<li class="level1"><div class="li"> It is a syntax error to call the super constructor more than once</div>
+</li>
+<li class="level1"><div class="li"> It is a syntax error to specify a return statement with an expression</div>
+</li>
+<li class="level1"><div class="li"> It is a syntax error to specify a result type of a constructor</div>
+</li>
+</ul>
+<p>
+ Note: that there is no way to directly call the constructor of an indirect base class is intentional. This might lead to brittle or insecure programs.
+</p>
+<h3>Static methods</h3>
+<p>
+ Functions declared with the static attribute add a method trait to the class object traits. Static variables are in scope of a static method. 
+</p>
+<p>
+It is an error for the this or super expression to appear in the body of a static method.
+</p>
+<p>
+Unlike in Java and C#, static methods are not inherited by derived classes and so can not be referenced through derived class objects.
+</p>
+<h3>Instance methods</h3>
+<p>
+ Functions declared without the static attribute add a method trait to the instance traits of a class object. Static and instance variables are in scope of an instance method. The value of this inside an instance method is the instance the method is bound to.
+</p>
+<pre class="code javascript"><span class="kw2">class</span> A 
+<span class="br0">&#123;</span>
+    <span class="kw2">function</span> m<span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span> <span class="kw1">return</span> <span class="kw1">this</span> <span class="br0">&#125;</span>
+<span class="br0">&#125;</span>
+<span class="kw2">var</span> a = <span class="kw2">new</span> A
+<span class="kw3">print</span><span class="br0">&#40;</span>a==a.<span class="me1">m</span><span class="br0">&#40;</span><span class="br0">&#41;</span><span class="br0">&#41;</span>   <span class="co1">// print true, this is the object 'm' is called on</span></pre>
+<p>
+In addition to the attributes defined for all class properties, the following attributes may be used on instance methods 
+</p>
+<table border="1" cellspacing="0" cellpadding="3" class="inline">
+	<tr>
+		<td class="leftalign"><code>final</code>      </td><td class="leftalign"> May not be overridden              </td>
+	</tr>
+	<tr>
+		<td class="leftalign"><code>override</code>   </td><td class="leftalign"> Must override an inherited method  </td>
+	</tr>
+</table>
+<br />
+<p>
+ The attribute override helps to avoid unintentional overriding of base class methods. It is a verifier error to use the override attribute on a function definition that does not override an inherited method. It is a verifier error to override an inherited method that is declared final. It is an error to define a method without the override attribute if the name matches the name of an inherited method.
+</p>
+<p>
+The prototype attribute allows the addition of a fixed property to the prototype object, but not to the instance. Instance methods defined with the prototype attribute have function values that are compatible with Ecmascript edition 3 prototype functions.
+</p>
+<pre class="code javascript"><span class="kw2">class</span> A 
+<span class="br0">&#123;</span>
+    prototype <span class="kw2">var</span> f = <span class="kw2">function</span><span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span> <span class="kw1">return</span> <span class="kw1">this</span> <span class="br0">&#125;</span>
+<span class="br0">&#125;</span>
+<span class="kw2">var</span> a = <span class="kw2">new</span> A
+dynamic <span class="kw2">class</span> B <span class="br0">&#123;</span><span class="br0">&#125;</span>
+<span class="kw2">var</span> b = <span class="kw2">new</span> B
+b.<span class="me1">f</span> = a.<span class="me1">f</span>
+b.<span class="me1">f</span><span class="br0">&#40;</span><span class="br0">&#41;</span>   <span class="co1">// traces "[object B]"</span></pre>
+<p>
+The instance of B becomes the value of <code>this</code>.
+</p>
+<h3>Accessor methods</h3>
+<p>
+ A method defined with the <code>get&rsquo; or </code>set&rsquo;&rsquo; keyword, adds a get or set method trait to the instance or static traits of the defining class object. Accessor methods are called when the name of the accessor is used in a reference that reads or writes the value of that name.
+</p>
+<pre class="code javascript"><span class="kw2">class</span> A 
+<span class="br0">&#123;</span>
+    <span class="kw2">private</span> <span class="kw2">var</span> _x
+    <span class="kw2">function</span> get x<span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span> <span class="kw1">return</span> _x <span class="br0">&#125;</span>
+    <span class="kw2">function</span> set x<span class="br0">&#40;</span>v<span class="br0">&#41;</span> <span class="br0">&#123;</span> _x = v <span class="br0">&#125;</span>
+<span class="br0">&#125;</span>
+<span class="kw2">var</span> a  = <span class="kw2">new</span> A
+a.<span class="me1">x</span> = <span class="nu0">10</span>       <span class="co1">// calls set accessor of A</span>
+<span class="kw3">print</span><span class="br0">&#40;</span>a.<span class="me1">x</span><span class="br0">&#41;</span>     <span class="co1">// traces 10, calls get accessor of A</span></pre>
+<p>
+Accessor methods are very similar in definition to regular methods. The differences are expressed by the following error conditions, 
+</p>
+<ul>
+<li class="level1"><div class="li"> Get methods must specify no parameters</div>
+</li>
+<li class="level1"><div class="li"> Set methods must specify just one parameter</div>
+</li>
+<li class="level1"><div class="li"> Get methods must return a value</div>
+</li>
+<li class="level1"><div class="li"> Set methods have a result type void by default</div>
+</li>
+<li class="level1"><div class="li"> Set methods must not specify a result type other than void</div>
+</li>
+<li class="level1"><div class="li"> Get methods must not specify the result type void</div>
+</li>
+<li class="level1"><div class="li"> If both a get and set method is defined with the same name, the parameter type of the set method and the result type of the get method must match</div>
+</li>
+</ul>
+<p>
+ Note: accessors may only be defined at the top level of a class. They must not be nested inside another method, or defined outside of a class.
+</p>
+<h3>Inheriting instance methods</h3>
+<p>
+ Instance methods are inherited by copying their instance traits down to the instance traits of the derived class. 
+</p>
+<h4>Overriding instance methods</h4>
+<p>
+ Methods inherited from a class may be overridden in the derived class if the overriding method is given the override attribute and if its name, number and type of parameters, and return type match exactly. It is an error to attempt to override a method with a method that has the same name, but does not have the same number of parameters or parameters of different types or different return type.
+</p>
+<h4>Implementing interface methods</h4>
+<p>
+ Methods inherited from an interface must be implemented by a method with a name and signature that matches the inherited method. Interface methods are implemented by an instance method declared with the public attribute.  
+</p>
+<p>
+A method that has the public attribute implements all inherited interface methods with a matching identifier.
+</p>
+<pre class="code javascript">interface I 
+<span class="br0">&#123;</span>
+    <span class="kw2">function</span> m<span class="br0">&#40;</span><span class="br0">&#41;</span>
+<span class="br0">&#125;</span>
+interface J 
+<span class="br0">&#123;</span>
+    <span class="kw2">function</span> m<span class="br0">&#40;</span><span class="br0">&#41;</span>
+<span class="br0">&#125;</span>
+&nbsp;
+<span class="kw2">class</span> A implements I,J
+<span class="br0">&#123;</span>
+    <span class="kw2">public</span> <span class="kw2">function</span> m<span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span> <span class="kw3">print</span><span class="br0">&#40;</span>"A.<span class="me1">m</span>"<span class="br0">&#41;</span> <span class="br0">&#125;</span>
+<span class="br0">&#125;</span></pre>
+<p>
+In this example, the definition of m in class A satisfies both interfaces I and J.
+</p>
+<h3>Bound methods</h3>
+<p>
+ Although a method is not a value by itself, it can be converted to a first class value called a bound method, through extraction. A bound method maintains the binding between a method and its instance.  The user visible type of a bound method is Function.
+</p>
+<pre class="code javascript"><span class="kw2">class</span> A 
+<span class="br0">&#123;</span>
+    <span class="kw2">function</span> m<span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span> <span class="kw1">return</span> <span class="kw1">this</span> <span class="br0">&#125;</span>
+<span class="br0">&#125;</span>
+<span class="kw2">var</span> a  = <span class="kw2">new</span> A
+<span class="kw2">var</span> mc : <span class="kw2">Function</span> = a.<span class="me1">m</span>     <span class="co1">// create a bound method from m and a</span>
+<span class="kw3">print</span><span class="br0">&#40;</span>a==mc<span class="br0">&#40;</span><span class="br0">&#41;</span><span class="br0">&#41;</span>   <span class="co1">// print true, mc remembers its this</span></pre>
+<h2>Class-defined operators</h2>
+<p>
+ <strong>PROPOSAL</strong> &mdash; Please see the <a href="/ECMA/wiki/doku.php?id=proposals:operators" class="wikilink1" title="proposals:operators" onclick="return svchk()" onkeypress="return svchk()">class-defined operators proposal page</a> for more information.
+</p>
+<p>
+A class definition may contain static methods that define how to interpret primitive operators applied to instances of the class. 
+</p>
+
+</body>
+</html>
