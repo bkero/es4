@@ -1190,7 +1190,7 @@ and defVar (env:ENV)
     case var of
         Ast.Binding { ident, ty } =>
         let
-            val ty' = defTy env ty
+            val ty':Ast.TY = defTy env ty
             val readOnly' = case kind of
                                  Ast.Const => true
                                | Ast.LetConst => true
@@ -1343,18 +1343,19 @@ and defFuncSig (env:ENV)
             val typeEnv = extendEnvironment env typeParamFixtures 0
 ****)
 
-            val thisType = 
+            val thisType:Ast.TYPE_EXPR = 
                 case thisType of 
                     NONE => Ast.SpecialType Ast.Any
-                  | SOME x => defTy env x
+                  | SOME x => defTypeExpr env x
 
-            val thisBinding = (Ast.PropName Name.this,
-                               Ast.ValFixture
-                                   { ty = thisType,
-                                     readOnly = true })
+            val thisBinding:(Ast.FIXTURE_NAME * Ast.FIXTURE) = 
+                (Ast.PropName Name.this,
+                 Ast.ValFixture
+                     { ty = (makeTy env thisType),
+                       readOnly = true })
 
 
-            fun isTempFixture (n,_) : bool =
+            fun isTempFixture (n:Ast.FIXTURE_NAME, _) : bool =
                 case n of
                    Ast.TempName _ => true
                  | _ => false
@@ -1413,15 +1414,27 @@ and defFuncSig (env:ENV)
         s=[i=10,j=20]}]}
 *)
 
-and defFunc (env:ENV) (func:Ast.FUNC)
-    : (Ast.HEAD * Ast.EXPR list * Ast.FUNC) =
+and extractFuncType (ty:Ast.TY) 
+    : (Ast.FUNC_TYPE * Ast.RIBS * Ast.UNIT_NAME option) = 
+    case ty of 
+        Ast.Ty {expr=Ast.FunctionType fty, nonTopRibs, topUnit} => 
+        (fty, nonTopRibs, topUnit)
+      | _ => error ["extracting funcType from non-FunctionType"]
+             
+             
+and defFunc (env:ENV) 
+            (func:Ast.FUNC)
+    : (Ast.HEAD * Ast.EXPR list * Ast.FUNC) = (* (settings, superArgs, func) *)    
     let
         val _ = trace [">> defFunc"]
-        val Ast.Func {name, fsig, block, ty, native, loc, ...} = func
-        val paramTypes = (#params ty)
-        val env = updateTempOffset env (length paramTypes)
+        val Ast.Func {name, typeParams, fsig, block, ty, native, loc, ...} = func
+        val (funcType:Ast.FUNC_TYPE, _, _) = extractFuncType ty
+                     
+        val numParams = length (#params funcType)
+
+        val env = updateTempOffset env numParams
         val (paramFixtures, paramInits, defaults, settingsFixtures, settingsInits, superArgs, thisType) = defFuncSig env fsig
-        val newTy = defFuncTy env ty
+        val newType:Ast.FUNC_TYPE = defFuncTy env funcType
         val defaults = defExprs env defaults
         val env = extendEnvironment env paramFixtures
         val (block, hoisted) = defBlock env block
@@ -1429,10 +1442,11 @@ and defFunc (env:ENV) (func:Ast.FUNC)
     in
         (Ast.Head (settingsFixtures, settingsInits), superArgs,
          Ast.Func {name = name,
+                   typeParams = typeParams,
                    fsig = fsig,
                    block = block,
                    defaults = defaults,
-                   ty = newTy,
+                   ty = makeTy env (Ast.FunctionType newType),
                    param = Ast.Head (mergeRibs paramFixtures hoisted, paramInits),
                    native=native,
                    loc=loc})
@@ -1451,8 +1465,9 @@ and defFunc (env:ENV) (func:Ast.FUNC)
 
 *)
 
-and defFuncDefn (env:ENV) (f:Ast.FUNC_DEFN)
-    : (Ast.RIB * Ast.FUNC_DEFN) =
+and defFuncDefn (env:ENV) 
+                (f:Ast.FUNC_DEFN)
+    : Ast.RIB =
     case (#func f) of
         Ast.Func { name, fsig, block, ty, native, ... } =>
         let
@@ -1461,67 +1476,67 @@ and defFuncDefn (env:ENV) (f:Ast.FUNC_DEFN)
             val env = clearPackageName env
             val (_, _, newFunc) = defFunc env (#func f)
             val Ast.Func { ty, ... } = newFunc
-            val newDefn = { kind = (#kind f),
-                            ns = (#ns f),
-                            final = (#final f),
-                            override = (#override f),
-                            prototype = (#prototype f),
-                            static = (#static f),
-                            abstract = (#abstract f),
-                            func = newFunc }
+            val (funcTy, nonTopRibs, topUnit) = extractFuncType ty
+
+            fun rebuildTy te = Ast.Ty { expr=te,
+                                        nonTopRibs = nonTopRibs,
+                                        topUnit=topUnit }
+                               
+            val resultTy = rebuildTy (#result funcTy)                           
+            fun paramTy _ = 
+                case (#params funcTy) of
+                    [t] => rebuildTy t
+                  | _ => error ["expected single parameter in ",
+                                LogErr.fname newName]                                     
 
             val fixture =
                 case (#kind name) of
                     Ast.Get =>
                     Ast.VirtualValFixture
-                        { ty = (#result ty),
-                          getter = SOME newDefn,
+                        { ty = resultTy,
+                          getter = SOME newFunc,
                           setter = NONE }
                   | Ast.Set =>
                     Ast.VirtualValFixture
-                        { ty = (case (#params ty) of
-                                    [t] => t
-                                  | _ => error ["expected one parameter in setter for ",
-                                                LogErr.fname newName]),
+                        { ty = paramTy (),
                           getter = NONE,
-                          setter = SOME newDefn }
+                          setter = SOME newFunc }
                   | Ast.Ordinary =>
                     let
                         val (ftype, isReadOnly) =
-                            if (#kind f) = Ast.Var
-                            then (Ast.SpecialType Ast.Any,false)      (* e3 style writeable function *)
-                            else ((Ast.FunctionType ty),true)         (* read only, method *)
+                            if (#kind f) = Ast.Var                            
+                            then  
+                                (* e3 style writeable function *)
+                                (makeTy env (Ast.SpecialType Ast.Any), false)  
+                            else 
+                                (* read only, method *)
+                                (ty, true)                        
                     in
                         Ast.MethodFixture
                             { func = newFunc,
                               ty = ftype,
                               readOnly = isReadOnly,
                               final = (#final f),
-                              override = (#override f),
-                              abstract = (#abstract f)}
+                              override = (#override f)}
                     end
                   | Ast.Call =>
                     Ast.MethodFixture
                         { func = newFunc,
-                          ty = Ast.FunctionType ty,
+                          ty = ty,
                           readOnly = true,
                           final = true,
-                          override = false,
-                          abstract = false}
+                          override = false}
                   | Ast.Has =>
                     Ast.MethodFixture
                         { func = newFunc,
-                          ty = Ast.FunctionType ty,
+                          ty = ty,
                           readOnly = true,
                           final = true,
-                          override = false,
-                          abstract = false}
+                          override = false}
                   | Ast.Operator =>
                     LogErr.unimplError ["operator function not implemented"]
-
-            val outerFixtures = [(newName, fixture)]
         in
-            (outerFixtures, newDefn)
+            [(newName, fixture)]
         end
 
 
@@ -1880,7 +1895,7 @@ and defLiteral (env:ENV)
             Ast.LiteralArray {exprs = defExprs env exprs,
                               ty = case ty of
                                        NONE => NONE
-                                     | SOME t => SOME (defTy env t) }
+                                     | SOME t => SOME (defTypeExpr env t) }
           | Ast.LiteralXML exprs =>
             Ast.LiteralXML (defExprs env exprs)
 
@@ -1891,7 +1906,7 @@ and defLiteral (env:ENV)
                                                      init = defExpr env init }) expr,
                                ty = case ty of
                                         NONE => NONE
-                                      | SOME t => SOME (defTy env t) }
+                                      | SOME t => SOME (defTypeExpr env t) }
 
           | Ast.LiteralNamespace ns =>
             Ast.LiteralNamespace (defNamespace env ns)
@@ -2046,7 +2061,7 @@ and defExpr (env:ENV)
             end
 
           | Ast.BinaryTypeExpr (b, e, te) =>
-            Ast.BinaryTypeExpr (b, sub e, defTy env te)
+            Ast.BinaryTypeExpr (b, sub e, defTypeExpr env te)
 
           | Ast.UnaryExpr (u, e) =>
             let
@@ -2064,7 +2079,7 @@ and defExpr (env:ENV)
             end
 
           | Ast.TypeExpr t =>
-            Ast.TypeExpr (defTy env t)
+            Ast.TypeExpr (defTypeExpr env t)
 
           | Ast.ThisExpr =>
             Ast.ThisExpr
@@ -2088,7 +2103,7 @@ and defExpr (env:ENV)
 
           | Ast.ApplyTypeExpr { expr, actuals } =>
             Ast.ApplyTypeExpr { expr = sub expr,
-                                actuals = map (defTy env) actuals }
+                                actuals = map (defTypeExpr env) actuals }
 
           | Ast.LetExpr { defs, body,... } =>
             let
@@ -2190,23 +2205,24 @@ and defFuncTy (env:ENV)
               (ty:Ast.FUNC_TYPE)
     : Ast.FUNC_TYPE =
         let
-            val {typeParams,params,result,thisType,hasRest,minArgs} = ty
-            val params' = map (defTy env) params
-            val thisType' = case thisType of SOME ty => SOME (defTy env ty) | _ => NONE
-            val result' = defTy env result
+            val {params,result,thisType,hasRest,minArgs} = ty
+            val params' = map (defTypeExpr env) params
+            val thisType' = case thisType of 
+                                SOME ty => SOME (defTypeExpr env ty) 
+                              | _ => NONE
+            val result' = defTypeExpr env result
         in
-            {typeParams=typeParams,
-             params=params',
+            {params=params',
              result=result',
              thisType=thisType',
              hasRest=hasRest,
              minArgs=minArgs}
         end
 
-and defTy (env:ENV)
-              (ty:Ast.TYPE_EXPR)
+and defTypeExpr (env:ENV)
+                (typeExpr:Ast.TYPE_EXPR)
     : Ast.TYPE_EXPR =
-    case ty of
+    case typeExpr of
         Ast.FunctionType t =>
         Ast.FunctionType (defFuncTy env t)
       | Ast.TypeName n =>
@@ -2227,30 +2243,35 @@ and defTy (env:ENV)
                 Ast.TypeName (defIdentExpr env n)
          end
       | Ast.UnionType tys =>
-        Ast.UnionType (map (defTy env) tys)
+        Ast.UnionType (map (defTypeExpr env) tys)
       | Ast.ArrayType tys =>
-        Ast.ArrayType (map (defTy env) tys)
+        Ast.ArrayType (map (defTypeExpr env) tys)
       | Ast.ObjectType tys =>
         Ast.ObjectType (map (defFieldType env) tys)
       | Ast.NullableType { expr, nullable } =>
-        Ast.NullableType { expr = defTy env expr,
+        Ast.NullableType { expr = defTypeExpr env expr,
                            nullable = nullable }
 
       | Ast.ElementTypeRef (ty, n) =>
-        Ast.ElementTypeRef (defTy env ty, n)
+        Ast.ElementTypeRef (defTypeExpr env ty, n)
 
       | Ast.FieldTypeRef (ty, ident) =>
-        Ast.FieldTypeRef (defTy env ty, ident)
+        Ast.FieldTypeRef (defTypeExpr env ty, ident)
 
       (* FIXME *)
       | t => t
+
+and defTy (env:ENV)
+          (typeExpr:Ast.TYPE_EXPR)
+    : Ast.TY = 
+    makeTy env (defTypeExpr env typeExpr)
 
 and defFieldType (env:ENV)
               (ty:Ast.FIELD_TYPE)
     : Ast.FIELD_TYPE =
     let
         val {name,ty} = ty
-        val ty = defTy env ty
+        val ty = defTypeExpr env ty
     in
         {name=name,ty=ty}
     end
@@ -2346,7 +2367,7 @@ and defStmt (env:ENV)
 
         fun reconstructCatch { bindings, fixtures, inits, block, ty } =
             let
-                val ty = defTy env ty
+                val ty:Ast.TY = defTy env ty
                 val (f0,i0) = defBindings env Ast.Var Name.noNS bindings
                 val env = extendEnvironment env f0
                 val (block,fixtures) = defBlock env block
@@ -2602,8 +2623,8 @@ and defStmt (env:ENV)
                 val (cases,hoisted) = ListPair.unzip (map reconstructCatch cases)
             in
                 (Ast.SwitchTypeStmt {cond = defExpr env cond,
-                                 ty = defTy env ty,
-                                 cases = cases}, List.concat hoisted)
+                                     ty = defTy env ty,
+                                     cases = cases}, List.concat hoisted)
             end
           | Ast.DXNStmt { expr } =>
             (Ast.DXNStmt { expr = defExpr env expr },[])
@@ -2704,7 +2725,7 @@ and defDefn (env:ENV)
       | Ast.FunctionDefn fd =>
             let
                 val {kind,...} = fd
-                val (fxtrs,def) = defFuncDefn env fd
+                val fxtrs = defFuncDefn env fd
             in case kind of
               (* hoisted fxtrs *)
                 Ast.Var => ([],fxtrs,[])

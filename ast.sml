@@ -222,14 +222,15 @@ datatype PRAGMA =
        | TypeDefn of TYPE_DEFN
 
      and FUNC_SIG =
-         FunctionSignature of {
-             params: BINDINGS,
-             paramTypes: TYPE_EXPR list,
-             defaults: EXPR list,
-             ctorInits: (BINDINGS * EXPR list) option, (* settings + super args *)
-             returnType: TYPE_EXPR,
-             thisType: TYPE_EXPR option,
-             hasRest: bool }
+         FunctionSignature of 
+         { typeParams: TYPE_EXPR list,
+           params: BINDINGS,
+           paramTypes: TYPE_EXPR list,
+           defaults: EXPR list,
+           ctorInits: (BINDINGS * EXPR list) option, (* settings + super args *)
+           returnType: TYPE_EXPR,
+           thisType: TYPE_EXPR option,
+           hasRest: bool }
 
      and BINDING =
          Binding of
@@ -430,8 +431,8 @@ datatype PRAGMA =
              readOnly: bool }
        | VirtualValFixture of
          { ty: TY, 
-           getter: FUNC_DEFN option,
-           setter: FUNC_DEFN option } (* VIRTUAL_VAL_FIXTURE *)
+           getter: FUNC option,
+           setter: FUNC option } (* VIRTUAL_VAL_FIXTURE *)
        | InheritedFixture of 
          { baseName: NAME, 
            baseTypeArgs: TY list }
@@ -583,8 +584,8 @@ withtype
 
 type VIRTUAL_VAL_FIXTURE =
            { ty: TY, 
-             getter: FUNC_DEFN option,
-             setter: FUNC_DEFN option }
+             getter: FUNC option,
+             setter: FUNC option }
 
 datatype FRAGMENT = 
          
