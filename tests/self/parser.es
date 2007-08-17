@@ -3203,7 +3203,7 @@ namespace Parser;
                     nd1.push (new Ast::Case (ndx,[]));
                     break;
                 default:
-                    var [ts1,ndx] = directive (ts1,Local,fullStmt);  // 'abbrev' is handled by RightBrace check in head
+                    var [ts1,ndx] = directive (ts1,localBlk,fullStmt);  // 'abbrev' is handled by RightBrace check in head
                     for (var i=0; i<ndx.length; ++i) nd1[nd1.length-1].Ast::stmts.push (ndx[i]);
                     break;
                 }
@@ -3263,11 +3263,11 @@ namespace Parser;
 
             ts = eat (ts, Token::Try);
 
-            var [ts1,nd1] = block (ts,Local);
+            var [ts1,nd1] = block (ts,localBlk);
             var [ts2,nd2] = catches (ts1);
             switch (hd (ts2)) {
             case Token::Finally:
-                var [ts3,nd3] = block (tl (ts2),Local);
+                var [ts3,nd3] = block (tl (ts2),localBlk);
                 break;
             default:
                 var [ts3,nd3] = [ts2,null];
@@ -3303,7 +3303,7 @@ namespace Parser;
             ts = eat (ts,Token::LeftParen);
             var [ts1,nd1] = parameter (ts);
             ts1 = eat (ts1,Token::RightParen);
-            var [ts2,nd2] = block (ts1,Local);
+            var [ts2,nd2] = block (ts1,localBlk);
 
             var [k,[p,t]] = nd1;
             var [b,i,temps] = desugarPattern (p, t, new Ast::GetParam (0), 0);
@@ -4243,7 +4243,7 @@ namespace Parser;
 
             switch (hd (ts)) {
             case Token::LeftBrace:
-                var [ts1,nd1] = block (ts,Local);
+                var [ts1,nd1] = block (ts,localBlk);
                 break;
             default:
                 var [ts1,nd1] = assignmentExpression (ts,beta);
