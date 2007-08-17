@@ -268,6 +268,30 @@ namespace Encode;
               + encodeExpr (nd.expr,nesting+", 'expr': ".length)
               + " }";
         }
+        case (nd: ThrowStmt) {
+            var str =
+                "{ 'ast_class': 'ThrowStmt'"
+              + indent(nesting)
+              + ", 'expr': "
+              + encodeExpr (nd.expr,nesting+", 'expr': ".length)
+              + " }";
+        }
+        case (nd: BreakStmt) {
+            var str =
+                "{ 'ast_class': 'BreakStmt'"
+              + indent(nesting)
+              + ", 'ident': "
+              + identOpt (nd.ident,nesting+", 'ident': ".length)
+              + " }";
+        }
+        case (nd: ContinueStmt) {
+            var str =
+                "{ 'ast_class': 'ContinueStmt'"
+              + indent(nesting)
+              + ", 'ident': "
+              + identOpt (nd.ident,nesting+", 'ident': ".length)
+              + " }";
+        }
         case (nd: IfStmt) {
             var str =
                 "{ 'ast_class': 'IfStmt'"
@@ -291,6 +315,20 @@ namespace Encode;
               + indent(nesting)
               + ", 'stmt': "
               + encodeStmt (nd.stmt,nesting+", 'stmt': ".length)
+              + indent(nesting)
+              + ", 'labels': "
+              + "[]"  // for now: encodeStmt (nd.stmt,nesting+", 'stmt': ".length)
+              + " }";
+        }
+        case (nd: SwitchStmt) {
+            var str =
+                "{ 'ast_class': 'SwitchStmt'"
+              + indent(nesting)
+              + ", 'expr': "
+              + encodeExpr (nd.expr,nesting+", 'expr': ".length)
+              + indent(nesting)
+              + ", 'cases': [ "
+              + cases (nd.cases,nesting+", 'cases': ".length) + " ]"
               + indent(nesting)
               + ", 'labels': "
               + "[]"  // for now: encodeStmt (nd.stmt,nesting+", 'stmt': ".length)
@@ -320,6 +358,42 @@ namespace Encode;
         return str;
     }
 
+    function cases (nd /*: CASES*/, nesting: int = 0)
+        : string {
+        enter ("Encode::cases ", nd.length);
+
+        var str = "";
+        var len = nd.length;
+        for (var i = 0; i < len; ++i) 
+        {
+            str = str 
+                + caseElement (nd[i], nesting)
+                + indent (nesting-2)
+                + ", ";
+        }
+
+        exit ("Encode::cases ",str);
+        return str;
+    }
+
+    function caseElement (nd : CASE, nesting: int = 0)
+        : string {
+        enter ("Encode::caseElement ");
+
+            var str =
+                "{ 'ast_class': 'Case'"
+              + indent(nesting)
+              + ", 'expr': "
+              + exprOpt (nd.expr,nesting+", 'expr': ".length)
+              + indent (nesting)
+              + ", 'stmts': [ "
+              + stmts (nd.stmts,nesting+", 'stmts': ".length)
+              + " ] }";
+
+        exit ("Encode::caseElement ",str);
+        return str;
+    }
+
     function exprs (nd /*: [EXPR]*/, nesting: int = 0)
         : string {
         enter ("Encode::exprs nd.length=",nd.length);
@@ -338,17 +412,31 @@ namespace Encode;
         return str;
     }
 
-    function encodeExprOption (nd : EXPR?, nesting: int = 0)
+    function exprOpt (nd : EXPR?, nesting: int = 0)
         : string {
-        enter ("encodeExprOption");
+        enter ("Encode::exprOpt");
         var str = "";
         if( nd === null ) {
-            var str = "'null'";
+            var str = "null";
         }
         else {
             var str = encodeExpr (nd,nesting);
         }
-        exit ("encodeExprOption ",str);
+        exit ("Encode::exprOpt ",str);
+        return str;
+    }
+
+    function identOpt (nd : IDENT?, nesting: int = 0)
+        : string {
+        enter ("Encode::identOpt");
+        var str = "";
+        if( nd === null ) {
+            var str = "null";
+        }
+        else {
+            var str = nd;
+        }
+        exit ("Encode::identOpt ",str);
         return str;
     }
 

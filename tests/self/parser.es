@@ -367,7 +367,7 @@ namespace Parser;
             ++n;
         }
 
-        public function toString () { print (this.n) }
+        public function toString () { return ts.slice(n,ts.length).toString() }
     }
 
     class Parser
@@ -417,24 +417,13 @@ namespace Parser;
         }
 
         function eat (ts:TokenStream,tc) {
-            // print("eating",Token::tokenText(tc));
+            //print("eating ",Token::tokenText(tc));
             let tk = hd (ts);
             if (tk === tc) {
                 return tl (ts);
             }
             throw "expecting "+Token::tokenText(tc)+" found "+Token::tokenText(tk);
         }
-
-        /*
-        function match (ts,tc) : void {
-            // print("matching",Token::tokenText(tc));
-            let tk = hd (ts);
-            if (tk !== tc) {
-                throw "expecting "+Token::tokenText(tc)+" found "+Token::tokenText(tk);
-            }
-            return;
-        }
-        */
 
         /*
           Replace the first token in the stream with another one. Raise an exception
@@ -2780,9 +2769,27 @@ namespace Parser;
                 var [ts1,nd1] = returnStatement (ts,omega);
                 var [ts2,nd2] = [semicolon (ts1,omega),nd1];
                 break;
+            case Token::Break:
+                var [ts1,nd1] = breakStatement (ts,omega);
+                var [ts2,nd2] = [semicolon (ts1,omega),nd1];
+                break;
+            case Token::Continue:
+                var [ts1,nd1] = continueStatement (ts,omega);
+                var [ts2,nd2] = [semicolon (ts1,omega),nd1];
+                break;
             case Token::LeftBrace:
                 var [ts1,nd1] = block (ts, tau);
                 var [ts2,nd2] = [ts1,new Ast::BlockStmt (nd1)];
+                break;
+            case Token::Switch:
+                switch (hd (tl (ts))) {
+                case Token::Type:
+                    var [ts1,nd1] = switchTypeStatement (ts);
+                    break;
+                default:
+                    var [ts2,nd2] = switchStatement (ts);
+                    break;
+                }
                 break;
             default:
                 let [ts1,nd1] = expressionStatement (ts);
@@ -2912,6 +2919,33 @@ namespace Parser;
             return [ts1, new Ast::ReturnStmt (nd1)];
         }
 
+        function breakStatement (ts: TOKENS)
+            : [TOKENS, Ast::STMT]
+        {
+            enter("Parser::breakStatement ", ts);
+
+            ts = eat (ts, Token::Break);
+            switch (hd (ts)) {
+            case Token::SemiColon:
+                var [ts1,nd1] = [tl (ts),null];
+                break;
+            case Token::RightBrace:
+                var [ts1,nd1] = [ts,null];
+                break;
+            default:
+                if (newline(ts)) {
+                    var [ts1,nd1] = [ts,null];
+                }
+                else {
+                    var [ts1,nd1] = identifier (ts);
+                } 
+                break;
+            }
+
+            exit("Parser::breakStatement ", ts1);
+            return [ts1, new Ast::BreakStmt (nd1)];
+        }
+
         function ifStatement (ts: TOKENS, omega)
             : [TOKENS, Ast::STMT]
         {
@@ -2954,6 +2988,112 @@ namespace Parser;
             return [ts2, new Ast::WhileStmt (nd1,nd2,labels)];
         }
 
+        /*
+
+        SwitchStatement
+            switch  ParenListExpression  {  CaseElements  }
+
+        CaseElements
+            empty
+            CaseLabel
+            CaseLabel  CaseElementsPrefix  CaseLabel
+            CaseLabel  CaseElementsPrefix  Directives(abbrev)
+
+        CaseElementsPrefix
+            empty
+            CaseElementsPrefix  CaseLabel
+            CaseElementsPrefix  Directives(full)
+
+        right recursive:
+
+        CaseElementsPrefix
+            empty
+            CaseLabel  CaseElementsPrefix
+            Directives(full)  CaseElementsPrefix
+
+        */
+
+        function switchStatement (ts: TOKENS)
+            : [TOKENS, Ast::STMT]
+        {
+            enter("Parser::switchStatement ", ts);
+
+            ts = eat (ts,Token::Switch);
+            var [ts1,nd1] = parenListExpression (ts);
+            ts1 = eat (ts1,Token::LeftBrace);
+            switch (hd (ts1)) {
+            case Token::Case:
+            case Token::Default:
+                var [ts2,nd2] = caseElementsPrefix (ts1);
+                break;
+            default:
+                // do nothing
+                break;
+            }
+            ts2 = eat (ts2,Token::RightBrace);
+
+            var nd3 = []; // FIXME labels
+
+            exit("Parser::switchStatement ", ts2);
+            return [ts2, new Ast::SwitchStmt (nd1,nd2,nd3)];
+        }
+
+        function caseElementsPrefix (ts: TOKENS)
+            : [TOKENS, Ast::CASES]
+        {
+            enter("Parser::caseElements ", ts);
+
+            var ts1 = ts;
+            var nd1 = [];
+            while (hd (ts1) !== Token::RightBrace) {
+                switch (hd (ts1)) {
+                case Token::Case:
+                case Token::Default:
+                    var [ts1,ndx] = caseLabel (ts1);
+                    nd1.push (new Ast::Case (ndx,[]));
+                    break;
+                default:
+                    var [ts1,ndx] = directive (ts1,Local,full);  // 'abbrev' is handled by RightBrace check in head
+                    for (var i=0; i<ndx.length; ++i) nd1[nd1.length-1].Ast::stmts.push (ndx[i]);
+                    break;
+                }
+            }
+
+            exit("Parser::caseElementsPrefix ", ts1);
+            return [ts1,nd1];
+        }
+
+        /*
+
+        CaseLabel
+            case  ListExpression(allowColon,allowIn)
+            default  :
+
+        */
+
+        function caseLabel (ts: TOKENS)
+            : [TOKENS, Ast::EXPR]
+        {
+            enter("Parser::caseLabel ", ts);
+
+            switch (hd (ts)) {
+            case Token::Case:
+                var [ts1,nd1] = listExpression (tl (ts),AllowIn);
+                break;
+            case Token::Default:
+                var [ts1,nd1] = [tl (ts),null];
+                break;
+            default:
+                throw "error caseLabel expecting case";
+            }
+
+            ts1 = eat (ts1,Token::Colon);
+
+            exit("Parser::caseLabel ", ts1);
+            return [ts1,nd1];
+        }
+
+        // DEFINITIONS
 
         /*
 
@@ -4235,7 +4375,7 @@ namespace Parser;
         {
             enter("Parser::directive ", ts);
 
-            printLn(ts);
+            //printLn(ts);
 
             switch (hd(ts)) {
             case Token::Let: // FIXME might be function

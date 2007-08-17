@@ -152,16 +152,16 @@ package cogen
         asm.I_label(Lbreak);
     }
 
-    function cgBreakStmt(ctx, {label: label}) {
+    function cgBreakStmt(ctx, {ident: ident}) {
         unstructuredControlFlow(ctx,
-                                (function (node) node.tag == "break" && (label == null || memberOf(label, stk.labels))),
+                                (function (node) node.tag == "break" && (ident == null || memberOf(ident, stk.labels))),
                                 true,
                                 "Internal error: definer should have checked that all referenced labels are defined");
     }
 
-    function cgContinueStmt(ctx, {label: label}) {
+    function cgContinueStmt(ctx, {ident: ident}) {
         unstructuredControlFlow(ctx,
-                                (function (node) node.tag == "continue" && (label == null || memberOf(label, stk.labels))),
+                                (function (node) node.tag == "continue" && (ident == null || memberOf(ident, stk.labels))),
                                 true,
                                 "Internal error: definer should have checked that all referenced labels are defined");
     }
@@ -207,15 +207,15 @@ package cogen
                 asm.I_label(Lnext);
                 Lnext = null;
             }
-            if (c.guard == null)
+            if (c.expr == null)
                 Ldefault = asm.I_label();
             else {
-                cgExpr(nctx, c.guard);
+                cgExpr(nctx, c.expr);
                 asm.I_getlocal(t);
                 asm.I_strictequals();
                 Lnext = asm.I_iffalse();
             }
-            let stmts = c.body;
+            let stmts = c.stmts;
             for ( let j=0 ; j < stmts.length ; j++ )
                 cgStmt(nctx, stmts[j] );
         }

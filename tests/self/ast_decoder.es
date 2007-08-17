@@ -356,12 +356,10 @@ namespace Decode;
             var ndx = new ReturnStmt (nd1);
             break;
         case 'BreakStmt':
-            let nd1 = expr (ob.expr);
-            var ndx = new BreakStmt (nd1);
+            var ndx = new BreakStmt (ob.ident);
             break;
         case 'ContinueStmt':
-            let nd1 = expr (ob.expr);
-            var ndx = new ContinueStmt (nd1);
+            var ndx = new ContinueStmt (ob.ident);
             break;
         case 'BlockStmt':
             let nd1 = block (ob.block);
@@ -410,7 +408,8 @@ namespace Decode;
         case 'SwitchStmt':
             let nd1 = expr (ob.expr);
             let nd2 = cases (ob.cases);
-            var ndx = new SwitchStmt (nd1,nd2);
+            let nd3 = cases (ob.labels);
+            var ndx = new SwitchStmt (nd1,nd2,nd3);
             break;
         case 'TryStmt':
             let nd1 = block (ob.block);
@@ -452,7 +451,7 @@ namespace Decode;
     {
         enter ("Decode::switchCase ", ob.ast_class);
 
-        let nd1 = expr (ob.expr);
+        let nd1 = exprOpt (ob.expr);
         let nd2 = stmts (ob.stmts);
         var ndx = new Case (nd1,nd2);
 
@@ -517,6 +516,23 @@ namespace Decode;
         exit ("Decode::exprs");
         return nd1;
     }
+
+    function exprOpt (ob) 
+        : EXPR?
+    {
+        enter ("Decode::exprOpt ", ob);
+
+        if (ob !== null) {
+            var nd1 = expr (ob);
+        }
+        else {
+            var nd1 = null;
+        }
+
+        exit ("Decode::exprOpt ");
+        return nd1;
+    }
+
 
     function expr (ob) 
         : EXPR
