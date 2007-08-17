@@ -16,7 +16,7 @@ namespace Decode;
     use namespace Ast;
     use namespace intrinsic;
 
-    use namespace Release;
+    use namespace Debug;
 
     function program (ob) 
         : PROGRAM
@@ -52,6 +52,22 @@ namespace Decode;
 
         exit ("Decode::block");
         return new Block (nd1,nd2);
+    }
+
+    function blockOpt (ob) 
+        : BLOCK?
+    {
+        enter ("Decode::blockOpt ", ob);
+
+        if (ob === null) {
+            var nd1 = null;
+        }
+        else {
+            var nd1 = block (ob);
+        }
+
+        exit ("Decode::blockOpt");
+        return nd1;
     }
 
     function head (ob) 
@@ -414,7 +430,7 @@ namespace Decode;
         case 'TryStmt':
             let nd1 = block (ob.block);
             let nd2 = catches (ob.catches);
-            let nd3 = finallyBlock (ob.finallyBlock);
+            let nd3 = blockOpt (ob.finallyBlock);
             var ndx = new TryStmt (nd1,nd2,nd3);
             break;
         case 'SwitchTypeStmt':

@@ -9,7 +9,7 @@ namespace Encode;
     use namespace intrinsic;
     use namespace Ast;
 
-    use namespace Release;
+    use namespace Debug;
 
     function indent (n:int)
         : string {
@@ -29,8 +29,8 @@ namespace Encode;
             var str =
                 indent(nesting) + "{ 'ast_class': 'Program'"
               + indent(nesting) + ", 'packages': " + encodePackages (nd.packages,nesting+", 'packages': ".length)
-              + indent(nesting) + ", 'head': " + encodeHead (nd.head,nesting+", 'head': ".length)
-              + indent(nesting) + ", 'block': " + encodeBlock (nd.block,nesting+", 'block': ".length)
+              + indent(nesting) + ", 'head': " + head (nd.head,nesting+", 'head': ".length)
+              + indent(nesting) + ", 'block': " + block (nd.block,nesting+", 'block': ".length)
               + " }";
         }
         case (nd: *) {
@@ -192,35 +192,36 @@ namespace Encode;
         return str;
     }
 
-    function encodeHead (nd /*: HEAD*/, nesting: int = 0)
+    function head (nd /*: HEAD*/, nesting: int = 0)
         : string {
-        enter ("encodeHead ",nesting);
+        enter ("Encode::head ",nesting);
 
         var str =
               "{ 'fixtures': [ " + encodeFixtures (nd.fixtures,nesting+"{ 'fixtures': [ ".length) + " ]"
             + indent(nesting) + ", 'inits': [ " + encodeInits (nd.inits,nesting+", 'inits': [ ".length)
             + " ] }";
-        exit ("encodeHead");
+
+        exit ("Encode::head");
         return str;
     }
 
-    function encodeBlock (nd: BLOCK, nesting: int = 0)
+    function block (nd: BLOCK, nesting: int = 0)
         : string {
-        enter ("encodeBlock ",nesting);
+        enter ("Encode::block ",nesting);
         var str;
         switch type (nd) : BLOCK {
         case (nd:Block) {
             var str =
                   "{ 'ast_class': 'Block'"
-                + indent(nesting) + ", 'head': " + encodeHead (nd.head,nesting+", 'head': ".length)
+                + indent(nesting) + ", 'head': " + head (nd.head,nesting+", 'head': ".length)
                 + indent(nesting) + ", 'stmts': [ " + stmts (nd.Ast::stmts,nesting+", 'stmts': [ ".length)
                 + " ] }";
         }
         case (x: *) {
-            throw "internalError: encodeBlock";
+            throw "internalError: Encode::block";
         }
         }
-        exit ("encodeBlock");
+        exit ("Encode::block");
         return str;
     }
 
@@ -339,22 +340,72 @@ namespace Encode;
                 "{ 'ast_class': 'BlockStmt'"
               + indent(nesting)
               + ", 'block': "
-              + encodeBlock (nd.block,nesting+", 'block': ".length)
+              + block (nd.block,nesting+", 'block': ".length)
               + " }";
         }
         case (nd: ClassBlock) {
             var str =
                 "{ 'ast_class': 'ClassBlock'"
               + indent(nesting) + ", 'name': " + encodeName (nd.name,nesting+", 'name': ".length)
-              + indent(nesting) + ", 'block': " + encodeBlock (nd.block,nesting+", 'block': ".length)
+              + indent(nesting) + ", 'block': " + block (nd.block,nesting+", 'block': ".length)
+              + " }";
+        }
+        case (nd: TryStmt) {
+            var str =
+                "{ 'ast_class': 'TryStmt'"
+              + indent(nesting)
+              + ", 'block': "
+              + block (nd.block,nesting+", 'block': ".length)
+              + indent(nesting)
+              + ", 'catches': [ "
+              + catches (nd.catches,nesting+", 'catches': ".length) + " ]"
+              + indent(nesting)
+              + ", 'finallyBlock': "
+              + "null"  // for now: encodeStmt (nd.stmt,nesting+", 'stmt': ".length)
               + " }";
         }
         case (x: *) {
-            throw "internalError: encodeStmt";
+            throw "error encodeStmt " + nd;
         }
         }
         }
         exit ("encodeStmt");
+        return str;
+    }
+
+    function catches (nd /*: CATCHES*/, nesting: int = 0)
+        : string {
+        enter ("Encode::catches ", nd.length);
+
+        var str = "";
+        var len = nd.length;
+        for (var i = 0; i < len; ++i) 
+        {
+            str = str 
+                + catchClause (nd[i], nesting)
+                + indent (nesting-2)
+                + ", ";
+        }
+
+        exit ("Encode::catches ",str);
+        return str;
+    }
+
+    function catchClause (nd : CATCH, nesting: int = 0)
+        : string {
+        enter ("Encode::catchClause ");
+
+            var str =
+                "{ 'ast_class': 'Catch'"
+              + indent(nesting)
+              + ", 'param': "
+              + head (nd.param,nesting+", 'param': ".length)
+              + indent (nesting)
+              + ", 'block': "
+              + block (nd.block,nesting+", 'block': ".length)
+              + " }";
+
+        exit ("Encode::catchClause ",str);
         return str;
     }
 
@@ -551,7 +602,7 @@ namespace Encode;
               + encodeInitTarget (nd.target,nesting+", 'target': ".length)
               + indent(nesting)
               + ", 'head': "
-              + encodeHead (nd.head,nesting+", 'head': ".length)
+              + head (nd.head,nesting+", 'head': ".length)
               + indent(nesting)
               + ", 'inits': [ "
               + encodeInits (nd.inits,nesting+", 'inits': [ ".length)
@@ -562,7 +613,7 @@ namespace Encode;
                 "{ 'ast_class': 'LetExpr'"
               + indent(nesting)
               + ", 'head': "
-              + encodeHead (nd.head,nesting+", 'head': ".length)
+              + head (nd.head,nesting+", 'head': ".length)
               + indent(nesting)
               + ", 'expr': "
               + encodeExpr (nd.expr,nesting+", 'expr': ".length)
@@ -1141,9 +1192,9 @@ namespace Encode;
             "{ 'ast_class': 'Func'"
           + indent(nesting) + ", 'name': " + encodeFuncName (nd.name,nesting+", 'name': ".length)
           + indent(nesting) + ", 'isNative': " + nd.isNative
-          + indent(nesting) + ", 'block': " + encodeBlock (nd.block,nesting+", 'block': ".length)
-          + indent(nesting) + ", 'params': " + encodeHead (nd.params,nesting+", 'params': ".length)
-          + indent(nesting) + ", 'vars': " + encodeHead (nd.vars,nesting+", 'vars': ".length)
+          + indent(nesting) + ", 'block': " + block (nd.block,nesting+", 'block': ".length)
+          + indent(nesting) + ", 'params': " + head (nd.params,nesting+", 'params': ".length)
+          + indent(nesting) + ", 'vars': " + head (nd.vars,nesting+", 'vars': ".length)
           + indent(nesting) + ", 'defaults': [" + exprs (nd.defaults,nesting+", 'defaults': ".length) + " ]"
           + indent(nesting) + ", 'type': " + encodeTypeExpr (nd.type,nesting+", 'type': ".length)
           + " }";
@@ -1164,8 +1215,8 @@ namespace Encode;
           + indent(nesting) + ", 'baseName': " + encodeName (nd.baseName,nesting+", 'baseName': ".length)
           + indent(nesting) + ", 'interfaceNames': " + "[]" //encodeNames (nd.interfaceNames,nesting+", 'interfaceNames': ".length)
           + indent(nesting) + ", 'constructor': " + encodeCtor (nd.constructor,nesting+", 'constructor': ".length)
-          + indent(nesting) + ", 'classHead': " + encodeHead (nd.classHead,nesting+", 'classHead': ".length)
-          + indent(nesting) + ", 'instanceHead': " + encodeHead (nd.instanceHead,nesting+", 'instanceHead': ".length)
+          + indent(nesting) + ", 'classHead': " + head (nd.classHead,nesting+", 'classHead': ".length)
+          + indent(nesting) + ", 'instanceHead': " + head (nd.instanceHead,nesting+", 'instanceHead': ".length)
           + indent(nesting) + ", 'classType': " + encodeTypeExpr (nd.classType,nesting+", 'classType': ".length)
           + indent(nesting) + ", 'instanceType': " + encodeTypeExpr (nd.instanceType,nesting+", 'instanceType': ".length)
           + " }";

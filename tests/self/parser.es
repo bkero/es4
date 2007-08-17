@@ -2791,6 +2791,13 @@ namespace Parser;
                     break;
                 }
                 break;
+            case Token::Throw:
+                var [ts1,nd1] = throwStatement (ts,omega);
+                var [ts2,nd2] = [semicolon (ts1,omega),nd1];
+                break;
+            case Token::Try:
+                var [ts2,nd2] = tryStatement (ts,omega);
+                break;
             default:
                 let [ts1,nd1] = expressionStatement (ts);
                 var [ts2,nd2] = [semicolon (ts1,omega),nd1];
@@ -3092,6 +3099,78 @@ namespace Parser;
             exit("Parser::caseLabel ", ts1);
             return [ts1,nd1];
         }
+
+        function throwStatement (ts: TOKENS)
+            : [TOKENS, Ast::STMT]
+        {
+            enter("Parser::throwStatement ", ts);
+
+            ts = eat (ts, Token::Throw);
+
+            var [ts1,nd1] = listExpression (ts,AllowIn);
+
+            exit("Parser::throwStatement ", ts1);
+            return [ts1, new Ast::ThrowStmt (nd1)];
+        }
+
+        function tryStatement (ts: TOKENS)
+            : [TOKENS, Ast::STMT]
+        {
+            enter("Parser::tryStatement ", ts);
+
+            ts = eat (ts, Token::Try);
+
+            var [ts1,nd1] = block (ts,Local);
+            var [ts2,nd2] = catches (ts1);
+            switch (hd (ts2)) {
+            case Token::Finally:
+                var [ts3,nd3] = block (tl (ts2),Local);
+                break;
+            default:
+                var [ts3,nd3] = [ts2,null];
+                break;
+            }
+
+            exit("Parser::tryStatement ", ts3);
+            return [ts3, new Ast::TryStmt (nd1,nd2,nd3)];
+        }
+
+        function catches (ts: TOKENS)
+            : [TOKENS,Ast::CATCHES]
+        {
+            enter("Parser::catches ", ts);
+
+            var ts1 = ts;
+            var nd1 = [];
+            while (hd (ts1)===Token::Catch) {
+                [ts1,ndx] = catchClause (ts1);
+                nd1.push (ndx);
+            }
+
+            exit("Parser::catches ", ts1);
+            return [ts1,nd1];
+        }
+
+        function catchClause (ts: TOKENS)
+            : [TOKENS,Ast::CATCH]
+        {
+            enter("Parser::catchClause ", ts);
+
+            ts = eat (ts,Token::Catch);
+            ts = eat (ts,Token::LeftParen);
+            var [ts1,nd1] = parameter (ts);
+            ts1 = eat (ts1,Token::RightParen);
+            var [ts2,nd2] = block (ts1,Local);
+
+            var [k,[p,t]] = nd1;
+            var [b,i,temps] = desugarPattern (p, t, new Ast::GetParam (0), 0);
+            let head = headFromBindingInits ([b,i]);
+
+            exit("Parser::catchClause ", ts2);
+            return [ts2,new Ast::Catch (head,nd2)];
+        }
+
+
 
         // DEFINITIONS
 

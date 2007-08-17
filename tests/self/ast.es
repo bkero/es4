@@ -1169,8 +1169,11 @@ namespace Ast
     }
 
     class LabeledStmt {
-        const label : IDENT;
+        const ident : IDENT;
         const stmt : STMT;
+        function LabeledStmt (label,stmt)
+            : ident = ident
+            , stmt = stmt { }
     }
 
     class LetStmt {
@@ -1276,7 +1279,7 @@ namespace Ast
     type CATCHES = [CATCH];
 
     class Catch {
-        const param: HEAD;
+        const param  // : HEAD;
         const block: BLOCK;
         function Catch (param,block)
             : param = param
