@@ -361,7 +361,7 @@ namespace Encode;
               + catches (nd.catches,nesting+", 'catches': ".length) + " ]"
               + indent(nesting)
               + ", 'finallyBlock': "
-              + "null"  // for now: encodeStmt (nd.stmt,nesting+", 'stmt': ".length)
+              + "null"  // for now: blockOpt (nd.finallyBlock,nesting+", 'finallyBlock': ".length)
               + " }";
         }
         case (x: *) {

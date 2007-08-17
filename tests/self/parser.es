@@ -47,7 +47,7 @@ namespace Parser;
 
 {
     use default namespace Parser;
-    use namespace Release;
+    use namespace Debug;
 
     type PATTERN =
           ( ObjectPattern
