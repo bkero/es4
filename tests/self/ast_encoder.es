@@ -234,7 +234,7 @@ namespace Encode;
         for (var i = 0; i < len; ++i) 
         {
             str = str 
-                + encodeStmt (nd[i], nesting)
+                + stmt (nd[i], nesting)
                 + indent (nesting-2)
                 + ", ";
         }
@@ -243,10 +243,10 @@ namespace Encode;
         return str;
     }
 
-    function encodeStmt (nd : STMT, nesting: int = 0)
+    function stmt (nd : STMT, nesting: int = 0)
         : string {
         var str = "";
-        enter ("encodeStmt");
+        enter ("stmt");
         print ("  stmt");
         if (nd == null) {
             var str = "null";
@@ -301,10 +301,10 @@ namespace Encode;
               + encodeExpr (nd.expr,nesting+", 'expr': ".length)
               + indent(nesting)
               + ", 'then': "
-              + encodeStmt (nd.then,nesting+", 'then': ".length)
+              + stmt (nd.then,nesting+", 'then': ".length)
               + indent(nesting)
               + ", 'elseOpt': "
-              + encodeStmt (nd.elseOpt,nesting+", 'elseOpt': ".length)
+              + stmt (nd.elseOpt,nesting+", 'elseOpt': ".length)
               + " }";
         }
         case (nd: WhileStmt) {
@@ -315,10 +315,10 @@ namespace Encode;
               + encodeExpr (nd.expr,nesting+", 'expr': ".length)
               + indent(nesting)
               + ", 'stmt': "
-              + encodeStmt (nd.stmt,nesting+", 'stmt': ".length)
+              + stmt (nd.stmt,nesting+", 'stmt': ".length)
               + indent(nesting)
               + ", 'labels': "
-              + "[]"  // for now: encodeStmt (nd.stmt,nesting+", 'stmt': ".length)
+              + "[]"  // for now: stmt (nd.stmt,nesting+", 'stmt': ".length)
               + " }";
         }
         case (nd: SwitchStmt) {
@@ -332,7 +332,30 @@ namespace Encode;
               + cases (nd.cases,nesting+", 'cases': ".length) + " ]"
               + indent(nesting)
               + ", 'labels': "
-              + "[]"  // for now: encodeStmt (nd.stmt,nesting+", 'stmt': ".length)
+              + "[]"  // for now: stmt (nd.stmt,nesting+", 'stmt': ".length)
+              + " }";
+        }
+        case (nd: ForStmt) {
+            var str =
+                "{ 'ast_class': 'ForStmt'"
+              + indent(nesting)
+              + ", 'vars': "
+              + head (nd.vars,nesting+", 'vars': ".length)
+              + indent(nesting)
+              + ", 'init': "
+              + exprOpt (nd.init,nesting+", 'init': ".length)
+              + indent(nesting)
+              + ", 'cond': "
+              + exprOpt (nd.cond,nesting+", 'cond': ".length)
+              + indent(nesting)
+              + ", 'incr': "
+              + exprOpt (nd.incr,nesting+", 'incr': ".length)
+              + indent(nesting)
+              + ", 'stmt': "
+              + stmt (nd.stmt,nesting+", 'stmt': ".length)
+              + indent(nesting)
+              + ", 'labels': "
+              + "[]"  // for now: stmt (nd.stmt,nesting+", 'stmt': ".length)
               + " }";
         }
         case (nd: BlockStmt) {
@@ -365,11 +388,11 @@ namespace Encode;
               + " }";
         }
         case (x: *) {
-            throw "error encodeStmt " + nd;
+            throw "error stmt " + nd;
         }
         }
         }
-        exit ("encodeStmt");
+        exit ("stmt");
         return str;
     }
 

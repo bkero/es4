@@ -403,12 +403,13 @@ namespace Decode;
             var ndx = new WhileStmt (nd1,nd2,nd3);
             break;
         case 'ForStmt':
-            let nd1 = expr (ob.e1);
-            let nd2 = expr (ob.e2);
-            let nd3 = expr (ob.e3);
-            let nd4 = stmt (ob.stmt);
-            let nd5 = idents (ob.labels);
-            var ndx = new ForStmt (nd1,nd2,nd3,nd4,nd5);
+            let nd1 = head (ob.vars);
+            let nd2 = expr (ob.init);
+            let nd3 = expr (ob.cond);
+            let nd4 = expr (ob.incr);
+            let nd5 = stmt (ob.stmt);
+            let nd6 = idents (ob.labels);
+            var ndx = new ForStmt (nd1,nd2,nd3,nd4,nd5,nd6);
             break;
         case 'IfStmt':
             let nd1 = expr (ob.expr);

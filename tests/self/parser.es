@@ -47,7 +47,7 @@ namespace Parser;
 
 {
     use default namespace Parser;
-    use namespace Debug;
+    use namespace Release;
 
     type PATTERN =
           ( ObjectPattern
@@ -71,11 +71,47 @@ namespace Parser;
             : ident = ident { }
     }
 
-    class Full {}
-    class Abbrev {}
-    type OMEGA = (Full, Abbrev);
-    const full = new Full;
-    const abbrev = new Abbrev;
+    type ALPHA = (NoColon, AllowColon);
+    class NoColon {}
+    class AllowColon {}
+    const noColon = new NoColon;
+    const allowColon = new AllowColon;
+
+    type BETA = (NoIn, AllowIn);
+    class NoIn {}
+    class AllowIn {}
+    const noIn = new NoIn;
+    const allowIn = new AllowIn;
+
+    type GAMMA = (NoExpr, AllowExpr);
+    class NoExpr {}
+    class AllowExpr {}
+    const noExpr = new NoExpr;
+    const allowExpr = new AllowExpr;
+
+    type TAU = (GlobalBlk, ClassBlk, InterfaceBlk, LocalBlk);
+    class GlobalBlk {}
+    class ClassBlk {}
+    class InterfaceBlk {}
+    class LocalBlk {}
+    const globalBlk = new GlobalBlk;
+    const classBlk = new ClassBlk;
+    const interfaceBlk = new InterfaceBlk;
+    const localBlk = new LocalBlk;
+
+    /*
+    const AbbrevIfElse = 0;
+    const AbbrevDoWhile = AbbrevIfElse + 1;
+    const AbbrevFunction = AbbrevDoWhile + 1;
+    const Abbrev = AbbrevFunction + 1;
+    const Full = Abbrev + 1;
+    */
+
+    type OMEGA = (FullStmt, AbbrevStmt);
+    class FullStmt {}
+    class AbbrevStmt {}
+    const fullStmt = new FullStmt;
+    const abbrevStmt = new AbbrevStmt;
 
     type ENV = [Ast::FIXTURES];
 
@@ -372,29 +408,6 @@ namespace Parser;
 
     class Parser
     {
-        /*
-        static const AbbrevIfElse = 0;
-        static const AbbrevDoWhile = AbbrevIfElse + 1;
-        static const AbbrevFunction = AbbrevDoWhile + 1;
-        static const Abbrev = AbbrevFunction + 1;
-        static const Full = Abbrev + 1;
-        */
-
-        type BETA = int;  // NoIn, AllowIn
-        type TAU = int;   // Global, Class, Interface, Local
-        type GAMMA = int; // NoExpr, AllowExpr
-
-        static const NoIn = 0;
-        static const AllowIn = 1;
-
-        static const NoExpr = 0;
-        static const AllowExpr = 1;
-
-        static const Global = 0;
-        static const Class = 1;
-        static const Interface = 2;
-        static const Local = 3;
-
         var scan : Lexer::Scanner
 
         public function Parser(src)
@@ -974,7 +987,7 @@ namespace Parser;
             enter("Parser::parenExpression ", ts);
 
             var ts1 = eat (ts,Token::LeftParen);
-            var [ts2,ndx] = assignmentExpression (ts1, AllowIn);
+            var [ts2,ndx] = assignmentExpression (ts1, allowIn);
             var tsx = eat (ts2,Token::RightParen);
 
             exit ("Parser::parenExpression ", tsx);
@@ -987,7 +1000,7 @@ namespace Parser;
             enter("Parser::parenListExpression ", ts);
 
             var ts1 = eat (ts,Token::LeftParen);
-            var [ts2,ndx] = listExpression (ts1, AllowIn);
+            var [ts2,ndx] = listExpression (ts1, allowIn);
             var tsx = eat (ts2,Token::RightParen);
 
             exit ("Parser::parenListExpression ", tsx);
@@ -1191,7 +1204,7 @@ namespace Parser;
                 var ndx = [];
                 break;
             default:
-                let [ts2,nd2] = listExpression (ts1, AllowIn);
+                let [ts2,nd2] = listExpression (ts1, allowIn);
                 var tsx = eat (ts2,Token::RightParen);
                 var ndx = nd2.Ast::exprs;
                 break;
@@ -1713,7 +1726,7 @@ namespace Parser;
                     var [ts2, nd2] = shiftExpression (tl (ts1), beta);
                     break;
                 case Token::In:
-                    if (beta == NoIn) {
+                    if (beta == noIn) {
                         break done;
                     }
                     var op = Ast::inOp;
@@ -2076,7 +2089,7 @@ namespace Parser;
 
         */
 
-        function listExpression (ts: TOKENS, beta )
+        function listExpression (ts: TOKENS, beta: BETA )
             : [TOKENS, Ast::EXPR]
         {
             enter("Parser::listExpression ", ts);
@@ -2221,11 +2234,11 @@ namespace Parser;
             enter("Parser::simplePattern", ts);
 
             switch (gamma) {
-            case NoExpr:
+            case noExpr:
                 let [ts1,nd1] = identifier (ts);
                 var [tsx,ndx] = [ts1, new IdentifierPattern (nd1)];
                 break;
-            case AllowExpr:
+            case allowExpr:
                 let [ts1,nd1] = leftHandSideExpression (ts,beta);
                 var [tsx,ndx] = [ts1, new SimplePattern (nd1)];
                 break;
@@ -2252,7 +2265,7 @@ namespace Parser;
         {
             enter("Parser::typedPattern ", ts);
 
-            var [ts1,nd1] = pattern (ts,beta,NoExpr);
+            var [ts1,nd1] = pattern (ts,beta,noExpr);
             switch (hd (ts1)) {
             case Token::Colon:
                 var [ts2,nd2] = nullableTypeExpression (tl (ts1));
@@ -2765,6 +2778,9 @@ namespace Parser;
             case Token::While:
                 var [ts2,nd2] = whileStatement (ts,omega);
                 break;
+            case Token::For:
+                var [ts2,nd2] = forStatement (ts,omega);
+                break;
             case Token::Return:
                 var [ts1,nd1] = returnStatement (ts,omega);
                 var [ts2,nd2] = [semicolon (ts1,omega),nd1];
@@ -2818,7 +2834,7 @@ namespace Parser;
                 var [ts1,nd1] = [tl (ts), new Ast::EmptyStmt];
                 break;
             default:
-                var [ts1,nd1] = statement (ts,Local,omega);
+                var [ts1,nd1] = statement (ts,localBlk,omega);
                 break;
             }
 
@@ -2862,7 +2878,7 @@ namespace Parser;
             enter("Parser::semicolon ", ts);
 
             switch (omega) {
-            case full:
+            case fullStmt:
                 switch (hd (ts)) {
                 case Token::SemiColon:
                     // print ("semicolon found");
@@ -2883,8 +2899,8 @@ namespace Parser;
                     break;
                 }
                 break;
-            case abbrev:  // Abbrev, ShortIf
-                //print("abbrev");
+            case abbrevStmt:  // Abbrev, ShortIf
+                //print("abbrevStmt");
                 switch (hd (ts)) {
                 case Token::SemiColon:
                     var ts1 = tl (ts);
@@ -2907,7 +2923,7 @@ namespace Parser;
         {
             enter("Parser::expressionStatement ", ts);
 
-            var [ts1,nd1] = listExpression (ts,AllowIn);
+            var [ts1,nd1] = listExpression (ts,allowIn);
 
             exit("Parser::expressionStatement ", ts1);
             return [ts1, new Ast::ExprStmt (nd1)];
@@ -2920,7 +2936,7 @@ namespace Parser;
 
             ts = eat (ts, Token::Return);
 
-            var [ts1,nd1] = listExpression (ts,AllowIn);
+            var [ts1,nd1] = listExpression (ts,allowIn);
 
             exit("Parser::returnStatement ", ts1);
             return [ts1, new Ast::ReturnStmt (nd1)];
@@ -2951,6 +2967,33 @@ namespace Parser;
 
             exit("Parser::breakStatement ", ts1);
             return [ts1, new Ast::BreakStmt (nd1)];
+        }
+
+        function continueStatement (ts: TOKENS)
+            : [TOKENS, Ast::STMT]
+        {
+            enter("Parser::continueStatement ", ts);
+
+            ts = eat (ts, Token::Continue);
+            switch (hd (ts)) {
+            case Token::SemiColon:
+                var [ts1,nd1] = [tl (ts),null];
+                break;
+            case Token::RightBrace:
+                var [ts1,nd1] = [ts,null];
+                break;
+            default:
+                if (newline(ts)) {
+                    var [ts1,nd1] = [ts,null];
+                }
+                else {
+                    var [ts1,nd1] = identifier (ts);
+                } 
+                break;
+            }
+
+            exit("Parser::continueStatement ", ts1);
+            return [ts1, new Ast::ContinueStmt (nd1)];
         }
 
         function ifStatement (ts: TOKENS, omega)
@@ -2993,6 +3036,106 @@ namespace Parser;
  
             exit("Parser::whileStatement ", ts2);
             return [ts2, new Ast::WhileStmt (nd1,nd2,labels)];
+        }
+
+        /*
+
+            ForStatement(omega)
+                for  (  ForInitialiser  ;  OptionalExpression  ;  OptionalExpression  )  Substatement(omega)
+                for  (  ForInBinding  in  ListExpression(allowColon, allowIn)  )  Substatement(omega)
+                for  each  ( ForInBinding  in  ListExpression(allowColon, allowIn)  )  Substatement(omega)
+            
+        */
+
+        function forStatement (ts: TOKENS, omega: OMEGA)
+            : [TOKENS, Ast::STMT]
+        {
+            enter("Parser::forStatement ", ts);
+
+            cx.enterLetBlock ();
+
+            ts = eat (ts,Token::For);
+            ts = eat (ts,Token::LeftParen);
+            var [ts1,nd1] = forInitialiser (ts);
+            ts1 = eat (ts1,Token::SemiColon);
+            var [ts2,nd2] = optionalExpression (ts1);
+            ts2 = eat (ts2,Token::SemiColon);
+            var [ts3,nd3] = optionalExpression (ts2);
+            ts3 = eat (ts3,Token::RightParen);
+            var [ts4,nd4] = substatement (ts3, omega); 
+            var labels = [];
+
+            var head = cx.exitLetBlock ();
+ 
+            exit("Parser::forStatement ", ts4);
+            return [ts4, new Ast::ForStmt (head,nd1,nd2,nd3,nd4,labels)];
+        }
+
+        /*
+
+            ForInitialiser
+                empty
+                ListExpression(allowColon, noIn)
+                VariableDefinition(noIn)
+            
+            ForInBinding
+                Pattern(allowColon, noIn, allowExpr)
+                VariableDefinitionKind VariableBinding(noIn)
+
+        */
+
+        function forInitialiser (ts: TOKENS)
+            : [TOKENS, Ast::EXPR?]
+        {
+            enter("Parser::forInitialiser ", ts);
+
+            switch (hd (ts)) {
+            case Token::SemiColon:
+                var [ts1,nd1] = [ts,null];
+                break;
+            case Token::Var:
+                var [ts1,nd1] = variableDefinition (ts,noIn,localBlk,cx.pragmas.defaultNamespace,false,false);
+                assert (nd1.length==1);
+                switch type (nd1[0]) {
+                case (nd:Ast::ExprStmt) { nd1 = nd.Ast::expr }
+                case (nd:*) { throw "error forInitialiser " + nd }
+                }
+                break;
+            default:
+                var [ts1,nd1] = listExpression (ts,noIn);
+                break;
+            }
+            print ("nd1=",nd1);
+ 
+            exit("Parser::forInitialiser ", ts1);
+            return [ts1,nd1];
+        }
+
+        /*
+
+        OptionalExpression
+            empty
+            ListExpression(allowColon, allowIn)
+
+        */
+
+        function optionalExpression (ts: TOKENS)
+            : [TOKENS, Ast::EXPR?]
+        {
+            enter("Parser::optionalExpression ", ts);
+
+            switch (hd (ts)) {
+            case Token::SemiColon:
+            case Token::RightBrace:
+                var [ts1,nd1] = [ts,null]
+                break;
+            default:
+                var [ts1,nd1] = listExpression (ts,noIn);
+                break;
+            }
+ 
+            exit("Parser::optionalExpression ", ts1);
+            return [ts1,nd1];
         }
 
         /*
@@ -3060,7 +3203,7 @@ namespace Parser;
                     nd1.push (new Ast::Case (ndx,[]));
                     break;
                 default:
-                    var [ts1,ndx] = directive (ts1,Local,full);  // 'abbrev' is handled by RightBrace check in head
+                    var [ts1,ndx] = directive (ts1,Local,fullStmt);  // 'abbrev' is handled by RightBrace check in head
                     for (var i=0; i<ndx.length; ++i) nd1[nd1.length-1].Ast::stmts.push (ndx[i]);
                     break;
                 }
@@ -3085,7 +3228,7 @@ namespace Parser;
 
             switch (hd (ts)) {
             case Token::Case:
-                var [ts1,nd1] = listExpression (tl (ts),AllowIn);
+                var [ts1,nd1] = listExpression (tl (ts),allowIn);
                 break;
             case Token::Default:
                 var [ts1,nd1] = [tl (ts),null];
@@ -3107,7 +3250,7 @@ namespace Parser;
 
             ts = eat (ts, Token::Throw);
 
-            var [ts1,nd1] = listExpression (ts,AllowIn);
+            var [ts1,nd1] = listExpression (ts,allowIn);
 
             exit("Parser::throwStatement ", ts1);
             return [ts1, new Ast::ThrowStmt (nd1)];
@@ -3210,7 +3353,7 @@ namespace Parser;
                 break;
             default:
                 switch (tau) {
-                case Class:
+                case classBlk:
                     cx.addVarFixtures (fxtrs);
                     cx.addVarInits (inits);
                     var stmts = [];
@@ -3346,7 +3489,7 @@ namespace Parser;
                 let [ts2,nd2] = assignmentExpression (tl (ts1), beta);
                 switch (hd (ts2)) {
                 case Token::In:
-                    if (beta === NoIn) {
+                    if (beta === noIn) {
                         // in a binding form
                         break;
                     } // else fall through
@@ -3358,7 +3501,7 @@ namespace Parser;
             default:
                 switch (hd (ts1)) {
                 case Token::In:
-                    if (beta === NoIn) {
+                    if (beta === noIn) {
                         // in a binding form
                         break;
                     } // else fall through
@@ -3402,7 +3545,7 @@ namespace Parser;
             var [ts2,nd2] = functionSignature (ts1);
 
             cx.enterVarBlock ();
-            var [ts3,nd3] = functionBody (ts2, AllowIn, omega);
+            var [ts3,nd3] = functionBody (ts2, allowIn, omega);
             var vars = cx.exitVarBlock ();
 
             var {params:params,defaults:defaults,resultType:resultType,thisType:thisType,hasRest:hasRest} = nd2;
@@ -3434,7 +3577,7 @@ namespace Parser;
             var [ts2,nd2] = constructorSignature (ts1);
 
             cx.enterVarBlock ();
-            var [ts3,nd3] = functionBody (ts2, AllowIn, omega);
+            var [ts3,nd3] = functionBody (ts2, allowIn, omega);
             var vars = cx.exitVarBlock ();
 
             var {params:params,defaults:defaults,hasRest:hasRest,settings:settings,superArgs:superArgs} = nd2;
@@ -3664,9 +3807,9 @@ namespace Parser;
         {
             enter("Parser::setting ", ts);
 
-            var [ts1,nd1] = pattern (ts,AllowIn,AllowExpr);
+            var [ts1,nd1] = pattern (ts,allowIn,allowExpr);
             ts1 = eat (ts1,Token::Assign);
-            var [ts2,nd2] = assignmentExpression (ts1,AllowIn);
+            var [ts2,nd2] = assignmentExpression (ts1,allowIn);
 
             var [tsx,[binds,inits,head]] = [ts2,desugarPattern (nd1, new Ast::SpecialType (new Ast::AnyType), nd2, 0)];
             // assert binds is empty
@@ -3983,7 +4126,7 @@ namespace Parser;
             switch (hd (ts1)) {
             case Token::Assign:
                 ts1 = eat (ts1, Token::Assign);
-                var [ts2,nd2] = nonAssignmentExpression(ts1,AllowIn);
+                var [ts2,nd2] = nonAssignmentExpression(ts1,allowIn);
                 nd2 = [nd2];
                 break;
             default:
@@ -4016,7 +4159,7 @@ namespace Parser;
             enter("Parser::parameter ", ts);
 
             var [ts1,nd1] = parameterKind (ts);
-            var [ts2,nd2] = typedPattern (ts1,AllowIn);
+            var [ts2,nd2] = typedPattern (ts1,allowIn);
 
             exit("Parser::parameter ", ts2);
             return [ts2,[nd1,nd2]];
@@ -4236,7 +4379,7 @@ namespace Parser;
         {
             enter("Parser::classBody ", ts);
 
-            var [ts1,blck] = block (ts,Class);
+            var [ts1,blck] = block (ts,classBlk);
 
             exit("Parser::classBody ", ts1);
 
@@ -4428,7 +4571,7 @@ namespace Parser;
             while (hd (ts1) !== Token::RightBrace &&
                    hd (ts1) !== Token::EOS ) 
             {
-                var [ts1,ndx] = directive (ts1,tau,full);
+                var [ts1,ndx] = directive (ts1,tau,fullStmt);
                 for (var i=0; i<ndx.length; ++i) nd1.push (ndx[i]);
             }
 
@@ -4461,7 +4604,7 @@ namespace Parser;
             case Token::Var:
             case Token::Const:
                 var [ts1,stmts1]
-                    = variableDefinition (ts, AllowIn, tau
+                    = variableDefinition (ts, allowIn, tau
                                   , cx.pragmas.defaultNamespace
                                   , false, false);
 
@@ -4668,7 +4811,7 @@ namespace Parser;
 
             while (hd (ts)===Token::Use) {
                 [ts] = pragma (ts);
-                ts = semicolon (ts,full);
+                ts = semicolon (ts,fullStmt);
             }
 
             var ts1 = ts;
@@ -5062,7 +5205,7 @@ namespace Parser;
             current_class = "";
 
             cx.enterLetBlock ();
-            var [ts2,nd2] = directives (ts1, Global);
+            var [ts2,nd2] = directives (ts1, globalBlk);
             var bhead = cx.exitLetBlock ();
             var vhead = cx.exitVarBlock ();
 

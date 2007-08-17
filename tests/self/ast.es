@@ -57,8 +57,15 @@ namespace Ast
     type IDENT = String;   // unicode string
     type IDENTS = [IDENT];
 
-    type HEAD = { fixtures: FIXTURES
-                , inits: INITS };
+    type HEAD = { fixtures: FIXTURES, inits: INITS }
+
+    class Head { 
+        const fixtures: FIXTURES;
+        const inits: INITS;
+        function Head (fixtures,inits)
+            : fixtures = fixtures
+            , inits = inits { }
+    }
 
     type FIXTURE_NAME =
        ( TempName
@@ -1203,15 +1210,17 @@ namespace Ast
     }
 
     class ForStmt {
-        const e1 : EXPR?;
-        const e2 : EXPR?;
-        const e3 : EXPR?;
+        const vars : *; //HEAD~;
+        const init : EXPR?;
+        const cond : EXPR?;
+        const incr : EXPR?;
         const stmt : STMT;
         const labels : [IDENT];
-        function ForStmt (e1,e2,e3,stmt,labels)
-            : e1 = e1
-            , e2 = e2
-            , e3 = e3
+        function ForStmt (vars,init,cond,incr,stmt,labels)
+            : vars = vars
+            , init = init
+            , cond = cond
+            , incr = incr
             , stmt = stmt
             , labels = labels {}
     }

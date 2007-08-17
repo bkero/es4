@@ -132,22 +132,23 @@ package cogen
         asm.I_label(Lbreak);
     }
 
-    function cgForStmt(ctx, {e1:e1, e2:e2, e3:e3, body:body, labels:labels}) {
+    function cgForStmt(ctx, {vars:vars,init:init,cond:cond,incr:incr,stmt:stmt,labels:labels}) {
         // FIXME: fixtures
         // FIXME: code shape?
+        let asm = ctx.asm;
         let Lbreak = asm.newLabel();
         let Lcont = asm.newLabel();
-        if (e1 != null)
-            cgExpr(ctx, e1);
+        if (init != null)
+            cgExpr(ctx, init);
         let Ltop = asm.I_label();
-        if (e2 != null) {
-            cgExpr(ctx, e2);
+        if (cond != null) {
+            cgExpr(ctx, cond);
             asm.I_iffalse(Lbreak);
         }
-        cgStmt(pushBreak(pushContinue(ctx, labels, Lcont), labels, Lbreak), body);
+        cgStmt(pushBreak(pushContinue(ctx, labels, Lcont), labels, Lbreak), stmt);
         asm.I_label(Lcont);
-        if (e3 != null)
-            cgExpr(ctx, e3);
+        if (incr != null)
+            cgExpr(ctx, incr);
         asm.I_jump(Ltop);
         asm.I_label(Lbreak);
     }
