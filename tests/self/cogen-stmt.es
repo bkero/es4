@@ -148,7 +148,10 @@ package cogen
         cgStmt(pushBreak(pushContinue(ctx, labels, Lcont), labels, Lbreak), stmt);
         asm.I_label(Lcont);
         if (incr != null)
+        {
             cgExpr(ctx, incr);
+            asm.I_pop();
+        }
         asm.I_jump(Ltop);
         asm.I_label(Lbreak);
     }
@@ -240,6 +243,59 @@ package cogen
         asm.I_pushwith();
         cgStmt(ctx, body);
         asm.I_popscope();
+    }
+    
+    function cgTryStmt(ctx, {block:block, catches:catches, finallyBlock:finallyBlock}) {
+        let asm = ctx.asm;
+        let code_start = asm.length;
+        cgBlock(ctx, block);
+        let code_end = asm.length;
+        
+        let Lend = asm.newLabel();
+        asm.I_jump(Lend);
+
+        for( let i = 0; i < catches.length; ++i ) {
+            cgCatch(ctx, [code_start, code_end, Lend], catches[i]);
+        }
+        
+        asm.I_label(Lend);
+        
+        
+        //FIXME need to do finally
+    }
+    
+    function cgCatch(ctx, [code_start, code_end, Lend], {param:param, block:block} ) {
+        let {asm:asm, emitter:emitter, target:target} = ctx;
+        let catch_ctx = pushCatch(ctx);
+        
+        if( param.fixtures.length != 1 )
+            throw "Internal Error: catch should have 1 fixture";
+        
+        let [propname, fix] = param.fixtures[0];
+        
+        let param_name = emitter.fixtureNameToName(propname);
+        let param_type = emitter.typeFromTypeExpr(fix.type);
+        
+        let catch_idx = target.addException(new ABCException(code_start, code_end, asm.length, param_type, param_name));
+
+        asm.startCatch();
+
+        asm.I_getlocal(0);
+        asm.I_pushscope();
+        //FIXME need to restore activation object/with scopes
+        asm.I_newcatch(catch_idx);
+        asm.I_dup();
+        asm.I_pushscope();
+        
+        // Store the exception object in the catch scope.
+        asm.I_swap();
+        asm.I_setproperty(param_name);
+
+        // catch block body
+        cgBlock(ctx, block);
+        
+        asm.I_popscope();
+        asm.I_jump(Lend);
     }
 
 }
