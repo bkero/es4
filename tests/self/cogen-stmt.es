@@ -231,10 +231,10 @@ package cogen
         asm.killTemp(t);
     }
 
-    function cgSwitchTypeStmt(ctx, {expr:expr, type:type, catches:catches}) {
+    function cgSwitchTypeStmt(ctx, {expr:expr, type:type, cases:cases}) {
         let b = new Block({fixtures:[],inits:[]}, [new ThrowStmt(expr)]);
 
-        cgTryStmt(ctx, {block:b, catches:catches, finallyBlock:null} );        
+        cgTryStmt(ctx, {block:b, catches:cases, finallyBlock:null} );        
     }
     
     function cgWithStmt(ctx, {expr:expr}) {
