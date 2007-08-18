@@ -1,13 +1,13 @@
 try {
 print('trying');
-throw 10;
+throw "hi";
 }
 catch (x:int) {
-print('catch ',x);
+print('catch int ',x);
 }
-catch (x:*) {
-print('missed ',x);
+catch (x:String) {
+print('catch string ',x);
 }
-finally {
-print('finally');
+catch (x) {
+print('catch other ',x);
 }

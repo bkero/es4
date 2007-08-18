@@ -16,7 +16,7 @@ namespace Decode;
     use namespace Ast;
     use namespace intrinsic;
 
-    use namespace Debug;
+    use namespace Release;
 
     function program (ob) 
         : PROGRAM

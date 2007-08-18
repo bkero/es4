@@ -9,7 +9,7 @@ namespace Encode;
     use namespace intrinsic;
     use namespace Ast;
 
-    use namespace Debug;
+    use namespace Release;
 
     function indent (n:int)
         : string {
