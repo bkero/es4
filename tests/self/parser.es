@@ -2331,6 +2331,9 @@ namespace Parser;
             enter("Parser::typeExpression ", ts);
 
             switch (hd (ts)) {
+            case Token::Mult:
+                var [ts1,nd1] = [tl (ts), new Ast::SpecialType (new Ast::AnyType)];
+                break;
             case Token::Null:
                 var [ts1,nd1] = [tl (ts), new Ast::SpecialType (new Ast::NullType)];
                 break;
