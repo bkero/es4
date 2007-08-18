@@ -1,0 +1,1259 @@
+\documentclass{article}
+\usepackage{amssymb}
+%\usepackage{gastex}
+\usepackage{graphics}
+\input{brackets}
+\input{restate.sty}
+
+\newcommand{\fun}[1]{\mbox{\it #1\/}}
+\newcommand{\eg}{\emph{e.g.}}
+\newcommand{\ie}{\emph{i.e.}}
+\newcommand{\meaningf}[1]{\ensuremath{[\![ #1 ]\!]}}
+\newcommand{\judge}[2]{\ensuremath{\Gamma\vdash{#1}:{#2}}}
+\newcommand{\setc}[2]{ \{ #1 ~|~ #2 \}}
+\newcommand{\setz}[1]{ \{ #1 \}}
+\newcommand{\nt}[1]{\ba#1\ea}
+\newcommand{\comment}[1]{}
+\newcommand{\fs}[1]{\mbox{\it #1}}
+
+%%%%%%%% language %%%%%%%%%%%%%%%
+
+% deprecated
+\newcommand{\mkref}[2]{\t{ref}~{#1}~#2}
+\newcommand{\mkrefl}[3]{\t{ref}^{#3}~{#1}~#2}
+\newcommand{\deref}[1]{!{#1}}
+\newcommand{\dereft}[2]{!{#1}:{#2}}
+\newcommand{\derefl}[2]{!^{#2}{#1}}
+\newcommand{\assign}[2]{{#1}:={#2}}
+\newcommand{\assignl}[3]{{#1}:=^{#3}{#2}}
+\newcommand{\Ref}[1]{\t{Ref}~{#1}}
+
+\newcommand{\slam}[3]{\lambda#1\!:\!#2.\,\,#3}
+\newcommand{\lam}[4]{\lambda#1\!:\!#2.\,\,#4:#3}
+\newcommand{\lete}[4]{\t{let}~{#1}:{#2}={#3}~\t{in}~{#4}} 
+\newcommand{\lamt}[2]{#1\rightarrow #2}
+\newcommand{\appl}[3]{(\app{#2}{#3})^{#1}}
+\newcommand{\appt}[3]{(\app{#2}{#3}):{#1}}
+\newcommand{\app}[2]{#1~#2}
+\newcommand{\cast}[3]{\langle#1\rangle^{#3}\,#2}
+\newcommand{\view}[3]{\langle\!\langle#1\rangle\!\rangle\,#2^{#3}}
+\renewcommand{\view}[3]{\langle\!\langle#1,~#2\rangle\!\rangle^{#3}}
+\newcommand{\bitview}[2]{\langle\!\langle#1\rangle\!\rangle^{#2}}
+\newcommand{\ascriptl}[3]{#2~\t{as}^{#1}~#3}
+\newcommand{\deltaf}[2]{\meaningf{#1}(#2)}
+\newcommand{\Nat}{\t{N}}
+\newcommand{\Int}{\t{Int}}
+\newcommand{\Bool}{\t{Bool}}
+\newcommand{\dynamic}{\t{*}} 
+\newcommand{\true}{\t{true}}
+\newcommand{\false}{\t{false}}
+\newcommand{\hole}{\bullet}
+
+\newcommand{\letexp}[3]{\t{let}~{#1}={#2}~\t{in}~{#3}}
+\newcommand{\lett}[4]{\t{letXXX}~{#1}:{#2}={#3}~\t{in}~{#4}}
+\newcommand{\astype}[2]{#1~\t{cast}~#2}
+
+\newcommand{\arrowt}[2]{#1\rightarrow #2}
+\newcommand{\defeq}{\stackrel{\mathrm{def}}{=}}
+\newcommand{\subtype}[2]{#1 \,\sword\, #2}
+\newcommand{\sword}{\mbox{\,\,$<:$\,\,}}
+\newcommand{\convert}[2]{{#1}\convertword{#2}}
+\newcommand{\convertword}{\mbox{\,\,$\sim :$\,\,}}
+
+\renewcommand{\t}[1]{{\tt #1}}
+
+%%%%%%%%%%% math %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\newcommand{\Or}{\vee}
+\newcommand{\meet}{\sqcap}
+\newcommand{\join}{\sqcup}
+\newcommand{\And}[0]{\wedge}
+\newcommand{\Implies}[0]{\Rightarrow}
+\newcommand{\Iff}[0]{\Leftrightarrow}
+
+%======= judgments ===============
+\renewcommand{\judge}[3]{#1\vdash #2\,:\,#3}
+\newcommand{\judgeE}[1]{\vdash #1}
+\newcommand{\judgeT}[2]{#1\vdash #2}
+\newcommand{\red}[0]{\longrightarrow}  % reduction
+\newcommand{\lred}[0]{\red}  % local reduction
+\newcommand{\judgers}[3]{#2 \rightarrow^{#1} #3}
+\newcommand{\compilesymbol}{\hookrightarrow}
+\newcommand{\judgec}[4]{#1 \vdash #2 \,\compilesymbol\, #3 \,:\, #4 }
+\newcommand{\judgeccc}[6]{#1 \vdash #2 \,\compilesymbol\, #3 :^{#4}{#5} \mbox{ default } {#6}}
+\newcommand{\judgecc}[5]{#1 \vdash #2 \,\compilesymbol\, #3 \,\downarrow^{#4}{#5} }
+\newcommand{\judgect}[3]{#1 \vdash #2 \,\compilesymbol\, #3  }
+ 
+%=== objects
+\newcommand{\objty}[1]{\{#1\}}
+\newcommand{\obje}[2]{\{#1\}:{#2}}
+\newcommand{\objget}[2]{#1.#2}
+\newcommand{\objcall}[2]{#1.#2()}
+\newcommand{\objset}[3]{#1.#2:=#3} 
+
+	
+\newcommand{\wrapty}[1]{\t{XXXX wrap}~#1}
+\newcommand{\likety}[1]{\t{like}~#1}
+\newcommand{\wrapv}[2]{#1@#2}
+%\renewcommand{\wrapv}[2]{\wrap{#1}{#2}}
+ 
+\newcommand{\wrap}[2]{#1~\t{wrap}~#2}
+%\newcommand{\assignable}[2]{#1<#2}
+\newcommand{\likev}[2]{#1 \sqsubset_{\sigma} #2 }
+\renewcommand{\likev}[2]{#1 ~\fun{XXXX like}_{\sigma}~ #2 }
+\newcommand{\compatible}[2]{#1 \sim: #2 }
+ 
+%\newcommand{\allocty}[2]{#1:_{\sigma}#2}
+\newcommand{\allocty}[1]{ty_{\sigma}(#1)}
+\renewcommand{\convert}[2]{\fun{convert}(#1,#2)}
+\newcommand{\istype}[2]{#1~\t{is}_{\sigma}~ #2}
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%				   
+
+\begin{document}
+
+
+\title{ValleyScript: Its Like Static Typing
+}
+
+%\date{\today}
+\maketitle
+
+\begin{abstract}
+We formalize the ES4 notions of \t{like} types and \t{wrap} operators for a lambda-calculus with ES4-style objects,
+to better understand these concepts and to clarify what guarantees can be provided by the verifier in strict mode.
+\end{abstract}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Language Overview}
+
+We consider the implementation of a \emph{gradual typed} language that supports both
+typed and untyped terms, which interoperate in a flexible manner.
+We begin by defining the syntax of terms and types in the language: see Figure~\ref{fig:syntax}.
+In addition to the usual terms of the lambda calculus (variables, abstractions, and application), 
+the language also includes constants and expressions to create, dereference, and update objects.
+It also includes \t{as}-expressions that perform casting, to help formalize the one-step evaluation relation.
+
+The type language is fairly rich. In addition to  base types ($\Int$ and $\Bool$), function types,
+and object types, the language includes additional types related to gradual typing.
+The type $\dynamic$ is (roughly) a top type, and indicates that no static type information is known.
+%The type $\dynobjty$ denotes an object type, where no static type information
+%is known about the names of fields of that object.
+
+The type $\likety{T}$ describes values whose value components match $T$, but whose type components may be more vague than $T$, due to the presence of the type $\dynamic$. (Due to imperative constructs, that matching-value guarantee does not persist, and so \t{like} types are helpful for debugging but do not provide strong guarantees.)
+
+In the term $\astype{e}{T}$, $e$ should yield a value of type ${T}$.
+
+In the term $\wrap{e}{T}$, $e$ should yield a value of type $\likety{T}$;
+that value is then wrapped to guarantee that it only exhibits $T$-like behavior.
+
+%Any value of type $\likety{T}$ can be assigned to a variable to type $\wrapty{T}$,
+%but that value is immediate wrapped (if necessary) so that the resulting value is guaranteed to have type $T$. 
+
+
+\begin{displayfigure}{th}{\label{fig:syntax}Syntax}
+\[
+\begin{array}{llr}
+	\mydefhead{e ::=\qquad\qquad\qquad\qquad\qquad}{Terms:} 
+	\mydefcase{c								}{constant} 
+	\mydefcase{x								}{variable} 
+%	\mydefcase{v								}{values} 
+	\mydefcase{\lam{x}{S}{T}{e} 				}{abstraction} 
+	\mydefcase{\app{e}{e} 					}{application} 
+%	\mydefcase{\lett{x}{T}{e}{e}				}{let expressions}
+%	\mydefcase{\mkrefl{T}{e}{l} 				}{allocation} 
+%	\mydefcase{\derefl{e}{l}					}{dereference} 
+%	\mydefcase{\assignl{e}{e}l				}{assignment} 
+	\mydefcase{\obje{\bar{l}=\bar{e}}{T}		}{object expression}
+	\mydefcase{\objget{e}{l}					}{field selection}
+%	\mydefcase{\objcall{e}{l}				}{method invocation}
+	\mydefcase{\objset{e}{l}{e}				}{member update}
+	\mydefcase{\astype{e}{T}					}{dynamic type check}
+	\mydefcase{\wrap{e}{T}					}{wrapping a value}
+\\
+	\mydefhead{c ::=}{Constants:} 
+	\mydefcase{n								}{integer constant} 
+	\mydefcase{b								}{boolean constant} 
+\\
+%	\mydefhead{v ::=}{Values:} 
+%	\mydefhead{c::=}{Constants} 
+%	\mydefcase{\true 						}{} 
+%	\mydefcase{\false						}{} 
+%	\mydefcase{n 							}{integer constants} 
+%	\mydefcase{+ 							}{addition operation} 
+%\\
+	\mydefhead{S,T::=}{Types:} 
+%	\mydefcase{B								}{base types}
+	\mydefcase{\Int 							}{integers}
+	\mydefcase{\Bool							}{booleans}
+	\mydefcase{\lamt{S}{T} 					}{function type}
+%	\mydefcase{\Ref{T}                      	}{reference type}
+	\mydefcase{\objty{\bar{l}:\bar{T}}	   	}{object types}
+%	\mydefcase{\dynobjty 	   				}{dynamic object type}
+	\mydefcase{\dynamic 		    				}{dynamic type}
+	\mydefcase{\likety{T}					}{like types}
+%	\mydefcase{\wrapty{T}					}{wrap types}
+	
+%\\
+%	\mydefhead{l 				}{Labels:} 
+\end{array}
+\]
+\end{displayfigure}
+
+%------------------------------------------
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\clearpage
+\section{Type Relations}
+
+We have two subtype-like relations on types, defined in Figure~\ref{fig:typerelations}:
+
+The judgement $\subtype{S}{T}$ (\emph{$S$ is a subtype of $T$}) checks if every value of type $S$ 
+can be assigned to a variable of type $T$.
+The type $\dynamic$ is a top type. The subtyping judgement is reflexively-transitively closed.
+
+The judgement $\compatible{S}{T}$  (\emph{$S$ is compatible with $T$}) 
+extends the assignable relation with a more flexible interpretation of dynamic types; 
+in particular, the type $\dynamic$ is compatible with any type.
+The compatibility judgement is not transitively closed.
+In particular, we have that   $\compatible{\Int}{\dynamic}$ and
+$\compatible{\dynamic}{\Bool}$, but the judgement $\compatible{\Int}{\Bool}$ does not hold. 
+
+\begin{displayfigure}{th}{Subtypes and Compatible Types}
+\label{fig:typerelations} 
+\begin{trules}
+\headtrule{$\subtype{S}{T}$}{Subtyping}
+\trule{S-Refl}{
+	}{
+		\subtype{T}{T}
+	}
+\trule{S-Arrow}{
+		\subtype{T_1}{S_1}\qquad
+		\subtype{S_2}{T_2}
+	}{
+		\subtype{(\lamt{S_1}{S_2})}{(\lamt{T_1}{T_2})}
+	}
+\trule{S-Obj}{
+		\subtype{T_i}{S_i}\qquad
+		\subtype{S_i}{T_i} \qquad\mbox{for $i\in 1..n$}
+	}{
+		\subtype{\objty{l_i:S_i^{i\in 1..n+m}}}
+				{\objty{l_i:T_i^{i\in 1..n}}}
+	}
+\trule{S-Dyn}{
+	}{
+		\subtype{T}{\dynamic}
+	}
+%\trule{S-DynObj}{
+%	}{
+%		\subtype{\objty{\dots}}{\dynobjty}
+%	}
+\trule{S-Like}{
+		\compatible{S}{T}
+	}{
+		\subtype{{S}}{\likety{T}} \\
+	}
+\trule{S-Like-Covariant}{
+		\subtype{S}{T}
+	}{
+		\subtype{\likety{S}}{\likety{T}} \\
+	}
+\headtrule{$\compatible{S}{T}$}{Compatible Types}
+\mbox{Includes all of the above rules, and also:}\\
+\trule{C-Dyn}{
+	}{
+		\compatible{\dynamic}{T}
+	}
+%\trule{C-DynObj}{%
+%	}{
+%		\compatible{\dynobjty}{\objty{\dots}}
+%	}
+\end{trules}
+\end{displayfigure}
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\clearpage
+\section{Evaluation}
+
+We next describe the evaluation semantics of the language. 
+The set of values in the language is given by:
+\[
+\begin{array}{llr}
+	\mydefhead{v ::=\qquad\qquad\qquad\qquad\qquad}{Values:} 
+	\mydefcase{c								}{constant} 
+	\mydefcase{\lam{x}{S}{T}{e} 				}{abstraction} 
+	\mydefcase{\wrapv{v}{T}	 				}{wrapped value} 
+	\mydefcase{a								}{object address}
+	\\
+	\mydefhead{o ::=\qquad\qquad\qquad\qquad\qquad}{Object value:} 
+	\mydefcase{\obje{\bar l = \bar v}{T}		}{object value}
+\end{array}
+\]
+A \emph{object store} $\sigma$ maps object addresses $a$ to object values of the form $\obje{\bar{l}=\bar v}{T}$.
+Every value has an \emph{allocated type} according to the function $\allocty{v}$:
+\[
+\begin{array}{rcll}
+		\allocty{n}&=&\Int \\
+		\allocty{b}&=&\Bool\\
+		\allocty{\lam{x}{S}{T}{e}}&=&(\lamt{S}{T})\\
+		\allocty{\wrapv{v}{T}}&=&T\\
+		\allocty{a}&=&T   &\mbox{~~if } 		\sigma(a)=\obje{\dots}{T}
+\end{array}
+\]
+An evaluation context is:
+\[
+C ~~::=
+\begin{array}[t]{@{}l}
+		~~~\hole
+%	~|~ 	\lam{x}S{\hole}
+	~|~	\app{\hole}{t} 
+	~|~	\app{v}{\hole}
+	~|~ \wrap{\hole}{T} \\
+	~|~ \obje{\bar l=\bar v,l=\hole, \bar l =\bar e}{T}
+	~|~ \objget{\hole}{l}
+	~|~ \objset{\hole}{l}{e}
+	~|~ \objset{v}{l}{\hole} 
+\end{array}
+\]
+A \emph{state} is a pair of an object store and a current expression.
+The evaluation relation on states is defined by the rules in Figure~\ref{fig:eval}.
+Several rules refer to the judgement $\istype{v}{T}$, which checks if the value $v$ matches the type $T$: see  Figure ~\ref{fig:convert}. 
+
+The rule \rel{E-Alloc} requires an explicit object type with a type for each field,
+but those field types could simply be $\dynamic$. (Note, fields can never be deleted in our semantics.)
+Thus, the necessary object type could always be locally inferred from the object expression.
+
+\begin{displayfigure}{th}{Evaluation Rules}
+\label{fig:eval} 
+\footnotesize
+\[
+\begin{array}{@{}rcllr}
+	\sigma,C[{\app{(\lam{x}{S}{T}{t})}{v}}]
+	&\lred&
+	\sigma,C[\astype{t[x:=v]}{T}]
+	\qquad\mbox{if $\istype v S$}
+	&\rel{E-Beta1}
+\\~\\
+	\sigma,C[{\app{(\wrapv{w}{(\lamt{S}{T})})}
+	              {v}}]
+	&\lred&
+	\sigma,C[\wrap{(w~(\wrap{v}{S}))}{T}]
+	&\rel{E-Beta2}
+\\~\\
+	\sigma,C[\astype{v}{T}]
+	&\lred&
+	\sigma,C[v]
+	\qquad\mbox{if $\istype{v}{T}$}
+	&\rel{E-As}
+\\~\\
+	\sigma,C[\wrap{v}{T}]
+	&\lred&
+	\sigma,C[w]
+	&\rel{E-Wrap} \\
+	&&\mbox{where $w=\left\{
+		\begin{array}{ll}
+			v				&\mbox{if $\subtype{\allocty{v}}{T}$} \\
+			\wrapv{v}{T}		&\mbox{if $\istype{v}{T}$}
+		\end{array}\right.$}
+\\~\\
+	\sigma,C[\obje{l_i=v_i^{i\in 1..n}}{T}]
+	&\lred&
+	\sigma[a:=(\obje{l_i=v_i}{T})],C[a] 
+	&\rel{E-Alloc} \\
+	&&\mbox{where }T=\objty{l_i:T_i^{i\in 1..n}}, \istype{v_i}{T_i} \\
+	&&\mbox{and $a$ fresh}
+\\~\\
+	\sigma,C[\objget{a}{l}]
+	&\lred&
+	\sigma,C[v]
+	\qquad\mbox{if $\sigma(a)=\obje{l=v,\dots}{T}$}
+	&\rel{E-Get1}
+\\~\\
+	\sigma,C[\objget{(\wrapv{w}{\objty{l:T,\dots}})}{l}]
+	&\lred&
+	\sigma,C[\wrap{(\objget{w}{l})}{T}] 
+	&\rel{E-Get2}
+\\~\\
+	\sigma,C[\objset{a}{l}{v}]
+	&\lred&
+	\sigma[a,l:=v],C[v] 
+	&\rel{E-Assign1} \\
+	&&\mbox{where if $\sigma(a)=\obje{\dots}{\objty{l:T,\dots}}$ }\\
+	&&\mbox{then $\istype{v}{T}$} 
+\\~\\
+	\sigma,C[\objset{(\wrapv{w}{\objty{l:T,\dots}})}{l}{v}]
+	&\lred&
+	\sigma,C[\objset{w}{l}{(\wrap{v}{T})}]
+	&\rel{E-Assign2} \\
+\end{array}
+\]
+\end{displayfigure}
+
+
+\begin{displayfigure}{th}{Dynamic Type Checks}
+\label{fig:convert} 
+\begin{trules}
+\headtrule{$\istype{v}{T}$}{Dynamic type check}
+\trule{Is-Ok}{
+		\subtype{\allocty{v}}{T}
+	}{
+		\istype{v}{T}
+	}
+\trule{Is-Obj}{
+		\sigma(a) = \obje{l_i=v_i^{i\in 1..n+m}}{S} \\
+	%	\compatible{S}{\objty{l_i:T_i^{i\in 1..n}}} \\
+		\istype{v_i}{\likety{T_i}} \mbox{ ~for~} {i\in 1..n}
+	}{
+		\istype{a}{\likety \objty{l_i:T_i^{i\in 1..n}}}
+	}
+\trule{Is-NonObj}{
+		\compatible{\allocty{v}}{T} \\
+		v \mbox{ not an object address}
+	}{
+		\istype{v}{\likety T}
+	}
+\end{trules}
+\end{displayfigure}
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\clearpage
+\section{Strict Mode Type System}
+
+The strict mode type system is based on a judgement $\judge{E}{e}{T}$,
+stating that expression $e$ has type $T$ in environment $E$.
+If $T$ is not a $\likety{}$ type, then $e$ will only produce values of that type.
+If $T=\likety{T'}$, then the intent is that $e$ will only produce values of type $T'$,
+but there is no guarantee. However, this intent can be still used to detect type errors at compile time.
+We sometimes use $k$ to range over $\likety{}$ or $\epsilon$.
+
+\begin{displayfigure}{th}{Type Rules for Strict Mode}
+\label{fig:typerules}
+\begin{trules}
+\headtrule{$\judge{E}{t}{T}$}{\underline{T}ype rules}
+\trule{T-Var}{
+		(x:T)\in E
+	}{
+		\judge{E}{x}{T}
+	}
+\trule{T-Const}{
+	}{
+		\judge{E}{c}{\fun{ty}(c)}
+	}
+\trule{T-Fun}{
+		\judge{E,x:S}{e}{T'} \qquad
+		\subtype{T'}{T} 
+	}{
+		\judge{E}{(\lam{x}{S}{T}{e})}{(\lamt{S}{T})}
+	}
+\trule{T-App1}{
+		\judge{E}{t_1}{k~(\lamt{S}{T})}\qquad
+		\judge{E}{t_2}{S'} \qquad
+		\subtype{S'}{k~S} \\
+	%	(k,k')\in\setz{(\likety{},\likety{\!\!}),(\wrapty{},\epsilon),(\epsilon,\epsilon)} \\
+	}{
+		\judge{E}{(\app{t_1}{t_2})}{k~T}
+	}
+\trule{T-App2}{
+		\judge{E}{t_1}{\dynamic}\qquad
+		\judge{E}{t_2}{S'}  
+	}{
+		\judge{E}{(\app{t_1}{t_2})}{\dynamic}
+	}
+\trule{T-As}{
+		\judge{E}{t}{S}\qquad 
+		\compatible{S}{T}
+	}{
+		\judge{E}{\astype{t}{T}}{T}
+	}
+\trule{T-Wrap}{
+		\judge{E}{t}{S}\qquad 
+		\compatible{S}{T}
+	}{
+		\judge{E}{\wrap{t}{T}}{T}
+	}
+%\trule{T-Let}{
+%		\judge{E}{t_1}{S}\qquad
+%		\judge{E,x:S}{t_2}{T} 
+%	}{
+%		\judge{E}{\letexp{x}{t_1}{t_2}}{T}
+%	}
+\trule{T-Alloc}{
+		\judge{E}{t_i}{S_i} \qquad
+		\subtype{S_i}{T_i} \qquad
+		T=\objty{l_i:T_i^{i\in 1..n}}
+	}{
+		\judge{E}{(\obje{l_i=t_i^{i\in 1..n}}{T})}{T}
+	}
+\trule{T-Get1}{
+		\judge{E}{e}{k~\objty{l:T,\dots}}  
+		%k\in\setz{\likety{},\wrapty{},\epsilon}
+	}{
+		\judge{E}{\objget{e}{l}}{k~T}
+	}
+\trule{T-Get2}{
+		\judge{E}{e}{\dynamic}
+	}{
+		\judge{E}{\objget{e}{l}}{\dynamic}
+	}
+\trule{T-Set1}{
+		\judge{E}{e_1}{k~\objty{l:T,\dots}} \qquad
+		\judge{E}{e_2}{S} \qquad
+		\subtype{S}{k~T}  
+	}{
+		\judge{E}{\objset{e_1}{l}{e_2}}{S}
+	}
+\trule{T-Set2}{
+		\judge{E}{e_1}{\dynamic} \qquad
+		\judge{E}{e_2}{S}
+	}{
+		\judge{E}{\objset{e_1}{l}{e_2}}{S}
+	}
+\end{trules}
+\end{displayfigure}
+
+%------------------------------------------
+
+\section{Sugar}
+\[
+\begin{array}{rcl}
+
+\lam{x}{(\t{wrap}~{S})}{T}{e} &=&
+	\lam{x}{(\likety{S})}{T}
+	    {\lete{x}{S}{(\wrap{x}{S})}{e}}
+	    \\~\\
+\lam{x}{S}{(\t{wrap}~T)}{e} &=&
+	\lam{x}{S}{T}{(\wrap{e}{T})}
+	\\~\\
+\t{wrap}~(\lam x S T e) &=&
+	\lam{x}{(\t{wrap}~S)}Te
+\end{array}
+\]
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\clearpage
+
+
+
+\end{document}
+\section{A Tale of Five Operational Semantics}
+
+We consider a variety of implementation strategies for well-typed programs.
+
+\subsection{Wrapper Operational Semantics}
+
+Casts of functions are reduced to wrappers:
+\[
+\begin{array}{@{}rclr}
+	\cast{\lamt{T_1}{T_2}}{v}{l}
+	&\lred& 
+	{\lam{x}{T_1}{T_2}{\cast{T_2}{\appt{S_2}{v}{(\cast{S_1}{x}{l})}}{l}}}
+	&\rel{E-Cast-F}
+\\
+	&&\mbox{if }v:(\lamt{S_1}{S_2}) 
+\end{array}
+\]
+Source language wrappers cannot wrap reference cells; that is left to the following section.
+
+%---------------------------------------------------------------------------
+
+\subsection{Stacked View Operational Semantics}
+Values can include a stack of views (delayed casts) on function values:
+\[
+\begin{array}{rcl}
+v &::=& c~|~u\\
+u &::=& w~|~\view{T}{u}{l} \\
+w &::=& a~|~\lam{x}{S}{T}{t} 
+\end{array}
+\]
+The tag of a viewed value is given by:
+\[
+\begin{array}{rcl}
+	\view{T}{u}{l} &:&  T 
+\end{array}
+\]
+These views are later applied at function applications:
+\[
+\begin{array}{@{}rcllr}
+	\cast{T}{u}{l}
+	&\lred& 
+	\view{T}{u}{l}
+	&\mbox{if $u:S$, $\convert S T$}
+	&\rel{E-Cast}
+\\~
+	\appt{R}{\view{\lamt{T_1}{T_2}}{u}{l}}{v}	
+	&\lred& 
+	\cast{T_2}{\appt{S_2}{u}{(\cast{S_1}{v}{l})}}{l}
+	&\mbox{if }u:(\lamt{S_1}{S_2})
+	&\rel{E-Beta-V}
+\\
+	\sigma,\dereft{\view{\Ref T}{u}{l}}{R}
+	&\lred&
+	\sigma,\cast{T}{(\dereft{u}{S})}{l}
+	&\mbox{if }u:(\Ref S)
+	&\rel{E-Deref-V}
+\\
+	\sigma,\assign{\view{\Ref T}{u}{l}}{v}
+	&\lred&
+	\sigma,\assign{u}{\cast{S}{v}{l}}
+	&\mbox{if }u:(\Ref S)
+	&\rel{E-Assign-V}
+\end{array}
+\]
+
+The Stacked View Semantics is equivalent to the Wrapper Semantics.
+
+%---------------------------------------------------------------------------
+
+\subsection{Single View Operational Semantics}
+Values can include a single views on function values:
+\[
+\begin{array}{rcl}
+v &::=& c ~|~w~|~\view{T}{w}{l}
+\end{array}
+\]
+These views are later applied at function applications:
+\[
+\begin{array}{@{}rcllr}
+	\cast{T}{w}{l}
+	&\lred& 
+	\view{T}{w}{l}
+	&\mbox{if $w:S$, $\convert S T$}
+	&\rel{E-Cast}
+\\
+	\cast{T}{\view{S}{w}{l}}{l'}
+	&\lred& 
+	\view{T}{w}{l'}
+	&&\rel{E-Cast-V}
+\\
+	\appt{R}{\view{\lamt{T_1}{T_2}}{w}{l}}{v}	
+	&\lred& 
+	\cast{T_2}{\appt{S_2}{w}{(\cast{S_1}{v}{l})}}{l}
+	&\mbox{if }w:(\lamt{S_1}{S_2})
+	&\rel{E-Beta-V}
+\\
+	\sigma,\dereft{\view{\Ref T}{a}{l}}{R}
+	&\lred&
+	\sigma,\cast{T}{(\dereft{a}{S})}{l}
+	&\mbox{if }a:(\Ref S)
+	&\rel{E-Deref-V}
+\\
+	\sigma,\assign{\view{\Ref T}{a}{l}}{v}
+	&\lred&
+	\sigma,\assign{a}{\cast{S}{v}{l}}
+	&\mbox{if }a:(\Ref S) 
+	&\rel{E-Assign-V}
+\end{array}
+\]
+
+The Single View Semantics is equivalent to the  Stacked View Semantics, except that it fails fewer casts.
+
+%---------------------------------------------------------------------------
+
+\subsection{Bit View Operational Semantics}
+
+Note that in the last rule of the previous subsection we have that $\subtype{T_2}{R}$.
+Hence, we can change the \rel{E-Beta-V}  rule above to:
+\[
+\begin{array}{@{}rclr}
+	\appt{R}{\view{\lamt{T_1}{T_2}}{w}{l}}{v}	
+	&\lred& 
+	\cast{R}{\appt{S_2}{w}{(\cast{S_1}{v}{l})}}{l}
+%	\cast{R}{\letexp{x}{\cast{S_1}{v}{l}}{t}}{l}
+	&\rel{E-Beta-V}
+\end{array}
+\]
+At this stage, the type in the view is irrelevant, motivating an operational
+semantics in which a view is just a marker (or a bit), plus perhaps a label, as shown here:
+\[
+\begin{array}{rcl}
+v &::=& v ~|~w~|~\bitview{w}{l} 
+\end{array}
+\]
+A marked value has \emph{any} convertible type:
+\[
+\begin{array}{rcl}
+	\bitview{w}{l} &:&  T \qquad \mbox{if $w:S$ and $\convert{S}{T}$}
+\end{array}
+\]
+These views are later applied at function applications:
+\[
+\begin{array}{@{}rcllr}
+	\cast{T}{w}{l}
+	&\lred& 
+	\bitview{w}{l}
+	&\mbox{if $w:S$, $\convert S T$}
+	&\rel{E-Cast}
+\\
+	\cast{T}{\bitview{w}{l}}{l'}
+	&\lred& 
+	\bitview{w}{l'}
+	&\mbox{if $w:S$, $\convert S T$}
+	&\rel{E-Cast-V}
+\\
+	\appt{R}{\bitview{w}{l}}{v}	
+	&\lred& 
+	\cast{R}{\appt{S_2}{w}{(\cast{S_1}{v}{l})}}{l}
+	&\mbox{if }w:(\lamt{S_1}{S_2}) 
+	&\rel{E-Beta-V}
+\\
+	\sigma,\dereft{\bitview{a}{l}}{R}
+	&\lred&
+	\sigma,\cast{R}{(\dereft{a}{S})}{l}
+	&\mbox{if }a:(\Ref S)
+	&\rel{E-Deref-V}
+\\
+	\sigma,\assign{\bitview{a}{l}}{v}
+	&\lred&
+	\sigma,\assign{a}{\cast{S}{v}{l}}
+	&\mbox{if }a:(\Ref S) 
+	&\rel{E-Assign-V}
+\end{array}
+\]
+
+The Bit View Semantics is equivalent to the Single View Semantics, except that it fails fewer casts.
+
+%---------------------------------------------------------------------------
+
+\subsection{Implicit View Operational Semantics}
+
+Finally, we assume that every function and ref cell has an implicit view.
+\[
+\begin{array}{rcl}
+v &::=& c ~|~w
+\end{array}
+\]
+A function has \emph{any} convertible function type:
+\[
+\begin{array}{rcll}
+	{\lam{x}{S_1}{S_2}{t}}{} &:&  T \qquad &\mbox{if $\convert{\lamt{S_1}{S_2}}{T}$} \\
+	a	&:& T				&\mbox{if $\sigma(a)=(S,v)$ and $\convert{\Ref{S}}{T}$}
+\end{array}
+\]
+\[
+\begin{array}{@{}rcllr}
+	\cast{T}{w}{l}
+	&\lred& 
+	w
+	&\mbox{if $w:S$ and $\convert S T$}
+	&\rel{E-Cast}
+\\
+	\appt{R}{({\lam{x}{S_1}{S_2}{t}}{})}{v}	
+	&\lred& 
+	\cast{R}{(\letexp{x}{\cast{S_1}{v}{l}}{t})}{l}
+	&&\rel{E-Beta}
+\\
+	\sigma,\dereft{a}{R}
+	&\lred&
+	\sigma,\cast{R}{v}{} 
+	&\mbox{if $\sigma(a)=(T,v)$}
+	&\rel{E-Deref}
+\\
+	\sigma,\assign{a}{v}
+	&\lred&
+	\sigma[a:=(T,v)],v 
+	&\mbox{if $\sigma(a)=(T,u),~v:S,~\convert S T$}
+	&\rel{E-Assign}
+\end{array}
+\]
+One question is where the labels come from in the \rel{E-Beta} rule above.
+
+Note that for the Implicit View Semantics, in order to satisfy the Preservation Theorem,
+we need a more flexible type rule for function expressions in run-time states 
+(and similarly for functions):
+\begin{trules}
+\trule{T-Fun}{
+		\judge{E,x:S}{t}{T} \qquad
+		\convert{\lamt{S}{T}}{U}
+	}{
+		\judge{E}{(\lam{x}{S}{T}{t})}{U}
+	}
+\end{trules}
+
+The Implicit View Semantics is equivalent to the Bit View  Semantics.
+
+
+
+%\end{document}
+
+The notation $\sigma[a.l:=v]$ returns a new store in which the field $l$ of object $a$ has been updated with the value $v$.
+
+---
+
+We have the usual subtyping relation $\subtype{S}{T}$ between types, as shown  in Figure~\ref{fig:subtype},
+and $\dynamic$ is the maximal type.
+We also have a separate \emph{convertibility} relation $\convert{S}{T}$ that holds  
+if it makes sense to cast values from type $S$ to type $T$. For example, the type
+$\dynamic$ is convertible to any type. Our source language supports implicit conversions
+from the type
+$\dynamic$ to any type.
+
+We formalize the type system for the source language via a compilation judgement to the run-time language, as described in the next section.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\clearpage
+\section{Target Language and Type System}
+
+The target language syntax is shown in Figure~\ref{fig:target},
+and extends the source language with explicit downcasts,
+and with explicit types on applications and  function bodies.
+The translation from source to target programs is shown in Figure~\ref{fig:compile}.
+\begin{itemize}
+\item
+The judgement $\judgec{E}{e}{t}{T}$ converts source term $e$ to target term $t$ of inferred type $T$.
+\item
+The judgement $\judgecc{E}{e}{t}{l}{T}$ converts source term $e$ to a target term $t$ 
+that must have the given  type $T$ (via casts, if necessary), and the label $l$ is used to annotate such casts.
+\item
+The judgement
+$\judgeccc{E}{e}{t}{l}{S}{T}$ converts source term $e$ to target term $t$ of inferred type $S$;
+however, if the inferred type is $\dynamic$, then that type is downcast to $T$, in which case
+$T$ is returned as the inferred type of $t$.
+\end{itemize}
+Compilation generates target programs that are well-typed according to Figure~\ref{fig:typerules}.
+
+\begin{displayfigure}{th}{\label{fig:target}Target Language Syntax}
+\[
+\begin{array}{llr}
+	\mydefhead{s,t ::=\qquad\qquad\qquad\qquad\qquad}{Terms:} 
+	\mydefcase{c				}{constant} 
+	\mydefcase{x}{variable} 
+%	\mydefcase{v}{values} 
+	\mydefcase{\lam{x}{S}{T}{t} 		}{abstraction} 
+	\mydefcase{\appt{T}{t}{t} 		}{application} 
+%	\mydefcase{\mkref{T}{t} 		}{allocation} 
+%	\mydefcase{\dereft{t}{T}		}{dereference} 
+%	\mydefcase{\assign{t}{t}		}{assignment} 
+	\mydefcase{\letexp{x}{t}{t} 		}{let-expression} 
+	\mydefcase{\cast{T}{t}{l}		}{type cast} 
+\end{array}
+\]
+\end{displayfigure}
+
+
+
+\begin{displayfigure}{th}{Compilation Rules}
+\label{fig:compile}
+\footnotesize
+\[
+\begin{array}{llr}
+	\mydefhead{E::=\emptyset ~|~ E,x:T\qquad\qquad\qquad\qquad}{Environments:} 
+\end{array}
+\]
+\\
+\begin{trules}
+\headtrule{$\judgec{E}{e}{t}{T}$}{\underline{C}ompilation of terms}
+\trule{C-Var}{
+		(x:T)\in E
+	}{
+		\judgec{E}{x}{x}{T}
+	}
+\trule{C-Const}{
+	}{
+		\judgec{E}{c}{c}{\fun{ty}(c)} 
+	}
+\trule{C-Bool}{
+	}{
+		\judgec{E}{b}{b}{\Bool} 
+	}
+\trule{C-Fun}{
+		\judgec{E,x:S}{e}{t}{T}
+	}{
+		\judgec{E}{(\slam{x}{S}{e})}{(\lam{x}{S}{T}{t})}{(\lamt{S}{T})}
+	}
+\trule{C-App}{
+		\judgeccc{E}{e_1}{t_1}{l}{(\lamt{S}{T})}{(\lamt{\dynamic}{\dynamic})}\\
+		\judgecc{E}{e_2}{t_2}{l}{S} 
+	}{
+		\judgec{E}	{\appl{l}{e_1}{e_2}}
+				{(\appt{T}{t_1}{t_2})}
+				{T}
+	}
+\\
+\headtrule{$\judgecc{E}{e}{t}{l}{T}$}{\underline{C}ompilation and \underline{c}hecking}
+\trule{CC-Ok}{
+		\judgec{E}{e}{t}{S} \qquad
+		\subtype{S}{T}
+	}{
+		\judgecc{E}{e}{t}{l}{T}
+	}
+\trule{CC-Chk}{
+		\judgec{E}{e}{t}{S} \qquad
+		\convert{S}{T}
+	}{
+		\judgecc{E}{e}{(\cast{T}{t}{l})}{l}{T}
+	}
+\headtrule{$\judgeccc{E}{e}{t}{l}{S}{T}$}{\underline{C}ompilation and \underline{c}hecking 2}
+\trule{CC-Ok}{
+		\judgec{E}{e}{t}{S} 
+	}{
+		\judgeccc{E}{e}{t}{l}{S}{T}
+	}
+\trule{CC-Chk}{
+		\judgec{E}{e}{t}{\dynamic}  
+	}{
+		\judgeccc{E}{e}{(\cast{T}{t}{l})}{l}{T}{T}
+	}
+\end{trules}
+\end{displayfigure}
+ 
+%----------------------------
+
+
+
+
+%---------------------------------------------------------------------------
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\clearpage
+\section{A Tale of Five Operational Semantics}
+
+We consider a variety of implementation strategies for well-typed programs.
+An evaluation context is:
+\[
+C ~~::=
+		~~~\hole
+%	~|~ 	\lam{x}S{\hole}
+	~|~	\app{\hole}{t}
+	~|~	\app{v}{\hole}
+	~|~	\mkref{T}{\hole}
+	~|~	\dereft{\hole}{T}
+	~|~	\assign{\hole}{t}
+	~|~	\assign{v}{\hole}
+	~|~	\letexp{x}{\hole}{t}
+	~|~	\cast{T}{\hole}{l}
+\]
+A store $\sigma$ maps addresses $a$ to pairs of types and values.
+Values are:
+\[
+v ::= c ~|~ a ~|~ \lam{x}{S}{T}{t}
+\]
+Every value has a type according to the judgement $v:T$.
+\[
+\begin{array}{rcl}
+	c &:& \fun{ty}(c) \\ 
+	\lam{x}{S}{T}{t} &:& \lamt{S}{T} \\
+	a &:& \Ref{T} \qquad \mbox{if $\sigma(a)=(T,v)$}
+\end{array}
+\]
+A state is a pair of a store and a term.
+For convenience, the reduction relation $\lred$ is defined both between terms and between states.
+All operational semantics have the basic reduction rules:
+\[
+\begin{array}{@{}rcllr}
+	{\appt{R}{(\lam{x}{S}{T}{t})}{v}}
+	&\lred&
+	{t[x:=v]}
+	&&\rel{E-Beta}
+\\
+	\letexp{x}{v}{t}
+	&\lred&
+	{t[x:=v]}
+	&&\rel{E-Let}
+\\
+	\sigma,\mkref{T}{v}
+	&\lred&
+	\sigma[a:=(T,v)],a	
+	&\mbox{$a$ fresh}
+	&\rel{E-Ref}
+\\
+	\sigma,\dereft{a}{R}
+	&\lred&
+	\sigma,v 
+	&\mbox{if $\sigma(a)=(T,v)$}
+	&\rel{E-Deref}
+\\
+	\sigma,\assign{a}{v}
+	&\lred&
+	\sigma[a:=(T,v)],v 
+	&\mbox{if $\sigma(a)=(T,u)$}
+	&\rel{E-Assign}
+\\
+	\cast{T}{c}{l}
+	&\lred&
+	c
+	&\mbox{if $c:T$}
+	&\rel{E-Cast-Bool}
+\\
+	\cast{\dynamic}{c}{l}
+	&\lred&
+	c
+	&&\rel{E-Cast-Dyn}
+\\
+	\cast{\Bool}{0}{l}
+	&\lred&
+	false
+	&&\rel{E-Cast}
+\\
+	\cast{\Bool}{n}{l}
+	&\lred&
+	true
+	&\mbox{if $n\not=0$}
+	&\rel{E-Cast}
+\\
+	\sigma,C[s] & \red & \sigma',C[t] 
+	&\mbox{if $\sigma,s\red \sigma',t$}
+	&\rel{E-Compat} 
+\\
+	\sigma,C[s] & \red & \sigma,C[t] 
+	&\mbox{if $s\red t$}
+	&\rel{E-Compat} \\
+\end{array}
+\]
+The operational semantics vary in how they implement higher-order casts,
+which may require introducing additional run-time syntax (and associated typing rules).
+
+All semantics satisfy the  key preservation and progress theorems: 
+[[need to extend typing judgements to states and stores]]
+
+\begin{theorem}[Preservation]
+If $\judge{\emptyset}{t}{T}$ and $\emptyset,t\lred \sigma,t'$ then $\judge{\emptyset}{(\sigma,t')}{T}$.
+\end{theorem}
+\begin{theorem}[Progress]
+If $\judge{\emptyset}{(\sigma,t)}{T}$ then $(\sigma,t)$ only gets stuck at failed casts.
+\end{theorem}
+
+%\begin{theorem}[Value Typing]
+%If $\judge{\emptyset}{e}{T}$ and $e\lred^* v$ then there exists $S$ such that $v:S$ and $\subtype{S}{T}$.
+%\end{theorem}
+
+
+\subsection{Wrapper Operational Semantics}
+
+Casts of functions are reduced to wrappers:
+\[
+\begin{array}{@{}rclr}
+	\cast{\lamt{T_1}{T_2}}{v}{l}
+	&\lred& 
+	{\lam{x}{T_1}{T_2}{\cast{T_2}{\appt{S_2}{v}{(\cast{S_1}{x}{l})}}{l}}}
+	&\rel{E-Cast-F}
+\\
+	&&\mbox{if }v:(\lamt{S_1}{S_2}) 
+\end{array}
+\]
+Source language wrappers cannot wrap reference cells; that is left to the following section.
+
+%---------------------------------------------------------------------------
+
+\subsection{Stacked View Operational Semantics}
+Values can include a stack of views (delayed casts) on function values:
+\[
+\begin{array}{rcl}
+v &::=& c~|~u\\
+u &::=& w~|~\view{T}{u}{l} \\
+w &::=& a~|~\lam{x}{S}{T}{t} 
+\end{array}
+\]
+The tag of a viewed value is given by:
+\[
+\begin{array}{rcl}
+	\view{T}{u}{l} &:&  T 
+\end{array}
+\]
+These views are later applied at function applications:
+\[
+\begin{array}{@{}rcllr}
+	\cast{T}{u}{l}
+	&\lred& 
+	\view{T}{u}{l}
+	&\mbox{if $u:S$, $\convert S T$}
+	&\rel{E-Cast}
+\\~
+	\appt{R}{\view{\lamt{T_1}{T_2}}{u}{l}}{v}	
+	&\lred& 
+	\cast{T_2}{\appt{S_2}{u}{(\cast{S_1}{v}{l})}}{l}
+	&\mbox{if }u:(\lamt{S_1}{S_2})
+	&\rel{E-Beta-V}
+\\
+	\sigma,\dereft{\view{\Ref T}{u}{l}}{R}
+	&\lred&
+	\sigma,\cast{T}{(\dereft{u}{S})}{l}
+	&\mbox{if }u:(\Ref S)
+	&\rel{E-Deref-V}
+\\
+	\sigma,\assign{\view{\Ref T}{u}{l}}{v}
+	&\lred&
+	\sigma,\assign{u}{\cast{S}{v}{l}}
+	&\mbox{if }u:(\Ref S)
+	&\rel{E-Assign-V}
+\end{array}
+\]
+
+The Stacked View Semantics is equivalent to the Wrapper Semantics.
+
+%---------------------------------------------------------------------------
+
+\subsection{Single View Operational Semantics}
+Values can include a single views on function values:
+\[
+\begin{array}{rcl}
+v &::=& c ~|~w~|~\view{T}{w}{l}
+\end{array}
+\]
+These views are later applied at function applications:
+\[
+\begin{array}{@{}rcllr}
+	\cast{T}{w}{l}
+	&\lred& 
+	\view{T}{w}{l}
+	&\mbox{if $w:S$, $\convert S T$}
+	&\rel{E-Cast}
+\\
+	\cast{T}{\view{S}{w}{l}}{l'}
+	&\lred& 
+	\view{T}{w}{l'}
+	&&\rel{E-Cast-V}
+\\
+	\appt{R}{\view{\lamt{T_1}{T_2}}{w}{l}}{v}	
+	&\lred& 
+	\cast{T_2}{\appt{S_2}{w}{(\cast{S_1}{v}{l})}}{l}
+	&\mbox{if }w:(\lamt{S_1}{S_2})
+	&\rel{E-Beta-V}
+\\
+	\sigma,\dereft{\view{\Ref T}{a}{l}}{R}
+	&\lred&
+	\sigma,\cast{T}{(\dereft{a}{S})}{l}
+	&\mbox{if }a:(\Ref S)
+	&\rel{E-Deref-V}
+\\
+	\sigma,\assign{\view{\Ref T}{a}{l}}{v}
+	&\lred&
+	\sigma,\assign{a}{\cast{S}{v}{l}}
+	&\mbox{if }a:(\Ref S) 
+	&\rel{E-Assign-V}
+\end{array}
+\]
+
+The Single View Semantics is equivalent to the  Stacked View Semantics, except that it fails fewer casts.
+
+%---------------------------------------------------------------------------
+
+\subsection{Bit View Operational Semantics}
+
+Note that in the last rule of the previous subsection we have that $\subtype{T_2}{R}$.
+Hence, we can change the \rel{E-Beta-V}  rule above to:
+\[
+\begin{array}{@{}rclr}
+	\appt{R}{\view{\lamt{T_1}{T_2}}{w}{l}}{v}	
+	&\lred& 
+	\cast{R}{\appt{S_2}{w}{(\cast{S_1}{v}{l})}}{l}
+%	\cast{R}{\letexp{x}{\cast{S_1}{v}{l}}{t}}{l}
+	&\rel{E-Beta-V}
+\end{array}
+\]
+At this stage, the type in the view is irrelevant, motivating an operational
+semantics in which a view is just a marker (or a bit), plus perhaps a label, as shown here:
+\[
+\begin{array}{rcl}
+v &::=& v ~|~w~|~\bitview{w}{l} 
+\end{array}
+\]
+A marked value has \emph{any} convertible type:
+\[
+\begin{array}{rcl}
+	\bitview{w}{l} &:&  T \qquad \mbox{if $w:S$ and $\convert{S}{T}$}
+\end{array}
+\]
+These views are later applied at function applications:
+\[
+\begin{array}{@{}rcllr}
+	\cast{T}{w}{l}
+	&\lred& 
+	\bitview{w}{l}
+	&\mbox{if $w:S$, $\convert S T$}
+	&\rel{E-Cast}
+\\
+	\cast{T}{\bitview{w}{l}}{l'}
+	&\lred& 
+	\bitview{w}{l'}
+	&\mbox{if $w:S$, $\convert S T$}
+	&\rel{E-Cast-V}
+\\
+	\appt{R}{\bitview{w}{l}}{v}	
+	&\lred& 
+	\cast{R}{\appt{S_2}{w}{(\cast{S_1}{v}{l})}}{l}
+	&\mbox{if }w:(\lamt{S_1}{S_2}) 
+	&\rel{E-Beta-V}
+\\
+	\sigma,\dereft{\bitview{a}{l}}{R}
+	&\lred&
+	\sigma,\cast{R}{(\dereft{a}{S})}{l}
+	&\mbox{if }a:(\Ref S)
+	&\rel{E-Deref-V}
+\\
+	\sigma,\assign{\bitview{a}{l}}{v}
+	&\lred&
+	\sigma,\assign{a}{\cast{S}{v}{l}}
+	&\mbox{if }a:(\Ref S) 
+	&\rel{E-Assign-V}
+\end{array}
+\]
+
+The Bit View Semantics is equivalent to the Single View Semantics, except that it fails fewer casts.
+
+%---------------------------------------------------------------------------
+
+\subsection{Implicit View Operational Semantics}
+
+Finally, we assume that every function and ref cell has an implicit view.
+\[
+\begin{array}{rcl}
+v &::=& c ~|~w
+\end{array}
+\]
+A function has \emph{any} convertible function type:
+\[
+\begin{array}{rcll}
+	{\lam{x}{S_1}{S_2}{t}}{} &:&  T \qquad &\mbox{if $\convert{\lamt{S_1}{S_2}}{T}$} \\
+	a	&:& T				&\mbox{if $\sigma(a)=(S,v)$ and $\convert{\Ref{S}}{T}$}
+\end{array}
+\]
+\[
+\begin{array}{@{}rcllr}
+	\cast{T}{w}{l}
+	&\lred& 
+	w
+	&\mbox{if $w:S$ and $\convert S T$}
+	&\rel{E-Cast}
+\\
+	\appt{R}{({\lam{x}{S_1}{S_2}{t}}{})}{v}	
+	&\lred& 
+	\cast{R}{(\letexp{x}{\cast{S_1}{v}{l}}{t})}{l}
+	&&\rel{E-Beta}
+\\
+	\sigma,\dereft{a}{R}
+	&\lred&
+	\sigma,\cast{R}{v}{} 
+	&\mbox{if $\sigma(a)=(T,v)$}
+	&\rel{E-Deref}
+\\
+	\sigma,\assign{a}{v}
+	&\lred&
+	\sigma[a:=(T,v)],v 
+	&\mbox{if $\sigma(a)=(T,u),~v:S,~\convert S T$}
+	&\rel{E-Assign}
+\end{array}
+\]
+One question is where the labels come from in the \rel{E-Beta} rule above.
+
+Note that for the Implicit View Semantics, in order to satisfy the Preservation Theorem,
+we need a more flexible type rule for function expressions in run-time states 
+(and similarly for functions):
+\begin{trules}
+\trule{T-Fun}{
+		\judge{E,x:S}{t}{T} \qquad
+		\convert{\lamt{S}{T}}{U}
+	}{
+		\judge{E}{(\lam{x}{S}{T}{t})}{U}
+	}
+\end{trules}
+
+The Implicit View Semantics is equivalent to the Bit View  Semantics.
+
+
+\end{document}
+
+
+
+
