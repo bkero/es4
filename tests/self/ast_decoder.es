@@ -437,7 +437,7 @@ namespace Decode;
         case 'SwitchTypeStmt':
             let nd1 = expr (ob.expr);
             let nd2 = typeExpr (ob.type);
-            let nd3 = catches (ob.catches);
+            let nd3 = catches (ob.cases);
             var ndx = new SwitchTypeStmt (nd1,nd2,nd3);
             break;
         default:

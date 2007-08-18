@@ -47,7 +47,7 @@ namespace Parser;
 
 {
     use default namespace Parser;
-    use namespace Release;
+    use namespace Debug;
 
     type PATTERN =
           ( ObjectPattern
@@ -2800,7 +2800,7 @@ namespace Parser;
             case Token::Switch:
                 switch (hd (tl (ts))) {
                 case Token::Type:
-                    var [ts1,nd1] = switchTypeStatement (ts);
+                    var [ts2,nd2] = switchTypeStatement (ts);
                     break;
                 default:
                     var [ts2,nd2] = switchStatement (ts);
@@ -3286,7 +3286,7 @@ namespace Parser;
             var ts1 = ts;
             var nd1 = [];
             while (hd (ts1)===Token::Catch) {
-                [ts1,ndx] = catchClause (ts1);
+                [ts1,ndx] = catchClause (tl (ts1));
                 nd1.push (ndx);
             }
 
@@ -3299,7 +3299,6 @@ namespace Parser;
         {
             enter("Parser::catchClause ", ts);
 
-            ts = eat (ts,Token::Catch);
             ts = eat (ts,Token::LeftParen);
             var [ts1,nd1] = parameter (ts);
             ts1 = eat (ts1,Token::RightParen);
@@ -3313,7 +3312,79 @@ namespace Parser;
             return [ts2,new Ast::Catch (head,nd2)];
         }
 
+        /*
 
+        SwitchTypeStatement
+            switch  type  TypedExpression {  TypeCaseElements }
+        
+        TypeCaseElements
+            TypeCaseElement
+            TypeCaseElements  TypeCaseElement
+            
+        TypeCaseElement
+            case  (  TypedPattern(allowColon, allowIn)  )  Blocklocal
+
+        */
+
+        function switchTypeStatement (ts: TOKENS)
+            : [TOKENS, Ast::STMT]
+        {
+            enter("Parser::switchTypeStatement ", ts);
+
+            ts = eat (ts,Token::Switch);
+            ts = eat (ts,Token::Type);
+            var [ts1,nd1] = typedExpression (ts);
+            var [e,t] = nd1;
+            ts1 = eat (ts1,Token::LeftBrace);
+            var [ts2,nd2] = typeCases (ts1);
+            ts2 = eat (ts2,Token::RightBrace);
+
+            exit("Parser::switchTypeStatement ", ts2);
+            return [ts2, new Ast::SwitchTypeStmt (e,t,nd2)];
+        }
+
+        /*
+
+        TypedExpression
+            ParenListExpression
+            ParenListExpression  :  NullableTypeExpression
+
+        */
+
+        function typedExpression (ts: TOKENS)
+            : [TOKENS,[Ast::EXPR,Ast::TYPE_EXPR]]
+        {
+            enter("Parser::typedExpression ", ts);
+
+            var [ts1,nd1] = parenListExpression (ts);
+            switch (hd (ts1)) {
+            case Token::Colon:
+                var [ts2,nd2] = nullableTypeExpression (tl (ts1));
+                break;
+            default:
+                var [ts2,nd2] = [ts1,Ast::anyType];
+                break;
+            }
+
+            exit("Parser::typedExpression ", ts2);
+            return [ts2,[nd1,nd2]];
+        }
+
+        function typeCases (ts: TOKENS)
+            : [TOKENS,Ast::CATCHES]
+        {
+            enter("Parser::typeCases ", ts);
+
+            var ts1 = ts;
+            var nd1 = [];
+            while (hd (ts1)==Token::Case) {
+                [ts1,ndx] = catchClause (tl (ts1));
+                nd1.push (ndx);
+            }
+
+            exit("Parser::typeCases ", ts1);
+            return [ts1,nd1];
+        }
 
         // DEFINITIONS
 
