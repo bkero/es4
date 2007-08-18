@@ -231,6 +231,12 @@ package cogen
         asm.killTemp(t);
     }
 
+    function cgSwitchTypeStmt(ctx, {expr:expr, type:type, catches:catches}) {
+        let b = new Block({fixtures:[],inits:[]}, [new ThrowStmt(expr)]);
+
+        cgTryStmt(ctx, {block:b, catches:catches, finallyBlock:null} );        
+    }
+    
     function cgWithStmt(ctx, {expr:expr}) {
         let asm = ctx.asm;
         // FIXME: save the scope object in a register and record this fact in the ctx inside
@@ -292,7 +298,7 @@ package cogen
         asm.I_setproperty(param_name);
 
         // catch block body
-        cgBlock(ctx, block);
+        cgBlock(catch_ctx, block);
         
         asm.I_popscope();
         asm.I_jump(Lend);

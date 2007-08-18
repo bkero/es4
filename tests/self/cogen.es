@@ -373,6 +373,9 @@ package cogen
                 return;
             }
             else {
+                if(stk.has_scope) {
+                    asm.I_popscope();
+                }
                 // FIXME
                 // if there's a FINALLY, visit it here
             }
@@ -384,10 +387,10 @@ package cogen
 
     // The following return extended contexts
     function pushBreak(ctx, labels, target)
-        push(ctx, { tag:"break", labels:labels, target:target });
+        push(ctx, { tag:"break", labels:labels, target:target, has_scope:false });
 
     function pushContinue(ctx, labels, target)
-        push(ctx, { tag:"continue", labels:labels, target:target });
+        push(ctx, { tag:"continue", labels:labels, target:target, has_scope:false });
 
     function pushFunction(ctx /*more*/) {
         // FIXME
@@ -400,10 +403,9 @@ package cogen
     function pushLet(ctx /*more*/) {
     }
 
-    function pushCatch(ctx /*more*/) {
-        push(ctx, {tag:"catch"});
+    function pushCatch(ctx /*more*/)
+        push(ctx, {tag:"catch", has_scope:true});
         // FIXME anything else?
-    }
 
     function pushFinally(ctx /*more*/) {
         // FIXME
