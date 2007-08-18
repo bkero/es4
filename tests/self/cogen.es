@@ -401,7 +401,8 @@ package cogen
     }
 
     function pushCatch(ctx /*more*/) {
-        // FIXME
+        push(ctx, {tag:"catch"});
+        // FIXME anything else?
     }
 
     function pushFinally(ctx /*more*/) {
