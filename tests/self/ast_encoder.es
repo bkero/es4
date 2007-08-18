@@ -335,6 +335,20 @@ namespace Encode;
               + "[]"  // for now: stmt (nd.stmt,nesting+", 'stmt': ".length)
               + " }";
         }
+        case (nd: SwitchTypeStmt) {
+            var str =
+                "{ 'ast_class': 'SwitchTypeStmt'"
+              + indent(nesting)
+              + ", 'expr': "
+              + encodeExpr (nd.expr,nesting+", 'expr': ".length)
+              + indent(nesting)
+              + ", 'type': "
+              + encodeTypeExpr (nd.type,nesting+", 'type': ".length)
+              + indent(nesting)
+              + ", 'cases': [ "
+              + catches (nd.cases,nesting+", 'cases': ".length) + " ]"
+              + " }";
+        }
         case (nd: ForStmt) {
             var str =
                 "{ 'ast_class': 'ForStmt'"

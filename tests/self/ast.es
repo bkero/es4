@@ -1277,11 +1277,11 @@ namespace Ast
     class SwitchTypeStmt {
         const expr: EXPR;
         const type: TYPE_EXPR;
-        const catches: CATCHES;
-        function SwitchTypeStmt (expr,ty,catches)
+        const cases: CATCHES;
+        function SwitchTypeStmt (expr,ty,cases)
             : expr = expr
             , type = ty
-            , catches = catches { }
+            , cases = cases { }
     }
 
     type CATCH = Catch;
