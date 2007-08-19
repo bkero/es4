@@ -41,15 +41,47 @@
 
 structure AstQuery = struct
 
+val doTrace = ref false
+fun trace ss = if (!doTrace) then LogErr.log ("[ast-query] " :: ss) else ()
+fun error ss = LogErr.parseError ss
+
 fun funcTy (func:Ast.FUNC)
     : Ast.TY = 
     let
-	val Ast.Func { ty, ... } = func
+	    val Ast.Func { ty, ... } = func
     in
-	ty
+	    ty
     end
-    
 
+fun funcTypeParams (func:Ast.FUNC)
+    : Ast.IDENT list = 
+    let
+	    val Ast.Func { fsig = Ast.FunctionSignature { typeParams, ... }, ... } = func
+    in
+	    typeParams
+    end
+
+fun paramTypesOfFuncTy (funcTy:Ast.TY)
+    : Ast.TYPE_EXPR list = 
+    let
+	    val Ast.Ty { expr = Ast.FunctionType { params, ... }, ... } = funcTy
+    in
+	    params
+    end
+
+fun paramTypesOfFuncTy (funcTy:Ast.TY)
+    : Ast.TYPE_EXPR list = 
+        case funcTy of 
+            Ast.Ty { expr = Ast.FunctionType { params, ... }, ... } => params
+          | _ => error ["paramTypesOfFuncTy: expected Ty with FunctionType"]
+
+
+fun resultTypeOfFuncTy (funcTy:Ast.TY)
+    : Ast.TYPE_EXPR = 
+    case funcTy of 
+        Ast.Ty { expr = Ast.FunctionType { result, ... }, ... } => result
+      | _ => error ["resultTypesOfFuncTy: expected Ty with FunctionType"]
+                 
 fun funcIsAbstract (func:Ast.FUNC) 
     : bool = 
     case func of 

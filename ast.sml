@@ -203,7 +203,6 @@ datatype PRAGMA =
      and FUNC =
          Func of 
          { name: FUNC_NAME,
-           typeParams: IDENT list,
            fsig: FUNC_SIG,
            native: bool,
            block: BLOCK option, (* NONE => abstract *)
@@ -223,7 +222,7 @@ datatype PRAGMA =
 
      and FUNC_SIG =
          FunctionSignature of 
-         { typeParams: TYPE_EXPR list,
+         { typeParams: IDENT list,
            params: BINDINGS,
            paramTypes: TYPE_EXPR list,
            defaults: EXPR list,
@@ -377,6 +376,9 @@ datatype PRAGMA =
        | QualifiedIdentifier of
            { qual : EXPR,
              ident : Ustring.STRING }
+       | TypeIdentifier of (* In a type context, these will be AppType *)
+         { ident : IDENT_EXPR,
+           typeArgs : TY list }
        | UnresolvedPath of (IDENT list * IDENT_EXPR) (* QualifiedIdentifier or ObjectRef *)
        | WildcardIdentifier
 

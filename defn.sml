@@ -1427,7 +1427,7 @@ and defFunc (env:ENV)
     : (Ast.HEAD * Ast.EXPR list * Ast.FUNC) = (* (settings, superArgs, func) *)    
     let
         val _ = trace [">> defFunc"]
-        val Ast.Func {name, typeParams, fsig, block, ty, native, loc, ...} = func
+        val Ast.Func {name, fsig, block, ty, native, loc, ...} = func
         val (funcType:Ast.FUNC_TYPE, _, _) = extractFuncType ty
                      
         val numParams = length (#params funcType)
@@ -1450,7 +1450,6 @@ and defFunc (env:ENV)
     in
         (Ast.Head (settingsRib, settingsInits), superArgs,
          Ast.Func {name = name,
-                   typeParams = typeParams,
                    fsig = fsig,
                    block = blockOpt,
                    defaults = defaults,
@@ -1632,7 +1631,6 @@ and makeAliasFixture (env:ENV)
             Ast.Func 
                 { name={ kind=Ast.Get,
                          ident=Ustring.empty},
-                  typeParams=[],
                   fsig=Ast.FunctionSignature 
                            {typeParams=[],params=([],[]),paramTypes=[],
                             defaults=[],ctorInits=NONE,
@@ -1654,7 +1652,6 @@ and makeAliasFixture (env:ENV)
             Ast.Func 
                 { name={kind=Ast.Set,
                         ident=Ustring.empty},
-                  typeParams=[],
                   fsig=Ast.FunctionSignature 
                            {typeParams=[],params=([],[]),paramTypes=[],
                             defaults=[],ctorInits=NONE,
@@ -1820,6 +1817,10 @@ and defIdentExpr (env:ENV)
           | Ast.AttributeIdentifier ai =>
             Ast.AttributeIdentifier (defIdentExpr env ai)
 
+          | Ast.TypeIdentifier { ident, typeArgs } =>
+            Ast.TypeIdentifier { ident=(defIdentExpr env ident),
+                                 typeArgs=map (defTyFromTy env) typeArgs }
+
           | Ast.QualifiedIdentifier { qual, ident } =>
             Ast.QualifiedIdentifier { qual = defExpr env qual,
                                       ident = ident }
@@ -1972,7 +1973,8 @@ and defLiteral (env:ENV)
     as an object reference.
 *)
 
-and resolvePath (env:ENV) (path:Ast.IDENT list)
+and resolvePath (env:ENV) 
+                (path:Ast.IDENT list)
     : Ast.EXPR =
     let
 val _ = dumpPath path
@@ -2184,6 +2186,11 @@ and defExpr (env:ENV)
                                Ast.LexicalRef {ident=Ast.QualifiedIdentifier {qual=(defExpr env base),
                                                                           ident=id},
                                            loc=loc}
+                         | (Ast.LiteralExpr _,Ast.TypeIdentifier {ident=Ast.Identifier {ident=id,...},typeArgs}) =>
+                           Ast.LexicalRef {ident=Ast.TypeIdentifier {ident=Ast.QualifiedIdentifier {qual=(defExpr env base),
+                                                                                                    ident=id},
+                                                                     typeArgs=map (defTyFromTy env) typeArgs},
+                                           loc=loc}
                          | (Ast.LiteralExpr _,_) =>
                                LogErr.defnError ["invalid package qualification"]
 
@@ -2279,8 +2286,16 @@ and defTypeExpr (env:ENV)
                     val base = resolvePath env p
                 in case (base,i) of
                    (Ast.LiteralExpr _,Ast.Identifier {ident=id,...}) =>
-                       Ast.TypeName (Ast.QualifiedIdentifier {qual=(defExpr env base),
-                                                              ident=id})
+                   Ast.TypeName (Ast.QualifiedIdentifier {qual=(defExpr env base),
+                                                          ident=id})
+                 | (Ast.LiteralExpr _,Ast.TypeIdentifier {ident=Ast.Identifier {ident=id,...},typeArgs}) =>
+                   let
+                       val groundArgs = map (Type.groundExpr o (Type.normalize (#program env))) typeArgs 
+                   in
+                       Ast.AppType { base = Ast.TypeName (Ast.QualifiedIdentifier {qual=(defExpr env base),
+                                                                                   ident=id}),
+                                     args=groundArgs}
+                   end
                  | (_,_) =>
                        LogErr.defnError ["invalid type expr ", Ustring.toAscii (hd p)]
                 end
