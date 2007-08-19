@@ -106,12 +106,12 @@ package cogen
 
     // Probable AST bug: should be no fixtures here, you can't define
     // vars in the WHILE head.
-    function cgWhileStmt(ctx, {body: body, labels: labels, expr: expr}) {
+    function cgWhileStmt(ctx, {stmt: stmt, labels: labels, expr: expr}) {
         let asm    = ctx.asm;
         let Lbreak = asm.newLabel();
         let Lcont  = asm.I_jump();
         let Ltop   = asm.I_label();
-        cgStmt(pushBreak(pushContinue(ctx, labels, Lcont), labels, Lbreak), body);
+        cgStmt(pushBreak(pushContinue(ctx, labels, Lcont), labels, Lbreak), stmt);
         asm.I_label(Lcont);
         cgExpr(ctx, expr);
         asm.I_iftrue(Ltop);
@@ -120,48 +120,52 @@ package cogen
 
     // Probable AST bug: should be no fixtures here, you can't define
     // vars in the DO-WHILE head.
-    function cgDoWhileStmt(ctx, {body: body, labels: labels, expr: expr}) {
+    function cgDoWhileStmt(ctx, {stmt: stmt, labels: labels, expr: expr}) {
         let asm    = ctx.asm;
         let Lbreak = asm.newLabel();
         let Lcont  = asm.newLabel();
         let Ltop   = asm.I_label();
-        cgStmt(pushBreak(pushContinue(ctx, labels, Lcont), labels, Lbreak), body);
+        cgStmt(pushBreak(pushContinue(ctx, labels, Lcont), labels, Lbreak), stmt);
         asm.I_label(Lcont);
         cgExpr(ctx, expr);
         asm.I_iftrue(Ltop);
         asm.I_label(Lbreak);
     }
 
-    function cgForStmt(ctx, {e1:e1, e2:e2, e3:e3, body:body, labels:labels}) {
+    function cgForStmt(ctx, {vars:vars,init:init,cond:cond,incr:incr,stmt:stmt,labels:labels}) {
         // FIXME: fixtures
         // FIXME: code shape?
+        let asm = ctx.asm;
         let Lbreak = asm.newLabel();
         let Lcont = asm.newLabel();
-        if (e1 != null)
-            cgExpr(ctx, e1);
+        if (init != null)
+            cgExpr(ctx, init);
         let Ltop = asm.I_label();
-        if (e2 != null) {
-            cgExpr(ctx, e2);
+        if (cond != null) {
+            cgExpr(ctx, cond);
             asm.I_iffalse(Lbreak);
         }
-        cgStmt(pushBreak(pushContinue(ctx, labels, Lcont), labels, Lbreak), body);
+        cgStmt(pushBreak(pushContinue(ctx, labels, Lcont), labels, Lbreak), stmt);
         asm.I_label(Lcont);
-        if (e3 != null)
-            cgExpr(ctx, e3);
+        if (incr != null)
+        {
+            cgExpr(ctx, incr);
+            asm.I_pop();
+        }
         asm.I_jump(Ltop);
         asm.I_label(Lbreak);
     }
 
-    function cgBreakStmt(ctx, {label: label}) {
+    function cgBreakStmt(ctx, {ident: ident}) {
         unstructuredControlFlow(ctx,
-                                (function (node) node.tag == "break" && (label == null || memberOf(label, stk.labels))),
+                                (function (node) node.tag == "break" && (ident == null || memberOf(ident, stk.labels))),
                                 true,
                                 "Internal error: definer should have checked that all referenced labels are defined");
     }
 
-    function cgContinueStmt(ctx, {label: label}) {
+    function cgContinueStmt(ctx, {ident: ident}) {
         unstructuredControlFlow(ctx,
-                                (function (node) node.tag == "continue" && (label == null || memberOf(label, stk.labels))),
+                                (function (node) node.tag == "continue" && (ident == null || memberOf(ident, stk.labels))),
                                 true,
                                 "Internal error: definer should have checked that all referenced labels are defined");
     }
@@ -207,15 +211,15 @@ package cogen
                 asm.I_label(Lnext);
                 Lnext = null;
             }
-            if (c.guard == null)
+            if (c.expr == null)
                 Ldefault = asm.I_label();
             else {
-                cgExpr(nctx, c.guard);
+                cgExpr(nctx, c.expr);
                 asm.I_getlocal(t);
                 asm.I_strictequals();
                 Lnext = asm.I_iffalse();
             }
-            let stmts = c.body;
+            let stmts = c.stmts;
             for ( let j=0 ; j < stmts.length ; j++ )
                 cgStmt(nctx, stmts[j] );
         }
@@ -227,6 +231,12 @@ package cogen
         asm.killTemp(t);
     }
 
+    function cgSwitchTypeStmt(ctx, {expr:expr, type:type, cases:cases}) {
+        let b = new Block({fixtures:[],inits:[]}, [new ThrowStmt(expr)]);
+
+        cgTryStmt(ctx, {block:b, catches:cases, finallyBlock:null} );        
+    }
+    
     function cgWithStmt(ctx, {expr:expr}) {
         let asm = ctx.asm;
         // FIXME: save the scope object in a register and record this fact in the ctx inside
@@ -239,6 +249,59 @@ package cogen
         asm.I_pushwith();
         cgStmt(ctx, body);
         asm.I_popscope();
+    }
+    
+    function cgTryStmt(ctx, {block:block, catches:catches, finallyBlock:finallyBlock}) {
+        let asm = ctx.asm;
+        let code_start = asm.length;
+        cgBlock(ctx, block);
+        let code_end = asm.length;
+        
+        let Lend = asm.newLabel();
+        asm.I_jump(Lend);
+
+        for( let i = 0; i < catches.length; ++i ) {
+            cgCatch(ctx, [code_start, code_end, Lend], catches[i]);
+        }
+        
+        asm.I_label(Lend);
+        
+        
+        //FIXME need to do finally
+    }
+    
+    function cgCatch(ctx, [code_start, code_end, Lend], {param:param, block:block} ) {
+        let {asm:asm, emitter:emitter, target:target} = ctx;
+        let catch_ctx = pushCatch(ctx);
+        
+        if( param.fixtures.length != 1 )
+            throw "Internal Error: catch should have 1 fixture";
+        
+        let [propname, fix] = param.fixtures[0];
+        
+        let param_name = emitter.fixtureNameToName(propname);
+        let param_type = emitter.typeFromTypeExpr(fix.type);
+        
+        let catch_idx = target.addException(new ABCException(code_start, code_end, asm.length, param_type, param_name));
+
+        asm.startCatch();
+
+        asm.I_getlocal(0);
+        asm.I_pushscope();
+        //FIXME need to restore activation object/with scopes
+        asm.I_newcatch(catch_idx);
+        asm.I_dup();
+        asm.I_pushscope();
+        
+        // Store the exception object in the catch scope.
+        asm.I_swap();
+        asm.I_setproperty(param_name);
+
+        // catch block body
+        cgBlock(catch_ctx, block);
+        
+        asm.I_popscope();
+        asm.I_jump(Lend);
     }
 
 }

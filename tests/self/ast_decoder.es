@@ -54,6 +54,22 @@ namespace Decode;
         return new Block (nd1,nd2);
     }
 
+    function blockOpt (ob) 
+        : BLOCK?
+    {
+        enter ("Decode::blockOpt ", ob);
+
+        if (ob === null) {
+            var nd1 = null;
+        }
+        else {
+            var nd1 = block (ob);
+        }
+
+        exit ("Decode::blockOpt");
+        return nd1;
+    }
+
     function head (ob) 
         : HEAD
     {
@@ -139,8 +155,9 @@ namespace Decode;
             let nd1 = func (ob.func);
             let nd2 = typeExpr (ob.type);
             let nd3 = ob.isReadOnly;
-            let nd4 = ob.isFinal;
-            var ndx = new MethodFixture (nd1,nd2,nd3,nd4);
+            let nd4 = ob.isOverride;
+            let nd5 = ob.isFinal;
+            var ndx = new MethodFixture (nd1,nd2,nd3,nd4,nd5);
             break;
         case 'ValFixture':
             let nd1 = typeExpr (ob.type);
@@ -315,6 +332,22 @@ namespace Decode;
         return nd1;
     }
 
+    function stmtOpt (ob) 
+        : STMT
+    {
+        enter ("Decode::stmtOpt ", ob);
+
+        if (ob !== null) {
+            var nd1 = stmt (ob);
+        }
+        else {
+            var nd1 = null;
+        }
+
+        exit ("Decode::stmtOpt ");
+        return nd1;
+    }
+
     function stmt (ob) 
         : STMT
     {
@@ -339,12 +372,10 @@ namespace Decode;
             var ndx = new ReturnStmt (nd1);
             break;
         case 'BreakStmt':
-            let nd1 = expr (ob.expr);
-            var ndx = new BreakStmt (nd1);
+            var ndx = new BreakStmt (ob.ident);
             break;
         case 'ContinueStmt':
-            let nd1 = expr (ob.expr);
-            var ndx = new ContinueStmt (nd1);
+            var ndx = new ContinueStmt (ob.ident);
             break;
         case 'BlockStmt':
             let nd1 = block (ob.block);
@@ -372,17 +403,18 @@ namespace Decode;
             var ndx = new WhileStmt (nd1,nd2,nd3);
             break;
         case 'ForStmt':
-            let nd1 = expr (ob.e1);
-            let nd2 = expr (ob.e2);
-            let nd3 = expr (ob.e3);
-            let nd4 = stmt (ob.stmt);
-            let nd5 = idents (ob.labels);
-            var ndx = new ForStmt (nd1,nd2,nd3,nd4,nd5);
+            let nd1 = head (ob.vars);
+            let nd2 = expr (ob.init);
+            let nd3 = expr (ob.cond);
+            let nd4 = expr (ob.incr);
+            let nd5 = stmt (ob.stmt);
+            let nd6 = idents (ob.labels);
+            var ndx = new ForStmt (nd1,nd2,nd3,nd4,nd5,nd6);
             break;
         case 'IfStmt':
             let nd1 = expr (ob.expr);
             let nd2 = stmt (ob.then);
-            let nd3 = stmt (ob.elseOpt);
+            let nd3 = stmtOpt (ob.elseOpt);
             var ndx = new IfStmt (nd1,nd2,nd3);
             break;
         case 'WithStmt':
@@ -393,18 +425,19 @@ namespace Decode;
         case 'SwitchStmt':
             let nd1 = expr (ob.expr);
             let nd2 = cases (ob.cases);
-            var ndx = new SwitchStmt (nd1,nd2);
+            let nd3 = cases (ob.labels);
+            var ndx = new SwitchStmt (nd1,nd2,nd3);
             break;
         case 'TryStmt':
             let nd1 = block (ob.block);
             let nd2 = catches (ob.catches);
-            let nd3 = finallyBlock (ob.finallyBlock);
+            let nd3 = blockOpt (ob.finallyBlock);
             var ndx = new TryStmt (nd1,nd2,nd3);
             break;
         case 'SwitchTypeStmt':
             let nd1 = expr (ob.expr);
             let nd2 = typeExpr (ob.type);
-            let nd3 = catches (ob.catches);
+            let nd3 = catches (ob.cases);
             var ndx = new SwitchTypeStmt (nd1,nd2,nd3);
             break;
         default:
@@ -435,7 +468,7 @@ namespace Decode;
     {
         enter ("Decode::switchCase ", ob.ast_class);
 
-        let nd1 = expr (ob.expr);
+        let nd1 = exprOpt (ob.expr);
         let nd2 = stmts (ob.stmts);
         var ndx = new Case (nd1,nd2);
 
@@ -471,6 +504,21 @@ namespace Decode;
         return ndx;
     }
 
+    function idents (ob) 
+        : IDENTS
+    {
+        enter ("Decode::idents ", ob.length);
+
+        var nd1 = [];
+        for (var i = 0; i < ob.length; ++i) {
+            var nd = ob[i];
+            nd1.push (nd);
+        }
+
+        exit ("Decode::idents");
+        return nd1;
+    }
+
     function exprs (ob) 
         : EXPRS
     {
@@ -485,6 +533,23 @@ namespace Decode;
         exit ("Decode::exprs");
         return nd1;
     }
+
+    function exprOpt (ob) 
+        : EXPR?
+    {
+        enter ("Decode::exprOpt ", ob);
+
+        if (ob !== null) {
+            var nd1 = expr (ob);
+        }
+        else {
+            var nd1 = null;
+        }
+
+        exit ("Decode::exprOpt ");
+        return nd1;
+    }
+
 
     function expr (ob) 
         : EXPR
@@ -804,10 +869,10 @@ namespace Decode;
             var ndx = new Type;
             break;
         default:
-            throw "error Decode::binOp " + ob.ast_class;
+            throw "error Decode::unOp " + ob.ast_class;
         }
 
-        exit ("Decode::binOp");
+        exit ("Decode::unOp");
         return ndx;
     }
 
@@ -1006,6 +1071,9 @@ namespace Decode;
             break;
         case 'LiteralDecimal':
             var ndx = new LiteralDecimal (ob.decimalValue);
+            break;
+        case 'LiteralBoolean':
+            var ndx = new LiteralBoolean (ob.booleanValue);
             break;
         default:
             throw "error Decode::literal " + ob.ast_class;

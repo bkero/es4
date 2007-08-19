@@ -620,10 +620,25 @@ namespace Token
         }
     }
 
-    function makeInstance(token_class:int, lexeme:String) : int
+    function makeInstance(kind:int, text:String) : int
     {
-        tokenStore.push(new Token(token_class, lexeme));
-        return tokenStore.length - 1;
+        function find() {
+            for ( var i=0 ; i < len ; i++ ) {
+                if (tokenStore[i].kind === kind &&
+                    tokenStore[i].utf8id == text) {
+                    return i;
+                }
+            }
+            return len;
+        }
+
+        var len = tokenStore.length;
+        var tid = find (kind,text);
+        if (tid === len) 
+        {
+            tokenStore.push(new Token(kind, text));
+        }
+        return tid;
     }
 
     function tokenKind (tid : int) : int
@@ -733,12 +748,12 @@ namespace Lexer
         {
             function pushToken (token)
             {
-                // print (token);
                 if (token == Token::Eol) {
                     lnCoord++;
                     colCoord = 0;
                 }
                 else {
+                    print ("token ",token);
                     colCoord += markIndex - lastMarkIndex;
                     coordList.push ([lnCoord,colCoord]);
                     tokenList.push (token);
@@ -770,12 +785,12 @@ namespace Lexer
             let c : int = next ();
             switch (c)
             {
-                case Char::Slash :
-                    return regexpFlags ();
+            case Char::Slash :
+                return regexpFlags ();
 	        case Char::EOS :
-		    throw "unexpected end of program in regexp literal";
-                default:
-                    return regexp ();
+                throw "unexpected end of program in regexp literal";
+            default:
+                return regexp ();
             }
         }
 

@@ -42,7 +42,7 @@ namespace Ast
 
 {
     use default namespace Ast;
-    use namespace intrinsic;
+    //    use namespace intrinsic;
 
     // POS
 
@@ -55,9 +55,17 @@ namespace Ast
     // BASIC TYPES
 
     type IDENT = String;   // unicode string
+    type IDENTS = [IDENT];
 
-    type HEAD = { fixtures: FIXTURES
-                , inits: INITS };
+    type HEAD = { fixtures: FIXTURES, inits: INITS }
+
+    class Head { 
+        const fixtures: FIXTURES;
+        const inits: INITS;
+        function Head (fixtures,inits)
+            : fixtures = fixtures
+            , inits = inits { }
+    }
 
     type FIXTURE_NAME =
        ( TempName
@@ -765,6 +773,7 @@ namespace Ast
     const letVarTag = new LetVar;
     const letConstTag = new LetConst;
 
+
     class VariableDefn {
         const ns: NAMESPACE;
         const isStatic: Boolean;
@@ -1167,8 +1176,11 @@ namespace Ast
     }
 
     class LabeledStmt {
-        const label : IDENT;
+        const ident : IDENT;
         const stmt : STMT;
+        function LabeledStmt (label,stmt)
+            : ident = ident
+            , stmt = stmt { }
     }
 
     class LetStmt {
@@ -1198,15 +1210,17 @@ namespace Ast
     }
 
     class ForStmt {
-        const e1 : EXPR?;
-        const e2 : EXPR?;
-        const e3 : EXPR?;
+        const vars : *; //HEAD~;
+        const init : EXPR?;
+        const cond : EXPR?;
+        const incr : EXPR?;
         const stmt : STMT;
         const labels : [IDENT];
-        function ForStmt (e1,e2,e3,stmt,labels)
-            : e1 = e1
-            , e2 = e2
-            , e3 = e3
+        function ForStmt (vars,init,cond,incr,stmt,labels)
+            : vars = vars
+            , init = init
+            , cond = cond
+            , incr = incr
             , stmt = stmt
             , labels = labels {}
     }
@@ -1223,10 +1237,12 @@ namespace Ast
 
     class SwitchStmt {
         const expr : EXPR;
-        const cases : CASES; // order matters
-        function SwitchStmt (expr, cases) 
+        const cases : CASES;
+        const labels : [IDENT];
+        function SwitchStmt (expr, cases, labels) 
             : expr = expr
-            , cases = cases { }
+            , cases = cases
+            , labels = labels { }
     }
 
     type CASE = Case;
@@ -1261,18 +1277,18 @@ namespace Ast
     class SwitchTypeStmt {
         const expr: EXPR;
         const type: TYPE_EXPR;
-        const catches: CATCHES;
-        function SwitchTypeStmt (expr,ty,catches)
+        const cases: CATCHES;
+        function SwitchTypeStmt (expr,ty,cases)
             : expr = expr
             , type = ty
-            , catches = catches { }
+            , cases = cases { }
     }
 
     type CATCH = Catch;
     type CATCHES = [CATCH];
 
     class Catch {
-        const param: HEAD;
+        const param  // : HEAD;
         const block: BLOCK;
         function Catch (param,block)
             : param = param

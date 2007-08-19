@@ -202,7 +202,7 @@ package cogen
 
         let incdec = function incdec(pre, inc) {
             let name;
-            switch type (e.ex) {
+            switch type (e.e1) {
             case (lr:LexicalRef) {
                 name = emitter.nameFromIdentExpr(lr.ident);
                 asm.I_findpropstrict(name);
@@ -235,7 +235,7 @@ package cogen
 
         switch type (e.op) {
         case (op:Delete) {
-            switch type (e.ex) {
+            switch type (e.e1) {
             case (lr:LexicalRef) {
                 let name = emitter.nameFromIdentExpr(lr.ident);
                 asm.I_findproperty(name);
@@ -246,26 +246,26 @@ package cogen
                 cgExpr(ctx, or.base);
                 asm.I_deleteproperty(name);
             }
-            case (ex:*) {
-                cgExpr(ctx, ex);
+            case (e1:*) {
+                cgExpr(ctx, e1);
                 asm.I_pop();
                 asm.I_pushtrue();
             }
             }
         }
         case (op:Void) {
-            cgExpr(ctx, e.ex);
+            cgExpr(ctx, e.e1);
             asm.I_pop();
             asm.I_pushundefined();
         }
         case (op:Typeof) {
-            if (e.ex is LexicalRef) {
-                let name = emitter.nameFromIdentExpr(e.ex.ident);
+            if (e.e1 is LexicalRef) {
+                let name = emitter.nameFromIdentExpr(e.e1.ident);
                 ctx.asm.I_findproperty(name);
                 ctx.asm.I_getproperty(name);
             }
             else {
-                cgExpr(ctx, e.ex);
+                cgExpr(ctx, e.e1);
                 // I_typeof is not compatible with ES4, so do something elaborate to work around that.
                 asm.I_dup();
                 asm.I_pushnull();
@@ -283,19 +283,19 @@ package cogen
         case (op:PostIncr) { incdec(false, true) }
         case (op:PostDecr) { incdec(false, false) }
         case (op:UnaryPlus) {
-            cgExpr(ctx, e.ex);
+            cgExpr(ctx, e.e1);
             asm.I_convert_d();
         }
         case (op:UnaryMinus) {
-            cgExpr(ctx, e.ex);
+            cgExpr(ctx, e.e1);
             asm.I_negate();
         }
         case (op:BitwiseNot) {
-            cgExpr(ctx, e.ex);
+            cgExpr(ctx, e.e1);
             asm.I_bitnot();
         }
         case (op:LogicalNot) {
-            cgExpr(ctx, e.ex);
+            cgExpr(ctx, e.e1);
             asm.I_not();
         }
         case (op:*) { throw "Internal error: Unimplemented unary operation" }

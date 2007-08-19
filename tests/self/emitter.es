@@ -276,6 +276,9 @@ package emitter
             return new Method(e, formals);
         }
 
+        public function addException(e) {
+            return init.addException(e);
+        }
         // Here we probably want: newVar, newConst, ... instead?
         public function addTrait(t) {
             return traits.push(t);
@@ -388,7 +391,7 @@ package emitter
 
     public class Method // extends AVM2Assembler
     {
-        public var e, formals, name, asm, traits = [], finalized=false, defaults = null;
+        public var e, formals, name, asm, traits = [], finalized=false, defaults = null, exceptions=[];
 
         function Method(e:ABCEmitter, formals:Array, name=null, standardPrologue=true) {
             asm = new AVM2Assembler(e.constants, formals.length);
@@ -413,6 +416,10 @@ package emitter
         public function setDefaults(d) {
             defaults = d;
         }
+
+        public function addException(e) {
+            return exceptions.push(e)-1;
+        }
         
         public function finalize() {
             if (finalized)
@@ -430,6 +437,9 @@ package emitter
             body.setCode(asm);
             for ( var i=0 ; i < traits.length ; i++ )
                 body.addTrait(traits[i]);
+            
+            for ( var i=0 ; i < exceptions.length; i++ )
+                body.addException(exceptions[i]);
             
             e.file.addMethodBody(body);
 

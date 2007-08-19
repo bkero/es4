@@ -29,8 +29,8 @@ namespace Encode;
             var str =
                 indent(nesting) + "{ 'ast_class': 'Program'"
               + indent(nesting) + ", 'packages': " + encodePackages (nd.packages,nesting+", 'packages': ".length)
-              + indent(nesting) + ", 'head': " + encodeHead (nd.head,nesting+", 'head': ".length)
-              + indent(nesting) + ", 'block': " + encodeBlock (nd.block,nesting+", 'block': ".length)
+              + indent(nesting) + ", 'head': " + head (nd.head,nesting+", 'head': ".length)
+              + indent(nesting) + ", 'block': " + block (nd.block,nesting+", 'block': ".length)
               + " }";
         }
         case (nd: *) {
@@ -86,7 +86,7 @@ namespace Encode;
         switch type (nd): FIXTURE_NAME {
         case (nd:Ast::PropName) {
 
-            print ("prop ",nd.name.id);
+            // print ("prop ",nd.name.id);
 
             var str =
                 "{ 'ast_class': 'PropName'"
@@ -128,6 +128,7 @@ namespace Encode;
             var str =
                 "{ 'ast_class': 'MethodFixture'"
               + indent(nesting) + ", 'func': " + encodeFunc (nd.func,nesting+", 'func': ".length)
+              + indent(nesting) + ", 'type': " + encodeTypeExpr (nd.type,nesting+", 'type': ".length)
               + indent(nesting) + ", 'isReadOnly': " + nd.isReadOnly
               + indent(nesting) + ", 'isOverride': " + nd.isOverride
               + indent(nesting) + ", 'isFinal': " + nd.isFinal
@@ -191,34 +192,36 @@ namespace Encode;
         return str;
     }
 
-    function encodeHead (nd /*: HEAD*/, nesting: int = 0)
+    function head (nd /*: HEAD*/, nesting: int = 0)
         : string {
-        enter ("encodeHead ",nesting);
+        enter ("Encode::head ",nesting);
+
         var str =
               "{ 'fixtures': [ " + encodeFixtures (nd.fixtures,nesting+"{ 'fixtures': [ ".length) + " ]"
             + indent(nesting) + ", 'inits': [ " + encodeInits (nd.inits,nesting+", 'inits': [ ".length)
             + " ] }";
-        exit ("encodeHead");
+
+        exit ("Encode::head");
         return str;
     }
 
-    function encodeBlock (nd: BLOCK, nesting: int = 0)
+    function block (nd: BLOCK, nesting: int = 0)
         : string {
-        enter ("encodeBlock ",nesting);
+        enter ("Encode::block ",nesting);
         var str;
         switch type (nd) : BLOCK {
         case (nd:Block) {
             var str =
                   "{ 'ast_class': 'Block'"
-                + indent(nesting) + ", 'head': " + encodeHead (nd.head,nesting+", 'head': ".length)
+                + indent(nesting) + ", 'head': " + head (nd.head,nesting+", 'head': ".length)
                 + indent(nesting) + ", 'stmts': [ " + stmts (nd.Ast::stmts,nesting+", 'stmts': [ ".length)
                 + " ] }";
         }
         case (x: *) {
-            throw "internalError: encodeBlock";
+            throw "internalError: Encode::block";
         }
         }
-        exit ("encodeBlock");
+        exit ("Encode::block");
         return str;
     }
 
@@ -231,7 +234,7 @@ namespace Encode;
         for (var i = 0; i < len; ++i) 
         {
             str = str 
-                + encodeStmt (nd[i], nesting)
+                + stmt (nd[i], nesting)
                 + indent (nesting-2)
                 + ", ";
         }
@@ -240,11 +243,11 @@ namespace Encode;
         return str;
     }
 
-    function encodeStmt (nd : STMT, nesting: int = 0)
+    function stmt (nd : STMT, nesting: int = 0)
         : string {
         var str = "";
-        enter ("encodeStmt");
-
+        enter ("stmt");
+        print ("  stmt");
         if (nd == null) {
             var str = "null";
         }
@@ -266,6 +269,30 @@ namespace Encode;
               + encodeExpr (nd.expr,nesting+", 'expr': ".length)
               + " }";
         }
+        case (nd: ThrowStmt) {
+            var str =
+                "{ 'ast_class': 'ThrowStmt'"
+              + indent(nesting)
+              + ", 'expr': "
+              + encodeExpr (nd.expr,nesting+", 'expr': ".length)
+              + " }";
+        }
+        case (nd: BreakStmt) {
+            var str =
+                "{ 'ast_class': 'BreakStmt'"
+              + indent(nesting)
+              + ", 'ident': "
+              + identOpt (nd.ident,nesting+", 'ident': ".length)
+              + " }";
+        }
+        case (nd: ContinueStmt) {
+            var str =
+                "{ 'ast_class': 'ContinueStmt'"
+              + indent(nesting)
+              + ", 'ident': "
+              + identOpt (nd.ident,nesting+", 'ident': ".length)
+              + " }";
+        }
         case (nd: IfStmt) {
             var str =
                 "{ 'ast_class': 'IfStmt'"
@@ -274,10 +301,10 @@ namespace Encode;
               + encodeExpr (nd.expr,nesting+", 'expr': ".length)
               + indent(nesting)
               + ", 'then': "
-              + encodeStmt (nd.then,nesting+", 'then': ".length)
+              + stmt (nd.then,nesting+", 'then': ".length)
               + indent(nesting)
               + ", 'elseOpt': "
-              + encodeStmt (nd.elseOpt,nesting+", 'elseOpt': ".length)
+              + stmt (nd.elseOpt,nesting+", 'elseOpt': ".length)
               + " }";
         }
         case (nd: WhileStmt) {
@@ -288,7 +315,61 @@ namespace Encode;
               + encodeExpr (nd.expr,nesting+", 'expr': ".length)
               + indent(nesting)
               + ", 'stmt': "
-              + encodeStmt (nd.body,nesting+", 'stmt': ".length)
+              + stmt (nd.stmt,nesting+", 'stmt': ".length)
+              + indent(nesting)
+              + ", 'labels': "
+              + "[]"  // for now: stmt (nd.stmt,nesting+", 'stmt': ".length)
+              + " }";
+        }
+        case (nd: SwitchStmt) {
+            var str =
+                "{ 'ast_class': 'SwitchStmt'"
+              + indent(nesting)
+              + ", 'expr': "
+              + encodeExpr (nd.expr,nesting+", 'expr': ".length)
+              + indent(nesting)
+              + ", 'cases': [ "
+              + cases (nd.cases,nesting+", 'cases': ".length) + " ]"
+              + indent(nesting)
+              + ", 'labels': "
+              + "[]"  // for now: stmt (nd.stmt,nesting+", 'stmt': ".length)
+              + " }";
+        }
+        case (nd: SwitchTypeStmt) {
+            var str =
+                "{ 'ast_class': 'SwitchTypeStmt'"
+              + indent(nesting)
+              + ", 'expr': "
+              + encodeExpr (nd.expr,nesting+", 'expr': ".length)
+              + indent(nesting)
+              + ", 'type': "
+              + encodeTypeExpr (nd.type,nesting+", 'type': ".length)
+              + indent(nesting)
+              + ", 'cases': [ "
+              + catches (nd.cases,nesting+", 'cases': ".length) + " ]"
+              + " }";
+        }
+        case (nd: ForStmt) {
+            var str =
+                "{ 'ast_class': 'ForStmt'"
+              + indent(nesting)
+              + ", 'vars': "
+              + head (nd.vars,nesting+", 'vars': ".length)
+              + indent(nesting)
+              + ", 'init': "
+              + exprOpt (nd.init,nesting+", 'init': ".length)
+              + indent(nesting)
+              + ", 'cond': "
+              + exprOpt (nd.cond,nesting+", 'cond': ".length)
+              + indent(nesting)
+              + ", 'incr': "
+              + exprOpt (nd.incr,nesting+", 'incr': ".length)
+              + indent(nesting)
+              + ", 'stmt': "
+              + stmt (nd.stmt,nesting+", 'stmt': ".length)
+              + indent(nesting)
+              + ", 'labels': "
+              + "[]"  // for now: stmt (nd.stmt,nesting+", 'stmt': ".length)
               + " }";
         }
         case (nd: BlockStmt) {
@@ -296,22 +377,108 @@ namespace Encode;
                 "{ 'ast_class': 'BlockStmt'"
               + indent(nesting)
               + ", 'block': "
-              + encodeBlock (nd.block,nesting+", 'block': ".length)
+              + block (nd.block,nesting+", 'block': ".length)
               + " }";
         }
         case (nd: ClassBlock) {
             var str =
                 "{ 'ast_class': 'ClassBlock'"
               + indent(nesting) + ", 'name': " + encodeName (nd.name,nesting+", 'name': ".length)
-              + indent(nesting) + ", 'block': " + encodeBlock (nd.block,nesting+", 'block': ".length)
+              + indent(nesting) + ", 'block': " + block (nd.block,nesting+", 'block': ".length)
+              + " }";
+        }
+        case (nd: TryStmt) {
+            var str =
+                "{ 'ast_class': 'TryStmt'"
+              + indent(nesting)
+              + ", 'block': "
+              + block (nd.block,nesting+", 'block': ".length)
+              + indent(nesting)
+              + ", 'catches': [ "
+              + catches (nd.catches,nesting+", 'catches': ".length) + " ]"
+              + indent(nesting)
+              + ", 'finallyBlock': "
+              + "null"  // for now: blockOpt (nd.finallyBlock,nesting+", 'finallyBlock': ".length)
               + " }";
         }
         case (x: *) {
-            throw "internalError: encodeStmt";
+            throw "error stmt " + nd;
         }
         }
         }
-        exit ("encodeStmt");
+        exit ("stmt");
+        return str;
+    }
+
+    function catches (nd /*: CATCHES*/, nesting: int = 0)
+        : string {
+        enter ("Encode::catches ", nd.length);
+
+        var str = "";
+        var len = nd.length;
+        for (var i = 0; i < len; ++i) 
+        {
+            str = str 
+                + catchClause (nd[i], nesting)
+                + indent (nesting-2)
+                + ", ";
+        }
+
+        exit ("Encode::catches ",str);
+        return str;
+    }
+
+    function catchClause (nd : CATCH, nesting: int = 0)
+        : string {
+        enter ("Encode::catchClause ");
+
+            var str =
+                "{ 'ast_class': 'Catch'"
+              + indent(nesting)
+              + ", 'param': "
+              + head (nd.param,nesting+", 'param': ".length)
+              + indent (nesting)
+              + ", 'block': "
+              + block (nd.block,nesting+", 'block': ".length)
+              + " }";
+
+        exit ("Encode::catchClause ",str);
+        return str;
+    }
+
+    function cases (nd /*: CASES*/, nesting: int = 0)
+        : string {
+        enter ("Encode::cases ", nd.length);
+
+        var str = "";
+        var len = nd.length;
+        for (var i = 0; i < len; ++i) 
+        {
+            str = str 
+                + caseElement (nd[i], nesting)
+                + indent (nesting-2)
+                + ", ";
+        }
+
+        exit ("Encode::cases ",str);
+        return str;
+    }
+
+    function caseElement (nd : CASE, nesting: int = 0)
+        : string {
+        enter ("Encode::caseElement ");
+
+            var str =
+                "{ 'ast_class': 'Case'"
+              + indent(nesting)
+              + ", 'expr': "
+              + exprOpt (nd.expr,nesting+", 'expr': ".length)
+              + indent (nesting)
+              + ", 'stmts': [ "
+              + stmts (nd.stmts,nesting+", 'stmts': ".length)
+              + " ] }";
+
+        exit ("Encode::caseElement ",str);
         return str;
     }
 
@@ -333,17 +500,31 @@ namespace Encode;
         return str;
     }
 
-    function encodeExprOption (nd : EXPR?, nesting: int = 0)
+    function exprOpt (nd : EXPR?, nesting: int = 0)
         : string {
-        enter ("encodeExprOption");
+        enter ("Encode::exprOpt");
         var str = "";
         if( nd === null ) {
-            var str = "'null'";
+            var str = "null";
         }
         else {
             var str = encodeExpr (nd,nesting);
         }
-        exit ("encodeExprOption ",str);
+        exit ("Encode::exprOpt ",str);
+        return str;
+    }
+
+    function identOpt (nd : IDENT?, nesting: int = 0)
+        : string {
+        enter ("Encode::identOpt");
+        var str = "";
+        if( nd === null ) {
+            var str = "null";
+        }
+        else {
+            var str = nd;
+        }
+        exit ("Encode::identOpt ",str);
         return str;
     }
 
@@ -352,102 +533,102 @@ namespace Encode;
         enter ("encodeExpr ",nd);
         var str = "";
         switch type (nd): EXPR {
-        case (le: LiteralExpr) {
+        case (nd: LiteralExpr) {
             var str =
                 "{ 'ast_class': 'LiteralExpr'"
               + indent(nesting)
               + ", 'literal': "
-              + encodeLiteral (le.literal,nesting+", 'literal': ".length)
+              + encodeLiteral (nd.literal,nesting+", 'literal': ".length)
               + " }";
         }
-        case (ex: ListExpr) {
+        case (nd: ListExpr) {
             var str =
                 "{ 'ast_class': 'ListExpr'"
               + indent(nesting)
               + ", 'exprs': [ "
-              + exprs (ex.exprs,nesting+", 'exprs': [ ".length)
+              + exprs (nd.exprs,nesting+", 'exprs': [ ".length)
               + " ] }";
         }
-        case (ex: CallExpr) {
+        case (nd: CallExpr) {
             var str =
                 "{ 'ast_class': 'CallExpr'"
               + indent(nesting)
               + ", 'expr': "
-              + encodeExpr (ex.expr,nesting+", 'expr': ".length)
+              + encodeExpr (nd.expr,nesting+", 'expr': ".length)
               + indent(nesting)
               + ", 'args': [ "
-              + exprs (ex.args,nesting+", 'args': [ ".length)
+              + exprs (nd.args,nesting+", 'args': [ ".length)
               + " ] }";
         }
-        case (ex: NewExpr) {
+        case (nd: NewExpr) {
             enter ("newexpr");
             var str =
                 "{ 'ast_class': 'NewExpr'"
               + indent(nesting)
               + ", 'expr': "
-              + encodeExpr (ex.expr,nesting+", 'expr': ".length)
+              + encodeExpr (nd.expr,nesting+", 'expr': ".length)
               + indent(nesting)
               + ", 'args': [ "
-              + exprs (ex.args,nesting+", 'args': [ ".length)
+              + exprs (nd.args,nesting+", 'args': [ ".length)
               + " ] }";
             exit ("newexpr");
         }
-        case (ex: LexicalRef) {
+        case (nd: LexicalRef) {
             var str =
                 "{ 'ast_class': 'LexicalRef'"
               + indent(nesting)
               + ", 'ident': "
-              + encodeIdentExpr (ex.ident,nesting+", 'ident': ".length)
+              + encodeIdentExpr (nd.ident,nesting+", 'ident': ".length)
               + " }";
         }
-        case (ex: ObjectRef) {
+        case (nd: ObjectRef) {
             var str =
                 "{ 'ast_class': 'ObjectRef'"
               + indent(nesting)
               + ", 'base': "
-              + encodeExpr (ex.base,nesting+", 'base': ".length)
+              + encodeExpr (nd.base,nesting+", 'base': ".length)
               + indent(nesting)
               + ", 'ident': "
-              + encodeIdentExpr (ex.ident,nesting+", 'ident': ".length)
+              + encodeIdentExpr (nd.ident,nesting+", 'ident': ".length)
               + " }";
         }
-        case (ex: SetExpr) {
+        case (nd: SetExpr) {
             var str =
                 "{ 'ast_class': 'SetExpr'"
               + indent(nesting)
               + ", 'op': "
-              + encodeAssignOp (ex.op,nesting,", 'op': ".length)
+              + encodeAssignOp (nd.op,nesting,", 'op': ".length)
               + indent(nesting)
               + ", 'le': "
-              + encodeExpr (ex.le,nesting+", 'le': ".length)
+              + encodeExpr (nd.le,nesting+", 'le': ".length)
               + indent(nesting)
               + ", 're': "
-              + encodeExpr (ex.re,nesting+", 're': ".length)
+              + encodeExpr (nd.re,nesting+", 're': ".length)
               + " }";
         }
-        case (ex: BinaryExpr) {
+        case (nd: BinaryExpr) {
             var str =
                 "{ 'ast_class': 'BinaryExpr'"
               + indent(nesting)
               + ", 'op': "
-              + encodeBinOp (ex.op,nesting,", 'op': ".length)
+              + encodeBinOp (nd.op,nesting,", 'op': ".length)
               + indent(nesting)
               + ", 'e1': "
-              + encodeExpr (ex.e1,nesting+", 'e1': ".length)
+              + encodeExpr (nd.e1,nesting+", 'e1': ".length)
               + indent(nesting)
               + ", 'e2': "
-              + encodeExpr (ex.e2,nesting+", 'e2': ".length)
+              + encodeExpr (nd.e2,nesting+", 'e2': ".length)
               + " }";
         }
-        case (ex: UnaryExpr) {
+        case (nd: UnaryExpr) {
             var str =
                 "{ 'ast_class': 'UnaryExpr'"
               + indent(nesting)
               + ", 'op': "
-              + encodeUnOp (ex.op,nesting,", 'op': ".length)
+              + encodeUnOp (nd.op,nesting,", 'op': ".length)
               + indent(nesting)
-              + ", 'ex': "
-              + encodeExpr (ex.ex,nesting+", 'ex': ".length)
+              + ", 'e1': "
+              + encodeExpr (nd.e1,nesting+", 'e1': ".length)
               + " }";
         }
         case (nd: InitExpr) {
@@ -458,7 +639,7 @@ namespace Encode;
               + encodeInitTarget (nd.target,nesting+", 'target': ".length)
               + indent(nesting)
               + ", 'head': "
-              + encodeHead (nd.head,nesting+", 'head': ".length)
+              + head (nd.head,nesting+", 'head': ".length)
               + indent(nesting)
               + ", 'inits': [ "
               + encodeInits (nd.inits,nesting+", 'inits': [ ".length)
@@ -469,7 +650,7 @@ namespace Encode;
                 "{ 'ast_class': 'LetExpr'"
               + indent(nesting)
               + ", 'head': "
-              + encodeHead (nd.head,nesting+", 'head': ".length)
+              + head (nd.head,nesting+", 'head': ".length)
               + indent(nesting)
               + ", 'expr': "
               + encodeExpr (nd.expr,nesting+", 'expr': ".length)
@@ -1048,9 +1229,9 @@ namespace Encode;
             "{ 'ast_class': 'Func'"
           + indent(nesting) + ", 'name': " + encodeFuncName (nd.name,nesting+", 'name': ".length)
           + indent(nesting) + ", 'isNative': " + nd.isNative
-          + indent(nesting) + ", 'block': " + encodeBlock (nd.block,nesting+", 'block': ".length)
-          + indent(nesting) + ", 'params': " + encodeHead (nd.params,nesting+", 'params': ".length)
-          + indent(nesting) + ", 'vars': " + encodeHead (nd.vars,nesting+", 'vars': ".length)
+          + indent(nesting) + ", 'block': " + block (nd.block,nesting+", 'block': ".length)
+          + indent(nesting) + ", 'params': " + head (nd.params,nesting+", 'params': ".length)
+          + indent(nesting) + ", 'vars': " + head (nd.vars,nesting+", 'vars': ".length)
           + indent(nesting) + ", 'defaults': [" + exprs (nd.defaults,nesting+", 'defaults': ".length) + " ]"
           + indent(nesting) + ", 'type': " + encodeTypeExpr (nd.type,nesting+", 'type': ".length)
           + " }";
@@ -1064,14 +1245,15 @@ namespace Encode;
 
         enter ("encodeCls ",nd);
 
+        print ("cls ",nd.name.id);
         var str =
             "{ 'ast_class': 'Cls'"
           + indent(nesting) + ", 'name': " + encodeName (nd.name,nesting+", 'name': ".length)
           + indent(nesting) + ", 'baseName': " + encodeName (nd.baseName,nesting+", 'baseName': ".length)
           + indent(nesting) + ", 'interfaceNames': " + "[]" //encodeNames (nd.interfaceNames,nesting+", 'interfaceNames': ".length)
           + indent(nesting) + ", 'constructor': " + encodeCtor (nd.constructor,nesting+", 'constructor': ".length)
-          + indent(nesting) + ", 'classHead': " + encodeHead (nd.classHead,nesting+", 'classHead': ".length)
-          + indent(nesting) + ", 'instanceHead': " + encodeHead (nd.instanceHead,nesting+", 'instanceHead': ".length)
+          + indent(nesting) + ", 'classHead': " + head (nd.classHead,nesting+", 'classHead': ".length)
+          + indent(nesting) + ", 'instanceHead': " + head (nd.instanceHead,nesting+", 'instanceHead': ".length)
           + indent(nesting) + ", 'classType': " + encodeTypeExpr (nd.classType,nesting+", 'classType': ".length)
           + indent(nesting) + ", 'instanceType': " + encodeTypeExpr (nd.instanceType,nesting+", 'instanceType': ".length)
           + " }";
