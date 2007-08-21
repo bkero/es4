@@ -264,7 +264,7 @@ package cogen
         function extractDefaults(expr)
             emitter.defaultExpr(expr);
 
-        return map(extractDefaultValues, f.defaults);
+        return map(extractDefaults, f.defaults);
     }
     
     /* Create a method trait in the ABCFile

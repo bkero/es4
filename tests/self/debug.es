@@ -1,6 +1,6 @@
 //module debug
 {
-    use namespace intrinsic;
+//    use namespace intrinsic;
 
     namespace Debug;
     namespace Release;
@@ -29,3 +29,9 @@
     Release function assert (e) { }
 } // end module debug
 
+{
+
+    use namespace Debug;
+    enter ("foo")
+    exit ("foo")
+}

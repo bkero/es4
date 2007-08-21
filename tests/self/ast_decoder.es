@@ -31,6 +31,8 @@ namespace Decode;
         return new Program (nd1,nd2,nd3);
     }
 
+(1/2)
+
     function packages (obj) 
         : PACKAGES
     {
@@ -907,7 +909,7 @@ namespace Decode;
             break;
         case 'ArrayType':
             var nd1 = typeExprs (ob.types);
-            var ndx = new UnionType (nd1);
+            var ndx = new ArrayType (nd1);
             break;
         case 'ObjectType':
             var nd1 = fieldTypes (ob.fields);
@@ -993,6 +995,11 @@ namespace Decode;
             var nd1 = ob.ident;
             var nd2 = namespaces (ob.nss);
             var ndx = new Identifier (nd1,nd2);
+            break;
+        case 'ReservedNamespace':
+            var nd1 = ob.ns;
+            var nd2 = namespace (ob.ns);
+            var ndx = new ReservedNamespace (nd1);
             break;
         default:
             throw "Decode::identExpr error";

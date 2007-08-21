@@ -715,6 +715,14 @@ namespace Encode;
               + encodeIdentExpr (ie.ident,nesting+", 'ident': ".length)
               + " }";
         }
+        case (ie: ReservedNamespace) {
+            var str =
+                "{ 'ast_class': 'ReservedNamespace'"
+              + indent(nesting)
+              + ", 'ns': "
+              + encodeNamespace (ie.ns,nesting+", 'ns': ".length)
+              + " }";
+        }
         case (x: *) {
             throw "internalError: encodeExpr: "+nd;
         }
