@@ -9,6 +9,8 @@ possible to invoke the global object as a function.  The values of the
 [[Prototype]] and [[Class]] properties of the global object are
 implementation-dependent.
 
+== Synopsis ==
+
 <p>The global object contains the following properties, functions,
 types, and class definitions.
 
@@ -41,6 +43,9 @@ __ES4__ class Name <LDOTS>
 __ES4__ class Namespace <LDOTS>
 __ES4__ class ByteArray <LDOTS>
 __ES4__ class Map <LDOTS>
+__ES4__ class IdentityMap <LDOTS>
+
+__ES4__ interface ObjectIdentity <LDOTS>
 
 __ES4__ type EnumerableId = <LDOTS>
 __ES4__ type Numeric = <LDOTS>
@@ -169,7 +174,7 @@ of the Standard, the value of ''__ECMASCRIPT_VERSION__'' is 4.
 
 === eval (s) ===
 
-<p> When the intrinsic and non-intrinsic ''eval'' functions are called
+<P> When the intrinsic and non-intrinsic ''eval'' functions are called
 directly by name (that is, by the explicit use of the name ''eval'' as
 an Identifier which is the MemberExpression in a CallExpression) they
 are treated like operators in the language.  See <XREF

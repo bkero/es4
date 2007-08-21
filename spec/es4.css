@@ -7,7 +7,8 @@
 .nonterm { padding-top: 1em }
 .xref { border: thin solid red; }
 
-code { font-size: 10pt; font-style: normal; font-weight: normal }
+P code { font-size: 10pt }
+code { font-style: normal; font-weight: normal }
 
 pre { font-size: 8pt }
 

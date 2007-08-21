@@ -1,0 +1,91 @@
+= The class "String" =
+
+<P>There are two native string classes, ''String'' and ''string'', the
+latter a subclass of the former.  Instances of ''String'' are
+compatible with ''String'' objects in 3rd Edition, while instances of
+''string'' are compatible with ''string'' values in 3rd Edition.
+
+
+== The class ''String'' ==
+
+<P>The String class is dynamic, non-final, and holds a sequence of
+Unicode character values (its "string value").  The string value is
+immutable and is set at the time a String object is constructed.
+
+=== Synopsis ===
+
+{{{
+dynamic class String
+{
+    <SIGNATURE file="String.es" name="function String">
+    <SIGNATURE file="String.es" name="meta static function invoke">
+
+    <SIGNATURE file="String.es" name="static function fromCharCode">
+    <SIGNATURE file="String.es" name="static function charAt">
+    <SIGNATURE file="String.es" name="static function charCodeAt">
+    <SIGNATURE file="String.es" name="static function concat">
+    <SIGNATURE file="String.es" name="static function indexOf">
+    <SIGNATURE file="String.es" name="static function lastIndexOf">
+    <SIGNATURE file="String.es" name="static function localeCompare">
+    <SIGNATURE file="String.es" name="static function match">
+    <SIGNATURE file="String.es" name="static function replace">
+    <SIGNATURE file="String.es" name="static function search">
+    <SIGNATURE file="String.es" name="static function slice">
+    <SIGNATURE file="String.es" name="static function split">
+    <SIGNATURE file="String.es" name="static function substring">
+    <SIGNATURE file="String.es" name="static function toLowerCase">
+    <SIGNATURE file="String.es" name="static function toLocaleLowerCase">
+    <SIGNATURE file="String.es" name="static function toUpperCase">
+    <SIGNATURE file="String.es" name="static function toLocaleUpperCase">
+    <SIGNATURE file="String.es" name="static function trim">
+
+    static const length: uint = 1
+    static const prototype: Object = <LDOTS>
+
+    <SIGNATURE file="String.es" name="intrinsic function fromCharCode">
+    <SIGNATURE file="String.es" name="intrinsic function charAt">
+    <SIGNATURE file="String.es" name="intrinsic function charCodeAt">
+    <SIGNATURE file="String.es" name="intrinsic function concat">
+    <SIGNATURE file="String.es" name="intrinsic function indexOf">
+    <SIGNATURE file="String.es" name="intrinsic function lastIndexOf">
+    <SIGNATURE file="String.es" name="intrinsic function localeCompare">
+    <SIGNATURE file="String.es" name="intrinsic function match">
+    <SIGNATURE file="String.es" name="intrinsic function replace">
+    <SIGNATURE file="String.es" name="intrinsic function search">
+    <SIGNATURE file="String.es" name="intrinsic function slice">
+    <SIGNATURE file="String.es" name="intrinsic function split">
+    <SIGNATURE file="String.es" name="intrinsic function substring">
+    <SIGNATURE file="String.es" name="intrinsic function toLowerCase">
+    <SIGNATURE file="String.es" name="intrinsic function toLocaleLowerCase">
+    <SIGNATURE file="String.es" name="intrinsic function toUpperCase">
+    <SIGNATURE file="String.es" name="intrinsic function toLocaleUpperCase">
+    <SIGNATURE file="String.es" name="intrinsic function trim">
+
+    <SIGNATURE file="String.es" name="function get length">
+    
+    <SIGNATURE file="String.es" name="prototype function charAt">
+    <SIGNATURE file="String.es" name="prototype function charCodeAt">
+    <SIGNATURE file="String.es" name="prototype function concat">
+    <SIGNATURE file="String.es" name="prototype function indexOf">
+    <SIGNATURE file="String.es" name="prototype function lastIndexOf">
+    <SIGNATURE file="String.es" name="prototype function localeCompare">
+    <SIGNATURE file="String.es" name="prototype function match">
+    <SIGNATURE file="String.es" name="prototype function replace">
+    <SIGNATURE file="String.es" name="prototype function search">
+    <SIGNATURE file="String.es" name="prototype function slice">
+    <SIGNATURE file="String.es" name="prototype function split">
+    <SIGNATURE file="String.es" name="prototype function substring">
+    <SIGNATURE file="String.es" name="prototype function toLowerCase">
+    <SIGNATURE file="String.es" name="prototype function toLocaleLowerCase">
+    <SIGNATURE file="String.es" name="prototype function toUpperCase">
+    <SIGNATURE file="String.es" name="prototype function toLocaleUpperCase">
+    <SIGNATURE file="String.es" name="prototype function trim">
+}
+}}}
+
+
+<FIXME> Should ''string'' methods be generic (ie unconstrained in
+their object argument), or only ''String'' methods?  The prototype
+methods on ''string'' have to be generic, for sure, but the static
+methods are new and we can choose.
+
