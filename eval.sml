@@ -110,33 +110,7 @@ and NumberToString (r:Real64.real)
                                       else (hd digits) :: #"." :: ((tl digits) @ expstr())))
                     end
 
-fun push (name:string) (args:Mach.VAL list) =
-    let
-        val newStack = { name = name, args = args } :: (!stack)
-    in
-        stack := newStack;
-        if !traceStack
-        then LogErr.log ("[stack] " :: [stackString ()])
-        else ();
-        case !doProfile of
-            NONE => ()
-          | SOME n =>
-            let
-                val n = Int.min (n, length newStack)
-                val frameNames = map (#name) (List.take (newStack, n))
-                val count = case StrListMap.find ((!profileMap), frameNames) of
-                                NONE => 1
-                              | SOME k => (k+1)
-            in
-                profileMap := StrListMap.insert ((!profileMap), frameNames, count)
-            end
-    end
 
-fun pop _ =
-    (stack := tl (!stack);
-     if !traceStack
-     then LogErr.log ("[stack] " :: [stackString()])
-     else ())
 
 (* Exceptions for object-language control transfer. *)
 exception ContinueException of (Ast.IDENT option)
