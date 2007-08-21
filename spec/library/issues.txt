@@ -23,3 +23,11 @@
 
   Alternatively, impement an interface Array.prototype.find() that
   returns an index if it finds the element or -1 if not.
+
+* Is the interface to the static Array methods typed or untyped?  The
+  interface to the prototype methods must be untyped for backwards
+  compatibility, and the interface to the intrinsic methods must be
+  typed because that's the "right thing"; the statics occupy a middle
+  ground -- they are in FF (and are untyped there) but are not
+  implemented elsewhere, yet in some sense it's "right" for them to be
+  typed.

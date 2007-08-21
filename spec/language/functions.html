@@ -1,0 +1,133 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+<title>Untitled Document</title>
+</head>
+
+<body>
+
+
+<h1>Functions</h1>
+<p>
+ A function is a callable object. In general functions consist of a block of code, a set of traits, and a list of scopes. Instance methods are functions that also consist of a receiver object that this references are bound to.
+</p>
+<h2>Function modifiers</h2>
+<p>
+ When allowed by the context of the definition, the following attributes modify a variable definition.  
+</p>
+<ul>
+<li class="level1"><div class="li"> Access control namespaces</div>
+</li>
+<li class="level1"><div class="li"> User defined namespaces</div>
+</li>
+<li class="level1"><div class="li"> <code>static</code></div>
+</li>
+<li class="level1"><div class="li"> <code>final</code></div>
+</li>
+<li class="level1"><div class="li"> <code>override</code></div>
+</li>
+<li class="level1"><div class="li"> <code>native</code></div>
+</li>
+<li class="level1"><div class="li"> <code>prototype</code></div>
+</li>
+</ul>
+<p>
+ Access control and visibility control namespaces specify the namespace part of the function name. 
+</p>
+<p>
+The <code>static</code> attribute may only be used inside a class definition and causes the function to become a trait of the class object rather than the instance object. 
+</p>
+<p>
+The <code>final</code> attribute may only be used on a non-<code>static</code> function definition inside a class. A function modified by <code>final</code> cannot be overridden.
+</p>
+<p>
+The <code>override</code> attribute may only be used on a non-<code>static</code> function definition inside a class. A function modified by <code>override</code> will override a method with the same name and signature as a non-<code>final</code> method of a base class.
+</p>
+<p>
+The <code>native</code> attribute may be used to indicate that that the function is implemented in an implementation defined way. The compiler should generate native stubs for functions that have this attribute.
+</p>
+<p>
+The <code>prototype</code> attribute may only be used inside a class definition  and causes the function to be added to the class&#8217;s prototype object.
+</p>
+<h2>Function signatures</h2>
+<p>
+ A function signature includes the number and types of its parameters and its result type. Like variable type annotations, the types of a function signature affect the implicit conversion of argument and return values when calling to and returning from a function. Function signatures are also used to match inherited methods to methods in a derived class.
+</p>
+<h2>Function objects</h2>
+<p>
+ Global and nested functions can be used as constructors in instantiation expressions. For example,
+</p>
+<pre class="code javascript"><span class="kw2">function</span> A<span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span> <span class="kw1">this</span>.<span class="me1">x</span> = <span class="nu0">10</span> <span class="br0">&#125;</span>
+<span class="kw2">var</span> o = <span class="kw2">new</span> A
+<span class="kw3">print</span><span class="br0">&#40;</span>o.<span class="me1">x</span><span class="br0">&#41;</span>     <span class="co1">// traces 10</span></pre>
+<p>
+Function objects have a property named <code>prototype</code> whose value is used to initialize the intrinsic delegate property of the objects it creates. The prototype property has a default value of a new instance of the class Object. Building on the example above,
+</p>
+<pre class="code javascript"><span class="kw2">function</span> A<span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span> <span class="kw1">this</span>.<span class="me1">x</span> = <span class="nu0">10</span> <span class="br0">&#125;</span>
+<span class="kw2">function</span> B<span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span><span class="br0">&#125;</span>
+B.<span class="me1">prototype</span> = <span class="kw2">new</span> A
+<span class="kw2">var</span> o = <span class="kw2">new</span> B
+<span class="kw3">print</span><span class="br0">&#40;</span>o.<span class="me1">x</span><span class="br0">&#41;</span>     <span class="co1">// traces 10</span></pre>
+<p>
+The value of <code>o</code> is an instance of <code>B</code> which delegates to an instance of <code>A</code> which has a property named <code>x</code> with value of <code>10</code>.
+</p>
+<p>
+Constructor methods inside of a class are also used to create objects. But unlike constructor functions, constructor methods create objects with a set of fixed properties (traits) associated with its class, and a delegate that is also an instance of its class.
+</p>
+<pre class="code javascript"><span class="kw2">class</span> A <span class="br0">&#123;</span>
+    <span class="kw2">var</span> x
+    <span class="kw2">function</span> A<span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span> <span class="kw1">this</span>.<span class="me1">x</span> = <span class="nu0">10</span> <span class="br0">&#125;</span>
+<span class="br0">&#125;</span>
+<span class="kw2">var</span> o = <span class="kw2">new</span> A
+<span class="kw3">print</span><span class="br0">&#40;</span>o.<span class="me1">x</span><span class="br0">&#41;</span>     <span class="co1">// traces 10</span></pre>
+<p>
+There are some subtle differences between this example and the one involving a function constructor above: 
+</p>
+<ul>
+<li class="level1"><div class="li"> <code>x</code> is a fixed property of each instance of <code>A</code> rather than a dynamic property</div>
+</li>
+<li class="level1"><div class="li"> <code>A.prototype</code> is an instance of <code>A</code> rather than an instance of <code>Object</code></div>
+</li>
+<li class="level1"><div class="li"> The expression <code>A(expr)</code> does not call the function <code>A</code> defined in class <code>A</code>. It results in an explicit conversion of the value of <code>expr</code> to the type <code>A</code></div>
+</li>
+</ul>
+<p>
+ Class methods are functions that are defined with the <code>static</code> attribute inside of a class definition. A class method cannot be used as a constructor and does not define <code>this</code>. Class methods are in the scope of the class object they are defined in.
+</p>
+<p>
+Instance methods are functions that are defined without the static attribute and inside a class definition. Instance methods are associated with an instance of the class they are defined in. Instance methods can override or implement inherited class or interface methods, and always have a value bound to <code>this</code>.
+</p>
+<p>
+The value of <code>this</code> in an instance method is a reference to the instance that is associated with the method. When an instance method is extracted from an object, a bound method is created to bind the value of <code>this</code> to that host object. Assignment of the bound method to a property of another object does not affect the binding of <code>this</code>. For example,
+</p>
+<pre class="code javascript"><span class="kw2">class</span> A <span class="br0">&#123;</span>
+    <span class="kw2">var</span> x
+    <span class="kw2">function</span> A<span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span> <span class="kw1">this</span>.<span class="me1">x</span> = <span class="nu0">10</span> <span class="br0">&#125;</span>
+    <span class="kw2">function</span> m<span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span> <span class="kw3">print</span><span class="br0">&#40;</span><span class="kw1">this</span>.<span class="me1">x</span><span class="br0">&#41;</span> <span class="br0">&#125;</span>
+<span class="br0">&#125;</span>
+<span class="kw2">var</span> a = <span class="kw2">new</span> A<span class="br0">&#40;</span><span class="br0">&#41;</span>
+<span class="kw2">var</span> o = <span class="br0">&#123;</span> x : <span class="nu0">20</span> <span class="br0">&#125;</span>
+o.<span class="me1">m</span> = a.<span class="me1">m</span>
+o.<span class="me1">m</span><span class="br0">&#40;</span><span class="br0">&#41;</span>   <span class="co1">// traces 10</span></pre>
+<h2>Proper tail calls</h2>
+<p>
+ <strong>PROPOSAL</strong> &mdash; Please see the <a href="/ECMA/wiki/doku.php?id=proposals:proper_tail_calls" class="wikilink1" title="proposals:proper_tail_calls" onclick="return svchk()" onkeypress="return svchk()">Proper tail calls proposal page</a> for more information.
+</p>
+<h2>Getters and Setters</h2>
+<p>
+ <strong>PROPOSAL</strong> &mdash; Please see the <a href="/ECMA/wiki/doku.php?id=proposals:getters_and_setters" class="wikilink1" title="proposals:getters_and_setters" onclick="return svchk()" onkeypress="return svchk()">getters and setters proposal page</a> for more information.
+</p>
+<p>
+[There should be something in the spec and grammar for object initialisers, too.
+</p>
+<p>
+ &mdash; <em><a href="mailto:%26%23x62%3B%26%23x72%3B%26%23x65%3B%26%23x6e%3B%26%23x64%3B%26%23x61%3B%26%23x6e%3B%26%23x40%3B%26%23x6d%3B%26%23x6f%3B%26%23x7a%3B%26%23x69%3B%26%23x6c%3B%26%23x6c%3B%26%23x61%3B%26%23x2e%3B%26%23x6f%3B%26%23x72%3B%26%23x67%3B" class="mail" title="&#x62;&#x72;&#x65;&#x6e;&#x64;&#x61;&#x6e;&#x40;&#x6d;&#x6f;&#x7a;&#x69;&#x6c;&#x6c;&#x61;&#x2e;&#x6f;&#x72;&#x67;">Brendan Eich</a> 2006/10/19 13:01</em>]
+</p>
+<h2>Catchalls</h2>
+<p>
+ <strong>PROPOSAL</strong> &mdash; Please see the <a href="/ECMA/wiki/doku.php?id=proposals:catchalls" class="wikilink1" title="proposals:catchalls" onclick="return svchk()" onkeypress="return svchk()">catchalls proposal page</a> for more information.
+</p>
+
+</body>
+</html>

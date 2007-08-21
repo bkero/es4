@@ -1,0 +1,302 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+<title>Untitled Document</title>
+</head>
+
+<body>
+
+
+<h1>Directives</h1>
+<p>
+ <strong>PROPOSAL</strong> &mdash; Please see the <a href="/ECMA/wiki/doku.php?id=proposals:syntax_for_pragmas" class="wikilink1" title="proposals:syntax_for_pragmas" onclick="return svchk()" onkeypress="return svchk()">Syntax for pragmas proposal page</a> for more information.
+</p>
+<h3>Syntax</h3>
+<table border="1" cellspacing="0" cellpadding="3" class="inline">
+	<tr>
+		<th colspan="2"> Directive </th>
+	</tr>
+	<tr>
+		<td class="rightalign">  </td><td class="leftalign"> EmptyStatement                                   </td>
+	</tr>
+	<tr>
+		<td class="rightalign">  </td><td class="leftalign"> Statement                                        </td>
+	</tr>
+	<tr>
+		<td class="rightalign">  </td><td class="leftalign"> AnnotatableDirective                             </td>
+	</tr>
+	<tr>
+		<td class="rightalign">  </td><td class="leftalign"> Attributes [no line break] AnnotatableDirective  </td>
+	</tr>
+	<tr>
+		<td class="rightalign">  </td><td class="leftalign"> IncludeDirective Semicolon                       </td>
+	</tr>
+	<tr>
+		<td class="rightalign">  </td><td class="leftalign"> ImportDirective Semicolon                        </td>
+	</tr>
+	<tr>
+		<td class="rightalign">  </td><td class="leftalign"> UseDirective Semicolon                           </td>
+	</tr>
+</table>
+<br />
+<table border="1" cellspacing="0" cellpadding="3" class="inline">
+	<tr>
+		<th colspan="2"> AnnotatableDirective </th>
+	</tr>
+	<tr>
+		<td class="rightalign">  </td><td class="leftalign"> VariableDefinition<sup>allowIn</sup> Semicolon   </td>
+	</tr>
+	<tr>
+		<td class="rightalign">  </td><td class="leftalign"> FunctionDefinition                               </td>
+	</tr>
+	<tr>
+		<td class="rightalign">  </td><td class="leftalign"> ClassDefinition                                  </td>
+	</tr>
+	<tr>
+		<td class="rightalign">  </td><td class="leftalign"> InterfaceDefinition                              </td>
+	</tr>
+	<tr>
+		<td class="rightalign">  </td><td class="leftalign"> NamespaceDefinition Semicolon                    </td>
+	</tr>
+</table>
+<br />
+<table border="1" cellspacing="0" cellpadding="3" class="inline">
+	<tr>
+		<th colspan="2"> Directives </th>
+	</tr>
+	<tr>
+		<td class="rightalign">  </td><td class="leftalign"> &#171;empty&#187;                                      </td>
+	</tr>
+	<tr>
+		<td class="rightalign">  </td><td class="leftalign"> DirectivesPrefix Directive<sup>abbrev</sup>  </td>
+	</tr>
+</table>
+<br />
+<table border="1" cellspacing="0" cellpadding="3" class="inline">
+	<tr>
+		<th colspan="2"> DirectivesPrefix </th>
+	</tr>
+	<tr>
+		<td class="rightalign">  </td><td class="leftalign"> &#171;empty&#187;                                      </td>
+	</tr>
+	<tr>
+		<td class="rightalign">  </td><td class="leftalign"> DirectivesPrefix Directive<sup>full</sup>    </td>
+	</tr>
+</table>
+<br />
+<h2>Attributes</h2>
+<h3>Syntax</h3>
+<table border="1" cellspacing="0" cellpadding="3" class="inline">
+	<tr>
+		<th colspan="2"> Attributes </th>
+	</tr>
+	<tr>
+		<td class="rightalign">  </td><td class="leftalign"> Attribute             </td>
+	</tr>
+	<tr>
+		<td class="rightalign">  </td><td class="leftalign"> AttributeCombination  </td>
+	</tr>
+</table>
+<br />
+<table border="1" cellspacing="0" cellpadding="3" class="inline">
+	<tr>
+		<th colspan="2"> AttributeCombination </th>
+	</tr>
+	<tr>
+		<td class="rightalign">  </td><td class="leftalign"> Attribute [no line break] Attributes  </td>
+	</tr>
+</table>
+<br />
+<table border="1" cellspacing="0" cellpadding="3" class="inline">
+	<tr>
+		<th colspan="2"> Attribute </th>
+	</tr>
+	<tr>
+		<td class="rightalign">  </td><td class="leftalign"> AttributeExpression                                </td>
+	</tr>
+	<tr>
+		<td class="rightalign">  </td><td class="leftalign"> ReservedNamespace                                  </td>
+	</tr>
+	<tr>
+		<td class="rightalign">  </td><td><code>[</code> AssignmentExpression<sup>allowIn</sup><code>]</code></td>
+	</tr>
+</table>
+<br />
+<table border="1" cellspacing="0" cellpadding="3" class="inline">
+	<tr>
+		<th colspan="2"> AttributeExpression </th>
+	</tr>
+	<tr>
+		<td class="rightalign">  </td><td class="leftalign"> Identifier                           </td>
+	</tr>
+	<tr>
+		<td class="rightalign">  </td><td> AttributeExpression PropertyOperator </td>
+	</tr>
+</table>
+<br />
+<p>
+ An AttributeExpression may be used as an Attribute.
+</p>
+<p>
+An Attribute of one kind or another may be used before any AnnotatableDirective. AnnotatableDirectives include variable, function, class, interface definitions.
+</p>
+<p>
+Here is a complete list of reserved attribute names: 
+</p>
+<ul>
+<li class="level1"><div class="li"> <code>public</code></div>
+</li>
+<li class="level1"><div class="li"> <code>private</code></div>
+</li>
+<li class="level1"><div class="li"> <code>internal</code></div>
+</li>
+<li class="level1"><div class="li"> <code>protected</code></div>
+</li>
+<li class="level1"><div class="li"> <code>override</code></div>
+</li>
+<li class="level1"><div class="li"> <code>final</code></div>
+</li>
+<li class="level1"><div class="li"> <code>dynamic</code></div>
+</li>
+<li class="level1"><div class="li"> <code>native</code></div>
+</li>
+<li class="level1"><div class="li"> <code>static</code></div>
+</li>
+</ul>
+<p>
+ <strong>BUG</strong>: The language for Directive is not LL(k) for any k, precluding the construction of straightforward recursive-descent parsers.  There reason is that it is impossible to know whether one is looking at an Attribute list or an expression statement with simple lookahead.  There are several cases: 
+</p>
+<ul>
+<li class="level1"><div class="li"> <code>[ E ]</code> could be an array initialiser or an Attribute.  If the form <code>[ E , E ]</code> occurs then it&rsquo;s definitely an array initialiser, but <code>[ (E, E) ]</code> is an attribute.  Here the Es can be arbitrarily complex.</div>
+</li>
+<li class="level1"><div class="li"> <code>E [ E2 ]</code> could be an array reference or a list of two attributes, and E can be of the form <code>Id.Id</code>.... or even <code>E[E]</code> for some E.&rdquo;</div>
+</li>
+</ul>
+<p>
+ It is not until we&rsquo;ve seen a declaration keyword (var, const, function, class, interfaces) or a semicolon or a newline.  But we can&rsquo;t blithely lex ahead without parser feedback, consider <code>E[ /10/ ]</code> where the value in the brackets is obviously a regexp literal, but the lexer can only know this with feedback from the parser.
+</p>
+<p>
+Thus we have to parse a sequence of fragments to get the parse right, and only determine the  reduction when we see some trailing token.  This is what an LR parser does.  The problem with implementing this in a recursive-descent parser is that we must jump into the parser machinery at some point depending on what the trailing token is.  Consider <code>a[b]++</code> and <code>a[b]=10</code>.  Here we have the E1 in productions <code>postfixExpr ::= E1 \&rdquo;++\&rdquo;</code> and <code>assignExpr ::= E1 \&rdquo;=\&rdquo; E2</code>, but a normal recursive-descent parser (notably one that&rsquo;s generated) will expect to be inside the call tree at some point with E1 on the stack.
+</p>
+<p>
+On closer reflection, the language for Directive is ambiguous (and therefore not parseable by even an LR parser).  The problem is that <code>x[y][z]</code> can be parsed as one, two, or three attributes.
+</p>
+<p>
+The committee agreed at the f2f on 16-17 March 2006 to say that a definition can name at most one namespace and that user namespaces must be named by simple identifiers.  This makes it much easier to parse attribute lists.
+</p>
+<h3>Semantics</h3>
+<p>
+The meaning of an Attribute depends on its compile-time value and its usage. See the description of the definitions being modified by the attribute.
+</p>
+<h2>Import directive</h2>
+<h3>Syntax</h3>
+<table border="1" cellspacing="0" cellpadding="3" class="inline">
+	<tr>
+		<th colspan="2"> ImportDirective </th>
+	</tr>
+	<tr>
+		<td class="rightalign">  </td><td class="leftalign"><code>import</code> PackageName <code>.</code><code>*</code>                       </td>
+	</tr>
+	<tr>
+		<td class="rightalign">  </td><td class="leftalign"><code>import</code> PackageName <code>.</code> Identifier                  </td>
+	</tr>
+	<tr>
+		<td class="rightalign">  </td><td><code>import</code> Identifier <code>=</code> PackageName <code>.</code> Identifier </td>
+	</tr>
+</table>
+<br />
+<p>
+ ImportDirective may be used where ever a Directive or AnnotatableDirective can be used.
+</p>
+<pre class="code">
+import a.b.*
+import a.b.x
+import y = a.b.x
+</pre>
+<h3>Semantics</h3>
+<p>
+ An ImportDirective causes the simple and fully qualified names of one or more public definitions of the specified package to be introduced into the current package. Simple names will be shadowed by identical locally defined names. Ambiguous references to imported names result in runtime errors.
+</p>
+<p>
+The wildcard form (import a.b.*) imports all public names in a package. The single name form (import a.b.x) imports only the specified name. The alias form of import directive (import y = a.b.x) imports the name on the right hand side of the assignment expression and introduces the identifier on the lefthand side as an alias for that name.
+</p>
+<p>
+The mechanism for locating and loading imported packages is implementation defined.
+</p>
+<h3>Compatibility</h3>
+<p>
+ The ActionScript 2.0 behavior of raising an error if there are two classes with the name simple name being imported is deprecated. Ecmascript 4 will import both classes, but references to the shared simple class name will result a compile-time error. Such references must be disambiguated by using a fully qualified class name.
+</p>
+<p>
+The ActionScript 2.0 behavior of implicit import feature is also deprecated and will result in a compile time error in Ecmascript 4. To work around such errors, an explicit import directive must be added to the current package, which imports the referenced class.
+</p>
+<h2>Include directive</h2>
+<h3>Syntax</h3>
+<table border="1" cellspacing="0" cellpadding="3" class="inline">
+	<tr>
+		<th colspan="2"> IncludeDirective </th>
+	</tr>
+	<tr>
+		<td class="rightalign">  </td><td><code>include</code> [no line break] String </td>
+	</tr>
+</table>
+<br />
+<p>
+ An IncludeDirective may be used where ever a Directive may be used.
+</p>
+<pre class="code">
+include "reusable.as"
+</pre>
+<h3>Semantics</h3>
+<p>
+ An IncludeDirective results at compile-time in the replacement of the text of the IncludeDirective with the content of the stream specified by String.
+</p>
+<p>
+<strong>BUG</strong>: The include directive is problematic.  
+</p>
+<ul>
+<li class="level1"><div class="li"> The specification does not contain a reasonable interpretation of the string.  It needs to at least address whether it is interpreted relative to the current script or some other context. [<em><a href="mailto:%26%23x6a%3B%26%23x6f%3B%26%23x64%3B%26%23x79%3B%26%23x65%3B%26%23x72%3B%26%23x40%3B%26%23x61%3B%26%23x64%3B%26%23x6f%3B%26%23x62%3B%26%23x65%3B%26%23x2e%3B%26%23x63%3B%26%23x6f%3B%26%23x6d%3B" class="mail" title="&#x6a;&#x6f;&#x64;&#x79;&#x65;&#x72;&#x40;&#x61;&#x64;&#x6f;&#x62;&#x65;&#x2e;&#x63;&#x6f;&#x6d;">Jeff Dyer</a> 2006/05/03 12:28</em> &mdash; True, the spec leaves the interpretation of the string argument up to the implementation. I&rsquo;m not sure what it could say that would apply to all embeddings of the language.]</div>
+</li>
+</ul>
+<p>
+ In addition I wish to note:
+</p>
+<ul>
+<li class="level1"><div class="li"> &ldquo;include&rdquo; may be used anywhere in the program where a directive is possible, not just at top level (or indeed at the beginning of the program).  This makes it powerful, but will tend to make programs unmaintainable. [<em><a href="mailto:%26%23x6a%3B%26%23x6f%3B%26%23x64%3B%26%23x79%3B%26%23x65%3B%26%23x72%3B%26%23x40%3B%26%23x61%3B%26%23x64%3B%26%23x6f%3B%26%23x62%3B%26%23x65%3B%26%23x2e%3B%26%23x63%3B%26%23x6f%3B%26%23x6d%3B" class="mail" title="&#x6a;&#x6f;&#x64;&#x79;&#x65;&#x72;&#x40;&#x61;&#x64;&#x6f;&#x62;&#x65;&#x2e;&#x63;&#x6f;&#x6d;">Jeff Dyer</a> 2006/05/03 12:36</em> &ndash; a quick scan of the flex framework shows that, aside from including a version string in just about every class, there are few uses of <code>include</code> that are not at the top level. So I&rsquo;m open]</div>
+</li>
+<li class="level1"><div class="li"> In a web browser, it will impede performance in the same way that document.write() does in JavaScript &ndash; serializing script loading [<em><a href="mailto:%26%23x6a%3B%26%23x6f%3B%26%23x64%3B%26%23x79%3B%26%23x65%3B%26%23x72%3B%26%23x40%3B%26%23x61%3B%26%23x64%3B%26%23x6f%3B%26%23x62%3B%26%23x65%3B%26%23x2e%3B%26%23x63%3B%26%23x6f%3B%26%23x6d%3B" class="mail" title="&#x6a;&#x6f;&#x64;&#x79;&#x65;&#x72;&#x40;&#x61;&#x64;&#x6f;&#x62;&#x65;&#x2e;&#x63;&#x6f;&#x6d;">Jeff Dyer</a> 2006/05/03 12:36</em> &mdash; are you arguing to remove include all together? Netscape JavaScript 2.0 made it an extension to the standard and we could to.]</div>
+</li>
+</ul>
+<h3>Compatibility</h3>
+<p>
+ In ActionScript 2.0 the include keyword is spelled #include. This form is deprecated and results in a compile warning in Ecmascript 4.
+</p>
+<h2>Use directive</h2>
+<h3>Syntax</h3>
+<table border="1" cellspacing="0" cellpadding="3" class="inline">
+	<tr>
+		<th colspan="2"> UseDirective </th>
+	</tr>
+	<tr>
+		<td class="rightalign">  </td><td class="leftalign"><code>use namespace</code> ListExpression<sup>allowIn</sup>  </td>
+	</tr>
+</table>
+<br />
+<p>
+ A UseDirective may be used where ever a Directive or AnnotatableDirective may be used. This includes the top-level of a Program, PackageDefinition and ClassDefinition.
+</p>
+<pre class="code">
+use namespace ns1, ns2
+</pre>
+<h3>Semantics</h3>
+<p>
+ A UseDirective causes the specified namespaces to be added to the open namespaces and removed when the current block scope is exited. Each sub expression of ListExpression must have a compile-time constant Namespace value.
+</p>
+<h3>Compatibility</h3>
+<p>
+ UseDirective is an extension to ActionScript 2.0. 
+</p>
+
+</body>
+</html>

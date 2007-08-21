@@ -1,6 +1,6 @@
 = Generic functions for ECMAScript 4 =
 
-2007-07-27 / lhansen@adobe.com / rev 2
+2007-08-09 / lhansen@adobe.com / rev 2
 
 
 == Motivation ==
@@ -14,22 +14,18 @@ functions (multimethods).
 == Overview ==
 
 Generic functions are function objects each with a set of attached
-methods.  A call to a generic function matches the number and types of
-the actual arguments to the signatures of the attached methods and
-dispatches to the most appropriate method following deterministic
-rules.
+methods.  A call to a generic function matches the types of the actual
+arguments to the signatures of the attached methods and dispatches to
+the most appropriate method following deterministic rules.
 
-Generic functions can be defined whereever other functions can be
-defined: at the top level of programs, packages, and functions, and as
-static and instance methods in classes.
+In this proposal, generic functions are only definable at the top
+level of programs, packages, and functions.  See the last section for
+other opportunities.
 
-Methods can be attached to top-level generic functions at any time.
+New methods can be attached to a generic function at any time.
+Methods cannot be redefined or removed.
 
-Methods can be attached to instance and static generic functions on
-classes only inside the class definition containing the generic
-function definition.
-
-At the time a generic function is called, applicable methods
+At the time a generic function is called, the applicable methods
 (determined by the manifest types of the actual arguments) are
 selected and ordered by specificity.  Methods that cannot be ordered
 cannot be invoked, and if the set of ordered methods is empty the
@@ -39,7 +35,7 @@ can ask that control be passed to the next most specific method, and
 so on.
 
 
-== Proposal ==
+== Proposal for generic functions ==
 
 === Defining functions ===
 
@@ -48,57 +44,24 @@ the contextual keyword pair "generic function":
 
   generic function f(x, y);
 
-The arguments in generic function definitions can be annotated with
-types, and the functions can be annotated with return types; these act
-as constraints on any methods defined on the function later:
+Optional and rest arguments are allowed.  The default values for the
+optional arguments will become the default values for those arguments
+for all methods.
 
-  generic function <=(a: Real, b: Real): Real;
-
-Types default to ''*''.
-
-Optional arguments are not allowed in generic function definitions,
-but may be present in method definitions.
-
-Rest arguments may be present in generic function definitions.
-
-  generic function g(a, b, ...xs);
-
-The //shape// of a generic function is taken to be the list of
-parameters and return type.
-
-A generic function can have multiple shapes.  New shapes are
-introduced to a generic function by adding a generic function
-definition with the same name but a different shape:
-
-  generic function f(x, y);
-  generic function f(x);
-
-Now f accepts one or two arguments.
-
-The //arity// of a generic function is the highest number of non-rest
-arguments in any signature defined for the function.
-
-The //restness// of a generic function says whether the argument takes
-a rest argument or not.  (Awful term, I know.)
-
-A new shape must be different from an existing shape in arity or
-restness, not in any of the type constraints.
-
-It's legal to add a shape to a generic function with the same number
-of arguments provided the shape matches exactly the already existing
-shape.  This has no effect and aids separate development.
-
-A shape with rest arguments can coexist with shapes without only if
-the shape with rest arguments has arity at least as large as any other
-shape in the generic function.
+The non-rest arguments are called the //fixed// arguments.  The
+//arity// of a generic function is number of fixed arguments.
 
 
 === Defining methods ===
 
 A //method// is defined on an already defined generic function by
-matching one of the function's shapes exactly and providing (a) types
-for some or all of the arguments and (b) optionally for the return
-type and (c) a method body.
+providing //specializers// for the fixed arguments and a //body// for
+the code.  There must be exactly as many specializers as there are
+fixed arguments.
+
+The specializers are types, and are expressed as type annotations on
+the method parameters.  The body is provided as a regular function
+body:
 
   generic function f(x:int, y:boolean): string {
       if (y)
@@ -107,62 +70,19 @@ type and (c) a method body.
           return "37";
   }
 
-  generic function f(x:int): string {
-      return "42";
-  }
+The specializers must all be either nominal types (class or interface
+types) or union types of nominal types, plus ''null'', ''undefined'',
+and ''*''.  If a specializer is absent it defaults to ''*''.
 
-If there are type constraints on the generic function then the method
-must have argument types that are subtypes of the parameter type
-constraints and a supertype of the return type constraint, or an error
-is signalled.
+A method definition that uses a union type specializer actually
+defines a set of methods simultaneously, one method per type in the
+union.
 
-The types in the signature must all be either nominal types (class or
-interface types) or union types of nominal types, plus ''null'',
-''undefined'', and ''*''.
+If the generic function was defined as taking rest arguments then the
+method may be defined as taking rest arguments as well.
 
-A method discriminating on a union type can be seen as defining a set
-of methods simultaneously, one method per type in the union.  This is
-actually somewhat important; a generic method
-
-  generic function +(x:Numeric,y:Numeric) { ... }
-
-actually prevents later addition of this method:
-
-  generic function +(x:int, y:int) { ... }
-
-because Numeric is a union containing ''int''
-
-A method discriminating on ''*'' can be seen as less specific than any
-other method.
-
-The method can supply default values for its trailing fixed
-parameters.
-
-
-=== Generic functions in classes ===
-
-Generic functions can be defined inside classes ("generic instance
-functions", "generic static functions").  All generic methods defined
-in the same class body as the generic function are attached to that
-function.  Methods outside the class body cannot extend generic class
-functions.
-
-Generic functions in classes can be static.  The methods must be
-declared static as well:
-
-  generic static function fn(x);
-
-  generic static function fn(x:int) x+5;
-
-Generic instance functions can override methods in the superclass,
-provided the generic function supplies at least one shape that is
-equal to the signature of the overridden method (in the normal sense
-for overriding).
-
-Generic instance functions can be overridden by methods in a subclass,
-provided the generic function has only one shape and that the shape of
-the overriding function matches the shape of the overridden function
-precisely.
+The method may not have any optional arguments; default values are
+provided for the trailing fixed arguments by the generic function.
 
 
 === Invocation ===
@@ -170,9 +90,9 @@ precisely.
 Generic functions are invoked using the normal function invocation
 syntax.
 
-When the function is invoked, the manifest number and of types of its
-arguments are compared to the shapes of the methods, and a set of
-applicable methods is computed (see below).
+When the function is invoked, the manifest types of the actual
+arguments are compared to the specializer signatures of the methods,
+and a set of applicable methods is computed (see below).
 
 The applicable methods are then ordered as described below, this
 yields a set of totally ordered methods and a set of unordered
@@ -181,185 +101,199 @@ methods.
 If the set of totally ordered methods is empty, an error is thrown.
 Otherwise, the first such method is invoked on the arguments.  If the
 method returns normally or throws an exception then the generic
-function terminates in the same way.  If the method invokes its "next
-method", then the next method in the ordered set is invoked.  If there
-is no next method, an error is thrown.
+function terminates in the same way.
 
 
 ==== Computing the applicable methods ====
 
-The set of applicable methods is determined from the number of actual
-arguments to the generic function.  A method is applicable if it is
-defined on a shape that has the same length as the number of
-arguments, or if it is defined on a shape with more fixed arguments
-but where there are methods with optional arguments s.t. there is a
-method taking the number of arguments passed in the current call, or
-if it is defined on a shape with fewer arguments but with a provision
-for a rest argument.
-
-For any of these, if a method parameter is constrained by a type then
-the method is only applicable if the acutal arguments' manifest types
-are all subtypes of the type constraints.
+A method //m// is applicable if, for every fixed parameter position
+//i//, the manifest type of fixed actual argument //i// is a subtype
+of the specializer for formal parameter //i// of //m//.
 
 
 ==== Sorting the applicable methods ====
 
-Observe that since structural types are not allowed, rest arguments
-are always untyped.  We will ignore optional arguments that are given
-default values when actual arguments are not supplied.  This leaves us
-with a set of method signatures all of the same length.
+The applicable methods can be sorted in order of specificity.  This
+ordering prefers more specific methods over less specific methods (ie,
+if a specializer //s// is a subclass of another specializer //t// then
+the method using //s// is preferred) and breaks ties in a predictable
+way.  This problem has been studied in the literature in the context
+of CLOS, Dylan, Cecil, and MultiJava.
 
-At this point, we use Dylan's algorithm for Method Specificity
-computation (DRM pp 96-98).
+For the time being, I'm proposing we use Dylan's algorithm for Method
+Specificity computation (DRM pp 96-98).
 
-For this we need to construct the class precedence list for classes
-and interfaces.  We take the local precedence order of a class to be
-the base class followed by the list of implemented interfaces in the
-order they are present in the class definition, and the local
-precedence order of an interface to be the list of base interfaces in
-the order they are present in the interface definition.  We then use
-Dylan's algorithm for computing the class precedence list (DRM pp
-54-56).
+For this algorithm we need to construct the class precedence list for
+classes and interfaces.  We take the local precedence order of a class
+to be the list containing the base class followed by the implemented
+interfaces in the order they are present in the class definition, and
+the local precedence order of an interface to be the list of base
+interfaces in the order they are present in the interface definition.
+We then use Dylan's algorithm for computing the class precedence list
+(DRM pp 54-56).
 
 This yields a set of totally ordered methods and a set of unordered
 methods as desired.
 
-(Details are needed here, obviously, and a proof that the precedence
-list computation has properties like monotonicity even in ES4 would be
-good.)
+(All of this is subject to revision as we study the problem.)
 
 
 ==== nextMethod ====
 
 Inside the method body the function ''nextMethod'' is defined (it is
-passed as an additional argument to the method); it can be called
-without arguments to invoke the next method in the list of unambiguous
-applicable methods on the argument values on which the present method
-was invoked.  (Stating the obvious: a function is invoked on a set of
-values v1, ..., vn, which are assigned to formal parameters inside the
-function.  Assignments to these formal parameters by the functions do
-not affect the values v1, ..., vn obviously; those same values are
-passed to ''nextMethod''.)
-
-''nextMethod'' can also be invoked on a list of arguments, these
-arguments will be passed to the next method.  Normal type checking
-applies on entry to the next method in this case.
-
-The invocation of ''nextMethod'' causes control to exit from the
-current method, so any finally handlers wrapping the call to
-''nextMethod'' will be executed, and no exception handlers wrapping
-the call to ''nextMethod'' will handle an exception thrown by any
-subsequent method.
-
-In fact, it may be better to think of (or even specify) ''nextMethod''
-as syntax: ''throw nextMethod'' is not obviously worse, since it
-clearly shows what's going on.  But it may leave a good implementation
-less room to play in.
+passed as the first argument to the method).  If ''nextMethod'' is
+called it invokes the next method in the list of ordered applicable
+methods on the argument values on which the present method was
+invoked.  This call is a normal call and returns the result of the
+next method.
 
 
 === Types ===
 
 Generic functions respond to "typeof" with "function"; if f is a
-generic function then "f is Function" is true, as is "f instanceof
-Function".
-
-I don't yet know if there needs to be a new visible class
-"GenericFunction".
-
-Seen as a typed entity, a generic function could be said to have a
-structual type that is is the union of its method types:
-
-  (function (int, *): int, function (string, MyClass): [double])
-
-Thus it should be possible for the generic function to be used in
-contexts that require the signature of a particular method of the
-function.
-
-Currently we have no objects whose manifest type is a union type, so
-there will need to be some slight hackery in the type system.  I don't
-think this should be too bad.  In the mean time, we can just assume
-the function to have type (function (...*):*).
-
-The meta-object proposal will need to be extended to accomodate
-generic functions.
+generic function then "f is Function" is true, as is "f is function()"
+and "f instanceof Function".
 
 
 === Error reporting ===
 
-Violations of constraints in the definition of generic functions and
-methods shall be reported at compile time as a SyntaxError for generic
-functions defined inside classes.
+A method definition fails if the number of specializers does not equal
+the number of fixed arguments in the generic function.  This error may
+be signalled at compile-time.
 
-Ditto violations shall be reported at run-time as a TypeError at the
-time when a violating shape or method is added to the generic
-function.  The function shall be left in a state as if the violating
-operation was never started.
+A generic function invocation fails at run-time if there are no
+methods in the totally ordered subset of the applicable methods.
 
 
-=== Meta-object protocols ===
+=== toString ===
+
+The ''toString'' method on generic functions returns an
+implementation-defined string consisting of text for a generic
+function definition followed by text for each of the methods defined
+on the function, in some arbitrary order, with all texts separated by
+a newline character.
+
+
+=== Implementation notes ===
+
+The realization of generic functions is left vague on purpose in this
+proposal.  There is a proof-of-concept generic function system that is
+now part of the reference implementation that treats generic function
+and method definitions as syntactic sugar for constructors and method
+calls on a class called "GenericFunction", which has an invoke()
+method to handle the call.  This implementation uses some system hooks
+that will eventually be provided as standard meta-object hooks
+(according to the already accepted meta-object proposal).
+
+Due to some limitations in the current reference implementation, union
+types are not yet supported.
+
+
+
+== Proposal: remove the current operator overloading mechanism ==
+
+The operator overloading mechanism is too weak and hard to control.
+We should just remove it, whatever else we do.
+
+
+== Proposal for built-in generic functions ==
 
 One of the strengths of generic functions is their ability to extend
-built-in facilities in a seamless way by means of adding methods to
-predefined protocols.
+built-in facilities in a seamless way by means of adding cases to
+predefined hooks.
 
 For example, in ECMAScript one might think of each of the built-in
-functions (eg Number) as a generic function because these functions
-perform conversion based on the input type; it might be useful for
-user code to extend the meaning of each such conversion by adding
-methods to the converter functions.
+functions (eg ''Number'') as a generic function because these
+functions perform conversion based on the input type; it might be
+useful for user code to extend the meaning of each such conversion by
+adding methods to the converter functions.
 
-The definition of a coherent and useful MOP for ECMAScript does not
-fit into the ES4 timeframe, unfortunately, though I would like not to
-take the language in a direction that prevents us from adding a MOP in
-the future.
+The definition of a full, coherent, and useful set of built-in generic
+functions for ECMAScript does not fit into the ES4 timeframe, but I
+would like not to take the language in a direction that prevents us
+from adding such functions in the future.
 
-However, the following global generic functions are predefined with
-the listed methods; they can be extended by user code:
+However, global generic functions are predefined for all the operator
+names in the language (full list to be provided), allowing for
+operator overloading on new types.
 
-  generic function +(a);
-  generic function +(a:Numeric):Numeric { ... }
+These built-in generic functions are defined in such a way that an
+implementation can use fast paths that do not check if new methods
+have been defined on built-in generic functions; since fundamental
+types like int and string are final, and since generic functions do
+not allow for method replacement, there can be no more specific
+methods defined than those that are primitive to the system.
 
-  generic function +(a,b);
-  generic function +(a:*,b:*):Numeric { ... }
-  generic function +(a:Numeric,b:Numeric):Numeric { ... }
-  generic function +(a:String,b:*):String { ... }
-  generic function +(a:*,b:String):String { ... }
+By way of example, here is a plausible definition for "+"
 
-  generic function -(a);
-  generic function -(a:Numeric):Numeric { ... }
+<code>
+  // Since + takes one or two arguments we create a distinguished 
+  // type for the one-argument case, letting a value of this type
+  // be the default value for the second argument.
 
-... and ditto for all of the operator names defined in the operator
-overloading proposal, with methods for signatures defined by E262-3
-and the proposals and probably some additional performance
-considerations.
+  private class Absent {}
+  private const AbsentValue = new Absent;
 
-FIXME: elaborate this fully.
+  // Primitive number representations are handled here
 
-In practice, the signatures are defined so that eg for ''+'', the
-system can take a fast path if it sees a built-in number type.
+  private type Numbers = (int,uint,double,decimal)
+
+  // + takes two arguments but the second is optional
+  generic function +(a, b=AbsentValue);
+
+  // Unary +
+
+  generic function +(a:*, b:Absent): Numbers
+      ToNumeric(a);
+
+  generic function +(a:Numbers, b:Absent):Numbers
+      a;
+
+  // Binary +
+
+  // Anything and a string turns into string-append
+  generic function +(a:string, b:*): string
+      intrinsic::stringAppend(a,string(b));
+
+  generic function +(a:*, b:string): string
+      intrinsic::stringAppend(string(a),b);
+
+  // Numbers are handled by primitive code
+  generic function +(a:Numbers, b:Numbers): Numbers
+      intrinsic::+(a,b);
+
+  // Otherwise, convert both to primitive, then to number,
+  // and add them.
+  generic function +(a:*, b:*): Numbers
+      intrinsic::+(ToNumeric(ToPrimitive(a)) + ToNumeric(ToPrimitive(b)));
+</code>
 
 
-== Open issues ==
-
-How do we do Function.toString() on these things?
-
-
-== Non-features ==
+== Non-features, future directions, etc ==
 
 Generic functions are not implicitly defined when a method is defined
-on a non-existing function.  I suspect they probably ought to be, but
-I'm not sure how crucial this is in practice.
+on a non-existing function.  This keeps things simple and explicit.
 
-There are no generic function expressions.
+There are no generic class-static methods.  These would be easy to add,
+though we need to determine if they are sealed inside the class, open
+to extension outside (and if so what the syntax is -- no doubt some
+variation on "Classname.functionname"), or whether that is selectable
+(and if so how that is selected -- no doubt some variation on "final").
 
-The Function constructor can't be used to create generic functions.
+There are no generic class-instance methods.  These would not be hard
+to add -- the dispatch would be two-stage, with normal method lookup
+in the receiver followed by type dispatch -- but there are various
+approaches we could take wrt overriding, so it seemed a bit much to
+handle it now.
+
+Generic functions have only one "shape", with a set number of fixed
+parameter.  It would not be very hard to allow for multiple shapes, so
+that eg the hack with the "Absent" value in the case of generic +
+above would feel less unnatural.
 
 There is no way to seal global generic functions.  This may however be
 worked around by scoping generic functions inside local packages or
 other functions, and then exporting those functions.
-
-There is no way to add methods at run-time, in particular, "eval"
-can't do it.
 
 The current proposal does not allow for removing methods or redefining
 them; but the intent is that it does not preclude these operations
@@ -367,14 +301,25 @@ being added in the future.  eg, non-removable methods on top-level
 generic functions could be designated "final", every other method
 could be removable.
 
-Structural types do not participate in dispatch, and we don't want
-methods to be annotated with structural types that are treated as
-''*'' even if that were convenient, since we may want structural types
-to participate in dispatch in the future.
+Structural object and array types cannot be used as specializers.
+These have prior history as "eql" specializers in CLOS; if we feel
+they are useful we can probably add them later.
+
+The Function constructor can't be used to create generic functions.
+
+There is no way to add methods at run-time, in particular, "eval"
+can't do it.  The example implementation in the reference
+implementation does have run-time method-addition facilities, but
+those are not intended to be available to user code.
+
+There are no generic function expressions -- they only make much sense
+when methods can be added at run-time.
 
 
 == Background material ==
 
-* Andrew Shalit, "The Dylan Reference Manual", Addison Wesley 1996
+* Andrew Shalit, "The Dylan Reference Manual", Addison Wesley 1996.
 
+* Kim Barrett, Bob Cassels, Paul Haahr, David A Moon, Keith Playford, and P Tucker Withington: "A Monotonic Superclass Linearization for Dylan", OOPSLA 1996.
 
+* Curtis Clifton, Todd Millstein, Gary T Leavens, and Craig Chambers: "MultiJava: Design Rationale, Compiler Implementation, and Applications".  ACM TOPLAS 28(3), May 2006.

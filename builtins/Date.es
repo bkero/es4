@@ -50,13 +50,10 @@ package
     use default namespace public;
     use namespace intrinsic;  // Override with "public::" when necessary
 
-    /* The Date class is "final dynamic" in ActionScript 3.0, though
-       the motivation for that is unclear.  The consequence is anyway
-       that the getters for the components of a Date can be
-       inlined.  */
-
-    final dynamic class Date
+    dynamic class Date
     {
+        use default namespace public;
+
         /* E262-3 15.9.2: The Date Constructor Called as a Function */
         meta static function invoke(...args)   // args are ignored.
             (new Date()).public::toString();
@@ -66,9 +63,9 @@ package
          * Plus spidermonkey extension: we accept 0 args (interpreted as "now") or
          * 1 arg (interpreted as a timespec).
          */
-        public function Date(year=0, month=0, date=1, hours=0, minutes=0, seconds=0, ms=0) {
+        function Date(year=0, month=0, date=1, hours=0, minutes=0, seconds=0, ms=0) {
 
-            setupNanoAge();
+            informative::setupNanoAge();
 
             switch (arguments.length) {
             case 0:
@@ -115,7 +112,7 @@ package
            the default for all library methods or (b) is pointless.
            Take your pick.
         */
-        public static var parse = function parse(string, reference:double=0.0) {
+        static var parse = function parse(string, reference:double=0.0) {
             return Date.parse(ToString(string), reference);
         }
 
@@ -123,7 +120,7 @@ package
 
             function fractionToMilliseconds(frac : string) : double
                 Math.floor(1000 * (parseInt(frac) / Math.pow(10,frac.length)));
-            let isoRes : Object = isoTimestamp.exec(s);
+            let isoRes : Object = helper::isoTimestamp.exec(s);
             let defaults : Date! = new Date(reference);
             if (isoRes) {
                 let year = isoRes.year !== undefined ? parseInt(isoRes.year) : defaults.UTCYear;
@@ -160,7 +157,7 @@ package
            the minimum required by the Standard and we handle that
            here along with the output of Date.prototype.toUTCString.
         */
-        static function fromDateString(s : string, reference : double) : double {
+        static private function fromDateString(s : string, reference : double) : double {
 
             function findMonth(name) {
                 for ( let i:int=0 ; i < monthNames.length ; i++ )
@@ -192,7 +189,7 @@ package
         /* E262-4 proposals:date_and_time - "Current and elapsed times" */
         static intrinsic native function now() : double;
 
-        public static function now() : double
+        static function now() : double
             Date.now();
 
         /* E262-4 proposals:date_and_time - "Current and elapsed times" */
@@ -207,24 +204,26 @@ package
             (Date.now() - birthtime) * 1000000;
 
         /* INFORMATIVE */
-        function setupNanoAge() : void
+        informative function setupNanoAge() : void
             this.birthtime = Date.now();
 
         /* E262-3 15.9.4.3: Date.UTC */
-        public static var UTC =
-            function UTC(year, month, date, hours, minutes, seconds, ms)
-            let (argc:uint = arguments.length)
-                Date.UTC(ToDouble(year),
-                         ToDouble(month),
-                         argc >= 3 ? ToDouble(date) : 1,
-                         argc >= 4 ? ToDouble(hours) : 0,
-                         argc >= 5 ? ToDouble(minutes) : 0,
-                         argc >= 6 ? ToDouble(seconds) : 0,
-                         argc >= 7 ? ToDouble(ms) : 0);
+        static var UTC =
+            function UTC(year, month, date, hours, minutes, seconds, ms) {
+                let argc:uint = arguments.length;
+                return (Date.UTC(ToDouble(year),
+                                 ToDouble(month),
+                                 argc >= 3 ? ToDouble(date) : 1,
+                                 argc >= 4 ? ToDouble(hours) : 0,
+                                 argc >= 5 ? ToDouble(minutes) : 0,
+                                 argc >= 6 ? ToDouble(seconds) : 0,
+                                 argc >= 7 ? ToDouble(ms) : 0));
+            };
 
         static intrinsic function UTC(year : double, month : double,
-				      date : double=1, hours : double?=0, minutes : double?=0,
-				      seconds : double=0, ms : double?=0) : double {
+                                      date : double=1, hours : double?=0, minutes : double?=0,
+                                      seconds : double=0, ms : double?=0) : double 
+        {
             let intYear:double = ToInteger(year);
             if (!isNaN(year) && 0 <= intYear && intYear <= 99)
                 intYear += 1900;
@@ -232,14 +231,14 @@ package
                                      MakeTime(hours, minutes, seconds, ms)));
         }
 
-        static const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-        static const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun",
-                                   "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+        static private const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+        static private const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun",
+                                           "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
         /* Format of string produced by Date.toString, recognized by Date.parse */
         /* e.g., "Fri, 15 Dec 2006 23:45:09 GMT-0800" */
 
-        static const adhocTimestamp : RegExp! =
+        static private const adhocTimestamp : RegExp! =
             /(?: Mon|Tue|Wed|Thu|Fri|Sat|Sun ),?\s+
              (?P<day> [0-9]+ )\s+
              (?P<month> Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec )\s+
@@ -253,7 +252,7 @@ package
         /* Format of string produced by Date.toISOString, recognized by Date.parse */
         /* e.g, "2006-12-15T23:45:09.33-08:00" */
 
-        static const isoTimestamp : RegExp! =
+        static helper const isoTimestamp : RegExp! =
             /^
             # Date, optional
             (?: (?P<year> - [0-9]+ | [0-9]{4} [0-9]* )
@@ -278,24 +277,36 @@ package
             this.toISOString();
 
         intrinsic function toISOString() : string {
+            use namespace helper;
+            return (formatYears(UTCFullYear) + "-" + 
+                    zeroFill(UTCMonth+1, 2) + "-" + 
+                    zeroFill(UTCDate, 2) +
+                    "T" + 
+                    zeroFill(UTCHours, 2) + ":" + 
+                    zeroFill(UTCMinutes, 2) + ":" + 
+                    zeroFill(UTCSeconds, 2) + "." + 
+                    removeTrailingZeroes(int(UTCMilliseconds)) + 
+                    "Z");
+        }
 
-            function years(n : double) : string {
-                if (n >= 0 && n <= 9999)
-                    return (n+10000).toString().substring(1);
-                else
-                    return n.toString();
-            }
-
-            function fraction(n : int) : string {
-                while (n > 0 && n % 10 === 0)
-                    n /= 10;
+        helper function formatYears(n: double): string {
+            if (n >= 0 && n <= 9999)
+                return helper::zeroFill(int(n), 4);
+            else
                 return n.toString();
-            }
+        }
 
-            return "" + years(UTCFullYear) + "-" + twoDigit(UTCMonth+1) + "-" + twoDigit(UTCDate) +
-                "T" + twoDigit(UTCHours) + ":" + twoDigit(UTCMinutes) + ":" + twoDigit(UTCSeconds) +
-                "." + fraction(int(UTCMilliseconds)) + 
-                "Z";
+        helper function removeTrailingZeroes(n: int): string {
+            while (n > 0 && n % 10 === 0)
+                n /= 10;
+            return n.toString();
+        }
+
+        helper function zeroFill(n: int, k): string {
+            let s = string(n);
+            while (s.length < k)
+                s = "0" + s;
+            return s;
         }
 
         /* E262-3 15.9.5.2: Date.prototype.toString */
@@ -306,8 +317,8 @@ package
         override intrinsic function toString() : string {
             /* "Fri, 15 Dec 2006 23:45:09 GMT-0800" */
             let tz:double = timezoneOffset;
-	    let atz:double = Math.abs(tz);
-	    return (dayNames[day] + ", " +
+            let atz:double = Math.abs(tz);
+            return (dayNames[day] + ", " +
                     twoDigit(date) + " " +
                     monthNames[month] + " " +
                     fullYear + " " +
@@ -402,45 +413,97 @@ package
            the Date instances, not properties on the prototype.
 
            As the Date class is final the getters and setters can be
-           inlined. */
+           inlined. 
+        */
 
-        public function get time(this:Date) : double                     getTime();
-        public function set time(this:Date, t : double) : double         setTime(t);
-        public function get year(this:Date) : double                     getYear();
-        public function set year(this:Date, t: double) : double          setYear(t);
-        public function get fullYear(this:Date) : double                 getFullYear();
-        public function set fullYear(this:Date, t : double) : double     setFullYear(t);
-        public function get UTCFullYear(this:Date) : double              getUTCFullYear();
-        public function set UTCFullYear(this:Date, t : double) : double  setUTCFullYear(t);
-        public function get month(this:Date) : double                    getMonth();
-        public function set month(this:Date, t : double) : double        setMonth(t);
-        public function get UTCMonth(this:Date) : double                 getUTCMonth();
-        public function set UTCMonth(this:Date, t : double) : double     setUTCMonth(t);
-        public function get date(this:Date) : double                     getDate();
-        public function set date(this:Date, t : double) : double         setDate(t);
-        public function get UTCDate(this:Date) : double                  getUTCDate();
-        public function set UTCDate(this:Date, t : double) : double      setUTCDate(t);
-        public function get day(this:Date) : double                      getDay();
-        public function set day(this:Date, t : double) : double          setDay(t);
-        public function get UTCDay(this:Date) : double                   getUTCDay();
-        public function set UTCDay(this:Date, t : double) : double       setUTCDay(t);
-        public function get hours(this:Date) : double                    getHours();
-        public function set hours(this:Date, t : double) : double        setHours(t);
-        public function get UTCHours(this:Date) : double                 getUTCHours();
-        public function set UTCHours(this:Date, t : double) : double     setUTCHours(t);
-        public function get minutes(this:Date) : double                  getMinutes();
-        public function set minutes(this:Date, t : double) : double      setMinutes(t);
-        public function get UTCMinutes(this:Date) : double               getUTCMinutes();
-        public function set UTCMinutes(this:Date, t : double) : double   setUTCMinutes(t);
-        public function get seconds(this:Date) : double                  getSeconds();
-        public function set seconds(this:Date, t : double) : double      setSeconds(t);
-        public function get UTCSeconds(this:Date) : double               getUTCSeconds();
-        public function set UTCSeconds(this:Date, t : double) : double   setUTCSeconds(t);
-        public function get milliseconds(this:Date) : double             getMilliseconds();
-        public function set milliseconds(this:Date, t : double) : double setMilliseconds(t);
-        public function get UTCMilliseconds(this:Date) : double          getUTCMilliseconds();
-        public function set UTCMilliseconds(this:Date, t : double) : double setUTCMilliseconds(t);
-        public function get timezoneOffset(this:Date) : double            getTimezoneOffset();
+        function get time(this:Date) : double 
+            getTime();
+        function set time(this:Date, t : double) : double 
+            setTime(t);
+
+        function get year(this:Date) : double 
+            getYear();
+        function set year(this:Date, t: double) : double
+            setYear(t);
+
+        function get fullYear(this:Date) : double 
+            getFullYear();
+        function set fullYear(this:Date, t : double) : double 
+            setFullYear(t);
+
+        function get UTCFullYear(this:Date) : double 
+            getUTCFullYear();
+        function set UTCFullYear(this:Date, t : double) : double 
+            setUTCFullYear(t);
+
+        function get month(this:Date) : double 
+            getMonth();
+        function set month(this:Date, t : double) : double 
+            setMonth(t);
+
+        function get UTCMonth(this:Date) : double 
+            getUTCMonth();
+        function set UTCMonth(this:Date, t : double) : double 
+            setUTCMonth(t);
+
+        function get date(this:Date) : double 
+            getDate();
+        function set date(this:Date, t : double) : double 
+            setDate(t);
+
+        function get UTCDate(this:Date) : double 
+            getUTCDate();
+        function set UTCDate(this:Date, t : double) : double 
+            setUTCDate(t);
+
+        function get day(this:Date) : double 
+            getDay();
+
+        function get UTCDay(this:Date) : double 
+            getUTCDay();
+
+        function get hours(this:Date) : double 
+            getHours();
+        function set hours(this:Date, t : double) : double 
+            setHours(t);
+
+        function get UTCHours(this:Date) : double 
+            getUTCHours();
+        function set UTCHours(this:Date, t : double) : double 
+            setUTCHours(t);
+
+        function get minutes(this:Date) : double 
+            getMinutes();
+        function set minutes(this:Date, t : double) : double 
+            setMinutes(t);
+
+        function get UTCMinutes(this:Date) : double 
+            getUTCMinutes();
+        function set UTCMinutes(this:Date, t : double) : double 
+            setUTCMinutes(t);
+
+        function get seconds(this:Date) : double 
+            getSeconds();
+        function set seconds(this:Date, t : double) : double 
+            setSeconds(t);
+
+        function get UTCSeconds(this:Date) : double 
+            getUTCSeconds();
+        function set UTCSeconds(this:Date, t : double) : double 
+            setUTCSeconds(t);
+
+        function get milliseconds(this:Date) : double 
+            getMilliseconds();
+        function set milliseconds(this:Date, t : double) : double 
+            setMilliseconds(t);
+
+        function get UTCMilliseconds(this:Date) : double 
+            getUTCMilliseconds();
+        function set UTCMilliseconds(this:Date, t : double) : double 
+            setUTCMilliseconds(t);
+
+        function get timezoneOffset(this:Date) : double            
+            getTimezoneOffset();
 
 
         /* Mandated aliases for the canonical getters and setters */
@@ -783,16 +846,18 @@ package
 
         /* Utilities */
 
-        function twoDigit(n : double)
+        private function twoDigit(n : double)
             (n + 100).toString().substring(1,3);
 
-        function sign(n : double)
+        private function sign(n : double)
             n < 0 ? "-" : "+";
 
         /* Primitives from E262-3 */
-
-        var timeval : double;    // This object's time value
-        var birthtime : double;  // INFORMATIVE.  For use by nanoAge
+        
+        private var timeval : double;    // This object's time value
+        private var birthtime : double;  // INFORMATIVE.  For use by nanoAge
+       
+        // FIXME: everything below here is "helper" or "informative".
 
         static const hoursPerDay : double = 24;
         static const minutesPerHour : double = 60;
@@ -812,10 +877,10 @@ package
             if (!isFinite(hour) || !isFinite(min) || !isFinite(sec) || !isFinite(ms))
                 return NaN;
 
-            return ToInteger(hour) * msPerHour +
-                ToInteger(min) * msPerMinute +
-                ToInteger(sec) * msPerSecond +
-                ToInteger(ms);
+            return (ToInteger(hour) * msPerHour +
+                    ToInteger(min) * msPerMinute +
+                    ToInteger(sec) * msPerSecond +
+                    ToInteger(ms));
         }
 
         static function MakeDay(year : double, month : double, date : double) : double {
@@ -879,10 +944,10 @@ package
             t % msPerSecond;
             
         static function DaysInYear(y : double) : double {
-            if (y % 4 !== 0) return 365;
-            if (y % 100 !== 0) return 366;
-            if (y % 400 !== 0) return 365;
-            return 366;
+            if (y % 4 !== 0 || y % 100 === 0 && y % 400 !== 0)
+                return 365;
+            else
+                return 366;
         }
 
         static function DayFromYear(y : double) : double
@@ -895,9 +960,9 @@ package
             (DaysInYear(YearFromTime(t)) == 365) ? 0 : 1;
 
         static function MonthFromTime(t : double) : double {
-            let dwy : double = DayWithinYear(t),
-                ily : double = InLeapYear(t);
-            for ( let i : int=monthOffsets.length-1; i >= 0; i-- ) {
+            let dwy = DayWithinYear(t),
+                ily = InLeapYear(t);
+            for ( let i=monthOffsets.length-1; i >= 0; i-- ) {
                 let monthBegin = monthOffsets[i];
                 if (i >= 2)
                     monthBegin += ily;
@@ -935,6 +1000,7 @@ package
         static function UTCTime(t : double) : double
             t - LocalTZA() - DaylightSavingsTA(t - LocalTZA());
 
+        // FIXME: the spec allows ToInteger(t) or abs(ToInteger(t)), which is different for -0.
         static function TimeClip(t : double) : double
             (!isFinite(t) || Math.abs(t) > 8.64e15) ? NaN : ToInteger(t);
 

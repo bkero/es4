@@ -1,0 +1,141 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+<title>Untitled Document</title>
+</head>
+
+<body>
+
+
+<h1>Interfaces</h1>
+<p>
+ Interfaces provide a way for programs to express contracts between the producers and consumers of objects. These contracts are type safe, easy to understand and efficient to implement. Programs should not have to pay a significant performance penalty for using interfaces.
+</p>
+<p>
+An interface is a type whose methods must be defined by every class that claims to implement it. Multiple interfaces can be inherited by another interface through the extends clause, or by a class through the implements clause. Instances of a class that implements an interface belong to the type represented by the interface. Interface definitions must only contain function definitions, which may include get and set methods.
+</p>
+<p>
+Interface methods are not public by default, but are added to the public namespace by the implementing method definition.
+</p>
+<h2>Interface types</h2>
+<p>
+ An interface definition introduces a type into the current scope. The interface type is described by a set of abstract method traits and a list of interfaces that it extends. This set of abstract traits must be fully implemented by any class that inherits the interface. 
+</p>
+<p>
+An interface name refers to the interface type when it is used in a type annotation or an inheritance clause of a class or interface definition.
+</p>
+<pre class="code javascript">interface I <span class="br0">&#123;</span><span class="br0">&#125;</span>
+<span class="kw2">class</span> A implements I <span class="br0">&#123;</span><span class="br0">&#125;</span>    <span class="co1">// I refers to type I</span>
+<span class="kw2">var</span> x : I  = <span class="kw2">new</span> A         <span class="co1">// In each of these uses too</span>
+<span class="kw3">print</span><span class="br0">&#40;</span> x <span class="kw1">is</span> I <span class="br0">&#41;</span>
+<span class="kw2">var</span> y : I = x <span class="kw1">as</span> I</pre>
+<p>
+When a reference is bound to an interface at compile-time, the value of that reference is always the compile-time interface value, even if the interface definition would be shadowed by another property at runtime. For example,
+</p>
+<pre class="code javascript">interface T <span class="br0">&#123;</span><span class="br0">&#125;</span>
+<span class="kw2">class</span> A implements T <span class="br0">&#123;</span><span class="br0">&#125;</span>
+<span class="kw2">class</span> B <span class="br0">&#123;</span><span class="br0">&#125;</span>
+<span class="kw2">function</span> f<span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span>
+    <span class="kw2">var</span> T = B
+    <span class="kw2">var</span> x = <span class="kw2">new</span> A
+    <span class="kw3">print</span><span class="br0">&#40;</span>x <span class="kw1">is</span> T<span class="br0">&#41;</span>  <span class="co1">// T refers to interface T, not var T, traces true </span>
+<span class="br0">&#125;</span></pre>
+<p>
+In this example, T in the is expression refers to the outer interface T, not the inner var T.
+</p>
+<h2>Interface methods</h2>
+<p>
+ Classes that implement an interface method must use the public attribute to implement all interface methods that have the same identifier name.
+</p>
+<pre class="code javascript">interface I 
+<span class="br0">&#123;</span>
+    <span class="kw2">function</span> f<span class="br0">&#40;</span><span class="br0">&#41;</span>
+<span class="br0">&#125;</span>
+interface J
+<span class="br0">&#123;</span>
+    <span class="kw2">function</span> g<span class="br0">&#40;</span><span class="br0">&#41;</span>
+<span class="br0">&#125;</span>
+&nbsp;
+<span class="kw2">class</span> A implements I 
+<span class="br0">&#123;</span>
+    <span class="kw2">public</span> <span class="kw2">function</span> f<span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span><span class="br0">&#125;</span>
+    <span class="kw2">public</span> <span class="kw2">function</span> g<span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span><span class="br0">&#125;</span>
+<span class="br0">&#125;</span></pre>
+<p>
+This example shows a class that implements two inherited interfaces with public qualified methods.
+</p>
+<h3>Visibility of interface methods</h3>
+<p>
+ Interface methods are visible when referenced through a property of the corresponding interface type, or through a reference to the implementing class or subclass.
+</p>
+<pre class="code javascript"><span class="kw2">var</span> a : A = <span class="kw2">new</span> A
+a.<span class="me1">f</span><span class="br0">&#40;</span><span class="br0">&#41;</span>     <span class="co1">// okay, f is visible through an A as {public}::f</span>
+a.<span class="me1">g</span><span class="br0">&#40;</span><span class="br0">&#41;</span>     <span class="co1">// okay, f is visible through an A as {public}::g</span>
+<span class="kw2">var</span> i : I = b
+i.<span class="me1">f</span><span class="br0">&#40;</span><span class="br0">&#41;</span>     <span class="co1">// okay, f is still visible through an I as {I}::f</span>
+i.<span class="me1">g</span><span class="br0">&#40;</span><span class="br0">&#41;</span>     <span class="co1">// error, g is not visible through an I as {I}::g</span></pre>
+<p>
+References through an object with an interface type are multinames that contain only the names qualified by the interface namespace and its super interface namespaces. This means that the names in the open namespaces (including public) will not be visible through a reference with an interface typed base object. The motivation for this behavior is to express the idea of the interface as a contract between the producer and consumer of an object, with the contract specified by the names in the interface namespace alone.
+</p>
+<p>
+If the compile-time type of the base object is not an interface type, an unqualified reference will use the currently open namespaces (which includes public) to create a multiname in the normal way. Again, ambiguous references can be explicitly qualified with the interface name to avoid conflicts.
+</p>
+<h3>Inheritance of interface methods</h3>
+<p>
+ The rules for implementing an inherited interface method are the same as the rules for overriding an inherited class method. Specifically, the name of the method, number and type of the parameters, and return type must match exactly. 
+</p>
+<p>
+It is a verification error if a class implements an interface method with a method whose name matches, but the parameter count or types, or return type do not match. It is a verifier error if a class inherits an interface method that it does not implement.
+</p>
+<h2>Interface example</h2>
+<p>
+ Here is an example of how interfaces are defined and used.
+</p>
+<pre class="code javascript">interface T 
+<span class="br0">&#123;</span>
+    <span class="kw2">function</span> f<span class="br0">&#40;</span><span class="br0">&#41;</span>
+<span class="br0">&#125;</span>
+&nbsp;
+interface U 
+<span class="br0">&#123;</span>
+    <span class="kw2">function</span> f<span class="br0">&#40;</span><span class="br0">&#41;</span>
+    <span class="kw2">function</span> g<span class="br0">&#40;</span><span class="br0">&#41;</span>
+<span class="br0">&#125;</span>
+&nbsp;
+interface V <span class="kw2">extends</span> T,U 
+<span class="br0">&#123;</span>
+    <span class="kw2">function</span> h<span class="br0">&#40;</span><span class="br0">&#41;</span>
+<span class="br0">&#125;</span>
+&nbsp;
+<span class="kw2">class</span> A implements V 
+<span class="br0">&#123;</span>
+    <span class="kw2">public</span> <span class="kw2">function</span> f<span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span><span class="br0">&#125;</span>   <span class="co1">// implements {T,U}::f</span>
+    <span class="kw2">public</span> <span class="kw2">function</span> g<span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span><span class="br0">&#125;</span>   <span class="co1">// implements {U}::g</span>
+    <span class="kw2">public</span> <span class="kw2">function</span> h<span class="br0">&#40;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span><span class="br0">&#125;</span>   <span class="co1">// implements {V}::h</span>
+<span class="br0">&#125;</span>
+&nbsp;
+<span class="kw2">var</span> a : A = <span class="kw2">new</span> A
+<span class="kw2">var</span> t : T = a
+<span class="kw2">var</span> u : U = a
+<span class="kw2">var</span> v : V = a
+&nbsp;
+t.<span class="me1">f</span><span class="br0">&#40;</span><span class="br0">&#41;</span>     <span class="co1">// {T}::f referenced, T::f matched</span>
+u.<span class="me1">g</span><span class="br0">&#40;</span><span class="br0">&#41;</span>     <span class="co1">// {U}::g referenced, U::g matched</span>
+v.<span class="me1">f</span><span class="br0">&#40;</span><span class="br0">&#41;</span>     <span class="co1">// {T,U,V}::f referenced, {T,U}::f matched</span>
+v.<span class="me1">g</span><span class="br0">&#40;</span><span class="br0">&#41;</span>     <span class="co1">// {T,U,V}::g referenced, U::g matched</span>
+v.<span class="me1">h</span><span class="br0">&#40;</span><span class="br0">&#41;</span>     <span class="co1">// {T,U,V}::h referenced, V::h matched</span>
+a.<span class="me1">f</span><span class="br0">&#40;</span><span class="br0">&#41;</span>     <span class="co1">// {public,…}::f referenced, public::f matched</span>
+&nbsp;
+<span class="kw2">var</span> o = a
+&nbsp;
+o.<span class="me1">f</span><span class="br0">&#40;</span><span class="br0">&#41;</span>     <span class="co1">// {public,…}::f referenced, public::f matched</span></pre>
+<p>
+A few highlights of this example are:
+</p>
+<p>
+An implementing class must use public as an attribute to make the method implement all interface methods with a matching identifier The static type of the base object of a reference controls which interface names are open in that reference if that type is an interface type
+</p>
+
+</body>
+</html>

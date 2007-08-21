@@ -1,0 +1,365 @@
+<!-- Function.html
+  --
+  -- The class "Function"
+  --
+  -- Copyright (C) 2007 ECMA International
+  -- Contains material from older specs.
+  --
+  -- Status: incomplete
+  -- Review: not reviewed
+  -->
+
+
+<h1 id="class Function"> The class ''Function'' </h1>
+
+<P> The class ''Function'' is a dynamic non-final subclass of
+''Object'' (see <XREF target="class Object">).
+
+<P> All objects defined by ''function'' definitions or expressions in
+ECMAScript are instances of the class ''Function''.
+
+<P> Not all objects that can be called as functions are instances of
+subclasses of the ''Function'' class, however.  Any object that has a
+''meta invoke'' method can be called as a function.
+
+<NOTE> Host functions may also not be instances of ''Function'' or its
+subclasses, but must to some extent behave as if they are (see <XREF
+target="Host objects">).
+
+
+== Synopsis ==
+
+<P> The class ''Function'' provides the following interface:
+
+{{{
+dynamic class Function extends Object
+{
+    <SIGNATURE file="Function.es" name="function Function">
+    <SIGNATURE file="Function.es" name="meta static function invoke">
+
+    <SIGNATURE file="Function.es" name="static function apply">
+    <SIGNATURE file="Function.es" name="static function call">
+
+    static const length: uint = 1
+    static const prototype: Object = <LDOTS>
+
+    meta final function invoke( <LDOTS> ) <LDOTS>
+
+    <SIGNATURE file="Function.es" name="override intrinsic function toString">
+
+    <SIGNATURE file="Function.es" name="intrinsic function apply">
+    <SIGNATURE file="Function.es" name="intrinsic function call">
+    <SIGNATURE file="Function.es" name="intrinsic function HasInstance">
+
+    const length: uint = <LDOTS>
+    var   prototype = <LDOTS>
+}
+}}}
+
+
+== Methods on the ''Function'' class object ==
+
+<H3 id="Function: constructor"> new Function (p1, p2, <LDOTS> , pn, body) </h3>
+
+<DESC> When the ''Function'' constructor is called with some arguments as
+part of a ''new'' expression, it creates a new ''Function'' instance
+whose parameter list is given by the concatenation of the //pi//
+arguments and whose executable code is given by the //body// argument.
+
+<P> There may be no "//p//" arguments, and //body// is optional too,
+defaulting to the empty string.
+
+<p> If the list of parameters is not parsable as a
+//FormalParameterList<sub>opt</sub>//, or if the body is not parsable
+as a //FunctionBody//, then a **SyntaxError** exception is thrown.
+
+<RETN> The ''Function'' constructor returns a new ''Function'' instance.
+
+<SHORTIMPL>
+
+<INCLUDE file="Function.es" name="function Function">
+<INCLUDE file="Function.es" name="helper function createFunction">
+
+<P> The helper function ''createFunction'' is also used by the
+''invoke'' method (see <XREF target="Function: meta static invoke">).
+
+<p> The magic function ''initializeFunction'' initializes the function
+object ''this'' from the list of parameters and the body, as specified
+in section <XREF target="translation:FunctionExpression">.  The global
+object is passed in as the Scope parameter.
+
+<p>A ''prototype'' property is automatically created for every function, to
+provide for the possibility that the function will be used as a
+constructor.
+
+<NOTE> It is permissible but not necessary to have one argument for
+each formal parameter to be specified. For example, all three of the
+following expressions produce the same result:
+
+{{{
+new Function("a", "b", "c", "return a+b+c")
+
+new Function("a, b, c", "return a+b+c")
+
+new Function("a,b", "c", "return a+b+c")
+}}}
+
+<FIXME> Type annotations?  The RI barfs (looks like an incomplete or
+incorrect set of namespaces is provided during construction).
+
+<FIXME> Return type annotations?  No way to specify this using the
+current shape of the constructor.
+
+<FIXME> Default values?  The RI says yes.
+
+<FIXME> Rest arguments?  The RI says yes.
+
+<FIXME> One possibility is to extend the syntax, s.t. the //pi//
+concatenated can form a syntactically valid parameter list bracketed
+by ''('' and '')''; this creates the possibility that a return type
+annotation can follow the '')''.
+
+
+<h3 id="Function: meta static invoke"> Function (p1, p2, <LDOTS> , pn, body) </h3>
+
+<DESC> When the ''Function'' class object is called as a function it
+creates and initialises a new ''Function'' object.  Thus the function
+call ''Function(<LDOTS>)'' is equivalent to the object creation
+expression ''new Function(<LDOTS>)'' with the same arguments.
+
+<RETN> The ''Function'' class object called as a function returns a
+new ''Function'' instance.
+
+<SHORTIMPL>
+
+<!-- FIXME: Faking it until we get the RI right -->
+{{{
+meta static function invoke(...args)
+    helper::createFunction(args)
+}}}
+
+<P> The helper function ''createFunction'' was defined along with the
+''Function'' constructor (see <XREF target="Function: constructor">).
+
+
+=== apply ( fn, thisArg, argArray ) ===
+
+<DESC> The ''apply'' method takes arguments //fn//, //thisArg//, and
+//argArray//, and performs a function call using the [[Call]] property
+of //fn//, passing //thisArg// as the value for ''this'' and the
+members of //argArray// as the individual argument values.
+
+<p> If //fn// does not have a [[Call]] property, a **TypeError**
+exception is thrown.
+
+<RETN> The ''apply'' method returns the value returned by //fn//.
+
+<SHORTIMPL>
+
+<INCLUDE file="Function.es" name="static function apply">
+
+<p> The magic ''apply'' function performs the actual invocation (see
+<XREF target="magic::apply">).
+
+
+=== call ( fn, thisArg, ...args ) ===
+
+<DESC> The static ''call'' method takes arguments //fn// and //thisArg// and
+optionally some //args//, and performs a function call using the
+[[Call]] property of //fn//, passing //thisArg// as the value for ''this''
+and the members of //args// as the individual argument values.
+
+<P> If //fn// does not have a [[Call]] property, a **TypeError** exception
+is thrown.
+
+<RETN> The ''call'' method returns the value returned by //fn//.
+
+<SHORTIMPL>
+<INCLUDE file="Function.es" name="static function call">
+
+
+== Properties of the ''Function'' class object ==
+
+=== [[Prototype]] ===
+
+<p> The value of the internal [[Prototype]] property of the
+''Function'' class object is the ''Function'' prototype object
+(section <XREF target="Function.prototype">).
+
+=== length ===
+
+<P> The value of the constant ''length'' property is 1.
+
+=== prototype ===
+
+<p> The initial value of the ''prototype'' property is the
+''Function'' prototype object (section <XREF
+target="Function.prototype">).
+
+
+== Methods on Function instances ==
+
+=== meta::invoke ( <LDOTS> ) ===
+
+<DESC> The meta method ''invoke'' is specialized to the individual
+function object.  When called, it evaluates the executable code for
+the function.
+
+<P> The meta method ''invoke'' is typically called by the ECMAScript
+implementation as part of the function invocation and object
+construction protocols.  When a function or method is invoked, the
+''invoke'' method of the function or method object provides the code
+to run.  When a function is used to construct a new object, the
+''invoke'' method provides the code for the constructor function.
+
+<P> The signature of the meta method ''invoke'' is determined when the
+''Function'' instance is created, and is determined by the text that
+defines the function being created.
+
+<NOTE> The meta method ''invoke'' is ''final''; therefore subclasses
+can add properties and methods but can't override the function calling
+behavior.
+
+<FIXME> While it is necessary that the ''invoke'' method is completely
+magic in ''Function'' instances, it's not clear it needs to be magic
+for instances of subclasses of ''Function'', because these can be
+treated like other objects that have ''invoke'' methods (and which
+already work just fine).  Therefore it should not be ''final''.
+
+<RETN> The meta method ''invoke'' returns the result of evaluating the
+executable code for the function represented by this ''Function''
+object.
+
+
+=== intrinsic::toString ( ) ===
+
+<DESC> The intrinsic ''toString'' method converts the executable code
+of the function to a string representation.  This representation has
+the syntax of a //FunctionDeclaration//.  Note in particular that the
+use and placement of white space, line terminators, and semicolons
+within the representation string is implementation-dependent.
+
+<FIXME> It doesn't make a lot of sense for (function () {}).toString()
+to return something that looks like a //FunctionDeclaration//, since
+the function has no name, so we might at least specify what is
+produced in that case.
+
+<RETN> The intrinsic ''toString'' method returns a string.
+
+<SHORTIMPL>
+{{{
+intrinsic function toString(): string
+    informative::source;
+}}}
+
+<p> The informative property ''source'' holds a string representation
+of this function object.
+
+
+=== intrinsic::apply ( ) ===
+
+<DESC>The intrinsic ''apply'' method calls the static ''apply'' method
+with the current value of ''this'' as the first argument and returns
+the result of the call:
+
+<INCLUDE file="Function.es" name="intrinsic function apply">
+
+=== intrinsic::call ( ) ===
+
+<DESC>The intrinsic ''call'' method calls the static ''apply'' method
+with the current value of ''this'' as the first argument and the rest
+arguments as the arguments array, and returns the result of the call:
+
+<INCLUDE file="Function.es" name="intrinsic function call">
+
+=== %%[[HasInstance]]%% (V) ===
+
+<FIXME> Is this what we want?
+
+<p>When the [[HasInstance]] method of a Function object is called with
+value V, the following steps are taken:
+
+<INCLUDE file="Function.es" name="intrinsic function HasInstance">
+
+<p> The magic ''getPrototype'' function extracts the [[Prototype]] property
+from the object (see <XREF target="magic:getPrototype">).
+
+
+== Properties of ''Function'' instances ==
+
+<p> In addition to the required internal properties, every function
+instance has a [[Call]] property, a [[Construct]] property and a
+[[Scope]] property (see sections 8.6.2 and 13.2).
+
+
+=== length ===
+
+<P> The value of the constant ''length'' property is the number of
+non-rest arguments accepted by the function.
+
+<P> The value of the ''length'' property is an integer that indicates
+the "typical" number of arguments expected by the function.  However,
+the language permits the function to be invoked with some other number
+of arguments.  The behaviour of a function when invoked on a number of
+arguments other than the number specified by its length property
+depends on the function.
+
+=== prototype ===
+
+<P> The initial value of the ''prototype'' property is a fresh
+''Object'' instance.
+
+<P> The value of the ''prototype'' property is used to initialise the
+internal [[Prototype]] property of a newly created object before the
+''Function'' instance is invoked as a constructor for that newly
+created object.
+
+
+<H2 id="Function.prototype"> The ''Function'' prototype object </H2>
+
+<p>The ''Function'' prototype object is itself an instance of the
+class ''Function'', with the exception that the value of its
+[[Prototype]] property is the ''Object'' prototype object (section
+<XREF target="Object.prototype">).
+
+=== Synopsis ===
+
+{{{
+Function.prototype = {
+    toString:    function () <LDOTS> ,
+    apply:       function(thisArg, argArray) <LDOTS> ,
+    call:        function(thisArg, ...args) <LDOTS> ,
+
+    constructor: <LDOTS>
+}
+}}}
+
+=== Invoking the ''Function'' prototype object ===
+
+<P> When the ''Function'' prototype object is invoked it accepts any
+arguments and returns **undefined**:
+
+<INCLUDE file="Function.es" name="meta prototype function invoke">
+
+=== Methods on the ''Function'' prototype object ===
+
+<p> The methods on the ''Function'' prototype object call their
+intrinsic counterparts:
+
+<INCLUDE file="Function.es" name="prototype function toString">
+<INCLUDE file="Function.es" name="prototype function apply">
+<INCLUDE file="Function.es" name="prototype function call">
+
+<p> The Function prototype object does not have a ''valueOf'' property
+of its own; however, it inherits the ''valueOf'' property from the
+''Object'' prototype object.
+
+=== Properties of the ''Function'' prototype object ===
+
+==== constructor ====
+
+<p> The initial value of the ''constructor'' property is the built-in
+''Function'' class object.
+
+<!-- End of Function.html -->
+

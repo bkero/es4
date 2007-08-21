@@ -209,6 +209,9 @@ package assembler
         public function I_pushstring(index) { pushOneU30("pushstring", 0x2C, index) }
         public function I_pushuint(index) { pushOneU30("pushuint", 0x2E, index) }
 
+        // start a catch block.  increments stack by 1 for the exception object
+        public function startCatch() { stack(1) }
+        
         // Instructions that pop one value, with a single opcode byte
         private function dropOne(name, opcode) {
             stack(-1);
@@ -241,7 +244,7 @@ package assembler
         public function I_nextvalue() { dropOne("nextvalue", 0x23) }
         public function I_pop() { dropOne("pop", 0x29) }
         public function I_pushscope() { scope(1); dropOne("pushscope", 0x30) }
-        public function I_pushwith() { dropOne("pushwith", 0x1C) }
+        public function I_pushwith() { scope(1); dropOne("pushwith", 0x1C) }
         public function I_returnvalue() { dropOne("returnvalue", 0x48) }
         public function I_rshift() { dropOne("rshift", 0xA6) }
         public function I_setlocal_0() { dropOne("setlocal_0", 0xD4) }
@@ -472,10 +475,17 @@ package assembler
             code.uint30(nargs);
         }
 
-        public function I_call(nargs) { call("call", 0x41, nargs) }
-        public function I_construct(nargs) { call("construct", 0x42, nargs) }
+        private function construct(name, opcode, nargs) {
+            stack(1-(nargs+1)); /* pop function/receiver/args; push result */
+            list2(name, nargs);
+            code.uint8(opcode);
+            code.uint30(nargs);
+        }
 
-        function I_constructsuper(nargs) {
+        public function I_call(nargs) { call("call", 0x41, nargs) }
+        public function I_construct(nargs) { construct("construct", 0x42, nargs) }
+
+        public function I_constructsuper(nargs) {
             stack(nargs+1); /* pop receiver/args */
             list2("constructsuper", nargs);
             code.uint8(0x49);
@@ -540,7 +550,7 @@ package assembler
         public function I_getproperty(index) { propU30("getproperty", 1, 1, 0x66, index); }
         public function I_getsuper(index) { propU30("getsuper", 1, 1, 0x04, index); }
         public function I_findproperty(index) { propU30("findproperty", 0, 1, 0x5E, index) }
-        public function I_findpropstrict(index) { propU30("findpropstict", 0, 1, 0x5D, index) }
+        public function I_findpropstrict(index) { propU30("findpropstrict", 0, 1, 0x5D, index) }
         public function I_initproperty(index) { propU30("initproperty", 2, 0, 0x68, index) }
         public function I_setproperty(index) { propU30("setproperty", 2, 0, 0x61, index) }
         public function I_setsuper(index) { propU30("setsuper", 2, 0, 0x05, index) }
@@ -614,8 +624,9 @@ package assembler
 
         private function stack(n) {
             current_stack_depth += n;
-            if (current_stack_depth > max_stack_depth)
+            if (current_stack_depth > max_stack_depth) {
                 max_stack_depth = current_stack_depth;
+            }
         }
 
         private function scope(n) {

@@ -1,0 +1,126 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+<title>Untitled Document</title>
+</head>
+
+<body>
+
+
+
+
+<h1>Expressions</h1>
+<h2>Expression Syntax</h2>
+<p>
+&lt;concrete &rarr; abstract syntax&gt; 
+</p>
+<pre class="code grammarSection">expressions</pre>
+<h2>Identifier Expressions</h2>
+<pre class="code ml">     and IDENT_EXPR =			
+	QualifiedIdentifier of		
+		qual: EXPR	
+		ident: IDENT	
+       	QualifiedExpression of		
+		qual: EXPR	
+		expr: EXPR	
+       	AttributeIdentifier of		
+		IDENT_EXPR	
+       	Identifier of		
+		ident: IDENT	
+		namespace: NAMESPACE list	
+       	ExpressionIdentifier of 		
+		EXPR	
+       	TypeIdentifier of 		
+		ident: IDENT_EXPR	
+		typeParams: TYPE_EXPR list
+</pre>
+<h3>Defining Identifier Expressions</h3>
+<pre class="code insert_ml">defIdentExpr</pre>
+<h3>Verifying Identifier Expressions</h3>
+<pre class="code insert_ml">verifyIdentExpr</pre>
+<h3>Evaluating Identifier Expressions</h3>
+<pre class="code insert_ml">evalIdentExpr</pre>
+<pre class="code ml">     and EXPR =		
+	ConditionalExpr of	
+		cnd: EXPR
+		thn: EXPR
+		els: EXPR
+       	BinaryExpr of	
+		op: BINOP
+		rhs: EXPR
+		lhs: EXPR
+       	BinaryTypeExpr of	
+		op: BINTYOP
+		lhs: TYPE_EXPR
+		rhs: TYPE_EXPR
+       	UnaryExpr of	
+		op: UNOP
+		expr: EXPR
+       	TypeExpr of	
+		TYPE_EXPR
+       	NullaryExpr of	
+		NULOP
+       	YieldExpr of	
+		EXPR option
+       	SuperExpr of	
+		EXPR option
+       	LiteralExpr of LITERAL	
+		LITERAL
+       	CallExpr of		
+		func: EXPR	
+		actuals: EXPR list	
+       	ApplyTypeExpr of 		
+		expr: EXPR	
+		actuals: TYPE_EXPR list	
+       	LetExpr of		
+		defs: VAR_BINDING list	
+		body: EXPR	
+		fixtures: FIXTURES option	
+       	NewExpr of		
+		obj: EXPR	
+		actuals: EXPR list	
+       	FunExpr of		
+		ident: IDENT option	
+		fsig: FUNC_SIG	
+		body: BLOCK
+		fixtures: FIXTURES option
+       	ObjectRef of	
+		base: EXPR
+		ident: IDENT_EXPR
+       	LexicalRef of	
+		ident: IDENT_EXPR
+       	SetExpr of	
+		op: ASSIGNOP
+		ptrn: PATTERN
+		expr: EXPR
+       	ListExpr of	
+		EXPR list
+       	SliceExpr of 	
+		(EXPR option * EXPR option * EXPR option)
+</pre>
+<h3>Defining Expressions</h3>
+<pre class="code insert_ml">defExpr</pre>
+<h3>Verifying Expressions</h3>
+<pre class="code insert_ml">verifyExpr</pre>
+<h4>Verifying Binary Expressions</h4>
+<pre class="code insert_ml">verifyBinaryExpr</pre>
+<h3>Evaluating Expressions</h3>
+<pre class="code insert_ml">evalExpr</pre>
+<h4>Evaluating Binary Expressions</h4>
+<pre class="code insert_ml">evalBinaryOp</pre><pre class="code insert_ml">performBinop</pre>
+<h2>Type Expressions</h2>
+<pre class="code">   and TYPE_EXPR =	
+      SpecialType of SPECIAL_TY
+      UnionType of TYPE_EXPR list
+     	ArrayType of TYPE_EXPR list
+     	NominalType of IDENT_EXPR
+     	FunctionType of FUNC_SIG
+     	ObjectType of FIELD_TYPE list
+     	AppType of { base: TYPE_EXPR, args: TYPE_EXPR list }
+     	NullableType of { expr: TYPE_EXPR, nullable: bool }</pre>
+<h3>Defining Type Expressions</h3>
+<h3>Verifying Type Expressions</h3>
+<h3>Evaluating Type Expressions</h3>
+</body>
+</html>

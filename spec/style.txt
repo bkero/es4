@@ -7,9 +7,17 @@ Use wiki simplifications where convenient (it's less noisy):
 * In-line code:
     ''...'', eg ''String.prototype.toString()''
     [[...]], eg [[HasProperty]]
+    {{{ ... }}} for multiline preformatted
+
+* Styling
+    **...** for bold
+    //...// for italics
+    %%...%% for literal text
 
   Wiki simplifications and normal markup can be mixed; it doesn't
   matter if you write <H1>...</H1> or = ... =, it all works out.
+
+  See documentation at the head of stitch.py for a full list!
 
 
 Header numbering:
@@ -49,6 +57,9 @@ Custom tags:
   The idea here is that the XREF link is replaced by the section
   number of the target section.  Does not yet work, subject to
   revision.
+
+  Eventually XREF will also match its target against the text inside
+  a header, so the id can be omitted in some cases.
 
 
 Type faces etc.

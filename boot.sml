@@ -253,6 +253,12 @@ fun boot _ =
                                     "builtins/Interface.es",
 
                                     "builtins/Error.es",
+                                    "builtins/EvalError.es",
+                                    "builtins/RangeError.es",
+                                    "builtins/ReferenceError.es",
+                                    "builtins/SyntaxError.es",
+                                    "builtins/TypeError.es",
+                                    "builtins/URIError.es",
 
                                     "builtins/Boolean.es",
                                     "builtins/boolean_primitive.es",

@@ -1,209 +1,308 @@
 = The Global Object =
 
-<p>The global object does not have a [[Construct]] property; it is not possible to use the global object as a constructor
-with the new operator.
+<p>The global object does not have a [[Construct]] property; it is not
+possible to use the global object as a constructor with the new
+operator.
 
-<p>The global object does not have a [[Call]] property; it is not possible to invoke the global object as a function.
-The values of the [[Prototype]] and [[Class]] properties of the global object are implementation-dependent.
+<p>The global object does not have a [[Call]] property; it is not
+possible to invoke the global object as a function.  The values of the
+[[Prototype]] and [[Class]] properties of the global object are
+implementation-dependent.
 
-<p>The global object contains the following properties, functions, and
-class definitions.  The classes are defined in the following sections.
+== Synopsis ==
+
+<p>The global object contains the following properties, functions,
+types, and class definitions.
 
 {{{
-const NaN: double = ...
-const Infinity: double = ...
-const undefined: undefined = ...
-const __ECMASCRIPT_VERSION__ = ...
+namespace __ES4__
 
-const Math: Object = ...
-const global: Object = ...
+class Object <LDOTS>
+class Function <LDOTS>
+class Array <LDOTS>
+class String <LDOTS>
+class Boolean <LDOTS>
+class Number <LDOTS>
+class Date <LDOTS>
+class RegExp <LDOTS>
+class Error <LDOTS>
+class EvalError <LDOTS>
+class RangeError <LDOTS>
+class ReferenceError <LDOTS>
+class SyntaxError <LDOTS>
+class TypeError <LDOTS>
+class URIError <LDOTS>
 
-intrinsic function eval(s: string) ...
-intrinsic function parseInt(s: string, r: (int,undefined)=undefined): Numeric ...
-intrinsic function parseFloat(s: string): Numeric ...
-intrinsic function isNaN(n: Numeric): boolean ...
-intrinsic function isFinite(n: Numeric): boolean ...
-intrinsic function decodeURI(s: string): string ...
-intrinsic function decodeURIComponent(s: string): string ...
-intrinsic function encodeURI(s: string): string ...
-intrinsic function encodeURIComponent(s: string): string ...
-intrinsic function hashcode(x): uint ...
+__ES4__ class string <LDOTS>
+__ES4__ class boolean
+__ES4__ class int <LDOTS>
+__ES4__ class uint <LDOTS>
+__ES4__ class double <LDOTS>
+__ES4__ class decimal <LDOTS>
+__ES4__ class Name <LDOTS>
+__ES4__ class Namespace <LDOTS>
+__ES4__ class ByteArray <LDOTS>
+__ES4__ class Map <LDOTS>
+__ES4__ class IdentityMap <LDOTS>
 
-function eval(x) ...
-function parseInt(s, r=undefined) ...
-function parseFloat(s) ...
-function isNaN(x) ...
-function isFinite(x) ...
-function decodeURI(x) ...
-function decodeURIComponent(x) ...
-function encodeURI(x) ...
-function encodeURIComponent(x) ...
+__ES4__ interface ObjectIdentity <LDOTS>
 
-class Object ...
-class Function ...
-class Array ...
-class String ...
-class string ...
-class Boolean ...
-class boolean
-class Number ...
-class int ...
-class uint ...
-class double ...
-class decimal ...
-class Date ...
-class RegExp ...
-class Error ...
-class EvalError ...
-class RangeError ...
-class ReferenceError ...
-class SyntaxError ...
-class TypeError ...
-class URIError ...
+__ES4__ type EnumerableId = <LDOTS>
+__ES4__ type Numeric = <LDOTS>
+
+intrinsic interface Field <LDOTS>
+intrinsic interface FieldValue <LDOTS>
+intrinsic interface Type <LDOTS>
+intrinsic interface NominalType <LDOTS>
+intrinsic interface InterfaceType <LDOTS>
+intrinsic interface ClassType <LDOTS>
+intrinsic interface UnionType <LDOTS>
+intrinsic interface RecordType <LDOTS>
+intrinsic interface FunctionType <LDOTS>
+intrinsic interface ArrayType <LDOTS>
+
+intrinsic type FieldIterator = <LDOTS>
+intrinsic type FieldValueIterator = <LDOTS>
+intrinsic type TypeIterator = <LDOTS>
+intrinsic type InterfaceIterator = <LDOTS>
+
+const NaN: double = <LDOTS>
+const Infinity: double = <LDOTS>
+const undefined: undefined = <LDOTS>
+const __ECMASCRIPT_VERSION__ = <LDOTS>
+const Math: Object = <LDOTS>
+
+__ES4__ const global: Object = <LDOTS>
+
+intrinsic function eval(s: string) <LDOTS>
+intrinsic function parseInt(s: string, r: (int,undefined)=undefined): Numeric <LDOTS>
+intrinsic function parseFloat(s: string): Numeric <LDOTS>
+intrinsic function isNaN(n: Numeric): boolean <LDOTS>
+intrinsic function isFinite(n: Numeric): boolean <LDOTS>
+intrinsic function decodeURI(s: string): string <LDOTS>
+intrinsic function decodeURIComponent(s: string): string <LDOTS>
+intrinsic function encodeURI(s: string): string <LDOTS>
+intrinsic function encodeURIComponent(s: string): string <LDOTS>
+intrinsic function hashcode(x): uint <LDOTS>
+
+intrinsic function +(a,b) <LDOTS>
+intrinsic function -(a,b) <LDOTS>
+intrinsic function *(a,b) <LDOTS>
+intrinsic function /(a,b) <LDOTS>
+intrinsic function %(a,b) <LDOTS>
+intrinsic function ^(a,b) <LDOTS>
+intrinsic function &(a,b) <LDOTS>
+intrinsic function |(a,b) <LDOTS>
+intrinsic function <<(a,b) <LDOTS>
+intrinsic function >>(a,b) <LDOTS>
+intrinsic function >>>(a,b) <LDOTS>
+intrinsic function ===(a,b) <LDOTS>
+intrinsic function !==(a,b) <LDOTS>
+intrinsic function ==(a,b) <LDOTS>
+intrinsic function !=(a,b) <LDOTS>
+intrinsic function <(a,b) <LDOTS>
+intrinsic function <=(a,b) <LDOTS>
+intrinsic function >(a,b) <LDOTS>
+intrinsic function >=(a,b) <LDOTS>
+intrinsic function ~(a) <LDOTS>
+
+function eval(x) <LDOTS>
+function parseInt(s, r=undefined) <LDOTS>
+function parseFloat(s) <LDOTS>
+function isNaN(x) <LDOTS>
+function isFinite(x) <LDOTS>
+function decodeURI(x) <LDOTS>
+function decodeURIComponent(x) <LDOTS>
+function encodeURI(x) <LDOTS>
+function encodeURIComponent(x) <LDOTS>
+
+__ES4__ function hashcode(x) <LDOTS>
 }}}
+
+== Namespace for types ==
+
+<p>All new classes and type definitions in the global object are
+defined in the namespace ''types''.  This namespace is automatically
+opened by the implementation for code that is to be treated as 4th
+Edition code, but not for code that is to be treated as 3rd Edition
+code.
+
+<NOTE>The risk of polluting the name space for 3rd Edition code with
+new names is deemed too great to always open the ''types'' name space.
+
+<FIXME>The name and behavior of this namespace has yet to be fully
+resolved by the committee.
+
+<p>The means by which an implementation determines whether to treat code according to
+3rd Edition or 4th Edition is outside the scope of this Standard.
+
+<NOTE>This standard makes recommendations for how mime types should be
+used to tag script content in a web browser.  See <XREF
+target="appendix-mime-types">.
 
 
 == Value Properties of the Global Object ==
 
-=== ''NaN'' ===
+=== NaN ===
 
-The value of ''NaN'' is **NaN** (section 8.5).
+<P>The value of ''NaN'' is **NaN** (section 8.5).
 
-<p class="note">NOTE<br>
-This property was not marked ReadOnly in 3rd Edition.
+<COMP>This property was not marked ReadOnly in 3rd Edition.
 
-=== ''Infinity'' ===
+=== Infinity ===
 
-The value of ''Infinity'' is +<INFINITY> (section 8.5).
+<P>The value of ''Infinity'' is +<INFINITY> (section 8.5).
 
-<p class="note">NOTE<br>
-This property was not marked ReadOnly in 3rd Edition.
+<COMP>This property was not marked ReadOnly in 3rd Edition.
 
-=== ''undefined'' ===
+=== undefined ===
 
-The value of undefined is **undefined** (section 8.1).
+<P>The value of undefined is **undefined** (section 8.1).
 
-<p class="note">NOTE<br>
-This property was not marked ReadOnly in 3rd Edition.
+<COMP>This property was not marked ReadOnly in 3rd Edition.
 
-=== ''__ECMASCRIPT_VERSION__'' ===
+=== __ECMASCRIPT_VERSION__ ===
 
-The value of ''__ECMASCRIPT_VERSION__'' is the version of this
+<P>The value of ''__ECMASCRIPT_VERSION__'' is the version of this
 Standard to which the implementation conforms.  For this 4th Edition
 of the Standard, the value of ''__ECMASCRIPT_VERSION__'' is 4.
 
-<p class="note">NOTE<br>
-This property is new in the 4th Edition.
+<NOTE>This property is new in 4th Edition.
 
 
 == Function Properties of the Global Object ==
 
-=== ''eval (s)'' ===
+=== eval (s) ===
 
-<p> When the intrinsic ''eval'' function is called with a string
-argument ''s'', the following steps are taken:
+<P> When the intrinsic and non-intrinsic ''eval'' functions are called
+directly by name (that is, by the explicit use of the name ''eval'' as
+an Identifier which is the MemberExpression in a CallExpression) they
+are treated like operators in the language.  See <XREF
+target="eval-operator">.
 
-<INCLUDE file="Global.es" name="intrinsic native function eval">
+<p> When the intrinsic and non-intrinsic ''eval'' functions are called
+as methods on the global objects in whose scope they are closed then
+they evaluate their argument as a program in the global scope that is
+the receiver object in the call.
 
-<p> When the non-intrinsic ''eval'' function is called with a value
-''x'', the following steps are taken:
+<p> When the intrinsic and non-intrinsic ''eval'' functions are called
+as ordinary functions under other names than ''eval'' then they
+evaluate their argument as a program in a global scope that is the
+scope in which the ''eval'' function was closed.
+
+<p> The definitions for the latter two cases can be summarized as
+follows, where the call to ''eval'' in the body is an instance of the
+former ("operator") case:
+
+{{{
+intrinsic function eval(s: string)
+    eval(s);
+}}}
 
 <INCLUDE file="Global.es" name="function eval">
 
+<p> If the value of the ''eval'' property is used in any way other
+than than the three listed previously, or if the ''eval'' property is
+assigned to, an ''EvalError'' exception may be thrown.
 
-=== ''parseInt (string , radix)'' ===
+<COMP> The 3rd Edition of this Standard restricted the use of ''eval''
+to the first case listed previously.
 
-<p>The intrinsic function ''parseInt'' produces an integer value dictated by
-interpretation of the contents of the ''string'' argument according to
-the specified ''radix''.  Leading whitespace in the ''string'' is
-ignored. If ''radix'' is undefined or 0, it is assumed to be 10 except
-when the number begins with the character pairs 0x or 0X, in which
-case a radix of 16 is assumed. Any radix-16 number may also optionally
-begin with the character pairs 0x or 0X.
 
-<p>When the ''parseInt'' function is called, the following steps are
-taken:
+=== parseInt (string , radix) ===
+
+<p>The intrinsic ''parseInt'' function produces an integer value
+dictated by interpretation of the contents of the string argument
+''s'' according to the specified radix ''r''.  Leading whitespace in
+''s'' is ignored.  If ''r'' is 0, it is assumed to be 10 except when
+the number begins with the character pairs 0x or 0X, in which case a
+radix of 16 is assumed.  Any radix-16 number may also optionally begin
+with the character pairs 0x or 0X.
+
+<p>When the intrinsic ''parseInt'' function is called, the following
+steps are taken:
 
 <INCLUDE file="Global.es" name="intrinsic function parseInt">
 
-where ''helper::isDigitForRadix(c,r)'' computes whether ''c'' is a valid
-digit for the radix ''r'':
+The helper function ''isDigitForRadix(c,r)'' computes whether ''c'' is
+a valid digit for the radix ''r'', see <XREF target="helper:isDigitForRadix">.
 
-<INCLUDE file="Global.es" name="helper function isDigitForRadix">
-
-<p>The function ''informative::numericValue(s, r)'' computes the
+<p>The informative function ''numericValue(s, r)'' computes the
 numeric value of a radix-''r'' string ''s''.  If ''r'' is 10 and ''s''
 contains more than 20 significant digits, every significant digit
 after the 20th may be replaced by a 0 digit, at the option of the
 implementation; and if ''r'' is not 2, 4, 8, 10, 16, or 32, then the
-returned alue may be an implementation-dependent approximation to the
+returned value may be an implementation-dependent approximation to the
 mathematical integer value that is represented by ''s'' in radix-''r''
 notation.
 
-<p>The non-intrinsic function ''parseInt'' converts its first argument
-to string and its second argument to int, and then calls the intrinsic
-''parseInt'' function:
-
-<INCLUDE file="Global.es" name="function parseInt">
-
-<p class="note">NOTE 1<br>
-In the 3rd Edition of this Standard, the ''parseInt'' function was
+<COMP>In the 3rd Edition of this Standard, the ''parseInt'' function was
 allowed to, though not encouraged to, interpret a string with a
 leading ''0'' but no leading ''0x'' or ''0X'' as a base-8 number if
 the radix was not supplied in the call or was supplied as zero.  This
 is no longer allowed; the function must interpret such a number as a
 base-10 number.
 
-<p class="note">NOTE 2<br>
-''parseInt'' may interpret only a leading portion of the string as an
+<NOTE>''parseInt'' may interpret only a leading portion of the string as an
 integer value; it ignores any characters that cannot be interpreted as
 part of the notation of an integer, and no indication is given that
 any such characters were ignored.
 
-=== ''parseFloat (string)'' ===
+<p>The non-intrinsic ''parseInt'' function converts its first argument
+to string and its second argument to int, and then calls its intrinsic
+counterpart:
 
-<p>The ''parseFloat'' function produces a number value dictated by
-interpretation of the contents of the string argument as a decimal
-literal.
+<INCLUDE file="Global.es" name="function parseInt">
+
+<h4 id="helper:isDigitForRadix">isDigitForRadix </h4>
+
+<INCLUDE file="Global.es" name="helper function isDigitForRadix">
+
+
+=== parseFloat (string) ===
+
+<p>The intrinsic ''parseFloat'' function produces a number value
+dictated by interpretation of the contents of the string argument as a
+decimal literal.
 
 <p>When the intrinsic ''parseFloat'' function is called, the following
 steps are taken:
 
 <INCLUDE file="Global.es" name="intrinsic function parseFloat">
 
-<p>When the non-intrinsic ''parseFloat'' function is called, the
-following steps are taken:
-
-<INCLUDE file="Global.es" name="function parseFloat">
-
-<p class="note">NOTE<br>
-''parseFloat'' may interpret only a leading portion of the string as a
+<NOTE>''parseFloat'' may interpret only a leading portion of the string as a
 number value; it ignores any characters that cannot be interpreted as
 part of the notation of an decimal literal, and no indication is given
 that any such characters were ignored.
 
-=== ''isNaN (number)'' ===
+<p>The non-intrinsic ''parseFloat'' function converts its argument to
+string, then calls its intrinsic counterpart:
 
-<p>The intrinsic function ''isNaN'' takes a numeric value and returns
-true if it is **NaN**, and otherwise returns false.
+<INCLUDE file="Global.es" name="function parseFloat">
+
+
+=== isNaN (number) ===
+
+<p>The intrinsic ''isNaN'' function takes a numeric value and returns
+**true** if it is **NaN**, and otherwise returns **false**.
 
 <INCLUDE file="Global.es" name="intrinsic function isNaN">
 
-<p>The non-intrinsic function ''isNaN'' converts its argument to a
-number, then calls the intrinsic ''isNaN''.
+<p>The non-intrinsic ''isNaN'' function converts its argument to a
+number, then calls its intrinsic counterpart:
 
 <INCLUDE file="Global.es" name="function isNaN">
 
 
-=== ''isFinite (number)'' ===
+=== isFinite (number) ===
 
-<p>When the intrinsic function ''isFinite'' is called on a number, the
+<p>When the intrinsic ''isFinite'' function is called on a number, the
 following steps are taken:
 
 <INCLUDE file="Global.es" name="intrinsic function isFinite">
 
-<p>When the non-intrinsic function ''isFinite'' is called on a value,
-the following steps are taken:
+<p>The non-intrinsic ''isFinite'' function converts its argument to a number,
+then calls its intrinsic counterpart:
 
 <INCLUDE file="Global.es" name="function isFinite">
 
@@ -214,13 +313,13 @@ the following steps are taken:
 resources (e.g. web pages or files) and transport protocols by which
 to access them (e.g. HTTP or FTP) on the Internet. The ECMAScript
 language itself does not provide any support for using URIs except for
-functions that encode and decode URIs as described in sections
-15.1.3.1, 15.1.3.2, 15.1.3.3 and 15.1.3.4.
+functions that encode and decode URIs as described in sections <XREF
+target="decodeURI">, <XREF target="decodeURIComponent">, <XREF
+target="encodeURI">, and <XREF target="encodeURIComponent">.
 
-<p class="NOTE">NOTE<br>
-Many implementations of ECMAScript provide additional functions and
-methods that manipulate web pages; these functions are beyond the
-scope of this standard.
+<NOTE>Many implementations of ECMAScript provide additional
+functions and methods that manipulate web pages; these functions are
+beyond the scope of this standard.
 
 <p>A URI is composed of a sequence of components separated by component separators. The general form is:
 <div class="indented">
@@ -270,53 +369,72 @@ uriMark</div>
 <div class="indented">''- _ . ! ~ * ' ( )''</div>
 </div>
 
-<p>When a character to be included in a URI is not listed above or is not intended to have the special meaning
-sometimes given to the reserved characters, that character must be encoded. The character is first transformed into
-a sequence of octets using the UTF-8 transformation, with surrogate pairs first transformed from their UCS-2 to
-UCS-4 encodings. (Note that for code points in the range [0,127] this results in a single octet with the same value.)
-The resulting sequence of octets is then transformed into a string with each octet represented by an escape
-sequence of the form "%xx".
+<FIXME>Upgrade to Unicode 5 in the following sections, and upgrade to
+handling the entire Unicode character set.
 
-<p>The encoding and escaping process is described by the hidden function Encode taking two string arguments string
-and unescapedSet. This function is defined for expository purpose only.
+<p>When a character to be included in a URI is not listed above or is
+not intended to have the special meaning sometimes given to the
+reserved characters, that character must be encoded. The character is
+first transformed into a sequence of octets using the UTF-8
+transformation, with surrogate pairs first transformed from their
+UCS-2 to UCS-4 encodings. (Note that for code points in the range
+[0,127] this results in a single octet with the same value.)  The
+resulting sequence of octets is then transformed into a string with
+each octet represented by an escape sequence of the form "''%xx''".
 
+<p>The encoding and escaping process is described by the helper
+function ''encode'' taking two string arguments ''s'' and
+''unescapedSet''.
 
-<p>The unescaping and decoding process is described by the hidden function Decode taking two string arguments
-string and reservedSet. This function is defined for expository purpose only.
+<INCLUDE file="Global.es" name="helper function encode">
+<INCLUDE file="Global.es" name="helper function twoHexDigits">
 
+<p>The unescaping and decoding process is described by the helper
+function ''decode'' taking two string arguments ''s'' and
+''reservedSet''.
 
-<p class="note">NOTE<br>
-The syntax of Uniform Resource Identifiers is given in RFC2396.
+<FIXME>One feels regular expressions would be appropriate here...
 
-<p class="note">NOTE<br>
-A formal description and implementation of UTF-8 is given in the Unicode Standard, Version 2.0, Appendix A.
-In UTF-8, characters are encoded using sequences of 1 to 6 octets. The only octet of a "sequence" of one has the higher-order
-bit set to 0, the remaining 7 bits being used to encode the character value. In a sequence of n octets, n>1, the initial octet has
-the n higher-order bits set to 1, followed by a bit set to 0. The remaining bits of that octet contain bits from the value of the
-character to be encoded. The following octets all have the higher-order bit set to 1 and the following bit set to 0, leaving 6 bits in
-each to contain bits from the character to be encoded. The possible UTF-8 encodings of ECMAScript characters are:
+<INCLUDE file="Global.es" name="helper function decode">
+<INCLUDE file="Global.es" name="helper function decodeHexEscape">
 
-<div class="indented">FIXME - table</div>
+<p>The helper function ''isDigitForRadix'' was defined in section
+<XREF target="helper:isDigitForRadix">.
 
-<!-- FIXME
-Code Point Value Representation 1st Octet 2nd Octet 3rd Octet 4th Octet
-0x0000 - 0x007F 00000000 0zzzzzzz 0zzzzzzz
-0x0080 - 0x07FF 00000yyy yyzzzzzz 110yyyyy 10zzzzzz
-0x0800 - 0xD7FF xxxxyyyy yyzzzzzz 1110xxxx 10yyyyyy 10zzzzzz
-0xD800 - 0xDBFF
-followed by
-0xDC00 – 0xDFFF
-110110vv vvwwwwxx
-followed by
-110111yy yyzzzzzz
-11110uuu 10uuwwww 10xxyyyy 10zzzzzz
-0xD800 - 0xDBFF
-not followed by
-0xDC00 – 0xDFFF
-causes URIError
-0xDC00 – 0xDFFF causes URIError
-0xE000 - 0xFFFF xxxxyyyy yyzzzzzz 1110xxxx 10yyyyyy 10zzzzzz
--->
+<NOTE>The syntax of Uniform Resource Identifiers is given in
+RFC2396.
+
+<NOTE>A formal description and implementation of UTF-8 is
+given in the Unicode Standard, Version 2.0, Appendix A.  In UTF-8,
+characters are encoded using sequences of 1 to 6 octets. The only
+octet of a "sequence" of one has the higher-order bit set to 0, the
+remaining 7 bits being used to encode the character value. In a
+sequence of n octets, n>1, the initial octet has the n higher-order
+bits set to 1, followed by a bit set to 0. The remaining bits of that
+octet contain bits from the value of the character to be encoded. The
+following octets all have the higher-order bit set to 1 and the
+following bit set to 0, leaving 6 bits in each to contain bits from
+the character to be encoded. The possible UTF-8 encodings of
+ECMAScript characters are:
+
+<center>
+<table border="1">
+  <tr><th>Code Point Value</th><th>Representation</th>    <th>1st Octet</th><th>2nd Octet</th><th>3rd Octet</th><th>4th Octet</th></tr>
+  <tr><td>0x0000 - 0x007F</td> <td>00000000 0zzzzzzz</td> <td>0zzzzzzz</td></tr>
+  <tr><td>0x0080 - 0x07FF</td> <td>00000yyy yyzzzzzz</td> <td>110yyyyy</td> <td>10zzzzzz</td></tr>
+  <tr><td>0x0800 - 0xD7FF</td> <td>xxxxyyyy yyzzzzzz</td> <td>1110xxxx</td> <td>10yyyyyy</td><td>10zzzzzz</td></tr>
+  <tr><td>0xD800 - 0xDBFF<br>
+          followed by<br>
+          0xDC00 - 0xDFFF</td> <td>110110vv vvwwwwxx<br>
+                                   followed by<br>
+                                   110111yy yyzzzzzz</td> <td>11110uuu</td> <td>10uuwwww</td> <td>10xxyyyy</td> <td>10zzzzzz</td></tr>
+  <tr><td>0xD800 - 0xDBFF<br>
+      not followed by<br>
+      0xDC00 - 0xDFFF</td>     <td>causes URIError</td></tr>
+  <tr><td>0xDC00 - 0xDFFF</td> <td>causes URIError</td></tr>
+  <tr><td>0xE000 - 0xFFFF</td> <td>xxxxyyyy yyzzzzzz</td> <td>1110xxxx</td> <td>10yyyyyy</td> <td>10zzzzzz</td></tr>
+</table>
+</center>
 
 <p>Where
 <div class="indented">uuuuu = vvvv + 1</div>
@@ -328,60 +446,226 @@ surrogate pairs; the above transformation combines a UCS-2 surrogate
 pair into a UCS-4 representation and encodes the resulting 21-bit
 value in UTF-8. Decoding reconstructs the surrogate pair.
 
+<p>The helper functions ''encode'' and ''decode'', defined above, use
+the helper functions ''toUTF8'' and ''fromUTF8'' to convert code
+points to UTF-8 sequences and to convert UTF-8 sequences to code
+points, respectively.
+
+<INCLUDE file="Global.es" name="helper function toUTF8">
+<INCLUDE file="Global.es" name="helper function fromUTF8">
+
+<p>Several helper strings are defined based on the grammar shown
+previously:
+
+<INCLUDE file="Global.es" name="helper const uriReserved">
+<INCLUDE file="Global.es" name="helper const uriAlpha">
+<INCLUDE file="Global.es" name="helper const uriDigit">
+<INCLUDE file="Global.es" name="helper const uriMark">
+<INCLUDE file="Global.es" name="helper const uriUnescaped">
+
+
 ==== decodeURI (encodedURI) ====
 
-The decodeURI function computes a new version of a URI in which each escape sequence and UTF-8 encoding of
-the sort that might be introduced by the encodeURI function is replaced with the character that it represents.
-Escape sequences that could not have been introduced by encodeURI are not replaced.
+<P>The intrinsic ''decodeURI'' function computes a new version of a URI
+in which each escape sequence and UTF-8 encoding of the sort that
+might be introduced by the ''encodeURI'' function is replaced with the
+character that it represents.  Escape sequences that could not have
+been introduced by ''encodeURI'' are not replaced.
 
-<p>When the decodeURI function is called with one argument encodedURI, the following steps are taken:
+<p>When the intrinsic ''decodeURI'' function is called with one string
+argument ''encodedURI'', the following steps are taken:
 
-<p>FIXME
+<INCLUDE file="Global.es" name="intrinsic function decodeURI">
 
-<p class="note">NOTE<br>
-The character "#" is not decoded from escape sequences even though it is not a reserved URI character.
+<NOTE>The character "''#''" is not decoded from escape sequences even
+though it is not a reserved URI character.
+
+<p>The non-intrinsic ''decodeURI'' function converts its argument to
+string, then calls its intrinsic counterpart:
+
+<INCLUDE file="Global.es" name="function decodeURI">
 
 
 ==== decodeURIComponent (encodedURIComponent) ====
 
-The decodeURIComponent function computes a new version of a URI in which each escape sequence and UTF-8
-encoding of the sort that might be introduced by the encodeURIComponent function is replaced with the character
-that it represents.
+<P>The intrinsic ''decodeURIComponent'' function computes a new version
+of a URI in which each escape sequence and UTF-8 encoding of the sort
+that might be introduced by the ''encodeURIComponent'' function is
+replaced with the character that it represents.
 
-<p>When the decodeURIComponent function is called with one argument encodedURIComponent, the following
-steps are taken:
+<p>When the intrinsic ''decodeURIComponent'' function is called with
+one string argument ''encodedURIComponent'', the following steps are
+taken:
 
-<p>FIXME
+<INCLUDE file="Global.es" name="intrinsic function decodeURIComponent">
+
+<p>The non-intrinsic ''decodeURIComponent'' function converts its
+argument to string, then calls its intrinsic counterpart:
+
+<INCLUDE file="Global.es" name="function decodeURIComponent">
+
+
 
 ==== encodeURI (uri) ====
 
-The encodeURI function computes a new version of a URI in which each instance of certain characters is replaced
-by one, two or three escape sequences representing the UTF-8 encoding of the character.
+<p>The intrinsic ''encodeURI'' function computes a new version of a URI
+in which each instance of certain characters is replaced by one, two
+or three escape sequences representing the UTF-8 encoding of the
+character.
 
-<p>When the encodeURI function is called with one argument uri, the following steps are taken:
+<p>When the intrinsic ''encodeURI'' function is called with one string
+argument ''uri'', the following steps are taken:
 
-<p>FIXME
+<INCLUDE file="Global.es" name="intrinsic function encodeURI">
 
-<p class="note">NOTE<br>
-The character "#" is not encoded to an escape sequence even though it is not a reserved or unescaped URI character.
+<NOTE>The character "''#''" is not encoded to an escape sequence
+even though it is not a reserved or unescaped URI character.
+
+<p>The non-intrinsic ''encodeURI'' function converts its argument to
+string, then calls its intrinsic counterpart:
+
+<INCLUDE file="Global.es" name="function encodeURI">
+
 
 ==== encodeURIComponent (uriComponent) ====
 
-The encodeURIComponent function computes a new version of a URI in which each instance of certain
-characters is replaced by one, two or three escape sequences representing the UTF-8 encoding of the character.
+<P>The ''encodeURIComponent'' function computes a new version of a URI in
+which each instance of certain characters is replaced by one, two or
+three escape sequences representing the UTF-8 encoding of the
+character.
 
-<p>When the encodeURIComponent function is called with one argument uriComponent, the following steps are
-taken:
+<p>When the intrinsic ''encodeURIComponent'' function is called with
+one string argument ''uriComponent'', the following steps are taken:
 
-<p> FIXME
+<INCLUDE file="Global.es" name="intrinsic function encodeURIComponent">
 
-=== Other Properties of the Global Object ===
+<p>The non-intrinsic ''encodeURIComponent'' function converts its
+argument to string, then calls its intrinsic counterpart:
 
-==== Math ====
+<INCLUDE file="Global.es" name="function encodeURIComponent">
 
-See section 15.8.
+=== hashcode (x) ===
 
-==== global ====
+<!-- [[proposals:hashcodes]] -->
 
-...
+<P> The intrinsic ''hashcode'' function computes an unsigned integer
+value for its argument such that if two values ''v1'' and ''v2'' are
+equal by the operator ''intrinsic::==='' then ''hashcode(v1)'' is
+numerically equal to ''hashcode(v2)''.
 
+<P> The hashcode of any value for which ''isNaN'' returns **true** is
+zero.
+
+<P> The hashcode computed for an object does not change over time.
+
+<INCLUDE file="Global.es" name="intrinsic function hashcode">
+
+<P> The informative functions ''stringHash'' and ''objectHash''
+compute hash values for strings and arbitrary objects, respectively.
+They can take into account their arguments' immutable structure only.
+
+<P> The implementation should strive to compute different hashcodes
+for objects that are not the same by ''intrinsic::==='', as the
+utility of this function depends on that property.  (The user program
+should be able to expect that the hashcodes of objects that are not
+the same are different with high probability.)
+
+<NOTE> A typical implementation of ''stringHash'' will make use of the
+string's character sequence and its length.
+
+<NOTE> A typical implementation of ''objectHash'' may make use of the
+object's address in memory if the object, or it may maintain a
+separate table mapping objects to hash codes.
+
+<IMPLNOTE>The intrinsic ''hashcode'' function should not return
+pointer values cast to integers, even in implementations that do not
+use a moving garbage collector.  Exposing memory locations of objects
+may make security vulnerabilities in the host environment
+significantly worse.  Implementations -- in particular those which
+read network input -- should return numbers unrelated to memory
+addresses if possible, or at least use memory addresses subject to
+some cryptographically strong one-way transformation, or sequence
+numbers, cookies, or similar.
+
+=== Operator functions ===
+
+<FIXME>These are defined as implementing the primitive functionality
+of each operator, bypassing any user overloading.  They can be
+referenced by prefixing them with a namespace, eg ''intrinsic::===''.
+
+
+== Class and Interface Properties of the Global Object ==
+
+<p>The class properties of the global object are defined in later sections of this Standard:
+<ul>
+  <li> The ''Object'' class is defined in section <XREF target="object-object">
+  <li> The ''Function'' class is defined in section <XREF target="function-object">
+  <li> The ''Name'' class is defined in section <XREF target="name-object">
+  <li> The ''Namespace'' class is defined in section <XREF target="namespace-object">
+  <li> The ''Array'' class is defined in section <XREF target="array-object">
+  <li> The ''ByteArray'' class is defined in section <XREF target="bytearray-object">
+  <li> The ''String'' and ''string'' classes are defined in section <XREF target="string-object">
+  <li> The ''Boolean'' and ''boolean'' classes are defined in section <XREF target="boolean-object">
+  <li> The ''Number'', ''int'', ''uint'', ''double'', and ''decimal'' classes are defined in section <XREF target="number-object">
+  <li> The ''Date'' class is defined in section <XREF target="date-object">
+  <li> The ''RegExp'' class is defined in section <XREF target="regexp-object">
+  <li> The ''Map'' class is defined in section <XREF target="map-object">
+  <li> The ''Error'' class and its subclasses ''EvalError'', ''RangeError'', ''ReferenceError'', ''SyntaxError'', ''TypeError'', and ''URIError'' are defined in section <XREF target="error-object">
+</ul>
+
+
+
+== Type Properties on the Global Object ==
+
+=== EnumerableId ===
+
+<p>The type ''EnumerableId'' is a union type that collects all nominal
+types that are treated as property names by the iteration protocol and the
+built-in objects:
+
+{{{
+__ES4__ type EnumerableId = (int,uint,Name,string);
+}}}
+
+=== Numeric ===
+
+<p>The type ''Numeric'' is a union type that collects all nominal
+types that are treated as numbers by the implementation:
+
+{{{
+__ES4__ type Numeric = (int,uint,double,decimal,Number);
+}}}
+
+
+== Meta-Object Interface and Type Properties of the Global Object ==
+
+<P> The interface types ''Field'', ''FieldValue'', ''Type'',
+''NominalType'', ''InterfaceType'', ''ClassType'', ''UnionType'',
+''RecordType'', ''FunctionType'', and ''ArrayType'', as well as the
+structural types ''FieldIterator'', ''FieldValueIterator'',
+''TypeIterator'', and ''InterfaceIterator'', are defined in section
+<XREF target="meta-objects">.
+
+
+== Other Properties of the Global Object ==
+
+=== Math ===
+
+<P> See section <XREF target="math-object">.
+
+=== global ===
+
+<!-- [[proposals:globals]] -->
+
+<p>The intrinsic ''global'' property holds a reference to the global
+object that contains that property.
+
+<NOTE>There may be multiple global objects in a program, but these
+objects may share values or immutable state: for example, their
+''isNaN'' properties may hold the same function object.  However, each
+global object has separate mutable state, and a separate value for the
+intrinsic ''global'' property.
+
+<NOTE>This property is new in 4th Edition.
+
+<!-- End of global.html -->

@@ -223,35 +223,25 @@ package Library
 
         private type box = {key:K, value:V, link:* /*box*/};
 
-        private var hashcode : function(K):uint;        /* key hash function (should be const?) */
-        private var equals : function (K,K):boolean;   /* key equality tester (should be const?) */
+        private var hashcode : function(K):uint;      /* key hash function (should be const?) */
+        private var equals : function (K,K):boolean;  /* key equality tester (should be const?) */
         private var population: uint = 0;             /* number of elements in the table */
         private var limit: uint = 10;                 /* number of buckets in the table */
         private var tbl: [box] = newTbl(limit);       /* hash table */
     }
 
-    /* FIXME: I don't like the name "Hashcode" but it captures the intent, sort of. */
     /* FIXME: Do we really want this to be parameterized? */
-    public interface Hashcode.<T>
+    public interface ObjectIdentity.<T>
     {
-        function equals(that: Hashcode.<T>): boolean;
+        function equals(that: ObjectIdentity.<T>): boolean;
         function hashcode(): uint;
     }
 
-    public class ObjectMap.<K /* implements Hashcode.<K> */, V> extends Map.<K,V> {
-        function ObjectMap() 
-            : super(function (x: Hashcode.<K>, y: Hashcode.<K>): boolean { return x.equals(y) },
-                    function (x: Hashcode.<K>): uint { return x.hashcode() })
+    public class IdentityMap.<K /* implements ObjectIdentity.<K> */, V> extends Map.<K,V> {
+        function IdentityMap() 
+            : super(function (x: ObjectIdentity.<K>, y: ObjectIdentity.<K>): boolean { return x.equals(y) },
+                    function (x: ObjectIdentity.<K>): uint { return x.hashcode() })
         {
-        }
-
-        /* Create an ObjectMap from an Object */
-        meta static function convert(x : Object!) {
-            let d = new ObjectMap.<EnumerableId,V>;
-            for ( let n in x )
-                if (x.hasOwnProperty(n))
-                    d.put(n, x[n]);
-            return d;
         }
     }
 }
