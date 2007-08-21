@@ -275,7 +275,7 @@ package
         static function substr(self, start, length): string
             string.substr(self, start, length);
 
-        intrinsic function substring(start: double, length: double): string
+        intrinsic function substr(start: double, length: double): string
             string.substr(this, start, length);
 
 
@@ -344,13 +344,13 @@ package
 
         /* E262-4 draft proposals:string.prototype.trim */
         prototype function trim()
-            string.trim(this);
+            string.trim(string(this));
 
         static function trim() : string
-            string.trim(this);
+            string.trim(string(this));
 
         intrinsic function trim() : string
-            string.trim(this);
+            string.trim(string(this));
 
 
         /* E262-3 15.5.5.1: length. */

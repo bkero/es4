@@ -1,0 +1,414 @@
+= The class ''string'' =
+
+<P> The ''string'' class (lower case "s") is a final and non-dynamic
+subclass of the ''String'' class (upper case "S") and corresponds to
+primitive string values in 3rd Edition.
+
+<RATIONALE> The ''string'' class, being final and non-dynamic, can
+typically be manipulated more efficiently by the language
+implementation than the ''String'' class, which exists primarily for
+backwards compatibility with 3rd Edition.
+
+<P> The ''string'' class inherits all the intrinsic methods from the
+''String'' class.  Those intrinsic methods invariably forward calls to
+their static counterparts in ''string''.
+
+<P> The ''string'' class has the same prototype object as the
+''String'' class; changes made to the prototype object of one class
+are visible on the prototype object of the other class.
+
+<RATIONALE> The shared prototype aids backward compatibility: in 3rd
+Edition, code could effect the ''String'' prototype object by
+expressions like ''"mystring".prototype.x=10''.  With the shared
+prototype, that code will still work in 4th Edition.
+
+
+== Synopsis ==
+
+{{{
+final class string! extends String
+{
+    <SIGNATURE file="string_primitive.es" name="function String">
+    <SIGNATURE file="string_primitive.es" name="meta static function invoke">
+
+    <SIGNATURE file="string_primitive.es" name="static function fromCharCode">
+    <SIGNATURE file="string_primitive.es" name="static function charAt">
+    <SIGNATURE file="string_primitive.es" name="static function charCodeAt">
+    <SIGNATURE file="string_primitive.es" name="static function concat">
+    <SIGNATURE file="string_primitive.es" name="static function indexOf">
+    <SIGNATURE file="string_primitive.es" name="static function lastIndexOf">
+    <SIGNATURE file="string_primitive.es" name="static function localeCompare">
+    <SIGNATURE file="string_primitive.es" name="static function match">
+    <SIGNATURE file="string_primitive.es" name="static function replace">
+    <SIGNATURE file="string_primitive.es" name="static function search">
+    <SIGNATURE file="string_primitive.es" name="static function slice">
+    <SIGNATURE file="string_primitive.es" name="static function split">
+    <SIGNATURE file="string_primitive.es" name="static function substring">
+    <SIGNATURE file="string_primitive.es" name="static function toLowerCase">
+    <SIGNATURE file="string_primitive.es" name="static function toLocaleLowerCase">
+    <SIGNATURE file="string_primitive.es" name="static function toUpperCase">
+    <SIGNATURE file="string_primitive.es" name="static function toLocaleUpperCase">
+    <SIGNATURE file="string_primitive.es" name="static function trim">
+
+    static const length: uint = 1
+    static const prototype: Object = <LDOTS>
+}
+}}}
+
+== Static Methods on the ''string'' Class ==
+
+<FIXME> Should ''string'' methods be generic (ie unconstrained in
+their object argument), or only ''String'' methods?  The prototype
+methods on ''string'' have to be generic, for sure, but the static
+methods are new and we can choose.
+
+=== charAt (pos) ===
+
+<P>Returns a string containing the character at position pos in the string resulting from converting this
+object to a string. If there is no character at that position, the result is the empty string. The result is a
+string value, not a String object.
+
+<P>If pos is a value of Number type that is an integer, then the result of x.charAt(pos) is equal to the
+result of x.substring(pos, pos+1).
+
+<P>When the charAt method is called with one argument pos, the following steps are taken:
+
+<INCLUDE file="string_primitive.es" name="static function charAt">
+
+<NOTE>
+The charAt function is intentionally generic; it does not require that its this value be a String
+object. Therefore, it can be transferred to other kinds of objects for use as a method.
+
+=== charCodeAt (pos) ===
+
+<P>Returns a number (a nonnegative integer less than 216) representing the code point value of the
+character at position pos in the string resulting from converting this object to a string. If there is no
+character at that position, the result is NaN.
+
+<P>When the charCodeAt method is called with one argument pos, the following steps are taken:
+
+<INCLUDE file="string_primitive.es" name="static function charCodeAt">
+
+<NOTE>
+The charCodeAt function is intentionally generic; it does not require that its this value be a String
+object. Therefore it can be transferred to other kinds of objects for use as a method.
+
+=== concat ( ...strings ) ===
+
+<P>When the concat method is called with zero or more arguments string1, string2, etc., it returns a
+string consisting of the characters of this object (converted to a string) followed by the characters of
+each of string1, string2, etc. (where each argument is converted to a string). The result is a string
+value, not a String object. The following steps are taken:
+
+<INCLUDE file="string_primitive.es" name="static function concat">
+
+<NOTE>
+The concat function is intentionally generic; it does not require that its this value be a String
+object. Therefore it can be transferred to other kinds of objects for use as a method.
+
+=== indexOf (searchString, position) ===
+
+<P>If searchString appears as a substring of the result of converting this object to a string, at one or more
+positions that are greater than or equal to position, then the index of the smallest such position is
+returned; otherwise, -1 is returned. If position is undefined, 0 is assumed, so as to search all of the
+string.
+
+<P>The indexOf method takes two arguments, searchString and position, and performs the following
+steps:
+
+<INCLUDE file="string_primitive.es" name="static function indexOf">
+
+<NOTE>
+The indexOf function is intentionally generic; it does not require that its this value be a String
+object. Therefore, it can be transferred to other kinds of objects for use as a method.
+
+=== lastIndexOf (searchString, position) ===
+
+<P>If searchString appears as a substring of the result of converting this object to a string at one or more
+positions that are smaller than or equal to position, then the index of the greatest such position is
+returned; otherwise, -1 is returned. If position is undefined, the length of the string value is assumed,
+so as to search all of the string.
+
+<P>The lastIndexOf method takes two arguments, searchString and position, and performs the
+following steps:
+
+<INCLUDE file="string_primitive.es" name="static function indexOf">
+
+<NOTE>The lastIndexOf function is intentionally generic; it does not require that its this value be a
+String object. Therefore, it can be transferred to other kinds of objects for use as a method.
+
+=== localeCompare (that) ===
+
+<P>When the localeCompare method is called with one argument that, it returns a number other than
+NaN that represents the result of a locale-sensitive string comparison of this object (converted to a
+string) with that (converted to a string). The two strings are compared in an implementation-defined
+fashion. The result is intended to order strings in the sort order specified by the system default locale,
+and will be negative, zero, or positive, depending on whether this comes before that in the sort order,
+the strings are equal, or this comes after that in the sort order, respectively.
+
+<P>The localeCompare method, if considered as a function of two arguments this and that, is a
+consistent comparison function (as defined in 15.4.4.11) on the set of all strings. Furthermore,
+localeCompare returns 0 or -0 when comparing two strings that are considered canonically
+equivalent by the Unicode standard.
+
+<P>The actual return values are left implementation-defined to permit implementers to encode additional
+information in the result value, but the function is required to define a total ordering on all strings and
+to return 0 when comparing two strings that are considered canonically equivalent by the Unicode
+standard.
+
+<NOTE>
+The localeCompare method itself is not directly suitable as an argument to
+Array.prototype.sort because the latter requires a function of two arguments.
+
+<NOTE>
+This function is intended to rely on whatever language-sensitive comparison functionality is available
+to the ECMAScript environment from the host environment, and to compare according to the rules of
+the host environment's current locale. It is strongly recommended that this function treat strings that
+are canonically equivalent according to the Unicode standard as identical (in other words, compare
+the strings as if they had both been converted to Normalised Form C or D first). It is also
+recommended that this function not honour Unicode compatibility equivalences or decompositions.
+If no language-sensitive comparison at all is available from the host environment, this function may
+perform a bitwise comparison.
+
+<NOTE>
+The localeCompare function is intentionally generic; it does not require that its this value be a
+String object. Therefore, it can be transferred to other kinds of objects for use as a method.
+
+<NOTE>
+The second parameter to this function is likely to be used in a future version of this standard; it is
+recommended that implementations do not use this parameter position for anything else.
+
+=== match (regexp) ===
+
+<P>If regexp is not an object whose [[Class]] property is "RegExp", it is replaced with the result of the
+expression new RegExp(regexp). Let string denote the result of converting the this value to a
+string. Then do one of the following:
+<OL>
+<LI> If regexp.global is false: Return the result obtained by invoking RegExp.prototype.exec
+(see 15.10.6.2) on regexp with string as parameter.
+<LI> If regexp.global is true: Set the regexp.lastIndex property to 0 and invoke
+RegExp.prototype.exec repeatedly until there is no match. If there is a match with an empty
+string (in other words, if the value of regexp.lastIndex is left unchanged), increment
+regexp.lastIndex by 1. Let n be the number of matches. The value returned is an array with the
+length property set to n and properties 0 through n-1 corresponding to the first elements of the
+results of all matching invocations of RegExp.prototype.exec.
+</OL>
+
+<NOTE>
+The match function is intentionally generic; it does not require that its this value be a String object.
+Therefore, it can be transferred to other kinds of objects for use as a method.
+
+=== replace (searchValue, replaceValue) ===
+
+<P>Let string denote the result of converting the this value to a string.
+If searchValue is a regular expression (an object whose [[Class]] property is "RegExp"), do the
+following: If searchValue.global is false, then search string for the first match of the regular
+expression searchValue. If searchValue.global is true, then search string for all matches of the
+regular expression searchValue. Do the search in the same manner as in
+String.prototype.match, including the update of searchValue.lastIndex. Let m be the
+number of left capturing parentheses in searchValue (NCapturingParens as specified in 15.10.2.1).
+If searchValue is not a regular expression, let searchString be ToString(searchValue) and search
+string for the first occurrence of searchString. Let m be 0.
+If replaceValue is a function, then for each matched substring, call the function with the following m
++ 3 arguments. Argument 1 is the substring that matched. If searchValue is a regular expression, the
+next m arguments are all of the captures in the MatchResult (see 15.10.2.1). Argument m + 2 is the
+offset within string where the match occurred, and argument m + 3 is string. The result is a string
+value derived from the original input by replacing each matched substring with the corresponding
+return value of the function call, converted to a string if need be.
+Otherwise, let newstring denote the result of converting replaceValue to a string. The result is a string
+value derived from the original input string by replacing each matched substring with a string derived
+from newstring by replacing characters in newstring by replacement text as specified in the following
+table. These $ replacements are done left-to-right, and, once such a replacement is performed, the new
+replacement text is not subject to further replacements. For example,
+"$1,$2".replace(/(\$(\d))/g, "$$1-$1$2") returns "$1-$11,$1-$22". A $ in
+newstring that does not match any of the forms below is left as is.
+
+<table border=1>
+<tr><th>Characters</th><th>Replacement text</th></tr>
+<tr><td>$$</td>        <td>$</td></tr>
+<tr><td>$&</td>        <td>The matched substring.</td></tr>
+<tr><td>$`</td>        <td>The portion of string that precedes the matched substring.</td></tr>
+<tr><td>$'</td>        <td>The portion of string that follows the matched substring.</td></tr>
+<tr><td>$n</td>        <td>The //n//th capture, where //n// is a single digit 1-9 and ''$n'' is not
+                           followed by a decimal digit. If //n<LEQ>m// and the //n//th capture
+                           is undefined, use the empty string instead. If //n<GT>m//,
+                           the result is implementation-defined.</td></tr>
+<tr><td>$nn</td>       <td>The //nn//th capture, where //nn// is a two-digit decimal number
+                           01-99. If //nn<LEQ>m// and the //nn//th capture is undefined, use
+                           the empty string instead. If //nn<GT>m//, the result is implementation-defined.</td></tr>
+</table>
+
+<NOTE>
+The replace function is intentionally generic; it does not require that its this value be a String
+object. Therefore, it can be transferred to other kinds of objects for use as a method.
+
+=== search (regexp) ===
+
+<P>If regexp is not an object whose [[Class]] property is "RegExp", it is replaced with the result of the
+expression new RegExp(regexp). Let string denote the result of converting the this value to a
+string.
+
+<P>The value string is searched from its beginning for an occurrence of the regular expression pattern
+regexp. The result is a number indicating the offset within the string where the pattern matched, or -1
+if there was no match.
+
+<NOTE>
+This method ignores the lastIndex and global properties of regexp. The lastIndex property
+of regexp is left unchanged.
+
+<NOTE>
+The search function is intentionally generic; it does not require that its this value be a String
+object. Therefore, it can be transferred to other kinds of objects for use as a method.
+
+=== slice (start, end) ===
+
+<P>The slice method takes two arguments, start and end, and returns a substring of the result of
+converting this object to a string, starting from character position start and running to, but not
+including, character position end (or through the end of the string if end is undefined). If start is
+negative, it is treated as (sourceLength+start) where sourceLength is the length of the string. If end is
+negative, it is treated as (sourceLength+end) where sourceLength is the length of the string. The result
+is a string value, not a String object. The following steps are taken:
+
+<INCLUDE file="string_primitive.es" name="static function slice">
+
+<NOTE>
+The slice function is intentionally generic; it does not require that its this value be a String object.
+Therefore it can be transferred to other kinds of objects for use as a method.
+
+=== split (separator, limit) ===
+
+<P>Returns an Array object into which substrings of the result of converting this object to a string have
+been stored. The substrings are determined by searching from left to right for occurrences of
+separator; these occurrences are not part of any substring in the returned array, but serve to divide up
+the string value. The value of separator may be a string of any length or it may be a RegExp object
+(i.e., an object whose [[Class]] property is "RegExp"; see 15.10).
+
+<P>The value of separator may be an empty string, an empty regular expression, or a regular expression
+that can match an empty string. In this case, separator does not match the empty substring at the
+beginning or end of the input string, nor does it match the empty substring at the end of the previous
+separator match. (For example, if separator is the empty string, the string is split up into individual
+characters; the length of the result array equals the length of the string, and each substring contains
+one character.) If separator is a regular expression, only the first match at a given position of the this
+string is considered, even if backtracking could yield a non-empty-substring match at that position.
+(For example, "ab".split(/a*?/) evaluates to the array ["a","b"], while
+"ab".split(/a*/) evaluates to the array["","b"].)
+
+<P>If the this object is (or converts to) the empty string, the result depends on whether separator can
+match the empty string. If it can, the result array contains no elements. Otherwise, the result array
+contains one element, which is the empty string.
+
+<P>If separator is a regular expression that contains capturing parentheses, then each time separator is
+matched the results (including any undefined results) of the capturing parentheses are spliced into the
+output array. For example,
+{{{
+"A<B>bold</B>and<CODE>coded</CODE>".split(/<(\/)?([^<>]+)>/)
+}}}
+evaluates to the array
+{{{
+["A", undefined, "B", "bold", "/", "B", "and", undefined, "CODE", "coded", "/", "CODE", ""].
+}}}
+
+<P>If separator is undefined, then the result array contains just one string, which is the this value
+(converted to a string). If limit is not undefined, then the output array is truncated so that it contains
+no more than limit elements.
+
+<P>When the split method is called, the following steps are taken:
+
+<INCLUDE file="string_primitive.es" name="static function split">
+
+The internal helper function SplitMatch takes three parameters, a string S, an integer q, and a string or
+RegExp R, and performs the following in order to return a MatchResult (see 15.10.2.1):
+
+
+<INCLUDE file="string_primitive.es" name="static function splitMatch">
+
+<NOTE>
+The split function is intentionally generic; it does not require that its this value be a String object.
+Therefore, it can be transferred to other kinds of objects for use as a method.
+
+<NOTE>
+The split method ignores the value of separator.global for separators that are RegExp objects.
+
+=== substring (start, end) ===
+
+<P>The substring method takes two arguments, start and end, and returns a substring of the result of
+converting this object to a string, starting from character position start and running to, but not
+including, character position end of the string (or through the end of the string is end is undefined).
+
+<P>The result is a string value, not a String object.
+
+<P>If either argument is NaN or negative, it is replaced with zero; if either argument is larger than the
+length of the string, it is replaced with the length of the string.
+
+<P>If start is larger than end, they are swapped.
+
+<P>The following steps are taken:
+
+<INCLUDE file="string_primitive.es" name="static function substring">
+
+<NOTE>
+The substring function is intentionally generic; it does not require that its this value be a String
+object. Therefore, it can be transferred to other kinds of objects for use as a method.
+
+=== toLowerCase ( ) ===
+
+<P>If this object is not already a string, it is converted to a string. The characters in that string are
+converted one by one to lower case. The result is a string value, not a String object.
+The characters are converted one by one. The result of each conversion is the original character,
+unless that character has a Unicode lowercase equivalent, in which case the lowercase equivalent is
+used instead.
+
+<NOTE>
+The result should be derived according to the case mappings in the Unicode character database (this
+explicitly includes not only the UnicodeData.txt file, but also the SpecialCasings.txt file that
+accompanies it in Unicode 2.1.8 and later).
+
+<NOTE>
+The toLowerCase function is intentionally generic; it does not require that its this value be a
+String object. Therefore, it can be transferred to other kinds of objects for use as a method.
+
+=== toLocaleLowerCase ( ) ===
+
+<P>This function works exactly the same as toLowerCase except that its result is intended to yield the
+correct result for the host environment's current locale, rather than a locale-independent result. There
+will only be a difference in the few cases (such as Turkish) where the rules for that language conflict
+with the regular Unicode case mappings.
+
+<NOTE>
+The toLocaleLowerCase function is intentionally generic; it does not require that its this value
+be a String object. Therefore, it can be transferred to other kinds of objects for use as a method.
+
+<NOTE>
+The first parameter to this function is likely to be used in a future version of this standard; it is
+recommended that implementations do not use this parameter position for anything else.
+
+=== toUpperCase ( ) ===
+
+<P>This function behaves in exactly the same way as String.prototype.toLowerCase, except
+that characters are mapped to their uppercase equivalents as specified in the Unicode Character
+Database.
+
+<NOTE>
+Because both toUpperCase and toLowerCase have context-sensitive behaviour, the functions
+are not symmetrical. In other words, s.toUpperCase().toLowerCase() is not necessarily
+equal to s.toLowerCase().
+
+<NOTE>
+The toUpperCase function is intentionally generic; it does not require that its this value be a
+String object. Therefore, it can be transferred to other kinds of objects for use as a method.
+
+=== toLocaleUpperCase ( ) ===
+
+<P>This function works exactly the same as toUpperCase except that its result is intended to yield the
+correct result for the host environment's current locale, rather than a locale-independent result. There
+will only be a difference in the few cases (such as Turkish) where the rules for that language conflict
+with the regular Unicode case mappings.
+
+<NOTE>
+The toLocaleUpperCase function is intentionally generic; it does not require that its this value
+be a String object. Therefore, it can be transferred to other kinds of objects for use as a method.
+
+<NOTE>
+The first parameter to this function is likely to be used in a future version of this standard; it is
+recommended that implementations do not use this parameter position for anything else.
+

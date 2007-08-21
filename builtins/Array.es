@@ -657,11 +657,17 @@ package
         // --------------------------------------------------
         // private utility methods
         // --------------------------------------------------
-        helper static function clamp(intValue:double, len:uint):uint
-        {
-            return (intValue < 0.0)
-                 ? (intValue + len < 0.0) ? 0 : uint(intValue + len)
-                 : (intValue > len) ? len : uint(intValue);
+        helper static function clamp(intValue: double, len: uint): uint {
+            if (intValue < 0) {
+                if (intValue + len < 0)
+                    return 0;
+                else
+                    return uint(intValue + len);
+            }
+            else if (intValue > len)
+                return len;
+            else
+                return uint(intValue);
         }
 
         helper function sortCompare(j:uint, k:uint, comparefn:Comparator): Numeric {

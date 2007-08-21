@@ -64,7 +64,7 @@ package
         }
 
         /* E262-3 15.2.2.1: The Object constructor. */
-        /* The run-time system provides the constructor for Object */
+        /* The run-time system provides the constructor for Object. */
 
         /* E262-3 15.2.4.2: Object.prototype.toString */
         prototype function toString()

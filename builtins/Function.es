@@ -70,7 +70,10 @@ package
 
         /* The following is for the benefit of the specification, don't remove it.
 
-        function Function(...args) {
+        function Function(...args)
+            helper::createFunction(args);
+
+        helper function createFunction(args) {
             let parameters = "";
             let body = "";
             if (args.length > 0) {
