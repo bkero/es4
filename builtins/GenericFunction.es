@@ -40,11 +40,14 @@
    arguments and a flag stating whether the function can also take
    optional or rest arguments.
 
-   The addMethod method adds a method to the function by providing a
+   The addMethod() method adds a method to the function by providing a
    list of specializers and a closure.  The list of specializers must
    be as long as the number of required arguments.  Each specializer
    is a type object.  The first argument to the closure must always be
    "nextMethod" and its type, if any, should be "function()".
+
+   The seal() method sets a flag that makes the function reject
+   attempts to add further methods.
 
    The type objects in the specializer list can be class objects,
    interface objects, or the three objects exported from this file,
@@ -135,27 +138,44 @@ package
 {
     const DEBUG = false;
 
-    public const NullType = { "null": true };
-    public const UndefinedType = { "undefined": true };
-    public const AnyType = { "any": true };
+    class TypeClass 
+    {
+        function TypeClass(name) 
+            : name=name 
+        {
+        }
+            
+        var name;
+    }
+
+    public const NullType = new TypeClass("null");
+    public const UndefinedType = new TypeClass("undefined");
+    public const AnyType = new TypeClass("any");
     
     public class GenericFunction extends Object
     {
-        function GenericFunction(constraints:Array, defaults:Array, more: boolean) 
+        function GenericFunction(constraints:Array, returnConstraint:Object, defaults:Array, more: boolean) 
             : required = constraints.length
             , constraints = constraints
+            , returnConstraint = returnConstraint
             , defaults = defaults
             , more = more
         {
         }
 
-        public function addMethod(specializers: Array, body: function()) {
+        public function addMethod(specializers: Array, returnType: Object, body: function()) {
+            if (sealed)
+                throw "Adding methods to a sealed generic function is not allowed.";
+
             if (specializers.length != required)
                 throw "Generic function requires exactly " + required + " specializers";
 
             for ( let i=0, limit=specializers.length ; i < limit ; i++ )
                 if (!isSubtype(specializers[i], constraints[i]))
-                    throw "Specializer fails subtype check";
+                    throw "Specializer type at position " + i + " is not subtype of declared constraint";
+
+            if (!isSubtype(returnType, returnConstraint))
+                throw "Return type is not subtype of declared constraint";
 
             for ( let i=0, limit=methods.length ; i < limit ; i++ ) {
                 let thesame = true;
@@ -168,6 +188,10 @@ package
             }
 
             methods.push({specializers: specializers, body: body});
+        }
+
+        public function seal() {
+            sealed = true;
         }
 
         meta final function invoke(...args) {
@@ -223,7 +247,7 @@ package
                     let rest = applicable.slice(i);
                     applicable.length = i;
                     if (applicable.length == 0)
-                        throw new TypeError("No applicable methods");
+                        throw new TypeError("No unambiguous method");
                     return [applicable, rest];
                 }
             }
@@ -294,11 +318,13 @@ package
             return cmp;
         }
 
-        var required;
-        var defaults;
-        var constraints;
-        var more;
+        const required;
+        const defaults;
+        const constraints;
+        const returnConstraint;
+        const more;
         const methods = new Array;
+        var   sealed = false;
     }
 
     /******************************************************************
@@ -557,42 +583,3 @@ package
         var values = new Array;
     }
 }
-
-
-/* List library sketch:
-
-    function cons(x,l) ({hd:x, tl:l});
-
-    function head(l) l.hd;
-
-    function tail(l) l.tl;
-
-    function length(l) {
-        let len=0;
-        while (l != null) {
-            len++;
-            l = l.tl;
-        }
-        return len;
-    }
-
-    function reverse(l) {
-        let r = null;
-        while (l != null) {
-            r = cons(l.hd, r);
-            l = l.tl;
-        }
-        return r;
-    }
-
-    function append(l1, l2) {
-        let l1 = reverse(l1);
-        while (l1 != null) {
-            l2 = cons(l1.hd, l2);
-            l1 = l1.tl;
-        }
-        return l2;
-    }
-
-... and then map(), every(), any(), sort()
-*/
