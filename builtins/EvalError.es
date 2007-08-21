@@ -1,6 +1,6 @@
 /* -*- mode: java; indent-tabs-mode: nil -*-
  *
- * ECMAScript 4 builtins - the "Error" object
+ * ECMAScript 4 builtins - the "EvalError" object
  *
  * The following licensing terms and conditions apply and must be
  * accepted in order to use the Reference Implementation:
@@ -54,35 +54,19 @@ package
     use namespace intrinsic;
     use default namespace public;
 
-    /* E262-3 15.11 */
-    public dynamic class Error
+    /* E262-3 15.11.6.1; 15.11.7 */
+    public dynamic class EvalError extends Error
     {
         meta static function invoke(msg)
-            new Error(msg);
+            new EvalError(msg);
 
-        function Error(msg)
-        {
-            if (msg)
-                this.message = ToString(msg);
-        }
+        function EvalError(msg) : super(msg) {}
 
-        /* E262-3 15.11.4.2: "name" property on prototype */
-        prototype var name = "Error";
+        /* E262-3 15.11.7.9: "name" property on NativeError prototype */
+        prototype var name = "EvalError";
 
-        /* E262-3 15.11.4.3: "message" property on prototype */
+        /* E262-3 15.11.7.10: "message" property on NativeError prototype */
         /* INFORMATIVE */
-        prototype var message = "Generic error";
-
-        /* E262-3 15.11.4.4: toString */
-        prototype function toString()
-            this.toString();
-
-        /* INFORMATIVE */
-        override intrinsic function toString() {
-            if (this.message)
-                return this.name + ": " + this.message;   /* "this" qualification in case they've been deleted */
-            else
-                return this.name;
-        }
+        prototype var message = "Illegal use of 'eval'";
     }
 }

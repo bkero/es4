@@ -61,6 +61,8 @@
 
 import re, sys, os, os.path
 
+DEBUG = False
+
 htmlcomment = re.compile(r"<!--(?:.|\s)*?-->")
 wikiheader = re.compile(r"^(\=+)\s+(.*?)\s+\1", re.M)
 htmlheader = re.compile(r"<h([1-6])((?:\".*?\"|[^\"])*?)>(.*?)</h\1>")
@@ -78,7 +80,7 @@ wikiformatItalic = re.compile(r"//((?:.|\s)*?)//")
 wikiformatLiteral = re.compile(r"(?!%%--[0-9]+--%%)%%(.*?)%%")
 wikiformatLiteralRecover = re.compile(r"%%--([0-9]+)--%%")
 wikiformatCodeblock = re.compile(r"^\{\{\{((?:.|[\n\r])*?)^\}\}\}", re.M)
-entitytag = re.compile(r"<(INFINITY|NOTE|FIXME|COMP|IMPLNOTE|LDOTS|LEQ|GEQ|LT|GT|PI|P|p)>")
+entitytag = re.compile(r"<(INFINITY|NOTE|FIXME|COMP|IMPLNOTE|LDOTS|LEQ|GEQ|LT|GT|PI|P|p|DESC|RETN|IMPL|SHORTIMPL)>")
 
 entities = { "INFINITY": "&#x221E;",
 	     "NOTE": "<p class=\"note\"><b>NOTE</b>&nbsp;&nbsp; ",
@@ -92,7 +94,12 @@ entities = { "INFINITY": "&#x221E;",
 	     "GT": ">",
 	     "PI": "&#x03C0;",
 	     "P": "<P><span class=\"pcounter\"></span>",
-	     "p": "<P><span class=\"pcounter\"></span>" }
+	     "p": "<P><span class=\"pcounter\"></span>",
+	     "DESC": "<P><b>Description</b> <P><span class=\"pcounter\"></span>",
+	     "RETN": "<P><b>Returns</b> <P><span class=\"pcounter\"></span>",
+	     "IMPL": "<P><b>Implementation</b> <P><span class=\"pcounter\"></span>",
+	     "SHORTIMPL": "<P><b>Implementation</b>"
+	     }
 
 currentlevel = 0
 
@@ -190,7 +197,7 @@ def extractES(fn, name, isSignature):
 		    s = s[:i] + "\n        " + s[i:]
 		    break
 		i = i - 1
-	return s
+	return s + " &#x0085";
     else:
 	ss = "\n"
 	for s in res:
@@ -296,8 +303,13 @@ def numberPreformatted(m):
 	i = i + 1
     return "<PRE>" + ss + "</PRE>"
 
+def trace(s):
+    if DEBUG:
+	print s
+
 def process(fn, hdrlvl):
     global literals
+    trace("FILE: " + fn)
     input = open(fn, 'r')
     text = input.read()
     text = re.sub(htmlcomment, "", text)
@@ -308,19 +320,33 @@ def process(fn, hdrlvl):
 	    sys.exit(1)
     literals = []
     # entities and signatures are replaced even in <PRE> blocks, so do that first.
+    trace("entity")
     text = re.sub(entitytag, replaceEntity, text)
+    trace("signature")
     text = re.sub(signaturetag, lambda m: replaceInclude(m, hdrlvl, fn), text)
+    trace("codeblock")
     text = re.sub(wikiformatCodeblock, hideCodeblock, text) 
+    trace("literal")
     text = re.sub(wikiformatLiteral, hideLiteral, text)
+    trace("wikiheader")
     text = re.sub(wikiheader, replaceWiki, text)
+    trace("htmlheader")
     text = re.sub(htmlheader, lambda m: replaceHTML(m, hdrlvl), text)
+    trace("xreftag")
     text = re.sub(xreftag, replaceXREF, text)
+    trace("wikicode")
     text = re.sub(wikiformatCode, r"<code>\1</code>", text)
+    trace("wikispecial")
     text = re.sub(wikiformatSpecial, r"<code>\1</code>", text)
+    trace("wikibold")
     text = re.sub(wikiformatBold, r"<b>\1</b>", text)
+    trace("wikiitalic")
     text = re.sub(wikiformatItalic, r"<i>\1</i>", text)
+    trace("wikiliteralrecover")
     text = re.sub(wikiformatLiteralRecover, revealLiteral, text)
+    trace("include")
     text = re.sub(includetag, lambda m: replaceInclude(m, hdrlvl, fn), text)
+    trace("done!")
     return text
 
 if len(sys.argv) != 3:
@@ -328,11 +354,13 @@ if len(sys.argv) != 3:
     sys.exit(2)
 
 premerge = re.compile(r"^</PRE>\s*^<PRE>", re.M)
-prenumber = re.compile(r"^<PRE>((?:.|\s)*?)^</PRE>", re.M)
+# Python quality software:  Feed enough text to this RE and it whines about "recursion limit exceeded".
+# prenumber = re.compile(r"^<PRE>((?:.|\s)*?)^</PRE>", re.M)
 
 text = process(sys.argv[1], 1)
 text = re.sub(premerge, "", text);
-text = re.sub(prenumber, numberPreformatted, text);
+# See above
+# text = re.sub(prenumber, numberPreformatted, text);
 output = open(sys.argv[2], 'w')
 output.write(text)
 output.close()
