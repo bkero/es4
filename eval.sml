@@ -1879,6 +1879,9 @@ and evalExpr (regs:Mach.REGS)
       | Ast.UnaryExpr (unop, expr) =>
         evalUnaryOp regs unop expr
 
+      | Ast.TypeExpr te =>
+        evalTypeExpr regs te
+
       | Ast.ThisExpr =>
         let
             val { this, ... } = regs
@@ -2542,6 +2545,18 @@ and evalUnaryOp (regs:Mach.REGS)
             end
     end
 
+and evalTypeExpr (regs:Mach.REGS)
+                 (te:Ast.TYPE_EXPR)
+    : Mach.VAL =
+    case te of 
+        Ast.SpecialType st => Mach.Null (* FIXME *)
+      | Ast.UnionType ut => Mach.Null (* FIXME *)
+      | Ast.ArrayType at => Mach.Null (* FIXME *)
+      | Ast.TypeName tn => evalExpr regs (Ast.LexicalRef { ident=tn, loc=NONE })
+      | Ast.FunctionType ft => Mach.Null (* FIXME *)
+      | Ast.ObjectType ot => Mach.Null (* FIXME *)
+      | Ast.NullableType { expr, nullable } => Mach.Null (* FIXME *)
+      | Ast.InstanceType { ty, ... } => Mach.Null (* FIXME *)
 
 and performBinop (bop:Ast.BINOP)
                  (va:Mach.VAL)

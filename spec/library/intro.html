@@ -1,23 +1,23 @@
+= Introduction =
+
 <p>There are certain built-in objects available whenever an ECMAScript
 program begins execution. One, the global object, is in the scope
 chain of the executing program. Others are accessible as initial
 properties of the global object.
 
-<p class="fixme">FIXME<br>
-There may be multiple global objects.
+<FIXME>There may be multiple global objects.
 
 <p>Unless specified otherwise, the [[Class]] property of a built-in
 object is ''"Class"'' if that object is defined as a class,
-''"Function"'' if that built-in object has a [[Call]] property, or
-''"Object"'' if that built-in object does not have a [[Call]]
-property.
+''"Function"'' if that built-in object is not a class but has a
+[[Call]] property, or ''"Object"'' if that built-in object neither is
+a class nor has a [[Call]] property.
 
-<p class="note">NOTE<br>
-The 3rd Edition of this Standard did not provide classes, and all
-built-in objects provided as classes in 4th Edition were previously
-provided as functions.  The change from functions to classes is
-observable to programs that convert the built-in class objects to
-strings.
+<COMP>The 3rd Edition of this Standard did not provide classes, and
+all built-in objects provided as classes in 4th Edition were
+previously provided as functions.  The change from functions to
+classes is observable to programs that convert the built-in class
+objects to strings.
 
 <p>Many built-in objects behave like functions: they can be invoked
 with arguments.  Some of them furthermore are constructors: they are
@@ -34,10 +34,9 @@ methods: constructors, static methods, prototype methods, and
 intrinsic instance methods.  Non-class built-in objects may
 additionally hold non-method functions.
 
-<p class="note">NOTE<br>
-The 3rd Edition of this standard provided only constructors and
-prototype methods.  The new methods are not visible to 3rd Edition
-code being executed by a 4th Edition implementation.
+<COMP>The 3rd Edition of this standard provided only
+constructors and prototype methods.  The new methods are not visible
+to 3rd Edition code being executed by a 4th Edition implementation.
 
 <p>Unless otherwise specified in the description of a particular
 class, if a constructor, prototype method, or ordinary function described
@@ -53,27 +52,26 @@ to allow, the behaviour of the function is undefined. In particular,
 an implementation is permitted (but not required) to throw a
 ''TypeError'' exception in this case.
 
-<p class="note">NOTE<br>
-Implementations that add additional capabilities to the set of
+<NOTE>Implementations that add additional capabilities to the set of
 built-in classes are encouraged to do so by adding new functions and
-prototype methods rather than adding new parameters to existing
-functions and prototype methods.
+methods rather than adding new parameters to existing functions and
+methods.
 
-<p>Every built-in function has the
-Function prototype object, which is the initial value of the
-expression ''Function.prototype'' (<XREF target="Function.prototype">),
-as the value of its internal [[Prototype]] property.
+<p>Every built-in function has the Function prototype object, which is
+the initial value of the expression ''Function.prototype'' (<XREF
+target="Function.prototype">), as the value of its internal
+[[Prototype]] property.
 
 <p>Every built-in class has the Object prototype object, which is the initial
 value of the expression ''Object.prototype'' (<XREF target="Object.prototype">),
 as the value of its internal [[Prototype]] property.
 
-<p class="note">NOTE<br>
-In the 3rd Edition of this Standard every constructor function that is
-represented as a class in 4th Edition also had the Function prototype
-object as the value of its internal [[Prototype]] property.  This
-change is observable to programs that attempt to call methods defined
-on the Function prototype object through a class object.
+<COMP>In the 3rd Edition of this Standard every constructor
+function that is represented as a class in 4th Edition also had the
+Function prototype object as the value of its internal [[Prototype]]
+property.  This change is observable to programs that attempt to call
+methods defined on the Function prototype object through a class
+object.
 
 <p>Every built-in prototype object has the Object prototype object,
 which is the initial value of the expression ''Object.prototype''
@@ -92,12 +90,11 @@ otherwise specified, this value is equal to the largest number of
 named arguments shown in the section headings for the function
 description, including optional parameters.
 
-<p class="NOTE">NOTE<br>
-For example, the Function object that is the initial value of the
-''slice'' property of the String prototype object is described under
-the section heading ''String.prototype.slice (start , end)'' which
-shows the two named arguments start and end; therefore the value of
-the length property of that Function object is 2.
+<NOTE>For example, the Function object that is the initial
+value of the ''slice'' property of the String prototype object is
+described under the section heading ''String.prototype.slice (start ,
+end)'' which shows the two named arguments start and end; therefore
+the value of the length property of that Function object is 2.
 
 <!--
 Obsolete:
@@ -109,38 +106,73 @@ in this section has the attribute { DontEnum } (and no others) unless
 otherwise specified.
 -->
 
-<p>The built-in objects and functions are described in terms of
-ECMAScript packages, namespaces, classes, methods, properties, and
-functions, with the help from a small number of implementation hooks.
-These hooks manifest themselves as functions in the ''magic''
-namespace, as in the definition of the intrinsic ''toString'' method
-on objects:
+<p>The built-in objects and functions are defined in terms of
+ECMAScript packages, namespaces, classes, types, methods, properties,
+and functions, with the help from a small number of implementation
+hooks.
+
+<NOTE>Though the behavior and structure of built-in objects and
+functions is expressed in ECMAScript terms, implementations are not
+required to implement them in ECMAScript, only to preserve the
+behavior as it is defined in this Standard.
+
+<p>Implementation hooks manifest themselves as functions in the
+''magic'' namespace, as in the definition of the intrinsic
+''toString'' method on ''Object'' objects:
 
 <INCLUDE file="Object.es" name="intrinsic function toString">
 
 <p>All magic function definitions are collected in section <XREF
 target="library-magic">.
 
-<p>The definitions of the built-in objects also leave some room for
-the implementation to choose strategies for certain primitive
-operations.  These variation points manifest themselves as functions
-in the ''informative'' namespace, as in the definition of the
-intrinsic function ''nanoAge'' on dates:
+<p>The definitions of the built-in objects and functions also leave
+some room for the implementation to choose strategies for certain
+auxiliary and primitive operations.  These variation points manifest
+themselves as functions in the ''informative'' namespace, as in the
+definition of the intrinsic function ''nanoAge'' on ''Date'' objects:
 
 <INCLUDE file="Date.es" name="intrinsic function nanoAge">
 
-<p>Informative methods and functions are defined in prose in the
-section from which they are referenced.
+<p>Informative methods and functions are defined non-operationally in
+the sections that makes use of them.
+
+<p>The definitions of the built-in objects and functions also make use
+of internal helper functions and properties, written in ECMAScript.
+These helper functions and properties are not available to user
+programs and are included in this Standard for expository purposes, as
+they help to define the semantics of the functions that make use of
+them.  Helper functions and properties manifest themselves as
+definitions in the ''helper'' namespace, as in the definition of the
+global ''encodeURI'' function:
+
+<INCLUDE file="Global.es" name="intrinsic function encodeURI">
+
+<p>Helper functions and properties are defined where they are first
+used, but are sometimes referenced from multiple sections in this
+Standard.
+
+<FIXME>We need a credible story for helper primitives like
+''ToString'' and ''ToNumeric''.  In the current code, they are just
+treated like global functions; more appropriate would be if they were
+in a namespace like ''helper'' or ''magic''.
 
 <p>Unless noted otherwise in the description of a particular class or
 function, the behavior of built-in objects is unaffected by
 definitions or assignments performed by the user program.  This is
 accomplished first by defining all built-in objects, classes,
 functions, and properties inside a package whose name is private to
-the implementation, second by always preferring intrinsic methods to
-prototype methods, and finally by importing the public names of the
-package containing the built-ins into the global environment of the
-user program.
+the implementation, second by always preferring intrinsic methods and
+functions to prototype methods and unqualified functions, and finally
+by importing the public names of the package containing the built-ins
+into the global environment of the user program.
+
+<FIXME>Does this provide us with the correct semantics?  If we do it
+as described, a user program can create a new binding for "Object"
+that shadows our "Object".  This is not a problem for the built-in; it
+may or may not be a benefit to the user program.  It may or may not be
+backwards compatible (what happens if the user program contains ''var
+isNaN'' -- does this redundantly state that there is a binding for
+''isNaN'' or does it create a new binding?)
 
 {{{
 package ...

@@ -72,6 +72,7 @@ package
     use strict;
     import Unicode.*
     import RegExpInternals.*
+    import ECMAScript4_Internal.*;
 
     intrinsic final class string! extends String
     {
@@ -84,7 +85,8 @@ package
             x is string ? x : magic::newString(x);
 
         /* 15.5.2 The string Constructor */
-        function string(x="") : super(x)
+        function string(x="") 
+            : super(x)
         {
             // No need to magic::bindString a second time,
             // since our super(x) call did it for us.
@@ -95,15 +97,15 @@ package
            E262-4 draft proposals:bug_fixes - FUNCTION.LENGTH
         */
         static function fromCharCode(...args)
-            fromCharCodeHelper(args);
+            string.helper::fromCharCode(args);
 
         intrinsic static function fromCharCode(...args) : double
-            fromCharCodeHelper(args);
+            string.helper::fromCharCode(args);
 
         /* IMPLEMENTATION DEVICE.  This method is not private,
          * it is called from methods in 'String'.
          */
-        static function fromCharCodeHelper(codes : Array) : double {
+        helper static function fromCharCode(codes : Array) : double {
             let s : string = "";
             let n : uint = codes.length;
             for (let i : uint = 0 ; i < n ; ++i)
@@ -169,18 +171,18 @@ package
            E262-4 draft proposals:bug_fixes - FUNCTION.LENGTH
          */
         prototype function concat(...args)
-            string.concatHelper(this, args);
+            string.helper::concat(this, args);
 
         override intrinsic function concat(...args) : string
-            string.concatHelper(this, args);
+            string.helper::concat(this, args);
 
         static function concat(self, ...args)
-            string.concatHelper(self, args);
+            string.helper::concat(self, args);
 
         /* IMPLEMENTATION DEVICE.  This method is not private,
          * it is called from methods in 'String'.
          */
-        static function concatHelper(self, strings) : string {
+        helper static function concat(self, strings) : string {
             let S : string = ToString(self);
             let n : uint = strings.length;
             for (let i : uint = 0; i < n ; i++)

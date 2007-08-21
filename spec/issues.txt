@@ -1,0 +1,13 @@
+Various things to worry about in the spec:
+
+  * atomicity guarantees -- should we try for anything here, or just
+    punt and say it's outside the language at this point?  Brendan
+    made a remark on es4-discuss that the browser vendors will have to
+    get together to say something about this at some point.  For the
+    language, we might want to say that eg [[Put]] is atomic as
+    observed by all code, but do we want to say that?
+
+  * &&= and ||= must short-circuit (no evaluation of RHS if LHS is
+    false or true, respectively), for compatibility with ActionScript.
+
+

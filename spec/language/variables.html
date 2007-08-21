@@ -1,0 +1,63 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+<title>Untitled Document</title>
+</head>
+
+<body>
+
+
+<h1>Variables</h1>
+<p>
+ A variable defines a slot with a name and a type. 
+</p>
+<p>
+A variable declared with the <code>const</code> rather than the <code>var</code> keyword, is read-only outside of the variable&#8217;s intialiser if it is not an instance variable, and outside of the instance constructor if it is an instance variable. It is a verifier error to assign to a <code>const</code> variable outside of its writable region.
+</p>
+<p>
+Variables exist in the following objects: 
+</p>
+<ul>
+<li class="level1"><div class="li"> global object, inside and outside of a package</div>
+</li>
+<li class="level1"><div class="li"> class objects</div>
+</li>
+<li class="level1"><div class="li"> instance objects</div>
+</li>
+<li class="level1"><div class="li"> activation objects</div>
+</li>
+</ul>
+<h2>Variable modifiers</h2>
+<p>
+ When allowed by the context of the definition, the following attributes modify a variable definition.  
+</p>
+<ul>
+<li class="level1"><div class="li"> Access control namespaces</div>
+</li>
+<li class="level1"><div class="li"> User defined namespaces</div>
+</li>
+<li class="level1"><div class="li"> <code>static</code></div>
+</li>
+<li class="level1"><div class="li"> <code>prototype</code></div>
+</li>
+</ul>
+<p>
+ Access control and visibility control namespaces specify the namespace part of the variables name. 
+</p>
+<p>
+The <code>static</code> attribute may only be used inside a class definition and causes the variable to become a trait of the class object rather than the instance object. 
+</p>
+<p>
+The <code>prototype</code> attribute may only be used inside a class definition and causes the variable to be added to the class&#8217;s prototype object.
+</p>
+<h2>Variable types</h2>
+<p>
+ All variables have a type. A type annotation on a variable definition limits the set of values that can be stored in that variable. If no type is specified, the variable is considered untyped and can hold any value.  A type annotation must be a compile-time constant expression that evaluates to a class or interface value. The actual value used to represent the type of the variable is the instance traits of the referenced class or interface.
+</p>
+<p>
+When a value is assigned to a variable an implicit conversion to the variables type is performed on the value. A type error occurs if there is no implicit conversion of that value to the variable&rsquo;s type. In the strict mode such errors are verification errors, in the standard mode type errors are runtime errors. 
+</p>
+
+</body>
+</html>

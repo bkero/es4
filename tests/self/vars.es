@@ -1,0 +1,22 @@
+// esc-test
+var s1="hello";
+var s2:String="hello";
+var b1=true;
+var b2:Boolean=false;
+var n1:uint=10000;
+var n2:int=-10000;
+var n3:Number=3.14;
+print("expecting s1=hello");
+print(s1);
+print("expecting s2=hello");
+print(s2);
+print("expecting b1=true");
+print(b1);
+print("expecting b2=false");
+print(b2);
+print("expecting n1=10000");
+print(n1);
+print("expecting n2=-10000");
+print(n2);
+print("expecting n3=3.14");
+print(n3);

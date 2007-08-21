@@ -237,7 +237,8 @@ fun eval argvRest =
     let
         val verified = verify argvRest
     in
-        Posix.Process.alarm (Time.fromReal 300.0);
+(*        Posix.Process.alarm (Time.fromReal 300.0);
+*)
 	    TextIO.print "evaluating ... \n";
         withHandlers (fn () => map Eval.evalTopProgram verified)
     end

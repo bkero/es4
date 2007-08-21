@@ -1,1 +1,1 @@
-private::x
+print ('hi')
