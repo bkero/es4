@@ -147,13 +147,6 @@ function setInFields( a:[[Label,*]], f : Label, to:* ) {
         function toString() { return "let "+x+":"+t+"="+e+" in "+body; }
     }
 
-    class LikeExpr extends ExprC {
-        const arg : Expr;
-        const ty : Type;
-        function LikeExpr(arg, ty) : arg = arg, ty = ty {} 
-        function toString() { return ""+arg+" like "+ty; }
-    }
-
     class ObjExpr extends ExprC { // {l:e, ...}:T
         const efields : [[Label,Expr]];
         const ty : ObjType;
@@ -471,15 +464,127 @@ function eval2 (n:ValEnv, e:Expr) : Val {
         case (e:FunExpr) {
             return new ClosureVal(e,n);
         }
-        case (e:LikeExpr) {
-            let v = eval( n, e.arg );
-            if (compatibleValue( v,  e.ty )) {
-                return 1;
-            } else {
-                return 0;
+        case (e:AppExpr) {
+            function apply( fn:Val, arg:Val ) : Val {
+                switch type (fn) {
+                    case (closure: ClosureVal) {
+                        let { fn:fn, env:env } = closure;
+                        let bodyEnv = env.extend( fn.x, convert( arg, fn.argt ) );
+                        let res = eval( bodyEnv, fn.body );
+                        return convert( res, fn.rest );
+                    }
+                    case (wrap: WrapVal) {
+                        return convert( apply( wrap.v, 
+                                               convert( arg, wrap.ty.arg )),
+                                        wrap.ty.res );
+                    }
+                    }
             }
+            return apply( eval( n, e.fn ),
+                          eval( n, e.arg ));
+        }
+        case (e:LetExpr) {
+            let {x:x, t:t, e:e2, body:body} = e;
+            let argval = eval( n, e2 );
+            let argval2 = convert( argval, t );
+            let n2 = n.extend( x, argval2 );
+            let resval = eval( n2, body );
+            return resval;
+        }
+        case ( e : ObjExpr) {
+            let {efields:efields, ty:ty} = e;
+            let vfields = [];
+            for(i in e.efields) {
+                let l:Label = efields[i][0];
+                let tyl : Type = anyType;
+                if (isInFields(ty.tfields,l)) {
+                    tyl = findInFields( ty.tfields, l );
+                }
+                vfields[i] = [ l,
+                               convert( eval( n, efields[i][1] ),
+                                        tyl )];
+            }
+            // make sure all fields in type defined
+            for(i in ty.tfields) {
+                findInFields( efields, ty.tfields[i][0] );
+            }
+            return new ObjVal(vfields, ty);
+        }
+        case (e : GetExpr) {
+            function get( o:Val, l:Label ) : Val {
+                switch type (o) {
+                    case (o: ObjVal) {
+                        // no read barrier
+                        return findInFields( o.vfields, l );
+                    }
+                    case (o: WrapVal) {
+                        let {v:obj, ty:objTy} = o;
+                        return convert( get(obj, l),
+                                        findInFields( objTy.tfields, l ));
+                    }
+                    }
+            }
+            return get( eval( n, e.e ), e.l );
+        }
+        case (e : SetExpr) {
+            function set( o:Val, l:Label, to:Val ) : Val {
+                switch type (o) {
+                    case (o: ObjVal) {
+                        // write barrier
+                        if (isInFields( o.ty.tfields, l )) {
+                            let tyf = findInFields( o.ty.tfields, l );
+                            to = convert( to, tyf );
+                        }
+                        setInFields( o.vfields, l, to);
+                        return to; // FIXME: which return type:
+                    }
+                    case (o: WrapVal) {
+                        let {v:obj, ty:objTy} = o;
+                        return set( obj, l,
+                                    convert( to, findInFields( objTy.tfields, l )));
+                    }
+                    }
+            }
+            return set( eval( n, e.e1 ), 
+                        e.l, 
+                        eval( n, e.e2 ));
+        }
+        }   
+}
+
+/************ Optional Verifier **************/
+
+type NonWrapType = ( AnyType, IntType, FunType, LikeType, ObjType );
+
+type TypeEnv = Env; // maps vars to NonWrapTypes
+
+function verify (n:TypeEnv, e:Expr) : NonWrapType {
+    switch type (e) {
+        case (e:int) {
+            return intType;
+        }
+        case (e:Ident) {
+            return n.lookup(e);
+        }
+        case (e:FunExpr) {
+            let xtype : NonWrapType;
+            switch type (e.argt) {
+                case (argt: WrapType) {
+                    xtype = argt.arg;
+                }
+                case (argt: Type) {
+                    xtype = argt;
+                }
+                }
+            let t : Type = verify ( n.extend( e.x, xtype ),
+                                    e.body );
+            if (!subType( t, e.rest ))
+                throw ("Body type "+t+" not a subtype of expected return type "+e.rest);
+            return new FunType( argt, e.rest );
         }
         case (e:AppExpr) {
+            let tfn : Type = verify( n, e.fn );
+            let targ : Type = verify( n, e.arg );
             function apply( fn:Val, arg:Val ) : Val {
                 switch type (fn) {
                     case (closure: ClosureVal) {
