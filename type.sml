@@ -213,22 +213,14 @@ fun isGroundType (t:Ast.TYPE_EXPR)
             isGroundOption thisType
     end
 
-fun exprOf (ty:Ast.TY) : Ast.TYPE_EXPR = 
-    let
-        val Ast.Ty { expr, ... } = ty
-    in
-        expr
-    end
-
-
 fun isGroundTy (ty:Ast.TY) 
     : bool =
-    isGroundType (exprOf ty)
+    isGroundType (AstQuery.typeExprOf ty)
 
 fun groundExpr (ty:Ast.TY) 
     : Ast.TYPE_EXPR = 
     if isGroundTy ty
-    then exprOf ty
+    then AstQuery.typeExprOf ty
     else error ["extracting ground type expr from non-ground ty"]
              
 (* 
@@ -337,8 +329,8 @@ and ty2norm (prog:Fixture.PROGRAM)
             let 
                 val t = norm2ty (subTerm2Norm e)
             in
-                if isGroundType (exprOf t)
-                then SOME (exprOf t)
+                if isGroundType (AstQuery.typeExprOf t)
+                then SOME (AstQuery.typeExprOf t)
                 else NONE
             end
 
@@ -358,8 +350,8 @@ and ty2norm (prog:Fixture.PROGRAM)
                 let
                     val t = norm2ty (subTerm2Norm te)
                 in
-                    if isGroundType (exprOf t)
-                    then SOME (SOME (exprOf t))
+                    if isGroundType (AstQuery.typeExprOf t)
+                    then SOME (SOME (AstQuery.typeExprOf t))
                     else NONE
                 end
     in

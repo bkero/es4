@@ -1414,13 +1414,6 @@ and defFuncSig (env:ENV)
         s=[i=10,j=20]}]}
 *)
 
-and extractFuncType (ty:Ast.TY) 
-    : (Ast.FUNC_TYPE * Ast.RIBS * Ast.UNIT_NAME option) = 
-    case ty of 
-        Ast.Ty {expr=Ast.FunctionType fty, nonTopRibs, topUnit} => 
-        (fty, nonTopRibs, topUnit)
-      | _ => error ["extracting funcType from non-FunctionType"]
-             
              
 and defFunc (env:ENV) 
             (func:Ast.FUNC)
@@ -1428,7 +1421,7 @@ and defFunc (env:ENV)
     let
         val _ = trace [">> defFunc"]
         val Ast.Func {name, fsig, block, ty, native, loc, ...} = func
-        val (funcType:Ast.FUNC_TYPE, _, _) = extractFuncType ty
+        val (funcType:Ast.FUNC_TYPE, _, _) = AstQuery.extractFuncType ty
                      
         val numParams = length (#params funcType)
 
@@ -1472,28 +1465,6 @@ and defFunc (env:ENV)
 
 *)
 
-and resultTyOfFuncTy (ty:Ast.TY) 
-    : Ast.TY = 
-    let
-        val (funcTy, nonTopRibs, topUnit) = extractFuncType ty                                            
-    in 
-        Ast.Ty { expr=(#result funcTy),
-                 nonTopRibs = nonTopRibs,
-                 topUnit=topUnit }
-    end
-
-and singleParamTyOfFuncTy (ty:Ast.TY) 
-    : Ast.TY = 
-    let
-        val (funcTy, nonTopRibs, topUnit) = extractFuncType ty                                            
-    in 
-        case (#params funcTy) of
-            [t] => Ast.Ty { expr=t,
-                            nonTopRibs = nonTopRibs,
-                            topUnit=topUnit }
-          | _ => error ["singleParamTyOfFuncTy: non-unique parameter"]
-    end    
-    
 
 and defFuncDefn (env:ENV) 
                 (f:Ast.FUNC_DEFN)
@@ -1511,12 +1482,12 @@ and defFuncDefn (env:ENV)
                 case (#kind name) of
                     Ast.Get =>
                     Ast.VirtualValFixture
-                        { ty = resultTyOfFuncTy ty,
+                        { ty = AstQuery.resultTyOfFuncTy ty,
                           getter = SOME newFunc,
                           setter = NONE }
                   | Ast.Set =>
                     Ast.VirtualValFixture
-                        { ty = singleParamTyOfFuncTy ty,
+                        { ty = AstQuery.singleParamTyOfFuncTy ty,
                           getter = NONE,
                           setter = SOME newFunc }
                   | Ast.Ordinary =>

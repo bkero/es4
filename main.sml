@@ -49,8 +49,8 @@ fun findTraceOption (tname:string)
       | "parse" => SOME (Parser.doTrace)
       | "name" => SOME (Multiname.doTrace)
       | "defn" => SOME (Defn.doTrace)
-      | "verify" => SOME (Verify.doTrace)
-      | "verified" => SOME (Verify.doTraceProg)
+      (* | "verify" => SOME (Verify.doTrace) *)
+      (* | "verified" => SOME (Verify.doTraceProg) *)
       | "eval" => SOME (Eval.doTrace)
       | "mach" => SOME (Mach.doTrace)
       | "decimal" => SOME (DecimalParams.doTrace)
@@ -178,7 +178,7 @@ fun repl argvRest =
                             then
                                 let
                                     val d = Defn.defProgram p
-                                    val vd = Verify.verifyProgram d
+                                    val vd = d (* Verify.verifyProgram d *)
                                 in
                                     if (!doEval)
                                     then
@@ -226,12 +226,15 @@ fun define argvRest =
     end
 
 fun verify argvRest =
+    define argvRest
+(*
     let
         val defined = define argvRest
     in
         TextIO.print "verifying ... \n";
         List.map Verify.verifyProgram defined
     end
+*)
 
 fun eval argvRest =
     let

@@ -45,6 +45,13 @@ val doTrace = ref false
 fun trace ss = if (!doTrace) then LogErr.log ("[ast-query] " :: ss) else ()
 fun error ss = LogErr.parseError ss
 
+fun typeExprOf (ty:Ast.TY) : Ast.TYPE_EXPR = 
+    let
+        val Ast.Ty { expr, ... } = ty
+    in
+        expr
+    end
+
 fun funcTy (func:Ast.FUNC)
     : Ast.TY = 
     let
@@ -61,13 +68,53 @@ fun funcTypeParams (func:Ast.FUNC)
 	    typeParams
     end
 
-fun paramTypesOfFuncTy (funcTy:Ast.TY)
-    : Ast.TYPE_EXPR list = 
-    let
-	    val Ast.Ty { expr = Ast.FunctionType { params, ... }, ... } = funcTy
+
+fun extractFuncType (ty:Ast.TY) 
+    : (Ast.FUNC_TYPE * Ast.RIBS * Ast.UNIT_NAME option) = 
+    case ty of 
+        Ast.Ty {expr=Ast.FunctionType fty, nonTopRibs, topUnit} => 
+        (fty, nonTopRibs, topUnit)
+      | _ => error ["extracting FunctionType from non-FunctionType"]
+
+
+fun extractInstanceType (ty:Ast.TY) 
+    : (Ast.INSTANCE_TYPE * Ast.RIBS * Ast.UNIT_NAME option) = 
+    case ty of 
+        Ast.Ty {expr=Ast.InstanceType ity, nonTopRibs, topUnit} => 
+        (ity, nonTopRibs, topUnit)
+      | _ => error ["extracting InstanceType from non-InstanceType"]
+
+
+fun lift (q:('a -> Ast.TYPE_EXPR))
+         (x:(Ast.TY -> ('a * Ast.RIBS * (Ast.UNIT_NAME option))))
+         (ty:Ast.TY) 
+    : (Ast.TY) =
+    let 
+        val (a, nonTopRibs, topUnit) = x ty
     in
-	    params
+        Ast.Ty { expr = (q a),
+                 nonTopRibs = nonTopRibs,
+                 topUnit = topUnit }
     end
+
+and liftOpt (q:('a -> Ast.TYPE_EXPR option))
+            (x:(Ast.TY -> ('a * Ast.RIBS * (Ast.UNIT_NAME option))))
+            (ty:Ast.TY) 
+    : (Ast.TY option) =
+    let
+        val (a, nonTopRibs, topUnit) = x ty
+    in
+        case q a of 
+            NONE => NONE
+          | SOME expr => 
+            SOME (Ast.Ty { expr = expr,
+                           nonTopRibs = nonTopRibs,
+                           topUnit = topUnit })
+    end
+    
+val conversionTyOfInstanceTy = liftOpt (#conversionTy) extractInstanceType
+val resultTyOfFuncTy = lift (#result) extractFuncType
+val resultTypeOfFuncTy = typeExprOf o resultTyOfFuncTy
 
 fun paramTypesOfFuncTy (funcTy:Ast.TY)
     : Ast.TYPE_EXPR list = 
@@ -76,18 +123,22 @@ fun paramTypesOfFuncTy (funcTy:Ast.TY)
           | _ => error ["paramTypesOfFuncTy: expected Ty with FunctionType"]
 
 
-fun resultTypeOfFuncTy (funcTy:Ast.TY)
-    : Ast.TYPE_EXPR = 
-    case funcTy of 
-        Ast.Ty { expr = Ast.FunctionType { result, ... }, ... } => result
-      | _ => error ["resultTypesOfFuncTy: expected Ty with FunctionType"]
+fun singleParamTyOfFuncTy (ty:Ast.TY) 
+    : Ast.TY = 
+    let
+        val (funcTy, nonTopRibs, topUnit) = extractFuncType ty                                            
+    in 
+        case (#params funcTy) of
+            [t] => Ast.Ty { expr=t,
+                            nonTopRibs = nonTopRibs,
+                            topUnit=topUnit }
+          | _ => error ["singleParamTyOfFuncTy: non-unique parameter"]
+    end    
                  
 fun funcIsAbstract (func:Ast.FUNC) 
     : bool = 
     case func of 
 	Ast.Func { block = NONE, ... } => true
       | _ => false
-
-
-    
+                 
 end

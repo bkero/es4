@@ -44,7 +44,7 @@ Library
     signature FIXTURE
     structure Fixture
     structure Type
-    structure Verify 
+(*  structure Verify *)
     structure Eval
     structure Mach 	
     structure Native 
@@ -72,7 +72,7 @@ is
     fixture.sig
     fixture.sml (lambdasplit: infinity)
     type.sml (lambdasplit: infinity)
-    verify.sml (lambdasplit: infinity)
+(*  verify.sml (lambdasplit: infinity) *)
     eval.sml (lambdasplit: infinity)
     mach.sml (lambdasplit: infinity)
     native.sml (lambdasplit: infinity)

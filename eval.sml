@@ -33,117 +33,25 @@ structure Eval = struct
  * Software ASA, and others.
  *)
 
-(* Local tracing, stack recording and profiling machinery *)
-
-val traceStack = ref false
-type frame = { name: string,
-               args: Mach.VAL list }
-val (stack:(frame list ref)) = ref []
-
-structure StrListKey = struct type ord_key = string list val compare = List.collate String.compare end
-structure StrListMap = SplayMapFn (StrListKey);
-
-structure NsKey = struct type ord_key = Ast.NAMESPACE val compare = NameKey.cmpNS end
-structure NsMap = SplayMapFn (NsKey);
-
-structure NmKey = struct type ord_key = Ast.NAME val compare = NameKey.compare end
-structure NmMap = SplayMapFn (NmKey);
-
-structure StrKey = struct type ord_key = Ustring.STRING val compare = NameKey.cmp end
-structure StrMap = SplayMapFn (StrKey);
-
-structure Real64Key = struct type ord_key = Real64.real val compare = Real64.compare end
-structure Real64Map = SplayMapFn (Real64Key);
-
-structure Word32Key = struct type ord_key = Word32.word val compare = Word32.compare end
-structure Word32Map = SplayMapFn (Word32Key);
-
-structure Int32Key = struct type ord_key = Int32.int val compare = Int32.compare end
-structure Int32Map = SplayMapFn (Int32Key);
-
-val (real64Cache:(Mach.VAL Real64Map.map) ref) = ref Real64Map.empty
-val (word32Cache:(Mach.VAL Word32Map.map) ref) = ref Word32Map.empty
-val (int32Cache:(Mach.VAL Int32Map.map) ref) = ref Int32Map.empty
-val (nsCache:(Mach.VAL NsMap.map) ref) = ref NsMap.empty
-val (nmCache:(Mach.VAL NmMap.map) ref) = ref NmMap.empty
-val (strCache:(Mach.VAL StrMap.map) ref) = ref StrMap.empty
-val cachesz = 1024
-
-val (profileMap:(int StrListMap.map) ref) = ref StrListMap.empty
-val (doProfile:((int option) ref)) = ref NONE
-
-fun resetProfile _ =
-    profileMap := StrListMap.empty
-
-fun resetStack _ =
-    stack := []
-
 fun log (ss:string list) = LogErr.log ("[eval] " :: ss)
 
 val doTrace = ref false
 fun fmtName n = if (!doTrace) then LogErr.name n else ""
 fun fmtMultiname n = if (!doTrace) then LogErr.multiname n else ""
 
-fun trace (ss:string list) = if (!doTrace) then log ss else ()
-fun error0 (ss:string list) =
+fun trace (ss:string list) = 
+    if (!doTrace) then log ss else ()
+
+fun error0 (regs:Mach.REGS) 
+           (ss:string list) =
     (LogErr.log ("[stack] " :: [stackString()]);
      LogErr.evalError ss)
 
-and error (ss:string list) =
+and error (regs:Mach.REGS) 
+          (ss:string list) =
     (LogErr.log ("[stack] " :: [stackString()]);
      LogErr.evalError ss)
 
-and stackString _ =
-    let
-        fun fmtFrame { name, args } =
-            name ^ "(" ^ (LogErr.join ", " (map approx args)) ^ ")"
-    in
-        "[" ^ (LogErr.join " | " (map fmtFrame (List.rev (!stack)))) ^ "]"
-    end
-
-(* An approximation of an invocation argument list, for debugging. *)
-and approx (arg:Mach.VAL)
-    : string =
-    case arg of
-        Mach.Null => "null"
-      | Mach.Undef => "undefined"
-      | Mach.Object ob =>
-        if Mach.hasMagic ob
-        then
-            let
-                val str = Ustring.toAscii (magicToUstring (Mach.needMagic arg))
-            in
-                if Mach.isString arg
-                then "\"" ^ str ^ "\""
-                else str
-            end
-        else
-            "obj"
-
-and magicToUstring (magic:Mach.MAGIC)
-    : Ustring.STRING =
-    case magic of
-        Mach.Double n => NumberToString n
-      | Mach.Decimal d => Ustring.fromString (Decimal.toString d)
-      | Mach.Int i => Ustring.fromInt32 i
-      | Mach.UInt u => Ustring.fromString (LargeInt.toString (Word32.toLargeInt u))
-      | Mach.String s => s
-      | Mach.Boolean true => Ustring.true_
-      | Mach.Boolean false => Ustring.false_
-      | Mach.Namespace (Ast.Private _) => Ustring.fromString "[private namespace]"
-      | Mach.Namespace (Ast.Protected _) => Ustring.fromString "[protected namespace]"
-      | Mach.Namespace Ast.Intrinsic => Ustring.fromString "[intrinsic namespace]"
-      | Mach.Namespace Ast.OperatorNamespace => Ustring.fromString "[operator namespace]"
-      | Mach.Namespace (Ast.Public id) => Ustring.append [Ustring.fromString "[public namespace: ", id, Ustring.fromString "]"]
-      | Mach.Namespace (Ast.Internal _) => Ustring.fromString "[internal namespace]"
-      | Mach.Namespace (Ast.UserNamespace id) => Ustring.append [Ustring.fromString "[user-defined namespace ", id, Ustring.fromString "]"]
-      | Mach.Class _ => Ustring.fromString "[class Class]"
-      | Mach.Interface _ => Ustring.fromString "[interface Interface]"
-      | Mach.Function _ => Ustring.fromString "[function Function]"
-      | Mach.Type _ => Ustring.fromString "[type Function]"
-      | Mach.ByteArray _ => Ustring.fromString "[ByteArray]"
-      | Mach.NativeFunction _ => Ustring.fromString "[function Function]"
-      | _ => error0 ["Shouldn't happen: failed to match in Eval.magicToUstring."]
 
 (*
  * ES-262-3 9.8.1: ToString applied to the Number (double) type.
@@ -230,18 +138,6 @@ fun pop _ =
      then LogErr.log ("[stack] " :: [stackString()])
      else ())
 
-val booting = ref false
-val ObjectClassIdentity = ref (~1)
-val ArrayClassIdentity = ref (~1)
-val FunctionClassIdentity = ref (~1)
-val StringClassIdentity = ref (~1)
-val NumberClassIdentity = ref (~1)
-val BooleanClassIdentity = ref (~1)
-
-val booleanTrue : (Mach.VAL option) ref = ref NONE
-val booleanFalse : (Mach.VAL option) ref = ref NONE
-val doubleNaN : (Mach.VAL option) ref = ref NONE
-
 (* Exceptions for object-language control transfer. *)
 exception ContinueException of (Ast.IDENT option)
 exception BreakException of (Ast.IDENT option)
@@ -250,11 +146,6 @@ exception ThrowException of Mach.VAL
 exception ReturnException of Mach.VAL
 
 exception InternalError
-
-infix 4 <:;
-
-fun (tsub <: tsup) =
-    Type.isSubtype (!Defn.topRib) tsub tsup
 
 fun mathOp (v:Mach.VAL)
            (decimalFn:(Decimal.DEC -> 'a) option)
@@ -293,19 +184,24 @@ fun extendScopeReg (r:Mach.REGS)
                    (kind:Mach.SCOPE_KIND)
     : Mach.REGS =
     let
-        val {scope,this} = r
+        val {scope,this,global,prog} = r
     in
         {scope=extendScope scope ob kind,
-         this=this}
+         this=this,
+         global=global,
+         prog=prog}
     end
 
 fun withThis (r:Mach.REGS)
              (newThis:Mach.OBJ)
     : Mach.REGS =
     let
-        val {scope,this} = r
+        val {scope,this,global,prog} = r
     in
-        {scope=scope, this=newThis}
+        {scope=scope, 
+         this=newThis, 
+         global=global, 
+         prog=prog}
     end
 
 
@@ -338,24 +234,16 @@ fun getTemps (regs:Mach.REGS)
  * The global object and scope.
  *)
 
-val (globalObject:(Mach.OBJ option) ref) = ref NONE
-val (globalScope:(Mach.SCOPE option) ref) = ref NONE
-
-fun getGlobalObject _
-    : Mach.OBJ =
-    case !globalObject of
-        NONE => error ["missing global object"]
-      | SOME ob => ob
-
-fun getGlobalScope _
+fun getGlobalScope (regs:Mach.REGS) =
     : Mach.SCOPE =
-    case !globalScope of
-        NONE => error ["missing global scope"]
-      | SOME ob => ob
-
-fun getInitialRegs _ =
-    { this = getGlobalObject (),
-      scope = getGlobalScope () }
+      let
+          val { global, ... } = regs 
+      in
+          Mach.Scope { object = global,
+                       parent = NONE,
+                       temps = ref [],
+                       kind = Mach.GlobalScope }
+      end
 
 
 (*
@@ -392,10 +280,26 @@ fun shouldBeDontEnum (n:Ast.NAME) (obj:Mach.OBJ) : bool =
 
 (* Fundamental object methods *)
 
-fun findConversion (ty1:Type.TYPE_VALUE)
-                   (ty2:Type.TYPE_VALUE)
-    : Ast.NAME option =
-    Type.findConversion (!Defn.topRib) ty1 ty2
+fun findConversion (regs:Mach.REGS)
+                   (ty1:Ast.TY)
+                   (ty2:Ast.TY)
+    : Ast.TY option =
+    (* Decide if we can do ty1 -> ty2, which is true iff
+     * 
+     *  class ty2 {
+     *    meta static function convert (ty1) { ... }
+     *  ...
+     *  }
+     * 
+     * exists. If it does, we return SOME ty2.
+     *)
+    case AstQuery.conversionTyOfInstanceTy 
+             (Type.normalize (#prog regs) ty2) 
+     of
+        NONE => NONE
+      | SOME t => if Type.equals ty1 t
+                  then SOME t
+                  else NONE
 
 fun allocRib (regs:Mach.REGS)
              (obj:Mach.OBJ)
@@ -479,7 +383,7 @@ fun allocRib (regs:Mach.REGS)
                         (* It is possible that we're booting and the class n doesn't even exist yet. *)
                         if (not (!booting)) orelse Mach.isClass (getValue (getGlobalObject ()) (#name n))
                         then
-                            case findConversion (Ast.SpecialType Ast.Undefined) t of
+                            case findConversion regs (Ast.SpecialType Ast.Undefined) t of
                                 SOME _ => Mach.ValProp (checkAndConvert Mach.Undef t)
                               | NONE => Mach.UninitProp
                         else
@@ -1097,22 +1001,27 @@ and needNamespaceOrNull (v:Mach.VAL)
       | Mach.Null => Name.noNS
       | _ => error ["need namespace"]
 
-and needNameOrString (v:Mach.VAL)
+and needNameOrString (regs:Mach.REGS)
+                     (v:Mach.VAL)
     : Ast.NAME =
-    case v of
-        Mach.Object obj =>
-        if (typeOfVal v) <: (Verify.instanceTypeExpr Name.intrinsic_Name)
-(*           Verify.isSubtype (typeOfVal v) (Verify.instanceTypeExpr Name.intrinsic_Name)*)
-        then
-            let
-                val nsval = getValue obj Name.nons_qualifier
-                val idval = getValue obj Name.nons_identifier
-            in
-                Name.make (toUstring idval) (needNamespaceOrNull nsval)
-            end
-        else
-            Name.nons (toUstring v)
-      | _ => Name.nons (toUstring v)
+    let 
+        val { prog, ... } = regs
+        val ty = typeOfVal v
+    in
+        case v of
+            Mach.Object obj => 
+            if Type.isSubtype prog ty (Fixture.instanceType prog Name.intrinsic_Name)
+            then
+                let
+                    val nsval = getValue obj Name.nons_qualifier
+                    val idval = getValue obj Name.nons_identifier
+                in
+                    Name.make (toUstring idval) (needNamespaceOrNull nsval)
+                end
+            else
+                Name.nons (toUstring v)
+          | _ => Name.nons (toUstring v)
+    end
 
 and needObj (v:Mach.VAL)
     : Mach.OBJ =
@@ -1441,7 +1350,7 @@ and toUstring (v:Mach.VAL)
             val Mach.Obj ob = obj
         in
             case !(#magic ob) of
-                SOME magic => magicToUstring magic
+                SOME magic => Mach.magicToUstring magic
               | NONE => toUstring (toPrimitiveWithStringHint v)
         end
 
@@ -3027,7 +2936,7 @@ and evalBinaryOp (regs:Mach.REGS)
         let
             val a = evalExpr regs aexpr
             val b = evalExpr regs bexpr
-            val aname = needNameOrString a
+            val aname = needNameOrString regs a
         in
             case b of
                 Mach.Object obj =>
@@ -4687,10 +4596,12 @@ and evalProgram (regs:Mach.REGS)
                    error ["uncaught exception: ", Ustring.toAscii (toUstring v)]
                end
     end
-and evalTopProgram (prog:Ast.PROGRAM)
+
+and evalTopFragment (prog:Fixture.PROGRAM)
+                    (frag:Ast.FRAGMENT)
     : Mach.VAL =
     let
-        val regs = getInitialRegs ()
+        val regs = getInitialRegs prog
         val _ = LogErr.setLoc NONE
         val _ = resetProfile ()
         val res = evalProgram regs prog
@@ -4718,9 +4629,6 @@ and evalTopProgram (prog:Ast.PROGRAM)
 fun resetGlobal (ob:Mach.OBJ)
     : unit =
     (globalObject := SOME ob;
-     globalScope := SOME (Mach.Scope { object = ob,
-                                       parent = NONE,
-                                       temps = ref [],
-                                       kind = Mach.GlobalScope }))
+     globalScope := SOME ())
 
 end
