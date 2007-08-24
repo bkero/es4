@@ -782,7 +782,7 @@ fun magicToUstring (magic:MAGIC)
 (* Call stack and debugging stuff *)
 
 (* An approximation of an invocation argument list, for debugging. *)
-and approx (arg:VAL)
+fun approx (arg:VAL)
     : string =
     case arg of
         Null => "null"
@@ -873,6 +873,15 @@ fun pop (regs:REGS)
         else ();
         stack := newStack
     end
+
+fun isBooting (regs:REGS) 
+    : bool =
+    let 
+        val { aux = Aux { booting, ...}, ... } = regs
+    in
+        !booting
+    end
+    
 
 (* native function stuff *)
 
