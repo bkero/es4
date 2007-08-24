@@ -800,6 +800,15 @@ fun approx (arg:VAL)
         else
             "obj"
 
+fun stackOf (regs:REGS) 
+    : (FRAME list) =
+    let 
+        val { aux = Aux { stack, ...}, ... } = regs
+    in
+        !stack
+    end
+
+
 fun stackString (stack:FRAME list) =
     let
         fun fmtFrame (Frame { name, args }) =
