@@ -75,8 +75,7 @@ dynamic class Array extends Object
     <SIGNATURE file="Array.es" name="static function splice">
     <SIGNATURE file="Array.es" name="static function unshift">
 
-    static const length: uint = 1
-    static const prototype: Object = <LDOTS>
+    static const length = 1
 
     <SIGNATURE file="Array.es" name="intrinsic function concat">
     <SIGNATURE file="Array.es" name="intrinsic function every">
@@ -101,6 +100,31 @@ dynamic class Array extends Object
 }
 }}}
 
+<P> The ''Array'' prototype object provides these direct properties:
+
+{{{
+   toString:       function () <LDOTS> ,
+   toLocaleString: function () <LDOTS> ,
+   concat:         function (...items) <LDOTS> ,
+   every:          function (checker, thisObj=null) <LDOTS> ,
+   filter:         function (checker, thisObj=null) <LDOTS> ,
+   forEach:        function (eacher, thisObj=null) <LDOTS> ,
+   indexOf:        function (value, from=0) <LDOTS> ,
+   join:           function (separator=",") <LDOTS> ,
+   lastIndexOf:    function (value, from=Infinity) <LDOTS> ,
+   map:            function (mapper, thisObj=null) <LDOTS> ,
+   pop:            function () <LDOTS> ,
+   push:           function (...items) <LDOTS> ,
+   reverse:        function () <LDOTS> ,
+   shift:          function () <LDOTS> ,
+   slice:          function (start=0, end=Infinity) <LDOTS> ,
+   some:           function (checker, thisObj=null) <LDOTS> ,
+   sort:           function (comparefn=undefined) <LDOTS> ,
+   splice:         function (start, deleteCount, ...items) <LDOTS> ,
+   unshift:        function (...items) <LDOTS> ,
+   length:         <LDOTS>
+}}}
+
 
 == Methods on the ''Array'' class object ==
 
@@ -121,26 +145,16 @@ edition.
 === new Array ( ...items ) ===
 
 <DESC> When the ''Array'' constructor is called with some set of
-arguments //items// as part of a ''new'' expression, it initializes
-the ''Array'' object from its argument values.
+arguments //items// as part of a ''new&nbsp;Array'' expression, it
+initializes the ''Array'' object from its argument values.
 
 <P> If there is exactly one argument of any number type, then its
 value is taken to be the initial value of the ''length'' property.
 The value must be a nonnegative integer less than 2<sup>32</sup>.
 
-<p> The [[Prototype]] property of the newly constructed object is set
-to the original Array prototype object, the one that is the initial
-value of ''Array.prototype'' (section <XREF
-target="Array.prototype">).
-
-<FIXME> We need to clean that up.  There ought to be one non-magic
-rule for the prototype that's picked.  That should (obviously) be the
-current value of the ''prototype'' property on the object that's the
-target of the ''new'' operator.  It's completely baffling that there
-is this special case here.
-
-<P> The [[Class]] property of the newly constructed object is set to
-''"Array"''.
+<P> If there are zero or more than one arguments, the arguments are
+taken to be the initial values of array elements, and there will be
+as many elements as there are arguments.
 
 <SHORTIMPL>
 <INCLUDE file="Array.es" name="function Array">
@@ -176,7 +190,7 @@ be objects.
 prototype variants of ''concat''.
 
 
-=== every ( object, checker, thisObj=null ) ===
+=== every ( object, checker, thisObj=<LDOTS> ) ===
 
 <DESC> The static ''every'' method calls //checker// on every array
 element of //object// in increasing numerical index order, stopping as
@@ -193,7 +207,7 @@ property index, and //object// itself.  The //thisObj// is used as the
 <INCLUDE file="Array.es" name="static function every">
 
 
-=== filter ( object, checker, thisObj=null ) ===
+=== filter ( object, checker, thisObj=<LDOTS> ) ===
 
 <DESC> The static ''filter'' method calls //checker// on every array element
 of //object// in increasing numerical index order, collecting all the
@@ -211,7 +225,7 @@ collected.
 <INCLUDE file="Array.es" name="static function filter">
 
 
-=== forEach ( object, eacher, thisObj=null ) ===
+=== forEach ( object, eacher, thisObj=<LDOTS> ) ===
 
 <DESC> The static ''forEach'' method calls //eacher// on every array
 element of //object// in increasing numerical index order, discarding
@@ -227,7 +241,7 @@ property index, and //object// itself.  The //thisObj// is used as the
 <INCLUDE file="Array.es" name="static function forEach">
 
 
-=== indexOf ( object, value, from=0 ) ===
+=== indexOf ( object, value, from=<LDOTS> ) ===
 
 <DESC> The static ''indexOf'' method compares //value// with every
 array element of //object// in increasing numerical index order,
@@ -245,7 +259,7 @@ found.
 <INCLUDE file="Array.es" name="static function indexOf">
 
 
-=== join ( object, separator="," ) ===
+=== join ( object, separator=<LDOTS> ) ===
 
 <DESC> The static ''join'' method concatenates the string
 representations of the array elements of //object// in increasing
@@ -259,7 +273,7 @@ string.
 <INCLUDE file="Array.es" name="static function join">
 
 
-=== lastIndexOf ( object, value, from=NaN ) ===
+=== lastIndexOf ( object, value, from=<LDOTS> ) ===
 
 <DESC> The static ''lastIndexOf'' method compares //value// with every
 array element of //object// in decreasing numerical index order,
@@ -269,11 +283,15 @@ equal to //value// by the ''==='' operator.
 <P> //From// is rounded toward zero before use.  If //from// is
 negative, it is treated as ''//object//.length+//from//''.
 
+<RETN> The static ''lastIndexOf'' method returns the array index the
+first time //value// is equal to an element, or -1 if no such element
+is found.
+
 <SHORTIMPL>
 <INCLUDE file="Array.es" name="static function lastIndexOf">
 
 
-=== map ( object, mapper, thisObj=null ) ===
+=== map ( object, mapper, thisObj=<LDOTS> ) ===
 
 <DESC> The static ''map'' method calls //mapper// on each array element of
 //object// in increasing numerical index order, collecting the return values
@@ -344,7 +362,7 @@ decrements the ''length'' property of //object// by 1.
 <INCLUDE file="Array.es" name="static function shift">
 
 
-=== slice ( object, start, end ) ===
+=== slice ( object, start=<LDOTS>, end=<LDOTS> ) ===
 
 <DESC> The static ''slice'' method extracts the subrange of array
 elements from //object// between //start// (inclusive) and //end//
@@ -364,7 +382,7 @@ containing the extracted array elements.
 <INCLUDE file="Array.es" name="helper static function clamp">
 
 
-=== some ( object, checker [ , thisObj ] ) ===
+=== some ( object, checker, thisObj=<LDOTS> ) ===
 
 <DESC> The static ''some'' method calls //checker// on every array element in
 //object// in increasing numerical index order, stopping as soon as //checker// returns
@@ -382,7 +400,7 @@ returns a true value, otherwise returns **false** if all the calls to
 <INCLUDE file="Array.es" name="static function some">
 
 
-=== sort (object, comparefn) ===
+=== sort (object, comparefn=<LDOTS>) ===
 
 <DESC> The static ''sort'' method sorts the array elements of
 //object//, it rearranges the elements of //object// according to some
@@ -489,6 +507,9 @@ that these equivalence classes are totally ordered.
 <RETN> The static ''sort'' method returns //object//.
 
 <IMPL>
+<P> The interface to the ''sort'' method can be described as follows:
+<SIGNATURE file="Array.es" name="static function sort">
+
 <P>When the //SortCompare// operator is called with two arguments
 //j// and //k//, the following steps are taken:
 
@@ -533,31 +554,6 @@ property of //object// is updated.
 <SHORTIMPL>
 <INCLUDE file="Array.es" name="static function unshift">
 <INCLUDE file="Array.es" name="helper static function unshift">
-
-
-== Properties of the Array Class ==
-
-=== [[Prototype]] ===
-
-<p>The value of the internal [[Prototype]] property of the ''Array''
-class object is the ''Function'' prototype object (section <XREF
-target="Function.prototype">).
-
-<FIXME> Either (a) this is the general rule and therefore true for all
-user-defined classes too or (b) the RI needs special hackarounds and
-those need to be documented explicitly here.
-
-
-=== length ===
-
-<p> The value of the constant ''length'' property of the Array class object is 1.
-
-=== prototype ===
-
-<P> The initial value of the ''prototype'' property of the Array class
-object is the Array prototype object (section <XREF
-target="Array.prototype">).
-
 
 == Method Properties of Array Instances ==
 
@@ -623,7 +619,7 @@ itself has a property (not an inherited property) named ToString(k), then delete
 </OL>
 
 
-== Properties of Array Instances ==
+== Value properties of Array instances ==
 
 <P>Array instances inherit properties from the Array prototype object
 and also have the following properties.
@@ -634,79 +630,39 @@ and also have the following properties.
 greater than the name of every property whose name is an array index.
 
 
+== Method properties on the ''Array'' prototype object ===
 
-== The Array prototype object ==
+=== toString ( ) ===
 
-=== Synopsis ===
+<DESC> The prototype ''toString'' method converts the array to a ''string''.
+It has the same effect as if the intrinsic ''join'' method were invoked for this
+object with no argument.
 
-{{{
-Array.prototype = {
-   toString:       function () <LDOTS> ,
-   toLocaleString: function () <LDOTS> ,
-   concat:         function (...items) <LDOTS> ,
-   every:          function (checker, thisObj=null) <LDOTS> ,
-   filter:         function (checker, thisObj=null) <LDOTS> ,
-   forEach:        function (eacher, thisObj=null) <LDOTS> ,
-   indexOf:        function (value, from=0) <LDOTS> ,
-   join:           function (separator=",") <LDOTS> ,
-   lastIndexOf:    function (value, from=Infinity) <LDOTS> ,
-   map:            function (mapper, thisObj=null) <LDOTS> ,
-   pop:            function () <LDOTS> ,
-   push:           function (...items) <LDOTS> ,
-   reverse:        function () <LDOTS> ,
-   shift:          function () <LDOTS> ,
-   slice:          function (start=0, end=Infinity) <LDOTS> ,
-   some:           function (checker, thisObj=null) <LDOTS> ,
-   sort:           function (comparefn=undefined) <LDOTS> ,
-   splice:         function (start, deleteCount, ...items) <LDOTS> ,
-   unshift:        function (...items) <LDOTS> ,
+<RETN> The prototype ''toString'' method returns a ''string''.
 
-   constructor:    <LDOTS> ,
-   length:         <LDOTS>
-}
-}}}
-
-<P>The value of the internal [[Prototype]] property of the Array
-prototype object is the Object prototype object (section <XREF
-target="Object.prototype">).
-
-<p>The Array prototype object is itself an array; its [[Class]] is
-''"Array"'', and it has a ''length'' property (whose initial value is
-+0) and the special internal [[Put]] method described in section
-<XREF target="Array.[[Put]]">.
-
-<NOTE>The Array prototype object does not have a ''valueOf'' property
-of its own; however, it inherits the ''valueOf'' property from the
-Object prototype Object.
-
-=== Method properties ===
-
-==== Array.prototype.toString ( ) ====
-
-<P>The result of calling this function is the same as if the built-in
-''join'' method were invoked for this object with no argument.
-
+<SHORTIMPL>
 <INCLUDE file="Array.es" name="prototype function toString">
 
-==== Array.prototype.toLocaleString ( ) ====
+=== toLocaleString ( ) ===
 
-<P>The elements of this Array are converted to strings using their
-''toLocaleString'' methods, and these strings are then concatenated,
+<DESC>The elements of this Array are converted to strings using their
+public ''toLocaleString'' methods, and these strings are then concatenated,
 separated by occurrences of a separator string that has been derived
 in an implementation-defined locale-specific way.  The result of
 calling this function is intended to be analogous to the result of
 ''toString'', except that the result of this function is intended to
 be locale-specific.
 
-<p>The result is calculated as follows:
+<RETN> The prototype ''toLocaleString'' method returns a ''string''.
 
+<SHORTIMPL>
 <INCLUDE file="Array.es" name="prototype function toLocaleString">
 
 <NOTE>The first parameter to this function is likely to be used in a
 future version of this standard; it is recommended that
 implementations do not use this parameter position for anything else.
 
-==== Generic Methods on the Array Prototype Object ====
+=== Generic methods ===
 
 <P>These methods delegate to their static counterparts, and like their
 counterparts, they are generic: they can be transferred to other
@@ -737,13 +693,5 @@ those functions' signatures.  In the 4th Edition of this Standard, all
 functions on the Array prototype object have ''length'' properties
 that follow the general rule stated in section <XREF
 target="function-semantics">.
-
-
-=== Value properties ===
-
-==== Array.prototype.constructor ====
-
-<P>The initial value of ''Array.prototype.constructor'' is the
-built-in Array constructor.
 
 <!-- end of Array.html -->

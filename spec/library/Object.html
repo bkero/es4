@@ -1,15 +1,3 @@
-<!-- Object.html
-  --
-  -- The class "Object"
-  --
-  -- Copyright (C) 2007 ECMA International
-  -- Contains material from older specs.
-  --
-  -- Status: incomplete
-  -- Review: not reviewed
-  -->
-
-
 <h1 id="class Object"> The class ''Object'' </h1>
 
 <pre>
@@ -41,7 +29,7 @@ dynamic class Object
     function Object(value=undefined) <LDOTS>
     <SIGNATURE file="Object.es" name="meta static function invoke">
 
-    static const length uint = 1
+    static const length = 1
 
     <SIGNATURE file="Object.es" name="intrinsic function toString">
     <SIGNATURE file="Object.es" name="intrinsic function toLocaleString">
@@ -62,8 +50,6 @@ dynamic class Object
     hasOwnProperty:       function (V) <LDOTS> ,
     isPrototypeOf:        function (V) <LDOTS> ,
     propertyIsEnumerable: function (name, flag=undefined) <LDOTS> ,
-
-    constructor:          Object
 }}}
 
 <P> The ''Object'' prototype object is itself an instance of the class
@@ -73,7 +59,7 @@ property is **null**.
 
 == Methods on the ''Object'' class object ==
 
-=== new Object ( value ) ===
+=== new Object ( value=<LDOTS> ) ===
 
 <DESC> When the ''Object'' constructor is called with an argument
 //value// (defaulting to **undefined**) as part of a ''new''
@@ -82,6 +68,10 @@ depends on the type of //value//.
 
 <RETN> The ''Object'' constructor returns an object (an instance of
 ''Object'' or one of its subclasses, or a host object).
+
+<NOTE> The ''Object'' constructor is the only constructor function
+defined on a class in the language whose result may be a value of a
+different class than the one in which the constructor is defined.
 
 <IMPL> The ''Object'' constructor can't be expressed as a regular
 ECMAScript constructor.  Instead it is presented below as a function
@@ -116,7 +106,7 @@ function makeObject(value=undefined) {
 }}}
 
 
-=== Object ( value ) ===
+=== Object ( value=<LDOTS> ) ===
 
 <DESC> When the ''Object'' class object is called as a function with zero
 or one arguments it performs a type conversion.
@@ -168,8 +158,7 @@ implementations do not use this parameter position for anything else.
 === intrinsic::toJSONString ( ) ===
 
 <FIXME>Waiting for proposal to be cleaned up and the RI method to be
-implemented.  This may have the same issues as ''toLocaleString'':
-care must be taken.
+implemented.
 
 
 === intrinsic::valueOf ( ) ===
@@ -224,7 +213,7 @@ returns ''false''.
 from the object.  See <XREF target="magic:getPrototype">.
 
 
-=== intrinsic::propertyIsEnumerable ( name, flag=undefined ) ===
+=== intrinsic::propertyIsEnumerable ( name, flag=<LDOTS> ) ===
 
 <DESC> The intrinsic ''propertyIsEnumerable'' method retrieves, and
 optionally sets, the enumerability flag for a property with a certain

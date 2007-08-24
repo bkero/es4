@@ -180,7 +180,9 @@ of the Standard, the value of ''__ECMASCRIPT_VERSION__'' is 4.
 
 == Function Properties of the Global Object ==
 
-=== eval (s) ===
+=== eval ===
+
+==== The ''eval'' operator ====
 
 <P> When the intrinsic and non-intrinsic ''eval'' functions are called
 directly by name (that is, by the explicit use of the name ''eval'' as
@@ -188,26 +190,55 @@ an Identifier which is the MemberExpression in a CallExpression) they
 are treated like operators in the language.  See <XREF
 target="eval-operator">.
 
-<p> When the intrinsic and non-intrinsic ''eval'' functions are called
-as methods on the global objects in whose scope they are closed then
-they evaluate their argument as a program in the global scope that is
-the receiver object in the call.
+<FIXME> It's possible we want just the unqualified use of ''eval'' here.
 
-<p> When the intrinsic and non-intrinsic ''eval'' functions are called
-as ordinary functions under other names than ''eval'' then they
-evaluate their argument as a program in a global scope that is the
-scope in which the ''eval'' function was closed.
 
-<p> The definitions for the latter two cases can be summarized as
-follows, where the call to ''eval'' in the body is an instance of the
-former ("operator") case:
+==== intrinsic::eval (s) ====
+
+<DESC> When the intrinsic ''eval'' function is called as a methods on the
+global objects in whose scope it is closed then it evaluates its
+argument as a program in the global scope that is the receiver object
+in the call.
+
+<p> When the intrinsic ''eval'' function is called as an ordinary
+function under other names than ''eval'' then it evaluates its
+argument as a program in a global scope that is the scope in which the
+''eval'' function was closed.
+
+<RETN> The intrinsic ''eval'' function returns the value computed by
+the program that's evaluated.
+
+<IMPL> The definitions for the two cases described above can be
+summarized as follows, where the call to ''eval'' in the body is an
+instance of the former ("operator") case:
 
 {{{
 intrinsic function eval(s: string)
     eval(s);
 }}}
 
+<FIXME> That's not right, because ''s'' shadows any global ''s'' that
+should be visible to the evaluated program.
+
+==== eval (s) ====
+
+<DESC> The non-intrinsic ''eval'' function can be called as a method
+on the global object in whose scope it is closed, or it can be called
+as an ordinary function under another name, just like the intrinsic
+''eval'' function.
+
+<P> If the argument to ''eval'' is a ''String'' object, then the
+program represented by that string is evaluated.  Otherwise the
+argument is returned unchanged.
+
 <INCLUDE file="Global.es" name="function eval">
+
+<NOTE> The behavior of this function depends on the fact that the
+non-intrinsic ''eval'' function is closed in the same global object as
+the intrinsic ''eval'' function.  Thus there's no need to capture and
+pass the ''this'' parameter.
+
+==== Restrictions on the use of the ''eval'' property  ====
 
 <p> If the value of the ''eval'' property is used in any way other
 than than the three listed previously, or if the ''eval'' property is
@@ -217,23 +248,24 @@ assigned to, an ''EvalError'' exception may be thrown.
 to the first case listed previously.
 
 
-=== parseInt (string , radix) ===
+=== intrinsic::parseInt (s, r=<LDOTS>) ===
 
-<p>The intrinsic ''parseInt'' function produces an integer value
+<DESC> The intrinsic ''parseInt'' function computes an integer value
 dictated by interpretation of the contents of the string argument
-''s'' according to the specified radix ''r''.  Leading whitespace in
-''s'' is ignored.  If ''r'' is 0, it is assumed to be 10 except when
+//s// according to the specified radix //r// (which defaults to zero).  Leading whitespace in
+//s// is ignored.  If //r// is zero, it is assumed to be 10 except when
 the number begins with the character pairs 0x or 0X, in which case a
 radix of 16 is assumed.  Any radix-16 number may also optionally begin
 with the character pairs 0x or 0X.
 
-<p>When the intrinsic ''parseInt'' function is called, the following
-steps are taken:
+<RETN> The intrinsic ''parseInt'' function returns a number.
 
+<SHORTIMPL>
 <INCLUDE file="Global.es" name="intrinsic function parseInt">
 
-The helper function ''isDigitForRadix(c,r)'' computes whether ''c'' is
-a valid digit for the radix ''r'', see <XREF target="helper:isDigitForRadix">.
+<P> The helper function ''isDigitForRadix(c,r)'' computes whether
+''c'' is a valid digit for the radix ''r'', see <XREF
+target="helper:isDigitForRadix">.
 
 <p>The informative function ''numericValue(s, r)'' computes the
 numeric value of a radix-''r'' string ''s''.  If ''r'' is 10 and ''s''
@@ -256,62 +288,94 @@ integer value; it ignores any characters that cannot be interpreted as
 part of the notation of an integer, and no indication is given that
 any such characters were ignored.
 
-<p>The non-intrinsic ''parseInt'' function converts its first argument
-to string and its second argument to int, and then calls its intrinsic
-counterpart:
-
-<INCLUDE file="Global.es" name="function parseInt">
-
 <h4 id="helper:isDigitForRadix">isDigitForRadix </h4>
 
 <INCLUDE file="Global.es" name="helper function isDigitForRadix">
 
 
-=== parseFloat (string) ===
+=== parseInt ( s, r=<LDOTS> ) ===
 
-<p>The intrinsic ''parseFloat'' function produces a number value
-dictated by interpretation of the contents of the string argument as a
+<DESC>The ''parseInt'' function converts its first argument to
+''string'' and its second argument to ''int'', and then calls its
+intrinsic counterpart.
+
+<RETN>The ''parseInt'' function returns a number.
+
+<SHORTIMPL>
+<INCLUDE file="Global.es" name="function parseInt">
+
+
+=== intrinsic::parseFloat (s) ===
+
+<DESC>The intrinsic ''parseFloat'' function computes a number value
+dictated by interpretation of the contents of the string argument //s// as a
 decimal literal.
 
-<p>When the intrinsic ''parseFloat'' function is called, the following
-steps are taken:
+<RETN> The intrinsic ''parseFloat'' function returns a number.
 
+<SHORTIMPL>
 <INCLUDE file="Global.es" name="intrinsic function parseFloat">
 
-<NOTE>''parseFloat'' may interpret only a leading portion of the string as a
+<NOTE>''parseFloat'' may interpret only a leading portion of //s// as a
 number value; it ignores any characters that cannot be interpreted as
 part of the notation of an decimal literal, and no indication is given
 that any such characters were ignored.
 
-<p>The non-intrinsic ''parseFloat'' function converts its argument to
-string, then calls its intrinsic counterpart:
+=== parseFloat (s) ===
 
+<DESC>The ''parseFloat'' function converts its argument to ''string'',
+then calls its intrinsic counterpart.
+
+<RETN>The ''parseFloat'' function returns a number.
+
+<SHORTIMPL>
 <INCLUDE file="Global.es" name="function parseFloat">
 
 
-=== isNaN (number) ===
+=== intrinsic::isNaN (number) ===
 
-<p>The intrinsic ''isNaN'' function takes a numeric value and returns
-**true** if it is **NaN**, and otherwise returns **false**.
+<DESC>The intrinsic ''isNaN'' function tests whether a numeric value //number// is an
+IEEE not-a-number value.
 
+<RETN>The intrinsic ''isNaN'' function returns 
+**true** if //number// is **NaN**, and otherwise returns **false**.
+
+<SHORTIMPL>
 <INCLUDE file="Global.es" name="intrinsic function isNaN">
 
-<p>The non-intrinsic ''isNaN'' function converts its argument to a
-number, then calls its intrinsic counterpart:
+=== isNaN (number) ===
 
+<DESC>The ''isNaN'' function converts its argument to a number, then
+calls its intrinsic counterpart.
+
+<RETN>The ''isNaN'' function returns **true** if //number// is
+**NaN**, and otherwise returns **false**.
+
+<SHORTIMPL>
 <INCLUDE file="Global.es" name="function isNaN">
+
+
+=== intrinsic::isFinite (number) ===
+
+<DESC>The intrinsic ''isFinite'' function tests whether a numeric value //number// is
+finite (neither not-a-number nor an infinity).
+
+<RETN>The intrinsic ''isFinite'' function returns **true** if //number// is
+finite, and otherwise returns **false**.
+
+<SHORTIMPL>
+<INCLUDE file="Global.es" name="intrinsic function isFinite">
 
 
 === isFinite (number) ===
 
-<p>When the intrinsic ''isFinite'' function is called on a number, the
-following steps are taken:
+<DESC>The ''isFinite'' function converts its argument to a number,
+then calls its intrinsic counterpart.
 
-<INCLUDE file="Global.es" name="intrinsic function isFinite">
+<RETN>The ''isFinite'' function returns **true** if //number// is
+finite, and otherwise returns **false**.
 
-<p>The non-intrinsic ''isFinite'' function converts its argument to a number,
-then calls its intrinsic counterpart:
-
+<SHORTIMPL>
 <INCLUDE file="Global.es" name="function isFinite">
 
 
@@ -472,93 +536,112 @@ previously:
 <INCLUDE file="Global.es" name="helper const uriUnescaped">
 
 
-==== decodeURI (encodedURI) ====
+==== intrinsic::decodeURI (encodedURI) ====
 
-<P>The intrinsic ''decodeURI'' function computes a new version of a URI
-in which each escape sequence and UTF-8 encoding of the sort that
-might be introduced by the ''encodeURI'' function is replaced with the
-character that it represents.  Escape sequences that could not have
-been introduced by ''encodeURI'' are not replaced.
+<DESC> The intrinsic ''decodeURI'' function computes a new version of
+a URI in which each escape sequence and UTF-8 encoding of the sort
+that might be introduced by the ''encodeURI'' function is replaced
+with the character that it represents.  Escape sequences that could
+not have been introduced by ''encodeURI'' are not replaced.
 
-<p>When the intrinsic ''decodeURI'' function is called with one string
-argument ''encodedURI'', the following steps are taken:
+<RETN> The intrinsic ''decodeURI'' function returns a decoded string.
 
+<SHORTIMPL>
 <INCLUDE file="Global.es" name="intrinsic function decodeURI">
 
 <NOTE>The character "''#''" is not decoded from escape sequences even
 though it is not a reserved URI character.
 
-<p>The non-intrinsic ''decodeURI'' function converts its argument to
-string, then calls its intrinsic counterpart:
+==== decodeURI (encodedURI) ====
 
+<DESC>The ''decodeURI'' function converts its argument to ''string'', then
+calls its intrinsic counterpart.
+
+<RETN> The ''decodeURI'' function returns a decoded string.
+
+<SHORTIMPL>
 <INCLUDE file="Global.es" name="function decodeURI">
 
 
-==== decodeURIComponent (encodedURIComponent) ====
+==== intrinsic::decodeURIComponent (encodedURIComponent) ====
 
-<P>The intrinsic ''decodeURIComponent'' function computes a new version
-of a URI in which each escape sequence and UTF-8 encoding of the sort
-that might be introduced by the ''encodeURIComponent'' function is
-replaced with the character that it represents.
+<DESC> The intrinsic ''decodeURIComponent'' function computes a new
+version of a URI in which each escape sequence and UTF-8 encoding of
+the sort that might be introduced by the ''encodeURIComponent''
+function is replaced with the character that it represents.
 
-<p>When the intrinsic ''decodeURIComponent'' function is called with
-one string argument ''encodedURIComponent'', the following steps are
-taken:
+<RETN> The intrinsic ''decodeURIComponent'' function returns a decoded string.
 
+<SHORTIMPL>
 <INCLUDE file="Global.es" name="intrinsic function decodeURIComponent">
 
-<p>The non-intrinsic ''decodeURIComponent'' function converts its
-argument to string, then calls its intrinsic counterpart:
+==== decodeURIComponent (encodedURIComponent) ====
 
+<DESC>The ''decodeURIComponent'' function converts its argument to
+''string'', then calls its intrinsic counterpart.
+
+<RETN> The ''decodeURIComponent'' function returns a decoded string.
+
+<SHORTIMPL>
 <INCLUDE file="Global.es" name="function decodeURIComponent">
 
 
+==== intrinsic::encodeURI (uri) ====
 
-==== encodeURI (uri) ====
-
-<p>The intrinsic ''encodeURI'' function computes a new version of a URI
-in which each instance of certain characters is replaced by one, two
-or three escape sequences representing the UTF-8 encoding of the
+<DESC> The intrinsic ''encodeURI'' function computes a new version of
+a URI in which each instance of certain characters is replaced by one,
+two or three escape sequences representing the UTF-8 encoding of the
 character.
 
-<p>When the intrinsic ''encodeURI'' function is called with one string
-argument ''uri'', the following steps are taken:
+<RETN> The intrinsic ''encodeURI'' function returns a encoded string.
 
+<SHORTIMPL>
 <INCLUDE file="Global.es" name="intrinsic function encodeURI">
 
 <NOTE>The character "''#''" is not encoded to an escape sequence
 even though it is not a reserved or unescaped URI character.
 
-<p>The non-intrinsic ''encodeURI'' function converts its argument to
-string, then calls its intrinsic counterpart:
+==== encodeURI (uri) ====
 
+<DESC>The ''encodeURI'' function converts its argument to string, then
+calls its intrinsic counterpart.
+
+<RETN> The ''encodeURI'' function returns a encoded string.
+
+<SHORTIMPL>
 <INCLUDE file="Global.es" name="function encodeURI">
 
 
-==== encodeURIComponent (uriComponent) ====
+==== intrinsic::encodeURIComponent (uriComponent) ====
 
-<P>The ''encodeURIComponent'' function computes a new version of a URI in
-which each instance of certain characters is replaced by one, two or
-three escape sequences representing the UTF-8 encoding of the
-character.
+<DESC> The intrinsic ''encodeURIComponent'' function computes a new
+version of a URI in which each instance of certain characters is
+replaced by one, two or three escape sequences representing the UTF-8
+encoding of the character.
 
-<p>When the intrinsic ''encodeURIComponent'' function is called with
-one string argument ''uriComponent'', the following steps are taken:
+<RETN> The intrinsic ''encodeURIComponent'' function returns a encoded string.
 
+<SHORTIMPL>
 <INCLUDE file="Global.es" name="intrinsic function encodeURIComponent">
 
-<p>The non-intrinsic ''encodeURIComponent'' function converts its
-argument to string, then calls its intrinsic counterpart:
+==== encodeURIComponent (uriComponent) ====
 
+<DESC>The ''encodeURIComponent'' function converts its
+argument to string, then calls its intrinsic counterpart.
+
+<RETN> The ''encodeURIComponent'' function returns a encoded string.
+
+<SHORTIMPL>
 <INCLUDE file="Global.es" name="function encodeURIComponent">
 
-=== hashcode (x) ===
+
+=== intrinsic::hashcode (x) ===
 
 <!-- [[proposals:hashcodes]] -->
 
-<P> The intrinsic ''hashcode'' function computes an unsigned integer
-value for its argument such that if two values ''v1'' and ''v2'' are
-equal by the operator ''intrinsic::==='' then ''hashcode(v1)'' is
+<DESC> The intrinsic ''hashcode'' function computes a numeric value
+for its argument such that if two values ''v1'' and ''v2'' are equal
+by the operator ''intrinsic::==='' then ''hashcode(v1)'' is
 numerically equal to ''hashcode(v2)''.
 
 <P> The hashcode of any value for which ''isNaN'' returns **true** is
@@ -566,6 +649,9 @@ zero.
 
 <P> The hashcode computed for an object does not change over time.
 
+<RETN> The intrinsic ''hashcode'' function returns an unsigned integer.
+
+<SHORTIMPL>
 <INCLUDE file="Global.es" name="intrinsic function hashcode">
 
 <P> The informative functions ''stringHash'' and ''objectHash''
@@ -597,7 +683,7 @@ numbers, cookies, or similar.
 
 === Operator functions ===
 
-<FIXME>These are defined as implementing the primitive functionality
+<FIXME> These are defined as implementing the primitive functionality
 of each operator, bypassing any user overloading.  They can be
 referenced by prefixing them with a namespace, eg ''intrinsic::===''.
 
@@ -606,19 +692,19 @@ referenced by prefixing them with a namespace, eg ''intrinsic::===''.
 
 <p>The class properties of the global object are defined in later sections of this Standard:
 <ul>
-  <li> The ''Object'' class is defined in section <XREF target="object-object">
-  <li> The ''Function'' class is defined in section <XREF target="function-object">
-  <li> The ''Name'' class is defined in section <XREF target="name-object">
-  <li> The ''Namespace'' class is defined in section <XREF target="namespace-object">
-  <li> The ''Array'' class is defined in section <XREF target="array-object">
-  <li> The ''ByteArray'' class is defined in section <XREF target="bytearray-object">
-  <li> The ''String'' and ''string'' classes are defined in section <XREF target="string-object">
-  <li> The ''Boolean'' and ''boolean'' classes are defined in section <XREF target="boolean-object">
-  <li> The ''Number'', ''int'', ''uint'', ''double'', and ''decimal'' classes are defined in section <XREF target="number-object">
-  <li> The ''Date'' class is defined in section <XREF target="date-object">
-  <li> The ''RegExp'' class is defined in section <XREF target="regexp-object">
-  <li> The ''Map'' class is defined in section <XREF target="map-object">
-  <li> The ''Error'' class and its subclasses ''EvalError'', ''RangeError'', ''ReferenceError'', ''SyntaxError'', ''TypeError'', and ''URIError'' are defined in section <XREF target="error-object">
+  <li> The ''Object'' class is defined in section <XREF target="class Object">
+  <li> The ''Function'' class is defined in section <XREF target="class Function">
+  <li> The ''Name'' class is defined in section <XREF target="class Name">
+  <li> The ''Namespace'' class is defined in section <XREF target="class Namespace">
+  <li> The ''Array'' class is defined in section <XREF target="class Array">
+  <li> The ''ByteArray'' class is defined in section <XREF target="class ByteArray">
+  <li> The ''String'' and ''string'' classes are defined in sections <XREF target="class String"> and <XREF target="class string">, respectively.
+  <li> The ''Boolean'' and ''boolean'' classes are defined in sections <XREF target="class Boolean"> and <XREF target="class boolean">, respectively.
+  <li> The ''Number'', ''int'', ''uint'', ''double'', and ''decimal'' classes are defined in sections <XREF target="class Number">, <XREF target="class int">, <XREF target="class uint">, <XREF target="class double">, and <XREF target="class decimal">, respectively.
+  <li> The ''Date'' class is defined in section <XREF target="class Date">
+  <li> The ''RegExp'' class is defined in section <XREF target="class RegExp">
+  <li> The ''Map'' class is defined in section <XREF target="class Map">
+  <li> The ''Error'' class and its subclasses ''EvalError'', ''RangeError'', ''ReferenceError'', ''SyntaxError'', ''TypeError'', and ''URIError'' are defined in sections <XREF target="class Error">, <XREF target="class EvalError">, <XREF target="class RangeError">, <XREF target="class ReferenceError">,  <XREF target="class SyntaxError">, <XREF target="class TypeError">, and <XREF target="class URIError">, respectively.
 </ul>
 
 

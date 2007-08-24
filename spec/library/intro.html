@@ -137,12 +137,20 @@ target="library-magic">.
 some room for the implementation to choose strategies for certain
 auxiliary and primitive operations.  These variation points manifest
 themselves as functions in the ''informative'' namespace, as in the
-definition of the intrinsic function ''nanoAge'' on ''Date'' objects:
+definition of the intrinsic global function ''hashcode'':
 
-<INCLUDE file="Date.es" name="intrinsic function nanoAge">
+{{{
+intrinsic function hashcode(o): uint {
+    switch type (o) {
+    <LDOTS>
+    case (x: String)    { return informative::stringHash(string(x)) }
+    case (x: *)         { return informative::objectHash(x) }
+    }
+}
+}}}
 
 <p>Informative methods and functions are defined non-operationally in
-the sections that makes use of them.
+the sections that make use of them.
 
 <p>The definitions of the built-in objects and functions also make use
 of internal helper functions and properties, written in ECMAScript.
