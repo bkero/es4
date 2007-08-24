@@ -88,7 +88,7 @@ package cogen
         case (e:SliceExpr) { cgSliceExpr(ctx, e) }
         case (e:GetTemp) { cgGetTempExpr(ctx, e) }
         case (e:GetParam) { cgGetParamExpr(ctx, e) }
-        case (e:*) { throw "Internal error: Unimplemented expression type" }
+        case (e:*) { throw ("Internal error: Unimplemented expression type " + e) }
         }
     }
 
@@ -186,9 +186,9 @@ package cogen
     function cgTypeExprHelper({asm:asm, emitter:emitter}, ty) {
         switch type (ty) {
         case (ty:TypeName) {
-            let name = emitter.nameFromIdentExpr(ty.ident);
-            asm.I_findpropstrict(name);
-            asm.I_getproperty(name);
+            //let name = cgIdentExpr(ctx, ty.ident);
+            asm.I_findpropstrict(cgIdentExpr(ctx, ty.ident));
+            asm.I_getproperty(cgIdentExpr(ctx, ty.ident));
         }
         case (ty:*) {
             /* FIXME */
@@ -201,20 +201,20 @@ package cogen
         let {asm:asm, emitter:emitter} = ctx;
 
         let incdec = function incdec(pre, inc) {
-            let name;
+            //let name;
             switch type (e.e1) {
             case (lr:LexicalRef) {
-                name = emitter.nameFromIdentExpr(lr.ident);
-                asm.I_findpropstrict(name);
+                //name = cgIdentExpr(ctx, lr.ident);
+                asm.I_findpropstrict(cgIdentExpr(ctx, lr.ident));
             }
             case (or:ObjectRef) {
-                name = nameFromIdentExpr(or.ident);
+                //name = cgIdentExpr(ctx, or.ident);
                 cgExpr(ctx, or.base);
             }
             case (x:*) { throw "Internal error: invalid lvalue" }
             }
             asm.I_dup();
-            asm.I_getproperty(name);
+            asm.I_getproperty(cgIdentExpr(ctx, e.e1.ident));
             let t = asm.getTemp();
             if (!pre) {
                 asm.I_dup();
@@ -228,7 +228,7 @@ package cogen
                 asm.I_dup();
                 asm.I_setlocal(t);
             }
-            asm.I_setproperty(name);
+            asm.I_setproperty(cgIdentExpr(ctx, e.e1.ident));
             asm.I_getlocal(t);
             asm.killTemp(t);
         }
@@ -237,14 +237,14 @@ package cogen
         case (op:Delete) {
             switch type (e.e1) {
             case (lr:LexicalRef) {
-                let name = emitter.nameFromIdentExpr(lr.ident);
-                asm.I_findproperty(name);
-                asm.I_deleteproperty(name);
+                //let name = cgIdentExpr(ctx, lr.ident);
+                asm.I_findproperty(cgIdentExpr(ctx, lr.ident));
+                asm.I_deleteproperty(cgIdentExpr(ctx, lr.ident));
             }
             case (or:ObjectRef) {
-                let name = emitter.nameFromIdentExpr(or.ident);
+                //let name = cgIdentExpr(ctx, or.ident);
                 cgExpr(ctx, or.base);
-                asm.I_deleteproperty(name);
+                asm.I_deleteproperty(cgIdentExpr(ctx, or.ident));
             }
             case (e1:*) {
                 cgExpr(ctx, e1);
@@ -260,9 +260,9 @@ package cogen
         }
         case (op:Typeof) {
             if (e.e1 is LexicalRef) {
-                let name = emitter.nameFromIdentExpr(e.e1.ident);
-                ctx.asm.I_findproperty(name);
-                ctx.asm.I_getproperty(name);
+                //let name = cgIdentExpr(ctx, e.e1.ident);
+                ctx.asm.I_findproperty(cgIdentExpr(ctx, e.e1.ident));
+                ctx.asm.I_getproperty(cgIdentExpr(ctx, e.e1.ident));
             }
             else {
                 cgExpr(ctx, e.e1);
@@ -316,7 +316,7 @@ package cogen
         let name = null;
         switch type (e.expr) {
         case (or:ObjectRef) {
-            name = emitter.nameFromIdentExpr(or.ident);
+            name = or.ident; // = cgIdentExpr(ctx, or.ident);
             cgExpr(ctx, or.base);
         }
         case (lr:LexicalRef) {
@@ -326,9 +326,9 @@ package cogen
              * that on Tamarin without global conventions / parallel
              * with stacks, I think.
              */
-            let n = emitter.nameFromIdentExpr(lr.ident);
-            asm.I_findpropstrict(n);
-            asm.I_getproperty(n);
+            let n = cgIdentExpr(ctx, lr.ident);
+            asm.I_findpropstrict(cgIdentExpr(ctx, lr.ident));
+            asm.I_getproperty(cgIdentExpr(ctx, lr.ident));
             asm.I_pushnull();
         }
         case (x:*) {
@@ -340,7 +340,7 @@ package cogen
         for ( let i=0 ; i < nargs ; i++ )
             cgExpr(ctx, e.args[i]);
         if (name != null)
-            asm.I_callproperty(name);
+            asm.I_callproperty(cgIdentExpr(ctx, name));
         else
             asm.I_call(nargs);
     }
@@ -364,13 +364,14 @@ package cogen
 
     function cgObjectRef(ctx, e) {
         cgExpr(ctx, e.base);
-        ctx.asm.I_getproperty(ctx.emitter.nameFromIdentExpr(e.ident));
+        ctx.asm.I_getproperty(cgIdentExpr(ctx, e.ident));
     }
 
-    function cgLexicalRef({asm:asm, emitter:emitter}, e) {
-        let name = emitter.nameFromIdentExpr(e.ident);
-        asm.I_findpropstrict(name);
-        asm.I_getproperty(name);
+    function cgLexicalRef(ctx, e) {
+        let asm = ctx.asm;
+        //let name = cgIdentExpr(ctx, e.ident);
+        asm.I_findpropstrict(cgIdentExpr(ctx, e.ident));
+        asm.I_getproperty(cgIdentExpr(ctx, e.ident));
     }
 
     function cgSetExpr(ctx, e) {
@@ -381,35 +382,36 @@ package cogen
         switch type (e.le) {
         case (lhs:ObjectRef) {
             cgExpr(ctx, lhs.base);
-            name = emitter.nameFromIdent(lhs.ident);
+            name = lhs.ident;
         }
         case (lhs:LexicalRef) {
-            name = emitter.nameFromIdentExpr(lhs.ident);
+            //name = cgIdentExpr(ctx, lhs.ident);
+            name = lhs.ident;
             if (e.op is Assign)
-                asm.I_findproperty(name);
+                asm.I_findproperty(cgIdentExpr(ctx, lhs.ident));
             else
-                asm.I_findpropstrict(name);
+                asm.I_findpropstrict(cgIdentExpr(ctx, lhs.ident));
         }
         case (lhs:*) { throw "Internal error: illegal ref type" }
         }
 
         if (e.op is AssignLogicalAnd) {
             asm.I_dup();
-            asm.I_getproperty(name);
+            asm.I_getproperty(cgIdentExpr(ctx, name));
             let L0 = asm.I_iffalse();
             asm.I_pop();
             cgExpr(ctx, e.re);
             asm.I_label(L0);
-            asm.I_setproperty(name);  // Always store it; the effect is observable
+            asm.I_setproperty(cgIdentExpr(ctx, name));  // Always store it; the effect is observable
         }
         else if (e.op is AssignLogicalOr) {
             asm.I_dup();
-            asm.I_getproperty(name);
+            asm.I_getproperty(cgIdentExpr(ctx, name));
             let L0 = asm.I_iftrue();
             asm.I_pop();
             cgExpr(ctx, e.re);
             asm.I_label(L0);
-            asm.I_setproperty(name);  // Always store it; the effect is observable
+            asm.I_setproperty(cgIdentExpr(ctx, name));  // Always store it; the effect is observable
         }
         else {
             cgExpr(ctx, e.re);
@@ -417,11 +419,11 @@ package cogen
             if (e.op is Assign) {
                 asm.I_dup();
                 asm.I_setlocal(t);
-                asm.I_setproperty(name);
+                asm.I_setproperty(cgIdentExpr(ctx, name));
             }
             else {
                 asm.I_dup();
-                asm.I_getproperty(name);
+                asm.I_getproperty(cgIdentExpr(ctx, name));
                 switch type (e.op) {
                 case (op:AssignPlus) { asm.I_add() }
                 case (op:AssignMinus) { asm.I_subtract() }
@@ -438,7 +440,7 @@ package cogen
                 }
                 asm.I_dup();
                 asm.I_setlocal(t);
-                asm.I_setproperty(name);
+                asm.I_setproperty(cgIdentExpr(ctx, name));
             }
             asm.I_getlocal(t);
             asm.killTemp(t);
@@ -472,7 +474,11 @@ package cogen
 
         function cgArrayInitializer(ctx, {exprs:exprs}) {
             let asm = ctx.asm;
-            asm.I_getglobalscope();
+            for ( let i=0 ; i < exprs.length ; i++ ) {
+                cgExpr(ctx, exprs[i]);
+            }
+            asm.I_newarray(exprs.length);
+/*            asm.I_getglobalscope();
             asm.I_getproperty(ctx.emitter.Array_name);
             asm.I_construct(0);
             asm.I_dup();
@@ -488,7 +494,7 @@ package cogen
             }
             asm.I_getlocal(t);
             asm.killTemp(t);
-        }
+*/        }
 
         function cgObjectInitializer(ctx, {fields:fields}) {
             let {asm:asm, emitter:emitter} = ctx;
@@ -502,7 +508,7 @@ package cogen
                 let f = fields[i];
                 asm.I_getlocal(t);
                 cgExpr(ctx, f.init);
-                asm.I_setproperty(emitter.nameFromIdentExpr(f.name));
+                asm.I_setproperty(cgIdentExpr(ctx, f.name));
             }
             asm.I_getlocal(t);
             asm.killTemp(t);
@@ -555,5 +561,23 @@ package cogen
     function cgGetParamExpr(ctx, e) {
         let asm = ctx.asm;
         asm.I_getlocal(e.n + 1);  //account for 'this'
+    }
+    
+    function cgIdentExpr(ctx, e) {
+        let{asm:asm, emitter:emitter} = ctx;
+        switch type(e) {
+            case (id:Identifier) {
+                return emitter.multiname(id);
+            }
+            case (ei:ExpressionIdentifier) {
+                cgExpr(ctx, ei.expr);
+                return emitter.multinameL(ei);
+            }
+            case (qi:QualifiedIdentifier) {
+                cgExpr(ctx, qi.qual);
+                return emitter.rtqname(qi);
+            }
+            case (x:*) { throw ("Unimplemented cgIdentExpr " + e) }
+        }
     }
 }

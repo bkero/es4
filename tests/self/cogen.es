@@ -105,7 +105,7 @@ package cogen
                 target.addTrait(new ABCOtherTrait(name, 0, TRAIT_Class, 0, clsidx));
             }
             case (nf:NamespaceFixture) {
-                target.addTrait(new ABCSlotTrait(name, 0, true, 0, 0, emitter.namespace(nf.ns), CONSTANT_Namespace));
+                target.addTrait(new ABCSlotTrait(name, 0, true, 0, emitter.qname({ns:new PublicNamespace(""), id:"Namespace"}), emitter.namespace(nf.ns), CONSTANT_Namespace));
             }
             case (tf:TypeFixture) {
 		print ("warning: ignoring type fixture");
@@ -164,8 +164,8 @@ package cogen
         
         let {asm:asm, emitter:emitter, script:script} = ctx;
         
-        let classname = emitter.nameFromNAME(c.name);
-        let basename = c.baseName != null ? emitter.nameFromNAME(c.baseName) : 0;
+        let classname = emitter.qname(c.name);
+        let basename = c.baseName != null ? emitter.qname(c.baseName) : 0;
         
         let cls = script.newClass(classname, basename);
 /*        
@@ -183,7 +183,7 @@ package cogen
         inst.setIInit(cgCtor(i_ctx, c.constructor, {fixtures:[],inits:c.instanceHead.inits}));
         
         var clsidx = cls.finalize();
-        var Object_name = emitter.nameFromNAME({ns:new PublicNamespace(""), id:"Object"});
+        var Object_name = emitter.qname({ns:new PublicNamespace(""), id:"Object"});
 
         asm.I_findpropstrict(Object_name);
         asm.I_getproperty(Object_name);
