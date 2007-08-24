@@ -50,12 +50,6 @@ type Label = String;
         function toString() { return "like "+arg; }
     }
 
-    class WrapType extends Type {
-        const arg : Type;
-        function WrapType (arg) : arg = arg {} 
-        function toString() { return "wrap "+arg; }
-    }
-
     class ObjType extends Type {       /* {l:T,...}  */
         const tfields : [[Label,Type]];
         function ObjType(tfields) : tfields = tfields {};
@@ -68,6 +62,8 @@ type Label = String;
     var intType    : IntType    = new IntType();
     var mtObjType  : ObjType    = new ObjType([]);
 }
+
+type NonLikeType = (AnyType, IntType, FunType, ObjType);
 
 /*** Helper functions for fields ***/
 
@@ -167,6 +163,13 @@ function setInFields( a:[[Label,*]], f : Label, to:* ) {
         function SetExpr(e1,l,e2) : e1=e1, l=l, e2=e2 {}
         function toString() { return ""+e1+"."+l+":="+e2; }
     }
+
+    class WrapExpr extends ExprC {
+        const e : Expr;
+        const ty : Type;
+        function WrapExpr(e,ty) : e=e, ty=ty {}
+        function toString() { return "("+e+" wrap "+t+")"; }
+    }
 }
 
 /*** Environments ***/
@@ -225,13 +228,13 @@ function compatibleType (t1:Type, t2:Type) : Boolean {
     if ( t1==t2 || t1==anyType || t2==anyType) { return true; }
 
     switch type(t2) {
-        case (t2: (LikeType,WrapType) ) {
+        case (t2: LikeType ) {
             return compatibleType( t1, t2.arg );
         }
 
         case (t2: *) {
             switch type(t1) {
-                case (t1: (LikeType, WrapType)) {
+                case (t1: LikeType) {
                     return compatibleType( t1.arg, t2 );
                 }
                 case (t1: FunType) {
@@ -274,8 +277,15 @@ function subType (t1:Type, t2:Type) : Boolean {
     if (t1==t2 || t2==anyType) { return true; }
     
     switch type(t2) {
-        case (t2: (LikeType, WrapType) ) {
-            return compatibleType( t1, t2.arg );
+        case (t2: LikeType) {
+            switch type(t1) {
+                case (t1: LikeType) {
+                    return subType( t1.arg, t2.arg );
+                }
+                case (t1: Type) {
+                    return compatibleType( t1, t2.arg );
+                }
+                }
         }
         
         case (t2: *) {
@@ -283,7 +293,7 @@ function subType (t1:Type, t2:Type) : Boolean {
                 case (t1: FunType) {
                     switch type(t2) {
                         case (t2: FunType) {
-                            return (t2.arg==anyType || subType( t2.arg, t1.arg )) &&
+                            return subType( t2.arg, t1.arg ) &&
                                    subType( t1.res, t2.res );
                         }
                         }
@@ -367,76 +377,66 @@ function typeOfVal (v:Val) : Type {
         }
 }
 
-function compatibleValue( v:Val, t:Type ) : Boolean {
+function valIsType( v:Val, t:Type ) : Boolean {
     let tv = typeOfVal(v);
-    print ("compatibleValue "+v+" of type "+tv+" to type "+t);
+    print ("valIsType "+v+" of type "+tv+" to type "+t);
     if (subType( tv, t )) {
         print (""+tv+" is a subtype of "+t);
         return true;
     }
     print("Not subtype");
-
-    switch type (v) {
-        case (v:ObjVal) {
-            print ("ObjVal");
-            switch type (t) {
-                case (t:ObjType) {
-                    for(let i in t.tfields) {
-                        let [f,tf] = t.tfields[i];
-                        print ("compatibleValue "+v+" of type "+tv+" to type "+t+" field "+f);
-                        if (!compatibleValue( findInFields( v.vfields, f), tf )) {
-                            return false;
+    
+    switch type(t) {
+        case (t:LikeType) {
+            switch type (v) {
+                case (vty:ObjVal) {
+                    print ("ObjVal");
+                    switch type (t.arg) {
+                        case (targ:ObjType) {
+                            for(let i in targ.tfields) {
+                                let [f,tf] = targ.tfields[i];
+                                print ("valIsType "+v
+                                       +" of type "+tv+" to type "+t+" field "+f);
+                                if (!valIsType( findInFields( v.vfields, f), tf )) {
+                                    return false;
+                                }
+                            }
                         }
+                        }
+                }
+                case (vty:Type) {
+                    if (!compatibleType( tv, targ )) {
+                        print ("valIsType "+v+" of type "+tv
+                               +" to type "+t+" incompatible types");
+                        return false;
                     }
+                    print ("valIsType "+v+" of type "+tv
+                           +" to type "+t+" compatible types");
+                    return true;
                 }
                 }
         }
-        case (v:Type) {
-            if (!compatibleType( tv, t )) {
-                print ("compatibleValue "+v+" of type "+tv+" to type "+t+" incompatible types");
-                return false;
-            }
-            print ("compatibleValue "+v+" of type "+tv+" to type "+t+" compatible types");
-            return true;
+        case (t:Type) {
+            return false;
         }
         }
-
+    
     return true;
 }        
 
-function convert (v:Val, t:Type) : Val {
-    let tv = typeOfVal(v);
-    print ("Converting value "+v+" of type "+tv+" to type "+t);
+function checkValIsType(v:Val, t:Type) {
+    if( valIsType(v,t) ) return;
+    throw "Value "+v+" does not match expected type "+t;
+}
 
-    switch type(t) {
-        case (t:LikeType) {
-            if (compatibleValue(v, t.arg)) {
-                print ("Converting value "+v+" of type "+tv+" to type "+t+" succeeds w/o change");
-                return v;
-            } else {
-                throw "Cannot convert1 value "+v+" to type "+t;
-            }
-        }
-        case (t:WrapType) {
-            if (subType(tv, t.arg)) {
-                print ("Converting value "+v+" of type "+tv+" to type "+t+" succeeds w/o change");
-                return v;
-            } else if (compatibleValue(v, t.arg)) {
-                return new WrapVal( v, t.arg ); 
-            } else {
-                throw "Cannot convert2 value "+v+" to type "+t;
-            }
-        }
-        case (t:Type) {
-            if (subType (tv, t)) {
-                return v;
-            } else {
-                print ("val : "+(v));
-                print ("type: "+(t));
-                throw "Cannot convert3 value "+(v)+" to type "+(t);
-            }
-        }
-        }
+function wrap (v:Val, t:Type) : Val {
+    let tv = typeOfVal(v);
+    print ("Wraping value "+v+" of type "+tv+" to type "+t);
+    if (subtype(v,t)) {
+        return v;
+    } else {
+        return new WrapVal(v,t);
+    }
 }
 
 var indent = "  ";
@@ -469,13 +469,15 @@ function eval2 (n:ValEnv, e:Expr) : Val {
                 switch type (fn) {
                     case (closure: ClosureVal) {
                         let { fn:fn, env:env } = closure;
-                        let bodyEnv = env.extend( fn.x, convert( arg, fn.argt ) );
+                        checkValIsType( arg, fn.argt );
+                        let bodyEnv = env.extend( fn.x, arg );
                         let res = eval( bodyEnv, fn.body );
-                        return convert( res, fn.rest );
+                        checkValIsType( res, fn.rest );
+                        return res;
                     }
                     case (wrap: WrapVal) {
-                        return convert( apply( wrap.v, 
-                                               convert( arg, wrap.ty.arg )),
+                        return wrap( apply( wrap.v, 
+                                               wrap( arg, wrap.ty.arg )),
                                         wrap.ty.res );
                     }
                     }
@@ -486,7 +488,7 @@ function eval2 (n:ValEnv, e:Expr) : Val {
         case (e:LetExpr) {
             let {x:x, t:t, e:e2, body:body} = e;
             let argval = eval( n, e2 );
-            let argval2 = convert( argval, t );
+            let argval2 = wrap( argval, t );
             let n2 = n.extend( x, argval2 );
             let resval = eval( n2, body );
             return resval;
@@ -501,7 +503,7 @@ function eval2 (n:ValEnv, e:Expr) : Val {
                     tyl = findInFields( ty.tfields, l );
                 }
                 vfields[i] = [ l,
-                               convert( eval( n, efields[i][1] ),
+                               wrap( eval( n, efields[i][1] ),
                                         tyl )];
             }
             // make sure all fields in type defined
@@ -519,7 +521,7 @@ function eval2 (n:ValEnv, e:Expr) : Val {
                     }
                     case (o: WrapVal) {
                         let {v:obj, ty:objTy} = o;
-                        return convert( get(obj, l),
+                        return wrap( get(obj, l),
                                         findInFields( objTy.tfields, l ));
                     }
                     }
@@ -533,7 +535,7 @@ function eval2 (n:ValEnv, e:Expr) : Val {
                         // write barrier
                         if (isInFields( o.ty.tfields, l )) {
                             let tyf = findInFields( o.ty.tfields, l );
-                            to = convert( to, tyf );
+                            to = wrap( to, tyf );
                         }
                         setInFields( o.vfields, l, to);
                         return to; // FIXME: which return type:
@@ -541,7 +543,7 @@ function eval2 (n:ValEnv, e:Expr) : Val {
                     case (o: WrapVal) {
                         let {v:obj, ty:objTy} = o;
                         return set( obj, l,
-                                    convert( to, findInFields( objTy.tfields, l )));
+                                    wrap( to, findInFields( objTy.tfields, l )));
                     }
                     }
             }
@@ -554,11 +556,20 @@ function eval2 (n:ValEnv, e:Expr) : Val {
 
 /************ Optional Verifier **************/
 
-type NonWrapType = ( AnyType, IntType, FunType, LikeType, ObjType );
+type TypeEnv = Env; // maps vars to Types
 
-type TypeEnv = Env; // maps vars to NonWrapTypes
+function stripLike(t:Type) : NonLikeType {
+    switch type (t) {
+        case (t:LikeType) {
+            return stripLike(t.arg);
+        }
+        case (t:NonLikeType) {
+            return t;
+        }
+        }
+}
 
-function verify (n:TypeEnv, e:Expr) : NonWrapType {
+function verify (n:TypeEnv, e:Expr) : NonLikeType {
     switch type (e) {
         case (e:int) {
             return intType;
@@ -567,7 +578,7 @@ function verify (n:TypeEnv, e:Expr) : NonWrapType {
             return n.lookup(e);
         }
         case (e:FunExpr) {
-            let xtype : NonWrapType;
+            let xtype : Type;
             switch type (e.argt) {
                 case (argt: WrapType) {
                     xtype = argt.arg;
@@ -589,14 +600,14 @@ function verify (n:TypeEnv, e:Expr) : NonWrapType {
                 switch type (fn) {
                     case (closure: ClosureVal) {
                         let { fn:fn, env:env } = closure;
-                        let bodyEnv = env.extend( fn.x, convert( arg, fn.argt ) );
+                        let bodyEnv = env.extend( fn.x, wrap( arg, fn.argt ) );
                         let res = eval( bodyEnv, fn.body );
-                        return convert( res, fn.rest );
+                        return wrap( res, fn.rest );
                     }
-                    case (wrap: WrapVal) {
-                        return convert( apply( wrap.v, 
-                                               convert( arg, wrap.ty.arg )),
-                                        wrap.ty.res );
+                    case (w: WrapVal) {
+                        return wrap( apply( w.v, 
+                                            wrap( arg, w.ty.arg )),
+                                     w.ty.res );
                     }
                     }
             }
@@ -606,8 +617,8 @@ function verify (n:TypeEnv, e:Expr) : NonWrapType {
         case (e:LetExpr) {
             let {x:x, t:t, e:e2, body:body} = e;
             let argval = eval( n, e2 );
-            let argval2 = convert( argval, t );
-            let n2 = n.extend( x, argval2 );
+            checkValIsType( argval, t );
+            let n2 = n.extend( x, argval );
             let resval = eval( n2, body );
             return resval;
         }
@@ -620,9 +631,9 @@ function verify (n:TypeEnv, e:Expr) : NonWrapType {
                 if (isInFields(ty.tfields,l)) {
                     tyl = findInFields( ty.tfields, l );
                 }
-                vfields[i] = [ l,
-                               convert( eval( n, efields[i][1] ),
-                                        tyl )];
+                let vi : Val = eval( n, efields[i][1] );
+                checkValInType( vi, tyl );
+                vfields[i] = [ l, vi ];
             }
             // make sure all fields in type defined
             for(i in ty.tfields) {
@@ -639,8 +650,8 @@ function verify (n:TypeEnv, e:Expr) : NonWrapType {
                     }
                     case (o: WrapVal) {
                         let {v:obj, ty:objTy} = o;
-                        return convert( get(obj, l),
-                                        findInFields( objTy.tfields, l ));
+                        return wrap( get(obj, l),
+                                     findInFields( objTy.tfields, l ));
                     }
                     }
             }
@@ -653,7 +664,7 @@ function verify (n:TypeEnv, e:Expr) : NonWrapType {
                         // write barrier
                         if (isInFields( o.ty.tfields, l )) {
                             let tyf = findInFields( o.ty.tfields, l );
-                            to = convert( to, tyf );
+                            checkValIsType( to, tyf );
                         }
                         setInFields( o.vfields, l, to);
                         return to; // FIXME: which return type:
@@ -661,7 +672,7 @@ function verify (n:TypeEnv, e:Expr) : NonWrapType {
                     case (o: WrapVal) {
                         let {v:obj, ty:objTy} = o;
                         return set( obj, l,
-                                    convert( to, findInFields( objTy.tfields, l )));
+                                    wrap( to, findInFields( objTy.tfields, l )));
                     }
                     }
             }
@@ -671,6 +682,7 @@ function verify (n:TypeEnv, e:Expr) : NonWrapType {
         }
         }   
 }
+
 
 /*********** Tests **********/
 

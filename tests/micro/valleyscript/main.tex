@@ -418,8 +418,35 @@ Conjecture: The types $\likety{T}$ and $\likety \likety T$ are indistinguishable
 \clearpage
 \section{Strict Mode Type System}
 
+In a traditional statically typed language, the type system fulfills two goals: 
+\begin{enumerate}
+\item
+It detects certain errors at compile time.
+\item
+It guarantees what kinds of values are produced by certain expressions, which enables  run-time check elimination.
+\end{enumerate}
+
+The situation in ES4 is somewhat different, because of two reasons. First, in \t{standard} mode, we would like to eliminate run-time checks where possible, using a type-based analysis,
+without reporting any compile-time type errors.
+Second, \t{like} types weaken the guarantees provided by \t{strict} mode.
+For these reasons, we actually present \emph{two} type systems.
+
+For example, if a variable $x$ has type $\likety{\objty{f:\Int}}$,
+then $\objget x f$  could actually return a value of any type.  
+Nevertheless, 
+$\objget x f$
+would be expected to produce values of type $\Int$, and so 
+the expression
+$\objget{\objget x f} g$ would yield a compile-time type error.
+Thus, we say that $\objget x f$ has type $\Int$, but this type is \emph{only} a statement of intent;
+it does not guarantee what kinds of values are returned by that expression,
+and so cannot be used for run-time check elimination.
+
+
+
 The strict mode type system is based on a judgement $\judge{E}{e}{T}$,
 stating that expression $e$ has type $T$ in environment $E$.
+Note that the type $T$ \emph{only} indicates that $e$ is intended to produce values of type $T$; there are no guarantees here, due to the use of \t{like} types. Thus, the strict mode type system 
 If $T$ is not a $\likety{}$ type, then $e$ will only produce values of that type.
 If $T=\likety{T'}$, then the intent is that $e$ will only produce values of type $T'$,
 but there is no guarantee. However, this intent can be still used to detect type errors at compile time.
@@ -518,25 +545,40 @@ The following section presents a type system with stronger guarantees that are s
 \clearpage
 \section{Check Optimization}
 
-Figure~\ref{fig:typerules2} presents \emph{optimization rules} that
-use a type-based analysis to statically remove dynamic type checks.
-We use the expression form $\safe e$ to mean that in the top-level construct in $e$,
-these run-time checks are unnecessary and $e$ cannot get stuck.
-The rules are formulated as verifying that $\safe \dots$ occurs in correct places;
+We now sketch a 
+type-based analysis that statically identifies dynamic type checks that can be eliminated.
+We introduce the following additional ``\t{safe}'' expression forms, for which run-time checks are unnecessary.
+\[
+\begin{array}{llr}
+	\mydefhead{e ::=\qquad\qquad\qquad\qquad\qquad}{Expressions:} 
+	\mydefcase{\dots								}{expressions mentioned earlier} 
+	\mydefcase{\safe x								}{safe variable} 
+	\mydefcase{\safe{\lam{x}{S}{T}{e}} 				}{safe abstraction} 
+	\mydefcase{\safe{\app{e}{e}} 					}{safe application} 
+	\mydefcase{\safe{} \obje{\bar{l}=\bar{e}}{T}		}{safe object allocation}
+	\mydefcase{\safe{}\objget{e}{l}					}{safe field selection}
+	\mydefcase{\safe{}\objset{e}{l}{e}				}{safe field update}
+	\\
+	\mydefhead{v ::=\qquad\qquad\qquad\qquad\qquad}{Values:} 
+	\mydefcase{\dots								}{values mentioned earlier} 
+	\mydefcase{\safe{\lam{x}{S}{T}{e}} 				}{safe abstraction} 
+\end{array}
+\]
+It is straightforward to formulate the operational semantics of the extended language.
+
+Figure~\ref{fig:typerules2} presents \emph{optimization rules}, which verify that $\safe \dots$ occurs in correct places;
 it is straightforward to reformulate the analysis to infer these $\safe{}$ annotations.
 
 The following lemmas remain to be proven.
 
-\begin{lemma}
+\begin{lemma}[No Failure]
 For any term $e$, there is some placement of $\safe{}$ annotations into $e$ yielding $e'$ such that
 $\judges{\emptyset}{e'}{T}$ for some $T$.
 \end{lemma}
 
-\begin{lemma}
+\begin{lemma}[Soundness]
 If $\judges{\emptyset}{e}{T}$, then $\safe{}$ operation in $e$ can never get stuck.
 \end{lemma}
-
-We need to formulate an operational semantics for the language with $\safe{}$ annotations to prove this lemma.
 
 %We use $s$ to range over $\safe{}$ or $\epsilon$.
 
@@ -557,7 +599,7 @@ We need to formulate an operational semantics for the language with $\safe{}$ an
 	}
 \trule{O-Const}{
 	}{
-		\judges{E}{\safe c}{\fun{ty}(c)}
+		\judges{E}{c}{\fun{ty}(c)}
 	}
 \trule{O-Fun-Safe}{
 		\judges{E,x:S}{e}{T'} \qquad
