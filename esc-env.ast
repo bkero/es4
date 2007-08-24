@@ -1,0 +1,37 @@
+var ast =
+{ 'ast_class': 'Program'
+, 'packages': []
+, 'head': { 'fixtures': [ [ { 'ast_class': 'PropName'
+                            , 'name': { 'ns': { 'ast_class': 'PublicNamespace'
+                                              , 'name': '' }
+                                      , 'id': 'Ast' } }
+                          , { 'ast_class': 'NamespaceFixture'
+                            , 'ns': { 'ast_class': 'AnonymousNamespace'
+                                    , 'name': 'Ast' } } ]
+                        , [ { 'ast_class': 'PropName'
+                            , 'name': { 'ns': { 'ast_class': 'PublicNamespace'
+                                              , 'name': '' }
+                                      , 'id': 'Encode' } }
+                          , { 'ast_class': 'NamespaceFixture'
+                            , 'ns': { 'ast_class': 'AnonymousNamespace'
+                                    , 'name': 'Encode' } } ]
+                        , [ { 'ast_class': 'PropName'
+                            , 'name': { 'ns': { 'ast_class': 'PublicNamespace'
+                                              , 'name': '' }
+                                      , 'id': 'Debug' } }
+                          , { 'ast_class': 'NamespaceFixture'
+                            , 'ns': { 'ast_class': 'AnonymousNamespace'
+                                    , 'name': 'Debug' } } ]
+                        , [ { 'ast_class': 'PropName'
+                            , 'name': { 'ns': { 'ast_class': 'PublicNamespace'
+                                              , 'name': '' }
+                                      , 'id': 'Release' } }
+                          , { 'ast_class': 'NamespaceFixture'
+                            , 'ns': { 'ast_class': 'AnonymousNamespace'
+                                    , 'name': 'Release' } } ]
+                        ,  ]
+          , 'inits': [  ] }
+, 'block': { 'ast_class': 'Block'
+           , 'head': { 'fixtures': [  ]
+                     , 'inits': [  ] }
+           , 'stmts': [  ] } }

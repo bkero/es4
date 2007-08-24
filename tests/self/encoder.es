@@ -1,22 +1,21 @@
-/* -*- mode: java; mode: font-lock; tab-width: 4; insert-tabs-mode: nil; indent-tabs-mode: nil -*- */
-// use module ast "tests/self/ast.es";
-// module ast_encoder {
-
 namespace Encode;
 
 {
     use default namespace Encode;
     use namespace intrinsic;
     use namespace Ast;
-
     use namespace Release;
-
+    
     function indent (n:int)
         : string {
         let str = "\n";
+
+/*
         for ( ; n > 0; n-- ) {
-            str += " ";
+            str = str + " ";
         }
+*/
+
         return str;
     }
 
@@ -696,6 +695,17 @@ namespace Encode;
               + encodeNamespacesList (ie.nss,nesting+", 'nss': [ ".length)
               + " ] }";
         }
+        case (ie: ExpressionIdentifier) {
+            var str =
+                "{ 'ast_class': 'ExpressionIdentifier'"
+              + indent(nesting)
+              + ", 'expr': "
+              + encodeExpr (ie.expr,nesting+", 'expr': ".length)
+              + indent(nesting)
+              + ", 'nss': [ "
+              + encodeNamespacesList (ie.nss,nesting+", 'nss': [ ".length)
+              + " ] }";
+        }
         case (ie: QualifiedIdentifier) {
             var str =
                 "{ 'ast_class': 'QualifiedIdentifier'"
@@ -713,6 +723,14 @@ namespace Encode;
               + indent(nesting)
               + ", 'ident': "
               + encodeIdentExpr (ie.ident,nesting+", 'ident': ".length)
+              + " }";
+        }
+        case (ie: ReservedNamespace) {
+            var str =
+                "{ 'ast_class': 'ReservedNamespace'"
+              + indent(nesting)
+              + ", 'ns': "
+              + encodeNamespace (ie.ns,nesting+", 'ns': ".length)
               + " }";
         }
         case (x: *) {
@@ -786,6 +804,16 @@ namespace Encode;
               + encodeTypeExprs (nd.types,nesting+", 'types': [ ".length)
               + " ] }";
         }
+        case (nd: NullableType) {
+            var str =
+                "{ 'ast_class': 'NullableType'"
+              + indent(nesting)
+              + ", 'type': "
+              + encodeTypeExpr (nd.type,nesting+", 'type': ".length)
+              + indent(nesting)
+              + ", 'isNullable': " + nd.isNullable
+              + " }";
+        }
         case (nd: *) {
             var str = "** unknown type in encodeTypeExpr: " + nd;
         }
@@ -819,6 +847,8 @@ namespace Encode;
         exit ("encodeSpecialTypeKind ",str);
         return str;
     }
+
+(1/1)
 
     function encodeFieldTypes (nd /*: [FIELD_TYPE]*/, nesting: int = 0)
         : string {
@@ -859,12 +889,25 @@ namespace Encode;
         var str = "";
         switch type (nd): LITERAL {
         case (nd: LiteralString) {
+
+	    let val = "";
+	    let len = nd.strValue.length;
+            for (var n=0; n<len; ++n) 
+            {
+		let c = nd.strValue[n];
+		if (c === "\n") c = "\\n";
+    		else if (c == '\"') c = '\\"';
+                else if (c == "'") c = "\\'";
+                else if (c == "\\") c = "\\\\";
+                val = val + c;
+            }
+
             var str =
                 "{ 'ast_class': 'LiteralString'"
               + indent(nesting)
-              + ", 'strValue': '"
-              + nd.strValue
-              + "' }";
+              + ", 'strValue': \""
+              + val
+              + "\" }";
         }
         case (nd: LiteralDecimal) {
             var str =
@@ -898,6 +941,17 @@ namespace Encode;
         case (nd: LiteralUndefined) {
             var str =
                 "{ 'ast_class': 'LiteralUndefined'"
+              + " }";
+        }
+        case (nd: LiteralArray) {
+            var str =
+                "{ 'ast_class': 'LiteralArray'"
+              + indent(nesting)
+              + ", 'exprs': [ "
+              + exprs (nd.exprs,nesting+", 'exprs': [ ".length) + " ]"
+              + indent(nesting)
+              + ", 'type': "
+              + encodeTypeExpr (nd.type,nesting+"] , 'type': ".length)
               + " }";
         }
         case (x: *) {
@@ -1011,6 +1065,8 @@ namespace Encode;
         exit ("encodeName ",str);
         return str;
     }
+
+(1/1)
 
     function encodeAssignOp (nd : ASSIGNOP, nesting: int = 0)
         : string {
@@ -1224,6 +1280,7 @@ namespace Encode;
     function encodeFunc (nd : FUNC, nesting: int = 0)
         : string {
         enter ("encodeFunc");
+        print ("func ",nd.name.ident);
 
         var str =
             "{ 'ast_class': 'Func'"
@@ -1239,6 +1296,8 @@ namespace Encode;
         exit ("encodeFunc ",str);
         return str;
     }
+
+(1/1)
 
     function encodeCls (nd : CLS, nesting: int = 0)
         : string {
@@ -1450,6 +1509,5 @@ namespace Encode;
         exit ("encodeInitTarget ",str);
         return str;
     }
-
 }
-// } // end module
+

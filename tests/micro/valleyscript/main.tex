@@ -1,0 +1,707 @@
+\documentclass{article}
+\usepackage{amssymb}
+%\usepackage{gastex}
+\usepackage{graphics}
+\input{brackets}
+\input{restate.sty}
+
+\newcommand{\fun}[1]{\mbox{\it #1\/}}
+\newcommand{\eg}{\emph{e.g.}}
+\newcommand{\ie}{\emph{i.e.}}
+\newcommand{\meaningf}[1]{\ensuremath{[\![ #1 ]\!]}}
+\newcommand{\judge}[2]{\ensuremath{\Gamma\vdash{#1}:{#2}}}
+\newcommand{\setc}[2]{ \{ #1 ~|~ #2 \}}
+\newcommand{\setz}[1]{ \{ #1 \}}
+\newcommand{\nt}[1]{\ba#1\ea}
+\newcommand{\comment}[1]{}
+\newcommand{\fs}[1]{\mbox{\it #1}}
+
+%%%%%%%% language %%%%%%%%%%%%%%%
+
+% deprecated
+\newcommand{\mkref}[2]{\t{ref}~{#1}~#2}
+\newcommand{\mkrefl}[3]{\t{ref}^{#3}~{#1}~#2}
+\newcommand{\deref}[1]{!{#1}}
+\newcommand{\dereft}[2]{!{#1}:{#2}}
+\newcommand{\derefl}[2]{!^{#2}{#1}}
+\newcommand{\assign}[2]{{#1}:={#2}}
+\newcommand{\assignl}[3]{{#1}:=^{#3}{#2}}
+\newcommand{\Ref}[1]{\t{Ref}~{#1}}
+
+\newcommand{\slam}[3]{\lambda#1\!:\!#2.\,\,#3}
+\newcommand{\lam}[4]{\lambda#1\!:\!#2.\,\,#4:#3}
+\newcommand{\lete}[4]{\t{let}~{#1}:{#2}={#3}~\t{in}~{#4}} 
+\newcommand{\lamt}[2]{#1\rightarrow #2}
+\newcommand{\appl}[3]{(\app{#2}{#3})^{#1}}
+\newcommand{\appt}[3]{(\app{#2}{#3}):{#1}}
+\newcommand{\app}[2]{#1~#2}
+\newcommand{\deltaf}[2]{\meaningf{#1}(#2)}
+\newcommand{\Nat}{\t{N}}
+\newcommand{\Int}{\t{Int}}
+\newcommand{\Bool}{\t{Bool}}
+\newcommand{\dynamic}{\t{*}} 
+\newcommand{\true}{\t{true}}
+\newcommand{\false}{\t{false}}
+\newcommand{\hole}{\bullet}
+
+\newcommand{\letexp}[3]{\t{let}~{#1}={#2}~\t{in}~{#3}}
+\newcommand{\lett}[4]{\t{letXXX}~{#1}:{#2}={#3}~\t{in}~{#4}}
+\newcommand{\cast}[2]{#1~\t{is}~#2}
+
+\newcommand{\arrowt}[2]{#1\rightarrow #2}
+\newcommand{\defeq}{\stackrel{\mathrm{def}}{=}}
+\newcommand{\subtype}[2]{#1 \,\sword\, #2}
+\newcommand{\sword}{\mbox{\,\,$<:$\,\,}}
+\newcommand{\convert}[2]{{#1}\convertword{#2}}
+\newcommand{\convertword}{\mbox{\,\,$\sim :$\,\,}}
+
+\renewcommand{\t}[1]{{\tt #1}}
+
+%%%%%%%%%%% math %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\newcommand{\Or}{\vee}
+\newcommand{\meet}{\sqcap}
+\newcommand{\join}{\sqcup}
+\newcommand{\And}[0]{\wedge}
+\newcommand{\Implies}[0]{\Rightarrow}
+\newcommand{\Iff}[0]{\Leftrightarrow}
+
+%======= judgments ===============
+\renewcommand{\judge}[3]{#1\vdash #2\,:\,#3}
+\newcommand{\judgeE}[1]{\vdash #1}
+\newcommand{\judgeT}[2]{#1\vdash #2}
+\newcommand{\red}[0]{\longrightarrow}  % reduction
+\newcommand{\lred}[0]{\red}  % local reduction
+\newcommand{\judgers}[3]{#2 \rightarrow^{#1} #3}
+\newcommand{\compilesymbol}{\hookrightarrow}
+\newcommand{\judgec}[4]{#1 \vdash #2 \,\compilesymbol\, #3 \,:\, #4 }
+\newcommand{\judgeccc}[6]{#1 \vdash #2 \,\compilesymbol\, #3 :^{#4}{#5} \mbox{ default } {#6}}
+\newcommand{\judgecc}[5]{#1 \vdash #2 \,\compilesymbol\, #3 \,\downarrow^{#4}{#5} }
+\newcommand{\judgect}[3]{#1 \vdash #2 \,\compilesymbol\, #3  }
+
+\newcommand{\judges}[3]{#1\vdash\!\!\!\vdash #2\,:\,#3}
+ 
+%=== objects
+\newcommand{\objty}[1]{\{#1\}}
+\newcommand{\obje}[2]{\{#1\}:{#2}}
+\newcommand{\objget}[2]{#1.#2}
+\newcommand{\objcall}[2]{#1.#2()}
+\newcommand{\objset}[3]{#1.#2:=#3} 
+
+	
+\newcommand{\wrapty}[1]{\t{XXXX wrap}~#1}
+\newcommand{\likety}[1]{\t{like}~#1}
+\newcommand{\wrapv}[2]{#1~\t{wrapped}~#2}
+%\renewcommand{\wrapv}[2]{\wrap{#1}{#2}}
+ 
+\newcommand{\wrap}[2]{#1~\t{wrap}~#2}
+%\newcommand{\assignable}[2]{#1<#2}
+\newcommand{\likev}[2]{#1 \sqsubset_{\sigma} #2 }
+\renewcommand{\likev}[2]{#1 ~\fun{XXXX like}_{\sigma}~ #2 }
+\newcommand{\compatible}[2]{#1 \sim: #2 }
+ 
+%\newcommand{\allocty}[2]{#1:_{\sigma}#2}
+\newcommand{\allocty}[1]{ty_{\sigma}(#1)}
+\renewcommand{\convert}[2]{\fun{convert}(#1,#2)}
+\newcommand{\istype}[2]{#1~\t{is}_{\sigma}~ #2}
+\newcommand{\safe}[1]{\t{safe}~#1}
+ 
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%				   
+
+\begin{document}
+
+
+\title{ValleyScript: Its Like Static Typing
+}
+
+%\date{\today}
+\maketitle
+
+\begin{abstract}
+We formalize the ES4 notions of \t{like} types and \t{wrap} operators for a lambda-calculus with ES4-style objects,
+to better understand these concepts and to clarify what guarantees can be provided by the verifier in strict mode.
+\end{abstract}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Language Overview}
+
+We consider the implementation of a \emph{gradual typed} language that supports both
+typed and untyped terms, which interoperate in a flexible manner.
+We begin by defining the syntax of terms and types in the language: see Figure~\ref{fig:syntax}.
+In addition to the usual terms of the lambda calculus (variables, abstractions, and application), 
+the language also includes constants and expressions to create, dereference, and update objects.
+It also includes \t{cast} expressions, which check that a value has a particular type,
+and \t{wrap} expressions, which, if necessary, wrap the given value to ensure that it behaves like it has that type. 
+
+The type language is fairly rich. In addition to  base types ($\Int$ and $\Bool$), function types,
+and object types, the language includes additional types related to gradual typing.
+The type $\dynamic$ is (roughly) a top type, and indicates that no static type information is known.
+%The type $\dynobjty$ denotes an object type, where no static type information
+%is known about the names of fields of that object.
+The type $\likety{T}$ describes values whose value components match $T$, but whose type components may be more vague than $T$, due to the presence of the type $\dynamic$. (Due to imperative constructs, that matching-value guarantee does not persist, and so \t{like} types are helpful for debugging but do not provide strong guarantees.)
+
+
+%Any value of type $\likety{T}$ can be assigned to a variable to type $\wrapty{T}$,
+%but that value is immediate wrapped (if necessary) so that the resulting value is guaranteed to have type $T$. 
+
+
+\begin{displayfigure}{th}{\label{fig:syntax}Syntax}
+\[
+\begin{array}{llr}
+	\mydefhead{e ::=\qquad\qquad\qquad\qquad\qquad}{Terms:} 
+	\mydefcase{c								}{constant} 
+	\mydefcase{x								}{variable} 
+%	\mydefcase{v								}{values} 
+	\mydefcase{\lam{x}{S}{T}{e} 				}{abstraction} 
+	\mydefcase{\app{e}{e} 					}{application} 
+%	\mydefcase{\lett{x}{T}{e}{e}				}{let expressions}
+%	\mydefcase{\mkrefl{T}{e}{l} 				}{allocation} 
+%	\mydefcase{\derefl{e}{l}					}{dereference} 
+%	\mydefcase{\assignl{e}{e}l				}{assignment} 
+	\mydefcase{\obje{\bar{l}=\bar{e}}{T}		}{object expression}
+	\mydefcase{\objget{e}{l}					}{field selection}
+%	\mydefcase{\objcall{e}{l}				}{method invocation}
+	\mydefcase{\objset{e}{l}{e}				}{member update}
+	\mydefcase{\cast{e}{T}					}{dynamic type check}
+	\mydefcase{\wrap{e}{T}					}{wrapping a value}
+\\
+	\mydefhead{c ::=}{Constants:} 
+	\mydefcase{n								}{integer constant} 
+	\mydefcase{b								}{boolean constant} 
+\\
+%	\mydefhead{v ::=}{Values:} 
+%	\mydefhead{c::=}{Constants} 
+%	\mydefcase{\true 						}{} 
+%	\mydefcase{\false						}{} 
+%	\mydefcase{n 							}{integer constants} 
+%	\mydefcase{+ 							}{addition operation} 
+%\\
+	\mydefhead{S,T::=}{Types:} 
+%	\mydefcase{B								}{base types}
+	\mydefcase{\Int 							}{integers}
+	\mydefcase{\Bool							}{booleans}
+	\mydefcase{\lamt{S}{T} 					}{function type}
+%	\mydefcase{\Ref{T}                      	}{reference type}
+	\mydefcase{\objty{\bar{l}:\bar{T}}	   	}{object types}
+%	\mydefcase{\dynobjty 	   				}{dynamic object type}
+	\mydefcase{\dynamic 		    				}{dynamic type}
+	\mydefcase{\likety{T}					}{like types}
+%	\mydefcase{\wrapty{T}					}{wrap types}
+	
+%\\
+%	\mydefhead{l 				}{Labels:} 
+\end{array}
+\]
+\end{displayfigure}
+
+%------------------------------------------
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\clearpage
+\section{Evaluation}
+
+We next describe the evaluation semantics of the language. 
+The set of values in the language is given by:
+\[
+\begin{array}{llr}
+	\mydefhead{v ::=\qquad\qquad\qquad\qquad\qquad}{Values:} 
+	\mydefcase{c								}{constant} 
+	\mydefcase{\lam{x}{S}{T}{e} 				}{abstraction} 
+	\mydefcase{\wrapv{v}{T}	 				}{wrapped value} 
+	\mydefcase{a								}{object address}
+	\\
+	\mydefhead{o ::=\qquad\qquad\qquad\qquad\qquad}{Object value:} 
+	\mydefcase{\obje{\bar l = \bar v}{T}		}{object value}
+\end{array}
+\]
+A \emph{object store} $\sigma$ maps object addresses $a$ to object values of the form $\obje{\bar{l}=\bar v}{T}$.
+Every value has an \emph{allocated type} according to the function $\allocty{v}$:
+\[
+\begin{array}{rcll}
+		\allocty{n}&=&\Int \\
+		\allocty{b}&=&\Bool\\
+		\allocty{\lam{x}{S}{T}{e}}&=&(\lamt{S}{T})\\
+		\allocty{\wrapv{v}{T}}&=&T\\
+		\allocty{a}&=&T   &\mbox{~~if } 		\sigma(a)=\obje{\dots}{T}
+\end{array}
+\]
+An evaluation context is:
+\[
+C ~~::=
+\begin{array}[t]{@{}l}
+		~~~\hole
+%	~|~ 	\lam{x}S{\hole}
+	~|~	\app{\hole}{t} 
+	~|~	\app{v}{\hole}
+	~|~ \wrap{\hole}{T} \\
+	~|~ \obje{\bar l=\bar v,l=\hole, \bar l =\bar e}{T}
+	~|~ \objget{\hole}{l}
+	~|~ \objset{\hole}{l}{e}
+	~|~ \objset{v}{l}{\hole} 
+\end{array}
+\]
+A \emph{state} is a pair of an object store and a current expression.
+The evaluation relation on states is defined by the rules in Figure~\ref{fig:eval}.
+The rule \rel{E-Alloc} requires an explicit object type with a type for each field,
+but those field types could simply be $\dynamic$. (Note, fields can never be deleted in our semantics.)
+Thus, the necessary object type could always be locally inferred from the object expression.
+
+Several rules refer to the judgement $\istype{v}{T}$, which checks if the value $v$ matches the type $T$: 
+see  Figure ~\ref{fig:convert}. This judgement relies on two subtype-like relations on types.
+
+The judgement $\subtype{S}{T}$ (\emph{$S$ is a subtype of $T$}) checks if every value of type $S$ 
+can be assigned to a variable of type $T$.
+The type $\dynamic$ is a top type. 
+
+\begin{lemma}
+The subtyping judgement is reflexively-transitively closed.
+\end{lemma}
+
+The judgement $\compatible{S}{T}$  (\emph{$S$ is compatible with $T$}) 
+extends the assignable relation with a more flexible interpretation of dynamic types; 
+in particular, the type $\dynamic$ is compatible with any type.
+The compatibility judgement is not transitively closed.
+In particular, we have that   $\compatible{\Int}{\dynamic}$ and
+$\compatible{\dynamic}{\Bool}$, but the judgement $\compatible{\Int}{\Bool}$ does not hold. 
+The rule~\rel{S-Like} for \t{like} types switches from checking subtyping to checking compatibility.
+
+\begin{lemma}[Preservation under subtyping]
+If $\istype v S$ and $\subtype S T$ then $\istype v T$.
+\end{lemma}
+TBP.
+
+Two types are \emph{indistinguishable} if they are indistinguishable under the subtyping,  compatibility, and \t{is} relations.
+
+Conjecture: The types $\likety{T}$ and $\likety \likety T$ are indistinguishable.
+
+\begin{displayfigure}{th}{Evaluation Rules}
+\label{fig:eval} 
+\footnotesize
+\[
+\begin{array}{@{}rcllr}
+	\sigma,C[{\app{(\lam{x}{S}{T}{t})}{v}}]
+	&\lred&
+	\sigma,C[\cast{t[x:=v]}{T}]
+	\qquad\mbox{if $\istype v S$}
+	&\rel{E-Beta1}
+\\~\\
+	\sigma,C[{\app{(\wrapv{w}{(\lamt{S}{T})})}
+	              {v}}]
+	&\lred&
+	\sigma,C[\wrap{(w~(\wrap{v}{S}))}{T}]
+	&\rel{E-Beta2}
+\\~\\
+	\sigma,C[\cast{v}{T}]
+	&\lred&
+	\sigma,C[v]
+	\qquad\mbox{if $\istype{v}{T}$}
+	&\rel{E-As}
+\\~\\
+	\sigma,C[\wrap{v}{T}]
+	&\lred&
+	\sigma,C[w]
+	&\rel{E-Wrap} \\
+	\multicolumn{3}{r}{
+	\mbox{where $w=\left\{
+		\begin{array}{ll}
+			v				&\mbox{if $\subtype{\allocty{v}}{T}$} \\
+			\wrapv{v}{T}		&\mbox{if $\istype{v}{T}$}
+		\end{array}\right.$}}
+\\~\\
+	\sigma,C[\obje{l_i=v_i^{i\in 1..n}}{T}]
+	&\lred&
+	\sigma[a:=(\obje{l_i=v_i}{T})],C[a] 
+	&\rel{E-Alloc} \\
+	&&\mbox{where }T=\objty{l_i:T_i^{i\in 1..n}}, \istype{v_i}{T_i} \\
+	&&\mbox{and $a$ fresh}
+\\~\\
+	\sigma,C[\objget{a}{l}]
+	&\lred&
+	\sigma,C[v]
+	\qquad\mbox{if $\sigma(a)=\obje{l=v,\dots}{T}$}
+	&\rel{E-Get1}
+\\~\\
+	\sigma,C[\objget{(\wrapv{w}{\objty{l:T,\dots}})}{l}]
+	&\lred&
+	\sigma,C[\wrap{(\objget{w}{l})}{T}] 
+	&\rel{E-Get2}
+\\~\\
+	\sigma,C[\objset{a}{l}{v}]
+	&\lred&
+	\sigma[a,l:=v],C[v] 
+	&\rel{E-Assign1} \\
+	&&\mbox{where if $\sigma(a)=\obje{\dots}{\objty{l:T,\dots}}$ }\\
+	&&\mbox{then $\istype{v}{T}$} 
+\\~\\
+	\sigma,C[\objset{(\wrapv{w}{\objty{l:T,\dots}})}{l}{v}]
+	&\lred&
+	\sigma,C[\objset{w}{l}{(\wrap{v}{T})}]
+	&\rel{E-Assign2} \\
+\end{array}
+\]
+\end{displayfigure}
+
+
+\begin{displayfigure}{th}{Dynamic Type Checks}
+\label{fig:convert} 
+\begin{trules}
+\headtrule{$\istype{v}{T}$}{Dynamic type check}
+\trule{Is-Ok}{
+		\subtype{\allocty{v}}{T}
+	}{
+		\istype{v}{T}
+	}
+\trule{Is-Obj}{
+		\sigma(a) = \obje{l_i=v_i^{i\in 1..n+m}}{S} \\
+	%	\compatible{S}{\objty{l_i:T_i^{i\in 1..n}}} \\
+		\istype{v_i}{\likety{T_i}} \mbox{ ~for~} {i\in 1..n}
+	}{
+		\istype{a}{\likety \objty{l_i:T_i^{i\in 1..n}}}
+	}
+\trule{Is-NonObj}{
+		\compatible{\allocty{v}}{T} \\
+		v \mbox{ not an object address}
+	}{
+		\istype{v}{\likety T}
+	}
+\headtrule{$\subtype{S}{T}$}{Subtyping}
+\trule{S-Refl}{
+	}{
+		\subtype{T}{T}
+	}
+\trule{S-Arrow}{
+		\subtype{T_1}{S_1}\qquad
+		\subtype{S_2}{T_2}
+	}{
+		\subtype{(\lamt{S_1}{S_2})}{(\lamt{T_1}{T_2})}
+	}
+\trule{S-Obj}{
+		\subtype{T_i}{S_i}\qquad
+		\subtype{S_i}{T_i} \qquad\mbox{for $i\in 1..n$}
+	}{
+		\subtype{\objty{l_i:S_i^{i\in 1..n+m}}}
+				{\objty{l_i:T_i^{i\in 1..n}}}
+	}
+\trule{S-Dyn}{
+	}{
+		\subtype{T}{\dynamic}
+	}
+%\trule{S-DynObj}{
+%	}{
+%		\subtype{\objty{\dots}}{\dynobjty}
+%	}
+\trule{S-Like}{
+		\compatible{S}{T}
+	}{
+		\subtype{{S}}{\likety{T}} \\
+	}
+\trule{S-Like-Covariant}{
+		\subtype{S}{T}
+	}{
+		\subtype{\likety{S}}{\likety{T}} \\
+	}
+\headtrule{$\compatible{S}{T}$}{Compatible Types}
+\mbox{Includes all of the above rules, and also:}\\
+\trule{C-Dyn}{
+	}{
+		\compatible{\dynamic}{T}
+	}
+%\trule{C-DynObj}{%
+%	}{
+%		\compatible{\dynobjty}{\objty{\dots}}
+%	}
+\end{trules}
+\end{displayfigure}
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\clearpage
+\section{Strict Mode Type System}
+
+In a traditional statically typed language, the type system fulfills two goals: 
+\begin{enumerate}
+\item
+It detects certain errors at compile time.
+\item
+It guarantees what kinds of values are produced by certain expressions, which enables  run-time check elimination.
+\end{enumerate}
+
+The situation in ES4 is somewhat different, because of two reasons. First, in \t{standard} mode, we would like to eliminate run-time checks where possible, using a type-based analysis,
+without reporting any compile-time type errors.
+Second, \t{like} types weaken the guarantees provided by \t{strict} mode.
+For these reasons, we actually present \emph{two} type systems.
+
+For example, if a variable $x$ has type $\likety{\objty{f:\Int}}$,
+then $\objget x f$  could actually return a value of any type.  
+Nevertheless, 
+$\objget x f$
+would be expected to produce values of type $\Int$, and so 
+the expression
+$\objget{\objget x f} g$ would yield a compile-time type error.
+Thus, we say that $\objget x f$ has type $\Int$, but this type is \emph{only} a statement of intent;
+it does not guarantee what kinds of values are returned by that expression,
+and so cannot be used for run-time check elimination.
+
+
+
+The strict mode type system is based on a judgement $\judge{E}{e}{T}$,
+stating that expression $e$ has type $T$ in environment $E$.
+Note that the type $T$ \emph{only} indicates that $e$ is intended to produce values of type $T$; there are no guarantees here, due to the use of \t{like} types. Thus, the strict mode type system 
+If $T$ is not a $\likety{}$ type, then $e$ will only produce values of that type.
+If $T=\likety{T'}$, then the intent is that $e$ will only produce values of type $T'$,
+but there is no guarantee. However, this intent can be still used to detect type errors at compile time.
+%We sometimes use $k$ to range over $\likety{}^+$ or $\epsilon$.
+
+Note that the judgement $\judge{E}{e}{T}$ means that $e$ is \emph{expected} to only produce values of type $T$,
+and the purpose of the strict mode type system is only to heuristically detect errors at verification time.
+The following section presents a type system with stronger guarantees that are sufficient for removing some run-time type checks.
+
+\begin{displayfigure}{th}{Type Rules for Strict Mode}
+\label{fig:typerules}
+\begin{trules}
+\headtrule{$\judge{E}{t}{T}$}{\underline{T}ype rules}
+\trule{T-Var}{
+		(x:T)\in E
+	}{
+		\judge{E}{x}{T}
+	}
+\trule{T-Const}{
+	}{
+		\judge{E}{c}{\fun{ty}(c)}
+	}
+\trule{T-Fun}{
+		\judge{E,x:S}{e}{T'} \qquad
+		\subtype{T'}{T} 
+	}{
+		\judge{E}{(\lam{x}{S}{T}{e})}{(\lamt{S}{T})}
+	}
+\trule{T-App1}{
+		\judge{E}{t_1}{\t{like}^*~(\lamt{S}{T})}\qquad
+		\judge{E}{t_2}{S'} \qquad
+		\subtype{S'}{S} \\
+	%	(k,k')\in\setz{(\likety{},\likety{\!\!}),(\wrapty{},\epsilon),(\epsilon,\epsilon)} \\
+	}{
+		\judge{E}{(\app{t_1}{t_2})}{T}
+	}
+\trule{T-App2}{
+		\judge{E}{t_1}{\dynamic}\qquad
+		\judge{E}{t_2}{S'}  
+	}{
+		\judge{E}{(\app{t_1}{t_2})}{\dynamic}
+	}
+\trule{T-As}{
+		\judge{E}{t}{S}%\qquad 
+		%\compatible{S}{T}
+	}{
+		\judge{E}{\cast{t}{T}}{T}
+	}
+\trule{T-Wrap}{
+		\judge{E}{t}{S}%\qquad 
+		%\compatible{S}{T}
+	}{
+		\judge{E}{\wrap{t}{T}}{T}
+	}
+%\trule{T-Let}{
+%		\judge{E}{t_1}{S}\qquad
+%		\judge{E,x:S}{t_2}{T} 
+%	}{
+%		\judge{E}{\letexp{x}{t_1}{t_2}}{T}
+%	}
+\trule{T-Alloc}{
+		\judge{E}{t_i}{S_i} \qquad
+		\subtype{S_i}{T_i} \qquad
+		T=\objty{l_i:T_i^{i\in 1..n}}
+	}{
+		\judge{E}{(\obje{l_i=t_i^{i\in 1..n}}{T})}{T}
+	}
+\trule{T-Get1}{
+		\judge{E}{e}{\t{like}^*~\objty{l:T,\dots}}  
+		%k\in\setz{\likety{},\wrapty{},\epsilon}
+	}{
+		\judge{E}{\objget{e}{l}}{T}
+	}
+\trule{T-Get2}{
+		\judge{E}{e}{\dynamic}
+	}{
+		\judge{E}{\objget{e}{l}}{\dynamic}
+	}
+\trule{T-Set1}{
+		\judge{E}{e_1}{\t{like}^*~\objty{l:T,\dots}} \qquad
+		\judge{E}{e_2}{S} \qquad
+		\subtype{S}{T}  
+	}{
+		\judge{E}{\objset{e_1}{l}{e_2}}{S}
+	}
+\trule{T-Set2}{
+		\judge{E}{e_1}{\dynamic} \qquad
+		\judge{E}{e_2}{S}
+	}{
+		\judge{E}{\objset{e_1}{l}{e_2}}{S}
+	}
+\end{trules}
+\end{displayfigure}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\clearpage
+\section{Check Optimization}
+
+We now sketch a 
+type-based analysis that statically identifies dynamic type checks that can be eliminated.
+We introduce the following additional ``\t{safe}'' expression forms, for which run-time checks are unnecessary.
+\[
+\begin{array}{llr}
+	\mydefhead{e ::=\qquad\qquad\qquad\qquad\qquad}{Expressions:} 
+	\mydefcase{\dots								}{expressions mentioned earlier} 
+	\mydefcase{\safe x								}{safe variable} 
+	\mydefcase{\safe{\lam{x}{S}{T}{e}} 				}{safe abstraction} 
+	\mydefcase{\safe{\app{e}{e}} 					}{safe application} 
+	\mydefcase{\safe{} \obje{\bar{l}=\bar{e}}{T}		}{safe object allocation}
+	\mydefcase{\safe{}\objget{e}{l}					}{safe field selection}
+	\mydefcase{\safe{}\objset{e}{l}{e}				}{safe field update}
+	\\
+	\mydefhead{v ::=\qquad\qquad\qquad\qquad\qquad}{Values:} 
+	\mydefcase{\dots								}{values mentioned earlier} 
+	\mydefcase{\safe{\lam{x}{S}{T}{e}} 				}{safe abstraction} 
+\end{array}
+\]
+It is straightforward to formulate the operational semantics of the extended language.
+
+Figure~\ref{fig:typerules2} presents \emph{optimization rules}, which verify that $\safe \dots$ occurs in correct places;
+it is straightforward to reformulate the analysis to infer these $\safe{}$ annotations.
+
+The following lemmas remain to be proven.
+
+\begin{lemma}[No Failure]
+For any term $e$, there is some placement of $\safe{}$ annotations into $e$ yielding $e'$ such that
+$\judges{\emptyset}{e'}{T}$ for some $T$.
+\end{lemma}
+
+\begin{lemma}[Soundness]
+If $\judges{\emptyset}{e}{T}$, then $\safe{}$ operation in $e$ can never get stuck.
+\end{lemma}
+
+%We use $s$ to range over $\safe{}$ or $\epsilon$.
+
+\newcommand{\maybesafe}[1]{\t{safe}^?~#1}
+
+\begin{displayfigure}{th}{Type Rules}
+\label{fig:typerules2}
+\begin{trules}
+\headtrule{$\judges{E}{t}{T}$}{\underline{T}ype rules}
+\trule{O-Var-Safe}{
+		(x:T)\in E
+	}{
+		\judges{E}{\safe x}{T}
+	}
+\trule{O-Var-Unsafe}{
+	}{
+		\judges{E}{x}{\dynamic}
+	}
+\trule{O-Const}{
+	}{
+		\judges{E}{c}{\fun{ty}(c)}
+	}
+\trule{O-Fun-Safe}{
+		\judges{E,x:S}{e}{T'} \qquad
+		\subtype{T'}{T} 
+	}{
+		\judges{E}{\safe (\lam{x}{S}{T}{e})}{(\lamt{S}{T})}
+	}
+\trule{O-Fun-Unsafe}{
+		\judges{E,x:S}{e}{T'}  
+	}{
+		\judges{E}{(\lam{x}{S}{T}{e})}{(\lamt{S}{T})}
+	}
+\trule{O-App-Safe}{
+		\judges{E}{t_1}{(\lamt{S}{T})}\qquad
+		\judges{E}{t_2}{S'} \qquad
+		\subtype{S'}{S} \\
+	%	(k,k')\in\setz{(\likety{},\likety{\!\!}),(\wrapty{},\epsilon),(\epsilon,\epsilon)} \\
+	}{
+		\judges{E}{\safe (\app{t_1}{t_2})}{T}
+	}
+\trule{O-App-Unsafe}{
+		\judges{E}{t_1}{S}\qquad
+		\judges{E}{t_2}{S'}  
+	}{
+		\judges{E}{(\app{t_1}{t_2})}{\dynamic}
+	}
+\trule{O-As}{
+		\judges{E}{t}{S}%\qquad 
+		%\compatible{S}{T}
+	}{
+		\judges{E}{\cast{t}{T}}{T}
+	}
+\trule{O-Wrap}{
+		\judges{E}{t}{S}%\qquad 
+		%\compatible{S}{T}
+	}{
+		\judges{E}{\wrap{t}{T}}{T}
+	}
+%\trule{O-Let}{
+%		\judges{E}{t_1}{S}\qquad
+%		\judges{E,x:S}{t_2}{T} 
+%	}{
+%		\judges{E}{\letexp{x}{t_1}{t_2}}{T}
+%	}
+\trule{O-Alloc-Safe}{
+		\judges{E}{t_i}{S_i} \qquad
+		\subtype{S_i}{T_i} \qquad
+		T=\objty{l_i:T_i^{i\in 1..n}}
+	}{
+		\judges{E}{\safe{(\obje{l_i=t_i^{i\in 1..n}}{T})}}{T}
+	}
+\trule{O-Alloc-Unsafe}{
+		\judges{E}{t_i}{S_i} 
+	}{
+		\judges{E}{(\obje{l_i=t_i^{i\in 1..n}}{T})}{T}
+	}
+\trule{O-Get-Safe}{
+		\judges{E}{e}{\objty{l:T,\dots}}  
+		%k\in\setz{\likety{},\wrapty{},\epsilon}
+	}{
+		\judges{E}{\safe{\objget{e}{l}}}{T}
+	}
+\trule{O-Get-Unsafe}{
+		\judges{E}{e}{S}
+	}{
+		\judges{E}{\objget{e}{l}}{\dynamic}
+	}
+\trule{O-Set-Safe}{
+		\judges{E}{e_1}{\objty{l:T,\dots}} \qquad
+		\judges{E}{e_2}{S} \qquad
+		\subtype{S}{T}  
+	}{
+		\judges{E}{\safe{(\objset{e_1}{l}{e_2})}}{S}
+	}
+\trule{O-Set2}{
+		\judges{E}{e_1}{\dynamic} \qquad
+		\judges{E}{e_2}{S}
+	}{
+		\judges{E}{\objset{e_1}{l}{e_2}}{S}
+	}
+\end{trules}
+\end{displayfigure}
+
+%------------------------------------------
+\clearpage
+\section{Sugar}
+\[
+\begin{array}{rcl}
+
+\lam{x}{(\t{wrap}~{S})}{T}{e} &=&
+	\lam{x}{(\likety{S})}{T}
+	    {\lete{x}{S}{(\wrap{x}{S})}{e}}
+	    \\~\\
+\lam{x}{S}{(\t{wrap}~T)}{e} &=&
+	\lam{x}{S}{T}{(\wrap{e}{T})}
+	\\~\\
+\t{wrap}~(\lam x S T e) &=&
+	\lam{x}{(\t{wrap}~S)}Te
+\end{array}
+\]
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\end{document}
+

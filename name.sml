@@ -148,6 +148,9 @@ val intrinsic_load = intrinsic Ustring.load_
 val intrinsic_assert = intrinsic Ustring.assert_
 val intrinsic_typename = intrinsic Ustring.typename_
 val intrinsic_readFile = intrinsic Ustring.readFile_
+val intrinsic_beginBytes = intrinsic Ustring.beginBytes_
+val intrinsic_pushByte = intrinsic Ustring.pushByte_
+val intrinsic_writeBytes = intrinsic Ustring.writeBytes_
 val intrinsic_writeFile = intrinsic Ustring.writeFile_
 val intrinsic_explodeDouble = intrinsic Ustring.explodeDouble_
 

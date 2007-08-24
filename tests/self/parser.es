@@ -56,7 +56,13 @@ namespace Parser;
           , IdentifierPattern );
 
     class ObjectPattern { }
-    class ArrayPattern { }
+
+    class ArrayPattern { 
+        const ptrns//: [PATTERN];
+        function ArrayPattern (ptrns)
+            : ptrns = ptrns { }
+    }
+
     class SimplePattern
     {
         const expr : Ast::EXPR;
@@ -125,7 +131,7 @@ namespace Parser;
             enter ("Pragma ",pragmas);
             if (pragmas===null)
             {
-                this.openNamespaces = [];
+                this.openNamespaces = [[]];
                 this.defaultNamespace = new Ast::InternalNamespace ("");
             }
             else
@@ -133,7 +139,10 @@ namespace Parser;
                 this.openNamespaces = util.copyArray (pragmas.openNamespaces);
                 this.defaultNamespace = pragmas.defaultNamespace;
             }
-            this.openNamespaces.push ([]);
+
+            if (this.openNamespaces[this.openNamespaces.length-1].length !== 0) { 
+                this.openNamespaces.push ([]);  // otherwise reuse the last one pushed
+            }
             exit ("Pragma");
         }
     }
@@ -149,14 +158,16 @@ namespace Parser;
         var pragmas: PRAGMAS;
         var pragmaEnv: PRAGMA_ENV; // push one PRAGMAS for each scope
 
-        function Context ()
-            : env = []
+        function Context (topFixtures)
+            : env = [topFixtures]
             , varHeads = []
             , letHeads = [] 
             , ctor = null
             , pragmas = null
             , pragmaEnv = []
         {
+            //print ("topFixtures.length=",topFixtures.length);
+            //            print ("env[0].length=",env[0].length);
         }
 
         function enterVarBlock () 
@@ -266,8 +277,8 @@ namespace Parser;
 
             let pn = fxtrs[0][0];
             //print ("pn..id=",pn.Ast::name.id," id=",id);
-            //print ("pn..ns=",pn.Ast::name.ns," ns=",ns);
-            if (pn.Ast::name.id==id && pn.Ast::name.ns.toString()==ns.toString())  // FIXME hack! 
+            //print ("pn..ns=",pn.Ast::name.ns.Ast::hash()," ns=",ns.Ast::hash());
+            if (pn.Ast::name.id==id && pn.Ast::name.ns.Ast::hash()==ns.Ast::hash())  // FIXME: need ns compare
             {
                 exit ("hasName true");
                 return true;
@@ -317,20 +328,21 @@ namespace Parser;
             enter ("findFixtureWithNames");
             // for each name in each head
             let env = this.env;
-            let ns = null;
             //print ("env.length=",env.length);
             for (var i=env.length-1; i>=0; --i)   // for each head
             {
+                let ns = null;
                 let fxtrs = env[i];
                 //print ("nss.length=",nss.length);
                 for (var j=nss.length-1; j>=0; --j)   // for each name
                 {
-                    if (hasName (fxtrs,id,nss[i])) 
+                    //print ("nss[",j,"]=",nss[j]);
+                    if (hasName (fxtrs,id,nss[j])) 
                     {
                         if (ns !== null) {
                             throw "ambiguous reference to " + id;
                         }
-                        ns = nss[i];
+                        ns = nss[j];
                     }
                 }
                 if (ns!==null) {
@@ -350,6 +362,7 @@ namespace Parser;
             //print ("nsss.length=",nsss.length);
             for (var i=nsss.length-1; i>=0; --i) 
             {
+                //print ("nsss[",i,"]=",nsss[i]);
                 let fx = findFixtureWithNames (id,nsss[i]);
                 if (fx !== null) 
                 {
@@ -357,10 +370,11 @@ namespace Parser;
                     return fx;
                 }
             }
-            throw "fixture not found";
+            throw "fixture not found: " + id;
         }
 
-        function evalIdentExpr (nd: Ast::IDENT_EXPR) 
+        function evalIdentExpr (nd: Ast::IDENT_EXPR)
+            : Ast::NAMESPACE
         {
             enter ("evalIdentExpr");
             switch type (nd) {
@@ -408,11 +422,13 @@ namespace Parser;
 
     class Parser
     {
-        var scan : Lexer::Scanner
+        var scan : Lexer::Scanner;
+        var cx: Context;
 
-        public function Parser(src)
+        public function Parser(src,topFixtures=[])
+            : cx = new Context (topFixtures)
+            , scan = new Lexer::Scanner (src)
         {
-            this.scan = new Lexer::Scanner(src)
         }
 
         var defaultNamespace: Ast::NAMESPACE;
@@ -494,6 +510,8 @@ namespace Parser;
                     throw "simple pattern without initializer";
                 }
             }
+            case (p:ArrayPattern) {
+            }
             case (x: *) {
                 throw "internal error: desugarPattern " + p;
             }
@@ -504,8 +522,6 @@ namespace Parser;
         }
 
         // Parse rountines
-
-        public var cx = new Context;
 
         /*
 
@@ -683,7 +699,7 @@ namespace Parser;
                 break;
             }
 
-            exit("Parser::reservedNamespace ", nd1);
+            exit("Parser::reservedNamespace ", ts1);
             return [ts1,nd1];
         }
 
@@ -772,27 +788,6 @@ namespace Parser;
                 ParenListExpression :: QualifiedName
         */
 
-//        function expressionQualifiedIdentifier()
-//        {
-//            enter("parseExpressionQualifiedIdentifier")
-//
-//            var first = parseParenListExpression()
-//            match(doublecolon_token)
-//            if( lookahead(leftbracket_token) )
-//            {
-//                var second = parseBrackets()
-//                var result = <QualifiedExpression><Qualifier>{first}</Qualifier><Expr>{second}</Expr></QualifiedExpression>
-//            }
-//            else
-//            {
-//                var second = parsePropertyIdentifier()
-//                var result = <QualifiedIdentifier><Qualifier>{first}</Qualifier>{second}</QualifiedIdentifier>
-//            }
-//
-//            exit("parseExpressionQualifiedIdentifier",result)
-//            return result
-//        }
-//
         /*
             NonAttributeQualifiedIdentifier
                 SimpleQualifiedName
@@ -816,31 +811,12 @@ namespace Parser;
             return [ts1,nd1];
         }
 
-//        /*
-//            AttributeQualifiedIdentifier
-//                @ Brackets
-//                @ NonAttributeQualifiedIdentifier
-//        */
-//
-//        function parseAttributeIdentifier()
-//        {
-//            enter("parseAttributeIdentifier")
-//
-//            match(at_token)
-//            if( lookahead(leftbracket_token) )
-//            {
-//                var result = parseBrackets()
-//            }
-//            else
-//            {
-//                var result = parseNonAttributeQualifiedIdentifier()
-//            }
-//            result.@is_attr="true"
-//
-//            exit("parseAttributeIdentifier",result)
-//            return result
-//        }
-//
+        /*
+            AttributeQualifiedIdentifier
+                @ Brackets
+                @ NonAttributeQualifiedIdentifier
+        */
+
         /*
             QualifiedName
                 AttributeName
@@ -981,6 +957,8 @@ namespace Parser;
             return [ts1,nd1];
         }
 
+        (1/2)
+
         function parenExpression (ts: TOKENS)
             : [TOKENS, Ast::EXPR]
         {
@@ -1005,6 +983,83 @@ namespace Parser;
 
             exit ("Parser::parenListExpression ", tsx);
             return [tsx, ndx];
+        }
+
+        /*
+
+        ArrayLiteral(noColon)
+            [  Elements  ]
+        
+        ArrayLiteral(allowColon)
+            [  Elements  ]
+            [  Elements  ]  :  TypeExpression
+        
+        Elements
+            ElementList
+            ElementComprehension
+
+        */
+
+        function arrayLiteral (ts: TOKENS)
+            : [TOKENS, Ast::EXPR]
+        {
+            enter("Parser::arrayLiteral ", ts);
+
+            ts = eat (ts,Token::LeftBracket);
+            var [ts1,nd1] = elementList (ts);
+            ts1 = eat (ts1,Token::RightBracket);
+
+            exit ("Parser::arrayLiteral ", ts1);
+            return [ts1, new Ast::LiteralExpr (new Ast::LiteralArray (nd1,new Ast::ArrayType ([])))];
+        }
+
+        /*
+
+        ElementList
+            empty
+            LiteralElement
+            ,  ElementList
+             LiteralElement  ,  ElementList
+
+        LiteralElement
+            AssignmentExpression(allowColon,allowIn)
+
+        */
+
+        function elementList (ts: TOKENS)
+            : [TOKENS, Ast::EXPR]
+        {
+            enter("Parser::elementList ", ts);
+
+            var nd1 = [];
+
+            if (hd (ts) !== Token::RightBracket) 
+            {
+                switch (hd (ts)) {
+                case Token::Comma:
+                    var [ts1,ndx] = [tl (ts),new Ast::LiteralExpr (new Ast::LiteralUndefined)];
+                    break;
+                default:
+                    var [ts1,ndx] = assignmentExpression (ts,allowIn);
+                    break;
+                }
+                nd1.push (ndx);
+                while (hd (ts1) === Token::Comma) {
+                    ts1 = eat (ts1,Token::Comma);
+                    switch (hd (ts1)) {
+                    case Token::Comma:
+                        var [ts1,ndx] = [ts1,new Ast::LiteralExpr (new Ast::LiteralUndefined)];
+                        break;
+                    default:
+                        var [ts1,ndx] = assignmentExpression (ts1,allowIn);
+                        break;
+                    }
+                    nd1.push (ndx);
+                }
+            }
+
+            exit ("Parser::elementList ", ts1);
+            return [ts1, nd1];
         }
 
         /*
@@ -1068,6 +1123,9 @@ namespace Parser;
 //            }
             case Token::LeftParen:
                 var [ts1,nd1] = parenListExpression(ts);
+                break;
+            case Token::LeftBracket:
+                var [ts1,nd1] = arrayLiteral (ts);
                 break;
 //            else
 //            if( lookahead(leftbracket_token) )
@@ -1165,8 +1223,9 @@ namespace Parser;
                 }
                 break;
             case Token::LeftBracket:
-                let [ts1,nd1] = brackets (ts);
-                var [tsx,ndx] = [ts1, new Ast::ObjectRef (nd,new Ast::ExpressionIdentifier (nd1))];
+                let [ts1,nd1] = listExpression (tl (ts), allowIn);
+                ts1 = eat (ts1,Token::RightBracket);
+                var [tsx,ndx] = [ts1, new Ast::ObjectRef (nd,new Ast::ExpressionIdentifier (nd1,cx.pragmas.openNamespaces))];
                 break;
             case Token::DoubleDot:
                 throw "descendents operator not implemented";
@@ -2204,17 +2263,17 @@ namespace Parser;
 
             switch (hd (ts)) {
             case Token::LeftBrace:
-                var [ts1,nd1] = objectPattern (tl (ts), gamma);
+                var [ts1,nd1] = objectPattern (ts, gamma);
                 break;
             case Token::LeftBracket:
-                var [ts1,nd1] = arrayPattern (tl (ts), gamma);
+                var [ts1,nd1] = arrayPattern (ts, gamma);
                 break;
             default:
                 var [ts1,nd1] = simplePattern (ts, beta, gamma);
                 break;
             }
 
-            exit("Parser::pattern", ts1);
+            exit("Parser::pattern ", ts1);
             return [ts1,nd1];
         }
 
@@ -2250,6 +2309,75 @@ namespace Parser;
 
         /*
 
+        ArrayPattern(gamma)
+            [  ElementListPattern(gamma)  ]
+        
+        */
+
+        function arrayPattern (ts: TOKENS, gamma: GAMMA)
+            : [TOKENS, Ast::EXPR]
+        {
+            enter("Parser::arrayPattern ", ts);
+
+            ts = eat (ts,Token::LeftBracket);
+            var [ts1,nd1] = elementListPattern (ts,gamma);
+            ts1 = eat (ts1,Token::RightBracket);
+
+            exit ("Parser::arrayPattern ", ts1);
+            return [ts1, new ArrayPattern (nd1)];
+        }
+
+        /*
+
+        ElementListPattern(gamma)
+            empty
+            LiteralElementPattern
+            ,  ElementListPattern
+             LiteralElementPattern  ,  ElementListPattern
+
+        LiteralElementPattern
+            Pattern(allowColon,allowIn,gamma)
+
+        */
+
+        function elementListPattern (ts: TOKENS, gamma:GAMMA)
+            : [TOKENS, Ast::EXPR]
+        {
+            enter("Parser::elementListPattern ", ts);
+
+            var nd1 = [];
+
+            if (hd (ts) !== Token::RightBracket) 
+            {
+                switch (hd (ts)) {
+                case Token::Comma:
+                    var [ts1,ndx] = [tl (ts),new Ast::LiteralExpr (new Ast::LiteralUndefined)];
+                    break;
+                default:
+                    var [ts1,ndx] = pattern (ts,allowIn,gamma);
+                    break;
+                }
+                nd1.push (ndx);
+                while (hd (ts1) === Token::Comma) {
+                    ts1 = eat (ts1,Token::Comma);
+                    switch (hd (ts1)) {
+                    case Token::Comma:
+                        var [ts1,ndx] = [ts1,new Ast::LiteralExpr (new Ast::LiteralUndefined)];
+                        break;
+                    default:
+                        var [ts1,ndx] = pattern (ts1,allowIn,gamma);
+                        break;
+                    }
+                    nd1.push (ndx);
+                }
+            }
+
+            exit ("Parser::elementListPattern ", ts1);
+            return [ts1, nd1];
+        }
+
+        /*
+
           TypedIdentifier(beta)
               SimplePattern(beta, noExpr)
               SimplePattern(beta, noExpr)  :  NullableTypeExpression
@@ -2278,6 +2406,8 @@ namespace Parser;
             exit("Parser::typedPattern ", ts2);
             return [ts2,[nd1,nd2]];
         }
+
+        (1/2)
 
         // TYPE EXPRESSIONS
 
@@ -2565,186 +2695,8 @@ namespace Parser;
             return [ts1,nd1];
         }
 
+        (1/2)
 
-//        /*
-//
-//        RecordType
-//            {  FieldTypeList  }
-//
-//        */
-//
-//        function parseRecordType()
-//
-
-        /*
-
-        DestructuringElement(gamma)
-            , DestructuringElementList(gamma)
-            DestructuringElementg  ,  DestructuringElementListg
-
-        DestructuringElementg
-            Patterng
-
-        TypedIdentifier
-            SimplePattern(noIn)
-            SimplePattern(beta)  :  NullableTypeExpression
-
-        TypedPattern(beta)
-            SimplePattern(beta)
-            SimplePattern(beta)  :  NullableTypeExpression
-            ObjectPattern
-            ObjectPattern  :  TypeExpression
-            ArrayPatternn
-            ArrayPatternn  :  TypeExpression
-
-        */
-
-//            enter("parseRecordType")
-//
-//            match(leftbrace_token)
-//            if( lookahead(rightbrace_token) )
-//            {
-//                var first = <></>
-//            }
-//            else
-//            {
-//                var first = parseFieldTypeListPrime(<>{parseFieldType()}</>)
-//            }
-//            var result = <RecordType>{first}</RecordType>
-//            match(rightbrace_token)
-//
-//            exit("parseRecordType",result)
-//            return result
-//        }
-//
-//        /*
-//
-//        NonemptyFieldTypeList
-//            FieldType
-//            FieldType  ,  NonemptyFieldTypeList
-//
-//        */
-//
-//        function parseFieldTypeListPrime(first)
-//        {
-//            enter("parseNonemptyFieldTypeList",first)
-//
-//            if( lookahead(comma_token) )
-//            {
-//                match(comma_token)
-//                var second = parseFieldType()
-//                var result = parseFieldTypeListPrime(<>{first}{second}</>)
-//            }
-//            else
-//            {
-//                var result = first
-//            }
-//
-//            exit("parseFieldListPrime",result)
-//            return result
-//        }
-//
-//        /*
-//            FieldType
-//                FieldName  :  TypeExpression
-//        */
-//
-//        function parseFieldType()
-//        {
-//            enter("parseFieldType")
-//
-//            var first = parseFieldName()
-//            match(colon_token)
-//            var second = parseTypeExpression()
-//            var result = <FieldType>{first}{second}</FieldType>
-//
-//            exit("parseFieldType",result)
-//            return result
-//        }
-//
-//        /*
-//
-//        ArrayType
-//            [  ElementTypeList  ]
-//
-//        ElementTypeList
-//            empty
-//            TypeExpression
-//            ,  ElementTypeList
-//            TypeExpression  ,  ElementTypeList
-//
-//        */
-//
-//        function parseArrayType()
-//        {
-//            enter("parseArrayType")
-//
-//            enterSlashContext(regexpliteral_token)
-//            match(leftbracket_token)
-//            if( lookahead(rightbracket_token) )
-//            {
-//                var first = <></>
-//            }
-//            else
-//            {
-//                var temp = parseElementType()
-//                var first = parseElementTypeListPrime(<>{temp}</>)
-//            }
-//
-//            exitSlashContext(regexpliteral_token)
-//            match(rightbracket_token)
-//            var result = <LiteralType>{first}</LiteralType>
-//
-//            exit("parseArrayLiteral",result)
-//            return result
-//        }
-//
-//        function parseElementTypeListPrime(first)
-//        {
-//            enter("parseElementTypeListPrime",first)
-//
-//            while( lookahead(comma_token) )
-//            {
-//                match(comma_token)
-//                var second = parseElementType()
-//                if( second == null )
-//                {
-//                    // do nothing
-//                }
-//                else
-//                {
-//                    var first = <>{first}{second}</>
-//                }
-//            }
-//            var result = first
-//
-//            exit("parseElementTypeListPrime",result)
-//            return result
-//        }
-//
-//        function parseElementType()
-//        {
-//            enter("parseElementType")
-//
-//            if( lookahead(comma_token) )
-//            {
-//                var result = <EmptyElementType/>
-//            }
-//            else
-//            if( lookahead(rightbracket_token) )
-//            {
-//                var result = null
-//            }
-//            else
-//            {
-//                var result = parseTypeExpression()
-//            }
-//
-//            exit("parseElementType",result)
-//            return result
-//        }
-//
-//
         // STATEMENTS
 
         /*
@@ -2851,7 +2803,7 @@ namespace Parser;
                 print("line eos");
             else {
                 let coord = coordList[ts.n];
-                print ("line ",coord[0]+1);
+                print ("ln ",coord[0]+1);
             }
             exit ("printLn");
         }
@@ -3108,7 +3060,7 @@ namespace Parser;
                 var [ts1,nd1] = listExpression (ts,noIn);
                 break;
             }
-            print ("nd1=",nd1);
+            //print ("nd1=",nd1);
  
             exit("Parser::forInitialiser ", ts1);
             return [ts1,nd1];
@@ -3388,6 +3340,8 @@ namespace Parser;
             exit("Parser::typeCases ", ts1);
             return [ts1,nd1];
         }
+
+        (1/2)
 
         // DEFINITIONS
 
@@ -4289,7 +4243,7 @@ namespace Parser;
                     var [ts1,nd1] = [ts,new Ast::SpecialType (new Ast::VoidType)];
                     break;
                 default:
-                    var [ts1,nd1] = nullableTypeExpression (ts1);
+                    var [ts1,nd1] = nullableTypeExpression (ts);
                     break;
                 }
                 break;
@@ -4472,7 +4426,7 @@ namespace Parser;
 
         */
 
-        function namespaceDefinition (ts: TOKENS, ns: Ast::NAMESPACE, omega: OMEGA)
+        function namespaceDefinition (ts: TOKENS, omega: OMEGA, ns: Ast::NAMESPACE )
             : [TOKENS, Ast::STMTS]
         {
             enter("Parser::namespaceDefinition ", ts);
@@ -4540,7 +4494,7 @@ namespace Parser;
 
         */
 
-        function typeDefinition (ts: TOKENS, ns: Ast::NAMESPACE, omega: OMEGA)
+        function typeDefinition (ts: TOKENS, omega: OMEGA, ns: Ast::NAMESPACE)
             : [TOKENS, Ast::STMTS]
         {
             enter("Parser::typeDefinition ", ts);
@@ -4560,6 +4514,8 @@ namespace Parser;
             exit("Parser::typeDefinition ", ts2);
             return [ts2,[]];
         }
+
+        (1/2)
 
         // DIRECTIVES
 
@@ -4666,59 +4622,190 @@ namespace Parser;
             }
         }
 
+        /*
+
+        Directive(t, w)
+            EmptyStatement
+            Statement(w)
+            AnnotatableDirective(t, w)
+            Attributes(t)  [no line break]  AnnotatableDirective(t, w)
+
+        */
+
         function directive (ts: TOKENS, tau: TAU, omega: OMEGA)
             : [TOKENS, Ast::STMTS]
         {
             enter("Parser::directive ", ts);
 
-            //printLn(ts);
+            printLn(ts);
 
             switch (hd(ts)) {
             case Token::Let: // FIXME might be function
             case Token::Var:
             case Token::Const:
-                var [ts1,stmts1]
+                var [ts1,nd1]
                     = variableDefinition (ts, allowIn, tau
                                   , cx.pragmas.defaultNamespace
                                   , false, false);
 
-                var tsx = semicolon (ts1,omega);
+                ts1 = semicolon (ts1,omega);
                 break;
             case Token::Function:
                 if (isCurrentClassName (tl (ts))) 
                 {
-                    var [ts1,stmts1] = constructorDefinition (ts, omega, cx.pragmas.defaultNamespace);
+                    var [ts1,nd1] = constructorDefinition (ts, omega, cx.pragmas.defaultNamespace);
                 }
                 else 
                 {
-                    var [ts1,stmts1] = functionDefinition (ts, tau, omega, new Ast::Var
+                    var [ts1,nd1] = functionDefinition (ts, tau, omega, new Ast::Var
                                   , cx.pragmas.defaultNamespace
                                   , false, false, false, false, false);
                 }
-                var tsx = semicolon (ts1,omega);
+                ts1 = semicolon (ts1,omega);
                 break;
             case Token::Class:
                 var isDynamic = false;
-                var [ts1,stmts1] = classDefinition (ts, cx.pragmas.defaultNamespace, isDynamic);
-                var tsx = ts1;
+                var [ts1,nd1] = classDefinition (ts, cx.pragmas.defaultNamespace, isDynamic);
                 break;
             case Token::Namespace:
-                var [ts1,stmts1] = namespaceDefinition (ts, cx.pragmas.defaultNamespace, omega);
-                var tsx = ts1;
+                var [ts1,nd1] = namespaceDefinition (ts, omega, cx.pragmas.defaultNamespace);
                 break;
             case Token::Type:
-                var [ts1,stmts1] = typeDefinition (ts, cx.pragmas.defaultNamespace, omega);
-                var tsx = ts1;
+                var [ts1,nd1] = typeDefinition (ts, omega, cx.pragmas.defaultNamespace);
                 break;
-            default:
-                var [ts2,nd2] = statement (ts,tau,omega);
-                var tsx = ts2;
-                var stmts1 = [nd2];
+            case Token::LeftBrace:
+            case Token::Break:
+            case Token::Continue:
+            case Token::Default:
+            case Token::Do:
+            case Token::For:
+            case Token::If:
+            case Token::Let:
+            case Token::Return:
+            case Token::Switch:
+            case Token::Throw:
+            case Token::Try:
+            case Token::While:
+            case Token::With:
+                var [ts1,nd1] = statement (ts,tau,omega);
+                nd1 = [nd1];
                 break;
+            case Token::Dynamic:
+            case Token::Final:
+            case Token::Native:
+            case Token::Override:
+            case Token::Prototype:
+            case Token::Static:
+            case Token::Public:
+            case Token::Private:
+            case Token::Protected:
+            case Token::Internal:
+            case Token::Intrinsic:
+                var [ts1,nd1] = attribute (ts,tau,defaultAttrs());
+                var [ts1,nd1] = annotatableDirective (ts1,tau,omega,nd1);
+                break;
+            default:  // label, attribute, or expr statement
+                var [ts1,nd1] = listExpression (ts,allowIn);
+                switch (hd (ts1)) {
+                case Token::Colon:  // label
+                    //print ("label=",Encode::encodeExpr (nd1));
+                    // FIXME check label
+                    break;
+                case Token::SemiColon:
+                    var nd1 = [new Ast::ExprStmt (nd1)];
+                    ts1 = tl (ts1);
+                    break;
+                case Token::RightBrace:
+                case Token::EOS:
+                    var nd1 = [new Ast::ExprStmt (nd1)];
+                    break;
+                default:
+                    if (newline (ts1)) 
+                    { // stmt
+                        var nd1 = [new Ast::ExprStmt (nd1)];
+                    }
+                    else 
+                    {
+                        switch (hd (ts1)) {
+                        case Token::Dynamic:
+                        case Token::Final:
+                        case Token::Native:
+                        case Token::Override:
+                        case Token::Prototype:
+                        case Token::Static:
+                        case Token::Let:
+                        case Token::Var:
+                        case Token::Const:
+                        case Token::Function:
+                        case Token::Class:
+                        case Token::Namespace:
+                        case Token::Type:
+                            // FIXME check ns attr
+                            let ie = nd1.Ast::exprs[0].Ast::ident;  
+                            var attrs = defaultAttrs ();
+                            attrs.ns = cx.evalIdentExpr (ie);
+                            var [ts1,nd1] = annotatableDirective (ts1,tau,omega,attrs);
+                            break;
+                        default:
+                            throw "directive should never get here";
+                            var nd1 = [new Ast::ExprStmt (nd1)];
+                            break;
+                        }
+                    }
+                }
             }
 
-            exit("Parser::directive ", tsx);
-            return [tsx, stmts1];
+            exit("Parser::directive ", ts1);
+            return [ts1,nd1];
+        }
+
+        function annotatableDirective (ts: TOKENS, tau: TAU, omega: OMEGA, attrs)
+            : [TOKENS, Ast::STMTS]
+        {
+            enter("Parser::annotatableDirective ", ts);
+
+            switch (hd(ts)) {
+            case Token::Let: // FIXME might be function
+            case Token::Var:
+            case Token::Const:
+                var [ts2,nd2]
+                    = variableDefinition (ts, allowIn, tau
+                                          , attrs.ns
+                                          , attrs.prototype
+                                          , attrs.static);
+
+                var ts2 = semicolon (ts2,omega);
+                break;
+            case Token::Function:
+                if (isCurrentClassName (tl (ts))) 
+                {
+                    var [ts2,nd2] = constructorDefinition (ts, omega, attrs.ns);
+                }
+                else 
+                {
+                    var [ts2,nd2] = functionDefinition (ts, tau, omega, new Ast::Var
+                                                           , attrs.ns, attrs.final, attrs.override
+                                                           , attrs.prototype, attrs.static, attrs.abstract);
+                }
+                ts2 = semicolon (ts2,omega);
+                break;
+            case Token::Class:
+                var [ts2,nd2] = classDefinition (ts, attrs.ns, attrs.dynamic);
+                break;
+            case Token::Namespace:
+                var [ts2,nd2] = namespaceDefinition (ts, omega, attrs.ns);
+                break;
+            case Token::Type:
+                var [ts2,nd2] = typeDefinition (ts, omega, attrs.ns);
+                break;
+            default:  // label, attribute, or expr statement
+                var [ts1,nd1] = attribute (ts,tau,defaultAttrs());
+                if (newline (ts1)) throw "error unexpected newline before "+Token::tokenText (hd (ts));
+                var [ts2,nd2] = annotatableDirective (ts1,tau,omega,nd1);
+            }
+
+            exit("Parser::annotatableDirective ", ts2);
+            return [ts2,nd2];
         }
 
 //        /*
@@ -4740,141 +4827,110 @@ namespace Parser;
 //
 //        */
 //
-//        function parseAttributes(first)
-//        {
-//            enter("parseAttributes",first)
-//
-//            while( !lookaheadSemicolon(full_mode) &&
-//                   ( lookahead(public_token) ||
-//                   lookahead(private_token) ||
-//                   lookahead(internal_token)  ||
-//                   lookahead(intrinsic_token) ||
-//                   lookahead(protected_token) ||
-//                   lookahead(dynamic_token) ||
-//                   lookahead(final_token) ||
-//                   lookahead(native_token) ||
-//                   lookahead(override_token) ||
-//                   lookahead(prototype_token) ||
-//                   lookahead(static_token) ||
-//                   lookahead(leftbracket_token) ||
-//                   lookahead(packageidentifier_token) ||
-//                   lookahead(identifier_token) ) )
-//            {
-//                first += parseAttribute()
-//            }
-//
-//            var node = <Attributes>{first}</Attributes>
-//
-//            // todo: check for duplicates
-//
-//            exit("parseAttributes",node)
-//            return node
-//        }
-//
-//        function parseAttribute()
-//        {
-//            enter("parseAttribute")
-//
-//            var found = lookahead(public_token) ? match(public_token) :
-//                        lookahead(private_token) ? match(private_token) :
-//                        lookahead(internal_token) ? match(internal_token) :
-//                        lookahead(intrinsic_token) ? match(intrinsic_token) :
-//                        lookahead(protected_token) ? match(protected_token) :
-//                        lookahead(dynamic_token) ? match(dynamic_token) :
-//                        lookahead(final_token) ? match(final_token) :
-//                        lookahead(native_token) ? match(native_token) :
-//                        lookahead(override_token) ? match(override_token) :
-//                        lookahead(prototype_token) ? match(prototype_token) :
-//                        lookahead(static_token) ? match(static_token) : empty_token
-//
-//
-//            if( found != empty_token )
-//            {
-//                if( lookahead(doublecolon_token) )  // todo: look for other tokens that indicate an expression
-//                {
-//                    throw "attribute names cannot start a labeled or expression statement"
-//                }
-//
-//                var slot_context = slot_context_stack[slot_context_stack.length-1]
-//                switch(found)
-//                {
-//                    case internal_token:
-//                        if( slot_context == "function" )
-//                        {
-//                            throw "'internal' shall not be used in local definitions"
-//                        }
-//                        var node = <Namespace kind="internal" name={current_package}/>
-//                        break
-//                    case intrinsic_token:
-//                        throw "'intrinsic' shall only be used by implementations"
-//                        var node = <Namespace kind={scan.tokenText(found)}/>
-//                        break
-//                    case private_token:
-//                        if( slot_context != "class" )
-//                        {
-//                            throw "'private' must only be used on class variable and method definitions"
-//                        }
-//                        var node = <Namespace kind="private" name={current_class}/>
-//                        break
-//                    case protected_token:
-//                        if( slot_context != "class" )
-//                        {
-//                            throw "'protected' must only be used on class variable and method definitions"
-//                        }
-//                        var node = <Namespace kind="protected" name={current_class}/>
-//                        break
-//                    case public_token:
-//                        if( slot_context == "function" )
-//                        {
-//                            throw "'public' shall not be used in local definitions"
-//                        }
-//                        if( inClassBody() )
-//                        {
-//                            var public_namespace_name = ""
-//                        }
-//                        else
-//                        {
-//                            var public_namespace_name = current_package
-//                        }
-//                        var node = <Namespace kind="public" name={public_namespace_name}/>
-//                        break
-//                    case dynamic_token:
-//                        var node = <Dynamic/>
-//                        break
-//                    case final_token:
-//                        var node = <Final/>
-//                        break
-//                    case native_token:
-//                        var node = <Native/>
-//                        break
-//                    case override_token:
-//                        var node = <Override/>
-//                        break
-//                    case prototype_token:
-//                        var node = <Prototype/>
-//                        break
-//                    case static_token:
-//                        var node = <Static/>
-//                        break
-//                    default:
-//                        throw "invalid attribute kind"
-//                }
-//
-//            }
-//            else
-//            if( lookahead(leftbracket_token) )
-//            {
-//                var node = parseArrayLiteral()  // not quite right but close enough for now
-//            }
-//            else
-//            {
-//                var node = parseSimpleTypeIdentifier()
-//            }
-//
-//            exit("parseAttribute",node.toXMLString())
-//            return node
-//        }
-//
+
+        type ATTRS = Object;  // FIXME object type
+
+        function defaultAttrs ()
+            : ATTRS {
+            return { ns: cx.pragmas.defaultNamespace
+                   , true: false
+                   , false: false
+                   , dynamic: false
+                   , final: false
+                   , native: false
+                   , override: false
+                   , prototype: false
+                   , static: false }
+        }
+
+        function attribute (ts: TOKENS, tau: TAU, nd: ATTRS)
+            : [TOKENS, *]
+        {
+            enter("Parser::attribute tau="+tau+" ", ts);
+
+            switch (tau) {
+            case classBlk:
+                switch (hd (ts)) {
+                case Token::Final:
+                    nd.final = true;
+                    var [ts1,nd1] = [tl (ts), nd];
+                    break;
+                case Token::Native:
+                    nd.native = true;
+                    var [ts1,nd1] = [tl (ts), nd];
+                    break;
+                case Token::Override:
+                    nd.override = true;
+                    var [ts1,nd1] = [tl (ts), nd];
+                    break;
+                case Token::Prototype:
+                    nd.prototype = true;
+                    var [ts1,nd1] = [tl (ts), nd];
+                    break;
+                case Token::Static:
+                    nd.static = true;
+                    var [ts1,nd1] = [tl (ts), nd];
+                    break;
+                case Token::Public:
+                case Token::Private:
+                case Token::Protected:
+                case Token::Internal:
+                case Token::Intrinsic:
+                    var [ts1,nd1] = reservedNamespace (ts);
+                    nd.ns = nd1;
+                    var [ts1,nd1] = [tl (ts), nd];
+                    break;
+                default:
+                    var [ts1,nd1] = primaryName (ts,allowIn);
+                    nd.ns = cx.evalIdentExpr (nd1);
+                    var [ts1,nd1] = [ts1,nd];
+                    break;
+                }
+            case globalBlk:
+                switch (hd (ts)) {
+                case Token::True:
+                    nd['true'] = true;  // FIXME RI bug
+                    var [ts1,nd1] = [tl (ts), nd];
+                case Token::False:
+                    nd['false'] = false;
+                    var [ts1,nd1] = [tl (ts), nd];
+                case Token::Dynamic:
+                    nd.dynamic = true;
+                    var [ts1,nd1] = [tl (ts), nd];
+                    break;
+                case Token::Final:
+                    nd.final = true;
+                    var [ts1,nd1] = [tl (ts), nd];
+                    break;
+                case Token::Native:
+                    nd.native = true;
+                    var [ts1,nd1] = [tl (ts), nd];
+                    break;
+                case Token::Public:
+                case Token::Internal:
+                case Token::Intrinsic:
+                    var [ts1,nd1] = reservedNamespace (ts);
+                    nd.ns = nd1;
+                    var [ts1,nd1] = [ts1, nd];
+                    break;
+                default:
+                    var [ts1,nd1] = primaryName (ts,allowIn);
+                    nd.ns = cx.evalIdentExpr (nd1);
+                    var [ts1,nd1] = [ts1, nd];
+                    break;
+                }
+                break;
+            case localBlk:
+                var [ts1,nd1] = [ts,nd];
+                break;
+            default:
+                throw "error attribute tau " + tau;
+            }
+
+            exit("Parser::attribute ", ts1);
+            return [ts1,nd1];
+        }
+
 
         // PRAGMAS
 
@@ -4911,64 +4967,6 @@ namespace Parser;
             exit("Parser::pragma ", ts1);
             return [ts1];
         }
-
-        /* This cause a weird behavior in the RI
-        function pragmaItems (ts: TOKENS)
-            : [TOKENS]
-        {
-            enter("Parser::pragmaItems ", ts);
-
-            switch (hd (ts)) {
-            case Token::Decimal:
-                break;
-            case Token::Namespace:
-                var [ts1,nd1] = primaryName (tl (ts));
-                cx.openNamespace (nd1);
-                break;
-            case Token::Double:
-                break;
-            case Token::Int:
-                break;
-            case Token::Default:
-                switch (hd (tl (ts))) {
-                case Token::Namespace:
-                    var [ts1,nd1] = primaryName (tl (ts));
-                    cx.defaultNamespace (nd1);
-                    break;
-                default:
-                    throw "unexpected token after 'use default'";
-                }
-                break;
-                //            case Token::Number
-                //                break;
-            case Token::Precision:
-                break;
-            case Token::Rounding:
-                break;
-            case Token::Standard:
-                break;
-            case Token::Strict:
-                break;
-            case Token::UInt:
-                break;
-            case Token::Unit:
-                break;
-            default:
-                throw "unknown token in PragmaItem";
-            }
-
-            switch (hd (ts1)) {
-            case Token::Comma:
-                return pragmaItems (tl (ts1));
-                break;
-            default:
-                break;
-            }
-
-            exit("Parser::pragmaItems ", ts1);
-            return [ts1];
-        }
-        */
 
         function pragmaItems (ts: TOKENS)
             : [TOKENS]
@@ -5028,211 +5026,6 @@ namespace Parser;
             exit("Parser::pragmaItems ", ts1);
             return [ts1];
         }
-
-//        public function parsePragmas()
-//        {
-//            enter("parsePragmas")
-//
-//            var node = <></>
-//
-//            while( !lookahead(eos_token) &&
-//                (lookahead(use_token) || lookahead(import_token)) )
-//            {
-//                node += parsePragma()
-//            }
-//
-//            exit("parsePragmas",node)
-//            return node
-//        }
-//
-//        public function parsePragma()
-//        {
-//            enter("parsePragma")
-//
-//            var node = <></>
-//
-//            if( lookahead(use_token) )
-//            {
-//                node += parseUsePragma()
-//                matchSemicolon(full_mode)
-//            }
-//            else
-//            if( lookahead(import_token) )
-//            {
-//                node += parseImportPragma()
-//                matchSemicolon(full_mode)
-//            }
-//
-//            exit("parsePragma",node)
-//            return node
-//        }
-//
-//        public function parseImportPragma()
-//        {
-//            enter("parseImportPragma")
-//
-//            match(import_token)
-//
-//            if( lookahead(identifier_token) )
-//            {
-//                var first = parseIdentifier()
-//                if( lookahead(assign_token) )
-//                {
-//                    match(assign_token)
-//                }
-//                else
-//                {
-//                    throw "import name '"+first.@name+"' is not a known package identifier"
-//                }
-//                var second = parseImportName()
-//                if( second.@def == "*" )
-//                {
-//                    throw "wildcard not allowed in aliasing import pragmas"
-//                }
-//                second.@alias=first.@name
-//                var node = second
-//            }
-//            else
-//            if( lookahead(packageidentifier_token) )
-//            {
-//                var second = parseImportName()
-//                var node = second
-//            }
-//            else
-//            {
-//                throw "invalid import name"
-//            }
-//
-//            var pkg_name = node.@pkg
-//            var def_name = node.@def
-//
-//            if( def_name == "*" )
-//            {
-//                scopes[scopes.length-1].Imports.*+=node
-//            }
-//            else
-//            {
-//                scopes[scopes.length-1].Imports[def_name].*+=node
-//            }
-//
-//            exit("parseImportPragma",node.toXMLString())
-//            return node
-//        }
-//
-//        var scopes = [<Scope/>]
-//
-//        function isImported(pkg_name,def_name)
-//        {
-//            var scope   = scopes[scopes.length-1]
-//            for each( var def in scope.Imports[def_name] )
-//            {
-//                if( def.Import.@pkg == pkg_name )
-//                {
-//                    return true
-//                }
-//            }
-//
-//            for each( var def in scope.Imports.* )
-//            {
-//                if( def.@pkg == pkg_name )
-//                {
-//                    return true
-//                }
-//            }
-//            return false
-//        }
-//
-//        function parseImportName()
-//        {
-//            enter("parseImportName")
-//
-//            var pkg_part = scan.tokenText(match(packageidentifier_token))
-//            match(dot_token)
-//            if( lookahead(mult_token) )
-//            {
-//                match(mult_token)
-//                var def_part = "*"
-//            }
-//            else
-//            if( lookaheadReservedWord() )
-//            {
-//                var def_part = scan.tokenText(matchReservedWord())
-//            }
-//            else
-//            {
-//                var def_part = scan.tokenText(match(identifier_token))
-//            }
-//
-//            var node = <Import pkg={pkg_part} def={def_part}/>
-//
-//            exit("parseImportName",node.toXMLString())
-//            return node
-//        }
-//
-//        public function parseUsePragma()
-//        {
-//            enter("parseUsePragma")
-//
-//            match(use_token)
-//            var node = <></>
-//            node += parsePragmaItem()
-//            while( lookahead(comma_token) )
-//            {
-//                match(comma_token)
-//                node += parsePragmaItem()
-//            }
-//
-//            exit("parseUsePragma",node)
-//            return node
-//        }
-//
-//        function parsePragmaItem()
-//        {
-//            enter("parsePragmaItem")
-//
-//            if( lookaheadReservedWord() ||
-//                lookahead(identifier_token) )
-//            {
-//                if( lookaheadReservedWord() )
-//                {
-//                    var first = matchReservedWord()
-//                }
-//                else
-//                {
-//                    var first = match(identifier_token)
-//                }
-//                var ident = scan.tokenText(first)
-//
-//                switch(ident)
-//                {
-//                    case 'decimal':
-//                    case 'double':
-//                    case 'int':
-//                    case 'rounding':
-//                    case 'standard':
-//                    case 'strict':
-//                    case 'uint':
-//                        var node = <{ident}/>
-//                        break
-//                    case 'default':
-//                        match(namespace_token)
-//                        var node = <DefaultNamespace/>
-//                        node.* = <Get kind="lexical">{parseSimpleTypeIdentifier()}</Get>
-//                        break
-//                    case 'namespace':
-//                        var node = <UseNamespace/>
-//                        node.* = <Get kind="lexical">{parseSimpleTypeIdentifier()}</Get>
-//                        break
-//                    default:
-//                        throw "invalid pragma identifier:"+ident
-//                        break
-//                }
-//            }
-//
-//            exit("parsePragmaItem",node)
-//            return node
-//        }
-//
 
         // BLOCKS and PROGRAMS
 

@@ -148,7 +148,7 @@ namespace Char
     const DoubleQuote = "\"".charCodeAt(0);
     const Space = " ".charCodeAt(0);
     const Tab = "\t".charCodeAt(0);
-    const Newline = "\n".charCodeAt();
+    const Newline = "\n".charCodeAt(0);
 
     function fromOctal (str)
 	: int
@@ -668,7 +668,7 @@ namespace Token
             var tok : Token = tokenStore[tid];
             var text = tok.tokenText();
         }
-        // print("tokenText: ",tid,", ",text);
+        //print("tokenText: ",tid,", ",text);
         return text;
     }
 
@@ -733,14 +733,14 @@ namespace Lexer
             : void
         {
             curIndex--;
-            // print("retract cur=",curIndex);
+            //print("retract cur=",curIndex);
         }
 
         private function mark ()
             : void
         {
             markIndex = curIndex;
-	    // print("mark mark=",markIndex);
+	    //print("mark mark=",markIndex);
         }
 
         public function tokenList (lexPrefix)
@@ -753,7 +753,7 @@ namespace Lexer
                     colCoord = 0;
                 }
                 else {
-                    print ("token ",token);
+                    print ("token ", token, " \t", Token::tokenText(token));
                     colCoord += markIndex - lastMarkIndex;
                     coordList.push ([lnCoord,colCoord]);
                     tokenList.push (token);
@@ -814,7 +814,7 @@ namespace Lexer
             {
                 mark();
                 c = next();
-                // print("c[",curIndex-1,"]=",String.fromCharCode(c));
+                //print("c[",curIndex-1,"]=",String.fromCharCode(c));
                 switch (c)
                 {
                 case 0xffffffef: return utf8sig ();
@@ -1135,13 +1135,14 @@ namespace Lexer
 	{
 	    let c : int = next ();
 	    switch (c) {
-	    case delimiter : return Token::makeInstance (Token::StringLiteral, String.fromCharCode(delimiter)+text);
-		// encode delimiter in string lexeme by appending to text
+	    case delimiter:
+            return Token::makeInstance (Token::StringLiteral, String.fromCharCode(delimiter)+text);
+            // encode delimiter in string lexeme by appending to text
 	    case Char::BackSlash:
-		let c = escapeSequence ();
-		return identifier (str+String.fromCharCode(c));
-	    default :
-		return stringLiteral (delimiter, text+String.fromCharCode (c))
+            let c = escapeSequence ();
+            return stringLiteral (delimiter, text+String.fromCharCode(c));
+	    default:
+            return stringLiteral (delimiter, text+String.fromCharCode (c))
 	    }
 	}
 
@@ -1162,28 +1163,30 @@ namespace Lexer
 	    case Char::Five:
 	    case Char::Six:
 	    case Char::Seven:
-		retract ();
-		return octalOrNulEscape ();
+            retract ();
+            return octalOrNulEscape ();
 	    case Char::x:
-		return hexEscape (2);
+            return hexEscape (2);
 	    case Char::u:
-		return hexEscape (4);
+            return hexEscape (4);
 	    case Char::b:
-		return Char::Backspace;
+            return Char::Backspace;
 	    case Char::f:
-		return Char::Formfeed;
+            return Char::Formfeed;
 	    case Char::n:
-		return Char::Newline;
+            return Char::Newline;
 	    case Char::r:
-		return Char::CarriageReturn;
+            return Char::CarriageReturn;
 	    case Char::t:
-		return Char::Tab;
+            return Char::Tab;
 	    case Char::v:
-		return Char::VerticalTab;
+            return Char::VerticalTab;
 	    case Char::SingleQuote:
 	    case Char::DoubleQuote:
 	    case Char::BackSlash:
-		return c;
+            return c;
+        default:
+            throw "lexer error escapeSequence " + c;
 	    }
 	}
 
@@ -1752,7 +1755,7 @@ namespace Lexer
             : int
         {
             let c : int = next ();
-            //            print("c[",curIndex-1,"]=",String.fromCharCode(c))
+            //print("c[",curIndex-1,"]=",String.fromCharCode(c))
             switch (c)
             {
             case Char::a :

@@ -22,4 +22,9 @@ package util
 
     public function toUint(x)
         uint(x);
+
+    intrinsic native function beginBytes ();
+    intrinsic native function pushByte (b:uint);
+    intrinsic native function writeBytes(filename:string);
+
 }
