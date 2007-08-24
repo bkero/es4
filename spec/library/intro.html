@@ -1,5 +1,13 @@
 = Introduction =
 
+<pre>
+FILE:                       spec/library/intro.html
+DRAFT STATUS:               DRAFT 1 - ROUGH
+REVIEWED AGAINST ES3:       NO
+REVIEWED AGAINST PROPOSALS: NO
+REVIEWED AGAINST CODE:      NO
+</pre>
+
 <p>There are certain built-in objects available whenever an ECMAScript
 program begins execution. One, the global object, is in the scope
 chain of the executing program. Others are accessible as initial
@@ -183,3 +191,73 @@ package ...
     // All global definitions, see section <XREF target="global-object">
 }
 }}}
+
+= Assumptions and notational conveniences =
+
+<P> (This section will be removed eventually.)
+
+<P> The following assumptions are made throughout the description of
+the builtins.  I believe they are correct for the language, but they
+need to be specified / cleaned up elsewhere; some of the descriptions
+here need to be merged into the foregoing sections.
+
+
+== Classes ==
+
+<P> Classes are reified as singleton class objects ''C'' which behave
+like ECMAScript objects in all respects.  We do //not// assume here
+that these class objects are instances of yet other classes; they can
+be assumed just to exist.  Class objects have some set of fixtures
+(always including the ''prototype'' property) and a [[Prototype]]
+chain, at a minimum.
+
+<P> The ''Function'' prototype object is on the [[Prototype]] chain of
+every class object, whether native or user defined.  This was true for
+all constuctor functions in ES3; it does not seem reasonable to be
+incompatible for native objects in ES4, and it does not seem
+reasonable to have a special case for native objects in ES4 (though that
+would be possible).
+
+<P> //Consequence:// It will be assumed that the ''Function'' prototype
+object is on the prototype chain of every class object, and this will not
+be described explicitly for each object, unlike 3rd Edition.
+
+
+== Prototype chains ==
+
+<P> Every class object ''C'' has a constant ''C.prototype'' fixture
+property, with fixed type ''Object''.  Unless specified otherwise,
+''C.prototype'' references an object ''PC'' that appears to be an
+instance of ''C'' except for the value of ''PC.[[Prototype]]'', which
+is normally a reference to ''B.prototype'' where ''B'' is the base
+class of ''C''.  (Thus the prototype hierarchy mirrors the class
+hierarchy, and inheritance of prototype properties mirrors the
+inheritance of class properties.)
+
+<P> //Consequence:// It will be assumed that every class object has a
+''prototype'' property and that that property will reference the
+prototype object for that class, which is always described separately.
+The fact that there is a ''prototype'' property will not be described
+explicitly for each object, unlike 3rd Edition.
+
+<P> Every [[Prototype]] property of an object ''O'' of class described
+by class object ''C'', unless specified otherwise, is initialized from
+the value of ''C.prototype''. 
+
+<P> //Consequence:// The structure of the prototype chain is elided
+from the description of the native classes except where it diverges
+from the standard behavior.
+
+
+== Constant-initialized properties ==
+
+<P> Several properties on both class objects and prototype objects are
+initialized by references to constants, for example ''length''
+properties on class objects and ''constructor'' properties on
+prototype objects.  These properties are trivially described in the
+synopsis and normally do not get a separate section in the body of the
+class description.
+
+<P> As far as ''constructor'' is concerned, it is a standard feature of
+the prototype object and its initial value is always the class object,
+so it does not have to be described either.  So it isn't.
