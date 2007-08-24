@@ -73,14 +73,22 @@ package abcfile
             assert(bodies.length != 0);
             assert(classes.length == instances.length);
 
+print ("emitting magic");
             bytes.uint16(minor_version);
             bytes.uint16(major_version);
+print ("emitting constants");
             constants.serialize(bytes);
+print ("emitting methods");
             emitArray(methods);
+print ("emitting metadatas");
             emitArray(metadatas);
+print ("emitting instances");
             emitArray(instances);
+print ("emitting classes");
             emitArray(classes, false);
+print ("emitting scripts");
             emitArray(scripts);
+print ("emitting bodies");
             emitArray(bodies);
             return bytes.getBytes();
         }
@@ -477,11 +485,11 @@ package abcfile
 
     public class ABCSlotTrait extends ABCTrait
     {
-        function ABCSlotTrait(name, attrs, slot_id=0, type_name=0, vindex=0, vkind=0) {
+        function ABCSlotTrait(name, attrs, is_const = false, slot_id=0, type_name=0, vindex=0, vkind=0) {
             /*FIXME #101: super not implemented*/
             //super(name, (attrs << 4) | TRAIT_Slot);
             this.name = name;
-            this.kind = (attrs << 4) | TRAIT_Slot;
+            this.kind = (attrs << 4) | (is_const ? TRAIT_Const : TRAIT_Slot);
             this.metadata = [];
             //End of fixme
             this.slot_id = slot_id;

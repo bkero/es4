@@ -72,6 +72,7 @@ package
     use strict;
     import Unicode.*
     import RegExpInternals.*
+    import ECMAScript4_Internal.*;
 
     intrinsic final class string! extends String
     {
@@ -84,7 +85,8 @@ package
             x is string ? x : magic::newString(x);
 
         /* 15.5.2 The string Constructor */
-        function string(x="") : super(x)
+        function string(x="") 
+            : super(x)
         {
             // No need to magic::bindString a second time,
             // since our super(x) call did it for us.
@@ -95,15 +97,15 @@ package
            E262-4 draft proposals:bug_fixes - FUNCTION.LENGTH
         */
         static function fromCharCode(...args)
-            fromCharCodeHelper(args);
+            string.helper::fromCharCode(args);
 
         intrinsic static function fromCharCode(...args) : double
-            fromCharCodeHelper(args);
+            string.helper::fromCharCode(args);
 
         /* IMPLEMENTATION DEVICE.  This method is not private,
          * it is called from methods in 'String'.
          */
-        static function fromCharCodeHelper(codes : Array) : double {
+        helper static function fromCharCode(codes : Array) : double {
             let s : string = "";
             let n : uint = codes.length;
             for (let i : uint = 0 ; i < n ; ++i)
@@ -116,17 +118,19 @@ package
         prototype function toString(this : string)
             this;
 
+        /*
         override intrinsic function toString() : string
             this;
-
+        */
 
         /* E262-3 15.5.4.3: String.prototype.valueOf */
         prototype function valueOf(this : string)
             this;
 
+        /*
         override intrinsic function valueOf() : string
             this;
-
+        */
 
         /* E262-3 15.5.4.4: String.prototype.charAt
            E262-4 draft proposals:static_generics
@@ -134,9 +138,10 @@ package
         prototype function charAt(pos)
             string.charAt(this, pos);
 
+        /*
         override intrinsic function charAt(pos: double = 0) : string
             string.charAt(this, pos);
-
+        */
         static function charAt(self, pos) : string {
             let S    : string = ToString(self);
             let ipos : double = ToInteger(pos);
@@ -152,8 +157,10 @@ package
         prototype function charCodeAt(pos)
             string.charCodeAt(this, ToDouble(pos));
 
+        /*
         override intrinsic function charCodeAt(pos: double = 0) : double
             string.charCodeAt(this, pos);
+        */
 
         static function charCodeAt(self, pos) : double {
             let S : string = ToString(self);
@@ -169,18 +176,20 @@ package
            E262-4 draft proposals:bug_fixes - FUNCTION.LENGTH
          */
         prototype function concat(...args)
-            string.concatHelper(this, args);
+            string.helper::concat(this, args);
 
+        /*
         override intrinsic function concat(...args) : string
-            string.concatHelper(this, args);
+            string.helper::concat(this, args);
+        */
 
         static function concat(self, ...args)
-            string.concatHelper(self, args);
+            string.helper::concat(self, args);
 
         /* IMPLEMENTATION DEVICE.  This method is not private,
          * it is called from methods in 'String'.
          */
-        static function concatHelper(self, strings) : string {
+        helper static function concat(self, strings) : string {
             let S : string = ToString(self);
             let n : uint = strings.length;
             for (let i : uint = 0; i < n ; i++)
@@ -196,8 +205,10 @@ package
         prototype function indexOf(searchString, position)
             string.indexOf(this, searchString, position);
 
+        /*
         override intrinsic function indexOf(searchString: string, position: double = 0.0) : double
             string.indexOf(this, searchString, position);
+        */
 
         static function indexOf(self, searchString, position) : double {
             let S     : string = ToString(self);
@@ -227,8 +238,10 @@ package
         prototype function lastIndexOf(searchString, position)
             string.lastIndexOf(this, searchString, position);
 
+        /*
         override intrinsic function lastIndexOf(searchString: string, position: double) : double
             string.lastIndexOf(self, searchString, position);
+        */
 
         static function lastIndexOf(self, searchString, position) : double {
             let S     : string = ToString(self);
@@ -258,8 +271,10 @@ package
         prototype function localeCompare(that)
             string.localeCompare(this, that);
 
+        /*
         override intrinsic function localeCompare(that : string) : double
             string.localeCompare(self, that);
+        */
 
         /* INFORMATIVE - this is correct for a "simple" locale, eg English */
         static function localeCompare(self, that) : double {
@@ -285,8 +300,10 @@ package
         prototype function match(regexp)
             string.match(this, regexp);
 
+        /*
         override intrinsic function match(regexp: RegExp) : Array
             string.match(this, regexp);
+        */
 
         static function match(self, regexp): Array {
             let S : string = ToString(self);
@@ -329,10 +346,12 @@ package
            Note that the superclass uses String!, and will need to be involved in the fix
            somehow.
         */
+        /*
         override
         intrinsic function replace(searchValue: (String!,RegExp!),
                                    replaceValue: (String!,function(...):String!)) : string
             string.replace(this, searchValue, replaceValue);
+        */
 
         static function replace(self, s, r): string {
 
@@ -462,8 +481,10 @@ package
         prototype function search(regexp)
             string.search(this, regexp);
 
+        /*
         override intrinsic function search(regexp: RegExp!) : double
             string.search(this, regexp);
+        */
 
         static function search(self, regexp): double {
             let S   : string = ToString(self);
@@ -483,8 +504,10 @@ package
         prototype function slice(start, end)
             string.slice(this, start, end);
 
+        /*
         override intrinsic function slice(start: double, end: double): Array
             string.slice(this, start, end);
+        */
 
         static function slice(self, s, e): Array {
             let S     : string = ToString(self);
@@ -511,9 +534,11 @@ package
 
            Note that the superclass uses String! and that that has an impact here.
         */
+        /*
         override
         intrinsic function split(separator:(String!,RegExp!), limit: uint = uint.MAX_VALUE): Array!
             string.split(this, separator, limit)
+        */
 
         static function split(self, separator, limit) : Array! {
 
@@ -616,8 +641,10 @@ package
         prototype function substring(start, end)
             string.substring(this, start, end);
 
+        /*
         override intrinsic function substring(start: double, end: double=this.length) : string
             string.substring(this, start, end);
+        */
 
         static function substring(self, start, end) : string {
             let S   : string = ToString(self);
@@ -649,8 +676,10 @@ package
         prototype function toLowerCase()
             string.toLowerCase(this);
 
+        /*
         override intrinsic function toLowerCase() : string
             string.toLowerCase(this);
+        */
 
         static function toLowerCase(self): string {
             let S   : string = ToString(self);
@@ -675,8 +704,10 @@ package
         prototype function toLocaleLowerCase()
             string.toLocaleLowerCase(this);
 
+        /*
         override intrinsic function toLocaleLowerCase() : string
             string.toLowerCase(this);
+        */
 
         /* INFORMATIVE - this is correct for a "simple" locale, eg English */
         static function toLocaleLowerCase(self): string
@@ -689,8 +720,10 @@ package
         prototype function toUpperCase()
             string.toUpperCase(this);
 
+        /*
         override intrinsic function toUpperCase() : string
             string.toUpperCase(this);
+        */
 
         static function toUpperCase(self): string {
             let S   : string = ToString(self);
@@ -715,8 +748,10 @@ package
         prototype function toLocaleUpperCase()
             string.toLocaleUpperCase(this);
 
+        /*
         override intrinsic function toLocaleUpperCase() : string
             string.toLocaleUpperCase(this);
+        */
 
         /* INFORMATIVE - this is correct for a "simple" locale, eg English */
         static function toLocaleUpperCase(self)
@@ -727,29 +762,38 @@ package
         prototype function parseJSON()
             this.parseJSON();
 
+        /*
         override intrinsic function parseJSON(...args)
             JSON.parse.apply(null, args.unshift(this));
+        */
 
 
         /* E262-4 draft proposals:string.prototype.trim */
         prototype function trim()
             ToString(this).trim();
 
-        override intrinsic function trim() : string {
-            let len  : uint = this.length;
+        /*
+        override intrinsic function trim() : string
+            string.trim(this);
+        */
+
+        static function trim(s: string) : string {
+            let len  : uint = s.length;
             let i, j : uint;
 
-            for ( i=0 ; i < len && Unicode.isTrimmableSpace(charAt(i)) ; i++ )
+            for ( i=0 ; i < len && Unicode.isTrimmableSpace(s.charAt(i)) ; i++ )
                 ;
-            for ( j=len-1 ; j >= i && Unicode.isTrimmableSpace(charAt(j)) ; j-- )
+            for ( j=len-1 ; j >= i && Unicode.isTrimmableSpace(s.charAt(j)) ; j-- )
                 ;
-            return substring(i,j+1);
+            return s.substring(i,j+1);
         }
 
 
         /* E262-3 15.5.5.1: length. */
+        /*
         override function get length() : uint
             magic::stringLength(this);
+        */
 
         /* The E262-3 string primitive consumes all additional [[set]] operations. */
         meta function set(n,v) : void

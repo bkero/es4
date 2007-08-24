@@ -60,9 +60,10 @@ package
     use default namespace public;
     use namespace intrinsic;
     use strict;
+    import ECMAScript4_Internal.*;
 
     /* The January 2007 meeting resolved that String is open and
-     * dynamic
+     * dynamic.
      */
     dynamic class String
     {
@@ -82,10 +83,7 @@ package
            E262-4 draft proposals:bug_fixes - FUNCTION.LENGTH
         */
         static function fromCharCode(...args)
-            string.fromCharCodeHelper(args);
-
-        intrinsic static function fromCharCode(...args) : double
-            string.fromCharCodeHelper(args);
+            string.helper::fromCharCode(args);
 
         /* E262-3 15.5.4.2: String.prototype.toString */
         prototype function toString(this : String) {
@@ -140,13 +138,13 @@ package
            E262-4 draft proposals:bug_fixes - FUNCTION.LENGTH
          */
         prototype function concat(...args)
-            string.concatHelper(this, args);
+            string.helper::concat(this, args);
 
         static function concat(self, ...args) : string
-            string.concatHelper(self, args);
+            string.helper::concat(self, args);
 
         intrinsic function concat(...args) : string
-            string.concatHelper(this, args);
+            string.helper::concat(this, args);
 
 
         /* E262-3 15.5.4.7: String.prototype.indexOf
@@ -274,10 +272,10 @@ package
         prototype function substr(start, length)
             string.substr(this, start, length);
 
-        static function substring(self, start, length): string
+        static function substr(self, start, length): string
             string.substr(self, start, length);
 
-        intrinsic function substring(start: double, length: double): string
+        intrinsic function substr(start: double, length: double): string
             string.substr(this, start, length);
 
 
@@ -335,18 +333,24 @@ package
 
         /* E262-4 draft proposals:json_encoding_and_decoding */
         prototype function parseJSON(...args)
-            string.parseJSONHelper(this, args);
+            string.helper::parseJSON(this, args);
+
+        static function parseJSON(...args)
+            string.helper::parseJSON(this, args);
 
         intrinsic function parseJSON(...args)
-            string.parseJSONHelper(this, args);
+            string.helper::parseJSON(this, args);
 
 
         /* E262-4 draft proposals:string.prototype.trim */
         prototype function trim()
-            string.trim(this);
+            string.trim(string(this));
+
+        static function trim() : string
+            string.trim(string(this));
 
         intrinsic function trim() : string
-            string.trim(this);
+            string.trim(string(this));
 
 
         /* E262-3 15.5.5.1: length. */

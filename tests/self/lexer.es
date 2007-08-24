@@ -147,7 +147,8 @@ namespace Char
     const SingleQuote = "'".charCodeAt(0);
     const DoubleQuote = "\"".charCodeAt(0);
     const Space = " ".charCodeAt(0);
-    const Newline = "\n".charCodeAt();
+    const Tab = "\t".charCodeAt(0);
+    const Newline = "\n".charCodeAt(0);
 
     function fromOctal (str)
 	: int
@@ -517,6 +518,9 @@ namespace Token
 
         function tokenText () : String
         {
+            if (kind===StringLiteral) {
+                return this.utf8id.slice(1,this.utf8id.length);
+            }
             return this.utf8id;
         }
 
@@ -616,16 +620,32 @@ namespace Token
         }
     }
 
-    function makeInstance(token_class:int, lexeme:String) : int
+    function makeInstance(kind:int, text:String) : int
     {
-        tokenStore.push(new Token(token_class, lexeme));
-        return tokenStore.length - 1;
+        function find() {
+            for ( var i=0 ; i < len ; i++ ) {
+                if (tokenStore[i].kind === kind &&
+                    tokenStore[i].utf8id == text) {
+                    return i;
+                }
+            }
+            return len;
+        }
+
+        var len = tokenStore.length;
+        var tid = find (kind,text);
+        if (tid === len) 
+        {
+            tokenStore.push(new Token(kind, text));
+        }
+        return tid;
     }
 
     function tokenKind (tid : int) : int
     {
         // if the token id is negative, it is a token_class
 
+        //print("tid=",tid);
         if (tid < 0)
         {
            return tid;
@@ -648,7 +668,7 @@ namespace Token
             var tok : Token = tokenStore[tid];
             var text = tok.tokenText();
         }
-        // print("tokenText: ",tid,", ",text);
+        //print("tokenText: ",tid,", ",text);
         return text;
     }
 
@@ -669,20 +689,22 @@ namespace Lexer
 
     class Scanner
     {
-        private var tokenList : Array;
-        private var followsNewline : Boolean;
-
         private var src : String;
         private var origin : String;
         private var curIndex : int;
         private var markIndex : int;
+        private var lastMarkIndex : int;
+        private var colCoord : int;
+        private var lnCoord : int;
 
         public function Scanner (src:String, origin:String)
             : src = src
             , origin = origin
-            , tokenList = new Array
             , curIndex = 0
             , markIndex = 0
+            , lastMarkIndex = 0
+            , colCoord = 0
+            , lnCoord = 0
         {
             print("scanning: ",src);
         }
@@ -711,30 +733,51 @@ namespace Lexer
             : void
         {
             curIndex--;
-            // print("retract cur=",curIndex);
+            //print("retract cur=",curIndex);
         }
 
         private function mark ()
             : void
         {
             markIndex = curIndex;
-	    // print("mark mark=",markIndex);
+	    //print("mark mark=",markIndex);
         }
 
         public function tokenList (lexPrefix)
-            : int
+            //            : [[int],[[int,int]]]
         {
-            let tokenList = new Array;
+            function pushToken (token)
+            {
+                if (token == Token::Eol) {
+                    lnCoord++;
+                    colCoord = 0;
+                }
+                else {
+                    print ("token ", token, " \t", Token::tokenText(token));
+                    colCoord += markIndex - lastMarkIndex;
+                    coordList.push ([lnCoord,colCoord]);
+                    tokenList.push (token);
+                    lastMarkIndex = markIndex;
+                }
+            }
+
+            var tokenList = new Array;
+            var coordList = new Array;
+
             let token = lexPrefix ();
-            tokenList.push (token);
+            pushToken (token);
+
             while (token != Token::BREAK &&
                    token != Token::EOS &&
                    token != Token::ERROR)
             {
                 token = start ();
-                tokenList.push (token);
+                pushToken (token);
             }
-            return tokenList;
+
+            //print("tokenList = ",tokenList);
+            //print("coordList = ",coordList);
+            return [tokenList,coordList];
         }
 
         public function regexp ()
@@ -742,12 +785,12 @@ namespace Lexer
             let c : int = next ();
             switch (c)
             {
-                case Char::Slash :
-                    return regexpFlags ();
+            case Char::Slash :
+                return regexpFlags ();
 	        case Char::EOS :
-		    throw "unexpected end of program in regexp literal";
-                default:
-                    return regexp ();
+                throw "unexpected end of program in regexp literal";
+            default:
+                return regexp ();
             }
         }
 
@@ -771,7 +814,7 @@ namespace Lexer
             {
                 mark();
                 c = next();
-                //                print("c[",curIndex-1,"]=",String.fromCharCode(c));
+                //print("c[",curIndex-1,"]=",String.fromCharCode(c));
                 switch (c)
                 {
                 case 0xffffffef: return utf8sig ();
@@ -779,6 +822,7 @@ namespace Lexer
                 case Char::Slash: return slash ();
                 case Char::Newline: return Token::Eol;
                 case Char::Space: return start ();
+                case Char::Tab: return start ();
                 case Char::LeftParen: return Token::LeftParen;
                 case Char::RightParen: return Token::RightParen;
                 case Char::Comma: return Token::Comma;
@@ -1061,21 +1105,28 @@ namespace Lexer
 	    let c : int = next ();
 	    switch (c) {
 	    case Char::Asterisk :
-		switch (next()) {
-		case Char::Slash:
-		    return;
-		case Char::EOS :
-		    retract ();
-		    return;
-		default:
-		    retract (); // leave in case its an asterisk
-		    blockComment ();
-		}
+            switch (next()) {
+            case Char::Slash:
+                return;
+            case Char::EOS :
+                retract ();
+                return;
+            case Char::Asterisk:
+                retract (); // leave in case next char is a slash
+                return blockComment ();
+            case Char::Newline:
+                colCoord = 0;
+                lnCoord++; // count ln and fall through
+            default:
+                return blockComment ();
+            }
 	    case Char::EOS :
-		retract ();
-		return;
+            retract ();
+            return;
+        case Char::Newline:
+            lnCoord++; // fall through
 	    default :
-		return blockComment ();
+            return blockComment ();
 	    }
 	}
 
@@ -1084,13 +1135,14 @@ namespace Lexer
 	{
 	    let c : int = next ();
 	    switch (c) {
-	    case delimiter : return Token::makeInstance (Token::StringLiteral, String.fromCharCode(delimiter)+text);
-		// encode delimiter in string lexeme by appending to text
+	    case delimiter:
+            return Token::makeInstance (Token::StringLiteral, String.fromCharCode(delimiter)+text);
+            // encode delimiter in string lexeme by appending to text
 	    case Char::BackSlash:
-		let c = escapeSequence ();
-		return identifier (str+String.fromCharCode(c));
-	    default :
-		return stringLiteral (delimiter, text+String.fromCharCode (c))
+            let c = escapeSequence ();
+            return stringLiteral (delimiter, text+String.fromCharCode(c));
+	    default:
+            return stringLiteral (delimiter, text+String.fromCharCode (c))
 	    }
 	}
 
@@ -1111,28 +1163,30 @@ namespace Lexer
 	    case Char::Five:
 	    case Char::Six:
 	    case Char::Seven:
-		retract ();
-		return octalOrNulEscape ();
+            retract ();
+            return octalOrNulEscape ();
 	    case Char::x:
-		return hexEscape (2);
+            return hexEscape (2);
 	    case Char::u:
-		return hexEscape (4);
+            return hexEscape (4);
 	    case Char::b:
-		return Char::Backspace;
+            return Char::Backspace;
 	    case Char::f:
-		return Char::Formfeed;
+            return Char::Formfeed;
 	    case Char::n:
-		return Char::Newline;
+            return Char::Newline;
 	    case Char::r:
-		return Char::CarriageReturn;
+            return Char::CarriageReturn;
 	    case Char::t:
-		return Char::Tab;
+            return Char::Tab;
 	    case Char::v:
-		return Char::VerticalTab;
+            return Char::VerticalTab;
 	    case Char::SingleQuote:
 	    case Char::DoubleQuote:
 	    case Char::BackSlash:
-		return c;
+            return c;
+        default:
+            throw "lexer error escapeSequence " + c;
 	    }
 	}
 
@@ -1701,7 +1755,7 @@ namespace Lexer
             : int
         {
             let c : int = next ();
-            //            print("c[",curIndex-1,"]=",String.fromCharCode(c))
+            //print("c[",curIndex-1,"]=",String.fromCharCode(c))
             switch (c)
             {
             case Char::a :
@@ -1886,6 +1940,7 @@ namespace Lexer
 			, "\\u0050 \\x50gh \\073 \\73 \\073123 \\7398"
                         , "/abc/ 'hi' \"bye\" null break /def/xyz" ].reverse();
 
+        /*
 	while (testCases.length > 0) {
             var scan = new Scanner (testCases.pop());
             var list = scan.tokenList (scan.start);
@@ -1907,7 +1962,7 @@ namespace Lexer
             } while (tk != Token::EOS);
             print ("scanned!");
 	}
+        */
     }
-
     //    test ();
 }

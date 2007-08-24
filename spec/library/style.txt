@@ -1,5 +1,7 @@
 == Rules for the library descriptions (and code) ==
 
+2007-08-16 / lhansen@adobe.com / rev 2
+
 === General guidelines ===
 
 - Follow E262-3 where reasonable, to preserve continuity.  Steal prose
@@ -8,8 +10,34 @@
 - Strive for uniformity, separation of concerns, and grouping of
   related functionality.
 
+- Describe classes as classes, not as "constructor functions".
 
 === Specific rules ===
+
+- The general layout for a section describing a class is:
+
+   - overview / purpose
+   - synopsis (as a class definition exporting signatures)
+   - internal calculations, helper functions, helper values
+   - class methods
+     - constructors and converters
+     - other static methods
+   - class properties
+   - instance methods
+     - intrinsic methods
+     - public methods
+     - getters
+     - setters
+   - instance properties
+   - the prototype object
+     - synopsis (as an object literal with method bodies and values omitted)
+     - methods
+     - properties
+
+- For every function or method, there are three sections: a summary of
+  what it does, a succinct description of what it returns (when
+  appropriate), and a description of its semantics as an ES4 fragment
+  (unless there is no ES4 model for the function).
 
 - If there are "static" variants of a method, then that method is the
   authoritative one, and intrinsic and prototype methods forward to
@@ -34,6 +62,12 @@
   NOTE, this is probably not right for a number of cases; it depends
   on what we mean by typechecking and conversion.  See open issue in
   following section.
+
+- Helper functions shall be defined in the "helper" namespace, and
+  informative functions shall be defined in the "informative"
+  namespace.  These are internal namespaces not available to user
+  code, and not visible in a production system (ie they are not
+  actually reserved).
 
 - If a method requires helper code or helper types, then the helper
   code or types shall be presented with the method if only that method
@@ -103,11 +137,6 @@
 
 - What are the ECMA constraints for the spec, if any?
 
-- Some new properties are visible because we haven't bothered to make
-  them internal (there are some open tickets on this).  One way to
-  make them internal is to export a namespace from an internal package
-  and to use this namespace to annotate the functions.
-
 - Use of private packages (like Unicode and Library): how to handle
   this?  Maybe a common "LibraryInternals" package is OK with some
   prose stating that "this thing is internal".
@@ -123,8 +152,8 @@
   otherwise, and we should assume "default namespace public" always,
   and always note when something is private?
 
-- Shall the prototype method shall have an E262-3 compatible signature
-  or typed signatures?  This depends on whether annotations imply
+- Shall the prototype method have an E262-3 compatible signature or
+  typed signatures?  This depends on whether annotations imply
   conversions or not.  If they do, then "x:double" on a function is
   fine, there is no need for an untyped interface with an explicit
   "ToDouble" or "x to double" conversion in the body.  There is some

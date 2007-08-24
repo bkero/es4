@@ -1,0 +1,72 @@
+= ByteArray Objects =
+
+<P>A ''ByteArray'' object is a container for an indexable, dense,
+mutable, and extensible sequence of unsigned integer values in the
+value range 0 through 255.
+
+<NOTE>ByteArray objects are motivated by efficiency: They are likely
+to use less storage and to be faster than Array objects.
+
+
+== Synopsis ==
+
+{{{
+intrinsic final class ByteArray
+{
+    <SIGNATURE file="ByteArray.es" name="function ByteArray">
+    <SIGNATURE file="ByteArray.es" name="meta static function invoke">
+
+    <SIGNATURE file="ByteArray.es" name="static function fromString">
+    <SIGNATURE file="ByteArray.es" name="static function fromArray">
+
+    <SIGNATURE file="ByteArray.es" name="override intrinsic function toString">
+    <SIGNATURE file="ByteArray.es" name="function get length">
+    <SIGNATURE file="ByteArray.es" name="function set length">
+
+    <SIGNATURE file="ByteArray.es" name="meta function get">
+    <SIGNATURE file="ByteArray.es" name="meta function set">
+}
+}}}
+
+<FIXME>Why is this class ''intrinsic''?  It should be enough for it to
+be ''__ES4__'' for it to be hidden.
+
+<COMP>The ''ByteArray'' class is new in 4th Edition.
+
+<COMP>The ''ByteArray'' class in 4th Edition is compatible with the
+''ByteArray'' class in ActionScript <CITE ref="ActionScript manual">
+in the sense that it does not define any methods that conflict with
+methods defined by the latter (as of ActionScript 3 and Adobe Flex 2).
+
+== Construction ==
+
+=== The ByteArray Class Called as a Function ===
+
+<P> This creates a new ByteArray and then populates it with data from
+the argument(s).
+
+<FIXME> The following is a proposal.
+
+<P> If the argument is anything with a "length" property, then
+elements from 0 through length-1 are extracted.  If an element is a string then
+its first character code is extracted.  If an element is numeric then it is converted to uint().
+(If neither string nor numeric an exception is thrown.)
+Finally the low 8 bits of the value are appended to the ByteArray.
+
+<P> There can be arbitrarily many arguments.
+
+
+=== The ByteArray Constructor ===
+
+
+=== Creating ByteArrays from Strings ===
+
+<FIXME> I vote that we remove this, ByteArray(string) does the same job
+
+=== Creating ByteArrays from Objects ===
+
+<FIXME> I vote that we remove this, ByteArray(array) does the same job
+
+
+== Methods on ByteArray Objects ==
+

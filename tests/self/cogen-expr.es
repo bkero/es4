@@ -202,7 +202,7 @@ package cogen
 
         let incdec = function incdec(pre, inc) {
             let name;
-            switch type (e.ex) {
+            switch type (e.e1) {
             case (lr:LexicalRef) {
                 name = emitter.nameFromIdentExpr(lr.ident);
                 asm.I_findpropstrict(name);
@@ -235,7 +235,7 @@ package cogen
 
         switch type (e.op) {
         case (op:Delete) {
-            switch type (e.ex) {
+            switch type (e.e1) {
             case (lr:LexicalRef) {
                 let name = emitter.nameFromIdentExpr(lr.ident);
                 asm.I_findproperty(name);
@@ -246,26 +246,26 @@ package cogen
                 cgExpr(ctx, or.base);
                 asm.I_deleteproperty(name);
             }
-            case (ex:*) {
-                cgExpr(ctx, ex);
+            case (e1:*) {
+                cgExpr(ctx, e1);
                 asm.I_pop();
                 asm.I_pushtrue();
             }
             }
         }
         case (op:Void) {
-            cgExpr(ctx, e.ex);
+            cgExpr(ctx, e.e1);
             asm.I_pop();
             asm.I_pushundefined();
         }
         case (op:Typeof) {
-            if (e.ex is LexicalRef) {
-                let name = emitter.nameFromIdentExpr(e.ex.ident);
+            if (e.e1 is LexicalRef) {
+                let name = emitter.nameFromIdentExpr(e.e1.ident);
                 ctx.asm.I_findproperty(name);
                 ctx.asm.I_getproperty(name);
             }
             else {
-                cgExpr(ctx, e.ex);
+                cgExpr(ctx, e.e1);
                 // I_typeof is not compatible with ES4, so do something elaborate to work around that.
                 asm.I_dup();
                 asm.I_pushnull();
@@ -283,19 +283,19 @@ package cogen
         case (op:PostIncr) { incdec(false, true) }
         case (op:PostDecr) { incdec(false, false) }
         case (op:UnaryPlus) {
-            cgExpr(ctx, e.ex);
+            cgExpr(ctx, e.e1);
             asm.I_convert_d();
         }
         case (op:UnaryMinus) {
-            cgExpr(ctx, e.ex);
+            cgExpr(ctx, e.e1);
             asm.I_negate();
         }
         case (op:BitwiseNot) {
-            cgExpr(ctx, e.ex);
+            cgExpr(ctx, e.e1);
             asm.I_bitnot();
         }
         case (op:LogicalNot) {
-            cgExpr(ctx, e.ex);
+            cgExpr(ctx, e.e1);
             asm.I_not();
         }
         case (op:*) { throw "Internal error: Unimplemented unary operation" }
@@ -314,7 +314,7 @@ package cogen
     function cgCallExpr(ctx, e) {
         let {asm:asm, emitter:emitter} = ctx;
         let name = null;
-        switch type (e.func) {
+        switch type (e.expr) {
         case (or:ObjectRef) {
             name = emitter.nameFromIdentExpr(or.ident);
             cgExpr(ctx, or.base);
@@ -332,7 +332,7 @@ package cogen
             asm.I_pushnull();
         }
         case (x:*) {
-            cgExpr(ctx, e.func);
+            cgExpr(ctx, e.expr);
             asm.I_pushnull();
         }
         }
@@ -351,12 +351,12 @@ package cogen
     }
 
     function cgLetExpr(ctx, e) {
-        // FIXME
-        throw "Unimplemented let expression";
+        cgHead(ctx, e.head);
+        cgExpr(ctx, e.expr);
     }
 
     function cgNewExpr(ctx, e) {
-        cgExpr(ctx, e.func);
+        cgExpr(ctx, e.expr);
         for ( let i=0 ; i < e.args.length ; i++ )
             cgExpr(ctx, e.args[i]);
         ctx.asm.I_construct(e.args.length);
@@ -364,7 +364,7 @@ package cogen
 
     function cgObjectRef(ctx, e) {
         cgExpr(ctx, e.base);
-        ctx.asm.I_findproperty(ctx.emitter.nameFromIdentExpr(e.ident));
+        ctx.asm.I_getproperty(ctx.emitter.nameFromIdentExpr(e.ident));
     }
 
     function cgLexicalRef({asm:asm, emitter:emitter}, e) {
@@ -455,8 +455,17 @@ package cogen
     }
 
     function cgInitExpr(ctx, e) {
-        // FIXME
-        throw "Unimplemented init expr";
+        let asm = ctx.asm;
+        let baseOnStk = false;
+        cgHead(ctx, e.head);
+        switch type (e.target) {
+            case (i:InstanceInit ) {
+                // Load this on the stack
+                asm.I_getlocal(0);
+                baseOnStk = true;
+            }
+        }
+        cgInits(ctx, e.inits, baseOnStk);
     }
 
     function cgLiteralExpr(ctx, e) {
@@ -544,7 +553,7 @@ package cogen
     }
 
     function cgGetParamExpr(ctx, e) {
-        // FIXME
-        throw "Unimplemented getParam expression";
+        let asm = ctx.asm;
+        asm.I_getlocal(e.n + 1);  //account for 'this'
     }
 }

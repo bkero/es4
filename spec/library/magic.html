@@ -1,0 +1,18 @@
+= Magic functions =
+
+== magic::apply (fn:Function!, thisArg:Object!, argArray:Array!) ==
+
+<p>Invokes the [[Call]] property of //fn// on the //argArray.length//
+arguments //argArray[0]//, //argArray[1]//, <LDOTS> ,
+//argArray[argArray.length-1]//, with the //this// object bound to the
+value of //thisArg//.
+
+<p>Uses the standard invocation protocol: an exception is thrown if
+the manifest types of the argument values do not match the type
+annotations of the formal parameters of //fn//.
+
+<p>If //fn// throws an exception, the exception is propagated to the
+caller of ''magic::apply''.  Otherwise returns the return value of
+//fn//.
+
+<p>The call is a tail call.

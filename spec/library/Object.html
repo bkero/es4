@@ -1,163 +1,295 @@
 <!-- Object.html
+  --
+  -- The class "Object"
+  --
+  -- Copyright (C) 2007 ECMA International
+  -- Contains material from older specs.
+  --
+  -- Status: incomplete
+  -- Review: not reviewed
+  -->
 
-     The "Object" object
 
-     Copyright (C) 2007 ECMA International
-     Contains material from older specs.
+<h1 id="class Object"> The class ''Object'' </h1>
 
-     Owner : lth
-     Status: incomplete
-     Review: not reviewed
--->
+<P> The class ''Object'' is a dynamic non-final class that does not
+subclass any other objects: it is the root of the class hierarchy.
 
-= ''Object'' Objects =
-
-<p>All values in ECMAScript except **undefined** and **null** are
+<p> All values in ECMAScript except **undefined** and **null** are
 instances of the class ''Object'' or one of its subclasses.
 
-<p>The class ''Object'' has the following interface:
+<NOTE> Host objects may not be instances of ''Object'' or its
+subclasses, but must to some extent behave as if they are (see <XREF
+target="Host objects">).
+
+
+== Synopsis ==
+
+<p>The class ''Object'' provides the following interface:
 
 {{{
 dynamic class Object
 {
-    function Object(value=undefined) ...
-
-    meta static function invoke(value=undefined) ...
+    function Object(value=undefined) <LDOTS>
+    <SIGNATURE file="Object.es" name="meta static function invoke">
 
     static const length: uint = 1
-    static const prototype: Object = ...
+    static const prototype: Object = <LDOTS>
 
-    intrinsic function toString(): string ...
-    intrinsic function toLocaleString(): string ...
-    intrinsic function toJSONString(...args): string ...
-    intrinsic function valueOf(): Object! ...
-    intrinsic function hasOwnProperty(V : EnumerableId): boolean ...
-    intrinsic function isPrototypeOf(V): boolean
-    intrinsic function propertyIsenumerable(prop: EnumerableId, e=undefined): boolean ...
+    <SIGNATURE file="Object.es" name="intrinsic function toString">
+    <SIGNATURE file="Object.es" name="intrinsic function toLocaleString">
+    <SIGNATURE file="Object.es" name="intrinsic function toJSONString">
+    <SIGNATURE file="Object.es" name="intrinsic function valueOf">
+    <SIGNATURE file="Object.es" name="intrinsic function hasOwnProperty">
+    <SIGNATURE file="Object.es" name="intrinsic function isPrototypeOf">
+    <SIGNATURE file="Object.es" name="intrinsic function propertyIsEnumerable">
 }
 }}}
 
 
-== The ''Object'' Constructor Called as a Function ==
+== Methods on the ''Object'' class object ==
 
-<p>When ''Object'' is called as a function rather than as a
-constructor, it performs a type conversion.
+=== new Object ( value ) ===
 
-=== ''Object ( value = undefined )'' ===
+<DESC> When the ''Object'' constructor is called with an argument
+//value// (defaulting to **undefined**) as part of a ''new''
+expression, it transforms the //value// to an object in a way that
+depends on the type of //value//.
 
-<p>When the ''Object'' function is called with no arguments or with one
-argument value, the following steps are taken:
+<RETN> The ''Object'' constructor returns an object (an instance of
+''Object'' or one of its subclasses, or a host object).
 
+<IMPL> The ''Object'' constructor can't be expressed as a regular
+ECMAScript constructor.  Instead it is presented below as a function
+''makeObject'' that the ECMAScript implementation will invoke when
+it evaluates ''new Object''.
+
+<P> The function ''makeObject'' is only invoked on native ECMAScript
+values.  If ''new Object'' is evaluated on a host object, then actions
+are taken and a result is returned in an implementation dependent
+manner that may depend on the host object.
+
+{{{
+function makeObject(value=undefined) {
+    switch type (value) {
+    case (s:string) { 
+        return new String(s);
+    }
+    case (b:boolean) { 
+        return new Boolean(b);
+    }
+    case (n:(int,uint,double,decimal)) { 
+        return new Number(n);
+    }
+    case (o:Object) {
+        return o;
+    }
+    case (x:(null,undefined)) { 
+        return magic::createObject();
+    }
+    }
+}
+}}}
+
+
+=== Object ( value ) ===
+
+<DESC> When the ''Object'' class object is called as a function with zero
+or one arguments it performs a type conversion.
+
+<RETN> It returns the converted value.
+
+<SHORTIMPL>
 <INCLUDE file="Object.es" name="meta static function invoke">
 
 
-== The Object Constructor ==
 
-<p>When ''Object'' is called as part of a new expression, it is a
-constructor that may create an object.
+== Properties of the ''Object'' class object ==
 
-=== ''new Object ( value = undefined )'' ===
+=== [[Prototype]] ===
 
-<p>When the Object constructor is called with no arguments or with one
-argument value, the following steps are taken:
+<p> The value of the internal [[Prototype]] property of the ''Object''
+class object is the ''Function'' prototype object (<XREF
+target="Function.prototype">).
 
-<INCLUDE file="eval.sml" name="specialObjectConstructor">
-
-
-== Properties of the ''Object'' Constructor ==
-
-<p> The value of the internal [[Prototype]] property of the Object
-constructor is the Function prototype object.
-
-<p>Besides the internal properties and the ''length'' property (whose
-value is 1), the Object constructor has the following properties:
-
-=== ''Object.prototype'' ===
-
-<p>The initial value of Object.prototype is the Object prototype object (<XREF target="obj-proto-props">).
-
-<p>This property has the attributes { DontEnum, DontDelete, ReadOnly }.
+<FIXME> Either (a) this is the general rule and therefore true for all
+user-defined classes too or (b) the RI needs special hackarounds and those
+need to be documented explicitly here.
 
 
-== Methods on Object instances ==
+=== length ===
 
-=== ''toString ( )'' ===
+<P> The value of the constant ''length'' property is ''1''.
 
-<p>When the ''toString'' method is called, the following steps are taken:
+=== prototype ===
 
+<P> The initial value of the ''prototype'' property is the ''Object''
+prototype object (<XREF target="Object.prototype">).
+
+
+== Methods on ''Object'' instances ==
+
+=== intrinsic::toString ( ) ===
+
+<DESC> The intrinsic ''toString'' method converts the ''this'' object
+to a string.
+
+<RETN> The intrinsic ''toString'' method returns the concatenation of
+''"["'', ''"Object"'', the class name of the object, and ''"]"''.
+
+<SHORTIMPL>
 <INCLUDE file="Object.es" name="intrinsic function toString">
 
+<p> The function ''magic::getClassName'' extracts the [[Class]] property
+from the object.  See <XREF target="magic:getClassName">.
 
-=== ''toLocaleString ( )'' ===
 
-<p>This function returns the result of calling ''toString()''.
+=== intrinsic::toLocaleString ( ) ===
 
+<DESC> The intrinsic ''toLocaleString'' method calls the public
+''toString'' method on the ''this'' object.
+
+<NOTE> This method is provided to give all objects a generic
+''toLocaleString'' interface, even though not all may use it.
+Currently, ''Array'', ''Number'', and ''Date'' provide their own
+locale-sensitive ''toLocaleString'' methods.
+
+<NOTE> The first parameter to this function is likely to be used in a
+future version of this standard; it is recommended that
+implementations do not use this parameter position for anything else.
+
+<RETN> The intrinsic ''toLocaleString'' method returns a string.
+
+<SHORTIMPL>
 <INCLUDE file="Object.es" name="intrinsic function toLocaleString">
 
-<p class="note">NOTE 1<br>
-This function is provided to give all Objects a generic ''toLocaleString'' interface, even though not
-all may use it. Currently, Array, Number, and Date provide their own locale-sensitive
-toLocaleString methods.
 
-<p class="note">NOTE 2<br>
-The first parameter to this function is likely to be used in a future version of this standard; it is
-recommended that implementations do not use this parameter position for anything else.
+=== intrinsic::toJSONString ( ) ===
+
+<FIXME>Waiting for proposal to be cleaned up and the RI method to be
+implemented.  This may have the same issues as ''toLocaleString'':
+care must be taken.
 
 
-=== ''toJSONString ( )'' ===
+=== intrinsic::valueOf ( ) ===
 
-<p>This function returns the result of calling ''toJSONString()''.
+<DESC> The intrinsic ''valueOf'' method returns its ''this'' value.
 
-<INCLUDE file="Object.es" name="intrinsic function toJSONString">
+<P> If the object is the result of calling the Object constructor with
+a host object (<XREF target="Host objects">), it is
+implementation-defined whether ''valueOf'' returns its ''this'' value
+or another value such as the host object originally passed to the
+constructor.
+
+<RETN> The intrinsic ''toLocaleString'' method returns an object value.
+
+<SHORTIMPL>
+<INCLUDE file="Object.es" name="intrinsic function valueOf">
 
 
-=== ''valueOf ( )'' ===
+=== intrinsic::hasOwnProperty ( name ) ===
 
-<p>The ''valueOf'' method returns its this value. If the object is the
-result of calling the Object constructor with a host object (<XREF
-target="host-object-defn">), it is implementation-defined whether
-''valueOf'' returns its this value or another value such as the host
-object originally passed to the constructor.
+<DESC> The intrinsic ''hasOwnProperty'' method determines whether the
+''this'' object contains a property with a certain //name//, without
+considering the prototype chain.
 
+<NOTE>Unlike [[HasProperty]] (<XREF target="HasProperty-defn">), this
+method does not consider objects in the prototype chain.
 
-=== ''hasOwnProperty (V)'' ===
+<RETN> The intrinsic ''hasOwnProperty'' method returns ''true'' if the
+object contains the property, otherwise it returns ''false''.
 
-<p>When the ''hasOwnProperty'' method is called with argument ''V'', the following steps are taken:
-
+<SHORTIMPL>
 <INCLUDE file="Object.es" name="intrinsic function hasOwnProperty">
 
-<p class="note">NOTE<br>
-Unlike [[HasProperty]] (<XREF target="HasProperty-defn">), this method does not consider objects in the prototype chain.
+<p> The function ''magic::hasOwnProperty'' tests whether the object
+contains the named property on its local property list (the prototype
+chain is not considered).  See <XREF target="magic:hasOwnProperty">.
 
 
-=== ''isPrototypeOf (V)'' ===
+=== intrinsic::isPrototypeOf ( obj ) ===
 
-<p>When the ''isPrototypeOf'' method is called with argument ''V'', the following steps are taken:
+<DESC> The intrinsic ''isPrototypeOf'' method determines whether its
+''this'' object is a prototype object of the argument //obj//.
 
+<RETN> The intrinsic ''isPrototypeOf'' method returns ''true'' if the
+''this'' object is on the prototype chain of //obj//, otherwise it
+returns ''false''.
+
+<SHORTIMPL>
 <INCLUDE file="Object.es" name="intrinsic function isPrototypeOf">
 
+<p> The function ''magic::getPrototype'' extracts the [[Prototype]] property
+from the object.  See <XREF target="magic:getPrototype">.
 
-=== ''propertyIsEnumerable (V)'' ===
 
-<p>When the ''propertyIsEnumerable'' method is called with argument
-''V'', the following steps are taken:
+=== intrinsic::propertyIsEnumerable ( name, flag=undefined ) ===
 
+<DESC> The intrinsic ''propertyIsEnumerable'' method retrieves, and
+optionally sets, the enumerability flag for a property with a certain
+//name// on the ''this'' object, without considering the prototype
+chain.
+
+<NOTE> This method does not consider objects in the prototype chain.
+
+<RETN> The intrinsic ''propertyIsEnumerable'' method returns ''false''
+if the property does not exist on the ''this'' object; otherwise it
+returns the value of the enumerability flag for the property before
+any change was made.
+
+<SHORTIMPL>
 <INCLUDE file="Object.es" name="intrinsic function propertyIsEnumerable">
 
-<p class="note">NOTE<br>
-This method does not consider objects in the prototype chain.
+<p> The function ''magic::hasOwnProperty'' tests whether the object
+contains the named property on its local property list.  See <XREF
+target="magic:hasOwnProperty">.
+
+<p> The function ''magic::getPropertyIsDontEnum'' gets the DontEnum
+flag of the property.  See <XREF target="magic:getPropertyIsDontEnum">.
+
+<p> The function ''magic::getPropertyIsDontDelete'' gets the DontDelete
+flag of the property.  See <XREF target="magic:getPropertyIsDontDelete">.
+
+<p> The function ''magic::setPropertyIsDontEnum'' sets the DontEnum
+flag of the property.  See <XREF target="magic:setPropertyIsDontEnum">.
 
 
-<h2 id="obj-proto-props">Properties of the Object Prototype Object</h2>
+== Properties of ''Object'' instances ==
 
-<p>The value of the internal [[Prototype]] property of the Object prototype object is null and the value of
-the internal [[Class]] property is "Object".
+<p>''Object'' instances have no special properties beyond those
+inherited from the ''Object'' prototype object (<XREF
+target="Object.prototype">).
 
 
-=== Methods on the Object prototype object ===
+<h2 id="Object.prototype">The ''Object'' prototype object</h2>
 
-<p>The methods on the object prototype object all call the
-corresponding intrinsic methods of the Object class, as follows.
+<P> The ''Object'' prototype object is itself an instance of the class
+''Object'', with the exception that the value of its [[Prototype]]
+property is **null**.
+
+=== Synopsis ===
+
+<P> The ''Object'' prototype object provides the following properties:
+
+{{{
+Object.prototype = {
+    toString:             function () <LDOTS> ,
+    toLocaleString:       function () <LDOTS> ,
+    toJSONString:         function () <LDOTS> ,
+    valueOf:              function () <LDOTS> ,
+    hasOwnProperty:       function (V) <LDOTS> ,
+    isPrototypeOf:        function (V) <LDOTS> ,
+    propertyIsEnumerable: function (name, flag=undefined) <LDOTS> ,
+
+    constructor:          <LDOTS>
+}
+}}}
+
+
+=== Methods on the ''Object'' prototype object ===
+
+<p> The methods on the ''Object'' prototype object all call the
+corresponding intrinsic methods of the ''Object'' class, as follows.
 
 <INCLUDE file="Object.es" name="prototype function toString">
 <INCLUDE file="Object.es" name="prototype function toLocaleString">
@@ -168,13 +300,11 @@ corresponding intrinsic methods of the Object class, as follows.
 <INCLUDE file="Object.es" name="prototype function propertyIsEnumerable">
 
 
-=== ''Object.prototype.constructor'' ===
+=== Properties of the ''Object'' prototype object ===
 
-<p>The initial value of ''Object.prototype.constructor'' is the built-in ''Object'' constructor.
+==== constructor ====
 
-
-== Properties of Object Instances ==
-
-<p>Object instances have no special properties beyond those inherited from the Object prototype object.
+<p> The initial value of the ''constructor'' property is the
+''Object'' class object.
 
 <!-- End of Object.html -->
