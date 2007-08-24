@@ -141,28 +141,31 @@ package emitter
             } 
             return new_nss;
         }
-        public function nameFromMultiname({ nss:nss, id:id }) {
-            return constants.Multiname(constants.namespaceset(flattenNamespaceSet(nss)), constants.stringUtf8(id));
+        public function multiname({ nss:nss, ident:ident }, is_attr=false) {
+            return constants.Multiname(constants.namespaceset(flattenNamespaceSet(nss)), constants.stringUtf8(ident), is_attr);
         }
-        public function nameFromNAME({ns:ns, id:id} : {ns:NAMESPACE, id:IDENT} ) {
-            return constants.QName(namespace(ns), constants.stringUtf8(id));
+        public function qname({ns:ns, id:id}, is_attr=false ) {
+            return constants.QName(namespace(ns), constants.stringUtf8(id), is_attr);
         }
         public function nameFromIdent(id) {
             return constants.QName(constants.namespace(CONSTANT_PackageNamespace, constants.stringUtf8("")),
                                    constants.stringUtf8(id));
         }
 
-        public function genMultinameL({cp:cp}) {
-            return constants.MultinameL(constants.namespaceset([constants.namespace(CONSTANT_PackageNamespace,
-                                                                                    constants.stringUtf8(""))]));
+        public function multinameL({nss:nss}, is_attr=false) {
+            return constants.MultinameL(constants.namespaceset(flattenNamespaceSet(nss)), is_attr);
         }
 
         public function nameFromIdentExpr(e) {
             use namespace Ast;
             switch type (e) {
-            case (id:Identifier) { return nameFromMultiname({nss:id.nss, id:id.ident}) }
+            case (id:Identifier) { return multiname(id) }
             case (x:*) { throw ("Unimplemented: nameFromIdentExpr " + e) }
             }
+        }
+        
+        public function rtqname({ident:ident}, is_attr=false) {
+            return constants.RTQName(constants.stringUtf8(ident), is_attr);
         }
 
         public function typeFromTypeExpr(t) {
@@ -183,7 +186,7 @@ package emitter
         public function fixtureNameToName(fn) {
             switch type (fn) {
             case (pn:PropName) {
-                return nameFromNAME(pn.name);
+                return qname(pn.name);
             }
             case (tn:TempName) {
                 // FIXME: updates "name"
