@@ -131,7 +131,7 @@ package emitter
                 }
             }
         }
-        function flattenNamespaceSet(nss:[[NAMESPACE]]) {
+        function flattenNamespaceSet(nss /*:[[NAMESPACE]]*/) {
             var new_nss = [];
             for( let i = 0; i <nss.length; i++ ) {
                 let temp = nss[i];

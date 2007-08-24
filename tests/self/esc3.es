@@ -1,12 +1,10 @@
 {
     import util.*;
     import cogen.*;
-    var file = "esc-tmp";
-    var ast = readFile (file+".ast");
-    print ("eval");
-    var ob = eval("("+ast+")");
-    print ("decode");
-    var nd3 = Decode::program (ob);
-    print("cogen");
-    dumpABCFile(cogen.cg(nd3), "esc-tmp.as");
+
+    print ("reading")
+    load ("esc-tmp.ast");  // read and eval 
+    print ("decoding");
+    var nd3 = Decode::program (ast);
+    dumpABCFile(cogen.cg(nd3), "esc-tmp.abc");
 }

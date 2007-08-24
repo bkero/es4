@@ -119,49 +119,60 @@ namespace Ast
        , PublicNamespace
        , InternalNamespace );
 
-    class IntrinsicNamespace {}
+    class IntrinsicNamespace {
+        function hash () { return "intrinsic"; }
+    }
 
-    class OperatorNamespace {}
+    class OperatorNamespace {
+        function hash () { return "operator"; }
+    }
 
     class PrivateNamespace {
         const name : IDENT
         function PrivateNamespace (name)
             : name = name { }
+        function hash () { return "private " + name; }
     }
 
     class ProtectedNamespace {
         const name : IDENT
         function ProtectedNamespace (name)
             : name = name { }
+        function hash () { return "protected " + name; }
     }
 
     class PublicNamespace {
         const name : IDENT;
         function PublicNamespace (name)
             : name = name { }
+        function hash () { return "public " + name; }
     }
 
     class InternalNamespace {
         const name : IDENT;
         function InternalNamespace (name)
             : name = name { }
+        function hash () { return "internal " + name; }
     }
 
     class UserNamespace {
         const name : IDENT;
         function UserNamespace (name)
             : name = name { }
+        function hash () { return "use " + name; }
     }
 
     class AnonymousNamespace {
         const name : IDENT;
         function AnonymousNamespace (name)
             : name = name { }
+        function hash () { return "anon " + name; }
     }
 
     class ImportNamespace {
         const ident : IDENT
         const ns : PublicNamespace
+        function hash () { return "import " + ns.hash; }
     }
 
     // NUMBERS
@@ -614,9 +625,10 @@ namespace Ast
 
     class ExpressionIdentifier {
         const expr: EXPR;
-        const nss : [[NAMESPACE]];
-        function ExpressionIdentifier (expr)
-            : expr=expr {}
+        const nss //: [[NAMESPACE]];
+        function ExpressionIdentifier (expr,nss)
+            : expr=expr
+            , nss = nss { }
     }
 
     class QualifiedIdentifier {
@@ -703,7 +715,8 @@ namespace Ast
 
     class LiteralInt {
         const intValue : int;
-        function LiteralInt(intValue) : intValue=intValue {}
+        function LiteralInt(intValue) 
+            : intValue=intValue {}
     }
 
     class LiteralUInt {
@@ -712,7 +725,8 @@ namespace Ast
 
     class LiteralBoolean {
         const booleanValue : Boolean;
-        function LiteralBoolean(booleanValue) : booleanValue=booleanValue {}
+        function LiteralBoolean(booleanValue) 
+            : booleanValue=booleanValue {}
     }
 
     class LiteralString {
@@ -722,8 +736,11 @@ namespace Ast
     }
 
     class LiteralArray {
-        const exprs : [EXPR];
+        const exprs //: [EXPR];
         const type : TYPE_EXPR;
+        function LiteralArray (exprs,ty)
+            : exprs = exprs
+            , type = ty { }
     }
 
     class LiteralXML {
@@ -739,6 +756,9 @@ namespace Ast
     class LiteralObject {
         const fields : [FIELD];
         const type : TYPE_EXPR;
+        function LiteralObject (fields, ty)
+            : fields = fields
+            , type = ty { }
     }
 
     type FIELD =
@@ -794,13 +814,13 @@ namespace Ast
 
     class Cls {
         const name //: NAME;
-        const baseName //: NAME?;
-        const interfaceNames //: [NAME];
+        const baseName; //: NAME?;
+        const interfaceNames; //: [NAME];
         const constructor : CTOR;
-        const classHead //: HEAD;
-        const instanceHead //: HEAD;
-        const classType //: ObjectType;
-        const instanceType //: InstanceType;
+        const classHead; //: HEAD;
+        const instanceHead; //: HEAD;
+        const classType; //: ObjectType;
+        const instanceType; //: InstanceType;
         function Cls (name,baseName,interfaceNames,constructor,classHead,instanceHead
                      ,classType,instanceType)
             : name = name
@@ -810,10 +830,10 @@ namespace Ast
             , classHead = classHead
             , instanceHead = instanceHead
             , classType = classType
-            , instanceType = instanceType{}
+            , instanceType = instanceType {}
     }
 
-    // FUNCS
+    // FUNC
 
     type FUNC = Func;
 
@@ -851,7 +871,7 @@ namespace Ast
             , type = ty {}
     }
 
-    // CTORS
+    // CTOR
 
     type CTOR = Ctor;
 
@@ -865,7 +885,7 @@ namespace Ast
             , func = func {}
     }
 
-    // BINDING_INITS
+    // BINDING_INIT
 
     type BINDING_INITS = [[BINDING],[INIT_STEP]];
 
@@ -922,7 +942,7 @@ namespace Ast
             , re = re {}
     }
 
-    // FIXTURES
+    // FIXTURE
 
     type FIXTURE = (
         NamespaceFixture,
@@ -985,7 +1005,7 @@ namespace Ast
         const setter : FUNC?;
     }
 
-    // TYPES
+    // TYPE_EXPR
 
     type TYPE_EXPRS = [TYPE_EXPR];
     type TYPE_EXPR = (
@@ -1082,11 +1102,17 @@ namespace Ast
     class AppType {
         const base : TYPE_EXPR;
         const args : [TYPE_EXPR];
+	function AppType (base,args)
+	: base = base
+	, args = args { }
     }
 
     class NullableType {
         const type : TYPE_EXPR;
         const isNullable : Boolean;
+	function NullableType (ty,isNullable)
+	    : type = ty
+	    , isNullable = isNullable { }
     }
 
     class InstanceType {
@@ -1360,7 +1386,7 @@ namespace Ast
     type PROGRAM = Program
 
     class Program {
-        var packages //: PACKAGES;
+        var packages: PACKAGES;
         var block: BLOCK;
         var head //: HEAD;
         function Program (packages, block, head)

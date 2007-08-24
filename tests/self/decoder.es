@@ -31,8 +31,6 @@ namespace Decode;
         return new Program (nd1,nd2,nd3);
     }
 
-(1/2)
-
     function packages (obj) 
         : PACKAGES
     {
@@ -49,7 +47,7 @@ namespace Decode;
     {
         enter ("Decode::block ",ob.ast_class);
 
-        var nd1 = ob.head;
+        var nd1 = head (ob.head);
         var nd2 = stmts (ob.stmts);
 
         exit ("Decode::block");
@@ -103,7 +101,7 @@ namespace Decode;
     function fixtureBinding (ob) 
         : FIXTURE_BINDING
     {
-        enter ("Decode::fixtureBinding ", ob.ast_class);
+        enter ("Decode::fixtureBinding ", ob.length);
 
         var nd1 = fixtureName (ob[0]);
         var nd2 = fixture (ob[1]);
@@ -406,9 +404,9 @@ namespace Decode;
             break;
         case 'ForStmt':
             let nd1 = head (ob.vars);
-            let nd2 = expr (ob.init);
-            let nd3 = expr (ob.cond);
-            let nd4 = expr (ob.incr);
+            let nd2 = exprOpt (ob.init);
+            let nd3 = exprOpt (ob.cond);
+            let nd4 = exprOpt (ob.incr);
             let nd5 = stmt (ob.stmt);
             let nd6 = idents (ob.labels);
             var ndx = new ForStmt (nd1,nd2,nd3,nd4,nd5,nd6);
@@ -996,6 +994,16 @@ namespace Decode;
             var nd2 = namespaces (ob.nss);
             var ndx = new Identifier (nd1,nd2);
             break;
+        case 'ExpressionIdentifier':
+            var nd1 = expr (ob.expr);
+            var nd2 = namespaces (ob.nss);
+            var ndx = new ExpressionIdentifier (nd1,nd2);
+            break;
+        case 'QualifiedIdentifier':
+            var nd1 = expr (ob.qual);
+            var nd2 = ob.ident;
+            var ndx = new QualifiedIdentifier (nd1,nd2);
+            break;
         case 'ReservedNamespace':
             var nd1 = ob.ns;
             var nd2 = namespace (ob.ns);
@@ -1073,6 +1081,9 @@ namespace Decode;
         enter ("Decode::literal ", ob.ast_class);
 
         switch (ob.ast_class) {
+        case 'LiteralNamespace':
+            var ndx = new LiteralNamespace (ob.namespaceValue);
+            break;
         case 'LiteralString':
             var ndx = new LiteralString (ob.strValue);
             break;
@@ -1081,6 +1092,17 @@ namespace Decode;
             break;
         case 'LiteralBoolean':
             var ndx = new LiteralBoolean (ob.booleanValue);
+            break;
+        case 'LiteralNull':
+            var ndx = new LiteralNull;
+            break;
+        case 'LiteralUndefined':
+            var ndx = new LiteralUndefined;
+            break;
+        case 'LiteralArray':
+            var nd1 = exprs (ob.exprs);
+            var nd2 = typeExpr (ob.type);
+            var ndx = new LiteralArray (nd1,nd2);
             break;
         default:
             throw "error Decode::literal " + ob.ast_class;

@@ -61,15 +61,15 @@ package util
     public function dumpABCFile(abcfile, filename) {
         var bytes = abcfile.getBytes();
         assert( bytes.push );  /*FIXME ES4: really "bytes is Array" */
-        var s = ["(function (xs) {",
-                 " import flash.utils.ByteArray;",
-                 " import avmplus.Domain;",
-                 " var ba = new ByteArray;",
-                 " for ( var i=0 ; i < xs.length ; i++ )",
-                 "   ba.writeByte(xs[i]);",
-                 " var domain = Domain.currentDomain;",
-                 " domain.loadBytes(ba);",
-                 "})([" + bytes.join(",") + "])" ].join("\n");
-        writeStringToFile(s, filename);
+
+        let s = ""
+        let len = bytes.length;
+	beginBytes();
+        for (let i = 0; i<len; ++i) {
+	    pushByte (uint(bytes[i]));
+        }
+
+        print (filename, ", writing ",len," bytes");        
+        writeBytes(filename);
     }
 }

@@ -35,10 +35,22 @@
  *
  * ***** END LICENSE BLOCK ***** */
 
-// ActionScript
-include "util-as3.es";
-include "util.es";
-include "bytestream.es";
-include "abcfile.es";
-include "assembler.es";
-//include "emitter.es";
+{
+    import util.*;
+    use namespace Parser;
+    load ("esc-env.ast")
+    print ("booting")
+    var nd = Decode::program (ast);
+    var topFixtures = nd.Ast::head.fixtures;
+    var str = readFile ("esc-tmp.es");
+    var parser = new Parser(str,topFixtures);
+    print ("parsing");
+    var [ts,nd] = parser.program();
+}
+
+{
+    import util.*;
+    import cogen.*;
+
+    dumpABCFile(cogen.cg(nd), "esc-tmp.abc");
+}

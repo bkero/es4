@@ -237,7 +237,7 @@ package cogen
         asm.I_getlocal(0);
         let nargs = c.superArgs.length;
         for ( let i=0 ; i < nargs ; i++ )
-            cgExpr(ctx, e.args[i]);
+            cgExpr(ctx, c.superArgs[i]);
         asm.I_constructsuper(nargs);
         
         asm.I_popscope();

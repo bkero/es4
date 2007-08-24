@@ -56,7 +56,13 @@ namespace Parser;
           , IdentifierPattern );
 
     class ObjectPattern { }
-    class ArrayPattern { }
+
+    class ArrayPattern { 
+        const ptrns//: [PATTERN];
+        function ArrayPattern (ptrns)
+            : ptrns = ptrns { }
+    }
+
     class SimplePattern
     {
         const expr : Ast::EXPR;
@@ -125,7 +131,7 @@ namespace Parser;
             enter ("Pragma ",pragmas);
             if (pragmas===null)
             {
-                this.openNamespaces = [];
+                this.openNamespaces = [[]];
                 this.defaultNamespace = new Ast::InternalNamespace ("");
             }
             else
@@ -133,7 +139,10 @@ namespace Parser;
                 this.openNamespaces = util.copyArray (pragmas.openNamespaces);
                 this.defaultNamespace = pragmas.defaultNamespace;
             }
-            this.openNamespaces.push ([]);
+
+            if (this.openNamespaces[this.openNamespaces.length-1].length !== 0) { 
+                this.openNamespaces.push ([]);  // otherwise reuse the last one pushed
+            }
             exit ("Pragma");
         }
     }
@@ -149,14 +158,16 @@ namespace Parser;
         var pragmas: PRAGMAS;
         var pragmaEnv: PRAGMA_ENV; // push one PRAGMAS for each scope
 
-        function Context ()
-            : env = []
+        function Context (topFixtures)
+            : env = [topFixtures]
             , varHeads = []
             , letHeads = [] 
             , ctor = null
             , pragmas = null
             , pragmaEnv = []
         {
+            //print ("topFixtures.length=",topFixtures.length);
+            //            print ("env[0].length=",env[0].length);
         }
 
         function enterVarBlock () 
@@ -266,8 +277,8 @@ namespace Parser;
 
             let pn = fxtrs[0][0];
             //print ("pn..id=",pn.Ast::name.id," id=",id);
-            //print ("pn..ns=",pn.Ast::name.ns," ns=",ns);
-            if (pn.Ast::name.id==id && pn.Ast::name.ns.toString()==ns.toString())  // FIXME hack! 
+            //print ("pn..ns=",pn.Ast::name.ns.Ast::hash()," ns=",ns.Ast::hash());
+            if (pn.Ast::name.id==id && pn.Ast::name.ns.Ast::hash()==ns.Ast::hash())  // FIXME: need ns compare
             {
                 exit ("hasName true");
                 return true;
@@ -317,20 +328,21 @@ namespace Parser;
             enter ("findFixtureWithNames");
             // for each name in each head
             let env = this.env;
-            let ns = null;
             //print ("env.length=",env.length);
             for (var i=env.length-1; i>=0; --i)   // for each head
             {
+                let ns = null;
                 let fxtrs = env[i];
                 //print ("nss.length=",nss.length);
                 for (var j=nss.length-1; j>=0; --j)   // for each name
                 {
-                    if (hasName (fxtrs,id,nss[i])) 
+                    //print ("nss[",j,"]=",nss[j]);
+                    if (hasName (fxtrs,id,nss[j])) 
                     {
                         if (ns !== null) {
                             throw "ambiguous reference to " + id;
                         }
-                        ns = nss[i];
+                        ns = nss[j];
                     }
                 }
                 if (ns!==null) {
@@ -350,6 +362,7 @@ namespace Parser;
             //print ("nsss.length=",nsss.length);
             for (var i=nsss.length-1; i>=0; --i) 
             {
+                //print ("nsss[",i,"]=",nsss[i]);
                 let fx = findFixtureWithNames (id,nsss[i]);
                 if (fx !== null) 
                 {
@@ -357,7 +370,7 @@ namespace Parser;
                     return fx;
                 }
             }
-            throw "fixture not found";
+            throw "fixture not found: " + id;
         }
 
         function evalIdentExpr (nd: Ast::IDENT_EXPR)
@@ -409,11 +422,13 @@ namespace Parser;
 
     class Parser
     {
-        var scan : Lexer::Scanner
+        var scan : Lexer::Scanner;
+        var cx: Context;
 
-        public function Parser(src)
+        public function Parser(src,topFixtures=[])
+            : cx = new Context (topFixtures)
+            , scan = new Lexer::Scanner (src)
         {
-            this.scan = new Lexer::Scanner(src)
         }
 
         var defaultNamespace: Ast::NAMESPACE;
@@ -495,6 +510,8 @@ namespace Parser;
                     throw "simple pattern without initializer";
                 }
             }
+            case (p:ArrayPattern) {
+            }
             case (x: *) {
                 throw "internal error: desugarPattern " + p;
             }
@@ -505,8 +522,6 @@ namespace Parser;
         }
 
         // Parse rountines
-
-        public var cx = new Context;
 
         /*
 
@@ -942,6 +957,8 @@ namespace Parser;
             return [ts1,nd1];
         }
 
+        (1/2)
+
         function parenExpression (ts: TOKENS)
             : [TOKENS, Ast::EXPR]
         {
@@ -966,6 +983,83 @@ namespace Parser;
 
             exit ("Parser::parenListExpression ", tsx);
             return [tsx, ndx];
+        }
+
+        /*
+
+        ArrayLiteral(noColon)
+            [  Elements  ]
+        
+        ArrayLiteral(allowColon)
+            [  Elements  ]
+            [  Elements  ]  :  TypeExpression
+        
+        Elements
+            ElementList
+            ElementComprehension
+
+        */
+
+        function arrayLiteral (ts: TOKENS)
+            : [TOKENS, Ast::EXPR]
+        {
+            enter("Parser::arrayLiteral ", ts);
+
+            ts = eat (ts,Token::LeftBracket);
+            var [ts1,nd1] = elementList (ts);
+            ts1 = eat (ts1,Token::RightBracket);
+
+            exit ("Parser::arrayLiteral ", ts1);
+            return [ts1, new Ast::LiteralExpr (new Ast::LiteralArray (nd1,new Ast::ArrayType ([])))];
+        }
+
+        /*
+
+        ElementList
+            empty
+            LiteralElement
+            ,  ElementList
+             LiteralElement  ,  ElementList
+
+        LiteralElement
+            AssignmentExpression(allowColon,allowIn)
+
+        */
+
+        function elementList (ts: TOKENS)
+            : [TOKENS, Ast::EXPR]
+        {
+            enter("Parser::elementList ", ts);
+
+            var nd1 = [];
+
+            if (hd (ts) !== Token::RightBracket) 
+            {
+                switch (hd (ts)) {
+                case Token::Comma:
+                    var [ts1,ndx] = [tl (ts),new Ast::LiteralExpr (new Ast::LiteralUndefined)];
+                    break;
+                default:
+                    var [ts1,ndx] = assignmentExpression (ts,allowIn);
+                    break;
+                }
+                nd1.push (ndx);
+                while (hd (ts1) === Token::Comma) {
+                    ts1 = eat (ts1,Token::Comma);
+                    switch (hd (ts1)) {
+                    case Token::Comma:
+                        var [ts1,ndx] = [ts1,new Ast::LiteralExpr (new Ast::LiteralUndefined)];
+                        break;
+                    default:
+                        var [ts1,ndx] = assignmentExpression (ts1,allowIn);
+                        break;
+                    }
+                    nd1.push (ndx);
+                }
+            }
+
+            exit ("Parser::elementList ", ts1);
+            return [ts1, nd1];
         }
 
         /*
@@ -1029,6 +1123,9 @@ namespace Parser;
 //            }
             case Token::LeftParen:
                 var [ts1,nd1] = parenListExpression(ts);
+                break;
+            case Token::LeftBracket:
+                var [ts1,nd1] = arrayLiteral (ts);
                 break;
 //            else
 //            if( lookahead(leftbracket_token) )
@@ -1126,8 +1223,9 @@ namespace Parser;
                 }
                 break;
             case Token::LeftBracket:
-                let [ts1,nd1] = brackets (ts);
-                var [tsx,ndx] = [ts1, new Ast::ObjectRef (nd,new Ast::ExpressionIdentifier (nd1))];
+                let [ts1,nd1] = listExpression (tl (ts), allowIn);
+                ts1 = eat (ts1,Token::RightBracket);
+                var [tsx,ndx] = [ts1, new Ast::ObjectRef (nd,new Ast::ExpressionIdentifier (nd1,cx.pragmas.openNamespaces))];
                 break;
             case Token::DoubleDot:
                 throw "descendents operator not implemented";
@@ -2165,17 +2263,17 @@ namespace Parser;
 
             switch (hd (ts)) {
             case Token::LeftBrace:
-                var [ts1,nd1] = objectPattern (tl (ts), gamma);
+                var [ts1,nd1] = objectPattern (ts, gamma);
                 break;
             case Token::LeftBracket:
-                var [ts1,nd1] = arrayPattern (tl (ts), gamma);
+                var [ts1,nd1] = arrayPattern (ts, gamma);
                 break;
             default:
                 var [ts1,nd1] = simplePattern (ts, beta, gamma);
                 break;
             }
 
-            exit("Parser::pattern", ts1);
+            exit("Parser::pattern ", ts1);
             return [ts1,nd1];
         }
 
@@ -2211,6 +2309,75 @@ namespace Parser;
 
         /*
 
+        ArrayPattern(gamma)
+            [  ElementListPattern(gamma)  ]
+        
+        */
+
+        function arrayPattern (ts: TOKENS, gamma: GAMMA)
+            : [TOKENS, Ast::EXPR]
+        {
+            enter("Parser::arrayPattern ", ts);
+
+            ts = eat (ts,Token::LeftBracket);
+            var [ts1,nd1] = elementListPattern (ts,gamma);
+            ts1 = eat (ts1,Token::RightBracket);
+
+            exit ("Parser::arrayPattern ", ts1);
+            return [ts1, new ArrayPattern (nd1)];
+        }
+
+        /*
+
+        ElementListPattern(gamma)
+            empty
+            LiteralElementPattern
+            ,  ElementListPattern
+             LiteralElementPattern  ,  ElementListPattern
+
+        LiteralElementPattern
+            Pattern(allowColon,allowIn,gamma)
+
+        */
+
+        function elementListPattern (ts: TOKENS, gamma:GAMMA)
+            : [TOKENS, Ast::EXPR]
+        {
+            enter("Parser::elementListPattern ", ts);
+
+            var nd1 = [];
+
+            if (hd (ts) !== Token::RightBracket) 
+            {
+                switch (hd (ts)) {
+                case Token::Comma:
+                    var [ts1,ndx] = [tl (ts),new Ast::LiteralExpr (new Ast::LiteralUndefined)];
+                    break;
+                default:
+                    var [ts1,ndx] = pattern (ts,allowIn,gamma);
+                    break;
+                }
+                nd1.push (ndx);
+                while (hd (ts1) === Token::Comma) {
+                    ts1 = eat (ts1,Token::Comma);
+                    switch (hd (ts1)) {
+                    case Token::Comma:
+                        var [ts1,ndx] = [ts1,new Ast::LiteralExpr (new Ast::LiteralUndefined)];
+                        break;
+                    default:
+                        var [ts1,ndx] = pattern (ts1,allowIn,gamma);
+                        break;
+                    }
+                    nd1.push (ndx);
+                }
+            }
+
+            exit ("Parser::elementListPattern ", ts1);
+            return [ts1, nd1];
+        }
+
+        /*
+
           TypedIdentifier(beta)
               SimplePattern(beta, noExpr)
               SimplePattern(beta, noExpr)  :  NullableTypeExpression
@@ -2239,6 +2406,8 @@ namespace Parser;
             exit("Parser::typedPattern ", ts2);
             return [ts2,[nd1,nd2]];
         }
+
+        (1/2)
 
         // TYPE EXPRESSIONS
 
@@ -2526,39 +2695,7 @@ namespace Parser;
             return [ts1,nd1];
         }
 
-
-//        /*
-//
-//        RecordType
-//            {  FieldTypeList  }
-//
-//        */
-//
-//        function parseRecordType()
-//
-
-        /*
-
-        DestructuringElement(gamma)
-            , DestructuringElementList(gamma)
-            DestructuringElementg  ,  DestructuringElementListg
-
-        DestructuringElementg
-            Patterng
-
-        TypedIdentifier
-            SimplePattern(noIn)
-            SimplePattern(beta)  :  NullableTypeExpression
-
-        TypedPattern(beta)
-            SimplePattern(beta)
-            SimplePattern(beta)  :  NullableTypeExpression
-            ObjectPattern
-            ObjectPattern  :  TypeExpression
-            ArrayPatternn
-            ArrayPatternn  :  TypeExpression
-
-        */
+        (1/2)
 
         // STATEMENTS
 
@@ -2666,7 +2803,7 @@ namespace Parser;
                 print("line eos");
             else {
                 let coord = coordList[ts.n];
-                print ("line ",coord[0]+1);
+                print ("ln ",coord[0]+1);
             }
             exit ("printLn");
         }
@@ -2923,7 +3060,7 @@ namespace Parser;
                 var [ts1,nd1] = listExpression (ts,noIn);
                 break;
             }
-            print ("nd1=",nd1);
+            //print ("nd1=",nd1);
  
             exit("Parser::forInitialiser ", ts1);
             return [ts1,nd1];
@@ -3203,6 +3340,8 @@ namespace Parser;
             exit("Parser::typeCases ", ts1);
             return [ts1,nd1];
         }
+
+        (1/2)
 
         // DEFINITIONS
 
@@ -4104,7 +4243,7 @@ namespace Parser;
                     var [ts1,nd1] = [ts,new Ast::SpecialType (new Ast::VoidType)];
                     break;
                 default:
-                    var [ts1,nd1] = nullableTypeExpression (ts1);
+                    var [ts1,nd1] = nullableTypeExpression (ts);
                     break;
                 }
                 break;
@@ -4376,6 +4515,8 @@ namespace Parser;
             return [ts2,[]];
         }
 
+        (1/2)
+
         // DIRECTIVES
 
         /*
@@ -4567,7 +4708,7 @@ namespace Parser;
                 var [ts1,nd1] = listExpression (ts,allowIn);
                 switch (hd (ts1)) {
                 case Token::Colon:  // label
-                    print ("label=",Encode::encodeExpr (nd1));
+                    //print ("label=",Encode::encodeExpr (nd1));
                     // FIXME check label
                     break;
                 case Token::SemiColon:
@@ -4585,11 +4726,31 @@ namespace Parser;
                     }
                     else 
                     {
-                        // FIXME check ns attr
-                        let ie = nd1.Ast::exprs[0].Ast::ident;  
-                        var attrs = defaultAttrs ();
-                        attrs.ns = cx.evalIdentExpr (ie);
-                        var [ts1,nd1] = annotatableDirective (ts1,tau,omega,attrs);
+                        switch (hd (ts1)) {
+                        case Token::Dynamic:
+                        case Token::Final:
+                        case Token::Native:
+                        case Token::Override:
+                        case Token::Prototype:
+                        case Token::Static:
+                        case Token::Let:
+                        case Token::Var:
+                        case Token::Const:
+                        case Token::Function:
+                        case Token::Class:
+                        case Token::Namespace:
+                        case Token::Type:
+                            // FIXME check ns attr
+                            let ie = nd1.Ast::exprs[0].Ast::ident;  
+                            var attrs = defaultAttrs ();
+                            attrs.ns = cx.evalIdentExpr (ie);
+                            var [ts1,nd1] = annotatableDirective (ts1,tau,omega,attrs);
+                            break;
+                        default:
+                            throw "directive should never get here";
+                            var nd1 = [new Ast::ExprStmt (nd1)];
+                            break;
+                        }
                     }
                 }
             }
