@@ -35,15 +35,13 @@ structure Verify = struct
 
 open LogErr
 
-type RIB = Ast.FIXTURES
-
 (* ENV contains all type checking context, including ribs (variable-type bindings),
  * strict vs standard mode, and the expected return type, if any.
  *)
 
 type ENV = { returnType: Ast.TYPE_EXPR option,
              strict: bool,
-             ribs: RIB list }
+             ribs: Ast.RIB list }
 
 fun withReturnType { returnType=_, strict, ribs } returnType =
     { returnType=returnType, strict=strict, ribs=ribs }
@@ -94,12 +92,12 @@ fun parentRib [] = NONE
   | parentRib (x::[]) = NONE
   | parentRib (x::xs) = SOME xs
 
-fun resolve (ribs:RIB list) (mname:Ast.MULTINAME) =
+fun resolve (ribs:Ast.RIB list) (mname:Ast.MULTINAME) =
     case ribs of
         [] => NONE
       | _ => Multiname.resolveInFixtures mname ribs List.hd parentRib
 
-fun findFixture (ribs:RIB list) (mname:Ast.MULTINAME) =
+fun findFixture (ribs:Ast.RIB list) (mname:Ast.MULTINAME) =
     case resolve ribs mname of
         NONE => error ["unable to resolve fixture for multiname: ", LogErr.multiname mname]
       | SOME (fixs, n) => Fixture.getFixture fixs (Ast.PropName n)
@@ -1194,7 +1192,7 @@ fun lookupIdNamespaces (env:TYPE_ENV)
 
 (******************** Expressions **************************************************)
 
-and verifyIdentExpr (env as {env,this,...}:RIB)
+and verifyIdentExpr (env as {env,this,...}:Ast.RIB)
 		    (ide:Ast.IDENT_EXPR)
     : Ast.TYPE_EXPR =
     let
@@ -1227,7 +1225,7 @@ and verifyIdentExpr (env as {env,this,...}:RIB)
 	    end
     end
 
-and verifyExpr (env as {env,this,...}:RIB)
+and verifyExpr (env as {env,this,...}:Ast.RIB)
 	       (e:EXPR)
     : Ast.TYPE_EXPR =
     let
@@ -1350,7 +1348,7 @@ and verifyExpr (env as {env,this,...}:RIB)
 *)
 
 
-and verifyCallExpr  (env as {env,this,...}:RIB)
+and verifyCallExpr  (env as {env,this,...}:Ast.RIB)
 		    func actuals
     : Ast.TYPE_EXPR =
     let val functy = verifyExpr env func;
@@ -1400,7 +1398,7 @@ and verifyCallExpr  (env as {env,this,...}:RIB)
 (* TODO: verifyPattern returns a pair of env extension and (inferred) type?
          or takes a type (checked) and returns just extension? *)
 (*
-and verifyPattern (env:RIB) (Ast.IdentifierPattern name) = (
+and verifyPattern (env:Ast.RIB) (Ast.IdentifierPattern name) = (
   | verifyPattern env (Ast.ObjectPattern props) =
   | verifyPattern env (Ast.ArrayPattern elts) =
   | verifyPattern env (Ast.SimplePattern expr) = ??
