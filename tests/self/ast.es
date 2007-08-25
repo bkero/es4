@@ -298,6 +298,7 @@ namespace Ast
     var equalOp = new Equal;
     var notEqualOp = new NotEqual;
     var strictEqualOp = new StrictEqual;
+    var strictNotEqualOp = new StrictEqual;
     var lessOp = new Less;
     var lessOrEqualOp = new LessOrEqual;
     var greaterOp = new Greater;

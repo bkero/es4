@@ -1765,7 +1765,7 @@ namespace Parser;
 
                 switch (hd (ts1)) {
                 case Token::Mult:
-                    var op = Ast::multOp;
+                    var op = Ast::timesOp;
                     break;
                 case Token::Div:
                     var op = Ast::divideOp;
@@ -1897,19 +1897,19 @@ namespace Parser;
                 switch (hd (ts1)) {
                 case Token::LessThan:
                     var [ts2, nd2] = shiftExpression (tl (ts1), beta);
-                    nd2 = new BinaryExpr (Ast::lessOp,nd1,nd2);
+                    nd2 = new Ast::BinaryExpr (Ast::lessOp,nd1,nd2);
                     break;
                 case Token::GreaterThan:
                     var [ts2, nd2] = shiftExpression (tl (ts1), beta);
-                    nd2 = new BinaryExpr (Ast::greaterOp,nd1,nd2);
+                    nd2 = new Ast::BinaryExpr (Ast::greaterOp,nd1,nd2);
                     break;
                 case Token::LessThanOrEqual:
                     var [ts2, nd2] = shiftExpression (tl (ts1), beta);
-                    nd2 = new BinaryExpr (Ast::lessOrEqualOp,nd1,nd2);
+                    nd2 = new Ast::BinaryExpr (Ast::lessOrEqualOp,nd1,nd2);
                     break;
                 case Token::GreaterThanOrEqual:
                     var [ts2, nd2] = shiftExpression (tl (ts1), beta);
-                    nd2 = new BinaryExpr (Ast::greaterOrEqualOp,nd1,nd2);
+                    nd2 = new Ast::BinaryExpr (Ast::greaterOrEqualOp,nd1,nd2);
                     break;
                 case Token::In:
                     if (beta == noIn) {
