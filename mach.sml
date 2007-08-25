@@ -639,7 +639,7 @@ fun nominalBaseOfTag (t:VAL_TAG)
       | ArrayTag _ => Name.nons_Array
       | FunctionTag _ => Name.nons_Function
       | ClassTag c => c
-      | ScopeTag => error ["searching for nominal base of scope object"]
+      | NoTag => error ["searching for nominal base of no-tag object"]
 
 fun getObjMagic (ob:OBJ)
     : (MAGIC option) =
@@ -871,6 +871,35 @@ fun push (regs:REGS)
             end
     end
 
+fun reportProfile (regs:REGS)
+    : unit = 
+    let 
+        val { aux = 
+              Aux { profiler =
+                    Profiler { doProfile,
+                               profileMap }, 
+                    ... },
+              ... } = regs
+    in
+        case !doProfile of
+            NONE => ()
+          | SOME _ =>
+            let
+                val items = StrListMap.listItemsi (!profileMap)
+                val itemArr = Array.fromList items
+                fun sort ((a,acount), (b,bcount)) = Int.compare (acount,bcount)
+                fun emitEntry (names, count) =
+                    let
+                        val n = LogErr.join " | " (List.rev names)
+                    in
+                        LogErr.log ["[prof] ", (Int.toString count), " : ", n]
+                    end
+            in
+                ArrayQSort.sort sort itemArr;
+                Array.app emitEntry itemArr
+            end
+ 
+    end
 fun pop (regs:REGS) 
     : unit =
     let 
@@ -890,9 +919,137 @@ fun isBooting (regs:REGS)
     in
         !booting
     end
-    
+
+fun setBooting (regs:REGS) 
+               (isBooting:bool)
+    : unit =
+    let 
+        val { aux = Aux { booting, ...}, ... } = regs
+    in
+        booting := isBooting
+    end
+
+fun getSpecials (regs:REGS) =
+    let 
+        val { aux = Aux { specials = SpecialObjs ss, ... }, ... } = regs
+    in
+        ss
+    end
+
+fun getObjectClassSlot (regs:REGS) = (#objectClass (getSpecials regs))
+fun getArrayClassSlot (regs:REGS) = (#arrayClass (getSpecials regs))
+fun getFunctionClassSlot (regs:REGS) = (#functionClass (getSpecials regs))
+fun getStringClassSlot (regs:REGS) = (#stringClass (getSpecials regs))
+fun getNumberClassSlot (regs:REGS) = (#numberClass (getSpecials regs))
+fun getBooleanClassSlot (regs:REGS) = (#booleanClass (getSpecials regs)) 
+fun getBooleanTrueSlot (regs:REGS) = (#booleanTrue (getSpecials regs)) 
+fun getBooleanFalseSlot (regs:REGS) = (#booleanFalse (getSpecials regs)) 
+fun getDoubleNaNSlot (regs:REGS) = (#doubleNaN (getSpecials regs)) 
+
+fun getCaches (regs:REGS) =
+    let 
+        val { aux = Aux { valCache = ValCache vc, ... }, ... } = regs
+    in
+        vc
+    end
+
+fun findInCache cacheGetter 
+                cacheQuery 
+                (regs:REGS) 
+                key = 
+    let 
+        val c = cacheGetter regs
+    in
+        cacheQuery ((!c), key)
+    end
+
+fun updateCache cacheGetter
+                cacheNumItems
+                cacheInsert
+                (regs:REGS)
+                (k,v) =
+    let
+        val c = cacheGetter regs 
+    in
+        if cacheNumItems (!c) < cachesz
+        then ((c := cacheInsert ((!c), k, v)); v)
+        else v
+    end
+
+fun getReal64Cache (regs:REGS) = (#real64Cache (getCaches regs)) 
+fun getWord32Cache (regs:REGS) = (#word32Cache (getCaches regs)) 
+fun getInt32Cache (regs:REGS) = (#int32Cache (getCaches regs)) 
+fun getNsCache (regs:REGS) = (#nsCache (getCaches regs)) 
+fun getNmCache (regs:REGS) = (#nmCache (getCaches regs)) 
+fun getStrCache (regs:REGS) = (#strCache (getCaches regs)) 
+
+val findInReal64Cache = findInCache getReal64Cache Real64Map.find
+val findInWord32Cache = findInCache getWord32Cache Word32Map.find
+val findInInt32Cache = findInCache getInt32Cache Int32Map.find
+val findInNsCache = findInCache getNsCache NsMap.find
+val findInNmCache = findInCache getNmCache NmMap.find
+val findInStrCache = findInCache getStrCache StrMap.find
+
+val updateReal64Cache = updateCache getReal64Cache Real64Map.numItems Real64Map.insert
+val updateWord32Cache = updateCache getWord32Cache Word32Map.numItems Word32Map.insert
+val updateInt32Cache = updateCache getInt32Cache Int32Map.numItems Int32Map.insert
+val updateNsCache = updateCache getNsCache NsMap.numItems NsMap.insert
+val updateNmCache = updateCache getNmCache NmMap.numItems NmMap.insert
+val updateStrCache = updateCache getStrCache StrMap.numItems StrMap.insert
+
+
+fun makeGlobalScopeWith (global:OBJ) 
+    : SCOPE =
+    Scope { object = global,
+            parent = NONE,
+            temps = ref [],
+            kind = GlobalScope }
+
+fun makeInitialRegs (prog:Fixture.PROGRAM)
+    : REGS =
+    let 
+        val glob = newObj (ClassTag Name.nons_Object) Null NONE
+        val prof = Profiler 
+                       { profileMap = ref StrListMap.empty,
+                         doProfile = ref NONE }
+        val vcache = ValCache 
+                     { real64Cache = ref Real64Map.empty,
+                       word32Cache = ref Word32Map.empty,                       
+                       int32Cache = ref Int32Map.empty,
+                       nsCache = ref NsMap.empty,
+                       nmCache = ref NmMap.empty,
+                       strCache = ref StrMap.empty }
+        val specials = SpecialObjs 
+                       { objectClass = ref NONE,
+                         arrayClass = ref NONE,
+                         functionClass = ref NONE,
+                         stringClass = ref NONE,
+                         numberClass = ref NONE,
+                         booleanClass = ref NONE,
+
+                         booleanTrue = ref NONE,
+                         booleanFalse = ref NONE,
+                         doubleNaN = ref NONE }
+        val aux = Aux { booting = ref false,
+                        specials = specials,
+                        traceStack = ref false,
+                        stack = ref [],
+                        valCache = vcache,
+                        profiler = prof }
+    in        
+        { this = glob,
+          global = glob,          
+          scope = makeGlobalScopeWith glob,
+          prog = prog,
+          aux = aux }
+    end
 
 (* native function stuff *)
+
+(* 
+ * FIXME: it is probably tidier if we push this into aux, but it's really 
+ * not a high priority; they only get set at SML-heap-load time anyways.
+ *)
 
 val nativeFunctions: (Ast.NAME * NATIVE_FUNCTION) list ref = ref []
 

@@ -2978,6 +2978,11 @@ and defFragment (env:ENV)
                  *)
                 val (env,unhoisted_pragma_fxtrs) = defPragmas env pragmas
 
+                (* 
+                 * FIXME: we are probably not quite doing the hoisting right here. 
+                 * It'll require some committee discussion to figure out how to 
+                 * simulate eval() properly in terms of fragments. 
+                 *)
                 val (env, unhoisted_defn_fxtrs, inits) = defTopDefns env defns [] []
                 val (body, hoisted_body_fxtrs) = defStmts env body
                 val env = extendProgramTopRib env hoisted_body_fxtrs
