@@ -225,6 +225,10 @@ namespace Ast
     class IsOp {}
     class ToOp {}
 
+    const castOp = new CastOp;
+    const isOp = new IsOp;
+    const toOp = new ToOp;
+
     // Binary operators
 
     type BINOP =
@@ -419,11 +423,13 @@ namespace Ast
 	        : op=op, e1=e1, e2=e2 {}
     }
 
+    /*
     class BinaryNumberExpr extends BinaryExpr {
         const mode : NUMERIC_MODE;
         function BinaryNumberExpr (op,e1,e2,mode)
             : mode = mode, super (op,e1,e2) {}
     }
+    */
 
     class BinaryTypeExpr {
         const op : BINTYOP
@@ -440,11 +446,13 @@ namespace Ast
             : op=op, e1=e1 {}
     }
 
+    /*
     class UnaryNumberExpr extends UnaryExpr {
         const mode : NUMERIC_MODE;
         function UnaryNumberExpr (op,ex,mode)
             : mode = mode, super (op,ex) {}
     }
+    */
 
     class TypeExpr {
         const ex : TYPE_EXPR;
@@ -531,11 +539,13 @@ namespace Ast
             : op=op, le=le, re=re {}
     }
 
+    /*
     class SetNumberExpr extends SetExpr {
         const mode : NUMERIC_MODE;
         function SetNumberExpr (op,le,re,mode)
             : mode=mode, super (op,le,re) {}
     }
+    */
 
     class ListExpr {
         const exprs : EXPRS;
@@ -702,14 +712,14 @@ namespace Ast
     }
 
     class LiteralDouble {
-        const doubleValue : double;
+        const doubleValue : Number;
         function LiteralDouble (doubleValue)
             : doubleValue=doubleValue { }
     }
 
     class LiteralDecimal {
-        const decimalValue : string;
-        function LiteralDecimal (str : string)
+        const decimalValue : String;
+        function LiteralDecimal (str : String)
             : decimalValue = str { }  // FIXME: convert from string to decimal
     }
 
@@ -754,17 +764,24 @@ namespace Ast
     }
 
     class LiteralObject {
-        const fields : [FIELD];
+        const fields : LITERAL_FIELDS;
         const type : TYPE_EXPR;
         function LiteralObject (fields, ty)
             : fields = fields
-            , type = ty { }
-    }
+            , type = ty { }}
+    
+    type LITERAL_FIELD = LiteralField;
+    type LITERAL_FIELDS = [LiteralField];
 
-    type FIELD =
-       { kind : VAR_DEFN_TAG
-       , name : IDENT_EXPR
-       , init : EXPR }
+    class LiteralField {
+        const kind: VAR_DEFN_TAG;
+        const ident: IDENT_EXPR;
+        const expr: EXPR;
+        function LiteralField (kind,ident,expr)
+            : kind = kind
+            , ident = ident
+            , expr = expr {}
+    }
 
     type FIELD_TYPE = FieldType;
     type FIELD_TYPES = [FIELD_TYPE];
@@ -907,8 +924,8 @@ namespace Ast
     class TempIdent {
         const index : int;
         function TempIdent (index)
-            : index = index {}
-    }
+            : index = index {}}
+    
 
     class ParamIdent {
         const index : int;
@@ -952,8 +969,8 @@ namespace Ast
         TypeFixture,
         MethodFixture,
         ValFixture,
-        VirtualValFixture
-    )
+        VirtualValFixture)
+        
 
     class NamespaceFixture {
         const ns : NAMESPACE;
@@ -996,8 +1013,8 @@ namespace Ast
     class ValFixture {
         const type : TYPE_EXPR;
         const isReadOnly : Boolean;
-        function ValFixture(ty, isReadOnly=false) : type=ty, isReadOnly=isReadOnly {}
-    }
+        function ValFixture(ty, isReadOnly=false) : type=ty, isReadOnly=isReadOnly {}}
+    
 
     class VirtualValFixture {
         const type : TYPE_EXPR;
@@ -1025,8 +1042,8 @@ namespace Ast
 
     class SpecialType {
         const kind : SPECIAL_TYPE_KIND;
-        function SpecialType(kind) : kind=kind {}
-    }
+        function SpecialType(kind) : kind=kind {}}
+    
 
     type SPECIAL_TYPE_KIND =
         ( AnyType
@@ -1399,5 +1416,5 @@ namespace Ast
         print (new EmptyStmt)
     }
 
-    test()
-}
+    test()}
+

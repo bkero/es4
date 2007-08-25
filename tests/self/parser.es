@@ -36,17 +36,11 @@
  *
  * ***** END LICENSE BLOCK ***** */
 
-//use module ast "tests/self/ast.es";
-//use module ast_encoder "tests/self/ast_encoder.es";
-//use module lexer "tests/self/lexer.es";
-
-//module parser
-{
-use namespace intrinsic;
 namespace Parser;
 
 {
     use default namespace Parser;
+    use namespace intrinsic;
     use namespace Release;
 
     type PATTERN =
@@ -623,7 +617,7 @@ namespace Parser;
 
             if (isReserved (hd (ts))) 
             {
-                var [ts1,nd1] = tokenText (hd (ts));
+                var [ts1,nd1] = Token::tokenText (hd (ts));
             }
             else 
             {
@@ -987,6 +981,146 @@ namespace Parser;
 
         /*
 
+        ObjectLiteral(noColon)
+            {  FieldList  }
+
+        ObjectLiteral(allowColon)
+            {  FieldList  }
+            {  FieldList  }  :  TypeExpression
+
+        */
+
+        function objectLiteral (ts: TOKENS /*, alpha: ALPHA*/)
+            : [TOKENS, Ast::TYPE_EXPR]
+        {
+            enter("Parser::objectLiteral ", ts);
+
+            var alpha: ALPHA = allowColon;    // FIXME need to get this from caller
+            ts = eat (ts,Token::LeftBrace);
+            var [ts1,nd1] = fieldList (ts);
+            ts1 = eat (ts1,Token::RightBrace);
+            switch (alpha) {
+            case allowColon:
+                switch (hd (ts1)) {
+                case Token::Colon:
+                    var [ts2,nd2] = typeExpression (tl (ts1));
+                    break;
+                default:
+                    var [ts2,nd2] = [ts1,new Ast::ObjectType ([])]; // FIXME I mean {*}
+                    break;
+                }
+                break;
+            default:
+                var [ts2,nd2] = [ts1,new Ast::ObjectType ([])]; // FIXME I mean {*}
+                break;
+            }
+
+            exit("Parser::objectLiteral ", ts2);
+            return [ts2,new Ast::LiteralExpr (new Ast::LiteralObject (nd1,nd2))];
+        }
+
+        /*
+
+        FieldList
+            empty
+            LiteralField
+            LiteralField  ,  LiteralFieldList
+
+        */
+
+        function fieldList (ts: TOKENS)
+            //            : [TOKENS, [Ast::FIELD_TYPE]]
+        {
+            enter("Parser::fieldList ", ts);
+
+            var nd1 = [];
+
+            if (hd (ts) !== Token::RightBrace) 
+            {
+                var [ts1,ndx] = literalField (ts);
+                nd1.push (ndx);
+                while (hd (ts1) === Token::Comma) {
+                    var [ts1,ndx] = literalField (tl (ts1));
+                    nd1.push (ndx);
+                }
+            }
+
+            exit ("Parser::fieldList ", ts1);
+            return [ts1,nd1];
+        }
+
+        /*
+
+          LiteralField
+              FieldKind  FieldName  :  AssignmentExpressionallowColon, allowIn
+              get  FieldName  FunctionSignature  FunctionExpressionBodyallowColon, allowIn
+              set  FieldName  FunctionSignature  FunctionExpressionBodyallowColon, allowIn
+
+        */
+
+        function literalField (ts: TOKENS)
+            : [TOKENS, Ast::FIELD_TYPE]
+        {
+            enter ("Parser::literalField");
+
+            switch (hd (ts)) {
+            case Token::Const:
+                var [ts1,nd1] = [tl (ts), constTag];
+                break;
+            default:
+                var [ts1,nd1] = [ts,Ast::varTag];
+                break;
+            }
+
+            var [ts2,nd2] = fieldName (ts);
+            ts2 = eat (ts2,Token::Colon);
+            var [ts3,nd3] = assignmentExpression (ts2,allowIn);
+
+            exit ("Parser::literalField", ts3);
+            return [ts3, new Ast::LiteralField (nd1,nd2,nd3)];
+        }
+
+        /*
+
+        FieldName
+            NonAttributeQualifiedName
+            StringLiteral
+            NumberLiteral
+            ReservedIdentifier
+
+        */
+
+        function fieldName (ts: TOKENS)
+            : [TOKENS, Ast::IDENT_EXPR]
+        {
+            enter ("Parser::fieldName");
+
+            switch (hd (ts)) {
+            case Token::StringLiteral:
+            case Token::DecimalLiteral:
+            case Token::DecimalIntegerLiteral:
+            case Token::HexIntegerLiteral:
+                throw "unsupported fieldName " + hd(ts);
+                break;
+            default:
+                if (isReserved (hd (ts))) {
+                    var [ts1,nd1] = [tl (ts), new Ast::Identifier (cx.pragmas.openNamespaces,tokenText (hd (ts)))];
+                                     // NOTE we use openNamespaces here to indicate that the name is 
+                                     //      unqualified. the generator should use the expando namespace,
+                                     //      which is probably Public "".
+                }
+                else {
+                    var [ts1,nd1] = nonAttributeQualifiedName (ts);
+                }
+                break;
+            }
+
+            exit ("Parser::fieldName");
+            return [ts1,nd1];
+        }
+
+        /*
+
         ArrayLiteral(noColon)
             [  Elements  ]
         
@@ -1127,16 +1261,9 @@ namespace Parser;
             case Token::LeftBracket:
                 var [ts1,nd1] = arrayLiteral (ts);
                 break;
-//            else
-//            if( lookahead(leftbracket_token) )
-//            {
-//                var result = parseArrayLiteral()
-//            }
-//            else
-//            if( lookahead(leftbrace_token) )
-//            {
-//                var result = parseObjectLiteral()
-//            }
+            case Token::LeftBrace:
+                var [ts1,nd1] = objectLiteral (ts);
+                break;
             default:
                 var [ts1,nd1] = primaryName (ts);
                 switch type (nd1) {
@@ -1769,48 +1896,48 @@ namespace Parser;
             while (true) {
                 switch (hd (ts1)) {
                 case Token::LessThan:
-                    var op = Ast::lessOp;
                     var [ts2, nd2] = shiftExpression (tl (ts1), beta);
+                    nd2 = new BinaryExpr (Ast::lessOp,nd1,nd2);
                     break;
                 case Token::GreaterThan:
-                    var op = Ast::greaterOp;
                     var [ts2, nd2] = shiftExpression (tl (ts1), beta);
+                    nd2 = new BinaryExpr (Ast::greaterOp,nd1,nd2);
                     break;
                 case Token::LessThanOrEqual:
-                    var op = Ast::lessOrEqualOp;
                     var [ts2, nd2] = shiftExpression (tl (ts1), beta);
+                    nd2 = new BinaryExpr (Ast::lessOrEqualOp,nd1,nd2);
                     break;
                 case Token::GreaterThanOrEqual:
-                    var op = Ast::greaterOrEqualOp;
                     var [ts2, nd2] = shiftExpression (tl (ts1), beta);
+                    nd2 = new BinaryExpr (Ast::greaterOrEqualOp,nd1,nd2);
                     break;
                 case Token::In:
                     if (beta == noIn) {
                         break done;
                     }
-                    var op = Ast::inOp;
                     var [ts2, nd2] = shiftExpression (tl (ts1), beta);
+                    nd2 = new Ast::BinaryExpr (Ast::inOp,nd1,nd2);
                     break;
                 case Token::InstanceOf:
-                    var op = Ast::instanceOfOp;
                     var [ts2, nd2] = shiftExpression (tl (ts1), beta);
+                    nd2 = new Ast::BinaryExpr (Ast::instanceOfOp,nd1,nd2);
                     break;
                 case Token::Is:
-                    var op = Ast::isOp;
                     var [ts2, nd2] = typeExpression (tl (ts1), beta);
+                    nd2 = new Ast::BinaryTypeExpr (Ast::isOp,nd1,nd2);
                     break;
                 case Token::To:
-                    var op = Ast::toOp;
                     var [ts2, nd2] = typeExpression (tl (ts1), beta);
+                    nd2 = new Ast::BinaryTypeExpr (Ast::toOp,nd1,nd2);
                     break;
                 case Token::Cast:
-                    var op = Ast::castOp;
                     var [ts2, nd2] = typeExpression (tl (ts1), beta);
+                    nd2 = new Ast::BinaryTypeExpr (Ast::castOp,nd1,nd2);
                     break;
                 default:
                     break done;
                 }
-                var [ts1, nd1] = [ts2, new Ast::BinaryExpr (op, nd1, nd2)];
+                var [ts1, nd1] = [ts2,nd2];
             }
 
             exit ("Parser::equalityExpression ", ts1);
@@ -2576,27 +2703,6 @@ namespace Parser;
 
             exit ("Parser::fieldType");
             return [ts2, new Ast::FieldType (nd1,nd2)];
-        }
-
-        function fieldName (ts: TOKENS)
-            : [TOKENS, Ast::IDENT_EXPR]
-        {
-            enter ("Parser::fieldName");
-
-            switch (hd (ts)) {
-            case Token::StringLiteral:
-            case Token::DecimalLiteral:
-            case Token::DecimalIntegerLiteral:
-            case Token::HexIntegerLiteral:
-                throw "fieldName: unsupported name " + hd(ts);
-                break;
-            default:
-                var [ts1,nd1] = reservedOrOrdinaryIdentifier (ts);
-                break;
-            }
-
-            exit ("Parser::fieldName");
-            return [ts1,nd1];
         }
 
         /*
@@ -5216,4 +5322,4 @@ namespace Parser;
 
     //    test ()
 }
-}// end module
+

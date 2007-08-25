@@ -557,6 +557,9 @@ namespace Decode;
         enter ("Decode::expr ", ob.ast_class);
 
         switch (ob.ast_class) {
+        case 'ThisExpr':
+            var ndx = new ThisExpr;
+            break;
         case 'GetParam':
             var ndx = new GetParam (ob.n);
             break;
@@ -607,7 +610,7 @@ namespace Decode;
             var ndx = new UnaryExpr (nd1,nd2);
             break;
         case 'BinaryTypeExpr':
-            let nd1 = binTypOp (ob.op);
+            let nd1 = binTyOp (ob.op);
             let nd2 = expr (ob.e1);
             let nd3 = typeExpr (ob.e2);
             var ndx = new BinaryTypeExpr (nd1,nd2,nd3);
@@ -803,7 +806,7 @@ namespace Decode;
         return ndx;
     }
 
-    function binTypeOp (ob) 
+    function binTyOp (ob) 
         : BINTYOP
     {
         enter ("Decode::binTyOp ", ob.ast_class);
@@ -1104,6 +1107,11 @@ namespace Decode;
             var nd2 = typeExpr (ob.type);
             var ndx = new LiteralArray (nd1,nd2);
             break;
+        case 'LiteralObject':
+            var nd1 = literalFields (ob.fields);
+            var nd2 = typeExpr (ob.type);
+            var ndx = new LiteralObject (nd1,nd2);
+            break;
         default:
             throw "error Decode::literal " + ob.ast_class;
         }
@@ -1111,5 +1119,62 @@ namespace Decode;
         exit ("Decode::literal");
         return ndx;
     }
+
+    function literalFields (ob) 
+        : LITERAL_FIELDS
+    {
+        enter ("Decode::literalField ", ob.length);
+
+        var nd1 = [];
+        for (var i = 0; i < ob.length; ++i) {
+            var nd = literalField (ob[i]);
+            nd1.push (nd);
+        }
+
+        exit ("Decode::fieldTypes");
+        return nd1;
+    }
+
+    function literalField (ob) 
+        : LITERAL_FIELD
+    {
+        enter ("Decode::literalField ", ob.ast_class);
+
+        let nd1 = varKind (ob.kind);
+        let nd2 = identExpr (ob.ident);
+        let nd3 = expr (ob.expr);
+        var ndx = new LiteralField (nd1,nd2,nd3);
+
+        exit ("Decode::literalField");
+        return ndx;
+    }
+
+    function varKind (ob) 
+        : VAR_DEFN_TAG
+    {
+        enter ("Decode::varKind ", ob.ast_class);
+
+        switch (ob.ast_class) {
+        case 'Const':
+            var ndx = constTag;
+            break;
+        case 'Var':
+            var ndx = varTag;
+            break;
+        case 'LetVar':
+            var ndx = letVarTag;
+            break;
+        case 'LetConst':
+            var ndx = letConstTag;
+            break;
+        default:
+            throw "error Decode::varKind " + ob.ast_class;
+        }
+
+        exit ("Decode::varKind");
+        return ndx;
+    }
+
+
 
 }
