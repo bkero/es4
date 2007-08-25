@@ -127,7 +127,7 @@ package cogen
             switch type (e.op) {
             case (e:Plus) { asm.I_add() }
             case (e:Minus) { asm.I_subtract() }
-            case (e:Times) { asm.I_times() }
+            case (e:Times) { asm.I_multiply() }
             case (e:Divide) { asm.I_divide() }
             case (e:Remainder) { asm.I_modulo() }
             case (e:LeftShift) { asm.I_lshift() }
@@ -183,7 +183,8 @@ package cogen
         cgTypeExprHelper(ctx, e.ex);
     }
 
-    function cgTypeExprHelper({asm:asm, emitter:emitter}, ty) {
+    function cgTypeExprHelper(ctx, ty) {
+        let asm = ctx.asm;
         switch type (ty) {
         case (ty:TypeName) {
             //let name = cgIdentExpr(ctx, ty.ident);
@@ -498,17 +499,15 @@ package cogen
 
         function cgObjectInitializer(ctx, {fields:fields}) {
             let {asm:asm, emitter:emitter} = ctx;
-            asm.I_getglobalscope();
-            asm.I_getproperty(ctx.emitter.Object_name);
-            asm.I_construct(0);
-            asm.I_dup();
+            asm.I_findpropstrict(ctx.emitter.Object_name);
+            asm.I_constructprop(ctx.emitter.Object_name, 0);
             let t = asm.getTemp();
             asm.I_setlocal(t);
             for ( let i=0 ; i < fields.length ; i++ ) {
                 let f = fields[i];
                 asm.I_getlocal(t);
-                cgExpr(ctx, f.init);
-                asm.I_setproperty(cgIdentExpr(ctx, f.name));
+                cgExpr(ctx, f.expr);
+                asm.I_setproperty(cgIdentExpr(ctx, f.ident));
             }
             asm.I_getlocal(t);
             asm.killTemp(t);
