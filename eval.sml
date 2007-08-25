@@ -270,240 +270,273 @@ fun allocRib (regs:Mach.REGS)
              (temps:Mach.TEMPS)
              (f:Ast.RIB)
     : unit =
-    case obj of
-        Mach.Obj { props, ident, ... } =>
-        let
-            val _ = trace ["allocating rib on object id #", Int.toString ident]
-            val {scope, ...} = regs
-            val methodScope = extendScope scope obj Mach.ActivationScope
-            fun valAllocState (t:Ast.TYPE_EXPR)
-                : Mach.PROP_STATE =
-
-                (* Every value fixture has a type, and every type has an
-                 * associated "allocated state". Note that
-                 * this is *not* the same as saying that every type
-                 * has an associated default value; for *some* types
-                 * the allocated state is a default value; for
-                 * types that are non-nullable, however, the allocated
-                 * state is Mach.UninitProp. This property
-                 * state should never be observable to a user. It is
-                 * always a hard error to read a property in
-                 * Mach.UninitProp state, and it is always a hard
-                 * error to complete the initialization phase of an
-                 * object with any properties remaining in
-                 * Mach.UninitProp state. *)
-
-                case t of
-                    Ast.SpecialType (Ast.Any) =>
-                    Mach.ValProp (Mach.Undef)
-
-                  | Ast.SpecialType (Ast.Null) =>
-                    Mach.ValProp (Mach.Null)
-
-                  | Ast.SpecialType (Ast.Undefined) =>
-                    Mach.ValProp (Mach.Undef)
-
-                  | Ast.SpecialType (Ast.VoidType) =>
-                    error regs ["attempt to allocate void-type property"]
-
-                  (* FIXME: is this correct? Maybe we need to check them all to be nullable? *)
-                  | Ast.UnionType _ =>
-                    Mach.ValProp (Mach.Null)
-
-                  | Ast.ArrayType _ =>
-                    Mach.ValProp (Mach.Null)
-
-                  | Ast.FunctionType _ =>
-                    Mach.UninitProp
-
-                  | Ast.ObjectType _ =>
-                    Mach.ValProp (Mach.Null)
-
-                  | Ast.AppType {base, ...} =>
-                    valAllocState base
-
-                  | Ast.NullableType { expr, nullable=true } =>
-                    Mach.ValProp (Mach.Null)
-
-                  | Ast.NullableType { expr, nullable=false } =>
-                    Mach.UninitProp
-
-                  | Ast.TypeName ident =>
-                    error regs ["allocating fixture with unresolved type name: ", Type.toString t]
-
-                  | Ast.ElementTypeRef _ =>
-                    error regs ["allocating fixture of unresolved element type reference"]
-
-                  | Ast.FieldTypeRef _ =>
-                    error regs ["allocating fixture of unresolved field type reference"]
-
-                  (* Note, the definer must have created inits for nonnullable primitive types
-                   * where the program does not contain such inits.
-                   *)
-                  | Ast.InstanceType n =>
-                    if (#nonnullable n)
+    let
+        
+        val Mach.Obj { props, ident, ... } = obj
+        val _ = trace ["allocating rib on object id #", Int.toString ident]
+        val {scope, ...} = regs
+        val methodScope = extendScope scope obj Mach.ActivationScope
+        fun valAllocState (t:Ast.TYPE_EXPR)
+            : Mach.PROP_STATE =
+            
+            (* Every value fixture has a type, and every type has an
+             * associated "allocated state". Note that
+             * this is *not* the same as saying that every type
+             * has an associated default value; for *some* types
+             * the allocated state is a default value; for
+             * types that are non-nullable, however, the allocated
+             * state is Mach.UninitProp. This property
+             * state should never be observable to a user. It is
+             * always a hard error to read a property in
+             * Mach.UninitProp state, and it is always a hard
+             * error to complete the initialization phase of an
+             * object with any properties remaining in
+             * Mach.UninitProp state. *)
+            
+            case t of
+                Ast.SpecialType (Ast.Any) =>
+                Mach.ValProp (Mach.Undef)
+                
+              | Ast.SpecialType (Ast.Null) =>
+                Mach.ValProp (Mach.Null)
+                
+              | Ast.SpecialType (Ast.Undefined) =>
+                Mach.ValProp (Mach.Undef)
+                
+              | Ast.SpecialType (Ast.VoidType) =>
+                error regs ["attempt to allocate void-type property"]
+                
+              (* FIXME: is this correct? Maybe we need to check them all to be nullable? *)
+              | Ast.UnionType _ =>
+                Mach.ValProp (Mach.Null)
+                
+              | Ast.ArrayType _ =>
+                Mach.ValProp (Mach.Null)
+                
+              | Ast.FunctionType _ =>
+                Mach.UninitProp
+                
+              | Ast.ObjectType _ =>
+                Mach.ValProp (Mach.Null)
+                
+              | Ast.AppType {base, ...} =>
+                valAllocState base
+                
+              | Ast.NullableType { expr, nullable=true } =>
+                Mach.ValProp (Mach.Null)
+                
+              | Ast.NullableType { expr, nullable=false } =>
+                Mach.UninitProp
+                
+              | Ast.TypeName ident =>
+                error regs ["allocating fixture with unresolved type name: ", Type.toString t]
+                
+              | Ast.ElementTypeRef _ =>
+                error regs ["allocating fixture of unresolved element type reference"]
+                
+              | Ast.FieldTypeRef _ =>
+                error regs ["allocating fixture of unresolved field type reference"]
+                
+              (* Note, the definer must have created inits for nonnullable primitive types
+               * where the program does not contain such inits.
+               *)
+              | Ast.InstanceType n =>
+                if (#nonnullable n)
+                then
+                    (* It is possible that we're booting and the class n doesn't even exist yet. *)
+                    if (not (Mach.isBooting regs)) orelse 
+                       Mach.isClass (getValue regs (#global regs) (#name n))
                     then
-                        (* It is possible that we're booting and the class n doesn't even exist yet. *)
-                        if (not (Mach.isBooting regs)) orelse 
-                           Mach.isClass (getValue regs (#global regs) (#name n))
-                        then
-                            case findConversion regs (Ast.SpecialType Ast.Undefined) t of
-                                SOME _ => Mach.ValProp (checkAndConvert Mach.Undef t)
-                              | NONE => Mach.UninitProp
-                        else
-                            Mach.UninitProp
+                        case findConversion regs (Ast.SpecialType Ast.Undefined) t of
+                            SOME _ => Mach.ValProp (checkAndConvert Mach.Undef t)
+                          | NONE => Mach.UninitProp
                     else
-                        Mach.ValProp Mach.Null
-
-            (* FIXME: this error should probably be turned on. *)
-            (* | _ => error regs ["Shouldn't happen: failed to match in Eval.allocRib#valAllocState."] *)
-
-            fun tempPadding n =
-                if n = 0
-                then []
-                else (Ast.SpecialType Ast.Any, Mach.UninitTemp)::(tempPadding (n-1))
-
-            fun allocFixture (n, f) =
-                case n of
-                    Ast.TempName t =>
-                    (case f of
-                         Ast.ValFixture { ty, ... } =>  (* FIXME: temp types are not needed, use the value tag for rt typechecking *)
-                         (if t = (List.length (!temps))
-                          then (trace ["allocating fixture for temporary ", Int.toString t];
-                                temps := (Ast.SpecialType Ast.Any, Mach.UninitTemp)::(!temps))
-                          else if t < (List.length (!temps))
-                          then (trace ["ignoring fixture, already allocated ", Int.toString t];
-                                temps := (List.take (!temps,((length (!temps))-t-1)))@((ty, Mach.UninitTemp)::(List.drop (!temps,(length (!temps)-t)))))
-                          else (trace ["allocating rib for temporaries ", Int.toString (length (!temps)), " to ", Int.toString t];
-                                temps := (Ast.SpecialType Ast.Any, Mach.UninitTemp)
-                                         ::(((tempPadding (t-(length (!temps))))@(!temps)))))
-                       | _ => error regs ["allocating non-value temporary"])
-                  | Ast.PropName pn =>
-                    let
-                        val _ = trace ["allocating fixture for property ", fmtName pn]
-                        fun allocProp state p =
-                            if Mach.hasProp props pn
-                            (* FIXME: make a detailed check of fixture-compatibility here! *)
-                            (* error regs ["allocating duplicate property name: ",
-                                           fmtName pn] *)
-                            then (trace ["replacing fixture for ", state, " property ",
-                                         fmtName pn];
-                                  Mach.delProp props pn; Mach.addProp props pn p)
-
-                            else (trace ["allocating fixture for ", state, " property ",
-                                         fmtName pn];
-                                  Mach.addProp props pn p)
-                    in
-                        case f of
-                            Ast.TypeFixture te =>
+                        Mach.UninitProp
+                else
+                    Mach.ValProp Mach.Null
+                    
+        (* FIXME: this error should probably be turned on. *)
+        (* | _ => error regs ["Shouldn't happen: failed to match in Eval.allocRib#valAllocState."] *)
+                    
+        fun tempPadding n =
+            if n = 0
+            then []
+            else (Ast.SpecialType Ast.Any, Mach.UninitTemp)::(tempPadding (n-1))
+                 
+        fun allocFixture (n, f) =
+            case n of
+                Ast.TempName t =>
+                let
+                    val tmps = !temps
+                    val tlen = List.length tmps
+                    val emptyTmp = (Ast.SpecialType Ast.Any, Mach.UninitTemp)
+                in
+                    case f of
+                        Ast.ValFixture { ty, ... } =>  
+                        (* 
+                         * FIXME: temp types are not needed, 
+                         * use the value tag for rt typechecking 
+                         *)
+                        (if t = tlen
+                         then (trace ["allocating fixture for temporary ", Int.toString t];
+                               temps := emptyTmp::tmps)
+                         else 
+                             if t < tlen
+                             then 
+                                 (trace ["ignoring fixture, already allocated ", Int.toString t];
+                                  temps := (List.take (tmps, (tlen-t-1))) @ 
+                                           ((ty, Mach.UninitTemp) :: 
+                                            (List.drop (tmps, (tlen-t)))))
+                                 
+                             else 
+                                 (trace ["allocating rib for temporaries ", 
+                                         Int.toString tlen, " to ", Int.toString t];
+                                  temps := emptyTmp :: ((tempPadding (t-tlen)) @ tmps)))
+                        
+                      | _ => error regs ["allocating non-value temporary"]
+                end
+              | Ast.PropName pn =>
+                let
+                    val _ = trace ["allocating fixture for property ", fmtName pn]
+                    fun allocProp state p =
+                        if Mach.hasProp props pn
+                        (* FIXME: make a detailed check of fixture-compatibility here! *)
+                        (* error regs ["allocating duplicate property name: ",
+                                       fmtName pn] *)
+                        then (trace ["replacing fixture for ", state, " property ",
+                                     fmtName pn];
+                              Mach.delProp props pn; Mach.addProp props pn p)
+                             
+                        else (trace ["allocating fixture for ", state, " property ",
+                                     fmtName pn];
+                              Mach.addProp props pn p)
+                in
+                    case f of
+                        Ast.TypeFixture ty =>
                             allocProp "type"
-                                      { ty = te,
+                                      { ty = evalTy regs ty,
                                         state = Mach.TypeProp,
                                         attrs = { dontDelete = true,
                                                   dontEnum = true,
                                                   readOnly = true,
                                                   isFixed = true } }
-
-                          | Ast.MethodFixture { func, ty, readOnly, ... } =>
-                            let
-                                val Ast.Func { native, ... } = func
-                                val p = if native
-                                        then Mach.NativeFunctionProp (Mach.getNativeFunction pn)
-                                        else Mach.MethodProp (newFunClosure methodScope func this)
-                            in
-                                allocProp "method"
-                                          { ty = ty,
-                                            state = p,
-                                            attrs = { dontDelete = true,
-                                                      dontEnum = true,
-                                                      readOnly = readOnly,
-                                                      isFixed = true } }
-                            end
-
-                          | Ast.ValFixture { ty, readOnly, ... } =>
+                            
+                      | Ast.MethodFixture { func, ty, readOnly, ... } =>
+                        let
+                            val Ast.Func { native, ... } = func
+                            val p = if native
+                                    then Mach.NativeFunctionProp (Mach.getNativeFunction pn)
+                                    else Mach.MethodProp (newFunClosure methodScope func this)
+                        in
+                            allocProp "method"
+                                      { ty = evalTy regs ty,
+                                        state = p,
+                                        attrs = { dontDelete = true,
+                                                  dontEnum = true,
+                                                  readOnly = readOnly,
+                                                  isFixed = true } }
+                        end
+                        
+                      | Ast.ValFixture { ty, readOnly, ... } =>
+                        let
+                            val tyExpr = evalTy regs ty 
+                        in
                             allocProp "value"
-                                      { ty = ty,
-                                        state = valAllocState ty,
+                                      { ty = tyExpr ,
+                                        state = valAllocState tyExpr,
                                         attrs = { dontDelete = true,
                                                   dontEnum = true, (* ticket #88 *) (* shouldBeDontEnum regs pn obj, *)
                                                   readOnly = readOnly,
                                                   isFixed = true } }
+                        end
 
-                          | Ast.VirtualValFixture { ty, getter, setter, ... } =>
-                            let
-                                val getFn = case getter of
-                                                NONE => NONE
-                                              | SOME f => SOME (newFunClosure methodScope (#func f) this)
-                                val setFn = case setter of
-                                                NONE => NONE
-                                              | SOME f => SOME (newFunClosure methodScope (#func f) this)
-                            in
-                                allocProp "virtual value"
-                                          { ty = ty,
-                                            state = Mach.VirtualValProp { getter = getFn,
-                                                                          setter = setFn },
-                                            attrs = { dontDelete = true,
-                                                      dontEnum = true, (* ticket #88 *) (* shouldBeDontEnum regs pn obj, *)
-                                                      readOnly = true,
-                                                      isFixed = true } }
-                            end
-
-                          | Ast.ClassFixture cls =>
-                            let
-                                val Ast.Cls {classRib, ...} = cls
-                                val _ = trace ["allocating class object for class ", fmtName pn]
-                                val classObj = needObj regs (newClass regs scope cls)
-                                val _ = trace ["allocating class rib on class ", fmtName pn]
-                                (* FIXME: 'this' binding in class objects might be wrong here. *)
-                                val _ = allocObjRib regs classObj NONE classRib
-                            in
-                                allocProp "class"
-                                          { ty = (Name.typename Name.intrinsic_Class),
-                                            state = Mach.ValProp (Mach.Object classObj),
-                                            attrs = { dontDelete = true,
-                                                      dontEnum = true,
-                                                      readOnly = true,
-                                                      isFixed = true } }
-                            end
-
-                          | Ast.NamespaceFixture ns =>
-                            allocProp "namespace"
-                                      { ty = (Name.typename Name.intrinsic_Namespace),
-                                        state = Mach.NamespaceProp ns,
+                      | Ast.VirtualValFixture { ty, getter, setter, ... } =>
+                        let
+                            val getFn = case getter of
+                                            NONE => NONE
+                                          | SOME f => SOME (newFunClosure methodScope (#func f) this)
+                            val setFn = case setter of
+                                            NONE => NONE
+                                          | SOME f => SOME (newFunClosure methodScope (#func f) this)
+                        in
+                            allocProp "virtual value"
+                                      { ty = evalTy regs ty,
+                                        state = Mach.VirtualValProp { getter = getFn,
+                                                                      setter = setFn },
+                                        attrs = { dontDelete = true,
+                                                  dontEnum = true, (* ticket #88 *) (* shouldBeDontEnum regs pn obj, *)
+                                                  readOnly = true,
+                                                  isFixed = true } }
+                        end
+                        
+                      | Ast.ClassFixture cls =>
+                        let
+                            val Ast.Cls {classRib, ...} = cls
+                            val _ = trace ["allocating class object for class ", fmtName pn]
+                            val classObj = needObj regs (newClass regs scope cls)
+                            val _ = trace ["allocating class rib on class ", fmtName pn]
+                            (* FIXME: 'this' binding in class objects might be wrong here. *)
+                            val _ = allocObjRib regs classObj NONE classRib
+                        in
+                            allocProp "class"
+                                      (* FIXME: get the TYPE_EXPR for the Name.intrinsic_Class type;
+                                       * this is a little tricky since it has to interact with 
+                                       * bootstrapping, but we can do it. For now we use '*' *)
+                                      { ty = Ast.SpecialType Ast.Any
+                                                             state = Mach.ValProp (Mach.Object classObj),
                                         attrs = { dontDelete = true,
                                                   dontEnum = true,
                                                   readOnly = true,
                                                   isFixed = true } }
+                        end
 
-                          | Ast.TypeVarFixture =>
-                            allocProp "type variable"
-                                      { ty = (Name.typename Name.intrinsic_Type),
-                                        state = Mach.TypeVarProp,
+                      | Ast.NamespaceFixture ns =>
+                        allocProp "namespace"
+                                  (* FIXME: get the TYPE_EXPR for the Name.intrinsic_Namespace type;
+                                   * this is a little tricky since it has to interact with 
+                                   * bootstrapping, but we can do it. For now we use '*' *)
+                                  { ty = Ast.SpecialType Ast.Any
+                                                         state = Mach.NamespaceProp ns,
+                                    attrs = { dontDelete = true,
+                                              dontEnum = true,
+                                              readOnly = true,
+                                              isFixed = true } }
+
+                      | Ast.TypeVarFixture =>
+                        allocProp "type variable"
+                                  (* FIXME: get the TYPE_EXPR for the Name.intrinsic_Type type;
+                                   * this is a little tricky since it has to interact with 
+                                   * bootstrapping, but we can do it. For now we use '*' *)
+                                  { ty = Ast.SpecialType Ast.Any,
+                                    state = Mach.TypeVarProp,
+                                    attrs = { dontDelete = true,
+                                              dontEnum = true,
+                                              readOnly = true,
+                                              isFixed = true } }
+
+                      | Ast.InterfaceFixture iface =>  (* FIXME *)
+                        let
+                            val _ = trace ["allocating interface object for interface ", fmtName pn]
+                            val ifaceObj = needObj regs (newInterface regs scope iface)
+                        in
+                            (* FIXME: get the TYPE_EXPR for the Name.intrinsic_Interface type;
+                             * this is a little tricky since it has to interact with 
+                             * bootstrapping, but we can do it. For now we use '*' *)
+                            allocProp "interface"
+                                      { ty = Ast.SpecialType Ast.Any,
+                                        state = Mach.ValProp (Mach.Object ifaceObj),
                                         attrs = { dontDelete = true,
                                                   dontEnum = true,
                                                   readOnly = true,
                                                   isFixed = true } }
+                        end
 
-                          | Ast.InterfaceFixture iface =>  (* FIXME *)
-                            let
-                                val _ = trace ["allocating interface object for interface ", fmtName pn]
-                                val ifaceObj = needObj regs (newInterface regs scope iface)
-                            in
-                                allocProp "interface"
-                                          { ty = (Name.typename Name.intrinsic_Interface),
-                                            state = Mach.ValProp (Mach.Object ifaceObj),
-                                            attrs = { dontDelete = true,
-                                                      dontEnum = true,
-                                                      readOnly = true,
-                                                      isFixed = true } }
-                            end
+                (* | _ => error regs ["Shouldn't happen: failed to match in Eval.allocRib#allocFixture."] *)
 
-                    (* | _ => error regs ["Shouldn't happen: failed to match in Eval.allocRib#allocFixture."] *)
-
-                    end
-        in
-            List.app allocFixture f
-        end
+                end
+    in
+        List.app allocFixture f
+    end
 
 
 and allocObjRib (regs:Mach.REGS)
