@@ -1,16 +1,12 @@
-<!-- Object.html
-  --
-  -- The class "Object"
-  --
-  -- Copyright (C) 2007 ECMA International
-  -- Contains material from older specs.
-  --
-  -- Status: incomplete
-  -- Review: not reviewed
-  -->
-
-
 <h1 id="class Object"> The class ''Object'' </h1>
+
+<pre>
+FILE:                       spec/library/Object.html
+DRAFT STATUS:               DRAFT 1 - ROUGH
+REVIEWED AGAINST ES3:       NO
+REVIEWED AGAINST PROPOSALS: NO
+REVIEWED AGAINST CODE:      NO
+</pre>
 
 <P> The class ''Object'' is a dynamic non-final class that does not
 subclass any other objects: it is the root of the class hierarchy.
@@ -25,7 +21,7 @@ target="Host objects">).
 
 == Synopsis ==
 
-<p>The class ''Object'' provides the following interface:
+<p>The class ''Object'' provides this interface:
 
 {{{
 dynamic class Object
@@ -33,8 +29,7 @@ dynamic class Object
     function Object(value=undefined) <LDOTS>
     <SIGNATURE file="Object.es" name="meta static function invoke">
 
-    static const length: uint = 1
-    static const prototype: Object = <LDOTS>
+    static const length = 1
 
     <SIGNATURE file="Object.es" name="intrinsic function toString">
     <SIGNATURE file="Object.es" name="intrinsic function toLocaleString">
@@ -46,10 +41,25 @@ dynamic class Object
 }
 }}}
 
+<P> The ''Object'' prototype object provides these direct properties:
+{{{
+    toString:             function () <LDOTS> ,
+    toLocaleString:       function () <LDOTS> ,
+    toJSONString:         function () <LDOTS> ,
+    valueOf:              function () <LDOTS> ,
+    hasOwnProperty:       function (V) <LDOTS> ,
+    isPrototypeOf:        function (V) <LDOTS> ,
+    propertyIsEnumerable: function (name, flag=undefined) <LDOTS> ,
+}}}
+
+<P> The ''Object'' prototype object is itself an instance of the class
+''Object'', with the exception that the value of its [[Prototype]]
+property is **null**.
+
 
 == Methods on the ''Object'' class object ==
 
-=== new Object ( value ) ===
+=== new Object ( value=<LDOTS> ) ===
 
 <DESC> When the ''Object'' constructor is called with an argument
 //value// (defaulting to **undefined**) as part of a ''new''
@@ -58,6 +68,10 @@ depends on the type of //value//.
 
 <RETN> The ''Object'' constructor returns an object (an instance of
 ''Object'' or one of its subclasses, or a host object).
+
+<NOTE> The ''Object'' constructor is the only constructor function
+defined on a class in the language whose result may be a value of a
+different class than the one in which the constructor is defined.
 
 <IMPL> The ''Object'' constructor can't be expressed as a regular
 ECMAScript constructor.  Instead it is presented below as a function
@@ -92,7 +106,7 @@ function makeObject(value=undefined) {
 }}}
 
 
-=== Object ( value ) ===
+=== Object ( value=<LDOTS> ) ===
 
 <DESC> When the ''Object'' class object is called as a function with zero
 or one arguments it performs a type conversion.
@@ -102,29 +116,6 @@ or one arguments it performs a type conversion.
 <SHORTIMPL>
 <INCLUDE file="Object.es" name="meta static function invoke">
 
-
-
-== Properties of the ''Object'' class object ==
-
-=== [[Prototype]] ===
-
-<p> The value of the internal [[Prototype]] property of the ''Object''
-class object is the ''Function'' prototype object (<XREF
-target="Function.prototype">).
-
-<FIXME> Either (a) this is the general rule and therefore true for all
-user-defined classes too or (b) the RI needs special hackarounds and those
-need to be documented explicitly here.
-
-
-=== length ===
-
-<P> The value of the constant ''length'' property is ''1''.
-
-=== prototype ===
-
-<P> The initial value of the ''prototype'' property is the ''Object''
-prototype object (<XREF target="Object.prototype">).
 
 
 == Methods on ''Object'' instances ==
@@ -167,8 +158,7 @@ implementations do not use this parameter position for anything else.
 === intrinsic::toJSONString ( ) ===
 
 <FIXME>Waiting for proposal to be cleaned up and the RI method to be
-implemented.  This may have the same issues as ''toLocaleString'':
-care must be taken.
+implemented.
 
 
 === intrinsic::valueOf ( ) ===
@@ -223,7 +213,7 @@ returns ''false''.
 from the object.  See <XREF target="magic:getPrototype">.
 
 
-=== intrinsic::propertyIsEnumerable ( name, flag=undefined ) ===
+=== intrinsic::propertyIsEnumerable ( name, flag=<LDOTS> ) ===
 
 <DESC> The intrinsic ''propertyIsEnumerable'' method retrieves, and
 optionally sets, the enumerability flag for a property with a certain
@@ -254,43 +244,15 @@ flag of the property.  See <XREF target="magic:getPropertyIsDontDelete">.
 flag of the property.  See <XREF target="magic:setPropertyIsDontEnum">.
 
 
-== Properties of ''Object'' instances ==
+== Methods on the ''Object'' prototype object ==
 
-<p>''Object'' instances have no special properties beyond those
-inherited from the ''Object'' prototype object (<XREF
-target="Object.prototype">).
+<DESC> The methods on the ''Object'' prototype object all call the
+corresponding intrinsic methods of the ''Object'' class.
 
+<RETN> The prototype methods return what their corresponding intrinsic
+methods return.
 
-<h2 id="Object.prototype">The ''Object'' prototype object</h2>
-
-<P> The ''Object'' prototype object is itself an instance of the class
-''Object'', with the exception that the value of its [[Prototype]]
-property is **null**.
-
-=== Synopsis ===
-
-<P> The ''Object'' prototype object provides the following properties:
-
-{{{
-Object.prototype = {
-    toString:             function () <LDOTS> ,
-    toLocaleString:       function () <LDOTS> ,
-    toJSONString:         function () <LDOTS> ,
-    valueOf:              function () <LDOTS> ,
-    hasOwnProperty:       function (V) <LDOTS> ,
-    isPrototypeOf:        function (V) <LDOTS> ,
-    propertyIsEnumerable: function (name, flag=undefined) <LDOTS> ,
-
-    constructor:          <LDOTS>
-}
-}}}
-
-
-=== Methods on the ''Object'' prototype object ===
-
-<p> The methods on the ''Object'' prototype object all call the
-corresponding intrinsic methods of the ''Object'' class, as follows.
-
+<SHORTIMPL>
 <INCLUDE file="Object.es" name="prototype function toString">
 <INCLUDE file="Object.es" name="prototype function toLocaleString">
 <INCLUDE file="Object.es" name="prototype function toJSONString">
@@ -299,12 +261,5 @@ corresponding intrinsic methods of the ''Object'' class, as follows.
 <INCLUDE file="Object.es" name="prototype function isPrototypeOf">
 <INCLUDE file="Object.es" name="prototype function propertyIsEnumerable">
 
-
-=== Properties of the ''Object'' prototype object ===
-
-==== constructor ====
-
-<p> The initial value of the ''constructor'' property is the
-''Object'' class object.
 
 <!-- End of Object.html -->

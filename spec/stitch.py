@@ -95,10 +95,10 @@ entities = { "INFINITY": "&#x221E;",
 	     "PI": "&#x03C0;",
 	     "P": "<P><span class=\"pcounter\"></span>",
 	     "p": "<P><span class=\"pcounter\"></span>",
-	     "DESC": "<P><b>Description</b> <P><span class=\"pcounter\"></span>",
-	     "RETN": "<P><b>Returns</b> <P><span class=\"pcounter\"></span>",
-	     "IMPL": "<P><b>Implementation</b> <P><span class=\"pcounter\"></span>",
-	     "SHORTIMPL": "<P><b>Implementation</b>"
+	     "DESC": "<P class=\"section\"><b>Description</b> <P><span class=\"pcounter\"></span>",
+	     "RETN": "<P class=\"section\"><b>Returns</b> <P><span class=\"pcounter\"></span>",
+	     "IMPL": "<P class=\"section\"><b>Implementation</b> <P><span class=\"pcounter\"></span>",
+	     "SHORTIMPL": "<P class=\"section\"><b>Implementation</b>"
 	     }
 
 currentlevel = 0
@@ -249,9 +249,9 @@ def replaceInclude(m, hdrlvl, fn):
     ms = esInclude.match(m.group(0))
     if ms:
 	if isSignature:
-	    return extractES(ms.group(1), ms.group(2), True)
+	    return htmlEscape(extractES(ms.group(1), ms.group(2), True))
 	else:
-	    return "<PRE>" + extractES(ms.group(1), ms.group(2), False) + "</PRE>"
+	    return "<PRE>" + htmlEscape(extractES(ms.group(1), ms.group(2), False)) + "</PRE>"
     print fn + ": Invalid INCLUDE directive: " + m.group(0)
     sys.exit(1)
 

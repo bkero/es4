@@ -1,28 +1,50 @@
 <!-- The Error class and its subclasses -->
 
-= The class ''Error'' =
+= Error classes =
 
-<P> The class ''Error'' is a dynamic non-final subclass of ''Object''
-and serves as the base class for all the classes describing standard
-errors thrown by the ECMAScript implementation: ''EvalError'',
-''RangeError'', ''ReferenceError'', ''SyntaxError'', ''TypeError'',
-and ''URIError''.  Collectively, the built-in subclasses of ''Error''
-are called "native error classes".
+<pre>
+FILE:                       spec/library/Error.html
+DRAFT STATUS:               DRAFT 1 - ROUGH
+REVIEWED AGAINST ES3:       NO
+REVIEWED AGAINST PROPOSALS: NO
+REVIEWED AGAINST CODE:      NO
+</pre>
+
+<P> ECMAScript provides a hierarchy of standard native error classes
+rooted at the class ''Error'' (see <XREF target="class Error">).
+
+<P> The ECMAScript implementation throws a new instance of one of
+the native error classes when it detects certain run-time errors.  The
+conditions under which run-time errors are detected are explained
+throughout this Standard.  The description of each of the native error
+objects contains a summary of the conditions under which an instance
+of that particular error class is thrown.
+
+<P> The class ''Error'' serves as the base class for all the classes
+describing standard errors thrown by the ECMAScript implementation:
+''EvalError'', ''RangeError'', ''ReferenceError'', ''SyntaxError'',
+''TypeError'', and ''URIError''.
 (See <XREF target="class EvalError">, <XREF target="class RangeError">,
 <XREF target="class ReferenceError">, <XREF target="class SyntaxError">,
 <XREF target="class TypeError">, <XREF target="class URIError">.)
 
-<P> The class ''Error'' as well as all the built-in subclasses are
-non-final and may be subclassed by user user-defined exception
+<P> The class ''Error'' as well as all its native subclasses are
+non-final and dynamic and may be subclassed by user-defined exception
 classes.
 
 <P> All the built-in subclasses of ''Error'' share the same structure.
 
-<P> A fresh instance of one of the native error classes is thrown when
-a run-time error is detected.  The conditions under which errors are
-detected are explained throughout this Standard.
+
+<H1 id="class Error"> The class ''Error'' </h1>
+
+<P> The class ''Error'' is a dynamic non-final subclass of ''Object''.
+Instances of ''Error'' are not thrown by the implementation; rather,
+''Error'' is intended to serve as a base class for other error classes
+whose instances represent specific classes of run-time errors.
 
 == Synopsis ==
+
+<P> The class ''Error'' provides the following interface:
 
 {{{
 dynamic class Error extends Object 
@@ -31,93 +53,88 @@ dynamic class Error extends Object
     <SIGNATURE file="Error.es" name="meta static function invoke">
     
     static const length = 1
-    static var prototype: Object = <LDOTS>
     
     <SIGNATURE file="Error.es" name="override intrinsic function toString">
 }
 }}}
 
-== Methods on the Error class ==
+<P> The ''Error'' prototype object provides these direct properties:
+
+{{{
+    toString: function () <LDOTS> ,
+    name:     "Error" ,
+    message:  <LDOTS> ,
+}}}
+
+== Methods on the ''Error'' class ==
 
 === new Error (message) ===
 
-<P> When the ''Error'' constructor is called as part of a new
-expression it initialises the newly created object.  If //message// is
-not undefined, the ''message'' property of the newly constructed
-object is set to ''ToString(//message//)''.
+<DESC> When the ''Error'' constructor is called as part of a
+''new&nbsp;Error'' expression it initialises the newly created object:
+If //message// is not **undefined**, the dynamic ''message'' property
+of the newly constructed ''Error'' object is set to ''string(//message//)''.
+
+<SHORTIMPL>
+<INCLUDE file="Error.es" name="function Error">
 
 === Error (message) ===
 
-<P> When the ''Error'' class is called as a function, it creates and
-initialises a new ''Error'' object.  Thus the function call
-''Error(<LDOTS>)'' is equivalent to the object creation expression
-''new&nbsp;Error(<LDOTS>)'' with the same arguments.
+<DESC> When the ''Error'' class object is called as a function, it
+creates and initialises a new ''Error'' object by invoking the
+''Error'' constructor.
+
+<RETN> The ''Error'' class object called as a function returns a new
+''Error'' object.
+
+<SHORTIMPL>
+<INCLUDE file="Error.es" name="meta static function invoke">
 
 
-== Value properties of the ''Error'' class ==
+== Methods on ''Error'' instances ==
 
-=== [[Prototype]] ===
+=== intrinsic::toString( ) ===
 
-<P> The value of the internal [[Prototype]] property of the ''Error''
-class object is the ''Function'' prototype object (<XREF
-target="Function.prototype">).
+<DESC> The intrinsic ''toString'' method converts the ''Error'' object
+to an implementation-defined string.
 
-=== length ===
+<RETN> A ''string'' object.
 
-<P> The value of the static ''length'' property is 1.
-
-=== prototype ===
-
-<P> The initial value of the static ''prototype'' property is the
-''Error'' prototype object (<XREF target="Error.prototype">).
+<IMPL> The intrinsic ''toString'' method is implementation-dependent.
 
 
-<H2 id="Error.prototype"> The Error Prototype Object </H2>
+== Methods on the ''Error'' prototype object ==
 
-=== Synopsis ===
+=== toString ( ) ===
 
-{{{
-Error.prototype = {
-    toString:    function () <LDOTS> ,
-    name:        <LDOTS> ,
-    string:      <LDOTS> ,
-    constructor: <LDOTS> 
-}
-}}}
+<DESC> The prototype ''toString'' method calls the intrinsic ''toString'' method.
 
-=== Method properties on the ''Error'' prototype object ===
+<RETN> The prototype ''toString'' method returns a ''string'' object.
 
-==== toString ( ) ====
+<SHORTIMPL>
+<INCLUDE file="Error.es" name="prototype function toString">
 
-<P> The prototype ''toString'' method returns an implementation
-defined string.
+== Value properties on the ''Error'' prototype object ==
 
+=== message ===
 
-=== Value properties on the ''Error'' prototype object ===
-
-==== constructor ====
-
-<P> The initial value of the ''constructor'' prototype propety is the
-built-in ''Error'' class object.
-
-==== name ====
-
-<P> The initial value of the ''name'' prototype property is ''"Error"''.
-
-==== message ====
-
-<P> The initial value of ''message'' prototype property is an
+<P> The initial value of the ''message'' prototype property is an
 implementation-defined string.
 
 
 <!----------------------------------------------------------------------->
 
-= The class ''EvalError'' =
+<H1 id="class EvalError"> The class ''EvalError'' </H1>
 
-<P> The implementation throws an ''EvalError'' instance when it detects that the global function 
-eval was used in a way that is incompatible with its definition.  See <XREF target="global.eval">.
+<P> The implementation throws a new ''EvalError'' instance when it
+detects that the global function ''eval'' was used in a way that is
+incompatible with its definition.  See XX.XX.
+
+<FIXME> Clean up the section references when we reach final draft.
 
 == Synopsis ==
+
+<P> The ''EvalError'' class provides this interface:
 
 {{{
 dynamic class EvalError extends Error
@@ -125,47 +142,61 @@ dynamic class EvalError extends Error
     <SIGNATURE file="EvalError.es" name="function EvalError">
     <SIGNATURE file="EvalError.es" name="meta static function invoke">
     
-    static var prototype: Object = <LDOTS>
+    static const length = 1
 }
 }}}
 
-== The ''EvalError'' prototype object ==
-
-=== Synopsis ===
-
+<P> The ''EvalError'' prototype object provides these direct properties:
 {{{
-EvalError.prototype = {
-    name:        <LDOTS> ,
-    string:      <LDOTS> ,
-    constructor: <LDOTS> 
-}
+    name:    "EvalError" ,
+    message: <LDOTS> ,
 }}}
 
-=== Value properties on the ''EvalError'' prototype object ===
+== Methods on the ''EvalError'' class ==
 
-==== constructor ====
+=== new EvalError (message) ===
 
-<P> The initial value of the ''constructor'' prototype propety is the built-in EvalError class.
+<DESC> When the ''EvalError'' constructor is called as part of a
+''new&nbsp;EvalError'' expression it initialises the newly created
+object by delegating to the ''Error'' constructor.
 
-==== name ====
+<SHORTIMPL>
+<INCLUDE file="EvalError.es" name="function EvalError">
 
-<P> The initial value of the ''name'' prototype property is ''"EvalError"''.
 
-==== message ====
+=== EvalError (message) ===
+
+<DESC> When the ''EvalError'' class object is called as a function, it
+creates and initialises a new ''EvalError'' object by invoking the
+''EvalError'' constructor.
+
+<RETN> The ''EvalError'' class object called as a function returns a
+new ''EvalError'' object.
+
+<SHORTIMPL>
+<INCLUDE file="EvalError.es" name="meta static function invoke">
+
+
+== Value properties on the ''EvalError'' prototype object ==
+
+=== message ===
 
 <P> The initial value of ''message'' prototype property is an implementation-defined string.
 
 
 <!----------------------------------------------------------------------->
 
-= The class ''RangeError'' =
+<H1 id="class RangeError"> The class ''RangeError'' </H1>
 
-<P> Indicates a numeric value has exceeded the allowable range. See 15.4.2.2, 15.4.5.1, 15.7.4.5, 15.7.4.6,
-and 15.7.4.7.
+<P> The implementation throws a new ''RangeError'' instance when it
+detects that a numeric value has exceeded the allowable range. See
+15.4.2.2, 15.4.5.1, 15.7.4.5, 15.7.4.6, and 15.7.4.7.
 
 <FIXME> Clean up the section references when we reach final draft.
 
 == Synopsis ==
+
+<P> The ''RangeError'' class provides this interface:
 
 {{{
 dynamic class RangeError extends Error
@@ -173,20 +204,54 @@ dynamic class RangeError extends Error
     <SIGNATURE file="RangeError.es" name="function RangeError">
     <SIGNATURE file="RangeError.es" name="meta static function invoke">
     
-    static var prototype: Object = <LDOTS>
+    static const length = 1
 }
 }}}
 
-== The ''RangeError'' prototype object ==
+<P> The ''RangeError'' prototype object provides these direct properties:
+{{{
+    name:    "RangeError" ,
+    message: <LDOTS> ,
+}}}
 
-<P> Adds no new properties (inherits from the Error prototype object)
+== Methods on the ''RangeError'' class ==
+
+=== new RangeError (message) ===
+
+<DESC> When the ''RangeError'' constructor is called as part of a
+''new&nbsp;RangeError'' expression it initialises the newly created
+object by delegating to the ''Error'' constructor.
+
+<SHORTIMPL>
+<INCLUDE file="RangeError.es" name="function RangeError">
+
+
+=== RangeError (message) ===
+
+<DESC> When the ''RangeError'' class object is called as a function, it
+creates and initialises a new ''RangeError'' object by invoking the
+''RangeError'' constructor.
+
+<RETN> The ''RangeError'' class object called as a function returns a
+new ''RangeError'' object.
+
+<SHORTIMPL>
+<INCLUDE file="RangeError.es" name="meta static function invoke">
+
+
+== Value properties on the ''RangeError'' prototype object ==
+
+=== message ===
+
+<P> The initial value of ''message'' prototype property is an implementation-defined string.
 
 
 <!----------------------------------------------------------------------->
 
-= The class ''ReferenceError'' =
+<H1 id="class ReferenceError"> The class ''ReferenceError'' </H1>
 
-<P> Indicates that an invalid reference value has been detected. See 8.7.1, and 8.7.2.
+<P> The implementation throws a new ''ReferenceError'' instance when it
+detects an invalid reference value. See 8.7.1, and 8.7.2.
 
 <FIXME> Clean up the section references when we reach final draft.
 
@@ -198,21 +263,55 @@ dynamic class ReferenceError extends Error
     <SIGNATURE file="ReferenceError.es" name="function ReferenceError">
     <SIGNATURE file="ReferenceError.es" name="meta static function invoke">
     
-    static var prototype: Object = <LDOTS>
+    static const length = 1
 }
 }}}
 
-== The ''ReferenceError'' prototype object ==
+<P> The ''ReferenceError'' prototype object provides these direct properties:
+{{{
+    name:    "ReferenceError" ,
+    message: <LDOTS> ,
+}}}
 
-<P> Adds no new properties (inherits from the Error prototype object)
+== Methods on the ''ReferenceError'' class ==
+
+=== new ReferenceError (message) ===
+
+<DESC> When the ''ReferenceError'' constructor is called as part of a
+''new&nbsp;ReferenceError'' expression it initialises the newly created
+object by delegating to the ''Error'' constructor.
+
+<SHORTIMPL>
+<INCLUDE file="ReferenceError.es" name="function ReferenceError">
+
+
+=== ReferenceError (message) ===
+
+<DESC> When the ''ReferenceError'' class object is called as a function, it
+creates and initialises a new ''ReferenceError'' object by invoking the
+''ReferenceError'' constructor.
+
+<RETN> The ''ReferenceError'' class object called as a function returns a
+new ''ReferenceError'' object.
+
+<SHORTIMPL>
+<INCLUDE file="ReferenceError.es" name="meta static function invoke">
+
+
+== Value properties on the ''ReferenceError'' prototype object ==
+
+=== message ===
+
+<P> The initial value of ''message'' prototype property is an implementation-defined string.
 
 
 <!----------------------------------------------------------------------->
 
-= The class ''SyntaxError'' =
+<H1 id="class SyntaxError"> The class ''SyntaxError'' </H1>
 
-<P> Indicates that a parsing error has occurred. See 15.1.2.1, 15.3.2.1, 15.10.2.5, 15.10.2.9, 15.10.2.15,
-15.10.2.19, and 15.10.4.1.
+<P> The implementation throws a new ''SyntaxError'' instance when a
+parsing error has occurred. See 15.1.2.1, 15.3.2.1, 15.10.2.5,
+15.10.2.9, 15.10.2.15, 15.10.2.19, and 15.10.4.1.
 
 <FIXME> Clean up the section references when we reach final draft.
 
@@ -224,23 +323,58 @@ dynamic class SyntaxError extends Error
     <SIGNATURE file="SyntaxError.es" name="function SyntaxError">
     <SIGNATURE file="SyntaxError.es" name="meta static function invoke">
     
-    static var prototype: Object = <LDOTS>
+    static const length = 1
 }
 }}}
 
-== The ''SyntaxError'' prototype object ==
+<P> The ''SyntaxError'' prototype object provides these direct properties:
+{{{
+    name:    "SyntaxError" ,
+    message: <LDOTS> ,
+}}}
 
-<P> Adds no new properties (inherits from the Error prototype object)
+== Methods on the ''SyntaxError'' class ==
+
+=== new SyntaxError (message) ===
+
+<DESC> When the ''SyntaxError'' constructor is called as part of a
+''new&nbsp;SyntaxError'' expression it initialises the newly created
+object by delegating to the ''Error'' constructor.
+
+<SHORTIMPL>
+<INCLUDE file="SyntaxError.es" name="function SyntaxError">
+
+
+=== SyntaxError (message) ===
+
+<DESC> When the ''SyntaxError'' class object is called as a function, it
+creates and initialises a new ''SyntaxError'' object by invoking the
+''SyntaxError'' constructor.
+
+<RETN> The ''SyntaxError'' class object called as a function returns a
+new ''SyntaxError'' object.
+
+<SHORTIMPL>
+<INCLUDE file="SyntaxError.es" name="meta static function invoke">
+
+
+== Value properties on the ''SyntaxError'' prototype object ==
+
+=== message ===
+
+<P> The initial value of ''message'' prototype property is an implementation-defined string.
 
 
 <!----------------------------------------------------------------------->
 
-= The class ''TypeError'' =
+<h1 id="class TypeError"> The class ''TypeError'' </H1>
 
-<P> Indicates the actual type of an operand is different than the expected type. See 8.6.2, 8.6.2.6, 9.9,
-11.2.2, 11.2.3, 11.8.6, 11.8.7, 15.3.4.2, 15.3.4.3, 15.3.4.4, 15.3.5.3, 15.4.4.2, 15.4.4.3, 15.5.4.2,
-15.5.4.3, 15.6.4, 15.6.4.2, 15.6.4.3, 15.7.4, 15.7.4.2, 15.7.4.4, 15.9.5, 15.9.5.9, 15.9.5.27, 15.10.4.1,
-and 15.10.6.
+<P> The implementation throws a new ''TypeError'' instance when it has
+detected that the actual type of an operand is different than the
+expected type. See 8.6.2, 8.6.2.6, 9.9, 11.2.2, 11.2.3, 11.8.6,
+11.8.7, 15.3.4.2, 15.3.4.3, 15.3.4.4, 15.3.5.3, 15.4.4.2, 15.4.4.3,
+15.5.4.2, 15.5.4.3, 15.6.4, 15.6.4.2, 15.6.4.3, 15.7.4, 15.7.4.2,
+15.7.4.4, 15.9.5, 15.9.5.9, 15.9.5.27, 15.10.4.1, and 15.10.6.
 
 <FIXME> Clean up the section references when we reach final draft.
 
@@ -252,20 +386,54 @@ dynamic class TypeError extends Error
     <SIGNATURE file="TypeError.es" name="function TypeError">
     <SIGNATURE file="TypeError.es" name="meta static function invoke">
     
-    static var prototype: Object = <LDOTS>
+    static const length = 1
 }
 }}}
 
-== The ''TypeError'' prototype object ==
+<P> The ''TypeError'' prototype object provides these direct properties:
+{{{
+    name:    "TypeError" ,
+    message: <LDOTS> ,
+}}}
 
-<P> Adds no new properties (inherits from the Error prototype object)
+== Methods on the ''TypeError'' class ==
+
+=== new TypeError (message) ===
+
+<DESC> When the ''TypeError'' constructor is called as part of a
+''new&nbsp;TypeError'' expression it initialises the newly created
+object by delegating to the ''Error'' constructor.
+
+<SHORTIMPL>
+<INCLUDE file="TypeError.es" name="function TypeError">
+
+
+=== TypeError (message) ===
+
+<DESC> When the ''TypeError'' class object is called as a function, it
+creates and initialises a new ''TypeError'' object by invoking the
+''TypeError'' constructor.
+
+<RETN> The ''TypeError'' class object called as a function returns a
+new ''TypeError'' object.
+
+<SHORTIMPL>
+<INCLUDE file="TypeError.es" name="meta static function invoke">
+
+
+== Value properties on the ''TypeError'' prototype object ==
+
+=== message ===
+
+<P> The initial value of ''message'' prototype property is an implementation-defined string.
 
 
 <!----------------------------------------------------------------------->
 
-= The class ''URIError'' =
+<H1 id="class URIError"> The class ''URIError'' </H1>
 
-<P> Indicates that one of the global URI handling functions was used in a way that is incompatible with its
+<P> The implementation throws a new ''URIError'' when one of the global
+URI handling functions was used in a way that is incompatible with its
 definition. See 15.1.3.
 
 <FIXME> Clean up the section references when we reach final draft.
@@ -278,82 +446,45 @@ dynamic class URIError extends Error
     <SIGNATURE file="URIError.es" name="function URIError">
     <SIGNATURE file="URIError.es" name="meta static function invoke">
     
-    static var prototype: Object = <LDOTS>
+    static const length = 1
 }
 }}}
 
-== The ''URIError'' prototype object ==
+<P> The ''URIError'' prototype object provides these direct properties:
+{{{
+    name:    "URIError" ,
+    message: <LDOTS> ,
+}}}
 
-<P> Adds no new properties (inherits from the Error prototype object)
+== Methods on the ''URIError'' class ==
+
+=== new URIError (message) ===
+
+<DESC> When the ''URIError'' constructor is called as part of a
+''new&nbsp;URIError'' expression it initialises the newly created
+object by delegating to the ''Error'' constructor.
+
+<SHORTIMPL>
+<INCLUDE file="URIError.es" name="function URIError">
 
 
-<!--
+=== URIError (message) ===
 
-------------------
+<DESC> When the ''URIError'' class object is called as a function, it
+creates and initialises a new ''URIError'' object by invoking the
+''URIError'' constructor.
 
-15.11.7 NativeError Object Structure
-When an ECMAScript implementation detects a runtime error, it throws an instance of one of the
-NativeError objects defined in 15.11.6. Each of these objects has the structure described below,
-differing only in the name used as the constructor name instead of NativeError, in the name property of
-the prototype object, and in the implementation-defined message property of the prototype object.
-For each error object, references to NativeError in the definition should be replaced with the appropriate
-error object name from 15.11.6.
+<RETN> The ''URIError'' class object called as a function returns a
+new ''URIError'' object.
 
-15.11.7.1 NativeError Constructors Called as Functions
-When a NativeError constructor is called as a function rather than as a constructor, it creates and
-initialises a new object. A call of the object as a function is equivalent to calling it as a constructor
-with the same arguments.
+<SHORTIMPL>
+<INCLUDE file="URIError.es" name="meta static function invoke">
 
-15.11.7.2 NativeError (message)
-The [[Prototype]] property of the newly constructed object is set to the prototype object for this error
-constructor. The [[Class]] property of the newly constructed object is set to "Error".
-If the argument message is not undefined, the message property of the newly constructed object is
-set to ToString(message).
 
-15.11.7.3 The NativeError Constructors
-When a NativeError constructor is called as part of a new expression, it is a constructor: it initialises
-the newly created object.
+== Value properties on the ''URIError'' prototype object ==
 
-15.11.7.4 New NativeError (message)
-The [[Prototype]] property of the newly constructed object is set to the prototype object for this
-NativeError constructor. The [[Class]] property of the newly constructed object is set to "Error".
-- 148 -
-If the argument message is not undefined, the message property of the newly constructed object is
-set to ToString(message).
+=== message ===
 
-15.11.7.5 Properties of the NativeError Constructors
-The value of the internal [[Prototype]] property of a NativeError constructor is the Function prototype
-object (15.3.4).
-Besides the internal properties and the length property (whose value is 1), each NativeError
-constructor has the following property:
+<P> The initial value of ''message'' prototype property is an implementation-defined string.
 
-15.11.7.6 NativeError.prototype
-The initial value of NativeError.prototype is a NativeError prototype object (15.11.7.7). Each
-NativeError constructor has a separate prototype object.
-This property has the attributes { DontEnum, DontDelete, ReadOnly }.
-
-15.11.7.7 Properties of the NativeError Prototype Objects
-Each NativeError prototype object is an Error object (its [[Class]] is "Error").
-The value of the internal [[Prototype]] property of each NativeError prototype object is the Error
-prototype object (15.11.4).
-
-15.11.7.8 NativeError.prototype.constructor
-The initial value of the constructor property of the prototype for a given NativeError constructor
-is the NativeError constructor function itself (15.11.7).
-
-15.11.7.9 NativeError.prototype.name
-The initial value of the name property of the prototype for a given NativeError constructor is the
-name of the constructor (the name used instead of NativeError).
-
-15.11.7.10 NativeError.prototype.message
-The initial value of the message property of the prototype for a given NativeError constructor is an
-implementation-defined string.
-NOTE
-The prototypes for the NativeError constructors do not themselves provide a toString function,
-but instances of errors will inherit it from the Error prototype object.
-
-15.11.7.11 Properties of NativeError Instances
-NativeError instances have no special properties beyond those inherited from the Error prototype
-object.
-
--->
+<!-- End of Error.html -->

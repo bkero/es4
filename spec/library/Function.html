@@ -12,6 +12,14 @@
 
 <h1 id="class Function"> The class ''Function'' </h1>
 
+<pre>
+FILE:                       spec/library/Function.html
+DRAFT STATUS:               DRAFT 1 - ROUGH
+REVIEWED AGAINST ES3:       NO
+REVIEWED AGAINST PROPOSALS: NO
+REVIEWED AGAINST CODE:      NO
+</pre>
+
 <P> The class ''Function'' is a dynamic non-final subclass of
 ''Object'' (see <XREF target="class Object">).
 
@@ -40,8 +48,7 @@ dynamic class Function extends Object
     <SIGNATURE file="Function.es" name="static function apply">
     <SIGNATURE file="Function.es" name="static function call">
 
-    static const length: uint = 1
-    static const prototype: Object = <LDOTS>
+    static const length = 1
 
     meta final function invoke( <LDOTS> ) <LDOTS>
 
@@ -51,9 +58,17 @@ dynamic class Function extends Object
     <SIGNATURE file="Function.es" name="intrinsic function call">
     <SIGNATURE file="Function.es" name="intrinsic function HasInstance">
 
-    const length: uint = <LDOTS>
+    const length = <LDOTS>
     var   prototype = <LDOTS>
 }
+}}}
+
+<p>The ''Function'' prototype object provides these direct properties:
+
+{{{
+    toString:    function () <LDOTS> ,
+    apply:       function(thisArg, argArray) <LDOTS> ,
+    call:        function(thisArg, ...args) <LDOTS> ,
 }}}
 
 
@@ -63,15 +78,17 @@ dynamic class Function extends Object
 
 <DESC> When the ''Function'' constructor is called with some arguments as
 part of a ''new'' expression, it creates a new ''Function'' instance
-whose parameter list is given by the concatenation of the //pi//
+whose parameter list is given by the concatenation of the //p<SUB>i</SUB>//
 arguments and whose executable code is given by the //body// argument.
 
-<P> There may be no "//p//" arguments, and //body// is optional too,
+<P> There may be no //p<SUB>i</SUB>// arguments, and //body// is optional too,
 defaulting to the empty string.
 
 <p> If the list of parameters is not parsable as a
 //FormalParameterList<sub>opt</sub>//, or if the body is not parsable
 as a //FunctionBody//, then a **SyntaxError** exception is thrown.
+
+<FIXME> Cross-reference to grammar here for those production names.
 
 <RETN> The ''Function'' constructor returns a new ''Function'' instance.
 
@@ -142,9 +159,9 @@ meta static function invoke(...args)
 ''Function'' constructor (see <XREF target="Function: constructor">).
 
 
-=== apply ( fn, thisArg, argArray ) ===
+=== apply ( fn, thisArg=<LDOTS>, argArray=<LDOTS> ) ===
 
-<DESC> The ''apply'' method takes arguments //fn//, //thisArg//, and
+<DESC> The static ''apply'' method takes arguments //fn//, //thisArg//, and
 //argArray//, and performs a function call using the [[Call]] property
 of //fn//, passing //thisArg// as the value for ''this'' and the
 members of //argArray// as the individual argument values.
@@ -162,7 +179,7 @@ exception is thrown.
 <XREF target="magic::apply">).
 
 
-=== call ( fn, thisArg, ...args ) ===
+=== call ( fn, thisArg=<LDOTS>, ...args ) ===
 
 <DESC> The static ''call'' method takes arguments //fn// and //thisArg// and
 optionally some //args//, and performs a function call using the
@@ -176,25 +193,6 @@ is thrown.
 
 <SHORTIMPL>
 <INCLUDE file="Function.es" name="static function call">
-
-
-== Properties of the ''Function'' class object ==
-
-=== [[Prototype]] ===
-
-<p> The value of the internal [[Prototype]] property of the
-''Function'' class object is the ''Function'' prototype object
-(section <XREF target="Function.prototype">).
-
-=== length ===
-
-<P> The value of the constant ''length'' property is 1.
-
-=== prototype ===
-
-<p> The initial value of the ''prototype'' property is the
-''Function'' prototype object (section <XREF
-target="Function.prototype">).
 
 
 == Methods on Function instances ==
@@ -256,29 +254,39 @@ intrinsic function toString(): string
 of this function object.
 
 
-=== intrinsic::apply ( ) ===
+=== intrinsic::apply ( thisObj=<LDOTS>, args=<LDOTS> ) ===
 
-<DESC>The intrinsic ''apply'' method calls the static ''apply'' method
-with the current value of ''this'' as the first argument and returns
-the result of the call:
+<DESC> The intrinsic ''apply'' method calls the static ''apply'' method
+with the current value of ''this'' as the first argument.
 
+<RETN> The intrinsic ''apply'' method returns the result of the static
+''apply'' method.
+
+<SHORTIMPL>
 <INCLUDE file="Function.es" name="intrinsic function apply">
 
-=== intrinsic::call ( ) ===
+=== intrinsic::call ( thisObj=<LDOTS>, ...args) ===
 
 <DESC>The intrinsic ''call'' method calls the static ''apply'' method
-with the current value of ''this'' as the first argument and the rest
-arguments as the arguments array, and returns the result of the call:
+with the current value of ''this'' as the first argument.
 
+<RETN> The intrinsic ''call'' method returns the result of the static
+''call'' method.
+
+<SHORTIMPL>
 <INCLUDE file="Function.es" name="intrinsic function call">
+
 
 === %%[[HasInstance]]%% (V) ===
 
 <FIXME> Is this what we want?
 
-<p>When the [[HasInstance]] method of a Function object is called with
-value V, the following steps are taken:
+<DESC>The [[HasInstance]] method of a ''Function'' object called with
+a value //V// determines if //V// is an instance of the ''Function'' object.
 
+<RETN> A boolean value.
+
+<SHORTIMPL>
 <INCLUDE file="Function.es" name="intrinsic function HasInstance">
 
 <p> The magic ''getPrototype'' function extracts the [[Prototype]] property
@@ -314,34 +322,15 @@ internal [[Prototype]] property of a newly created object before the
 ''Function'' instance is invoked as a constructor for that newly
 created object.
 
-
-<H2 id="Function.prototype"> The ''Function'' prototype object </H2>
-
-<p>The ''Function'' prototype object is itself an instance of the
-class ''Function'', with the exception that the value of its
-[[Prototype]] property is the ''Object'' prototype object (section
-<XREF target="Object.prototype">).
-
-=== Synopsis ===
-
-{{{
-Function.prototype = {
-    toString:    function () <LDOTS> ,
-    apply:       function(thisArg, argArray) <LDOTS> ,
-    call:        function(thisArg, ...args) <LDOTS> ,
-
-    constructor: <LDOTS>
-}
-}}}
-
-=== Invoking the ''Function'' prototype object ===
+== Invoking the ''Function'' prototype object ==
 
 <P> When the ''Function'' prototype object is invoked it accepts any
 arguments and returns **undefined**:
 
 <INCLUDE file="Function.es" name="meta prototype function invoke">
 
-=== Methods on the ''Function'' prototype object ===
+
+== Methods on the ''Function'' prototype object ==
 
 <p> The methods on the ''Function'' prototype object call their
 intrinsic counterparts:
@@ -353,13 +342,6 @@ intrinsic counterparts:
 <p> The Function prototype object does not have a ''valueOf'' property
 of its own; however, it inherits the ''valueOf'' property from the
 ''Object'' prototype object.
-
-=== Properties of the ''Function'' prototype object ===
-
-==== constructor ====
-
-<p> The initial value of the ''constructor'' property is the built-in
-''Function'' class object.
 
 <!-- End of Function.html -->
 

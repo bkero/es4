@@ -1,15 +1,33 @@
-<!--
-
-Stylistically it is actually best for the helpers not to be "static"
-but to be on the global level, but the 'static' can be hidden by
-preprocessing, probably: some "hidestatic" flag on INCLUDE?
-
--->
+<!-- Date.html -->
 
 <H1 id="class Date"> The class ''Date'' </h1>
 
+<pre>
+FILE:                       spec/library/Date.html
+DRAFT STATUS:               DRAFT 1 - ROUGH
+REVIEWED AGAINST ES3:       NO
+REVIEWED AGAINST PROPOSALS: NO
+REVIEWED AGAINST CODE:      NO
+</pre>
+
+<P> The ''Date'' object serves two purposes: as a record of an instant
+in time, and as a simple timer.
+
+<P> Time is measured in ECMAScript in milliseconds since 01 January,
+1970 UTC (the "epoch"), and a ''Date'' object contains a number
+indicating a particular instant in time to within a millisecond
+relative to the epoch.  The number may also be NaN, indicating that
+the Date object does not represent a specific instant of time.
+
+<P> A ''Date'' object also contains a record of its time of creation
+to nanosecond precision, and can be queried for the elapsed time since
+its creation to within a nanosecond.
+
 == Synopsis ==
 
+<P> The ''Date'' class provides this interface:
+
+<!-- This is split in two blocks because of a bug in the Python regex package. -->
 {{{
 dynamic class Date extends Object
 {
@@ -110,111 +128,231 @@ dynamic class Date extends Object
 }
 }}}
 
-== Overview of Date Objects and Definitions of Internal Operators ==
+<P> The ''Date'' prototype object is itself a ''Date'' object whose
+time value is NaN.  It provides the following direct properties:
 
-<P>A Date object contains a number indicating a particular instant in time to within a millisecond. The
-number may also be NaN, indicating that the Date object does not represent a specific instant of time.
-The following sections define a number of functions for operating on time values. Note that, in every
-case, if any argument to such a function is NaN, the result will be NaN.
+{{{
+    toString:           function () <LDOTS> ,
+    toDateString:       function () <LDOTS> ,
+    toTimeString:       function () <LDOTS> ,
+    toLocaleString:     function () <LDOTS> ,
+    toLocaleDateString: function () <LDOTS> ,
+    toLocaleTimeString: function () <LDOTS> ,
+    toUTCString:        function () <LDOTS> ,
+    toISOString:        function () <LDOTS> ,
+    valueOf:            function () <LDOTS> ,
+    getTime:            function () <LDOTS> ,
+    getFullYear:        function () <LDOTS> ,
+    getUTCFullYear:     function () <LDOTS> ,
+    getMonth:           function () <LDOTS> ,
+    getUTCMonth:        function () <LDOTS> ,
+    getDate:            function () <LDOTS> ,
+    getUTCDate:         function () <LDOTS> ,
+    getDay:             function () <LDOTS> ,
+    getUTCDay:          function () <LDOTS> ,
+    getHours:           function () <LDOTS> ,
+    getUTCHours:        function () <LDOTS> ,
+    getMinutes:         function () <LDOTS> ,
+    getUTCMinutes:      function () <LDOTS> ,
+    getSeconds:         function () <LDOTS> ,
+    getUTCSeconds:      function () <LDOTS> ,
+    getMilliseconds:    function () <LDOTS> ,
+    getUTCMilliseconds: function () <LDOTS> ,
+    getTimezoneOffset:  function () <LDOTS> ,
+    setTime:            function (time) <LDOTS> ,
+    setMilliseconds:    function (ms) <LDOTS> ,
+    setUTCMilliseconds: function (ms) <LDOTS> ,
+    setSeconds:         function (sec, ms=undefined) <LDOTS> ,
+    setUTCSeconds:      function (sec, ms=undefined) <LDOTS> ,
+    setMinutes:         function (min, sec=undefined, ms=undefined) <LDOTS> ,
+    setUTCMinutes:      function (min, sec=undefined, ms=undefined) <LDOTS> ,
+    setHours:           function (hour, min=undefined, sec=undefined, ms=undefined) <LDOTS> ,
+    setUTCHours:        function (hour, min=undefined, sec=undefined, ms=undefined) <LDOTS> ,
+    setDate:            function (date) <LDOTS> ,
+    setUTCDate:         function (date) <LDOTS> ,
+    setMonth:           function (month, date=undefined) <LDOTS> ,
+    setUTCMonth:        function (month, date=undefined) <LDOTS> ,
+    setFullYear:        function (year, month=undefined, date=undefined) <LDOTS> ,
+    setUTCFullYear:     function (year, month=undefined, date=undefined) <LDOTS> ,
+}}}
+
+
+== Overview of Date Objects and Definitions of Helper Functions ==
+
+<P> A ''Date'' object contains a private property ''timeval'' that
+indicates a particular instant in time to within a millisecond.  The
+number may also be **NaN**, indicating that the ''Date'' object does not
+represent a specific instant of time.
+
+<P> The following sections define a number of helper functions for
+operating on time values.  Note that, in every case, if any argument
+to such a function is **NaN**, the result will be **NaN**.
+
+<P> For the sake of succinctness, the ''helper'' and ''informative''
+namespaces are open in all the definitions that follow.
+
 
 === Time Range ===
 
-<P>Time is measured in ECMAScript in milliseconds since 01 January, 1970 UTC. Leap seconds are
-ignored. It is assumed that there are exactly 86,400,000 milliseconds per day. ECMAScript number
-values can represent all integers from -9,007,199,254,740,991 to 9,007,199,254,740,991; this range
-suffices to measure times to millisecond precision for any instant that is within approximately 285,616
-years, either forward or backward, from 01 January, 1970 UTC.
+<P> Time is measured in ECMAScript in milliseconds since 01 January,
+1970 UTC. Leap seconds are ignored. It is assumed that there are
+exactly 86,400,000 milliseconds per day. ECMAScript ''double'' values
+can represent all integers from -9,007,199,254,740,991 to
+9,007,199,254,740,991; this range suffices to measure times to
+millisecond precision for any instant that is within approximately
+285,616 years, either forward or backward, from 01 January, 1970 UTC.
 
-<P>The actual range of times supported by ECMAScript Date objects is slightly smaller: exactly 
--100,000,000 days to 100,000,000 days measured relative to midnight at the beginning of 01 January,
-1970 UTC. This gives a range of 8,640,000,000,000,000 milliseconds to either side of 01 January,
-1970 UTC.
+<P> The actual range of times supported by ECMAScript Date objects is
+slightly smaller: exactly -100,000,000 days to 100,000,000 days
+measured relative to midnight at the beginning of 01 January, 1970
+UTC. This gives a range of 8,640,000,000,000,000 milliseconds to
+either side of 01 January, 1970 UTC.
 
-<P>The exact moment of midnight at the beginning of 01 January, 1970 UTC is represented by the value +0.
+<P> The exact moment of midnight at the beginning of 01 January, 1970
+UTC is represented by the value +0.
+
+=== Constants ===
+
+<P> The following simple constants are used by the helper functions
+defined below.
+
+<INCLUDE file="Date.es" name="helper const hoursPerDay">
+<INCLUDE file="Date.es" name="helper const minutesPerHour">
+<INCLUDE file="Date.es" name="helper const secondsPerMinute">
+<INCLUDE file="Date.es" name="helper const daysPerYear">
+<INCLUDE file="Date.es" name="helper const msPerSecond">
+<INCLUDE file="Date.es" name="helper const msPerMinute">
+<INCLUDE file="Date.es" name="helper const msPerHour">
+<INCLUDE file="Date.es" name="helper const msPerDay">
+<INCLUDE file="Date.es" name="helper const msPerYear">
+
+<P> The table ''monthOffsets'' contains the day offset within a
+non-leap year of the first day of each month:
+
+<INCLUDE file="Date.es" name="helper const monthOffsets">
 
 === Day Number and Time within Day ===
 
-<P>A given time value t belongs to day number
-<INCLUDE file="Date.es" name="static function Day">
-where the number of milliseconds per day is
-<INCLUDE file="Date.es" name="static const msPerDay">
+<P>A given time value //t// belongs to day number ''Day(//t//)'':
 
-<P>The remainder is called the time within the day:
-<INCLUDE file="Date.es" name="static function TimeWithinDay">
+<INCLUDE file="Date.es" name="helper function Day">
+
+<P>The remainder is called the time within the day, ''TimeWithinDay(//t//)'':
+
+<INCLUDE file="Date.es" name="helper function TimeWithinDay">
 
 
 <H3 id="year number"> Year Number </h3>
 
-<P>ECMAScript uses an extrapolated Gregorian system to map a day number to a year number and to
-determine the month and date within that year. In this system, leap years are precisely those which are
-(divisible by 4) and ((not divisible by 100) or (divisible by 400)). The number of days in year number
-y is therefore defined by
-<INCLUDE file="Date.es" name="static function DaysInYear">
+<P>ECMAScript uses an extrapolated Gregorian system to map a day
+number to a year number and to determine the month and date within
+that year.  In this system, leap years are precisely those which are
+(divisible by 4) and ((not divisible by 100) or (divisible by
+400)). The number of days in year number //y// is therefore defined by
+''DaysInYear(//y//)'':
 
-<P>All non-leap years have 365 days with the usual number of days per month and leap years have an
-extra day in February. The day number of the first day of year y is given by:
-<INCLUDE file="Date.es" name="static function DayFromYear">
+<INCLUDE file="Date.es" name="helper function DaysInYear">
 
-<P>The time value of the start of a year is:
-<INCLUDE file="Date.es" name="static function TimeFromYear">
+<P>All non-leap years have 365 days with the usual number of days per
+month and leap years have an extra day in February.  The day number of
+the first day of year //y// is given by ''DayFromYear(//y//)'':
 
-<P>A time value determines a year by:
+<INCLUDE file="Date.es" name="helper function DayFromYear">
+
+<P>The time value of the start of a year //y// is ''TimefromYear(//y//)'':
+
+<INCLUDE file="Date.es" name="helper function TimeFromYear">
+
+<P> A time value //t// determines a year by ''YearFromTime(//t//)'',
+which yields the largest integer //y// (closest to positive infinity)
+such that ''TimeFromYear(//y//) <LEQ> //t//''.
+
+<P> The function ''YearFromTime'' is not defined precisely by this Standard.
 {{{
 informative static function YearFromTime(t: double): double <LDOTS>
 }}}
 
-YearFromTime(t) is the largest integer //y// (closest to positive infinity) such that //TimeFromYear(y) <LEQ> t//.
+<FIXME> Is there any good reason not to define how ''YearFromTime''
+should be computed?  The RI uses a non-iterative algorithm which I
+believe comes from SpiderMonkey.  I have seen iterative algorithms
+elsewhere.
 
-<P>The leap-year function is 1 for a time within a leap year and otherwise is zero:
-<INCLUDE file="Date.es" name="static function InLeapYear">
+<P>The leap-year function ''InLeapYear'' is 1 for a time within a leap
+year and otherwise is zero:
+
+<INCLUDE file="Date.es" name="helper function InLeapYear">
 
 
 <H3 id="month number"> Month Number </H3>
 
-<P>Months are identified by an integer in the range 0 to 11, inclusive. The mapping MonthFromTime(t)
-from a time value t to a month number is defined by:
-<INCLUDE file="Date.es" name="static function MonthFromTime">
-<INCLUDE file="Date.es" name="static function DayWithinYear">
+<P> Months are identified by an integer in the range 0 to 11,
+inclusive.  The mapping from a time value //t// to a month number is
+defined by ''MonthFromTime(//t//)'' :
 
-<P>A month value of 0 specifies January; 1 specifies February; 2
+<INCLUDE file="Date.es" name="helper function MonthFromTime">
+<INCLUDE file="Date.es" name="helper function DayWithinYear">
+
+<P> A month value of 0 specifies January; 1 specifies February; 2
 specifies March; 3 specifies April; 4 specifies May; 5 specifies June;
 6 specifies July; 7 specifies August; 8 specifies September; 9
 specifies October; 10 specifies November; and 11 specifies December.
-Note that //MonthFromTime(0)=0//, corresponding to Thursday, 01
-January, 1970.
+
+<NOTE> ''MonthFromTime(0)=0'', corresponding to Thursday, 01&nbsp;January, 1970.
 
 
 <H3 id="date number"> Date Number </h3>
 
-<P>A date number is identified by an integer in the range 1 through 31, inclusive. The mapping
-//DateFromTime(t)// from a time value t to a month number is defined by:
-<INCLUDE file="Date.es" name="static function DateFromTime">
+<P> A date number is identified by an integer in the range 1 through
+31, inclusive.  The mapping from a time value //t// to a month number
+is defined by ''DateFromTime(//t//)'':
+
+<INCLUDE file="Date.es" name="helper function DateFromTime">
 
 
 <H3 id="week day"> Week Day </h3>
 
-<P>The weekday for a particular time value t is defined as
-<INCLUDE file="Date.es" name="static function WeekDay">
+<P>The weekday for a particular time value //t// is defined as ''WeekDay(//t//)'':
+
+<INCLUDE file="Date.es" name="helper function WeekDay">
 
 <P>A weekday value of 0 specifies Sunday; 1 specifies Monday; 2
 specifies Tuesday; 3 specifies Wednesday; 4 specifies Thursday; 5
-specifies Friday; and 6 specifies Saturday. Note that
-//WeekDay(0)=4//, corresponding to Thursday, 01 January, 1970.
+specifies Friday; and 6 specifies Saturday.
+
+<NOTE> ''WeekDay(0)=4'', corresponding to Thursday, 01&nbsp;January, 1970.
 
 
 <H3 id="time zone adjustment"> Local Time Zone Adjustment </H3>
 
-<P>An implementation of ECMAScript is expected to determine the local time zone adjustment. The local
-time zone adjustment is a value LocalTZA measured in milliseconds which when added to UTC
-represents the local standard time. Daylight saving time is not reflected by LocalTZA. The value
-LocalTZA does not vary with time but depends only on the geographic location.
+<P> An implementation of ECMAScript is expected to determine the local
+time zone adjustment.  The local time zone adjustment is a value
+''LocalTZA'' measured in milliseconds which when added to UTC
+represents the local standard time.  Daylight saving time is not
+reflected by ''LocalTZA''.
+
+{{{
+informative function LocalTZA(): double <LDOTS>
+}}}
+
+<P> The value ''LocalTZA'' does not vary with time but depends only on
+the geographic location.
+
+<FIXME> This is bogus because it assumes time zone boundaries are
+fixed for all eternity.  Yet time zone (standard time) is political;
+changing political conditions can lead to adoption of a different
+standard time (analogous to the changes in daylight savings time
+adjustment).  So the above assertion needs to go, and probably be
+replaced by language similar to that we want to adopt for
+DaylightSavingsTA, which encourages "best effort for the given time".
 
 
 <H3 id="dst adjustment"> Daylight Saving Time Adjustment </H3>
 
-An implementation of ECMAScript is expected to determine the daylight saving time algorithm.  The
-algorithm to determine the daylight saving time adjustment ''DaylightSavingTA(//t//)'', measured in
-milliseconds, must depend only on four things:
+<P> An implementation of ECMAScript is expected to determine the
+daylight saving time algorithm.  The algorithm to determine the
+daylight saving time adjustment for a time //t//, implemented by
+''DaylightSavingTA(//t//)'', measured in milliseconds, must depend
+only on four things:
 
 <OL>
 <LI> The time since the beginning of the year: ''//t// - TimeFromYear(YearFromTime(//t//))''
@@ -226,42 +364,49 @@ milliseconds, must depend only on four things:
 <LI> The geographic location.
 </OL>
 
-<P>The implementation of ECMAScript should not try to determine whether the exact time was subject to
-daylight saving time, but just whether daylight saving time would have been in effect if the current
-daylight saving time algorithm had been used at the time. This avoids complications such as taking
-into account the years that the locale observed daylight saving time year round.
+<P> The implementation of ECMAScript should not try to determine
+whether the exact time //t// was subject to daylight saving time, but
+just whether daylight saving time would have been in effect if the
+current daylight saving time algorithm had been used at the time.
+This avoids complications such as taking into account the years that
+the locale observed daylight saving time year round.
 
-<P>If the host environment provides functionality for determining daylight saving time, the
-implementation of ECMAScript is free to map the year in question to an equivalent year (same leapyear-
-ness and same starting week day for the year) for which the host environment provides daylight
-saving time information. The only restriction is that all equivalent years should produce the same
-result.
+<P> If the host environment provides functionality for determining
+daylight saving time, the implementation of ECMAScript is free to map
+the year in question to an equivalent year (same leapyear-ness and
+same starting week day for the year) for which the host environment
+provides daylight saving time information.  The only restriction is
+that all equivalent years should produce the same result.
+
+<FIXME> We've already agreed that the above is bogus; the
+implementation needs to make a "best effort" to find the correct
+adjustment for the time //t//, in the year of //t//.  More to come
+here.  Also see note above for ''LocalTZA''.
 
 === Local Time ===
 
 <P>Conversion from UTC to local time is defined by
-<INCLUDE file="Date.es" name="static function LocalTime">
+
+<INCLUDE file="Date.es" name="helper function LocalTime">
 
 <P>Conversion from local time to UTC is defined by
-<INCLUDE file="Date.es" name="static function UTCTime">
 
-<P>Note that //UTCTime(LocalTime(t))// is not necessarily always equal to t.
+<INCLUDE file="Date.es" name="helper function UTCTime">
+
+<P>Note that ''UTCTime(LocalTime(//t//))'' is not necessarily always
+equal to //t// because the former expands as
+''//t//+DaylightSavingsTA(//t//)-DaylightSavingsTA(//t//-LocalTZA())''.
+
 
 <H3 id="hours, minutes, seconds, and milliseconds"> Hours, Minutes, Seconds, and Milliseconds </H3>
 
 <P>The following functions are useful in decomposing time values:
-<INCLUDE file="Date.es" name="static function HourFromTime">
-<INCLUDE file="Date.es" name="static function MinFromTime">
-<INCLUDE file="Date.es" name="static function SecFromTime">
-<INCLUDE file="Date.es" name="static function msFromTime">
 
-<P>In the above, 
-<INCLUDE file="Date.es" name="static const hoursPerDay">
-<INCLUDE file="Date.es" name="static const minutesPerHour">
-<INCLUDE file="Date.es" name="static const secondsPerMinute">
-<INCLUDE file="Date.es" name="static const msPerSecond">
-<INCLUDE file="Date.es" name="static const msPerMinute">
-<INCLUDE file="Date.es" name="static const msPerHour">
+<INCLUDE file="Date.es" name="helper function HourFromTime">
+<INCLUDE file="Date.es" name="helper function MinFromTime">
+<INCLUDE file="Date.es" name="helper function SecFromTime">
+<INCLUDE file="Date.es" name="helper function msFromTime">
+
 
 === MakeTime (hour, min, sec, ms) ===
 
@@ -269,49 +414,87 @@ result.
 four arguments, which must be ECMAScript number values. This operator
 functions as follows:
 
-<INCLUDE file="Date.es" name="static function MakeTime">
+<INCLUDE file="Date.es" name="helper function MakeTime">
 
 === MakeDay (year, month, date) ===
 
-<P>The operator MakeDay calculates a number of days from its three arguments, which must be
-ECMAScript number values. This operator functions as follows:
+<P>The helper function ''MakeDay'' calculates a number of days from
+its three arguments, which must be ECMAScript ''double'' values:
 
-<INCLUDE file="Date.es" name="static function MakeDay">
+<INCLUDE file="Date.es" name="helper function MakeDay">
 
 === MakeDate (day, time) ===
 
-<P>The operator MakeDate calculates a number of milliseconds from its two arguments, which must be
-ECMAScript number values. This operator functions as follows:
+<P>The helper function ''MakeDate'' calculates a number of
+milliseconds from its two arguments, which must be ECMAScript
+''double'' values:
 
-<INCLUDE file="Date.es" name="static function MakeDate">
+<INCLUDE file="Date.es" name="helper function MakeDate">
 
 === TimeClip (time) ===
 
-<P>The operator TimeClip calculates a number of milliseconds from its argument, which must be an
-ECMAScript number value. This operator functions as follows:
+<P>The helper function ''TimeClip'' calculates a number of
+milliseconds from its argument, which must be an ECMAScript ''double''
+value:
 
-<INCLUDE file="Date.es" name="static function TimeClip">
+<INCLUDE file="Date.es" name="helper function TimeClip">
+<SIGNATURE file="Date.es" name="informative function adjustZero">
 
-<NOTE>
-The point of step 3 is that an implementation is permitted a choice of internal representations of time
-values, for example as a 64-bit signed integer or as a 64-bit floating-point value. Depending on the
-implementation, this internal representation may or may not distinguish -0 and +0.
+<NOTE> The informative function ''adjustZero(//t//)'' can either
+return //t// unchanged or it can add (+0) to it.  The point of this
+freedom is that an implementation is permitted a choice of internal
+representations of time values, for example as a 64-bit signed integer
+or as a 64-bit floating-point value.  Depending on the implementation,
+this internal representation may or may not distinguish -0 and +0.
 
-<FIXME>
-That seems bogus.  Why not just specify that abs should be applied?
 
 == Date strings ==
 
-<FIXME> Discussion of implementation dependent date strings,
-invariance of Date.parse / Date.prototype.toString, ISO strings, ISO
-string grammar.
+<P> Dates can be converted to string representations for purposes of
+human consumption and data transmission in a number of ways, many of
+them locale-dependent.
+
+<P> Some of the string representations of dates are required to be
+lossless, which is to say that converting a time value to a string and
+then parsing that string as a Date will always yield the same time
+value.  Other string representations are implementation-dependent and
+it is not guaranteed that they can be parsed to yield the same time
+value (or that they can be parsed at all).
+
+<P> This Standard defines numerous methods on ''Date'' instances to
+generate strings from time values: ''toString'', ''toDateString'',
+''toTimeString'', ''toLocaleString'', ''toLocaleDateString'',
+''toLocaleTimeString'', ''toUTCString'', and ''toISOString''.
+
+<P> The ''toString'' and ''toUTCString'' methods convert time values
+to a string losslessly except for fractional seconds, which may not be
+represented in the string.  The format of these strings is
+implementation-dependent.
+
+<P> The ''toISOString'' method converts time values to a string
+losslessly, and the string conforms to the ISO date grammar defined
+below.
+
+<P> This Standard defines the static ''parse'' method on the ''Date''
+class to parse strings and compute time values represented by those
+strings.  The ''parse'' method is only required to parse all strings
+that conform to the ISO date grammar defined below, as well as all
+strings produced by the ''toString'' and ''toUTCString'' methods on
+''Date'' instances.
+
+<P> The grammar for ISO date strings is defined by the following
+regular expression:
+
+<INCLUDE file="Date.es" name="helper const isoTimestamp">
+
+<FIXME> Replace the regexp by a proper grammar, eventually.
 
 
 == Methods on the Date class ==
 
-=== new Date (year, month [, date [, hours [, minutes [, seconds [, ms ] ] ] ] ] ) ===
+=== new Date (year=<LDOTS>, month=<LDOTS>, date=<LDOTS>, hours=<LDOTS>, minutes=<LDOTS>, seconds=<LDOTS>, ms=<LDOTS>) ===
 
-<DESC> When the ''Date'' constructor is called as part of a new expression it initialises 
+<DESC> When the ''Date'' constructor is called as part of a ''new&nbsp;Date'' expression it initialises 
 the newly created object by setting its private ''timeval'' property.
 
 <P> The ''Date'' constructor can be called with zero, one, or two to seven arguments, 
@@ -320,99 +503,141 @@ and sets ''timeval'' in different ways depending on how it is called.
 <SHORTIMPL>
 <INCLUDE file="Date.es" name="function Date">
 
-
-=== Date ( [ year [, month [, date [, hours [, minutes [, seconds [, ms ] ] ] ] ] ] ] ) ===
-
-<DESC> When the Date class is called as a function rather than as a constructor, it returns a string 
-representing the current time (UTC).
-
-<NOTE>
-The function call ''Date(<LDOTS>)'' is not equivalent to the object creation expression 
-''new Date(<LDOTS>)'' with the same arguments.
-
-<P> All of the arguments are optional; any arguments supplied are accepted but are completely 
-ignored. A string is created and returned as if by the expression ''(new Date()).toString()''.
+<NOTE> The default value ''NOARG'' is an unforgeable private value and is
+used to detect the difference between an unsupplied parameter and a
+parameter value of **undefined**.
 
 
-=== parse (string) ===
+=== Date (...args) ===
 
-<DESC> The static ''parse'' method applies the ''ToString'' operator to its argument and interprets 
-the resulting string as a date; it returns a number, the UTC time value corresponding to the date.
-The string may be interpreted as a local time, a UTC time, or a time in some other time zone, 
-depending on the contents of the string.
+<DESC> When the Date class is called as a function rather than as a
+constructor, it converts the current time (as returned by the static
+method ''now'' on ''Date'') to a string.
 
-<P>If //x// is any Date object whose milliseconds amount is zero within a particular implementation of
-ECMAScript, then all of the following expressions should produce the same numeric value in that
-implementation, if all the properties referenced have their initial values:
+<P> All arguments are ignored.  A string is created as if by the
+expression ''(new Date()).toString()''.
+
+<NOTE> The function call ''Date(<LDOTS>)'' is not equivalent to the
+object creation expression ''new Date(<LDOTS>)'' with the same
+arguments.
+
+<RETN> The ''Date'' class called as a function returns a ''string'' object.
+
+<SHORTIMPL>
+<INCLUDE file="Date.es" name="meta static function invoke">
+
+
+=== intrinsic::parse (s, reference=<LDOTS>) ===
+
+<DESC> The static intrinsic ''parse'' method applies the ''string''
+function to its argument //s// and interprets the resulting string as
+a date.  The string may be interpreted as a local time, a UTC time, or
+a time in some other time zone, depending on the contents of the
+string.
+
+<P> The value //reference// (defaulting to zero) is a time value that
+will provide default values for any fields missing from the string.
+
+<P>If //x// is any Date object whose milliseconds amount is zero
+within a particular implementation of ECMAScript, then all of the
+following expressions should produce the same numeric value in that
+implementation, if all the properties referenced have their initial
+values:
+
 {{{
 x.valueOf()
 Date.parse(x.toString())
 Date.parse(x.toUTCString())
 }}}
 
-<P>However, the expression
-{{{
-Date.parse(x.toLocaleString())
-}}}
-<P>is not required to produce the same number value as the preceding three expressions and, in general,
-the value produced by Date.parse is implementation-dependent when given any string value that
-could not be produced in that implementation by the toString or toUTCString method.
+<P>However, the expression ''Date.parse(x.toLocaleString())'' is not
+required to produce the same number value as the preceding three
+expressions and, in general, the value produced by Date.parse is
+implementation-dependent when given any string value that could not be
+produced in that implementation by the toString or toUTCString method.
 
-<RETN>
+<RETN> The static ''parse'' method returns a number, the UTC time
+value corresponding to the date represented by the string.
 
-<IMPL> The static ''parse'' function is implementation dependent.  (Not true -- only partly!)
+<IMPL> The static ''parse'' method parses a string that conforms to
+the ISO grammar as an ISO date string.  Otherwise, the parsing is
+implementation-dependent.
+
+<INCLUDE file="Date.es" name="static intrinsic function parse">
 
 
-=== UTC (year, month [, date [, hours [, minutes [, seconds [, ms ] ] ] ] ] ) ===
+=== parse( s, reference=<LDOTS> ) ===
 
-<DESC> When the UTC function is called with fewer than two arguments, the behaviour is implementation dependent.
-When the UTC function is called with two to seven arguments, it computes the date from
-year, month and (optionally) date, hours, minutes, seconds and ms. 
+<DESC> The static ''parse'' method applies the ''string'' function to
+its argument //s// and the ''double'' function to its argument
+//reference// (which defaults to zero), and then calls the intrinsic
+''parse'' method on the resulting values.
 
-<NOTE>
-The UTC function differs from the Date constructor in two ways: it returns a time value as a number,
-rather than creating a Date object, and it interprets the arguments in UTC rather than as local time.
+<RETN> The static ''parse'' method returns a number, the UTC time
+value corresponding to the date represented by the string.
+
+<SHORTIMPL>
+<INCLUDE file="Date.es" name="static var parse">
+
+
+=== intrinsic::UTC (year, month, date=<LDOTS>, hours=<LDOTS>, minutes=<LDOTS>, seconds=<LDOTS>, ms=<LDOTS> ) ===
+
+<DESC> When the static intrinsic ''UTC'' method is called with two to
+seven arguments, it computes the date from //year//, //month// and
+(optionally) //date//, //hours//, //minutes//, //seconds// and //ms//.
+
+<NOTE> The ''UTC'' method differs from the ''Date'' constructor in two
+ways: it returns a time value as a number, rather than creating a
+''Date'' object, and it interprets the arguments in UTC rather than as
+local time.
+
+<RETN> The static intrinsic ''UTC'' method returns a time value.
+
+<SHORTIMPL>
+<INCLUDE file="Date.es" name="static intrinsic function UTC">
+
+=== UTC (year, month, date=<LDOTS>, hours=<LDOTS>, minutes=<LDOTS>, seconds=<LDOTS>, ms=<LDOTS> ) ===
+
+<DESC> When the static intrinsic ''UTC'' method is called with fewer
+than two arguments, the behaviour is implementation dependent.  When
+the ''UTC'' method is called with two to seven arguments, it computes
+the date from //year//, //month// and (optionally) //date//,
+//hours//, //minutes//, //seconds// and //ms// by converting all
+arguments to ''double'' values and calling the static intrinsic
+''UTC'' method.
 
 <RETN> The static ''UTC'' method returns a time value.
 
 <SHORTIMPL>
-<INCLUDE file="Date.es" name="static intrinsic function UTC">
 <INCLUDE file="Date.es" name="static var UTC">
+
+<NOTE> The default value ''NOARG'' is an unforgeable private value and is
+used to detect the difference between an unsupplied parameter and a
+parameter value of **undefined**.
 
 === now ===
 
-<FIXME> Definition of Date.now.
+<DESC> The static ''now'' method produces the time value at the time
+of the call.
 
+<RETN> The static ''now'' method returns a ''double'' representing a
+time value.
 
-== Properties of the Date Constructor ==
-
-=== [[Prototype]] ===
-
-<P>The value of the internal [[Prototype]] property of the Date constructor is the Function prototype object
-(15.3.4).
-
-=== length ===
-
-<P>Besides the internal properties and the length property (whose value is 7), 
-
-=== prototype ===
-
-<P> The initial value of Date.prototype is the built-in Date prototype object (15.9.5).
-This property has the attributes { DontEnum, DontDelete, ReadOnly }.
+<IMPL> The static ''now'' method is implementation-dependent.
 
 
 == Methods on Date instances ==
 
 === intrinsic::toString ( ) ===
 
-<DESC> The intrinsic ''toString'' method converts the Date value to
+<DESC> The intrinsic ''toString'' method converts the ''Date'' value to
 a string.  The contents of the string are intended to represent the
 value in the current time zone in a convenient, human-readable
 form.
 
-<NOTE> It is intended that for any Date value //d//, the result of
-''Date.parse(//d//.toString())'' (<XREF target="Date.parse">) is equal
-to //d//.
+<NOTE> It is intended that for any ''Date'' value //d//, the result of
+''Date.parse(//d//.toString())'' is equal to //d//.  (See <XREF
+target="Date.parse">.)
 
 <RETN> A ''string'' value.
 
@@ -421,10 +646,10 @@ to //d//.
 
 === intrinsic::toDateString ( ) ===
 
-<DESC> The intrinsic ''toLocaleString'' method converts the "date" portion of the Date value
-to a string.  The contents of the string are intended to represent the
-value in the current time zone in a convenient, human-readable
-form.
+<DESC> The intrinsic ''toLocaleString'' method converts the "date"
+portion of the ''Date'' value to a string.  The contents of the string are
+intended to represent the value in the current time zone in a
+convenient, human-readable form.
 
 <RETN> A ''string'' value.
 
@@ -433,7 +658,7 @@ form.
 === intrinsic::toTimeString ( ) ===
 
 <DESC> The intrinsic ''toTimeString'' method converts the "time"
-portion of the Date value to a string.  The contents of the string are
+portion of the ''Date'' value to a string.  The contents of the string are
 intended to represent the value in the current time zone in a
 convenient, human-readable form.
 
@@ -444,7 +669,7 @@ convenient, human-readable form.
 
 === intrinsic::toLocaleString ( ) ===
 
-<DESC> The intrinsic ''toLocaleString'' method converts the Date value
+<DESC> The intrinsic ''toLocaleString'' method converts the ''Date'' value
 to a string.  The contents of the string are intended to represent the
 value in the current time zone in a convenient, human-readable form that
 corresponds to the conventions of the host environment's current locale.
@@ -460,7 +685,7 @@ implementations do not use this parameter position for anything else.
 === intrinsic::toLocaleDateString ( ) ===
 
 <DESC> The intrinsic ''toLocaleDateString'' method converts the "date"
-portion of the Date value to a string.  The contents of the string are
+portion of the ''Date'' value to a string.  The contents of the string are
 intended to represent the value in the current time zone in a
 convenient, human-readable form that corresponds to the conventions of
 the host environment's current locale.
@@ -477,7 +702,7 @@ implementations do not use this parameter position for anything else.
 === intrinsic::toLocaleTimeString ( ) ===
 
 <DESC> The intrinsic ''toLocaleTimeString'' method converts the "time"
-portion of the Date value to a string.  The contents of the string are
+portion of the ''Date'' value to a string.  The contents of the string are
 intended to represent the value in the current time zone in a
 convenient, human-readable form that corresponds to the conventions of
 the host environment's current locale.
@@ -494,7 +719,7 @@ implementation-dependent.
 
 === intrinsic::toUTCString ( ) ===
 
-<DESC> The intrinsic ''toUTCString'' method converts the Date value to
+<DESC> The intrinsic ''toUTCString'' method converts the ''Date'' value to
 a string.  The contents of the string are intended to represent the
 value in UTC in a convenient, human-readable form.
 
@@ -505,7 +730,7 @@ value in UTC in a convenient, human-readable form.
 
 === intrinsic::toISOString ( ) ===
 
-<DESC> The intrinsic ''toISOString'' method converts the Date value to
+<DESC> The intrinsic ''toISOString'' method converts the ''Date'' value to
 a string.  The string conforms to the ISO time and date grammar
 presented in section <XREF target="ISO date grammar">.  All fields are
 present in the string and the shortest possible nonempty string of
@@ -518,15 +743,42 @@ UTC, denoted by a suffix ''Z''.
 <INCLUDE file="Date.es" name="intrinsic function toISOString">
 <INCLUDE file="Date.es" name="helper function formatYears">
 
+<P> The helper functions ''removeTrailingZeroes'' and ''zeroFill'' are
+described in section <XREF target="Minor date helpers">.
+
 
 === intrinsic::nanoAge() ===
 
-<FIXME> Definition of nanoAge.
+<DESC> The intrinsic ''nanoAge'' method computes an approximation of
+the number of nanoseconds of real time that have elapsed since this
+''Date'' object was created.
+
+<NOTE> The approximation is of unspecified quality, and may vary in
+both accuracy and precision from platform to platform.  The
+approximation will necessarily lose precision as its object ages,
+since it is expressed as a double: after approximately 104 days of
+real time, its object will have been alive for over 2<SUP>53</SUP>
+nanoseconds, so the result of this call will carry more than 2
+nanoseconds rounding error after 104 days, and more than 4 nanoseconds
+rounding error after 208 days.  Code wishing to measure greater
+periods of real time may either construct fresh Date objects after 104
+days, or accept the gradual loss of precision.
+
+<RETN> A ''double'' object.
+
+<IMPL> The static ''nanoAge'' method is implementation-dependent.
 
 
 === intrinsic::valueOf ( ) ===
 
-<P>The valueOf function returns a number, which is this time value.
+<DESC> The intrinsic ''valueOf'' method returns the time value of the
+''Date'' object.
+
+<RETN> A ''double'' object.
+
+<SHORTIMPL>
+<INCLUDE file="Date.es" name="override intrinsic function valueOf">
+
 
 === intrinsic::getTime ( ) ===
 
@@ -724,30 +976,42 @@ a value in UTC.
 <INCLUDE file="Date.es" name="intrinsic function setUTCMilliseconds">
 
 
-=== intrinisic::setSeconds (sec, ms=milliseconds ) ===
+=== intrinisic::setSeconds (sec, ms=<LDOTS> ) ===
 
-<DESC> The intrinsic ''setSeconds'' method sets the seconds value (and optionally the milliseconds value) of the Date object, 
-taking //sec// and //ms// to be values in the local time zone.
-
-<FIXME> Default arguments: is this the way we want it?<BR><BR> For this
-and the following methods the signature has the following impliciation:
-if a program subclasses Date and overrides the ''milliseconds'' getter,
-the new getter //will// be invoked if setSeconds is called with one
-argument.  The same would be the case if we used ''getMilliseconds()''
-instead above.  Indeed, as the code is written above, user code will be
-invoked if either ''get milliseconds'' is overridden or if
-''getMilliseconds'' is overridden, since the latter is defined to call
-the former.<BR><BR>There are various ways to avoid this, though I don't
-think it's really a problem that there is this dependence, except that
-it binds implementations in how they represent and handle dates.
+<DESC> The intrinsic ''setSeconds'' method sets the seconds value (and
+optionally the milliseconds value) of the Date object, taking //sec//
+and //ms// to be values in the local time zone.
 
 <RETN> The new time value.
 
 <SHORTIMPL>
 <INCLUDE file="Date.es" name="intrinsic function setSeconds">
 
+<FIXME> Default arguments: is this the way we want it?
 
-=== intrinisic::setUTCSeconds (sec, ms=UTCMilliseconds ) ===
+<BR><BR>
+
+For this and the following methods the signature has the following
+impliciation: if a program subclasses Date and overrides the
+intrinsic ''getMilliseconds()'' method, the new method //will// be invoked if
+setSeconds is called with one argument.
+
+<BR><BR>
+
+There are various ways to avoid this, though I don't think it's really
+a problem that there is this dependence, except that it binds
+implementations in how they represent and handle dates.
+
+<BR><BR>
+
+3rd Edition has imprecise language here, it says that if ms is not
+provided by the caller then its value will be as if //ms// were
+specified with the value //getMilliseconds()//.  Whether that implies
+that that method is called (and that the user could override it) or
+not is not at all clear.
+
+
+=== intrinisic::setUTCSeconds (sec, ms=<LDOTS> ) ===
 
 <DESC> The intrinsic ''setUTCSeconds'' method sets the seconds value (and optionally the 
 milliseconds value) of the Date object,  taking //sec// and //ms// to be values in UTC.
@@ -757,7 +1021,7 @@ milliseconds value) of the Date object,  taking //sec// and //ms// to be values 
 <SHORTIMPL>
 <INCLUDE file="Date.es" name="intrinsic function setUTCSeconds">
 
-=== intrinisic::setMinutes (min, sec=seconds, ms=milliseconds ) ===
+=== intrinisic::setMinutes (min, sec=<LDOTS>, ms=<LDOTS> ) ===
 
 <DESC> The intrinsic ''setMinutes'' method sets the minutes value (and optionally the seconds and 
 milliseconds values) of the Date object,  taking //min//, //sec// and //ms// to be values in the 
@@ -768,7 +1032,7 @@ local time zone.
 <SHORTIMPL>
 <INCLUDE file="Date.es" name="intrinsic function setMinutes">
 
-=== intrinisic::setUTCMinutes (min, sec=UTCSeconds, ms=UTCMilliseconds ) ===
+=== intrinisic::setUTCMinutes (min, sec=<LDOTS>, ms=<LDOTS> ) ===
 
 <DESC> The intrinsic ''setUTCMinutes'' method sets the minutes value (and optionally the seconds 
 and milliseconds values) of the Date object,  taking //min//, //sec// and //ms// to be values in UTC.
@@ -778,7 +1042,7 @@ and milliseconds values) of the Date object,  taking //min//, //sec// and //ms//
 <SHORTIMPL>
 <INCLUDE file="Date.es" name="intrinsic function setUTCMinutes">
 
-=== intrinisic::setHours (hour, min=minutes, sec=seconds, ms=milliseconds ) ===
+=== intrinisic::setHours (hour, min=minutes, sec=<LDOTS>, ms=<LDOTS> ) ===
 
 <DESC> The intrinsic ''setHours'' method sets the hours value (and optionally the minutes, seconds, and 
 milliseconds values) of the Date object,  taking //hour//, //min//, //sec// and //ms// to be values in the 
@@ -789,7 +1053,7 @@ local time zone.
 <SHORTIMPL>
 <INCLUDE file="Date.es" name="intrinsic function setHours">
 
-=== intrinisic::setUTCHours (hour, min=UTCMinutes, sec=UTCSeconds, ms=UTCMilliseconds ) ===
+=== intrinisic::setUTCHours (hour, min=<LDOTS>, sec=<LDOTS>, ms=<LDOTS> ) ===
 
 <DESC> The intrinsic ''setUTCHours'' method sets the hours value (and optionally the minutes, seconds, and 
 milliseconds values) of the Date object,  taking //hour//, //min//, //sec// and //ms// to be values in UTC.
@@ -819,7 +1083,7 @@ a value in UTC.
 <SHORTIMPL>
 <INCLUDE file="Date.es" name="intrinsic function setUTCDate">
 
-=== intrinisic::setMonth (month, date=date) ===
+=== intrinisic::setMonth (month, date=<LDOTS> ) ===
 
 <DESC> The intrinsic ''setMonth'' method sets the month value (and optionally the date value) of 
 the Date object, taking //month// and //date// to be values in the local time zone.
@@ -829,7 +1093,7 @@ the Date object, taking //month// and //date// to be values in the local time zo
 <SHORTIMPL>
 <INCLUDE file="Date.es" name="intrinsic function setMonth">
 
-=== intrinisic::setUTCMonth (month, date=UTCdate ) ===
+=== intrinisic::setUTCMonth (month, date=<LDOTS> ) ===
 
 <DESC> The intrinsic ''setUTCMonth'' method sets the month value (and optionally the date value) of 
 the Date object, taking //month// and //date// to be values in UTC.
@@ -839,7 +1103,7 @@ the Date object, taking //month// and //date// to be values in UTC.
 <SHORTIMPL>
 <INCLUDE file="Date.es" name="intrinsic function setUTCMonth">
 
-=== intrinisic::setFullYear (year, month=month, date=date ) ===
+=== intrinisic::setFullYear (year, month=<LDOTS>, date=<LDOTS> ) ===
 
 <DESC> The intrinsic ''setFullYear'' method sets the year value (and optionally the month and date 
 values) of the Date object, taking //year//, //month//, and //date// to be values in the local time zone.
@@ -849,7 +1113,7 @@ values) of the Date object, taking //year//, //month//, and //date// to be value
 <SHORTIMPL>
 <INCLUDE file="Date.es" name="intrinsic function setFullYear">
 
-=== intrinisic::setUTCFullYear (year, month=UTCMonth, date=UTCDate ) ===
+=== intrinisic::setUTCFullYear (year, month=<LDOTS>, date=<LDOTS> ) ===
 
 <DESC> The intrinsic ''setFullYear'' method sets the year value (and optionally the month and date 
 values) of the Date object, taking //year//, //month//, and //date// to be values in UTC.
@@ -862,8 +1126,8 @@ values) of the Date object, taking //year//, //month//, and //date// to be value
 
 == Getters on Date instances ==
 
-<DESC> The Date object provides a number of getters that simply call
-the object's corresponding accessor methods.
+<DESC> The Date object provides a number of getters that call the
+object's corresponding accessor methods.
 
 <RETN> The getters all return what their corresponding accessor methods return.
 
@@ -889,8 +1153,10 @@ the object's corresponding accessor methods.
 
 == Setters on Date instances ==
 
-<DESC> The Date object provides a number of setters that simply call
-the object's corresponding updater methods.
+<DESC> The Date object provides a number of setters that call the
+object's corresponding updater methods.  Since the setters only accept
+a single argument, the updaters will be called with default arguments
+for all arguments beyond the first.
 
 <RETN> The setters all return what their corresponding updater methods return.
 
@@ -913,79 +1179,18 @@ the object's corresponding updater methods.
 <INCLUDE file="Date.es" name="function set UTCMilliseconds">
 
 
-== Value properties of Date instances ==
-
-<P> Date instances have no special properties beyond those inherited from the Date prototype object.
 
 
-== The Date prototype object ==
+== Method properties on the ''Date'' prototype object ==
 
-<P> The Date prototype object is itself a Date object (its [[Class]] is "Date") whose value is NaN.
-The value of the internal [[Prototype]] property of the Date prototype object is the Object prototype
-object (<XREF target="Object.prototype">).
+<DESC> The ''Date'' prototype methods are not generic; their ''this''
+object must be a ''Date''.  The methods forward the call to the
+corresponding intrinsic method in all cases.
 
-=== Synopsis ===
+<RETN> The ''Date'' prototype methods return the values returned by
+the intrinsic methods they call.
 
-{{{
-Date.prototype = {
-    toString:           function () <LDOTS> ,
-    toDateString:       function () <LDOTS> ,
-    toTimeString:       function () <LDOTS> ,
-    toLocaleString:     function () <LDOTS> ,
-    toLocaleDateString: function () <LDOTS> ,
-    toLocaleTimeString: function () <LDOTS> ,
-    toUTCString:        function () <LDOTS> ,
-    toISOString:        function () <LDOTS> ,
-    valueOf:            function () <LDOTS> ,
-    getTime:            function () <LDOTS> ,
-    getFullYear:        function () <LDOTS> ,
-    getUTCFullYear:     function () <LDOTS> ,
-    getMonth:           function () <LDOTS> ,
-    getUTCMonth:        function () <LDOTS> ,
-    getDate:            function () <LDOTS> ,
-    getUTCDate:         function () <LDOTS> ,
-    getDay:             function () <LDOTS> ,
-    getUTCDay:          function () <LDOTS> ,
-    getHours:           function () <LDOTS> ,
-    getUTCHours:        function () <LDOTS> ,
-    getMinutes:         function () <LDOTS> ,
-    getUTCMinutes:      function () <LDOTS> ,
-    getSeconds:         function () <LDOTS> ,
-    getUTCSeconds:      function () <LDOTS> ,
-    getMilliseconds:    function () <LDOTS> ,
-    getUTCMilliseconds: function () <LDOTS> ,
-    getTimezoneOffset:  function () <LDOTS> ,
-    setTime:            function (time) <LDOTS> ,
-    setMilliseconds:    function (ms) <LDOTS> ,
-    setUTCMilliseconds: function (ms) <LDOTS> ,
-    setSeconds:         function (sec, ms=undefined) <LDOTS> ,
-    setUTCSeconds:      function (sec, ms=undefined) <LDOTS> ,
-    setMinutes:         function (min, sec=undefined, ms=undefined) <LDOTS> ,
-    setUTCMinutes:      function (min, sec=undefined, ms=undefined) <LDOTS> ,
-    setHours:           function (hour, min=undefined, sec=undefined, ms=undefined) <LDOTS> ,
-    setUTCHours:        function (hour, min=undefined, sec=undefined, ms=undefined) <LDOTS> ,
-    setDate:            function (date) <LDOTS> ,
-    setUTCDate:         function (date) <LDOTS> ,
-    setMonth:           function (month, date=undefined) <LDOTS> ,
-    setUTCMonth:        function (month, date=undefined) <LDOTS> ,
-    setFullYear:        function (year, month=undefined, date=undefined) <LDOTS> ,
-    setUTCFullYear:     function (year, month=undefined, date=undefined) <LDOTS> ,
-    
-    constructor:        <LDOTS>
-}
-}}}
-
-=== Method properties ===
-
-<P> In following descriptions of functions that are properties of the Date prototype object, the phrase "this
-Date object" refers to the object that is the this value for the invocation of the function. None of these
-functions are generic; a TypeError exception is thrown if the this value is not an object for which the
-value of the internal [[Class]] property is "Date". Also, the phrase "this time value" refers to the
-number value for the time represented by this Date object, that is, the value of the internal [[Value]]
-property of this Date object.
-
-<P> Prototype methods forward the call to the corresponding intrinsic methods.
-
+<SHORTIMPL>
 <INCLUDE file="Date.es" name="prototype function toString">
 <INCLUDE file="Date.es" name="prototype function toDateString">
 <INCLUDE file="Date.es" name="prototype function toTimeString">
@@ -1028,11 +1233,5 @@ property of this Date object.
 <INCLUDE file="Date.es" name="prototype function setUTCMonth">
 <INCLUDE file="Date.es" name="prototype function setFullYear">
 <INCLUDE file="Date.es" name="prototype function setUTCFullYear">
-
-=== Value properties ===
-
-==== constructor ====
-
-<P> The initial value of Date.prototype.constructor is the built-in Date class object.
 
 
