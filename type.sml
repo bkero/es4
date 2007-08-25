@@ -583,10 +583,34 @@ fun serializeGroundType (a:Ast.TYPE_EXPR)
  * Equality
  * ----------------------------------------------------------------------------- *)
 
-fun equals (t1:Ast.TY)
-           (t2:Ast.TY)
+fun normalizingPredicate groundPredicate 
+                         nonNormalizableDefault
+                         (prog:Fixture.PROGRAM)
+                         (t1:Ast.TY)
+                         (t2:Ast.TY)
+  =
+  let
+      val norm1 = normalize prog t1
+      val norm2 = normalize prog t2
+  in
+      if isGroundTy norm1 andalso
+         isGroundTy norm2 
+      then 
+          groundPredicate
+              (AstQuery.typeExprOf norm1) 
+              (AstQuery.typeExprOf norm2)
+      else
+          nonNormalizableDefault
+    end
+    
+
+fun groundEquals (t1:Ast.TYPE_EXPR)
+                 (t2:Ast.TYPE_EXPR)
     : bool =
-true
+    true
+
+val equals = normalizingPredicate groundEquals false
+
 (*
     let
         fun pairEqual (t1, t2) = equals t1 t2
@@ -686,15 +710,19 @@ true
     end
 *)
 
+
+
 (* -----------------------------------------------------------------------------
  * Subtyping
  * ----------------------------------------------------------------------------- *)
 
-fun isSubtype (prog:Fixture.PROGRAM)
-              (t1:Ast.TY) (* derived *)
-              (t2:Ast.TY) (* base *)
-    : bool =
+fun groundIsSubtype (t1:Ast.TYPE_EXPR) (* derived *)
+                    (t2:Ast.TYPE_EXPR) (* base *)
+    : bool = 
     true
+
+val isSubtype = normalizingPredicate groundIsSubtype false
+
 (*
     let
         val _ = trace [">>> isSubtype: ", fmtType t1, " <: ", fmtType t2 ];
@@ -756,16 +784,17 @@ fun isSubtype (prog:Fixture.PROGRAM)
  * Compatibility
  * ----------------------------------------------------------------------------- *)
 
-and isCompatible (prog:Fixture.PROGRAM)
-                 (t1:Ast.TY)
-                 (t2:Ast.TY)
-    : bool =
-true
+fun groundIsCompatible (t1:Ast.TYPE_EXPR)
+                       (t2:Ast.TYPE_EXPR)
+    : bool = 
+    true
+
+val isCompatible = normalizingPredicate groundIsCompatible false
+
 (*
     let
         val t1 = normalize t1
-        val t2 = normalize t2
-        val _ = trace [">>> isCompatible: ", fmtType t1, " ~: ", fmtType t2 ];
+        val t2 = normalize t2        val _ = trace [">>> isCompatible: ", fmtType t1, " ~: ", fmtType t2 ];
         val res = (isSubtype tf t1 t2) orelse
 	              (equals t1 anyType) orelse
 	              (equals t2 anyType) orelse

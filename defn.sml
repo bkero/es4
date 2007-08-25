@@ -351,13 +351,14 @@ fun extendProgramTopRib (env:ENV)
               labels, packageNames, className,
               packageName, defaultNamespace, topUnitName, program } = env
     in
-        withProgram env (Fixture.extendTopRib program rib Type.equals)
+        withProgram env (Fixture.extendTopRib program rib (Type.equals program))
     end
 
 
-fun mergeRibs (oldRib:Ast.RIB) 
+fun mergeRibs (program:Fixture.PROGRAM)
+              (oldRib:Ast.RIB) 
               (newRib:Ast.RIB) = 
-    List.foldl (Fixture.mergeFixtures Type.equals) oldRib newRib
+    List.foldl (Fixture.mergeFixtures (Type.equals program)) oldRib newRib
 
 fun updateRib (env:ENV) (rib:Ast.RIB)
     : ENV =
@@ -365,7 +366,7 @@ fun updateRib (env:ENV) (rib:Ast.RIB)
         val { nonTopRibs, tempOffset, numericMode, openNamespaces, 
               labels, packageNames, className,
               packageName, defaultNamespace, topUnitName, program } = env
-        val rib = mergeRibs (hd nonTopRibs) rib
+        val rib = mergeRibs program (hd nonTopRibs) rib
     in
         { nonTopRibs = rib :: nonTopRibs,
           tempOffset = tempOffset,
@@ -1041,7 +1042,6 @@ and analyzeClassBody (env:ENV)
                      (cdef:Ast.CLASS_DEFN)
     : Ast.CLS =
     let
-
         val {ns, ident, nonnullable, dynamic, params,                  
              classDefns, 
              instanceDefns, instanceStmts, 
@@ -1057,7 +1057,7 @@ and analyzeClassBody (env:ENV)
         val env = enterClass env name
 
         val (unhoisted,classRib,classInits) = defNonTopDefns env classDefns
-        val classRib = (mergeRibs unhoisted classRib)
+        val classRib = (mergeRibs (#program env) unhoisted classRib)
         val staticEnv = extendEnvironment env classRib
 
         (* namespace and type definitions aren't normally hoisted *)
@@ -1447,7 +1447,8 @@ and defFunc (env:ENV)
                    block = blockOpt,
                    defaults = defaults,
                    ty = makeTy env (Ast.FunctionType newType),
-                   param = Ast.Head (mergeRibs paramRib hoisted, paramInits),
+                   param = Ast.Head (mergeRibs (#program env) paramRib hoisted, 
+                                     paramInits),
                    native=native,
                    loc=loc})
     end
@@ -2353,7 +2354,7 @@ and defStmt (env:ENV)
                                      body = newBody,
                                      rib = SOME ur1,
                                      next = newNext },
-                     mergeRibs hr1 hoisted)
+                     mergeRibs (#program env) hr1 hoisted)
                 end
             end
 
@@ -2386,7 +2387,7 @@ and defStmt (env:ENV)
                         SOME vd => defDefn env false (Ast.VariableDefn vd)
                       | NONE => ([],[],[])
                 val (ur,hr,_) = defVarDefnOpt defn
-                val env' = updateRib env (mergeRibs ur hr)
+                val env' = updateRib env (mergeRibs (#program env) ur hr)
                 val (newInit,_) = defStmts env' init
                 val newCond = defExpr env' cond
                 val newUpdate = defExpr env' update
@@ -2400,7 +2401,7 @@ and defStmt (env:ENV)
                                 labels = Ustring.empty::labelIds,
                                 body = newBody,
                                 rib = SOME (ur) },
-                  (mergeRibs hr hoisted) )
+                  (mergeRibs (#program env') hr hoisted) )
             end
 
         fun reconstructCatch { bindings, rib, inits, block, ty } =
@@ -2615,7 +2616,7 @@ and defStmt (env:ENV)
                 (Ast.IfStmt { cnd = cnd,
                               thn = thn,
                               els = els },
-                 mergeRibs thn_hoisted els_hoisted)
+                 mergeRibs (#program env) thn_hoisted els_hoisted)
             end
 
           | Ast.WithStmt { obj, ty, body } =>
@@ -2680,7 +2681,7 @@ and defStmts (env) (stmts:Ast.STMT list)
                 val env' = updateRib env f1
                 val (s2,f2) = defStmts env' stmts
             in
-                (s1::s2,(mergeRibs f1 f2))
+                (s1::s2,(mergeRibs (#program env) f1 f2))
             end
       | [] => ([],[])
 
@@ -2839,7 +2840,7 @@ and defTopDefns (env:ENV)
                 val env = updateRib env unhoisted'
            in
                 defTopDefns env ds
-                            (mergeRibs unhoisted unhoisted')
+                            (mergeRibs (#program env) unhoisted unhoisted')
                             (inits@inits') 
            end
     end
@@ -2866,14 +2867,17 @@ and defBlock (env:ENV)
         val _ = LogErr.setLoc loc
         val (env,unhoisted_pragma_fxtrs) = defPragmas env pragmas
         val (unhoisted_defn_fxtrs,hoisted_defn_fxtrs,inits) = defNonTopDefns env defns
-        val env = updateRib env (mergeRibs unhoisted_defn_fxtrs hoisted_defn_fxtrs)
+        val env = updateRib env (mergeRibs (#program env) unhoisted_defn_fxtrs hoisted_defn_fxtrs)
         val (body,hoisted_body_fxtrs) = defStmts env body
-        val hoisted = mergeRibs hoisted_defn_fxtrs hoisted_body_fxtrs
+        val hoisted = mergeRibs (#program env) hoisted_defn_fxtrs hoisted_body_fxtrs
     in
         (Ast.Block { pragmas = pragmas,
                      defns = [],  (* clear definitions, we are done with them *)
                      body = body,
-                     head = SOME (Ast.Head (mergeRibs unhoisted_defn_fxtrs unhoisted_pragma_fxtrs,inits)),
+                     head = SOME (Ast.Head (mergeRibs (#program env) 
+                                                      unhoisted_defn_fxtrs 
+                                                      unhoisted_pragma_fxtrs,
+                                            inits)),
                      loc = loc},
          hoisted)
     end
@@ -2992,7 +2996,8 @@ and defFragment (env:ENV)
                                        defns = [],  (* clear definitions, we are done with them *)
                                        body = body,
                                        head = SOME (Ast.Head 
-                                                        (mergeRibs unhoisted_defn_fxtrs 
+                                                        (mergeRibs (#program env) 
+                                                                   unhoisted_defn_fxtrs 
                                                                    unhoisted_pragma_fxtrs,
                                                          inits)),
                                        loc = loc}))
@@ -3015,7 +3020,7 @@ and defTopFragment (prog:Fixture.PROGRAM)
                        topUnitName = NONE,
                        program = prog } 
         val (prog, frag) = defFragment topEnv frag
-        val prog = Fixture.closeTopFragment prog frag Type.equals
+        val prog = Fixture.closeTopFragment prog frag (Type.equals prog)
     in
         trace ["fragment definition complete"];
         (if !doTrace

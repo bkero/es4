@@ -68,6 +68,22 @@ fun makeTy (tyExpr:Ast.TYPE_EXPR)
              topUnit = NONE,
              expr = tyExpr }
 
+fun evalTy (regs:Mach.REGS)
+           (ty:Ast.TY)
+    : Ast.TYPE_EXPR = 
+    (* 
+     * evalTy implements the above assumption: a last-ditch, no-option
+     * requirement that we *must* turn this TY into a ground TYPE_EXPR. 
+     * We call this in a variety of contexts where the program can't 
+     * really sensibly proceed if we can't ground the type.
+     *)
+    let
+        val norm = Type.normalize (#prog regs) ty
+    in
+        if Type.isGroundTy norm
+        then AstQuery.typeExprOf norm
+        else error regs ["Unable to ground type closure"]
+    end
 
 (* Exceptions for object-language control transfer. *)
 exception ContinueException of (Ast.IDENT option)
@@ -77,6 +93,12 @@ exception ThrowException of Mach.VAL
 exception ReturnException of Mach.VAL
 
 exception InternalError
+
+infix 4 <:;
+
+fun ((tsub:Ast.TYPE_EXPR) <: (tsup:Ast.TYPE_EXPR)) =
+    Type.groundIsSubtype tsub tsup
+    
 
 fun mathOp (v:Mach.VAL)
            (decimalFn:(Decimal.DEC -> 'a) option)
@@ -1752,13 +1774,7 @@ and getExpectedType (regs:Mach.REGS)
                     (expr:Ast.EXPR)
     : (Ast.TYPE_EXPR * Ast.EXPR) =
     case expr of
-        Ast.ExpectedTypeExpr (ty, e) => 
-        let 
-            val normalizedTy = Type.normalize (#prog regs) ty
-            val groundExpr = Type.groundExpr normalizedTy          
-        in 
-            (groundExpr, e)
-        end
+        Ast.ExpectedTypeExpr (ty, e) => (evalTy ty, e)
       | _ => (Ast.SpecialType Ast.Any, expr)
 
 and checkCompatible (regs:Mach.REGS)
@@ -2937,10 +2953,11 @@ and isCompatible (regs:Mach.REGS)
 and evalBinaryTypeOp (regs:Mach.REGS)
                      (bop:Ast.BINTYPEOP)
                      (expr:Ast.EXPR)
-                     (tyExpr:Ast.TYPE_EXPR)
+                     (ty:Ast.TY)
     : Mach.VAL =
     let
         val v = evalExpr regs expr
+        val tyExpr = evalTy regs ty
     in
         case bop of
             Ast.Cast =>
@@ -4039,18 +4056,24 @@ in a global property. All that remains is to initialise it by executing
 and constructSpecialPrototype (regs:Mach.REGS)
                               (id:Mach.OBJ_IDENT)
     : Mach.VAL option =
-    if id = (getObjId (!(Mach.getStringClassSlot regs)))
-    then SOME (newPublicString regs Ustring.empty)
-    else
-        if id = (getObjId (!(Mach.getNumberClassSlot regs)))
-        then SOME (newPublicNumber regs 0.0)
+    let
+        fun ooid sf = case !(sf regs) of 
+                          NONE => ~1
+                        | SOME obj => getObjId obj
+    in
+        if id = ooid Mach.getStringClassSlot
+        then SOME (newPublicString regs Ustring.empty)
         else
-            if id = (getObjId (!(Mach.getBooleanClassSlot regs)))
-            then SOME (newPublicBoolean regs false)
+            if id = ooid Mach.getNumberClassSlot
+            then SOME (newPublicNumber regs 0.0)
             else
-                if id = (getObjId (!(Mach.getArrayClassSlot regs)))
-                then SOME (newArray regs [])
-                else NONE
+                if id = ooid Mach.getBooleanClassSlot
+                then SOME (newPublicBoolean regs false)
+                else
+                    if id = ooid Mach.getArrayClassSlot
+                    then SOME (newArray regs [])
+                    else NONE
+    end
 
 and initClassPrototype (regs:Mach.REGS)
                        (classObj:Mach.OBJ)
