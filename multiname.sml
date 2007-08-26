@@ -70,7 +70,7 @@ fun resolve (mname:Ast.MULTINAME)
                  | [] => tryMultiname xs
                  | matches  => (List.app (fn m => trace ["matched:", fmtName m]) matches;
                                 error ["ambiguous reference ",
-					                   fmtMultiname mname])
+					                   LogErr.multiname mname])
             end
     in
         case tryMultiname (#nss mname) of

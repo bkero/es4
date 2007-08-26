@@ -303,7 +303,8 @@ namespace Token
     const Type = Static - 1
     const UInt = Type - 1
     const Undefined = UInt - 1
-    const Use = Undefined - 1
+    const Unit = Undefined - 1
+    const Use = Unit - 1
     const Xml = Use - 1
     const Yield = Xml - 1
 
@@ -614,6 +615,7 @@ namespace Token
         case "uint": return UInt;
         case "undefined": return Undefined;
         case "use": return Use;
+        case "unit": return Unit;
         case "xml": return Xml;
         case "yield": return Yield;
         default: return makeInstance (Identifier,lexeme);
@@ -753,7 +755,8 @@ namespace Lexer
                     colCoord = 0;
                 }
                 else {
-                    print ("token ", token, " \t", Token::tokenText(token));
+                    print ("token ", token);
+                    //print ("token ", token, " \t", Token::tokenText(token));
                     colCoord += markIndex - lastMarkIndex;
                     coordList.push ([lnCoord,colCoord]);
                     tokenList.push (token);

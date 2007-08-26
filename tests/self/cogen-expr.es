@@ -341,7 +341,7 @@ package cogen
         for ( let i=0 ; i < nargs ; i++ )
             cgExpr(ctx, e.args[i]);
         if (name != null)
-            asm.I_callproperty(cgIdentExpr(ctx, name));
+            asm.I_callproperty(cgIdentExpr(ctx, name),nargs);
         else
             asm.I_call(nargs);
     }
@@ -460,7 +460,7 @@ package cogen
     function cgInitExpr(ctx, e) {
         let asm = ctx.asm;
         let baseOnStk = false;
-        cgHead(ctx, e.head);
+//        cgHead(ctx, e.head);
         switch type (e.target) {
             case (i:InstanceInit ) {
                 // Load this on the stack
@@ -554,7 +554,10 @@ package cogen
 
     function cgGetTempExpr(ctx, e) {
         // FIXME
-        throw "Unimplemented getTemp expression";
+        let{asm:asm, emitter:emitter} = ctx;
+        var qn = emitter.qname ({ns:Ast::noNS,id:"$t"+e.n});
+        asm.I_findpropstrict(qn);
+        asm.I_getproperty(qn);
     }
 
     function cgGetParamExpr(ctx, e) {

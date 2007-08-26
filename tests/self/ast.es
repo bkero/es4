@@ -59,8 +59,9 @@ namespace Ast
 
     type HEAD = { fixtures: FIXTURES, inits: INITS }
 
-    class Head { 
-        const fixtures: FIXTURES;
+    class Head {
+        use default namespace public;  // TRAC should default namespace nest
+        const fixtures: FIXTURES;  
         const inits: INITS;
         function Head (fixtures,inits)
             : fixtures = fixtures
@@ -174,6 +175,8 @@ namespace Ast
         const ns : PublicNamespace
         function hash () { return "import " + ns.hash; }
     }
+
+    var noNS = new PublicNamespace ("");   // FIXME find better way to express
 
     // NUMBERS
 
@@ -338,6 +341,8 @@ namespace Ast
     class AssignBitwiseXor {}
     class AssignLogicalAnd {}
     class AssignLogicalOr {}
+
+    const assignOp = new Assign;
 
     // UNOP
 
@@ -555,15 +560,20 @@ namespace Ast
     }
 
     type INIT_TARGET =
-       ( HoistedInit
-       , LocalInit
+       ( VarInit
+       , LetInit
        , PrototypeInit
        , InstanceInit )
 
-    class HoistedInit {}
-    class LocalInit {}
+    class VarInit {}
+    class LetInit {}
     class PrototypeInit {}
     class InstanceInit {}
+
+    const varInit = new VarInit;
+    const letInit = new LetInit;
+    const prototypeInit = new PrototypeInit;
+    const instanceInit = new InstanceInit;
 
 	class InitExpr {
         const target : INIT_TARGET;
@@ -608,7 +618,7 @@ namespace Ast
 
     class Identifier {
         const ident : IDENT;
-        const nss //: [[NAMESPACE]];
+        const nss //: NAMESPACES;
         function Identifier (ident,nss)
             : ident = ident
             , nss = nss {}
@@ -636,7 +646,7 @@ namespace Ast
 
     class ExpressionIdentifier {
         const expr: EXPR;
-        const nss //: [[NAMESPACE]];
+        const nss //: [NAMESPACE];
         function ExpressionIdentifier (expr,nss)
             : expr=expr
             , nss = nss { }
@@ -1081,13 +1091,19 @@ namespace Ast
     }
 
     class ElementTypeRef {
-        const base : IDENT_EXPR;
+        const base : TYPE_EXPR;
         const index : int;
+        function ElementTypeRef (base,index)
+            : base = base
+            , index = index { }
     }
 
     class FieldTypeRef {
-        const base : IDENT_EXPR;
+        const base : TYPE_EXPR;
         const ident : IDENT;
+        function FieldTypeRef (base,ident)
+            : base = base
+            , ident = ident { }
     }
 
     class FunctionType {

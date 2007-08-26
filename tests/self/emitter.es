@@ -100,7 +100,7 @@ package emitter
         public function namespace( ns:NAMESPACE ) {
             switch type ( ns ) {
                 case (int_ns:IntrinsicNamespace) {
-                    throw ("Unimplemented namespace IntrinsicNamespace");
+                    return constants.namespace(CONSTANT_Namespace, constants.stringUtf8("intrinsic"));  // FIXME
                 }
                 case (on:OperatorNamespace) {
                     throw ("Unimplemented namespace OperatorNamespace");
@@ -189,8 +189,7 @@ package emitter
                 return qname(pn.name);
             }
             case (tn:TempName) {
-                // FIXME: updates "name"
-                throw "Internal error: what is the internal structure of a TempName?";
+		return qname ({ns:Ast::noNS,id:"$t"+tn.index});  // FIXME allocate and access actual temps
             }
             case (x:*) { throw "Internal error: not a valid fixture name" }
             }

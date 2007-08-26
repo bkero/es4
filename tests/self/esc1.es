@@ -1,5 +1,5 @@
 {
-    import util.*;
+//    import util.*;
     use namespace Parser;
     load ("esc-env.ast")
     print ("decoding: ", ast);

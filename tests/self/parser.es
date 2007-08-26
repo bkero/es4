@@ -467,52 +467,132 @@ namespace Parser;
 
         /*
 
-        desugaring can result in bindings and inits for temporaries,
-        bindings for the declared names, and inits for the declared names.
+   
+        assignment, create a let for each aggregate, a temp for
+        each level of nesting
 
-        the temp bindings and inits from destructuring end up in the head of an 
-        InitExpr, the property init, if any, ends up in the InitExpr inits, and 
-        the property bindings get hoisted into the appropriate block head
+        x = y              set x=y
+        [x] = y            let (t0=y) set x=t0[0]
+        [[x]] = y          let (t0=y) let (t1=t0[0]) set x=t1[0]
+        [[x],[x]] = y      let (t0=y) let (t1=t0[0]) set x=t1[0]
+                                    , let (t1=t0[1]) set x=t1[0]
+        
+        initialization, create an init rather than a set for the
+        leaf nodes
+
+        var x = v            let (t0=v) init () [x=t0]
+        var [x] = v          let (t0=v) init () [x=t0[0]]
+        var [x,[y,z]] = v    let (t0=v) init () [x=t0[0]]
+                                      , let (t1=t0[1]) init () [y=t1[0], z=t1[1]]
+        var [x,[y,[z]]] = v  let (t0=v) init () [x=t0[0]]
+                                      , let (t1=t0[1]) init () [y=t1[0]
+                                                     , let (t2=t1[0]) init () [z=t2[0]]
+
+        for initialization, we need to know the namespace and the target 
+        so we make INITS to go into the InitExpr inside the LetExpr
+
+        let x = y          init x=y
+
+        flattening.
+
+        var [x,[y,z]] = v  let (t0=v) init () [x=t0[0]]
+                                    , let (t1=t0[1]) init () [y=t1[0], z=t1[0]]
+
+                           t0=v
+                           x=t0[0]
+                           t1=t0[1]
+                           y=t1[0]
+                           z=t1[1]
+        head = {[t0,x,t1,y,z],
+
+        flattening doesn't work because it mixes named and temporary
+        fixtures
+
+        lets and params have the same problem. both allow destructuring
+        patterns that can expand into a nested expression.
+
+        let ([x,[y,z]]=v) ...
+
+        top heads only have named fixtures. sub heads only have temporaries.
+        temporaries are always immediately initialized. a head is a list of
+        fixtures and a list of expressions. the expressions get evaluated
+        in the scope outside the head.
+
+        settings is a sub head. it has temporary fixtures and init exprs that
+        target instance variables
 
         */
 
-        function desugarPattern (p: PATTERN, t: Ast::TYPE_EXPR, e: Ast::EXPR)
-            : [[Ast::BINDING], [Ast::INIT_STEP], Ast::HEAD]
-        {
-            enter ("desugarPattern");
-            var bs, ss;
-            switch type (p) : PATTERN {
-            case (p:IdentifierPattern) {
-                let i = new Ast::PropIdent (p.ident);
-                var binds = [new Ast::Binding (i,t)];
-                if (e !== null) {
-                    var inits = [new Ast::InitStep (i,e)];
-                    var head = {fixtures:[],inits:[]};
-                }
-                else {
-                    var inits = [];
-                    var head = {fixtures:[],inits:[]};
-                }
-            }
-            case (p:SimplePattern) {
-                if (e !== null) {
-                    var binds = [];
-                    var inits = [new Ast::AssignStep (p.expr,e)];
-                    var head = {fixtures:[],inits:[]};
-                }
-                else {
-                    throw "simple pattern without initializer";
-                }
-            }
-            case (p:ArrayPattern) {
-            }
-            case (x: *) {
-                throw "internal error: desugarPattern " + p;
-            }
-            }
-            exit ("desugarPattern");
+        function desugarAssignmentPattern (p: PATTERN, t: Ast::TYPE_EXPR, e: Ast::EXPR, op: Ast::ASSIGNOP)
+            desugarPattern (p,t,e,null,null,null,op);
 
-            return [binds,inits,head];  // FIXME: RI allows [b,[]], which should be an error
+        function desugarBindingPattern (p: PATTERN, t: Ast::TYPE_EXPR, e: Ast::EXPR,
+                                        ns: Ast::NAMESPACE?, it: Ast::INIT_TARGET?, ro: boolean?)
+            desugarPattern (p,t,e,ns,it,ro,null);
+
+        function desugarPattern (p: PATTERN, t: Ast::TYPE_EXPR, e: Ast::EXPR,
+                                 ns: Ast::NAMESPACE?, it: Ast::INIT_TARGET?, ro: boolean?, op: Ast::ASSIGNOP?)
+            : [Ast::FIXTURES, Ast::EXPR]
+        {
+            return desugarSubPattern (p,t,e,0);
+
+            function desugarSubPattern (p: PATTERN, t: Ast::TYPE_EXPR, e: Ast::EXPR, n: int) 
+                : [Ast::FIXTURES, Ast::EXPR]
+            {
+                switch type (p) : PATTERN {
+                case (p:IdentifierPattern) {
+                    let nm = new Ast::PropName ({ns:ns,id:p.ident});
+                    let fx = new Ast::ValFixture (t,ro);
+                    var fxtrs = [[nm,fx]];
+                    if (e !== null) {
+                        var inits = [[nm,e]];
+                    }
+                    else {
+                        var inits = [];
+                    }
+                    var expr = new Ast::InitExpr (it, new Ast::Head ([],[]), inits);
+                }
+                case (p:SimplePattern) {
+                    if (e === null) throw "simple pattern without initializer";
+                    var fxtrs = [];
+                    var expr = new Ast::SetExpr (op,p.expr,e);
+                }
+                case (p:ArrayPattern) {
+                    
+                    /*
+                      
+                    [p0,pN] = e  
+
+                    becomes
+
+                    let (t0=e) set p0=t0[0]
+                             , set pN=t0[N]
+
+                    */
+
+                    let tn = new Ast::TempName (n);   // t0
+                    var fxtrs = [];
+                    let exprs = [];
+                    let ptrns = p.ptrns;
+                    for (let i=0; i<ptrns.length; ++i) {
+                        let pat = ptrns[i];
+                        let typ = new Ast::ElementTypeRef (t,i);
+                        let exp = new Ast::ObjectRef (new Ast::GetTemp (n), new Ast::Identifier (i,[[Ast::noNS]]));  
+                                                    // FIXME what is the ns of a temp and how do we refer it
+                        let [fx,ex] = desugarSubPattern (pat,typ,exp,n+1);
+
+                        for (let n in fx) fxtrs.push(fx[n]);
+                        exprs.push(ex);
+                    }
+                    let head = new Ast::Head ([[tn,new Ast::ValFixture (Ast::anyType,false)]],[[tn,e]]);
+                    var expr = new Ast::LetExpr (head, new Ast::ListExpr (exprs));
+                }
+                case (x: *) {
+                    throw "internal error: desugarPattern " + p;
+                }
+                }
+                return [fxtrs,expr];
+            }
         }
 
         // Parse rountines
@@ -719,7 +799,7 @@ namespace Parser;
                     break;
                 case Token::StringLiteral:
                 case Token::DecimalLiteral:
-                    let str = Token::tokenText (ts1[0]);
+                    let str = Token::tokenText (ts1.head());
                     var [ts2,nd2] = [tl(ts1), str];
                     var [ts3,nd3] = [ts1, new Ast::QualifiedIdentifier (nd1,nd2)];
                     break;
@@ -1097,6 +1177,8 @@ namespace Parser;
 
             switch (hd (ts)) {
             case Token::StringLiteral:
+                var [ts1,nd1] = [tl (ts), new Ast::Identifier (Token::tokenText (ts.head()),cx.pragmas.openNamespaces)];
+                break;
             case Token::DecimalLiteral:
             case Token::DecimalIntegerLiteral:
             case Token::HexIntegerLiteral:
@@ -1104,7 +1186,7 @@ namespace Parser;
                 break;
             default:
                 if (isReserved (hd (ts))) {
-                    var [ts1,nd1] = [tl (ts), new Ast::Identifier (cx.pragmas.openNamespaces,tokenText (hd (ts)))];
+                    var [ts1,nd1] = [tl (ts), new Ast::Identifier (Token::tokenText (ts.head()),cx.pragmas.openNamespaces)];
                                      // NOTE we use openNamespaces here to indicate that the name is 
                                      //      unqualified. the generator should use the expando namespace,
                                      //      which is probably Public "".
@@ -1166,6 +1248,7 @@ namespace Parser;
             enter("Parser::elementList ", ts);
 
             var nd1 = [];
+            var ts1 = ts;
 
             if (hd (ts) !== Token::RightBracket) 
             {
@@ -1184,6 +1267,8 @@ namespace Parser;
                     case Token::Comma:
                         var [ts1,ndx] = [ts1,new Ast::LiteralExpr (new Ast::LiteralUndefined)];
                         break;
+                    case Token::RightBracket:
+                        continue;  // we're done
                     default:
                         var [ts1,ndx] = assignmentExpression (ts1,allowIn);
                         break;
@@ -2243,7 +2328,7 @@ namespace Parser;
             case Token::Assign:
                 var [ts1,nd1] = [tl (ts1), patternFromExpr (nd1)];
                 var [ts2,nd2] = assignmentExpression (ts1,beta);
-                var [binds,inits,head] = desugarPattern (nd1,Ast::anyType,nd2,0);
+                var [binds,inits,head] = desugarAssignmentPattern (nd1,Ast::anyType,nd2,Ast::assignOp);
                 //var expr = new Ast::LetExpr (head, new Ast::ListExpr ([exprFromAssignStep (inits[0])]));  
                 var expr = exprFromAssignStep (inits[0]);
                             // FIXME: map exprFromAssignStep over all elements
@@ -3156,7 +3241,7 @@ namespace Parser;
                 break;
             case Token::Var:
                 var [ts1,nd1] = variableDefinition (ts,noIn,localBlk,cx.pragmas.defaultNamespace,false,false);
-                assert (nd1.length==1);
+                //assert (nd1.length==1);
                 switch type (nd1[0]) {
                 case (nd:Ast::ExprStmt) { nd1 = nd.Ast::expr }
                 case (nd:*) { throw "error forInitialiser " + nd }
@@ -3366,7 +3451,7 @@ namespace Parser;
             var [ts2,nd2] = block (ts1,localBlk);
 
             var [k,[p,t]] = nd1;
-            var [b,i,temps] = desugarPattern (p, t, new Ast::GetParam (0), 0);
+            var [b,i,temps] = desugarBindingPattern (p, t, new Ast::GetParam (0), Ast::noNS, Ast::varInit, false);
             let head = headFromBindingInits ([b,i]);
 
             exit("Parser::catchClause ", ts2);
@@ -3469,32 +3554,47 @@ namespace Parser;
             enter("Parser::variableDefinition ", ts);
 
             let [ts1,nd1] = variableDefinitionKind (ts);
-            let [ts2,nd2] = variableBindingList (ts1, beta);
 
-            let [b,i,h] = nd2;
+            switch (nd1) {
+            case Ast::letConstTag:
+                var it = Ast::letInit;
+                var ro = true;
+                break;
+            case Ast::letVarTag:
+                var it = Ast::letInit;
+                var ro = false;
+                break;
+            case Ast::constTag:
+                var it = Ast::varInit;
+                var ro = true;
+                break;
+            case Ast::varTag:
+                var it = Ast::varInit;
+                var ro = false;
+                break;
+            default:
+                throw "error variableDefinition kind " + nd1;
+            }
 
-            // i => initexprs
-            // b => fixtures
-
-            var fxtrs = fixturesFromBindings (ns, b);
-            var inits = initsFromInitSteps (ns, i);
+            let [ts2,nd2] = variableBindingList (ts1, beta, ns, it, ro);
+            let [fxtrs,init] = nd2;
 
             switch (nd1) {
             case Ast::letConstTag:
             case Ast::letVarTag:
                 cx.addLetFixtures (fxtrs);
-                var stmts = [new Ast::ExprStmt (new Ast::InitExpr (new Ast::HoistedInit, h,inits))];
+                var stmts = [new Ast::ExprStmt (init)];
                 break;
             default:
                 switch (tau) {
                 case classBlk:
                     cx.addVarFixtures (fxtrs);
-                    cx.addVarInits (inits);
+                    cx.addVarInits ([init]);
                     var stmts = [];
                     break;
                 default:
                     cx.addVarFixtures (fxtrs);
-                    var stmts = [new Ast::ExprStmt (new Ast::InitExpr (new Ast::HoistedInit, h,inits))];
+                    var stmts = [new Ast::ExprStmt (init)];
                     break;
                 }
             }
@@ -3562,13 +3662,28 @@ namespace Parser;
 
         */
 
-        function variableBindingList (ts: TOKENS, beta: BETA )
-            : [TOKENS, [[Ast::BINDING], [Ast::INIT_STEP], Ast::HEAD]]
+        function variableBindingList (ts: TOKENS, beta: BETA, ns: Ast::NAMESPACE, 
+                                      it: Ast::INIT_TARGET, ro: boolean )
+            : [TOKENS, [Ast::FIXTURES, Ast::EXPR]]
         {
             enter("Parser::variableBindingList ", ts);
 
-            function variableBindingListPrime (ts: TOKENS )
-                : [TOKENS,[[Ast::BINDING], [Ast::INIT_STEP], Ast::HEAD]]
+            var [ts1,nd1] = variableBinding (ts, beta);
+            var [ts2,nd2] = variableBindingListPrime (ts1, beta);
+
+            var [f1,i1] = nd1;  // FIXME: fold into patterns above when it works in the RI
+            var [f2,i2] = nd2;
+
+            i1 = [i1];   // i1 is actually only a single expression
+
+            for (let n in f2) f1.push (f2[n]);  // FIXME: use concat when it works in the RI
+            for (let n in i2) i1.push (i2[n]);
+
+            exit ("Parser::variableBindingList ", ts2);
+            return [ts2,[f1,new Ast::ListExpr(i1)]];  // FIXME if only one element don't create listexpr
+
+            function variableBindingListPrime (ts: TOKENS)
+                : [TOKENS, [Ast::FIXTURES, Ast::EXPRS]]
             {
                 enter("Parser::variableBindingListPrime ", ts);
         
@@ -3577,42 +3692,69 @@ namespace Parser;
                     var [ts1,nd1] = variableBinding (tl (ts), beta);
                     var [ts2,nd2] = variableBindingListPrime (ts1);
 
-                    var [b1,i1,h1] = nd1;  // FIXME: fold into patterns above when it works in the RI
-                    var [b2,i2,h2] = nd2;
+                    var [f1,i1] = nd1;  // FIXME: fold into patterns above when it works in the RI
+                    var [f2,i2] = nd2;
 
-                    for (var n in b2) b1.push (b2[n]);  // FIXME: use concat when it works in the RI
-                    for (var n in i2) i1.push (i2[n]);
-                    for (var n in h2.fixtures) h1.fixtures.push (h2.fixtures[n]);
-                    for (var n in h2.inits) h1.inits.push (h2.inits[n]);
-
+                    for (let n in f2) f1.push (f2[n]);  // FIXME: use concat when it works in the RI
+                    for (let n in i2) i1.push (i2[n]);
                     break;
                 default:
-                    var [ts2,nd2] = [ts,[[],[],{fixtures:[],inits:[]}]];
-                    var [b1,i1,h1] = nd2;
+                    var [ts2,nd2] = [ts,[[],[]]];
+                    var [f1,i1] = nd2;
                     break;
                 }
 
                 exit ("Parser::variableBindingListPrime ", ts2);
-                return [ts2,[b1,i1,h1]];
+                return [ts2,[f1,i1]];
             }
 
-            var [ts1,nd1] = variableBinding (ts, beta);
-            var [ts2,nd2] = variableBindingListPrime (ts1, beta);
-
-            var [b1,i1,h1] = nd1;  // FIXME: fold into patterns above when it works in the RI
-            var [b2,i2,h2] = nd2;
-
-            for (var n in b2) b1.push (b2[n]);  // FIXME: use concat when it works in the RI
-            for (var n in i2) i1.push (i2[n]);
-            for (var n in h2.fixtures) h1.fixtures.push (h2.fixtures[n]);
-            for (var n in h2.inits) h1.inits.push (h2.inits[n]);
-
-            exit ("Parser::variableBindingList ", ts2);
-            return [ts2,[b1,i1,h1]];
+            function variableBinding (ts: TOKENS, beta: BETA)
+                : [TOKENS, [Ast::FIXTURES, Ast::EXPR]]
+            {
+                enter("Parser::variableBinding ", ts);
+                    
+                let [ts1,nd1] = typedPattern (ts,beta);
+                let [p,t] = nd1;
+                switch (hd (ts1)) {
+                case Token::Assign:
+                    let [ts2,nd2] = assignmentExpression (tl (ts1), beta);
+                    switch (hd (ts2)) {
+                    case Token::In:
+                        if (beta === noIn) {
+                            // in a binding form
+                            break;
+                        } // else fall through
+                    default:
+                        var [tsx,ndx] = [ts2,desugarBindingPattern (p,t,nd2,ns,it,ro)];
+                        break;
+                    }
+                    break;
+                default:
+                    switch (hd (ts1)) {
+                    case Token::In:
+                        if (beta === noIn) {
+                            // in a binding form
+                            break;
+                        } // else fall through
+                    default:
+                        switch type (p) {
+                        case (p: IdentifierPattern) {
+                            var [tsx,ndx] = [ts1,desugarBindingPattern (p,t,null,ns,it,ro)];
+                        }
+                        case (x : *) {
+                            throw "destructuring pattern without initializer";
+                        }
+                        }
+                        break;
+                    }
+                }
+                exit("Parser::variableBinding ", tsx);
+                return [tsx,ndx];
+            }
         }
 
-        function variableBinding (ts: TOKENS, beta: BETA)
-            : [TOKENS, [[Ast::BINDING], [Ast::INIT_STEP], Ast::HEAD]]
+        function variableBinding (ts: TOKENS, beta: BETA, ns: Ast::NAMESPACE, it: Ast::INIT_TARGET)
+            : [TOKENS, [Ast::FIXTURES, Ast::EXPRS]]
         {
             enter("Parser::variableBinding ", ts);
 
@@ -3628,7 +3770,7 @@ namespace Parser;
                         break;
                     } // else fall through
                 default:
-                    var [tsx,ndx] = [ts2,desugarPattern (p, t, nd2, 0)];
+                    var [tsx,ndx] = [ts2,desugarBindingPattern (p,t,nd2,ns,it,ro)];
                     break;
                 }
                 break;
@@ -3642,7 +3784,7 @@ namespace Parser;
                 default:
                     switch type (p) {
                     case (p: IdentifierPattern) {
-                        var [tsx,ndx] = [ts1,desugarPattern (p, t, null, 0)];
+                        var [tsx,ndx] = [ts1,desugarPattern (p,t,null,ns,it)];
                     }
                     case (x : *) {
                         throw "destructuring pattern without initializer";
@@ -3918,14 +4060,14 @@ namespace Parser;
             case (ident: Ast::Identifier) {
                 var ns = cx.pragmas.defaultNamespace;
                 var name = new Ast::PropName ({ns:ns,id:ident.Ast::ident});
-                var init = new Ast::InitExpr (new Ast::InstanceInit,{fixtures:[],inits:[]},[[name,as.Ast::re]]);
+                var init = new Ast::InitExpr (Ast::instanceInit,new Ast::Head ([],[]),[[name,as.Ast::re]]);
             }
             case (le: Ast::QualifiedIdentifier) {
                 var qual = le.Ast::qual;
                 var ident = le.Ast::ident;
                 var ns = cx.pragmas.defaultNamespace; //cx.evalIdentExpr (qual);
                 var name = new Ast::PropName ({ns:ns,id:ident});
-                var init = new Ast::InitExpr (new Ast::InstanceInit,[[],[]],[[name,as.Ast::re]]);
+                var init = new Ast::InitExpr (Ast::instanceInit,new Ast::Head([],[]),[[name,as.Ast::re]]);
             }
             case (le: *) {
                 throw "invalid setting target " + (as.Ast::le).Ast::ident;
@@ -3945,11 +4087,8 @@ namespace Parser;
             ts1 = eat (ts1,Token::Assign);
             var [ts2,nd2] = assignmentExpression (ts1,allowIn);
 
-            var [tsx,[binds,inits,head]] = [ts2,desugarPattern (nd1, new Ast::SpecialType (new Ast::AnyType), nd2, 0)];
-            // assert binds is empty
-
-            var init = initFromAssignStep (inits[0]);  // FIXME might be more than one init for destructuring
-            var ndx = new Ast::LetExpr (head,init);
+            var [tsx,[fxtrs,ndx]] = [ts2,desugarBindingPattern (nd1, new Ast::SpecialType (new Ast::AnyType), nd2, null, Ast::instanceInit)];
+            // assert fxtrs is empty
 
             exit("Parser::setting ", tsx);
             return [tsx,ndx];
@@ -4008,6 +4147,7 @@ namespace Parser;
         properties, and the offset on parameter indicies.
 
         */
+
 
         function fixtureNameFromBindingIdent (ns,bi: Ast::BINDING_IDENT)
             : Ast::FIXTURE_NAME 
@@ -4083,11 +4223,10 @@ namespace Parser;
             var [ts3,nd3] = resultType (ts2);
 
             // Translate bindings and init steps into fixtures and inits (HEAD)
-            let [[b,i],e,t] = nd2;
-            let p = headFromBindingInits ([b,i]);
+            let [h,e,t] = nd2;
 
             var ndx = { typeParams: []
-                      , params: p
+                      , params: h
                       , paramTypes: t
                       , defaults: e
                       , ctorInits: null
@@ -4184,7 +4323,7 @@ namespace Parser;
                 let i1 = [];
                 let e1 = [];
                 let t1 = [];
-                var [ts1,nd1,hasRest] = [ts,[[b1,i1],e1,t1],false];
+                var [ts1,nd1,hasRest] = [ts,[new Ast::Head([],[]),e1,t1],false];
                 break;
             default:
                 var [ts1,nd1,hasRest] = nonemptyParameters (ts,0,false);
@@ -4205,7 +4344,7 @@ namespace Parser;
         */
 
         function nonemptyParameters (ts: TOKENS, n, initRequired)
-            : [TOKENS, [Ast::BINDING_INITS, [Ast::EXPR], [Ast::TYPE_EXPR]], boolean]
+            : [TOKENS, [Ast::HEAD, [Ast::EXPR], [Ast::TYPE_EXPR]], boolean]
         {
             enter("Parser::nonemptyParameters ", ts);
 
@@ -4219,15 +4358,15 @@ namespace Parser;
                 switch (hd (ts1)) {
                 case Token::Comma:
                     ts1 = eat (ts1, Token::Comma);
-                    let [[b1,i1],e1,t1] = nd1;
+                    let [[f1,i1],e1,t1] = nd1;
                     var [ts2,nd2,hasRest] = nonemptyParameters (ts1, n+1, e1.length!=0);
-                    let [[b2,i2],e2,t2] = nd2;
+                    let [[f2,i2],e2,t2] = nd2;
                     // FIXME when Array.concat works
-                    for (let p in b2) b1.push(b2[p]);
+                    for (let p in f2) f1.push(b2[p]);
                     for (let p in i2) i1.push(i2[p]);
                     for (let p in e2) e1.push(e2[p]);
                     for (let p in t2) t1.push(t2[p]);
-                    var [ts1,nd1,hasRest] = [ts2,[[b1,i1],e1,t1],hasRest];
+                    var [ts1,nd1,hasRest] = [ts2,[new Ast::Head(f1,[i1]),e1,t1],hasRest];
                     break;
                 case Token::RightParen:
                     /* var */ hasRest = false;
@@ -4272,11 +4411,11 @@ namespace Parser;
             }
 
             var [k,[p,t]] = nd1;
-            var [b,i,temps] = desugarPattern (p, t, new Ast::GetParam (n), 0);
+            var [f,i] = desugarBindingPattern (p, t, new Ast::GetParam (n), Ast::noNS, Ast::letInit, false);
             // FIXME: what do we do with 'temps'
             b.push (new Ast::Binding (new Ast::ParamIdent (n), t)); // temp for desugaring
             exit("Parser::parameterInit ", ts2);
-            return [ts2,[[b,i],nd2,t]];
+            return [ts2,[[f,i],nd2,t]];
         }
 
         /*
@@ -4572,7 +4711,7 @@ namespace Parser;
             case Token::Assign:
                 switch (hd (tl (ts))) {
                 case Token::StringLiteral:
-                    var [ts1,nd1] = [tl (tl (ts)), tokenText (tl (ts)[0])];
+                    var [ts1,nd1] = [tl (tl (ts)), tokenText (tl (ts).head())];
                     break;
                 default:
                     var [ts1,nd1] = primaryName (tl (ts));

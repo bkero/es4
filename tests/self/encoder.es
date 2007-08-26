@@ -193,10 +193,10 @@ namespace Encode;
         : string {
         enter ("Encode::head ",nesting);
 
-        var str =
-              "{ 'fixtures': [ " + fixtures (nd.fixtures,nesting+"{ 'fixtures': [ ".length) + " ]"
-            + indent(nesting) + ", 'inits': [ " + inits (nd.inits,nesting+", 'inits': [ ".length)
-            + " ] }";
+        var str = "{ 'fixtures': [ " 
+                + fixtures (nd.fixtures,nesting+"{ 'fixtures': [ ".length) + " ]"
+                + indent(nesting) + ", 'inits': [ " + inits (nd.inits,nesting+", 'inits': [ ".length)
+                + " ] }";
 
         exit ("Encode::head");
         return str;
@@ -827,6 +827,26 @@ namespace Encode;
               + typeExpr (nd.type,nesting+", 'type': ".length)
               + indent(nesting)
               + ", 'isNullable': " + nd.isNullable
+              + " }";
+        }
+        case (nd: ElementTypeRef) {
+            var str =
+                "{ 'ast_class': 'ElementTypeRef'"
+              + indent(nesting)
+              + ", 'base': "
+              + typeExpr (nd.base,nesting+", 'base': ".length)
+              + indent(nesting)
+              + ", 'index': " + nd.index
+              + " }";
+        }
+        case (nd: FieldTypeRef) {
+            var str =
+                "{ 'ast_class': 'FieldTypeRef'"
+              + indent(nesting)
+              + ", 'base': "
+              + typeExpr (nd.base,nesting+", 'base': ".length)
+              + indent(nesting)
+              + ", 'ident': " + nd.ident
               + " }";
         }
         case (nd: *) {
@@ -1584,11 +1604,11 @@ namespace Encode;
         enter ("Encode::initTarget")
         var str = "";
         switch type (nd) {
-        case (op: HoistedInit) {
-            var str = "HoistedInit";
+        case (op: VarInit) {
+            var str = "VarInit";
         }
-        case (op: LocalInit) {
-            var str = "LocalInit";
+        case (op: LetInit) {
+            var str = "LetInit";
         }
         case (op: PrototypeInit) {
             var str = "PrototypeInit";

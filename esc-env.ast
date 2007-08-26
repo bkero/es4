@@ -29,6 +29,20 @@ var ast =
                           , { 'ast_class': 'NamespaceFixture'
                             , 'ns': { 'ast_class': 'AnonymousNamespace'
                                     , 'name': 'Release' } } ]
+                        , [ { 'ast_class': 'PropName'
+                            , 'name': { 'ns': { 'ast_class': 'PublicNamespace'
+                                              , 'name': '' }
+                                      , 'id': 'Decode' } }
+                          , { 'ast_class': 'NamespaceFixture'
+                            , 'ns': { 'ast_class': 'AnonymousNamespace'
+                                    , 'name': 'Decode' } } ]
+                        , [ { 'ast_class': 'PropName'
+                            , 'name': { 'ns': { 'ast_class': 'PublicNamespace'
+                                              , 'name': '' }
+                                      , 'id': 'Encode' } }
+                          , { 'ast_class': 'NamespaceFixture'
+                            , 'ns': { 'ast_class': 'AnonymousNamespace'
+                                    , 'name': 'Encode' } } ]
                         ,  ]
           , 'inits': [  ] }
 , 'block': { 'ast_class': 'Block'

@@ -647,11 +647,11 @@ namespace Decode;
         enter ("Decode::initTarget ", ob.ast_class);
 
         switch (ob.ast_class) {
-        case 'HoistedInit':
-            var ndx = new HoistedInit;
+        case 'VarInit':
+            var ndx = new VarInit;
             break;
-        case 'LocalInit':
-            var ndx = new LocalInit;
+        case 'LetInit':
+            var ndx = new LetInit;
             break;
         case 'PrototypeInit':
             var ndx = new PrototypeInit;
@@ -930,6 +930,16 @@ namespace Decode;
             var nd1 = identExpr (ob.ident);
             var ndx = new TypeName (nd1);
             break;
+        case 'ElementTypeRef':
+            var nd1 = typeExpr (ob.base);
+            var nd2 = ob.index;
+            var ndx = new ElementTypeRef (nd1,nd2);
+            break;
+        case 'FieldTypeRef':
+            var nd1 = typeExpr (ob.base);
+            var nd2 = ob.ident;
+            var ndx = new ElementTypeRef (nd1,nd2);
+            break;
         default:
             throw "error Decode::typeExpr " + ob.ast_class;
         }
@@ -1174,7 +1184,4 @@ namespace Decode;
         exit ("Decode::varKind");
         return ndx;
     }
-
-
-
 }
