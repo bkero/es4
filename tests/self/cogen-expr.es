@@ -451,9 +451,9 @@ package cogen
     function cgListExpr(ctx, e) {
         let asm = ctx.asm;
         for ( let i=0, limit=e.exprs.length ; i < limit ; i++ ) {
-            if (i != 0)
-                asm.I_pop();
             cgExpr(ctx, e.exprs[i]);
+            if (i < limit-1)
+                asm.I_pop();
         }
     }
 
@@ -469,6 +469,7 @@ package cogen
             }
         }
         cgInits(ctx, e.inits, baseOnStk);
+	asm.I_pushundefined();
     }
 
     function cgLiteralExpr(ctx, e) {

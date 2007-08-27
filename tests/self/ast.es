@@ -884,16 +884,18 @@ namespace Ast
         const name //: FUNC_NAME;
         const isNative: Boolean;
         const block: BLOCK;
-        const params /*: HEAD*/;
+        const params //: FIXTURES;
+        const settings // : EXPRS;
         const vars /* : HEAD */;
         const defaults: [EXPR];
         const type /*: FUNC_TYPE*/;    // FIXME: should be able to use 'type' here
         function Func (name,isNative,block,
-                       params,vars,defaults,ty)
+                       params,settings,vars,defaults,ty)
             : name = name
             , isNative = isNative
             , block = block
             , params = params
+            , settings = settings
             , vars = vars
             , defaults = defaults
             , type = ty {}
@@ -1100,7 +1102,7 @@ namespace Ast
 
     class FieldTypeRef {
         const base : TYPE_EXPR;
-        const ident : IDENT;
+        const ident : IDENT_EXPR;
         function FieldTypeRef (base,ident)
             : base = base
             , ident = ident { }

@@ -49,10 +49,25 @@ namespace Parser;
           , SimplePattern
           , IdentifierPattern );
 
-    class ObjectPattern { }
+    type FIELD_PATTERN = FieldPattern;
+
+    class FieldPattern {
+        use default namespace public;
+        const ident: Ast::IDENT_EXPR;
+        const ptrn: PATTERN;
+        function FieldPattern (ident,ptrn)
+            : ident = ident
+            , ptrn = ptrn { }
+    }
+
+    class ObjectPattern {
+        const ptrns //: [FIELD_PATTERN];
+        function ObjectPattern (ptrns)
+            : ptrns = ptrns { }
+    }
 
     class ArrayPattern { 
-        const ptrns//: [PATTERN];
+        const ptrns //: [PATTERN];
         function ArrayPattern (ptrns)
             : ptrns = ptrns { }
     }
@@ -524,10 +539,12 @@ namespace Parser;
         */
 
         function desugarAssignmentPattern (p: PATTERN, t: Ast::TYPE_EXPR, e: Ast::EXPR, op: Ast::ASSIGNOP)
+            : [Ast::FIXTURES, Ast::EXPR]
             desugarPattern (p,t,e,null,null,null,op);
 
         function desugarBindingPattern (p: PATTERN, t: Ast::TYPE_EXPR, e: Ast::EXPR,
                                         ns: Ast::NAMESPACE?, it: Ast::INIT_TARGET?, ro: boolean?)
+            : [Ast::FIXTURES, Ast::EXPR]
             desugarPattern (p,t,e,ns,it,ro,null);
 
         function desugarPattern (p: PATTERN, t: Ast::TYPE_EXPR, e: Ast::EXPR,
@@ -557,30 +574,28 @@ namespace Parser;
                     var fxtrs = [];
                     var expr = new Ast::SetExpr (op,p.expr,e);
                 }
-                case (p:ArrayPattern) {
-                    
-                    /*
-                      
-                    [p0,pN] = e  
-
-                    becomes
-
-                    let (t0=e) set p0=t0[0]
-                             , set pN=t0[N]
-
-                    */
-
-                    let tn = new Ast::TempName (n);   // t0
+                case (p: (ArrayPattern, ObjectPattern)) {
+                    let tn = new Ast::TempName (n);
                     var fxtrs = [];
                     let exprs = [];
                     let ptrns = p.ptrns;
                     for (let i=0; i<ptrns.length; ++i) {
-                        let pat = ptrns[i];
-                        let typ = new Ast::ElementTypeRef (t,i);
-                        let exp = new Ast::ObjectRef (new Ast::GetTemp (n), new Ast::Identifier (i,[[Ast::noNS]]));  
-                                                    // FIXME what is the ns of a temp and how do we refer it
-                        let [fx,ex] = desugarSubPattern (pat,typ,exp,n+1);
+                        let sub = ptrns[i];
+                        switch type (sub) {
+                        case (pat: FieldPattern) {
+                            var typ = new Ast::FieldTypeRef (t,sub.ident);
+                            var exp = new Ast::ObjectRef (new Ast::GetTemp (n), sub.ident);
+                            var pat = sub.ptrn;
+                        }
+                        case (pat: *) {
+                            var typ = new Ast::ElementTypeRef (t,i);
+                            var exp = new Ast::ObjectRef (new Ast::GetTemp (n), new Ast::Identifier (i,[[Ast::noNS]]));
+                                      // FIXME what is the ns of a temp and how do we refer it
+                            var pat = sub;
+                        }
+                        }
 
+                        let [fx,ex] = desugarSubPattern (pat,typ,exp,n+1);
                         for (let n in fx) fxtrs.push(fx[n]);
                         exprs.push(ex);
                     }
@@ -2590,6 +2605,87 @@ namespace Parser;
 
         /*
 
+        ObjectPattern(gamma)
+            [  FieldListPattern(gamma)  ]
+        
+        */
+
+        function objectPattern (ts: TOKENS, gamma: GAMMA)
+            : [TOKENS, Ast::EXPR]
+        {
+            enter("Parser::objectPattern ", ts);
+
+            ts = eat (ts,Token::LeftBrace);
+            var [ts1,nd1] = fieldListPattern (ts,gamma);
+            ts1 = eat (ts1,Token::RightBrace);
+
+            exit ("Parser::objectPattern ", ts1);
+            return [ts1, new ObjectPattern (nd1)];
+        }
+
+        /*
+
+        FieldListPattern(gamma)
+            empty
+            FieldPattern
+            FieldPattern  ,  FieldListPattern
+
+        FieldPattern
+            FieldName
+            FieldName  :  Pattern(allowColon,allowIn,gamma)
+
+        */
+
+        function fieldListPattern (ts: TOKENS, gamma:GAMMA)
+            : [TOKENS, Ast::EXPR]
+        {
+            enter("Parser::fieldListPattern ", ts);
+
+            var nd1 = [];
+
+            if (hd (ts) !== Token::RightBrace) 
+            {
+                var [ts1,ndx] = fieldPattern (ts,gamma);
+                nd1.push (ndx);
+                while (hd (ts1) === Token::Comma) {
+                    ts1 = eat (ts1,Token::Comma);
+                    var [ts1,ndx] = fieldPattern (ts1,gamma);
+                    nd1.push (ndx);
+                }
+            }
+
+            exit ("Parser::fieldListPattern ", ts1);
+            return [ts1, nd1];
+        }
+
+        function fieldPattern (ts: TOKENS, gamma:GAMMA)
+            : [TOKENS, FIELD_PATTERN]
+        {
+            enter("Parser::fieldPattern ", ts);
+
+            var [ts1,nd1] = fieldName (ts);
+            switch (hd (ts1)) {
+            case Token::Colon:
+                var [ts2,nd2] = pattern (tl (ts1),allowIn,gamma);
+                break;
+            default:
+                switch type (nd1) {
+                case (nd1: Ast::Identifier) {
+                    var [ts2,nd2] = [ts1, new IdentifierPattern (nd1.Ast::ident)];
+                }
+                case (nd1:*) {
+                    throw "unsupported fieldPattern " + nd1;
+                }
+                }
+                break;
+            }
+
+            exit ("Parser::fieldPattern ", ts2);
+            return [ts2, new FieldPattern (nd1,nd2)];
+        }
+
+        /*
+
           TypedIdentifier(beta)
               SimplePattern(beta, noExpr)
               SimplePattern(beta, noExpr)  :  NullableTypeExpression
@@ -3451,7 +3547,7 @@ namespace Parser;
             var [ts2,nd2] = block (ts1,localBlk);
 
             var [k,[p,t]] = nd1;
-            var [b,i,temps] = desugarBindingPattern (p, t, new Ast::GetParam (0), Ast::noNS, Ast::varInit, false);
+            var [b,i] = desugarBindingPattern (p, t, new Ast::GetParam (0), Ast::noNS, Ast::varInit, false);
             let head = headFromBindingInits ([b,i]);
 
             exit("Parser::catchClause ", ts2);
@@ -3824,8 +3920,8 @@ namespace Parser;
             var [ts3,nd3] = functionBody (ts2, allowIn, omega);
             var vars = cx.exitVarBlock ();
 
-            var {params:params,defaults:defaults,resultType:resultType,thisType:thisType,hasRest:hasRest} = nd2;
-            var func = new Ast::Func (nd1,false,nd3,params,vars,defaults,resultType);
+            var {params:params,paramSettings:paramSettings,defaults:defaults,resultType:resultType,thisType:thisType,hasRest:hasRest} = nd2;
+            var func = new Ast::Func (nd1,false,nd3,params,paramSettings,vars,defaults,resultType);
 
             var name = new Ast::PropName ({ns:ns,id:nd1.ident});
             var fxtr = new Ast::MethodFixture (func,new Ast::SpecialType (new Ast::AnyType),true,isOverride,isFinal);
@@ -3856,11 +3952,11 @@ namespace Parser;
             var [ts3,nd3] = functionBody (ts2, allowIn, omega);
             var vars = cx.exitVarBlock ();
 
-            var {params:params,defaults:defaults,hasRest:hasRest,settings:settings,superArgs:superArgs} = nd2;
+            var {params:params,paramSettings:paramSettings,defaults:defaults,hasRest:hasRest,settings:settings,superArgs:superArgs} = nd2;
 
             // print ("superArgs=",superArgs);
             // print ("settings=",settings);
-            var func = new Ast::Func ({kind:new Ast::Ordinary,ident:nd1},false,nd3,params,vars,defaults,Ast::voidType);
+            var func = new Ast::Func ({kind:new Ast::Ordinary,ident:nd1},false,nd3,params,paramSettings,vars,defaults,Ast::voidType);
             var ctor = new Ast::Ctor (settings,superArgs,func);
 
             if (cx.ctor !== null) {
@@ -4223,10 +4319,11 @@ namespace Parser;
             var [ts3,nd3] = resultType (ts2);
 
             // Translate bindings and init steps into fixtures and inits (HEAD)
-            let [h,e,t] = nd2;
+            let [[f,i],e,t] = nd2;
 
             var ndx = { typeParams: []
-                      , params: h
+                      , params: new Ast::Head (f,[])
+                      , paramSettings: i
                       , paramTypes: t
                       , defaults: e
                       , ctorInits: null
@@ -4313,7 +4410,7 @@ namespace Parser;
         */
 
         function parameters (ts: TOKENS)
-            : [TOKENS, [Ast::BINDING_INITS, [Ast::EXPR], [Ast::TYPE_EXPR]], boolean]
+            : [TOKENS, [[Ast::FIXTURES, Ast::EXPRS], [Ast::EXPR], [Ast::TYPE_EXPR]], boolean]
         {
             enter("Parser::parameters ", ts);
 
@@ -4343,8 +4440,8 @@ namespace Parser;
 
         */
 
-        function nonemptyParameters (ts: TOKENS, n, initRequired)
-            : [TOKENS, [Ast::HEAD, [Ast::EXPR], [Ast::TYPE_EXPR]], boolean]
+        function nonemptyParameters (ts: TOKENS, n:int, initRequired)
+            : [TOKENS, [[Ast::FIXTURES,Ast::EXPRS], Ast::EXPRS, Ast::TYPE_EXPRS], boolean]
         {
             enter("Parser::nonemptyParameters ", ts);
 
@@ -4362,11 +4459,11 @@ namespace Parser;
                     var [ts2,nd2,hasRest] = nonemptyParameters (ts1, n+1, e1.length!=0);
                     let [[f2,i2],e2,t2] = nd2;
                     // FIXME when Array.concat works
-                    for (let p in f2) f1.push(b2[p]);
+                    for (let p in f2) f1.push(f2[p]);
                     for (let p in i2) i1.push(i2[p]);
                     for (let p in e2) e1.push(e2[p]);
                     for (let p in t2) t1.push(t2[p]);
-                    var [ts1,nd1,hasRest] = [ts2,[new Ast::Head(f1,[i1]),e1,t1],hasRest];
+                    var [ts1,nd1,hasRest] = [ts2,[[f1,i1],e1,t1],hasRest];
                     break;
                 case Token::RightParen:
                     /* var */ hasRest = false;
@@ -4389,13 +4486,12 @@ namespace Parser;
 
         */
 
-        function parameterInit (ts: TOKENS, n, initRequired)
-            : [TOKENS, [Ast::BINDING_INITS, Ast::EXPR, Ast::TYPE_EXPR]]
+        function parameterInit (ts: TOKENS, n: int, initRequired)
+            : [TOKENS,[[Ast::FIXTURES,Ast::EXPRS], Ast::EXPR, Ast::TYPE_EXPR]]
         {
             enter("Parser::parameterInit ", ts);
 
             var [ts1,nd1] = parameter (ts,n);
-
             switch (hd (ts1)) {
             case Token::Assign:
                 ts1 = eat (ts1, Token::Assign);
@@ -4412,10 +4508,9 @@ namespace Parser;
 
             var [k,[p,t]] = nd1;
             var [f,i] = desugarBindingPattern (p, t, new Ast::GetParam (n), Ast::noNS, Ast::letInit, false);
-            // FIXME: what do we do with 'temps'
-            b.push (new Ast::Binding (new Ast::ParamIdent (n), t)); // temp for desugaring
+            f.push ([new Ast::TempName (n), new Ast::ValFixture (t,false)]); // temp for desugaring
             exit("Parser::parameterInit ", ts2);
-            return [ts2,[[f,i],nd2,t]];
+            return [ts2,[[f,[i]],nd2,t]];
         }
 
         /*
@@ -4554,10 +4649,11 @@ namespace Parser;
                 let isNative = false;
                 let blck = new Ast::Block ({fixtures:[],inits:[]},[]);
                 let params = {fixtures:[],inits:[]};
+                let paramSettings = [];
                 let vars = {fixtures:[],inits:[]};
                 let defaults = [];
                 let type = Ast::anyType;
-                let func = new Ast::Func ({kind:new Ast::Ordinary,ident:nd1},isNative,blck,params,vars,defaults,type);
+                let func = new Ast::Func ({kind:new Ast::Ordinary,ident:nd1},isNative,blck,params,paramSettings,vars,defaults,type);
                 var ctor = new Ast::Ctor ([],[],func);
             }
             

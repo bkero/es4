@@ -278,10 +278,11 @@ namespace Decode;
         let nd2 = ob.isNative;
         let nd3 = block (ob.block);
         let nd4 = head (ob.params);
-        let nd5 = head (ob.vars);
-        let nd6 = exprs (ob.defaults);
-        let nd7 = typeExpr (ob.type);
-        let ndx = new Func (nd1,nd2,nd3,nd4,nd5,nd6,nd7);
+        let nd5 = exprs (ob.settings);
+        let nd6 = head (ob.vars);
+        let nd7 = exprs (ob.defaults);
+        let nd8 = typeExpr (ob.type);
+        let ndx = new Func (nd1,nd2,nd3,nd4,nd5,nd6,nd7,nd8);
 
         exit ("Decode::func");
         return ndx;
@@ -937,8 +938,8 @@ namespace Decode;
             break;
         case 'FieldTypeRef':
             var nd1 = typeExpr (ob.base);
-            var nd2 = ob.ident;
-            var ndx = new ElementTypeRef (nd1,nd2);
+            var nd2 = identExpr (ob.ident);
+            var ndx = new FieldTypeRef (nd1,nd2);
             break;
         default:
             throw "error Decode::typeExpr " + ob.ast_class;

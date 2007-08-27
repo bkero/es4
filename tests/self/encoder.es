@@ -846,7 +846,8 @@ namespace Encode;
               + ", 'base': "
               + typeExpr (nd.base,nesting+", 'base': ".length)
               + indent(nesting)
-              + ", 'ident': " + nd.ident
+              + ", 'ident': " 
+              + identExpr(nd.ident,nesting+", 'ident': ".length)
               + " }";
         }
         case (nd: *) {
@@ -1405,6 +1406,7 @@ namespace Encode;
           + indent(nesting) + ", 'isNative': " + nd.isNative
           + indent(nesting) + ", 'block': " + block (nd.block,nesting+", 'block': ".length)
           + indent(nesting) + ", 'params': " + head (nd.params,nesting+", 'params': ".length)
+          + indent(nesting) + ", 'settings': [ " + exprs (nd.settings,nesting+", 'settings': ".length) + " ]"
           + indent(nesting) + ", 'vars': " + head (nd.vars,nesting+", 'vars': ".length)
           + indent(nesting) + ", 'defaults': [" + exprs (nd.defaults,nesting+", 'defaults': ".length) + " ]"
           + indent(nesting) + ", 'type': " + typeExpr (nd.type,nesting+", 'type': ".length)

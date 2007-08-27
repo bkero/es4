@@ -71,6 +71,7 @@ package cogen
 
     function cgExprStmt(ctx, s) {
         cgExpr(ctx, s.expr);
+        ctx.asm.I_pop();  // FIXME the last expr stmt of the program must save its value
     }
 
     function cgClassBlock(ctx, s) {

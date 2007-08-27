@@ -303,6 +303,10 @@ package cogen
         let ctx = new CTX(asm, {tag: "function"}, method);
 
         cgHead(ctx, f.params, true);
+
+        for ( let i=0 ; i < f.settings.length ; i++ )
+            cgExpr(ctx, f.settings[i]);
+
         //cgHead(ctx, f.vars, true);
         
         /* Generate code for the body.  If there is no return statement in the

@@ -179,7 +179,10 @@ package emitter
                     }
                 }
             }
-            case (x:*) { throw ("Unimplemented: typeFromTypeExpr " + t) }
+            case (x:*) { 
+                print ("warning: Unimplemented: typeFromTypeExpr " + t + ", using *")
+                return 0;
+            }
             }
         }
 
