@@ -1,10 +1,10 @@
+use namespace Release;
+use namespace Ast;
+use namespace intrinsic;
 namespace Encode;
 
 {
     use default namespace Encode;
-    use namespace intrinsic;
-    use namespace Ast;
-    use namespace Release;
     
     function indent (n:int)
         : string {

@@ -43,12 +43,14 @@ namespace Parser;
     use namespace intrinsic;
     use namespace Release;
 
+    type PATTERNS = [PATTERN];
     type PATTERN =
           ( ObjectPattern
           , ArrayPattern
           , SimplePattern
           , IdentifierPattern );
 
+    type FIELD_PATTERNS = [FIELD_PATTERN];
     type FIELD_PATTERN = FieldPattern;
 
     class FieldPattern {
@@ -61,13 +63,13 @@ namespace Parser;
     }
 
     class ObjectPattern {
-        const ptrns //: [FIELD_PATTERN];
+        const ptrns //: FIELD_PATTERNS;
         function ObjectPattern (ptrns)
             : ptrns = ptrns { }
     }
 
     class ArrayPattern { 
-        const ptrns //: [PATTERN];
+        const ptrns //: PATTERNS;
         function ArrayPattern (ptrns)
             : ptrns = ptrns { }
     }
@@ -1129,6 +1131,7 @@ namespace Parser;
             enter("Parser::fieldList ", ts);
 
             var nd1 = [];
+            var ts1 = ts;
 
             if (hd (ts) !== Token::RightBrace) 
             {
@@ -2325,29 +2328,17 @@ namespace Parser;
 
         */
 
-        function exprFromAssignStep (as : Ast::AssignStep) {
-            return new Ast::SetExpr (new Ast::Assign,as.Ast::le,as.Ast::re);
-        }
-
         function assignmentExpression (ts: TOKENS, beta: BETA)
             : [TOKENS, Ast::EXPR]
         {
             enter("Parser::assignmentExpression ", ts);
-
-            function patternFromExpr (e: Ast::EXPR) {
-                return new SimplePattern (e);  // FIXME: handle destructuring patterns
-            }
 
             var [ts1,nd1] = conditionalExpression (ts, beta);
             switch (hd (ts1)) {
             case Token::Assign:
                 var [ts1,nd1] = [tl (ts1), patternFromExpr (nd1)];
                 var [ts2,nd2] = assignmentExpression (ts1,beta);
-                var [binds,inits,head] = desugarAssignmentPattern (nd1,Ast::anyType,nd2,Ast::assignOp);
-                //var expr = new Ast::LetExpr (head, new Ast::ListExpr ([exprFromAssignStep (inits[0])]));  
-                var expr = exprFromAssignStep (inits[0]);
-                            // FIXME: map exprFromAssignStep over all elements
-                            // assert binds is empty
+                var [fxtrs,expr,head] = desugarAssignmentPattern (nd1,Ast::anyType,nd2,Ast::assignOp);
                 break;
             default:
                 var [ts2,expr] = [ts1,nd1];
@@ -2356,6 +2347,106 @@ namespace Parser;
 
             exit ("Parser::assignmentExpression ", ts1);
             return [ts2,expr];
+
+            // expression to pattern converters
+
+            function patternFromExpr (e: Ast::EXPR) {
+                switch type (e) {
+                case (e: Ast::LiteralExpr) {
+                    switch type (e.Ast::literal) {
+                    case (l: Ast::LiteralArray) {
+                        var p = arrayPatternFromLiteral (l);
+                    }
+                    case (l: Ast::LiteralObject) {
+                        var p = objectPatternFromLiteral (l);
+                    }
+                    case (l: *) {
+                        throw "invalid lhs expr " + e;
+                    }
+                    }
+                }
+                case (e: (Ast::LexicalRef, Ast::ObjectRef)) {
+                    var p = new SimplePattern (e);
+                }
+                case (e: *) {
+                    throw "error patternFromExpr, unhandled expression kind " + e;
+                }
+                }
+                return p;
+            }
+
+            function arrayPatternFromLiteral (nd: Ast::LITERAL)
+                : PATTERN
+            {
+                enter("Parser::arrayPatternFromLiteral ", ts);
+                
+                var nd1 = elementListPatternFromLiteral (nd.Ast::exprs);
+                
+                exit ("Parser::arrayPatternFromLiteral ", ts1);
+                return new ArrayPattern (nd1);
+            }
+
+            function elementListPatternFromLiteral (nd: Ast::EXPRS)
+                : PATTERNS
+            {
+                enter("Parser::elementListPatternFromLiteral ", nd);
+                
+                var nd1 = [];
+                
+                for (let i=0; i<nd.length; ++i) {
+                    var ndx = patternFromExpr (nd[i]);
+                    nd1.push (ndx);
+                }
+                
+                exit ("Parser::elementListPatternFromLiteral ", nd1);
+                return nd1;
+            }
+                    
+            function objectPatternFromLiteral (l: Ast::LITERAL)
+                : PATTERN
+            {
+                enter("Parser::objectPatternFromLiteral ", l);
+                
+                switch type (l) {
+                case (nd: Ast::LiteralObject) {
+                    var p = fieldListPatternFromLiteral (nd.Ast::fields);
+                }
+                case (nd: *) {
+                    throw "error objectPatternFromLiteral " + nd;
+                }
+                }
+                        
+                exit ("Parser::objectPatternFromLiteral ", p);
+                return new ObjectPattern (p);
+            }
+                    
+            function fieldListPatternFromLiteral (nd: Ast::LITERAL_FIELDS)
+                : FIELD_PATTERNS
+            {
+                enter("Parser::fieldListPatternFromLiteral ", nd);
+                
+                var nd1 = [];
+                
+                for (let i=0; i<nd.length; ++i) {
+                    var ndx = fieldPatternFromLiteral (nd[i]);
+                    nd1.push (ndx);
+                }
+                
+                exit ("Parser::fieldListPatternFromLiteral ", nd1);
+                return nd1;
+            }
+                    
+            function fieldPatternFromLiteral (nd: Ast::LITERAL_FIELD)
+                : FIELD_PATTERN
+            {
+                enter("Parser::fieldPatternFromLiteral ", ts);
+                
+                var nd1 = nd.Ast::ident;
+                var nd2 = patternFromExpr (nd.Ast::expr);
+                
+                exit ("Parser::fieldPatternFromLiteral ", ts2);
+                return new FieldPattern (nd1,nd2);
+            }
         }
 
         /*
@@ -2568,7 +2659,7 @@ namespace Parser;
         */
 
         function elementListPattern (ts: TOKENS, gamma:GAMMA)
-            : [TOKENS, Ast::EXPR]
+            : [TOKENS, Ast::EXPRS]
         {
             enter("Parser::elementListPattern ", ts);
 

@@ -1,19 +1,25 @@
 /*
-var [x,[y,[z]]] = [1,[2,[3]]]
-print(x,y,z)
-*/
-
-/*
 {
    use namespace Decode
-   program (ast)
+   var decoded = program (ast)
 }
+
+{
+   use namespace Encode
+   var encoded = program (decoded)
+}
+
+print (encoded)
+
 */
 
 /*
-function f([x,y,z]) { print(x,y,z) }
-f([1,2,3])
+var o = {y:10}
+print (o.y)
+({x:o.y} = {x:20})
+print (o.y)
 */
 
-var [a,[b,[c]]] = [1,[2,[3]]];
-print (a,b,c)
+var x = {};
+[x.y] = [10]
+print (x.y)

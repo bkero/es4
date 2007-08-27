@@ -475,6 +475,7 @@ namespace Token
         "type",
         "uint",
         "undefined",
+        "unit",
         "use",
         "xml",
         "yield",

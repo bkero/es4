@@ -9,14 +9,13 @@ to get the same text form back.
 
 */
 
+use namespace Release;
+use namespace Ast;
+use namespace intrinsic;
 namespace Decode;
 
 {
     use default namespace Decode;
-    use namespace Ast;
-    use namespace intrinsic;
-
-    use namespace Release;
 
     function program (ob) 
         : PROGRAM
