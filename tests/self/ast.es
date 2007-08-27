@@ -1351,9 +1351,11 @@ namespace Ast
 
     class Catch {
         const param  // : HEAD;
+        const settings // : EXPR;
         const block: BLOCK;
-        function Catch (param,block)
+        function Catch (param,settings,block)
             : param = param
+            , settings = settings
             , block = block { }
     }
 

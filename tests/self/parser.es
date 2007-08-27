@@ -3638,11 +3638,11 @@ namespace Parse;
             var [ts2,nd2] = block (ts1,localBlk);
 
             var [k,[p,t]] = nd1;
-            var [b,i] = desugarBindingPattern (p, t, new Ast::GetParam (0), Ast::noNS, Ast::varInit, false);
-            let head = headFromBindingInits ([b,i]);
+            var [f,i] = desugarBindingPattern (p, t, new Ast::GetParam (0), Ast::noNS, Ast::varInit, false);
+            let head = new Ast::Head (f,[]);
 
             exit("Parser::catchClause ", ts2);
-            return [ts2,new Ast::Catch (head,nd2)];
+            return [ts2,new Ast::Catch (head,i,nd2)];
         }
 
         /*

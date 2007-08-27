@@ -36,19 +36,6 @@
  *
  * ***** END LICENSE BLOCK ***** */
 
-/*
-    TODO
-
-    x lex break
-    x regexp literals
-    x punctuators
-    x string literals
-    x comments
-    x reserved words
-    x escapes
-    x number literals
-*/
-
 use namespace intrinsic;
 
 namespace Char

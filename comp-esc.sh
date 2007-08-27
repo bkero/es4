@@ -12,9 +12,11 @@
 
 ### PARSE
 
-#./esc1.sh tests/self/lex.es
+#./esc1.sh tests/self/lex-char.es
+#./esc1.sh tests/self/lex-token.es
+#./esc1.sh tests/self/lex-scan.es
 #./esc1.sh tests/self/parse-util.es
-#./esc1.sh tests/self/parse-idnt.es
+#./esc1.sh tests/self/parse-ident.es
 #./esc1.sh tests/self/parse-expr.es
 #./esc1.sh tests/self/parse-ptrn.es
 #./esc1.sh tests/self/parse-type.es

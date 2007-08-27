@@ -10,9 +10,11 @@ namespace Encode;
         : string {
         let str = "\n";
 
+/*
         for ( ; n > 0; n-- ) {
             str = str + " ";
         }
+*/
 
         return str;
     }
