@@ -36,10 +36,10 @@
  *
  * ***** END LICENSE BLOCK ***** */
 
-namespace Parser;
+namespace Parse;
 
 {
-    use default namespace Parser;
+    use default namespace Parse;
     use namespace intrinsic;
     use namespace Release;
 
@@ -4070,7 +4070,8 @@ namespace Parser;
 
         type CTOR_SIG = 
           { typeParams : [Ast::IDENT]
-          , params : Ast::HEAD  //BINDING_INITS
+          , params : Ast::HEAD
+          , paramSettings : Ast::EXPR
           , paramTypes : [Ast::TYPE_EXPR]
           , defaults : [Ast::EXPR]
           , hasRest: boolean
@@ -4079,7 +4080,8 @@ namespace Parser;
 
         type FUNC_SIG = 
           { typeParams : [Ast::IDENT]
-          , params : Ast::HEAD  //BINDING_INITS
+          , params : Ast::HEAD
+          , paramSettings : Ast::EXPR
           , paramTypes : [Ast::TYPE_EXPR]
           , defaults : [Ast::EXPR]
           , returnType : Ast::TYPE_EXPR
@@ -4099,11 +4101,11 @@ namespace Parser;
             var [ts3,settings,superArgs] = constructorInitialiser (ts2);
 
             // Translate bindings and init steps into fixtures and inits (HEAD)
-            let [[b,i],e,t] = nd2;
-            let p = headFromBindingInits ([b,i]);
+            let [[f,i],e,t] = nd2;
 
             var ndx = { typeParams: []
-                      , params: p
+                      , params: new Ast::Head (f,[])
+                      , paramSettings: i
                       , paramTypes: t
                       , defaults: e
                       , hasRest: hasRest
@@ -4511,7 +4513,7 @@ namespace Parser;
                 let i1 = [];
                 let e1 = [];
                 let t1 = [];
-                var [ts1,nd1,hasRest] = [ts,[new Ast::Head([],[]),e1,t1],false];
+                var [ts1,nd1,hasRest] = [ts,[[[],[]],e1,t1],false];
                 break;
             default:
                 var [ts1,nd1,hasRest] = nonemptyParameters (ts,0,false);

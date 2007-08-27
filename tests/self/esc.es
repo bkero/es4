@@ -37,7 +37,7 @@
 
 {
     import util.*;
-    use namespace Parser;
+    use namespace Parse;
     load ("esc-env.ast")
     print ("booting")
     var nd = Decode::program (ast);

@@ -3,7 +3,7 @@
     import cogen.*;
 
     use namespace Ast;
-    use namespace Parser;
+    use namespace Parse;
 
     var file = "fib";
 
