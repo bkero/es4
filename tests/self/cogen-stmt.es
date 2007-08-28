@@ -231,7 +231,7 @@ package cogen
     }
 
     function cgSwitchTypeStmt(ctx, {expr:expr, type:type, cases:cases}) {
-        let b = new Block({fixtures:[],inits:[]}, [new ThrowStmt(expr)]);
+        let b = new Block(new Ast::Head([],[]), [new ThrowStmt(expr)]);
 
         cgTryStmt(ctx, {block:b, catches:cases, finallyBlock:null} );        
     }

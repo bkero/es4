@@ -1348,7 +1348,7 @@ namespace Ast
     class Catch {
         const param: HEAD;
         const block: BLOCK;
-        function Catch (param,setting,block)
+        function Catch (param,block)
             : param = param
             , block = block { }
     }

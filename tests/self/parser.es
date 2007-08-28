@@ -287,8 +287,8 @@ namespace Parse;
             }
 
             let pn = fxtrs[0][0];
-            print ("pn..id=",pn.Ast::name.id," id=",id);
-            print ("pn..ns=",pn.Ast::name.ns.Ast::hash()," ns=",ns.Ast::hash());
+            //print ("pn..id=",pn.Ast::name.id," id=",id);
+            //print ("pn..ns=",pn.Ast::name.ns.Ast::hash()," ns=",ns.Ast::hash());
             if (pn.Ast::name.id==id && pn.Ast::name.ns.Ast::hash()==ns.Ast::hash())  // FIXME: need ns compare
             {
                 exit ("hasName true");
@@ -403,7 +403,7 @@ namespace Parse;
             enter ("evalIdentExprToNamespace");
             switch type (nd) {
             case (nd: Ast::Identifier) {
-                var fxtr = findFixtureWithIdentifier (nd.Ast::ident,it);
+                var fxtr = findFixtureWithIdentifier (nd.Ast::ident,null);
                 switch type (fxtr[1]) {
                 case (fxtr:Ast::NamespaceFixture) {
                     var val = fxtr.Ast::ns;
@@ -4715,7 +4715,7 @@ namespace Parse;
             default:
                 var [ts1,nd1] = assignmentExpression (ts,beta);
                 ts1 = semicolon (ts1,omega);
-                var nd1 = new Ast::Block ({fixtures:[],inits:[]},[new Ast::ReturnStmt (nd1)],null);
+                var nd1 = new Ast::Block (new Ast::Head ([],[]),[new Ast::ReturnStmt (nd1)],null);
                 break;
             }
 
@@ -5607,7 +5607,7 @@ namespace Parse;
             "T.<U>!",
             "?T.<U>",
 
-            // Postfix expressions
+            // Postfixx expressions
 
             "x.y",
             "new x",

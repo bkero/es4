@@ -743,7 +743,7 @@ namespace Lexer
                     colCoord = 0;
                 }
                 else {
-                    print ("token ", token);
+                    //print ("token ", token);
                     //print ("token ", token, " \t", Token::tokenText(token));
                     colCoord += markIndex - lastMarkIndex;
                     coordList.push ([lnCoord,colCoord]);
