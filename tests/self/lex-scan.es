@@ -38,656 +38,22 @@
 
 use namespace intrinsic;
 
-namespace Char
+namespace Lex
 
 {
-    use default namespace Char;
-    const EOS = 0;
-    const a = "a".charCodeAt(0);
-    const b = "b".charCodeAt(0);
-    const c = "c".charCodeAt(0);
-    const d = "d".charCodeAt(0);
-    const e = "e".charCodeAt(0);
-    const f = "f".charCodeAt(0);
-    const g = "g".charCodeAt(0);
-    const h = "h".charCodeAt(0);
-    const i = "i".charCodeAt(0);
-    const j = "j".charCodeAt(0);
-    const k = "k".charCodeAt(0);
-    const l = "l".charCodeAt(0);
-    const m = "m".charCodeAt(0);
-    const n = "n".charCodeAt(0);
-    const o = "o".charCodeAt(0);
-    const p = "p".charCodeAt(0);
-    const q = "q".charCodeAt(0);
-    const r = "r".charCodeAt(0);
-    const s = "s".charCodeAt(0);
-    const t = "t".charCodeAt(0);
-    const u = "u".charCodeAt(0);
-    const v = "v".charCodeAt(0);
-    const w = "w".charCodeAt(0);
-    const x = "x".charCodeAt(0);
-    const y = "y".charCodeAt(0);
-    const z = "z".charCodeAt(0);
-    const A = "A".charCodeAt(0);
-    const B = "B".charCodeAt(0);
-    const C = "C".charCodeAt(0);
-    const D = "D".charCodeAt(0);
-    const E = "E".charCodeAt(0);
-    const F = "F".charCodeAt(0);
-    const G = "G".charCodeAt(0);
-    const H = "H".charCodeAt(0);
-    const I = "I".charCodeAt(0);
-    const J = "J".charCodeAt(0);
-    const K = "K".charCodeAt(0);
-    const L = "L".charCodeAt(0);
-    const M = "M".charCodeAt(0);
-    const N = "N".charCodeAt(0);
-    const O = "O".charCodeAt(0);
-    const P = "P".charCodeAt(0);
-    const Q = "Q".charCodeAt(0);
-    const R = "R".charCodeAt(0);
-    const S = "S".charCodeAt(0);
-    const T = "T".charCodeAt(0);
-    const U = "U".charCodeAt(0);
-    const V = "V".charCodeAt(0);
-    const W = "W".charCodeAt(0);
-    const X = "X".charCodeAt(0);
-    const Y = "Y".charCodeAt(0);
-    const Z = "Z".charCodeAt(0);
-    const Zero = "0".charCodeAt(0);
-    const One = "1".charCodeAt(0);
-    const Two = "2".charCodeAt(0);
-    const Three = "3".charCodeAt(0);
-    const Four = "4".charCodeAt(0);
-    const Five = "5".charCodeAt(0);
-    const Six = "6".charCodeAt(0);
-    const Seven = "7".charCodeAt(0);
-    const Eight = "8".charCodeAt(0);
-    const Nine = "9".charCodeAt(0);
-    const Dot = ".".charCodeAt(0);
-    const Bang = "!".charCodeAt(0);
-    const Equal = "=".charCodeAt(0);
-    const Percent = "%".charCodeAt(0);
-    const Ampersand = "&".charCodeAt(0);
-    const Asterisk = "*".charCodeAt(0);
-    const Plus = "+".charCodeAt(0);
-    const Dash = "-".charCodeAt(0);
-    const Slash = "/".charCodeAt(0);
-    const BackSlash = "\\".charCodeAt(0);
-    const Comma = ",".charCodeAt(0);
-    const Colon = ":".charCodeAt(0);
-    const Semicolon = ";".charCodeAt(0);
-    const LeftAngle = "<".charCodeAt(0);
-    const RightAngle = ">".charCodeAt(0);
-    const Caret = "^".charCodeAt(0);
-    const Bar = "|".charCodeAt(0);
-    const QuestionMark = "?".charCodeAt(0);
-    const LeftParen = "(".charCodeAt(0);
-    const RightParen = ")".charCodeAt(0);
-    const LeftBrace = "{".charCodeAt(0);
-    const RightBrace = "}".charCodeAt(0);
-    const LeftBracket = "[".charCodeAt(0);
-    const RightBracket = "]".charCodeAt(0);
-    const Tilde = "~".charCodeAt(0);
-    const At = "@".charCodeAt(0);
-    const SingleQuote = "'".charCodeAt(0);
-    const DoubleQuote = "\"".charCodeAt(0);
-    const Space = " ".charCodeAt(0);
-    const Tab = "\t".charCodeAt(0);
-    const Newline = "\n".charCodeAt(0);
-
-    function fromOctal (str)
-	: int
-    {
-	return parseInt (str);
-    }
-
-    function fromHex (str)
-	: int
-    {
-	return parseInt (str);
-    }
-}
-
-
-namespace Token
-
-{
-    use default namespace Token
-
-    const firstTokenClass = -1
-    const Minus = firstTokenClass
-    const MinusMinus = Minus - 1
-    const Not = MinusMinus - 1
-    const NotEqual = Not - 1
-    const StrictNotEqual = NotEqual - 1
-    const Remainder = StrictNotEqual - 1
-    const RemainderAssign = Remainder - 1
-    const BitwiseAnd = RemainderAssign - 1
-    const LogicalAnd = BitwiseAnd - 1
-    const LogicalAndAssign = LogicalAnd - 1
-    const BitwiseAndAssign = LogicalAndAssign - 1
-    const LeftParen = BitwiseAndAssign - 1
-    const RightParen = LeftParen - 1
-    const Mult = RightParen - 1
-    const MultAssign = Mult - 1
-    const Comma = MultAssign  - 1
-    const Dot = Comma - 1
-    const DoubleDot = Dot - 1
-    const TripleDot = DoubleDot - 1
-    const LeftDotAngle = TripleDot - 1
-    const Div = LeftDotAngle - 1
-    const DivAssign = Div - 1
-    const Colon = DivAssign - 1
-    const DoubleColon = Colon - 1
-    const SemiColon = DoubleColon - 1
-    const QuestionMark = SemiColon - 1
-    const At = QuestionMark - 1
-    const LeftBracket = At - 1
-    const RightBracket = LeftBracket - 1
-    const LogicalXor = RightBracket - 1
-    const LogicalXorAssign = LogicalXor - 1
-    const LeftBrace = LogicalXorAssign - 1
-    const LogicalOr = LeftBrace - 1
-    const LogicalOrAssign = LogicalOr - 1
-    const BitwiseOr = LogicalOrAssign - 1
-    const BitwiseOrAssign = BitwiseOr - 1
-    const BitwiseXor = LogicalOrAssign - 1
-    const BitwiseXorAssign = BitwiseXor - 1
-    const RightBrace = BitwiseXorAssign - 1
-    const BitwiseNot = RightBrace - 1
-    const Plus = BitwiseNot - 1
-    const PlusPlus = Plus - 1
-    const PlusAssign = PlusPlus - 1
-    const LessThan = PlusAssign - 1
-    const LeftShift = LessThan - 1
-    const LeftShiftAssign = LeftShift - 1
-    const LessThanOrEqual = LeftShiftAssign - 1
-    const Assign = LessThanOrEqual - 1
-    const MinusAssign = Assign - 1
-    const Equal = MinusAssign - 1
-    const StrictEqual = Equal - 1
-    const GreaterThan = StrictEqual - 1
-    const GreaterThanOrEqual = GreaterThan - 1
-    const RightShift = GreaterThanOrEqual - 1
-    const RightShiftAssign = RightShift - 1
-    const UnsignedRightShift = RightShiftAssign - 1
-    const UnsignedRightShiftAssign = UnsignedRightShift - 1
-
-    /* reserved identifiers */
-
-    const Break = UnsignedRightShiftAssign - 1
-    const Case = Break - 1
-    const Catch = Case - 1
-    const Class = Catch - 1
-    const Continue = Class - 1
-    const Default = Continue - 1
-    const Delete = Default - 1
-    const Do = Delete - 1
-    const Else = Do - 1
-    const Enum = Else - 1
-    const Extends = Enum - 1
-    const False = Extends - 1
-    const Finally = False - 1
-    const For = Finally - 1
-    const Function = For - 1
-    const If = Function - 1
-    const In = If - 1
-    const InstanceOf = In - 1
-    const New = InstanceOf - 1
-    const Null = New - 1
-    const Return = Null - 1
-    const Super = Return - 1
-    const Switch = Super - 1
-    const This = Switch - 1
-    const Throw = This - 1
-    const True = Throw - 1
-    const Try = True - 1
-    const TypeOf = Try - 1
-    const Var = TypeOf - 1
-    const Void = Var - 1
-    const While = Void - 1
-    const With = While - 1
-
-    /* contextually reserved identifiers */
-
-    const Call = With - 1
-    const Cast = Call - 1
-    const Const = Cast - 1
-    const Decimal = Const - 1
-    const Double = Decimal - 1
-    const Dynamic = Double - 1
-    const Each = Dynamic - 1
-    const Eval = Each - 1
-    const Final = Eval - 1
-    const Get = Final - 1
-    const Has = Get - 1
-    const Implements = Has - 1
-    const Import = Implements - 1
-    const Int = Import - 1
-    const Interface = Int - 1
-    const Internal = Interface - 1
-    const Intrinsic = Internal - 1
-    const Is = Intrinsic - 1
-    const Let = Is - 1
-    const Namespace = Let - 1
-    const Native = Namespace - 1
-    const Number = Native - 1
-    const Override = Number - 1
-    const Package = Override - 1
-    const Precision = Package - 1
-    const Private = Precision - 1
-    const Protected = Private - 1
-    const Prototype = Protected - 1
-    const Public = Prototype - 1
-    const Rounding = Public - 1
-    const Standard = Rounding - 1
-    const Strict = Standard - 1
-    const To = Strict - 1
-    const Set = To - 1
-    const Static = Set - 1
-    const Type = Static - 1
-    const UInt = Type - 1
-    const Undefined = UInt - 1
-    const Unit = Undefined - 1
-    const Use = Unit - 1
-    const Xml = Use - 1
-    const Yield = Xml - 1
-
-    /* literals */
-
-    const AttributeIdentifier = Yield - 1
-    const BlockComment = AttributeIdentifier - 1
-    const DocComment = BlockComment - 1
-    const Eol = DocComment - 1
-    const Identifier = Eol - 1
-
-    // The interpretation of these 4 literal types can be done during lexing
-
-    const ExplicitDecimalLiteral = Identifier - 1
-    const ExplicitDoubleLiteral = ExplicitDecimalLiteral - 1
-    const ExplicitIntLiteral = ExplicitDoubleLiteral - 1
-    const ExplicitUIntLiteral = ExplicitIntLiteral - 1
-
-    // The interpretation of these 3 literal types is deferred until defn phase
-
-    const DecimalIntegerLiteral = ExplicitUIntLiteral - 1
-    const DecimalLiteral = DecimalIntegerLiteral - 1
-    const HexIntegerLiteral = DecimalLiteral - 1
-
-    const RegexpLiteral = HexIntegerLiteral - 1
-    const SlashSlashComment = RegexpLiteral - 1
-    const StringLiteral = SlashSlashComment - 1
-    const Space = StringLiteral - 1
-    const XmlLiteral = Space - 1
-    const XmlPart = XmlLiteral - 1
-    const XmlMarkup = XmlPart - 1
-    const XmlText = XmlMarkup - 1
-    const XmlTagEndEnd = XmlText - 1
-    const XmlTagStartEnd = XmlTagEndEnd - 1
-
-    // meta
-
-    const ERROR = XmlTagStartEnd - 1
-    const EOS = ERROR - 1
-    const BREAK = EOS - 1
-    const lastTokenClass = BREAK
-
-    const names = [
-        "<unused index>",
-        "minus",
-        "minusminus",
-        "not",
-        "notequals",
-        "strictnotequals",
-        "modulus",
-        "modulusassign",
-        "bitwiseand",
-        "logicaland",
-        "logicalandassign",
-        "bitwiseandassign",
-        "leftparen",
-        "rightparen",
-        "mult",
-        "multassign",
-        "comma",
-        "dot",
-        "doubledot",
-        "tripledot",
-        "leftdotangle",
-        "div",
-        "divassign",
-        "colon",
-        "doublecolon",
-        "semicolon",
-        "questionmark",
-        "at",
-        "leftbracket",
-        "rightbracket",
-        "bitwisexor",
-        "bitwisexorassign",
-        "leftbrace",
-        "bitwiseor",
-        "logicalor",
-        "logicalorassign",
-        "bitwiseorassign",
-        "rightbrace",
-        "bitwisenot",
-        "plus",
-        "plusplus",
-        "plusassign",
-        "lessthan",
-        "leftshift",
-        "leftshiftassign",
-        "lessthanorequals",
-        "assign",
-        "minusassign",
-        "equals",
-        "strictequals",
-        "greaterthan",
-        "greaterthanorequals",
-        "rightshift",
-        "rightshiftassign",
-        "unsignedrightshift",
-        "unsignedrightshiftassign",
-        "break",
-        "case",
-        "catch",
-        "class",
-        "continue",
-        "default",
-        "delete",
-        "do",
-        "else",
-        "enum",
-        "extends",
-        "false",
-        "finally",
-        "for",
-        "function",
-        "if",
-        "in",
-        "instanceof",
-        "new",
-        "null",
-        "return",
-        "super",
-        "switch",
-        "this",
-        "throw",
-        "true",
-        "try",
-        "typeof",
-        "var",
-        "void",
-        "while",
-        "with",
-
-        "call",
-        "cast",
-        "const",
-        "decimal",
-        "double",
-        "dynamic",
-        "each",
-        "eval",
-        "final",
-        "get",
-        "has",
-        "implements",
-        "import",
-        "int",
-        "interface",
-        "internal",
-        "intrinsic",
-        "is",
-        "let",
-        "namespace",
-        "native",
-        "Number",
-        "override",
-        "package",
-        "precision",
-        "private",
-        "protected",
-        "prototype",
-        "public",
-        "rounding",
-        "standard",
-        "strict",
-        "to",
-        "set",
-        "static",
-        "type",
-        "uint",
-        "undefined",
-        "unit",
-        "use",
-        "xml",
-        "yield",
-
-        "attributeidentifier",
-        "blockcomment",
-        "doccomment",
-        "eol",
-        "identifier",
-        "explicitdecimalliteral",
-        "explicitdoubleliteral",
-        "explicitintliteral",
-        "explicituintliteral",
-        "decimalintegerliteral",
-        "decimalliteral",
-        "hexintegerliteral",
-        "regexpliteral",
-        "linecomment",
-        "stringliteral",
-        "space",
-        "xmlliteral",
-        "xmlpart",
-        "xmlmarkup",
-        "xmltext",
-        "xmltagendend",
-        "xmltagstartend",
-
-        "ERROR",
-        "EOS",
-        "BREAK"
-    ]
-
-    class Token
-    {
-        var kind;
-        var utf8id;
-        function Token(kind,utf8id)
-            : kind = kind
-            , utf8id = utf8id
-        {
-        }
-
-        function tokenText () : String
-        {
-            if (kind===StringLiteral) {
-                return this.utf8id.slice(1,this.utf8id.length);
-            }
-            return this.utf8id;
-        }
-
-        function tokenKind () : int
-        {
-            return this.kind;
-        }
-    }
-
-    const tokenStore = new Array;
-
-    function maybeReservedIdentifier (lexeme:String) : int
-    {
-        // ("maybeReservedIdentifier lexeme=",lexeme);
-        switch (lexeme) {
-
-        // ContextuallyReservedIdentifiers
-
-        case "break": return Break;
-        case "case": return Case;
-        case "catch": return Catch;
-        case "class": return Class;
-        case "continue": return Continue;
-        case "default": return Default;
-        case "delete": return Delete;
-        case "do": return Do;
-        case "else": return Else;
-        case "enum": return Enum;
-        case "extends": return Extends;
-        case "false": return False;
-        case "finally": return Finally;
-        case "for": return For;
-        case "function": return Function;
-        case "if": return If;
-        case "in": return In;
-        case "instanceof": return InstanceOf;
-        case "new": return New;
-        case "null": return Null;
-        case "return": return Return;
-        case "super": return Super;
-        case "switch": return Switch;
-        case "this": return This;
-        case "throw": return Throw;
-        case "true": return True;
-        case "try": return Try;
-        case "typeof": return TypeOf;
-        case "var": return Var;
-        case "void": return Void;
-        case "while": return While;
-        case "with": return With;
-
-        // ContextuallyReservedIdentifiers
-
-        case "call": return Call;
-        case "cast": return Cast;
-        case "const": return Const;
-        case "decimal": return Decimal;
-        case "double": return Double;
-        case "dynamic": return Dynamic;
-        case "each": return Each;
-        case "eval": return Eval;
-        case "final": return Final;
-        case "get": return Get;
-        case "has": return Has;
-        case "implements": return Implements;
-        case "import": return Import;
-        case "int": return Int;
-        case "interface" : return Interface;
-        case "internal": return Internal;
-        case "intrinsic": return Intrinsic;
-        case "is": return Is;
-        case "let": return Let;
-        case "namespace": return Namespace;
-        case "native": return Native;
-        case "Number": return Number;
-        case "override": return Override;
-        case "package": return Package;
-        case "precision": return Precision;
-        case "private": return Private;
-        case "protected": return Protected;
-        case "prototype": return Prototype;
-        case "public": return Public;
-        case "rounding": return Rounding;
-        case "standard": return Standard;
-        case "strict": return Strict;
-        case "to": return To;
-        case "set": return Set;
-        case "static": return Static;
-        case "to": return To;
-        case "type": return Type;
-        case "uint": return UInt;
-        case "undefined": return Undefined;
-        case "use": return Use;
-        case "unit": return Unit;
-        case "xml": return Xml;
-        case "yield": return Yield;
-        default: return makeInstance (Identifier,lexeme);
-        }
-    }
-
-    function makeInstance(kind:int, text:String) : int
-    {
-        function find() {
-            for ( var i=0 ; i < len ; i++ ) {
-                if (tokenStore[i].kind === kind &&
-                    tokenStore[i].utf8id == text) {
-                    return i;
-                }
-            }
-            return len;
-        }
-
-        var len = tokenStore.length;
-        var tid = find (kind,text);
-        if (tid === len) 
-        {
-            tokenStore.push(new Token(kind, text));
-        }
-        return tid;
-    }
-
-    function tokenKind (tid : int) : int
-    {
-        // if the token id is negative, it is a token_class
-
-        //print("tid=",tid);
-        if (tid < 0)
-        {
-           return tid;
-        }
-
-        // otherwise, get instance data from the instance vector.
-
-        var tok : Token = tokenStore[tid];
-        return tok.kind;
-    }
-
-    function tokenText ( tid : int ) : String
-    {
-        if (tid < 0) {
-            // if the token id is negative, it is a token_class.
-            var text = names[-tid];
-        }
-        else {
-            // otherwise, get instance data from the instance vector
-            var tok : Token = tokenStore[tid];
-            var text = tok.tokenText();
-        }
-        //print("tokenText: ",tid,", ",text);
-        return text;
-    }
-
-    function test ()
-    {
-        for( let i = firstTokenClass; i >= lastTokenClass; --i )
-            print(i,": ",names[-i])
-    }
-
-}
-
-//Token::test()
-
-namespace Lexer
-
-{
-    use default namespace Lexer;
+    use default namespace Lex;
 
     class Scanner
     {
-        private var src : String;
-        private var origin : String;
-        private var curIndex : int;
-        private var markIndex : int;
-        private var lastMarkIndex : int;
-        private var colCoord : int;
-        private var lnCoord : int;
+        var src : String;
+        var origin : String;
+        var curIndex : int;
+        var markIndex : int;
+        var lastMarkIndex : int;
+        var colCoord : int;
+        var lnCoord : int;
 
-        public function Scanner (src:String, origin:String)
+        function Scanner (src:String, origin:String)
             : src = src
             , origin = origin
             , curIndex = 0
@@ -699,7 +65,7 @@ namespace Lexer
             print("scanning: ",src);
         }
 
-        public function next ()
+        function next ()
             : String
         {
             if (curIndex == src.length)
@@ -713,27 +79,27 @@ namespace Lexer
             }
         }
 
-        public function lexeme()
+        function lexeme()
             : String
         {
             return src.slice (markIndex,curIndex)
         }
 
-        public function retract()
+        function retract()
             : void
         {
             curIndex--;
             //print("retract cur=",curIndex);
         }
 
-        private function mark ()
+        function mark ()
             : void
         {
             markIndex = curIndex;
 	    //print("mark mark=",markIndex);
         }
 
-        public function tokenList (lexPrefix)
+        function tokenList (lexPrefix)
             //            : [[int],[[int,int]]]
         {
             print ("scanning");
@@ -744,7 +110,7 @@ namespace Lexer
                     colCoord = 0;
                 }
                 else {
-                    //print ("token ", token);
+                    print ("token ", token);
                     //print ("token ", token, " \t", Token::tokenText(token));
                     colCoord = colCoord + markIndex - lastMarkIndex;
                     coordList.push ([lnCoord,colCoord]);
@@ -772,7 +138,7 @@ namespace Lexer
             return [tokenList,coordList];
         }
 
-        public function regexp ()
+        function regexp ()
         {
             let c : int = next ();
             switch (c)
@@ -786,7 +152,7 @@ namespace Lexer
             }
         }
 
-        public function regexpFlags ()
+        function regexpFlags ()
         {
             let c : int = next ();
             if (Unicode.isIdentifierPart (String.fromCharCode(c))) {
@@ -798,7 +164,7 @@ namespace Lexer
             }
         }
 
-        public function start ()
+        function start ()
             : int
         {
             var c : int;
@@ -885,7 +251,7 @@ namespace Lexer
             Debug.assert(false);
 	}
 
-	private function zero ()
+	function zero ()
 	    : int
 	{
 	    let c : int = next ();
@@ -912,7 +278,7 @@ namespace Lexer
 	    }
 	}
 
-	private function hexLiteral ()
+	function hexLiteral ()
 	    : int
 	{
 	    let c : int = next ();
@@ -940,7 +306,7 @@ namespace Lexer
 	    }
 	}
 
-	private function octalLiteral ()
+	function octalLiteral ()
 	    : int
 	{
 	    let c : int = next ();
@@ -962,7 +328,7 @@ namespace Lexer
 	    }
 	}
 
-	private function decimalInteger ()
+	function decimalInteger ()
 	    : int
 	{
 	    let c : int = next ();
@@ -988,7 +354,7 @@ namespace Lexer
 	    }
 	}
 
-	private function decimalFraction ()
+	function decimalFraction ()
 	    : int
 	{
 	    let c : int = next ();
@@ -1019,7 +385,7 @@ namespace Lexer
 	    }
 	}
 
-	private function decimalExponent ()
+	function decimalExponent ()
 	    : int
 	{
 	    let c : int = next ();
@@ -1041,7 +407,7 @@ namespace Lexer
 	    }
 	}
 
-	private function numberSuffix ()
+	function numberSuffix ()
 	    : int
 	{
 	    let c : int = next ();
@@ -1060,7 +426,7 @@ namespace Lexer
 	    }
 	}
 
-	private function slash ()
+	function slash ()
 	    : int
 	{
 	    let c : int = next ();
@@ -1077,7 +443,7 @@ namespace Lexer
 	    }
 	}
 
-	private function lineComment ()
+	function lineComment ()
 	    : void
 	{
 	    let c : int = next ();
@@ -1091,7 +457,7 @@ namespace Lexer
 	    }
 	}
 
-	private function blockComment ()
+	function blockComment ()
 	    : void
 	{
 	    let c : int = next ();
@@ -1122,7 +488,7 @@ namespace Lexer
 	    }
 	}
 
-	private function stringLiteral (delimiter, text="")
+	function stringLiteral (delimiter, text="")
 	    : int
 	{
 	    let c : int = next ();
@@ -1142,7 +508,7 @@ namespace Lexer
 
 	*/
 
-	private function escapeSequence ()
+	function escapeSequence ()
 	    : int
 	{
 	    let c : int = next ();
@@ -1182,7 +548,7 @@ namespace Lexer
 	    }
 	}
 
-	private function octalOrNulEscape (n:int)
+	function octalOrNulEscape (n:int)
 	    : uint
 	{
 	    let c : int = next ();
@@ -1215,7 +581,7 @@ namespace Lexer
 	    }
 	}
 
-	private function octalEscapeFull (n:int)
+	function octalEscapeFull (n:int)
 	    : uint
 	{
 	    if (n==3) {
@@ -1240,7 +606,7 @@ namespace Lexer
 	    }
 	}
 
-	private function octalEscapeShort (n:int)
+	function octalEscapeShort (n:int)
 	    : uint
 	{
 	    let c : int = next ();
@@ -1261,7 +627,7 @@ namespace Lexer
 	    }
 	}
 
-	private function octalEscape (n:int,v:uint=0)
+	function octalEscape (n:int,v:uint=0)
 	    : uint
 	{
 	    if (n==0) {
@@ -1302,7 +668,7 @@ namespace Lexer
 	    return octalEscape (n-1, v+m*Math.pow(8,n-1));
 	}
 
-	private function hexEscape (n:int,v:uint=0)
+	function hexEscape (n:int,v:uint=0)
 	    : uint
 	{
 	    if (n==0) {
@@ -1373,7 +739,7 @@ namespace Lexer
 
 	*/
 
-	private function dot ()
+	function dot ()
 	    : int
 	{
 	    let c : int = next ();
@@ -1397,7 +763,7 @@ namespace Lexer
 	    }
 	}
 
-	private function dotdot ()
+	function dotdot ()
 	    : int
 	{
 	    let c : int = next ();
@@ -1415,7 +781,7 @@ namespace Lexer
 
 	*/
 
-	private function not ()
+	function not ()
 	    : int
 	{
 	    let c : int = next ();
@@ -1427,7 +793,7 @@ namespace Lexer
 	    }
 	}
 
-	private function notequal ()
+	function notequal ()
 	    : int
 	{
 	    let c : int = next ();
@@ -1445,12 +811,12 @@ namespace Lexer
 
 	*/
 
-	private function remainder ()
+	function remainder ()
 	    : int
 	{
 	    let c : int = next ();
 	    switch (c) {
-	    case Char::Equal : return Token::RemainderAssign;;
+	    case Char::Equal : return Token::RemainderAssign;
 	    default :
 		retract ();
 		return Token::Remainder;
@@ -1463,12 +829,12 @@ namespace Lexer
 
 	*/
 
-	private function and ()
+	function and ()
 	    : int
 	{
 	    let c : int = next ();
 	    switch (c) {
-	    case Char::Equal : return Token::BitwiseAndAssign;;
+	    case Char::Equal : return Token::BitwiseAndAssign;
 	    case Char::Ampersand : return logicalAnd ();
 	    default :
 		retract ();
@@ -1476,12 +842,12 @@ namespace Lexer
 	    }
 	}
 
-	private function logicalAnd ()
+	function logicalAnd ()
 	    : int
 	{
 	    let c : int = next ();
 	    switch (c) {
-	    case Char::Equal : return Token::LogicalAndAssign;;
+	    case Char::Equal : return Token::LogicalAndAssign;
 	    default :
 		retract ();
 		return Token::LogicalAnd;
@@ -1494,12 +860,12 @@ namespace Lexer
 
 	*/
 
-	private function mult ()
+	function mult ()
 	    : int
 	{
 	    let c : int = next ();
 	    switch (c) {
-	    case Char::Equal : return Token::MultAssign;;
+	    case Char::Equal : return Token::MultAssign;
 	    default :
 		retract ();
 		return Token::Mult;
@@ -1512,7 +878,7 @@ namespace Lexer
 
 	*/
 
-	private function plus ()
+	function plus ()
 	    : int
 	{
 	    let c : int = next ();
@@ -1531,7 +897,7 @@ namespace Lexer
 
 	*/
 
-	private function minus ()
+	function minus ()
 	    : int
 	{
 	    let c : int = next ();
@@ -1550,7 +916,7 @@ namespace Lexer
 
 	*/
 
-	public function div ()
+	function div ()
 	    : int
 	{
 	    let c : int = next ();
@@ -1569,7 +935,7 @@ namespace Lexer
 
 	*/
 
-	private function leftAngle ()
+	function leftAngle ()
 	    : int
 	{
 	    let c : int = next ();
@@ -1583,7 +949,7 @@ namespace Lexer
 	    }
 	}
 
-	private function leftShift ()
+	function leftShift ()
 	    : int
 	{
 	    let c : int = next ();
@@ -1601,7 +967,7 @@ namespace Lexer
 
 	*/
 
-	private function equal ()
+	function equal ()
 	    : int
 	{
 	    let c : int = next ();
@@ -1613,7 +979,7 @@ namespace Lexer
 	    }
 	}
 
-	private function equalEqual ()
+	function equalEqual ()
 	    : int
 	{
 	    let c : int = next ();
@@ -1632,7 +998,7 @@ namespace Lexer
 
 	*/
 
-	private function rightAngle ()
+	function rightAngle ()
 	    : int
 	{
 	    let c : int = next ();
@@ -1645,7 +1011,7 @@ namespace Lexer
 	    }
 	}
 
-	private function rightShift ()
+	function rightShift ()
 	    : int
 	{
 	    let c : int = next ();
@@ -1658,7 +1024,7 @@ namespace Lexer
 	    }
 	}
 
-	private function unsignedRightShift ()
+	function unsignedRightShift ()
 	    : int
 	{
 	    let c : int = next ();
@@ -1676,7 +1042,7 @@ namespace Lexer
 
 	*/
 
-	private function bitwiseXor ()
+	function bitwiseXor ()
 	    : int
 	{
 	    let c : int = next ();
@@ -1694,7 +1060,7 @@ namespace Lexer
 
 	*/
 
-	private function bitwiseOr ()
+	function bitwiseOr ()
 	    : int
 	{
 	    let c : int = next ();
@@ -1707,7 +1073,7 @@ namespace Lexer
 	    }
 	}
 
-	private function logicalOr ()
+	function logicalOr ()
 	    : int
 	{
 	    let c : int = next ();
@@ -1725,7 +1091,7 @@ namespace Lexer
 
 	*/
 
-	private function colon ()
+	function colon ()
 	    : int
 	{
 	    let c : int = next ();
@@ -1743,7 +1109,7 @@ namespace Lexer
 
 	*/
 
-        private function identifier (str:string)
+        function identifier (str:string)
             : int
         {
             let c : int = next ();
@@ -1820,7 +1186,7 @@ namespace Lexer
             }
         }
 
-        private function b_ () : int
+        function b_ () : int
         {
             let c : int = next ();
             switch (c)
@@ -1833,7 +1199,7 @@ namespace Lexer
             }
         }
 
-        private function br_ ()
+        function br_ ()
             : int
         {
             let c : int = next ();
@@ -1847,7 +1213,7 @@ namespace Lexer
             }
         }
 
-        private function d_ ()
+        function d_ ()
             : int
         {
             let c : int = next ();
@@ -1860,7 +1226,7 @@ namespace Lexer
             }
         }
 
-        private function n_ ()
+        function n_ ()
             : int
         {
             let c : int = next();
@@ -1875,7 +1241,7 @@ namespace Lexer
             }
         }
 
-        private function nu_ ()
+        function nu_ ()
             : int
         {
             let c : int = next ();
@@ -1887,7 +1253,7 @@ namespace Lexer
             }
         }
 
-        private function nul_ ()
+        function nul_ ()
             : int
         {
             let c : int = next ();
@@ -1899,7 +1265,7 @@ namespace Lexer
             }
         }
 
-        private function null_ ()
+        function null_ ()
             : int
         {
             let c : int = next ();

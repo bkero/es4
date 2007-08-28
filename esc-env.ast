@@ -50,6 +50,48 @@ var ast =
                           , { 'ast_class': 'NamespaceFixture'
                             , 'ns': { 'ast_class': 'AnonymousNamespace'
                                     , 'name': 'Parse' } } ]
+                        , [ { 'ast_class': 'PropName'
+                            , 'name': { 'ns': { 'ast_class': 'PublicNamespace'
+                                              , 'name': '' }
+                                      , 'id': 'Lex' } }
+                          , { 'ast_class': 'NamespaceFixture'
+                            , 'ns': { 'ast_class': 'AnonymousNamespace'
+                                    , 'name': 'Lex' } } ]
+                        , [ { 'ast_class': 'PropName'
+                            , 'name': { 'ns': { 'ast_class': 'PublicNamespace'
+                                              , 'name': '' }
+                                      , 'id': 'Gen' } }
+                          , { 'ast_class': 'NamespaceFixture'
+                            , 'ns': { 'ast_class': 'AnonymousNamespace'
+                                    , 'name': 'Gen' } } ]
+                        , [ { 'ast_class': 'PropName'
+                            , 'name': { 'ns': { 'ast_class': 'PublicNamespace'
+                                              , 'name': '' }
+                                      , 'id': 'Util' } }
+                          , { 'ast_class': 'NamespaceFixture'
+                            , 'ns': { 'ast_class': 'AnonymousNamespace'
+                                    , 'name': 'Util' } } ]
+                        , [ { 'ast_class': 'PropName'
+                            , 'name': { 'ns': { 'ast_class': 'PublicNamespace'
+                                              , 'name': '' }
+                                      , 'id': 'Abc' } }
+                          , { 'ast_class': 'NamespaceFixture'
+                            , 'ns': { 'ast_class': 'AnonymousNamespace'
+                                    , 'name': 'Abc' } } ]
+                        , [ { 'ast_class': 'PropName'
+                            , 'name': { 'ns': { 'ast_class': 'PublicNamespace'
+                                              , 'name': '' }
+                                      , 'id': 'Asm' } }
+                          , { 'ast_class': 'NamespaceFixture'
+                            , 'ns': { 'ast_class': 'AnonymousNamespace'
+                                    , 'name': 'Asm' } } ]
+                        , [ { 'ast_class': 'PropName'
+                            , 'name': { 'ns': { 'ast_class': 'PublicNamespace'
+                                              , 'name': '' }
+                                      , 'id': 'Emit' } }
+                          , { 'ast_class': 'NamespaceFixture'
+                            , 'ns': { 'ast_class': 'AnonymousNamespace'
+                                    , 'name': 'Emit' } } ]
                         ,  ]
           , 'exprs': [  ] }
 , 'block': { 'ast_class': 'Block'

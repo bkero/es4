@@ -26,12 +26,13 @@ var x = {};
 print (x.y)
 */
 
-
 class A { 
   var x = 10
   function A (x) 
     : x = x 
     {}
+  function m () {
+    return this.x
+  }
 }
-print(new A(20).x)
-
+print(new A(20).m())

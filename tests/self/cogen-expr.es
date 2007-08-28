@@ -1,3 +1,4 @@
+/* -*- mode: java; mode: font-lock; tab-width: 4; insert-tabs-mode: nil; indent-tabs-mode: nil -*- */
 /* ***** BEGIN LICENSE BLOCK *****
  * Version: MPL 1.1/GPL 2.0/LGPL 2.1
  *
@@ -55,15 +56,21 @@
  *   calls the super class's "m" with "o" as the receiver (o must be of a reasonable type):
  *   'callsuper' instruction
  */
+
 package cogen
 {
     import util.*;
     import abcfile.*;
     import assembler.*;
     import emitter.*;
-
-    use namespace Ast;
     use default namespace public;
+
+    /// use default namespace Gen;
+    /// use namespace Util;
+    /// use namespace Abc;
+    /// use namespace Asm;
+    /// use namespace Emit;
+    use namespace Ast;
 
     function cgExpr(ctx, e) {
         switch type (e) {

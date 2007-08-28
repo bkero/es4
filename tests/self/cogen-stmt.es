@@ -1,3 +1,4 @@
+/* -*- mode: java; mode: font-lock; tab-width: 4; insert-tabs-mode: nil; indent-tabs-mode: nil -*- */
 /* ***** BEGIN LICENSE BLOCK *****
  * Version: MPL 1.1/GPL 2.0/LGPL 2.1
  *
@@ -40,8 +41,13 @@ package cogen
     import util.*;
     import abcfile.*;
     import assembler.*;
-
     use default namespace public;
+
+    /// use default namespace Gen;
+    /// use namespace Util;
+    /// use namespace Abc;
+    /// use namespace Asm;
+    /// use namespace Emit;
     use namespace Ast;
 
     function cgStmt(ctx, s) {

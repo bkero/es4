@@ -42,6 +42,7 @@ namespace Parse;
 
 {
     use default namespace Parse;
+    use namespace Lex;
 
     type PATTERNS = [PATTERN];
     type PATTERN =
@@ -248,7 +249,7 @@ namespace Parse;
         {
             let letHead = this.letHeads[this.letHeads.length-1];
             for (let n = 0, len = fxtrs.length; n < len; ++n)  // until array conact works
-                letHead.fixtures.push (fxtrs[n]);
+                letHead.Ast::fixtures.push (fxtrs[n]);
         }
 
         function addLetInits (inits) 
@@ -462,12 +463,12 @@ namespace Parse;
 
     class Parser
     {
-        var scan : Lexer::Scanner;
+        var scan : Scanner;
         var cx: Context;
 
         public function Parser(src,topFixtures=[])
             : cx = new Context (topFixtures)
-            , scan = new Lexer::Scanner (src)
+            , scan = new Scanner (src)
         {
         }
 
@@ -694,7 +695,7 @@ namespace Parse;
                         }
 
                         let [fx,ex] = desugarSubPattern (pat,typ,exp,n+1);
-                        for (let n in fx) fxtrs.push(fx[n]);
+                        for (let j=0; j<fx.length; ++j) fxtrs.push(fx[j]);
                         exprs.push(ex);
                     }
                     let head = new Ast::Head ([[tn,new Ast::ValFixture (Ast::anyType,false)]],[new Ast::InitExpr (Ast::letInit,new Ast::Head([],[]),[[tn,e]])]);
@@ -1808,7 +1809,16 @@ namespace Parse;
 
             switch (hd (ts)) {
             case Token::New:
-                var [tsx,ndx] = newExpression (ts,beta,0);
+                var [ts1,nd1] = newExpression (ts,beta,0);
+                switch (hd (ts1)) {
+                case Token::LeftParen:
+                    let [ts2,nd2] = this.arguments (ts1); // refer to parser method
+                    var [tsx,ndx] = callExpressionPrime (ts2, beta, new Ast::CallExpr (nd1,nd2));
+                    break;
+                default:
+                    var [tsx,ndx] = [ts1,nd1];
+                    break;
+                }
                 break;
             default:
                 let [ts1,nd1] = memberExpression (ts,beta);
@@ -1948,7 +1958,8 @@ namespace Parse;
 
             var [ts1,nd1] = unaryExpression (ts, beta);
 
-            done:
+            //done:
+            let done = false;
             while (true) {
 
                 if (hd (ts1) === Token::BREAK) {
@@ -1968,8 +1979,11 @@ namespace Parse;
                     var op = Ast::remainderOp;
                     break;
                 default:
-                    break done;
+                    /// break done;
+                    done = true;
                 }
+                if (done) break;
+
                 let [ts2, nd2] = unaryExpression (tl (ts1), beta);
                 ts1 = ts2;
                 nd1 = new Ast::BinaryExpr (op, nd1, nd2);
@@ -1994,6 +2008,7 @@ namespace Parse;
             enter("Parser::additiveExpression ", ts);
 
             var [ts1, nd1] = multiplicativeExpression (ts, beta);
+
             done:
             while (true) {
                 switch (hd (ts1)) {
@@ -3360,7 +3375,20 @@ namespace Parse;
 
             ts = eat (ts, Token::Return);
 
-            var [ts1,nd1] = listExpression (ts,allowIn);
+            switch (hd (ts)) {
+            case Token::SemiColon:
+            case Token::RightBrace:
+                var [ts1,nd1] = [ts,null];
+                break;
+            default:
+                if (newline(ts)) {
+                    var [ts1,nd1] = [ts,null];
+                }
+                else {
+                    var [ts1,nd1] = listExpression (ts,allowIn);
+                }
+                break;
+            }
 
             exit("Parser::returnStatement ", ts1);
             return [ts1, new Ast::ReturnStmt (nd1)];
@@ -3517,6 +3545,8 @@ namespace Parse;
             case Token::SemiColon:
                 var [ts1,nd1] = [ts,null];
                 break;
+            case Token::Const:
+            case Token::Let:
             case Token::Var:
                 var [ts1,nd1] = variableDefinition (ts,noIn,localBlk,cx.pragmas.defaultNamespace,false,false);
                 //assert (nd1.length==1);
@@ -3673,7 +3703,6 @@ namespace Parse;
             enter("Parser::throwStatement ", ts);
 
             ts = eat (ts, Token::Throw);
-
             var [ts1,nd1] = listExpression (ts,allowIn);
 
             exit("Parser::throwStatement ", ts1);
@@ -3952,8 +3981,8 @@ namespace Parse;
             var [f1,i1] = nd1;  // FIXME: fold into patterns above when it works in the RI
             var [f2,i2] = nd2;
 
-            for (let n in f2) f1.push (f2[n]);  // FIXME: use concat when it works in the RI
-            for (let n in i2) i1.push (i2[n]);
+            for (let i=0; i<f2.length; ++i) f1.push (f2[i]);  // FIXME: use concat when it works in the RI
+            for (let i=0; i<i2.length; ++i) i1.push (i2[i]);
 
             exit ("Parser::variableBindingList ", ts2);
             return [ts2,[f1,i1]];
@@ -3971,8 +4000,8 @@ namespace Parse;
                     var [f1,i1] = nd1;  // FIXME: fold into patterns above when it works in the RI
                     var [f2,i2] = nd2;
 
-                    for (let n in f2) f1.push (f2[n]);  // FIXME: use concat when it works in the RI
-                    for (let n in i2) i1.push (i2[n]);
+                    for (let i=0; i<f2.length; ++i) f1.push (f2[i]);  // FIXME: use concat when it works in the RI
+                    for (let i=0; i<i2.length; ++i) i1.push (i2[i]);
                     break;
                 default:
                     var [ts2,nd2] = [ts,[[],[]]];
@@ -4558,14 +4587,14 @@ namespace Parse;
                     var [ts2,nd2,hasRest] = nonemptyParameters (ts1, n+1, e1.length!=0);
                     let [[f2,i2],e2,t2] = nd2;
                     // FIXME when Array.concat works
-                    for (let p in f2) f1.push(f2[p]);
-                    for (let p in i2) i1.push(i2[p]);
-                    for (let p in e2) e1.push(e2[p]);
-                    for (let p in t2) t1.push(t2[p]);
+                    for (let i=0; i<f2.length; ++i) f1.push(f2[i]);
+                    for (let i=0; i<i2.length; ++i) i1.push(i2[i]);
+                    for (let i=0; i<e2.length; ++i) e1.push(e2[i]);
+                    for (let i=0; i<t2.length; ++i) t1.push(t2[i]);
                     var [ts1,nd1,hasRest] = [ts2,[[f1,i1],e1,t1],hasRest];
                     break;
                 case Token::RightParen:
-                    /* var */ hasRest = false;
+                    // nothing to do
                     break;
                 default:
                     throw "unexpected token in nonemptyParameters";
@@ -4586,7 +4615,7 @@ namespace Parse;
         */
 
         function parameterInit (ts: TOKENS, n: int, initRequired)
-            : [TOKENS,[[Ast::FIXTURES,Ast::EXPRS], Ast::EXPR, Ast::TYPE_EXPR]]
+            : [TOKENS,[[Ast::FIXTURES,Ast::EXPRS], Ast::EXPRS, Ast::TYPE_EXPRS]]
         {
             enter("Parser::parameterInit ", ts);
 
@@ -4609,7 +4638,7 @@ namespace Parse;
             var [f,i] = desugarBindingPattern (p, t, new Ast::GetParam (n), Ast::noNS, Ast::letInit, false);
             f.push ([new Ast::TempName (n), new Ast::ValFixture (t,false)]); // temp for desugaring
             exit("Parser::parameterInit ", ts2);
-            return [ts2,[[f,[i]],nd2,t]];
+            return [ts2,[[f,[i]],nd2,[t]]];
         }
 
         /*
@@ -5079,6 +5108,9 @@ namespace Parse;
             printLn(ts);
 
             switch (hd(ts)) {
+            case Token::SemiColon:
+                var [ts1,nd1] = [tl (ts), [new Ast::EmptyStmt]];
+                break;
             case Token::Let: // FIXME might be function
             case Token::Var:
             case Token::Const:
@@ -5151,8 +5183,7 @@ namespace Parse;
                     // FIXME check label
                     break;
                 case Token::SemiColon:
-                    var nd1 = [new Ast::ExprStmt (nd1)];
-                    ts1 = tl (ts1);
+                    var [ts1,nd1] = [tl (ts1), [new Ast::ExprStmt (nd1)]];
                     break;
                 case Token::RightBrace:
                 case Token::EOS:

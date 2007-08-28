@@ -1,3 +1,4 @@
+/* -*- mode: java; mode: font-lock; tab-width: 4; insert-tabs-mode: nil; indent-tabs-mode: nil -*- */
 /* ***** BEGIN LICENSE BLOCK *****
  * Version: MPL 1.1/GPL 2.0/LGPL 2.1
  *
@@ -128,6 +129,7 @@ package assembler
      *    depth.
      *  - Ditto for the scope depth, really.
      */
+
     public class AVM2Assembler
     {
         const listify = true;
@@ -623,14 +625,14 @@ package assembler
         }
 
         private function stack(n) {
-            current_stack_depth += n;
+            current_stack_depth = current_stack_depth + n;
             if (current_stack_depth > max_stack_depth) {
                 max_stack_depth = current_stack_depth;
             }
         }
 
         private function scope(n) {
-            current_scope_depth += n;
+            current_scope_depth = current_scope_depth + n;
             if (current_scope_depth > max_scope_depth)
                 max_scope_depth = current_scope_depth;
         }

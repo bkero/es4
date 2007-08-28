@@ -1,3 +1,4 @@
+/* -*- mode: java; mode: font-lock; tab-width: 4; insert-tabs-mode: nil; indent-tabs-mode: nil -*- */
 /* ***** BEGIN LICENSE BLOCK *****
  * Version: MPL 1.1/GPL 2.0/LGPL 2.1
  *
@@ -35,17 +36,23 @@
  *
  * ***** END LICENSE BLOCK ***** */
 
+/// namespace Gen;
 package cogen
 {
     import util.*;
     import abcfile.*;
     import assembler.*;
     import emitter.*;
-
+    /// use default namespace Gen;
+    /// use namespace Util;
+    /// use namespace Abc;
+    /// use namespace Asm;
+    /// use namespace Emit;
     use namespace Ast;
 
     /* Returns an ABCFile structure */
     public function cg(tree: PROGRAM) {
+    /// function cg(tree: PROGRAM) {
         var e = new ABCEmitter;
         var s = e.newScript();
         CTX.prototype = { "emitter": e, "script": s, "cp": e.constants };

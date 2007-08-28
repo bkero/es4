@@ -4,25 +4,25 @@
 
 ### DECODE
 
-./esc1.sh tests/self/debug.es
-./esc1.sh tests/self/ast.es
-./esc1.sh tests/self/decoder.es
-./esc1.sh tests/self/encoder.es
-./esc1.sh tests/self/esc2.es
+#./esc1.sh tests/self/debug.es
+#./esc1.sh tests/self/ast.es
+#./esc1.sh tests/self/decoder.es
+#./esc1.sh tests/self/encoder.es
+#./esc1.sh tests/self/esc2.es
 
 ### PARSE
 
-./esc1.sh tests/self/lex-char.es
-./esc1.sh tests/self/lex-token.es
-./esc1.sh tests/self/lex-scan.es
+#./esc1.sh tests/self/lex-char.es
+#./esc1.sh tests/self/lex-token.es
+#./esc1.sh tests/self/lex-scan.es
 #./esc1.sh tests/self/parse-util.es
 #./esc1.sh tests/self/parse-ident.es
 #./esc1.sh tests/self/parse-expr.es
 #./esc1.sh tests/self/parse-ptrn.es
 #./esc1.sh tests/self/parse-type.es
 #./esc1.sh tests/self/parse-stmt.es
-#./esc1.sh tests/self/parse-prgm.es
-#./esc1.sh tests/self/esc1.es
+./esc1.sh tests/self/parse-prgm.es
+./esc1.sh tests/self/esc1.es
 
 ### GENERATE
 
@@ -48,7 +48,9 @@
 
 ### PARSE
 
-#./esc2.sh tests/self/lexer.es
+#./esc2.sh tests/self/lex-char.es
+#./esc2.sh tests/self/lex-token.es
+#./esc2.sh tests/self/lex-scan.es
 #./esc2.sh tests/self/parser-util.es
 #./esc2.sh tests/self/parser-identexpr.es
 #./esc2.sh tests/self/parser-expr.es

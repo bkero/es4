@@ -48,10 +48,11 @@ namespace Encode;
         : string {
         let str = "\n";
 
+/*
         for ( ; n > 0; n-- ) {
             str = str + " ";
         }
-
+*/
         return str;
     }
 
@@ -301,7 +302,7 @@ namespace Encode;
                 "{ 'ast_class': 'ReturnStmt'"
               + indent(nesting)
               + ", 'expr': "
-              + expr (nd.expr,nesting+", 'expr': ".length)
+              + exprOpt (nd.expr,nesting+", 'expr': ".length)
               + " }";
         }
         case (nd: ThrowStmt) {
@@ -435,6 +436,9 @@ namespace Encode;
               + ", 'finallyBlock': "
               + "null"  // for now: blockOpt (nd.finallyBlock,nesting+", 'finallyBlock': ".length)
               + " }";
+        }
+        case (nd: EmptyStmt) {
+            var str = "";
         }
         case (x: *) {
             throw "error stmt " + nd;
