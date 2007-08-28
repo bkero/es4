@@ -484,7 +484,15 @@ namespace Parse;
 
         /*
 
-   
+        var x = y    [x], init var () [x=y]
+        x = y        [],  set x=y
+        var [x] = y  [x], init var ([t0],[t0=y]) x=t0[0]
+        [x] = y      [],  let ([t0],[t0=y]) x=t0[0]
+
+        let (x=y) ...  let ([x], init let () [x=y]) ...
+        let x=y             [x], init let () [x=y]
+
+
         assignment, create a let for each aggregate, a temp for
         each level of nesting
 
@@ -3776,7 +3784,7 @@ namespace Parse;
                 switch (tau) {
                 case classBlk:
                     cx.addVarFixtures (fxtrs);
-                    cx.addVarInits ([init]);
+                    //cx.addVarInits ([init]);  // FIXME these aren't inits, they are a kind of settings
                     var stmts = [];
                     break;
                 default:
@@ -4759,7 +4767,7 @@ namespace Parse;
 
             var baseName = {ns: new Ast::PublicNamespace (""), id: "Object"}
             var interfaceNames = [];
-            var chead = {fixtures:[],inits:[]};
+            var chead = new Ast::Head ([],[]);
             var ctype = Ast::anyType;
             var itype = Ast::anyType;
             var cls = new Ast::Cls (name,baseName,interfaceNames,ctor,chead,ihead,ctype,itype);
@@ -4777,7 +4785,7 @@ namespace Parse;
 
         /*
 
-        TypeSignature
+        Typesignature
             TypeParameters
             TypeParameters  !
 

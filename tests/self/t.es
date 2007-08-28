@@ -20,6 +20,10 @@ print (o.y)
 print (o.y)
 */
 
+/*
 var x = {};
 [x.y] = [10]
 print (x.y)
+*/
+
+class A { var x; function A (x) : x = x {}}
