@@ -2,7 +2,17 @@
 <html xmlns="http://www.w3.org/1999/xhtml">
 <head>
 <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
-<title>Untitled Document</title>
+<link rel="stylesheet" type="text/css" href="../es4.css" />
+<style type="text/css">
+body { counter-reset: chapter 8 section subsection subsubsection }
+.concretesyntax {    
+   font-style:italic; 
+   font-family:Arial, Helvetica, sans-serif;}
+
+code {font-size:small}
+
+</style>
+<title>Expressions</title>
 </head>
 
 <body>
@@ -11,116 +21,62 @@
 
 
 <h1>Expressions</h1>
-<h2>Expression Syntax</h2>
-<p>
-&lt;concrete &rarr; abstract syntax&gt; 
-</p>
-<pre class="code grammarSection">expressions</pre>
+<p>The section divides expressions into three main categories: identifier expressions, expressions, and type expressions. Each category represents a node in the abstract syntax tree (AST). </p>
+
+
 <h2>Identifier Expressions</h2>
-<pre class="code ml">     and IDENT_EXPR =			
-	QualifiedIdentifier of		
-		qual: EXPR	
-		ident: IDENT	
-       	QualifiedExpression of		
-		qual: EXPR	
-		expr: EXPR	
-       	AttributeIdentifier of		
-		IDENT_EXPR	
-       	Identifier of		
-		ident: IDENT	
-		namespace: NAMESPACE list	
-       	ExpressionIdentifier of 		
-		EXPR	
-       	TypeIdentifier of 		
-		ident: IDENT_EXPR	
-		typeParams: TYPE_EXPR list
-</pre>
+
+<h3>Identifier Expressions Syntax</h3>
+<pre class="code grammar_start"><em>Identifier</em></pre>
+<pre class="code grammar_end"><em>Path</em></pre>
+<h3>Identifier Expressions Abstract Syntax Tree Implementation</h3>
+<p>The following reference implementation code describes the AST node for Identifier Expressions.</p>
+<pre class="code insert_ml">IDENT_EXPR</pre>
 <h3>Defining Identifier Expressions</h3>
 <pre class="code insert_ml">defIdentExpr</pre>
 <h3>Verifying Identifier Expressions</h3>
 <pre class="code insert_ml">verifyIdentExpr</pre>
 <h3>Evaluating Identifier Expressions</h3>
 <pre class="code insert_ml">evalIdentExpr</pre>
-<pre class="code ml">     and EXPR =		
-	ConditionalExpr of	
-		cnd: EXPR
-		thn: EXPR
-		els: EXPR
-       	BinaryExpr of	
-		op: BINOP
-		rhs: EXPR
-		lhs: EXPR
-       	BinaryTypeExpr of	
-		op: BINTYOP
-		lhs: TYPE_EXPR
-		rhs: TYPE_EXPR
-       	UnaryExpr of	
-		op: UNOP
-		expr: EXPR
-       	TypeExpr of	
-		TYPE_EXPR
-       	NullaryExpr of	
-		NULOP
-       	YieldExpr of	
-		EXPR option
-       	SuperExpr of	
-		EXPR option
-       	LiteralExpr of LITERAL	
-		LITERAL
-       	CallExpr of		
-		func: EXPR	
-		actuals: EXPR list	
-       	ApplyTypeExpr of 		
-		expr: EXPR	
-		actuals: TYPE_EXPR list	
-       	LetExpr of		
-		defs: VAR_BINDING list	
-		body: EXPR	
-		fixtures: FIXTURES option	
-       	NewExpr of		
-		obj: EXPR	
-		actuals: EXPR list	
-       	FunExpr of		
-		ident: IDENT option	
-		fsig: FUNC_SIG	
-		body: BLOCK
-		fixtures: FIXTURES option
-       	ObjectRef of	
-		base: EXPR
-		ident: IDENT_EXPR
-       	LexicalRef of	
-		ident: IDENT_EXPR
-       	SetExpr of	
-		op: ASSIGNOP
-		ptrn: PATTERN
-		expr: EXPR
-       	ListExpr of	
-		EXPR list
-       	SliceExpr of 	
-		(EXPR option * EXPR option * EXPR option)
-</pre>
+
+<h2>Expressions</h2>
+<h3>Expressions Syntax</h3>
+<pre class="code grammar_start"><em>ParenExpression</em></pre>
+<pre class="code grammar_end"><em>ListExpression<sup>&alpha;, &beta;</sup></em></pre>
+<h3>Expressions Abtract Syntax Tree Implementation</h3>
+<p>The following reference implementation code describes the AST node for Expressions.</p>
+<pre class="code insert_ml">EXPR</pre>
 <h3>Defining Expressions</h3>
 <pre class="code insert_ml">defExpr</pre>
 <h3>Verifying Expressions</h3>
 <pre class="code insert_ml">verifyExpr</pre>
+<h4>Verifying Unary Expressions</h4>
+<pre class="code insert_ml">verifyUnaryExpr</pre>
 <h4>Verifying Binary Expressions</h4>
 <pre class="code insert_ml">verifyBinaryExpr</pre>
+<h4>Verifying Ternary Expressions</h4>
+<pre class="code insert_ml">verifyTrinaryExpr</pre>
 <h3>Evaluating Expressions</h3>
 <pre class="code insert_ml">evalExpr</pre>
+<h4>Evaluating Unary Expressions</h4>
+<pre class="code insert_ml">evalUnaryOp</pre>
 <h4>Evaluating Binary Expressions</h4>
 <pre class="code insert_ml">evalBinaryOp</pre><pre class="code insert_ml">performBinop</pre>
+<h4>Evaluating Ternary Expressions</h4>
+<pre class="code insert_ml">evalCondExpr</pre>
+
 <h2>Type Expressions</h2>
-<pre class="code">   and TYPE_EXPR =	
-      SpecialType of SPECIAL_TY
-      UnionType of TYPE_EXPR list
-     	ArrayType of TYPE_EXPR list
-     	NominalType of IDENT_EXPR
-     	FunctionType of FUNC_SIG
-     	ObjectType of FIELD_TYPE list
-     	AppType of { base: TYPE_EXPR, args: TYPE_EXPR list }
-     	NullableType of { expr: TYPE_EXPR, nullable: bool }</pre>
+<h3>Type Expressions Syntax</h3>
+<pre class="code grammar_start"><em>NullableTypeExpression</em></pre>
+<pre class="code grammar_end"><em>TypeExpressionList</em></pre>
+<h3>Type Expressions Abstract Syntax Tree Implementation</h3>
+<p>The following reference implementation code describes the AST node for Type Expressions.</p>
+<pre class="code insert_ml">TYPE_EXPR</pre>
 <h3>Defining Type Expressions</h3>
+<pre class="code insert_ml">defTyExpr</pre>
 <h3>Verifying Type Expressions</h3>
+<pre class="code insert_ml">verifyTypeExpr</pre>
 <h3>Evaluating Type Expressions</h3>
+<pre class="code insert_ml">evalTypeExpr</pre>
 </body>
 </html>
