@@ -160,6 +160,19 @@ package emitter
             use namespace Ast;
             switch type (e) {
             case (id:Identifier) { return multiname(id) }
+            case (qi:QualifiedIdentifier) { 
+                switch type(qi.qual) {
+                    case( lr:LexicalRef ) {
+                        // Hack to deal with namespaces for now...
+                        // later we will have to implement a namespace lookup to resolve qualified typenames
+                        return qname({ns:new AnonymousNamespace(lr.ident.ident), id:qi.ident})
+                    }
+                    case( e:* ) {
+                        throw ("Unimplemented: nameFromIdentExpr " + e);
+                    }
+                }
+                return multiname(id) 
+            }
             case (x:*) { throw ("Unimplemented: nameFromIdentExpr " + e) }
             }
         }
