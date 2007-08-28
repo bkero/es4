@@ -123,9 +123,9 @@ datatype VAL = Object of OBJ
           numberClass : (OBJ option) ref,
           booleanClass : (OBJ option) ref,
 
-          booleanTrue : (OBJ option) ref,
-          booleanFalse : (OBJ option) ref,
-          doubleNaN : (OBJ option) ref
+          booleanTrue : (VAL option) ref,
+          booleanFalse : (VAL option) ref,
+          doubleNaN : (VAL option) ref
          }
 
      and FRAME = 

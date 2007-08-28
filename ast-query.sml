@@ -116,11 +116,17 @@ val conversionTyOfInstanceTy = liftOpt (#conversionTy) extractInstanceType
 val resultTyOfFuncTy = lift (#result) extractFuncType
 val resultTypeOfFuncTy = typeExprOf o resultTyOfFuncTy
 
-fun paramTypesOfFuncTy (funcTy:Ast.TY)
-    : Ast.TYPE_EXPR list = 
-        case funcTy of 
-            Ast.Ty { expr = Ast.FunctionType { params, ... }, ... } => params
-          | _ => error ["paramTypesOfFuncTy: expected Ty with FunctionType"]
+fun queryFuncTy (q:Ast.FUNC_TYPE -> 'a) 
+                (funcTy:Ast.TY)                 
+    : 'a =
+    let
+        val (fty, _, _) = extractFuncType funcTy
+    in
+        q fty
+    end
+
+val paramTypesOfFuncTy = queryFuncTy (#params)
+val funcTyHasRest = queryFuncTy (#hasRest)
 
 
 fun singleParamTyOfFuncTy (ty:Ast.TY) 

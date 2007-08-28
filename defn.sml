@@ -3003,22 +3003,26 @@ and defFragment (env:ENV)
                                        loc = loc}))
             end
     end
-            
+
+and mkTopEnv (prog:Fixture.PROGRAM) 
+    : ENV =
+    { nonTopRibs = [],
+      tempOffset = 0,
+      openNamespaces = [[Name.noNS, Ast.Internal Ustring.empty], [Ast.Intrinsic]],
+      numericMode = defaultNumericMode,
+      labels = [],
+      packageNames = Fixture.getPackageNames prog,
+      className = Ustring.fromString "",
+      packageName = [],
+      defaultNamespace = Name.noNS,
+      topUnitName = NONE,
+      program = prog }     
+    
 and defTopFragment (prog:Fixture.PROGRAM)
                    (frag:Ast.FRAGMENT)
     : (Fixture.PROGRAM * Ast.FRAGMENT) =
     let
-        val topEnv = { nonTopRibs = [],
-                       tempOffset = 0,
-                       openNamespaces = [[Name.noNS, Ast.Internal Ustring.empty], [Ast.Intrinsic]],
-                       numericMode = defaultNumericMode,
-                       labels = [],
-                       packageNames = Fixture.getPackageNames prog,
-                       className = Ustring.fromString "",
-                       packageName = [],
-                       defaultNamespace = Name.noNS,
-                       topUnitName = NONE,
-                       program = prog } 
+        val topEnv = mkTopEnv prog
         val (prog, frag) = defFragment topEnv frag
         val prog = Fixture.closeTopFragment prog frag (Type.equals prog)
     in
