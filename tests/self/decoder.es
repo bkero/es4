@@ -75,11 +75,10 @@ namespace Decode;
         enter ("Decode::head " + ob.fixtures);
 
         var nd1 = fixtures (ob.fixtures);
-        var nd2 = inits (ob.inits);
-        var ndx = {fixtures: nd1, inits:nd2};
+        var nd2 = exprs (ob.exprs);
 
         exit ("Decode::head");
-        return ndx;
+        return new Head (nd1,nd2);
     }
 
     function fixtures (ob) 
@@ -277,11 +276,10 @@ namespace Decode;
         let nd2 = ob.isNative;
         let nd3 = block (ob.block);
         let nd4 = head (ob.params);
-        let nd5 = exprs (ob.settings);
-        let nd6 = head (ob.vars);
-        let nd7 = exprs (ob.defaults);
-        let nd8 = typeExpr (ob.type);
-        let ndx = new Func (nd1,nd2,nd3,nd4,nd5,nd6,nd7,nd8);
+        let nd5 = head (ob.vars);
+        let nd6 = exprs (ob.defaults);
+        let nd7 = typeExpr (ob.type);
+        let ndx = new Func (nd1,nd2,nd3,nd4,nd5,nd6,nd7);
 
         exit ("Decode::func");
         return ndx;

@@ -469,7 +469,7 @@ package cogen
             }
         }
         cgInits(ctx, e.inits, baseOnStk);
-	asm.I_pushundefined();
+//	asm.I_pushundefined();
     }
 
     function cgLiteralExpr(ctx, e) {

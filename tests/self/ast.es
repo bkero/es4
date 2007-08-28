@@ -57,15 +57,15 @@ namespace Ast
     type IDENT = String;   // unicode string
     type IDENTS = [IDENT];
 
-    type HEAD = { fixtures: FIXTURES, inits: INITS }
+    type HEAD = Head;
 
     class Head {
         use default namespace public;  // TRAC should default namespace nest
         const fixtures: FIXTURES;  
-        const inits: INITS;
-        function Head (fixtures,inits)
+        const exprs // : EXPRS;
+        function Head (fixtures,exprs)
             : fixtures = fixtures
-            , inits = inits { }
+            , exprs = exprs { }
     }
 
     type FIXTURE_NAME =
@@ -504,7 +504,7 @@ namespace Ast
     }
 
     class LetExpr {
-        const head //: HEAD;
+        const head : HEAD;
         const expr : EXPR;
         function LetExpr (head,expr)
             : head = head
@@ -531,10 +531,8 @@ namespace Ast
 
     class LexicalRef {
         const ident : IDENT_EXPR;
-        const pos : POS?;
-        function LexicalRef (ident,pos=null)
-            : ident = ident
-            , pos = pos { }
+        function LexicalRef (ident)
+            : ident = ident { }
     }
 
     class SetExpr {
@@ -577,7 +575,7 @@ namespace Ast
 
 	class InitExpr {
         const target : INIT_TARGET;
-        const head   //: HEAD;               // for desugaring temporaries
+        const head : HEAD;               // for desugaring temporaries
         const inits  //: INITS;
         function InitExpr (target, head, inits)
             : target = target
@@ -845,8 +843,8 @@ namespace Ast
         const baseName; //: NAME?;
         const interfaceNames; //: [NAME];
         const constructor : CTOR;
-        const classHead; //: HEAD;
-        const instanceHead; //: HEAD;
+        const classHead: HEAD;
+        const instanceHead: HEAD;
         const classType; //: ObjectType;
         const instanceType; //: InstanceType;
         function Cls (name,baseName,interfaceNames,constructor,classHead,instanceHead
@@ -884,18 +882,16 @@ namespace Ast
         const name //: FUNC_NAME;
         const isNative: Boolean;
         const block: BLOCK;
-        const params //: FIXTURES;
-        const settings // : EXPRS;
-        const vars /* : HEAD */;
+        const params: HEAD;
+        const vars: HEAD;
         const defaults: [EXPR];
         const type /*: FUNC_TYPE*/;    // FIXME: should be able to use 'type' here
         function Func (name,isNative,block,
-                       params,settings,vars,defaults,ty)
+                       params,vars,defaults,ty)
             : name = name
             , isNative = isNative
             , block = block
             , params = params
-            , settings = settings
             , vars = vars
             , defaults = defaults
             , type = ty {}
@@ -1272,7 +1268,7 @@ namespace Ast
     }
 
     class ForStmt {
-        const vars : *; //HEAD~;
+        const vars : HEAD;
         const init : EXPR?;
         const cond : EXPR?;
         const incr : EXPR?;
@@ -1350,12 +1346,10 @@ namespace Ast
     type CATCHES = [CATCH];
 
     class Catch {
-        const param  // : HEAD;
-        const settings // : EXPR;
+        const param: HEAD;
         const block: BLOCK;
-        function Catch (param,settings,block)
+        function Catch (param,setting,block)
             : param = param
-            , settings = settings
             , block = block { }
     }
 
@@ -1369,7 +1363,7 @@ namespace Ast
     type BLOCK = Block;
 
     class Block {
-        const head /*: HEAD?*/;
+        const head: HEAD?;
         const stmts : STMTS;
         function Block (head,stmts)
             : head = head
@@ -1426,7 +1420,7 @@ namespace Ast
     class Program {
         var packages: PACKAGES;
         var block: BLOCK;
-        var head //: HEAD;
+        var head: HEAD;
         function Program (packages, block, head)
             : packages = packages
             , block = block
@@ -1437,5 +1431,5 @@ namespace Ast
         print (new EmptyStmt)
     }
 
-    test()}
-
+    test()
+}

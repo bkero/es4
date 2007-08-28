@@ -51,8 +51,8 @@ var ast =
                             , 'ns': { 'ast_class': 'AnonymousNamespace'
                                     , 'name': 'Parse' } } ]
                         ,  ]
-          , 'inits': [  ] }
+          , 'exprs': [  ] }
 , 'block': { 'ast_class': 'Block'
            , 'head': { 'fixtures': [  ]
-                     , 'inits': [  ] }
+                     , 'exprs': [  ] }
            , 'stmts': [  ] } }

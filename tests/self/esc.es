@@ -38,10 +38,11 @@
 {
     import util.*;
     use namespace Parse;
+    use namespace Ast;
     load ("esc-env.ast")
     print ("booting")
     var nd = Decode::program (ast);
-    var topFixtures = nd.Ast::head.fixtures;
+    var topFixtures = nd.head.fixtures;
     var str = readFile ("esc-tmp.es");
     var parser = new Parser(str,topFixtures);
     print ("parsing");

@@ -1,10 +1,11 @@
 {
 //    import util.*;
+    use namespace Ast;
     use namespace Parse;
     load ("esc-env.ast")
     print ("decoding: ", ast);
     var nd = Decode::program (ast);
-    var topFixtures = nd.Ast::head.fixtures;
+    var topFixtures = nd.head.fixtures;
 
     var file = "esc-tmp";
     var str = readFile (file+".es");

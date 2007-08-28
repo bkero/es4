@@ -180,7 +180,7 @@ package cogen
         // do instance slots
         cgFixtures(i_ctx, c.instanceHead.fixtures);  // FIXME instanceHead and instanceInits should be unified
         
-        inst.setIInit(cgCtor(i_ctx, c.constructor, {fixtures:[],inits:c.instanceHead.inits}));
+        inst.setIInit(cgCtor(i_ctx, c.constructor, {fixtures:[],exprs:c.instanceHead.exprs}));
         
         var clsidx = cls.finalize();
         var Object_name = emitter.qname({ns:new PublicNamespace(""), id:"Object"});
@@ -304,9 +304,6 @@ package cogen
 
         cgHead(ctx, f.params, true);
 
-        for ( let i=0 ; i < f.settings.length ; i++ )
-            cgExpr(ctx, f.settings[i]);
-
         //cgHead(ctx, f.vars, true);
         
         /* Generate code for the body.  If there is no return statement in the
@@ -334,9 +331,8 @@ package cogen
             target.addTrait(new ABCSlotTrait(formals[i], 0, false, 0, formals_type[i]));
         }
 
-        // do inits
-        cgInits(ctx, head.inits, baseOnStk);    
-        
+        for ( let i=0 ; i < head.exprs.length ; i++ )
+            cgExpr(ctx, head.exprs[i], baseOnStk);
     }
     
     function cgInits(ctx, inits, baseOnStk=false){

@@ -26,4 +26,12 @@ var x = {};
 print (x.y)
 */
 
-class A { var x; function A (x) : x = x {}}
+
+class A { 
+  var x = 10
+  function A (x) 
+    : x = x 
+    {}
+}
+print(new A(20).x)
+

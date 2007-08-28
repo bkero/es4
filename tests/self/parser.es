@@ -36,12 +36,12 @@
  *
  * ***** END LICENSE BLOCK ***** */
 
+use namespace Release;
+use namespace intrinsic;
 namespace Parse;
 
 {
     use default namespace Parse;
-    use namespace intrinsic;
-    use namespace Release;
 
     type PATTERNS = [PATTERN];
     type PATTERN =
@@ -184,9 +184,9 @@ namespace Parse;
         function enterVarBlock () 
         {
             enter ("enterVarBlock");
-            let varHead = {fixtures:[],inits:[]};
+            let varHead = new Ast::Head ([],[]);
             this.varHeads.push(varHead);
-            this.env.push (varHead.fixtures);
+            this.env.push (varHead.Ast::fixtures);
             this.pragmas = new Pragmas (this.pragmas);
             this.pragmaEnv.push (this.pragmas);
             exit ("exitVarBlock");
@@ -212,22 +212,22 @@ namespace Parse;
         {
             let varHead = this.varHeads[this.varHeads.length-1];
             for (let n = 0, len = fxtrs.length; n < len; ++n)  // until array conact works
-                varHead.fixtures.push (fxtrs[n]);
+                varHead.Ast::fixtures.push (fxtrs[n]);
         }
 
         function addVarInits (inits) 
         {
             let varHead = this.varHeads[this.varHeads.length-1];
             for (let n = 0, len = inits.length; n < len; ++n)  // until array conact works
-                varHead.inits.push (inits[n]);
+                varHead.Ast::exprs.push (inits[n]);
         }
 
         function enterLetBlock () 
         {
             enter ("enterLetBlock");
-            let letHead = {fixtures:[],inits:[]};
+            let letHead = new Ast::Head ([],[]);
             this.letHeads.push(letHead);
-            this.env.push (letHead.fixtures);
+            this.env.push (letHead.Ast::fixtures);
             this.pragmas = new Pragmas (this.pragmas);
             this.pragmaEnv.push (this.pragmas);
             exit ("enterLetBlock");
@@ -255,12 +255,12 @@ namespace Parse;
         {
             let letHead = this.letHeads[this.letHeads.length-1];
             for (let n = 0, len = inits.length; n < len; ++n)  // until array conact works
-                letHead.inits.push (inits[n]);
+                letHead.Ast::exprs.push (inits[n]);
         }
 
         function openNamespace (nd: Ast::IDENT_EXPR) {
             enter ("openNamespace");
-            let ns = evalIdentExpr (nd);
+            let ns = evalIdentExprToNamespace (nd);
             //print("this.pragmas=",this.pragmas);
             let opennss = this.pragmas.openNamespaces;
             //print ("opennss=",opennss);
@@ -272,7 +272,7 @@ namespace Parse;
 
         function defaultNamespace (nd: Ast::IDENT_EXPR) {
             enter ("defaultNamespace");
-            let ns = evalIdentExpr (nd);
+            let ns = evalIdentExprToNamespace (nd);
             this.pragmas.defaultNamespace = ns;
             exit ("defaultNamespace");
         }
@@ -287,8 +287,8 @@ namespace Parse;
             }
 
             let pn = fxtrs[0][0];
-            //print ("pn..id=",pn.Ast::name.id," id=",id);
-            //print ("pn..ns=",pn.Ast::name.ns.Ast::hash()," ns=",ns.Ast::hash());
+            print ("pn..id=",pn.Ast::name.id," id=",id);
+            print ("pn..ns=",pn.Ast::name.ns.Ast::hash()," ns=",ns.Ast::hash());
             if (pn.Ast::name.id==id && pn.Ast::name.ns.Ast::hash()==ns.Ast::hash())  // FIXME: need ns compare
             {
                 exit ("hasName true");
@@ -313,7 +313,7 @@ namespace Parse;
             if (pn.Ast::name.id==id && pn.Ast::name.ns.toString()==ns.toString()) 
             {
                 exit ("getFixture");
-                return fxtrs[0][1];
+                return fxtrs[0];
             }
             else 
             {
@@ -335,21 +335,33 @@ namespace Parse;
 
         */
 
-        function findFixtureWithNames (id,nss) {
+        function findFixtureWithNames (id,nss, it: Ast::INIT_TARGET?) {
             enter ("findFixtureWithNames");
-            // for each name in each head
+
             let env = this.env;
+
+            switch (it) {
+            case Ast::instanceInit:
+                var start = env.length-2;
+                var stop = start;
+                break;
+            case null:
+                var start = env.length-1;
+                var stop = 0;
+                break;
+            default:
+                throw "error findFixtureWithName: unimplemented target";
+            }
+
             //print ("env.length=",env.length);
-            for (var i=env.length-1; i>=0; --i)   // for each head
+            for (var i=start; i>=stop; --i)   // for each head
             {
                 let ns = null;
                 let fxtrs = env[i];
                 //print ("nss.length=",nss.length);
-                for (var j=nss.length-1; j>=0; --j)   // for each name
-                {
+                for (var j=nss.length-1; j>=0; --j) {
                     //print ("nss[",j,"]=",nss[j]);
-                    if (hasName (fxtrs,id,nss[j])) 
-                    {
+                    if (hasName (fxtrs,id,nss[j])) {
                         if (ns !== null) {
                             throw "ambiguous reference to " + id;
                         }
@@ -361,11 +373,12 @@ namespace Parse;
                     return getFixture (fxtrs,id,ns);
                 }
             }
+
             exit ("findFixtureWithNames");
             return null;
         }
 
-        function findFixtureWithIdentifier (id: Ast::IDENT)
+        function findFixtureWithIdentifier (id: Ast::IDENT, it: Ast::INIT_TARGET?)
         {
             enter ("findFixtureWithIdentifier ", id);
             //print ("this.pragmas=",this.pragmas);
@@ -374,7 +387,7 @@ namespace Parse;
             for (var i=nsss.length-1; i>=0; --i) 
             {
                 //print ("nsss[",i,"]=",nsss[i]);
-                let fx = findFixtureWithNames (id,nsss[i]);
+                let fx = findFixtureWithNames (id,nsss[i],it);
                 if (fx !== null) 
                 {
                     exit ("findFixtureWithIdentifier");
@@ -384,14 +397,14 @@ namespace Parse;
             throw "fixture not found: " + id;
         }
 
-        function evalIdentExpr (nd: Ast::IDENT_EXPR)
+        function evalIdentExprToNamespace (nd: Ast::IDENT_EXPR)
             : Ast::NAMESPACE
         {
-            enter ("evalIdentExpr");
+            enter ("evalIdentExprToNamespace");
             switch type (nd) {
             case (nd: Ast::Identifier) {
-                let fxtr = findFixtureWithIdentifier (nd.Ast::ident);
-                switch type (fxtr) {
+                var fxtr = findFixtureWithIdentifier (nd.Ast::ident,it);
+                switch type (fxtr[1]) {
                 case (fxtr:Ast::NamespaceFixture) {
                     var val = fxtr.Ast::ns;
                 }
@@ -404,11 +417,27 @@ namespace Parse;
                 var val = nd.Ast::ns;
             }
             case (nd: Ast::QualifiedIdentifier) {
-                throw "evalIdentExpr: case not implemented " + nd;
+                throw "evalIdentExprToNamespace: case not implemented " + nd;
             }
             }
-            exit ("evalIdentExpr ", val);
+            exit ("evalIdentExprToNamespace ", val);
             return val;
+        }
+
+        function resolveIdentExpr (nd: Ast::IDENT_EXPR, it: Ast::INIT_TARGET)
+            : Ast::FIXTURE_NAME
+        {
+            enter ("resolveIdentExpr");
+            switch type (nd) {
+            case (nd: Ast::Identifier) {
+                var fxtr = findFixtureWithIdentifier (nd.Ast::ident, it);
+            }
+            case (nd: *) {
+                throw "resolveIdentExpr: case not implemented " + nd;
+            }
+            }
+            exit ("resolveIdentExpr ", fxtr);
+            return fxtr[0];
         }
     };
 
@@ -484,13 +513,48 @@ namespace Parse;
 
         /*
 
-        var x = y    [x], init var () [x=y]
-        x = y        [],  set x=y
-        var [x] = y  [x], init var ([t0],[t0=y]) x=t0[0]
-        [x] = y      [],  let ([t0],[t0=y]) x=t0[0]
+        Notation
 
-        let (x=y) ...  let ([x], init let () [x=y]) ...
-        let x=y             [x], init let () [x=y]
+        []             list
+        (fl,el)        head
+        fl             fixture list
+        el             expr list
+        il             init list
+        sl             stmt list
+        it             init target = VAR, LET (default=LET)
+        ie             init expr
+        se             set expr
+
+        initexpr       init it (fl,el) il
+        letexpr        let (fl,el) el
+        block          (fl,el) sl
+
+      
+
+        Bindings
+
+        var x = y      [x], init VAR () [x=y]
+        var [x] = y    [x], init VAR ([t0],[init t0=y]) [x=t0[0]]
+
+        let (x=y) ...  let ([x], init x=y) ...
+        let x=y             [x], init x=y]
+
+        Assignments
+
+        x = y          [],  set x=y
+        [x] = y        [],  let ([t0],[init t0=y]) [set x=t0[0]]
+
+        Blocks
+
+        { }            () {}
+        {stmt}         () {stmt}
+        {let x}        ([x],[x=undef]) {}       is undef the right val?
+        let (x) {}     ([x],[x=undef]) {}       what about reping uninit?
+
+        Mixture
+
+        { var x = y; let z = y }  =>
+            ([x],[]) { blkstmt ([z],[]) { init VAR () x=y; init LET () z=y } }
 
 
         assignment, create a let for each aggregate, a temp for
@@ -550,7 +614,7 @@ namespace Parse;
 
         function desugarAssignmentPattern (p: PATTERN, t: Ast::TYPE_EXPR, e: Ast::EXPR, op: Ast::ASSIGNOP)
             : [Ast::FIXTURES, Ast::EXPR]
-            desugarPattern (p,t,e,null,null,null,op);
+            desugarPattern (p,t,e,null,null,null,op,false);
 
         function desugarBindingPattern (p: PATTERN, t: Ast::TYPE_EXPR, e: Ast::EXPR,
                                         ns: Ast::NAMESPACE?, it: Ast::INIT_TARGET?, ro: boolean?)
@@ -562,6 +626,19 @@ namespace Parse;
             : [Ast::FIXTURES, Ast::EXPR]
         {
             return desugarSubPattern (p,t,e,0);
+
+            function identExprFromExpr (e: Ast::EXPR) 
+                : Ast::IDENT_EXPR {
+                switch type (e) {
+                case (e: Ast::LexicalRef) {
+                    var ie = e.Ast::ident;
+                }
+                case (e: *) {
+                    throw "invalid init lhs " + e;
+                }
+                }
+                return ie;
+            }
 
             function desugarSubPattern (p: PATTERN, t: Ast::TYPE_EXPR, e: Ast::EXPR, n: int) 
                 : [Ast::FIXTURES, Ast::EXPR]
@@ -582,9 +659,17 @@ namespace Parse;
                 case (p:SimplePattern) {
                     if (e === null) throw "simple pattern without initializer";
                     var fxtrs = [];
-                    var expr = new Ast::SetExpr (op,p.expr,e);
+                    if (it != null) { // we have an init target so must be an init
+                        var ie = identExprFromExpr (p.expr);
+                        var nm = cx.resolveIdentExpr (ie,it);
+                        var expr = new Ast::InitExpr (it, new Ast::Head ([],[]), [[nm,e]]);
+                    }
+                    else {
+                        var expr = new Ast::SetExpr (op,p.expr,e);
+                    }
                 }
-                case (p: (ArrayPattern, ObjectPattern)) {
+                //case (p: (ArrayPattern, ObjectPattern)) {
+                case (x: *) {
                     let tn = new Ast::TempName (n);
                     var fxtrs = [];
                     let exprs = [];
@@ -603,17 +688,17 @@ namespace Parse;
                                       // FIXME what is the ns of a temp and how do we refer it
                             var pat = sub;
                         }
+                        case (x: *) {
+                            throw "internal error: desugarPattern " + p;
+                        }
                         }
 
                         let [fx,ex] = desugarSubPattern (pat,typ,exp,n+1);
                         for (let n in fx) fxtrs.push(fx[n]);
                         exprs.push(ex);
                     }
-                    let head = new Ast::Head ([[tn,new Ast::ValFixture (Ast::anyType,false)]],[[tn,e]]);
+                    let head = new Ast::Head ([[tn,new Ast::ValFixture (Ast::anyType,false)]],[new Ast::InitExpr (Ast::letInit,new Ast::Head([],[]),[[tn,e]])]);
                     var expr = new Ast::LetExpr (head, new Ast::ListExpr (exprs));
-                }
-                case (x: *) {
-                    throw "internal error: desugarPattern " + p;
                 }
                 }
                 return [fxtrs,expr];
@@ -1055,8 +1140,6 @@ namespace Parse;
             exit ("Parser::path ", ts1);
             return [ts1,nd1];
         }
-
-        (1/2)
 
         function parenExpression (ts: TOKENS)
             : [TOKENS, Ast::EXPR]
@@ -3647,10 +3730,10 @@ namespace Parse;
 
             var [k,[p,t]] = nd1;
             var [f,i] = desugarBindingPattern (p, t, new Ast::GetParam (0), Ast::noNS, Ast::varInit, false);
-            let head = new Ast::Head (f,[]);
+            let head = new Ast::Head (f,[i]);
 
             exit("Parser::catchClause ", ts2);
-            return [ts2,new Ast::Catch (head,i,nd2)];
+            return [ts2,new Ast::Catch (head,nd2)];
         }
 
         /*
@@ -3772,24 +3855,24 @@ namespace Parse;
             }
 
             let [ts2,nd2] = variableBindingList (ts1, beta, ns, it, ro);
-            let [fxtrs,init] = nd2;
+            let [fxtrs,exprs] = nd2;
 
             switch (nd1) {
             case Ast::letConstTag:
             case Ast::letVarTag:
                 cx.addLetFixtures (fxtrs);
-                var stmts = [new Ast::ExprStmt (init)];
+                var stmts = [new Ast::ExprStmt (new Ast::ListExpr(exprs))];
                 break;
             default:
                 switch (tau) {
                 case classBlk:
                     cx.addVarFixtures (fxtrs);
-                    //cx.addVarInits ([init]);  // FIXME these aren't inits, they are a kind of settings
+                    cx.addVarInits (exprs);  // FIXME these aren't inits, they are a kind of settings
                     var stmts = [];
                     break;
                 default:
                     cx.addVarFixtures (fxtrs);
-                    var stmts = [new Ast::ExprStmt (init)];
+                    var stmts = [new Ast::ExprStmt (new Ast::ListExpr(exprs))];
                     break;
                 }
             }
@@ -3859,7 +3942,7 @@ namespace Parse;
 
         function variableBindingList (ts: TOKENS, beta: BETA, ns: Ast::NAMESPACE, 
                                       it: Ast::INIT_TARGET, ro: boolean )
-            : [TOKENS, [Ast::FIXTURES, Ast::EXPR]]
+            : [TOKENS, [Ast::FIXTURES, Ast::EXPRS]]
         {
             enter("Parser::variableBindingList ", ts);
 
@@ -3869,13 +3952,11 @@ namespace Parse;
             var [f1,i1] = nd1;  // FIXME: fold into patterns above when it works in the RI
             var [f2,i2] = nd2;
 
-            i1 = [i1];   // i1 is actually only a single expression
-
             for (let n in f2) f1.push (f2[n]);  // FIXME: use concat when it works in the RI
             for (let n in i2) i1.push (i2[n]);
 
             exit ("Parser::variableBindingList ", ts2);
-            return [ts2,[f1,new Ast::ListExpr(i1)]];  // FIXME if only one element don't create listexpr
+            return [ts2,[f1,i1]];
 
             function variableBindingListPrime (ts: TOKENS)
                 : [TOKENS, [Ast::FIXTURES, Ast::EXPRS]]
@@ -3920,7 +4001,7 @@ namespace Parse;
                             break;
                         } // else fall through
                     default:
-                        var [tsx,ndx] = [ts2,desugarBindingPattern (p,t,nd2,ns,it,ro)];
+                        var [tsx,[f,i]] = [ts2,desugarBindingPattern (p,t,nd2,ns,it,ro)];
                         break;
                     }
                     break;
@@ -3934,7 +4015,7 @@ namespace Parse;
                     default:
                         switch type (p) {
                         case (p: IdentifierPattern) {
-                            var [tsx,ndx] = [ts1,desugarBindingPattern (p,t,null,ns,it,ro)];
+                            var [tsx,[f,i]] = [ts1,desugarBindingPattern (p,t,null,ns,it,ro)];
                         }
                         case (x : *) {
                             throw "destructuring pattern without initializer";
@@ -3944,10 +4025,11 @@ namespace Parse;
                     }
                 }
                 exit("Parser::variableBinding ", tsx);
-                return [tsx,ndx];
+                return [tsx,[f,[i]]];
             }
         }
 
+        /*
         function variableBinding (ts: TOKENS, beta: BETA, ns: Ast::NAMESPACE, it: Ast::INIT_TARGET)
             : [TOKENS, [Ast::FIXTURES, Ast::EXPRS]]
         {
@@ -3991,6 +4073,7 @@ namespace Parse;
             exit("Parser::variableBinding ", tsx);
             return [tsx,ndx];
         }
+        */
 
         /*
 
@@ -4019,8 +4102,8 @@ namespace Parse;
             var [ts3,nd3] = functionBody (ts2, allowIn, omega);
             var vars = cx.exitVarBlock ();
 
-            var {params:params,paramSettings:paramSettings,defaults:defaults,resultType:resultType,thisType:thisType,hasRest:hasRest} = nd2;
-            var func = new Ast::Func (nd1,false,nd3,params,paramSettings,vars,defaults,resultType);
+            var {params:params,defaults:defaults,resultType:resultType,thisType:thisType,hasRest:hasRest} = nd2;
+            var func = new Ast::Func (nd1,false,nd3,params,vars,defaults,resultType);
 
             var name = new Ast::PropName ({ns:ns,id:nd1.ident});
             var fxtr = new Ast::MethodFixture (func,new Ast::SpecialType (new Ast::AnyType),true,isOverride,isFinal);
@@ -4051,11 +4134,11 @@ namespace Parse;
             var [ts3,nd3] = functionBody (ts2, allowIn, omega);
             var vars = cx.exitVarBlock ();
 
-            var {params:params,paramSettings:paramSettings,defaults:defaults,hasRest:hasRest,settings:settings,superArgs:superArgs} = nd2;
+            var {params:params,defaults:defaults,hasRest:hasRest,settings:settings,superArgs:superArgs} = nd2;
 
             // print ("superArgs=",superArgs);
             // print ("settings=",settings);
-            var func = new Ast::Func ({kind:new Ast::Ordinary,ident:nd1},false,nd3,params,paramSettings,vars,defaults,Ast::voidType);
+            var func = new Ast::Func ({kind:new Ast::Ordinary,ident:nd1},false,nd3,params,vars,defaults,Ast::voidType);
             var ctor = new Ast::Ctor (settings,superArgs,func);
 
             if (cx.ctor !== null) {
@@ -4079,7 +4162,6 @@ namespace Parse;
         type CTOR_SIG = 
           { typeParams : [Ast::IDENT]
           , params : Ast::HEAD
-          , paramSettings : Ast::EXPR
           , paramTypes : [Ast::TYPE_EXPR]
           , defaults : [Ast::EXPR]
           , hasRest: boolean
@@ -4089,7 +4171,6 @@ namespace Parse;
         type FUNC_SIG = 
           { typeParams : [Ast::IDENT]
           , params : Ast::HEAD
-          , paramSettings : Ast::EXPR
           , paramTypes : [Ast::TYPE_EXPR]
           , defaults : [Ast::EXPR]
           , returnType : Ast::TYPE_EXPR
@@ -4112,8 +4193,7 @@ namespace Parse;
             let [[f,i],e,t] = nd2;
 
             var ndx = { typeParams: []
-                      , params: new Ast::Head (f,[])
-                      , paramSettings: i
+                      , params: new Ast::Head (f,i)
                       , paramTypes: t
                       , defaults: e
                       , hasRest: hasRest
@@ -4250,31 +4330,6 @@ namespace Parse;
 
         */
 
-        function initFromAssignStep (as : Ast::AssignStep) {
-            enter ("initFromAssignStep");
-
-            switch type ((as.Ast::le).Ast::ident) {
-            case (ident: Ast::Identifier) {
-                var ns = cx.pragmas.defaultNamespace;
-                var name = new Ast::PropName ({ns:ns,id:ident.Ast::ident});
-                var init = new Ast::InitExpr (Ast::instanceInit,new Ast::Head ([],[]),[[name,as.Ast::re]]);
-            }
-            case (le: Ast::QualifiedIdentifier) {
-                var qual = le.Ast::qual;
-                var ident = le.Ast::ident;
-                var ns = cx.pragmas.defaultNamespace; //cx.evalIdentExpr (qual);
-                var name = new Ast::PropName ({ns:ns,id:ident});
-                var init = new Ast::InitExpr (Ast::instanceInit,new Ast::Head([],[]),[[name,as.Ast::re]]);
-            }
-            case (le: *) {
-                throw "invalid setting target " + (as.Ast::le).Ast::ident;
-            }
-            }
-
-            exit ("initFromAssignStep");
-            return init;
-        }
-
         function setting (ts: TOKENS)
             : [TOKENS, Ast::EXPR]
         {
@@ -4345,62 +4400,6 @@ namespace Parse;
 
         */
 
-
-        function fixtureNameFromBindingIdent (ns,bi: Ast::BINDING_IDENT)
-            : Ast::FIXTURE_NAME 
-        {
-            switch type (bi) {
-            case (bi:Ast::PropIdent) {
-                var fn = new Ast::PropName ({ns:ns,id:bi.Ast::ident});
-            }
-            case (bi:Ast::ParamIdent) {
-                var fn = new Ast::TempName (bi.Ast::index);
-            }
-            case (bi:Ast::TempIdent) {
-                var fn = new Ast::TempName (bi.Ast::index);
-            }
-            }
-            return fn;
-        }
-
-        function fixturesFromBindings (ns,bs /*: [Ast::BINDING]*/) // FIXME: RI bug
-            : Ast::FIXTURES {
-            if(bs.length === 0) {
-                return [];
-            }
-            var b0 = bs[0];
-            var n0 = fixtureNameFromBindingIdent (ns,b0.Ast::ident);
-            var f0 = new Ast::ValFixture (b0.Ast::type,false);
-            var fs = fixturesFromBindings (ns,bs.slice(1,bs.length));
-            fs.unshift ([n0,f0]);
-            return fs;
-        }
-
-        function initsFromInitSteps (ns,ss /*: [Ast::INIT_STEP]*/ )
-            /* : Ast::INITS */ 
-        {
-
-            if(ss.length === 0) {
-                return [];
-            }
-            var s0 = ss[0];
-
-            var n0 = fixtureNameFromBindingIdent (ns,s0.Ast::ident);
-            var i0 = [n0,s0.Ast::expr];
-            var is = initsFromInitSteps (ns,ss.slice(1,ss.length));
-            is.unshift (i0);
-
-            return is;
-        }
-
-        function headFromBindingInits ([bindings,steps] /*: Ast::BINDING_INITS*/, ns )
-            // : Ast::HEAD  
-        {
-            var fixtures = fixturesFromBindings (cx.pragmas.defaultNamespace,bindings);
-            var inits = initsFromInitSteps (cx.pragmas.defaultNamespace, steps);
-            return {fixtures:fixtures, inits:inits}
-        }
-
         function functionSignature (ts: TOKENS)
             : [TOKENS, FUNC_SIG]
         {
@@ -4423,8 +4422,7 @@ namespace Parse;
             let [[f,i],e,t] = nd2;
 
             var ndx = { typeParams: []
-                      , params: new Ast::Head (f,[])
-                      , paramSettings: i
+                      , params: new Ast::Head (f,i)
                       , paramTypes: t
                       , defaults: e
                       , ctorInits: null
@@ -4748,13 +4746,12 @@ namespace Parse;
             if (ctor===null)
             {
                 let isNative = false;
-                let blck = new Ast::Block ({fixtures:[],inits:[]},[]);
-                let params = {fixtures:[],inits:[]};
-                let paramSettings = [];
-                let vars = {fixtures:[],inits:[]};
+                let blck = new Ast::Block (new Ast::Head([],[]),[]);
+                let params = new Ast::Head([],[]);
+                let vars = new Ast::Head([],[]);
                 let defaults = [];
                 let type = Ast::anyType;
-                let func = new Ast::Func ({kind:new Ast::Ordinary,ident:nd1},isNative,blck,params,paramSettings,vars,defaults,type);
+                let func = new Ast::Func ({kind:new Ast::Ordinary,ident:nd1},isNative,blck,params,vars,defaults,type);
                 var ctor = new Ast::Ctor ([],[],func);
             }
             
@@ -5185,7 +5182,7 @@ namespace Parse;
                             // FIXME check ns attr
                             let ie = nd1.Ast::exprs[0].Ast::ident;  
                             var attrs = defaultAttrs ();
-                            attrs.ns = cx.evalIdentExpr (ie);
+                            attrs.ns = cx.evalIdentExprToNamespace (ie);
                             var [ts1,nd1] = annotatableDirective (ts1,tau,omega,attrs);
                             break;
                         default:
@@ -5324,7 +5321,7 @@ namespace Parse;
                     break;
                 default:
                     var [ts1,nd1] = primaryName (ts,allowIn);
-                    nd.ns = cx.evalIdentExpr (nd1);
+                    nd.ns = cx.evalIdentExprToNamespace (nd1);
                     var [ts1,nd1] = [ts1,nd];
                     break;
                 }
@@ -5357,7 +5354,7 @@ namespace Parse;
                     break;
                 default:
                     var [ts1,nd1] = primaryName (ts,allowIn);
-                    nd.ns = cx.evalIdentExpr (nd1);
+                    nd.ns = cx.evalIdentExprToNamespace (nd1);
                     var [ts1,nd1] = [ts1, nd];
                     break;
                 }
