@@ -36,8 +36,8 @@
  *
  * ***** END LICENSE BLOCK ***** */
 
-use namespace intrinsic;
 use namespace Release;
+use namespace intrinsic;
 
 {
     use default namespace Parse;

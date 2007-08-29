@@ -5,7 +5,7 @@
 ### DECODE
 
 #./esc1.sh tests/self/debug.es
-#./esc1.sh tests/self/ast.es
+./esc1.sh tests/self/ast.es
 #./esc1.sh tests/self/decoder.es
 #./esc1.sh tests/self/encoder.es
 #./esc1.sh tests/self/esc2.es
@@ -21,8 +21,8 @@
 #./esc1.sh tests/self/parse-ptrn.es
 #./esc1.sh tests/self/parse-type.es
 #./esc1.sh tests/self/parse-stmt.es
-./esc1.sh tests/self/parse-prgm.es
-./esc1.sh tests/self/esc1.es
+#./esc1.sh tests/self/parse-prgm.es
+#./esc1.sh tests/self/esc1.es
 
 ### GENERATE
 

@@ -1297,7 +1297,7 @@ namespace Ast
         const expr : EXPR;
         const cases : CASES;
         const labels : [IDENT];
-        function SwitchStmt (expr, cases, labels) 
+        function SwitchStmt (expr, cases, labels)
             : expr = expr
             , cases = cases
             , labels = labels { }
