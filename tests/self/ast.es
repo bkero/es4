@@ -1134,17 +1134,17 @@ namespace Ast
     class AppType {
         const base : TYPE_EXPR;
         const args : [TYPE_EXPR];
-	function AppType (base,args)
-	: base = base
-	, args = args { }
+        function AppType (base,args)
+            : base = base
+            , args = args { }
     }
 
     class NullableType {
         const type : TYPE_EXPR;
         const isNullable : Boolean;
-	function NullableType (ty,isNullable)
-	    : type = ty
-	    , isNullable = isNullable { }
+        function NullableType (ty,isNullable)
+            : type = ty
+            , isNullable = isNullable { }
     }
 
     class InstanceType {

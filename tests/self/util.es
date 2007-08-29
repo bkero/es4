@@ -1,5 +1,7 @@
+//namespace Util
 package util
 {
+    //use default namespace Util
     import bytestream.*;
 
     public function assert(cond) {
