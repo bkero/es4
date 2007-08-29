@@ -101,7 +101,7 @@ package cogen
 
             switch type (fx) {
             case (vf:ValFixture) {
-                target.addTrait(new ABCSlotTrait(name, 0, false, 0, 0 /*emitter.fixtureTypeToType(vf)*/)); 
+                target.addTrait(new ABCSlotTrait(name, 0, false, 0, emitter.typeFromTypeExpr(vf.type))); 
 					// FIXME when we have more general support for type annos
             }
             case (mf:MethodFixture) {
@@ -223,7 +223,7 @@ package cogen
        
         asm.I_getlocal(0);
         // Should this be instanceInits.inits only?
-        cgHead(ctor_ctx, instanceInits, true);
+        cgHead(ctor_ctx, instanceInits);
         //cgHead(ctor_ctx, instanceInits.inits, true);
 
         // Push 'this' onto scope stack
@@ -234,11 +234,12 @@ package cogen
         asm.I_dup();
         asm.I_dup();
         asm.I_pushwith();
-        cgHead(ctor_ctx, c.func.params, true);
-        //cgHead(ctor_ctx, c.func.vars, true);
+        cgHead(ctor_ctx, c.func.params);
 
-        for ( let i=0 ; i < c.settings.length ; i++ )
+        for ( let i=0 ; i < c.settings.length ; i++ ) {
             cgExpr(ctor_ctx, c.settings[i]);
+            asm.I_pop();
+        }
 
         // Eval super args, and call super ctor
         asm.I_getlocal(0);
@@ -252,6 +253,7 @@ package cogen
         asm.I_pushscope();  //'this'
         asm.I_pushscope();  //'activation'
         
+        cgHead(ctor_ctx, c.func.vars);
 
         cgBlock(ctor_ctx, c.func.block);
         
@@ -309,9 +311,9 @@ package cogen
         
         let ctx = new CTX(asm, {tag: "function"}, method);
 
-        cgHead(ctx, f.params, true);
+        cgHead(ctx, f.params);
 
-        //cgHead(ctx, f.vars, true);
+        cgHead(ctx, f.vars);
         
         /* Generate code for the body.  If there is no return statement in the
          * code then the default behavior of the emitter is to add a returnvoid
@@ -321,7 +323,7 @@ package cogen
         return method.finalize();
     }
     
-    function cgHead(ctx, head, baseOnStk=false) {
+    function cgHead(ctx, head) {
         let {asm:asm, emitter:emitter, target:target} = ctx;
         
         function extractName([name,fixture])
@@ -338,8 +340,10 @@ package cogen
             target.addTrait(new ABCSlotTrait(formals[i], 0, false, 0, formals_type[i]));
         }
 
-        for ( let i=0 ; i < head.exprs.length ; i++ )
-            cgExpr(ctx, head.exprs[i], baseOnStk);
+        for ( let i=0 ; i < head.exprs.length ; i++ ) {
+            cgExpr(ctx, head.exprs[i]);
+            asm.I_pop();
+        }
     }
     
     function cgInits(ctx, inits, baseOnStk=false){

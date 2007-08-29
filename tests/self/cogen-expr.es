@@ -191,7 +191,7 @@ package cogen
     }
 
     function cgTypeExprHelper(ctx, ty) {
-        let asm = ctx.asm;
+        let {asm:asm, emitter:emitter} = ctx;
         switch type (ty) {
         case (ty:TypeName) {
             //let name = cgIdentExpr(ctx, ty.ident);
@@ -200,7 +200,7 @@ package cogen
         }
         case (ty:*) {
             /* FIXME */
-            throw "Unimplemented: type expression type";
+            throw ("Unimplemented: type expression type " + ty);
         }
         }
     }
@@ -475,8 +475,9 @@ package cogen
                 baseOnStk = true;
             }
         }
-        cgInits(ctx, e.inits, baseOnStk);
-//	asm.I_pushundefined();
+        cgInits(ctx, e.inits, baseOnStk, true);
+    	asm.I_pushundefined(); // exprs need to leave something on the stack
+        // FIXME: should this be the value of the last init?
     }
 
     function cgLiteralExpr(ctx, e) {
@@ -512,11 +513,13 @@ package cogen
             let t = asm.getTemp();
             asm.I_setlocal(t);
             for ( let i=0 ; i < fields.length ; i++ ) {
+                //cgLiteralField(fields[i]);
                 let f = fields[i];
                 asm.I_getlocal(t);
                 cgExpr(ctx, f.expr);
                 asm.I_setproperty(cgIdentExpr(ctx, f.ident));
             }
+            //asm.I_newobject(fields.length);
             asm.I_getlocal(t);
             asm.killTemp(t);
         }

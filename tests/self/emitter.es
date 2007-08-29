@@ -183,20 +183,34 @@ package emitter
 
         public function typeFromTypeExpr(t) {
             use namespace Ast;
+            // not dealing with types for now
             switch type (t) {
-            case (tn:TypeName) { return nameFromIdentExpr(tn.ident) }
-            case (st:SpecialType) { 
-                switch type(st.kind) {
-                    case (a:AnyType) {
-                        return 0;
+                case (tn:TypeName) {
+                    switch type( tn.ident ){
+                        case(i:Identifier) {
+                            let name = i.ident;
+                            if( name=="String" || name=="Number" ||
+                                name=="Boolean" || name=="int" ||
+                                name=="uint" || name=="Object" ||
+                                name=="Array" || name=="Class" ||
+                                name=="Function") {
+                                return nameFromIdent(name);
+                            }
+                            else if( name=="string" ) {
+                                return nameFromIdent("String");
+                            }
+                            else if( name=="boolean" ) {
+                                return nameFromIdent("Boolean");
+                            }
+                        }
                     }
                 }
+                case (x:*) { 
+                    print ("warning: Unimplemented: typeFromTypeExpr " + t + ", using *")
+                }
             }
-            case (x:*) { 
-                print ("warning: Unimplemented: typeFromTypeExpr " + t + ", using *")
-                return 0;
-            }
-            }
+            return 0;
+            
         }
 
         public function fixtureNameToName(fn) {
