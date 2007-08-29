@@ -1,3 +1,4 @@
+/* -*- mode: java; mode: font-lock; tab-width: 4; insert-tabs-mode: nil; indent-tabs-mode: nil -*- */
 /* ***** BEGIN LICENSE BLOCK *****
  * Version: MPL 1.1/GPL 2.0/LGPL 2.1
  *
@@ -35,8 +36,12 @@
  *
  * ***** END LICENSE BLOCK ***** */
 
+//namespace Util
 package bytestream
 {
+    //use default namespace Util
+    import util.*
+
     /* Emitter for various data in ABC-compatible formats, as a byte
      * stream.  The byte stream is represented as an array of unsigned
      * integers below 256 here, the purpose is that we will dump its
