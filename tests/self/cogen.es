@@ -93,6 +93,15 @@ package cogen
         cgBlock(ctx, prog.block);
     }
 
+    function hasTrait(traits, name, kind) {
+        for(var i = 0, l =traits.length; i < l; i++) {
+            let t = traits[i];
+            if(t.name==name && ((t.kind&15)==kind))
+                return true;
+        }
+        return false;
+    }
+    
     function cgFixtures(ctx, fixtures) {
         let { target:target, asm:asm, emitter:emitter } = ctx;
         for ( let i=0 ; i < fixtures.length ; i++ ) {
@@ -101,7 +110,8 @@ package cogen
 
             switch type (fx) {
             case (vf:ValFixture) {
-                target.addTrait(new ABCSlotTrait(name, 0, false, 0, emitter.typeFromTypeExpr(vf.type))); 
+                if( !hasTrait(target.traits, name, TRAIT_Slot) )
+                    target.addTrait(new ABCSlotTrait(name, 0, false, 0, emitter.typeFromTypeExpr(vf.type))); 
 					// FIXME when we have more general support for type annos
             }
             case (mf:MethodFixture) {
@@ -232,7 +242,6 @@ package cogen
         // Create the activation object, and initialize params
         asm.I_newactivation();
         asm.I_dup();
-        asm.I_dup();
         asm.I_pushwith();
         cgHead(ctor_ctx, c.func.params);
 
@@ -306,7 +315,6 @@ package cogen
          * God only knows about the arguments object...
          */
         asm.I_newactivation();
-        asm.I_dup(); // Put activation object on stack for property inits
         asm.I_pushscope();
         
         let ctx = new CTX(asm, {tag: "function"}, method);
@@ -337,7 +345,8 @@ package cogen
         let formals = map(extractName, named_fixtures);
         let formals_type = map(extractType, named_fixtures);
         for ( let i=0 ; i < formals.length ; i++ ) {
-            target.addTrait(new ABCSlotTrait(formals[i], 0, false, 0, formals_type[i]));
+            if(!hasTrait(target.traits, formals[i], TRAIT_Slot) )
+                target.addTrait(new ABCSlotTrait(formals[i], 0, false, 0, formals_type[i]));
         }
 
         for ( let i=0 ; i < head.exprs.length ; i++ ) {
