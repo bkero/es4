@@ -44,9 +44,9 @@
     var nd = Decode::program (ast);
     var topFixtures = nd.head.fixtures;
     var str = readFile ("esc-tmp.es");
-    var parser = new Parser(str,topFixtures);
+    var parser = Parse::initParser(str,topFixtures);
     print ("parsing");
-    var [ts,nd] = parser.program();
+    var [ts,nd] = Parse::program();
 }
 
 {

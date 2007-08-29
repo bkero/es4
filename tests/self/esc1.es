@@ -1,7 +1,6 @@
 {
 //    import util.*;
     use namespace Ast;
-    use namespace Parse;
     load ("esc-env.ast")
     print ("decoding: ", ast);
     var nd = Decode::program (ast);
@@ -9,9 +8,9 @@
 
     var file = "esc-tmp";
     var str = readFile (file+".es");
-    var parser = new Parser(str,topFixtures);
+    var parser = Parse::initParser(str,topFixtures);
     print ("parsing");
-    var [ts,nd] = parser.program();
+    var [ts,nd] = Parse::program();
     print ("encoding");
     var tx = "var ast = "+Encode::program (nd);
     print ("writing");
