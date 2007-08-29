@@ -860,7 +860,7 @@ use namespace Release;
 
             var [ts1,nd1] = unaryExpression (ts, beta);
 
-            //done:
+            /// done:
             let done = false;
             while (true) {
 
@@ -881,8 +881,8 @@ use namespace Release;
                     var op = Ast::remainderOp;
                     break;
                 default:
-                    /// break done;
                     done = true;
+                    break /// done;
                 }
                 if (done) break;
 
@@ -911,7 +911,8 @@ use namespace Release;
 
             var [ts1, nd1] = multiplicativeExpression (ts, beta);
 
-            done:
+            /// done:
+            let done = false;
             while (true) {
                 switch (hd (ts1)) {
                 case Token::Plus:
@@ -921,8 +922,11 @@ use namespace Release;
                     var op = Ast::minusOp;
                     break;
                 default:
-                    break done;
+                    done = true;
+                    break /// done;
                 }
+                if (done) break;
+
                 let [ts2, nd2] = multiplicativeExpression (tl (ts1), beta);
                 [ts1, nd1] = [ts2, new Ast::BinaryExpr (op, nd1, nd2)];
             }
@@ -947,7 +951,9 @@ use namespace Release;
             enter("Parser::shiftExpression ", ts);
 
             var [ts1, nd1] = additiveExpression (ts, beta);
-            done:
+            
+            let done = false;
+            /// done:
             while (true) {
                 switch (hd (ts1)) {
                 case Token::LeftShift:
@@ -960,8 +966,11 @@ use namespace Release;
                     var op = Ast::unsignedRightShiftOp;
                     break;
                 default:
-                    break done;
+                    done = true;
+                    break /// done;
                 }
+                if (done) break;
+
                 let [ts2, nd2] = additiveExpression (tl (ts1), beta);
                 var [ts1, nd1] = [ts2, new Ast::BinaryExpr (op, nd1, nd2)];
             }
@@ -1003,7 +1012,9 @@ use namespace Release;
             enter("Parser::relationalExpression ", ts);
 
             var [ts1, nd1] = shiftExpression (ts, beta);
-            done:
+
+            /// done:
+            let done = false;
             while (true) {
                 switch (hd (ts1)) {
                 case Token::LessThan:
@@ -1024,7 +1035,8 @@ use namespace Release;
                     break;
                 case Token::In:
                     if (beta == noIn) {
-                        break done;
+                        done = true;
+                        break /// done;
                     }
                     var [ts2, nd2] = shiftExpression (tl (ts1), beta);
                     nd2 = new Ast::BinaryExpr (Ast::inOp,nd1,nd2);
@@ -1046,8 +1058,10 @@ use namespace Release;
                     nd2 = new Ast::BinaryTypeExpr (Ast::castOp,nd1,nd2);
                     break;
                 default:
-                    break done;
+                    done = true;
+                    break /// done;
                 }
+                if (done) break;
                 var [ts1, nd1] = [ts2,nd2];
             }
 
@@ -1072,7 +1086,8 @@ use namespace Release;
             enter("Parser::equalityExpression ", ts);
 
             var [ts1, nd1] = relationalExpression (ts, beta);
-            done:
+            /// done:
+            let done = false;
             while (true) {
                 switch (hd (ts1)) {
                 case Token::Equal:
@@ -1088,8 +1103,11 @@ use namespace Release;
                     var op = Ast::strictNotEqualOp;
                     break;
                 default:
-                    break done;
+                    done = true;
+                    break /// done;
                 }
+                if (done) break;
+
                 let [ts2, nd2] = relationalExpression (tl (ts1), beta);
                 var [ts1, nd1] = [ts2, new Ast::BinaryExpr (op, nd1, nd2)];
             }

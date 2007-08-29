@@ -362,8 +362,8 @@ use namespace intrinsic;
         function defaultAttrs ()
             : ATTRS {
             return { ns: cx.pragmas.defaultNamespace
-                   , true: false
-                   , false: false
+                   , 'true': false
+                   , 'false': false
                    , dynamic: false
                    , final: false
                    , native: false

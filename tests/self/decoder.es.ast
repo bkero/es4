@@ -19,7 +19,7 @@ var ast =
 , 'isNative': false
 , 'block': { 'ast_class': 'Block'
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'stmts': [ { 'ast_class': 'ExprStmt'
 , 'expr': { 'ast_class': 'ListExpr'
 , 'exprs': [ { 'ast_class': 'CallExpr'
@@ -84,7 +84,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'VarInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -149,7 +149,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'VarInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -214,7 +214,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'VarInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -388,11 +388,10 @@ var ast =
 , 'kind': { 'ast_class': 'AnyType' } }
 , 'isReadOnly': false } ]
 ,  ]
-, 'inits': [  ] }
-, 'settings': [ { 'ast_class': 'InitExpr'
+, 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'LetInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'PublicNamespace'
 , 'name': '' }
@@ -400,7 +399,7 @@ var ast =
 , { 'ast_class': 'GetParam'
 , 'n': 0 } ]
 ,  ] }
-,  ]
+,  ] }
 , 'vars': { 'fixtures': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -426,7 +425,7 @@ var ast =
 , 'kind': { 'ast_class': 'AnyType' } }
 , 'isReadOnly': false } ]
 ,  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'defaults': [ ]
 , 'type': { 'ast_class': 'TypeName'
 , 'ident': { 'ast_class': 'Identifier'
@@ -460,7 +459,7 @@ var ast =
 , 'isNative': false
 , 'block': { 'ast_class': 'Block'
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'stmts': [ { 'ast_class': 'ExprStmt'
 , 'expr': { 'ast_class': 'ListExpr'
 , 'exprs': [ { 'ast_class': 'CallExpr'
@@ -535,11 +534,10 @@ var ast =
 , 'kind': { 'ast_class': 'AnyType' } }
 , 'isReadOnly': false } ]
 ,  ]
-, 'inits': [  ] }
-, 'settings': [ { 'ast_class': 'InitExpr'
+, 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'LetInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'PublicNamespace'
 , 'name': '' }
@@ -547,9 +545,9 @@ var ast =
 , { 'ast_class': 'GetParam'
 , 'n': 0 } ]
 ,  ] }
-,  ]
+,  ] }
 , 'vars': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'defaults': [ ]
 , 'type': { 'ast_class': 'TypeName'
 , 'ident': { 'ast_class': 'Identifier'
@@ -583,7 +581,7 @@ var ast =
 , 'isNative': false
 , 'block': { 'ast_class': 'Block'
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'stmts': [ { 'ast_class': 'ExprStmt'
 , 'expr': { 'ast_class': 'ListExpr'
 , 'exprs': [ { 'ast_class': 'CallExpr'
@@ -648,7 +646,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'VarInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -713,7 +711,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'VarInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -870,11 +868,10 @@ var ast =
 , 'kind': { 'ast_class': 'AnyType' } }
 , 'isReadOnly': false } ]
 ,  ]
-, 'inits': [  ] }
-, 'settings': [ { 'ast_class': 'InitExpr'
+, 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'LetInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'PublicNamespace'
 , 'name': '' }
@@ -882,7 +879,7 @@ var ast =
 , { 'ast_class': 'GetParam'
 , 'n': 0 } ]
 ,  ] }
-,  ]
+,  ] }
 , 'vars': { 'fixtures': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -900,7 +897,7 @@ var ast =
 , 'kind': { 'ast_class': 'AnyType' } }
 , 'isReadOnly': false } ]
 ,  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'defaults': [ ]
 , 'type': { 'ast_class': 'TypeName'
 , 'ident': { 'ast_class': 'Identifier'
@@ -934,7 +931,7 @@ var ast =
 , 'isNative': false
 , 'block': { 'ast_class': 'Block'
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'stmts': [ { 'ast_class': 'ExprStmt'
 , 'expr': { 'ast_class': 'ListExpr'
 , 'exprs': [ { 'ast_class': 'CallExpr'
@@ -1004,13 +1001,13 @@ var ast =
 , 'then': { 'ast_class': 'BlockStmt'
 , 'block': { 'ast_class': 'Block'
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'stmts': [ { 'ast_class': 'ExprStmt'
 , 'expr': { 'ast_class': 'ListExpr'
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'VarInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -1023,13 +1020,13 @@ var ast =
 , 'elseOpt': { 'ast_class': 'BlockStmt'
 , 'block': { 'ast_class': 'Block'
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'stmts': [ { 'ast_class': 'ExprStmt'
 , 'expr': { 'ast_class': 'ListExpr'
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'VarInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -1134,11 +1131,10 @@ var ast =
 , 'kind': { 'ast_class': 'AnyType' } }
 , 'isReadOnly': false } ]
 ,  ]
-, 'inits': [  ] }
-, 'settings': [ { 'ast_class': 'InitExpr'
+, 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'LetInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'PublicNamespace'
 , 'name': '' }
@@ -1146,7 +1142,7 @@ var ast =
 , { 'ast_class': 'GetParam'
 , 'n': 0 } ]
 ,  ] }
-,  ]
+,  ] }
 , 'vars': { 'fixtures': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -1164,7 +1160,7 @@ var ast =
 , 'kind': { 'ast_class': 'AnyType' } }
 , 'isReadOnly': false } ]
 ,  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'defaults': [ ]
 , 'type': { 'ast_class': 'NullableType'
 , 'type': { 'ast_class': 'TypeName'
@@ -1200,7 +1196,7 @@ var ast =
 , 'isNative': false
 , 'block': { 'ast_class': 'Block'
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'stmts': [ { 'ast_class': 'ExprStmt'
 , 'expr': { 'ast_class': 'ListExpr'
 , 'exprs': [ { 'ast_class': 'CallExpr'
@@ -1267,7 +1263,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'VarInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -1332,7 +1328,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'VarInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -1340,7 +1336,7 @@ var ast =
 , { 'ast_class': 'CallExpr'
 , 'expr': { 'ast_class': 'LexicalRef'
 , 'ident': { 'ast_class': 'Identifier'
-, 'ident': 'inits'
+, 'ident': 'exprs'
 , 'nss': [  [ { 'ast_class': 'PublicNamespace'
 , 'name': '' }
 ,  ]
@@ -1374,7 +1370,7 @@ var ast =
 ,  [  ]
 ,  ] } }
 , 'ident': { 'ast_class': 'Identifier'
-, 'ident': 'inits'
+, 'ident': 'exprs'
 , 'nss': [  [ { 'ast_class': 'PublicNamespace'
 , 'name': '' }
 ,  ]
@@ -1390,93 +1386,6 @@ var ast =
 ,  [  ]
 ,  ] } }
 ,  ] } ]
-,  ] }
-,  ] } }
-, { 'ast_class': 'ExprStmt'
-, 'expr': { 'ast_class': 'ListExpr'
-, 'exprs': [ { 'ast_class': 'InitExpr'
-, 'target': { 'ast_class': 'VarInit' }
-, 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
-, 'inits': [ [ { 'ast_class': 'PropName'
-, 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
-, 'name': 'Decode' }
-, 'id': 'ndx' } }
-, { 'ast_class': 'LiteralExpr'
-, 'literal': { 'ast_class': 'LiteralObject'
-, 'fields': [ { 'ast_class': 'LiteralField'
-, 'kind': { 'ast_class': 'Var' }
-, 'ident': { 'ast_class': 'Identifier'
-, 'ident': 'fixtures'
-, 'nss': [  [ { 'ast_class': 'PublicNamespace'
-, 'name': '' }
-,  ]
-,  [ { 'ast_class': 'AnonymousNamespace'
-, 'name': 'Release' }
-, { 'ast_class': 'AnonymousNamespace'
-, 'name': 'Ast' }
-, { 'ast_class': 'IntrinsicNamespace' }
-,  ]
-,  [ { 'ast_class': 'AnonymousNamespace'
-, 'name': 'Decode' }
-,  ]
-,  [  ]
-,  ] }
-, 'expr': { 'ast_class': 'LexicalRef'
-, 'ident': { 'ast_class': 'Identifier'
-, 'ident': 'nd1'
-, 'nss': [  [ { 'ast_class': 'PublicNamespace'
-, 'name': '' }
-,  ]
-,  [ { 'ast_class': 'AnonymousNamespace'
-, 'name': 'Release' }
-, { 'ast_class': 'AnonymousNamespace'
-, 'name': 'Ast' }
-, { 'ast_class': 'IntrinsicNamespace' }
-,  ]
-,  [ { 'ast_class': 'AnonymousNamespace'
-, 'name': 'Decode' }
-,  ]
-,  [  ]
-,  ] } } }
-, { 'ast_class': 'LiteralField'
-, 'kind': { 'ast_class': 'Var' }
-, 'ident': { 'ast_class': 'Identifier'
-, 'ident': 'inits'
-, 'nss': [  [ { 'ast_class': 'PublicNamespace'
-, 'name': '' }
-,  ]
-,  [ { 'ast_class': 'AnonymousNamespace'
-, 'name': 'Release' }
-, { 'ast_class': 'AnonymousNamespace'
-, 'name': 'Ast' }
-, { 'ast_class': 'IntrinsicNamespace' }
-,  ]
-,  [ { 'ast_class': 'AnonymousNamespace'
-, 'name': 'Decode' }
-,  ]
-,  [  ]
-,  ] }
-, 'expr': { 'ast_class': 'LexicalRef'
-, 'ident': { 'ast_class': 'Identifier'
-, 'ident': 'nd2'
-, 'nss': [  [ { 'ast_class': 'PublicNamespace'
-, 'name': '' }
-,  ]
-,  [ { 'ast_class': 'AnonymousNamespace'
-, 'name': 'Release' }
-, { 'ast_class': 'AnonymousNamespace'
-, 'name': 'Ast' }
-, { 'ast_class': 'IntrinsicNamespace' }
-,  ]
-,  [ { 'ast_class': 'AnonymousNamespace'
-, 'name': 'Decode' }
-,  ]
-,  [  ]
-,  ] } } }
-,  ]
-, 'type': { 'ast_class': 'ObjectType'
-, 'fields': [  ] } } } ]
 ,  ] }
 ,  ] } }
 , { 'ast_class': 'ExprStmt'
@@ -1506,9 +1415,10 @@ var ast =
 ,  ] } }
 , { 'ast_class': 'ReturnStmt'
 , 'expr': { 'ast_class': 'ListExpr'
-, 'exprs': [ { 'ast_class': 'LexicalRef'
+, 'exprs': [ { 'ast_class': 'NewExpr'
+, 'expr': { 'ast_class': 'LexicalRef'
 , 'ident': { 'ast_class': 'Identifier'
-, 'ident': 'ndx'
+, 'ident': 'Head'
 , 'nss': [  [ { 'ast_class': 'PublicNamespace'
 , 'name': '' }
 ,  ]
@@ -1523,6 +1433,41 @@ var ast =
 ,  ]
 ,  [  ]
 ,  ] } }
+, 'args': [ { 'ast_class': 'LexicalRef'
+, 'ident': { 'ast_class': 'Identifier'
+, 'ident': 'nd1'
+, 'nss': [  [ { 'ast_class': 'PublicNamespace'
+, 'name': '' }
+,  ]
+,  [ { 'ast_class': 'AnonymousNamespace'
+, 'name': 'Release' }
+, { 'ast_class': 'AnonymousNamespace'
+, 'name': 'Ast' }
+, { 'ast_class': 'IntrinsicNamespace' }
+,  ]
+,  [ { 'ast_class': 'AnonymousNamespace'
+, 'name': 'Decode' }
+,  ]
+,  [  ]
+,  ] } }
+, { 'ast_class': 'LexicalRef'
+, 'ident': { 'ast_class': 'Identifier'
+, 'ident': 'nd2'
+, 'nss': [  [ { 'ast_class': 'PublicNamespace'
+, 'name': '' }
+,  ]
+,  [ { 'ast_class': 'AnonymousNamespace'
+, 'name': 'Release' }
+, { 'ast_class': 'AnonymousNamespace'
+, 'name': 'Ast' }
+, { 'ast_class': 'IntrinsicNamespace' }
+,  ]
+,  [ { 'ast_class': 'AnonymousNamespace'
+, 'name': 'Decode' }
+,  ]
+,  [  ]
+,  ] } }
+,  ] }
 ,  ] } }
 ,  ] }
 , 'params': { 'fixtures': [ [ { 'ast_class': 'PropName'
@@ -1540,11 +1485,10 @@ var ast =
 , 'kind': { 'ast_class': 'AnyType' } }
 , 'isReadOnly': false } ]
 ,  ]
-, 'inits': [  ] }
-, 'settings': [ { 'ast_class': 'InitExpr'
+, 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'LetInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'PublicNamespace'
 , 'name': '' }
@@ -1552,7 +1496,7 @@ var ast =
 , { 'ast_class': 'GetParam'
 , 'n': 0 } ]
 ,  ] }
-,  ]
+,  ] }
 , 'vars': { 'fixtures': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -1569,16 +1513,8 @@ var ast =
 , 'type': { 'ast_class': 'SpecialType'
 , 'kind': { 'ast_class': 'AnyType' } }
 , 'isReadOnly': false } ]
-, [ { 'ast_class': 'PropName'
-, 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
-, 'name': 'Decode' }
-, 'id': 'ndx' } }
-, { 'ast_class': 'ValFixture'
-, 'type': { 'ast_class': 'SpecialType'
-, 'kind': { 'ast_class': 'AnyType' } }
-, 'isReadOnly': false } ]
 ,  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'defaults': [ ]
 , 'type': { 'ast_class': 'TypeName'
 , 'ident': { 'ast_class': 'Identifier'
@@ -1612,7 +1548,7 @@ var ast =
 , 'isNative': false
 , 'block': { 'ast_class': 'Block'
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'stmts': [ { 'ast_class': 'ExprStmt'
 , 'expr': { 'ast_class': 'ListExpr'
 , 'exprs': [ { 'ast_class': 'CallExpr'
@@ -1677,7 +1613,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'VarInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -1691,12 +1627,12 @@ var ast =
 ,  ] } }
 , { 'ast_class': 'ForStmt'
 , 'vars': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'init': { 'ast_class': 'ListExpr'
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'VarInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -1785,13 +1721,13 @@ var ast =
 , 'stmt': { 'ast_class': 'BlockStmt'
 , 'block': { 'ast_class': 'Block'
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'stmts': [ { 'ast_class': 'ExprStmt'
 , 'expr': { 'ast_class': 'ListExpr'
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'VarInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -1988,11 +1924,10 @@ var ast =
 , 'kind': { 'ast_class': 'AnyType' } }
 , 'isReadOnly': false } ]
 ,  ]
-, 'inits': [  ] }
-, 'settings': [ { 'ast_class': 'InitExpr'
+, 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'LetInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'PublicNamespace'
 , 'name': '' }
@@ -2000,7 +1935,7 @@ var ast =
 , { 'ast_class': 'GetParam'
 , 'n': 0 } ]
 ,  ] }
-,  ]
+,  ] }
 , 'vars': { 'fixtures': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -2026,7 +1961,7 @@ var ast =
 , 'kind': { 'ast_class': 'AnyType' } }
 , 'isReadOnly': false } ]
 ,  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'defaults': [ ]
 , 'type': { 'ast_class': 'TypeName'
 , 'ident': { 'ast_class': 'Identifier'
@@ -2060,7 +1995,7 @@ var ast =
 , 'isNative': false
 , 'block': { 'ast_class': 'Block'
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'stmts': [ { 'ast_class': 'ExprStmt'
 , 'expr': { 'ast_class': 'ListExpr'
 , 'exprs': [ { 'ast_class': 'CallExpr'
@@ -2125,7 +2060,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'VarInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -2194,7 +2129,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'VarInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -2263,7 +2198,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'VarInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -2370,11 +2305,10 @@ var ast =
 , 'kind': { 'ast_class': 'AnyType' } }
 , 'isReadOnly': false } ]
 ,  ]
-, 'inits': [  ] }
-, 'settings': [ { 'ast_class': 'InitExpr'
+, 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'LetInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'PublicNamespace'
 , 'name': '' }
@@ -2382,7 +2316,7 @@ var ast =
 , { 'ast_class': 'GetParam'
 , 'n': 0 } ]
 ,  ] }
-,  ]
+,  ] }
 , 'vars': { 'fixtures': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -2408,7 +2342,7 @@ var ast =
 , 'kind': { 'ast_class': 'AnyType' } }
 , 'isReadOnly': false } ]
 ,  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'defaults': [ ]
 , 'type': { 'ast_class': 'TypeName'
 , 'ident': { 'ast_class': 'Identifier'
@@ -2450,7 +2384,7 @@ var ast =
 , 'kind': { 'ast_class': 'AnyType' } }
 , 'isReadOnly': false } ]
 ,  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'stmts': [ { 'ast_class': 'ExprStmt'
 , 'expr': { 'ast_class': 'ListExpr'
 , 'exprs': [ { 'ast_class': 'CallExpr'
@@ -2558,7 +2492,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'LetInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -2604,7 +2538,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'VarInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -2664,7 +2598,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'VarInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -2729,7 +2663,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'VarInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -2886,11 +2820,10 @@ var ast =
 , 'kind': { 'ast_class': 'AnyType' } }
 , 'isReadOnly': false } ]
 ,  ]
-, 'inits': [  ] }
-, 'settings': [ { 'ast_class': 'InitExpr'
+, 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'LetInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'PublicNamespace'
 , 'name': '' }
@@ -2898,7 +2831,7 @@ var ast =
 , { 'ast_class': 'GetParam'
 , 'n': 0 } ]
 ,  ] }
-,  ]
+,  ] }
 , 'vars': { 'fixtures': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -2924,7 +2857,7 @@ var ast =
 , 'kind': { 'ast_class': 'AnyType' } }
 , 'isReadOnly': false } ]
 ,  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'defaults': [ ]
 , 'type': { 'ast_class': 'TypeName'
 , 'ident': { 'ast_class': 'Identifier'
@@ -3038,7 +2971,7 @@ var ast =
 , 'kind': { 'ast_class': 'AnyType' } }
 , 'isReadOnly': false } ]
 ,  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'stmts': [ { 'ast_class': 'ExprStmt'
 , 'expr': { 'ast_class': 'ListExpr'
 , 'exprs': [ { 'ast_class': 'CallExpr'
@@ -3146,7 +3079,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'LetInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -3211,7 +3144,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'VarInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -3268,7 +3201,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'LetInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -3333,7 +3266,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'VarInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -3390,7 +3323,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'LetInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -3455,7 +3388,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'VarInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -3512,7 +3445,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'LetInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -3577,7 +3510,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'LetInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -3642,7 +3575,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'LetInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -3688,7 +3621,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'LetInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -3734,7 +3667,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'LetInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -3780,7 +3713,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'VarInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -3905,7 +3838,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'LetInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -3970,7 +3903,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'LetInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -4016,7 +3949,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'VarInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -4208,11 +4141,10 @@ var ast =
 , 'kind': { 'ast_class': 'AnyType' } }
 , 'isReadOnly': false } ]
 ,  ]
-, 'inits': [  ] }
-, 'settings': [ { 'ast_class': 'InitExpr'
+, 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'LetInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'PublicNamespace'
 , 'name': '' }
@@ -4220,7 +4152,7 @@ var ast =
 , { 'ast_class': 'GetParam'
 , 'n': 0 } ]
 ,  ] }
-,  ]
+,  ] }
 , 'vars': { 'fixtures': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -4262,7 +4194,7 @@ var ast =
 , 'kind': { 'ast_class': 'AnyType' } }
 , 'isReadOnly': false } ]
 ,  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'defaults': [ ]
 , 'type': { 'ast_class': 'TypeName'
 , 'ident': { 'ast_class': 'Identifier'
@@ -4296,7 +4228,7 @@ var ast =
 , 'isNative': false
 , 'block': { 'ast_class': 'Block'
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'stmts': [ { 'ast_class': 'ExprStmt'
 , 'expr': { 'ast_class': 'ListExpr'
 , 'exprs': [ { 'ast_class': 'CallExpr'
@@ -4361,7 +4293,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'VarInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -4375,12 +4307,12 @@ var ast =
 ,  ] } }
 , { 'ast_class': 'ForStmt'
 , 'vars': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'init': { 'ast_class': 'ListExpr'
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'VarInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -4469,13 +4401,13 @@ var ast =
 , 'stmt': { 'ast_class': 'BlockStmt'
 , 'block': { 'ast_class': 'Block'
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'stmts': [ { 'ast_class': 'ExprStmt'
 , 'expr': { 'ast_class': 'ListExpr'
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'VarInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -4672,11 +4604,10 @@ var ast =
 , 'kind': { 'ast_class': 'AnyType' } }
 , 'isReadOnly': false } ]
 ,  ]
-, 'inits': [  ] }
-, 'settings': [ { 'ast_class': 'InitExpr'
+, 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'LetInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'PublicNamespace'
 , 'name': '' }
@@ -4684,7 +4615,7 @@ var ast =
 , { 'ast_class': 'GetParam'
 , 'n': 0 } ]
 ,  ] }
-,  ]
+,  ] }
 , 'vars': { 'fixtures': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -4710,7 +4641,7 @@ var ast =
 , 'kind': { 'ast_class': 'AnyType' } }
 , 'isReadOnly': false } ]
 ,  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'defaults': [ ]
 , 'type': { 'ast_class': 'TypeName'
 , 'ident': { 'ast_class': 'Identifier'
@@ -4744,7 +4675,7 @@ var ast =
 , 'isNative': false
 , 'block': { 'ast_class': 'Block'
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'stmts': [ { 'ast_class': 'ExprStmt'
 , 'expr': { 'ast_class': 'ListExpr'
 , 'exprs': [ { 'ast_class': 'CallExpr'
@@ -4809,7 +4740,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'VarInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -4878,7 +4809,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'VarInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -4947,7 +4878,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'VarInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -5054,11 +4985,10 @@ var ast =
 , 'kind': { 'ast_class': 'AnyType' } }
 , 'isReadOnly': false } ]
 ,  ]
-, 'inits': [  ] }
-, 'settings': [ { 'ast_class': 'InitExpr'
+, 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'LetInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'PublicNamespace'
 , 'name': '' }
@@ -5066,7 +4996,7 @@ var ast =
 , { 'ast_class': 'GetParam'
 , 'n': 0 } ]
 ,  ] }
-,  ]
+,  ] }
 , 'vars': { 'fixtures': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -5092,7 +5022,7 @@ var ast =
 , 'kind': { 'ast_class': 'AnyType' } }
 , 'isReadOnly': false } ]
 ,  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'defaults': [ ]
 , 'type': { 'ast_class': 'TypeName'
 , 'ident': { 'ast_class': 'Identifier'
@@ -5126,7 +5056,7 @@ var ast =
 , 'isNative': false
 , 'block': { 'ast_class': 'Block'
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'stmts': [ { 'ast_class': 'ExprStmt'
 , 'expr': { 'ast_class': 'ListExpr'
 , 'exprs': [ { 'ast_class': 'CallExpr'
@@ -5234,7 +5164,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'VarInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -5299,7 +5229,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'VarInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -5364,7 +5294,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'VarInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -5429,7 +5359,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'VarInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -5494,7 +5424,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'VarInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -5559,7 +5489,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'VarInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -5624,7 +5554,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'VarInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -5689,7 +5619,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'VarInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -5754,7 +5684,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'VarInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -6027,11 +5957,10 @@ var ast =
 , 'kind': { 'ast_class': 'AnyType' } }
 , 'isReadOnly': false } ]
 ,  ]
-, 'inits': [  ] }
-, 'settings': [ { 'ast_class': 'InitExpr'
+, 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'LetInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'PublicNamespace'
 , 'name': '' }
@@ -6039,7 +5968,7 @@ var ast =
 , { 'ast_class': 'GetParam'
 , 'n': 0 } ]
 ,  ] }
-,  ]
+,  ] }
 , 'vars': { 'fixtures': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -6113,7 +6042,7 @@ var ast =
 , 'kind': { 'ast_class': 'AnyType' } }
 , 'isReadOnly': false } ]
 ,  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'defaults': [ ]
 , 'type': { 'ast_class': 'TypeName'
 , 'ident': { 'ast_class': 'Identifier'
@@ -6155,7 +6084,7 @@ var ast =
 , 'kind': { 'ast_class': 'AnyType' } }
 , 'isReadOnly': false } ]
 ,  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'stmts': [ { 'ast_class': 'ExprStmt'
 , 'expr': { 'ast_class': 'ListExpr'
 , 'exprs': [ { 'ast_class': 'CallExpr'
@@ -6220,7 +6149,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'LetInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -6285,7 +6214,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'VarInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -6445,11 +6374,10 @@ var ast =
 , 'kind': { 'ast_class': 'AnyType' } }
 , 'isReadOnly': false } ]
 ,  ]
-, 'inits': [  ] }
-, 'settings': [ { 'ast_class': 'InitExpr'
+, 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'LetInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'PublicNamespace'
 , 'name': '' }
@@ -6457,7 +6385,7 @@ var ast =
 , { 'ast_class': 'GetParam'
 , 'n': 0 } ]
 ,  ] }
-,  ]
+,  ] }
 , 'vars': { 'fixtures': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -6467,7 +6395,7 @@ var ast =
 , 'kind': { 'ast_class': 'AnyType' } }
 , 'isReadOnly': false } ]
 ,  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'defaults': [ ]
 , 'type': { 'ast_class': 'TypeName'
 , 'ident': { 'ast_class': 'Identifier'
@@ -6501,7 +6429,7 @@ var ast =
 , 'isNative': false
 , 'block': { 'ast_class': 'Block'
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'stmts': [ { 'ast_class': 'ExprStmt'
 , 'expr': { 'ast_class': 'ListExpr'
 , 'exprs': [ { 'ast_class': 'CallExpr'
@@ -6566,7 +6494,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'VarInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -6580,12 +6508,12 @@ var ast =
 ,  ] } }
 , { 'ast_class': 'ForStmt'
 , 'vars': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'init': { 'ast_class': 'ListExpr'
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'VarInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -6674,13 +6602,13 @@ var ast =
 , 'stmt': { 'ast_class': 'BlockStmt'
 , 'block': { 'ast_class': 'Block'
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'stmts': [ { 'ast_class': 'ExprStmt'
 , 'expr': { 'ast_class': 'ListExpr'
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'VarInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -6877,11 +6805,10 @@ var ast =
 , 'kind': { 'ast_class': 'AnyType' } }
 , 'isReadOnly': false } ]
 ,  ]
-, 'inits': [  ] }
-, 'settings': [ { 'ast_class': 'InitExpr'
+, 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'LetInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'PublicNamespace'
 , 'name': '' }
@@ -6889,7 +6816,7 @@ var ast =
 , { 'ast_class': 'GetParam'
 , 'n': 0 } ]
 ,  ] }
-,  ]
+,  ] }
 , 'vars': { 'fixtures': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -6915,7 +6842,7 @@ var ast =
 , 'kind': { 'ast_class': 'AnyType' } }
 , 'isReadOnly': false } ]
 ,  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'defaults': [ ]
 , 'type': { 'ast_class': 'TypeName'
 , 'ident': { 'ast_class': 'Identifier'
@@ -6981,7 +6908,7 @@ var ast =
 , 'kind': { 'ast_class': 'AnyType' } }
 , 'isReadOnly': false } ]
 ,  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'stmts': [ { 'ast_class': 'ExprStmt'
 , 'expr': { 'ast_class': 'ListExpr'
 , 'exprs': [ { 'ast_class': 'CallExpr'
@@ -7046,7 +6973,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'LetInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -7111,7 +7038,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'LetInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -7176,7 +7103,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'LetInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -7241,7 +7168,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'LetInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -7379,11 +7306,10 @@ var ast =
 , 'kind': { 'ast_class': 'AnyType' } }
 , 'isReadOnly': false } ]
 ,  ]
-, 'inits': [  ] }
-, 'settings': [ { 'ast_class': 'InitExpr'
+, 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'LetInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'PublicNamespace'
 , 'name': '' }
@@ -7391,9 +7317,9 @@ var ast =
 , { 'ast_class': 'GetParam'
 , 'n': 0 } ]
 ,  ] }
-,  ]
+,  ] }
 , 'vars': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'defaults': [ ]
 , 'type': { 'ast_class': 'TypeName'
 , 'ident': { 'ast_class': 'Identifier'
@@ -7485,21 +7411,13 @@ var ast =
 , [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
-, 'id': 'nd8' } }
-, { 'ast_class': 'ValFixture'
-, 'type': { 'ast_class': 'SpecialType'
-, 'kind': { 'ast_class': 'AnyType' } }
-, 'isReadOnly': false } ]
-, [ { 'ast_class': 'PropName'
-, 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
-, 'name': 'Decode' }
 , 'id': 'ndx' } }
 , { 'ast_class': 'ValFixture'
 , 'type': { 'ast_class': 'SpecialType'
 , 'kind': { 'ast_class': 'AnyType' } }
 , 'isReadOnly': false } ]
 ,  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'stmts': [ { 'ast_class': 'ExprStmt'
 , 'expr': { 'ast_class': 'ListExpr'
 , 'exprs': [ { 'ast_class': 'CallExpr'
@@ -7564,7 +7482,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'LetInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -7629,7 +7547,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'LetInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -7675,7 +7593,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'LetInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -7740,7 +7658,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'LetInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -7805,76 +7723,11 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'LetInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
 , 'id': 'nd5' } }
-, { 'ast_class': 'CallExpr'
-, 'expr': { 'ast_class': 'LexicalRef'
-, 'ident': { 'ast_class': 'Identifier'
-, 'ident': 'exprs'
-, 'nss': [  [ { 'ast_class': 'PublicNamespace'
-, 'name': '' }
-,  ]
-,  [ { 'ast_class': 'AnonymousNamespace'
-, 'name': 'Release' }
-, { 'ast_class': 'AnonymousNamespace'
-, 'name': 'Ast' }
-, { 'ast_class': 'IntrinsicNamespace' }
-,  ]
-,  [ { 'ast_class': 'AnonymousNamespace'
-, 'name': 'Decode' }
-,  ]
-,  [  ]
-,  ] } }
-, 'args': [ { 'ast_class': 'ObjectRef'
-, 'base': { 'ast_class': 'LexicalRef'
-, 'ident': { 'ast_class': 'Identifier'
-, 'ident': 'ob'
-, 'nss': [  [ { 'ast_class': 'PublicNamespace'
-, 'name': '' }
-,  ]
-,  [ { 'ast_class': 'AnonymousNamespace'
-, 'name': 'Release' }
-, { 'ast_class': 'AnonymousNamespace'
-, 'name': 'Ast' }
-, { 'ast_class': 'IntrinsicNamespace' }
-,  ]
-,  [ { 'ast_class': 'AnonymousNamespace'
-, 'name': 'Decode' }
-,  ]
-,  [  ]
-,  ] } }
-, 'ident': { 'ast_class': 'Identifier'
-, 'ident': 'settings'
-, 'nss': [  [ { 'ast_class': 'PublicNamespace'
-, 'name': '' }
-,  ]
-,  [ { 'ast_class': 'AnonymousNamespace'
-, 'name': 'Release' }
-, { 'ast_class': 'AnonymousNamespace'
-, 'name': 'Ast' }
-, { 'ast_class': 'IntrinsicNamespace' }
-,  ]
-,  [ { 'ast_class': 'AnonymousNamespace'
-, 'name': 'Decode' }
-,  ]
-,  [  ]
-,  ] } }
-,  ] } ]
-,  ] }
-,  ] } }
-, { 'ast_class': 'ExprStmt'
-, 'expr': { 'ast_class': 'ListExpr'
-, 'exprs': [ { 'ast_class': 'InitExpr'
-, 'target': { 'ast_class': 'LetInit' }
-, 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
-, 'inits': [ [ { 'ast_class': 'PropName'
-, 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
-, 'name': 'Decode' }
-, 'id': 'nd6' } }
 , { 'ast_class': 'CallExpr'
 , 'expr': { 'ast_class': 'LexicalRef'
 , 'ident': { 'ast_class': 'Identifier'
@@ -7935,11 +7788,11 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'LetInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
-, 'id': 'nd7' } }
+, 'id': 'nd6' } }
 , { 'ast_class': 'CallExpr'
 , 'expr': { 'ast_class': 'LexicalRef'
 , 'ident': { 'ast_class': 'Identifier'
@@ -8000,11 +7853,11 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'LetInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
-, 'id': 'nd8' } }
+, 'id': 'nd7' } }
 , { 'ast_class': 'CallExpr'
 , 'expr': { 'ast_class': 'LexicalRef'
 , 'ident': { 'ast_class': 'Identifier'
@@ -8065,7 +7918,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'LetInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -8207,23 +8060,6 @@ var ast =
 ,  ]
 ,  [  ]
 ,  ] } }
-, { 'ast_class': 'LexicalRef'
-, 'ident': { 'ast_class': 'Identifier'
-, 'ident': 'nd8'
-, 'nss': [  [ { 'ast_class': 'PublicNamespace'
-, 'name': '' }
-,  ]
-,  [ { 'ast_class': 'AnonymousNamespace'
-, 'name': 'Release' }
-, { 'ast_class': 'AnonymousNamespace'
-, 'name': 'Ast' }
-, { 'ast_class': 'IntrinsicNamespace' }
-,  ]
-,  [ { 'ast_class': 'AnonymousNamespace'
-, 'name': 'Decode' }
-,  ]
-,  [  ]
-,  ] } }
 ,  ] } ]
 ,  ] }
 ,  ] } }
@@ -8288,11 +8124,10 @@ var ast =
 , 'kind': { 'ast_class': 'AnyType' } }
 , 'isReadOnly': false } ]
 ,  ]
-, 'inits': [  ] }
-, 'settings': [ { 'ast_class': 'InitExpr'
+, 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'LetInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'PublicNamespace'
 , 'name': '' }
@@ -8300,9 +8135,9 @@ var ast =
 , { 'ast_class': 'GetParam'
 , 'n': 0 } ]
 ,  ] }
-,  ]
+,  ] }
 , 'vars': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'defaults': [ ]
 , 'type': { 'ast_class': 'TypeName'
 , 'ident': { 'ast_class': 'Identifier'
@@ -8360,7 +8195,7 @@ var ast =
 , 'kind': { 'ast_class': 'AnyType' } }
 , 'isReadOnly': false } ]
 ,  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'stmts': [ { 'ast_class': 'ExprStmt'
 , 'expr': { 'ast_class': 'ListExpr'
 , 'exprs': [ { 'ast_class': 'CallExpr'
@@ -8391,7 +8226,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'LetInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -8456,7 +8291,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'LetInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -8502,7 +8337,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'LetInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -8645,11 +8480,10 @@ var ast =
 , 'kind': { 'ast_class': 'AnyType' } }
 , 'isReadOnly': false } ]
 ,  ]
-, 'inits': [  ] }
-, 'settings': [ { 'ast_class': 'InitExpr'
+, 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'LetInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'PublicNamespace'
 , 'name': '' }
@@ -8657,9 +8491,9 @@ var ast =
 , { 'ast_class': 'GetParam'
 , 'n': 0 } ]
 ,  ] }
-,  ]
+,  ] }
 , 'vars': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'defaults': [ ]
 , 'type': { 'ast_class': 'TypeName'
 , 'ident': { 'ast_class': 'Identifier'
@@ -8693,7 +8527,7 @@ var ast =
 , 'isNative': false
 , 'block': { 'ast_class': 'Block'
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'stmts': [ { 'ast_class': 'ExprStmt'
 , 'expr': { 'ast_class': 'ListExpr'
 , 'exprs': [ { 'ast_class': 'CallExpr'
@@ -8801,7 +8635,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'VarInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -8921,11 +8755,10 @@ var ast =
 , 'kind': { 'ast_class': 'AnyType' } }
 , 'isReadOnly': false } ]
 ,  ]
-, 'inits': [  ] }
-, 'settings': [ { 'ast_class': 'InitExpr'
+, 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'LetInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'PublicNamespace'
 , 'name': '' }
@@ -8933,7 +8766,7 @@ var ast =
 , { 'ast_class': 'GetParam'
 , 'n': 0 } ]
 ,  ] }
-,  ]
+,  ] }
 , 'vars': { 'fixtures': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -8943,7 +8776,7 @@ var ast =
 , 'kind': { 'ast_class': 'AnyType' } }
 , 'isReadOnly': false } ]
 ,  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'defaults': [ ]
 , 'type': { 'ast_class': 'TypeName'
 , 'ident': { 'ast_class': 'Identifier'
@@ -8977,7 +8810,7 @@ var ast =
 , 'isNative': false
 , 'block': { 'ast_class': 'Block'
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'stmts': [ { 'ast_class': 'ExprStmt'
 , 'expr': { 'ast_class': 'ListExpr'
 , 'exprs': [ { 'ast_class': 'CallExpr'
@@ -9042,7 +8875,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'VarInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -9056,12 +8889,12 @@ var ast =
 ,  ] } }
 , { 'ast_class': 'ForStmt'
 , 'vars': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'init': { 'ast_class': 'ListExpr'
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'VarInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -9150,13 +8983,13 @@ var ast =
 , 'stmt': { 'ast_class': 'BlockStmt'
 , 'block': { 'ast_class': 'Block'
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'stmts': [ { 'ast_class': 'ExprStmt'
 , 'expr': { 'ast_class': 'ListExpr'
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'VarInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -9353,11 +9186,10 @@ var ast =
 , 'kind': { 'ast_class': 'AnyType' } }
 , 'isReadOnly': false } ]
 ,  ]
-, 'inits': [  ] }
-, 'settings': [ { 'ast_class': 'InitExpr'
+, 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'LetInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'PublicNamespace'
 , 'name': '' }
@@ -9365,7 +9197,7 @@ var ast =
 , { 'ast_class': 'GetParam'
 , 'n': 0 } ]
 ,  ] }
-,  ]
+,  ] }
 , 'vars': { 'fixtures': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -9391,7 +9223,7 @@ var ast =
 , 'kind': { 'ast_class': 'AnyType' } }
 , 'isReadOnly': false } ]
 ,  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'defaults': [ ]
 , 'type': { 'ast_class': 'TypeName'
 , 'ident': { 'ast_class': 'Identifier'
@@ -9425,7 +9257,7 @@ var ast =
 , 'isNative': false
 , 'block': { 'ast_class': 'Block'
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'stmts': [ { 'ast_class': 'ExprStmt'
 , 'expr': { 'ast_class': 'ListExpr'
 , 'exprs': [ { 'ast_class': 'CallExpr'
@@ -9495,13 +9327,13 @@ var ast =
 , 'then': { 'ast_class': 'BlockStmt'
 , 'block': { 'ast_class': 'Block'
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'stmts': [ { 'ast_class': 'ExprStmt'
 , 'expr': { 'ast_class': 'ListExpr'
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'VarInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -9548,13 +9380,13 @@ var ast =
 , 'elseOpt': { 'ast_class': 'BlockStmt'
 , 'block': { 'ast_class': 'Block'
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'stmts': [ { 'ast_class': 'ExprStmt'
 , 'expr': { 'ast_class': 'ListExpr'
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'VarInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -9625,11 +9457,10 @@ var ast =
 , 'kind': { 'ast_class': 'AnyType' } }
 , 'isReadOnly': false } ]
 ,  ]
-, 'inits': [  ] }
-, 'settings': [ { 'ast_class': 'InitExpr'
+, 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'LetInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'PublicNamespace'
 , 'name': '' }
@@ -9637,7 +9468,7 @@ var ast =
 , { 'ast_class': 'GetParam'
 , 'n': 0 } ]
 ,  ] }
-,  ]
+,  ] }
 , 'vars': { 'fixtures': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -9655,7 +9486,7 @@ var ast =
 , 'kind': { 'ast_class': 'AnyType' } }
 , 'isReadOnly': false } ]
 ,  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'defaults': [ ]
 , 'type': { 'ast_class': 'TypeName'
 , 'ident': { 'ast_class': 'Identifier'
@@ -9953,7 +9784,7 @@ var ast =
 , 'kind': { 'ast_class': 'AnyType' } }
 , 'isReadOnly': false } ]
 ,  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'stmts': [ { 'ast_class': 'ExprStmt'
 , 'expr': { 'ast_class': 'ListExpr'
 , 'exprs': [ { 'ast_class': 'CallExpr'
@@ -10061,7 +9892,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'VarInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -10126,7 +9957,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'VarInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -10183,7 +10014,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'VarInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -10248,7 +10079,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'LetInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -10313,7 +10144,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'VarInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -10387,7 +10218,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'LetInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -10452,7 +10283,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'VarInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -10509,7 +10340,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'LetInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -10574,7 +10405,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'VarInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -10631,7 +10462,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'VarInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -10705,7 +10536,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'VarInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -10779,7 +10610,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'LetInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -10844,7 +10675,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'VarInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -10901,7 +10732,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'LetInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -10947,7 +10778,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'LetInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -11012,7 +10843,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'VarInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -11086,7 +10917,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'LetInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -11151,7 +10982,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'VarInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -11208,7 +11039,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'LetInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -11273,7 +11104,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'LetInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -11338,7 +11169,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'LetInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -11403,7 +11234,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'VarInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -11494,7 +11325,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'LetInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -11559,7 +11390,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'LetInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -11624,7 +11455,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'LetInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -11689,7 +11520,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'VarInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -11780,7 +11611,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'LetInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -11845,7 +11676,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'LetInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -11910,7 +11741,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'LetInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -11975,7 +11806,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'LetInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -12040,7 +11871,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'LetInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -12105,7 +11936,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'LetInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -12170,7 +12001,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'VarInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -12312,7 +12143,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'LetInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -12377,7 +12208,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'LetInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -12442,7 +12273,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'LetInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -12507,7 +12338,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'VarInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -12598,7 +12429,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'LetInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -12663,7 +12494,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'LetInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -12728,7 +12559,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'VarInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -12802,7 +12633,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'LetInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -12867,7 +12698,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'LetInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -12932,7 +12763,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'LetInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -12997,7 +12828,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'VarInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -13088,7 +12919,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'LetInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -13153,7 +12984,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'LetInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -13218,7 +13049,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'LetInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -13283,7 +13114,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'VarInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -13374,7 +13205,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'LetInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -13439,7 +13270,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'LetInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -13504,7 +13335,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'LetInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -13569,7 +13400,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'VarInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -13757,11 +13588,10 @@ var ast =
 , 'kind': { 'ast_class': 'AnyType' } }
 , 'isReadOnly': false } ]
 ,  ]
-, 'inits': [  ] }
-, 'settings': [ { 'ast_class': 'InitExpr'
+, 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'LetInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'PublicNamespace'
 , 'name': '' }
@@ -13769,7 +13599,7 @@ var ast =
 , { 'ast_class': 'GetParam'
 , 'n': 0 } ]
 ,  ] }
-,  ]
+,  ] }
 , 'vars': { 'fixtures': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -13923,7 +13753,7 @@ var ast =
 , 'kind': { 'ast_class': 'AnyType' } }
 , 'isReadOnly': false } ]
 ,  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'defaults': [ ]
 , 'type': { 'ast_class': 'TypeName'
 , 'ident': { 'ast_class': 'Identifier'
@@ -13957,7 +13787,7 @@ var ast =
 , 'isNative': false
 , 'block': { 'ast_class': 'Block'
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'stmts': [ { 'ast_class': 'ExprStmt'
 , 'expr': { 'ast_class': 'ListExpr'
 , 'exprs': [ { 'ast_class': 'CallExpr'
@@ -14022,7 +13852,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'VarInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -14036,12 +13866,12 @@ var ast =
 ,  ] } }
 , { 'ast_class': 'ForStmt'
 , 'vars': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'init': { 'ast_class': 'ListExpr'
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'VarInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -14130,13 +13960,13 @@ var ast =
 , 'stmt': { 'ast_class': 'BlockStmt'
 , 'block': { 'ast_class': 'Block'
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'stmts': [ { 'ast_class': 'ExprStmt'
 , 'expr': { 'ast_class': 'ListExpr'
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'VarInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -14333,11 +14163,10 @@ var ast =
 , 'kind': { 'ast_class': 'AnyType' } }
 , 'isReadOnly': false } ]
 ,  ]
-, 'inits': [  ] }
-, 'settings': [ { 'ast_class': 'InitExpr'
+, 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'LetInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'PublicNamespace'
 , 'name': '' }
@@ -14345,7 +14174,7 @@ var ast =
 , { 'ast_class': 'GetParam'
 , 'n': 0 } ]
 ,  ] }
-,  ]
+,  ] }
 , 'vars': { 'fixtures': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -14371,7 +14200,7 @@ var ast =
 , 'kind': { 'ast_class': 'AnyType' } }
 , 'isReadOnly': false } ]
 ,  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'defaults': [ ]
 , 'type': { 'ast_class': 'TypeName'
 , 'ident': { 'ast_class': 'Identifier'
@@ -14421,7 +14250,7 @@ var ast =
 , 'kind': { 'ast_class': 'AnyType' } }
 , 'isReadOnly': false } ]
 ,  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'stmts': [ { 'ast_class': 'ExprStmt'
 , 'expr': { 'ast_class': 'ListExpr'
 , 'exprs': [ { 'ast_class': 'CallExpr'
@@ -14486,7 +14315,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'LetInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -14551,7 +14380,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'LetInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -14616,7 +14445,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'VarInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -14737,11 +14566,10 @@ var ast =
 , 'kind': { 'ast_class': 'AnyType' } }
 , 'isReadOnly': false } ]
 ,  ]
-, 'inits': [  ] }
-, 'settings': [ { 'ast_class': 'InitExpr'
+, 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'LetInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'PublicNamespace'
 , 'name': '' }
@@ -14749,7 +14577,7 @@ var ast =
 , { 'ast_class': 'GetParam'
 , 'n': 0 } ]
 ,  ] }
-,  ]
+,  ] }
 , 'vars': { 'fixtures': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -14759,7 +14587,7 @@ var ast =
 , 'kind': { 'ast_class': 'AnyType' } }
 , 'isReadOnly': false } ]
 ,  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'defaults': [ ]
 , 'type': { 'ast_class': 'TypeName'
 , 'ident': { 'ast_class': 'Identifier'
@@ -14793,7 +14621,7 @@ var ast =
 , 'isNative': false
 , 'block': { 'ast_class': 'Block'
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'stmts': [ { 'ast_class': 'ExprStmt'
 , 'expr': { 'ast_class': 'ListExpr'
 , 'exprs': [ { 'ast_class': 'CallExpr'
@@ -14858,7 +14686,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'VarInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -14872,12 +14700,12 @@ var ast =
 ,  ] } }
 , { 'ast_class': 'ForStmt'
 , 'vars': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'init': { 'ast_class': 'ListExpr'
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'VarInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -14966,13 +14794,13 @@ var ast =
 , 'stmt': { 'ast_class': 'BlockStmt'
 , 'block': { 'ast_class': 'Block'
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'stmts': [ { 'ast_class': 'ExprStmt'
 , 'expr': { 'ast_class': 'ListExpr'
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'VarInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -15169,11 +14997,10 @@ var ast =
 , 'kind': { 'ast_class': 'AnyType' } }
 , 'isReadOnly': false } ]
 ,  ]
-, 'inits': [  ] }
-, 'settings': [ { 'ast_class': 'InitExpr'
+, 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'LetInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'PublicNamespace'
 , 'name': '' }
@@ -15181,7 +15008,7 @@ var ast =
 , { 'ast_class': 'GetParam'
 , 'n': 0 } ]
 ,  ] }
-,  ]
+,  ] }
 , 'vars': { 'fixtures': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -15207,7 +15034,7 @@ var ast =
 , 'kind': { 'ast_class': 'AnyType' } }
 , 'isReadOnly': false } ]
 ,  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'defaults': [ ]
 , 'type': { 'ast_class': 'TypeName'
 , 'ident': { 'ast_class': 'Identifier'
@@ -15257,7 +15084,7 @@ var ast =
 , 'kind': { 'ast_class': 'AnyType' } }
 , 'isReadOnly': false } ]
 ,  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'stmts': [ { 'ast_class': 'ExprStmt'
 , 'expr': { 'ast_class': 'ListExpr'
 , 'exprs': [ { 'ast_class': 'CallExpr'
@@ -15322,7 +15149,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'LetInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -15387,7 +15214,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'LetInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -15452,7 +15279,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'VarInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -15573,11 +15400,10 @@ var ast =
 , 'kind': { 'ast_class': 'AnyType' } }
 , 'isReadOnly': false } ]
 ,  ]
-, 'inits': [  ] }
-, 'settings': [ { 'ast_class': 'InitExpr'
+, 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'LetInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'PublicNamespace'
 , 'name': '' }
@@ -15585,7 +15411,7 @@ var ast =
 , { 'ast_class': 'GetParam'
 , 'n': 0 } ]
 ,  ] }
-,  ]
+,  ] }
 , 'vars': { 'fixtures': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -15595,7 +15421,7 @@ var ast =
 , 'kind': { 'ast_class': 'AnyType' } }
 , 'isReadOnly': false } ]
 ,  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'defaults': [ ]
 , 'type': { 'ast_class': 'TypeName'
 , 'ident': { 'ast_class': 'Identifier'
@@ -15629,7 +15455,7 @@ var ast =
 , 'isNative': false
 , 'block': { 'ast_class': 'Block'
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'stmts': [ { 'ast_class': 'ExprStmt'
 , 'expr': { 'ast_class': 'ListExpr'
 , 'exprs': [ { 'ast_class': 'CallExpr'
@@ -15694,7 +15520,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'VarInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -15708,12 +15534,12 @@ var ast =
 ,  ] } }
 , { 'ast_class': 'ForStmt'
 , 'vars': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'init': { 'ast_class': 'ListExpr'
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'VarInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -15802,13 +15628,13 @@ var ast =
 , 'stmt': { 'ast_class': 'BlockStmt'
 , 'block': { 'ast_class': 'Block'
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'stmts': [ { 'ast_class': 'ExprStmt'
 , 'expr': { 'ast_class': 'ListExpr'
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'VarInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -15986,11 +15812,10 @@ var ast =
 , 'kind': { 'ast_class': 'AnyType' } }
 , 'isReadOnly': false } ]
 ,  ]
-, 'inits': [  ] }
-, 'settings': [ { 'ast_class': 'InitExpr'
+, 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'LetInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'PublicNamespace'
 , 'name': '' }
@@ -15998,7 +15823,7 @@ var ast =
 , { 'ast_class': 'GetParam'
 , 'n': 0 } ]
 ,  ] }
-,  ]
+,  ] }
 , 'vars': { 'fixtures': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -16024,7 +15849,7 @@ var ast =
 , 'kind': { 'ast_class': 'AnyType' } }
 , 'isReadOnly': false } ]
 ,  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'defaults': [ ]
 , 'type': { 'ast_class': 'TypeName'
 , 'ident': { 'ast_class': 'Identifier'
@@ -16058,7 +15883,7 @@ var ast =
 , 'isNative': false
 , 'block': { 'ast_class': 'Block'
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'stmts': [ { 'ast_class': 'ExprStmt'
 , 'expr': { 'ast_class': 'ListExpr'
 , 'exprs': [ { 'ast_class': 'CallExpr'
@@ -16123,7 +15948,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'VarInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -16137,12 +15962,12 @@ var ast =
 ,  ] } }
 , { 'ast_class': 'ForStmt'
 , 'vars': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'init': { 'ast_class': 'ListExpr'
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'VarInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -16231,13 +16056,13 @@ var ast =
 , 'stmt': { 'ast_class': 'BlockStmt'
 , 'block': { 'ast_class': 'Block'
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'stmts': [ { 'ast_class': 'ExprStmt'
 , 'expr': { 'ast_class': 'ListExpr'
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'VarInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -16434,11 +16259,10 @@ var ast =
 , 'kind': { 'ast_class': 'AnyType' } }
 , 'isReadOnly': false } ]
 ,  ]
-, 'inits': [  ] }
-, 'settings': [ { 'ast_class': 'InitExpr'
+, 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'LetInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'PublicNamespace'
 , 'name': '' }
@@ -16446,7 +16270,7 @@ var ast =
 , { 'ast_class': 'GetParam'
 , 'n': 0 } ]
 ,  ] }
-,  ]
+,  ] }
 , 'vars': { 'fixtures': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -16472,7 +16296,7 @@ var ast =
 , 'kind': { 'ast_class': 'AnyType' } }
 , 'isReadOnly': false } ]
 ,  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'defaults': [ ]
 , 'type': { 'ast_class': 'TypeName'
 , 'ident': { 'ast_class': 'Identifier'
@@ -16506,7 +16330,7 @@ var ast =
 , 'isNative': false
 , 'block': { 'ast_class': 'Block'
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'stmts': [ { 'ast_class': 'ExprStmt'
 , 'expr': { 'ast_class': 'ListExpr'
 , 'exprs': [ { 'ast_class': 'CallExpr'
@@ -16576,13 +16400,13 @@ var ast =
 , 'then': { 'ast_class': 'BlockStmt'
 , 'block': { 'ast_class': 'Block'
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'stmts': [ { 'ast_class': 'ExprStmt'
 , 'expr': { 'ast_class': 'ListExpr'
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'VarInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -16629,13 +16453,13 @@ var ast =
 , 'elseOpt': { 'ast_class': 'BlockStmt'
 , 'block': { 'ast_class': 'Block'
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'stmts': [ { 'ast_class': 'ExprStmt'
 , 'expr': { 'ast_class': 'ListExpr'
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'VarInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -16706,11 +16530,10 @@ var ast =
 , 'kind': { 'ast_class': 'AnyType' } }
 , 'isReadOnly': false } ]
 ,  ]
-, 'inits': [  ] }
-, 'settings': [ { 'ast_class': 'InitExpr'
+, 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'LetInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'PublicNamespace'
 , 'name': '' }
@@ -16718,7 +16541,7 @@ var ast =
 , { 'ast_class': 'GetParam'
 , 'n': 0 } ]
 ,  ] }
-,  ]
+,  ] }
 , 'vars': { 'fixtures': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -16736,7 +16559,7 @@ var ast =
 , 'kind': { 'ast_class': 'AnyType' } }
 , 'isReadOnly': false } ]
 ,  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'defaults': [ ]
 , 'type': { 'ast_class': 'NullableType'
 , 'type': { 'ast_class': 'TypeName'
@@ -16940,7 +16763,7 @@ var ast =
 , 'kind': { 'ast_class': 'AnyType' } }
 , 'isReadOnly': false } ]
 ,  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'stmts': [ { 'ast_class': 'ExprStmt'
 , 'expr': { 'ast_class': 'ListExpr'
 , 'exprs': [ { 'ast_class': 'CallExpr'
@@ -17048,7 +16871,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'VarInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -17088,7 +16911,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'VarInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -17162,7 +16985,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'VarInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -17236,7 +17059,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'VarInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -17301,7 +17124,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'VarInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -17358,7 +17181,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'VarInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -17423,7 +17246,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'VarInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -17480,7 +17303,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'VarInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -17545,7 +17368,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'VarInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -17610,7 +17433,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'VarInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -17684,7 +17507,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'VarInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -17749,7 +17572,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'VarInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -17814,7 +17637,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'VarInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -17888,7 +17711,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'VarInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -17953,7 +17776,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'VarInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -18010,7 +17833,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'LetInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -18075,7 +17898,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'LetInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -18140,7 +17963,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'VarInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -18214,7 +18037,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'LetInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -18279,7 +18102,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'LetInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -18344,7 +18167,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'LetInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -18409,7 +18232,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'VarInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -18500,7 +18323,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'LetInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -18565,7 +18388,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'LetInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -18630,7 +18453,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'VarInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -18704,7 +18527,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'LetInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -18769,7 +18592,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'LetInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -18834,7 +18657,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'VarInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -18908,7 +18731,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'LetInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -18973,7 +18796,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'LetInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -19038,7 +18861,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'LetInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -19103,7 +18926,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'VarInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -19194,7 +19017,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'LetInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -19259,7 +19082,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'LetInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -19324,7 +19147,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'LetInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -19389,7 +19212,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'VarInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -19480,7 +19303,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'LetInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -19545,7 +19368,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'LetInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -19610,7 +19433,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'LetInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -19675,7 +19498,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'VarInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -19766,7 +19589,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'LetInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -19831,7 +19654,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'LetInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -19896,7 +19719,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'LetInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -19961,7 +19784,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'VarInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -20149,11 +19972,10 @@ var ast =
 , 'kind': { 'ast_class': 'AnyType' } }
 , 'isReadOnly': false } ]
 ,  ]
-, 'inits': [  ] }
-, 'settings': [ { 'ast_class': 'InitExpr'
+, 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'LetInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'PublicNamespace'
 , 'name': '' }
@@ -20161,7 +19983,7 @@ var ast =
 , { 'ast_class': 'GetParam'
 , 'n': 0 } ]
 ,  ] }
-,  ]
+,  ] }
 , 'vars': { 'fixtures': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -20347,7 +20169,7 @@ var ast =
 , 'kind': { 'ast_class': 'AnyType' } }
 , 'isReadOnly': false } ]
 ,  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'defaults': [ ]
 , 'type': { 'ast_class': 'TypeName'
 , 'ident': { 'ast_class': 'Identifier'
@@ -20381,7 +20203,7 @@ var ast =
 , 'isNative': false
 , 'block': { 'ast_class': 'Block'
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'stmts': [ { 'ast_class': 'ExprStmt'
 , 'expr': { 'ast_class': 'ListExpr'
 , 'exprs': [ { 'ast_class': 'CallExpr'
@@ -20489,7 +20311,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'VarInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -20529,7 +20351,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'VarInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -20569,7 +20391,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'VarInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -20609,7 +20431,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'VarInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -20746,11 +20568,10 @@ var ast =
 , 'kind': { 'ast_class': 'AnyType' } }
 , 'isReadOnly': false } ]
 ,  ]
-, 'inits': [  ] }
-, 'settings': [ { 'ast_class': 'InitExpr'
+, 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'LetInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'PublicNamespace'
 , 'name': '' }
@@ -20758,7 +20579,7 @@ var ast =
 , { 'ast_class': 'GetParam'
 , 'n': 0 } ]
 ,  ] }
-,  ]
+,  ] }
 , 'vars': { 'fixtures': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -20792,7 +20613,7 @@ var ast =
 , 'kind': { 'ast_class': 'AnyType' } }
 , 'isReadOnly': false } ]
 ,  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'defaults': [ ]
 , 'type': { 'ast_class': 'TypeName'
 , 'ident': { 'ast_class': 'Identifier'
@@ -20826,7 +20647,7 @@ var ast =
 , 'isNative': false
 , 'block': { 'ast_class': 'Block'
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'stmts': [ { 'ast_class': 'ExprStmt'
 , 'expr': { 'ast_class': 'ListExpr'
 , 'exprs': [ { 'ast_class': 'CallExpr'
@@ -20934,7 +20755,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'VarInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -20974,7 +20795,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'VarInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -21014,7 +20835,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'VarInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -21054,7 +20875,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'VarInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -21094,7 +20915,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'VarInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -21134,7 +20955,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'VarInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -21174,7 +20995,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'VarInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -21214,7 +21035,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'VarInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -21254,7 +21075,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'VarInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -21294,7 +21115,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'VarInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -21334,7 +21155,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'VarInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -21374,7 +21195,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'VarInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -21414,7 +21235,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'VarInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -21454,7 +21275,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'VarInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -21591,11 +21412,10 @@ var ast =
 , 'kind': { 'ast_class': 'AnyType' } }
 , 'isReadOnly': false } ]
 ,  ]
-, 'inits': [  ] }
-, 'settings': [ { 'ast_class': 'InitExpr'
+, 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'LetInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'PublicNamespace'
 , 'name': '' }
@@ -21603,7 +21423,7 @@ var ast =
 , { 'ast_class': 'GetParam'
 , 'n': 0 } ]
 ,  ] }
-,  ]
+,  ] }
 , 'vars': { 'fixtures': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -21717,7 +21537,7 @@ var ast =
 , 'kind': { 'ast_class': 'AnyType' } }
 , 'isReadOnly': false } ]
 ,  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'defaults': [ ]
 , 'type': { 'ast_class': 'TypeName'
 , 'ident': { 'ast_class': 'Identifier'
@@ -21751,7 +21571,7 @@ var ast =
 , 'isNative': false
 , 'block': { 'ast_class': 'Block'
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'stmts': [ { 'ast_class': 'ExprStmt'
 , 'expr': { 'ast_class': 'ListExpr'
 , 'exprs': [ { 'ast_class': 'CallExpr'
@@ -21859,7 +21679,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'VarInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -21899,7 +21719,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'VarInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -21939,7 +21759,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'VarInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -21979,7 +21799,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'VarInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -22019,7 +21839,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'VarInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -22059,7 +21879,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'VarInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -22099,7 +21919,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'VarInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -22139,7 +21959,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'VarInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -22179,7 +21999,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'VarInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -22219,7 +22039,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'VarInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -22259,7 +22079,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'VarInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -22299,7 +22119,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'VarInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -22339,7 +22159,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'VarInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -22379,7 +22199,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'VarInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -22419,7 +22239,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'VarInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -22459,7 +22279,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'VarInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -22499,7 +22319,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'VarInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -22539,7 +22359,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'VarInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -22579,7 +22399,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'VarInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -22619,7 +22439,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'VarInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -22659,7 +22479,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'VarInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -22699,7 +22519,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'VarInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -22739,7 +22559,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'VarInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -22876,11 +22696,10 @@ var ast =
 , 'kind': { 'ast_class': 'AnyType' } }
 , 'isReadOnly': false } ]
 ,  ]
-, 'inits': [  ] }
-, 'settings': [ { 'ast_class': 'InitExpr'
+, 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'LetInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'PublicNamespace'
 , 'name': '' }
@@ -22888,7 +22707,7 @@ var ast =
 , { 'ast_class': 'GetParam'
 , 'n': 0 } ]
 ,  ] }
-,  ]
+,  ] }
 , 'vars': { 'fixtures': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -23074,7 +22893,7 @@ var ast =
 , 'kind': { 'ast_class': 'AnyType' } }
 , 'isReadOnly': false } ]
 ,  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'defaults': [ ]
 , 'type': { 'ast_class': 'TypeName'
 , 'ident': { 'ast_class': 'Identifier'
@@ -23108,7 +22927,7 @@ var ast =
 , 'isNative': false
 , 'block': { 'ast_class': 'Block'
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'stmts': [ { 'ast_class': 'ExprStmt'
 , 'expr': { 'ast_class': 'ListExpr'
 , 'exprs': [ { 'ast_class': 'CallExpr'
@@ -23216,7 +23035,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'VarInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -23256,7 +23075,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'VarInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -23296,7 +23115,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'VarInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -23433,11 +23252,10 @@ var ast =
 , 'kind': { 'ast_class': 'AnyType' } }
 , 'isReadOnly': false } ]
 ,  ]
-, 'inits': [  ] }
-, 'settings': [ { 'ast_class': 'InitExpr'
+, 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'LetInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'PublicNamespace'
 , 'name': '' }
@@ -23445,7 +23263,7 @@ var ast =
 , { 'ast_class': 'GetParam'
 , 'n': 0 } ]
 ,  ] }
-,  ]
+,  ] }
 , 'vars': { 'fixtures': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -23471,7 +23289,7 @@ var ast =
 , 'kind': { 'ast_class': 'AnyType' } }
 , 'isReadOnly': false } ]
 ,  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'defaults': [ ]
 , 'type': { 'ast_class': 'TypeName'
 , 'ident': { 'ast_class': 'Identifier'
@@ -23505,7 +23323,7 @@ var ast =
 , 'isNative': false
 , 'block': { 'ast_class': 'Block'
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'stmts': [ { 'ast_class': 'ExprStmt'
 , 'expr': { 'ast_class': 'ListExpr'
 , 'exprs': [ { 'ast_class': 'CallExpr'
@@ -23613,7 +23431,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'VarInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -23653,7 +23471,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'VarInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -23693,7 +23511,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'VarInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -23733,7 +23551,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'VarInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -23773,7 +23591,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'VarInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -23813,7 +23631,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'VarInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -23853,7 +23671,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'VarInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -23893,7 +23711,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'VarInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -23933,7 +23751,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'VarInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -23973,7 +23791,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'VarInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -24013,7 +23831,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'VarInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -24053,7 +23871,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'VarInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -24190,11 +24008,10 @@ var ast =
 , 'kind': { 'ast_class': 'AnyType' } }
 , 'isReadOnly': false } ]
 ,  ]
-, 'inits': [  ] }
-, 'settings': [ { 'ast_class': 'InitExpr'
+, 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'LetInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'PublicNamespace'
 , 'name': '' }
@@ -24202,7 +24019,7 @@ var ast =
 , { 'ast_class': 'GetParam'
 , 'n': 0 } ]
 ,  ] }
-,  ]
+,  ] }
 , 'vars': { 'fixtures': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -24300,7 +24117,7 @@ var ast =
 , 'kind': { 'ast_class': 'AnyType' } }
 , 'isReadOnly': false } ]
 ,  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'defaults': [ ]
 , 'type': { 'ast_class': 'TypeName'
 , 'ident': { 'ast_class': 'Identifier'
@@ -24334,7 +24151,7 @@ var ast =
 , 'isNative': false
 , 'block': { 'ast_class': 'Block'
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'stmts': [ { 'ast_class': 'ExprStmt'
 , 'expr': { 'ast_class': 'ListExpr'
 , 'exprs': [ { 'ast_class': 'CallExpr'
@@ -24399,7 +24216,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'VarInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -24413,12 +24230,12 @@ var ast =
 ,  ] } }
 , { 'ast_class': 'ForStmt'
 , 'vars': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'init': { 'ast_class': 'ListExpr'
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'VarInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -24507,13 +24324,13 @@ var ast =
 , 'stmt': { 'ast_class': 'BlockStmt'
 , 'block': { 'ast_class': 'Block'
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'stmts': [ { 'ast_class': 'ExprStmt'
 , 'expr': { 'ast_class': 'ListExpr'
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'VarInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -24710,11 +24527,10 @@ var ast =
 , 'kind': { 'ast_class': 'AnyType' } }
 , 'isReadOnly': false } ]
 ,  ]
-, 'inits': [  ] }
-, 'settings': [ { 'ast_class': 'InitExpr'
+, 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'LetInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'PublicNamespace'
 , 'name': '' }
@@ -24722,7 +24538,7 @@ var ast =
 , { 'ast_class': 'GetParam'
 , 'n': 0 } ]
 ,  ] }
-,  ]
+,  ] }
 , 'vars': { 'fixtures': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -24748,7 +24564,7 @@ var ast =
 , 'kind': { 'ast_class': 'AnyType' } }
 , 'isReadOnly': false } ]
 ,  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'defaults': [ ]
 , 'type': { 'ast_class': 'TypeName'
 , 'ident': { 'ast_class': 'Identifier'
@@ -24782,7 +24598,7 @@ var ast =
 , 'isNative': false
 , 'block': { 'ast_class': 'Block'
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'stmts': [ { 'ast_class': 'ExprStmt'
 , 'expr': { 'ast_class': 'ListExpr'
 , 'exprs': [ { 'ast_class': 'CallExpr'
@@ -24890,7 +24706,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'VarInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -24955,7 +24771,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'VarInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -25012,7 +24828,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'VarInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -25077,7 +24893,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'VarInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -25134,7 +24950,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'VarInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -25199,7 +25015,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'VarInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -25256,7 +25072,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'VarInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -25321,7 +25137,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'VarInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -25378,7 +25194,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'VarInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -25443,7 +25259,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'VarInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -25508,7 +25324,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'VarInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -25582,7 +25398,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'VarInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -25647,7 +25463,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'VarInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -25693,7 +25509,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'VarInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -25767,7 +25583,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'VarInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -25832,7 +25648,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'VarInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -25889,7 +25705,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'VarInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -25954,7 +25770,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'VarInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -26000,7 +25816,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'VarInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -26074,7 +25890,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'VarInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -26139,7 +25955,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'VarInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -26204,7 +26020,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'VarInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -26375,11 +26191,10 @@ var ast =
 , 'kind': { 'ast_class': 'AnyType' } }
 , 'isReadOnly': false } ]
 ,  ]
-, 'inits': [  ] }
-, 'settings': [ { 'ast_class': 'InitExpr'
+, 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'LetInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'PublicNamespace'
 , 'name': '' }
@@ -26387,7 +26202,7 @@ var ast =
 , { 'ast_class': 'GetParam'
 , 'n': 0 } ]
 ,  ] }
-,  ]
+,  ] }
 , 'vars': { 'fixtures': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -26565,7 +26380,7 @@ var ast =
 , 'kind': { 'ast_class': 'AnyType' } }
 , 'isReadOnly': false } ]
 ,  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'defaults': [ ]
 , 'type': { 'ast_class': 'TypeName'
 , 'ident': { 'ast_class': 'Identifier'
@@ -26599,7 +26414,7 @@ var ast =
 , 'isNative': false
 , 'block': { 'ast_class': 'Block'
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'stmts': [ { 'ast_class': 'ExprStmt'
 , 'expr': { 'ast_class': 'ListExpr'
 , 'exprs': [ { 'ast_class': 'CallExpr'
@@ -26664,7 +26479,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'VarInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -26678,12 +26493,12 @@ var ast =
 ,  ] } }
 , { 'ast_class': 'ForStmt'
 , 'vars': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'init': { 'ast_class': 'ListExpr'
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'VarInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -26772,13 +26587,13 @@ var ast =
 , 'stmt': { 'ast_class': 'BlockStmt'
 , 'block': { 'ast_class': 'Block'
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'stmts': [ { 'ast_class': 'ExprStmt'
 , 'expr': { 'ast_class': 'ListExpr'
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'VarInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -26975,11 +26790,10 @@ var ast =
 , 'kind': { 'ast_class': 'AnyType' } }
 , 'isReadOnly': false } ]
 ,  ]
-, 'inits': [  ] }
-, 'settings': [ { 'ast_class': 'InitExpr'
+, 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'LetInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'PublicNamespace'
 , 'name': '' }
@@ -26987,7 +26801,7 @@ var ast =
 , { 'ast_class': 'GetParam'
 , 'n': 0 } ]
 ,  ] }
-,  ]
+,  ] }
 , 'vars': { 'fixtures': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -27013,7 +26827,7 @@ var ast =
 , 'kind': { 'ast_class': 'AnyType' } }
 , 'isReadOnly': false } ]
 ,  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'defaults': [ ]
 , 'type': { 'ast_class': 'TypeName'
 , 'ident': { 'ast_class': 'Identifier'
@@ -27063,7 +26877,7 @@ var ast =
 , 'kind': { 'ast_class': 'AnyType' } }
 , 'isReadOnly': false } ]
 ,  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'stmts': [ { 'ast_class': 'ExprStmt'
 , 'expr': { 'ast_class': 'ListExpr'
 , 'exprs': [ { 'ast_class': 'CallExpr'
@@ -27128,7 +26942,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'LetInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -27174,7 +26988,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'LetInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -27239,7 +27053,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'VarInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -27360,11 +27174,10 @@ var ast =
 , 'kind': { 'ast_class': 'AnyType' } }
 , 'isReadOnly': false } ]
 ,  ]
-, 'inits': [  ] }
-, 'settings': [ { 'ast_class': 'InitExpr'
+, 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'LetInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'PublicNamespace'
 , 'name': '' }
@@ -27372,7 +27185,7 @@ var ast =
 , { 'ast_class': 'GetParam'
 , 'n': 0 } ]
 ,  ] }
-,  ]
+,  ] }
 , 'vars': { 'fixtures': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -27382,7 +27195,7 @@ var ast =
 , 'kind': { 'ast_class': 'AnyType' } }
 , 'isReadOnly': false } ]
 ,  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'defaults': [ ]
 , 'type': { 'ast_class': 'TypeName'
 , 'ident': { 'ast_class': 'Identifier'
@@ -27416,7 +27229,7 @@ var ast =
 , 'isNative': false
 , 'block': { 'ast_class': 'Block'
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'stmts': [ { 'ast_class': 'ExprStmt'
 , 'expr': { 'ast_class': 'ListExpr'
 , 'exprs': [ { 'ast_class': 'CallExpr'
@@ -27524,7 +27337,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'VarInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -27564,7 +27377,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'VarInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -27701,11 +27514,10 @@ var ast =
 , 'kind': { 'ast_class': 'AnyType' } }
 , 'isReadOnly': false } ]
 ,  ]
-, 'inits': [  ] }
-, 'settings': [ { 'ast_class': 'InitExpr'
+, 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'LetInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'PublicNamespace'
 , 'name': '' }
@@ -27713,7 +27525,7 @@ var ast =
 , { 'ast_class': 'GetParam'
 , 'n': 0 } ]
 ,  ] }
-,  ]
+,  ] }
 , 'vars': { 'fixtures': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -27731,7 +27543,7 @@ var ast =
 , 'kind': { 'ast_class': 'AnyType' } }
 , 'isReadOnly': false } ]
 ,  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'defaults': [ ]
 , 'type': { 'ast_class': 'TypeName'
 , 'ident': { 'ast_class': 'Identifier'
@@ -27765,7 +27577,7 @@ var ast =
 , 'isNative': false
 , 'block': { 'ast_class': 'Block'
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'stmts': [ { 'ast_class': 'ExprStmt'
 , 'expr': { 'ast_class': 'ListExpr'
 , 'exprs': [ { 'ast_class': 'CallExpr'
@@ -27873,7 +27685,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'VarInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -27919,7 +27731,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'VarInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -27984,7 +27796,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'VarInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -28058,7 +27870,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'VarInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -28123,7 +27935,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'VarInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -28188,7 +28000,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'VarInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -28262,7 +28074,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'VarInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -28327,7 +28139,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'VarInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -28373,7 +28185,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'VarInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -28447,7 +28259,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'VarInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -28493,7 +28305,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'VarInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -28558,7 +28370,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'VarInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -28676,11 +28488,10 @@ var ast =
 , 'kind': { 'ast_class': 'AnyType' } }
 , 'isReadOnly': false } ]
 ,  ]
-, 'inits': [  ] }
-, 'settings': [ { 'ast_class': 'InitExpr'
+, 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'LetInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'PublicNamespace'
 , 'name': '' }
@@ -28688,7 +28499,7 @@ var ast =
 , { 'ast_class': 'GetParam'
 , 'n': 0 } ]
 ,  ] }
-,  ]
+,  ] }
 , 'vars': { 'fixtures': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -28786,7 +28597,7 @@ var ast =
 , 'kind': { 'ast_class': 'AnyType' } }
 , 'isReadOnly': false } ]
 ,  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'defaults': [ ]
 , 'type': { 'ast_class': 'TypeName'
 , 'ident': { 'ast_class': 'Identifier'
@@ -28820,7 +28631,7 @@ var ast =
 , 'isNative': false
 , 'block': { 'ast_class': 'Block'
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'stmts': [ { 'ast_class': 'ExprStmt'
 , 'expr': { 'ast_class': 'ListExpr'
 , 'exprs': [ { 'ast_class': 'CallExpr'
@@ -28885,7 +28696,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'VarInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -28902,7 +28713,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'VarInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -28928,12 +28739,12 @@ var ast =
 ,  ] } }
 , { 'ast_class': 'ForStmt'
 , 'vars': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'init': { 'ast_class': 'ListExpr'
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'VarInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -29022,13 +28833,13 @@ var ast =
 , 'stmt': { 'ast_class': 'BlockStmt'
 , 'block': { 'ast_class': 'Block'
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'stmts': [ { 'ast_class': 'ExprStmt'
 , 'expr': { 'ast_class': 'ListExpr'
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'VarInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -29092,7 +28903,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'VarInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -29106,12 +28917,12 @@ var ast =
 ,  ] } }
 , { 'ast_class': 'ForStmt'
 , 'vars': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'init': { 'ast_class': 'ListExpr'
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'VarInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -29200,13 +29011,13 @@ var ast =
 , 'stmt': { 'ast_class': 'BlockStmt'
 , 'block': { 'ast_class': 'Block'
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'stmts': [ { 'ast_class': 'ExprStmt'
 , 'expr': { 'ast_class': 'ListExpr'
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'VarInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -29461,11 +29272,10 @@ var ast =
 , 'kind': { 'ast_class': 'AnyType' } }
 , 'isReadOnly': false } ]
 ,  ]
-, 'inits': [  ] }
-, 'settings': [ { 'ast_class': 'InitExpr'
+, 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'LetInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'PublicNamespace'
 , 'name': '' }
@@ -29473,7 +29283,7 @@ var ast =
 , { 'ast_class': 'GetParam'
 , 'n': 0 } ]
 ,  ] }
-,  ]
+,  ] }
 , 'vars': { 'fixtures': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -29531,7 +29341,7 @@ var ast =
 , 'kind': { 'ast_class': 'AnyType' } }
 , 'isReadOnly': false } ]
 ,  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'defaults': [ ]
 , 'type': { 'ast_class': 'TypeName'
 , 'ident': { 'ast_class': 'Identifier'
@@ -29565,7 +29375,7 @@ var ast =
 , 'isNative': false
 , 'block': { 'ast_class': 'Block'
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'stmts': [ { 'ast_class': 'ExprStmt'
 , 'expr': { 'ast_class': 'ListExpr'
 , 'exprs': [ { 'ast_class': 'CallExpr'
@@ -29673,7 +29483,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'VarInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -29713,7 +29523,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'VarInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -29787,7 +29597,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'VarInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -29861,7 +29671,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'VarInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -29935,7 +29745,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'VarInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -30009,7 +29819,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'VarInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -30083,7 +29893,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'VarInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -30246,11 +30056,10 @@ var ast =
 , 'kind': { 'ast_class': 'AnyType' } }
 , 'isReadOnly': false } ]
 ,  ]
-, 'inits': [  ] }
-, 'settings': [ { 'ast_class': 'InitExpr'
+, 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'LetInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'PublicNamespace'
 , 'name': '' }
@@ -30258,7 +30067,7 @@ var ast =
 , { 'ast_class': 'GetParam'
 , 'n': 0 } ]
 ,  ] }
-,  ]
+,  ] }
 , 'vars': { 'fixtures': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -30316,7 +30125,7 @@ var ast =
 , 'kind': { 'ast_class': 'AnyType' } }
 , 'isReadOnly': false } ]
 ,  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'defaults': [ ]
 , 'type': { 'ast_class': 'TypeName'
 , 'ident': { 'ast_class': 'Identifier'
@@ -30350,7 +30159,7 @@ var ast =
 , 'isNative': false
 , 'block': { 'ast_class': 'Block'
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'stmts': [ { 'ast_class': 'ExprStmt'
 , 'expr': { 'ast_class': 'ListExpr'
 , 'exprs': [ { 'ast_class': 'CallExpr'
@@ -30458,7 +30267,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'VarInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -30532,7 +30341,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'VarInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -30606,7 +30415,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'VarInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -30680,7 +30489,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'VarInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -30754,7 +30563,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'VarInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -30794,7 +30603,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'VarInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -30834,7 +30643,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'VarInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -30899,7 +30708,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'VarInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -30964,7 +30773,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'VarInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -31038,7 +30847,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'VarInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -31103,7 +30912,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'VarInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -31168,7 +30977,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'VarInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -31339,11 +31148,10 @@ var ast =
 , 'kind': { 'ast_class': 'AnyType' } }
 , 'isReadOnly': false } ]
 ,  ]
-, 'inits': [  ] }
-, 'settings': [ { 'ast_class': 'InitExpr'
+, 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'LetInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'PublicNamespace'
 , 'name': '' }
@@ -31351,7 +31159,7 @@ var ast =
 , { 'ast_class': 'GetParam'
 , 'n': 0 } ]
 ,  ] }
-,  ]
+,  ] }
 , 'vars': { 'fixtures': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -31449,7 +31257,7 @@ var ast =
 , 'kind': { 'ast_class': 'AnyType' } }
 , 'isReadOnly': false } ]
 ,  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'defaults': [ ]
 , 'type': { 'ast_class': 'TypeName'
 , 'ident': { 'ast_class': 'Identifier'
@@ -31483,7 +31291,7 @@ var ast =
 , 'isNative': false
 , 'block': { 'ast_class': 'Block'
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'stmts': [ { 'ast_class': 'ExprStmt'
 , 'expr': { 'ast_class': 'ListExpr'
 , 'exprs': [ { 'ast_class': 'CallExpr'
@@ -31548,7 +31356,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'VarInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -31562,12 +31370,12 @@ var ast =
 ,  ] } }
 , { 'ast_class': 'ForStmt'
 , 'vars': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'init': { 'ast_class': 'ListExpr'
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'VarInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -31656,13 +31464,13 @@ var ast =
 , 'stmt': { 'ast_class': 'BlockStmt'
 , 'block': { 'ast_class': 'Block'
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'stmts': [ { 'ast_class': 'ExprStmt'
 , 'expr': { 'ast_class': 'ListExpr'
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'VarInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -31859,11 +31667,10 @@ var ast =
 , 'kind': { 'ast_class': 'AnyType' } }
 , 'isReadOnly': false } ]
 ,  ]
-, 'inits': [  ] }
-, 'settings': [ { 'ast_class': 'InitExpr'
+, 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'LetInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'PublicNamespace'
 , 'name': '' }
@@ -31871,7 +31678,7 @@ var ast =
 , { 'ast_class': 'GetParam'
 , 'n': 0 } ]
 ,  ] }
-,  ]
+,  ] }
 , 'vars': { 'fixtures': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -31897,7 +31704,7 @@ var ast =
 , 'kind': { 'ast_class': 'AnyType' } }
 , 'isReadOnly': false } ]
 ,  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'defaults': [ ]
 , 'type': { 'ast_class': 'TypeName'
 , 'ident': { 'ast_class': 'Identifier'
@@ -31955,7 +31762,7 @@ var ast =
 , 'kind': { 'ast_class': 'AnyType' } }
 , 'isReadOnly': false } ]
 ,  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'stmts': [ { 'ast_class': 'ExprStmt'
 , 'expr': { 'ast_class': 'ListExpr'
 , 'exprs': [ { 'ast_class': 'CallExpr'
@@ -32020,7 +31827,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'LetInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -32085,7 +31892,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'LetInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -32150,7 +31957,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'LetInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -32215,7 +32022,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'VarInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -32353,11 +32160,10 @@ var ast =
 , 'kind': { 'ast_class': 'AnyType' } }
 , 'isReadOnly': false } ]
 ,  ]
-, 'inits': [  ] }
-, 'settings': [ { 'ast_class': 'InitExpr'
+, 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'LetInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'PublicNamespace'
 , 'name': '' }
@@ -32365,7 +32171,7 @@ var ast =
 , { 'ast_class': 'GetParam'
 , 'n': 0 } ]
 ,  ] }
-,  ]
+,  ] }
 , 'vars': { 'fixtures': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -32375,7 +32181,7 @@ var ast =
 , 'kind': { 'ast_class': 'AnyType' } }
 , 'isReadOnly': false } ]
 ,  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'defaults': [ ]
 , 'type': { 'ast_class': 'TypeName'
 , 'ident': { 'ast_class': 'Identifier'
@@ -32409,7 +32215,7 @@ var ast =
 , 'isNative': false
 , 'block': { 'ast_class': 'Block'
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'stmts': [ { 'ast_class': 'ExprStmt'
 , 'expr': { 'ast_class': 'ListExpr'
 , 'exprs': [ { 'ast_class': 'CallExpr'
@@ -32517,7 +32323,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'VarInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -32555,7 +32361,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'VarInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -32593,7 +32399,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'VarInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -32631,7 +32437,7 @@ var ast =
 , 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'VarInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -32766,11 +32572,10 @@ var ast =
 , 'kind': { 'ast_class': 'AnyType' } }
 , 'isReadOnly': false } ]
 ,  ]
-, 'inits': [  ] }
-, 'settings': [ { 'ast_class': 'InitExpr'
+, 'exprs': [ { 'ast_class': 'InitExpr'
 , 'target': { 'ast_class': 'LetInit' }
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'PublicNamespace'
 , 'name': '' }
@@ -32778,7 +32583,7 @@ var ast =
 , { 'ast_class': 'GetParam'
 , 'n': 0 } ]
 ,  ] }
-,  ]
+,  ] }
 , 'vars': { 'fixtures': [ [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Decode' }
@@ -32812,7 +32617,7 @@ var ast =
 , 'kind': { 'ast_class': 'AnyType' } }
 , 'isReadOnly': false } ]
 ,  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'defaults': [ ]
 , 'type': { 'ast_class': 'TypeName'
 , 'ident': { 'ast_class': 'Identifier'
@@ -32836,13 +32641,13 @@ var ast =
 , 'isOverride': false
 , 'isFinal': false } ]
 ,  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'block': { 'ast_class': 'Block'
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'stmts': [ { 'ast_class': 'BlockStmt'
 , 'block': { 'ast_class': 'Block'
 , 'head': { 'fixtures': [  ]
-, 'inits': [  ] }
+, 'exprs': [  ] }
 , 'stmts': [  ] } }
 ,  ] } }
