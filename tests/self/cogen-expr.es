@@ -114,6 +114,7 @@ package cogen
         let asm = ctx.asm;
         if (e.op is LogicalAnd) {
             cgExpr(ctx, e.e1);
+            asm.I_convert_b();
             asm.I_dup();
             let L0 = asm.I_iffalse();
             asm.I_pop();
@@ -122,6 +123,7 @@ package cogen
         }
         else if (e.op is LogicalOr) {
             cgExpr(ctx, e.e2);
+            asm.I_convert_b();
             asm.I_dup();
             let L0 = asm.I_iftrue();
             asm.I_pop();
