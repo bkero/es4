@@ -1283,12 +1283,12 @@ var ast =
 , [ { 'ast_class': 'PropName'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Token' }
-, 'id': 'Token' } }
+, 'id': 'Tok' } }
 , { 'ast_class': 'ClassFixture'
 , 'cls': { 'ast_class': 'Cls'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Token' }
-, 'id': 'Token' }
+, 'id': 'Tok' }
 , 'baseName': { 'ns': { 'ast_class': 'PublicNamespace'
 , 'name': '' }
 , 'id': 'Object' }
@@ -1342,7 +1342,7 @@ var ast =
 , 'superArgs': [  ]
 , 'func': { 'ast_class': 'Func'
 , 'name': { 'kind': { 'ast_class': 'Ordinary' }
-, 'ident': 'Token' }
+, 'ident': 'Tok' }
 , 'isNative': false
 , 'block': { 'ast_class': 'Block'
 , 'head': { 'fixtures': [  ]
@@ -3692,7 +3692,7 @@ var ast =
 , 'args': [ { 'ast_class': 'NewExpr'
 , 'expr': { 'ast_class': 'LexicalRef'
 , 'ident': { 'ast_class': 'Identifier'
-, 'ident': 'Token'
+, 'ident': 'Tok'
 , 'nss': [  [ { 'ast_class': 'PublicNamespace'
 , 'name': '' }
 ,  ]
@@ -4352,7 +4352,7 @@ var ast =
 , { 'ast_class': 'ValFixture'
 , 'type': { 'ast_class': 'TypeName'
 , 'ident': { 'ast_class': 'Identifier'
-, 'ident': 'Token'
+, 'ident': 'Tok'
 , 'nss': [  [ { 'ast_class': 'PublicNamespace'
 , 'name': '' }
 ,  ]
@@ -4652,7 +4652,7 @@ var ast =
 , { 'ast_class': 'ValFixture'
 , 'type': { 'ast_class': 'TypeName'
 , 'ident': { 'ast_class': 'Identifier'
-, 'ident': 'Token'
+, 'ident': 'Tok'
 , 'nss': [  [ { 'ast_class': 'PublicNamespace'
 , 'name': '' }
 ,  ]
@@ -4704,20 +4704,33 @@ var ast =
 , 'block': { 'ast_class': 'Block'
 , 'head': { 'fixtures': [  ]
 , 'exprs': [  ] }
-, 'stmts': [ { 'ast_class': 'ForStmt'
-, 'vars': { 'fixtures': [ [ { 'ast_class': 'PropName'
-, 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
-, 'name': 'Token' }
-, 'id': 'i' } }
-, { 'ast_class': 'ValFixture'
-, 'type': { 'ast_class': 'SpecialType'
-, 'kind': { 'ast_class': 'AnyType' } }
-, 'isReadOnly': false } ]
+, 'stmts': [ { 'ast_class': 'ExprStmt'
+, 'expr': { 'ast_class': 'ListExpr'
+, 'exprs': [ { 'ast_class': 'CallExpr'
+, 'expr': { 'ast_class': 'LexicalRef'
+, 'ident': { 'ast_class': 'Identifier'
+, 'ident': 'print'
+, 'nss': [  [ { 'ast_class': 'PublicNamespace'
+, 'name': '' }
 ,  ]
+,  [ { 'ast_class': 'IntrinsicNamespace' }
+,  ]
+,  [ { 'ast_class': 'AnonymousNamespace'
+, 'name': 'Token' }
+,  ]
+,  [  ]
+,  ] } }
+, 'args': [ { 'ast_class': 'LiteralExpr'
+, 'literal': { 'ast_class': 'LiteralString'
+, 'strValue': "testing lex-token.es" } }
+,  ] }
+,  ] } }
+, { 'ast_class': 'ForStmt'
+, 'vars': { 'fixtures': [  ]
 , 'exprs': [  ] }
 , 'init': { 'ast_class': 'ListExpr'
 , 'exprs': [ { 'ast_class': 'InitExpr'
-, 'target': { 'ast_class': 'LetInit' }
+, 'target': { 'ast_class': 'VarInit' }
 , 'head': { 'fixtures': [  ]
 , 'exprs': [  ] }
 , 'inits': [ [ { 'ast_class': 'PropName'
@@ -4866,7 +4879,15 @@ var ast =
 ,  ] }
 , 'params': { 'fixtures': [  ]
 , 'exprs': [  ] }
-, 'vars': { 'fixtures': [  ]
+, 'vars': { 'fixtures': [ [ { 'ast_class': 'PropName'
+, 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
+, 'name': 'Token' }
+, 'id': 'i' } }
+, { 'ast_class': 'ValFixture'
+, 'type': { 'ast_class': 'SpecialType'
+, 'kind': { 'ast_class': 'AnyType' } }
+, 'isReadOnly': false } ]
+,  ]
 , 'exprs': [  ] }
 , 'defaults': [ ]
 , 'type': { 'ast_class': 'SpecialType'
@@ -4939,8 +4960,10 @@ var ast =
 , { 'ast_class': 'BinaryExpr'
 , 'op': { 'ast_class': 'Minus' }
 , 'e1': { 'ast_class': 'LexicalRef'
+, 'ident': { 'ast_class': 'QualifiedIdentifier'
+, 'qual': { 'ast_class': 'LexicalRef'
 , 'ident': { 'ast_class': 'Identifier'
-, 'ident': 'Minus'
+, 'ident': 'Token'
 , 'nss': [  [ { 'ast_class': 'PublicNamespace'
 , 'name': '' }
 ,  ]
@@ -4950,6 +4973,7 @@ var ast =
 , 'name': 'Token' }
 ,  ]
 ,  ] } }
+, 'ident': 'Minus' } }
 , 'e2': { 'ast_class': 'LiteralExpr'
 , 'literal': { 'ast_class': 'LiteralDecimal'
 , 'decimalValue': '1' } } } ]
@@ -4968,8 +4992,10 @@ var ast =
 , { 'ast_class': 'BinaryExpr'
 , 'op': { 'ast_class': 'Minus' }
 , 'e1': { 'ast_class': 'LexicalRef'
+, 'ident': { 'ast_class': 'QualifiedIdentifier'
+, 'qual': { 'ast_class': 'LexicalRef'
 , 'ident': { 'ast_class': 'Identifier'
-, 'ident': 'MinusMinus'
+, 'ident': 'Token'
 , 'nss': [  [ { 'ast_class': 'PublicNamespace'
 , 'name': '' }
 ,  ]
@@ -4979,6 +5005,7 @@ var ast =
 , 'name': 'Token' }
 ,  ]
 ,  ] } }
+, 'ident': 'MinusMinus' } }
 , 'e2': { 'ast_class': 'LiteralExpr'
 , 'literal': { 'ast_class': 'LiteralDecimal'
 , 'decimalValue': '1' } } } ]
@@ -4997,8 +5024,10 @@ var ast =
 , { 'ast_class': 'BinaryExpr'
 , 'op': { 'ast_class': 'Minus' }
 , 'e1': { 'ast_class': 'LexicalRef'
+, 'ident': { 'ast_class': 'QualifiedIdentifier'
+, 'qual': { 'ast_class': 'LexicalRef'
 , 'ident': { 'ast_class': 'Identifier'
-, 'ident': 'Not'
+, 'ident': 'Token'
 , 'nss': [  [ { 'ast_class': 'PublicNamespace'
 , 'name': '' }
 ,  ]
@@ -5008,6 +5037,7 @@ var ast =
 , 'name': 'Token' }
 ,  ]
 ,  ] } }
+, 'ident': 'Not' } }
 , 'e2': { 'ast_class': 'LiteralExpr'
 , 'literal': { 'ast_class': 'LiteralDecimal'
 , 'decimalValue': '1' } } } ]
@@ -5026,8 +5056,10 @@ var ast =
 , { 'ast_class': 'BinaryExpr'
 , 'op': { 'ast_class': 'Minus' }
 , 'e1': { 'ast_class': 'LexicalRef'
+, 'ident': { 'ast_class': 'QualifiedIdentifier'
+, 'qual': { 'ast_class': 'LexicalRef'
 , 'ident': { 'ast_class': 'Identifier'
-, 'ident': 'NotEqual'
+, 'ident': 'Token'
 , 'nss': [  [ { 'ast_class': 'PublicNamespace'
 , 'name': '' }
 ,  ]
@@ -5037,6 +5069,7 @@ var ast =
 , 'name': 'Token' }
 ,  ]
 ,  ] } }
+, 'ident': 'NotEqual' } }
 , 'e2': { 'ast_class': 'LiteralExpr'
 , 'literal': { 'ast_class': 'LiteralDecimal'
 , 'decimalValue': '1' } } } ]
@@ -5055,8 +5088,10 @@ var ast =
 , { 'ast_class': 'BinaryExpr'
 , 'op': { 'ast_class': 'Minus' }
 , 'e1': { 'ast_class': 'LexicalRef'
+, 'ident': { 'ast_class': 'QualifiedIdentifier'
+, 'qual': { 'ast_class': 'LexicalRef'
 , 'ident': { 'ast_class': 'Identifier'
-, 'ident': 'StrictNotEqual'
+, 'ident': 'Token'
 , 'nss': [  [ { 'ast_class': 'PublicNamespace'
 , 'name': '' }
 ,  ]
@@ -5066,6 +5101,7 @@ var ast =
 , 'name': 'Token' }
 ,  ]
 ,  ] } }
+, 'ident': 'StrictNotEqual' } }
 , 'e2': { 'ast_class': 'LiteralExpr'
 , 'literal': { 'ast_class': 'LiteralDecimal'
 , 'decimalValue': '1' } } } ]
@@ -5084,8 +5120,10 @@ var ast =
 , { 'ast_class': 'BinaryExpr'
 , 'op': { 'ast_class': 'Minus' }
 , 'e1': { 'ast_class': 'LexicalRef'
+, 'ident': { 'ast_class': 'QualifiedIdentifier'
+, 'qual': { 'ast_class': 'LexicalRef'
 , 'ident': { 'ast_class': 'Identifier'
-, 'ident': 'Remainder'
+, 'ident': 'Token'
 , 'nss': [  [ { 'ast_class': 'PublicNamespace'
 , 'name': '' }
 ,  ]
@@ -5095,6 +5133,7 @@ var ast =
 , 'name': 'Token' }
 ,  ]
 ,  ] } }
+, 'ident': 'Remainder' } }
 , 'e2': { 'ast_class': 'LiteralExpr'
 , 'literal': { 'ast_class': 'LiteralDecimal'
 , 'decimalValue': '1' } } } ]
@@ -5113,8 +5152,10 @@ var ast =
 , { 'ast_class': 'BinaryExpr'
 , 'op': { 'ast_class': 'Minus' }
 , 'e1': { 'ast_class': 'LexicalRef'
+, 'ident': { 'ast_class': 'QualifiedIdentifier'
+, 'qual': { 'ast_class': 'LexicalRef'
 , 'ident': { 'ast_class': 'Identifier'
-, 'ident': 'RemainderAssign'
+, 'ident': 'Token'
 , 'nss': [  [ { 'ast_class': 'PublicNamespace'
 , 'name': '' }
 ,  ]
@@ -5124,6 +5165,7 @@ var ast =
 , 'name': 'Token' }
 ,  ]
 ,  ] } }
+, 'ident': 'RemainderAssign' } }
 , 'e2': { 'ast_class': 'LiteralExpr'
 , 'literal': { 'ast_class': 'LiteralDecimal'
 , 'decimalValue': '1' } } } ]
@@ -5142,8 +5184,10 @@ var ast =
 , { 'ast_class': 'BinaryExpr'
 , 'op': { 'ast_class': 'Minus' }
 , 'e1': { 'ast_class': 'LexicalRef'
+, 'ident': { 'ast_class': 'QualifiedIdentifier'
+, 'qual': { 'ast_class': 'LexicalRef'
 , 'ident': { 'ast_class': 'Identifier'
-, 'ident': 'BitwiseAnd'
+, 'ident': 'Token'
 , 'nss': [  [ { 'ast_class': 'PublicNamespace'
 , 'name': '' }
 ,  ]
@@ -5153,6 +5197,7 @@ var ast =
 , 'name': 'Token' }
 ,  ]
 ,  ] } }
+, 'ident': 'BitwiseAnd' } }
 , 'e2': { 'ast_class': 'LiteralExpr'
 , 'literal': { 'ast_class': 'LiteralDecimal'
 , 'decimalValue': '1' } } } ]
@@ -5171,8 +5216,10 @@ var ast =
 , { 'ast_class': 'BinaryExpr'
 , 'op': { 'ast_class': 'Minus' }
 , 'e1': { 'ast_class': 'LexicalRef'
+, 'ident': { 'ast_class': 'QualifiedIdentifier'
+, 'qual': { 'ast_class': 'LexicalRef'
 , 'ident': { 'ast_class': 'Identifier'
-, 'ident': 'LogicalAnd'
+, 'ident': 'Token'
 , 'nss': [  [ { 'ast_class': 'PublicNamespace'
 , 'name': '' }
 ,  ]
@@ -5182,6 +5229,7 @@ var ast =
 , 'name': 'Token' }
 ,  ]
 ,  ] } }
+, 'ident': 'LogicalAnd' } }
 , 'e2': { 'ast_class': 'LiteralExpr'
 , 'literal': { 'ast_class': 'LiteralDecimal'
 , 'decimalValue': '1' } } } ]
@@ -5200,8 +5248,10 @@ var ast =
 , { 'ast_class': 'BinaryExpr'
 , 'op': { 'ast_class': 'Minus' }
 , 'e1': { 'ast_class': 'LexicalRef'
+, 'ident': { 'ast_class': 'QualifiedIdentifier'
+, 'qual': { 'ast_class': 'LexicalRef'
 , 'ident': { 'ast_class': 'Identifier'
-, 'ident': 'LogicalAndAssign'
+, 'ident': 'Token'
 , 'nss': [  [ { 'ast_class': 'PublicNamespace'
 , 'name': '' }
 ,  ]
@@ -5211,6 +5261,7 @@ var ast =
 , 'name': 'Token' }
 ,  ]
 ,  ] } }
+, 'ident': 'LogicalAndAssign' } }
 , 'e2': { 'ast_class': 'LiteralExpr'
 , 'literal': { 'ast_class': 'LiteralDecimal'
 , 'decimalValue': '1' } } } ]
@@ -5229,8 +5280,10 @@ var ast =
 , { 'ast_class': 'BinaryExpr'
 , 'op': { 'ast_class': 'Minus' }
 , 'e1': { 'ast_class': 'LexicalRef'
+, 'ident': { 'ast_class': 'QualifiedIdentifier'
+, 'qual': { 'ast_class': 'LexicalRef'
 , 'ident': { 'ast_class': 'Identifier'
-, 'ident': 'BitwiseAndAssign'
+, 'ident': 'Token'
 , 'nss': [  [ { 'ast_class': 'PublicNamespace'
 , 'name': '' }
 ,  ]
@@ -5240,6 +5293,7 @@ var ast =
 , 'name': 'Token' }
 ,  ]
 ,  ] } }
+, 'ident': 'BitwiseAndAssign' } }
 , 'e2': { 'ast_class': 'LiteralExpr'
 , 'literal': { 'ast_class': 'LiteralDecimal'
 , 'decimalValue': '1' } } } ]
@@ -5258,8 +5312,10 @@ var ast =
 , { 'ast_class': 'BinaryExpr'
 , 'op': { 'ast_class': 'Minus' }
 , 'e1': { 'ast_class': 'LexicalRef'
+, 'ident': { 'ast_class': 'QualifiedIdentifier'
+, 'qual': { 'ast_class': 'LexicalRef'
 , 'ident': { 'ast_class': 'Identifier'
-, 'ident': 'LeftParen'
+, 'ident': 'Token'
 , 'nss': [  [ { 'ast_class': 'PublicNamespace'
 , 'name': '' }
 ,  ]
@@ -5269,6 +5325,7 @@ var ast =
 , 'name': 'Token' }
 ,  ]
 ,  ] } }
+, 'ident': 'LeftParen' } }
 , 'e2': { 'ast_class': 'LiteralExpr'
 , 'literal': { 'ast_class': 'LiteralDecimal'
 , 'decimalValue': '1' } } } ]
@@ -5287,8 +5344,10 @@ var ast =
 , { 'ast_class': 'BinaryExpr'
 , 'op': { 'ast_class': 'Minus' }
 , 'e1': { 'ast_class': 'LexicalRef'
+, 'ident': { 'ast_class': 'QualifiedIdentifier'
+, 'qual': { 'ast_class': 'LexicalRef'
 , 'ident': { 'ast_class': 'Identifier'
-, 'ident': 'RightParen'
+, 'ident': 'Token'
 , 'nss': [  [ { 'ast_class': 'PublicNamespace'
 , 'name': '' }
 ,  ]
@@ -5298,6 +5357,7 @@ var ast =
 , 'name': 'Token' }
 ,  ]
 ,  ] } }
+, 'ident': 'RightParen' } }
 , 'e2': { 'ast_class': 'LiteralExpr'
 , 'literal': { 'ast_class': 'LiteralDecimal'
 , 'decimalValue': '1' } } } ]
@@ -5316,8 +5376,10 @@ var ast =
 , { 'ast_class': 'BinaryExpr'
 , 'op': { 'ast_class': 'Minus' }
 , 'e1': { 'ast_class': 'LexicalRef'
+, 'ident': { 'ast_class': 'QualifiedIdentifier'
+, 'qual': { 'ast_class': 'LexicalRef'
 , 'ident': { 'ast_class': 'Identifier'
-, 'ident': 'Mult'
+, 'ident': 'Token'
 , 'nss': [  [ { 'ast_class': 'PublicNamespace'
 , 'name': '' }
 ,  ]
@@ -5327,6 +5389,7 @@ var ast =
 , 'name': 'Token' }
 ,  ]
 ,  ] } }
+, 'ident': 'Mult' } }
 , 'e2': { 'ast_class': 'LiteralExpr'
 , 'literal': { 'ast_class': 'LiteralDecimal'
 , 'decimalValue': '1' } } } ]
@@ -5345,8 +5408,10 @@ var ast =
 , { 'ast_class': 'BinaryExpr'
 , 'op': { 'ast_class': 'Minus' }
 , 'e1': { 'ast_class': 'LexicalRef'
+, 'ident': { 'ast_class': 'QualifiedIdentifier'
+, 'qual': { 'ast_class': 'LexicalRef'
 , 'ident': { 'ast_class': 'Identifier'
-, 'ident': 'MultAssign'
+, 'ident': 'Token'
 , 'nss': [  [ { 'ast_class': 'PublicNamespace'
 , 'name': '' }
 ,  ]
@@ -5356,6 +5421,7 @@ var ast =
 , 'name': 'Token' }
 ,  ]
 ,  ] } }
+, 'ident': 'MultAssign' } }
 , 'e2': { 'ast_class': 'LiteralExpr'
 , 'literal': { 'ast_class': 'LiteralDecimal'
 , 'decimalValue': '1' } } } ]
@@ -5374,8 +5440,10 @@ var ast =
 , { 'ast_class': 'BinaryExpr'
 , 'op': { 'ast_class': 'Minus' }
 , 'e1': { 'ast_class': 'LexicalRef'
+, 'ident': { 'ast_class': 'QualifiedIdentifier'
+, 'qual': { 'ast_class': 'LexicalRef'
 , 'ident': { 'ast_class': 'Identifier'
-, 'ident': 'Comma'
+, 'ident': 'Token'
 , 'nss': [  [ { 'ast_class': 'PublicNamespace'
 , 'name': '' }
 ,  ]
@@ -5385,6 +5453,7 @@ var ast =
 , 'name': 'Token' }
 ,  ]
 ,  ] } }
+, 'ident': 'Comma' } }
 , 'e2': { 'ast_class': 'LiteralExpr'
 , 'literal': { 'ast_class': 'LiteralDecimal'
 , 'decimalValue': '1' } } } ]
@@ -5403,8 +5472,10 @@ var ast =
 , { 'ast_class': 'BinaryExpr'
 , 'op': { 'ast_class': 'Minus' }
 , 'e1': { 'ast_class': 'LexicalRef'
+, 'ident': { 'ast_class': 'QualifiedIdentifier'
+, 'qual': { 'ast_class': 'LexicalRef'
 , 'ident': { 'ast_class': 'Identifier'
-, 'ident': 'Dot'
+, 'ident': 'Token'
 , 'nss': [  [ { 'ast_class': 'PublicNamespace'
 , 'name': '' }
 ,  ]
@@ -5414,6 +5485,7 @@ var ast =
 , 'name': 'Token' }
 ,  ]
 ,  ] } }
+, 'ident': 'Dot' } }
 , 'e2': { 'ast_class': 'LiteralExpr'
 , 'literal': { 'ast_class': 'LiteralDecimal'
 , 'decimalValue': '1' } } } ]
@@ -5432,8 +5504,10 @@ var ast =
 , { 'ast_class': 'BinaryExpr'
 , 'op': { 'ast_class': 'Minus' }
 , 'e1': { 'ast_class': 'LexicalRef'
+, 'ident': { 'ast_class': 'QualifiedIdentifier'
+, 'qual': { 'ast_class': 'LexicalRef'
 , 'ident': { 'ast_class': 'Identifier'
-, 'ident': 'DoubleDot'
+, 'ident': 'Token'
 , 'nss': [  [ { 'ast_class': 'PublicNamespace'
 , 'name': '' }
 ,  ]
@@ -5443,6 +5517,7 @@ var ast =
 , 'name': 'Token' }
 ,  ]
 ,  ] } }
+, 'ident': 'DoubleDot' } }
 , 'e2': { 'ast_class': 'LiteralExpr'
 , 'literal': { 'ast_class': 'LiteralDecimal'
 , 'decimalValue': '1' } } } ]
@@ -5461,8 +5536,10 @@ var ast =
 , { 'ast_class': 'BinaryExpr'
 , 'op': { 'ast_class': 'Minus' }
 , 'e1': { 'ast_class': 'LexicalRef'
+, 'ident': { 'ast_class': 'QualifiedIdentifier'
+, 'qual': { 'ast_class': 'LexicalRef'
 , 'ident': { 'ast_class': 'Identifier'
-, 'ident': 'TripleDot'
+, 'ident': 'Token'
 , 'nss': [  [ { 'ast_class': 'PublicNamespace'
 , 'name': '' }
 ,  ]
@@ -5472,6 +5549,7 @@ var ast =
 , 'name': 'Token' }
 ,  ]
 ,  ] } }
+, 'ident': 'TripleDot' } }
 , 'e2': { 'ast_class': 'LiteralExpr'
 , 'literal': { 'ast_class': 'LiteralDecimal'
 , 'decimalValue': '1' } } } ]
@@ -5490,8 +5568,10 @@ var ast =
 , { 'ast_class': 'BinaryExpr'
 , 'op': { 'ast_class': 'Minus' }
 , 'e1': { 'ast_class': 'LexicalRef'
+, 'ident': { 'ast_class': 'QualifiedIdentifier'
+, 'qual': { 'ast_class': 'LexicalRef'
 , 'ident': { 'ast_class': 'Identifier'
-, 'ident': 'LeftDotAngle'
+, 'ident': 'Token'
 , 'nss': [  [ { 'ast_class': 'PublicNamespace'
 , 'name': '' }
 ,  ]
@@ -5501,6 +5581,7 @@ var ast =
 , 'name': 'Token' }
 ,  ]
 ,  ] } }
+, 'ident': 'LeftDotAngle' } }
 , 'e2': { 'ast_class': 'LiteralExpr'
 , 'literal': { 'ast_class': 'LiteralDecimal'
 , 'decimalValue': '1' } } } ]
@@ -5519,8 +5600,10 @@ var ast =
 , { 'ast_class': 'BinaryExpr'
 , 'op': { 'ast_class': 'Minus' }
 , 'e1': { 'ast_class': 'LexicalRef'
+, 'ident': { 'ast_class': 'QualifiedIdentifier'
+, 'qual': { 'ast_class': 'LexicalRef'
 , 'ident': { 'ast_class': 'Identifier'
-, 'ident': 'Div'
+, 'ident': 'Token'
 , 'nss': [  [ { 'ast_class': 'PublicNamespace'
 , 'name': '' }
 ,  ]
@@ -5530,6 +5613,7 @@ var ast =
 , 'name': 'Token' }
 ,  ]
 ,  ] } }
+, 'ident': 'Div' } }
 , 'e2': { 'ast_class': 'LiteralExpr'
 , 'literal': { 'ast_class': 'LiteralDecimal'
 , 'decimalValue': '1' } } } ]
@@ -5548,8 +5632,10 @@ var ast =
 , { 'ast_class': 'BinaryExpr'
 , 'op': { 'ast_class': 'Minus' }
 , 'e1': { 'ast_class': 'LexicalRef'
+, 'ident': { 'ast_class': 'QualifiedIdentifier'
+, 'qual': { 'ast_class': 'LexicalRef'
 , 'ident': { 'ast_class': 'Identifier'
-, 'ident': 'DivAssign'
+, 'ident': 'Token'
 , 'nss': [  [ { 'ast_class': 'PublicNamespace'
 , 'name': '' }
 ,  ]
@@ -5559,6 +5645,7 @@ var ast =
 , 'name': 'Token' }
 ,  ]
 ,  ] } }
+, 'ident': 'DivAssign' } }
 , 'e2': { 'ast_class': 'LiteralExpr'
 , 'literal': { 'ast_class': 'LiteralDecimal'
 , 'decimalValue': '1' } } } ]
@@ -5577,8 +5664,10 @@ var ast =
 , { 'ast_class': 'BinaryExpr'
 , 'op': { 'ast_class': 'Minus' }
 , 'e1': { 'ast_class': 'LexicalRef'
+, 'ident': { 'ast_class': 'QualifiedIdentifier'
+, 'qual': { 'ast_class': 'LexicalRef'
 , 'ident': { 'ast_class': 'Identifier'
-, 'ident': 'Colon'
+, 'ident': 'Token'
 , 'nss': [  [ { 'ast_class': 'PublicNamespace'
 , 'name': '' }
 ,  ]
@@ -5588,6 +5677,7 @@ var ast =
 , 'name': 'Token' }
 ,  ]
 ,  ] } }
+, 'ident': 'Colon' } }
 , 'e2': { 'ast_class': 'LiteralExpr'
 , 'literal': { 'ast_class': 'LiteralDecimal'
 , 'decimalValue': '1' } } } ]
@@ -5606,8 +5696,10 @@ var ast =
 , { 'ast_class': 'BinaryExpr'
 , 'op': { 'ast_class': 'Minus' }
 , 'e1': { 'ast_class': 'LexicalRef'
+, 'ident': { 'ast_class': 'QualifiedIdentifier'
+, 'qual': { 'ast_class': 'LexicalRef'
 , 'ident': { 'ast_class': 'Identifier'
-, 'ident': 'DoubleColon'
+, 'ident': 'Token'
 , 'nss': [  [ { 'ast_class': 'PublicNamespace'
 , 'name': '' }
 ,  ]
@@ -5617,6 +5709,7 @@ var ast =
 , 'name': 'Token' }
 ,  ]
 ,  ] } }
+, 'ident': 'DoubleColon' } }
 , 'e2': { 'ast_class': 'LiteralExpr'
 , 'literal': { 'ast_class': 'LiteralDecimal'
 , 'decimalValue': '1' } } } ]
@@ -5635,8 +5728,10 @@ var ast =
 , { 'ast_class': 'BinaryExpr'
 , 'op': { 'ast_class': 'Minus' }
 , 'e1': { 'ast_class': 'LexicalRef'
+, 'ident': { 'ast_class': 'QualifiedIdentifier'
+, 'qual': { 'ast_class': 'LexicalRef'
 , 'ident': { 'ast_class': 'Identifier'
-, 'ident': 'SemiColon'
+, 'ident': 'Token'
 , 'nss': [  [ { 'ast_class': 'PublicNamespace'
 , 'name': '' }
 ,  ]
@@ -5646,6 +5741,7 @@ var ast =
 , 'name': 'Token' }
 ,  ]
 ,  ] } }
+, 'ident': 'SemiColon' } }
 , 'e2': { 'ast_class': 'LiteralExpr'
 , 'literal': { 'ast_class': 'LiteralDecimal'
 , 'decimalValue': '1' } } } ]
@@ -5664,8 +5760,10 @@ var ast =
 , { 'ast_class': 'BinaryExpr'
 , 'op': { 'ast_class': 'Minus' }
 , 'e1': { 'ast_class': 'LexicalRef'
+, 'ident': { 'ast_class': 'QualifiedIdentifier'
+, 'qual': { 'ast_class': 'LexicalRef'
 , 'ident': { 'ast_class': 'Identifier'
-, 'ident': 'QuestionMark'
+, 'ident': 'Token'
 , 'nss': [  [ { 'ast_class': 'PublicNamespace'
 , 'name': '' }
 ,  ]
@@ -5675,6 +5773,7 @@ var ast =
 , 'name': 'Token' }
 ,  ]
 ,  ] } }
+, 'ident': 'QuestionMark' } }
 , 'e2': { 'ast_class': 'LiteralExpr'
 , 'literal': { 'ast_class': 'LiteralDecimal'
 , 'decimalValue': '1' } } } ]
@@ -5693,8 +5792,10 @@ var ast =
 , { 'ast_class': 'BinaryExpr'
 , 'op': { 'ast_class': 'Minus' }
 , 'e1': { 'ast_class': 'LexicalRef'
+, 'ident': { 'ast_class': 'QualifiedIdentifier'
+, 'qual': { 'ast_class': 'LexicalRef'
 , 'ident': { 'ast_class': 'Identifier'
-, 'ident': 'At'
+, 'ident': 'Token'
 , 'nss': [  [ { 'ast_class': 'PublicNamespace'
 , 'name': '' }
 ,  ]
@@ -5704,6 +5805,7 @@ var ast =
 , 'name': 'Token' }
 ,  ]
 ,  ] } }
+, 'ident': 'At' } }
 , 'e2': { 'ast_class': 'LiteralExpr'
 , 'literal': { 'ast_class': 'LiteralDecimal'
 , 'decimalValue': '1' } } } ]
@@ -5722,8 +5824,10 @@ var ast =
 , { 'ast_class': 'BinaryExpr'
 , 'op': { 'ast_class': 'Minus' }
 , 'e1': { 'ast_class': 'LexicalRef'
+, 'ident': { 'ast_class': 'QualifiedIdentifier'
+, 'qual': { 'ast_class': 'LexicalRef'
 , 'ident': { 'ast_class': 'Identifier'
-, 'ident': 'LeftBracket'
+, 'ident': 'Token'
 , 'nss': [  [ { 'ast_class': 'PublicNamespace'
 , 'name': '' }
 ,  ]
@@ -5733,6 +5837,7 @@ var ast =
 , 'name': 'Token' }
 ,  ]
 ,  ] } }
+, 'ident': 'LeftBracket' } }
 , 'e2': { 'ast_class': 'LiteralExpr'
 , 'literal': { 'ast_class': 'LiteralDecimal'
 , 'decimalValue': '1' } } } ]
@@ -5751,8 +5856,10 @@ var ast =
 , { 'ast_class': 'BinaryExpr'
 , 'op': { 'ast_class': 'Minus' }
 , 'e1': { 'ast_class': 'LexicalRef'
+, 'ident': { 'ast_class': 'QualifiedIdentifier'
+, 'qual': { 'ast_class': 'LexicalRef'
 , 'ident': { 'ast_class': 'Identifier'
-, 'ident': 'RightBracket'
+, 'ident': 'Token'
 , 'nss': [  [ { 'ast_class': 'PublicNamespace'
 , 'name': '' }
 ,  ]
@@ -5762,6 +5869,7 @@ var ast =
 , 'name': 'Token' }
 ,  ]
 ,  ] } }
+, 'ident': 'RightBracket' } }
 , 'e2': { 'ast_class': 'LiteralExpr'
 , 'literal': { 'ast_class': 'LiteralDecimal'
 , 'decimalValue': '1' } } } ]
@@ -5780,8 +5888,10 @@ var ast =
 , { 'ast_class': 'BinaryExpr'
 , 'op': { 'ast_class': 'Minus' }
 , 'e1': { 'ast_class': 'LexicalRef'
+, 'ident': { 'ast_class': 'QualifiedIdentifier'
+, 'qual': { 'ast_class': 'LexicalRef'
 , 'ident': { 'ast_class': 'Identifier'
-, 'ident': 'LogicalXor'
+, 'ident': 'Token'
 , 'nss': [  [ { 'ast_class': 'PublicNamespace'
 , 'name': '' }
 ,  ]
@@ -5791,6 +5901,7 @@ var ast =
 , 'name': 'Token' }
 ,  ]
 ,  ] } }
+, 'ident': 'LogicalXor' } }
 , 'e2': { 'ast_class': 'LiteralExpr'
 , 'literal': { 'ast_class': 'LiteralDecimal'
 , 'decimalValue': '1' } } } ]
@@ -5809,8 +5920,10 @@ var ast =
 , { 'ast_class': 'BinaryExpr'
 , 'op': { 'ast_class': 'Minus' }
 , 'e1': { 'ast_class': 'LexicalRef'
+, 'ident': { 'ast_class': 'QualifiedIdentifier'
+, 'qual': { 'ast_class': 'LexicalRef'
 , 'ident': { 'ast_class': 'Identifier'
-, 'ident': 'LogicalXorAssign'
+, 'ident': 'Token'
 , 'nss': [  [ { 'ast_class': 'PublicNamespace'
 , 'name': '' }
 ,  ]
@@ -5820,6 +5933,7 @@ var ast =
 , 'name': 'Token' }
 ,  ]
 ,  ] } }
+, 'ident': 'LogicalXorAssign' } }
 , 'e2': { 'ast_class': 'LiteralExpr'
 , 'literal': { 'ast_class': 'LiteralDecimal'
 , 'decimalValue': '1' } } } ]
@@ -5838,8 +5952,10 @@ var ast =
 , { 'ast_class': 'BinaryExpr'
 , 'op': { 'ast_class': 'Minus' }
 , 'e1': { 'ast_class': 'LexicalRef'
+, 'ident': { 'ast_class': 'QualifiedIdentifier'
+, 'qual': { 'ast_class': 'LexicalRef'
 , 'ident': { 'ast_class': 'Identifier'
-, 'ident': 'LeftBrace'
+, 'ident': 'Token'
 , 'nss': [  [ { 'ast_class': 'PublicNamespace'
 , 'name': '' }
 ,  ]
@@ -5849,6 +5965,7 @@ var ast =
 , 'name': 'Token' }
 ,  ]
 ,  ] } }
+, 'ident': 'LeftBrace' } }
 , 'e2': { 'ast_class': 'LiteralExpr'
 , 'literal': { 'ast_class': 'LiteralDecimal'
 , 'decimalValue': '1' } } } ]
@@ -5867,8 +5984,10 @@ var ast =
 , { 'ast_class': 'BinaryExpr'
 , 'op': { 'ast_class': 'Minus' }
 , 'e1': { 'ast_class': 'LexicalRef'
+, 'ident': { 'ast_class': 'QualifiedIdentifier'
+, 'qual': { 'ast_class': 'LexicalRef'
 , 'ident': { 'ast_class': 'Identifier'
-, 'ident': 'LogicalOr'
+, 'ident': 'Token'
 , 'nss': [  [ { 'ast_class': 'PublicNamespace'
 , 'name': '' }
 ,  ]
@@ -5878,6 +5997,7 @@ var ast =
 , 'name': 'Token' }
 ,  ]
 ,  ] } }
+, 'ident': 'LogicalOr' } }
 , 'e2': { 'ast_class': 'LiteralExpr'
 , 'literal': { 'ast_class': 'LiteralDecimal'
 , 'decimalValue': '1' } } } ]
@@ -5896,8 +6016,10 @@ var ast =
 , { 'ast_class': 'BinaryExpr'
 , 'op': { 'ast_class': 'Minus' }
 , 'e1': { 'ast_class': 'LexicalRef'
+, 'ident': { 'ast_class': 'QualifiedIdentifier'
+, 'qual': { 'ast_class': 'LexicalRef'
 , 'ident': { 'ast_class': 'Identifier'
-, 'ident': 'LogicalOrAssign'
+, 'ident': 'Token'
 , 'nss': [  [ { 'ast_class': 'PublicNamespace'
 , 'name': '' }
 ,  ]
@@ -5907,6 +6029,7 @@ var ast =
 , 'name': 'Token' }
 ,  ]
 ,  ] } }
+, 'ident': 'LogicalOrAssign' } }
 , 'e2': { 'ast_class': 'LiteralExpr'
 , 'literal': { 'ast_class': 'LiteralDecimal'
 , 'decimalValue': '1' } } } ]
@@ -5925,8 +6048,10 @@ var ast =
 , { 'ast_class': 'BinaryExpr'
 , 'op': { 'ast_class': 'Minus' }
 , 'e1': { 'ast_class': 'LexicalRef'
+, 'ident': { 'ast_class': 'QualifiedIdentifier'
+, 'qual': { 'ast_class': 'LexicalRef'
 , 'ident': { 'ast_class': 'Identifier'
-, 'ident': 'BitwiseOr'
+, 'ident': 'Token'
 , 'nss': [  [ { 'ast_class': 'PublicNamespace'
 , 'name': '' }
 ,  ]
@@ -5936,6 +6061,7 @@ var ast =
 , 'name': 'Token' }
 ,  ]
 ,  ] } }
+, 'ident': 'BitwiseOr' } }
 , 'e2': { 'ast_class': 'LiteralExpr'
 , 'literal': { 'ast_class': 'LiteralDecimal'
 , 'decimalValue': '1' } } } ]
@@ -5954,8 +6080,10 @@ var ast =
 , { 'ast_class': 'BinaryExpr'
 , 'op': { 'ast_class': 'Minus' }
 , 'e1': { 'ast_class': 'LexicalRef'
+, 'ident': { 'ast_class': 'QualifiedIdentifier'
+, 'qual': { 'ast_class': 'LexicalRef'
 , 'ident': { 'ast_class': 'Identifier'
-, 'ident': 'LogicalOrAssign'
+, 'ident': 'Token'
 , 'nss': [  [ { 'ast_class': 'PublicNamespace'
 , 'name': '' }
 ,  ]
@@ -5965,6 +6093,7 @@ var ast =
 , 'name': 'Token' }
 ,  ]
 ,  ] } }
+, 'ident': 'LogicalOrAssign' } }
 , 'e2': { 'ast_class': 'LiteralExpr'
 , 'literal': { 'ast_class': 'LiteralDecimal'
 , 'decimalValue': '1' } } } ]
@@ -5983,8 +6112,10 @@ var ast =
 , { 'ast_class': 'BinaryExpr'
 , 'op': { 'ast_class': 'Minus' }
 , 'e1': { 'ast_class': 'LexicalRef'
+, 'ident': { 'ast_class': 'QualifiedIdentifier'
+, 'qual': { 'ast_class': 'LexicalRef'
 , 'ident': { 'ast_class': 'Identifier'
-, 'ident': 'BitwiseXor'
+, 'ident': 'Token'
 , 'nss': [  [ { 'ast_class': 'PublicNamespace'
 , 'name': '' }
 ,  ]
@@ -5994,6 +6125,7 @@ var ast =
 , 'name': 'Token' }
 ,  ]
 ,  ] } }
+, 'ident': 'BitwiseXor' } }
 , 'e2': { 'ast_class': 'LiteralExpr'
 , 'literal': { 'ast_class': 'LiteralDecimal'
 , 'decimalValue': '1' } } } ]
@@ -6012,8 +6144,10 @@ var ast =
 , { 'ast_class': 'BinaryExpr'
 , 'op': { 'ast_class': 'Minus' }
 , 'e1': { 'ast_class': 'LexicalRef'
+, 'ident': { 'ast_class': 'QualifiedIdentifier'
+, 'qual': { 'ast_class': 'LexicalRef'
 , 'ident': { 'ast_class': 'Identifier'
-, 'ident': 'BitwiseXorAssign'
+, 'ident': 'Token'
 , 'nss': [  [ { 'ast_class': 'PublicNamespace'
 , 'name': '' }
 ,  ]
@@ -6023,6 +6157,7 @@ var ast =
 , 'name': 'Token' }
 ,  ]
 ,  ] } }
+, 'ident': 'BitwiseXorAssign' } }
 , 'e2': { 'ast_class': 'LiteralExpr'
 , 'literal': { 'ast_class': 'LiteralDecimal'
 , 'decimalValue': '1' } } } ]
@@ -6041,8 +6176,10 @@ var ast =
 , { 'ast_class': 'BinaryExpr'
 , 'op': { 'ast_class': 'Minus' }
 , 'e1': { 'ast_class': 'LexicalRef'
+, 'ident': { 'ast_class': 'QualifiedIdentifier'
+, 'qual': { 'ast_class': 'LexicalRef'
 , 'ident': { 'ast_class': 'Identifier'
-, 'ident': 'RightBrace'
+, 'ident': 'Token'
 , 'nss': [  [ { 'ast_class': 'PublicNamespace'
 , 'name': '' }
 ,  ]
@@ -6052,6 +6189,7 @@ var ast =
 , 'name': 'Token' }
 ,  ]
 ,  ] } }
+, 'ident': 'RightBrace' } }
 , 'e2': { 'ast_class': 'LiteralExpr'
 , 'literal': { 'ast_class': 'LiteralDecimal'
 , 'decimalValue': '1' } } } ]
@@ -6070,8 +6208,10 @@ var ast =
 , { 'ast_class': 'BinaryExpr'
 , 'op': { 'ast_class': 'Minus' }
 , 'e1': { 'ast_class': 'LexicalRef'
+, 'ident': { 'ast_class': 'QualifiedIdentifier'
+, 'qual': { 'ast_class': 'LexicalRef'
 , 'ident': { 'ast_class': 'Identifier'
-, 'ident': 'BitwiseNot'
+, 'ident': 'Token'
 , 'nss': [  [ { 'ast_class': 'PublicNamespace'
 , 'name': '' }
 ,  ]
@@ -6081,6 +6221,7 @@ var ast =
 , 'name': 'Token' }
 ,  ]
 ,  ] } }
+, 'ident': 'BitwiseNot' } }
 , 'e2': { 'ast_class': 'LiteralExpr'
 , 'literal': { 'ast_class': 'LiteralDecimal'
 , 'decimalValue': '1' } } } ]
@@ -6099,8 +6240,10 @@ var ast =
 , { 'ast_class': 'BinaryExpr'
 , 'op': { 'ast_class': 'Minus' }
 , 'e1': { 'ast_class': 'LexicalRef'
+, 'ident': { 'ast_class': 'QualifiedIdentifier'
+, 'qual': { 'ast_class': 'LexicalRef'
 , 'ident': { 'ast_class': 'Identifier'
-, 'ident': 'Plus'
+, 'ident': 'Token'
 , 'nss': [  [ { 'ast_class': 'PublicNamespace'
 , 'name': '' }
 ,  ]
@@ -6110,6 +6253,7 @@ var ast =
 , 'name': 'Token' }
 ,  ]
 ,  ] } }
+, 'ident': 'Plus' } }
 , 'e2': { 'ast_class': 'LiteralExpr'
 , 'literal': { 'ast_class': 'LiteralDecimal'
 , 'decimalValue': '1' } } } ]
@@ -6128,8 +6272,10 @@ var ast =
 , { 'ast_class': 'BinaryExpr'
 , 'op': { 'ast_class': 'Minus' }
 , 'e1': { 'ast_class': 'LexicalRef'
+, 'ident': { 'ast_class': 'QualifiedIdentifier'
+, 'qual': { 'ast_class': 'LexicalRef'
 , 'ident': { 'ast_class': 'Identifier'
-, 'ident': 'PlusPlus'
+, 'ident': 'Token'
 , 'nss': [  [ { 'ast_class': 'PublicNamespace'
 , 'name': '' }
 ,  ]
@@ -6139,6 +6285,7 @@ var ast =
 , 'name': 'Token' }
 ,  ]
 ,  ] } }
+, 'ident': 'PlusPlus' } }
 , 'e2': { 'ast_class': 'LiteralExpr'
 , 'literal': { 'ast_class': 'LiteralDecimal'
 , 'decimalValue': '1' } } } ]
@@ -6157,8 +6304,10 @@ var ast =
 , { 'ast_class': 'BinaryExpr'
 , 'op': { 'ast_class': 'Minus' }
 , 'e1': { 'ast_class': 'LexicalRef'
+, 'ident': { 'ast_class': 'QualifiedIdentifier'
+, 'qual': { 'ast_class': 'LexicalRef'
 , 'ident': { 'ast_class': 'Identifier'
-, 'ident': 'PlusAssign'
+, 'ident': 'Token'
 , 'nss': [  [ { 'ast_class': 'PublicNamespace'
 , 'name': '' }
 ,  ]
@@ -6168,6 +6317,7 @@ var ast =
 , 'name': 'Token' }
 ,  ]
 ,  ] } }
+, 'ident': 'PlusAssign' } }
 , 'e2': { 'ast_class': 'LiteralExpr'
 , 'literal': { 'ast_class': 'LiteralDecimal'
 , 'decimalValue': '1' } } } ]
@@ -6186,8 +6336,10 @@ var ast =
 , { 'ast_class': 'BinaryExpr'
 , 'op': { 'ast_class': 'Minus' }
 , 'e1': { 'ast_class': 'LexicalRef'
+, 'ident': { 'ast_class': 'QualifiedIdentifier'
+, 'qual': { 'ast_class': 'LexicalRef'
 , 'ident': { 'ast_class': 'Identifier'
-, 'ident': 'LessThan'
+, 'ident': 'Token'
 , 'nss': [  [ { 'ast_class': 'PublicNamespace'
 , 'name': '' }
 ,  ]
@@ -6197,6 +6349,7 @@ var ast =
 , 'name': 'Token' }
 ,  ]
 ,  ] } }
+, 'ident': 'LessThan' } }
 , 'e2': { 'ast_class': 'LiteralExpr'
 , 'literal': { 'ast_class': 'LiteralDecimal'
 , 'decimalValue': '1' } } } ]
@@ -6215,8 +6368,10 @@ var ast =
 , { 'ast_class': 'BinaryExpr'
 , 'op': { 'ast_class': 'Minus' }
 , 'e1': { 'ast_class': 'LexicalRef'
+, 'ident': { 'ast_class': 'QualifiedIdentifier'
+, 'qual': { 'ast_class': 'LexicalRef'
 , 'ident': { 'ast_class': 'Identifier'
-, 'ident': 'LeftShift'
+, 'ident': 'Token'
 , 'nss': [  [ { 'ast_class': 'PublicNamespace'
 , 'name': '' }
 ,  ]
@@ -6226,6 +6381,7 @@ var ast =
 , 'name': 'Token' }
 ,  ]
 ,  ] } }
+, 'ident': 'LeftShift' } }
 , 'e2': { 'ast_class': 'LiteralExpr'
 , 'literal': { 'ast_class': 'LiteralDecimal'
 , 'decimalValue': '1' } } } ]
@@ -6244,8 +6400,10 @@ var ast =
 , { 'ast_class': 'BinaryExpr'
 , 'op': { 'ast_class': 'Minus' }
 , 'e1': { 'ast_class': 'LexicalRef'
+, 'ident': { 'ast_class': 'QualifiedIdentifier'
+, 'qual': { 'ast_class': 'LexicalRef'
 , 'ident': { 'ast_class': 'Identifier'
-, 'ident': 'LeftShiftAssign'
+, 'ident': 'Token'
 , 'nss': [  [ { 'ast_class': 'PublicNamespace'
 , 'name': '' }
 ,  ]
@@ -6255,6 +6413,7 @@ var ast =
 , 'name': 'Token' }
 ,  ]
 ,  ] } }
+, 'ident': 'LeftShiftAssign' } }
 , 'e2': { 'ast_class': 'LiteralExpr'
 , 'literal': { 'ast_class': 'LiteralDecimal'
 , 'decimalValue': '1' } } } ]
@@ -6273,8 +6432,10 @@ var ast =
 , { 'ast_class': 'BinaryExpr'
 , 'op': { 'ast_class': 'Minus' }
 , 'e1': { 'ast_class': 'LexicalRef'
+, 'ident': { 'ast_class': 'QualifiedIdentifier'
+, 'qual': { 'ast_class': 'LexicalRef'
 , 'ident': { 'ast_class': 'Identifier'
-, 'ident': 'LessThanOrEqual'
+, 'ident': 'Token'
 , 'nss': [  [ { 'ast_class': 'PublicNamespace'
 , 'name': '' }
 ,  ]
@@ -6284,6 +6445,7 @@ var ast =
 , 'name': 'Token' }
 ,  ]
 ,  ] } }
+, 'ident': 'LessThanOrEqual' } }
 , 'e2': { 'ast_class': 'LiteralExpr'
 , 'literal': { 'ast_class': 'LiteralDecimal'
 , 'decimalValue': '1' } } } ]
@@ -6302,8 +6464,10 @@ var ast =
 , { 'ast_class': 'BinaryExpr'
 , 'op': { 'ast_class': 'Minus' }
 , 'e1': { 'ast_class': 'LexicalRef'
+, 'ident': { 'ast_class': 'QualifiedIdentifier'
+, 'qual': { 'ast_class': 'LexicalRef'
 , 'ident': { 'ast_class': 'Identifier'
-, 'ident': 'Assign'
+, 'ident': 'Token'
 , 'nss': [  [ { 'ast_class': 'PublicNamespace'
 , 'name': '' }
 ,  ]
@@ -6313,6 +6477,7 @@ var ast =
 , 'name': 'Token' }
 ,  ]
 ,  ] } }
+, 'ident': 'Assign' } }
 , 'e2': { 'ast_class': 'LiteralExpr'
 , 'literal': { 'ast_class': 'LiteralDecimal'
 , 'decimalValue': '1' } } } ]
@@ -6331,8 +6496,10 @@ var ast =
 , { 'ast_class': 'BinaryExpr'
 , 'op': { 'ast_class': 'Minus' }
 , 'e1': { 'ast_class': 'LexicalRef'
+, 'ident': { 'ast_class': 'QualifiedIdentifier'
+, 'qual': { 'ast_class': 'LexicalRef'
 , 'ident': { 'ast_class': 'Identifier'
-, 'ident': 'MinusAssign'
+, 'ident': 'Token'
 , 'nss': [  [ { 'ast_class': 'PublicNamespace'
 , 'name': '' }
 ,  ]
@@ -6342,6 +6509,7 @@ var ast =
 , 'name': 'Token' }
 ,  ]
 ,  ] } }
+, 'ident': 'MinusAssign' } }
 , 'e2': { 'ast_class': 'LiteralExpr'
 , 'literal': { 'ast_class': 'LiteralDecimal'
 , 'decimalValue': '1' } } } ]
@@ -6360,8 +6528,10 @@ var ast =
 , { 'ast_class': 'BinaryExpr'
 , 'op': { 'ast_class': 'Minus' }
 , 'e1': { 'ast_class': 'LexicalRef'
+, 'ident': { 'ast_class': 'QualifiedIdentifier'
+, 'qual': { 'ast_class': 'LexicalRef'
 , 'ident': { 'ast_class': 'Identifier'
-, 'ident': 'Equal'
+, 'ident': 'Token'
 , 'nss': [  [ { 'ast_class': 'PublicNamespace'
 , 'name': '' }
 ,  ]
@@ -6371,6 +6541,7 @@ var ast =
 , 'name': 'Token' }
 ,  ]
 ,  ] } }
+, 'ident': 'Equal' } }
 , 'e2': { 'ast_class': 'LiteralExpr'
 , 'literal': { 'ast_class': 'LiteralDecimal'
 , 'decimalValue': '1' } } } ]
@@ -6389,8 +6560,10 @@ var ast =
 , { 'ast_class': 'BinaryExpr'
 , 'op': { 'ast_class': 'Minus' }
 , 'e1': { 'ast_class': 'LexicalRef'
+, 'ident': { 'ast_class': 'QualifiedIdentifier'
+, 'qual': { 'ast_class': 'LexicalRef'
 , 'ident': { 'ast_class': 'Identifier'
-, 'ident': 'StrictEqual'
+, 'ident': 'Token'
 , 'nss': [  [ { 'ast_class': 'PublicNamespace'
 , 'name': '' }
 ,  ]
@@ -6400,6 +6573,7 @@ var ast =
 , 'name': 'Token' }
 ,  ]
 ,  ] } }
+, 'ident': 'StrictEqual' } }
 , 'e2': { 'ast_class': 'LiteralExpr'
 , 'literal': { 'ast_class': 'LiteralDecimal'
 , 'decimalValue': '1' } } } ]
@@ -6418,8 +6592,10 @@ var ast =
 , { 'ast_class': 'BinaryExpr'
 , 'op': { 'ast_class': 'Minus' }
 , 'e1': { 'ast_class': 'LexicalRef'
+, 'ident': { 'ast_class': 'QualifiedIdentifier'
+, 'qual': { 'ast_class': 'LexicalRef'
 , 'ident': { 'ast_class': 'Identifier'
-, 'ident': 'GreaterThan'
+, 'ident': 'Token'
 , 'nss': [  [ { 'ast_class': 'PublicNamespace'
 , 'name': '' }
 ,  ]
@@ -6429,6 +6605,7 @@ var ast =
 , 'name': 'Token' }
 ,  ]
 ,  ] } }
+, 'ident': 'GreaterThan' } }
 , 'e2': { 'ast_class': 'LiteralExpr'
 , 'literal': { 'ast_class': 'LiteralDecimal'
 , 'decimalValue': '1' } } } ]
@@ -6447,8 +6624,10 @@ var ast =
 , { 'ast_class': 'BinaryExpr'
 , 'op': { 'ast_class': 'Minus' }
 , 'e1': { 'ast_class': 'LexicalRef'
+, 'ident': { 'ast_class': 'QualifiedIdentifier'
+, 'qual': { 'ast_class': 'LexicalRef'
 , 'ident': { 'ast_class': 'Identifier'
-, 'ident': 'GreaterThanOrEqual'
+, 'ident': 'Token'
 , 'nss': [  [ { 'ast_class': 'PublicNamespace'
 , 'name': '' }
 ,  ]
@@ -6458,6 +6637,7 @@ var ast =
 , 'name': 'Token' }
 ,  ]
 ,  ] } }
+, 'ident': 'GreaterThanOrEqual' } }
 , 'e2': { 'ast_class': 'LiteralExpr'
 , 'literal': { 'ast_class': 'LiteralDecimal'
 , 'decimalValue': '1' } } } ]
@@ -6476,8 +6656,10 @@ var ast =
 , { 'ast_class': 'BinaryExpr'
 , 'op': { 'ast_class': 'Minus' }
 , 'e1': { 'ast_class': 'LexicalRef'
+, 'ident': { 'ast_class': 'QualifiedIdentifier'
+, 'qual': { 'ast_class': 'LexicalRef'
 , 'ident': { 'ast_class': 'Identifier'
-, 'ident': 'RightShift'
+, 'ident': 'Token'
 , 'nss': [  [ { 'ast_class': 'PublicNamespace'
 , 'name': '' }
 ,  ]
@@ -6487,6 +6669,7 @@ var ast =
 , 'name': 'Token' }
 ,  ]
 ,  ] } }
+, 'ident': 'RightShift' } }
 , 'e2': { 'ast_class': 'LiteralExpr'
 , 'literal': { 'ast_class': 'LiteralDecimal'
 , 'decimalValue': '1' } } } ]
@@ -6505,8 +6688,10 @@ var ast =
 , { 'ast_class': 'BinaryExpr'
 , 'op': { 'ast_class': 'Minus' }
 , 'e1': { 'ast_class': 'LexicalRef'
+, 'ident': { 'ast_class': 'QualifiedIdentifier'
+, 'qual': { 'ast_class': 'LexicalRef'
 , 'ident': { 'ast_class': 'Identifier'
-, 'ident': 'RightShiftAssign'
+, 'ident': 'Token'
 , 'nss': [  [ { 'ast_class': 'PublicNamespace'
 , 'name': '' }
 ,  ]
@@ -6516,6 +6701,7 @@ var ast =
 , 'name': 'Token' }
 ,  ]
 ,  ] } }
+, 'ident': 'RightShiftAssign' } }
 , 'e2': { 'ast_class': 'LiteralExpr'
 , 'literal': { 'ast_class': 'LiteralDecimal'
 , 'decimalValue': '1' } } } ]
@@ -6534,8 +6720,10 @@ var ast =
 , { 'ast_class': 'BinaryExpr'
 , 'op': { 'ast_class': 'Minus' }
 , 'e1': { 'ast_class': 'LexicalRef'
+, 'ident': { 'ast_class': 'QualifiedIdentifier'
+, 'qual': { 'ast_class': 'LexicalRef'
 , 'ident': { 'ast_class': 'Identifier'
-, 'ident': 'UnsignedRightShift'
+, 'ident': 'Token'
 , 'nss': [  [ { 'ast_class': 'PublicNamespace'
 , 'name': '' }
 ,  ]
@@ -6545,6 +6733,7 @@ var ast =
 , 'name': 'Token' }
 ,  ]
 ,  ] } }
+, 'ident': 'UnsignedRightShift' } }
 , 'e2': { 'ast_class': 'LiteralExpr'
 , 'literal': { 'ast_class': 'LiteralDecimal'
 , 'decimalValue': '1' } } } ]
@@ -6563,8 +6752,10 @@ var ast =
 , { 'ast_class': 'BinaryExpr'
 , 'op': { 'ast_class': 'Minus' }
 , 'e1': { 'ast_class': 'LexicalRef'
+, 'ident': { 'ast_class': 'QualifiedIdentifier'
+, 'qual': { 'ast_class': 'LexicalRef'
 , 'ident': { 'ast_class': 'Identifier'
-, 'ident': 'UnsignedRightShiftAssign'
+, 'ident': 'Token'
 , 'nss': [  [ { 'ast_class': 'PublicNamespace'
 , 'name': '' }
 ,  ]
@@ -6574,6 +6765,7 @@ var ast =
 , 'name': 'Token' }
 ,  ]
 ,  ] } }
+, 'ident': 'UnsignedRightShiftAssign' } }
 , 'e2': { 'ast_class': 'LiteralExpr'
 , 'literal': { 'ast_class': 'LiteralDecimal'
 , 'decimalValue': '1' } } } ]
@@ -6592,8 +6784,10 @@ var ast =
 , { 'ast_class': 'BinaryExpr'
 , 'op': { 'ast_class': 'Minus' }
 , 'e1': { 'ast_class': 'LexicalRef'
+, 'ident': { 'ast_class': 'QualifiedIdentifier'
+, 'qual': { 'ast_class': 'LexicalRef'
 , 'ident': { 'ast_class': 'Identifier'
-, 'ident': 'Break'
+, 'ident': 'Token'
 , 'nss': [  [ { 'ast_class': 'PublicNamespace'
 , 'name': '' }
 ,  ]
@@ -6603,6 +6797,7 @@ var ast =
 , 'name': 'Token' }
 ,  ]
 ,  ] } }
+, 'ident': 'Break' } }
 , 'e2': { 'ast_class': 'LiteralExpr'
 , 'literal': { 'ast_class': 'LiteralDecimal'
 , 'decimalValue': '1' } } } ]
@@ -6621,8 +6816,10 @@ var ast =
 , { 'ast_class': 'BinaryExpr'
 , 'op': { 'ast_class': 'Minus' }
 , 'e1': { 'ast_class': 'LexicalRef'
+, 'ident': { 'ast_class': 'QualifiedIdentifier'
+, 'qual': { 'ast_class': 'LexicalRef'
 , 'ident': { 'ast_class': 'Identifier'
-, 'ident': 'Case'
+, 'ident': 'Token'
 , 'nss': [  [ { 'ast_class': 'PublicNamespace'
 , 'name': '' }
 ,  ]
@@ -6632,6 +6829,7 @@ var ast =
 , 'name': 'Token' }
 ,  ]
 ,  ] } }
+, 'ident': 'Case' } }
 , 'e2': { 'ast_class': 'LiteralExpr'
 , 'literal': { 'ast_class': 'LiteralDecimal'
 , 'decimalValue': '1' } } } ]
@@ -6650,8 +6848,10 @@ var ast =
 , { 'ast_class': 'BinaryExpr'
 , 'op': { 'ast_class': 'Minus' }
 , 'e1': { 'ast_class': 'LexicalRef'
+, 'ident': { 'ast_class': 'QualifiedIdentifier'
+, 'qual': { 'ast_class': 'LexicalRef'
 , 'ident': { 'ast_class': 'Identifier'
-, 'ident': 'Catch'
+, 'ident': 'Token'
 , 'nss': [  [ { 'ast_class': 'PublicNamespace'
 , 'name': '' }
 ,  ]
@@ -6661,6 +6861,7 @@ var ast =
 , 'name': 'Token' }
 ,  ]
 ,  ] } }
+, 'ident': 'Catch' } }
 , 'e2': { 'ast_class': 'LiteralExpr'
 , 'literal': { 'ast_class': 'LiteralDecimal'
 , 'decimalValue': '1' } } } ]
@@ -6679,8 +6880,10 @@ var ast =
 , { 'ast_class': 'BinaryExpr'
 , 'op': { 'ast_class': 'Minus' }
 , 'e1': { 'ast_class': 'LexicalRef'
+, 'ident': { 'ast_class': 'QualifiedIdentifier'
+, 'qual': { 'ast_class': 'LexicalRef'
 , 'ident': { 'ast_class': 'Identifier'
-, 'ident': 'Class'
+, 'ident': 'Token'
 , 'nss': [  [ { 'ast_class': 'PublicNamespace'
 , 'name': '' }
 ,  ]
@@ -6690,6 +6893,7 @@ var ast =
 , 'name': 'Token' }
 ,  ]
 ,  ] } }
+, 'ident': 'Class' } }
 , 'e2': { 'ast_class': 'LiteralExpr'
 , 'literal': { 'ast_class': 'LiteralDecimal'
 , 'decimalValue': '1' } } } ]
@@ -6708,8 +6912,10 @@ var ast =
 , { 'ast_class': 'BinaryExpr'
 , 'op': { 'ast_class': 'Minus' }
 , 'e1': { 'ast_class': 'LexicalRef'
+, 'ident': { 'ast_class': 'QualifiedIdentifier'
+, 'qual': { 'ast_class': 'LexicalRef'
 , 'ident': { 'ast_class': 'Identifier'
-, 'ident': 'Continue'
+, 'ident': 'Token'
 , 'nss': [  [ { 'ast_class': 'PublicNamespace'
 , 'name': '' }
 ,  ]
@@ -6719,6 +6925,7 @@ var ast =
 , 'name': 'Token' }
 ,  ]
 ,  ] } }
+, 'ident': 'Continue' } }
 , 'e2': { 'ast_class': 'LiteralExpr'
 , 'literal': { 'ast_class': 'LiteralDecimal'
 , 'decimalValue': '1' } } } ]
@@ -6737,8 +6944,10 @@ var ast =
 , { 'ast_class': 'BinaryExpr'
 , 'op': { 'ast_class': 'Minus' }
 , 'e1': { 'ast_class': 'LexicalRef'
+, 'ident': { 'ast_class': 'QualifiedIdentifier'
+, 'qual': { 'ast_class': 'LexicalRef'
 , 'ident': { 'ast_class': 'Identifier'
-, 'ident': 'Default'
+, 'ident': 'Token'
 , 'nss': [  [ { 'ast_class': 'PublicNamespace'
 , 'name': '' }
 ,  ]
@@ -6748,6 +6957,7 @@ var ast =
 , 'name': 'Token' }
 ,  ]
 ,  ] } }
+, 'ident': 'Default' } }
 , 'e2': { 'ast_class': 'LiteralExpr'
 , 'literal': { 'ast_class': 'LiteralDecimal'
 , 'decimalValue': '1' } } } ]
@@ -6766,8 +6976,10 @@ var ast =
 , { 'ast_class': 'BinaryExpr'
 , 'op': { 'ast_class': 'Minus' }
 , 'e1': { 'ast_class': 'LexicalRef'
+, 'ident': { 'ast_class': 'QualifiedIdentifier'
+, 'qual': { 'ast_class': 'LexicalRef'
 , 'ident': { 'ast_class': 'Identifier'
-, 'ident': 'Delete'
+, 'ident': 'Token'
 , 'nss': [  [ { 'ast_class': 'PublicNamespace'
 , 'name': '' }
 ,  ]
@@ -6777,6 +6989,7 @@ var ast =
 , 'name': 'Token' }
 ,  ]
 ,  ] } }
+, 'ident': 'Delete' } }
 , 'e2': { 'ast_class': 'LiteralExpr'
 , 'literal': { 'ast_class': 'LiteralDecimal'
 , 'decimalValue': '1' } } } ]
@@ -6795,8 +7008,10 @@ var ast =
 , { 'ast_class': 'BinaryExpr'
 , 'op': { 'ast_class': 'Minus' }
 , 'e1': { 'ast_class': 'LexicalRef'
+, 'ident': { 'ast_class': 'QualifiedIdentifier'
+, 'qual': { 'ast_class': 'LexicalRef'
 , 'ident': { 'ast_class': 'Identifier'
-, 'ident': 'Do'
+, 'ident': 'Token'
 , 'nss': [  [ { 'ast_class': 'PublicNamespace'
 , 'name': '' }
 ,  ]
@@ -6806,6 +7021,7 @@ var ast =
 , 'name': 'Token' }
 ,  ]
 ,  ] } }
+, 'ident': 'Do' } }
 , 'e2': { 'ast_class': 'LiteralExpr'
 , 'literal': { 'ast_class': 'LiteralDecimal'
 , 'decimalValue': '1' } } } ]
@@ -6824,8 +7040,10 @@ var ast =
 , { 'ast_class': 'BinaryExpr'
 , 'op': { 'ast_class': 'Minus' }
 , 'e1': { 'ast_class': 'LexicalRef'
+, 'ident': { 'ast_class': 'QualifiedIdentifier'
+, 'qual': { 'ast_class': 'LexicalRef'
 , 'ident': { 'ast_class': 'Identifier'
-, 'ident': 'Else'
+, 'ident': 'Token'
 , 'nss': [  [ { 'ast_class': 'PublicNamespace'
 , 'name': '' }
 ,  ]
@@ -6835,6 +7053,7 @@ var ast =
 , 'name': 'Token' }
 ,  ]
 ,  ] } }
+, 'ident': 'Else' } }
 , 'e2': { 'ast_class': 'LiteralExpr'
 , 'literal': { 'ast_class': 'LiteralDecimal'
 , 'decimalValue': '1' } } } ]
@@ -6853,8 +7072,10 @@ var ast =
 , { 'ast_class': 'BinaryExpr'
 , 'op': { 'ast_class': 'Minus' }
 , 'e1': { 'ast_class': 'LexicalRef'
+, 'ident': { 'ast_class': 'QualifiedIdentifier'
+, 'qual': { 'ast_class': 'LexicalRef'
 , 'ident': { 'ast_class': 'Identifier'
-, 'ident': 'Enum'
+, 'ident': 'Token'
 , 'nss': [  [ { 'ast_class': 'PublicNamespace'
 , 'name': '' }
 ,  ]
@@ -6864,6 +7085,7 @@ var ast =
 , 'name': 'Token' }
 ,  ]
 ,  ] } }
+, 'ident': 'Enum' } }
 , 'e2': { 'ast_class': 'LiteralExpr'
 , 'literal': { 'ast_class': 'LiteralDecimal'
 , 'decimalValue': '1' } } } ]
@@ -6882,8 +7104,10 @@ var ast =
 , { 'ast_class': 'BinaryExpr'
 , 'op': { 'ast_class': 'Minus' }
 , 'e1': { 'ast_class': 'LexicalRef'
+, 'ident': { 'ast_class': 'QualifiedIdentifier'
+, 'qual': { 'ast_class': 'LexicalRef'
 , 'ident': { 'ast_class': 'Identifier'
-, 'ident': 'Extends'
+, 'ident': 'Token'
 , 'nss': [  [ { 'ast_class': 'PublicNamespace'
 , 'name': '' }
 ,  ]
@@ -6893,6 +7117,7 @@ var ast =
 , 'name': 'Token' }
 ,  ]
 ,  ] } }
+, 'ident': 'Extends' } }
 , 'e2': { 'ast_class': 'LiteralExpr'
 , 'literal': { 'ast_class': 'LiteralDecimal'
 , 'decimalValue': '1' } } } ]
@@ -6911,8 +7136,10 @@ var ast =
 , { 'ast_class': 'BinaryExpr'
 , 'op': { 'ast_class': 'Minus' }
 , 'e1': { 'ast_class': 'LexicalRef'
+, 'ident': { 'ast_class': 'QualifiedIdentifier'
+, 'qual': { 'ast_class': 'LexicalRef'
 , 'ident': { 'ast_class': 'Identifier'
-, 'ident': 'False'
+, 'ident': 'Token'
 , 'nss': [  [ { 'ast_class': 'PublicNamespace'
 , 'name': '' }
 ,  ]
@@ -6922,6 +7149,7 @@ var ast =
 , 'name': 'Token' }
 ,  ]
 ,  ] } }
+, 'ident': 'False' } }
 , 'e2': { 'ast_class': 'LiteralExpr'
 , 'literal': { 'ast_class': 'LiteralDecimal'
 , 'decimalValue': '1' } } } ]
@@ -6940,8 +7168,10 @@ var ast =
 , { 'ast_class': 'BinaryExpr'
 , 'op': { 'ast_class': 'Minus' }
 , 'e1': { 'ast_class': 'LexicalRef'
+, 'ident': { 'ast_class': 'QualifiedIdentifier'
+, 'qual': { 'ast_class': 'LexicalRef'
 , 'ident': { 'ast_class': 'Identifier'
-, 'ident': 'Finally'
+, 'ident': 'Token'
 , 'nss': [  [ { 'ast_class': 'PublicNamespace'
 , 'name': '' }
 ,  ]
@@ -6951,6 +7181,7 @@ var ast =
 , 'name': 'Token' }
 ,  ]
 ,  ] } }
+, 'ident': 'Finally' } }
 , 'e2': { 'ast_class': 'LiteralExpr'
 , 'literal': { 'ast_class': 'LiteralDecimal'
 , 'decimalValue': '1' } } } ]
@@ -6969,8 +7200,10 @@ var ast =
 , { 'ast_class': 'BinaryExpr'
 , 'op': { 'ast_class': 'Minus' }
 , 'e1': { 'ast_class': 'LexicalRef'
+, 'ident': { 'ast_class': 'QualifiedIdentifier'
+, 'qual': { 'ast_class': 'LexicalRef'
 , 'ident': { 'ast_class': 'Identifier'
-, 'ident': 'For'
+, 'ident': 'Token'
 , 'nss': [  [ { 'ast_class': 'PublicNamespace'
 , 'name': '' }
 ,  ]
@@ -6980,6 +7213,7 @@ var ast =
 , 'name': 'Token' }
 ,  ]
 ,  ] } }
+, 'ident': 'For' } }
 , 'e2': { 'ast_class': 'LiteralExpr'
 , 'literal': { 'ast_class': 'LiteralDecimal'
 , 'decimalValue': '1' } } } ]
@@ -6998,8 +7232,10 @@ var ast =
 , { 'ast_class': 'BinaryExpr'
 , 'op': { 'ast_class': 'Minus' }
 , 'e1': { 'ast_class': 'LexicalRef'
+, 'ident': { 'ast_class': 'QualifiedIdentifier'
+, 'qual': { 'ast_class': 'LexicalRef'
 , 'ident': { 'ast_class': 'Identifier'
-, 'ident': 'Function'
+, 'ident': 'Token'
 , 'nss': [  [ { 'ast_class': 'PublicNamespace'
 , 'name': '' }
 ,  ]
@@ -7009,6 +7245,7 @@ var ast =
 , 'name': 'Token' }
 ,  ]
 ,  ] } }
+, 'ident': 'Function' } }
 , 'e2': { 'ast_class': 'LiteralExpr'
 , 'literal': { 'ast_class': 'LiteralDecimal'
 , 'decimalValue': '1' } } } ]
@@ -7027,8 +7264,10 @@ var ast =
 , { 'ast_class': 'BinaryExpr'
 , 'op': { 'ast_class': 'Minus' }
 , 'e1': { 'ast_class': 'LexicalRef'
+, 'ident': { 'ast_class': 'QualifiedIdentifier'
+, 'qual': { 'ast_class': 'LexicalRef'
 , 'ident': { 'ast_class': 'Identifier'
-, 'ident': 'If'
+, 'ident': 'Token'
 , 'nss': [  [ { 'ast_class': 'PublicNamespace'
 , 'name': '' }
 ,  ]
@@ -7038,6 +7277,7 @@ var ast =
 , 'name': 'Token' }
 ,  ]
 ,  ] } }
+, 'ident': 'If' } }
 , 'e2': { 'ast_class': 'LiteralExpr'
 , 'literal': { 'ast_class': 'LiteralDecimal'
 , 'decimalValue': '1' } } } ]
@@ -7056,8 +7296,10 @@ var ast =
 , { 'ast_class': 'BinaryExpr'
 , 'op': { 'ast_class': 'Minus' }
 , 'e1': { 'ast_class': 'LexicalRef'
+, 'ident': { 'ast_class': 'QualifiedIdentifier'
+, 'qual': { 'ast_class': 'LexicalRef'
 , 'ident': { 'ast_class': 'Identifier'
-, 'ident': 'In'
+, 'ident': 'Token'
 , 'nss': [  [ { 'ast_class': 'PublicNamespace'
 , 'name': '' }
 ,  ]
@@ -7067,6 +7309,7 @@ var ast =
 , 'name': 'Token' }
 ,  ]
 ,  ] } }
+, 'ident': 'In' } }
 , 'e2': { 'ast_class': 'LiteralExpr'
 , 'literal': { 'ast_class': 'LiteralDecimal'
 , 'decimalValue': '1' } } } ]
@@ -7085,8 +7328,10 @@ var ast =
 , { 'ast_class': 'BinaryExpr'
 , 'op': { 'ast_class': 'Minus' }
 , 'e1': { 'ast_class': 'LexicalRef'
+, 'ident': { 'ast_class': 'QualifiedIdentifier'
+, 'qual': { 'ast_class': 'LexicalRef'
 , 'ident': { 'ast_class': 'Identifier'
-, 'ident': 'InstanceOf'
+, 'ident': 'Token'
 , 'nss': [  [ { 'ast_class': 'PublicNamespace'
 , 'name': '' }
 ,  ]
@@ -7096,6 +7341,7 @@ var ast =
 , 'name': 'Token' }
 ,  ]
 ,  ] } }
+, 'ident': 'InstanceOf' } }
 , 'e2': { 'ast_class': 'LiteralExpr'
 , 'literal': { 'ast_class': 'LiteralDecimal'
 , 'decimalValue': '1' } } } ]
@@ -7114,8 +7360,10 @@ var ast =
 , { 'ast_class': 'BinaryExpr'
 , 'op': { 'ast_class': 'Minus' }
 , 'e1': { 'ast_class': 'LexicalRef'
+, 'ident': { 'ast_class': 'QualifiedIdentifier'
+, 'qual': { 'ast_class': 'LexicalRef'
 , 'ident': { 'ast_class': 'Identifier'
-, 'ident': 'New'
+, 'ident': 'Token'
 , 'nss': [  [ { 'ast_class': 'PublicNamespace'
 , 'name': '' }
 ,  ]
@@ -7125,6 +7373,7 @@ var ast =
 , 'name': 'Token' }
 ,  ]
 ,  ] } }
+, 'ident': 'New' } }
 , 'e2': { 'ast_class': 'LiteralExpr'
 , 'literal': { 'ast_class': 'LiteralDecimal'
 , 'decimalValue': '1' } } } ]
@@ -7143,8 +7392,10 @@ var ast =
 , { 'ast_class': 'BinaryExpr'
 , 'op': { 'ast_class': 'Minus' }
 , 'e1': { 'ast_class': 'LexicalRef'
+, 'ident': { 'ast_class': 'QualifiedIdentifier'
+, 'qual': { 'ast_class': 'LexicalRef'
 , 'ident': { 'ast_class': 'Identifier'
-, 'ident': 'Null'
+, 'ident': 'Token'
 , 'nss': [  [ { 'ast_class': 'PublicNamespace'
 , 'name': '' }
 ,  ]
@@ -7154,6 +7405,7 @@ var ast =
 , 'name': 'Token' }
 ,  ]
 ,  ] } }
+, 'ident': 'Null' } }
 , 'e2': { 'ast_class': 'LiteralExpr'
 , 'literal': { 'ast_class': 'LiteralDecimal'
 , 'decimalValue': '1' } } } ]
@@ -7172,8 +7424,10 @@ var ast =
 , { 'ast_class': 'BinaryExpr'
 , 'op': { 'ast_class': 'Minus' }
 , 'e1': { 'ast_class': 'LexicalRef'
+, 'ident': { 'ast_class': 'QualifiedIdentifier'
+, 'qual': { 'ast_class': 'LexicalRef'
 , 'ident': { 'ast_class': 'Identifier'
-, 'ident': 'Return'
+, 'ident': 'Token'
 , 'nss': [  [ { 'ast_class': 'PublicNamespace'
 , 'name': '' }
 ,  ]
@@ -7183,6 +7437,7 @@ var ast =
 , 'name': 'Token' }
 ,  ]
 ,  ] } }
+, 'ident': 'Return' } }
 , 'e2': { 'ast_class': 'LiteralExpr'
 , 'literal': { 'ast_class': 'LiteralDecimal'
 , 'decimalValue': '1' } } } ]
@@ -7201,8 +7456,10 @@ var ast =
 , { 'ast_class': 'BinaryExpr'
 , 'op': { 'ast_class': 'Minus' }
 , 'e1': { 'ast_class': 'LexicalRef'
+, 'ident': { 'ast_class': 'QualifiedIdentifier'
+, 'qual': { 'ast_class': 'LexicalRef'
 , 'ident': { 'ast_class': 'Identifier'
-, 'ident': 'Super'
+, 'ident': 'Token'
 , 'nss': [  [ { 'ast_class': 'PublicNamespace'
 , 'name': '' }
 ,  ]
@@ -7212,6 +7469,7 @@ var ast =
 , 'name': 'Token' }
 ,  ]
 ,  ] } }
+, 'ident': 'Super' } }
 , 'e2': { 'ast_class': 'LiteralExpr'
 , 'literal': { 'ast_class': 'LiteralDecimal'
 , 'decimalValue': '1' } } } ]
@@ -7230,8 +7488,10 @@ var ast =
 , { 'ast_class': 'BinaryExpr'
 , 'op': { 'ast_class': 'Minus' }
 , 'e1': { 'ast_class': 'LexicalRef'
+, 'ident': { 'ast_class': 'QualifiedIdentifier'
+, 'qual': { 'ast_class': 'LexicalRef'
 , 'ident': { 'ast_class': 'Identifier'
-, 'ident': 'Switch'
+, 'ident': 'Token'
 , 'nss': [  [ { 'ast_class': 'PublicNamespace'
 , 'name': '' }
 ,  ]
@@ -7241,6 +7501,7 @@ var ast =
 , 'name': 'Token' }
 ,  ]
 ,  ] } }
+, 'ident': 'Switch' } }
 , 'e2': { 'ast_class': 'LiteralExpr'
 , 'literal': { 'ast_class': 'LiteralDecimal'
 , 'decimalValue': '1' } } } ]
@@ -7259,8 +7520,10 @@ var ast =
 , { 'ast_class': 'BinaryExpr'
 , 'op': { 'ast_class': 'Minus' }
 , 'e1': { 'ast_class': 'LexicalRef'
+, 'ident': { 'ast_class': 'QualifiedIdentifier'
+, 'qual': { 'ast_class': 'LexicalRef'
 , 'ident': { 'ast_class': 'Identifier'
-, 'ident': 'This'
+, 'ident': 'Token'
 , 'nss': [  [ { 'ast_class': 'PublicNamespace'
 , 'name': '' }
 ,  ]
@@ -7270,6 +7533,7 @@ var ast =
 , 'name': 'Token' }
 ,  ]
 ,  ] } }
+, 'ident': 'This' } }
 , 'e2': { 'ast_class': 'LiteralExpr'
 , 'literal': { 'ast_class': 'LiteralDecimal'
 , 'decimalValue': '1' } } } ]
@@ -7288,8 +7552,10 @@ var ast =
 , { 'ast_class': 'BinaryExpr'
 , 'op': { 'ast_class': 'Minus' }
 , 'e1': { 'ast_class': 'LexicalRef'
+, 'ident': { 'ast_class': 'QualifiedIdentifier'
+, 'qual': { 'ast_class': 'LexicalRef'
 , 'ident': { 'ast_class': 'Identifier'
-, 'ident': 'Throw'
+, 'ident': 'Token'
 , 'nss': [  [ { 'ast_class': 'PublicNamespace'
 , 'name': '' }
 ,  ]
@@ -7299,6 +7565,7 @@ var ast =
 , 'name': 'Token' }
 ,  ]
 ,  ] } }
+, 'ident': 'Throw' } }
 , 'e2': { 'ast_class': 'LiteralExpr'
 , 'literal': { 'ast_class': 'LiteralDecimal'
 , 'decimalValue': '1' } } } ]
@@ -7317,8 +7584,10 @@ var ast =
 , { 'ast_class': 'BinaryExpr'
 , 'op': { 'ast_class': 'Minus' }
 , 'e1': { 'ast_class': 'LexicalRef'
+, 'ident': { 'ast_class': 'QualifiedIdentifier'
+, 'qual': { 'ast_class': 'LexicalRef'
 , 'ident': { 'ast_class': 'Identifier'
-, 'ident': 'True'
+, 'ident': 'Token'
 , 'nss': [  [ { 'ast_class': 'PublicNamespace'
 , 'name': '' }
 ,  ]
@@ -7328,6 +7597,7 @@ var ast =
 , 'name': 'Token' }
 ,  ]
 ,  ] } }
+, 'ident': 'True' } }
 , 'e2': { 'ast_class': 'LiteralExpr'
 , 'literal': { 'ast_class': 'LiteralDecimal'
 , 'decimalValue': '1' } } } ]
@@ -7346,8 +7616,10 @@ var ast =
 , { 'ast_class': 'BinaryExpr'
 , 'op': { 'ast_class': 'Minus' }
 , 'e1': { 'ast_class': 'LexicalRef'
+, 'ident': { 'ast_class': 'QualifiedIdentifier'
+, 'qual': { 'ast_class': 'LexicalRef'
 , 'ident': { 'ast_class': 'Identifier'
-, 'ident': 'Try'
+, 'ident': 'Token'
 , 'nss': [  [ { 'ast_class': 'PublicNamespace'
 , 'name': '' }
 ,  ]
@@ -7357,6 +7629,7 @@ var ast =
 , 'name': 'Token' }
 ,  ]
 ,  ] } }
+, 'ident': 'Try' } }
 , 'e2': { 'ast_class': 'LiteralExpr'
 , 'literal': { 'ast_class': 'LiteralDecimal'
 , 'decimalValue': '1' } } } ]
@@ -7375,8 +7648,10 @@ var ast =
 , { 'ast_class': 'BinaryExpr'
 , 'op': { 'ast_class': 'Minus' }
 , 'e1': { 'ast_class': 'LexicalRef'
+, 'ident': { 'ast_class': 'QualifiedIdentifier'
+, 'qual': { 'ast_class': 'LexicalRef'
 , 'ident': { 'ast_class': 'Identifier'
-, 'ident': 'TypeOf'
+, 'ident': 'Token'
 , 'nss': [  [ { 'ast_class': 'PublicNamespace'
 , 'name': '' }
 ,  ]
@@ -7386,6 +7661,7 @@ var ast =
 , 'name': 'Token' }
 ,  ]
 ,  ] } }
+, 'ident': 'TypeOf' } }
 , 'e2': { 'ast_class': 'LiteralExpr'
 , 'literal': { 'ast_class': 'LiteralDecimal'
 , 'decimalValue': '1' } } } ]
@@ -7404,8 +7680,10 @@ var ast =
 , { 'ast_class': 'BinaryExpr'
 , 'op': { 'ast_class': 'Minus' }
 , 'e1': { 'ast_class': 'LexicalRef'
+, 'ident': { 'ast_class': 'QualifiedIdentifier'
+, 'qual': { 'ast_class': 'LexicalRef'
 , 'ident': { 'ast_class': 'Identifier'
-, 'ident': 'Var'
+, 'ident': 'Token'
 , 'nss': [  [ { 'ast_class': 'PublicNamespace'
 , 'name': '' }
 ,  ]
@@ -7415,6 +7693,7 @@ var ast =
 , 'name': 'Token' }
 ,  ]
 ,  ] } }
+, 'ident': 'Var' } }
 , 'e2': { 'ast_class': 'LiteralExpr'
 , 'literal': { 'ast_class': 'LiteralDecimal'
 , 'decimalValue': '1' } } } ]
@@ -7433,8 +7712,10 @@ var ast =
 , { 'ast_class': 'BinaryExpr'
 , 'op': { 'ast_class': 'Minus' }
 , 'e1': { 'ast_class': 'LexicalRef'
+, 'ident': { 'ast_class': 'QualifiedIdentifier'
+, 'qual': { 'ast_class': 'LexicalRef'
 , 'ident': { 'ast_class': 'Identifier'
-, 'ident': 'Void'
+, 'ident': 'Token'
 , 'nss': [  [ { 'ast_class': 'PublicNamespace'
 , 'name': '' }
 ,  ]
@@ -7444,6 +7725,7 @@ var ast =
 , 'name': 'Token' }
 ,  ]
 ,  ] } }
+, 'ident': 'Void' } }
 , 'e2': { 'ast_class': 'LiteralExpr'
 , 'literal': { 'ast_class': 'LiteralDecimal'
 , 'decimalValue': '1' } } } ]
@@ -7462,8 +7744,10 @@ var ast =
 , { 'ast_class': 'BinaryExpr'
 , 'op': { 'ast_class': 'Minus' }
 , 'e1': { 'ast_class': 'LexicalRef'
+, 'ident': { 'ast_class': 'QualifiedIdentifier'
+, 'qual': { 'ast_class': 'LexicalRef'
 , 'ident': { 'ast_class': 'Identifier'
-, 'ident': 'While'
+, 'ident': 'Token'
 , 'nss': [  [ { 'ast_class': 'PublicNamespace'
 , 'name': '' }
 ,  ]
@@ -7473,6 +7757,7 @@ var ast =
 , 'name': 'Token' }
 ,  ]
 ,  ] } }
+, 'ident': 'While' } }
 , 'e2': { 'ast_class': 'LiteralExpr'
 , 'literal': { 'ast_class': 'LiteralDecimal'
 , 'decimalValue': '1' } } } ]
@@ -7491,8 +7776,10 @@ var ast =
 , { 'ast_class': 'BinaryExpr'
 , 'op': { 'ast_class': 'Minus' }
 , 'e1': { 'ast_class': 'LexicalRef'
+, 'ident': { 'ast_class': 'QualifiedIdentifier'
+, 'qual': { 'ast_class': 'LexicalRef'
 , 'ident': { 'ast_class': 'Identifier'
-, 'ident': 'With'
+, 'ident': 'Token'
 , 'nss': [  [ { 'ast_class': 'PublicNamespace'
 , 'name': '' }
 ,  ]
@@ -7502,6 +7789,7 @@ var ast =
 , 'name': 'Token' }
 ,  ]
 ,  ] } }
+, 'ident': 'With' } }
 , 'e2': { 'ast_class': 'LiteralExpr'
 , 'literal': { 'ast_class': 'LiteralDecimal'
 , 'decimalValue': '1' } } } ]
@@ -7520,8 +7808,10 @@ var ast =
 , { 'ast_class': 'BinaryExpr'
 , 'op': { 'ast_class': 'Minus' }
 , 'e1': { 'ast_class': 'LexicalRef'
+, 'ident': { 'ast_class': 'QualifiedIdentifier'
+, 'qual': { 'ast_class': 'LexicalRef'
 , 'ident': { 'ast_class': 'Identifier'
-, 'ident': 'Call'
+, 'ident': 'Token'
 , 'nss': [  [ { 'ast_class': 'PublicNamespace'
 , 'name': '' }
 ,  ]
@@ -7531,6 +7821,7 @@ var ast =
 , 'name': 'Token' }
 ,  ]
 ,  ] } }
+, 'ident': 'Call' } }
 , 'e2': { 'ast_class': 'LiteralExpr'
 , 'literal': { 'ast_class': 'LiteralDecimal'
 , 'decimalValue': '1' } } } ]
@@ -7549,8 +7840,10 @@ var ast =
 , { 'ast_class': 'BinaryExpr'
 , 'op': { 'ast_class': 'Minus' }
 , 'e1': { 'ast_class': 'LexicalRef'
+, 'ident': { 'ast_class': 'QualifiedIdentifier'
+, 'qual': { 'ast_class': 'LexicalRef'
 , 'ident': { 'ast_class': 'Identifier'
-, 'ident': 'Cast'
+, 'ident': 'Token'
 , 'nss': [  [ { 'ast_class': 'PublicNamespace'
 , 'name': '' }
 ,  ]
@@ -7560,6 +7853,7 @@ var ast =
 , 'name': 'Token' }
 ,  ]
 ,  ] } }
+, 'ident': 'Cast' } }
 , 'e2': { 'ast_class': 'LiteralExpr'
 , 'literal': { 'ast_class': 'LiteralDecimal'
 , 'decimalValue': '1' } } } ]
@@ -7578,8 +7872,10 @@ var ast =
 , { 'ast_class': 'BinaryExpr'
 , 'op': { 'ast_class': 'Minus' }
 , 'e1': { 'ast_class': 'LexicalRef'
+, 'ident': { 'ast_class': 'QualifiedIdentifier'
+, 'qual': { 'ast_class': 'LexicalRef'
 , 'ident': { 'ast_class': 'Identifier'
-, 'ident': 'Const'
+, 'ident': 'Token'
 , 'nss': [  [ { 'ast_class': 'PublicNamespace'
 , 'name': '' }
 ,  ]
@@ -7589,6 +7885,7 @@ var ast =
 , 'name': 'Token' }
 ,  ]
 ,  ] } }
+, 'ident': 'Const' } }
 , 'e2': { 'ast_class': 'LiteralExpr'
 , 'literal': { 'ast_class': 'LiteralDecimal'
 , 'decimalValue': '1' } } } ]
@@ -7607,8 +7904,10 @@ var ast =
 , { 'ast_class': 'BinaryExpr'
 , 'op': { 'ast_class': 'Minus' }
 , 'e1': { 'ast_class': 'LexicalRef'
+, 'ident': { 'ast_class': 'QualifiedIdentifier'
+, 'qual': { 'ast_class': 'LexicalRef'
 , 'ident': { 'ast_class': 'Identifier'
-, 'ident': 'Decimal'
+, 'ident': 'Token'
 , 'nss': [  [ { 'ast_class': 'PublicNamespace'
 , 'name': '' }
 ,  ]
@@ -7618,6 +7917,7 @@ var ast =
 , 'name': 'Token' }
 ,  ]
 ,  ] } }
+, 'ident': 'Decimal' } }
 , 'e2': { 'ast_class': 'LiteralExpr'
 , 'literal': { 'ast_class': 'LiteralDecimal'
 , 'decimalValue': '1' } } } ]
@@ -7636,8 +7936,10 @@ var ast =
 , { 'ast_class': 'BinaryExpr'
 , 'op': { 'ast_class': 'Minus' }
 , 'e1': { 'ast_class': 'LexicalRef'
+, 'ident': { 'ast_class': 'QualifiedIdentifier'
+, 'qual': { 'ast_class': 'LexicalRef'
 , 'ident': { 'ast_class': 'Identifier'
-, 'ident': 'Double'
+, 'ident': 'Token'
 , 'nss': [  [ { 'ast_class': 'PublicNamespace'
 , 'name': '' }
 ,  ]
@@ -7647,6 +7949,7 @@ var ast =
 , 'name': 'Token' }
 ,  ]
 ,  ] } }
+, 'ident': 'Double' } }
 , 'e2': { 'ast_class': 'LiteralExpr'
 , 'literal': { 'ast_class': 'LiteralDecimal'
 , 'decimalValue': '1' } } } ]
@@ -7665,8 +7968,10 @@ var ast =
 , { 'ast_class': 'BinaryExpr'
 , 'op': { 'ast_class': 'Minus' }
 , 'e1': { 'ast_class': 'LexicalRef'
+, 'ident': { 'ast_class': 'QualifiedIdentifier'
+, 'qual': { 'ast_class': 'LexicalRef'
 , 'ident': { 'ast_class': 'Identifier'
-, 'ident': 'Dynamic'
+, 'ident': 'Token'
 , 'nss': [  [ { 'ast_class': 'PublicNamespace'
 , 'name': '' }
 ,  ]
@@ -7676,6 +7981,7 @@ var ast =
 , 'name': 'Token' }
 ,  ]
 ,  ] } }
+, 'ident': 'Dynamic' } }
 , 'e2': { 'ast_class': 'LiteralExpr'
 , 'literal': { 'ast_class': 'LiteralDecimal'
 , 'decimalValue': '1' } } } ]
@@ -7694,8 +8000,10 @@ var ast =
 , { 'ast_class': 'BinaryExpr'
 , 'op': { 'ast_class': 'Minus' }
 , 'e1': { 'ast_class': 'LexicalRef'
+, 'ident': { 'ast_class': 'QualifiedIdentifier'
+, 'qual': { 'ast_class': 'LexicalRef'
 , 'ident': { 'ast_class': 'Identifier'
-, 'ident': 'Each'
+, 'ident': 'Token'
 , 'nss': [  [ { 'ast_class': 'PublicNamespace'
 , 'name': '' }
 ,  ]
@@ -7705,6 +8013,7 @@ var ast =
 , 'name': 'Token' }
 ,  ]
 ,  ] } }
+, 'ident': 'Each' } }
 , 'e2': { 'ast_class': 'LiteralExpr'
 , 'literal': { 'ast_class': 'LiteralDecimal'
 , 'decimalValue': '1' } } } ]
@@ -7723,8 +8032,10 @@ var ast =
 , { 'ast_class': 'BinaryExpr'
 , 'op': { 'ast_class': 'Minus' }
 , 'e1': { 'ast_class': 'LexicalRef'
+, 'ident': { 'ast_class': 'QualifiedIdentifier'
+, 'qual': { 'ast_class': 'LexicalRef'
 , 'ident': { 'ast_class': 'Identifier'
-, 'ident': 'Eval'
+, 'ident': 'Token'
 , 'nss': [  [ { 'ast_class': 'PublicNamespace'
 , 'name': '' }
 ,  ]
@@ -7734,6 +8045,7 @@ var ast =
 , 'name': 'Token' }
 ,  ]
 ,  ] } }
+, 'ident': 'Eval' } }
 , 'e2': { 'ast_class': 'LiteralExpr'
 , 'literal': { 'ast_class': 'LiteralDecimal'
 , 'decimalValue': '1' } } } ]
@@ -7752,8 +8064,10 @@ var ast =
 , { 'ast_class': 'BinaryExpr'
 , 'op': { 'ast_class': 'Minus' }
 , 'e1': { 'ast_class': 'LexicalRef'
+, 'ident': { 'ast_class': 'QualifiedIdentifier'
+, 'qual': { 'ast_class': 'LexicalRef'
 , 'ident': { 'ast_class': 'Identifier'
-, 'ident': 'Final'
+, 'ident': 'Token'
 , 'nss': [  [ { 'ast_class': 'PublicNamespace'
 , 'name': '' }
 ,  ]
@@ -7763,6 +8077,7 @@ var ast =
 , 'name': 'Token' }
 ,  ]
 ,  ] } }
+, 'ident': 'Final' } }
 , 'e2': { 'ast_class': 'LiteralExpr'
 , 'literal': { 'ast_class': 'LiteralDecimal'
 , 'decimalValue': '1' } } } ]
@@ -7781,8 +8096,10 @@ var ast =
 , { 'ast_class': 'BinaryExpr'
 , 'op': { 'ast_class': 'Minus' }
 , 'e1': { 'ast_class': 'LexicalRef'
+, 'ident': { 'ast_class': 'QualifiedIdentifier'
+, 'qual': { 'ast_class': 'LexicalRef'
 , 'ident': { 'ast_class': 'Identifier'
-, 'ident': 'Get'
+, 'ident': 'Token'
 , 'nss': [  [ { 'ast_class': 'PublicNamespace'
 , 'name': '' }
 ,  ]
@@ -7792,6 +8109,7 @@ var ast =
 , 'name': 'Token' }
 ,  ]
 ,  ] } }
+, 'ident': 'Get' } }
 , 'e2': { 'ast_class': 'LiteralExpr'
 , 'literal': { 'ast_class': 'LiteralDecimal'
 , 'decimalValue': '1' } } } ]
@@ -7810,8 +8128,10 @@ var ast =
 , { 'ast_class': 'BinaryExpr'
 , 'op': { 'ast_class': 'Minus' }
 , 'e1': { 'ast_class': 'LexicalRef'
+, 'ident': { 'ast_class': 'QualifiedIdentifier'
+, 'qual': { 'ast_class': 'LexicalRef'
 , 'ident': { 'ast_class': 'Identifier'
-, 'ident': 'Has'
+, 'ident': 'Token'
 , 'nss': [  [ { 'ast_class': 'PublicNamespace'
 , 'name': '' }
 ,  ]
@@ -7821,6 +8141,7 @@ var ast =
 , 'name': 'Token' }
 ,  ]
 ,  ] } }
+, 'ident': 'Has' } }
 , 'e2': { 'ast_class': 'LiteralExpr'
 , 'literal': { 'ast_class': 'LiteralDecimal'
 , 'decimalValue': '1' } } } ]
@@ -7839,8 +8160,10 @@ var ast =
 , { 'ast_class': 'BinaryExpr'
 , 'op': { 'ast_class': 'Minus' }
 , 'e1': { 'ast_class': 'LexicalRef'
+, 'ident': { 'ast_class': 'QualifiedIdentifier'
+, 'qual': { 'ast_class': 'LexicalRef'
 , 'ident': { 'ast_class': 'Identifier'
-, 'ident': 'Implements'
+, 'ident': 'Token'
 , 'nss': [  [ { 'ast_class': 'PublicNamespace'
 , 'name': '' }
 ,  ]
@@ -7850,6 +8173,7 @@ var ast =
 , 'name': 'Token' }
 ,  ]
 ,  ] } }
+, 'ident': 'Implements' } }
 , 'e2': { 'ast_class': 'LiteralExpr'
 , 'literal': { 'ast_class': 'LiteralDecimal'
 , 'decimalValue': '1' } } } ]
@@ -7868,8 +8192,10 @@ var ast =
 , { 'ast_class': 'BinaryExpr'
 , 'op': { 'ast_class': 'Minus' }
 , 'e1': { 'ast_class': 'LexicalRef'
+, 'ident': { 'ast_class': 'QualifiedIdentifier'
+, 'qual': { 'ast_class': 'LexicalRef'
 , 'ident': { 'ast_class': 'Identifier'
-, 'ident': 'Import'
+, 'ident': 'Token'
 , 'nss': [  [ { 'ast_class': 'PublicNamespace'
 , 'name': '' }
 ,  ]
@@ -7879,6 +8205,7 @@ var ast =
 , 'name': 'Token' }
 ,  ]
 ,  ] } }
+, 'ident': 'Import' } }
 , 'e2': { 'ast_class': 'LiteralExpr'
 , 'literal': { 'ast_class': 'LiteralDecimal'
 , 'decimalValue': '1' } } } ]
@@ -7897,8 +8224,10 @@ var ast =
 , { 'ast_class': 'BinaryExpr'
 , 'op': { 'ast_class': 'Minus' }
 , 'e1': { 'ast_class': 'LexicalRef'
+, 'ident': { 'ast_class': 'QualifiedIdentifier'
+, 'qual': { 'ast_class': 'LexicalRef'
 , 'ident': { 'ast_class': 'Identifier'
-, 'ident': 'Int'
+, 'ident': 'Token'
 , 'nss': [  [ { 'ast_class': 'PublicNamespace'
 , 'name': '' }
 ,  ]
@@ -7908,6 +8237,7 @@ var ast =
 , 'name': 'Token' }
 ,  ]
 ,  ] } }
+, 'ident': 'Int' } }
 , 'e2': { 'ast_class': 'LiteralExpr'
 , 'literal': { 'ast_class': 'LiteralDecimal'
 , 'decimalValue': '1' } } } ]
@@ -7926,8 +8256,10 @@ var ast =
 , { 'ast_class': 'BinaryExpr'
 , 'op': { 'ast_class': 'Minus' }
 , 'e1': { 'ast_class': 'LexicalRef'
+, 'ident': { 'ast_class': 'QualifiedIdentifier'
+, 'qual': { 'ast_class': 'LexicalRef'
 , 'ident': { 'ast_class': 'Identifier'
-, 'ident': 'Interface'
+, 'ident': 'Token'
 , 'nss': [  [ { 'ast_class': 'PublicNamespace'
 , 'name': '' }
 ,  ]
@@ -7937,6 +8269,7 @@ var ast =
 , 'name': 'Token' }
 ,  ]
 ,  ] } }
+, 'ident': 'Interface' } }
 , 'e2': { 'ast_class': 'LiteralExpr'
 , 'literal': { 'ast_class': 'LiteralDecimal'
 , 'decimalValue': '1' } } } ]
@@ -7955,8 +8288,10 @@ var ast =
 , { 'ast_class': 'BinaryExpr'
 , 'op': { 'ast_class': 'Minus' }
 , 'e1': { 'ast_class': 'LexicalRef'
+, 'ident': { 'ast_class': 'QualifiedIdentifier'
+, 'qual': { 'ast_class': 'LexicalRef'
 , 'ident': { 'ast_class': 'Identifier'
-, 'ident': 'Internal'
+, 'ident': 'Token'
 , 'nss': [  [ { 'ast_class': 'PublicNamespace'
 , 'name': '' }
 ,  ]
@@ -7966,6 +8301,7 @@ var ast =
 , 'name': 'Token' }
 ,  ]
 ,  ] } }
+, 'ident': 'Internal' } }
 , 'e2': { 'ast_class': 'LiteralExpr'
 , 'literal': { 'ast_class': 'LiteralDecimal'
 , 'decimalValue': '1' } } } ]
@@ -7984,8 +8320,10 @@ var ast =
 , { 'ast_class': 'BinaryExpr'
 , 'op': { 'ast_class': 'Minus' }
 , 'e1': { 'ast_class': 'LexicalRef'
+, 'ident': { 'ast_class': 'QualifiedIdentifier'
+, 'qual': { 'ast_class': 'LexicalRef'
 , 'ident': { 'ast_class': 'Identifier'
-, 'ident': 'Intrinsic'
+, 'ident': 'Token'
 , 'nss': [  [ { 'ast_class': 'PublicNamespace'
 , 'name': '' }
 ,  ]
@@ -7995,6 +8333,7 @@ var ast =
 , 'name': 'Token' }
 ,  ]
 ,  ] } }
+, 'ident': 'Intrinsic' } }
 , 'e2': { 'ast_class': 'LiteralExpr'
 , 'literal': { 'ast_class': 'LiteralDecimal'
 , 'decimalValue': '1' } } } ]
@@ -8013,8 +8352,10 @@ var ast =
 , { 'ast_class': 'BinaryExpr'
 , 'op': { 'ast_class': 'Minus' }
 , 'e1': { 'ast_class': 'LexicalRef'
+, 'ident': { 'ast_class': 'QualifiedIdentifier'
+, 'qual': { 'ast_class': 'LexicalRef'
 , 'ident': { 'ast_class': 'Identifier'
-, 'ident': 'Is'
+, 'ident': 'Token'
 , 'nss': [  [ { 'ast_class': 'PublicNamespace'
 , 'name': '' }
 ,  ]
@@ -8024,6 +8365,7 @@ var ast =
 , 'name': 'Token' }
 ,  ]
 ,  ] } }
+, 'ident': 'Is' } }
 , 'e2': { 'ast_class': 'LiteralExpr'
 , 'literal': { 'ast_class': 'LiteralDecimal'
 , 'decimalValue': '1' } } } ]
@@ -8042,8 +8384,10 @@ var ast =
 , { 'ast_class': 'BinaryExpr'
 , 'op': { 'ast_class': 'Minus' }
 , 'e1': { 'ast_class': 'LexicalRef'
+, 'ident': { 'ast_class': 'QualifiedIdentifier'
+, 'qual': { 'ast_class': 'LexicalRef'
 , 'ident': { 'ast_class': 'Identifier'
-, 'ident': 'Let'
+, 'ident': 'Token'
 , 'nss': [  [ { 'ast_class': 'PublicNamespace'
 , 'name': '' }
 ,  ]
@@ -8053,6 +8397,7 @@ var ast =
 , 'name': 'Token' }
 ,  ]
 ,  ] } }
+, 'ident': 'Let' } }
 , 'e2': { 'ast_class': 'LiteralExpr'
 , 'literal': { 'ast_class': 'LiteralDecimal'
 , 'decimalValue': '1' } } } ]
@@ -8071,8 +8416,10 @@ var ast =
 , { 'ast_class': 'BinaryExpr'
 , 'op': { 'ast_class': 'Minus' }
 , 'e1': { 'ast_class': 'LexicalRef'
+, 'ident': { 'ast_class': 'QualifiedIdentifier'
+, 'qual': { 'ast_class': 'LexicalRef'
 , 'ident': { 'ast_class': 'Identifier'
-, 'ident': 'Namespace'
+, 'ident': 'Token'
 , 'nss': [  [ { 'ast_class': 'PublicNamespace'
 , 'name': '' }
 ,  ]
@@ -8082,6 +8429,7 @@ var ast =
 , 'name': 'Token' }
 ,  ]
 ,  ] } }
+, 'ident': 'Namespace' } }
 , 'e2': { 'ast_class': 'LiteralExpr'
 , 'literal': { 'ast_class': 'LiteralDecimal'
 , 'decimalValue': '1' } } } ]
@@ -8100,8 +8448,10 @@ var ast =
 , { 'ast_class': 'BinaryExpr'
 , 'op': { 'ast_class': 'Minus' }
 , 'e1': { 'ast_class': 'LexicalRef'
+, 'ident': { 'ast_class': 'QualifiedIdentifier'
+, 'qual': { 'ast_class': 'LexicalRef'
 , 'ident': { 'ast_class': 'Identifier'
-, 'ident': 'Native'
+, 'ident': 'Token'
 , 'nss': [  [ { 'ast_class': 'PublicNamespace'
 , 'name': '' }
 ,  ]
@@ -8111,6 +8461,7 @@ var ast =
 , 'name': 'Token' }
 ,  ]
 ,  ] } }
+, 'ident': 'Native' } }
 , 'e2': { 'ast_class': 'LiteralExpr'
 , 'literal': { 'ast_class': 'LiteralDecimal'
 , 'decimalValue': '1' } } } ]
@@ -8129,8 +8480,10 @@ var ast =
 , { 'ast_class': 'BinaryExpr'
 , 'op': { 'ast_class': 'Minus' }
 , 'e1': { 'ast_class': 'LexicalRef'
+, 'ident': { 'ast_class': 'QualifiedIdentifier'
+, 'qual': { 'ast_class': 'LexicalRef'
 , 'ident': { 'ast_class': 'Identifier'
-, 'ident': 'Number'
+, 'ident': 'Token'
 , 'nss': [  [ { 'ast_class': 'PublicNamespace'
 , 'name': '' }
 ,  ]
@@ -8140,6 +8493,7 @@ var ast =
 , 'name': 'Token' }
 ,  ]
 ,  ] } }
+, 'ident': 'Number' } }
 , 'e2': { 'ast_class': 'LiteralExpr'
 , 'literal': { 'ast_class': 'LiteralDecimal'
 , 'decimalValue': '1' } } } ]
@@ -8158,8 +8512,10 @@ var ast =
 , { 'ast_class': 'BinaryExpr'
 , 'op': { 'ast_class': 'Minus' }
 , 'e1': { 'ast_class': 'LexicalRef'
+, 'ident': { 'ast_class': 'QualifiedIdentifier'
+, 'qual': { 'ast_class': 'LexicalRef'
 , 'ident': { 'ast_class': 'Identifier'
-, 'ident': 'Override'
+, 'ident': 'Token'
 , 'nss': [  [ { 'ast_class': 'PublicNamespace'
 , 'name': '' }
 ,  ]
@@ -8169,6 +8525,7 @@ var ast =
 , 'name': 'Token' }
 ,  ]
 ,  ] } }
+, 'ident': 'Override' } }
 , 'e2': { 'ast_class': 'LiteralExpr'
 , 'literal': { 'ast_class': 'LiteralDecimal'
 , 'decimalValue': '1' } } } ]
@@ -8187,8 +8544,10 @@ var ast =
 , { 'ast_class': 'BinaryExpr'
 , 'op': { 'ast_class': 'Minus' }
 , 'e1': { 'ast_class': 'LexicalRef'
+, 'ident': { 'ast_class': 'QualifiedIdentifier'
+, 'qual': { 'ast_class': 'LexicalRef'
 , 'ident': { 'ast_class': 'Identifier'
-, 'ident': 'Package'
+, 'ident': 'Token'
 , 'nss': [  [ { 'ast_class': 'PublicNamespace'
 , 'name': '' }
 ,  ]
@@ -8198,6 +8557,7 @@ var ast =
 , 'name': 'Token' }
 ,  ]
 ,  ] } }
+, 'ident': 'Package' } }
 , 'e2': { 'ast_class': 'LiteralExpr'
 , 'literal': { 'ast_class': 'LiteralDecimal'
 , 'decimalValue': '1' } } } ]
@@ -8216,8 +8576,10 @@ var ast =
 , { 'ast_class': 'BinaryExpr'
 , 'op': { 'ast_class': 'Minus' }
 , 'e1': { 'ast_class': 'LexicalRef'
+, 'ident': { 'ast_class': 'QualifiedIdentifier'
+, 'qual': { 'ast_class': 'LexicalRef'
 , 'ident': { 'ast_class': 'Identifier'
-, 'ident': 'Precision'
+, 'ident': 'Token'
 , 'nss': [  [ { 'ast_class': 'PublicNamespace'
 , 'name': '' }
 ,  ]
@@ -8227,6 +8589,7 @@ var ast =
 , 'name': 'Token' }
 ,  ]
 ,  ] } }
+, 'ident': 'Precision' } }
 , 'e2': { 'ast_class': 'LiteralExpr'
 , 'literal': { 'ast_class': 'LiteralDecimal'
 , 'decimalValue': '1' } } } ]
@@ -8245,8 +8608,10 @@ var ast =
 , { 'ast_class': 'BinaryExpr'
 , 'op': { 'ast_class': 'Minus' }
 , 'e1': { 'ast_class': 'LexicalRef'
+, 'ident': { 'ast_class': 'QualifiedIdentifier'
+, 'qual': { 'ast_class': 'LexicalRef'
 , 'ident': { 'ast_class': 'Identifier'
-, 'ident': 'Private'
+, 'ident': 'Token'
 , 'nss': [  [ { 'ast_class': 'PublicNamespace'
 , 'name': '' }
 ,  ]
@@ -8256,6 +8621,7 @@ var ast =
 , 'name': 'Token' }
 ,  ]
 ,  ] } }
+, 'ident': 'Private' } }
 , 'e2': { 'ast_class': 'LiteralExpr'
 , 'literal': { 'ast_class': 'LiteralDecimal'
 , 'decimalValue': '1' } } } ]
@@ -8274,8 +8640,10 @@ var ast =
 , { 'ast_class': 'BinaryExpr'
 , 'op': { 'ast_class': 'Minus' }
 , 'e1': { 'ast_class': 'LexicalRef'
+, 'ident': { 'ast_class': 'QualifiedIdentifier'
+, 'qual': { 'ast_class': 'LexicalRef'
 , 'ident': { 'ast_class': 'Identifier'
-, 'ident': 'Protected'
+, 'ident': 'Token'
 , 'nss': [  [ { 'ast_class': 'PublicNamespace'
 , 'name': '' }
 ,  ]
@@ -8285,6 +8653,7 @@ var ast =
 , 'name': 'Token' }
 ,  ]
 ,  ] } }
+, 'ident': 'Protected' } }
 , 'e2': { 'ast_class': 'LiteralExpr'
 , 'literal': { 'ast_class': 'LiteralDecimal'
 , 'decimalValue': '1' } } } ]
@@ -8303,8 +8672,10 @@ var ast =
 , { 'ast_class': 'BinaryExpr'
 , 'op': { 'ast_class': 'Minus' }
 , 'e1': { 'ast_class': 'LexicalRef'
+, 'ident': { 'ast_class': 'QualifiedIdentifier'
+, 'qual': { 'ast_class': 'LexicalRef'
 , 'ident': { 'ast_class': 'Identifier'
-, 'ident': 'Prototype'
+, 'ident': 'Token'
 , 'nss': [  [ { 'ast_class': 'PublicNamespace'
 , 'name': '' }
 ,  ]
@@ -8314,6 +8685,7 @@ var ast =
 , 'name': 'Token' }
 ,  ]
 ,  ] } }
+, 'ident': 'Prototype' } }
 , 'e2': { 'ast_class': 'LiteralExpr'
 , 'literal': { 'ast_class': 'LiteralDecimal'
 , 'decimalValue': '1' } } } ]
@@ -8332,8 +8704,10 @@ var ast =
 , { 'ast_class': 'BinaryExpr'
 , 'op': { 'ast_class': 'Minus' }
 , 'e1': { 'ast_class': 'LexicalRef'
+, 'ident': { 'ast_class': 'QualifiedIdentifier'
+, 'qual': { 'ast_class': 'LexicalRef'
 , 'ident': { 'ast_class': 'Identifier'
-, 'ident': 'Public'
+, 'ident': 'Token'
 , 'nss': [  [ { 'ast_class': 'PublicNamespace'
 , 'name': '' }
 ,  ]
@@ -8343,6 +8717,7 @@ var ast =
 , 'name': 'Token' }
 ,  ]
 ,  ] } }
+, 'ident': 'Public' } }
 , 'e2': { 'ast_class': 'LiteralExpr'
 , 'literal': { 'ast_class': 'LiteralDecimal'
 , 'decimalValue': '1' } } } ]
@@ -8361,8 +8736,10 @@ var ast =
 , { 'ast_class': 'BinaryExpr'
 , 'op': { 'ast_class': 'Minus' }
 , 'e1': { 'ast_class': 'LexicalRef'
+, 'ident': { 'ast_class': 'QualifiedIdentifier'
+, 'qual': { 'ast_class': 'LexicalRef'
 , 'ident': { 'ast_class': 'Identifier'
-, 'ident': 'Rounding'
+, 'ident': 'Token'
 , 'nss': [  [ { 'ast_class': 'PublicNamespace'
 , 'name': '' }
 ,  ]
@@ -8372,6 +8749,7 @@ var ast =
 , 'name': 'Token' }
 ,  ]
 ,  ] } }
+, 'ident': 'Rounding' } }
 , 'e2': { 'ast_class': 'LiteralExpr'
 , 'literal': { 'ast_class': 'LiteralDecimal'
 , 'decimalValue': '1' } } } ]
@@ -8390,8 +8768,10 @@ var ast =
 , { 'ast_class': 'BinaryExpr'
 , 'op': { 'ast_class': 'Minus' }
 , 'e1': { 'ast_class': 'LexicalRef'
+, 'ident': { 'ast_class': 'QualifiedIdentifier'
+, 'qual': { 'ast_class': 'LexicalRef'
 , 'ident': { 'ast_class': 'Identifier'
-, 'ident': 'Standard'
+, 'ident': 'Token'
 , 'nss': [  [ { 'ast_class': 'PublicNamespace'
 , 'name': '' }
 ,  ]
@@ -8401,6 +8781,7 @@ var ast =
 , 'name': 'Token' }
 ,  ]
 ,  ] } }
+, 'ident': 'Standard' } }
 , 'e2': { 'ast_class': 'LiteralExpr'
 , 'literal': { 'ast_class': 'LiteralDecimal'
 , 'decimalValue': '1' } } } ]
@@ -8419,8 +8800,10 @@ var ast =
 , { 'ast_class': 'BinaryExpr'
 , 'op': { 'ast_class': 'Minus' }
 , 'e1': { 'ast_class': 'LexicalRef'
+, 'ident': { 'ast_class': 'QualifiedIdentifier'
+, 'qual': { 'ast_class': 'LexicalRef'
 , 'ident': { 'ast_class': 'Identifier'
-, 'ident': 'Strict'
+, 'ident': 'Token'
 , 'nss': [  [ { 'ast_class': 'PublicNamespace'
 , 'name': '' }
 ,  ]
@@ -8430,6 +8813,7 @@ var ast =
 , 'name': 'Token' }
 ,  ]
 ,  ] } }
+, 'ident': 'Strict' } }
 , 'e2': { 'ast_class': 'LiteralExpr'
 , 'literal': { 'ast_class': 'LiteralDecimal'
 , 'decimalValue': '1' } } } ]
@@ -8448,8 +8832,10 @@ var ast =
 , { 'ast_class': 'BinaryExpr'
 , 'op': { 'ast_class': 'Minus' }
 , 'e1': { 'ast_class': 'LexicalRef'
+, 'ident': { 'ast_class': 'QualifiedIdentifier'
+, 'qual': { 'ast_class': 'LexicalRef'
 , 'ident': { 'ast_class': 'Identifier'
-, 'ident': 'To'
+, 'ident': 'Token'
 , 'nss': [  [ { 'ast_class': 'PublicNamespace'
 , 'name': '' }
 ,  ]
@@ -8459,6 +8845,7 @@ var ast =
 , 'name': 'Token' }
 ,  ]
 ,  ] } }
+, 'ident': 'To' } }
 , 'e2': { 'ast_class': 'LiteralExpr'
 , 'literal': { 'ast_class': 'LiteralDecimal'
 , 'decimalValue': '1' } } } ]
@@ -8477,8 +8864,10 @@ var ast =
 , { 'ast_class': 'BinaryExpr'
 , 'op': { 'ast_class': 'Minus' }
 , 'e1': { 'ast_class': 'LexicalRef'
+, 'ident': { 'ast_class': 'QualifiedIdentifier'
+, 'qual': { 'ast_class': 'LexicalRef'
 , 'ident': { 'ast_class': 'Identifier'
-, 'ident': 'Set'
+, 'ident': 'Token'
 , 'nss': [  [ { 'ast_class': 'PublicNamespace'
 , 'name': '' }
 ,  ]
@@ -8488,6 +8877,7 @@ var ast =
 , 'name': 'Token' }
 ,  ]
 ,  ] } }
+, 'ident': 'Set' } }
 , 'e2': { 'ast_class': 'LiteralExpr'
 , 'literal': { 'ast_class': 'LiteralDecimal'
 , 'decimalValue': '1' } } } ]
@@ -8506,8 +8896,10 @@ var ast =
 , { 'ast_class': 'BinaryExpr'
 , 'op': { 'ast_class': 'Minus' }
 , 'e1': { 'ast_class': 'LexicalRef'
+, 'ident': { 'ast_class': 'QualifiedIdentifier'
+, 'qual': { 'ast_class': 'LexicalRef'
 , 'ident': { 'ast_class': 'Identifier'
-, 'ident': 'Static'
+, 'ident': 'Token'
 , 'nss': [  [ { 'ast_class': 'PublicNamespace'
 , 'name': '' }
 ,  ]
@@ -8517,6 +8909,7 @@ var ast =
 , 'name': 'Token' }
 ,  ]
 ,  ] } }
+, 'ident': 'Static' } }
 , 'e2': { 'ast_class': 'LiteralExpr'
 , 'literal': { 'ast_class': 'LiteralDecimal'
 , 'decimalValue': '1' } } } ]
@@ -8535,8 +8928,10 @@ var ast =
 , { 'ast_class': 'BinaryExpr'
 , 'op': { 'ast_class': 'Minus' }
 , 'e1': { 'ast_class': 'LexicalRef'
+, 'ident': { 'ast_class': 'QualifiedIdentifier'
+, 'qual': { 'ast_class': 'LexicalRef'
 , 'ident': { 'ast_class': 'Identifier'
-, 'ident': 'Type'
+, 'ident': 'Token'
 , 'nss': [  [ { 'ast_class': 'PublicNamespace'
 , 'name': '' }
 ,  ]
@@ -8546,6 +8941,7 @@ var ast =
 , 'name': 'Token' }
 ,  ]
 ,  ] } }
+, 'ident': 'Type' } }
 , 'e2': { 'ast_class': 'LiteralExpr'
 , 'literal': { 'ast_class': 'LiteralDecimal'
 , 'decimalValue': '1' } } } ]
@@ -8564,8 +8960,10 @@ var ast =
 , { 'ast_class': 'BinaryExpr'
 , 'op': { 'ast_class': 'Minus' }
 , 'e1': { 'ast_class': 'LexicalRef'
+, 'ident': { 'ast_class': 'QualifiedIdentifier'
+, 'qual': { 'ast_class': 'LexicalRef'
 , 'ident': { 'ast_class': 'Identifier'
-, 'ident': 'UInt'
+, 'ident': 'Token'
 , 'nss': [  [ { 'ast_class': 'PublicNamespace'
 , 'name': '' }
 ,  ]
@@ -8575,6 +8973,7 @@ var ast =
 , 'name': 'Token' }
 ,  ]
 ,  ] } }
+, 'ident': 'UInt' } }
 , 'e2': { 'ast_class': 'LiteralExpr'
 , 'literal': { 'ast_class': 'LiteralDecimal'
 , 'decimalValue': '1' } } } ]
@@ -8593,8 +8992,10 @@ var ast =
 , { 'ast_class': 'BinaryExpr'
 , 'op': { 'ast_class': 'Minus' }
 , 'e1': { 'ast_class': 'LexicalRef'
+, 'ident': { 'ast_class': 'QualifiedIdentifier'
+, 'qual': { 'ast_class': 'LexicalRef'
 , 'ident': { 'ast_class': 'Identifier'
-, 'ident': 'Undefined'
+, 'ident': 'Token'
 , 'nss': [  [ { 'ast_class': 'PublicNamespace'
 , 'name': '' }
 ,  ]
@@ -8604,6 +9005,7 @@ var ast =
 , 'name': 'Token' }
 ,  ]
 ,  ] } }
+, 'ident': 'Undefined' } }
 , 'e2': { 'ast_class': 'LiteralExpr'
 , 'literal': { 'ast_class': 'LiteralDecimal'
 , 'decimalValue': '1' } } } ]
@@ -8622,8 +9024,10 @@ var ast =
 , { 'ast_class': 'BinaryExpr'
 , 'op': { 'ast_class': 'Minus' }
 , 'e1': { 'ast_class': 'LexicalRef'
+, 'ident': { 'ast_class': 'QualifiedIdentifier'
+, 'qual': { 'ast_class': 'LexicalRef'
 , 'ident': { 'ast_class': 'Identifier'
-, 'ident': 'Unit'
+, 'ident': 'Token'
 , 'nss': [  [ { 'ast_class': 'PublicNamespace'
 , 'name': '' }
 ,  ]
@@ -8633,6 +9037,7 @@ var ast =
 , 'name': 'Token' }
 ,  ]
 ,  ] } }
+, 'ident': 'Unit' } }
 , 'e2': { 'ast_class': 'LiteralExpr'
 , 'literal': { 'ast_class': 'LiteralDecimal'
 , 'decimalValue': '1' } } } ]
@@ -8651,8 +9056,10 @@ var ast =
 , { 'ast_class': 'BinaryExpr'
 , 'op': { 'ast_class': 'Minus' }
 , 'e1': { 'ast_class': 'LexicalRef'
+, 'ident': { 'ast_class': 'QualifiedIdentifier'
+, 'qual': { 'ast_class': 'LexicalRef'
 , 'ident': { 'ast_class': 'Identifier'
-, 'ident': 'Use'
+, 'ident': 'Token'
 , 'nss': [  [ { 'ast_class': 'PublicNamespace'
 , 'name': '' }
 ,  ]
@@ -8662,6 +9069,7 @@ var ast =
 , 'name': 'Token' }
 ,  ]
 ,  ] } }
+, 'ident': 'Use' } }
 , 'e2': { 'ast_class': 'LiteralExpr'
 , 'literal': { 'ast_class': 'LiteralDecimal'
 , 'decimalValue': '1' } } } ]
@@ -8680,8 +9088,10 @@ var ast =
 , { 'ast_class': 'BinaryExpr'
 , 'op': { 'ast_class': 'Minus' }
 , 'e1': { 'ast_class': 'LexicalRef'
+, 'ident': { 'ast_class': 'QualifiedIdentifier'
+, 'qual': { 'ast_class': 'LexicalRef'
 , 'ident': { 'ast_class': 'Identifier'
-, 'ident': 'Xml'
+, 'ident': 'Token'
 , 'nss': [  [ { 'ast_class': 'PublicNamespace'
 , 'name': '' }
 ,  ]
@@ -8691,6 +9101,7 @@ var ast =
 , 'name': 'Token' }
 ,  ]
 ,  ] } }
+, 'ident': 'Xml' } }
 , 'e2': { 'ast_class': 'LiteralExpr'
 , 'literal': { 'ast_class': 'LiteralDecimal'
 , 'decimalValue': '1' } } } ]
@@ -8709,8 +9120,10 @@ var ast =
 , { 'ast_class': 'BinaryExpr'
 , 'op': { 'ast_class': 'Minus' }
 , 'e1': { 'ast_class': 'LexicalRef'
+, 'ident': { 'ast_class': 'QualifiedIdentifier'
+, 'qual': { 'ast_class': 'LexicalRef'
 , 'ident': { 'ast_class': 'Identifier'
-, 'ident': 'Yield'
+, 'ident': 'Token'
 , 'nss': [  [ { 'ast_class': 'PublicNamespace'
 , 'name': '' }
 ,  ]
@@ -8720,6 +9133,7 @@ var ast =
 , 'name': 'Token' }
 ,  ]
 ,  ] } }
+, 'ident': 'Yield' } }
 , 'e2': { 'ast_class': 'LiteralExpr'
 , 'literal': { 'ast_class': 'LiteralDecimal'
 , 'decimalValue': '1' } } } ]
@@ -8738,8 +9152,10 @@ var ast =
 , { 'ast_class': 'BinaryExpr'
 , 'op': { 'ast_class': 'Minus' }
 , 'e1': { 'ast_class': 'LexicalRef'
+, 'ident': { 'ast_class': 'QualifiedIdentifier'
+, 'qual': { 'ast_class': 'LexicalRef'
 , 'ident': { 'ast_class': 'Identifier'
-, 'ident': 'AttributeIdentifier'
+, 'ident': 'Token'
 , 'nss': [  [ { 'ast_class': 'PublicNamespace'
 , 'name': '' }
 ,  ]
@@ -8749,6 +9165,7 @@ var ast =
 , 'name': 'Token' }
 ,  ]
 ,  ] } }
+, 'ident': 'AttributeIdentifier' } }
 , 'e2': { 'ast_class': 'LiteralExpr'
 , 'literal': { 'ast_class': 'LiteralDecimal'
 , 'decimalValue': '1' } } } ]
@@ -8767,8 +9184,10 @@ var ast =
 , { 'ast_class': 'BinaryExpr'
 , 'op': { 'ast_class': 'Minus' }
 , 'e1': { 'ast_class': 'LexicalRef'
+, 'ident': { 'ast_class': 'QualifiedIdentifier'
+, 'qual': { 'ast_class': 'LexicalRef'
 , 'ident': { 'ast_class': 'Identifier'
-, 'ident': 'BlockComment'
+, 'ident': 'Token'
 , 'nss': [  [ { 'ast_class': 'PublicNamespace'
 , 'name': '' }
 ,  ]
@@ -8778,6 +9197,7 @@ var ast =
 , 'name': 'Token' }
 ,  ]
 ,  ] } }
+, 'ident': 'BlockComment' } }
 , 'e2': { 'ast_class': 'LiteralExpr'
 , 'literal': { 'ast_class': 'LiteralDecimal'
 , 'decimalValue': '1' } } } ]
@@ -8796,8 +9216,10 @@ var ast =
 , { 'ast_class': 'BinaryExpr'
 , 'op': { 'ast_class': 'Minus' }
 , 'e1': { 'ast_class': 'LexicalRef'
+, 'ident': { 'ast_class': 'QualifiedIdentifier'
+, 'qual': { 'ast_class': 'LexicalRef'
 , 'ident': { 'ast_class': 'Identifier'
-, 'ident': 'DocComment'
+, 'ident': 'Token'
 , 'nss': [  [ { 'ast_class': 'PublicNamespace'
 , 'name': '' }
 ,  ]
@@ -8807,6 +9229,7 @@ var ast =
 , 'name': 'Token' }
 ,  ]
 ,  ] } }
+, 'ident': 'DocComment' } }
 , 'e2': { 'ast_class': 'LiteralExpr'
 , 'literal': { 'ast_class': 'LiteralDecimal'
 , 'decimalValue': '1' } } } ]
@@ -8825,8 +9248,10 @@ var ast =
 , { 'ast_class': 'BinaryExpr'
 , 'op': { 'ast_class': 'Minus' }
 , 'e1': { 'ast_class': 'LexicalRef'
+, 'ident': { 'ast_class': 'QualifiedIdentifier'
+, 'qual': { 'ast_class': 'LexicalRef'
 , 'ident': { 'ast_class': 'Identifier'
-, 'ident': 'Eol'
+, 'ident': 'Token'
 , 'nss': [  [ { 'ast_class': 'PublicNamespace'
 , 'name': '' }
 ,  ]
@@ -8836,6 +9261,7 @@ var ast =
 , 'name': 'Token' }
 ,  ]
 ,  ] } }
+, 'ident': 'Eol' } }
 , 'e2': { 'ast_class': 'LiteralExpr'
 , 'literal': { 'ast_class': 'LiteralDecimal'
 , 'decimalValue': '1' } } } ]
@@ -8854,8 +9280,10 @@ var ast =
 , { 'ast_class': 'BinaryExpr'
 , 'op': { 'ast_class': 'Minus' }
 , 'e1': { 'ast_class': 'LexicalRef'
+, 'ident': { 'ast_class': 'QualifiedIdentifier'
+, 'qual': { 'ast_class': 'LexicalRef'
 , 'ident': { 'ast_class': 'Identifier'
-, 'ident': 'Identifier'
+, 'ident': 'Token'
 , 'nss': [  [ { 'ast_class': 'PublicNamespace'
 , 'name': '' }
 ,  ]
@@ -8865,6 +9293,7 @@ var ast =
 , 'name': 'Token' }
 ,  ]
 ,  ] } }
+, 'ident': 'Identifier' } }
 , 'e2': { 'ast_class': 'LiteralExpr'
 , 'literal': { 'ast_class': 'LiteralDecimal'
 , 'decimalValue': '1' } } } ]
@@ -8883,8 +9312,10 @@ var ast =
 , { 'ast_class': 'BinaryExpr'
 , 'op': { 'ast_class': 'Minus' }
 , 'e1': { 'ast_class': 'LexicalRef'
+, 'ident': { 'ast_class': 'QualifiedIdentifier'
+, 'qual': { 'ast_class': 'LexicalRef'
 , 'ident': { 'ast_class': 'Identifier'
-, 'ident': 'ExplicitDecimalLiteral'
+, 'ident': 'Token'
 , 'nss': [  [ { 'ast_class': 'PublicNamespace'
 , 'name': '' }
 ,  ]
@@ -8894,6 +9325,7 @@ var ast =
 , 'name': 'Token' }
 ,  ]
 ,  ] } }
+, 'ident': 'ExplicitDecimalLiteral' } }
 , 'e2': { 'ast_class': 'LiteralExpr'
 , 'literal': { 'ast_class': 'LiteralDecimal'
 , 'decimalValue': '1' } } } ]
@@ -8912,8 +9344,10 @@ var ast =
 , { 'ast_class': 'BinaryExpr'
 , 'op': { 'ast_class': 'Minus' }
 , 'e1': { 'ast_class': 'LexicalRef'
+, 'ident': { 'ast_class': 'QualifiedIdentifier'
+, 'qual': { 'ast_class': 'LexicalRef'
 , 'ident': { 'ast_class': 'Identifier'
-, 'ident': 'ExplicitDoubleLiteral'
+, 'ident': 'Token'
 , 'nss': [  [ { 'ast_class': 'PublicNamespace'
 , 'name': '' }
 ,  ]
@@ -8923,6 +9357,7 @@ var ast =
 , 'name': 'Token' }
 ,  ]
 ,  ] } }
+, 'ident': 'ExplicitDoubleLiteral' } }
 , 'e2': { 'ast_class': 'LiteralExpr'
 , 'literal': { 'ast_class': 'LiteralDecimal'
 , 'decimalValue': '1' } } } ]
@@ -8941,8 +9376,10 @@ var ast =
 , { 'ast_class': 'BinaryExpr'
 , 'op': { 'ast_class': 'Minus' }
 , 'e1': { 'ast_class': 'LexicalRef'
+, 'ident': { 'ast_class': 'QualifiedIdentifier'
+, 'qual': { 'ast_class': 'LexicalRef'
 , 'ident': { 'ast_class': 'Identifier'
-, 'ident': 'ExplicitIntLiteral'
+, 'ident': 'Token'
 , 'nss': [  [ { 'ast_class': 'PublicNamespace'
 , 'name': '' }
 ,  ]
@@ -8952,6 +9389,7 @@ var ast =
 , 'name': 'Token' }
 ,  ]
 ,  ] } }
+, 'ident': 'ExplicitIntLiteral' } }
 , 'e2': { 'ast_class': 'LiteralExpr'
 , 'literal': { 'ast_class': 'LiteralDecimal'
 , 'decimalValue': '1' } } } ]
@@ -8970,8 +9408,10 @@ var ast =
 , { 'ast_class': 'BinaryExpr'
 , 'op': { 'ast_class': 'Minus' }
 , 'e1': { 'ast_class': 'LexicalRef'
+, 'ident': { 'ast_class': 'QualifiedIdentifier'
+, 'qual': { 'ast_class': 'LexicalRef'
 , 'ident': { 'ast_class': 'Identifier'
-, 'ident': 'ExplicitUIntLiteral'
+, 'ident': 'Token'
 , 'nss': [  [ { 'ast_class': 'PublicNamespace'
 , 'name': '' }
 ,  ]
@@ -8981,6 +9421,7 @@ var ast =
 , 'name': 'Token' }
 ,  ]
 ,  ] } }
+, 'ident': 'ExplicitUIntLiteral' } }
 , 'e2': { 'ast_class': 'LiteralExpr'
 , 'literal': { 'ast_class': 'LiteralDecimal'
 , 'decimalValue': '1' } } } ]
@@ -8999,8 +9440,10 @@ var ast =
 , { 'ast_class': 'BinaryExpr'
 , 'op': { 'ast_class': 'Minus' }
 , 'e1': { 'ast_class': 'LexicalRef'
+, 'ident': { 'ast_class': 'QualifiedIdentifier'
+, 'qual': { 'ast_class': 'LexicalRef'
 , 'ident': { 'ast_class': 'Identifier'
-, 'ident': 'DecimalIntegerLiteral'
+, 'ident': 'Token'
 , 'nss': [  [ { 'ast_class': 'PublicNamespace'
 , 'name': '' }
 ,  ]
@@ -9010,6 +9453,7 @@ var ast =
 , 'name': 'Token' }
 ,  ]
 ,  ] } }
+, 'ident': 'DecimalIntegerLiteral' } }
 , 'e2': { 'ast_class': 'LiteralExpr'
 , 'literal': { 'ast_class': 'LiteralDecimal'
 , 'decimalValue': '1' } } } ]
@@ -9028,8 +9472,10 @@ var ast =
 , { 'ast_class': 'BinaryExpr'
 , 'op': { 'ast_class': 'Minus' }
 , 'e1': { 'ast_class': 'LexicalRef'
+, 'ident': { 'ast_class': 'QualifiedIdentifier'
+, 'qual': { 'ast_class': 'LexicalRef'
 , 'ident': { 'ast_class': 'Identifier'
-, 'ident': 'DecimalLiteral'
+, 'ident': 'Token'
 , 'nss': [  [ { 'ast_class': 'PublicNamespace'
 , 'name': '' }
 ,  ]
@@ -9039,6 +9485,7 @@ var ast =
 , 'name': 'Token' }
 ,  ]
 ,  ] } }
+, 'ident': 'DecimalLiteral' } }
 , 'e2': { 'ast_class': 'LiteralExpr'
 , 'literal': { 'ast_class': 'LiteralDecimal'
 , 'decimalValue': '1' } } } ]
@@ -9057,8 +9504,10 @@ var ast =
 , { 'ast_class': 'BinaryExpr'
 , 'op': { 'ast_class': 'Minus' }
 , 'e1': { 'ast_class': 'LexicalRef'
+, 'ident': { 'ast_class': 'QualifiedIdentifier'
+, 'qual': { 'ast_class': 'LexicalRef'
 , 'ident': { 'ast_class': 'Identifier'
-, 'ident': 'HexIntegerLiteral'
+, 'ident': 'Token'
 , 'nss': [  [ { 'ast_class': 'PublicNamespace'
 , 'name': '' }
 ,  ]
@@ -9068,6 +9517,7 @@ var ast =
 , 'name': 'Token' }
 ,  ]
 ,  ] } }
+, 'ident': 'HexIntegerLiteral' } }
 , 'e2': { 'ast_class': 'LiteralExpr'
 , 'literal': { 'ast_class': 'LiteralDecimal'
 , 'decimalValue': '1' } } } ]
@@ -9086,8 +9536,10 @@ var ast =
 , { 'ast_class': 'BinaryExpr'
 , 'op': { 'ast_class': 'Minus' }
 , 'e1': { 'ast_class': 'LexicalRef'
+, 'ident': { 'ast_class': 'QualifiedIdentifier'
+, 'qual': { 'ast_class': 'LexicalRef'
 , 'ident': { 'ast_class': 'Identifier'
-, 'ident': 'RegexpLiteral'
+, 'ident': 'Token'
 , 'nss': [  [ { 'ast_class': 'PublicNamespace'
 , 'name': '' }
 ,  ]
@@ -9097,6 +9549,7 @@ var ast =
 , 'name': 'Token' }
 ,  ]
 ,  ] } }
+, 'ident': 'RegexpLiteral' } }
 , 'e2': { 'ast_class': 'LiteralExpr'
 , 'literal': { 'ast_class': 'LiteralDecimal'
 , 'decimalValue': '1' } } } ]
@@ -9115,8 +9568,10 @@ var ast =
 , { 'ast_class': 'BinaryExpr'
 , 'op': { 'ast_class': 'Minus' }
 , 'e1': { 'ast_class': 'LexicalRef'
+, 'ident': { 'ast_class': 'QualifiedIdentifier'
+, 'qual': { 'ast_class': 'LexicalRef'
 , 'ident': { 'ast_class': 'Identifier'
-, 'ident': 'SlashSlashComment'
+, 'ident': 'Token'
 , 'nss': [  [ { 'ast_class': 'PublicNamespace'
 , 'name': '' }
 ,  ]
@@ -9126,6 +9581,7 @@ var ast =
 , 'name': 'Token' }
 ,  ]
 ,  ] } }
+, 'ident': 'SlashSlashComment' } }
 , 'e2': { 'ast_class': 'LiteralExpr'
 , 'literal': { 'ast_class': 'LiteralDecimal'
 , 'decimalValue': '1' } } } ]
@@ -9144,8 +9600,10 @@ var ast =
 , { 'ast_class': 'BinaryExpr'
 , 'op': { 'ast_class': 'Minus' }
 , 'e1': { 'ast_class': 'LexicalRef'
+, 'ident': { 'ast_class': 'QualifiedIdentifier'
+, 'qual': { 'ast_class': 'LexicalRef'
 , 'ident': { 'ast_class': 'Identifier'
-, 'ident': 'StringLiteral'
+, 'ident': 'Token'
 , 'nss': [  [ { 'ast_class': 'PublicNamespace'
 , 'name': '' }
 ,  ]
@@ -9155,6 +9613,7 @@ var ast =
 , 'name': 'Token' }
 ,  ]
 ,  ] } }
+, 'ident': 'StringLiteral' } }
 , 'e2': { 'ast_class': 'LiteralExpr'
 , 'literal': { 'ast_class': 'LiteralDecimal'
 , 'decimalValue': '1' } } } ]
@@ -9173,8 +9632,10 @@ var ast =
 , { 'ast_class': 'BinaryExpr'
 , 'op': { 'ast_class': 'Minus' }
 , 'e1': { 'ast_class': 'LexicalRef'
+, 'ident': { 'ast_class': 'QualifiedIdentifier'
+, 'qual': { 'ast_class': 'LexicalRef'
 , 'ident': { 'ast_class': 'Identifier'
-, 'ident': 'Space'
+, 'ident': 'Token'
 , 'nss': [  [ { 'ast_class': 'PublicNamespace'
 , 'name': '' }
 ,  ]
@@ -9184,6 +9645,7 @@ var ast =
 , 'name': 'Token' }
 ,  ]
 ,  ] } }
+, 'ident': 'Space' } }
 , 'e2': { 'ast_class': 'LiteralExpr'
 , 'literal': { 'ast_class': 'LiteralDecimal'
 , 'decimalValue': '1' } } } ]
@@ -9202,8 +9664,10 @@ var ast =
 , { 'ast_class': 'BinaryExpr'
 , 'op': { 'ast_class': 'Minus' }
 , 'e1': { 'ast_class': 'LexicalRef'
+, 'ident': { 'ast_class': 'QualifiedIdentifier'
+, 'qual': { 'ast_class': 'LexicalRef'
 , 'ident': { 'ast_class': 'Identifier'
-, 'ident': 'XmlLiteral'
+, 'ident': 'Token'
 , 'nss': [  [ { 'ast_class': 'PublicNamespace'
 , 'name': '' }
 ,  ]
@@ -9213,6 +9677,7 @@ var ast =
 , 'name': 'Token' }
 ,  ]
 ,  ] } }
+, 'ident': 'XmlLiteral' } }
 , 'e2': { 'ast_class': 'LiteralExpr'
 , 'literal': { 'ast_class': 'LiteralDecimal'
 , 'decimalValue': '1' } } } ]
@@ -9231,8 +9696,10 @@ var ast =
 , { 'ast_class': 'BinaryExpr'
 , 'op': { 'ast_class': 'Minus' }
 , 'e1': { 'ast_class': 'LexicalRef'
+, 'ident': { 'ast_class': 'QualifiedIdentifier'
+, 'qual': { 'ast_class': 'LexicalRef'
 , 'ident': { 'ast_class': 'Identifier'
-, 'ident': 'XmlPart'
+, 'ident': 'Token'
 , 'nss': [  [ { 'ast_class': 'PublicNamespace'
 , 'name': '' }
 ,  ]
@@ -9242,6 +9709,7 @@ var ast =
 , 'name': 'Token' }
 ,  ]
 ,  ] } }
+, 'ident': 'XmlPart' } }
 , 'e2': { 'ast_class': 'LiteralExpr'
 , 'literal': { 'ast_class': 'LiteralDecimal'
 , 'decimalValue': '1' } } } ]
@@ -9260,8 +9728,10 @@ var ast =
 , { 'ast_class': 'BinaryExpr'
 , 'op': { 'ast_class': 'Minus' }
 , 'e1': { 'ast_class': 'LexicalRef'
+, 'ident': { 'ast_class': 'QualifiedIdentifier'
+, 'qual': { 'ast_class': 'LexicalRef'
 , 'ident': { 'ast_class': 'Identifier'
-, 'ident': 'XmlMarkup'
+, 'ident': 'Token'
 , 'nss': [  [ { 'ast_class': 'PublicNamespace'
 , 'name': '' }
 ,  ]
@@ -9271,6 +9741,7 @@ var ast =
 , 'name': 'Token' }
 ,  ]
 ,  ] } }
+, 'ident': 'XmlMarkup' } }
 , 'e2': { 'ast_class': 'LiteralExpr'
 , 'literal': { 'ast_class': 'LiteralDecimal'
 , 'decimalValue': '1' } } } ]
@@ -9289,8 +9760,10 @@ var ast =
 , { 'ast_class': 'BinaryExpr'
 , 'op': { 'ast_class': 'Minus' }
 , 'e1': { 'ast_class': 'LexicalRef'
+, 'ident': { 'ast_class': 'QualifiedIdentifier'
+, 'qual': { 'ast_class': 'LexicalRef'
 , 'ident': { 'ast_class': 'Identifier'
-, 'ident': 'XmlText'
+, 'ident': 'Token'
 , 'nss': [  [ { 'ast_class': 'PublicNamespace'
 , 'name': '' }
 ,  ]
@@ -9300,6 +9773,7 @@ var ast =
 , 'name': 'Token' }
 ,  ]
 ,  ] } }
+, 'ident': 'XmlText' } }
 , 'e2': { 'ast_class': 'LiteralExpr'
 , 'literal': { 'ast_class': 'LiteralDecimal'
 , 'decimalValue': '1' } } } ]
@@ -9318,8 +9792,10 @@ var ast =
 , { 'ast_class': 'BinaryExpr'
 , 'op': { 'ast_class': 'Minus' }
 , 'e1': { 'ast_class': 'LexicalRef'
+, 'ident': { 'ast_class': 'QualifiedIdentifier'
+, 'qual': { 'ast_class': 'LexicalRef'
 , 'ident': { 'ast_class': 'Identifier'
-, 'ident': 'XmlTagEndEnd'
+, 'ident': 'Token'
 , 'nss': [  [ { 'ast_class': 'PublicNamespace'
 , 'name': '' }
 ,  ]
@@ -9329,6 +9805,7 @@ var ast =
 , 'name': 'Token' }
 ,  ]
 ,  ] } }
+, 'ident': 'XmlTagEndEnd' } }
 , 'e2': { 'ast_class': 'LiteralExpr'
 , 'literal': { 'ast_class': 'LiteralDecimal'
 , 'decimalValue': '1' } } } ]
@@ -9347,8 +9824,10 @@ var ast =
 , { 'ast_class': 'BinaryExpr'
 , 'op': { 'ast_class': 'Minus' }
 , 'e1': { 'ast_class': 'LexicalRef'
+, 'ident': { 'ast_class': 'QualifiedIdentifier'
+, 'qual': { 'ast_class': 'LexicalRef'
 , 'ident': { 'ast_class': 'Identifier'
-, 'ident': 'XmlTagStartEnd'
+, 'ident': 'Token'
 , 'nss': [  [ { 'ast_class': 'PublicNamespace'
 , 'name': '' }
 ,  ]
@@ -9358,6 +9837,7 @@ var ast =
 , 'name': 'Token' }
 ,  ]
 ,  ] } }
+, 'ident': 'XmlTagStartEnd' } }
 , 'e2': { 'ast_class': 'LiteralExpr'
 , 'literal': { 'ast_class': 'LiteralDecimal'
 , 'decimalValue': '1' } } } ]
@@ -9376,8 +9856,10 @@ var ast =
 , { 'ast_class': 'BinaryExpr'
 , 'op': { 'ast_class': 'Minus' }
 , 'e1': { 'ast_class': 'LexicalRef'
+, 'ident': { 'ast_class': 'QualifiedIdentifier'
+, 'qual': { 'ast_class': 'LexicalRef'
 , 'ident': { 'ast_class': 'Identifier'
-, 'ident': 'ERROR'
+, 'ident': 'Token'
 , 'nss': [  [ { 'ast_class': 'PublicNamespace'
 , 'name': '' }
 ,  ]
@@ -9387,6 +9869,7 @@ var ast =
 , 'name': 'Token' }
 ,  ]
 ,  ] } }
+, 'ident': 'ERROR' } }
 , 'e2': { 'ast_class': 'LiteralExpr'
 , 'literal': { 'ast_class': 'LiteralDecimal'
 , 'decimalValue': '1' } } } ]
@@ -9405,8 +9888,10 @@ var ast =
 , { 'ast_class': 'BinaryExpr'
 , 'op': { 'ast_class': 'Minus' }
 , 'e1': { 'ast_class': 'LexicalRef'
+, 'ident': { 'ast_class': 'QualifiedIdentifier'
+, 'qual': { 'ast_class': 'LexicalRef'
 , 'ident': { 'ast_class': 'Identifier'
-, 'ident': 'EOS'
+, 'ident': 'Token'
 , 'nss': [  [ { 'ast_class': 'PublicNamespace'
 , 'name': '' }
 ,  ]
@@ -9416,6 +9901,7 @@ var ast =
 , 'name': 'Token' }
 ,  ]
 ,  ] } }
+, 'ident': 'EOS' } }
 , 'e2': { 'ast_class': 'LiteralExpr'
 , 'literal': { 'ast_class': 'LiteralDecimal'
 , 'decimalValue': '1' } } } ]
@@ -9432,8 +9918,10 @@ var ast =
 , 'name': 'Token' }
 , 'id': 'lastTokenClass' } }
 , { 'ast_class': 'LexicalRef'
+, 'ident': { 'ast_class': 'QualifiedIdentifier'
+, 'qual': { 'ast_class': 'LexicalRef'
 , 'ident': { 'ast_class': 'Identifier'
-, 'ident': 'BREAK'
+, 'ident': 'Token'
 , 'nss': [  [ { 'ast_class': 'PublicNamespace'
 , 'name': '' }
 ,  ]
@@ -9442,7 +9930,8 @@ var ast =
 ,  [ { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Token' }
 ,  ]
-,  ] } } ]
+,  ] } }
+, 'ident': 'BREAK' } } ]
 ,  ] }
 ,  ] } }
 , { 'ast_class': 'ExprStmt'
@@ -9930,7 +10419,7 @@ var ast =
 , { 'ast_class': 'ClassBlock'
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Token' }
-, 'id': 'Token' }
+, 'id': 'Tok' }
 , 'block': { 'ast_class': 'Block'
 , 'head': { 'fixtures': [  ]
 , 'exprs': [  ] }
@@ -9960,6 +10449,23 @@ var ast =
 ,  ] } }
 , 'args': [  ] } ]
 ,  ] }
+,  ] } }
+, { 'ast_class': 'ExprStmt'
+, 'expr': { 'ast_class': 'ListExpr'
+, 'exprs': [ { 'ast_class': 'CallExpr'
+, 'expr': { 'ast_class': 'LexicalRef'
+, 'ident': { 'ast_class': 'Identifier'
+, 'ident': 'test'
+, 'nss': [  [ { 'ast_class': 'PublicNamespace'
+, 'name': '' }
+,  ]
+,  [ { 'ast_class': 'IntrinsicNamespace' }
+,  ]
+,  [ { 'ast_class': 'AnonymousNamespace'
+, 'name': 'Token' }
+,  ]
+,  ] } }
+, 'args': [  ] }
 ,  ] } }
 ,  ] } }
 ,  ] } }

@@ -148,4 +148,13 @@ namespace Char
     {
 	return parseInt (str);
     }
+
+    function test () {
+	print ("testing lex-char.es");
+        print ("Space=",Space);
+        print ("Tab=",Tab);
+        print ("Newline=",Newline);
+    }
+
+    test ();
 }

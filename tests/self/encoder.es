@@ -965,13 +965,12 @@ namespace Encode;
         switch type (nd): LITERAL {
         case (nd: LiteralString) {
 
-	    let val = "";
-	    let len = nd.strValue.length;
-            for (var n=0; n<len; ++n) 
-            {
-		let c = nd.strValue.charAt(n);
-		if (c === "\n") c = "\\n";
-    		else if (c == '\"') c = '\\"';
+            let val = "";
+            let len = nd.strValue.length;
+            for (var n=0; n<len; ++n) {
+                let c = nd.strValue.charAt(n);
+                if (c === "\n") c = "\\n";
+                else if (c == '\"') c = '\\"';
                 else if (c == "'") c = "\\'";
                 else if (c == "\\") c = "\\\\";
                 val = val + c;
@@ -1668,4 +1667,3 @@ namespace Encode;
         return str;
     }
 }
-

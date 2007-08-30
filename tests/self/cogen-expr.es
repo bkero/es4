@@ -553,7 +553,8 @@ package cogen
         case (e:LiteralArray) { cgArrayInitializer(ctx, e) }
         case (e:LiteralObject) { cgObjectInitializer(ctx, e) }
         case (e:LiteralRegExp) { cgRegExpLiteral(ctx, e) }
-        case (e:*) { throw "Unimplemented LiteralExpr" }
+            // case (e:LiteralNamesace) { cgNamespaceLiteral(ctx, e) }
+        case (e:*) { throw "Unimplemented LiteralExpr " + e }
         }
     }
 

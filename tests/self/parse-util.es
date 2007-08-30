@@ -210,11 +210,37 @@ namespace Parse;
             return varHead;
         }
 
+        function hasFixture (fxtrs,fb) {
+            use namespace Ast;
+            let [fn,f1] = fb;
+            switch type (fn) {
+            case (fn: Ast::PropName) {
+                if (hasName (fxtrs,fn.name.id,fn.name.ns)) {
+                    print("hasName ",ns,"::",id);
+                    let f2 = getFixture (fxtrs,id,ns);
+                    if (f1 is Ast::ValFixture && f2 is Ast::ValFixture) {
+                        if (f1.Ast::type==Ast::anyType || f2.Ast::type==Ast::anyType) // FIXME is this right?
+                            return true;
+                    }
+                    throw "incompatible fixture redef "+fn.id;
+                }
+            }
+            case (fn: Ast::TempName) {
+                return false;  // for now
+            }
+            }
+        }
+
         function addVarFixtures (fxtrs) 
         {
             let varHead = this.varHeads[this.varHeads.length-1];
             for (let n = 0, len = fxtrs.length; n < len; ++n)  // until array conact works
-                varHead.Ast::fixtures.push (fxtrs[n]);
+            {
+                let fb = fxtrs[n];
+                /// if (!hasFixture (varHead.Ast::fixtures,fb)) {
+                    varHead.Ast::fixtures.push (fxtrs[n]);
+                /// }
+            }
         }
 
         function addVarInits (inits) 
@@ -289,8 +315,8 @@ namespace Parse;
             }
 
             let pn = fxtrs[0][0];
-            //print ("pn..id=",pn.Ast::name.id," id=",id);
-            //print ("pn..ns=",pn.Ast::name.ns.Ast::hash()," ns=",ns.Ast::hash());
+            // print ("pn..id=",pn.Ast::name.id," id=",id);
+            // print ("pn..ns=",pn.Ast::name.ns.Ast::hash()," ns=",ns.Ast::hash());
             if (pn.Ast::name.id==id && pn.Ast::name.ns.Ast::hash()==ns.Ast::hash())  // FIXME: need ns compare
             {
                 exit ("hasName true");

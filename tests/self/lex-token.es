@@ -45,181 +45,181 @@ namespace Token
 
     const firstTokenClass = -1
     const Minus = firstTokenClass
-    const MinusMinus = Minus - 1
-    const Not = MinusMinus - 1
-    const NotEqual = Not - 1
-    const StrictNotEqual = NotEqual - 1
-    const Remainder = StrictNotEqual - 1
-    const RemainderAssign = Remainder - 1
-    const BitwiseAnd = RemainderAssign - 1
-    const LogicalAnd = BitwiseAnd - 1
-    const LogicalAndAssign = LogicalAnd - 1
-    const BitwiseAndAssign = LogicalAndAssign - 1
-    const LeftParen = BitwiseAndAssign - 1
-    const RightParen = LeftParen - 1
-    const Mult = RightParen - 1
-    const MultAssign = Mult - 1
-    const Comma = MultAssign  - 1
-    const Dot = Comma - 1
-    const DoubleDot = Dot - 1
-    const TripleDot = DoubleDot - 1
-    const LeftDotAngle = TripleDot - 1
-    const Div = LeftDotAngle - 1
-    const DivAssign = Div - 1
-    const Colon = DivAssign - 1
-    const DoubleColon = Colon - 1
-    const SemiColon = DoubleColon - 1
-    const QuestionMark = SemiColon - 1
-    const At = QuestionMark - 1
-    const LeftBracket = At - 1
-    const RightBracket = LeftBracket - 1
-    const LogicalXor = RightBracket - 1
-    const LogicalXorAssign = LogicalXor - 1
-    const LeftBrace = LogicalXorAssign - 1
-    const LogicalOr = LeftBrace - 1
-    const LogicalOrAssign = LogicalOr - 1
-    const BitwiseOr = LogicalOrAssign - 1
-    const BitwiseOrAssign = BitwiseOr - 1
-    const BitwiseXor = LogicalOrAssign - 1
-    const BitwiseXorAssign = BitwiseXor - 1
-    const RightBrace = BitwiseXorAssign - 1
-    const BitwiseNot = RightBrace - 1
-    const Plus = BitwiseNot - 1
-    const PlusPlus = Plus - 1
-    const PlusAssign = PlusPlus - 1
-    const LessThan = PlusAssign - 1
-    const LeftShift = LessThan - 1
-    const LeftShiftAssign = LeftShift - 1
-    const LessThanOrEqual = LeftShiftAssign - 1
-    const Assign = LessThanOrEqual - 1
-    const MinusAssign = Assign - 1
-    const Equal = MinusAssign - 1
-    const StrictEqual = Equal - 1
-    const GreaterThan = StrictEqual - 1
-    const GreaterThanOrEqual = GreaterThan - 1
-    const RightShift = GreaterThanOrEqual - 1
-    const RightShiftAssign = RightShift - 1
-    const UnsignedRightShift = RightShiftAssign - 1
-    const UnsignedRightShiftAssign = UnsignedRightShift - 1
+    const MinusMinus = Token::Minus - 1
+    const Not = Token::MinusMinus - 1
+    const NotEqual = Token::Not - 1
+    const StrictNotEqual = Token::NotEqual - 1
+    const Remainder = Token::StrictNotEqual - 1
+    const RemainderAssign = Token::Remainder - 1
+    const BitwiseAnd = Token::RemainderAssign - 1
+    const LogicalAnd = Token::BitwiseAnd - 1
+    const LogicalAndAssign = Token::LogicalAnd - 1
+    const BitwiseAndAssign = Token::LogicalAndAssign - 1
+    const LeftParen = Token::BitwiseAndAssign - 1
+    const RightParen = Token::LeftParen - 1
+    const Mult = Token::RightParen - 1
+    const MultAssign = Token::Mult - 1
+    const Comma = Token::MultAssign  - 1
+    const Dot = Token::Comma - 1
+    const DoubleDot = Token::Dot - 1
+    const TripleDot = Token::DoubleDot - 1
+    const LeftDotAngle = Token::TripleDot - 1
+    const Div = Token::LeftDotAngle - 1
+    const DivAssign = Token::Div - 1
+    const Colon = Token::DivAssign - 1
+    const DoubleColon = Token::Colon - 1
+    const SemiColon = Token::DoubleColon - 1
+    const QuestionMark = Token::SemiColon - 1
+    const At = Token::QuestionMark - 1
+    const LeftBracket = Token::At - 1
+    const RightBracket = Token::LeftBracket - 1
+    const LogicalXor = Token::RightBracket - 1
+    const LogicalXorAssign = Token::LogicalXor - 1
+    const LeftBrace = Token::LogicalXorAssign - 1
+    const LogicalOr = Token::LeftBrace - 1
+    const LogicalOrAssign = Token::LogicalOr - 1
+    const BitwiseOr = Token::LogicalOrAssign - 1
+    const BitwiseOrAssign = Token::BitwiseOr - 1
+    const BitwiseXor = Token::LogicalOrAssign - 1
+    const BitwiseXorAssign = Token::BitwiseXor - 1
+    const RightBrace = Token::BitwiseXorAssign - 1
+    const BitwiseNot = Token::RightBrace - 1
+    const Plus = Token::BitwiseNot - 1
+    const PlusPlus = Token::Plus - 1
+    const PlusAssign = Token::PlusPlus - 1
+    const LessThan = Token::PlusAssign - 1
+    const LeftShift = Token::LessThan - 1
+    const LeftShiftAssign = Token::LeftShift - 1
+    const LessThanOrEqual = Token::LeftShiftAssign - 1
+    const Assign = Token::LessThanOrEqual - 1
+    const MinusAssign = Token::Assign - 1
+    const Equal = Token::MinusAssign - 1
+    const StrictEqual = Token::Equal - 1
+    const GreaterThan = Token::StrictEqual - 1
+    const GreaterThanOrEqual = Token::GreaterThan - 1
+    const RightShift = Token::GreaterThanOrEqual - 1
+    const RightShiftAssign = Token::RightShift - 1
+    const UnsignedRightShift = Token::RightShiftAssign - 1
+    const UnsignedRightShiftAssign = Token::UnsignedRightShift - 1
 
     /* reserved identifiers */
 
-    const Break = UnsignedRightShiftAssign - 1
-    const Case = Break - 1
-    const Catch = Case - 1
-    const Class = Catch - 1
-    const Continue = Class - 1
-    const Default = Continue - 1
-    const Delete = Default - 1
-    const Do = Delete - 1
-    const Else = Do - 1
-    const Enum = Else - 1
-    const Extends = Enum - 1
-    const False = Extends - 1
-    const Finally = False - 1
-    const For = Finally - 1
-    const Function = For - 1
-    const If = Function - 1
-    const In = If - 1
-    const InstanceOf = In - 1
-    const New = InstanceOf - 1
-    const Null = New - 1
-    const Return = Null - 1
-    const Super = Return - 1
-    const Switch = Super - 1
-    const This = Switch - 1
-    const Throw = This - 1
-    const True = Throw - 1
-    const Try = True - 1
-    const TypeOf = Try - 1
-    const Var = TypeOf - 1
-    const Void = Var - 1
-    const While = Void - 1
-    const With = While - 1
+    const Break = Token::UnsignedRightShiftAssign - 1
+    const Case = Token::Break - 1
+    const Catch = Token::Case - 1
+    const Class = Token::Catch - 1
+    const Continue = Token::Class - 1
+    const Default = Token::Continue - 1
+    const Delete = Token::Default - 1
+    const Do = Token::Delete - 1
+    const Else = Token::Do - 1
+    const Enum = Token::Else - 1
+    const Extends = Token::Enum - 1
+    const False = Token::Extends - 1
+    const Finally = Token::False - 1
+    const For = Token::Finally - 1
+    const Function = Token::For - 1
+    const If = Token::Function - 1
+    const In = Token::If - 1
+    const InstanceOf = Token::In - 1
+    const New = Token::InstanceOf - 1
+    const Null = Token::New - 1
+    const Return = Token::Null - 1
+    const Super = Token::Return - 1
+    const Switch = Token::Super - 1
+    const This = Token::Switch - 1
+    const Throw = Token::This - 1
+    const True = Token::Throw - 1
+    const Try = Token::True - 1
+    const TypeOf = Token::Try - 1
+    const Var = Token::TypeOf - 1
+    const Void = Token::Var - 1
+    const While = Token::Void - 1
+    const With = Token::While - 1
 
     /* contextually reserved identifiers */
 
-    const Call = With - 1
-    const Cast = Call - 1
-    const Const = Cast - 1
-    const Decimal = Const - 1
-    const Double = Decimal - 1
-    const Dynamic = Double - 1
-    const Each = Dynamic - 1
-    const Eval = Each - 1
-    const Final = Eval - 1
-    const Get = Final - 1
-    const Has = Get - 1
-    const Implements = Has - 1
-    const Import = Implements - 1
-    const Int = Import - 1
-    const Interface = Int - 1
-    const Internal = Interface - 1
-    const Intrinsic = Internal - 1
-    const Is = Intrinsic - 1
-    const Let = Is - 1
-    const Namespace = Let - 1
-    const Native = Namespace - 1
-    const Number = Native - 1
-    const Override = Number - 1
-    const Package = Override - 1
-    const Precision = Package - 1
-    const Private = Precision - 1
-    const Protected = Private - 1
-    const Prototype = Protected - 1
-    const Public = Prototype - 1
-    const Rounding = Public - 1
-    const Standard = Rounding - 1
-    const Strict = Standard - 1
-    const To = Strict - 1
-    const Set = To - 1
-    const Static = Set - 1
-    const Type = Static - 1
-    const UInt = Type - 1
-    const Undefined = UInt - 1
-    const Unit = Undefined - 1
-    const Use = Unit - 1
-    const Xml = Use - 1
-    const Yield = Xml - 1
+    const Call = Token::With - 1
+    const Cast = Token::Call - 1
+    const Const = Token::Cast - 1
+    const Decimal = Token::Const - 1
+    const Double = Token::Decimal - 1
+    const Dynamic = Token::Double - 1
+    const Each = Token::Dynamic - 1
+    const Eval = Token::Each - 1
+    const Final = Token::Eval - 1
+    const Get = Token::Final - 1
+    const Has = Token::Get - 1
+    const Implements = Token::Has - 1
+    const Import = Token::Implements - 1
+    const Int = Token::Import - 1
+    const Interface = Token::Int - 1
+    const Internal = Token::Interface - 1
+    const Intrinsic = Token::Internal - 1
+    const Is = Token::Intrinsic - 1
+    const Let = Token::Is - 1
+    const Namespace = Token::Let - 1
+    const Native = Token::Namespace - 1
+    const Number = Token::Native - 1
+    const Override = Token::Number - 1
+    const Package = Token::Override - 1
+    const Precision = Token::Package - 1
+    const Private = Token::Precision - 1
+    const Protected = Token::Private - 1
+    const Prototype = Token::Protected - 1
+    const Public = Token::Prototype - 1
+    const Rounding = Token::Public - 1
+    const Standard = Token::Rounding - 1
+    const Strict = Token::Standard - 1
+    const To = Token::Strict - 1
+    const Set = Token::To - 1
+    const Static = Token::Set - 1
+    const Type = Token::Static - 1
+    const UInt = Token::Type - 1
+    const Undefined = Token::UInt - 1
+    const Unit = Token::Undefined - 1
+    const Use = Token::Unit - 1
+    const Xml = Token::Use - 1
+    const Yield = Token::Xml - 1
 
     /* literals */
 
-    const AttributeIdentifier = Yield - 1
-    const BlockComment = AttributeIdentifier - 1
-    const DocComment = BlockComment - 1
-    const Eol = DocComment - 1
-    const Identifier = Eol - 1
+    const AttributeIdentifier = Token::Yield - 1
+    const BlockComment = Token::AttributeIdentifier - 1
+    const DocComment = Token::BlockComment - 1
+    const Eol = Token::DocComment - 1
+    const Identifier = Token::Eol - 1
 
     // The interpretation of these 4 literal types can be done during lexing
 
-    const ExplicitDecimalLiteral = Identifier - 1
-    const ExplicitDoubleLiteral = ExplicitDecimalLiteral - 1
-    const ExplicitIntLiteral = ExplicitDoubleLiteral - 1
-    const ExplicitUIntLiteral = ExplicitIntLiteral - 1
+    const ExplicitDecimalLiteral = Token::Identifier - 1
+    const ExplicitDoubleLiteral = Token::ExplicitDecimalLiteral - 1
+    const ExplicitIntLiteral = Token::ExplicitDoubleLiteral - 1
+    const ExplicitUIntLiteral = Token::ExplicitIntLiteral - 1
 
     // The interpretation of these 3 literal types is deferred until defn phase
 
-    const DecimalIntegerLiteral = ExplicitUIntLiteral - 1
-    const DecimalLiteral = DecimalIntegerLiteral - 1
-    const HexIntegerLiteral = DecimalLiteral - 1
+    const DecimalIntegerLiteral = Token::ExplicitUIntLiteral - 1
+    const DecimalLiteral = Token::DecimalIntegerLiteral - 1
+    const HexIntegerLiteral = Token::DecimalLiteral - 1
 
-    const RegexpLiteral = HexIntegerLiteral - 1
-    const SlashSlashComment = RegexpLiteral - 1
-    const StringLiteral = SlashSlashComment - 1
-    const Space = StringLiteral - 1
-    const XmlLiteral = Space - 1
-    const XmlPart = XmlLiteral - 1
-    const XmlMarkup = XmlPart - 1
-    const XmlText = XmlMarkup - 1
-    const XmlTagEndEnd = XmlText - 1
-    const XmlTagStartEnd = XmlTagEndEnd - 1
+    const RegexpLiteral = Token::HexIntegerLiteral - 1
+    const SlashSlashComment = Token::RegexpLiteral - 1
+    const StringLiteral = Token::SlashSlashComment - 1
+    const Space = Token::StringLiteral - 1
+    const XmlLiteral = Token::Space - 1
+    const XmlPart = Token::XmlLiteral - 1
+    const XmlMarkup = Token::XmlPart - 1
+    const XmlText = Token::XmlMarkup - 1
+    const XmlTagEndEnd = Token::XmlText - 1
+    const XmlTagStartEnd = Token::XmlTagEndEnd - 1
 
     // meta
 
-    const ERROR = XmlTagStartEnd - 1
-    const EOS = ERROR - 1
-    const BREAK = EOS - 1
-    const lastTokenClass = BREAK
+    const ERROR = Token::XmlTagStartEnd - 1
+    const EOS = Token::ERROR - 1
+    const BREAK = Token::EOS - 1
+    const lastTokenClass = Token::BREAK
 
     const names = [
         "<unused index>",
@@ -382,11 +382,11 @@ namespace Token
         "BREAK"
     ]
 
-    class Token
+    class Tok
     {
         var kind;
         var utf8id;
-        function Token(kind,utf8id)
+        function Tok(kind,utf8id)
             : kind = kind
             , utf8id = utf8id
         {
@@ -513,7 +513,7 @@ namespace Token
         var tid = find (kind,text);
         if (tid === len) 
         {
-            tokenStore.push(new Token(kind, text));
+            tokenStore.push(new Tok(kind, text));
         }
         return tid;
     }
@@ -530,7 +530,7 @@ namespace Token
 
         // otherwise, get instance data from the instance vector.
 
-        var tok : Token = tokenStore[tid];
+        var tok : Tok = tokenStore[tid];
         return tok.kind;
     }
 
@@ -542,7 +542,7 @@ namespace Token
         }
         else {
             // otherwise, get instance data from the instance vector
-            var tok : Token = tokenStore[tid];
+            var tok : Tok = tokenStore[tid];
             var text = tok.tokenText();
         }
         //print("tokenText: ",tid,", ",text);
@@ -551,10 +551,11 @@ namespace Token
 
     function test ()
     {
-        for( let i = firstTokenClass; i >= lastTokenClass; --i )
+        print ("testing lex-token.es");
+        for( var i = firstTokenClass; i >= lastTokenClass; --i )
             print(i,": ",names[-i])
     }
 
-    //test()
+    test()
 }
 

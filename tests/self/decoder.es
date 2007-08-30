@@ -366,7 +366,7 @@ namespace Decode;
             var ndx = new ThrowStmt (nd1);
             break;
         case 'ReturnStmt':
-            let nd1 = expr (ob.expr);
+            let nd1 = exprOpt (ob.expr);
             var ndx = new ReturnStmt (nd1);
             break;
         case 'BreakStmt':
@@ -1093,7 +1093,8 @@ namespace Decode;
 
         switch (ob.ast_class) {
         case 'LiteralNamespace':
-            var ndx = new LiteralNamespace (ob.namespaceValue);
+            let nd1 = namespace (ob.namespaceValue);
+            var ndx = new LiteralNamespace (nd1);
             break;
         case 'LiteralString':
             var ndx = new LiteralString (ob.strValue);

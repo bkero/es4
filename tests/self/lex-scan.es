@@ -244,7 +244,7 @@ namespace Lex
                     }
                     else
                     {
-                        return intrinsic::print("invalid prefix ", c);
+                        throw "scanning with invalid prefix ", c;
                     }
                 }
             }
@@ -1283,44 +1283,39 @@ namespace Lex
 
     function test()
     {
+        print ("testing lex-scan.es");
         let testCases = [ "break case catch continue default delete do else enum extends"
-			, "false finally for function if in instanceof new null return"
-                        , "super switch this throw true try typeof var void while with"
-			, "call cast const decimal double dynamic each eval final get has"
-			, "implements import int interface internal intrinsic is let namespace"
-			, "native Number override package precision private protected prototype public"
-			, "rounding standard strict static to type uint undefined use xml yield"
-			, ". .< .. ... ! != !== % %= & && &&= * *= + +- ++ - -- -="
-		        , "/ /= /> < <= </ << <<= = == === > >= >> >>= >>> >>>="
-			, "^ ^= | |= || ||= : :: ( ) [ ] { } ~ @ , ; ?"
-			, "/* hello nobody */ hello // goodbye world"
-			, "0 0i 00 001u 0123d 045m 0x0 0xCAFEBABE 0x12345678u 1. .0 .2e+3 1.23m"
-			, "\\u0050 \\x50gh \\073 \\73 \\073123 \\7398"
-                        , "/abc/ 'hi' \"bye\" null break /def/xyz" ].reverse();
+                          , "false finally for function if in instanceof new null return"
+                          , "super switch this throw true try typeof var void while with"
+                          , "call cast const decimal double dynamic each eval final get has"
+                          , "implements import int interface internal intrinsic is let namespace"
+                          , "native Number override package precision private protected prototype public"
+                          , "rounding standard strict static to type uint undefined use xml yield"
+                          , ". .< .. ... ! != !== % %= & && &&= * *= + +- ++ - -- -="
+                          , "/ /= /> < <= </ << <<= = == === > >= >> >>= >>> >>>="
+                          , "^ ^= | |= || ||= : :: ( ) [ ] { } ~ @ , ; ?"
+                          , "/* hello nobody */ hello // goodbye world"
+                          , "0 0i 00 001u 0123d 045m 0x0 0xCAFEBABE 0x12345678u 1. .0 .2e+3 1.23m"
+                          , "\\u0050 \\x50gh \\073 \\73 \\073123 \\7398"
+                          , "/abc/ 'hi' \"bye\" null break /def/xyz" ];
 
-        /*
-	while (testCases.length > 0) {
-            var scan = new Scanner (testCases.pop());
-            var list = scan.tokenList (scan.start);
-            let tk = Token::EOS;
-            do {
-                print("tokenList.length=",list.length);
-                while (list.length > 0) {
-                    tk=list.pop();
-                    if (tk == Token::BREAK) {
-			if (testCases.length == 0) {   // if last test, then scan for regexps
-                            list = scan.tokenList (scan.regexp);
-                        }
-			else {
-			    list = scan.tokenList (scan.div);
-			}
-                        print("tokenList.length=",list.length);
+        for (var i = 0; i < testCases.length; ++i) {
+            var scan = new Scanner (testCases[i],"test"+i);
+            var tokenList = scan.tokenList (scan.start);
+            print ("tokenList ", tokenList);
+            for (var j=0; j<tokenList.length; ++j) {
+            	if (tokenList[j] == Token::BREAK) {
+                    if (i == testCases.length-1) {   // if last test, then scan for regexps
+                        tokenList = scan.tokenList (scan.regexp);
                     }
+                    else {
+                        tokenList = scan.tokenList (scan.div);
+                    }
+                    print ("tokenList ", tokenList);
                 }
-            } while (tk != Token::EOS);
+            }
             print ("scanned!");
-	}
-        */
+        }
     }
-    //    test ();
+    test ();
 }
