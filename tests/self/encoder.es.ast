@@ -28002,7 +28002,8 @@ var ast =
 , 'name': { 'ns': { 'ast_class': 'AnonymousNamespace'
 , 'name': 'Encode' }
 , 'id': 'c' } }
-, { 'ast_class': 'ObjectRef'
+, { 'ast_class': 'CallExpr'
+, 'expr': { 'ast_class': 'ObjectRef'
 , 'base': { 'ast_class': 'ObjectRef'
 , 'base': { 'ast_class': 'LexicalRef'
 , 'ident': { 'ast_class': 'Identifier'
@@ -28037,9 +28038,23 @@ var ast =
 ,  ]
 ,  [  ]
 ,  ] } }
-, 'ident': { 'ast_class': 'ExpressionIdentifier'
-, 'expr': { 'ast_class': 'ListExpr'
-, 'exprs': [ { 'ast_class': 'LexicalRef'
+, 'ident': { 'ast_class': 'Identifier'
+, 'ident': 'charAt'
+, 'nss': [  [ { 'ast_class': 'PublicNamespace'
+, 'name': '' }
+,  ]
+,  [ { 'ast_class': 'AnonymousNamespace'
+, 'name': 'Release' }
+, { 'ast_class': 'AnonymousNamespace'
+, 'name': 'Ast' }
+, { 'ast_class': 'IntrinsicNamespace' }
+,  ]
+,  [ { 'ast_class': 'AnonymousNamespace'
+, 'name': 'Encode' }
+,  ]
+,  [  ]
+,  ] } }
+, 'args': [ { 'ast_class': 'LexicalRef'
 , 'ident': { 'ast_class': 'Identifier'
 , 'ident': 'n'
 , 'nss': [  [ { 'ast_class': 'PublicNamespace'
@@ -28056,21 +28071,7 @@ var ast =
 ,  ]
 ,  [  ]
 ,  ] } }
-,  ] }
-, 'nss': [  [ { 'ast_class': 'PublicNamespace'
-, 'name': '' }
-,  ]
-,  [ { 'ast_class': 'AnonymousNamespace'
-, 'name': 'Release' }
-, { 'ast_class': 'AnonymousNamespace'
-, 'name': 'Ast' }
-, { 'ast_class': 'IntrinsicNamespace' }
-,  ]
-,  [ { 'ast_class': 'AnonymousNamespace'
-, 'name': 'Encode' }
-,  ]
-,  [  ]
-,  ] } } ]
+,  ] } ]
 ,  ] }
 ,  ] } }
 , { 'ast_class': 'IfStmt'

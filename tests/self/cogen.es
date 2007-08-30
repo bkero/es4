@@ -134,6 +134,7 @@ package cogen
 
     function cgBlock(ctx, b) {
         // FIXME -- more here
+        cgHead(ctx, b.head);
         let stmts = b.stmts;
         for ( let i=0 ; i < stmts.length ; i++ )
             cgStmt(ctx, stmts[i]);
@@ -229,7 +230,8 @@ package cogen
             method.setDefaults(defaults);
         }
         
-        let ctor_ctx = new CTX(asm, {tag:"function"}, method);
+        let t = asm.getTemp();
+        let ctor_ctx = new CTX(asm, {tag:"function", scope_reg:t}, method);
        
         asm.I_getlocal(0);
         // Should this be instanceInits.inits only?
@@ -241,6 +243,8 @@ package cogen
         //asm.I_pushscope();
         // Create the activation object, and initialize params
         asm.I_newactivation();
+        asm.I_dup();
+        asm.I_setlocal(t);
         asm.I_dup();
         asm.I_pushwith();
         cgHead(ctor_ctx, c.func.params);
@@ -266,6 +270,7 @@ package cogen
 
         cgBlock(ctor_ctx, c.func.block);
         
+        asm.I_kill(t);
         return method.finalize();
     }
 
@@ -314,10 +319,13 @@ package cogen
          *
          * God only knows about the arguments object...
          */
+        let t = asm.getTemp();
         asm.I_newactivation();
+        asm.I_dup();
+        asm.I_setlocal(t);
         asm.I_pushscope();
         
-        let ctx = new CTX(asm, {tag: "function"}, method);
+        let ctx = new CTX(asm, {tag: "function", scope_reg:t, has_scope:true}, method);
 
         cgHead(ctx, f.params);
 
@@ -328,6 +336,7 @@ package cogen
          * at the end, so there's nothing to worry about here.
          */
         cgBlock(ctx, f.block);
+        asm.I_kill(t);
         return method.finalize();
     }
     
@@ -404,6 +413,20 @@ package cogen
         throw msg;
     }
 
+    function restoreScopes({stk:stk, asm:asm}) {
+        while (stk != null) {
+            if(stk.has_scope) {
+                asm.I_getlocal(stk.scope_reg);
+                asm.I_pushscope();
+            }
+            if( stk.tag != "function" ) {
+                stk = stk.link;
+            }
+            else {
+                stk = null;
+            }
+        }
+    }
 
     // The following return extended contexts
     function pushBreak(ctx, labels, target)
@@ -423,8 +446,8 @@ package cogen
     function pushLet(ctx /*more*/) {
     }
 
-    function pushCatch(ctx /*more*/)
-        push(ctx, {tag:"catch", has_scope:true});
+    function pushCatch(ctx, scope_reg )
+        push(ctx, {tag:"catch", has_scope:true, scope_reg:scope_reg});
         // FIXME anything else?
 
     function pushFinally(ctx /*more*/) {

@@ -334,7 +334,6 @@ package cogen
              * that on Tamarin without global conventions / parallel
              * with stacks, I think.
              */
-            let n = cgIdentExpr(ctx, lr.ident);
             asm.I_findpropstrict(cgIdentExpr(ctx, lr.ident));
             asm.I_getproperty(cgIdentExpr(ctx, lr.ident));
             asm.I_pushnull();
@@ -587,9 +586,18 @@ package cogen
                 return emitter.multinameL(ei);
             }
             case (qi:QualifiedIdentifier) {
-                cgExpr(ctx, qi.qual);
-                return emitter.rtqname(qi);
-            }
+/*                switch type(qi.qual) {
+                    case( lr:LexicalRef ) {
+                        // Hack to deal with namespaces for now...
+                        // later we will have to implement a namespace lookup to resolve qualified typenames
+                        return emitter.qname({ns:new AnonymousNamespace(lr.ident.ident), id:qi.ident})
+                    }
+                    case( e:* ) {
+*/                        cgExpr(ctx, qi.qual);
+                        return emitter.rtqname(qi);
+/*                    }
+                }
+*/            }
             case (x:*) { throw ("Unimplemented cgIdentExpr " + e) }
         }
     }

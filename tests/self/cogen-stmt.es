@@ -143,8 +143,10 @@ package cogen
         let asm = ctx.asm;
         let Lbreak = asm.newLabel();
         let Lcont = asm.newLabel();
-        if (init != null)
+        if (init != null) {
             cgExpr(ctx, init);
+            asm.I_pop();
+        }
         let Ltop = asm.I_label();
         if (cond != null) {
             cgExpr(ctx, cond);
@@ -277,7 +279,6 @@ package cogen
     
     function cgCatch(ctx, [code_start, code_end, Lend], {param:param, block:block} ) {
         let {asm:asm, emitter:emitter, target:target} = ctx;
-        let catch_ctx = pushCatch(ctx);
         
         if( param.fixtures.length != 1 )
             throw "Internal Error: catch should have 1 fixture";
@@ -285,16 +286,21 @@ package cogen
         let [propname, fix] = param.fixtures[0];
         
         let param_name = emitter.fixtureNameToName(propname);
-        let param_type = emitter.typeFromTypeExpr(fix.type);
+        let param_type = emitter.realTypeName(fix.type);
         
         let catch_idx = target.addException(new ABCException(code_start, code_end, asm.length, param_type, param_name));
 
         asm.startCatch();
 
+        let t = asm.getTemp();
         asm.I_getlocal(0);
         asm.I_pushscope();
-        //FIXME need to restore activation object/with scopes
+        restoreScopes(ctx);
+        let catch_ctx = pushCatch(ctx,t);
+
         asm.I_newcatch(catch_idx);
+        asm.I_dup();
+        asm.I_setlocal(t);  // Store catch scope in register so it can be restored later
         asm.I_dup();
         asm.I_pushscope();
         
@@ -304,6 +310,8 @@ package cogen
 
         // catch block body
         cgBlock(catch_ctx, block);
+        
+        asm.I_kill(t);
         
         asm.I_popscope();
         asm.I_jump(Lend);

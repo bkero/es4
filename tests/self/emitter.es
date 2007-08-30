@@ -213,6 +213,26 @@ package emitter
             
         }
 
+        // Use this only for places that need a QName, only works with basic class names
+        // as Tamarin doesn't support 
+        public function realTypeName(t) {
+            use namespace Ast;
+            // not dealing with types for now
+            switch type (t) {
+                case (tn:TypeName) {
+                    return nameFromIdentExpr(tn.ident);
+                }
+                case (st:SpecialType) {
+                    return 0;
+                }
+                case (x:*) { 
+                    throw ("Unimplemented: realTypeName " + t + ", using *")
+                }
+            }
+            return 0;
+            
+        }
+
         public function fixtureNameToName(fn) {
             switch type (fn) {
             case (pn:PropName) {
