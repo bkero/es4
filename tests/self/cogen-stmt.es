@@ -141,6 +141,7 @@ package cogen
         // FIXME: fixtures
         // FIXME: code shape?
         let asm = ctx.asm;
+        cgHead(ctx, vars);
         let Lbreak = asm.newLabel();
         let Lcont = asm.newLabel();
         if (init != null) {
