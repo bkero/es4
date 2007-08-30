@@ -1428,8 +1428,9 @@ namespace Ast
     }
 
     function test () {
-        print (new EmptyStmt)
+        print ("testing ast.es");
+        print (new EmptyStmt);
     }
 
-    test()
+    test();
 }

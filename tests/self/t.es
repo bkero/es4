@@ -1,1 +1,2 @@
-Token::test();
+class A {};
+class B {};

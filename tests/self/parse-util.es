@@ -467,9 +467,10 @@ namespace Parse;
             exit ("resolveIdentExpr ", fxtr);
             return fxtr[0];
         }
-    };
+    }
 
     type TOKENS = TokenStream;  // [int];
+
     class TokenStream {
         var ts: Array;
         var n: int;
@@ -493,7 +494,7 @@ namespace Parse;
         var scan : Scanner;
         var cx: Context;
 
-        function initParser(src,topFixtures=[])
+        function initParser(src,topFixtures)
         {
             this.cx = new Context (topFixtures)
             this.scan = new Scanner (src)
@@ -732,5 +733,10 @@ namespace Parse;
                 return [fxtrs,expr];
             }
         }
+    }
+
+    function test () {
+        print ("testing parse-util.es");
+        var x = initParser ("hi",[]);
     }
 }

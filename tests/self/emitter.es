@@ -295,7 +295,7 @@ package emitter
                     return  {val:val, kind:CONSTANT_Namespace};
                 }
                 case(x:*) {
-                    throw ("le Default expression must be a constant value" + le.literal)
+                    throw ("le Default expression must be a constant value" + x)
                 }
             }
         }
