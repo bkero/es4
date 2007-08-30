@@ -575,11 +575,6 @@ fun serializeGroundType (a:Ast.TYPE_EXPR)
     end
 
 (* -----------------------------------------------------------------------------
- * ****************** WIP line: code below here needs rewriting ****************
- * ----------------------------------------------------------------------------- *)
-
-
-(* -----------------------------------------------------------------------------
  * Equality
  * ----------------------------------------------------------------------------- *)
 
@@ -607,110 +602,78 @@ fun normalizingPredicate groundPredicate
 fun groundEquals (t1:Ast.TYPE_EXPR)
                  (t2:Ast.TYPE_EXPR)
     : bool =
-    true
-
-val equals = normalizingPredicate groundEquals false
-
-(*
     let
-        fun pairEqual (t1, t2) = equals t1 t2
+        val _ = trace [">>> groundEquals: ", fmtType t1, " == ", fmtType t2 ];
+
+        val _ = if not (isGroundType t1 andalso isGroundType t2)
+                then error ["groundEquals on non-ground terms"]
+                else ()
+
+        fun pairEqual (t1, t2) = groundEquals t1 t2
+
         fun allEqual ts1 ts2 = List.all pairEqual (ListPair.zip (ts1, ts2))
+
         fun fieldTypesEqual [] [] = true
           | fieldTypesEqual ({ name=id1, ty=t1 }::ts1) ts2 =
             (case (List.partition (fn ({ name=id, ty }) => Ustring.stringEquals id id1) ts2) of
-                 ([{ ty=ty2, name }], ts2) => (equals t1 t2) andalso fieldTypesEqual ts1 ts2
+                 ([{ ty=ty2, name }], ts2) => (groundEquals t1 t2) andalso fieldTypesEqual ts1 ts2
                | _ => false)
           | fieldTypesEqual _ _ = false
+
         fun namedEqual [] [] = true
           | namedEqual ((id1,t1)::ts1) ts2 =
             (case (List.partition (fn (id,_) => Ustring.stringEquals id id1) ts2) of
-                 ([(_,t2)], ts2) => (equals t1 t2) andalso namedEqual ts1 ts2
+                 ([(_,t2)], ts2) => (groundEquals t1 t2) andalso namedEqual ts1 ts2
                | _ => false)
           | namedEqual _ _ = false
+
         fun optionEqual NONE NONE = true
-          | optionEqual (SOME t1) (SOME t2) = equals t1 t2
+          | optionEqual (SOME t1) (SOME t2) = groundEquals t1 t2
           | optionEqual _ _ = false
-        (* TODO: should this be a library function in ast.sml? *)
-        fun namespaceEquals (Ast.Intrinsic, Ast.Intrinsic) = true
-          | namespaceEquals (Ast.OperatorNamespace, Ast.OperatorNamespace) = true
-          | namespaceEquals (Ast.Private i1, Ast.Private i2) = Ustring.stringEquals i1 i2
-          | namespaceEquals (Ast.Protected i1, Ast.Protected i2) = Ustring.stringEquals i1 i2
-          | namespaceEquals (Ast.Public i1, Ast.Public i2) = Ustring.stringEquals i1 i2
-          | namespaceEquals (Ast.Internal i1, Ast.Internal i2) = Ustring.stringEquals i1 i2
-          | namespaceEquals (Ast.UserNamespace s1, Ast.UserNamespace s2) = Ustring.stringEquals s1 s2
-          | namespaceEquals (Ast.AnonUserNamespace i1, Ast.AnonUserNamespace i2) = i1 = i2
-          | namespaceEquals (Ast.LimitedNamespace (i1, ns1), Ast.LimitedNamespace (i2, ns2)) =
-            (Ustring.stringEquals i1 i2) andalso (namespaceEquals (ns1, ns2))
-          | namespaceEquals (_, _) = false
-        (* FIXME: totally bogus *)
-        fun identExprEquals (Ast.Identifier { ident=ident1, openNamespaces=openNamespaces1 })
-                            (Ast.Identifier { ident=ident2, openNamespaces=openNamespaces2 }) =
-            (Ustring.stringEquals ident1 ident2) andalso
-            (List.all (fn (ls1, ls2) => List.all namespaceEquals (ListPair.zip (ls1, ls2)))
-                      (ListPair.zip (openNamespaces1, openNamespaces2)))
-          | identExprEquals _ _ = false
+
+        val res = 
+            case (t1, t2) of
+                (Ast.SpecialType st1, Ast.SpecialType st2) => st1 = st2
+
+              | (Ast.UnionType ts1, Ast.UnionType ts2) => allEqual ts1 ts2
+                                                          
+              | (Ast.UnionType [t1], _) => groundEquals t1 t2
+              | (_, Ast.UnionType [t2]) => groundEquals t1 t2
+
+              | (Ast.ArrayType ts1, Ast.ArrayType ts2)
+                => allEqual ts1 ts2
+
+              | (Ast.FunctionType { params=params1,
+                                    result=result1,
+                                    thisType=thisType1,
+                                    hasRest=hasRest1,
+                                    minArgs=minArgs1, ... },
+                 Ast.FunctionType { params=params2,
+                                    result=result2,
+                                    thisType=thisType2,
+                                    hasRest=hasRest2,
+                                    minArgs=minArgs2, ... })
+
+                => (allEqual params1 params2) andalso
+                   groundEquals result1 result2 andalso
+                   (optionEqual thisType1 thisType2) andalso
+                   hasRest1 = hasRest2 andalso
+                   minArgs1 = minArgs2
+
+              | (Ast.ObjectType fts1, Ast.ObjectType fts2)
+                => fieldTypesEqual fts1 fts2
+
+              | (Ast.InstanceType ity1, Ast.InstanceType ity2)
+                => Mach.nameEq (#name ity1) (#name ity2) andalso
+                   allEqual (#typeArgs ity1) (#typeArgs ity2)
+                   
+              | _ => false                     
     in
-        case (t1, t2) of
-            (Ast.SpecialType st1, Ast.SpecialType st2) => st1 = st2
-          | (Ast.UnionType ts1, Ast.UnionType ts2)
-            => allEqual ts1 ts2
-          | (Ast.UnionType [t1], _) => equals t1 t2
-          | (_, Ast.UnionType [t2]) => equals t1 t2
-          | (Ast.ArrayType ts1, Ast.ArrayType ts2)
-            => allEqual ts1 ts2
-          | (Ast.FunctionType { params=params1,
-                                result=result1,
-                                thisType=thisType1,
-                                hasRest=hasRest1,
-                                minArgs=minArgs1, ... },
-             Ast.FunctionType { params=params2,
-                                result=result2,
-                                thisType=thisType2,
-                                hasRest=hasRest2,
-                                minArgs=minArgs2, ... })
-            => (allEqual params1 params2) andalso
-               equals result1 result2 andalso
-               (optionEqual thisType1 thisType2) andalso
-               hasRest1 = hasRest2 andalso
-               minArgs1 = minArgs2
-          | (Ast.ObjectType fts1, Ast.ObjectType fts2)
-            => fieldTypesEqual fts1 fts2
-(*
-       | AppType of
-           { base: TYPE_EXPR,  -- not a function type
-             args: TYPE_EXPR list }
-       | NullableType of
-           { expr:TYPE_EXPR,
-             nullable:bool }
-*)
-          | (Ast.InstanceType {  name=name1,
-                                 nonnullable=nonnullable1,
-                                 superTypes=superTypes1,
-                                 ty=ty1,
-                                 conversionTy=conversionTy1,
-                                 dynamic=dynamic1, ... },
-             Ast.InstanceType {  name=name2,
-                                 nonnullable=nonnullable2,
-                                 superTypes=superTypes2,
-                                 ty=ty2,
-                                 conversionTy=conversionTy2,
-                                 dynamic=dynamic2, ... })
-            => (Mach.nameEq name1 name2) andalso
-               (nonnullable1 = nonnullable2) andalso
-               (* FIXME: order shouldn't matter *)
-               (List.all (fn (nm1, nm2) => Mach.nameEq nm1 nm2)
-                         (ListPair.zip (superTypes1, superTypes2))) andalso
-               (equals ty1 ty2) andalso
-               (optionEqual conversionTy1 conversionTy2) andalso
-               dynamic1 = dynamic2
-          (* FIXME: I thought this shouldn't happen? disallowed in normalized types...? it is being used, though *)
-          | (Ast.TypeName ie1, Ast.TypeName ie2)
-            => identExprEquals ie1 ie2
-          | _ => false
+        trace ["<<< groundEquals: ", fmtType t1, " == ", fmtType t2, " = ", Bool.toString res ];
+        res
     end
-*)
 
-
+val equals = normalizingPredicate groundEquals false
 
 (* -----------------------------------------------------------------------------
  * Subtyping
@@ -719,26 +682,23 @@ val equals = normalizingPredicate groundEquals false
 fun groundIsSubtype (t1:Ast.TYPE_EXPR) (* derived *)
                     (t2:Ast.TYPE_EXPR) (* base *)
     : bool = 
-    true
-
-val isSubtype = normalizingPredicate groundIsSubtype false
-
-(*
     let
-        val _ = trace [">>> isSubtype: ", fmtType t1, " <: ", fmtType t2 ];
-        val t1 = normalize t1
-        val t2 = normalize t2
-        val res = if equals t1 t2 then
+        val _ = trace [">>> groundIsSubtype: ", fmtType t1, " <: ", fmtType t2 ];
+        val _ = if not (isGroundType t1 andalso isGroundType t2)
+                then error ["groundIsSubtype on non-ground terms"]
+                else ()
+
+        val res = if groundEquals t1 t2 then
                       true
                   else
                       case (t1,t2) of
                           (* FIXME: nullability is a bit of a mess. *)
-
+                          
                           ((Ast.SpecialType Ast.Null), Ast.NullableType { nullable, ... }) =>
                           nullable
 
                         | (_, Ast.NullableType { nullable=false, expr }) =>
-                          isSubtype tf t1 expr
+                          groundIsSubtype t1 expr
 
                         | ((Ast.SpecialType Ast.Null), Ast.InstanceType {nonnullable,...}) =>
                           not nonnullable
@@ -746,21 +706,11 @@ val isSubtype = normalizingPredicate groundIsSubtype false
                         | (Ast.SpecialType _, _) => false
 
 	                    | (Ast.UnionType types1,_) =>
-	                      List.all (fn t => isSubtype tf t t2) types1
+	                      List.all (fn t => groundIsSubtype t t2) types1
 
 	                    | (_, Ast.UnionType types2) =>
-	                      List.exists (fn t => isSubtype tf t1 t) types2
+	                      List.exists (fn t => groundIsSubtype t1 t) types2
 
-                        (*
-                        | (Ast.UnionType ts1, Ast.UnionType ts2) =>
-                          unimplError ["isSubtype 1"]
-                        | (Ast.ArrayType ts1, Ast.ArrayType ts2) =>
-                          unimplError ["isSubtype 2"]
-                        | (Ast.FunctionType ft1, Ast.FunctionType ft2) =>
-                          unimplError ["isSubtype 3"]
-                        | (Ast.ObjectType fts1, Ast.ObjectType fts2) =>
-                          unimplError ["isSubtype 4"]
-                         *)
                         | (Ast.ArrayType _, Ast.InstanceType it2) =>
                           (#name it2) = Name.nons_Array
 
@@ -771,14 +721,17 @@ val isSubtype = normalizingPredicate groundIsSubtype false
                           (#name it2) = Name.nons_Function
 
                         | (Ast.InstanceType it1, Ast.InstanceType it2) =>
-                          Fixture.isClass tf (#name it1)
-                          andalso Fixture.instanceOf tf (#name it1) (#name it2)
+                          List.exists (fn sup => groundIsSubtype sup t2) 
+                                      (#superTypes it1)
+                          
                         | _ => false
     in
-        trace ["<<< isSubtype: ", fmtType t1, " <: ", fmtType t2, " = ", Bool.toString res ];
+        trace ["<<< groundIsSubtype: ", fmtType t1, " <: ", fmtType t2, " = ", Bool.toString res ];
         res
     end
-*)
+
+val isSubtype = normalizingPredicate groundIsSubtype false
+
 
 (* -----------------------------------------------------------------------------
  * Compatibility
@@ -787,29 +740,23 @@ val isSubtype = normalizingPredicate groundIsSubtype false
 fun groundIsCompatible (t1:Ast.TYPE_EXPR)
                        (t2:Ast.TYPE_EXPR)
     : bool = 
-    true
-
-val isCompatible = normalizingPredicate groundIsCompatible false
-
-(*
     let
-        val t1 = normalize t1
-        val t2 = normalize t2        val _ = trace [">>> isCompatible: ", fmtType t1, " ~: ", fmtType t2 ];
-        val res = (isSubtype tf t1 t2) orelse
-	              (equals t1 anyType) orelse
-	              (equals t2 anyType) orelse
+        val _ = trace [">>> groundIsCompatible: ", fmtType t1, " ~: ", fmtType t2 ]
+        val res = (groundIsSubtype t1 t2) orelse
+	              (groundEquals t1 anyType) orelse
+	              (groundEquals t2 anyType) orelse
 	              case (t1,t2) of
 	                  (Ast.UnionType types1,_) =>
-	                  List.all (fn t => isCompatible tf t t2) types1
+	                  List.all (fn t => groundIsCompatible t t2) types1
 	                | (_, Ast.UnionType types2) =>
 	                  (* t1 must exist in types2 *)
-	                  List.exists (fn t => isCompatible tf t1 t) types2
+	                  List.exists (fn t => groundIsCompatible t1 t) types2
 	                | (Ast.ArrayType types1, Ast.ArrayType types2) =>
 	                  (* arrays are invariant, every entry should be compatible in both directions *)
 	                  let fun check (h1::t1) (h2::t2) =
-		                      (isCompatible tf h1 h2)
+		                      (groundIsCompatible h1 h2)
 		                      andalso
-		                      (isCompatible tf h2 h1)
+		                      (groundIsCompatible h2 h1)
 		                      andalso
 		                      (case (t1,t2) of
 			                       ([],[]) => true
@@ -822,27 +769,18 @@ val isCompatible = normalizingPredicate groundIsCompatible false
 	                  in
 		                  check types1 types2
 	                  end
-
-	                | (Ast.AppType {base=base1,args=args1}, Ast.AppType {base=base2,args=args2}) =>
-	                  (* We keep types normalized wrt beta-reduction,
-	                   * so base1 and base2 must be class or interface types.
-	                   * Type arguments are covariant, and so must be intra-compatible - CHECK
-	                   *)
-	                  false
-
+                      
 	                | (Ast.ObjectType fields1, Ast.ObjectType fields2) =>
 	                  false
 
 	                | (Ast.FunctionType
-		                   {typeParams=typeParams1,
-		                    params  =params1,
+		                   {params  =params1,
 		                    result  =result1,
 		                    thisType=thisType1,
 		                    hasRest =hasRest1,
 	                        minArgs=minArgs},
 	                   Ast.FunctionType
-		                   {typeParams=typeParams2,
-		                    params=params2,
+		                   {params=params2,
 		                    result=result2,
 		                    thisType=thisType2,
 		                    hasRest=hasRest2,
@@ -850,22 +788,21 @@ val isCompatible = normalizingPredicate groundIsCompatible false
 	                  let
 	                  in
 		                  (* TODO: Assume for now that functions are not polymorphic *)
-		                  assert (typeParams1 = [] andalso typeParams2=[]) "cannot handle polymorphic fns";
 		                  assert (not hasRest1 andalso not hasRest2) "cannot handle rest args";
 
-		                  ListPair.all (fn (t1,t2) => isCompatible tf t1 t2) (params1,params2)
+		                  ListPair.all (fn (t1,t2) => groundIsCompatible t1 t2) (params1,params2)
 		                  andalso
-		                  isCompatible tf result1 result2
+		                  groundIsCompatible result1 result2
 	                  end
 
                     | _ => false
-	(* catch all *)
-	(* | _ => unimplError ["isCompatible"] *)
     in
         trace ["<<< isCompatible: ", fmtType t1, " ~: ", fmtType t2, " = ", Bool.toString res ];
         res
     end
-*)
+
+val isCompatible = normalizingPredicate groundIsCompatible false
+
 
 (* -----------------------------------------------------------------------------
  * Convertibility
@@ -878,22 +815,15 @@ val isCompatible = normalizingPredicate groundIsCompatible false
  * or NONE if there is no such converter.
  *)
 
-fun findConversion (prog:Fixture.PROGRAM)
-                   (ty1:Ast.TY)
-                   (ty2:Ast.TY)
-    : Ast.NAME option =
-    NONE
-(*
+fun groundFindConversion (tyExpr1:Ast.TYPE_EXPR)
+                         (tyExpr2:Ast.TYPE_EXPR) 
+    : Ast.TYPE_EXPR option = 
     let
-        val _ = trace ["searching for converter from ", fmtType ty1,
-                       " ~~> ", fmtType ty2];
-        val ty1 = normalize ty1
-        val ty2 = normalize ty2
         fun tryToConvertTo (target:Ast.TYPE_EXPR) =
             case target of
-                Ast.InstanceType { name, conversionTy=SOME c, ... } =>
-                if isCompatible tf ty1 c
-                then SOME name
+                Ast.InstanceType { conversionTy=SOME c, ... } =>
+                if groundIsCompatible tyExpr1 c
+                then SOME target
                 else NONE
               | Ast.UnionType [] => NONE
               | (Ast.UnionType (t::ts)) =>
@@ -902,7 +832,9 @@ fun findConversion (prog:Fixture.PROGRAM)
                    | found => found)
               | _ => NONE
     in
-        tryToConvertTo ty2
+        tryToConvertTo tyExpr2
     end
-*)
+
+val findConversion = normalizingPredicate groundFindConversion NONE
+
 end

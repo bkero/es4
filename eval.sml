@@ -85,6 +85,22 @@ fun evalTy (regs:Mach.REGS)
         else error regs ["Unable to ground type closure"]
     end
 
+fun instanceType (regs:Mach.REGS)
+                 (name:Ast.NAME)
+                 (args:Ast.TYPE_EXPR list)
+    : Ast.TYPE_EXPR = 
+    let
+        val instanceTy = Fixture.instanceTy (#prog regs) name
+        val fullTy = 
+            case args of 
+                [] => instanceTy
+              | exprs => Type.normalize (makeTy (Ast.AppTy {base = instanceTy,
+                                                            args = args }))    
+    in
+        evalTy regs fullTy
+    end
+        
+
 (* Exceptions for object-language control transfer. *)
 exception ContinueException of (Ast.IDENT option)
 exception BreakException of (Ast.IDENT option)
@@ -393,7 +409,7 @@ fun allocRib (regs:Mach.REGS)
                              then 
                                  (trace ["ignoring fixture, already allocated ", Int.toString t];
                                   temps := (List.take (tmps, (tlen-t-1))) @ 
-                                           ((ty, Mach.UninitTemp) :: 
+                                           (((evalTy regs ty), Mach.UninitTemp) :: 
                                             (List.drop (tmps, (tlen-t)))))
                                  
                              else 
@@ -735,9 +751,8 @@ and checkAndConvert (regs:Mach.REGS)
     then v
     else
         let
-            val valTy = typeOfVal v
             val className =
-                case findConversion regs valTy tyExpr of
+                case findConversion regs (typeOfVal v) tyExpr of
                     NONE => (typeOpFailure regs "incompatible types w/o converter" v tyExpr; Name.empty)
                   | SOME n => n
             val class = needObj regs (getValue regs (#global regs) className)
@@ -760,13 +775,7 @@ and isDynamic (regs:Mach.REGS)
           | Mach.ArrayTag _ => true
           | Mach.FunctionTag _ => true
           | Mach.NoTag => true
-          | Mach.ClassTag n =>
-            let
-                val cc = Mach.needClass (getValue regs (#global regs) n)
-                val Ast.Cls { dynamic, ... } = (#cls cc)
-            in
-                dynamic
-            end
+          | Mach.ClassTag ity => (#dynamic ity)
     end
 
 and setValueOrVirtual (regs:Mach.REGS)
@@ -1049,24 +1058,19 @@ and needNamespaceOrNull (regs:Mach.REGS)
 and needNameOrString (regs:Mach.REGS)
                      (v:Mach.VAL)
     : Ast.NAME =
-    let 
-        val { prog, ... } = regs
-        val ty = typeOfVal v
-    in
-        case v of
-            Mach.Object obj => 
-            if Type.isSubtype prog ty (Fixture.instanceType prog Name.intrinsic_Name)
-            then
-                let
-                    val nsval = getValue regs obj Name.nons_qualifier
-                    val idval = getValue regs obj Name.nons_identifier
-                in
-                    Name.make (toUstring regs idval) (needNamespaceOrNull regs nsval)
-                end
-            else
-                Name.nons (toUstring regs v)
-          | _ => Name.nons (toUstring regs v)
-    end
+    case v of
+        Mach.Object obj => 
+        if (typeOfVal v) <: (instanceType regs Name.intrinsic_Name)
+        then
+            let
+                val nsval = getValue regs obj Name.nons_qualifier
+                val idval = getValue regs obj Name.nons_identifier
+            in
+                Name.make (toUstring regs idval) (needNamespaceOrNull regs nsval)
+            end
+        else
+            Name.nons (toUstring regs v)
+      | _ => Name.nons (toUstring regs v)
 
 and needObj (regs:Mach.REGS)
             (v:Mach.VAL)
@@ -1268,7 +1272,7 @@ and newNamespace (regs:Mach.REGS)
         SOME v => v
       | NONE => 
         let 
-            val v = newBuiltin regs Name.Namespace_string (SOME (Mach.Namespace n))
+            val v = newBuiltin regs Name.intrinsic_Namespace (SOME (Mach.Namespace n))
         in 
             Mach.updateNsCache regs (n, v)
         end
@@ -2511,7 +2515,7 @@ and evalUnaryOp (regs:Mach.REGS)
              * ES-262-3 1.4.3 backward-compatibility operation.
              *)
             let
-                fun typeOfVal (v:Mach.VAL) =
+                fun typeNameOfVal (v:Mach.VAL) =
                     case v of
                         Mach.Null => Ustring.null_
                       | Mach.Undef => Ustring.undefined_
@@ -2546,9 +2550,9 @@ and evalUnaryOp (regs:Mach.REGS)
                          in
                              case resolveOnScopeChain (#scope regs) nomn of
                                  NONE => Ustring.undefined_
-                               | SOME (obj, name) => typeOfVal (getValue regs obj name)
+                               | SOME (obj, name) => typeNameOfVal (getValue regs obj name)
                          end
-                       | _ => typeOfVal (evalExpr regs expr))
+                       | _ => typeNameOfVal (evalExpr regs expr))
             end
     end
 
@@ -2997,7 +3001,7 @@ and typeOfVal (v:Mach.VAL)
       | Mach.Null => Ast.SpecialType Ast.Null
       | Mach.Object (Mach.Obj {tag, ...}) =>
         (case tag of
-             Mach.ClassTag name => Verify.instanceTypeExpr name
+             Mach.ClassTag ity => ity
            | Mach.ObjectTag tys => Ast.ObjectType tys
            | Mach.ArrayTag tys => Ast.ArrayType tys
            | Mach.FunctionTag fty => Ast.FunctionType fty
@@ -3012,7 +3016,8 @@ and typeOfVal (v:Mach.VAL)
              Ast.SpecialType Ast.Any)
 
 
-and isCompatible (v:Mach.VAL)
+and isCompatible (regs:Mach.REGS)
+                 (v:Mach.VAL)
                  (tyExpr:Ast.TYPE_EXPR)
     : bool =
     Type.groundIsCompatible (typeOfVal v) tyExpr
@@ -3153,7 +3158,7 @@ and evalIdentExpr (regs:Mach.REGS)
         in
             case v of
                 Mach.Object obj =>
-                if (typeOfVal v) <: (Verify.instanceTypeExpr Name.intrinsic_Name)
+                if (typeOfVal v) <: (instanceType regs Name.intrinsic_Name)
                 then
                     let
                         val nsval = getValue regs obj Name.nons_qualifier
@@ -3862,7 +3867,7 @@ and constructStandard (regs:Mach.REGS)
     : Mach.OBJ =
     let
         val {cls = Ast.Cls { name, instanceRib, ...}, env, ...} = classClosure
-        val (tag:Mach.VAL_TAG) = Mach.ClassTag name
+        val (tag:Mach.VAL_TAG) = Mach.ClassTag (instanceType regs name [])
     in
         constructStandardWithTag regs classObj classClosure args tag
     end

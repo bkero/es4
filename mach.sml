@@ -88,7 +88,7 @@ datatype VAL = Object of OBJ
          ObjectTag of Ast.FIELD_TYPE list
        | ArrayTag of Ast.TYPE_EXPR list
        | FunctionTag of Ast.FUNC_TYPE
-       | ClassTag of Ast.NAME
+       | ClassTag of Ast.INSTANCE_TYPE
        | NoTag (*
                 * NoTag objects are made for scopes and
                 * temporaries passed as arguments during
@@ -431,17 +431,6 @@ fun es3Type (v:VAL) : MACHTY =
 fun isSameType (va:VAL) (vb:VAL) : bool =
     es3Type va = es3Type vb
 
-fun isDirectInstanceOf (n:Ast.NAME)
-                       (v:VAL)
-    : bool =
-    case v of
-        Object (Obj { tag, ... }) =>
-        (case tag of
-             ClassTag cn => nameEq cn n
-           | _ => false)
-      | _ => false
-
-
 (* Binding operations. *)
 
 fun newPropBindings _ : PROP_BINDINGS =
@@ -638,7 +627,7 @@ fun nominalBaseOfTag (t:VAL_TAG)
         ObjectTag _ => Name.nons_Object
       | ArrayTag _ => Name.nons_Array
       | FunctionTag _ => Name.nons_Function
-      | ClassTag c => c
+      | ClassTag ity => (#name ity)
       | NoTag => error ["searching for nominal base of no-tag object"]
 
 fun getObjMagic (ob:OBJ)
@@ -1008,7 +997,8 @@ fun makeGlobalScopeWith (global:OBJ)
 fun makeInitialRegs (prog:Fixture.PROGRAM)
     : REGS =
     let 
-        val glob = newObj (ClassTag Name.nons_Object) Null NONE
+        (* FIXME: tie the knot for ::Object in boot.sml *)
+        val glob = newObj NoTag (* (ClassTag Name.nons_Object) *) Null NONE
         val prof = Profiler 
                        { profileMap = ref StrListMap.empty,
                          doProfile = ref NONE }

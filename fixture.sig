@@ -118,7 +118,7 @@ signature FIXTURE = sig
     val getCurrFullRibs : PROGRAM -> Ast.RIBS -> Ast.RIBS
     val getFullRibsForTy : PROGRAM -> Ast.TY -> (Ast.RIBS * bool)
 
-    val instanceType : PROGRAM -> Ast.NAME -> Ast.TY
+    val instanceTy : PROGRAM -> Ast.NAME -> Ast.TY
     val isClass : PROGRAM -> Ast.NAME -> bool
     val getClass : PROGRAM -> Ast.NAME -> Ast.CLS
     val instanceOf : PROGRAM -> 

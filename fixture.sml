@@ -317,9 +317,9 @@ fun getFullRibsForTy (prog:PROGRAM)
  *        instanceOfCache in PROGRAM if it's an abstract type
  *)
 
-fun instanceType (prog:PROGRAM)
-                 (n:Ast.NAME)
-    : Ast.TY =
+fun instanceTy (prog:PROGRAM)
+               (n:Ast.NAME)
+    : Ast.TY =    
     case getTopFixture prog n of
         Ast.ClassFixture (Ast.Cls cls) => (#instanceType cls)
       | Ast.InterfaceFixture (Ast.Iface iface) => (#instanceType iface)
