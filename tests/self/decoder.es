@@ -352,6 +352,9 @@ namespace Decode;
         enter ("Decode::stmt ", ob.ast_class);
 
         switch (ob.ast_class) {
+        case 'EmptyStmt':
+            var ndx = new EmptyStmt ();
+            break;
         case 'ExprStmt':
             var nd1 = expr (ob.expr);
             var ndx = new ExprStmt (nd1);

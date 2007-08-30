@@ -1301,17 +1301,19 @@ namespace Lex
 
         for (var i = 0; i < testCases.length; ++i) {
             var scan = new Scanner (testCases[i],"test"+i);
-            var tokenList = scan.tokenList (scan.start);
-            print ("tokenList ", tokenList);
-            for (var j=0; j<tokenList.length; ++j) {
-            	if (tokenList[j] == Token::BREAK) {
+            var [tokens,coords] = scan.tokenList (scan.start);
+            print ("tokens ", tokens);
+            print ("coords ", coords);
+            for (var j=0; j<tokens.length; ++j) {
+            	if (tokens[j] == Token::BREAK) {
                     if (i == testCases.length-1) {   // if last test, then scan for regexps
-                        tokenList = scan.tokenList (scan.regexp);
+                        var [tokens,coords] = scan.tokenList (scan.regexp);
                     }
                     else {
-                        tokenList = scan.tokenList (scan.div);
+                        [tokens,coords] = scan.tokenList (scan.div);
                     }
-                    print ("tokenList ", tokenList);
+                    print ("tokens ", tokens);
+                    print ("coords ", coords);
                 }
             }
             print ("scanned!");

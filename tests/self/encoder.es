@@ -436,7 +436,7 @@ namespace Encode;
               + " }";
         }
         case (nd: EmptyStmt) {
-            var str = "";
+            var str = "{ 'ast_class': 'EmptyStmt' }";
         }
         case (x: *) {
             throw "error stmt " + nd;
