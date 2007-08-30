@@ -468,7 +468,7 @@ use namespace intrinsic;
         {
             enter("Parser::pragmas ", ts);
 
-            while (hd (ts)===Token::Use) {
+            while (hd (ts)===Token::Use || hd (ts)===Token::Import) {
                 [ts] = pragma (ts);
                 ts = semicolon (ts,fullStmt);
             }
@@ -554,6 +554,46 @@ use namespace intrinsic;
 
             exit("Parser::pragmaItems ", ts1);
             return [ts1];
+        }
+
+        /*
+
+        ImportName
+            PackageName  .  *
+            PackageName  .  Identifier
+
+        */
+
+        function importName (ts: TOKENS)
+            : [TOKENS]
+        {
+            enter("Parser::importName ", ts);
+
+            var [ts1,nd1] = identifier (ts);
+            nd1 = [nd1];
+            while (hd (ts1)===Token::Dot) {
+                nd1.push(Token::tokenText(tl (ts1).head()));
+                ts1 = tl (tl (ts1));
+            }
+
+            let ns = namespaceFromPath (nd1);
+            cx.openNamespace (ns);
+
+            exit ("Parser::importName ", ts1);
+            return [ts1];
+
+            function namespaceFromPath (path) 
+            {
+                var str = "";
+                for (var i=0; i<path.length-1; ++i) { // -1 to skip last ident
+                    if (i!=0) 
+                        str = str + ".";
+                    str = str + path[i];
+                }
+
+                return new Ast::ReservedNamespace (new Ast::PublicNamespace (str));  // FIXME ReservedNamespace is a misnomer
+            }
+
         }
 
         // BLOCKS and PROGRAMS
@@ -718,7 +758,7 @@ use namespace intrinsic;
         {
             var p = programs[n];
             try {
-                var parser = new Parser(p);
+                var parser = initParser(p);
                 var [ts1,nd1] = parser.program ();
 
                 //                dumpABCFile(cogen.cg(nd1), "hello-test.es");
@@ -743,6 +783,6 @@ use namespace intrinsic;
         }
     }
 
-    //    test ()
+    Parse::test ()
 }
 

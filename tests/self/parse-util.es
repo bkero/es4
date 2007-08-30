@@ -739,4 +739,6 @@ namespace Parse;
         print ("testing parse-util.es");
         var x = initParser ("hi",[]);
     }
+
+    Parse::test ();
 }

@@ -156,5 +156,5 @@ namespace Char
         print ("Newline=",Newline);
     }
 
-    test ();
+    Char::test ();
 }

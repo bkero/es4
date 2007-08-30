@@ -1,2 +1,2 @@
-class A {};
-class B {};
+import flash.util.*;
+print('hello')

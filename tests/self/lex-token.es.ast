@@ -10454,8 +10454,10 @@ var ast =
 , 'expr': { 'ast_class': 'ListExpr'
 , 'exprs': [ { 'ast_class': 'CallExpr'
 , 'expr': { 'ast_class': 'LexicalRef'
+, 'ident': { 'ast_class': 'QualifiedIdentifier'
+, 'qual': { 'ast_class': 'LexicalRef'
 , 'ident': { 'ast_class': 'Identifier'
-, 'ident': 'test'
+, 'ident': 'Token'
 , 'nss': [  [ { 'ast_class': 'PublicNamespace'
 , 'name': '' }
 ,  ]
@@ -10465,6 +10467,7 @@ var ast =
 , 'name': 'Token' }
 ,  ]
 ,  ] } }
+, 'ident': 'test' } }
 , 'args': [  ] }
 ,  ] } }
 ,  ] } }

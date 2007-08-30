@@ -982,8 +982,8 @@ use namespace intrinsic;
                 let params = new Ast::Head([],[]);
                 let vars = new Ast::Head([],[]);
                 let defaults = [];
-                let type = Ast::anyType;
-                let func = new Ast::Func ({kind:new Ast::Ordinary,ident:nd1},isNative,blck,params,vars,defaults,type);
+                let ty = Ast::anyType;
+                let func = new Ast::Func ({kind:new Ast::Ordinary,ident:nd1},isNative,blck,params,vars,defaults,ty);
                 var ctor = new Ast::Ctor ([],[],func);
             }
             
