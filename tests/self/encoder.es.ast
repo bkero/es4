@@ -12317,7 +12317,7 @@ var ast =
 , 'id': 'str' } }
 , { 'ast_class': 'LiteralExpr'
 , 'literal': { 'ast_class': 'LiteralString'
-, 'strValue': "" } } ]
+, 'strValue': "{ \'ast_class\': \'EmptyStmt\' }" } } ]
 ,  ] }
 ,  ] } }
 ,  ] } }
@@ -18649,7 +18649,9 @@ var ast =
 ,  ]
 ,  [  ]
 ,  ] } }
-, { 'ast_class': 'LexicalRef'
+, { 'ast_class': 'BinaryExpr'
+, 'op': { 'ast_class': 'Plus' }
+, 'e1': { 'ast_class': 'LexicalRef'
 , 'ident': { 'ast_class': 'Identifier'
 , 'ident': 'nesting'
 , 'nss': [  [ { 'ast_class': 'PublicNamespace'
@@ -18666,7 +18668,7 @@ var ast =
 ,  ]
 ,  [  ]
 ,  ] } }
-, { 'ast_class': 'ObjectRef'
+, 'e2': { 'ast_class': 'ObjectRef'
 , 'base': { 'ast_class': 'LiteralExpr'
 , 'literal': { 'ast_class': 'LiteralString'
 , 'strValue': ", \'op\': " } }
@@ -18685,7 +18687,7 @@ var ast =
 , 'name': 'Encode' }
 ,  ]
 ,  [  ]
-,  ] } }
+,  ] } } }
 ,  ] } }
 , 'e2': { 'ast_class': 'CallExpr'
 , 'expr': { 'ast_class': 'LexicalRef'

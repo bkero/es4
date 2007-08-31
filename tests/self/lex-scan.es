@@ -1319,5 +1319,5 @@ namespace Lex
             print ("scanned!");
         }
     }
-    Lex::test ();
+    //Lex::test ();
 }

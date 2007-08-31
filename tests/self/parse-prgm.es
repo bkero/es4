@@ -783,6 +783,6 @@ use namespace intrinsic;
         }
     }
 
-    Parse::test ()
+    //Parse::test ()
 }
 

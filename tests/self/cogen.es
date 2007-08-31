@@ -36,22 +36,22 @@
  *
  * ***** END LICENSE BLOCK ***** */
 
-/// namespace Gen;
-package cogen
+namespace Gen;
+//package cogen
 {
-    import util.*;
-    import abcfile.*;
-    import assembler.*;
-    import emitter.*;
-    /// use default namespace Gen;
-    /// use namespace Util;
-    /// use namespace Abc;
-    /// use namespace Asm;
-    /// use namespace Emit;
+    //import util.*;
+    //import abcfile.*;
+    //import assembler.*;
+    //import emitter.*;
+    use default namespace Gen;
+    use namespace Util;
+    use namespace Abc;
+    use namespace Asm;
+    use namespace Emit;
     use namespace Ast;
 
     /* Returns an ABCFile structure */
-    public function cg(tree: PROGRAM) {
+    function cg(tree: PROGRAM) {
     /// function cg(tree: PROGRAM) {
         var e = new ABCEmitter;
         var s = e.newScript();

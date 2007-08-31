@@ -651,7 +651,7 @@ namespace Encode;
                 "{ 'ast_class': 'BinaryExpr'"
               + indent(nesting)
               + ", 'op': "
-              + binOp (nd.op,nesting,", 'op': ".length)
+              + binOp (nd.op,nesting+", 'op': ".length)
               + indent(nesting)
               + ", 'e1': "
               + expr (nd.e1,nesting+", 'e1': ".length)

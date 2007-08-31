@@ -556,6 +556,6 @@ namespace Token
             print(i,": ",names[-i])
     }
 
-    Token::test()
+    //Token::test()
 }
 

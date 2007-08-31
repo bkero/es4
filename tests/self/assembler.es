@@ -36,11 +36,17 @@
  *
  * ***** END LICENSE BLOCK ***** */
 
-package assembler
+namespace Asm;
+
+//package assembler
 {
-    import util.*;
-    import bytestream.*;
-    import abcfile.*;
+    use default namespace Asm;
+    use namespace Util;
+    //use namespace Abc;
+    
+    //import util.*;
+    //import bytestream.*;
+    //import abcfile.*;
 
     /*******************************************************************
      * ABC constants

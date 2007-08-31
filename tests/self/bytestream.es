@@ -37,10 +37,9 @@
  * ***** END LICENSE BLOCK ***** */
 
 //namespace Util
-package bytestream
+//package bytestream
 {
-    //use default namespace Util
-    import util.*
+    use default namespace Util
 
     /* Emitter for various data in ABC-compatible formats, as a byte
      * stream.  The byte stream is represented as an array of unsigned
@@ -50,7 +49,6 @@ package bytestream
      * All data are dumped in litte-endian format.
      */
 
-    import util.*;
 
     public final class ABCByteStream
     {

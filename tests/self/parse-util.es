@@ -149,7 +149,7 @@ namespace Parse;
             }
             else
             {
-                this.openNamespaces = util.copyArray (pragmas.openNamespaces);
+                this.openNamespaces = Util::copyArray (pragmas.openNamespaces);
                 this.defaultNamespace = pragmas.defaultNamespace;
             }
 
@@ -740,5 +740,5 @@ namespace Parse;
         var x = initParser ("hi",[]);
     }
 
-    Parse::test ();
+    //Parse::test ();
 }

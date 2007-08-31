@@ -57,19 +57,19 @@
  *   'callsuper' instruction
  */
 
-package cogen
+//package cogen
 {
-    import util.*;
-    import abcfile.*;
-    import assembler.*;
-    import emitter.*;
+    //import util.*;
+    //import abcfile.*;
+    //import assembler.*;
+    //import emitter.*;
     use default namespace public;
 
-    /// use default namespace Gen;
-    /// use namespace Util;
-    /// use namespace Abc;
-    /// use namespace Asm;
-    /// use namespace Emit;
+    use default namespace Gen;
+    use namespace Util;
+    use namespace Abc;
+    use namespace Asm;
+    use namespace Emit;
     use namespace Ast;
 
     function cgExpr(ctx, e) {

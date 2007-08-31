@@ -36,18 +36,18 @@
  *
  * ***** END LICENSE BLOCK ***** */
 
-package cogen
+//package cogen
 {
-    import util.*;
-    import abcfile.*;
-    import assembler.*;
+    //import util.*;
+    //import abcfile.*;
+    //import assembler.*;
     use default namespace public;
 
-    /// use default namespace Gen;
-    /// use namespace Util;
-    /// use namespace Abc;
-    /// use namespace Asm;
-    /// use namespace Emit;
+    use default namespace Gen;
+    use namespace Util;
+    use namespace Abc;
+    use namespace Asm;
+    use namespace Emit;
     use namespace Ast;
 
     function cgStmt(ctx, s) {

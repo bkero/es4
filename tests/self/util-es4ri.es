@@ -1,7 +1,9 @@
 /* Utilities adapted to the ECMAScript 4 reference implementation */
 
-package util
+//package util
 {
+    use default namespace Util;
+    
     use namespace intrinsic;
 
     intrinsic native function explodeDouble(d:double, idx:uint);

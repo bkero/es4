@@ -1,15 +1,16 @@
-//namespace Util
-package util
+namespace Util
+//package util
 {
-    //use default namespace Util
-    import bytestream.*;
+    use default namespace Util
+    //import bytestream.*;
+    
 
-    public function assert(cond) {
+    function assert(cond) {
         if (!cond)
             throw "Assertion failed!";
     }
 
-    public function map(fn, a) {
+    function map(fn, a) {
         var b = [];
         for ( var i=0 ; i < a.length ; i++ )
             if (i in a)
@@ -17,27 +18,27 @@ package util
         return b;
     }
 
-    public function forEach(fn, a) {
+    function forEach(fn, a) {
         for ( var i=0 ; i < a.length ; i++ )
             if (i in a)
                 fn(a[i]);
     }
 
-    public function memberOf(x, ys) {
+    function memberOf(x, ys) {
         for ( var i=0 ; i < ys.length ; i++ )
             if (ys[i] === x)
                 return true;
         return false;
     }
 
-    public function copyArray(c) {
+    function copyArray(c) {
         var a = new Array;
         for ( var i=0 ; i < c.length ; i++ )
             a[i] = c[i];
         return a;
     }
 
-    public function dumpByteStream(bytes, result=null) {
+    function dumpByteStream(bytes, result=null) {
         function f(n, r=16) {
             return (n + 0x100).toString(r).substring(1);
         }
@@ -60,7 +61,7 @@ package util
                   (a[i] >= 32 && a[i] <= 126 ? "'" + String.fromCharCode(a[i]) + "'" : "") );
     }
 
-    public function dumpABCFile(abcfile, filename) {
+    function dumpABCFile(abcfile, filename) {
         var bytes = abcfile.getBytes();
         assert( bytes.push );  /*FIXME ES4: really "bytes is Array" */
 

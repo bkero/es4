@@ -59,11 +59,16 @@
    Sometimes this OO setup does not seem natural, other times it simplifies...
 */
 
-package emitter
+namespace Emit;
+//package emitter
 {
-    import util.*;
-    import abcfile.*;
-    import assembler.*;
+    use default namespace Emit;
+    use namespace Util;
+    use namespace Abc;
+    use namespace Asm;
+    //import util.*;
+    //import abcfile.*;
+    //import assembler.*;
 
     use namespace Ast;
 
