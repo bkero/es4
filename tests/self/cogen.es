@@ -350,14 +350,15 @@ namespace Gen;
             ctx.emitter.fixtureTypeToType(fixture); //FIXME: shouldn't need ctx.
         
         let named_fixtures = extractNamedFixtures(head.fixtures);
-
+/*
         let formals = map(extractName, named_fixtures);
         let formals_type = map(extractType, named_fixtures);
         for ( let i=0 ; i < formals.length ; i++ ) {
             if(!hasTrait(target.traits, formals[i], TRAIT_Slot) )
                 target.addTrait(new ABCSlotTrait(formals[i], 0, false, 0, formals_type[i]));
         }
-
+*/
+        cgFixtures(ctx, named_fixtures);
         for ( let i=0 ; i < head.exprs.length ; i++ ) {
             cgExpr(ctx, head.exprs[i]);
             asm.I_pop();

@@ -3596,33 +3596,7 @@ var ast =
 ,  ]
 ,  [  ]
 ,  ] } }
-, 'args': [ { 'ast_class': 'LexicalRef'
-, 'ident': { 'ast_class': 'Identifier'
-, 'ident': 'kind'
-, 'nss': [  [ { 'ast_class': 'PublicNamespace'
-, 'name': '' }
-,  ]
-,  [ { 'ast_class': 'IntrinsicNamespace' }
-,  ]
-,  [ { 'ast_class': 'AnonymousNamespace'
-, 'name': 'Token' }
-,  ]
-,  [  ]
-,  ] } }
-, { 'ast_class': 'LexicalRef'
-, 'ident': { 'ast_class': 'Identifier'
-, 'ident': 'text'
-, 'nss': [  [ { 'ast_class': 'PublicNamespace'
-, 'name': '' }
-,  ]
-,  [ { 'ast_class': 'IntrinsicNamespace' }
-,  ]
-,  [ { 'ast_class': 'AnonymousNamespace'
-, 'name': 'Token' }
-,  ]
-,  [  ]
-,  ] } }
-,  ] } ]
+, 'args': [  ] } ]
 ,  ] }
 ,  ] } }
 , { 'ast_class': 'IfStmt'
@@ -10449,26 +10423,6 @@ var ast =
 ,  ] } }
 , 'args': [  ] } ]
 ,  ] }
-,  ] } }
-, { 'ast_class': 'ExprStmt'
-, 'expr': { 'ast_class': 'ListExpr'
-, 'exprs': [ { 'ast_class': 'CallExpr'
-, 'expr': { 'ast_class': 'LexicalRef'
-, 'ident': { 'ast_class': 'QualifiedIdentifier'
-, 'qual': { 'ast_class': 'LexicalRef'
-, 'ident': { 'ast_class': 'Identifier'
-, 'ident': 'Token'
-, 'nss': [  [ { 'ast_class': 'PublicNamespace'
-, 'name': '' }
-,  ]
-,  [ { 'ast_class': 'IntrinsicNamespace' }
-,  ]
-,  [ { 'ast_class': 'AnonymousNamespace'
-, 'name': 'Token' }
-,  ]
-,  ] } }
-, 'ident': 'test' } }
-, 'args': [  ] }
 ,  ] } }
 ,  ] } }
 ,  ] } }

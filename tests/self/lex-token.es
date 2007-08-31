@@ -510,7 +510,7 @@ namespace Token
         }
 
         var len = tokenStore.length;
-        var tid = find (kind,text);
+        var tid = find ();
         if (tid === len) 
         {
             tokenStore.push(new Tok(kind, text));

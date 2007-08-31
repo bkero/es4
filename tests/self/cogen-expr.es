@@ -119,6 +119,7 @@
             let L0 = asm.I_iffalse();
             asm.I_pop();
             cgExpr(ctx, e.e2);
+            asm.I_convert_b();
             asm.I_label(L0);
         }
         else if (e.op is LogicalOr) {
@@ -128,6 +129,7 @@
             let L0 = asm.I_iftrue();
             asm.I_pop();
             cgExpr(ctx, e.e2);
+            asm.I_convert_b();
             asm.I_label(L0);
         }
         else {
