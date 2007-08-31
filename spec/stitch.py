@@ -23,6 +23,7 @@
 #  - %%...%% for ..., unprocessed
 #  - {{{ ... }}} for <pre>...</pre>, blank lines removed at the beginning and end,
 #    contents unprocessed.  The triple braces must be at the start of a line.
+#  - ""..."" for bold, normal text (handy inside the scope of //..//)
 #  - <entity> for some simple replacements, see full list in the code below
 
 # Rules for processing in general:
@@ -67,13 +68,15 @@ htmlcomment = re.compile(r"<!--(?:.|\s)*?-->")
 wikiheader = re.compile(r"^(\=+)\s+(.*?)\s+\1", re.M)
 htmlheader = re.compile(r"<h([1-6])((?:\".*?\"|[^\"])*?)>(.*?)</h\1>")
 xreftag = re.compile(r"<XREF\s+target=\"(.*?)\"\s*>")
-includetag = re.compile(r"<h[1-6]|<(?:INCLUDE|SIGNATURE)(?:\".*?\"|[^\"])*?>")
+includetag = re.compile(r"<h[1-6]|<(?:INCLUDE|INCLUDECTX|SIGNATURE)(?:\".*?\"|[^\"])*?>")
 signaturetag = re.compile(r"<h[1-6]|<SIGNATURE(?:\".*?\"|[^\"])*?>")
 htmlInclude = re.compile(r"<(?:INCLUDE|SIGNATURE)\s*file=\"(.*?\.(?:html|css))\">")
 smlInclude = re.compile(r"<(?:INCLUDE|SIGNATURE)\s+file=\"(.*?\.sml)\"\s+name=\"(.*?)\">")
 esInclude = re.compile(r"<(?:INCLUDE|SIGNATURE)\s+file=\"(.*?\.es)\"\s+name=\"(.*?)\">")
+esIncludeCtx = re.compile(r"<INCLUDECTX\s+file=\"(.*?\.es)\"\s+name=\"(.*?)\"\s+ctx=\"(.*?)\">")
 hdrprefix = re.compile(r"<h([1-6])")
 wikiformatCode = re.compile(r"''((?:.|\s)*?)''")
+wikiformatLiteralBold = re.compile("\"\"((?:.|\\s)*?)\"\"")
 wikiformatSpecial = re.compile(r"(\[\[(.*?)\]\])")
 wikiformatBold = re.compile(r"\*\*((?:.|\s)*?)\*\*")
 wikiformatItalic = re.compile(r"//((?:.|\s)*?)//")
@@ -135,7 +138,7 @@ def unComment(s):
 	    i = i - 1
     return s
 
-def extractES(fn, name, isSignature):
+def extractES(fn, name, isSignature, isContextual):
     f = open(os.path.normpath(es_dir + "/" + fn), 'r')
     outside = True
     # Avoid matching prefixes of names
@@ -144,10 +147,17 @@ def extractES(fn, name, isSignature):
     if lastIsIdent:
 	name = name + r"(?![a-zA-Z0-9_])"
     starting = re.compile("^( *)" + name)
+    starting2 = re.compile("^( *)" + str(isContextual))
     blanks = 0
     prev = ""
+    inContext = False
     for line in f:
 	if outside:
+	    if isContextual and not inContext:
+		m = starting2.search(line)
+		if m:
+		    inContext = True
+		continue
 	    m = starting.search(line)
 	    if m:
 		ending = re.compile("^" + m.group(1) + r"[^\s]")
@@ -188,7 +198,8 @@ def extractES(fn, name, isSignature):
     undent = len(re.search(r"^(\s*)", res[0]).group(1))
     if isSignature:
 	s = res[0][undent:]
-	if s[len(s)-1] == "{":
+	s = re.sub(r" native", "", s)
+	if s[len(s)-1] == "{" or s[len(s)-1] == ";":
 	    s = s[:len(s)-1].rstrip()
 	if len(s) >= 80:
 	    i = len(s)-1;
@@ -229,6 +240,7 @@ def replaceXREF(m):
 def replaceInclude(m, hdrlvl, fn):
     global currentlevel
     isSignature = re.search(r"^<SIGNATURE",m.group(0))
+    isContextual = re.search(r"^<INCLUDECTX",m.group(0))
     ms = hdrprefix.match(m.group(0))
     if ms:
 	currentlevel = int(ms.group(1))
@@ -246,12 +258,17 @@ def replaceInclude(m, hdrlvl, fn):
     ms = smlInclude.match(m.group(0))
     if ms:
 	return "<PRE>" + extractSML(ms.group(1), ms.group(2)) + "\n</PRE>"
-    ms = esInclude.match(m.group(0))
+    if isContextual:
+	ms = esIncludeCtx.match(m.group(0))
+    else:
+	ms = esInclude.match(m.group(0))
     if ms:
 	if isSignature:
-	    return htmlEscape(extractES(ms.group(1), ms.group(2), True))
+	    return htmlEscape(extractES(ms.group(1), ms.group(2), True, False))
 	else:
-	    return "<PRE>" + htmlEscape(extractES(ms.group(1), ms.group(2), False)) + "</PRE>"
+	    if isContextual:
+		isContextual = ms.group(3)
+	    return "<PRE>" + htmlEscape(extractES(ms.group(1), ms.group(2), False, isContextual)) + "</PRE>"
     print fn + ": Invalid INCLUDE directive: " + m.group(0)
     sys.exit(1)
 
@@ -326,7 +343,7 @@ def process(fn, hdrlvl):
     text = re.sub(signaturetag, lambda m: replaceInclude(m, hdrlvl, fn), text)
     trace("codeblock")
     text = re.sub(wikiformatCodeblock, hideCodeblock, text) 
-    trace("literal")
+    trace("wikiliteral")
     text = re.sub(wikiformatLiteral, hideLiteral, text)
     trace("wikiheader")
     text = re.sub(wikiheader, replaceWiki, text)
@@ -336,6 +353,8 @@ def process(fn, hdrlvl):
     text = re.sub(xreftag, replaceXREF, text)
     trace("wikicode")
     text = re.sub(wikiformatCode, r"<code>\1</code>", text)
+    trace("wikiliteralbold")
+    text = re.sub(wikiformatLiteralBold, "<span class=\"literal\">\\1</span>", text)
     trace("wikispecial")
     text = re.sub(wikiformatSpecial, r"<code>\1</code>", text)
     trace("wikibold")

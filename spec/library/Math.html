@@ -1,0 +1,587 @@
+<H1 id="Math object"> The ''Math'' Object </H1>
+
+<PRE>
+FILE:                       spec/library/Math.html
+DRAFT STATUS:               DRAFT 1 - 2007-08-29 - ROUGH
+REVIEWED AGAINST ES3:       NO
+REVIEWED AGAINST PROPOSALS: NO
+REVIEWED AGAINST CODE:      NO
+</PRE>
+
+<P> The global ''Math'' object is a single object that has some named
+properties, some of which are functions.  The ''Math'' object is the
+only instance of a helper class called ''Math''.
+
+<P> The ''Math'' object acts as a container for built-in
+mathematics-related functions and constants.
+
+
+== Synopsis ==
+
+<P> For convenience of notation the definition of the Math object uses
+the private type names ''AnyNumber'' and ''FloatNumber''.
+
+{{{
+type AnyNumber = (int,uint,double,decimal);
+type FloatNumber = (double,decimal);
+}}}
+
+<P> The intrinsic methods on the math object are restricted to
+arguments of the type ''AnyNumber''.
+
+<P> The ''Math'' object provides the following interface:
+
+{{{
+helper dynamic final class Math extends Object
+{
+    <SIGNATURE file="Math.es" name="intrinsic function abs">
+    <SIGNATURE file="Math.es" name="intrinsic function acos">
+    <SIGNATURE file="Math.es" name="intrinsic function atan">
+    <SIGNATURE file="Math.es" name="intrinsic function atan2">
+    <SIGNATURE file="Math.es" name="intrinsic function ceil">
+    <SIGNATURE file="Math.es" name="intrinsic function cos">
+    <SIGNATURE file="Math.es" name="intrinsic function exp">
+    <SIGNATURE file="Math.es" name="intrinsic function floor">
+    <SIGNATURE file="Math.es" name="intrinsic function log">
+    <SIGNATURE file="Math.es" name="intrinsic function max">
+    <SIGNATURE file="Math.es" name="intrinsic function min">
+    <SIGNATURE file="Math.es" name="intrinsic function pow">
+    <SIGNATURE file="Math.es" name="intrinsic native function random">
+    <SIGNATURE file="Math.es" name="intrinsic function round">
+    <SIGNATURE file="Math.es" name="intrinsic function sin">
+    <SIGNATURE file="Math.es" name="intrinsic function sqrt">
+    <SIGNATURE file="Math.es" name="intrinsic function tan">
+
+    const E: double = double.E
+    const LN10: double = double.LN10
+    const LN2: double = double.LN2
+    const LOG2E: double = double.LOG2E
+    const LOG10E: double = double.LOG10E
+    const PI: double = double.PI
+    const SQRT1_2: double = double.SQRT1_2
+    const SQRT2: double = double.SQRT2
+}
+}}}
+
+<P> The constant values ''E'', ''LN10'', ''LN2'', ''LOG2E'',
+''LOG10E'', ''PI'', ''SQRT1_2'', and ''SQRT2'' in the ''Math'' class
+are of type ''double'' for compatibility with 3rd Edition.
+
+<NOTE> New code may find it more convenient to access these constant
+values through the ''double'' or ''decimal'' classes, as appropriate,
+to obtain values with the best precision for the particular type.
+
+<P> The ''Math'' object additionally provides the following dynamic
+function properties.  These functions are not restricted in the types
+of arguments they accept, but convert all their arguments to number.
+
+{{{
+    abs:    function (x) <LDOTS> ,
+    acos:   function (x) <LDOTS> ,
+    asin:   function (x) <LDOTS> ,
+    atan:   function (x) <LDOTS> ,
+    atan2:  function (y,x) <LDOTS> ,
+    ceil:   function (x) <LDOTS> ,
+    cos:    function (x) <LDOTS> ,
+    exp:    function (x) <LDOTS> ,
+    floor:  function (x) <LDOTS> ,
+    log:    function (x) <LDOTS> ,
+    max:    function (...xs) <LDOTS> ,
+    min:    function (...xs) <LDOTS> ,
+    pow:    function (x,y) <LDOTS> ,
+    random: function () <LDOTS> ,
+    round:  function (x) <LDOTS> ,
+    sin:    function (x) <LDOTS> ,
+    sqrt:   function (x) <LDOTS> ,
+    tan:    function (x) <LDOTS>
+}}}
+
+<P> The [[Prototype]] object of the ''Math'' object does not contain a
+''constructor'' property.
+
+<FIXME> The constraint on ''constructor'' is for backward
+compatibility and is also necessary to insure that the math object is
+a singleton object.
+
+
+== Primitive operations on numbers ==
+
+<FIXME> Describe the following helper and informative functions here:
+copysign, sign, isPositive, isPositiveZero, isNegativeZero,
+isOddInteger, coerceToCommonFloating.  Or describe them in the chapter
+on numbers.
+
+
+== Intrinsic function properties of the Math object ==
+
+<P> In the function descriptions below, the symbols NaN, -0, +0, -<INFINITY>
+and +<INFINITY> refer to the number values described in 8.5.
+
+<FIXME> Clean up the buggy cross-reference later.
+
+<NOTE> The behaviour of the functions ''acos'', ''asin'', ''atan'',
+''atan2'', ''cos'', ''exp'', ''log'', ''pow'', ''sin'', and ''sqrt''
+is not precisely specified here except to require specific results for
+certain argument values that represent boundary cases of interest. For
+other argument values, these functions are intended to compute
+approximations to the results of familiar mathematical functions, but
+some latitude is allowed in the choice of approximation
+algorithms. The general intent is that an implementer should be able
+to use the same mathematical library for ECMAScript on a given
+hardware platform that is available to C programmers on that platform.
+
+<P class="note"> Although the choice of algorithms is left to the
+implementation, it is recommended (but not specified by this standard)
+that implementations use the approximation algorithms for IEEE 754
+arithmetic contained in fdlibm, the freely distributable mathematical
+library from Sun Microsystems (''fdlibm-comment@sunpro.eng.sun.com'').
+This specification also requires specific results for certain argument
+values that represent boundary cases of interest.
+
+<NOTE> The functions defined in this section preserve the
+representation of the argument(s) in the result where this is
+reasonable.  The functions ''ceil'', ''floor'', ''pow'', and ''sqrt''
+produce ''int'' and ''uint'' results when their arguments are ''int''
+or ''uint'' values and the result is representable as ''int'' or
+''uint''.  All functions map ''double'' and ''decimal'' arguments to
+''double'' and ''decimal'' results, respectively.
+
+
+=== intrinsic::abs (x) ===
+
+<DESC>The intrinsic ''abs'' function computes the absolute value of
+the number //x//, which has the same magnitude as //x// but has
+positive sign.
+
+<RETN>The intrinsic ''abs'' function returns the absolute value of
+//x//.  The representation of the result is the same as the
+representation of //x// except that the absolute value of an ''int''
+may be represented as a ''uint''.
+
+<IMPL>
+<INCLUDE file="Math.es" name="intrinsic function abs">
+
+
+=== intrinsic::acos (x) ===
+
+<DESC> The intrinsic ''acos'' function computes an
+implementation-dependent approximation to the arc cosine of the number
+//x//.  The result is expressed in radians and ranges from +0 to +<PI>.
+
+<RETN> The intrinsic ''acos'' function returns a floating-point number.
+
+<SHORTIMPL>
+<INCLUDE file="Math.es" name="intrinsic function acos">
+
+<P> The informative functions ''acosDouble'' and ''acosDecimal''
+implement representation-preserving approximate computation of the arc
+cosine of their argument.
+
+{{{
+<SIGNATURE file="Math.es" name="informative native function acosDouble">
+<SIGNATURE file="Math.es" name="informative native function acosDecimal">
+}}}
+
+
+=== intrinsic::asin (x) ===
+
+<DESC> The intrinsic ''asin'' function computes an
+implementation-dependent approximation to the arc sine of the number
+//x//.  The result is expressed in radians and ranges from -<PI>/2 to
++<PI>/2.
+
+<RETN> The intrinsic ''asin'' function returns a floating-point number.
+
+<SHORTIMPL>
+<INCLUDE file="Math.es" name="intrinsic function asin">
+
+<NOTE>The intrinsic ''asin'' function preserves the sign of //x// if x is 0.
+
+<P> The informative functions ''asinDouble'' and ''asinDecimal''
+implement representation-preserving approximate computation of the arc
+sine of their argument.
+
+{{{
+<SIGNATURE file="Math.es" name="informative native function asinDouble">
+<SIGNATURE file="Math.es" name="informative native function asinDecimal">
+}}}
+
+
+=== intrinsic::atan (x) ===
+
+<DESC> The intrinsic ''atan'' function computes an
+implementation-dependent approximation to the arc tangent of the
+number //x//.  The result is expressed in radians and ranges from
+-<PI>/2 to +<PI>/2.
+
+<RETN> The intrinsic ''atan'' function returns a floating-point number.
+
+<SHORTIMPL>
+<INCLUDE file="Math.es" name="intrinsic function atan">
+
+<NOTE>The intrinsic ''atan'' function preserves the sign of //x// if x is 0.
+
+<P> The informative functions ''atanDouble'' and ''atanDecimal''
+implement representation-preserving approximate computation of the arc
+tangent of their argument.
+
+{{{
+<SIGNATURE file="Math.es" name="informative native function atanDouble">
+<SIGNATURE file="Math.es" name="informative native function atanDecimal">
+}}}
+
+=== intrinsic::atan2 (y, x) ===
+
+<DESC> The intrinsic ''atan2'' function computes an
+implementation-dependent approximation to the arc tangent of the
+quotient //y/x// of the numbers //y// and //x//, where the signs of
+//y// and //x// are used to determine the quadrant of the result.
+Note that it is intentional and traditional for the two-argument arc
+tangent function that the argument named //y// be first and the
+argument named //x// be second. The result is expressed in radians and
+ranges from -<PI> to +<PI>.
+
+<RETN> The intrinsic ''atan2'' function returns a floating-point
+number.  The result is ''decimal'' of //y// or //x// is ''decimal'',
+otherwise ''double''.
+
+<SHORTIMPL>
+<INCLUDE file="Math.es" name="intrinsic function atan2">
+
+<NOTE> An implementation is free to produce approximations for all
+computations involving ''PI'' in the preceding algorithm.
+
+<P> The informative functions ''atan2Double'' and ''atan2Decimal''
+implement representation-preserving approximate computation of the arc
+tangent of the quotient of their arguments.
+
+{{{
+<SIGNATURE file="Math.es" name="informative native function atan2Double">
+<SIGNATURE file="Math.es" name="informative native function atan2Decimal">
+}}}
+
+<FIXME> It's possible that this code could be clearer or at least more
+efficient by introducing a type-parameterized helper function that is
+instantiated by either ''double'' or ''decimal''.
+
+
+=== intrinsic::ceil (x) ===
+
+<DESC> The intrinsic ''ceil'' function computes the smallest (closest
+to -<INFINITY>) number value that is not less than //x// and is equal to
+a mathematical integer. If //x// is already an integer, the result is
+//x//.
+
+<NOTE> The value of ''Math.ceil(//x//)'' is the same as the value of
+''-Math.floor(-//x//)''.
+
+<RETN> The intrinsic ''ceil'' function returns a number in the same
+representation as //x//.
+
+<SHORTIMPL>
+<INCLUDE file="Math.es" name="intrinsic function ceil">
+
+<P> The informative functions ''ceilDouble'' and ''ceilDecimal''
+implement representation-preserving computation of the ceiling of
+their argument.
+
+{{{
+<SIGNATURE file="Math.es" name="informative native function ceilDouble">
+<SIGNATURE file="Math.es" name="informative native function ceilDecimal">
+}}}
+
+
+=== intrinsic::cos (x) ===
+
+<DESC> The intrinsic ''cos'' method computes an
+implementation-dependent approximation to the cosine of the number
+//x//.  The argument is expressed in radians.
+
+<RETN> The intrinsic ''cos'' function returns a floating-point number.
+
+<SHORTIMPL>
+<INCLUDE file="Math.es" name="intrinsic function cos">
+
+<P> The informative functions ''cosDouble'' and ''cosDecimal''
+implement representation-preserving approximate computation of the cosine
+of their argument.
+
+{{{
+<SIGNATURE file="Math.es" name="informative native function cosDouble">
+<SIGNATURE file="Math.es" name="informative native function cosDecimal">
+}}}
+
+=== intrinsic::exp (x) ===
+
+<DESC> The intrinsic ''exp'' function computes an
+implementation-dependent approximation to the exponential function of
+the number //x// (//e<SUP>x</SUP>//, where //e// is the base of the
+natural logarithms).
+
+<RETN> The intrinsic ''exp'' function returns a floating-point number.
+
+<SHORTIMPL>
+<INCLUDE file="Math.es" name="intrinsic function exp">
+
+<P> The informative functions ''expDouble'' and ''expDecimal''
+implement representation-preserving approximate computation of the
+exponential function of their argument.
+
+{{{
+<SIGNATURE file="Math.es" name="informative native function expDouble">
+<SIGNATURE file="Math.es" name="informative native function expDecimal">
+}}}
+
+=== intrinsic::floor (x) ===
+
+<DESC> The intrinsic ''floor'' function computes the greatest (closest
+to +<INFINITY>) number value that is not greater than //x// and is equal
+to a mathematical integer. If //x// is already an integer, the result
+is //x//.
+
+<RETN> The intrinsic ''floor'' function returns a number in the same
+representation as //x//.
+
+<SHORTIMPL>
+<INCLUDE file="Math.es" name="intrinsic function floor">
+
+<NOTE> The value of ''Math.floor(//x//)'' is the same as the value of
+''-Math.ceil(-//x//)''.
+
+<P> The informative functions ''floorDouble'' and ''floorDecimal''
+implement representation-preserving computation of the floor of their
+argument.
+
+{{{
+<SIGNATURE file="Math.es" name="informative native function floorDouble">
+<SIGNATURE file="Math.es" name="informative native function floorDecimal">
+}}}
+
+
+=== intrinsic::log (x) ===
+
+<DESC> The intrinsic ''log'' function computes an
+implementation-dependent approximation to the natural logarithm of the
+number //x//.
+
+<RETN> The intrinsic ''log'' function returns a floating-point number.
+
+<SHORTIMPL>
+<INCLUDE file="Math.es" name="intrinsic function log">
+
+<P> The informative functions ''logDouble'' and ''logDecimal''
+implement representation-preserving approximate computation of the
+natural logarithm of their argument.
+
+{{{
+<SIGNATURE file="Math.es" name="informative native function logDouble">
+<SIGNATURE file="Math.es" name="informative native function logDecimal">
+}}}
+
+
+=== intrinsic::max (x, y) ===
+
+<DESC> The intrinsic ''max'' method selects the numerically largest
+(closest to +<INFINITY>) value among //x// and //y//.  +0 is
+considered larger than -0.
+
+<RETN> The intrinsic ''max'' method returns either //x// or //y//.
+
+<SHORTIMPL>
+<INCLUDE file="Math.es" name="intrinsic function max">
+
+<NOTE> If //x// and //y// are numerically equal (and of the same sign
+if they are both 0) then the implementation is free to return either
+one of them.
+
+=== intrinsic::min (x, y) ===
+
+<DESC> The intrinsic ''min'' method selects the numerically smallest
+(closest to -<INFINITY>) number among //x// and //y//.  -0 is
+considered smaller than +0.
+
+<RETN> The intrinsic ''min'' method returns either //x// or //y//.
+
+<SHORTIMPL>
+<INCLUDE file="Math.es" name="intrinsic function min">
+
+<NOTE> If //x// and //y// are numerically equal (and of the same sign
+if they are both 0) then the implementation is free to return either
+one of them.
+
+=== intrinsic::pow (x, y) ===
+
+<DESC> The intrinsic ''pow'' function computes an
+implementation-dependent approximation to the result of raising //x//
+to the power //y//.
+
+<P> The intrinsic ''pow'' function produces a result in the
+representation of //x//.  However, ''int'' and ''uint'' are only used
+to represent the result if //x// and //y// are both ''int'' or
+''uint'' and //y// is nonnegative, and //x<SUP>y</SUP>// is
+representable in the representation of //x//.  Following the rules for
+arithmetic, ''int'' results overflow to a ''uint'' or ''double'' as
+appropriate, and ''uint'' overflows to ''double''.
+
+<RETN> The intrinsic ''pow'' function returns a number.
+
+<SHORTIMPL>
+<INCLUDE file="Math.es" name="intrinsic function pow">
+
+
+<P> The informative functions ''powInt'', ''powUInt'', ''powDouble'', and ''powDecimal''
+implement representation-dependent computation of the value //x<SUP>y</SUP>//.  ''powInt'' and
+''powUInt'' preserve the representation of //x// if possible as described above.
+
+{{{
+<SIGNATURE file="Math.es" name="informative function powInt">
+<SIGNATURE file="Math.es" name="informative function powUInt">
+<SIGNATURE file="Math.es" name="informative native function powDouble">
+<SIGNATURE file="Math.es" name="informative native function powDecimal">
+}}}
+
+=== intrinsic::random ( ) ===
+
+<DESC> The intrinsic ''random'' function computes a ''double'' value
+with positive sign, greater than or equal to 0 but less than 1, chosen
+randomly or pseudo randomly with approximately uniform distribution
+over that range, using an implementation-dependent algorithm or
+strategy. This function takes no arguments.
+
+<RETN> The intrinsic ''random'' function returns a ''double''.
+
+<IMPL> The intrinsic ''random'' function is implementation-dependent.
+
+=== intrinsic::round (x) ===
+
+<DESC> The intrinsic ''round'' function computes the number value that
+is closest to //x// and is equal to a mathematical integer. If two
+integer number values are equally close to //x//, then the result is the
+number value that is closer to +<INFINITY>. If //x// is already an integer,
+the result is //x//.
+
+<RETN> The intrinsic ''round'' function returns a number, the representation
+of which is always the same as the representation of the input //x//.
+
+<SHORTIMPL>
+<INCLUDE file="Math.es" name="intrinsic function round">
+
+<P> The informative functions ''roundDouble'' and ''roundDecimal''
+implement representation-preserving computation of the rounded value
+of their argument.
+
+{{{
+<SIGNATURE file="Math.es" name="informative native function roundDouble">
+<SIGNATURE file="Math.es" name="informative native function roundDecimal">
+}}}
+
+<NOTE>
+The intrinsic ''round'' function preserves the sign of //x// if //x// is 0.
+
+<NOTE>
+''Math.round(3.5)'' returns 4, but ''Math.round(-3.5)'' returns -3.
+
+<NOTE> The value of ''Math.round(//x//)'' is the same as the value of
+''Math.floor(//x//+0.5)'', except when //x// is -0 or is less than 0
+but greater than or equal to -0.5; for these cases
+''Math.round(//x//)'' returns -0, but ''Math.floor(//x//+0.5)''
+returns +0.
+
+
+=== intrinsic::sin (x) ===
+
+<DESC> The intrinsic ''sin'' function computes an
+implementation-dependent approximation to the sine of the number
+//x//.  The argument is expressed in radians.
+
+<RETN> The intrinsic ''sin'' function returns a floating-point number.
+
+<SHORTIMPL>
+<INCLUDE file="Math.es" name="intrinsic function sin">
+
+<P> The informative functions ''sinDouble'' and ''sinDecimal''
+implement representation-preserving approximate computation of the sine
+of their argument.
+
+{{{
+<SIGNATURE file="Math.es" name="informative native function sinDouble">
+<SIGNATURE file="Math.es" name="informative native function sinDecimal">
+}}}
+
+<NOTE>
+The intrinsic ''sin'' function preserves the sign of //x// if //x// is 0.
+
+
+=== intrinsic::sqrt (x) ===
+
+<DESC> The intrinsic ''sqrt'' method computes an
+implementation-dependent approximation to the square root of the
+number //x//.
+
+<RETN> The intrinsic ''sqrt'' method returns a number.  The
+representation of the result is the same as the representation of
+//x// if possible; in particular, if //x// is of type ''int'' or
+''uint'' and //x <GEQ> 0//, then the result is of type ''int'' or
+''uint'' if //x// is a square.
+
+<SHORTIMPL>
+<INCLUDE file="Math.es" name="intrinsic function sqrt">
+
+
+=== intrinsic::tan (x) ===
+
+<DESC> The intrinsic ''tan'' function computes an
+implementation-dependent approximation to the tangent of //x//.  The
+argument is expressed in radians.
+
+<RETN> The intrinsic ''tan'' function returns a floating-point number.
+
+<SHORTIMPL>
+<INCLUDE file="Math.es" name="intrinsic function sin">
+
+<P> The informative functions ''tanDouble'' and ''tanDecimal''
+implement representation-preserving approximate computation of the tangent
+of their argument.
+
+{{{
+<SIGNATURE file="Math.es" name="informative native function tanDouble">
+<SIGNATURE file="Math.es" name="informative native function tanDecimal">
+}}}
+
+<NOTE>
+The intrinsic ''tan'' function preserves the sign of //x// if //x// is 0.
+
+
+== Other function properties of the Math object ==
+
+<P> Every function listed in this section applies the ''toAnyNumber''
+function to each of its arguments (in left-to-right order if there is
+more than one) and then performs a computation on the resulting number
+value(s) by invoking the corresponding intrinsic method.
+
+<INCLUDE file="Math.es" name="public::abs">
+<INCLUDE file="Math.es" name="public::acos">
+<INCLUDE file="Math.es" name="public::asin">
+<INCLUDE file="Math.es" name="public::atan">
+<INCLUDE file="Math.es" name="public::atan2">
+<INCLUDE file="Math.es" name="public::ceil">
+<INCLUDE file="Math.es" name="public::cos">
+<INCLUDE file="Math.es" name="public::exp">
+<INCLUDE file="Math.es" name="public::floor">
+<INCLUDE file="Math.es" name="public::log">
+<INCLUDE file="Math.es" name="public::pow">
+<INCLUDE file="Math.es" name="public::random">
+<INCLUDE file="Math.es" name="public::round">
+<INCLUDE file="Math.es" name="public::sin">
+<INCLUDE file="Math.es" name="public::sqrt">
+<INCLUDE file="Math.es" name="public::tan">
+
+<P> The ''max'' and ''min'' functions are more general than their
+corresponding intrinsic methods: they accept zero or more arguments
+and apply their corresponding intrinsic methods to the current result
+and the next argument, in left-to-right order.
+
+<INCLUDE file="Math.es" name="public::max">
+<INCLUDE file="Math.es" name="public::min">
+
+<!-- End of math.html -->
