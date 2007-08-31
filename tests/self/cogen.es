@@ -115,7 +115,18 @@ namespace Gen;
 					// FIXME when we have more general support for type annos
             }
             case (mf:MethodFixture) {
-                target.addTrait(new ABCOtherTrait(name, 0, TRAIT_Method, 0, cgFunc(ctx, mf.func)));
+                let methidx = cgFunc(ctx, mf.func);
+                switch type (target) {
+                    case (m:Method) {
+                        target.addTrait(new ABCSlotTrait(name, 0, false, 0, 0)); 
+                        asm.I_findpropstrict(name);
+                        asm.I_newfunction(methidx);
+                        asm.I_setproperty(name);
+                    }
+                    case (x:*) {
+                        target.addTrait(new ABCOtherTrait(name, 0, TRAIT_Method, 0, methidx));
+                    }
+                }
             }
             case (cf:ClassFixture) {
                 let clsidx = cgClass(ctx, cf.cls);
