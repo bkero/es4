@@ -60,6 +60,15 @@ package
         static const NaN : double               = 0.0 / 0.0;
         static const NEGATIVE_INFINITY : double = -1.0 / 0.0;
         static const POSITIVE_INFINITY : double = 1.0 / 0.0;
+        // 15.8.1 Value Properties of the Math Object.  These are {DD,DE,RO}.
+        static const E: double = 2.7182818284590452354;   /* Approximately */
+        static const LN10: double = 2.302585092994046;    /* Approximately */
+        static const LN2: double = 0.6931471805599453;    /* Approximately */
+        static const LOG2E: double = 1.4426950408889634;  /* Approximately */
+        static const LOG10E: double = 0.4342944819032518; /* Approximately */
+        static const PI: double = 3.1415926535897932;     /* Approximately */
+        static const SQRT1_2: double = 0.7071067811865476;/* Approximately */
+        static const SQRT2: double = 1.4142135623730951;  /* Approximately */
 
         /* E262-4 draft */
         meta static function convert(x)

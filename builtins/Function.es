@@ -128,7 +128,7 @@ package
         prototype function apply(thisArg, argArray)
             Function.apply(this, thisArg, argArray);
 
-        intrinsic function apply(thisArg, argArray)
+        intrinsic function apply(thisArg=undefined, argArray=undefined)
             Function.apply(this, thisArg, argArray);
 
         /* E262-4 draft: "apply" and "call" are static methods on the
@@ -138,7 +138,7 @@ package
            Note ES4 bug fix: the arguments object is an 'Array', so the test
            for applicability of argArray is simpler than in ES3.
         */
-        static function apply(fn : Function!, thisArg, argArray) {
+        static function apply(fn : Function!, thisArg=undefined, argArray=undefined) {
             if (thisArg === undefined || thisArg === null)
                 thisArg = global;
             if (argArray === undefined || argArray === null)
@@ -157,13 +157,13 @@ package
         prototype function call(thisObj, ...args)
             Function.apply(this, thisObj, args);
 
-        intrinsic function call(thisObj, ...args)
+        intrinsic function call(thisObj=undefined, ...args)
             Function.apply(this, thisObj, args);
 
         /* E262-4 draft: "apply" and "call" are static methods on the
            Function object. */
-        static function call(thisObj, ...args:Array):*
-            Function.apply(this, thisObj, args);
+        static function call(fn, thisObj=undefined, ...args:Array):*
+            Function.apply(fn, thisObj, args);
 
         /* E262-3 15.3.5.3: [[HasInstance]] */
         intrinsic function HasInstance(V) {

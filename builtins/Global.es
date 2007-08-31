@@ -188,8 +188,13 @@ package
 
 
     // 15.1.2.5 isFinite (number)
-    intrinsic function isFinite(n: Numeric): boolean
-        !isNaN(n) && n != -Infinity && n != Infinity;
+    // FIXME: this returns the wrong answer if the body is
+    // reduced to an expression; however, the function works if
+    // typed at the repl even in its simplified form, so something
+    // is definitely very wrong.
+    intrinsic function isFinite(n: Numeric): boolean {
+        return !isNaN(n) && n != -Infinity && n != Infinity;
+    }
 
     function isFinite(x)
         intrinsic::isFinite(ToNumeric(x));

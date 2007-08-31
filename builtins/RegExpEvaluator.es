@@ -44,6 +44,7 @@ package RegExpInternals
 {
     import Unicode.*;
     use namespace intrinsic;
+    use default namespace public;
     use strict;
 
     /* Encapsulation of compiled regular expression as returned by the
@@ -51,7 +52,7 @@ package RegExpInternals
     */
     intrinsic class RegExpMatcher!
     {
-        public function RegExpMatcher(matcher : Matcher, nCapturingParens : uint)
+        function RegExpMatcher(matcher: Matcher, nCapturingParens: uint)
             : matcher = matcher
             , nCapturingParens = nCapturingParens
         {
@@ -60,14 +61,14 @@ package RegExpInternals
         /* Returns an array of matches, with additional named properties
            on the array for named submatches
         */
-        public function match( input : string, endIndex : int, multiline: boolean, ignoreCase: boolean ) : MatchResult {
+        function match( input: string, endIndex: int, multiline: boolean, ignoreCase: boolean ): MatchResult {
             return matcher.match(new Context(input, multiline, ignoreCase),
                                  new State(endIndex, makeCapArray(nCapturingParens+1)),
-                                 function (ctx : Context, x : State) : State? { return x } );
+                                 function (ctx: Context, x: State): State? { return x } );
         }
 
-        public var nCapturingParens : uint;
-        var matcher : Matcher;
+        var nCapturingParens: uint;
+        private var matcher: Matcher;
     }
 
     /* The Context contains static data for the matching, we use this
@@ -76,7 +77,7 @@ package RegExpInternals
     */
     class Context!
     {
-        function Context(input : string, multiline: boolean, ignoreCase: boolean)
+        function Context(input: string, multiline: boolean, ignoreCase: boolean)
             : input = input
             , inputLength = input.length
             , ignoreCase = ignoreCase
@@ -93,19 +94,19 @@ package RegExpInternals
     /* MatchResult and State.
      */
 
-    public type MatchResult = State?;
-    public const failure : State? = null;
+    type MatchResult = (State,null);
+    const failure : State? = null;
 
     class State!
     {
-        function State(endIndex : int, cap : CapArray)
+        function State(endIndex: int, cap: CapArray)
             : endIndex = endIndex
             , cap = cap
         {
         }
 
-        public var endIndex : int;
-        public var cap : CapArray;
+        var endIndex : int;
+        var cap : CapArray;
     }
 
     /* Captures array.
@@ -113,21 +114,21 @@ package RegExpInternals
        This captures array can be an array that's copied like the
        E262-3 states, or it could be a functional data structure.
     */
-    public type CapArray = [(string,undefined)];
+    type CapArray = [(string,undefined)];
 
-    function makeCapArray(len: uint) : CapArray {
-        let a = [] : CapArray;
-        for ( let i : uint = 0 ; i < len ; i++ )
+    function makeCapArray(len: uint): CapArray {
+        let a = []: CapArray;
+        for ( let i: uint = 0 ; i < len ; i++ )
             a[i] = undefined;
         return a;
     }
 
-    function copyCapArray(a : CapArray, parenIndex : uint, parenCount : uint) : CapArray {
-        let b : CapArray = makeCapArray(a.length);
-        for ( let i : uint = 0 ; i < a.length ; i++ )
+    function copyCapArray(a: CapArray, parenIndex: uint, parenCount: uint): CapArray {
+        let b: CapArray = makeCapArray(a.length);
+        for ( let i: uint = 0 ; i < a.length ; i++ )
             b[i] = a[i];
         // E262-3 says k >= parenIndex here, but that appears clearly to be wrong.
-        for ( let k : uint = parenIndex+1 ; k <= parenIndex+parenCount ; k++ )
+        for ( let k: uint = parenIndex+1 ; k <= parenIndex+parenCount ; k++ )
             b[k] = undefined;
         return b;
     }
@@ -136,28 +137,28 @@ package RegExpInternals
     /* The matcher is a single object that implements the Matcher
        interface.  Normally a Matcher object references other Matcher
        objects.  */
-    public interface Matcher
+    interface Matcher
     {
-        function match(ctx : Context, x : State, c : Continuation) : MatchResult;
+        function match(ctx: Context, x: State, c: Continuation): MatchResult;
     }
 
     // type Matcher = *;
 
-    type Continuation = function(Context, State) : MatchResult;
+    type Continuation = function(Context, State): MatchResult;
 
     class Empty! implements Matcher
     {
-        public function match(ctx : Context, x : State, c : Continuation) : MatchResult {
+        public function match(ctx: Context, x: State, c: Continuation): MatchResult {
             return c(ctx, x);
         }
     }
 
     class Disjunct! implements Matcher
     {
-        function Disjunct(m1 : Matcher, m2 : Matcher) : m1=m1, m2=m2 {}
+        function Disjunct(m1: Matcher, m2: Matcher) : m1=m1, m2=m2 {}
 
-        public function match(ctx : Context, x : State, c : Continuation) : MatchResult {
-            let r : MatchResult = m1.match(ctx, x, c);
+        public function match(ctx: Context, x: State, c: Continuation): MatchResult {
+            let r: MatchResult = m1.match(ctx, x, c);
             if (r !== failure)
                 return r;
             return m2.match(ctx, x, c);
@@ -168,10 +169,10 @@ package RegExpInternals
 
     class Alternative! implements Matcher
     {
-        function Alternative(m1 : Matcher, m2 : Matcher) : m1=m1, m2=m2 {}
+        function Alternative(m1: Matcher, m2: Matcher) : m1=m1, m2=m2 {}
 
-        public function match(ctx : Context, x : State, c : Continuation) : MatchResult {
-            return m1.match(ctx, x, function (ctx : Context, y : State) { return m2.match(ctx, y, c) } );
+        public function match(ctx: Context, x: State, c: Continuation): MatchResult {
+            return m1.match(ctx, x, function (ctx: Context, y: State): MatchResult  { return m2.match(ctx, y, c) } );
         }
 
         const m1 : Matcher, m2 : Matcher;
@@ -179,19 +180,19 @@ package RegExpInternals
 
     class Assertion! implements Matcher
     {
-        public function match(ctx : Context, x : State, c : Continuation) : MatchResult {
+        public function match(ctx: Context, x: State, c: Continuation): MatchResult {
             if (!testAssertion(ctx, x))
                 return failure;
             return c(ctx, x);
         }
 
-        function testAssertion(ctx : Context, x : State) : boolean { return false; }
+        function testAssertion(ctx: Context, x: State) : boolean { return false; }
     }
 
     class AssertStartOfInput extends Assertion
     {
-        override function testAssertion(ctx : Context, x : State) : boolean {
-            let e : int = x.endIndex;
+        override function testAssertion(ctx: Context, x: State): boolean {
+            let e: int = x.endIndex;
             if (e === 0)
                 return true;
             if (ctx.multiline)
@@ -202,8 +203,8 @@ package RegExpInternals
 
     class AssertEndOfInput extends Assertion
     {
-        override function testAssertion(ctx : Context, x : State) : boolean {
-            let e : int = x.endIndex;
+        override function testAssertion(ctx: Context, x: State): boolean {
+            let e: int = x.endIndex;
             if (e === ctx.inputLength)
                 return true;
             if (ctx.multiline)
@@ -214,21 +215,21 @@ package RegExpInternals
 
     class AssertWordBoundary extends Assertion
     {
-        override function testAssertion(ctx : Context, x : State) : boolean {
-            let e : int = x.endIndex;
+        override function testAssertion(ctx: Context, x: State): boolean {
+            let e: int = x.endIndex;
             return isREWordChar(ctx, e-1) !== isREWordChar(ctx, e);
         }
     }
 
     class AssertNotWordBoundary extends Assertion
     {
-        override function testAssertion(ctx : Context, x : State) : boolean {
-            let e : int = x.endIndex;
+        override function testAssertion(ctx: Context, x: State): boolean {
+            let e: int = x.endIndex;
             return isREWordChar(ctx, e-1) === isREWordChar(ctx, e);
         }
     }
 
-    function isREWordChar(ctx : Context, e : int) : boolean {
+    function isREWordChar(ctx: Context, e: int): boolean {
         if (e === -1 || e === ctx.inputLength)
             return false;
         let c = ctx.input[e];
@@ -248,10 +249,10 @@ package RegExpInternals
         {
         }
 
-        public function match(ctx : Context, x : State, c : Continuation) : MatchResult {
+        public function match(ctx: Context, x: State, c: Continuation): MatchResult {
 
-            function RepeatMatcher(min : double, max : double, x : State) : MatchResult {
-                function d(ctx: Context, y : State) : MatchResult {
+            function RepeatMatcher(min: double, max: double, x: State): MatchResult {
+                function d(ctx: Context, y: State): MatchResult {
                     if (min === 0 && y.endIndex === x.endIndex)
                         return failure;
                     else
@@ -267,13 +268,13 @@ package RegExpInternals
                     return m.match(ctx, xr, d);
 
                 if (!greedy) {
-                    let z : MatchResult = c(ctx, x);
+                    let z: MatchResult = c(ctx, x);
                     if (z !== failure)
                         return z;
                     return m.match(ctx, xr, d);
                 }
                 else {
-                    let z : MatchResult = m.match(ctx, xr, d);
+                    let z: MatchResult = m.match(ctx, xr, d);
                     if (z !== failure)
                         return z;
                     return c(ctx, x);
@@ -293,14 +294,14 @@ package RegExpInternals
 
     class Capturing! implements Matcher
     {
-        function Capturing(m : Matcher, parenIndex : uint) : m=m, parenIndex=parenIndex {}
+        function Capturing(m: Matcher, parenIndex: uint): m=m, parenIndex=parenIndex {}
 
-        public function match(ctx : Context, x : State, c : Continuation) : MatchResult {
+        public function match(ctx: Context, x: State, c: Continuation): MatchResult {
 
-            let function d( ctx: Context, y : State ) : MatchResult {
-                let cap : CapArray = copyCapArray( y.cap, 0, 0 );
-                let xe : int = x.endIndex;
-                let ye : int = y.endIndex;
+            let function d( ctx: Context, y: State ): MatchResult {
+                let cap: CapArray = copyCapArray( y.cap, 0, 0 );
+                let xe: int = x.endIndex;
+                let ye: int = y.endIndex;
                 cap[parenIndex+1] = ctx.input.substring(xe, ye);
                 return c(ctx, new State(ye, cap));
             }
@@ -313,9 +314,9 @@ package RegExpInternals
 
     class Backref! implements Matcher
     {
-        function Backref(capno : uint) : capno=capno {}
+        function Backref(capno: uint): capno=capno {}
 
-        public function match(ctx : Context, x : State, c : Continuation) : MatchResult {
+        public function match(ctx: Context, x: State, c: Continuation): MatchResult {
             let cap = x.cap;
             let s = cap[capno];
             if (s == null)
@@ -336,10 +337,10 @@ package RegExpInternals
 
     class PositiveLookahead! implements Matcher
     {
-        function PositiveLookahead(m : Matcher) : m=m {}
+        function PositiveLookahead(m: Matcher) : m=m {}
 
-        public function match(ctx : Context, x : State, c : Continuation) : MatchResult {
-            let r : MatchResult = m.match(ctx, x, function (ctx, y : State) : MatchResult { return y } );
+        public function match(ctx: Context, x: State, c: Continuation): MatchResult {
+            let r: MatchResult = m.match(ctx, x, function (ctx, y: State): MatchResult { return y } );
             if (r === failure)
                 return failure;
             return c(ctx, new State(x.endIndex, r.cap));
@@ -350,10 +351,10 @@ package RegExpInternals
 
     class NegativeLookahead! implements Matcher
     {
-        function NegativeLookahead(m : Matcher) : m=m {}
+        function NegativeLookahead(m: Matcher) : m=m {}
 
-        public function match(ctx : Context, x : State, c : Continuation) : MatchResult {
-            let r : MatchResult = m.match(ctx, x, function (ctx, y : State) : MatchResult { return y } );
+        public function match(ctx: Context, x: State, c: Continuation): MatchResult {
+            let r: MatchResult = m.match(ctx, x, function (ctx, y: State): MatchResult { return y } );
             if (r !== failure)
                 return failure;
             return c(ctx, x);
@@ -364,9 +365,9 @@ package RegExpInternals
 
     class CharsetMatcher! implements Matcher
     {
-        function CharsetMatcher(cs : Charset) : cs=cs {}
+        function CharsetMatcher(cs: Charset) : cs=cs {}
 
-        public function match(ctx : Context, x : State, c : Continuation) /* : MatchResult */ {
+        public function match(ctx: Context, x: State, c: Continuation) /*: MatchResult */ {
             let e = x.endIndex;
             let cap = x.cap;
             if (e === ctx.inputLength)
@@ -398,23 +399,23 @@ package RegExpInternals
 
     class Charset!
     {
-        function match(ctx: Context, c : string) : boolean { throw "Abstract"; }
-        function hasOneCharacter() : boolean { return false }
-        function singleCharacter() : string { return " " };
+        function match(ctx: Context, c: string): boolean { throw "Abstract"; }
+        function hasOneCharacter(): boolean { return false }
+        function singleCharacter(): string { return " " };
     }
 
     class CharsetEmpty extends Charset
     {
-        override function match(ctx: Context, c: string) : boolean {
+        override function match(ctx: Context, c: string): boolean {
             return false;
         }
     }
 
     class CharsetUnion! extends Charset
     {
-        function CharsetUnion(m1: Charset, m2 : Charset) : m1=m1, m2=m2 {}
+        function CharsetUnion(m1: Charset, m2: Charset) : m1=m1, m2=m2 {}
 
-        override function match(ctx: Context, c : string) : boolean {
+        override function match(ctx: Context, c: string): boolean {
             return m1.match(ctx, c) || m2.match(ctx, c);
         }
 
@@ -423,9 +424,9 @@ package RegExpInternals
 
     class CharsetIntersection! extends Charset
     {
-        function CharsetIntersection(m1 : Charset, m2 : Charset) : m1=m1, m2=m2 {}
+        function CharsetIntersection(m1: Charset, m2: Charset) : m1=m1, m2=m2 {}
 
-        override function match(ctx: Context, c : string) : boolean {
+        override function match(ctx: Context, c: string): boolean {
             return m1.match(ctx, c) && m2.match(ctx, c);
         }
 
@@ -434,9 +435,9 @@ package RegExpInternals
 
     class CharsetComplement! extends Charset
     {
-        function CharsetComplement(m : Charset) : m=m { }
+        function CharsetComplement(m: Charset) : m=m { }
 
-        override function match(ctx: Context, c : string) : boolean {
+        override function match(ctx: Context, c: string): boolean {
             return !m.match(ctx, c);
         }
 
@@ -445,9 +446,9 @@ package RegExpInternals
 
     class CharsetRange! extends Charset
     {
-        function CharsetRange(lo : string, hi : string) : lo=lo, hi=hi { }
+        function CharsetRange(lo: string, hi: string): lo=lo, hi=hi { }
 
-        override function match(ctx: Context, c : string) : boolean {
+        override function match(ctx: Context, c: string): boolean {
             let lo_code = lo.charCodeAt(0);
             let hi_code = hi.charCodeAt(0);
             for ( let i=lo_code ; i <= hi_code ; i++ )
@@ -461,11 +462,11 @@ package RegExpInternals
 
     class CharsetAdhoc! extends Charset
     {
-        function CharsetAdhoc(s : string) {
+        function CharsetAdhoc(s: string) {
             cs = explodeString(s);
         }
 
-        override function match(ctx: Context, c : string) : boolean {
+        override function match(ctx: Context, c: string): boolean {
             for ( let i=0 ; i < cs.length ; i++ ) {
                 if (Canonicalize(ctx, cs[i]) === c)
                     return true;
@@ -473,11 +474,11 @@ package RegExpInternals
             return false;
         }
 
-        override function hasOneCharacter() : boolean {
+        override function hasOneCharacter(): boolean {
             return cs.length == 1;
         }
 
-        override function singleCharacter() : string {
+        override function singleCharacter(): string {
             return cs[0];
         }
 
@@ -486,9 +487,9 @@ package RegExpInternals
 
     class CharsetUnicodeClass! extends Charset
     {
-        function CharsetUnicodeClass(tester: function(uint): boolean) : tester=tester {}
+        function CharsetUnicodeClass(tester: function(uint): boolean): tester=tester {}
 
-        override function match(ctx: Context, c : string) : boolean
+        override function match(ctx: Context, c: string): boolean
             tester(c.charCodeAt(0));
 
         const tester: function(uint): boolean;
@@ -508,15 +509,15 @@ package RegExpInternals
 
     const unicode_named_classes = {
         "L":  new CharsetUnicodeClass(Unicode.isUnicodeL),
-        "Lu": new CharsetUnicodeClass(Unicode.isUnicodeLu),
         "Ll": new CharsetUnicodeClass(Unicode.isUnicodeLl),
-        "Lt": new CharsetUnicodeClass(Unicode.isUnicodeLt),
         "Lm": new CharsetUnicodeClass(Unicode.isUnicodeLm),
         "Lo": new CharsetUnicodeClass(Unicode.isUnicodeLo),
+        "Lt": new CharsetUnicodeClass(Unicode.isUnicodeLt),
+        "Lu": new CharsetUnicodeClass(Unicode.isUnicodeLu),
         "M":  new CharsetUnicodeClass(Unicode.isUnicodeM),
-        "Mn": new CharsetUnicodeClass(Unicode.isUnicodeMn),
         "Mc": new CharsetUnicodeClass(Unicode.isUnicodeMc),
         "Me": new CharsetUnicodeClass(Unicode.isUnicodeMe),
+        "Mn": new CharsetUnicodeClass(Unicode.isUnicodeMn),
         "N":  new CharsetUnicodeClass(Unicode.isUnicodeN),
         "Nd": new CharsetUnicodeClass(Unicode.isUnicodeNd),
         "Nl": new CharsetUnicodeClass(Unicode.isUnicodeNl),
@@ -524,32 +525,32 @@ package RegExpInternals
         "P":  new CharsetUnicodeClass(Unicode.isUnicodeP),
         "Pc": new CharsetUnicodeClass(Unicode.isUnicodePc),
         "Pd": new CharsetUnicodeClass(Unicode.isUnicodePd),
-        "Ps": new CharsetUnicodeClass(Unicode.isUnicodePs),
         "Pe": new CharsetUnicodeClass(Unicode.isUnicodePe),
-        "Pi": new CharsetUnicodeClass(Unicode.isUnicodePi),
         "Pf": new CharsetUnicodeClass(Unicode.isUnicodePf),
+        "Pi": new CharsetUnicodeClass(Unicode.isUnicodePi),
         "Po": new CharsetUnicodeClass(Unicode.isUnicodePo),
+        "Ps": new CharsetUnicodeClass(Unicode.isUnicodePs),
         "S":  new CharsetUnicodeClass(Unicode.isUnicodeS),
-        "Sm": new CharsetUnicodeClass(Unicode.isUnicodeSm),
         "Sc": new CharsetUnicodeClass(Unicode.isUnicodeSc),
         "Sk": new CharsetUnicodeClass(Unicode.isUnicodeSk),
+        "Sm": new CharsetUnicodeClass(Unicode.isUnicodeSm),
         "So": new CharsetUnicodeClass(Unicode.isUnicodeSo),
         "Z":  new CharsetUnicodeClass(Unicode.isUnicodeZ),
-        "Zs": new CharsetUnicodeClass(Unicode.isUnicodeZs),
         "Zl": new CharsetUnicodeClass(Unicode.isUnicodeZl),
         "Zp": new CharsetUnicodeClass(Unicode.isUnicodeZp),
+        "Zs": new CharsetUnicodeClass(Unicode.isUnicodeZs),
         "C":  new CharsetUnicodeClass(Unicode.isUnicodeC),
         "Cc": new CharsetUnicodeClass(Unicode.isUnicodeCc),
         "Cf": new CharsetUnicodeClass(Unicode.isUnicodeCf),
-        "Cs": new CharsetUnicodeClass(Unicode.isUnicodeCs),
+        "Cn": new CharsetUnicodeClass(Unicode.isUnicodeCn),
         "Co": new CharsetUnicodeClass(Unicode.isUnicodeCo),
-        "Cn": new CharsetUnicodeClass(Unicode.isUnicodeCn)
+        "Cs": new CharsetUnicodeClass(Unicode.isUnicodeCs)
     };
 
-    function unicodeClass(name : string, complement : boolean) : Charset? {
+    function unicodeClass(name: string, complement: boolean): Charset? {
         let c = unicode_named_classes[name];
         if (!c)
             return null;
-        return complement ? new CharsetComplement(c) : c;
+        return complement ? new CharsetComplement(c): c;
     }
 }

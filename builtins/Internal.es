@@ -38,7 +38,7 @@ package ECMAScript4_Internal  // private to the implementation
 {
     use default namespace public;
 
-    namespace informative;
+    //    namespace informative;
     namespace helper;
 }
 
