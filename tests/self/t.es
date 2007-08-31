@@ -1,4 +1,7 @@
-var x = true ? 10 : 20
-
-
-print(x)
+namespace foo
+{
+    use namespace foo
+    Debug::enter ('foo')
+    Debug::exit ('foo')
+}
+print ('hello, world');

@@ -123,10 +123,12 @@ namespace Emit;
                     return constants.namespace(CONSTANT_PackageInternalNS, constants.stringUtf8(pn.name));
                 }
                 case (un:UserNamespace) {
-                    return constants.namespace(CONSTANT_ExplicitNamespace, constants.stringUtf8(pn.name));
+                    /// return constants.namespace(CONSTANT_ExplicitNamespace, constants.stringUtf8(pn.name));
+                    return constants.namespace(CONSTANT_Namespace, constants.stringUtf8(un.name));
                 }
                 case (an:AnonymousNamespace) {
-                    return constants.namespace(CONSTANT_PackageInternalNS, constants.stringUtf8(an.name));
+                    /// return constants.namespace(CONSTANT_PackageInternalNS, constants.stringUtf8(an.name));
+                    return constants.namespace(CONSTANT_Namespace, constants.stringUtf8(an.name));
                 }
                 case (imp_ns:ImportNamespace) {
                     throw ("Unimplemented namespace ImportNamespace");

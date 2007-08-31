@@ -38,7 +38,7 @@
 
 use namespace intrinsic;
 
-namespace Lex
+public namespace Lex
 
 {
     use default namespace Lex;
@@ -155,7 +155,7 @@ namespace Lex
         function regexpFlags ()
         {
             let c : int = next ();
-            if (Unicode.isIdentifierPart (String.fromCharCode(c))) {
+            if (Char::isIdentifierPart (c)) {
                 return regexpFlags ();
             }
             else {
@@ -175,7 +175,7 @@ namespace Lex
                 //print("c[",curIndex-1,"]=",String.fromCharCode(c));
                 switch (c)
                 {
-                case 0xffffffef: return utf8sig ();
+                    //                case 0xffffffef: return utf8sig ();
                 case Char::EOS: return Token::EOS;
                 case Char::Slash: return slash ();
                 case Char::Newline: return Token::Eol;
@@ -239,7 +239,7 @@ namespace Lex
                 case Char::Nine:
                     return decimalInteger ();
                 default:
-                    if (Unicode.isIdentifierStart (String.fromCharCode(c)))
+                    if (Char::isIdentifierStart (c))
                     {
                         return identifier (String.fromCharCode(c));
                     }
@@ -1176,7 +1176,7 @@ namespace Lex
 		let c = escapeSequence ();
 		return identifier (str+String.fromCharCode(c));
             default:
-                if (Unicode.isIdentifierPart (String.fromCharCode(c)) && c != Char::EOS)
+                if (Char::isIdentifierPart (c) && c != Char::EOS)
                 {
                     return identifier (str+String.fromCharCode(c));
                 }
@@ -1271,7 +1271,7 @@ namespace Lex
             : int
         {
             let c : int = next ();
-            if (Unicode.isIdentifierPart (String.fromCharCode(c)))
+            if (Char::isIdentifierPart (c))
             {
                 return identifier ("null"+String.fromCharCode(c));
             }
