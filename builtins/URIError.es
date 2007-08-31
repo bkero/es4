@@ -55,12 +55,15 @@ package
     use default namespace public;
 
     /* E262-3 15.11.6.6; 15.11.7 */
-    public dynamic class URIError extends Error
+    dynamic class URIError extends Error
     {
-        meta static function invoke(msg)
-            new URIError(msg);
+        meta static function invoke(message)
+            new URIError(message);
 
-        function URIError(msg) : super(msg) {}
+        function URIError(message)
+            : super(message) 
+        {
+        }
 
         /* E262-3 15.11.7.9: "name" property on NativeError prototype */
         prototype var name = "URIError";

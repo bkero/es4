@@ -97,7 +97,8 @@ val defaultNumericMode : Ast.NUMERIC_MODE =
       precision = Decimal.defaultPrecision }
 
 val (initFixtures:Ast.FIXTURES) = [ (Ast.PropName Name.meta_, Ast.NamespaceFixture Name.metaNS),
-                                    (Ast.PropName Name.magic_, Ast.NamespaceFixture Name.magicNS) ]
+                                    (Ast.PropName Name.magic_, Ast.NamespaceFixture Name.magicNS),
+                                    (Ast.PropName Name.informative_, Ast.NamespaceFixture Name.informativeNS) ]
 
 val (topFixtures:Fixture.TOP_FIXTURES ref) = ref (Fixture.mkTopFixtures [])
 val (topPackageNames:Ast.IDENT list list ref) = ref []

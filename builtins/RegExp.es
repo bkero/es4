@@ -62,7 +62,7 @@ package
         }
 
         /* E262-3 15.10.4.1: The RegExp constructor */
-        public function RegExp( pattern, flags ) {
+        function RegExp( pattern, flags ) {
             let src : string = "";
 
             if (pattern is RegExp) {
@@ -78,12 +78,12 @@ package
                 flags = flags === undefined ? "" : string(flags);
             }
 
-            let usedflags : Object! = { m: false, i: false, g: false, x: false, y: false };
+            let usedflags = { m: false, i: false, g: false, x: false, y: false };
 
-            for ( let i=0, cs=explodeString(flags) ; i < cs.length ; i++ ) {
-                let f = cs[i];
+            for ( let i=0 ; i < flags.length ; i++ ) {
+                let f = flags[i];
                 if (!(f in usedflags))
-                  throw new SyntaxError("Invalid flag: " + f);
+                    throw new SyntaxError("Invalid flag: " + f);
                 if (usedflags[f])
                     throw new SyntaxError("Duplicated flag: " + f);
                 usedflags[f] = true;
@@ -158,13 +158,13 @@ package
 
         /* E262-3 15.10.7: properties of regexp instances */
         /* FIXME: the flags should be 'const'.  Ticket #24. */
-        public var multiline  : boolean;
-        public var ignoreCase : boolean;
-        public var global     : boolean;
-        public var extended   : boolean; // E262-4 proposals:extend_regexps
-        public var sticky     : boolean; // E262-4 proposals:extend_regexps
-        public var source     : string;
-        public var lastIndex  : double;
+        var multiline  : boolean;
+        var ignoreCase : boolean;
+        var global     : boolean;
+        var extended   : boolean; // E262-4 proposals:extend_regexps
+        var sticky     : boolean; // E262-4 proposals:extend_regexps
+        var source     : string;
+        var lastIndex  : double;
 
         /* E262-4 - [[Match]] may not *have* to be public, but String
          * uses it, and if we want to model the language in the

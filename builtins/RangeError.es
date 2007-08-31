@@ -55,12 +55,15 @@ package
     use default namespace public;
 
     /* E262-3 15.11.6.2; 15.11.7 */
-    public dynamic class RangeError extends Error
+    dynamic class RangeError extends Error
     {
-        meta static function invoke(msg)
-            new RangeError(msg);
+        meta static function invoke(message)
+            new RangeError(message);
 
-        function RangeError(msg) : super(msg) {}
+        function RangeError(message)
+            : super(message)
+        {
+        }
 
         /* E262-3 15.11.7.9: "name" property on NativeError prototype */
         prototype var name = "RangeError";

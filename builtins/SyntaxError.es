@@ -55,12 +55,15 @@ package
     use default namespace public;
 
     /* E262-3 15.11.6.4; 15.11.7 */
-    public dynamic class SyntaxError extends Error
+    dynamic class SyntaxError extends Error
     {
-        meta static function invoke(msg)
-            new SyntaxError(msg);
+        meta static function invoke(message)
+            new SyntaxError(message);
 
-        function SyntaxError(msg) : super(msg) {}
+        function SyntaxError(message) 
+            : super(message)
+        {
+        }
 
         /* E262-3 15.11.7.9: "name" property on NativeError prototype */
         prototype var name = "SyntaxError";
