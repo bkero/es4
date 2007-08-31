@@ -660,6 +660,23 @@ namespace Encode;
               + expr (nd.e2,nesting+", 'e2': ".length)
               + " }";
         }
+        case (nd: TernaryExpr) {
+            var str =
+                "{ 'ast_class': 'TernaryExpr'"
+              + indent(nesting)
+              + ", 'op': "
+              + binOp (nd.op,nesting+", 'op': ".length)
+              + indent(nesting)
+              + ", 'e1': "
+              + expr (nd.e1,nesting+", 'e1': ".length)
+              + indent(nesting)
+              + ", 'e2': "
+              + expr (nd.e2,nesting+", 'e2': ".length)
+              + indent(nesting)
+              + ", 'e3': "
+              + expr (nd.e3,nesting+", 'e3': ".length)
+              + " }";
+        }
         case (nd: BinaryTypeExpr) {
             var str =
                 "{ 'ast_class': 'BinaryTypeExpr'"

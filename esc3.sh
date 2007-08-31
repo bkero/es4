@@ -5,3 +5,5 @@ make run-dumped FILE="tests/self/debug.es tests/self/ast.es tests/self/decoder.e
 # java -cp /work/asc/lib/asc.jar macromedia.asc.embedding.Main -d -m esc-tmp.as
 
 cp esc-tmp.abc $1.abc
+
+rm esc-tmp.ast

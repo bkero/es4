@@ -36,7 +36,7 @@
  *
  * ***** END LICENSE BLOCK ***** */
 
-use namespace Release;
+use namespace Debug;
 use namespace intrinsic;
 
 {

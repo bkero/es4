@@ -92,6 +92,13 @@ var ast =
                           , { 'ast_class': 'NamespaceFixture'
                             , 'ns': { 'ast_class': 'AnonymousNamespace'
                                     , 'name': 'Emit' } } ]
+                        , [ { 'ast_class': 'PropName'
+                            , 'name': { 'ns': { 'ast_class': 'PublicNamespace'
+                                              , 'name': '' }
+                                      , 'id': 'Unicode' } }
+                          , { 'ast_class': 'NamespaceFixture'
+                            , 'ns': { 'ast_class': 'AnonymousNamespace'
+                                    , 'name': 'Unicode' } } ]
                         ,  ]
           , 'exprs': [  ] }
 , 'block': { 'ast_class': 'Block'

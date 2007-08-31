@@ -133,9 +133,13 @@ namespace Char
     const At = "@".charCodeAt(0);
     const SingleQuote = "'".charCodeAt(0);
     const DoubleQuote = "\"".charCodeAt(0);
+    const UnderScore = "_".charCodeAt(0);
+    const Dollar = "$".charCodeAt(0);
     const Space = " ".charCodeAt(0);
     const Tab = "\t".charCodeAt(0);
+    const VerticalTab = "\v".charCodeAt(0);
     const Newline = "\n".charCodeAt(0);
+    const CarriageReturn = "\r".charCodeAt(0);
 
     function fromOctal (str)
 	: int
@@ -149,6 +153,24 @@ namespace Char
 	return parseInt (str);
     }
 
+    function isIdentifierStart(c) {
+        if ((c >= Char::A && c <= Char::Z) ||
+            (c >= Char::a && c <= Char::z) ||
+            c == Char::UnderScore ||
+            c == Char::Dollar) return true;
+        return false;
+    }
+
+    function _isDigit (c) {
+        if (c >= Char::Zero && c <= Char::Nine) return true;
+        return false;
+    }
+
+    function isIdentifierPart(c) {
+        return isIdentifierStart (c) || _isDigit (c);
+    }
+
+
     function test () {
 	print ("testing lex-char.es");
         print ("Space=",Space);
@@ -157,4 +179,5 @@ namespace Char
     }
 
     Char::test ();
+
 }

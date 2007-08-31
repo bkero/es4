@@ -179,6 +179,7 @@ namespace Lex
                 case Char::EOS: return Token::EOS;
                 case Char::Slash: return slash ();
                 case Char::Newline: return Token::Eol;
+                case Char::CarriageReturn: return start (); // ignore
                 case Char::Space: return start ();
                 case Char::Tab: return start ();
                 case Char::LeftParen: return Token::LeftParen;
@@ -244,6 +245,7 @@ namespace Lex
                     }
                     else
                     {
+                        print ("prefix=",c);
                         throw "scanning with invalid prefix ", c;
                     }
                 }

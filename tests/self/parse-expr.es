@@ -36,8 +36,8 @@
  *
  * ***** END LICENSE BLOCK ***** */
 
+use namespace Debug;
 use namespace intrinsic;
-use namespace Release;
 
 {
     use default namespace Parse;
@@ -1291,11 +1291,11 @@ use namespace Release;
                 switch (hd (ts1)) {
                 case Token::QuestionMark:
                     var [ts2,nd2] = nonAssignmentExpression (tl (ts1),beta);
-                    match (ts2,Token::Colon);
-                    var [ts3,nd3] = nonAssignmentExpression (tl (ts2),beta);
+                    ts2 = eat (ts2,Token::Colon);
+                    var [ts3,nd3] = nonAssignmentExpression (ts2,beta);
+                    var [ts1,nd1] = [ts3, new Ast::TernaryExpr (nd1,nd2,nd3)];
                     break;
                 default:
-                    var [ts3,nd3] = [ts1,nd1];
                     break;
                 }
             }
@@ -1332,11 +1332,11 @@ use namespace Release;
                 switch (hd (ts1)) {
                 case Token::QuestionMark:
                     var [ts2,nd2] = assignmentExpression (tl (ts1),beta);
-                    match (ts2,Token::Colon);
-                    var [ts3,nd3] = assignmentExpression (tl (ts2),beta);
+                    ts2 = eat (ts2,Token::Colon);
+                    var [ts3,nd3] = assignmentExpression (ts2,beta);
+                    var [ts1,nd1] = [ts3, new Ast::TernaryExpr (nd1,nd2,nd3)];
                     break;
                 default:
-                    var [ts3,nd3] = [ts1,nd1];
                     break;
                 }
             }

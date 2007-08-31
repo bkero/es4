@@ -36,9 +36,9 @@
  * ***** END LICENSE BLOCK ***** */
 
 {
-    import util.*;
     use namespace Parse;
     use namespace Ast;
+    use namespace Util;
     load ("esc-env.ast")
     print ("booting")
     var nd = Decode::program (ast);
@@ -50,8 +50,6 @@
 }
 
 {
-    import util.*;
-    import cogen.*;
-
-    dumpABCFile(cogen.cg(nd), "esc-tmp.abc");
+    use namespace Util;
+    dumpABCFile(Gen::cg(nd), "esc-tmp.abc");
 }
